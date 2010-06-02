@@ -1,0 +1,13 @@
+menu "Meson platform type"
+	depends on ARCH_MESON
+
+config MESON_CLOCK_TICK_RATE
+    int "Clock Tick Rate"
+	default 25000000
+
+config MACH_MESON
+	bool "Support MESON-M1 platform"
+	help
+	  Include support for the MESON-M1 Platform Baseboard.
+
+endmenu

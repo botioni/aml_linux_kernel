@@ -1,0 +1,11 @@
+
+menu "Amlogic UART Support"
+
+config AM_UART
+        bool "Amlogic Uart support"
+        default y
+        depends on ARCH_MESON
+        help
+           hardware uart
+
+endmenu
