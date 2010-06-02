@@ -1,0 +1,12 @@
+#
+# CMEM device configuration
+#
+
+menu "AMLOGIC Physical memory allocator"
+    depends on AMLOGIC_BOARD_APOLLO_H_LINUX
+
+config CMEM
+    tristate "CMEM Physical memory allocator"
+	help
+	  Select to enable CMEM physical memory allocator driver.
+endmenu

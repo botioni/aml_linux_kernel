@@ -1,0 +1,19 @@
+#
+# Sensor device configuration
+#
+
+menu "AMLOGIC NAND Flash  support"
+    depends on AMLOGIC_BOARD
+
+config APOLLO_NAND
+	tristate "APOLLO NAND FLASH SUPPORT"
+	select MTD_NAND 
+  select MTD_PARTITIONS
+  select MTD_BLOCK
+  select MTD_CHAR
+	help
+		This is Apollo nand suport
+		This driver can also be built as a module.  If so, the module
+		will be called apollo_nand.ko
+	  
+endmenu

@@ -1,0 +1,11 @@
+
+menu "Amlogic USB Support"
+
+config USB_DWC_OTG_HCD
+        bool "Amloigc usb host controler dwc_otg support"
+        depends on AMLOGIC_BOARD && USB_SUPPORT
+        help
+           usb dwc_otg
+
+
+endmenu

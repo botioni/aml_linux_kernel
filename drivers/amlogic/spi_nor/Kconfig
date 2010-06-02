@@ -1,0 +1,20 @@
+#
+# Sensor device configuration
+#
+
+menu "AMLOGIC SPI NOR Flash  support"
+    depends on AMLOGIC_BOARD
+
+config APOLLO_SPI_NOR
+	tristate "APOLLO SPI NOR FLASH SUPPORT"
+  select MTD_DATA_FLASH 
+  select MTD_PARTITIONS
+  select MTD_BLOCK
+  select MTD_CHAR
+  select SPI
+	help
+		This is Apollo spi nor suport
+		This driver can also be built as a module.  If so, the module
+		will be called apollo_nand.ko
+	  
+endmenu

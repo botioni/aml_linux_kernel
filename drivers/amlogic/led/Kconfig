@@ -1,0 +1,12 @@
+#
+# LED device configuration
+#
+
+menu "AMLOGIC Linux Ref board LED support"
+    depends on AMLOGIC_BOARD_APOLLO_H_LINUX
+
+config LED
+    tristate "APOLLO A1H Linux Ref board LED"
+	help
+	  Select to enable LED driver to control LEDs on Linux reference board.      
+endmenu

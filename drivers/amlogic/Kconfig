@@ -1,0 +1,25 @@
+#
+# Amlogic driver configuration
+#
+menu "Amlogic Device Drivers"
+	depends on ARCH_MESON
+
+source "drivers/amlogic/uart/Kconfig"
+#source "drivers/amlogic/net/Kconfig"
+#source "drivers/amlogic/usb/Kconfig"
+source "drivers/amlogic/canvas/Kconfig"
+source "drivers/amlogic/display/Kconfig"
+#source "drivers/amlogic/cardreader/Kconfig"
+source "drivers/amlogic/amports/Kconfig"
+#source "drivers/amlogic/i2c/Kconfig"
+#source "drivers/amlogic/hdmi/Kconfig"
+#source "drivers/amlogic/nand/Kconfig"
+#source "drivers/amlogic/sound/Kconfig"
+#source "drivers/amlogic/input/Kconfig"
+#source "drivers/amlogic/audiodsp/Kconfig"
+#source "drivers/amlogic/led/Kconfig"
+#source "drivers/amlogic/cmem/Kconfig"
+#source "drivers/amlogic/jpeglogo/Kconfig"
+#source "drivers/amlogic/spi_nor/Kconfig"
+endmenu	
+
