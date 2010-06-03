@@ -691,25 +691,16 @@
 // ----------------------------
 // NAND (21)
 // ----------------------------
-#define PNAND_GEN_CNTL                             0x2180
-#define PNAND_GEN_TIMING                           0x2181
-#define PNAND_DMA_START_ADDR                       0x2182
-#define PNAND_DMA_XFER_COUNT                       0x2183
-#define PNAND_DMA_CNTL                             0x2184
-#define PNAND_DMA_COL_PAGE                         0x2185
-#define PNAND_DMA_BURST                            0x2186
-#define PNAND_USER_3_0                             0x2187
-#define PNAND_USER_7_4                             0x2188
-#define PNAND_USER_11_8                            0x2189
-#define PNAND_USER_15_12                           0x218a
-#define PNAND_ERR_LOC                              0x218b
-#define PNAND_ERR_CNT0                             0x218c
-#define PNAND_ERR_CNT1                             0x218d
-#define PNAND_ERR_UNC                              0x218e
-#define PNAND_USER_B_3_0                           0x218f
-#define PNAND_USER_B_7_4                           0x2190
-#define PNAND_USER_B_11_8                          0x2192
-#define PNAND_USER_B_15_12                         0x2193
+#define P_NAND_CMD                                 0x2180
+#define P_NAND_CFG                                 0x2181
+#define P_NAND_DADR                                0x2182
+#define P_NAND_IADR                                0x2183
+#define P_NAND_BUF                                 0x2184
+#define P_NAND_INFO                                0x2185
+#define P_NAND_DC                                  0x2186
+#define P_NAND_ADR                                 0x2187
+#define P_NAND_DL                                  0x2188
+#define P_NAND_DH                                  0x2189
 // ----------------------------
 // PWM / DS C/D
 // ----------------------------
