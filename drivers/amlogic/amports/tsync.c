@@ -53,6 +53,7 @@ void tsync_avevent(avevent_t event, u32 param)
     u32 t;
 
     spin_lock_irqsave(&lock, flags);
+    local_fiq_disable();
 
     switch (event) {
     case VIDEO_START:
@@ -192,6 +193,7 @@ void tsync_avevent(avevent_t event, u32 param)
         break;
     }
 
+    local_fiq_enable();
     spin_unlock_irqrestore(&lock, flags);
 }
 EXPORT_SYMBOL(tsync_avevent);

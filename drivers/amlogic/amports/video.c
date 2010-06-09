@@ -44,6 +44,7 @@
 #include <linux/sched.h>
 #include <linux/poll.h>
 
+#include <asm/fiq.h>
 #include <asm/uaccess.h>
 
 #include "vframe.h"
@@ -57,6 +58,9 @@
 
 //#define SLOW_SYNC_REPEAT
 //#define DEBUG
+
+#define BRIDGE_IRQ	INT_TIMER_D
+#define BRIDGE_IRQ_SET() WRITE_CBUS_REG(ISA_TIMERE, 1)
 
 #define RESERVE_CLR_FRAME
 
@@ -157,6 +161,7 @@ static const f2v_vphase_type_t vpp_phase_table[4][3] = {
     {F2V_IB2IT, F2V_IB2IB, F2V_IB2P}    /* VIDTYPE_INTERLACE_BOTTOM */
 };
 
+static const u8 skip_tab[6] = { 0x24, 0x04, 0x68, 0x48, 0x28, 0x08 };
 /* wait queue for poll */
 static wait_queue_head_t amvideo_trick_wait;
 
@@ -507,7 +512,7 @@ static void viu_set_dcu(vpp_frame_par_t *frame_par, vframe_t *vf)
 
 static int detect_vout_type(void)
 {
-#if defined(CONFIG_FB_AML_TCON)
+#if defined(CONFIG_AM_TCON_OUTPUT)
     return VOUT_TYPE_PROG;
 #else
     int vout_type;
@@ -596,8 +601,25 @@ static inline bool vpts_expire(vframe_t *cur_vf, vframe_t *next_vf)
 
 static irqreturn_t vsync_isr(int irq, void *dev_id)
 {
+	wake_up_interruptible(&amvideo_trick_wait);
+
+	return IRQ_HANDLED;
+}
+
+static void __attribute__ ((naked)) vsync_fiq_isr(void)
+{
     s32 i, vout_type;
     vframe_t *vf;
+#ifdef DEBUG
+    int toggle_cnt;
+#endif
+
+	asm __volatile__ (
+		"mov    ip, sp;\n"
+		"stmfd	sp!, {r0-r12, lr};\n"
+		"sub    sp, sp, #256;\n"
+		"sub    fp, sp, #256;\n");
+			
 #ifdef DEBUG
     int toggle_cnt = 0;
 #endif
@@ -623,7 +645,7 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
 #endif
 
         } else
-            return IRQ_HANDLED;
+            return;
     }
 
     /* buffer switch management */
@@ -647,7 +669,9 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
             if (trickmode_fffb == 1)
             {
                 atomic_set(&trickmode_framedone, 1);
-                wake_up_interruptible(&amvideo_trick_wait);
+
+				/* bridge to dummy IRQ */
+				BRIDGE_IRQ_SET();
                 break;
             }
 
@@ -701,7 +725,6 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
 
         if (vphase->repeat_skip >= 0) {
             /* skip lines */
-            const u8 skip_tab[6] = { 0x24, 0x04, 0x68, 0x48, 0x28, 0x08 };
             WRITE_MPEG_REG_BITS(VPP_VSC_PHASE_CTRL,
                                 skip_tab[vphase->repeat_skip],
                                 VPP_PHASECTL_INIRCVNUMT_BIT,
@@ -798,7 +821,12 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
 
     wait_sync = 0;
 
-    return IRQ_HANDLED;
+	WRITE_MPEG_REG(IRQ_CLR_REG(INT_VIU_VSYNC), 1 << IRQ_BIT(INT_VIU_VSYNC));
+
+	asm __volatile__ (
+		"add	sp, sp, #256 ;\n"
+		"ldmia	sp!, {r0-r12, lr};\n"
+		"subs	pc, lr, #4;\n");
 }
 
 static int alloc_keep_buffer(void)
@@ -867,8 +895,44 @@ err1:
     return -ENOMEM;
 }
 
+/*********************************************************
+ * FIQ Routines
+ *********************************************************/
+/* 4K size of FIQ stack size */
+static u8 fiq_stack[4096];
 
-/*********************************************************/
+static void __attribute__ ((naked)) fiq_vector(void)
+{
+	asm __volatile__ ("mov pc, r0 ;");
+}
+
+static void vsync_fiq_up(void)
+{
+	struct pt_regs regs;
+	unsigned int mask = 1 << IRQ_BIT(INT_VIU_VSYNC);
+
+	/* prep the special FIQ mode regs */
+	memset(&regs, 0, sizeof(regs));
+	regs.ARM_r0 = (unsigned long)vsync_fiq_isr;
+	regs.ARM_sp = (unsigned long)fiq_stack + sizeof(fiq_stack) - 4;
+	set_fiq_regs(&regs);
+	set_fiq_handler(fiq_vector, 8);
+
+	SET_CBUS_REG_MASK(IRQ_FIQSEL_REG(INT_VIU_VSYNC), mask);
+	enable_fiq(INT_VIU_VSYNC);
+}
+
+static void vsync_fiq_down(void)
+{
+	unsigned int mask = 1 << IRQ_BIT(INT_VIU_VSYNC);
+	
+	disable_fiq(INT_VIU_VSYNC);
+	CLEAR_CBUS_REG_MASK(IRQ_FIQSEL_REG(INT_VIU_VSYNC), mask);
+}
+
+/*********************************************************
+ * Exported routines
+ *********************************************************/
 void vf_reg_provider(const vframe_provider_t *p)
 {
     ulong flags;
@@ -1512,7 +1576,7 @@ static int __init video_init(void)
     cur_dispbuf = NULL;
 
     /* hook vsync isr */
-    r = request_irq(INT_VIU_VSYNC, &vsync_isr,
+    r = request_irq(BRIDGE_IRQ, &vsync_isr,
                     IRQF_SHARED, "amvideo",
                     (void *)video_dev_id);
 
@@ -1552,30 +1616,34 @@ static int __init video_init(void)
 
     disp_canvas = (disp_canvas_index[2] << 16) | (disp_canvas_index[1] << 8) | disp_canvas_index[0];
 
+	vsync_fiq_up();
+
     return (0);
 
 err3:
     unregister_chrdev(AMVIDEO_MAJOR, DEVICE_NAME);
 
 err2:
-    free_irq(INT_VIU_VSYNC, (void *)video_dev_id);
+    free_irq(BRIDGE_IRQ, (void *)video_dev_id);
 
 err1:
     class_unregister(&amvideo_class);
 
 err0:
-    return (0);
+    return r;
 }
 
 static void __exit video_exit(void)
 {
     DisableVideoLayer();
+    
+    vsync_fiq_down();
 
     device_destroy(&amvideo_class, MKDEV(AMVIDEO_MAJOR, 0));
 
     unregister_chrdev(AMVIDEO_MAJOR, DEVICE_NAME);
 
-    free_irq(INT_VIU_VSYNC, (void *)video_dev_id);
+    free_irq(BRIDGE_IRQ, (void *)video_dev_id);
 
     class_unregister(&amvideo_class);
 }

@@ -36,11 +36,6 @@
 /***********************************************************************
  * IRQ
  **********************************************************************/
-#define IRQ_BIT(irq)			((irq) & 0x1f)
-#define IRQ_MASK_REG(irq)		((CBUS_REG_ADDR(A9_IRQ_IN0_INTR_MASK)) + ((irq) >> 5))
-#define IRQ_STATUS_REG(irq)		((CBUS_REG_ADDR(A9_IRQ_IN0_INTR_STAT)) + ((irq) >> 5))
-#define IRQ_CLR_REG(irq)		((CBUS_REG_ADDR(A9_IRQ_IN0_INTR_STAT_CLR)) + ((irq) >> 5))
-#define IRQ_FIQSEL_REG(irq) 	((CBUS_REG_ADDR(A9_IRQ_IN0_INTR_FIRQ_SEL)) + ((irq) >> 5))
 
 /* Enable interrupt */
 static void meson_unmask_irq(unsigned int irq)
