@@ -5,10 +5,11 @@
 menu "AMLOGIC AV Streaming devices"
 
 config AM_VIDEO
-	tristate "AMLOGIC Video management"
+	bool "AMLOGIC Video management"
 	default y
 	select AM_CANVAS
 	select AM_PTSMGR
+	select AM_TIMESYNC
 	help
 	  Driver for video display.
 
@@ -68,13 +69,13 @@ config AM_JPEGDEC
 	  Select to enable HW jpeg decoder.
 
 config AM_TIMESYNC
-	tristate "AMLOGIC Time sync driver"
+	bool "AMLOGIC Time sync driver"
 	default y
 	help
 	  AV sync and play rate control management.
 
 config AM_STREAMING
-	tristate "AMLOGIC AV Streaming support"
+	bool "AMLOGIC AV Streaming support"
 	default y
 	select AM_PTSSERVER
 	help

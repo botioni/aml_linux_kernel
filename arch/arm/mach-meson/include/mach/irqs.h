@@ -21,6 +21,12 @@
 #ifndef __ASM_ARCH_IRQS_H
 #define __ASM_ARCH_IRQS_H
 
+#define IRQ_BIT(irq)			((irq) & 0x1f)
+#define IRQ_MASK_REG(irq)		((CBUS_REG_ADDR(A9_IRQ_IN0_INTR_MASK)) + ((irq) >> 5))
+#define IRQ_STATUS_REG(irq)		((CBUS_REG_ADDR(A9_IRQ_IN0_INTR_STAT)) + ((irq) >> 5))
+#define IRQ_CLR_REG(irq)		((CBUS_REG_ADDR(A9_IRQ_IN0_INTR_STAT_CLR)) + ((irq) >> 5))
+#define IRQ_FIQSEL_REG(irq) 	((CBUS_REG_ADDR(A9_IRQ_IN0_INTR_FIRQ_SEL)) + ((irq) >> 5))
+
 #define AM_IRQ0(v)		( 0	+ (v))
 #define AM_IRQ1(v)		(32 + (v))
 #define AM_IRQ2(v)		(64 + (v))
@@ -129,5 +135,8 @@
 #define INT_AMRISC_VENC_INT			AM_IRQ3(19)
 #define INT_AMRISC_TIMER0			AM_IRQ3(26)
 #define INT_AMRISC_TIMER1			AM_IRQ3(27)
+
+/* All interrupts are FIQ capable */
+#define FIQ_START					AM_IRQ0(0)
 
 #endif
