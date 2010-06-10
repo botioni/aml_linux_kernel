@@ -178,6 +178,25 @@ static void __init meson_clocksource_init(void)
 
 /********** Clock Event Device, Timer-A *********/
 
+static void meson_clkevt_set_mode(enum clock_event_mode mode,
+                                  struct clock_event_device *dev)
+{
+	switch (mode) {
+	case CLOCK_EVT_MODE_PERIODIC:
+	case CLOCK_EVT_MODE_RESUME:
+		CLEAR_MPEG_REG_MASK(ISA_TIMERA, 0xffff);
+		SET_MPEG_REG_MASK(ISA_TIMERA, 1);
+		break;
+	case CLOCK_EVT_MODE_ONESHOT:
+		BUG(); /* Not supported */
+        /* FALLTHROUGH */
+	case CLOCK_EVT_MODE_SHUTDOWN:
+	case CLOCK_EVT_MODE_UNUSED:
+		CLEAR_MPEG_REG_MASK(ISA_TIMERA, 0xffff);
+		break;
+	}
+}
+
 static struct clock_event_device clockevent_meson_1mhz = {
 	.name           = "TIMER-A",
 	.rating         = 300, /* Reasonably fast and accurate clock event */
@@ -188,8 +207,8 @@ static struct clock_event_device clockevent_meson_1mhz = {
 	.shift          = 0,
 #if 0
 	.set_next_event = meson_set_next_event,
-	.set_mode       = meson_set_mode,
 #endif
+	.set_mode       = meson_clkevt_set_mode,
 };
 
 /* Clock event timer interrupt handler */
