@@ -129,6 +129,11 @@ static __initdata struct map_desc meson_io_desc[] = {
 		.length		= SZ_1M,
 		.type		= MT_DEVICE,
 	} , {
+		.virtual	= IO_PL310_BASE,
+		.pfn		= __phys_to_pfn(IO_AXI_BUS_BASE),
+		.length		= SZ_4K,
+		.type		= MT_DEVICE,
+	} , {
 		.virtual	= IO_AHB_BUS_BASE,
 		.pfn		= __phys_to_pfn(IO_AHB_BUS_BASE),
 		.length		= SZ_16M,
@@ -216,7 +221,7 @@ static irqreturn_t meson_timer_interrupt(int irq, void *dev_id)
 {
 	struct clock_event_device *evt = &clockevent_meson_1mhz;
 
-	meson_mask_irq(irq);
+	meson_ack_irq(irq);
 
 	evt->event_handler(evt);
 
