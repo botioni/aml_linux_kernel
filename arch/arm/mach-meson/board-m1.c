@@ -22,10 +22,20 @@
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>
 
+#ifdef CONFIG_CACHE_L2X0
+#include <asm/hardware/cache-l2x0.h>
+#endif
+
 #define MACH_MESON_STRING "AMLOGIC MESON-M1 Board"
 
 static __init void m1_init_machine(void)
 {
+#ifdef CONFIG_CACHE_L2X0
+		/* 128kb (16KB/way), 8-way associativity, evmon/parity/share disabled
+		 * Bits:  .... .... .000 0010 0000 .... .... .... */
+		l2x0_init((void __iomem *)IO_PL310_BASE, 0x00020000, 0xff800fff);
+#endif
+
 	/* todo: load device drivers */
 }
 
