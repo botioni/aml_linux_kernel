@@ -69,6 +69,7 @@
 
 #define IO_CBUS_BASE			0xc1100000
 #define IO_AXI_BUS_BASE			0xc1300000
+#define IO_PL310_BASE			0xc4200000
 #define IO_AHB_BUS_BASE			0xc9000000
 #define IO_APB_BUS_BASE			0xd0040000
 
@@ -1307,23 +1308,6 @@
 #define GPIO_INTR_GPIO_SEL1                        0x2622
 #define GPIO_INTR_FILTER_SEL0                      0x2623
 #define GLOBAL_INTR_DISABLE                        0x2624
-
-#define A9_IRQ_IN0_INTR_STAT                       0x2630
-#define A9_IRQ_IN0_INTR_STAT_CLR                   0x2631
-#define A9_IRQ_IN0_INTR_MASK                       0x2632
-#define A9_IRQ_IN0_INTR_FIRQ_SEL                   0x2633
-#define A9_IRQ_IN1_INTR_STAT                       0x2634
-#define A9_IRQ_IN1_INTR_STAT_CLR                   0x2635
-#define A9_IRQ_IN1_INTR_MASK                       0x2636
-#define A9_IRQ_IN1_INTR_FIRQ_SEL                   0x2637
-#define A9_IRQ_IN2_INTR_STAT                       0x2638
-#define A9_IRQ_IN2_INTR_STAT_CLR                   0x2639
-#define A9_IRQ_IN2_INTR_MASK                       0x263a
-#define A9_IRQ_IN2_INTR_FIRQ_SEL                   0x263b
-#define A9_IRQ_IN3_INTR_STAT                       0x263c
-#define A9_IRQ_IN3_INTR_STAT_CLR                   0x263d
-#define A9_IRQ_IN3_INTR_MASK                       0x263e
-#define A9_IRQ_IN3_INTR_FIRQ_SEL                   0x263f
 
 // -----------------------------------------------------------
 #define WATCHDOG_TC                                0x2640

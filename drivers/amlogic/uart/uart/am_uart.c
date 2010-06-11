@@ -46,7 +46,7 @@
 
 #include "am_uart.h"
 
-#define M1_SIM
+//#define M1_SIM
 
 #ifdef M1_SIM
 #include "c_stimulus.h"
@@ -109,6 +109,9 @@ static void am_uart_stop(struct tty_struct *tty)
  */
 void am_uart_put_char(char ch)
 {
+#ifdef M1_SIM
+	stimulus_display("%c", ch);
+#else
 	am_uart_t *uart = uart_addr[0];
 
 	/* check if TXEMPTY (bit 7) in the status reg. is 1. Else, we
@@ -118,8 +121,6 @@ void am_uart_put_char(char ch)
 	__raw_writel(ch, &uart->wdata);
 	//uart->wdata=ch;
 
-#ifdef M1_SIM
-	stimulus_display("%c", ch);
 #endif
 }
 
@@ -891,8 +892,12 @@ module_init(am_uart_init);
 
 int am_uart_console_setup(struct console *cp, char *arg)
 {
+	struct clk *sysclk;
 	unsigned long baudrate = 0;
-	int baud = 0, flow, bits, parity;
+	int baud = 115200;
+	int bits = 8;
+	int parity = 'n';
+	int flow = 'n';
 
 	/* TODO: pinmux */
 
@@ -902,14 +907,18 @@ int am_uart_console_setup(struct console *cp, char *arg)
 	if (baud < 300 || baud > 115200)
 		baud = 115200;
 
-	CLEAR_MPEG_REG_MASK(UART0_CONTROL, 1 << 19);
-	baudrate = (clk_get_rate(clk_get_sys("clk81", NULL)) / (baud * 4)) - 1;
-	CLEAR_MPEG_REG_MASK(UART0_CONTROL, 0xFFF);
+	sysclk = clk_get_sys("clk81", NULL);
+	if (IS_ERR(sysclk))
+		baudrate = (180000000 / (baud * 4)) - 1;
+	else
+		baudrate = (clk_get_rate(sysclk) / (baud * 4)) - 1;
+
+	CLEAR_MPEG_REG_MASK(UART0_CONTROL, (1 << 19) | 0xFFF);
 	SET_MPEG_REG_MASK(UART0_CONTROL, (baudrate & 0xfff));
 	SET_MPEG_REG_MASK(UART0_CONTROL, (1 << 12) | 1 << 13);
-	//reset the red 
 	SET_MPEG_REG_MASK(UART0_CONTROL, (7 << 22));
 	CLEAR_MPEG_REG_MASK(UART0_CONTROL, (7 << 22));
+
 	console_inited = 1;
 
 	return 0;		/* successful initialization */

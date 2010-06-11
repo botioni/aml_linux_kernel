@@ -26,7 +26,7 @@
 #include <linux/mm.h>
 #include <linux/clockchips.h>
 #include <linux/clocksource.h>
- 
+
 #include <mach/hardware.h>
 #include <asm/memory.h>
 #include <asm/mach/map.h>
@@ -47,7 +47,7 @@ static void meson_unmask_irq(unsigned int irq)
 
 	mask = 1 << IRQ_BIT(irq);
 
-	SET_MPEG_REG_MASK(IRQ_MASK_REG(irq), mask);
+	SET_CBUS_REG_MASK(IRQ_MASK_REG(irq), mask);
 }
 
 /* Disable interrupt */
@@ -60,7 +60,7 @@ static void meson_mask_irq(unsigned int irq)
 
 	mask = 1 << IRQ_BIT(irq);
 
-	CLEAR_MPEG_REG_MASK(IRQ_MASK_REG(irq), mask);
+	CLEAR_CBUS_REG_MASK(IRQ_MASK_REG(irq), mask);
 }
 
 /* Clear interrupt */
@@ -73,7 +73,7 @@ static void meson_ack_irq(unsigned int irq)
 
 	mask = 1 << IRQ_BIT(irq);
 
-	WRITE_MPEG_REG(IRQ_CLR_REG(irq), mask);
+	WRITE_CBUS_REG(IRQ_CLR_REG(irq), mask);
 }
 
 static struct irq_chip meson_irq_chip = {
@@ -89,22 +89,22 @@ void __init meson_init_irq(void)
 	unsigned i;
 
 	/* Disable all interrupt requests */
-	WRITE_MPEG_REG(A9_IRQ_IN0_INTR_MASK, 0);
-	WRITE_MPEG_REG(A9_IRQ_IN1_INTR_MASK, 0);
-	WRITE_MPEG_REG(A9_IRQ_IN2_INTR_MASK, 0);
-	WRITE_MPEG_REG(A9_IRQ_IN3_INTR_MASK, 0);
+	WRITE_CBUS_REG(A9_0_IRQ_IN0_INTR_MASK, 0);
+	WRITE_CBUS_REG(A9_0_IRQ_IN1_INTR_MASK, 0);
+	WRITE_CBUS_REG(A9_0_IRQ_IN2_INTR_MASK, 0);
+	WRITE_CBUS_REG(A9_0_IRQ_IN3_INTR_MASK, 0);
 
 	/* Clear all interrupts */
-	WRITE_MPEG_REG(A9_IRQ_IN0_INTR_STAT_CLR, ~0);
-	WRITE_MPEG_REG(A9_IRQ_IN1_INTR_STAT_CLR, ~0);
-	WRITE_MPEG_REG(A9_IRQ_IN2_INTR_STAT_CLR, ~0);
-	WRITE_MPEG_REG(A9_IRQ_IN3_INTR_STAT_CLR, ~0);
+	WRITE_CBUS_REG(A9_0_IRQ_IN0_INTR_STAT_CLR, ~0);
+	WRITE_CBUS_REG(A9_0_IRQ_IN1_INTR_STAT_CLR, ~0);
+	WRITE_CBUS_REG(A9_0_IRQ_IN2_INTR_STAT_CLR, ~0);
+	WRITE_CBUS_REG(A9_0_IRQ_IN3_INTR_STAT_CLR, ~0);
 
 	/* Set all interrupts to IRQ */
-	WRITE_MPEG_REG(A9_IRQ_IN0_INTR_FIRQ_SEL, 0);
-	WRITE_MPEG_REG(A9_IRQ_IN1_INTR_FIRQ_SEL, 0);
-	WRITE_MPEG_REG(A9_IRQ_IN2_INTR_FIRQ_SEL, 0);
-	WRITE_MPEG_REG(A9_IRQ_IN3_INTR_FIRQ_SEL, 0);
+	WRITE_CBUS_REG(A9_0_IRQ_IN0_INTR_FIRQ_SEL, 0);
+	WRITE_CBUS_REG(A9_0_IRQ_IN1_INTR_FIRQ_SEL, 0);
+	WRITE_CBUS_REG(A9_0_IRQ_IN2_INTR_FIRQ_SEL, 0);
+	WRITE_CBUS_REG(A9_0_IRQ_IN3_INTR_FIRQ_SEL, 0);
 
 	/* set up genirq dispatch */
 	for (i = 0; i < NR_IRQS; i++) {
@@ -159,7 +159,7 @@ void __init meson_map_io(void)
 
 static cycle_t cycle_read_timerE(struct clocksource *cs)
 {
-    return (cycles_t) READ_MPEG_REG(ISA_TIMERE);
+    return (cycles_t) READ_CBUS_REG(ISA_TIMERE);
 }
 
 static struct clocksource clocksource_timer_e = {
@@ -174,9 +174,9 @@ static struct clocksource clocksource_timer_e = {
 
 static void __init meson_clocksource_init(void)
 {
-	CLEAR_MPEG_REG_MASK(ISA_TIMER_MUX, TIMER_A_INPUT_MASK);
-	SET_MPEG_REG_MASK(ISA_TIMER_MUX, TIMERE_UNIT_1us << TIMER_E_INPUT_BIT);
-	WRITE_MPEG_REG(ISA_TIMERE, 0);
+	CLEAR_CBUS_REG_MASK(ISA_TIMER_MUX, TIMER_E_INPUT_MASK);
+	SET_CBUS_REG_MASK(ISA_TIMER_MUX, TIMERE_UNIT_1us << TIMER_E_INPUT_BIT);
+	WRITE_CBUS_REG(ISA_TIMERE, 0);
 
     clocksource_register(&clocksource_timer_e);
 }
@@ -189,15 +189,18 @@ static void meson_clkevt_set_mode(enum clock_event_mode mode,
 	switch (mode) {
 	case CLOCK_EVT_MODE_PERIODIC:
 	case CLOCK_EVT_MODE_RESUME:
-		CLEAR_MPEG_REG_MASK(ISA_TIMERA, 0xffff);
-		SET_MPEG_REG_MASK(ISA_TIMERA, 1);
+		CLEAR_CBUS_REG_MASK(ISA_TIMERA, 0xffff);
+		SET_CBUS_REG_MASK(ISA_TIMERA, 999);
 		break;
 	case CLOCK_EVT_MODE_ONESHOT:
 		BUG(); /* Not supported */
         /* FALLTHROUGH */
 	case CLOCK_EVT_MODE_SHUTDOWN:
 	case CLOCK_EVT_MODE_UNUSED:
-		CLEAR_MPEG_REG_MASK(ISA_TIMERA, 0xffff);
+		/* there is no way to shut down TIMERA,
+		 * so set a long TIMERA period magic.
+		 */
+		SET_CBUS_REG_MASK(ISA_TIMERA, 0xffff);
 		break;
 	}
 }
@@ -223,7 +226,8 @@ static irqreturn_t meson_timer_interrupt(int irq, void *dev_id)
 
 	meson_ack_irq(irq);
 
-	evt->event_handler(evt);
+	if ((READ_CBUS_REG(ISA_TIMERA) & 0xffff) != 0xffff)
+		evt->event_handler(evt);
 
 	return IRQ_HANDLED;
 }
@@ -236,10 +240,9 @@ static struct irqaction meson_timer_irq = {
 
 static void __init meson_clockevent_init(void)
 {
-	/* setup Timer A as 1ms timer */
-	WRITE_MPEG_REG(ISA_TIMERA, 1);
-	CLEAR_MPEG_REG_MASK(ISA_TIMER_MUX, TIMER_A_INPUT_MASK);
-	SET_MPEG_REG_MASK(ISA_TIMER_MUX, TIMER_UNIT_1ms << TIMER_A_INPUT_BIT);
+	CLEAR_CBUS_REG_MASK(ISA_TIMER_MUX, TIMER_A_INPUT_MASK);
+	SET_CBUS_REG_MASK(ISA_TIMER_MUX, TIMER_UNIT_1us << TIMER_A_INPUT_BIT);
+	WRITE_CBUS_REG(ISA_TIMERA, 999);
 
 	/* 24bit counter, so 24bits delta is max */
 	clockevent_meson_1mhz.max_delta_ns =

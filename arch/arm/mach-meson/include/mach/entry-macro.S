@@ -19,7 +19,7 @@
 	.endm
 
 	.macro	get_irqnr_and_base, irqnr, irqstat, base, tmp
-	ldr	\base, = CBUS_REG_ADDR(A9_IRQ_IN0_INTR_STAT)
+	ldr	\base, = CBUS_REG_ADDR(A9_0_IRQ_IN0_INTR_STAT)
 
 	ldr	\irqstat, [\base, #0]
 	mov	\irqnr, #0
