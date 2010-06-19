@@ -645,7 +645,7 @@ static void __attribute__ ((naked)) vsync_fiq_isr(void)
 #endif
 
         } else
-            return;
+            goto exit;
     }
 
     /* buffer switch management */
@@ -821,7 +821,10 @@ static void __attribute__ ((naked)) vsync_fiq_isr(void)
 
     wait_sync = 0;
 
+exit:
 	WRITE_MPEG_REG(IRQ_CLR_REG(INT_VIU_VSYNC), 1 << IRQ_BIT(INT_VIU_VSYNC));
+
+	dsb();
 
 	asm __volatile__ (
 		"add	sp, sp, #256 ;\n"
@@ -903,7 +906,7 @@ static u8 fiq_stack[4096];
 
 static void __attribute__ ((naked)) fiq_vector(void)
 {
-	asm __volatile__ ("mov pc, r0 ;");
+	asm __volatile__ ("mov pc, r8 ;");
 }
 
 static void vsync_fiq_up(void)
@@ -913,7 +916,7 @@ static void vsync_fiq_up(void)
 
 	/* prep the special FIQ mode regs */
 	memset(&regs, 0, sizeof(regs));
-	regs.ARM_r0 = (unsigned long)vsync_fiq_isr;
+	regs.ARM_r8 = (unsigned long)vsync_fiq_isr;
 	regs.ARM_sp = (unsigned long)fiq_stack + sizeof(fiq_stack) - 4;
 	set_fiq_regs(&regs);
 	set_fiq_handler(fiq_vector, 8);
