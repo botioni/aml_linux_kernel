@@ -48,6 +48,8 @@ static void meson_unmask_irq(unsigned int irq)
 	mask = 1 << IRQ_BIT(irq);
 
 	SET_CBUS_REG_MASK(IRQ_MASK_REG(irq), mask);
+	
+	dsb();
 }
 
 /* Disable interrupt */
@@ -61,6 +63,8 @@ static void meson_mask_irq(unsigned int irq)
 	mask = 1 << IRQ_BIT(irq);
 
 	CLEAR_CBUS_REG_MASK(IRQ_MASK_REG(irq), mask);
+	
+	dsb();
 }
 
 /* Clear interrupt */
@@ -74,6 +78,8 @@ static void meson_ack_irq(unsigned int irq)
 	mask = 1 << IRQ_BIT(irq);
 
 	WRITE_CBUS_REG(IRQ_CLR_REG(irq), mask);
+	
+	dsb();
 }
 
 static struct irq_chip meson_irq_chip = {
@@ -181,53 +187,74 @@ static void __init meson_clocksource_init(void)
     clocksource_register(&clocksource_timer_e);
 }
 
-/********** Clock Event Device, Timer-A *********/
+/********** Clock Event Device, Timer-AC *********/
 
 static void meson_clkevt_set_mode(enum clock_event_mode mode,
                                   struct clock_event_device *dev)
 {
 	switch (mode) {
-	case CLOCK_EVT_MODE_PERIODIC:
 	case CLOCK_EVT_MODE_RESUME:
-		CLEAR_CBUS_REG_MASK(ISA_TIMERA, 0xffff);
-		SET_CBUS_REG_MASK(ISA_TIMERA, 999);
+		/* FIXME:
+		 * CLOCK_EVT_MODE_RESUME is always followed by
+		 * CLOCK_EVT_MODE_PERIODIC or CLOCK_EVT_MODE_ONESHOT.
+		 * do nothing here.
+		 */
 		break;
+
+	case CLOCK_EVT_MODE_PERIODIC:
+		meson_mask_irq(INT_TIMER_C);
+		meson_unmask_irq(INT_TIMER_A);
+		break;
+
 	case CLOCK_EVT_MODE_ONESHOT:
-		BUG(); /* Not supported */
-        /* FALLTHROUGH */
+		meson_mask_irq(INT_TIMER_A);
+		break;
+
 	case CLOCK_EVT_MODE_SHUTDOWN:
 	case CLOCK_EVT_MODE_UNUSED:
-		/* there is no way to shut down TIMERA,
-		 * so set a long TIMERA period magic.
+		/* there is no way to actually pause or stop TIMERA/C,
+		 * so just disable TIMER interrupt.
 		 */
-		SET_CBUS_REG_MASK(ISA_TIMERA, 0xffff);
+		meson_mask_irq(INT_TIMER_A);
+		meson_mask_irq(INT_TIMER_C);
 		break;
 	}
 }
 
+static int meson_set_next_event(unsigned long evt,
+				struct clock_event_device *unused)
+{
+	meson_mask_irq(INT_TIMER_C);
+	/* use a big number to clear previous trigger cleanly */
+	SET_CBUS_REG_MASK(ISA_TIMERC, evt & 0xffff);
+	meson_ack_irq(INT_TIMER_C);
+
+	/* then set next event */
+	WRITE_CBUS_REG_BITS(ISA_TIMERC, evt, 0, 16);
+	meson_unmask_irq(INT_TIMER_C);
+
+	return 0;
+}
+
 static struct clock_event_device clockevent_meson_1mhz = {
-	.name           = "TIMER-A",
+	.name           = "TIMER-AC",
 	.rating         = 300, /* Reasonably fast and accurate clock event */
 
-	/* todo: CLOCK_EVT_FEAT_ONESHOT with TIMER-C? */
-	.features       = CLOCK_EVT_FEAT_PERIODIC,
+	.features       = CLOCK_EVT_FEAT_PERIODIC | CLOCK_EVT_FEAT_ONESHOT,
     .mult			= 1000,
 	.shift          = 0,
-#if 0
 	.set_next_event = meson_set_next_event,
-#endif
 	.set_mode       = meson_clkevt_set_mode,
 };
 
-/* Clock event timer interrupt handler */
+/* Clock event timerA interrupt handler */
 static irqreturn_t meson_timer_interrupt(int irq, void *dev_id)
 {
 	struct clock_event_device *evt = &clockevent_meson_1mhz;
 
 	meson_ack_irq(irq);
 
-	if ((READ_CBUS_REG(ISA_TIMERA) & 0xffff) != 0xffff)
-		evt->event_handler(evt);
+	evt->event_handler(evt);
 
 	return IRQ_HANDLED;
 }
@@ -240,8 +267,10 @@ static struct irqaction meson_timer_irq = {
 
 static void __init meson_clockevent_init(void)
 {
-	CLEAR_CBUS_REG_MASK(ISA_TIMER_MUX, TIMER_A_INPUT_MASK);
-	SET_CBUS_REG_MASK(ISA_TIMER_MUX, TIMER_UNIT_1us << TIMER_A_INPUT_BIT);
+	CLEAR_CBUS_REG_MASK(ISA_TIMER_MUX, TIMER_A_INPUT_MASK | TIMER_C_INPUT_MASK);
+	SET_CBUS_REG_MASK(ISA_TIMER_MUX, 
+		(TIMER_UNIT_1us << TIMER_A_INPUT_BIT) |
+		(TIMER_UNIT_1us << TIMER_C_INPUT_BIT));
 	WRITE_CBUS_REG(ISA_TIMERA, 999);
 
 	/* 24bit counter, so 24bits delta is max */
@@ -255,6 +284,7 @@ static void __init meson_clockevent_init(void)
 
 	/* Set up the IRQ handler */
 	setup_irq(INT_TIMER_A, &meson_timer_irq);
+	setup_irq(INT_TIMER_C, &meson_timer_irq);
 }
 
 /*
