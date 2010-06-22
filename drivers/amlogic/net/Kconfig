@@ -5,7 +5,7 @@ menu "Amlogic Net Device Support"
 
 config AM_ETHERNET
 	bool "Amloigc Ethetnet support"
-	depends on AMLOGIC_BOARD && NET
+	depends on  NET
 	
 endmenu
 

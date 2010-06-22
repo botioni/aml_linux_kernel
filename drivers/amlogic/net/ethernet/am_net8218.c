@@ -13,11 +13,11 @@ add by zhouzhi 2008-8-18
 #include <linux/io.h>
 #include <linux/mii.h>
 #include <asm/delay.h>
-#include <asm/arch/pinmux.h>
+#include <mach/pinmux.h>
 #include <linux/crc32.h>
 
 #include "am_net8218.h"
-#include "asm/bsp.h"
+//#include "asm/bsp.h"
 // >0 for basic init and remove debug;
 // >1 further setting debug;
 // >2 for tx
@@ -143,10 +143,10 @@ static int netdev_ioctl(struct net_device *dev, struct ifreq *rq, int cmd)
 			printk("set mac addr to %02x:%02x:%02x:%02x:%02x:%02x\n",
 			     addr[0], addr[1], addr[2], addr[3], addr[4],
 			     addr[5]);
-		spin_lock_irq(dev);
+		spin_lock_irq(&np->lock);
 		memcpy(dev->dev_addr, &addr, MAX_ADDR_LEN);
 		write_mac_addr(dev, addr);
-		spin_unlock_irq(dev);
+		spin_unlock_irq(&np->lock);
 	default:
 		if (debug > 0)
 			printk("Ethernet Driver unknow ioctl (%x) \n", cmd);
@@ -195,8 +195,8 @@ int init_rxtx_rings(struct net_device *dev)
 		np->rx_ring[i].skb = NULL;
 		np->rx_ring[i].buf = (rx + i * np->rx_buf_sz);	//(unsigned long )skb->data;
 #endif
-		np->rx_ring[i].count =
-		    (DescChain) | (np->rx_buf_sz & DescSize1Mask);
+		np->rx_ring[i].buf_dma=dma_map_single(&dev->dev,(void *)np->rx_ring[i].buf,np->rx_buf_sz,DMA_FROM_DEVICE);
+		np->rx_ring[i].count =(DescChain) | (np->rx_buf_sz & DescSize1Mask);
 		np->rx_ring[i].status = (DescOwnByDma);
 		np->rx_ring[i].next = &np->rx_ring[i + 1];
 
@@ -231,9 +231,12 @@ static int alloc_ringdesc(struct net_device *dev)
 
 	np->rx_buf_sz = (dev->mtu <= 1500 ? PKT_BUF_SZ : dev->mtu + 32);
 
-	np->rx_ring = kmalloc(sizeof(struct _rx_desc) * RX_RING_SIZE +
+	/*np->rx_ring = kmalloc(sizeof(struct _rx_desc) * RX_RING_SIZE +
 				sizeof(struct _tx_desc) * TX_RING_SIZE +
-			      	CACHE_LINE, GFP_DMA);
+			      	CACHE_LINE, GFP_DMA); */
+	np->rx_ring=dma_alloc_coherent(&dev->dev,
+				sizeof(struct _rx_desc) * RX_RING_SIZE +CACHE_LINE,
+				(dma_addr_t *)&np->rx_ring_dma,GFP_KERNEL);
 	//np->rx_ring=0xc1001000;//apollo on chip sram
 
 	if (!np->rx_ring)
@@ -243,7 +246,10 @@ static int alloc_ringdesc(struct net_device *dev)
 		printk("Error the alloc mem is not cache aligned(%p)\n",np->rx_ring);
 	}
 	printk("NET MDA descpter start addr=%p\n", np->rx_ring);
-	np->tx_ring =(struct _tx_desc*)(CACHE_END_ALIGNED((unsigned long)(&np->rx_ring[RX_RING_SIZE])));
+
+	np->tx_ring=dma_alloc_coherent(&dev->dev,
+				sizeof(struct _tx_desc) * TX_RING_SIZE +CACHE_LINE,
+				(dma_addr_t *)&np->tx_ring_dma,GFP_KERNEL);
 	memset(np->rx_ring, 0,
 	       sizeof(struct _rx_desc) * RX_RING_SIZE +
 	       sizeof(struct _tx_desc) * TX_RING_SIZE);
@@ -252,7 +258,6 @@ static int alloc_ringdesc(struct net_device *dev)
 		return -1;
 	}
 	//make sure all the data are write to memory
-	flush_and_inv_dcache_all();
 	return 0;
 }
 
@@ -271,9 +276,19 @@ static int free_ringdesc(struct net_device *dev)
 		np->tx_ring[i].skb = NULL;
 	}
 	if (np->rx_ring)
-		kfree(np->rx_ring);	// for apollo
+		{
+		dma_free_coherent(&dev->dev,
+			sizeof(struct _rx_desc) * RX_RING_SIZE +CACHE_LINE,
+			np->rx_ring,(dma_addr_t )np->rx_ring_dma);	// for apollo
+		}
+	np->tx_ring = NULL;
+	if (np->tx_ring)
+		{
+		dma_free_coherent(&dev->dev,
+			sizeof(struct _tx_desc) * RX_RING_SIZE +CACHE_LINE,
+			np->tx_ring,(dma_addr_t )np->tx_ring_dma);	// for apollo
+		}
 	np->rx_ring = NULL;
-	flush_and_inv_dcache_all();
 	return 0;
 }
 
@@ -281,7 +296,7 @@ static void netdev_timer(unsigned long data)
 {
 	struct net_device *dev = (struct net_device *)data;
 	struct am_net_private *np = netdev_priv(dev);
-	void __iomem *ioaddr = np->base_addr;
+	unsigned long ioaddr = np->base_addr;
 	static int error_num = 0;
 	int val;
 	spin_lock_irq(&np->lock);
@@ -339,9 +354,9 @@ static void netdev_timer(unsigned long data)
 				IO_READ32(np->base_addr +ETH_MAC_0_Configuration);
 				tmp &= ~(1 << 14);
 				IO_WRITE32(tmp,np->base_addr +ETH_MAC_0_Configuration);
-				PERIPHS_CLEAR_BITS(ETH_PLL_CNTL, 1);
-				PERIPHS_CLEAR_BITS(ETH_PLL_CNTL, (1 << 1));
-				PERIPHS_SET_BITS(ETH_PLL_CNTL, 1);
+				PERIPHS_CLEAR_BITS(HHI_ETH_CLK_CNTL, 1);
+				PERIPHS_CLEAR_BITS(HHI_ETH_CLK_CNTL, (1 << 1));
+				PERIPHS_SET_BITS(HHI_ETH_CLK_CNTL, 1);
 			} else if (val & (1 << 3)) {
 				if (debug > 0)
 					printk("100m\n");
@@ -349,10 +364,10 @@ static void netdev_timer(unsigned long data)
 				tmp =
 				IO_READ32(np->base_addr +ETH_MAC_0_Configuration);
 				tmp |= 1 << 14;
-				PERIPHS_CLEAR_BITS(ETH_PLL_CNTL, 1);
+				PERIPHS_CLEAR_BITS(HHI_ETH_CLK_CNTL, 1);
 				IO_WRITE32(tmp,np->base_addr +ETH_MAC_0_Configuration);
-				PERIPHS_SET_BITS(ETH_PLL_CNTL, (1 << 1));
-				PERIPHS_SET_BITS(ETH_PLL_CNTL, 1);
+				PERIPHS_SET_BITS(HHI_ETH_CLK_CNTL, (1 << 1));
+				PERIPHS_SET_BITS(HHI_ETH_CLK_CNTL, 1);
 
 			}
 		}
@@ -530,7 +545,6 @@ void net_tasklet(unsigned long dev_instance)
 
 		c_tx =(void *)IO_READ32(np->base_addr +ETH_DMA_18_Curr_Host_Tr_Descriptor);
 		tx = np->start_tx;
-		inv_dcache_range((unsigned long)tx,(unsigned long)(tx + 1) - 1);
 		while (tx != NULL && tx != c_tx && !(tx->status & DescOwnByDma)) {
 #ifdef DMA_USE_SKB_BUF
 			spin_lock_irqsave(&np->lock, flags);
@@ -554,9 +568,7 @@ void net_tasklet(unsigned long dev_instance)
 				np->tx_full = 0;
 			}
 #endif
-			flush_dcache_range((unsigned long)tx,(unsigned long)(tx + 1) - 1);
 			tx = tx->next;
-			inv_dcache_range((unsigned long)tx,(unsigned long)(tx + 1) - 1);
 		}
 		np->start_tx = tx;
 		//data tx end... todo 
@@ -567,7 +579,6 @@ void net_tasklet(unsigned long dev_instance)
 		c_rx =
 		    (void *)IO_READ32(np->base_addr +ETH_DMA_19_Curr_Host_Re_Descriptor);
 		rx = np->last_rx->next;
-		inv_dcache_range((unsigned long)rx,(unsigned long)(rx + 1) - 1);
 		while (rx != NULL) {
 			//if(rx->status !=IO_READ32(&rx->status))
 			//      printk("error of D-chche!\n");
@@ -642,26 +653,16 @@ void net_tasklet(unsigned long dev_instance)
 					rx->status = 0;
 					rx->count = 0;
 					np->last_rx = rx;
-					flush_dcache_range((unsigned long)rx,
-							   (unsigned long)(rx +
-									   1) -
-							   1);
 					break;
 				}
 				skb_reserve(rx->skb, 2);
 				rx->buf = (unsigned long)rx->skb->data;
 #endif
-				inv_dcache_range((unsigned long)rx->buf, (unsigned long)rx->buf + np->rx_buf_sz);	//invalidate for next  dma in;
-				rx->count =
-				    (DescChain) | (np->rx_buf_sz &
-						   DescSize1Mask);
+				rx->buf_dma=dma_map_single(&dev->dev,(void *)rx->buf, (unsigned long)np->rx_buf_sz,DMA_FROM_DEVICE);	//invalidate for next  dma in;
+				rx->count =(DescChain) | (np->rx_buf_sz &DescSize1Mask);
 				rx->status = DescOwnByDma;
-				flush_dcache_range((unsigned long)rx,
-						   (unsigned long)(rx + 1) - 1);
 				np->last_rx = rx;
 				rx = rx->next;
-				inv_dcache_range((unsigned long)rx,
-						 (unsigned long)(rx + 1) - 1);
 			} else {
 				break;
 			}
@@ -740,8 +741,8 @@ static int phy_reset(struct net_device *ndev)
 	//| 1 << 31;	//receive all the data 
 	IO_WRITE32(val, np->base_addr + ETH_MAC_1_Frame_Filter);
 
-	IO_WRITE32(&np->rx_ring[0],(np->base_addr + ETH_DMA_3_Re_Descriptor_List_Addr));
-	IO_WRITE32(&np->tx_ring[0],(np->base_addr + ETH_DMA_4_Tr_Descriptor_List_Addr));
+	IO_WRITE32((unsigned long)&np->rx_ring[0],(np->base_addr + ETH_DMA_3_Re_Descriptor_List_Addr));
+	IO_WRITE32((unsigned long)&np->tx_ring[0],(np->base_addr + ETH_DMA_4_Tr_Descriptor_List_Addr));
 	IO_WRITE32(np->irq_mask, (np->base_addr + ETH_DMA_7_Interrupt_Enable));
 	IO_WRITE32((0), (np->base_addr + ETH_MAC_Interrupt_Mask));
 	val = (0x00000002 | 7 << 14 | 1 << 25 | 1 << 8 | 1 << 26 | 1 << 21);
@@ -857,7 +858,6 @@ static int start_tx(struct sk_buff *skb, struct net_device *dev)
 		tx = np->last_tx->next;
 	else
 		tx = &np->tx_ring[0];
-	inv_dcache_range((unsigned long)tx, (unsigned long)(tx + 1) - 1);
 	if (tx->status & DescOwnByDma) {
 		spin_unlock_irqrestore(&np->lock, flags);
 		printk("tx queue is full \n");
@@ -872,15 +872,12 @@ static int start_tx(struct sk_buff *skb, struct net_device *dev)
 #else
 	memcpy((void *)tx->buf, skb->data, skb->len);
 #endif
-	flush_dcache_range((unsigned long)tx->buf,(unsigned long)(tx->buf + skb->len));
+	tx->buf_dma=dma_map_single(&dev->dev,(void *)tx->buf,(unsigned long)(skb->len),DMA_TO_DEVICE);
 	tx->count = ((skb->len << DescSize1Shift) & DescSize1Mask) | DescTxFirst | DescTxLast | DescTxIntEnable | DescChain;	//|2<<27; (1<<25, ring end)
 	tx->status = DescOwnByDma;
 	if (skb->ip_summed == CHECKSUM_PARTIAL) {
 		tx->count |= 0x3 << 27;	//add hw check sum;
 	}
-
-	flush_dcache_range((unsigned long)tx, (unsigned long)(tx + 1) - 1);
-	invalidate_ahb_cache();	//for apollo for ahb cache invalidate
 	np->last_tx = tx;
 	np->stats.tx_packets++;
 	np->stats.tx_bytes += skb->len;
@@ -1032,7 +1029,11 @@ static void set_multicast_list(struct net_device *dev)
 				addr[0],addr[1],addr[2],addr[3],addr[4],addr[5],
 				hash_id);
 			//*/
-			set_bit(hash_id,hash);
+			//set_bit(hash_id,hash);
+			if(hash_id>31)
+				hash[1]|=1<<(hash_id-32);
+			else
+				hash[0]|=1<<hash_id;
 		}
 		printk("set hash low=%x,high=%x\n",hash[0],hash[1]);
 		IO_WRITE32(hash[1], np->base_addr + ETH_MAC_2_Hash_Table_High);
@@ -1045,20 +1046,26 @@ static void set_multicast_list(struct net_device *dev)
 	}
 }
 
+static const struct net_device_ops am_netdev_ops = {
+	.ndo_open		= netdev_open,
+	.ndo_stop		= netdev_close,
+	.ndo_start_xmit 	= start_tx,
+	.ndo_tx_timeout		= tx_timeout,
+	.ndo_set_multicast_list = set_multicast_list,
+	.ndo_do_ioctl		=netdev_ioctl,
+	.ndo_get_stats		=get_stats
+	//.ndo_change_mtu		= eth_change_mtu,
+	//.ndo_set_mac_address 	= eth_mac_addr,
+	//.ndo_validate_addr	= eth_validate_addr,
+};
 
 static int setup_net_device(struct net_device *dev)
 {
 	struct am_net_private *np = netdev_priv(dev);
 	int res = 0;
-	dev->open = &netdev_open;
 	dev->features = NETIF_F_GEN_CSUM;
-	dev->hard_start_xmit = &start_tx;
-	dev->stop = &netdev_close;
-	dev->get_stats = &get_stats;
-	dev->set_multicast_list = set_multicast_list;	// &set_rx_mode;
-	dev->do_ioctl = &netdev_ioctl;
+	dev->netdev_ops=&am_netdev_ops;
 	dev->ethtool_ops = NULL;	// &netdev_ethtool_ops;
-	dev->tx_timeout = &tx_timeout;
 	dev->watchdog_timeo = TX_TIMEOUT;
 	np->irq_mask= (1 << 16) |       //NIE: Normal Interrupt Summary Enable                                                                     
             	(1 << 15) |          //abnormal int summary                                                                                
@@ -1085,54 +1092,29 @@ I think this must be init at the system start ...
 
 static void bank_io_init(struct net_device *ndev)
 {
-#ifdef CONFIG_AMLOGIC_BOARD_NIKE
-	PERIPHS_SET_BITS(PERIPHS_PIN_MUX_1, 0x07fe0000);
-	PERIPHS_CLEAR_BITS(NDMA_AES_CONTROL, (1 << 12));
-	PERIPHS_CLEAR_BITS(PREG_GPIOC_OE, (0x1 << 12));
-	PERIPHS_SET_BITS(PREG_GPIOC_OUT_LEVEL, (0x1 << 12));
-	udelay(10);
-	PERIPHS_CLEAR_BITS(ETH_PLL_CNTL, 1);	//disable clk        
-	PERIPHS_CLEAR_BITS(ETH_PLL_CNTL, (1 << 0 | 1 << 2 | 1 << 3));
-	PERIPHS_SET_BITS(ETH_PLL_CNTL, (1 << 1));
-	PERIPHS_SET_BITS(ETH_PLL_CNTL, (1 << 0));
-#endif
-#if defined(CONFIG_AMLOGIC_BOARD_APOLLO) || \
-      defined(CONFIG_AMLOGIC_BOARD_APOLLO_H)
-	switch (get_chip_id()) {
-	case 8328:
-		//PERIPHS_SET_BITS(PREG_PIN_MUX_REG6, 0x3ff << 5);
-		set_mio_mux(6,(0x3ff << 1));
-		PERIPHS_CLEAR_BITS(PREG_NDMA_AES_CONTROL, (1 << 12));
-		PERIPHS_CLEAR_BITS(PREG_GPIOC_OUTLVL, (0x1));
-		PERIPHS_CLEAR_BITS(PREG_GPIOC_OE, (0x1));
-		udelay(100);	//waiting reset end;
-		PERIPHS_SET_BITS(PREG_GPIOC_OUTLVL, (0x1));
-		udelay(10);
-
-		break;
-	case 7266:
-	case 8626:
-	case 8226:
-	case 72661://7266h
-	case 86261://8626h
+	int chip=0;
+	switch (chip) {
+		default:
 		///PERIPHS_SET_BITS(PREG_PIN_MUX_REG8, 0x3ff << 1);
-		set_mio_mux(8,(0x3ff << 1));
-		PERIPHS_CLEAR_BITS(PREG_NDMA_AES_CONTROL, (1 << 12));
-		PERIPHS_CLEAR_BITS(PREG_GPIOC_OUTLVL, (0x1 << 26));
-		PERIPHS_CLEAR_BITS(PREG_GPIOC_OE, (0x1 << 26));
-		udelay(100);	//waiting reset end;
-		PERIPHS_SET_BITS(PREG_GPIOC_OUTLVL, (0x1 << 26));
-		udelay(10);
+		
+			set_mio_mux(8,(0x3ff << 1));
+		#if 0	
+			PERIPHS_CLEAR_BITS(PREG_NDMA_AES_CONTROL, (1 << 12));
+			PERIPHS_CLEAR_BITS(PREG_GPIOC_OUTLVL, (0x1 << 26));
+			PERIPHS_CLEAR_BITS(PREG_GPIOC_OE, (0x1 << 26));
+			udelay(100);	//waiting reset end;
+			PERIPHS_SET_BITS(PREG_GPIOC_OUTLVL, (0x1 << 26));
+			udelay(10);
+		#endif	
 		break;
-	default:
 		;
 	}
-	PERIPHS_CLEAR_BITS(ETH_PLL_CNTL, 1);	//disable clk                                
-	PERIPHS_CLEAR_BITS(ETH_PLL_CNTL, (1 << 0 | 1 << 2 | 1 << 3));
-	PERIPHS_SET_BITS(ETH_PLL_CNTL, (1 << 1));
-	PERIPHS_SET_BITS(ETH_PLL_CNTL, (1 << 0));
-#endif
+	PERIPHS_CLEAR_BITS(HHI_ETH_CLK_CNTL, 1);	//disable clk                                
+	PERIPHS_CLEAR_BITS(HHI_ETH_CLK_CNTL, (1 << 0 | 1 << 2 | 1 << 3));
+	PERIPHS_SET_BITS(HHI_ETH_CLK_CNTL, (1 << 1));
+	PERIPHS_SET_BITS(HHI_ETH_CLK_CNTL, (1 << 0));
 	udelay(100);
+
 }
 
 static int probe_init(struct net_device *ndev)
@@ -1148,7 +1130,7 @@ static int probe_init(struct net_device *ndev)
 	priv->mii_if.dev = ndev;
 	priv->mii_if.mdio_read = mdio_read;
 	priv->mii_if.mdio_write = mdio_write;
-	priv->base_addr = (void *)ndev->base_addr;
+	priv->base_addr = ndev->base_addr;
 	if (debug > 0)
 		printk("addr is %x\n", (unsigned int)ndev->base_addr);
 

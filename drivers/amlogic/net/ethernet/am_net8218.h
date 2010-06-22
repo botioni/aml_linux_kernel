@@ -1,28 +1,17 @@
 #ifndef __AM_NET_8218_H_
 #define __AM_NET_8218_H_
-#include <asm/arch/am_regs.h>
+#include <mach/am_regs.h>
 #include <linux/skbuff.h>
 	/*  */
-    
-//#define  DMA_USE_SKB_BUF
-//#define DMA_USE_MALLOC_ADDR
-#ifdef CONFIG_AMLOGIC_BOARD_NIKE
-    //use the static memory;
-#define  TX_BUF_ADDR  0x80c10000
-#define  RX_BUF_ADDR  0x80e00000
-#define  DMA_USE_SKB_BUF
-#define ETH_INTERRUPT	AM_ISA_GEN_IRQ(31)
-#elif defined(CONFIG_AMLOGIC_BOARD_APOLLO) || \
-	defined(CONFIG_AMLOGIC_BOARD_APOLLO_H)
-#define  DMA_USE_SKB_BUF
-#define ETH_INTERRUPT	AM_ISA_GEN_IRQ(8)
-#if  !defined(DMA_USE_MALLOC_ADDR) && !defined(DMA_USE_SKB_BUF)
-#error "Apollo Can't support the static memory yet"
-#endif				/*  */
-#else///upsupport now
-#error "This driver can't support unknow board,only for nike/apollo yet\n"
 
-#endif
+#define  DMA_USE_SKB_BUF
+#define ETH_INTERRUPT	(INT_ETHERNET)
+#define IO_WRITE32(val,addr)	 __raw_writel(val,addr)
+#define IO_READ32(addr)	 	__raw_readl(addr)
+#define ETHBASE (IO_ETH_BASE)
+#define WRITE_PERIPHS_REG(v,addr) WRITE_CBUS_REG(v,addr)
+#define READ_PERIPHS_REG(addr) READ_CBUS_REG(addr)
+
     
 //ring buf must less than the MAX alloc length 131072
 //131072/1536~=85;
@@ -113,26 +102,30 @@ enum DmaDescriptorStatus /* status word of DMA descriptor */
 struct _tx_desc {
 		unsigned long status;
 		unsigned long count;
-		unsigned long buf;
+		dma_addr_t buf_dma;
 		struct _tx_desc *next;
 
 		//-------------------------
 		struct sk_buff *skb;
-		unsigned long reverse[3];
+		unsigned long buf;
+		unsigned long reverse[2];
 };
 struct _rx_desc {
 		unsigned long status;
 		unsigned long count;
-		unsigned long buf;
+		dma_addr_t buf_dma;
 		struct _rx_desc *next;
 
 		//-------------------------
 		struct sk_buff *skb;
-		unsigned long reverse[3];
+		unsigned long buf;
+		unsigned long reverse[2];
 };
 struct am_net_private {
 		struct _rx_desc *rx_ring;
+		struct _rx_desc *rx_ring_dma;
 		struct _tx_desc *tx_ring;
+		struct _tx_desc *tx_ring_dma;
 		struct _rx_desc *last_rx;
 		struct _tx_desc *last_tx;
 		struct _tx_desc *start_tx;
@@ -154,7 +147,7 @@ struct am_net_private {
 		u32 mii;
 		int phy_set[MII_CNT];	//save the latest phy_set;
 		struct mii_if_info mii_if;
-		void __iomem *base_addr;
+		unsigned long base_addr;
 };
 
 #endif				/*  */

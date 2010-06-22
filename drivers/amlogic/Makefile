@@ -18,7 +18,7 @@ obj-y += uart/
 
 #obj-y += nand/
 
-#obj-y += net/
+obj-y += net/
 
 #obj-y += usb/
 

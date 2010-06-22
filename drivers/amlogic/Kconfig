@@ -5,7 +5,7 @@ menu "Amlogic Device Drivers"
 	depends on ARCH_MESON
 
 source "drivers/amlogic/uart/Kconfig"
-#source "drivers/amlogic/net/Kconfig"
+source "drivers/amlogic/net/Kconfig"
 #source "drivers/amlogic/usb/Kconfig"
 source "drivers/amlogic/canvas/Kconfig"
 source "drivers/amlogic/display/Kconfig"
