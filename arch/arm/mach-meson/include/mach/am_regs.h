@@ -66,8 +66,11 @@
 #define SET_MPEG_REG_MASK(reg, mask) \
 	SET_CBUS_REG_MASK(reg, mask)
 #endif
+#define IO_ETH_BASE			0xc1010000
 
 #define IO_CBUS_BASE			0xc1100000
+
+
 #define IO_AXI_BUS_BASE			0xc1300000
 #define IO_PL310_BASE			0xc4200000
 #define IO_AHB_BUS_BASE			0xc9000000
@@ -92,6 +95,7 @@
 #include "c_stb_define.h"
 #include "pctl.h"
 #include "dmc.h"
+#include "am_eth_reg.h"
 
 //
 // Reading file:  ./register_map.h
