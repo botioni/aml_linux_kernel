@@ -37,7 +37,7 @@ enum osd_type_s {
     OSD_TYPE_16_844     = 6,  // 1
     OSD_TYPE_16_6442    = 7, // 2 
     OSD_TYPE_16_4444_R    = 8, // 3
-#ifdef   AML_A1H   
+  
     OSD_TYPE_32_ARGB =9, // 1 
     OSD_TYPE_32_ABGR =10,// 2
     OSD_TYPE_32_BGRA =11,// 3 
@@ -59,7 +59,6 @@ enum osd_type_s {
 
     
 
- #endif 
     OSD_TYPE_INVALID=0xff
 };
 typedef  enum {

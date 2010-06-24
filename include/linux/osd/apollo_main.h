@@ -28,7 +28,7 @@
 #include  <linux/vout/vout_notify.h>
 #include "apollofbdev.h"
 
-#if  CONFIG_FB_APOLLO_OSD2_ENABLE
+#if  CONFIG_FB_OSD2_ENABLE
 #define   OSD_COUNT  2
 #else
 #define   OSD_COUNT  1
@@ -66,7 +66,7 @@ static struct fb_var_screeninfo mydef_var[] = {
 	.rotate          = 0,
 	
 },
-#if  CONFIG_FB_APOLLO_OSD2_ENABLE
+#if  CONFIG_FB_OSD2_ENABLE
 
 {
 	.xres            = 720,
