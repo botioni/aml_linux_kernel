@@ -34,7 +34,8 @@
 #include <linux/errno.h>
 #include <asm/irq.h>
 #include <asm/io.h>
-#include <asm/arch/am_regs.h>
+#include <mach/am_regs.h>
+#include <linux/slab.h>
 #include <linux/major.h>
 #include <asm/uaccess.h>
 
@@ -113,7 +114,7 @@ static void  register_remote_dev(struct input_struct * kp)
 	}
        kp->config_major = ret;
        kp->config_class = class_create(THIS_MODULE, kp->config_name);
-	kp->config_dev = device_create(kp->config_class, NULL, MKDEV(kp->config_major, 0), kp->config_name);
+	kp->config_dev = device_create(kp->config_class, NULL, MKDEV(kp->config_major, 0),NULL, kp->config_name);
 	return;
 }
 static int __init virtual_remote_probe(struct platform_device *pdev)

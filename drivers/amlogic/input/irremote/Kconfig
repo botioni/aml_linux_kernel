@@ -4,9 +4,8 @@
 
 
 
-config KEYPADS_APOLLO
+config KEYPADS_AM
 	tristate "Amlogic ir remote  keypads support"
-	depends on (AMLOGIC_BOARD)
 	default n
 	help
 	  Say Y here if you want to use the amlogic remote keypad.
@@ -16,7 +15,6 @@ config KEYPADS_APOLLO
 
 config VIRTUAL_REMOTE
 	tristate "Amlogic virtual ir remote support (only for QA test)"
-	depends on (AMLOGIC_BOARD)
 	default n
 	help
 	  Say Y here if you want to use the virtual remote keypad.

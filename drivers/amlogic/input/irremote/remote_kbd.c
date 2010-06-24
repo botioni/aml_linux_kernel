@@ -37,12 +37,17 @@
 #include <linux/errno.h>
 #include <asm/irq.h>
 #include <asm/io.h>
-#include <asm/arch/am_regs.h>
+#include <mach/am_regs.h>
 #include <linux/major.h>
+#include <linux/slab.h>
 #include <asm/uaccess.h>
 #include "amkbd_remote.h"
 #undef NEW_BOARD_LEARNING_MODE
 
+ #define IR_CONTROL_HOLD_LAST_KEY 		(1<<6)
+ #define IR_CONTROL_DECODER_MODE		(3<<7)
+ #define IR_CONTROL_SKIP_HEADER		(1<<7)
+ #define IR_CONTROL_RESET         			(1<<0)
 
 
 #define   KEY_RELEASE_DELAY    200
@@ -53,7 +58,7 @@ static DEFINE_MUTEX(kp_enable_mutex);
 static DEFINE_MUTEX(kp_file_mutex);
 static void apollo_kp_tasklet(unsigned long);
 static int kp_enable ;
-static  int NEC_REMOTE_IRQ_NO=AM_ISA_GEN_IRQ(15);
+static  int NEC_REMOTE_IRQ_NO=INT_REMOTE;
 
 
 DECLARE_TASKLET_DISABLED(kp_tasklet, apollo_kp_tasklet, 0);
@@ -64,22 +69,10 @@ typedef  struct {
 	unsigned int  bit;
 }pin_config_t;
 
-static  pin_config_t  pin_config[]={
-		{
-			.platform_name="8626_64x2",
-#if defined(CONFIG_AMLOGIC_BOARD_APOLLO)||defined(CONFIG_AMLOGIC_BOARD_APOLLO_H)			
-			.pin_mux=PREG_PIN_MUX_REG2,
-			.bit=PINMUX2_CARD1_REMOTE,
-#endif			
-		},
-		{
-			.platform_name="8328_32x2",
-#if  defined(CONFIG_AMLOGIC_BOARD_NIKE)				
-			.pin_mux=PERIPHS_PIN_MUX_3,
-#endif			
-			.bit=(1<<25),
-		},
-
+static  pin_config_t  pin_config={
+			.platform_name="meson-1",
+			.pin_mux=1,  //need fix 
+			.bit= 2,
 };
 
 
@@ -129,8 +122,8 @@ static inline int apollo_kp_hw_reprot_key(struct apollo_kp *apollo_kp_data )
 	
 	 
 	// 1		get  scan code
-	scan_code=READ_PERIPHS_REG(PREG_IR_DEC_FRAME_DATA);
-	status=READ_PERIPHS_REG(PREG_IR_DEC_FRAME_STATUS);
+	scan_code=READ_MPEG_REG(IR_DEC_FRAME);
+	status=READ_MPEG_REG(IR_DEC_STATUS);
 	
 	key_index=0 ;
 	key_hold=-1 ;
@@ -243,32 +236,23 @@ static int    hardware_init(struct platform_device *pdev)
 	pin_config_t  *config=NULL;
 	
 	//step 0: set mutx to remote
-	if (!(mem = platform_get_resource(pdev, IORESOURCE_IO, 0))) {
-		printk("not define ioresource for remote keyboard.\n");
-		return -1;
-	}
-	for (i=0;i<ARRAY_SIZE(pin_config);i++)
-	{
-		if(strcmp(pin_config[i].platform_name,mem->name)==0)
-		{
-			config=&pin_config[i] ;
-			input_dbg("got resource :%d\r\n",i);
-			break;
-		}
-	}
+	
+	
+	config=&pin_config ;
+	
 	if(NULL==config)  return -1;
-	SET_PERIPHS_REG_BITS(config->pin_mux,config->bit); //apollo
+	WRITE_MPEG_REG_BITS(config->pin_mux,1,config->bit,1); //apollo
 	
 	//step 1 :set reg IR_DEC_CONTROL
 									//for 27Mhz oscillator.
 	control_value = 3<<28|(0xFA0 << 12) |0x13; 
 
-	WRITE_PERIPHS_REG(PREG_IR_DEC_BASE_GEN , control_value) ;	
-      	control_value=READ_PERIPHS_REG(PREG_IR_DEC_CONTROL);
-	WRITE_PERIPHS_REG(PREG_IR_DEC_CONTROL,control_value|IR_CONTROL_HOLD_LAST_KEY);
+	WRITE_MPEG_REG(IR_DEC_REG0 , control_value) ;	
+      	control_value=READ_MPEG_REG(IR_DEC_REG1);
+	WRITE_MPEG_REG(IR_DEC_REG1,control_value|IR_CONTROL_HOLD_LAST_KEY);
 	
-	status=READ_PERIPHS_REG(PREG_IR_DEC_FRAME_STATUS);       	
-	data_value=READ_PERIPHS_REG(PREG_IR_DEC_FRAME_DATA);
+	status=READ_MPEG_REG(IR_DEC_STATUS);       	
+	data_value=READ_MPEG_REG(IR_DEC_FRAME);
 	
        //step 2 : request nec_remote irq  & enable it             		
        return request_irq(NEC_REMOTE_IRQ_NO, apollo_kp_interrupt, IRQF_SHARED,"apollo-keypad", (void *)apollo_kp_interrupt);
@@ -285,10 +269,10 @@ work_mode_config(int  work_mode)
 	if(work_mode==REMOTE_WORK_MODE_HW)
 	{
 		control_value=0xbe40; //ignore  custom code .
-		WRITE_PERIPHS_REG(PREG_IR_DEC_CONTROL,control_value|IR_CONTROL_HOLD_LAST_KEY);
+		WRITE_MPEG_REG(IR_DEC_REG1,control_value|IR_CONTROL_HOLD_LAST_KEY);
 	}else{
 		control_value=0x8578;
-		WRITE_PERIPHS_REG(PREG_IR_DEC_CONTROL,control_value);
+		WRITE_MPEG_REG(IR_DEC_REG1,control_value);
 	}
 	return 0;
 }
@@ -333,22 +317,22 @@ remote_config_ioctl(struct inode *inode, struct file *filp,
 		copy_from_user(&kp->custom_code,argp,sizeof(long));
 		break;
 		case  REMOTE_IOC_SET_REG_BASE_GEN:
-		WRITE_PERIPHS_REG(PREG_IR_DEC_BASE_GEN,val);
+		WRITE_MPEG_REG(IR_DEC_REG0,val);
 		break;
 		case REMOTE_IOC_SET_REG_CONTROL:
-		WRITE_PERIPHS_REG(PREG_IR_DEC_CONTROL,val);
+		WRITE_MPEG_REG(IR_DEC_REG1,val);
 		break;
 		case REMOTE_IOC_SET_REG_LEADER_ACT:
-		WRITE_PERIPHS_REG(PREG_IR_DEC_LEADER_ACTIVE,val);
+		WRITE_MPEG_REG(IR_DEC_LDR_ACTIVE,val);
 		break;
 		case REMOTE_IOC_SET_REG_LEADER_IDLE:
-		WRITE_PERIPHS_REG(PREG_IR_DEC_LEADER_IDLE,val);	
+		WRITE_MPEG_REG(IR_DEC_LDR_IDLE,val);	
 		break;
 		case REMOTE_IOC_SET_REG_REPEAT_LEADER:
-		WRITE_PERIPHS_REG(PREG_IR_DEC_REPEAT_IDLE,val);		
+		WRITE_MPEG_REG(IR_DEC_LDR_REPEAT,val);		
 		break;	
 		case REMOTE_IOC_SET_REG_BIT0_TIME:
-		WRITE_PERIPHS_REG(PREG_IR_DEC_BIT0_TIME,val);		
+		WRITE_MPEG_REG(IR_DEC_BIT_0,val);		
 		break;
 		case REMOTE_IOC_SET_RELEASE_DELAY:
 		copy_from_user(&kp->release_delay,argp,sizeof(long));	
@@ -372,28 +356,28 @@ remote_config_ioctl(struct inode *inode, struct file *filp,
 		break;	
 		// 2 get  part
 		case REMOTE_IOC_GET_REG_BASE_GEN:
-		val=READ_PERIPHS_REG(PREG_IR_DEC_BASE_GEN);
+		val=READ_MPEG_REG(IR_DEC_REG0);
 		break;
 		case REMOTE_IOC_GET_REG_CONTROL:
-		val=READ_PERIPHS_REG(PREG_IR_DEC_CONTROL);	
+		val=READ_MPEG_REG(IR_DEC_REG1);	
 		break;
 		case REMOTE_IOC_GET_REG_LEADER_ACT:
-		val=READ_PERIPHS_REG(PREG_IR_DEC_LEADER_ACTIVE);
+		val=READ_MPEG_REG(IR_DEC_LDR_ACTIVE);
 		break;	
 		case REMOTE_IOC_GET_REG_LEADER_IDLE:
-		val=READ_PERIPHS_REG(PREG_IR_DEC_REPEAT_IDLE);
+		val=READ_MPEG_REG(IR_DEC_LDR_IDLE);
 		break;
 		case REMOTE_IOC_GET_REG_REPEAT_LEADER:
-		val=READ_PERIPHS_REG(PREG_IR_DEC_REPEAT_IDLE);
+		val=READ_MPEG_REG(IR_DEC_LDR_REPEAT);
 		break;
 		case REMOTE_IOC_GET_REG_BIT0_TIME:
-		val=READ_PERIPHS_REG(PREG_IR_DEC_BIT0_TIME);	
+		val=READ_MPEG_REG(IR_DEC_BIT_0);	
 		break;	
 		case REMOTE_IOC_GET_REG_FRAME_DATA:
-		val=READ_PERIPHS_REG(PREG_IR_DEC_FRAME_DATA);		
+		val=READ_MPEG_REG(IR_DEC_FRAME);		
 		break;
 		case REMOTE_IOC_GET_REG_FRAME_STATUS:
-		val=READ_PERIPHS_REG(PREG_IR_DEC_FRAME_STATUS);	
+		val=READ_MPEG_REG(IR_DEC_STATUS);	
 		break;	
 		//sw
 		case REMOTE_IOC_GET_TW_LEADER_ACT:
@@ -470,7 +454,7 @@ static int  register_remote_dev(struct apollo_kp  *kp)
 	kp->config_major=ret;
 	printk("remote config major:%d\r\n",ret);
 	kp->config_class=class_create(THIS_MODULE,kp->config_name);
-	kp->config_dev=device_create(kp->config_class,NULL,MKDEV(kp->config_major,0),kp->config_name);
+	kp->config_dev=device_create(kp->config_class,NULL,MKDEV(kp->config_major,0),NULL,kp->config_name);
 	return ret;
 }
 static int __init apollo_kp_probe(struct platform_device *pdev)
