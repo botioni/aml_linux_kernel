@@ -25,7 +25,7 @@
 #include <linux/kernel.h>
 #include <linux/spinlock.h>
 
-#include <asm/arch/am_regs.h>
+#include <mach/am_regs.h>
 #include <linux/irqreturn.h>
 #include <linux/errno.h>
 #include <linux/irq.h>
@@ -36,6 +36,8 @@
 #define DEBUG
 #define OSD_COUNT	2
 #define MODULE_NAME "apollofb"
+
+#define BRIDGE_IRQ	INT_TIMER_D
 #ifdef  DEBUG
 //#define pr_err(fmt, args...) printk(KERN_ERR MODULE_NAME ": " fmt, ## args)
 #define pr_dbg(fmt, args...) printk(KERN_DEBUG MODULE_NAME ": " fmt, ## args)
@@ -118,8 +120,8 @@ _init_osd_simple(u32 pix_x_start,
     	{
     		data32 = 3;
     		tv_scan_mode='i';
-		if ( request_irq(AM_ISA_AMRISC_IRQ(IRQNUM_VSYNC), &vsync_isr,
-                    IRQF_SHARED | IRQ_ISA_FAST, "am_osd_tv", (void *)&tv_scan_mode))
+		if ( request_irq(BRIDGE_IRQ, &vsync_isr,
+                    IRQF_SHARED , "am_osd_tv", (void *)&tv_scan_mode))
     		{
     			  printk(KERN_ERR"can't request irq for vsync\r\n");
     		}
@@ -362,7 +364,7 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
 
 int  tv_irq_release(void)
 {
-	free_irq(AM_ISA_GEN_IRQ(IRQNUM_VSYNC),(void *)&tv_scan_mode) ;
+	free_irq(BRIDGE_IRQ,(void *)&tv_scan_mode) ;
 	return  0;
 }
 

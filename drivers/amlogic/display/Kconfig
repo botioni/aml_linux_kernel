@@ -5,25 +5,25 @@ menu "Amlogic Display Driver"
 
 source "drivers/amlogic/display/vout/Kconfig"
 
-#source "drivers/amlogic/display/osd/Kconfig"
+source "drivers/amlogic/display/osd/Kconfig"
 
-#config  FB_AML_GE2D
-#	tristate  "ge2d module"
-#	default y
-#	help 
-#		ge2d graphic  engine support
+config  AM_GE2D
+	tristate  "ge2d module"
+	default y
+	help 
+		ge2d graphic  engine support
 
-#config  FB_AML_LOGO
-#	bool  "setup logo"
-#	default n
-#	depends on FB_AML_APOLLO
-#	help 
-#		setup logo support osd parameter offered by Uboot 
+config  FB_AM_LOGO
+	bool  "setup logo"
+	default n
+	depends on FB_AM
+	help 
+		setup logo support osd parameter offered by Uboot 
 
-#config  FB_AML_LOGO_ON_OSD0
-#	bool  "logo on osd0"
-#	default  y 
-#	depends on (FB_AML_LOGO )
-#	help 
-# 		display logo display on osd0 if y ,on osd1 if no
+config  FB_AM_LOGO_ON_OSD0
+	bool  "logo on osd0"
+	default  y 
+	depends on (FB_AM_LOGO )
+	help 
+ 		display logo display on osd0 if y ,on osd1 if no
 endmenu	

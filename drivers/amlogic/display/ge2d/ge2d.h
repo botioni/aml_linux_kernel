@@ -1,6 +1,6 @@
 #ifndef _GE2D_H_
 #define _GE2D_H_
-#include  <asm/arch/am_regs.h>
+#include <mach/am_regs.h>
 #include  <linux/module.h>
 #define 	AVMem_kmalloc(x)   kmalloc(x,GFP_KERNEL)
 #define	AVMem_calloc(a,b)   kcalloc(a,b,GFP_KERNEL)
@@ -98,7 +98,7 @@
 #define MATRIX_RGB_TO_YCC               2
 #define MATRIX_FULL_RANGE_YCC_TO_RGB    3
 
-#if defined(AML_A1H)
+
 #define GE2D_ENDIAN_SHIFT       	24
 #define GE2D_ENDIAN_MASK            (0x1 << GE2D_ENDIAN_SHIFT)
 #define GE2D_BIG_ENDIAN             (0 << GE2D_ENDIAN_SHIFT)
@@ -146,7 +146,7 @@
 #define GE2D_COLOR_MAP_AVUY8888     (2 << GE2D_COLOR_MAP_SHIFT)
 #define GE2D_COLOR_MAP_BGRA8888     (3 << GE2D_COLOR_MAP_SHIFT)
 #define GE2D_COLOR_MAP_VUYA8888     (3 << GE2D_COLOR_MAP_SHIFT)
-#endif
+
 /* format code is defined as:
 [11] : 1-YUV color space, 0-RGB color space
 [10] : compress_range
@@ -167,7 +167,7 @@
 #define GE2D_FORMAT_COMP_RANGE      0x10000
 /*bit8(2)  format   bi6(2) mode_8b_sel  bit5(1)lut_en   bit2 sep_en*/
 /*M  seperate block S one block.*/ 
-#if defined(AML_A1H)
+
 #define GE2D_FMT_S8_Y            	0x00000 /* 00_00_0_00_0_00 */
 #define GE2D_FMT_S8_CB           	0x00040 /* 00_01_0_00_0_00 */
 #define GE2D_FMT_S8_CR           	0x00080 /* 00_10_0_00_0_00 */
@@ -238,35 +238,7 @@
 #define GE2D_FORMAT_S32_ABGR        (GE2D_FMT_S32_RGBA    | GE2D_COLOR_MAP_ABGR8888) 
 #define GE2D_FORMAT_S32_BGRA        (GE2D_FMT_S32_RGBA    | GE2D_COLOR_MAP_BGRA8888) 
 
-#else
-#define GE2D_FORMAT_MASK            0x0ffff
-#define GE2D_FORMAT_YUV             0x20000
-#define GE2D_FORMAT_COMP_RANGE      0x10000
-#define GE2D_FORMAT_S8_Y            0x00000 /* 00_00_0_00_0_00 */
-#define GE2D_FORMAT_S8_CB           0x00400 /* 00_01_0_00_0_00 */
-#define GE2D_FORMAT_S8_CR           0x00800 /* 00_10_0_00_0_00 */
-#define GE2D_FORMAT_S8_R            0x00000 /* 00_00_0_00_0_00 */
-#define GE2D_FORMAT_S8_G            0x00400 /* 00_01_0_00_0_00 */
-#define GE2D_FORMAT_S8_B            0x00800 /* 00_10_0_00_0_00 */
-#define GE2D_FORMAT_S8_A            0x00c00 /* 00_11_0_00_0_00 */
-#define GE2D_FORMAT_S8_LUT          0x00020 /* 00_00_1_00_0_00 */
-#define GE2D_FORMAT_S16_YUV422      0x20100 /* 01_00_0_00_0_00 */
-#define GE2D_FORMAT_S16_RGB         0x00100 /* 01_00_0_00_0_00 */
-#define GE2D_FORMAT_S24_YUV444      0x20200 /* 10_00_0_00_0_00 */
-#define GE2D_FORMAT_S24_RGB         0x00200 /* 10_00_0_00_0_00 */
-#define GE2D_FORMAT_S32_YUVA444     0x20300 /* 11_00_0_00_0_00 */
-#define GE2D_FORMAT_S32_RGBA        0x00300 /* 11_00_0_00_0_00 */
-#define GE2D_FORMAT_M24_YUV420      0x20007 /* 00_00_0_00_1_11 */
-#define GE2D_FORMAT_M24_YUV422      0x20006 /* 00_00_0_00_1_10 */
-#define GE2D_FORMAT_M24_YUV444      0x20004 /* 00_00_0_00_1_00 */
-#define GE2D_FORMAT_M24_RGB         0x00004 /* 00_00_0_00_1_00 */
-#define GE2D_FORMAT_M24_YUV420T     0x20017 /* 00_00_0_10_1_11 */
-#define GE2D_FORMAT_M24_YUV420B     0x2001f /* 00_00_0_11_1_11 */
-#define GE2D_FORMAT_S16_YUV422T     0x20110 /* 01_00_0_10_0_00 */
-#define GE2D_FORMAT_S16_YUV422B     0x20138 /* 01_00_0_11_0_00 */
-#define GE2D_FORMAT_S24_YUV444T     0x20210 /* 10_00_0_10_0_00 */
-#define GE2D_FORMAT_S24_YUV444B     0x20218 /* 10_00_0_11_0_00 */
-#endif
+
 
 #define OSD0      0
 #define OSD1     1
@@ -312,10 +284,10 @@ typedef struct {
     unsigned char     y_yc_ratio;
     unsigned char     sep_en;
     unsigned char     format;
-#if defined(AML_A1H)
+
 	unsigned char     endian;
 	unsigned char     color_map;
-#endif    
+ 
     unsigned char     mode_8b_sel;
     unsigned char     lut_en;
     unsigned int      def_color;
@@ -343,19 +315,19 @@ typedef struct {
     unsigned char     ddr_burst_size;
     unsigned char     src2_canaddr;
     unsigned char     src2_format;
-#if defined(AML_A1H)
+
 	unsigned char     src2_endian;
 	unsigned char     src2_color_map;
-#endif    
+    
     unsigned char     src2_mode_8b_sel;
     unsigned int      src2_def_color;
 
     unsigned char     dst_canaddr;
     unsigned char     dst_format;
-#if defined(AML_A1H)
+
 	unsigned char     dst_endian;
 	unsigned char     dst_color_map;
-#endif    
+   
     unsigned char     dst_mode_8b_sel;
 
     unsigned int      src2_format_all;

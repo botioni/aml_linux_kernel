@@ -6,6 +6,6 @@
 
 #O_TARGET	:= peripherals.o
 
-obj-$(CONFIG_FB_AML_APOLLO) += amlogo.o
+obj-$(CONFIG_FB_AM_LOGO) += amlogo.o
 amlogo-objs := logo_test.o
 

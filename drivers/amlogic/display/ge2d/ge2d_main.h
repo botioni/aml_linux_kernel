@@ -3,7 +3,7 @@
 #include "ge2d.h"
 #include "pr_dbg.h"
 #include <linux/interrupt.h>
-#include <asm/arch/am_regs.h>
+#include <mach/am_regs.h>
 #include <linux/amports/canvas.h>
 #include <linux/osd/apollofbdev.h>
 #include <linux/fb.h>

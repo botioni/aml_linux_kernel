@@ -2,7 +2,7 @@
 #include <linux/vout/vout_notify.h>
 #include  "./header/fbdev.h"
 
-#ifdef  CONFIG_FB_AML_LOGO
+#ifdef  CONFIG_FB_AM_LOGO
 //enable  logo_module
 #define   dev_to_platformdev(dev)   (container_of((dev), struct platform_device,dev) )
 #define   FB_DEV_NAME    "apollofb"
@@ -16,7 +16,7 @@ static 	int	 logo_yres_def=720 ;
 static  int  logo_osd_type_def=OSD_TYPE_32_ARGB;
 static  char vmode[10];
 
-#ifdef   CONFIG_FB_AML_LOGO_ON_OSD0
+#ifdef   CONFIG_FB_AM_LOGO_ON_OSD0
 #define   OSD_INDEX   0
 #else
 #define   OSD_INDEX   1
@@ -29,7 +29,7 @@ static  struct resource *mem;
 static  int  find_valid_bpp_type(enum osd_type_s type)
 {
 	int  i;
-#ifdef   AML_A1H		
+
     const enum osd_type_s typeTab[33] = {
         OSD_TYPE_INVALID,OSD_TYPE_INVALID,OSD_TYPE_02_PAL4,
         OSD_TYPE_INVALID, OSD_TYPE_04_PAL16,
@@ -41,19 +41,7 @@ static  int  find_valid_bpp_type(enum osd_type_s type)
         OSD_TYPE_INVALID,OSD_TYPE_INVALID,OSD_TYPE_INVALID,OSD_TYPE_INVALID,
         OSD_TYPE_32_BGRA  , OSD_TYPE_32_ABGR  , OSD_TYPE_32_RGBA  , OSD_TYPE_32_ARGB /*32*/ ,
     };
-#else
-	 const enum osd_type_s typeTab[33] = {
-	  OSD_TYPE_INVALID  , OSD_TYPE_INVALID  , OSD_TYPE_02_PAL4  ,
-        OSD_TYPE_INVALID , OSD_TYPE_04_PAL16 ,
-        OSD_TYPE_INVALID, OSD_TYPE_INVALID, OSD_TYPE_INVALID, OSD_TYPE_08_PAL256,
-        OSD_TYPE_INVALID  , OSD_TYPE_INVALID   ,OSD_TYPE_INVALID   ,OSD_TYPE_INVALID   ,
-        OSD_TYPE_INVALID  , OSD_TYPE_16_6442   , OSD_TYPE_INVALID  , OSD_TYPE_16_655/*16*/   ,
-        OSD_TYPE_INVALID  , OSD_TYPE_INVALID  , OSD_TYPE_INVALID   , OSD_TYPE_INVALID   ,
-        OSD_TYPE_INVALID  , OSD_TYPE_INVALID  , OSD_TYPE_INVALID  , OSD_TYPE_24_RGB /*24*/  ,
-        OSD_TYPE_INVALID  ,OSD_TYPE_INVALID  , OSD_TYPE_INVALID  , OSD_TYPE_INVALID  ,
-        OSD_TYPE_INVALID  , OSD_TYPE_INVALID ,OSD_TYPE_INVALID , OSD_TYPE_32_RGBA /*32*/ , 	
-    };
-#endif 
+
 	for (i=0;i<33;i++)
 	{
 		if(typeTab[i]==type)
@@ -102,9 +90,7 @@ static int match_fb_name(struct device *dev, void *data)
 {
 	const char *name = data;
 
-	if (strncmp(name, dev->bus_id,strlen(FB_DEV_NAME)) == 0)
-		return 1;
-	return 0;
+	return sysfs_streq(name, dev_name(dev));
 }
 
 static  int  get_logo_osd_display_para(logo_osd_config_t *config)
@@ -141,15 +127,11 @@ static  int  get_logo_osd_display_para(logo_osd_config_t *config)
 }
 static inline  int  IS_VALID_CONFIG(logo_osd_config_t *config)
 {
-#ifdef   AML_A1H //apollo_a1h 
+
 	return ((config->osd_ctl.xres>=720 && config->osd_ctl.xres<=1920) &&\
 		    (config->osd_ctl.yres>=480 && config->osd_ctl.yres<=1080) &&\
 		    (config->osd_ctl.type<= OSD_TYPE_16_4642_R) ) ;
-#else	//apollo
-	return ((config->osd_ctl.xres>=720 && config->osd_ctl.xres<=1920) &&\
-		    	(config->osd_ctl.yres>=480 && config->osd_ctl.yres<=1080) &&\
-			(config->osd_ctl.type<=OSD_TYPE_16_4444_R));	
-#endif
+
 }
 static int logo_test(void)
 {
