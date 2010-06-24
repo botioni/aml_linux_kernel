@@ -35,7 +35,7 @@
 #include <linux/fb.h>
 #include <linux/spinlock.h>
 #include <asm/cacheflush.h>
-#include <asm/arch/am_regs.h>
+#include <mach/am_regs.h>
 #include <linux/fs.h>
 #include <linux/sysfs.h>
 #include <linux/file.h>
@@ -43,6 +43,7 @@
 #include <linux/osd/apollo_main.h>
 #include <linux/osd/apollodev.h>
 #include <linux/osd/apollofbdev.h>
+#include <linux/slab.h>
 #include <pr_dbg.h>
 #include <asm/uaccess.h>
 

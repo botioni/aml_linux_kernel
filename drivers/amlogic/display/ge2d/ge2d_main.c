@@ -16,14 +16,15 @@
 * sysfs   section 
 *
 ************************************************************************/
-static ssize_t ge2d_debug_show(struct class *cla, char *buf) 
+
+static ssize_t ge2d_debug_show(struct class *cla,struct class_attribute *attr, char *buf) 
 {
 	return sprintf(buf, "%u\n", ge2d_device.dbg_enable);
 }
 
 //control var by sysfs .
 
-static ssize_t ge2d_debug_store(struct class *cla, const char *buf,
+static ssize_t ge2d_debug_store(struct class *cla, struct class_attribute *attr,const char *buf,
                                 size_t count)
 {
 	int state;
@@ -208,7 +209,7 @@ init_ge2d_device(void)
 		return ret;
 	}
 	ge2d_device.cla=&ge2d_class ;
-	ge2d_device.dev=device_create(ge2d_device.cla,NULL,MKDEV(ge2d_device.major,0),ge2d_device.name);
+	ge2d_device.dev=device_create(ge2d_device.cla,NULL,MKDEV(ge2d_device.major,0),NULL,ge2d_device.name);
 	if (IS_ERR(ge2d_device.dev)) {
 		printk("create ge2d device error\n");
 		class_unregister(ge2d_device.cla);

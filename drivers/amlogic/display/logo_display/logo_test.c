@@ -7,15 +7,16 @@
 #include <linux/timer.h>
 #include <linux/init.h>
 #include <linux/platform_device.h>
-#include <asm/arch/am_regs.h>
+#include <mach/am_regs.h>
 #include <asm/cacheflush.h>
 #include <linux/timer.h>
 #include <linux/kthread.h>
 
 ///#include "bsp.h"
-#include <asm/arch/ddrmem.h>
+//#include <asm/arch/ddrmem.h>
+#include <linux/slab.h>
 #include <linux/osd/apollofbdev.h>
-#include <linux/osd/logo_bmp.h>
+//#include <linux/osd/logo_bmp.h>
 
 #undef  DEBUG 
 //#define  DEBUG
@@ -42,6 +43,8 @@ typedef struct {
  u32 w;
  u32 h;
 }rect_t;
+
+u32 *logo_bmp; //need change
 extern  logo_osd_dev_t*  get_init_fbdev(void) ;
 static struct timer_list   logo_timer;
 static  int  boot_process;

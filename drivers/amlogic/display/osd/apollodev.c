@@ -27,7 +27,7 @@
 #include <linux/mutex.h>
 #include <linux/platform_device.h>
 #include <linux/fb.h>
-#include <asm/arch/am_regs.h>
+#include <mach/am_regs.h>
 
 #include <linux/osd/osd.h>
 #include <linux/osd/apollofbdev.h>
@@ -39,7 +39,7 @@
 void apollodev_set(struct myfb_dev *fbdev)
 {
     enum osd_type_s type;
-#ifdef   AML_A1H		
+	
     const enum osd_type_s typeTab[33] = {
         OSD_TYPE_02_PAL4  , OSD_TYPE_02_PAL4  , OSD_TYPE_02_PAL4  ,
         OSD_TYPE_04_PAL16 , OSD_TYPE_04_PAL16 ,
@@ -51,19 +51,6 @@ void apollodev_set(struct myfb_dev *fbdev)
         OSD_TYPE_32_ARGB  , OSD_TYPE_32_ARGB  , OSD_TYPE_32_ARGB  , OSD_TYPE_32_ARGB  ,
         OSD_TYPE_32_BGRA  , OSD_TYPE_32_ABGR  , OSD_TYPE_32_RGBA  , OSD_TYPE_32_ARGB /*32*/ ,
     };
-#else
-	 const enum osd_type_s typeTab[33] = {
-        OSD_TYPE_02_PAL4  , OSD_TYPE_02_PAL4  , OSD_TYPE_02_PAL4  ,
-        OSD_TYPE_04_PAL16 , OSD_TYPE_04_PAL16 ,
-        OSD_TYPE_08_PAL256, OSD_TYPE_08_PAL256, OSD_TYPE_08_PAL256, OSD_TYPE_08_PAL256,
-        OSD_TYPE_16_655   , OSD_TYPE_16_655   , OSD_TYPE_16_655   , OSD_TYPE_16_655   ,
-        OSD_TYPE_16_655   , OSD_TYPE_16_6442   , OSD_TYPE_16_655   , OSD_TYPE_16_655   ,
-        OSD_TYPE_24_RGB   , OSD_TYPE_24_RGB   , OSD_TYPE_24_RGB   , OSD_TYPE_24_RGB   ,
-        OSD_TYPE_24_RGB   , OSD_TYPE_24_RGB   , OSD_TYPE_24_RGB   , OSD_TYPE_24_RGB   ,
-        OSD_TYPE_32_RGBA  , OSD_TYPE_32_RGBA  , OSD_TYPE_32_RGBA  , OSD_TYPE_32_RGBA  ,
-        OSD_TYPE_32_RGBA  , OSD_TYPE_32_RGBA  , OSD_TYPE_32_RGBA  , OSD_TYPE_32_RGBA  ,
-    };
-#endif 
 
 
 	
