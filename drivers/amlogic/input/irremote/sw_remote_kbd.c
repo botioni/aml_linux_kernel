@@ -36,7 +36,7 @@
 #include <linux/errno.h>
 #include <asm/irq.h>
 #include <asm/io.h>
-#include <asm/arch/am_regs.h>
+#include <mach/am_regs.h>
 #include "amkbd_remote.h"
 
 
@@ -52,7 +52,7 @@ static int  get_pulse_width(unsigned long data)
 	char buf[100];
 	const char* state;
 
-	pulse_width     = ( (READ_PERIPHS_REG( PREG_IR_DEC_CONTROL)) & 0x1FFF0000 ) >> 16 ;
+	pulse_width     = ( (READ_MPEG_REG( IR_DEC_REG1)) & 0x1FFF0000 ) >> 16 ;
 	state = apollo_kp_data->step==REMOTE_STATUS_WAIT?"wait":\
 				apollo_kp_data->step==REMOTE_STATUS_LEADER?"leader":\
 				apollo_kp_data->step==REMOTE_STATUS_DATA?"data":\

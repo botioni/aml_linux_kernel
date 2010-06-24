@@ -28,7 +28,7 @@ obj-y += amports/
 
 #obj-y += i2c/
 
-#obj-y += input/
+obj-y += input/
 
 #obj-y += led/
 
