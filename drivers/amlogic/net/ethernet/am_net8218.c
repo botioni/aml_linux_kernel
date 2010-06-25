@@ -544,6 +544,7 @@ void net_tasklet(unsigned long dev_instance)
 		struct _tx_desc *c_tx, *tx = NULL;
 
 		c_tx =(void *)IO_READ32(np->base_addr +ETH_DMA_18_Curr_Host_Tr_Descriptor);
+		c_tx=np->tx_ring+(c_tx-np->tx_ring_dma);
 		tx = np->start_tx;
 		while (tx != NULL && tx != c_tx && !(tx->status & DescOwnByDma)) {
 #ifdef DMA_USE_SKB_BUF
@@ -576,8 +577,8 @@ void net_tasklet(unsigned long dev_instance)
 	if (result & 2) {
 		//data  rx; 
 		struct _rx_desc *c_rx, *rx = NULL;
-		c_rx =
-		    (void *)IO_READ32(np->base_addr +ETH_DMA_19_Curr_Host_Re_Descriptor);
+		c_rx =(void *)IO_READ32(np->base_addr +ETH_DMA_19_Curr_Host_Re_Descriptor);
+		c_rx=np->rx_ring+(c_rx-np->rx_ring_dma);
 		rx = np->last_rx->next;
 		while (rx != NULL) {
 			//if(rx->status !=IO_READ32(&rx->status))
@@ -741,8 +742,8 @@ static int phy_reset(struct net_device *ndev)
 	//| 1 << 31;	//receive all the data 
 	IO_WRITE32(val, np->base_addr + ETH_MAC_1_Frame_Filter);
 
-	IO_WRITE32((unsigned long)&np->rx_ring[0],(np->base_addr + ETH_DMA_3_Re_Descriptor_List_Addr));
-	IO_WRITE32((unsigned long)&np->tx_ring[0],(np->base_addr + ETH_DMA_4_Tr_Descriptor_List_Addr));
+	IO_WRITE32((unsigned long)&np->rx_ring_dma[0],(np->base_addr + ETH_DMA_3_Re_Descriptor_List_Addr));
+	IO_WRITE32((unsigned long)&np->tx_ring_dma[0],(np->base_addr + ETH_DMA_4_Tr_Descriptor_List_Addr));
 	IO_WRITE32(np->irq_mask, (np->base_addr + ETH_DMA_7_Interrupt_Enable));
 	IO_WRITE32((0), (np->base_addr + ETH_MAC_Interrupt_Mask));
 	val = (0x00000002 | 7 << 14 | 1 << 25 | 1 << 8 | 1 << 26 | 1 << 21);
