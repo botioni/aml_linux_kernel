@@ -103,24 +103,30 @@ struct _tx_desc {
 		unsigned long status;
 		unsigned long count;
 		dma_addr_t buf_dma;
-		struct _tx_desc *next;
+		struct _tx_desc *next_dma;
 
 		//-------------------------
 		struct sk_buff *skb;
 		unsigned long buf;
-		unsigned long reverse[2];
+		struct _tx_desc *next;
+		unsigned long reverse[1];
 };
 struct _rx_desc {
 		unsigned long status;
 		unsigned long count;
 		dma_addr_t buf_dma;
-		struct _rx_desc *next;
+		struct _rx_desc *next_dma;
 
 		//-------------------------
 		struct sk_buff *skb;
 		unsigned long buf;
-		unsigned long reverse[2];
+		struct _rx_desc *next;
+		unsigned long reverse[1];
 };
+
+#define PHY_SMSC_8700			0x7c0c4
+#define PHY_ATHEROS_8032		0x004dd023
+
 struct am_net_private {
 		struct _rx_desc *rx_ring;
 		struct _rx_desc *rx_ring_dma;
@@ -129,6 +135,7 @@ struct am_net_private {
 		struct _rx_desc *last_rx;
 		struct _tx_desc *last_tx;
 		struct _tx_desc *start_tx;
+		struct net_device *dev;
 		struct net_device_stats stats;
 		struct timer_list timer;	/* Media monitoring timer. */
 		struct tasklet_struct rx_tasklet;
@@ -144,6 +151,9 @@ struct am_net_private {
 		/* MII transceiver section. */
 		int mii_cnt;		/* MII device addresses. */
 		unsigned char phys[MII_CNT];	/* MII device addresses, but only the first is used */
+			
+		int phy_Identifier;
+
 		u32 mii;
 		int phy_set[MII_CNT];	//save the latest phy_set;
 		struct mii_if_info mii_if;
