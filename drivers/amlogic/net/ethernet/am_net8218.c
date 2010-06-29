@@ -14,6 +14,8 @@ add by zhouzhi 2008-8-18
 #include <linux/mii.h>
 #include <asm/delay.h>
 #include <mach/pinmux.h>
+#include <mach/gpio.h>
+
 #include <linux/crc32.h>
 
 #include "am_net8218.h"
@@ -198,10 +200,12 @@ int init_rxtx_rings(struct net_device *dev)
 		np->rx_ring[i].buf_dma=dma_map_single(&dev->dev,(void *)np->rx_ring[i].buf,np->rx_buf_sz,DMA_FROM_DEVICE);
 		np->rx_ring[i].count =(DescChain) | (np->rx_buf_sz & DescSize1Mask);
 		np->rx_ring[i].status = (DescOwnByDma);
+		np->rx_ring[i].next_dma = &np->rx_ring_dma[i + 1];
 		np->rx_ring[i].next = &np->rx_ring[i + 1];
 
 	}
 
+	np->rx_ring[RX_RING_SIZE - 1].next_dma = &np->rx_ring_dma[0];
 	np->rx_ring[RX_RING_SIZE - 1].next = &np->rx_ring[0];
 	/* Initialize the Tx descriptors */
 	for (i = 0; i < TX_RING_SIZE; i++) {
@@ -213,9 +217,11 @@ int init_rxtx_rings(struct net_device *dev)
 		np->tx_ring[i].status = 0;
 		np->tx_ring[i].count =
 		    (DescChain) | (np->rx_buf_sz & DescSize1Mask);
+		np->tx_ring[i].next_dma = &np->tx_ring_dma[i + 1];
 		np->tx_ring[i].next = &np->tx_ring[i + 1];
 		np->tx_ring[i].skb = NULL;
 	}
+	np->tx_ring[TX_RING_SIZE - 1].next_dma = &np->tx_ring_dma[0];
 	np->tx_ring[TX_RING_SIZE - 1].next = &np->tx_ring[0];
 	np->start_tx = &np->tx_ring[0];
 	np->last_tx = NULL;
@@ -230,15 +236,9 @@ static int alloc_ringdesc(struct net_device *dev)
 	struct am_net_private *np = netdev_priv(dev);
 
 	np->rx_buf_sz = (dev->mtu <= 1500 ? PKT_BUF_SZ : dev->mtu + 32);
-
-	/*np->rx_ring = kmalloc(sizeof(struct _rx_desc) * RX_RING_SIZE +
-				sizeof(struct _tx_desc) * TX_RING_SIZE +
-			      	CACHE_LINE, GFP_DMA); */
 	np->rx_ring=dma_alloc_coherent(&dev->dev,
-				sizeof(struct _rx_desc) * RX_RING_SIZE +CACHE_LINE,
+				sizeof(struct _rx_desc) * RX_RING_SIZE,
 				(dma_addr_t *)&np->rx_ring_dma,GFP_KERNEL);
-	//np->rx_ring=0xc1001000;//apollo on chip sram
-
 	if (!np->rx_ring)
 		return -ENOMEM;
 
@@ -248,11 +248,8 @@ static int alloc_ringdesc(struct net_device *dev)
 	printk("NET MDA descpter start addr=%p\n", np->rx_ring);
 
 	np->tx_ring=dma_alloc_coherent(&dev->dev,
-				sizeof(struct _tx_desc) * TX_RING_SIZE +CACHE_LINE,
+				sizeof(struct _tx_desc) * TX_RING_SIZE ,
 				(dma_addr_t *)&np->tx_ring_dma,GFP_KERNEL);
-	memset(np->rx_ring, 0,
-	       sizeof(struct _rx_desc) * RX_RING_SIZE +
-	       sizeof(struct _tx_desc) * TX_RING_SIZE);
 	if (init_rxtx_rings(dev)) {
 		printk("init rx tx ring failed!!\n");
 		return -1;
@@ -291,6 +288,99 @@ static int free_ringdesc(struct net_device *dev)
 	np->rx_ring = NULL;
 	return 0;
 }
+static int phy_linked(struct am_net_private *np)
+{
+	 unsigned int val;
+	switch(np->phy_Identifier)
+		{
+		case PHY_ATHEROS_8032:	
+			val=mdio_read(np->dev,np->phys[0],17);
+			val=(val&(1<<10));
+			break;
+		case PHY_SMSC_8700:
+		default:	
+			val=mdio_read(np->dev,np->phys[0],1);
+			val=(val&(1<<2));
+		}
+	return val;
+}
+static int mac_PLL_changed(struct am_net_private *np,int clk_mhz)
+{
+	unsigned long tmp;
+	switch(clk_mhz)
+		{
+		case 0://disable clock
+				PERIPHS_CLEAR_BITS(HHI_ETH_CLK_CNTL, 1<<8);	//disable clk                       
+				break;
+		case 10:
+			if (debug > 0)
+							printk("10m\n");
+				//(*ETH_MAC_0_Configuration) &= ~(1<<14); // program mac
+				tmp =
+				IO_READ32(np->base_addr +ETH_MAC_0_Configuration);
+				tmp &= ~(1 << 14);
+				IO_WRITE32(tmp,np->base_addr +ETH_MAC_0_Configuration);
+				PERIPHS_CLEAR_BITS(HHI_ETH_CLK_CNTL, 1<<8);
+				PERIPHS_CLEAR_BITS(HHI_ETH_CLK_CNTL, (1 << 7));
+				PERIPHS_SET_BITS(HHI_ETH_CLK_CNTL, 1<<8)
+				break;
+		case 100:
+		default:
+			if (debug > 0)
+						printk("100m\n");
+				//(*ETH_MAC_0_Configuration) |= 1<<14; // program mac
+				tmp =
+				IO_READ32(np->base_addr +ETH_MAC_0_Configuration);
+				tmp |= 1 << 14;
+				IO_WRITE32(tmp,np->base_addr +ETH_MAC_0_Configuration);
+				PERIPHS_CLEAR_BITS(HHI_ETH_CLK_CNTL, 1<<8);
+				PERIPHS_SET_BITS(HHI_ETH_CLK_CNTL, (1 << 7));
+				PERIPHS_SET_BITS(HHI_ETH_CLK_CNTL, 1<<8);
+		}
+	return 0;
+}
+
+static void phy_auto_negotiation_set(struct am_net_private *np)
+{
+	unsigned int rint;
+	int s100,full,tmp;
+	switch(np->phy_Identifier)
+	{
+	case PHY_ATHEROS_8032:
+		rint=mdio_read(np->dev,np->phys[0],0x11);
+		s100=rint&(1<<14);
+		full=((rint)&(1<<13));
+		break;
+	case PHY_SMSC_8700:	
+	default:
+		rint=mdio_read(np->dev,np->phys[0],31);
+		s100=rint&(1<<3);
+		full=((rint>>4)&1);
+		break;
+	}
+	if(full)
+	{
+		if (debug > 0)
+					printk("duplex\n");
+		//(*ETH_MAC_0_Configuration) |= 1<<11; // program mac
+		tmp =
+		IO_READ32(np->base_addr +ETH_MAC_0_Configuration);
+		tmp |= 1 << 11;
+		IO_WRITE32(tmp,np->base_addr +ETH_MAC_0_Configuration);
+	}
+	else
+	{
+		if (debug > 0)
+					printk("half duplex\n");
+		//(*ETH_MAC_0_Configuration) &= ~(1<<11) ; // program mac
+		tmp =
+		IO_READ32(np->base_addr +ETH_MAC_0_Configuration);
+		tmp &= ~(1 << 11);
+		IO_WRITE32(tmp, np->base_addr +ETH_MAC_0_Configuration);
+	}
+	mac_PLL_changed(np,s100?100:10);
+	return;
+}
 
 static void netdev_timer(unsigned long data)
 {
@@ -299,14 +389,12 @@ static void netdev_timer(unsigned long data)
 	unsigned long ioaddr = np->base_addr;
 	static int error_num = 0;
 	int val;
-	spin_lock_irq(&np->lock);
-	val = mdio_read(dev, np->phys[0], MII_BMSR);
-	spin_unlock_irq(&np->lock);
+
 	if (debug > 2)
-		printk(KERN_DEBUG "%s: Media selection timer tick, mac status %8.8x "
-		       "MII SR %8.8x.\n", dev->name,
-		       ioread32(ioaddr + ETH_DMA_5_Status), val);
-	if (!(val & (BMSR_LSTATUS))) {	//unlink .....
+		printk(KERN_DEBUG "%s: Media selection timer tick, mac status %8.8x \n", 
+				dev->name,
+		       ioread32(ioaddr + ETH_DMA_5_Status));
+	if (!phy_linked(np)) {	//unlink .....
 		error_num++;
 		if (error_num > 30) {
 			error_num = 0;
@@ -323,53 +411,10 @@ static void netdev_timer(unsigned long data)
 		netif_carrier_off(dev);
 		np->phy_set[0] = 0;
 	} else {		//linked 
-		spin_lock_irq(&np->lock);
-		val = mdio_read(dev, np->phys[0], 31);
-		spin_unlock_irq(&np->lock);
+		val = mdio_read(dev, np->phys[0], 1);
 		if (np->phy_set[0] != val) {
-			int tmp = 0;
-			np->phy_set[0] = val;
-			if ((val >> 4) & 1) {
-				if (debug > 0)
-					printk("duplex\n");
-				//(*ETH_MAC_0_Configuration) |= 1<<11; // program mac
-				tmp =
-				IO_READ32(np->base_addr +ETH_MAC_0_Configuration);
-				tmp |= 1 << 11;
-				IO_WRITE32(tmp,np->base_addr +ETH_MAC_0_Configuration);
-			} else {
-				if (debug > 0)
-					printk("half duplex\n");
-				//(*ETH_MAC_0_Configuration) &= ~(1<<11) ; // program mac
-				tmp =
-				IO_READ32(np->base_addr +ETH_MAC_0_Configuration);
-				tmp &= ~(1 << 11);
-				IO_WRITE32(tmp, np->base_addr +ETH_MAC_0_Configuration);
-			}
-			if (val & (1 << 2)) {
-				if (debug > 0)
-					printk("10m\n");
-				//(*ETH_MAC_0_Configuration) &= ~(1<<14); // program mac
-				tmp =
-				IO_READ32(np->base_addr +ETH_MAC_0_Configuration);
-				tmp &= ~(1 << 14);
-				IO_WRITE32(tmp,np->base_addr +ETH_MAC_0_Configuration);
-				PERIPHS_CLEAR_BITS(HHI_ETH_CLK_CNTL, 1);
-				PERIPHS_CLEAR_BITS(HHI_ETH_CLK_CNTL, (1 << 1));
-				PERIPHS_SET_BITS(HHI_ETH_CLK_CNTL, 1);
-			} else if (val & (1 << 3)) {
-				if (debug > 0)
-					printk("100m\n");
-				//(*ETH_MAC_0_Configuration) |= 1<<14; // program mac
-				tmp =
-				IO_READ32(np->base_addr +ETH_MAC_0_Configuration);
-				tmp |= 1 << 14;
-				PERIPHS_CLEAR_BITS(HHI_ETH_CLK_CNTL, 1);
-				IO_WRITE32(tmp,np->base_addr +ETH_MAC_0_Configuration);
-				PERIPHS_SET_BITS(HHI_ETH_CLK_CNTL, (1 << 1));
-				PERIPHS_SET_BITS(HHI_ETH_CLK_CNTL, 1);
-
-			}
+			np->phy_set[0] =val;
+			phy_auto_negotiation_set(np);
 		}
 		error_num = 0;
 		netif_carrier_on(dev);
@@ -531,7 +576,7 @@ void net_tasklet(unsigned long dev_instance)
 	struct am_net_private *np = netdev_priv(dev);
 	int len;
 	int result;
-	unsigned long flags,status,mask;
+	unsigned long flags,status,mask=0;
 
 #ifndef DMA_USE_SKB_BUF
 	struct sk_buff *skb = NULL;
@@ -539,6 +584,7 @@ void net_tasklet(unsigned long dev_instance)
 	if (!running)
 		goto release;
         status = IO_READ32(np->base_addr + ETH_DMA_5_Status);
+		mask = IO_READ32(np->base_addr + ETH_MAC_Interrupt_Mask);
         result= update_status(dev, status, mask);
 	if (result & 1) {
 		struct _tx_desc *c_tx, *tx = NULL;
@@ -638,7 +684,8 @@ void net_tasklet(unsigned long dev_instance)
 				np->stats.rx_bytes += len;
 
 				//*/
-				//printk("receive data len=%d\n",len);
+				if(debug>3)
+					printk("receive data len=%d\n",len);
 				//dump((unsigned char *)rx->buf,len);
 
 				//reset the rx_ring to receive 
@@ -746,7 +793,7 @@ static int phy_reset(struct net_device *ndev)
 	IO_WRITE32((unsigned long)&np->tx_ring_dma[0],(np->base_addr + ETH_DMA_4_Tr_Descriptor_List_Addr));
 	IO_WRITE32(np->irq_mask, (np->base_addr + ETH_DMA_7_Interrupt_Enable));
 	IO_WRITE32((0), (np->base_addr + ETH_MAC_Interrupt_Mask));
-	val = (0x00000002 | 7 << 14 | 1 << 25 | 1 << 8 | 1 << 26 | 1 << 21);
+	val = (7 << 14 | 1 << 25 | 1 << 8 | 1 << 26 | 1 << 21);/*don't start receive here */
 	////1<<21 is Transmit Store and Forward used for tcp/ip checksum insert
 	IO_WRITE32(val, (np->base_addr + ETH_DMA_6_Operation_Mode));
 	np->phy_set[0] = 0;	//make sure reset the phy speed
@@ -760,8 +807,10 @@ static int ethernet_reset(struct net_device *dev)
 {
 	struct am_net_private *np = netdev_priv(dev);
 	int res;
-
+	unsigned long flags;
+	spin_lock_irqsave(&np->lock, flags);
 	res = alloc_ringdesc(dev);
+	spin_unlock_irqrestore(&np->lock, flags);
 	if (res != 0) {
 		printk(KERN_INFO "can't alloc ring desc!err=%d\n", res);
 		goto out_err;
@@ -780,13 +829,14 @@ static int ethernet_reset(struct net_device *dev)
 static int netdev_open(struct net_device *dev)
 {
 	struct am_net_private *np = netdev_priv(dev);
-	unsigned long flags;
+	unsigned long val;
+	
 	int res;
 	if (running)
 		return 0;
-	spin_lock_irqsave(&np->lock, flags);
+	printk(KERN_INFO "netdev_open\n");
 	res = ethernet_reset(dev);
-	spin_unlock_irqrestore(&np->lock, flags);
+	
 	if (res != 0) {
 		printk(KERN_INFO "ethernet_reset err=%d\n", res);
 		goto out_err;
@@ -809,6 +859,9 @@ static int netdev_open(struct net_device *dev)
 	np->timer.data = (unsigned long)dev;
 	np->timer.function = &netdev_timer;	/* timer handler */
 	add_timer(&np->timer);
+	val=IO_READ32((np->base_addr + ETH_DMA_6_Operation_Mode));
+	val |= (1<<1);/*start receive*/
+	IO_WRITE32(val, (np->base_addr + ETH_DMA_6_Operation_Mode));
 	running = 1;
 	return 0;
       out_err:
@@ -819,11 +872,16 @@ static int netdev_open(struct net_device *dev)
 static int netdev_close(struct net_device *dev)
 {
 	struct am_net_private *np = netdev_priv(dev);
+	unsigned long val;
+	
 	if (!running)
 		return 0;
 	running = 0;
+	val=IO_READ32((np->base_addr + ETH_DMA_6_Operation_Mode));
+	val |= ~((1<<1)| 1<<13);/*stop  receive and send*/
+	IO_WRITE32(val, (np->base_addr + ETH_DMA_6_Operation_Mode));
 	IO_WRITE32(0, np->base_addr + ETH_DMA_7_Interrupt_Enable);
-	//netif_device_detach(dev);
+	msleep(1);//waiting all dma is finished!!
 	disable_irq(dev->irq);
 	netif_carrier_off(dev);
 	netif_stop_queue(dev);
@@ -996,7 +1054,7 @@ static void set_multicast_list(struct net_device *dev)
 		tmp=IO_READ32(np->base_addr + ETH_MAC_1_Frame_Filter);
 		tmp&=~1;
 		IO_WRITE32(tmp, np->base_addr + ETH_MAC_1_Frame_Filter);//live promisc
-		printk("ether live promisc module\n");
+		//printk("ether leave promisc module\n");
 	}
 	if ((dev->flags & IFF_ALLMULTI) ) {
 		tmp=IO_READ32(np->base_addr + ETH_MAC_1_Frame_Filter);
@@ -1009,7 +1067,7 @@ static void set_multicast_list(struct net_device *dev)
 		tmp=IO_READ32(np->base_addr + ETH_MAC_1_Frame_Filter);
 		tmp&=(1<<4);
 		IO_WRITE32(tmp, np->base_addr + ETH_MAC_1_Frame_Filter);//live all muticast
-		printk("ether live all muticast module\n");
+		//printk("ether leave all muticast module\n");
 	}
 	
 	if (dev->mc_count > 0)
@@ -1093,29 +1151,43 @@ I think this must be init at the system start ...
 
 static void bank_io_init(struct net_device *ndev)
 {
-	int chip=0;
+	int chip=86262;
+	struct am_net_private *priv = netdev_priv(ndev);
+	
 	switch (chip) {
-		default:
-		///PERIPHS_SET_BITS(PREG_PIN_MUX_REG8, 0x3ff << 1);
-		
-			set_mio_mux(8,(0x3ff << 1));
-		#if 0	
-			PERIPHS_CLEAR_BITS(PREG_NDMA_AES_CONTROL, (1 << 12));
-			PERIPHS_CLEAR_BITS(PREG_GPIOC_OUTLVL, (0x1 << 26));
-			PERIPHS_CLEAR_BITS(PREG_GPIOC_OE, (0x1 << 26));
+		case 86262://8626m
+			///GPIOD15-24 for 8626M;
+			///GPIOD12	nRst;
+			///GPIOD13    n_int;
+			set_mio_mux(5,0x3ff<<1);
+			set_gpio_mode(PREG_GGPIO,12,GPIO_OUTPUT_MODE);
+			set_gpio_val(PREG_GGPIO,12,0);
 			udelay(100);	//waiting reset end;
-			PERIPHS_SET_BITS(PREG_GPIOC_OUTLVL, (0x1 << 26));
-			udelay(10);
-		#endif	
+			set_gpio_val(PREG_GGPIO,12,1);
+			udelay(10);	//waiting reset end;
+			break;
+		case 62362://6236m
+			///GPIOC3-12 for 8626M;
+			///GPIOC0_nRst;
+			///GPIOC1_nInt;
+			set_mio_mux(3,0x3ff<<1);
+
+			set_gpio_mode(PREG_FGPIO,0,GPIO_OUTPUT_MODE);
+			set_gpio_val(PREG_FGPIO,0,0);
+			udelay(100);	//waiting reset end;
+			set_gpio_val(PREG_FGPIO,0,1);
+			udelay(10);	//waiting reset end;
+			break;
+		default:
 		break;
 		;
 	}
-	PERIPHS_CLEAR_BITS(HHI_ETH_CLK_CNTL, 1);	//disable clk                                
-	PERIPHS_CLEAR_BITS(HHI_ETH_CLK_CNTL, (1 << 0 | 1 << 2 | 1 << 3));
-	PERIPHS_SET_BITS(HHI_ETH_CLK_CNTL, (1 << 1));
-	PERIPHS_SET_BITS(HHI_ETH_CLK_CNTL, (1 << 0));
-	udelay(100);
 
+	WRITE_CBUS_REG_BITS(HHI_ETH_CLK_CNTL,1,9,11);//select 400MHZ
+	WRITE_CBUS_REG_BITS(HHI_ETH_CLK_CNTL,8,0,6);//divide to 50MHZ
+	mac_PLL_changed(priv,0);//disable the clock
+	mac_PLL_changed(priv,100);
+	udelay(100);
 }
 
 static int probe_init(struct net_device *ndev)
@@ -1124,7 +1196,10 @@ static int probe_init(struct net_device *ndev)
 	int phy_idx = 0;
 	int found = 0;
 	int res;
+	unsigned int val;
+	
 	struct am_net_private *priv = netdev_priv(ndev);
+	priv->dev=ndev;
 	ndev->base_addr = (unsigned long)(ETHBASE);
 	ndev->irq = ETH_INTERRUPT;
 	spin_lock_init(&priv->lock);
@@ -1154,12 +1229,18 @@ static int probe_init(struct net_device *ndev)
 			found++;
 		}
 	}
+	
 	if (!found) {
 		printk("can't find any mii phy device !\n");
 		res = -EIO;
 		goto error0;
 	}
 	mdio_write(ndev, priv->phys[0], 18, priv->phys[0] | (1 << 14 | 7 << 5));
+
+	val=mdio_read(ndev, phy, 2);//phy_rw(0, phyad, 2, &val);
+	priv->phy_Identifier=val<<16;	
+	val=mdio_read(ndev, phy, 3);//phy_rw(0, phyad, 3, &val);
+	priv->phy_Identifier|=val;	
 	res = setup_net_device(ndev);
 	if (res != 0) {
 		printk("setup net device error !\n");
