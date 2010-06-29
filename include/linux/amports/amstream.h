@@ -22,6 +22,7 @@
 #ifndef AMSTREAM_H
 #define AMSTREAM_H
 
+#ifdef __KERNEL__
 #define PORT_FLAG_IN_USE    0x0001
 #define PORT_FLAG_VFORMAT   0x0002
 #define PORT_FLAG_AFORMAT   0x0004
@@ -30,7 +31,7 @@
 #define PORT_FLAG_AID       0x0010
 #define PORT_FLAG_SID       0x0020
 #define PORT_FLAG_ID        (PORT_FLAG_VID | PORT_FLAG_AID | PORT_FLAG_SID)
-#define PORT_FLAG_INITED  0x100
+#define PORT_FLAG_INITED    0x100
 
 #define PORT_TYPE_VIDEO     0x01
 #define PORT_TYPE_AUDIO     0x02
@@ -39,6 +40,7 @@
 #define PORT_TYPE_ES        0x10
 #define PORT_TYPE_RM        0x20
 #define PORT_TYPE_SUB       0x40
+#endif
 
 #define AMSTREAM_IOC_MAGIC  'S'
 
@@ -142,9 +144,11 @@ struct dec_sysinfo {
     void *          param;
 };
 
+#ifdef __KERNEL__
 void set_vdec_func(int (*vdec_func)(struct vdec_status *));
 void set_adec_func(int (*adec_func)(struct adec_status *));
 void set_trickmode_func(int (*trickmode_func)(unsigned long trickmode));
+#endif
 
 #endif /* AMSTREAM_H */
 
