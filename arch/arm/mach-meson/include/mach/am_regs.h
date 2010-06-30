@@ -696,16 +696,20 @@
 // ----------------------------
 // NAND (21)
 // ----------------------------
-#define P_NAND_CMD                                 0x2180
-#define P_NAND_CFG                                 0x2181
-#define P_NAND_DADR                                0x2182
-#define P_NAND_IADR                                0x2183
-#define P_NAND_BUF                                 0x2184
-#define P_NAND_INFO                                0x2185
-#define P_NAND_DC                                  0x2186
-#define P_NAND_ADR                                 0x2187
-#define P_NAND_DL                                  0x2188
-#define P_NAND_DH                                  0x2189
+
+#define NAND_CMD                                 0x2180
+#define NAND_CFG                                 0x2181
+#define NAND_DADR                                0x2182
+#define NAND_IADR                                0x2183
+#define NAND_BUF                                 0x2184
+#define NAND_INFO                                0x2185
+#define NAND_DC                                  0x2186
+#define NAND_ADR                                 0x2187
+#define NAND_DL                                  0x2188
+#define NAND_DH                                  0x2189
+
+
+
 // ----------------------------
 // PWM / DS C/D
 // ----------------------------
