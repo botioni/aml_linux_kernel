@@ -1,7 +1,6 @@
 # ALSA ARC drivers
 
 menu "Amlogic ALSA Audio devices"
-	depends on AMLOGIC_BOARD
 
 config	SND_AML
 	tristate "Amlogic Audio driver"

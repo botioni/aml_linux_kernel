@@ -14,11 +14,11 @@
 #include <sound/pcm.h>
 #include <sound/initval.h>
 #include <sound/control.h>
-#include <asm/arch/am_regs.h>
-#include <asm/arch/pinmux.h>
+#include <mach/am_regs.h>
+#include <mach/pinmux.h>
 
 #ifdef CONFIG_AMLOGIC_BOARD_APOLLO_H_LINUX
-#include <asm/arch/gpio.h>    
+#include <mach/gpio.h>    
 #endif
 
 #include "aml_pcm.h"
@@ -380,7 +380,6 @@ static snd_pcm_uframes_t snd_aml_audio_playback_pointer(struct
     s = &chip->s[substream->pstr->stream];
     ptr = read_i2s_rd_ptr();
     addr1 = ptr - (s->I2S_addr);
-    invalidate_ahb_cache();
 
     return bytes_to_frames(substream->runtime, addr1);
 
@@ -402,7 +401,7 @@ static int snd_aml_audio_playback_trigger(struct snd_pcm_substream
         timer.expires = jiffies + 1;
         del_timer(&timer);
         add_timer(&timer);
-        flush_dcache_all();
+        //flush_dcache_all();
         dug_printk
             ("snd_aml_audio_playback_trigger: pcm trigger! SNDRV_PCM_TRIGGER_START\n");
         audio_enable_ouput(1);
@@ -417,14 +416,14 @@ static int snd_aml_audio_playback_trigger(struct snd_pcm_substream
 
     case SNDRV_PCM_TRIGGER_PAUSE_PUSH:
         s->active = 0;
-        WRITE_MPEG_REG_BITS(MREG_AIU_MEM_I2S_CONTROL, 0, 2, 1);
+        WRITE_MPEG_REG_BITS(AIU_MEM_I2S_CONTROL, 0, 2, 1);
         dug_printk
             ("snd_aml_audio_playback_trigger: pcm trigger! SNDRV_PCM_TRIGGER_PAUSE\n");
         break;
 
      case SNDRV_PCM_TRIGGER_PAUSE_RELEASE:
         s->active = 1;
-        WRITE_MPEG_REG_BITS(MREG_AIU_MEM_I2S_CONTROL, 1, 2, 1);
+        WRITE_MPEG_REG_BITS(AIU_MEM_I2S_CONTROL, 1, 2, 1);
         dug_printk
             ("snd_aml_audio_playback_trigger: pcm trigger! SNDRV_PCM_TRIGGER_PAUSE_RELEASE\n");
         break;
@@ -456,7 +455,7 @@ static int snd_aml_audio_playback_copy(struct snd_pcm_substream *substream,
     register unsigned  int vol =(audio_mixer_control.output_volume*(1<<VOLUME_SHIFT))/VOLUME_SCALE;
     struct snd_pcm_runtime *runtime = substream->runtime;
     char *hwbuf = runtime->dma_area + frames_to_bytes(runtime, pos);
-    snd_assert(runtime->dma_area, return -EFAULT);
+    //snd_assert(runtime->dma_area, return -EFAULT);
     //      if (copy_from_user(hwbuf, buf, frames_to_bytes(runtime, frames)))
     //              return -EFAULT;
  
@@ -495,7 +494,7 @@ static int snd_aml_audio_playback_copy(struct snd_pcm_substream *substream,
 	        left += 16;
 	        right += 16;
 	    }
-	   dma_cache_wback((unsigned long)hwbuf,n);
+	  // dma_cache_wback((unsigned long)hwbuf,n);
     	}
    else
    	{
@@ -692,8 +691,10 @@ static int __init aml_alsa_audio_probe(struct platform_device *dev)
     struct snd_card *card;
     aml_audio_t *chip;
 
-    card = snd_card_new(-1, id, THIS_MODULE, sizeof(aml_audio_t));
-    if (card == NULL) {
+   // card = snd_card_new(-1, id, THIS_MODULE, sizeof(aml_audio_t));
+	err=snd_card_create(SNDRV_DEFAULT_IDX1, SNDRV_DEFAULT_STR1,
+			      THIS_MODULE, 0, &card);
+    if (err <0) {
         return -ENOMEM;
     }
 
