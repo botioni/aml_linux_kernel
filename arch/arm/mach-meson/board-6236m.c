@@ -26,8 +26,6 @@
 #include <asm/hardware/cache-l2x0.h>
 #endif
 
-#define MACH_MESON_STRING "AMLOGIC MESON-M1 Board"
-
 static __init void m1_init_machine(void)
 {
 #ifdef CONFIG_CACHE_L2X0
@@ -49,7 +47,7 @@ static __init void m1_irq_init(void)
 	meson_init_irq();
 }
 
-MACHINE_START(MESON, MACH_MESON_STRING)
+MACHINE_START(MESON_6236M, "AMLOGIC MESON-M1 6236M")
 	.phys_io		= MESON_PERIPHS1_PHYS_BASE,
 	.io_pg_offst	= (MESON_PERIPHS1_PHYS_BASE >> 18) & 0xfffc,
 	.boot_params	= BOOT_PARAMS_OFFSET,

@@ -1,13 +1,18 @@
 menu "Meson platform type"
 	depends on ARCH_MESON
 
+config MACH_MESON_6236M
+	bool "Support M1 6236 platform"
+	help
+	  Include support for the AMLOGIC M1 6236M Emulation Baseboard platform.
+
+config MACH_MESON_8626M
+	bool "Support M1 8626 platform"
+	help
+	  Include support for the AMLOGIC M1 8626M Emulation Baseboard platform.
+
 config MESON_CLOCK_TICK_RATE
     int "Clock Tick Rate"
 	default 25000000
-
-config MACH_MESON
-	bool "Support MESON-M1 platform"
-	help
-	  Include support for the MESON-M1 Platform Baseboard.
 
 endmenu
