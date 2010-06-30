@@ -35,12 +35,12 @@ gpio_mode_t get_gpio_mode(gpio_bank_t bank,int bit)
 
 int set_gpio_val(gpio_bank_t bank,int bit,unsigned long val)
 {
-	unsigned long addr=gpio_addrs[bank].mode_addr;
+	unsigned long addr=gpio_addrs[bank].out_addr;
 	WRITE_CBUS_REG_BITS(addr,val,bit,1);
 }
 unsigned long  get_gpio_val(gpio_bank_t bank,int bit)
 {
-	unsigned long addr=gpio_addrs[bank].mode_addr;
+	unsigned long addr=gpio_addrs[bank].in_addr;
 	return READ_CBUS_REG_BITS(addr,bit,1);
 }
 
