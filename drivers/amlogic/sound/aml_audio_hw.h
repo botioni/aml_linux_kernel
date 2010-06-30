@@ -1,7 +1,72 @@
 #ifndef __AML_AUDIO_HW_H__
 #define __AML_AUDIO_HW_H__
 
-#if defined(AML_A1H)
+#if defined(CONFIG_MACH_MESON)
+/*need to fix */
+#define AUDIO_384FS_PLL_192K        0x4e81  /* 36.864M */
+#define AUDIO_384FS_PLL_192K_MUX    0x5
+#define AUDIO_384FS_CLK_192K        0x5eb
+
+#define AUDIO_384FS_PLL_176K        0x127f  /* 33.8688M */
+#define AUDIO_384FS_PLL_176K_MUX    0x9
+#define AUDIO_384FS_CLK_176K        0x5eb
+
+#define AUDIO_384FS_PLL_96K         0x4e81  /* 36.864M */
+#define AUDIO_384FS_PLL_96K_MUX     0x5
+#define AUDIO_384FS_CLK_96K         0x5ef
+
+#define AUDIO_384FS_PLL_88K         0x127f  /* 33.8688M */
+#define AUDIO_384FS_PLL_88K_MUX     0x9
+#define AUDIO_384FS_CLK_88K         0x5ef
+
+#define AUDIO_384FS_PLL_48K         0x14c0  /* 18.432M */
+#define AUDIO_384FS_PLL_48K_MUX     24
+#define AUDIO_384FS_CLK_48K_AC3     0x5ed
+#define AUDIO_384FS_CLK_48K         0x5ef
+
+#define AUDIO_384FS_PLL_44K         0x16a3  /* 16.9344M */
+#define AUDIO_384FS_PLL_44K_MUX     20
+#define AUDIO_384FS_CLK_44K         0x5ef
+
+#define AUDIO_384FS_PLL_32K         0x1480  /* 12.288M */
+#define AUDIO_384FS_PLL_32K_MUX     24
+#define AUDIO_384FS_CLK_32K         0x5ef
+
+#define AUDIO_384FS_DAC_CFG         0x6
+
+#define AUDIO_256FS_PLL_192K        0x50d5  /* 24.576M */
+#define AUDIO_256FS_PLL_192K_MUX    12
+#define AUDIO_256FS_CLK_192K        0x5c7
+
+#define AUDIO_256FS_PLL_176K        0x108f  /* 22.5792M */
+#define AUDIO_256FS_PLL_176K_MUX    18
+#define AUDIO_256FS_CLK_176K        0x5c7
+
+#define AUDIO_256FS_PLL_96K         0x50d5  /* 24.576M */
+#define AUDIO_256FS_PLL_96K_MUX     12
+#define AUDIO_256FS_CLK_96K         0x5db
+
+#define AUDIO_256FS_PLL_88K         0x108f  /* 22.5792M */
+#define AUDIO_256FS_PLL_88K_MUX     18
+#define AUDIO_256FS_CLK_88K         0x5db
+
+#define AUDIO_256FS_PLL_48K         0x1480  /* 12.288M */
+#define AUDIO_256FS_PLL_48K_MUX     24
+#define AUDIO_256FS_CLK_48K_AC3     0x5d9
+#define AUDIO_256FS_CLK_48K         0x5db
+
+#define AUDIO_256FS_PLL_44K         0x508f  /* 11.2896M */
+#define AUDIO_256FS_PLL_44K_MUX     18
+#define AUDIO_256FS_CLK_44K         0x5db
+
+#define AUDIO_256FS_PLL_32K         0x508e  /* 8.192M */
+#define AUDIO_256FS_PLL_32K_MUX     25
+#define AUDIO_256FS_CLK_32K         0x5db
+#define AUDIO_256FS_DAC_CFG         0x7
+
+#define AUDIO_DAC_CLK_DIV           (0x4000>>12)
+
+#elif defined(AML_A1H)
 #define AUDIO_384FS_PLL_192K        0x4e81  /* 36.864M */
 #define AUDIO_384FS_PLL_192K_MUX    0x5
 #define AUDIO_384FS_CLK_192K        0x5eb
@@ -129,6 +194,7 @@
 #define AUDIO_256FS_DAC_CFG         0x7
 
 #define AUDIO_DAC_CLK_DIV           (0x4000>>12)
+
 #endif
 
 typedef struct {

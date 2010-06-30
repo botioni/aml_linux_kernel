@@ -44,7 +44,7 @@ obj-y += input/
 #obj-y += audiodsp/
 
 #####Sound system is later init in kernel default..######################
-#obj-y += sound/
+obj-y += sound/
 
 
 
