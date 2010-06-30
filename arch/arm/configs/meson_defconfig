@@ -1,7 +1,7 @@
 #
 # Automatically generated make config: don't edit
 # Linux kernel version: 2.6.34
-# Wed Jun 30 19:07:36 2010
+# Wed Jun 30 19:25:54 2010
 #
 CONFIG_ARM=y
 CONFIG_SYS_SUPPORTS_APM_EMULATION=y
@@ -915,7 +915,40 @@ CONFIG_HTC_PASIC3=m
 #
 # CONFIG_VGA_CONSOLE is not set
 CONFIG_DUMMY_CONSOLE=y
-# CONFIG_SOUND is not set
+CONFIG_SOUND=y
+CONFIG_SOUND_OSS_CORE=y
+CONFIG_SOUND_OSS_CORE_PRECLAIM=y
+CONFIG_SND=y
+CONFIG_SND_TIMER=y
+CONFIG_SND_PCM=y
+# CONFIG_SND_SEQUENCER is not set
+CONFIG_SND_OSSEMUL=y
+# CONFIG_SND_MIXER_OSS is not set
+CONFIG_SND_PCM_OSS=y
+CONFIG_SND_PCM_OSS_PLUGINS=y
+# CONFIG_SND_DYNAMIC_MINORS is not set
+CONFIG_SND_SUPPORT_OLD_API=y
+CONFIG_SND_VERBOSE_PROCFS=y
+# CONFIG_SND_VERBOSE_PRINTK is not set
+# CONFIG_SND_DEBUG is not set
+# CONFIG_SND_RAWMIDI_SEQ is not set
+# CONFIG_SND_OPL3_LIB_SEQ is not set
+# CONFIG_SND_OPL4_LIB_SEQ is not set
+# CONFIG_SND_SBAWE_SEQ is not set
+# CONFIG_SND_EMU10K1_SEQ is not set
+CONFIG_SND_DRIVERS=y
+# CONFIG_SND_DUMMY is not set
+# CONFIG_SND_MTPAV is not set
+# CONFIG_SND_MTS64 is not set
+# CONFIG_SND_SERIAL_U16550 is not set
+# CONFIG_SND_MPU401 is not set
+# CONFIG_SND_PORTMAN2X4 is not set
+CONFIG_SND_ARM=y
+CONFIG_SND_PCMCIA=y
+# CONFIG_SND_VXPOCKET is not set
+# CONFIG_SND_PDAUDIOCF is not set
+# CONFIG_SND_SOC is not set
+# CONFIG_SOUND_PRIME is not set
 # CONFIG_HID_SUPPORT is not set
 # CONFIG_USB_SUPPORT is not set
 # CONFIG_MMC is not set
@@ -945,6 +978,15 @@ CONFIG_UIO_PDRV=y
 CONFIG_AM_UART=y
 
 #
+# Amlogic Net Device Support
+#
+# CONFIG_AM_ETHERNET is not set
+
+#
+# Amlogic USB Support
+#
+
+#
 # AMLOGIC Canvas management driver
 #
 CONFIG_AM_CANVAS=y
@@ -957,6 +999,11 @@ CONFIG_AM_CANVAS=y
 # Amlogic video output module
 #
 CONFIG_AM_TV_OUTPUT=y
+
+#
+# Amlogic osd module
+#
+CONFIG_AM_GE2D=y
 
 #
 # AMLOGIC AV Streaming devices
@@ -976,6 +1023,17 @@ CONFIG_AM_STREAMING=y
 # AMLOGIC NAND Flash  support
 #
 CONFIG_AM_NAND=y
+
+#
+# Amlogic ALSA Audio devices
+#
+CONFIG_SND_AML=y
+
+#
+# Amlogic Input device support
+#
+CONFIG_KEYPADS_AM=y
+CONFIG_VIRTUAL_REMOTE=y
 
 #
 # File systems
