@@ -116,18 +116,21 @@ void audio_set_clk(unsigned freq, unsigned fs_config)
 {
     int i;
     if (fs_config == AUDIO_CLK_256FS) {
+        //WRITE_MPEG_REG_BITS(MREG_AUDIO_CLK_CTRL, 0, 8, 1);
         WRITE_MPEG_REG(HHI_AUD_PLL_CNTL, freq_tab_256fs[freq].pll);
         for (i = 0; i < 100000; i++) ;
         WRITE_MPEG_REG(HHI_AUD_CLK_CNTL, freq_tab_256fs[freq].mux);
+        WRITE_MPEG_REG_BITS(HHI_AUD_CLK_CNTL, 1, 8, 1);
 
         WRITE_MPEG_REG_BITS(AIU_CLK_CTRL,
                             freq_tab_256fs[freq].devisor, 0, 8);
         WRITE_MPEG_REG(AIU_I2S_DAC_CFG, AUDIO_256FS_DAC_CFG);
     } else if (fs_config == AUDIO_CLK_384FS) {
+        //WRITE_MPEG_REG_BITS(MREG_AUDIO_CLK_CTRL, 0, 8, 1);
         WRITE_MPEG_REG(HHI_AUD_PLL_CNTL, freq_tab_384fs[freq].pll);
         for (i = 0; i < 100000; i++) ;
         WRITE_MPEG_REG(HHI_AUD_CLK_CNTL, freq_tab_384fs[freq].mux);
-
+        WRITE_MPEG_REG_BITS(HHI_AUD_CLK_CNTL, 1, 8, 1);
         WRITE_MPEG_REG_BITS(AIU_CLK_CTRL,
                             freq_tab_384fs[freq].devisor, 0, 8);
         WRITE_MPEG_REG(AIU_I2S_DAC_CFG, AUDIO_384FS_DAC_CFG);
