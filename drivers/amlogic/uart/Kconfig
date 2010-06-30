@@ -5,6 +5,8 @@ config AM_UART
         bool "Amlogic Uart support"
         default y
         depends on ARCH_MESON
+        select SERIAL_CORE
+        select SERIAL_CORE_CONSOLE
         help
            hardware uart
 
