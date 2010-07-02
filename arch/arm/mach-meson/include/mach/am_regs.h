@@ -66,7 +66,7 @@
 #define SET_MPEG_REG_MASK(reg, mask) \
 	SET_CBUS_REG_MASK(reg, mask)
 #endif
-#define IO_ETH_BASE			0xc1010000
+#define IO_ETH_BASE			0xc9010000
 
 #define IO_CBUS_BASE			0xc1100000
 
