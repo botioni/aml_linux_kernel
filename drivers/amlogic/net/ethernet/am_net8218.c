@@ -310,7 +310,8 @@ static int mac_PLL_changed(struct am_net_private *np,int clk_mhz)
 	switch(clk_mhz)
 		{
 		case 0://disable clock
-				PERIPHS_CLEAR_BITS(HHI_ETH_CLK_CNTL, 1<<8);	//disable clk                       
+				PERIPHS_CLEAR_BITS(PREG_ETHERNET_ADDR0, 1);	//disable clk                                
+				PERIPHS_CLEAR_BITS(PREG_ETHERNET_ADDR0, (1 << 0 | 1 << 2 | 1 << 3));
 				break;
 		case 10:
 			if (debug > 0)
@@ -320,9 +321,9 @@ static int mac_PLL_changed(struct am_net_private *np,int clk_mhz)
 				IO_READ32(np->base_addr +ETH_MAC_0_Configuration);
 				tmp &= ~(1 << 14);
 				IO_WRITE32(tmp,np->base_addr +ETH_MAC_0_Configuration);
-				PERIPHS_CLEAR_BITS(HHI_ETH_CLK_CNTL, 1<<8);
-				PERIPHS_CLEAR_BITS(HHI_ETH_CLK_CNTL, (1 << 7));
-				PERIPHS_SET_BITS(HHI_ETH_CLK_CNTL, 1<<8)
+				PERIPHS_CLEAR_BITS(PREG_ETHERNET_ADDR0, 1);
+				PERIPHS_CLEAR_BITS(PREG_ETHERNET_ADDR0, (1 << 1));
+				PERIPHS_SET_BITS(PREG_ETHERNET_ADDR0, 1);
 				break;
 		case 100:
 		default:
@@ -333,9 +334,9 @@ static int mac_PLL_changed(struct am_net_private *np,int clk_mhz)
 				IO_READ32(np->base_addr +ETH_MAC_0_Configuration);
 				tmp |= 1 << 14;
 				IO_WRITE32(tmp,np->base_addr +ETH_MAC_0_Configuration);
-				PERIPHS_CLEAR_BITS(HHI_ETH_CLK_CNTL, 1<<8);
-				PERIPHS_SET_BITS(HHI_ETH_CLK_CNTL, (1 << 7));
-				PERIPHS_SET_BITS(HHI_ETH_CLK_CNTL, 1<<8);
+				PERIPHS_CLEAR_BITS(PREG_ETHERNET_ADDR0, 1);
+				PERIPHS_SET_BITS(PREG_ETHERNET_ADDR0, (1 << 1));
+				PERIPHS_SET_BITS(PREG_ETHERNET_ADDR0, 1);
 		}
 	return 0;
 }
@@ -1183,8 +1184,9 @@ static void bank_io_init(struct net_device *ndev)
 		;
 	}
 
-	WRITE_CBUS_REG_BITS(HHI_ETH_CLK_CNTL,1,9,11);//select 400MHZ
-	WRITE_CBUS_REG_BITS(HHI_ETH_CLK_CNTL,8,0,6);//divide to 50MHZ
+	
+	PERIPHS_SET_BITS(ETH_PLL_CNTL, (1 << 1));
+	PERIPHS_SET_BITS(ETH_PLL_CNTL, (1 << 0));
 	mac_PLL_changed(priv,0);//disable the clock
 	mac_PLL_changed(priv,100);
 	udelay(100);
