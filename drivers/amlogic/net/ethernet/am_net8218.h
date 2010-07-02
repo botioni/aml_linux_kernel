@@ -9,8 +9,8 @@
 #define IO_WRITE32(val,addr)	 __raw_writel(val,addr)
 #define IO_READ32(addr)	 	__raw_readl(addr)
 #define ETHBASE (IO_ETH_BASE)
-#define WRITE_PERIPHS_REG(v,addr) WRITE_CBUS_REG(v,addr)
-#define READ_PERIPHS_REG(addr) READ_CBUS_REG(addr)
+#define WRITE_PERIPHS_REG(v,addr) __raw_writel(v,addr)
+#define READ_PERIPHS_REG(addr) __raw_readl(addr)
 
     
 //ring buf must less than the MAX alloc length 131072
