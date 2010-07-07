@@ -1154,7 +1154,30 @@ static void bank_io_init(struct net_device *ndev)
 {
 	int chip=86262;
 	struct am_net_private *priv = netdev_priv(ndev);
+	int selectclk,n;
+	/*
+	5,6,7 sata
+	4-extern pad
+	3-other_pll_clk
+	2-ddr_pll_clk
+	1-APLL_CLK_OUT_400M
+	0----sys_pll_div3 (333~400Mhz)
+	*/
+	n=12;
+	selectclk=3;//other lck
+	WRITE_CBUS_REG(HHI_ETH_CLK_CNTL,
+		n<<0 |
+		selectclk<<9 |
+		1<<8//enable clk
+		); 
+		
+	//writel(0x70b,(0xc1100000+0x1076*4));  // enable Ethernet clocks   for other clock 600/12 
+	//writel(0x107,(0xc1100000+0x1076*4));  // enable Ethernet clocks   for sys clock 1200/3/8
+	udelay(100);
 	
+	mac_PLL_changed(priv,0);//disable the clock
+	mac_PLL_changed(priv,100);
+	udelay(100);
 	switch (chip) {
 		case 86262://8626m
 			///GPIOD15-24 for 8626M;
@@ -1185,11 +1208,8 @@ static void bank_io_init(struct net_device *ndev)
 	}
 
 	
-	PERIPHS_SET_BITS(ETH_PLL_CNTL, (1 << 1));
-	PERIPHS_SET_BITS(ETH_PLL_CNTL, (1 << 0));
-	mac_PLL_changed(priv,0);//disable the clock
-	mac_PLL_changed(priv,100);
-	udelay(100);
+
+	
 }
 
 static int probe_init(struct net_device *ndev)
