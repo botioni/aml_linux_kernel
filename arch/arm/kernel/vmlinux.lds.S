@@ -40,9 +40,8 @@ SECTIONS
 		__tagtable_begin = .;
 			*(.taglist.init)
 		__tagtable_end = .;
-
+		*(.note.gnu.build-id)
 		INIT_SETUP(16)
-
 		INIT_CALLS
 		CON_INITCALL
 		SECURITY_INITCALL
