@@ -46,12 +46,6 @@
 
 #include "am_uart.h"
 
-//#define M1_SIM
-
-#ifdef M1_SIM
-#include "c_stimulus.h"
-#endif
-
 static struct am_uart am_uart_info[NR_PORTS];	//the value of NR_PORTS is given in the .config
 
 struct am_uart *IRQ_ports[NR_IRQS];
@@ -854,8 +848,8 @@ static int __init am_uart_init(void)
 		info->is_cons = ((i == 1) ? 1 : 0);
 		mutex_init(&info->info_mutex);
 		INIT_WORK(&info->tqueue,am_uart_workqueue);
-		SET_MPEG_REG_MASK(UART0_CONTROL, (1 << 27 | 1 << 28));
-		WRITE_MPEG_REG(UART0_MISC, 1 << 7 | 1);
+		SET_MPEG_REG_MASK(UART1_CONTROL, (1 << 27 | 1 << 28));
+		WRITE_MPEG_REG(UART1_MISC, 1 << 7 | 1);
 
 		
 		if (request_irq(info->irq, (irq_handler_t) am_uart_interrupt, IRQF_SHARED,
@@ -900,6 +894,7 @@ int am_uart_console_setup(struct console *cp, char *arg)
 	int flow = 'n';
 
 	/* TODO: pinmux */
+	SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_3, (1<<27)|(1<<30));
 
 	if (arg)
 		uart_parse_options(arg, &baud, &parity, &bits, &flow);
@@ -913,11 +908,11 @@ int am_uart_console_setup(struct console *cp, char *arg)
 	else
 		baudrate = (clk_get_rate(sysclk) / (baud * 4)) - 1;
 
-	CLEAR_MPEG_REG_MASK(UART0_CONTROL, (1 << 19) | 0xFFF);
-	SET_MPEG_REG_MASK(UART0_CONTROL, (baudrate & 0xfff));
-	SET_MPEG_REG_MASK(UART0_CONTROL, (1 << 12) | 1 << 13);
-	SET_MPEG_REG_MASK(UART0_CONTROL, (7 << 22));
-	CLEAR_MPEG_REG_MASK(UART0_CONTROL, (7 << 22));
+	CLEAR_MPEG_REG_MASK(UART1_CONTROL, (1 << 19) | 0xFFF);
+	SET_MPEG_REG_MASK(UART1_CONTROL, (baudrate & 0xfff));
+	SET_MPEG_REG_MASK(UART1_CONTROL, (1 << 12) | 1 << 13);
+	SET_MPEG_REG_MASK(UART1_CONTROL, (7 << 22));
+	CLEAR_MPEG_REG_MASK(UART1_CONTROL, (7 << 22));
 
 	console_inited = 1;
 
