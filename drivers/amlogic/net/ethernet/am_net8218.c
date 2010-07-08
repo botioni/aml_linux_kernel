@@ -40,9 +40,9 @@ MODULE_LICENSE("Amlogic");
 MODULE_VERSION(DRV_VERSION);
 
 #define PERIPHS_SET_BITS(reg,val)	{	\
-    	WRITE_PERIPHS_REG(reg,READ_PERIPHS_REG(reg) |(val));}
+    	WRITE_CBUS_REG(reg,READ_CBUS_REG(reg) |(val));}
 #define PERIPHS_CLEAR_BITS(reg,val)	{	\
-	WRITE_PERIPHS_REG(reg,READ_PERIPHS_REG(reg) & ~(val));}
+	WRITE_CBUS_REG(reg,READ_CBUS_REG(reg) & ~(val));}
 
 static void write_mac_addr(struct net_device *dev, char *macaddr);
 static int ethernet_reset(struct net_device *dev);
