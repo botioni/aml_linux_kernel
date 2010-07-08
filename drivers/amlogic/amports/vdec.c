@@ -46,7 +46,8 @@ static const char *vdec_device_name[] = {
     "amvdec_h264",
     "amvdec_mjpeg",
     "amvdec_real",
-    "amjpegdec"
+    "amjpegdec",
+    "amvdec_vc1"
 };
 
 /*

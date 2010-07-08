@@ -36,6 +36,14 @@ config AM_VDEC_MPEG4
 	help
 	  Driver for mpeg4 video decoder.
 
+config AM_VDEC_VC1
+	tristate "AMLOGIC VC1 Video Decoder"
+	default y
+	select AM_VIDEO
+	select AM_PTSSERVER
+	help
+	  Driver for vc1 video decoder.
+
 config AM_VDEC_H264
 	tristate "AMLOGIC H264 Video Decoder"
 	default y
