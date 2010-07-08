@@ -1163,8 +1163,8 @@ static void bank_io_init(struct net_device *ndev)
 	1-APLL_CLK_OUT_400M
 	0----sys_pll_div3 (333~400Mhz)
 	*/
-	n=12;
-	selectclk=3;//other lck
+	n=8;
+	selectclk=2;//other lck
 	WRITE_CBUS_REG(HHI_ETH_CLK_CNTL,
 		n<<0 |
 		selectclk<<9 |
