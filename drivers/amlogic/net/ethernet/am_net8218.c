@@ -1184,10 +1184,10 @@ static void bank_io_init(struct net_device *ndev)
 			///GPIOD12	nRst;
 			///GPIOD13    n_int;
 			set_mio_mux(5,0x3ff<<1);
-			set_gpio_mode(PREG_GGPIO,12,GPIO_OUTPUT_MODE);
-			set_gpio_val(PREG_GGPIO,12,0);
+			set_gpio_mode(PREG_GGPIO,10,GPIO_OUTPUT_MODE);
+			set_gpio_val(PREG_GGPIO,10,0);
 			udelay(100);	//waiting reset end;
-			set_gpio_val(PREG_GGPIO,12,1);
+			set_gpio_val(PREG_GGPIO,10,1);
 			udelay(10);	//waiting reset end;
 			break;
 		case 62362://6236m
