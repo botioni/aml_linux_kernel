@@ -34,13 +34,13 @@
 
 1002:
 	ldr	\irqstat, [\base, #32]
-	mov	\irqnr, #32
+	mov	\irqnr, #64
 	teq	\irqstat, #0
 	bne	1004f
 
 1003:
 	ldr	\irqstat, [\base, #48]
-	mov	\irqnr, #32
+	mov	\irqnr, #92
 	teq	\irqstat, #0
 	beq	1005f
 
