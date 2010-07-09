@@ -50,7 +50,7 @@ static struct am_uart am_uart_info[NR_PORTS];	//the value of NR_PORTS is given i
 
 struct am_uart *IRQ_ports[NR_IRQS];
 
-static unsigned int uart_irqs[NR_PORTS] = { INT_UART };
+static unsigned int uart_irqs[NR_PORTS] = { INT_UART_1 };
 
 static am_uart_t *uart_addr[NR_PORTS] = { UART_BASEADDR };
 
@@ -530,7 +530,7 @@ static int am_uart_ioctl(struct tty_struct *tty, struct file *file,
 		return 0;
 
 	default:
-		return -EINVAL;
+		return -ENOIOCTLCMD;
 	}
 
 }
