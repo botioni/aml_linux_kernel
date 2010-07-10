@@ -275,17 +275,17 @@ static int free_ringdesc(struct net_device *dev)
 	if (np->rx_ring)
 		{
 		dma_free_coherent(&dev->dev,
-			sizeof(struct _rx_desc) * RX_RING_SIZE +CACHE_LINE,
+			sizeof(struct _rx_desc) * RX_RING_SIZE ,
 			np->rx_ring,(dma_addr_t )np->rx_ring_dma);	// for apollo
 		}
-	np->tx_ring = NULL;
+	np->rx_ring = NULL;
 	if (np->tx_ring)
 		{
 		dma_free_coherent(&dev->dev,
-			sizeof(struct _tx_desc) * RX_RING_SIZE +CACHE_LINE,
+			sizeof(struct _tx_desc) * TX_RING_SIZE ,
 			np->tx_ring,(dma_addr_t )np->tx_ring_dma);	// for apollo
 		}
-	np->rx_ring = NULL;
+	np->tx_ring = NULL;
 	return 0;
 }
 static int phy_linked(struct am_net_private *np)
@@ -1123,6 +1123,7 @@ static int setup_net_device(struct net_device *dev)
 {
 	struct am_net_private *np = netdev_priv(dev);
 	int res = 0;
+	dev->dev.coherent_dma_mask =DMA_BIT_MASK(32);
 	dev->features = NETIF_F_GEN_CSUM;
 	dev->netdev_ops=&am_netdev_ops;
 	dev->ethtool_ops = NULL;	// &netdev_ethtool_ops;
@@ -1164,9 +1165,9 @@ static void bank_io_init(struct net_device *ndev)
 	0----sys_pll_div3 (333~400Mhz)
 	*/
 	n=8;
-	selectclk=2;//other lck
+	selectclk=0;//sys/3-400/8=50
 	WRITE_CBUS_REG(HHI_ETH_CLK_CNTL,
-		n<<0 |
+		(n-1)<<0 |
 		selectclk<<9 |
 		1<<8//enable clk
 		); 
@@ -1259,10 +1260,11 @@ static int probe_init(struct net_device *ndev)
 	}
 	mdio_write(ndev, priv->phys[0], 18, priv->phys[0] | (1 << 14 | 7 << 5));
 
-	val=mdio_read(ndev, phy, 2);//phy_rw(0, phyad, 2, &val);
+	val=mdio_read(ndev, priv->phys[0], 2);//phy_rw(0, phyad, 2, &val);
 	priv->phy_Identifier=val<<16;	
-	val=mdio_read(ndev, phy, 3);//phy_rw(0, phyad, 3, &val);
+	val=mdio_read(ndev, priv->phys[0], 3);//phy_rw(0, phyad, 3, &val);
 	priv->phy_Identifier|=val;	
+	printk("find phy id=%x\n",priv->phy_Identifier);
 	res = setup_net_device(ndev);
 	if (res != 0) {
 		printk("setup net device error !\n");
