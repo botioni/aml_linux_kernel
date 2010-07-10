@@ -68,9 +68,8 @@
 #endif
 #define IO_ETH_BASE			0xc9010000
 
+#define IO_ETH_BASE				0xc9010000
 #define IO_CBUS_BASE			0xc1100000
-
-
 #define IO_AXI_BUS_BASE			0xc1300000
 #define IO_PL310_BASE			0xc4200000
 #define IO_AHB_BUS_BASE			0xc9000000
@@ -696,19 +695,16 @@
 // ----------------------------
 // NAND (21)
 // ----------------------------
-
-#define NAND_CMD                                 0x2180
-#define NAND_CFG                                 0x2181
-#define NAND_DADR                                0x2182
-#define NAND_IADR                                0x2183
-#define NAND_BUF                                 0x2184
-#define NAND_INFO                                0x2185
-#define NAND_DC                                  0x2186
-#define NAND_ADR                                 0x2187
-#define NAND_DL                                  0x2188
-#define NAND_DH                                  0x2189
-
-
+#define NAND_CMD                                   0x2180
+#define NAND_CFG                                   0x2181
+#define NAND_DADR                                  0x2182
+#define NAND_IADR                                  0x2183
+#define NAND_BUF                                   0x2184
+#define NAND_INFO                                  0x2185
+#define NAND_DC                                    0x2186
+#define NAND_ADR                                   0x2187
+#define NAND_DL                                    0x2188
+#define NAND_DH                                    0x2189
 
 // ----------------------------
 // PWM / DS C/D
@@ -1338,11 +1334,11 @@
     #define TIMER_C_INPUT_BIT         4
     #define TIMER_B_INPUT_BIT         2
     #define TIMER_A_INPUT_BIT         0
-    #define TIMER_E_INPUT_MASK       (3L << TIMER_E_INPUT_BIT)
-    #define TIMER_D_INPUT_MASK       (3L << TIMER_D_INPUT_BIT)
-    #define TIMER_C_INPUT_MASK       (3L << TIMER_C_INPUT_BIT)
-    #define TIMER_B_INPUT_MASK       (3L << TIMER_B_INPUT_BIT)
-    #define TIMER_A_INPUT_MASK       (3L << TIMER_A_INPUT_BIT)
+    #define TIMER_E_INPUT_MASK       (7UL << TIMER_E_INPUT_BIT)
+    #define TIMER_D_INPUT_MASK       (3UL << TIMER_D_INPUT_BIT)
+    #define TIMER_C_INPUT_MASK       (3UL << TIMER_C_INPUT_BIT)
+    #define TIMER_B_INPUT_MASK       (3UL << TIMER_B_INPUT_BIT)
+    #define TIMER_A_INPUT_MASK       (3UL << TIMER_A_INPUT_BIT)
     #define TIMER_UNIT_1us            0
     #define TIMER_UNIT_10us           1
     #define TIMER_UNIT_100us          2
@@ -1351,6 +1347,7 @@
     #define TIMERE_UNIT_1us           1
     #define TIMERE_UNIT_10us          2
     #define TIMERE_UNIT_100us         3
+    #define TIMERE_UNIT_1ms           4
 #define ISA_TIMERA                                 0x2651
 #define ISA_TIMERB                                 0x2652
 #define ISA_TIMERC                                 0x2653
