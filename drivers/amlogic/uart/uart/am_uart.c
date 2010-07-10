@@ -384,17 +384,18 @@ static void am_uart_flush_chars(struct tty_struct *tty)
 	//unsigned long flags;
 	unsigned long c;
 
-
+	mutex_lock(&info->info_mutex);
 	if (info->xmit_cnt <= 0 || tty->stopped || tty->hw_stopped ||
 	    !info->xmit_buf)
 	{
+		mutex_unlock(&info->info_mutex);
 		tty_wakeup(tty);
 		return;
 	}	
 
 	/* Enable transmitter */
 	
-	mutex_lock(&info->info_mutex);
+	
 	while (!(__raw_readl(&uart->status) & UART_TXEMPTY)) ;	//wait ..for send end........
 
 	if (__raw_readl(&uart->status) & UART_TXEMPTY) {
