@@ -173,7 +173,7 @@ static struct clocksource clocksource_timer_e = {
     .rating = 300,
     .read   = cycle_read_timerE,
     .mask   = CLOCKSOURCE_MASK(24),
-    .mult	= 1000,
+    .mult	= 1000000,
     .shift	= 0,
     .flags  = CLOCK_SOURCE_IS_CONTINUOUS,
 };
@@ -181,7 +181,7 @@ static struct clocksource clocksource_timer_e = {
 static void __init meson_clocksource_init(void)
 {
 	CLEAR_CBUS_REG_MASK(ISA_TIMER_MUX, TIMER_E_INPUT_MASK);
-	SET_CBUS_REG_MASK(ISA_TIMER_MUX, TIMERE_UNIT_1us << TIMER_E_INPUT_BIT);
+	SET_CBUS_REG_MASK(ISA_TIMER_MUX, TIMERE_UNIT_1ms << TIMER_E_INPUT_BIT);
 	WRITE_CBUS_REG(ISA_TIMERE, 0);
 
     clocksource_register(&clocksource_timer_e);
@@ -241,7 +241,7 @@ static struct clock_event_device clockevent_meson_1mhz = {
 	.rating         = 300, /* Reasonably fast and accurate clock event */
 
 	.features       = CLOCK_EVT_FEAT_PERIODIC | CLOCK_EVT_FEAT_ONESHOT,
-    .mult			= 1000,
+    .mult			= 10000000,
 	.shift          = 0,
 	.set_next_event = meson_set_next_event,
 	.set_mode       = meson_clkevt_set_mode,
@@ -269,9 +269,9 @@ static void __init meson_clockevent_init(void)
 {
 	CLEAR_CBUS_REG_MASK(ISA_TIMER_MUX, TIMER_A_INPUT_MASK | TIMER_C_INPUT_MASK);
 	SET_CBUS_REG_MASK(ISA_TIMER_MUX, 
-		(TIMER_UNIT_1us << TIMER_A_INPUT_BIT) |
-		(TIMER_UNIT_1us << TIMER_C_INPUT_BIT));
-	WRITE_CBUS_REG(ISA_TIMERA, 999);
+		(TIMER_UNIT_1ms << TIMER_A_INPUT_BIT) |
+		(TIMER_UNIT_1ms << TIMER_C_INPUT_BIT));
+	WRITE_CBUS_REG(ISA_TIMERA, 9);
 
 	/* 24bit counter, so 24bits delta is max */
 	clockevent_meson_1mhz.max_delta_ns =
