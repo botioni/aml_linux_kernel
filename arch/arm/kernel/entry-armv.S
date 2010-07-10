@@ -313,7 +313,7 @@ __pabt_svc:
 	biceq	r9, r9, #PSR_I_BIT
 
 	mov	r0, r2			@ pass address of aborted instruction.
-#ifdef MULTI_PABORT
+#if 0 //def MULTI_PABORT
 	ldr	r4, .LCprocfns
 	mov	lr, pc
 	ldr	pc, [r4, #PROCESSOR_PABT_FUNC]
@@ -697,7 +697,7 @@ __pabt_usr:
 	usr_entry
 
 	mov	r0, r2			@ pass address of aborted instruction.
-#ifdef MULTI_PABORT
+#if 0 //def MULTI_PABORT
 	ldr	r4, .LCprocfns
 	mov	lr, pc
 	ldr	pc, [r4, #PROCESSOR_PABT_FUNC]
