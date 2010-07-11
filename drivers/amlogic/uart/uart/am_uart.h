@@ -103,7 +103,11 @@ typedef volatile struct {
 /* #define	CONSOLE_BAUD_RATE CONFIG_ARC700_SERIAL_BAUD 
    #define BASE_BAUD CONSOLE_BAUD_RATE */
 
+#ifdef UART_PORTB
 #define UART_BASEADDR    ((void *)CBUS_REG_ADDR(UART1_WFIFO))
+#else
+#define UART_BASEADDR    ((void *)CBUS_REG_ADDR(UART0_WFIFO))
+#endif
 
 #define UART_OVERFLOW_ERR (0x01<<18)
 #define UART_FRAME_ERR (0x01<<17)

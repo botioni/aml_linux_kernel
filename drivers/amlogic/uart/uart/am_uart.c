@@ -44,13 +44,19 @@
 #include <mach/hardware.h>
 #include <mach/irqs.h>
 
+#define UART_PORTB
+
 #include "am_uart.h"
 
 static struct am_uart am_uart_info[NR_PORTS];	//the value of NR_PORTS is given in the .config
 
 struct am_uart *IRQ_ports[NR_IRQS];
 
+#ifdef UART_PORTB
 static unsigned int uart_irqs[NR_PORTS] = { INT_UART_1 };
+#else
+static unsigned int uart_irqs[NR_PORTS] = { INT_UART };
+#endif
 
 static am_uart_t *uart_addr[NR_PORTS] = { UART_BASEADDR };
 
@@ -103,9 +109,6 @@ static void am_uart_stop(struct tty_struct *tty)
  */
 void am_uart_put_char(char ch)
 {
-#ifdef M1_SIM
-	stimulus_display("%c", ch);
-#else
 	am_uart_t *uart = uart_addr[0];
 
 	/* check if TXEMPTY (bit 7) in the status reg. is 1. Else, we
@@ -113,9 +116,6 @@ void am_uart_put_char(char ch)
 	 */
 	while (!((__raw_readl(&uart->status) & 0xff00)< 0x3f00)) ;
 	__raw_writel(ch, &uart->wdata);
-	//uart->wdata=ch;
-
-#endif
 }
 
 void am_uart_print(char *buffer)
@@ -235,8 +235,6 @@ static void transmit_chars(struct am_uart *info)
 /*
  * This is the serial driver's generic interrupt routine
  */
-#if 1
-
 static irqreturn_t am_uart_interrupt(int irq, void *dev, struct pt_regs *regs)
 {
 	struct am_uart *info=(struct am_uart *)dev;
@@ -276,7 +274,6 @@ static void am_uart_workqueue(struct work_struct *work)
       out:
 	return ;
 }
-#endif
 
 static void change_speed(struct am_uart *info, unsigned long newbaud)
 {
@@ -308,7 +305,6 @@ static void change_speed(struct am_uart *info, unsigned long newbaud)
 static int startup(struct am_uart *info)
 {
 	am_uart_t *uart = uart_addr[info->line];
-//	unsigned long flags;
 	unsigned long mode;
 	if (info->flags & ASYNC_INITIALIZED)
 		return 0;
@@ -381,7 +377,6 @@ static void am_uart_flush_chars(struct tty_struct *tty)
 {
 	struct am_uart *info = (struct am_uart *)tty->driver_data;
 	am_uart_t *uart = uart_addr[info->line];
-	//unsigned long flags;
 	unsigned long c;
 
 	mutex_lock(&info->info_mutex);
@@ -395,7 +390,6 @@ static void am_uart_flush_chars(struct tty_struct *tty)
 
 	/* Enable transmitter */
 	
-	
 	while (!(__raw_readl(&uart->status) & UART_TXEMPTY)) ;	//wait ..for send end........
 
 	if (__raw_readl(&uart->status) & UART_TXEMPTY) {
@@ -405,6 +399,7 @@ static void am_uart_flush_chars(struct tty_struct *tty)
 		info->xmit_tail = (info->xmit_tail+1)& (SERIAL_XMIT_SIZE - 1);
 		info->xmit_cnt--;
 	}
+
 	mutex_unlock(&info->info_mutex);
 	tty_wakeup(tty);
 }
@@ -849,9 +844,14 @@ static int __init am_uart_init(void)
 		info->is_cons = ((i == 1) ? 1 : 0);
 		mutex_init(&info->info_mutex);
 		INIT_WORK(&info->tqueue,am_uart_workqueue);
+
+#ifdef UART_PORTB
 		SET_MPEG_REG_MASK(UART1_CONTROL, (1 << 27 | 1 << 28));
 		WRITE_MPEG_REG(UART1_MISC, 1 << 7 | 1);
-
+#else
+		SET_MPEG_REG_MASK(UART0_CONTROL, (1 << 27 | 1 << 28));
+		WRITE_MPEG_REG(UART0_MISC, 1 << 7 | 1);
+#endif
 		
 		if (request_irq(info->irq, (irq_handler_t) am_uart_interrupt, IRQF_SHARED,
 		     "uart", info)) {
@@ -895,7 +895,11 @@ int am_uart_console_setup(struct console *cp, char *arg)
 	int flow = 'n';
 
 	/* TODO: pinmux */
+#ifdef UART_PORTB
 	SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_3, (1<<27)|(1<<30));
+#else
+	SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<11)|(1<<15));
+#endif
 
 	if (arg)
 		uart_parse_options(arg, &baud, &parity, &bits, &flow);
@@ -909,11 +913,19 @@ int am_uart_console_setup(struct console *cp, char *arg)
 	else
 		baudrate = (clk_get_rate(sysclk) / (baud * 4)) - 1;
 
+#ifdef UART_PORTB
 	CLEAR_MPEG_REG_MASK(UART1_CONTROL, (1 << 19) | 0xFFF);
 	SET_MPEG_REG_MASK(UART1_CONTROL, (baudrate & 0xfff));
 	SET_MPEG_REG_MASK(UART1_CONTROL, (1 << 12) | 1 << 13);
 	SET_MPEG_REG_MASK(UART1_CONTROL, (7 << 22));
 	CLEAR_MPEG_REG_MASK(UART1_CONTROL, (7 << 22));
+#else
+	CLEAR_MPEG_REG_MASK(UART0_CONTROL, (1 << 19) | 0xFFF);
+	SET_MPEG_REG_MASK(UART0_CONTROL, (baudrate & 0xfff));
+	SET_MPEG_REG_MASK(UART0_CONTROL, (1 << 12) | 1 << 13);
+	SET_MPEG_REG_MASK(UART0_CONTROL, (7 << 22));
+	CLEAR_MPEG_REG_MASK(UART0_CONTROL, (7 << 22));
+#endif
 
 	console_inited = 1;
 
