@@ -40,13 +40,9 @@ typedef struct tvinfo_s {
 
 static const  reg_t tvregs_720p[] = {
     {VENC_VDAC_SETTING,          0xff,  },
-#ifdef CONFIG_AMLOGIC_BOARD_APOLLO
-    {MREG_VIDEO_PLL_CTRL,        0x0216,},
-#endif
-#ifdef CONFIG_AMLOGIC_BOARD_APOLLO_H
-    {MREG_VIDEO_PLL_CTRL,        0x50c6,},
-#endif
-    {HHI_VID_PLL_CNTL,        0x0421,},
+	{HHI_AUD_PLL_CNTL,			 0x485f,},
+	{HHI_VID_CLK_DIV,			 1		},
+    {HHI_VID_CLK_CNTL,        	 0x0421,},
     {ENCP_VIDEO_FILT_CTRL,       0x0052,},
     {VENC_DVI_SETTING,           0x2029,},
     {ENCP_VIDEO_MODE,            0x0040,},
@@ -86,13 +82,9 @@ static const  reg_t tvregs_720p[] = {
 
 static const reg_t tvregs_480i[] = {
     {VENC_VDAC_SETTING,          0xff,  },
-#ifdef CONFIG_AMLOGIC_BOARD_APOLLO
-    {MREG_VIDEO_PLL_CTRL,        0x0210,},
-#endif
-#ifdef CONFIG_AMLOGIC_BOARD_APOLLO_H
-    {MREG_VIDEO_PLL_CTRL,        0x4c6c,},
-#endif
-    {HHI_VID_PLL_CNTL,        0x05a1,},
+	{HHI_AUD_PLL_CNTL,			 0x4a6c,},
+	{HHI_VID_CLK_DIV,			 4,		},
+    {HHI_VID_CLK_CNTL,        	 0x05a1,},
     {ENCI_CFILT_CTRL,            0x0810,},
     {VENC_DVI_SETTING,           0,     },
     {ENCI_SYNC_HSO_BEGIN,        5,     },
@@ -106,19 +98,12 @@ static const reg_t tvregs_480i[] = {
     {ENCI_VIDEO_SCH,             0x20,  },
     {ENCI_SYNC_MODE,             0x07,  },
     {ENCI_YC_DELAY,              0x341, },
-#ifdef CONFIG_AMLOGIC_BOARD_APOLLO
-    {VFIFO2VD_PIXEL,        0x00f30693, },
-    {VFIFO2VD_LINE_TOP,     0x00120102, },
-    {VFIFO2VD_LINE_BOT,     0x00130103, },
-#endif
-#ifdef CONFIG_AMLOGIC_BOARD_APOLLO_H
     {VFIFO2VD_PIXEL_START,       0x00f3 },
     {VFIFO2VD_PIXEL_END,         0x0693 },
     {VFIFO2VD_LINE_TOP_START,    0x0012 },
     {VFIFO2VD_LINE_TOP_END,      0x0102 },
     {VFIFO2VD_LINE_BOT_START,    0x0013 },
     {VFIFO2VD_LINE_BOT_END,      0x0103 },
-#endif
     {VFIFO2VD_CTL,              0x4e01, },
     {ENCI_DBG_PX_RST,            0,     },
     {VENC_INTCTRL,               0x2,   },
@@ -129,13 +114,9 @@ static const reg_t tvregs_480i[] = {
 };
 static const reg_t tvregs_480cvbs[] = {
     {VENC_VDAC_SETTING,          0xff,  },
-#ifdef CONFIG_AMLOGIC_BOARD_APOLLO
-    {MREG_VIDEO_PLL_CTRL,        0x0210,},
-#endif
-#ifdef CONFIG_AMLOGIC_BOARD_APOLLO_H
-    {MREG_VIDEO_PLL_CTRL,        0x4c6c,},
-#endif
-    {HHI_VID_PLL_CNTL,        0x05a1,},
+	{HHI_AUD_PLL_CNTL,			 0x4a6c,},
+	{HHI_VID_CLK_DIV,			 4,		},
+    {HHI_VID_CLK_CNTL,        	 0x05a1,},
     {ENCI_CFILT_CTRL,            0x0810,},
     {VENC_DVI_SETTING,           0,     },
     {ENCI_SYNC_HSO_BEGIN,        5,     },
@@ -149,19 +130,12 @@ static const reg_t tvregs_480cvbs[] = {
     {ENCI_VIDEO_SCH,             0x20,  },
     {ENCI_SYNC_MODE,             0x07,  },
     {ENCI_YC_DELAY,              0x341, },
-#ifdef CONFIG_AMLOGIC_BOARD_APOLLO
-    {VFIFO2VD_PIXEL,        0x00f30693, },
-    {VFIFO2VD_LINE_TOP,     0x00120102, },
-    {VFIFO2VD_LINE_BOT,     0x00130103, },
-#endif
-#ifdef CONFIG_AMLOGIC_BOARD_APOLLO_H
     {VFIFO2VD_PIXEL_START,       0x00f3 },
     {VFIFO2VD_PIXEL_END,         0x0693 },
     {VFIFO2VD_LINE_TOP_START,    0x0012 },
     {VFIFO2VD_LINE_TOP_END,      0x0102 },
     {VFIFO2VD_LINE_BOT_START,    0x0013 },
     {VFIFO2VD_LINE_BOT_END,      0x0103 },
-#endif
     {VFIFO2VD_CTL,              0x4e01, },
     {ENCI_DBG_PX_RST,            0,     },
     {VENC_INTCTRL,               0x2,   },
@@ -172,13 +146,9 @@ static const reg_t tvregs_480cvbs[] = {
 };
 static const reg_t tvregs_480p[] = {
     {VENC_VDAC_SETTING,          0xff,  },
-#ifdef CONFIG_AMLOGIC_BOARD_APOLLO
-    {MREG_VIDEO_PLL_CTRL,        0x0210,},
-#endif
-#ifdef CONFIG_AMLOGIC_BOARD_APOLLO_H
-    {MREG_VIDEO_PLL_CTRL,        0x4c6c,},
-#endif
-    {HHI_VID_PLL_CNTL,        0x0561,},
+	{HHI_AUD_PLL_CNTL,			 0x4a6c,},
+	{HHI_VID_CLK_DIV,			 4,		},
+    {HHI_VID_CLK_CNTL,        	 0x0561,},
     {ENCP_VIDEO_FILT_CTRL,       0x2052,},
     {VENC_DVI_SETTING,           0x21,  },
     {ENCP_VIDEO_MODE,            0,     },
@@ -217,13 +187,9 @@ static const reg_t tvregs_480p[] = {
 
 static const reg_t tvregs_576i[] = {
     {VENC_VDAC_SETTING,          0xff,  },
-#ifdef CONFIG_AMLOGIC_BOARD_APOLLO
-    {MREG_VIDEO_PLL_CTRL,        0x0210,},
-#endif
-#ifdef CONFIG_AMLOGIC_BOARD_APOLLO_H
-    {MREG_VIDEO_PLL_CTRL,        0x4c6c,},
-#endif
-    {HHI_VID_PLL_CNTL,        0x05a1,},
+	{HHI_AUD_PLL_CNTL,			 0x4a6c,},
+	{HHI_VID_CLK_DIV,			 4,		},
+    {HHI_VID_CLK_CNTL,        	 0x05a1,},
     {ENCI_CFILT_CTRL,            0x0810,},
     {VENC_DVI_SETTING,           0,     },
     {ENCI_SYNC_HSO_BEGIN,        3,     },
@@ -237,19 +203,12 @@ static const reg_t tvregs_576i[] = {
     {ENCI_VIDEO_SCH,             0x28,  },
     {ENCI_SYNC_MODE,             0x07,  },
     {ENCI_YC_DELAY,              0x341, },
-#ifdef CONFIG_AMLOGIC_BOARD_APOLLO
-    {VFIFO2VD_PIXEL,        0x010b06ab, },
-    {VFIFO2VD_LINE_TOP,     0x00150135, },
-    {VFIFO2VD_LINE_BOT,     0x00160136, },
-#endif
-#ifdef CONFIG_AMLOGIC_BOARD_APOLLO_H
     {VFIFO2VD_PIXEL_START,       0x010b },
     {VFIFO2VD_PIXEL_END,             0x06ab },
     {VFIFO2VD_LINE_TOP_START,    0x0016 },
     {VFIFO2VD_LINE_TOP_END,      0x0136 },
     {VFIFO2VD_LINE_BOT_START,    0x0017 },
     {VFIFO2VD_LINE_BOT_END,      0x0137 },
-#endif
     {VFIFO2VD_CTL,              0x4e01, },
     {ENCI_DBG_PX_RST,            0,     },
     {VENC_INTCTRL,               0x2,   },
@@ -260,13 +219,9 @@ static const reg_t tvregs_576i[] = {
 };
 static const reg_t tvregs_576cvbs[] = {
     {VENC_VDAC_SETTING,          0xff,  },
-#ifdef CONFIG_AMLOGIC_BOARD_APOLLO
-    {MREG_VIDEO_PLL_CTRL,        0x0210,},
-#endif
-#ifdef CONFIG_AMLOGIC_BOARD_APOLLO_H
-    {MREG_VIDEO_PLL_CTRL,        0x4c6c,},
-#endif
-    {HHI_VID_PLL_CNTL,        0x05a1,},
+	{HHI_AUD_PLL_CNTL,			 0x4a6c,},
+	{HHI_VID_CLK_DIV,			 4,		},
+    {HHI_VID_CLK_CNTL,        	 0x05a1,},
     {ENCI_CFILT_CTRL,            0x0810,},
     {VENC_DVI_SETTING,           0,     },
     {ENCI_SYNC_HSO_BEGIN,        3,     },
@@ -280,19 +235,12 @@ static const reg_t tvregs_576cvbs[] = {
     {ENCI_VIDEO_SCH,             0x28,  },
     {ENCI_SYNC_MODE,             0x07,  },
     {ENCI_YC_DELAY,              0x341, },
-#ifdef CONFIG_AMLOGIC_BOARD_APOLLO
-    {VFIFO2VD_PIXEL,        0x010b06ab, },
-    {VFIFO2VD_LINE_TOP,     0x00150135, },
-    {VFIFO2VD_LINE_BOT,     0x00160136, },
-#endif
-#ifdef CONFIG_AMLOGIC_BOARD_APOLLO_H
     {VFIFO2VD_PIXEL_START,       0x010b },
     {VFIFO2VD_PIXEL_END,             0x06ab },
     {VFIFO2VD_LINE_TOP_START,    0x0016 },
     {VFIFO2VD_LINE_TOP_END,      0x0136 },
     {VFIFO2VD_LINE_BOT_START,    0x0017 },
     {VFIFO2VD_LINE_BOT_END,      0x0137 },
-#endif
     {VFIFO2VD_CTL,              0x4e01, },
     {ENCI_DBG_PX_RST,            0,     },
     {VENC_INTCTRL,               0x2,   },
@@ -303,13 +251,9 @@ static const reg_t tvregs_576cvbs[] = {
 };
 static const reg_t tvregs_576p[] = {
     {VENC_VDAC_SETTING,          0xff,  },
-#ifdef CONFIG_AMLOGIC_BOARD_APOLLO
-    {MREG_VIDEO_PLL_CTRL,        0x0210,},
-#endif
-#ifdef CONFIG_AMLOGIC_BOARD_APOLLO_H
-    {MREG_VIDEO_PLL_CTRL,        0x4c6c,},
-#endif
-    {HHI_VID_PLL_CNTL,        0x0561,},
+	{HHI_AUD_PLL_CNTL,			 0x4a6c,},
+	{HHI_VID_CLK_DIV,			 4,		},
+    {HHI_VID_CLK_CNTL,        	 0x0561,},
     {ENCP_VIDEO_FILT_CTRL,       0x52,  },
     {VENC_DVI_SETTING,           0x21,  },
     {ENCP_VIDEO_MODE,            0,     },
@@ -337,7 +281,6 @@ static const reg_t tvregs_576p[] = {
     {ENCP_VIDEO_VSO_BEGIN,       0x0,   },
     {ENCP_VIDEO_VSO_END,         0x5,   },
     {VENC_SYNC_ROUTE,            0,     },
-
     {VENC_INTCTRL,               0x200, },
     {VFIFO2VD_CTL,               0,     },
     {VENC_VDAC_SETTING,          0,     },
@@ -348,13 +291,9 @@ static const reg_t tvregs_576p[] = {
 
 static const reg_t tvregs_1080i[] = {
     {VENC_VDAC_SETTING,          0xff,  },
-#ifdef CONFIG_AMLOGIC_BOARD_APOLLO
-    {MREG_VIDEO_PLL_CTRL,        0x0216,},
-#endif
-#ifdef CONFIG_AMLOGIC_BOARD_APOLLO_H
-    {MREG_VIDEO_PLL_CTRL,        0x50c6,},
-#endif
-    {HHI_VID_PLL_CNTL,        0x0421,},
+	{HHI_AUD_PLL_CNTL,			 0x485f,},
+	{HHI_VID_CLK_DIV,			 1		},
+    {HHI_VID_CLK_CNTL,        	 0x0421,},
     {ENCP_VIDEO_FILT_CTRL,       0x0052,},
     {VENC_DVI_SETTING,           0x2029,},
     {ENCP_VIDEO_MAX_PXCNT,       4399,  },
@@ -398,13 +337,9 @@ static const reg_t tvregs_1080i[] = {
 
 static const reg_t tvregs_1080p[] = {
     {VENC_VDAC_SETTING,          0xff,  },
-#ifdef CONFIG_AMLOGIC_BOARD_APOLLO
-    {MREG_VIDEO_PLL_CTRL,        0x0216,},
-#endif
-#ifdef CONFIG_AMLOGIC_BOARD_APOLLO_H
-    {MREG_VIDEO_PLL_CTRL,        0x50c6,},
-#endif
-    {HHI_VID_PLL_CNTL,        0x0421,},
+	{HHI_AUD_PLL_CNTL,			 0x485f,},
+	{HHI_VID_CLK_DIV,			 1		},
+    {HHI_VID_CLK_CNTL,        	 0x0421,},
     {ENCP_VIDEO_FILT_CTRL,       0x1052,},
     {VENC_DVI_SETTING,           0x0001,},
     {ENCP_VIDEO_MODE,            0x0040,},
