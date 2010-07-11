@@ -34,7 +34,8 @@ typedef struct myfb_dev {
     struct fb_info *fb_info;
     struct platform_device *dev;
 
-	u32 fb_mem;
+	u32 fb_mem_paddr;
+	void __iomem *fb_mem_vaddr;
 	u32 fb_len;
 
     vmode_t vmode;

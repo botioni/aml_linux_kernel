@@ -687,11 +687,11 @@ static int __init
 apollofb_probe(struct platform_device *pdev)
 {
 	int r;
-    	struct myfb_dev *fbdev = NULL;
-    	struct fb_info *fbi=NULL;
-    	vmode_t vmode;
-    	struct fb_var_screeninfo *var;
-    	struct fb_fix_screeninfo *fix;
+    struct myfb_dev *fbdev = NULL;
+    struct fb_info *fbi=NULL;
+    vmode_t vmode;
+    struct fb_var_screeninfo *var;
+    struct fb_fix_screeninfo *fix;
 	struct resource *mem;
 	int  index,Bpp;
 	pfb_list_t  fbdev_item;
@@ -699,9 +699,9 @@ apollofb_probe(struct platform_device *pdev)
 	int  allow_auto_adj;
 	int  logo_osd_index=0;
 	
-    	INIT_LIST_HEAD(&fbdev_list_head);
+    INIT_LIST_HEAD(&fbdev_list_head);
 
-    	vout_register_client(&osd_notifier_nb);
+    vout_register_client(&osd_notifier_nb);
 
 #ifdef CONFIG_FB_AML_LOGO
 	init_fbdev = get_init_fbdev();
@@ -709,22 +709,22 @@ apollofb_probe(struct platform_device *pdev)
 #endif
 
    	if (init_fbdev)
-    	{
+	{
 		BUG_ON(init_fbdev->vmode >= VMODE_MAX);
 
-    		vmode=init_fbdev->vmode  ;
-    	}
-    	else
-    	{
-    		vmode=VMODE_720P;
-    	}
+    	vmode=init_fbdev->vmode  ;
+    } else
+	{
+    	vmode=VMODE_720P;
+    }
 
 	set_current_vmode(vmode);
 	
-    	for (index=0;index<OSD_COUNT;index++)
-    	{
-    		//platform resource 
-		if (!(mem = platform_get_resource(pdev, IORESOURCE_MEM, index))) {
+    for (index=0;index<OSD_COUNT;index++)
+    {
+    	//platform resource 
+		if (!(mem = platform_get_resource(pdev, IORESOURCE_MEM, index)))
+		{
 			pr_err("No frame buffer memory define.\n");
 			r = -EFAULT;
 			goto failed2;
@@ -735,97 +735,106 @@ apollofb_probe(struct platform_device *pdev)
 			continue ;
 		}
 	
-    		fbi = framebuffer_alloc(sizeof(struct myfb_dev), &pdev->dev);
-    		if(!fbi) {
-        		r = -ENOMEM;
-        		goto failed1;
-    		}
+    	fbi = framebuffer_alloc(sizeof(struct myfb_dev), &pdev->dev);
+    	if(!fbi)
+    	{
+        	r = -ENOMEM;
+        	goto failed1;
+    	}
 	
-	fbdev = (struct myfb_dev *)fbi->par;
-	fbdev->fb_info = fbi;
-	fbdev->dev = pdev;
+		fbdev = (struct myfb_dev *)fbi->par;
+		fbdev->fb_info = fbi;
+		fbdev->dev = pdev;
  	
-	mutex_init(&fbdev->lock);
+		mutex_init(&fbdev->lock);
 
     	var = &fbi->var;
     	fix = &fbi->fix;
 
-	fbdev_item=(pfb_list_t)kmalloc(sizeof(fb_list_t),GFP_KERNEL);
-	fbdev_item->fbdev=fbdev;
-	list_add(&fbdev_item->list,&fbdev_list_head);
+		fbdev_item=(pfb_list_t)kmalloc(sizeof(fb_list_t),GFP_KERNEL);
+		fbdev_item->fbdev=fbdev;
+
+		list_add(&fbdev_item->list,&fbdev_list_head);
 	
-	
-	fbdev->fb_mem = mem->start;
-	fbdev->fb_len = mem->end - mem->start + 1;
-	//clear framebuffer memory
-	pr_dbg("Frame buffer memory assigned at 0x%08x, size=%dK\n",
-	    fbdev->fb_mem, fbdev->fb_len >> 10);
-	allow_auto_adj=1;
-	if(init_fbdev && index==logo_osd_index ) //adjust default var info
-	{
-		int  bpp=init_fbdev->bpp;//bytes per pixel
-		
-		Bpp=(bpp >8?(bpp>16?(bpp>24?4:3):2):1);
-		if(init_fbdev->config.osd_ctl.xres_virtual*init_fbdev->config.osd_ctl.yres_virtual*Bpp <= fbdev->fb_len )
+		fbdev->fb_mem_paddr = mem->start;
+		fbdev->fb_len = mem->end - mem->start + 1;
+		fbdev->fb_mem_vaddr = ioremap_wc(fbdev->fb_mem_paddr, fbdev->fb_len);
+
+		if (!fbdev->fb_mem_vaddr)
 		{
-			mydef_var[index].xres=init_fbdev->config.osd_ctl.xres;
-			mydef_var[index].yres=init_fbdev->config.osd_ctl.yres;	
-			mydef_var[index].xres_virtual=init_fbdev->config.osd_ctl.xres_virtual;
-			mydef_var[index].yres_virtual=init_fbdev->config.osd_ctl.yres_virtual;
-			mydef_var[index].bits_per_pixel=bpp ;
-			allow_auto_adj=0;
-			pr_dbg("init fbdev bpp is :%d\r\n",mydef_var[index].bits_per_pixel);
-		}	
-		if(mydef_var[index].bits_per_pixel>32) 
-		{
-			mydef_var[index].bits_per_pixel=32;
+			pr_err("failed to ioremap framebuffer\n");
+        	r = -ENOMEM;
+        	goto failed3;
 		}
-		
-	}else{
-		
-		memset((char*)fbdev->fb_mem,0,fbdev->fb_len);	
-	}
 	
-	_fbdev_set_default(fbdev,index,0);
-	Bpp=(fbdev->bpp_type >8?(fbdev->bpp_type>16?(fbdev->bpp_type>24?4:3):2):1);
-	fix->line_length=var->xres_virtual*Bpp;
-	fix->smem_start = fbdev->fb_mem;
-	fix->smem_len = fbdev->fb_len;
+		//clear framebuffer memory
+		pr_dbg("Frame buffer memory assigned at phy:0x%08x, vir:0x%08x, size=%dK\n",
+	    	fbdev->fb_mem_paddr, fbdev->fb_mem_vaddr, fbdev->fb_len >> 10);
+		allow_auto_adj=1;
 
+		if (init_fbdev && index==logo_osd_index ) //adjust default var info
+		{
+			int  bpp=init_fbdev->bpp;//bytes per pixel
+		
+			Bpp=(bpp >8?(bpp>16?(bpp>24?4:3):2):1);
+			if(init_fbdev->config.osd_ctl.xres_virtual*init_fbdev->config.osd_ctl.yres_virtual*Bpp <= fbdev->fb_len )
+			{
+				mydef_var[index].xres=init_fbdev->config.osd_ctl.xres;
+				mydef_var[index].yres=init_fbdev->config.osd_ctl.yres;	
+				mydef_var[index].xres_virtual=init_fbdev->config.osd_ctl.xres_virtual;
+				mydef_var[index].yres_virtual=init_fbdev->config.osd_ctl.yres_virtual;
+				mydef_var[index].bits_per_pixel=bpp ;
+				allow_auto_adj=0;
+				pr_dbg("init fbdev bpp is :%d\r\n",mydef_var[index].bits_per_pixel);
+			}	
+			
+			if(mydef_var[index].bits_per_pixel>32) 
+			{
+				mydef_var[index].bits_per_pixel=32;
+			}
+		
+		}else{
+			memset((char*)fbdev->fb_mem_vaddr, 0, fbdev->fb_len);	
+		}
+	
+		_fbdev_set_default(fbdev,index,0);
+		Bpp=(fbdev->bpp_type >8?(fbdev->bpp_type>16?(fbdev->bpp_type>24?4:3):2):1);
+		fix->line_length=var->xres_virtual*Bpp;
+		fix->smem_start = fbdev->fb_mem_paddr;
+		fix->smem_len = fbdev->fb_len;
 
-	set_default_display_axis(var,&fbdev->osd_ctl,get_current_vinfo());
-	
-	
-	  
-	if (fb_alloc_cmap(&fbi->cmap, 16, 0) != 0) {
-		pr_err("unable to allocate color map memory\n");
+		set_default_display_axis(var,&fbdev->osd_ctl,get_current_vinfo());
+		  
+		if (fb_alloc_cmap(&fbi->cmap, 16, 0) != 0) {
+			pr_err("unable to allocate color map memory\n");
       		r = -ENOMEM;
         	goto failed3;
     	}
 
-	if (!(fbi->pseudo_palette = kmalloc(sizeof(u32) * 16, GFP_KERNEL))) {
-		pr_err("unable to allocate pseudo palette memory\n");
+		if (!(fbi->pseudo_palette = kmalloc(sizeof(u32) * 16, GFP_KERNEL))) {
+			pr_err("unable to allocate pseudo palette memory\n");
         	r = -ENOMEM;
         	goto failed4;
-	}
-	memset(fbi->pseudo_palette, 0, sizeof(u32) * 16);
+		}
 
-   	fbi->fbops = &apollofb_ops;
-    	fbi->screen_base = (char __iomem *)fix->smem_start ;
-	fbi->screen_size = fix->smem_len;
-	
+		memset(fbi->pseudo_palette, 0, sizeof(u32) * 16);
 
+	   	fbi->fbops = &apollofb_ops;
+    	fbi->screen_base = (char __iomem *)fbdev->fb_mem_vaddr ;
+		fbi->screen_size = fix->smem_len;
 	
-    	apollofb_check_var(var, fbi);
+		apollofb_check_var(var, fbi);
     	register_framebuffer(fbi);
-	if(NULL==init_fbdev )//to see logo ,dont change this line 
-	{
-		apollodev_set(fbdev);
-	}
+
+		if(NULL==init_fbdev )//to see logo ,dont change this line 
+			apollodev_set(fbdev);
 		
-    	}	
+   	}	
+
  	dev_set_drvdata(&pdev->dev, &fbdev_list_head);
+
 	index=0;
+
 	while(attr_name(device_attrs[index]))
 	{
 		r= device_create_file(&pdev->dev, &device_attrs[index]);
@@ -843,8 +852,7 @@ apollofb_probe(struct platform_device *pdev)
 		index++;
 	}
 
-	
-       pr_dbg("apollofb probe ok  \r\n");
+    pr_dbg("apollofb probe ok  \r\n");
 	return 0;
 
 failed4:
@@ -854,9 +862,7 @@ failed3:
 failed2:
     unregister_framebuffer(fbi);
 failed1:
-
     pr_err("Driver module insert failed.\n");
-
     return r;
 }
 
@@ -883,17 +889,20 @@ apollofb_remove(struct platform_device *pdev)
 	head = (list_head_t*) dev_get_drvdata(&pdev->dev);
 	vout_unregister_client(&osd_notifier_nb);
 	
-	
 	list_for_each_safe(l,t,head)
 	{
 		d = list_entry(l, fb_list_t, list);
 		if(d->fbdev!=NULL)
 		{
-		  fbi = d->fbdev->fb_info;
-      		  kfree(fbi->pseudo_palette);
-     		  fb_dealloc_cmap(&fbi->cmap);
-         	  unregister_framebuffer(fbi);
-		  framebuffer_release(fbi);
+			struct myfb_dev * fbdev;
+
+			fbi = d->fbdev->fb_info;
+			fbdev = (struct myfb_dev *)fbi->par;
+			iounmap(fbdev->fb_mem_vaddr);
+      		kfree(fbi->pseudo_palette);
+     		fb_dealloc_cmap(&fbi->cmap);
+         	unregister_framebuffer(fbi);
+			framebuffer_release(fbi);
 		}
 		list_del(l);
 		if(d)
