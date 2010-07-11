@@ -37,7 +37,10 @@ int set_gpio_val(gpio_bank_t bank,int bit,unsigned long val)
 {
 	unsigned long addr=gpio_addrs[bank].out_addr;
 	WRITE_CBUS_REG_BITS(addr,val,bit,1);
+
+	return 0;
 }
+
 unsigned long  get_gpio_val(gpio_bank_t bank,int bit)
 {
 	unsigned long addr=gpio_addrs[bank].in_addr;

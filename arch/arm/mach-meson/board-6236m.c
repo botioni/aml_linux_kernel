@@ -26,6 +26,36 @@
 #include <asm/hardware/cache-l2x0.h>
 #endif
 
+#include "board-6236m.h"
+
+#ifdef CONFIG_FB_AM
+static struct resource fb_device_resources[] = {
+    [0] = {
+        .start = OSD1_ADDR_START,
+        .end   = OSD1_ADDR_END,
+        .flags = IORESOURCE_MEM,
+    },
+    [1] ={ //for osd2
+        .start = OSD2_ADDR_START,
+        .end   =OSD2_ADDR_END,
+        .flags = IORESOURCE_MEM,
+    },
+};
+
+static struct platform_device fb_device = {
+    .name       = "apollofb",
+    .id         = 0,
+    .num_resources = ARRAY_SIZE(fb_device_resources),
+    .resource      = fb_device_resources,
+};
+#endif
+
+static struct platform_device __initdata *platform_devs[] = {
+    #if defined(CONFIG_FB_AM)
+    	&fb_device
+    #endif
+};
+
 static __init void m1_init_machine(void)
 {
 #ifdef CONFIG_CACHE_L2X0
@@ -34,7 +64,7 @@ static __init void m1_init_machine(void)
 		l2x0_init((void __iomem *)IO_PL310_BASE, 0x00020000, 0xff800fff);
 #endif
 
-	/* todo: load device drivers */
+	platform_add_devices(platform_devs, ARRAY_SIZE(platform_devs));
 }
 
 static __init void m1_map_io(void)
