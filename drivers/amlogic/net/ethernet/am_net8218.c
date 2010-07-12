@@ -24,7 +24,7 @@ add by zhouzhi 2008-8-18
 // >1 further setting debug;
 // >2 for tx
 // >3 for rx
-static volatile int debug = 1;
+static volatile int debug = 0x1;
 
 static int running = 0;
 static struct net_device *my_ndev = NULL;
@@ -298,6 +298,7 @@ static int phy_linked(struct am_net_private *np)
 			val=(val&(1<<10));
 			break;
 		case PHY_SMSC_8700:
+		case PHY_SMSC_8720:
 		default:	
 			val=mdio_read(np->dev,np->phys[0],1);
 			val=(val&(1<<2));
@@ -338,6 +339,7 @@ static int mac_PLL_changed(struct am_net_private *np,int clk_mhz)
 				PERIPHS_SET_BITS(PREG_ETHERNET_ADDR0, (1 << 1));
 				PERIPHS_SET_BITS(PREG_ETHERNET_ADDR0, 1);
 		}
+	udelay(10);
 	return 0;
 }
 
@@ -353,6 +355,7 @@ static void phy_auto_negotiation_set(struct am_net_private *np)
 		full=((rint)&(1<<13));
 		break;
 	case PHY_SMSC_8700:	
+	case PHY_SMSC_8720:
 	default:
 		rint=mdio_read(np->dev,np->phys[0],31);
 		s100=rint&(1<<3);
@@ -407,7 +410,7 @@ static void netdev_timer(unsigned long data)
 			mdio_write(dev, np->phys[0], MII_BMCR, val);
 			spin_unlock_irq(&np->lock);
 		}
-		np->timer.expires = jiffies + 2 * HZ;
+		np->timer.expires = jiffies + 1 * HZ;
 		netif_stop_queue(dev);
 		netif_carrier_off(dev);
 		np->phy_set[0] = 0;
@@ -420,7 +423,7 @@ static void netdev_timer(unsigned long data)
 		error_num = 0;
 		netif_carrier_on(dev);
 		netif_start_queue(dev);
-		np->timer.expires = jiffies + 10 * HZ;
+		np->timer.expires = jiffies + 2 * HZ;
 	}
 	add_timer(&np->timer);
 }
@@ -886,9 +889,7 @@ static int netdev_close(struct net_device *dev)
 	disable_irq(dev->irq);
 	netif_carrier_off(dev);
 	netif_stop_queue(dev);
-	spin_lock_irq(&np->lock);
 	free_ringdesc(dev);
-	spin_unlock_irq(&np->lock);
 	free_irq(dev->irq, dev);
 	del_timer_sync(&np->timer);
 //      free_rxtx_rings(np);
@@ -1013,10 +1014,10 @@ static unsigned char inline chartonum(char c)
 
 }
 
-static void config_mac_addr(struct net_device *dev)
+static void config_mac_addr(struct net_device *dev,void *mac)
 {
 	//Need fix..mac addr is read from eeprom..
-	memcpy(dev->dev_addr, DEFMAC, 6);
+	memcpy(dev->dev_addr, mac, 6);
 	write_mac_addr(dev, dev->dev_addr);
 }
 
@@ -1105,18 +1106,22 @@ static void set_multicast_list(struct net_device *dev)
 		IO_WRITE32(tmp, np->base_addr + ETH_MAC_1_Frame_Filter);//hash muticast
 	}
 }
-
+static int am_eth_mac_addr(struct net_device *dev,void *mac)
+{
+	config_mac_addr(dev,mac);
+	return 0;
+}
 static const struct net_device_ops am_netdev_ops = {
-	.ndo_open		= netdev_open,
-	.ndo_stop		= netdev_close,
-	.ndo_start_xmit 	= start_tx,
+	.ndo_open			= netdev_open,
+	.ndo_stop			= netdev_close,
+	.ndo_start_xmit 		= start_tx,
 	.ndo_tx_timeout		= tx_timeout,
-	.ndo_set_multicast_list = set_multicast_list,
-	.ndo_do_ioctl		=netdev_ioctl,
-	.ndo_get_stats		=get_stats
-	//.ndo_change_mtu		= eth_change_mtu,
-	//.ndo_set_mac_address 	= eth_mac_addr,
-	//.ndo_validate_addr	= eth_validate_addr,
+	.ndo_set_multicast_list 	= set_multicast_list,
+	.ndo_do_ioctl			=netdev_ioctl,
+	.ndo_get_stats		=get_stats,
+	.ndo_change_mtu		=eth_change_mtu,
+	.ndo_set_mac_address 	=eth_mac_addr,
+	.ndo_validate_addr		=eth_validate_addr,
 };
 
 static int setup_net_device(struct net_device *dev)
@@ -1140,7 +1145,7 @@ static int setup_net_device(struct net_device *dev)
             	(1 << 13) |          //13 FBI: Fatal Bus Error Interrupt                                                                        
          	 (1) | 		//tx interrupt
 	   	0; 
-	config_mac_addr(dev);
+	config_mac_addr(dev,DEFMAC);
 	dev_alloc_name(dev, "eth%d");
 	memset(&np->stats, 0, sizeof(np->stats));
 	return res;
@@ -1153,7 +1158,9 @@ I think this must be init at the system start ...
 
 static void bank_io_init(struct net_device *ndev)
 {
-	int chip=86262;
+	//
+	//
+	int chip=86263;
 	struct am_net_private *priv = netdev_priv(ndev);
 	int selectclk,n;
 	/*
@@ -1164,8 +1171,8 @@ static void bank_io_init(struct net_device *ndev)
 	1-APLL_CLK_OUT_400M
 	0----sys_pll_div3 (333~400Mhz)
 	*/
-	n=8;
-	selectclk=0;//sys/3-400/8=50
+	n=4;
+	selectclk=0;//ddr----200/4=50;;sys_pll_clk=600M;cpu_clk=450M;
 	WRITE_CBUS_REG(HHI_ETH_CLK_CNTL,
 		(n-1)<<0 |
 		selectclk<<9 |
@@ -1175,12 +1182,9 @@ static void bank_io_init(struct net_device *ndev)
 	//writel(0x70b,(0xc1100000+0x1076*4));  // enable Ethernet clocks   for other clock 600/12 
 	//writel(0x107,(0xc1100000+0x1076*4));  // enable Ethernet clocks   for sys clock 1200/3/8
 	udelay(100);
-	
-	mac_PLL_changed(priv,0);//disable the clock
-	mac_PLL_changed(priv,100);
-	udelay(100);
 	switch (chip) {
 		case 86262://8626m
+		case 72262://7226m
 			///GPIOD15-24 for 8626M;
 			///GPIOD12	nRst;
 			///GPIOD13    n_int;
@@ -1191,6 +1195,17 @@ static void bank_io_init(struct net_device *ndev)
 			set_gpio_val(PREG_GGPIO,10,1);
 			udelay(10);	//waiting reset end;
 			break;
+		case 86263://8626m-SZ_boards
+		case 72263://7226m-SZ-boards
+			///GPIOD15-24 for 8626M;
+			///GPIOE_16/NA	nRst;
+			set_mio_mux(5,0x3ff<<1);
+			set_gpio_mode(PREG_HGPIO,16,GPIO_OUTPUT_MODE);
+			set_gpio_val(PREG_HGPIO,16,0);
+			udelay(100);	//waiting reset end;
+			set_gpio_val(PREG_HGPIO,16,1);
+			udelay(10);	//waiting reset end;
+			break;	
 		case 62362://6236m
 			///GPIOC3-12 for 8626M;
 			///GPIOC0_nRst;
@@ -1207,10 +1222,11 @@ static void bank_io_init(struct net_device *ndev)
 		break;
 		;
 	}
-
+	udelay(100);
 	
-
-	
+	mac_PLL_changed(priv,0);//disable the clock
+	mac_PLL_changed(priv,100);
+	udelay(100);
 }
 
 static int probe_init(struct net_device *ndev)
@@ -1220,6 +1236,7 @@ static int probe_init(struct net_device *ndev)
 	int found = 0;
 	int res;
 	unsigned int val;
+	int k,kk;
 	
 	struct am_net_private *priv = netdev_priv(ndev);
 	priv->dev=ndev;
@@ -1234,24 +1251,40 @@ static int probe_init(struct net_device *ndev)
 		printk("addr is %x\n", (unsigned int)ndev->base_addr);
 
 	bank_io_init(ndev);
-	for (phy = 0; phy < 32 && phy_idx < MII_CNT; phy++) {
-		int mii_status = mdio_read(ndev, phy, MII_BMSR);
-		if (mii_status != 0xffff && mii_status != 0x0000) {
-			priv->phys[phy_idx++] = phy;
-			priv->mii_if.advertising =
-			    mdio_read(ndev, phy, MII_ADVERTISE);
-			priv->mii =
-			    (mdio_read(ndev, phy, MII_PHYSID1) << 16) +
-			    mdio_read(ndev, phy, MII_PHYSID2);
-			if (debug > 0)
-				printk(KERN_INFO
-				       "%s: MII PHY %8.8xh found at address %d, status "
-				       "0x%4.4x advertising %4.4x.\n", DRV_NAME,
-				       priv->mii, phy, mii_status,
-				       priv->mii_if.advertising);
-			found++;
+	for(k=0;k<100 && !found;k++)
+		{	
+
+			//mac reset ...
+			IO_WRITE32(1, priv->base_addr + ETH_DMA_0_Bus_Mode);
+			//waiting mac reset...
+			for (kk = 0;
+			     (IO_READ32(priv->base_addr + ETH_DMA_0_Bus_Mode) & 1) &&kk< 1000;
+			     kk++)
+				udelay(1);
+			if (kk >= 1000) {
+				printk("error to reset mac!\n");
+				goto error0;
+			}
+			
+			for (phy = 0; phy < 32 && phy_idx < MII_CNT; phy++) {
+				int mii_status = mdio_read(ndev, phy, MII_BMSR);
+				if (mii_status != 0xffff && mii_status != 0x0000) {
+					priv->phys[phy_idx++] = phy;
+					priv->mii_if.advertising =
+					    mdio_read(ndev, phy, MII_ADVERTISE);
+					priv->mii =
+					    (mdio_read(ndev, phy, MII_PHYSID1) << 16) +
+					    mdio_read(ndev, phy, MII_PHYSID2);
+					if (debug > 0)
+						printk(KERN_INFO
+						       "%s: MII PHY %8.8xh found at address %d, status "
+						       "0x%4.4x advertising %4.4x.\n", DRV_NAME,
+						       priv->mii, phy, mii_status,
+						       priv->mii_if.advertising);
+					found++;
+				}
+			}
 		}
-	}
 	
 	if (!found) {
 		printk("can't find any mii phy device !\n");
