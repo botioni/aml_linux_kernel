@@ -27,6 +27,9 @@
 
 #define MREG_END_MARKER 0xffff
 
+//#define CRYSTAL_25M
+#define CRYSTAL_24M
+
 typedef struct reg_s {
     uint reg;
     uint val;
@@ -40,7 +43,12 @@ typedef struct tvinfo_s {
 
 static const  reg_t tvregs_720p[] = {
     {VENC_VDAC_SETTING,          0xff,  },
+#ifdef CRYSTAL_25M
 	{HHI_AUD_PLL_CNTL,			 0x485f,},
+#endif
+#ifdef CRYSTAL_24M
+	{HHI_AUD_PLL_CNTL,			 0x4863,},
+#endif
 	{HHI_VID_CLK_DIV,			 1		},
     {HHI_VID_CLK_CNTL,        	 0x0421,},
     {ENCP_VIDEO_FILT_CTRL,       0x0052,},
@@ -82,7 +90,12 @@ static const  reg_t tvregs_720p[] = {
 
 static const reg_t tvregs_480i[] = {
     {VENC_VDAC_SETTING,          0xff,  },
+#ifdef CRYSTAL_25M
 	{HHI_AUD_PLL_CNTL,			 0x4a6c,},
+#endif
+#ifdef CRYSTAL_24M
+	{HHI_AUD_PLL_CNTL,			 0x442d,},
+#endif
 	{HHI_VID_CLK_DIV,			 4,		},
     {HHI_VID_CLK_CNTL,        	 0x05a1,},
     {ENCI_CFILT_CTRL,            0x0810,},
@@ -112,9 +125,15 @@ static const reg_t tvregs_480i[] = {
     {ENCI_VIDEO_EN,              1,     },
     {MREG_END_MARKER,            0      }
 };
+
 static const reg_t tvregs_480cvbs[] = {
     {VENC_VDAC_SETTING,          0xff,  },
+#ifdef CRYSTAL_25M
 	{HHI_AUD_PLL_CNTL,			 0x4a6c,},
+#endif
+#ifdef CRYSTAL_24M
+	{HHI_AUD_PLL_CNTL,			 0x442d,},
+#endif
 	{HHI_VID_CLK_DIV,			 4,		},
     {HHI_VID_CLK_CNTL,        	 0x05a1,},
     {ENCI_CFILT_CTRL,            0x0810,},
@@ -146,7 +165,12 @@ static const reg_t tvregs_480cvbs[] = {
 };
 static const reg_t tvregs_480p[] = {
     {VENC_VDAC_SETTING,          0xff,  },
+#ifdef CRYSTAL_25M
 	{HHI_AUD_PLL_CNTL,			 0x4a6c,},
+#endif
+#ifdef CRYSTAL_24M
+	{HHI_AUD_PLL_CNTL,			 0x442d,},
+#endif
 	{HHI_VID_CLK_DIV,			 4,		},
     {HHI_VID_CLK_CNTL,        	 0x0561,},
     {ENCP_VIDEO_FILT_CTRL,       0x2052,},
@@ -187,7 +211,12 @@ static const reg_t tvregs_480p[] = {
 
 static const reg_t tvregs_576i[] = {
     {VENC_VDAC_SETTING,          0xff,  },
+#ifdef CRYSTAL_25M
 	{HHI_AUD_PLL_CNTL,			 0x4a6c,},
+#endif
+#ifdef CRYSTAL_24M
+	{HHI_AUD_PLL_CNTL,			 0x442d,},
+#endif
 	{HHI_VID_CLK_DIV,			 4,		},
     {HHI_VID_CLK_CNTL,        	 0x05a1,},
     {ENCI_CFILT_CTRL,            0x0810,},
@@ -217,9 +246,15 @@ static const reg_t tvregs_576i[] = {
     {ENCI_VIDEO_EN,              1,     },
     {MREG_END_MARKER,            0      }
 };
+
 static const reg_t tvregs_576cvbs[] = {
     {VENC_VDAC_SETTING,          0xff,  },
+#ifdef CRYSTAL_25M
 	{HHI_AUD_PLL_CNTL,			 0x4a6c,},
+#endif
+#ifdef CRYSTAL_24M
+	{HHI_AUD_PLL_CNTL,			 0x442d,},
+#endif
 	{HHI_VID_CLK_DIV,			 4,		},
     {HHI_VID_CLK_CNTL,        	 0x05a1,},
     {ENCI_CFILT_CTRL,            0x0810,},
@@ -249,9 +284,15 @@ static const reg_t tvregs_576cvbs[] = {
     {ENCI_VIDEO_EN,              1,     },
     {MREG_END_MARKER,            0      }
 };
+
 static const reg_t tvregs_576p[] = {
     {VENC_VDAC_SETTING,          0xff,  },
+#ifdef CRYSTAL_25M
 	{HHI_AUD_PLL_CNTL,			 0x4a6c,},
+#endif
+#ifdef CRYSTAL_24M
+	{HHI_AUD_PLL_CNTL,			 0x442d,},
+#endif
 	{HHI_VID_CLK_DIV,			 4,		},
     {HHI_VID_CLK_CNTL,        	 0x0561,},
     {ENCP_VIDEO_FILT_CTRL,       0x52,  },
@@ -291,7 +332,12 @@ static const reg_t tvregs_576p[] = {
 
 static const reg_t tvregs_1080i[] = {
     {VENC_VDAC_SETTING,          0xff,  },
+#ifdef CRYSTAL_25M
 	{HHI_AUD_PLL_CNTL,			 0x485f,},
+#endif
+#ifdef CRYSTAL_24M
+	{HHI_AUD_PLL_CNTL,			 0x4863,},
+#endif
 	{HHI_VID_CLK_DIV,			 1		},
     {HHI_VID_CLK_CNTL,        	 0x0421,},
     {ENCP_VIDEO_FILT_CTRL,       0x0052,},
@@ -337,7 +383,12 @@ static const reg_t tvregs_1080i[] = {
 
 static const reg_t tvregs_1080p[] = {
     {VENC_VDAC_SETTING,          0xff,  },
+#ifdef CRYSTAL_25M
 	{HHI_AUD_PLL_CNTL,			 0x485f,},
+#endif
+#ifdef CRYSTAL_24M
+	{HHI_AUD_PLL_CNTL,			 0x4863,},
+#endif
 	{HHI_VID_CLK_DIV,			 1		},
     {HHI_VID_CLK_CNTL,        	 0x0421,},
     {ENCP_VIDEO_FILT_CTRL,       0x1052,},
