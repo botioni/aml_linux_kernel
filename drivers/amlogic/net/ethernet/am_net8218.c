@@ -423,7 +423,7 @@ static void netdev_timer(unsigned long data)
 		error_num = 0;
 		netif_carrier_on(dev);
 		netif_start_queue(dev);
-		np->timer.expires = jiffies + 2 * HZ;
+		np->timer.expires = jiffies + 1 * HZ;
 	}
 	add_timer(&np->timer);
 }
@@ -859,7 +859,7 @@ static int netdev_open(struct net_device *dev)
 	//enable_irq(dev->irq);
 	/* Set the timer to check for link beat. */
 	init_timer(&np->timer);
-	np->timer.expires = jiffies + 1 * HZ;
+	np->timer.expires = jiffies + 1;
 	np->timer.data = (unsigned long)dev;
 	np->timer.function = &netdev_timer;	/* timer handler */
 	add_timer(&np->timer);
@@ -1171,7 +1171,7 @@ static void bank_io_init(struct net_device *ndev)
 	1-APLL_CLK_OUT_400M
 	0----sys_pll_div3 (333~400Mhz)
 	*/
-	n=4;
+	n=6;
 	selectclk=0;//ddr----200/4=50;;sys_pll_clk=600M;cpu_clk=450M;
 	WRITE_CBUS_REG(HHI_ETH_CLK_CNTL,
 		(n-1)<<0 |
