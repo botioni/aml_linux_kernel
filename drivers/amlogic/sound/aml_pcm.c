@@ -693,7 +693,7 @@ static int __init aml_alsa_audio_probe(struct platform_device *dev)
 
    // card = snd_card_new(-1, id, THIS_MODULE, sizeof(aml_audio_t));
 	err=snd_card_create(SNDRV_DEFAULT_IDX1, SNDRV_DEFAULT_STR1,
-			      THIS_MODULE, 0, &card);
+			      THIS_MODULE,sizeof(aml_audio_t), &card);
     if (err <0) {
         return -ENOMEM;
     }
