@@ -125,6 +125,7 @@ struct _rx_desc {
 };
 
 #define PHY_SMSC_8700			0x7c0c4
+#define PHY_SMSC_8720			0x7c0f1
 #define PHY_ATHEROS_8032		0x004dd023
 
 struct am_net_private {
