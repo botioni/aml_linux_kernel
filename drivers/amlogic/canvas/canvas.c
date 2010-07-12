@@ -56,20 +56,20 @@ void canvas_config(u32 index, ulong addr, u32 width,
 
     spin_lock_irqsave(&lock, flags);
 
-    WRITE_MPEG_REG(DC_CAV_LUT_DATAL,
+    WRITE_APB_REG(DC_CAV_LUT_DATAL,
 					(((addr + 7) >> 3) & CANVAS_ADDR_LMASK) |
 					((((width + 7) >> 3) & CANVAS_WIDTH_LMASK) << CANVAS_WIDTH_LBIT));
 
-    WRITE_MPEG_REG(DC_CAV_LUT_DATAH,
+    WRITE_APB_REG(DC_CAV_LUT_DATAH,
 					((((width + 7) >> 3) >> CANVAS_WIDTH_LWID) << CANVAS_WIDTH_HBIT) |
 					((height & CANVAS_HEIGHT_MASK) << CANVAS_HEIGHT_BIT)	|
 					((wrap & CANVAS_XWRAP) ? CANVAS_XWRAP : 0)              |
 					((wrap & CANVAS_YWRAP) ? CANVAS_YWRAP : 0)              |
 					((blkmode & CANVAS_BLKMODE_MASK) << CANVAS_BLKMODE_BIT));
 
-    WRITE_MPEG_REG(DC_CAV_LUT_ADDR, CANVAS_LUT_WR_EN | index);
+    WRITE_APB_REG(DC_CAV_LUT_ADDR, CANVAS_LUT_WR_EN | index);
 
-	READ_MPEG_REG(DC_CAV_LUT_DATAH);
+	READ_APB_REG(DC_CAV_LUT_DATAH);
 
 	canvasP->addr = addr;
 	canvasP->width = width;
@@ -105,21 +105,21 @@ void canvas_copy(u32 src, u32 dst)
     wrap = canvasPool[src].wrap;
     blkmode = canvasPool[src].blkmode;
     
-    WRITE_MPEG_REG(DC_CAV_LUT_DATAL,
+    WRITE_APB_REG(DC_CAV_LUT_DATAL,
         (((addr + 7) >> 3) & CANVAS_ADDR_LMASK) |
         ((((width + 7) >> 3) & CANVAS_WIDTH_LMASK) << CANVAS_WIDTH_LBIT));
 
-    WRITE_MPEG_REG(DC_CAV_LUT_DATAH,
+    WRITE_APB_REG(DC_CAV_LUT_DATAH,
         ((((width + 7) >> 3) >> CANVAS_WIDTH_LWID) << CANVAS_WIDTH_HBIT) |
         ((height & CANVAS_HEIGHT_MASK) << CANVAS_HEIGHT_BIT)    |
         ((wrap & CANVAS_XWRAP) ? CANVAS_XWRAP : 0)              | 
         ((wrap & CANVAS_YWRAP) ? CANVAS_YWRAP : 0)              | 
         ((blkmode & CANVAS_BLKMODE_MASK) << CANVAS_BLKMODE_BIT));
 
-    WRITE_MPEG_REG(DC_CAV_LUT_ADDR, CANVAS_LUT_WR_EN | dst);
+    WRITE_APB_REG(DC_CAV_LUT_ADDR, CANVAS_LUT_WR_EN | dst);
 
     // read a cbus to make sure last write finish.
-    READ_MPEG_REG(DC_CAV_LUT_DATAH);
+    READ_APB_REG(DC_CAV_LUT_DATAH);
     
     canvasPool[dst].addr = addr;
     canvasPool[dst].width = width;
@@ -144,21 +144,21 @@ void canvas_update_addr(u32 index, u32 addr)
 
     canvasPool[index].addr = addr;
 
-    WRITE_MPEG_REG(DC_CAV_LUT_DATAL,
+    WRITE_APB_REG(DC_CAV_LUT_DATAL,
         (((canvasPool[index].addr + 7) >> 3) & CANVAS_ADDR_LMASK) |
         ((((canvasPool[index].width + 7) >> 3) & CANVAS_WIDTH_LMASK) << CANVAS_WIDTH_LBIT));
 
-    WRITE_MPEG_REG(DC_CAV_LUT_DATAH,
+    WRITE_APB_REG(DC_CAV_LUT_DATAH,
         ((((canvasPool[index].width + 7) >> 3) >> CANVAS_WIDTH_LWID) << CANVAS_WIDTH_HBIT) |
         ((canvasPool[index].height & CANVAS_HEIGHT_MASK) << CANVAS_HEIGHT_BIT)   |
         ((canvasPool[index].wrap & CANVAS_XWRAP) ? CANVAS_XWRAP : 0)             | 
         ((canvasPool[index].wrap & CANVAS_YWRAP) ? CANVAS_YWRAP : 0)             | 
         ((canvasPool[index].blkmode & CANVAS_BLKMODE_MASK) << CANVAS_BLKMODE_BIT));
 
-    WRITE_MPEG_REG(DC_CAV_LUT_ADDR, CANVAS_LUT_WR_EN | index);
+    WRITE_APB_REG(DC_CAV_LUT_ADDR, CANVAS_LUT_WR_EN | index);
 
     // read a cbus to make sure last write finish.
-    READ_MPEG_REG(DC_CAV_LUT_DATAH);
+    READ_APB_REG(DC_CAV_LUT_DATAH);
 
     spin_unlock_irqrestore(&lock, flags);
 
