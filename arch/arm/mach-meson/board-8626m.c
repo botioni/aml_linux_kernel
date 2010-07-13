@@ -47,6 +47,33 @@ static __init void m1_irq_init(void)
 	meson_init_irq();
 }
 
+static struct resource apollo_codec_resources[] = {
+    [0] = {
+        .start =  0x86000000,
+        .end   = 0x88000000,
+        .flags = IORESOURCE_MEM,
+    },
+};
+
+static struct platform_device apollo_codec = {
+    .name       = "amstream",
+    .id         = 0,
+    .num_resources = ARRAY_SIZE(apollo_codec_resources),
+    .resource      = apollo_codec_resources,
+};
+
+static struct platform_device __initdata *platform_devs[] = {
+	&apollo_codec,
+};
+
+int __init  platform_io_init(void)
+{
+ 	printk("start platform init\r\n");
+	platform_add_devices(platform_devs, ARRAY_SIZE(platform_devs));
+	return 0;
+}
+arch_initcall(platform_io_init);
+
 MACHINE_START(MESON_8626M, "AMLOGIC MESON-M1 8626M")
 	.phys_io		= MESON_PERIPHS1_PHYS_BASE,
 	.io_pg_offst	= (MESON_PERIPHS1_PHYS_BASE >> 18) & 0xfffc,
