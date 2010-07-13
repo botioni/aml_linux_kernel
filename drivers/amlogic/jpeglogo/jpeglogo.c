@@ -26,7 +26,7 @@
 #include <linux/platform_device.h>
 #include <linux/amports/canvas.h>
 
-#include <asm/arch/am_regs.h>
+#include <mach/am_regs.h>
 #include <asm/uaccess.h>
 #include <asm/cacheflush.h>
 
@@ -65,11 +65,11 @@ enum {
 	PIC_FETCHED = 2
 };
 
-static u32 logo_addr;
+static u32 logo_paddr;
 static u32 logo_size;
 static u32 disp;
 
-static u32 logo_state = PIC_NA;
+static volatile u32 logo_state = PIC_NA;
 static vframe_t vf;
 static const char jpeglogo_id[] = "jpeglogo-dev";
 
@@ -264,7 +264,7 @@ static void jpeglogo_prot_init(void)
     WRITE_MPEG_REG(MREG_TO_AMRISC, 0);
     WRITE_MPEG_REG(MREG_FROM_AMRISC, 0);
 
-    WRITE_MPEG_REG(MREG_CPU_INTR_MSK, 0xffff);
+    WRITE_MPEG_REG(MCPU_INTR_MSK, 0xffff);
     WRITE_MPEG_REG(MREG_DECODE_PARAM, 0);
 
     /* clear mailbox interrupt */
@@ -361,8 +361,6 @@ static void swap_tailzero_data(u8 *addr, u32 s)
 		p += 8;
 		len --;
 	}
-
-    dma_cache_wback((ulong)addr, s + 7);
 }
 
 /*********************************************************/
@@ -373,6 +371,7 @@ static int jpeglogo_probe(struct platform_device *pdev)
 	ulong timeout;
 	u32 *mc_addr_aligned;
 	struct resource *s;
+	void __iomem *logo_vaddr;
 
 	printk("[jpeglogo]: loading ...\n");
 	mc_addr_aligned = (u32 *)vmjpeg_mc;
@@ -383,9 +382,15 @@ static int jpeglogo_probe(struct platform_device *pdev)
 		return -EINVAL;
 	}
 
-	logo_addr = s->start;
+	logo_paddr = s->start;
 	logo_size = s->end - s->start + 1;
 	
+	logo_vaddr = ioremap_wc(logo_paddr, logo_size + PADDINGSIZE);
+	if (!logo_vaddr) {
+		printk("[jpeglogo]: Remapping logo data failed.\n");
+		return -EINVAL;
+	}
+		
 	s = platform_get_resource(pdev, IORESOURCE_MEM, 1);
 	if (!s) {
 		printk("[jpeglogo]: No display buffer resource specified.\n");
@@ -393,12 +398,12 @@ static int jpeglogo_probe(struct platform_device *pdev)
 	}
 	disp = s->start;
 
-	if ((!logo_addr) || (logo_size == 0)) {
+	if ((!logo_paddr) || (logo_size == 0)) {
 		printk("[jpeglogo]: Invalid data specified.\n");
 		return -EINVAL;
 	}
 
-	if ((logo_addr & 7) != 0) {
+	if ((logo_paddr & 7) != 0) {
 		printk("[jpeglogo]: Logo data must be aligned at 8 bytes boundary.\n");
 		return -EINVAL;
 	}
@@ -409,17 +414,17 @@ static int jpeglogo_probe(struct platform_device *pdev)
 	}
 
 	printk("[jpeglogo]: logo data at 0x%x, size %d, display buffer 0x%x\n",
-		logo_addr, logo_size, disp);
+		logo_paddr, logo_size, disp);
 
 	memset(&vf, 0, sizeof(vframe_t));
 
 	/* a little bit sanity check */
-	if (sanity_check((u8 *)logo_addr, logo_size) < 0) {
+	if (sanity_check((u8 *)logo_vaddr, logo_size) < 0) {
 		printk("[jpeglogo]: Invalid jpeg data.\n");
 		return -EINVAL;
 	}
 
-	swap_tailzero_data((u8 *)logo_addr, logo_size);
+	swap_tailzero_data((u8 *)logo_vaddr, logo_size);
 
     WRITE_MPEG_REG(RESET0_REGISTER, RESET_VCPU | RESET_CCPU);
 
@@ -430,7 +435,7 @@ static int jpeglogo_probe(struct platform_device *pdev)
     
     jpeglogo_prot_init();
 
-    r = request_irq(AM_ISA_GEN1_IRQ(IRQNUM_MAILBOX_1A), jpeglogo_isr,
+    r = request_irq(INT_MAILBOX_1A, jpeglogo_isr,
                     IRQF_SHARED, "jpeglogo-irq", (void *)jpeglogo_id);
 
     if (r) {
@@ -438,10 +443,10 @@ static int jpeglogo_probe(struct platform_device *pdev)
         return -ENOENT;
     }
 
-	setup_vb(logo_addr, logo_size);
+	setup_vb(logo_paddr, logo_size);
 
-	WRITE_MPEG_REG(MREG_M4_CONTROL_REG, 0x0300);
-	WRITE_MPEG_REG(MREG_POWER_CTL_VLD, 0);
+	WRITE_MPEG_REG(M4_CONTROL_REG, 0x0300);
+	WRITE_MPEG_REG(POWER_CTL_VLD, 0);
 
     amvdec_start();
     
@@ -462,8 +467,7 @@ static int jpeglogo_probe(struct platform_device *pdev)
 
     amvdec_stop();
 
-    free_irq(AM_ISA_GEN1_IRQ(IRQNUM_MAILBOX_1A),
-             (void *)jpeglogo_id);
+    free_irq(INT_MAILBOX_1A, (void *)jpeglogo_id);
 
 	if (logo_state > PIC_NA) {
 	    vf_reg_provider(&jpeglogo_vf_provider);
@@ -476,6 +480,8 @@ static int jpeglogo_probe(struct platform_device *pdev)
 		vf_unreg_provider();
 	}
 	
+	iounmap(logo_vaddr);
+
 	if (logo_state == PIC_FETCHED)
 		printk("[jpeglogo]: Logo loaded.\n");
 	else

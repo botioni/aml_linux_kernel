@@ -1001,11 +1001,24 @@ unsigned int get_post_canvas(void)
     return post_canvas;
 }
 
+static int canvas_dup(ulong *dst, ulong src_paddr, ulong size)
+{
+	void __iomem *p = ioremap_wc(src_paddr, size);
+	
+	if (p) {
+		memcpy(dst, p, size);
+		iounmap(p);
+		
+		return 1;
+	}
+	
+	return 0;
+}
+
 unsigned int vf_keep_current(void)
 {
     u32 cur_index;
     u32 y_index, u_index, v_index;
-    u32 disp_addr;
 
     if (blackout)
         return 0;
@@ -1024,16 +1037,13 @@ unsigned int vf_keep_current(void)
     u_index = (cur_index >> 8) & 0xff;
     v_index = (cur_index >> 16) & 0xff;
 
-    disp_addr = canvas_get_addr(y_index);
-    memcpy(keep_y_addr_remap, (void *)disp_addr, Y_BUFFER_SIZE);
-    disp_addr = canvas_get_addr(u_index);
-    memcpy(keep_u_addr_remap, (void *)disp_addr, U_BUFFER_SIZE);
-    disp_addr = canvas_get_addr(v_index);
-    memcpy(keep_v_addr_remap, (void *)disp_addr, V_BUFFER_SIZE);
-
-    canvas_update_addr(y_index, (u32)keep_y_addr);
-    canvas_update_addr(u_index, (u32)keep_u_addr);
-    canvas_update_addr(v_index, (u32)keep_v_addr);
+	if (canvas_dup(keep_y_addr_remap, canvas_get_addr(y_index), Y_BUFFER_SIZE) &&
+    	canvas_dup(keep_u_addr_remap, canvas_get_addr(u_index), U_BUFFER_SIZE) &&
+    	canvas_dup(keep_v_addr_remap, canvas_get_addr(v_index), V_BUFFER_SIZE)) {
+	    canvas_update_addr(y_index, (u32)keep_y_addr);
+    	canvas_update_addr(u_index, (u32)keep_u_addr);
+    	canvas_update_addr(v_index, (u32)keep_v_addr);
+    }
 
     return 0;
 }
@@ -1542,6 +1552,12 @@ static void vout_hook(void)
     vout_register_client(&vout_notifier);
 
     vinfo = get_current_vinfo();
+
+	if (!vinfo) {
+		set_current_vmode(VMODE_720P);
+
+	    vinfo = get_current_vinfo();
+	}
 
     if (vinfo)
         vsync_pts_inc = 90000 * vinfo->sync_duration_den / vinfo->sync_duration_num;

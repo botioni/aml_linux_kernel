@@ -3,7 +3,6 @@
 #
 
 menu "AMLOGIC HW jpeg logo driver"
-    depends on AMLOGIC_BOARD_APOLLO_H_LINUX
 
 config JPEGLOGO
     bool "AMLOGIC HW jpeg logo driver"
