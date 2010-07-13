@@ -44,7 +44,7 @@
 #include <mach/hardware.h>
 #include <mach/irqs.h>
 
-#define UART_PORTB
+//#define UART_PORTB
 
 #include "am_uart.h"
 
@@ -52,20 +52,27 @@ static struct am_uart am_uart_info[NR_PORTS];	//the value of NR_PORTS is given i
 
 struct am_uart *IRQ_ports[NR_IRQS];
 
-#ifdef UART_PORTB
-static unsigned int uart_irqs[NR_PORTS] = { INT_UART_1 };
-#else
-static unsigned int uart_irqs[NR_PORTS] = { INT_UART };
-#endif
 
-static am_uart_t *uart_addr[NR_PORTS] = { UART_BASEADDR };
+static unsigned int uart_irqs[NR_PORTS] = { INT_UART,INT_UART_1 };
 
-static int console_inited = 0;	/* have we initialized the console already? */
 
+static am_uart_t *uart_addr[NR_PORTS] = { UART_BASEADDR0,UART_BASEADDR1 };
+static int console_inited[2] ={ 0,0};	/* have we initialized the console already? */static int default_index = 0;	/* have we initialized the console index? */
 static struct tty_driver *am_uart_driver;
 
 #define MAX_NAMED_UART 4
 
+#ifndef outl
+#define outl(v,addr)	__raw_writel(v,(unsigned long)addr)
+#endif
+
+#ifndef inl
+#define inl(addr)	__raw_readl((unsigned long)addr)
+#endif
+#define in_l(addr)	inl((unsigned long )addr)
+#define out_l(v,addr)	outl(v,(unsigned long )addr)
+#define clear_mask(addr,mask)		out_l(in_l(addr) &(~(mask)),addr)
+#define set_mask(addr,mask)		out_l(in_l(addr) |(mask),addr)
 /*
  * tmp_buf is used as a temporary buffer by serial_write. We need to
  * lock it in case the memcpy_fromfs blocks while swapping in a page,
@@ -107,9 +114,9 @@ static void am_uart_stop(struct tty_struct *tty)
  * Output a single character, using UART polled mode.
  * This is used for console output.
  */
-void am_uart_put_char(char ch)
+void am_uart_put_char(int index,char ch)
 {
-	am_uart_t *uart = uart_addr[0];
+	am_uart_t *uart = uart_addr[index];
 
 	/* check if TXEMPTY (bit 7) in the status reg. is 1. Else, we
 	 * aren't supposed to write right now. Wait for some time.
@@ -118,10 +125,10 @@ void am_uart_put_char(char ch)
 	__raw_writel(ch, &uart->wdata);
 }
 
-void am_uart_print(char *buffer)
+void am_uart_print(int index,char *buffer)
 {
 	while (*buffer) {
-		am_uart_put_char(*buffer++);
+		am_uart_put_char(index,*buffer++);
 	}
 }
 
@@ -740,7 +747,7 @@ int am_uart_open(struct tty_struct *tty, struct file *filp)
 	int retval, line;
 	line = tty->index;
 	if ((line < 0) || (line >= NR_PORTS)) {
-		printk("AA3 serial driver: check your lines\n");
+		printk("amlogic serial driver: check your lines,in open line=%d\n",line);
 		return -ENODEV;
 	}
 	
@@ -795,6 +802,7 @@ static const struct tty_operations am_uart_ops = {
 static int __init am_uart_init(void)
 {
 	struct am_uart *info;
+	
 	int i;
 	
 
@@ -825,7 +833,7 @@ static int __init am_uart_init(void)
 
 
 	for (i = 0; i < NR_PORTS; i++) {
-
+		am_uart_t *uart = uart_addr[i];
 		info = &am_uart_info[i];
 		info->magic = SERIAL_MAGIC;
 		info->port = (unsigned int)uart_addr[i];
@@ -845,13 +853,9 @@ static int __init am_uart_init(void)
 		mutex_init(&info->info_mutex);
 		INIT_WORK(&info->tqueue,am_uart_workqueue);
 
-#ifdef UART_PORTB
-		SET_MPEG_REG_MASK(UART1_CONTROL, (1 << 27 | 1 << 28));
-		WRITE_MPEG_REG(UART1_MISC, 1 << 7 | 1);
-#else
-		SET_MPEG_REG_MASK(UART0_CONTROL, (1 << 27 | 1 << 28));
-		WRITE_MPEG_REG(UART0_MISC, 1 << 7 | 1);
-#endif
+		set_mask(&uart->mode, (1 << 27 | 1 << 28));
+		outl( 1 << 7 | 1,&uart->intctl);
+
 		
 		if (request_irq(info->irq, (irq_handler_t) am_uart_interrupt, IRQF_SHARED,
 		     "uart", info)) {
@@ -893,14 +897,18 @@ int am_uart_console_setup(struct console *cp, char *arg)
 	int bits = 8;
 	int parity = 'n';
 	int flow = 'n';
-
+	am_uart_t *uart = uart_addr[cp->index];
 	/* TODO: pinmux */
-#ifdef UART_PORTB
-	SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_3, (1<<27)|(1<<30));
-#else
-	SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<11)|(1<<15));
-#endif
 
+	if(cp->index==1)/*PORT B*/
+		{
+		SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_3, (1<<27)|(1<<30));
+		}
+	else/*PORT_A*/
+		{
+		SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<11)|(1<<15));
+		}
+	
 	if (arg)
 		uart_parse_options(arg, &baud, &parity, &bits, &flow);
 
@@ -913,22 +921,15 @@ int am_uart_console_setup(struct console *cp, char *arg)
 	else
 		baudrate = (clk_get_rate(sysclk) / (baud * 4)) - 1;
 
-#ifdef UART_PORTB
-	CLEAR_MPEG_REG_MASK(UART1_CONTROL, (1 << 19) | 0xFFF);
-	SET_MPEG_REG_MASK(UART1_CONTROL, (baudrate & 0xfff));
-	SET_MPEG_REG_MASK(UART1_CONTROL, (1 << 12) | 1 << 13);
-	SET_MPEG_REG_MASK(UART1_CONTROL, (7 << 22));
-	CLEAR_MPEG_REG_MASK(UART1_CONTROL, (7 << 22));
-#else
-	CLEAR_MPEG_REG_MASK(UART0_CONTROL, (1 << 19) | 0xFFF);
-	SET_MPEG_REG_MASK(UART0_CONTROL, (baudrate & 0xfff));
-	SET_MPEG_REG_MASK(UART0_CONTROL, (1 << 12) | 1 << 13);
-	SET_MPEG_REG_MASK(UART0_CONTROL, (7 << 22));
-	CLEAR_MPEG_REG_MASK(UART0_CONTROL, (7 << 22));
-#endif
 
-	console_inited = 1;
+	clear_mask(&uart->mode, (1 << 19) | 0xFFF);
+	set_mask(&uart->mode, (baudrate & 0xfff));
+	set_mask(&uart->mode, (1 << 12) | 1 << 13);
+	set_mask(&uart->mode, (7 << 22));
+	clear_mask(&uart->mode, (7 << 22));
 
+	console_inited[cp->index]= 1;
+	default_index=cp->index;
 	return 0;		/* successful initialization */
 }
 
@@ -941,18 +942,15 @@ static struct tty_driver *am_uart_console_device(struct console *c, int *index)
 void am_uart_console_write(struct console *cp, const char *p, unsigned len)
 {
 	unsigned long flags;
-	if (!console_inited)
+	if (!console_inited[cp->index])
 		am_uart_console_setup(cp, NULL);
-	local_irq_save(flags);
-	local_irq_enable();
 	while (len-- > 0) {
 #if 1
 		if (*p == '\n')
-			am_uart_put_char('\r');
+			am_uart_put_char(cp->index,'\r');
 #endif
-		am_uart_put_char(*p++);
+		am_uart_put_char(cp->index,*p++);
 	}
-	local_irq_restore(flags);
 }
 
 int am_uart_console_read(struct console *cp, const char *p, unsigned len)
@@ -960,7 +958,7 @@ int am_uart_console_read(struct console *cp, const char *p, unsigned len)
 	return 0;
 }
 
-struct console arc_am_uart_console = {
+struct console arc_am_uart_console0 = {
 	.name = "ttyS",
 	.write = am_uart_console_write,
 	.read = NULL,
@@ -968,14 +966,28 @@ struct console arc_am_uart_console = {
 	.unblank = NULL,
 	.setup = am_uart_console_setup,
 	.flags = CON_PRINTBUFFER,
-	.index = -1,
+	.index = 0,
+	.cflag = 0,
+	.next = NULL
+};
+struct console arc_am_uart_console1 = {
+	.name = "ttyS",
+	.write = am_uart_console_write,
+	.read = NULL,
+	.device = am_uart_console_device,
+	.unblank = NULL,
+	.setup = am_uart_console_setup,
+	.flags = CON_PRINTBUFFER,
+	.index = 1,
 	.cflag = 0,
 	.next = NULL
 };
 
+
 int __init am_uart_console_init(void)
 {
-	register_console(&arc_am_uart_console);
+	register_console(&arc_am_uart_console0);
+	register_console(&arc_am_uart_console1);
 	return 0;
 }
 
@@ -1013,11 +1025,11 @@ static void raw_num(unsigned int num, int zero_ok)
 				if (leading_zeroes)
 					leading_zeroes = 0;
 			}
-			am_uart_put_char(dec_to_hex[nibble]);
+			am_uart_put_char(default_index,dec_to_hex[nibble]);
 		}
 	}
 
-	am_uart_put_char(' ');
+	am_uart_put_char(default_index,' ');
 }
 
 static int raw_str(const char *str)
@@ -1034,7 +1046,7 @@ static int raw_str(const char *str)
 			cr = 1;
 			break;
 		}
-		am_uart_put_char(*str++);
+		am_uart_put_char(default_index,*str++);
 	}
 
 	return cr;
@@ -1052,8 +1064,8 @@ void raw_printk(const char *str, unsigned int num)
 
 	/* Carriage Return and Line Feed */
 	if (cr) {
-		am_uart_put_char('\r');
-		am_uart_put_char('\n');
+		am_uart_put_char(default_index,'\r');
+		am_uart_put_char(default_index,'\n');
 	}
 
 	local_irq_restore(flags);
@@ -1076,8 +1088,8 @@ void raw_printk5(const char *str, uint n1, uint n2, uint n3, uint n4)
 
 	/* Carriage Return and Line Feed */
 	if (cr) {
-		am_uart_put_char('\r');
-		am_uart_put_char('\n');
+		am_uart_put_char(default_index,'\r');
+		am_uart_put_char(default_index,'\n');
 
 		local_irq_restore(flags);
 	}
