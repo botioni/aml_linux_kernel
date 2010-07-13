@@ -88,7 +88,9 @@ $(obj)/ccImage: vmlinux FORCE
 	@echo '  Kernel: $@ is ready'
 
 $(obj)/ccImage.gz:$(obj)/ccImage FORCE
-	gzip $(obj)/ccImage 
+	@-rm -rf $(obj)/ccImage.gz 
+	@gzip $(obj)/ccImage
+	@echo '  Image $@ is ready'
 
 $(obj)/uImage:	$(obj)/ccImage.gz FORCE
 	$(call if_changed,uimage)
