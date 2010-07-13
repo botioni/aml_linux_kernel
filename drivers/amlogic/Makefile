@@ -34,9 +34,9 @@ obj-y += input/
 
 #obj-y += spi_nor/
 
-#obj-$(CONFIG_CMEM) += cmem/
+obj-$(CONFIG_CMEM) += cmem/
 
-#obj-$(CONFIG_JPEGLOGO) += jpeglogo/
+obj-$(CONFIG_JPEGLOGO) += jpeglogo/
 
 #obj-$(CONFIG_CARDREADER) += cardreader/
 

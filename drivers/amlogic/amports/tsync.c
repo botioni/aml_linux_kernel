@@ -51,8 +51,12 @@ void tsync_avevent(avevent_t event, u32 param)
 {
     ulong flags;
     u32 t;
+    ulong fiq_flag;
 
     spin_lock_irqsave(&lock, flags);
+    
+    raw_local_save_flags(fiq_flag);
+
     local_fiq_disable();
 
     switch (event) {
@@ -193,7 +197,8 @@ void tsync_avevent(avevent_t event, u32 param)
         break;
     }
 
-    local_fiq_enable();
+    raw_local_irq_restore(fiq_flag);
+
     spin_unlock_irqrestore(&lock, flags);
 }
 EXPORT_SYMBOL(tsync_avevent);

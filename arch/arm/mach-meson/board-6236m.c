@@ -28,6 +28,28 @@
 
 #include "board-6236m.h"
 
+#if defined(CONFIG_JPEGLOGO)
+static struct resource jpeglogo_resources[] = {
+    [0] = {
+        .start = CONFIG_JPEGLOGO_ADDR,
+        .end   = CONFIG_JPEGLOGO_ADDR + CONFIG_JPEGLOGO_SIZE - 1,
+        .flags = IORESOURCE_MEM,
+    },
+    [1] = {
+        .start = CODEC_ADDR_START,
+        .end   = CODEC_ADDR_END,
+        .flags = IORESOURCE_MEM,
+    },
+};
+
+static struct platform_device jpeglogo_dev = {
+	.name = "jpeglogo-dev",
+	.id   = 0,
+    .num_resources = ARRAY_SIZE(jpeglogo_resources),
+    .resource      = jpeglogo_resources,
+};
+#endif
+
 #ifdef CONFIG_FB_AM
 static struct resource fb_device_resources[] = {
     [0] = {
@@ -51,6 +73,9 @@ static struct platform_device fb_device = {
 #endif
 
 static struct platform_device __initdata *platform_devs[] = {
+    #if defined(CONFIG_JPEGLOGO)
+		&jpeglogo_dev,
+	#endif	
     #if defined(CONFIG_FB_AM)
     	&fb_device
     #endif
