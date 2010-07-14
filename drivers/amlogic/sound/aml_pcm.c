@@ -247,18 +247,16 @@ static int snd_card_aml_audio_playback_open(struct snd_pcm_substream
                                     &hw_playback_rates)) < 0)
         return err;
 
-#ifdef CONFIG_AMLOGIC_BOARD_APOLLO_H
-    WRITE_PERIPHS_REG(PREG_PIN_MUX_REG3, 0xff);
-    
-    CLEAR_PERIPHS_REG_BITS(PREG_JTAG_GPIO, 1 << 16);
-    set_mio_mux(2, 1 << 21);
-#endif
+/*
+pinmux JTAG-
+data0
+tck
+tdo 
+tdi
+reg[8],8,9,10,11
 
-#ifdef CONFIG_AMLOGIC_BOARD_APOLLO_H_LINUX
-    GPIOB_MODE(9, GPIO_OUT_MODE);
-    GPIOB_SET_PIN(9, PIN_DOWN);
-    clear_mio_mux(4, (1 << 7) | (1 << 12));
-#endif
+*/
+//	set_mio_mux(8,0xf<<8);
 
     timer.function = &aml_pcm_timer_callback;
     timer.data = (unsigned long)substream;
