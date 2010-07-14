@@ -802,7 +802,6 @@ static const struct tty_operations am_uart_ops = {
 static int __init am_uart_init(void)
 {
 	struct am_uart *info;
-	
 	int i;
 	
 
@@ -837,6 +836,7 @@ static int __init am_uart_init(void)
 		info = &am_uart_info[i];
 		info->magic = SERIAL_MAGIC;
 		info->port = (unsigned int)uart_addr[i];
+		
 		info->tty = 0;
 		info->irq = uart_irqs[i];
 		info->custom_divisor = 16;
@@ -856,13 +856,13 @@ static int __init am_uart_init(void)
 		set_mask(&uart->mode, (1 << 27 | 1 << 28));
 		outl( 1 << 7 | 1,&uart->intctl);
 
-		
+		sprintf(info->name,"UART_ttyS%d:",info->line);
 		if (request_irq(info->irq, (irq_handler_t) am_uart_interrupt, IRQF_SHARED,
-		     "uart", info)) {
+		     info->name, info)) {
 			printk("request irq error!!!\n");
 		}
-		printk("%s%d (irq = %d, address = 0x%x)", am_uart_driver->name,
-		       info->line, info->irq, info->port);
+		printk("%s(irq = %d, address = 0x%x)\n", info->name,
+		       info->irq, info->port);
 
 		IRQ_ports[info->irq] = info;
 		
