@@ -56,11 +56,13 @@
 #define MODULE_NAME "amvideo"
 #define DEVICE_NAME "amvideo"
 
+//#define FIQ_VSYNC 
+
 //#define SLOW_SYNC_REPEAT
-//#define DEBUG
+#define DEBUG
 
 #define BRIDGE_IRQ	INT_TIMER_D
-#define BRIDGE_IRQ_SET() WRITE_CBUS_REG(ISA_TIMERE, 1)
+#define BRIDGE_IRQ_SET() WRITE_CBUS_REG(ISA_TIMERD, 1)
 
 #define RESERVE_CLR_FRAME
 
@@ -87,6 +89,7 @@
 #define DUR2PTS_RM(x) ((x) & 0xf)
 
 const char video_dev_id[] = "amvideo-dev";
+
 
 static spinlock_t lock = SPIN_LOCK_UNLOCKED;
 static u32 frame_par_ready_to_set, frame_par_force_to_set;
@@ -605,24 +608,25 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
 
 	return IRQ_HANDLED;
 }
-
+#ifdef FIQ_VSYNC
 static void __attribute__ ((naked)) vsync_fiq_isr(void)
+#else
+static irqreturn_t vsync_isr0(int irq, void *dev_id)
+#endif
 {
     s32 i, vout_type;
     vframe_t *vf;
 #ifdef DEBUG
     int toggle_cnt;
 #endif
-
+#ifdef FIQ_VSYNC
 	asm __volatile__ (
 		"mov    ip, sp;\n"
 		"stmfd	sp!, {r0-r12, lr};\n"
 		"sub    sp, sp, #256;\n"
 		"sub    fp, sp, #256;\n");
-			
-#ifdef DEBUG
-    int toggle_cnt = 0;
-#endif
+#endif			
+
 
     vout_type = detect_vout_type();
 
@@ -633,10 +637,9 @@ static void __attribute__ ((naked)) vsync_fiq_isr(void)
 #endif
 
     if ((!cur_dispbuf) || (cur_dispbuf == &vf_local)) {
-
         vf = vf_peek();
-
-        if (vf) {
+        if (vf) 
+        	{
             tsync_avevent(VIDEO_START,
                 (vf->pts) ? vf->pts : timestamp_vpts_get());
 
@@ -822,6 +825,7 @@ static void __attribute__ ((naked)) vsync_fiq_isr(void)
     wait_sync = 0;
 
 exit:
+#ifdef FIQ_VSYNC
 	WRITE_MPEG_REG(IRQ_CLR_REG(INT_VIU_VSYNC), 1 << IRQ_BIT(INT_VIU_VSYNC));
 
 	dsb();
@@ -830,6 +834,10 @@ exit:
 		"add	sp, sp, #256 ;\n"
 		"ldmia	sp!, {r0-r12, lr};\n"
 		"subs	pc, lr, #4;\n");
+#else
+	return IRQ_HANDLED;
+#endif
+	
 }
 
 static int alloc_keep_buffer(void)
@@ -911,6 +919,8 @@ static void __attribute__ ((naked)) fiq_vector(void)
 
 static void vsync_fiq_up(void)
 {
+
+#ifdef  FIQ_VSYNC
 	struct pt_regs regs;
 	unsigned int mask = 1 << IRQ_BIT(INT_VIU_VSYNC);
 
@@ -923,6 +933,12 @@ static void vsync_fiq_up(void)
 
 	SET_CBUS_REG_MASK(IRQ_FIQSEL_REG(INT_VIU_VSYNC), mask);
 	enable_fiq(INT_VIU_VSYNC);
+#else
+   int r;
+   r = request_irq(INT_VIU_VSYNC, &vsync_isr0,
+                    IRQF_SHARED, "am_sync0",
+                    (void *)video_dev_id);
+   #endif
 }
 
 static void vsync_fiq_down(void)
@@ -1604,6 +1620,7 @@ static int __init video_init(void)
         r = -ENOENT;
         goto err0;
     }
+  
 
     /* sysfs node creation */
     r = class_register(&amvideo_class);
