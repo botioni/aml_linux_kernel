@@ -299,7 +299,10 @@ int vmpeg12_dec_status(struct vdec_status *vstatus)
 {
     vstatus->width = frame_width;
     vstatus->height = frame_height;
-    vstatus->fps = 96000/frame_dur;
+    if(frame_dur!=0)
+    	vstatus->fps = 96000/frame_dur;
+    else
+	vstatus->fps = 96000;	
     vstatus->error_count = READ_MPEG_REG(AV_SCRATCH_C);
     vstatus->status = stat;
 
