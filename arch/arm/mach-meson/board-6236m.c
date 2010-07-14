@@ -72,12 +72,31 @@ static struct platform_device fb_device = {
 };
 #endif
 
+#if defined(CONFIG_AM_STREAMING)
+static struct resource apollo_codec_resources[] = {
+    [0] = {
+        .start =  CODEC_ADDR_START,
+        .end   = CODEC_ADDR_END,
+        .flags = IORESOURCE_MEM,
+    },
+};
+
+static struct platform_device apollo_codec = {
+    .name       = "amstream",
+    .id         = 0,
+    .num_resources = ARRAY_SIZE(apollo_codec_resources),
+    .resource      = apollo_codec_resources,
+};
+#endif
 static struct platform_device __initdata *platform_devs[] = {
     #if defined(CONFIG_JPEGLOGO)
 		&jpeglogo_dev,
 	#endif	
     #if defined(CONFIG_FB_AM)
-    	&fb_device
+    	&fb_device,
+    #endif
+    #if defined(CONFIG_AM_STREAMING)
+	&apollo_codec,
     #endif
 };
 

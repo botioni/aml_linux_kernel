@@ -22,9 +22,83 @@
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>
 
+#include "board-8626m.h"
+
 #ifdef CONFIG_CACHE_L2X0
 #include <asm/hardware/cache-l2x0.h>
 #endif
+#if defined(CONFIG_JPEGLOGO)
+static struct resource jpeglogo_resources[] = {
+    [0] = {
+        .start = CONFIG_JPEGLOGO_ADDR,
+        .end   = CONFIG_JPEGLOGO_ADDR + CONFIG_JPEGLOGO_SIZE - 1,
+        .flags = IORESOURCE_MEM,
+    },
+    [1] = {
+        .start = CODEC_ADDR_START,
+        .end   = CODEC_ADDR_END,
+        .flags = IORESOURCE_MEM,
+    },
+};
+
+static struct platform_device jpeglogo_dev = {
+	.name = "jpeglogo-dev",
+	.id   = 0,
+    .num_resources = ARRAY_SIZE(jpeglogo_resources),
+    .resource      = jpeglogo_resources,
+};
+#endif
+
+#ifdef CONFIG_FB_AM
+static struct resource fb_device_resources[] = {
+    [0] = {
+        .start = OSD1_ADDR_START,
+        .end   = OSD1_ADDR_END,
+        .flags = IORESOURCE_MEM,
+    },
+    [1] ={ //for osd2
+        .start = OSD2_ADDR_START,
+        .end   =OSD2_ADDR_END,
+        .flags = IORESOURCE_MEM,
+    },
+};
+
+
+
+static struct platform_device fb_device = {
+    .name       = "apollofb",
+    .id         = 0,
+    .num_resources = ARRAY_SIZE(fb_device_resources),
+    .resource      = fb_device_resources,
+};
+#endif
+#if defined(CONFIG_AM_STREAMING)
+static struct resource apollo_codec_resources[] = {
+    [0] = {
+        .start =  CODEC_ADDR_START,
+        .end   = CODEC_ADDR_END,
+        .flags = IORESOURCE_MEM,
+    },
+};
+
+static struct platform_device apollo_codec = {
+    .name       = "amstream",
+    .id         = 0,
+    .num_resources = ARRAY_SIZE(apollo_codec_resources),
+    .resource      = apollo_codec_resources,
+};
+#endif
+static struct platform_device __initdata *platform_devs[] = {
+    #if defined(CONFIG_JPEGLOGO)
+		&jpeglogo_dev,
+	#endif	
+    #if defined(CONFIG_FB_AM)
+    	&fb_device,
+    #endif
+    #if defined(CONFIG_AM_STREAMING)
+	&apollo_codec,
+    #endif
+};
 
 static __init void m1_init_machine(void)
 {
@@ -33,7 +107,7 @@ static __init void m1_init_machine(void)
 		 * Bits:  .... .... .000 0010 0000 .... .... .... */
 		l2x0_init((void __iomem *)IO_PL310_BASE, 0x00020000, 0xff800fff);
 #endif
-
+	platform_add_devices(platform_devs, ARRAY_SIZE(platform_devs));
 	/* todo: load device drivers */
 }
 
@@ -47,32 +121,6 @@ static __init void m1_irq_init(void)
 	meson_init_irq();
 }
 
-static struct resource apollo_codec_resources[] = {
-    [0] = {
-        .start =  0x86000000,
-        .end   = 0x88000000,
-        .flags = IORESOURCE_MEM,
-    },
-};
-
-static struct platform_device apollo_codec = {
-    .name       = "amstream",
-    .id         = 0,
-    .num_resources = ARRAY_SIZE(apollo_codec_resources),
-    .resource      = apollo_codec_resources,
-};
-
-static struct platform_device __initdata *platform_devs[] = {
-	&apollo_codec,
-};
-
-int __init  platform_io_init(void)
-{
- 	printk("start platform init\r\n");
-	platform_add_devices(platform_devs, ARRAY_SIZE(platform_devs));
-	return 0;
-}
-arch_initcall(platform_io_init);
 
 MACHINE_START(MESON_8626M, "AMLOGIC MESON-M1 8626M")
 	.phys_io		= MESON_PERIPHS1_PHYS_BASE,
