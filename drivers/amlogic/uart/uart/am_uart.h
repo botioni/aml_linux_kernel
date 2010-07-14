@@ -28,7 +28,8 @@ struct am_uart{
 	 * to read the bps rate the chip has currently
 	 * loaded.
 	 */
-	int baud;
+	char 		name[16];
+	int 			baud;
 	int			magic;
 	int			baud_base;
 	int			port;
