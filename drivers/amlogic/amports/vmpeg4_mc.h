@@ -1036,4 +1036,8 @@ const u32 vmpeg4_mc_311[] __attribute__ ((aligned (8))) =
 0x06800009,0x0d000008,0x020091c9,0x04401249,0x06800047,0x0ba10089,
 0x05801249,0x0c7fff80,0x040011c7,0x0cc00000,0x07c00687};
 
+/* TODO */
+const u32 h263_mc[] __attribute__ ((aligned (8))) = 
+{};
+
 #endif /* VMPEG4_MC_H */
