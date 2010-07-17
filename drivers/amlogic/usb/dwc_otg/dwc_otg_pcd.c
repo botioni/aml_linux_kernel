@@ -71,11 +71,11 @@
 #include <linux/interrupt.h>
 #include <linux/string.h>
 //#include <linux/dma-mapping.h>
-#include <asm/lm.h>
-#include <asm/arch/irqs.h>
+#include <mach/lm.h>
+#include <mach/irqs.h>
 
-#include <linux/usb_ch9.h>
-#include <linux/usb_gadget.h>
+#include <linux/usb/ch9.h>
+#include <linux/usb/gadget.h>
 
 #include "dwc_otg_driver.h"
 #include "dwc_otg_pcd.h"
@@ -714,8 +714,8 @@ static struct usb_ep_ops dwc_otg_pcd_ep_ops = {
 	.alloc_request = dwc_otg_pcd_alloc_request,
 	.free_request = dwc_otg_pcd_free_request,
 
-	.alloc_buffer = dwc_otg_pcd_alloc_buffer,
-	.free_buffer = dwc_otg_pcd_free_buffer,
+	//.alloc_buffer = dwc_otg_pcd_alloc_buffer,
+	//.free_buffer = dwc_otg_pcd_free_buffer,
 
 	.queue = dwc_otg_pcd_ep_queue,
 	.dequeue = dwc_otg_pcd_ep_dequeue,
@@ -1348,7 +1348,8 @@ int __init dwc_otg_pcd_init(struct lm_device *_lmdev)
 	otg_dev->pcd = pcd;
 	s_pcd = pcd;
 	pcd->gadget.name = pcd_name;
-	strcpy(pcd->gadget.dev.bus_id, "gadget");
+	//strcpy(pcd->gadget.dev.bus_id, "gadget");
+	dev_set_name(&pcd->gadget.dev, "gadget");
 
 	pcd->otg_dev = lm_get_drvdata(_lmdev);
 

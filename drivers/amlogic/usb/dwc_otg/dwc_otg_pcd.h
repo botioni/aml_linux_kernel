@@ -38,8 +38,8 @@
 #include <linux/list.h>
 #include <linux/errno.h>
 #include <linux/device.h>
-#include <linux/usb_ch9.h>
-#include <linux/usb_gadget.h>
+#include <linux/usb/ch9.h>
+#include <linux/usb/gadget.h>
 #include <linux/interrupt.h>
 #include <linux/dma-mapping.h>
 

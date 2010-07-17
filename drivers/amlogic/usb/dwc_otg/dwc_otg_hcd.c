@@ -48,8 +48,8 @@
 #include <linux/interrupt.h>
 #include <linux/string.h>
 //#include <linux/dma-mapping.h>
-#include <asm/lm.h>
-#include <asm/arch/irqs.h>
+#include <mach/lm.h>
+#include <mach/irqs.h>
 
 #include <linux/version.h>
 
@@ -531,7 +531,7 @@ int dwc_otg_hcd_init(struct lm_device *_lmdev)
 	 */
 	hcd =
 	    usb_create_hcd(&dwc_otg_hc_driver, &_lmdev->dev,
-			   _lmdev->dev.bus_id);
+			   dev_name(&_lmdev->dev));
 	if (hcd == NULL) {
 		retval = -ENOMEM;
 		goto error1;
@@ -645,7 +645,7 @@ int dwc_otg_hcd_init(struct lm_device *_lmdev)
 	dwc_otg_hcd->nak_timer.data = (unsigned long)dwc_otg_hcd;	
 #endif
 	DWC_DEBUGPL(DBG_HCD, "DWC OTG HCD Initialized HCD, bus=%s, usbbus=%d\n",
-		    _lmdev->dev.bus_id, hcd->self.busnum);
+		    dev_name(&_lmdev->dev), hcd->self.busnum);
 
 	return 0;
 
@@ -2845,7 +2845,7 @@ void dwc_print_setup_data(uint8_t * setup)
 
 void dwc_otg_hcd_dump_frrem(dwc_otg_hcd_t * _hcd)
 {
-#ifdef DEBUG
+#if 0 //def DEBUG
 	DWC_PRINT("Frame remaining at SOF:\n");
 	DWC_PRINT("  samples %u, accum %llu, avg %llu\n",
 		  _hcd->frrem_samples, _hcd->frrem_accum,

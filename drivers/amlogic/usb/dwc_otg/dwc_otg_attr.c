@@ -256,7 +256,7 @@
 
 #include <asm/sizes.h>
 #include <asm/io.h>
-#include <asm/lm.h>
+#include <mach/lm.h>
 //#include <asm/sizes.h>
 
 #include "linux/dwc_otg_plat.h"

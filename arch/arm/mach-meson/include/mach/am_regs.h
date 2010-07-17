@@ -67,6 +67,10 @@
 	SET_CBUS_REG_MASK(reg, mask)
 #endif
 #define IO_ETH_BASE				0xc9010000
+#define IO_USB_A_BASE			0xC9040000
+#define IO_USB_B_BASE			0xC90C0000
+#define IO_WIFI_BASE			0xC9300000
+#define IO_SATA_BASE			0xC9400000
 #define IO_CBUS_BASE			0xc1100000
 #define IO_AXI_BUS_BASE			0xc1300000
 #define IO_PL310_BASE			0xc4200000
@@ -531,13 +535,41 @@
 // ----------------------------
 // $usb/rtl/usb_reg.v   (8)
 // ----------------------------
-#define USB_ADDR0                                  0x2100
-#define USB_ADDR1                                  0x2101
-#define USB_ADDR2                                  0x2102
-#define USB_ADDR3                                  0x2103
-#define USB_ADDR4                                  0x2104
-#define USB_ADDR5                                  0x2105
-#define USB_ADDR6                                  0x2106
+#define PREI_USB_PHY_REG              0x2100 //0xC1108400
+#define PREI_USB_PHY_A_REG1           0x2101
+#define PREI_USB_PHY_B_REG1           0x2102
+
+#define PREI_USB_PHY_A_POR      (1 << 0)
+#define PREI_USB_PHY_B_POR      (1 << 1)
+#define PREI_USB_PHY_CLK_SEL    (7 << 5) 
+#define PREI_USB_PHY_CLK_GATE 	(1 << 8) 
+#define PREI_USB_PHY_B_AHB_RSET     (1 << 11)
+#define PREI_USB_PHY_B_CLK_RSET     (1 << 12)
+#define PREI_USB_PHY_B_PLL_RSET     (1 << 13)
+#define PREI_USB_PHY_A_AHB_RSET     (1 << 17)
+#define PREI_USB_PHY_A_CLK_RSET     (1 << 18)
+#define PREI_USB_PHY_A_PLL_RSET     (1 << 19)
+#define PREI_USB_PHY_A_DRV_VBUS     (1 << 20)
+#define PREI_USB_PHY_B_DRV_VBUS			(1 << 21)
+#define PREI_USB_PHY_B_CLK_DETECT   (1 << 22)
+#define PREI_USB_PHY_CLK_DIV        (0x7f << 24)
+#define PREI_USB_PHY_A_CLK_DETECT   (1 << 31)
+
+#define USB_PHY_TUNE_MASK_REFCLKDIV  (3 << 29)
+#define USB_PHY_TUNE_MASK_REFCLKSEL  (3 << 27 )
+#define USB_PHY_TUNE_MASK_SQRX          (7 << 16 )
+#define USB_PHY_TUNE_MASK_TXVREF       (15 << 5)
+#define USB_PHY_TUNE_MASK_OTGDISABLE    (1 << 2)
+#define USB_PHY_TUNE_MASK_RISETIME  (3 << 9 )
+#define USB_PHY_TUNE_MASK_VBUS_THRE (7 << 19)
+
+#define USB_PHY_TUNE_SHIFT_REFCLKDIV  (29)
+#define USB_PHY_TUNE_SHIFT_REFCLKSEL  (27)
+#define USB_PHY_TUNE_SHIFT_SQRX          (16)
+#define USB_PHY_TUNE_SHIFT_TXVREF       (5)
+#define USB_PHY_TUNE_SHIFT_OTGDISABLE    (2)
+#define USB_PHY_TUNE_SHIFT_RISETIME  (9)
+#define USB_PHY_TUNE_SHIFT_VBUS_THRE (19)
 // ----------------------------
 // Smart Card (8)
 // ----------------------------
