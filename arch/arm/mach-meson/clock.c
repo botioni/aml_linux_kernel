@@ -117,7 +117,127 @@ static const pll_t *find_pll(struct clk *clk, int rate)
 
     return NULL;
 }
+static char * clock_src_name[]={
+		"XTAL input",
+		"XTAL input divided by 2",
+		"other PLL",
+		"DDR PLL",
+		"dmod PLL"
+};
+int clk_set_usb_phy_clk(struct clk *clk,unsigned long rate)
+{
 
+    int divider =0;
+    int clk_sel = rate;
+    int i;
+    int time_dly = 50000;
+
+
+	// ------------------------------------------------------------
+	//  CLK_SEL: These bits select the source for the 12Mhz: 
+	// 0 = XTAL input (24, 25, 27Mhz)
+	// 1 = XTAL input divided by 2
+	// 2 = other PLL output
+	// 3 = DDR pll clock (typically 400mhz)
+	// 4 = demod 240Mhz PLL output
+	CLEAR_CBUS_REG_MASK(PREI_USB_PHY_REG, PREI_USB_PHY_CLK_SEL);
+	//clk_sel = 0; // 24M CLK 
+	//clk_sel = 1; // 12M, Phy default setting is 12Mhz
+	//clk_sel = 2; // other PLL, 540M
+	//clk_sel = 3; // DDR, 369M
+	//clk_sel = 4; // demod, 240M
+	
+	printk(KERN_NOTICE"USB PHY clock souce: %s\n",clock_src_name[clk_sel]);
+	SET_CBUS_REG_MASK(PREI_USB_PHY_REG, (clk_sel<<5 ));
+
+    if(clk_sel == 3)//DDR runing 396MHz (396/(32+1)=12)
+    {
+ 		CLEAR_CBUS_REG_MASK(PREI_USB_PHY_REG,PREI_USB_PHY_CLK_DIV);
+ 		SET_CBUS_REG_MASK(PREI_USB_PHY_REG, (32 << 24));
+    }else if(clk_sel == 2)//Other PLL running at 540M (540/(44+1)=12)
+    {
+ 		CLEAR_CBUS_REG_MASK(PREI_USB_PHY_REG,PREI_USB_PHY_CLK_DIV);
+ 		SET_CBUS_REG_MASK(PREI_USB_PHY_REG, (44 << 24));
+    }else if(clk_sel == 4)// demod 240M (240/(19+1) = 12)
+    {
+ 		CLEAR_CBUS_REG_MASK(PREI_USB_PHY_REG,PREI_USB_PHY_CLK_DIV);
+ 		SET_CBUS_REG_MASK(PREI_USB_PHY_REG, (19 << 24));
+    }
+	// Open clock gate, to enable CLOCK to usb phy 
+    SET_CBUS_REG_MASK(PREI_USB_PHY_REG, PREI_USB_PHY_CLK_GATE);
+    i=0;
+    while(i++<time_dly){};
+	
+    /*  Reset USB PHY A  */
+    SET_CBUS_REG_MASK(PREI_USB_PHY_REG, PREI_USB_PHY_A_AHB_RSET);
+    i=0;
+    while(i++<time_dly){};  
+    CLEAR_CBUS_REG_MASK(PREI_USB_PHY_REG, PREI_USB_PHY_A_AHB_RSET);
+    i=0;
+    while(i++<time_dly){};
+    SET_CBUS_REG_MASK(PREI_USB_PHY_REG, PREI_USB_PHY_A_CLK_RSET);
+    i=0;
+    while(i++<time_dly){};      
+    CLEAR_CBUS_REG_MASK(PREI_USB_PHY_REG, PREI_USB_PHY_A_CLK_RSET);
+    i=0;
+    while(i++<time_dly){};
+    SET_CBUS_REG_MASK(PREI_USB_PHY_REG, PREI_USB_PHY_A_PLL_RSET);
+    i=0;
+    while(i++<time_dly){};
+    CLEAR_CBUS_REG_MASK(PREI_USB_PHY_REG, PREI_USB_PHY_A_PLL_RSET);
+    i=0;
+    while(i++<time_dly){};
+
+    // ------------------------------------------------------------ 
+    // Reset the PHY A by setting POR high for 10uS.
+    SET_CBUS_REG_MASK(PREI_USB_PHY_REG, PREI_USB_PHY_A_POR);
+    i=0;
+    while(i++<time_dly){};
+    // Set POR to the PHY high
+
+    CLEAR_CBUS_REG_MASK(PREI_USB_PHY_REG, PREI_USB_PHY_A_POR);
+    i=0;
+    while(i++<time_dly){};
+    
+    /* Reset USB PHY B */
+    SET_CBUS_REG_MASK(PREI_USB_PHY_REG, PREI_USB_PHY_B_AHB_RSET);
+    i=0;
+    while(i++<time_dly){};
+    CLEAR_CBUS_REG_MASK(PREI_USB_PHY_REG, PREI_USB_PHY_B_AHB_RSET);
+    i=0;
+    while(i++<time_dly){};
+    SET_CBUS_REG_MASK(PREI_USB_PHY_REG, PREI_USB_PHY_B_CLK_RSET);
+    i=0;
+    while(i++<time_dly){};
+    CLEAR_CBUS_REG_MASK(PREI_USB_PHY_REG, PREI_USB_PHY_B_CLK_RSET);
+    i=0;
+    while(i++<time_dly){};
+    SET_CBUS_REG_MASK(PREI_USB_PHY_REG, PREI_USB_PHY_B_PLL_RSET);
+    i=0;
+    while(i++<time_dly){};
+    CLEAR_CBUS_REG_MASK(PREI_USB_PHY_REG, PREI_USB_PHY_B_PLL_RSET);
+    i=0;
+    while(i++<time_dly){};
+
+    // ------------------------------------------------------------ 
+    // Reset the PHY B by setting POR high for 10uS.
+    SET_CBUS_REG_MASK(PREI_USB_PHY_REG, PREI_USB_PHY_B_POR);
+    i=0;
+    while(i++<time_dly){};
+
+    // Set POR to the PHY high
+    CLEAR_CBUS_REG_MASK(PREI_USB_PHY_REG, PREI_USB_PHY_B_POR);
+    i=0;
+    while(i++<time_dly){};
+
+    return 0;
+}
+static struct clk usb_clk = {
+    .name       = "usb_clk",
+    .pll_table  = 0,
+    .rate       = 2,
+    .set_rate   = clk_set_usb_phy_clk,
+};
 int clk_set_rate_clk81(struct clk *clk, unsigned long rate)
 {
     unsigned long r = rate;
@@ -185,6 +305,9 @@ static struct clk_lookup lookups[] = {
     }, {
         .dev_id = "clk81",
         .clk    = &clk81,
+    }, {
+       .dev_id = "usb_clk",
+       .clk    = &usb_clk,
     }
 };
 

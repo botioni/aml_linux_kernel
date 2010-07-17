@@ -1720,7 +1720,7 @@ void dwc_otg_hc_start_transfer(dwc_otg_core_if_t * _core_if, dwc_hc_t * _hc)
 
 	if (_core_if->dma_enable) {
 		dwc_write_reg32(&hc_regs->hcdma, (uint32_t) _hc->xfer_buff);
-		dma_cache_wback_inv((unsigned long)_hc->xfer_buff,(unsigned long) _hc->xfer_len);
+//		dma_cache_wback_inv((unsigned long)_hc->xfer_buff,(unsigned long) _hc->xfer_len);
 	}
 
 	/* Start the split */
@@ -1755,7 +1755,7 @@ void dwc_otg_hc_start_transfer(dwc_otg_core_if_t * _core_if, dwc_hc_t * _hc)
 		dwc_otg_hc_write_packet(_core_if, _hc);
 	}
 
-	invalidate_ahb_cache();	//we need add this for apollo
+//	invalidate_ahb_cache();	//we need add this for apollo
 
 #ifdef DEBUG
 	/* Start a timer for this transfer. */

@@ -47,8 +47,8 @@
 #include <linux/list.h>
 #include <linux/interrupt.h>
 #include <linux/string.h>
-#include <asm/lm.h>
-#include <asm/arch/irqs.h>
+#include <mach/lm.h>
+#include <mach/irqs.h>
 
 #include "dwc_otg_driver.h"
 #include "dwc_otg_hcd.h"
