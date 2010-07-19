@@ -37,6 +37,11 @@ static struct resource amvdec_mem_resource[]  = {
         .start = 0,
         .end   = 0,
         .flags = 0,
+    },
+    [1] = {
+        .start = 0,
+        .end   = 0,
+        .flags = 0,
     }
 };
 
@@ -55,7 +60,7 @@ This function used for change the memory reasource on system run;
 It can used for system swap memory for codec and some othor use;
 We must call it at the amstream start for register a memory resource
 */
-int vdec_set_resource(struct resource *s)
+int vdec_set_resource(struct resource *s, void *param)
 {
     if (inited_vcodec_num != 0) {
 		printk("ERROR:We can't support the change resource at code running\n");
@@ -66,6 +71,8 @@ int vdec_set_resource(struct resource *s)
     amvdec_mem_resource[0].end = s->end;
     amvdec_mem_resource[0].flags = s->flags;
 
+    amvdec_mem_resource[1].start = (resource_size_t)param;
+    
     return 0;
 }
 
