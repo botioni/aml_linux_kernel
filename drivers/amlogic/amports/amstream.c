@@ -978,7 +978,7 @@ static int  amstream_probe(struct platform_device *pdev)
     goto error2;
     }
 
-    vdec_set_resource(platform_get_resource(pdev, IORESOURCE_MEM, 0));
+    vdec_set_resource(platform_get_resource(pdev, IORESOURCE_MEM, 0), (void *)&amstream_dec_info);
 
     amstream_dev_class = class_create(THIS_MODULE, DEVICE_NAME);
 
