@@ -264,12 +264,20 @@ static int free_ringdesc(struct net_device *dev)
 	int i;
 	for (i = 0; i < RX_RING_SIZE; i++) {
 		if (np->rx_ring[i].skb)
+		{
 			dev_kfree_skb_any(np->rx_ring[i].skb);
+			if(np->rx_ring[i].buf_dma!=0)
+				dma_unmap_single(&dev->dev,np->rx_ring[i].buf_dma,np->rx_buf_sz,DMA_FROM_DEVICE);
+		}
 		np->rx_ring[i].skb = NULL;
 	}
 	for (i = 0; i < TX_RING_SIZE; i++) {
 		if (np->tx_ring[i].skb != NULL)
+		{
 			dev_kfree_skb_any(np->tx_ring[i].skb);
+			if(np->rx_ring[i].buf_dma!=0)
+				dma_unmap_single(&dev->dev,np->tx_ring[i].buf_dma,np->rx_buf_sz,DMA_TO_DEVICE);
+		}
 		np->tx_ring[i].skb = NULL;
 	}
 	if (np->rx_ring)
@@ -606,8 +614,11 @@ void net_tasklet(unsigned long dev_instance)
 					np->tx_full = 0;
 				}
 				dev_kfree_skb_any(tx->skb);
+				if(tx->buf_dma!=0)
+					dma_unmap_single(&dev->dev,tx->buf_dma,np->rx_buf_sz,DMA_TO_DEVICE);
 				tx->skb = NULL;
 				tx->buf = 0;
+				tx->buf_dma= 0;
 				tx->status = 0;
 			} else
 				break;
@@ -666,7 +677,9 @@ void net_tasklet(unsigned long dev_instance)
 				/*we have checked in hardware;
 				   we not need check again */
 				rx->skb->ip_summed = ip_summed;
-				
+				if(rx->buf_dma!=0)
+					dma_unmap_single(&dev->dev,rx->buf_dma,np->rx_buf_sz,DMA_FROM_DEVICE);
+				rx->buf_dma=0;
 				netif_rx(rx->skb);
 #else
 				skb = dev_alloc_skb(len + 4);
@@ -677,6 +690,8 @@ void net_tasklet(unsigned long dev_instance)
 				}
 				skb_reserve(skb, 2);
 				skb_put(skb, len);
+				if(rx->buf_dma!=NULL)
+					dma_unmap_single(&dev->dev,(void *)rx->buf_dma,np->rx_buf_sz,DMA_FROM_DEVICE);
 				memcpy(skb->data, (void *)rx->buf, len);
 				skb->dev = dev;
 				skb->protocol = eth_type_trans(skb, dev);
@@ -702,6 +717,7 @@ void net_tasklet(unsigned long dev_instance)
 					printk(KERN_ERR
 					       "error to alloc the skb\n");
 					rx->buf = 0;
+					rx->buf_dma= 0;
 					rx->status = 0;
 					rx->count = 0;
 					np->last_rx = rx;
@@ -927,6 +943,8 @@ static int start_tx(struct sk_buff *skb, struct net_device *dev)
 #ifdef DMA_USE_SKB_BUF
 	if (tx->skb != NULL) {
 		dev_kfree_skb_any(tx->skb);
+		if(tx->buf_dma!=0)
+			dma_unmap_single(&dev->dev,tx->buf_dma,np->rx_buf_sz,DMA_FROM_DEVICE);
 	}
 	tx->skb = skb;
 	tx->buf = (unsigned long)skb->data;
@@ -1106,11 +1124,7 @@ static void set_multicast_list(struct net_device *dev)
 		IO_WRITE32(tmp, np->base_addr + ETH_MAC_1_Frame_Filter);//hash muticast
 	}
 }
-static int am_eth_mac_addr(struct net_device *dev,void *mac)
-{
-	config_mac_addr(dev,mac);
-	return 0;
-}
+
 static const struct net_device_ops am_netdev_ops = {
 	.ndo_open			= netdev_open,
 	.ndo_stop			= netdev_close,
