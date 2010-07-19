@@ -57,7 +57,7 @@
 #define MEM_MMCO_CPU_BASE             (0x81112000 + buf_offset)
 #define MEM_LIST_CPU_BASE             (0x81113000 + buf_offset)
 #define MEM_SLICE_CPU_BASE            (0x81114000 + buf_offset)
-#define MEM_SWAP_SIZE				  0x5000
+#define MEM_SWAP_SIZE				  (0x5000*4)
 #define V_BUF_ADDR_START              0x8113e000
 
 #define PIC_SINGLE_FRAME        0
@@ -145,11 +145,14 @@ static u32 h264pts1, h264pts2;
 static u32 h264_pts_count, duration_from_pts_done;
 static u32 vh264_error_count;
 static u32 vh264_no_disp_count;
+#if 0
 static u32 vh264_no_disp_wd_count;
+#endif
 static u32 vh264_running;
 static struct vframe_s *p_last_vf;
 static s32 last_ptr;
 static u32 wait_buffer_counter;
+static uint error_recovery_mode = 0;
 
 #ifdef DEBUG_PTS
 static unsigned long pts_missed, pts_hit;
@@ -556,6 +559,7 @@ static void vh264_isr(void)
                 int current_error_count;
 
                 vh264_running = 1;
+				vh264_no_disp_count = 0;
                 num_frame = (cpu_cmd >> 8) & 0xff;
                 frame_mb_only = seq_info & 0x8000;
                 pic_struct_present = seq_info & 0x10;
@@ -840,7 +844,8 @@ static void vh264_put_timer_func(unsigned long arg)
             vf_reg_provider(&vh264_vf_provider);
             amvdec_start();
         }
-        
+
+#if 0
         if (!wait_buffer_status)
         {
             if (vh264_no_disp_count++ > NO_DISP_WD_COUNT)
@@ -857,6 +862,7 @@ static void vh264_put_timer_func(unsigned long arg)
                 vh264_no_disp_wd_count++;
 			}
 		}
+#endif
 
         if (putting_ptr != put_ptr)
         {
@@ -906,7 +912,10 @@ int vh264_dec_status(struct vdec_status *vstatus)
 {
     vstatus->width = frame_width;
     vstatus->height = frame_height;
-    vstatus->fps = 96000/frame_dur;
+	if ( frame_dur != 0 )
+		vstatus->fps = 96000/frame_dur;
+	else 
+		vstatus->fps = -1;
     vstatus->error_count = READ_MPEG_REG(AV_SCRATCH_D);
     vstatus->status = stat;
     return 0;
@@ -916,12 +925,12 @@ int vh264_set_trickmode(unsigned long trickmode)
 {
     if (trickmode == TRICKMODE_I)
     {
-        WRITE_MPEG_REG(AV_SCRATCH_F, 2);
+        WRITE_MPEG_REG(AV_SCRATCH_F, (READ_MPEG_REG(AV_SCRATCH_F) & 0xfffffffc) | 2);
         trickmode_i = 1;
     }
     else if (trickmode == TRICKMODE_NONE)
     {
-        WRITE_MPEG_REG(AV_SCRATCH_F, 0);
+        WRITE_MPEG_REG(AV_SCRATCH_F, READ_MPEG_REG(AV_SCRATCH_F) & 0xfffffffc);
         trickmode_i = 0;
     }
 
@@ -949,6 +958,7 @@ static void vh264_prot_init(void)
         WRITE_MPEG_REG(AV_SCRATCH_7, 0);
         WRITE_MPEG_REG(AV_SCRATCH_8, 0);
         WRITE_MPEG_REG(AV_SCRATCH_9, 0);
+        WRITE_MPEG_REG(AV_SCRATCH_F, (READ_MPEG_REG(AV_SCRATCH_F) & 0xffffffcf) | ((error_recovery_mode & 0x3) << 4));
 
         /* clear mailbox interrupt */
         WRITE_MPEG_REG(ASSIST_MBOX1_CLR_REG, 1);
@@ -973,7 +983,6 @@ static void vh264_local_init(void)
         frame_height = vh264_amstream_dec_info.height;
         frame_dur = vh264_amstream_dec_info.rate;
         pts_outside = (u32)vh264_amstream_dec_info.param;
-        sync_outside = 0;
 
         buffer_for_recycle_rd = 0;
         buffer_for_recycle_wr = 0;
@@ -1009,6 +1018,13 @@ static void vh264_local_init(void)
 
 static s32 vh264_init(void)
 {
+		void __iomem *p = ioremap_nocache(MEM_HEADER_CPU_BASE, MEM_SWAP_SIZE);
+	
+		if (!p) {
+				printk("\nvh264_init: Cannot remap ucode swapping memory\n");
+				return -ENOMEM;
+		}
+
         printk("\nvh264_init\n");
         init_timer(&recycle_timer);
 
@@ -1021,24 +1037,23 @@ static s32 vh264_init(void)
                 return -EBUSY;
         }
 
-        memcpy((unsigned char *)MEM_HEADER_CPU_BASE,
-        	vh264_header_mc, sizeof(vh264_header_mc)/4);
+        memcpy(p,
+        	vh264_header_mc, sizeof(vh264_header_mc));
 
-        memcpy((unsigned char *)MEM_DATA_CPU_BASE,
-        	vh264_data_mc, sizeof(vh264_header_mc)/4);
+        memcpy((void *)((ulong)p + 0x1000),
+        	vh264_data_mc, sizeof(vh264_data_mc));
 
-        memcpy((unsigned char *)MEM_MMCO_CPU_BASE,
-        	vh264_mmco_mc, sizeof(vh264_header_mc)/4);
+        memcpy((void *)((ulong)p + 0x2000),
+        	vh264_mmco_mc, sizeof(vh264_mmco_mc));
 
-        memcpy((unsigned char *)MEM_LIST_CPU_BASE,
-        	vh264_mmco_mc, sizeof(vh264_list_mc)/4);
+        memcpy((void *)((ulong)p + 0x3000),
+        	vh264_list_mc, sizeof(vh264_list_mc));
 
-        memcpy((unsigned char *)MEM_SLICE_CPU_BASE,
-        	vh264_mmco_mc, sizeof(vh264_slice_mc)/4);
+        memcpy((void *)((ulong)p + 0x4000),
+        	vh264_slice_mc, sizeof(vh264_slice_mc));
 
-		dma_sync_single_for_device(NULL, MEM_HEADER_CPU_BASE,
-			MEM_SWAP_SIZE, DMA_TO_DEVICE);
-
+		iounmap(p);
+			
         stat |= STAT_MC_LOAD;
 
         /* enable AMRISC side protocol */
@@ -1199,7 +1214,10 @@ static void __exit amvdec_h264_driver_remove_module(void)
 
 module_param(stat, uint, 0664);
 MODULE_PARM_DESC(stat, "\n amvdec_h264 stat \n");
-
+module_param(error_recovery_mode, uint, 0664);
+MODULE_PARM_DESC(error_recovery_mode, "\n amvdec_h264 error_recovery_mode \n");
+module_param(sync_outside, uint, 0664);
+MODULE_PARM_DESC(sync_outside, "\n amvdec_h264 sync_outside \n");
 module_init(amvdec_h264_driver_init_module);
 module_exit(amvdec_h264_driver_remove_module);
 
