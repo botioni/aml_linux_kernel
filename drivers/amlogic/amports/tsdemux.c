@@ -229,7 +229,7 @@ s32 tsdemux_init(u32 vid, u32 aid, u32 sid)
     if (r) 
         goto err3;
     WRITE_MPEG_REG(PARSER_INT_STATUS, 0xffff);
-    WRITE_MPEG_REG(PARSER_INT_ENABLE, PARSER_INTSTAT_FETCH_CMD<<8);
+    WRITE_MPEG_REG(PARSER_INT_ENABLE, PARSER_INTSTAT_FETCH_CMD << PARSER_INT_HOST_EN_BIT);
 
     discontinued_counter=0;
     r = request_irq(INT_DEMUX, tsdemux_isr,

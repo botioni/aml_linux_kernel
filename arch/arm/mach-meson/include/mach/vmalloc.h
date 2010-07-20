@@ -18,5 +18,11 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+#ifdef CONFIG_VMSPLIT_3G
+#define VMALLOC_END		0xF0000000UL
+#endif
+
+#ifdef CONFIG_VMSPLIT_2G
 #define VMALLOC_START	0xA0000000UL
 #define VMALLOC_END		0xC0000000UL
+#endif
