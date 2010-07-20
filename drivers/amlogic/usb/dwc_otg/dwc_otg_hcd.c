@@ -595,12 +595,12 @@ int dwc_otg_hcd_init(struct lm_device *_lmdev)
 	/* Set device flags indicating whether the HCD supports DMA. */
 	if (otg_dev->core_if->dma_enable) {
 		DWC_PRINT("Using DMA mode\n");
-		_lmdev->dev.dma_mask = (void *)~0;
-		_lmdev->dev.coherent_dma_mask = ~0;
+		//_lmdev->dev.dma_mask = (void *)~0;
+		//_lmdev->dev.coherent_dma_mask = ~0;
 	} else {
 		DWC_PRINT("Using Slave mode\n");
-		_lmdev->dev.dma_mask = (void *)0;
-		_lmdev->dev.coherent_dma_mask = 0;
+		//_lmdev->dev.dma_mask = (void *)0;
+		//_lmdev->dev.coherent_dma_mask = 0;
 	}
 
 	/*

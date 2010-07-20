@@ -34,4 +34,6 @@ struct clk {
 	int	(*set_rate)(struct clk *, unsigned long);
 };
 
+extern int set_usb_phy_clk(int rate);
+
 #endif
