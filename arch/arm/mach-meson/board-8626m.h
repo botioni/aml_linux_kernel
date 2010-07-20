@@ -4,7 +4,7 @@
 #include <asm/page.h>
 
 #define PHYS_MEM_START		(0x80000000)
-#define PHYS_MEM_SIZE		(128*1024*1024)
+#define PHYS_MEM_SIZE		(256*1024*1024)
 #define PHYS_MEM_END		(PHYS_MEM_START + PHYS_MEM_SIZE -1 )
 
 /******** CODEC memory setting ************************/

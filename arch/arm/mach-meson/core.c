@@ -126,27 +126,27 @@ void __init meson_init_irq(void)
 static __initdata struct map_desc meson_io_desc[] = {
 	{
 		.virtual	= IO_CBUS_BASE,
-		.pfn		= __phys_to_pfn(IO_CBUS_BASE),
+		.pfn		= __phys_to_pfn(IO_CBUS_PHY_BASE),
 		.length		= SZ_2M,
 		.type		= MT_DEVICE,
 	} , {
 		.virtual	= IO_AXI_BUS_BASE,
-		.pfn		= __phys_to_pfn(IO_AXI_BUS_BASE),
+		.pfn		= __phys_to_pfn(IO_AXI_BUS_PHY_BASE),
 		.length		= SZ_1M,
 		.type		= MT_DEVICE,
 	} , {
 		.virtual	= IO_PL310_BASE,
-		.pfn		= __phys_to_pfn(IO_AXI_BUS_BASE),
+		.pfn		= __phys_to_pfn(IO_AXI_BUS_PHY_BASE),
 		.length		= SZ_4K,
 		.type		= MT_DEVICE,
 	} , {
 		.virtual	= IO_AHB_BUS_BASE,
-		.pfn		= __phys_to_pfn(IO_AHB_BUS_BASE),
+		.pfn		= __phys_to_pfn(IO_AHB_BUS_PHY_BASE),
 		.length		= SZ_16M,
 		.type		= MT_DEVICE,
 	} , {
 		.virtual	= IO_APB_BUS_BASE,
-		.pfn		= __phys_to_pfn(IO_APB_BUS_BASE),
+		.pfn		= __phys_to_pfn(IO_APB_BUS_PHY_BASE),
 		.length		= SZ_512K,
 		.type		= MT_DEVICE,
 	} , {

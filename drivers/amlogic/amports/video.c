@@ -627,6 +627,9 @@ static irqreturn_t vsync_isr0(int irq, void *dev_id)
 		"sub    fp, sp, #256;\n");
 #endif			
 
+#ifdef DEBUG
+    toggle_cnt = 0;
+#endif
 
     vout_type = detect_vout_type();
 
@@ -909,6 +912,7 @@ err1:
 /*********************************************************
  * FIQ Routines
  *********************************************************/
+#ifdef FIQ_VSYNC
 /* 4K size of FIQ stack size */
 static u8 fiq_stack[4096];
 
@@ -916,6 +920,7 @@ static void __attribute__ ((naked)) fiq_vector(void)
 {
 	asm __volatile__ ("mov pc, r8 ;");
 }
+#endif
 
 static void vsync_fiq_up(void)
 {
@@ -1597,6 +1602,12 @@ static int __init video_init(void)
 #ifdef RESERVE_CLR_FRAME
     alloc_keep_buffer();
 #endif
+
+    /* MALI clock settings */
+    WRITE_CBUS_REG(HHI_MALI_CLK_CNTL,
+		(2 << 9)	|	// select DDR clock as clock source
+		(1 << 8)	|	// enable clock gating
+		(1 << 0));		// DDR clk / 2
 
     DisableVideoLayer();
 
