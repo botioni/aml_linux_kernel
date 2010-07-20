@@ -1,6 +1,8 @@
 #ifndef __AMLOGIC_LM_H__
 #define __AMLOGIC_LM_H__
 
+/* usb setting header */
+
 
 enum usb_port_type_e{
     USB_PORT_TYPE_HOST,
@@ -14,7 +16,8 @@ enum usb_port_speed_e{
 };
 
 enum usb_dma_config_e{
-    USB_DMA_BURST_DEFAULT = 0,
+    USB_DMA_DISABLE = 0,
+    USB_DMA_BURST_DEFAULT,
     USB_DMA_BURST_SINGLE,
     USB_DMA_BURST_INCR,
     USB_DMA_BURST_INCR4,
@@ -27,6 +30,7 @@ struct lm_device {
 	struct resource		resource;
 	unsigned int		irq;
 	unsigned int		id;
+	u64				dma_mask_room; // dma mask room for dev->dma_mask
     
 	unsigned int		port_type;
 	unsigned int		port_speed;

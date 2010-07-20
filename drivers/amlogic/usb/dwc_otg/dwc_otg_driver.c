@@ -851,9 +851,14 @@ static int __init dwc_otg_driver_probe(struct lm_device *_lmdev)
 		dev_err(&_lmdev->dev, "force work in full speed mode\n");
 	}
 
-	if (_lmdev->dev.dma_mask == 0) {
+	_lmdev->dev.dma_mask = &_lmdev->dma_mask_room;
+	if (dma_config == USB_DMA_DISABLE) {
 		pcore_para->dma_enable = 0;
+		_lmdev->dev.coherent_dma_mask = 0;
 	} else {
+		//dma_set_mask(&_lmdev->dev,DMA_BIT_MASK(32));
+		_lmdev->dev.coherent_dma_mask = *_lmdev->dev.dma_mask;
+		printk("_lmdev->dev.dma_mask %p (%llX)\n",_lmdev->dev.dma_mask,*_lmdev->dev.dma_mask);
 		switch (dma_config) {
 		case USB_DMA_BURST_INCR:
 			pcore_para->dma_burst_size =
@@ -1004,7 +1009,7 @@ static int __init dwc_otg_driver_probe(struct lm_device *_lmdev)
 	 * handlers are installed.
 	 */
 	dwc_otg_enable_global_interrupts(dwc_otg_device->core_if);
-
+g_dbg_lvl = 0xfff;
 	return 0;
 
       fail:

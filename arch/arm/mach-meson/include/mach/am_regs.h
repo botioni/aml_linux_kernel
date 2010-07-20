@@ -570,6 +570,13 @@
 #define USB_PHY_TUNE_SHIFT_OTGDISABLE    (2)
 #define USB_PHY_TUNE_SHIFT_RISETIME  (9)
 #define USB_PHY_TUNE_SHIFT_VBUS_THRE (19)
+
+#define	USB_PHY_CLOCK_SEL_XTAL (0)
+#define	USB_PHY_CLOCK_SEL_XTAL_DIV2 (1)
+#define	USB_PHY_CLOCK_SEL_OTHER_PLL (2)
+#define	USB_PHY_CLOCK_SEL_DDR_PLL (3)
+#define	USB_PHY_CLOCK_SEL_DEMOD_PLL (4)
+
 // ----------------------------
 // Smart Card (8)
 // ----------------------------
