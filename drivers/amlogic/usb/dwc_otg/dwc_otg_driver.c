@@ -1009,7 +1009,7 @@ static int __init dwc_otg_driver_probe(struct lm_device *_lmdev)
 	 * handlers are installed.
 	 */
 	dwc_otg_enable_global_interrupts(dwc_otg_device->core_if);
-g_dbg_lvl = 0xfff;
+
 	return 0;
 
       fail:
