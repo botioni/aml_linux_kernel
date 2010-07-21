@@ -33,7 +33,11 @@ extern ssize_t psparser_write(struct file *file,
 
 extern void psparser_change_avid(unsigned int vid, unsigned int aid);
 
+extern void psparser_change_sid(unsigned int sid);
+
 extern void psparser_audio_reset(void);
+
+extern void psparser_sub_reset(void);
 
 #endif /* PSPARSER_H */
 

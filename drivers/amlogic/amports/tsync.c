@@ -28,6 +28,7 @@ const static struct {
     {"VIDEO_PAUSE", 11, VIDEO_PAUSE, 0},
     {"VIDEO_TSTAMP_DISCONTINUITY", 26, VIDEO_TSTAMP_DISCONTINUITY, AVEVENT_FLAG_PARAM},
     {"AUDIO_START", 11, AUDIO_START, AVEVENT_FLAG_PARAM},
+    {"AUDIO_RESUME",12, AUDIO_RESUME, 0},
     {"AUDIO_STOP",  10, AUDIO_STOP,  0},
     {"AUDIO_PAUSE", 11, AUDIO_PAUSE, 0},
     {"AUDIO_TSTAMP_DISCONTINUITY", 26, AUDIO_TSTAMP_DISCONTINUITY, AVEVENT_FLAG_PARAM},
@@ -46,6 +47,7 @@ static int tsync_abreak = 0;
 static int tsync_trickmode = 0;
 static unsigned int tsync_av_thresh = AV_DISCONTINUE_THREDHOLD;
 static unsigned int tsync_syncthresh = 1;
+static int tsync_dec_reset_flag = 0;
 
 void tsync_avevent(avevent_t event, u32 param)
 {
@@ -165,7 +167,19 @@ void tsync_avevent(avevent_t event, u32 param)
         }
 
         tsync_abreak = 0;
-        timestamp_pcrscr_set(param);
+        if (tsync_dec_reset_flag) // after reset, video should be played first
+        {
+            int vpts = timestamp_vpts_get();
+            if (param < vpts)
+                timestamp_pcrscr_set(param);
+            else
+                timestamp_pcrscr_set(vpts);
+            tsync_dec_reset_flag = 0;
+        }
+        else
+        {
+            timestamp_pcrscr_set(param);
+        }
         timestamp_apts_set(param);
         tsync_stat = TSYNC_STAT_PCRSCR_SETUP_AUDIO;
 #ifdef DEBUG
@@ -173,7 +187,13 @@ void tsync_avevent(avevent_t event, u32 param)
 #endif
         timestamp_pcrscr_enable(1);
         break;
-
+        
+    case AUDIO_RESUME:
+        if (!tsync_enable)
+            break;
+        timestamp_pcrscr_enable(1);
+        break;
+        
     case AUDIO_STOP:
         tsync_abreak = 0;
         if (tsync_trickmode)
@@ -230,6 +250,12 @@ void tsync_set_syncthresh(unsigned int sync_thresh)
     return;
 }
 EXPORT_SYMBOL(tsync_set_syncthresh);
+
+void tsync_set_dec_reset(void)
+{
+    tsync_dec_reset_flag = 1;
+}
+EXPORT_SYMBOL(tsync_set_dec_reset);
 
 /*********************************************************/
 static ssize_t show_vpts(struct class *class,
@@ -418,6 +444,11 @@ static int __init tsync_init(void)
         return r;
     }
 
+    /* init audio pts to -1, others to 0 */
+    timestamp_apts_set(-1);
+    timestamp_vpts_set(0);
+    timestamp_pcrscr_set(0);
+    
     return (0);
 }
 

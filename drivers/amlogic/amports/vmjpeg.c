@@ -134,7 +134,7 @@ static irqreturn_t vmjpeg_isr(int irq, void *dev_id)
     if (reg & PICINFO_BUF_IDX_MASK) {
         offset = READ_MPEG_REG(MREG_FRAME_OFFSET);
 
-        if (pts_lookup_offset(PTS_TYPE_VIDEO, offset, &pts) == 0) {
+        if (pts_lookup_offset(PTS_TYPE_VIDEO, offset, &pts, 0) == 0) {
             pts_valid = 1;
         }
 
@@ -477,6 +477,8 @@ static int amvdec_mjpeg_probe(struct platform_device *pdev)
 
     buf_start = mem->start;
     buf_size  = mem->end - mem->start + 1;
+
+    memcpy(&vmjpeg_amstream_dec_info, (void *)mem[1].start, sizeof(vmjpeg_amstream_dec_info));
 
     if (vmjpeg_init() < 0) {
         printk("amvdec_mjpeg init failed.\n");

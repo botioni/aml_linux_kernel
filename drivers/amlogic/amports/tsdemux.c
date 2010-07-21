@@ -45,6 +45,8 @@ static DECLARE_WAIT_QUEUE_HEAD(wq);
 static u32 fetch_done;
 static u32 discontinued_counter;
 
+static int demux_skipbyte;
+
 static irqreturn_t tsdemux_isr(int irq, void *dev_id)
 {
     u32 int_status = READ_MPEG_REG(STB_INT_STATUS);
@@ -68,7 +70,8 @@ static irqreturn_t tsdemux_isr(int irq, void *dev_id)
    if (int_status & (1<<SUB_PES_READY))
     {
         /* TODO: put data to somewhere */
-        printk("subtitle pes ready\n");
+        //printk("subtitle pes ready\n");
+        wakeup_sub_poll();
     }
    
     WRITE_MPEG_REG(STB_INT_STATUS, int_status);
@@ -168,6 +171,7 @@ s32 tsdemux_init(u32 vid, u32 aid, u32 sid)
                    (0 << SECTION_ENDIAN));
     WRITE_MPEG_REG(TS_HIU_CTL, 1 << USE_HI_BSF_INTERFACE);
     WRITE_MPEG_REG(TS_FILE_CONFIG,
+                   (demux_skipbyte << 16)                  |
                    (6 << DES_OUT_DLY)                      |
                    (3 << TRANSPORT_SCRAMBLING_CONTROL_ODD) |
                    (1 << TS_HIU_ENABLE)                    |
@@ -209,7 +213,7 @@ s32 tsdemux_init(u32 vid, u32 aid, u32 sid)
     WRITE_MPEG_REG(PARSER_SUB_START_PTR, parser_sub_start_ptr);
     WRITE_MPEG_REG(PARSER_SUB_END_PTR, parser_sub_end_ptr);
     WRITE_MPEG_REG(PARSER_SUB_RP, parser_sub_rp);
-    SET_MPEG_REG_MASK(PARSER_ES_CONTROL, ES_SUB_MAN_RD_PTR);
+    SET_MPEG_REG_MASK(PARSER_ES_CONTROL, (7<<ES_SUB_WR_ENDIAN_BIT) | ES_SUB_MAN_RD_PTR);
 
     if ((r = pts_start(PTS_TYPE_VIDEO)) < 0)
     {
@@ -350,6 +354,16 @@ void tsdemux_change_avid(unsigned int vid, unsigned int aid)
     return;
 }
 
+void tsdemux_change_sid(unsigned int sid)
+{
+    WRITE_MPEG_REG(FM_WR_DATA, 
+               (((sid & 0x1fff) | (SUB_PACKET << 13)) << 16) | 0xffff);
+    WRITE_MPEG_REG(FM_WR_ADDR, 0x8001);
+    while (READ_MPEG_REG(FM_WR_ADDR) & 0x8000);
+
+    return;
+}
+
 void tsdemux_audio_reset(void)
 {
     ulong flags;
@@ -373,5 +387,34 @@ void tsdemux_audio_reset(void)
 
     spin_unlock_irqrestore(&lock, flags);
 
+    return;
+}
+
+void tsdemux_sub_reset(void)
+{
+    ulong flags;
+    spinlock_t lock = SPIN_LOCK_UNLOCKED;
+    u32 parser_sub_start_ptr;
+    u32 parser_sub_end_ptr;
+
+    spin_lock_irqsave(&lock, flags);
+
+    parser_sub_start_ptr = READ_MPEG_REG(PARSER_SUB_START_PTR);
+    parser_sub_end_ptr = READ_MPEG_REG(PARSER_SUB_END_PTR);
+
+    WRITE_MPEG_REG(PARSER_SUB_START_PTR, parser_sub_start_ptr);
+    WRITE_MPEG_REG(PARSER_SUB_END_PTR, parser_sub_end_ptr);
+    WRITE_MPEG_REG(PARSER_SUB_RP, parser_sub_start_ptr);
+    WRITE_MPEG_REG(PARSER_SUB_WP, parser_sub_start_ptr);
+    SET_MPEG_REG_MASK(PARSER_ES_CONTROL, (7<<ES_SUB_WR_ENDIAN_BIT) | ES_SUB_MAN_RD_PTR);
+
+    spin_unlock_irqrestore(&lock, flags);
+
+    return;
+}
+
+void tsdemux_set_skipbyte(int skipbyte)
+{
+    demux_skipbyte = skipbyte;
     return;
 }

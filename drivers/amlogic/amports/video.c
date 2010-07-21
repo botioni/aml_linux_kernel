@@ -118,7 +118,6 @@ static u32 zoom_end_y_lines;
 
 /* wide settings */
 static u32 wide_setting; // 1  fill content .
-atomic_t wide_changed = ATOMIC_INIT(0);
 
 /* black out policy */
 #if defined(CONFIG_JPEGLOGO)
@@ -292,7 +291,7 @@ static void vsync_toggle_frame(vframe_t *vf)
         return;
     }
 
-    if ((cur_dispbuf) && (cur_dispbuf != &vf_local)) {
+    if ((cur_dispbuf) && (cur_dispbuf != &vf_local) && (cur_dispbuf != vf)) {
         vf_put(cur_dispbuf);
 
     } else {
@@ -316,7 +315,8 @@ static void vsync_toggle_frame(vframe_t *vf)
     WRITE_MPEG_REG(VD2_IF0_CANVAS1, disp_canvas);
 
     /* set video PTS */
-    if (vf->pts != 0) {
+	if (cur_dispbuf != vf) {
+	    if (vf->pts != 0) {
 #ifdef DEBUG
         pr_dbg("vpts to vf->pts: 0x%x, scr: 0x%x, abs_scr: 0x%x\n",
             vf->pts, timestamp_pcrscr_get(), READ_MPEG_REG(SCR_HIU));
@@ -337,10 +337,10 @@ static void vsync_toggle_frame(vframe_t *vf)
             timestamp_vpts_inc(-1);
         }
     }
+    }
 
     /* enable new config on the new frames */
     if ((first_picture) ||
-        (atomic_read(&wide_changed)) ||
         (cur_dispbuf->bufWidth != vf->bufWidth) ||
         (cur_dispbuf->width != vf->width) ||
         (cur_dispbuf->height != vf->height) ||
@@ -365,8 +365,6 @@ static void vsync_toggle_frame(vframe_t *vf)
 
         /* apply new vpp settings */
         frame_par_ready_to_set = 1;
-
-        atomic_set(&wide_changed, 0);
     }
 
     cur_dispbuf = vf;
@@ -650,10 +648,26 @@ static irqreturn_t vsync_isr0(int irq, void *dev_id)
             frame_repeat_count = 0;
 #endif
 
-        } else
-            goto exit;
-    }
+        } 
+        else if ((cur_dispbuf == &vf_local) && (video_property_changed))
+        {
+            if (!blackout)
+            {
+                /* setting video display property in unregister mode */
+                u32 cur_index = cur_dispbuf->canvas0Addr;
+                canvas_update_addr(cur_index & 0xff, (u32)keep_y_addr);
+                canvas_update_addr((cur_index >> 8)& 0xff, (u32)keep_u_addr);
+                canvas_update_addr((cur_index >> 16)&0xff, (u32)keep_v_addr);
 
+                vsync_toggle_frame(cur_dispbuf);
+            }
+            else
+                video_property_changed = false;
+        }
+		else
+			return IRQ_HANDLED;
+    }
+    
     /* buffer switch management */
     vf = vf_peek();
 
@@ -706,7 +720,12 @@ static irqreturn_t vsync_isr0(int irq, void *dev_id)
 
                 vf = vf_peek();
             }
-#endif
+			else
+#endif            
+			/* setting video display property in pause mode */
+			if (video_property_changed && cur_dispbuf)
+				vsync_toggle_frame(cur_dispbuf);
+
             break;
         }
 #ifdef DEBUG
@@ -1101,7 +1120,10 @@ static int amvideo_ioctl(struct inode *inode, struct file *file,
             else if (arg == TRICKMODE_FFFB)
                 trickmode_fffb = 1;
             else
+            {
+                trickmode_i = 0;
                 trickmode_fffb = 0;
+            }
             atomic_set(&trickmode_framedone, 0);
             tsync_trick_mode(trickmode_fffb);
             break;
@@ -1264,7 +1286,7 @@ static ssize_t video_screen_mode_store(struct class *cla, struct class_attribute
     {
         if (0 != wide_setting)
         {
-            atomic_set(&wide_changed, 1);
+			video_property_changed = true;
             wide_setting=0;
         }
     }
@@ -1272,7 +1294,7 @@ static ssize_t video_screen_mode_store(struct class *cla, struct class_attribute
     {
         if (1 != wide_setting)
         {
-            atomic_set(&wide_changed, 1);
+			video_property_changed = true;
             wide_setting=1;
         }
     }

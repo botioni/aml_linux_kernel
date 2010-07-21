@@ -442,8 +442,7 @@ int vreal_dec_status(struct vdec_status *vstatus)
     vstatus->height = vreal_amstream_dec_info.height;
     vstatus->fps = 96000/vreal_amstream_dec_info.rate;
     vstatus->error_count = real_err_count;
-    vstatus->status = stat;
-
+    vstatus->status = READ_MPEG_REG(STATUS_AMRISC) | stat;
     return 0;
 }
 
@@ -561,7 +560,8 @@ static void vreal_local_init(void)
 {
     int i;
 
-    vreal_ratio = vreal_amstream_dec_info.ratio;
+    //vreal_ratio = vreal_amstream_dec_info.ratio;
+    vreal_ratio = 0x100;
 
     fill_ptr = get_ptr = put_ptr = putting_ptr = 0;
 
@@ -718,6 +718,8 @@ static int amvdec_real_probe(struct platform_device *pdev)
     buf_start = mem->start;
     buf_size = mem->end - mem->start + 1;
     buf_offset = buf_start - RM_DEF_BUFFER_ADDR;
+
+    memcpy(&vreal_amstream_dec_info, (void *)mem[1].start, sizeof(vreal_amstream_dec_info));
 
     if (vreal_init() < 0) 
     {

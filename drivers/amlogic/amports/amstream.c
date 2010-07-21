@@ -28,11 +28,13 @@
 #include <linux/vmalloc.h>
 #include <linux/mm.h>
 #include <linux/major.h>
+#include <linux/sched.h>
 #include <linux/amports/amstream.h>
 #include <linux/amports/vformat.h>
 #include <linux/amports/aformat.h>
 #include <linux/amports/tsync.h>
 #include <linux/amports/ptsserv.h>
+#include <linux/amports/timestamp.h>
 
 #include <asm/types.h>
 #include <asm/uaccess.h>
@@ -41,6 +43,10 @@
 #include <mach/am_regs.h>
 
 #include <linux/platform_device.h>
+#include <linux/mutex.h>
+#include <linux/poll.h>
+#include <linux/dma-mapping.h>
+#include <asm/uaccess.h>
 
 #include "streambuf.h"
 #include "streambuf_reg.h"
@@ -150,6 +156,11 @@ static ssize_t amstream_mpts_write
 static ssize_t amstream_mpps_write
     (struct file *file, const char *buf,
      size_t count, loff_t * ppos);
+static ssize_t amstream_sub_read
+    (struct file *file, char *buf,
+     size_t count, loff_t * ppos);
+static unsigned int amstream_sub_poll
+    (struct file *file, poll_table *wait_table);
 static int (*amstream_vdec_status)
     (struct vdec_status *vstatus);
 static int (*amstream_adec_status)
@@ -200,6 +211,15 @@ const static struct file_operations mprm_fops = {
     .ioctl    = amstream_ioctl,
 };
 
+const static struct file_operations sub_fops = {
+    .owner    = THIS_MODULE,
+    .open     = amstream_open,
+    .release  = amstream_release,
+    .read     = amstream_sub_read,
+    .poll     = amstream_sub_poll,
+    .ioctl    = amstream_ioctl,
+};
+
 const static struct file_operations amstream_fops = {
     .owner    = THIS_MODULE,
     .open     = amstream_open,
@@ -211,6 +231,11 @@ const static struct file_operations amstream_fops = {
 
 struct dec_sysinfo amstream_dec_info;
 static struct class *amstream_dev_class;
+static DEFINE_MUTEX(amstream_mutex);
+
+atomic_t subdata_ready = ATOMIC_INIT(0);
+/* wait queue for poll */
+static wait_queue_head_t amstream_sub_wait;
 
 static stream_port_t ports[] =
 {
@@ -238,6 +263,11 @@ static stream_port_t ports[] =
         .name  = "amstream_rm",
         .type  = PORT_TYPE_RM | PORT_TYPE_VIDEO | PORT_TYPE_AUDIO,
         .fops  = &mprm_fops,
+    },
+    {
+        .name  = "amstream_sub",
+        .type  = PORT_TYPE_SUB,
+        .fops  = &sub_fops,
     }
 };
 
@@ -370,6 +400,27 @@ static int audio_port_reset(stream_port_t *port,struct stream_buf_s * pbuf)
 
     pts_start(PTS_TYPE_AUDIO);
 
+    return 0;
+}
+
+static int sub_port_reset(stream_port_t *port,struct stream_buf_s * pbuf)
+{
+    int r;
+
+    stbuf_release(pbuf);
+
+    r = stbuf_init(pbuf);
+    if (r < 0)
+        return r;
+
+    if(port->type & PORT_TYPE_MPTS)
+        tsdemux_sub_reset();
+
+    if(port->type & PORT_TYPE_MPPS)
+        psparser_sub_reset();
+
+    pbuf->flag |= BUF_FLAG_IN_USE;
+    
     return 0;
 }
 
@@ -554,6 +605,21 @@ static void amstream_change_avid(stream_port_t *port)
     return;
 }
 
+static void amstream_change_sid(stream_port_t *port)
+{
+    if(port->type & PORT_TYPE_MPTS)
+    {
+        tsdemux_change_sid((port->flag & PORT_FLAG_SID) ? port->sid : 0xffff);
+    }
+
+    if(port->type & PORT_TYPE_MPPS)
+    {
+        psparser_change_sid((port->flag & PORT_FLAG_SID) ? port->sid : 0xffff);
+    }
+
+    return;
+}
+
 /**************************************************/
 static ssize_t amstream_vbuf_write(struct file *file, const char *buf,
                                size_t count, loff_t * ppos)
@@ -646,6 +712,80 @@ static ssize_t amstream_mprm_write(struct file *file, const char *buf,
     return rmparser_write(file, pvbuf,pabuf,buf, count);
 }
 
+static ssize_t amstream_sub_read(struct file *file, char __user *buf, size_t count, loff_t * ppos)
+{
+    u32 sub_rp, sub_wp, sub_start, data_size, res;
+    stream_buf_t *s_buf = &bufs[BUF_TYPE_SUBTITLE];
+    stream_port_t *st = (stream_port_t *)file->private_data;
+    dma_addr_t buf_map;
+
+    sub_rp = stbuf_sub_rp_get();
+    sub_wp = stbuf_sub_wp_get();
+    sub_start = stbuf_sub_start_get();
+
+    if (sub_wp > sub_rp)
+    {
+        data_size = sub_wp - sub_rp;
+    }
+    else
+    {
+        data_size = s_buf->buf_size - sub_rp + sub_wp;
+    }
+
+    if (data_size > count)
+        data_size = count;
+
+    if (sub_wp < sub_rp)
+    {
+        int first_num = s_buf->buf_size - (sub_rp - sub_start);
+
+        buf_map = dma_map_single(st->class_dev, (void *)buf, first_num, DMA_FROM_DEVICE);
+        res = copy_to_user((void *)buf_map, (void *)sub_rp, first_num);
+        dma_unmap_single(st->class_dev, buf_map, first_num, DMA_FROM_DEVICE);
+        if (res)
+        {
+            if (res > 0)
+            {
+                stbuf_sub_rp_set(sub_rp + first_num - res);
+            }
+            return first_num-res;
+        }
+
+        buf_map = dma_map_single(st->class_dev, (void *)buf + first_num, data_size - first_num, DMA_FROM_DEVICE);
+        res = copy_to_user((void *)buf_map, (void *)sub_start, data_size - first_num);
+        dma_unmap_single(st->class_dev, buf_map, data_size - first_num, DMA_FROM_DEVICE);
+        if (res >= 0)
+        {            
+            stbuf_sub_rp_set(sub_start + data_size - first_num - res);
+        }
+        return data_size-res;
+    }
+    else
+    {
+        buf_map = dma_map_single(st->class_dev, (void *)buf, data_size, DMA_FROM_DEVICE);
+        res = copy_to_user((void *)buf_map, (void *)sub_rp, data_size);
+        dma_unmap_single(st->class_dev, buf_map, data_size, DMA_FROM_DEVICE);
+        if (res >= 0)
+        {
+            stbuf_sub_rp_set(sub_rp + data_size - res);
+        }
+        return data_size-res;
+    }
+}
+
+static unsigned int amstream_sub_poll(struct file *file, poll_table *wait_table)
+{
+    poll_wait(file, &amstream_sub_wait, wait_table);
+
+    if (atomic_read(&subdata_ready))
+    {
+        atomic_set(&subdata_ready, 0);
+        return POLLOUT | POLLWRNORM;
+    }
+
+    return 0;
+}
+
 static int amstream_open(struct inode *inode, struct file *file)
 {
     s32 i;
@@ -696,6 +836,8 @@ static int amstream_release(struct inode *inode, struct file *file)
     amstream_port_release(this);
     this->flag=0;
 
+    timestamp_pcrscr_set(0);
+    
     #ifdef DATA_DEBUG
     if (debug_filp)
     {
@@ -802,6 +944,11 @@ static int amstream_ioctl(struct inode *inode, struct file *file,
             {
                 this->sid = (u32)arg;
                 this->flag |= PORT_FLAG_SID;
+
+                if (this->flag & PORT_FLAG_INITED)
+                {
+                    amstream_change_sid(this);
+                }
             }
             else
                 r = -EINVAL;
@@ -944,12 +1091,57 @@ static int amstream_ioctl(struct inode *inode, struct file *file,
         	if (this->type & PORT_TYPE_AUDIO) {
             	stream_buf_t *pabuf=&bufs[BUF_TYPE_AUDIO];
 
-            	r=audio_port_reset(this, pabuf);
+            r=audio_port_reset(this, pabuf);
+        }
+        else
+            r = -EINVAL;
 
-        	} else
-            	r = -EINVAL;
-			break;
+        break;
 
+    case AMSTREAM_IOC_SUB_RESET:
+        if (this->type & PORT_TYPE_SUB)
+        {
+            stream_buf_t *psbuf = &bufs[BUF_TYPE_SUBTITLE];
+
+            r = sub_port_reset(this, psbuf);
+        }
+        else
+            r = -EINVAL;
+        break;
+
+    case AMSTREAM_IOC_SUB_LENGTH:
+        if (this->type & PORT_TYPE_SUB)
+        {
+            u32 sub_wp, sub_rp;
+            stream_buf_t *psbuf = &bufs[BUF_TYPE_SUBTITLE];
+
+            sub_wp = stbuf_sub_wp_get();
+            sub_rp = stbuf_sub_rp_get();
+
+            if (sub_wp > sub_rp)
+            {
+                *((u32 *)arg) = sub_wp - sub_rp;
+            }
+            else
+            {
+                *((u32 *)arg) = psbuf->buf_size - (sub_rp - sub_wp);
+            }
+        }
+        else
+            r = -EINVAL;
+        break;
+
+    case AMSTREAM_IOC_SET_DEC_RESET:
+        tsync_set_dec_reset();
+        break;
+
+    case AMSTREAM_IOC_TS_SKIPBYTE:
+        if ((int)arg >= 0)
+            tsdemux_set_skipbyte(arg);
+        else
+            r = -EINVAL;
+        break;
+        
         default:
             r = -ENOIOCTLCMD;
     }
@@ -1015,7 +1207,9 @@ static int  amstream_probe(struct platform_device *pdev)
             r= (-ENOMEM);
             goto error7;
         }
-    return 0;
+    init_waitqueue_head(&amstream_sub_wait);
+
+	return 0;
 
 error7:
     stbuf_change_size(&bufs[BUF_TYPE_SUBTITLE],0);
@@ -1081,9 +1275,18 @@ void set_trickmode_func(int (*trickmode_func)(unsigned long trickmode))
     return;
 }
 
+void wakeup_sub_poll(void)
+{
+    atomic_set(&subdata_ready, 1);
+    wake_up_interruptible(&amstream_sub_wait);
+    
+    return;
+}
+
 EXPORT_SYMBOL(set_vdec_func);
 EXPORT_SYMBOL(set_adec_func);
 EXPORT_SYMBOL(set_trickmode_func);
+EXPORT_SYMBOL(wakeup_sub_poll);
 
 static struct platform_driver
 amstream_driver = {

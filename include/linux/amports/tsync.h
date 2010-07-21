@@ -33,6 +33,7 @@ typedef enum {
     VIDEO_TSTAMP_DISCONTINUITY,
     AUDIO_START,
     AUDIO_PAUSE,
+    AUDIO_RESUME,
     AUDIO_STOP,
     AUDIO_TSTAMP_DISCONTINUITY
 } avevent_t;
@@ -51,6 +52,8 @@ extern void tsync_trick_mode(int trick_mode);
 extern void tsync_set_avthresh(unsigned int av_thresh);
 
 extern void tsync_set_syncthresh(unsigned int sync_thresh);
+
+extern void tsync_set_dec_reset(void);
 
 static inline u32 tsync_vpts_discontinuity_margin(void)
 {

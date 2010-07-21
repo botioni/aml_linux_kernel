@@ -72,6 +72,10 @@
 #define AMSTREAM_IOC_VPAUSE      _IOW(AMSTREAM_IOC_MAGIC, 0x17, int)
 #define AMSTREAM_IOC_AVTHRESH   _IOW(AMSTREAM_IOC_MAGIC, 0x18, int)
 #define AMSTREAM_IOC_SYNCTHRESH _IOW(AMSTREAM_IOC_MAGIC, 0x19, int)
+#define AMSTREAM_IOC_SUB_RESET   _IOW(AMSTREAM_IOC_MAGIC, 0x1a, int)
+#define AMSTREAM_IOC_SUB_LENGTH  _IOR(AMSTREAM_IOC_MAGIC, 0x1b, unsigned long)
+#define AMSTREAM_IOC_SET_DEC_RESET _IOW(AMSTREAM_IOC_MAGIC, 0x1c, int)
+#define AMSTREAM_IOC_TS_SKIPBYTE _IOW(AMSTREAM_IOC_MAGIC, 0x1d, int)
 
 #define TRICKMODE_NONE       0x00
 #define TRICKMODE_I          0x01
@@ -150,6 +154,7 @@ struct dec_sysinfo {
 void set_vdec_func(int (*vdec_func)(struct vdec_status *));
 void set_adec_func(int (*adec_func)(struct adec_status *));
 void set_trickmode_func(int (*trickmode_func)(unsigned long trickmode));
+void wakeup_sub_poll(void);
 #endif
 
 #endif /* AMSTREAM_H */

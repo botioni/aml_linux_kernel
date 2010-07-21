@@ -43,6 +43,8 @@
 #define MPEG_START_CODE_MASK    (0xffffff00L)
 #define MAX_MPG_AUDIOPK_SIZE     0x1000
 
+#define SUB_INSERT_START_CODE   0x12345678
+
 #define PARSER_WRITE        (ES_WRITE | ES_PARSER_START)
 #define PARSER_VIDEO        (ES_TYPE_VIDEO)
 #define PARSER_AUDIO        (ES_TYPE_AUDIO)
@@ -51,6 +53,8 @@
 #define PARSER_AUTOSEARCH   (ES_SEARCH | ES_PARSER_START)
 #define PARSER_DISCARD      (ES_DISCARD | ES_PARSER_START)
 #define PARSER_BUSY         (ES_PARSER_BUSY)
+
+#define PARSER_PARAMETER_LENGTH_BIT     16
 
 #define PARSER_POP      READ_MPEG_REG(PFIFO_DATA)
 #define SET_BLOCK(size) \
@@ -86,6 +90,7 @@ static u32 audio_data_parsed;
 
 static unsigned first_apts, first_vpts;
 static unsigned audio_got_first_pts, video_got_first_dts, sub_got_first_pts;
+atomic_t sub_block_found = ATOMIC_INIT(0);
 
 static bool ptsmgr_first_vpts_ready(void)
 {
@@ -489,8 +494,14 @@ static u32 parser_process(s32 type, s32 packet_len)
                     }
 
                     if (sub_got_first_pts) {
-                        //printk("sub pts 0x%x, len %d\n", pts, packet_len);
+                        printk("sub pts 0x%x, len %d\n", pts, packet_len);
                         SET_BLOCK(packet_len);
+                        WRITE_MPEG_REG(PARSER_PARAMETER, 16 << PARSER_PARAMETER_LENGTH_BIT);
+                        WRITE_MPEG_REG(PARSER_INSERT_DATA, SUB_INSERT_START_CODE);
+                        WRITE_MPEG_REG(PARSER_INSERT_DATA, sub_id);
+                        WRITE_MPEG_REG(PARSER_INSERT_DATA, packet_len);
+                        WRITE_MPEG_REG(PARSER_INSERT_DATA, pts);
+                        atomic_set(&sub_block_found, 1);
                         return SEND_SUBPIC_SEARCH;
                     }
                     else {
@@ -530,6 +541,12 @@ static void on_start_code_found(int start_code)
 #if SAVE_SCR
     unsigned scr;
 #endif
+
+    if (atomic_read(&sub_block_found))
+    {
+        wakeup_sub_poll();
+        atomic_set(&sub_block_found, 0);
+    }
 
     if (audio_first_access == AUDIO_FIRST_ACCESS_POPING) {
         /* we are in the procedure of poping data for audio first access, continue with last packet */
@@ -635,7 +652,7 @@ static void on_start_code_found(int start_code)
             break;
 
         case SEND_SUBPIC_SEARCH:
-            WRITE_MPEG_REG_BITS(PARSER_CONTROL, PARSER_AUTOSEARCH | PARSER_SUBPIC | PARSER_WRITE, ES_CTRL_BIT, ES_CTRL_WID);
+            WRITE_MPEG_REG_BITS(PARSER_CONTROL, PARSER_AUTOSEARCH | PARSER_SUBPIC | PARSER_WRITE | ES_INSERT_BEFORE_ES_WRITE, ES_CTRL_BIT, ES_CTRL_WID);
             break;
 
         case DISCARD_SEARCH:
@@ -763,7 +780,7 @@ s32 psparser_init(u32 vid, u32 aid, u32 sid)
     WRITE_MPEG_REG(PARSER_SUB_START_PTR, parser_sub_start_ptr);
     WRITE_MPEG_REG(PARSER_SUB_END_PTR, parser_sub_end_ptr);
     WRITE_MPEG_REG(PARSER_SUB_RP, parser_sub_rp);
-    SET_MPEG_REG_MASK(PARSER_ES_CONTROL, ES_SUB_MAN_RD_PTR);
+    SET_MPEG_REG_MASK(PARSER_ES_CONTROL, (7<<ES_SUB_WR_ENDIAN_BIT) | ES_SUB_MAN_RD_PTR);
 
     WRITE_MPEG_REG(PFIFO_RD_PTR, 0);
     WRITE_MPEG_REG(PFIFO_WR_PTR, 0);
@@ -866,6 +883,13 @@ void psparser_change_avid(unsigned int vid, unsigned int aid)
     return;
 }
 
+void psparser_change_sid(unsigned int sid)
+{
+    sub_id = sid;
+
+    return;
+}
+
 void psparser_audio_reset(void)
 {
     ulong flags;
@@ -888,6 +912,29 @@ void psparser_audio_reset(void)
     CLEAR_MPEG_REG_MASK(AIU_MEM_AIFIFO_BUF_CNTL, MEM_BUFCTRL_INIT);
 
     audio_data_parsed = 0;
+
+    spin_unlock_irqrestore(&lock, flags);
+
+    return;
+}
+
+void psparser_sub_reset(void)
+{
+    ulong flags;
+    spinlock_t lock = SPIN_LOCK_UNLOCKED;
+    u32 parser_sub_start_ptr;
+    u32 parser_sub_end_ptr;
+
+    spin_lock_irqsave(&lock, flags);
+
+    parser_sub_start_ptr = READ_MPEG_REG(PARSER_SUB_START_PTR);
+    parser_sub_end_ptr = READ_MPEG_REG(PARSER_SUB_END_PTR);
+
+    WRITE_MPEG_REG(PARSER_SUB_START_PTR, parser_sub_start_ptr);
+    WRITE_MPEG_REG(PARSER_SUB_END_PTR, parser_sub_end_ptr);
+    WRITE_MPEG_REG(PARSER_SUB_RP, parser_sub_start_ptr);
+    WRITE_MPEG_REG(PARSER_SUB_WP, parser_sub_start_ptr);
+    SET_MPEG_REG_MASK(PARSER_ES_CONTROL, (7<<ES_SUB_WR_ENDIAN_BIT) | ES_SUB_MAN_RD_PTR);
 
     spin_unlock_irqrestore(&lock, flags);
 

@@ -5,6 +5,7 @@
 #include <linux/spinlock.h>
 #include <linux/slab.h>
 #include <linux/amports/ptsserv.h>
+#include <linux/amports/timestamp.h>
 
 #include <mach/am_regs.h>
 
@@ -240,7 +241,7 @@ int pts_checkin(u8 type, u32 val)
 
 EXPORT_SYMBOL(pts_checkin);
 
-int pts_lookup_pageoffset(u8 type, u32 page_offset, u32 *val)
+int pts_lookup_pageoffset(u8 type, u32 page_offset, u32 *val, u32 pts_margin)
 {
     ulong flags;
     u32 offset, page, page_no;
@@ -258,15 +259,16 @@ int pts_lookup_pageoffset(u8 type, u32 page_offset, u32 *val)
     page_no = (page_offset < offset) ? (page + 1) : page;
 
     return pts_lookup_offset(type,
-        page_offset + pts_table[type].buf_size * page_no, val);
+        page_offset + pts_table[type].buf_size * page_no, val, pts_margin);
 }
 
 EXPORT_SYMBOL(pts_lookup_pageoffset);
 
-int pts_lookup_offset(u8 type, u32 offset, u32 *val)
+int pts_lookup_offset(u8 type, u32 offset, u32 *val, u32 pts_margin)
 {
     ulong flags;
     pts_table_t *pTable;
+    int lookup_threshold;
 #if defined(DEBUG_VIDEO) || defined(DEBUG_AUDIO)
     int look_cnt = 0;
 #endif
@@ -275,6 +277,11 @@ int pts_lookup_offset(u8 type, u32 offset, u32 *val)
         return -EINVAL;
 
     pTable = &pts_table[type];
+
+    if (pts_margin == 0)
+        lookup_threshold = pTable->lookup_threshold;
+    else
+        lookup_threshold = pts_margin;
 
     spin_lock_irqsave(&lock, flags);
 
@@ -338,7 +345,7 @@ if (type == PTS_TYPE_VIDEO)
             p2 = p;
 
         if ((p2) &&
-            ((offset - p2->offset) < pTable->lookup_threshold)) {
+            ((offset - p2->offset) < lookup_threshold)) {
 #ifdef DEBUG_CHECKOUT
 #ifdef DEBUG_VIDEO
             if (type == PTS_TYPE_VIDEO)
@@ -523,6 +530,9 @@ int pts_stop(u8 type)
         INIT_LIST_HEAD(&pTable->free_list);
 
         pTable->status = PTS_IDLE;
+
+        if (type == PTS_TYPE_AUDIO)
+            timestamp_apts_set(-1);
 
         printk("pts stopped\n");
 
