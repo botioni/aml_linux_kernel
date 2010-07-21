@@ -148,25 +148,28 @@ static ssize_t _esparser_write(const char __user *buf, size_t count, u32 type)
 
 s32 es_vpts_checkin(struct stream_buf_s *buf, u32 pts)
 {
+#if 0
     if (buf->first_tstamp==INVALID_PTS) {
         buf->flag |= BUF_FLAG_FIRST_TSTAMP;
         buf->first_tstamp = pts;
 
         return 0;
     }
-
+#endif
     return pts_checkin_offset(PTS_TYPE_VIDEO, video_data_parsed, pts);
 
 }
 
 s32 es_apts_checkin(struct stream_buf_s *buf, u32 pts)
 {
+#if 0
     if (buf->first_tstamp==INVALID_PTS) {
         buf->flag |= BUF_FLAG_FIRST_TSTAMP;
         buf->first_tstamp = pts;
 
         return 0;
     }
+#endif
 
     return pts_checkin_offset(PTS_TYPE_AUDIO, audio_data_parsed, pts);
 }
@@ -272,6 +275,7 @@ s32 esparser_init(struct stream_buf_s *buf)
         goto Err_1;
     }
 
+#if 0
     if (buf->flag & BUF_FLAG_FIRST_TSTAMP) {
         if (buf->type == BUF_TYPE_VIDEO)
             es_vpts_checkin(buf, buf->first_tstamp);
@@ -280,6 +284,7 @@ s32 esparser_init(struct stream_buf_s *buf)
 
         buf->flag &= ~BUF_FLAG_FIRST_TSTAMP;
     }
+#endif
 
     if (atomic_read(&esparser_use_count) == 1)
     {

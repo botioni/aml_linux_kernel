@@ -34,6 +34,9 @@ extern ssize_t tsdemux_write(struct file *file,
 int     tsdemux_class_register(void);
 void  tsdemux_class_unregister(void);
 void tsdemux_change_avid(unsigned int vid, unsigned int aid);
+void tsdemux_change_sid(unsigned int sid);
 void tsdemux_audio_reset(void);
+void tsdemux_sub_reset(void);
+void tsdemux_set_skipbyte(int skipbyte);
 #endif /* TSDEMUX_H */
 

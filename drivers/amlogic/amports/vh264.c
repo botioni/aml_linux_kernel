@@ -626,7 +626,7 @@ static void vh264_isr(void)
                                 break;
                         }
 
-                        if (pts_lookup_offset(PTS_TYPE_VIDEO, b_offset, &pts) == 0) 
+                        if (pts_lookup_offset(PTS_TYPE_VIDEO, b_offset, &pts, 0) == 0) 
                         {
                                 pts_valid = 1;
                         #ifdef DEBUG_PTS

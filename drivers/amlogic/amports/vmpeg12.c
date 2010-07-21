@@ -176,7 +176,7 @@ static irqreturn_t vmpeg12_isr(int irq, void *dev_id)
         offset = READ_MPEG_REG(MREG_FRAME_OFFSET);
 
         if (((info & PICINFO_TYPE_MASK) == PICINFO_TYPE_I) &&
-            (pts_lookup_offset(PTS_TYPE_VIDEO, offset, &pts) == 0)) {
+            (pts_lookup_offset(PTS_TYPE_VIDEO, offset, &pts, 0) == 0)) {
             pts_valid = 1;
         }
 

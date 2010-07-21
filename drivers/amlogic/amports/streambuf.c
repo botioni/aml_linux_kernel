@@ -261,3 +261,24 @@ void stbuf_release(struct stream_buf_s *buf)
 	buf->first_tstamp=INVALID_PTS;
     buf->flag = 0;
 }
+
+u32 stbuf_sub_rp_get(void)
+{
+    return READ_MPEG_REG(PARSER_SUB_RP);
+}
+
+void stbuf_sub_rp_set(unsigned int sub_rp)
+{
+    WRITE_MPEG_REG(PARSER_SUB_RP, sub_rp);
+    return;
+}
+
+u32 stbuf_sub_wp_get(void)
+{
+    return READ_MPEG_REG(PARSER_SUB_WP);
+}
+
+u32 stbuf_sub_start_get(void)
+{
+    return READ_MPEG_REG(PARSER_SUB_START_PTR);
+}

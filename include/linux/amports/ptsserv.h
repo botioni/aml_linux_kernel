@@ -39,9 +39,9 @@ extern int pts_checkin_pageoffset(u8 type, u32 offset, u32 val);
 
 extern int pts_checkin_offset(u8 type, u32 offset, u32 val);
 
-extern int pts_lookup_pageoffset(u8 type, u32 offset, u32 *val);
+extern int pts_lookup_pageoffset(u8 type, u32 offset, u32 *val, u32 pts_margin);
 
-extern int pts_lookup_offset(u8 type, u32 offset, u32 *val);
+extern int pts_lookup_offset(u8 type, u32 offset, u32 *val, u32 pts_margin);
 
 extern int pts_set_resolution(u8 type, u32 level);
 

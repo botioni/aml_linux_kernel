@@ -83,6 +83,10 @@ extern void stbuf_release(struct stream_buf_s *buf);
 extern int  stbuf_change_size(struct stream_buf_s *buf,int size);
 extern int stbuf_fetch_init(void);
 extern void stbuf_fetch_release(void);
+extern u32 stbuf_sub_rp_get(void);
+extern void stbuf_sub_rp_set(unsigned int sub_rp);
+extern u32 stbuf_sub_wp_get(void);
+extern u32 stbuf_sub_start_get(void);
 
 #endif /* STREAMBUF_H */
 

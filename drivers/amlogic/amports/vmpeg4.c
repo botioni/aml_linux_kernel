@@ -193,7 +193,7 @@ static void set_aspect_ratio(vframe_t *vf, unsigned pixel_ratio)
         ar = min(ar, DISP_RATIO_ASPECT_RATIO_MAX);
 
         vf->ratio_control = (ar<<DISP_RATIO_ASPECT_RATIO_BIT);
-        vf->ratio_control |= DISP_RATIO_FORCECONFIG | DISP_RATIO_KEEPRATIO;
+        //vf->ratio_control |= DISP_RATIO_FORCECONFIG | DISP_RATIO_KEEPRATIO;
 }
 
 #ifdef HANDLE_MPEG4_IRQ
@@ -216,7 +216,7 @@ static void vmpeg4_isr(void)
                 if (pts_by_offset)
                 {
                         offset = READ_MPEG_REG(MP4_OFFSET_REG);
-                        if (pts_lookup_offset(PTS_TYPE_VIDEO, offset, &pts) == 0) 
+                        if (pts_lookup_offset(PTS_TYPE_VIDEO, offset, &pts, 0) == 0) 
                         {
                                 pts_valid = 1;
                         #ifdef DEBUG_PTS
