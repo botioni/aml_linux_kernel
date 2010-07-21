@@ -21,7 +21,8 @@
 #include <mach/memory.h>
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>
-
+#include <asm/mach/map.h>
+#include <asm/setup.h>
 #ifdef CONFIG_CACHE_L2X0
 #include <asm/hardware/cache-l2x0.h>
 #endif
