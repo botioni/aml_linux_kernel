@@ -89,7 +89,7 @@ static const struct hc_driver dwc_otg_hc_driver = {
 
 #ifdef NO_HOST_SOF
 
-#define SOF_INTERVAL	500	/* period for SOF, in ticks  */
+#define SOF_INTERVAL	2	/* period for SOF, in ticks  */
 
 /* forward declare */
 static void assign_and_init_hc(dwc_otg_hcd_t * _hcd, dwc_otg_qh_t * _qh);
@@ -185,7 +185,7 @@ static void dwc_otg_hcd_nak_timer_handler(unsigned long parg)
 
       local_irq_restore(flags);
 
-      //mod_timer(&_hcd->nak_timer, jiffies + NAK_TIMER_INTERVAL);
+      mod_timer(&_hcd->nak_timer, jiffies + NAK_TIMER_INTERVAL);
       return;
 }
 
