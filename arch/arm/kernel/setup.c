@@ -388,7 +388,7 @@ static struct machine_desc * __init setup_machine(unsigned int nr)
 static int __init arm_add_memory(unsigned long start, unsigned long size)
 {
 	struct membank *bank = &meminfo.bank[meminfo.nr_banks];
-
+	printk("add memory bank,start=%x-%x\n",start,start+size);
 	if (meminfo.nr_banks >= NR_BANKS) {
 		printk(KERN_CRIT "NR_BANKS too low, "
 			"ignoring memory at %#lx\n", start);
@@ -439,8 +439,18 @@ static int __init early_mem(char *p)
 	size  = memparse(p, &endp);
 	if (*endp == '@')
 		start = memparse(endp + 1, NULL);
-
-	arm_add_memory(start, size);
+#ifdef CONFIG_ARCH_MESON
+	{
+		/*64M-128M is reversed for VIDEO MEMORY*/
+		arm_add_memory(start, size>(SZ_64M)?SZ_64M:size);
+		if(size>(SZ_128M))
+		{
+			arm_add_memory(PHYS_OFFSET+SZ_128M,size-SZ_128M);
+		}
+	}
+#else
+		arm_add_memory(start, size);
+#endif
 
 	return 0;
 }
