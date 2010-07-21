@@ -88,6 +88,36 @@ static struct platform_device apollo_codec = {
     .resource      = apollo_codec_resources,
 };
 #endif
+static struct resource apollo_audiodsp_resources[] = {
+    [0] = {
+        .start =  AUDIODSP_ADDR_START,
+        .end   = AUDIODSP_ADDR_END,
+        .flags = IORESOURCE_MEM,
+    },
+};
+
+static struct platform_device apollo_audiodsp = {
+    .name       = "audiodsp",
+    .id         = 0,
+    .num_resources = ARRAY_SIZE(apollo_audiodsp_resources),
+    .resource      = apollo_audiodsp_resources,
+};
+static struct resource apollo_mali_resources[] = {
+    [0] = {
+        .start = MALI_ADDR_START,
+        .end   = MALI_ADDR_END,
+        .flags = IORESOURCE_MEM,
+    },
+};
+
+static struct platform_device apollo_mali= {
+    .name       = "mali400",
+    .id         = 0,
+    .num_resources = ARRAY_SIZE(apollo_mali_resources),
+    .resource      = apollo_mali_resources,
+};
+
+
 static struct platform_device __initdata *platform_devs[] = {
     #if defined(CONFIG_JPEGLOGO)
 		&jpeglogo_dev,
@@ -98,7 +128,10 @@ static struct platform_device __initdata *platform_devs[] = {
     #if defined(CONFIG_AM_STREAMING)
 	&apollo_codec,
     #endif
+	&apollo_audiodsp,
+	&apollo_mali,
 };
+
 
 static __init void m1_init_machine(void)
 {
@@ -110,15 +143,42 @@ static __init void m1_init_machine(void)
 
 	platform_add_devices(platform_devs, ARRAY_SIZE(platform_devs));
 }
+/*VIDEO MEMORY MAPING*/
+static __initdata struct map_desc meson_video_mem_desc[] = {
+	{
+		/*FIXME:map the video memory to other.*/
+		.virtual		=	PAGE_ALIGN(VIDEO_MEM_START),
+		.pfn			= 	__phys_to_pfn(VIDEO_MEM_START),
+		.length		= 	VIDEO_MEM_END-VIDEO_MEM_START+1,
+		.type		= 	MT_DEVICE,
+	},
+};
 
 static __init void m1_map_io(void)
 {
 	meson_map_io();
+	iotable_init(meson_video_mem_desc, ARRAY_SIZE(meson_video_mem_desc));
 }
 
 static __init void m1_irq_init(void)
 {
 	meson_init_irq();
+}
+
+static __init void m1_fixup(struct machine_desc *mach, struct tag *tag, char **cmdline, struct meminfo *m)
+{
+	struct membank *pbank;
+	m->nr_banks=0;
+	pbank=&m->bank[m->nr_banks];
+	pbank->start = PAGE_ALIGN(PHYS_MEM_START);
+	pbank->size  = SZ_64M & PAGE_MASK;
+	pbank->node  = PHYS_TO_NID(PHYS_MEM_START);
+	m->nr_banks++;
+	pbank=&m->bank[m->nr_banks];
+	pbank->start = PAGE_ALIGN(VIDEO_MEM_END+1);
+	pbank->size  = (PHYS_MEM_END-VIDEO_MEM_END) & PAGE_MASK;
+	pbank->node  = PHYS_TO_NID(VIDEO_MEM_END+1);
+	m->nr_banks++;
 }
 
 MACHINE_START(MESON_6236M, "AMLOGIC MESON-M1 6236M")
@@ -129,4 +189,7 @@ MACHINE_START(MESON_6236M, "AMLOGIC MESON-M1 6236M")
 	.init_irq		= m1_irq_init,
 	.timer			= &meson_sys_timer,
 	.init_machine	= m1_init_machine,
+	.fixup		=m1_fixup,
+	.video_start	=VIDEO_MEM_START,
+	.video_end	=VIDEO_MEM_END,
 MACHINE_END
