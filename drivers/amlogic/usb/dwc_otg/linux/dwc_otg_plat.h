@@ -48,7 +48,7 @@
 #define NAK_IN_TIMER
 
 #ifdef NAK_IN_TIMER
-#define NAK_TIMER_INTERVAL		20
+#define NAK_TIMER_INTERVAL		1
 #endif
 /**
  * @file 
