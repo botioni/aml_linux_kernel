@@ -91,10 +91,10 @@ static const  reg_t tvregs_720p[] = {
 static const reg_t tvregs_480i[] = {
     {VENC_VDAC_SETTING,          0xff,  },
 #ifdef CRYSTAL_25M
-	{HHI_AUD_PLL_CNTL,			 0x4a6c,},
+	{HHI_AUD_PLL_CNTL,			 0x0a6c,},
 #endif
 #ifdef CRYSTAL_24M
-	{HHI_AUD_PLL_CNTL,			 0x442d,},
+	{HHI_AUD_PLL_CNTL,			 0x042d,},
 #endif
 	{HHI_VID_CLK_DIV,			 4,		},
     {HHI_VID_CLK_CNTL,        	 0x05a1,},
@@ -129,10 +129,10 @@ static const reg_t tvregs_480i[] = {
 static const reg_t tvregs_480cvbs[] = {
     {VENC_VDAC_SETTING,          0xff,  },
 #ifdef CRYSTAL_25M
-	{HHI_AUD_PLL_CNTL,			 0x4a6c,},
+	{HHI_AUD_PLL_CNTL,			 0x0a6c,},
 #endif
 #ifdef CRYSTAL_24M
-	{HHI_AUD_PLL_CNTL,			 0x442d,},
+	{HHI_AUD_PLL_CNTL,			 0x042d,},
 #endif
 	{HHI_VID_CLK_DIV,			 4,		},
     {HHI_VID_CLK_CNTL,        	 0x05a1,},
@@ -166,10 +166,10 @@ static const reg_t tvregs_480cvbs[] = {
 static const reg_t tvregs_480p[] = {
     {VENC_VDAC_SETTING,          0xff,  },
 #ifdef CRYSTAL_25M
-	{HHI_AUD_PLL_CNTL,			 0x4a6c,},
+	{HHI_AUD_PLL_CNTL,			 0x0a6c,},
 #endif
 #ifdef CRYSTAL_24M
-	{HHI_AUD_PLL_CNTL,			 0x442d,},
+	{HHI_AUD_PLL_CNTL,			 0x042d,},
 #endif
 	{HHI_VID_CLK_DIV,			 4,		},
     {HHI_VID_CLK_CNTL,        	 0x0561,},
@@ -212,10 +212,10 @@ static const reg_t tvregs_480p[] = {
 static const reg_t tvregs_576i[] = {
     {VENC_VDAC_SETTING,          0xff,  },
 #ifdef CRYSTAL_25M
-	{HHI_AUD_PLL_CNTL,			 0x4a6c,},
+	{HHI_AUD_PLL_CNTL,			 0x0a6c,},
 #endif
 #ifdef CRYSTAL_24M
-	{HHI_AUD_PLL_CNTL,			 0x442d,},
+	{HHI_AUD_PLL_CNTL,			 0x042d,},
 #endif
 	{HHI_VID_CLK_DIV,			 4,		},
     {HHI_VID_CLK_CNTL,        	 0x05a1,},
@@ -250,10 +250,10 @@ static const reg_t tvregs_576i[] = {
 static const reg_t tvregs_576cvbs[] = {
     {VENC_VDAC_SETTING,          0xff,  },
 #ifdef CRYSTAL_25M
-	{HHI_AUD_PLL_CNTL,			 0x4a6c,},
+	{HHI_AUD_PLL_CNTL,			 0x0a6c,},
 #endif
 #ifdef CRYSTAL_24M
-	{HHI_AUD_PLL_CNTL,			 0x442d,},
+	{HHI_AUD_PLL_CNTL,			 0x042d,},
 #endif
 	{HHI_VID_CLK_DIV,			 4,		},
     {HHI_VID_CLK_CNTL,        	 0x05a1,},
@@ -288,10 +288,10 @@ static const reg_t tvregs_576cvbs[] = {
 static const reg_t tvregs_576p[] = {
     {VENC_VDAC_SETTING,          0xff,  },
 #ifdef CRYSTAL_25M
-	{HHI_AUD_PLL_CNTL,			 0x4a6c,},
+	{HHI_AUD_PLL_CNTL,			 0x0a6c,},
 #endif
 #ifdef CRYSTAL_24M
-	{HHI_AUD_PLL_CNTL,			 0x442d,},
+	{HHI_AUD_PLL_CNTL,			 0x042d,},
 #endif
 	{HHI_VID_CLK_DIV,			 4,		},
     {HHI_VID_CLK_CNTL,        	 0x0561,},
