@@ -218,7 +218,7 @@ static void vvc1_isr(void)
                 if (pts_by_offset)
                 {
                         offset = READ_MPEG_REG(VC1_OFFSET_REG);
-                        if (pts_lookup_offset(PTS_TYPE_VIDEO, offset, &pts) == 0) 
+                        if (pts_lookup_offset(PTS_TYPE_VIDEO, offset, &pts, 0) == 0) 
                         {
                                 pts_valid = 1;
                         #ifdef DEBUG_PTS
