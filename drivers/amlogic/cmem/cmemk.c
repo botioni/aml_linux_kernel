@@ -19,6 +19,9 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
+/*
+ * cmemk.c
+ */
 #include <linux/device.h>
 #include <linux/fs.h>
 #include <linux/module.h>
@@ -32,14 +35,33 @@
 #include <linux/seq_file.h>
 #include <linux/vmalloc.h>
 #include <linux/sched.h>
+#include <linux/version.h>
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,34)
+#include <linux/dma-mapping.h>
+#else
 #include <asm/cacheflush.h>
+#endif
 #include <asm/uaccess.h>
 #include <asm/pgtable.h>
 #include <asm/io.h>
 
-#include <linux/version.h>
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,28)
+/*
+ * L_PTE_MT_BUFFERABLE and L_PTE_MT_ WRITETHROUGH were introduced in 2.6.28
+ * and are preferred over L_PTE_BUFFERABLE and L_PTE_CACHEABLE (which are
+ * themselves going away).
+ */
+#define USE_PTE_MT
+#else
+#undef USE_PTE_MT
+#endif
+
 /*
  * The following macros control version-dependent code:
+ * USE_CACHE_DMAAPI - #define if more common DMA functions are used
+ * USE_CACHE_VOID_ARG - #define if dmac functions take "void *" parameters,
+ *    otherwise unsigned long is used
  * USE_CLASS_SIMPLE - #define if Linux version contains "class_simple*",
  *    otherwise "class*" or "device*" is used (see USE_CLASS_DEVICE usage).
  * USE_CLASS_DEVICE - #define if Linux version contains "class_device*",
@@ -48,26 +70,29 @@
  * If neither USE_CLASS_SIMPLE nor USE_CLASS_DEVICE is set, there is further
  *    kernel version checking embedded in the module init & exit functions.
  */
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,26)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,34)
+	
+#define USE_CACHE_DMAAPI
+#undef USE_CLASS_DEVICE
+#undef USE_CLASS_SIMPLE
+	
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,26)
 
-//#warning *** not a warning *** Note: LINUX_VERSION_CODE >= 2.6.26
-
+#define USE_CACHE_VOID_ARG
 #undef USE_CLASS_DEVICE
 #undef USE_CLASS_SIMPLE
 
 #elif LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,18)
 
-//#warning *** not a warning *** Note: 2.6.26 > LINUX_VERSION_CODE >= 2.6.18
-
+#define USE_CACHE_VOID_ARG
 #define USE_CLASS_DEVICE
 #undef USE_CLASS_SIMPLE
 
 #else  /* LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,18) */
 
-//#warning *** not a warning *** Note: LINUX_VERSION_CODE < 2.6.18
-
 #define USE_CLASS_SIMPLE
 #undef USE_CLASS_DEVICE
+#undef USE_CACHE_VOID_ARG
 
 #endif /* LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,18) */
 
@@ -347,6 +372,7 @@ void *HeapMem_alloc(int bi, size_t reqSize, size_t reqAlign)
 
     /* Loop over the free list. */
     while (curHeader != NULL) {
+
         curSize = curHeader->size;
 
         /*
@@ -999,6 +1025,7 @@ static int alloc_pool(int bi, int idx, int num, int reqsize, unsigned long *virt
 
         entry->id = i;
         entry->physp = get_phys(virtp);
+        entry->size = size;
         INIT_LIST_HEAD(&entry->users);
 
         if (virtpRet) {
@@ -1018,54 +1045,6 @@ static int alloc_pool(int bi, int idx, int num, int reqsize, unsigned long *virt
     return 0;
 }
 
-
-/*
- * This is useful to dump out the page tables associated with
- * 'addr' in mm 'mm'.
- */
-void show_pte(struct mm_struct *mm, unsigned long addr)
-{
-        pgd_t *pgd;
-
-        if (!mm)
-                mm = &init_mm;
-
-        printk(KERN_ALERT "pgd = %p\n", mm->pgd);
-        pgd = pgd_offset(mm, addr);
-        printk(KERN_ALERT "[%08lx] *pgd=%08lx", addr, pgd_val(*pgd));
-
-        do {
-                pmd_t *pmd;
-                pte_t *pte;
-
-                if (pgd_none(*pgd))
-                        break;
-
-                if (pgd_bad(*pgd)) {
-                        printk("(bad)");
-                        break;
-                }
-
-                pmd = pmd_offset(pgd, addr);
-
-                if (pmd_none(*pmd))
-                        break;
-
-                if (pmd_bad(*pmd)) {
-                        printk("(bad)");
-                        break;
-                }
-
-                /* We must not map this if we have highmem enabled */
-                pte = pte_offset_map(pmd, addr);
-                printk(", *pte=%08lx", pte_val(*pte));
-                printk(", *ppte=%08lx", pte_val(pte[-PTRS_PER_PTE]));
-                pte_unmap(pte);
-        } while(0);
-
-        printk("\n");
-}
-
 static int set_noncached(struct vm_area_struct *vma)
 {
     vma->vm_page_prot = pgprot_noncached(vma->vm_page_prot);
@@ -1083,8 +1062,15 @@ static int set_noncached(struct vm_area_struct *vma)
 
 static int set_cached(struct vm_area_struct *vma)
 {
+#ifdef USE_PTE_MT
     vma->vm_page_prot = __pgprot(pgprot_val(vma->vm_page_prot) |
-                                 _PAGE_CACHEABLE);
+                                 (L_PTE_MT_WRITETHROUGH | L_PTE_MT_BUFFERABLE)
+                                );
+#else
+    vma->vm_page_prot = __pgprot(pgprot_val(vma->vm_page_prot) |
+                                 (L_PTE_CACHEABLE | L_PTE_BUFFERABLE)
+                                );
+#endif
 
     vma->vm_flags |= VM_RESERVED | VM_IO;
 
@@ -1124,6 +1110,11 @@ static int ioctl(struct inode *inode, struct file *filp,
     int id;
     struct block_struct block;
     union CMEM_AllocUnion allocDesc;
+
+    if (_IOC_TYPE(cmd) != _IOC_TYPE(CMEM_IOCMAGIC)) {
+        __E("ioctl(): bad command type 0x%x (should be 0x%x)\n",
+            _IOC_TYPE(cmd), _IOC_TYPE(CMEM_IOCMAGIC));
+    }
 
     switch (cmd & CMEM_IOCCMDMASK) {
         case CMEM_IOCALLOCHEAP:
@@ -1549,21 +1540,39 @@ static int ioctl(struct inode *inode, struct file *filp,
 
             switch (cmd) {
               case CMEM_IOCCACHEWB:
-                flush_dcache_range(virtp, virtp_end);
+#ifdef USE_CACHE_DMAAPI
+                __dma_single_cpu_to_dev((const void *)virtp, block.size, DMA_TO_DEVICE);
+#elif defined USE_CACHE_VOID_ARG
+                dmac_clean_range((void *)virtp, (void *)virtp_end);
+#else
+                dmac_clean_range(virtp, virtp_end);
+#endif
                 __D("CACHEWB: cleaned user virtual %#lx->%#lx\n",
                        virtp, virtp_end);
 
                 break;
 
               case CMEM_IOCCACHEINV:
-                inv_dcache_range(virtp, virtp_end);
+#ifdef USE_CACHE_DMAAPI
+                __dma_single_dev_to_cpu((const void *)virtp, block.size, DMA_FROM_DEVICE);
+#elif defined USE_CACHE_VOID_ARG
+                dmac_inv_range((void *)virtp, (void *)virtp_end);
+#else
+                dmac_inv_range(virtp, virtp_end);
+#endif
                 __D("CACHEINV: invalidated user virtual %#lx->%#lx\n",
                        virtp, virtp_end);
 
                 break;
 
               case CMEM_IOCCACHEWBINV:
-                flush_and_inv_dcache_range(virtp, virtp_end);
+#ifdef USE_CACHE_DMAAPI
+                __dma_single_cpu_to_dev((const void *)virtp, block.size, DMA_FROM_DEVICE);
+#elif defined USE_CACHE_VOID_ARG
+                dmac_flush_range((void *)virtp, (void *)virtp_end);
+#else
+                dmac_flush_range(virtp, virtp_end);
+#endif
                 __D("CACHEWBINV: flushed user virtual %#lx->%#lx\n",
                        virtp, virtp_end);
 
@@ -1851,7 +1860,7 @@ int __init cmem_init(void)
     char **pool_table[MAX_POOLS];
     char tmp_str[4];
 
-    //banner();
+    banner();
 
     if (npools[0] > MAX_POOLS) {
         __E("Too many pools specified (%d) for Block 0, only %d supported.\n",
