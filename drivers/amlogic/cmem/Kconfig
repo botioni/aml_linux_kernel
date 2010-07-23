@@ -3,7 +3,6 @@
 #
 
 menu "AMLOGIC Physical memory allocator"
-    depends on AMLOGIC_BOARD_APOLLO_H_LINUX
 
 config CMEM
     tristate "CMEM Physical memory allocator"

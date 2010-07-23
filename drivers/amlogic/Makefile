@@ -30,8 +30,6 @@ obj-y += amports/
 
 obj-y += input/
 
-#obj-y += led/
-
 #obj-y += spi_nor/
 
 obj-$(CONFIG_CMEM) += cmem/
