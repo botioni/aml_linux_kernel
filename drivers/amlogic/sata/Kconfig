@@ -1,0 +1,11 @@
+
+menu "Amlogic SATA Support"
+
+config SATA_DWC_AHCI
+        bool "Amloigc SATA AHCI support"
+				depends on ATA
+        help
+           depend on libATA
+
+
+endmenu

@@ -11,7 +11,7 @@ obj-  :=
 obj-$(CONFIG_CPU_FREQ) 		+= cpu.o
 obj-$(CONFIG_ARCH_MESON)	+= pinmux.o
 obj-$(CONFIG_ARCH_MESON)	+= gpio.o
-obj-$(CONFIG_ARCH_MESON)	+= lm.o usbclock.o
+obj-$(CONFIG_ARCH_MESON)	+= lm.o usbclock.o sataclock.o
 
 obj-$(CONFIG_MACH_MESON_6236M)	+= board-6236m.o
 obj-$(CONFIG_MACH_MESON_8626M)	+= board-8626m.o

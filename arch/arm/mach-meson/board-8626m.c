@@ -79,6 +79,7 @@ static struct platform_device fb_device = {
 
 #ifdef CONFIG_USB_DWC_OTG_HCD
 struct lm_device usb_ld_b = {
+	.type = LM_DEVICE_TYPE_USB,
 	.id = 1,
 	.irq = INT_USB_B,
 	.resource.start = IO_USB_B_BASE,
@@ -88,6 +89,16 @@ struct lm_device usb_ld_b = {
 	.port_speed = USB_PORT_SPEED_DEFAULT,
 	.dma_config = USB_DMA_BURST_DEFAULT,
 	.set_vbus_power = 0,
+};
+#endif
+#ifdef CONFIG_SATA_DWC_AHCI
+struct lm_device sata_ld = {
+	.type = LM_DEVICE_TYPE_SATA,
+	.id = 2,
+	.irq = INT_SATA,
+	.dma_mask_room = DMA_BIT_MASK(32),
+	.resource.start = IO_SATA_BASE,
+	.resource.end = -1,
 };
 #endif
 
@@ -151,8 +162,12 @@ static __init void m1_init_machine(void)
 	platform_add_devices(platform_devs, ARRAY_SIZE(platform_devs));
 	/* todo: load device drivers */
 #ifdef CONFIG_USB_DWC_OTG_HCD
-	set_usb_phy_clk(USB_PHY_CLOCK_SEL_XTAL);
+	set_usb_phy_clk(USB_PHY_CLOCK_SEL_XTAL_DIV2);
 	lm_device_register(&usb_ld_b);
+#endif
+#ifdef CONFIG_SATA_DWC_AHCI
+	set_sata_phy_clk(SATA_PHY_CLOCK_SEL_DEMOD_PLL);
+	lm_device_register(&sata_ld);
 #endif
 }
 

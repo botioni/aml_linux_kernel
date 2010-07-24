@@ -22,6 +22,8 @@ obj-y += net/
 
 obj-y += usb/
 
+obj-$(CONFIG_SATA_DWC_AHCI) += sata/
+
 obj-y += canvas/
 
 obj-y += amports/

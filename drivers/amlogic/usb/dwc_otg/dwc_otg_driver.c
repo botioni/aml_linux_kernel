@@ -781,6 +781,9 @@ static int __init dwc_otg_driver_probe(struct lm_device *_lmdev)
 	int port_type, port_speed, dma_config;
 	dwc_otg_core_params_t *pcore_para;
 
+	if(_lmdev->type != LM_DEVICE_TYPE_USB)
+		return -ENODEV;
+
 	dev_dbg(&_lmdev->dev, "dwc_otg_driver_probe(%p)\n", _lmdev);
 	dev_dbg(&_lmdev->dev, "start=0x%08x\n",
 		(unsigned)_lmdev->resource.start);
@@ -858,7 +861,7 @@ static int __init dwc_otg_driver_probe(struct lm_device *_lmdev)
 	} else {
 		//dma_set_mask(&_lmdev->dev,DMA_BIT_MASK(32));
 		_lmdev->dev.coherent_dma_mask = *_lmdev->dev.dma_mask;
-		printk("_lmdev->dev.dma_mask %p (%llX)\n",_lmdev->dev.dma_mask,*_lmdev->dev.dma_mask);
+		//printk("_lmdev->dev.dma_mask %p (%llX)\n",_lmdev->dev.dma_mask,*_lmdev->dev.dma_mask);
 		switch (dma_config) {
 		case USB_DMA_BURST_INCR:
 			pcore_para->dma_burst_size =

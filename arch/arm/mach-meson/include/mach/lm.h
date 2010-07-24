@@ -24,12 +24,15 @@ enum usb_dma_config_e{
     USB_DMA_BURST_INCR8,
     USB_DMA_BURST_INCR16
 };
+#define LM_DEVICE_TYPE_USB	0
+#define LM_DEVICE_TYPE_SATA	1
 
 struct lm_device {
 	struct device		dev;
 	struct resource		resource;
 	unsigned int		irq;
 	unsigned int		id;
+	unsigned int		type;
 	u64				dma_mask_room; // dma mask room for dev->dma_mask
     
 	unsigned int		port_type;
