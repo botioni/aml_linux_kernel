@@ -550,6 +550,15 @@
 #define PREG_SATA_REG3                             0x2053
 #define PREG_SATA_REG4                             0x2054
 #define PREG_SATA_REG5                             0x2055
+
+#define SATA_PHY_CLOCK_SEL_XTAL		(0)
+#define SATA_PHY_CLOCK_SEL_DDR_PLL	(1)
+#define SATA_PHY_CLOCK_SEL_OTHER_PLL	(2)
+#define SATA_PHY_CLOCK_SEL_DEMOD_PLL	(3)
+
+#define SATA_PHY_CLK_SEL_OFFSET		(9)
+#define SATA_PHY_CLK_ENABLE			(8)
+#define SATA_PHY_CLK_DIV				(0)
 // ---------------------------
 // am_analog_top
 // ----------------------------
