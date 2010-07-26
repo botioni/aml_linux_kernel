@@ -2,14 +2,21 @@
 #include <linux/sched.h>
 #include <linux/kernel.h>
 #include <linux/cache.h>
+#include <linux/slab.h>
 #include <asm/cacheflush.h>
-#include <asm/arch/am_regs.h>
-#include <asm/bsp.h>
+//include <asm/arch/am_regs.h>
+#include <mach/am_regs.h>
+//#include <asm/bsp.h>
+//
 
 #include "dsp_microcode.h"
 #include "audiodsp_module.h"
 #include "dsp_control.h"
-#include <asm/dsp/dsp_register.h>
+
+
+//#include <asm/dsp/dsp_register.h>
+#include "dsp_register.h"
+
 
 #include "dsp_mailbox.h"
 #include <linux/delay.h>
@@ -18,39 +25,34 @@
 #define MAX_CACHE_ALIGN(x)	((x+0x1f)&(~0x1f))
 
 
+
+#define RESET_AUD_ARC	(1<<13)
+
 static void	enable_dsp(int flag)
 {	
-	 int reg_save = READ_ISA_REG(IREG_DDR_CTRL);
 
-#if defined(AML_APOLLO) || defined(AML_A1H)
-		/* RESET DSP */
+	/* RESET DSP */
 	 if(!flag)
-	  	 CLEAR_ISA_REG_MASK(IREG_ARC2_CTRL, 1);
+	  	 CLEAR_MPEG_REG_MASK(AUD_ARC_CTL, 1);
 	/*write more for make the dsp is realy reset!*/
-	 SET_MPEG_REG_MASK(RESET1_REGISTER, RESET_ARC2);
-	 SET_MPEG_REG_MASK(RESET1_REGISTER, RESET_ARC2);
-	 SET_MPEG_REG_MASK(RESET1_REGISTER, RESET_ARC2);
+	 SET_MPEG_REG_MASK(RESET2_REGISTER, RESET_AUD_ARC);
+	// M1 has this bug also????
+	// SET_MPEG_REG_MASK(RESET2_REGISTER, RESET_AUD_ARC);
+	// SET_MPEG_REG_MASK(RESET2_REGISTER, RESET_AUD_ARC);
 	 
-#if defined(AML_A1H)
     	/* Enable BVCI low 16MB address mapping to DDR */
 	
-    	SET_ISA_REG_MASK(IREG_DDR_CTRL, (1<<DDR_CTL_MAPDDR));
+//    	SET_MPEG_REG_MASK(AUD_ARC_CTRL, (1<<DDR_CTL_MAPDDR));
     	/* polling highest bit of IREG_DDR_CTRL until the mapping is done */
-    	while (READ_ISA_REG(IREG_DDR_CTRL) & (1<<31));
-#endif
 	
         if (flag) {
-		    SET_ISA_REG_MASK(IREG_ARC2_CTRL, 1);
-		    CLEAR_ISA_REG_MASK(IREG_ARC2_CTRL, 1);
-		}
-	/* DSP is running, restore the original view of address 0 (if necessary) */
-	WRITE_ISA_REG(IREG_DDR_CTRL, reg_save);	
-#endif		
+		    SET_MPEG_REG_MASK(AUD_ARC_CTL, 1);
+		    CLEAR_MPEG_REG_MASK(AUD_ARC_CTL, 1);
+	}
 }
 
 void halt_dsp( struct audiodsp_priv *priv)
 {
-	int i=0;
 	if(DSP_RD(DSP_STATUS)==DSP_STATUS_RUNING)
 		{
 		dsp_mailbox_send(priv,1,M2B_IRQ0_DSP_HALT,0,0,0);
@@ -69,10 +71,10 @@ void reset_dsp( struct audiodsp_priv *priv)
 {
     halt_dsp(priv);
 
-    flush_and_inv_dcache_all();
+    //flush_and_inv_dcache_all();
     /* map DSP 0 address so that reset vector points to same vector table as ARC1 */
-    CLEAR_ISA_REG_MASK(IREG_ARC2_CTRL, (0xfff << 4));
-    SET_ISA_REG_MASK(IREG_ARC2_CTRL, ((0x80000000)>> 20) << 4);
+    CLEAR_MPEG_REG_MASK(AUD_ARC_CTL, (0xfff << 4));
+    SET_MPEG_REG_MASK(AUD_ARC_CTL, ((0x84000000)>> 20) << 4);
     enable_dsp(1);
 
     return;    
@@ -201,7 +203,7 @@ static inline int dsp_set_stream_buffer( struct audiodsp_priv *priv)
 		}
 	else
 		{
-		DSP_PRNT("dsp status=%lx\n",DSP_RD(DSP_STATUS));
+		DSP_PRNT("dsp status=%x\n",DSP_RD(DSP_STATUS));
 		priv->dsp_is_started=1;
 		res=0;
 		}

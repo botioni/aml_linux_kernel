@@ -14,12 +14,17 @@
 #include <linux/timer.h>
 #include <linux/delay.h>
 #include <asm/cacheflush.h>
-#include <asm/arch/am_regs.h>
+//#include <asm/arch/am_regs.h>
 #include <linux/major.h>
-#include <asm/dsp/audiodsp_control.h>
+#include <linux/slab.h>
+
+//#include <asm/dsp/audiodsp_control.h>
+#include "audiodsp_control.h"	// temp here
 
 #include <asm/uaccess.h>
 #include <linux/amports/amstream.h>
+
+#include <mach/am_regs.h>
 
 #include "audiodsp_module.h"
 #include "dsp_control.h"
@@ -67,7 +72,7 @@ int audiodsp_start(void)
 	if(pmcode->fmt == MCODEC_FMT_COOK)
 		{
 		get_real_audio_info(&real_info, sizeof(real_info));
-		dsp_mailbox_send(priv, 1, M2B_IRQ4_AUDIO_INFO, 0, &real_info, sizeof(real_info));
+		dsp_mailbox_send(priv, 1, M2B_IRQ4_AUDIO_INFO, 0, (const char*)&real_info, sizeof(real_info));
 		}
 #endif
 	return ret;
@@ -252,7 +257,7 @@ ssize_t audiodsp_read(struct file * file, char __user * ubuf, size_t size,
 		
 		wlen=priv->stream_buffer_end-rp;
 		wlen=min(wlen,else_len);
-		dma_cache_inv((unsigned long)rp,wlen);
+///		dma_cache_inv((unsigned long)rp,wlen);
 		w_else_len=copy_to_user(pubuf,(const char *)(rp),wlen);
 		if(w_else_len!=0)
 			{
