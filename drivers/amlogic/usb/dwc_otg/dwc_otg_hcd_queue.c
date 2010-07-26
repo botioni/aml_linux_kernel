@@ -594,11 +594,16 @@ void dwc_otg_hcd_qh_deactivate(dwc_otg_hcd_t * _hcd, dwc_otg_qh_t * _qh,
 dwc_otg_qtd_t *dwc_otg_hcd_qtd_create(struct urb *_urb)
 {
 	dwc_otg_qtd_t *qtd;
+	unsigned long flags;
+
+	local_irq_save(flags);
 	qtd = dwc_otg_hcd_qtd_alloc();
 	if (qtd == NULL) {
+		local_irq_restore(flags);
 		return NULL;
 	}
 	dwc_otg_hcd_qtd_init(qtd, _urb);
+	local_irq_restore(flags);
 	return qtd;
 }
 
