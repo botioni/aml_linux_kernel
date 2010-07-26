@@ -3,11 +3,12 @@
 #include <linux/kernel.h>
 #include <linux/cache.h>
 #include <asm/cacheflush.h>
-#include <asm/arch/am_regs.h>
-#include <asm/bsp.h>
+//#include <asm/arch/am_regs.h>
+#include <mach/am_regs.h>
+//#include <asm/bsp.h>
 
 #include <linux/amports/ptsserv.h>
-#include <asm/dsp/dsp_register.h>
+//#include <asm/dsp/dsp_register.h>
 
 #include "dsp_microcode.h"
 #include "audiodsp_module.h"
