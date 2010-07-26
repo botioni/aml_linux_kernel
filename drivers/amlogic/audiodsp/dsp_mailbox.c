@@ -33,8 +33,8 @@ int dsp_mailbox_send(struct audiodsp_priv *priv,int overwrite,int num,int cmd,co
 			m->len=len;
 			m->status=1;
 			after_change_mailbox(m);
-			if(data!=NULL && len >0)
-				flush_dcache_range((unsigned long)data,(unsigned long)data+len);
+		//	if(data!=NULL && len >0)
+		//		flush_dcache_range((unsigned long)data,(unsigned long)data+len);
 			MAIBOX2_IRQ_ENABLE(num);
 			DSP_TRIGGER_IRQ(num);
 			res=0;
@@ -77,7 +77,7 @@ static irqreturn_t audiodsp_mailbox_irq(int irq, void *data)
 		{
 		get_mailbox_data(priv,M1B_IRQ0_PRINT,&msg);
 		SYS_CLEAR_IRQ(M1B_IRQ0_PRINT);
-		inv_dcache_range((unsigned  long )msg.data,(unsigned long)msg.data+msg.len);
+	//	inv_dcache_range((unsigned  long )msg.data,(unsigned long)msg.data+msg.len);
 		printk(KERN_INFO "%s",msg.data);
 		}
 	if(status&(1<<M1B_IRQ1_BUF_OVERFLOW))
@@ -148,7 +148,7 @@ static irqreturn_t audiodsp_mailbox_irq(int irq, void *data)
 
 int audiodsp_init_mailbox(struct audiodsp_priv *priv)
 {
-	request_irq(AM_ISA_GEN1_IRQ(IRQNUM_MAILBOX_1B), audiodsp_mailbox_irq,
+	request_irq(INT_MAILBOX_1B, audiodsp_mailbox_irq,
                     IRQF_SHARED, "audiodsp_mailbox", (void *)priv);
 	//WRITE_MPEG_REG(ASSIST_MBOX0_MASK, 0xffffffff);
 	priv->mailbox_reg=(struct mail_msg *)MAILBOX1_REG(0);
@@ -157,8 +157,8 @@ int audiodsp_init_mailbox(struct audiodsp_priv *priv)
 }
 int audiodsp_release_mailbox(struct audiodsp_priv *priv)
 {
-	free_irq(AM_ISA_GEN1_IRQ(IRQNUM_MAILBOX_1B),(void *)priv);
-	return 0;
+	free_irq(INT_MAILBOX_1B,(void *)priv);
+    return 0;
 }
 
 
