@@ -87,7 +87,7 @@ struct lm_device usb_ld_b = {
 	.dma_mask_room = DMA_BIT_MASK(32),
 	.port_type = USB_PORT_TYPE_HOST,
 	.port_speed = USB_PORT_SPEED_DEFAULT,
-	.dma_config = USB_DMA_BURST_DEFAULT,
+	.dma_config = 0, //USB_DMA_BURST_DEFAULT,
 	.set_vbus_power = 0,
 };
 #endif
