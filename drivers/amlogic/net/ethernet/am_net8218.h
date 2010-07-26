@@ -1,6 +1,7 @@
 #ifndef __AM_NET_8218_H_
 #define __AM_NET_8218_H_
 #include <mach/am_regs.h>
+#include <mach/am_eth_reg.h>
 #include <linux/skbuff.h>
 	/*  */
 

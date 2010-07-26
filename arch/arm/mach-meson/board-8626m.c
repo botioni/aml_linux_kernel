@@ -26,10 +26,13 @@
 #include <mach/lm.h>
 #include <asm/memory.h>
 #include <asm/mach/map.h>
-
+#include <mach/am_eth_pinmux.h>
 #ifdef CONFIG_CACHE_L2X0
 #include <asm/hardware/cache-l2x0.h>
 #endif
+#include <mach/pinmux.h>
+#include <mach/gpio.h>
+#include <linux/delay.h>
 
 #include "board-8626m.h"
 
@@ -152,6 +155,32 @@ static struct platform_device __initdata *platform_devs[] = {
 	#endif
 };
 
+static void __init eth_pinmux_init(void)
+{
+	///GPIOD15-24 for 8626M;
+	///GPIOE_16/NA	nRst;
+    	eth_clk_set(ETH_CLKSRC_SYS_D3,900*CLK_1M/3,50*CLK_1M);
+	/*for dpf_sz with ethernet*/	
+	eth_set_pinmux(ETH_BANK2_GPIOD15_D23,ETH_CLK_OUT_GPIOD24_REG5_1,0);
+	CLEAR_CBUS_REG_MASK(PREG_ETHERNET_ADDR0, 1);
+	SET_CBUS_REG_MASK(PREG_ETHERNET_ADDR0, (1 << 1));
+	SET_CBUS_REG_MASK(PREG_ETHERNET_ADDR0, 1);
+	udelay(100);
+	/*reset*/
+	set_gpio_mode(PREG_HGPIO,16,GPIO_OUTPUT_MODE);
+	set_gpio_val(PREG_HGPIO,16,0);
+	udelay(100);	//waiting reset end;
+	set_gpio_val(PREG_HGPIO,16,1);
+	udelay(10);	//waiting reset end;
+}
+static void __init device_pinmux_init(void )
+{
+	clearall_pinmux();
+	/*uart port A,*/
+	uart_set_pinmux(UART_PORT_A,UART_A_GPIO_B2_B3);
+	/*pinmux of eth*/
+	eth_pinmux_init();
+}
 static __init void m1_init_machine(void)
 {
 #ifdef CONFIG_CACHE_L2X0
@@ -159,10 +188,11 @@ static __init void m1_init_machine(void)
 	 * Bits:  .... .... .000 0010 0000 .... .... .... */
 	l2x0_init((void __iomem *)IO_PL310_BASE, 0x00020000, 0xff800fff);
 #endif
+	device_pinmux_init();
 	platform_add_devices(platform_devs, ARRAY_SIZE(platform_devs));
 	/* todo: load device drivers */
 #ifdef CONFIG_USB_DWC_OTG_HCD
-	set_usb_phy_clk(USB_PHY_CLOCK_SEL_XTAL_DIV2);
+	//set_usb_phy_clk(USB_PHY_CLOCK_SEL_XTAL_DIV2);
 	lm_device_register(&usb_ld_b);
 #endif
 #ifdef CONFIG_SATA_DWC_AHCI
@@ -180,6 +210,7 @@ static __initdata struct map_desc meson_video_mem_desc[] = {
 		.type		= MT_DEVICE,
 	},
 };
+
 
 static __init void m1_map_io(void)
 {
@@ -211,11 +242,15 @@ static __init void m1_fixup(struct machine_desc *mach, struct tag *tag, char **c
 
 MACHINE_START(MESON_8626M, "AMLOGIC MESON-M1 8626M")
 	.phys_io		= MESON_PERIPHS1_PHYS_BASE,
-	.io_pg_offst	= (MESON_PERIPHS1_PHYS_BASE >> 18) & 0xfffc,
-	.boot_params	= BOOT_PARAMS_OFFSET,
+	.io_pg_offst		= (MESON_PERIPHS1_PHYS_BASE >> 18) & 0xfffc,
+	.boot_params		= BOOT_PARAMS_OFFSET,
 	.map_io			= m1_map_io,
 	.init_irq		= m1_irq_init,
 	.timer			= &meson_sys_timer,
-	.init_machine	= m1_init_machine,
+	.init_machine		= m1_init_machine,
+	.video_start		=RESERVED_MEM_START,	/*let the memmap know the memory is reversed, */ 
+							/*Because when the board is not support 256M, */
+							/*we can used mem=128 for test'*/
+	.video_end		=RESERVED_MEM_END,
 	.fixup			= m1_fixup,
 MACHINE_END

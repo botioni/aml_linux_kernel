@@ -28,7 +28,7 @@ INITRD_PHYS := $(initrd_phys-y)
 
 export ZRELADDR INITRD_PHYS PARAMS_PHYS
 
-targets := Image zImage xipImage bootpImage uImage
+targets := Image zImage xipImage bootpImage uImage uzImage
 
 ifeq ($(CONFIG_XIP_KERNEL),y)
 
@@ -71,6 +71,12 @@ quiet_cmd_uimage = UIMAGE  $@
 		   -C gzip -a $(LOADADDR) -e $(STARTADDR) \
 		   -n 'Linux-$(KERNELRELEASE)' -d $< $@
 
+
+quiet_cmd_uzImage = UZIMAGE  $@
+      cmd_uzImage = $(MKIMAGE) -A arm -O linux -T kernel \
+		   -C none -a 0x84000000 -e 0x84000000 \
+		   -n 'Linux-$(KERNELRELEASE)' -d $< $@
+
 ifeq ($(CONFIG_ZBOOT_ROM),y)
 $(obj)/uImage: LOADADDR=$(CONFIG_ZBOOT_ROM_TEXT)
 else
@@ -96,6 +102,12 @@ $(obj)/ccImage.gz:$(obj)/ccImage FORCE
 $(obj)/uImage:	$(obj)/ccImage.gz FORCE
 	$(call if_changed,uimage)
 	@echo '  Image $@ is ready'
+
+
+$(obj)/uzImage:	$(obj)/zImage FORCE
+	$(call if_changed,uzImage)
+	@echo '  Image $@ is ready'
+
 
 $(obj)/bootp/bootp: $(obj)/zImage initrd FORCE
 	$(Q)$(MAKE) $(build)=$(obj)/bootp $@

@@ -24,7 +24,7 @@ SECTIONS
   }
 
   /*. = TEXT_START; */
-  . = 0x80800000;
+  . = 0x84000000;
   _text = .;
 
   .text : {
