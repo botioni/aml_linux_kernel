@@ -899,16 +899,57 @@ int am_uart_console_setup(struct console *cp, char *arg)
 	int flow = 'n';
 	am_uart_t *uart = uart_addr[cp->index];
 	/* TODO: pinmux */
-
+#if 0
 	if(cp->index==1)/*PORT B*/
+	{
+		int uart_bank;
+		switch(uart_bank)
 		{
-		SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_3, (1<<27)|(1<<30));
+			case 0://JTAG=TCK,TDO
+				SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_1, (1<<18)|(1<<22));
+				break;
+			case 1://GPIO+B0.B1
+				SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<4)|(1<<7));
+				break;		
+			case 2:	///GPIO_C13_C14
+				/*6236-SH*/
+				SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_3, (1<<27)|(1<<30));
+				break;	
+			case 3://GPIO+E18.E19
+				SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_5, (1<<23)|(1<<24));
+				break;		
+			default:
+				printk("UartB pinmux set error\n");
 		}
+	}
 	else/*PORT_A*/
+	{
+		int uart_bank=3;
+		switch(uart_bank)
 		{
-		SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<11)|(1<<15));
+			case 0:/*JTAG-TMS/TDI*/
+				SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_1, (1<<10)|(1<<14));
+				break;
+			case 1:/*GPIO_B2,B3*//*7266-m_SZ*/
+				SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<11)|(1<<15));
+				break;	
+			case 2:
+				SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_3, (1<<23)|(1<<24));
+				break;		
+			case 3:/*6236m_dpf_sz :GPIOC_21_22*/
+				SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_7,((1 << 11) | (1 << 8)));
+				break;
+			case 4:
+				SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_7, (1<<18)|(1<<19));
+				break;	
+			case 5:
+				SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, (1<<0)|(1<<1));
+				break;		
+			default:
+				printk("UartA pinmux set error\n");
 		}
-	
+	}
+#endif	
 	if (arg)
 		uart_parse_options(arg, &baud, &parity, &bits, &flow);
 

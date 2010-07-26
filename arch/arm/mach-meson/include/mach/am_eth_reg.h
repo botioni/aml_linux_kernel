@@ -10,7 +10,6 @@
  *******************************************************************/
 #ifndef __ETH_REG_H_
 #define __ETH_REG_H_
-
 #define ETH_DMA_0_Bus_Mode                  (0x1000)
 #define ETH_DMA_1_Tr_Poll_Demand	    (0x1004)
 #define ETH_DMA_2_Re_Poll_Demand	    (0x1008)

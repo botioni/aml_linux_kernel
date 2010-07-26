@@ -1220,7 +1220,7 @@ static void bank_io_init(struct net_device *ndev)
 			set_gpio_val(PREG_HGPIO,16,1);
 			udelay(10);	//waiting reset end;
 			break;	
-		case 62362://6236m
+		case 62362://6236m-sh
 			///GPIOC3-12 for 8626M;
 			///GPIOC0_nRst;
 			///GPIOC1_nInt;
@@ -1232,6 +1232,18 @@ static void bank_io_init(struct net_device *ndev)
 			set_gpio_val(PREG_FGPIO,0,1);
 			udelay(10);	//waiting reset end;
 			break;
+		case 62363://6236m-sz,dpf
+			///LCD B2-B7,LCD-G6,G7
+			///LCD_G5_nRst;
+			///GPIOC1_nInt;
+			set_mio_mux(3,0x3ff<<1);
+
+			set_gpio_mode(PREG_FGPIO,26,GPIO_OUTPUT_MODE);
+			set_gpio_val(PREG_FGPIO,26,0);
+			udelay(100);	//waiting reset end;
+			set_gpio_val(PREG_FGPIO,26,1);
+			udelay(10);	//waiting reset end;
+			break;	
 		default:
 		break;
 		;
@@ -1264,7 +1276,7 @@ static int probe_init(struct net_device *ndev)
 	if (debug > 0)
 		printk("addr is %x\n", (unsigned int)ndev->base_addr);
 
-	bank_io_init(ndev);
+	//bank_io_init(ndev);
 	for(k=0;k<100 && !found;k++)
 		{	
 
