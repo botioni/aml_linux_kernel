@@ -1148,7 +1148,126 @@ static int amstream_ioctl(struct inode *inode, struct file *file,
 
     return r;
 }
+static ssize_t ports_show(struct class *class, struct class_attribute *attr, char *buf)
+{
+	int i;
+	char *pbuf=buf;
+	stream_port_t *p=NULL;
+	for(i=0;i<sizeof(ports)/sizeof(stream_port_t);i++)
+	{
+		p=&ports[i];
+		/*name*/
+		pbuf+=sprintf(pbuf,"%s\t:\n",p->name);
+		/*type*/
+		pbuf+=sprintf(pbuf,"\ttype:%d( ",p->type);
+		if(p->type&PORT_TYPE_VIDEO)	pbuf+=sprintf(pbuf,"%s ","Video");
+		if(p->type&PORT_TYPE_AUDIO)	pbuf+=sprintf(pbuf,"%s ","Audio");
+		if(p->type&PORT_TYPE_MPTS)	pbuf+=sprintf(pbuf,"%s ","TS");
+		if(p->type&PORT_TYPE_MPPS)	pbuf+=sprintf(pbuf,"%s ","PS");
+		if(p->type&PORT_TYPE_ES)		pbuf+=sprintf(pbuf,"%s ","ES");
+		if(p->type&PORT_TYPE_RM)		pbuf+=sprintf(pbuf,"%s ","RM");
+		if(p->type&PORT_TYPE_SUB)	pbuf+=sprintf(pbuf,"%s ","Subtitle");
+		pbuf+=sprintf(pbuf,")\n"); 
+		/*flag*/
+		pbuf+=sprintf(pbuf,"\tflag:%d( ",p->flag);
+		if(p->flag&PORT_FLAG_IN_USE)	
+			pbuf+=sprintf(pbuf,"%s ","Used");
+		else
+			pbuf+=sprintf(pbuf,"%s ","Unused");
+		if(p->flag&PORT_FLAG_INITED)	
+			pbuf+=sprintf(pbuf,"%s ","inited");
+		else
+			pbuf+=sprintf(pbuf,"%s ","uninited");
+		pbuf+=sprintf(pbuf,")\n");
+		/*others*/
+		pbuf+=sprintf(pbuf,"\tVformat:%d\n",(p->flag&PORT_FLAG_VFORMAT)?p->vformat:-1);
+		pbuf+=sprintf(pbuf,"\tAformat:%d\n",(p->flag&PORT_FLAG_AFORMAT)?p->aformat:-1);
+		pbuf+=sprintf(pbuf,"\tVid:%d\n",(p->flag&PORT_FLAG_VID)?p->vid:-1);
+		pbuf+=sprintf(pbuf,"\tAid:%d\n",(p->flag&PORT_FLAG_AID)?p->aid:-1);
+		pbuf+=sprintf(pbuf,"\tSid:%d\n",(p->flag&PORT_FLAG_SID)?p->sid:-1);
+		pbuf+=sprintf(pbuf,"\tachannel:%d\n",p->achanl);
+		pbuf+=sprintf(pbuf,"\tasamprate:%d\n",p->asamprate);
+		pbuf+=sprintf(pbuf,"\tadatawidth:%d\n\n",p->adatawidth);
+	}
+	return pbuf-buf;
+}
+static ssize_t bufs_show(struct class *class, struct class_attribute *attr, char *buf)
+{
+	int i;
+	char *pbuf=buf;
+	stream_buf_t *p=NULL;
+	char buf_type[][12]={"Video","Audio","Subtitle","NA"};
+	for(i=0;i<sizeof(bufs)/sizeof(stream_buf_t);i++)
+	{
+		p=&bufs[i];
+		/*type*/
+		pbuf+=sprintf(pbuf,"%s buffer:",buf_type[p->type]);
+		/*flag*/
+		pbuf+=sprintf(pbuf,"\tflag:%d( ",p->flag);
+		if(p->flag&BUF_FLAG_ALLOC)	
+			pbuf+=sprintf(pbuf,"%s ","Alloc");
+		else
+			pbuf+=sprintf(pbuf,"%s ","Unalloc");
+		if(p->flag&BUF_FLAG_IN_USE)	
+			pbuf+=sprintf(pbuf,"%s ","Used");
+		else
+			pbuf+=sprintf(pbuf,"%s ","Noused");
+		if(p->flag&BUF_FLAG_PARSER)	
+			pbuf+=sprintf(pbuf,"%s ","Parser");
+		else
+			pbuf+=sprintf(pbuf,"%s ","noParser");
+		if(p->flag&BUF_FLAG_FIRST_TSTAMP)	
+			pbuf+=sprintf(pbuf,"%s ","firststamp");
+		else
+			pbuf+=sprintf(pbuf,"%s ","nofirststamp");
+		pbuf+=sprintf(pbuf,")\n");
+		/*buf stats*/
+		
+		pbuf+=sprintf(pbuf,"\tbuf addr:%#x\n",p->buf_start);
+		if(p->type!=BUF_TYPE_SUBTITLE)
+		{
+			
+			pbuf+=sprintf(pbuf,"\tbuf size:%#x\n",p->buf_size);
+			pbuf+=sprintf(pbuf,"\tbuf regbase:%#lx\n",p->reg_base);
+			pbuf+=sprintf(pbuf,"\tbuf level:%#x\n",stbuf_level(p));
+			pbuf+=sprintf(pbuf,"\tbuf space:%#x\n",stbuf_space(p));
+		}
+		else
+		{
+			u32 sub_wp,sub_rp,data_size;
+			sub_wp=stbuf_sub_wp_get();
+			sub_rp=stbuf_sub_rp_get();
+			if (sub_wp >= sub_rp)
+			{
+				data_size = sub_wp - sub_rp;
+			}
+			else
+			{
+				data_size = p->buf_size - sub_rp + sub_wp;
+			}
+			pbuf+=sprintf(pbuf,"\tbuf size:%#x\n",p->buf_size);
+			pbuf+=sprintf(pbuf,"\tbuf start:%#x\n",stbuf_sub_start_get());
+			pbuf+=sprintf(pbuf,"\tbuf write pointer:%#x\n",sub_wp);
+			pbuf+=sprintf(pbuf,"\tbuf read pointer:%#x\n",sub_rp);
+			pbuf+=sprintf(pbuf,"\tbuf level:%#x\n",data_size);
+		}
+			
+		pbuf+=sprintf(pbuf,"\tbuf first_stamp:%#x\n",p->first_tstamp);
+		
+		pbuf+=sprintf(pbuf,"\tbuf wcnt:%#x\n\n",p->wcnt);
+	}
+	return pbuf-buf;
+}
 
+static struct class_attribute amstream_class_attrs[] = {
+    __ATTR_RO(ports),
+    __ATTR_RO(bufs),
+    __ATTR_NULL
+};
+static struct class amstream_class = {
+    .name = "amstream",
+    .class_attrs = amstream_class_attrs,
+};
 static int  amstream_probe(struct platform_device *pdev)
 {
     int i;
@@ -1156,7 +1275,11 @@ static int  amstream_probe(struct platform_device *pdev)
     stream_port_t *st;
 
     printk("Amlogic A/V streaming port init\n");
-
+     r = class_register(&amstream_class);
+    if (r) {
+        printk("amstream class create fail.\n");
+        return r;
+    }
     r = astream_dev_register();
     if (r) {
         return r;
