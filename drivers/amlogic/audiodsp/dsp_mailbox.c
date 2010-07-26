@@ -11,7 +11,9 @@
 #include <linux/timer.h>
 
 #include <asm/cacheflush.h>
-#include <asm/arch/am_regs.h>
+//#include <asm/arch/am_regs.h>
+#include <mach/am_regs.h>
+
 #include "dsp_mailbox.h"
 #include "dsp_codec.h"
 

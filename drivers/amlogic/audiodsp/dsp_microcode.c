@@ -6,9 +6,11 @@
 #include <linux/string.h>
 #include <linux/io.h>
 #include <linux/fs.h>
+#include <linux/slab.h>
 
+//#include <asm/dsp/audiodsp_control.h>
+#include "audiodsp_control.h"
 
-#include <asm/dsp/audiodsp_control.h>
 #include <linux/firmware.h>
 #include <linux/major.h>
 #include <linux/device.h>
@@ -90,7 +92,7 @@ static struct auidodsp_microcode *  audiodsp_find_mcode_by_name(struct audiodsp_
 		}
 
 	memcpy((char *)pmcode->code_start_addr, firmware->data,firmware->size);
-	dma_cache_wback(pmcode->code_start_addr, firmware->size);
+///	dma_cache_wback(pmcode->code_start_addr, firmware->size);
 	pmcode->code_size=firmware->size;
 	//DSP_PRNT("load mcode size=%d\n",firmware->size);
 release:	
