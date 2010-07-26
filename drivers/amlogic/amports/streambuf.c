@@ -55,7 +55,7 @@ static s32 _stbuf_alloc(stream_buf_t *buf)
 
         buf->flag |= BUF_FLAG_ALLOC;
     }
-
+      buf->flag |= BUF_FLAG_ALLOC;
     return 0;
 }
 int  stbuf_change_size(struct stream_buf_s *buf,int size)
