@@ -176,6 +176,10 @@ static void __init eth_pinmux_init(void)
 static void __init device_pinmux_init(void )
 {
 	clearall_pinmux();
+	/*other deivce power on*/
+	/*GPIOA_200e_bit4..usb/eth/YUV power on*/
+	set_gpio_mode(PREG_EGPIO,1<<4,GPIO_OUTPUT_MODE);
+	set_gpio_val(PREG_EGPIO,1<<4,1);
 	/*uart port A,*/
 	uart_set_pinmux(UART_PORT_A,UART_A_GPIO_B2_B3);
 	/*pinmux of eth*/

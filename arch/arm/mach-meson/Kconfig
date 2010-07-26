@@ -2,12 +2,12 @@ menu "Meson platform type"
 	depends on ARCH_MESON
 
 config MACH_MESON_6236M
-	bool "Support M1 6236 platform"
+	bool "Support M1 6236(MODE:MBOX728) platform"
 	help
 	  Include support for the AMLOGIC M1 6236M Emulation Baseboard platform.
 
 config MACH_MESON_8626M
-	bool "Support M1 8626 platform"
+	bool "Support M1 8626(MBOX_8626M1_V1.0) platform"
 	help
 	  Include support for the AMLOGIC M1 8626M Emulation Baseboard platform.
 
