@@ -9,7 +9,7 @@
 #include <linux/spi/spi.h>
 #include <linux/spi/flash.h>
 
-#include <asm/spi_nor.h>
+#include <mach/spi_nor.h>
 /****************************************************************************/
 
 struct spi_nor {
@@ -113,7 +113,7 @@ static int wait_till_ready(struct spi_nor *spi_nor, u8 wp_disable_flag)
  */
 static int erase_sector(struct spi_nor *spi_nor, unsigned offset)
 {
-	DEBUG(MTD_DEBUG_LEVEL3, "%s: %s %dKiB at 0x%08x\n", spi_nor->spi->dev.bus_id, __func__, spi_nor->mtd.erasesize / 1024, offset);
+	DEBUG(MTD_DEBUG_LEVEL3, "%s: %s %dKiB at 0x%08x\n", dev_name(&spi_nor->spi->dev), __func__, spi_nor->mtd.erasesize / 1024, offset);
 
 	/* Wait until finished previous write command. */
 	if (wait_till_ready(spi_nor, 1))
@@ -148,20 +148,20 @@ static int spi_nor_erase(struct mtd_info *mtd, struct erase_info *instr)
 	struct spi_nor *spi_nor = mtd_to_spi_nor(mtd);
 	u32 addr,len;
 
-	DEBUG(MTD_DEBUG_LEVEL2, "%s: %s %s 0x%08x, len %d\n",
-			spi_nor->spi->dev.bus_id, __func__, "at",
-			(u32)instr->addr, instr->len);
 
-	/* sanity checks */
-	if (instr->addr + instr->len > spi_nor->mtd.size)
-		return -EINVAL;
-	if ((instr->addr % mtd->erasesize) != 0
-			|| (instr->len % mtd->erasesize) != 0) {
-		return -EINVAL;
-	}
+	DEBUG(MTD_DEBUG_LEVEL3, "%s: %s %dKiB at 0x%08x\n",
+			dev_name(&spi_nor->spi->dev), __func__,
+			spi_nor->mtd.erasesize / 1024, (u32)instr->addr);
 
 	addr = instr->addr;
 	len = instr->len;
+	/* sanity checks */
+	if (instr->addr + instr->len > spi_nor->mtd.size)
+		return -EINVAL;
+	if ((addr % mtd->erasesize) != 0
+			|| (len % mtd->erasesize) != 0) {
+		return -EINVAL;
+	}
 
 	mutex_lock(&spi_nor->lock);
 
@@ -201,7 +201,7 @@ static int spi_nor_read(struct mtd_info *mtd, loff_t from, size_t len,
 	struct spi_message m;
 
 	DEBUG(MTD_DEBUG_LEVEL2, "%s: %s %s 0x%08x, len %zd\n",
-			spi_nor->spi->dev.bus_id, __func__, "from",
+			dev_name(&spi_nor->spi->dev), __func__, "from",
 			(u32)from, len);
 
 	/* sanity checks */
@@ -268,15 +268,16 @@ static int spi_nor_write(struct mtd_info *mtd, loff_t to, size_t len,
 	size_t *retlen, const u_char *buf)
 {
 	struct spi_nor *spi_nor = mtd_to_spi_nor(mtd);
-	u32 page_offset, page_size, flash_pp_size;
+	u32 page_offset, page_size, flash_pp_size, addr_to;
 	struct spi_transfer t[2];
 	struct spi_message m;
 
 	DEBUG(MTD_DEBUG_LEVEL2, "%s: %s %s 0x%08x, len %zd\n",
-			spi_nor->spi->dev.bus_id, __func__, "to",
+			dev_name(&spi_nor->spi->dev), __func__, "to",
 			(u32)to, len);
 
 	flash_pp_size = spi_nor->flash_pp_size;
+	addr_to = to;
 
 	if (retlen)
 		*retlen = 0;
@@ -315,7 +316,7 @@ static int spi_nor_write(struct mtd_info *mtd, loff_t to, size_t len,
 	spi_nor->command[3] = to;
 
 	/* what page do we start with? */
-	page_offset = to % flash_pp_size;
+	page_offset = addr_to % flash_pp_size;
 
 	/* do all the bytes fit onto one page? */
 	if (page_offset + len <= flash_pp_size) {
@@ -429,7 +430,7 @@ static struct flash_info spi_nor_data [] = {
 	{ "m25p10",  0x202011,  32 * 1024, 4, },
 	{ "m25p20",  0x202012,  64 * 1024, 4, },
 	{ "m25p40",  0x202013,  64 * 1024, 8, },
-	{ "m25p80",         0,  64 * 1024, 16, },
+	{ "m25p80",  0x202014,  64 * 1024, 16, },
 	{ "m25p16",  0x202015,  64 * 1024, 32, },
 	{ "m25p32",  0x202016,  64 * 1024, 64, },
 	{ "m25p64",  0x202017,  64 * 1024, 128, },
@@ -484,7 +485,7 @@ static struct flash_info * jedec_probe(struct spi_device *spi)
 	tmp = spi_write_then_read(spi, &code, 1, id, 3);
 	if (tmp < 0) {
 		DEBUG(MTD_DEBUG_LEVEL0, "%s: error %d reading JEDEC ID\n",
-			spi->dev.bus_id, tmp);
+			dev_name(&spi->dev), tmp);
 		return NULL;
 	}
 	jedec = id[0];
@@ -537,7 +538,7 @@ static int spi_nor_probe(struct spi_device *spi)
 			info = jedec_probe(spi);
 			if (!info) {
 				DEBUG(MTD_DEBUG_LEVEL0, "%s: unrecognized id %s\n",
-						spi->dev.bus_id, data->type);
+						dev_name(&spi_nor->spi->dev), data->type);
 				info = NULL;
 			}
 
@@ -569,7 +570,7 @@ static int spi_nor_probe(struct spi_device *spi)
 	if (data && data->name)
 		spi_nor->mtd.name = data->name;
 	else
-		spi_nor->mtd.name = spi->dev.bus_id;
+		spi_nor->mtd.name = dev_name(&spi_nor->spi->dev);
 
 	//for sst flash pp command just one byte a time
 	if (((info->jedec_id & 0xff0000)>>16) == 0xbf)
@@ -586,8 +587,8 @@ static int spi_nor_probe(struct spi_device *spi)
 
 	/* prefer "small sector" erase if possible */
 	if (data) {
-		spi_nor->mtd.writesize = data->sector_size;
-		spi_nor->mtd.erasesize = data->block_size;
+		spi_nor->mtd.writesize = info->block_size;
+		spi_nor->mtd.erasesize = 4096;
 		if (spi_nor->mtd.erasesize == 0x1000)
 			spi_nor->erase_opcode = OPCODE_SE_4K;
 		else if (spi_nor->mtd.erasesize == 0x10000)
@@ -612,21 +613,21 @@ static int spi_nor_probe(struct spi_device *spi)
 		}
 	}
 
-	dev_info(&spi->dev, "%s (%d Kbytes)\n", info->name,
-			spi_nor->mtd.size / 1024);
+	dev_info(&spi->dev, "%s (%lld Kbytes)\n", info->name,
+			(long long)spi_nor->mtd.size / 1024);
 
 	DEBUG(MTD_DEBUG_LEVEL2,
-		"mtd .name = %s, .size = 0x%.8x (%uMiB) "
+		"mtd .name = %s, .size = 0x%llx (%lldMiB) "
 			".erasesize = 0x%.8x (%uKiB) .numeraseregions = %d\n",
 		spi_nor->mtd.name,
-		spi_nor->mtd.size, flash->mtd.size / (1024*1024),
-		spi_nor->mtd.erasesize, flash->mtd.erasesize / 1024,
+		(long long)spi_nor->mtd.size, (long long)spi_nor->mtd.size / (1024*1024),
+		spi_nor->mtd.erasesize, spi_nor->mtd.erasesize / 1024,
 		spi_nor->mtd.numeraseregions);
 
 	if (spi_nor->mtd.numeraseregions)
 		for (i = 0; i < spi_nor->mtd.numeraseregions; i++)
 			DEBUG(MTD_DEBUG_LEVEL2,
-				"mtd.eraseregions[%d] = { .offset = 0x%.8x, "
+				"mtd.eraseregions[%d] = { .offset = 0x%llx, "
 				".erasesize = 0x%.8x (%uKiB), "
 				".numblocks = %d }\n",
 				i, spi_nor->mtd.eraseregions[i].offset,

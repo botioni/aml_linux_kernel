@@ -3,7 +3,7 @@
 #
 
 menu "AMLOGIC SPI NOR Flash  support"
-    depends on AMLOGIC_BOARD
+
 
 config APOLLO_SPI_NOR
 	tristate "APOLLO SPI NOR FLASH SUPPORT"

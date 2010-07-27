@@ -12,9 +12,7 @@
 #include <linux/io.h>
 
 #include <linux/spi/spi.h>
-#include <asm/arch/am_regs.h>
-#include <asm/uaccess.h>
-#include <asm/spi_nor.h>
+#include <mach/spi_nor.h>
 
 struct amlogic_spi_user_crtl {
 	unsigned char	user_def_cmd;
@@ -40,7 +38,7 @@ struct amlogic_spi {
 	unsigned char		*map_end;
 };
 
-void spi_hw_init(struct amlogic_spi	*amlogic_spi)
+static void spi_hw_init(struct amlogic_spi	*amlogic_spi)
 {
 #if  defined(ONFIG_AMLOGIC_BOARD_APOLLO) || defined(CONFIG_AMLOGIC_BOARD_APOLLO_H)
 	CLEAR_PERI_REG_MASK(PREG_PIN_MUX_REG4, ((1 << 1)|(1 << 2)|(1 << 4)|(1 << 5)|(1 << 6)));
@@ -59,43 +57,40 @@ void spi_hw_init(struct amlogic_spi	*amlogic_spi)
 	asm("nop");
 	WRITE_PERI_REG(PREG_SPI_FLASH_CTRL, 0xea525);
 	WRITE_PERI_REG(PREG_SPI_FLASH_CTRL1, 0xf0280100);
+	SET_PERI_REG_MASK(SPI_FLASH_USER,(1<<2));
 }
 
-void spi_hw_enable(void)
+static void spi_hw_enable(void)
 {
-#if  defined(ONFIG_AMLOGIC_BOARD_APOLLO) || defined(CONFIG_AMLOGIC_BOARD_APOLLO_H)
-	CLEAR_PERI_REG_MASK(PREG_PIN_MUX_REG4, ((1 << 1)|(1 << 2)|(1 << 4)|(1 << 5)|(1 << 6)));
-#endif
+	SET_PERI_REG_MASK(PERIPHS_PIN_MUX_1, ((1 << 23)|(1 <<25)|(1 << 27)|(1 << 29)));
 	asm("nop");
 	asm("nop");
 	asm("nop");
 	asm("nop");
 }
 
-void spi_hw_disable(void)
+static void spi_hw_disable(void)
 {
-#if  defined(ONFIG_AMLOGIC_BOARD_APOLLO) || defined(CONFIG_AMLOGIC_BOARD_APOLLO_H)
-	SET_PERI_REG_MASK(PREG_PIN_MUX_REG4, ((1 << 1)|(1 << 2)|(1 << 4)|(1 << 5)|(1 << 6)));
-#endif
+	CLEAR_PERI_REG_MASK(PERIPHS_PIN_MUX_1, ((1 << 23)|(1 <<25)|(1 << 27)|(1 << 29)));
 	asm("nop");
 	asm("nop");
 	asm("nop");
 	asm("nop");
 }
 
-int spi_add_dev(struct amlogic_spi *amlogic_spi, struct spi_master	*master)
+static int spi_add_dev(struct amlogic_spi *amlogic_spi, struct spi_master	*master)
 {
 	amlogic_spi->spi_dev.master = master;
 	device_initialize(&amlogic_spi->spi_dev.dev);
 	amlogic_spi->spi_dev.dev.parent = &amlogic_spi->master->dev;
 	amlogic_spi->spi_dev.dev.bus = &spi_bus_type;
 
-	snprintf((char *)amlogic_spi->spi_dev.modalias, BUS_ID_SIZE, SPI_DEV_NAME);
-	snprintf(amlogic_spi->spi_dev.dev.bus_id, sizeof(amlogic_spi->spi_dev.dev.bus_id), "apollospi%d", master->bus_num);
+	strcpy((char *)amlogic_spi->spi_dev.modalias, SPI_DEV_NAME);
+	dev_set_name(&amlogic_spi->spi_dev.dev, "%s:%d", "apollospi", master->bus_num);
 	return device_add(&amlogic_spi->spi_dev.dev);
 }
 
-static void amlogic_spi_cleanup(struct spi_device	*spi)
+static  void amlogic_spi_cleanup(struct spi_device	*spi)
 {
 	if (spi->modalias)
 		kfree(spi->modalias);
@@ -314,6 +309,7 @@ static int spi_transmit_cycle(struct amlogic_spi *amlogic_spi, struct amlogic_sp
 	return 0;
 }
 
+unsigned spi_flag = 1;
 static int amlogic_spi_transfer(struct spi_device *spi, struct spi_message *m)
 {
 	struct amlogic_spi	*amlogic_spi;
@@ -321,7 +317,12 @@ static int amlogic_spi_transfer(struct spi_device *spi, struct spi_message *m)
 	unsigned long		flags;
 	struct spi_transfer	*t;
 	unsigned command_index = 0;
-
+	while(spi_flag)
+	{
+		spi_flag++;
+		spi_flag--;
+		command_index = 0;
+	}
 	spin_lock_irqsave(&amlogic_spi->lock, flags);
 	amlogic_spi = spi_master_get_devdata(spi->master);
 	m->actual_length = 0;
@@ -430,20 +431,14 @@ static int amlogic_spi_nor_probe(struct platform_device *pdev)
 	amlogic_spi = spi_master_get_devdata(master);
 	amlogic_spi->master = master;
 
-	amlogic_spi->spi_dev.modalias = (char *)kmalloc(BUS_ID_SIZE, GFP_KERNEL);
-	if (amlogic_spi->spi_dev.modalias == NULL) {
-		dev_dbg(&pdev->dev, "modalias allocation failed\n");
-		return -ENOMEM;
-	}
-
 	r = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (r == NULL) {
 		status = -ENODEV;
 		goto err1;
 	}
 
-	amlogic_spi->map_base = (unsigned char *)(r->start);
-	amlogic_spi->map_end = (unsigned char *)(r->end);
+	//amlogic_spi->map_base = (unsigned char *)(r->start);
+	//amlogic_spi->map_end = (unsigned char *)(r->end);
 	amlogic_spi->spi_dev.dev.platform_data = pdev->dev.platform_data;
 
 	spin_lock_init(&amlogic_spi->lock);
