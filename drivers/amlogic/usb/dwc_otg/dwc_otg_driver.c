@@ -841,7 +841,6 @@ static int __init dwc_otg_driver_probe(struct lm_device *_lmdev)
 	 * Device structure.
 	 */
 	lm_set_drvdata(_lmdev, dwc_otg_device);
-	dev_dbg(&_lmdev->dev, "dwc_otg_device=0x%p\n", dwc_otg_device);
 
 	port_type = _lmdev->port_type;
 	port_speed = _lmdev->port_speed;
@@ -961,7 +960,7 @@ static int __init dwc_otg_driver_probe(struct lm_device *_lmdev)
 		/*
 		 * Initialize the HCD
 		 */
-		DWC_WARN("working on port type = HOST\n");
+		dev_dbg(&_lmdev->dev,"Working on port type = HOST\n");
 		if (!dwc_otg_is_host_mode(dwc_otg_device->core_if)) {
 			DWC_ERROR
 			    ("Chip mode not match! -- Want HOST mode but not.  --\n");
@@ -977,7 +976,7 @@ static int __init dwc_otg_driver_probe(struct lm_device *_lmdev)
 		/*
 		 * Initialize the PCD
 		 */
-		DWC_WARN("working on port type = SLAVE\n");
+		dev_dbg(&_lmdev->dev,"Working on port type = SLAVE\n");
 		if (!dwc_otg_is_device_mode(dwc_otg_device->core_if)) {
 			DWC_ERROR
 			    ("Chip mode not match! -- Want Device mode but not.  --\n");
