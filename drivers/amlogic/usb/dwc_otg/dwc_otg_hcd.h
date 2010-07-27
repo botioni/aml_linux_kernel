@@ -517,7 +517,7 @@ extern int dwc_otg_hcd_qtd_add(dwc_otg_qtd_t * qtd,
  * @return Returns the memory allocate or NULL on error. */
 static inline dwc_otg_qtd_t *dwc_otg_hcd_qtd_alloc(void)
 {
-	return (dwc_otg_qtd_t *) kmalloc(sizeof(dwc_otg_qtd_t), GFP_KERNEL);
+	return (dwc_otg_qtd_t *) kmalloc(sizeof(dwc_otg_qtd_t), GFP_ATOMIC);
 }
 
 /** Frees the memory for a QTD structure.  QTD should already be removed from
