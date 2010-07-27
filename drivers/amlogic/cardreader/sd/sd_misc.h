@@ -8,14 +8,17 @@
 #include <linux/module.h>
 #include <linux/init.h>
 #include <linux/delay.h>
-    
-#include <asm/arch/am_regs.h>
-#include <asm/cacheflush.h>
-#include <asm/delay.h>
-    
+#include <linux/io.h>
+#include <linux/mii.h>
+#include <linux/skbuff.h>
+
+#include <mach/am_regs.h>
+#include <mach/irqs.h>
+#include <mach/card_io.h>    
+ 
 #include "sd_port.h"
     
-#define sd_get_timer_tick()			READ_ISA_REG(IREG_TIMER_E_COUNT)	//unit: 10us or 1/100ms, max: 0 ~ 0xFFFFFF
+#define sd_get_timer_tick()			READ_CBUS_REG(ISA_TIMERE)	//unit: 10us or 1/100ms, max: 0 ~ 0xFFFFFF
 #define SD_MAX_TIMER_TICK           0xFFFFFF
 #define TIMER_1US					1
 #define TIMER_10US					(10*TIMER_1US)
@@ -23,11 +26,9 @@
 void sd_start_timer(unsigned long time_value);
 int sd_check_timer(void);
 int sd_check_timeout(void);
-
-#define Debug_Printf				printk
+#define Debug_Printf				printk
 extern const unsigned short sd_crc_table[];
-
-//#define inline _Inline
+//#define inline _Inline
     
 #define SD_CAL_BIT_CRC(crc_val,bit_mask_value)	{if(crc_val&0x8000){crc_val<<=1;crc_val^=0x1021;}else{crc_val<<=1;};if(bit_mask_value){crc_val^=0x1021;};}
     

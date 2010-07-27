@@ -2,164 +2,203 @@
 #define _H_SD_PROTOCOL
 
 #include <linux/slab.h>
-#include <linux/types.h>
-    
-#include <asm/drivers/cardreader/cardreader.h>
-#include <asm/drivers/cardreader/card_io.h>
-#include <asm/drivers/cardreader/sdio_hw.h>
-    
+#include <linux/cardreader/cardreader.h>
+#include <linux/cardreader/card_block.h>
+#include <linux/cardreader/sdio_hw.h>
+
+#include <mach/am_regs.h>
+#include <mach/irqs.h>
+#include <mach/card_io.h>
+
 //Never change any sequence of following data variables
 #pragma pack(1)
     
 //MSB->LSB, structure for Operation Conditions Register
-typedef struct _SD_REG_OCR  {
-	unsigned Reserved0:6;
-	unsigned Card_Capacity_Status:1;	//Card_High_capacity
+typedef struct _SD_REG_OCR {
+
+	unsigned Reserved0:6;
+	unsigned Card_Capacity_Status:1;	//Card_High_capacity
 	unsigned Card_Busy:1;	//Card power up status bit (busy)
-	unsigned VDD_28_29:1;	/* VDD voltage 2.8 ~ 2.9 */
-	unsigned VDD_29_30:1;	/* VDD voltage 2.9 ~ 3.0 */
-	unsigned VDD_30_31:1;	/* VDD voltage 3.0 ~ 3.1 */
-	unsigned VDD_31_32:1;	/* VDD voltage 3.1 ~ 3.2 */
-	unsigned VDD_32_33:1;	/* VDD voltage 3.2 ~ 3.3 */
-	unsigned VDD_33_34:1;	/* VDD voltage 3.3 ~ 3.4 */
-	unsigned VDD_34_35:1;	/* VDD voltage 3.4 ~ 3.5 */
-	unsigned VDD_35_36:1;	/* VDD voltage 3.5 ~ 3.6 */
-	unsigned VDD_20_21:1;	/* VDD voltage 2.0 ~ 2.1 */
-	unsigned VDD_21_22:1;	/* VDD voltage 2.1 ~ 2.2 */
-	unsigned VDD_22_23:1;	/* VDD voltage 2.2 ~ 2.3 */
-	unsigned VDD_23_24:1;	/* VDD voltage 2.3 ~ 2.4 */
-	unsigned VDD_24_25:1;	/* VDD voltage 2.4 ~ 2.5 */
-	unsigned VDD_25_26:1;	/* VDD voltage 2.5 ~ 2.6 */
-	unsigned VDD_26_27:1;	/* VDD voltage 2.6 ~ 2.7 */
-	unsigned VDD_27_28:1;	/* VDD voltage 2.7 ~ 2.8 */
-	unsigned Reserved4:1;	/* MMC VDD voltage 1.45 ~ 1.50 */
-	unsigned Reserved3:1;	/* MMC VDD voltage 1.50 ~ 1.55 */
-	unsigned Reserved2:1;	/* MMC VDD voltage 1.55 ~ 1.60 */
-	unsigned Reserved1:1;	/* MMC VDD voltage 1.60 ~ 1.65 */
-	unsigned VDD_16_17:1;	/* VDD voltage 1.6 ~ 1.7 */
-	unsigned VDD_17_18:1;	/* VDD voltage 1.7 ~ 1.8 */
-	unsigned VDD_18_19:1;	/* VDD voltage 1.8 ~ 1.9 */
-	unsigned VDD_19_20:1;	/* VDD voltage 1.9 ~ 2.0 */
-} SD_REG_OCR_t;
-typedef struct _SDIO_REG_OCR  {
-	unsigned VDD_28_29:1;	/* VDD voltage 2.8 ~ 2.9 */
-	unsigned VDD_29_30:1;	/* VDD voltage 2.9 ~ 3.0 */
-	unsigned VDD_30_31:1;	/* VDD voltage 3.0 ~ 3.1 */
-	unsigned VDD_31_32:1;	/* VDD voltage 3.1 ~ 3.2 */
-	unsigned VDD_32_33:1;	/* VDD voltage 3.2 ~ 3.3 */
-	unsigned VDD_33_34:1;	/* VDD voltage 3.3 ~ 3.4 */
-	unsigned VDD_34_35:1;	/* VDD voltage 3.4 ~ 3.5 */
-	unsigned VDD_35_36:1;	/* VDD voltage 3.5 ~ 3.6 */
-	unsigned VDD_20_21:1;	/* VDD voltage 2.0 ~ 2.1 */
-	unsigned VDD_21_22:1;	/* VDD voltage 2.1 ~ 2.2 */
-	unsigned VDD_22_23:1;	/* VDD voltage 2.2 ~ 2.3 */
-	unsigned VDD_23_24:1;	/* VDD voltage 2.3 ~ 2.4 */
-	unsigned VDD_24_25:1;	/* VDD voltage 2.4 ~ 2.5 */
-	unsigned VDD_25_26:1;	/* VDD voltage 2.5 ~ 2.6 */
-	unsigned VDD_26_27:1;	/* VDD voltage 2.6 ~ 2.7 */
-	unsigned VDD_27_28:1;	/* VDD voltage 2.7 ~ 2.8 */
-	unsigned Reserved:8;	/* reserved */
-} SDIO_REG_OCR_t;
-
+
+	unsigned VDD_28_29:1;	/* VDD voltage 2.8 ~ 2.9 */
+	unsigned VDD_29_30:1;	/* VDD voltage 2.9 ~ 3.0 */
+	unsigned VDD_30_31:1;	/* VDD voltage 3.0 ~ 3.1 */
+	unsigned VDD_31_32:1;	/* VDD voltage 3.1 ~ 3.2 */	
+	unsigned VDD_32_33:1;	/* VDD voltage 3.2 ~ 3.3 */	
+	unsigned VDD_33_34:1;	/* VDD voltage 3.3 ~ 3.4 */	
+	unsigned VDD_34_35:1;	/* VDD voltage 3.4 ~ 3.5 */	
+	unsigned VDD_35_36:1;	/* VDD voltage 3.5 ~ 3.6 */	
+
+	unsigned VDD_20_21:1;	/* VDD voltage 2.0 ~ 2.1 */	
+	unsigned VDD_21_22:1;	/* VDD voltage 2.1 ~ 2.2 */	
+	unsigned VDD_22_23:1;	/* VDD voltage 2.2 ~ 2.3 */	
+	unsigned VDD_23_24:1;	/* VDD voltage 2.3 ~ 2.4 */
+	unsigned VDD_24_25:1;	/* VDD voltage 2.4 ~ 2.5 */	
+	unsigned VDD_25_26:1;	/* VDD voltage 2.5 ~ 2.6 */	
+	unsigned VDD_26_27:1;	/* VDD voltage 2.6 ~ 2.7 */	
+	unsigned VDD_27_28:1;	/* VDD voltage 2.7 ~ 2.8 */
+
+	unsigned Reserved4:1;	/* MMC VDD voltage 1.45 ~ 1.50 */
+	unsigned Reserved3:1;	/* MMC VDD voltage 1.50 ~ 1.55 */	
+	unsigned Reserved2:1;	/* MMC VDD voltage 1.55 ~ 1.60 */	
+	unsigned Reserved1:1;	/* MMC VDD voltage 1.60 ~ 1.65 */	
+	unsigned VDD_16_17:1;	/* VDD voltage 1.6 ~ 1.7 */	
+	unsigned VDD_17_18:1;	/* VDD voltage 1.7 ~ 1.8 */	
+	unsigned VDD_18_19:1;	/* VDD voltage 1.8 ~ 1.9 */	
+	unsigned VDD_19_20:1;	/* VDD voltage 1.9 ~ 2.0 */
+} SD_REG_OCR_t;
+
+
+typedef struct _SDIO_REG_OCR {
+
+	unsigned VDD_28_29:1;	/* VDD voltage 2.8 ~ 2.9 */
+	unsigned VDD_29_30:1;	/* VDD voltage 2.9 ~ 3.0 */
+	unsigned VDD_30_31:1;	/* VDD voltage 3.0 ~ 3.1 */	
+	unsigned VDD_31_32:1;	/* VDD voltage 3.1 ~ 3.2 */
+	unsigned VDD_32_33:1;	/* VDD voltage 3.2 ~ 3.3 */	
+	unsigned VDD_33_34:1;	/* VDD voltage 3.3 ~ 3.4 */	
+	unsigned VDD_34_35:1;	/* VDD voltage 3.4 ~ 3.5 */	
+	unsigned VDD_35_36:1;	/* VDD voltage 3.5 ~ 3.6 */
+	
+	unsigned VDD_20_21:1;	/* VDD voltage 2.0 ~ 2.1 */
+	unsigned VDD_21_22:1;	/* VDD voltage 2.1 ~ 2.2 */
+	unsigned VDD_22_23:1;	/* VDD voltage 2.2 ~ 2.3 */
+	unsigned VDD_23_24:1;	/* VDD voltage 2.3 ~ 2.4 */
+	unsigned VDD_24_25:1;	/* VDD voltage 2.4 ~ 2.5 */
+	unsigned VDD_25_26:1;	/* VDD voltage 2.5 ~ 2.6 */
+	unsigned VDD_26_27:1;	/* VDD voltage 2.6 ~ 2.7 */
+	unsigned VDD_27_28:1;	/* VDD voltage 2.7 ~ 2.8 */	
+
+	unsigned Reserved:8;	/* reserved */
+} SDIO_REG_OCR_t;
+
 //MSB->LSB, structure for Card_Identification Register
-typedef struct _SD_REG_CID  {
-	unsigned char MID;	//Manufacturer ID
-	char OID[2];		//OEM/Application ID
-	char PNM[5];		//Product Name
+typedef struct _SD_REG_CID {
+
+	unsigned char MID;	//Manufacturer ID
+	char OID[2];		//OEM/Application ID	
+	char PNM[5];		//Product Name
 	unsigned char PRV;	//Product Revision
-	unsigned long PSN;	//Serial Number
-	unsigned MDT_high:4;	//Manufacture Date Code
-	unsigned Reserved:4;
-	unsigned MDT_low:8;	// MDT = (MDT_high << 8) | MDT_low
-	unsigned NotUsed:1;
-	unsigned CRC:7;	//CRC7 checksum
+	unsigned long PSN;	//Serial Number
+	unsigned MDT_high:4;	//Manufacture Date Code
+	unsigned Reserved:4;	
+	unsigned MDT_low:8;	// MDT = (MDT_high << 8) | MDT_low
+	unsigned NotUsed:1;
+	unsigned CRC:7;	//CRC7 checksum
 } SD_REG_CID_t;
-
+
 //MSB->LSB, structure for Card-Specific Data Register
-typedef struct _SD_REG_CSD  {
-	unsigned Reserved1:2;
-	unsigned MMC_SPEC_VERS:4;	//MMC Spec_vers
-	unsigned CSD_STRUCTURE:2;	//CSD structure
-	unsigned TAAC:8;	//data read access-time-1
+typedef struct _SD_REG_CSD {
+
+	unsigned Reserved1:2;
+	unsigned MMC_SPEC_VERS:4;	//MMC Spec_vers
+	unsigned CSD_STRUCTURE:2;	//CSD structure	
+
+	unsigned TAAC:8;	//data read access-time-1
 	unsigned NSAC:8;	//data read access-time-2 in CLK cycles(NSAC*100)
 	unsigned TRAN_SPEED:8;	//max. data transfer rate
-	unsigned CCC_high:8;	//card command classes
-	unsigned READ_BL_LEN:4;	//max. read data block length
+	unsigned CCC_high:8;	//card command classes	
+
+	unsigned READ_BL_LEN:4;	//max. read data block length
 	unsigned CCC_low:4;	// CCC = (CCC_high << 4) | CCC_low
-	unsigned C_SIZE_high:2;	//device size
+
+	unsigned C_SIZE_high:2;	//device size
 	unsigned Reserved2:2;
-	unsigned DSR_IMP:1;	//DSR implemented
+	unsigned DSR_IMP:1;	//DSR implemented
 	unsigned READ_BLK_MISALIGN:1;	//read block misalignment
 	unsigned WRITE_BLK_MISALIGN:1;	//write block misalignment
 	unsigned READ_BL_PARTIAL:1;	//partial blocks for read allowed
-	unsigned C_SIZE_mid:8;
-	unsigned VDD_R_CURR_MAX:3;	//max. read current @VDD max
+	
+	unsigned C_SIZE_mid:8;
+
+	unsigned VDD_R_CURR_MAX:3;	//max. read current @VDD max
 	unsigned VDD_R_CURR_MIN:3;	//max. read current @VDD min
 	unsigned C_SIZE_low:2;	// C_SIZE = (C_SIZE_high << 10) | (C_SIZE_mid << 2) | C_SIZE_low
-	unsigned C_SIZE_MULT_high:2;
-	unsigned VDD_W_CURR_MAX:3;	//max. write current @VDD max
+
+	unsigned C_SIZE_MULT_high:2;	
+	unsigned VDD_W_CURR_MAX:3;	//max. write current @VDD max
 	unsigned VDD_W_CURR_MIN:3;	//max. write current @VDD min
-	unsigned SECTOR_SIZE_high:6;	//erase sector size
+	
+	unsigned SECTOR_SIZE_high:6;	//erase sector size
 	unsigned ERASE_BLK_EN:1;	//erase single block enable
 	unsigned C_SIZE_MULT_low:1;	// C_SIZE_MULT = (C_SIZE_MULT_high << 1) | C_SIZE_MULT_low
-	unsigned WP_GRP_SIZE:7;	//write protect group size
+	
+	unsigned WP_GRP_SIZE:7;	//write protect group size
 	unsigned SECTOR_SIZE_low:1;	// SECTOR_SIZE = (SECTOR_SIZE_high << 1) | SECTOR_SIZE_low
-	unsigned WRITE_BL_LEN_high:2;	//max. write data block length
+	
+	unsigned WRITE_BL_LEN_high:2;	//max. write data block length
 	unsigned R2W_FACTOR:3;	//write speed factor
 	unsigned Reserved3:2;
-	unsigned WP_GRP_ENABLE:1;	//write protect group enable
-	unsigned Reserved4:5;
-	unsigned WRITE_BL_PARTIAL:1;	//partial blocks for write allowed
+	
+	unsigned WP_GRP_ENABLE:1;	//write protect group enable
+	unsigned Reserved4:5;	
+	unsigned WRITE_BL_PARTIAL:1;	//partial blocks for write allowed
 	unsigned WRITE_BL_LEN_low:2;	//WRITE_BL_LEN = (WRITE_BL_LEN_high << 2) | WRITE_BL_LEN_low
-	unsigned Reserved5:2;
-	unsigned FILE_FORMAT:2;	//File format
+	
+	unsigned Reserved5:2;
+	unsigned FILE_FORMAT:2;	//File format
 	unsigned TMP_WRITE_PROTECT:1;	//temporary write protection
 	unsigned PERM_WRITE_PROTECT:1;	//permanent write protection
 	unsigned COPY:1;	//copy flag (OTP)
 	unsigned FILE_FORMAT_GRP:1;	//File format group
-	unsigned NotUsed:1;
-	unsigned CRC:7;	//CRC checksum
-} SD_REG_CSD_t;
-typedef struct _SDHC_REG_CSD  {
-	unsigned Reserved1:6;
-	unsigned CSD_STRUCTURE:2;	//CSD structure
-	unsigned TAAC:8;	//data read access-time-1
+	
+	unsigned NotUsed:1;	
+	unsigned CRC:7;	//CRC checksum
+} SD_REG_CSD_t;
+
+
+typedef struct _SDHC_REG_CSD {
+	
+	unsigned Reserved1:6;
+	unsigned CSD_STRUCTURE:2;	//CSD structure
+	
+	unsigned TAAC:8;	//data read access-time-1
 	unsigned NSAC:8;	//data read access-time-2 in CLK cycles(NSAC*100)
 	unsigned TRAN_SPEED:8;	//max. data transfer rate
-	unsigned CCC_high:8;	//card command classes
-	unsigned READ_BL_LEN:4;	//max. read data block length
+	
+	unsigned CCC_high:8;	//card command classes
+	unsigned READ_BL_LEN:4;	//max. read data block length
 	unsigned CCC_low:4;	// CCC = (CCC_high << 4) | CCC_low
-	unsigned Reserved2:4;
-	unsigned DSR_IMP:1;	//DSR implemented
+	
+	unsigned Reserved2:4;
+	unsigned DSR_IMP:1;	//DSR implemented
 	unsigned READ_BLK_MISALIGN:1;	//read block misalignment
 	unsigned WRITE_BLK_MISALIGN:1;	//write block misalignment
 	unsigned READ_BL_PARTIAL:1;	//partial blocks for read allowed
-	unsigned C_SIZE_high:6;	//device size       
+	
+	unsigned C_SIZE_high:6;	//device size       
 	unsigned Reserved3:2;
-	unsigned C_SIZE_mid:8;
-	unsigned C_SIZE_low:8;
-	unsigned SECTOR_SIZE_high:6;	//erase sector size
+
+	unsigned C_SIZE_mid:8;
+	unsigned C_SIZE_low:8;
+	
+	unsigned SECTOR_SIZE_high:6;	//erase sector size
 	unsigned ERASE_BLK_EN:1;	//erase single block enable
 	unsigned Reserved4:1;
-	unsigned WP_GRP_SIZE:7;	//write protect group size
+	
+	unsigned WP_GRP_SIZE:7;	//write protect group size
 	unsigned SECTOR_SIZE_low:1;	// SECTOR_SIZE = (SECTOR_SIZE_high << 1) | SECTOR_SIZE_low
-	unsigned WRITE_BL_LEN_high:2;	//max. write data block length
+	
+	unsigned WRITE_BL_LEN_high:2;	//max. write data block length
 	unsigned R2W_FACTOR:3;	//write speed factor
 	unsigned Reserved5:2;
-	unsigned WP_GRP_ENABLE:1;	//write protect group enable
-	unsigned Reserved6:5;
-	unsigned WRITE_BL_PARTIAL:1;	//partial blocks for write allowed
+	unsigned WP_GRP_ENABLE:1;	//write protect group enable
+		
+	unsigned Reserved6:5;
+	unsigned WRITE_BL_PARTIAL:1;	//partial blocks for write allowed
 	unsigned WRITE_BL_LEN_low:2;	//WRITE_BL_LEN = (WRITE_BL_LEN_high << 2) | WRITE_BL_LEN_low
-	unsigned Reserved7:2;
-	unsigned FILE_FORMAT:2;	//File format
+	unsigned Reserved7:2;
+	
+	unsigned FILE_FORMAT:2;	//File format
 	unsigned TMP_WRITE_PROTECT:1;	//temporary write protection
 	unsigned PERM_WRITE_PROTECT:1;	//permanent write protection
 	unsigned COPY:1;	//copy flag (OTP)
 	unsigned FILE_FORMAT_GRP:1;	//File format group
-	unsigned NotUsed:1;
-	unsigned CRC:7;	//CRC checksum
-} SDHC_REG_CSD_t;
-
+
+	unsigned NotUsed:1;	
+	unsigned CRC:7;	//CRC checksum
+} SDHC_REG_CSD_t;
+
 /*typedef struct _MMC_REG_EXT_CSD
 {
     unsigned char Reserved1[7];
@@ -188,42 +227,52 @@ typedef struct _SD_REG_CSD  {
             } MMC_REG_EXT_CSD_t;*/// reserved for future use
     
 //MSB->LSB, structure for SD CARD Configuration Register
-typedef struct _SD_REG_SCR  {
-	unsigned SD_SPEC:4;	//SD Card¡ªSpec. Version
+typedef struct _SD_REG_SCR {
+	
+	unsigned SD_SPEC:4;	//SD Card¡ªSpec. Version
 	unsigned SCR_STRUCTURE:4;	//SCR Structure
-	unsigned SD_BUS_WIDTHS:4;	//DAT Bus widths supported
+	
+	unsigned SD_BUS_WIDTHS:4;	//DAT Bus widths supported
 	unsigned SD_SECURITY:3;	//SD Security Support
 	unsigned DATA_STAT_AFTER_ERASE:1;	//data_status_after erases
-	unsigned Reserved1:16;	//for alignment
+	
+	unsigned Reserved1:16;	//for alignment
 	unsigned long Reserved2;
-} SD_REG_SCR_t;
-typedef struct _SDIO_REG_CCCR  {
-	unsigned char CCCR_SDIO_SPEC;	//cccr and sdio spec verion low four bits(cccr) high four bits(sdio)
+} SD_REG_SCR_t;
+
+
+typedef struct _SDIO_REG_CCCR {
+
+	unsigned char CCCR_SDIO_SPEC;	//cccr and sdio spec verion low four bits(cccr) high four bits(sdio)
 	unsigned char SD_SPEC;	//SD Card¡ªSpec. Version low four bits
 	unsigned char IO_ENABLE;	//
 	unsigned char IO_READY;	//
 	unsigned char INT_ENABLE;	//
 	unsigned char INT_PENDING;
-	unsigned char INT_ABORT;
-	unsigned char BUS_Interface_Control;
-	unsigned char Card_Capability;
-	unsigned short Common_CIS_Pointer1;
-	unsigned char Common_CIS_Pointer2;
-	unsigned char BUS_Suspend;
-	unsigned char Function_Select;
-	unsigned char Exec_Flags;
-	unsigned short FN0_Block_Size;
-	unsigned char Power_Control;
-	unsigned char High_Speed;
-	unsigned char RFU[220];	//
+	unsigned char INT_ABORT;
+	unsigned char BUS_Interface_Control;
+	unsigned char Card_Capability;	
+	unsigned short Common_CIS_Pointer1;	
+	unsigned char Common_CIS_Pointer2;	
+	unsigned char BUS_Suspend;	
+	unsigned char Function_Select;	
+	unsigned char Exec_Flags;	
+	unsigned short FN0_Block_Size;	
+	unsigned char Power_Control;	
+	unsigned char High_Speed;	
+	unsigned char RFU[220];	//
 	unsigned char Reserved[16];
-} SDIO_REG_CCCR_t;
-typedef struct _SD_REG_DSR  {
-} SD_REG_DSR_t;
-
+} SDIO_REG_CCCR_t;
+
+
+typedef struct _SD_REG_DSR {
+
+} SD_REG_DSR_t;
+
 //MSB->LSB, structrue for SD Card Status
-typedef struct _SD_Card_Status  {
-	unsigned LOCK_UNLOCK_FAILED:1;	//Set when a sequence or password error has been detected in lock/ unlock card command or if there was an attempt to access a locked card
+typedef struct _SD_Card_Status {
+	
+	unsigned LOCK_UNLOCK_FAILED:1;	//Set when a sequence or password error has been detected in lock/ unlock card command or if there was an attempt to access a locked card
 	unsigned CARD_IS_LOCKED:1;	//When set, signals that the card is locked by the host
 	unsigned WP_VIOLATION:1;	//Attempt to program a write-protected block.
 	unsigned ERASE_PARAM:1;	//An invalid selection of write-blocks for erase occurred.
@@ -231,161 +280,237 @@ typedef struct _SD_Card_Status  {
 	unsigned BLOCK_LEN_ERROR:1;	//The transferred block length is not allowed for this card, or the number of transferred bytes does not match the block length.
 	unsigned ADDRESS_ERROR:1;	//A misaligned address that did not match the block length was used in the command.
 	unsigned OUT_OF_RANGE:1;	//The command¡¯s argument was out of the allowed range for this card.
-	unsigned CID_CSD_OVERWRITE:1;	//Can be either one of the following errors:
+	
+	unsigned CID_CSD_OVERWRITE:1;	//Can be either one of the following errors:
 	unsigned Reserved1:1;
-	unsigned Reserved2:1;
-	unsigned ERROR:1;	//A general or an unknown error occurred during the operation.
+	unsigned Reserved2:1;
+	unsigned ERROR:1;	//A general or an unknown error occurred during the operation.
 	unsigned CC_ERROR:1;	//Internal card controller error
 	unsigned CARD_ECC_FAILED:1;	//Card internal ECC was applied but failed to correct the data.
 	unsigned ILLEGAL_COMMAND:1;	//Command not legal for the card state
 	unsigned COM_CRC_ERROR:1;	//The CRC check of the previous command failed.
-	unsigned READY_FOR_DATA:1;	//Corresponds to buffer empty signalling on the bus.
+	
+	unsigned READY_FOR_DATA:1;	//Corresponds to buffer empty signalling on the bus.
 	unsigned CURRENT_STATE:4;	//The state of the card when receiving the command. 
 	unsigned ERASE_RESET:1;	//An erase sequence was cleared beforem executing because an out of erase sequence command was received.
 	unsigned CARD_ECC_DISABLED:1;	//The command has been executed without using the internal ECC.
 	unsigned WP_ERASE_SKIP:1;	//Only partial address space was erased due to existing write protected blocks.
-	unsigned Reserved3:2;
-	unsigned Reserved4:1;
-	unsigned AKE_SEQ_ERROR:1;	//Error in the sequence of authentication process.
+	
+	unsigned Reserved3:2;
+	unsigned Reserved4:1;
+	unsigned AKE_SEQ_ERROR:1;	//Error in the sequence of authentication process.
 	unsigned Reserved5:1;
-	unsigned APP_CMD:1;	//The card will expect ACMD, or indication that the command has been interpreted as ACMD.
+	
+	unsigned APP_CMD:1;	//The card will expect ACMD, or indication that the command has been interpreted as ACMD.
 	unsigned NotUsed:2;
-} SD_Card_Status_t;
-
+} SD_Card_Status_t;
+
 //MSB->LSB, structure for SD SD_Status
-typedef struct _SD_SD_Status  {
-	unsigned Reserved1:5;
-	unsigned SECURED_MODE:1;	//Card is in Secured Mode of operation (refer to the SD Security Specifications document).
+typedef struct _SD_SD_Status {
+	
+	unsigned Reserved1:5;
+	unsigned SECURED_MODE:1;	//Card is in Secured Mode of operation (refer to the SD Security Specifications document).
 	unsigned DAT_BUS_WIDTH:2;	//Shows the currently defined data bus width that was defined by the SET_sd_info.bus_width command.
-	unsigned Reserved2:8;
-	unsigned SIZE_OF_PROTECTED_AREA:2;	//Shows the size of the protected area. The actual area = (SIZE_OF_PROTECTED_AREA) * MULT * BLOCK_LEN.
+	
+	unsigned Reserved2:8;
+
+	unsigned SIZE_OF_PROTECTED_AREA:2;	//Shows the size of the protected area. The actual area = (SIZE_OF_PROTECTED_AREA) * MULT * BLOCK_LEN.
 	unsigned SD_CARD_TYPE:6;	//In the future, the 8 LSBs will be used to define different variations of an SD Card (each bit will define different SD types).
-	unsigned Reserved3:8;	//just for bit structure alignment
-	unsigned char Reserved4[16];
-	unsigned char Reserved5[39];
-} SD_SD_Status_t;
-typedef struct _SD_Switch_Function__Status  {
-	unsigned short Max_Current_Consumption;
-	unsigned short Function_Group[6];
-	unsigned Function_Group_Status6:4;
-	unsigned Function_Group_Status5:4;
-	unsigned Function_Group_Status4:4;
-	unsigned Function_Group_Status3:4;
-	unsigned Function_Group_Status2:4;
-	unsigned Function_Group_Status1:4;
-	unsigned char Data_Struction_Verion;
-	unsigned short Function_Status_In_Group[6];
-	unsigned char Reserved[34];
-} SD_Switch_Function_Status_t;
-
+	
+	unsigned Reserved3:8;	//just for bit structure alignment	
+	unsigned char Reserved4[16];	
+	unsigned char Reserved5[39];
+} SD_SD_Status_t;
+
+
+typedef struct _SD_Switch_Function__Status {
+	
+	unsigned short Max_Current_Consumption;
+	unsigned short Function_Group[6];
+	unsigned Function_Group_Status6:4;
+	unsigned Function_Group_Status5:4;
+	unsigned Function_Group_Status4:4;	
+	unsigned Function_Group_Status3:4;	
+	unsigned Function_Group_Status2:4;	
+	unsigned Function_Group_Status1:4;	
+	unsigned char Data_Struction_Verion;
+	unsigned short Function_Status_In_Group[6];
+	unsigned char Reserved[34];
+} SD_Switch_Function_Status_t;
+
 //structure for response
-typedef struct _SD_Response_R1  {
-	unsigned char command;	//command index = bit 6:0
-	SD_Card_Status_t card_status;	//card status
-	unsigned end_bit:1;	//end bit = bit 0
+typedef struct _SD_Response_R1 {
+
+	unsigned char command;	//command index = bit 6:0
+	SD_Card_Status_t card_status;	//card status
+	unsigned end_bit:1;	//end bit = bit 0
 	unsigned crc7:7;	//CRC7 = bit 7:1
 } SD_Response_R1_t;
-typedef struct _SD_Response_R2_CID  {
-	unsigned char reserved;	//should be 0x3F
-	SD_REG_CID_t cid;	//response CID
-	unsigned end_bit:1;	//end bit = bit 0
+
+
+typedef struct _SD_Response_R2_CID {
+
+	unsigned char reserved;	//should be 0x3F
+	SD_REG_CID_t cid;	//response CID	
+	unsigned end_bit:1;	//end bit = bit 0
 	unsigned crc7:7;	//CRC7 = bit 7:1
 } SD_Response_R2_CID_t;
-typedef struct _SD_Response_R2_CSD  {
-	unsigned char reserved;	//should be 0x3F
-	SD_REG_CSD_t csd;	//response CSD
-	unsigned end_bit:1;	//end bit = bit 0
+
+
+typedef struct _SD_Response_R2_CSD {
+	
+	unsigned char reserved;	//should be 0x3F
+	SD_REG_CSD_t csd;	//response CSD
+	unsigned end_bit:1;	//end bit = bit 0
 	unsigned crc7:7;	//CRC7 = bit 7:1
 } SD_Response_R2_CSD_t;
-typedef struct _SDHC_Response_R2_CSD  {
-	unsigned char reserved;	//should be 0x3F
-	SDHC_REG_CSD_t csd;	//response CSD
-	unsigned end_bit:1;	//end bit = bit 0
+
+
+typedef struct _SDHC_Response_R2_CSD {
+	
+	unsigned char reserved;	//should be 0x3F
+	SDHC_REG_CSD_t csd;	//response CSD	
+	unsigned end_bit:1;	//end bit = bit 0
 	unsigned crc7:7;	//CRC7 = bit 7:1
 } SDHC_Response_R2_CSD_t;
-typedef struct _SD_Response_R3  {
-	unsigned char reserved1;	//should be 0x3F
-	SD_REG_OCR_t ocr;	//OCR register
-	unsigned end_bit:1;	//end bit = bit 0
+
+
+typedef struct _SD_Response_R3 {
+	
+	unsigned char reserved1;	//should be 0x3F
+	SD_REG_OCR_t ocr;	//OCR register	
+	unsigned end_bit:1;	//end bit = bit 0
 	unsigned reserved2:7;	//should be 0x7F
 } SD_Response_R3_t;
-typedef struct _SDIO_Response_R4  {
-	unsigned char reserved1;	//should be 0x3F
-	unsigned Stuff_bits:3;
-	unsigned Memory_Present:1;
-	unsigned IO_Function_No:3;
-	unsigned Card_Ready:1;
-	SDIO_REG_OCR_t ocr;	//OCR register
-	unsigned end_bit:1;	//end bit = bit 0
+
+
+typedef struct _SDIO_Response_R4 {
+	
+	unsigned char reserved1;	//should be 0x3F
+	unsigned Stuff_bits:3;	
+	unsigned Memory_Present:1;	
+	unsigned IO_Function_No:3;
+	unsigned Card_Ready:1;
+	SDIO_REG_OCR_t ocr;	//OCR register
+	unsigned end_bit:1;	//end bit = bit 0
 	unsigned reserved2:7;	//should be 0x7F
 } SDIO_Response_R4_t;
-typedef struct _SDIO_RW_CMD_Response_R5  {
-	unsigned command:6;	//command index = bit 6:0
+
+
+typedef struct _SDIO_RW_CMD_Response_R5 {
+
+	unsigned command:6;	//command index = bit 6:0
 	unsigned direct_bit:1;
-	unsigned start_bit:1;
-	unsigned short stuff;	//not used
-	unsigned Out_Of_Range:1;	//status of sdio card
+	unsigned start_bit:1;
+	
+	unsigned short stuff;	//not used
+	
+	unsigned Out_Of_Range:1;	//status of sdio card
 	unsigned Function_Number:1;
-	unsigned RFU:1;
-	unsigned Error:1;
-	unsigned IO_Current_State:2;
-	unsigned Illegal_CMD:1;
-	unsigned CMD_CRC_Error:1;
-	unsigned char read_or_write_data;	//read back data
-	unsigned end_bit:1;	//end bit = bit 0
+	unsigned RFU:1;
+	unsigned Error:1;
+	unsigned IO_Current_State:2;
+	unsigned Illegal_CMD:1;
+	unsigned CMD_CRC_Error:1;
+
+	unsigned char read_or_write_data;	//read back data
+
+	unsigned end_bit:1;	//end bit = bit 0
 	unsigned crc7:7;	//CRC7 = bit 7:1
 } SDIO_RW_CMD_Response_R5_t;
-typedef struct _SD_Response_R6  {
-	unsigned char command;	//command index = bit 6:0
-	unsigned char rca_high;	//New published RCA [31:16] of the card
+
+
+typedef struct _SD_Response_R6 {
+	
+	unsigned char command;	//command index = bit 6:0
+	unsigned char rca_high;	//New published RCA [31:16] of the card
 	unsigned char rca_low;
-	unsigned short part_card_status;	//[15:0] card status bits: 23,22,19,12:0
-	unsigned end_bit:1;	//end bit = bit 0
+	unsigned short part_card_status;	//[15:0] card status bits: 23,22,19,12:0
+	unsigned end_bit:1;	//end bit = bit 0
 	unsigned crc7:7;	//CRC7 = bit 7:1
 } SD_Response_R6_t;
-typedef struct _SD_Response_R7  {
-	unsigned char command;	//command index = bit 6:0
-	unsigned reserved1:4;
-	unsigned cmd_version:4;	//0:voltage check
-	unsigned char reserved;
-	unsigned voltage_accept:4;	//0001b:2.7v-3.6v  0010b:1.65v-1.95v
+
+
+typedef struct _SD_Response_R7 {
+
+	unsigned char command;	//command index = bit 6:0
+
+	unsigned reserved1:4;
+	unsigned cmd_version:4;	//0:voltage check
+	
+	unsigned char reserved;
+
+	unsigned voltage_accept:4;	//0001b:2.7v-3.6v  0010b:1.65v-1.95v
 	unsigned reserved2:4;
-	unsigned char check_pattern;
-	unsigned end_bit:1;	//end bit = bit 0
+	
+	unsigned char check_pattern;
+
+	unsigned end_bit:1;	//end bit = bit 0
 	unsigned crc7:7;	//CRC7 = bit 7:1
 } SD_Response_R7_t;
-typedef struct _SDIO_IO_RW_CMD_ARG  {
-	unsigned char write_data_bytes;	//write data bytes count
-	unsigned stuff1:1;	//not used
+
+
+typedef struct _SDIO_IO_RW_CMD_ARG {
+
+	unsigned char write_data_bytes;	//write data bytes count
+
+	unsigned stuff1:1;	//not used
 	unsigned Register_Address:17;	//byte address of select fuction to read
 	unsigned stuff2:1;	//not used  
 	unsigned RAW_Flag:1;	//read after write flag
 	unsigned Function_No:3;	//function number of wish to read or write
 	unsigned R_W_Flag:1;	//the direction of I/O operation
 } SDIO_IO_RW_CMD_ARG_t;
-typedef struct _SDIO_IO_RW_EXTENDED_ARG  {
-	unsigned Byte_Block_Count:9;	//bytes or block count
+
+
+typedef struct _SDIO_IO_RW_EXTENDED_ARG {
+	
+	unsigned Byte_Block_Count:9;	//bytes or block count
 	unsigned Register_Address:17;	//start address of I/O register
 	unsigned OP_Code:1;	//define the read write operation  
 	unsigned Block_Mode:1;	//Block or byte mode of read and write
 	unsigned Function_No:3;	//function number of wish to read or write
 	unsigned R_W_Flag:1;	//the direction of I/O operation
 } SDIO_IO_RW_EXTENDED_ARG;
-
+
 #pragma pack()
-typedef enum _SD_Card_State 
-    { STATE_UNKNOWN = -1, STATE_INACTIVE =
-0, STATE_IDLE, STATE_READY, STATE_IDENTIFICATION, STATE_STAND_BY, STATE_TRANSFER,
-	STATE_SENDING_DATA, STATE_RECEIVE_DATA, STATE_PROGRAMMING,
-	STATE_DISCONNECT 
+
+
+typedef enum _SD_Card_State { 
+
+	STATE_UNKNOWN = -1, 
+	STATE_INACTIVE = 0, 
+	STATE_IDLE, 
+	STATE_READY, 
+	STATE_IDENTIFICATION, 
+	STATE_STAND_BY, 
+	STATE_TRANSFER,
+	STATE_SENDING_DATA, 
+	STATE_RECEIVE_DATA, 
+	STATE_PROGRAMMING,
+	STATE_DISCONNECT 
 } SD_Card_State_t;
-typedef enum _SD_Response_Type  { RESPONSE_NONE = -1, RESPONSE_R1 = 0, RESPONSE_R1B, RESPONSE_R2_CID, RESPONSE_R2_CSD, RESPONSE_R3, RESPONSE_R4,	//SD, responses are not supported.
+
+
+typedef enum _SD_Response_Type { 
+
+	RESPONSE_NONE = -1, 
+	RESPONSE_R1 = 0, 
+	RESPONSE_R1B, 
+	RESPONSE_R2_CID, 
+	RESPONSE_R2_CSD, 
+	RESPONSE_R3, 
+	RESPONSE_R4,	//SD, responses are not supported.
 	RESPONSE_R5,		//SD, responses are not supported.
-	RESPONSE_R6, RESPONSE_R7 
+	RESPONSE_R6, 
+	RESPONSE_R7 
 } SD_Response_Type_t;
-
+
 /* Error codes */ 
-    typedef enum _SD_Error_Status_t { SD_MMC_NO_ERROR = 0, SD_MMC_ERROR_OUT_OF_RANGE,	//Bit 31
+typedef enum _SD_Error_Status_t {
+
+	SD_MMC_NO_ERROR = 0, 
+	SD_MMC_ERROR_OUT_OF_RANGE,	//Bit 31
 	SD_MMC_ERROR_ADDRESS,	//Bit 30 
 	SD_MMC_ERROR_BLOCK_LEN,	//Bit 29
 	SD_MMC_ERROR_ERASE_SEQ,	//Bit 28
@@ -402,66 +527,114 @@ typedef struct _SD_Response_R1  {
 	SD_ERROR_Reserved2,	//Bit 17
 	SD_MMC_ERROR_CID_CSD_OVERWRITE,	//Bit 16
 	SD_ERROR_AKE_SEQ,	//Bit 03
-	SD_MMC_ERROR_STATE_MISMATCH, SD_MMC_ERROR_HEADER_MISMATCH,
-	SD_MMC_ERROR_DATA_CRC, SD_MMC_ERROR_TIMEOUT,
-	SD_MMC_ERROR_DRIVER_FAILURE, SD_MMC_ERROR_WRITE_PROTECTED,
-	SD_MMC_ERROR_NO_MEMORY, SD_ERROR_SWITCH_FUNCTION_COMUNICATION,
-	SD_ERROR_NO_FUNCTION_SWITCH, SD_MMC_ERROR_NO_CARD_INS,
-	SD_MMC_ERROR_READ_DATA_FAILED, SD_SDIO_ERROR_NO_FUNCTION 
+	SD_MMC_ERROR_STATE_MISMATCH, 
+	SD_MMC_ERROR_HEADER_MISMATCH,
+	SD_MMC_ERROR_DATA_CRC, 
+	SD_MMC_ERROR_TIMEOUT,	
+	SD_MMC_ERROR_DRIVER_FAILURE, 
+	SD_MMC_ERROR_WRITE_PROTECTED,	
+	SD_MMC_ERROR_NO_MEMORY, 
+	SD_ERROR_SWITCH_FUNCTION_COMUNICATION,
+	SD_ERROR_NO_FUNCTION_SWITCH, 
+	SD_MMC_ERROR_NO_CARD_INS,	
+	SD_MMC_ERROR_READ_DATA_FAILED, 
+	SD_SDIO_ERROR_NO_FUNCTION 
 } SD_Error_Status_t;
-typedef enum _SD_Operation_Mode  { CARD_INDENTIFICATION_MODE = 0,	//fod = 100 ~ 400 Khz, OHz stops the clock. The given minimum frequency range is for cases where a continuous clock is required.
+
+
+typedef enum _SD_Operation_Mode { 
+
+	CARD_INDENTIFICATION_MODE = 0,	//fod = 100 ~ 400 Khz, OHz stops the clock. The given minimum frequency range is for cases where a continuous clock is required.
 	DATA_TRANSFER_MODE = 1	//fpp = 0 ~ 25 Mhz
 } SD_Operation_Mode_t;
-typedef enum _SD_Bus_Width  { SD_BUS_SINGLE = 1,	//only DAT0
+
+
+typedef enum _SD_Bus_Width { 
+
+	SD_BUS_SINGLE = 1,	//only DAT0
 	SD_BUS_WIDE = 4		//use DAT0-4
 } SD_Bus_Width_t;
-typedef enum SD_Card_Type 
-    { CARD_TYPE_NONE =
-0, CARD_TYPE_SD, CARD_TYPE_SDHC, CARD_TYPE_MMC, CARD_TYPE_SDIO 
+
+
+typedef enum SD_Card_Type { 
+
+	CARD_TYPE_NONE = 0, 
+	CARD_TYPE_SD, 
+	CARD_TYPE_SDHC, 
+	CARD_TYPE_MMC, 
+	CARD_TYPE_SDIO 
 } SD_Card_Type_t;
-typedef enum SDIO_Card_Type 
-    { CARD_TYPE_NONE_SDIO =
-0, CARD_TYPE_SDIO_STD_UART, CARD_TYPE_SDIO_BT_TYPEA, CARD_TYPE_SDIO_BT_TYPEB,
-	CARD_TYPE_SDIO_GPS, CARD_TYPE_SDIO_CAMERA, CARD_TYPE_SDIO_PHS,
-	CARD_TYPE_SDIO_WLAN,
-	CARD_TYPE_SDIO_OTHER_IF 
+
+
+typedef enum SDIO_Card_Type { 
+
+	CARD_TYPE_NONE_SDIO =0, 
+	CARD_TYPE_SDIO_STD_UART, 
+	CARD_TYPE_SDIO_BT_TYPEA, 
+	CARD_TYPE_SDIO_BT_TYPEB,	
+	CARD_TYPE_SDIO_GPS, 
+	CARD_TYPE_SDIO_CAMERA, 
+	CARD_TYPE_SDIO_PHS,	
+	CARD_TYPE_SDIO_WLAN,
+	CARD_TYPE_SDIO_OTHER_IF 
 } SDIO_Card_Type_t;
-typedef enum SD_SPEC_VERSION 
-    { SPEC_VERSION_10_101, SPEC_VERSION_110, SPEC_VERSION_20 
+
+
+typedef enum SD_SPEC_VERSION { 
+
+	SPEC_VERSION_10_101, 
+	SPEC_VERSION_110, 
+	SPEC_VERSION_20 
 } SD_SPEC_VERSION_t;
-typedef enum MMC_SPEC_VERSION 
-    { SPEC_VERSION_10_12, SPEC_VERSION_14, SPEC_VERSION_20_22,
-	SPEC_VERSION_30_33, SPEC_VERSION_40_41 
+
+
+typedef enum MMC_SPEC_VERSION { 
+
+	SPEC_VERSION_10_12, 
+	SPEC_VERSION_14, 
+	SPEC_VERSION_20_22,	
+	SPEC_VERSION_30_33, 
+	SPEC_VERSION_40_41 
 } MMC_SPEC_VERSION_t;
-typedef enum SD_SPEED_CLASS  { NORMAL_SPEED, HIGH_SPEED 
+
+
+typedef enum SD_SPEED_CLASS { 
+
+	NORMAL_SPEED, 
+	HIGH_SPEED 
 } SD_SPEED_CLASS_t;
-typedef struct SD_MMC_Card_Info  {
-	SD_Card_Type_t card_type;
-	SDIO_Card_Type_t sdio_card_type;
-	SD_Operation_Mode_t operation_mode;
-	SD_Bus_Width_t bus_width;
-	SD_SPEC_VERSION_t spec_version;
-	MMC_SPEC_VERSION_t mmc_spec_version;
-	SD_SPEED_CLASS_t speed_class;
-	SD_REG_CID_t raw_cid;
-	unsigned short card_rca;
-	unsigned sdio_function_no;
-	unsigned sdio_clk_unit;
-	unsigned long blk_len;
-	unsigned long blk_nums;
-	unsigned long clks_nac;
-	int write_protected_flag;
-	int inited_flag;
-	int removed_flag;
-	int init_retry;
-	int single_blk_failed;
-	int sdio_init_flag;
-	void (*sd_mmc_power) (int power_on);
-	int (*sd_mmc_get_ins) (void);
-	int (*sd_get_wp) (void);
-	void (*sd_mmc_io_release) (void);
-} SD_MMC_Card_Info_t;
-
+
+
+typedef struct SD_MMC_Card_Info {
+	
+	SD_Card_Type_t card_type;	
+	SDIO_Card_Type_t sdio_card_type;	
+	SD_Operation_Mode_t operation_mode;	
+	SD_Bus_Width_t bus_width;	
+	SD_SPEC_VERSION_t spec_version;	
+	MMC_SPEC_VERSION_t mmc_spec_version;	
+	SD_SPEED_CLASS_t speed_class;	
+	SD_REG_CID_t raw_cid;	
+
+	unsigned short card_rca;
+	unsigned sdio_function_no;
+	unsigned sdio_clk_unit;
+	unsigned long blk_len;
+	unsigned long blk_nums;	
+	unsigned long clks_nac;
+	int write_protected_flag;
+	int inited_flag;
+	int removed_flag;
+	int init_retry;	
+	int single_blk_failed;
+	int sdio_init_flag;	
+
+	void (*sd_mmc_power) (int power_on);
+	int (*sd_mmc_get_ins) (void);	
+	int (*sd_get_wp) (void);	
+	void (*sd_mmc_io_release) (void);
+} SD_MMC_Card_Info_t;
+
     //SDIO_REG_DEFINE
 #define CCCR_SDIO_SPEC_REG               0x00
 #define SD_SPEC_REG                      0x01
@@ -594,7 +767,7 @@ typedef struct _SD_Response_R1  {
     //  Rsserved for Manufacturer       61      -----   ----------              --------
     //  Rsserved for Manufacturer       62      -----   ----------              --------
     //  Rsserved for Manufacturer       63      -----   ----------              --------
-    
+    
 //All timing values definition for NAND MMC and SD-based Products
 #define SD_MMC_TIME_NCR_MIN             2           /* min. of Number of cycles
 													   between command and response */
@@ -650,9 +823,11 @@ typedef struct _SD_Response_R1  {
 //Following functions are the API used for outside routine
     
 //SD Initialization...
-int sd_mmc_init(SD_MMC_Card_Info_t * card_info);
-void sd_mmc_exit(void);
-void sd_mmc_prepare_init(void);
+int sd_mmc_init(void);
+
+void sd_mmc_exit(void);
+
+void sd_mmc_prepare_init(void);
 
 //get sd_mmc card information
 //void sd_mmc_get_info(blkdev_stat_t *info);
@@ -665,39 +840,52 @@ int sd_mmc_check_insert(void);
 //Read data from SD/MMC card
 int sd_mmc_read_data(unsigned long lba, unsigned long byte_cnt,
 		     unsigned char *data_buf);
-
+
 //Write data to SD/MMC card
 int sd_mmc_write_data(unsigned long lba, unsigned long byte_cnt,
 		      unsigned char *data_buf);
-int sdio_read_data_block_hw(int function_no, int buf_or_fifo,
+
+
+int sdio_read_data_block_hw(int function_no, int buf_or_fifo,
 			      unsigned long sdio_addr,
 			      unsigned long block_count,
 			      unsigned char *data_buf);
-int sdio_read_data_byte_hw(int function_no, int buf_or_fifo,
+
+int sdio_read_data_byte_hw(int function_no, int buf_or_fifo,
 			    unsigned long sdio_addr, unsigned long byte_count,
 			    unsigned char *data_buf);
-int sdio_write_data_block_hw(int function_no, int buf_or_fifo,
+
+int sdio_write_data_block_hw(int function_no, int buf_or_fifo,
 			      unsigned long sdio_addr,
 			      unsigned long block_count,
 			      unsigned char *data_buf);
-int sdio_write_data_byte_hw(int function_no, int buf_or_fifo,
+
+int sdio_write_data_byte_hw(int function_no, int buf_or_fifo,
 			     unsigned long sdio_addr, unsigned long byte_count,
 			     unsigned char *data_buf);
-int sdio_read_reg(int function_no, unsigned long sdio_register,
+
+int sdio_read_reg(int function_no, unsigned long sdio_register,
 		   unsigned char *reg_data);
-int sdio_write_reg(int function_no, unsigned long sdio_register,
+
+int sdio_write_reg(int function_no, unsigned long sdio_register,
 		    unsigned char *reg_data, unsigned read_after_write_flag);
-int sdio_read_data(int function_no, int buf_or_fifo, unsigned long sdio_addr,
+
+int sdio_read_data(int function_no, int buf_or_fifo, unsigned long sdio_addr,
 		    unsigned long byte_count, unsigned char *data_buf);
-int sdio_write_data(int function_no, int buf_or_fifo, unsigned long sdio_addr,
+
+int sdio_write_data(int function_no, int buf_or_fifo, unsigned long sdio_addr,
 		     unsigned long byte_count, unsigned char *data_buf);
-int sdio_close_target_interrupt(int function_no);
-int sdio_open_target_interrupt(int function_no);
-
+
+int sdio_close_target_interrupt(int function_no);
+
+int sdio_open_target_interrupt(int function_no);
+
 //SD Power on/off
 void sd_mmc_power_on(void);
-void sd_mmc_power_off(void);
-void sd_mmc_prepare_init(void);
-
+
+void sd_mmc_power_off(void);
+
+void sd_mmc_prepare_init(void);
+
 #endif				//_H_SD_PROTOCOL
     

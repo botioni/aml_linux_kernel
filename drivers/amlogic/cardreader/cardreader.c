@@ -16,48 +16,15 @@
 #include <linux/device.h>
 #include <linux/pagemap.h>
 #include <linux/platform_device.h>
+#include <linux/cardreader/cardreader.h>
+#include <linux/cardreader/card_block.h>
     
-#include <asm/drivers/cardreader/cardreader.h>
-#include <asm/drivers/cardreader/card_io.h>
-#include <asm/drivers/cardreader/sd.h>
-#include <asm/drivers/cardreader/cf.h>
-#include <asm/drivers/cardreader/xd.h>
-#include <asm/drivers/cardreader/ms.h>
-#include <asm/arch/irqs.h>
-#include <asm/drivers/cardreader/card_block.h>
-    
-#include "xd/xd_protocol.h"
-#include "ms/ms_mspro.h"
-#include "sd/sd_protocol.h"
-#include "cf/cf_protocol.h"
-    
-#define CARD_MS_NAME_STR           "ms"
-#define CARD_SD_NAME_STR           "sd"
-#define CARD_XD_NAME_STR           "xd"
-#define CARD_CF_NAME_STR           "cf"
-#define CARD_UNKNOW_NAME_STR       "xx"
-#define CARD_5IN1CARD_NAME_STR     "5in1"
+#include <mach/am_regs.h>
+#include <mach/irqs.h>
+#include <mach/card_io.h>
 
- /**/ typedef unsigned char (*CARD_DETECTOR) (void);	// INSERTED: 1  REMOVED: 0
- /**/ typedef unsigned char (*CARD_PROCESS) (void);
- /**/ typedef unsigned char (*CARD_READ_CAPACITY) (unsigned *blk_length, unsigned *capacity,  u32 * raw_cid);
- /**/ typedef int (*CARD_IOCTL) (unsigned dev, int req, void *argp);
-    
-typedef struct _card_reader_monitor {
-	unsigned time;
-	unsigned blk_length[CARD_MAX_UNIT];	// block length byte
-	unsigned capacity[CARD_MAX_UNIT];	// capacity in block unit
-	unsigned char unit_state[CARD_MAX_UNIT];
-	
-	u32 raw_cid[CARD_MAX_UNIT][4];
-	char name[CARD_MAX_UNIT][CARD_STRING_LEN];	
-	CARD_DETECTOR card_detector[CARD_MAX_UNIT];
-	CARD_PROCESS card_insert_process[CARD_MAX_UNIT];
-	CARD_PROCESS card_remove_process[CARD_MAX_UNIT];
-	CARD_IOCTL card_ioctl[CARD_MAX_UNIT];
-	CARD_READ_CAPACITY card_read_capacity[CARD_MAX_UNIT];
-}CARD_READER_MONITOR;
-
+#define card_list_to_card(l)	container_of(l, struct memory_card, node)
+static DEFINE_MUTEX(init_lock);
 
 struct amlogic_card_host 
 {
@@ -70,35 +37,23 @@ struct amlogic_card_host
 	*/ 
 	unsigned int flags;
 	/* flag for current bus settings */ 
-	 u32 bus_mode;
+	unsigned bus_mode;
 	/* Latest in the scatterlist that has been enabled for transfer, but not freed */ 
 	int in_use_index;
 	/* Latest in the scatterlist that has been enabled for transfer */ 
 	int transfer_index;
 };
 
-static CARD_READER_MONITOR cr_mon;
-static unsigned char slot_detector;
-static unsigned char card_register_flag[CARD_MAX_UNIT];
-static int card_reader_monitor(void *arg);
-unsigned CARD_SLOT_MODE = CARD_SLOT_4_1;
-unsigned char sdio_card_flag = 0;
-unsigned char sdio_function_no;
-unsigned char card_power_off_flag[CARD_MAX_UNIT];
-unsigned char card_in_event_status[CARD_MAX_UNIT];
-unsigned char card_out_event_status[CARD_MAX_UNIT];
-unsigned char card_status[CARD_MAX_UNIT];
+CARD_READER_MONITOR cr_mon;
 
 //wait_queue_head_t     sdio_wait_event;
 
-static irqreturn_t sdio_interrupt_monitor(int irq, void *dev_id, struct pt_regs *regs);
+static int card_reader_monitor(void *arg);
 void card_detect_change(struct card_host *host, unsigned long delay);
 struct card_host *card_alloc_host(int extra, struct device *dev);
 static void card_setup(struct card_host *host);
 static void amlogic_card_request(struct card_host *card, struct card_blk_request *brq);
 static struct memory_card *card_find_card(struct card_host *host, u32 * raw_cid);
-#define card_list_to_card(l)	container_of(l, struct memory_card, node)
-static DEFINE_MUTEX(init_lock);
 
 void card_reader_initialize(struct card_host *card) 
 {
@@ -110,59 +65,11 @@ void card_reader_initialize(struct card_host *card)
 		cr_mon.capacity[card_num] = 0;	
 	}
 	
-#ifdef CONFIG_SD_MMC
-	cr_mon.card_detector[CARD_SECURE_DIGITAL] = sd_insert_detector;
-	cr_mon.card_insert_process[CARD_SECURE_DIGITAL] = sd_open;
-	cr_mon.card_remove_process[CARD_SECURE_DIGITAL] = sd_close;
-	cr_mon.card_ioctl[CARD_SECURE_DIGITAL] = sd_ioctl;
-	cr_mon.card_read_capacity[CARD_SECURE_DIGITAL] = sd_read_info;
-	strcpy(cr_mon.name[CARD_SECURE_DIGITAL], CARD_SD_NAME_STR);	//  "/dev/disk/sd"
-	
-	if (request_irq(AM_ISA_GEN_IRQ(28), (irq_handler_t) sdio_interrupt_monitor, 0, "sd_mmc", card))
-		printk("request SDIO irq error!!!\n");
-	
-	//init_waitqueue_head(&sdio_wait_event); 
-	sd_init();
-#endif
-	    
-#ifdef CONFIG_CF
-	cr_mon.card_detector[CARD_COMPACT_FLASH] = cf_insert_detector;
-	cr_mon.card_insert_process[CARD_COMPACT_FLASH] = cf_open;
-	cr_mon.card_remove_process[CARD_COMPACT_FLASH] = cf_close;
-	cr_mon.card_ioctl[CARD_COMPACT_FLASH] = cf_ioctl;
-	cr_mon.card_read_capacity[CARD_COMPACT_FLASH] = cf_read_info;
-	strcpy(cr_mon.name[CARD_COMPACT_FLASH], CARD_CF_NAME_STR);	//  "/dev/disk/cf"
-	
-	cf_init();
-#endif	
-	    
-#ifdef CONFIG_XD
-	    cr_mon.card_detector[CARD_XD_PICTURE] = xd_insert_detector;
-	cr_mon.card_insert_process[CARD_XD_PICTURE] = xd_open;
-	cr_mon.card_remove_process[CARD_XD_PICTURE] = xd_close;
-	cr_mon.card_ioctl[CARD_XD_PICTURE] = xd_ioctl;
-	cr_mon.card_read_capacity[CARD_XD_PICTURE] = xd_read_info;
-	strcpy(cr_mon.name[CARD_XD_PICTURE], CARD_XD_NAME_STR);	//  "/dev/disk/xd"
-
-	xd_init();	
-#endif
-	    
-#ifdef CONFIG_MS_MSPRO  
-	cr_mon.card_detector[CARD_MEMORY_STICK] = ms_insert_detector;
-	cr_mon.card_insert_process[CARD_MEMORY_STICK] = ms_open;
-	cr_mon.card_remove_process[CARD_MEMORY_STICK] = ms_close;	
-	cr_mon.card_ioctl[CARD_MEMORY_STICK] = ms_ioctl;	
-	cr_mon.card_read_capacity[CARD_MEMORY_STICK] = ms_read_info;	
-	strcpy(cr_mon.name[CARD_MEMORY_STICK], CARD_MS_NAME_STR);	//  "/dev/disk/ms"
-	
-	ms_init();
-#endif 
-	    
 	cr_mon.card_detector[CARD_TYPE_UNKNOW] = NULL;	
 	cr_mon.card_insert_process[CARD_TYPE_UNKNOW] = NULL;	
 	cr_mon.card_remove_process[CARD_TYPE_UNKNOW] = NULL;	
-	cr_mon.card_ioctl[CARD_TYPE_UNKNOW] = NULL;	
-	cr_mon.card_read_capacity[CARD_TYPE_UNKNOW] = NULL;	
+	cr_mon.card_read_data[CARD_TYPE_UNKNOW] = NULL;	
+	cr_mon.card_write_data[CARD_TYPE_UNKNOW] = NULL;	
 	strcpy(cr_mon.name[CARD_TYPE_UNKNOW], CARD_UNKNOW_NAME_STR);	//   "/dev/disk/xx"
 
 }
@@ -182,50 +89,42 @@ static int card_reader_init(struct card_host *card)
 
 static int card_reader_monitor(void *data)
 {
-    unsigned char result = 0;
-    unsigned card_type, card_4in1_init_type = 0;
-    unsigned capacity = 0, blk_length = 0;
-    struct card_host *card_host = data;
+    unsigned card_type, card_4in1_init_type;
+    struct card_host *card_host = (struct card_host *)data;
     struct memory_card *card;
+    card_4in1_init_type = 0;
 
 	while(1) {
 		msleep(200);
 
 		mutex_lock(&init_lock);
 		for(card_type=CARD_XD_PICTURE; card_type<CARD_MAX_UNIT; card_type++) {
-			if(cr_mon.card_detector[card_type] && (!card_power_off_flag[card_type]))
-				card_status[card_type] = (*cr_mon.card_detector[card_type])();
+			if(cr_mon.card_detector[card_type] && (!cr_mon.card_power_off_flag[card_type]))
+				cr_mon.card_status[card_type] = (*cr_mon.card_detector[card_type])();
 
-	    	if((card_status[card_type] == CARD_INSERTED) && (cr_mon.unit_state[card_type] != CARD_UNIT_READY) && ((card_type == CARD_COMPACT_FLASH) ||(slot_detector == CARD_REMOVED)||(CARD_SLOT_MODE == CARD_SLOT_DISJUNCT))) {
+	    	if((cr_mon.card_status[card_type] == CARD_INSERTED) && (cr_mon.unit_state[card_type] != CARD_UNIT_READY) && ((card_type == CARD_COMPACT_FLASH) ||(cr_mon.slot_detector == CARD_REMOVED)||(cr_mon.card_slot_mode == CARD_SLOT_DISJUNCT))) {
 				if(cr_mon.card_insert_process[card_type])
 					cr_mon.unit_state[card_type] = (*cr_mon.card_insert_process[card_type])();
 				else
 					cr_mon.unit_state[card_type] = CARD_UNIT_READY;
 
 				if(cr_mon.unit_state[card_type] == CARD_UNIT_PROCESSED) {
-					if(CARD_SLOT_MODE == CARD_SLOT_4_1) {
+					if(cr_mon.card_slot_mode == CARD_SLOT_4_1) {
 	                	if (card_type != CARD_COMPACT_FLASH) {
-	                		slot_detector = CARD_INSERTED;
+	                		cr_mon.slot_detector = CARD_INSERTED;
 	                		card_4in1_init_type = card_type;
 	                	}
 					}
 					cr_mon.unit_state[card_type] = CARD_UNIT_READY;
-
-					result = (*cr_mon.card_read_capacity[card_type])(&blk_length, &capacity, cr_mon.raw_cid[card_type]);
-					if (result != 0)
-						continue;
-
-					cr_mon.blk_length[card_type] = blk_length;
-					cr_mon.capacity[card_type]   = capacity;
-					card_register_flag[card_type] = CARD_REGISTERED;
+					cr_mon.card_register_flag[card_type] = CARD_REGISTERED;
 					card_host->card_type = card_type;
 					card_detect_change(card_host, 0);
 	            }
 	        }
-	        else if((card_status[card_type] == CARD_REMOVED) && (cr_mon.unit_state[card_type] != CARD_UNIT_NOT_READY)) {
-				if(CARD_SLOT_MODE == CARD_SLOT_4_1) {                       
+	        else if((cr_mon.card_status[card_type] == CARD_REMOVED) && (cr_mon.unit_state[card_type] != CARD_UNIT_NOT_READY)) {
+				if(cr_mon.card_slot_mode == CARD_SLOT_4_1) {                       
 					if (card_type == card_4in1_init_type) 
-						slot_detector = CARD_REMOVED;
+						cr_mon.slot_detector = CARD_REMOVED;
 				}
 
 				if(cr_mon.card_remove_process[card_type])
@@ -236,8 +135,8 @@ static int card_reader_monitor(void *data)
 				if(cr_mon.unit_state[card_type] == CARD_UNIT_PROCESSED) {
 					cr_mon.unit_state[card_type] = CARD_UNIT_NOT_READY;
 
-					if(card_register_flag[card_type] == CARD_REGISTERED) {
-						card_register_flag[card_type] = CARD_UNREGISTERED;
+					if(cr_mon.card_register_flag[card_type] == CARD_REGISTERED) {
+						cr_mon.card_register_flag[card_type] = CARD_UNREGISTERED;
 						card = card_find_card(card_host, cr_mon.raw_cid[card_type]);
 						if(card) {
 							list_del(&card->node);
@@ -252,38 +151,6 @@ static int card_reader_monitor(void *data)
 	}
 
     return 0;
-}
-
-static irqreturn_t sdio_interrupt_monitor(int irq, void *dev_id, struct pt_regs *regs) 
-{
-	unsigned sdio_interrupt_resource = sdio_check_interrupt();
-	switch (sdio_interrupt_resource) {
-		case SDIO_IF_INT:
-		    //sdio_if_int_handle();
-		    break;
-
-		case SDIO_CMD_INT:
-			sdio_cmd_int_handle();
-			break;
-
-		case SDIO_TIMEOUT_INT:
-			sdio_timeout_int_handle();
-			break;
-	
-		case SDIO_SOFT_INT:
-		    //AVDetachIrq(sdio_int_handler);
-		    //sdio_int_handler = -1;
-		    break;
-	
-		case SDIO_NO_INT:	
-			break;
-
-		default:	
-			break;	
-	}
-
-	return 0;
-
 }
 
 static void card_deselect_cards(struct card_host *host) 
@@ -621,88 +488,12 @@ static void amlogic_card_request(struct card_host *card, struct card_blk_request
 
 	mutex_lock(&init_lock);
 	if(brq->crq.cmd == READ) {
-		switch(card->card_type) {
-#ifdef CONFIG_XD
-			case CARD_XD_PICTURE:
-				ret = xd_read_data(lba, byte_cnt, data_buf);
-				if(ret)
-					ret = xd_read_data(lba, byte_cnt, data_buf);
+		ret = cr_mon.card_read_data[card->card_type](lba, byte_cnt, data_buf);
 				brq->card_data.error = ret;
-				break;
-#endif
-
-#ifdef CONFIG_MS_MSPRO
-			case CARD_MEMORY_STICK:
-				ret = ms_mspro_read_data(lba, byte_cnt, data_buf);
-				if(ret)
-					ret = ms_mspro_read_data(lba, byte_cnt, data_buf);
-				brq->card_data.error = ret;
-				break;
-#endif
-
-#ifdef CONFIG_SD_MMC
-			case CARD_SECURE_DIGITAL:
-				ret = sd_mmc_read_data(lba, byte_cnt, data_buf);
-				if(ret)
-					ret = sd_mmc_read_data(lba, byte_cnt, data_buf);
-				brq->card_data.error = ret;
-				break;
-#endif
-
-#ifdef CONFIG_CF
-			case CARD_COMPACT_FLASH:
-				ret = cf_read_data(lba, byte_cnt, data_buf);
-				if(ret)
-					ret = cf_read_data(lba, byte_cnt, data_buf);
-				brq->card_data.error = ret;
-				break;
-#endif
-
-			default :
-				break;
-		}
 	}
 	else if(brq->crq.cmd == WRITE) {
-		switch(card->card_type) {
-#ifdef CONFIG_XD
-			case CARD_XD_PICTURE:
-				ret = xd_write_data(lba, byte_cnt, data_buf);
-				if(ret)
-					ret = xd_write_data(lba, byte_cnt, data_buf);
+		ret = cr_mon.card_write_data[card->card_type](lba, byte_cnt, data_buf);
 				brq->card_data.error = ret;
-				break;
-#endif
-
-#ifdef CONFIG_MS_MSPRO
-			case CARD_MEMORY_STICK:
-				ret = ms_mspro_write_data(lba, byte_cnt, data_buf);
-				if(ret)
-					ret = ms_mspro_write_data(lba, byte_cnt, data_buf);
-				brq->card_data.error = ret;
-				break;
-#endif
-
-#ifdef CONFIG_SD_MMC
-			case CARD_SECURE_DIGITAL:
-				ret = sd_mmc_write_data(lba, byte_cnt, data_buf);
-				if(ret)
-					ret = sd_mmc_write_data(lba, byte_cnt, data_buf);
-				brq->card_data.error = ret;
-				break;
-#endif
-
-#ifdef CONFIG_CF
-			case CARD_COMPACT_FLASH:
-				ret = cf_write_data(lba, byte_cnt, data_buf);
-				if(ret)
-					ret = cf_write_data(lba, byte_cnt, data_buf);
-				brq->card_data.error = ret;
-				break;
-#endif	
-
-			default :
-				break;
-		}
 	}
 	mutex_unlock(&init_lock);
 }

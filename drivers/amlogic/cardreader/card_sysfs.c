@@ -15,8 +15,7 @@
 #include <linux/idr.h>
 #include <linux/workqueue.h>
 #include <linux/err.h>
-
-#include <asm/drivers/cardreader/card_block.h>
+#include <linux/cardreader/card_block.h>
 
 #define dev_to_memory_card(d)	container_of(d, struct memory_card, dev)
 #define to_card_driver(d)	container_of(d, struct card_driver, drv)
@@ -134,7 +133,7 @@ EXPORT_SYMBOL(card_init_card);
 int card_register_card(struct memory_card *card, char *card_name)
 {
 	strcpy(card->name, card_name);
-	snprintf(card->dev.bus_id, sizeof(card->dev.bus_id), "%s:%s", card_hostname(card->host), card_name);
+	dev_set_name(&card->dev, "%s:%s", card_hostname(card->host), card_name);
 
 	return device_add(&card->dev);
 }
@@ -207,8 +206,8 @@ int card_add_host_sysfs(struct card_host *host)
 	if (err)
 		return err;
 
-	snprintf(host->class_dev.bus_id, BUS_ID_SIZE, "memorycard%d",
-		 host->index);
+	dev_set_name(&host->class_dev, "memorycard%d", host->index);
+	//snprintf(host->class_dev.bus_id, BUS_ID_SIZE, "memorycard%d", host->index);
 
 	return device_add(&host->class_dev);
 }
