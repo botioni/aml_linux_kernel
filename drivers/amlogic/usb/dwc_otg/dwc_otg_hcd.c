@@ -1026,13 +1026,13 @@ int dwc_otg_hcd_urb_enqueue(struct usb_hcd *_hcd,
 		/* No longer connected. */
 		return -ENODEV;
 	}
-	qtd = dwc_otg_hcd_qtd_create(_urb);
+	qtd = dwc_otg_hcd_qtd_create(_urb, _mem_flags);
 	if (qtd == NULL) {
 		DWC_ERROR("DWC OTG HCD URB Enqueue failed creating QTD\n");
 		return -ENOMEM;
 	}
 
-	retval = dwc_otg_hcd_qtd_add(qtd, dwc_otg_hcd);
+	retval = dwc_otg_hcd_qtd_add(qtd, dwc_otg_hcd, _mem_flags);
 	if (retval < 0) {
 		DWC_ERROR("DWC OTG HCD URB Enqueue failed adding QTD. "
 			  "Error status %d\n", retval);

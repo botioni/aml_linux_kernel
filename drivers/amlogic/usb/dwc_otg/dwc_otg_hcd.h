@@ -484,7 +484,7 @@ extern int32_t dwc_otg_hcd_handle_wakeup_detected_intr(dwc_otg_hcd_t *
 
 /* Implemented in dwc_otg_hcd_queue.c */
 extern dwc_otg_qh_t *dwc_otg_hcd_qh_create(dwc_otg_hcd_t * _hcd,
-					   struct urb *_urb);
+					   struct urb *_urb, gfp_t _mem_flags);
 extern void dwc_otg_hcd_qh_init(dwc_otg_hcd_t * _hcd, dwc_otg_qh_t * _qh,
 				struct urb *_urb);
 extern void dwc_otg_hcd_qh_free(dwc_otg_qh_t * _qh);
@@ -503,21 +503,21 @@ static inline void dwc_otg_hcd_qh_remove_and_free(dwc_otg_hcd_t * _hcd,
 
 /** Allocates memory for a QH structure.
  * @return Returns the memory allocate or NULL on error. */
-static inline dwc_otg_qh_t *dwc_otg_hcd_qh_alloc(void)
+static inline dwc_otg_qh_t *dwc_otg_hcd_qh_alloc(gfp_t _mem_flags)
 {
-	return (dwc_otg_qh_t *) kmalloc(sizeof(dwc_otg_qh_t), GFP_KERNEL);
+	return (dwc_otg_qh_t *) kmalloc(sizeof(dwc_otg_qh_t), _mem_flags);
 }
 
-extern dwc_otg_qtd_t *dwc_otg_hcd_qtd_create(struct urb *urb);
+extern dwc_otg_qtd_t *dwc_otg_hcd_qtd_create(struct urb *urb,gfp_t _mem_flags);
 extern void dwc_otg_hcd_qtd_init(dwc_otg_qtd_t * qtd, struct urb *urb);
 extern int dwc_otg_hcd_qtd_add(dwc_otg_qtd_t * qtd,
-			       dwc_otg_hcd_t * dwc_otg_hcd);
+			       dwc_otg_hcd_t * dwc_otg_hcd, gfp_t _mem_flags);
 
 /** Allocates memory for a QTD structure.
  * @return Returns the memory allocate or NULL on error. */
-static inline dwc_otg_qtd_t *dwc_otg_hcd_qtd_alloc(void)
+static inline dwc_otg_qtd_t *dwc_otg_hcd_qtd_alloc(gfp_t _mem_flags)
 {
-	return (dwc_otg_qtd_t *) kmalloc(sizeof(dwc_otg_qtd_t), GFP_ATOMIC);
+	return (dwc_otg_qtd_t *) kmalloc(sizeof(dwc_otg_qtd_t), _mem_flags);
 }
 
 /** Frees the memory for a QTD structure.  QTD should already be removed from
