@@ -62,13 +62,14 @@
  * to initialize the QH.
  *
  * @return Returns pointer to the newly allocated QH, or NULL on error. */
-dwc_otg_qh_t *dwc_otg_hcd_qh_create(dwc_otg_hcd_t * _hcd, struct urb * _urb)
+dwc_otg_qh_t *dwc_otg_hcd_qh_create(dwc_otg_hcd_t * _hcd, struct urb * _urb,
+											gfp_t _mem_flags)
 {
 	dwc_otg_qh_t *qh;
 
 	/* Allocate memory */
 	/** @todo add memflags argument */
-	qh = dwc_otg_hcd_qh_alloc();
+	qh = dwc_otg_hcd_qh_alloc(_mem_flags);
 	if (qh == NULL) {
 		return NULL;
 	}
@@ -591,13 +592,13 @@ void dwc_otg_hcd_qh_deactivate(dwc_otg_hcd_t * _hcd, dwc_otg_qh_t * _qh,
  * pointing to each other so each pair should have a unique correlation.
  *
  * @return Returns pointer to the newly allocated QTD, or NULL on error. */
-dwc_otg_qtd_t *dwc_otg_hcd_qtd_create(struct urb *_urb)
+dwc_otg_qtd_t *dwc_otg_hcd_qtd_create(struct urb *_urb,gfp_t _mem_flags)
 {
 	dwc_otg_qtd_t *qtd;
 	unsigned long flags;
 
 	local_irq_save(flags);
-	qtd = dwc_otg_hcd_qtd_alloc();
+	qtd = dwc_otg_hcd_qtd_alloc(_mem_flags);
 	if (qtd == NULL) {
 		local_irq_restore(flags);
 		return NULL;
@@ -647,7 +648,8 @@ void dwc_otg_hcd_qtd_init(dwc_otg_qtd_t * _qtd, struct urb *_urb)
  *
  * @return 0 if successful, negative error code otherwise.
  */
-int dwc_otg_hcd_qtd_add(dwc_otg_qtd_t * _qtd, dwc_otg_hcd_t * _dwc_otg_hcd)
+int dwc_otg_hcd_qtd_add(dwc_otg_qtd_t * _qtd, dwc_otg_hcd_t * _dwc_otg_hcd,
+								gfp_t _mem_flags)
 {
 	struct usb_host_endpoint *ep;
 	dwc_otg_qh_t *qh;
@@ -668,7 +670,7 @@ int dwc_otg_hcd_qtd_add(dwc_otg_qtd_t * _qtd, dwc_otg_hcd_t * _dwc_otg_hcd)
 	ep = dwc_urb_to_endpoint(urb);
 	qh = (dwc_otg_qh_t *) ep->hcpriv;
 	if (qh == NULL) {
-		qh = dwc_otg_hcd_qh_create(_dwc_otg_hcd, urb);
+		qh = dwc_otg_hcd_qh_create(_dwc_otg_hcd, urb, _mem_flags);
 		if (qh == NULL) {
 			goto done;
 		}
