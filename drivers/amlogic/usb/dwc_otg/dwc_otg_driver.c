@@ -141,7 +141,18 @@ static dwc_otg_core_params_t dwc_otg_module_params = {
 	.rx_thr_length = -1,
 
 };
-
+/**
+  *  Index-name refer to lm.h usb_dma_config_e
+  */
+static const char *dma_config_name[] = {
+	"DISABLE",
+	"BURST_DEFAULT",
+	"BURST_SINGLE",
+	"BURST_INCR",
+	"BURST_INCR4",
+	"BURST_INCR8",
+	"BURST_INCR16"
+};
 /**
  * This function shows the Driver Version.
  */
@@ -784,7 +795,6 @@ static int __init dwc_otg_driver_probe(struct lm_device *_lmdev)
 	if(_lmdev->type != LM_DEVICE_TYPE_USB)
 		return -ENODEV;
 
-	dev_dbg(&_lmdev->dev, "dwc_otg_driver_probe(%p)\n", _lmdev);
 	dev_dbg(&_lmdev->dev, "start=0x%08x\n",
 		(unsigned)_lmdev->resource.start);
 
@@ -810,7 +820,6 @@ static int __init dwc_otg_driver_probe(struct lm_device *_lmdev)
 		retval = -ENOMEM;
 		goto fail;
 	}
-	dev_dbg(&_lmdev->dev, "base=0x%08x\n", (unsigned)dwc_otg_device->base);
 
 	/*
 	 * Attempt to ensure this device is really a DWC_otg Controller.
@@ -854,6 +863,7 @@ static int __init dwc_otg_driver_probe(struct lm_device *_lmdev)
 		dev_err(&_lmdev->dev, "force work in full speed mode\n");
 	}
 
+	dev_dbg(&_lmdev->dev,"DMA config: %s\n",dma_config_name[dma_config]);
 	if (dma_config == USB_DMA_DISABLE) {
 		pcore_para->dma_enable = 0;
 		_lmdev->dev.coherent_dma_mask = 0;
