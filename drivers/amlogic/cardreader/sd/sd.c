@@ -7,19 +7,12 @@
 **                                                              **
 *****************************************************************/
 #include <linux/slab.h>
-
-#include <asm/drivers/cardreader/cardreader.h>
-#include <asm/drivers/cardreader/card_io.h>
-#include <asm/drivers/cardreader/sd.h>
+#include <linux/interrupt.h>
+#include <mach/am_regs.h>
+#include <mach/irqs.h>
+#include <mach/card_io.h>
 
 #include "sd_protocol.h"
-
-static SD_MMC_Card_Info_t sd_info;
-extern SD_MMC_Card_Info_t *sd_mmc_info;
-extern unsigned char sdio_card_flag;
-extern unsigned char sdio_function_no;
-extern unsigned disable_high_speed;
-extern unsigned disable_wide_bus;
 
 unsigned char sd_insert_detector(void)
 {
@@ -34,39 +27,20 @@ unsigned char sd_open(void)
 {
 	int ret;
 	
-	ret = sd_mmc_init(&sd_info);
-	if(ret) {
-		disable_high_speed = 1;
-		ret = sd_mmc_init(&sd_info);
-	}
-	if(ret) {
-		disable_high_speed = 0;
-		disable_wide_bus = 1;
-		ret = sd_mmc_init(&sd_info);
-	}
+	ret = sd_mmc_init();
 	if(ret)
 		return CARD_UNIT_READY;
-	else {
-		if(sd_info.card_type == CARD_TYPE_SDIO) {
-			sdio_card_flag = 1;
-			sdio_function_no = sd_info.sdio_function_no;
-		}
-		else {
-			sdio_card_flag = 0;
-		}
+	else
 		return CARD_UNIT_PROCESSED;
 	}
-}
 
 unsigned char sd_close(void)
 {
-	disable_high_speed = 0;
-	disable_wide_bus = 0;
 	sd_mmc_exit();
 	return CARD_UNIT_PROCESSED;
 }
 
-unsigned char sd_read_info(unsigned *blk_length, unsigned *capacity, u32 *raw_cid)
+/*unsigned char sd_read_info(unsigned *blk_length, unsigned *capacity, u32 *raw_cid)
 {
 	if(sd_info.inited_flag) {
 		if(blk_length)
@@ -79,11 +53,11 @@ unsigned char sd_read_info(unsigned *blk_length, unsigned *capacity, u32 *raw_ci
 	}
 	else
 		return 1;
-}
+}*/
 
-int sd_ioctl(unsigned dev, int req, void *argp)
+/*int sd_ioctl(unsigned dev, int req, void *argp)
 {
-	/*unsigned32 ret=0;
+	unsigned32 ret=0;
     int errno;
     blkdev_request1 *req1 =(blkdev_request1 *) argp;  
     blkdev_request *r =&(req1->req); 
@@ -175,13 +149,80 @@ int sd_ioctl(unsigned dev, int req, void *argp)
             ret=-1;
             break;
         }
-    }*/
+    }
     return 0; 
+    }*/
+
+static irqreturn_t sdio_interrupt_monitor(int irq, void *dev_id, struct pt_regs *regs) 
+{
+	unsigned sdio_interrupt_resource = sdio_check_interrupt();
+	switch (sdio_interrupt_resource) {
+		case SDIO_IF_INT:
+		    //sdio_if_int_handle();
+		    break;
+
+		case SDIO_CMD_INT:
+			sdio_cmd_int_handle();
+			break;
+
+		case SDIO_TIMEOUT_INT:
+			sdio_timeout_int_handle();
+			break;
+	
+		case SDIO_SOFT_INT:
+		    //AVDetachIrq(sdio_int_handler);
+		    //sdio_int_handler = -1;
+		    break;
+	
+		case SDIO_NO_INT:	
+			break;
+
+		default:	
+			break;	
+	}
+
+    return 0; 
+
 }
 
-void sd_init(void)
+static int __init sd_init(void)
 {
-	sd_io_init();
+	cr_mon.card_detector[CARD_SECURE_DIGITAL] = sd_insert_detector;
+	cr_mon.card_insert_process[CARD_SECURE_DIGITAL] = sd_open;
+	cr_mon.card_remove_process[CARD_SECURE_DIGITAL] = sd_close;
+	cr_mon.card_read_data[CARD_SECURE_DIGITAL] = sd_mmc_read_data;
+	cr_mon.card_write_data[CARD_SECURE_DIGITAL] = sd_mmc_write_data;
+	strcpy(cr_mon.name[CARD_SECURE_DIGITAL], CARD_SD_NAME_STR);
+	
+	if (request_irq(INT_SDIO, (irq_handler_t) sdio_interrupt_monitor, 0, "sd_mmc", (void *)(&cr_mon))) {
+		printk("request SDIO irq error!!!\n");
+		return -1;
+	}
+
+	//sd_io_init();
 	sd_mmc_prepare_init();
+	return 0;
 }
+
+static void __exit sd_exit(void)
+{
+	cr_mon.card_detector[CARD_SECURE_DIGITAL] = NULL;
+	cr_mon.card_insert_process[CARD_SECURE_DIGITAL] = NULL;
+	cr_mon.card_remove_process[CARD_SECURE_DIGITAL] = NULL;
+	cr_mon.card_read_data[CARD_SECURE_DIGITAL] = NULL;
+	cr_mon.card_write_data[CARD_SECURE_DIGITAL] = NULL;
+	strcpy(cr_mon.name[CARD_SECURE_DIGITAL], CARD_UNKNOW_NAME_STR);
+
+	free_irq(INT_SDIO, (void *)(&cr_mon));
+	sd_mmc_exit();
+}
+
+module_init(sd_init);
+
+module_exit(sd_exit);
+
+
+MODULE_DESCRIPTION("Amlogic SD Card Interface driver");
+
+MODULE_LICENSE("GPL");
 

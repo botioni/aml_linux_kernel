@@ -17,11 +17,11 @@
 #include <linux/scatterlist.h>
 #include <linux/err.h>
 #include <linux/genhd.h>
+#include <linux/cardreader/card_block.h>
 
 #include <asm/system.h>
 #include <asm/uaccess.h>
 
-#include <asm/drivers/cardreader/card_block.h>
 
 static int major;
 #define CARD_SHIFT	3
@@ -126,27 +126,27 @@ static void card_blk_put(struct card_blk_data *card_data)
 	mutex_unlock(&open_lock);
 }
 
-static int card_blk_open(struct inode *inode, struct file *filp)
+static int card_blk_open(struct block_device *bdev, fmode_t mode)
 {
 	struct card_blk_data *card_data;
 	int ret = -ENXIO;
 
-	card_data = card_blk_get(inode->i_bdev->bd_disk);
+	card_data = card_blk_get(bdev->bd_disk);
 	if (card_data) {
 		if (card_data->usage == 2)
-			check_disk_change(inode->i_bdev);
+			check_disk_change(bdev);
 		ret = 0;
 
-		if ((filp->f_mode & FMODE_WRITE) && card_data->read_only)
+		if ((mode & FMODE_WRITE) && card_data->read_only)
 			ret = -EROFS;
 	}
 
 	return ret;
 }
 
-static int card_blk_release(struct inode *inode, struct file *filp)
+static int card_blk_release(struct gendisk *disk, fmode_t mode)
 {
-	struct card_blk_data *card_data = inode->i_bdev->bd_disk->private_data;
+	struct card_blk_data *card_data = disk->private_data;
 
 	card_blk_put(card_data);
 	return 0;
@@ -169,7 +169,7 @@ static struct block_device_operations card_ops = {
 
 static inline int card_claim_card(struct memory_card *card)
 {
-	if(card_status[card->card_type] == CARD_REMOVED)
+	if(cr_mon.card_status[card->card_type] == CARD_REMOVED)
 		return ENODEV;
 	return __card_claim_host(card->host, card);
 }
@@ -206,7 +206,7 @@ static int card_prep_request(struct request_queue *q, struct request *req)
 	return ret;
 }
 
-static void card_request(request_queue_t * q)
+static void card_request(struct request_queue *q)
 {
 	struct card_queue *cq = q->queuedata;
 	struct card_queue_list *cq_node_current = card_queue_head;
@@ -228,7 +228,7 @@ static void card_request(request_queue_t * q)
 
 void card_queue_suspend(struct card_queue *cq)
 {
-	request_queue_t *q = cq->queue;
+	struct request_queue *q = cq->queue;
 	unsigned long flags;
 
 	if (!(cq->flags & CARD_QUEUE_SUSPENDED)) {
@@ -244,7 +244,7 @@ void card_queue_suspend(struct card_queue *cq)
 
 void card_queue_resume(struct card_queue *cq)
 {
-	request_queue_t *q = cq->queue;
+	struct request_queue *q = cq->queue;
 	unsigned long flags;
 
 	if (cq->flags & CARD_QUEUE_SUSPENDED) {
@@ -285,7 +285,7 @@ static int card_queue_thread(void *d)
 			q = cq->queue;
 			if (cq_node_current->cq_flag) {
 				if (!blk_queue_plugged(q)) {
-					req = elv_next_request(q);
+					req = blk_fetch_request(q);
 					if (req)
 						break;
 
@@ -344,9 +344,9 @@ int card_init_queue(struct card_queue *cq, struct memory_card *card,
 
 	blk_queue_prep_rq(cq->queue, card_prep_request);
 	blk_queue_bounce_limit(cq->queue, limit);
-	blk_queue_max_sectors(cq->queue, host->max_sectors);
-	blk_queue_max_phys_segments(cq->queue, host->max_phys_segs);
-	blk_queue_max_hw_segments(cq->queue, host->max_hw_segs);
+	blk_queue_max_hw_sectors(cq->queue, host->max_sectors);
+	//blk_queue_max_hw_phys_segments(cq->queue, host->max_phys_segs);
+	blk_queue_max_segments(cq->queue, host->max_hw_segs);
 	blk_queue_max_segment_size(cq->queue, host->max_seg_size);
 
 	cq->queue->queuedata = cq;
@@ -470,7 +470,7 @@ static struct card_blk_data *card_blk_alloc(struct memory_card *card)
 
 	sprintf(card_data->disk->disk_name, "cardblk%s", card->name);
 
-	blk_queue_hardsect_size(card_data->queue.queue, 1 << card_data->block_bits);
+	blk_queue_logical_block_size(card_data->queue.queue, 1 << card_data->block_bits);
 
 	set_capacity(card_data->disk, card->capacity);
 
@@ -505,7 +505,7 @@ static int card_blk_issue_rq(struct card_queue *cq, struct request *req)
 		spin_lock_irq(&card_data->lock);
 		ret = 1;
 		while (ret) {
-			ret = __blk_end_request(req, -EIO, req-> current_nr_sectors << 9);
+			ret = __blk_end_request(req, -EIO, (1 << card_data->block_bits));
 		}
 		spin_unlock_irq(&card_data->lock);
 		return 0;
@@ -515,9 +515,9 @@ static int card_blk_issue_rq(struct card_queue *cq, struct request *req)
 		brq.crq.cmd = rq_data_dir(req);
 		brq.crq.buf = req->buffer;
 
-		brq.card_data.lba = req->sector;
+		brq.card_data.lba = blk_rq_pos(req);
 		brq.card_data.blk_size = 1 << card_data->block_bits;
-		brq.card_data.blk_nums = req->nr_sectors >> (card_data->block_bits - 9);
+		brq.card_data.blk_nums = blk_rq_sectors(req);
 
 		brq.card_data.sg = cq->sg;
 		brq.card_data.sg_len = blk_rq_map_sg(req->q, req, brq.card_data.sg);
@@ -534,7 +534,7 @@ static int card_blk_issue_rq(struct card_queue *cq, struct request *req)
 			spin_lock_irq(&card_data->lock);
 			ret = 1;
 			while (ret) {
-				ret = __blk_end_request(req, -EIO, req-> current_nr_sectors << 9);
+				ret = __blk_end_request(req, -EIO, (1 << card_data->block_bits));
 			}
 			spin_unlock_irq(&card_data->lock);
 
