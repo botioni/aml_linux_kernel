@@ -421,12 +421,10 @@ static void vmpeg_put_timer_func(unsigned long arg)
 #ifndef HANDLE_MPEG4_IRQ
         vmpeg4_isr();
 #endif
-        
-        if (putting_ptr != put_ptr)
+        if ((putting_ptr != put_ptr)&& (READ_MPEG_REG(MREG_BUFFERIN) == 0))
         {
                 u32 index = vfpool_idx[put_ptr];
 
-                while(READ_MPEG_REG(MREG_BUFFERIN));
                 if (--vfbuf_use[index] == 0) 
                 {
                         WRITE_MPEG_REG(MREG_BUFFERIN, ~(1<<index));
