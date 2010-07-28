@@ -20,6 +20,6 @@ source "drivers/amlogic/input/Kconfig"
 source "drivers/amlogic/audiodsp/Kconfig"
 source "drivers/amlogic/cmem/Kconfig"
 source "drivers/amlogic/jpeglogo/Kconfig"
-#source "drivers/amlogic/spi_nor/Kconfig"
+source "drivers/amlogic/spi_nor/Kconfig"
 endmenu	
 

@@ -20,7 +20,7 @@ obj-y += uart/
 
 obj-y += net/
 
-obj-y += usb/
+#obj-y += usb/
 
 obj-$(CONFIG_SATA_DWC_AHCI) += sata/
 
@@ -32,7 +32,7 @@ obj-y += amports/
 
 obj-y += input/
 
-#obj-y += spi_nor/
+obj-y += spi_nor/
 
 obj-$(CONFIG_CMEM) += cmem/
 
