@@ -7,6 +7,7 @@ menu "AMLOGIC SPI NOR Flash  support"
 
 config APOLLO_SPI_NOR
 	tristate "APOLLO SPI NOR FLASH SUPPORT"
+  select MTD
   select MTD_DATA_FLASH 
   select MTD_PARTITIONS
   select MTD_BLOCK
