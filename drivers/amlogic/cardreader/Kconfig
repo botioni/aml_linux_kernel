@@ -15,22 +15,22 @@ config SD_MMC
 
 config AM_ATA
 	bool "ATA/ATAPI driver support"
-	default y
+	default n
 	depends on CARDREADER
 
 config CF
 	bool "CF card driver support"
-	default y
+	default n
 	depends on AM_ATA
 
 config MS_MSPRO
 	bool "MS/MSPRO card driver support"
-	default y
+	default n
 	depends on CARDREADER
 
 config XD
 	bool "XD card driver support"
-	default y
+	default n
 	depends on CARDREADER
 
 endmenu
