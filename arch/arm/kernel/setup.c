@@ -517,7 +517,9 @@ request_standard_resources(struct meminfo *mi, struct machine_desc *mdesc)
 	if (mdesc->video_start) {
 		video_ram.start = mdesc->video_start;
 		video_ram.end   = mdesc->video_end;
+		#ifndef CONFIG_ARCH_MESON
 		request_resource(&iomem_resource, &video_ram);
+		#endif
 	}
 
 	/*

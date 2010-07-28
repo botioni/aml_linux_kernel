@@ -11,6 +11,16 @@ config MACH_MESON_8626M
 	help
 	  Include support for the AMLOGIC M1 8626M Emulation Baseboard platform.
 
+config MACH_MESON_6236M_SH
+	bool "Support M1 6236(dpf_aml6236-m_innolux8_skt_v1) platform"
+	help
+	  Include support for the AMLOGIC M1 6236M Emulation Baseboard platform.
+
+config MACH_MESON_8626M_SH
+	bool "Support M1 8626(mbx_aml8626-m_skt_v1) platform"
+	help
+	  Include support for the AMLOGIC M1 8626M Emulation Baseboard platform.
+
 config MESON_CLOCK_TICK_RATE
     int "Clock Tick Rate"
 	default 25000000
