@@ -309,7 +309,7 @@ static int spi_transmit_cycle(struct amlogic_spi *amlogic_spi, struct amlogic_sp
 	return 0;
 }
 
-unsigned spi_flag = 1;
+
 static int amlogic_spi_transfer(struct spi_device *spi, struct spi_message *m)
 {
 	struct amlogic_spi	*amlogic_spi;
@@ -317,12 +317,6 @@ static int amlogic_spi_transfer(struct spi_device *spi, struct spi_message *m)
 	unsigned long		flags;
 	struct spi_transfer	*t;
 	unsigned command_index = 0;
-	while(spi_flag)
-	{
-		spi_flag++;
-		spi_flag--;
-		command_index = 0;
-	}
 	spin_lock_irqsave(&amlogic_spi->lock, flags);
 	amlogic_spi = spi_master_get_devdata(spi->master);
 	m->actual_length = 0;
