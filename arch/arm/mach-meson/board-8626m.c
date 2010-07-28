@@ -16,6 +16,12 @@
 #include <linux/platform_device.h>
 #include <linux/io.h>
 #include <linux/dma-mapping.h>
+#include <linux/mtd/mtd.h>
+#include <linux/mtd/nand.h>
+#include <linux/mtd/nand_ecc.h>
+#include <linux/mtd/partitions.h>
+#include <linux/device.h>
+#include <linux/spi/flash.h>
 #include <mach/hardware.h>
 #include <mach/platform.h>
 #include <mach/memory.h>
@@ -79,7 +85,41 @@ static struct platform_device fb_device = {
     .resource      = fb_device_resources,
 };
 #endif
+static struct mtd_partition spi_partition_info[] = {
+	{
+		.name = "U boot",
+		.offset = 0,
+		.size = 0x80000,
+	},
+	{
+		.name = "conf",
+		.offset = 0x80000,
+		.size = 0xf0000-0x80000,
+	},
+};
 
+static struct flash_platform_data amlogic_spi_platform = {
+	.parts = spi_partition_info,
+	.nr_parts = ARRAY_SIZE(spi_partition_info),
+};
+
+static struct resource amlogic_spi_nor_resources[] = {
+	{
+		.start = 0xc1800000,
+		.end = 0xc1ffffff,
+		.flags = IORESOURCE_MEM,
+	},
+};
+
+static struct platform_device amlogic_spi_nor_device = {
+	.name = "AMLOGIC_SPI_NOR",
+	.id = -1,
+	.num_resources = ARRAY_SIZE(amlogic_spi_nor_resources),
+	.resource = amlogic_spi_nor_resources,
+	.dev = {
+		.platform_data = &amlogic_spi_platform,
+	},
+};
 #ifdef CONFIG_USB_DWC_OTG_HCD
 struct lm_device usb_ld_b = {
 	.type = LM_DEVICE_TYPE_USB,
@@ -113,6 +153,23 @@ static struct resource apollo_codec_resources[] = {
         .flags = IORESOURCE_MEM,
     },
 };
+
+static struct resource amlogic_card_resource[]  = {
+	[0] = {
+		.start = 0x1200230,   //physical address
+		.end   = 0x120024c,
+		.flags = 0x200,
+	}
+};
+
+
+struct platform_device amlogic_card_device = { 
+	.name = "AMLOGIC_CARD", 
+	.id    = -1,
+	.num_resources = ARRAY_SIZE(amlogic_card_resource),
+	.resource = amlogic_card_resource,
+};
+
 
 static struct platform_device apollo_codec = {
     .name       = "amstream",
@@ -153,6 +210,8 @@ static struct platform_device __initdata *platform_devs[] = {
 	#if defined(CONFIG_AML_AUDIO_DSP)
 		&apollo_audiodsp,
 	#endif
+    &amlogic_card_device,
+    &amlogic_spi_nor_device,
 };
 
 static void __init eth_pinmux_init(void)
