@@ -38,7 +38,7 @@ obj-$(CONFIG_CMEM) += cmem/
 
 obj-$(CONFIG_JPEGLOGO) += jpeglogo/
 
-#obj-$(CONFIG_CARDREADER) += cardreader/
+obj-$(CONFIG_CARDREADER) += cardreader/
 
 
 obj-$(CONFIG_AML_AUDIO_DSP) += audiodsp/
