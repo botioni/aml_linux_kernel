@@ -20,7 +20,7 @@ obj-y += uart/
 
 obj-y += net/
 
-#obj-y += usb/
+obj-y += usb/
 
 obj-$(CONFIG_SATA_DWC_AHCI) += sata/
 
