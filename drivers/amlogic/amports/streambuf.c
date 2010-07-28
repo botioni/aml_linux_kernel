@@ -52,8 +52,6 @@ static s32 _stbuf_alloc(stream_buf_t *buf)
         printk("%s stbuf alloced at 0x%x, size = %d\n",
                (buf->type == BUF_TYPE_VIDEO) ? "Video" : (buf->type == BUF_TYPE_AUDIO) ? "Audio" : "Subtitle",
                buf->buf_start, buf->buf_size);
-
-        buf->flag |= BUF_FLAG_ALLOC;
     }
       buf->flag |= BUF_FLAG_ALLOC;
     return 0;
