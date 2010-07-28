@@ -53,7 +53,7 @@
 typedef  int   (*type_printk)(const char *fmt, ...) ;
 
 
-struct apollo_kp {
+struct kp {
 	struct input_dev *input;
 	struct timer_list timer;
 	int irq;
@@ -85,6 +85,6 @@ struct apollo_kp {
 extern type_printk input_dbg;
 
 
-void apollo_kp_sw_reprot_key(unsigned long data);
+void kp_sw_reprot_key(unsigned long data);
 
 #endif   //_AMKBD_REMOTE_H
