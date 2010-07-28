@@ -56,7 +56,7 @@ static struct resource jpeglogo_resources[] = {
     },
 };
 
-static struct platform_device jpeglogo_dev = {
+static struct platform_device jpeglogo_device = {
 	.name = "jpeglogo-dev",
 	.id   = 0,
     .num_resources = ARRAY_SIZE(jpeglogo_resources),
@@ -151,7 +151,7 @@ static struct lm_device sata_ld = {
 #endif
 
 #if defined(CONFIG_AM_STREAMING)
-static struct resource apollo_codec_resources[] = {
+static struct resource codec_resources[] = {
     [0] = {
         .start =  CODEC_ADDR_START,
         .end   = CODEC_ADDR_END,
@@ -159,11 +159,17 @@ static struct resource apollo_codec_resources[] = {
     },
 };
 
-static struct platform_device apollo_codec = {
+static struct platform_device codec_device = {
     .name       = "amstream",
     .id         = 0,
-    .num_resources = ARRAY_SIZE(apollo_codec_resources),
-    .resource      = apollo_codec_resources,
+    .num_resources = ARRAY_SIZE(codec_resources),
+    .resource      = codec_resources,
+};
+#endif
+
+#if defined(CONFIG_KEYPADS_AM)
+static struct platform_device input_device = {
+	.name = "keypad_dev",
 };
 #endif
 
@@ -186,7 +192,7 @@ static struct platform_device amlogic_card_device = {
 #endif
 
 #if defined(CONFIG_AML_AUDIO_DSP)
-static struct resource apollo_audiodsp_resources[] = {
+static struct resource audiodsp_resources[] = {
     [0] = {
         .start = AUDIODSP_ADDR_START,
         .end   = AUDIODSP_ADDR_END,
@@ -194,31 +200,34 @@ static struct resource apollo_audiodsp_resources[] = {
     },
 };
 
-static struct platform_device apollo_audiodsp = {
+static struct platform_device audiodsp_device = {
     .name       = "audiodsp",
     .id         = 0,
-    .num_resources = ARRAY_SIZE(apollo_audiodsp_resources),
-    .resource      = apollo_audiodsp_resources,
+    .num_resources = ARRAY_SIZE(audiodsp_resources),
+    .resource      = audiodsp_resources,
 };
 #endif
 
 
 static struct platform_device __initdata *platform_devs[] = {
     #if defined(CONFIG_JPEGLOGO)
-		&jpeglogo_dev,
+		&jpeglogo_device,
 	#endif	
     #if defined(CONFIG_FB_AM)
     	&fb_device,
     #endif
     #if defined(CONFIG_AM_STREAMING)
-		&apollo_codec,
+		&codec_device,
     #endif
 	#if defined(CONFIG_AML_AUDIO_DSP)
-		&apollo_audiodsp,
+		&audiodsp_device,
 	#endif
 	#if defined(CONFIG_CARDREADER)
     	&amlogic_card_device,
     #endif
+    #if defined(CONFIG_KEYPADS_AM)
+		&input_device,
+    #endif	
     #if defined(CONFIG_AMLOGIC_SPI_NOR)
     	&amlogic_spi_nor_device,
     #endif
@@ -242,18 +251,26 @@ static void __init eth_pinmux_init(void)
 	set_gpio_val(PREG_HGPIO,16,1);
 	udelay(10);	//waiting reset end;
 }
+
 static void __init device_pinmux_init(void )
 {
 	clearall_pinmux();
-	/*other deivce power on*/
-	/*GPIOA_200e_bit4..usb/eth/YUV power on*/
+
+	/* other deivce power on */
+	/* GPIOA_200e_bit4..usb/eth/YUV power on */
 	set_gpio_mode(PREG_EGPIO,1<<4,GPIO_OUTPUT_MODE);
 	set_gpio_val(PREG_EGPIO,1<<4,1);
-	/*uart port A,*/
+
+	/* uart port A */
 	uart_set_pinmux(UART_PORT_A,UART_A_GPIO_B2_B3);
-	/*pinmux of eth*/
+
+	/* pinmux of eth */
 	eth_pinmux_init();
+
+	/* IR decoder pinmux */
+	set_mio_mux(1, 1<<31);
 }
+
 static __init void m1_init_machine(void)
 {
 #ifdef CONFIG_CACHE_L2X0
@@ -313,7 +330,7 @@ static __init void m1_fixup(struct machine_desc *mach, struct tag *tag, char **c
 	m->nr_banks++;
 }
 
-MACHINE_START(MESON_8626M, "AMLOGIC MESON-M1 8626M SZ ")
+MACHINE_START(MESON_8626M, "AMLOGIC MESON-M1 8626M SZ")
 	.phys_io		= MESON_PERIPHS1_PHYS_BASE,
 	.io_pg_offst		= (MESON_PERIPHS1_PHYS_BASE >> 18) & 0xfffc,
 	.boot_params		= BOOT_PARAMS_OFFSET,
