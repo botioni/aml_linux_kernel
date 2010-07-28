@@ -85,6 +85,8 @@ static struct platform_device fb_device = {
     .resource      = fb_device_resources,
 };
 #endif
+
+#if defined(CONFIG_AMLOGIC_SPI_NOR)
 static struct mtd_partition spi_partition_info[] = {
 	{
 		.name = "U boot",
@@ -120,6 +122,9 @@ static struct platform_device amlogic_spi_nor_device = {
 		.platform_data = &amlogic_spi_platform,
 	},
 };
+
+#endif
+
 #ifdef CONFIG_USB_DWC_OTG_HCD
 struct lm_device usb_ld_b = {
 	.type = LM_DEVICE_TYPE_USB,
@@ -154,6 +159,15 @@ static struct resource apollo_codec_resources[] = {
     },
 };
 
+static struct platform_device apollo_codec = {
+    .name       = "amstream",
+    .id         = 0,
+    .num_resources = ARRAY_SIZE(apollo_codec_resources),
+    .resource      = apollo_codec_resources,
+};
+#endif
+
+#if defined(CONFIG_CARDREADER)
 static struct resource amlogic_card_resource[]  = {
 	[0] = {
 		.start = 0x1200230,   //physical address
@@ -168,14 +182,6 @@ struct platform_device amlogic_card_device = {
 	.id    = -1,
 	.num_resources = ARRAY_SIZE(amlogic_card_resource),
 	.resource = amlogic_card_resource,
-};
-
-
-static struct platform_device apollo_codec = {
-    .name       = "amstream",
-    .id         = 0,
-    .num_resources = ARRAY_SIZE(apollo_codec_resources),
-    .resource      = apollo_codec_resources,
 };
 #endif
 
@@ -210,8 +216,12 @@ static struct platform_device __initdata *platform_devs[] = {
 	#if defined(CONFIG_AML_AUDIO_DSP)
 		&apollo_audiodsp,
 	#endif
-    &amlogic_card_device,
-    &amlogic_spi_nor_device,
+	#if defined(CONFIG_CARDREADER)
+    	&amlogic_card_device,
+    #endif
+    #if defined(CONFIG_AMLOGIC_SPI_NOR)
+    	&amlogic_spi_nor_device,
+    #endif
 };
 
 static void __init eth_pinmux_init(void)
