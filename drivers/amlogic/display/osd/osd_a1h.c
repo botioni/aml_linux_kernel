@@ -45,10 +45,19 @@
 #define pr_dbg(fmt, args...)
 #endif
 
+typedef struct {
+	s32 x_start;
+	s32 x_end;
+	s32 y_start;
+	s32 y_end;
+} pandata_t;
+
 static const u8 blkmode_reg[] = {5, 7, 0, 1, 2, 4, 4, 4, 4,/*32*/5,5,5,/*24*/7,7,7,7,7,/*16*/4,4,4,4};
 static const u8 colormat_reg[] = {0, 0, 0, 0, 0, 0, 1, 2, 3,/*32*/1,2,3,/*24*/5,1,2,3,4,/*16*/4,5,6,7};
 static const u8 modebits[] = {32,24,2,4,8,16,16,16,16,/*32*/32,32,32,/*24*/24,24,24,24,24,/*16*/16,16,16,16};
-static char   tv_scan_mode;
+static char  tv_scan_mode;
+
+static pandata_t pandata[2];
 
 static spinlock_t osd_lock = SPIN_LOCK_UNLOCKED;
 
@@ -83,11 +92,11 @@ _init_osd_simple(u32 pix_x_start,
  	u32  vmode ;
 	static char   tv_irq_got=0; 	
 	
-    	if(READ_MPEG_REG(ENCI_VIDEO_EN)&0x1)  //interlace
-    	{
-    		vmode=1;
+    if(READ_MPEG_REG(ENCI_VIDEO_EN)&0x1)  //interlace
+    {
+    	vmode=1;
 		//display_v_end = 	(display_v_start + display_v_end)/2 ;
-    	}
+    }
 	else
 	{
 		vmode=0;
@@ -99,17 +108,31 @@ _init_osd_simple(u32 pix_x_start,
 	data32 = (display_h_start & 0xfff) | (display_h_end & 0xfff) <<16 ;
    	WRITE_MPEG_REG(VIU_OSD1_BLK0_CFG_W3 + REG_OFFSET*index, data32);
 	data32 = (display_v_start & 0xfff) | (display_v_end & 0xfff) <<16 ;
-    	WRITE_MPEG_REG(index?VIU_OSD2_BLK0_CFG_W4:VIU_OSD1_BLK0_CFG_W4, data32);
+    WRITE_MPEG_REG(index?VIU_OSD2_BLK0_CFG_W4:VIU_OSD1_BLK0_CFG_W4, data32);
 
-    	// Program reg VIU_OSD1_BLK0_CFG_W1
- 	data32 = (pix_x_start & 0x1fff) | (pix_x_end & 0x1fff) <<16 ;		
-    	WRITE_MPEG_REG(VIU_OSD1_BLK0_CFG_W1 + REG_OFFSET*index, data32);
+    // Program reg VIU_OSD1_BLK0_CFG_W1
+ 	// data32 = (pix_x_start & 0x1fff) | (pix_x_end & 0x1fff) <<16 ;		
+	// WRITE_MPEG_REG(VIU_OSD1_BLK0_CFG_W1 + REG_OFFSET*index, data32);
 
-    	// Program reg VIU_OSD1_BLK0_CFG_W2
-    	data32 = (pix_y_start & 0x1fff) | (pix_y_end & 0x1fff) <<16 ;			
-    	WRITE_MPEG_REG(VIU_OSD1_BLK0_CFG_W2 + REG_OFFSET*index, data32);
+    // Program reg VIU_OSD1_BLK0_CFG_W2
+    // data32 = (pix_y_start & 0x1fff) | (pix_y_end & 0x1fff) <<16 ;			
+    //WRITE_MPEG_REG(VIU_OSD1_BLK0_CFG_W2 + REG_OFFSET*index, data32);
+	pandata[index].x_start = pix_x_start;
+	pandata[index].x_end   = pix_x_end;
+	pandata[index].y_start = pix_y_start;
+	pandata[index].y_end   = pix_y_end;
 
-    	// Program reg VIU_OSD1_BLK0_CFG_W3
+	WRITE_MPEG_REG(VIU_OSD1_BLK0_CFG_W1,
+		(pandata[0].x_start & 0x1fff) | (pandata[0].x_end & 0x1fff) << 16);
+	WRITE_MPEG_REG(VIU_OSD1_BLK0_CFG_W2,
+		(pandata[0].y_start & 0x1fff) | (pandata[0].y_end & 0x1fff) << 16);
+
+	WRITE_MPEG_REG(VIU_OSD2_BLK0_CFG_W1,
+		(pandata[1].x_start & 0x1fff) | (pandata[1].x_end & 0x1fff) << 16);
+	WRITE_MPEG_REG(VIU_OSD2_BLK0_CFG_W2,
+		(pandata[1].y_start & 0x1fff) | (pandata[1].y_end & 0x1fff) << 16);
+
+    // Program reg VIU_OSD1_BLK0_CFG_W3
  	if( tv_irq_got)
 	{
     		tv_irq_release() ;
@@ -302,27 +325,21 @@ void osd_enable(int enable ,int index )
 
 void osd_pan_display(unsigned int xoffset, unsigned int yoffset,int index )
 {
-    	u32 cfg,reg_index;
-      	u32 pix_start;
-    	u32 pix_end;
-    	u32	offset[2]={xoffset,yoffset};
-	u32 i;
-
-	reg_index=VIU_OSD1_BLK0_CFG_W1+REG_OFFSET*index;
-	for (i=0;i<2;i++)
-	{
-		cfg= READ_MPEG_REG(reg_index);
-		pix_start = cfg & 0x1fff; /*bit [12..0]*/
-		pix_end = (cfg >>16) & 0x1fff;/*bit[28..16]*/
-		pix_end +=offset[i] - pix_start ;
-		pix_start = offset[i] ;
-		cfg = pix_start | pix_end << 16 ;
-		WRITE_MPEG_REG(reg_index,cfg) ;
-		reg_index ++;
-	}
-   
+	ulong flags;
 	
+	if (index >= 2)
+		return;
+
+    spin_lock_irqsave(&osd_lock, flags);
+
+	pandata[index].x_start += xoffset;
+	pandata[index].x_end   += xoffset;
+	pandata[index].y_start += yoffset;
+	pandata[index].y_end   += yoffset;
+
+    spin_unlock_irqrestore(&osd_lock, flags);
 }
+
 /********************************************************
 *  request vsync irq                                                                        **
 *********************************************************/
@@ -332,6 +349,16 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
 	unsigned  int  fb0_cfg_w0,fb1_cfg_w0;
 	unsigned  int  current_field;
 	
+	WRITE_MPEG_REG(VIU_OSD1_BLK0_CFG_W1,
+		(pandata[0].x_start & 0x1fff) | (pandata[0].x_end & 0x1fff) << 16);
+	WRITE_MPEG_REG(VIU_OSD1_BLK1_CFG_W2,
+		(pandata[0].y_start & 0x1fff) | (pandata[0].y_end & 0x1fff) << 16);
+
+	WRITE_MPEG_REG(VIU_OSD2_BLK0_CFG_W1,
+		(pandata[1].x_start & 0x1fff) | (pandata[1].x_end & 0x1fff) << 16);
+	WRITE_MPEG_REG(VIU_OSD2_BLK1_CFG_W2,
+		(pandata[1].y_start & 0x1fff) | (pandata[1].y_end & 0x1fff) << 16);
+
 	if (*scan_mode=='i')
 	{
 		fb0_cfg_w0=READ_MPEG_REG(VIU_OSD1_BLK0_CFG_W0);
