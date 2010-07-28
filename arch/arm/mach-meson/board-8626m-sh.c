@@ -40,7 +40,7 @@
 #include <mach/gpio.h>
 #include <linux/delay.h>
 
-#include "board-8626m.h"
+#include "board-8626m-sh.h"
 
 #if defined(CONFIG_JPEGLOGO)
 static struct resource jpeglogo_resources[] = {
@@ -236,21 +236,19 @@ static void __init eth_pinmux_init(void)
 	SET_CBUS_REG_MASK(PREG_ETHERNET_ADDR0, 1);
 	udelay(100);
 	/*reset*/
-	set_gpio_mode(PREG_HGPIO,16,GPIO_OUTPUT_MODE);
-	set_gpio_val(PREG_HGPIO,16,0);
+	set_gpio_mode(PREG_GGPIO,10,GPIO_OUTPUT_MODE);
+	set_gpio_val(PREG_GGPIO,10,0);
 	udelay(100);	//waiting reset end;
-	set_gpio_val(PREG_HGPIO,16,1);
+	set_gpio_val(PREG_GGPIO,10,1);
 	udelay(10);	//waiting reset end;
 }
 static void __init device_pinmux_init(void )
 {
 	clearall_pinmux();
-	/*other deivce power on*/
-	/*GPIOA_200e_bit4..usb/eth/YUV power on*/
-	set_gpio_mode(PREG_EGPIO,1<<4,GPIO_OUTPUT_MODE);
-	set_gpio_val(PREG_EGPIO,1<<4,1);
-	/*uart port A,*/
-	uart_set_pinmux(UART_PORT_A,UART_A_GPIO_B2_B3);
+	
+	/*uart port B,*/
+	//uart_set_pinmux(UART_PORT_A,UART_A_GPIO_B2_B3);
+	uart_set_pinmux(UART_PORT_B,UART_B_GPIO_C13_C14);
 	/*pinmux of eth*/
 	eth_pinmux_init();
 }
@@ -313,7 +311,7 @@ static __init void m1_fixup(struct machine_desc *mach, struct tag *tag, char **c
 	m->nr_banks++;
 }
 
-MACHINE_START(MESON_8626M, "AMLOGIC MESON-M1 8626M SZ ")
+MACHINE_START(MESON_8626M_SH, "AMLOGIC MESON-M1 8626M")
 	.phys_io		= MESON_PERIPHS1_PHYS_BASE,
 	.io_pg_offst		= (MESON_PERIPHS1_PHYS_BASE >> 18) & 0xfffc,
 	.boot_params		= BOOT_PARAMS_OFFSET,

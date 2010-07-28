@@ -32,7 +32,7 @@
 #endif
 #include <mach/pinmux.h>
 #include <mach/gpio.h>
-#include "board-6236m.h"
+#include "board-6236m-sh.h"
 
 #if defined(CONFIG_JPEGLOGO)
 static struct resource jpeglogo_resources[] = {
@@ -142,27 +142,22 @@ static void eth_pinmux_init(void)
 {
     	eth_clk_set(ETH_CLKSRC_SYS_D3,900*CLK_1M/3,50*CLK_1M);
 	/*for dpf_sz with ethernet*/	
-    	eth_set_pinmux(ETH_BANK1_GPIOD2_D11,ETH_CLK_OUT_GPIOD7_REG4_20,(0xf<<15|1<<21 |3<<24));
-	//RMII RX_D0/D1
-	eth_set_pinmux(ETH_BANK2_GPIOD15_D23,ETH_CLK_OUT_GPIOD7_REG4_20,(1<<4 | 1<<5));
+    	eth_set_pinmux(ETH_BANK0_GPIOC3_C12,ETH_CLK_OUT_GPIOC12_REG3_1,0);
 	CLEAR_CBUS_REG_MASK(PREG_ETHERNET_ADDR0, 1);
 	SET_CBUS_REG_MASK(PREG_ETHERNET_ADDR0, (1 << 1));
 	SET_CBUS_REG_MASK(PREG_ETHERNET_ADDR0, 1);
 	udelay(100);
 	/*reset*/
-	set_gpio_mode(PREG_FGPIO,26,GPIO_OUTPUT_MODE);
-	set_gpio_val(PREG_FGPIO,26,0);
+	set_gpio_mode(PREG_FGPIO,0,GPIO_OUTPUT_MODE);
+	set_gpio_val(PREG_FGPIO,0,0);
 	udelay(100);	//waiting reset end;
-	set_gpio_val(PREG_FGPIO,26,1);
+	set_gpio_val(PREG_FGPIO,0,1);
 }
 static void __init device_pinmux_init(void )
 {
 	clearall_pinmux();
-	/*other deivce power on*/
-	/*GPIOA_200e_bit4..usb/eth/YUV power on*/
-	set_gpio_mode(PREG_EGPIO,1<<4,GPIO_OUTPUT_MODE);
-	set_gpio_val(PREG_EGPIO,1<<4,1);
-	uart_set_pinmux(UART_PORT_A,UART_A_GPIO_C21_D22);
+	//uart_set_pinmux(UART_PORT_A,UART_A_GPIO_C21_D22);
+	uart_set_pinmux(UART_PORT_B,UART_B_GPIO_C13_C14);
 	/*pinmux of eth*/
 	eth_pinmux_init();
 }
@@ -217,7 +212,7 @@ static __init void m1_fixup(struct machine_desc *mach, struct tag *tag, char **c
 	m->nr_banks++;
 }
 
-MACHINE_START(MESON_6236M, "AMLOGIC MESON-M1 6236M SZ")
+MACHINE_START(MESON_6236M_SH, "AMLOGIC MESON-M1-SH 6236M")
 	.phys_io		= MESON_PERIPHS1_PHYS_BASE,
 	.io_pg_offst	= (MESON_PERIPHS1_PHYS_BASE >> 18) & 0xfffc,
 	.boot_params	= BOOT_PARAMS_OFFSET,
