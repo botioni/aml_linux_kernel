@@ -28,7 +28,7 @@ obj-y += canvas/
 
 obj-y += amports/
 
-#obj-y += i2c/
+obj-y += i2c/
 
 obj-y += input/
 
