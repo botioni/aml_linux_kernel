@@ -43,6 +43,9 @@ typedef struct {
 #define DISPLAY_CANVAS_BASE_INDEX   0x60
 #define DISPLAY_CANVAS_MAX_INDEX    0x62 
 
+#define DEINTERLACE_CANVAS_BASE_INDEX	0x63
+#define DEINTERLACE_CANVAS_MAX_INDEX	0x6a
+
 extern void canvas_config(u32 index, ulong addr, u32 width,
                           u32 height, u32 wrap, u32 blkmode);
 
