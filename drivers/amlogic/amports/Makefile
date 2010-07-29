@@ -35,8 +35,8 @@ amvdec_real-y    := vreal.o
 obj-$(CONFIG_AM_JPEGDEC) += jpegdec.o
 
 obj-$(CONFIG_AM_VIDEO) += amvideo.o
-amvideo-objs := video.o vpp.o
-amvideo-y    := video.o vpp.o
+amvideo-objs := video.o vpp.o deinterlace.o
+amvideo-y    := video.o vpp.o deinterlace.o
 
 obj-$(CONFIG_AM_TIMESYNC) += amtsync.o
 amtsync-objs := tsync.o timestamp.o

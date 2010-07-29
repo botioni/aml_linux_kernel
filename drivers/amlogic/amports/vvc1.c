@@ -195,7 +195,7 @@ static void set_aspect_ratio(vframe_t *vf, unsigned pixel_ratio)
         ar = min(ar, DISP_RATIO_ASPECT_RATIO_MAX);
 
         vf->ratio_control = (ar<<DISP_RATIO_ASPECT_RATIO_BIT);
-        vf->ratio_control |= DISP_RATIO_FORCECONFIG | DISP_RATIO_KEEPRATIO;
+        //vf->ratio_control |= DISP_RATIO_FORCECONFIG | DISP_RATIO_KEEPRATIO;
 }
 
 #ifdef HANDLE_VC1_IRQ
@@ -425,11 +425,10 @@ static void vmpeg_put_timer_func(unsigned long arg)
         vvc1_isr();
 #endif
         
-        if (putting_ptr != put_ptr)
+        if ((putting_ptr != put_ptr) && (READ_MPEG_REG(VC1_BUFFERIN) == 0))
         {
                 u32 index = vfpool_idx[put_ptr];
 
-                while(READ_MPEG_REG(VC1_BUFFERIN));
                 if (--vfbuf_use[index] == 0) 
                 {
                         WRITE_MPEG_REG(VC1_BUFFERIN, ~(1<<index));
