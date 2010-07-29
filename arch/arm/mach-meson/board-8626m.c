@@ -34,6 +34,8 @@
 #include <asm/mach/map.h>
 #include <mach/am_eth_pinmux.h>
 #include <mach/nand.h>
+#include <linux/i2c.h>
+#include <linux/i2c-aml.h>
 #ifdef CONFIG_CACHE_L2X0
 #include <asm/hardware/cache-l2x0.h>
 #endif
@@ -270,6 +272,80 @@ static struct platform_device aml_nand_device = {
 };
 #endif
 
+#if defined(CONFIG_I2C_SW_AML)
+
+struct aml_sw_i2c_platform aml_sw_i2c_plat = {
+	.sw_pins = {
+		.scl_reg_out		= MESON_I2C_PREG_GPIOC_OUTLVL,
+		.scl_reg_in		= MESON_I2C_PREG_GPIOC_INLVL,
+		.scl_bit			= 13,	/*MESON_I2C_MASTER_B_GPIOC_13_REG*/
+		.scl_oe			= MESON_I2C_PREG_GPIOC_OE,
+		.sda_reg_out		= MESON_I2C_PREG_GPIOC_OUTLVL,
+		.sda_reg_in		= MESON_I2C_PREG_GPIOC_INLVL,
+		.sda_bit			= 14,	/*MESON_I2C_MASTER_B_GPIOC_14_BIT*/
+		.sda_oe			= MESON_I2C_PREG_GPIOC_OE,
+	},	
+	.udelay			= 10,
+	.timeout			= 100,
+};
+
+struct platform_device aml_sw_i2c_device = {
+	.name		  = "aml-sw-i2c",
+	.id		  = -1,
+	.dev = {
+		.platform_data = &aml_sw_i2c_plat,
+	},
+};
+
+#endif
+
+#if defined(CONFIG_I2C_AML)
+struct aml_i2c_platform aml_i2c_plat = {
+	.wait_count		= 1000000,
+	.wait_ack_interval	= 5,
+	.wait_read_interval	= 5,
+	.wait_xfer_interval	= 5,
+	.master_no		= AML_I2C_MASTER_B,
+	.use_pio			= 0,
+	.master_i2c_speed	= AML_I2C_SPPED_100K,
+
+	.master_b_pinmux = {
+		.scl_reg	= MESON_I2C_MASTER_B_GPIOC_13_REG,
+		.scl_bit	= MESON_I2C_MASTER_B_GPIOC_13_BIT,
+		.sda_reg	= MESON_I2C_MASTER_B_GPIOC_14_REG,
+		.sda_bit	= MESON_I2C_MASTER_B_GPIOC_14_BIT,
+	}
+};
+
+static struct resource aml_i2c_resource[] = {
+	[0] = {/*master a*/
+		.start = 	MESON_I2C_MASTER_A_START,
+		.end   = 	MESON_I2C_MASTER_A_END,
+		.flags = 	IORESOURCE_MEM,
+	},
+	[1] = {/*master b*/
+		.start = 	MESON_I2C_MASTER_B_START,
+		.end   = 	MESON_I2C_MASTER_B_END,
+		.flags = 	IORESOURCE_MEM,
+	},
+	[2] = {/*slave*/
+		.start = 	MESON_I2C_SLAVE_START,
+		.end   = 	MESON_I2C_SLAVE_END,
+		.flags = 	IORESOURCE_MEM,
+	},
+};
+
+struct platform_device aml_i2c_device = {
+	.name		  = "aml-i2c",
+	.id		  = -1,
+	.num_resources	  = ARRAY_SIZE(aml_i2c_resource),
+	.resource	  = aml_i2c_resource,
+	.dev = {
+		.platform_data = &aml_i2c_plat,
+	},
+};
+#endif
+
 static struct platform_device __initdata *platform_devs[] = {
     #if defined(CONFIG_JPEGLOGO)
 		&jpeglogo_device,
@@ -295,6 +371,13 @@ static struct platform_device __initdata *platform_devs[] = {
     #if defined(CONFIG_AM_NAND)
 		&aml_nand_device,
     #endif		
+	
+    #if defined(CONFIG_I2C_SW_AML)
+		&aml_sw_i2c_device,
+    #endif
+    #if defined(CONFIG_I2C_AML)
+		&aml_i2c_device,
+    #endif
 };
 
 static void __init eth_pinmux_init(void)
