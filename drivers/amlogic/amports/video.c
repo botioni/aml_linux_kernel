@@ -149,6 +149,11 @@ static vpp_frame_par_t frame_parms[2];
 static u32 wait_sync;
 static const vframe_provider_t *vfp;
 
+// 0 - off
+// 1 - pre-post link
+// 2 - pre-post separate, only post in vsync
+static int deinterlace_mode = 0;
+
 /* trickmode i frame*/
 u32 trickmode_i = 0;
 
@@ -166,6 +171,11 @@ static const f2v_vphase_type_t vpp_phase_table[4][3] = {
 static const u8 skip_tab[6] = { 0x24, 0x04, 0x68, 0x48, 0x28, 0x08 };
 /* wait queue for poll */
 static wait_queue_head_t amvideo_trick_wait;
+
+int get_deinterlace_mode(void)
+{
+	return deinterlace_mode;
+}
 
 /*********************************************************/
 static inline vframe_t *vf_peek(void)
