@@ -62,8 +62,8 @@
 #define NFC_CMD_ADH(addr)              (ADH|((addr>>16)&0xffff))
 #define NFC_CMD_AIL(addr)              (AIL     |(addr&0xffff))
 #define NFC_CMD_AIH(addr)              (AIH|((addr>>16)&0xffff))
-#define NFC_CMD_M2N(size,ecc)          (M2N |ecc|(size&0x3fff))
-#define NFC_CMD_N2M(size,ecc)          (N2M |ecc|(size&0x3fff))
+#define NFC_CMD_M2N(size,ecc)          (M2N |(ecc<<14)|(1<<16)|(size&0x3fff))
+#define NFC_CMD_N2M(size,ecc)          (N2M |(ecc<<14)|(1<<16)|(size&0x3fff))
 #define NFC_CMD_DWR(data)              (DWR     |(data&0xff  ))
 #define NFC_CMD_DRD(    )              (DRD                   )
 
@@ -84,10 +84,12 @@
 #define NAND_ECC_REV0             0x1
 #define NAND_ECC_REV1             0x2
 #define NAND_ECC_REV2             0x3
-#define NAND_ECC_BCH9             0x4
-#define NAND_ECC_BCH8             0x5
-#define NAND_ECC_BCH12            0x6
-#define NAND_ECC_BCH16            0x7
+
+
+#define NAND_ECC_BCH9             0x0
+#define NAND_ECC_BCH8             0x1
+#define NAND_ECC_BCH12            0x2
+#define NAND_ECC_BCH16            0x3
 
 /**
     Cmd FIFO control
@@ -112,10 +114,10 @@
 #define NFC_SEND_CMD_ADH(addr)              NFC_SEND_CMD(ADH|((addr>>16)&0xffff))
 #define NFC_SEND_CMD_AIL(addr)              NFC_SEND_CMD(AIL     |(addr&0xffff))
 #define NFC_SEND_CMD_AIH(addr)              NFC_SEND_CMD(AIH|((addr>>16)&0xffff))
-#define NFC_SEND_CMD_M2N(size,ecc)          NFC_SEND_CMD(M2N |ecc|(size&0x3fff))
-#define NFC_SEND_CMD_N2M(size,ecc)          NFC_SEND_CMD(N2M |ecc|(size&0x3fff))
+#define NFC_SEND_CMD_M2N(size,ecc)          NFC_SEND_CMD(M2N |(ecc<<14)|(1<<16)|(size&0x3fff))
+#define NFC_SEND_CMD_N2M(size,ecc)          NFC_SEND_CMD(N2M |(ecc<<14)|(1<<16)|(size&0x3fff))
 #define NFC_SEND_CMD_DWR(data)              NFC_SEND_CMD(DWR     |(data&0xff  ))
-#define NFC_SEND_CMD_DRD(    )              NFC_SEND_CMD(DRD                   )
+#define NFC_SEND_CMD_DRD( size  )              NFC_SEND_CMD(DRD |                  )
 /**
     Cmd Info Macros
 */
@@ -135,6 +137,7 @@ typedef unsigned    t_nfc_info;
 
 #define NFC_SET_SPARE_ONLY()			(SET_CBUS_REG_MASK(NAND_CFG,1<<15))
 #define NFC_CLEAR_SPARE_ONLY()			(CLEAR_CBUS_REG_MASK(NAND_CFG,1<<15))
+#define NFC_GET_BUF() 					READ_CBUS_REG(NAND_BUF)
 
 
 typedef unsigned  t_nf_ce;
@@ -147,14 +150,15 @@ typedef unsigned  t_ecc_mode;
 
 struct aml_m1_nand_platform
 {
-         unsigned int           page_size;		
+         unsigned int           page_size;
+		 unsigned int 			spare_size;
 		 unsigned int 			page_num;
 	 	 unsigned long long 	chip_size;
 		 unsigned int 			ce_num;
 		 unsigned int 			chip_num;
-		 unsigned int 			spare_size;
 		 unsigned int 			timing_mode;
 		 unsigned int 			bch_mode;
+		 unsigned int 			encode_size;
          unsigned int           nr_partitions;
          struct mtd_partition    *partitions;
 };
