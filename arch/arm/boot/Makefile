@@ -68,7 +68,7 @@ endif
 
 quiet_cmd_uimage = UIMAGE  $@
       cmd_uimage = $(MKIMAGE) -A arm -O linux -T kernel \
-		   -C gzip -a $(LOADADDR) -e $(STARTADDR) \
+		   -C lzma -a $(LOADADDR) -e $(STARTADDR) \
 		   -n 'Linux-$(KERNELRELEASE)' -d $< $@
 
 
@@ -98,8 +98,12 @@ $(obj)/ccImage.gz:$(obj)/ccImage FORCE
 	@-rm -rf $(obj)/ccImage.gz 
 	@gzip $(obj)/ccImage
 	@echo '  Image $@ is ready'
+$(obj)/ccImage.lzma:$(obj)/ccImage FORCE
+	@-rm -rf $(obj)/ccImage.lzma 
+	@lzma -z -S .lzma $(obj)/ccImage
+	@echo '  Image $@ is ready'
 
-$(obj)/uImage:	$(obj)/ccImage.gz FORCE
+$(obj)/uImage:	$(obj)/ccImage.lzma FORCE
 	$(call if_changed,uimage)
 	@echo '  Image $@ is ready'
 
