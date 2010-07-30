@@ -13,6 +13,7 @@
 
 #include <linux/spi/spi.h>
 #include <mach/spi_nor.h>
+#include <mach/pinmux.h>
 
 struct amlogic_spi_user_crtl {
 	unsigned char	user_def_cmd;
@@ -62,6 +63,7 @@ static void spi_hw_init(struct amlogic_spi	*amlogic_spi)
 
 static void spi_hw_enable(void)
 {
+	clear_mio_mux(6,0x7fff);
 	SET_PERI_REG_MASK(PERIPHS_PIN_MUX_1, ((1 << 23)|(1 <<25)|(1 << 27)|(1 << 29)));
 	asm("nop");
 	asm("nop");
