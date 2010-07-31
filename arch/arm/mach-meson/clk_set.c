@@ -19,10 +19,10 @@
 int  eth_clk_set(int selectclk,unsigned long clk_freq,unsigned long out_clk)
 {
 	int n;
-	printk("select eth clk-%d,source=%d,out=%d\n",selectclk,clk_freq,out_clk);
+	printk("select eth clk-%d,source=%ld,out=%ld\n",selectclk,clk_freq,out_clk);
 	if(((clk_freq)%out_clk)!=0)
 		{
-			printk(KERN_ERR "ERROR:source clk must n times of out_clk ,source clk=%d\n",out_clk,clk_freq);
+			printk(KERN_ERR "ERROR:source clk must n times of out_clk=%ld ,source clk=%ld\n",out_clk,clk_freq);
 			return -1;
 		}
 	else
