@@ -177,6 +177,11 @@ int get_deinterlace_mode(void)
 	return deinterlace_mode;
 }
 
+const vframe_provider_t * get_vfp(void)
+{
+	return vfp;
+}
+
 /*********************************************************/
 static inline vframe_t *vf_peek(void)
 {
