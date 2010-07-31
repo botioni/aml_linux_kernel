@@ -44,6 +44,10 @@ typedef struct DI_SIM_MIF_TYPE
    unsigned short  	canvas_num;
 } DI_SIM_MIF_t;
 
+int get_deinterlace_mode(void);
+
+const vframe_provider_t * get_vfp(void);
+
 void initial_di_prepost ( int hsize_pre, int vsize_pre, int hsize_post, int vsize_post, int hold_line ); 
 
 void initial_di_pre ( int hsize_pre, int vsize_pre, int hold_line );

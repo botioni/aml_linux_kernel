@@ -46,6 +46,7 @@ typedef struct vframe_s {
     u32 type;
     u32 type_backup;
     u32 blend_mode;
+    u32 recycle_by_di_pre;
     u32 duration;
     u32 duration_pulldown;
     u32 pts;
