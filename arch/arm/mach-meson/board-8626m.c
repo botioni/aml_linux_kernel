@@ -129,6 +129,33 @@ static struct platform_device amlogic_spi_nor_device = {
 #endif
 
 #ifdef CONFIG_USB_DWC_OTG_HCD
+static void set_usb_a_vbus_power(char is_power_on)
+{
+#define USB_A_POW_GPIO_BIT	20
+	if(is_power_on){
+		printk(KERN_INFO "set usb port power on (board gpio %d)!\n",USB_A_POW_GPIO_BIT);
+		set_gpio_mode(PREG_HGPIO,USB_A_POW_GPIO_BIT,GPIO_OUTPUT_MODE);
+		set_gpio_val(PREG_HGPIO,USB_A_POW_GPIO_BIT,1);
+	}
+	else	{
+		printk(KERN_INFO "set usb port power off (board gpio %d)!\n",USB_A_POW_GPIO_BIT);		
+		set_gpio_mode(PREG_HGPIO,USB_A_POW_GPIO_BIT,GPIO_OUTPUT_MODE);
+		set_gpio_val(PREG_HGPIO,USB_A_POW_GPIO_BIT,0);		
+	}
+}
+//usb_a is OTG port
+struct lm_device usb_ld_a = {
+	.type = LM_DEVICE_TYPE_USB,
+	.id = 0,
+	.irq = INT_USB_A,
+	.resource.start = IO_USB_A_BASE,
+	.resource.end = -1,
+	.dma_mask_room = DMA_BIT_MASK(32),
+	.port_type = USB_PORT_TYPE_HOST,
+	.port_speed = USB_PORT_SPEED_DEFAULT,
+	.dma_config = USB_DMA_BURST_SINGLE,
+	.set_vbus_power = set_usb_a_vbus_power,
+};
 static struct lm_device usb_ld_b = {
 	.type = LM_DEVICE_TYPE_USB,
 	.id = 1,
@@ -430,6 +457,7 @@ static __init void m1_init_machine(void)
 	/* todo: load device drivers */
 #ifdef CONFIG_USB_DWC_OTG_HCD
 	set_usb_phy_clk(USB_PHY_CLOCK_SEL_XTAL_DIV2);
+	lm_device_register(&usb_ld_a);
 	lm_device_register(&usb_ld_b);
 #endif
 #ifdef CONFIG_SATA_DWC_AHCI
