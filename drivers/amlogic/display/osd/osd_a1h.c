@@ -351,12 +351,12 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
 	
 	WRITE_MPEG_REG(VIU_OSD1_BLK0_CFG_W1,
 		(pandata[0].x_start & 0x1fff) | (pandata[0].x_end & 0x1fff) << 16);
-	WRITE_MPEG_REG(VIU_OSD1_BLK1_CFG_W2,
+	WRITE_MPEG_REG(VIU_OSD1_BLK0_CFG_W2,
 		(pandata[0].y_start & 0x1fff) | (pandata[0].y_end & 0x1fff) << 16);
 
 	WRITE_MPEG_REG(VIU_OSD2_BLK0_CFG_W1,
 		(pandata[1].x_start & 0x1fff) | (pandata[1].x_end & 0x1fff) << 16);
-	WRITE_MPEG_REG(VIU_OSD2_BLK1_CFG_W2,
+	WRITE_MPEG_REG(VIU_OSD2_BLK0_CFG_W2,
 		(pandata[1].y_start & 0x1fff) | (pandata[1].y_end & 0x1fff) << 16);
 
 	if (*scan_mode=='i')
