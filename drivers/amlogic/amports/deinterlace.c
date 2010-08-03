@@ -54,6 +54,23 @@ DI_SIM_MIF_t di_mtnprd_mif;
 
 unsigned long di_mem_start;
 
+vframe_t *get_di_out_buf(int *counter, int *pre_counter, int *offset)
+{
+	counter = &field_counter;
+	pre_counter = &pre_field_counter;
+	offset = &di_checked_field;
+	return di_buf_pool;
+}
+
+unsigned long get_di_mem_start(DI_MIF_t *buf0_mif, DI_MIF_t *buf1_mif, DI_SIM_MIF_t *mtncrd_mif, DI_SIM_MIF_t *mtnprd_mif)
+{
+	buf0_mif = &di_buf0_mif;
+	buf1_mif = &di_buf1_mif;
+	mtncrd_mif = &di_mtncrd_mif;
+	mtnprd_mif = &di_mtnprd_mif;
+	return di_mem_start;
+}
+
 void disable_deinterlace(void)
 {
     WRITE_MPEG_REG(DI_PRE_CTRL, 0x3 << 30);
@@ -2446,6 +2463,9 @@ void di_pre_isr(void)
 	}
 	else
 	{
+		if ( pre_field_counter >= field_counter+DI_BUF_NUM-2 )
+			return;
+		
     	cur_buf = vfp->get();
     	if ( !cur_buf )
     		return;

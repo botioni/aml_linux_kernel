@@ -44,9 +44,19 @@ typedef struct DI_SIM_MIF_TYPE
    unsigned short  	canvas_num;
 } DI_SIM_MIF_t;
 
+void disable_deinterlace(void);
+
+void disable_pre_deinterlace(void);
+
+void disable_post_deinterlace(void);
+
 int get_deinterlace_mode(void);
 
 const vframe_provider_t * get_vfp(void);
+
+vframe_t *get_di_out_buf(int *counter, int *pre_counter, int *offset);
+
+unsigned long get_di_mem_start(DI_MIF_t *buf0_mif, DI_MIF_t *buf1_mif, DI_SIM_MIF_t *mtncrd_mif, DI_SIM_MIF_t *mtnprd_mif);
 
 void initial_di_prepost ( int hsize_pre, int vsize_pre, int hsize_post, int vsize_post, int hold_line ); 
 
@@ -218,6 +228,13 @@ void enable_region_blend (
         int reg2_en, int reg2_start_x, int reg2_end_x, int reg2_start_y, int reg2_end_y, int reg2_mode,
         int reg3_en, int reg3_start_x, int reg3_end_x, int reg3_start_y, int reg3_end_y, int reg3_mode 
     );
+
+void di_pre_isr(void);
+
+void run_deinterlace(unsigned zoom_start_x_lines, unsigned zoom_end_x_lines, unsigned zoom_start_y_lines, unsigned zoom_end_y_lines, 
+	unsigned type, int mode, int hold_line);
+
+void deinterlace_init(void);
 
 #endif
 
