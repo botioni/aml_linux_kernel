@@ -48,8 +48,9 @@
 #define MREG_BUFFEROUT      AV_SCRATCH_9
 
 #define MREG_CMD            AV_SCRATCH_A
-#define MREG_FRAME_OFFSET   AV_SCRATCH_A
+#define MREG_CO_MV_START	AV_SCRATCH_B
 #define MREG_ERROR_COUNT    AV_SCRATCH_C
+#define MREG_FRAME_OFFSET   AV_SCRATCH_D
 
 #define PICINFO_ERROR       0x80000000
 #define PICINFO_TYPE_MASK       0x00030000
@@ -60,6 +61,9 @@
 #define PICINFO_PROG        0x8000
 #define PICINFO_RPT_FIRST   0x4000
 #define PICINFO_TOP_FIRST   0x2000
+
+#define SEQINFO_EXT_AVAILABLE   0x80000000
+#define SEQINFO_PROG            0x00010000
 
 #define VF_POOL_SIZE        12
 #define PUT_INTERVAL        HZ/100
@@ -94,14 +98,25 @@ static const u32 frame_rate_tab[16] = {
     96000/24, 96000/24, 96000/24
 };
 
-static struct vframe_s vfpool[VF_POOL_SIZE];
-static u32 vfpool_idx[VF_POOL_SIZE];
-static s32 vfbuf_use[4];
-static s32 fill_ptr, get_ptr, putting_ptr, put_ptr;
+typedef struct {
+	struct vframe_s *pool[VF_POOL_SIZE];
+	u32	rd_index;
+	u32 wr_index;
+} vfq_t;
+
+static struct vframe_s vfqool[VF_POOL_SIZE];
+static s32 vfbuf_use[VF_POOL_SIZE];
+static vfq_t newframe_q, display_q, recycle_q;
+
 static u32 frame_width, frame_height, frame_dur, frame_prog;
 static struct timer_list recycle_timer;
 static u32 stat;
 static u32 buf_start, buf_size;
+static spinlock_t lock = SPIN_LOCK_UNLOCKED;
+
+/* for error handling */
+static s32 frame_force_skip_flag = 0;
+static s32 error_frame_skip_level = 0;
 
 static inline u32 index2canvas(u32 index)
 {
@@ -122,6 +137,44 @@ static inline void ptr_atomic_wrap_inc(u32 *ptr)
         i = 0;
 
     *ptr = i;
+}
+
+static inline bool vfq_empty(vfq_t *q)
+{
+	return (q->rd_index == q->wr_index);
+}
+
+static inline void vfq_push(vfq_t *q, vframe_t *vf)
+{
+	q->pool[q->wr_index] = vf;
+	ptr_atomic_wrap_inc(&q->wr_index);
+}
+
+static inline vframe_t *vfq_pop(vfq_t *q)
+{
+	vframe_t *vf;
+
+	if (vfq_empty(q))
+		return NULL;
+		
+	vf = q->pool[q->rd_index];
+
+	ptr_atomic_wrap_inc(&q->rd_index);
+
+	return vf;
+}
+
+static inline vframe_t *vfq_peek(vfq_t *q)
+{
+	if (vfq_empty(q))
+		return NULL;
+
+	return q->pool[q->rd_index];
+}
+
+static inline void vfq_init(vfq_t *q)
+{
+	q->rd_index = q->wr_index = 0;
 }
 
 static void set_frame_info(vframe_t *vf)
@@ -162,10 +215,32 @@ static void set_frame_info(vframe_t *vf)
             frame_rate_tab[(READ_MPEG_REG(MREG_SEQ_INFO) >> 4) & 0xf]);
 }
 
+static bool error_skip(u32 info, vframe_t *vf)
+{
+    if (error_frame_skip_level) {
+        /* skip error frame */
+        if ((info & PICINFO_ERROR) || (frame_force_skip_flag)) {
+            if ((info & PICINFO_ERROR) == 0 ){
+                if((info & PICINFO_TYPE_MASK) == PICINFO_TYPE_I)
+                    frame_force_skip_flag = 0;    
+            } else {
+                if (error_frame_skip_level >= 2)
+                    frame_force_skip_flag = 1;
+            }
+            if ((info & PICINFO_ERROR) || (frame_force_skip_flag)) {
+                return true;
+            }
+        }
+    }
+    
+    return false;
+}
+
 static irqreturn_t vmpeg12_isr(int irq, void *dev_id)
 {
-    u32 reg, info, offset, pts, pts_valid = 0;
+    u32 reg, info, seqinfo, offset, pts, pts_valid = 0;
     vframe_t *vf;
+    ulong flags;
 
     WRITE_MPEG_REG(ASSIST_MBOX1_CLR_REG, 1);
 
@@ -187,30 +262,53 @@ static irqreturn_t vmpeg12_isr(int irq, void *dev_id)
         if (frame_prog & PICINFO_PROG) {
             u32 index = ((reg & 7) - 1) & 3;
 
-            vfpool_idx[fill_ptr] = index;
-            vf = &vfpool[fill_ptr];
+	        seqinfo = READ_MPEG_REG(MREG_SEQ_INFO);
+
+            vf = vfq_pop(&newframe_q);
 
             set_frame_info(vf);
 
+            vf->index = index;
             vf->type = VIDTYPE_PROGRESSIVE | VIDTYPE_VIU_FIELD;
-            vf->duration_pulldown = (info & PICINFO_RPT_FIRST) ?
-                vf->duration >> 1 : 0;
+
+            if ((seqinfo & SEQINFO_EXT_AVAILABLE)&& (seqinfo & SEQINFO_PROG)) {
+                if (info & PICINFO_RPT_FIRST){
+                    if (info & PICINFO_TOP_FIRST)
+                        vf->duration = vf->duration * 3; // repeat three times
+                    else
+                        vf->duration = vf->duration * 2; // repeat two times
+                }
+                vf->duration_pulldown = 0; // no pull down
+
+            } else {
+                vf->duration_pulldown = (info & PICINFO_RPT_FIRST) ?
+                    vf->duration >> 1 : 0;
+            }
+
             vf->duration += vf->duration_pulldown;
             vf->canvas0Addr = vf->canvas1Addr = index2canvas(index);
             vf->pts = (pts_valid) ? pts : 0;
 
             vfbuf_use[index]++;
 
-            INCPTR(fill_ptr);
+			if (error_skip(info, vf)) {
+			    spin_lock_irqsave(&lock, flags);
+				vfq_push(&recycle_q, vf);
+			    spin_unlock_irqrestore(&lock, flags);
+			}
+			else
+				vfq_push(&display_q, vf);
 
         } else {
             u32 index = ((reg & 7) - 1) & 3;
 
-            vfpool_idx[fill_ptr] = index;
-            vf = &vfpool[fill_ptr];
+            vf = vfq_pop(&newframe_q);
+
+            vfbuf_use[index]+=2;
 
             set_frame_info(vf);
 
+            vf->index = index;
             vf->type = (info & PICINFO_TOP_FIRST) ?
                 VIDTYPE_INTERLACE_TOP : VIDTYPE_INTERLACE_BOTTOM;
             vf->duration >>= 1;
@@ -220,15 +318,16 @@ static irqreturn_t vmpeg12_isr(int irq, void *dev_id)
             vf->canvas0Addr = vf->canvas1Addr = index2canvas(index);
             vf->pts = (pts_valid) ? pts : 0;
 
-            vfbuf_use[index]++;
+			if (error_skip(info, vf))
+				vfq_push(&recycle_q, vf);
+			else
+				vfq_push(&display_q, vf);
 
-            INCPTR(fill_ptr);
-
-            vfpool_idx[fill_ptr] = index;
-            vf = &vfpool[fill_ptr];
+            vf = vfq_pop(&newframe_q);
 
             set_frame_info(vf);
 
+            vf->index = index;
             vf->type = (info & PICINFO_TOP_FIRST) ?
                 VIDTYPE_INTERLACE_BOTTOM : VIDTYPE_INTERLACE_TOP;
             vf->duration >>= 1;
@@ -238,9 +337,10 @@ static irqreturn_t vmpeg12_isr(int irq, void *dev_id)
             vf->canvas0Addr = vf->canvas1Addr = index2canvas(index);
             vf->pts = 0;
 
-            vfbuf_use[index]++;
-
-            INCPTR(fill_ptr);
+			if (error_skip(info, vf))
+				vfq_push(&recycle_q, vf);
+			else
+				vfq_push(&display_q, vf);
         }
 
         WRITE_MPEG_REG(MREG_BUFFEROUT, 0);
@@ -251,43 +351,31 @@ static irqreturn_t vmpeg12_isr(int irq, void *dev_id)
 
 static vframe_t *vmpeg_vf_peek(void)
 {
-    if (get_ptr == fill_ptr)
-        return NULL;
-
-    return &vfpool[get_ptr];
+    return vfq_peek(&display_q);
 }
 
 static vframe_t *vmpeg_vf_get(void)
 {
-    vframe_t *vf;
-
-    if (get_ptr == fill_ptr)
-        return NULL;
-
-    vf = &vfpool[get_ptr];
-
-    INCPTR(get_ptr);
-
-    return vf;
+    return vfq_pop(&display_q);
 }
 
 static void vmpeg_vf_put(vframe_t *vf)
 {
-    INCPTR(putting_ptr);
+	vfq_push(&recycle_q, vf);
 }
 
 static void vmpeg_put_timer_func(unsigned long arg)
 {
     struct timer_list *timer = (struct timer_list *)arg;
 
-    while ((putting_ptr != put_ptr) && (READ_MPEG_REG(MREG_BUFFERIN) == 0)) {
-        u32 index = vfpool_idx[put_ptr];
+    while (!vfq_empty(&recycle_q) && (READ_MPEG_REG(MREG_BUFFERIN) == 0)) {
+        vframe_t *vf = vfq_pop(&recycle_q);
 
-        if (--vfbuf_use[index] == 0) {
-            WRITE_MPEG_REG(MREG_BUFFERIN, index + 1);
+        if (--vfbuf_use[vf->index] == 0) {
+            WRITE_MPEG_REG(MREG_BUFFERIN, vf->index + 1);
         }
 
-        INCPTR(put_ptr);
+		vfq_push(&newframe_q, vf);
     }
 
     timer->expires = jiffies + PUT_INTERVAL;
@@ -371,6 +459,8 @@ static void vmpeg12_canvas_init(void)
         }
     }
 
+	WRITE_MPEG_REG(MREG_CO_MV_START, buf_start + buf_start + 4 * decbuf_size);
+
 }
 
 static void vmpeg12_prot_init(void)
@@ -410,12 +500,19 @@ static void vmpeg12_local_init(void)
 {
     int i;
 
-    fill_ptr = get_ptr = put_ptr = putting_ptr = 0;
+	vfq_init(&display_q);
+	vfq_init(&recycle_q);
+	vfq_init(&newframe_q);
+	
+	for (i=0; i<VF_POOL_SIZE-1; i++)
+		vfq_push(&newframe_q, &vfqool[i]);
 
     frame_width = frame_height = frame_dur = frame_prog = 0;
 
     for (i = 0; i < 4; i++)
         vfbuf_use[i] = 0;
+        
+    frame_force_skip_flag = 0;
 }
 
 static s32 vmpeg12_init(void)
