@@ -572,7 +572,8 @@ int sd_send_cmd_hw(unsigned char cmd, unsigned long arg, SD_Response_Type_t res_
 				cmd_ext_reg->data_rw_number = sd_mmc_info->blk_len * 8 + 16 - 1;
 			//buffer = sd_write_buf;
 			//memcpy(buffer, data_buf, data_cnt);
-			buffer = data_buf;
+			memcpy(sd_mmc_buf, data_buf, data_cnt);
+			buffer = sd_mmc_phy_buf;
 			//inv_dcache_range((unsigned long)buffer, ((unsigned long)buffer + data_cnt));
 			break;
 
@@ -3362,14 +3363,14 @@ int sd_mmc_init(void)
 	    }
 	}
 
-	error = sd_check_data_consistency();
-	if(error)
-	{
-#ifdef  SD_MMC_DEBUG
-		Debug_Printf("#%s error occured in sd_check_data_consistency()!\n", sd_error_to_string(error));
-#endif
-		return error;
-	}
+//	error = sd_check_data_consistency();
+//	if(error)
+//	{
+//#ifdef  SD_MMC_DEBUG
+//		Debug_Printf("#%s error occured in sd_check_data_consistency()!\n", sd_error_to_string(error));
+//#endif
+//		return error;
+//	}
 
 #ifdef SD_MMC_DEBUG
 	Debug_Printf("sd_mmc_init() is completed successfully!\n");
