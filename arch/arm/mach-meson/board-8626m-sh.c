@@ -41,6 +41,7 @@
 #include <linux/delay.h>
 
 #include "board-8626m-sh.h"
+#include <mach/clk_set.h>
 
 #if defined(CONFIG_JPEGLOGO)
 static struct resource jpeglogo_resources[] = {
@@ -228,7 +229,7 @@ static void __init eth_pinmux_init(void)
 {
 	///GPIOD15-24 for 8626M;
 	///GPIOE_16/NA	nRst;
-    	eth_clk_set(ETH_CLKSRC_SYS_D3,900*CLK_1M/3,50*CLK_1M);
+    	//eth_clk_set(ETH_CLKSRC_SYS_D3,900*CLK_1M/3,50*CLK_1M);
 	/*for dpf_sz with ethernet*/	
 	eth_set_pinmux(ETH_BANK2_GPIOD15_D23,ETH_CLK_OUT_GPIOD24_REG5_1,0);
 	CLEAR_CBUS_REG_MASK(PREG_ETHERNET_ADDR0, 1);
@@ -252,6 +253,15 @@ static void __init device_pinmux_init(void )
 	/*pinmux of eth*/
 	eth_pinmux_init();
 }
+static void __init  device_clk_setting(void)
+{
+	/*Demod CLK for eth and sata*/
+	demod_apll_setting(24*CLK_1M,1200*CLK_1M);
+	/*eth clk*/
+
+    	//eth_clk_set(ETH_CLKSRC_SYS_D3,900*CLK_1M/3,50*CLK_1M);
+    	eth_clk_set(ETH_CLKSRC_APLL_CLK,400*CLK_1M,50*CLK_1M);
+}
 static __init void m1_init_machine(void)
 {
 #ifdef CONFIG_CACHE_L2X0
@@ -259,6 +269,7 @@ static __init void m1_init_machine(void)
 	 * Bits:  .... .... .000 0010 0000 .... .... .... */
 	l2x0_init((void __iomem *)IO_PL310_BASE, 0x00020000, 0xff800fff);
 #endif
+	device_clk_setting();
 	device_pinmux_init();
 	platform_add_devices(platform_devs, ARRAY_SIZE(platform_devs));
 	/* todo: load device drivers */
