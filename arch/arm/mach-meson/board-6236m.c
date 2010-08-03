@@ -94,6 +94,25 @@ static struct platform_device apollo_codec = {
     .resource      = apollo_codec_resources,
 };
 #endif
+
+#if defined(CONFIG_CARDREADER)
+static struct resource amlogic_card_resource[]  = {
+	[0] = {
+		.start = 0x1200230,   //physical address
+		.end   = 0x120024c,
+		.flags = 0x200,
+	}
+};
+
+
+static struct platform_device amlogic_card_device = { 
+	.name = "AMLOGIC_CARD", 
+	.id    = -1,
+	.num_resources = ARRAY_SIZE(amlogic_card_resource),
+	.resource = amlogic_card_resource,
+};
+#endif
+
 static struct resource apollo_audiodsp_resources[] = {
     [0] = {
         .start =  AUDIODSP_ADDR_START,
@@ -133,6 +152,9 @@ static struct platform_device __initdata *platform_devs[] = {
     #endif
     #if defined(CONFIG_AM_STREAMING)
 	&apollo_codec,
+    #endif
+    #if defined(CONFIG_CARDREADER)
+    	&amlogic_card_device,
     #endif
 	&apollo_audiodsp,
 	&apollo_mali,
