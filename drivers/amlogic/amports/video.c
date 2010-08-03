@@ -985,8 +985,8 @@ static irqreturn_t vsync_isr0(int irq, void *dev_id)
     if ( deinterlace_mode != 0 )
     	run_deinterlace(zoom_start_x_lines, zoom_end_x_lines, zoom_start_y_lines, zoom_end_y_lines, cur_dispbuf->type_backup, cur_dispbuf->blend_mode, hold_line);
 
-exit:
 #ifdef FIQ_VSYNC
+exit:
 	WRITE_MPEG_REG(IRQ_CLR_REG(INT_VIU_VSYNC), 1 << IRQ_BIT(INT_VIU_VSYNC));
 
 	dsb();
@@ -1132,7 +1132,6 @@ void vf_reg_provider(const vframe_provider_t *p)
 void vf_unreg_provider(void)
 {
     ulong flags;
-    spinlock_t lock = SPIN_LOCK_UNLOCKED;
 
     spin_lock_irqsave(&lock, flags);
 
@@ -1164,7 +1163,6 @@ void vf_unreg_provider(void)
 void vf_light_unreg_provider(void)
 {
     ulong flags;
-    spinlock_t lock = SPIN_LOCK_UNLOCKED;
 
     spin_lock_irqsave(&lock, flags);
 
