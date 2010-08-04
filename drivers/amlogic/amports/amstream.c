@@ -159,6 +159,9 @@ static ssize_t amstream_mpps_write
 static ssize_t amstream_sub_read
     (struct file *file, char *buf,
      size_t count, loff_t * ppos);
+static ssize_t amstream_sub_write
+    (struct file *file, const char *buf,
+     size_t count, loff_t * ppos);
 static unsigned int amstream_sub_poll
     (struct file *file, poll_table *wait_table);
 static int (*amstream_vdec_status)
@@ -216,6 +219,7 @@ const static struct file_operations sub_fops = {
     .open     = amstream_open,
     .release  = amstream_release,
     .read     = amstream_sub_read,
+    .write    = amstream_sub_write,
     .poll     = amstream_sub_poll,
     .ioctl    = amstream_ioctl,
 };
@@ -234,6 +238,7 @@ static struct class *amstream_dev_class;
 static DEFINE_MUTEX(amstream_mutex);
 
 atomic_t subdata_ready = ATOMIC_INIT(0);
+static int sub_type;
 /* wait queue for poll */
 static wait_queue_head_t amstream_sub_wait;
 
@@ -458,19 +463,38 @@ static  int audio_port_init( stream_port_t *port,struct stream_buf_s * pbuf)
 
 static void sub_port_release(stream_port_t *port,struct stream_buf_s * pbuf)
 {
+    if (port->sid == 0xffff) // this is es sub
+    {
+        esparser_release(pbuf);
+    }
     stbuf_release(pbuf);
     return;
 }
 
 static int sub_port_init(stream_port_t *port,struct stream_buf_s * pbuf)
 {
+    int r;
     if ((port->flag & PORT_FLAG_SID) == 0)
     {
         printk("subtitle id not set\n");
         return 0;
     }
 
-    return stbuf_init(pbuf);
+    r = stbuf_init(pbuf);
+    if (r < 0)
+        return r;
+
+    if (port->sid == 0xffff) // es sub
+    {
+        r = esparser_init(pbuf);
+        if (r < 0)
+        {
+            sub_port_release(port, pbuf);
+            return r;
+        }
+    }
+
+    return 0;
 }
 
 static  int amstream_port_init( stream_port_t *port)
@@ -557,6 +581,7 @@ static  int amstream_port_release( stream_port_t *port)
 {
     stream_buf_t *pvbuf=&bufs[BUF_TYPE_VIDEO];
     stream_buf_t *pabuf=&bufs[BUF_TYPE_AUDIO];
+    stream_buf_t *psbuf=&bufs[BUF_TYPE_SUBTITLE];
 
     if (port->type & PORT_TYPE_MPTS) {
         tsdemux_release();
@@ -576,6 +601,10 @@ static  int amstream_port_release( stream_port_t *port)
 
     if (port->type & PORT_TYPE_AUDIO) {
         audio_port_release(port,pabuf,0);
+    }
+
+    if (port->type & PORT_TYPE_SUB) {
+        sub_port_release(port, psbuf);
     }
 
     port->flag = 0;
@@ -773,6 +802,23 @@ static ssize_t amstream_sub_read(struct file *file, char __user *buf, size_t cou
     }
 }
 
+static ssize_t amstream_sub_write(struct file *file, const char *buf,
+                                size_t count, loff_t * ppos)
+{
+   	stream_port_t *port = (stream_port_t *)file->private_data;
+	stream_buf_t *pbuf=&bufs[BUF_TYPE_SUBTITLE];
+	int r;
+
+	if (!(port->flag & PORT_FLAG_INITED)) {
+		r=amstream_port_init(port);
+		if(r<0)
+	   		return r;
+	}
+
+    return esparser_write(file,pbuf, buf, count);
+}
+
+
 static unsigned int amstream_sub_poll(struct file *file, poll_table *wait_table)
 {
     poll_wait(file, &amstream_sub_wait, wait_table);
@@ -808,6 +854,9 @@ static int amstream_open(struct inode *inode, struct file *file)
         }
     }
 
+    this->vid = 0;
+    this->aid = 0;
+    this->sid = 0;
     file->f_op = this->fops;
     file->private_data = this;
 
@@ -1141,6 +1190,10 @@ static int amstream_ioctl(struct inode *inode, struct file *file,
         else
             r = -EINVAL;
         break;
+
+    case AMSTREAM_IOC_SUB_TYPE:
+        sub_type = (int)arg;
+        break;
         
         default:
             r = -ENOIOCTLCMD;
@@ -1406,10 +1459,16 @@ void wakeup_sub_poll(void)
     return;
 }
 
+int get_sub_type(void)
+{
+    return sub_type;
+}
+
 EXPORT_SYMBOL(set_vdec_func);
 EXPORT_SYMBOL(set_adec_func);
 EXPORT_SYMBOL(set_trickmode_func);
 EXPORT_SYMBOL(wakeup_sub_poll);
+EXPORT_SYMBOL(get_sub_type);
 
 static struct platform_driver
 amstream_driver = {
