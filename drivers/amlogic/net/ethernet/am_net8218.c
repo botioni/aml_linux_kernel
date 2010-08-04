@@ -24,7 +24,11 @@ add by zhouzhi 2008-8-18
 // >1 further setting debug;
 // >2 for tx
 // >3 for rx
-static volatile int debug = 0x1;
+#ifdef CONFIG_AM_ETHERNET_DEBUG_LEVEL
+static volatile int debug = CONFIG_AM_ETHERNET_DEBUG_LEVEL;
+#else
+static volatile int debug = 1;
+#endif
 
 static int running = 0;
 static struct net_device *my_ndev = NULL;
