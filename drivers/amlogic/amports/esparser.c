@@ -50,6 +50,7 @@
 #define PARSER_WRITE        (ES_WRITE | ES_PARSER_START)
 #define PARSER_VIDEO        (ES_TYPE_VIDEO)
 #define PARSER_AUDIO        (ES_TYPE_AUDIO)
+#define PARSER_SUBPIC       (ES_TYPE_SUBTITLE)
 #define PARSER_PASSTHROUGH  (ES_PASSTHROUGH | ES_PARSER_START)
 #define PARSER_AUTOSEARCH   (ES_SEARCH | ES_PARSER_START)
 #define PARSER_DISCARD      (ES_DISCARD | ES_PARSER_START)
@@ -101,6 +102,14 @@ static ssize_t _esparser_write(const char __user *buf, size_t count, u32 type)
     size_t r = count;
     const char __user *p = buf;
     u32 len = 0;
+    u32 parser_type;
+
+    if (type == BUF_TYPE_VIDEO)
+        parser_type = PARSER_VIDEO;
+    else if (type == BUF_TYPE_AUDIO)
+        parser_type = PARSER_AUDIO;
+    else
+        parser_type = PARSER_SUBPIC;
 
     if (r > 0) {
         len = min(r, (size_t)FETCHBUF_SIZE);
@@ -113,7 +122,7 @@ static ssize_t _esparser_write(const char __user *buf, size_t count, u32 type)
 
         WRITE_MPEG_REG_BITS(PARSER_CONTROL, len, ES_PACK_SIZE_BIT, ES_PACK_SIZE_WID);
         WRITE_MPEG_REG_BITS(PARSER_CONTROL,
-            ((type == BUF_TYPE_VIDEO) ? PARSER_VIDEO : PARSER_AUDIO) | PARSER_WRITE | PARSER_AUTOSEARCH,
+            parser_type | PARSER_WRITE | PARSER_AUTOSEARCH,
             ES_CTRL_BIT, ES_CTRL_WID);
 
         WRITE_MPEG_REG(PARSER_FETCH_ADDR, fetchbuf);
@@ -178,13 +187,22 @@ s32 esparser_init(struct stream_buf_s *buf)
 {
     s32 r;
     u32 pts_type;
-    
+    u32 parser_sub_start_ptr;
+    u32 parser_sub_end_ptr;
+    u32 parser_sub_rp;
+
     if (buf->type== BUF_TYPE_VIDEO)
         pts_type = PTS_TYPE_VIDEO;
     else if (buf->type & BUF_TYPE_AUDIO)
         pts_type = PTS_TYPE_AUDIO;
+    else if (buf->type & BUF_TYPE_SUBTITLE)
+        pts_type = PTS_TYPE_MAX;
     else
         return -EINVAL;
+
+    parser_sub_start_ptr = READ_MPEG_REG(PARSER_SUB_START_PTR);
+    parser_sub_end_ptr = READ_MPEG_REG(PARSER_SUB_END_PTR);
+    parser_sub_rp = READ_MPEG_REG(PARSER_SUB_RP);
 
     buf->flag |= BUF_FLAG_PARSER;
 
@@ -268,11 +286,20 @@ s32 esparser_init(struct stream_buf_s *buf)
 
         audio_data_parsed = 0;
     }
+    else if (buf->type & BUF_TYPE_SUBTITLE) {
+        WRITE_MPEG_REG(PARSER_SUB_START_PTR, parser_sub_start_ptr);
+        WRITE_MPEG_REG(PARSER_SUB_END_PTR, parser_sub_end_ptr);
+        WRITE_MPEG_REG(PARSER_SUB_RP, parser_sub_rp);
+        SET_MPEG_REG_MASK(PARSER_ES_CONTROL, (7<<ES_SUB_WR_ENDIAN_BIT) | ES_SUB_MAN_RD_PTR);
+    }
 
-    r = pts_start(pts_type);
-    if (r < 0) {
-        printk("esparser_init: pts_start failed\n");
-        goto Err_1;
+    if (pts_type < PTS_TYPE_MAX)
+    {
+        r = pts_start(pts_type);
+        if (r < 0) {
+            printk("esparser_init: pts_start failed\n");
+            goto Err_1;
+        }
     }
 
 #if 0
@@ -363,6 +390,11 @@ void esparser_release(struct stream_buf_s *buf)
         pts_type = PTS_TYPE_VIDEO;
     else if (buf->type == BUF_TYPE_AUDIO)
         pts_type = PTS_TYPE_AUDIO;
+    else if (buf->type == BUF_TYPE_SUBTITLE)
+    {
+        buf->flag &= ~BUF_FLAG_PARSER;
+        return;
+    }
     else
         return;
 

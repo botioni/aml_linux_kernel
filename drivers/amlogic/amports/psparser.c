@@ -43,7 +43,8 @@
 #define MPEG_START_CODE_MASK    (0xffffff00L)
 #define MAX_MPG_AUDIOPK_SIZE     0x1000
 
-#define SUB_INSERT_START_CODE   0x12345678
+#define SUB_INSERT_START_CODE_HIGH   0x414d4c55
+#define SUB_INSERT_START_CODE_LOW    0xaa000000
 
 #define PARSER_WRITE        (ES_WRITE | ES_PARSER_START)
 #define PARSER_VIDEO        (ES_TYPE_VIDEO)
@@ -497,8 +498,8 @@ static u32 parser_process(s32 type, s32 packet_len)
                         printk("sub pts 0x%x, len %d\n", pts, packet_len);
                         SET_BLOCK(packet_len);
                         WRITE_MPEG_REG(PARSER_PARAMETER, 16 << PARSER_PARAMETER_LENGTH_BIT);
-                        WRITE_MPEG_REG(PARSER_INSERT_DATA, SUB_INSERT_START_CODE);
-                        WRITE_MPEG_REG(PARSER_INSERT_DATA, sub_id);
+                        WRITE_MPEG_REG(PARSER_INSERT_DATA, SUB_INSERT_START_CODE_HIGH);
+                        WRITE_MPEG_REG(PARSER_INSERT_DATA, SUB_INSERT_START_CODE_LOW | get_sub_type());
                         WRITE_MPEG_REG(PARSER_INSERT_DATA, packet_len);
                         WRITE_MPEG_REG(PARSER_INSERT_DATA, pts);
                         atomic_set(&sub_block_found, 1);
