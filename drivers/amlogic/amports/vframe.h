@@ -32,6 +32,7 @@
 #define VIDTYPE_VIU_422                 0x800
 #define VIDTYPE_VIU_FIELD               0x1000
 #define VIDTYPE_VIU_SINGLE_PLANE        0x2000
+#define VIDTYPE_VIU_444                 0x4000
 
 #define DISP_RATIO_FORCECONFIG          0x80000000
 #define DISP_RATIO_CTRL_MASK            0x00000003
@@ -43,6 +44,7 @@
 #define DISP_RATIO_ASPECT_RATIO_MAX     0x3ff
 
 typedef struct vframe_s {
+    u32 index;
     u32 type;
     u32 type_backup;
     u32 blend_mode;
