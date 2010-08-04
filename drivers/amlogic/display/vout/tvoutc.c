@@ -29,7 +29,15 @@
 
 #include <linux/vout/vinfo.h>
 #include "tvoutc.h"
+
+#define CLOCK_SRC_AUDIOPLL
+//#define CLOCK_SRC_VIDEOPLL
+
+//#define CRYSTAL_25M
+#define CRYSTAL_24M
+
 #include "tvregs.h"
+
 #define  SET_VDAC(index,val)   (WRITE_MPEG_REG((index+VENC_VDAC_DACSEL0),val))
 static const unsigned int  signal_set[SIGNAL_SET_MAX][3]=
 {
