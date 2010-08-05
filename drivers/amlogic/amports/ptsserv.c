@@ -466,7 +466,7 @@ int pts_start(u8 type)
 			 * offset wrapped before 32 bits boundary.
 			 * This is unlikely to set such a small streaming buffer though.
 			 */
-			BUG_ON(pTable->buf_size <= 0x10000);
+			//BUG_ON(pTable->buf_size <= 0x10000);
 
             WRITE_MPEG_REG(VIDEO_PTS, 0);
         }
@@ -475,7 +475,7 @@ int pts_start(u8 type)
             pTable->buf_size = READ_MPEG_REG(AIU_MEM_AIFIFO_END_PTR)
                                  - pTable->buf_start + 8;
 
-			BUG_ON(pTable->buf_size <= 0x10000);
+			//BUG_ON(pTable->buf_size <= 0x10000);
 
             WRITE_MPEG_REG(AUDIO_PTS, 0);
         }
