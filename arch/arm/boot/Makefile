@@ -28,7 +28,7 @@ INITRD_PHYS := $(initrd_phys-y)
 
 export ZRELADDR INITRD_PHYS PARAMS_PHYS
 
-targets := Image zImage xipImage bootpImage uImage uzImage
+targets := Image zImage xipImage bootpImage uImage uzImage ugImage
 
 ifeq ($(CONFIG_XIP_KERNEL),y)
 
@@ -66,8 +66,8 @@ endif
 #		   -n 'Linux-$(KERNELRELEASE)' -d $< $@
 #
 
-quiet_cmd_uimage = UIMAGE  $@
-      cmd_uimage = $(MKIMAGE) -A arm -O linux -T kernel \
+quiet_cmd_uImage = UIMAGE  $@
+      cmd_uImage = $(MKIMAGE) -A arm -O linux -T kernel \
 		   -C lzma -a $(LOADADDR) -e $(STARTADDR) \
 		   -n 'Linux-$(KERNELRELEASE)' -d $< $@
 
@@ -76,6 +76,13 @@ quiet_cmd_uzImage = UZIMAGE  $@
       cmd_uzImage = $(MKIMAGE) -A arm -O linux -T kernel \
 		   -C none -a 0x84000000 -e 0x84000000 \
 		   -n 'Linux-$(KERNELRELEASE)' -d $< $@
+
+
+quiet_cmd_ugImage = ugIMAGE  $@
+      cmd_ugImage = $(MKIMAGE) -A arm -O linux -T kernel \
+		   -C gzip -a 0x84000000 -e 0x84000000 \
+		   -n 'Linux-$(KERNELRELEASE)' -d $< $@
+
 
 ifeq ($(CONFIG_ZBOOT_ROM),y)
 $(obj)/uImage: LOADADDR=$(CONFIG_ZBOOT_ROM_TEXT)
@@ -98,18 +105,23 @@ $(obj)/ccImage.gz:$(obj)/ccImage FORCE
 	@-rm -rf $(obj)/ccImage.gz 
 	@gzip $(obj)/ccImage
 	@echo '  Image $@ is ready'
+
 $(obj)/ccImage.lzma:$(obj)/ccImage FORCE
 	@-rm -rf $(obj)/ccImage.lzma 
 	@lzma -z -S .lzma $(obj)/ccImage
 	@echo '  Image $@ is ready'
 
 $(obj)/uImage:	$(obj)/ccImage.lzma FORCE
-	$(call if_changed,uimage)
+	$(call if_changed,uImage)
 	@echo '  Image $@ is ready'
 
 
 $(obj)/uzImage:	$(obj)/zImage FORCE
 	$(call if_changed,uzImage)
+	@echo '  Image $@ is ready'
+
+$(obj)/ugImage:	$(obj)/ccImage.gz FORCE
+	$(call if_changed,ugImage)
 	@echo '  Image $@ is ready'
 
 
