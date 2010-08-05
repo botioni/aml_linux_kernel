@@ -14,11 +14,7 @@ config AM_VIDEO
 	  Driver for video display.
 
 config AM_PTSSERVER
-	tristate "AMLOGIC Time Stamp Daemon"
-	depends on AM_STREAMING
-	default y
-	help
-	  Streaming data time stamp daemon.
+	bool
 
 config AM_VDEC_MPEG12
 	tristate "AMLOGIC MPEG1/2 Video Decoder"

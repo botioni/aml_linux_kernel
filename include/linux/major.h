@@ -181,6 +181,7 @@
 #define HWJPEGDEC_MAJOR		238
 #define AMVIDEO_MAJOR		239
 #define AMCANVAS_MAJOR		240
+#define MALI_MAJOR			241
 
 #define BLOCK_EXT_MAJOR		259
 #define SCSI_OSD_MAJOR		260	/* open-osd's OSD scsi device */

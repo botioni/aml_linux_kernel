@@ -1,6 +1,4 @@
 #include <linux/module.h>
-#include <linux/kthread.h>
-#include <linux/delay.h>
 #include <linux/list.h>
 #include <linux/spinlock.h>
 #include <linux/slab.h>
@@ -18,6 +16,9 @@
 #define AUDIO_REC_SIZE  4096
 #define VIDEO_LOOKUP_RESOLUTION 2500
 #define AUDIO_LOOKUP_RESOLUTION 1024
+
+#define OFFSET_LATER(x, y) ((int)(x) > (int)(y))
+#define OFFSET_DIFF(x, y)  ((int)(x - y))
 
 enum {
     PTS_IDLE       = 0,
@@ -40,10 +41,6 @@ typedef struct pts_table_s {
     u32 lookup_cache_offset;
     bool lookup_cache_valid;
     u32 lookup_cache_pts;
-    u32 wr_pages;
-    u32 wr_ptr;
-    u32 rd_pages;
-    u32 rd_ptr;
     u32 buf_start;
     u32 buf_size;
     pts_rec_t *pts_recs;
@@ -52,69 +49,88 @@ typedef struct pts_table_s {
     struct list_head free_list;
 } pts_table_t;
 
-static struct task_struct *pts_task = NULL;
 static spinlock_t lock = SPIN_LOCK_UNLOCKED;
 
 static pts_table_t pts_table[PTS_TYPE_MAX] =
 {
-    {.status = PTS_IDLE,
-     .rec_num = VIDEO_REC_SIZE,
-     .lookup_threshold = VIDEO_LOOKUP_RESOLUTION,
+    {	.status = PTS_IDLE,
+     	.rec_num = VIDEO_REC_SIZE,
+     	.lookup_threshold = VIDEO_LOOKUP_RESOLUTION,
     },
-    {.status = PTS_IDLE,
-    .rec_num = AUDIO_REC_SIZE,
-    .lookup_threshold = AUDIO_LOOKUP_RESOLUTION,
+    {	.status = PTS_IDLE,
+     	.rec_num = AUDIO_REC_SIZE,
+     	.lookup_threshold = AUDIO_LOOKUP_RESOLUTION,
     },
 };
 
-/* to-do: a HW implentation? */
-static int pts_thread(void *unused)
+static inline void get_wrpage_offset(u8 type, u32 *page, u32 *page_offset)
 {
-    unsigned p;
+	ulong flags;
+	u32 page1, page2, offset;
+	
+	if (type == PTS_TYPE_VIDEO) {
+		do {
+			local_irq_save(flags);
 
-    printk(KERN_INFO "pts_thread up\n");
+			page1 = READ_MPEG_REG(PARSER_AV_WRAP_COUNT) & 0xffff;
+			offset = READ_MPEG_REG(VLD_MEM_VIFIFO_WP);
+			page2 = READ_MPEG_REG(PARSER_AV_WRAP_COUNT) & 0xffff;
 
-    while (!kthread_should_stop()) {
-        pts_table_t *pTable;
+			local_irq_restore(flags);
+		} while (page1 != page2);
+		
+		*page = page1;
+		*page_offset = offset - pts_table[PTS_TYPE_VIDEO].buf_start;
+	}
+	else if (type == PTS_TYPE_AUDIO) {
+		do {
+			local_irq_save(flags);
 
-        pTable = &pts_table[PTS_TYPE_VIDEO];
+			page1 = READ_MPEG_REG(PARSER_AV_WRAP_COUNT) >> 16;
+			offset = READ_MPEG_REG(AIU_MEM_AIFIFO_MAN_WP);
+			page2 = READ_MPEG_REG(PARSER_AV_WRAP_COUNT) >> 16;
 
-        p = READ_MPEG_REG(VLD_MEM_VIFIFO_RP);
-        if (p < pTable->rd_ptr) {
-            pTable->rd_pages++;
+			local_irq_restore(flags);
+		} while (page1 != page2);
+		
+		*page = page1;
+		*page_offset = offset - pts_table[PTS_TYPE_AUDIO].buf_start;
+	}
+}
 
-            WRITE_MPEG_REG(VLD_MEM_RD_PAGE, pTable->rd_pages);
-            WRITE_MPEG_REG(VLD_MEM_RD_PAGE_RP, p);
-        }
-        pTable->rd_ptr = p;
+static inline void get_rdpage_offset(u8 type, u32 *page, u32 *page_offset)
+{
+	ulong flags;
+	u32 page1, page2, offset;
+	
+	if (type == PTS_TYPE_VIDEO) {
+		do {
+			local_irq_save(flags);
 
-        p = READ_MPEG_REG(VLD_MEM_VIFIFO_WP);
-        if (p < pTable->wr_ptr)
-            pTable->wr_pages++;
-        pTable->wr_ptr = p;
+			page1 = READ_MPEG_REG(VLD_MEM_VIFIFO_WRAP_COUNT) & 0xffff;
+			offset = READ_MPEG_REG(VLD_MEM_VIFIFO_RP);
+			page2 = READ_MPEG_REG(VLD_MEM_VIFIFO_WRAP_COUNT) & 0xffff;
 
-        pTable = &pts_table[PTS_TYPE_AUDIO];
+			local_irq_restore(flags);
+		} while (page1 != page2);
+		
+		*page = page1;
+		*page_offset = offset - pts_table[PTS_TYPE_VIDEO].buf_start;
+	}
+	else if (type == PTS_TYPE_AUDIO) {
+		do {
+			local_irq_save(flags);
 
-        p = READ_MPEG_REG(AIU_MEM_AIFIFO_MAN_RP);
-        if (p < pTable->rd_ptr) {
-            pTable->rd_pages++;
+			page1 = READ_MPEG_REG(AIU_MEM_AIFIFO_BUF_WRAP_COUNT);
+			offset = READ_MPEG_REG(AIU_MEM_AIFIFO_MAN_RP);
+			page2 = READ_MPEG_REG(AIU_MEM_AIFIFO_BUF_WRAP_COUNT) >> 16;
 
-            WRITE_MPEG_REG(AIU_MEM_RD_PAGE, pTable->rd_pages);
-            WRITE_MPEG_REG(AIU_MEM_RD_PAGE_RP, p);
-        }
-        pTable->rd_ptr = p;
-
-        p = READ_MPEG_REG(AIU_MEM_AIFIFO_MAN_WP);
-        if (p < pTable->wr_ptr)
-            pTable->wr_pages++;
-        pTable->wr_ptr = p;
-
-        msleep(5);
-    }
-
-    printk(KERN_INFO "pts_thread quit\n");
-
-    return 0;
+			local_irq_restore(flags);
+		} while (page1 != page2);
+		
+		*page = page1;
+		*page_offset = offset - pts_table[PTS_TYPE_AUDIO].buf_start;
+	}
 }
 
 int pts_checkin_offset(u8 type, u32 offset, u32 val)
@@ -180,46 +196,20 @@ int pts_checkin_offset(u8 type, u32 offset, u32 val)
 
 EXPORT_SYMBOL(pts_checkin_offset);
 
-int pts_checkin_pageoffset(u8 type, u32 page_offset, u32 val)
-{
-    ulong flags;
-    u32 offset, page, page_no;
-
-    if (type >= PTS_TYPE_MAX)
-        return -EINVAL;
-
-    spin_lock_irqsave(&lock, flags);
-
-    page = pts_table[type].wr_pages;
-    offset = pts_table[type].wr_ptr - pts_table[type].buf_start;
-
-    spin_unlock_irqrestore(&lock, flags);
-
-    page_no = (page_offset < offset) ? (page + 1) : page;
-
-    return pts_checkin_offset(type,
-        pts_table[type].buf_size * page_no + page_offset, val);
-}
-
-EXPORT_SYMBOL(pts_checkin_pageoffset);
-
+/* This type of PTS could happen in the past, 
+ * e.g. from TS demux when the real time (wr_page, wr_ptr)
+ * could be bigger than pts parameter here.
+ */
 int pts_checkin_wrptr(u8 type, u32 ptr, u32 val)
 {
-    ulong flags;
     u32 offset, page, page_no;
 
     if (type >= PTS_TYPE_MAX)
         return -EINVAL;
 
-    spin_lock_irqsave(&lock, flags);
+	get_wrpage_offset(type, &page, &offset);
 
-    page = pts_table[type].wr_pages;
-    offset = pts_table[type].wr_ptr;
-
-    spin_unlock_irqrestore(&lock, flags);
-
-    /* to-do: sanity check for input ptr range */
-    page_no = (ptr < offset) ? (page + 1) : page;
+    page_no = (ptr > offset) ? (page - 1) : page;
 
     return pts_checkin_offset(type,
         pts_table[type].buf_size * page_no + ptr - pts_table[type].buf_start, val);
@@ -229,40 +219,47 @@ EXPORT_SYMBOL(pts_checkin_wrptr);
 
 int pts_checkin(u8 type, u32 val)
 {
-    if (type == PTS_TYPE_VIDEO)
-        return pts_checkin_pageoffset(type,
-            READ_MPEG_REG(VLD_MEM_VIFIFO_WP) - pts_table[type].buf_start, val);
-    else if (type == PTS_TYPE_AUDIO)
-        return pts_checkin_pageoffset(type,
-            READ_MPEG_REG(AIU_MEM_AIFIFO_MAN_WP) - pts_table[type].buf_start, val);
+	u32 page, offset;
+	
+	get_wrpage_offset(type, &page, &offset);	
+
+    if (type == PTS_TYPE_VIDEO) {
+    	offset = page * pts_table[PTS_TYPE_VIDEO].buf_size + offset;
+		pts_checkin_offset(PTS_TYPE_VIDEO, offset, val);
+		return 0;
+	}
+    else if (type == PTS_TYPE_AUDIO) {
+    	offset = page * pts_table[PTS_TYPE_AUDIO].buf_size + offset;
+		pts_checkin_offset(PTS_TYPE_AUDIO, offset, val);
+		return 0;
+	}
     else
         return -EINVAL;
 }
 
 EXPORT_SYMBOL(pts_checkin);
 
-int pts_lookup_pageoffset(u8 type, u32 page_offset, u32 *val, u32 pts_margin)
+int pts_lookup(u8 type, u32 *val, u32 pts_margin)
 {
-    ulong flags;
-    u32 offset, page, page_no;
+	u32 page, offset;
+	
+	get_rdpage_offset(type, &page, &offset);	
 
-    if (type >= PTS_TYPE_MAX)
+    if (type == PTS_TYPE_VIDEO) {
+    	offset = page * pts_table[PTS_TYPE_VIDEO].buf_size + offset;
+		pts_lookup_offset(PTS_TYPE_VIDEO, offset, val, pts_margin);
+		return 0;
+	}
+    else if (type == PTS_TYPE_AUDIO) {
+    	offset = page * pts_table[PTS_TYPE_AUDIO].buf_size + offset;
+		pts_lookup_offset(PTS_TYPE_AUDIO, offset, val, pts_margin);
+		return 0;
+	}
+    else
         return -EINVAL;
-
-    spin_lock_irqsave(&lock, flags);
-
-    page = pts_table[type].rd_pages;
-    offset = pts_table[type].rd_ptr - pts_table[type].buf_start;
-
-    spin_unlock_irqrestore(&lock, flags);
-
-    page_no = (page_offset < offset) ? (page + 1) : page;
-
-    return pts_lookup_offset(type,
-        page_offset + pts_table[type].buf_size * page_no, val, pts_margin);
 }
 
-EXPORT_SYMBOL(pts_lookup_pageoffset);
+EXPORT_SYMBOL(pts_lookup);
 
 int pts_lookup_offset(u8 type, u32 offset, u32 *val, u32 pts_margin)
 {
@@ -307,7 +304,7 @@ int pts_lookup_offset(u8 type, u32 offset, u32 *val, u32 pts_margin)
         else
             p = list_entry(pTable->pts_search, pts_rec_t, list);
 
-        if (p->offset < offset) {
+        if (OFFSET_LATER(offset, p->offset)) {
             p2 = p; /* lookup candidate */
 
             list_for_each_entry_continue(p, &pTable->valid_list, list) {
@@ -326,7 +323,7 @@ if (type == PTS_TYPE_VIDEO)
                 p2 = p;
             }
         }
-        else if (p->offset > offset) {
+        else if (OFFSET_LATER(p->offset, offset)) {
             list_for_each_entry_continue_reverse(p, &pTable->valid_list, list) {
 #if 0
 if (type == PTS_TYPE_VIDEO)
@@ -345,7 +342,7 @@ if (type == PTS_TYPE_VIDEO)
             p2 = p;
 
         if ((p2) &&
-            ((offset - p2->offset) < lookup_threshold)) {
+            (OFFSET_DIFF(p2->offset, offset) < lookup_threshold)) {
 #ifdef DEBUG_CHECKOUT
 #ifdef DEBUG_VIDEO
             if (type == PTS_TYPE_VIDEO)
@@ -464,15 +461,21 @@ int pts_start(u8 type)
             pTable->buf_size = READ_MPEG_REG(VLD_MEM_VIFIFO_END_PTR)
                                  - pTable->buf_start + 8;
 
-            WRITE_MPEG_REG(VIDEO_PTS, 0);
+			/* since the HW buffer wrap counter only have 16 bits,
+			 * a too small buf_size will make pts lookup fail with streaming
+			 * offset wrapped before 32 bits boundary.
+			 * This is unlikely to set such a small streaming buffer though.
+			 */
+			BUG_ON(pTable->buf_size <= 0x10000);
 
-            WRITE_MPEG_REG(VLD_MEM_RD_PAGE, 0);
-            WRITE_MPEG_REG(VLD_MEM_RD_PAGE_RP, 0);
+            WRITE_MPEG_REG(VIDEO_PTS, 0);
         }
         else if (type == PTS_TYPE_AUDIO) {
             pTable->buf_start = READ_MPEG_REG(AIU_MEM_AIFIFO_START_PTR);
             pTable->buf_size = READ_MPEG_REG(AIU_MEM_AIFIFO_END_PTR)
                                  - pTable->buf_start + 8;
+
+			BUG_ON(pTable->buf_size <= 0x10000);
 
             WRITE_MPEG_REG(AUDIO_PTS, 0);
         }
@@ -483,15 +486,9 @@ int pts_start(u8 type)
         for (i = 0; i < pTable->rec_num; i++)
             list_add_tail(&pTable->pts_recs[i].list, &pTable->free_list);
 
-        pTable->wr_pages = 0;
-        pTable->rd_pages = 0;
-        pTable->wr_ptr = pTable->buf_start;
-        pTable->rd_ptr = pTable->buf_start;
         pTable->pts_search = &pTable->valid_list;
         pTable->status = PTS_LOADING;
         pTable->lookup_cache_valid = false;
-
-        printk("pts started\n");
 
         return 0;
 
@@ -534,8 +531,6 @@ int pts_stop(u8 type)
         if (type == PTS_TYPE_AUDIO)
             timestamp_apts_set(-1);
 
-        printk("pts stopped\n");
-
         return 0;
 
     } else {
@@ -546,25 +541,3 @@ int pts_stop(u8 type)
 }
 
 EXPORT_SYMBOL(pts_stop);
-
-static int __init pts_init(void)
-{
-    pts_task = kthread_run(pts_thread, NULL, "ptsserv thread");
-
-    if (IS_ERR(pts_task))
-        return PTR_ERR(pts_task);
-
-    return 0;
-}
-
-static void __exit pts_exit(void)
-{
-    kthread_stop(pts_task);
-}
-
-module_init(pts_init);
-module_exit(pts_exit);
-
-MODULE_DESCRIPTION("AMLOGIC PTS service driver");
-MODULE_LICENSE("GPL");
-MODULE_AUTHOR("Tim Yao <timyao@amlogic.com>");
