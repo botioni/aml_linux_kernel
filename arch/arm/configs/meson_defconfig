@@ -1,7 +1,7 @@
 #
 # Automatically generated make config: don't edit
 # Linux kernel version: 2.6.34
-# Sun Aug  1 15:25:34 2010
+# Thu Aug  5 16:39:48 2010
 #
 CONFIG_ARM=y
 CONFIG_SYS_SUPPORTS_APM_EMULATION=y
@@ -638,8 +638,27 @@ CONFIG_BLK_DEV_RAM_SIZE=4096
 # CONFIG_BLK_DEV_XIP is not set
 # CONFIG_CDROM_PKTCDVD is not set
 # CONFIG_ATA_OVER_ETH is not set
+CONFIG_MISC_DEVICES=y
+# CONFIG_AD525X_DPOT is not set
 CONFIG_ANDROID_PMEM=y
-# CONFIG_MISC_DEVICES is not set
+# CONFIG_ICS932S401 is not set
+# CONFIG_ENCLOSURE_SERVICES is not set
+# CONFIG_KERNEL_DEBUGGER_CORE is not set
+# CONFIG_ISL29003 is not set
+# CONFIG_SENSORS_TSL2550 is not set
+# CONFIG_DS1682 is not set
+# CONFIG_UID_STAT is not set
+# CONFIG_APANIC is not set
+# CONFIG_C2PORT is not set
+
+#
+# EEPROM support
+#
+# CONFIG_EEPROM_AT24 is not set
+# CONFIG_EEPROM_LEGACY is not set
+# CONFIG_EEPROM_MAX6875 is not set
+# CONFIG_EEPROM_93CX6 is not set
+# CONFIG_IWMC3200TOP is not set
 CONFIG_HAVE_IDE=y
 # CONFIG_IDE is not set
 
@@ -1299,6 +1318,7 @@ CONFIG_AM_UART=y
 # Amlogic Net Device Support
 #
 CONFIG_AM_ETHERNET=y
+CONFIG_AM_ETHERNET_DEBUG_LEVEL=1
 
 #
 # Amlogic USB Support
