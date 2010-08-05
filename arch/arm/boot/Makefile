@@ -101,7 +101,15 @@ $(obj)/ccImage: vmlinux FORCE
 	$(call if_changed,objcopy)
 	@echo '  Kernel: $@ is ready'
 
-$(obj)/ccImage.gz:$(obj)/ccImage FORCE
+$(obj)/ccImageg: vmlinux FORCE
+	$(call if_changed,objcopy)
+	@echo '  Kernel: $@ is ready'
+
+$(obj)/ccImageg.gz:$(obj)/ccImageg FORCE
+	@-rm -rf $(obj)/ccImageg.gz 
+	@gzip $(obj)/ccImageg
+	@echo '  Image $@ is ready'
+
 	@-rm -rf $(obj)/ccImage.gz 
 	@gzip $(obj)/ccImage
 	@echo '  Image $@ is ready'
@@ -120,7 +128,7 @@ $(obj)/uzImage:	$(obj)/zImage FORCE
 	$(call if_changed,uzImage)
 	@echo '  Image $@ is ready'
 
-$(obj)/ugImage:	$(obj)/ccImage.gz FORCE
+$(obj)/ugImage:	$(obj)/ccImageg.gz FORCE
 	$(call if_changed,ugImage)
 	@echo '  Image $@ is ready'
 
