@@ -59,7 +59,7 @@ extern unsigned SD_PWR_EN_LEVEL;
 
 extern unsigned SD_WORK_MODE;
 #define SD_MMC_POWER_CONTROL
-#define SD_MMC_WP_CHECK
+//#define SD_MMC_WP_CHECK
 
 extern void sd_sdio_enable(void);
 
@@ -111,7 +111,7 @@ extern void sd_gpio_enable(void);
 	#define SD_WORK_MODE				CARD_HW_MODE
 	    
 	#define SD_MMC_POWER_CONTROL
-	#define SD_MMC_WP_CHECK
+//	#define SD_MMC_WP_CHECK
 	    
 	#define sd_sdio_enable()			{SET_CBUS_REG_MASK(CARD_PIN_MUX_0, (0x3F<<23));SET_CBUS_REG_MASK(SDIO_MULT_CONFIG, (0));}
 	#define sd_gpio_enable()			{CLEAR_CBUS_REG_MASK(CARD_PIN_MUX_0, (0x3F<<23));CLEAR_CBUS_REG_MASK(SDIO_MULT_CONFIG, (0));}
@@ -159,7 +159,7 @@ extern void sd_gpio_enable(void);
 	#define SD_WORK_MODE				CARD_HW_MODE
 	    
 	#define SD_MMC_POWER_CONTROL
-	#define SD_MMC_WP_CHECK
+//	#define SD_MMC_WP_CHECK
 	  
 	#define sd_sdio_enable()			{SET_CBUS_REG_MASK(CARD_PIN_MUX_0, (0x3F<<23));SET_CBUS_REG_MASK(SDIO_MULT_CONFIG, (0));}
 	#define sd_gpio_enable()			{CLEAR_CBUS_REG_MASK(CARD_PIN_MUX_0, (0x3F<<23));CLEAR_CBUS_REG_MASK(SDIO_MULT_CONFIG, (0));}
@@ -195,7 +195,7 @@ extern int i_GPIO_timer;
 #define	sd_set_ins_input()				{(*(volatile unsigned int *)SD_INS_OUTPUT_EN_REG) |= SD_INS_OUTPUT_EN_MASK; for(i_GPIO_timer=0;i_GPIO_timer<15;i_GPIO_timer++);}
 #define sd_get_ins_value()				((*(volatile unsigned int *)SD_INS_INPUT_REG & SD_INS_INPUT_MASK)?1:0)
     
-#define SD_MMC_WP_CHECK
+//#define SD_MMC_WP_CHECK
     
 #ifdef SD_MMC_WP_CHECK
 #define sd_set_wp_input()           {(*(volatile unsigned int *)SD_WP_OUTPUT_EN_REG) |= SD_WP_OUTPUT_EN_MASK; for(i_GPIO_timer=0;i_GPIO_timer<15;i_GPIO_timer++);}
