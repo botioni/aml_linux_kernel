@@ -106,9 +106,7 @@ static ssize_t pts_show(struct class *class, struct class_attribute *attr, char 
         pts_margin = 512;
     
     if (INFO_VALID &&
-        (pts_lookup_pageoffset(PTS_TYPE_AUDIO,
-        	READ_MPEG_REG(AIU_MEM_AIFIFO_MAN_RP)-READ_MPEG_REG(AIU_MEM_AIFIFO_START_PTR), 
-        	&pts, pts_margin) >= 0))
+        (pts_lookup(PTS_TYPE_AUDIO,	&pts, pts_margin) >= 0))
         return sprintf(buf, "0x%x\n", pts);
     else
         return sprintf(buf, "%s\n", na_string);

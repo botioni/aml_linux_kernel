@@ -3061,9 +3061,6 @@
 // bit  [0]     Init            Set high then low after everything has been initialized
 #define AIU_MEM_AIFIFO_BUF_CNTL                    0x158c
 
-#define AIU_MEM_RD_PAGE					0x1a49
-#define AIU_MEM_RD_PAGE_RP				0x1a4a
-
 #define AIU_MEM_AIFIFO_BUF_WRAP_COUNT              0x158d
 #define AIU_MEM_AIFIFO2_BUF_WRAP_COUNT             0x158e
 // bit 29:24 A_brst_num
@@ -6438,9 +6435,6 @@
 #define VLD_MEM_VIFIFO_BUF_CNTL                    0x0c48
 	#define MEM_BUFCTRL_MANUAL		(1<<1)
 	#define MEM_BUFCTRL_INIT		(1<<0)
-
-#define VLD_MEM_RD_PAGE				0x1a47
-#define VLD_MEM_RD_PAGE_RP			0x1a48
 
 // bit 31:16 -- drop_bytes
 // bit 15:14 -- drop_status (Read-Only)
