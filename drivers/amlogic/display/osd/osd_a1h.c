@@ -277,6 +277,11 @@ void osd_setup(struct osd_ctl_s *osd_ctl,
 	WRITE_MPEG_REG_BITS(VIU_OSD2_FIFO_CTRL_STAT, 0x2, 10, 2);
 	SET_MPEG_REG_MASK(VPP_MISC, ((index == 0) ? VPP_OSD1_POSTBLEND :
 	                  VPP_OSD2_POSTBLEND) | VPP_POSTBLEND_EN);
+
+#ifndef FB_OSD2_ENABLE
+    CLEAR_MPEG_REG_MASK(VPP_MISC, VPP_OSD2_POSTBLEND);
+#endif
+
     CLEAR_MPEG_REG_MASK(VPP_MISC, VPP_PREBLEND_EN |
                                   VPP_PRE_FG_OSD2 |
                                   VPP_POST_FG_OSD2);

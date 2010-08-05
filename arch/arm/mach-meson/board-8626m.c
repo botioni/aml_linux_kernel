@@ -45,6 +45,12 @@
 #include <mach/clk_set.h>
 #include "board-8626m.h"
 
+#ifdef CONFIG_ANDROID_PMEM
+#include <linux/slab.h>
+#include <linux/dma-mapping.h>
+#include <linux/android_pmem.h>
+#endif
+
 #if defined(CONFIG_JPEGLOGO)
 static struct resource jpeglogo_resources[] = {
     [0] = {
@@ -91,11 +97,6 @@ static struct resource fb_device_resources[] = {
     [0] = {
         .start = OSD1_ADDR_START,
         .end   = OSD1_ADDR_END,
-        .flags = IORESOURCE_MEM,
-    },
-    [1] = {
-        .start = OSD2_ADDR_START,
-        .end   =OSD2_ADDR_END,
         .flags = IORESOURCE_MEM,
     },
 };
@@ -408,6 +409,26 @@ static struct platform_device aml_i2c_device = {
 };
 #endif
 
+#ifdef CONFIG_ANDROID_PMEM
+static struct android_pmem_platform_data pmem_data =
+{
+	.name = "pmem",
+	.start = PMEM_START,
+	.size = PMEM_SIZE,
+	.no_allocator = 1,
+	.cached = 1,
+};
+
+static struct platform_device android_pmem_device =
+{
+	.name = "android_pmem",
+	.id = 0,
+	.dev = {
+		.platform_data = &pmem_data,
+	},
+};
+#endif
+
 static struct platform_device __initdata *platform_devs[] = {
     #if defined(CONFIG_JPEGLOGO)
 		&jpeglogo_device,
@@ -442,6 +463,10 @@ static struct platform_device __initdata *platform_devs[] = {
     #endif
     #if defined(CONFIG_I2C_AML)
 		&aml_i2c_device,
+    #endif
+    
+    #if defined(CONFIG_ANDROID_PMEM)
+		&android_pmem_device,
     #endif
 };
 

@@ -212,23 +212,16 @@ _adjust_xyres(struct myfb_dev *fbdev)
 #endif
 
 static void __init
-_fbdev_set_default(struct myfb_dev *fbdev,int index ,int allow_auto_adj)
+_fbdev_set_default(struct myfb_dev *fbdev,int index)
 {
-    	/* setup default value */
+   	/* setup default value */
 	fbdev->fb_info->var = mydef_var[index];
 	fbdev->fb_info->fix = mydef_fix;
 	fbdev->bpp_type=fbdev->fb_info->var.bits_per_pixel ;
 
-	/* TODO:
-	 * call vout server to find out the best output vmode
-	 * based on memory size.
-	 * Or just remove such features.
-	 */
-#if 0
-	if(allow_auto_adj)
-	_adjust_xyres(fbdev);	
-#endif
+	apollodev_set(fbdev);
 }
+
 bpp_color_bit_define_t*	
 _find_color_format(int  bpp)
 {
@@ -794,10 +787,16 @@ apollofb_probe(struct platform_device *pdev)
 			}
 		
 		}else{
+			mydef_var[index].xres=1280;
+			mydef_var[index].yres=720;	
+			mydef_var[index].xres_virtual=1280;
+			mydef_var[index].yres_virtual=1440;
+			mydef_var[index].bits_per_pixel=16 ;
+
 			memset((char*)fbdev->fb_mem_vaddr, 0, fbdev->fb_len);	
 		}
 	
-		_fbdev_set_default(fbdev,index,0);
+		_fbdev_set_default(fbdev,index);
 		Bpp=(fbdev->bpp_type >8?(fbdev->bpp_type>16?(fbdev->bpp_type>24?4:3):2):1);
 		fix->line_length=var->xres_virtual*Bpp;
 		fix->smem_start = fbdev->fb_mem_paddr;
