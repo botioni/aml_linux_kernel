@@ -653,7 +653,9 @@ static int __init card_blk_init(void)
 	}
 	if (major == 0)
 		major = res;
-
+    printk(KERN_WARNING
+		       "Memory Card media Major: %d\n",
+		       major);
 	return card_register_driver(&card_driver);
 }
 
