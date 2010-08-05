@@ -73,7 +73,7 @@ static inline void get_wrpage_offset(u8 type, u32 *page, u32 *page_offset)
 			local_irq_save(flags);
 
 			page1 = READ_MPEG_REG(PARSER_AV_WRAP_COUNT) & 0xffff;
-			offset = READ_MPEG_REG(VLD_MEM_VIFIFO_WP);
+			offset = READ_MPEG_REG(PARSER_VIDEO_WP);
 			page2 = READ_MPEG_REG(PARSER_AV_WRAP_COUNT) & 0xffff;
 
 			local_irq_restore(flags);
@@ -87,7 +87,7 @@ static inline void get_wrpage_offset(u8 type, u32 *page, u32 *page_offset)
 			local_irq_save(flags);
 
 			page1 = READ_MPEG_REG(PARSER_AV_WRAP_COUNT) >> 16;
-			offset = READ_MPEG_REG(AIU_MEM_AIFIFO_MAN_WP);
+			offset = READ_MPEG_REG(PARSER_AUDIO_WP);
 			page2 = READ_MPEG_REG(PARSER_AV_WRAP_COUNT) >> 16;
 
 			local_irq_restore(flags);
@@ -202,17 +202,18 @@ EXPORT_SYMBOL(pts_checkin_offset);
  */
 int pts_checkin_wrptr(u8 type, u32 ptr, u32 val)
 {
-    u32 offset, page, page_no;
+    u32 offset, cur_offset, page, page_no;
 
     if (type >= PTS_TYPE_MAX)
         return -EINVAL;
 
-	get_wrpage_offset(type, &page, &offset);
+	offset = ptr - pts_table[type].buf_start;
+	get_wrpage_offset(type, &page, &cur_offset);
 
-    page_no = (ptr > offset) ? (page - 1) : page;
+    page_no = (offset > cur_offset) ? (page - 1) : page;
 
     return pts_checkin_offset(type,
-        pts_table[type].buf_size * page_no + ptr - pts_table[type].buf_start, val);
+        pts_table[type].buf_size * page_no + offset, val);
 }
 
 EXPORT_SYMBOL(pts_checkin_wrptr);
