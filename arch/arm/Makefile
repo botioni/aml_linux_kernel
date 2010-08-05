@@ -256,7 +256,7 @@ archprepare:
 # Convert bzImage to zImage
 bzImage: zImage
 
-uzImage zImage Image xipImage bootpImage uImage: vmlinux
+ugImage uzImage zImage Image xipImage bootpImage uImage: vmlinux
 	$(Q)$(MAKE) $(build)=$(boot) MACHINE=$(MACHINE) $(boot)/$@
 
 zinstall install: vmlinux
