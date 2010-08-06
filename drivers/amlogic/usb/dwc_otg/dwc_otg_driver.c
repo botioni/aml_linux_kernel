@@ -107,7 +107,7 @@ static dwc_otg_core_params_t dwc_otg_module_params = {
 				   -1},	/* 15 */
 	.host_rx_fifo_size = 256,
 	.host_nperio_tx_fifo_size = 256,
-	.host_perio_tx_fifo_size = -1,
+	.host_perio_tx_fifo_size = 64,
 	.max_transfer_size = 65535,
 	.max_packet_count = -1,
 	.host_channels = 6,
@@ -492,7 +492,7 @@ break; case DWC_OTG_CAP_PARAM_NO_HNP_SRP_CAPABLE:
 					     (&core_if->
 					      core_global_regs->gnptxfsiz) >>
 					     16));
-
+#if 0
 	retval += DWC_OTG_PARAM_CHECK_VALID(host_perio_tx_fifo_size,
 					    "host_perio_tx_fifo_size",
 					    (dwc_otg_module_params.host_perio_tx_fifo_size
@@ -505,7 +505,7 @@ break; case DWC_OTG_CAP_PARAM_NO_HNP_SRP_CAPABLE:
 					      (&core_if->
 					       core_global_regs->hptxfsiz) >>
 					      16)));
-
+#endif
 	retval += DWC_OTG_PARAM_CHECK_VALID(max_transfer_size,
 					    "max_transfer_size",
 					    (dwc_otg_module_params.max_transfer_size
@@ -906,7 +906,6 @@ static int __init dwc_otg_driver_probe(struct lm_device *_lmdev)
 		retval = -ENOMEM;
 		goto fail;
 	}
-
 	/*
 	 * Validate parameter values.
 	 */
