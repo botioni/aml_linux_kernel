@@ -181,7 +181,7 @@ static irqreturn_t sdio_interrupt_monitor(int irq, void *dev_id, struct pt_regs 
 			break;	
 	}
 
-    return 0; 
+    return IRQ_HANDLED; 
 
 }
 
