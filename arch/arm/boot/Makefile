@@ -110,10 +110,6 @@ $(obj)/ccImageg.gz:$(obj)/ccImageg FORCE
 	@gzip $(obj)/ccImageg
 	@echo '  Image $@ is ready'
 
-	@-rm -rf $(obj)/ccImage.gz 
-	@gzip $(obj)/ccImage
-	@echo '  Image $@ is ready'
-
 $(obj)/ccImage.lzma:$(obj)/ccImage FORCE
 	@-rm -rf $(obj)/ccImage.lzma 
 	@lzma -z -S .lzma $(obj)/ccImage
