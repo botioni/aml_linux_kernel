@@ -490,6 +490,8 @@ int sd_send_cmd_hw(unsigned char cmd, unsigned long arg, SD_Response_Type_t res_
 	int ret = SD_MMC_NO_ERROR, num_res;
 	unsigned char *buffer = NULL;
 	unsigned int cmd_ext, cmd_send;
+	dma_addr_t data_dma_to_device_addr=0;
+	dma_addr_t data_dma_from_device_addr=0;
 
 	MSHW_IRQ_Config_Reg_t *irq_config_reg;
 	SDIO_Status_IRQ_Reg_t *status_irq_reg;
@@ -548,7 +550,10 @@ int sd_send_cmd_hw(unsigned char cmd, unsigned long arg, SD_Response_Type_t res_
 				cmd_ext_reg->data_rw_number = sd_mmc_info->blk_len * 8 + (16 - 1) * 4;
 			else
 				cmd_ext_reg->data_rw_number = sd_mmc_info->blk_len * 8 + 16 - 1;
-			buffer = sd_mmc_phy_buf;
+			
+			data_dma_from_device_addr = dma_map_single(NULL, (void *)data_buf, data_cnt, DMA_FROM_DEVICE );
+			buffer = data_dma_from_device_addr;
+			//buffer = sd_mmc_phy_buf;
 			break;
 
         case SD_SWITCH_FUNCTION:
@@ -572,8 +577,10 @@ int sd_send_cmd_hw(unsigned char cmd, unsigned long arg, SD_Response_Type_t res_
 				cmd_ext_reg->data_rw_number = sd_mmc_info->blk_len * 8 + 16 - 1;
 			//buffer = sd_write_buf;
 			//memcpy(buffer, data_buf, data_cnt);
-			memcpy(sd_mmc_buf, data_buf, data_cnt);
-			buffer = sd_mmc_phy_buf;
+			//memcpy(sd_mmc_buf, data_buf, data_cnt);
+			data_dma_to_device_addr=dma_map_single(NULL, (void *)data_buf, data_cnt, DMA_TO_DEVICE);	
+			buffer = data_dma_to_device_addr;
+			//buffer = sd_mmc_phy_buf;
 			//inv_dcache_range((unsigned long)buffer, ((unsigned long)buffer + data_cnt));
 			break;
 
@@ -837,10 +844,15 @@ int sd_send_cmd_hw(unsigned char cmd, unsigned long arg, SD_Response_Type_t res_
 			
 	}
 
-	if(cmd_send_reg->res_with_data && buffer && (data_buf != sd_mmc_phy_buf))
-	{
-		memcpy(data_buf, sd_mmc_buf, data_cnt);
-	}
+	//if(cmd_send_reg->res_with_data && buffer && (data_buf != sd_mmc_phy_buf))
+	//{
+		//memcpy(data_buf, data_dma_addr);
+		//memcpy(data_buf, sd_mmc_buf, data_cnt);
+	//}
+	if(data_dma_from_device_addr)
+		dma_unmap_single(NULL, data_dma_from_device_addr, data_cnt, DMA_FROM_DEVICE);
+	if(data_dma_to_device_addr)
+		dma_unmap_single(NULL, data_dma_to_device_addr, data_cnt, DMA_TO_DEVICE);
 
 	return SD_MMC_NO_ERROR;
 }
@@ -3691,7 +3703,7 @@ int sd_mmc_check_insert()
 int sd_mmc_read_data(unsigned long lba, unsigned long byte_cnt, unsigned char * data_buf)
 {
 	int error = 0;
-	unsigned long lba_nums;	
+	unsigned long lba_nums;
 
 	if(cr_mon.card_status[CARD_SECURE_DIGITAL] != CARD_INSERTED)
 		return SD_MMC_ERROR_NO_CARD_INS;
@@ -3755,7 +3767,7 @@ int sd_mmc_read_data(unsigned long lba, unsigned long byte_cnt, unsigned char * 
 #endif
 			return error;
 		}
-	}
+	}	
 	
 	return SD_MMC_NO_ERROR;
 }
