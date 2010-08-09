@@ -18,17 +18,19 @@
  * Author:  Tim Yao <timyao@amlogic.com>
  *
  */
-
+#include <linux/init.h>
 #include <linux/version.h>
-#include <linux/kernel.h>
+#include <linux/types.h>
+#include <linux/slab.h>
 #include <linux/module.h>
 #include <linux/platform_device.h>
 #include <linux/string.h>
 #include <linux/vout/tcon.h>
 #include <linux/vout/vinfo.h>
 #include <linux/vout/vout_notify.h>
+#include <linux/kernel.h>
 
-#include <asm/arch/am_regs.h>
+#include <mach/am_regs.h>
 
 #define BL_MAX_LEVEL 0x100
 
@@ -137,8 +139,8 @@ static inline void _init_tvenc(tcon_conf_t *pConf)
     WRITE_MPEG_REG(ENCP_VIDEO_FILT_CTRL,    0x1000);
     WRITE_MPEG_REG(VENC_DVI_SETTING,        0x11);
 
-    WRITE_MPEG_REG(MREG_VIDEO_PLL_CTRL, pConf->pll_ctrl);
-    WRITE_MPEG_REG(MREG_VIDEO_CLK_CTRL, pConf->clk_ctrl);
+    WRITE_MPEG_REG(HHI_AUD_PLL_CNTL, pConf->pll_ctrl);
+    WRITE_MPEG_REG(HHI_VID_CLK_DIV, pConf->clk_ctrl);
 
     WRITE_MPEG_REG(ENCP_VIDEO_MODE,         0x0040);
     WRITE_MPEG_REG(ENCP_VIDEO_MODE_ADV,     0x418);
@@ -168,12 +170,12 @@ static inline void _init_tvenc(tcon_conf_t *pConf)
 
     WRITE_MPEG_REG(ENCP_VIDEO_VSO_BLINE,    0);
     WRITE_MPEG_REG(ENCP_VIDEO_VSO_ELINE,    2);
-    WRITE_MPEG_REG(ENCP_ADDR_START,         1);
+    WRITE_MPEG_REG(ENCP_VIDEO_EN,         1);
 
     WRITE_MPEG_REG(VENC_VIDEO_PROG_MODE,    0x100);
     WRITE_MPEG_REG(ENCP_VIDEO_EN, 1);
 
-    WRITE_MPEG_REG(VPP_POSTBLEND_HSIZE,		pConf->width);
+    WRITE_MPEG_REG(VPP_POSTBLEND_VD1_H_START_END,		pConf->width);
 }
 
 static inline void _enable_vsync_interrupt(void)
@@ -277,7 +279,7 @@ static void _init_vout(tcon_dev_t *pDev)
 
 static void _tcon_init(tcon_conf_t *pConf)
 {
-    _init_tvenc(pConf);
+    //_init_tvenc(pConf);
     _init_tcon(pConf);
     _init_vout(pDev);
     _enable_backlight(BL_MAX_LEVEL);
