@@ -19,15 +19,18 @@
  *
  */
 
+#include <linux/init.h>
 #include <linux/version.h>
+#include <linux/types.h>
+#include <linux/slab.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/platform_device.h>
 #include <linux/vout/tcon.h>
 
-#include <asm/arch/gpio.h>
-#include <asm/arch/am_regs.h>
-#include <asm/arch/pinmux.h>
+#include <mach/gpio.h>
+#include <mach/am_regs.h>
+#include <mach/pinmux.h>
 
 #define LCD_WIDTH       800
 #define LCD_HEIGHT      480
@@ -135,48 +138,38 @@ static void t13_setup_gama_table(tcon_conf_t *pConf)
 void power_on_backlight(void)
 {
     /* Pull GPIO A10 to high */
-    GPIOA_MODE(10, GPIO_OUT_MODE);
-    GPIOA_SET_PIN(10, PIN_UP);
+//    GPIOA_MODE(10, GPIO_OUTPUT_MODE);
+//    GPIOA_SET_PIN(10, PIN_UP);
 }
 
 void power_off_backlight(void)
 {
     /* Pull GPIO A10 to low */
-    GPIOA_MODE(10, GPIO_OUT_MODE);
-    GPIOA_SET_PIN(10, PIN_DOWN);
+//    GPIOA_MODE(10, GPIO_OUT_MODE);
+//    GPIOA_SET_PIN(10, PIN_DOWN);
 }
 
 static void power_on_lcd(void)
 {
-    /* Pull Card 12 to low */
-    GPIO_CARD_MODE(12, GPIO_OUT_MODE);
-    GPIO_CARD_SET_PIN(12, PIN_DOWN);
+    /* Pull GPIOC_13 to high */
+    CLEAR_CBUS_REG_MASK(PREG_FGPIO_EN_N,1<<13);
+    SET_CBUS_REG_MASK(PREG_FGPIO_O,1<<13);
 }
 
 static void power_off_lcd(void)
 {
-    /* Pull Card 12 to high */
-    GPIO_CARD_MODE(12, GPIO_OUT_MODE);
-    GPIO_CARD_SET_PIN(12, PIN_UP);
+    /* Pull GPIOC_13 to low */
+    CLEAR_CBUS_REG_MASK(PREG_FGPIO_EN_N,1<<13);
+    CLEAR_CBUS_REG_MASK(PREG_FGPIO_O,1<<13);
 }
 
 static void set_tcon_pinmux(void)
 {
     /* TCON control pins pinmux */
-    set_mio_mux(5,
-        PINMUX5_GPIOC31_TCON_CPH1 |
-        PINMUX5_GPIOC30_TCON_OEH1 |
-        PINMUX5_GPIOC29_TCON_STV1 |
-        PINMUX5_GPIOC28_TCON_STH1);
+    set_mio_mux(0,0x7f<<10);
 
     /* RGB data pins */
-    set_mio_mux(4,
-        PINMUX4_GPIOC34_39_LCD_R2_7 |
-        PINMUX4_GPIOC32_33_LCD_R0_1 |
-        PINMUX4_GPIOC42_47_LCD_G2_7 |
-        PINMUX4_GPIOC40_41_LCD_G0_1 |
-        PINMUX4_GPIOC50_55_LCD_B2_7 |
-        PINMUX4_GPIOC48_49_LCD_B0_1);
+    set_mio_mux(4,(1<<0)|(1<<2)|(1<<4));
 }
 
 static void t13_io_init(void)
