@@ -57,6 +57,22 @@ static struct platform_device jpeglogo_dev = {
 };
 #endif
 
+static struct resource intput_resources[] = { 
+        {   
+                .start = 0x0,
+                .end = 0x0,
+                .name="6236",
+                .flags = IORESOURCE_IO,
+        },  
+};
+
+static struct platform_device input_device = { 
+        .name = "m1-kp",
+        .id = 0,
+        .num_resources = ARRAY_SIZE(intput_resources),
+        .resource = intput_resources,
+    
+};
 #ifdef CONFIG_FB_AM
 static struct resource fb_device_resources[] = {
     [0] = {
@@ -147,7 +163,10 @@ static struct platform_device apollo_mali= {
 static struct platform_device __initdata *platform_devs[] = {
     #if defined(CONFIG_JPEGLOGO)
 		&jpeglogo_dev,
-	#endif	
+	#endif
+    #if defined(CONFIG_KEYPADS_AM)
+                &input_device,
+    #endif	
     #if defined(CONFIG_FB_AM)
     	&fb_device,
     #endif

@@ -66,7 +66,22 @@ static struct platform_device jpeglogo_device = {
     .resource      = jpeglogo_resources,
 };
 #endif
+static struct resource intput_resources[] = {
+	{
+		.start = 0x0,
+		.end = 0x0,
+		.name="8626",
+		.flags = IORESOURCE_IO,
+	},
+};
 
+static struct platform_device input_device = {
+	.name = "m1-kp",
+	.id = 0,
+	.num_resources = ARRAY_SIZE(intput_resources),
+	.resource = intput_resources,
+	
+};
 #ifdef CONFIG_FB_AM
 static struct resource fb_device_resources[] = {
     [0] = {
@@ -197,11 +212,7 @@ static struct platform_device codec_device = {
 };
 #endif
 
-#if defined(CONFIG_KEYPADS_AM)
-static struct platform_device input_device = {
-	.name = "keypad_dev",
-};
-#endif
+
 
 #if defined(CONFIG_CARDREADER)
 static struct resource amlogic_card_resource[]  = {
