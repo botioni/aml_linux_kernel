@@ -37,7 +37,9 @@
 #include <linux/errno.h>
 #include <asm/irq.h>
 #include <asm/io.h>
+
 #include <mach/am_regs.h>
+#include <mach/pinmux.h>
 #include <linux/major.h>
 #include <linux/slab.h>
 #include <asm/uaccess.h>
@@ -64,6 +66,27 @@ DECLARE_TASKLET_DISABLED(tasklet, kp_tasklet, 0);
 
 static struct kp   *gp_kp=NULL;
 char *remote_log_buf;
+typedef  struct {
+	char		     *platform_name;
+	unsigned int  pin_mux;
+	unsigned int  bit;
+}pin_config_t;
+static  pin_config_t  pin_config[]={
+#if defined(CONFIG_MACH_MESON_8626M)	
+		{
+			.platform_name="8626",
+			.pin_mux=1,
+			.bit=(1<<31),
+		},
+#endif
+#if  defined(CONFIG_MACH_MESON_6236M)	
+		{
+			.platform_name="6236",
+			.pin_mux=1,
+			.bit=(1<<31),
+		},
+#endif
+} ;
 
 int remote_printk(const char *fmt, ...)
 {
@@ -213,17 +236,35 @@ static DEVICE_ATTR(log_buffer, S_IRUGO | S_IWUSR, kp_log_buffer_show, NULL);
 ********************************************************************/
 static int    hardware_init(struct platform_device *pdev)
 {
-    unsigned int  control_value,status,data_value;
-
+	struct resource *mem; 
+	unsigned int  control_value,status,data_value;
+	int i;
+	pin_config_t  *config=NULL;
+	//step 0: set mutx to remote
+	if (!(mem = platform_get_resource(pdev, IORESOURCE_IO, 0))) {
+		printk("not define ioresource for remote keyboard.\n");
+		return -1;
+	}
+	for (i=0;i<ARRAY_SIZE(pin_config);i++)
+	{
+		if(strcmp(pin_config[i].platform_name,mem->name)==0)
+		{
+			config=&pin_config[i] ;
+			input_dbg("got resource :%d\r\n",i);
+			break;
+		}
+	}
+	if(NULL==config)  return -1;
+	set_mio_mux(config->pin_mux,config->bit); 	
     //step 1 :set reg IR_DEC_CONTROL
-    control_value = 3<<28|(0xFA0 << 12) |0x13;
+    	control_value = 3<<28|(0xFA0 << 12) |0x13;
 
-    WRITE_MPEG_REG(IR_DEC_REG0, control_value);
-    control_value = READ_MPEG_REG(IR_DEC_REG1);
-    WRITE_MPEG_REG(IR_DEC_REG1, control_value | IR_CONTROL_HOLD_LAST_KEY);
+    	WRITE_MPEG_REG(IR_DEC_REG0, control_value);
+    	control_value = READ_MPEG_REG(IR_DEC_REG1);
+    	WRITE_MPEG_REG(IR_DEC_REG1, control_value | IR_CONTROL_HOLD_LAST_KEY);
 
-    status = READ_MPEG_REG(IR_DEC_STATUS);
-    data_value = READ_MPEG_REG(IR_DEC_FRAME);
+    	status = READ_MPEG_REG(IR_DEC_STATUS);
+    	data_value = READ_MPEG_REG(IR_DEC_FRAME);
 
     //step 2 : request nec_remote irq  & enable it
     return request_irq(NEC_REMOTE_IRQ_NO, kp_interrupt,
@@ -584,7 +625,7 @@ static struct platform_driver kp_driver = {
     .suspend    = NULL,
     .resume     = NULL,
     .driver     = {
-        .name   = "keypad_dev",
+        .name   = "m1-kp",
     },
 };
 
