@@ -32,10 +32,13 @@
 #include <mach/am_regs.h>
 #include <mach/pinmux.h>
 
+/*
+此处屏参用于Innolux AT080TN42
+*/
 #define LCD_WIDTH       800
-#define LCD_HEIGHT      480
+#define LCD_HEIGHT      600
 #define MAX_WIDTH       1056
-#define MAX_HEIGHT      525
+#define MAX_HEIGHT      631
 #define VIDEO_ON_LINE   17
 
 static tcon_conf_t tcon_config =
@@ -45,33 +48,33 @@ static tcon_conf_t tcon_config =
     .max_width  = MAX_WIDTH,
     .max_height = MAX_HEIGHT,
     .video_on_line = VIDEO_ON_LINE,
-    .pll_ctrl = 0x0625,
+    .pll_ctrl = 0x063c,
     .clk_ctrl = 0x1fc1,
     .gamma_cntl_port = (1 << LCD_GAMMA_EN) | (0 << LCD_GAMMA_RVS_OUT) | (1 << LCD_GAMMA_VCOM_POL),
     .gamma_vcom_hswitch_addr = 0,
     .rgb_base_addr = 0xf0,
     .rgb_coeff_addr = 0x74a,
     .pol_cntl_addr = (0x0 << LCD_CPH1_POL) |(0x1 << LCD_HS_POL) | (0x1 << LCD_VS_POL),
-    .dith_cntl_addr = 0x400,
+    .dith_cntl_addr = 0x600,
     .sth1_hs_addr = 64,
-    .sth1_he_addr = 67,
+    .sth1_he_addr = 73,
     .sth1_vs_addr = 0,
     .sth1_ve_addr = MAX_HEIGHT - 1,
     .sth2_hs_addr = 0,
     .sth2_he_addr = 0,
     .sth2_vs_addr = 0,
     .sth2_ve_addr = 0,
-    .oeh_hs_addr = 64,
-    .oeh_he_addr = 64 + LCD_WIDTH,
-    .oeh_vs_addr = VIDEO_ON_LINE,
-    .oeh_ve_addr = VIDEO_ON_LINE + LCD_HEIGHT,
+    .oeh_hs_addr = 50,
+    .oeh_he_addr = 66,
+    .oeh_vs_addr = 0,
+    .oeh_ve_addr = MAX_HEIGHT - 1,
     .vcom_hswitch_addr = 5,
     .vcom_vs_addr = 0,
     .vcom_ve_addr = MAX_HEIGHT - 1,
-    .cpv1_hs_addr = 0,
-    .cpv1_he_addr = 0,
+    .cpv1_hs_addr = 40,
+    .cpv1_he_addr = 560,
     .cpv1_vs_addr = 0,
-    .cpv1_ve_addr = 0,
+    .cpv1_ve_addr = MAX_HEIGHT - 1,
     .cpv2_hs_addr = 0,
     .cpv2_he_addr = 0,
     .cpv2_vs_addr = 0,
@@ -84,10 +87,10 @@ static tcon_conf_t tcon_config =
     .stv2_he_addr = 0,
     .stv2_vs_addr = 0,
     .stv2_ve_addr = 0,
-    .oev1_hs_addr = 0,
-    .oev1_he_addr = 0,
+    .oev1_hs_addr = 20,
+    .oev1_he_addr = 66,
     .oev1_vs_addr = 0,
-    .oev1_ve_addr = 0,
+    .oev1_ve_addr = MAX_HEIGHT - 1,
     .oev2_hs_addr = 0,
     .oev2_he_addr = 0,
     .oev2_vs_addr = 0,
@@ -98,9 +101,9 @@ static tcon_conf_t tcon_config =
     .oev3_ve_addr = 0,
     .inv_cnt_addr = (0<<LCD_INV_EN) | (0<<LCD_INV_CNT),
     .tcon_misc_sel_addr = (1<<LCD_STV1_SEL) | (1<<LCD_STV2_SEL),
-    .dual_port_cntl_addr = (1<<LCD_TTL_SEL) | (1<<LCD_ANALOG_SEL_CPH3) | (1<<LCD_ANALOG_3PHI_CLK_SEL) | (1<<RGB_SWP) | (1<<BIT_SWP),
+    .dual_port_cntl_addr = (1<<LCD_TTL_SEL) | (1<<LCD_ANALOG_SEL_CPH3) | (1<<LCD_ANALOG_3PHI_CLK_SEL),
     .flags = 0,
-    .screen_width = 5,
+    .screen_width = 4,
     .screen_height = 3,
     .sync_duration_num = 89,
     .sync_duration_den = 2,
