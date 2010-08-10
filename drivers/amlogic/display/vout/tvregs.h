@@ -46,14 +46,14 @@
 		#define CLOCK_HD	0x0021085f
 		#define CLOCK_SD	0x00500a6c
 	#elif defined(CRYSTAL_24M)
-		#define CLOCK_HD	0x00210863f
+		#define CLOCK_HD	0x00210863
 		#define CLOCK_SD	0x0050042d
 	#else
 	#error "No valid crystal clock source specified."
 	#endif
 
-	#define VCLK_HD			{HHI_VID_PLL_CNTL, CLOCK_HD}
-	#define VCLK_SD			{HHI_VID_PLL_CNTL, CLOCK_SD}
+	#define VCLK_HD			HHI_VID_PLL_CNTL, CLOCK_HD
+	#define VCLK_SD			HHI_VID_PLL_CNTL, CLOCK_SD
 
 #else
 	#error "No clock source specified."

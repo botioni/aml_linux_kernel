@@ -106,8 +106,15 @@ void  change_vdac_setting(unsigned int  vdec_setting,vmode_t  mode)
 }
 static void enable_vsync_interrupt(void)
 {
+#ifdef CLOCK_SRC_AUDIOPLL
 	/* M1 chip test only, use audio PLL as video clock source */
 	SET_CBUS_REG_MASK(HHI_MPEG_CLK_CNTL, 1<<11);
+#elif defined(CLOCK_SRC_VIDEOPLL)
+      /* M1 REVB , Video PLL bug fixed */
+        CLEAR_CBUS_REG_MASK(HHI_MPEG_CLK_CNTL, 1<<11);
+#else
+    #error PLEASE set CLOCK_SRC_AUDIOPLL or CLOCK_SRC_VIDEOPLL
+#endif
 	
     if (READ_MPEG_REG(ENCP_VIDEO_EN) & 1) {
         WRITE_MPEG_REG(VENC_INTCTRL, 0x200);
