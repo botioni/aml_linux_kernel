@@ -617,6 +617,8 @@ void net_tasklet(unsigned long dev_instance)
 					netif_wake_queue(dev);
 					np->tx_full = 0;
 				}
+				if(debug>2)
+					printk("send data ok len=%d\n",tx->skb->len);
 				dev_kfree_skb_any(tx->skb);
 				if(tx->buf_dma!=0)
 					dma_unmap_single(&dev->dev,tx->buf_dma,np->rx_buf_sz,DMA_TO_DEVICE);
@@ -1327,7 +1329,7 @@ static int probe_init(struct net_device *ndev)
 	priv->phy_Identifier=val<<16;	
 	val=mdio_read(ndev, priv->phys[0], 3);//phy_rw(0, phyad, 3, &val);
 	priv->phy_Identifier|=val;	
-	printk("find phy id=%x\n",priv->phy_Identifier);
+	printk("find phy phy_Identifier=%x\n",priv->phy_Identifier);
 	res = setup_net_device(ndev);
 	if (res != 0) {
 		printk("setup net device error !\n");

@@ -43,5 +43,24 @@ int set_gpio_val(gpio_bank_t bank,int bit,unsigned long val);
 unsigned long  get_gpio_val(gpio_bank_t bank,int bit);
 
 
+#define GPIOA_bank_bit(bit)		(PREG_EGPIO)
+#define GPIOA_bit_bit23_26(bit)	(bit-23)
+#define GPIOA_bit_bit0_14(bit)		(bit+4)
+
+										
+#define GPIOB_bank_bit0_7(bit)		(PREG_EGPIO)
+#define GPIOB_bit_bit0_7(bit)			(bit+19)		
+
+#define GPIOC_bank_bit0_26(bit)		(PREG_FGPIO)
+#define GPIOC_bit_bit0_26(bit)			(bit)		
+
+#define GPIOD_bank_bit2_24(bit)		(PREG_GGPIO)
+#define GPIOD_bit_bit2_24(bit)			(bit-1)		
+
+#define GPIOE_bank_bit0_15(bit)		(PREG_HGPIO)
+#define GPIOE_bit_bit0_15(bit)			(bit)		
+
+#define GPIOE_bank_bit16_21(bit)		(PREG_HGPIO)
+#define GPIOE_bit_bit16_21(bit)			(bit)		
 
 #endif
