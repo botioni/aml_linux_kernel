@@ -31,7 +31,7 @@ Bank1_GPIOD2-D11
 */
 #define ETH_BANK1_GPIOD2_D11	1
 #define ETH_BANK1_REG1			4
-#define ETH_BANK1_REG1_VAL		(0x1ff<<15)
+#define ETH_BANK1_REG1_VAL		(0xf<<15|0x1f<<21)
 
 /*
 "RMII_CLK50_OUTREG7[13]"

@@ -18,4 +18,5 @@ obj-$(CONFIG_MACH_MESON_6236M)	+= board-6236m.o
 obj-$(CONFIG_MACH_MESON_8626M)	+= board-8626m.o
 obj-$(CONFIG_MACH_MESON_6236M_SH)	+= board-6236m-sh.o
 obj-$(CONFIG_MACH_MESON_8626M_SH)	+= board-8626m-sh.o
+obj-$(CONFIG_MACH_MESON_8226M)	+= board-8226m.o
 

@@ -66,22 +66,7 @@ static struct platform_device jpeglogo_device = {
     .resource      = jpeglogo_resources,
 };
 #endif
-static struct resource intput_resources[] = {
-	{
-		.start = 0x0,
-		.end = 0x0,
-		.name="8626",
-		.flags = IORESOURCE_IO,
-	},
-};
 
-static struct platform_device input_device = {
-	.name = "m1-kp",
-	.id = 0,
-	.num_resources = ARRAY_SIZE(intput_resources),
-	.resource = intput_resources,
-	
-};
 #ifdef CONFIG_FB_AM
 static struct resource fb_device_resources[] = {
     [0] = {
@@ -212,7 +197,11 @@ static struct platform_device codec_device = {
 };
 #endif
 
-
+#if defined(CONFIG_KEYPADS_AM)
+static struct platform_device input_device = {
+	.name = "keypad_dev",
+};
+#endif
 
 #if defined(CONFIG_CARDREADER)
 static struct resource amlogic_card_resource[]  = {
@@ -312,7 +301,7 @@ static struct platform_device aml_nand_device = {
 
 #if defined(CONFIG_I2C_SW_AML)
 
-static struct aml_sw_i2c_platform aml_sw_i2c_plat = {
+struct aml_sw_i2c_platform aml_sw_i2c_plat = {
 	.sw_pins = {
 		.scl_reg_out		= MESON_I2C_PREG_GPIOC_OUTLVL,
 		.scl_reg_in		= MESON_I2C_PREG_GPIOC_INLVL,
@@ -327,7 +316,7 @@ static struct aml_sw_i2c_platform aml_sw_i2c_plat = {
 	.timeout			= 100,
 };
 
-struct platform_device aml_sw_i2c_device = {
+static struct platform_device aml_sw_i2c_device = {
 	.name		  = "aml-sw-i2c",
 	.id		  = -1,
 	.dev = {
@@ -338,7 +327,7 @@ struct platform_device aml_sw_i2c_device = {
 #endif
 
 #if defined(CONFIG_I2C_AML)
-struct aml_i2c_platform aml_i2c_plat = {
+static struct aml_i2c_platform aml_i2c_plat = {
 	.wait_count		= 1000000,
 	.wait_ack_interval	= 5,
 	.wait_read_interval	= 5,
@@ -422,18 +411,20 @@ static void __init eth_pinmux_init(void)
 {
 
 	/*for dpf_sz with ethernet*/	
-		///GPIOD15-24 for 8626M;
-	///GPIOE_16/NA	nRst;
-	eth_set_pinmux(ETH_BANK2_GPIOD15_D23,ETH_CLK_OUT_GPIOD24_REG5_1,0);
+		///GPIOC17 -int
+	///GPIOC19/NA	nRst;
+	printk("eth pinmux init\n");
+	eth_set_pinmux(ETH_BANK1_GPIOD2_D11,ETH_CLK_OUT_GPIOD7_REG4_20,0);
 	CLEAR_CBUS_REG_MASK(PREG_ETHERNET_ADDR0, 1);
 	SET_CBUS_REG_MASK(PREG_ETHERNET_ADDR0, (1 << 1));
 	SET_CBUS_REG_MASK(PREG_ETHERNET_ADDR0, 1);
 	udelay(100);
 	/*reset*/
-	set_gpio_mode(PREG_HGPIO,16,GPIO_OUTPUT_MODE);
-	set_gpio_val(PREG_HGPIO,16,0);
+	///GPIOC19/NA	nRst;
+	set_gpio_mode(GPIOC_bank_bit0_26(19),GPIOC_bit_bit0_26(19),GPIO_OUTPUT_MODE);
+	set_gpio_val(GPIOC_bank_bit0_26(19),GPIOC_bit_bit0_26(19),0);
 	udelay(100);	//waiting reset end;
-	set_gpio_val(PREG_HGPIO,16,1);
+	set_gpio_val(GPIOC_bank_bit0_26(19),GPIOC_bit_bit0_26(19),1);
 	udelay(10);	//waiting reset end;
 }
 
@@ -443,8 +434,8 @@ static void __init device_pinmux_init(void )
 
 	/* other deivce power on */
 	/* GPIOA_200e_bit4..usb/eth/YUV power on */
-	set_gpio_mode(PREG_EGPIO,1<<4,GPIO_OUTPUT_MODE);
-	set_gpio_val(PREG_EGPIO,1<<4,1);
+	//set_gpio_mode(PREG_EGPIO,1<<4,GPIO_OUTPUT_MODE);
+	//set_gpio_val(PREG_EGPIO,1<<4,1);
 
 	/* uart port A */
 	uart_set_pinmux(UART_PORT_A,UART_A_GPIO_B2_B3);
@@ -525,7 +516,7 @@ static __init void m1_fixup(struct machine_desc *mach, struct tag *tag, char **c
 	m->nr_banks++;
 }
 
-MACHINE_START(MESON_8626M, "AMLOGIC MESON-M1 8626M SZ")
+MACHINE_START(MESON_8226M, "AMLOGIC MESON-M1 8226M")
 	.phys_io		= MESON_PERIPHS1_PHYS_BASE,
 	.io_pg_offst		= (MESON_PERIPHS1_PHYS_BASE >> 18) & 0xfffc,
 	.boot_params		= BOOT_PARAMS_OFFSET,
