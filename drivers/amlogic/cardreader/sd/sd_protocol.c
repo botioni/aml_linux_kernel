@@ -4093,6 +4093,8 @@ void sd_mmc_exit(void)
 	if(sd_mmc_phy_buf != NULL)
 	{
 	   dma_free_coherent(NULL, SD_MMC_BUFFER_SIZE, sd_mmc_buf, (dma_addr_t )sd_mmc_phy_buf);
+	   sd_mmc_phy_buf = NULL;
+	   sd_mmc_buf = NULL;
 	}
 #endif	
 }
