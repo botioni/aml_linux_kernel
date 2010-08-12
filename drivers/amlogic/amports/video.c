@@ -189,13 +189,7 @@ static inline vframe_t *vf_peek(void)
 {
 	if ( deinterlace_mode == 2 )
 	{
-		int *field_counter, pre_field_counter, di_checked_field;
-		vframe_t *di_buf = get_di_out_buf(field_counter, &pre_field_counter, &di_checked_field);
-
-		if ( (*field_counter) <= pre_field_counter-2 )
-			return &di_buf[(*field_counter)%DI_BUF_NUM];
-		else
-			return NULL;
+		return peek_di_out_buf();
 	}
 	else
 	{
@@ -210,42 +204,23 @@ static inline vframe_t *vf_get(void)
 {
 	if ( deinterlace_mode == 2 )
 	{
-		vframe_t *disp_buf;
-		int *field_counter, pre_field_counter, di_checked_field;
-		DI_MIF_t *di_buf0_mif, *di_buf1_mif;
-		DI_SIM_MIF_t *di_mtncrd_mif, *di_mtnprd_mif;
-		vframe_t *di_buf = get_di_out_buf(field_counter, &pre_field_counter, &di_checked_field);
-		unsigned long mem_start = get_di_mem_start(di_buf0_mif, di_buf1_mif, di_mtncrd_mif, di_mtnprd_mif);
+		vframe_t *disp_buf = peek_di_out_buf();
 
-		if ( (*field_counter) <= pre_field_counter-2 )
+		if ( disp_buf )
 		{
-			disp_buf = &di_buf[(*field_counter)%DI_BUF_NUM];
-
 	    	if ( (disp_buf->duration > 0)
 #ifdef DI_SD_ONLY
 				&& (disp_buf->width <= 720)
 #endif
 	    		)
 			{
-				unsigned temp = mem_start + (MAX_CANVAS_WIDTH*MAX_CANVAS_HEIGHT*5/4)*(((*field_counter)+di_checked_field)%DI_BUF_NUM);
-				canvas_config(di_buf0_mif->canvas0_addr0, temp, MAX_CANVAS_WIDTH*2, MAX_CANVAS_HEIGHT/2, 0, 0);
-				if ( disp_buf->blend_mode == 1 )
-					temp = mem_start + (MAX_CANVAS_WIDTH*MAX_CANVAS_HEIGHT*5/4)*(((*field_counter)+di_checked_field+1)%DI_BUF_NUM);
-				else
-					temp = mem_start + (MAX_CANVAS_WIDTH*MAX_CANVAS_HEIGHT*5/4)*(((*field_counter)+di_checked_field-1)%DI_BUF_NUM);
-				canvas_config(di_buf1_mif->canvas0_addr0, temp, MAX_CANVAS_WIDTH*2, MAX_CANVAS_HEIGHT/2, 0, 0);
-				temp = mem_start + (MAX_CANVAS_WIDTH*MAX_CANVAS_HEIGHT*5/4)*(((*field_counter)+di_checked_field)%DI_BUF_NUM) + (MAX_CANVAS_WIDTH*MAX_CANVAS_HEIGHT);
-				canvas_config(di_mtncrd_mif->canvas_num, temp, MAX_CANVAS_WIDTH/2, MAX_CANVAS_HEIGHT/2, 0, 0);
-				temp = mem_start + (MAX_CANVAS_WIDTH*MAX_CANVAS_HEIGHT*5/4)*(((*field_counter)+di_checked_field+1)%DI_BUF_NUM) + (MAX_CANVAS_WIDTH*MAX_CANVAS_HEIGHT);
-				canvas_config(di_mtnprd_mif->canvas_num, temp, MAX_CANVAS_WIDTH/2, MAX_CANVAS_HEIGHT/2, 0, 0);
+				set_post_di_mem(disp_buf->blend_mode);
 			}
 
-		   	(*field_counter)++;
-
-			return disp_buf;
+		   	inc_field_counter();
 		}
-		else
-			return NULL;
+
+		return disp_buf;
 	}
 	else
 	{
@@ -454,10 +429,7 @@ static void vsync_toggle_frame(vframe_t *vf)
 
            	if ( deinterlace_mode == 1 )
            	{
-				int *field_counter, pre_field_counter, di_checked_field;
-
-				get_di_out_buf(field_counter, &pre_field_counter, &di_checked_field);
-            	(*field_counter)++;
+            	inc_field_counter();
            	}
         } 
 
@@ -479,10 +451,7 @@ static void vsync_toggle_frame(vframe_t *vf)
 
            	if ( deinterlace_mode == 1 )
            	{
-				int *field_counter, pre_field_counter, di_checked_field;
-
-				get_di_out_buf(field_counter, &pre_field_counter, &di_checked_field);
-            	(*field_counter)++;
+            	inc_field_counter();
            	}
 		}
     }
@@ -765,6 +734,8 @@ static irqreturn_t vsync_isr0(int irq, void *dev_id)
 
     vout_type = detect_vout_type();
 	hold_line = calc_hold_line();
+
+	//di_pre_isr();
 
     timestamp_pcrscr_inc(vsync_pts_inc);
 
@@ -1826,6 +1797,8 @@ static int __init video_init(void)
     disp_canvas = (disp_canvas_index[2] << 16) | (disp_canvas_index[1] << 8) | disp_canvas_index[0];
 
 	vsync_fiq_up();
+
+	//deinterlace_init(disp_canvas_index);
 
     return (0);
 
