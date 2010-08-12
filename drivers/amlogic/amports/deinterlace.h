@@ -54,9 +54,11 @@ int get_deinterlace_mode(void);
 
 const vframe_provider_t * get_vfp(void);
 
-vframe_t *get_di_out_buf(int *counter, int *pre_counter, int *offset);
+vframe_t *peek_di_out_buf(void);
 
-unsigned long get_di_mem_start(DI_MIF_t *buf0_mif, DI_MIF_t *buf1_mif, DI_SIM_MIF_t *mtncrd_mif, DI_SIM_MIF_t *mtnprd_mif);
+void inc_field_counter(void);
+
+void set_post_di_mem(int mode);
 
 void initial_di_prepost ( int hsize_pre, int vsize_pre, int hsize_post, int vsize_post, int hold_line ); 
 
@@ -234,7 +236,7 @@ void di_pre_isr(void);
 void run_deinterlace(unsigned zoom_start_x_lines, unsigned zoom_end_x_lines, unsigned zoom_start_y_lines, unsigned zoom_end_y_lines, 
 	unsigned type, int mode, int hold_line);
 
-void deinterlace_init(void);
+void deinterlace_init(int *disp_canvas_index);
 
 #endif
 

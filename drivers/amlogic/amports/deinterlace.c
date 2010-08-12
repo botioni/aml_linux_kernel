@@ -54,21 +54,32 @@ DI_SIM_MIF_t di_mtnprd_mif;
 
 unsigned long di_mem_start;
 
-vframe_t *get_di_out_buf(int *counter, int *pre_counter, int *offset)
+vframe_t *peek_di_out_buf(void)
 {
-	counter = &field_counter;
-	pre_counter = &pre_field_counter;
-	offset = &di_checked_field;
-	return di_buf_pool;
+	if ( field_counter <= pre_field_counter-2 )
+		return &(di_buf_pool[field_counter%DI_BUF_NUM]);
+	else
+		return NULL;
 }
 
-unsigned long get_di_mem_start(DI_MIF_t *buf0_mif, DI_MIF_t *buf1_mif, DI_SIM_MIF_t *mtncrd_mif, DI_SIM_MIF_t *mtnprd_mif)
+void inc_field_counter(void)
 {
-	buf0_mif = &di_buf0_mif;
-	buf1_mif = &di_buf1_mif;
-	mtncrd_mif = &di_mtncrd_mif;
-	mtnprd_mif = &di_mtnprd_mif;
-	return di_mem_start;
+	field_counter++;
+}
+
+void set_post_di_mem(int mode)
+{
+	unsigned temp = di_mem_start + (MAX_CANVAS_WIDTH*MAX_CANVAS_HEIGHT*5/4)*((field_counter+di_checked_field)%DI_BUF_NUM);
+	canvas_config(di_buf0_mif.canvas0_addr0, temp, MAX_CANVAS_WIDTH*2, MAX_CANVAS_HEIGHT/2, 0, 0);
+	if ( mode == 1 )
+		temp = di_mem_start + (MAX_CANVAS_WIDTH*MAX_CANVAS_HEIGHT*5/4)*((field_counter+di_checked_field+1)%DI_BUF_NUM);
+	else
+		temp = di_mem_start + (MAX_CANVAS_WIDTH*MAX_CANVAS_HEIGHT*5/4)*((field_counter+di_checked_field-1)%DI_BUF_NUM);
+	canvas_config(di_buf1_mif.canvas0_addr0, temp, MAX_CANVAS_WIDTH*2, MAX_CANVAS_HEIGHT/2, 0, 0);
+	temp = di_mem_start + (MAX_CANVAS_WIDTH*MAX_CANVAS_HEIGHT*5/4)*((field_counter+di_checked_field)%DI_BUF_NUM) + (MAX_CANVAS_WIDTH*MAX_CANVAS_HEIGHT);
+	canvas_config(di_mtncrd_mif.canvas_num, temp, MAX_CANVAS_WIDTH/2, MAX_CANVAS_HEIGHT/2, 0, 0);
+	temp = di_mem_start + (MAX_CANVAS_WIDTH*MAX_CANVAS_HEIGHT*5/4)*((field_counter+di_checked_field+1)%DI_BUF_NUM) + (MAX_CANVAS_WIDTH*MAX_CANVAS_HEIGHT);
+	canvas_config(di_mtnprd_mif.canvas_num, temp, MAX_CANVAS_WIDTH/2, MAX_CANVAS_HEIGHT/2, 0, 0);
 }
 
 void disable_deinterlace(void)
@@ -587,7 +598,7 @@ void enable_di_prepost_full (
       	} 
       	else 
       	{
-          	WRITE_MPEG_REG(DI_MTNRD_CTRL, (di_mtnprd_mif->canvas_num <<8 ) |          					//mtnp canvas index.
+          	WRITE_MPEG_REG(DI_MTNRD_CTRL, (0 << 8 ) |          											//mtnp canvas index.
                             ((prepost_link && di_vpp_en) << 16)  |          							// urgent
                             di_mtncrd_mif->canvas_num );                   							 	// current field mtn canvas index. 
       	}
@@ -2912,12 +2923,14 @@ void run_deinterlace(unsigned zoom_start_x_lines, unsigned zoom_end_x_lines, uns
     }
 }
 
-void deinterlace_init(void)
+void deinterlace_init(int *disp_canvas_index)
 {
    	int i;
 	unsigned long addr;
 
 	// declare deinterlace memory
+	di_mem_start = 0x88100000;
+	
 	addr = di_mem_start;
 
 	for ( i = 0 ; i < 4 ; i++ )
@@ -2949,6 +2962,10 @@ void deinterlace_init(void)
 	memcpy(&di_buf0_mif, &di_mem_mif, sizeof(DI_MIF_t));
 	memcpy(&di_buf1_mif, &di_mem_mif, sizeof(DI_MIF_t));
 	memcpy(&di_chan2_mif, &di_buf1_mif, sizeof(DI_MIF_t));
+
+    di_inp_top_mif.canvas0_addr0 = di_inp_bot_mif.canvas0_addr0 = disp_canvas_index[0];
+    di_inp_top_mif.canvas0_addr1 = di_inp_bot_mif.canvas0_addr1 = disp_canvas_index[1];
+    di_inp_top_mif.canvas0_addr2 = di_inp_bot_mif.canvas0_addr2 = disp_canvas_index[2];
 
    	WRITE_MPEG_REG(DI_NRMTN_CTRL0, 0xb00a0603);
 }
