@@ -269,7 +269,7 @@ static int card_queue_thread(void *d)
 	 * Set iothread to ensure that we aren't put to sleep by
 	 * the process freezing.  We handle suspension ourselves.
 	 */
-	current->flags |= PF_MEMALLOC | PF_NOFREEZE;
+	current->flags |= PF_MEMALLOC;
 
 	complete(&card_thread_complete);
 
@@ -284,15 +284,11 @@ static int card_queue_thread(void *d)
 			cq = cq_node_current->cq;
 			q = cq->queue;
 			if (cq_node_current->cq_flag) {
-				if (!blk_queue_plugged(q)) {
-					req = blk_fetch_request(q);
-					if (req)
-						break;
-
-					cq_node_current->cq_flag = 0;
-				} else {
+				req = blk_fetch_request(q);
+				if (req)
 					break;
-				}
+
+				cq_node_current->cq_flag = 0;
 			}
 
 			cq_node_current = cq_node_current->cq_next;
