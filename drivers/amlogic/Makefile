@@ -16,7 +16,7 @@ obj-y += display/
 
 obj-y += uart/
 
-#obj-y += nand/
+obj-y += nand/
 
 obj-y += net/
 

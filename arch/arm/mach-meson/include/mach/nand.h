@@ -117,7 +117,7 @@
 #define NFC_SEND_CMD_M2N(size,ecc)          NFC_SEND_CMD(M2N |(ecc<<14)|(1<<16)|(size&0x3fff))
 #define NFC_SEND_CMD_N2M(size,ecc)          NFC_SEND_CMD(N2M |(ecc<<14)|(1<<16)|(size&0x3fff))
 #define NFC_SEND_CMD_DWR(data)              NFC_SEND_CMD(DWR     |(data&0xff  ))
-#define NFC_SEND_CMD_DRD( size  )              NFC_SEND_CMD(DRD |                  )
+#define NFC_SEND_CMD_DRD( size  )              NFC_SEND_CMD(DRD |  size   )
 /**
     Cmd Info Macros
 */
@@ -138,6 +138,8 @@ typedef unsigned    t_nfc_info;
 #define NFC_SET_SPARE_ONLY()			(SET_CBUS_REG_MASK(NAND_CFG,1<<15))
 #define NFC_CLEAR_SPARE_ONLY()			(CLEAR_CBUS_REG_MASK(NAND_CFG,1<<15))
 #define NFC_GET_BUF() 					READ_CBUS_REG(NAND_BUF)
+#define NFC_GET_CFG() 					READ_CBUS_REG(NAND_CFG)
+#define NFC_SET_CFG(val) 			    WRITE_CBUS_REG(NAND_CFG,(unsigned)val)
 
 
 typedef unsigned  t_nf_ce;
@@ -152,13 +154,14 @@ struct aml_m1_nand_platform
 {
          unsigned int           page_size;
 		 unsigned int 			spare_size;
-		 unsigned int 			page_num;
+		 unsigned int 			erase_size;
 	 	 unsigned long long 	chip_size;
 		 unsigned int 			ce_num;
 		 unsigned int 			chip_num;
 		 unsigned int 			timing_mode;
 		 unsigned int 			bch_mode;
 		 unsigned int 			encode_size;
+		 unsigned int 			onfi_mode;
          unsigned int           nr_partitions;
          struct mtd_partition    *partitions;
 };
