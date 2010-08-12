@@ -30,8 +30,8 @@
 #include <linux/vout/vinfo.h>
 #include "tvoutc.h"
 
-#define CLOCK_SRC_AUDIOPLL
-//#define CLOCK_SRC_VIDEOPLL
+//#define CLOCK_SRC_AUDIOPLL
+#define CLOCK_SRC_VIDEOPLL
 
 //#define CRYSTAL_25M
 #define CRYSTAL_24M
