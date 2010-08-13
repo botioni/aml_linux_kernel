@@ -1,4 +1,6 @@
 #include <linux/string.h>
+#include <linux/platform_device.h>
+
 #include <mach/am_regs.h>
 #include <linux/amports/canvas.h>
 
@@ -22,6 +24,11 @@ unsigned long debug_array[4*1024];
 #endif
 
 #define PRE_HOLD_LINE	4
+
+// 0 - off
+// 1 - pre-post link
+// 2 - pre-post separate, only post in vsync
+static int deinterlace_mode = 0;
 
 int prev_struct = 0;
 int prog_field_count = 0;
@@ -52,7 +59,12 @@ DI_SIM_MIF_t di_mtnwr_mif;
 DI_SIM_MIF_t di_mtncrd_mif;
 DI_SIM_MIF_t di_mtnprd_mif;
 
-unsigned long di_mem_start;
+unsigned di_mem_start;
+
+int get_deinterlace_mode(void)
+{
+	return deinterlace_mode;
+}
 
 vframe_t *peek_di_out_buf(void)
 {
@@ -2410,7 +2422,6 @@ void di_pre_isr(void)
 	unsigned temp = READ_MPEG_REG(DI_INTR_CTRL);
     unsigned status = READ_MPEG_REG(DI_PRE_CTRL) & 0x2;
 
-    int deinterlace_mode = get_deinterlace_mode();
 	const vframe_provider_t *vfp = get_vfp();
 	
 	if ( deinterlace_mode != 2 )
@@ -2673,8 +2684,6 @@ void run_deinterlace(unsigned zoom_start_x_lines, unsigned zoom_end_x_lines, uns
 {
     int di_width, di_height, di_start_x, di_end_x, di_start_y, di_end_y, size_change, position_change;
 
-    int deinterlace_mode = get_deinterlace_mode();
-
     di_start_x = zoom_start_x_lines;
     di_end_x = zoom_end_x_lines;
     di_width = di_end_x - di_start_x + 1;
@@ -2923,15 +2932,10 @@ void run_deinterlace(unsigned zoom_start_x_lines, unsigned zoom_end_x_lines, uns
     }
 }
 
-void deinterlace_init(int *disp_canvas_index)
+void deinterlace_init(void)
 {
    	int i;
-	unsigned long addr;
-
-	// declare deinterlace memory
-	di_mem_start = 0x88100000;
-	
-	addr = di_mem_start;
+	unsigned long addr = di_mem_start;
 
 	for ( i = 0 ; i < 4 ; i++ )
 	{
@@ -2963,10 +2967,71 @@ void deinterlace_init(int *disp_canvas_index)
 	memcpy(&di_buf1_mif, &di_mem_mif, sizeof(DI_MIF_t));
 	memcpy(&di_chan2_mif, &di_buf1_mif, sizeof(DI_MIF_t));
 
-    di_inp_top_mif.canvas0_addr0 = di_inp_bot_mif.canvas0_addr0 = disp_canvas_index[0];
-    di_inp_top_mif.canvas0_addr1 = di_inp_bot_mif.canvas0_addr1 = disp_canvas_index[1];
-    di_inp_top_mif.canvas0_addr2 = di_inp_bot_mif.canvas0_addr2 = disp_canvas_index[2];
+    di_inp_top_mif.canvas0_addr0 = di_inp_bot_mif.canvas0_addr0 = DISPLAY_CANVAS_BASE_INDEX;
+    di_inp_top_mif.canvas0_addr1 = di_inp_bot_mif.canvas0_addr1 = DISPLAY_CANVAS_BASE_INDEX + 1;
+    di_inp_top_mif.canvas0_addr2 = di_inp_bot_mif.canvas0_addr2 = DISPLAY_CANVAS_BASE_INDEX + 2;
 
    	WRITE_MPEG_REG(DI_NRMTN_CTRL0, 0xb00a0603);
 }
+
+static int deinterlace_probe(struct platform_device *pdev)
+{
+    struct resource *mem;
+
+    printk("Amlogic deinterlace init\n");
+
+    if (!(mem = platform_get_resource(pdev, IORESOURCE_MEM, 0)))
+    {
+    	printk("\ndeinterlace memory resource undefined.\n");
+        return -EFAULT;
+    }
+
+	// declare deinterlace memory
+	di_mem_start = mem->start;
+	printk("Deinterlace memory start 0x%x\n", di_mem_start);
+
+	deinterlace_init();
+
+	return 0;
+}
+
+static int deinterlace_remove(struct platform_device *pdev)
+{
+    printk("Amlogic deinterlace release\n");
+    return 0;
+}
+
+static struct platform_driver
+deinterlace_driver = {
+    .probe      = deinterlace_probe,
+    .remove     = deinterlace_remove,
+    .driver     = {
+        .name   = "deinterlace",
+    }
+};
+
+static int __init deinterlace_module_init(void)
+{
+    if (platform_driver_register(&deinterlace_driver)) {
+        printk("failed to register deinterlace module\n");
+        return -ENODEV;
+    }
+
+    return 0;
+}
+
+static void __exit deinterlace_module_exit(void)
+{
+    platform_driver_unregister(&deinterlace_driver);
+    return;
+}
+
+MODULE_PARM_DESC(deinterlace_mode, "\n deinterlace mode \n");
+module_param(deinterlace_mode, int, 0664);
+module_init(deinterlace_module_init);
+module_exit(deinterlace_module_exit);
+
+MODULE_DESCRIPTION("AMLOGIC deinterlace driver");
+MODULE_LICENSE("GPL");
+MODULE_AUTHOR("Qi Wang <qi.wang@amlogic.com>");
 
