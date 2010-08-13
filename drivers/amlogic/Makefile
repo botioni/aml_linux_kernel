@@ -45,6 +45,3 @@ obj-$(CONFIG_AML_AUDIO_DSP) += audiodsp/
 
 #####Sound system is later init in kernel default..######################
 obj-y += sound/
-
-obj-$(CONFIG_CLOCK600) += clock600/
-
