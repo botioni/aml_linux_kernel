@@ -552,7 +552,7 @@ int sd_send_cmd_hw(unsigned char cmd, unsigned long arg, SD_Response_Type_t res_
 				cmd_ext_reg->data_rw_number = sd_mmc_info->blk_len * 8 + 16 - 1;
 			
 			data_dma_from_device_addr = dma_map_single(NULL, (void *)data_buf, data_cnt, DMA_FROM_DEVICE );
-			buffer = data_dma_from_device_addr;
+			buffer = (unsigned char*)data_dma_from_device_addr;
 			//buffer = sd_mmc_phy_buf;
 			break;
 
@@ -579,7 +579,7 @@ int sd_send_cmd_hw(unsigned char cmd, unsigned long arg, SD_Response_Type_t res_
 			//memcpy(buffer, data_buf, data_cnt);
 			//memcpy(sd_mmc_buf, data_buf, data_cnt);
 			data_dma_to_device_addr=dma_map_single(NULL, (void *)data_buf, data_cnt, DMA_TO_DEVICE);	
-			buffer = data_dma_to_device_addr;
+			buffer = (unsigned char*)data_dma_to_device_addr;
 			//buffer = sd_mmc_phy_buf;
 			//inv_dcache_range((unsigned long)buffer, ((unsigned long)buffer + data_cnt));
 			break;
@@ -605,7 +605,7 @@ int sd_send_cmd_hw(unsigned char cmd, unsigned long arg, SD_Response_Type_t res_
 			if(arg & (1<<31))
 			{
 				cmd_send_reg->cmd_send_data = 1;
-				buffer = data_buf;
+				buffer = sd_mmc_phy_buf;
 				//inv_dcache_range((unsigned long)sd_mmc_buf, ((unsigned long)sd_mmc_buf + data_cnt));
 			}
 			else
@@ -629,7 +629,7 @@ int sd_send_cmd_hw(unsigned char cmd, unsigned long arg, SD_Response_Type_t res_
 				cmd_ext_reg->data_rw_number = data_cnt * 8 + (16 - 1) * 4;
 			else
 				cmd_ext_reg->data_rw_number = data_cnt * 8 + 16 - 1;
-			buffer = data_buf;
+			buffer = sd_mmc_phy_buf;
 			break;
 			
 		default:
