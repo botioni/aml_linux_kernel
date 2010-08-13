@@ -212,7 +212,22 @@ static struct platform_device codec_device = {
 };
 #endif
 
+#if defined(CONFIG_AM_VIDEO)
+static struct resource deinterlace_resources[] = {
+    [0] = {
+        .start =  DI_ADDR_START,
+        .end   = DI_ADDR_END,
+        .flags = IORESOURCE_MEM,
+    },
+};
 
+static struct platform_device deinterlace_device = {
+    .name       = "deinterlace",
+    .id         = 0,
+    .num_resources = ARRAY_SIZE(deinterlace_resources),
+    .resource      = deinterlace_resources,
+};
+#endif
 
 #if defined(CONFIG_CARDREADER)
 static struct resource amlogic_card_resource[]  = {
@@ -395,6 +410,9 @@ static struct platform_device __initdata *platform_devs[] = {
     #endif
     #if defined(CONFIG_AM_STREAMING)
 		&codec_device,
+    #endif
+    #if defined(CONFIG_AM_VIDEO)
+		&deinterlace_device,
     #endif
 	#if defined(CONFIG_AML_AUDIO_DSP)
 		&audiodsp_device,
