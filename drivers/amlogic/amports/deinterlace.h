@@ -236,7 +236,7 @@ void di_pre_isr(void);
 void run_deinterlace(unsigned zoom_start_x_lines, unsigned zoom_end_x_lines, unsigned zoom_start_y_lines, unsigned zoom_end_y_lines, 
 	unsigned type, int mode, int hold_line);
 
-void deinterlace_init(int *disp_canvas_index);
+void deinterlace_init(void);
 
 #endif
 

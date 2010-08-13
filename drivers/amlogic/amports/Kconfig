@@ -4,12 +4,20 @@
 
 menu "AMLOGIC AV Streaming devices"
 
+config AM_DEINTERLACE
+	bool "AMLOGIC Deinterlace"
+	default y
+	select AM_CANVAS
+	help
+	  Driver for deinterlace.
+
 config AM_VIDEO
 	bool "AMLOGIC Video management"
 	default y
 	select AM_CANVAS
 	select AM_PTSMGR
 	select AM_TIMESYNC
+	select AM_DEINTERLACE
 	help
 	  Driver for video display.
 

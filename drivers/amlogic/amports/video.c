@@ -149,12 +149,7 @@ static vpp_frame_par_t frame_parms[2];
 
 /* vsync pass flag */
 static u32 wait_sync;
-static const vframe_provider_t *vfp;
-
-// 0 - off
-// 1 - pre-post link
-// 2 - pre-post separate, only post in vsync
-static int deinterlace_mode = 0;
+static const vframe_provider_t *vfp = NULL;
 
 /* trickmode i frame*/
 u32 trickmode_i = 0;
@@ -174,11 +169,6 @@ static const u8 skip_tab[6] = { 0x24, 0x04, 0x68, 0x48, 0x28, 0x08 };
 /* wait queue for poll */
 static wait_queue_head_t amvideo_trick_wait;
 
-int get_deinterlace_mode(void)
-{
-	return deinterlace_mode;
-}
-
 const vframe_provider_t * get_vfp(void)
 {
 	return vfp;
@@ -187,6 +177,8 @@ const vframe_provider_t * get_vfp(void)
 /*********************************************************/
 static inline vframe_t *vf_peek(void)
 {
+	int deinterlace_mode = get_deinterlace_mode();
+	
 	if ( deinterlace_mode == 2 )
 	{
 		return peek_di_out_buf();
@@ -202,6 +194,8 @@ static inline vframe_t *vf_peek(void)
 
 static inline vframe_t *vf_get(void)
 {
+	int deinterlace_mode = get_deinterlace_mode();
+	
 	if ( deinterlace_mode == 2 )
 	{
 		vframe_t *disp_buf = peek_di_out_buf();
@@ -233,6 +227,8 @@ static inline vframe_t *vf_get(void)
 
 static inline void vf_put(vframe_t *vf)
 {
+	int deinterlace_mode = get_deinterlace_mode();
+	
 	if ( deinterlace_mode == 2 )
 	{
 		if ( vfp && (vf->recycle_by_di_pre == 0) )
@@ -341,6 +337,8 @@ static void vsync_toggle_frame(vframe_t *vf)
 {
     u32 first_picture = 0;
 
+	int deinterlace_mode = get_deinterlace_mode();
+	
     if ((vf->width == 0) && (vf->height == 0)) {
         printk("Video: invalid frame dimension\n");
         return;
@@ -463,9 +461,9 @@ static void vsync_toggle_frame(vframe_t *vf)
 
         frame_par_ready_to_set = 1;
 
-        if ( deinterlace_mode == 1 )
+        if ( deinterlace_mode != 2 )
     		disable_deinterlace();
-        else if ( deinterlace_mode == 2 )
+        else
         	disable_post_deinterlace();
     }
 }
@@ -715,6 +713,8 @@ static irqreturn_t vsync_isr0(int irq, void *dev_id)
 #endif
 {
 	int hold_line;
+	int deinterlace_mode = get_deinterlace_mode();
+	
     s32 i, vout_type;
     vframe_t *vf;
 #ifdef DEBUG
@@ -735,7 +735,7 @@ static irqreturn_t vsync_isr0(int irq, void *dev_id)
     vout_type = detect_vout_type();
 	hold_line = calc_hold_line();
 
-	//di_pre_isr();
+	di_pre_isr();
 
     timestamp_pcrscr_inc(vsync_pts_inc);
 
@@ -1104,6 +1104,8 @@ void vf_unreg_provider(void)
 {
     ulong flags;
 
+	int deinterlace_mode = get_deinterlace_mode();
+	
     spin_lock_irqsave(&lock, flags);
 
     if (cur_dispbuf) {
@@ -1797,8 +1799,6 @@ static int __init video_init(void)
     disp_canvas = (disp_canvas_index[2] << 16) | (disp_canvas_index[1] << 8) | disp_canvas_index[0];
 
 	vsync_fiq_up();
-
-	//deinterlace_init(disp_canvas_index);
 
     return (0);
 
