@@ -309,8 +309,8 @@ advanced setting -- bit 7:0 force compare result
     #define UNIT_START_STB_OM_W_RD                  2
     #define OM_CMD_OVERFLOW                         1
 
-// bit 15:9 // bit 14:8 -- count_stb_om_w_rd  (read only)
-// bit 8:0  // bit  7:0 -- start_stb_om_wa_rd (read only)
+// bit 15:9 -- count_stb_om_w_rd  (read only)
+// bit 8:0 -- start_stb_om_wa_rd (read only)
 #define OM_CMD_DATA             (STB_CBUS_BASE + DEMUX_1_OFFSET + 0x0c)  // 0x160c
 #define OM_CMD_DATA_2           (STB_CBUS_BASE + DEMUX_2_OFFSET + 0x0c)  // 0x165c
 #define OM_CMD_DATA_3           (STB_CBUS_BASE + DEMUX_3_OFFSET + 0x0c)  // 0x16ac
@@ -530,20 +530,12 @@ advanced setting -- bit 7:0 force compare result
     #define BYPASS_ENDIAN              3
     #define SECTION_ENDIAN             0
 
-// Bit 15:8 -- last_burst_threshold
 // Bit 7 -- use hi_bsf interface
-// Bit 6:2 - fec_clk_div
-// Bit 1 ts_source_sel 
-// Bit 0 - Hiu TS generate enable 
 #define TS_HIU_CTL              (STB_CBUS_BASE + DEMUX_1_OFFSET + 0x25)  // 0x1625
 #define TS_HIU_CTL_2            (STB_CBUS_BASE + DEMUX_2_OFFSET + 0x25)  // 0x1675
 #define TS_HIU_CTL_3            (STB_CBUS_BASE + DEMUX_3_OFFSET + 0x25)  // 0x16c5
     /*----------- bit define -----------*/
-    #define LAST_BURST_THRESHOLD       8
     #define USE_HI_BSF_INTERFACE       7
-    #define FEC_CLK_DIV                2
-    #define TS_SOURCE_SELECT           1
-    #define HIU_TS_GENERATE_ENABLE     0
 
 // bit 15:0 -- base address for section buffer start (*0x10000 to get real base)
 #define SEC_BUFF_BASE           (STB_CBUS_BASE + DEMUX_1_OFFSET + 0x26)  // 0x1626
