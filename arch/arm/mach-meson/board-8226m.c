@@ -238,6 +238,7 @@ static struct platform_device audiodsp_device = {
 };
 #endif
 #ifdef CONFIG_AM_NAND
+
 static struct mtd_partition partition_info[] = 
 {
 	{
