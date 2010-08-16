@@ -240,13 +240,13 @@ static struct platform_device audiodsp_device = {
 #ifdef CONFIG_AM_NAND
 static struct mtd_partition partition_info[] = 
 {
-	/*{
+	{
 		.name = "U-BOOT",
 		.offset = 0,
 		.size=2*1024*1024,
 	//	.set_flags=0,
 	//	.dual_partnum=0,
-	},*/
+	},
 	{
 		.name = "Kernel",
 		.offset = 2*1024*1024,
@@ -256,26 +256,31 @@ static struct mtd_partition partition_info[] =
 	},
 	{
 		.name = "YAFFS2",
-		.offset = 2*1024*1024+4 * 1024*1024,
-		.size = 20 * 0x100000,
+//		.offset = 2*1024*1024+4 * 1024*1024,
+//		.size = 20 * 0x100000,
+   		.offset=MTDPART_OFS_APPEND,
+		.size=MTDPART_SIZ_FULL,
+
 	//	.set_flags=0,
 	//	.dual_partnum=0,
 	},
-	{	.name="FTL_Part",
-		.offset=MTDPART_OFS_APPEND,
-		.size=MTDPART_SIZ_FULL,
-	//	.set_flags=MTD_AVNFTL,
-	//	.dual_partnum=1,
-	}
+//	{	.name="FTL_Part",
+//		.offset=MTDPART_OFS_APPEND,
+//		.size=MTDPART_SIZ_FULL,
+//	//	.set_flags=MTD_AVNFTL,
+//	//	.dual_partnum=1,
+//	}
 };
 
-static struct aml_m1_nand_platform aml_nand_platform = {
+static struct aml_m1_nand_platform aml_2kpage128kblocknand_platform = {
 	.page_size = 2048,
 	.spare_size=64,
+	.erase_size= 128*1024,
 	.bch_mode=1,			//BCH8
 	.encode_size=528,
 	.timing_mode=5,
 	.ce_num=1,
+	.onfi_mode=0,
 	.partitions = partition_info,
 	.nr_partitions = ARRAY_SIZE(partition_info),
 };
@@ -294,7 +299,7 @@ static struct platform_device aml_nand_device = {
 	.num_resources = ARRAY_SIZE(aml_nand_resources),
 	.resource = aml_nand_resources,
 	.dev = {
-		.platform_data = &aml_nand_platform,
+		.platform_data = &aml_2kpage128kblocknand_platform,
 	},
 };
 #endif
