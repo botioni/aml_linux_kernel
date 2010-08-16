@@ -115,7 +115,7 @@ void __init meson_init_irq(void)
 	/* set up genirq dispatch */
 	for (i = 0; i < NR_IRQS; i++) {
 		set_irq_chip(i, &meson_irq_chip);
-		set_irq_handler(i, handle_edge_irq);
+		set_irq_handler(i, handle_level_irq);
 		set_irq_flags(i, IRQF_VALID);
 	}
 }
