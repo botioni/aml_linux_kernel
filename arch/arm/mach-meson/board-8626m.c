@@ -282,17 +282,17 @@ static struct mtd_partition partition_info[] =
 	},
 	{
 		.name = "YAFFS2",
-		.offset = 2*1024*1024+4 * 1024*1024,
-		.size = 20 * 0x100000,
+		.offset=MTDPART_OFS_APPEND,
+		.size=MTDPART_SIZ_FULL,
 	//	.set_flags=0,
 	//	.dual_partnum=0,
 	},
-	{	.name="FTL_Part",
-		.offset=MTDPART_OFS_APPEND,
-		.size=MTDPART_SIZ_FULL,
-	//	.set_flags=MTD_AVNFTL,
-	//	.dual_partnum=1,
-	}
+//	{	.name="FTL_Part",
+//		.offset=MTDPART_OFS_APPEND,
+//		.size=MTDPART_SIZ_FULL,
+//	//	.set_flags=MTD_AVNFTL,
+//	//	.dual_partnum=1,
+//	}
 };
 
 static struct aml_m1_nand_platform aml_2kpage128kblocknand_platform = {
