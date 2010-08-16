@@ -177,13 +177,9 @@ void ge2d_set_src1_data (ge2d_src1_data_t *cfg)
 
    WRITE_MPEG_REG_BITS (GE2D_GEN_CTRL0, ((cfg->x_yc_ratio << 1) | cfg->y_yc_ratio), 10, 2);  
    WRITE_MPEG_REG_BITS (GE2D_GEN_CTRL0, cfg->sep_en, 0, 1);  
-#if defined(AML_A1H)
    WRITE_MPEG_REG_BITS (GE2D_GEN_CTRL2, cfg->endian, 7, 1);  
    WRITE_MPEG_REG_BITS (GE2D_GEN_CTRL2, cfg->color_map, 3, 4);  
    WRITE_MPEG_REG_BITS (GE2D_GEN_CTRL2, cfg->format, 0, 2);
-#else
-   WRITE_MPEG_REG_BITS (GE2D_GEN_CTRL0, cfg->format, 7, 2);
-#endif
    WRITE_MPEG_REG_BITS (GE2D_GEN_CTRL0, cfg->mode_8b_sel, 5, 2);
    WRITE_MPEG_REG_BITS (GE2D_GEN_CTRL0, cfg->lut_en, 3, 1);
 
@@ -284,17 +280,12 @@ void ge2d_set_src2_dst_data (ge2d_src2_dst_data_t *cfg)
                          (cfg->dst_canaddr << 0)
                          ); 
                          
-#if defined(AML_A1H)
    WRITE_MPEG_REG_BITS (GE2D_GEN_CTRL2, cfg->src2_endian, 15, 1);  
    WRITE_MPEG_REG_BITS (GE2D_GEN_CTRL2, cfg->src2_color_map, 11, 4);  
    WRITE_MPEG_REG_BITS (GE2D_GEN_CTRL2, cfg->src2_format, 8, 2);  
    WRITE_MPEG_REG_BITS (GE2D_GEN_CTRL2, cfg->dst_endian, 23, 1);  
    WRITE_MPEG_REG_BITS (GE2D_GEN_CTRL2, cfg->dst_color_map, 19, 4);  
    WRITE_MPEG_REG_BITS (GE2D_GEN_CTRL2, cfg->dst_format, 16, 2);  
-#else
-   WRITE_MPEG_REG_BITS (GE2D_GEN_CTRL0, cfg->src2_format, 17, 2);  
-   WRITE_MPEG_REG_BITS (GE2D_GEN_CTRL0, cfg->dst_format, 20, 2);  
-#endif
    WRITE_MPEG_REG_BITS (GE2D_GEN_CTRL0, cfg->src2_mode_8b_sel, 15, 2);  
    WRITE_MPEG_REG_BITS (GE2D_GEN_CTRL0, cfg->dst_mode_8b_sel, 24, 2);  
    
@@ -417,7 +408,6 @@ void ge2d_set_dp_gen (ge2d_dp_gen_t *cfg)
      cfg->matrix_sign_ctrl = 0x3;
   }
                          
-#if defined(AML_A1H)
 	if (cfg->matrix_minus_16_ctrl) {
 		WRITE_MPEG_REG_BITS(GE2D_MATRIX_PRE_OFFSET, 0x1f0, 20, 9);
 	} else {
@@ -429,7 +419,6 @@ void ge2d_set_dp_gen (ge2d_dp_gen_t *cfg)
 	} else {
 		WRITE_MPEG_REG_BITS(GE2D_MATRIX_PRE_OFFSET, 0, 0, 20);
 	}
-#endif
    WRITE_MPEG_REG(GE2D_MATRIX_COEF00_01, 
                         (cfg->matrix_coef[0] << 16) | 
                         (cfg->matrix_coef[1] << 0)
@@ -453,10 +442,8 @@ void ge2d_set_dp_gen (ge2d_dp_gen_t *cfg)
    WRITE_MPEG_REG(GE2D_MATRIX_COEF22_CTRL, 
                         (cfg->matrix_coef[8] << 16) | 
                         (cfg->matrix_sat_in_en << 7) |
-#if !defined(AML_A1H)
                         (cfg->matrix_minus_16_ctrl << 4) |
                         (cfg->matrix_sign_ctrl << 1) |
-#endif
                         (cfg->conv_matrix_en << 0)
                         ); 
 

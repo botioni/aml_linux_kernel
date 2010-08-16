@@ -11,7 +11,6 @@
 #include <linux/wait.h>
 #include <pr_dbg.h>
 #include <linux/slab.h>
-#define  AML_A1H
 #define 	GE2D_HIGHEST_PRIORITY   0
 #define 	GE2D_LOWEST_PRIORITY    255
 
@@ -103,7 +102,6 @@ static const  int   bpp_type_lut[]={
 };
 
 static const  int   default_ge2d_color_lut[]={
-#if defined(AML_A1H)		
 	0, 
 	0,
 	0,//BPP_TYPE_02_PAL4    = 2, 
@@ -137,13 +135,6 @@ static const  int   default_ge2d_color_lut[]={
 	GE2D_FORMAT_S32_ABGR,//BPP_TYPE_32_ABGR = 30,
 	GE2D_FORMAT_S32_RGBA,//BPP_TYPE_32_RGBA=31,
 	GE2D_FORMAT_S32_ARGB,//BPP_TYPE_32_ARGB=32,
-#else
-	0,0,0,0,0,0,0,0,0,0,0,0,//12
-	0,0,0,0,0,0,0,0,0,0,0,0,
-	GE2D_FORMAT_S24_RGB,
-	0,0,0,0,0,0,0,
-	GE2D_FORMAT_S32_RGBA
-#endif
 };
 typedef   enum{
 	GE2D_OP_DEFAULT=0,

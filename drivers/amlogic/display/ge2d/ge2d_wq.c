@@ -45,12 +45,12 @@ static int   get_queue_member_count(struct list_head  *head)
 	}
 	return member_count;
 }
-ssize_t work_queue_status_show(struct class *cla, char *buf)
+ssize_t work_queue_status_show(struct class *cla,struct class_attribute *attr,char *buf)
 {
 	ge2d_context_t *wq=ge2d_manager.current_wq;
      	return snprintf(buf,40,"cmd count in queue:%d\n",get_queue_member_count(&wq->work_queue));
 }
-ssize_t free_queue_status_show(struct class *cla, char *buf)
+ssize_t free_queue_status_show(struct class *cla,struct class_attribute *attr, char *buf)
 {
 	ge2d_context_t *wq=ge2d_manager.current_wq;
      	return snprintf(buf, 40, "free space :%d\n",get_queue_member_count(&wq->free_queue));
@@ -157,7 +157,6 @@ exit:
                     
 static irqreturn_t ge2d_wq_handle(int  irq_number, void *para)
 {
-	printk("trigger interupt\n");
 	wake_up_interruptible(&ge2d_manager.event.cmd_complete) ;
 	return 0;
 
