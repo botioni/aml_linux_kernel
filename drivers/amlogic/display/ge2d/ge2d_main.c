@@ -54,7 +54,7 @@ static ssize_t ge2d_debug_store(struct class *cla, struct class_attribute *attr,
 ************************************************************************/
 static  bool   command_valid(unsigned int cmd)
 {
-    return (cmd <= GE2D_STRETCHBLIT_NOALPHA && cmd >= GE2D_CONFIG );
+    return (cmd <= GE2D_STRETCHBLIT_NOALPHA_NOBLOCK && cmd >= GE2D_CONFIG );
 }
 static int 
 ge2d_open(struct inode *inode, struct file *file) 
@@ -87,7 +87,10 @@ ge2d_ioctl(struct inode *inode, struct file *filp,
 	switch (cmd)
    	{
 		case  GE2D_CONFIG:
+		case  GE2D_SRCCOLORKEY:	
 		copy_from_user(&ge2d_config,argp,sizeof(config_para_t));
+		break;
+		case  GE2D_SET_COEF:
 		break;
 		default :
 		copy_from_user(&para,argp,sizeof(ge2d_para_t));	
@@ -99,8 +102,11 @@ ge2d_ioctl(struct inode *inode, struct file *filp,
 		case GE2D_CONFIG:
 		ret=ge2d_context_config(context,&ge2d_config) ;
 	  	break;
+		case GE2D_SET_COEF:
+		ge2d_wq_set_scale_coef(context,args,args);
+		break;
     	  	case GE2D_SRCCOLORKEY:
-		ge2dgen_src_key(context , 1,para.color, 0x0);  //RGBA MODE		
+		ge2dgen_src_key(context , ge2d_config.src_key.key_enable,ge2d_config.src_key.key_color, ge2d_config.src_key.key_mask,ge2d_config.src_key.key_mode);  //RGBA MODE		
 		break;
 		case GE2D_FILLRECTANGLE:
 		pr_dbg("fill rect...,x=%d,y=%d,w=%d,h=%d,color=0x%x\r\n",
@@ -108,7 +114,18 @@ ge2d_ioctl(struct inode *inode, struct file *filp,
                    para.src1_rect.w, para.src1_rect.h,
                    para.color);
 
-            fillrect(context,
+            	fillrect(context,
+                     para.src1_rect.x, para.src1_rect.y,
+                     para.src1_rect.w, para.src1_rect.h,
+                     para.color) ;	
+		break;
+		case GE2D_FILLRECTANGLE_NOBLOCK:
+		pr_dbg("fill rect...,x=%d,y=%d,w=%d,h=%d,color=0x%x,noblk\r\n",
+                   para.src1_rect.x, para.src1_rect.y,
+                   para.src1_rect.w, para.src1_rect.h,
+                   para.color);
+
+            	fillrect_noblk(context,
                      para.src1_rect.x, para.src1_rect.y,
                      para.src1_rect.w, para.src1_rect.h,
                      para.color) ;	
@@ -124,6 +141,17 @@ ge2d_ioctl(struct inode *inode, struct file *filp,
                        para.src1_rect.x, para.src1_rect.y, para.src1_rect.w, para.src1_rect.h,
                        para.dst_rect.x,  para.dst_rect.y,  para.dst_rect.w,  para.dst_rect.h);	
 		break;
+		case GE2D_STRETCHBLIT_NOBLOCK:
+		//stretch blit
+            	pr_dbg("stretchblt...,x=%d,y=%d,w=%d,h=%d,dst.w=%d,dst.h=%d,noblk\r\n",
+                   para.src1_rect.x, para.src1_rect.y,
+                   para.src1_rect.w, para.src1_rect.h,
+                   para.dst_rect.w, para.dst_rect.h);
+
+            	stretchblt_noblk(context ,
+                       para.src1_rect.x, para.src1_rect.y, para.src1_rect.w, para.src1_rect.h,
+                       para.dst_rect.x,  para.dst_rect.y,  para.dst_rect.w,  para.dst_rect.h);	
+		break;
 		case GE2D_BLIT:
 		//bitblt
             	pr_dbg("blit...\r\n");
@@ -133,9 +161,29 @@ ge2d_ioctl(struct inode *inode, struct file *filp,
                    para.src1_rect.w, para.src1_rect.h,
                    para.dst_rect.x, para.dst_rect.y);
            	break;
+		case GE2D_BLIT_NOBLOCK:
+		//bitblt
+            	pr_dbg("blit...,noblk\r\n");
+
+            	bitblt_noblk(context ,
+                   para.src1_rect.x, para.src1_rect.y,
+                   para.src1_rect.w, para.src1_rect.h,
+                   para.dst_rect.x, para.dst_rect.y);
+           	break;	
 		case GE2D_BLEND:
 		pr_dbg("blend ...\r\n");
 		blend(context,
+            		para.src1_rect.x, para.src1_rect.y,
+            		para.src1_rect.w, para.src1_rect.h,
+           		para.src2_rect.x, para.src2_rect.y,
+           		para.src2_rect.w, para.src2_rect.h,
+           		para.dst_rect.x, para.dst_rect.y,
+           		para.dst_rect.w, para.dst_rect.h,
+           		para.op) ;	
+		break;
+		case GE2D_BLEND_NOBLOCK:
+		pr_dbg("blend ...,noblk\r\n");
+		blend_noblk(context,
             		para.src1_rect.x, para.src1_rect.y,
             		para.src1_rect.w, para.src1_rect.h,
            		para.src2_rect.x, para.src2_rect.y,
@@ -152,6 +200,14 @@ ge2d_ioctl(struct inode *inode, struct file *filp,
                    para.src1_rect.w, para.src1_rect.h,
                    para.dst_rect.x, para.dst_rect.y);	
 		break;
+		case GE2D_BLIT_NOALPHA_NOBLOCK:
+		//bitblt_noalpha
+            	pr_dbg("blit_noalpha...,noblk\r\n");
+            	bitblt_noalpha_noblk(context ,
+                   para.src1_rect.x, para.src1_rect.y,
+                   para.src1_rect.w, para.src1_rect.h,
+                   para.dst_rect.x, para.dst_rect.y);	
+		break;
 		case GE2D_STRETCHBLIT_NOALPHA:
 		//stretch blit
             	pr_dbg("stretchblt_noalpha...,x=%d,y=%d,w=%d,h=%d,dst.w=%d,dst.h=%d\r\n",
@@ -160,6 +216,17 @@ ge2d_ioctl(struct inode *inode, struct file *filp,
                    para.dst_rect.w, para.dst_rect.h);
 
             	stretchblt_noalpha(context ,
+                       para.src1_rect.x, para.src1_rect.y, para.src1_rect.w, para.src1_rect.h,
+                       para.dst_rect.x,  para.dst_rect.y,  para.dst_rect.w,  para.dst_rect.h);	
+		break;
+		case GE2D_STRETCHBLIT_NOALPHA_NOBLOCK:
+		//stretch blit
+            	pr_dbg("stretchblt_noalpha...,x=%d,y=%d,w=%d,h=%d,dst.w=%d,dst.h=%d,noblk\r\n",
+                   para.src1_rect.x, para.src1_rect.y,
+                   para.src1_rect.w, para.src1_rect.h,
+                   para.dst_rect.w, para.dst_rect.h);
+
+            	stretchblt_noalpha_noblk(context ,
                        para.src1_rect.x, para.src1_rect.y, para.src1_rect.w, para.src1_rect.h,
                        para.dst_rect.x,  para.dst_rect.y,  para.dst_rect.w,  para.dst_rect.h);	
 		break;

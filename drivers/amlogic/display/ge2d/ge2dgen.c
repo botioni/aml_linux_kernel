@@ -12,8 +12,10 @@ static inline void _set_src1_format(ge2d_src1_data_t *src1_data_cfg,
     src1_data_cfg->mode_8b_sel = (format_src >> 6) & 3;
     src1_data_cfg->lut_en      = (format_src >> 5) & 1;
     src1_data_cfg->sep_en      = (format_src >> 2) & 1;
+#if defined(AML_A1H)
 	src1_data_cfg->endian      = (format_src & GE2D_ENDIAN_MASK) >> GE2D_ENDIAN_SHIFT;
 	src1_data_cfg->color_map   = (format_src & GE2D_COLOR_MAP_MASK) >> GE2D_COLOR_MAP_SHIFT;
+#endif    
 
     src1_gen_cfg->pic_struct   = (format_src >> 3) & 3;
     src1_data_cfg->x_yc_ratio  = (format_src >> 1) & 1;
@@ -41,10 +43,10 @@ static inline void _set_src2_format(ge2d_src2_dst_data_t *src2_dst_data_cfg,
     src2_dst_data_cfg->src2_format_all  = format;
 
     src2_dst_data_cfg->src2_format      = (format >> 8) & 3;
-
+#if defined(AML_A1H)
 	src2_dst_data_cfg->src2_endian      = (format & GE2D_ENDIAN_MASK) >> GE2D_ENDIAN_SHIFT;
 	src2_dst_data_cfg->src2_color_map   = (format & GE2D_COLOR_MAP_MASK) >> GE2D_COLOR_MAP_SHIFT;
-   
+#endif    
     src2_dst_data_cfg->src2_mode_8b_sel = (format >> 6) & 3;
 
     src2_dst_gen_cfg->src2_pic_struct   = (format >> 3) & 3;
@@ -59,10 +61,10 @@ static inline void _set_dst_format(ge2d_src2_dst_data_t *src2_dst_data_cfg,
     src2_dst_data_cfg->dst_format_all  = format_dst;
 
     src2_dst_data_cfg->dst_format      = (format_dst >> 8) & 3;
-
+#if defined(AML_A1H)
 	src2_dst_data_cfg->dst_endian      = (format_dst & GE2D_ENDIAN_MASK) >> GE2D_ENDIAN_SHIFT;
 	src2_dst_data_cfg->dst_color_map   = (format_dst & GE2D_COLOR_MAP_MASK) >> GE2D_COLOR_MAP_SHIFT;
-  
+#endif    
     src2_dst_data_cfg->dst_mode_8b_sel = (format_dst >> 6) & 3;
 
     src2_dst_gen_cfg->dst_pic_struct   = (format_dst >> 3) & 3;
@@ -219,15 +221,19 @@ void ge2dgen_src2_clip(ge2d_context_t *wq,
 }
 
 void ge2dgen_src_key(ge2d_context_t *wq,
-                     int en, int key, int keymask)
+                     int en, int key, int keymask,int keymode)
 {
     	ge2d_dp_gen_t *dp_gen_cfg = ge2d_wq_get_dp_gen(wq);
-	if(dp_gen_cfg->src1_key_en != en || dp_gen_cfg->src1_key != key || dp_gen_cfg->src1_key_mask != keymask)      
+	if(dp_gen_cfg->src1_key_en != en || dp_gen_cfg->src1_key != key || dp_gen_cfg->src1_key_mask != keymask ||
+		dp_gen_cfg->src1_key_mode != keymode)      
 	{
-    		dp_gen_cfg->src1_key_en = en;
+		printk("key_en:0x%x,key_mask:0x%x,keymode:0x%x",en,keymask,keymode);
+    		dp_gen_cfg->src1_key_en = en&0x1;
     		dp_gen_cfg->src1_key = key;
     		dp_gen_cfg->src1_key_mask = keymask;
-    		dp_gen_cfg->src1_vsc_bank_length = 4;
+		dp_gen_cfg->src1_key_mode=keymode&0x1;	
+
+		dp_gen_cfg->src1_vsc_bank_length = 4;
     		dp_gen_cfg->src1_hsc_bank_length = 4;
 		wq->config.update_flag |= UPDATE_DP_GEN;	
 	}

@@ -68,6 +68,7 @@ static int ge2d_process_work_queue(ge2d_context_t *  wq)
 	unsigned int  mask=0x1;
 	struct list_head  *head=&wq->work_queue,*pos;
 	int ret=0;
+	unsigned int block_mode;
 
 	ge2d_manager.ge2d_state=GE2D_STATE_RUNNING;
 	down(&wq->lock);
@@ -97,6 +98,7 @@ static int ge2d_process_work_queue(ge2d_context_t *  wq)
 	}
 
 	do{
+		
 	      	cfg = &pitem->config;
 		mask=0x1;	
             	while(cfg->update_flag && mask <= UPDATE_SCALE_COEF ) //we do not change 
@@ -129,6 +131,7 @@ static int ge2d_process_work_queue(ge2d_context_t *  wq)
 		}
             	ge2d_set_cmd(&pitem->cmd);//set START_FLAG in this func.
       		//remove item
+      		block_mode=pitem->cmd.wait_done_flag;
       		down(&wq->lock);
 		pos=pos->next;	
 		list_move_tail(&pitem->list,&wq->free_queue);
@@ -136,7 +139,11 @@ static int ge2d_process_work_queue(ge2d_context_t *  wq)
 		
 		while(READ_MPEG_REG(GE2D_STATUS0) & 1)
 		interruptible_sleep_on_timeout(&ge2d_manager.event.cmd_complete, 1);
-
+		//if block mode (cmd)
+		if(block_mode)
+		{
+			wake_up_interruptible(&wq->cmd_complete);
+		}
 		pitem=(ge2d_queue_item_t *)pos;
 	}while(pos!=head);
 	ge2d_manager.last_wq=wq;
@@ -150,6 +157,7 @@ exit:
                     
 static irqreturn_t ge2d_wq_handle(int  irq_number, void *para)
 {
+	printk("trigger interupt\n");
 	wake_up_interruptible(&ge2d_manager.event.cmd_complete) ;
 	return 0;
 
@@ -234,7 +242,13 @@ int ge2d_wq_add_work(ge2d_context_t *wq)
 	list_move_tail(&pitem->list,&wq->work_queue);
 	up(&wq->lock);
 	pr_dbg(FILE_NAME"add new work ok\r\n"); 
-	wake_up_interruptible(&ge2d_manager.event.wait_queue) ;
+	if(ge2d_manager.event.cmd_in_sem.count == 0 )//only read not need lock
+	up(&ge2d_manager.event.cmd_in_sem) ;//new cmd come in	
+	//add block mode   if()
+	if(pitem->cmd.wait_done_flag)
+	{
+		interruptible_sleep_on(&wq->cmd_complete);
+	}
 	return 0;
 error:
  	 return -1;	
@@ -264,16 +278,14 @@ static inline ge2d_context_t*  get_next_work_queue(ge2d_manager_t*  manager)
 }
 static int ge2d_monitor_thread(void *data)
 {
-#define 	TIMEOUT  300000
 
 	ge2d_manager_t*  manager = (  ge2d_manager_t*)data ;
-	int				timeout=TIMEOUT;
-		
+	
  	pr_dbg(FILE_NAME"ge2d workqueue monitor start\r\n");
 	//setup current_wq here.
 	while(1)
 	{
-		interruptible_sleep_on_timeout(&manager->event.wait_queue,timeout);
+		down(&manager->event.cmd_in_sem);
 		if (kthread_should_stop() )
 		{
 			pr_dbg(FILE_NAME"ge2d monitor got stop signal");
@@ -336,75 +348,95 @@ static void build_ge2d_config(config_para_t *cfg, src_dst_para_t *src, src_dst_p
 	{
 		src->xres = cfg->src_planes[0].w;
 		src->yres = cfg->src_planes[0].h;
-		src->canvas_index = (index+3)<<24|(index+2)<<16|(index+1)<<8|index;
+//		src->canvas_index = (index+3)<<24|(index+2)<<16|(index+1)<<8|index;
 		src->ge2d_color_index = cfg->src_format;
 		src->bpp = bpp(cfg->src_format);
 		
+	    if(cfg->src_planes[0].addr){
+	        src->canvas_index = index;
     		canvas_config(index++,
     			  cfg->src_planes[0].addr,
 				  cfg->src_planes[0].w * src->bpp / 8,
 				  cfg->src_planes[0].h,
                   CANVAS_ADDR_NOWRAP,
 		          CANVAS_BLKMODE_LINEAR);
-
-		if (cfg->src_format & 4) {
+	    }
 		/* multi-src_planes */
-		canvas_config(index++,
-    				  cfg->src_planes[1].addr,
-					  cfg->src_planes[1].w * src->bpp / 8,
-					  cfg->src_planes[1].h,
+		if(cfg->src_planes[1].addr){
+            src->canvas_index |= index<<8;
+            canvas_config(index++,
+            		  cfg->src_planes[1].addr,
+            		  cfg->src_planes[1].w * src->bpp / 8,
+            		  cfg->src_planes[1].h,
                 	  CANVAS_ADDR_NOWRAP,
-		          	  CANVAS_BLKMODE_LINEAR);
+                  	  CANVAS_BLKMODE_LINEAR);
+		 }
+		 if(cfg->src_planes[2].addr){
+		    src->canvas_index |= index<<16;
     		canvas_config(index++,
     				  cfg->src_planes[2].addr,
 					  cfg->src_planes[2].w * src->bpp / 8,
 					  cfg->src_planes[2].h,
 	                  CANVAS_ADDR_NOWRAP,
 			          CANVAS_BLKMODE_LINEAR);
-		canvas_config(index++,
+        }
+        if(cfg->src_planes[3].addr){
+            src->canvas_index |= index<<24;
+		    canvas_config(index++,
     				  cfg->src_planes[3].addr,
 					  cfg->src_planes[3].w * src->bpp / 8,
 					  cfg->src_planes[3].h,
                 	  CANVAS_ADDR_NOWRAP,
 		          	  CANVAS_BLKMODE_LINEAR);
 		}
+	
 	}
 	if(dst)
 	{
 		dst->xres = cfg->dst_planes[0].w;
 		dst->yres = cfg->dst_planes[0].h;
-		dst->canvas_index = (index+3)<<24|(index+2)<<16|(index+1)<<8|index;
+//		dst->canvas_index = (index+3)<<24|(index+2)<<16|(index+1)<<8|index;
 		dst->ge2d_color_index = cfg->dst_format;
 		dst->bpp = bpp(cfg->dst_format);
-		
-    		canvas_config(index++ & 0xff,
-    			  cfg->dst_planes[0].addr,
-				  cfg->dst_planes[0].w * dst->bpp / 8,
-				  cfg->dst_planes[0].h,
-                  CANVAS_ADDR_NOWRAP,
-		          CANVAS_BLKMODE_LINEAR);
+		if(cfg->dst_planes[0].addr){
+		    dst->canvas_index = index;
+		    canvas_config(index++ & 0xff,
+			  cfg->dst_planes[0].addr,
+			  cfg->dst_planes[0].w * dst->bpp / 8,
+			  cfg->dst_planes[0].h,
+              CANVAS_ADDR_NOWRAP,
+	          CANVAS_BLKMODE_LINEAR);
+	    }
 
-		if (cfg->dst_format & 4) {
+
 		/* multi-src_planes */
-		canvas_config(index++,
-    				  cfg->dst_planes[1].addr,
-					  cfg->dst_planes[1].w * dst->bpp / 8,
-					  cfg->dst_planes[1].h,
-                	  CANVAS_ADDR_NOWRAP,
-		          	  CANVAS_BLKMODE_LINEAR);
-    		canvas_config(index++,
-    				  cfg->dst_planes[2].addr,
-					  cfg->dst_planes[2].w * dst->bpp / 8,
-					  cfg->dst_planes[2].h,
-	                  CANVAS_ADDR_NOWRAP,
-			          CANVAS_BLKMODE_LINEAR);
-		canvas_config(index++,
-    				  cfg->dst_planes[3].addr,
-					  cfg->dst_planes[3].w * dst->bpp / 8,
-				  	  cfg->dst_planes[3].h,
-                	  CANVAS_ADDR_NOWRAP,
-		          	  CANVAS_BLKMODE_LINEAR);
-		}
+        if(cfg->dst_planes[1].addr){
+            dst->canvas_index |= index<<8;
+            canvas_config(index++,
+                  cfg->dst_planes[1].addr,
+                  cfg->dst_planes[1].w * dst->bpp / 8,
+                  cfg->dst_planes[1].h,
+                  CANVAS_ADDR_NOWRAP,
+                  CANVAS_BLKMODE_LINEAR);
+        }
+        if(cfg->dst_planes[2].addr){
+            dst->canvas_index |= index<<16;	          	
+            canvas_config(index++,
+                cfg->dst_planes[2].addr,
+                cfg->dst_planes[2].w * dst->bpp / 8,
+                cfg->dst_planes[2].h,
+                CANVAS_ADDR_NOWRAP,
+                  CANVAS_BLKMODE_LINEAR);
+        }
+        if(cfg->dst_planes[3].addr){
+            dst->canvas_index |= index<<24;			        
+            canvas_config(index++,
+        		  cfg->dst_planes[3].addr,
+        		  cfg->dst_planes[3].w * dst->bpp / 8,
+        	  	  cfg->dst_planes[3].h,
+            	  CANVAS_ADDR_NOWRAP,
+              	  CANVAS_BLKMODE_LINEAR);
+        }
 	}
 }
 static  int  
@@ -423,7 +455,7 @@ setup_display_property(src_dst_para_t *src_dst,int index)
 	data32=READ_MPEG_REG(VIU_OSD1_BLK0_CFG_W0+ REG_OFFSET*index);
 	bpp=block_mode[(data32>>8) & 0xf];  //OSD_BLK_MODE[8..11]
 	pr_dbg(FILE_NAME"osd%d : %d bpp\r\n",index,bpp);
-	if(bpp <16) return -1;
+	if(bpp < 16) return -1;
 
 	src_dst->bpp=bpp;
 	src_dst->xres=canvas.width/(bpp>>3);
@@ -445,13 +477,34 @@ int   ge2d_context_config(ge2d_context_t *context, config_para_t *ge2d_config)
 		
 	pr_dbg(FILE_NAME" ge2d init\r\n");
 	//setup src and dst  
-	if(0>setup_display_property(&src,OSD1_CANVAS_INDEX))
+	switch (type)
 	{
-		return -1;
+		case  OSD0_OSD0:
+		case  OSD0_OSD1:
+		case  OSD1_OSD0:
+		case ALLOC_OSD0:
+    	if(0>setup_display_property(&src,OSD1_CANVAS_INDEX))
+    	{
+    		return -1;
+    	}
+		break;
+		default:
+		break;
 	}
-	if(0>setup_display_property(&dst,OSD2_CANVAS_INDEX))
+	switch (type)
 	{
-		return -1;
+		case  OSD0_OSD1:
+		case  OSD1_OSD1:
+		case  OSD1_OSD0:
+		case ALLOC_OSD1:
+    	if(0>setup_display_property(&dst,OSD2_CANVAS_INDEX))
+    	{
+    		return -1;
+    	}
+		break;
+		case ALLOC_ALLOC:
+		default:
+		break;
 	}
 	pr_dbg(FILE_NAME"OSD ge2d type %d\r\n",type);
 	switch (type)
@@ -489,7 +542,6 @@ int   ge2d_context_config(ge2d_context_t *context, config_para_t *ge2d_config)
 	pr_dbg(FILE_NAME"ge2d xres %d yres %d : dst xres %d yres %d\r\n",src.xres,src.yres,
 	dst.xres,dst.yres);
 	ge2dgen_src(context,src.canvas_index, src.ge2d_color_index);
-	ge2dgen_src_key(context,0, 0, 0xff);  //RGBA MODE
 	ge2dgen_src_clip(context,
                   0, 0,src.xres, src.yres);
 	ge2dgen_src2(context, dst.canvas_index, dst.ge2d_color_index);
@@ -521,6 +573,7 @@ ge2d_context_t* create_ge2d_work_queue(void)
 	}
 	INIT_LIST_HEAD(&ge2d_work_queue->work_queue);
 	INIT_LIST_HEAD(&ge2d_work_queue->free_queue);
+	init_waitqueue_head (&ge2d_work_queue->cmd_complete);
 	init_MUTEX (&ge2d_work_queue->lock); //for process lock.
 	for(i=0;i<MAX_GE2D_CMD;i++)
 	{
@@ -598,7 +651,7 @@ int ge2d_wq_init(void)
 	//prepare bottom half		
 	
 	init_MUTEX (&ge2d_manager.event.sem); 
-	init_waitqueue_head (&ge2d_manager.event.wait_queue);
+	init_MUTEX (&ge2d_manager.event.cmd_in_sem); 
 	init_waitqueue_head (&ge2d_manager.event.cmd_complete);
 	init_completion(&ge2d_manager.event.process_complete);
 	INIT_LIST_HEAD(&ge2d_manager.process_queue);

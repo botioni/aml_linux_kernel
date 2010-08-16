@@ -2,7 +2,7 @@
 #define BITBLT_H_
 
 #include <linux/mutex.h>
-#include <asm/semaphore.h>
+#include <linux/semaphore.h>
 #include <linux/list.h>
 #include <linux/osd/osd.h>
 #include <linux/interrupt.h>
@@ -10,7 +10,8 @@
 #include <linux/spinlock.h>
 #include <linux/wait.h>
 #include <pr_dbg.h>
-
+#include <linux/slab.h>
+#define  AML_A1H
 #define 	GE2D_HIGHEST_PRIORITY   0
 #define 	GE2D_LOWEST_PRIORITY    255
 
@@ -26,7 +27,7 @@
 #define 	UPDATE_ALL          0x3f
 #define	GE2D_ATTR_MAX	  2
 #define   GE2D_MAX_WORK_QUEUE_NUM   4
-#define   GE2D_IRQ_NO   	AM_ISA_AMRISC_IRQ(15) 
+#define   GE2D_IRQ_NO   	AM_IRQ3(15) 
 #define	FILE_NAME		"[GE2D_WQ]"
 typedef  struct {
   struct list_head  list;
@@ -41,16 +42,17 @@ typedef struct{
     	ge2d_cmd_t         	cmd;
 	struct list_head	work_queue;
    	struct list_head	free_queue;
+	wait_queue_head_t	cmd_complete;
    	int				queue_dirty;
    	int				queue_need_recycle;
 	struct semaphore	 	lock; 	// for get and release item.
 } ge2d_context_t;
 
 typedef  struct {
-	wait_queue_head_t	wait_queue;
 	wait_queue_head_t	cmd_complete;
 	struct completion		process_complete;
 	struct semaphore	 	sem;  //for queue switch and create destroy queue.
+	struct semaphore		cmd_in_sem;
 }ge2d_event_t;
 
 
@@ -158,6 +160,12 @@ typedef struct {
 	unsigned int	h;
 }config_planes_t;
 
+typedef  struct{
+	int	key_enable;
+	int	key_color;
+	int 	key_mask;
+	int   key_mode;
+}src_key_ctrl_t;
 typedef    struct {
 	int  src_dst_type;
 	int  alu_const_color;
@@ -166,6 +174,7 @@ typedef    struct {
 
 	config_planes_t src_planes[4];
 	config_planes_t dst_planes[4];
+	src_key_ctrl_t  src_key;
 }config_para_t;
 
 extern int   ge2d_setup(void);
