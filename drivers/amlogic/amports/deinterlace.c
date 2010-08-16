@@ -1,4 +1,6 @@
 #include <linux/string.h>
+#include <linux/timer.h>
+#include <linux/workqueue.h>
 #include <linux/platform_device.h>
 
 #include <mach/am_regs.h>
@@ -23,12 +25,17 @@ unsigned long debug_array[4*1024];
 #define PATTERN22_MARK		0xffffffffffffffffLL
 #endif
 
-#define PRE_HOLD_LINE	4
+#define PRE_HOLD_LINE		4
+
+#define DI_PRE_INTERVAL		(HZ/100)
 
 // 0 - off
 // 1 - pre-post link
 // 2 - pre-post separate, only post in vsync
 static int deinterlace_mode = 0;
+
+static struct timer_list di_pre_timer;
+static struct work_struct di_pre_work;
 
 int prev_struct = 0;
 int prog_field_count = 0;
@@ -2417,7 +2424,7 @@ void pattern_check_pre(void)
 	}
 }
 
-void di_pre_isr(void)
+void di_pre_isr(struct work_struct *work)
 {
 	unsigned temp = READ_MPEG_REG(DI_INTR_CTRL);
     unsigned status = READ_MPEG_REG(DI_PRE_CTRL) & 0x2;
@@ -2932,6 +2939,16 @@ void run_deinterlace(unsigned zoom_start_x_lines, unsigned zoom_end_x_lines, uns
     }
 }
 
+void di_pre_timer_func(unsigned long arg)
+{
+	struct timer_list *timer = (struct timer_list *)arg;
+
+    schedule_work(&di_pre_work);
+
+    timer->expires = jiffies + DI_PRE_INTERVAL;
+    add_timer(timer);
+}
+
 void deinterlace_init(void)
 {
    	int i;
@@ -2972,6 +2989,14 @@ void deinterlace_init(void)
     di_inp_top_mif.canvas0_addr2 = di_inp_bot_mif.canvas0_addr2 = DISPLAY_CANVAS_BASE_INDEX + 2;
 
    	WRITE_MPEG_REG(DI_NRMTN_CTRL0, 0xb00a0603);
+
+    INIT_WORK(&di_pre_work, di_pre_isr);
+
+    init_timer(&di_pre_timer);
+    di_pre_timer.data = (ulong) & di_pre_timer;
+    di_pre_timer.function = di_pre_timer_func;
+    di_pre_timer.expires = jiffies + DI_PRE_INTERVAL;
+    add_timer(&di_pre_timer);
 }
 
 static int deinterlace_probe(struct platform_device *pdev)
@@ -2998,6 +3023,7 @@ static int deinterlace_probe(struct platform_device *pdev)
 static int deinterlace_remove(struct platform_device *pdev)
 {
     printk("Amlogic deinterlace release\n");
+    del_timer_sync(&di_pre_timer);
     return 0;
 }
 

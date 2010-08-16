@@ -231,8 +231,6 @@ void enable_region_blend (
         int reg3_en, int reg3_start_x, int reg3_end_x, int reg3_start_y, int reg3_end_y, int reg3_mode 
     );
 
-void di_pre_isr(void);
-
 void run_deinterlace(unsigned zoom_start_x_lines, unsigned zoom_end_x_lines, unsigned zoom_start_y_lines, unsigned zoom_end_y_lines, 
 	unsigned type, int mode, int hold_line);
 
