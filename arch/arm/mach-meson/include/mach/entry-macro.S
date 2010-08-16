@@ -40,7 +40,7 @@
 
 1003:
 	ldr	\irqstat, [\base, #48]
-	mov	\irqnr, #92
+	mov	\irqnr, #96
 	teq	\irqstat, #0
 	beq	1005f
 
