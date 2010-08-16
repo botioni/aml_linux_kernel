@@ -251,7 +251,7 @@ static void _dec_run(void)
 	unsigned horz_step, vert_step;
 	unsigned r, cmd = 0;
 	unsigned pscaleCanvasWidth = (dec->conf.angle & 1) ? dec->conf.dec_h : dec->conf.dec_w;
-
+    pscaleCanvasWidth = (pscaleCanvasWidth + 63)&(~63);
     canvas_config(JPEGDEC_OUTPUT_CANVAS_Y,
     			  dec->conf.addr_y,
 				  dec->conf.canvas_width,
