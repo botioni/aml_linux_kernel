@@ -8,6 +8,6 @@ apollo_ge2d-objs=bitblt.o \
 				stretchblt.o\
 				ge2d_main.o\
 				blend.o
-obj-$(CONFIG_FB_AML_GE2D) +=apollo_ge2d.o
+obj-$(CONFIG_AM_GE2D) +=apollo_ge2d.o
 EXTRA_CFLAGS += -Idrivers/amlogic/display/
 									

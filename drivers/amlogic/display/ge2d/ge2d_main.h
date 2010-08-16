@@ -21,6 +21,14 @@
 ***************************************************************/
 
 #define    	GE2D_CLASS_NAME   				"ge2d"
+
+#define  	 	GE2D_STRETCHBLIT_NOALPHA_NOBLOCK   	0x4708
+#define  		GE2D_BLIT_NOALPHA_NOBLOCK 	0x4707
+#define  		GE2D_BLEND_NOBLOCK 	 		0x4706
+#define  		GE2D_BLIT_NOBLOCK 	 		0x4705
+#define  		GE2D_STRETCHBLIT_NOBLOCK 	0x4704
+#define  		GE2D_FILLRECTANGLE_NOBLOCK 	0x4703
+
 #define  	 	GE2D_STRETCHBLIT_NOALPHA   	0x4702
 #define  		GE2D_BLIT_NOALPHA	 			0x4701
 #define  		GE2D_BLEND			 			0x4700
@@ -28,6 +36,7 @@
 #define  		GE2D_STRETCHBLIT   				0x46fe
 #define  		GE2D_FILLRECTANGLE   			0x46fd
 #define  		GE2D_SRCCOLORKEY   			0x46fc
+#define		GE2D_SET_COEF					0x46fa
 #define  		GE2D_CONFIG					0x46f9
 
 /**************************************************************
@@ -55,8 +64,8 @@ static int ge2d_open(struct inode *inode, struct file *file) ;
 static int ge2d_ioctl(struct inode *inode, struct file *filp, unsigned int cmd, unsigned long args) ;
 static int ge2d_release(struct inode *inode, struct file *file);
 
-static ssize_t ge2d_debug_show(struct class *cla, char *buf) ;
-static ssize_t ge2d_debug_store(struct class *cla, const char *buf,
+static ssize_t ge2d_debug_show(struct class *cla,struct class_attribute *attr, char *buf) ;
+static ssize_t ge2d_debug_store(struct class *cla, struct class_attribute *attr,const char *buf,
                                 size_t count);
 extern ssize_t work_queue_status_show(struct class *cla, char *buf) ;
 extern ssize_t free_queue_status_show(struct class *cla, char *buf);

@@ -37,7 +37,7 @@ void ge2dgen_src_clip(ge2d_context_t *wq,
                       int x, int y, int w, int h);
 
 void ge2dgen_src_key(ge2d_context_t *wq,
-                     int en, int key, int keymask);
+                     int en, int key, int keymask,int keymode);
 
 void ge2dgent_src_gbalpha(ge2d_context_t *wq,
                           unsigned char alpha);
