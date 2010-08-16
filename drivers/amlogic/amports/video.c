@@ -735,8 +735,6 @@ static irqreturn_t vsync_isr0(int irq, void *dev_id)
     vout_type = detect_vout_type();
 	hold_line = calc_hold_line();
 
-	di_pre_isr();
-
     timestamp_pcrscr_inc(vsync_pts_inc);
 
 #ifdef SLOW_SYNC_REPEAT
