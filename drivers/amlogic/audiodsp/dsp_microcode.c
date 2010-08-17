@@ -19,6 +19,7 @@
 #include "audiodsp_module.h"
 #include "dsp_control.h"
 #include "dsp_microcode.h"
+#include <linux/dma-mapping.h>
 
 static  int auidodsp_microcode_insert(struct audiodsp_priv*priv,struct auidodsp_microcode *pmcode)
 {
@@ -74,9 +75,10 @@ static struct auidodsp_microcode *  audiodsp_find_mcode_by_name(struct audiodsp_
 	
 	const struct firmware *firmware;
 	int err=0;
+   // dma_addr_t dsp_addr_map;
 	priv->micro_dev = device_create(priv->class,
 					    NULL, MKDEV(AUDIODSP_MAJOR, 1),
-					    "audiodsp%d", 1);
+					    NULL, "audiodsp1");
 	if(priv->micro_dev ==NULL)
 		return -1;
 	if((err=request_firmware(&firmware,pmcode->file_name, priv->micro_dev))<0)
@@ -90,11 +92,11 @@ static struct auidodsp_microcode *  audiodsp_find_mcode_by_name(struct audiodsp_
 		err=ENOMEM;
 		goto release;
 		}
-
+    //dsp_addr_map = dma_map_single(priv->micro_dev,(void*)pmcode->code_start_addr,firmware->size,DMA_FROM_DEVICE);
 	memcpy((char *)pmcode->code_start_addr, firmware->data,firmware->size);
-///	dma_cache_wback(pmcode->code_start_addr, firmware->size);
 	pmcode->code_size=firmware->size;
 	//DSP_PRNT("load mcode size=%d\n",firmware->size);
+    //dma_unmap_single(priv->micro_dev,dsp_addr_map,firmware->size,DMA_FROM_DEVICE);
 release:	
 	release_firmware(firmware);
 

@@ -27,7 +27,22 @@
 
 
 #define RESET_AUD_ARC	(1<<13)
-
+unsigned long DSP_RD(unsigned reg)
+{
+    dma_addr_t addr_map;
+    unsigned long ret;
+    addr_map = dma_map_single(NULL,(void*)reg,4,DMA_FROM_DEVICE);
+    ret = *(unsigned long*)addr_map;
+    dma_unmap_single(NULL,addr_map,4,DMA_FROM_DEVICE);
+    return ret;    
+}
+void  DSP_WD(unsigned reg,unsigned value)
+{
+    dma_addr_t addr_map;
+    addr_map = dma_map_single(NULL,(void*)reg,4,DMA_FROM_DEVICE);
+    *(unsigned long*)addr_map = value;
+    dma_unmap_single(NULL,addr_map,4,DMA_FROM_DEVICE);
+}
 static void	enable_dsp(int flag)
 {	
 
@@ -38,7 +53,7 @@ static void	enable_dsp(int flag)
 	 SET_MPEG_REG_MASK(RESET2_REGISTER, RESET_AUD_ARC);
 	// M1 has this bug also????
 	// SET_MPEG_REG_MASK(RESET2_REGISTER, RESET_AUD_ARC);
-	// SET_MPEG_REG_MASK(RESET2_REGISTER, RESET_AUD_ARC);
+	 //SET_MPEG_REG_MASK(RESET2_REGISTER, RESET_AUD_ARC);
 	 
     	/* Enable BVCI low 16MB address mapping to DDR */
 	
@@ -74,7 +89,8 @@ void reset_dsp( struct audiodsp_priv *priv)
     //flush_and_inv_dcache_all();
     /* map DSP 0 address so that reset vector points to same vector table as ARC1 */
     CLEAR_MPEG_REG_MASK(AUD_ARC_CTL, (0xfff << 4));
-    SET_MPEG_REG_MASK(AUD_ARC_CTL, ((0x84000000)>> 20) << 4);
+ //   SET_MPEG_REG_MASK(SDRAM_CTL0,1);//arc mapping to ddr memory
+    SET_MPEG_REG_MASK(AUD_ARC_CTL, ((AUDIO_DSP_START_ADDR)>> 20) << 4);
     enable_dsp(1);
 
     return;    
