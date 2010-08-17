@@ -11,8 +11,8 @@ dsp_register.h
 #define S_1M					(S_1K*S_1K)
 
 #define AUDIO_DSP_MEM_SIZE		 S_1M
-#define AUDIO_DSP_START_ADDR	((SYS_MEM_START+SYS_MEM_SIZE)-AUDIO_DSP_MEM_SIZE)
-#define AUDIO_DSP_END_ADDR		((SYS_MEM_START+SYS_MEM_SIZE))
+#define AUDIO_DSP_START_ADDR	0x84000000//((SYS_MEM_START+SYS_MEM_SIZE)-AUDIO_DSP_MEM_SIZE)
+#define AUDIO_DSP_END_ADDR		((AUDIO_DSP_START_ADDR+AUDIO_DSP_MEM_SIZE))
 #define REG_MEM_SIZE					(S_1K*4)
 
 
@@ -45,7 +45,6 @@ dsp_register.h
 #define MAILBOX2_REG(n)	DSP_REG(40+32+n)
 
 
-
 #ifndef __ASSEMBLY__
 /*mailbox struct*/
 struct mail_msg{
@@ -62,6 +61,7 @@ int len;
 #define M1B_IRQ3_DECODE_ERROR					(3+16)
 #define M1B_IRQ4_DECODE_FINISH_FRAME 		(4+16)
 #define M1B_IRQ5_STREAM_FMT_CHANGED 			(5+16)
+#define M1B_IRQ5_STREAM_RD_WD_TEST 			(6+16)
 
 #define M2B_IRQ0_DSP_HALT							(0)
 #define M2B_IRQ1_DSP_RESET						(1)
@@ -91,7 +91,8 @@ int len;
 #define MAIBOX0_IRQ_ENABLE(irq)		SET_MPEG_REG_MASK(ASSIST_MBOX0_MASK,1<<irq)
 #define MAIBOX1_IRQ_ENABLE(irq)		SET_MPEG_REG_MASK(ASSIST_MBOX1_MASK,1<<irq)
 #define MAIBOX2_IRQ_ENABLE(irq)		SET_MPEG_REG_MASK(ASSIST_MBOX2_MASK,1<<irq)
-
+extern unsigned long DSP_RD(unsigned reg);
+extern void  DSP_WD(unsigned reg,unsigned value);
 #endif
 
 

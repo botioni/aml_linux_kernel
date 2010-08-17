@@ -55,6 +55,7 @@ int get_mailbox_data(struct audiodsp_priv *priv,int num,struct mail_msg *msg)
 	pre_read_mailbox(m);
 	msg->cmd=m->cmd; 
 	msg->data=m->data;
+    msg->data = (char *)((unsigned)msg->data+AUDIO_DSP_START_ADDR);
 	msg->status=m->status;
 	msg->len=m->len;
 	m->status=0;
@@ -143,6 +144,29 @@ static irqreturn_t audiodsp_mailbox_irq(int irq, void *data)
 				}
 			}
 		}
+    	if(status& (1<<M1B_IRQ5_STREAM_RD_WD_TEST)){
+            DSP_WD((0x84100000-4096+20*20),0);
+    		SYS_CLEAR_IRQ(M1B_IRQ5_STREAM_RD_WD_TEST);
+    		get_mailbox_data(priv,M1B_IRQ5_STREAM_RD_WD_TEST,&msg);
+            int i;
+            for(i = 0;i<12;i++){
+                if((DSP_RD((0x84100000-512*1024+i*20)))!= (0xff00|i)){
+                    DSP_PRNT("a9 read dsp reg error ,now 0x%x, should be 0x%x \n",(DSP_RD((0x84100000-512*1024+i*20))),12-i);
+                }
+               // DSP_PRNT("A9 audio dsp reg%d value 0x%x\n",i,DSP_RD((0x84100000-4096+i*20)));
+            }
+            for(i = 0;i<12;i++){
+                DSP_WD((0x84100000-512*1024+i*20),(i%2)?i:(0xf0|i));
+               
+            }
+            DSP_WD((0x84100000-512*1024+20*20),DSP_STATUS_HALT);
+        //    DSP_PRNT("A9 mail box handle finished\n");
+           // dsp_mailbox_send(priv, 1, M1B_IRQ5_STREAM_RD_WD_TEST, 0, NULL,0);
+            
+            
+    		
+        }
+
 	return 0;
 }
 

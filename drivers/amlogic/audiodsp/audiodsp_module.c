@@ -33,6 +33,7 @@
 #include "dsp_monitor.h"
 
 #include "dsp_codec.h"
+#include <linux/dma-mapping.h>
 
 
 
@@ -217,6 +218,8 @@ ssize_t audiodsp_read(struct file * file, char __user * ubuf, size_t size,
 	size_t w_else_len;
 	int wait=0;
 	 char __user *pubuf=ubuf;
+   // dma_addr_t buf_map;
+
 
 
 
@@ -258,12 +261,14 @@ ssize_t audiodsp_read(struct file * file, char __user * ubuf, size_t size,
 		wlen=priv->stream_buffer_end-rp;
 		wlen=min(wlen,else_len);
 ///		dma_cache_inv((unsigned long)rp,wlen);
-		w_else_len=copy_to_user(pubuf,(const char *)(rp),wlen);
+      //  buf_map = dma_map_single(priv->dev, (void *)pubuf, wlen, DMA_FROM_DEVICE);
+		w_else_len=copy_to_user((void*)pubuf,(const char *)(rp),wlen);
 		if(w_else_len!=0)
 			{
 			DSP_PRNT("copyed error,%d,%d,[%p]<---[%lx]\n",w_else_len,wlen,pubuf,rp);
 			wlen-=w_else_len;
 			}
+       // dma_unmap_single(priv->dev, buf_map, wlen, DMA_FROM_DEVICE);
 		else_len-=wlen;
 		pubuf+=wlen;
 		rp=dsp_codec_inc_rd_addr(priv,wlen);
@@ -338,7 +343,7 @@ static int audiodsp_init_mcode(struct audiodsp_priv *priv)
 	priv->dsp_gstack_size=512;
 	priv->dsp_heap_size=0;
 	priv->stream_buffer_mem=NULL;
-	priv->stream_buffer_mem_size=8*1024;
+	priv->stream_buffer_mem_size=32*1024;
 	priv->stream_fmt=-1;
 	INIT_LIST_HEAD(&priv->mcode_list);
 	init_completion(&priv->decode_completion);
@@ -379,7 +384,7 @@ int audiodsp_probe(void )
 	}
 	priv->dev = device_create(priv->class,
 					    NULL, MKDEV(AUDIODSP_MAJOR, 0),
-					    "audiodsp%d", 0);
+					    NULL, "audiodsp0");
 	if(priv->dev==NULL)
 		{
 		res = -EEXIST;
@@ -390,6 +395,7 @@ int audiodsp_probe(void )
 #ifdef CONFIG_AM_STREAMING	
 	set_adec_func(audiodsp_get_status);
 #endif
+    
 	return res;
 
 //error4:
