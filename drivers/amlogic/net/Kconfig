@@ -4,7 +4,7 @@
 menu "Amlogic Net Device Support"
 
 config AM_ETHERNET
-	bool "Amloigc Ethetnet support"
+	tristate "Amloigc Ethetnet support"
 	depends on  NET
 	
 config AM_ETHERNET_DEBUG_LEVEL

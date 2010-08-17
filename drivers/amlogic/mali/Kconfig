@@ -5,8 +5,9 @@
 menu "Mali 400 GPU OpenGL device driver"
 
 config MALI
-	bool "Mali 400 GPU OpenGL device driver"
+	tristate "Mali 400 GPU OpenGL device driver"
 	depends on m
+	default m
 	help
 	  Enable kernel module build for Mali 400 OpenGL device driver.
 
