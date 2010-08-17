@@ -2,16 +2,19 @@
 #include <linux/delay.h>
 #include <mach/am_regs.h>
 #include <mach/clk_set.h>
+
+unsigned long get_xtal_clock(void)
+{
+	unsigned long clk;
+	clk=READ_CBUS_REG_BITS(PREG_CTLREG0_ADDR,4,5);
+	clk=clk*1000*1000;
+	return clk;
+}
+
 /*
 Get two number's max common divisor;
 */
-static unsigned long base_clock=24000000;//24M crystral
-#ifdef CONFIG_INIT_A9_CLOCK_FREQ
-static unsigned long __initdata init_clock=CONFIG_INIT_A9_CLOCK;
-#else
-static unsigned long __initdata init_clock=0;
-#endif
-	
+
 static int get_max_common_divisor(int a,int b){
         while(b){
                 int temp=b;
@@ -75,7 +78,7 @@ int demod_apll_setting(unsigned crystal_req,unsigned out_freq)
 {
 	int n,m;
 	unsigned long crys_M,out_M,middle_freq;
-	if(!crystal_req)  crystal_req=base_clock;
+	if(!crystal_req)  crystal_req=get_xtal_clock();
 	crys_M=crystal_req/1000000;
 	out_M=out_freq/1000000;
 	middle_freq=get_max_common_divisor(crys_M,out_M);
@@ -111,7 +114,7 @@ int sys_clkpll_setting(unsigned crystal_freq,unsigned  out_freq)
 {
 	int n,m;
 	unsigned long crys_M,out_M,middle_freq,flags;
-	if(!crystal_freq)  crystal_freq=base_clock;
+	if(!crystal_freq)  crystal_freq=get_xtal_clock();
 	crys_M=crystal_freq/1000000;
 	out_M=out_freq/1000000;
 	middle_freq=get_max_common_divisor(crys_M,out_M);
@@ -133,7 +136,7 @@ int sys_clkpll_setting(unsigned crystal_freq,unsigned  out_freq)
 	{
 		printk(KERN_WARNING"sys_clk_setting  warning,VCO may no support out_freq,crys_M=%ldM,out=%ldM\n",crys_M,out_M);
 	}
-	printk("a9_clk_setting crystal_req=%ld,out_freq=%ld,n=%d,m=%d\n",crys_M,out_M,n,m);
+	printk(KERN_INFO "a9_clk_setting crystal_req=%ld,out_freq=%ld,n=%d,m=%d\n",crys_M,out_M,n,m);
 	local_irq_save(flags);
 	WRITE_MPEG_REG(HHI_SYS_PLL_CNTL, m<<0 | n<<9); // system PLL
 	WRITE_MPEG_REG(HHI_A9_CLK_CNTL, // A9 clk set to system clock/2
@@ -147,44 +150,89 @@ int sys_clkpll_setting(unsigned crystal_freq,unsigned  out_freq)
 	local_irq_restore(flags);
 	return 0;
 }
-unsigned long long clkparse(const char *ptr, char **retptr)
+
+int other_pll_setting(unsigned crystal_freq,unsigned  out_freq)
 {
-	char *endptr;	/* local pointer to end of parsed string */
+	int n,m,od;
+	unsigned long crys_M,out_M,middle_freq;
+	if(!crystal_freq)  crystal_freq=get_xtal_clock();
+	crys_M=crystal_freq/1000000;
+	out_M=out_freq/1000000;
+	if(out_M<400)
+		{/*if <400M, Od=1*/
+			od=1;/*out=pll_out/(1<<od)
+				 */
+			out_M=out_M<<1;	
+		}
+	else
+		{
+			od=0;
+		}
 
-	unsigned long long ret = simple_strtoull(ptr, &endptr, 0);
-
-	switch (*endptr) {
-	case 'G':
-	case 'g':
-		ret *= 1000;
-	case 'M':
-	case 'm':
-		ret *= 1000;
-	case 'K':
-	case 'k':
-		ret *= 1000;
-		endptr++;
-	default:
-		break;
+	middle_freq=get_max_common_divisor(crys_M,out_M);
+	n=crys_M/middle_freq;
+	m=out_M/(middle_freq);
+	if(n>(1<<5)-1)
+	{
+		printk(KERN_ERR "other_pll_setting  error, n is too bigger n=%d,crys_M=%ldM,out=%ldM\n",
+		n,crys_M,out_M);
+		return -1;
 	}
-
-	if (retptr)
-		*retptr = endptr;
-
-	return ret;
-}
-static int __init base_clk_set(char *ptr)
-{
-	base_clock=clkparse(ptr,0);
+	if(m>(1<<9)-1)
+	{
+		printk(KERN_ERR "other_pll_setting  error, m is too bigger m=%d,crys_M=%ldM,out=%ldM\n",
+		m,crys_M,out_M);
+		return -2;
+	}
+	WRITE_MPEG_REG(HHI_OTHER_PLL_CNTL,
+					m|
+					n<<9 |
+					(od&1)<<16
+					); // other PLL
+	printk(KERN_INFO "other pll setting to crystal_req=%ld,out_freq=%ld,n=%d,m=%d\n",crys_M,out_M*(od+1),n,m);	
 	return 0;
 }
-__setup("baseclock=",base_clk_set);
 
-static int __init a9_clock_setup(char *ptr)
+int audio_pll_setting(unsigned crystal_freq,unsigned  out_freq)
 {
-	init_clock=clkparse(ptr,0);
-	sys_clkpll_setting(0,init_clock<<1);
+	int n,m,od;
+	unsigned long crys_M,out_M,middle_freq;
+	if(!crystal_freq)  crystal_freq=get_xtal_clock();
+	crys_M=crystal_freq/1000000;
+	out_M=out_freq/1000000;
+	if(out_M<400)
+		{/*if <400M, Od=1*/
+			od=1;/*out=pll_out/(1<<od)
+				 */
+			out_M=out_M<<1;	
+		}
+	else
+		{
+			od=0;
+		}
+	middle_freq=get_max_common_divisor(crys_M,out_M);
+	n=crys_M/middle_freq;
+	m=out_M/(middle_freq);
+	if(n>(1<<5)-1)
+	{
+		printk(KERN_ERR "audio_pll_setting  error, n is too bigger n=%d,crys_M=%ldM,out=%ldM\n",
+		n,crys_M,out_M);
+		return -1;
+	}
+	if(m>(1<<9)-1)
+	{
+		printk(KERN_ERR "audio_pll_setting  error, m is too bigger m=%d,crys_M=%ldM,out=%ldM\n",
+		m,crys_M,out_M);
+		return -2;
+	}
+	WRITE_MPEG_REG(HHI_AUD_PLL_CNTL,
+					m|
+					n<<9 |
+					(od&1)<<16
+					); // other PLL
+	printk(KERN_INFO "audio_pll_setting to crystal_req=%ld,out_freq=%ld,n=%d,m=%d\n",crys_M,out_M*(od+1),n,m);	
 	return 0;
 }
-__setup("a9_clk=",a9_clock_setup);
+
+
 
