@@ -28,5 +28,8 @@ int  eth_clk_set(int selectclk,unsigned long clk_freq,unsigned long out_clk);
 
 int demod_apll_setting(unsigned crystal_req,unsigned out_freq);
 int sys_clkpll_setting(unsigned crystal_freq,unsigned out_freq);
+unsigned long get_xtal_clock(void);
+int other_pll_setting(unsigned crystal_freq,unsigned  out_freq);
+
 
 #endif

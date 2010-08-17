@@ -21,16 +21,15 @@
 #ifndef __ARCH_ARM_MESON_CLOCK_H
 #define __ARCH_ARM_MESON_CLOCK_H
 
-typedef struct pll_s {
-	int	rate;
-	int setting;
-	int devidor;
-} pll_t;
+
 
 struct clk {
 	const char *name;
-	const struct pll_s *pll_table;
 	unsigned long rate;
+	unsigned long min;
+	unsigned long max;
+	int source_clk;
+	unsigned long	(*get_rate)(struct clk *);
 	int	(*set_rate)(struct clk *, unsigned long);
 };
 
