@@ -521,12 +521,12 @@ advanced setting -- bit 7:0 force compare result
 #define DEMUX_ENDIAN_3          (STB_CBUS_BASE + DEMUX_3_OFFSET + 0x24)  // 0x16c4
     /*----------- bit define -----------*/
     #define SEPERATE_ENDIAN            31
-    #define OTHER_ENDIAN               21
+    #define OTHER_PES_ENDIAN           21
     #define SCR_ENDIAN                 18
     #define SUB_ENDIAN                 15
     #define AUDIO_ENDIAN               12
     #define VIDEO_ENDIAN               9
-    #define ELSE_ENDIAN                6
+    #define OTHER_ENDIAN               6
     #define BYPASS_ENDIAN              3
     #define SECTION_ENDIAN             0
 
