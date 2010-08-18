@@ -212,7 +212,7 @@ static void __init device_pinmux_init(void )
 static void __init  device_clk_setting(void)
 {
 	/*Demod CLK for eth and sata*/
-	demod_apll_setting(24*CLK_1M,1200*CLK_1M);
+	demod_apll_setting(0,1200*CLK_1M);
 	/*eth clk*/
     	eth_clk_set(ETH_CLKSRC_APLL_CLK,400*CLK_1M,50*CLK_1M);
 }
