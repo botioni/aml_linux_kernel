@@ -3,9 +3,16 @@
 #include <mach/am_regs.h>
 #include <mach/clk_set.h>
 
+struct pll_reg_table
+{
+unsigned  long xtal_clk;
+unsigned  long out_clk;
+unsigned  long settings;	 
+};
 unsigned long get_xtal_clock(void)
 {
 	unsigned long clk;
+	
 	clk=READ_CBUS_REG_BITS(PREG_CTLREG0_ADDR,4,5);
 	clk=clk*1000*1000;
 	return clk;
@@ -24,6 +31,7 @@ static int get_max_common_divisor(int a,int b){
         return a;
 }
 
+
 /*
 	select clk:
 	5,6,7 sata
@@ -38,6 +46,8 @@ static int get_max_common_divisor(int a,int b){
 	aways,maybe changed for others?
 	
 */
+
+
 int  eth_clk_set(int selectclk,unsigned long clk_freq,unsigned long out_clk)
 {
 	int n;
@@ -189,14 +199,18 @@ int other_pll_setting(unsigned crystal_freq,unsigned  out_freq)
 					n<<9 |
 					(od&1)<<16
 					); // other PLL
-	printk(KERN_INFO "other pll setting to crystal_req=%ld,out_freq=%ld,n=%d,m=%d\n",crys_M,out_M*(od+1),n,m);	
+	printk(KERN_INFO "other pll setting to crystal_req=%ld,out_freq=%ld,n=%d,m=%d,od=%d\n",crys_M,out_M/(od+1),n,m,od);	
 	return 0;
 }
 
+	
 int audio_pll_setting(unsigned crystal_freq,unsigned  out_freq)
 {
 	int n,m,od;
 	unsigned long crys_M,out_M,middle_freq;
+	/*
+	FIXME:If we need can't exact setting this clock,Can used a pll table?
+	*/
 	if(!crystal_freq)  crystal_freq=get_xtal_clock();
 	crys_M=crystal_freq/1000000;
 	out_M=out_freq/1000000;
@@ -228,11 +242,60 @@ int audio_pll_setting(unsigned crystal_freq,unsigned  out_freq)
 	WRITE_MPEG_REG(HHI_AUD_PLL_CNTL,
 					m|
 					n<<9 |
-					(od&1)<<16
+					(od&1)<<14
 					); // other PLL
-	printk(KERN_INFO "audio_pll_setting to crystal_req=%ld,out_freq=%ld,n=%d,m=%d\n",crys_M,out_M*(od+1),n,m);	
+	printk(KERN_INFO "audio_pll_setting to crystal_req=%ld,out_freq=%ld,n=%d,m=%d,od=%d\n",crys_M,out_M/(od+1),n,m,od);	
 	return 0;
 }
 
+int video_pll_setting(unsigned crystal_freq,unsigned  out_freq,int powerdown,int flags)
+{
+	int n,m,od;
+	unsigned long crys_M,out_M,middle_freq;
+	int ret=0;
+	/*
+	flags can used for od1/xd settings
+	FIXME:If we need can't exact setting this clock,Can used a pll table?
+	*/
+	if(!crystal_freq)  crystal_freq=get_xtal_clock();
+	crys_M=crystal_freq/1000000;
+	out_M=out_freq/1000000;
+
+	if(out_M<400)
+		{/*if <400M, Od=1*/
+			od=1;/*out=pll_out/(1<<od)
+				 */
+			out_M=out_M<<1;	
+		}
+	else
+		{
+			od=0;
+		}
+	middle_freq=get_max_common_divisor(crys_M,out_M);
+	n=crys_M/middle_freq;
+	m=out_M/(middle_freq);
+	if(n>(1<<5)-1)
+	{
+		printk(KERN_ERR "video_pll_setting  error, n is too bigger n=%d,crys_M=%ldM,out=%ldM\n",
+		n,crys_M,out_M);
+		ret=-1;
+	}
+	if(m>(1<<9)-1)
+	{
+		printk(KERN_ERR "video_pll_setting  error, m is too bigger m=%d,crys_M=%ldM,out=%ldM\n",
+		m,crys_M,out_M);
+		ret=-2;
+	}
+	if(ret)
+		return ret;
+	WRITE_MPEG_REG(HHI_VID_PLL_CNTL,
+					m|
+					n<<9 |
+					(od&1)<<16 |
+					(!!powerdown)<<15 /*is power down mode?*/
+					); // other PLL
+	printk(KERN_INFO "video_pll_setting to crystal_req=%ld,out_freq=%ld,n=%d,m=%d,od=%d\n",crys_M,out_M/(od+1),n,m,od);	
+	return 0;
+}
 
 

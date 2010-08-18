@@ -43,7 +43,8 @@ unsigned long clk_get_rate(struct clk *clk)
 {
     if (!clk)
         return 0;
-
+	if(clk->get_rate)
+		return clk->get_rate(clk);
     return clk->rate;
 }
 EXPORT_SYMBOL(clk_get_rate);
@@ -156,6 +157,27 @@ static int clk_set_rate_a9_clk(struct clk *clk, unsigned long rate)
 		(1 << 7 ));						// Connect A9 to the PLL divider output
     return 0;
 }
+static int clk_set_rate_audio_clk(struct clk *clk, unsigned long rate)
+{
+    unsigned long r = rate;
+	int ret=-EINVAL;
+	
+    if (r < 1000)
+        r = r * 1000000;
+	ret=audio_pll_setting(0,r );
+    return ret;
+}
+
+static int clk_set_rate_video_clk(struct clk *clk, unsigned long rate)
+{
+    unsigned long r = rate;
+	int ret=-EINVAL;
+	
+    if (r < 1000)
+        r = r * 1000000;
+	ret=video_pll_setting(0,r ,0,0);
+    return ret;
+}
 
 static struct clk xtal_clk = {
     .name       = "clk_xtal",
@@ -205,6 +227,25 @@ static struct clk a9_clk = {
     .set_rate   = clk_set_rate_a9_clk,
 };
 
+static struct clk audio_clk = {
+    .name       = "audio_clk",
+    .rate       = 300000000,
+    .min		= 200000000,
+    .max		=1000000000,
+    .set_rate   = clk_set_rate_audio_clk,
+};
+
+static struct clk video_clk = {
+    .name       = "video_clk",
+    .rate       = 300000000,
+    .min		= 100000000,
+    .max		= 750000000,
+    .set_rate   = clk_set_rate_video_clk,
+};
+
+
+
+
 /*
  * Here we only define clocks that are meaningful to
  * look up through clockdevice.
@@ -233,13 +274,19 @@ static struct clk_lookup lookups[] = {
     {
 	        .dev_id = "a9_clk",
 	        .clk    = &a9_clk,
+    },
+    {
+	        .dev_id = "audio_clk",
+	        .clk    = &audio_clk,
+    },
+    {
+	        .dev_id = "video_clk",
+	        .clk    = &video_clk,
     }
 };
 
 static int __init meson_clock_init(void)
 {
-    int i;
-	
 	if(init_clock && init_clock!=a9_clk.rate)
 	{
 		if(sys_clkpll_setting(0,init_clock<<1)==0)
