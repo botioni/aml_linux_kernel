@@ -21,7 +21,7 @@
  * Author:  Tim Yao <timyao@amlogic.com>
  *
  */
-
+#include <linux/module.h>
 #include <linux/errno.h>
 #include <linux/kernel.h>
 
@@ -29,13 +29,11 @@
 
 #include <linux/vout/vinfo.h>
 #include "tvoutc.h"
+#include <linux/clk.h>
 
-//#define CLOCK_SRC_AUDIOPLL
-#define CLOCK_SRC_VIDEOPLL
 
-//#define CRYSTAL_25M
-#define CRYSTAL_24M
 
+static int used_audio_pll=0;
 #include "tvregs.h"
 
 #define  SET_VDAC(index,val)   (WRITE_MPEG_REG((index+VENC_VDAC_DACSEL0),val))
@@ -106,15 +104,16 @@ void  change_vdac_setting(unsigned int  vdec_setting,vmode_t  mode)
 }
 static void enable_vsync_interrupt(void)
 {
-#ifdef CLOCK_SRC_AUDIOPLL
-	/* M1 chip test only, use audio PLL as video clock source */
-	SET_CBUS_REG_MASK(HHI_MPEG_CLK_CNTL, 1<<11);
-#elif defined(CLOCK_SRC_VIDEOPLL)
-      /* M1 REVB , Video PLL bug fixed */
-        CLEAR_CBUS_REG_MASK(HHI_MPEG_CLK_CNTL, 1<<11);
-#else
-    #error PLEASE set CLOCK_SRC_AUDIOPLL or CLOCK_SRC_VIDEOPLL
-#endif
+	if(used_audio_pll)
+	{
+		/* M1 chip test only, use audio PLL as video clock source */
+		SET_CBUS_REG_MASK(HHI_MPEG_CLK_CNTL, 1<<11);
+	}
+	else
+	{
+	      /* M1 REVB , Video PLL bug fixed */
+	        CLEAR_CBUS_REG_MASK(HHI_MPEG_CLK_CNTL, 1<<11);
+	}
 	
     if (READ_MPEG_REG(ENCP_VIDEO_EN) & 1) {
         WRITE_MPEG_REG(VENC_INTCTRL, 0x200);
@@ -156,6 +155,63 @@ static void enable_vsync_interrupt(void)
         WRITE_MPEG_REG(VENC_INTCTRL, 0x2);
     }
 }
+int tvoutc_setclk(tvmode_t mode)
+{
+	struct clk *clk;
+	const  reg_t *sd,*hd;
+	int xtal;
+	if(used_audio_pll)
+	{
+		printk("TEST:used audio pll for video out for test!!\n");
+		sd=tvreg_aclk_sd;
+		hd=tvreg_aclk_hd;
+	}
+	else
+	{
+		printk("used Video pll for video out!!\n");
+		sd=tvreg_vclk_sd;
+		hd=tvreg_vclk_hd;
+	}
+	clk=clk_get_sys("clk_xtal", NULL);
+	if(!clk)
+	{
+		printk(KERN_ERR "can't find clk %s for VIDEO PLL SETTING!\n\n","clk_xtal");
+		return -1;
+	}
+	xtal=clk_get_rate(clk);
+	xtal=xtal/1000000;
+	if(xtal>=24 && xtal <=25)/*current only support 24,25*/
+		{
+		xtal-=24;
+		}
+	else
+		{
+		printk(KERN_WARNING "UNsupport xtal setting for vidoe xtal=%d,default to 24M\n",xtal);	
+		xtal=0;
+		}
+	switch(mode)
+	{
+		case TVMODE_480I:
+		case TVMODE_480CVBS:
+		case TVMODE_480P:
+		case TVMODE_576I:
+		case TVMODE_576CVBS:
+		case TVMODE_576P:
+			  setreg(&sd[xtal]);
+			  //clk_set_rate(clk,540);
+			  break;
+		case TVMODE_720P:
+		case TVMODE_1080I:
+		case TVMODE_1080P:
+			  setreg(&hd[xtal]);
+			 // clk_set_rate(clk,297);
+			  break;
+		default:
+			printk(KERN_ERR "unsupport tv mode,video clk is not set!!\n");	
+	}
+
+	return 0;
+}
 
 int tvoutc_setmode(tvmode_t mode)
 {
@@ -172,10 +228,31 @@ int tvoutc_setmode(tvmode_t mode)
 			
     while (MREG_END_MARKER != s->reg)
         setreg(s++);
-
+	tvoutc_setclk(mode);
     enable_vsync_interrupt();
     
     WRITE_MPEG_REG(VPP_POSTBLEND_H_SIZE, tvinfoTab[mode].xres);
 
     return 0;
 }
+
+static  int __init video_pll_testsetting(char *s)
+{
+	printk("chip set vpll [%s]\n",s);
+	switch(s[0])
+	{
+		case 'a':
+		case 'A':
+			used_audio_pll=1;
+			break;
+		case 'b':
+		case 'B':
+		default:
+			used_audio_pll=0;	
+	}
+	return 0;
+}
+
+__setup("chip=",video_pll_testsetting);
+
+

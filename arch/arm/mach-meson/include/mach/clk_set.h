@@ -30,6 +30,8 @@ int demod_apll_setting(unsigned crystal_req,unsigned out_freq);
 int sys_clkpll_setting(unsigned crystal_freq,unsigned out_freq);
 unsigned long get_xtal_clock(void);
 int other_pll_setting(unsigned crystal_freq,unsigned  out_freq);
+int audio_pll_setting(unsigned crystal_freq,unsigned  out_freq);
+int video_pll_setting(unsigned crystal_freq,unsigned  out_freq,int powerdown,int flags);
 
 
 #endif

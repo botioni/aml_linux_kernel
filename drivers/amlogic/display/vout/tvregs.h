@@ -27,37 +27,17 @@
 
 #define MREG_END_MARKER 0xffff
 
-#ifdef CLOCK_SRC_AUDIOPLL
-	#ifdef CRYSTAL_25M
-		#define CLOCK_HD	0x485f
-		#define CLOCK_SD	0x0a6c
-	#elif defined(CRYSTAL_24M)
-		#define CLOCK_HD	0x4863
-		#define CLOCK_SD	0x042d
-	#else
-	#error "No valid crystal clock source specified."
-	#endif
 
-	#define VCLK_HD			HHI_AUD_PLL_CNTL, CLOCK_HD
-	#define VCLK_SD			HHI_AUD_PLL_CNTL, CLOCK_SD
+	#define AUDIO_CLOCK_HD_25	0x485f
+	#define AUDIO_CLOCK_SD_25	0x0a6c
+	#define AUDIO_CLOCK_HD_24	0x4863
+	#define AUDIO_CLOCK_SD_24	0x042d
 
-#elif defined(CLOCK_SRC_VIDEOPLL)
-	#ifdef CRYSTAL_25M
-		#define CLOCK_HD	0x0021085f
-		#define CLOCK_SD	0x00500a6c
-	#elif defined(CRYSTAL_24M)
-		#define CLOCK_HD	0x0021083c
-		#define CLOCK_SD	0x0050042d
-	#else
-	#error "No valid crystal clock source specified."
-	#endif
+	#define VIDEO_CLOCK_HD_25	0x0021085f
+	#define VIDEO_CLOCK_SD_25	0x00500a6c
+	#define VIDEO_CLOCK_HD_24	0x0021083c
+	#define VIDEO_CLOCK_SD_24	0x0050042d
 
-	#define VCLK_HD			HHI_VID_PLL_CNTL, CLOCK_HD
-	#define VCLK_SD			HHI_VID_PLL_CNTL, CLOCK_SD
-
-#else
-	#error "No clock source specified."
-#endif
 
 typedef struct reg_s {
     uint reg;
@@ -69,10 +49,45 @@ typedef struct tvinfo_s {
     uint yres;
     const char *id;
 } tvinfo_t;
+/*
+24M
+25M
+26M
+27M
+*/
+static const  reg_t tvreg_vclk_sd[]={
+	{HHI_VID_PLL_CNTL,VIDEO_CLOCK_SD_24},//SD.24
+    {HHI_VID_PLL_CNTL,VIDEO_CLOCK_SD_25},//SD,25  
+	{HHI_VID_PLL_CNTL,0},//SD,26
+    {HHI_VID_PLL_CNTL,0},//SD,27
+};
+static const  reg_t tvreg_vclk_hd[]={
+    {HHI_VID_PLL_CNTL,VIDEO_CLOCK_HD_24},//HD,24
+    {HHI_VID_PLL_CNTL,VIDEO_CLOCK_HD_25},//HD,25    
+	{HHI_VID_PLL_CNTL,0},//SD,26
+    {HHI_VID_PLL_CNTL,0}//SD,27
+};
+
+
+static const  reg_t tvreg_aclk_sd[]={
+    {HHI_AUD_PLL_CNTL,AUDIO_CLOCK_SD_24},//SD
+    {HHI_AUD_PLL_CNTL,AUDIO_CLOCK_SD_25},//HD,
+    {HHI_AUD_PLL_CNTL,0},//SD
+    {HHI_AUD_PLL_CNTL,0}//HD,    
+};
+static const  reg_t tvreg_aclk_hd[]={
+    {HHI_AUD_PLL_CNTL,AUDIO_CLOCK_HD_24},//SD
+    {HHI_AUD_PLL_CNTL,AUDIO_CLOCK_HD_25},//HD,
+    {HHI_AUD_PLL_CNTL,0},//SD
+    {HHI_AUD_PLL_CNTL,0}//HD,    
+};
+
+
+
 
 static const  reg_t tvregs_720p[] = {
     {VENC_VDAC_SETTING,          0xff,  },
-	{VCLK_HD},
+//	{VCLK_HD},
 	{HHI_VID_CLK_DIV,			 1		},
     {HHI_VID_CLK_CNTL,        	 0x0421,},
     {ENCP_VIDEO_FILT_CTRL,       0x0052,},
@@ -114,7 +129,7 @@ static const  reg_t tvregs_720p[] = {
 
 static const reg_t tvregs_480i[] = {
     {VENC_VDAC_SETTING,          0xff,  },
-	{VCLK_SD},
+//	{VCLK_SD},
 	{HHI_VID_CLK_DIV,			 4,		},
     {HHI_VID_CLK_CNTL,        	 0x05a1,},
     {ENCI_CFILT_CTRL,            0x0810,},
@@ -147,7 +162,7 @@ static const reg_t tvregs_480i[] = {
 
 static const reg_t tvregs_480cvbs[] = {
     {VENC_VDAC_SETTING,          0xff,  },
-	{VCLK_SD},
+//	{VCLK_SD},
 	{HHI_VID_CLK_DIV,			 4,		},
     {HHI_VID_CLK_CNTL,        	 0x05a1,},
     {ENCI_CFILT_CTRL,            0x0810,},
@@ -179,7 +194,7 @@ static const reg_t tvregs_480cvbs[] = {
 };
 static const reg_t tvregs_480p[] = {
     {VENC_VDAC_SETTING,          0xff,  },
-	{VCLK_SD},
+//	{VCLK_SD},
 	{HHI_VID_CLK_DIV,			 4,		},
     {HHI_VID_CLK_CNTL,        	 0x0561,},
     {ENCP_VIDEO_FILT_CTRL,       0x2052,},
@@ -220,7 +235,7 @@ static const reg_t tvregs_480p[] = {
 
 static const reg_t tvregs_576i[] = {
     {VENC_VDAC_SETTING,          0xff,  },
-	{VCLK_SD},
+//	{VCLK_SD},
 	{HHI_VID_CLK_DIV,			 4,		},
     {HHI_VID_CLK_CNTL,        	 0x05a1,},
     {ENCI_CFILT_CTRL,            0x0810,},
@@ -253,7 +268,7 @@ static const reg_t tvregs_576i[] = {
 
 static const reg_t tvregs_576cvbs[] = {
     {VENC_VDAC_SETTING,          0xff,  },
-	{VCLK_SD},
+//	{VCLK_SD},
 	{HHI_VID_CLK_DIV,			 4,		},
     {HHI_VID_CLK_CNTL,        	 0x05a1,},
     {ENCI_CFILT_CTRL,            0x0810,},
@@ -286,7 +301,7 @@ static const reg_t tvregs_576cvbs[] = {
 
 static const reg_t tvregs_576p[] = {
     {VENC_VDAC_SETTING,          0xff,  },
-	{VCLK_SD},
+//	{VCLK_SD},
 	{HHI_VID_CLK_DIV,			 4,		},
     {HHI_VID_CLK_CNTL,        	 0x0561,},
     {ENCP_VIDEO_FILT_CTRL,       0x52,  },
@@ -326,7 +341,7 @@ static const reg_t tvregs_576p[] = {
 
 static const reg_t tvregs_1080i[] = {
     {VENC_VDAC_SETTING,          0xff,  },
-	{VCLK_HD},
+//	{VCLK_HD},
 	{HHI_VID_CLK_DIV,			 1		},
     {HHI_VID_CLK_CNTL,        	 0x0421,},
     {ENCP_VIDEO_FILT_CTRL,       0x0052,},
@@ -372,7 +387,7 @@ static const reg_t tvregs_1080i[] = {
 
 static const reg_t tvregs_1080p[] = {
     {VENC_VDAC_SETTING,          0xff,  },
-	{VCLK_HD},
+//	{VCLK_HD},
 	{HHI_VID_CLK_DIV,			 1		},
     {HHI_VID_CLK_CNTL,        	 0x0421,},
     {ENCP_VIDEO_FILT_CTRL,       0x1052,},
