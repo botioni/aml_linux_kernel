@@ -24,6 +24,8 @@
 #include <linux/errno.h>
 #include <linux/platform_device.h>
 #include <linux/amports/vformat.h>
+#include <mach/am_regs.h>
+
 
 #define MC_SIZE (4096 * 4)
 
@@ -31,6 +33,10 @@
 static int inited_vcodec_num = 0;
 
 static struct platform_device *vdec_device = NULL;
+struct am_reg{
+	char *name;
+	int offset;
+};
 
 static struct resource amvdec_mem_resource[]  = {
     [0] = {
@@ -140,3 +146,66 @@ s32 vdec_release(vformat_t vf)
 
     return 0;
 }
+
+static struct am_reg am_risc[]=
+{
+	{"MSP",0x300},
+	{"MPSR",0x301 },	
+	{"MCPU_INT_BASE",0x302 },	
+	{"MCPU_INTR_GRP",0x303 },	
+	{"MCPU_INTR_MSK",0x304 },	
+	{"MCPU_INTR_REQ",0x305 },	
+	{"MPC-P",0x306 },	
+	{"MPC-D",0x307 },	
+	{"MPC_E",0x308 },	
+	{"MPC_W",0x309 }
+};
+
+static ssize_t amrisc_regs_show(struct class *class, struct class_attribute *attr, char *buf)
+{
+    char *pbuf=buf;
+	struct am_reg *regs=am_risc;
+	int rsize=sizeof(am_risc)/sizeof(struct am_reg);
+	int i;
+	unsigned  val;
+
+	pbuf+=sprintf(pbuf, "amrisc registers show:\n");
+	for(i=0;i<rsize;i++)
+	{
+		val=READ_MPEG_REG(regs[i].offset);
+    	pbuf+=sprintf(pbuf, "%s(%#x)\t:%#x(%d)\n",
+    				   regs[i].name,regs[i].offset,val,val);
+	}
+	return (pbuf-buf);
+}
+
+
+
+static struct class_attribute vdec_class_attrs[] = {
+    __ATTR_RO(amrisc_regs),
+    __ATTR_NULL
+};
+
+static struct class vdec_class = {
+    .name = "vdec",
+    .class_attrs = vdec_class_attrs,
+};
+
+s32 vdec_dev_register(void)
+{
+    s32 r;
+
+    r = class_register(&vdec_class);
+    if (r) {
+        printk("vdec class create fail.\n");
+        return r;
+    }
+	return 0;
+}
+s32 vdec_dev_unregister(void)
+{
+	 class_unregister(&vdec_class);
+	 return 0;
+}
+
+
