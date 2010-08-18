@@ -291,11 +291,11 @@ static int snd_aml_audio_hw_params(struct snd_pcm_substream *substream,
 
     runtime->dma_addr = virt_to_phys(runtime->dma_area);
 
-    dug_printk(" snd_aml_audio_hw_params runtime->dma_addr 0x(%x)\n",
+    printk(" snd_aml_audio_hw_params runtime->dma_addr 0x(%x)\n",
                (unsigned int)runtime->dma_addr);
-    dug_printk(" snd_aml_audio_hw_params runtime->dma_area 0x(%x)\n",
+    printk(" snd_aml_audio_hw_params runtime->dma_area 0x(%x)\n",
                (unsigned int)runtime->dma_area);
-    dug_printk(" snd_aml_audio_hw_params runtime->dma_bytes 0x(%x)\n",
+    printk(" snd_aml_audio_hw_params runtime->dma_bytes 0x(%x)\n",
                (unsigned int)runtime->dma_bytes);
     return ret;
 }
@@ -316,6 +316,9 @@ static int snd_aml_audio_playback_prepare(struct snd_pcm_substream
     normalize_speed_for_pcm(substream);
     //audio_set_clk(s->sample_rate, AUDIO_CLK_256FS);
     //config.clock = s->sample_rate;
+   	audio_set_clk(s->sample_rate, AUDIO_CLK_256FS);       // XD: div by n+1 by n+1
+	audio_dac_set(s->sample_rate);
+	//audio_set_i2s_mode(config.i2s_mode);
 
     audio_set_aiubuf(substream->runtime->dma_addr,
                      substream->runtime->dma_bytes);
@@ -324,11 +327,13 @@ static int snd_aml_audio_playback_prepare(struct snd_pcm_substream
     s->I2S_addr = substream->runtime->dma_addr;
 
     dug_printk("music channel=%d\n", substream->runtime->channels);
-    audio_set_clk(s->sample_rate, AUDIO_CLK_256FS);
+   // audio_set_clk(s->sample_rate, AUDIO_CLK_256FS);
+
     config.clock = s->sample_rate;
-    audio_set_i2s_mode(config.i2s_mode);
+	
+    
     //audio_i2s_unmute();
-    audio_util_set_dac_format(config.i2s_dac_mode);
+    //audio_util_set_dac_format(config.i2s_dac_mode);
 
     memset(&set, 0, sizeof(set));
     set.chan_stat = &config.chan_status;
