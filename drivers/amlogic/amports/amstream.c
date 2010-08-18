@@ -1328,6 +1328,7 @@ static int  amstream_probe(struct platform_device *pdev)
     stream_port_t *st;
 
     printk("Amlogic A/V streaming port init\n");
+	
      r = class_register(&amstream_class);
     if (r) {
         printk("amstream class create fail.\n");
@@ -1337,6 +1338,11 @@ static int  amstream_probe(struct platform_device *pdev)
     if (r) {
         return r;
     }
+	
+	r = vdec_dev_register();
+	if (r) {
+		   return r;
+	}
 
     r = register_chrdev(AMSTREAM_MAJOR, "amstream", &amstream_fops);
 
@@ -1421,7 +1427,7 @@ static int  amstream_remove(struct platform_device *pdev)
     class_destroy(amstream_dev_class);
 
     unregister_chrdev(AMSTREAM_MAJOR, DEVICE_NAME);
-
+	vdec_dev_unregister();
     astream_dev_unregister();
 
     amstream_vdec_status = NULL;
