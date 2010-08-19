@@ -99,11 +99,15 @@ static u32 vpts_remainder;
 static bool video_property_changed = false;
 
 /* display canvas */
-static u32 disp_canvas_index[3] = {
+static u32 disp_canvas_index[6] = {
     DISPLAY_CANVAS_BASE_INDEX,
     DISPLAY_CANVAS_BASE_INDEX+1,
-    DISPLAY_CANVAS_BASE_INDEX+2};
-static u32 disp_canvas;
+    DISPLAY_CANVAS_BASE_INDEX+2,
+    DISPLAY_CANVAS_BASE_INDEX+3,
+    DISPLAY_CANVAS_BASE_INDEX+4,
+    DISPLAY_CANVAS_BASE_INDEX+5,
+    };
+static u32 disp_canvas[2];
 static u32 post_canvas = 0;
 static ulong keep_y_addr = 0, *keep_y_addr_remap = NULL;
 static ulong keep_u_addr = 0, *keep_u_addr_remap = NULL;
@@ -378,11 +382,14 @@ static void vsync_toggle_frame(vframe_t *vf)
     canvas_copy(vf->canvas0Addr & 0xff, disp_canvas_index[0]);
     canvas_copy((vf->canvas0Addr >> 8) & 0xff, disp_canvas_index[1]);
     canvas_copy((vf->canvas0Addr >> 16)& 0xff, disp_canvas_index[2]);
+    canvas_copy(vf->canvas1Addr & 0xff, disp_canvas_index[3]);
+    canvas_copy((vf->canvas1Addr >> 8) & 0xff, disp_canvas_index[4]);
+    canvas_copy((vf->canvas1Addr >> 16)& 0xff, disp_canvas_index[5]);
 
-    WRITE_MPEG_REG(VD1_IF0_CANVAS0, disp_canvas);
-    WRITE_MPEG_REG(VD1_IF0_CANVAS1, disp_canvas);
-    WRITE_MPEG_REG(VD2_IF0_CANVAS0, disp_canvas);
-    WRITE_MPEG_REG(VD2_IF0_CANVAS1, disp_canvas);
+    WRITE_MPEG_REG(VD1_IF0_CANVAS0, disp_canvas[0]);
+    WRITE_MPEG_REG(VD1_IF0_CANVAS1, disp_canvas[1]);
+    WRITE_MPEG_REG(VD2_IF0_CANVAS0, disp_canvas[0]);
+    WRITE_MPEG_REG(VD2_IF0_CANVAS1, disp_canvas[1]);
 
     /* set video PTS */
 	if (cur_dispbuf != vf) {
@@ -493,7 +500,8 @@ static void viu_set_dcu(vpp_frame_par_t *frame_par, vframe_t *vf)
         (10 << VDIF_HOLD_LINES_BIT) |
         VDIF_FORMAT_SPLIT  |
         VDIF_CHRO_RPT_LAST |
-        VDIF_ENABLE;
+        VDIF_ENABLE |
+        VDIF_RESET_ON_GO_FIELD;
 
     if ((vf->type & VIDTYPE_VIU_SINGLE_PLANE) == 0) {
         r |= VDIF_SEPARATE_EN;
@@ -507,6 +515,9 @@ static void viu_set_dcu(vpp_frame_par_t *frame_par, vframe_t *vf)
 
     WRITE_MPEG_REG(VD1_IF0_GEN_REG, r);
     WRITE_MPEG_REG(VD2_IF0_GEN_REG, r);
+
+	WRITE_MPEG_REG(VD1_IF0_LUMA_PSEL, 0);
+	WRITE_MPEG_REG(VD1_IF0_CHROMA_PSEL, 0);
 
     if ((vf->type & VIDTYPE_VIU_FIELD) &&
         (frame_par->VPP_prog_as_interlace == 0)) {
@@ -616,7 +627,44 @@ static void viu_set_dcu(vpp_frame_par_t *frame_par, vframe_t *vf)
         }
     }
     else {
-        /* progressive frame in two canvases, unsupported */
+        WRITE_MPEG_REG(VD1_IF0_RPT_LOOP,        0);
+        WRITE_MPEG_REG(VD1_IF0_LUMA0_RPT_PAT,   0);
+        WRITE_MPEG_REG(VD1_IF0_CHROMA0_RPT_PAT, 0);
+        WRITE_MPEG_REG(VD1_IF0_LUMA1_RPT_PAT,   0);
+        WRITE_MPEG_REG(VD1_IF0_CHROMA1_RPT_PAT, 0);
+
+        WRITE_MPEG_REG(VD2_IF0_RPT_LOOP,        0);
+        WRITE_MPEG_REG(VD2_IF0_LUMA0_RPT_PAT,   0);
+        WRITE_MPEG_REG(VD2_IF0_CHROMA0_RPT_PAT, 0);
+        WRITE_MPEG_REG(VD2_IF0_LUMA1_RPT_PAT,   0);
+        WRITE_MPEG_REG(VD2_IF0_CHROMA1_RPT_PAT, 0);
+
+        WRITE_MPEG_REG(VIU_VD1_FMT_CTRL,
+            HFORMATTER_YC_RATIO_2_1 |
+            HFORMATTER_EN |
+            VFORMATTER_RPTLINE0_EN |
+            (0xc << VFORMATTER_INIPHASE_BIT) |
+            (((vf->type & VIDTYPE_VIU_422) ? 0x10 : 0x08) << VFORMATTER_PHASE_BIT) |
+            VFORMATTER_EN);
+
+        WRITE_MPEG_REG(VIU_VD2_FMT_CTRL,
+            HFORMATTER_YC_RATIO_2_1 |
+            HFORMATTER_EN |
+            VFORMATTER_RPTLINE0_EN |
+            (0xc << VFORMATTER_INIPHASE_BIT) |
+            (((vf->type & VIDTYPE_VIU_422) ? 0x10 : 0x08) << VFORMATTER_PHASE_BIT) |
+            VFORMATTER_EN);
+
+		WRITE_MPEG_REG(VD1_IF0_LUMA_PSEL, 
+			(2 << 26) |	/* two pic mode */
+			(2 << 24) | /* use own last line */
+			(2 << 8)  | /* toggle pic 0 and 1, use pic0 first */
+			(0x01));	/* loop pattern */
+		WRITE_MPEG_REG(VD1_IF0_CHROMA_PSEL,
+			(2 << 26) |	/* two pic mode */
+			(2 << 24) | /* use own last line */
+			(2 << 8)  | /* toggle pic 0 and 1, use pic0 first */
+			(0x01));	/* loop pattern */
     }
 }
 
@@ -899,13 +947,14 @@ static irqreturn_t vsync_isr0(int irq, void *dev_id)
         vppfilter_mode_t *vpp_filter = &cur_frame_par->vpp_filter;
 
         if (cur_dispbuf) {
-            u32 zoom_start_y;
+            u32 zoom_start_y, zoom_end_y;
 
             if ((cur_dispbuf->type & VIDTYPE_VIU_FIELD) == 0) {
                 zoom_start_y = cur_frame_par->VPP_vd_start_lines_ >> 1;
-
+				zoom_end_y = (cur_frame_par->VPP_vd_end_lines_ + 1) >> 1;
             } else {
                 zoom_start_y = cur_frame_par->VPP_vd_start_lines_;
+				zoom_end_y = cur_frame_par->VPP_vd_end_lines_;
             }
 
             zoom_start_x_lines = cur_frame_par->VPP_hd_start_lines_;
@@ -913,7 +962,7 @@ static irqreturn_t vsync_isr0(int irq, void *dev_id)
             zoom_display_horz();
 
             zoom_start_y_lines = zoom_start_y;
-            zoom_end_y_lines   = cur_frame_par->VPP_vd_end_lines_;
+            zoom_end_y_lines   = zoom_end_y;
             zoom_display_vert();
         }
 
@@ -1819,7 +1868,8 @@ static int __init video_init(void)
 
     vout_hook();
 
-    disp_canvas = (disp_canvas_index[2] << 16) | (disp_canvas_index[1] << 8) | disp_canvas_index[0];
+    disp_canvas[0] = (disp_canvas_index[2] << 16) | (disp_canvas_index[1] << 8) | disp_canvas_index[0];
+    disp_canvas[1] = (disp_canvas_index[5] << 16) | (disp_canvas_index[4] << 8) | disp_canvas_index[3];
 
 	vsync_fiq_up();
 
