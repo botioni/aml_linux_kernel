@@ -94,10 +94,19 @@ static struct timer_list recycle_timer;
 static u32 stat;
 static u32 buf_start, buf_size;
 
-static inline u32 index2canvas(u32 index)
+static inline u32 index2canvas0(u32 index)
 {
     const u32 canvas_tab[4] = {
         0x020100, 0x050403, 0x080706, 0x0b0a09
+    };
+
+    return canvas_tab[index];
+}
+
+static inline u32 index2canvas1(u32 index)
+{
+    const u32 canvas_tab[4] = {
+        0x0e0d0c, 0x11100f, 0x141312, 0x171615
     };
 
     return canvas_tab[index];
@@ -149,7 +158,7 @@ static irqreturn_t vmjpeg_isr(int irq, void *dev_id)
             set_frame_info(vf);
 
             vf->type = VIDTYPE_PROGRESSIVE | VIDTYPE_VIU_FIELD;
-            vf->canvas0Addr = vf->canvas1Addr = index2canvas(index);
+            vf->canvas0Addr = vf->canvas1Addr = index2canvas0(index);
             vf->pts = (pts_valid) ? pts : 0;
 
             vfbuf_use[index]++;
@@ -164,6 +173,7 @@ static irqreturn_t vmjpeg_isr(int irq, void *dev_id)
 
             set_frame_info(vf);
 
+#if 0
 			if (reg & PICINFO_AVI1) {
 				/* AVI1 format */
 				if (reg & PICINFO_INTERLACE_AVI1_BOT) {
@@ -181,7 +191,7 @@ static irqreturn_t vmjpeg_isr(int irq, void *dev_id)
 
             vf->type |= VIDTYPE_VIU_FIELD;
             vf->duration >>= 1;
-            vf->canvas0Addr = vf->canvas1Addr = index2canvas(index);
+            vf->canvas0Addr = vf->canvas1Addr = index2canvas0(index);
 
 			if ((vf->type & VIDTYPE_INTERLACE_FIRST) && (pts_valid))
 	            vf->pts = pts;
@@ -191,6 +201,21 @@ static irqreturn_t vmjpeg_isr(int irq, void *dev_id)
             vfbuf_use[index]++;
 
             INCPTR(fill_ptr);
+#else
+           	/* send whole frame by weaving top & bottom field */
+            vf->type = VIDTYPE_PROGRESSIVE;
+			vf->canvas0Addr = index2canvas0(index);
+            vf->canvas1Addr = index2canvas1(index);
+
+			if (pts_valid)
+	            vf->pts = pts;
+	        else
+	        	vf->pts = 0;
+
+	        vfbuf_use[index]++;
+
+  	        INCPTR(fill_ptr);
+#endif
         }
 
         WRITE_MPEG_REG(MREG_FROM_AMRISC, 0);
@@ -284,15 +309,27 @@ static void vmjpeg_canvas_init(void)
         canvas_config(3 * i + 0,
                       buf_start + i * decbuf_size,
                       canvas_width, canvas_height,
-                      CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_32X32);
+                      CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_LINEAR);
         canvas_config(3 * i + 1,
                       buf_start + i * decbuf_size + decbuf_y_size,
                       canvas_width / 2, canvas_height / 2,
-                      CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_32X32);
+                      CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_LINEAR);
         canvas_config(3 * i + 2,
                       buf_start + i * decbuf_size + decbuf_y_size + decbuf_uv_size,
                       canvas_width/2, canvas_height/2,
-                      CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_32X32);
+                      CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_LINEAR);
+        canvas_config(3 * i + 0 + 12,
+                      buf_start + i * decbuf_size + decbuf_size / 2,
+                      canvas_width, canvas_height,
+                      CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_LINEAR);
+        canvas_config(3 * i + 1 + 12,
+                      buf_start + i * decbuf_size + decbuf_y_size + decbuf_uv_size / 2,
+                      canvas_width / 2, canvas_height / 2,
+                      CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_LINEAR);
+        canvas_config(3 * i + 2 + 12,
+                      buf_start + i * decbuf_size + decbuf_y_size + decbuf_uv_size + decbuf_uv_size / 2,
+                      canvas_width/2, canvas_height/2,
+                      CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_LINEAR);
     }
 }
 
