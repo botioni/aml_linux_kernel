@@ -4,12 +4,18 @@
 
 menu "AMLOGIC AV Streaming devices"
 
-config AM_DEINTERLACE
+menuconfig AM_DEINTERLACE
 	bool "AMLOGIC Deinterlace"
 	default y
 	select AM_CANVAS
 	help
 	  Driver for deinterlace.
+	  
+if AM_DEINTERLACE
+config AM_DEINTERLACE_SD_ONLY
+	bool "AMLOGIC Deinterlace SD only"
+	default n
+endif
 
 config AM_VIDEO
 	bool "AMLOGIC Video management"

@@ -181,7 +181,17 @@ static inline vframe_t *vf_peek(void)
 	
 	if ( deinterlace_mode == 2 )
 	{
-		return peek_di_out_buf();
+		int di_pre_recycle_buf = get_di_pre_recycle_buf();
+
+		if ( di_pre_recycle_buf == 1 )
+		{
+			return peek_di_out_buf();
+		}
+    	else if ( di_pre_recycle_buf == 0 )
+    	{
+    		if (vfp)
+        		return vfp->peek();
+    	}
 	}
 	else
 	{
@@ -198,23 +208,25 @@ static inline vframe_t *vf_get(void)
 	
 	if ( deinterlace_mode == 2 )
 	{
-		vframe_t *disp_buf = peek_di_out_buf();
+		int di_pre_recycle_buf = get_di_pre_recycle_buf();
 
-		if ( disp_buf )
+		if ( di_pre_recycle_buf == 1 )
 		{
-	    	if ( (disp_buf->duration > 0)
-#ifdef DI_SD_ONLY
-				&& (disp_buf->width <= 720)
-#endif
-	    		)
+			vframe_t *disp_buf = peek_di_out_buf();
+
+			if ( disp_buf )
 			{
 				set_post_di_mem(disp_buf->blend_mode);
+		   		inc_field_counter();
 			}
 
-		   	inc_field_counter();
+			return disp_buf;
 		}
-
-		return disp_buf;
+		else if ( di_pre_recycle_buf == 0 )
+		{
+    		if (vfp)
+        		return vfp->get();
+		}
 	}
 	else
 	{
@@ -231,8 +243,13 @@ static inline void vf_put(vframe_t *vf)
 	
 	if ( deinterlace_mode == 2 )
 	{
-		if ( vfp && (vf->recycle_by_di_pre == 0) )
-        	vfp->put(vf);
+		int di_pre_recycle_buf = get_di_pre_recycle_buf();
+
+		if ( di_pre_recycle_buf == 0 )
+		{
+    		if (vfp)
+        		vfp->put(vf);
+		}
 	}
 	else
 	{
@@ -418,7 +435,7 @@ static void vsync_toggle_frame(vframe_t *vf)
 
         if ( (deinterlace_mode != 0) 
         	&& (vf->type & VIDTYPE_INTERLACE)
-#ifdef DI_SD_ONLY
+#if defined(CONFIG_AM_DEINTERLACE_SD_ONLY)
             && (vf->width <= 720)
 #endif
                 ) 
@@ -440,7 +457,7 @@ static void vsync_toggle_frame(vframe_t *vf)
     {
         if ( (deinterlace_mode != 0) 
         	&& (vf->type & VIDTYPE_INTERLACE)
-#ifdef DI_SD_ONLY
+#if defined(CONFIG_AM_DEINTERLACE_SD_ONLY)
             && (vf->width <= 720)
 #endif
                 ) 
@@ -846,7 +863,11 @@ static irqreturn_t vsync_isr0(int irq, void *dev_id)
         f2v_vphase_t *vphase;
         u32 vin_type = cur_dispbuf->type & VIDTYPE_TYPEMASK;
 
-		if ( deinterlace_mode == 0 )
+		if ( (deinterlace_mode == 0) || (cur_dispbuf->duration == 0)
+#if defined(CONFIG_AM_DEINTERLACE_SD_ONLY)
+					|| (cur_dispbuf->width > 720)
+#endif
+				)
         	viu_set_dcu(cur_frame_par, cur_dispbuf);
 
         /* vertical phase */
@@ -951,7 +972,11 @@ static irqreturn_t vsync_isr0(int irq, void *dev_id)
 
     wait_sync = 0;
 
-    if ( deinterlace_mode != 0 )
+	if ( (deinterlace_mode != 0) && (cur_dispbuf->duration > 0)
+#if defined(CONFIG_AM_DEINTERLACE_SD_ONLY)
+				&& (cur_dispbuf->width <= 720)
+#endif
+			)
     	run_deinterlace(zoom_start_x_lines, zoom_end_x_lines, zoom_start_y_lines, zoom_end_y_lines, cur_dispbuf->type_backup, cur_dispbuf->blend_mode, hold_line);
 
 #ifdef FIQ_VSYNC
