@@ -1,1 +1,1 @@
-obj-y        += hdmi_apollo/
+obj-$(CONFIG_AML_HDMI_TX)  +=  hdmi_tx/

@@ -2,10 +2,9 @@
 menu "Amlogic HDMI Support"
 
 
-config AML_APOLLO_HDMI
+config AML_HDMI_TX
         tristate "HDMI output enable"
         default y
-        depends on  FB_AML_APOLLO && I2C
         help  
                 hdmi output enable,It should be enalbe if board have hdmi out interface
 
