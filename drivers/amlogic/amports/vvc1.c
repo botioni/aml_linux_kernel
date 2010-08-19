@@ -53,8 +53,8 @@
 
 /* protocol registers */
 #define VC1_PIC_RATIO       AV_SCRATCH_0
-#define VC1_PIC_WIDTH      AV_SCRATCH_6
-#define VC1_PIC_HEIGHT     AV_SCRATCH_7
+#define VC1_ERROR_COUNT    AV_SCRATCH_6
+#define VC1_SOS_COUNT     AV_SCRATCH_7
 #define VC1_BUFFERIN       AV_SCRATCH_8
 #define VC1_BUFFEROUT      AV_SCRATCH_9
 #define VC1_REPEAT_COUNT    AV_SCRATCH_A
@@ -80,7 +80,7 @@ static void vmpeg_vf_put(vframe_t *);
 
 static const char vvc1_dec_id[] = "vvc1-dev";
 
-static const struct vframe_provider_s vmpeg_vf_provider = {
+static const struct vframe_provider_s vvc1_vf_provider = {
         .peek = vmpeg_vf_peek,
         .get = vmpeg_vf_get,
         .put = vmpeg_vf_put,
@@ -417,31 +417,6 @@ static void vmpeg_vf_put(vframe_t *vf)
         INCPTR(putting_ptr);
 }
 
-static void vmpeg_put_timer_func(unsigned long arg)
-{
-        struct timer_list *timer = (struct timer_list *)arg;
-
-#ifndef HANDLE_VC1_IRQ
-        vvc1_isr();
-#endif
-        
-        if ((putting_ptr != put_ptr) && (READ_MPEG_REG(VC1_BUFFERIN) == 0))
-        {
-                u32 index = vfpool_idx[put_ptr];
-
-                if (--vfbuf_use[index] == 0) 
-                {
-                        WRITE_MPEG_REG(VC1_BUFFERIN, ~(1<<index));
-                }
-
-                INCPTR(put_ptr);
-        }
-
-        timer->expires = jiffies + PUT_INTERVAL;
-
-        add_timer(timer);
-}
-
 int vvc1_dec_status(struct vdec_status *vstatus)
 {
     vstatus->width = vvc1_amstream_dec_info.width;
@@ -549,6 +524,7 @@ static void vvc1_prot_init(void)
         /* disable PSCALE for hardware sharing */
         WRITE_MPEG_REG(PSCALE_CTRL, 0);
 
+        WRITE_MPEG_REG(VC1_SOS_COUNT, 0);
         WRITE_MPEG_REG(VC1_BUFFERIN, 0);
         WRITE_MPEG_REG(VC1_BUFFEROUT, 0);
 
@@ -582,6 +558,43 @@ static void vvc1_local_init(void)
 
         for (i = 0; i < 4; i++)
                 vfbuf_use[i] = 0;
+}
+
+static void vmpeg_put_timer_func(unsigned long arg)
+{
+        struct timer_list *timer = (struct timer_list *)arg;
+
+#ifndef HANDLE_VC1_IRQ
+        vvc1_isr();
+#endif
+
+#if 1
+        if ( READ_MPEG_REG(VC1_SOS_COUNT) > 10 )
+        {
+                amvdec_stop();
+                vf_light_unreg_provider();
+                vvc1_local_init();
+                vvc1_prot_init();
+                vf_reg_provider(&vvc1_vf_provider);
+                amvdec_start();
+        }
+#endif
+        
+        if ((putting_ptr != put_ptr) && (READ_MPEG_REG(VC1_BUFFERIN) == 0))
+        {
+                u32 index = vfpool_idx[put_ptr];
+
+                if (--vfbuf_use[index] == 0) 
+                {
+                        WRITE_MPEG_REG(VC1_BUFFERIN, ~(1<<index));
+                }
+
+                INCPTR(put_ptr);
+        }
+
+        timer->expires = jiffies + PUT_INTERVAL;
+
+        add_timer(timer);
 }
 
 static s32 vvc1_init(void)
@@ -632,7 +645,7 @@ static s32 vvc1_init(void)
 
         stat |= STAT_ISR_REG;
 
-        vf_reg_provider(&vmpeg_vf_provider);
+        vf_reg_provider(&vvc1_vf_provider);
 
         stat |= STAT_VF_HOOK;
 
