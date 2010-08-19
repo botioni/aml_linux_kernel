@@ -37,6 +37,8 @@ static int deinterlace_mode = 0;
 static struct timer_list di_pre_timer;
 static struct work_struct di_pre_work;
 
+int di_pre_recycle_buf = -1;
+
 int prev_struct = 0;
 int prog_field_count = 0;
 int buf_recycle_done = 1;
@@ -71,6 +73,11 @@ unsigned di_mem_start;
 int get_deinterlace_mode(void)
 {
 	return deinterlace_mode;
+}
+
+int get_di_pre_recycle_buf(void)
+{
+	return di_pre_recycle_buf;
 }
 
 vframe_t *peek_di_out_buf(void)
@@ -148,6 +155,8 @@ void disable_pre_deinterlace(void)
 
 	di_checked_field = (field_counter+di_checked_field+1) % DI_BUF_NUM;
 	pre_field_counter = field_counter = 0;
+
+	di_pre_recycle_buf = -1;
 
     WRITE_MPEG_REG(DI_PRE_CTRL, 0x3 << 30);
     WRITE_MPEG_REG(DI_PRE_SIZE, (32-1) | ((64-1) << 16));
@@ -2454,7 +2463,6 @@ void di_pre_isr(struct work_struct *work)
 			pattern_check_pre();
 
 			memcpy((&di_buf_pool[pre_field_counter%DI_BUF_NUM]), cur_buf, sizeof(vframe_t));
-			di_buf_pool[pre_field_counter%DI_BUF_NUM].recycle_by_di_pre = 1;
 			di_buf_pool[pre_field_counter%DI_BUF_NUM].blend_mode = blend_mode;
 			di_buf_pool[pre_field_counter%DI_BUF_NUM].canvas0Addr = DEINTERLACE_CANVAS_BASE_INDEX + 4;
 			di_buf_pool[pre_field_counter%DI_BUF_NUM].canvas1Addr = DEINTERLACE_CANVAS_BASE_INDEX + 4;
@@ -2495,21 +2503,22 @@ void di_pre_isr(struct work_struct *work)
 		if ( pre_field_counter >= field_counter+DI_BUF_NUM-2 )
 			return;
 		
-    	cur_buf = vfp->get();
+    	cur_buf = vfp->peek();
     	if ( !cur_buf )
     		return;
 
     	if ( (cur_buf->duration == 0)
-#ifdef DI_SD_ONLY
+#if defined(CONFIG_AM_DEINTERLACE_SD_ONLY)
 			|| (cur_buf->width > 720)
 #endif
     		)
     	{
-			memcpy((&di_buf_pool[pre_field_counter%DI_BUF_NUM]), cur_buf, sizeof(vframe_t));
-			di_buf_pool[pre_field_counter%DI_BUF_NUM].recycle_by_di_pre = 0;
-			pre_field_counter++;
+    		di_pre_recycle_buf = 0;
 			return;
     	}
+
+		di_pre_recycle_buf = 1;
+    	cur_buf = vfp->get();
 
 	    di_inp_top_mif.canvas0_addr0 = di_inp_bot_mif.canvas0_addr0 = cur_buf->canvas0Addr & 0xff;
 	    di_inp_top_mif.canvas0_addr1 = di_inp_bot_mif.canvas0_addr1 = (cur_buf->canvas0Addr>>8) & 0xff;
@@ -3013,7 +3022,7 @@ static int deinterlace_probe(struct platform_device *pdev)
 
 	// declare deinterlace memory
 	di_mem_start = mem->start;
-	printk("Deinterlace memory start 0x%x\n", di_mem_start);
+	printk("Deinterlace memory: start = 0x%x, end = 0x%x\n", di_mem_start, mem->end);
 
 	deinterlace_init();
 

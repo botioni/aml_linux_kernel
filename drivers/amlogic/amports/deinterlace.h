@@ -1,9 +1,7 @@
 #ifndef __DEINTERLACE__
 #define __DEINTERLACE__
 
-//#define DI_SD_ONLY
-
-#ifdef DI_SD_ONLY
+#if defined(CONFIG_AM_DEINTERLACE_SD_ONLY)
 #define MAX_CANVAS_WIDTH 				720
 #define MAX_CANVAS_HEIGHT				576
 #else
@@ -51,6 +49,8 @@ void disable_pre_deinterlace(void);
 void disable_post_deinterlace(void);
 
 int get_deinterlace_mode(void);
+
+int get_di_pre_recycle_buf(void);
 
 const vframe_provider_t * get_vfp(void);
 
