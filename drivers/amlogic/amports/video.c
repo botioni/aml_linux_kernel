@@ -949,13 +949,23 @@ static irqreturn_t vsync_isr0(int irq, void *dev_id)
         if (cur_dispbuf) {
             u32 zoom_start_y, zoom_end_y;
 
-            if ((cur_dispbuf->type & VIDTYPE_VIU_FIELD) == 0) {
-                zoom_start_y = cur_frame_par->VPP_vd_start_lines_ >> 1;
-				zoom_end_y = (cur_frame_par->VPP_vd_end_lines_ + 1) >> 1;
-            } else {
-                zoom_start_y = cur_frame_par->VPP_vd_start_lines_;
-				zoom_end_y = cur_frame_par->VPP_vd_end_lines_;
-            }
+			if (cur_dispbuf->type & VIDTYPE_INTERLACE) {
+				if (cur_dispbuf->type & VIDTYPE_VIU_FIELD) {
+	                zoom_start_y = cur_frame_par->VPP_vd_start_lines_ >> 1;
+					zoom_end_y = (cur_frame_par->VPP_vd_end_lines_ + 1) >> 1;
+				} else {
+	                zoom_start_y = cur_frame_par->VPP_vd_start_lines_;
+					zoom_end_y = cur_frame_par->VPP_vd_end_lines_;
+				}
+			} else {
+				if (cur_dispbuf->type & VIDTYPE_VIU_FIELD) {
+	                zoom_start_y = cur_frame_par->VPP_vd_start_lines_;
+					zoom_end_y = cur_frame_par->VPP_vd_end_lines_;
+				} else {
+	                zoom_start_y = cur_frame_par->VPP_vd_start_lines_ >> 1;
+					zoom_end_y = (cur_frame_par->VPP_vd_end_lines_ + 1) >> 1;
+				}
+			}
 
             zoom_start_x_lines = cur_frame_par->VPP_hd_start_lines_;
             zoom_end_x_lines   = cur_frame_par->VPP_hd_end_lines_;
