@@ -54,8 +54,10 @@
 #define MREG_FRAME_OFFSET   AV_SCRATCH_A
 
 #define PICINFO_BUF_IDX_MASK        0x0007
+#define PICINFO_AVI1				0x0080
 #define PICINFO_INTERLACE           0x0020
-#define PICINFO_INTERLACE_TOP       0x0010
+#define PICINFO_INTERLACE_AVI1_BOT	0x0010
+#define PICINFO_INTERLACE_FIRST		0x0010
 
 #define VF_POOL_SIZE        12
 #define PUT_INTERVAL        HZ/100
@@ -162,26 +164,29 @@ static irqreturn_t vmjpeg_isr(int irq, void *dev_id)
 
             set_frame_info(vf);
 
-            vf->type = (reg & PICINFO_INTERLACE_TOP) ?
-                VIDTYPE_INTERLACE_TOP : VIDTYPE_INTERLACE_BOTTOM;
+			if (reg & PICINFO_AVI1) {
+				/* AVI1 format */
+				if (reg & PICINFO_INTERLACE_AVI1_BOT) {
+					vf->type = VIDTYPE_INTERLACE_BOTTOM | VIDTYPE_INTERLACE_FIRST;
+                } else {
+                    vf->type = VIDTYPE_INTERLACE_TOP;
+                }
+            } else {
+            	if (reg & PICINFO_INTERLACE_FIRST) {
+                	vf->type = VIDTYPE_INTERLACE_TOP | VIDTYPE_INTERLACE_FIRST;
+                } else {
+        	        vf->type = VIDTYPE_INTERLACE_BOTTOM;
+                }
+            }
+
             vf->type |= VIDTYPE_VIU_FIELD;
             vf->duration >>= 1;
             vf->canvas0Addr = vf->canvas1Addr = index2canvas(index);
-            vf->pts = (pts_valid) ? pts : 0;
 
-            vfbuf_use[index]++;
-
-            INCPTR(fill_ptr);
-
-            vfpool_idx[fill_ptr] = index;
-            vf = &vfpool[fill_ptr];
-
-            set_frame_info(vf);
-
-            vf->type = VIDTYPE_INTERLACE_BOTTOM;
-            vf->duration >>= 1;
-            vf->canvas0Addr = vf->canvas1Addr = index2canvas(index);
-            vf->pts = 0;
+			if ((vf->type & VIDTYPE_INTERLACE_FIRST) && (pts_valid))
+	            vf->pts = pts;
+	        else
+	        	vf->pts = 0;
 
             vfbuf_use[index]++;
 
@@ -390,7 +395,7 @@ static void vmjpeg_prot_init(void)
     WRITE_MPEG_REG(MREG_FROM_AMRISC, 0);
 
     WRITE_MPEG_REG(MCPU_INTR_MSK, 0xffff);
-    WRITE_MPEG_REG(MREG_DECODE_PARAM, frame_height << 4);
+    WRITE_MPEG_REG(MREG_DECODE_PARAM, (frame_height << 4) | 0x8000);
 
     /* clear mailbox interrupt */
     WRITE_MPEG_REG(ASSIST_MBOX1_CLR_REG, 1);
