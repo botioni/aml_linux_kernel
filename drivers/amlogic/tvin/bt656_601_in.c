@@ -61,19 +61,19 @@
 
 //static struct am656in_dev_t am656in_dev_;
 typedef struct {
-    unsigned long pbufAddr;
-    unsigned long pbufSize;
+    unsigned long   pbufAddr;
+    unsigned long   pbufSize;
 
-    unsigned pin_mux_reg1;
-    unsigned pin_mux_mask1;
+    unsigned        pin_mux_reg1;
+    unsigned        pin_mux_mask1;
 
-    unsigned pin_mux_reg2;
-    unsigned pin_mux_mask2;
+    unsigned        pin_mux_reg2;
+    unsigned        pin_mux_mask2;
 
     unsigned		state : 1;  //1--being 656in decode; 0--disable 656in decode;
-    unsigned		input_mode : 1;  //0:PAL ; 1:NTSC   ccir656 input
-    unsigned		wrap_flag : 1;
-    unsigned    pre_field_type : 1;     //0: top; 1: field
+    unsigned		input_mode : 2;  //00b:656--PAL ; 01b:656--NTSC   ccir656 input
+                                    //10b:601--PAL ; 11b:601--NTSC   ccir656 input
+    unsigned        pre_field_type : 1;     //0: top; 1: field
 }am656in_t;
 
 am656in_t *am656in_dec = NULL;
@@ -86,11 +86,13 @@ static const char bt656in_dec_id[] = "bt656in-dev";
 //static struct class *am656in_class;
 //static struct device *am656in_dev;
 
+void reset_bt601in_dec(void);
+
 
 static void init_656in_dec_parameter(void)
 {
 //		am656in_dec.pre_field_type = 0;
-		am656in_dec.wrap_flag = 0;
+
 		return;
 }
 
@@ -98,79 +100,168 @@ static void reset_bt656in_dec(void)
 {
 		unsigned temp_data;
 		// reset BT656in module.
-		temp_data = READ_MPEG_REG(BT_CTRL);
+		temp_data = READ_CBUS_REG(BT_CTRL);
 		temp_data |= ( 1 << BT_SOFT_RESET );
-		WRITE_MPEG_REG(BT_CTRL, temp_data);
+		WRITE_CBUS_REG(BT_CTRL, temp_data);
 
-		temp_data = READ_MPEG_REG(BT_CTRL);
+		temp_data = READ_CBUS_REG(BT_CTRL);
 		temp_data &= ~( 1 << BT_SOFT_RESET );
-		WRITE_MPEG_REG(BT_CTRL, temp_data);
+		WRITE_CBUS_REG(BT_CTRL, temp_data);
 
-
+        WRITE_CBUS_REG(BT_FIELDSADR, (4 << 16) | 4);	// field 0/1 start lcnt: default value
 // configuration the BT PORT control
-// For standard bt656 in stream, there's no HSYNC VSYNC pins.
+// For standaREAD_CBUS_REG bt656 in stream, there's no HSYNC VSYNC pins.
 // So we don't need to configure the port.
-		WRITE_MPEG_REG(BT_PORT_CTRL, 1 << BT_D8B);	// data itself is 8 bits.
+		WRITE_CBUS_REG(BT_PORT_CTRL, 1 << BT_D8B);	// data itself is 8 bits.
 
-		WRITE_MPEG_REG(BT_SWAP_CTRL,	( 4 << 0 ) |        //POS_Y1_IN
+		WRITE_CBUS_REG(BT_SWAP_CTRL,	( 4 << 0 ) |        //POS_Y1_IN
 						( 5 << 4 ) |        //POS_Cr0_IN
  						( 6 << 8 ) |        //POS_Y0_IN
 						( 7 << 12 ));       //POS_CB0_IN
 
 // ANCI is the field blanking data, like close caption. If it connected to digital camara interface, the jpeg bitstream also use this ANCI FIFO.
-		WRITE_MPEG_REG(BT_ANCISADR, am656in_dec.pbufAddr);
-		WRITE_MPEG_REG(BT_ANCIEADR, am656in_dec.pbufAddr + BT656IN_ANCI_DATA_SIZE);
+		WRITE_CBUS_REG(BT_ANCISADR, am656in_dec.pbufAddr);
+		WRITE_CBUS_REG(BT_ANCIEADR, am656in_dec.pbufAddr + BT656IN_ANCI_DATA_SIZE);
 
-		WRITE_MPEG_REG(BT_AFIFO_CTRL,	(1 <<31) |     // load start and end address to afifo.
+		WRITE_CBUS_REG(BT_AFIFO_CTRL,	(1 <<31) |     // load start and end address to afifo.
 						(1 << 6) |     // fill _en;
 						(1 << 3)) ;     // urgent
 
 
-    		WRITE_MPEG_REG(BT_INT_CTRL ,   // (1 << 5) |    //ancififo done int.
+    		WRITE_CBUS_REG(BT_INT_CTRL ,   // (1 << 5) |    //ancififo done int.
 //						(1 << 4) |    //SOF interrupt enable.
 //						(1 << 3) |      //EOF interrupt enable.
 						(1 << 1)); // |      //input overflow interrupt enable.
 //						(1 << 0));      //bt656 controller error interrupt enable.
 
-		WRITE_MPEG_REG(BT_ERR_CNT, (626 << 16) | (1760));
+		WRITE_CBUS_REG(BT_ERR_CNT, (626 << 16) | (1760));
 
 		if(am656in_dec.input_mode  == 0) //input is PAL
 		{
-				WRITE_MPEG_REG(BT_VBIEND, 	22 | (22 << 16));		//field 0/1 VBI last line number
-//				WRITE_MPEG_REG(BT_FIELD_SADR, 	23 | (23 << 16));	//field 0/1 start line number
-				WRITE_MPEG_REG(BT_VIDEOSTART, 	23 | (23 << 16));	//Line number of the first video start line in field 0/1.
-				WRITE_MPEG_REG(BT_VIDEOEND , 	312 |          //  Line number of the last video line in field 1. added video end for avoid overflow.
-								626 <<16));					// Line number of the last video line in field 0
-				WRITE_MPEG_REG(BT_CTRL ,	(1 << BT_UPDATE_ST_SEL) |  //Update bt656 status register when start of frame.
+				WRITE_CBUS_REG(BT_VBIEND, 	22 | (22 << 16));		//field 0/1 VBI last line number
+				WRITE_CBUS_REG(BT_VIDEOSTART, 	23 | (23 << 16));	//Line number of the first video start line in field 0/1.
+				WRITE_CBUS_REG(BT_VIDEOEND , 	312 |          //  Line number of the last video line in field 1. added video end for avoid overflow.
+								312 <<16));					// Line number of the last video line in field 0
+				WRITE_CBUS_REG(BT_CTRL ,	//(1 << BT_UPDATE_ST_SEL) |  //Update bt656 status register when start of frame.
 								(1 << BT_COLOR_REPEAT) | //Repeated the color data when do 4:2:2 -> 4:4:4 data transfer.
-								(1 << BT_AUTO_FMT ) |			//use hardware to check the PAL/NTSC format input format if it's standard BT656 input format.
-								(1 << BT_MODE_BIT     ) | // BT656 standard interface.
+								(1 << BT_AUTO_FMT ) |			//use haREAD_CBUS_REGware to check the PAL/NTSC format input format if it's standaREAD_CBUS_REG BT656 input format.
+								(1 << BT_MODE_BIT     ) | // BT656 standaREAD_CBUS_REG interface.
 								(1 << BT_EN_BIT       ) |    // enable BT moduale.
 								(1 << BT_REF_MODE_BIT ) |    // timing reference is from bit stream.
 								(1 << BT_CLK27_SEL_BIT) |    // use external xclk27.
 								(1 << BT_XCLK27_EN_BIT)) ;    // xclk27 is input.
 		}
-		else	//input is NTSC
+		else if(am656in_dec.input_mode  == 1) //input is PAL	//input is NTSC
 		{
-				WRITE_MPEG_REG(BT_VBIEND, 	21 | (21 << 16));		//field 0/1 VBI last line number
-//				WRITE_MPEG_REG(BT_FIELD_SADR, 	22 | (22 << 16));	//field 0/1 start line number
-				WRITE_MPEG_REG(BT_VIDEOSTART, 	22 | (22 << 16));	//Line number of the first video start line in field 0/1.
-				WRITE_MPEG_REG(BT_VIDEOEND , 	265 |          //  Line number of the last video line in field 1. added video end for avoid overflow.
-								(526 <<16));					// Line number of the last video line in field 0
-				WRITE_MPEG_REG(BT_CTRL ,	(1 << BT_UPDATE_ST_SEL) |  //Update bt656 status register when start of frame.
+				WRITE_CBUS_REG(BT_VBIEND, 	21 | (21 << 16));		//field 0/1 VBI last line number
+				WRITE_CBUS_REG(BT_VIDEOSTART, 	18 | (18 << 16));	//Line number of the first video start line in field 0/1.
+				WRITE_CBUS_REG(BT_VIDEOEND , 	257 |          //  Line number of the last video line in field 1. added video end for avoid overflow.
+								(257 <<16));					// Line number of the last video line in field 0
+				WRITE_CBUS_REG(BT_CTRL ,	//(1 << BT_UPDATE_ST_SEL) |  //Update bt656 status register when start of frame.
 								(1 << BT_COLOR_REPEAT) | //Repeated the color data when do 4:2:2 -> 4:4:4 data transfer.
-								(1 << BT_AUTO_FMT ) |		//use hardware to check the PAL/NTSC format input format if it's standard BT656 input format.
-								(1 << BT_MODE_BIT     ) | // BT656 standard interface.
+								(1 << BT_AUTO_FMT ) |		//use haREAD_CBUS_REGware to check the PAL/NTSC format input format if it's standaREAD_CBUS_REG BT656 input format.
+								(1 << BT_MODE_BIT     ) | // BT656 standaREAD_CBUS_REG interface.
 								(1 << BT_EN_BIT       ) |    // enable BT moduale.
 								(1 << BT_REF_MODE_BIT ) |    // timing reference is from bit stream.
 								(1 << BT_CLK27_SEL_BIT) |    // use external xclk27.
 								(1 << BT_XCLK27_EN_BIT) |		// xclk27 is input.
 								(1 << BT_FMT_MODE_BIT));   //input format is NTSC
 		}
-
+        else
+        {
+            reset_bt601in_dec();
+        }
 		return;
 }
 
+
+static void reset_bt601in_dec(void)
+{
+		unsigned temp_data;
+		// reset BT656in module.
+		temp_data = READ_CBUS_REG(BT_CTRL);
+		temp_data |= ( 1 << BT_SOFT_RESET );
+		WRITE_CBUS_REG(BT_CTRL, temp_data);
+
+		temp_data = READ_CBUS_REG(BT_CTRL);
+		temp_data &= ~( 1 << BT_SOFT_RESET );
+		WRITE_CBUS_REG(BT_CTRL, temp_data);
+
+		WRITE_CBUS_REG(BT_FIELDSADR, (1 << 16) | 1);	// field 0/1 start lcnt
+        WRITE_CBUS_REG(BT_PORT_CTRL,    (0 << BT_IDQ_EN )   |     // use external idq pin.
+                                                (1 << BT_IDQ_PHASE )   |
+                                                ( 1 << BT_FID_HSVS ) |         // FID came from HS VS.
+                                                ( 1 << BT_HSYNC_PHASE ) |
+                                                (1 << BT_D8B )     |
+                                                (4 << BT_FID_DELAY ) |
+                                                (5 << BT_VSYNC_DELAY) |
+                                                (5 << BT_HSYNC_DELAY));
+
+        WRITE_CBUS_REG(BT_601_CTRL2 , ( 10 << 16));     // FID field check done point.
+
+		WRITE_CBUS_REG(BT_SWAP_CTRL,	( 4 << 0 ) | // suppose the input bitstream format is Cb0 Y0 Cr0 Y1.
+							( 5 << 4 ) |
+							( 6 << 8 ) |
+							( 7 << 13 ) );
+
+        WRITE_CBUS_REG(BT_LINECTRL , ( 1 << 31 ) |   //software line ctrl enable.
+                                    (1644 << 16 ) |    //1440 + 204
+                                    220 )  ;
+
+        // ANCI is the field blanking data, like close caption. If it connected to digital camara interface, the jpeg bitstream also use this ANCI FIFO.
+        WRITE_CBUS_REG(BT_ANCISADR, am656in_dec.pbufAddr);
+        WRITE_CBUS_REG(BT_ANCIEADR, am656in_dec.pbufAddr + BT656IN_ANCI_DATA_SIZE);
+
+		WRITE_CBUS_REG(BT_AFIFO_CTRL,	(1 <<31) |     // load start and end address to afifo.
+                        				(1 << 6) |     // fill _en;
+                        				(1 << 3)) ;     // urgent
+
+    	WRITE_CBUS_REG(BT_INT_CTRL ,   // (1 << 5) |    //ancififo done int.
+//						(1 << 4) |    //SOF interrupt enable.
+//						(1 << 3) |      //EOF interrupt enable.
+						(1 << 1)); // |      //input overflow interrupt enable.
+//						(1 << 0));      //bt656 controller error interrupt enable.
+        WRITE_CBUS_REG(BT_ERR_CNT, (626 << 16) | (2000));
+
+		if(am656in_dec.input_mode == 2) //input is PAL
+		{
+				WRITE_CBUS_REG(BT_VBIEND, 22 | (22 << 16));		//field 0/1 VBI last line number
+				WRITE_CBUS_REG(BT_VIDEOSTART, 23 | (23 << 16));	//Line number of the first video start line in field 0/1.
+				WRITE_CBUS_REG(BT_VIDEOEND , 312 |          //  Line number of the last video line in field 1. added video end for avoid overflow.
+                     							(312 <<16));					// Line number of the last video line in field 0
+				WRITE_CBUS_REG(BT_CTRL ,	(0 << BT_MODE_BIT     ) |    // BT656 standaREAD_CBUS_REG interface.
+                                            (1 << BT_AUTO_FMT )     |
+                                            (1 << BT_EN_BIT       ) |    // enable BT moduale.
+                                            (0 << BT_REF_MODE_BIT ) |    // timing reference is from bit stream.
+                                            (0 << BT_FMT_MODE_BIT ) |     //PAL
+                                            (1 << BT_SLICE_MODE_BIT )|    // no ancillay flag.
+                                            (0 << BT_FID_EN_BIT )   |     // use external fid pin.
+                                            (1 << BT_CLK27_SEL_BIT) |  // use external xclk27.
+                                            (1 << BT_XCLK27_EN_BIT) );   // xclk27 is input.
+     }
+		else if(am656in_dec.input_mode == 3) 	//input is NTSC
+		{
+				WRITE_CBUS_REG(BT_VBIEND, 21 | (21 << 16));		//field 0/1 VBI last line number
+				WRITE_CBUS_REG(BT_VIDEOSTART, 18 | (18 << 16));	//Line number of the first video start line in field 0/1.
+				WRITE_CBUS_REG(BT_VIDEOEND , 257 |          //  Line number of the last video line in field 1. added video end for avoid overflow.
+                     					(257 <<16));		// Line number of the last video line in field 0
+				WRITE_CBUS_REG(BT_CTRL ,(0 << BT_MODE_BIT     ) |    // BT656 standaREAD_CBUS_REG interface.
+                                        (1 << BT_AUTO_FMT )     |
+                                        (1 << BT_EN_BIT       ) |    // enable BT moduale.
+                                        (0 << BT_REF_MODE_BIT ) |    // timing reference is from bit stream.
+                                        (1 << BT_FMT_MODE_BIT ) |     // NTSC
+                                        (1 << BT_SLICE_MODE_BIT )|    // no ancillay flag.
+                                        (0 << BT_FID_EN_BIT )   |     // use external fid pin.
+                                        (1 << BT_CLK27_SEL_BIT) |  // use external xclk27.
+                                        (1 << BT_XCLK27_EN_BIT) );   // xclk27 is input.
+      }
+        else
+        {
+            reset_bt656in_dec();
+        }
+
+		return;
+}
 
 
 void set_next_field_bt656in_anci_address(unsigned char index)
@@ -178,7 +269,7 @@ void set_next_field_bt656in_anci_address(unsigned char index)
 		unsigned pbufAddr;
 		pbufAddr = am656in_dec.pbufAddr + index * 0x200;
 //		//set next field ANCI.
-		WRITE_MPEG_REG(BT_ANCISADR, pbufAddr);
+		WRITE_CBUS_REG(BT_ANCISADR, pbufAddr);
 }
 
 
@@ -189,7 +280,10 @@ void start_amvdec_656in(void)
 			am656in_dec.state = 1;
 			init_656in_dec_parameter();
 			reset_bt656in_dec();
-			SET_PERI_REG_MASK(am656in_dec.pin_mux_reg, am656in_dec.pin_mux_mask);  //set the related pin mux
+            if(am656in_dec.pin_mux_reg1 != 0)
+			    SET_CBUS_REG_MASK(am656in_dec.pin_mux_reg1, am656in_dec.pin_mux_mask1);  //set the related pin mux
+            if(am656in_dec.pin_mux_reg2 != 0)
+                SET_CBUS_REG_MASK(am656in_dec.pin_mux_reg2, am656in_dec.pin_mux_mask2);  //set the related pin mux
 		}
 		return;
 }
@@ -200,20 +294,24 @@ void stop_amvdec_656in(void)
 		// reset BT656in module.
 		if(am656in_dec.state)
 		{
-				CLEAR_PERI_REG_MASK(am656in_dec.pin_mux_reg, am656in_dec.pin_mux_mask);  //clear the related pin mux
+            if(am656in_dec.pin_mux_reg1 != 0)
+               CLEAR_CBUS_REG_MASK(am656in_dec.pin_mux_reg1, am656in_dec.pin_mux_mask1);
 
-				temp_data = READ_MPEG_REG(BT_CTRL);
-				temp_data &= ~( 1 << BT_EN_BIT );
-				WRITE_MPEG_REG(BT_CTRL, temp_data);	//disable BT656 input
+            if(am656in_dec.pin_mux_reg2 != 0)
+               CLEAR_CBUS_REG_MASK(am656in_dec.pin_mux_reg2, am656in_dec.pin_mux_mask2);
+
+            temp_data = READ_CBUS_REG(BT_CTRL);
+			temp_data &= ~( 1 << BT_EN_BIT );
+			WRITE_CBUS_REG(BT_CTRL, temp_data);	//disable BT656 input
 
 				//reset 656 input module
-				temp_data = READ_MPEG_REG(BT_CTRL);
-				temp_data |= ( 1 << BT_SOFT_RESET );
-				WRITE_MPEG_REG(BT_CTRL, temp_data);
-				temp_data = READ_MPEG_REG(BT_CTRL);
-				temp_data &= ~( 1 << BT_SOFT_RESET );
-				WRITE_MPEG_REG(BT_CTRL, temp_data);
-				am656in_dec.state = 0;
+			temp_data = READ_CBUS_REG(BT_CTRL);
+			temp_data |= ( 1 << BT_SOFT_RESET );
+			WRITE_CBUS_REG(BT_CTRL, temp_data);
+			temp_data = READ_CBUS_REG(BT_CTRL);
+			temp_data &= ~( 1 << BT_SOFT_RESET );
+			WRITE_CBUS_REG(BT_CTRL, temp_data);
+			am656in_dec.state = 0;
 		}
 
 		return;
@@ -250,14 +348,14 @@ vframe_t * amvdec_656in_run(void)
             0,                      //ratio_control
     };
 
-    if(am656in_dec.decoder_state == 0){
+    if(am656in_dec.state == 0){
         printk("bt656in decoder is not started\n");
         return &info;
     }
 
-    ccir656_status = READ_MPEG_REG(BT_STATUS);
-    field_total_line = (READ_PERI_REG(BT_VLINE_STATUS)) & 0xfff;
-    WRITE_PERI_REG(BT_STATUS, ccir656_status | (1 << 9));	//Write 1 to clean the SOF interrupt bit
+    ccir656_status = READ_CBUS_REG(BT_STATUS);
+    field_total_line = (READ_CBUS_REG(BT_VLINE_STATUS)) & 0xfff;
+    WRITE_CBUS_REG(BT_STATUS, ccir656_status | (1 << 9));	//WRITE_CBUS_REGite 1 to clean the SOF interrupt bit
 
     if(ccir656_status & 0x80)
     {
@@ -387,7 +485,7 @@ static int amvdec_656in_probe(struct platform_device *pdev)
 	    return(ENOMEM);
     memset(am656in_dec, 0, sizeof(struct bt656in_t));
 
-//    r = alloc_chrdev_region(&am656in_id, 0, BT656IN_COUNT, DEVICE_NAME);
+//    r = alloc_chREAD_CBUS_REGev_region(&am656in_id, 0, BT656IN_COUNT, DEVICE_NAME);
 //    if (r < 0) {
 //        pr_error("Can't register major for am656indec device\n");
 //        return r;
@@ -396,7 +494,7 @@ static int amvdec_656in_probe(struct platform_device *pdev)
 //        am656in_class = class_create(THIS_MODULE, DEVICE_NAME);
 //    if (IS_ERR(am656in_class))
 //    {
-//        unregister_chrdev_region(am656in_id, BT656IN_COUNT);
+//        unregister_chREAD_CBUS_REGev_region(am656in_id, BT656IN_COUNT);
 //        return PTR_ERR(aoe_class);
 //    }
 
@@ -412,9 +510,8 @@ static int amvdec_656in_probe(struct platform_device *pdev)
 //				return r;
 //		}
 
-     am656in_dec.state = 0;
      am656in_dec.input_mode = 1;     //0:  PAL; 1:  NTSC ccir656 input
-     am656in_dec.luma_croma_fifo_size = 1440 * (288 + 16);
+//     am656in_dec.luma_croma_fifo_size = 1440 * (288 + 16);
      am656in_dec.pbufAddr = 0x81000000;
 //     am656in_dec.pbufSize = BT656IN_ANCI_DATA_SIZE + am656in_dec.luma_croma_fifo_size * BT656IN_POOL_NUM;
 //    for(i = 0;i < BT656IN_POOL_NUM; i++){
@@ -442,7 +539,7 @@ static int amvdec_656in_probe(struct platform_device *pdev)
 	        am656in_dec.pin_mux_mask1 = (unsigned )(s->start);
 	        am656in_dec.pin_mux_reg1 = ((unsigned )(s->end) - am656in_dec.pin_mux_mask1 ) & 0xffff;
 	        if(am656in_dec.pin_mux_reg1 != 0)
-	        	SET_PERI_REG_MASK(am656in_dec.pin_mux_reg1, am656in_dec.pin_mux_mask1);
+	        	SET_CBUS_REG_MASK(am656in_dec.pin_mux_reg1, am656in_dec.pin_mux_mask1);
      }
      else
              pr_error("error in getting resource parameters1 \n");
@@ -453,7 +550,7 @@ static int amvdec_656in_probe(struct platform_device *pdev)
 	        am656in_dec.pin_mux_mask2 = (unsigned )(s->start);
 	        am656in_dec.pin_mux_reg2 = ((unsigned )(s->end) - am656in_dec.pin_mux_mask1 ) & 0xffff;
 	        if(am656in_dec.pin_mux_reg2 != 0)
-	        	SET_PERI_REG_MASK(am656in_dec.pin_mux_reg2, am656in_dec.pin_mux_mask2);
+	        	SET_CBUS_REG_MASK(am656in_dec.pin_mux_reg2, am656in_dec.pin_mux_mask2);
      }
      else
              pr_error("error in getting resource parameters1 \n");
@@ -484,13 +581,13 @@ static int amvdec_656in_remove(struct platform_device *pdev)
 
 //    class_destroy(am656in_class);
 
-//    unregister_chrdev_region(am656in_id, BT656IN_COUNT);
+//    unregister_chREAD_CBUS_REGev_region(am656in_id, BT656IN_COUNT);
 
 	  if(am656in_dec.pin_mux_reg1 != 0)
-	     CLEAR_PERI_REG_MASK(am656in_dec.pin_mux_reg1, am656in_dec.pin_mux_mask1);
+	     CLEAR_CBUS_REG_MASK(am656in_dec.pin_mux_reg1, am656in_dec.pin_mux_mask1);
 
 	  if(am656in_dec.pin_mux_reg2 != 0)
-	     CLEAR_PERI_REG_MASK(am656in_dec.pin_mux_reg2, am656in_dec.pin_mux_mask2);
+	     CLEAR_CBUS_REG_MASK(am656in_dec.pin_mux_reg2, am656in_dec.pin_mux_mask2);
     return 0;
 }
 
