@@ -138,10 +138,7 @@ static inline void _init_tvenc(tcon_conf_t *pConf)
 {
     WRITE_MPEG_REG(ENCP_VIDEO_FILT_CTRL,    0x1000);
     WRITE_MPEG_REG(VENC_DVI_SETTING,        0x11);
-
-/*
-注意：此处LCD CLK是从Audio处mux过来的
-*/    
+  
     WRITE_MPEG_REG(HHI_AUD_PLL_CNTL, pConf->pll_ctrl);
     WRITE_MPEG_REG(HHI_VID_CLK_CNTL, pConf->clk_ctrl);
     WRITE_MPEG_REG(HHI_VID_CLK_DIV, (pConf->clk_ctrl)&0xf);
