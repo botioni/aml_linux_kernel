@@ -28,7 +28,7 @@ USING_UMP ?= 0
 ONLY_ZBT ?= 0
 USING_ZBT ?= 1
 USING_OS_MEMORY ?= 1
-BUILD ?= debug
+BUILD ?= release
 CONFIG ?= aml-m1-m400-1
 
 ifeq ($(USING_UMP),1)
