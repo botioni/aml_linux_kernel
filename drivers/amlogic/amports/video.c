@@ -61,6 +61,7 @@
 //#define FIQ_VSYNC 
 
 //#define SLOW_SYNC_REPEAT
+//#define INTERLACE_FIELD_MATCH_PROCESS
 #define DEBUG
 
 #define BRIDGE_IRQ	INT_TIMER_D
@@ -495,9 +496,12 @@ static void vsync_toggle_frame(vframe_t *vf)
 static void viu_set_dcu(vpp_frame_par_t *frame_par, vframe_t *vf)
 {
     u32 r;
+    u32 hformat, vphase, vini_phase, vrpt, hformatter_en, vformatter_en;
+    u32 pat, loop;
+    const u32 vpat[] = {0, 0x8, 0x9, 0xa, 0xb, 0xc};
 
     r = (3 << VDIF_URGENT_BIT) |
-        (10 << VDIF_HOLD_LINES_BIT) |
+        (17 << VDIF_HOLD_LINES_BIT) |
         VDIF_FORMAT_SPLIT  |
         VDIF_CHRO_RPT_LAST |
         VDIF_ENABLE |
@@ -509,35 +513,46 @@ static void viu_set_dcu(vpp_frame_par_t *frame_par, vframe_t *vf)
         if (vf->type & VIDTYPE_VIU_422) {
             r |= VDIF_FORMAT_422;
         } else {
-            r |= VDIF_FORMAT_RGB888_YUV444;
+            r |= VDIF_FORMAT_RGB888_YUV444 | VDIF_DEMUX_MODE_RGB_444;
         }
     }
 
     WRITE_MPEG_REG(VD1_IF0_GEN_REG, r);
     WRITE_MPEG_REG(VD2_IF0_GEN_REG, r);
+    
+	/* chroma formatter */
+ 	if (vf->type & VIDTYPE_VIU_FIELD) {
+ 	    if (vf->type & VIDTYPE_VIU_444) {
+    	    hformat = HFORMATTER_YC_RATIO_1_1;
+        	vrpt = 0;
+        	vini_phase = 0;
+        	vphase = 0;
+        	hformatter_en = 0;            
+        	vformatter_en = 0;
+    	} else {
+        	hformat = HFORMATTER_YC_RATIO_2_1;
+        	vrpt = VFORMATTER_RPTLINE0_EN;
+        	vini_phase = 0xc << VFORMATTER_INIPHASE_BIT;
+        	vphase = ((vf->type & VIDTYPE_VIU_422) ? 0x10 : 0x08) << VFORMATTER_PHASE_BIT;
+        	hformatter_en = HFORMATTER_EN;            
+        	vformatter_en = VFORMATTER_EN;	
+        }
 
-	WRITE_MPEG_REG(VD1_IF0_LUMA_PSEL, 0);
-	WRITE_MPEG_REG(VD1_IF0_CHROMA_PSEL, 0);
+	    WRITE_MPEG_REG(VIU_VD1_FMT_CTRL,
+    	    hformat | hformatter_en |
+        	vrpt | vini_phase | vphase | vformatter_en);
 
-    if ((vf->type & VIDTYPE_VIU_FIELD) &&
-        (frame_par->VPP_prog_as_interlace == 0)) {
-        WRITE_MPEG_REG(VD1_IF0_RPT_LOOP,        0);
-        WRITE_MPEG_REG(VD1_IF0_LUMA0_RPT_PAT,   0);
-        WRITE_MPEG_REG(VD1_IF0_CHROMA0_RPT_PAT, 0);
-        WRITE_MPEG_REG(VD1_IF0_LUMA1_RPT_PAT,   0);
-        WRITE_MPEG_REG(VD1_IF0_CHROMA1_RPT_PAT, 0);
-
-        WRITE_MPEG_REG(VD2_IF0_RPT_LOOP,        0);
-        WRITE_MPEG_REG(VD2_IF0_LUMA0_RPT_PAT,   0);
-        WRITE_MPEG_REG(VD2_IF0_CHROMA0_RPT_PAT, 0);
-        WRITE_MPEG_REG(VD2_IF0_LUMA1_RPT_PAT,   0);
-        WRITE_MPEG_REG(VD2_IF0_CHROMA1_RPT_PAT, 0);
-
+    	WRITE_MPEG_REG(VIU_VD2_FMT_CTRL,
+        	hformat | hformatter_en |
+        	vrpt | vini_phase | vphase | vformatter_en);
+    }
+    else if ((vf->type & VIDTYPE_INTERLACE) &&
+        	 (((vf->type & VIDTYPE_TYPEMASK) == VIDTYPE_INTERLACE_TOP))) {
         WRITE_MPEG_REG(VIU_VD1_FMT_CTRL,
             HFORMATTER_YC_RATIO_2_1 |
             HFORMATTER_EN |
             VFORMATTER_RPTLINE0_EN |
-            (0xc << VFORMATTER_INIPHASE_BIT) |
+            (0xe << VFORMATTER_INIPHASE_BIT) |
             (((vf->type & VIDTYPE_VIU_422) ? 0x10 : 0x08) << VFORMATTER_PHASE_BIT) |
             VFORMATTER_EN);
 
@@ -545,105 +560,16 @@ static void viu_set_dcu(vpp_frame_par_t *frame_par, vframe_t *vf)
             HFORMATTER_YC_RATIO_2_1 |
             HFORMATTER_EN |
             VFORMATTER_RPTLINE0_EN |
-            (0xc << VFORMATTER_INIPHASE_BIT) |
+            (0xe << VFORMATTER_INIPHASE_BIT) |
             (((vf->type & VIDTYPE_VIU_422) ? 0x10 : 0x08) << VFORMATTER_PHASE_BIT) |
             VFORMATTER_EN);
-    }
-    else if ((vf->type & VIDTYPE_INTERLACE) ||
-             (frame_par->VPP_prog_as_interlace == 1)) {
-        if (((vf->type & VIDTYPE_TYPEMASK) == VIDTYPE_INTERLACE_TOP) &&
-            (frame_par->VPP_prog_as_interlace == 0)) {
-            WRITE_MPEG_REG(VD1_IF0_RPT_LOOP,
-                (0x11 << VDIF_CHROMA_LOOP1_BIT) |
-                (0x11 << VDIF_LUMA_LOOP1_BIT)   |
-                (0x11 << VDIF_CHROMA_LOOP0_BIT) |
-                (0x11 << VDIF_LUMA_LOOP0_BIT));
-            WRITE_MPEG_REG(VD1_IF0_LUMA0_RPT_PAT,   0x80);
-            WRITE_MPEG_REG(VD1_IF0_CHROMA0_RPT_PAT, 0x80);
-            WRITE_MPEG_REG(VD1_IF0_LUMA1_RPT_PAT,   0x80);
-            WRITE_MPEG_REG(VD1_IF0_CHROMA1_RPT_PAT, 0x80);
-
-            WRITE_MPEG_REG(VD2_IF0_RPT_LOOP,
-                (0x11 << VDIF_CHROMA_LOOP1_BIT) |
-                (0x11 << VDIF_LUMA_LOOP1_BIT)   |
-                (0x11 << VDIF_CHROMA_LOOP0_BIT) |
-                (0x11 << VDIF_LUMA_LOOP0_BIT));
-            WRITE_MPEG_REG(VD2_IF0_LUMA0_RPT_PAT,   0x80);
-            WRITE_MPEG_REG(VD2_IF0_CHROMA0_RPT_PAT, 0x80);
-            WRITE_MPEG_REG(VD2_IF0_LUMA1_RPT_PAT,   0x80);
-            WRITE_MPEG_REG(VD2_IF0_CHROMA1_RPT_PAT, 0x80);
-
-            WRITE_MPEG_REG(VIU_VD1_FMT_CTRL,
-                HFORMATTER_YC_RATIO_2_1 |
-                HFORMATTER_EN |
-                VFORMATTER_RPTLINE0_EN |
-                (0xe << VFORMATTER_INIPHASE_BIT) |
-                (((vf->type & VIDTYPE_VIU_422) ? 0x10 : 0x08) << VFORMATTER_PHASE_BIT) |
-                VFORMATTER_EN);
-
-            WRITE_MPEG_REG(VIU_VD2_FMT_CTRL,
-                HFORMATTER_YC_RATIO_2_1 |
-                HFORMATTER_EN |
-                VFORMATTER_RPTLINE0_EN |
-                (0xe << VFORMATTER_INIPHASE_BIT) |
-                (((vf->type & VIDTYPE_VIU_422) ? 0x10 : 0x08) << VFORMATTER_PHASE_BIT) |
-                VFORMATTER_EN);
-        } else {
-            WRITE_MPEG_REG(VD1_IF0_RPT_LOOP,
-                (0x00 << VDIF_CHROMA_LOOP1_BIT) |
-                (0x00 << VDIF_LUMA_LOOP1_BIT)   |
-                (0x00 << VDIF_CHROMA_LOOP0_BIT) |
-                (0x00 << VDIF_LUMA_LOOP0_BIT));
-            WRITE_MPEG_REG(VD1_IF0_LUMA0_RPT_PAT,   0x08);
-            WRITE_MPEG_REG(VD1_IF0_CHROMA0_RPT_PAT, 0x08);
-            WRITE_MPEG_REG(VD1_IF0_LUMA1_RPT_PAT,   0x08);
-            WRITE_MPEG_REG(VD1_IF0_CHROMA1_RPT_PAT, 0x08);
-
-            WRITE_MPEG_REG(VD2_IF0_RPT_LOOP,
-                (0x00 << VDIF_CHROMA_LOOP1_BIT) |
-                (0x00 << VDIF_LUMA_LOOP1_BIT)   |
-                (0x00 << VDIF_CHROMA_LOOP0_BIT) |
-                (0x00 << VDIF_LUMA_LOOP0_BIT));
-            WRITE_MPEG_REG(VD2_IF0_LUMA0_RPT_PAT,   0x08);
-            WRITE_MPEG_REG(VD2_IF0_CHROMA0_RPT_PAT, 0x08);
-            WRITE_MPEG_REG(VD2_IF0_LUMA1_RPT_PAT,   0x08);
-            WRITE_MPEG_REG(VD2_IF0_CHROMA1_RPT_PAT, 0x08);
-
-            WRITE_MPEG_REG(VIU_VD1_FMT_CTRL,
-                HFORMATTER_YC_RATIO_2_1 |
-                HFORMATTER_EN |
-                VFORMATTER_RPTLINE0_EN |
-                (0xa << VFORMATTER_INIPHASE_BIT) |
-                (((vf->type & VIDTYPE_VIU_422) ? 0x10 : 0x08) << VFORMATTER_PHASE_BIT) |
-                VFORMATTER_EN);
-
-            WRITE_MPEG_REG(VIU_VD2_FMT_CTRL,
-                HFORMATTER_YC_RATIO_2_1 |
-                HFORMATTER_EN |
-                VFORMATTER_RPTLINE0_EN |
-                (0xa << VFORMATTER_INIPHASE_BIT) |
-                (((vf->type & VIDTYPE_VIU_422) ? 0x10 : 0x08) << VFORMATTER_PHASE_BIT) |
-                VFORMATTER_EN);
-        }
     }
     else {
-        WRITE_MPEG_REG(VD1_IF0_RPT_LOOP,        0);
-        WRITE_MPEG_REG(VD1_IF0_LUMA0_RPT_PAT,   0);
-        WRITE_MPEG_REG(VD1_IF0_CHROMA0_RPT_PAT, 0);
-        WRITE_MPEG_REG(VD1_IF0_LUMA1_RPT_PAT,   0);
-        WRITE_MPEG_REG(VD1_IF0_CHROMA1_RPT_PAT, 0);
-
-        WRITE_MPEG_REG(VD2_IF0_RPT_LOOP,        0);
-        WRITE_MPEG_REG(VD2_IF0_LUMA0_RPT_PAT,   0);
-        WRITE_MPEG_REG(VD2_IF0_CHROMA0_RPT_PAT, 0);
-        WRITE_MPEG_REG(VD2_IF0_LUMA1_RPT_PAT,   0);
-        WRITE_MPEG_REG(VD2_IF0_CHROMA1_RPT_PAT, 0);
-
         WRITE_MPEG_REG(VIU_VD1_FMT_CTRL,
             HFORMATTER_YC_RATIO_2_1 |
             HFORMATTER_EN |
             VFORMATTER_RPTLINE0_EN |
-            (0xc << VFORMATTER_INIPHASE_BIT) |
+            (0xa << VFORMATTER_INIPHASE_BIT) |
             (((vf->type & VIDTYPE_VIU_422) ? 0x10 : 0x08) << VFORMATTER_PHASE_BIT) |
             VFORMATTER_EN);
 
@@ -651,10 +577,57 @@ static void viu_set_dcu(vpp_frame_par_t *frame_par, vframe_t *vf)
             HFORMATTER_YC_RATIO_2_1 |
             HFORMATTER_EN |
             VFORMATTER_RPTLINE0_EN |
-            (0xc << VFORMATTER_INIPHASE_BIT) |
+            (0xa << VFORMATTER_INIPHASE_BIT) |
             (((vf->type & VIDTYPE_VIU_422) ? 0x10 : 0x08) << VFORMATTER_PHASE_BIT) |
             VFORMATTER_EN);
+    }
 
+	/* LOOP/SKIP pattern */
+	pat = vpat[frame_par->vscale_skip_count];
+
+ 	if (vf->type & VIDTYPE_VIU_FIELD) {
+ 		loop = 0;
+    
+        if (vf->type & VIDTYPE_INTERLACE) {
+        	pat = vpat[frame_par->vscale_skip_count - 1];
+        }
+	}
+	else if ((vf->type & VIDTYPE_TYPEMASK) == VIDTYPE_INTERLACE_TOP) {
+		loop = 0x11;
+		pat <<= 4;
+
+        WRITE_MPEG_REG(VD1_IF0_LUMA_PSEL, 0);
+        WRITE_MPEG_REG(VD1_IF0_CHROMA_PSEL, 0);
+	}
+	else
+		loop = 0;
+
+    WRITE_MPEG_REG(VD1_IF0_RPT_LOOP,
+        (loop << VDIF_CHROMA_LOOP1_BIT) |
+        (loop << VDIF_LUMA_LOOP1_BIT)   |
+        (loop << VDIF_CHROMA_LOOP0_BIT) |
+        (loop << VDIF_LUMA_LOOP0_BIT));
+
+    WRITE_MPEG_REG(VD2_IF0_RPT_LOOP,
+        (loop << VDIF_CHROMA_LOOP1_BIT) |
+        (loop << VDIF_LUMA_LOOP1_BIT)   |
+        (loop << VDIF_CHROMA_LOOP0_BIT) |
+        (loop << VDIF_LUMA_LOOP0_BIT));
+
+    WRITE_MPEG_REG(VD1_IF0_LUMA0_RPT_PAT,   pat);
+    WRITE_MPEG_REG(VD1_IF0_CHROMA0_RPT_PAT, pat);
+    WRITE_MPEG_REG(VD1_IF0_LUMA1_RPT_PAT,   pat);
+    WRITE_MPEG_REG(VD1_IF0_CHROMA1_RPT_PAT, pat);
+
+    WRITE_MPEG_REG(VD2_IF0_LUMA0_RPT_PAT,   pat);
+    WRITE_MPEG_REG(VD2_IF0_CHROMA0_RPT_PAT, pat);
+    WRITE_MPEG_REG(VD2_IF0_LUMA1_RPT_PAT,   pat);
+    WRITE_MPEG_REG(VD2_IF0_CHROMA1_RPT_PAT, pat);
+
+	/* picture 0/1 control */
+	if (((vf->type & VIDTYPE_INTERLACE) == 0) &&
+		((vf->type & VIDTYPE_VIU_FIELD) == 0)) {
+		/* progressive frame in two pictures */
 		WRITE_MPEG_REG(VD1_IF0_LUMA_PSEL, 
 			(2 << 26) |	/* two pic mode */
 			(2 << 24) | /* use own last line */
@@ -665,7 +638,10 @@ static void viu_set_dcu(vpp_frame_par_t *frame_par, vframe_t *vf)
 			(2 << 24) | /* use own last line */
 			(2 << 8)  | /* toggle pic 0 and 1, use pic0 first */
 			(0x01));	/* loop pattern */
-    }
+	} else {
+	    WRITE_MPEG_REG(VD1_IF0_LUMA_PSEL, 0);
+    	WRITE_MPEG_REG(VD1_IF0_CHROMA_PSEL, 0);
+	}
 }
 
 static int detect_vout_type(void)
@@ -698,6 +674,23 @@ static int detect_vout_type(void)
     return vout_type;
 #endif
 }
+
+#ifdef INTERLACE_FIELD_MATCH_PROCESS
+static inline bool interlace_field_type_match(int vout_type, vframe_t *vf)
+{
+	if (DUR2PTS(vf->duration) != vsync_pts_inc)
+		return false;
+
+	if ((vout_type == VOUT_TYPE_TOP_FIELD) && 
+		((vf->type & VIDTYPE_TYPEMASK) == VIDTYPE_INTERLACE_TOP))
+		return true;
+	else if ((vout_type == VOUT_TYPE_BOT_FIELD) && 
+		((vf->type & VIDTYPE_TYPEMASK) == VIDTYPE_INTERLACE_BOTTOM))
+		return true;
+		
+	return false;
+}
+#endif
 
 static int calc_hold_line(void)
 {
@@ -765,13 +758,14 @@ static inline bool vpts_expire(vframe_t *cur_vf, vframe_t *next_vf)
     return ((int)(timestamp_pcrscr_get() - pts) >= 0);
 }
 
+#ifdef FIQ_VSYNC
 static irqreturn_t vsync_isr(int irq, void *dev_id)
 {
 	wake_up_interruptible(&amvideo_trick_wait);
 
 	return IRQ_HANDLED;
 }
-#ifdef FIQ_VSYNC
+
 static void __attribute__ ((naked)) vsync_fiq_isr(void)
 #else
 static irqreturn_t vsync_isr0(int irq, void *dev_id)
@@ -807,9 +801,10 @@ static irqreturn_t vsync_isr0(int irq, void *dev_id)
 #endif
 
     if ((!cur_dispbuf) || (cur_dispbuf == &vf_local)) {
+
         vf = vf_peek();
-        if (vf) 
-        	{
+
+        if (vf) {
             tsync_avevent(VIDEO_START,
                 (vf->pts) ? vf->pts : timestamp_vpts_get());
 
@@ -839,9 +834,17 @@ static irqreturn_t vsync_isr0(int irq, void *dev_id)
     
     /* buffer switch management */
     vf = vf_peek();
+    
+	/* setting video display property in underflow mode */
+	if ((!vf) && cur_dispbuf && (video_property_changed))
+		vsync_toggle_frame(cur_dispbuf);
 
     while (vf) {
-        if (vpts_expire(cur_dispbuf, vf)) {
+        if (vpts_expire(cur_dispbuf, vf)
+#ifdef INTERLACE_FIELD_MATCH_PROCESS
+        	 || interlace_field_type_match(vout_type, vf)
+#endif
+        	 ) {            
 #ifdef DEBUG
             pr_dbg("VIDEO_PTS = 0x%x, cur_dur=0x%x, next_pts=0x%x, scr = 0x%x\n",
                 timestamp_vpts_get(),
@@ -858,9 +861,12 @@ static irqreturn_t vsync_isr0(int irq, void *dev_id)
             if (trickmode_fffb == 1)
             {
                 atomic_set(&trickmode_framedone, 1);
-
+#ifdef FIQ_VSYNC
 				/* bridge to dummy IRQ */
 				BRIDGE_IRQ_SET();
+#else
+                wake_up_interruptible(&amvideo_trick_wait);
+#endif
                 break;
             }
 
@@ -877,7 +883,7 @@ static irqreturn_t vsync_isr0(int irq, void *dev_id)
              * you can adjust this array for any slow sync control as you want.
              * The playback can be smoother than previous method.
              */
-            if (duration_expire(cur_dispbuf, vf, frame_repeat_count * vsync_pts_inc))
+            if (duration_expire(cur_dispbuf, vf, frame_repeat_count * vsync_pts_inc) && timestamp_pcrscr_enable_state())
             {
 #ifdef DEBUG
                 pr_dbg("slow sync toggle, frame_repeat_count = %d\n", frame_repeat_count);
@@ -1154,7 +1160,7 @@ static void vsync_fiq_up(void)
    r = request_irq(INT_VIU_VSYNC, &vsync_isr0,
                     IRQF_SHARED, "am_sync0",
                     (void *)video_dev_id);
-   #endif
+#endif
 }
 
 static void vsync_fiq_down(void)
@@ -1839,6 +1845,7 @@ static int __init video_init(void)
     cur_dispbuf = NULL;
 
     /* hook vsync isr */
+#ifdef FIQ_VSYNC
     r = request_irq(BRIDGE_IRQ, &vsync_isr,
                     IRQF_SHARED, "amvideo",
                     (void *)video_dev_id);
@@ -1848,6 +1855,7 @@ static int __init video_init(void)
         r = -ENOENT;
         goto err0;
     }
+#endif
   
 
     /* sysfs node creation */
@@ -1894,7 +1902,9 @@ err2:
 err1:
     class_unregister(&amvideo_class);
 
+#ifdef FIQ_VSYNC
 err0:
+#endif
     return r;
 }
 
@@ -1908,13 +1918,15 @@ static void __exit video_exit(void)
 
     unregister_chrdev(AMVIDEO_MAJOR, DEVICE_NAME);
 
+#ifdef FIQ_VSYNC
     free_irq(BRIDGE_IRQ, (void *)video_dev_id);
+#endif
 
     class_unregister(&amvideo_class);
 }
 
 #ifdef CONFIG_JPEGLOGO
-subsys_initcall(video_init);
+subsys_initcall_sync(video_init);
 #else
 module_init(video_init);
 #endif
