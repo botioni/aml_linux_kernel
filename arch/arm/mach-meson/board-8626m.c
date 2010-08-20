@@ -66,6 +66,8 @@ static struct platform_device jpeglogo_device = {
     .resource      = jpeglogo_resources,
 };
 #endif
+
+#if defined(CONFIG_KEYPADS_AM)
 static struct resource intput_resources[] = {
 	{
 		.start = 0x0,
@@ -82,6 +84,8 @@ static struct platform_device input_device = {
 	.resource = intput_resources,
 	
 };
+#endif
+
 #ifdef CONFIG_FB_AM
 static struct resource fb_device_resources[] = {
     [0] = {
