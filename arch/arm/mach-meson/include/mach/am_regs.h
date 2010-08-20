@@ -5046,6 +5046,7 @@
 // VD1 path
 //------------------------------------------------------------------------------
 #define VD1_IF0_GEN_REG                            0x1a50
+	#define VDIF_RESET_ON_GO_FIELD		 (1<<29)
     #define VDIF_URGENT_BIT              27
     #define VDIF_CHROMA_END_AT_LAST_LINE (1<<26)
     #define VDIF_LUMA_END_AT_LAST_LINE   (1<<25)
