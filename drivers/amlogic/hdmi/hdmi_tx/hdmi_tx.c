@@ -20,6 +20,8 @@
 #include <linux/module.h>
 #include <linux/types.h>
 #include <linux/kernel.h>
+#include <linux/kthread.h>
+#include <linux/delay.h>
 #include <linux/interrupt.h>
 #include <linux/fs.h>
 #include <linux/init.h>
@@ -29,6 +31,7 @@
 #include <linux/platform_device.h>
 #include <linux/mutex.h>
 #include <linux/cdev.h>
+#include <linux/proc_fs.h> 
 #include <asm/uaccess.h>
 
 #include <linux/osd/apollo_main.h>
@@ -55,13 +58,6 @@ void hdmi_setup_irq();
 #define pr_error(fmt, args...) printk(KERN_ERR "amhdmitx: " fmt, ## args)
 
 
-/* Per-device (per-bank) structure */
-typedef struct hdmi_tx_dev_s {
-    /* ... */
-    struct cdev cdev;             /* The cdev structure */
-    //wait_queue_head_t   wait_queue;            /* wait queues */
-}hdmitx_dev_t;
-
 static hdmitx_dev_t hdmitx_device;
 
 static dev_t hdmitx_id;
@@ -70,42 +66,65 @@ static struct device *hdmitx_dev;
 
 static HDMI_TX_INFO_t hdmi_info;
 
+#define HDMI_M1A 1
+static hdmi_chip_type = 0;
 /*****************************
 *    hdmitx attr management :
 *    enable
 *    mode
-*    write_reg
-* read_reg
+*    reg
 ******************************/
-
-static void func_default_null(char* enable)
+static  int  set_disp_mode(char *mode)
 {
-    
-}    
-
-static  void  set_disp_mode(char *mode)
-{
+    int ret=-1;
     if(strncmp(mode,"480p",4)==0){
-        hdmitx_set_display(HDMI_480p60);
+        ret = hdmitx_set_display(&hdmitx_device, HDMI_480p60);
     }
     else if(strncmp(mode,"1080p",5)==0){
-        hdmitx_set_display(HDMI_1080p60);
+        ret = hdmitx_set_display(&hdmitx_device, HDMI_1080p60);
     }
+    return ret;
 }
 
+static int set_disp_mode_auto()
+{
+    int ret=-1;
+    vinfo_t *info = get_current_vinfo();
+    HDMI_Video_Codes_t vic;
+    vic = hdmitx_edid_get_VIC(&hdmitx_device, info->name);
+    hdmitx_device.cur_VIC = HDMI_Unkown;
+    if(vic != HDMI_Unkown ){
+        ret = hdmitx_set_display(&hdmitx_device, vic);
+        if(ret>=0){
+            hdmitx_device.cur_VIC = vic;    
+        }
+    }
+    return ret;
+}    
 
+/*mode attr*/
+static ssize_t show_mode(struct device * dev, struct device_attribute *attr, char * buf)
+{
+    int pos=0;
+    pos+=snprintf(buf+pos, PAGE_SIZE, "VIC:%d\r\n", hdmitx_device.cur_VIC);
+    return pos;    
+}
+    
+static ssize_t store_mode(struct device * dev, struct device_attribute *attr, const char * buf)
+{
+    set_disp_mode(buf);
+    return 0;    
+}
 
-SET_HDMI_CLASS_ATTR(enable,func_default_null)
-SET_HDMI_CLASS_ATTR(mode,set_disp_mode)
-//SET_HDMI_CLASS_ATTR(wr_reg,write_reg)
-//SET_HDMI_CLASS_ATTR(rd_reg,read_reg)
+/*edid attr*/
+static ssize_t show_edid(struct device *dev, struct device_attribute *attr, char *buf)
+{
+    return hdmitx_edid_dump(&hdmitx_device, buf, PAGE_SIZE);
+}
+    
 
-static  struct  class_attribute   *hdmi_attr[]={
-&class_hdmi_attr_enable,
-&class_hdmi_attr_mode,    
-//&class_hdmi_attr_wr_reg,
-//&class_hdmi_attr_rd_reg,
-};
+static DEVICE_ATTR(mode, S_IWUSR | S_IRUGO, show_mode, store_mode);
+static DEVICE_ATTR(edid, S_IWUSR | S_IRUGO, show_edid, NULL);
 
 /*****************************
 *    hdmitx display client interface 
@@ -113,17 +132,10 @@ static  struct  class_attribute   *hdmi_attr[]={
 ******************************/
 static int hdmitx_notify_callback(struct notifier_block *block, unsigned long cmd , void *para)
 {
-    const vinfo_t *info;
     if (cmd != VOUT_EVENT_MODE_CHANGE)
         return -1;
 
-    info = get_current_vinfo();
-    
-    //spin_lock_irqsave(&lock, flags);
-
-    set_disp_mode(info->name);
-
-    //spin_unlock_irqrestore(&lock, flags);
+    set_disp_mode_auto();
 
     return 0;
 }
@@ -132,6 +144,47 @@ static int hdmitx_notify_callback(struct notifier_block *block, unsigned long cm
 static struct notifier_block hdmitx_notifier_nb = {
     .notifier_call    = hdmitx_notify_callback,
 };
+
+/******************************
+*  hdmitx kernel task
+*******************************/
+static int hdmi_task_handle(void *data) 
+{
+    hdmitx_dev_t* hdmitx_device = (hdmitx_dev_t*)data;
+
+    hdmitx_init_parameters(&hdmi_info);
+
+    if(hdmi_chip_type == HDMI_M1A){
+        HDMITX_M1A_Init(hdmitx_device);
+    }
+    else{
+        HDMITX_M1B_Init(hdmitx_device);
+    }
+
+    hdmitx_device->HWOp.SetupIRQ(hdmitx_device);
+
+    while (1)
+    {
+        if (hdmitx_device->hpd_event == 1)
+        {
+            if(hdmitx_device->HWOp.GetEDIDData(hdmitx_device)){
+                hdmitx_edid_clear(hdmitx_device);
+                hdmitx_edid_parse(hdmitx_device);
+                set_disp_mode_auto();
+                hdmitx_device->hpd_event = 0;
+            }    
+        }
+        else if(hdmitx_device->hpd_event == 2)
+        {
+            hdmitx_edid_clear(hdmitx_device);
+            hdmitx_device->hpd_event = 0;
+        }    
+        msleep(500);
+    }
+
+    return 0;
+
+}
 
 
 /*****************************
@@ -206,8 +259,8 @@ static int amhdmitx_probe(struct platform_device *pdev)
     //hdmitx_dev = device_create(hdmitx_class, NULL, hdmitx_id, "amhdmitx%d", 0);
     hdmitx_dev = device_create(hdmitx_class, NULL, hdmitx_id, NULL, "amhdmitx%d", 0); //kernel>=2.6.27 
 
-    class_create_file(hdmitx_class, hdmi_attr[0]) ;
-    class_create_file(hdmitx_class, hdmi_attr[1]) ;
+    device_create_file(hdmitx_dev, &dev_attr_mode);
+    device_create_file(hdmitx_dev, &dev_attr_edid);
     
     if (hdmitx_dev == NULL) {
         pr_error("device_create create error\n");
@@ -217,18 +270,17 @@ static int amhdmitx_probe(struct platform_device *pdev)
     }
     vout_register_client(&hdmitx_notifier_nb);
 
-    hdmitx_init_parameters(&hdmi_info);
+    hdmitx_device.task = kthread_run(hdmi_task_handle, &hdmitx_device, "kthread_hdmi");
 
-    HDMITX_HW_Init();
-
-    HDMITX_HW_SetupIRQ();
-    
     return r;
 }
 
 static int amhdmitx_remove(struct platform_device *pdev)
 {
     /* Remove the cdev */
+    device_remove_file(hdmitx_dev, &dev_attr_mode);
+    device_remove_file(hdmitx_dev, &dev_attr_edid);
+
     cdev_del(&hdmitx_device.cdev);
 
     device_destroy(hdmitx_class, hdmitx_id);
@@ -277,6 +329,22 @@ static void __exit amhdmitx_exit(void)
     platform_driver_unregister(&amhdmitx_driver);
     return ;
 }
+
+static  int __init hdmi_chip_select(char *s)
+{
+	switch(s[0])
+	{
+		case 'a':
+		case 'A':
+			hdmi_chip_type = HDMI_M1A;
+			break;
+	}
+	return 0;
+}
+
+__setup("chip=",hdmi_chip_select);
+
+
 
 module_init(amhdmitx_init);
 module_exit(amhdmitx_exit);
