@@ -854,7 +854,7 @@ static int __init am_uart_init(void)
 		INIT_WORK(&info->tqueue,am_uart_workqueue);
 
 		set_mask(&uart->mode, (1 << 27 | 1 << 28));
-		outl( 1 << 7 | 1,&uart->intctl);
+		__raw_writel(1 << 7 | 1, &uart->intctl);
 
 		sprintf(info->name,"UART_ttyS%d:",info->line);
 		if (request_irq(info->irq, (irq_handler_t) am_uart_interrupt, IRQF_SHARED,
@@ -982,7 +982,6 @@ static struct tty_driver *am_uart_console_device(struct console *c, int *index)
 
 void am_uart_console_write(struct console *cp, const char *p, unsigned len)
 {
-	unsigned long flags;
 	if (!console_inited[cp->index])
 		am_uart_console_setup(cp, NULL);
 	while (len-- > 0) {
