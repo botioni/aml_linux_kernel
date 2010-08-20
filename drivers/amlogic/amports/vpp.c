@@ -198,6 +198,26 @@ static void f2v_get_vertical_phase(u32 zoom_ratio,
     }
 }
 
+static int
+vpp_process_speed_check(u32 width_in,
+                        u32 height_in,
+                        u32 height_out,
+                        u32 height_screen)
+{
+
+#if 0
+    /* 1920x1080, 156M, with 0.90 full screen vertical scale output */
+    get_sysclk() / 1560 *
+    height_out / height_screen / 0.90 *
+    1920 * 1080 / width_in * height_in
+#endif
+
+    if (1800 * 1400 * height_out > height_screen * width_in * height_in)
+        return 0;
+
+    return 1;
+}
+
 static void
 vpp_set_filters2(u32 width_in,
                  u32 height_in,
@@ -220,17 +240,16 @@ vpp_set_filters2(u32 width_in,
     u32 aspect_factor;
     s32 ini_vphase;
 
-    next_frame_par->VPP_prog_as_interlace = 0;
+    next_frame_par->vscale_skip_count = 0;
 
-RESTART:
-
+    if (vpp_flags & VPP_FLAG_INTERLACE_IN) {
+        next_frame_par->vscale_skip_count++;
+    }
     if (vpp_flags & VPP_FLAG_INTERLACE_OUT) {
         height_shift++;
     }
 
-    if (vpp_flags & VPP_FLAG_INTERLACE_IN) {
-        height_shift--;
-    }
+RESTART:
 
     aspect_factor = (vpp_flags & VPP_FLAG_AR_MASK) >> VPP_FLAG_AR_BITS;
 
@@ -280,13 +299,8 @@ RESTART:
 
     /* vertical */
     ini_vphase = vpp_zoom_center_y & 0xff;
-
-    if (vpp_flags & VPP_FLAG_INTERLACE_IN) {
-        next_frame_par->VPP_pic_in_height_ = height_in >> 1;
-
-    } else {
-        next_frame_par->VPP_pic_in_height_ = height_in;
-    }
+    
+    next_frame_par->VPP_pic_in_height_ = height_in / (next_frame_par->vscale_skip_count + 1);
 
     /* screen position for source */
     start = video_top + video_height / 2 - ((height_in << 17) + (vpp_zoom_center_y << 10)) / ratio_y;
@@ -311,6 +325,11 @@ RESTART:
             next_frame_par->VPP_vd_start_lines_ = 0;
         }
     }
+
+    if (vpp_flags & VPP_FLAG_INTERLACE_IN) {
+        next_frame_par->VPP_vd_start_lines_ &= ~1;
+    }
+
     temp = next_frame_par->VPP_vd_start_lines_ + (video_height * ratio_y >> 18);
     next_frame_par->VPP_vd_end_lines_ = (temp <= (height_in - 1))? temp :(height_in -1);
     /* find overlapped region between
@@ -333,28 +352,9 @@ RESTART:
             (vpp_flags & VPP_FLAG_INTERLACE_OUT) ? (end >> 1) : end;
     }
 
-    /* check the painful bandwidth limitation and see
-     * if we need skip half resolution on source side for progressive
-     * frames.
-     */
-    if ((next_frame_par->VPP_prog_as_interlace == 0) &&
-        (height_in >= 1080) &&
-        (ratio_y > 0x81000) &&
-        ((vpp_flags & VPP_FLAG_INTERLACE_IN) == 0)) {
-        /* ratio_y > 2.25 */
-        vpp_flags |= VPP_FLAG_INTERLACE_IN;
-        next_frame_par->VPP_prog_as_interlace = 1;
-        goto RESTART;
-    }
-
     /* set filter co-efficients */
-    /* adjust ratio_y for those interlacing stuff */
-    if (height_shift >= 0) {
-        ratio_y <<= height_shift;
-
-    } else {
-        ratio_y >>= -height_shift;
-    }
+    ratio_y <<= height_shift;
+    ratio_y = ratio_y / (next_frame_par->vscale_skip_count + 1);
 
     if (vpp_flags & VPP_FLAG_INTERLACE_OUT)
         filter->vpp_vert_coeff = filter_table[COEF_BILINEAR];
@@ -435,6 +435,24 @@ RESTART:
         next_frame_par->VPP_hsc_endp = end;
     }
 
+    /* check the painful bandwidth limitation and see
+     * if we need skip half resolution on source side for progressive
+     * frames.
+     */
+    if ((next_frame_par->vscale_skip_count < 4) &&
+        vpp_process_speed_check(next_frame_par->VPP_hd_end_lines_ - next_frame_par->VPP_hd_start_lines_ + 1,
+            (next_frame_par->VPP_vd_end_lines_ - next_frame_par->VPP_vd_start_lines_ + 1) / (next_frame_par->vscale_skip_count + 1) ,
+            next_frame_par->VPP_vsc_endp - next_frame_par->VPP_vsc_startp,
+            height_out >> ((vpp_flags & VPP_FLAG_INTERLACE_OUT) ? 1 : 0))) {
+        if (vpp_flags & VPP_FLAG_INTERLACE_IN) {
+            next_frame_par->vscale_skip_count += 2;
+        } else {
+            next_frame_par->vscale_skip_count++;
+        }
+        
+        goto RESTART;
+    }
+
     filter->vpp_hsc_start_phase_step = ratio_x << 6;
 
     next_frame_par->VPP_hf_ini_phase_ = vpp_zoom_center_x & 0xff;
@@ -503,21 +521,21 @@ vpp_set_filters(u32 wide_mode,
                      next_frame_par);
 }
 
-void vpp_set_video_layer_position(s32 x0, s32 y0, u32 x1, u32 y1)
+void vpp_set_video_layer_position(s32 x0, s32 y0, s32 x1, s32 y1)
 {
-    video_layer_top =y0;
+	if ((x1 <= x0) || (y1 <= y0))
+		return;
+
+    video_layer_top = y0;
     video_layer_left = x0;
     video_layer_width = x1-x0;
     video_layer_height = y1-y0;
 }
 
-void vpp_get_video_layer_position(s32* top,
-                                  s32* left,
-                                  u32* width,
-                                  u32* height)
+void vpp_get_video_layer_position(s32 *x0, s32 *y0, s32 *x1, s32 *y1)
 {
-    *top = video_layer_top;
-    *left = video_layer_left;
-    *width = video_layer_width;
-    *height = video_layer_height;
+    *x0 = video_layer_left;
+    *y0 = video_layer_top;
+    *x1 = video_layer_left + video_layer_width;
+    *y1 = video_layer_top + video_layer_height;
 }

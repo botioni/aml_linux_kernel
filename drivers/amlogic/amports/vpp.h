@@ -101,7 +101,7 @@ typedef struct {
     vppfilter_mode_t vpp_filter;
 
     u32 VPP_postproc_misc_;
-    u32 VPP_prog_as_interlace;
+    u32 vscale_skip_count;
 } vpp_frame_par_t;
 
 extern void
@@ -109,8 +109,9 @@ vpp_set_filters(u32 wide_mode, vframe_t * vf,
                 vpp_frame_par_t * next_frame_par, const vinfo_t *vinfo);
 
 extern void
-vpp_set_video_layer_position(int top, int left, u32 width, u32 height);
-void vpp_get_video_layer_position(s32 * top,
-                                  s32 * left, u32 * width, u32 * height);
+vpp_set_video_layer_position(s32 x0, s32 y0, s32 x1, s32 y1);
+
+extern void
+vpp_get_video_layer_position(s32 *x0, s32 *y0, s32 *x1, s32 *y1);
 
 #endif /* VPP_H */
