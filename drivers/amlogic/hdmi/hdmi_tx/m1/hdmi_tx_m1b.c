@@ -912,298 +912,26 @@ static void hdmi_hw_set_1080p(Hdmi_tx_video_para_t *param)
     hdmi_wr_reg(TX_SYS5_TX_SOFT_RESET_1, 0x00); // Final release reset on tmds_clk domain
 }
 
-static void hdmi_m1a_init()
+/*
+static void edid_tasklet_fun(ulong data)
 {
-    unsigned int tmp_add_data;
-    // Configure HDMI PLL
-//    Wr(HHI_HDMI_PLL_CNTL, 0x000a1B16);
-#ifdef XTAL_24MHZ
-    Wr(HHI_HDMI_PLL_CNTL, 0x03040905); // For xtal=24MHz: PREDIV=5, POSTDIV=9, N=4, 0D=3, to get phy_clk=270MHz, tmds_clk=27MHz.
-#else
-    Wr(HHI_HDMI_PLL_CNTL, 0x03050906); // PREDIV=6, POSTDIV=9, N=5, 0D=3, to get phy_clk=270MHz, tmds_clk=27MHz.
-#endif
-    Wr(HHI_HDMI_PLL_CNTL2, 0x50e8);
-    Wr(HHI_HDMI_PLL_CNTL1, 0x00040003);
-    Wr(HHI_HDMI_AFC_CNTL, Rd(HHI_HDMI_AFC_CNTL) | 0x3);
-    //Wr(HHI_HDMI_PLL_CNTL1, 0x014000c1);
-    //Wr(OTHER_PLL_CNTL, 0x1021e);
+    hdmitx_dev_t* hdmitx_device=(hdmitx_dev_t*)data;
+    int block,i;
+    for(block=0;block<4;block++){
+        for(i=0;i<128;i++){
+            hdmitx_device->EDID_buf[block*128+i]=hdmi_rd_reg(0x600+block*128+i);
+        }
+    }
+    hdmitx_edid_parse(hdmitx_device);
+    return 0;
 
-    // Configure HDMI TX serializer:
-    hdmi_wr_reg(0x011, 0x0f);   //Channels Power Up Setting ,"1" for Power-up ,"0" for Power-down,Bit[3:0]=CK,Data2,data1,data1,data0 Channels ;
-    hdmi_wr_reg(0x015, 0x03);   //slew rate
-    hdmi_wr_reg(0x017, 0x1d);   //1d for power-up Band-gap and main-bias ,00 is power down 
-    hdmi_wr_reg(0x018, 0x24);   //Serializer Internal clock setting ,please fix to vaue 24 ,other setting is only for debug  
-    hdmi_wr_reg(0x01a, 0xfb);   //bit[2:0]=011 ,CK channel output TMDS CLOCK ,bit[2:0]=101 ,ck channel output PHYCLCK 
-    hdmi_wr_reg(0x016, 0x06);   // Bit[3:0] is HDMI-PHY's output swing control register
-    hdmi_wr_reg(0x0F7, 0x0F);   // Termination resistor calib value
-  //hdmi_wr_reg(0x014, 0x07);   // This register is for pre-emphasis control ,we need test different TMDS Clcok speed then write down the suggested     value for each one ;
-    hdmi_wr_reg(0x014, 0x01);   // This is a sample for Pre-emphasis setting ,recommended for 225MHz's TMDS Setting & ** meters HDMI Cable  
-    
-    // delay 1000uS, then check HPLL_LOCK
-    delay_us(1000);
-    //while ( (Rd(HHI_HDMI_PLL_CNTL2) & (1<<31)) != (1<<31) );
-
-    // --------------------------------------------------------
-    // Program core_pin_mux to enable HDMI pins
-    // --------------------------------------------------------
-    //wire            pm_hdmi_cec_en              = pin_mux_reg0[2];
-    //wire            pm_hdmi_hpd_5v_en           = pin_mux_reg0[1];
-    //wire            pm_hdmi_i2c_5v_en           = pin_mux_reg0[0];
-    //(*P_PERIPHS_PIN_MUX_0) |= ((1 << 2) | // pm_hdmi_cec_en
-    //                           (1 << 1) | // pm_hdmi_hpd_5v_en
-    //                           (1 << 0)); // pm_hdmi_i2c_5v_en
-    Wr(PERIPHS_PIN_MUX_0, Rd(PERIPHS_PIN_MUX_0)|((1 << 2) | // pm_hdmi_cec_en
-                               (1 << 1) | // pm_hdmi_hpd_5v_en
-                               (1 << 0))); // pm_hdmi_i2c_5v_en
-
-/////////////////reset
-
-    // Enable these interrupts: [2] tx_edit_int_rise [1] tx_hpd_int_fall [0] tx_hpd_int_rise
-    hdmi_wr_reg(OTHER_BASE_ADDR + HDMI_OTHER_INTR_MASKN, 0x7);
-    
-    // HPD glitch filter
-    hdmi_wr_reg(TX_HDCP_HPD_FILTER_L, 0x00);
-    hdmi_wr_reg(TX_HDCP_HPD_FILTER_H, 0xa0);
-
-    // Keep TX (except register I/F) in reset, while programming the registers:
-    tmp_add_data  = 0;
-    tmp_add_data |= 1 << 7; // tx_pixel_rstn
-    tmp_add_data |= 1 << 6; // tx_tmds_rstn
-    tmp_add_data |= 1 << 5; // tx_audio_master_rstn
-    tmp_add_data |= 1 << 4; // tx_audio_sample_rstn
-    tmp_add_data |= 1 << 3; // tx_i2s_reset_rstn
-    tmp_add_data |= 1 << 2; // tx_dig_reset_n_ch2
-    tmp_add_data |= 1 << 1; // tx_dig_reset_n_ch1
-    tmp_add_data |= 1 << 0; // tx_dig_reset_n_ch0
-    hdmi_wr_reg(TX_SYS5_TX_SOFT_RESET_1, tmp_add_data);
-
-    tmp_add_data  = 0;
-    tmp_add_data |= 1 << 7; // HDMI_CH3_RST_IN
-    tmp_add_data |= 1 << 6; // HDMI_CH2_RST_IN
-    tmp_add_data |= 1 << 5; // HDMI_CH1_RST_IN
-    tmp_add_data |= 1 << 4; // HDMI_CH0_RST_IN
-    tmp_add_data |= 1 << 3; // HDMI_SR_RST
-    tmp_add_data |= 1 << 0; // tx_dig_reset_n_ch3
-    hdmi_wr_reg(TX_SYS5_TX_SOFT_RESET_2, tmp_add_data);
-
-    // Enable software controlled DDC transaction
-    //tmp_add_data[15:8] = 0;
-    //tmp_add_data[7]   = 1'b0 ;  // forced_sys_trigger
-    //tmp_add_data[6]   = 1'b0 ;  // sys_trigger_config
-    //tmp_add_data[5]   = 1'b0 ;  // mem_acc_seq_mode
-    //tmp_add_data[4]   = 1'b0 ;  // mem_acc_seq_start
-    //tmp_add_data[3]   = 1'b1 ;  // forced_mem_copy_done
-    //tmp_add_data[2]   = 1'b1 ;  // mem_copy_done_config
-    //tmp_add_data[1]   = 1'b1 ;  // sys_trigger_config_semi_manu
-    //tmp_add_data[0]   = 1'b0 ;  // Rsrv
-    tmp_add_data = 0x0e;
-    hdmi_wr_reg(TX_HDCP_EDID_CONFIG, tmp_add_data);
-    
-    hdmi_wr_reg(TX_HDCP_CONFIG0,      1<<3);  //set TX rom_encrypt_off=1
-    hdmi_wr_reg(TX_HDCP_MEM_CONFIG,   0<<3);  //set TX read_decrypt=0
-    hdmi_wr_reg(TX_HDCP_ENCRYPT_BYTE, 0);     //set TX encrypt_byte=0x00
-    
-    // Setting the keys & EDID
-    //task_tx_key_setting();
-    
-    //tmp_add_data[15:8] = 0;
-    //tmp_add_data[7] = 1'b0;      // Force DTV timing (Auto)
-    //tmp_add_data[6] = 1'b0;      // Force Video Scan, only if [7]is set
-    //tmp_add_data[5] = 1'b0 ;     // Force Video field, only if [7]is set
-    //tmp_add_data[4:0] = 5'b00 ;  // Rsrv
-    tmp_add_data = 0;
-    hdmi_wr_reg(TX_VIDEO_DTV_TIMING, tmp_add_data);
-    
-    tmp_add_data  = 0;
-    tmp_add_data |= 0                       << 7; // [7]   forced_default_phase
-    tmp_add_data |= 0                       << 2; // [6:2] Rsrv
-    tmp_add_data |= 0   << 0; // [1:0] Color_depth:0=24-bit pixel; 1=30-bit pixel; 2=36-bit pixel; 3=48-bit pixel
-    hdmi_wr_reg(TX_VIDEO_DTV_MODE, tmp_add_data); // 0x00
-    
-    //tmp_add_data[15:8] = 0;
-    //tmp_add_data[7] = 1'b0;       // Force packet timing
-    //tmp_add_data[6] = 1'b0;       // PACKET ALLOC MODE
-    //tmp_add_data[5:0] = 6'd47 ;   // PACKET_START_LATENCY
-    tmp_add_data = 47;
-    hdmi_wr_reg(TX_PACKET_CONTROL_1, tmp_add_data);
-
-    // For debug: disable packets of audio_request, acr_request, deep_color_request, and avmute_request
-    //hdmi_wr_reg(TX_PACKET_CONTROL_2, hdmi_rd_reg(TX_PACKET_CONTROL_2) | 0x0f);
-
-    //tmp_add_data[15:8] = 0;
-    //tmp_add_data[7:6] = 2'b0;     // audio_source_select[1:0]
-    //tmp_add_data[5] = 1'b0;       // external_packet_enable
-    //tmp_add_data[4] = 1'b1 ;      // internal_packet_enable
-    //tmp_add_data[3:2] = 2'b0;     // afe_fifo_source_select_lane_1[1:0]
-    //tmp_add_data[1:0] = 2'b0 ;    // afe_fifo_source_select_lane_0[1:0]
-    tmp_add_data = 0x10;
-    hdmi_wr_reg(TX_CORE_DATA_CAPTURE_2, tmp_add_data);
-    
-    //tmp_add_data[15:8] = 0;
-    //tmp_add_data[7]   = 1'b0;     // monitor_lane_1
-    //tmp_add_data[6:4] = 3'd0;     // monitor_select_lane_1[2:0]
-    //tmp_add_data[3]   = 1'b1 ;    // monitor_lane_0
-    //tmp_add_data[2:0] = 3'd7;     // monitor_select_lane_0[2:0]
-    tmp_add_data = 0xf;
-    hdmi_wr_reg(TX_CORE_DATA_MONITOR_1, tmp_add_data);
-    
-    //tmp_add_data[15:8] = 0;
-    //tmp_add_data[7:3] = 5'b0;     // Rsrv
-    //tmp_add_data[2:0] = 3'd2;     // monitor_select[2:0]
-    tmp_add_data = 0x2;
-    hdmi_wr_reg(TX_CORE_DATA_MONITOR_2, tmp_add_data);
-    
-    //tmp_add_data[15:8] = 0;
-    //tmp_add_data[7] = 1'b1;     // forced_hdmi
-    //tmp_add_data[6] = 1'b1;     // hdmi_config
-    //tmp_add_data[5:4] = 2'b0;   // Rsrv
-    //tmp_add_data[3] = 1'b0;     // bit_swap.
-    //tmp_add_data[2:0] = 3'd0;   // channel_swap[2:0]
-    tmp_add_data = 0xc0;
-    hdmi_wr_reg(TX_TMDS_MODE, tmp_add_data);
-    
-    //tmp_add_data[15:8] = 0;
-    //tmp_add_data[7] = 1'b0;  // Rsrv
-    //tmp_add_data[6] = 1'b0;  // TX_CONNECT_SEL: 0=use lower channel data[29:0]; 1=use upper channel data[59:30]
-    //tmp_add_data[5:0] = 'h0;  // Rsrv
-    tmp_add_data = 0x0;
-    hdmi_wr_reg(TX_SYS4_CONNECT_SEL_1, tmp_add_data);
-    
-    // Normally it makes sense to synch 3 channel output with clock channel's rising edge,
-    // as HDMI's serializer is LSB out first, invert tmds_clk pattern from "1111100000" to
-    // "0000011111" actually enable data synch with clock rising edge.
-    tmp_add_data = 1 << 4; // Set tmds_clk pattern to be "0000011111" before being sent to AFE clock channel
-    hdmi_wr_reg(TX_SYS4_CK_INV_VIDEO, tmp_add_data);
-    
-    //tmp_add_data[15:8] = 0;
-    //tmp_add_data[7] = 1'b0;  // Rsrv
-    //tmp_add_data[6] = 1'b0;  // TX_AFE_FIFO channel 2 bypass=0
-    //tmp_add_data[5] = 1'b0;  // TX_AFE_FIFO channel 1 bypass=0
-    //tmp_add_data[4] = 1'b0;  // TX_AFE_FIFO channel 0 bypass=0
-    //tmp_add_data[3] = 1'b1;  // output enable of clk channel (channel 3)
-    //tmp_add_data[2] = 1'b1;  // TX_AFE_FIFO channel 2 enable
-    //tmp_add_data[1] = 1'b1;  // TX_AFE_FIFO channel 1 enable
-    //tmp_add_data[0] = 1'b1;  // TX_AFE_FIFO channel 0 enable
-    tmp_add_data = 0x0f;
-    hdmi_wr_reg(TX_SYS5_FIFO_CONFIG, tmp_add_data);
-    
-    tmp_add_data  = 0;
-    tmp_add_data |= 0  << 6; // [7:6] output_color_format: 0=RGB444; 1=YCbCr444; 2=Rsrv; 3=YCbCr422.
-    tmp_add_data |= TX_INPUT_COLOR_FORMAT   << 4; // [5:4] input_color_format:  0=RGB444; 1=YCbCr444; 2=Rsrv; 3=YCbCr422.
-    tmp_add_data |= 0<< 2; // [3:2] output_color_depth:  0=24-b; 1=30-b; 2=36-b; 3=48-b.
-    tmp_add_data |= TX_INPUT_COLOR_DEPTH    << 0; // [1:0] input_color_depth:   0=24-b; 1=30-b; 2=36-b; 3=48-b.
-    hdmi_wr_reg(TX_VIDEO_DTV_OPTION_L, tmp_add_data); // 0x50
-    
-    tmp_add_data  = 0;
-    tmp_add_data |= 0                       << 4; // [7:4] Rsrv
-    tmp_add_data |= TX_OUTPUT_COLOR_RANGE   << 2; // [3:2] output_color_range:  0=16-235/240; 1=16-240; 2=1-254; 3=0-255.
-    tmp_add_data |= TX_INPUT_COLOR_RANGE    << 0; // [1:0] input_color_range:   0=16-235/240; 1=16-240; 2=1-254; 3=0-255.
-    hdmi_wr_reg(TX_VIDEO_DTV_OPTION_H, tmp_add_data); // 0x00
-
-    tmp_add_data  = 0;
-    tmp_add_data |= TX_I2S_SPDIF    << 7; // [7]    I2S or SPDIF
-    tmp_add_data |= TX_I2S_8_CHANNEL<< 6; // [6]    8 or 2ch
-    tmp_add_data |= 2               << 4; // [5:4]  Serial Format: I2S format
-    tmp_add_data |= 3               << 2; // [3:2]  Bit Width: 24-bit
-    tmp_add_data |= 1               << 1; // [1]    WS Polarity: 1=WS high is left
-    tmp_add_data |= 1               << 0; // [0]    For I2S: 0=one-bit audio; 1=I2S;
-                                          //        For SPDIF: 0= channel status from input data; 1=from register
-    hdmi_wr_reg(TX_AUDIO_FORMAT, tmp_add_data); // 0x2f
-
-    tmp_add_data  = 0;
-    tmp_add_data |= 0x4 << 4; // [7:4]  FIFO Depth=512
-    tmp_add_data |= 0x2 << 2; // [3:2]  Critical threshold=Depth/16
-    tmp_add_data |= 0x1 << 0; // [1:0]  Normal threshold=Depth/8
-    hdmi_wr_reg(TX_AUDIO_FIFO, tmp_add_data); // 0x49
-    hdmi_wr_reg(TX_AUDIO_LIPSYNC, 0); // [7:0] Normalized lip-sync param: 0 means S(lipsync) = S(total)/2
-    tmp_add_data  = 0;
-    tmp_add_data |= 0   << 7; // [7]    forced_audio_fifo_clear
-    tmp_add_data |= 1   << 6; // [6]    auto_audio_fifo_clear
-    tmp_add_data |= 0x0 << 4; // [5:4]  audio_packet_type: 0=audio sample packet; 1=one bit audio; 2=HBR audio packet; 3=DST audio packet.
-    tmp_add_data |= 0   << 3; // [3]    Rsrv
-    tmp_add_data |= 0   << 2; // [2]    Audio sample packet's valid bit: 0=valid bit is 0 for I2S, is input data for SPDIF; 1=valid bit from register
-    tmp_add_data |= 0   << 1; // [1]    Audio sample packet's user bit: 0=user bit is 0 for I2S, is input data for SPDIF; 1=user bit from register
-    tmp_add_data |= 0   << 0; // [0]    0=Audio sample packet's sample_flat bit is 1; 1=sample_flat is 0.
-    hdmi_wr_reg(TX_AUDIO_CONTROL, tmp_add_data); // 0x40
-
-    tmp_add_data  = 0;
-    tmp_add_data |= TX_I2S_8_CHANNEL<< 7; // [7]    Audio sample packet's header layout bit: 0=layout0; 1=layout1
-    tmp_add_data |= 0               << 6; // [6]    Set normal_double bit in DST packet header.
-    tmp_add_data |= 0               << 0; // [5:0]  Rsrv
-    hdmi_wr_reg(TX_AUDIO_HEADER, tmp_add_data); // 0x00
-
-    tmp_add_data  = TX_I2S_8_CHANNEL ? 0x00ff : 0x0003;
-    hdmi_wr_reg(TX_AUDIO_SAMPLE, tmp_add_data); // Channel valid for up to 8 channels, 1 bit per channel.
-
-    hdmi_wr_reg(TX_AUDIO_PACK, 0x0001); // Enable audio sample packets
-
-    // Set N = 4096 (N is not measured, N must be configured so as to be a reference to clock_meter)
-    hdmi_wr_reg(TX_SYS1_ACR_N_0, 0x0000); // N[7:0]
-    hdmi_wr_reg(TX_SYS1_ACR_N_1, 0x0010); // N[15:8]
-
-    tmp_add_data  = 0;
-    tmp_add_data |= 0xa << 4;    // [7:4] Meas Tolerance
-    tmp_add_data |= 0x0 << 0;    // [3:0] N[19:16]
-    hdmi_wr_reg(TX_SYS1_ACR_N_2, tmp_add_data); // 0xa0
-
-    //tmp_add_data[7] = 1'b0;      // cp_desired
-    //tmp_add_data[6] = 1'b0;      // ess_config
-    //tmp_add_data[5] = 1'b0;      // set_avmute
-    //tmp_add_data[4] = 1'b1;      // clear_avmute
-    //tmp_add_data[3] = 1'b0;      // hdcp_1_1
-    //tmp_add_data[2] = 1'b0;      // Vsync/Hsync forced_polarity_select
-    //tmp_add_data[1] = 1'b0;      // forced_vsync_polarity
-    //tmp_add_data[0] = 1'b0;      // forced_hsync_polarity
-    tmp_add_data = 0x10;
-    hdmi_wr_reg(TX_HDCP_MODE, tmp_add_data);
-
-    //config_hdmi(1);
-    
-    //tmp_add_data[15:8] = 0;
-    //tmp_add_data[7]   = 8'b1 ;  //cp_desired 
-    //tmp_add_data[6]   = 8'b1 ;  //ess_config 
-    //tmp_add_data[5]   = 8'b0 ;  //set_avmute 
-    //tmp_add_data[4]   = 8'b0 ;  //clear_avmute 
-    //tmp_add_data[3]   = 8'b1 ;  //hdcp_1_1 
-    //tmp_add_data[2]   = 8'b0 ;  //forced_polarity 
-    //tmp_add_data[1]   = 8'b0 ;  //forced_vsync_polarity 
-    //tmp_add_data[0]   = 8'b0 ;  //forced_hsync_polarity
-    tmp_add_data = 0x8; //0xc8;
-    hdmi_wr_reg(TX_HDCP_MODE, tmp_add_data);
-    
-
-
-    //tmp_add_data[15:8] = 0;
-    //tmp_add_data[7:0]   = 0xa ; // time_divider[7:0] for DDC I2C bus clock
-    tmp_add_data = 0xa;
-    hdmi_wr_reg(TX_HDCP_CONFIG3, tmp_add_data);
-    
-/////////////////////////    
-    //hdmi_wr_reg(TX_AUDIO_I2S,   1); // TX AUDIO I2S Enable
-/////////////////////////    
-    // --------------------------------------------------------
-    // Release TX out of reset
-    // --------------------------------------------------------
-
-    Wr(HHI_HDMI_PLL_CNTL1, 0x00040000); // turn off phy_clk
-    delay_us(10);
-
-    hdmi_wr_reg(TX_SYS5_TX_SOFT_RESET_2, 0x01); // Release serializer resets
-    delay_us(10);
-
-    Wr(HHI_HDMI_PLL_CNTL1, 0x00040003); // turn on phy_clk
-    delay_us(10);
-
-    hdmi_wr_reg(TX_SYS5_TX_SOFT_RESET_2, 0x00); // Release reset on TX digital clock channel
-    hdmi_wr_reg(TX_SYS5_TX_SOFT_RESET_1, 1<<6); // Release resets all other TX digital clock domain, except tmds_clk
-    delay_us(10);
-
-    hdmi_wr_reg(TX_SYS5_TX_SOFT_RESET_1, 0x00); // Final release reset on tmds_clk domain
 }
+*/
+
 /************************************
 *    hdmitx hardware level interface
 *************************************/
-static unsigned char hdmitx_m1a_getediddata(hdmitx_dev_t* hdmitx_device)
+static unsigned char hdmitx_m1b_getediddata(hdmitx_dev_t* hdmitx_device)
 {
     if(hdmi_rd_reg(TX_HDCP_ST_EDID_STATUS) & (1<<4)){
         int block,i;
@@ -1220,10 +948,10 @@ static unsigned char hdmitx_m1a_getediddata(hdmitx_dev_t* hdmitx_device)
 }    
 
 
-static int hdmitx_m1a_setmode(Hdmi_tx_video_para_t *param)
+static int hdmitx_m1b_setmode(Hdmi_tx_video_para_t *param)
 {
     int ret=0;
-    if((param->VIC==HDMI_480p60)||(param->VIC==HDMI_480p60_16x9)){
+    if(param->VIC==HDMI_480p60){
         hdmi_hw_set_480p(param);    
         hdmi_tvenc_set(param);
     }
@@ -1238,7 +966,7 @@ static int hdmitx_m1a_setmode(Hdmi_tx_video_para_t *param)
 }    
 
 
-static void hdmitx_m1a_setavi(unsigned char* AVI_DB, unsigned char* AVI_HB)
+static void hdmitx_m1b_setavi(unsigned char* AVI_DB, unsigned char* AVI_HB)
 {
     // AVI frame
     int i ;
@@ -1274,7 +1002,7 @@ static void hdmitx_m1a_setavi(unsigned char* AVI_DB, unsigned char* AVI_HB)
 }
 
 
-static void hdmitx_m1a_setaudioinfoframe(unsigned char bEnable, unsigned char* AUD_DB)
+static void hdmitx_m1b_setaudioinfoframe(unsigned char bEnable, unsigned char* AUD_DB)
 {
 
     if(!bEnable){
@@ -1352,7 +1080,7 @@ static void hdmitx_m1a_setaudioinfoframe(unsigned char bEnable, unsigned char* A
     }
 }
     
-static void hdmitx_m1a_setupirq(hdmitx_dev_t* hdmitx_device)
+static void hdmitx_m1b_setupirq(hdmitx_dev_t* hdmitx_device)
 {
    int r;
 
@@ -1368,13 +1096,13 @@ static void hdmitx_m1a_setupirq(hdmitx_dev_t* hdmitx_device)
     
 }    
 
-void HDMITX_M1A_Init(hdmitx_dev_t* hdmitx_device)
+void HDMITX_M1B_Init(hdmitx_dev_t* hdmitx_device)
 {
-    hdmitx_device->HWOp.SetAVI = hdmitx_m1a_setavi;
-    hdmitx_device->HWOp.SetAudioInfoFrame = hdmitx_m1a_setaudioinfoframe;
-    hdmitx_device->HWOp.GetEDIDData = hdmitx_m1a_getediddata;
-    hdmitx_device->HWOp.SetMode = hdmitx_m1a_setmode;
-    hdmitx_device->HWOp.SetupIRQ = hdmitx_m1a_setupirq;
+    hdmitx_device->HWOp.SetAVI = hdmitx_m1b_setavi;
+    hdmitx_device->HWOp.SetAudioInfoFrame = hdmitx_m1b_setaudioinfoframe;
+    hdmitx_device->HWOp.GetEDIDData = hdmitx_m1b_getediddata;
+    hdmitx_device->HWOp.SetMode = hdmitx_m1b_setmode;
+    hdmitx_device->HWOp.SetupIRQ = hdmitx_m1b_setupirq;
     
     // -----------------------------------------
     // HDMI (90Mhz)
@@ -1394,8 +1122,6 @@ void HDMITX_M1A_Init(hdmitx_dev_t* hdmitx_device)
     // Enable APB3 fail on error
     //*((volatile unsigned long *) HDMI_CTRL_PORT) |= (1 << 15);        //APB3 err_en
     WRITE_APB_REG(0x2008, READ_APB_REG(0x2008)|(1<<15));
-    
-    hdmi_m1a_init();
 
 }    
     

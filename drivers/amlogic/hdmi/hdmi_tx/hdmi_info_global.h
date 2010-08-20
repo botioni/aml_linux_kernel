@@ -545,6 +545,7 @@ typedef struct{
 
 typedef struct {
         unsigned char VIC;
+        color_space_type_t color_prefer;
         color_space_type_t color;
         hdmi_color_depth_t color_depth;
         hdmi_bar_info_t     bar_info;

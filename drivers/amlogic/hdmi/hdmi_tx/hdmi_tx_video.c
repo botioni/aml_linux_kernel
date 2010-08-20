@@ -18,7 +18,7 @@ static const Hdmi_tx_video_para_t hdmi_tx_video_params[] =
 {
     { 
         .VIC            = HDMI_640x480p60,
-        .color          = COLOR_SPACE_YUV444,
+        .color_prefer   = COLOR_SPACE_YUV444,
         .color_depth    = COLOR_24BIT,
         .bar_info       = B_BAR_VERT_HORIZ,
         .repeat_time    = NO_REPEAT,
@@ -29,7 +29,7 @@ static const Hdmi_tx_video_para_t hdmi_tx_video_params[] =
     },
     { 
         .VIC            = HDMI_480p60,
-        .color          = COLOR_SPACE_YUV444,
+        .color_prefer   = COLOR_SPACE_YUV444,
         .color_depth    = COLOR_24BIT,
         .bar_info       = B_BAR_VERT_HORIZ,
         .repeat_time    = NO_REPEAT,
@@ -40,7 +40,7 @@ static const Hdmi_tx_video_para_t hdmi_tx_video_params[] =
     },
     { 
         .VIC            = HDMI_480p60_16x9,
-        .color          = COLOR_SPACE_YUV444,
+        .color_prefer   = COLOR_SPACE_YUV444,
         .color_depth    = COLOR_24BIT,
         .bar_info       = B_BAR_VERT_HORIZ,
         .repeat_time    = NO_REPEAT,
@@ -51,7 +51,7 @@ static const Hdmi_tx_video_para_t hdmi_tx_video_params[] =
     },
     { 
         .VIC            = HDMI_720p60,
-        .color          = COLOR_SPACE_YUV444,
+        .color_prefer   = COLOR_SPACE_YUV444,
         .color_depth    = COLOR_24BIT,
         .bar_info       = B_BAR_VERT_HORIZ,
         .repeat_time    = NO_REPEAT,
@@ -62,7 +62,7 @@ static const Hdmi_tx_video_para_t hdmi_tx_video_params[] =
     },
     { 
         .VIC            = HDMI_1080i60,
-        .color          = COLOR_SPACE_YUV444,
+        .color_prefer   = COLOR_SPACE_YUV444,
         .color_depth    = COLOR_24BIT,
         .bar_info       = B_BAR_VERT_HORIZ,
         .repeat_time    = NO_REPEAT,
@@ -73,7 +73,7 @@ static const Hdmi_tx_video_para_t hdmi_tx_video_params[] =
     },
     { 
         .VIC            = HDMI_480i60,
-        .color          = COLOR_SPACE_YUV444,
+        .color_prefer   = COLOR_SPACE_YUV444,
         .color_depth    = COLOR_24BIT,
         .bar_info       = B_BAR_VERT_HORIZ,
         .repeat_time    = HDMI_2_TIMES_REPEAT,
@@ -84,7 +84,7 @@ static const Hdmi_tx_video_para_t hdmi_tx_video_params[] =
     },
     { 
         .VIC            = HDMI_480i60_16x9,
-        .color          = COLOR_SPACE_YUV444,
+        .color_prefer   = COLOR_SPACE_YUV444,
         .color_depth    = COLOR_24BIT,
         .bar_info       = B_BAR_VERT_HORIZ,
         .repeat_time    = HDMI_2_TIMES_REPEAT,
@@ -95,7 +95,7 @@ static const Hdmi_tx_video_para_t hdmi_tx_video_params[] =
     },
     { 
         .VIC            = HDMI_1440x480p60,
-        .color          = COLOR_SPACE_YUV444,
+        .color_prefer   = COLOR_SPACE_YUV444,
         .color_depth    = COLOR_24BIT,
         .bar_info       = B_BAR_VERT_HORIZ,
         .repeat_time    = NO_REPEAT,
@@ -106,7 +106,7 @@ static const Hdmi_tx_video_para_t hdmi_tx_video_params[] =
     },
     { 
         .VIC            = HDMI_1080p60,
-        .color          = COLOR_SPACE_YUV422,
+        .color_prefer   = COLOR_SPACE_YUV422,
         .color_depth    = COLOR_24BIT,
         .bar_info       = B_BAR_VERT_HORIZ,
         .repeat_time    = NO_REPEAT,
@@ -117,7 +117,7 @@ static const Hdmi_tx_video_para_t hdmi_tx_video_params[] =
     },
     { 
         .VIC            = HDMI_576p50,
-        .color          = COLOR_SPACE_YUV444,
+        .color_prefer   = COLOR_SPACE_YUV444,
         .color_depth    = COLOR_24BIT,
         .bar_info       = B_BAR_VERT_HORIZ,
         .repeat_time    = NO_REPEAT,
@@ -128,7 +128,7 @@ static const Hdmi_tx_video_para_t hdmi_tx_video_params[] =
     },
     { 
         .VIC            = HDMI_576p50_16x9,
-        .color          = COLOR_SPACE_YUV444,
+        .color_prefer   = COLOR_SPACE_YUV444,
         .color_depth    = COLOR_24BIT,
         .bar_info       = B_BAR_VERT_HORIZ,
         .repeat_time    = NO_REPEAT,
@@ -139,7 +139,7 @@ static const Hdmi_tx_video_para_t hdmi_tx_video_params[] =
     },
     { 
         .VIC            = HDMI_720p50,
-        .color          = COLOR_SPACE_YUV444,
+        .color_prefer   = COLOR_SPACE_YUV444,
         .color_depth    = COLOR_24BIT,
         .bar_info       = B_BAR_VERT_HORIZ,
         .repeat_time    = NO_REPEAT,
@@ -150,7 +150,7 @@ static const Hdmi_tx_video_para_t hdmi_tx_video_params[] =
     },
     { 
         .VIC            = HDMI_1080i50,
-        .color          = COLOR_SPACE_YUV444,
+        .color_prefer   = COLOR_SPACE_YUV444,
         .color_depth    = COLOR_24BIT,
         .bar_info       = B_BAR_VERT_HORIZ,
         .repeat_time    = NO_REPEAT,
@@ -161,7 +161,7 @@ static const Hdmi_tx_video_para_t hdmi_tx_video_params[] =
     },
     { 
         .VIC            = HDMI_576i50,
-        .color          = COLOR_SPACE_YUV444,
+        .color_prefer   = COLOR_SPACE_YUV444,
         .color_depth    = COLOR_24BIT,
         .bar_info       = B_BAR_VERT_HORIZ,
         .repeat_time    = HDMI_2_TIMES_REPEAT,
@@ -172,7 +172,7 @@ static const Hdmi_tx_video_para_t hdmi_tx_video_params[] =
     },
     { 
         .VIC            = HDMI_576i50_16x9,
-        .color          = COLOR_SPACE_YUV444,
+        .color_prefer   = COLOR_SPACE_YUV444,
         .color_depth    = COLOR_24BIT,
         .bar_info       = B_BAR_VERT_HORIZ,
         .repeat_time    = HDMI_2_TIMES_REPEAT,
@@ -183,7 +183,7 @@ static const Hdmi_tx_video_para_t hdmi_tx_video_params[] =
     },
     { 
         .VIC            = HDMI_1080p50,
-        .color          = COLOR_SPACE_YUV422,
+        .color_prefer   = COLOR_SPACE_YUV422,
         .color_depth    = COLOR_24BIT,
         .bar_info       = B_BAR_VERT_HORIZ,
         .repeat_time    = NO_REPEAT,
@@ -194,7 +194,7 @@ static const Hdmi_tx_video_para_t hdmi_tx_video_params[] =
     },
     { 
         .VIC            = HDMI_1080p24,
-        .color          = COLOR_SPACE_YUV422,
+        .color_prefer   = COLOR_SPACE_YUV422,
         .color_depth    = COLOR_24BIT,
         .bar_info       = B_BAR_VERT_HORIZ,
         .repeat_time    = NO_REPEAT,
@@ -205,7 +205,7 @@ static const Hdmi_tx_video_para_t hdmi_tx_video_params[] =
     },
     { 
         .VIC            = HDMI_1080p25,
-        .color          = COLOR_SPACE_YUV422,
+        .color_prefer   = COLOR_SPACE_YUV422,
         .color_depth    = COLOR_24BIT,
         .bar_info       = B_BAR_VERT_HORIZ,
         .repeat_time    = NO_REPEAT,
@@ -216,7 +216,7 @@ static const Hdmi_tx_video_para_t hdmi_tx_video_params[] =
     },
     { 
         .VIC            = HDMI_1080p30,
-        .color          = COLOR_SPACE_YUV422,
+        .color_prefer   = COLOR_SPACE_YUV422,
         .color_depth    = COLOR_24BIT,
         .bar_info       = B_BAR_VERT_HORIZ,
         .repeat_time    = NO_REPEAT,
@@ -301,10 +301,10 @@ void hdmitx_init_parameters(HDMI_TX_INFO_t *info)
     info->Ignore_EDID_flag = 0; // If == 1, set hdmi video and audio patameters, ignoring the EDID data from TV, user control
 }
 
-void hdmitx_set_display(HDMI_Video_Codes_t VideoCode)
+int hdmitx_set_display(hdmitx_dev_t* hdmitx_device, HDMI_Video_Codes_t VideoCode)
 {
     Hdmi_tx_video_para_t *param;
-    int i;
+    int i,ret=-1;
     unsigned char AVI_DB[32];
     unsigned char AVI_HB[32];
     AVI_HB[0] = TYPE_AVI_INFOFRAMES ; 
@@ -315,15 +315,26 @@ void hdmitx_set_display(HDMI_Video_Codes_t VideoCode)
     }
 
     param = hdmi_get_video_param(VideoCode);
-    
     if(param){
-        if(HDMITX_HW_SetMode(param)>=0){
+        param->color = param->color_prefer;
+        if(param->color == COLOR_SPACE_YUV444 &&
+            (hdmitx_device->RXCap.native_Mode&0x20) == 0){
+            param->color = COLOR_SPACE_YUV422;        
+        }
+        if(param->color == COLOR_SPACE_YUV422 &&
+            (hdmitx_device->RXCap.native_Mode&0x10) == 0){
+            param->color = COLOR_SPACE_RGB444;        
+        }
+        
+        if(hdmitx_device->HWOp.SetMode(param)>=0){
     
             hdmi_tx_construct_avi_packet(param, AVI_DB);
     
-            HDMITX_HW_SetAVI(AVI_DB, AVI_HB);
+            hdmitx_device->HWOp.SetAVI(AVI_DB, AVI_HB);
+            ret = 0;
         }
     }
+    return ret;
 
 }
 
