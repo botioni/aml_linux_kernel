@@ -74,16 +74,16 @@
 #define STAT_TIMER_ARM      0x10
 #define STAT_VDEC_RUN       0x20
 
-static vframe_t *vmpeg_vf_peek(void);
-static vframe_t *vmpeg_vf_get(void);
-static void vmpeg_vf_put(vframe_t *);
+static vframe_t *vvc1_vf_peek(void);
+static vframe_t *vvc1_vf_get(void);
+static void vvc1_vf_put(vframe_t *);
 
 static const char vvc1_dec_id[] = "vvc1-dev";
 
 static const struct vframe_provider_s vvc1_vf_provider = {
-        .peek = vmpeg_vf_peek,
-        .get = vmpeg_vf_get,
-        .put = vmpeg_vf_put,
+        .peek = vvc1_vf_peek,
+        .get = vvc1_vf_get,
+        .put = vvc1_vf_put,
 };
 
 static struct vframe_s vfpool[VF_POOL_SIZE];
@@ -390,7 +390,7 @@ static void vvc1_isr(void)
 #endif
 }
 
-static vframe_t *vmpeg_vf_peek(void)
+static vframe_t *vvc1_vf_peek(void)
 {
         if (get_ptr == fill_ptr)
                 return NULL;
@@ -398,7 +398,7 @@ static vframe_t *vmpeg_vf_peek(void)
         return &vfpool[get_ptr];
 }
 
-static vframe_t *vmpeg_vf_get(void)
+static vframe_t *vvc1_vf_get(void)
 {
         vframe_t *vf;
 
@@ -412,7 +412,7 @@ static vframe_t *vmpeg_vf_get(void)
         return vf;
 }
 
-static void vmpeg_vf_put(vframe_t *vf)
+static void vvc1_vf_put(vframe_t *vf)
 {
         INCPTR(putting_ptr);
 }
@@ -560,7 +560,7 @@ static void vvc1_local_init(void)
                 vfbuf_use[i] = 0;
 }
 
-static void vmpeg_put_timer_func(unsigned long arg)
+static void vvc1_put_timer_func(unsigned long arg)
 {
         struct timer_list *timer = (struct timer_list *)arg;
 
@@ -650,7 +650,7 @@ static s32 vvc1_init(void)
         stat |= STAT_VF_HOOK;
 
         recycle_timer.data = (ulong) & recycle_timer;
-        recycle_timer.function = vmpeg_put_timer_func;
+        recycle_timer.function = vvc1_put_timer_func;
         recycle_timer.expires = jiffies + PUT_INTERVAL;
 
         add_timer(&recycle_timer);
@@ -672,7 +672,7 @@ static int amvdec_vc1_probe(struct platform_device *pdev)
 
         if (!(mem = platform_get_resource(pdev, IORESOURCE_MEM, 0)))
         {
-                printk("amvdec_mpeg4 memory resource undefined.\n");
+                printk("amvdec_vc1 memory resource undefined.\n");
                 return -EFAULT;
         }
 
