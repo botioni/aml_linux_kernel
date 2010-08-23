@@ -33,7 +33,7 @@
 
 
 
-static int used_audio_pll=0;
+static int used_audio_pll=-1;
 #include "tvregs.h"
 
 #define  SET_VDAC(index,val)   (WRITE_MPEG_REG((index+VENC_VDAC_DACSEL0),val))
@@ -104,6 +104,10 @@ void  change_vdac_setting(unsigned int  vdec_setting,vmode_t  mode)
 }
 static void enable_vsync_interrupt(void)
 {
+	if(used_audio_pll==-1)
+		{
+		used_audio_pll=(system_serial_low==0xA)?1:0;
+		}
 	if(used_audio_pll)
 	{
 		/* M1 chip test only, use audio PLL as video clock source */
