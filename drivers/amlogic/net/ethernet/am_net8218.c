@@ -15,6 +15,7 @@ add by zhouzhi 2008-8-18
 #include <asm/delay.h>
 #include <mach/pinmux.h>
 #include <mach/gpio.h>
+#include <linux/sched.h>
 
 #include <linux/crc32.h>
 
@@ -29,6 +30,12 @@ static volatile int debug = CONFIG_AM_ETHERNET_DEBUG_LEVEL;
 #else
 static volatile int debug = 1;
 #endif
+
+//#define LOOP_BACK_TEST
+//#define MAC_LOOPBACK_TEST
+//#define PHY_LOOPBACK_TEST
+
+void start_test(struct net_device *dev);
 
 static int running = 0;
 static struct net_device *my_ndev = NULL;
@@ -418,7 +425,13 @@ static void netdev_timer(unsigned long data)
 			val = (1 << 14) | (7 << 5) | np->phys[0];
 			mdio_write(dev, np->phys[0], 18, val);
 			// Auto negotiation restart 
-			val = BMCR_ANENABLE | BMCR_ANRESTART;
+			val = mdio_read(dev, np->phys[0], MII_BMCR);
+			
+			#ifdef PHY_LOOPBACK_TEST	
+			val = 1<<14 | 1<<8 | 1<<13;//100M,full,seting it as 
+			#else
+			val |= BMCR_ANENABLE | BMCR_ANRESTART;
+			#endif	
 			mdio_write(dev, np->phys[0], MII_BMCR, val);
 			spin_unlock_irq(&np->lock);
 		}
@@ -809,11 +822,21 @@ static int phy_reset(struct net_device *ndev)
 
 	val = 0xc80c |		//8<<8 | 8<<17; //tx and rx all 8bit mode;
 	    	1 << 10;		//checksum offload enabled
+#ifdef MAC_LOOPBACK_TEST	    	
+	val|=1<<12;//mac loop back
+#endif	
 	IO_WRITE32(val, np->base_addr + ETH_MAC_0_Configuration);
 
 	val = 1 << 4;/*receive all muticast*/
 	//| 1 << 31;	//receive all the data 
 	IO_WRITE32(val, np->base_addr + ETH_MAC_1_Frame_Filter);
+#ifdef PHY_LOOPBACK_TEST
+	/*phy loop back*/
+	val=mdio_read(ndev, np->phys[0], MII_BMCR);
+	val=1<<14 | 1<<8 | 1<<13;//100M,full,seting it as ;
+	mdio_write(ndev, np->phys[0], MII_BMCR, val);
+
+#endif
 
 	IO_WRITE32((unsigned long)&np->rx_ring_dma[0],(np->base_addr + ETH_DMA_3_Re_Descriptor_List_Addr));
 	IO_WRITE32((unsigned long)&np->tx_ring_dma[0],(np->base_addr + ETH_DMA_4_Tr_Descriptor_List_Addr));
@@ -852,6 +875,7 @@ static int ethernet_reset(struct net_device *dev)
 	return res;
 }
 
+
 static int netdev_open(struct net_device *dev)
 {
 	struct am_net_private *np = netdev_priv(dev);
@@ -889,6 +913,9 @@ static int netdev_open(struct net_device *dev)
 	val |= (1<<1);/*start receive*/
 	IO_WRITE32(val, (np->base_addr + ETH_DMA_6_Operation_Mode));
 	running = 1;
+#ifdef LOOP_BACK_TEST	
+	start_test(np->dev);
+#endif
 	return 0;
       out_err:
 	running = 0;
@@ -986,7 +1013,60 @@ static int start_tx(struct sk_buff *skb, struct net_device *dev)
 	netif_stop_queue(dev);
 	return -1;
 }
+#ifdef LOOP_BACK_TEST
 
+void test_loop_back(struct net_device *dev)
+{
+	//static int start_tx(struct sk_buff *skb, struct net_device *dev)
+	//struct am_net_private *np = netdev_priv(dev);
+	int i=0;
+	char header[64]="";
+	printk("start testing!!\n");
+	memcpy(header,dev->dev_addr,6);
+	memcpy(header+8,dev->dev_addr,6);
+	header[12]=0x80;
+	header[13]=0;
+	while(1)
+	{
+		struct sk_buff *skb=dev_alloc_skb(1600);
+		while(!running)
+		{
+			i=0;
+			msleep(10);
+		}
+		
+		skb_put(skb,1400);
+		memset(skb->data,0x55,skb->len);
+		memcpy(skb->data,header,16);
+		if(start_tx(skb,dev)!=0)
+		{
+			/*tx list is full*/
+			msleep(1);
+			dev_kfree_skb(skb);
+		}
+		else
+			i++;
+		if(i%1024==0)
+		{
+			struct am_net_private *np = netdev_priv(dev);
+			int val;
+			val=mdio_read(dev, np->phys[0], MII_BMCR);
+			printk("send pkt=%d,val=%x\n",i,val);
+		}
+		
+	}
+}
+
+void start_test(struct net_device *dev)
+{
+	static int test_running=0;
+	if(test_running)
+		return ;
+	kernel_thread((void *)test_loop_back, (void *)dev, CLONE_FS | CLONE_SIGHAND);
+	test_running++;
+
+}
+#endif
 static struct net_device_stats *get_stats(struct net_device *dev)
 {
 	struct am_net_private *np = netdev_priv(dev);
@@ -1171,6 +1251,7 @@ static int setup_net_device(struct net_device *dev)
 	return res;
 }
 
+#if 0 //move to system start
 /***
 I think this must be init at the system start ...
 //zhouzhi
@@ -1260,7 +1341,7 @@ static void bank_io_init(struct net_device *ndev)
 	mac_PLL_changed(priv,100);
 	udelay(100);
 }
-
+#endif
 static int probe_init(struct net_device *ndev)
 {
 	int phy = 0;
