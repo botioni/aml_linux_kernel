@@ -16,11 +16,10 @@ ifneq ($(KBUILD_EXTMOD),)
 DRIVER_DIR=$(KBUILD_EXTMOD)
 include $(KBUILD_EXTMOD)/Makefile.common
 else
-KBUILD_EXTMOD=$(TOP)
+override KBUILD_EXTMOD=$(TOP)
 DRIVER_DIR=$(TOP)
 include $(TOP)/Makefile.common
 endif
-
 # set up defaults if not defined by the user
 ARCH ?= arm
 USING_MMU ?= 1
@@ -76,7 +75,6 @@ endif
 
 # Use our defines when compiling
 EXTRA_CFLAGS += $(DEFINES) -I$(KBUILD_EXTMOD) -I$(KBUILD_EXTMOD)/common -I$(KBUILD_EXTMOD)/linux -I$(KBUILD_EXTMOD)/platform
-
 # For customer releases the Linux Device Drivers will be provided as ARM proprietary and GPL releases:
 # The ARM proprietary product will only include the license/proprietary directory
 # The GPL product will only include the license/gpl directory
