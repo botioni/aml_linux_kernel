@@ -104,10 +104,7 @@ void  change_vdac_setting(unsigned int  vdec_setting,vmode_t  mode)
 }
 static void enable_vsync_interrupt(void)
 {
-	if(used_audio_pll==-1)
-		{
-		used_audio_pll=(system_serial_low==0xA)?1:0;
-		}
+	
 	if(used_audio_pll)
 	{
 		/* M1 chip test only, use audio PLL as video clock source */
@@ -164,6 +161,11 @@ int tvoutc_setclk(tvmode_t mode)
 	struct clk *clk;
 	const  reg_t *sd,*hd;
 	int xtal;
+
+	if(used_audio_pll==-1)
+		{
+		used_audio_pll=(system_serial_low==0xA)?1:0;
+		}
 	if(used_audio_pll)
 	{
 		printk("TEST:used audio pll for video out for test!!\n");
