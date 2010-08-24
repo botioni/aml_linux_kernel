@@ -35,7 +35,7 @@
 
 	#define VIDEO_CLOCK_HD_25	0x0021085f
 	#define VIDEO_CLOCK_SD_25	0x00500a6c
-	#define VIDEO_CLOCK_HD_24	0x0021083c
+	#define VIDEO_CLOCK_HD_24	0x00140863
 	#define VIDEO_CLOCK_SD_24	0x0050042d
 
 
@@ -87,7 +87,6 @@ static const  reg_t tvreg_aclk_hd[]={
 
 static const  reg_t tvregs_720p[] = {
     {VENC_VDAC_SETTING,          0xff,  },
-//	{VCLK_HD},
 	{HHI_VID_CLK_DIV,			 1		},
     {HHI_VID_CLK_CNTL,        	 0x0421,},
     {ENCP_VIDEO_FILT_CTRL,       0x0052,},
