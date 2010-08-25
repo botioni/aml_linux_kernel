@@ -44,7 +44,8 @@ typedef struct hdmi_tx_dev_s {
         void (*SetAVI)(unsigned char* AVI_DB, unsigned char* AVI_HB);
         void (*SetAudioInfoFrame)(unsigned char bEnable, unsigned char* AUD_DB);
         unsigned char (*GetEDIDData)(struct hdmi_tx_dev_s* hdmitx_device);
-        int (*SetMode)(Hdmi_tx_video_para_t *param);
+        int (*SetDispMode)(Hdmi_tx_video_para_t *param);
+        int (*SetAudMode)(struct hdmi_tx_dev_s* hdmitx_device);
         void (*SetupIRQ)(struct hdmi_tx_dev_s* hdmitx_device);
     }HWOp;
     
@@ -66,13 +67,15 @@ extern void hdmitx_init_parameters(HDMI_TX_INFO_t *info);
 
 extern int hdmitx_edid_parse(hdmitx_dev_t* hdmitx_device);
 
-HDMI_Video_Codes_t hdmitx_edid_get_VIC(hdmitx_dev_t* hdmitx_device,char* disp_mode);
+HDMI_Video_Codes_t hdmitx_edid_get_VIC(hdmitx_dev_t* hdmitx_device,char* disp_mode, char force_flag);
 
 extern int hdmitx_edid_dump(hdmitx_dev_t* hdmitx_device, char* buffer, int buffer_len);
 
 extern void hdmitx_edid_clear(hdmitx_dev_t* hdmitx_device);
 
 extern int hdmitx_set_display(hdmitx_dev_t* hdmitx_device, HDMI_Video_Codes_t VideoCode);
+
+extern void hdmitx_audio_enable(hdmitx_dev_t* hdmitx_device);
 
 /************************************
 *    hdmitx hardware level interface

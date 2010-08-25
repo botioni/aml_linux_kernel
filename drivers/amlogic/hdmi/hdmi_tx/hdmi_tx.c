@@ -77,11 +77,14 @@ static hdmi_chip_type = 0;
 static  int  set_disp_mode(char *mode)
 {
     int ret=-1;
-    if(strncmp(mode,"480p",4)==0){
-        ret = hdmitx_set_display(&hdmitx_device, HDMI_480p60);
-    }
-    else if(strncmp(mode,"1080p",5)==0){
-        ret = hdmitx_set_display(&hdmitx_device, HDMI_1080p60);
+    HDMI_Video_Codes_t vic;
+    vic = hdmitx_edid_get_VIC(&hdmitx_device, mode, 1);
+    hdmitx_device.cur_VIC = HDMI_Unkown;
+    if(vic != HDMI_Unkown ){
+        ret = hdmitx_set_display(&hdmitx_device, vic);
+        if(ret>=0){
+            hdmitx_device.cur_VIC = vic;    
+        }
     }
     return ret;
 }
@@ -91,7 +94,7 @@ static int set_disp_mode_auto()
     int ret=-1;
     vinfo_t *info = get_current_vinfo();
     HDMI_Video_Codes_t vic;
-    vic = hdmitx_edid_get_VIC(&hdmitx_device, info->name);
+    vic = hdmitx_edid_get_VIC(&hdmitx_device, info->name, 0);
     hdmitx_device.cur_VIC = HDMI_Unkown;
     if(vic != HDMI_Unkown ){
         ret = hdmitx_set_display(&hdmitx_device, vic);
@@ -102,18 +105,31 @@ static int set_disp_mode_auto()
     return ret;
 }    
 
-/*mode attr*/
-static ssize_t show_mode(struct device * dev, struct device_attribute *attr, char * buf)
+/*disp_mode attr*/
+static ssize_t show_disp_mode(struct device * dev, struct device_attribute *attr, char * buf)
 {
     int pos=0;
     pos+=snprintf(buf+pos, PAGE_SIZE, "VIC:%d\r\n", hdmitx_device.cur_VIC);
     return pos;    
 }
     
-static ssize_t store_mode(struct device * dev, struct device_attribute *attr, const char * buf)
+static ssize_t store_disp_mode(struct device * dev, struct device_attribute *attr, const char * buf)
 {
     set_disp_mode(buf);
+    return 16;    
+}
+
+/*aud_mode attr*/
+static ssize_t show_aud_mode(struct device * dev, struct device_attribute *attr, char * buf)
+{
     return 0;    
+}
+    
+static ssize_t store_aud_mode(struct device * dev, struct device_attribute *attr, const char * buf)
+{
+    //set_disp_mode(buf);
+    hdmitx_audio_enable(&hdmitx_device);
+    return 16;    
 }
 
 /*edid attr*/
@@ -123,7 +139,8 @@ static ssize_t show_edid(struct device *dev, struct device_attribute *attr, char
 }
     
 
-static DEVICE_ATTR(mode, S_IWUSR | S_IRUGO, show_mode, store_mode);
+static DEVICE_ATTR(disp_mode, S_IWUSR | S_IRUGO, show_disp_mode, store_disp_mode);
+static DEVICE_ATTR(aud_mode, S_IWUSR | S_IRUGO, show_aud_mode, store_aud_mode);
 static DEVICE_ATTR(edid, S_IWUSR | S_IRUGO, show_edid, NULL);
 
 /*****************************
@@ -259,7 +276,8 @@ static int amhdmitx_probe(struct platform_device *pdev)
     //hdmitx_dev = device_create(hdmitx_class, NULL, hdmitx_id, "amhdmitx%d", 0);
     hdmitx_dev = device_create(hdmitx_class, NULL, hdmitx_id, NULL, "amhdmitx%d", 0); //kernel>=2.6.27 
 
-    device_create_file(hdmitx_dev, &dev_attr_mode);
+    device_create_file(hdmitx_dev, &dev_attr_disp_mode);
+    device_create_file(hdmitx_dev, &dev_attr_aud_mode);
     device_create_file(hdmitx_dev, &dev_attr_edid);
     
     if (hdmitx_dev == NULL) {
@@ -278,7 +296,8 @@ static int amhdmitx_probe(struct platform_device *pdev)
 static int amhdmitx_remove(struct platform_device *pdev)
 {
     /* Remove the cdev */
-    device_remove_file(hdmitx_dev, &dev_attr_mode);
+    device_remove_file(hdmitx_dev, &dev_attr_disp_mode);
+    device_remove_file(hdmitx_dev, &dev_attr_aud_mode);
     device_remove_file(hdmitx_dev, &dev_attr_edid);
 
     cdev_del(&hdmitx_device.cdev);

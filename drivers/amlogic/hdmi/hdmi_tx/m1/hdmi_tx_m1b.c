@@ -124,6 +124,270 @@ static irqreturn_t intr_handler(int irq, void *dev_instance)
     return IRQ_HANDLED;
 }
 
+static void hdmi_tvenc1080i_set(Hdmi_tx_video_para_t* param)
+{
+    unsigned long TOTAL_PIXELS, PIXEL_REPEAT_HDMI, PIXEL_REPEAT_VENC, ACTIVE_PIXELS;
+    unsigned FRONT_PORCH, HSYNC_PIXELS, ACTIVE_LINES, INTERLACE_MODE, TOTAL_LINES, SOF_LINES, VSYNC_LINES;
+    unsigned LINES_F0, LINES_F1,BACK_PORCH, EOF_LINES, TOTAL_FRAMES;
+
+    unsigned long total_pixels_venc ;
+    unsigned long active_pixels_venc;
+    unsigned long front_porch_venc  ;
+    unsigned long hsync_pixels_venc ;
+
+    unsigned long de_h_begin, de_h_end;
+    unsigned long de_v_begin_even, de_v_end_even, de_v_begin_odd, de_v_end_odd;
+    unsigned long hs_begin, hs_end;
+    unsigned long vs_adjust;
+    unsigned long vs_bline_evn, vs_eline_evn, vs_bline_odd, vs_eline_odd;
+    unsigned long vso_begin_evn, vso_begin_odd;
+    if(param->VIC==HDMI_1080i60){
+         INTERLACE_MODE     = 1;                   
+         PIXEL_REPEAT_VENC  = 1;                   
+         PIXEL_REPEAT_HDMI  = 0;                   
+         ACTIVE_PIXELS  =     (1920*(1+PIXEL_REPEAT_HDMI)); // Number of active pixels per line.
+         ACTIVE_LINES   =     (1080/(1+INTERLACE_MODE));    // Number of active lines per field.
+         LINES_F0           = 562;                 
+         LINES_F1           = 563;                 
+         FRONT_PORCH        = 88;                  
+         HSYNC_PIXELS       = 44;                  
+         BACK_PORCH         = 148;                  
+         EOF_LINES          = 2;                   
+         VSYNC_LINES        = 5;                   
+         SOF_LINES          = 15;                  
+         TOTAL_FRAMES       = 4;                   
+    }
+    TOTAL_PIXELS =(FRONT_PORCH+HSYNC_PIXELS+BACK_PORCH+ACTIVE_PIXELS); // Number of total pixels per line.
+    TOTAL_LINES  =(LINES_F0+(LINES_F1*INTERLACE_MODE));                // Number of total lines per frame.
+
+    total_pixels_venc = (TOTAL_PIXELS  / (1+PIXEL_REPEAT_HDMI)) * (1+PIXEL_REPEAT_VENC); // 2200 / 1 * 2 = 4400
+    active_pixels_venc= (ACTIVE_PIXELS / (1+PIXEL_REPEAT_HDMI)) * (1+PIXEL_REPEAT_VENC); // 1920 / 1 * 2 = 3840
+    front_porch_venc  = (FRONT_PORCH   / (1+PIXEL_REPEAT_HDMI)) * (1+PIXEL_REPEAT_VENC); // 88   / 1 * 2 = 176
+    hsync_pixels_venc = (HSYNC_PIXELS  / (1+PIXEL_REPEAT_HDMI)) * (1+PIXEL_REPEAT_VENC); // 44   / 1 * 2 = 88
+
+    Wr(ENCP_VIDEO_MODE,          1<<14); // cfg_de_v = 1
+
+    // Program DE timing
+    de_h_begin = modulo(Rd(ENCP_VIDEO_HAVON_BEGIN) + VFIFO2VD_TO_HDMI_LATENCY,  total_pixels_venc); // (383 + 3) % 4400 = 386
+    de_h_end   = modulo(de_h_begin + active_pixels_venc,                        total_pixels_venc); // (386 + 3840) % 4400 = 4226
+    Wr(ENCP_DE_H_BEGIN, de_h_begin);    // 386
+    Wr(ENCP_DE_H_END,   de_h_end);      // 4226
+    // Program DE timing for even field
+    de_v_begin_even = Rd(ENCP_VIDEO_VAVON_BLINE);       // 20
+    de_v_end_even   = de_v_begin_even + ACTIVE_LINES;   // 20 + 540 = 560
+    Wr(ENCP_DE_V_BEGIN_EVEN,de_v_begin_even);   // 20
+    Wr(ENCP_DE_V_END_EVEN,  de_v_end_even);     // 560
+    // Program DE timing for odd field if needed
+    if (INTERLACE_MODE) {
+        // Calculate de_v_begin_odd according to enc480p_timing.v:
+        //wire[10:0]	cfg_ofld_vavon_bline	= {{7{ofld_vavon_ofst1 [3]}},ofld_vavon_ofst1 [3:0]} + cfg_video_vavon_bline	+ ofld_line;
+        de_v_begin_odd  = to_signed((Rd(ENCP_VIDEO_OFLD_VOAV_OFST) & 0xf0)>>4) + de_v_begin_even + (TOTAL_LINES-1)/2; // 1 + 20 + (1125-1)/2 = 583
+        de_v_end_odd    = de_v_begin_odd + ACTIVE_LINES;    // 583 + 540 = 1123
+        Wr(ENCP_DE_V_BEGIN_ODD, de_v_begin_odd);// 583
+        Wr(ENCP_DE_V_END_ODD,   de_v_end_odd);  // 1123
+    }
+
+    // Program Hsync timing
+    if (de_h_end + front_porch_venc >= total_pixels_venc) {
+        hs_begin    = de_h_end + front_porch_venc - total_pixels_venc; // 4226 + 176 - 4400 = 2
+        vs_adjust   = 1;
+    } else {
+        hs_begin    = de_h_end + front_porch_venc;
+        vs_adjust   = 0;
+    }
+    hs_end  = modulo(hs_begin + hsync_pixels_venc,   total_pixels_venc); // (2 + 88) % 4400 = 90
+    Wr(ENCP_DVI_HSO_BEGIN,  hs_begin);  // 2
+    Wr(ENCP_DVI_HSO_END,    hs_end);    // 90
+    
+    // Program Vsync timing for even field
+    if (de_v_begin_even >= SOF_LINES + VSYNC_LINES + (1-vs_adjust)) {
+        vs_bline_evn = de_v_begin_even - SOF_LINES - VSYNC_LINES - (1-vs_adjust); // 20 - 15 - 5 - 0 = 0
+    } else {
+        vs_bline_evn = TOTAL_LINES + de_v_begin_even - SOF_LINES - VSYNC_LINES - (1-vs_adjust);
+    }
+    vs_eline_evn = modulo(vs_bline_evn + VSYNC_LINES, TOTAL_LINES); // (0 + 5) % 1125 = 5
+    Wr(ENCP_DVI_VSO_BLINE_EVN, vs_bline_evn);   // 0
+    Wr(ENCP_DVI_VSO_ELINE_EVN, vs_eline_evn);   // 5
+    vso_begin_evn = hs_begin; // 2
+    Wr(ENCP_DVI_VSO_BEGIN_EVN, vso_begin_evn);  // 2
+    Wr(ENCP_DVI_VSO_END_EVN,   vso_begin_evn);  // 2
+    // Program Vsync timing for odd field if needed
+    if (INTERLACE_MODE) {
+        vs_bline_odd = de_v_begin_odd-1 - SOF_LINES - VSYNC_LINES;  // 583-1 - 15 - 5   = 562
+        vs_eline_odd = de_v_begin_odd-1 - SOF_LINES;                // 583-1 - 15       = 567
+        vso_begin_odd   = modulo(hs_begin + (total_pixels_venc>>1), total_pixels_venc); // (2 + 4400/2) % 4400 = 2202
+        Wr(ENCP_DVI_VSO_BLINE_ODD, vs_bline_odd);   // 562
+        Wr(ENCP_DVI_VSO_ELINE_ODD, vs_eline_odd);   // 567
+        Wr(ENCP_DVI_VSO_BEGIN_ODD, vso_begin_odd);  // 2202
+        Wr(ENCP_DVI_VSO_END_ODD,   vso_begin_odd);  // 2202
+    }
+
+    Wr(VENC_DVI_SETTING, (1 << 0)               | //0=select enci hs/vs; 1=select encp hs/vs
+                         (0 << 1)               | //select vso/hso as hsync vsync
+                         (HSYNC_POLARITY << 2)  | //invert hs
+                         (VSYNC_POLARITY << 3)  | //invert vs
+                         (5 << 4)               | //select vclk1 as HDMI pixel clk
+                         (1 << 7)               | //0=sel external dvi; 1= sel internal hdmi
+                         (0 << 8)               | //no invert clk
+                         (0 << 13)              | //cfg_dvi_mode_gamma_en
+                         (1 << 15)                //select encp_vs_dvi, encp_hs_dvi and encp_de as timing signal
+    );
+    
+    Wr(VENC_DVI_SETTING_MORE, (TX_INPUT_COLOR_FORMAT==0)? 1 : 0); // [0] 0=Map data pins from Venc to Hdmi Tx as CrYCb mode;
+    
+}    
+
+static void hdmi_tvenc480i_set(Hdmi_tx_video_para_t* param)
+{
+    unsigned long TOTAL_PIXELS, PIXEL_REPEAT_HDMI, PIXEL_REPEAT_VENC, ACTIVE_PIXELS;
+    unsigned FRONT_PORCH, HSYNC_PIXELS, ACTIVE_LINES, INTERLACE_MODE, TOTAL_LINES, SOF_LINES, VSYNC_LINES;
+    unsigned LINES_F0, LINES_F1,BACK_PORCH, EOF_LINES, TOTAL_FRAMES;
+
+    unsigned long total_pixels_venc ;
+    unsigned long active_pixels_venc;
+    unsigned long front_porch_venc  ;
+    unsigned long hsync_pixels_venc ;
+
+    unsigned long de_h_begin, de_h_end;
+    unsigned long de_v_begin_even, de_v_end_even, de_v_begin_odd, de_v_end_odd;
+    unsigned long hs_begin, hs_end;
+    unsigned long vs_adjust;
+    unsigned long vs_bline_evn, vs_eline_evn, vs_bline_odd, vs_eline_odd;
+    unsigned long vso_begin_evn, vso_begin_odd;
+    if(param->VIC==HDMI_480i60){
+         INTERLACE_MODE     = 1;                   
+         PIXEL_REPEAT_VENC  = 1;                   
+         PIXEL_REPEAT_HDMI  = 1;                   
+         ACTIVE_PIXELS  =     (720*(1+PIXEL_REPEAT_HDMI)); // Number of active pixels per line.
+         ACTIVE_LINES   =     (480/(1+INTERLACE_MODE));    // Number of active lines per field.
+         LINES_F0           = 262;                 
+         LINES_F1           = 263;                 
+         FRONT_PORCH        = 38;                  
+         HSYNC_PIXELS       = 124;                  
+         BACK_PORCH         = 114;                  
+         EOF_LINES          = 4;                   
+         VSYNC_LINES        = 3;                   
+         SOF_LINES          = 15;                  
+         TOTAL_FRAMES       = 4;                   
+    }
+    TOTAL_PIXELS =(FRONT_PORCH+HSYNC_PIXELS+BACK_PORCH+ACTIVE_PIXELS); // Number of total pixels per line.
+    TOTAL_LINES  =(LINES_F0+(LINES_F1*INTERLACE_MODE));                // Number of total lines per frame.
+
+    total_pixels_venc = (TOTAL_PIXELS  / (1+PIXEL_REPEAT_HDMI)) * (1+PIXEL_REPEAT_VENC); // 1716 / 2 * 2 = 1716
+    active_pixels_venc= (ACTIVE_PIXELS / (1+PIXEL_REPEAT_HDMI)) * (1+PIXEL_REPEAT_VENC); // 1440 / 2 * 2 = 1440
+    front_porch_venc  = (FRONT_PORCH   / (1+PIXEL_REPEAT_HDMI)) * (1+PIXEL_REPEAT_VENC); // 38   / 2 * 2 = 38
+    hsync_pixels_venc = (HSYNC_PIXELS  / (1+PIXEL_REPEAT_HDMI)) * (1+PIXEL_REPEAT_VENC); // 124  / 2 * 2 = 124
+
+    Wr(ENCP_VIDEO_MODE,          1<<14); // cfg_de_v = 1
+
+    // Program DE timing
+    de_h_begin = modulo(Rd(VFIFO2VD_PIXEL_START) + VFIFO2VD_TO_HDMI_LATENCY,    total_pixels_venc); // (233 + 2) % 1716 = 235
+    de_h_end   = modulo(de_h_begin + active_pixels_venc,                        total_pixels_venc); // (235 + 1440) % 1716 = 1675
+    Wr(ENCI_DE_H_BEGIN, de_h_begin);    // 235
+    Wr(ENCI_DE_H_END,   de_h_end);      // 1675
+
+    de_v_begin_even = Rd(VFIFO2VD_LINE_TOP_START);      // 17
+    de_v_end_even   = de_v_begin_even + ACTIVE_LINES;   // 17 + 240 = 257
+    de_v_begin_odd  = Rd(VFIFO2VD_LINE_BOT_START);      // 18
+    de_v_end_odd    = de_v_begin_odd + ACTIVE_LINES;    // 18 + 480/2 = 258
+    Wr(ENCI_DE_V_BEGIN_EVEN,de_v_begin_even);   // 17
+    Wr(ENCI_DE_V_END_EVEN,  de_v_end_even);     // 257
+    Wr(ENCI_DE_V_BEGIN_ODD, de_v_begin_odd);    // 18
+    Wr(ENCI_DE_V_END_ODD,   de_v_end_odd);      // 258
+
+    // Program Hsync timing
+    if (de_h_end + front_porch_venc >= total_pixels_venc) {
+        hs_begin    = de_h_end + front_porch_venc - total_pixels_venc;
+        vs_adjust   = 1;
+    } else {
+        hs_begin    = de_h_end + front_porch_venc; // 1675 + 38 = 1713
+        vs_adjust   = 0;
+    }
+    hs_end  = modulo(hs_begin + hsync_pixels_venc,   total_pixels_venc); // (1713 + 124) % 1716 = 121
+    Wr(ENCI_DVI_HSO_BEGIN,  hs_begin);  // 1713
+    Wr(ENCI_DVI_HSO_END,    hs_end);    // 121
+    
+    // Program Vsync timing for even field
+    if (de_v_end_odd-1 + EOF_LINES + vs_adjust >= LINES_F1) {
+        vs_bline_evn = de_v_end_odd-1 + EOF_LINES + vs_adjust - LINES_F1;
+        vs_eline_evn = vs_bline_evn + VSYNC_LINES;
+        Wr(ENCI_DVI_VSO_BLINE_EVN, vs_bline_evn);
+        //vso_bline_evn_reg_wr_cnt ++;
+        Wr(ENCI_DVI_VSO_ELINE_EVN, vs_eline_evn);
+        //vso_eline_evn_reg_wr_cnt ++;
+        Wr(ENCI_DVI_VSO_BEGIN_EVN, hs_begin);
+        Wr(ENCI_DVI_VSO_END_EVN,   hs_begin);
+    } else {
+        vs_bline_odd = de_v_end_odd-1 + EOF_LINES + vs_adjust; // 258-1 + 4 + 0 = 261
+        Wr(ENCI_DVI_VSO_BLINE_ODD, vs_bline_odd); // 261
+        //vso_bline_odd_reg_wr_cnt ++;
+        Wr(ENCI_DVI_VSO_BEGIN_ODD, hs_begin);  // 1713
+        if (vs_bline_odd + VSYNC_LINES >= LINES_F1) {
+            vs_eline_evn = vs_bline_odd + VSYNC_LINES - LINES_F1; // 261 + 3 - 263 = 1
+            Wr(ENCI_DVI_VSO_ELINE_EVN, vs_eline_evn);   // 1
+            //vso_eline_evn_reg_wr_cnt ++;
+            Wr(ENCI_DVI_VSO_END_EVN,   hs_begin);       // 1713
+        } else {
+            vs_eline_odd = vs_bline_odd + VSYNC_LINES;
+            Wr(ENCI_DVI_VSO_ELINE_ODD, vs_eline_odd);
+            //vso_eline_odd_reg_wr_cnt ++;
+            Wr(ENCI_DVI_VSO_END_ODD,   hs_begin);
+        }
+    }
+    // Program Vsync timing for odd field
+    if (de_v_end_even-1 + EOF_LINES + 1 >= LINES_F0) {
+        vs_bline_odd = de_v_end_even-1 + EOF_LINES + 1 - LINES_F0;
+        vs_eline_odd = vs_bline_odd + VSYNC_LINES;
+        Wr(ENCI_DVI_VSO_BLINE_ODD, vs_bline_odd);
+        //vso_bline_odd_reg_wr_cnt ++;
+        Wr(ENCI_DVI_VSO_ELINE_ODD, vs_eline_odd);
+        //vso_eline_odd_reg_wr_cnt ++;
+        vso_begin_odd   = modulo(hs_begin + (total_pixels_venc>>1), total_pixels_venc);
+        Wr(ENCI_DVI_VSO_BEGIN_ODD, vso_begin_odd);
+        Wr(ENCI_DVI_VSO_END_ODD,   vso_begin_odd);
+    } else {
+        vs_bline_evn = de_v_end_even-1 + EOF_LINES + 1; // 257-1 + 4 + 1 = 261
+        Wr(ENCI_DVI_VSO_BLINE_EVN, vs_bline_evn); // 261
+        //vso_bline_evn_reg_wr_cnt ++;
+        vso_begin_evn   = modulo(hs_begin + (total_pixels_venc>>1), total_pixels_venc);   // (1713 + 1716/2) % 1716 = 855
+        Wr(ENCI_DVI_VSO_BEGIN_EVN, vso_begin_evn);  // 855
+        if (vs_bline_evn + VSYNC_LINES >= LINES_F0) {
+            vs_eline_odd = vs_bline_evn + VSYNC_LINES - LINES_F0; // 261 + 3 - 262 = 2
+            Wr(ENCI_DVI_VSO_ELINE_ODD, vs_eline_odd);   // 2
+            //vso_eline_odd_reg_wr_cnt ++;
+            Wr(ENCI_DVI_VSO_END_ODD,   vso_begin_evn);  // 855
+        } else {
+            vs_eline_evn = vs_bline_evn + VSYNC_LINES;
+            Wr(ENCI_DVI_VSO_ELINE_EVN, vs_eline_evn);
+            //vso_eline_evn_reg_wr_cnt ++;
+            Wr(ENCI_DVI_VSO_END_EVN,   vso_begin_evn);
+        }
+    }
+
+    // Check if there are duplicate or missing timing settings
+    //if ((vso_bline_evn_reg_wr_cnt != 1) || (vso_bline_odd_reg_wr_cnt != 1) ||
+    //    (vso_eline_evn_reg_wr_cnt != 1) || (vso_eline_odd_reg_wr_cnt != 1)) {
+        //stimulus_print("[TEST.C] Error: Multiple or missing timing settings on reg ENCI_DVI_VSO_B(E)LINE_EVN(ODD)!\n");
+        //stimulus_finish_fail(1);
+    //}
+
+    Wr(VENC_DVI_SETTING, (0 << 0)               | //0=select enci hs/vs; 1=select encp hs/vs
+                         (0 << 1)               | //select vso/hso as hsync vsync
+                         (HSYNC_POLARITY << 2)  | //invert hs
+                         (VSYNC_POLARITY << 3)  | //invert vs
+                         (1 << 4)               | //select clk54 as clk
+                         (1 << 7)               | //0=sel external dvi; 1= sel internal hdmi
+                         (0 << 8)               | //no invert clk
+                         (0 << 13)              | //cfg_dvi_mode_gamma_en
+                         (1 << 15)                //select enci_vs_dvi, enci_hs_dvi and intl_de as timing signal
+    );
+    
+    Wr(VENC_DVI_SETTING_MORE, (TX_INPUT_COLOR_FORMAT==0)? 1 : 0); // [0] 0=Map data pins from Venc to Hdmi Tx as CrYCb mode;
+                                                                  //     1=Map data pins from Venc to Hdmi Tx as RGB mode.
+    
+}    
+
+
 static void hdmi_tvenc_set(Hdmi_tx_video_para_t *param)
 {
     unsigned long TOTAL_PIXELS, PIXEL_REPEAT_HDMI, PIXEL_REPEAT_VENC, ACTIVE_PIXELS;
@@ -157,6 +421,22 @@ static void hdmi_tvenc_set(Hdmi_tx_video_para_t *param)
          SOF_LINES          = 30;                  
          TOTAL_FRAMES       = 4;                   
     }
+    else if(param->VIC==HDMI_720p60){
+         INTERLACE_MODE     = 0;                   
+         PIXEL_REPEAT_VENC  = 1;                   
+         PIXEL_REPEAT_HDMI  = 0;                   
+         ACTIVE_PIXELS      = (1280*(1+PIXEL_REPEAT_HDMI)); // Number of active pixels per line.
+         ACTIVE_LINES       = (720/(1+INTERLACE_MODE));    // Number of active lines per field.
+         LINES_F0           = 750;                 
+         LINES_F1           = 750;                 
+         FRONT_PORCH        = 110;                  
+         HSYNC_PIXELS       = 40;                  
+         BACK_PORCH         = 220;                  
+         EOF_LINES          = 5;                   
+         VSYNC_LINES        = 5;                   
+         SOF_LINES          = 20;                  
+         TOTAL_FRAMES       = 4;                   
+    }
     else{
          INTERLACE_MODE      =0;              
          PIXEL_REPEAT_VENC   =0;              
@@ -173,6 +453,7 @@ static void hdmi_tvenc_set(Hdmi_tx_video_para_t *param)
          SOF_LINES           =36;             
          TOTAL_FRAMES        =4;              
     }
+
     TOTAL_PIXELS       = (FRONT_PORCH+HSYNC_PIXELS+BACK_PORCH+ACTIVE_PIXELS); // Number of total pixels per line.
     TOTAL_LINES        = (LINES_F0+(LINES_F1*INTERLACE_MODE));                // Number of total lines per frame.
 
@@ -181,62 +462,65 @@ static void hdmi_tvenc_set(Hdmi_tx_video_para_t *param)
     front_porch_venc  = (FRONT_PORCH   / (1+PIXEL_REPEAT_HDMI)) * (1+PIXEL_REPEAT_VENC); // 16   / 1 * 2 = 32
     hsync_pixels_venc = (HSYNC_PIXELS  / (1+PIXEL_REPEAT_HDMI)) * (1+PIXEL_REPEAT_VENC); // 62   / 1 * 2 = 124
 
-    if(param->VIC==HDMI_480p60){    
-        Wr(ENCP_VIDEO_MODE,          1<<14); // cfg_de_v = 1
-        // Program DE timing
-        de_h_begin = modulo(Rd(ENCP_VIDEO_HAVON_BEGIN) + VFIFO2VD_TO_HDMI_LATENCY,  total_pixels_venc); // (217 + 3) % 1716 = 220
-        de_h_end   = modulo(de_h_begin + active_pixels_venc,                        total_pixels_venc); // (220 + 1440) % 1716 = 1660
-        Wr(ENCP_DE_H_BEGIN, de_h_begin);    // 220
-        Wr(ENCP_DE_H_END,   de_h_end);      // 1660
-        // Program DE timing for even field
-        de_v_begin_even = Rd(ENCP_VIDEO_VAVON_BLINE);       // 42
-        de_v_end_even   = de_v_begin_even + ACTIVE_LINES;   // 42 + 480 = 522
-        Wr(ENCP_DE_V_BEGIN_EVEN,de_v_begin_even);   // 42
-        Wr(ENCP_DE_V_END_EVEN,  de_v_end_even);     // 522
-        // Program DE timing for odd field if needed
-        if (INTERLACE_MODE) {
-            // Calculate de_v_begin_odd according to enc480p_timing.v:
-            //wire[10:0]    cfg_ofld_vavon_bline    = {{7{ofld_vavon_ofst1 [3]}},ofld_vavon_ofst1 [3:0]} + cfg_video_vavon_bline    + ofld_line;
-            de_v_begin_odd  = to_signed((Rd(ENCP_VIDEO_OFLD_VOAV_OFST) & 0xf0)>>4) + de_v_begin_even + (TOTAL_LINES-1)/2;
-            de_v_end_odd    = de_v_begin_odd + ACTIVE_LINES;
-            Wr(ENCP_DE_V_BEGIN_ODD, de_v_begin_odd);
-            Wr(ENCP_DE_V_END_ODD,   de_v_end_odd);
-        }
+    Wr(ENCP_VIDEO_MODE,          1<<14); // cfg_de_v = 1
+    // Program DE timing
+    de_h_begin = modulo(Rd(ENCP_VIDEO_HAVON_BEGIN) + VFIFO2VD_TO_HDMI_LATENCY,  total_pixels_venc); // (217 + 3) % 1716 = 220
+    de_h_end   = modulo(de_h_begin + active_pixels_venc,                        total_pixels_venc); // (220 + 1440) % 1716 = 1660
+    Wr(ENCP_DE_H_BEGIN, de_h_begin);    // 220
+    Wr(ENCP_DE_H_END,   de_h_end);      // 1660
+    // Program DE timing for even field
+    de_v_begin_even = Rd(ENCP_VIDEO_VAVON_BLINE);       // 42
+    de_v_end_even   = de_v_begin_even + ACTIVE_LINES;   // 42 + 480 = 522
+    Wr(ENCP_DE_V_BEGIN_EVEN,de_v_begin_even);   // 42
+    Wr(ENCP_DE_V_END_EVEN,  de_v_end_even);     // 522
+    // Program DE timing for odd field if needed
+    if (INTERLACE_MODE) {
+        // Calculate de_v_begin_odd according to enc480p_timing.v:
+        //wire[10:0]    cfg_ofld_vavon_bline    = {{7{ofld_vavon_ofst1 [3]}},ofld_vavon_ofst1 [3:0]} + cfg_video_vavon_bline    + ofld_line;
+        de_v_begin_odd  = to_signed((Rd(ENCP_VIDEO_OFLD_VOAV_OFST) & 0xf0)>>4) + de_v_begin_even + (TOTAL_LINES-1)/2;
+        de_v_end_odd    = de_v_begin_odd + ACTIVE_LINES;
+        Wr(ENCP_DE_V_BEGIN_ODD, de_v_begin_odd);
+        Wr(ENCP_DE_V_END_ODD,   de_v_end_odd);
+    }
+
+    // Program Hsync timing
+    if (de_h_end + front_porch_venc >= total_pixels_venc) {
+        hs_begin    = de_h_end + front_porch_venc - total_pixels_venc;
+        vs_adjust   = 1;
+    } else {
+        hs_begin    = de_h_end + front_porch_venc; // 1660 + 32 = 1692
+        vs_adjust   = 0;
+    }
+    hs_end  = modulo(hs_begin + hsync_pixels_venc,   total_pixels_venc); // (1692 + 124) % 1716 = 100
+    Wr(ENCP_DVI_HSO_BEGIN,  hs_begin);  // 1692
+    Wr(ENCP_DVI_HSO_END,    hs_end);    // 100
     
-        // Program Hsync timing
-        if (de_h_end + front_porch_venc >= total_pixels_venc) {
-            hs_begin    = de_h_end + front_porch_venc - total_pixels_venc;
-            vs_adjust   = 1;
-        } else {
-            hs_begin    = de_h_end + front_porch_venc; // 1660 + 32 = 1692
-            vs_adjust   = 0;
-        }
-        hs_end  = modulo(hs_begin + hsync_pixels_venc,   total_pixels_venc); // (1692 + 124) % 1716 = 100
-        Wr(ENCP_DVI_HSO_BEGIN,  hs_begin);  // 1692
-        Wr(ENCP_DVI_HSO_END,    hs_end);    // 100
-        
-        // Program Vsync timing for even field
-        if (de_v_begin_even >= SOF_LINES + VSYNC_LINES + (1-vs_adjust)) {
-            vs_bline_evn = de_v_begin_even - SOF_LINES - VSYNC_LINES - (1-vs_adjust); // 42 - 30 - 6 - 1 = 5
-        } else {
-            vs_bline_evn = TOTAL_LINES + de_v_begin_even - SOF_LINES - VSYNC_LINES - (1-vs_adjust);
-        }
-        vs_eline_evn = modulo(vs_bline_evn + VSYNC_LINES, TOTAL_LINES); // (5 + 6) % 525 = 11
-        Wr(ENCP_DVI_VSO_BLINE_EVN, vs_bline_evn);   // 5
-        Wr(ENCP_DVI_VSO_ELINE_EVN, vs_eline_evn);   // 11
-        vso_begin_evn = hs_begin; // 1692
-        Wr(ENCP_DVI_VSO_BEGIN_EVN, vso_begin_evn);  // 1692
-        Wr(ENCP_DVI_VSO_END_EVN,   vso_begin_evn);  // 1692
-        // Program Vsync timing for odd field if needed
-        if (INTERLACE_MODE) {
-            vs_bline_odd = de_v_begin_odd-1 - SOF_LINES - VSYNC_LINES;
-            vs_eline_odd = de_v_begin_odd-1 - SOF_LINES;
-            vso_begin_odd   = modulo(hs_begin + (total_pixels_venc>>1), total_pixels_venc);
-            Wr(ENCP_DVI_VSO_BLINE_ODD, vs_bline_odd);
-            Wr(ENCP_DVI_VSO_ELINE_ODD, vs_eline_odd);
-            Wr(ENCP_DVI_VSO_BEGIN_ODD, vso_begin_odd);
-            Wr(ENCP_DVI_VSO_END_ODD,   vso_begin_odd);
-        }
+    // Program Vsync timing for even field
+    if (de_v_begin_even >= SOF_LINES + VSYNC_LINES + (1-vs_adjust)) {
+        vs_bline_evn = de_v_begin_even - SOF_LINES - VSYNC_LINES - (1-vs_adjust); // 42 - 30 - 6 - 1 = 5
+    } else {
+        vs_bline_evn = TOTAL_LINES + de_v_begin_even - SOF_LINES - VSYNC_LINES - (1-vs_adjust);
+    }
+    vs_eline_evn = modulo(vs_bline_evn + VSYNC_LINES, TOTAL_LINES); // (5 + 6) % 525 = 11
+    Wr(ENCP_DVI_VSO_BLINE_EVN, vs_bline_evn);   // 5
+    Wr(ENCP_DVI_VSO_ELINE_EVN, vs_eline_evn);   // 11
+    vso_begin_evn = hs_begin; // 1692
+    Wr(ENCP_DVI_VSO_BEGIN_EVN, vso_begin_evn);  // 1692
+    Wr(ENCP_DVI_VSO_END_EVN,   vso_begin_evn);  // 1692
+    // Program Vsync timing for odd field if needed
+    if (INTERLACE_MODE) {
+        vs_bline_odd = de_v_begin_odd-1 - SOF_LINES - VSYNC_LINES;
+        vs_eline_odd = de_v_begin_odd-1 - SOF_LINES;
+        vso_begin_odd   = modulo(hs_begin + (total_pixels_venc>>1), total_pixels_venc);
+        Wr(ENCP_DVI_VSO_BLINE_ODD, vs_bline_odd);
+        Wr(ENCP_DVI_VSO_ELINE_ODD, vs_eline_odd);
+        Wr(ENCP_DVI_VSO_BEGIN_ODD, vso_begin_odd);
+        Wr(ENCP_DVI_VSO_END_ODD,   vso_begin_odd);
+    }
+    Wr(VENC_DVI_SETTING_MORE, (TX_INPUT_COLOR_FORMAT==0)? 1 : 0); // [0] 0=Map data pins from Venc to Hdmi Tx as CrYCb mode;
+    
+
+    if(param->VIC==HDMI_480p60){
         Wr(VENC_DVI_SETTING, (1 << 0)               | //0=select enci hs/vs; 1=select encp hs/vs
                              (0 << 1)               | //select vso/hso as hsync vsync
                              (HSYNC_POLARITY << 2)  | //invert hs
@@ -247,66 +531,8 @@ static void hdmi_tvenc_set(Hdmi_tx_video_para_t *param)
                              (0 << 13)              | //cfg_dvi_mode_gamma_en
                              (1 << 15)                //select encp_vs_dvi, encp_hs_dvi and encp_de as timing signal
         );
-        Wr(VENC_DVI_SETTING_MORE, (TX_INPUT_COLOR_FORMAT==0)? 1 : 0); // [0] 0=Map data pins from Venc to Hdmi Tx as CrYCb mode;
-        
     }
-    else if(param->VIC==HDMI_1080p60){
-        Wr(ENCP_VIDEO_MODE,          1<<14); // cfg_de_v = 1
-        // Program DE timing
-        de_h_begin = modulo(Rd(ENCP_VIDEO_HAVON_BEGIN) + VFIFO2VD_TO_HDMI_LATENCY,  total_pixels_venc); // (148 + 3) % 2200 = 151
-        de_h_end   = modulo(de_h_begin + active_pixels_venc,                        total_pixels_venc); // (151 + 1920) % 2200 = 2071
-        Wr(ENCP_DE_H_BEGIN, de_h_begin);    // 151
-        Wr(ENCP_DE_H_END,   de_h_end);      // 2071
-        // Program DE timing for even field
-        de_v_begin_even = Rd(ENCP_VIDEO_VAVON_BLINE);       // 41
-        de_v_end_even   = de_v_begin_even + ACTIVE_LINES;   // 41 + 1080 = 1121
-        Wr(ENCP_DE_V_BEGIN_EVEN,de_v_begin_even);   // 41
-        Wr(ENCP_DE_V_END_EVEN,  de_v_end_even);     // 1121
-        // Program DE timing for odd field if needed
-        if (INTERLACE_MODE) {
-            // Calculate de_v_begin_odd according to enc480p_timing.v:
-            //wire[10:0]    cfg_ofld_vavon_bline    = {{7{ofld_vavon_ofst1 [3]}},ofld_vavon_ofst1 [3:0]} + cfg_video_vavon_bline    + ofld_line;
-            de_v_begin_odd  = to_signed((Rd(ENCP_VIDEO_OFLD_VOAV_OFST) & 0xf0)>>4) + de_v_begin_even + (TOTAL_LINES-1)/2;
-            de_v_end_odd    = de_v_begin_odd + ACTIVE_LINES;
-            Wr(ENCP_DE_V_BEGIN_ODD, de_v_begin_odd);
-            Wr(ENCP_DE_V_END_ODD,   de_v_end_odd);
-        }
-    
-        // Program Hsync timing
-        if (de_h_end + front_porch_venc >= total_pixels_venc) {
-            hs_begin    = de_h_end + front_porch_venc - total_pixels_venc;
-            vs_adjust   = 1;
-        } else {
-            hs_begin    = de_h_end + front_porch_venc; // 2071 + 88 = 2159
-            vs_adjust   = 0;
-        }
-        hs_end  = modulo(hs_begin + hsync_pixels_venc,   total_pixels_venc); // (2159 + 44) % 2200 = 3
-        Wr(ENCP_DVI_HSO_BEGIN,  hs_begin);  // 2159
-        Wr(ENCP_DVI_HSO_END,    hs_end);    // 3
-        
-        // Program Vsync timing for even field
-        if (de_v_begin_even >= SOF_LINES + VSYNC_LINES + (1-vs_adjust)) {
-            vs_bline_evn = de_v_begin_even - SOF_LINES - VSYNC_LINES - (1-vs_adjust);
-        } else {
-            vs_bline_evn = TOTAL_LINES + de_v_begin_even - SOF_LINES - VSYNC_LINES - (1-vs_adjust); // 1125 + 41 - 36 - 5 - 1 = 1124
-        }
-        vs_eline_evn = modulo(vs_bline_evn + VSYNC_LINES, TOTAL_LINES); // (1124 + 5) % 1125 = 4
-        Wr(ENCP_DVI_VSO_BLINE_EVN, vs_bline_evn);   // 1124
-        Wr(ENCP_DVI_VSO_ELINE_EVN, vs_eline_evn);   // 4
-        vso_begin_evn = hs_begin; // 2159
-        Wr(ENCP_DVI_VSO_BEGIN_EVN, vso_begin_evn);  // 2159
-        Wr(ENCP_DVI_VSO_END_EVN,   vso_begin_evn);  // 2159
-        // Program Vsync timing for odd field if needed
-        if (INTERLACE_MODE) {
-            vs_bline_odd = de_v_begin_odd-1 - SOF_LINES - VSYNC_LINES;
-            vs_eline_odd = de_v_begin_odd-1 - SOF_LINES;
-            vso_begin_odd   = modulo(hs_begin + (total_pixels_venc>>1), total_pixels_venc);
-            Wr(ENCP_DVI_VSO_BLINE_ODD, vs_bline_odd);
-            Wr(ENCP_DVI_VSO_ELINE_ODD, vs_eline_odd);
-            Wr(ENCP_DVI_VSO_BEGIN_ODD, vso_begin_odd);
-            Wr(ENCP_DVI_VSO_END_ODD,   vso_begin_odd);
-        }
-    
+    else{
         Wr(VENC_DVI_SETTING, (1 << 0)               | //0=select enci hs/vs; 1=select encp hs/vs
                              (0 << 1)               | //select vso/hso as hsync vsync
                              (HSYNC_POLARITY << 2)  | //invert hs
@@ -317,53 +543,28 @@ static void hdmi_tvenc_set(Hdmi_tx_video_para_t *param)
                              (0 << 13)              | //cfg_dvi_mode_gamma_en
                              (1 << 15)                //select encp_vs_dvi, encp_hs_dvi and encp_de as timing signal
         );
-        Wr(VENC_DVI_SETTING_MORE, (TX_INPUT_COLOR_FORMAT==0)? 1 : 0); // [0] 0=Map data pins from Venc to Hdmi Tx as CrYCb mode;
-                                                                      //     1=Map data pins from Venc to Hdmi Tx as RGB mode.
-    }        
-
+    }
 }    
  
-static void hdmi_hw_set_480p(Hdmi_tx_video_para_t *param)
+static void hdmi_hw_init()
 {
     unsigned int tmp_add_data;
-    unsigned long TX_OUTPUT_COLOR_FORMAT;
-    if(param->color==COLOR_SPACE_YUV444){
-        TX_OUTPUT_COLOR_FORMAT=1;
-    }
-    else if(param->color==COLOR_SPACE_YUV422){
-        TX_OUTPUT_COLOR_FORMAT=3;
-    }
-    else{
-        TX_OUTPUT_COLOR_FORMAT=0;
-    }
+    Wr(HHI_HDMI_PLL_CNTL, 0x03040502); 
 
-    // Configure HDMI PLL
-//    Wr(HHI_HDMI_PLL_CNTL, 0x000a1B16);
-#ifdef XTAL_24MHZ
-    Wr(HHI_HDMI_PLL_CNTL, 0x03040905); // For xtal=24MHz: PREDIV=5, POSTDIV=9, N=4, 0D=3, to get phy_clk=270MHz, tmds_clk=27MHz.
-#else
-    Wr(HHI_HDMI_PLL_CNTL, 0x03050906); // PREDIV=6, POSTDIV=9, N=5, 0D=3, to get phy_clk=270MHz, tmds_clk=27MHz.
-#endif
-    Wr(HHI_HDMI_PLL_CNTL2, 0x50e8);
+    //Wr(HHI_HDMI_PLL_CNTL2, 0x50e8);
     Wr(HHI_HDMI_PLL_CNTL1, 0x00040003);
     Wr(HHI_HDMI_AFC_CNTL, Rd(HHI_HDMI_AFC_CNTL) | 0x3);
-    //Wr(HHI_HDMI_PLL_CNTL1, 0x014000c1);
-    //Wr(OTHER_PLL_CNTL, 0x1021e);
 
     // Configure HDMI TX serializer:
     hdmi_wr_reg(0x011, 0x0f);   //Channels Power Up Setting ,"1" for Power-up ,"0" for Power-down,Bit[3:0]=CK,Data2,data1,data1,data0 Channels ;
-    hdmi_wr_reg(0x015, 0x03);   //slew rate
+  //hdmi_wr_reg(0x015, 0x03);   //slew rate
     hdmi_wr_reg(0x017, 0x1d);   //1d for power-up Band-gap and main-bias ,00 is power down 
     hdmi_wr_reg(0x018, 0x24);   //Serializer Internal clock setting ,please fix to vaue 24 ,other setting is only for debug  
     hdmi_wr_reg(0x01a, 0xfb);   //bit[2:0]=011 ,CK channel output TMDS CLOCK ,bit[2:0]=101 ,ck channel output PHYCLCK 
-    hdmi_wr_reg(0x016, 0x06);   // Bit[3:0] is HDMI-PHY's output swing control register
+    hdmi_wr_reg(0x016, 0x04);   // Bit[3:0] is HDMI-PHY's output swing control register
     hdmi_wr_reg(0x0F7, 0x0F);   // Termination resistor calib value
   //hdmi_wr_reg(0x014, 0x07);   // This register is for pre-emphasis control ,we need test different TMDS Clcok speed then write down the suggested     value for each one ;
-    hdmi_wr_reg(0x014, 0x01);   // This is a sample for Pre-emphasis setting ,recommended for 225MHz's TMDS Setting & ** meters HDMI Cable  
-    
-    // delay 1000uS, then check HPLL_LOCK
-    delay_us(1000);
-    //while ( (Rd(HHI_HDMI_PLL_CNTL2) & (1<<31)) != (1<<31) );
+  //hdmi_wr_reg(0x014, 0x01);   // This is a sample for Pre-emphasis setting ,recommended for 225MHz's TMDS Setting & ** meters HDMI Cable  
 
     // --------------------------------------------------------
     // Program core_pin_mux to enable HDMI pins
@@ -371,18 +572,11 @@ static void hdmi_hw_set_480p(Hdmi_tx_video_para_t *param)
     //wire            pm_hdmi_cec_en              = pin_mux_reg0[2];
     //wire            pm_hdmi_hpd_5v_en           = pin_mux_reg0[1];
     //wire            pm_hdmi_i2c_5v_en           = pin_mux_reg0[0];
-    //(*P_PERIPHS_PIN_MUX_0) |= ((1 << 2) | // pm_hdmi_cec_en
-    //                           (1 << 1) | // pm_hdmi_hpd_5v_en
-    //                           (1 << 0)); // pm_hdmi_i2c_5v_en
     Wr(PERIPHS_PIN_MUX_0, Rd(PERIPHS_PIN_MUX_0)|((1 << 2) | // pm_hdmi_cec_en
                                (1 << 1) | // pm_hdmi_hpd_5v_en
                                (1 << 0))); // pm_hdmi_i2c_5v_en
 
-/////////////////reset
-
-    // Enable these interrupts: [2] tx_edit_int_rise [1] tx_hpd_int_fall [0] tx_hpd_int_rise
     hdmi_wr_reg(OTHER_BASE_ADDR + HDMI_OTHER_INTR_MASKN, 0x7);
-    
     // HPD glitch filter
     hdmi_wr_reg(TX_HDCP_HPD_FILTER_L, 0x00);
     hdmi_wr_reg(TX_HDCP_HPD_FILTER_H, 0xa0);
@@ -418,155 +612,11 @@ static void hdmi_hw_set_480p(Hdmi_tx_video_para_t *param)
     //tmp_add_data[2]   = 1'b1 ;  // mem_copy_done_config
     //tmp_add_data[1]   = 1'b1 ;  // sys_trigger_config_semi_manu
     //tmp_add_data[0]   = 1'b0 ;  // Rsrv
-    tmp_add_data = 0x0e;
-    hdmi_wr_reg(TX_HDCP_EDID_CONFIG, tmp_add_data);
+    hdmi_wr_reg(TX_HDCP_EDID_CONFIG, 0x0e);
     
     hdmi_wr_reg(TX_HDCP_CONFIG0,      1<<3);  //set TX rom_encrypt_off=1
     hdmi_wr_reg(TX_HDCP_MEM_CONFIG,   0<<3);  //set TX read_decrypt=0
     hdmi_wr_reg(TX_HDCP_ENCRYPT_BYTE, 0);     //set TX encrypt_byte=0x00
-    
-    // Setting the keys & EDID
-    //task_tx_key_setting();
-    
-    //tmp_add_data[15:8] = 0;
-    //tmp_add_data[7] = 1'b0;      // Force DTV timing (Auto)
-    //tmp_add_data[6] = 1'b0;      // Force Video Scan, only if [7]is set
-    //tmp_add_data[5] = 1'b0 ;     // Force Video field, only if [7]is set
-    //tmp_add_data[4:0] = 5'b00 ;  // Rsrv
-    tmp_add_data = 0;
-    hdmi_wr_reg(TX_VIDEO_DTV_TIMING, tmp_add_data);
-    
-    tmp_add_data  = 0;
-    tmp_add_data |= 0                       << 7; // [7]   forced_default_phase
-    tmp_add_data |= 0                       << 2; // [6:2] Rsrv
-    tmp_add_data |= param->color_depth   << 0; // [1:0] Color_depth:0=24-bit pixel; 1=30-bit pixel; 2=36-bit pixel; 3=48-bit pixel
-    hdmi_wr_reg(TX_VIDEO_DTV_MODE, tmp_add_data); // 0x00
-    
-    //tmp_add_data[15:8] = 0;
-    //tmp_add_data[7] = 1'b0;       // Force packet timing
-    //tmp_add_data[6] = 1'b0;       // PACKET ALLOC MODE
-    //tmp_add_data[5:0] = 6'd47 ;   // PACKET_START_LATENCY
-    tmp_add_data = 47;
-    hdmi_wr_reg(TX_PACKET_CONTROL_1, tmp_add_data);
-
-    // For debug: disable packets of audio_request, acr_request, deep_color_request, and avmute_request
-    //hdmi_wr_reg(TX_PACKET_CONTROL_2, hdmi_rd_reg(TX_PACKET_CONTROL_2) | 0x0f);
-
-    //tmp_add_data[15:8] = 0;
-    //tmp_add_data[7:6] = 2'b0;     // audio_source_select[1:0]
-    //tmp_add_data[5] = 1'b0;       // external_packet_enable
-    //tmp_add_data[4] = 1'b1 ;      // internal_packet_enable
-    //tmp_add_data[3:2] = 2'b0;     // afe_fifo_source_select_lane_1[1:0]
-    //tmp_add_data[1:0] = 2'b0 ;    // afe_fifo_source_select_lane_0[1:0]
-    tmp_add_data = 0x10;
-    hdmi_wr_reg(TX_CORE_DATA_CAPTURE_2, tmp_add_data);
-    
-    //tmp_add_data[15:8] = 0;
-    //tmp_add_data[7]   = 1'b0;     // monitor_lane_1
-    //tmp_add_data[6:4] = 3'd0;     // monitor_select_lane_1[2:0]
-    //tmp_add_data[3]   = 1'b1 ;    // monitor_lane_0
-    //tmp_add_data[2:0] = 3'd7;     // monitor_select_lane_0[2:0]
-    tmp_add_data = 0xf;
-    hdmi_wr_reg(TX_CORE_DATA_MONITOR_1, tmp_add_data);
-    
-    //tmp_add_data[15:8] = 0;
-    //tmp_add_data[7:3] = 5'b0;     // Rsrv
-    //tmp_add_data[2:0] = 3'd2;     // monitor_select[2:0]
-    tmp_add_data = 0x2;
-    hdmi_wr_reg(TX_CORE_DATA_MONITOR_2, tmp_add_data);
-    
-    //tmp_add_data[15:8] = 0;
-    //tmp_add_data[7] = 1'b1;     // forced_hdmi
-    //tmp_add_data[6] = 1'b1;     // hdmi_config
-    //tmp_add_data[5:4] = 2'b0;   // Rsrv
-    //tmp_add_data[3] = 1'b0;     // bit_swap.
-    //tmp_add_data[2:0] = 3'd0;   // channel_swap[2:0]
-    tmp_add_data = 0xc0;
-    hdmi_wr_reg(TX_TMDS_MODE, tmp_add_data);
-    
-    //tmp_add_data[15:8] = 0;
-    //tmp_add_data[7] = 1'b0;  // Rsrv
-    //tmp_add_data[6] = 1'b0;  // TX_CONNECT_SEL: 0=use lower channel data[29:0]; 1=use upper channel data[59:30]
-    //tmp_add_data[5:0] = 'h0;  // Rsrv
-    tmp_add_data = 0x0;
-    hdmi_wr_reg(TX_SYS4_CONNECT_SEL_1, tmp_add_data);
-    
-    // Normally it makes sense to synch 3 channel output with clock channel's rising edge,
-    // as HDMI's serializer is LSB out first, invert tmds_clk pattern from "1111100000" to
-    // "0000011111" actually enable data synch with clock rising edge.
-    tmp_add_data = 1 << 4; // Set tmds_clk pattern to be "0000011111" before being sent to AFE clock channel
-    hdmi_wr_reg(TX_SYS4_CK_INV_VIDEO, tmp_add_data);
-    
-    //tmp_add_data[15:8] = 0;
-    //tmp_add_data[7] = 1'b0;  // Rsrv
-    //tmp_add_data[6] = 1'b0;  // TX_AFE_FIFO channel 2 bypass=0
-    //tmp_add_data[5] = 1'b0;  // TX_AFE_FIFO channel 1 bypass=0
-    //tmp_add_data[4] = 1'b0;  // TX_AFE_FIFO channel 0 bypass=0
-    //tmp_add_data[3] = 1'b1;  // output enable of clk channel (channel 3)
-    //tmp_add_data[2] = 1'b1;  // TX_AFE_FIFO channel 2 enable
-    //tmp_add_data[1] = 1'b1;  // TX_AFE_FIFO channel 1 enable
-    //tmp_add_data[0] = 1'b1;  // TX_AFE_FIFO channel 0 enable
-    tmp_add_data = 0x0f;
-    hdmi_wr_reg(TX_SYS5_FIFO_CONFIG, tmp_add_data);
-    
-    tmp_add_data  = 0;
-    tmp_add_data |= TX_OUTPUT_COLOR_FORMAT  << 6; // [7:6] output_color_format: 0=RGB444; 1=YCbCr444; 2=Rsrv; 3=YCbCr422.
-    tmp_add_data |= TX_INPUT_COLOR_FORMAT   << 4; // [5:4] input_color_format:  0=RGB444; 1=YCbCr444; 2=Rsrv; 3=YCbCr422.
-    tmp_add_data |= param->color_depth<< 2; // [3:2] output_color_depth:  0=24-b; 1=30-b; 2=36-b; 3=48-b.
-    tmp_add_data |= TX_INPUT_COLOR_DEPTH    << 0; // [1:0] input_color_depth:   0=24-b; 1=30-b; 2=36-b; 3=48-b.
-    hdmi_wr_reg(TX_VIDEO_DTV_OPTION_L, tmp_add_data); // 0x50
-    
-    tmp_add_data  = 0;
-    tmp_add_data |= 0                       << 4; // [7:4] Rsrv
-    tmp_add_data |= TX_OUTPUT_COLOR_RANGE   << 2; // [3:2] output_color_range:  0=16-235/240; 1=16-240; 2=1-254; 3=0-255.
-    tmp_add_data |= TX_INPUT_COLOR_RANGE    << 0; // [1:0] input_color_range:   0=16-235/240; 1=16-240; 2=1-254; 3=0-255.
-    hdmi_wr_reg(TX_VIDEO_DTV_OPTION_H, tmp_add_data); // 0x00
-
-    tmp_add_data  = 0;
-    tmp_add_data |= TX_I2S_SPDIF    << 7; // [7]    I2S or SPDIF
-    tmp_add_data |= TX_I2S_8_CHANNEL<< 6; // [6]    8 or 2ch
-    tmp_add_data |= 2               << 4; // [5:4]  Serial Format: I2S format
-    tmp_add_data |= 3               << 2; // [3:2]  Bit Width: 24-bit
-    tmp_add_data |= 1               << 1; // [1]    WS Polarity: 1=WS high is left
-    tmp_add_data |= 1               << 0; // [0]    For I2S: 0=one-bit audio; 1=I2S;
-                                          //        For SPDIF: 0= channel status from input data; 1=from register
-    hdmi_wr_reg(TX_AUDIO_FORMAT, tmp_add_data); // 0x2f
-
-    tmp_add_data  = 0;
-    tmp_add_data |= 0x4 << 4; // [7:4]  FIFO Depth=512
-    tmp_add_data |= 0x2 << 2; // [3:2]  Critical threshold=Depth/16
-    tmp_add_data |= 0x1 << 0; // [1:0]  Normal threshold=Depth/8
-    hdmi_wr_reg(TX_AUDIO_FIFO, tmp_add_data); // 0x49
-    hdmi_wr_reg(TX_AUDIO_LIPSYNC, 0); // [7:0] Normalized lip-sync param: 0 means S(lipsync) = S(total)/2
-    tmp_add_data  = 0;
-    tmp_add_data |= 0   << 7; // [7]    forced_audio_fifo_clear
-    tmp_add_data |= 1   << 6; // [6]    auto_audio_fifo_clear
-    tmp_add_data |= 0x0 << 4; // [5:4]  audio_packet_type: 0=audio sample packet; 1=one bit audio; 2=HBR audio packet; 3=DST audio packet.
-    tmp_add_data |= 0   << 3; // [3]    Rsrv
-    tmp_add_data |= 0   << 2; // [2]    Audio sample packet's valid bit: 0=valid bit is 0 for I2S, is input data for SPDIF; 1=valid bit from register
-    tmp_add_data |= 0   << 1; // [1]    Audio sample packet's user bit: 0=user bit is 0 for I2S, is input data for SPDIF; 1=user bit from register
-    tmp_add_data |= 0   << 0; // [0]    0=Audio sample packet's sample_flat bit is 1; 1=sample_flat is 0.
-    hdmi_wr_reg(TX_AUDIO_CONTROL, tmp_add_data); // 0x40
-
-    tmp_add_data  = 0;
-    tmp_add_data |= TX_I2S_8_CHANNEL<< 7; // [7]    Audio sample packet's header layout bit: 0=layout0; 1=layout1
-    tmp_add_data |= 0               << 6; // [6]    Set normal_double bit in DST packet header.
-    tmp_add_data |= 0               << 0; // [5:0]  Rsrv
-    hdmi_wr_reg(TX_AUDIO_HEADER, tmp_add_data); // 0x00
-
-    tmp_add_data  = TX_I2S_8_CHANNEL ? 0x00ff : 0x0003;
-    hdmi_wr_reg(TX_AUDIO_SAMPLE, tmp_add_data); // Channel valid for up to 8 channels, 1 bit per channel.
-
-    hdmi_wr_reg(TX_AUDIO_PACK, 0x0001); // Enable audio sample packets
-
-    // Set N = 4096 (N is not measured, N must be configured so as to be a reference to clock_meter)
-    hdmi_wr_reg(TX_SYS1_ACR_N_0, 0x0000); // N[7:0]
-    hdmi_wr_reg(TX_SYS1_ACR_N_1, 0x0010); // N[15:8]
-
-    tmp_add_data  = 0;
-    tmp_add_data |= 0xa << 4;    // [7:4] Meas Tolerance
-    tmp_add_data |= 0x0 << 0;    // [3:0] N[19:16]
-    hdmi_wr_reg(TX_SYS1_ACR_N_2, tmp_add_data); // 0xa0
 
     //tmp_add_data[7] = 1'b0;      // cp_desired
     //tmp_add_data[6] = 1'b0;      // ess_config
@@ -578,8 +628,12 @@ static void hdmi_hw_set_480p(Hdmi_tx_video_para_t *param)
     //tmp_add_data[0] = 1'b0;      // forced_hsync_polarity
     tmp_add_data = 0x10;
     hdmi_wr_reg(TX_HDCP_MODE, tmp_add_data);
-
     //config_hdmi(1);
+
+    //tmp_add_data[15:8] = 0;
+    //tmp_add_data[7:0]   = 0xa ; // time_divider[7:0] for DDC I2C bus clock
+    tmp_add_data = 0xa;
+    hdmi_wr_reg(TX_HDCP_CONFIG3, tmp_add_data);
     
     //tmp_add_data[15:8] = 0;
     //tmp_add_data[7]   = 8'b1 ;  //cp_desired 
@@ -590,19 +644,9 @@ static void hdmi_hw_set_480p(Hdmi_tx_video_para_t *param)
     //tmp_add_data[2]   = 8'b0 ;  //forced_polarity 
     //tmp_add_data[1]   = 8'b0 ;  //forced_vsync_polarity 
     //tmp_add_data[0]   = 8'b0 ;  //forced_hsync_polarity
-    tmp_add_data = 0x8; //0xc8;
+    tmp_add_data = 0xc8;
     hdmi_wr_reg(TX_HDCP_MODE, tmp_add_data);
     
-
-
-    //tmp_add_data[15:8] = 0;
-    //tmp_add_data[7:0]   = 0xa ; // time_divider[7:0] for DDC I2C bus clock
-    tmp_add_data = 0xa;
-    hdmi_wr_reg(TX_HDCP_CONFIG3, tmp_add_data);
-    
-/////////////////////////    
-    //hdmi_wr_reg(TX_AUDIO_I2S,   1); // TX AUDIO I2S Enable
-/////////////////////////    
     // --------------------------------------------------------
     // Release TX out of reset
     // --------------------------------------------------------
@@ -621,9 +665,9 @@ static void hdmi_hw_set_480p(Hdmi_tx_video_para_t *param)
     delay_us(10);
 
     hdmi_wr_reg(TX_SYS5_TX_SOFT_RESET_1, 0x00); // Final release reset on tmds_clk domain
-}
-
-static void hdmi_hw_set_1080p(Hdmi_tx_video_para_t *param)
+}    
+ 
+static void hdmi_hw_reset(Hdmi_tx_video_para_t *param)
 {
     unsigned int tmp_add_data;
     unsigned long TX_OUTPUT_COLOR_FORMAT;
@@ -637,12 +681,7 @@ static void hdmi_hw_set_1080p(Hdmi_tx_video_para_t *param)
         TX_OUTPUT_COLOR_FORMAT=0;
     }
     // Configure HDMI PLL
-#ifdef XTAL_24MHZ
-    Wr(HHI_HDMI_PLL_CNTL, 0x0008210f); // For 24MHz xtal: PREDIV=15, POSTDIV=33, N=8, 0D=0, to get phy_clk=1485MHz, tmds_clk=148.5MHz.
-#else
-    Wr(HHI_HDMI_PLL_CNTL, 0x00081913); // PREDIV=19, POSTDIV=25, N=8, 0D=0, to get phy_clk=1484.375MHz, tmds_clk=148.4375MHz.
-#endif    
-    Wr(HHI_HDMI_PLL_CNTL2, 0x50e8);
+    //Wr(HHI_HDMI_PLL_CNTL2, 0x50e8);
     Wr(HHI_HDMI_PLL_CNTL1, 0x00040003);
     Wr(HHI_HDMI_AFC_CNTL, Rd(HHI_HDMI_AFC_CNTL) | 0x3);
 
@@ -815,6 +854,7 @@ static void hdmi_hw_set_1080p(Hdmi_tx_video_para_t *param)
     tmp_add_data |= TX_INPUT_COLOR_RANGE    << 0; // [1:0] input_color_range:   0=16-235/240; 1=16-240; 2=1-254; 3=0-255.
     hdmi_wr_reg(TX_VIDEO_DTV_OPTION_H, tmp_add_data); // 0x00
 
+#if 0
     tmp_add_data  = 0;
     tmp_add_data |= TX_I2S_SPDIF    << 7; // [7]    I2S or SPDIF
     tmp_add_data |= TX_I2S_8_CHANNEL<< 6; // [6]    8 or 2ch
@@ -862,7 +902,9 @@ static void hdmi_hw_set_1080p(Hdmi_tx_video_para_t *param)
     tmp_add_data |= 0xa << 4;    // [7:4] Meas Tolerance
     tmp_add_data |= 0x0 << 0;    // [3:0] N[19:16]
     hdmi_wr_reg(TX_SYS1_ACR_N_2, tmp_add_data); // 0xa0
-
+#else
+    hdmi_wr_reg(TX_AUDIO_PACK, 0x00); // disable audio sample packets
+#endif
     //tmp_add_data[7] = 1'b0;      // cp_desired
     //tmp_add_data[6] = 1'b0;      // ess_config
     //tmp_add_data[5] = 1'b0;      // set_avmute
@@ -912,21 +954,143 @@ static void hdmi_hw_set_1080p(Hdmi_tx_video_para_t *param)
     hdmi_wr_reg(TX_SYS5_TX_SOFT_RESET_1, 0x00); // Final release reset on tmds_clk domain
 }
 
-/*
-static void edid_tasklet_fun(ulong data)
+static void hdmi_audio_init()
 {
-    hdmitx_dev_t* hdmitx_device=(hdmitx_dev_t*)data;
-    int block,i;
-    for(block=0;block<4;block++){
-        for(i=0;i<128;i++){
-            hdmitx_device->EDID_buf[block*128+i]=hdmi_rd_reg(0x600+block*128+i);
-        }
-    }
-    hdmitx_edid_parse(hdmitx_device);
-    return 0;
-
+ // Transwitch recommended audio programming sequence
+    hdmi_wr_reg(TX_AUDIO_CONTROL,                   0x40); //Address  0x5D=0x40
+    hdmi_wr_reg(TX_AUDIO_FIFO,                      0x1 ); //Address  0x5B=0x1
+    hdmi_wr_reg(TX_AUDIO_CONTROL,                   0x40); //Address  0x5D=0x40
+    hdmi_wr_reg(TX_AUDIO_FIFO,                      0xD ); //Address  0x5B=0xD
+    hdmi_wr_reg(TX_AUDIO_FIFO,                      0x3D); //Address  0x5B=0x3D
+    hdmi_wr_reg(TX_AUDIO_LIPSYNC,                   0x1 ); //Address  0x5C=0x1
+    hdmi_wr_reg(TX_AUDIO_PACK,                      0x1 ); //Address  0x62=0x1
+    hdmi_wr_reg(TX_AUDIO_CONTROL,                   0x40); //Address  0x5D=0x40
+    hdmi_wr_reg(TX_AUDIO_HEADER,                    0x0 ); //Address  0x5E=0x0
+    hdmi_wr_reg(TX_HDCP_MODE,                       0x0 ); //Address  0x2F=0x0
+    hdmi_wr_reg(TX_HDCP_MODE,                       0x0 ); //Address  0x2F=0x0
+    hdmi_wr_reg(TX_SYS0_ACR_CTS_2,                  0x20); //Address  0x4=0x20
+    hdmi_wr_reg(TX_SYS0_ACR_CTS_2,                  0x20); //Address  0x4=0x20
+    hdmi_wr_reg(TX_SYS0_ACR_CTS_2,                  0x20); //Address  0x4=0x20
+    hdmi_wr_reg(TX_SYS0_ACR_CTS_2,                  0x20); //Address  0x4=0x20
+    hdmi_wr_reg(TX_AUDIO_CONTROL,                   0x40); //Address  0x5D=0x40
+    hdmi_wr_reg(TX_AUDIO_SAMPLE,                    0x15); //Address  0x5F=0x15
+    hdmi_wr_reg(TX_AUDIO_CONTROL,                   0x41); //Address  0x5D=0x41
+    hdmi_wr_reg(TX_PKT_REG_AUDIO_INFO_BASE_ADDR,    0x70); //Address  0x280=0x70
+    hdmi_wr_reg(0x29E,                              0xA ); //Address  0x29E=0xA
+    hdmi_wr_reg(0x29D,                              0x1 ); //Address  0x29D=0x1
+    hdmi_wr_reg(0x29C,                              0x84); //Address  0x29C=0x84
+    hdmi_wr_reg(0x281,                              0x1 ); //Address  0x281=0x1
+    hdmi_wr_reg(0x29F,                              0x80); //Address  0x29F=0x80
+    hdmi_wr_reg(TX_AUDIO_FORMAT,                    0x0 ); //Address  0x58=0x0
+    hdmi_wr_reg(TX_AUDIO_HEADER,                    0x0 ); //Address  0x5E=0x0
+    hdmi_wr_reg(TX_AUDIO_SAMPLE,                    0x3 ); //Address  0x5F=0x3
+    hdmi_wr_reg(TX_AUDIO_SPDIF,                     0x0 ); //Address  0x59=0x0
+    hdmi_wr_reg(TX_AUDIO_FORMAT,                    0x80); //Address  0x58=0x80
+    hdmi_wr_reg(TX_AUDIO_I2S,                       0x1 ); //Address  0x5A=0x1
+    hdmi_wr_reg(TX_AUDIO_FORMAT,                    0x81); //Address  0x58=0x81
+    hdmi_wr_reg(TX_AUDIO_FORMAT,                    0xA1); //Address  0x58=0xA1
+    hdmi_wr_reg(TX_IEC60958_SUB1_OFFSET,            0x0 ); //Address  0xB0=0x0
+    hdmi_wr_reg(0xB1,                               0x0 ); //Address  0xB1=0x0
+    hdmi_wr_reg(0xB2,                               0x18); //Address  0xB2=0x18
+    hdmi_wr_reg(0xB5,                               0x0 ); //Address  0xB5=0x0
+    hdmi_wr_reg(0xB6,                               0x0 ); //Address  0xB6=0x0
+    hdmi_wr_reg(0xB7,                               0x0 ); //Address  0xB7=0x0
+    hdmi_wr_reg(0xB8,                               0x0 ); //Address  0xB8=0x0
+    hdmi_wr_reg(0xB9,                               0x0 ); //Address  0xB9=0x0
+    hdmi_wr_reg(0xBA,                               0x0 ); //Address  0xBA=0x0
+    hdmi_wr_reg(0xBB,                               0x0 ); //Address  0xBB=0x0
+    hdmi_wr_reg(0xBC,                               0x0 ); //Address  0xBC=0x0
+    hdmi_wr_reg(0xBD,                               0x0 ); //Address  0xBD=0x0
+    hdmi_wr_reg(0xBE,                               0x0 ); //Address  0xBE=0x0
+    hdmi_wr_reg(0xBF,                               0x0 ); //Address  0xBF=0x0
+    hdmi_wr_reg(0xC0,                               0x0 ); //Address  0xC0=0x0
+    hdmi_wr_reg(0xC1,                               0x0 ); //Address  0xC1=0x0
+    hdmi_wr_reg(0xC2,                               0x0 ); //Address  0xC2=0x0
+    hdmi_wr_reg(0xC3,                               0x0 ); //Address  0xC3=0x0
+    hdmi_wr_reg(0xC4,                               0x0 ); //Address  0xC4=0x0
+    hdmi_wr_reg(0xC5,                               0x0 ); //Address  0xC5=0x0
+    hdmi_wr_reg(0xC6,                               0x0 ); //Address  0xC6=0x0
+    hdmi_wr_reg(0xC7,                               0x0 ); //Address  0xC7=0x0
+    hdmi_wr_reg(TX_IEC60958_SUB2_OFFSET,            0x0 ); //Address  0xC8=0x0
+    hdmi_wr_reg(0xC9,                               0x0 ); //Address  0xC9=0x0
+    hdmi_wr_reg(0xCA,                               0x28); //Address  0xCA=0x28
+    hdmi_wr_reg(0xCD,                               0x0 ); //Address  0xCD=0x0
+    hdmi_wr_reg(0xCE,                               0x0 ); //Address  0xCE=0x0
+    hdmi_wr_reg(0xCF,                               0x0 ); //Address  0xCF=0x0
+    hdmi_wr_reg(0xD0,                               0x0 ); //Address  0xD0=0x0
+    hdmi_wr_reg(0xD1,                               0x0 ); //Address  0xD1=0x0
+    hdmi_wr_reg(0xD2,                               0x0 ); //Address  0xD2=0x0
+    hdmi_wr_reg(0xD3,                               0x0 ); //Address  0xD3=0x0
+    hdmi_wr_reg(0xD4,                               0x0 ); //Address  0xD4=0x0
+    hdmi_wr_reg(0xD5,                               0x0 ); //Address  0xD5=0x0
+    hdmi_wr_reg(0xD6,                               0x0 ); //Address  0xD6=0x0
+    hdmi_wr_reg(0xD7,                               0x0 ); //Address  0xD7=0x0
+    hdmi_wr_reg(0xD8,                               0x0 ); //Address  0xD8=0x0
+    hdmi_wr_reg(0xD9,                               0x0 ); //Address  0xD9=0x0
+    hdmi_wr_reg(0xDA,                               0x0 ); //Address  0xDA=0x0
+    hdmi_wr_reg(0xDB,                               0x0 ); //Address  0xDB=0x0
+    hdmi_wr_reg(0xDC,                               0x0 ); //Address  0xDC=0x0
+    hdmi_wr_reg(0xDD,                               0x0 ); //Address  0xDD=0x0
+    hdmi_wr_reg(0xDE,                               0x0 ); //Address  0xDE=0x0
+    hdmi_wr_reg(0xDF,                               0x0 ); //Address  0xDF=0x0
+    hdmi_wr_reg(TX_SYS1_ACR_N_2,                    0x0 ); //Address  0x1E=0x0
+    hdmi_wr_reg(TX_SYS1_ACR_N_1,                    0x2D); //Address  0x1D=0x2D
+    hdmi_wr_reg(TX_SYS1_ACR_N_0,                    0x80); //Address  0x1C=0x80
+    hdmi_wr_reg(0xB3,                               0x3 ); //Address  0xB3=0x3
+    hdmi_wr_reg(0xB4,                               0xCA); //Address  0xB4=0xCA
+    hdmi_wr_reg(0xCB,                               0x3 ); //Address  0xCB=0x3
+    hdmi_wr_reg(0xCC,                               0xCA); //Address  0xCC=0xCA
+/*TRANSWITCH_AUDIO_SEQUENCE*/
 }
-*/
+
+static void enable_audio_spdif(unsigned char* audio_adr, int audio_data_size)
+{
+    // Audio clock source use xtal clock
+    Wr(HHI_AUD_CLK_CNTL,    Rd(HHI_AUD_CLK_CNTL) | (1<<11));
+    // As amclk is 25MHz, set i2s and iec958 divisor appropriately to get 48KHz sample rate.
+    Wr(AIU_CLK_CTRL_MORE,   0x0000); // i2s_divisor_more does not take effect
+    Wr(AIU_CLK_CTRL,        (0 << 12) | // 958 divisor more, if true, divided by 2, 4, 6, 8.
+                            (1 <<  8) | // alrclk skew: 1=alrclk transitions on the cycle before msb is sent
+                            (1 <<  6) | // invert aoclk
+                            (3 <<  4) | // 958 divisor: 0=no div; 1=div by 2; 2=div by 3; 3=div by 4.
+                            (3 <<  2)   // i2s divisor: 0=no div; 1=div by 2; 2=div by 4; 3=div by 8.
+      );
+        Wr( AIU_958_MISC, 0x204a ); // // Program the IEC958 Module in the AIU
+        Wr( AIU_958_FORCE_LEFT, 0x0000 );
+        Wr( AIU_958_CTRL, 0x0240 );
+        Wr( AIU_MEM_IEC958_START_PTR, ((unsigned)audio_adr)&0x7fffffff  /*0x00110000*/ ); // Set the IEC958 Start pointer into DDR memory to 0x00110000
+        Wr( AIU_MEM_IEC958_RD_PTR,    ((unsigned)audio_adr)&0x7fffffff /*0x00110000*/ ); // Set the IEC958 current pointer into DDR memory to 0x00110000
+        Wr( AIU_MEM_IEC958_END_PTR,   (((unsigned)audio_adr)+audio_data_size)&0x7fffffff /*0x00112000*/ ); // Set the IEC958 end pointer into DDR memory to 0x00112000
+        Wr( AIU_MEM_IEC958_MASKS, 0xFFFF ); // Set the number of channels in memory to 8 and the number of channels to read to 8
+
+/* enable audio*/        
+        hdmi_wr_reg(TX_AUDIO_SPDIF, 1); // TX AUDIO SPDIF Enable
+
+        Wr(AIU_CLK_CTRL,        Rd(AIU_CLK_CTRL) | 2); // enable iec958 clock which is audio_master_clk
+        Wr( AIU_958_BPF, 0x0100 ); // Set the PCM frame size to 256 bytes
+        Wr( AIU_958_DCU_FF_CTRL, 0x0001 );
+        // Set init high then low to initilize the IEC958 memory logic
+        // bit 30 : ch_always_8
+        Wr( AIU_MEM_IEC958_CONTROL, 1  | (1 << 30));
+        Wr( AIU_MEM_IEC958_CONTROL, 0  | (1 << 30));
+        // Enable the IEC958 FIFO (both the empty and fill modules)
+        Wr( AIU_MEM_IEC958_CONTROL, Rd( AIU_MEM_IEC958_CONTROL) | ((1 << 1) | (1 << 2)) );
+        
+    }
+
+#if 0
+#include "logon_spdif.dat"
+static int prepare_audio_data(unsigned int* audio_adr)
+{
+    int i;
+    int audio_data_size=sizeof(audio_data);
+    for(i=0;i<(audio_data_size>>2);i++){
+        audio_adr[i]=audio_data[i];
+    }
+    audio_data_size=(audio_data_size*7/8)&0xffff0000;
+    return audio_data_size;
+}
+#endif
 
 /************************************
 *    hdmitx hardware level interface
@@ -948,17 +1112,35 @@ static unsigned char hdmitx_m1b_getediddata(hdmitx_dev_t* hdmitx_device)
 }    
 
 
-static int hdmitx_m1b_setmode(Hdmi_tx_video_para_t *param)
+static int hdmitx_m1b_set_dispmode(Hdmi_tx_video_para_t *param)
 {
     int ret=0;
-    if(param->VIC==HDMI_480p60){
-        hdmi_hw_set_480p(param);    
+    if((param->VIC==HDMI_480p60)||(param->VIC==HDMI_480p60_16x9)){
+        Wr(HHI_HDMI_PLL_CNTL, 0x03040502); 
+        hdmi_hw_reset(param);    
         hdmi_tvenc_set(param);
     }
+    else if((param->VIC==HDMI_480i60)||(param->VIC==HDMI_480i60_16x9)){
+        Wr(HHI_HDMI_PLL_CNTL, 0x03040502); 
+        hdmi_hw_reset(param);    
+        hdmi_tvenc480i_set(param);
+    }            
     else if(param->VIC==HDMI_1080p60){
-        hdmi_hw_set_1080p(param);    
+        Wr(HHI_HDMI_PLL_CNTL, 0x00040502); 
+        hdmi_hw_reset(param);    
         hdmi_tvenc_set(param);
     }
+    else if(param->VIC==HDMI_720p60){
+        Wr(HHI_HDMI_PLL_CNTL, 0x00040502); 
+        //Wr(HHI_HDMI_PLL_CNTL, 0x01080502);
+        hdmi_hw_reset(param);    
+        hdmi_tvenc_set(param);
+    }   
+    else if(param->VIC==HDMI_1080i60){
+        Wr(HHI_HDMI_PLL_CNTL, 0x00040502); 
+        hdmi_hw_reset(param);    
+        hdmi_tvenc1080i_set(param);
+    } 
     else{
         ret = -1;
     }
@@ -1080,6 +1262,13 @@ static void hdmitx_m1b_setaudioinfoframe(unsigned char bEnable, unsigned char* A
     }
 }
     
+static void hdmitx_m1b_set_audmode(hdmitx_dev_t* hdmitx_device)
+{
+    //int size = prepare_audio_data((unsigned char*)0x81100000);
+    //hdmi_audio_init();
+    //enable_audio_spdif((unsigned char*)0x81100000, size);
+}    
+    
 static void hdmitx_m1b_setupirq(hdmitx_dev_t* hdmitx_device)
 {
    int r;
@@ -1101,7 +1290,8 @@ void HDMITX_M1B_Init(hdmitx_dev_t* hdmitx_device)
     hdmitx_device->HWOp.SetAVI = hdmitx_m1b_setavi;
     hdmitx_device->HWOp.SetAudioInfoFrame = hdmitx_m1b_setaudioinfoframe;
     hdmitx_device->HWOp.GetEDIDData = hdmitx_m1b_getediddata;
-    hdmitx_device->HWOp.SetMode = hdmitx_m1b_setmode;
+    hdmitx_device->HWOp.SetDispMode = hdmitx_m1b_set_dispmode;
+    hdmitx_device->HWOp.SetAudMode = hdmitx_m1b_set_audmode;
     hdmitx_device->HWOp.SetupIRQ = hdmitx_m1b_setupirq;
     
     // -----------------------------------------
@@ -1122,6 +1312,9 @@ void HDMITX_M1B_Init(hdmitx_dev_t* hdmitx_device)
     // Enable APB3 fail on error
     //*((volatile unsigned long *) HDMI_CTRL_PORT) |= (1 << 15);        //APB3 err_en
     WRITE_APB_REG(0x2008, READ_APB_REG(0x2008)|(1<<15));
+
+    /**/    
+    hdmi_hw_init();
 
 }    
     
