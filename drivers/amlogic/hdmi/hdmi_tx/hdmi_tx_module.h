@@ -54,6 +54,9 @@ typedef struct hdmi_tx_dev_s {
     unsigned char EDID_buf[EDID_MAX_BLOCK*128];    
     rx_cap_t RXCap;
     /*status*/
+#define DISP_SWITCH_FORCE       0
+#define DISP_SWITCH_EDID        1    
+    unsigned char disp_switch_config; /* 0, force; 1,edid */
     unsigned char cur_VIC;
     /**/
     unsigned char hpd_event; /* 1, plugin; 2, plugout */

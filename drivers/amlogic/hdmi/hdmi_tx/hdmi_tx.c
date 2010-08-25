@@ -39,8 +39,6 @@
 
 #include "hdmi_info_global.h"
 #include "hdmi_tx_module.h"
-void hdmi_hw_init();
-void hdmi_setup_irq();
 
 #define ADD_DEVICE
 
@@ -66,15 +64,13 @@ static struct device *hdmitx_dev;
 
 static HDMI_TX_INFO_t hdmi_info;
 
-#define HDMI_M1A 1
-static hdmi_chip_type = 0;
 /*****************************
 *    hdmitx attr management :
 *    enable
 *    mode
 *    reg
 ******************************/
-static  int  set_disp_mode(char *mode)
+static  int  set_disp_mode(const char *mode)
 {
     int ret=-1;
     HDMI_Video_Codes_t vic;
@@ -94,7 +90,7 @@ static int set_disp_mode_auto()
     int ret=-1;
     vinfo_t *info = get_current_vinfo();
     HDMI_Video_Codes_t vic;
-    vic = hdmitx_edid_get_VIC(&hdmitx_device, info->name, 0);
+    vic = hdmitx_edid_get_VIC(&hdmitx_device, info->name, (hdmitx_device.disp_switch_config==DISP_SWITCH_FORCE)?1:0);
     hdmitx_device.cur_VIC = HDMI_Unkown;
     if(vic != HDMI_Unkown ){
         ret = hdmitx_set_display(&hdmitx_device, vic);
@@ -137,11 +133,31 @@ static ssize_t show_edid(struct device *dev, struct device_attribute *attr, char
 {
     return hdmitx_edid_dump(&hdmitx_device, buf, PAGE_SIZE);
 }
+
+/*config attr*/
+static ssize_t show_config(struct device * dev, struct device_attribute *attr, char * buf)
+{   
+    int pos=0;
+    pos += snprintf(buf+pos, PAGE_SIZE, "disp switch (force or edid): %s\r\n", (hdmitx_device.disp_switch_config==DISP_SWITCH_FORCE)?"force":"edid");
+    return pos;    
+}
+    
+static ssize_t store_config(struct device * dev, struct device_attribute *attr, const char * buf)
+{
+    if(strncmp(buf, "force", 5)==0){
+        hdmitx_device.disp_switch_config=DISP_SWITCH_FORCE;
+    }
+    else if(strncmp(buf, "edid", 4)==0){
+        hdmitx_device.disp_switch_config=DISP_SWITCH_EDID;
+    }
+    return 16;    
+}
     
 
 static DEVICE_ATTR(disp_mode, S_IWUSR | S_IRUGO, show_disp_mode, store_disp_mode);
 static DEVICE_ATTR(aud_mode, S_IWUSR | S_IRUGO, show_aud_mode, store_aud_mode);
 static DEVICE_ATTR(edid, S_IWUSR | S_IRUGO, show_edid, NULL);
+static DEVICE_ATTR(config, S_IWUSR | S_IRUGO, show_config, store_config);
 
 /*****************************
 *    hdmitx display client interface 
@@ -171,12 +187,7 @@ static int hdmi_task_handle(void *data)
 
     hdmitx_init_parameters(&hdmi_info);
 
-    if(hdmi_chip_type == HDMI_M1A){
-        HDMITX_M1A_Init(hdmitx_device);
-    }
-    else{
-        HDMITX_M1B_Init(hdmitx_device);
-    }
+    HDMITX_M1B_Init(hdmitx_device);
 
     hdmitx_device->HWOp.SetupIRQ(hdmitx_device);
 
@@ -279,6 +290,7 @@ static int amhdmitx_probe(struct platform_device *pdev)
     device_create_file(hdmitx_dev, &dev_attr_disp_mode);
     device_create_file(hdmitx_dev, &dev_attr_aud_mode);
     device_create_file(hdmitx_dev, &dev_attr_edid);
+    device_create_file(hdmitx_dev, &dev_attr_config);
     
     if (hdmitx_dev == NULL) {
         pr_error("device_create create error\n");
@@ -299,6 +311,7 @@ static int amhdmitx_remove(struct platform_device *pdev)
     device_remove_file(hdmitx_dev, &dev_attr_disp_mode);
     device_remove_file(hdmitx_dev, &dev_attr_aud_mode);
     device_remove_file(hdmitx_dev, &dev_attr_edid);
+    device_remove_file(hdmitx_dev, &dev_attr_config);
 
     cdev_del(&hdmitx_device.cdev);
 
@@ -348,21 +361,6 @@ static void __exit amhdmitx_exit(void)
     platform_driver_unregister(&amhdmitx_driver);
     return ;
 }
-
-static  int __init hdmi_chip_select(char *s)
-{
-	switch(s[0])
-	{
-		case 'a':
-		case 'A':
-			hdmi_chip_type = HDMI_M1A;
-			break;
-	}
-	return 0;
-}
-
-__setup("chip=",hdmi_chip_select);
-
 
 
 module_init(amhdmitx_init);
