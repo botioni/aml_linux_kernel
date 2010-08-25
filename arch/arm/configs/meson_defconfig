@@ -1,7 +1,7 @@
 #
 # Automatically generated make config: don't edit
 # Linux kernel version: 2.6.34
-# Thu Aug  5 17:04:09 2010
+# Tue Aug 24 19:17:08 2010
 #
 CONFIG_ARM=y
 CONFIG_SYS_SUPPORTS_APM_EMULATION=y
@@ -245,6 +245,7 @@ CONFIG_MACH_MESON_6236M=y
 CONFIG_MACH_MESON_8626M=y
 # CONFIG_MACH_MESON_6236M_SH is not set
 # CONFIG_MACH_MESON_8626M_SH is not set
+# CONFIG_MACH_MESON_8226M is not set
 CONFIG_MESON_CLOCK_TICK_RATE=25000000
 
 #
@@ -494,6 +495,127 @@ CONFIG_EXTRA_FIRMWARE=""
 # CONFIG_DEBUG_DRIVER is not set
 # CONFIG_DEBUG_DEVRES is not set
 # CONFIG_SYS_HYPERVISOR is not set
+
+#
+# Amlogic Device Drivers
+#
+
+#
+# Amlogic UART Support
+#
+CONFIG_AM_UART=y
+
+#
+# Amlogic Net Device Support
+#
+CONFIG_AM_ETHERNET=y
+CONFIG_AM_ETHERNET_DEBUG_LEVEL=1
+
+#
+# Amlogic USB Support
+#
+CONFIG_USB_DWC_OTG_HCD=y
+
+#
+# Amlogic SATA Support
+#
+
+#
+# AMLOGIC Canvas management driver
+#
+CONFIG_AM_CANVAS=y
+
+#
+# Amlogic Display Driver
+#
+
+#
+# Amlogic video output module
+#
+CONFIG_AM_TV_OUTPUT=y
+
+#
+# Amlogic osd module
+#
+CONFIG_FB_AM=y
+# CONFIG_FB_OSD2_ENABLE is not set
+# CONFIG_AM_GE2D is not set
+# CONFIG_FB_AM_LOGO is not set
+
+#
+# Amlogic Card support
+#
+CONFIG_CARDREADER=y
+CONFIG_SD_MMC=y
+# CONFIG_AM_ATA is not set
+# CONFIG_MS_MSPRO is not set
+# CONFIG_XD is not set
+
+#
+# AMLOGIC AV Streaming devices
+#
+CONFIG_AM_DEINTERLACE=y
+# CONFIG_AM_DEINTERLACE_SD_ONLY is not set
+CONFIG_AM_VIDEO=y
+CONFIG_AM_PTSSERVER=y
+CONFIG_AM_VDEC_MPEG12=y
+CONFIG_AM_VDEC_MPEG4=y
+# CONFIG_AM_VDEC_VC1 is not set
+CONFIG_AM_VDEC_H264=y
+CONFIG_AM_VDEC_MJPEG=y
+CONFIG_AM_VDEC_REAL=y
+# CONFIG_AM_JPEGDEC is not set
+CONFIG_AM_TIMESYNC=y
+CONFIG_AM_STREAMING=y
+# CONFIG_I2C_APOLLO is not set
+# CONFIG_I2C_AML is not set
+CONFIG_I2C_SW_AML=y
+
+#
+# Amlogic HDMI Support
+#
+CONFIG_AML_HDMI_TX=y
+
+#
+# AMLOGIC NAND Flash  support
+#
+# CONFIG_AM_NAND is not set
+
+#
+# Amlogic ALSA Audio devices
+#
+# CONFIG_SND_AML is not set
+
+#
+# Amlogic Input device support
+#
+# CONFIG_KEYPADS_AM is not set
+# CONFIG_VIRTUAL_REMOTE is not set
+
+#
+# Amlogic audio dsp process 
+#
+# CONFIG_AML_AUDIO_DSP is not set
+
+#
+# AMLOGIC Physical memory allocator
+#
+# CONFIG_CMEM is not set
+
+#
+# AMLOGIC HW jpeg logo driver
+#
+# CONFIG_JPEGLOGO is not set
+
+#
+# AMLOGIC SPI NOR Flash  support
+#
+# CONFIG_AMLOGIC_SPI_NOR is not set
+
+#
+# Mali 400 GPU OpenGL device driver
+#
+CONFIG_MALI=m
 CONFIG_CONNECTOR=y
 CONFIG_PROC_EVENTS=y
 CONFIG_MTD=m
@@ -1306,120 +1428,6 @@ CONFIG_ANDROID_LOW_MEMORY_KILLER=y
 # CONFIG_FB_SM7XX is not set
 
 #
-# Amlogic Device Drivers
-#
-
-#
-# Amlogic UART Support
-#
-CONFIG_AM_UART=y
-
-#
-# Amlogic Net Device Support
-#
-CONFIG_AM_ETHERNET=y
-CONFIG_AM_ETHERNET_DEBUG_LEVEL=1
-
-#
-# Amlogic USB Support
-#
-CONFIG_USB_DWC_OTG_HCD=y
-
-#
-# Amlogic SATA Support
-#
-
-#
-# AMLOGIC Canvas management driver
-#
-CONFIG_AM_CANVAS=y
-
-#
-# Amlogic Display Driver
-#
-
-#
-# Amlogic video output module
-#
-CONFIG_AM_TV_OUTPUT=y
-
-#
-# Amlogic osd module
-#
-CONFIG_FB_AM=y
-# CONFIG_FB_OSD2_ENABLE is not set
-# CONFIG_AM_GE2D is not set
-# CONFIG_FB_AM_LOGO is not set
-
-#
-# Amlogic Card support
-#
-CONFIG_CARDREADER=y
-CONFIG_SD_MMC=y
-# CONFIG_AM_ATA is not set
-# CONFIG_MS_MSPRO is not set
-# CONFIG_XD is not set
-
-#
-# AMLOGIC AV Streaming devices
-#
-CONFIG_AM_VIDEO=y
-CONFIG_AM_PTSSERVER=y
-CONFIG_AM_VDEC_MPEG12=y
-CONFIG_AM_VDEC_MPEG4=y
-# CONFIG_AM_VDEC_VC1 is not set
-CONFIG_AM_VDEC_H264=y
-CONFIG_AM_VDEC_MJPEG=y
-CONFIG_AM_VDEC_REAL=y
-# CONFIG_AM_JPEGDEC is not set
-CONFIG_AM_TIMESYNC=y
-CONFIG_AM_STREAMING=y
-# CONFIG_I2C_APOLLO is not set
-# CONFIG_I2C_AML is not set
-CONFIG_I2C_SW_AML=y
-
-#
-# AMLOGIC NAND Flash  support
-#
-# CONFIG_AM_NAND is not set
-
-#
-# Amlogic ALSA Audio devices
-#
-# CONFIG_SND_AML is not set
-
-#
-# Amlogic Input device support
-#
-# CONFIG_KEYPADS_AM is not set
-# CONFIG_VIRTUAL_REMOTE is not set
-
-#
-# Amlogic audio dsp process 
-#
-# CONFIG_AML_AUDIO_DSP is not set
-
-#
-# AMLOGIC Physical memory allocator
-#
-# CONFIG_CMEM is not set
-
-#
-# AMLOGIC HW jpeg logo driver
-#
-# CONFIG_JPEGLOGO is not set
-
-#
-# AMLOGIC SPI NOR Flash  support
-#
-# CONFIG_AMLOGIC_SPI_NOR is not set
-
-#
-# AMLOGIC CLOCK600
-#
-# CONFIG_CLOCK600 is not set
-
-#
 # File systems
 #
 CONFIG_EXT2_FS=y
@@ -1469,8 +1477,11 @@ CONFIG_GENERIC_ACL=y
 #
 # DOS/FAT/NT Filesystems
 #
-# CONFIG_MSDOS_FS is not set
-# CONFIG_VFAT_FS is not set
+CONFIG_FAT_FS=y
+CONFIG_MSDOS_FS=y
+CONFIG_VFAT_FS=y
+CONFIG_FAT_DEFAULT_CODEPAGE=437
+CONFIG_FAT_DEFAULT_IOCHARSET="iso8859-1"
 # CONFIG_NTFS_FS is not set
 
 #
@@ -1493,8 +1504,8 @@ CONFIG_MISC_FILESYSTEMS=y
 # CONFIG_BEFS_FS is not set
 # CONFIG_BFS_FS is not set
 # CONFIG_EFS_FS is not set
-# CONFIG_YAFFS_FS is not set
 # CONFIG_JFFS2_FS is not set
+# CONFIG_YAFFS_FS is not set
 # CONFIG_UBIFS_FS is not set
 # CONFIG_LOGFS is not set
 CONFIG_CRAMFS=y
