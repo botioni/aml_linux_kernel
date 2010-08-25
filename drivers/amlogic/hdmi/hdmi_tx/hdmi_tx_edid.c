@@ -160,20 +160,26 @@ static struct{
     {"1080p", HDMI_1080p60},
 };    
 
-HDMI_Video_Codes_t hdmitx_edid_get_VIC(hdmitx_dev_t* hdmitx_device, char* disp_mode)
+HDMI_Video_Codes_t hdmitx_edid_get_VIC(hdmitx_dev_t* hdmitx_device, char* disp_mode, char force_flag)
 {
     rx_cap_t* pRXCap = &(hdmitx_device->RXCap);
 	  int  i,j,count=ARRAY_SIZE(dispmode_VIC_tab);
 	  HDMI_Video_Codes_t vic=HDMI_Unkown;
     for(i=0;i<count;i++){
         if(strncmp(disp_mode, dispmode_VIC_tab[i].disp_mode, strlen(dispmode_VIC_tab[i].disp_mode))==0){
-            for( j = 0 ; j < pRXCap->VIC_count ; j++ ){
-                if(pRXCap->VIC[j]==dispmode_VIC_tab[i].VIC)
-                    break;    
-            }
-            if(j<pRXCap->VIC_count){
+            if(force_flag){
                 vic = dispmode_VIC_tab[i].VIC;
-                break;        
+                break;
+            }
+            else{
+                for( j = 0 ; j < pRXCap->VIC_count ; j++ ){
+                    if(pRXCap->VIC[j]==dispmode_VIC_tab[i].VIC)
+                        break;    
+                }
+                if(j<pRXCap->VIC_count){
+                    vic = dispmode_VIC_tab[i].VIC;
+                    break;        
+                }
             }
         }
     }    
