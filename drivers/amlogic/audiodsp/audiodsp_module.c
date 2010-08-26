@@ -358,6 +358,7 @@ static int audiodsp_init_mcode(struct audiodsp_priv *priv)
 
 int audiodsp_probe(void )
 {
+
 	int res=0;
 	struct audiodsp_priv *priv;
 	priv=kmalloc(sizeof(struct audiodsp_priv),GFP_KERNEL);
@@ -366,6 +367,7 @@ int audiodsp_probe(void )
 		DSP_PRNT("Out of memory for audiodsp register\n");
 		return -1;
 		}
+    priv->dsp_is_started=0;
 	audiodsp_p=priv;
 	audiodsp_init_mcode(priv);
 	res = register_chrdev(AUDIODSP_MAJOR, DSP_NAME, &audiodsp_fops);

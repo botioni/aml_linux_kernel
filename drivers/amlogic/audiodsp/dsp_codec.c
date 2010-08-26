@@ -25,6 +25,7 @@
  	}
   int dsp_codec_stop( struct audiodsp_priv *priv)
   	{
+
   		return dsp_mailbox_send(priv,1,M2B_IRQ3_DECODE_STOP,0,0,0);
   	}
 
@@ -60,7 +61,7 @@ unsigned long dsp_codec_inc_rd_addr(struct audiodsp_priv *priv,int size)
 	return rd;
 }
 
-#define CONFIG_AM_PTSMGR
+
 u32 dsp_codec_get_current_pts(struct audiodsp_priv *priv)
 {
 #ifdef CONFIG_AM_PTSMGR
@@ -78,7 +79,7 @@ u32 dsp_codec_get_current_pts(struct audiodsp_priv *priv)
 		}
 	else
 		{
-#if 0
+
 	res=pts_lookup_offset(PTS_TYPE_AUDIO,priv->cur_frame_info.offset,&pts,0);
 	if(res==0)
 		{
@@ -92,20 +93,20 @@ u32 dsp_codec_get_current_pts(struct audiodsp_priv *priv)
 			pts=0;
 		priv->last_valid_pts=pts;
 		}
-#endif /* 0 */
-	//else if(priv->last_valid_pts>0)
+
+	else if(priv->last_valid_pts>0)
 		{
 		pts=priv->last_valid_pts;
 		len=priv->out_len_after_last_valid_pts;
 		frame_nums=(len*8/(priv->frame_format.data_width*priv->frame_format.channel_num));
 		pts+=(frame_nums*90)/(priv->frame_format.sample_rate/1000);
 		}
-#if 0
+
 	else
 		{
 		pts=-1;
 		}
-#endif /* 0 */
+
 	mutex_unlock(&priv->stream_buffer_mutex);
 		}
 	return pts;

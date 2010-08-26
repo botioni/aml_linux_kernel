@@ -26,6 +26,8 @@ dsp_register.h
 #define DSP_STATUS_HALT		('H'<<24 | 'a'<<16|'l'<<8 |'t')
 #define DSP_STATUS_RUNING		('R'<<16|'u'<<8 |'n')
 #define DSP_JIFFIES				DSP_REG(1)
+#define DSP_STATUS_SLEEP  ('S'<<24 | 'L'<<16|'A'<<8 |'P')
+#define DSP_STATUS_WAKEUP  ('W'<<24 | 'A'<<16|'K'<<8 |'E')
 
 #define DSP_STACK_START   DSP_REG(3)
 #define DSP_STACK_END   	DSP_REG(4)
@@ -68,6 +70,8 @@ int len;
 #define M2B_IRQ2_DECODE_START					(2)
 #define M2B_IRQ3_DECODE_STOP					(3)
 #define M2B_IRQ4_AUDIO_INFO					(4)
+#define M2B_IRQ0_DSP_SLEEP					(5)
+#define M2B_IRQ0_DSP_WAKEUP					(6)
 
 #define CMD_PRINT_LOG					(1234<<8 |1)
 

@@ -47,6 +47,7 @@ static void	enable_dsp(int flag)
 {	
 
 	/* RESET DSP */
+
 	 if(!flag)
 	  	 CLEAR_MPEG_REG_MASK(AUD_ARC_CTL, 1);
 	/*write more for make the dsp is realy reset!*/
@@ -70,28 +71,38 @@ void halt_dsp( struct audiodsp_priv *priv)
 {
 	if(DSP_RD(DSP_STATUS)==DSP_STATUS_RUNING)
 		{
-		dsp_mailbox_send(priv,1,M2B_IRQ0_DSP_HALT,0,0,0);
+		dsp_mailbox_send(priv,1,M2B_IRQ0_DSP_SLEEP,0,0,0);
 		msleep(1);/*waiting cpu to self halted*/
 		}
-	if(DSP_RD(DSP_STATUS)!=DSP_STATUS_RUNING)
-		{
-		DSP_WD(DSP_STATUS, DSP_STATUS_HALT);
-		return ;
-		}
-	enable_dsp(0);/*hardware halt the cpu*/
-	DSP_WD(DSP_STATUS, DSP_STATUS_HALT);
-	priv->last_stream_fmt=-1;/*mask the stream format is not valid*/
+    if(!priv->dsp_is_started){
+
+	    enable_dsp(0);/*hardware halt the cpu*/
+        DSP_WD(DSP_STATUS, DSP_STATUS_HALT);
+        priv->last_stream_fmt=-1;/*mask the stream format is not valid*/
+    }
+    else
+        DSP_WD(DSP_STATUS, DSP_STATUS_SLEEP);
+
+	
 }
 void reset_dsp( struct audiodsp_priv *priv)
 {
     halt_dsp(priv);
-
     //flush_and_inv_dcache_all();
     /* map DSP 0 address so that reset vector points to same vector table as ARC1 */
     CLEAR_MPEG_REG_MASK(AUD_ARC_CTL, (0xfff << 4));
  //   SET_MPEG_REG_MASK(SDRAM_CTL0,1);//arc mapping to ddr memory
     SET_MPEG_REG_MASK(AUD_ARC_CTL, ((AUDIO_DSP_START_ADDR)>> 20) << 4);
-    enable_dsp(1);
+    if(!priv->dsp_is_started){
+        DSP_PRNT("dsp reset now\n");
+        enable_dsp(1);
+        }
+    else{
+       	dsp_mailbox_send(priv,1,M2B_IRQ0_DSP_WAKEUP,0,0,0);
+        DSP_WD(DSP_STATUS, DSP_STATUS_WAKEUP);
+        msleep(1);/*waiting arc625 run again */
+
+    }
 
     return;    
 }
@@ -188,7 +199,7 @@ static inline int dsp_set_stream_buffer( struct audiodsp_priv *priv)
 	int res;
 	mutex_lock(&priv->dsp_mutex);		
 	halt_dsp(priv);
-	if(priv->stream_fmt!=priv->last_stream_fmt)
+	//if(priv->stream_fmt!=priv->last_stream_fmt)
 		{
 		if(auidodsp_microcode_load(audiodsp_privdata(),mcode)!=0)
 			{
@@ -204,10 +215,16 @@ static inline int dsp_set_stream_buffer( struct audiodsp_priv *priv)
 		goto exit;
 	if((res=dsp_set_stream_buffer(priv)))
 		goto exit;
-	reset_dsp(priv);
+    if(!priv->dsp_is_started)
+	    reset_dsp(priv);
+    else{
+        dsp_mailbox_send(priv,1,M2B_IRQ0_DSP_WAKEUP,0,0,0);
+        msleep(1);/*waiting arc625 run again */
+    }    
 	priv->dsp_start_time=jiffies;
+    
 	for(i=0;i<1000;i++)
-		{
+		{            
 		if(DSP_RD(DSP_STATUS)==DSP_STATUS_RUNING)
 			break;
 		msleep(1);
@@ -231,7 +248,7 @@ exit:
  int dsp_stop( struct audiodsp_priv *priv)
  	{
  	mutex_lock(&priv->dsp_mutex);		
- 	priv->dsp_is_started=0;
+ 	//priv->dsp_is_started=0;
  	halt_dsp(priv);
 	priv->dsp_end_time=jiffies;
 	if(priv->dsp_stack_start!=0)
