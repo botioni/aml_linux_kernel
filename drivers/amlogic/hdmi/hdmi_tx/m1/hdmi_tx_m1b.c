@@ -170,7 +170,7 @@ static void hdmi_tvenc1080i_set(Hdmi_tx_video_para_t* param)
     front_porch_venc  = (FRONT_PORCH   / (1+PIXEL_REPEAT_HDMI)) * (1+PIXEL_REPEAT_VENC); // 88   / 1 * 2 = 176
     hsync_pixels_venc = (HSYNC_PIXELS  / (1+PIXEL_REPEAT_HDMI)) * (1+PIXEL_REPEAT_VENC); // 44   / 1 * 2 = 88
 
-    Wr(ENCP_VIDEO_MODE,          1<<14); // cfg_de_v = 1
+    Wr(ENCP_VIDEO_MODE,Rd(ENCP_VIDEO_MODE)|(1<<14)); // cfg_de_v = 1
 
     // Program DE timing
     de_h_begin = modulo(Rd(ENCP_VIDEO_HAVON_BEGIN) + VFIFO2VD_TO_HDMI_LATENCY,  total_pixels_venc); // (383 + 3) % 4400 = 386
@@ -232,6 +232,7 @@ static void hdmi_tvenc1080i_set(Hdmi_tx_video_para_t* param)
                          (HSYNC_POLARITY << 2)  | //invert hs
                          (VSYNC_POLARITY << 3)  | //invert vs
                          (5 << 4)               | //select vclk1 as HDMI pixel clk
+                         //(1 << 4)               | //select vclk1 as HDMI pixel clk
                          (1 << 7)               | //0=sel external dvi; 1= sel internal hdmi
                          (0 << 8)               | //no invert clk
                          (0 << 13)              | //cfg_dvi_mode_gamma_en
@@ -283,7 +284,7 @@ static void hdmi_tvenc480i_set(Hdmi_tx_video_para_t* param)
     front_porch_venc  = (FRONT_PORCH   / (1+PIXEL_REPEAT_HDMI)) * (1+PIXEL_REPEAT_VENC); // 38   / 2 * 2 = 38
     hsync_pixels_venc = (HSYNC_PIXELS  / (1+PIXEL_REPEAT_HDMI)) * (1+PIXEL_REPEAT_VENC); // 124  / 2 * 2 = 124
 
-    Wr(ENCP_VIDEO_MODE,          1<<14); // cfg_de_v = 1
+    Wr(ENCP_VIDEO_MODE,Rd(ENCP_VIDEO_MODE)|(1<<14)); // cfg_de_v = 1
 
     // Program DE timing
     de_h_begin = modulo(Rd(VFIFO2VD_PIXEL_START) + VFIFO2VD_TO_HDMI_LATENCY,    total_pixels_venc); // (233 + 2) % 1716 = 235
@@ -467,7 +468,7 @@ static void hdmi_tvenc_set(Hdmi_tx_video_para_t *param)
     front_porch_venc  = (FRONT_PORCH   / (1+PIXEL_REPEAT_HDMI)) * (1+PIXEL_REPEAT_VENC); // 16   / 1 * 2 = 32
     hsync_pixels_venc = (HSYNC_PIXELS  / (1+PIXEL_REPEAT_HDMI)) * (1+PIXEL_REPEAT_VENC); // 62   / 1 * 2 = 124
 
-    Wr(ENCP_VIDEO_MODE,          1<<14); // cfg_de_v = 1
+    Wr(ENCP_VIDEO_MODE,Rd(ENCP_VIDEO_MODE)|(1<<14)); // cfg_de_v = 1
     // Program DE timing
     de_h_begin = modulo(Rd(ENCP_VIDEO_HAVON_BEGIN) + VFIFO2VD_TO_HDMI_LATENCY,  total_pixels_venc); // (217 + 3) % 1716 = 220
     de_h_end   = modulo(de_h_begin + active_pixels_venc,                        total_pixels_venc); // (220 + 1440) % 1716 = 1660
@@ -1077,24 +1078,24 @@ static int hdmitx_m1b_set_dispmode(Hdmi_tx_video_para_t *param)
         }
         else{
             Wr(HHI_HDMI_PLL_CNTL, 0x00040502); 
+            //Wr(HHI_HDMI_PLL_CNTL, 0x01080502);
         }
-        //Wr(HHI_HDMI_PLL_CNTL, 0x01080502);
         hdmi_hw_reset(param);    
         hdmi_tvenc_set(param);
     }   
     else if(param->VIC==HDMI_1080i60){
         //Wr_reg_bits (HHI_VID_CLK_CNTL, 1, 4, 2);  // Select vclk1=54Mhz as HDMI TX pixel_clk to achieve 4-time pixel repeatition
+        Wr_reg_bits (HHI_VID_CLK_CNTL, 0, 4, 2); 
         // set am_analog_top.u_video_pll.OD and XD to make HDMI PLL CKIN the same as vclk2/2
         //Wr_reg_bits (HHI_VID_PLL_CNTL, 1, 16, 1);  // OD: 0=no div, 1=div by 2
         //Wr_reg_bits (HHI_VID_PLL_CNTL, 4, 20, 9);  // XD: div by n
-                              //0x01020504
         if(hdmi_chip_type == HDMI_M1A){
             Wr(HHI_HDMI_PLL_CNTL, 0x0110210f); // For 24MHz xtal: PREDIV=15, POSTDIV=33, N=8, 0D=0, to get phy_clk=1485MHz, tmds_clk=148.5MHz.
         }
         else{
-            Wr(HHI_HDMI_PLL_CNTL, 0x01080502); 
+            Wr(HHI_HDMI_PLL_CNTL, 0x00040502); 
+            //Wr(HHI_HDMI_PLL_CNTL, 0x01080502); 
         }
-        //Wr(HHI_HDMI_PLL_CNTL, 0x00040502); 
         hdmi_hw_reset(param);    
         hdmi_tvenc1080i_set(param);
     } 
