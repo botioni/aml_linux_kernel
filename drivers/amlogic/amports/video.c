@@ -1037,7 +1037,7 @@ static irqreturn_t vsync_isr0(int irq, void *dev_id)
 
     wait_sync = 0;
 
-	if ( (deinterlace_mode != 0) && (cur_dispbuf->duration > 0)
+	if ( (deinterlace_mode != 0) && cur_dispbuf && (cur_dispbuf->duration > 0)
 #if defined(CONFIG_AM_DEINTERLACE_SD_ONLY)
 				&& (cur_dispbuf->width <= 720)
 #endif
