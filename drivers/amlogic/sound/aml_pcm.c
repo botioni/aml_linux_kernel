@@ -290,7 +290,7 @@ static int snd_aml_audio_hw_params(struct snd_pcm_substream *substream,
         return ret;
 
     runtime->dma_addr = virt_to_phys(runtime->dma_area);
-
+	runtime->dma_area =ioremap_nocache(runtime->dma_area, 32 * 1024);
     printk(" snd_aml_audio_hw_params runtime->dma_addr 0x(%x)\n",
                (unsigned int)runtime->dma_addr);
     printk(" snd_aml_audio_hw_params runtime->dma_area 0x(%x)\n",
@@ -445,6 +445,7 @@ static int snd_aml_audio_playback_trigger(struct snd_pcm_substream
 //printk("snd_aml_audio_playback_ack\n");
 //      return 0;
 //}
+
 #define VOL_CTL(s) ( unsigned short)((unsigned int)(((signed short)(s))*(vol))>>VOLUME_SHIFT)
 static int snd_aml_audio_playback_copy(struct snd_pcm_substream *substream,
                                        int channel, snd_pcm_uframes_t pos,
