@@ -27,22 +27,6 @@
 
 
 #define RESET_AUD_ARC	(1<<13)
-unsigned long DSP_RD(unsigned reg)
-{
-    dma_addr_t addr_map;
-    unsigned long ret;
-    addr_map = dma_map_single(NULL,(void*)reg,4,DMA_FROM_DEVICE);
-    ret = *(unsigned long*)addr_map;
-    dma_unmap_single(NULL,addr_map,4,DMA_FROM_DEVICE);
-    return ret;    
-}
-void  DSP_WD(unsigned reg,unsigned value)
-{
-    dma_addr_t addr_map;
-    addr_map = dma_map_single(NULL,(void*)reg,4,DMA_FROM_DEVICE);
-    *(unsigned long*)addr_map = value;
-    dma_unmap_single(NULL,addr_map,4,DMA_FROM_DEVICE);
-}
 static void	enable_dsp(int flag)
 {	
 

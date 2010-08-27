@@ -10,6 +10,7 @@
 #include "dsp_register.h"
 
 #include "codec_message.h"
+#include <linux/dma-mapping.h>
 
 
  struct audiodsp_priv 
@@ -56,6 +57,7 @@
 	struct mutex	stream_buffer_mutex;
 
 	struct completion	decode_completion;
+    void __iomem *p;	
 	
 };
 

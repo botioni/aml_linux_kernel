@@ -76,7 +76,6 @@ static struct auidodsp_microcode *  audiodsp_find_mcode_by_name(struct audiodsp_
 	const struct firmware *firmware;
 	int err=0;
     	unsigned code_start_tocp = 0;
-    	void __iomem *p = ioremap(AUDIO_DSP_START_ADDR, S_1M);
 	priv->micro_dev = device_create(priv->class,
 					    NULL, MKDEV(AUDIODSP_MAJOR, 1),
 					    NULL, "audiodsp1");
@@ -93,10 +92,10 @@ static struct auidodsp_microcode *  audiodsp_find_mcode_by_name(struct audiodsp_
 		err=ENOMEM;
 		goto release;
 		}
-    	if(priv->dsp_is_started)
-        	code_start_tocp = 0x66c;
-	memcpy((char *)((unsigned)p+code_start_tocp), (char*)firmware->data+code_start_tocp,firmware->size-code_start_tocp);
-    	iounmap(p);
+    if(priv->dsp_is_started)
+        code_start_tocp = 0x66c;
+	memcpy((char *)((unsigned)priv->p+code_start_tocp), (char*)firmware->data+code_start_tocp,firmware->size-code_start_tocp);
+
 	pmcode->code_size=firmware->size;
 	DSP_PRNT("load mcode size=%d\n,load addr 0x%x mcode name %s",firmware->size,pmcode->code_start_addr,pmcode->file_name);
 release:	
