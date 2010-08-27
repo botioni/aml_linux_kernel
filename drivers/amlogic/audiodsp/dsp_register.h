@@ -95,8 +95,6 @@ int len;
 #define MAIBOX0_IRQ_ENABLE(irq)		SET_MPEG_REG_MASK(ASSIST_MBOX0_MASK,1<<irq)
 #define MAIBOX1_IRQ_ENABLE(irq)		SET_MPEG_REG_MASK(ASSIST_MBOX1_MASK,1<<irq)
 #define MAIBOX2_IRQ_ENABLE(irq)		SET_MPEG_REG_MASK(ASSIST_MBOX2_MASK,1<<irq)
-extern unsigned long DSP_RD(unsigned reg);
-extern void  DSP_WD(unsigned reg,unsigned value);
 #endif
 
 

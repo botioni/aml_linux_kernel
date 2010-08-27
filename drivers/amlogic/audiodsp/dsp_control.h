@@ -12,9 +12,8 @@ void reset_dsp( struct audiodsp_priv *priv);
  int dsp_start( struct audiodsp_priv *priv, struct auidodsp_microcode *mcode);
  int dsp_stop( struct audiodsp_priv *priv);
 
-// #define DSP_RD(reg)	({static dma_addr_t addr_map;addr_map = dma_map_single(NULL,(void*)reg,4,DMA_FROM_DEVICE); 
- //   (*((unsigned long *)addr_map));});
+#define DSP_RD(reg)	  (*((volatile unsigned long *)reg))
 
-//#define DSP_WD(reg,val)	({(*((unsigned long *)(reg)))=val;})
+#define DSP_WD(reg,val)	({(*((volatile unsigned long *)(reg)))=val;})
 #endif
 
