@@ -28,12 +28,14 @@ static int major;
 #define CARD_QUEUE_EXIT		(1 << 0)
 #define CARD_QUEUE_SUSPENDED	(1 << 1)
 
+#define CARD_QUEUE_BOUNCESZ	(512*256)
+
 #define CARD_NUM_MINORS	(256 >> CARD_SHIFT)
 static unsigned long dev_use[CARD_NUM_MINORS / (8 * sizeof(unsigned long))];
 
 static int card_blk_issue_rq(struct card_queue *cq, struct request *req);
 static int card_blk_probe(struct memory_card *card);
-static int card_blk_prep_rq(struct card_queue *mq, struct request *req);
+static int card_blk_prep_rq(struct card_queue *cq, struct request *req);
 
 struct card_blk_data {
 	spinlock_t lock;
@@ -265,6 +267,7 @@ static int card_queue_thread(void *d)
 	struct card_queue_list *cq_node_current;
 	DECLARE_WAITQUEUE(wait, current);
 
+	daemonize("card_queue_thread");
 	/*
 	 * Set iothread to ensure that we aren't put to sleep by
 	 * the process freezing.  We handle suspension ourselves.
@@ -321,6 +324,161 @@ static int card_queue_thread(void *d)
 	return 0;
 }
 
+#define CONFIG_CARD_BLOCK_BOUNCE 1
+
+#ifdef CONFIG_CARD_BLOCK_BOUNCE
+/*
+ * Prepare the sg list(s) to be handed of to the host driver
+ */
+static unsigned int card_queue_map_sg(struct card_queue *cq)
+{
+	unsigned int sg_len;
+	size_t buflen;
+	struct scatterlist *sg;
+	int i;
+
+	if (!cq->bounce_buf)
+		return blk_rq_map_sg(cq->queue, cq->req, cq->sg);
+
+	BUG_ON(!cq->bounce_sg);
+
+	sg_len = blk_rq_map_sg(cq->queue, cq->req, cq->bounce_sg);
+
+	cq->bounce_sg_len = sg_len;
+
+	buflen = 0;
+	for_each_sg(cq->bounce_sg, sg, sg_len, i)
+		buflen += sg->length;
+
+	sg_init_one(cq->sg, cq->bounce_buf, buflen);
+
+	return 1;
+}
+
+/*
+ * If writing, bounce the data to the buffer before the request
+ * is sent to the host driver
+ */
+static void card_queue_bounce_pre(struct card_queue *cq)
+{
+	unsigned long flags;
+
+	if (!cq->bounce_buf)
+		return;
+
+	if (rq_data_dir(cq->req) != WRITE)
+		return;
+	
+	local_irq_save(flags);
+		
+	sg_copy_to_buffer(cq->bounce_sg, cq->bounce_sg_len,
+		cq->bounce_buf, cq->sg[0].length);
+	
+	local_irq_restore(flags);	
+}
+
+/*
+ * If reading, bounce the data from the buffer after the request
+ * has been handled by the host driver
+ */
+static void card_queue_bounce_post(struct card_queue *cq)
+{
+	unsigned long flags;
+
+	if (!cq->bounce_buf)
+		return;
+
+	if (rq_data_dir(cq->req) != READ)
+		return;
+	
+	local_irq_save(flags);
+	
+	sg_copy_from_buffer(cq->bounce_sg, cq->bounce_sg_len,
+		cq->bounce_buf, cq->sg[0].length);
+		
+	local_irq_restore(flags);
+	
+	bio_flush_dcache_pages(cq->req->bio);
+}
+
+/*
+ * Alloc bounce buf for read/write numbers of pages in one request
+ */
+static int card_init_bounce_buf(struct card_queue *cq, 
+			struct memory_card *card)
+{
+	int ret=0;
+	struct card_host *host = card->host;
+	unsigned int bouncesz;
+
+	bouncesz = CARD_QUEUE_BOUNCESZ;
+
+	if (bouncesz > host->max_req_size)
+		bouncesz = host->max_req_size;
+
+	if (bouncesz >= PAGE_CACHE_SIZE) {
+		cq->bounce_buf = kmalloc(bouncesz*2, GFP_KERNEL);
+		if (!cq->bounce_buf) {
+			printk(KERN_WARNING "%s: unable to "
+				"allocate bounce buffer\n", card->name);
+		}
+	}
+
+	if (cq->bounce_buf) {
+		blk_queue_bounce_limit(cq->queue, BLK_BOUNCE_HIGH);
+		blk_queue_max_hw_sectors(cq->queue, bouncesz / 512);
+		blk_queue_physical_block_size(cq->queue, bouncesz);
+		blk_queue_max_segments(cq->queue, bouncesz / PAGE_CACHE_SIZE);
+		blk_queue_max_segment_size(cq->queue, bouncesz);
+
+		cq->queue->queuedata = cq;
+		cq->req = NULL;
+	
+		cq->sg = kmalloc(sizeof(struct scatterlist),
+			GFP_KERNEL);
+		if (!cq->sg) {
+			ret = -ENOMEM;
+			blk_cleanup_queue(cq->queue);
+			return ret;
+		}
+		sg_init_table(cq->sg, 1);
+
+		cq->bounce_sg = kmalloc(sizeof(struct scatterlist) *
+			bouncesz / PAGE_CACHE_SIZE, GFP_KERNEL);
+		if (!cq->bounce_sg) {
+			ret = -ENOMEM;
+			kfree(cq->sg);
+			cq->sg = NULL;
+			blk_cleanup_queue(cq->queue);
+			return ret;
+		}
+		sg_init_table(cq->bounce_sg, bouncesz / PAGE_CACHE_SIZE);
+	}
+
+	return 0;
+}
+
+#else
+
+static unsigned int card_queue_map_sg(struct card_queue *cq)
+{
+}
+
+static void card_queue_bounce_pre(struct card_queue *cq)
+{
+}
+
+static void card_queue_bounce_post(struct card_queue *cq)
+{
+}
+
+static int card_init_bounce_buf(struct card_queue *cq, 
+			struct memory_card *card)
+{
+}
+
+#endif
+
 int card_init_queue(struct card_queue *cq, struct memory_card *card,
 		    spinlock_t * lock)
 {
@@ -339,22 +497,24 @@ int card_init_queue(struct card_queue *cq, struct memory_card *card,
 		return -ENOMEM;
 
 	blk_queue_prep_rq(cq->queue, card_prep_request);
-	blk_queue_bounce_limit(cq->queue, limit);
-	blk_queue_max_hw_sectors(cq->queue, host->max_sectors);
-	//blk_queue_max_hw_phys_segments(cq->queue, host->max_phys_segs);
-	blk_queue_max_segments(cq->queue, host->max_hw_segs);
-	blk_queue_max_segment_size(cq->queue, host->max_seg_size);
+	card_init_bounce_buf(cq, card);
+	
+	if(!cq->bounce_buf){
+		blk_queue_bounce_limit(cq->queue, limit);
+		blk_queue_max_hw_sectors(cq->queue, host->max_sectors);
+		//blk_queue_max_hw_phys_segments(cq->queue, host->max_phys_segs);
+		blk_queue_max_segments(cq->queue, host->max_hw_segs);
+		blk_queue_max_segment_size(cq->queue, host->max_seg_size);
 
-	cq->queue->queuedata = cq;
-	cq->req = NULL;
+		cq->queue->queuedata = cq;
+		cq->req = NULL;
 
-	cq->sg = kmalloc(sizeof(struct scatterlist) * host->max_phys_segs, GFP_KERNEL);
-	if (!cq->sg) {
-		ret = -ENOMEM;
-		kfree(cq->sg);
-		cq->sg = NULL;
-		blk_cleanup_queue(cq->queue);
-		return ret;
+		cq->sg = kmalloc(sizeof(struct scatterlist) * host->max_phys_segs, GFP_KERNEL);
+		if (!cq->sg) {
+			ret = -ENOMEM;
+			blk_cleanup_queue(cq->queue);
+			return ret;
+		}
 	}
 
 	if (card_queue_head == NULL)
@@ -509,18 +669,26 @@ static int card_blk_issue_rq(struct card_queue *cq, struct request *req)
 
 	do {
 		brq.crq.cmd = rq_data_dir(req);
-		brq.crq.buf = req->buffer;
+		brq.crq.buf = cq->bounce_buf;
+		//	brq.crq.buf = req->buffer;
 
 		brq.card_data.lba = blk_rq_pos(req);
 		brq.card_data.blk_size = 1 << card_data->block_bits;
 		brq.card_data.blk_nums = blk_rq_sectors(req);
 
 		brq.card_data.sg = cq->sg;
-		brq.card_data.sg_len = blk_rq_map_sg(req->q, req, brq.card_data.sg);
+
+		brq.card_data.sg_len = card_queue_map_sg(cq);
+		//brq.card_data.sg_len = blk_rq_map_sg(req->q, req, brq.card_data.sg);
 
 		card->host->card_type = card->card_type;
-		card_wait_for_req(card->host, &brq);
+		
+		card_queue_bounce_pre(cq);
 
+		card_wait_for_req(card->host, &brq);
+		
+		card_queue_bounce_post(cq);
+			
 		/*
 		 *the request issue failed
 		 */

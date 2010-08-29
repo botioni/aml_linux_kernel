@@ -94,6 +94,8 @@ static int card_reader_monitor(void *data)
     struct memory_card *card;
     card_4in1_init_type = 0;
 
+	daemonize("card_read_monitor");
+	
 	while(1) {
 		msleep(200);
 
@@ -385,7 +387,9 @@ struct card_host *card_alloc_host(int extra, struct device *dev)
 		host->max_hw_segs = 1;
 		host->max_phys_segs = 1;
 		host->max_sectors = 1 << (PAGE_CACHE_SHIFT - 5);
-		host->max_seg_size = PAGE_CACHE_SIZE;	
+		host->max_seg_size = PAGE_CACHE_SIZE;
+		
+		host->max_req_size = 512*256;	/*for CONFIG_CARD_BLOCK_BOUNCE fix me*/
 	}
 
 	return host;
