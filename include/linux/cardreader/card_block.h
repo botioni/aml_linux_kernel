@@ -49,6 +49,10 @@ struct card_queue {
 	void			*data;
 	struct request_queue	*queue;
 	struct scatterlist	*sg;
+	
+	char			*bounce_buf;
+	struct scatterlist	*bounce_sg;
+	unsigned int		bounce_sg_len;
 };
 
 struct card_request {
@@ -87,6 +91,7 @@ struct card_host {
 	unsigned long		caps;		/* Host capabilities */
 
 	/* host specific block data */
+	unsigned int		max_req_size;	/* maximum number of bytes in one req */
 	unsigned int		max_seg_size;	/* see blk_queue_max_segment_size */
 	unsigned short		max_hw_segs;	/* see blk_queue_max_hw_segments */
 	unsigned short		max_phys_segs;	/* see blk_queue_max_phys_segments */
