@@ -51,11 +51,15 @@ static const Hdmi_tx_video_para_t hdmi_tx_video_params[] =
     },
     { 
         .VIC            = HDMI_720p60,
-        .color_prefer   = COLOR_SPACE_YUV444,
+        //.color_prefer   = COLOR_SPACE_YUV444,
+        .color_prefer   = COLOR_SPACE_RGB444,
         .color_depth    = COLOR_24BIT,
         .bar_info       = B_BAR_VERT_HORIZ,
-        //.repeat_time    = NO_REPEAT,
+#ifdef DOUBLE_CLK_720P_1080I
         .repeat_time    = HDMI_2_TIMES_REPEAT,
+#else
+        .repeat_time    = NO_REPEAT,
+#endif        
         .aspect_ratio   = TV_ASPECT_RATIO_16_9,
         .cc             = CC_ITU709,
         .ss             = SS_SCAN_UNDER,   
@@ -63,11 +67,15 @@ static const Hdmi_tx_video_para_t hdmi_tx_video_params[] =
     },
     { 
         .VIC            = HDMI_1080i60,
-        .color_prefer   = COLOR_SPACE_YUV444,
+        //.color_prefer   = COLOR_SPACE_YUV444,
+        .color_prefer   = COLOR_SPACE_RGB444,
         .color_depth    = COLOR_24BIT,
         .bar_info       = B_BAR_VERT_HORIZ,
-        //.repeat_time    = NO_REPEAT,
+#ifdef DOUBLE_CLK_720P_1080I
         .repeat_time    = HDMI_2_TIMES_REPEAT,
+#else
+        .repeat_time    = NO_REPEAT,
+#endif        
         .aspect_ratio   = TV_ASPECT_RATIO_16_9,
         .cc             = CC_ITU709,
         .ss             = SS_SCAN_UNDER,   
@@ -327,7 +335,6 @@ int hdmitx_set_display(hdmitx_dev_t* hdmitx_device, HDMI_Video_Codes_t VideoCode
             (hdmitx_device->RXCap.native_Mode&0x10) == 0){
             param->color = COLOR_SPACE_RGB444;        
         }
-        
         if(hdmitx_device->HWOp.SetDispMode(param)>=0){
     
             hdmi_tx_construct_avi_packet(param, AVI_DB);

@@ -231,8 +231,11 @@ static void hdmi_tvenc1080i_set(Hdmi_tx_video_para_t* param)
                          (0 << 1)               | //select vso/hso as hsync vsync
                          (HSYNC_POLARITY << 2)  | //invert hs
                          (VSYNC_POLARITY << 3)  | //invert vs
+#ifdef DOUBLE_CLK_720P_1080I
                          (5 << 4)               | //select vclk1 as HDMI pixel clk
-                         //(1 << 4)               | //select vclk1 as HDMI pixel clk
+#else                         
+                         (1 << 4)               | //select vclk1 as HDMI pixel clk
+#endif                         
                          (1 << 7)               | //0=sel external dvi; 1= sel internal hdmi
                          (0 << 8)               | //no invert clk
                          (0 << 13)              | //cfg_dvi_mode_gamma_en
@@ -1074,13 +1077,25 @@ static int hdmitx_m1b_set_dispmode(Hdmi_tx_video_para_t *param)
     }
     else if(param->VIC==HDMI_720p60){
         if(hdmi_chip_type == HDMI_M1A){
+#ifdef DOUBLE_CLK_720P_1080I
             Wr(HHI_HDMI_PLL_CNTL, 0x0008210f); // For 24MHz xtal: PREDIV=15, POSTDIV=33, N=8, 0D=0, to get phy_clk=1485MHz, tmds_clk=148.5MHz.
+#else
+            Wr(HHI_HDMI_PLL_CNTL, 0x0110210f); // For 24MHz xtal: PREDIV=15, POSTDIV=33, N=8, 0D=0, to get phy_clk=1485MHz, tmds_clk=148.5MHz.
+#endif            
         }
         else{
+#ifdef DOUBLE_CLK_720P_1080I
             Wr(HHI_HDMI_PLL_CNTL, 0x00040502); 
-            //Wr(HHI_HDMI_PLL_CNTL, 0x01080502);
+#else            
+            Wr(HHI_HDMI_PLL_CNTL, 0x01080502);
+#endif            
         }
         hdmi_hw_reset(param);    
+#if 1
+//test        
+        Wr(ENCP_VIDEO_HAVON_BEGIN,  Rd(ENCP_VIDEO_HAVON_BEGIN)-1);     
+        Wr(ENCP_VIDEO_HAVON_END,  Rd(ENCP_VIDEO_HAVON_END)-1);     
+#endif        
         hdmi_tvenc_set(param);
     }   
     else if(param->VIC==HDMI_1080i60){
@@ -1090,13 +1105,25 @@ static int hdmitx_m1b_set_dispmode(Hdmi_tx_video_para_t *param)
         //Wr_reg_bits (HHI_VID_PLL_CNTL, 1, 16, 1);  // OD: 0=no div, 1=div by 2
         //Wr_reg_bits (HHI_VID_PLL_CNTL, 4, 20, 9);  // XD: div by n
         if(hdmi_chip_type == HDMI_M1A){
+#ifdef DOUBLE_CLK_720P_1080I
+            Wr(HHI_HDMI_PLL_CNTL, 0x0008210f); // For 24MHz xtal: PREDIV=15, POSTDIV=33, N=8, 0D=0, to get phy_clk=1485MHz, tmds_clk=148.5MHz.
+#else
             Wr(HHI_HDMI_PLL_CNTL, 0x0110210f); // For 24MHz xtal: PREDIV=15, POSTDIV=33, N=8, 0D=0, to get phy_clk=1485MHz, tmds_clk=148.5MHz.
+#endif            
         }
         else{
+#ifdef DOUBLE_CLK_720P_1080I
             Wr(HHI_HDMI_PLL_CNTL, 0x00040502); 
-            //Wr(HHI_HDMI_PLL_CNTL, 0x01080502); 
+#else            
+            Wr(HHI_HDMI_PLL_CNTL, 0x01080502); 
+#endif            
         }
         hdmi_hw_reset(param);    
+#if 1
+//test        
+        Wr(ENCP_VIDEO_HAVON_BEGIN,  Rd(ENCP_VIDEO_HAVON_BEGIN)-1);     
+        Wr(ENCP_VIDEO_HAVON_END,  Rd(ENCP_VIDEO_HAVON_END)-1);     
+#endif        
         hdmi_tvenc1080i_set(param);
     } 
     else{
