@@ -47,6 +47,30 @@
 #include <asm/fiq.h>
 #include <asm/uaccess.h>
 
+//#define CONFIG_VIDEO_LOG
+#ifdef CONFIG_VIDEO_LOG
+#define AMLOG	1
+#define LOG_LEVEL_ERROR		0
+#define LOG_MASK_TIMESTAMP	0x00000001UL
+#define LOG_MASK_FRAMEINFO	0x00000002UL
+#define LOG_MASK_FRAMESKIP	0x00000004UL
+#define LOG_MASK_SLOWSYNC	0x00000008UL
+#define LOG_MASK_KEEPBUF	0x00000010UL
+#define LOG_MASK_SYSFS		0x00000020UL
+#define LOG_MASK_VINFO		0x00000040UL
+#define LOG_MASK_MODULE		0x00000080UL
+
+#define LOG_DEFAULT_LEVEL	LOG_LEVEL_ERROR
+#define LOG_DEFAULT_MASK	0x00000000UL
+
+#define LOG_MASK_DESC \
+"[0x01]:TIMESTAMP,[0x02]:FRAMEINFO,[0x04]:FRAMESKIP,[0x08]:SLOWSYNC,[0x10]:KEEPBUF,[0x20]:SYSFS,[0x40]:VINFO,[0x80]:MODULE."
+
+#else
+#define AMLOG	0
+#endif
+#include <linux/amlog.h>
+
 #include "vframe.h"
 #include "vframe_provider.h"
 #include "video.h"
@@ -62,15 +86,11 @@
 
 //#define SLOW_SYNC_REPEAT
 //#define INTERLACE_FIELD_MATCH_PROCESS
-#define DEBUG
 
 #define BRIDGE_IRQ	INT_TIMER_D
 #define BRIDGE_IRQ_SET() WRITE_CBUS_REG(ISA_TIMERD, 1)
 
 #define RESERVE_CLR_FRAME
-
-#define pr_dbg(fmt, args...) printk(KERN_DEBUG "apollo video: " fmt, ## args)
-#define pr_error(fmt, args...) printk(KERN_ERR "apollo video: " fmt, ## args)
 
 #define EnableVideoLayer()  \
     do { SET_MPEG_REG_MASK(VPP_MISC, \
@@ -362,7 +382,7 @@ static void vsync_toggle_frame(vframe_t *vf)
 	int deinterlace_mode = get_deinterlace_mode();
 	
     if ((vf->width == 0) && (vf->height == 0)) {
-        printk("Video: invalid frame dimension\n");
+        amlog_level(LOG_LEVEL_ERROR, "Video: invalid frame dimension\n");
         return;
     }
 
@@ -395,18 +415,18 @@ static void vsync_toggle_frame(vframe_t *vf)
     /* set video PTS */
 	if (cur_dispbuf != vf) {
 	    if (vf->pts != 0) {
-#ifdef DEBUG
-        pr_dbg("vpts to vf->pts: 0x%x, scr: 0x%x, abs_scr: 0x%x\n",
-            vf->pts, timestamp_pcrscr_get(), READ_MPEG_REG(SCR_HIU));
-#endif
-        timestamp_vpts_set(vf->pts);
+    	    amlog_mask(LOG_MASK_TIMESTAMP,
+    	    	"vpts to vf->pts: 0x%x, scr: 0x%x, abs_scr: 0x%x\n",
+        	    vf->pts, timestamp_pcrscr_get(), READ_MPEG_REG(SCR_HIU));
+
+        	timestamp_vpts_set(vf->pts);
     	}
     	else if (cur_dispbuf) {
-#ifdef DEBUG
-        	pr_dbg("vpts inc: 0x%x, scr: 0x%x, abs_scr: 0x%x\n",
+    	    amlog_mask(LOG_MASK_TIMESTAMP,
+				"vpts inc: 0x%x, scr: 0x%x, abs_scr: 0x%x\n",
             	timestamp_vpts_get() + DUR2PTS(cur_dispbuf->duration),
             	timestamp_pcrscr_get(), READ_MPEG_REG(SCR_HIU));
-#endif
+
         	timestamp_vpts_inc(DUR2PTS(cur_dispbuf->duration));
 
         	vpts_remainder += DUR2PTS_RM(cur_dispbuf->duration);
@@ -414,7 +434,7 @@ static void vsync_toggle_frame(vframe_t *vf)
             	vpts_remainder -= 0xf;
             	timestamp_vpts_inc(-1);
         	}
-    	}
+        }
     }
 
 	vf->type_backup = vf->type;
@@ -427,17 +447,17 @@ static void vsync_toggle_frame(vframe_t *vf)
         (cur_dispbuf->ratio_control != vf->ratio_control) ||
         ((cur_dispbuf->type_backup & VIDTYPE_INTERLACE) !=
          (vf->type_backup & VIDTYPE_INTERLACE))) {
-#ifdef DEBUG
-        pr_dbg("%s %dx%d ar=0x%x\n",
-               ((vf->type & VIDTYPE_TYPEMASK) == VIDTYPE_INTERLACE_TOP) ?
-               "interlace-top" :
-               ((vf->type & VIDTYPE_TYPEMASK) == VIDTYPE_INTERLACE_BOTTOM) ?
-               "interlace-bottom" :
-               "progressive",
-               vf->width,
-               vf->height,
-               vf->ratio_control);
-#endif
+		amlog_mask(LOG_MASK_FRAMEINFO,
+			"%s %dx%d ar=0x%x\n",
+            ((vf->type & VIDTYPE_TYPEMASK) == VIDTYPE_INTERLACE_TOP) ?
+            "interlace-top" :
+            ((vf->type & VIDTYPE_TYPEMASK) == VIDTYPE_INTERLACE_BOTTOM) ?
+            "interlace-bottom" :
+            "progressive",
+            vf->width,
+            vf->height,
+            vf->ratio_control);
+
         next_frame_par = (&frame_parms[0] == next_frame_par) ?
             &frame_parms[1] : &frame_parms[0];
 
@@ -776,7 +796,7 @@ static irqreturn_t vsync_isr0(int irq, void *dev_id)
 	
     s32 i, vout_type;
     vframe_t *vf;
-#ifdef DEBUG
+#ifdef CONFIG_VIDEO_LOG
     int toggle_cnt;
 #endif
 #ifdef FIQ_VSYNC
@@ -787,7 +807,7 @@ static irqreturn_t vsync_isr0(int irq, void *dev_id)
 		"sub    fp, sp, #256;\n");
 #endif			
 
-#ifdef DEBUG
+#ifdef CONFIG_VIDEO_LOG
     toggle_cnt = 0;
 #endif
 
@@ -845,15 +865,15 @@ static irqreturn_t vsync_isr0(int irq, void *dev_id)
         	 || interlace_field_type_match(vout_type, vf)
 #endif
         	 ) {            
-#ifdef DEBUG
-            pr_dbg("VIDEO_PTS = 0x%x, cur_dur=0x%x, next_pts=0x%x, scr = 0x%x\n",
-                timestamp_vpts_get(),
+            amlog_mask(LOG_MASK_TIMESTAMP,
+				"VIDEO_PTS = 0x%x, cur_dur=0x%x, next_pts=0x%x, scr = 0x%x\n",
+				timestamp_vpts_get(),
                 (cur_dispbuf) ? cur_dispbuf->duration : 0,
                 vf->pts,
                 timestamp_pcrscr_get());
 
-            if (toggle_cnt > 0) pr_dbg("skipped\n");
-#endif
+            amlog_mask_if(toggle_cnt > 0, LOG_MASK_FRAMESKIP, "skipped\n");
+
             vf = vf_get();
 
             vsync_toggle_frame(vf);
@@ -885,10 +905,12 @@ static irqreturn_t vsync_isr0(int irq, void *dev_id)
              */
             if (duration_expire(cur_dispbuf, vf, frame_repeat_count * vsync_pts_inc) && timestamp_pcrscr_enable_state())
             {
-#ifdef DEBUG
-                pr_dbg("slow sync toggle, frame_repeat_count = %d\n", frame_repeat_count);
-                pr_dbg("system time = 0x%x, video time = 0x%x\n", timestamp_pcrscr_get(), timestamp_vpts_get());
-#endif
+                amlog_mask(LOG_MASK_SLOWSYNC,
+                	"slow sync toggle, frame_repeat_count = %d\n",
+                	frame_repeat_count);
+                amlog_mask(LOG_MASK_SLOWSYNC,
+					"system time = 0x%x, video time = 0x%x\n",
+					timestamp_pcrscr_get(), timestamp_vpts_get());
                 vf = vf_get();
                 vsync_toggle_frame(vf);
                 frame_repeat_count = 0;
@@ -903,7 +925,7 @@ static irqreturn_t vsync_isr0(int irq, void *dev_id)
 
             break;
         }
-#ifdef DEBUG
+#ifdef CONFIG_VIDEO_LOG
         toggle_cnt++;
 #endif
     }
@@ -1062,46 +1084,46 @@ exit:
 
 static int alloc_keep_buffer(void)
 {
-    printk("alloc_keep_buffer\n");
+    amlog_mask(LOG_MASK_KEEPBUF, "alloc_keep_buffer\n");
     keep_y_addr = __get_free_pages(GFP_KERNEL, get_order(Y_BUFFER_SIZE));
     if (!keep_y_addr)
     {
-        printk("%s: failed to alloc y addr\n", __FUNCTION__);
+        amlog_mask(LOG_MASK_KEEPBUF, "%s: failed to alloc y addr\n", __FUNCTION__);
         goto err1;
     }
 
     keep_y_addr_remap = ioremap_nocache(virt_to_phys((u8 *)keep_y_addr), Y_BUFFER_SIZE);
     if (!keep_y_addr_remap)
     {
-        printk("%s: failed to remap y addr\n", __FUNCTION__);
+        amlog_mask(LOG_MASK_KEEPBUF, "%s: failed to remap y addr\n", __FUNCTION__);
         goto err2;
     }
 
     keep_u_addr = __get_free_pages(GFP_KERNEL, get_order(U_BUFFER_SIZE));
     if (!keep_u_addr)
     {
-        printk("%s: failed to alloc u addr\n", __FUNCTION__);
+        amlog_mask(LOG_MASK_KEEPBUF, "%s: failed to alloc u addr\n", __FUNCTION__);
         goto err3;
     }
 
     keep_u_addr_remap = ioremap_nocache(virt_to_phys((u8 *)keep_u_addr), U_BUFFER_SIZE);
     if (!keep_u_addr_remap)
     {
-        printk("%s: failed to remap u addr\n", __FUNCTION__);
+        amlog_mask(LOG_MASK_KEEPBUF, "%s: failed to remap u addr\n", __FUNCTION__);
         goto err4;
     }
 
     keep_v_addr = __get_free_pages(GFP_KERNEL, get_order(V_BUFFER_SIZE));
     if (!keep_v_addr)
     {
-        printk("%s: failed to alloc v addr\n", __FUNCTION__);
+        amlog_mask(LOG_MASK_KEEPBUF, "%s: failed to alloc v addr\n", __FUNCTION__);
         goto err5;
     }
 
     keep_v_addr_remap = ioremap_nocache(virt_to_phys((u8 *)keep_v_addr), U_BUFFER_SIZE);
     if (!keep_v_addr_remap)
     {
-        printk("%s: failed to remap v addr\n", __FUNCTION__);
+        amlog_mask(LOG_MASK_KEEPBUF, "%s: failed to remap v addr\n", __FUNCTION__);
         goto err6;
     }
 
@@ -1432,10 +1454,11 @@ static void set_video_window(char *para)
 
     //parse window para .
     memcpy(pt, parse_para(para, &count), sizeof(disp_rect_t));
-#ifdef DEBUG
-    pr_dbg("video=>x0:%d ,y0:%d,x1:%d,y1:%d\r\n ",
-           *pt, *(pt + 1), *(pt + 2), *(pt + 3));
-#endif
+
+    amlog_mask(LOG_MASK_SYSFS,
+    	"video=>x0:%d ,y0:%d,x1:%d,y1:%d\r\n ",
+        *pt, *(pt + 1), *(pt + 2), *(pt + 3));
+
     vpp_set_video_layer_position(*pt, *(pt + 1), *(pt + 2), *(pt + 3));
 }
 
@@ -1806,13 +1829,13 @@ static void vout_hook(void)
     if (vinfo)
         vsync_pts_inc = 90000 * vinfo->sync_duration_den / vinfo->sync_duration_num;
 
-#ifdef DEBUG
+#ifdef CONFIG_VIDEO_LOG
     if (vinfo) {
-        pr_dbg("vinfo = %p\n", vinfo);
-        pr_dbg("display platform %s:\n", vinfo->name);
-        pr_dbg("\tresolution %d x %d\n", vinfo->width, vinfo->height);
-        pr_dbg("\taspect ratio %d : %d\n", vinfo->aspect_ratio_num, vinfo->aspect_ratio_den);
-        pr_dbg("\tsync duration %d : %d\n", vinfo->sync_duration_num, vinfo->sync_duration_den);
+		amlog_mask(LOG_MASK_VINFO, "vinfo = %p\n", vinfo);
+        amlog_mask(LOG_MASK_VINFO, "display platform %s:\n", vinfo->name);
+        amlog_mask(LOG_MASK_VINFO, "\tresolution %d x %d\n", vinfo->width, vinfo->height);
+        amlog_mask(LOG_MASK_VINFO, "\taspect ratio %d : %d\n", vinfo->aspect_ratio_num, vinfo->aspect_ratio_den);
+        amlog_mask(LOG_MASK_VINFO, "\tsync duration %d : %d\n", vinfo->sync_duration_num, vinfo->sync_duration_den);
     }
 #endif
 }
@@ -1851,7 +1874,7 @@ static int __init video_init(void)
                     (void *)video_dev_id);
 
     if (r) {
-        pr_error("video irq register error.\n");
+		amlog_level(LOG_LEVEL_ERROR, "video irq register error.\n");
         r = -ENOENT;
         goto err0;
     }
@@ -1861,7 +1884,7 @@ static int __init video_init(void)
     /* sysfs node creation */
     r = class_register(&amvideo_class);
     if (r) {
-        pr_error("create video class fail\r\n");
+		amlog_level(LOG_LEVEL_ERROR, "create video class fail.\n");
         free_irq(INT_VIU_VSYNC, (void *)video_dev_id);
         goto err1;
     }
@@ -1869,7 +1892,7 @@ static int __init video_init(void)
     /* create video device */
     r = register_chrdev(AMVIDEO_MAJOR, "amvideo", &amvideo_fops);
     if (r < 0) {
-        pr_error("Can't register major for amvideo device\n");
+		amlog_level(LOG_LEVEL_ERROR, "Can't register major for amvideo device\n");
         goto err2;
     }
 
@@ -1878,7 +1901,7 @@ static int __init video_init(void)
                               DEVICE_NAME);
 
     if (IS_ERR(amvideo_dev)) {
-        pr_error("Can't create amvideo device\n");
+		amlog_level(LOG_LEVEL_ERROR, "Can't create amvideo device\n");
         goto err3;
     }
 
