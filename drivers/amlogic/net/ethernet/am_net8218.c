@@ -833,7 +833,8 @@ static int phy_reset(struct net_device *ndev)
 #ifdef PHY_LOOPBACK_TEST
 	/*phy loop back*/
 	val=mdio_read(ndev, np->phys[0], MII_BMCR);
-	val=1<<14 | 1<<8 | 1<<13;//100M,full,seting it as ;
+	//val=1<<14 | 1<<8 | 1<<13;//100M,full,seting it as ;
+	val=1<<14 | 1<<8;/////10M,full,seting it as ;
 	mdio_write(ndev, np->phys[0], MII_BMCR, val);
 
 #endif
@@ -970,7 +971,8 @@ static int start_tx(struct sk_buff *skb, struct net_device *dev)
 		tx = &np->tx_ring[0];
 	if (tx->status & DescOwnByDma) {
 		spin_unlock_irqrestore(&np->lock, flags);
-		printk("tx queue is full \n");
+		if(debug>2)
+			printk("tx queue is full \n");
 		goto err;
 	}
 #ifdef DMA_USE_SKB_BUF
@@ -1021,6 +1023,8 @@ void test_loop_back(struct net_device *dev)
 	//struct am_net_private *np = netdev_priv(dev);
 	int i=0;
 	char header[64]="";
+	struct am_net_private *np = netdev_priv(dev);
+	
 	printk("start testing!!\n");
 	memcpy(header,dev->dev_addr,6);
 	memcpy(header+8,dev->dev_addr,6);
@@ -1046,12 +1050,10 @@ void test_loop_back(struct net_device *dev)
 		}
 		else
 			i++;
-		if(i%1024==0)
+		if(i%2000==0)
 		{
-			struct am_net_private *np = netdev_priv(dev);
-			int val;
-			val=mdio_read(dev, np->phys[0], MII_BMCR);
-			printk("send pkt=%d,val=%x\n",i,val);
+			msleep(1);
+			printk("send pkts=%ld,receive pkts=%ld\n",np->stats.tx_packets,np->stats.rx_packets);
 		}
 		
 	}
@@ -1060,8 +1062,10 @@ void test_loop_back(struct net_device *dev)
 void start_test(struct net_device *dev)
 {
 	static int test_running=0;
+	struct am_net_private *np = netdev_priv(dev);
 	if(test_running)
 		return ;
+	phy_auto_negotiation_set(np);
 	kernel_thread((void *)test_loop_back, (void *)dev, CLONE_FS | CLONE_SIGHAND);
 	test_running++;
 
