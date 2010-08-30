@@ -83,6 +83,8 @@ extern void hdmitx_audio_enable(hdmitx_dev_t* hdmitx_device);
 /************************************
 *    hdmitx hardware level interface
 *************************************/
+#define DOUBLE_CLK_720P_1080I
+
 extern void HDMITX_M1A_Init(hdmitx_dev_t* hdmitx_device);
 
 extern void HDMITX_M1B_Init(hdmitx_dev_t* hdmitx_device);
