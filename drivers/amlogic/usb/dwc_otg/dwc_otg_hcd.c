@@ -908,24 +908,32 @@ static void dump_urb_info(struct urb *_urb, char *_fn_name)
 	DWC_PRINT("  Endpoint: %d, %s\n", usb_pipeendpoint(_urb->pipe),
 		  (usb_pipein(_urb->pipe) ? "IN" : "OUT"));
 	DWC_PRINT("  Endpoint type: %s\n", ( {
-					    char *pipetype;
-					    switch (usb_pipetype(_urb->pipe)) {
-case PIPE_CONTROL:
-pipetype = "CONTROL"; break; case PIPE_BULK:
-pipetype = "BULK"; break; case PIPE_INTERRUPT:
-pipetype = "INTERRUPT"; break; case PIPE_ISOCHRONOUS:
-pipetype = "ISOCHRONOUS"; break; default:
-					    pipetype = "UNKNOWN"; break;};
-					    pipetype;}
+		    char *pipetype;
+		    switch (usb_pipetype(_urb->pipe)) {
+			case PIPE_CONTROL:
+				pipetype = "CONTROL"; break; 
+			case PIPE_BULK:
+				pipetype = "BULK"; break;
+			case PIPE_INTERRUPT:
+				pipetype = "INTERRUPT"; break; 
+			case PIPE_ISOCHRONOUS:
+				pipetype = "ISOCHRONOUS"; break; 
+			default:
+				pipetype = "UNKNOWN"; break;};
+			pipetype;}
 		  )) ;
 	DWC_PRINT("  Speed: %s\n", ( {
-				    char *speed;
-				    switch (_urb->dev->speed) {
-case USB_SPEED_HIGH:
-speed = "HIGH"; break; case USB_SPEED_FULL:
-speed = "FULL"; break; case USB_SPEED_LOW:
-speed = "LOW"; break; default:
-				    speed = "UNKNOWN"; break;}; speed;}
+			char *speed;
+			switch (_urb->dev->speed) {
+				case USB_SPEED_HIGH:
+					speed = "HIGH"; break; 
+				case USB_SPEED_FULL:
+					speed = "FULL"; break; 
+				case USB_SPEED_LOW:
+					speed = "LOW"; break; 
+				default:
+					speed = "UNKNOWN"; break;}; 
+				speed;}
 		  )) ;
 	DWC_PRINT("  Max packet size: %d\n",
 		  usb_maxpacket(_urb->dev, _urb->pipe,

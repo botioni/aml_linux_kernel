@@ -45,7 +45,13 @@
 
 #define NO_HOST_SOF
 
-#define NAK_IN_TIMER
+/*
+  * Open this macro to prevent many many NAKs in ISR.
+  *     Many many NAKs will pull system to ISR, no other process
+  *     can be executed.
+  * Close this macro to improve performance.
+  */
+//#define NAK_IN_TIMER
 
 #ifdef NAK_IN_TIMER
 #define NAK_TIMER_INTERVAL		1
