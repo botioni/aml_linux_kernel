@@ -26,10 +26,11 @@ add by zhouzhi 2008-8-18
 // >2 for tx
 // >3 for rx
 #ifdef CONFIG_AM_ETHERNET_DEBUG_LEVEL
-static volatile int debug = CONFIG_AM_ETHERNET_DEBUG_LEVEL;
+static  int debug = CONFIG_AM_ETHERNET_DEBUG_LEVEL;
 #else
-static volatile int debug = 1;
+static  int debug = 1;
 #endif
+
 
 //#define LOOP_BACK_TEST
 //#define MAC_LOOPBACK_TEST
@@ -41,14 +42,23 @@ static int running = 0;
 static struct net_device *my_ndev = NULL;
 static char DEFMAC[] = "\x00\x01\x23\xcd\xee\xaf";
 
-#define DRV_NAME	"Amlogic Ethernet"
-#define DRV_VERSION	"v2.0.0"
-#define DRV_RELDATE	"2008-8-28"
+
 
 MODULE_AUTHOR("rising_o<zhi_zhou@amlogic.com>");
 MODULE_DESCRIPTION("Amlogic Ethernet Driver");
 MODULE_LICENSE("Amlogic");
 MODULE_VERSION(DRV_VERSION);
+module_param_named(amlog_level,debug, int, 0664);
+
+MODULE_PARM_DESC(amlog_level,"ethernet debug level\n");
+
+#define MODULE_NAME "ethernet" 
+#define DRIVER_NAME "ethernet" 
+
+#define DRV_NAME	DRIVER_NAME
+#define DRV_VERSION	"v2.0.0"
+#define DRV_RELDATE	"2008-8-28"
+
 
 #define PERIPHS_SET_BITS(reg,val)	{	\
     	WRITE_CBUS_REG(reg,READ_CBUS_REG(reg) |(val));}
