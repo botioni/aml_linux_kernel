@@ -34,7 +34,7 @@ static int __init chip_version_init(void )
 	system_serial_high=0;/*0 for meson*/
 	/*0x49800000*/
 	/*system_serial_low=,1,2,3,4,5 for REVA,B,C*/
-	version_map=ioremap(0x49800000,64);
+	version_map=ioremap(0x49800000,1024);
 
 	if(!version_map)
 	{
