@@ -150,16 +150,19 @@ static struct platform_device amlogic_spi_nor_device = {
 #ifdef CONFIG_USB_DWC_OTG_HCD
 static void set_usb_a_vbus_power(char is_power_on)
 {
+#define USB_A_POW_GPIO	PREG_HGPIO
 #define USB_A_POW_GPIO_BIT	20
+#define USB_A_POW_GPIO_BIT_ON	1
+#define USB_A_POW_GPIO_BIT_OFF	0
 	if(is_power_on){
 		printk(KERN_INFO "set usb port power on (board gpio %d)!\n",USB_A_POW_GPIO_BIT);
-		set_gpio_mode(PREG_HGPIO,USB_A_POW_GPIO_BIT,GPIO_OUTPUT_MODE);
-		set_gpio_val(PREG_HGPIO,USB_A_POW_GPIO_BIT,1);
+		set_gpio_mode(USB_A_POW_GPIO,USB_A_POW_GPIO_BIT,GPIO_OUTPUT_MODE);
+		set_gpio_val(USB_A_POW_GPIO,USB_A_POW_GPIO_BIT,USB_A_POW_GPIO_BIT_ON);
 	}
 	else	{
 		printk(KERN_INFO "set usb port power off (board gpio %d)!\n",USB_A_POW_GPIO_BIT);		
-		set_gpio_mode(PREG_HGPIO,USB_A_POW_GPIO_BIT,GPIO_OUTPUT_MODE);
-		set_gpio_val(PREG_HGPIO,USB_A_POW_GPIO_BIT,0);		
+		set_gpio_mode(USB_A_POW_GPIO,USB_A_POW_GPIO_BIT,GPIO_OUTPUT_MODE);
+		set_gpio_val(USB_A_POW_GPIO,USB_A_POW_GPIO_BIT,USB_A_POW_GPIO_BIT_OFF);		
 	}
 }
 //usb_a is OTG port
