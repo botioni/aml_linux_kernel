@@ -3278,12 +3278,12 @@ int sd_identify_process()
 		sdio_config = READ_CBUS_REG(SDIO_CONFIG);
 		if(disable_high_speed == 1)
 		{
-			config_reg->cmd_clk_divide = 1;
+			config_reg->cmd_clk_divide = 4;
 			sd_mmc_info->sdio_clk_unit = 1000/SD_MMC_TRANSFER_SLOWER_CLK;
 		}
 		else
 		{
-			config_reg->cmd_clk_divide = 1;
+			config_reg->cmd_clk_divide = 3;
 			sd_mmc_info->sdio_clk_unit = 1000/SD_MMC_TRANSFER_CLK;
 		}
 
@@ -4201,7 +4201,7 @@ int sd_mmc_switch_function(void)
         sdio_config = 0;
         config_reg = (void *)&sdio_config;
         sdio_config = READ_CBUS_REG(SDIO_CONFIG);
-        config_reg->cmd_clk_divide = 1;
+        config_reg->cmd_clk_divide = 3;
         WRITE_CBUS_REG(SDIO_CONFIG, sdio_config);
 
 		sd_mmc_info->sdio_clk_unit = 1000/SD_MMC_TRANSFER_HIGHSPEED_CLK;
@@ -4223,7 +4223,7 @@ int sd_mmc_switch_function(void)
         	sdio_config = 0;
         	config_reg = (void *)&sdio_config;
         	sdio_config = READ_CBUS_REG(SDIO_CONFIG);
-        	config_reg->cmd_clk_divide =1;
+        	config_reg->cmd_clk_divide =2;
         	WRITE_CBUS_REG(SDIO_CONFIG, sdio_config);
 
 			sd_mmc_info->sdio_clk_unit = 1000/SD_MMC_TRANSFER_HIGHSPEED_CLK;
@@ -4233,12 +4233,14 @@ int sd_mmc_switch_function(void)
 		sdio_config = 0;
         config_reg = (void *)&sdio_config;
         sdio_config = READ_CBUS_REG(SDIO_CONFIG);
-        config_reg->cmd_clk_divide = 1;
+        config_reg->cmd_clk_divide = 3;
         WRITE_CBUS_REG(SDIO_CONFIG, sdio_config);
 
 		sd_mmc_info->sdio_clk_unit = 1000/SD_MMC_TRANSFER_CLK;
     }
 
+	printk("set sd_mmc config_reg->cmd_clk_divide %d, CLK %dM\n", 
+			config_reg->cmd_clk_divide, 90/(config_reg->cmd_clk_divide + 1) );
 	return SD_MMC_NO_ERROR;
 }
 

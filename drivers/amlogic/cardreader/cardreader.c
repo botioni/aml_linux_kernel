@@ -390,6 +390,7 @@ struct card_host *card_alloc_host(int extra, struct device *dev)
 		host->max_seg_size = PAGE_CACHE_SIZE;
 		
 		host->max_req_size = 512*256;	/*for CONFIG_CARD_BLOCK_BOUNCE fix me*/
+		printk("card max_req_size is %dK \n", host->max_req_size/1024);
 	}
 
 	return host;
