@@ -576,33 +576,28 @@ typedef struct {
         hdcp_auth_state_t                  auth_state;
         hdmi_tx_display_type_t          output_state;
 //-------------------------------------------------------
-        unsigned    dec_state                          : 1;
         unsigned    video_out_changing_flag : 1;
-        unsigned    audio_out_changing_flag : 1;
-        unsigned    audio_flag                         : 1;        // 1 - enable hdmi audio;  0 - display hdmi audio, user control
+        unsigned    support_underscan_flag : 1;
+        unsigned    support_ycbcr444_flag : 1;
+        unsigned    support_ycbcr422_flag : 1;
+        unsigned    tx_video_input_stable_flag : 1;
         unsigned    auto_hdcp_ri_flag  : 1;   // If == 1, turn on Auto Ri Checking, user control
         unsigned    hw_sha_calculator_flag : 1;  // If  == 1, use the HW SHA calculator, otherwise, use SW SHA calculator, user control
-        unsigned    hpd_state : 1;     //0: no hdmi device connected,  0x1: hdmi device connected
-        unsigned    hpd_change_flag : 1;   //0: no change,  1: changed
+        unsigned    need_sup_cec : 1;     //, user control
+
 //-------------------------------------------------------
+        unsigned    audio_out_changing_flag : 1;
+        unsigned    audio_flag              : 1;        // 1 - enable hdmi audio;  0 - display hdmi audio, user control
+        unsigned    support_basic_audio_flag : 1;
         unsigned        audio_fifo_overflow : 1;
         unsigned        audio_fifo_underflow : 1;
         unsigned        audio_cts_status_err_flag : 1;
-        unsigned        check_hdmi_interrupt : 1;              //, user control
-        unsigned        support_underscan_flag : 1;
-        unsigned        support_ycbcr444_flag : 1;
-        unsigned        support_ycbcr422_flag : 1;
-        unsigned        support_basic_audio_flag : 1;
-//-------------------------------------------------------
-        unsigned    need_sup_cec : 1;     //, user control
         unsigned    support_ai_flag : 1;
-        unsigned    Ignore_EDID_flag : 1; // If == 1, set hdmi video and audio patameters, ignoring the EDID data from TV, user control
-        unsigned    Read_EDID_ERR_flag : 1;
-        unsigned    tx_video_input_stable_flag : 1;
-        unsigned    cea_on_fisrt_page : 4;
         unsigned    hdmi_sup_480i : 1;
-        unsigned	    hdmi_sup_576i : 1;
+
+
 //-------------------------------------------------------
+        unsigned	    hdmi_sup_576i : 1;
         unsigned        hdmi_sup_480p : 1;
         unsigned	        hdmi_sup_576p : 1;
         unsigned	        hdmi_sup_720p_60hz : 1;
@@ -610,11 +605,17 @@ typedef struct {
         unsigned	        hdmi_sup_1080i_60hz : 1;
         unsigned	        hdmi_sup_1080i_50hz : 1;
         unsigned	        hdmi_sup_1080p_60hz : 1;
-        unsigned	        hdmi_sup_1080p_50hz : 1;
+
+
+
 //-------------------------------------------------------
+        unsigned	        hdmi_sup_1080p_50hz : 1;
         unsigned    hdmi_sup_1080p_24hz : 1;
         unsigned    hdmi_sup_1080p_25hz : 1;
         unsigned    hdmi_sup_1080p_30hz : 1;
+
+//-------------------------------------------------------
+
 
 
 

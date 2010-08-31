@@ -226,7 +226,8 @@ static const Hdmi_tx_video_para_t hdmi_tx_video_params[] =
     },
     { 
         .VIC            = HDMI_1080p30,
-        .color_prefer   = COLOR_SPACE_YUV422,
+        //.color_prefer   = COLOR_SPACE_YUV422,
+        .color_prefer   = COLOR_SPACE_RGB444,
         .color_depth    = COLOR_24BIT,
         .bar_info       = B_BAR_VERT_HORIZ,
         .repeat_time    = NO_REPEAT,
@@ -304,11 +305,9 @@ void hdmitx_init_parameters(HDMI_TX_INFO_t *info)
     info->audio_info.audio_mclk = MCLK_256_Fs;
     info->audio_out_changing_flag = 1;
     
-    info->auth_state = HDCP_NO_AUTH;
-    info->output_state = CABLE_UNPLUG;
     info->auto_hdcp_ri_flag = 1;     // If == 1, turn on Auto Ri Checking
     info->hw_sha_calculator_flag = 1;    // If  == 1, use the HW SHA calculator, otherwise, use SW SHA calculator
-    info->Ignore_EDID_flag = 0; // If == 1, set hdmi video and audio patameters, ignoring the EDID data from TV, user control
+
 }
 
 int hdmitx_set_display(hdmitx_dev_t* hdmitx_device, HDMI_Video_Codes_t VideoCode)
@@ -335,6 +334,7 @@ int hdmitx_set_display(hdmitx_dev_t* hdmitx_device, HDMI_Video_Codes_t VideoCode
             (hdmitx_device->RXCap.native_Mode&0x10) == 0){
             param->color = COLOR_SPACE_RGB444;        
         }
+        
         if(hdmitx_device->HWOp.SetDispMode(param)>=0){
     
             hdmi_tx_construct_avi_packet(param, AVI_DB);
