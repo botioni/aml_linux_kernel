@@ -34,7 +34,7 @@ typedef struct rx_cap_
 }rx_cap_t;
 
 
-#define EDID_MAX_BLOCK  4
+#define EDID_MAX_BLOCK  6       //4
 typedef struct hdmi_tx_dev_s {
     struct cdev cdev;             /* The cdev structure */
 
@@ -60,6 +60,7 @@ typedef struct hdmi_tx_dev_s {
     unsigned char cur_VIC;
     /**/
     unsigned char hpd_event; /* 1, plugin; 2, plugout */
+    HDMI_TX_INFO_t hdmi_info;
     
 }hdmitx_dev_t;
 

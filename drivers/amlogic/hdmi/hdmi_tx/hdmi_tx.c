@@ -62,7 +62,7 @@ static dev_t hdmitx_id;
 static struct class *hdmitx_class;
 static struct device *hdmitx_dev;
 
-static HDMI_TX_INFO_t hdmi_info;
+//static HDMI_TX_INFO_t hdmi_info;
 
 /*****************************
 *    hdmitx attr management :
@@ -185,7 +185,7 @@ static int hdmi_task_handle(void *data)
 {
     hdmitx_dev_t* hdmitx_device = (hdmitx_dev_t*)data;
 
-    hdmitx_init_parameters(&hdmi_info);
+    hdmitx_init_parameters(&hdmitx_device->hdmi_info);
 
     HDMITX_M1B_Init(hdmitx_device);
 
