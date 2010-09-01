@@ -238,7 +238,11 @@ static int pcm_pb_tone_put(struct snd_kcontrol *kcontrol,
 	
      return 0;
 }
-
+static int pcm_pb_tone_get(struct snd_kcontrol *kcontrol,
+				    struct snd_ctl_elem_value *uvalue)
+{
+     return 0;
+}
 struct snd_kcontrol_new pcm_control_pb_vol = {
     .iface = SNDRV_CTL_ELEM_IFACE_MIXER,
     .name = "Master Playback Volume",
@@ -313,7 +317,10 @@ struct snd_kcontrol_new pcm_tone_play = {
 	.name = "Playback Tone",
 	.info = pcm_pb_tone_info,
 	.put = pcm_pb_tone_put,
-	.access = SNDRV_CTL_ELEM_ACCESS_WRITE,
+	.get = pcm_pb_tone_get,
+	.access = (SNDRV_CTL_ELEM_ACCESS_WRITE |
+	          SNDRV_CTL_ELEM_ACCESS_READ), 
+	          
 };
 
 int aml_alsa_create_ctrl(struct snd_card *card, void *p_value)
