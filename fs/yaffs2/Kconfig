@@ -4,7 +4,7 @@
 
 config YAFFS_FS
 	tristate "YAFFS2 file system support"
-	default n
+	default y
 	depends on MTD_BLOCK
 	select YAFFS_YAFFS1
 	select YAFFS_YAFFS2
@@ -23,7 +23,7 @@ config YAFFS_FS
 config YAFFS_YAFFS1
 	bool "512 byte / page devices"
 	depends on YAFFS_FS
-	default y
+	default n
 	help
 	  Enable YAFFS1 support -- yaffs for 512 byte / page devices
 
@@ -93,7 +93,7 @@ config YAFFS_AUTO_YAFFS2
 config YAFFS_DISABLE_TAGS_ECC
 	bool "Disable YAFFS from doing ECC on tags by default"
 	depends on YAFFS_FS && YAFFS_YAFFS2
-	default n
+	default y
 	help
 	  This defaults Yaffs to using its own ECC calculations on tags instead of
 	  just relying on the MTD.
@@ -160,7 +160,7 @@ config YAFFS_EMPTY_LOST_AND_FOUND
 config YAFFS_DISABLE_BLOCK_REFRESHING
 	bool "Disable yaffs2 block refreshing"
 	depends on YAFFS_FS
-	default n
+	default y
 	help
 	 If this is set, then block refreshing is disabled.
 	 Block refreshing infrequently refreshes the oldest block in
@@ -172,7 +172,7 @@ config YAFFS_DISABLE_BLOCK_REFRESHING
 config YAFFS_DISABLE_BACKGROUND
 	bool "Disable yaffs2 background processing"
 	depends on YAFFS_FS
-	default n
+	default y
 	help
 	 If this is set, then background processing is disabled.
 	 Background processing makes many foreground activities faster.

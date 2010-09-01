@@ -40,7 +40,10 @@
 #include <mach/nand.h>
 #include <mach/pinmux.h>
 #include <linux/dma-mapping.h>
-
+#define MAX_INFO_LEN 4*8*2
+#define CM0	((1<<29) | (1<<27) | (1<<25) | (1<<23))
+#define SM0	(1<<30) | (1<<28) | (1<<26) | (1<<24)	
+#define CM7	((1<<29) | (1<<27) | (1<<28) | (1<<26)|(1<<24))
 struct aml_m1_nand_info
 {
 	struct nand_hw_control			controller;
@@ -85,14 +88,18 @@ static void aml_m1_nand_select_chip(struct mtd_info *mtd, int chipnr)
 	struct nand_chip *chip = mtd->priv;
 	struct aml_m1_nand_info * info=mtd_to_nand_info(mtd);
 
-	clear_mio_mux(1,( (1<<29) | (1<<27) | (1<<25) | (1<<23)));
-	set_mio_mux(1,(1<<30) | (1<<28) | (1<<26) | (1<<24));
+	clear_mio_mux(1,CM0);
+	set_mio_mux(1,SM0);
 	set_mio_mux(6,0x7fff);
-	clear_mio_mux(7,0xffffffff);
+	clear_mio_mux(7,CM7);
 
 	switch (chipnr) {
 		case -1:
 			chip->cmd_ctrl(mtd, NAND_CMD_NONE, 0 | NAND_CTRL_CHANGE);
+			set_mio_mux(1,CM0);
+			clear_mio_mux(1,SM0);
+			clear_mio_mux(6,0x7fff);
+			set_mio_mux(7,CM7);	
 			break;
 		case 0:
 			info->ce_sel=CE0;
@@ -357,8 +364,6 @@ static int aml_m1_nand_block_bad(struct mtd_info *mtd, loff_t ofs, int getchip)
 	struct aml_m1_nand_info * aml_info=mtd_to_nand_info(mtd);	
 	volatile	int page = (int)(ofs >> chip->page_shift)&chip->pagemask;
 	volatile	unsigned int size=((mtd->writesize+mtd->oobsize)/(aml_info->encode_size))<<9;				//FIXME for boot!=normal  
-	
-//	printk(" if bad at page %d \n ", page);
 
 	if(getchip)
 	{
@@ -375,6 +380,7 @@ static int aml_m1_nand_block_bad(struct mtd_info *mtd, loff_t ofs, int getchip)
 	ret=aml_m1_nand_dma_read(mtd,NULL,size,aml_info->bch_mode);
 
 	NFC_CLEAR_SPARE_ONLY();
+
 
 	if(getchip) 
 		nand_release_device(mtd);
@@ -395,27 +401,35 @@ static int aml_m1_nand_hw_init(struct aml_m1_nand_info *info)
 	volatile unsigned tmp=0xffff;
 	mode=plat->timing_mode;	
 
-	//	mode=0;			
-//FIXME	set feature ,calc 
 	if(mode==5){
 	   	cycles=	3;
 	}else if(mode==0)
 	   	cycles=19;	
+	else if(mode==4){
+		cycles=4;
+	}else if(mode==3){
+		cycles=5;
+	}else if(mode==2){
+		cycles=6;
+	}else if(mode==1){
+		cycles=9;
+	}
 	else{
 		mode =0;
 		cycles=19;
 	}
+
 	clear_mio_mux(1,( (1<<29) | (1<<27) | (1<<25) | (1<<23)));
 	set_mio_mux(1,(1<<30) | (1<<28) | (1<<26) | (1<<24));
 	set_mio_mux(6,0x7fff);
-	clear_mio_mux(7,0xffffffff);
+	clear_mio_mux(7,((1<<29) | (1<<27) | (1<<28) | (1<<26))|(1<<24));
 
 	NFC_SET_CFG(0);
 	NFC_SET_TIMING(0,19,0)  ; 
 	NFC_SEND_CMD(1<<31);
 	while (NFC_CMDFIFO_SIZE() > 0);     
 	
-//	printk("NAND CONFIG IS 0x%4x \n",NFC_GET_CFG());
+	printk("NAND CONFIG IS 0x%4x \n",NFC_GET_CFG());
 	
 	if(plat->onfi_mode==1)
 	{
@@ -593,7 +607,7 @@ static int aml_m1_nand_probe(struct platform_device *pdev)
 	}
 	
 	dev_dbg(&pdev->dev, "initialised ok\n");
-//	printk("NAND initialised ok\n");
+	printk("NAND initialised ok\n");
 
 	//nand_release_chip();
 
@@ -601,6 +615,8 @@ static int aml_m1_nand_probe(struct platform_device *pdev)
 
 exit_error:	
 
+	printk("NAND initialised err\n");
+	
 	kfree(info);
 	if (err == 0)
 		err = -EINVAL;
