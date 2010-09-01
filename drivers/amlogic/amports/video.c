@@ -50,10 +50,10 @@
 #include "videolog.h"
 //#define CONFIG_VIDEO_LOG
 #ifdef CONFIG_VIDEO_LOG
-#define AMLOG
+#define AMLOG 0
 #endif
 #include <linux/amlog.h>
-MODULE_AMLOG(LOG_LEVEL_ERROR, 0, LOG_DEFAULT_LEVEL_DESC, LOG_MASK_DESC);
+//MODULE_AMLOG(LOG_LEVEL_ERROR, 0, LOG_DEFAULT_LEVEL_DESC, LOG_MASK_DESC);
 
 #include "vframe.h"
 #include "vframe_provider.h"
