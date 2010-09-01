@@ -121,12 +121,14 @@ static inline void get_rdpage_offset(u8 type, u32 *page, u32 *page_offset)
 		do {
 			local_irq_save(flags);
 
-			page1 = READ_MPEG_REG(AIU_MEM_AIFIFO_BUF_WRAP_COUNT);
+			page1 = READ_MPEG_REG(AIU_MEM_AIFIFO_BUF_WRAP_COUNT)&0xffff;
 			offset = READ_MPEG_REG(AIU_MEM_AIFIFO_MAN_RP);
-			page2 = READ_MPEG_REG(AIU_MEM_AIFIFO_BUF_WRAP_COUNT) >> 16;
-
+			page2 = READ_MPEG_REG(AIU_MEM_AIFIFO_BUF_WRAP_COUNT)&0xffff;
+			
+			
 			local_irq_restore(flags);
 		} while (page1 != page2);
+		
 		
 		*page = page1;
 		*page_offset = offset - pts_table[PTS_TYPE_AUDIO].buf_start;
