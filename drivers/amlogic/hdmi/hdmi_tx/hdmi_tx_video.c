@@ -206,8 +206,14 @@ static const Hdmi_tx_video_para_t hdmi_tx_video_params[] =
         .VIC            = HDMI_1080p24,
         .color_prefer   = COLOR_SPACE_YUV422,
         .color_depth    = COLOR_24BIT,
+        //.color_depth    = COLOR_30BIT,
+        //.color_depth    = COLOR_36BIT,
         .bar_info       = B_BAR_VERT_HORIZ,
+//#ifdef DOUBLE_CLK_720P_1080I
+//        .repeat_time    = HDMI_2_TIMES_REPEAT,
+//#else
         .repeat_time    = NO_REPEAT,
+//#endif        
         .aspect_ratio   = TV_ASPECT_RATIO_16_9,
         .cc             = CC_ITU709,
         .ss             = SS_SCAN_UNDER,   
@@ -226,9 +232,10 @@ static const Hdmi_tx_video_para_t hdmi_tx_video_params[] =
     },
     { 
         .VIC            = HDMI_1080p30,
-        //.color_prefer   = COLOR_SPACE_YUV422,
-        .color_prefer   = COLOR_SPACE_RGB444,
+        .color_prefer   = COLOR_SPACE_YUV422,
+        //.color_prefer   = COLOR_SPACE_RGB444,
         .color_depth    = COLOR_24BIT,
+        //.color_depth    = COLOR_30BIT,
         .bar_info       = B_BAR_VERT_HORIZ,
         .repeat_time    = NO_REPEAT,
         .aspect_ratio   = TV_ASPECT_RATIO_16_9,

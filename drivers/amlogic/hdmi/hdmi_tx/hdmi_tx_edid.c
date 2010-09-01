@@ -853,6 +853,9 @@ static int hdmitx_edid_block_parse(hdmitx_dev_t* hdmitx_device, unsigned char *B
                 pRXCap->IEEEOUI += (unsigned long)BlockBuf[offset+1] ;
                 pRXCap->IEEEOUI <<= 8 ;
                 pRXCap->IEEEOUI += (unsigned long)BlockBuf[offset] ;
+                /**/
+                pRXCap->ColorDeepSupport = (unsigned long)BlockBuf[offset+5];
+                pRXCap->Max_TMDS_Clock = (unsigned long)BlockBuf[offset+6]; 
                 offset += count ; // ignore the remaind.
                 break ;
             
@@ -975,6 +978,8 @@ static struct{
     {"720p", HDMI_720p60},
     {"1080i", HDMI_1080i60},
     {"1080p", HDMI_1080p60},
+    {"1080P30", HDMI_1080p30},
+    {"1080P24", HDMI_1080p24},
 };    
 
 HDMI_Video_Codes_t hdmitx_edid_get_VIC(hdmitx_dev_t* hdmitx_device, char* disp_mode, char force_flag)
@@ -1020,6 +1025,13 @@ int hdmitx_edid_dump(hdmitx_dev_t* hdmitx_device, char* buffer, int buffer_len)
     rx_cap_t* pRXCap = &(hdmitx_device->RXCap);
     pos+=snprintf(buffer+pos, buffer_len-pos, "native Mode %x, VIC (native %d):\r\n",
         pRXCap->native_Mode, pRXCap->native_VIC);
+
+    pos+=snprintf(buffer+pos, buffer_len-pos, "native Mode %x, VIC (native %d):\r\n",
+        pRXCap->native_Mode, pRXCap->native_VIC);
+
+    pos+=snprintf(buffer+pos, buffer_len-pos, "ColorDeepSupport %x, MaxTMDSClock %d\r\n",
+        pRXCap->ColorDeepSupport, pRXCap->Max_TMDS_Clock); 
+
     for( i = 0 ; i < pRXCap->VIC_count ; i++ )
     {
         pos+=snprintf(buffer+pos, buffer_len-pos,"%d ", pRXCap->VIC[i]);

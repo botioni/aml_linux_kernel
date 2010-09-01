@@ -18,14 +18,32 @@ void hdmi_tx_set_N_CTS(unsigned N_value, unsigned CTS)
 {
 }
 
-void hdmi_tx_setting_audio_packet(HDMI_TX_INFO_t *info)
+static void hdmi_tx_construct_aud_packet(Hdmi_tx_audio_para_t* audio_param, char* AUD_DB, unsigned char* CHAN_STAT_BUF)
 {
+
+
+}
+
+int hdmitx_set_audio(hdmitx_dev_t* hdmitx_device, Hdmi_tx_audio_para_t* audio_param)
+{
+    int i,ret=-1;
+    unsigned char AUD_DB[32];
+    unsigned char CHAN_STAT_BUF[128];
+    for(i=0;i<32;i++) AUD_DB[i]=0;
+    for(i=0;i<128;i++) CHAN_STAT_BUF[i]=0;
+    if(hdmitx_device->HWOp.SetAudMode(hdmitx_device, audio_param)>=0){
+        hdmi_tx_construct_aud_packet(audio_param, AUD_DB, CHAN_STAT_BUF);
+    
+        hdmitx_device->HWOp.SetAudioInfoFrame(AUD_DB, CHAN_STAT_BUF);
+        ret = 0;
+    }
+    return ret;
 }
 
 void hdmitx_audio_enable(hdmitx_dev_t* hdmitx_device)
 {
     if(hdmitx_device->HWOp.SetAudMode)
-        hdmitx_device->HWOp.SetAudMode(hdmitx_device);
+        hdmitx_device->HWOp.SetAudMode(hdmitx_device, NULL);
 
 }
 

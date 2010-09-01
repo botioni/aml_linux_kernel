@@ -31,6 +31,9 @@ typedef struct rx_cap_
     unsigned char RxSpeakerAllocation;
     /*vendor*/    
     unsigned long IEEEOUI;
+    unsigned long ColorDeepSupport;
+    unsigned long Max_TMDS_Clock; 
+    
 }rx_cap_t;
 
 
@@ -42,10 +45,10 @@ typedef struct hdmi_tx_dev_s {
     struct task_struct *task;
     struct {
         void (*SetAVI)(unsigned char* AVI_DB, unsigned char* AVI_HB);
-        void (*SetAudioInfoFrame)(unsigned char bEnable, unsigned char* AUD_DB);
+        void (*SetAudioInfoFrame)(unsigned char* AUD_DB, unsigned char* CHAN_STAT_BUF);
         unsigned char (*GetEDIDData)(struct hdmi_tx_dev_s* hdmitx_device);
         int (*SetDispMode)(Hdmi_tx_video_para_t *param);
-        int (*SetAudMode)(struct hdmi_tx_dev_s* hdmitx_device);
+        int (*SetAudMode)(struct hdmi_tx_dev_s* hdmitx_device, Hdmi_tx_audio_para_t* audio_param);
         void (*SetupIRQ)(struct hdmi_tx_dev_s* hdmitx_device);
     }HWOp;
     
@@ -84,7 +87,7 @@ extern void hdmitx_audio_enable(hdmitx_dev_t* hdmitx_device);
 /************************************
 *    hdmitx hardware level interface
 *************************************/
-#define DOUBLE_CLK_720P_1080I
+//#define DOUBLE_CLK_720P_1080I
 
 extern void HDMITX_M1A_Init(hdmitx_dev_t* hdmitx_device);
 

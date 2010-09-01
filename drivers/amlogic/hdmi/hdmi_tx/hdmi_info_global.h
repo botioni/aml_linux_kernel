@@ -556,6 +556,13 @@ typedef struct {
         hdmi_slacing_t          sc;
 }Hdmi_tx_video_para_t;
 
+typedef struct {
+    audio_type_t type;  
+    int channel_num;
+    int sample_rate; /*44100, 48000, etc */
+    int sample_size; /* 16,24, etc */
+}Hdmi_tx_audio_para_t;    
+
 
 typedef struct
 {
