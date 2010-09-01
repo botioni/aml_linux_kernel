@@ -71,7 +71,7 @@ void tsync_avevent(avevent_t event, u32 param)
     #endif
         {
         #ifndef TSYNC_SLOW_SYNC
-            if (tsync_syncthresh)
+            if (tsync_syncthresh && (tsync_mode == TSYNC_MODE_AMASTER))
                 timestamp_pcrscr_set(param - VIDEO_HOLD_THRESHOLD);
             else
                 timestamp_pcrscr_set(param);
