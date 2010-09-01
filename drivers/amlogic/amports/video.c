@@ -47,29 +47,13 @@
 #include <asm/fiq.h>
 #include <asm/uaccess.h>
 
+#include "videolog.h"
 //#define CONFIG_VIDEO_LOG
 #ifdef CONFIG_VIDEO_LOG
-#define AMLOG	1
-#define LOG_LEVEL_ERROR		0
-#define LOG_MASK_TIMESTAMP	0x00000001UL
-#define LOG_MASK_FRAMEINFO	0x00000002UL
-#define LOG_MASK_FRAMESKIP	0x00000004UL
-#define LOG_MASK_SLOWSYNC	0x00000008UL
-#define LOG_MASK_KEEPBUF	0x00000010UL
-#define LOG_MASK_SYSFS		0x00000020UL
-#define LOG_MASK_VINFO		0x00000040UL
-#define LOG_MASK_MODULE		0x00000080UL
-
-#define LOG_DEFAULT_LEVEL	LOG_LEVEL_ERROR
-#define LOG_DEFAULT_MASK	0x00000000UL
-
-#define LOG_MASK_DESC \
-"[0x01]:TIMESTAMP,[0x02]:FRAMEINFO,[0x04]:FRAMESKIP,[0x08]:SLOWSYNC,[0x10]:KEEPBUF,[0x20]:SYSFS,[0x40]:VINFO,[0x80]:MODULE."
-
-#else
-#define AMLOG	0
+#define AMLOG
 #endif
 #include <linux/amlog.h>
+MODULE_AMLOG(LOG_LEVEL_ERROR, 0, LOG_DEFAULT_LEVEL_DESC, LOG_MASK_DESC);
 
 #include "vframe.h"
 #include "vframe_provider.h"
