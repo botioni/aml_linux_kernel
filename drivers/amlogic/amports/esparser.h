@@ -36,5 +36,7 @@ extern int es_apts_checkin(struct stream_buf_s *buf, u32 pts);
 
 extern void esparser_audio_reset(struct stream_buf_s *buf);
 
+extern void esparser_sub_reset(void);
+
 #endif /* ESPARSER_H */
 

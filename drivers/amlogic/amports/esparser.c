@@ -432,3 +432,27 @@ ssize_t esparser_write(struct file *file,
 
     return r;
 }
+
+void esparser_sub_reset(void)
+{
+    ulong flags;
+    spinlock_t lock = SPIN_LOCK_UNLOCKED;
+    u32 parser_sub_start_ptr;
+    u32 parser_sub_end_ptr;
+
+    spin_lock_irqsave(&lock, flags);
+
+    parser_sub_start_ptr = READ_MPEG_REG(PARSER_SUB_START_PTR);
+    parser_sub_end_ptr = READ_MPEG_REG(PARSER_SUB_END_PTR);
+
+    WRITE_MPEG_REG(PARSER_SUB_START_PTR, parser_sub_start_ptr);
+    WRITE_MPEG_REG(PARSER_SUB_END_PTR, parser_sub_end_ptr);
+    WRITE_MPEG_REG(PARSER_SUB_RP, parser_sub_start_ptr);
+    WRITE_MPEG_REG(PARSER_SUB_WP, parser_sub_start_ptr);
+    SET_MPEG_REG_MASK(PARSER_ES_CONTROL, (7<<ES_SUB_WR_ENDIAN_BIT) | ES_SUB_MAN_RD_PTR);
+
+    spin_unlock_irqrestore(&lock, flags);
+
+    return;
+}
+
