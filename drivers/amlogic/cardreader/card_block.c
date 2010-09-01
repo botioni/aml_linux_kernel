@@ -401,6 +401,7 @@ static void card_queue_bounce_post(struct card_queue *cq)
 	bio_flush_dcache_pages(cq->req->bio);
 }
 
+extern unsigned char *sd_mmc_buf;
 /*
  * Alloc bounce buf for read/write numbers of pages in one request
  */
@@ -417,7 +418,8 @@ static int card_init_bounce_buf(struct card_queue *cq,
 		bouncesz = host->max_req_size;
 
 	if (bouncesz >= PAGE_CACHE_SIZE) {
-		cq->bounce_buf = kmalloc(bouncesz*2, GFP_KERNEL);
+		//cq->bounce_buf = kmalloc(bouncesz, GFP_KERNEL);
+		cq->bounce_buf = sd_mmc_buf;
 		if (!cq->bounce_buf) {
 			printk(KERN_WARNING "%s: unable to "
 				"allocate bounce buffer\n", card->name);
