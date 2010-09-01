@@ -147,30 +147,26 @@ void audio_util_set_dac_format(unsigned format);
 void audio_hw_set_958_mode(unsigned mode, _aiu_958_raw_setting_t * set);
 unsigned int read_i2s_mute_swap_reg(void);
 void audio_i2s_swap_left_right(unsigned int flag);
-#define ADAC_BASE_ADDR                0xd0045000
 
-#define WRITE_ADAC_REG(reg, value) *((volatile unsigned long *) (ADAC_BASE_ADDR+(reg<<2))) = value;
-#define READ_ADAC_REG(reg)  *((volatile unsigned long *) (ADAC_BASE_ADDR+(reg<<2))); 
 
-#define CLEAR_ADAC_REG_MASK(reg, mask) WRITE_ADAC_REG(reg, (READ_ADAC_REG(reg)&(~mask)))
-#define SET_ADAC_REG_MASK(reg, mask)   WRITE_ADAC_REG(reg, (READ_ADAC_REG(reg)|(mask)))
+
 int audio_dac_set(unsigned freq);
 
 
-#define ADAC_RESET                		0x00
-#define ADAC_LATCH                		0x01
-#define ADAC_CLOCK                		0x02
-#define ADAC_I2S_CONFIG_REG1      		0x0c
-#define ADAC_I2S_CONFIG_REG2      		0x0d
-#define ADAC_POWER_CTRL_REG1      		0x10
-#define ADAC_POWER_CTRL_REG2      		0x11
-#define ADAC_POWER_CTRL_REG3      		0x12
-#define ADAC_MUTE_CTRL_REG1       		0x18
-#define ADAC_DAC_ADC_MIXER        		0x1a
-#define ADAC_PLAYBACK_VOL_CTRL_LSB      0x20
-#define ADAC_PLAYBACK_VOL_CTRL_MSB      0x21
-#define ADAC_STEREO_HS_VOL_CTRL_LSB     0x22
-#define ADAC_STEREO_HS_VOL_CTRL_MSB     0x23
+#define ADAC_RESET                		(0x5000+0x00*4)
+#define ADAC_LATCH                		(0x5000+0x01*4)
+#define ADAC_CLOCK                		(0x5000+0x02*4)
+#define ADAC_I2S_CONFIG_REG1      		(0x5000+0x0c*4)
+#define ADAC_I2S_CONFIG_REG2      		(0x5000+0x0d*4)
+#define ADAC_POWER_CTRL_REG1      		(0x5000+0x10*4)
+#define ADAC_POWER_CTRL_REG2      		(0x5000+0x11*4)
+#define ADAC_POWER_CTRL_REG3      		(0x5000+0x12*4)
+#define ADAC_MUTE_CTRL_REG1       		(0x5000+0x18*4)
+#define ADAC_DAC_ADC_MIXER        		(0x5000+0x1a*4)
+#define ADAC_PLAYBACK_VOL_CTRL_LSB              (0x5000+0x20*4)
+#define ADAC_PLAYBACK_VOL_CTRL_MSB              (0x5000+0x21*4)
+#define ADAC_STEREO_HS_VOL_CTRL_LSB             (0x5000+0x22*4)
+#define ADAC_STEREO_HS_VOL_CTRL_MSB             (0x5000+0x23*4)
 
 
 
