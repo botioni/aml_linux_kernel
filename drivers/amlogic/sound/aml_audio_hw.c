@@ -140,9 +140,9 @@ void latch (void)
 {
     int latch;
     latch = 1;
-    WRITE_ADAC_REG(ADAC_LATCH, latch);
+    WRITE_APB_REG(ADAC_LATCH, latch);
     latch = 0;
-    WRITE_ADAC_REG(ADAC_LATCH, latch);
+    WRITE_APB_REG(ADAC_LATCH, latch);
 }
 void wr_adac_regbank (unsigned long rstdpz,
                   unsigned long mclksel,
@@ -163,18 +163,18 @@ void wr_adac_regbank (unsigned long rstdpz,
                   unsigned long lmvol,
                   unsigned long hsvol)
 {
-    WRITE_ADAC_REG(ADAC_RESET, (rstdpz<<1));
-    WRITE_ADAC_REG(ADAC_CLOCK, (mclksel<<0));
-    WRITE_ADAC_REG(ADAC_I2S_CONFIG_REG1, (i2sfsdac<<0));
-    WRITE_ADAC_REG(ADAC_I2S_CONFIG_REG2, (i2ssplit<<3) | (i2smode<<0));
-    WRITE_ADAC_REG(ADAC_POWER_CTRL_REG1, (pdauxdrvrz<<7) | (pdauxdrvlz<<6) | (pdhsdrvrz<<5) | (pdhsdrvlz<<4) | (pddacrz<<1) | (pddaclz<<0));
-    WRITE_ADAC_REG(ADAC_POWER_CTRL_REG2, (pdz<<7));
-    WRITE_ADAC_REG(ADAC_MUTE_CTRL_REG1, (hsmute<<6) | (lmmute<<0));
-    WRITE_ADAC_REG(ADAC_DAC_ADC_MIXER, (lmmix<<5) | (ctr<<1));
-    WRITE_ADAC_REG(ADAC_PLAYBACK_VOL_CTRL_LSB, (lmvol&0xff));
-    WRITE_ADAC_REG(ADAC_PLAYBACK_VOL_CTRL_MSB, (lmvol>>8));
-    WRITE_ADAC_REG(ADAC_STEREO_HS_VOL_CTRL_LSB, (hsvol&0xff));
-    WRITE_ADAC_REG(ADAC_STEREO_HS_VOL_CTRL_MSB, (hsvol>>8));
+    WRITE_APB_REG(ADAC_RESET, (rstdpz<<1));
+    WRITE_APB_REG(ADAC_CLOCK, (mclksel<<0));
+    WRITE_APB_REG(ADAC_I2S_CONFIG_REG1, (i2sfsdac<<0));
+    WRITE_APB_REG(ADAC_I2S_CONFIG_REG2, (i2ssplit<<3) | (i2smode<<0));
+    WRITE_APB_REG(ADAC_POWER_CTRL_REG1, (pdauxdrvrz<<7) | (pdauxdrvlz<<6) | (pdhsdrvrz<<5) | (pdhsdrvlz<<4) | (pddacrz<<1) | (pddaclz<<0));
+    WRITE_APB_REG(ADAC_POWER_CTRL_REG2, (pdz<<7));
+    WRITE_APB_REG(ADAC_MUTE_CTRL_REG1, (hsmute<<6) | (lmmute<<0));
+    WRITE_APB_REG(ADAC_DAC_ADC_MIXER, (lmmix<<5) | (ctr<<1));
+    WRITE_APB_REG(ADAC_PLAYBACK_VOL_CTRL_LSB, (lmvol&0xff));
+    WRITE_APB_REG(ADAC_PLAYBACK_VOL_CTRL_MSB, (lmvol>>8));
+    WRITE_APB_REG(ADAC_STEREO_HS_VOL_CTRL_LSB, (hsvol&0xff));
+    WRITE_APB_REG(ADAC_STEREO_HS_VOL_CTRL_MSB, (hsvol>>8));
 } /* wr_regbank */
 
 int audio_dac_set(unsigned freq)
@@ -240,14 +240,14 @@ int audio_dac_set(unsigned freq)
 	                            // 0=-40dB, 1=-39dB, ..., 0x28=0dB, ..., 0x2e=6dB, >=0x2f Rsrv.
 
     latch();
-	WRITE_ADAC_REG(ADAC_POWER_CTRL_REG2, (0<<7));
+	WRITE_APB_REG(ADAC_POWER_CTRL_REG2, (0<<7));
     latch();
-	WRITE_ADAC_REG(ADAC_POWER_CTRL_REG2, (1<<7));
+	WRITE_APB_REG(ADAC_POWER_CTRL_REG2, (1<<7));
     latch();
 
-	WRITE_ADAC_REG(ADAC_RESET, (0<<1));
+	WRITE_APB_REG(ADAC_RESET, (0<<1));
     latch();
-	WRITE_ADAC_REG(ADAC_RESET, (1<<1));
+	WRITE_APB_REG(ADAC_RESET, (1<<1));
     latch();
 	for (i = 0; i < 1500000; i++) ;
 	for (i = 0; i < 1500000; i++) ;
