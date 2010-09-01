@@ -26,6 +26,13 @@
 #include "video.h"
 #include "vpp.h"
 
+#include "videolog.h"
+//#define CONFIG_VIDEO_LOG
+#ifdef CONFIG_VIDEO_LOG
+#define AMLOG
+#endif
+#include <linux/amlog.h>
+
 /* vpp filter coefficients */
 #define COEF_BICUBIC         0
 #define COEF_3POINT_TRIANGLE 1
@@ -214,6 +221,8 @@ vpp_process_speed_check(u32 width_in,
 
     if (1800 * 1400 * height_out > height_screen * width_in * height_in)
         return 0;
+
+	amlog_mask(LOG_MASK_VPP, "vpp_process_speed_check failed\n");
 
     return 1;
 }
