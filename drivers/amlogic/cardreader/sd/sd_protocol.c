@@ -36,7 +36,7 @@ extern unsigned sdio_timeout_int_times;
 
 #ifdef SD_MMC_ALLOC_MEMORY
 unsigned char *sd_mmc_phy_buf = NULL;
-static unsigned char *sd_mmc_buf = NULL;
+unsigned char *sd_mmc_buf = NULL;
 static unsigned sd_mmc_buf_from_sys = 0;
 #else
 static unsigned char sd_mmc_buf[SD_MMC_BUFFER_SIZE];
@@ -552,8 +552,9 @@ int sd_send_cmd_hw(unsigned char cmd, unsigned long arg, SD_Response_Type_t res_
 			else
 				cmd_ext_reg->data_rw_number = sd_mmc_info->blk_len * 8 + 16 - 1;
 
-			data_dma_from_device_addr = dma_map_single(NULL, (void *)data_buf, data_cnt, DMA_FROM_DEVICE );
-			buffer = (unsigned char*)data_dma_from_device_addr;
+			//data_dma_from_device_addr = dma_map_single(NULL, (void *)data_buf, data_cnt, DMA_FROM_DEVICE );
+			//buffer = (unsigned char*)data_dma_from_device_addr;
+			buffer = sd_mmc_phy_buf;
 			break;
 
         case SD_SWITCH_FUNCTION:
@@ -576,10 +577,10 @@ int sd_send_cmd_hw(unsigned char cmd, unsigned long arg, SD_Response_Type_t res_
 			else
 				cmd_ext_reg->data_rw_number = sd_mmc_info->blk_len * 8 + 16 - 1;
 			
-			data_dma_to_device_addr=dma_map_single(NULL, (void *)data_buf, data_cnt, DMA_TO_DEVICE);	
-			buffer = (unsigned char*)data_dma_to_device_addr;
+			//data_dma_to_device_addr=dma_map_single(NULL, (void *)data_buf, data_cnt, DMA_TO_DEVICE);	
+			//buffer = (unsigned char*)data_dma_to_device_addr;
 
-			//buffer = sd_mmc_phy_buf;
+			buffer = sd_mmc_phy_buf;
 			//inv_dcache_range((unsigned long)buffer, ((unsigned long)buffer + data_cnt));
 			break;
 
