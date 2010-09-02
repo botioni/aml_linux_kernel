@@ -26,60 +26,57 @@
 #define MPEG_VD_SEL_WID                 1
 /* indicates MPEG field ID,written by software.
 0: EVEN FIELD 1: ODD FIELD */
-#define MPEG_FE_BIT                     30
-#define MPEG_FE_WID                     1
-#define FORCE_FE_BIT                    29   // for test
-#define FORCE_GO_FE_WID                 1    // pulse signal
-#define FORCE_GO_LN_BIT                 28   // for test
-#define FORCE_GO_LN_WID                 1    // pulse signal
-#define MPEG_GO_FE_EN_BIT               27
-#define MPEG_GO_FE_EN_WID               1
+#define MPEG_FID_BIT                    30
+#define MPEG_FID_WID                    1
+#define FORCE_GFLD_BIT                  29   // for test
+#define FORCE_GFLD_WID                  1    // pulse signal
+#define FORCE_GLN_BIT                   28   // for test
+#define FORCE_GLN_WID                   1    // pulse signal
 /* vdin read enable after hold lines counting from delayed Go-field (VS). */
-#define HOLD_LN_BIT                     20
-#define HOLD_LN_WID                     7
+#define HOLD_LINES_BIT                  20
+#define HOLD_LINES_WID                  7
 #define DLY_GF_EN_BIT                   19
 #define DLY_GF_EN_WID                   1
 #define DLY_GF_LNUM_BIT                 12
 #define DLY_GF_LNUM_WID                 7    // delay go field lines
 /* 00: component0_in 01: component1_in 10: component2_in */
-#define C2_OUT_SW_BIT                   10
-#define C2_OUT_SW_WID                   2
+#define C2_OUT_SWT_BIT                  10
+#define C2_OUT_SWT_WID                  2
 /* 00: component0_in 01: component1_in 10: component2_in */
-#define C1_OUT_SW_BIT                   8
-#define C1_OUT_SW_WID                   2
+#define C1_OUT_SWT_BIT                  8
+#define C1_OUT_SWT_WID                  2
 /* 00: component0_in 01: component1_in 10: component2_in */
-#define C0_OUT_SW_BIT                   6
-#define C0_OUT_SW_WID                   2
+#define C0_OUT_SWT_BIT                  6
+#define C0_OUT_SWT_WID                  2
 /* 0: no data input 1: common data input */
-#define COMMON_IN_EN_BIT                4
-#define COMMON_IN_EN_WID                1
+#define CDATA_IN_EN_BIT                 4
+#define CDATA_IN_EN_WID                 1
 /* 1: MPEG, 2: 656, 3: TVFE, 4: CDV2, 5: HDMI_Rx,6: DVIN otherwise: NULL */
 #define SEL_BIT                         0
 #define SEL_WID                         4
 
-
 //#define VDIN_ACTIVE_MAX_PIX_CNT_STATUS             0x1203
 /* ~field_hold & prehsc input active max pixel every line output of window */
-#define AMAX_PCNT_BIT                   16
-#define AMAX_PCNT_WID                   13
-#define AMAX_PCNTS_BIT                  0    // latch by go_field
-#define AMAX_PCNTS_WID                  13
+#define AMP_CNT_BIT                     16
+#define AMP_CNT_WID                     13
+#define AMP_CNT_SDW_BIT                 0    // latch by go_field
+#define AMP_CNT_SDW_WID                 13
 
 //#define VDIN_LCNT_STATUS                           0x1204
 /* line count by force_go_line |sel_go_line :output of decimate */
-#define GO_LCNT_BIT                     16
-#define GO_LCNT_WID                     13
+#define GLINE_CNT_BIT                   16
+#define GLINE_CNT_WID                   13
 /* line  count prehsc input active max pixel every active line output of window */
-#define ALCNT_BIT                       0
-#define ALCNT_WID                       13
+#define ALINE_CNT_BIT                   0
+#define ALINE_CNT_WID                   13
 
 //#define VDIN_COM_STATUS0                        0x1205
 #define LFIFO_BCNT_BIT                  3
 #define LFIFO_BCNT_WID                  10   //wren + read -
-#define DIRECT_STS_BIT                  2
-#define DIRECT_STS_WID                  1    // direct_done_clr_bit & reg_wpluse
-#define NR_STS_BIT                      1
-#define NR_STS_WID                      1    // nr_done_clr_bit & reg_wpluse
+#define DDONE_STS_BIT                   2
+#define DDONE_STS_WID                   1    // direct_done_clr_bit & reg_wpluse
+#define NRDONE_STS_BIT                  1
+#define NRDONE_STS_WID                  1    // nr_done_clr_bit & reg_wpluse
 #define FIELD_BIT                       0
 #define FIELD_WID                       1
 
@@ -102,78 +99,78 @@
 #define ASFIFO1_CNT_WID                 6
 
 //#define VDIN_LCNT_SHADOW_STATUS                 0x1207
-#define GO_LCNTS_BIT                    16
-#define GO_LCNTS_WID                    13   // latch by go_field
-#define ALCNTS_BIT                      0
-#define ALCNTS_WID                      13   // latch by go_field
+#define GL_CNT_SDW_BIT                  16
+#define GL_CNT_SDW_WID                  13   // latch by go_field
+#define AL_CNT_SDW_BIT                  0
+#define AL_CNT_SDW_WID                  13   // latch by go_field
 
 //#define VDIN_ASFIFO_CTRL0                       0x1208
-#define ASF2_DE_EN_BIT                  23
-#define ASF2_DE_EN_WID                  1
-#define ASF2_GFE_EN_BIT                 22
-#define ASF2_GFE_EN_WID                 1
-#define ASF2_GLN_EN_BIT                 21
-#define ASF2_GLN_EN_WID                 1
-#define ASF2_NAIN_VS_BIT                20
-#define ASF2_NAIN_VS_WID                1
-#define ASF2_NAIN_HS_BIT                19
-#define ASF2_NAIN_HS_WID                1
-#define ASF2_VRST_F_BIT                 18
-#define ASF2_VRST_F_WID                 1
-#define ASF2_OSTS_CL_BIT                17
-#define ASF2_OSTS_CL_WID                1
-#define ASF2_RST_BIT                    16
-#define ASF2_RST_WID                    1    // write 1 & then 0 to reset
-#define ASF1_DE_EN_BIT                  7
-#define ASF1_DE_EN_WID                  1
-#define ASF1_GFE_EN_BIT                 6
-#define ASF1_GFE_EN_WID                 1
-#define ASF1_GLN_EN_BIT                 5
-#define ASF1_GLN_EN_WID                 1
-#define ASF1_NAIN_VS_BIT                4
-#define ASF1_NAIN_VS_WID                1
-#define ASF1_NAIN_HS_BIT                3
-#define ASF1_NAIN_HS_WID                1
-#define ASF1_VRST_F_BIT                 2
-#define ASF1_VRST_F_WID                 1
-#define ASF1_OSTS_CL_BIT                1
-#define ASF1_OSTS_CL_WID                1
-#define ASF1_RST_BIT                    0
-#define ASF1_RST_WID                    1    // write 1 & then 0 to reset
+#define A2_DE_EN_BIT                    23
+#define A2_DE_EN_WID                    1
+#define A2_GFLD_EN_BIT                  22
+#define A2_GFLD_EN_WID                  1
+#define A2_GLN_EN_BIT                   21
+#define A2_GLN_EN_WID                   1
+#define A2_NA_IN_VS_BIT                 20
+#define A2_NA_IN_VS_WID                 1
+#define A2_NA_IN_HS_BIT                 19
+#define A2_NA_IN_HS_WID                 1
+#define A2_VS_RST_F_BIT                 18
+#define A2_VS_RST_F_WID                 1
+#define A2_OSTS_CLR_BIT                 17
+#define A2_OSTS_CLR_WID                 1
+#define A2_RST_BIT                      16
+#define A2_RST_WID                      1    // write 1 & then 0 to reset
+#define A1_DE_EN_BIT                    7
+#define A1_DE_EN_WID                    1
+#define A1_GFLD_EN_BIT                  6
+#define A1_GFLD_EN_WID                  1
+#define A1_GLN_EN_BIT                   5
+#define A1_GLN_EN_WID                   1
+#define A1_NA_IN_VS_BIT                 4
+#define A1_NA_IN_VS_WID                 1
+#define A1_NA_IN_HS_BIT                 3
+#define A1_NA_IN_HS_WID                 1
+#define A1_VS_RST_F_BIT                 2
+#define A1_VS_RST_F_WID                 1
+#define A1_OSTS_CLR_BIT                 1
+#define A1_OSTS_CLR_WID                 1
+#define A1_RST_BIT                      0
+#define A1_RST_WID                      1    // write 1 & then 0 to reset
 
-//#define VDIN_ASFIFO_CTRL1                       0x1209
-#define ASF4_DE_EN_BIT                  23
-#define ASF4_DE_EN_WID                  1
-#define ASF4_GFE_EN_BIT                 22
-#define ASF4_GFE_EN_WID                 1
-#define ASF4_GLN_EN_BIT                 21
-#define ASF4_GLN_EN_WID                 1
-#define ASF4_NAIN_VS_BIT                20
-#define ASF4_NAIN_VS_WID                1
-#define ASF4_NAIN_HS_BIT                19
-#define ASF4_NAIN_HS_WID                1
-#define ASF4_VRST_F_BIT                 18
-#define ASF4_VRST_F_WID                 1
-#define ASF4_OSTS_CL_BIT                17
-#define ASF4_OSTS_CL_WID                1
-#define ASF4_RST_BIT                    16
-#define ASF4_RST_WID                    1    // write 1 & then 0 to reset
-#define ASF3_DE_EN_BIT                  7
-#define ASF3_DE_EN_WID                  1
-#define ASF3_GFE_EN_BIT                 6
-#define ASF3_GFE_EN_WID                 1
-#define ASF3_GLN_EN_BIT                 5
-#define ASF3_GLN_EN_WID                 1
-#define ASF3_NAIN_VS_BIT                4
-#define ASF3_NAIN_VS_WID                1
-#define ASF3_NAIN_HS_BIT                3
-#define ASF3_NAIN_HS_WID                1
-#define ASF3_VRST_F_BIT                 2
-#define ASF3_VRST_F_WID                 1
-#define ASF3_OSTS_CL_BIT                1
-#define ASF3_OSTS_CL_WID                1
-#define ASF3_RST_BIT                    0
-#define ASF3_RST_WID                    1    // write 1 & then 0 to reset
+//#define VDIN_ASFIFO_CTRL1                         0x1209
+#define A4_DE_EN_BIT                    23
+#define A4_DE_EN_WID                    1
+#define A4_GFLD_EN_BIT                  22
+#define A4_GFLD_EN_WID                  1
+#define A4_GLN_EN_BIT                   21
+#define A4_GLN_EN_WID                   1
+#define A4_NA_IN_VS_BIT                 20
+#define A4_NA_IN_VS_WID                 1
+#define A4_NA_IN_HS_BIT                 19
+#define A4_NA_IN_HS_WID                 1
+#define A4_VS_RST_F_BIT                 18
+#define A4_VS_RST_F_WID                 1
+#define A4_OSTS_CLR_BIT                 17
+#define A4_OSTS_CLR_WID                 1
+#define A4_RST_BIT                      16
+#define A4_RST_WID                      1    // write 1 & then 0 to reset
+#define A3_DE_EN_BIT                    7
+#define A3_DE_EN_WID                    1
+#define A3_GFLD_EN_BIT                  6
+#define A3_GFLD_EN_WID                  1
+#define A3_GLN_EN_BIT                   5
+#define A3_GLN_EN_WID                   1
+#define A3_NA_IN_VS_BIT                 4
+#define A3_NA_IN_VS_WID                 1
+#define A3_NA_IN_HS_BIT                 3
+#define A3_NA_IN_HS_WID                 1
+#define A3_VS_RST_F_BIT                 2
+#define A3_VS_RST_F_WID                 1
+#define A3_OSTS_CLR_BIT                 1
+#define A3_OSTS_CLR_WID                 1
+#define A3_RST_BIT                      0
+#define A3_RST_WID                      1    // write 1 & then 0 to reset
 
 //#define VDIN_WIDTHM1I_WIDTHM1O                  0x120a
 #define WIDTHM1I_BIT                    16
@@ -182,28 +179,28 @@
 #define WIDTHM1O_WID                    13
 
 //#define VDIN_SC_MISC_CTRL                       0x120b
-#define INIT_PIN_PT_BIT                 8
-#define INIT_PIN_PT_WID                 7    // signed value for short line output
-#define PRE_HS_EN_BIT                   7
-#define PRE_HS_EN_WID                   1    // pre-hscaler: 1/2 coarse scale down
-#define HSCALER_EN_BIT                  6
-#define HSCALER_EN_WID                  1    // hscaler: fine scale down
+#define INIT_PI_PTR_BIT                 8
+#define INIT_PI_PTR_WID                 7    // signed value for short line output
+#define PRE_HSCL_EN_BIT                 7
+#define PRE_HSCL_EN_WID                 1    // pre-hscaler: 1/2 coarse scale down
+#define HSCL_EN_BIT                     6
+#define HSCL_EN_WID                     1    // hscaler: fine scale down
 #define SLN_OUT_EN_BIT                  5
 #define SLN_OUT_EN_WID                  1
 /*when decimation timing located in between 2 input pixels, decimate the nearest one*/
-#define HSN_EN_BIT                      4
-#define HSN_EN_WID                      1
-#define PHASE0A_EN_BIT                  3
-#define PHASE0A_EN_WID                  1
+#define HSNEAR_EN_BIT                   4
+#define HSNEAR_EN_WID                   1
+#define PHASE0_A_EN_BIT                 3
+#define PHASE0_A_EN_WID                 1
 /* filter pixel buf len (depth), max is 4 in IP design */
-#define HSB_LTH_BIT                     0
-#define HSB_LTH_WID                     3
+#define HSBANK_LEN_BIT                  0
+#define HSBANK_LEN_WID                  3
 
 //#define VDIN_HSC_PHASE_STEP                     0x120c
-#define HSP_STEP_I_BIT                  24
-#define HSP_STEP_I_WID                  5
-#define HSP_STEP_F_BIT                  0
-#define HSP_STEP_F_WID                  24
+#define HSPSTEP_INT_BIT                 24
+#define HSPSTEP_INT_WID                 5
+#define HSPSTEP_FRA_BIT                 0
+#define HSPSTEP_FRA_WID                 24
 
 //#define VDIN_HSC_INI_CTRL                          0x120d
 /* repeatedly decimation of pixel #0 of each line? */
@@ -270,27 +267,27 @@
 #define MATRIX_POF2_WID                 11   // s8.2
 
 //#define VDIN_LFIFO_CTRL                         0x121a
-#define LFIFOB_SIZE_BIT                 0
-#define LFIFOB_SIZE_WID                 12
+#define LFBUF_SIZE_BIT                  0
+#define LFBUF_SIZE_WID                  12
 
 //#define VDIN_COM_GCLK_CTRL                      0x121b
-#define CGCTRL_BB_BIT                   14
-#define CGCTRL_BB_WID                   2    // 00: auto, 01: off, 1x: on
-#define CGCTRL_HIST_BIT                 12
-#define CGCTRL_HIST_WID                 2    // 00: auto, 01: off, 1x: on
-#define CGCTRL_LF_BIT                   10
-#define CGCTRL_LF_WID                   2    // 00: auto, 01: off, 1x: on
-#define CGCTRL_M_BIT                    8
-#define CGCTRL_M_WID                    2    // 00: auto, 01: off, 1x: on
-#define CGCTRL_HS_BIT                   6
-#define CGCTRL_HS_WID                   2    // 00: auto, 01: off, 1x: on
-#define CGCTRL_PHS_BIT                  4
-#define CGCTRL_PHS_WID                  2    // 00: auto, 01: off, 1x: on
-#define CGCTRL_TOP_BIT                  2
-#define CGCTRL_TOP_WID                  2    // 00: auto, 01: off, 1x: on
+#define CGC_BBAR_BIT                    14
+#define CGC_BBAR_WID                    2    // 00: auto, 01: off, 1x: on
+#define CGC_HIST_BIT                    12
+#define CGC_HIST_WID                    2    // 00: auto, 01: off, 1x: on
+#define CGC_LFIFO_BIT                   10
+#define CGC_LFIFO_WID                   2    // 00: auto, 01: off, 1x: on
+#define CGC_MATRIX_BIT                  8
+#define CGC_MATRIX_WID                  2    // 00: auto, 01: off, 1x: on
+#define CGC_HSCL_BIT                    6
+#define CGC_HSCL_WID                    2    // 00: auto, 01: off, 1x: on
+#define CGC_PHSCL_BIT                   4
+#define CGC_PHSCL_WID                   2    // 00: auto, 01: off, 1x: on
+#define CGC_TOP_BIT                     2
+#define CGC_TOP_WID                     2    // 00: auto, 01: off, 1x: on
 /* Caution !!! never turn it off, otherwise no way to wake up VDIN unless power reset  */
-#define CGCTRL_REG_BIT                  0
-#define CGCTRL_REG_WID                  1    //  0: auto,  1: off. Caution !!!
+#define CGC_REG_BIT                     0
+#define CGC_REG_WID                     1    //  0: auto,  1: off. Caution !!!
 
 //#define VDIN_WR_CTRL                            0x1220
 #define WR_OUT_CTRL_BIT                 24
@@ -299,10 +296,10 @@
 #define FRA_RST_EN_WID                  1
 #define LF_RST_EN_BIT                   22   // reset LFIFO on VS (Go_field)
 #define LF_RST_EN_WID                   1
-#define DD_CLR_BIT_BIT                  21   // used by other modules
-#define DD_CLR_BIT_WID                  1
-#define NRD_CLR_BIT_BIT                 20   // used by other modules
-#define NRD_CLR_BIT_WID                 1
+#define DDONE_CLR_BIT                   21   // used by other modules
+#define DDONE_CLR_WID                   1
+#define NRDONE_CLR_BIT                  20   // used by other modules
+#define NRDONE_CLR_WID                  1
 #define WR_FORMAT_BIT                   12
 #define WR_FORMAT_WID                   1    // 0: 422, 1: 444 directly send out
 /* vdin_wr_canvas = vdin_wr_canvas_dbuf_en ? wr_canvas_shadow :wr_canvas;  */
@@ -565,8 +562,8 @@
 #define HIST_OB_62_WID                  16
 
 //#define VDIN_BLKBAR_CTRL0                       0x1260
-#define BB_BLEVEL_BIT                   22
-#define BB_BLEVEL_WID                   10   // threshold to judge a black point
+#define BLK_LEVEL_BIT                   22
+#define BLK_LEVEL_WID                   10   // threshold to judge a black point
 #define BB_HWID_BIT                     8
 #define BB_HWID_WID                     13   // left and right region width
 /* select yin or uin or vin to be the valid input */
@@ -574,8 +571,8 @@
 #define BB_COMP_SEL_WID                 3
 /* sw statistic of black pixels of each block,
 1: search once, 0: search continuously till the exact edge */
-#define BB_SW_ST_EN_BIT                 4
-#define BB_SW_ST_EN_WID                 1
+#define SW_STAT_EN_BIT                  4
+#define SW_STAT_EN_WID                  1
 #define BB_DRST_N_BIT                   3
 #define BB_DRST_N_WID                   1    // write 0 & then 1 to reset
 /* 0: matrix_dout, 1: hscaler_dout,
@@ -583,8 +580,8 @@
 #define BB_DIN_SEL_BIT                  1
 #define BB_DIN_SEL_WID                  2
 /* blkbar_din_srdy blkbar_din_rrdy  enable */
-#define BB_DTOP_EN_BIT                  0
-#define BB_DTOP_EN_WID                  1
+#define DET_TOP_EN_BIT                  0
+#define DET_TOP_EN_WID                  1
 
 //#define VDIN_BLKBAR_H_START_END                    0x1261
 #define BB_HSTART_BIT                   16
@@ -612,51 +609,51 @@
 #define BB_ROW_TH2_WID                  13
 
 //#define VDIN_BLKBAR_IND_LEFT_START_END             0x1265
-#define BB_LRG_HS_BIT                   16
-#define BB_LRG_HS_WID                   13
-#define BB_LRG_HE_BIT                   0
-#define BB_LRG_HE_WID                   13
+#define LREGION_HS_BIT                  16
+#define LREGION_HS_WID                  13
+#define LREGION_HE_BIT                  0
+#define LREGION_HE_WID                  13
 
 //#define VDIN_BLKBAR_IND_RIGHT_START_END            0x1266
-#define BB_RRG_HS_BIT                   16
-#define BB_RRG_HS_WID                   13
-#define BB_RRG_HE_BIT                   0
-#define BB_RRG_HE_WID                   13
+#define RREGION_HS_BIT                  16
+#define RREGION_HS_WID                  13
+#define RREGION_HE_BIT                  0
+#define RREGION_HE_WID                  13
 
 //#define VDIN_BLKBAR_IND_LEFT1_CNT                  0x1267
 /* Black pixels at left part of the left region */
-#define BB_L1_CNT_BIT                   0
-#define BB_L1_CNT_WID                   20
+#define LEFT1_CNT_BIT                   0
+#define LEFT1_CNT_WID                   20
 
 //#define VDIN_BLKBAR_IND_LEFT2_CNT                  0x1268
 /* Black pixels at right part of the left region */
-#define BB_L2_CNT_BIT                    0
-#define BB_L2_CNT_WID                    20
+#define LEFT2_CNT_BIT                   0
+#define LEFT2_CNT_WID                   20
 
 //#define VDIN_BLKBAR_IND_RIGHT1_CNT                 0x1269
 /* Black pixels at right part of the left region */
-#define BB_R1_CNT_BIT                   0
-#define BB_R1_CNT_WID                   20
+#define RIGHT1_CNT_BIT                  0
+#define RIGHT1_CNT_WID                  20
 
 //#define VDIN_BLKBAR_IND_RIGHT2_CNT                 0x126a
 /* Black pixels at right part of the right region */
-#define BB_R2_CNT_BIT                   0
-#define BB_R2_CNT_WID                   20
+#define RIGHT2_CNT_BIT                  0
+#define RIGHT2_CNT_WID                  20
 
 //#define VDIN_BLKBAR_STATUS0                        0x126b
 /* LEFT/RIGHT Black Bar detection done */
-#define BB_DET_DONE_BIT                 29
-#define BB_DET_DONE_WID                 1
-#define BB_TPOS_BIT                     16
-#define BB_TPOS_WID                     13
-#define BB_BPOS_BIT                     0
-#define BB_BPOS_WID                     13
+#define DET_DONE_BIT                    29
+#define DET_DONE_WID                    1
+#define TOP_POS_BIT                     16
+#define TOP_POS_WID                     13
+#define BTM_POS_BIT                     0
+#define BTM_POS_WID                     13
 
 //#define VDIN_BLKBAR_STATUS1                        0x126c
-#define BB_LPOS_BIT                     16
-#define BB_LPOS_WID                     13
-#define BB_RPOS_BIT                     0
-#define BB_RPOS_WID                     13
+#define LEFT_POS_BIT                    16
+#define LEFT_POS_WID                    13
+#define RIGHT_POS_BIT                   0
+#define RIGHT_POS_WID                   13
 
 #endif
 
