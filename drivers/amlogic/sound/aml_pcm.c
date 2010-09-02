@@ -290,7 +290,7 @@ static int snd_aml_audio_hw_params(struct snd_pcm_substream *substream,
         return ret;
 
     runtime->dma_addr = virt_to_phys(runtime->dma_area);
-	runtime->dma_area =ioremap_nocache(runtime->dma_area, 32 * 1024);
+    runtime->dma_area = ioremap_nocache(runtime->dma_addr, runtime->dma_bytes);
     printk(" snd_aml_audio_hw_params runtime->dma_addr 0x(%x)\n",
                (unsigned int)runtime->dma_addr);
     printk(" snd_aml_audio_hw_params runtime->dma_area 0x(%x)\n",
@@ -319,11 +319,12 @@ static int snd_aml_audio_playback_prepare(struct snd_pcm_substream
    	audio_set_clk(s->sample_rate, AUDIO_CLK_256FS);       // XD: div by n+1 by n+1
 	audio_dac_set(s->sample_rate);
 	//audio_set_i2s_mode(config.i2s_mode);
-
+    
     audio_set_aiubuf(substream->runtime->dma_addr,
                      substream->runtime->dma_bytes);
     audio_set_958outbuf(substream->runtime->dma_addr,
                         substream->runtime->dma_bytes);
+    memset((void*)substream->runtime->dma_area,0,substream->runtime->dma_bytes);
     s->I2S_addr = substream->runtime->dma_addr;
 
     dug_printk("music channel=%d\n", substream->runtime->channels);
