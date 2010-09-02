@@ -100,19 +100,19 @@ enum   vdin_src_e           vdin_src;
 static inline void vdin_set_clkgate( vdin_clkgate_cfg_t *clkgate_cfg)
 {
     WRITE_CBUS_REG_BITS(VDIN_COM_GCLK_CTRL, (unsigned int)(clkgate_cfg->blackbar),
-                        CGCTRL_BB_BIT, CGCTRL_BB_WID);
+                        CGC_BBAR_BIT, CGC_BBAR_WID);
     WRITE_CBUS_REG_BITS(VDIN_COM_GCLK_CTRL, (unsigned int)(clkgate_cfg->histgram),
-                        CGCTRL_HIST_BIT, CGCTRL_HIST_WID);
+                        CGC_HIST_BIT, CGC_HIST_WID);
     WRITE_CBUS_REG_BITS(VDIN_COM_GCLK_CTRL, (unsigned int)(clkgate_cfg->lfifo),
-                        CGCTRL_LF_BIT, CGCTRL_LF_WID);
+                        CGC_LFIFO_BIT, CGC_LFIFO_WID);
     WRITE_CBUS_REG_BITS(VDIN_COM_GCLK_CTRL, (unsigned int)(clkgate_cfg->matrix),
-                        CGCTRL_M_BIT, CGCTRL_M_WID);
+                        CGC_MATRIX_BIT, CGC_MATRIX_WID);
     WRITE_CBUS_REG_BITS(VDIN_COM_GCLK_CTRL, (unsigned int)(clkgate_cfg->hscaler),
-                        CGCTRL_HS_BIT, CGCTRL_HS_WID);
+                        CGC_HSCL_BIT, CGC_HSCL_WID);
     WRITE_CBUS_REG_BITS(VDIN_COM_GCLK_CTRL, (unsigned int)(clkgate_cfg->prehscaler),
-                        CGCTRL_PHS_BIT, CGCTRL_PHS_WID);
+                        CGC_PHSCL_BIT, CGC_PHSCL_WID);
     WRITE_CBUS_REG_BITS(VDIN_COM_GCLK_CTRL, (unsigned int)(clkgate_cfg->top),
-                        CGCTRL_TOP_BIT, CGCTRL_TOP_WID);
+                        CGC_TOP_BIT, CGC_TOP_WID);
 }
 
 /* function collection - MPEG
@@ -125,9 +125,9 @@ static inline void vdin_set_mpeg( vdin_mpeg_cfg_t * mpeg_cfg)
     val = mpeg_cfg->en;
     WRITE_CBUS_REG_BITS(VDIN_COM_CTRL0, val, MPEG_VD_SEL_BIT, MPEG_VD_SEL_WID);
     val = (unsigned int)(mpeg_cfg->field);
-    WRITE_CBUS_REG_BITS(VDIN_COM_CTRL0, val, MPEG_FE_BIT, MPEG_FE_WID);
+    WRITE_CBUS_REG_BITS(VDIN_COM_CTRL0, val, MPEG_FID_BIT, MPEG_FID_WID);
     val = mpeg_cfg->go_field_en;
-    WRITE_CBUS_REG_BITS(VDIN_COM_CTRL0, val, MPEG_GO_FE_EN_BIT, MPEG_GO_FE_EN_WID);
+    WRITE_CBUS_REG_BITS(VDIN_COM_CTRL0, val, MPEG_GFE_EN_BIT, MPEG_GFE_EN_WID);
 }
 
 static inline unsigned int vdin_get_afifo( enum vdin_src_e src)
@@ -151,10 +151,10 @@ static inline void vdin_reset_afifo(enum vdin_src_e src)
     switch (src)
     {
         case VDIN_SRC_BT656IN:
-            WRITE_CBUS_REG_BITS(VDIN_ASFIFO_CTRL0, 1, ASF1_RST_BIT, ASF1_RST_WID);
-            WRITE_CBUS_REG_BITS(VDIN_ASFIFO_CTRL0, 0, ASF1_RST_BIT, ASF1_RST_WID);
-            WRITE_CBUS_REG_BITS(VDIN_ASFIFO_CTRL0, 1, ASF1_OSTS_CL_BIT, ASF1_OSTS_CL_WID);
-            WRITE_CBUS_REG_BITS(VDIN_ASFIFO_CTRL0, 0, ASF1_OSTS_CL_BIT, ASF1_OSTS_CL_WID);
+            WRITE_CBUS_REG_BITS(VDIN_ASFIFO_CTRL0, 1, A1_RST_BIT, A1_RST_WID);
+            WRITE_CBUS_REG_BITS(VDIN_ASFIFO_CTRL0, 0, A1_RST_BIT, A1_RST_WID);
+            WRITE_CBUS_REG_BITS(VDIN_ASFIFO_CTRL0, 1, A1_OSTS_CLR_BIT, A1_OSTS_CLR_WID);
+            WRITE_CBUS_REG_BITS(VDIN_ASFIFO_CTRL0, 0, A1_OSTS_CLR_BIT, A1_OSTS_CLR_WID);
             break;
         default:
             break;
@@ -180,12 +180,12 @@ static inline void vdin_set_afifo(enum vdin_src_e src)
     switch (src)
     {
         case VDIN_SRC_BT656IN:
-            WRITE_CBUS_REG_BITS(VDIN_ASFIFO_CTRL0, 1, ASF1_DE_EN_BIT, ASF1_DE_EN_WID);
-            WRITE_CBUS_REG_BITS(VDIN_ASFIFO_CTRL0, 1, ASF1_GFE_EN_BIT, ASF1_GFE_EN_WID);
-            WRITE_CBUS_REG_BITS(VDIN_ASFIFO_CTRL0, 1, ASF1_GLN_EN_BIT, ASF1_GLN_EN_WID);
-            WRITE_CBUS_REG_BITS(VDIN_ASFIFO_CTRL0, 0, ASF1_NAIN_VS_BIT, ASF1_NAIN_VS_WID);
-            WRITE_CBUS_REG_BITS(VDIN_ASFIFO_CTRL0, 0, ASF1_NAIN_HS_BIT, ASF1_NAIN_HS_WID);
-            WRITE_CBUS_REG_BITS(VDIN_ASFIFO_CTRL0, 1, ASF1_VRST_F_BIT, ASF1_VRST_F_WID);
+            WRITE_CBUS_REG_BITS(VDIN_ASFIFO_CTRL0, 1, A1_DE_EN_BIT, A1_DE_EN_WID);
+            WRITE_CBUS_REG_BITS(VDIN_ASFIFO_CTRL0, 1, A1_GFLD_EN_BIT, A1_GFLD_EN_WID);
+            WRITE_CBUS_REG_BITS(VDIN_ASFIFO_CTRL0, 1, A1_GLN_EN_BIT, A1_GLN_EN_WID);
+            WRITE_CBUS_REG_BITS(VDIN_ASFIFO_CTRL0, 0, A1_NA_IN_VS_BIT, A1_NA_IN_VS_WID);
+            WRITE_CBUS_REG_BITS(VDIN_ASFIFO_CTRL0, 0, A1_NA_IN_HS_BIT, A1_NA_IN_HS_WID);
+            WRITE_CBUS_REG_BITS(VDIN_ASFIFO_CTRL0, 1, A1_VS_RST_F_BIT, A1_VS_RST_F_WID);
             break;
         default:
             break;
@@ -198,34 +198,34 @@ static inline void vdin_set_mux(enum vdin_mux_e mux)
     switch (mux)
     {
         case VDIN_MUX_YCBCR:
-            WRITE_CBUS_REG_BITS(VDIN_COM_CTRL0, 2, C2_OUT_SW_BIT, C2_OUT_SW_WID);
-            WRITE_CBUS_REG_BITS(VDIN_COM_CTRL0, 1, C1_OUT_SW_BIT, C1_OUT_SW_WID);
-            WRITE_CBUS_REG_BITS(VDIN_COM_CTRL0, 0, C0_OUT_SW_BIT, C0_OUT_SW_WID);
+            WRITE_CBUS_REG_BITS(VDIN_COM_CTRL0, 2, C2_OUT_SWT_BIT, C2_OUT_SWT_WID);
+            WRITE_CBUS_REG_BITS(VDIN_COM_CTRL0, 1, C1_OUT_SWT_BIT, C1_OUT_SWT_WID);
+            WRITE_CBUS_REG_BITS(VDIN_COM_CTRL0, 0, C0_OUT_SWT_BIT, C0_OUT_SWT_WID);
             break;
         case VDIN_MUX_YCRCB:
-            WRITE_CBUS_REG_BITS(VDIN_COM_CTRL0, 1, C2_OUT_SW_BIT, C2_OUT_SW_WID);
-            WRITE_CBUS_REG_BITS(VDIN_COM_CTRL0, 2, C1_OUT_SW_BIT, C1_OUT_SW_WID);
-            WRITE_CBUS_REG_BITS(VDIN_COM_CTRL0, 0, C0_OUT_SW_BIT, C0_OUT_SW_WID);
+            WRITE_CBUS_REG_BITS(VDIN_COM_CTRL0, 1, C2_OUT_SWT_BIT, C2_OUT_SWT_WID);
+            WRITE_CBUS_REG_BITS(VDIN_COM_CTRL0, 2, C1_OUT_SWT_BIT, C1_OUT_SWT_WID);
+            WRITE_CBUS_REG_BITS(VDIN_COM_CTRL0, 0, C0_OUT_SWT_BIT, C0_OUT_SWT_WID);
             break;
         case VDIN_MUX_CBCRY:
-            WRITE_CBUS_REG_BITS(VDIN_COM_CTRL0, 1, C2_OUT_SW_BIT, C2_OUT_SW_WID);
-            WRITE_CBUS_REG_BITS(VDIN_COM_CTRL0, 0, C1_OUT_SW_BIT, C1_OUT_SW_WID);
-            WRITE_CBUS_REG_BITS(VDIN_COM_CTRL0, 2, C0_OUT_SW_BIT, C0_OUT_SW_WID);
+            WRITE_CBUS_REG_BITS(VDIN_COM_CTRL0, 1, C2_OUT_SWT_BIT, C2_OUT_SWT_WID);
+            WRITE_CBUS_REG_BITS(VDIN_COM_CTRL0, 0, C1_OUT_SWT_BIT, C1_OUT_SWT_WID);
+            WRITE_CBUS_REG_BITS(VDIN_COM_CTRL0, 2, C0_OUT_SWT_BIT, C0_OUT_SWT_WID);
             break;
         case VDIN_MUX_CBYCR:
-            WRITE_CBUS_REG_BITS(VDIN_COM_CTRL0, 2, C2_OUT_SW_BIT, C2_OUT_SW_WID);
-            WRITE_CBUS_REG_BITS(VDIN_COM_CTRL0, 0, C1_OUT_SW_BIT, C1_OUT_SW_WID);
-            WRITE_CBUS_REG_BITS(VDIN_COM_CTRL0, 1, C0_OUT_SW_BIT, C0_OUT_SW_WID);
+            WRITE_CBUS_REG_BITS(VDIN_COM_CTRL0, 2, C2_OUT_SWT_BIT, C2_OUT_SWT_WID);
+            WRITE_CBUS_REG_BITS(VDIN_COM_CTRL0, 0, C1_OUT_SWT_BIT, C1_OUT_SWT_WID);
+            WRITE_CBUS_REG_BITS(VDIN_COM_CTRL0, 1, C0_OUT_SWT_BIT, C0_OUT_SWT_WID);
             break;
         case VDIN_MUX_CRYCB:
-            WRITE_CBUS_REG_BITS(VDIN_COM_CTRL0, 0, C2_OUT_SW_BIT, C2_OUT_SW_WID);
-            WRITE_CBUS_REG_BITS(VDIN_COM_CTRL0, 2, C1_OUT_SW_BIT, C1_OUT_SW_WID);
-            WRITE_CBUS_REG_BITS(VDIN_COM_CTRL0, 1, C0_OUT_SW_BIT, C0_OUT_SW_WID);
+            WRITE_CBUS_REG_BITS(VDIN_COM_CTRL0, 0, C2_OUT_SWT_BIT, C2_OUT_SWT_WID);
+            WRITE_CBUS_REG_BITS(VDIN_COM_CTRL0, 2, C1_OUT_SWT_BIT, C1_OUT_SWT_WID);
+            WRITE_CBUS_REG_BITS(VDIN_COM_CTRL0, 1, C0_OUT_SWT_BIT, C0_OUT_SWT_WID);
             break;
         case VDIN_MUX_CRCBY:
-            WRITE_CBUS_REG_BITS(VDIN_COM_CTRL0, 0, C2_OUT_SW_BIT, C2_OUT_SW_WID);
-            WRITE_CBUS_REG_BITS(VDIN_COM_CTRL0, 1, C1_OUT_SW_BIT, C1_OUT_SW_WID);
-            WRITE_CBUS_REG_BITS(VDIN_COM_CTRL0, 2, C0_OUT_SW_BIT, C0_OUT_SW_WID);
+            WRITE_CBUS_REG_BITS(VDIN_COM_CTRL0, 0, C2_OUT_SWT_BIT, C2_OUT_SWT_WID);
+            WRITE_CBUS_REG_BITS(VDIN_COM_CTRL0, 1, C1_OUT_SWT_BIT, C1_OUT_SWT_WID);
+            WRITE_CBUS_REG_BITS(VDIN_COM_CTRL0, 2, C0_OUT_SWT_BIT, C0_OUT_SWT_WID);
             break;
         default:
             break;
@@ -238,7 +238,7 @@ static inline void vdin_set_src_mux( vdin_src_mux_cfg_t *src_mux_cfg)
 
     if (src_mux_cfg->src == VDIN_SRC_NULL)  // disable
     {
-        WRITE_CBUS_REG_BITS(VDIN_COM_CTRL0, 0, COMMON_IN_EN_BIT,COMMON_IN_EN_WID);
+        WRITE_CBUS_REG_BITS(VDIN_COM_CTRL0, 0, CDATA_IN_EN_BIT,CDATA_IN_EN_WID);
     }
     else                                    // enable
     {
@@ -247,13 +247,13 @@ static inline void vdin_set_src_mux( vdin_src_mux_cfg_t *src_mux_cfg)
         WRITE_CBUS_REG_BITS(VDIN_COM_CTRL0, (src_mux_cfg->go_field_delay ? 1 : 0),
                             DLY_GF_EN_BIT, DLY_GF_EN_WID);
         WRITE_CBUS_REG_BITS(VDIN_COM_CTRL0, src_mux_cfg->hold_lines,
-                            HOLD_LN_BIT, HOLD_LN_WID);
+                            HOLD_LINES_BIT, HOLD_LINES_WID);
         vdin_set_mux(src_mux_cfg->mux);
 
         WRITE_CBUS_REG_BITS(VDIN_COM_CTRL0, (unsigned int)(src_mux_cfg->src),
                             SEL_BIT, SEL_WID);
-        WRITE_CBUS_REG_BITS(VDIN_COM_CTRL0, 1, COMMON_IN_EN_BIT, COMMON_IN_EN_WID);
-        vdin_set_afifo(src_mux_cfg->src, src_mux_cfg->ratio);
+        WRITE_CBUS_REG_BITS(VDIN_COM_CTRL0, 1, CDATA_IN_EN_BIT, CDATA_IN_EN_WID);
+        vdin_set_afifo(src_mux_cfg->src);
     }
 }
 
@@ -318,37 +318,37 @@ static inline void vdin_set_hscaler( struct vdin_hscl_cfg_s *hsc_cfg)
         hsc_cfg->init_pixi_ptr = -64;
     hsc_cfg->init_pixi_ptr &= VDIN_INIT_PIXEL_INPUT_PTR_MASK;
     WRITE_CBUS_REG_BITS(VDIN_WIDTHM1I_WIDTHM1O, hsc_cfg->src_w-1,
-                        WIDTHM1I_BIT, WIDTHM1I_BIT);
+                        WIDTHM1I_BIT, WIDTHM1I_WID);
     WRITE_CBUS_REG_BITS(VDIN_WIDTHM1I_WIDTHM1O, hsc_cfg->dst_w-1,
-                        WIDTHM1O_BIT, WIDTHM1O_BIT);
+                        WIDTHM1O_BIT, WIDTHM1O_WID);
     WRITE_CBUS_REG_BITS(VDIN_HSC_PHASE_STEP, phase_step_integer,
-                        HSP_STEP_I_BIT, HSP_STEP_I_BIT);
+                        HSPSTEP_INT_BIT, HSPSTEP_INT_WID);
     WRITE_CBUS_REG_BITS(VDIN_HSC_PHASE_STEP, phase_step_fraction,
-                        HSP_STEP_F_BIT, HSP_STEP_F_BIT);
+                        HSPSTEP_FRA_BIT, HSPSTEP_FRA_WID);
     WRITE_CBUS_REG_BITS(VDIN_HSC_INI_CTRL, hsc_cfg->hsc_rpt_p0_num,
-                        HSRPT_P0_N_BIT, HSRPT_P0_N_BIT);
+                        HSRPT_P0_N_BIT, HSRPT_P0_N_WID);
     WRITE_CBUS_REG_BITS(VDIN_HSC_INI_CTRL, hsc_cfg->hsc_ini_rcv_num,
-                        HSINI_RCV_N_BIT, HSINI_RCV_N_BIT);
+                        HSINI_RCV_N_BIT, HSINI_RCV_N_WID);
     WRITE_CBUS_REG_BITS(VDIN_HSC_INI_CTRL, hsc_cfg->hsc_ini_phase,
-                        HSINI_PHASE_BIT, HSINI_PHASE_BIT);
+                        HSINI_PHASE_BIT, HSINI_PHASE_WID);
     WRITE_CBUS_REG_BITS(VDIN_SC_MISC_CTRL, (unsigned int)(hsc_cfg->init_pixi_ptr),
-                        INIT_PIN_PT_BIT, INIT_PIN_PT_BIT);
+                        INIT_PI_PTR_BIT, INIT_PI_PTR_WID);
     WRITE_CBUS_REG_BITS(VDIN_SC_MISC_CTRL, hsc_cfg->prehsc_en,
-                        PRE_HS_EN_BIT, PRE_HS_EN_BIT);
+                        PRE_HSCL_EN_BIT, PRE_HSCL_EN_WID;
     WRITE_CBUS_REG_BITS(VDIN_SC_MISC_CTRL, hsc_cfg->hsc_en,
-                        HSCALER_EN_BIT, HSCALER_EN_BIT);
+                        HSCL_EN_BIT, HSCL_EN_WID);
     WRITE_CBUS_REG_BITS(VDIN_SC_MISC_CTRL, hsc_cfg->short_lineo_en,
-                        SLN_OUT_EN_BIT, SLN_OUT_EN_BIT);
+                        SLN_OUT_EN_BIT, SLN_OUT_EN_WID);
     WRITE_CBUS_REG_BITS(VDIN_SC_MISC_CTRL, hsc_cfg->hsc_nearest_en,
-                        HSN_EN_BIT, HSN_EN_BIT);
+                        HSNEAR_EN_BIT, HSNEAR_EN_WID);
     WRITE_CBUS_REG_BITS(VDIN_SC_MISC_CTRL, hsc_cfg->phase0_always_en,
-                        PHASE0A_EN_BIT, PHASE0A_EN_BIT);
+                        PHASE0_A_EN_BIT, PHASE0_A_EN_WID);
     WRITE_CBUS_REG_BITS(VDIN_SC_MISC_CTRL, (unsigned int)(hsc_cfg->filter_depth),
-                        HSB_LTH_BIT, HSB_LTH_BIT);
+                        HSBANK_LEN_BIT, HSBANK_LEN_WID);
 }
 
 
-static const struct vdin_matrix_s vdin_matrix_lup[30] =
+static const struct vdin_matrix_lup_s vdin_matrix_lup[30] =
 {
     // VDIN_MATRIX_RGB_YUV601
     //    0     0.257  0.504  0.098     16
@@ -539,7 +539,7 @@ static inline void vdin_set_matrix(enum vdin_matrix_csc_e matrix_csc);
 
 static inline void vdin_set_matrix(enum vdin_matrix_csc_e matrix_csc)
 {
-    struct *vdin_matrix_s matrix;
+    struct *vdin_matrix_lup_s matrix;
     if (matrix_csc == VDIN_MATRIX_NULL) // disable
     {
         WRITE_MPEG_REG_BITS(VDIN_MATRIX_CTRL, 0, MATRIX_EN_BIT, MATRIX_EN_WID);
@@ -567,8 +567,8 @@ static inline void vdin_set_lfifo(struct vdin_lfifo_cfg_s lfifo_cfg);
 
 static inline void vdin_set_lfifo(struct vdin_lfifo_cfg_s *lfifo_cfg)
 {
-    WRITE_MPEG_REG_BITS(VDIN_LFIFO_CTRL, lfifo_cfg->en,
-        LFIFOB_SIZE_BIT, LFIFOB_SIZE_BIT);
+    WRITE_MPEG_REG_BITS(VDIN_LFIFO_CTRL, lfifo_cfg->len,
+        LFBUF_SIZE_BIT, LFBUF_SIZE_WID);
     WRITE_MPEG_REG_BITS(VDIN_WR_CTRL, lfifo_cfg->soft_reset_en,
         LF_RST_EN_BIT, LF_RST_EN_BIT,  );
 }
@@ -583,8 +583,8 @@ static inline void vdin_set_output(struct vdin_output_cfg_s *output_cfg)
     WRITE_MPEG_REG_BITS(VDIN_WR_CTRL, output_cfg.control,
                         WR_OUT_CTRL_BIT, WR_OUT_CTRL_WID);
 
-    if((output_cfg.data_format == VDIN_COLOR_RGB444) ||
-        (output_cfg.data_format == VDIN_COLOR_YUV444))
+    if((output_cfg.data_fmt == TVIN_CS_RGB444) ||
+        (output_cfg.data_fmt == TVIN_CS_YUV444))
         temp_data = 1;
     else
         temp_data = 0;
@@ -598,13 +598,13 @@ static inline void vdin_set_output(struct vdin_output_cfg_s *output_cfg)
                         WR_REQ_EN_BIT, WR_REQ_EN_WID);
     WRITE_MPEG_REG_BITS(VDIN_WR_CTRL, output_cfg->canvas_id,
                         WR_CANVAS_BIT, WR_CANVAS_WID);
-    WRITE_MPEG_REG_BITS(VDIN_WR_H_START_END, output_cfg->h_start,
+    WRITE_MPEG_REG_BITS(VDIN_WR_H_START_END, output_cfg->hstart,
                         WR_HSTART_BIT, WR_HSTART_WID);
-    WRITE_MPEG_REG_BITS(VDIN_WR_H_START_END, output_cfg->h_end,
+    WRITE_MPEG_REG_BITS(VDIN_WR_H_START_END, output_cfg->hend,
                         WR_HEND_BIT, WR_HEND_WID);
-    WRITE_MPEG_REG_BITS(VDIN_WR_V_START_END, output_cfg->v_start,
+    WRITE_MPEG_REG_BITS(VDIN_WR_V_START_END, output_cfg->vstart,
                         WR_VSTART_BIT, WR_VSTART_WID);
-    WRITE_MPEG_REG_BITS(VDIN_WR_V_START_END, output_cfg->v_end,
+    WRITE_MPEG_REG_BITS(VDIN_WR_V_START_END, output_cfg->vend,
                         WR_VEND_BIT, WR_VEND_WID);
 }
 
@@ -655,13 +655,13 @@ static inline void vdin_get_histgram(void)
 
 static inline void vdin_set_histgram(struct vdin_hist_cfg_s *hist_cfg)
 {
-    WRITE_MPEG_REG_BITS(VDIN_HIST_H_START_END, hist_cfg->h_start,
+    WRITE_MPEG_REG_BITS(VDIN_HIST_H_START_END, hist_cfg->hstart,
                         HIST_HSTART_BIT, HIST_HSTART_WID);
-    WRITE_MPEG_REG_BITS(VDIN_HIST_H_START_END, hist_cfg->h_end,
+    WRITE_MPEG_REG_BITS(VDIN_HIST_H_START_END, hist_cfg->hend,
                         HIST_HEND_BIT, HIST_HEND_WID);
-    WRITE_MPEG_REG_BITS(VDIN_HIST_V_START_END, hist_cfg->v_start,
+    WRITE_MPEG_REG_BITS(VDIN_HIST_V_START_END, hist_cfg->vstart,
                         HIST_VSTART_BIT, HIST_VSTART_WID);
-    WRITE_MPEG_REG_BITS(VDIN_HIST_V_START_END, hist_cfg->v_end,
+    WRITE_MPEG_REG_BITS(VDIN_HIST_V_START_END, hist_cfg->vend,
                         HIST_VEND_BIT, HIST_VEND_WID);
     WRITE_MPEG_REG_BITS(VDIN_HIST_CTRL, hist_cfg->pow,
                         HIST_POW_BIT, HIST_POW_WID);
@@ -682,41 +682,41 @@ static inline void vdin_set_blackbar(struct vdin_blackbar_cfg_s blackbar_cfg);
 static inline void vdin_get_blackbar(void)
 {
 
-    if (READ_MPEG_REG_BITS(VDIN_BLKBAR_STATUS0, BB_DET_DONE_BIT, BB_DET_DONE_WID)) // done
+    if (READ_MPEG_REG_BITS(VDIN_BLKBAR_STATUS0, DET_DONE_BIT, DET_DONE_WID)) // done
     {
         unsigned int val;
 
         val = READ_MPEG_REG_BITS(VDIN_BLKBAR_IND_LEFT_START_END,
-                BB_LRG_HS_BIT, BB_LRG_HS_BIT);
-        vdin_bbar.left_region_h_start = val;
+                LREGION_HS_BIT, LREGION_HS_WID);
+        vdin_bbar.left_hstart = val;
         val = READ_MPEG_REG_BITS(VDIN_BLKBAR_IND_LEFT_START_END,
-                BB_LRG_HE_BIT, BB_LRG_HE_BIT);
-        vdin_bbar.left_region_h_end = val;
+                LREGION_HE_BIT, LREGION_HE_WID);
+        vdin_bbar.left_hend = val;
         val = READ_MPEG_REG_BITS(VDIN_BLKBAR_IND_RIGHT_START_END,
-                BB_RRG_HS_BIT, BB_RRG_HS_BIT);
-        vdin_bbar.right_region_h_start = val;
+                RREGION_HS_BIT, RREGION_HS_WID);
+        vdin_bbar.right_hstart = val;
         val = READ_MPEG_REG_BITS(VDIN_BLKBAR_IND_RIGHT_START_END,
-                BB_RRG_HE_BIT, BB_RRG_HE_BIT);
-        vdin_bbar.right_region_h_end = val;
+                RREGION_HE_BIT, RREGION_HE_WID);
+        vdin_bbar.right_hend = val;
         val =READ_MPEG_REG_BITS(VDIN_BLKBAR_IND_LEFT1_CNT,
-                BB_L1_CNT_BIT, BB_L1_CNT_BIT);
-        vdin_bbar.left_region_left_black_pixs = val;
+                LEFT1_CNT_BIT, LEFT1_CNT_WID);
+        vdin_bbar.lleft_blk_pixs = val;
         val = READ_MPEG_REG_BITS(VDIN_BLKBAR_IND_LEFT2_CNT,
-                BB_L2_CNT_BIT, BB_L2_CNT_BIT);
-        vdin_bbar.left_region_right_black_pixs = val;
+                LEFT2_CNT_BIT, LEFT2_CNT_WID);
+        vdin_bbar.lright_blk_pixs = val;
         val = READ_MPEG_REG_BITS(VDIN_BLKBAR_IND_RIGHT1_CNT,
-                BB_R1_CNT_BIT, BB_R1_CNT_BIT);
-        vdin_bbar.right_region_left_black_pixs = val;
+                RIGHT1_CNT_BIT, RIGHT1_CNT_BIT);
+        vdin_bbar.rleft_blk_pixs = val;
         val = READ_MPEG_REG_BITS(VDIN_BLKBAR_IND_RIGHT2_CNT,
-                BB_R2_CNT_BIT, BB_R2_CNT_BIT);
-        vdin_bbar.right_region_right_black_pixs = val;
-        val = READ_MPEG_REG_BITS(VDIN_BLKBAR_STATUS0, BB_TPOS_BIT, BB_TPOS_BIT);
+                RIGHT2_CNT_BIT, RIGHT2_CNT_BIT);
+        vdin_bbar.rright_blk_pixs = val;
+        val = READ_MPEG_REG_BITS(VDIN_BLKBAR_STATUS0, TOP_POS_BIT, TOP_POS_WID);
         vdin_bbar.top = val;
-        val = READ_MPEG_REG_BITS(VDIN_BLKBAR_STATUS0, BB_BPOS_BIT, BB_BPOS_BIT);
+        val = READ_MPEG_REG_BITS(VDIN_BLKBAR_STATUS0, BTM_POS_BIT, BTM_POS_WID);
         vdin_bbar.bottom = val;
-        val = READ_MPEG_REG_BITS(VDIN_BLKBAR_STATUS1, BB_LPOS_BIT, BB_LPOS_BIT);
+        val = READ_MPEG_REG_BITS(VDIN_BLKBAR_STATUS1, LEFT_POS_BIT, LEFT_POS_WID);
         vdin_bbar.left = val;
-        val = READ_MPEG_REG_BITS(VDIN_BLKBAR_STATUS1, BB_RPOS_BIT, BB_RPOS_BIT);
+        val = READ_MPEG_REG_BITS(VDIN_BLKBAR_STATUS1, RIGHT_POS_BIT, RIGHT_POS_WID);
         vdin_bbar.right = val;
 
         vdin_bbar.valid = 1;
@@ -737,43 +737,43 @@ static inline void vdin_set_blackbar(struct vdin_bbar_cfg_s  *blkbar_cfg)
 {
     unsigned int val;
 
-    val = blkbar_cfg->blackpix_thr;
+    val = blkbar_cfg->blkpix_thr;
     WRITE_MPEG_REG_BITS(VDIN_BLKBAR_CTRL0, val,
-                        BB_BLEVEL_BIT, BB_BLEVEL_BIT);
+                        BLK_LEVEL_BIT, BLK_LEVEL_WID);
     val = (2<<(unsigned int)(blkbar_cfg->region_wid_pow))-1;
     WRITE_MPEG_REG_BITS(VDIN_BLKBAR_CTRL0, val,
                         BB_HWID_BIT, BB_HWID_BIT);
     val = (unsigned int)(blkbar_cfg->src);
     WRITE_MPEG_REG_BITS(VDIN_BLKBAR_CTRL0, val,
                         BB_COMP_SEL_BIT, BB_COMP_SEL_BIT);
-    val = blkbar_cfg->statistics_en;
+    val = blkbar_cfg->stat_en;
     WRITE_MPEG_REG_BITS(VDIN_BLKBAR_CTRL0, val,
-                        BB_SW_ST_EN_BIT, BB_SW_ST_EN_BIT);
+                        SW_STAT_EN_BIT, SW_STAT_EN_WID);
     val = (unsigned int)(blkbar_cfg->mux);
     WRITE_MPEG_REG_BITS(VDIN_BLKBAR_CTRL0, val,
                         BB_DIN_SEL_BIT, BB_DIN_SEL_BIT);
-    val = blkbar_cfg->blackbar_cfg.en;
+    val = blkbar_cfg->en;
     WRITE_MPEG_REG_BITS(VDIN_BLKBAR_CTRL0, val,
-                        BB_DTOP_EN_BIT, BB_DTOP_EN_BIT);
-    val = blkbar_cfg->left_region_h_start;
+                        DET_TOP_EN_BIT, DET_TOP_EN_WID);
+    val = blkbar_cfg->lhstart;
     WRITE_MPEG_REG_BITS(VDIN_BLKBAR_H_START_END, val,
                         BB_HSTART_BIT, BB_HSTART_BIT);
-    val = blkbar_cfg->right_region_h_end;
+    val = blkbar_cfg->rhend;
     WRITE_MPEG_REG_BITS(VDIN_BLKBAR_H_START_END, val,
                         BB_HEND_BIT, BB_HEND_BIT);
-    val = blkbar_cfg->v_start;
+    val = blkbar_cfg->vstart;
     WRITE_MPEG_REG_BITS(VDIN_BLKBAR_V_START_END, val,
                         BB_VSTART_BIT, BB_VSTART_BIT);
-    val = blkbar_cfg->v_end;
+    val = blkbar_cfg->vend;
     WRITE_MPEG_REG_BITS(VDIN_BLKBAR_V_START_END, val,
                         BB_VEND_BIT, BB_VEND_BIT);
-    val = blkbar_cfg->blackbar_thr;
+    val = blkbar_cfg->bbar_thr;
     WRITE_MPEG_REG_BITS(VDIN_BLKBAR_CNT_THRESHOLD, val,
                         BB_CNT_TH_BIT, BB_CNT_TH_BIT);
-    val = blkbar_cfg->blackline_thr_top;
+    val = blkbar_cfg->bline_thr_top;
     WRITE_MPEG_REG_BITS(VDIN_BLKBAR_ROW_TH1_TH2, val,
                         BB_ROW_TH1_BIT, BB_ROW_TH1_BIT);
-    val = blkbar_cfg->blackline_thr_bottom;
+    val = blkbar_cfg->bline_thr_btm;
     WRITE_MPEG_REG_BITS(VDIN_BLKBAR_ROW_TH1_TH2, val,
                         BB_ROW_TH2_BIT, BB_ROW_TH2_BIT);
 

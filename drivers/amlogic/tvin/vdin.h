@@ -191,7 +191,7 @@ typedef struct vdin_lfifo_cfg_s {
 typedef struct vdin_output_cfg_s {
     unsigned int            control;
 //    enum vdin_data_format_e data_format;
-    enum vdin_color_space_e data_fmt;
+    enum tvin_color_space_e data_fmt;
     unsigned int            canvas_shadow_en;
     unsigned int            req_urgent;
     unsigned int            req_en;

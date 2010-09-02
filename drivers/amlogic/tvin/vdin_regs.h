@@ -32,6 +32,8 @@
 #define FORCE_GFLD_WID                  1    // pulse signal
 #define FORCE_GLN_BIT                   28   // for test
 #define FORCE_GLN_WID                   1    // pulse signal
+#define MPEG_GFE_EN_BIT                 27
+#define MPEG_GFE_EN_WID                 1
 /* vdin read enable after hold lines counting from delayed Go-field (VS). */
 #define HOLD_LINES_BIT                  20
 #define HOLD_LINES_WID                  7
