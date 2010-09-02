@@ -15,11 +15,14 @@
 #include <linux/ioport.h>
 #include <linux/platform_device.h>
 #include <linux/io.h>
+#include <linux/dma-mapping.h>
 #include <mach/hardware.h>
 #include <mach/platform.h>
 #include <mach/memory.h>
 #include <mach/memory.h>
 #include <mach/pinmux.h>
+#include <mach/lm.h>
+#include <mach/clock.h>
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>
 #include <asm/mach/map.h>
@@ -94,7 +97,63 @@ static struct platform_device fb_device = {
     .resource      = fb_device_resources,
 };
 #endif
-
+#ifdef CONFIG_USB_DWC_OTG_HCD
+static void set_usb_a_vbus_power(char is_power_on)
+{
+#if 0
+codes for 8626m, 6236m gpio need redefined!
+#define USB_A_POW_GPIO	PREG_HGPIO
+#define USB_A_POW_GPIO_BIT	20
+#define USB_A_POW_GPIO_BIT_ON	1
+#define USB_A_POW_GPIO_BIT_OFF	0
+	if(is_power_on){
+		printk(KERN_INFO "set usb port power on (board gpio %d)!\n",USB_A_POW_GPIO_BIT);
+		set_gpio_mode(USB_A_POW_GPIO,USB_A_POW_GPIO_BIT,GPIO_OUTPUT_MODE);
+		set_gpio_val(USB_A_POW_GPIO,USB_A_POW_GPIO_BIT,USB_A_POW_GPIO_BIT_ON);
+	}
+	else	{
+		printk(KERN_INFO "set usb port power off (board gpio %d)!\n",USB_A_POW_GPIO_BIT);		
+		set_gpio_mode(USB_A_POW_GPIO,USB_A_POW_GPIO_BIT,GPIO_OUTPUT_MODE);
+		set_gpio_val(USB_A_POW_GPIO,USB_A_POW_GPIO_BIT,USB_A_POW_GPIO_BIT_OFF);		
+	}
+#endif
+}
+//usb_a is OTG port
+static struct lm_device usb_ld_a = {
+	.type = LM_DEVICE_TYPE_USB,
+	.id = 0,
+	.irq = INT_USB_A,
+	.resource.start = IO_USB_A_BASE,
+	.resource.end = -1,
+	.dma_mask_room = DMA_BIT_MASK(32),
+	.port_type = USB_PORT_TYPE_HOST,
+	.port_speed = USB_PORT_SPEED_DEFAULT,
+	.dma_config = USB_DMA_BURST_SINGLE,
+	.set_vbus_power = set_usb_a_vbus_power,
+};
+static struct lm_device usb_ld_b = {
+	.type = LM_DEVICE_TYPE_USB,
+	.id = 1,
+	.irq = INT_USB_B,
+	.resource.start = IO_USB_B_BASE,
+	.resource.end = -1,
+	.dma_mask_room = DMA_BIT_MASK(32),
+	.port_type = USB_PORT_TYPE_HOST,
+	.port_speed = USB_PORT_SPEED_DEFAULT,
+	.dma_config = USB_DMA_BURST_SINGLE,
+	.set_vbus_power = 0,
+};
+#endif
+#ifdef CONFIG_SATA_DWC_AHCI
+static struct lm_device sata_ld = {
+	.type = LM_DEVICE_TYPE_SATA,
+	.id = 2,
+	.irq = INT_SATA,
+	.dma_mask_room = DMA_BIT_MASK(32),
+	.resource.start = IO_SATA_BASE,
+	.resource.end = -1,
+};
+#endif
 #if defined(CONFIG_AM_STREAMING)
 static struct resource apollo_codec_resources[] = {
     [0] = {
@@ -227,6 +286,16 @@ static __init void m1_init_machine(void)
 	device_clk_setting();
 	device_pinmux_init();
 	platform_add_devices(platform_devs, ARRAY_SIZE(platform_devs));
+
+#ifdef CONFIG_USB_DWC_OTG_HCD
+	set_usb_phy_clk(USB_PHY_CLOCK_SEL_XTAL_DIV2);
+	lm_device_register(&usb_ld_a);
+	lm_device_register(&usb_ld_b);
+#endif
+#ifdef CONFIG_SATA_DWC_AHCI
+	set_sata_phy_clk(SATA_PHY_CLOCK_SEL_DEMOD_PLL);
+	lm_device_register(&sata_ld);
+#endif
 }
 /*VIDEO MEMORY MAPING*/
 static __initdata struct map_desc meson_video_mem_desc[] = {
