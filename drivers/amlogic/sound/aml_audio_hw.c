@@ -51,7 +51,6 @@ void audio_set_aiubuf(u32 addr, u32 size)
 	WRITE_MPEG_REG(AIU_MEM_I2S_CONTROL, 	6|(1<<6) );
 
 #endif
-    memset((void *)addr, 0, size);
 }
 
 void audio_set_958outbuf(u32 addr, u32 size)
@@ -67,7 +66,6 @@ void audio_set_958outbuf(u32 addr, u32 size)
         WRITE_MPEG_REG(AIU_MEM_IEC958_BUF_CNTL, 1 | (0 << 1));
         WRITE_MPEG_REG(AIU_MEM_IEC958_BUF_CNTL, 0 | (0 << 1));
     }
-    memset((void *)addr, 0, size);
 }
 
 void audio_set_i2s_mode(u32 mode)
