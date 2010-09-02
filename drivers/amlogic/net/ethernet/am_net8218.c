@@ -853,6 +853,7 @@ static int phy_reset(struct net_device *ndev)
 	IO_WRITE32((unsigned long)&np->tx_ring_dma[0],(np->base_addr + ETH_DMA_4_Tr_Descriptor_List_Addr));
 	IO_WRITE32(np->irq_mask, (np->base_addr + ETH_DMA_7_Interrupt_Enable));
 	IO_WRITE32((0), (np->base_addr + ETH_MAC_Interrupt_Mask));
+	printk("Current DMA mode=%x\n",IO_READ32(np->base_addr + ETH_DMA_6_Operation_Mode));
 	val = (7 << 14 | 1 << 25 | 1 << 8 | 1 << 26 | 1 << 21);/*don't start receive here */
 	////1<<21 is Transmit Store and Forward used for tcp/ip checksum insert
 	IO_WRITE32(val, (np->base_addr + ETH_DMA_6_Operation_Mode));
@@ -941,11 +942,22 @@ static int netdev_close(struct net_device *dev)
 	if (!running)
 		return 0;
 	running = 0;
-	val=IO_READ32((np->base_addr + ETH_DMA_6_Operation_Mode));
-	val |= ~((1<<1)| 1<<13);/*stop  receive and send*/
-	IO_WRITE32(val, (np->base_addr + ETH_DMA_6_Operation_Mode));
+	//We need to  reset the PHY first to close dma;
+	//if not,the dma may have problem!
+	IO_WRITE32(1, np->base_addr + ETH_DMA_0_Bus_Mode);
+
+	udelay(10);
+	IO_WRITE32(0, (np->base_addr + ETH_DMA_6_Operation_Mode));
 	IO_WRITE32(0, np->base_addr + ETH_DMA_7_Interrupt_Enable);
-	msleep(1);//waiting all dma is finished!!
+	val=IO_READ32((np->base_addr + ETH_DMA_5_Status));	
+	while((val&(7<<17)) || (val&(7<<20)))/*DMA not finished?*/
+	{
+		printk(KERN_ERR "ERROR! MDA is not stoped,val=%x!\n",val);
+		msleep(1);//waiting all dma is finished!!
+		val=IO_READ32((np->base_addr + ETH_DMA_5_Status));
+	}
+	if(debug >0)
+		printk(KERN_INFO "NET MDA is  stoped,val=%lx!\n",val);
 	disable_irq(dev->irq);
 	netif_carrier_off(dev);
 	netif_stop_queue(dev);
@@ -1367,7 +1379,7 @@ static int probe_init(struct net_device *ndev)
 	
 	struct am_net_private *priv = netdev_priv(ndev);
 	priv->dev=ndev;
-	ndev->base_addr = (unsigned long)(ETHBASE);
+	ndev->base_addr = (unsigned long)ioremap(ETHBASE,0x2000);
 	ndev->irq = ETH_INTERRUPT;
 	spin_lock_init(&priv->lock);
 	priv->mii_if.dev = ndev;
@@ -1464,9 +1476,11 @@ static int __init am_net_init(void)
 
 static void am_net_free(struct net_device *ndev)
 {
-	//struct am_net_private *np=netdev_priv(ndev);
+	struct am_net_private *np=netdev_priv(ndev);
+	
 	netdev_close(ndev);
 	unregister_netdev(ndev);
+	iounmap(np->base_addr);
 }
 
 static void __exit am_net_exit(void)
