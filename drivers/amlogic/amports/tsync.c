@@ -65,6 +65,8 @@ void tsync_avevent(avevent_t event, u32 param)
     case VIDEO_START:
         if (tsync_enable)
             tsync_mode = TSYNC_MODE_AMASTER;
+        else
+            tsync_mode = TSYNC_MODE_VMASTER;
 
     #ifndef TSYNC_SLOW_SYNC
         if (tsync_stat == TSYNC_STAT_PCRSCR_SETUP_NONE) 
