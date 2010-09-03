@@ -615,16 +615,17 @@ void net_tasklet(unsigned long dev_instance)
 	struct am_net_private *np = netdev_priv(dev);
 	int len;
 	int result;
-	unsigned long flags,status,mask=0;
+	unsigned long flags;
 
 #ifndef DMA_USE_SKB_BUF
 	struct sk_buff *skb = NULL;
 #endif
+	spin_lock_irqsave(&np->lock, flags);
+ 	result=np->int_rx_tx;
+	np->int_rx_tx=0;
+	spin_unlock_irqrestore(&np->lock, flags);
 	if (!running)
-		goto release;
-        status = IO_READ32(np->base_addr + ETH_DMA_5_Status);
-		mask = IO_READ32(np->base_addr + ETH_MAC_Interrupt_Mask);
-        result= update_status(dev, status, mask);
+		goto release;	
 	if (result & 1) {
 		struct _tx_desc *c_tx, *tx = NULL;
 
@@ -774,8 +775,12 @@ static irqreturn_t intr_handler(int irq, void *dev_instance)
 {
 	struct net_device *dev = (struct net_device *)dev_instance;
 	struct am_net_private *np = netdev_priv(dev);
+	unsigned long status,mask=0;
 	IO_WRITE32(0, (np->base_addr + ETH_DMA_7_Interrupt_Enable));//disable irq
 	tasklet_schedule(&np->rx_tasklet);
+	status = IO_READ32(np->base_addr + ETH_DMA_5_Status);
+	mask = IO_READ32(np->base_addr + ETH_MAC_Interrupt_Mask);
+    np->int_rx_tx|= update_status(dev, status, mask);
 	return IRQ_HANDLED;
 }
 
@@ -942,17 +947,13 @@ static int netdev_close(struct net_device *dev)
 	if (!running)
 		return 0;
 	running = 0;
-	//We need to  reset the PHY first to close dma;
-	//if not,the dma may have problem!
-	IO_WRITE32(1, np->base_addr + ETH_DMA_0_Bus_Mode);
 
-	udelay(10);
 	IO_WRITE32(0, (np->base_addr + ETH_DMA_6_Operation_Mode));
 	IO_WRITE32(0, np->base_addr + ETH_DMA_7_Interrupt_Enable);
 	val=IO_READ32((np->base_addr + ETH_DMA_5_Status));	
 	while((val&(7<<17)) || (val&(7<<20)))/*DMA not finished?*/
 	{
-		printk(KERN_ERR "ERROR! MDA is not stoped,val=%x!\n",val);
+		printk(KERN_ERR "ERROR! MDA is not stoped,val=%lx!\n",val);
 		msleep(1);//waiting all dma is finished!!
 		val=IO_READ32((np->base_addr + ETH_DMA_5_Status));
 	}
@@ -1477,11 +1478,9 @@ static int __init am_net_init(void)
 
 static void am_net_free(struct net_device *ndev)
 {
-	struct am_net_private *np=netdev_priv(ndev);
-	
+	//struct am_net_private *np=netdev_priv(ndev);
 	netdev_close(ndev);
 	unregister_netdev(ndev);
-	iounmap(np->base_addr);
 }
 
 static void __exit am_net_exit(void)
