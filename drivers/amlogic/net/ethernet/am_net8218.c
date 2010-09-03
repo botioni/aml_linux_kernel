@@ -1379,7 +1379,8 @@ static int probe_init(struct net_device *ndev)
 	
 	struct am_net_private *priv = netdev_priv(ndev);
 	priv->dev=ndev;
-	ndev->base_addr = (unsigned long)ioremap(ETHBASE,0x2000);
+	//ndev->base_addr = (unsigned long)ioremap(ETHBASE,0x2000);
+	ndev->base_addr = (unsigned long)(ETHBASE);
 	ndev->irq = ETH_INTERRUPT;
 	spin_lock_init(&priv->lock);
 	priv->mii_if.dev = ndev;
