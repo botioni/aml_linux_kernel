@@ -145,12 +145,12 @@ typedef enum vdin_bbar_src_e {
 // ***************************************************************************
 
 typedef struct vdin_clkgate_cfg_s {
-    enum vdin_clk_e blackbar;
-    enum vdin_clk_e histgram;
+    enum vdin_clk_e bbar;
+    enum vdin_clk_e hist;
     enum vdin_clk_e lfifo;
     enum vdin_clk_e matrix;
-    enum vdin_clk_e hscaler;
-    enum vdin_clk_e prehscaler;
+    enum vdin_clk_e hscl;
+    enum vdin_clk_e prehscl;
     enum vdin_clk_e top;        // including other parts except meas, which uses seperate lower clk
 } vdin_clkgate_cfg_t;
 
@@ -172,8 +172,8 @@ typedef struct vdin_hscl_cfg_s {
     unsigned int                    src_w;
     unsigned int                    dst_w;
       signed int                    init_pixi_ptr;
-    unsigned int                    prehsc_en;
-    unsigned int                    hsc_en;
+    unsigned int                    prehscl_en;
+    unsigned int                    hscl_en;
     unsigned int                    short_lineo_en;
     unsigned int                    hsc_nearest_en;
     unsigned int                    phase0_always_en;
