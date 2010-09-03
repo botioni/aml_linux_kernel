@@ -440,7 +440,10 @@ int vreal_dec_status(struct vdec_status *vstatus)
 {
     vstatus->width = vreal_amstream_dec_info.width;
     vstatus->height = vreal_amstream_dec_info.height;
-    vstatus->fps = 96000/vreal_amstream_dec_info.rate;
+    if(0!=vreal_amstream_dec_info.rate)
+        vstatus->fps = 96000/vreal_amstream_dec_info.rate;
+    else
+        vstatus->fps = 96000;
     vstatus->error_count = real_err_count;
     vstatus->status = READ_MPEG_REG(STATUS_AMRISC) | stat;
     return 0;
