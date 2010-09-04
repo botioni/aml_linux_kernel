@@ -50,6 +50,7 @@ typedef struct hdmi_tx_dev_s {
         int (*SetDispMode)(Hdmi_tx_video_para_t *param);
         int (*SetAudMode)(struct hdmi_tx_dev_s* hdmitx_device, Hdmi_tx_audio_para_t* audio_param);
         void (*SetupIRQ)(struct hdmi_tx_dev_s* hdmitx_device);
+        void (*DebugFun)(unsigned char * buf);
     }HWOp;
     
     //wait_queue_head_t   wait_queue;            /* wait queues */
@@ -82,7 +83,7 @@ extern void hdmitx_edid_clear(hdmitx_dev_t* hdmitx_device);
 
 extern int hdmitx_set_display(hdmitx_dev_t* hdmitx_device, HDMI_Video_Codes_t VideoCode);
 
-extern void hdmitx_audio_enable(hdmitx_dev_t* hdmitx_device);
+extern int hdmitx_set_audio(hdmitx_dev_t* hdmitx_device, Hdmi_tx_audio_para_t* audio_param);
 
 /************************************
 *    hdmitx hardware level interface

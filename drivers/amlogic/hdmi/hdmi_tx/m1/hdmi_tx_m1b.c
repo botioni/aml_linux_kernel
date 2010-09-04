@@ -43,7 +43,8 @@
 #define Wr_reg_bits(reg, val, start, len) \
   Wr(reg, Rd(reg) & ~(((1L<<(len))-1)<<(start)) | ((unsigned int)(val) << (start)))
 
-static void hdmi_audio_init(void);
+//#define TEST
+static void hdmi_audio_init(unsigned char spdif_flag);
 
 #define HDMI_M1A 1
 static unsigned char hdmi_chip_type = 0;
@@ -236,7 +237,7 @@ static void hdmi_tvenc1080i_set(Hdmi_tx_video_para_t* param)
 #ifdef DOUBLE_CLK_720P_1080I
                          (5 << 4)               | //select vclk1 as HDMI pixel clk
 #else                         
-                         (1 << 4)               | //select vclk1 as HDMI pixel clk
+                         (2 << 4)               | //select vclk1 as HDMI pixel clk
 #endif                         
                          (1 << 7)               | //0=sel external dvi; 1= sel internal hdmi
                          (0 << 8)               | //no invert clk
@@ -543,6 +544,22 @@ static void hdmi_tvenc_set(Hdmi_tx_video_para_t *param)
                              (1 << 15)                //select encp_vs_dvi, encp_hs_dvi and encp_de as timing signal
         );
     }
+    else if(param->VIC==HDMI_720p60){
+        Wr(VENC_DVI_SETTING, (1 << 0)               | //0=select enci hs/vs; 1=select encp hs/vs
+                             (0 << 1)               | //select vso/hso as hsync vsync
+                             (HSYNC_POLARITY << 2)  | //invert hs
+                             (VSYNC_POLARITY << 3)  | //invert vs
+#ifdef DOUBLE_CLK_720P_1080I
+                             (1 << 4)               | //select encp_dvi_clk = clk54/2
+#else
+                             (2 << 4)               | //select encp_dvi_clk = clk54/2
+#endif                             
+                             (1 << 7)               | //0=sel external dvi; 1= sel internal hdmi
+                             (0 << 8)               | //no invert clk
+                             (0 << 13)              | //cfg_dvi_mode_gamma_en
+                             (1 << 15)                //select encp_vs_dvi, encp_hs_dvi and encp_de as timing signal
+        );
+    }
     else{
         Wr(VENC_DVI_SETTING, (1 << 0)               | //0=select enci hs/vs; 1=select encp hs/vs
                              (0 << 1)               | //select vso/hso as hsync vsync
@@ -706,7 +723,13 @@ static void hdmi_hw_reset(Hdmi_tx_video_para_t *param)
     hdmi_wr_reg(0x011, 0x0f);   //Channels Power Up Setting ,"1" for Power-up ,"0" for Power-down,Bit[3:0]=CK,Data2,data1,data1,data0 Channels ;
   //hdmi_wr_reg(0x015, 0x03);   //slew rate
     hdmi_wr_reg(0x017, 0x1d);   //1d for power-up Band-gap and main-bias ,00 is power down 
-    hdmi_wr_reg(0x018, 0x24);   //Serializer Internal clock setting ,please fix to vaue 24 ,other setting is only for debug  
+    if((param->VIC==HDMI_1080p30)||(param->VIC==HDMI_720p60)||(param->VIC==HDMI_1080i60)
+        ||(param->VIC==HDMI_1080p24)){
+        hdmi_wr_reg(0x018, 0x22);   //Serializer Internal clock setting ,please fix to vaue 24 ,other setting is only for debug  
+    }
+    else{
+        hdmi_wr_reg(0x018, 0x24);   //Serializer Internal clock setting ,please fix to vaue 24 ,other setting is only for debug  
+    }
     hdmi_wr_reg(0x01a, 0xfb);   //bit[2:0]=011 ,CK channel output TMDS CLOCK ,bit[2:0]=101 ,ck channel output PHYCLCK 
     hdmi_wr_reg(0x016, 0x04);   // Bit[3:0] is HDMI-PHY's output swing control register
     hdmi_wr_reg(0x0F7, 0x0F);   // Termination resistor calib value
@@ -843,8 +866,13 @@ static void hdmi_hw_reset(Hdmi_tx_video_para_t *param)
     // Normally it makes sense to synch 3 channel output with clock channel's rising edge,
     // as HDMI's serializer is LSB out first, invert tmds_clk pattern from "1111100000" to
     // "0000011111" actually enable data synch with clock rising edge.
-    tmp_add_data = 1 << 4; // Set tmds_clk pattern to be "0000011111" before being sent to AFE clock channel
-    hdmi_wr_reg(TX_SYS4_CK_INV_VIDEO, tmp_add_data);
+    //if((param->VIC==HDMI_1080p30)||(param->VIC==HDMI_720p60)||(param->VIC==HDMI_1080i60)){
+    //    hdmi_wr_reg(TX_SYS4_CK_INV_VIDEO, 0xf0);
+    //}
+    //else{
+        tmp_add_data = 1 << 4; // Set tmds_clk pattern to be "0000011111" before being sent to AFE clock channel
+        hdmi_wr_reg(TX_SYS4_CK_INV_VIDEO, tmp_add_data);
+    //}            
     
     //tmp_add_data[15:8] = 0;
     //tmp_add_data[7] = 1'b0;  // Rsrv
@@ -871,7 +899,7 @@ static void hdmi_hw_reset(Hdmi_tx_video_para_t *param)
     tmp_add_data |= TX_INPUT_COLOR_RANGE    << 0; // [1:0] input_color_range:   0=16-235/240; 1=16-240; 2=1-254; 3=0-255.
     hdmi_wr_reg(TX_VIDEO_DTV_OPTION_H, tmp_add_data); // 0x00
 #if 1
-    hdmi_audio_init();
+    hdmi_audio_init(1);
 #elif 0
     tmp_add_data  = 0;
     tmp_add_data |= TX_I2S_SPDIF    << 7; // [7]    I2S or SPDIF
@@ -972,8 +1000,41 @@ static void hdmi_hw_reset(Hdmi_tx_video_para_t *param)
     hdmi_wr_reg(TX_SYS5_TX_SOFT_RESET_1, 0x00); // Final release reset on tmds_clk domain
 }
 
-static void hdmi_audio_init(void)
+static void hdmi_audio_init(unsigned char spdif_flag)
 {
+if(spdif_flag){
+    hdmi_wr_reg(0x5D,   0x40);  // Address  0x5D=0x40   TX_AUDIO_CONTROL
+    hdmi_wr_reg(0x5B,   0x1 );  // Address  0x5B=0x1    TX_AUDIO_FIFO
+    hdmi_wr_reg(0x5D,   0x40);  // Address  0x5D=0x40   TX_AUDIO_CONTROL
+    hdmi_wr_reg(0x5B,   0xD );  // Address  0x5B=0xD    TX_AUDIO_FIFO
+    hdmi_wr_reg(0x5B,   0x3D);  // Address  0x5B=0x3D   TX_AUDIO_FIFO
+    hdmi_wr_reg(0x5C,   0x1 );  // Address  0x5C=0x1    TX_AUDIO_LIPSYNC
+    hdmi_wr_reg(0x62,   0x1 );  // Address  0x62=0x1    TX_AUDIO_PACK
+    hdmi_wr_reg(0x5D,   0x40);  // Address  0x5D=0x40   TX_AUDIO_CONTROL
+    hdmi_wr_reg(0x5E,   0x0 );  // Address  0x5E=0x0    TX_AUDIO_HEADER
+    hdmi_wr_reg(0x2F,   0x0 );  // Address  0x2F=0x0    TX_HDCP_MODE
+    hdmi_wr_reg(0x2F,   0x0 );  // Address  0x2F=0x0    TX_HDCP_MODE
+    hdmi_wr_reg(0x4,    0x20);  // Address  0x4=0x20    TX_SYS0_ACR_CTS_2
+    hdmi_wr_reg(0x4,    0x20);  // Address  0x4=0x20    TX_SYS0_ACR_CTS_2
+    hdmi_wr_reg(0x4,    0x20);  // Address  0x4=0x20    TX_SYS0_ACR_CTS_2
+    hdmi_wr_reg(0x4,    0x20);  // Address  0x4=0x20    TX_SYS0_ACR_CTS_2
+    hdmi_wr_reg(0x5D,   0x40);  // Address  0x5D=0x40   TX_AUDIO_CONTROL
+    hdmi_wr_reg(0x5F,   0x3 );  // Address  0x5F=0x3    TX_AUDIO_SAMPLE
+    hdmi_wr_reg(0x5D,   0x41);  // Address  0x5D=0x41   TX_AUDIO_CONTROL
+    hdmi_wr_reg(0x280,  0x70);  // Address  0x280=0x70  TX_PKT_REG_AUDIO_INFO_BASE_ADDR
+    hdmi_wr_reg(0x29E,  0xA );  // Address  0x29E=0xA
+    hdmi_wr_reg(0x29D,  0x1 );  // Address  0x29D=0x1
+    hdmi_wr_reg(0x29C,  0x84);  // Address  0x29C=0x84
+    hdmi_wr_reg(0x281,  0x1 );  // Address  0x281=0x1
+    hdmi_wr_reg(0x29F,  0x80);  // Address  0x29F=0x80
+    hdmi_wr_reg(0x58,   0x0 );  // Address  0x58=0x0    TX_AUDIO_FORMAT
+    hdmi_wr_reg(0x5A,   0x0 );  // Address  0x5A=0x0    TX_AUDIO_I2S
+    hdmi_wr_reg(0x59,   0x1 );  // Address  0x59=0x1    TX_AUDIO_SPDIF
+    hdmi_wr_reg(0x1E,   0x0 );  // Address  0x1E=0x0    TX_SYS1_ACR_N_2
+    hdmi_wr_reg(0x1D,   0x2D);  // Address  0x1D=0x2D   TX_SYS1_ACR_N_1
+    hdmi_wr_reg(0x1C,   0x80);  // Address  0x1C=0x80   TX_SYS1_ACR_N_0
+}
+else{
     hdmi_wr_reg(TX_AUDIO_CONTROL,                   0x40); //Address  0x5D=0x40
     hdmi_wr_reg(TX_AUDIO_FIFO,                      0x1 ); //Address  0x5B=0x1
     hdmi_wr_reg(TX_AUDIO_CONTROL,                   0x40); //Address  0x5D=0x40
@@ -983,8 +1044,10 @@ static void hdmi_audio_init(void)
     hdmi_wr_reg(TX_AUDIO_PACK,                      0x1 ); //Address  0x62=0x1
     hdmi_wr_reg(TX_AUDIO_CONTROL,                   0x40); //Address  0x5D=0x40
     hdmi_wr_reg(TX_AUDIO_HEADER,                    0x0 ); //Address  0x5E=0x0
-    //hdmi_wr_reg(TX_HDCP_MODE,                       0x0 ); //Address  0x2F=0x0
-    //hdmi_wr_reg(TX_HDCP_MODE,                       0x0 ); //Address  0x2F=0x0
+#ifdef TEST
+    hdmi_wr_reg(TX_HDCP_MODE,                       0x0 ); //Address  0x2F=0x0
+    hdmi_wr_reg(TX_HDCP_MODE,                       0x0 ); //Address  0x2F=0x0
+#endif    
     hdmi_wr_reg(TX_SYS0_ACR_CTS_2,                  0x20); //Address  0x4=0x20
     hdmi_wr_reg(TX_SYS0_ACR_CTS_2,                  0x20); //Address  0x4=0x20
     hdmi_wr_reg(TX_SYS0_ACR_CTS_2,                  0x20); //Address  0x4=0x20
@@ -992,12 +1055,14 @@ static void hdmi_audio_init(void)
     hdmi_wr_reg(TX_AUDIO_CONTROL,                   0x40); //Address  0x5D=0x40
     hdmi_wr_reg(TX_AUDIO_SAMPLE,                    0x15); //Address  0x5F=0x15
     hdmi_wr_reg(TX_AUDIO_CONTROL,                   0x41); //Address  0x5D=0x41
-    //hdmi_wr_reg(TX_PKT_REG_AUDIO_INFO_BASE_ADDR,    0x70); //Address  0x280=0x70
-    //hdmi_wr_reg(0x29E,                              0xA ); //Address  0x29E=0xA
-    //hdmi_wr_reg(0x29D,                              0x1 ); //Address  0x29D=0x1
-    //hdmi_wr_reg(0x29C,                              0x84); //Address  0x29C=0x84
-    //hdmi_wr_reg(0x281,                              0x1 ); //Address  0x281=0x1
-    //hdmi_wr_reg(0x29F,                              0x80); //Address  0x29F=0x80
+#ifdef TEST
+    hdmi_wr_reg(TX_PKT_REG_AUDIO_INFO_BASE_ADDR,    0x70); //Address  0x280=0x70
+    hdmi_wr_reg(0x29E,                              0xA ); //Address  0x29E=0xA
+    hdmi_wr_reg(0x29D,                              0x1 ); //Address  0x29D=0x1
+    hdmi_wr_reg(0x29C,                              0x84); //Address  0x29C=0x84
+    hdmi_wr_reg(0x281,                              0x1 ); //Address  0x281=0x1
+    hdmi_wr_reg(0x29F,                              0x80); //Address  0x29F=0x80
+#endif    
     hdmi_wr_reg(TX_AUDIO_FORMAT,                    0x0 ); //Address  0x58=0x0
     hdmi_wr_reg(TX_AUDIO_HEADER,                    0x0 ); //Address  0x5E=0x0
     hdmi_wr_reg(TX_AUDIO_SAMPLE,                    0x3 ); //Address  0x5F=0x3
@@ -1006,7 +1071,7 @@ static void hdmi_audio_init(void)
     hdmi_wr_reg(TX_AUDIO_I2S,                       0x1 ); //Address  0x5A=0x1
     hdmi_wr_reg(TX_AUDIO_FORMAT,                    0x81); //Address  0x58=0x81
     hdmi_wr_reg(TX_AUDIO_FORMAT,                    0xA1); //Address  0x58=0xA1
-#if 0
+#ifdef TEST
     hdmi_wr_reg(TX_IEC60958_SUB1_OFFSET,            0x0 ); //Address  0xB0=0x0
     hdmi_wr_reg(0xB1,                               0x0 ); //Address  0xB1=0x0
     hdmi_wr_reg(0xB2,                               0x18); //Address  0xB2=0x18
@@ -1055,16 +1120,47 @@ static void hdmi_audio_init(void)
     hdmi_wr_reg(TX_SYS1_ACR_N_2,                    0x0 ); //Address  0x1E=0x0
     hdmi_wr_reg(TX_SYS1_ACR_N_1,                    0x2D); //Address  0x1D=0x2D
     hdmi_wr_reg(TX_SYS1_ACR_N_0,                    0x80); //Address  0x1C=0x80
-#if 0
+#ifdef TEST
     hdmi_wr_reg(0xB3,                               0x3 ); //Address  0xB3=0x3
     hdmi_wr_reg(0xB4,                               0xCA); //Address  0xB4=0xCA
     hdmi_wr_reg(0xCB,                               0x3 ); //Address  0xCB=0x3
     hdmi_wr_reg(0xCC,                               0xCA); //Address  0xCC=0xCA
-#endif    
+#endif 
+}   
+}
+
+static void enable_audio()
+{
+        Wr( AIU_958_MISC, 0x204a ); // // Program the IEC958 Module in the AIU
+        Wr( AIU_958_FORCE_LEFT, 0x0000 );
+        Wr( AIU_958_CTRL, 0x0240 );
+
+#if 1
+        Wr( AIU_MEM_IEC958_MASKS, 0xFFFF ); // Set the number of channels in memory to 8 and the number of channels to read to 8
+#endif
+/* enable audio*/        
+        hdmi_wr_reg(TX_AUDIO_SPDIF, 1); // TX AUDIO SPDIF Enable
+
+        Wr(AIU_CLK_CTRL,        Rd(AIU_CLK_CTRL) | 2); // enable iec958 clock which is audio_master_clk
+        Wr( AIU_958_BPF, 0x0100 ); // Set the PCM frame size to 256 bytes
+        Wr( AIU_958_DCU_FF_CTRL, 0x0001 );
+        // Set init high then low to initilize the IEC958 memory logic
+        // bit 30 : ch_always_8
+#if 1
+        Wr( AIU_MEM_IEC958_CONTROL, 1  | (1 << 30));
+        Wr( AIU_MEM_IEC958_CONTROL, 0  | (1 << 30));
+        // Enable the IEC958 FIFO (both the empty and fill modules)
+        Wr( AIU_MEM_IEC958_CONTROL, Rd( AIU_MEM_IEC958_CONTROL) | ((1 << 1) | (1 << 2)) );
+#endif        
+        
+        Wr(AIU_I2S_MISC, Rd(AIU_I2S_MISC)|0x8);
 }
 
 static void enable_audio_spdif()
 {
+#define AAA    
+#ifdef AAA
+
     // Audio clock source use xtal clock
     Wr(HHI_AUD_CLK_CNTL,    Rd(HHI_AUD_CLK_CNTL) | (1<<11));
     // As amclk is 25MHz, set i2s and iec958 divisor appropriately to get 48KHz sample rate.
@@ -1075,14 +1171,17 @@ static void enable_audio_spdif()
                             (3 <<  4) | // 958 divisor: 0=no div; 1=div by 2; 2=div by 3; 3=div by 4.
                             (3 <<  2)   // i2s divisor: 0=no div; 1=div by 2; 2=div by 4; 3=div by 8.
       );
+#endif
         Wr( AIU_958_MISC, 0x204a ); // // Program the IEC958 Module in the AIU
         Wr( AIU_958_FORCE_LEFT, 0x0000 );
         Wr( AIU_958_CTRL, 0x0240 );
-//        Wr( AIU_MEM_IEC958_START_PTR, ((unsigned)audio_adr)&0x7fffffff  /*0x00110000*/ ); // Set the IEC958 Start pointer into DDR memory to 0x00110000
-//        Wr( AIU_MEM_IEC958_RD_PTR,    ((unsigned)audio_adr)&0x7fffffff /*0x00110000*/ ); // Set the IEC958 current pointer into DDR memory to 0x00110000
- //       Wr( AIU_MEM_IEC958_END_PTR,   (((unsigned)audio_adr)+audio_data_size)&0x7fffffff /*0x00112000*/ ); // Set the IEC958 end pointer into DDR memory to 0x00112000
-//        Wr( AIU_MEM_IEC958_MASKS, 0xFFFF ); // Set the number of channels in memory to 8 and the number of channels to read to 8
 
+#if 1
+        //Wr( AIU_MEM_IEC958_START_PTR, ((unsigned)audio_adr)&0x7fffffff  /*0x00110000*/ ); // Set the IEC958 Start pointer into DDR memory to 0x00110000
+        //Wr( AIU_MEM_IEC958_RD_PTR,    ((unsigned)audio_adr)&0x7fffffff /*0x00110000*/ ); // Set the IEC958 current pointer into DDR memory to 0x00110000
+        //Wr( AIU_MEM_IEC958_END_PTR,   (((unsigned)audio_adr)+audio_data_size)&0x7fffffff /*0x00112000*/ ); // Set the IEC958 end pointer into DDR memory to 0x00112000
+        Wr( AIU_MEM_IEC958_MASKS, 0xFFFF ); // Set the number of channels in memory to 8 and the number of channels to read to 8
+#endif
 /* enable audio*/        
         hdmi_wr_reg(TX_AUDIO_SPDIF, 1); // TX AUDIO SPDIF Enable
 
@@ -1091,10 +1190,12 @@ static void enable_audio_spdif()
         Wr( AIU_958_DCU_FF_CTRL, 0x0001 );
         // Set init high then low to initilize the IEC958 memory logic
         // bit 30 : ch_always_8
-        //Wr( AIU_MEM_IEC958_CONTROL, 1  | (1 << 30));
-        //Wr( AIU_MEM_IEC958_CONTROL, 0  | (1 << 30));
+#if 1
+        Wr( AIU_MEM_IEC958_CONTROL, 1  | (1 << 30));
+        Wr( AIU_MEM_IEC958_CONTROL, 0  | (1 << 30));
         // Enable the IEC958 FIFO (both the empty and fill modules)
-        //Wr( AIU_MEM_IEC958_CONTROL, Rd( AIU_MEM_IEC958_CONTROL) | ((1 << 1) | (1 << 2)) );
+        Wr( AIU_MEM_IEC958_CONTROL, Rd( AIU_MEM_IEC958_CONTROL) | ((1 << 1) | (1 << 2)) );
+#endif        
         
         Wr(AIU_I2S_MISC, Rd(AIU_I2S_MISC)|0x8);
     }
@@ -1127,7 +1228,8 @@ static int hdmitx_m1b_set_dispmode(Hdmi_tx_video_para_t *param)
             Wr(HHI_HDMI_PLL_CNTL, 0x03040905); // For xtal=24MHz: PREDIV=5, POSTDIV=9, N=4, 0D=3, to get phy_clk=270MHz, tmds_clk=27MHz.
         }
         else{
-            Wr(HHI_HDMI_PLL_CNTL, 0x03040502); 
+            Wr(HHI_HDMI_PLL_CNTL, 0x03040502); //normal
+            //Wr(HHI_HDMI_PLL_CNTL, 0x00040508); //pixiel repeat 4 
         }
         hdmi_hw_reset(param);    
         hdmi_tvenc_set(param);
@@ -1144,7 +1246,9 @@ static int hdmitx_m1b_set_dispmode(Hdmi_tx_video_para_t *param)
     }            
     else if(param->VIC==HDMI_1080p30){
         if(hdmi_chip_type == HDMI_M1A){
-            ret=-1;            
+            Wr(HHI_HDMI_PLL_CNTL, 0x0110210f);
+            Wr(HHI_VID_CLK_DIV,3);
+            //Wr(HHI_AUD_PLL_CNTL, 0x4863);
         }
         else{
             Wr(HHI_HDMI_PLL_CNTL, 0x01040502); //24 bit
@@ -1157,14 +1261,15 @@ static int hdmitx_m1b_set_dispmode(Hdmi_tx_video_para_t *param)
     }
     else if(param->VIC==HDMI_1080p24){
         if(hdmi_chip_type == HDMI_M1A){
-            ret=-1;            
+            Wr(HHI_HDMI_PLL_CNTL, 0x0102030f);
+            Wr(HHI_VID_CLK_DIV,4);
         }
         else{
 //#ifdef DOUBLE_CLK_720P_1080I
 //            Wr(HHI_HDMI_PLL_CNTL, 0x00040504);
 //#else
-            Wr(HHI_HDMI_PLL_CNTL, 0x01040502); //24 bit
-            //Wr(HHI_HDMI_PLL_CNTL, 0x0110050a); //30 bit
+            //Wr(HHI_HDMI_PLL_CNTL, 0x01040502); //24 bit
+            Wr(HHI_HDMI_PLL_CNTL, 0x0110050a); //30 bit
 //#endif            
             Wr(HHI_VID_PLL_CNTL, 0x00190a63); //0x00140863
         }
@@ -1235,6 +1340,7 @@ static int hdmitx_m1b_set_dispmode(Hdmi_tx_video_para_t *param)
     else{
         ret = -1;
     }
+    
     return ret;
 }    
 
@@ -1279,7 +1385,9 @@ static void hdmitx_m1b_setaudioinfoframe(unsigned char* AUD_DB, unsigned char* C
 {
     int i ;
     unsigned char ucData ;
-
+#ifdef TEST
+    return;
+#endif    
     // Audio Info frame
     hdmi_wr_reg(TX_PKT_REG_AUDIO_INFO_BASE_ADDR+0x01, AUD_DB[0]);  
     hdmi_wr_reg(TX_PKT_REG_AUDIO_INFO_BASE_ADDR+0x02, AUD_DB[1]);  
@@ -1359,7 +1467,10 @@ static int hdmitx_m1b_set_audmode(hdmitx_dev_t* hdmitx_device)
 {
     //int size = prepare_audio_data((unsigned char*)0x81100000);
     //hdmi_audio_init();
-    enable_audio_spdif();
+
+
+    enable_audio();
+    //enable_audio_spdif();
     return 0;
 }    
     
@@ -1379,6 +1490,107 @@ static void hdmitx_m1b_setupirq(hdmitx_dev_t* hdmitx_device)
     
 }    
 
+
+#if 1
+
+//Expect 8*10-Bit shift pattern data:
+//
+//0x2e3   = 1011100011
+//0x245   = 1001000101
+//0x1cb   = 0111001011
+//0x225   = 1000100101
+//0x2da   = 1011011010
+//0x3e0   = 1111100000
+//0x367   = 1101100111
+//0x000   = 0000000000
+
+static void turn_on_shift_pattern (void)
+{
+    unsigned int tmp_add_data;
+    hdmi_wr_reg(TX_SYS0_BIST_DATA_0, 0x00);
+    hdmi_wr_reg(TX_SYS0_BIST_DATA_1, 0x6c);
+    hdmi_wr_reg(TX_SYS0_BIST_DATA_2, 0xfe);
+    hdmi_wr_reg(TX_SYS0_BIST_DATA_3, 0x41);
+    hdmi_wr_reg(TX_SYS0_BIST_DATA_4, 0x5b);
+    hdmi_wr_reg(TX_SYS0_BIST_DATA_5, 0x91);
+    hdmi_wr_reg(TX_SYS0_BIST_DATA_6, 0x3a);
+    hdmi_wr_reg(TX_SYS0_BIST_DATA_7, 0x9d);
+    hdmi_wr_reg(TX_SYS0_BIST_DATA_8, 0x68);
+    hdmi_wr_reg(TX_SYS0_BIST_DATA_9, 0xc7);
+
+    //tmp_add_data[7:6] = 2'b0;     // audio_source_select[1:0]
+    //tmp_add_data[5] = 1'b0;       // external_packet_enable
+    //tmp_add_data[4] = 1'b1 ;      // internal_packet_enable
+    //tmp_add_data[3:2] = 2'b0;     // afe_fifo_source_select_lane_1[1:0]
+    //tmp_add_data[1:0] = 2'd3 ;    // afe_fifo_source_select_lane_0[1:0] : 0=data path; 1=injected on lane 0; 2=inject on lane 1; 3=BIST.
+    tmp_add_data = 0x13;
+    hdmi_wr_reg(TX_CORE_DATA_CAPTURE_2, tmp_add_data);
+
+    hdmi_wr_reg(TX_SYS0_BIST_CONTROL, 0x00); // Reset BIST
+    hdmi_wr_reg(TX_SYS0_BIST_CONTROL, 0xc0); // Enable shift pattern BIST
+}
+
+static void turn_off_shift_pattern (void)
+{
+    unsigned int tmp_add_data;
+    hdmi_wr_reg(TX_SYS0_BIST_CONTROL, 0x00); // Reset BIST
+
+    //tmp_add_data[7:6] = 2'b0;     // audio_source_select[1:0]
+    //tmp_add_data[5] = 1'b0;       // external_packet_enable
+    //tmp_add_data[4] = 1'b1 ;      // internal_packet_enable
+    //tmp_add_data[3:2] = 2'b0;     // afe_fifo_source_select_lane_1[1:0]
+    //tmp_add_data[1:0] = 2'd0 ;    // afe_fifo_source_select_lane_0[1:0] : 0=data path; 1=injected on lane 0; 2=inject on lane 1; 3=BIST.
+    tmp_add_data = 0x10;
+    hdmi_wr_reg(TX_CORE_DATA_CAPTURE_2, tmp_add_data);
+}
+#endif
+
+static void hdmitx_m1b_debug(unsigned char* buf)
+{ 
+    char tmpbuf[128];
+    int i=0;
+    unsigned int adr, value;
+    while((buf[i])&&(buf[i]!=',')&&(buf[i]!=' ')){
+        tmpbuf[i]=buf[i];
+        i++;    
+    }
+    tmpbuf[i]=0;
+
+    if(tmpbuf[0]=='o'){
+        if(tmpbuf[1]=='n'){
+            turn_on_shift_pattern();
+            printk("Shift Pattern On\n");
+        }
+        else if(tmpbuf[1]=='f'){
+            turn_off_shift_pattern();
+            printk("Shift Pattern Off\n");
+        }
+        return;        
+    }
+
+    adr=simple_strtoul(tmpbuf+2, NULL, 16);
+    if(tmpbuf[0]=='w'){
+        value=simple_strtoul(buf+i+1, NULL, 16);
+        if(buf[1]=='h'){
+            hdmi_wr_reg(adr, value);
+        }
+        else if(buf[1]=='c'){
+            WRITE_MPEG_REG(adr, value);
+        }
+        printk("write %x to %s reg[%x]\n",value, buf[1]=='h'?"HDMI":"CBUS", adr);
+    }
+    else if(tmpbuf[0]=='r'){
+        if(buf[1]=='h'){
+            value = hdmi_rd_reg(adr);
+            
+        }
+        else if(buf[1]=='c'){
+            value = READ_MPEG_REG(adr);
+        }
+        printk("%s reg[%x]=%x\n",buf[1]=='h'?"HDMI":"CBUS", adr, value);
+    }
+}
+
 void HDMITX_M1B_Init(hdmitx_dev_t* hdmitx_device)
 {
     hdmitx_device->HWOp.SetAVI = hdmitx_m1b_setavi;
@@ -1387,6 +1599,17 @@ void HDMITX_M1B_Init(hdmitx_dev_t* hdmitx_device)
     hdmitx_device->HWOp.SetDispMode = hdmitx_m1b_set_dispmode;
     hdmitx_device->HWOp.SetAudMode = hdmitx_m1b_set_audmode;
     hdmitx_device->HWOp.SetupIRQ = hdmitx_m1b_setupirq;
+    hdmitx_device->HWOp.DebugFun = hdmitx_m1b_debug;
+    
+    if(Rd(HHI_MPEG_CLK_CNTL)&(1<<11)){ //audio pll is selected as video clk
+			hdmi_chip_type = HDMI_M1A; 
+			printk("HDMI:Chip A\n");
+    }
+    else{
+			hdmi_chip_type = 0; 
+			printk("HDMI:Chip B\n");
+		}
+    
     
     // -----------------------------------------
     // HDMI (90Mhz)
@@ -1411,6 +1634,7 @@ void HDMITX_M1B_Init(hdmitx_dev_t* hdmitx_device)
     hdmi_hw_init();
 
 }    
+
     
 static  int __init hdmi_chip_select(char *s)
 {
