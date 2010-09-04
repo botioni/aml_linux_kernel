@@ -33,6 +33,7 @@
 #include <linux/cdev.h>
 #include <linux/proc_fs.h> 
 #include <asm/uaccess.h>
+#include <mach/am_regs.h>
 
 #include <linux/osd/apollo_main.h>
 #include <linux/osd/apollodev.h>
@@ -124,7 +125,24 @@ static ssize_t show_aud_mode(struct device * dev, struct device_attribute *attr,
 static ssize_t store_aud_mode(struct device * dev, struct device_attribute *attr, const char * buf)
 {
     //set_disp_mode(buf);
-    hdmitx_audio_enable(&hdmitx_device);
+    Hdmi_tx_audio_para_t audio_param;
+    if(strncmp(buf, "32k", 3)==0){
+        audio_param.sample_rate = FS_32K; 
+    }
+    else if(strncmp(buf, "44.1k", 5)==0){
+        audio_param.sample_rate = FS_44K1; 
+    }
+    else if(strncmp(buf, "48k", 3)==0){
+        audio_param.sample_rate = FS_48K; 
+    }
+    else{
+        return 0;
+    }
+    audio_param.type = CT_PCM;
+    audio_param.channel_num = CC_2CH;
+    audio_param.sample_size = SS_16BITS; 
+    hdmitx_set_audio(&hdmitx_device, &audio_param);
+    
     return 16;    
 }
 
@@ -154,10 +172,18 @@ static ssize_t store_config(struct device * dev, struct device_attribute *attr, 
 }
     
 
+    
+static ssize_t store_dbg(struct device * dev, struct device_attribute *attr, const char * buf)
+{
+    hdmitx_device.HWOp.DebugFun(buf);
+    return 16;    
+}
+
 static DEVICE_ATTR(disp_mode, S_IWUSR | S_IRUGO, show_disp_mode, store_disp_mode);
 static DEVICE_ATTR(aud_mode, S_IWUSR | S_IRUGO, show_aud_mode, store_aud_mode);
 static DEVICE_ATTR(edid, S_IWUSR | S_IRUGO, show_edid, NULL);
 static DEVICE_ATTR(config, S_IWUSR | S_IRUGO, show_config, store_config);
+static DEVICE_ATTR(debug, S_IWUSR | S_IRUGO, NULL, store_dbg);
 
 /*****************************
 *    hdmitx display client interface 
@@ -291,6 +317,7 @@ static int amhdmitx_probe(struct platform_device *pdev)
     device_create_file(hdmitx_dev, &dev_attr_aud_mode);
     device_create_file(hdmitx_dev, &dev_attr_edid);
     device_create_file(hdmitx_dev, &dev_attr_config);
+    device_create_file(hdmitx_dev, &dev_attr_debug);
     
     if (hdmitx_dev == NULL) {
         pr_error("device_create create error\n");
@@ -312,6 +339,7 @@ static int amhdmitx_remove(struct platform_device *pdev)
     device_remove_file(hdmitx_dev, &dev_attr_aud_mode);
     device_remove_file(hdmitx_dev, &dev_attr_edid);
     device_remove_file(hdmitx_dev, &dev_attr_config);
+    device_remove_file(hdmitx_dev, &dev_attr_debug);
 
     cdev_del(&hdmitx_device.cdev);
 
