@@ -15,7 +15,7 @@
 #ifndef __TVIN_VDIN_H
 #define __TVIN_VDIN_H
 
-#include <vdin_global.h>
+#include "tvin_global.h"
 
 
 typedef enum vdin_clk_e {
