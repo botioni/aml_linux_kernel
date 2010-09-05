@@ -183,6 +183,7 @@
 //#define VDIN_SC_MISC_CTRL                       0x120b
 #define INIT_PIX_IN_PTR_BIT             8
 #define INIT_PIX_IN_PTR_WID             7    // signed value for short line output
+#define INIT_PIX_IN_PTR_MSK             0x0000007f
 #define PRE_HSCL_EN_BIT                 7
 #define PRE_HSCL_EN_WID                 1    // pre-hscaler: 1/2 coarse scale down
 #define HSCL_EN_BIT                     6

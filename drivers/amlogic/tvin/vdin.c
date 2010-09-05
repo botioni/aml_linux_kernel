@@ -13,18 +13,22 @@
 
 
 /* Standard Linux include */
+#include <linux/types.h>
+#include <linux/errno.h>
 #include <linux/init.h>
 #include <linux/module.h>
 #include <linux/kernel.h>
-#include <linux/fs.h>
-#include <linux/cdev.h>
+#include <linux/slab.h>
 #include <linux/interrupt.h>
-#include <linux/errno.h>
+#include <linux/fs.h>
+#include <linux/device.h>
+#include <linux/cdev.h>
+#include <linux/platform_device.h>
 #include <asm/uaccess.h>
 
 /* Local include */
-#include <asm/arch/am_regs.h>
-#include "vdin_reg.h"
+#include <mach/am_regs.h>
+#include "vdin_regs.h"
 #include "vdin.h"
 
 
@@ -43,12 +47,19 @@ static dev_t vdin_devno;
 static struct class *vdin_clsp;
 
 typedef struct vdin_dev_s {
-    int                 index;
-    struct cdev         cdev;
-    unsigned int        flags;
-    unsigned int        mem_start;
-    unsigned int        mem_size;
-    static irqreturn_t (*vdin_isr) (int irq, void *dev_id);
+    int                         index;
+    struct cdev                 cdev;
+    unsigned int                flags;
+
+    unsigned int                mem_start;
+    unsigned int                mem_size;
+
+    irqreturn_t (*vdin_isr) (int irq, void *dev_id);
+
+    union vdin_hist_u           hist;
+    struct vdin_bbar_info_s     bbar;
+    enum   vdin_src_e           src;
+
 
 } vdin_dev_t;
 
@@ -73,7 +84,7 @@ static int vdin_open(struct inode *inode, struct file *file)
     devp = container_of(inode->i_cdev, vdin_dev_t, cdev);
     file->private_data = devp;
 
-    ret = request_irq(INT_VDIN_VSYNC, vdin_isr, IRQF_SHARED, "vdin-irq", NULL);
+    ret = request_irq(INT_VDIN_VSYNC, devp->vdin_isr, IRQF_SHARED, "vdin-irq", NULL);
     if (ret) {
         printk(KERN_ERR "vdin: irq register error.\n");
         return -ENOENT;
@@ -85,7 +96,7 @@ static int vdin_open(struct inode *inode, struct file *file)
 
 static int vdin_release(struct inode *inode, struct file *file)
 {
-    vdin_dev_t *devp = file->private_data;
+    //vdin_dev_t *devp = file->private_data;
     file->private_data = NULL;
 
     /* Release some other fields */
@@ -119,15 +130,14 @@ static inline void vdin_set_clkgate( vdin_clkgate_cfg_t *clkgate_cfg)
 static inline void vdin_set_mpeg(struct vdin_mpeg_cfg_s mpeg_cfg);
 */
 
-static inline void vdin_set_mpeg( vdin_mpeg_cfg_t * mpeg_cfg)
+static inline void vdin_set_mpeg( vdin_mpeg_cfg_t *mpeg_cfg)
 {
-    unsigned int val;
-    val = mpeg_cfg->en;
-    WRITE_CBUS_REG_BITS(VDIN_COM_CTRL0, val, MPEG_TO_VDIN_SEL_BIT, MPEG_TO_VDIN_SEL_WID);
-    val = (unsigned int)(mpeg_cfg->field);
-    WRITE_CBUS_REG_BITS(VDIN_COM_CTRL0, val, MPEG_FID_BIT, MPEG_FID_WID);
-    val = mpeg_cfg->go_field_en;
-    WRITE_CBUS_REG_BITS(VDIN_COM_CTRL0, val, MPEG_GO_FLD_EN_BIT, MPEG_GO_FLD_EN_WID);
+    WRITE_CBUS_REG_BITS(VDIN_COM_CTRL0, mpeg_cfg->en,
+        MPEG_TO_VDIN_SEL_BIT, MPEG_TO_VDIN_SEL_WID);
+    WRITE_CBUS_REG_BITS(VDIN_COM_CTRL0, (unsigned int)(mpeg_cfg->field),
+        MPEG_FID_BIT, MPEG_FID_WID);
+    WRITE_CBUS_REG_BITS(VDIN_COM_CTRL0, mpeg_cfg->go_field_en,
+        MPEG_GO_FLD_EN_BIT, MPEG_GO_FLD_EN_WID);
 }
 
 static inline unsigned int vdin_get_afifo( enum vdin_src_e src)
@@ -242,9 +252,9 @@ static inline void vdin_set_mux(enum vdin_mux_e mux)
     }
 }
 
-static inline void vdin_set_src_mux( vdin_src_mux_cfg_t *src_mux_cfg)
+static inline void vdin_set_src_mux( vdin_src_mux_cfg_t *src_mux_cfg, vdin_dev_t *devp)
 {
-    vdin_src = src_mux_cfg->src;
+    devp->src = src_mux_cfg->src;
 
     if (src_mux_cfg->src == VDIN_SRC_NULL)  // disable
     {
@@ -319,14 +329,14 @@ static inline void vdin_set_hscaler( struct vdin_hscl_cfg_s *hsc_cfg)
     }
     phase_step = hsc_cfg->prehscl_en ?
         (((hsc_cfg->src_w+1)>>1)<<24)/hsc_cfg->dst_w :
-        (hsc_cfg->src_w<<24)/hsc_cfg.dst_w;
+        (hsc_cfg->src_w<<24)/hsc_cfg->dst_w;
     phase_step_integer  = (unsigned int)phase_step>>24;
     phase_step_fraction = (unsigned int)phase_step&0x00ffffff;
     if (hsc_cfg->init_pixi_ptr > 63)
         hsc_cfg->init_pixi_ptr = 63;
     if (hsc_cfg->init_pixi_ptr < -64)
         hsc_cfg->init_pixi_ptr = -64;
-    hsc_cfg->init_pixi_ptr &= VDIN_INIT_PIXEL_INPUT_PTR_MASK;
+    hsc_cfg->init_pixi_ptr &= INIT_PIX_IN_PTR_MSK;
     WRITE_CBUS_REG_BITS(VDIN_WIDTHM1I_WIDTHM1O, hsc_cfg->src_w-1,
                         WIDTHM1I_BIT, WIDTHM1I_WID);
     WRITE_CBUS_REG_BITS(VDIN_WIDTHM1I_WIDTHM1O, hsc_cfg->dst_w-1,
@@ -344,7 +354,7 @@ static inline void vdin_set_hscaler( struct vdin_hscl_cfg_s *hsc_cfg)
     WRITE_CBUS_REG_BITS(VDIN_SC_MISC_CTRL, (unsigned int)(hsc_cfg->init_pixi_ptr),
                         INIT_PIX_IN_PTR_BIT, INIT_PIX_IN_PTR_WID);
     WRITE_CBUS_REG_BITS(VDIN_SC_MISC_CTRL, hsc_cfg->prehscl_en,
-                        PRE_HSCL_EN_BIT, PRE_HSCL_EN_WID;
+                        PRE_HSCL_EN_BIT, PRE_HSCL_EN_WID);
     WRITE_CBUS_REG_BITS(VDIN_SC_MISC_CTRL, hsc_cfg->hscl_en,
                         HSCL_EN_BIT, HSCL_EN_WID);
     WRITE_CBUS_REG_BITS(VDIN_SC_MISC_CTRL, hsc_cfg->short_lineo_en,
@@ -549,7 +559,7 @@ static inline void vdin_set_matrix(enum vdin_matrix_csc_e matrix_csc);
 
 static inline void vdin_set_matrix(enum vdin_matrix_csc_e matrix_csc)
 {
-    struct *vdin_matrix_lup_s matrix;
+    const struct vdin_matrix_lup_s *matrix;
     if (matrix_csc == VDIN_MATRIX_NULL) // disable
     {
         WRITE_MPEG_REG_BITS(VDIN_MATRIX_CTRL, 0, VDIN_MATRIX_EN_BIT,
@@ -582,7 +592,7 @@ static inline void vdin_set_lfifo(struct vdin_lfifo_cfg_s *lfifo_cfg)
     WRITE_MPEG_REG_BITS(VDIN_LFIFO_CTRL, lfifo_cfg->len,
         LFIFO_BUF_SIZE_BIT, LFIFO_BUF_SIZE_WID);
     WRITE_MPEG_REG_BITS(VDIN_WR_CTRL, lfifo_cfg->soft_reset_en,
-        LFIFO_SOFT_RST_EN_BIT, LFIFO_SOFT_RST_EN_BIT,  );
+        LFIFO_SOFT_RST_EN_BIT, LFIFO_SOFT_RST_EN_BIT);
 }
 
 /* function collection - OUTPUT
@@ -592,11 +602,11 @@ static inline void vdin_set_output(struct vdin_output_cfg_s output_cfg);
 static inline void vdin_set_output(struct vdin_output_cfg_s *output_cfg)
 {
     unsigned temp_data;
-    WRITE_MPEG_REG_BITS(VDIN_WR_CTRL, output_cfg.control,
+    WRITE_MPEG_REG_BITS(VDIN_WR_CTRL, output_cfg->control,
                         WR_OUT_CTRL_BIT, WR_OUT_CTRL_WID);
 
-    if((output_cfg.data_fmt == TVIN_CS_RGB444) ||
-        (output_cfg.data_fmt == TVIN_CS_YUV444))
+    if((output_cfg->data_fmt == TVIN_CS_RGB444) ||
+        (output_cfg->data_fmt == TVIN_CS_YUV444))
         temp_data = 1;
     else
         temp_data = 0;
@@ -747,7 +757,7 @@ static inline void vdin_get_blackbar(void)
 static inline void vdin_reset_blackbar(void)
 {
     WRITE_MPEG_REG_BITS(VDIN_BLKBAR_CTRL0, 0, BLKBAR_DET_SOFT_RST_N_BIT,
-        BLKBAR_DET_SOFT_RST_N_WID;
+        BLKBAR_DET_SOFT_RST_N_WID);
     WRITE_MPEG_REG_BITS(VDIN_BLKBAR_CTRL0, 1, BLKBAR_DET_SOFT_RST_N_BIT,
         BLKBAR_DET_SOFT_RST_N_WID);
 }
@@ -799,17 +809,14 @@ static inline void vdin_set_blackbar(struct vdin_bbar_cfg_s  *blkbar_cfg)
     vdin_reset_blackbar();
 }
 
-static void vdin_init()
-{
 
-}
-static void vdin_bt656in_canvas_init()
+static void vdin_bt656in_canvas_init(struct vdin_dev_s *devp)
 {
     int i = 0;
     unsigned int canvas_width  = 1440;
     unsigned int canvas_height = 288;
     unsigned int decbuf_size   = 0x70000;
-    unsigned int decbuf_start  = mem_start + BT656IN_ANCI_DATA_SIZE;
+    unsigned int decbuf_start  = devp->mem_start + BT656IN_ANCI_DATA_SIZE;
 
     for ( i = 0; i < BT656IN_BUF_NUM; i++)
     {
@@ -821,15 +828,14 @@ static void vdin_bt656in_canvas_init()
 
 
 
-static void vdin_canvas_init(enum vdin_src_e src)
+static void vdin_canvas_init(struct vdin_dev_s *devp)
 {
-    int ret = 0;
-    switch (src)
+    switch (devp->src)
     {
         case VDIN_SRC_MPEG:
             break;
         case VDIN_SRC_BT656IN:
-            vdin_bt656in_canvas_init();
+            vdin_bt656in_canvas_init(devp);
             break;
         case VDIN_SRC_TVFE:
             break;
@@ -859,12 +865,12 @@ static int vdin_ioctl(struct inode *inode, struct file *file, unsigned int cmd, 
         case VDIN_IOCS_CLKGATE:
         {
             struct vdin_clkgate_cfg_s clkgate_cfg = {
-                .blackbar   = VDIN_CLK_AUTO,
-                .histgram   = VDIN_CLK_AUTO,
+                .bbar       = VDIN_CLK_AUTO,
+                .hist       = VDIN_CLK_AUTO,
                 .lfifo      = VDIN_CLK_AUTO,
                 .matrix     = VDIN_CLK_AUTO,
-                .hscaler    = VDIN_CLK_AUTO,
-                .prehscaler = VDIN_CLK_AUTO,
+                .hscl       = VDIN_CLK_AUTO,
+                .prehscl    = VDIN_CLK_AUTO,
                 .top        = VDIN_CLK_AUTO};
             if (copy_from_user(&clkgate_cfg, argp, sizeof(vdin_clkgate_cfg_t)))
             {
@@ -898,7 +904,7 @@ static int vdin_ioctl(struct inode *inode, struct file *file, unsigned int cmd, 
                 break;
             }
 
-            vdin_set_src_mux(&src_mux_cfg);
+            vdin_set_src_mux(&src_mux_cfg, devp);
             break;
         }
 
@@ -931,7 +937,7 @@ static int vdin_ioctl(struct inode *inode, struct file *file, unsigned int cmd, 
         case VDIN_IOCS_LFIFO:
         {
             vdin_lfifo_cfg_t lfifo_cfg = {0, 0};
-            if (copy_from_user(&lfifo_cfg, argp, sizeof(vdin_lfifo_cfg_t))
+            if (copy_from_user(&lfifo_cfg, argp, sizeof(vdin_lfifo_cfg_t)))
             {
                 ret = -EFAULT;
                 break;
@@ -980,8 +986,10 @@ static int vdin_ioctl(struct inode *inode, struct file *file, unsigned int cmd, 
             break;
         }
         case VDIN_IOC_INIT:
-            vdin_canvas_init();
+        {
+            vdin_canvas_init(devp);
             break;
+        }
         default:
             ret = -ENOIOCTLCMD;
             break;
@@ -1019,6 +1027,14 @@ static int vdin_probe(struct platform_device *pdev)
         return PTR_ERR(vdin_clsp);
     }
 
+    /* @todo do with resources */
+    res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+    if (!res)
+    {
+        printk(KERN_ERR "vdin: can't get memory resource\n");
+        return -EFAULT;
+    }
+
     for (i = 0; i < VDIN_COUNT; ++i)
     {
         /* allocate memory for the per-device structure */
@@ -1041,25 +1057,18 @@ static int vdin_probe(struct platform_device *pdev)
     		return ret;
     	}
         /* create /dev nodes */
-        devp = device_create(vdin_clsp, NULL, MKDEV(MAJOR(vdin_devno), i), "vdin%d", i);
+        devp = device_create(vdin_clsp, NULL, MKDEV(MAJOR(vdin_devno), i),
+                            NULL, "vdin%d", i);
         if (IS_ERR(devp)) {
             printk(KERN_ERR "vdin: failed to create device node\n");
             class_destroy(vdin_clsp);
             /* @todo do with error */
             return PTR_ERR(devp);;
     	}
-    }
 
-    /* @todo do with resources */
-    res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-    if (!res)
-    {
-        printk(KERN_ERR "vdin: can't get memory resource\n");
-        return -EFAULT;
+        vdin_devp[i]->mem_start = res->start;
+        vdin_devp[i]->mem_size  = res->end - res->start + 1;
     }
-    mem_start = res->start;
-    mem_size  = res->end - res->start + 1;
-
 
     printk(KERN_INFO "vdin: driver initialized ok\n");
     return 0;
