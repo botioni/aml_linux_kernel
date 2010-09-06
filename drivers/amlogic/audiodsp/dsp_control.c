@@ -76,7 +76,7 @@ void reset_dsp( struct audiodsp_priv *priv)
     /* map DSP 0 address so that reset vector points to same vector table as ARC1 */
     CLEAR_MPEG_REG_MASK(AUD_ARC_CTL, (0xfff << 4));
  //   SET_MPEG_REG_MASK(SDRAM_CTL0,1);//arc mapping to ddr memory
-    SET_MPEG_REG_MASK(AUD_ARC_CTL, ((AUDIO_DSP_START_ADDR)>> 20) << 4);
+    SET_MPEG_REG_MASK(AUD_ARC_CTL, ((AUDIO_DSP_START_PHY_ADDR)>> 20) << 4);
     if(!priv->dsp_is_started){
         DSP_PRNT("dsp reset now\n");
         enable_dsp(1);
@@ -100,9 +100,9 @@ static inline int dsp_set_stack( struct audiodsp_priv *priv)
 		return -ENOMEM;
 		}
 	memset((void*)priv->dsp_stack_start,0,priv->dsp_stack_size);
-	DSP_WD(DSP_STACK_START,MAX_CACHE_ALIGN(priv->dsp_stack_start));
-	DSP_WD(DSP_STACK_END,MIN_CACHE_ALIGN(priv->dsp_stack_start+priv->dsp_stack_size));
-	//DSP_PRNT("DSP statck start =%#lx,size=%#lx\n",priv->dsp_stack_start,priv->dsp_stack_size);
+	DSP_WD(DSP_STACK_START,MAX_CACHE_ALIGN(ARM_2_ARC_ADDR_SWAP(priv->dsp_stack_start)));
+	DSP_WD(DSP_STACK_END,MIN_CACHE_ALIGN(ARM_2_ARC_ADDR_SWAP(priv->dsp_stack_start)+priv->dsp_stack_size));
+	DSP_PRNT("DSP statck start =%#lx,size=%#lx\n",ARM_2_ARC_ADDR_SWAP(priv->dsp_stack_start),priv->dsp_stack_size);
 	if(priv->dsp_gstack_start==0)
 		priv->dsp_gstack_start=(unsigned long)kmalloc(priv->dsp_gstack_size,GFP_KERNEL);
 	if(priv->dsp_gstack_start==0)
@@ -112,9 +112,9 @@ static inline int dsp_set_stack( struct audiodsp_priv *priv)
 		return -ENOMEM;
 		}
 	memset((void*)priv->dsp_gstack_start,0,priv->dsp_gstack_size);
-	DSP_WD(DSP_GP_STACK_START,MAX_CACHE_ALIGN(priv->dsp_gstack_start));
-	DSP_WD(DSP_GP_STACK_END,MIN_CACHE_ALIGN(priv->dsp_gstack_start+priv->dsp_gstack_size));
-	//DSP_PRNT("DSP gp statck start =%#lx,size=%#lx\n",priv->dsp_gstack_start,priv->dsp_gstack_size);
+	DSP_WD(DSP_GP_STACK_START,MAX_CACHE_ALIGN(ARM_2_ARC_ADDR_SWAP(priv->dsp_gstack_start)));
+	DSP_WD(DSP_GP_STACK_END,MIN_CACHE_ALIGN(ARM_2_ARC_ADDR_SWAP(priv->dsp_gstack_start)+priv->dsp_gstack_size));
+	DSP_PRNT("DSP gp statck start =%#lx,size=%#lx\n",ARM_2_ARC_ADDR_SWAP(priv->dsp_gstack_start),priv->dsp_gstack_size);
 		
 	return 0;
 }
@@ -130,9 +130,9 @@ static inline int dsp_set_heap( struct audiodsp_priv *priv)
 		return -ENOMEM;
 		}
 	memset((void *)priv->dsp_heap_start,0,priv->dsp_heap_start);
-	DSP_WD(DSP_MEM_START,MAX_CACHE_ALIGN(priv->dsp_heap_start));
-	DSP_WD(DSP_MEM_END,MIN_CACHE_ALIGN(priv->dsp_heap_start+priv->dsp_heap_size));
-	//DSP_PRNT("DSP heap start =%#lx,size=%#lx\n",priv->dsp_heap_start,priv->dsp_heap_size);
+	DSP_WD(DSP_MEM_START,MAX_CACHE_ALIGN(ARM_2_ARC_ADDR_SWAP(priv->dsp_heap_start)));
+	DSP_WD(DSP_MEM_END,MIN_CACHE_ALIGN(ARM_2_ARC_ADDR_SWAP(priv->dsp_heap_start)+priv->dsp_heap_size));
+	DSP_PRNT("DSP heap start =%#lx,size=%#lx\n",ARM_2_ARC_ADDR_SWAP(priv->dsp_heap_start),priv->dsp_heap_size);
 	return 0;
 }
 
@@ -167,12 +167,12 @@ static inline int dsp_set_stream_buffer( struct audiodsp_priv *priv)
 		return -2;
 		}
 		
-	DSP_WD(DSP_DECODE_OUT_START_ADDR,priv->stream_buffer_start);
-	DSP_WD(DSP_DECODE_OUT_END_ADDR,priv->stream_buffer_end);
-	DSP_WD(DSP_DECODE_OUT_RD_ADDR,priv->stream_buffer_start);
-	DSP_WD(DSP_DECODE_OUT_WD_ADDR,priv->stream_buffer_start);
+	DSP_WD(DSP_DECODE_OUT_START_ADDR,ARM_2_ARC_ADDR_SWAP(priv->stream_buffer_start));
+	DSP_WD(DSP_DECODE_OUT_END_ADDR,ARM_2_ARC_ADDR_SWAP(priv->stream_buffer_end));
+	DSP_WD(DSP_DECODE_OUT_RD_ADDR,ARM_2_ARC_ADDR_SWAP(priv->stream_buffer_start));
+	DSP_WD(DSP_DECODE_OUT_WD_ADDR,ARM_2_ARC_ADDR_SWAP(priv->stream_buffer_start));
 	
-	DSP_PRNT("DSP stream buffer to [%#lx-%#lx]\n",priv->stream_buffer_start,priv->stream_buffer_end);
+	DSP_PRNT("DSP stream buffer to [%#lx-%#lx]\n",ARM_2_ARC_ADDR_SWAP(priv->stream_buffer_start),ARM_2_ARC_ADDR_SWAP(priv->stream_buffer_end));
 	return 0;
 }
 

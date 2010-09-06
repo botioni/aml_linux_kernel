@@ -56,7 +56,7 @@ unsigned long dsp_codec_inc_rd_addr(struct audiodsp_priv *priv,int size)
 	rd=rd+size;
 	if(rd>=priv->stream_buffer_end)
 		rd=rd-priv->stream_buffer_size;
-	DSP_WD(DSP_DECODE_OUT_RD_ADDR,rd);
+	DSP_WD(DSP_DECODE_OUT_RD_ADDR,ARM_2_ARC_ADDR_SWAP((void*)rd));
 	local_irq_restore(flags);
 	return rd;
 }
