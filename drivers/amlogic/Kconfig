@@ -22,5 +22,6 @@ source "drivers/amlogic/cmem/Kconfig"
 source "drivers/amlogic/jpeglogo/Kconfig"
 source "drivers/amlogic/spi_nor/Kconfig"
 source "drivers/amlogic/mali/Kconfig"
-endmenu	
+source "drivers/amlogic/tvin/Kconfig"
+endmenu
 
