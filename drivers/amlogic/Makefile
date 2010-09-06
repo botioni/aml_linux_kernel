@@ -44,6 +44,8 @@ obj-$(CONFIG_MALI) += mali/
 
 obj-$(CONFIG_AML_AUDIO_DSP) += audiodsp/
 
+obj-y += tvin/
+
 #####Sound system is later init in kernel default..######################
 obj-y += sound/
 
