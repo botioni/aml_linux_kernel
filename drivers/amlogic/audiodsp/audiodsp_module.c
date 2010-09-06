@@ -261,15 +261,21 @@ ssize_t audiodsp_read(struct file * file, char __user * ubuf, size_t size,
 		wlen=priv->stream_buffer_end-rp;
 		wlen=min(wlen,else_len);
 ///		dma_cache_inv((unsigned long)rp,wlen);
+#ifdef CONFIG_VMSPLIT_2G        
         buf_map = dma_map_single(NULL, (void *)rp, wlen, DMA_FROM_DEVICE);
-		temp_ptr=(short*)buf_map;
-		w_else_len=copy_to_user((void*)pubuf,(const char *)(buf_map),wlen);
+        temp_ptr=(short*)buf_map;
+#else
+        temp_ptr = (short*)rp;
+#endif
+		w_else_len=copy_to_user((void*)pubuf,(const char *)(temp_ptr),wlen);
 		if(w_else_len!=0)
 			{
 			DSP_PRNT("copyed error,%d,%d,[%p]<---[%lx]\n",w_else_len,wlen,pubuf,rp);
 			wlen-=w_else_len;
 			}
+#ifdef CONFIG_VMSPLIT_2G          
         dma_unmap_single(NULL, buf_map, wlen, DMA_FROM_DEVICE);
+#endif
 		else_len-=wlen;
 		pubuf+=wlen;
 		rp=dsp_codec_inc_rd_addr(priv,wlen);
@@ -340,6 +346,7 @@ static int audiodsp_init_mcode(struct audiodsp_priv *priv)
 	priv->dsp_heap_start=0;
 	priv->code_mem_size=AUDIO_DSP_MEM_SIZE -REG_MEM_SIZE;
 	priv->dsp_code_start=AUDIO_DSP_START_ADDR;
+    DSP_PRNT("DSP start addr 0x%x\n",AUDIO_DSP_START_ADDR);
 	priv->dsp_stack_size=1024*64;
 	priv->dsp_gstack_size=512;
 	priv->dsp_heap_size=0;
@@ -369,7 +376,11 @@ int audiodsp_probe(void )
 		return -1;
 		}
     priv->dsp_is_started=0;
-    priv->p = ioremap_nocache(AUDIO_DSP_START_ADDR, S_1M);
+    priv->p = ioremap_nocache(AUDIO_DSP_START_PHY_ADDR, S_1M);
+    if(priv->p)
+        DSP_PRNT("DSP IOREMAP to addr 0x%x\n",(unsigned)priv->p);
+    else
+        goto error1;
 	audiodsp_p=priv;
 	audiodsp_init_mcode(priv);
 	res = register_chrdev(AUDIODSP_MAJOR, DSP_NAME, &audiodsp_fops);
@@ -399,6 +410,7 @@ int audiodsp_probe(void )
 #ifdef CONFIG_AM_STREAMING	
 	set_adec_func(audiodsp_get_status);
 #endif
+    memset((void*)DSP_REG_OFFSET,0,REG_MEM_SIZE);
     
 	return res;
 

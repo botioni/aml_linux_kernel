@@ -30,7 +30,7 @@ int dsp_mailbox_send(struct audiodsp_priv *priv,int overwrite,int num,int cmd,co
 		{
 			
 			m->cmd=cmd;
-			m->data=(char *)data;
+			m->data=(char *)ARM_2_ARC_ADDR_SWAP((unsigned)data);
 			m->len=len;
 			m->status=1;
 			after_change_mailbox(m);

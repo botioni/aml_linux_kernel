@@ -164,8 +164,10 @@ void wr_adac_regbank (unsigned long rstdpz,
     WRITE_APB_REG(ADAC_RESET, (rstdpz<<1));
     WRITE_APB_REG(ADAC_CLOCK, (mclksel<<0));
     WRITE_APB_REG(ADAC_I2S_CONFIG_REG1, (i2sfsdac<<0));
+    WRITE_APB_REG(ADAC_I2S_CONFIG_REG1, (i2sfsdac<<0));
     WRITE_APB_REG(ADAC_I2S_CONFIG_REG2, (i2ssplit<<3) | (i2smode<<0));
     WRITE_APB_REG(ADAC_POWER_CTRL_REG1, (pdauxdrvrz<<7) | (pdauxdrvlz<<6) | (pdhsdrvrz<<5) | (pdhsdrvlz<<4) | (pddacrz<<1) | (pddaclz<<0));
+
     WRITE_APB_REG(ADAC_POWER_CTRL_REG2, (pdz<<7));
     WRITE_APB_REG(ADAC_MUTE_CTRL_REG1, (hsmute<<6) | (lmmute<<0));
     WRITE_APB_REG(ADAC_DAC_ADC_MIXER, (lmmix<<5) | (ctr<<1));

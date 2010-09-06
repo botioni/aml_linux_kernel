@@ -3,6 +3,7 @@ dsp_register.h
 */
 #ifndef DSP_REGISTER_H
 #define DSP_REGISTER_H
+#include <linux/dma-mapping.h>
 
 #define SYS_MEM_START	0x80000000
 #define SYS_MEM_SIZE	0x8000000
@@ -11,7 +12,8 @@ dsp_register.h
 #define S_1M					(S_1K*S_1K)
 
 #define AUDIO_DSP_MEM_SIZE		 S_1M
-#define AUDIO_DSP_START_ADDR	0x84000000//((SYS_MEM_START+SYS_MEM_SIZE)-AUDIO_DSP_MEM_SIZE)
+#define AUDIO_DSP_START_PHY_ADDR 0x84000000
+#define AUDIO_DSP_START_ADDR	((unsigned)phys_to_virt(AUDIO_DSP_START_PHY_ADDR))//((SYS_MEM_START+SYS_MEM_SIZE)-AUDIO_DSP_MEM_SIZE)
 #define AUDIO_DSP_END_ADDR		((AUDIO_DSP_START_ADDR+AUDIO_DSP_MEM_SIZE))
 #define REG_MEM_SIZE					(S_1K*4)
 
@@ -95,6 +97,9 @@ int len;
 #define MAIBOX0_IRQ_ENABLE(irq)		SET_MPEG_REG_MASK(ASSIST_MBOX0_MASK,1<<irq)
 #define MAIBOX1_IRQ_ENABLE(irq)		SET_MPEG_REG_MASK(ASSIST_MBOX1_MASK,1<<irq)
 #define MAIBOX2_IRQ_ENABLE(irq)		SET_MPEG_REG_MASK(ASSIST_MBOX2_MASK,1<<irq)
+
+#define ARC_2_ARM_ADDR_SWAP(addr)  ((unsigned long)(phys_to_virt(addr)))
+#define ARM_2_ARC_ADDR_SWAP(addr)  (virt_to_phys((void*)addr))
 #endif
 
 
