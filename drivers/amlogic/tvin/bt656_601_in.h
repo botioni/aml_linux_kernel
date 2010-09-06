@@ -20,7 +20,7 @@ extern void set_next_field_656_601_camera_in_anci_address(unsigned char index);
 extern void start_amvdec_656_601_camera_in(unsigned char input_mode);
 extern void stop_amvdec_656_601_camera_in(unsigned char input_mode);
 
-extern vframe_t * amvdec_656_601_camera_in_run(void);
+extern int amvdec_656_601_camera_in_run(vframe_t *info);
 
 #endif				//__BT656_601_INPUT_H
 
