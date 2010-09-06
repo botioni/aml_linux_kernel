@@ -443,7 +443,7 @@ void start_amvdec_656_601_camera_in(unsigned char input_mode)
             if(am656in_dec_info.pin_mux_reg2 != 0)
                 SET_CBUS_REG_MASK(am656in_dec_info.pin_mux_reg2, am656in_dec_info.pin_mux_mask2);  //set the related pin mux
         }
-        else 
+        else
         {
             reset_camera_dec();
              if(am656in_dec_info.pin_mux_reg3 != 0)
@@ -684,28 +684,14 @@ input_mode is more than 3,    CAMERA input(progressive mode): CLOCK + D0~D7 + HR
                               .....
                               0xff: disable 656in/601/camera decode;
 */
-vframe_t * amvdec_656_601_camera_in_run(void)
+int amvdec_656_601_camera_in_run(vframe_t *info)
 {
     unsigned ccir656_status;
-    vframe_t info = {
-            0xffffffff,         //type
-            0xffffffff,         //type_backup
-            0,                  //blend_mode
-            0,                  //recycle_by_di_pre
-            1600,               //duration
-            0,                  //duration_pulldown
-            0,                  //pts
-            0xff,               //canvas0Addr
-            0xff,               //canvas1Addr
-            1440,               //bufWidth
-            720,                //width
-            480,                //height
-            0,                  //ratio_control
-    };
+
 
     if(am656in_dec_info.input_mode == 0xff){
         printk("bt656in decoder is not started\n");
-        return &info;
+        return -1;
     }
 
     ccir656_status = READ_CBUS_REG(BT_STATUS);
@@ -713,18 +699,18 @@ vframe_t * amvdec_656_601_camera_in_run(void)
 
     if(am656in_dec_info.input_mode < 2)  //NTSC or PAL input(interlace mode): D0~D7(with SAV + EAV )
     {
-        bt656_in_dec_run(&info);
+        bt656_in_dec_run(info);
     }
     else if(am656in_dec_info.input_mode < 4)
     {
-        bt601_in_dec_run(&info);
+        bt601_in_dec_run(info);
     }
     else
     {
-        camera_in_dec_run(&info);
+        camera_in_dec_run(info);
     }
 
-    return &info;
+    return 0;
 }
 
 
@@ -783,7 +769,7 @@ vframe_t * amvdec_656_601_camera_in_run(void)
 
 static int amvdec_656in_probe(struct platform_device *pdev)
 {
-    int r, i;
+    int r = 0;
 //    unsigned pbufSize;
     struct resource *s;
 
@@ -854,7 +840,7 @@ static int amvdec_656in_probe(struct platform_device *pdev)
     {
             am656in_dec_info.pin_mux_mask3 = (unsigned )(s->start);
             am656in_dec_info.pin_mux_reg3 = ((unsigned )(s->end) - am656in_dec_info.pin_mux_mask3 ) & 0xffff;
-            if(am656in_dec_info.pin_mux_reg2 != 0)
+            if(am656in_dec_info.pin_mux_reg3 != 0)
                 SET_CBUS_REG_MASK(am656in_dec_info.pin_mux_reg3, am656in_dec_info.pin_mux_mask3);
      }
      else
@@ -931,3 +917,10 @@ static void __exit amvdec_656in_exit_module(void)
 
 module_init(amvdec_656in_init_module);
 module_exit(amvdec_656in_exit_module);
+
+MODULE_DESCRIPTION("AMLOGIC BT656_601 input driver");
+MODULE_LICENSE("GPL");
+MODULE_AUTHOR("xintan <xintan.chen@amlogic.com>");
+
+
+

@@ -24,10 +24,12 @@
 #include <linux/device.h>
 #include <linux/cdev.h>
 #include <linux/platform_device.h>
+#include <linux/interrupt.h>
+#include <linux/errno.h>
 #include <asm/uaccess.h>
 
 /* Local include */
-#include <mach/am_regs.h>
+#include <asm/arch/am_regs.h>
 #include "vdin_regs.h"
 #include "vdin.h"
 
@@ -38,6 +40,15 @@
 #define VDIN_DEVICE_NAME        "vdin"
 #define VDIN_CLASS_NAME         "vdin"
 
+#ifdef DEBUG
+#define pr_dbg(fmt, args...) printk(KERN_DEBUG "amvdecvdin: " fmt, ## args)
+#else
+#define pr_dbg(fmt, args...)
+#endif
+#define pr_error(fmt, args...) printk(KERN_ERR "amvdecvdin: " fmt, ## args)
+
+
+
 #define VDIN_COUNT              1
 #define VDIN_CANVAS             70U
 #define BT656IN_BUF_NUM         8
@@ -47,12 +58,12 @@ static dev_t vdin_devno;
 static struct class *vdin_clsp;
 
 typedef struct vdin_dev_s {
-    int                         index;
-    struct cdev                 cdev;
-    unsigned int                flags;
-
-    unsigned int                mem_start;
-    unsigned int                mem_size;
+    int                 index;
+    vdin_src_t          src;
+    struct cdev         cdev;
+    unsigned int        flags;
+    unsigned int        mem_start;
+    unsigned int        mem_size;
 
     irqreturn_t (*vdin_isr) (int irq, void *dev_id);
 
@@ -75,34 +86,7 @@ void set_isr_func(vdin_dev_t * devp, irqreturn_t (*func)(int irq, void *dev_id))
 }
 EXPORT_SYMBOL(set_isr_func);
 
-static int vdin_open(struct inode *inode, struct file *file)
-{
-    int ret = 0;
-    vdin_dev_t *devp;
 
-    /* Get the per-device structure that contains this cdev */
-    devp = container_of(inode->i_cdev, vdin_dev_t, cdev);
-    file->private_data = devp;
-
-    ret = request_irq(INT_VDIN_VSYNC, devp->vdin_isr, IRQF_SHARED, "vdin-irq", NULL);
-    if (ret) {
-        printk(KERN_ERR "vdin: irq register error.\n");
-        return -ENOENT;
-    }
-
-
-    return 0;
-}
-
-static int vdin_release(struct inode *inode, struct file *file)
-{
-    //vdin_dev_t *devp = file->private_data;
-    file->private_data = NULL;
-
-    /* Release some other fields */
-    /* ... */
-    return 0;
-}
 
 union vdin_hist_u           vdin_hist;
 struct vdin_bbar_info_s     vdin_bbar;
@@ -828,14 +812,18 @@ static void vdin_bt656in_canvas_init(struct vdin_dev_s *devp)
 
 
 
-static void vdin_canvas_init(struct vdin_dev_s *devp)
+static int vdin_canvas_init(int vdin_index, enum vdin_src_e src)
 {
-    switch (devp->src)
+    int ret = 0;
+    if(vdin_index > VDIN_COUNT)
+        return -1;
+    vdin_devp[0].src = src;
+    switch (src)
     {
         case VDIN_SRC_MPEG:
             break;
         case VDIN_SRC_BT656IN:
-            vdin_bt656in_canvas_init(devp);
+            vdin_bt656in_canvas_init();
             break;
         case VDIN_SRC_TVFE:
             break;
@@ -844,14 +832,159 @@ static void vdin_canvas_init(struct vdin_dev_s *devp)
         case VDIN_SRC_HDMIRX:
             break;
         default:
+            ret = -1;
             break;
     }
+    return ret;
 }
+
+static irqreturn_t vdin_isr(int irq, void *dev_id)
+{
+    u32 reg, index;
+    vframe_t info = {
+            0xffffffff,         //type
+            0xffffffff,         //type_backup
+            0,                  //blend_mode
+            0,                  //recycle_by_di_pre
+            1600,               //duration
+            0,                  //duration_pulldown
+            0,                  //pts
+            0xff,               //canvas0Addr
+            0xff,               //canvas1Addr
+            1440,               //bufWidth
+            720,                //width
+            480,                //height
+            0,                  //ratio_control
+    };
+
+    switch (vdin_devp[0].src)
+    {
+        case VDIN_SRC_MPEG:
+            break;
+        case VDIN_SRC_BT656IN:
+            info = &amvdec_656_601_camera_in_run(&info); //If info.type ( --reture value )is 0xffffffff, the current field is error
+            break;
+        case VDIN_SRC_TVFE:
+            break;
+        case VDIN_SRC_CVD2:
+            break;
+        case VDIN_SRC_HDMIRX:
+            break;
+        default:
+            ret = -1;
+            break;
+    }
+    //If info.type ( --reture value )is 0xffffffff, the current field is error
+    if(info.type == 0xffffffff)
+    {
+        pr_error("decode data is error, skip the feild data \n");
+    }
+    else    //do buffer managerment, and send info into video display, please refer to vh264 decode
+    {
+            //set info.canvas0Addr for display
+            //set info.canvas1Addr for display
+            //others
+    }
+    return IRQ_HANDLED;
+}
+
+
+
+
+static int vdin_open(struct inode *inode, struct file *file)
+{
+    int ret = 0;
+    vdin_dev_t *devp;
+
+    /* Get the per-device structure that contains this cdev */
+    devp = container_of(inode->i_cdev, vdin_dev_t, cdev);
+    file->private_data = devp;
+
+    switch (vdin_devp[0].src)
+    {
+        case VDIN_SRC_MPEG:
+            break;
+        case VDIN_SRC_BT656IN:
+ //input_mode is 0 or 1,         NTSC or PAL input(interlace mode): CLOCK + D0~D7(with SAV + EAV )
+//                              0:656--PAL ; 1:656--NTSC   ccir656 input
+//input_mode is 2 or 3,         NTSC or PAL input(interlace mode): CLOCK + D0~D7 + HSYNC + VSYNC + FID
+//                              2:601--PAL ; 3:601--NTSC   ccir656 input
+//input_mode is more than 3,    CAMERA input(progressive mode): CLOCK + D0~D7 + HREF + VSYNC
+//                              4:640x480 camera inout(progressive)
+//                              5:800x600 camera inout(progressive)
+//                              6:1024x768 camera inout(progressive)
+//                              .....
+//                              0xff: disable 656in/601/camera decode;
+            start_amvdec_656_601_camera_in(0);
+            break;
+        case VDIN_SRC_TVFE:
+            break;
+        case VDIN_SRC_CVD2:
+            break;
+        case VDIN_SRC_HDMIRX:
+            break;
+        default:
+            ret = -1;
+            break;
+    }
+
+
+    ret = request_irq(INT_VDIN_VSYNC, vdin_isr, IRQF_SHARED, "vdin-irq", NULL);
+    if (ret) {
+        printk(KERN_ERR "vdin: irq register error.\n");
+        return -ENOENT;
+    }
+
+
+    return 0;
+}
+
+static int vdin_release(struct inode *inode, struct file *file)
+{
+    vdin_dev_t *devp = file->private_data;
+    file->private_data = NULL;
+
+    /* Release some other fields */
+
+        switch (vdin_devp[0].src)
+        {
+            case VDIN_SRC_MPEG:
+                break;
+            case VDIN_SRC_BT656IN:
+     //input_mode is 0 or 1,         NTSC or PAL input(interlace mode): CLOCK + D0~D7(with SAV + EAV )
+    //                              0:656--PAL ; 1:656--NTSC   ccir656 input
+    //input_mode is 2 or 3,         NTSC or PAL input(interlace mode): CLOCK + D0~D7 + HSYNC + VSYNC + FID
+    //                              2:601--PAL ; 3:601--NTSC   ccir656 input
+    //input_mode is more than 3,    CAMERA input(progressive mode): CLOCK + D0~D7 + HREF + VSYNC
+    //                              4:640x480 camera inout(progressive)
+    //                              5:800x600 camera inout(progressive)
+    //                              6:1024x768 camera inout(progressive)
+    //                              .....
+    //                              0xff: disable 656in/601/camera decode;
+                stop_amvdec_656_601_camera_in(0);
+                break;
+            case VDIN_SRC_TVFE:
+                break;
+            case VDIN_SRC_CVD2:
+                break;
+            case VDIN_SRC_HDMIRX:
+                break;
+            default:
+                break;
+        }
+
+
+    /* ... */
+    return 0;
+}
+
+
 
 static int vdin_ioctl(struct inode *inode, struct file *file, unsigned int cmd, unsigned long arg)
 {
     int ret = 0;
     vdin_dev_t *devp;
+    unsigned temp1 = (unsigned *)arg;
     void __user *argp = (void __user *)arg;
 
 	if (_IOC_TYPE(cmd) != VDIN_IOC_MAGIC) {
@@ -986,10 +1119,70 @@ static int vdin_ioctl(struct inode *inode, struct file *file, unsigned int cmd, 
             break;
         }
         case VDIN_IOC_INIT:
-        {
-            vdin_canvas_init(devp);
+            vdin_canvas_init(0, VDIN_SRC_BT656IN);
             break;
-        }
+
+        case VDIN_START_DEC:
+
+            switch (vdin_devp[0].src)
+                {
+                    case VDIN_SRC_MPEG:
+                        break;
+                    case VDIN_SRC_BT656IN:
+             //input_mode is 0 or 1,         NTSC or PAL input(interlace mode): CLOCK + D0~D7(with SAV + EAV )
+            //                              0:656--PAL ; 1:656--NTSC   ccir656 input
+            //input_mode is 2 or 3,         NTSC or PAL input(interlace mode): CLOCK + D0~D7 + HSYNC + VSYNC + FID
+            //                              2:601--PAL ; 3:601--NTSC   ccir656 input
+            //input_mode is more than 3,    CAMERA input(progressive mode): CLOCK + D0~D7 + HREF + VSYNC
+            //                              4:640x480 camera inout(progressive)
+            //                              5:800x600 camera inout(progressive)
+            //                              6:1024x768 camera inout(progressive)
+            //                              .....
+            //                              0xff: disable 656in/601/camera decode;
+                        start_amvdec_656_601_camera_in(temp1);
+                        break;
+                    case VDIN_SRC_TVFE:
+                        break;
+                    case VDIN_SRC_CVD2:
+                        break;
+                    case VDIN_SRC_HDMIRX:
+                        break;
+                    default:
+                        break;
+                }
+
+            break;
+
+        case VDIN_STOP_DEC:
+            switch (vdin_devp[0].src)
+                {
+                    case VDIN_SRC_MPEG:
+                        break;
+
+                    case VDIN_SRC_BT656IN:
+             //input_mode is 0 or 1,         NTSC or PAL input(interlace mode): CLOCK + D0~D7(with SAV + EAV )
+            //                              0:656--PAL ; 1:656--NTSC   ccir656 input
+            //input_mode is 2 or 3,         NTSC or PAL input(interlace mode): CLOCK + D0~D7 + HSYNC + VSYNC + FID
+            //                              2:601--PAL ; 3:601--NTSC   ccir656 input
+            //input_mode is more than 3,    CAMERA input(progressive mode): CLOCK + D0~D7 + HREF + VSYNC
+            //                              4:640x480 camera inout(progressive)
+            //                              5:800x600 camera inout(progressive)
+            //                              6:1024x768 camera inout(progressive)
+            //                              .....
+            //                              0xff: disable 656in/601/camera decode;
+                        stop_amvdec_656_601_camera_in(temp1);
+                        break;
+                    case VDIN_SRC_TVFE:
+                        break;
+                    case VDIN_SRC_CVD2:
+                        break;
+                    case VDIN_SRC_HDMIRX:
+                        break;
+                    default:
+                        break;
+                }
+
+            break;
         default:
             ret = -ENOIOCTLCMD;
             break;
