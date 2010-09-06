@@ -32,6 +32,7 @@
 #include <asm/arch/am_regs.h>
 #include "vdin_regs.h"
 #include "vdin.h"
+#include "tvin_global.h"
 
 
 #define VDIN_NAME               "vdin"
@@ -862,7 +863,7 @@ static irqreturn_t vdin_isr(int irq, void *dev_id)
         case VDIN_SRC_MPEG:
             break;
         case VDIN_SRC_BT656IN:
-            info = &amvdec_656_601_camera_in_run(&info); //If info.type ( --reture value )is 0xffffffff, the current field is error
+            amvdec_656_601_camera_in_run(&info); //If info.type ( --reture value )is 0xffffffff, the current field is error
             break;
         case VDIN_SRC_TVFE:
             break;
@@ -905,17 +906,20 @@ static int vdin_open(struct inode *inode, struct file *file)
         case VDIN_SRC_MPEG:
             break;
         case VDIN_SRC_BT656IN:
- //input_mode is 0 or 1,         NTSC or PAL input(interlace mode): CLOCK + D0~D7(with SAV + EAV )
-//                              0:656--PAL ; 1:656--NTSC   ccir656 input
-//input_mode is 2 or 3,         NTSC or PAL input(interlace mode): CLOCK + D0~D7 + HSYNC + VSYNC + FID
-//                              2:601--PAL ; 3:601--NTSC   ccir656 input
-//input_mode is more than 3,    CAMERA input(progressive mode): CLOCK + D0~D7 + HREF + VSYNC
-//                              4:640x480 camera inout(progressive)
-//                              5:800x600 camera inout(progressive)
-//                              6:1024x768 camera inout(progressive)
-//                              .....
-//                              0xff: disable 656in/601/camera decode;
-            start_amvdec_656_601_camera_in(0);
+            //below macro defined is from tvin_global.h, they maybe not exact.
+            //input_mode is TVIN_SIG_FMT_NULL: disable 656in/601/camera decode;
+            //input_mode is TVIN_SIG_FMT_COMPONENT_576I_50D000 or TVIN_SIG_FMT_COMPONENT_576I_50D000, NTSC or PAL input(interlace mode): CLOCK + D0~D7(with SAV + EAV )
+            //              TVIN_SIG_FMT_COMPONENT_576I_50D000:     656--PAL ;
+            //              TVIN_SIG_FMT_COMPONENT_480I_59D940:     656--NTSC   ccir656 input
+            //input_mode is TVIN_SIG_FMT_HDMI_1440x576I_50Hz or TVIN_SIG_FMT_HDMI_1440x480I_60Hz,  NTSC or PAL input(interlace mode): CLOCK + D0~D7 + HSYNC + VSYNC + FID
+            //              TVIN_SIG_FMT_HDMI_1440x576I_50Hz:       601--PAL ;
+            //              TVIN_SIG_FMT_HDMI_1440x480I_60Hz:6      601--NTSC   ccir656 input
+            //input_mode is others,    CAMERA input(progressive mode): CLOCK + D0~D7 + HREF + VSYNC
+            //              TVIN_SIG_FMT_VGA_640X480P_60D000:640x480 camera inout(progressive)
+            //              TVIN_SIG_FMT_VGA_800X600P_60D317:800x600 camera inout(progressive)
+            //              TVIN_SIG_FMT_VGA_1024X768P_60D004:1024x768 camera inout(progressive)
+            //              .....
+            start_amvdec_656_601_camera_in(TVIN_SIG_FMT_COMPONENT_576I_50D000);
             break;
         case VDIN_SRC_TVFE:
             break;
@@ -951,17 +955,20 @@ static int vdin_release(struct inode *inode, struct file *file)
             case VDIN_SRC_MPEG:
                 break;
             case VDIN_SRC_BT656IN:
-     //input_mode is 0 or 1,         NTSC or PAL input(interlace mode): CLOCK + D0~D7(with SAV + EAV )
-    //                              0:656--PAL ; 1:656--NTSC   ccir656 input
-    //input_mode is 2 or 3,         NTSC or PAL input(interlace mode): CLOCK + D0~D7 + HSYNC + VSYNC + FID
-    //                              2:601--PAL ; 3:601--NTSC   ccir656 input
-    //input_mode is more than 3,    CAMERA input(progressive mode): CLOCK + D0~D7 + HREF + VSYNC
-    //                              4:640x480 camera inout(progressive)
-    //                              5:800x600 camera inout(progressive)
-    //                              6:1024x768 camera inout(progressive)
-    //                              .....
-    //                              0xff: disable 656in/601/camera decode;
-                stop_amvdec_656_601_camera_in(0);
+                //below macro defined is from tvin_global.h, they maybe not exact.
+                //input_mode is TVIN_SIG_FMT_NULL: disable 656in/601/camera decode;
+                //input_mode is TVIN_SIG_FMT_COMPONENT_576I_50D000 or TVIN_SIG_FMT_COMPONENT_576I_50D000, NTSC or PAL input(interlace mode): CLOCK + D0~D7(with SAV + EAV )
+                //              TVIN_SIG_FMT_COMPONENT_576I_50D000:     656--PAL ;
+                //              TVIN_SIG_FMT_COMPONENT_480I_59D940:     656--NTSC   ccir656 input
+                //input_mode is TVIN_SIG_FMT_HDMI_1440x576I_50Hz or TVIN_SIG_FMT_HDMI_1440x480I_60Hz,  NTSC or PAL input(interlace mode): CLOCK + D0~D7 + HSYNC + VSYNC + FID
+                //              TVIN_SIG_FMT_HDMI_1440x576I_50Hz:       601--PAL ;
+                //              TVIN_SIG_FMT_HDMI_1440x480I_60Hz:6      601--NTSC   ccir656 input
+                //input_mode is others,    CAMERA input(progressive mode): CLOCK + D0~D7 + HREF + VSYNC
+                //              TVIN_SIG_FMT_VGA_640X480P_60D000:640x480 camera inout(progressive)
+                //              TVIN_SIG_FMT_VGA_800X600P_60D317:800x600 camera inout(progressive)
+                //              TVIN_SIG_FMT_VGA_1024X768P_60D004:1024x768 camera inout(progressive)
+                //              .....
+                stop_amvdec_656_601_camera_in(TVIN_SIG_FMT_COMPONENT_576I_50D000);
                 break;
             case VDIN_SRC_TVFE:
                 break;
@@ -984,7 +991,7 @@ static int vdin_ioctl(struct inode *inode, struct file *file, unsigned int cmd, 
 {
     int ret = 0;
     vdin_dev_t *devp;
-    unsigned temp1 = (unsigned *)arg;
+    tvin_sig_format_t tvin_index_ = (tvin_sig_format_t *)arg;
     void __user *argp = (void __user *)arg;
 
 	if (_IOC_TYPE(cmd) != VDIN_IOC_MAGIC) {
@@ -1129,17 +1136,21 @@ static int vdin_ioctl(struct inode *inode, struct file *file, unsigned int cmd, 
                     case VDIN_SRC_MPEG:
                         break;
                     case VDIN_SRC_BT656IN:
-             //input_mode is 0 or 1,         NTSC or PAL input(interlace mode): CLOCK + D0~D7(with SAV + EAV )
-            //                              0:656--PAL ; 1:656--NTSC   ccir656 input
-            //input_mode is 2 or 3,         NTSC or PAL input(interlace mode): CLOCK + D0~D7 + HSYNC + VSYNC + FID
-            //                              2:601--PAL ; 3:601--NTSC   ccir656 input
-            //input_mode is more than 3,    CAMERA input(progressive mode): CLOCK + D0~D7 + HREF + VSYNC
-            //                              4:640x480 camera inout(progressive)
-            //                              5:800x600 camera inout(progressive)
-            //                              6:1024x768 camera inout(progressive)
-            //                              .....
-            //                              0xff: disable 656in/601/camera decode;
-                        start_amvdec_656_601_camera_in(temp1);
+//below macro defined is from tvin_global.h, they maybe not exact.
+//input_mode is TVIN_SIG_FMT_NULL: disable 656in/601/camera decode;
+//input_mode is TVIN_SIG_FMT_COMPONENT_576I_50D000 or TVIN_SIG_FMT_COMPONENT_576I_50D000, NTSC or PAL input(interlace mode): CLOCK + D0~D7(with SAV + EAV )
+//              TVIN_SIG_FMT_COMPONENT_576I_50D000:     656--PAL ;
+//              TVIN_SIG_FMT_COMPONENT_480I_59D940:     656--NTSC   ccir656 input
+//input_mode is TVIN_SIG_FMT_HDMI_1440x576I_50Hz or TVIN_SIG_FMT_HDMI_1440x480I_60Hz,  NTSC or PAL input(interlace mode): CLOCK + D0~D7 + HSYNC + VSYNC + FID
+//              TVIN_SIG_FMT_HDMI_1440x576I_50Hz:       601--PAL ;
+//              TVIN_SIG_FMT_HDMI_1440x480I_60Hz:6      601--NTSC   ccir656 input
+//input_mode is others,    CAMERA input(progressive mode): CLOCK + D0~D7 + HREF + VSYNC
+//              TVIN_SIG_FMT_VGA_640X480P_60D000:640x480 camera inout(progressive)
+//              TVIN_SIG_FMT_VGA_800X600P_60D317:800x600 camera inout(progressive)
+//              TVIN_SIG_FMT_VGA_1024X768P_60D004:1024x768 camera inout(progressive)
+//              .....
+//                      tvin_index_ = TVIN_SIG_FMT_COMPONENT_576I_50D000;   //for test
+                        start_amvdec_656_601_camera_in(tvin_index_);
                         break;
                     case VDIN_SRC_TVFE:
                         break;
@@ -1160,17 +1171,21 @@ static int vdin_ioctl(struct inode *inode, struct file *file, unsigned int cmd, 
                         break;
 
                     case VDIN_SRC_BT656IN:
-             //input_mode is 0 or 1,         NTSC or PAL input(interlace mode): CLOCK + D0~D7(with SAV + EAV )
-            //                              0:656--PAL ; 1:656--NTSC   ccir656 input
-            //input_mode is 2 or 3,         NTSC or PAL input(interlace mode): CLOCK + D0~D7 + HSYNC + VSYNC + FID
-            //                              2:601--PAL ; 3:601--NTSC   ccir656 input
-            //input_mode is more than 3,    CAMERA input(progressive mode): CLOCK + D0~D7 + HREF + VSYNC
-            //                              4:640x480 camera inout(progressive)
-            //                              5:800x600 camera inout(progressive)
-            //                              6:1024x768 camera inout(progressive)
-            //                              .....
-            //                              0xff: disable 656in/601/camera decode;
-                        stop_amvdec_656_601_camera_in(temp1);
+//below macro defined is from tvin_global.h, they maybe not exact.
+//input_mode is TVIN_SIG_FMT_NULL: disable 656in/601/camera decode;
+//input_mode is TVIN_SIG_FMT_COMPONENT_576I_50D000 or TVIN_SIG_FMT_COMPONENT_576I_50D000, NTSC or PAL input(interlace mode): CLOCK + D0~D7(with SAV + EAV )
+//              TVIN_SIG_FMT_COMPONENT_576I_50D000:     656--PAL ;
+//              TVIN_SIG_FMT_COMPONENT_480I_59D940:     656--NTSC   ccir656 input
+//input_mode is TVIN_SIG_FMT_HDMI_1440x576I_50Hz or TVIN_SIG_FMT_HDMI_1440x480I_60Hz,  NTSC or PAL input(interlace mode): CLOCK + D0~D7 + HSYNC + VSYNC + FID
+//              TVIN_SIG_FMT_HDMI_1440x576I_50Hz:       601--PAL ;
+//              TVIN_SIG_FMT_HDMI_1440x480I_60Hz:6      601--NTSC   ccir656 input
+//input_mode is others,    CAMERA input(progressive mode): CLOCK + D0~D7 + HREF + VSYNC
+//              TVIN_SIG_FMT_VGA_640X480P_60D000:640x480 camera inout(progressive)
+//              TVIN_SIG_FMT_VGA_800X600P_60D317:800x600 camera inout(progressive)
+//              TVIN_SIG_FMT_VGA_1024X768P_60D004:1024x768 camera inout(progressive)
+//              .....
+//                      tvin_index_ = TVIN_SIG_FMT_COMPONENT_576I_50D000;   //for test
+                        stop_amvdec_656_601_camera_in(tvin_index_);
                         break;
                     case VDIN_SRC_TVFE:
                         break;

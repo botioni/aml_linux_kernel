@@ -28,6 +28,7 @@
 #include <linux/dma-mapping.h>
 #include <asm/atomic.h>
 #include <mach/am_regs.h>
+#include "tvin_global.h"
 #include "bt656_601_in.h"
 
 
@@ -61,28 +62,36 @@
 
 //static struct am656in_dev_t am656in_dev_;
 typedef struct {
-    unsigned long   pbufAddr;
-    unsigned long   pbufSize;
+    unsigned long       pbufAddr;
+    unsigned long       pbufSize;
 
-    unsigned        pin_mux_reg1;   //for bt656 input
-    unsigned        pin_mux_mask1;
+    unsigned            pin_mux_reg1;   //for bt656 input
+    unsigned            pin_mux_mask1;
 
-    unsigned        pin_mux_reg2;   //for bt601 input
-    unsigned        pin_mux_mask2;
+    unsigned            pin_mux_reg2;   //for bt601 input
+    unsigned            pin_mux_mask2;
 
-    unsigned        pin_mux_reg3;   //for camera input
-    unsigned        pin_mux_mask3;
+    unsigned            pin_mux_reg3;   //for camera input
+    unsigned            pin_mux_mask3;
 
-    unsigned        active_pixel;
-    unsigned        active_line;
+    unsigned            active_pixel;
+    unsigned            active_line;
 
-    unsigned char   input_mode;  //0:656--PAL ; 1:656--NTSC   ccir656 input
-                                //2:601--PAL ; 3:601--NTSC   ccir656 input
-                                //4:640x480 camera inout(progressive)
-                                //5:800x600 camera inout(progressive)
-                                //6:1024x768 camera inout(progressive)
-                                //.....
-                                //0xff: disable 656in/601/camera decode;
+//below macro defined is from tvin_global.h, they maybe not exact.
+//input_mode is TVIN_SIG_FMT_NULL: disable 656in/601/camera decode;
+//input_mode is TVIN_SIG_FMT_COMPONENT_576I_50D000 or TVIN_SIG_FMT_COMPONENT_576I_50D000, NTSC or PAL input(interlace mode): CLOCK + D0~D7(with SAV + EAV )
+//              TVIN_SIG_FMT_COMPONENT_576I_50D000:     656--PAL ;
+//              TVIN_SIG_FMT_COMPONENT_480I_59D940:     656--NTSC   ccir656 input
+//input_mode is TVIN_SIG_FMT_HDMI_1440x576I_50Hz or TVIN_SIG_FMT_HDMI_1440x480I_60Hz,  NTSC or PAL input(interlace mode): CLOCK + D0~D7 + HSYNC + VSYNC + FID
+//              TVIN_SIG_FMT_HDMI_1440x576I_50Hz:       601--PAL ;
+//              TVIN_SIG_FMT_HDMI_1440x480I_60Hz:6      601--NTSC   ccir656 input
+//input_mode is others,    CAMERA input(progressive mode): CLOCK + D0~D7 + HREF + VSYNC
+//              TVIN_SIG_FMT_VGA_640X480P_60D000:640x480 camera inout(progressive)
+//              TVIN_SIG_FMT_VGA_800X600P_60D317:800x600 camera inout(progressive)
+//              TVIN_SIG_FMT_VGA_1024X768P_60D004:1024x768 camera inout(progressive)
+//              .....
+    tvin_sig_format_t   input_mode;
+
 }am656in_t;
 
 am656in_t am656in_dec_info = {
@@ -96,9 +105,7 @@ am656in_t am656in_dec_info = {
         .pin_mux_mask3 = 0,
         .active_pixel = 720,
         .active_line = 288,
-        .input_mode = 0xff,     //disable 656in/601/camera decode;
-
-
+        .input_mode = TVIN_SIG_FMT_NULL,     //disable 656in/601/camera decode;
 
     };
 
@@ -112,54 +119,67 @@ static const char bt656in_dec_id[] = "bt656in-dev";
 //static struct device *am656in_dev;
 
 
+//below macro defined is from tvin_global.h, they maybe not exact.
+//input_mode is TVIN_SIG_FMT_NULL: disable 656in/601/camera decode;
+//input_mode is TVIN_SIG_FMT_COMPONENT_576I_50D000 or TVIN_SIG_FMT_COMPONENT_576I_50D000, NTSC or PAL input(interlace mode): CLOCK + D0~D7(with SAV + EAV )
+//              TVIN_SIG_FMT_COMPONENT_576I_50D000:     656--PAL ;
+//              TVIN_SIG_FMT_COMPONENT_480I_59D940:     656--NTSC   ccir656 input
+//input_mode is TVIN_SIG_FMT_HDMI_1440x576I_50Hz or TVIN_SIG_FMT_HDMI_1440x480I_60Hz,  NTSC or PAL input(interlace mode): CLOCK + D0~D7 + HSYNC + VSYNC + FID
+//              TVIN_SIG_FMT_HDMI_1440x576I_50Hz:       601--PAL ;
+//              TVIN_SIG_FMT_HDMI_1440x480I_60Hz:6      601--NTSC   ccir656 input
+//input_mode is others,    CAMERA input(progressive mode): CLOCK + D0~D7 + HREF + VSYNC
+//              TVIN_SIG_FMT_VGA_640X480P_60D000:640x480 camera inout(progressive)
+//              TVIN_SIG_FMT_VGA_800X600P_60D317:800x600 camera inout(progressive)
+//              TVIN_SIG_FMT_VGA_1024X768P_60D004:1024x768 camera inout(progressive)
+//              .....
 static void init_656in_dec_parameter(unsigned char input_mode)
 {
     am656in_dec_info.input_mode = input_mode;
     switch(input_mode)
     {
-        case 0:     //656--PAL(interlace)
+        case TVIN_SIG_FMT_COMPONENT_576I_50D000:     //656--PAL(interlace)
             am656in_dec_info.active_pixel = 720;
             am656in_dec_info.active_line = 288;
             pr_dbg("PAL input mode is selected for bt656, \n");
             break;
 
-        case 1:     //656--NTSC(interlace)
+        case TVIN_SIG_FMT_COMPONENT_480I_59D940:     //656--NTSC(interlace)
             am656in_dec_info.active_pixel = 720;
             am656in_dec_info.active_line = 240;
             pr_dbg("NTSC input mode is selected for bt656, \n");
             break;
 
-        case 2:     //601--PAL(interlace)
+        case TVIN_SIG_FMT_HDMI_1440x576I_50Hz:     //601--PAL(interlace)
             am656in_dec_info.active_pixel = 720;
             am656in_dec_info.active_line = 288;
             pr_dbg("PAL input mode is selected for bt601, \n");
             break;
 
-        case 3:     //601--NTSC(interlace)
+        case TVIN_SIG_FMT_HDMI_1440x480I_60Hz:     //601--NTSC(interlace)
             am656in_dec_info.active_pixel = 720;
             am656in_dec_info.active_line = 240;
             pr_dbg("NTSC input mode is selected for bt601, \n");
             break;
 
-        case 4:     //640x480 camera inout(progressive)
+        case TVIN_SIG_FMT_VGA_640X480P_60D000:     //640x480 camera inout(progressive)
             am656in_dec_info.active_pixel = 640;
             am656in_dec_info.active_line = 480;
             pr_dbg("640x480 input mode is selected for camera, \n");
             break;
 
-        case 5:     //800x600 camera inout(progressive)
+        case TVIN_SIG_FMT_VGA_800X600P_60D317:     //800x600 camera inout(progressive)
             am656in_dec_info.active_pixel = 800;
             am656in_dec_info.active_line = 600;
             pr_dbg("800x600 input mode is selected for camera, \n");
             break;
 
-        case 6:     //1024x768 camera inout(progressive)
+        case TVIN_SIG_FMT_VGA_1024X768P_60D004:     //1024x768 camera inout(progressive)
             am656in_dec_info.active_pixel = 1024;
             am656in_dec_info.active_line = 768;
             pr_dbg("1024x768 input mode is selected for camera, \n");
             break;
 
-        case 0xff:
+        case TVIN_SIG_FMT_NULL:
             pr_dbg("bt656_601 input decode is not start, do nothing \n");
             break;
 
@@ -214,7 +234,7 @@ static void reset_bt656in_dec(void)
 
 		WRITE_CBUS_REG(BT_ERR_CNT, (626 << 16) | (1760));
 
-		if(am656in_dec_info.input_mode  == 0) //input is PAL
+		if(am656in_dec_info.input_mode  == TVIN_SIG_FMT_COMPONENT_480I_59D940) //input is PAL
 		{
 				WRITE_CBUS_REG(BT_VBIEND, 	22 | (22 << 16));		//field 0/1 VBI last line number
 				WRITE_CBUS_REG(BT_VIDEOSTART, 	23 | (23 << 16));	//Line number of the first video start line in field 0/1.
@@ -229,7 +249,7 @@ static void reset_bt656in_dec(void)
 								(1 << BT_CLK27_SEL_BIT) |    // use external xclk27.
 								(1 << BT_XCLK27_EN_BIT)) ;    // xclk27 is input.
 		}
-		else //if(am656in_dec_info.input_mode  == 1) //input is PAL	//input is NTSC
+		else if(am656in_dec_info.input_mode  == TVIN_SIG_FMT_COMPONENT_576I_50D000) //input is PAL	//input is NTSC
 		{
 				WRITE_CBUS_REG(BT_VBIEND, 	21 | (21 << 16));		//field 0/1 VBI last line number
 				WRITE_CBUS_REG(BT_VIDEOSTART, 	18 | (18 << 16));	//Line number of the first video start line in field 0/1.
@@ -245,6 +265,8 @@ static void reset_bt656in_dec(void)
 								(1 << BT_XCLK27_EN_BIT) |		// xclk27 is input.
 								(1 << BT_FMT_MODE_BIT));   //input format is NTSC
 		}
+        else
+           pr_dbg("bt656 input mode is invalid, do nothing \n");
 
 		return;
 }
@@ -301,7 +323,7 @@ static void reset_bt601in_dec(void)
                                                                     //there are some lines without HREF sometime
 		WRITE_CBUS_REG(BT_FIELDSADR, (1 << 16) | 1);	// field 0/1 start lcnt
 
-		if(am656in_dec_info.input_mode == 2) //input is PAL
+		if(am656in_dec_info.input_mode == TVIN_SIG_FMT_HDMI_1440x576I_50Hz) //input is PAL
 		{
 				WRITE_CBUS_REG(BT_VBIEND, 22 | (22 << 16));		//field 0/1 VBI last line number
 				WRITE_CBUS_REG(BT_VIDEOSTART, 23 | (23 << 16));	//Line number of the first video start line in field 0/1.
@@ -318,7 +340,7 @@ static void reset_bt601in_dec(void)
                                             (1 << BT_XCLK27_EN_BIT) );   // xclk27 is input.
      }
 
-		else //if(am656in_dec_info.input_mode == 3) 	//input is NTSC
+		else if(am656in_dec_info.input_mode == TVIN_SIG_FMT_HDMI_1440x480I_60Hz) 	//input is NTSC
 		{
 				WRITE_CBUS_REG(BT_VBIEND, 21 | (21 << 16));		//field 0/1 VBI last line number
 				WRITE_CBUS_REG(BT_VIDEOSTART, 18 | (18 << 16));	//Line number of the first video start line in field 0/1.
@@ -333,6 +355,10 @@ static void reset_bt601in_dec(void)
                                         (0 << BT_FID_EN_BIT )   |     // use external fid pin.
                                         (1 << BT_CLK27_SEL_BIT) |  // use external xclk27.
                                         (1 << BT_XCLK27_EN_BIT) );   // xclk27 is input.
+      }
+      else
+      {
+            pr_dbg("bt601 input mode is invalid, do nothing \n");
       }
 		return;
 }
@@ -417,27 +443,30 @@ void set_next_field_656_601_camera_in_anci_address(unsigned char index)
 		WRITE_CBUS_REG(BT_ANCISADR, pbufAddr);
 }
 
-//input_mode is 0 or 1,         NTSC or PAL input(interlace mode): CLOCK + D0~D7(with SAV + EAV )
-//                              0:656--PAL ; 1:656--NTSC   ccir656 input
-//input_mode is 2 or 3,         NTSC or PAL input(interlace mode): CLOCK + D0~D7 + HSYNC + VSYNC + FID
-//                              2:601--PAL ; 3:601--NTSC   ccir656 input
-//input_mode is more than 3,    CAMERA input(progressive mode): CLOCK + D0~D7 + HREF + VSYNC
-//                              4:640x480 camera inout(progressive)
-//                              5:800x600 camera inout(progressive)
-//                              6:1024x768 camera inout(progressive)
-//                              .....
-//                              0xff: disable 656in/601/camera decode;
+//below macro defined is from tvin_global.h, they maybe not exact.
+//input_mode is TVIN_SIG_FMT_NULL: disable 656in/601/camera decode;
+//input_mode is TVIN_SIG_FMT_COMPONENT_576I_50D000 or TVIN_SIG_FMT_COMPONENT_576I_50D000, NTSC or PAL input(interlace mode): CLOCK + D0~D7(with SAV + EAV )
+//              TVIN_SIG_FMT_COMPONENT_576I_50D000:     656--PAL ;
+//              TVIN_SIG_FMT_COMPONENT_480I_59D940:     656--NTSC   ccir656 input
+//input_mode is TVIN_SIG_FMT_HDMI_1440x576I_50Hz or TVIN_SIG_FMT_HDMI_1440x480I_60Hz,  NTSC or PAL input(interlace mode): CLOCK + D0~D7 + HSYNC + VSYNC + FID
+//              TVIN_SIG_FMT_HDMI_1440x576I_50Hz:       601--PAL ;
+//              TVIN_SIG_FMT_HDMI_1440x480I_60Hz:6      601--NTSC   ccir656 input
+//input_mode is others,    CAMERA input(progressive mode): CLOCK + D0~D7 + HREF + VSYNC
+//              TVIN_SIG_FMT_VGA_640X480P_60D000:640x480 camera inout(progressive)
+//              TVIN_SIG_FMT_VGA_800X600P_60D317:800x600 camera inout(progressive)
+//              TVIN_SIG_FMT_VGA_1024X768P_60D004:1024x768 camera inout(progressive)
+//              .....
 void start_amvdec_656_601_camera_in(unsigned char input_mode)
 {
-    if((am656in_dec_info.input_mode == 0xff) && (input_mode != 0xff))
+    if((am656in_dec_info.input_mode == TVIN_SIG_FMT_NULL) && (input_mode != TVIN_SIG_FMT_NULL))
     {
         init_656in_dec_parameter(input_mode);
 
-        if(input_mode < 2)  //NTSC or PAL input(interlace mode): D0~D7(with SAV + EAV )
+        if((input_mode == TVIN_SIG_FMT_COMPONENT_576I_50D000) || (input_mode == TVIN_SIG_FMT_COMPONENT_480I_59D940))  //NTSC or PAL input(interlace mode): D0~D7(with SAV + EAV )
         {
             reset_bt656in_dec();
         }
-        else if(input_mode < 4)
+        else if((input_mode == TVIN_SIG_FMT_HDMI_1440x576I_50Hz) || (input_mode == TVIN_SIG_FMT_HDMI_1440x480I_60Hz))
         {
             reset_bt601in_dec();
             if(am656in_dec_info.pin_mux_reg2 != 0)
@@ -457,21 +486,24 @@ void start_amvdec_656_601_camera_in(unsigned char input_mode)
 }
 
 
-//input_mode is 0 or 1,         NTSC or PAL input(interlace mode): CLOCK + D0~D7(with SAV + EAV )
-//                              0:656--PAL ; 1:656--NTSC   ccir656 input
-//input_mode is 2 or 3,         NTSC or PAL input(interlace mode): CLOCK + D0~D7 + HSYNC + VSYNC + FID
-//                              2:601--PAL ; 3:601--NTSC   ccir656 input
-//input_mode is more than 3,    CAMERA input(progressive mode): CLOCK + D0~D7 + HREF + VSYNC
-//                              4:640x480 camera inout(progressive)
-//                              5:800x600 camera inout(progressive)
-//                              6:1024x768 camera inout(progressive)
-//                              .....
-//                              0xff: disable 656in/601/camera decode;
+//below macro defined is from tvin_global.h, they maybe not exact.
+//input_mode is TVIN_SIG_FMT_NULL: disable 656in/601/camera decode;
+//input_mode is TVIN_SIG_FMT_COMPONENT_576I_50D000 or TVIN_SIG_FMT_COMPONENT_576I_50D000, NTSC or PAL input(interlace mode): CLOCK + D0~D7(with SAV + EAV )
+//              TVIN_SIG_FMT_COMPONENT_576I_50D000:     656--PAL ;
+//              TVIN_SIG_FMT_COMPONENT_480I_59D940:     656--NTSC   ccir656 input
+//input_mode is TVIN_SIG_FMT_HDMI_1440x576I_50Hz or TVIN_SIG_FMT_HDMI_1440x480I_60Hz,  NTSC or PAL input(interlace mode): CLOCK + D0~D7 + HSYNC + VSYNC + FID
+//              TVIN_SIG_FMT_HDMI_1440x576I_50Hz:       601--PAL ;
+//              TVIN_SIG_FMT_HDMI_1440x480I_60Hz:6      601--NTSC   ccir656 input
+//input_mode is others,    CAMERA input(progressive mode): CLOCK + D0~D7 + HREF + VSYNC
+//              TVIN_SIG_FMT_VGA_640X480P_60D000:640x480 camera inout(progressive)
+//              TVIN_SIG_FMT_VGA_800X600P_60D317:800x600 camera inout(progressive)
+//              TVIN_SIG_FMT_VGA_1024X768P_60D004:1024x768 camera inout(progressive)
+//              .....
 void stop_amvdec_656_601_camera_in(unsigned char input_mode)
 {
     unsigned temp_data;
 		// reset BT656in module.
-    if(am656in_dec_info.input_mode != 0xff)
+    if(am656in_dec_info.input_mode != TVIN_SIG_FMT_NULL)
     {
         if(am656in_dec_info.pin_mux_reg1 != 0)
             CLEAR_CBUS_REG_MASK(am656in_dec_info.pin_mux_reg1, am656in_dec_info.pin_mux_mask1);
@@ -494,7 +526,7 @@ void stop_amvdec_656_601_camera_in(unsigned char input_mode)
         temp_data &= ~( 1 << BT_SOFT_RESET );
         WRITE_CBUS_REG(BT_CTRL, temp_data);
 
-        am656in_dec_info.input_mode = 0xff;
+        am656in_dec_info.input_mode = TVIN_SIG_FMT_NULL;
     }
 
     return;
@@ -527,20 +559,20 @@ static void bt656_in_dec_run(vframe_t * info)
     field_total_line &= 0xfff;
     if((field_total_line < 200) || (field_total_line > 320))  //skip current field
     {
-        pr_dbg("656 in total line is less than 200 \n");
+        pr_dbg("656 in total line is less than 200 or more than 320, \n");
         return;
     }
 
-    else if((field_total_line < 264) && (ccir656_status & 0x4000) && (am656in_dec_info.input_mode != 1)) //current field total line number is 240
+    else if((field_total_line < 264) && (ccir656_status & 0x4000) && (am656in_dec_info.input_mode != TVIN_SIG_FMT_COMPONENT_480I_59D940)) //current field total line number is 240
     {
-        init_656in_dec_parameter(1);
+        init_656in_dec_parameter(TVIN_SIG_FMT_COMPONENT_480I_59D940);
         reset_bt656in_dec();
         return;
     }
 
-    else if( (field_total_line >= 264) && (!(ccir656_status & 0x4000)) && (am656in_dec_info.input_mode != 0) )  //current field total line number is 288(0x100 + 0x20)
+    else if( (field_total_line >= 264) && (!(ccir656_status & 0x4000)) && (am656in_dec_info.input_mode != TVIN_SIG_FMT_COMPONENT_576I_50D000) )  //current field total line number is 288(0x100 + 0x20)
     {
-        init_656in_dec_parameter(0);
+        init_656in_dec_parameter(TVIN_SIG_FMT_COMPONENT_576I_50D000);
         reset_bt656in_dec();
         return;
     }
@@ -556,7 +588,7 @@ static void bt656_in_dec_run(vframe_t * info)
             info->type = VIDTYPE_VIU_422 | VIDTYPE_VIU_FIELD | VIDTYPE_INTERLACE_TOP;
         }
 
-        if(am656in_dec_info.input_mode == 0)	//the data in the buffer is PAL
+        if(am656in_dec_info.input_mode == TVIN_SIG_FMT_COMPONENT_576I_50D000)	//the data in the buffer is PAL
         {
             info->width= 720;
             info->height = 576;
@@ -590,20 +622,20 @@ static void bt601_in_dec_run(vframe_t * info)
     field_total_line &= 0xfff;
     if((field_total_line < 200) || (field_total_line > 320))  //skip current field
     {
-        pr_dbg("601 in total line is less than 200 \n");
+        pr_dbg("601 in total line is less than 200 or more than 320 \n");
         return;
     }
 
-    else if((field_total_line < 264) && (ccir656_status & 0x4000) && (am656in_dec_info.input_mode != 1)) //current field total line number is 240
+    else if((field_total_line < 264) && (ccir656_status & 0x4000) && (am656in_dec_info.input_mode != TVIN_SIG_FMT_HDMI_1440x480I_60Hz)) //current field total line number is 240
     {
-        init_656in_dec_parameter(1);
+        init_656in_dec_parameter(TVIN_SIG_FMT_HDMI_1440x480I_60Hz);
         reset_bt601in_dec();
         return;
     }
 
-    else if( (field_total_line >= 264) && (!(ccir656_status & 0x4000)) && (am656in_dec_info.input_mode != 0) )  //current field total line number is 288(0x100 + 0x20)
+    else if( (field_total_line >= 264) && (!(ccir656_status & 0x4000)) && (am656in_dec_info.input_mode != TVIN_SIG_FMT_HDMI_1440x576I_50Hz) )  //current field total line number is 288(0x100 + 0x20)
     {
-        init_656in_dec_parameter(0);
+        init_656in_dec_parameter(TVIN_SIG_FMT_HDMI_1440x576I_50Hz);
         reset_bt601in_dec();
         return;
     }
@@ -619,7 +651,7 @@ static void bt601_in_dec_run(vframe_t * info)
             info->type = VIDTYPE_VIU_422 | VIDTYPE_VIU_FIELD | VIDTYPE_INTERLACE_TOP;
         }
 
-        if(am656in_dec_info.input_mode == 0)	//the data in the buffer is PAL
+        if(am656in_dec_info.input_mode == TVIN_SIG_FMT_HDMI_1440x576I_50Hz)	//the data in the buffer is PAL
         {
             info->width= 720;
             info->height = 576;
@@ -652,7 +684,7 @@ static void camera_in_dec_run(vframe_t * info)
 
     field_total_line = READ_CBUS_REG(BT_VLINE_STATUS);
     field_total_line &= 0xfff;
-    if((field_total_line < 200) || (field_total_line > 320))  //skip current field
+    if(field_total_line < 200)   //skip current field
     {
         pr_dbg("601 in total line is less than 200 \n");
         return;
@@ -670,26 +702,25 @@ static void camera_in_dec_run(vframe_t * info)
     return;
 }
 
-/*
-    If info.type ( --reture value )is 0xffffffff, the current field is error
-
-input_mode is 0 or 1,         NTSC or PAL input(interlace mode): CLOCK + D0~D7(with SAV + EAV )
-                              0:656--PAL ; 1:656--NTSC   ccir656 input
-input_mode is 2 or 3,         NTSC or PAL input(interlace mode): CLOCK + D0~D7 + HSYNC + VSYNC + FID
-                              2:601--PAL ; 3:601--NTSC   ccir656 input
-input_mode is more than 3,    CAMERA input(progressive mode): CLOCK + D0~D7 + HREF + VSYNC
-                              4:640x480 camera inout(progressive)
-                              5:800x600 camera inout(progressive)
-                              6:1024x768 camera inout(progressive)
-                              .....
-                              0xff: disable 656in/601/camera decode;
-*/
+//below macro defined is from tvin_global.h, they maybe not exact.
+//input_mode is TVIN_SIG_FMT_NULL: disable 656in/601/camera decode;
+//input_mode is TVIN_SIG_FMT_COMPONENT_576I_50D000 or TVIN_SIG_FMT_COMPONENT_576I_50D000, NTSC or PAL input(interlace mode): CLOCK + D0~D7(with SAV + EAV )
+//              TVIN_SIG_FMT_COMPONENT_576I_50D000:     656--PAL ;
+//              TVIN_SIG_FMT_COMPONENT_480I_59D940:     656--NTSC   ccir656 input
+//input_mode is TVIN_SIG_FMT_HDMI_1440x576I_50Hz or TVIN_SIG_FMT_HDMI_1440x480I_60Hz,  NTSC or PAL input(interlace mode): CLOCK + D0~D7 + HSYNC + VSYNC + FID
+//              TVIN_SIG_FMT_HDMI_1440x576I_50Hz:       601--PAL ;
+//              TVIN_SIG_FMT_HDMI_1440x480I_60Hz:6      601--NTSC   ccir656 input
+//input_mode is others,    CAMERA input(progressive mode): CLOCK + D0~D7 + HREF + VSYNC
+//              TVIN_SIG_FMT_VGA_640X480P_60D000:640x480 camera inout(progressive)
+//              TVIN_SIG_FMT_VGA_800X600P_60D317:800x600 camera inout(progressive)
+//              TVIN_SIG_FMT_VGA_1024X768P_60D004:1024x768 camera inout(progressive)
+//              .....
 int amvdec_656_601_camera_in_run(vframe_t *info)
 {
     unsigned ccir656_status;
 
 
-    if(am656in_dec_info.input_mode == 0xff){
+    if(am656in_dec_info.input_mode == TVIN_SIG_FMT_NULL){
         printk("bt656in decoder is not started\n");
         return -1;
     }
@@ -697,11 +728,11 @@ int amvdec_656_601_camera_in_run(vframe_t *info)
     ccir656_status = READ_CBUS_REG(BT_STATUS);
     WRITE_CBUS_REG(BT_STATUS, ccir656_status | (1 << 9));	//WRITE_CBUS_REGite 1 to clean the SOF interrupt bit
 
-    if(am656in_dec_info.input_mode < 2)  //NTSC or PAL input(interlace mode): D0~D7(with SAV + EAV )
+    if((am656in_dec_info.input_mode == TVIN_SIG_FMT_COMPONENT_576I_50D000) || (am656in_dec_info.input_mode == TVIN_SIG_FMT_COMPONENT_480I_59D940))  //NTSC or PAL input(interlace mode): D0~D7(with SAV + EAV )
     {
         bt656_in_dec_run(info);
     }
-    else if(am656in_dec_info.input_mode < 4)
+    else if((am656in_dec_info.input_mode == TVIN_SIG_FMT_HDMI_1440x576I_50Hz) || (am656in_dec_info.input_mode == TVIN_SIG_FMT_HDMI_1440x480I_60Hz))
     {
         bt601_in_dec_run(info);
     }
@@ -921,6 +952,4 @@ module_exit(amvdec_656in_exit_module);
 MODULE_DESCRIPTION("AMLOGIC BT656_601 input driver");
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("xintan <xintan.chen@amlogic.com>");
-
-
 
