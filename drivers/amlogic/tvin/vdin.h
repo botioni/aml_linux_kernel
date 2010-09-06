@@ -157,7 +157,6 @@ typedef struct vdin_clkgate_cfg_s {
 typedef struct vdin_mpeg_cfg_s {
     unsigned int           en;
     enum vdin_mpeg_field_e field;
-    unsigned int           go_field_en;
 } vdin_mpeg_cfg_t;
 
 typedef struct vdin_src_mux_cfg_s {

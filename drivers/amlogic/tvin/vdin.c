@@ -121,8 +121,6 @@ static inline void vdin_set_mpeg( vdin_mpeg_cfg_t *mpeg_cfg)
         MPEG_TO_VDIN_SEL_BIT, MPEG_TO_VDIN_SEL_WID);
     WRITE_CBUS_REG_BITS(VDIN_COM_CTRL0, (unsigned int)(mpeg_cfg->field),
         MPEG_FID_BIT, MPEG_FID_WID);
-    WRITE_CBUS_REG_BITS(VDIN_COM_CTRL0, mpeg_cfg->go_field_en,
-        MPEG_GO_FLD_EN_BIT, MPEG_GO_FLD_EN_WID);
 }
 
 static inline unsigned int vdin_get_afifo( enum vdin_src_e src)
@@ -260,6 +258,8 @@ static inline void vdin_set_src_mux( vdin_src_mux_cfg_t *src_mux_cfg, vdin_dev_t
         WRITE_CBUS_REG_BITS(VDIN_COM_CTRL0, 1, COMMON_DATA_IN_EN_BIT, COMMON_DATA_IN_EN_WID);
         vdin_set_afifo(src_mux_cfg->src);
     }
+    //add sourec mux here
+
 }
 
 static const unsigned int vdin_hscl_filter[3][33] =
