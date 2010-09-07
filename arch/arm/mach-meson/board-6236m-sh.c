@@ -110,6 +110,63 @@ static struct platform_device apollo_codec = {
     .resource      = apollo_codec_resources,
 };
 #endif
+#if defined(CONFIG_TVIN_VDIN)
+static struct resource vdin_resources[] = {
+    [0] = {
+        .start =  VDIN_ADDR_START,		//pbufAddr
+        .end   = VDIN_ADDR_END,				//pbufAddr + size
+        .flags = IORESOURCE_MEM,
+    },
+
+
+};
+
+static struct platform_device vdin_device = {
+    .name       = "vdin",
+    .id         = -1,
+    .num_resources = ARRAY_SIZE(vdin_resources),
+    .resource      = vdin_resources,
+};
+
+
+//add pin mux info for bt656 input
+static struct resource bt656in_resources[] = {
+    [0] = {
+        .start =  VDIN_ADDR_START,		//pbufAddr
+        .end   = VDIN_ADDR_END,				//pbufAddr + size
+        .flags = IORESOURCE_MEM,
+    },
+    [1] = {		//bt656/camera/bt601 input resource pin mux setting
+        .start =  0x3000,		//mask--mux gpioD 15 to bt656 clk;  mux gpioD 16:23 to be bt656 dt_in
+        .end   = PERIPHS_PIN_MUX_5 + 0x3000,	 
+        .flags = IORESOURCE_MEM,
+    },
+
+    [2] = {			//camera/bt601 input resource pin mux setting
+        .start =  0x1c000,		//mask--mux gpioD 12 to bt601 FIQ; mux gpioD 13 to bt601HS; mux gpioD 14 to bt601 VS;
+        .end   = PERIPHS_PIN_MUX_5 + 0x1c000,				
+        .flags = IORESOURCE_MEM,
+    },
+
+    [3] = {			//bt601 input resource pin mux setting
+        .start =  0x800,		//mask--mux gpioD 24 to bt601 IDQ;;
+        .end   = PERIPHS_PIN_MUX_5 + 0x800,			
+        .flags = IORESOURCE_MEM,
+    },
+
+};
+
+static struct platform_device bt656in_device = {
+    .name       = "amvdec_656in",
+    .id         = -1,
+    .num_resources = ARRAY_SIZE(bt656in_resources),
+    .resource      = bt656in_resources,
+};
+
+
+
+#endif
+
 static struct resource apollo_audiodsp_resources[] = {
     [0] = {
         .start =  AUDIODSP_ADDR_START,
@@ -152,6 +209,11 @@ static struct platform_device __initdata *platform_devs[] = {
     #endif
     #if defined(CONFIG_AM_STREAMING)
 	&apollo_codec,
+    #endif
+    #if defined(CONFIG_TVIN_VDIN)
+        &vdin_device,
+		&bt656in_device,
+
     #endif
 	&apollo_audiodsp,
 	&apollo_mali,
