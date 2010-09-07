@@ -56,7 +56,7 @@ unsigned long dsp_codec_inc_rd_addr(struct audiodsp_priv *priv,int size)
 	rd=rd+size;
 	if(rd>=priv->stream_buffer_end)
 		rd=rd-priv->stream_buffer_size;
-	DSP_WD(DSP_DECODE_OUT_RD_ADDR,rd);
+	DSP_WD(DSP_DECODE_OUT_RD_ADDR,ARM_2_ARC_ADDR_SWAP((void*)rd));
 	local_irq_restore(flags);
 	return rd;
 }
@@ -64,7 +64,7 @@ unsigned long dsp_codec_inc_rd_addr(struct audiodsp_priv *priv,int size)
 
 u32 dsp_codec_get_current_pts(struct audiodsp_priv *priv)
 {
-#ifdef CONFIG_AM_PTSMGR
+#ifdef CONFIG_AM_PTSSERVER
 	u32  pts;
        u32 delay_pts;
 	int len;

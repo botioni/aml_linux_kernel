@@ -442,7 +442,10 @@ int vmpeg4_dec_status(struct vdec_status *vstatus)
 {
     vstatus->width = vmpeg4_amstream_dec_info.width;
     vstatus->height = vmpeg4_amstream_dec_info.height;
-    vstatus->fps = 96000/vmpeg4_amstream_dec_info.rate;
+    if(0!=vmpeg4_amstream_dec_info.rate)
+        vstatus->fps = 96000/vmpeg4_amstream_dec_info.rate;
+    else 
+        vstatus->fps = 96000;
     vstatus->error_count = READ_MPEG_REG(AV_SCRATCH_4);
     vstatus->status = stat;
 

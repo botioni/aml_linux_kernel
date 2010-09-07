@@ -151,7 +151,6 @@ typedef enum tvin_sig_format_e {
     TVIN_SIG_FMT_COMPONENT_1080P_30D000,
     TVIN_SIG_FMT_COMPONENT_1080P_50D000,
     TVIN_SIG_FMT_COMPONENT_1080P_60D000,
-    TVIN_SIG_FMT_COMPONENT_1080I_29D970,
     TVIN_SIG_FMT_COMPONENT_1080I_47D952,
     TVIN_SIG_FMT_COMPONENT_1080I_48D000,
     TVIN_SIG_FMT_COMPONENT_1080I_50D000_A,
@@ -325,6 +324,14 @@ typedef enum tvin_video_status_e {
     TVIN_VIDEO_ON,			        //
     TVIN_NMB_OF_STATES             // Not a state, but just a limiter. Must be the last at the list
 } tvin_video_status_t;
+
+#define VDIN_DEBUG
+#ifdef VDIN_DEBUG
+#define pr_dbg(fmt, args...) printk(KERN_DEBUG "amvdecvdin: " fmt, ## args)
+#else
+#define pr_dbg(fmt, args...)
+#endif
+#define pr_error(fmt, args...) printk(KERN_ERR "amvdecvdin: " fmt, ## args)
 
 
 #endif // __TVIN_GLOBAL_H

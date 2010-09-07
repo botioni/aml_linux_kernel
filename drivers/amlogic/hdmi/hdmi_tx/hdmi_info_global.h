@@ -558,9 +558,9 @@ typedef struct {
 
 typedef struct {
     audio_type_t type;  
-    int channel_num;
-    int sample_rate; /*44100, 48000, etc */
-    int sample_size; /* 16,24, etc */
+    audio_channel_t channel_num;
+    audio_fs_t sample_rate; 
+    audio_sample_size_t sample_size; 
 }Hdmi_tx_audio_para_t;    
 
 

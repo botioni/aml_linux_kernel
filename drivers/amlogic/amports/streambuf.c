@@ -175,11 +175,11 @@ s32 stbuf_init(struct stream_buf_s *buf)
 {
     s32 r;
     u32 dummy;
-
+    u32 phy_addr;
     r = _stbuf_alloc(buf);
     if (r < 0)
         return r;
-    
+    phy_addr = virt_to_phys(buf->buf_start);
     init_waitqueue_head(&buf->wq);
 
     _WRITE_ST_REG(CONTROL, 0);
@@ -196,22 +196,22 @@ s32 stbuf_init(struct stream_buf_s *buf)
 
     if (buf->type == BUF_TYPE_SUBTITLE)
     {
-        WRITE_MPEG_REG(PARSER_SUB_RP, buf->buf_start);
-        WRITE_MPEG_REG(PARSER_SUB_START_PTR, buf->buf_start);
-        WRITE_MPEG_REG(PARSER_SUB_END_PTR, buf->buf_start + buf->buf_size - 8);
+        WRITE_MPEG_REG(PARSER_SUB_RP, phy_addr);
+        WRITE_MPEG_REG(PARSER_SUB_START_PTR, phy_addr);
+        WRITE_MPEG_REG(PARSER_SUB_END_PTR, phy_addr + buf->buf_size - 8);
 
         return 0;
     }
 
-    _WRITE_ST_REG(START_PTR, buf->buf_start);
-    _WRITE_ST_REG(CURR_PTR, buf->buf_start);
-    _WRITE_ST_REG(END_PTR, buf->buf_start + buf->buf_size - 8);
+    _WRITE_ST_REG(START_PTR,phy_addr);
+    _WRITE_ST_REG(CURR_PTR, phy_addr);
+    _WRITE_ST_REG(END_PTR, phy_addr + buf->buf_size - 8);
 
     _SET_ST_REG_MASK(CONTROL, MEM_BUFCTRL_INIT);
     _CLR_ST_REG_MASK(CONTROL, MEM_BUFCTRL_INIT);
 
     _WRITE_ST_REG(BUF_CTRL, MEM_BUFCTRL_MANUAL);
-    _WRITE_ST_REG(WP, buf->buf_start);
+    _WRITE_ST_REG(WP, phy_addr);
 
     _SET_ST_REG_MASK(BUF_CTRL, MEM_BUFCTRL_INIT);
     _CLR_ST_REG_MASK(BUF_CTRL, MEM_BUFCTRL_INIT);

@@ -134,7 +134,7 @@ static struct uio_info astream_uio_info = {
     .mem = {
         [0] = {
             .memtype = UIO_MEM_PHYS,
-            .addr = CBUS_REG_ADDR(AIU_AIFIFO_CTRL),
+            .addr = (IO_CBUS_PHY_BASE +CBUS_REG_OFFSET(AIU_AIFIFO_CTRL)),
             .size = (AIU_MEM_AIFIFO_BYTES_AVAIL - AIU_AIFIFO_CTRL + 1) * 4,
         },
     },

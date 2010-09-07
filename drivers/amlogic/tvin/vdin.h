@@ -15,7 +15,7 @@
 #ifndef __TVIN_VDIN_H
 #define __TVIN_VDIN_H
 
-#include <vdin_global.h>
+#include "tvin_global.h"
 
 
 typedef enum vdin_clk_e {
@@ -145,19 +145,18 @@ typedef enum vdin_bbar_src_e {
 // ***************************************************************************
 
 typedef struct vdin_clkgate_cfg_s {
-    enum vdin_clk_e blackbar;
-    enum vdin_clk_e histgram;
+    enum vdin_clk_e bbar;
+    enum vdin_clk_e hist;
     enum vdin_clk_e lfifo;
     enum vdin_clk_e matrix;
-    enum vdin_clk_e hscaler;
-    enum vdin_clk_e prehscaler;
+    enum vdin_clk_e hscl;
+    enum vdin_clk_e prehscl;
     enum vdin_clk_e top;        // including other parts except meas, which uses seperate lower clk
 } vdin_clkgate_cfg_t;
 
 typedef struct vdin_mpeg_cfg_s {
     unsigned int           en;
     enum vdin_mpeg_field_e field;
-    unsigned int           go_field_en;
 } vdin_mpeg_cfg_t;
 
 typedef struct vdin_src_mux_cfg_s {
@@ -172,8 +171,8 @@ typedef struct vdin_hscl_cfg_s {
     unsigned int                    src_w;
     unsigned int                    dst_w;
       signed int                    init_pixi_ptr;
-    unsigned int                    prehsc_en;
-    unsigned int                    hsc_en;
+    unsigned int                    prehscl_en;
+    unsigned int                    hscl_en;
     unsigned int                    short_lineo_en;
     unsigned int                    hsc_nearest_en;
     unsigned int                    phase0_always_en;
@@ -278,17 +277,19 @@ typedef struct vdin_matrix_lup_s {
 
 #define VDIN_IOC_MAGIC 'T'
 
-#define VDIN_IOCS_CLKGATE  _IOW(VDIN_IOC_MAGIC, 0x01, struct vdin_clkgate_cfg_s)
-#define VDIN_IOCS_MPEG     _IOW(VDIN_IOC_MAGIC, 0x02, struct vdin_mpeg_cfg_s)
-#define VDIN_IOCS_SRC_MUX  _IOW(VDIN_IOC_MAGIC, 0x03, struct vdin_src_mux_cfg_s)
-#define VDIN_IOCS_HSCL     _IOW(VDIN_IOC_MAGIC, 0x05, struct vdin_hscl_cfg_s)
-#define VDIN_IOCS_MATRIX   _IOW(VDIN_IOC_MAGIC, 0x06, enum   vdin_matrix_csc_e)
-#define VDIN_IOCS_LFIFO    _IOW(VDIN_IOC_MAGIC, 0x07, struct vdin_lfifo_cfg_s)
-#define VDIN_IOCS_OUTPUT   _IOW(VDIN_IOC_MAGIC, 0x08, struct vdin_output_cfg_s)
-#define VDIN_IOCS_HIST     _IOW(VDIN_IOC_MAGIC, 0x09, struct vdin_hist_cfg_s)
-#define VDIN_IOCS_BBAR     _IOW(VDIN_IOC_MAGIC, 0x11, struct vdin_bbar_cfg_s)
-#define VDIN_IOC_DEBUG     _IOWR(VDIN_IOC_MAGIC, 0x12, unsigned long long)
-#define VDIN_IOC_INIT      _IO(VDIN_IOC_MAGIC, 0x13)
+#define VDIN_IOCS_CLKGATE   _IOW(VDIN_IOC_MAGIC, 0x01, struct vdin_clkgate_cfg_s)
+#define VDIN_IOCS_MPEG      _IOW(VDIN_IOC_MAGIC, 0x02, struct vdin_mpeg_cfg_s)
+#define VDIN_IOCS_SRC_MUX   _IOW(VDIN_IOC_MAGIC, 0x03, struct vdin_src_mux_cfg_s)
+#define VDIN_IOCS_HSCL      _IOW(VDIN_IOC_MAGIC, 0x05, struct vdin_hscl_cfg_s)
+#define VDIN_IOCS_MATRIX    _IOW(VDIN_IOC_MAGIC, 0x06, enum   vdin_matrix_csc_e)
+#define VDIN_IOCS_LFIFO     _IOW(VDIN_IOC_MAGIC, 0x07, struct vdin_lfifo_cfg_s)
+#define VDIN_IOCS_OUTPUT    _IOW(VDIN_IOC_MAGIC, 0x08, struct vdin_output_cfg_s)
+#define VDIN_IOCS_HIST      _IOW(VDIN_IOC_MAGIC, 0x09, struct vdin_hist_cfg_s)
+#define VDIN_IOCS_BBAR      _IOW(VDIN_IOC_MAGIC, 0x11, struct vdin_bbar_cfg_s)
+#define VDIN_IOC_DEBUG      _IOWR(VDIN_IOC_MAGIC, 0x12, unsigned long long)
+#define VDIN_IOC_INIT       _IO(VDIN_IOC_MAGIC, 0x13)
+#define VDIN_START_DEC      _IOW(VDIN_IOC_MAGIC, 0x14, unsigned )
+#define VDIN_STOP_DEC       _IOW(VDIN_IOC_MAGIC, 0x15, unsigned )
 
 #endif // __TVIN_VDIN_H
 

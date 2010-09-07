@@ -274,7 +274,10 @@ int vmjpeg_dec_status(struct vdec_status *vstatus)
 {
     vstatus->width = frame_width;
     vstatus->height = frame_height;
-    vstatus->fps = 96000/frame_dur;
+    if(0!= frame_dur)
+        vstatus->fps = 96000/frame_dur;
+    else
+        vstatus->fps = 96000;
     vstatus->error_count = 0;
     vstatus->status = stat;
 

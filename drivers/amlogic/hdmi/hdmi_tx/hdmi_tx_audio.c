@@ -20,8 +20,15 @@ void hdmi_tx_set_N_CTS(unsigned N_value, unsigned CTS)
 
 static void hdmi_tx_construct_aud_packet(Hdmi_tx_audio_para_t* audio_param, char* AUD_DB, unsigned char* CHAN_STAT_BUF)
 {
-
-
+    if(AUD_DB){
+        AUD_DB[0] = (audio_param->type<<4)|(audio_param->channel_num-1) ; 
+        AUD_DB[1] = (audio_param->sample_rate<<2)|audio_param->sample_size;
+        AUD_DB[4] = 0; //CA, 2 channel
+        AUD_DB[5] = 0;//DM_INH<<7|LSV<<3
+    }
+    if(CHAN_STAT_BUF){
+        
+    }
 }
 
 int hdmitx_set_audio(hdmitx_dev_t* hdmitx_device, Hdmi_tx_audio_para_t* audio_param)
@@ -40,11 +47,5 @@ int hdmitx_set_audio(hdmitx_dev_t* hdmitx_device, Hdmi_tx_audio_para_t* audio_pa
     return ret;
 }
 
-void hdmitx_audio_enable(hdmitx_dev_t* hdmitx_device)
-{
-    if(hdmitx_device->HWOp.SetAudMode)
-        hdmitx_device->HWOp.SetAudMode(hdmitx_device, NULL);
-
-}
 
 
