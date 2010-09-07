@@ -47,6 +47,7 @@
 static void hdmi_audio_init(unsigned char spdif_flag);
 
 #define HDMI_M1A 1
+#define HDMI_M1B 2
 static unsigned char hdmi_chip_type = 0;
 
 #define HSYNC_POLARITY      1                       // HSYNC polarity: active high 
@@ -69,6 +70,7 @@ static unsigned char hdmi_chip_type = 0;
 #endif
 
 //static struct tasklet_struct EDID_tasklet;
+static unsigned serial_reg_val=0x22;
 
 static unsigned long modulo(unsigned long a, unsigned long b)
 {
@@ -723,12 +725,17 @@ static void hdmi_hw_reset(Hdmi_tx_video_para_t *param)
     hdmi_wr_reg(0x011, 0x0f);   //Channels Power Up Setting ,"1" for Power-up ,"0" for Power-down,Bit[3:0]=CK,Data2,data1,data1,data0 Channels ;
   //hdmi_wr_reg(0x015, 0x03);   //slew rate
     hdmi_wr_reg(0x017, 0x1d);   //1d for power-up Band-gap and main-bias ,00 is power down 
-    if((param->VIC==HDMI_1080p30)||(param->VIC==HDMI_720p60)||(param->VIC==HDMI_1080i60)
-        ||(param->VIC==HDMI_1080p24)){
-        hdmi_wr_reg(0x018, 0x22);   //Serializer Internal clock setting ,please fix to vaue 24 ,other setting is only for debug  
+    if(serial_reg_val==0){
+        if((param->VIC==HDMI_1080p30)||(param->VIC==HDMI_720p60)||(param->VIC==HDMI_1080i60)
+            ||(param->VIC==HDMI_1080p24)){
+            hdmi_wr_reg(0x018, 0x22);   
+        }
+        else{
+            hdmi_wr_reg(0x018, 0x24);   
+        }
     }
     else{
-        hdmi_wr_reg(0x018, 0x24);   //Serializer Internal clock setting ,please fix to vaue 24 ,other setting is only for debug  
+        hdmi_wr_reg(0x018, serial_reg_val);
     }
     hdmi_wr_reg(0x01a, 0xfb);   //bit[2:0]=011 ,CK channel output TMDS CLOCK ,bit[2:0]=101 ,ck channel output PHYCLCK 
     hdmi_wr_reg(0x016, 0x04);   // Bit[3:0] is HDMI-PHY's output swing control register
@@ -1219,10 +1226,28 @@ static unsigned char hdmitx_m1b_getediddata(hdmitx_dev_t* hdmitx_device)
     }    
 }    
 
+static void check_chip_type()
+{
+    if(Rd(HHI_MPEG_CLK_CNTL)&(1<<11)){ //audio pll is selected as video clk
+			if(hdmi_chip_type != HDMI_M1A){
+			    hdmi_chip_type = HDMI_M1A; 
+			    printk("Set HDMI:Chip A\n");
+			}
+    }
+    else{
+			if(hdmi_chip_type != HDMI_M1B){
+          hdmi_chip_type = HDMI_M1B;     			    
+			    printk("Set HDMI:Chip B\n");
+			}
+		}
+}
 
 static int hdmitx_m1b_set_dispmode(Hdmi_tx_video_para_t *param)
 {
     int ret=0;
+    
+    check_chip_type(); /* check chip_type again */
+
     if((param->VIC==HDMI_480p60)||(param->VIC==HDMI_480p60_16x9)){
         if(hdmi_chip_type == HDMI_M1A){
             Wr(HHI_HDMI_PLL_CNTL, 0x03040905); // For xtal=24MHz: PREDIV=5, POSTDIV=9, N=4, 0D=3, to get phy_clk=270MHz, tmds_clk=27MHz.
@@ -1556,6 +1581,15 @@ static void hdmitx_m1b_debug(unsigned char* buf)
     }
     tmpbuf[i]=0;
 
+    if(tmpbuf[0]=='v'){
+        printk("Hdmitx driver version: %s\nSerial %x\n", HDMITX_VER, serial_reg_val);
+        return;    
+    }
+    if(tmpbuf[0]=='s'){
+        serial_reg_val=simple_strtoul(tmpbuf+1,NULL,16);
+        return;
+    }
+
     if(tmpbuf[0]=='o'){
         if(tmpbuf[1]=='n'){
             turn_on_shift_pattern();
@@ -1601,15 +1635,9 @@ void HDMITX_M1B_Init(hdmitx_dev_t* hdmitx_device)
     hdmitx_device->HWOp.SetupIRQ = hdmitx_m1b_setupirq;
     hdmitx_device->HWOp.DebugFun = hdmitx_m1b_debug;
     
-    if(Rd(HHI_MPEG_CLK_CNTL)&(1<<11)){ //audio pll is selected as video clk
-			hdmi_chip_type = HDMI_M1A; 
-			printk("HDMI:Chip A\n");
-    }
-    else{
-			hdmi_chip_type = 0; 
-			printk("HDMI:Chip B\n");
-		}
-    
+    if(hdmi_chip_type==0){
+        check_chip_type();
+    }    
     
     // -----------------------------------------
     // HDMI (90Mhz)
@@ -1644,11 +1672,13 @@ static  int __init hdmi_chip_select(char *s)
 		case 'A':
 			hdmi_chip_type = HDMI_M1A;
 			break;
+    default:
+			hdmi_chip_type = HDMI_M1B;
+			break;
 	}
 	return 0;
 }
 
 __setup("chip=",hdmi_chip_select);
-
 
     

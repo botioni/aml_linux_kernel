@@ -369,10 +369,15 @@ static struct platform_device *devices[] = {
 &amhdmi_tx_device,
 };
 
+static int hdmitx_off = 0;
+
 static int  __init amhdmitx_init(void)
 {
+    if(hdmitx_off)
+        return 0;
+        
     pr_dbg("amhdmitx_init2\n");
-
+    
     if (platform_driver_register(&amhdmitx_driver)) {
         pr_error("failed to register amhdmitx module\n");
         return -ENODEV;
@@ -397,3 +402,13 @@ module_exit(amhdmitx_exit);
 MODULE_DESCRIPTION("AMLOGIC HDMI TX driver");
 MODULE_LICENSE("GPL");
 MODULE_VERSION("1.0.0");
+
+static  int __init hdmitx_off_setup(char *s)
+{
+	if((s[0]=='o')&&(s[1]=='f')&&(s[2]=='f')){
+			hdmitx_off = 1;
+	}
+	return 0;
+}
+
+__setup("hdmitx=",hdmitx_off_setup);
