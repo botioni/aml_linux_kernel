@@ -283,13 +283,13 @@ typedef struct vdin_matrix_lup_s {
 #define VDIN_IOCS_HSCL      _IOW(VDIN_IOC_MAGIC, 0x05, struct vdin_hscl_cfg_s)
 #define VDIN_IOCS_MATRIX    _IOW(VDIN_IOC_MAGIC, 0x06, enum   vdin_matrix_csc_e)
 #define VDIN_IOCS_LFIFO     _IOW(VDIN_IOC_MAGIC, 0x07, struct vdin_lfifo_cfg_s)
-#define VDIN_IOCS_OUTPUT   _IOW(VDIN_IOC_MAGIC, 0x08, struct vdin_output_cfg_s)
+#define VDIN_IOCS_OUTPUT    _IOW(VDIN_IOC_MAGIC, 0x08, struct vdin_output_cfg_s)
 #define VDIN_IOCS_HIST      _IOW(VDIN_IOC_MAGIC, 0x09, struct vdin_hist_cfg_s)
 #define VDIN_IOCS_BBAR      _IOW(VDIN_IOC_MAGIC, 0x11, struct vdin_bbar_cfg_s)
 #define VDIN_IOC_DEBUG      _IOWR(VDIN_IOC_MAGIC, 0x12, unsigned long long)
 #define VDIN_IOC_INIT       _IO(VDIN_IOC_MAGIC, 0x13)
-#define VDIN_START_DEC      _IO(VDIN_IOC_MAGIC, 0x14, unsigned )
-#define VDIN_STOP_DEC       _IO(VDIN_IOC_MAGIC, 0x15, unsigned )
+#define VDIN_START_DEC      _IOW(VDIN_IOC_MAGIC, 0x14, unsigned )
+#define VDIN_STOP_DEC       _IOW(VDIN_IOC_MAGIC, 0x15, unsigned )
 
 #endif // __TVIN_VDIN_H
 
