@@ -64,7 +64,7 @@ unsigned long dsp_codec_inc_rd_addr(struct audiodsp_priv *priv,int size)
 
 u32 dsp_codec_get_current_pts(struct audiodsp_priv *priv)
 {
-#ifdef CONFIG_AM_PTSMGR
+#ifdef CONFIG_AM_PTSSERVER
 	u32  pts;
        u32 delay_pts;
 	int len;
