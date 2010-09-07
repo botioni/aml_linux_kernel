@@ -1,0 +1,14 @@
+#support amlogic rtc
+
+menu "Amlogic RTC support"
+
+comment "  Need RTC_CLASS "
+config AML_RTC
+		bool "Amlogic RTC support"
+		default n
+		depends on ARCH_MESON && RTC_CLASS
+		
+		help
+		  This is amlogic inernal rtc driver
+		  
+endmenu
