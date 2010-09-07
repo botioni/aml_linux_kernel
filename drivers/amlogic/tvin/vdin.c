@@ -29,7 +29,11 @@
 #include <asm/uaccess.h>
 
 /* Local include */
-#include <asm/arch/am_regs.h>
+#include "../amports/vframe.h"
+#include "../amports/vframe_provider.h"
+#include <mach/am_regs.h>
+//#include <asm/arch/am_regs.h>
+#include "bt656_601_in.h"
 #include "vdin_regs.h"
 #include "vdin.h"
 #include "tvin_global.h"
@@ -59,12 +63,11 @@ static dev_t vdin_devno;
 static struct class *vdin_clsp;
 
 typedef struct vdin_dev_s {
-    int                 index;
-    vdin_src_t          src;
-    struct cdev         cdev;
-    unsigned int        flags;
-    unsigned int        mem_start;
-    unsigned int        mem_size;
+    int                         index;
+    struct cdev                 cdev;
+    unsigned int                flags;
+    unsigned int                mem_start;
+    unsigned int                mem_size;
 
     irqreturn_t (*vdin_isr) (int irq, void *dev_id);
 
@@ -86,7 +89,6 @@ void set_isr_func(vdin_dev_t * devp, irqreturn_t (*func)(int irq, void *dev_id))
     return;
 }
 EXPORT_SYMBOL(set_isr_func);
-
 
 
 union vdin_hist_u           vdin_hist;
@@ -794,7 +796,6 @@ static inline void vdin_set_blackbar(struct vdin_bbar_cfg_s  *blkbar_cfg)
     vdin_reset_blackbar();
 }
 
-
 static void vdin_bt656in_canvas_init(struct vdin_dev_s *devp)
 {
     int i = 0;
@@ -811,20 +812,18 @@ static void vdin_bt656in_canvas_init(struct vdin_dev_s *devp)
     }
 }
 
-
-
 static int vdin_canvas_init(int vdin_index, enum vdin_src_e src)
 {
     int ret = 0;
     if(vdin_index > VDIN_COUNT)
         return -1;
-    vdin_devp[0].src = src;
+    vdin_devp[0]->src = src;
     switch (src)
     {
         case VDIN_SRC_MPEG:
             break;
         case VDIN_SRC_BT656IN:
-            vdin_bt656in_canvas_init();
+            vdin_bt656in_canvas_init(vdin_devp[0]);
             break;
         case VDIN_SRC_TVFE:
             break;
@@ -841,7 +840,7 @@ static int vdin_canvas_init(int vdin_index, enum vdin_src_e src)
 
 static irqreturn_t vdin_isr(int irq, void *dev_id)
 {
-    u32 reg, index;
+    //u32 reg, index;
     vframe_t info = {
             0xffffffff,         //type
             0xffffffff,         //type_backup
@@ -858,7 +857,7 @@ static irqreturn_t vdin_isr(int irq, void *dev_id)
             0,                  //ratio_control
     };
 
-    switch (vdin_devp[0].src)
+    switch (vdin_devp[0]->src)
     {
         case VDIN_SRC_MPEG:
             break;
@@ -872,7 +871,6 @@ static irqreturn_t vdin_isr(int irq, void *dev_id)
         case VDIN_SRC_HDMIRX:
             break;
         default:
-            ret = -1;
             break;
     }
     //If info.type ( --reture value )is 0xffffffff, the current field is error
@@ -901,7 +899,7 @@ static int vdin_open(struct inode *inode, struct file *file)
     devp = container_of(inode->i_cdev, vdin_dev_t, cdev);
     file->private_data = devp;
 
-    switch (vdin_devp[0].src)
+    switch (vdin_devp[0]->src)
     {
         case VDIN_SRC_MPEG:
             break;
@@ -945,12 +943,12 @@ static int vdin_open(struct inode *inode, struct file *file)
 
 static int vdin_release(struct inode *inode, struct file *file)
 {
-    vdin_dev_t *devp = file->private_data;
-    file->private_data = NULL;
+    //vdin_dev_t *devp = file->private_data;
+    //file->private_data = NULL;
 
     /* Release some other fields */
 
-        switch (vdin_devp[0].src)
+        switch (vdin_devp[0]->src)
         {
             case VDIN_SRC_MPEG:
                 break;
@@ -989,10 +987,10 @@ static int vdin_release(struct inode *inode, struct file *file)
 
 static int vdin_ioctl(struct inode *inode, struct file *file, unsigned int cmd, unsigned long arg)
 {
-    int ret = 0;
+    int ret = 0; unsigned int tvin_index_ = 0;
     vdin_dev_t *devp;
-    tvin_sig_format_t tvin_index_ = (tvin_sig_format_t *)arg;
     void __user *argp = (void __user *)arg;
+    //tvin_sig_format_t __user *tvin_index_ = (tvin_sig_format_t __user *)arg;
 
 	if (_IOC_TYPE(cmd) != VDIN_IOC_MAGIC) {
 		return -EINVAL;
@@ -1024,7 +1022,7 @@ static int vdin_ioctl(struct inode *inode, struct file *file, unsigned int cmd, 
 
         case VDIN_IOCS_MPEG:
         {
-            vdin_mpeg_cfg_t mpeg_cfg = {0, 0, 0};
+            vdin_mpeg_cfg_t mpeg_cfg = {0, 0};
             if (copy_from_user(&mpeg_cfg, argp, sizeof(vdin_mpeg_cfg_t)))
             {
                 ret = -EFAULT;
@@ -1130,12 +1128,14 @@ static int vdin_ioctl(struct inode *inode, struct file *file, unsigned int cmd, 
             break;
 
         case VDIN_START_DEC:
+            if (get_user(tvin_index_, (int __user *)argp))
+                return -EFAULT;
 
-            switch (vdin_devp[0].src)
-                {
-                    case VDIN_SRC_MPEG:
-                        break;
-                    case VDIN_SRC_BT656IN:
+            switch (vdin_devp[0]->src)
+            {
+                case VDIN_SRC_MPEG:
+                    break;
+                case VDIN_SRC_BT656IN:
 //below macro defined is from tvin_global.h, they maybe not exact.
 //input_mode is TVIN_SIG_FMT_NULL: disable 656in/601/camera decode;
 //input_mode is TVIN_SIG_FMT_COMPONENT_576I_50D000 or TVIN_SIG_FMT_COMPONENT_576I_50D000, NTSC or PAL input(interlace mode): CLOCK + D0~D7(with SAV + EAV )
@@ -1150,27 +1150,28 @@ static int vdin_ioctl(struct inode *inode, struct file *file, unsigned int cmd, 
 //              TVIN_SIG_FMT_VGA_1024X768P_60D004:1024x768 camera inout(progressive)
 //              .....
 //                      tvin_index_ = TVIN_SIG_FMT_COMPONENT_576I_50D000;   //for test
-                        start_amvdec_656_601_camera_in(tvin_index_);
-                        break;
-                    case VDIN_SRC_TVFE:
-                        break;
-                    case VDIN_SRC_CVD2:
-                        break;
-                    case VDIN_SRC_HDMIRX:
-                        break;
-                    default:
-                        break;
-                }
+                    start_amvdec_656_601_camera_in(tvin_index_);
+                    break;
+                case VDIN_SRC_TVFE:
+                    break;
+                case VDIN_SRC_CVD2:
+                    break;
+                case VDIN_SRC_HDMIRX:
+                    break;
+                default:
+                    break;
+            }
 
             break;
 
         case VDIN_STOP_DEC:
-            switch (vdin_devp[0].src)
-                {
-                    case VDIN_SRC_MPEG:
-                        break;
-
-                    case VDIN_SRC_BT656IN:
+            if (get_user(tvin_index_, (int __user *)argp))
+                return -EFAULT;
+            switch (vdin_devp[0]->src)
+            {
+                case VDIN_SRC_MPEG:
+                    break;
+                case VDIN_SRC_BT656IN:
 //below macro defined is from tvin_global.h, they maybe not exact.
 //input_mode is TVIN_SIG_FMT_NULL: disable 656in/601/camera decode;
 //input_mode is TVIN_SIG_FMT_COMPONENT_576I_50D000 or TVIN_SIG_FMT_COMPONENT_576I_50D000, NTSC or PAL input(interlace mode): CLOCK + D0~D7(with SAV + EAV )
@@ -1185,17 +1186,17 @@ static int vdin_ioctl(struct inode *inode, struct file *file, unsigned int cmd, 
 //              TVIN_SIG_FMT_VGA_1024X768P_60D004:1024x768 camera inout(progressive)
 //              .....
 //                      tvin_index_ = TVIN_SIG_FMT_COMPONENT_576I_50D000;   //for test
-                        stop_amvdec_656_601_camera_in(tvin_index_);
-                        break;
-                    case VDIN_SRC_TVFE:
-                        break;
-                    case VDIN_SRC_CVD2:
-                        break;
-                    case VDIN_SRC_HDMIRX:
-                        break;
-                    default:
-                        break;
-                }
+                    stop_amvdec_656_601_camera_in(tvin_index_);
+                    break;
+                case VDIN_SRC_TVFE:
+                    break;
+                case VDIN_SRC_CVD2:
+                    break;
+                case VDIN_SRC_HDMIRX:
+                    break;
+                default:
+                    break;
+            }
 
             break;
         default:
