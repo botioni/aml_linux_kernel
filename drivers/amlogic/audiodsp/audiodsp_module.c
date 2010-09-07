@@ -219,7 +219,6 @@ ssize_t audiodsp_read(struct file * file, char __user * ubuf, size_t size,
 	int wait=0;
 	 char __user *pubuf=ubuf;
      dma_addr_t buf_map;
-	short * temp_ptr=NULL;
 
 
 
@@ -260,22 +259,15 @@ ssize_t audiodsp_read(struct file * file, char __user * ubuf, size_t size,
 		
 		wlen=priv->stream_buffer_end-rp;
 		wlen=min(wlen,else_len);
-///		dma_cache_inv((unsigned long)rp,wlen);
-#ifdef CONFIG_VMSPLIT_2G        
+///		dma_cache_inv((unsigned long)rp,wlen);    
         buf_map = dma_map_single(NULL, (void *)rp, wlen, DMA_FROM_DEVICE);
-        temp_ptr=(short*)buf_map;
-#else
-        temp_ptr = (short*)rp;
-#endif
-		w_else_len=copy_to_user((void*)pubuf,(const char *)(temp_ptr),wlen);
+		w_else_len=copy_to_user((void*)pubuf,(const char *)(rp),wlen);
 		if(w_else_len!=0)
 			{
 			DSP_PRNT("copyed error,%d,%d,[%p]<---[%lx]\n",w_else_len,wlen,pubuf,rp);
 			wlen-=w_else_len;
-			}
-#ifdef CONFIG_VMSPLIT_2G          
+			}      
         dma_unmap_single(NULL, buf_map, wlen, DMA_FROM_DEVICE);
-#endif
 		else_len-=wlen;
 		pubuf+=wlen;
 		rp=dsp_codec_inc_rd_addr(priv,wlen);
