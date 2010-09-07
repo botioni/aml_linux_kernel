@@ -39,6 +39,7 @@
 #define OSD2_ADDR_START		U_ALIGN(OSD1_ADDR_END)
 #define OSD2_ADDR_END		(OSD2_ADDR_START +OSD2_MAX_MEM -1)
 
+
 #if defined(CONFIG_AM_VDEC_H264)
 #define CODEC_MEM_SIZE		U_ALIGN(32*SZ_1M)
 #else
@@ -46,6 +47,12 @@
 #endif
 #define CODEC_ADDR_START	U_ALIGN(OSD2_ADDR_END)
 #define CODEC_ADDR_END		(CODEC_ADDR_START+CODEC_MEM_SIZE-1)
+
+
+/********VDIN memory configuration ***************/
+#define VDIN_ADDR_START		U_ALIGN(OSD2_ADDR_END)
+#define VDIN_ADDR_END		(VDIN_ADDR_START +CODEC_MEM_SIZE -1)
+
 
 #if defined(CONFIG_AM_DEINTERLACE_SD_ONLY)
 #define DI_MEM_SIZE			(SZ_1M*3)

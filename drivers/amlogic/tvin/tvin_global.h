@@ -325,6 +325,14 @@ typedef enum tvin_video_status_e {
     TVIN_NMB_OF_STATES             // Not a state, but just a limiter. Must be the last at the list
 } tvin_video_status_t;
 
+#define VDIN_DEBUG
+#ifdef VDIN_DEBUG
+#define pr_dbg(fmt, args...) printk(KERN_DEBUG "amvdecvdin: " fmt, ## args)
+#else
+#define pr_dbg(fmt, args...)
+#endif
+#define pr_error(fmt, args...) printk(KERN_ERR "amvdecvdin: " fmt, ## args)
+
 
 #endif // __TVIN_GLOBAL_H
 

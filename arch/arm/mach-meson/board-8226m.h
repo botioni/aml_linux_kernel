@@ -47,6 +47,12 @@
 #define CODEC_ADDR_START	U_ALIGN(OSD2_ADDR_END)
 #define CODEC_ADDR_END		(CODEC_ADDR_START+CODEC_MEM_SIZE-1)
 
+
+/********VDIN memory configuration ***************/
+#define VDIN_ADDR_START		U_ALIGN(OSD2_ADDR_END)
+#define VDIN_ADDR_END		(VDIN_ADDR_START +CODEC_MEM_SIZE -1)
+
+
 #define RESERVED_MEM_END	(CODEC_ADDR_END)
 
 #endif

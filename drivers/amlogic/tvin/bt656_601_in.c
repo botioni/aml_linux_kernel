@@ -38,19 +38,9 @@
 
 //#define HANDLE_BT656IN_IRQ
 
-
-
 #define BT656IN_COUNT 			32
 #define BT656IN_ANCI_DATA_SIZE     	0x4000
 #define BR656IN_NTSC_FLAG		0x10
-
-#ifdef DEBUG
-#define pr_dbg(fmt, args...) printk(KERN_DEBUG "amvdec656in: " fmt, ## args)
-#else
-#define pr_dbg(fmt, args...)
-#endif
-#define pr_error(fmt, args...) printk(KERN_ERR "amvdec656in: " fmt, ## args)
-
 
 
 /* Per-device (per-bank) structure */
@@ -62,20 +52,20 @@
 
 //static struct am656in_dev_t am656in_dev_;
 typedef struct {
-    unsigned long       pbufAddr;
-    unsigned long       pbufSize;
+    unsigned long   pbufAddr;
+    unsigned long   pbufSize;
 
-    unsigned            pin_mux_reg1;   //for bt656 input
-    unsigned            pin_mux_mask1;
+    unsigned        pin_mux_reg1;   //for bt656 input
+    unsigned        pin_mux_mask1;
 
-    unsigned            pin_mux_reg2;   //for bt601 input
-    unsigned            pin_mux_mask2;
+    unsigned        pin_mux_reg2;   //for bt601 input
+    unsigned        pin_mux_mask2;
 
-    unsigned            pin_mux_reg3;   //for camera input
-    unsigned            pin_mux_mask3;
+    unsigned        pin_mux_reg3;   //for camera input
+    unsigned        pin_mux_mask3;
 
-    unsigned            active_pixel;
-    unsigned            active_line;
+    unsigned        active_pixel;
+    unsigned        active_line;
 
 //below macro defined is from tvin_global.h, they maybe not exact.
 //input_mode is TVIN_SIG_FMT_NULL: disable 656in/601/camera decode;
@@ -460,26 +450,34 @@ void start_amvdec_656_601_camera_in(unsigned char input_mode)
 {
     if((am656in_dec_info.input_mode == TVIN_SIG_FMT_NULL) && (input_mode != TVIN_SIG_FMT_NULL))
     {
+        pr_dbg("start ");
         init_656in_dec_parameter(input_mode);
 
         if((input_mode == TVIN_SIG_FMT_COMPONENT_576I_50D000) || (input_mode == TVIN_SIG_FMT_COMPONENT_480I_59D940))  //NTSC or PAL input(interlace mode): D0~D7(with SAV + EAV )
         {
+            pr_dbg("bt656in decode. \n");
             reset_bt656in_dec();
         }
         else if((input_mode == TVIN_SIG_FMT_HDMI_1440x576I_50Hz) || (input_mode == TVIN_SIG_FMT_HDMI_1440x480I_60Hz))
         {
+            pr_dbg("bt601in decode. \n");
             reset_bt601in_dec();
             if(am656in_dec_info.pin_mux_reg2 != 0)
                 SET_CBUS_REG_MASK(am656in_dec_info.pin_mux_reg2, am656in_dec_info.pin_mux_mask2);  //set the related pin mux
+            if(am656in_dec_info.pin_mux_reg3 != 0)
+               SET_CBUS_REG_MASK(am656in_dec_info.pin_mux_reg3, am656in_dec_info.pin_mux_mask3);  //set the related pin mux
+
         }
         else
         {
+            pr_dbg("camera in decode. \n");
             reset_camera_dec();
-             if(am656in_dec_info.pin_mux_reg3 != 0)
-                SET_CBUS_REG_MASK(am656in_dec_info.pin_mux_reg3, am656in_dec_info.pin_mux_mask3);  //set the related pin mux
+             if(am656in_dec_info.pin_mux_reg2 != 0)
+                SET_CBUS_REG_MASK(am656in_dec_info.pin_mux_reg2, am656in_dec_info.pin_mux_mask2);  //set the related pin mux
         }
         if(am656in_dec_info.pin_mux_reg1 != 0)
             SET_CBUS_REG_MASK(am656in_dec_info.pin_mux_reg1, am656in_dec_info.pin_mux_mask1);  //set the related pin mux
+
 
     }
     return;
@@ -505,6 +503,7 @@ void stop_amvdec_656_601_camera_in(unsigned char input_mode)
 		// reset BT656in module.
     if(am656in_dec_info.input_mode != TVIN_SIG_FMT_NULL)
     {
+        pr_dbg("stop 656_601_camera_in decode. \n");
         if(am656in_dec_info.pin_mux_reg1 != 0)
             CLEAR_CBUS_REG_MASK(am656in_dec_info.pin_mux_reg1, am656in_dec_info.pin_mux_mask1);
 
@@ -849,8 +848,11 @@ static int amvdec_656in_probe(struct platform_device *pdev)
     {
 	        am656in_dec_info.pin_mux_mask1 = (unsigned )(s->start);
 	        am656in_dec_info.pin_mux_reg1 = ((unsigned )(s->end) - am656in_dec_info.pin_mux_mask1 ) & 0xffff;
-	        if(am656in_dec_info.pin_mux_reg1 != 0)
-	        	SET_CBUS_REG_MASK(am656in_dec_info.pin_mux_reg1, am656in_dec_info.pin_mux_mask1);
+            pr_dbg(" bt656in pin_mux_reg1 is %x, pin_mux_mask1 is %x . \n",
+                am656in_dec_info.pin_mux_reg1,am656in_dec_info.pin_mux_mask1);
+
+//       if(am656in_dec_info.pin_mux_reg1 != 0)
+//       	SET_CBUS_REG_MASK(am656in_dec_info.pin_mux_reg1, am656in_dec_info.pin_mux_mask1);
      }
      else
              pr_error("error in getting bt656 resource parameters \n");
@@ -860,8 +862,10 @@ static int amvdec_656in_probe(struct platform_device *pdev)
     {
 	        am656in_dec_info.pin_mux_mask2 = (unsigned )(s->start);
 	        am656in_dec_info.pin_mux_reg2 = ((unsigned )(s->end) - am656in_dec_info.pin_mux_mask2 ) & 0xffff;
-	        if(am656in_dec_info.pin_mux_reg2 != 0)
-	        	SET_CBUS_REG_MASK(am656in_dec_info.pin_mux_reg2, am656in_dec_info.pin_mux_mask2);
+            pr_dbg(" bt656in pin_mux_reg2 is %x, pin_mux_mask2 is %x . \n",
+                am656in_dec_info.pin_mux_reg2,am656in_dec_info.pin_mux_mask2);
+//       if(am656in_dec_info.pin_mux_reg2 != 0)
+//       	SET_CBUS_REG_MASK(am656in_dec_info.pin_mux_reg2, am656in_dec_info.pin_mux_mask2);
      }
      else
              pr_error("error in getting bt601 resource parameters \n");
@@ -871,8 +875,10 @@ static int amvdec_656in_probe(struct platform_device *pdev)
     {
             am656in_dec_info.pin_mux_mask3 = (unsigned )(s->start);
             am656in_dec_info.pin_mux_reg3 = ((unsigned )(s->end) - am656in_dec_info.pin_mux_mask3 ) & 0xffff;
-            if(am656in_dec_info.pin_mux_reg3 != 0)
-                SET_CBUS_REG_MASK(am656in_dec_info.pin_mux_reg3, am656in_dec_info.pin_mux_mask3);
+            pr_dbg(" bt656in pin_mux_reg3 is %x, pin_mux_mask3 is %x . \n",
+                am656in_dec_info.pin_mux_reg3,am656in_dec_info.pin_mux_mask3);
+//          if(am656in_dec_info.pin_mux_reg3 != 0)
+//              SET_CBUS_REG_MASK(am656in_dec_info.pin_mux_reg3, am656in_dec_info.pin_mux_mask3);
      }
      else
              pr_error("error in getting camera resource parameters \n");
@@ -951,5 +957,5 @@ module_exit(amvdec_656in_exit_module);
 
 MODULE_DESCRIPTION("AMLOGIC BT656_601 input driver");
 MODULE_LICENSE("GPL");
-MODULE_AUTHOR("xintan <xintan.chen@amlogic.com>");
+MODULE_VERSION("1.0.0");
 
