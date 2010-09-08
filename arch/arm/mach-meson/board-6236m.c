@@ -363,7 +363,7 @@ static __init void m1_init_machine(void)
 static __initdata struct map_desc meson_video_mem_desc[] = {
 	{
 		/*FIXME:map the video memory to other.*/
-		.virtual		=	PAGE_ALIGN(VIDEO_MEM_START),
+		.virtual		=	PAGE_ALIGN(__phys_to_virt(VIDEO_MEM_START)),
 		.pfn			= 	__phys_to_pfn(VIDEO_MEM_START),
 		.length		= 	VIDEO_MEM_END-VIDEO_MEM_START+1,
 		.type		= 	MT_DEVICE,
