@@ -288,8 +288,8 @@ typedef struct vdin_matrix_lup_s {
 #define VDIN_IOCS_BBAR      _IOW(VDIN_IOC_MAGIC, 0x11, struct vdin_bbar_cfg_s)
 #define VDIN_IOC_DEBUG      _IOWR(VDIN_IOC_MAGIC, 0x12, unsigned long long)
 #define VDIN_IOC_INIT       _IO(VDIN_IOC_MAGIC, 0x13)
-#define VDIN_START_DEC      _IOW(VDIN_IOC_MAGIC, 0x14, unsigned )
-#define VDIN_STOP_DEC       _IOW(VDIN_IOC_MAGIC, 0x15, unsigned )
+#define VDIN_IOC_START_DEC  _IOW(VDIN_IOC_MAGIC, 0x14, enum tvin_sig_format_e)
+#define VDIN_IOC_STOP_DEC   _IO(VDIN_IOC_MAGIC, 0x15)
 
 #endif // __TVIN_VDIN_H
 
