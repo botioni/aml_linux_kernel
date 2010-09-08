@@ -1,7 +1,7 @@
 #
 # Automatically generated make config: don't edit
 # Linux kernel version: 2.6.34
-# Tue Aug 24 19:17:08 2010
+# Tue Sep  7 14:31:14 2010
 #
 CONFIG_ARM=y
 CONFIG_SYS_SUPPORTS_APM_EMULATION=y
@@ -179,7 +179,7 @@ CONFIG_INLINE_WRITE_UNLOCK=y
 CONFIG_INLINE_WRITE_UNLOCK_IRQ=y
 # CONFIG_INLINE_WRITE_UNLOCK_IRQRESTORE is not set
 # CONFIG_MUTEX_SPIN_ON_OWNER is not set
-CONFIG_FREEZER=y
+# CONFIG_FREEZER is not set
 
 #
 # System Type
@@ -373,23 +373,7 @@ CONFIG_HAVE_AOUT=y
 #
 # Power management options
 #
-CONFIG_PM=y
-# CONFIG_PM_DEBUG is not set
-CONFIG_PM_SLEEP=y
-CONFIG_SUSPEND=y
-CONFIG_SUSPEND_FREEZER=y
-CONFIG_HAS_WAKELOCK=y
-CONFIG_HAS_EARLYSUSPEND=y
-CONFIG_WAKELOCK=y
-CONFIG_WAKELOCK_STAT=y
-CONFIG_USER_WAKELOCK=y
-CONFIG_EARLYSUSPEND=y
-# CONFIG_NO_USER_SPACE_SCREEN_ACCESS_CONTROL is not set
-# CONFIG_CONSOLE_EARLYSUSPEND is not set
-CONFIG_FB_EARLYSUSPEND=y
-# CONFIG_APM_EMULATION is not set
-# CONFIG_PM_RUNTIME is not set
-CONFIG_PM_OPS=y
+# CONFIG_PM is not set
 CONFIG_ARCH_SUSPEND_POSSIBLE=y
 CONFIG_NET=y
 
@@ -501,15 +485,35 @@ CONFIG_EXTRA_FIRMWARE=""
 #
 
 #
+# Char devices
+#
+
+#
 # Amlogic UART Support
 #
 CONFIG_AM_UART=y
 
 #
-# Amlogic Net Device Support
+# Amlogic RTC support
 #
-CONFIG_AM_ETHERNET=y
-CONFIG_AM_ETHERNET_DEBUG_LEVEL=1
+
+#
+# Need RTC_CLASS 
+#
+# CONFIG_AML_RTC is not set
+# CONFIG_I2C_APOLLO is not set
+# CONFIG_I2C_AML is not set
+CONFIG_I2C_SW_AML=y
+
+#
+# Amlogic Input device support
+#
+# CONFIG_KEYPADS_AM is not set
+# CONFIG_VIRTUAL_REMOTE is not set
+
+#
+# Block devices
+#
 
 #
 # Amlogic USB Support
@@ -518,6 +522,39 @@ CONFIG_USB_DWC_OTG_HCD=y
 
 #
 # Amlogic SATA Support
+#
+
+#
+# Amlogic Card support
+#
+CONFIG_CARDREADER=y
+CONFIG_SD_MMC=y
+# CONFIG_AM_ATA is not set
+# CONFIG_MS_MSPRO is not set
+# CONFIG_XD is not set
+
+#
+# AMLOGIC SPI NOR Flash  support
+#
+# CONFIG_AMLOGIC_SPI_NOR is not set
+
+#
+# AMLOGIC NAND Flash  support
+#
+# CONFIG_AM_NAND is not set
+
+#
+# Network devices
+#
+
+#
+# Amlogic Net Device Support
+#
+CONFIG_AM_ETHERNET=y
+CONFIG_AM_ETHERNET_DEBUG_LEVEL=1
+
+#
+# Media devices
 #
 
 #
@@ -543,15 +580,6 @@ CONFIG_FB_AM=y
 # CONFIG_FB_AM_LOGO is not set
 
 #
-# Amlogic Card support
-#
-CONFIG_CARDREADER=y
-CONFIG_SD_MMC=y
-# CONFIG_AM_ATA is not set
-# CONFIG_MS_MSPRO is not set
-# CONFIG_XD is not set
-
-#
 # AMLOGIC AV Streaming devices
 #
 CONFIG_AM_DEINTERLACE=y
@@ -567,9 +595,6 @@ CONFIG_AM_VDEC_REAL=y
 # CONFIG_AM_JPEGDEC is not set
 CONFIG_AM_TIMESYNC=y
 CONFIG_AM_STREAMING=y
-# CONFIG_I2C_APOLLO is not set
-# CONFIG_I2C_AML is not set
-CONFIG_I2C_SW_AML=y
 
 #
 # Amlogic HDMI Support
@@ -577,20 +602,19 @@ CONFIG_I2C_SW_AML=y
 CONFIG_AML_HDMI_TX=y
 
 #
-# AMLOGIC NAND Flash  support
+# Amlogic TVIN Support
 #
-# CONFIG_AM_NAND is not set
+# CONFIG_TVIN_MPEG is not set
+# CONFIG_TVIN_HDMI is not set
+# CONFIG_TVIN_BT656IN is not set
+# CONFIG_TVIN_DVIN is not set
+# CONFIG_TVIN_AFE is not set
+# CONFIG_TVIN_VDIN is not set
 
 #
 # Amlogic ALSA Audio devices
 #
-# CONFIG_SND_AML is not set
-
-#
-# Amlogic Input device support
-#
-# CONFIG_KEYPADS_AM is not set
-# CONFIG_VIRTUAL_REMOTE is not set
+CONFIG_SND_AML=y
 
 #
 # Amlogic audio dsp process 
@@ -606,11 +630,6 @@ CONFIG_AML_HDMI_TX=y
 # AMLOGIC HW jpeg logo driver
 #
 # CONFIG_JPEGLOGO is not set
-
-#
-# AMLOGIC SPI NOR Flash  support
-#
-# CONFIG_AMLOGIC_SPI_NOR is not set
 
 #
 # Mali 400 GPU OpenGL device driver
@@ -1435,8 +1454,14 @@ CONFIG_EXT2_FS_XATTR=y
 CONFIG_EXT2_FS_POSIX_ACL=y
 CONFIG_EXT2_FS_SECURITY=y
 # CONFIG_EXT2_FS_XIP is not set
-# CONFIG_EXT3_FS is not set
+CONFIG_EXT3_FS=y
+# CONFIG_EXT3_DEFAULTS_TO_ORDERED is not set
+CONFIG_EXT3_FS_XATTR=y
+# CONFIG_EXT3_FS_POSIX_ACL is not set
+# CONFIG_EXT3_FS_SECURITY is not set
 # CONFIG_EXT4_FS is not set
+CONFIG_JBD=y
+# CONFIG_JBD_DEBUG is not set
 CONFIG_FS_MBCACHE=y
 # CONFIG_REISERFS_FS is not set
 # CONFIG_JFS_FS is not set
