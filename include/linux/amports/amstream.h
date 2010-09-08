@@ -139,6 +139,16 @@ struct am_io_param {
         struct adec_status astatus;
     };
 };
+struct audio_info {
+    int valid;
+    int sample_rate;
+    int channels;
+    int bitrate;
+    int codec_id;
+    int block_align;
+    int extradata_size;
+    char extradata[2048];
+};
 
 struct dec_sysinfo {
     unsigned int    format;
