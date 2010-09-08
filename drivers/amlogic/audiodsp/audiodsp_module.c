@@ -47,12 +47,12 @@ void audiodsp_moniter(unsigned long);
 static struct audiodsp_priv *audiodsp_p;
 #define  DSP_DRIVER_NAME	"auidodsp"
 #define  DSP_NAME	"dsp"
-
+extern struct audio_info *get_audio_info(void );
 int audiodsp_start(void)
 {
 	struct audiodsp_priv *priv=audiodsp_privdata();
 	struct auidodsp_microcode *pmcode;
-	struct real_cookinfo real_info;
+	struct audio_info *audio_info;
 	int ret;
 	priv->frame_format.valid=0;
 	priv->decode_error_count=0;
@@ -72,8 +72,8 @@ int audiodsp_start(void)
 #ifdef CONFIG_AM_VDEC_REAL
 	if(pmcode->fmt == MCODEC_FMT_COOK)
 		{
-		get_real_audio_info(&real_info, sizeof(real_info));
-		dsp_mailbox_send(priv, 1, M2B_IRQ4_AUDIO_INFO, 0, (const char*)&real_info, sizeof(real_info));
+		audio_info = get_audio_info();
+		dsp_mailbox_send(priv, 1, M2B_IRQ4_AUDIO_INFO, 0, (const char*)&audio_info, sizeof(audio_info));
 		}
 #endif
 	return ret;
@@ -129,12 +129,12 @@ static int audiodsp_ioctl(struct inode *node, struct file *file, unsigned int cm
 					
 					waittime++;
 					if(waittime>100)
-						{
+					{
 						DSP_PRNT("dsp have not set the codec stream's format details,valid=%x\n",
-							priv->frame_format.valid);
+						priv->frame_format.valid);
 						ret=-1;
 						break;
-						}
+					}
 					msleep(10);/*wait codec start and decode the format*/
 					}
 				}
