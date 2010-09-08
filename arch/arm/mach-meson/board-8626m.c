@@ -488,6 +488,13 @@ static struct platform_device android_pmem_device =
 };
 #endif
 
+#if defined(CONFIG_AML_RTC)
+	struct platform_device aml_rtc_device = {
+      		.name            = "aml_rtc",
+      		.id               = -1,
+	};
+#endif
+
 static struct platform_device __initdata *platform_devs[] = {
     #if defined(CONFIG_JPEGLOGO)
 		&jpeglogo_device,
@@ -529,9 +536,16 @@ static struct platform_device __initdata *platform_devs[] = {
 		&aml_i2c_device,
     #endif
     
+<<<<<<< HEAD
     #if defined(CONFIG_ANDROID_PMEM)
 		&android_pmem_device,
     #endif
+=======
+    #if defined(CONFIG_AML_RTC)
+    &aml_rtc_device,
+    #endif
+    
+>>>>>>> master
 };
 
 static void __init eth_pinmux_init(void)

@@ -232,7 +232,7 @@ const static struct file_operations amstream_fops = {
 };
 
 /**************************************************/
-
+static struct audio_info audio_dec_info;
 struct dec_sysinfo amstream_dec_info;
 static struct class *amstream_dev_class;
 static DEFINE_MUTEX(amstream_mutex);
@@ -301,6 +301,16 @@ static stream_buf_t bufs[BUF_MAX_NUM] =
 
     }
 };
+void set_sample_rate_info(int arg)
+{
+	audio_dec_info.sample_rate=arg;
+	audio_dec_info.valid=1;
+}
+
+struct audio_info *get_audio_info(void )
+{
+    return &audio_dec_info;
+}
 
 static  void video_port_release( stream_port_t *port,struct stream_buf_s * pbuf,int release_num)
 {
@@ -1051,6 +1061,7 @@ static int amstream_ioctl(struct inode *inode, struct file *file,
         case AMSTREAM_IOC_SAMPLERATE:
             if (this->type & PORT_TYPE_AUDIO) {
                 this->asamprate = (u32)arg;
+				set_sample_rate_info((u32)arg);
             } else
                 r = -EINVAL;
             break;
@@ -1130,11 +1141,14 @@ static int amstream_ioctl(struct inode *inode, struct file *file,
             break;
 
         case AMSTREAM_IOC_AUDIO_INFO:
-            if (this->type & PORT_TYPE_VIDEO)
-            	set_real_audio_info((void *)arg);
-            else
-                r = -EINVAL;
-            break;
+
+			if ((this->type & PORT_TYPE_VIDEO) || (this->type & PORT_TYPE_AUDIO))
+		   	{			  
+		 		copy_from_user(&audio_dec_info, arg, sizeof(audio_dec_info));
+		   	}
+		   	else
+			   	r = -EINVAL;
+		   	break;
 
         case AMSTREAM_IOC_AUDIO_RESET:
         	if (this->type & PORT_TYPE_AUDIO) {
