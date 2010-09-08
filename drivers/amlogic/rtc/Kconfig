@@ -2,7 +2,10 @@
 
 menu "Amlogic RTC support"
 
-comment "  Need RTC_CLASS "
+if !RTC_CLASS
+comment "Need config 'Real Time Clock'"
+endif
+
 config AML_RTC
 		bool "Amlogic RTC support"
 		default n
