@@ -487,7 +487,8 @@ static void vsync_toggle_frame(vframe_t *vf)
 
     if (first_picture && (disable_video==0)) {
         EnableVideoLayer();
-
+    }
+    if (first_picture) {
         frame_par_ready_to_set = 1;
 
         if ( deinterlace_mode != 2 )
