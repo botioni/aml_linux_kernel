@@ -536,16 +536,12 @@ static struct platform_device __initdata *platform_devs[] = {
 		&aml_i2c_device,
     #endif
     
-<<<<<<< HEAD
     #if defined(CONFIG_ANDROID_PMEM)
 		&android_pmem_device,
     #endif
-=======
     #if defined(CONFIG_AML_RTC)
     &aml_rtc_device,
     #endif
-    
->>>>>>> master
 };
 
 static void __init eth_pinmux_init(void)
