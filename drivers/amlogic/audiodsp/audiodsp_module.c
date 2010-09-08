@@ -70,10 +70,11 @@ int audiodsp_start(void)
  		start_audiodsp_monitor(priv);
 
 #ifdef CONFIG_AM_VDEC_REAL
-	if(pmcode->fmt == MCODEC_FMT_COOK)
+	if(pmcode->fmt == MCODEC_FMT_COOK || pmcode->fmt == MCODEC_FMT_RAAC)
 		{
+		msleep(5);
 		audio_info = get_audio_info();
-		dsp_mailbox_send(priv, 1, M2B_IRQ4_AUDIO_INFO, 0, (const char*)&audio_info, sizeof(audio_info));
+		dsp_mailbox_send(priv, 1, M2B_IRQ4_AUDIO_INFO, 0, (const char*)audio_info, sizeof(audio_info));
 		}
 #endif
 	return ret;
