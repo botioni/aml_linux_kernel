@@ -26,7 +26,7 @@
 #define OSD_MAIN_H
 #include  <linux/list.h>
 #include  <linux/vout/vout_notify.h>
-
+#include  <linux/fb.h>
 
 
 
