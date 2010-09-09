@@ -59,6 +59,5 @@
 
 
 #define VIDEO_MEM_END		(MALI_ADDR_END)
-#endif 
 #endif
 
