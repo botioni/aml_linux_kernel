@@ -35,8 +35,8 @@
 #include <asm/uaccess.h>
 #include <mach/am_regs.h>
 
-#include <linux/osd/apollo_main.h>
-#include <linux/osd/apollodev.h>
+#include <linux/osd/osd_main.h>
+#include <linux/osd/osd_dev.h>
 
 #include "hdmi_info_global.h"
 #include "hdmi_tx_module.h"
