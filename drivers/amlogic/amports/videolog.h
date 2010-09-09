@@ -1,5 +1,5 @@
 #define LOG_LEVEL_VAR		amlog_level_video
-#define LOG_MASK_VAR		amlog_level_mask
+#define LOG_MASK_VAR		amlog_mask_video
 
 #define LOG_LEVEL_ERROR		0
 #define LOG_MASK_TIMESTAMP	0x00000001UL
