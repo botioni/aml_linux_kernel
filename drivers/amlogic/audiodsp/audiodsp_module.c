@@ -53,7 +53,7 @@ int audiodsp_start(void)
 	struct audiodsp_priv *priv=audiodsp_privdata();
 	struct auidodsp_microcode *pmcode;
 	struct audio_info *audio_info;
-	int ret;
+	int ret,i;
 	priv->frame_format.valid=0;
 	priv->decode_error_count=0;
 	priv->last_valid_pts=0;
@@ -71,11 +71,16 @@ int audiodsp_start(void)
 
 #ifdef CONFIG_AM_VDEC_REAL
 	if(pmcode->fmt == MCODEC_FMT_COOK || pmcode->fmt == MCODEC_FMT_RAAC)
-		{
-		msleep(5);
-		audio_info = get_audio_info();
-		dsp_mailbox_send(priv, 1, M2B_IRQ4_AUDIO_INFO, 0, (const char*)audio_info, sizeof(audio_info));
-		}
+	{
+    		for(i = 0; i< 1000;i++){
+                if(DSP_RD(DSP_AUDIOINFO_STATUS) == DSP_AUDIOINFO_READY)//maybe at audiodsp side,INT not enabled yet,so wait a while
+                    break;
+    		     msleep(1);
+            }
+            DSP_WD(DSP_AUDIOINFO_STATUS,0);
+		    audio_info = get_audio_info();
+		    dsp_mailbox_send(priv, 1, M2B_IRQ4_AUDIO_INFO, 0, (const char*)audio_info, sizeof(audio_info));
+    }
 #endif
 	return ret;
 }
