@@ -13,17 +13,11 @@ config  AM_GE2D
 	help 
 		ge2d graphic  engine support
 
-config  FB_AM_LOGO
+config  AM_LOGO
 	bool  "setup logo"
 	default n
-	depends on FB_AM
+	depends on FB_AM && AM_GE2D
 	help 
 		setup logo support osd parameter offered by Uboot 
 
-config  FB_AM_LOGO_ON_OSD0
-	bool  "logo on osd0"
-	default  y 
-	depends on (FB_AM_LOGO )
-	help 
- 		display logo display on osd0 if y ,on osd1 if no
 endmenu	
