@@ -178,7 +178,7 @@ s32 tsdemux_init(u32 vid, u32 aid, u32 sid)
                    (4 << FEC_FILE_CLK_DIV));
 
     /* enable TS demux */
-    WRITE_MPEG_REG(DEMUX_CONTROL, (1 << STB_DEMUX_ENABLE));
+    WRITE_MPEG_REG(DEMUX_CONTROL, (1 << STB_DEMUX_ENABLE) | (1 << KEEP_DUPLICATE_PACKAGE));
 
     if (fetchbuf == 0)
     {
