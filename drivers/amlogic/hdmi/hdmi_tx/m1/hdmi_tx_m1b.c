@@ -70,6 +70,7 @@ static unsigned char hdmi_chip_type = 0;
 
 //static struct tasklet_struct EDID_tasklet;
 static unsigned serial_reg_val=0x22;
+static unsigned color_depth_f=0;
 
 static unsigned long modulo(unsigned long a, unsigned long b)
 {
@@ -736,6 +737,9 @@ static void hdmi_hw_reset(Hdmi_tx_video_para_t *param)
     else{
         hdmi_wr_reg(0x018, serial_reg_val);
     }
+    if((param->VIC==HDMI_1080p60)&&(param->color_depth==COLOR_30BIT)&&(hdmi_rd_reg(0x018)==0x22)){
+        hdmi_wr_reg(0x018,0x12);
+    }
     hdmi_wr_reg(0x01a, 0xfb);   //bit[2:0]=011 ,CK channel output TMDS CLOCK ,bit[2:0]=101 ,ck channel output PHYCLCK 
     hdmi_wr_reg(0x016, 0x04);   // Bit[3:0] is HDMI-PHY's output swing control register
     hdmi_wr_reg(0x0F7, 0x0F);   // Termination resistor calib value
@@ -1005,7 +1009,8 @@ static void hdmi_hw_reset(Hdmi_tx_video_para_t *param)
 
     hdmi_wr_reg(TX_SYS5_TX_SOFT_RESET_1, 0x00); // Final release reset on tmds_clk domain
     
-    if(hdmi_rd_reg(0x018)==0x22){
+    tmp_add_data = hdmi_rd_reg(0x018);
+    if((tmp_add_data==0x22)||(tmp_add_data==0x12)){
         hdmi_wr_reg(TX_SYS5_TX_SOFT_RESET_2, 0x08);        
         delay_us(10);
         hdmi_wr_reg(TX_SYS5_TX_SOFT_RESET_2, 0x00);        
@@ -1224,14 +1229,28 @@ static int hdmitx_m1b_set_dispmode(Hdmi_tx_video_para_t *param)
     int ret=0;
     
     check_chip_type(); /* check chip_type again */
+    if((hdmi_chip_type == HDMI_M1B)&&(color_depth_f != 0)){
+        if(color_depth_f==24)
+            param->color_depth = COLOR_24BIT;
+        else if(color_depth_f==30)
+            param->color_depth = COLOR_30BIT;
+        else if(color_depth_f==36)
+            param->color_depth = COLOR_36BIT;
+        else if(color_depth_f==48)
+            param->color_depth = COLOR_48BIT;
+    }
 
     if((param->VIC==HDMI_480p60)||(param->VIC==HDMI_480p60_16x9)){
         if(hdmi_chip_type == HDMI_M1A){
             Wr(HHI_HDMI_PLL_CNTL, 0x03040905); // For xtal=24MHz: PREDIV=5, POSTDIV=9, N=4, 0D=3, to get phy_clk=270MHz, tmds_clk=27MHz.
         }
         else{
-            Wr(HHI_HDMI_PLL_CNTL, 0x03040502); //normal
-            //Wr(HHI_HDMI_PLL_CNTL, 0x00040508); //pixiel repeat 4 
+            if(param->color_depth==COLOR_30BIT){
+                Wr(HHI_HDMI_PLL_CNTL, 0x0310050a); 
+            }
+            else{
+                Wr(HHI_HDMI_PLL_CNTL, 0x03040502); //normal
+            }
         }
         hdmi_hw_reset(param);    
         hdmi_tvenc_set(param);
@@ -1241,7 +1260,12 @@ static int hdmitx_m1b_set_dispmode(Hdmi_tx_video_para_t *param)
             Wr(HHI_HDMI_PLL_CNTL, 0x03040905); // For xtal=24MHz: PREDIV=5, POSTDIV=9, N=4, 0D=3, to get phy_clk=270MHz, tmds_clk=27MHz.
         }
         else{
-            Wr(HHI_HDMI_PLL_CNTL, 0x03040502); 
+            if(param->color_depth==COLOR_30BIT){
+                Wr(HHI_HDMI_PLL_CNTL, 0x0310050a); 
+            }
+            else{
+                Wr(HHI_HDMI_PLL_CNTL, 0x03040502); 
+            }
         }
         hdmi_hw_reset(param);    
         hdmi_tvenc480i_set(param);
@@ -1253,8 +1277,12 @@ static int hdmitx_m1b_set_dispmode(Hdmi_tx_video_para_t *param)
             //Wr(HHI_AUD_PLL_CNTL, 0x4863);
         }
         else{
-            Wr(HHI_HDMI_PLL_CNTL, 0x01040502); //24 bit
-            //Wr(HHI_HDMI_PLL_CNTL, 0x0110050a); //30 bit
+            if(param->color_depth==COLOR_30BIT){
+                Wr(HHI_HDMI_PLL_CNTL, 0x0110050a); //30 bit
+            }
+            else{
+                Wr(HHI_HDMI_PLL_CNTL, 0x01040502); //24 bit
+            }
             Wr(HHI_VID_PLL_CNTL, 0x00190863); //0x00140863
             //Wr(HHI_VID_PLL_CNTL, 0x00190ead);
         }
@@ -1267,12 +1295,12 @@ static int hdmitx_m1b_set_dispmode(Hdmi_tx_video_para_t *param)
             Wr(HHI_VID_CLK_DIV,4);
         }
         else{
-//#ifdef DOUBLE_CLK_720P_1080I
-//            Wr(HHI_HDMI_PLL_CNTL, 0x00040504);
-//#else
-            //Wr(HHI_HDMI_PLL_CNTL, 0x01040502); //24 bit
-            Wr(HHI_HDMI_PLL_CNTL, 0x0110050a); //30 bit
-//#endif            
+            if(param->color_depth==COLOR_30BIT){
+                Wr(HHI_HDMI_PLL_CNTL, 0x0110050a); //30 bit
+            }
+            else{
+                Wr(HHI_HDMI_PLL_CNTL, 0x01040502); //24 bit
+            }
             Wr(HHI_VID_PLL_CNTL, 0x00190a63); //0x00140863
         }
         hdmi_hw_reset(param);    
@@ -1283,7 +1311,12 @@ static int hdmitx_m1b_set_dispmode(Hdmi_tx_video_para_t *param)
             Wr(HHI_HDMI_PLL_CNTL, 0x0008210f); // For 24MHz xtal: PREDIV=15, POSTDIV=33, N=8, 0D=0, to get phy_clk=1485MHz, tmds_clk=148.5MHz.
         }
         else{
-            Wr(HHI_HDMI_PLL_CNTL, 0x00040502); 
+            if(param->color_depth==COLOR_30BIT){
+                Wr(HHI_HDMI_PLL_CNTL, 0x0010050a); 
+            }
+            else{
+                Wr(HHI_HDMI_PLL_CNTL, 0x00040502); 
+            }
         }
         hdmi_hw_reset(param);    
         hdmi_tvenc_set(param);
@@ -1300,7 +1333,12 @@ static int hdmitx_m1b_set_dispmode(Hdmi_tx_video_para_t *param)
 #ifdef DOUBLE_CLK_720P_1080I
             Wr(HHI_HDMI_PLL_CNTL, 0x00040502); 
 #else            
-            Wr(HHI_HDMI_PLL_CNTL, 0x01080502);
+            if(param->color_depth==COLOR_30BIT){
+                Wr(HHI_HDMI_PLL_CNTL, 0x01100505); 
+            }
+            else{
+                Wr(HHI_HDMI_PLL_CNTL, 0x01080502);
+            }
 #endif            
         }
         hdmi_hw_reset(param);    
@@ -1328,7 +1366,12 @@ static int hdmitx_m1b_set_dispmode(Hdmi_tx_video_para_t *param)
 #ifdef DOUBLE_CLK_720P_1080I
             Wr(HHI_HDMI_PLL_CNTL, 0x00040502); 
 #else            
-            Wr(HHI_HDMI_PLL_CNTL, 0x01080502); 
+            if(param->color_depth==COLOR_30BIT){
+                Wr(HHI_HDMI_PLL_CNTL, 0x01100505); 
+            }
+            else{
+                Wr(HHI_HDMI_PLL_CNTL, 0x01080502); 
+            }
 #endif            
         }
         hdmi_hw_reset(param);    
@@ -1556,15 +1599,22 @@ static void hdmitx_m1b_debug(unsigned char* buf)
     tmpbuf[i]=0;
 
     if(tmpbuf[0]=='v'){
-        printk("Hdmitx driver version: %s\nSerial %x\n", HDMITX_VER, serial_reg_val);
+        printk("Hdmitx driver version: %s\nSerial %x\nColor Depth %d\n", HDMITX_VER, serial_reg_val, color_depth_f);
         return;    
     }
-    if(tmpbuf[0]=='s'){
+    else if(tmpbuf[0]=='s'){
         serial_reg_val=simple_strtoul(tmpbuf+1,NULL,16);
         return;
     }
-
-    if(tmpbuf[0]=='o'){
+    else if(tmpbuf[0]=='c'){
+        color_depth_f=simple_strtoul(tmpbuf+1,NULL,10);
+        if((color_depth_f!=24)&&(color_depth_f!=30)){
+            printk("Color depth %d is not supported\n", color_depth_f);
+            color_depth_f=0;
+        }
+        return;
+    }
+    else if(tmpbuf[0]=='o'){
         if(tmpbuf[1]=='n'){
             turn_on_shift_pattern();
             printk("Shift Pattern On\n");
@@ -1575,9 +1625,8 @@ static void hdmitx_m1b_debug(unsigned char* buf)
         }
         return;        
     }
-
-    adr=simple_strtoul(tmpbuf+2, NULL, 16);
-    if(tmpbuf[0]=='w'){
+    else if(tmpbuf[0]=='w'){
+        adr=simple_strtoul(tmpbuf+2, NULL, 16);
         value=simple_strtoul(buf+i+1, NULL, 16);
         if(buf[1]=='h'){
             hdmi_wr_reg(adr, value);
@@ -1588,6 +1637,7 @@ static void hdmitx_m1b_debug(unsigned char* buf)
         printk("write %x to %s reg[%x]\n",value, buf[1]=='h'?"HDMI":"CBUS", adr);
     }
     else if(tmpbuf[0]=='r'){
+        adr=simple_strtoul(tmpbuf+2, NULL, 16);
         if(buf[1]=='h'){
             value = hdmi_rd_reg(adr);
             
