@@ -153,8 +153,7 @@ void disable_pre_deinterlace(void)
    	buf_recycle_done = 1;
    	di_pre_post_done = 1;
 
-	di_checked_field = (field_counter+di_checked_field+1) % DI_BUF_NUM;
-	pre_field_counter = field_counter = 0;
+	pre_field_counter = field_counter;
 
 	di_pre_recycle_buf = -1;
 
@@ -2562,6 +2561,8 @@ void di_pre_isr(struct work_struct *work)
     	WRITE_MPEG_REG(DI_INTR_CTRL, 0x000f000f);
 		initial_di_pre(cur_buf->width, cur_buf->height/2, PRE_HOLD_LINE);
 
+		di_checked_field = (field_counter+di_checked_field+2) % DI_BUF_NUM;
+		pre_field_counter = field_counter = 0;
 		di_p32_info = di_p22_info = di_p32_info_2 = di_p22_info_2 = 0;
 		pattern_len = 0;
 
@@ -2924,7 +2925,7 @@ void run_deinterlace(unsigned zoom_start_x_lines, unsigned zoom_end_x_lines, uns
     	post_blend_en = 1;
     	post_blend_mode = mode;
 
-    	if ( (post_blend_mode == 3) && (field_counter < 2) )
+    	if ( field_counter < 2 )
     	{
     		post_blend_en = 0;
     		post_blend_mode = 2;
