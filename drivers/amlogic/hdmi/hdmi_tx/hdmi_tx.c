@@ -65,6 +65,8 @@ static struct device *hdmitx_dev;
 
 //static HDMI_TX_INFO_t hdmi_info;
 
+#define DISABLE_AUDIO
+
 /*****************************
 *    hdmitx attr management :
 *    enable
@@ -189,7 +191,7 @@ static DEVICE_ATTR(debug, S_IWUSR | S_IRUGO, NULL, store_dbg);
 *    hdmitx display client interface 
 *    
 ******************************/
-static int hdmitx_notify_callback(struct notifier_block *block, unsigned long cmd , void *para)
+static int hdmitx_notify_callback_v(struct notifier_block *block, unsigned long cmd , void *para)
 {
     if (cmd != VOUT_EVENT_MODE_CHANGE)
         return -1;
@@ -200,10 +202,67 @@ static int hdmitx_notify_callback(struct notifier_block *block, unsigned long cm
 }
 
 
-static struct notifier_block hdmitx_notifier_nb = {
-    .notifier_call    = hdmitx_notify_callback,
+static struct notifier_block hdmitx_notifier_nb_v = {
+    .notifier_call    = hdmitx_notify_callback_v,
 };
 
+#ifndef DISABLE_AUDIO
+
+#define AOUT_EVENT_PREPARE  0x1
+extern int aout_register_client(struct notifier_block * ) ;
+
+#include <linux/soundcard.h>
+#include <sound/core.h>
+#include <sound/pcm.h>
+#include <sound/initval.h>
+#include <sound/control.h>
+
+static int hdmitx_notify_callback_a(struct notifier_block *block, unsigned long cmd , void *para)
+{
+    if (cmd == AOUT_EVENT_PREPARE){
+        struct snd_pcm_substream *substream =(struct snd_pcm_substream*)para;
+        Hdmi_tx_audio_para_t audio_param;
+
+        audio_param.type = CT_PCM;
+        audio_param.channel_num = CC_2CH;
+        audio_param.sample_size = SS_16BITS; 
+    
+        switch (substream->runtime->rate) {
+            case 192000:
+                audio_param.sample_rate = FS_192K; 
+                break;
+            case 176400:
+                audio_param.sample_rate = FS_176K4; 
+                break;
+            case 96000:
+                audio_param.sample_rate = FS_96K; 
+                break;
+            case 88200:
+                audio_param.sample_rate = FS_88K2; 
+                break;
+            case 48000:
+                audio_param.sample_rate = FS_48K; 
+                break;
+            case 44100:
+                audio_param.sample_rate = FS_44K1; 
+                break;
+            case 32000:
+                audio_param.sample_rate = FS_32K; 
+                break;
+            default:
+                break;
+        }
+        hdmitx_set_audio(&hdmitx_device, &audio_param);
+        printk("HDMI: aout notify rate %d\n", substream->runtime->rate);
+        return 0;
+    }
+    return -1;
+}
+
+static struct notifier_block hdmitx_notifier_nb_a = {
+    .notifier_call    = hdmitx_notify_callback_a,
+};
+#endif
 /******************************
 *  hdmitx kernel task
 *******************************/
@@ -325,8 +384,10 @@ static int amhdmitx_probe(struct platform_device *pdev)
         r = -EEXIST;
         return r;
     }
-    vout_register_client(&hdmitx_notifier_nb);
-
+    vout_register_client(&hdmitx_notifier_nb_v);
+#ifndef DISABLE_AUDIO
+    aout_register_client(&hdmitx_notifier_nb_a);
+#endif
     hdmitx_device.task = kthread_run(hdmi_task_handle, &hdmitx_device, "kthread_hdmi");
 
     return r;
