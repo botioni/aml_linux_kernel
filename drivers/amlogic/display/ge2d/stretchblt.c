@@ -16,19 +16,11 @@ static inline void _stretchblt(ge2d_context_t *wq,
     ge2d_cmd_cfg->dst_y_start  = dst_y;
     ge2d_cmd_cfg->dst_y_end    = dst_y+dst_h-1;
 
-    if (1) {
-        ge2d_cmd_cfg->sc_hsc_en = 1;
-        ge2d_cmd_cfg->sc_vsc_en = 1;
-        ge2d_cmd_cfg->hsc_rpt_p0_num = 1;
-        ge2d_cmd_cfg->vsc_rpt_l0_num = 1;
-        ge2d_cmd_cfg->hsc_div_en = 1; 
-    } else {
-        ge2d_cmd_cfg->sc_hsc_en = 0;
-        ge2d_cmd_cfg->sc_vsc_en = 0;
-        ge2d_cmd_cfg->hsc_rpt_p0_num = 0;
-        ge2d_cmd_cfg->vsc_rpt_l0_num = 0;
-        ge2d_cmd_cfg->hsc_div_en = 0; 
-    }
+    ge2d_cmd_cfg->sc_hsc_en = 1;
+    ge2d_cmd_cfg->sc_vsc_en = 1;
+    ge2d_cmd_cfg->hsc_rpt_p0_num = 1;
+    ge2d_cmd_cfg->vsc_rpt_l0_num = 1;
+    ge2d_cmd_cfg->hsc_div_en = 1; 
     
     ge2d_cmd_cfg->color_blend_mode = OPERATION_LOGIC;
     ge2d_cmd_cfg->color_logic_op   = LOGIC_OPERATION_COPY;  
@@ -82,26 +74,11 @@ static inline void _stretchblt_noalpha(ge2d_context_t *wq,
     ge2d_cmd_cfg->dst_y_start  = dst_y;
     ge2d_cmd_cfg->dst_y_end    = dst_y+dst_h-1;
 
-#if 0
-    if ((dst_w != src_w) || (dst_h != src_h)) {
-#else
-	/* when YC ratio is not 1:1 the scaler must be turned on also,
-	 * just always enable scaler for now.
-	 */
-	if (1) {
-#endif
-        ge2d_cmd_cfg->sc_hsc_en = 1;
-        ge2d_cmd_cfg->sc_vsc_en = 1;
-        ge2d_cmd_cfg->hsc_rpt_p0_num = 1;
-        ge2d_cmd_cfg->vsc_rpt_l0_num = 1;
-        ge2d_cmd_cfg->hsc_div_en = 1; 
-    } else {
-        ge2d_cmd_cfg->sc_hsc_en = 0;
-        ge2d_cmd_cfg->sc_vsc_en = 0;
-        ge2d_cmd_cfg->hsc_rpt_p0_num = 0;
-        ge2d_cmd_cfg->vsc_rpt_l0_num = 0;
-        ge2d_cmd_cfg->hsc_div_en = 0; 
-    }
+    ge2d_cmd_cfg->sc_hsc_en = 1;
+    ge2d_cmd_cfg->sc_vsc_en = 1;
+    ge2d_cmd_cfg->hsc_rpt_p0_num = 1;
+    ge2d_cmd_cfg->vsc_rpt_l0_num = 1;
+    ge2d_cmd_cfg->hsc_div_en = 1; 
     
     ge2d_cmd_cfg->color_blend_mode = OPERATION_LOGIC;
     ge2d_cmd_cfg->color_logic_op   = LOGIC_OPERATION_COPY;  
