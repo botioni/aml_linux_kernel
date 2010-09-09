@@ -1,7 +1,6 @@
 #ifndef  _GE2D_MAIN_H
 #define  _GE2D_MAIN_H
 #include "ge2d.h"
-#include "pr_dbg.h"
 #include <linux/interrupt.h>
 #include <mach/am_regs.h>
 #include <linux/amports/canvas.h>
