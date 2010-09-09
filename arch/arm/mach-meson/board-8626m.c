@@ -101,7 +101,7 @@ static struct resource fb_device_resources[] = {
 };
 
 static struct platform_device fb_device = {
-    .name       = "apollofb",
+    .name       = "mesonfb",
     .id         = 0,
     .num_resources = ARRAY_SIZE(fb_device_resources),
     .resource      = fb_device_resources,
