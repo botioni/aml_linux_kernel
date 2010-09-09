@@ -58,13 +58,15 @@ static struct resource jpeglogo_resources[] = {
     },
 };
 
-static struct platform_device jpeglogo_dev = {
+static struct platform_device jpeglogo_device = {
 	.name = "jpeglogo-dev",
 	.id   = 0,
     .num_resources = ARRAY_SIZE(jpeglogo_resources),
     .resource      = jpeglogo_resources,
 };
 #endif
+
+#if defined(CONFIG_KEYPADS_AM)
 static struct resource intput_resources[] = {
 	{
 		.start = 0x0,
@@ -81,6 +83,8 @@ static struct platform_device input_device = {
 	.resource = intput_resources,
 	
 };
+#endif
+
 #ifdef CONFIG_FB_AM
 static struct resource fb_device_resources[] = {
     [0] = {
@@ -168,7 +172,7 @@ static struct lm_device sata_ld = {
 #endif
 
 #if defined(CONFIG_AM_STREAMING)
-static struct resource apollo_codec_resources[] = {
+static struct resource codec_resources[] = {
     [0] = {
         .start =  CODEC_ADDR_START,
         .end   = CODEC_ADDR_END,
@@ -176,11 +180,11 @@ static struct resource apollo_codec_resources[] = {
     },
 };
 
-static struct platform_device apollo_codec = {
+static struct platform_device codec_device = {
     .name       = "amstream",
     .id         = 0,
-    .num_resources = ARRAY_SIZE(apollo_codec_resources),
-    .resource      = apollo_codec_resources,
+    .num_resources = ARRAY_SIZE(codec_resources),
+    .resource      = codec_resources,
 };
 #endif
 
@@ -201,7 +205,6 @@ static struct platform_device vdin_device = {
     .num_resources = ARRAY_SIZE(vdin_resources),
     .resource      = vdin_resources,
 };
-
 
 //add pin mux info for bt656 input
 static struct resource bt656in_resources[] = {
@@ -236,11 +239,7 @@ static struct platform_device bt656in_device = {
     .num_resources = ARRAY_SIZE(bt656in_resources),
     .resource      = bt656in_resources,
 };
-
-
-
 #endif
-
 
 #if defined(CONFIG_CARDREADER)
 static struct resource amlogic_card_resource[]  = {
@@ -261,7 +260,7 @@ static struct platform_device amlogic_card_device = {
 #endif
 
 #if defined(CONFIG_AML_AUDIO_DSP)
-static struct resource apollo_audiodsp_resources[] = {
+static struct resource audiodsp_resources[] = {
     [0] = {
         .start = AUDIODSP_ADDR_START,
         .end   = AUDIODSP_ADDR_END,
@@ -269,14 +268,15 @@ static struct resource apollo_audiodsp_resources[] = {
     },
 };
 
-static struct platform_device apollo_audiodsp = {
+static struct platform_device audiodsp_device = {
     .name       = "audiodsp",
     .id         = 0,
-    .num_resources = ARRAY_SIZE(apollo_audiodsp_resources),
-    .resource      = apollo_audiodsp_resources,
+    .num_resources = ARRAY_SIZE(audiodsp_resources),
+    .resource      = audiodsp_resources,
 };
 #endif
 
+#ifdef CONFIG_AM_NAND
 static struct mtd_partition partition_info[] = 
 {
 	{
@@ -334,22 +334,20 @@ static struct platform_device aml_nand_device = {
 	.num_resources = ARRAY_SIZE(aml_nand_resources),
 	.resource = aml_nand_resources,
 	.dev = {
-//	.platform_data = &aml_MicronABAnand_platform,
-	.platform_data = &aml_2Kpage128Kblocknand_platform,
+		.platform_data = &aml_2kpage128kblocknand_platform,
 	},
 };
+#endif
+
 static struct platform_device __initdata *platform_devs[] = {
     #if defined(CONFIG_JPEGLOGO)
-		&jpeglogo_dev,
-	#endif
-    #if defined(CONFIG_KEYPADS_AM)||defined(CONFIG_VIRTUAL_REMOTE)
-	&input_device,
-    #endif		
+		&jpeglogo_device,
+	#endif	
     #if defined(CONFIG_FB_AM)
     	&fb_device,
     #endif
     #if defined(CONFIG_AM_STREAMING)
-		&apollo_codec,
+		&codec_device,
     #endif
     #if defined(CONFIG_TVIN_VDIN)
         &vdin_device,
@@ -357,11 +355,14 @@ static struct platform_device __initdata *platform_devs[] = {
 
     #endif
 	#if defined(CONFIG_AML_AUDIO_DSP)
-		&apollo_audiodsp,
+		&audiodsp_device,
 	#endif
 	#if defined(CONFIG_CARDREADER)
     	&amlogic_card_device,
     #endif
+    #if defined(CONFIG_KEYPADS_AM)||defined(CONFIG_VIRTUAL_REMOTE)
+		&input_device,
+    #endif	
     #if defined(CONFIG_AM_NAND)
 		&aml_nand_device,
     #endif		
@@ -418,7 +419,7 @@ static __init void m1_init_machine(void)
 	device_clk_setting();
 	device_pinmux_init();
 	platform_add_devices(platform_devs, ARRAY_SIZE(platform_devs));
-	/* todo: load device drivers */
+
 #ifdef CONFIG_USB_DWC_OTG_HCD
 	set_usb_phy_clk(USB_PHY_CLOCK_SEL_XTAL_DIV2);
 	lm_device_register(&usb_ld_b);
@@ -439,7 +440,6 @@ static __initdata struct map_desc meson_video_mem_desc[] = {
 	},
 };
 
-
 static __init void m1_map_io(void)
 {
 	meson_map_io();
@@ -450,7 +450,6 @@ static __init void m1_irq_init(void)
 {
 	meson_init_irq();
 }
-
 
 static __init void m1_fixup(struct machine_desc *mach, struct tag *tag, char **cmdline, struct meminfo *m)
 {
@@ -470,15 +469,13 @@ static __init void m1_fixup(struct machine_desc *mach, struct tag *tag, char **c
 
 MACHINE_START(MESON_8626M_SH, "AMLOGIC MESON-M1 SH 8626M")
 	.phys_io		= MESON_PERIPHS1_PHYS_BASE,
-	.io_pg_offst		= (MESON_PERIPHS1_PHYS_BASE >> 18) & 0xfffc,
-	.boot_params		= BOOT_PARAMS_OFFSET,
+	.io_pg_offst	= (MESON_PERIPHS1_PHYS_BASE >> 18) & 0xfffc,
+	.boot_params	= BOOT_PARAMS_OFFSET,
 	.map_io			= m1_map_io,
 	.init_irq		= m1_irq_init,
 	.timer			= &meson_sys_timer,
-	.init_machine		= m1_init_machine,
-	.video_start		=RESERVED_MEM_START,	/*let the memmap know the memory is reversed, */ 
-							/*Because when the board is not support 256M, */
-							/*we can used mem=128 for test'*/
-	.video_end		=RESERVED_MEM_END,
+	.init_machine	= m1_init_machine,
 	.fixup			= m1_fixup,
+	.video_start	= RESERVED_MEM_START,
+	.video_end		= RESERVED_MEM_END,
 MACHINE_END

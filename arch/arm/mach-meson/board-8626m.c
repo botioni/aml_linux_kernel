@@ -236,7 +236,6 @@ static struct platform_device deinterlace_device = {
 };
 #endif
 
-
 #if defined(CONFIG_TVIN_VDIN)
 static struct resource vdin_resources[] = {
     [0] = {
@@ -254,7 +253,6 @@ static struct platform_device vdin_device = {
     .num_resources = ARRAY_SIZE(vdin_resources),
     .resource      = vdin_resources,
 };
-
 
 //add pin mux info for bt656 input
 static struct resource bt656in_resources[] = {
@@ -289,11 +287,7 @@ static struct platform_device bt656in_device = {
     .num_resources = ARRAY_SIZE(bt656in_resources),
     .resource      = bt656in_resources,
 };
-
-
-
 #endif
-
 
 #if defined(CONFIG_CARDREADER)
 static struct resource amlogic_card_resource[]  = {
@@ -329,6 +323,7 @@ static struct platform_device audiodsp_device = {
     .resource      = audiodsp_resources,
 };
 #endif
+
 #ifdef CONFIG_AM_NAND
 static struct mtd_partition partition_info[] = 
 {
@@ -410,7 +405,7 @@ static struct aml_sw_i2c_platform aml_sw_i2c_plat = {
 	.timeout			= 100,
 };
 
-struct platform_device aml_sw_i2c_device = {
+static struct platform_device aml_sw_i2c_device = {
 	.name		  = "aml-sw-i2c",
 	.id		  = -1,
 	.dev = {
@@ -421,7 +416,7 @@ struct platform_device aml_sw_i2c_device = {
 #endif
 
 #if defined(CONFIG_I2C_AML)
-struct aml_i2c_platform aml_i2c_plat = {
+static struct aml_i2c_platform aml_i2c_plat = {
 	.wait_count		= 1000000,
 	.wait_ack_interval	= 5,
 	.wait_read_interval	= 5,
@@ -498,7 +493,7 @@ static struct platform_device __initdata *platform_devs[] = {
 	#if defined(CONFIG_CARDREADER)
     	&amlogic_card_device,
     #endif
-    #if defined(CONFIG_KEYPADS_AM)
+    #if defined(CONFIG_KEYPADS_AM)||defined(CONFIG_VIRTUAL_REMOTE)
 		&input_device,
     #endif	
     #if defined(CONFIG_AMLOGIC_SPI_NOR)
@@ -577,7 +572,7 @@ static __init void m1_init_machine(void)
 	device_clk_setting();
 	device_pinmux_init();
 	platform_add_devices(platform_devs, ARRAY_SIZE(platform_devs));
-	/* todo: load device drivers */
+
 #ifdef CONFIG_USB_DWC_OTG_HCD
 	set_usb_phy_clk(USB_PHY_CLOCK_SEL_XTAL_DIV2);
 	lm_device_register(&usb_ld_a);
@@ -599,7 +594,6 @@ static __initdata struct map_desc meson_video_mem_desc[] = {
 	},
 };
 
-
 static __init void m1_map_io(void)
 {
 	meson_map_io();
@@ -610,7 +604,6 @@ static __init void m1_irq_init(void)
 {
 	meson_init_irq();
 }
-
 
 static __init void m1_fixup(struct machine_desc *mach, struct tag *tag, char **cmdline, struct meminfo *m)
 {
@@ -630,15 +623,13 @@ static __init void m1_fixup(struct machine_desc *mach, struct tag *tag, char **c
 
 MACHINE_START(MESON_8626M, "AMLOGIC MESON-M1 8626M SZ")
 	.phys_io		= MESON_PERIPHS1_PHYS_BASE,
-	.io_pg_offst		= (MESON_PERIPHS1_PHYS_BASE >> 18) & 0xfffc,
-	.boot_params		= BOOT_PARAMS_OFFSET,
+	.io_pg_offst	= (MESON_PERIPHS1_PHYS_BASE >> 18) & 0xfffc,
+	.boot_params	= BOOT_PARAMS_OFFSET,
 	.map_io			= m1_map_io,
 	.init_irq		= m1_irq_init,
 	.timer			= &meson_sys_timer,
-	.init_machine		= m1_init_machine,
-	.video_start		=RESERVED_MEM_START,	/*let the memmap know the memory is reversed, */ 
-							/*Because when the board is not support 256M, */
-							/*we can used mem=128 for test'*/
-	.video_end		=RESERVED_MEM_END,
+	.init_machine	= m1_init_machine,
 	.fixup			= m1_fixup,
+	.video_start	= RESERVED_MEM_START,
+	.video_end		= RESERVED_MEM_END,
 MACHINE_END
