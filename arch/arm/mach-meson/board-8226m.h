@@ -13,18 +13,18 @@
 /******** CODEC memory setting ************************/
 //	Codec need 16M for 1080p decode
 //	4M for sd decode;
-#define ALIGN_MSK		((SZ_1M)-1)
-#define U_ALIGN(x)		((x+ALIGN_MSK)&(~ALIGN_MSK))
-#define D_ALIGN(x)		((x)&(~ALIGN_MSK))
+#define ALIGN_MSK			((SZ_1M)-1)
+#define U_ALIGN(x)			((x+ALIGN_MSK)&(~ALIGN_MSK))
+#define D_ALIGN(x)			((x)&(~ALIGN_MSK))
 
 /******** AUDIODSP memory setting ************************/
 #define AUDIODSP_ADDR_START	U_ALIGN(RESERVED_MEM_START)	/*audiodsp memstart*/
 #define AUDIODSP_ADDR_END	(AUDIODSP_ADDR_START+SZ_1M-1)	/*audiodsp memend*/
 
 /******** Frame buffer memory configuration ***********/
-#define OSD_480_PIX		(640*480)
-#define OSD_576_PIX		(768*576)
-#define OSD_720_PIX		(1280*720)
+#define OSD_480_PIX			(640*480)
+#define OSD_576_PIX			(768*576)
+#define OSD_720_PIX			(1280*720)
 #define OSD_1080_PIX		(1920*1080)
 #define B16BpP	(2)
 #define B32BpP	(4)
@@ -46,7 +46,6 @@
 #endif
 #define CODEC_ADDR_START	U_ALIGN(OSD2_ADDR_END)
 #define CODEC_ADDR_END		(CODEC_ADDR_START+CODEC_MEM_SIZE-1)
-
 
 /********VDIN memory configuration ***************/
 #define VDIN_ADDR_START		U_ALIGN(OSD2_ADDR_END)
