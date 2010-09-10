@@ -97,15 +97,15 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
 	{
 		fb0_cfg_w0=READ_MPEG_REG(VIU_OSD1_BLK0_CFG_W0);
 		fb1_cfg_w0=READ_MPEG_REG(VIU_OSD1_BLK0_CFG_W0+ REG_OFFSET);
-		if ((READ_MPEG_REG(ENCP_VIDEO_MODE) & (1 << 12)) && 
-        		((READ_MPEG_REG(ENCI_VIDEO_EN) & 1) == 0)) {
+		if (READ_MPEG_REG(ENCP_VIDEO_MODE) & (1 << 12))
+        	{
        		 /* 1080I */
 			 
         		if (READ_MPEG_REG(VENC_ENCP_LINE) >= 562) {
            		 /* top field */
-            			current_field = 1;
+            			current_field = 0;
         		} else {
-           			current_field = 0;
+           			current_field = 1;
         		}
     		} else {
         		current_field = READ_MPEG_REG(VENC_STATA) & 1;
@@ -160,7 +160,8 @@ _init_osd_simple(u32 pix_x_start,
       	WRITE_MPEG_REG(VIU_OSD1_BLK0_CFG_W3 + REG_OFFSET*index, data32);
    	data32 = (display_v_start & 0xfff) | (display_v_end & 0xfff) <<16 ;
        WRITE_MPEG_REG(index?VIU_OSD2_BLK0_CFG_W4:VIU_OSD1_BLK0_CFG_W4, data32);
-
+	amlog_mask_level(LOG_MASK_HARDWARE,LOG_LEVEL_LOW,"[disp(x-y)] %d:%d-%d:%d\n",display_h_start,\
+														display_h_end,display_v_start,display_v_end);
 
 	pandata[index].x_start = pix_x_start;
 	pandata[index].x_end   = pix_x_end;
@@ -184,10 +185,11 @@ _init_osd_simple(u32 pix_x_start,
 		if ( request_irq(INT_VIU_VSYNC, &vsync_isr,
                     IRQF_SHARED , "am_osd_tv", osd_setup))
     		{
-    			  amlog_level(LOG_LEVEL_HIGH,"can't request irq for vsync\r\n");
+    			amlog_level(LOG_LEVEL_HIGH,"can't request irq for vsync\r\n");
     		}
 		else
 		{
+			amlog_level(LOG_LEVEL_HIGH,"request irq for vsync \r\n");
 			tv_irq_got=1;
 		}
 	}

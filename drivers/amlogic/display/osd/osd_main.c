@@ -47,7 +47,7 @@
 #include "osd_log.h"
 #include <linux/amlog.h>
 
-MODULE_AMLOG(AMLOG_DEFAULT_LEVEL, AMLOG_DEFAULT_MASK, LOG_LEVEL_DESC, LOG_MASK_DESC);
+MODULE_AMLOG(AMLOG_DEFAULT_LEVEL, 0, LOG_LEVEL_DESC, LOG_MASK_DESC);
 static myfb_dev_t  *gp_fbdev_list[OSD_COUNT]={NULL,NULL};
 static DEFINE_MUTEX(dbg_mutex);
 
@@ -123,7 +123,6 @@ osd_check_var(struct fb_var_screeninfo *var, struct fb_info *info)
 static int
 osd_set_par(struct fb_info *info)
 {
-	amlog_mask_level(LOG_MASK_PARA,LOG_LEVEL_LOW,"osd_set_par\n");
 	osddev_set((struct myfb_dev *)info->par);
        return  0;
 }
@@ -299,19 +298,9 @@ static struct fb_ops osd_ops = {
 	.fb_sync	    = osd_sync,
 };
 
-static void  set_default_display_axis(struct fb_var_screeninfo *var,osd_ctl_t *osd_ctrl, const vinfo_t *vinfo)
-{
-	osd_ctrl->disp_start_x=0;
-	osd_ctrl->disp_start_y=0;
-	osd_ctrl->disp_end_x=min(var->xres, vinfo->width)-1;
-	osd_ctrl->disp_end_y=min(var->yres,vinfo->height)-1;
-}
-
 int osd_notify_callback(struct notifier_block *block, unsigned long cmd , void *para)
 {
 	const vinfo_t *vinfo;
-	osd_ctl_t	    *osd_ctrl;
-	struct fb_var_screeninfo *var ;
 	myfb_dev_t *fb_dev;
 	int  i,blank;
 
@@ -325,12 +314,6 @@ int osd_notify_callback(struct notifier_block *block, unsigned long cmd , void *
 		for(i=0;i<OSD_COUNT;i++)
 		{
 			if(NULL==(fb_dev=gp_fbdev_list[i])) continue;
-			osd_ctrl=&fb_dev->osd_ctl;
-			var=&fb_dev->fb_info->var ;
-			set_default_display_axis(var,osd_ctrl,vinfo);
-			amlog_mask_level(LOG_MASK_PARA,LOG_LEVEL_LOW,"disp axis: x:%d y:%d w:%d h:%d\r\n"  , \
-					osd_ctrl->disp_start_x, osd_ctrl->disp_start_y,\
-					osd_ctrl->disp_end_x,osd_ctrl->disp_end_y);
 			osddev_set(fb_dev);
 		}
 		break;
@@ -463,8 +446,6 @@ osd_probe(struct platform_device *pdev)
 		fix->smem_start = fbdev->fb_mem_paddr;
 		fix->smem_len = fbdev->fb_len;
 
-		set_default_display_axis(var,&fbdev->osd_ctl,get_current_vinfo());
-		  
 		if (fb_alloc_cmap(&fbi->cmap, 16, 0) != 0) {
 			amlog_level(LOG_LEVEL_HIGH,"unable to allocate color map memory\n");
       		r = -ENOMEM;

@@ -12,7 +12,7 @@
 #include "ge2d_log.h"
 #include <linux/amlog.h>
 
-MODULE_AMLOG(AMLOG_DEFAULT_LEVEL, AMLOG_DEFAULT_MASK, LOG_LEVEL_DESC, LOG_MASK_DESC);
+MODULE_AMLOG(AMLOG_DEFAULT_LEVEL, 0, LOG_LEVEL_DESC, LOG_MASK_DESC);
 
 /***********************************************************************
 *
