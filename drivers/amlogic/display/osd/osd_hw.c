@@ -381,19 +381,24 @@ void osd_enable_hw(int enable ,int index )
 void osd_pan_display_hw(unsigned int xoffset, unsigned int yoffset,int index )
 {
 	ulong flags;
+	long diff_x, diff_y;
 	
 	if (index >= 2)
 		return;
 
     spin_lock_irqsave(&osd_lock, flags);
 
-	pandata[index].x_start += xoffset;
-	pandata[index].x_end   += xoffset;
-	pandata[index].y_start += yoffset;
-	pandata[index].y_end   += yoffset;
+	diff_x = xoffset - pandata[index].x_start;
+	diff_y = yoffset - pandata[index].y_start;
+
+	pandata[index].x_start += diff_x;
+	pandata[index].x_end   += diff_x;
+	pandata[index].y_start += diff_y;
+	pandata[index].y_end   += diff_y;
 
     spin_unlock_irqrestore(&osd_lock, flags);
 }
+
 void  osd_suspend_hw(void)
 {
 	u32 i,j;
