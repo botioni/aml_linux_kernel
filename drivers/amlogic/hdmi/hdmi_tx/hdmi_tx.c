@@ -65,7 +65,7 @@ static struct device *hdmitx_dev;
 
 //static HDMI_TX_INFO_t hdmi_info;
 
-#define DISABLE_AUDIO
+#undef DISABLE_AUDIO
 
 /*****************************
 *    hdmitx attr management :
