@@ -1153,7 +1153,7 @@ void dwc_otg_hcd_endpoint_disable(struct usb_hcd *_hcd,
 	dwc_otg_qh_t *qh;
 	dwc_otg_hcd_t *dwc_otg_hcd = hcd_to_dwc_otg_hcd(_hcd);
 #ifdef _WAIT_FOR_EMPTY
-	unsigned long flags;
+	//unsigned long flags;
 	int retry = 0;
 #endif
 

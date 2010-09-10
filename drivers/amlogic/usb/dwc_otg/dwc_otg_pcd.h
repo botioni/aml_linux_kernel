@@ -200,6 +200,8 @@ extern void dwc_otg_pcd_start_srp_timer(dwc_otg_pcd_t * _pcd);
 
 extern void dwc_otg_pcd_initiate_srp(dwc_otg_pcd_t * _pcd);
 extern void dwc_otg_pcd_remote_wakeup(dwc_otg_pcd_t * _pcd, int set);
+extern void dwc_otg_pcd_dma_map(dwc_ep_t * ep, struct usb_request * _req);
+extern void dwc_otg_pcd_dma_unmap(dwc_ep_t * ep);
 
 #endif
 #endif				/* DWC_HOST_ONLY */
