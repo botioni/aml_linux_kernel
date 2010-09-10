@@ -65,6 +65,7 @@ _fbdev_set_default(struct myfb_dev *fbdev,int index )
 	fbdev->fb_info->var = mydef_var[index];
 	fbdev->fb_info->fix = mydef_fix;
 	fbdev->bpp_type=fbdev->fb_info->var.bits_per_pixel ;
+	osddev_set(fbdev);
 }
 
 bpp_color_bit_define_t*	
@@ -443,6 +444,11 @@ osd_probe(struct platform_device *pdev)
 				mydef_var[index].bits_per_pixel=32;
 			}
 		}else{
+			mydef_var[index].xres=1280;
+			mydef_var[index].yres=720;
+			mydef_var[index].xres_virtual=1280;
+			mydef_var[index].yres_virtual=1440;
+			mydef_var[index].bits_per_pixel=16;
 			memset((char*)fbdev->fb_mem_vaddr, 0, fbdev->fb_len);	
 		}
 	
