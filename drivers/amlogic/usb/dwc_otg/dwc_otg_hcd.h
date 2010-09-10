@@ -203,6 +203,7 @@ typedef struct dwc_otg_qh {
 
 	/** Entry for QH in either the periodic or non-periodic schedule. */
 	struct list_head qh_list_entry;
+	uint32_t current_num;
 } dwc_otg_qh_t;
 
 /**
@@ -389,6 +390,7 @@ typedef struct dwc_otg_hcd {
 	uint32_t hfnum_other_samples_b;
 	uint64_t hfnum_other_frrem_accum_b;
 #endif
+	uint32_t split_frm_num;
 
 } dwc_otg_hcd_t;
 
