@@ -14,7 +14,7 @@
 #include "hdmi_tx_module.h"
 #include "hdmi_info_global.h"
 
-static const Hdmi_tx_video_para_t hdmi_tx_video_params[] = 
+static Hdmi_tx_video_para_t hdmi_tx_video_params[] = 
 {
     { 
         .VIC            = HDMI_640x480p60,

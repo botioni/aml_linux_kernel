@@ -35,7 +35,6 @@
 #include <asm/uaccess.h>
 #include <mach/am_regs.h>
 
-#include <linux/osd/osd_main.h>
 #include <linux/osd/osd_dev.h>
 
 #include "hdmi_info_global.h"
@@ -88,10 +87,10 @@ static  int  set_disp_mode(const char *mode)
     return ret;
 }
 
-static int set_disp_mode_auto()
+static int set_disp_mode_auto(void)
 {
     int ret=-1;
-    vinfo_t *info = get_current_vinfo();
+    const vinfo_t *info = get_current_vinfo();
     HDMI_Video_Codes_t vic;
     vic = hdmitx_edid_get_VIC(&hdmitx_device, info->name, (hdmitx_device.disp_switch_config==DISP_SWITCH_FORCE)?1:0);
     hdmitx_device.cur_VIC = HDMI_Unkown;
@@ -112,7 +111,7 @@ static ssize_t show_disp_mode(struct device * dev, struct device_attribute *attr
     return pos;    
 }
     
-static ssize_t store_disp_mode(struct device * dev, struct device_attribute *attr, const char * buf)
+static ssize_t store_disp_mode(struct device * dev, struct device_attribute *attr, const char * buf, size_t count)
 {
     set_disp_mode(buf);
     return 16;    
@@ -124,7 +123,7 @@ static ssize_t show_aud_mode(struct device * dev, struct device_attribute *attr,
     return 0;    
 }
     
-static ssize_t store_aud_mode(struct device * dev, struct device_attribute *attr, const char * buf)
+static ssize_t store_aud_mode(struct device * dev, struct device_attribute *attr, const char * buf, size_t count)
 {
     //set_disp_mode(buf);
     Hdmi_tx_audio_para_t audio_param;
@@ -162,7 +161,7 @@ static ssize_t show_config(struct device * dev, struct device_attribute *attr, c
     return pos;    
 }
     
-static ssize_t store_config(struct device * dev, struct device_attribute *attr, const char * buf)
+static ssize_t store_config(struct device * dev, struct device_attribute *attr, const char * buf, size_t count)
 {
     if(strncmp(buf, "force", 5)==0){
         hdmitx_device.disp_switch_config=DISP_SWITCH_FORCE;
@@ -172,10 +171,9 @@ static ssize_t store_config(struct device * dev, struct device_attribute *attr, 
     }
     return 16;    
 }
+  
     
-
-    
-static ssize_t store_dbg(struct device * dev, struct device_attribute *attr, const char * buf)
+static ssize_t store_dbg(struct device * dev, struct device_attribute *attr, const char * buf, size_t count)
 {
     hdmitx_device.HWOp.DebugFun(buf);
     return 16;    
