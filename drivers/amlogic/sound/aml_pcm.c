@@ -29,6 +29,9 @@
 #include "tone/tone_44k.h"
 #include "tone/tone_48k.h"
 
+#define AOUT_EVENT_PREPARE  0x1
+extern int aout_notifier_call_chain(unsigned long val, void *v);
+
 audio_mixer_control_t audio_mixer_control;
 audio_tone_control_t audio_tone_control;
 
@@ -368,6 +371,7 @@ static int snd_aml_audio_playback_prepare(struct snd_pcm_substream
     }
     audio_hw_set_958_mode(config.i958_mode, &set);
 
+    aout_notifier_call_chain(AOUT_EVENT_PREPARE, substream);
     return 0;
 }
 
