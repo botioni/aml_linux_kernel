@@ -64,7 +64,7 @@ void hdmi_wr_reg(unsigned long addr, unsigned long data)
     rd_data = hdmi_rd_reg (addr);
     if (rd_data != data) 
     {
-        printk("hdmi_wr_reg(%x,%x) fails to write: %x\n",addr, data, rd_data);
+        //printk("hdmi_wr_reg(%x,%x) fails to write: %x\n",addr, data, rd_data);
        //while(1){};      
     }
 }
