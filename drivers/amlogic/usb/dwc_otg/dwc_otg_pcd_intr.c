@@ -162,12 +162,14 @@ void start_next_request(dwc_otg_pcd_ep_t * _ep)
 	if (!list_empty(&_ep->queue)) {
 		req = list_entry(_ep->queue.next, dwc_otg_pcd_request_t, queue);
 
+		if(GET_CORE_IF(_ep->pcd)->dma_enable)
+			dwc_otg_pcd_dma_map(&_ep->dwc_ep, &req->req);
 		/* Setup and start the Transfer */
 		_ep->dwc_ep.start_xfer_buff = req->req.buf;
 		_ep->dwc_ep.xfer_buff = req->req.buf;
 		_ep->dwc_ep.xfer_len = req->req.length;
 		_ep->dwc_ep.xfer_count = 0;
-		_ep->dwc_ep.dma_addr = req->req.dma;
+		//_ep->dwc_ep.dma_addr = req->req.dma;
 		_ep->dwc_ep.sent_zlp = 0;
 		_ep->dwc_ep.total_len = _ep->dwc_ep.xfer_len;
 
@@ -1553,6 +1555,8 @@ static int32_t ep0_complete_request(dwc_otg_pcd_ep_t * _ep)
 
 	/* Complete the request */
 	if (is_last) {
+		if(core_if->dma_enable)
+			dwc_otg_pcd_dma_unmap(&_ep->dwc_ep);
 		request_done(_ep, req, 0);
 		_ep->dwc_ep.start_xfer_buff = 0;
 		_ep->dwc_ep.xfer_buff = 0;
@@ -1629,6 +1633,7 @@ static void complete_ep(dwc_otg_pcd_ep_t * _ep)
 		if (core_if->dma_enable) {
 			req->req.actual =
 			    _ep->dwc_ep.xfer_len - deptsiz.b.xfersize;
+			dwc_otg_pcd_dma_unmap(&_ep->dwc_ep);
 		} else {
 			req->req.actual = _ep->dwc_ep.xfer_count;
 		}
@@ -2390,6 +2395,7 @@ int32_t dwc_otg_pcd_handle_intr(dwc_otg_pcd_t * _pcd)
 
 		gintr_status.d32 = dwc_otg_read_core_intr(core_if);
 		if (!gintr_status.d32) {
+			SPIN_UNLOCK(&_pcd->lock);
 			return 0;
 		}
 		DWC_DEBUGPL(DBG_PCDV, "%s: gintsts&gintmsk=%08x\n",
