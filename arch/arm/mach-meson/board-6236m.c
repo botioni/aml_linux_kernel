@@ -60,7 +60,7 @@ static struct platform_device jpeglogo_device = {
 };
 #endif
 
-#if defined(CONFIG_KEYPADS_AM)
+#if defined(CONFIG_KEYPADS_AM)||defined(CONFIG_KEYPADS_AM_MODULE) 
 static struct resource intput_resources[] = {
 	{
 		.start = 0x0,
@@ -285,7 +285,7 @@ static struct platform_device __initdata *platform_devs[] = {
 	#if defined(CONFIG_CARDREADER)
     	&amlogic_card_device,
     #endif
-    #if defined(CONFIG_KEYPADS_AM)||defined(CONFIG_VIRTUAL_REMOTE)
+    #if defined(CONFIG_KEYPADS_AM)||defined(CONFIG_VIRTUAL_REMOTE)||defined(CONFIG_KEYPADS_AM_MODULE) 
 		&input_device,
     #endif	
 };
