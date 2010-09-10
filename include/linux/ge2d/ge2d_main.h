@@ -27,6 +27,7 @@
 #define  		GE2D_STRETCHBLIT_NOBLOCK 	0x4704
 #define  		GE2D_FILLRECTANGLE_NOBLOCK 	0x4703
 
+
 #define  	 	GE2D_STRETCHBLIT_NOALPHA   	0x4702
 #define  		GE2D_BLIT_NOALPHA	 			0x4701
 #define  		GE2D_BLEND			 			0x4700
@@ -36,6 +37,7 @@
 #define  		GE2D_SRCCOLORKEY   			0x46fc
 #define		GE2D_SET_COEF					0x46fa
 #define  		GE2D_CONFIG					0x46f9
+#define		GE2D_ANTIFLICKER_ENABLE			0x46f8
 
 /**************************************************************
 **																	 **

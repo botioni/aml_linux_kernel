@@ -190,7 +190,7 @@ extern ge2d_context_t* create_ge2d_work_queue(void) ;
 extern int ge2d_wq_remove_config(ge2d_context_t *wq);
 
 extern void ge2d_wq_set_scale_coef(ge2d_context_t *wq, unsigned v_scale_coef, unsigned h_scale_coef);
-
+extern int	ge2d_antiflicker_enable(ge2d_context_t *context,unsigned long enable);
 extern ge2d_src1_data_t * ge2d_wq_get_src_data(ge2d_context_t *wq);
 extern ge2d_src1_gen_t * ge2d_wq_get_src_gen(ge2d_context_t *wq);
 extern ge2d_src2_dst_data_t * ge2d_wq_get_dst_data(ge2d_context_t *wq);

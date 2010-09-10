@@ -21,7 +21,7 @@ void ge2dgen_src2(ge2d_context_t *wq,
 
 void ge2dgen_src2_clip(ge2d_context_t *wq,
                       int x, int y, int w, int h);
-
+void ge2dgen_antiflicker(ge2d_context_t *wq,unsigned long enable) ;
 void ge2dgen_rendering_dir(ge2d_context_t *wq,
                            int src1_xrev,
                            int src1_yrev,
