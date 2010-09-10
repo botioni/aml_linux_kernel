@@ -163,11 +163,11 @@ void dwc_otg_hcd_qh_init(dwc_otg_hcd_t * _hcd, dwc_otg_qh_t * _qh,
 		/** @todo Account for split transfers in the bus time. */
 		int bytecount =
 		    dwc_hb_mult(_qh->maxp) * dwc_max_packet(_qh->maxp);
-		int usecs =
+		_qh->usecs =
 		    usb_calc_bus_time(_urb->dev->speed, usb_pipein(_urb->pipe),
 				      (_qh->ep_type == USB_ENDPOINT_XFER_ISOC),
 				      bytecount);
-		_qh->usecs = NS_TO_US(usecs);
+
 		/* Start in a slightly future (micro)frame. */
 		_qh->sched_frame = dwc_frame_num_inc(_hcd->frame_number,
 						     SCHEDULE_SLOP);
