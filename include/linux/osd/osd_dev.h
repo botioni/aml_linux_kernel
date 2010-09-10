@@ -1,5 +1,5 @@
 /*
- * Amlogic Apollo
+ * Amlogic osd
  * frame buffer driver
  *
  * Copyright (C) 2009 Amlogic, Inc.
@@ -22,11 +22,14 @@
  *
  */
 
-#ifndef APOLLOFBDEV_H
-#define APOLLOFBDEV_H
+#ifndef OSD_DEV_H
+#define OSD_DEV_H
 
 #include "osd.h"
 #include <linux/vout/vinfo.h>
+#include <linux/logo/logo.h>
+
+#define  OSD_COUNT 	2 /* we have two osd layer on hardware*/
 
 typedef struct myfb_dev {
     struct mutex lock;
@@ -58,22 +61,25 @@ typedef  struct {
 }osd_addr_t ;
 
 
-typedef  struct {
-struct osd_ctl_s osd_ctl;
-
-}logo_osd_config_t,*plogo_osd_confit_t;
-
-typedef  struct {
-logo_osd_config_t  config;
-vmode_t		vmode;
-int  bpp;
-}logo_osd_dev_t ;
 
 #define fbdev_lock(dev) mutex_lock(&dev->lock);
 #define fbdev_unlock(dev) mutex_unlock(&dev->lock);
 
-extern logo_osd_dev_t*  get_init_fbdev(void); //export point
+extern int osddev_select_mode(struct myfb_dev *fbdev);
 
+extern void osddev_set(struct myfb_dev *fbdev);
 
-#endif /* APOLLOFBDEV_H */
+extern int osddev_setcolreg(unsigned regno, u16 red, u16 green, u16 blue,
+        u16 transp, struct myfb_dev *fbdev);
+        
+extern void osddev_enable(int enable,int index);
+
+extern void osddev_pan_display(struct myfb_dev *fbdev);
+extern  void  osddev_set_colorkey(u32 index,u32 bpp,u32 colorkey );
+extern  void  osddev_srckey_enable(u32  index,u8 enable);
+extern void  osddev_set_gbl_alpha(u32 index,u32 gbl_alpha) ;
+extern u32  osddev_get_gbl_alpha(u32  index);
+extern  void  osddev_suspend(void);
+extern  void  osddev_resume(void);
+#endif /* osdFBDEV_H */
 

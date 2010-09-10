@@ -1,4 +1,4 @@
-#include "ge2d.h"
+#include <linux/ge2d/ge2d.h>
 
 
 static void inline _bitblt(ge2d_context_t *wq,

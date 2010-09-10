@@ -5,13 +5,6 @@
 #include  <linux/vout/vout_notify.h>
 
 #define    DISPLAY_CLASS_NAME   "display"
-
-#if  defined(CONFIG_FB_aml_OSD2_ENABLE)
-#define   OSD_COUNT  2
-#else
-#define   OSD_COUNT  1
-#endif 
-
 #define  MAX_NUMBER_PARA   10
 
 
@@ -19,7 +12,6 @@
 typedef enum   {
 DISP_ATTR_ENABLE=0 ,
 DISP_ATTR_MODE,
-DISP_ATTR_AXIS,
 DISP_ATTR_VDAC_SETTING,
 DISP_ATTR_WR_REG,
 DISP_ATTR_RD_REG,
@@ -54,7 +46,6 @@ typedef  struct {
 static void  parse_vdac_setting(char *para);
 static  void  read_reg(char *para);
 static  void  write_reg(char *para);
-static  void  set_disp_window(char *para) ;
 static  void  set_disp_mode(char *mode) ;
 static  void   func_default_null(char  *str);
 
@@ -101,6 +92,4 @@ __ATTR(name, S_IRUGO|S_IWUSR, aml_display_attr_##name##_show, aml_display_attr_#
 
 
 
-#define pr_dbg(fmt, args...) printk(KERN_DEBUG "apollo tv: " fmt, ## args)
-//#define pr_err(fmt, args...)  printk(KERN_ERR "apollo tv: " fmt, ## args)
 #endif

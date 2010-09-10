@@ -1,4 +1,5 @@
-#include "ge2d.h"
+#include <linux/ge2d/ge2d.h>
+
 
 void blend(ge2d_context_t *wq,
            int src_x, int src_y, int src_w, int src_h, 

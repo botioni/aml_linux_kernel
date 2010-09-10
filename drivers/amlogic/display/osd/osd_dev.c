@@ -1,5 +1,5 @@
 /*
- * Amlogic Apollo
+ * Amlogic osd
  * frame buffer driver
  *
  * Copyright (C) 2009 Amlogic, Inc.
@@ -30,13 +30,13 @@
 #include <mach/am_regs.h>
 
 #include <linux/osd/osd.h>
-#include <linux/osd/apollofbdev.h>
-
+#include <linux/osd/osd_dev.h>
+#include <linux/osd/osd_hw.h>
 /* to-do: TV output mode should be configured by
  * sysfs attribute
  */
 
-void apollodev_set(struct myfb_dev *fbdev)
+void osddev_set(struct myfb_dev *fbdev)
 {
     enum osd_type_s type;
 	
@@ -84,7 +84,7 @@ void apollodev_set(struct myfb_dev *fbdev)
     return;
 }
 
-int apollodev_setcolreg(unsigned regno, u16 red, u16 green, u16 blue,
+int osddev_setcolreg(unsigned regno, u16 red, u16 green, u16 blue,
         u16 transp, struct myfb_dev *fbdev)
 {
     struct fb_info *info = fbdev->fb_info;
@@ -95,7 +95,7 @@ int apollodev_setcolreg(unsigned regno, u16 red, u16 green, u16 blue,
 
         fbdev_lock(fbdev);
 
-        osd_setpal(regno, red, green, blue, transp,fbdev->fb_info->node);
+        osd_setpal_hw(regno, red, green, blue, transp,fbdev->fb_info->node);
 
         fbdev_unlock(fbdev);
     }
@@ -122,12 +122,12 @@ int apollodev_setcolreg(unsigned regno, u16 red, u16 green, u16 blue,
     return 0;
 }
 
-void apollodev_enable(int enable,int  index)
+void osddev_enable(int enable,int  index)
 {
-    osd_enable(enable,index);
+    osd_enable_hw(enable,index);
 }
 
-void apollodev_pan_display(struct myfb_dev *fbdev)
+void osddev_pan_display(struct myfb_dev *fbdev)
 {
     struct fb_var_screeninfo *var;
 
@@ -135,7 +135,31 @@ void apollodev_pan_display(struct myfb_dev *fbdev)
 
     var = &fbdev->fb_info->var;
     
-    osd_pan_display(var->xoffset, var->yoffset,fbdev->fb_info->node);
+    osd_pan_display_hw(var->xoffset, var->yoffset,fbdev->fb_info->node);
 
     fbdev_unlock(fbdev);
+}
+void  osddev_set_colorkey(u32 index,u32 bpp,u32 colorkey )
+{
+	osd_set_colorkey_hw( index, bpp, colorkey );
+}
+void  osddev_srckey_enable(u32  index,u8 enable)
+{
+	osd_srckey_enable_hw(index,enable);
+}
+void  osddev_set_gbl_alpha(u32 index,u32 gbl_alpha)
+{
+	osd_set_gbl_alpha_hw(index,gbl_alpha);
+}
+u32  osddev_get_gbl_alpha(u32  index)
+{
+	return osd_get_gbl_alpha_hw(index);
+}
+void  osddev_suspend(void)
+{
+	osd_suspend_hw();
+}
+void osddev_resume(void)
+{
+	osd_resume_hw();
 }

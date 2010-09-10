@@ -43,7 +43,10 @@
 #include <linux/major.h>
 #include "tvconf.h"
 #include "tvmode.h"
+#include "tv_log.h"
+#include <linux/amlog.h>
 
+MODULE_AMLOG(AMLOG_DEFAULT_LEVEL, AMLOG_DEFAULT_MASK, LOG_LEVEL_DESC, LOG_MASK_DESC);
 static  DEFINE_MUTEX(tvconf_module_mutex)  ;
 
 #define DEFAULT_VMODE	VMODE_720P
@@ -57,7 +60,6 @@ SET_DISP_DEVICE_ATTR(hdmi_mode,func_default_null)
 //class attribute
 SET_DISP_CLASS_ATTR(enable,func_default_null)
 SET_DISP_CLASS_ATTR(mode,set_disp_mode)
-SET_DISP_CLASS_ATTR(axis,set_disp_window)
 SET_DISP_CLASS_ATTR(vdac_setting,parse_vdac_setting)
 SET_DISP_CLASS_ATTR(wr_reg,write_reg)
 SET_DISP_CLASS_ATTR(rd_reg,read_reg)
@@ -185,7 +187,6 @@ static const vinfo_t tv_info[] =
 static  struct  class_attribute   *disp_attr[]={
 &class_display_attr_enable,
 &class_display_attr_mode,	
-&class_display_attr_axis ,
 &class_display_attr_vdac_setting,
 &class_display_attr_wr_reg,
 &class_display_attr_rd_reg,
@@ -302,10 +303,11 @@ static  void  read_reg(char *para)
 	memcpy(&reg.addr,parse_para(para+1,&count),sizeof(unsigned int));
 
 	if (((*para) == 'm') || ((*para) == 'M'))
-		pr_dbg("reg 0x%x return value:0x%x\r\n", reg.addr, READ_MPEG_REG(reg.addr));
-	else if (((*para) == 'p') || ((*para) == 'P')) {
+	{
+		amlog_level(LOG_LEVEL_HIGH,"[0x%x] : 0x%x\r\n", reg.addr, READ_MPEG_REG(reg.addr));
+	}else if (((*para) == 'p') || ((*para) == 'P')) {
 		if (APB_REG_ADDR_VALID(reg.addr))
-			pr_dbg("reg 0x%x return value:0x%x\r\n", reg.addr, READ_APB_REG(reg.addr));
+		amlog_level(LOG_LEVEL_HIGH,"[0x%x] : 0x%x\r\n", reg.addr, READ_APB_REG(reg.addr));
 	}
 }
 
@@ -342,10 +344,10 @@ static void  parse_vdac_setting(char *para)
 	char  *pt=strstrip(para);
 	int len=strlen(pt);
 
-	printk("origin vdac setting:0x%x,strlen:%d\n",vdac_sequence,len);
+	amlog_mask_level(LOG_MASK_PARA,LOG_LEVEL_LOW,"origin vdac setting:0x%x,strlen:%d\n",vdac_sequence,len);
 	if(len!=6)
 	{
-		printk("can't parse vdac settings\n");
+		amlog_mask_level(LOG_MASK_PARA,LOG_LEVEL_HIGH,"can't parse vdac settings\n");
 		return ;
 	}
 	vdac_sequence=0;
@@ -355,46 +357,26 @@ static void  parse_vdac_setting(char *para)
 		vdac_sequence|=*pt -'0';
 		pt++;
 	}
-	printk("current vdac setting:0x%x\n",vdac_sequence);
+	amlog_mask_level(LOG_MASK_PARA,LOG_LEVEL_LOW,"current vdac setting:0x%x\n",vdac_sequence);
 	change_vdac_setting(vdac_sequence,info->vinfo->mode);
 }
 	
-//axis type : 0x12  0x100 0x120 0x130
-static void  set_disp_window(char *para) 
-{
-	char  count=OSD_COUNT*4;	
-	int  blank;
-	int   *pt=&info->disp_rect[0].x;
-	
 
-	//parse window para .
-	memcpy(pt,parse_para(para,&count),sizeof(disp_rect_t)*OSD_COUNT);
-	
-	if(count >=4 && count <8 )
-	{
-		info->disp_rect[1]=info->disp_rect[0] ;
-	}
-	pr_dbg("osd0=>x:%d ,y:%d,w:%d,h:%d\r\n osd1=> x:%d,y:%d,w:%d,h:%d \r\n", \
-			*pt,*(pt+1),*(pt+2),*(pt+3),*(pt+4),*(pt+5),*(pt+6),*(pt+7));
-	OSD_OFF;
-	vout_notifier_call_chain(VOUT_EVENT_OSD_DISP_AXIS,&info->disp_rect) ;
-	OSD_ON;
-}
 
 static  void  set_disp_mode(char *mode)
 {
 	const vinfo_t *tvinfo;
 	int  		  blank ;
 
-	pr_dbg("tvmode set to %s\r\n",mode);
+	amlog_mask_level(LOG_MASK_PARA,LOG_LEVEL_LOW,"tvmode set to %s\r\n",mode);
 	if( (tvinfo=get_valid_vinfo(mode))== NULL)
 	{
-		pr_err("invalid tvmode \r\n");
+		amlog_mask_level(LOG_MASK_PARA,LOG_LEVEL_HIGH,"invalid tvmode \r\n");
 		return  ;
 	}
 	if(tvinfo==info->vinfo)
 	{
-		pr_err("don't set the same mode as current.\r\n");
+		amlog_mask_level(LOG_MASK_PARA,LOG_LEVEL_HIGH,"don't set the same mode as current.\r\n");
 	}
 	else
 	{
@@ -402,7 +384,7 @@ static  void  set_disp_mode(char *mode)
 		OSD_OFF  ;
 		tvoutc_setmode(vmode_tvmode_tab[tvinfo->mode]);
 		change_vdac_setting(vdac_sequence,tvinfo->mode);
-		pr_dbg("new mode %s set ok\r\n",mode);
+		amlog_mask_level(LOG_MASK_PARA,LOG_LEVEL_LOW,"new mode %s set ok\r\n",mode);
 		vout_notifier_call_chain(VOUT_EVENT_MODE_CHANGE,(vmode_t *)&tvinfo->mode) ;
 		OSD_ON   ;
 	}
@@ -417,7 +399,7 @@ static int  create_disp_attr(disp_module_info_t* info)
 	info->base_class=class_create(THIS_MODULE,info->name);
 	if(IS_ERR(info->base_class))
 	{
-		pr_err("create tv display class fail\r\n");
+		amlog_mask_level(LOG_MASK_INIT,LOG_LEVEL_HIGH,"create tv display class fail\r\n");
 		return  -1 ;
 	}
 	//create  class attr
@@ -425,7 +407,7 @@ static int  create_disp_attr(disp_module_info_t* info)
 	{
 		if ( class_create_file(info->base_class,disp_attr[i]))
 		{
-			pr_err("create disp attribute %s fail\r\n",disp_attr[i]->attr.name);
+			amlog_mask_level(LOG_MASK_INIT,LOG_LEVEL_HIGH,"create disp attribute %s fail\r\n",disp_attr[i]->attr.name);
 		}
 	}
 	//create  class device  ,for mdev
@@ -455,7 +437,7 @@ static int __init display_init_module(void)
 	info=(disp_module_info_t*)kmalloc(sizeof(disp_module_info_t),GFP_KERNEL) ;
 	if (!info)
 	{
-		pr_err("can't alloc display info struct\r\n");
+		amlog_mask_level(LOG_MASK_INIT,LOG_LEVEL_HIGH,"can't alloc display info struct\r\n");
 		return -ENOMEM;
 	}
 	
@@ -465,27 +447,27 @@ static int __init display_init_module(void)
 	ret=register_chrdev(TV_CONF_MAJOR,info->name,&am_tv_fops);
 	if(ret <0) 
 	{
-		pr_err("register char dev tv error\r\n");
+		amlog_mask_level(LOG_MASK_INIT,LOG_LEVEL_HIGH,"register char dev tv error\r\n");
 		return  ret ;
 	}
 	info->major=TV_CONF_MAJOR;
-	pr_dbg("major number %d for disp\r\n",ret);
+	amlog_mask_level(LOG_MASK_INIT,LOG_LEVEL_HIGH,"major number %d for disp\r\n",ret);
 	if ( ! disp_module_init(info) )
 	{
-		pr_dbg("display module init ok \r\n");
+		amlog_mask_level(LOG_MASK_INIT,LOG_LEVEL_HIGH,"display module init ok \r\n");
 	}
 	else
 	{
-		pr_err("display module init fail \r\n");
+		amlog_mask_level(LOG_MASK_INIT,LOG_LEVEL_HIGH,"display module init fail \r\n");
 	}
 
 	if(vout_register_server(&tv_server))
 	{
-		pr_err("register tv module server fail \r\n");
+		amlog_mask_level(LOG_MASK_INIT,LOG_LEVEL_HIGH,"register tv module server fail \r\n");
 	}
 	else
 	{
-		pr_dbg("register tv module server ok \r\n");
+		amlog_mask_level(LOG_MASK_INIT,LOG_LEVEL_HIGH,"register tv module server ok \r\n");
 	}
 	return 0;
 
@@ -513,10 +495,10 @@ static __exit void display_exit_module(void)
 	}
 	vout_unregister_server();
 	
-	pr_dbg("exit tv module\r\n");
+	amlog_mask_level(LOG_MASK_INIT,LOG_LEVEL_HIGH,"exit tv module\r\n");
 }
 
-#if defined(CONFIG_JPEGLOGO) || defined(CONFIG_FB_AML_LOGO)
+#if defined(CONFIG_JPEGLOGO) || defined(CONFIG_AM_LOGO)
 subsys_initcall(display_init_module);
 #else
 module_init(display_init_module);

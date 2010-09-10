@@ -75,7 +75,7 @@ static struct auidodsp_microcode *  audiodsp_find_mcode_by_name(struct audiodsp_
 	
 	const struct firmware *firmware;
 	int err=0;
-    	unsigned code_start_tocp = 0;
+    unsigned dsp_code_text_start = 0;
 	priv->micro_dev = device_create(priv->class,
 					    NULL, MKDEV(AUDIODSP_MAJOR, 1),
 					    NULL, "audiodsp1");
@@ -93,8 +93,8 @@ static struct auidodsp_microcode *  audiodsp_find_mcode_by_name(struct audiodsp_
 		goto release;
 		}
     if(priv->dsp_is_started)
-        code_start_tocp = 0x66c;
-	memcpy((char *)((unsigned)priv->p+code_start_tocp), (char*)firmware->data+code_start_tocp,firmware->size-code_start_tocp);
+        dsp_code_text_start = 0x66c;//after dsp is running,only load from the text section of the microcode.
+	memcpy((char *)((unsigned)priv->p+dsp_code_text_start), (char*)firmware->data+dsp_code_text_start,firmware->size-dsp_code_text_start);
 
 	pmcode->code_size=firmware->size;
 	DSP_PRNT("load mcode size=%d\n,load addr 0x%x mcode name %s",firmware->size,pmcode->code_start_addr,pmcode->file_name);

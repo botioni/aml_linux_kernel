@@ -52,7 +52,7 @@ static struct resource jpeglogo_resources[] = {
     },
 };
 
-static struct platform_device jpeglogo_dev = {
+static struct platform_device jpeglogo_device = {
 	.name = "jpeglogo-dev",
 	.id   = 0,
     .num_resources = ARRAY_SIZE(jpeglogo_resources),
@@ -60,22 +60,25 @@ static struct platform_device jpeglogo_dev = {
 };
 #endif
 
-static struct resource intput_resources[] = { 
-        {   
-                .start = 0x0,
-                .end = 0x0,
-                .name="6236",
-                .flags = IORESOURCE_IO,
-        },  
+#if defined(CONFIG_KEYPADS_AM)
+static struct resource intput_resources[] = {
+	{
+		.start = 0x0,
+		.end = 0x0,
+		.name="6236",
+		.flags = IORESOURCE_IO,
+	},
 };
 
-static struct platform_device input_device = { 
-        .name = "m1-kp",
-        .id = 0,
-        .num_resources = ARRAY_SIZE(intput_resources),
-        .resource = intput_resources,
-    
+static struct platform_device input_device = {
+	.name = "m1-kp",
+	.id = 0,
+	.num_resources = ARRAY_SIZE(intput_resources),
+	.resource = intput_resources,
+	
 };
+#endif
+
 #ifdef CONFIG_FB_AM
 static struct resource fb_device_resources[] = {
     [0] = {
@@ -83,7 +86,7 @@ static struct resource fb_device_resources[] = {
         .end   = OSD1_ADDR_END,
         .flags = IORESOURCE_MEM,
     },
-    [1] ={ //for osd2
+    [1] = {
         .start = OSD2_ADDR_START,
         .end   =OSD2_ADDR_END,
         .flags = IORESOURCE_MEM,
@@ -91,7 +94,7 @@ static struct resource fb_device_resources[] = {
 };
 
 static struct platform_device fb_device = {
-    .name       = "apollofb",
+    .name       = "mesonfb",
     .id         = 0,
     .num_resources = ARRAY_SIZE(fb_device_resources),
     .resource      = fb_device_resources,
@@ -154,8 +157,9 @@ static struct lm_device sata_ld = {
 	.resource.end = -1,
 };
 #endif
+
 #if defined(CONFIG_AM_STREAMING)
-static struct resource apollo_codec_resources[] = {
+static struct resource codec_resources[] = {
     [0] = {
         .start =  CODEC_ADDR_START,
         .end   = CODEC_ADDR_END,
@@ -163,11 +167,11 @@ static struct resource apollo_codec_resources[] = {
     },
 };
 
-static struct platform_device apollo_codec = {
+static struct platform_device codec_device = {
     .name       = "amstream",
     .id         = 0,
-    .num_resources = ARRAY_SIZE(apollo_codec_resources),
-    .resource      = apollo_codec_resources,
+    .num_resources = ARRAY_SIZE(codec_resources),
+    .resource      = codec_resources,
 };
 #endif
 
@@ -188,7 +192,6 @@ static struct platform_device vdin_device = {
     .num_resources = ARRAY_SIZE(vdin_resources),
     .resource      = vdin_resources,
 };
-
 
 //add pin mux info for bt656 input
 static struct resource bt656in_resources[] = {
@@ -223,9 +226,6 @@ static struct platform_device bt656in_device = {
     .num_resources = ARRAY_SIZE(bt656in_resources),
     .resource      = bt656in_resources,
 };
-
-
-
 #endif
 
 #if defined(CONFIG_CARDREADER)
@@ -246,62 +246,51 @@ static struct platform_device amlogic_card_device = {
 };
 #endif
 
-static struct resource apollo_audiodsp_resources[] = {
+#if defined(CONFIG_AML_AUDIO_DSP)
+static struct resource audiodsp_resources[] = {
     [0] = {
-        .start =  AUDIODSP_ADDR_START,
+        .start = AUDIODSP_ADDR_START,
         .end   = AUDIODSP_ADDR_END,
         .flags = IORESOURCE_MEM,
     },
 };
 
-static struct platform_device apollo_audiodsp = {
+static struct platform_device audiodsp_device = {
     .name       = "audiodsp",
     .id         = 0,
-    .num_resources = ARRAY_SIZE(apollo_audiodsp_resources),
-    .resource      = apollo_audiodsp_resources,
+    .num_resources = ARRAY_SIZE(audiodsp_resources),
+    .resource      = audiodsp_resources,
 };
-static struct resource apollo_mali_resources[] = {
-    [0] = {
-        .start = MALI_ADDR_START,
-        .end   = MALI_ADDR_END,
-        .flags = IORESOURCE_MEM,
-    },
-};
-
-static struct platform_device apollo_mali= {
-    .name       = "mali400",
-    .id         = 0,
-    .num_resources = ARRAY_SIZE(apollo_mali_resources),
-    .resource      = apollo_mali_resources,
-};
+#endif
 
 
 static struct platform_device __initdata *platform_devs[] = {
     #if defined(CONFIG_JPEGLOGO)
-		&jpeglogo_dev,
-	#endif
-    #if defined(CONFIG_KEYPADS_AM)
-                &input_device,
-    #endif	
+		&jpeglogo_device,
+	#endif	
     #if defined(CONFIG_FB_AM)
     	&fb_device,
     #endif
     #if defined(CONFIG_AM_STREAMING)
-	&apollo_codec,
+		&codec_device,
     #endif
     #if defined(CONFIG_TVIN_VDIN)
         &vdin_device,
 		&bt656in_device,
 
     #endif
-    #if defined(CONFIG_CARDREADER)
+	#if defined(CONFIG_AML_AUDIO_DSP)
+		&audiodsp_device,
+	#endif
+	#if defined(CONFIG_CARDREADER)
     	&amlogic_card_device,
     #endif
-	&apollo_audiodsp,
-	&apollo_mali,
+    #if defined(CONFIG_KEYPADS_AM)||defined(CONFIG_VIRTUAL_REMOTE)
+		&input_device,
+    #endif	
 };
 
-static void eth_pinmux_init(void)
+static void __init eth_pinmux_init(void)
 {
     	//eth_clk_set(ETH_CLKSRC_SYS_D3,900*CLK_1M/3,50*CLK_1M);
 	/*for dpf_sz with ethernet*/	
@@ -359,14 +348,14 @@ static __init void m1_init_machine(void)
 	lm_device_register(&sata_ld);
 #endif
 }
+
 /*VIDEO MEMORY MAPING*/
 static __initdata struct map_desc meson_video_mem_desc[] = {
 	{
-		/*FIXME:map the video memory to other.*/
-		.virtual		=	PAGE_ALIGN(__phys_to_virt(VIDEO_MEM_START)),
-		.pfn			= 	__phys_to_pfn(VIDEO_MEM_START),
-		.length		= 	VIDEO_MEM_END-VIDEO_MEM_START+1,
-		.type		= 	MT_DEVICE,
+		.virtual	= PAGE_ALIGN(__phys_to_virt(RESERVED_MEM_START)),
+		.pfn		= __phys_to_pfn(RESERVED_MEM_START),
+		.length		= RESERVED_MEM_END-RESERVED_MEM_START+1,
+		.type		= MT_DEVICE,
 	},
 };
 
@@ -384,16 +373,16 @@ static __init void m1_irq_init(void)
 static __init void m1_fixup(struct machine_desc *mach, struct tag *tag, char **cmdline, struct meminfo *m)
 {
 	struct membank *pbank;
-	m->nr_banks=0;
+	m->nr_banks = 0;
 	pbank=&m->bank[m->nr_banks];
 	pbank->start = PAGE_ALIGN(PHYS_MEM_START);
 	pbank->size  = SZ_64M & PAGE_MASK;
 	pbank->node  = PHYS_TO_NID(PHYS_MEM_START);
 	m->nr_banks++;
 	pbank=&m->bank[m->nr_banks];
-	pbank->start = PAGE_ALIGN(VIDEO_MEM_END+1);
-	pbank->size  = (PHYS_MEM_END-VIDEO_MEM_END) & PAGE_MASK;
-	pbank->node  = PHYS_TO_NID(VIDEO_MEM_END+1);
+	pbank->start = PAGE_ALIGN(RESERVED_MEM_END+1);
+	pbank->size  = (PHYS_MEM_END-RESERVED_MEM_END) & PAGE_MASK;
+	pbank->node  = PHYS_TO_NID(RESERVED_MEM_END+1);
 	m->nr_banks++;
 }
 
@@ -405,7 +394,7 @@ MACHINE_START(MESON_6236M, "AMLOGIC MESON-M1 6236M SZ")
 	.init_irq		= m1_irq_init,
 	.timer			= &meson_sys_timer,
 	.init_machine	= m1_init_machine,
-	.fixup		=m1_fixup,
-	.video_start	=VIDEO_MEM_START,
-	.video_end	=VIDEO_MEM_END,
+	.fixup			= m1_fixup,
+	.video_start	= RESERVED_MEM_START,
+	.video_end		= RESERVED_MEM_END,
 MACHINE_END

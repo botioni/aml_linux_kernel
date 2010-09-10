@@ -3,6 +3,8 @@
 #include <linux/errno.h>
 #include <linux/string.h>
 #include <mach/am_regs.h>
+#include <linux/clk.h>
+
 #include "aml_audio_hw.h"
 
 #ifndef MREG_AIU_958_chstat0
@@ -14,14 +16,27 @@
 #endif
 unsigned ENABLE_IEC958 = 0;
 
-int audio_clock_config_table[5][2]=
+int audio_clock_config_table[][5][2]=
 {
-	{(19 <<  0) |(1   <<  9) | (1   << 14), (29-1)},//32K	
-	{(28 <<  0) |(1   <<  9) | (1   << 14), (31-1)},//44.1K	
-	{(173 <<  0) |(8   <<  9) | (1   << 14), (22-1)},//48K	
-	{(173 <<  0) |(8   <<  9) | (1   << 14), (11-1)},//96K	
-	{(118 <<  0) |(5   <<  9) | (1   << 14), (6-1)}//192K	               
+	{
+	//24M
+		{(71 <<  0) |(4   <<  9) | (1   << 14), (26-1)},//32K	
+		{(143 <<  0) |(8   <<  9) | (1   << 14), (19-1)},//44.1K	
+		{(128 <<  0) |(5   <<  9) | (1   << 14), (25-1)},//48K	
+		{(128 <<  0) |(5   <<  9) | (0   << 14), (25-1)},//96K	
+		{(213 <<  0) |(8   <<  9) | (0   << 14), (13-1)}//192K	    
+	},
+	{
+	//25M
+		{(19 <<  0) |(1   <<  9) | (1   << 14), (29-1)},//32K	
+		{(28 <<  0) |(1   <<  9) | (1   << 14), (31-1)},//44.1K	
+		{(173 <<  0) |(8   <<  9) | (1   << 14), (22-1)},//48K	
+		{(173 <<  0) |(8   <<  9) | (1   << 14), (11-1)},//96K	
+		{(118 <<  0) |(5   <<  9) | (1   << 14), (6-1)}//192K	               
+	}
 };
+
+
 void audio_set_aiubuf(u32 addr, u32 size)
 {
     WRITE_MPEG_REG(AIU_MEM_I2S_START_PTR, addr & 0xffffffc0);
@@ -142,6 +157,7 @@ void latch (void)
     latch = 0;
     WRITE_APB_REG(ADAC_LATCH, latch);
 }
+
 void wr_adac_regbank (unsigned long rstdpz,
                   unsigned long mclksel,
                   unsigned long i2sfsdac,
@@ -164,7 +180,7 @@ void wr_adac_regbank (unsigned long rstdpz,
     WRITE_APB_REG(ADAC_RESET, (rstdpz<<1));
     WRITE_APB_REG(ADAC_CLOCK, (mclksel<<0));
     WRITE_APB_REG(ADAC_I2S_CONFIG_REG1, (i2sfsdac<<0));
-    WRITE_APB_REG(ADAC_I2S_CONFIG_REG1, (i2sfsdac<<0));
+    //WRITE_APB_REG(ADAC_I2S_CONFIG_REG1, (i2sfsdac<<0));
     WRITE_APB_REG(ADAC_I2S_CONFIG_REG2, (i2ssplit<<3) | (i2smode<<0));
     WRITE_APB_REG(ADAC_POWER_CTRL_REG1, (pdauxdrvrz<<7) | (pdauxdrvlz<<6) | (pdhsdrvrz<<5) | (pdhsdrvlz<<4) | (pddacrz<<1) | (pddaclz<<0));
 
@@ -174,7 +190,7 @@ void wr_adac_regbank (unsigned long rstdpz,
     WRITE_APB_REG(ADAC_PLAYBACK_VOL_CTRL_LSB, (lmvol&0xff));
     WRITE_APB_REG(ADAC_PLAYBACK_VOL_CTRL_MSB, (lmvol>>8));
     WRITE_APB_REG(ADAC_STEREO_HS_VOL_CTRL_LSB, (hsvol&0xff));
-    WRITE_APB_REG(ADAC_STEREO_HS_VOL_CTRL_MSB, (hsvol>>8));
+    WRITE_APB_REG(ADAC_STEREO_HS_VOL_CTRL_MSB, (hsvol>>8));    
 } /* wr_regbank */
 
 int audio_dac_set(unsigned freq)
@@ -268,6 +284,11 @@ int audio_dac_set(unsigned freq)
 void audio_set_clk(unsigned freq, unsigned fs_config)
 {
     int i;
+    struct clk *clk;
+    int xtal = 0;
+    
+    int (*audio_clock_config)[2];
+    
    // if (fs_config == AUDIO_CLK_256FS) {
    if(1){
 #if 0
@@ -311,6 +332,30 @@ void audio_set_clk(unsigned freq, unsigned fs_config)
 			index=0;
 			break;
 	};
+	// get system crystal freq
+		clk=clk_get_sys("clk_xtal", NULL);
+		if(!clk)
+		{
+			printk(KERN_ERR "can't find clk %s for AUDIO PLL SETTING!\n\n","clk_xtal");
+			//return -1;
+		}
+		else
+		{
+			xtal=clk_get_rate(clk);
+			xtal=xtal/1000000;
+			if(xtal>=24 && xtal <=25)/*current only support 24,25*/
+			{
+				xtal-=24;
+			}
+			else
+			{
+				printk(KERN_WARNING "UNsupport xtal setting for audio xtal=%d,default to 24M\n",xtal);	
+				xtal=0;
+			}
+		}
+		
+		audio_clock_config = audio_clock_config_table[xtal];
+	
     // gate the clock off
     WRITE_MPEG_REG( HHI_AUD_CLK_CNTL, READ_MPEG_REG(HHI_AUD_CLK_CNTL) & ~(1 << 8));
 
@@ -319,9 +364,9 @@ void audio_set_clk(unsigned freq, unsigned fs_config)
 
     // Bring out of reset but keep bypassed to allow to stablize
     //Wr( HHI_AUD_PLL_CNTL, (1 << 15) | (0 << 14) | (hiu_reg & 0x3FFF) );
-    WRITE_MPEG_REG( HHI_AUD_PLL_CNTL, (1 << 15) | (audio_clock_config_table[index][0] & 0x7FFF) );
+    WRITE_MPEG_REG( HHI_AUD_PLL_CNTL, (1 << 15) | (audio_clock_config[index][0] & 0x7FFF) );
     // Set the XD value
-    WRITE_MPEG_REG( HHI_AUD_CLK_CNTL, (READ_MPEG_REG(HHI_AUD_CLK_CNTL) & ~(0xff << 0)) | audio_clock_config_table[index][1]);
+    WRITE_MPEG_REG( HHI_AUD_CLK_CNTL, (READ_MPEG_REG(HHI_AUD_CLK_CNTL) & ~(0xff << 0)) | audio_clock_config[index][1]);
     // delay 5uS
 	//udelay(5);
 	for (i = 0; i < 500000; i++) ;

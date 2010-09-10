@@ -1,5 +1,5 @@
 /*
- * Amlogic Apollo
+ * Amlogic osd
  * frame buffer driver
  *
  * Copyright (C) 2009 Amlogic, Inc.
@@ -22,41 +22,24 @@
  *
  */
 
-#ifndef APOLLO_MAIN_H
-#define APOLLO_MAIN_H
+#ifndef OSD_MAIN_H
+#define OSD_MAIN_H
 #include  <linux/list.h>
 #include  <linux/vout/vout_notify.h>
-#include "apollofbdev.h"
+#include  <linux/fb.h>
 
 
 
-/**************************************************************
-**																	 **
-**	macro define		 												 **
-**																	 **
-***************************************************************/
 
-#if  CONFIG_FB_APOLLO_OSD2_ENABLE
-#define   OSD_COUNT  2
-#else
-#define   OSD_COUNT  1
-#endif 
-
-
-/**************************************************************
-**																	 **
-**	varible define		 												 **
-**																	 **
-***************************************************************/
 static struct fb_var_screeninfo mydef_var[] = {
 {
-	.xres            = 1280,
-	.yres            = 720,
-	.xres_virtual    = 1280,
-	.yres_virtual    = 720,
+	.xres            = 720,
+	.yres            = 576,
+	.xres_virtual    = 720,
+	.yres_virtual    = 1152,
 	.xoffset         = 0,
 	.yoffset         = 0,
-	.bits_per_pixel  = 32,
+	.bits_per_pixel  = 8,
 	.grayscale       = 0,
 	.red             = {0, 8, 0},
 	.green           = {0, 8, 0},
@@ -79,16 +62,16 @@ static struct fb_var_screeninfo mydef_var[] = {
 	.rotate          = 0,
 	
 },
-#if  CONFIG_FB_APOLLO_OSD2_ENABLE
+#if  CONFIG_FB_OSD2_ENABLE
 
 {
-	.xres            = 1280,
-	.yres            = 720,
-	.xres_virtual    = 1280,
-	.yres_virtual    = 720,
+	.xres            = 720,
+	.yres            = 576,
+	.xres_virtual    = 720,
+	.yres_virtual    = 1152,
 	.xoffset         = 0,
 	.yoffset         = 0,
-	.bits_per_pixel  = 32,
+	.bits_per_pixel  = 8,
 	.grayscale       = 0,
 	.red             = {0, 8, 0},
 	.green           = {0, 8, 0},
@@ -112,51 +95,10 @@ static struct fb_var_screeninfo mydef_var[] = {
 }
 #endif 
 };
-typedef   struct {
-	tvmode_t		vmode;
-	u32			disp_start_x;
-	u32			disp_start_y;
-}disp_offset_t;
-static  disp_offset_t   disp_offset[]={
-{
-	.vmode=TVMODE_480P,
-	.disp_start_x=45,
-	.disp_start_y=5,
-},
-{
-	.vmode=TVMODE_480I,
-	.disp_start_x=14,
-	.disp_start_y=14,
-},
-{
-	.vmode=TVMODE_576P,
-	.disp_start_x=45,
-	.disp_start_y=15,
-},	
-{
-	.vmode=TVMODE_576I,
-	.disp_start_x=7,
-	.disp_start_y=8,
-},
-{
-	.vmode=TVMODE_720P,
-	.disp_start_x=101,
-	.disp_start_y=15,
-},
-{
-	.vmode=TVMODE_1080P,
-	.disp_start_x=150,
-	.disp_start_y=12,
-},
-{
-	.vmode=TVMODE_1080I,
-	.disp_start_x=120,
-	.disp_start_y=14,
-},
-};
+
 
 static struct fb_fix_screeninfo mydef_fix = {
-	.id		    = "Apollo FB",
+	.id		    = "OSD FB",
 	.xpanstep 	= 1,
 	.ypanstep 	= 1,
 	.type		= FB_TYPE_PACKED_PIXELS,
@@ -164,4 +106,19 @@ static struct fb_fix_screeninfo mydef_fix = {
 	.accel		= FB_ACCEL_NONE,
 };
 
-#endif /* APOLLO_MAIN_H */
+
+#define DRIVER_NAME "osdfb"
+#define MODULE_NAME "osdfb"
+#define  FBIOPUT_OSD_SRCCOLORKEY	0x46fb
+#define  FBIOPUT_OSD_SRCKEY_ENABLE	0x46fa
+#define  FBIOPUT_OSD_SET_GBL_ALPHA	0x4500
+#define  FBIOGET_OSD_GET_GBL_ALPHA	0x4501
+
+
+
+
+
+
+
+
+#endif /* OSD_MAIN_H */

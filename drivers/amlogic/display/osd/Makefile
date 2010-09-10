@@ -3,16 +3,14 @@
 #
 
 
-obj-$(CONFIG_FB_AM) += apollofb.o 
-apollofb-objs := apollodev.o 
+obj-$(CONFIG_FB_AM) += fb.o 
+
+fb-objs =  osd_hw.o osd_main.o osd_dev.o 
 
 
-apollofb-objs +=  osd_a1h.o apollo_h_main.o
+EXTRA_CFLAGS += -Iinclude/linux/osd/
 
 
-EXTRA_CFLAGS += -Idrivers/amlogic/display/	
-EXTRA_CFLAGS += -Idrivers/amlogic/display/ge2d
 
-#apollofb-y    := apollo_main.o apollodev.o  osd.o 
 
 

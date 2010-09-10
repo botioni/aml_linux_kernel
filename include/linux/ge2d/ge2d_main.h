@@ -1,11 +1,9 @@
 #ifndef  _GE2D_MAIN_H
 #define  _GE2D_MAIN_H
 #include "ge2d.h"
-#include "pr_dbg.h"
 #include <linux/interrupt.h>
 #include <mach/am_regs.h>
 #include <linux/amports/canvas.h>
-#include <linux/osd/apollofbdev.h>
 #include <linux/fb.h>
 #include <linux/list.h>
 #include <asm/uaccess.h>
@@ -64,11 +62,8 @@ static int ge2d_open(struct inode *inode, struct file *file) ;
 static int ge2d_ioctl(struct inode *inode, struct file *filp, unsigned int cmd, unsigned long args) ;
 static int ge2d_release(struct inode *inode, struct file *file);
 
-static ssize_t ge2d_debug_show(struct class *cla,struct class_attribute *attr, char *buf) ;
-static ssize_t ge2d_debug_store(struct class *cla, struct class_attribute *attr,const char *buf,
-                                size_t count);
-extern ssize_t work_queue_status_show(struct class *cla, char *buf) ;
-extern ssize_t free_queue_status_show(struct class *cla, char *buf);
+extern ssize_t work_queue_status_show(struct class *cla,struct class_attribute *attr,char *buf) ;
+extern ssize_t free_queue_status_show(struct class *cla,struct class_attribute *attr,char *buf);
 /**************************************************************
 **																	 **
 **	varible define		 												 **
@@ -84,10 +79,6 @@ static const struct file_operations ge2d_fops = {
 	.release		= ge2d_release, 	
 };
 static struct class_attribute ge2d_class_attrs[] = {
-    __ATTR(debug,
-           S_IRUGO | S_IWUSR,
-           ge2d_debug_show,
-           ge2d_debug_store),
     __ATTR(wq_status,
            S_IRUGO | S_IWUSR,
            work_queue_status_show,

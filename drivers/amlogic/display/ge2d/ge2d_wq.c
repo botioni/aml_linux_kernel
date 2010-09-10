@@ -10,29 +10,18 @@
  *******************************************************************/
 
 
-#include "ge2d.h"
+#include <linux/ge2d/ge2d.h>
 #include <linux/interrupt.h>
 #include <mach/am_regs.h>
 #include <linux/amports/canvas.h>
-#include <linux/osd/apollofbdev.h>
 #include <linux/fb.h>
 #include <linux/list.h>
 #include  <linux/spinlock.h>
 #include <linux/kthread.h>
-
+#include "ge2d_log.h"
+#include <linux/amlog.h>
 static  ge2d_manager_t  ge2d_manager;
 
-enum  	GE2D_SRC_DST_TYPE
-{
-		OSD0_OSD0 =0,
-		OSD0_OSD1,	 
-		OSD1_OSD1,
-		OSD1_OSD0,
-		ALLOC_OSD0,
-		ALLOC_OSD1,
-		ALLOC_ALLOC,
-		TYPE_INVALID,
-};
 
 static int   get_queue_member_count(struct list_head  *head)
 {
@@ -71,9 +60,7 @@ static int ge2d_process_work_queue(ge2d_context_t *  wq)
 	unsigned int block_mode;
 
 	ge2d_manager.ge2d_state=GE2D_STATE_RUNNING;
-	down(&wq->lock);
 	pos=head->next;
-	up(&wq->lock);
 	if(pos!=head) //current work queue not empty.
 	{
 		if(wq!=ge2d_manager.last_wq )//maybe 
@@ -82,14 +69,12 @@ static int ge2d_process_work_queue(ge2d_context_t *  wq)
 			if(pitem)
 			pitem->config.update_flag=UPDATE_ALL;
 			else{
-				pr_dbg(FILE_NAME"can't get pitem\r\n");	
+				amlog_mask_level(LOG_MASK_WORK,LOG_LEVEL_HIGH,"can't get pitem\r\n");	
 				ret=-1;
 				goto  exit;
 			}
 		}else{ 
 			pitem=(ge2d_queue_item_t *)pos;  //modify the first item .
-			if(NULL==ge2d_manager.last_wq) //this queue already deleted,see line 565
-			pitem->config.update_flag=UPDATE_ALL;//malloc after free maybe the same address
 		}
 		
 	}else{
@@ -132,10 +117,10 @@ static int ge2d_process_work_queue(ge2d_context_t *  wq)
             	ge2d_set_cmd(&pitem->cmd);//set START_FLAG in this func.
       		//remove item
       		block_mode=pitem->cmd.wait_done_flag;
-      		down(&wq->lock);
+      		spin_lock(&wq->lock);
 		pos=pos->next;	
 		list_move_tail(&pitem->list,&wq->free_queue);
-		up(&wq->lock);
+		spin_unlock(&wq->lock);
 		
 		while(READ_MPEG_REG(GE2D_STATUS0) & 1)
 		interruptible_sleep_on_timeout(&ge2d_manager.event.cmd_complete, 1);
@@ -157,7 +142,7 @@ exit:
                     
 static irqreturn_t ge2d_wq_handle(int  irq_number, void *para)
 {
-	wake_up_interruptible(&ge2d_manager.event.cmd_complete) ;
+	wake_up(&ge2d_manager.event.cmd_complete) ;
 	return 0;
 
 
@@ -216,16 +201,16 @@ int ge2d_wq_add_work(ge2d_context_t *wq)
 
 	ge2d_queue_item_t  *pitem ;
     
-     	pr_dbg(FILE_NAME"add new work @@%s:%d\r\n",__func__,__LINE__)	; 
+     	amlog_mask_level(LOG_MASK_WORK,LOG_LEVEL_LOW,"add new work @@%s:%d\r\n",__func__,__LINE__)	; 
  	if(work_queue_no_space(wq))
  	{
- 		pr_dbg(FILE_NAME"work queue no space\r\n");
+ 		amlog_mask_level(LOG_MASK_WORK,LOG_LEVEL_LOW,"work queue no space\r\n");
 		//we should wait for queue empty at this point.
 		while(work_queue_no_space(wq))
 		{
 			interruptible_sleep_on_timeout(&ge2d_manager.event.cmd_complete, 3);
 		}
-		pr_dbg(FILE_NAME"got free space\r\n");
+		amlog_mask_level(LOG_MASK_WORK,LOG_LEVEL_LOW,"got free space\r\n");
 	}
 
       pitem=list_entry(wq->free_queue.next,ge2d_queue_item_t,list); 
@@ -237,10 +222,10 @@ int ge2d_wq_add_work(ge2d_context_t *wq)
       	memset(&wq->cmd, 0, sizeof(ge2d_cmd_t));
       	memcpy(&pitem->config, &wq->config, sizeof(ge2d_config_t));
 	wq->config.update_flag =0;  //reset config set flag   
-	down(&wq->lock);
+	spin_lock(&wq->lock);
 	list_move_tail(&pitem->list,&wq->work_queue);
-	up(&wq->lock);
-	pr_dbg(FILE_NAME"add new work ok\r\n"); 
+	spin_unlock(&wq->lock);
+	amlog_mask_level(LOG_MASK_WORK,LOG_LEVEL_LOW,"add new work ok\r\n"); 
 	if(ge2d_manager.event.cmd_in_sem.count == 0 )//only read not need lock
 	up(&ge2d_manager.event.cmd_in_sem) ;//new cmd come in	
 	//add block mode   if()
@@ -262,17 +247,17 @@ static inline ge2d_context_t*  get_next_work_queue(ge2d_manager_t*  manager)
 {
 	ge2d_context_t* pcontext;
 
-	down(&manager->event.sem);
+	spin_lock(&ge2d_manager.event.sem_lock);
 	list_for_each_entry(pcontext,&manager->process_queue,list)
 	{
 		if(!list_empty(&pcontext->work_queue))	//not lock maybe delay to next time.
 		{									
 			list_move(&manager->process_queue,&pcontext->list);//move head .
-			up(&manager->event.sem);
+			spin_unlock(&ge2d_manager.event.sem_lock);
 			return pcontext;	
 		}	
 	}
-	up(&manager->event.sem);
+	spin_unlock(&ge2d_manager.event.sem_lock);
 	return NULL;
 }
 static int ge2d_monitor_thread(void *data)
@@ -280,16 +265,11 @@ static int ge2d_monitor_thread(void *data)
 
 	ge2d_manager_t*  manager = (  ge2d_manager_t*)data ;
 	
- 	pr_dbg(FILE_NAME"ge2d workqueue monitor start\r\n");
+ 	amlog_level(LOG_LEVEL_HIGH,"ge2d workqueue monitor start\r\n");
 	//setup current_wq here.
-	while(1)
+	while(ge2d_manager.process_queue_state!=GE2D_PROCESS_QUEUE_STOP)
 	{
-		down(&manager->event.cmd_in_sem);
-		if (kthread_should_stop() )
-		{
-			pr_dbg(FILE_NAME"ge2d monitor got stop signal");
-			break ;
-		}
+		down_timeout(&manager->event.cmd_in_sem,6000);
 		//got new cmd arrived in signal,
 		while((manager->current_wq=get_next_work_queue(manager))!=NULL)
 		{
@@ -297,22 +277,29 @@ static int ge2d_monitor_thread(void *data)
 		}
 		
 	}
-	pr_dbg(FILE_NAME"exit ge2d_monitor_thread\r\n");
+	amlog_level(LOG_LEVEL_HIGH,"exit ge2d_monitor_thread\r\n");
 	return 0;
 }
 static  int ge2d_start_monitor(void )
 {
 	int ret =0;
 	
-	pr_dbg(FILE_NAME"ge2d start monitor\r\n");
+	amlog_level(LOG_LEVEL_HIGH,"ge2d start monitor\r\n");
+	ge2d_manager.process_queue_state=GE2D_PROCESS_QUEUE_START;
 	ge2d_manager.ge2d_thread=kthread_run(ge2d_monitor_thread,&ge2d_manager,"ge2d_monitor");
 	if (IS_ERR(ge2d_manager.ge2d_thread)) {
 		ret = PTR_ERR(ge2d_manager.ge2d_thread);
-		printk("ge2d monitor : failed to start kthread (%d)\n", ret);
+		amlog_level(LOG_LEVEL_HIGH,"ge2d monitor : failed to start kthread (%d)\n", ret);
 	}
 	return ret;
 }
-
+static  int  ge2d_stop_monitor(void)
+{
+	amlog_level(LOG_LEVEL_HIGH,"stop ge2d monitor thread\n");
+	ge2d_manager.process_queue_state =GE2D_PROCESS_QUEUE_STOP;
+	up(&ge2d_manager.event.cmd_in_sem) ;
+	return  0;
+}
 /********************************************************************
 **																		 	**
 **																			**
@@ -453,7 +440,7 @@ setup_display_property(src_dst_para_t *src_dst,int index)
 	index=(index==OSD1_CANVAS_INDEX?0:1);
 	data32=READ_MPEG_REG(VIU_OSD1_BLK0_CFG_W0+ REG_OFFSET*index);
 	bpp=block_mode[(data32>>8) & 0xf];  //OSD_BLK_MODE[8..11]
-	pr_dbg(FILE_NAME"osd%d : %d bpp\r\n",index,bpp);
+	amlog_mask_level(LOG_MASK_CONFIG,LOG_LEVEL_HIGH,"osd%d : %d bpp\r\n",index,bpp);
 	if(bpp < 16) return -1;
 
 	src_dst->bpp=bpp;
@@ -474,7 +461,7 @@ int   ge2d_context_config(ge2d_context_t *context, config_para_t *ge2d_config)
 	src_dst_para_t  src,dst,tmp;
 	int type=ge2d_config->src_dst_type;
 		
-	pr_dbg(FILE_NAME" ge2d init\r\n");
+	amlog_mask_level(LOG_MASK_CONFIG,LOG_LEVEL_LOW," ge2d init\r\n");
 	//setup src and dst  
 	switch (type)
 	{
@@ -505,7 +492,7 @@ int   ge2d_context_config(ge2d_context_t *context, config_para_t *ge2d_config)
 		default:
 		break;
 	}
-	pr_dbg(FILE_NAME"OSD ge2d type %d\r\n",type);
+	amlog_mask_level(LOG_MASK_CONFIG,LOG_LEVEL_LOW,"OSD ge2d type %d\r\n",type);
 	switch (type)
 	{
 		case  OSD0_OSD0:
@@ -534,11 +521,11 @@ int   ge2d_context_config(ge2d_context_t *context, config_para_t *ge2d_config)
 	}
 	if(src.bpp < 16 || dst.bpp < 16 )
 	{
-		pr_dbg(FILE_NAME"8 bit ge2d not support \r\n");
+		amlog_mask_level(LOG_MASK_CONFIG,LOG_LEVEL_HIGH,"8 bit ge2d not support \r\n");
 	}
 	
 	//next will config regs
-	pr_dbg(FILE_NAME"ge2d xres %d yres %d : dst xres %d yres %d\r\n",src.xres,src.yres,
+	amlog_mask_level(LOG_MASK_CONFIG,LOG_LEVEL_LOW,"ge2d xres %d yres %d : dst xres %d yres %d\r\n",src.xres,src.yres,
 	dst.xres,dst.yres);
 	ge2dgen_src(context,src.canvas_index, src.ge2d_color_index);
 	ge2dgen_src_clip(context,
@@ -561,53 +548,66 @@ ge2d_context_t* create_ge2d_work_queue(void)
 	int  i;
 	ge2d_queue_item_t  *p_item;
 	ge2d_context_t  *ge2d_work_queue;
+	int  empty;
 	
 	ge2d_work_queue=kzalloc(sizeof(ge2d_context_t), GFP_KERNEL);
 	ge2d_work_queue->config.h_scale_coef_type=FILTER_TYPE_TRIANGLE;
 	ge2d_work_queue->config.v_scale_coef_type=FILTER_TYPE_TRIANGLE;
 	if(IS_ERR(ge2d_work_queue))
 	{
-		printk(FILE_NAME"can't create work queue\r\n");
+		amlog_level(LOG_LEVEL_HIGH,"can't create work queue\r\n");
 		return NULL;
 	}
 	INIT_LIST_HEAD(&ge2d_work_queue->work_queue);
 	INIT_LIST_HEAD(&ge2d_work_queue->free_queue);
 	init_waitqueue_head (&ge2d_work_queue->cmd_complete);
-	init_MUTEX (&ge2d_work_queue->lock); //for process lock.
+	spin_lock_init (&ge2d_work_queue->lock); //for process lock.
 	for(i=0;i<MAX_GE2D_CMD;i++)
 	{
 		p_item=(ge2d_queue_item_t*)kcalloc(1,sizeof(ge2d_queue_item_t),GFP_KERNEL);
 		if(IS_ERR(p_item))
 		{
-			printk("can't request queue item memory\r\n");
+			amlog_level(LOG_LEVEL_HIGH,"can't request queue item memory\r\n");
 			return NULL;
 		}
 		list_add_tail(&p_item->list, &ge2d_work_queue->free_queue) ;
 	}
+	
 	//put this process queue  into manager queue list.
 	//maybe process queue is changing .
-	down(&ge2d_manager.event.sem);
+	spin_lock(&ge2d_manager.event.sem_lock);
+	empty=list_empty(&ge2d_manager.process_queue);
 	list_add_tail(&ge2d_work_queue->list,&ge2d_manager.process_queue);
-	up(&ge2d_manager.event.sem);
+	spin_unlock(&ge2d_manager.event.sem_lock);
+	if(empty)//the first work queue come in.
+	{
+		if(ge2d_start_monitor())
+ 		{
+ 			amlog_level(LOG_LEVEL_HIGH,"ge2d create thread error\r\n");	
+			return NULL;
+ 		}
+	}
 	return ge2d_work_queue; //find it 
 }
 int  destroy_ge2d_work_queue(ge2d_context_t* ge2d_work_queue)
 {
 	ge2d_queue_item_t    	*pitem,*tmp;
 	struct list_head  		*head;
-
+	int empty;
 	if (ge2d_work_queue) {
 		//first detatch  it from the process queue,then delete it .	
 		//maybe process queue is changing .so we lock it.
-		down(&ge2d_manager.event.sem);
+		spin_lock(&ge2d_manager.event.sem_lock);
 		list_del(&ge2d_work_queue->list);
-		up(&ge2d_manager.event.sem);
+		empty=list_empty(&ge2d_manager.process_queue);
+		spin_unlock(&ge2d_manager.event.sem_lock);
 		if((ge2d_manager.current_wq==ge2d_work_queue)&&(ge2d_manager.ge2d_state== GE2D_STATE_RUNNING))
 		{
 			ge2d_manager.ge2d_state=GE2D_STATE_REMOVING_WQ;
 			wait_for_completion(&ge2d_manager.event.process_complete);
+			ge2d_manager.last_wq=NULL;  //condition so complex ,simplify it .
 		}//else we can delete it safely.
-		ge2d_manager.last_wq=NULL;  //condition so complex ,simplify it .
+		
 		head=&ge2d_work_queue->work_queue;
 		list_for_each_entry_safe(pitem,tmp,head,list){
 			if(pitem)  
@@ -627,6 +627,11 @@ int  destroy_ge2d_work_queue(ge2d_context_t* ge2d_work_queue)
 		
      		kfree(ge2d_work_queue);
         	ge2d_work_queue=NULL;
+		if(empty) //the last work queue be killed. 
+		{
+			return ge2d_stop_monitor();
+		
+		}	
 		return 0;
     	}
 	
@@ -640,25 +645,21 @@ int ge2d_wq_init(void)
    	ge2d_gen_t           ge2d_gen_cfg;
 	
 
-	pr_dbg(FILE_NAME"enter %s line %d\r\n",__func__,__LINE__)	;    
+	amlog_mask_level(LOG_MASK_INIT,LOG_LEVEL_HIGH,"enter %s line %d\r\n",__func__,__LINE__)	;    
 	
     	if ((ge2d_manager.irq_num=request_irq(GE2D_IRQ_NO, ge2d_wq_handle , IRQF_SHARED,"ge2d irq", (void *)&ge2d_manager))<0)
    	{
-		printk("ge2d request irq error\r\n")	;
+		amlog_mask_level(LOG_MASK_INIT,LOG_LEVEL_HIGH,"ge2d request irq error\r\n")	;
 		return -1;
 	}
 	//prepare bottom half		
 	
-	init_MUTEX (&ge2d_manager.event.sem); 
+	spin_lock_init(&ge2d_manager.event.sem_lock);
 	init_MUTEX (&ge2d_manager.event.cmd_in_sem); 
 	init_waitqueue_head (&ge2d_manager.event.cmd_complete);
 	init_completion(&ge2d_manager.event.process_complete);
 	INIT_LIST_HEAD(&ge2d_manager.process_queue);
 	ge2d_manager.last_wq=NULL;
-	if(ge2d_manager.ge2d_thread) 
-	{
-		kthread_stop(ge2d_manager.ge2d_thread);
-	}
 	ge2d_manager.ge2d_thread=NULL;
     	ge2d_soft_rst();
     	ge2d_gen_cfg.interrupt_ctrl = 0x02;
@@ -674,33 +675,21 @@ int   ge2d_setup(void)
 	// do init work for ge2d.
 	if (ge2d_wq_init())
       	{
-      		printk("ge2d work queue init error \r\n");	
+      		amlog_mask_level(LOG_MASK_INIT,LOG_LEVEL_HIGH,"ge2d work queue init error \r\n");	
 		return -1;	
       	}
- 	if(ge2d_start_monitor())
- 	{
- 		printk("ge2d create thread error\r\n");	
-		return -1;
- 	}
  	return  0;
 }
 EXPORT_SYMBOL(ge2d_setup);
 int   ge2d_deinit( void )
 {
-	pr_dbg(FILE_NAME"deinit ge2d device \r\n") ;
+	amlog_mask_level(LOG_MASK_INIT,LOG_LEVEL_HIGH,"deinit ge2d device \r\n") ;
 	if (ge2d_manager.irq_num >= 0) {
       		free_irq(GE2D_IRQ_NO,&ge2d_manager);
        	 ge2d_manager.irq_num= -1;
     	}
-	if(ge2d_manager.ge2d_thread) 
-	{
-		kthread_stop(ge2d_manager.ge2d_thread);
-	}
 	return  0;
 }
 EXPORT_SYMBOL(ge2d_deinit);
 
-MODULE_DESCRIPTION("AMLOGIC APOLLO ge2d driver");
-MODULE_LICENSE("GPL");
-MODULE_AUTHOR("jianfeng_wang <jianfeng_Wang@amlogic.com>");
 

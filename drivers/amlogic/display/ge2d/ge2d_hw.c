@@ -1,6 +1,5 @@
+#include <linux/ge2d/ge2d.h>
 
-
-#include "ge2d.h"
 static const  unsigned int filt_coef0[] =   //bicubic
 			{
 			0x00800000,
@@ -151,17 +150,6 @@ static const        unsigned int filt_coef3[] =  //3 point triangle
 //####################################################################################################
 // ge2d_set_src1_data
 //####################################################################################################
-void layer_show(void)
-{
-      
-        WRITE_MPEG_REG_BITS(VIU_OSD1_CTRL_STAT, 1, 21, 1);
-        WRITE_MPEG_REG_BITS(VIU_OSD1_FIFO_CTRL_STAT, 0x2, 10, 2); //set burst size 48
-        WRITE_MPEG_REG_BITS(VPP_MISC, 0, 16, 1);
-        WRITE_MPEG_REG_BITS(VPP_MISC, 1, 12, 1);
-        WRITE_MPEG_REG_BITS(VIU_OSD1_FIFO_CTRL_STAT, 1, 0, 1); // set osd display urgent
-     
-   
-}
 void ge2d_set_src1_data (ge2d_src1_data_t *cfg)
 {
    WRITE_MPEG_REG_BITS (GE2D_GEN_CTRL1, cfg->urgent_en,  10, 1);

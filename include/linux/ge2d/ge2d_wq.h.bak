@@ -28,6 +28,17 @@
 #define   GE2D_MAX_WORK_QUEUE_NUM   4
 #define   GE2D_IRQ_NO   	AM_IRQ3(15) 
 #define	FILE_NAME		"[GE2D_WQ]"
+typedef  enum  	
+{
+		OSD0_OSD0 =0,
+		OSD0_OSD1,	 
+		OSD1_OSD1,
+		OSD1_OSD0,
+		ALLOC_OSD0,
+		ALLOC_OSD1,
+		ALLOC_ALLOC,
+		TYPE_INVALID,
+}ge2d_src_dst_t;
 typedef  struct {
   struct list_head  list;
   ge2d_cmd_t   cmd ;
@@ -44,13 +55,13 @@ typedef struct{
 	wait_queue_head_t	cmd_complete;
    	int				queue_dirty;
    	int				queue_need_recycle;
-	struct semaphore	 	lock; 	// for get and release item.
+	spinlock_t	 	lock; 	// for get and release item.
 } ge2d_context_t;
 
 typedef  struct {
 	wait_queue_head_t	cmd_complete;
 	struct completion		process_complete;
-	struct semaphore	 	sem;  //for queue switch and create destroy queue.
+	spinlock_t	 	sem_lock;  //for queue switch and create destroy queue.
 	struct semaphore		cmd_in_sem;
 }ge2d_event_t;
 
@@ -64,6 +75,7 @@ typedef  struct {
    ge2d_event_t			event ;
    int		 			irq_num;
    int 		 			ge2d_state;
+   int					process_queue_state;
 }ge2d_manager_t ;
 
 typedef  struct  {

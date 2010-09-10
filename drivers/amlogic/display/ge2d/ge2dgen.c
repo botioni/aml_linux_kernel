@@ -1,4 +1,4 @@
-#include "ge2d.h"
+#include <linux/ge2d/ge2d.h>
 
 static inline void _set_src1_format(ge2d_src1_data_t *src1_data_cfg,
                                      ge2d_src1_gen_t *src1_gen_cfg,
@@ -226,7 +226,6 @@ void ge2dgen_src_key(ge2d_context_t *wq,
 	if(dp_gen_cfg->src1_key_en != en || dp_gen_cfg->src1_key != key || dp_gen_cfg->src1_key_mask != keymask ||
 		dp_gen_cfg->src1_key_mode != keymode)      
 	{
-		printk("key_en:0x%x,key_mask:0x%x,keymode:0x%x",en,keymask,keymode);
     		dp_gen_cfg->src1_key_en = en&0x1;
     		dp_gen_cfg->src1_key = key;
     		dp_gen_cfg->src1_key_mask = keymask;
