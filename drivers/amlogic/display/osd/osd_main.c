@@ -48,7 +48,13 @@
 #include <linux/amlog.h>
 
 MODULE_AMLOG(AMLOG_DEFAULT_LEVEL, 0, LOG_LEVEL_DESC, LOG_MASK_DESC);
+
+#ifdef CONFIG_FB_OSD2_ENABLE
 static myfb_dev_t  *gp_fbdev_list[OSD_COUNT]={NULL,NULL};
+#else
+static myfb_dev_t  *gp_fbdev_list[OSD_COUNT]={NULL};
+#endif
+
 static DEFINE_MUTEX(dbg_mutex);
 
 
