@@ -1,6 +1,7 @@
 #include "sd_port.h"
 #include "sd_misc.h"
 #include "sd_protocol.h"
+#include <asm/cacheflush.h>
 
 //Global struct variable, to hold all card information need to operate card
 static SD_MMC_Card_Info_t _sd_mmc_info = {CARD_TYPE_NONE,           //card_type
@@ -552,9 +553,14 @@ int sd_send_cmd_hw(unsigned char cmd, unsigned long arg, SD_Response_Type_t res_
 			else
 				cmd_ext_reg->data_rw_number = sd_mmc_info->blk_len * 8 + 16 - 1;
 
-			//data_dma_from_device_addr = dma_map_single(NULL, (void *)data_buf, data_cnt, DMA_FROM_DEVICE );
-			//buffer = (unsigned char*)data_dma_from_device_addr;
-			buffer = sd_mmc_phy_buf;
+			if(data_buf == sd_mmc_buf)/*data_buf == cq->bounce_buf, sg > 1*/
+				buffer = sd_mmc_phy_buf;
+			else{/*sg = 1, map directly*/
+				//data_dma_from_device_addr = dma_map_single(NULL, (void *)data_buf, data_cnt, DMA_FROM_DEVICE );
+				dmac_map_area(data_buf, data_cnt, DMA_FROM_DEVICE);
+				data_dma_from_device_addr = virt_to_dma(NULL, data_buf);
+				buffer = data_dma_from_device_addr;
+			}
 			break;
 
         case SD_SWITCH_FUNCTION:
@@ -577,10 +583,19 @@ int sd_send_cmd_hw(unsigned char cmd, unsigned long arg, SD_Response_Type_t res_
 			else
 				cmd_ext_reg->data_rw_number = sd_mmc_info->blk_len * 8 + 16 - 1;
 			
+			if(data_buf == sd_mmc_buf)/*data_buf == cq->bounce_buf, sg > 1*/
+				buffer = sd_mmc_phy_buf;
+			else{/*sg = 1, map directly*/
+				//data_dma_to_device_addr=dma_map_single(NULL, (void *)data_buf, data_cnt, DMA_TO_DEVICE);	
+				dmac_map_area(data_buf, data_cnt, DMA_TO_DEVICE);
+				data_dma_to_device_addr = virt_to_dma(NULL, data_buf);
+				buffer = data_dma_to_device_addr;
+			}
+			
 			//data_dma_to_device_addr=dma_map_single(NULL, (void *)data_buf, data_cnt, DMA_TO_DEVICE);	
 			//buffer = (unsigned char*)data_dma_to_device_addr;
 
-			buffer = sd_mmc_phy_buf;
+			//buffer = sd_mmc_phy_buf;
 			//inv_dcache_range((unsigned long)buffer, ((unsigned long)buffer + data_cnt));
 			break;
 
@@ -864,18 +879,18 @@ int sd_send_cmd_hw(unsigned char cmd, unsigned long arg, SD_Response_Type_t res_
 	//{
 	//	memcpy(data_buf, sd_mmc_buf, data_cnt);
 	//}
-	if(data_dma_from_device_addr)
-		dma_unmap_single(NULL, data_dma_from_device_addr, data_cnt, DMA_FROM_DEVICE);
-	if(data_dma_to_device_addr)
-		dma_unmap_single(NULL, data_dma_to_device_addr, data_cnt, DMA_TO_DEVICE);
+	//if(data_dma_from_device_addr)
+	//	dmac_unmap_area(data_buf, data_cnt, DMA_FROM_DEVICE);
+	//if(data_dma_to_device_addr)
+	//	dmac_unmap_area(data_buf, data_cnt, DMA_TO_DEVICE);
 
 	return SD_MMC_NO_ERROR;
 error:
 	
-	if(data_dma_from_device_addr)
-		dma_unmap_single(NULL, data_dma_from_device_addr, data_cnt, DMA_FROM_DEVICE);
-	if(data_dma_to_device_addr)
-		dma_unmap_single(NULL, data_dma_to_device_addr, data_cnt, DMA_TO_DEVICE);
+	//if(data_dma_from_device_addr)
+	//	dmac_unmap_area(data_buf, data_cnt, DMA_FROM_DEVICE);
+	//if(data_dma_to_device_addr)
+	//	dmac_unmap_area(data_buf, data_cnt, DMA_TO_DEVICE);
 	return ret;
 }
 #endif

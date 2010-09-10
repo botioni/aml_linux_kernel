@@ -400,6 +400,7 @@ static void dwc_otg_pcd_free_request(struct usb_ep *_ep,
  * @param _gfp_flags the GFP_* flags to use.
  * @return address of a new buffer or null is buffer could not be allocated.
  */
+#if 0
 static void *dwc_otg_pcd_alloc_buffer(struct usb_ep *_ep, unsigned _bytes,
 				      dma_addr_t * _dma, gfp_t _gfp_flags)
 {
@@ -460,7 +461,42 @@ static void dwc_otg_pcd_free_buffer(struct usb_ep *_ep, void *_buf,
 		kfree(_buf);
 	}
 }
+#endif
 
+/**
+* This function is used to do dma map for the _req->buf
+*/
+void dwc_otg_pcd_dma_map(dwc_ep_t *ep, struct usb_request *_req)
+{
+	if(ep->is_in){
+			ep->dma_addr = dma_map_single(NULL, _req->buf, \
+				                                          _req->length, DMA_TO_DEVICE);
+		}else{
+
+			ep->dma_addr = dma_map_single(NULL, _req->buf, \
+				                                          _req->length, DMA_FROM_DEVICE);
+		}
+		ep->dma_mapping = 1;
+}
+
+
+/**
+* This function is used to do dma unmap for the _req->buf
+*/
+void dwc_otg_pcd_dma_unmap(dwc_ep_t *ep)
+{
+	if(ep->dma_mapping == 1){
+
+		if(ep->is_in)
+			dma_unmap_single(NULL, ep->dma_addr, \
+			                                 ep->xfer_len, DMA_TO_DEVICE);
+              else
+			dma_unmap_single(NULL, ep->dma_addr, \
+			                                ep->xfer_len, DMA_FROM_DEVICE);
+	      ep->dma_mapping = 0;
+
+	}
+}
 /**
  * This function is used to submit an I/O Request to an EP.
  *
@@ -534,6 +570,9 @@ static int dwc_otg_pcd_ep_queue(struct usb_ep *_ep,
 
 	/* Start the transfer */
 	if (list_empty(&ep->queue) && !ep->stopped) {
+		if(GET_CORE_IF(pcd)->dma_enable){
+			dwc_otg_pcd_dma_map(&ep->dwc_ep, _req);
+		}
 		/* EP0 Transfer? */
 		if (ep->dwc_ep.num == 0) {
 			switch (pcd->ep0state) {
@@ -561,7 +600,7 @@ static int dwc_otg_pcd_ep_queue(struct usb_ep *_ep,
 				return -EL2HLT;
 			}
 
-			ep->dwc_ep.dma_addr = _req->dma;
+			//ep->dwc_ep.dma_addr = (dma_addr_t)_req->buf;//_req->dma;
 			ep->dwc_ep.start_xfer_buff = _req->buf;
 			ep->dwc_ep.xfer_buff = _req->buf;
 			ep->dwc_ep.xfer_len = _req->length;
@@ -572,7 +611,7 @@ static int dwc_otg_pcd_ep_queue(struct usb_ep *_ep,
 						   &ep->dwc_ep);
 		} else {
 			/* Setup and start the Transfer */
-			ep->dwc_ep.dma_addr = _req->dma;
+			//ep->dwc_ep.dma_addr = (dma_addr_t)_req->buf;//_req->dma; //
 			ep->dwc_ep.start_xfer_buff = _req->buf;
 			ep->dwc_ep.xfer_buff = _req->buf;
 			ep->dwc_ep.xfer_len = _req->length;

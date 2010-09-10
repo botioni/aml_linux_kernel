@@ -84,6 +84,7 @@ typedef struct dwc_ep {
 	 */
 
 	uint32_t dma_addr;
+	uint32_t dma_mapping;
 
 	uint8_t *start_xfer_buff;
 	/** pointer to the transfer buffer */

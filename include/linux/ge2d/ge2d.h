@@ -367,6 +367,20 @@ typedef struct {
     unsigned char     src1_hsc_nearest_en; 
     unsigned char     src1_vsc_nearest_en; 
     
+    unsigned char     antiflick_en;
+    unsigned char     antiflick_ycbcr_rgb_sel;
+    unsigned char     antiflick_cbcr_en;
+    unsigned int      antiflick_r_coef;      //Y= (R * r_coef + G * g_coef + B * b_coef)/256
+    unsigned int      antiflick_g_coef;
+    unsigned int      antiflick_b_coef;
+    unsigned int      antiflick_color_filter_n1[4];
+    unsigned int      antiflick_color_filter_n2[4];
+    unsigned int      antiflick_color_filter_n3[4];
+    unsigned int      antiflick_color_filter_th[3];
+    unsigned int      antiflick_alpha_filter_n1[4];
+    unsigned int      antiflick_alpha_filter_n2[4];
+    unsigned int      antiflick_alpha_filter_n3[4];
+    unsigned int      antiflick_alpha_filter_th[3];    
     //matrix related
     unsigned char     use_matrix_default;
     unsigned char     conv_matrix_en;

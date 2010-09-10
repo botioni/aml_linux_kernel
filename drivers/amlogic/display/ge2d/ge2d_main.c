@@ -12,7 +12,7 @@
 #include "ge2d_log.h"
 #include <linux/amlog.h>
 
-MODULE_AMLOG(AMLOG_DEFAULT_LEVEL, AMLOG_DEFAULT_MASK, LOG_LEVEL_DESC, LOG_MASK_DESC);
+MODULE_AMLOG(AMLOG_DEFAULT_LEVEL, 0, LOG_LEVEL_DESC, LOG_MASK_DESC);
 
 /***********************************************************************
 *
@@ -21,7 +21,7 @@ MODULE_AMLOG(AMLOG_DEFAULT_LEVEL, AMLOG_DEFAULT_MASK, LOG_LEVEL_DESC, LOG_MASK_D
 ************************************************************************/
 static  bool   command_valid(unsigned int cmd)
 {
-    return (cmd <= GE2D_STRETCHBLIT_NOALPHA_NOBLOCK && cmd >= GE2D_CONFIG );
+    return (cmd <= GE2D_STRETCHBLIT_NOALPHA_NOBLOCK && cmd >= GE2D_ANTIFLICKER_ENABLE );
 }
 static int 
 ge2d_open(struct inode *inode, struct file *file) 
@@ -58,6 +58,7 @@ ge2d_ioctl(struct inode *inode, struct file *filp,
 		copy_from_user(&ge2d_config,argp,sizeof(config_para_t));
 		break;
 		case  GE2D_SET_COEF:
+		case	  GE2D_ANTIFLICKER_ENABLE:	
 		break;
 		default :
 		copy_from_user(&para,argp,sizeof(ge2d_para_t));	
@@ -70,7 +71,10 @@ ge2d_ioctl(struct inode *inode, struct file *filp,
 		ret=ge2d_context_config(context,&ge2d_config) ;
 	  	break;
 		case GE2D_SET_COEF:
-		ge2d_wq_set_scale_coef(context,args,args);
+		ge2d_wq_set_scale_coef(context,args&0xff,args>>16);
+		break;
+		case GE2D_ANTIFLICKER_ENABLE:
+		ge2d_antiflicker_enable(context,args);	
 		break;
     	  	case GE2D_SRCCOLORKEY:
 		ge2dgen_src_key(context , ge2d_config.src_key.key_enable,ge2d_config.src_key.key_color, ge2d_config.src_key.key_mask,ge2d_config.src_key.key_mode);  //RGBA MODE		

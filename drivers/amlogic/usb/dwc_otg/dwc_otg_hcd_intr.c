@@ -454,6 +454,68 @@ int32_t dwc_otg_hcd_handle_port_intr(dwc_otg_hcd_t * _dwc_otg_hcd)
 	return retval;
 }
 
+typedef struct
+{
+	uint8_t channel_num;
+	uint16_t current_num;
+}split_order_struct_t;
+
+#define CHANNEL_NUM  6
+
+static int split_order(dwc_otg_hcd_t * _dwc_otg_hcd,haint_data_t *haint, int *order)
+{
+	dwc_hc_t *hc;	
+	int split_num = 0;
+	split_order_struct_t s_order[CHANNEL_NUM];
+	int s_tmp;
+	uint8_t c_tmp;
+	int i,j;	
+	
+	//haint_data_t *haint_s = haint;
+	
+	for(i  = 0;i < CHANNEL_NUM; i++){
+		s_order[i].channel_num = i;
+		if (haint->b2.chint & (1 << i)) {//has channel interrupt
+			hc = _dwc_otg_hcd->hc_ptr_array[i];
+				
+			if((hc->do_split)&&(hc->ep_type == DWC_OTG_EP_TYPE_INTR) &&(hc->ep_is_in)){
+				s_order[i].current_num= hc->qh->current_num;					
+				split_num++;
+			}					
+		}
+	}
+	
+	if(split_num>1){
+		for(i = 0;i<CHANNEL_NUM;i++){
+			if(s_order[i].current_num==0)
+				continue;
+			else{
+				for(j = i+1;j<6;j++){
+					if(s_order[j].current_num==0)
+						continue;
+					else{
+						if(s_order[j].current_num<s_order[i].current_num){
+							s_tmp = s_order[i].current_num;
+							s_order[i].current_num= s_order[j].current_num;
+							s_order[j].current_num= s_tmp;
+
+							c_tmp = s_order[i].channel_num;
+							s_order[i].channel_num = s_order[j].channel_num;
+							s_order[j].channel_num = c_tmp;
+						}
+					}
+				}
+			}
+		}
+		
+		for(i =0;i<CHANNEL_NUM;i++){
+				order[i] = s_order[i].channel_num;
+		}
+	}
+	return split_num;
+	
+
+}
 /** This interrupt indicates that one or more host channels has a pending
  * interrupt. There are multiple conditions that can cause each host channel
  * interrupt. This function determines which conditions have occurred for each
@@ -463,18 +525,42 @@ int32_t dwc_otg_hcd_handle_hc_intr(dwc_otg_hcd_t * _dwc_otg_hcd)
 	int i;
 	int retval = 0;
 	haint_data_t haint;
-
+	
+	int chnl_order[CHANNEL_NUM] = {0,0,0,0,0,0};
+	int split_intr_num = 0;
+	
 	/* Clear appropriate bits in HCINTn to clear the interrupt bit in
 	 * GINTSTS */
 
 	haint.d32 = dwc_otg_read_host_all_channels_intr(_dwc_otg_hcd->core_if);
-
+#if 0
 	for (i = 0; i < _dwc_otg_hcd->core_if->core_params->host_channels; i++) {
+		
 		if (haint.b2.chint & (1 << i)) {
-			retval |= dwc_otg_hcd_handle_hc_n_intr(_dwc_otg_hcd, i);
+			retval |= dwc_otg_hcd_handle_hc_n_intr(_dwc_otg_hcd, i);				
+		}		
+	}
+#else
+
+	split_intr_num = split_order(_dwc_otg_hcd, &haint, chnl_order);
+	if(split_intr_num > 1) /*more than 1 splict interrupt*/
+	{
+		for(i = 0;i < _dwc_otg_hcd->core_if->core_params->host_channels; i++){
+				if (haint.b2.chint & (1 << chnl_order[i])) {
+					retval |= dwc_otg_hcd_handle_hc_n_intr(_dwc_otg_hcd,chnl_order[i]);	
+				}
 		}
 	}
-
+	else{
+		for (i = 0; i < _dwc_otg_hcd->core_if->core_params->host_channels; i++) {
+		
+			if (haint.b2.chint & (1 << i)) {
+				retval |= dwc_otg_hcd_handle_hc_n_intr(_dwc_otg_hcd, i);				
+			}		
+		}
+	}
+#endif
+		
 	return retval;
 }
 

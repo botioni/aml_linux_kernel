@@ -29,7 +29,11 @@
 #include <linux/vout/vinfo.h>
 #include <linux/logo/logo.h>
 
+#ifdef CONFIG_FB_OSD2_ENABLE
 #define  OSD_COUNT 	2 /* we have two osd layer on hardware*/
+#else
+#define  OSD_COUNT 	1
+#endif
 
 typedef struct myfb_dev {
     struct mutex lock;
