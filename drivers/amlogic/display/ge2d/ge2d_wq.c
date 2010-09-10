@@ -122,7 +122,7 @@ static int ge2d_process_work_queue(ge2d_context_t *  wq)
 		list_move_tail(&pitem->list,&wq->free_queue);
 		spin_unlock(&wq->lock);
 		
-		while(READ_MPEG_REG(GE2D_STATUS0) & 1)
+		while(ge2d_is_busy())
 		interruptible_sleep_on_timeout(&ge2d_manager.event.cmd_complete, 1);
 		//if block mode (cmd)
 		if(block_mode)
@@ -455,6 +455,22 @@ setup_display_property(src_dst_para_t *src_dst,int index)
 	
 	return 0;	
 	
+}
+int	ge2d_antiflicker_enable(ge2d_context_t *context,unsigned long enable)
+{
+	/*********************************************************************
+	**	antiflicker used in cvbs mode, if antiflicker is enabled , it represent that we want 
+	**	this feature be enabled for all ge2d work
+	***********************************************************************/
+	ge2d_context_t* pcontext;
+
+	spin_lock(&ge2d_manager.event.sem_lock);
+	list_for_each_entry(pcontext,&ge2d_manager.process_queue,list)
+	{
+		ge2dgen_antiflicker(pcontext,enable);
+	}
+	spin_unlock(&ge2d_manager.event.sem_lock);
+	return 0;
 }
 int   ge2d_context_config(ge2d_context_t *context, config_para_t *ge2d_config)
 {

@@ -82,7 +82,6 @@ static inline void _set_dst_format(ge2d_src2_dst_data_t *src2_dst_data_cfg,
         dp_gen_cfg->conv_matrix_en = 0;
     }
 }
-
 void ge2dgen_src(ge2d_context_t *wq,
                  unsigned canvas_addr,
                  unsigned format)
@@ -104,6 +103,18 @@ void ge2dgen_src(ge2d_context_t *wq,
     }
 }
 
+void ge2dgen_antiflicker(ge2d_context_t *wq,unsigned long enable)
+{
+	ge2d_dp_gen_t *dp_gen_cfg = ge2d_wq_get_dp_gen(wq);
+
+	enable = enable?1:0;  
+
+	if(dp_gen_cfg->antiflick_en != enable)
+	{
+		dp_gen_cfg->antiflick_en=enable;
+		wq->config.update_flag |= UPDATE_DP_GEN;
+	}
+}
 void ge2dgen_post_release_src1buf(ge2d_context_t *wq, unsigned buffer)
 {
     ge2d_cmd_t *ge2d_cmd_cfg = ge2d_wq_get_cmd(wq);

@@ -321,6 +321,37 @@ void ge2d_set_src2_dst_gen (ge2d_src2_dst_gen_t *cfg)
 //####################################################################################################
 void ge2d_set_dp_gen (ge2d_dp_gen_t *cfg)
 {
+    unsigned int antiflick_color_filter_n1[] = {0,   8,    16, 32};
+    unsigned int antiflick_color_filter_n2[] = {128, 112,  96, 64};
+    unsigned int antiflick_color_filter_n3[] = {0,   8,    16, 32};
+    unsigned int antiflick_color_filter_th[] = {8, 16, 64};
+    unsigned int antiflick_alpha_filter_n1[] = {0,    8,  16, 32};
+    unsigned int antiflick_alpha_filter_n2[] = {128,112,  96, 64};
+    unsigned int antiflick_alpha_filter_n3[] = {0,    8,  16, 32};
+    unsigned int antiflick_alpha_filter_th[] = {8, 16, 64};        
+
+    if( cfg->conv_matrix_en )
+    {
+    	cfg->antiflick_ycbcr_rgb_sel = 0;  //0: yuv2rgb 1:rgb2rgb
+    	cfg->antiflick_cbcr_en = 1;
+    	cfg->antiflick_r_coef = 0; 
+    	cfg->antiflick_g_coef = 0;
+    	cfg->antiflick_b_coef = 0;
+     }else{
+       	cfg->antiflick_ycbcr_rgb_sel = 1;  	//0: yuv2rgb 1:rgb2rgb
+    	cfg->antiflick_cbcr_en = 1;
+    	cfg->antiflick_r_coef = 0x42;    	//0.257 
+    	cfg->antiflick_g_coef = 0x81;     	//0.504
+    	cfg->antiflick_b_coef = 0x19;     	//0.098
+     }   
+    memcpy(cfg->antiflick_color_filter_n1, antiflick_color_filter_n1, 4 * sizeof(unsigned int));
+    memcpy(cfg->antiflick_color_filter_n2, antiflick_color_filter_n2, 4 * sizeof(unsigned int));
+    memcpy(cfg->antiflick_color_filter_n3, antiflick_color_filter_n3, 4 * sizeof(unsigned int));
+    memcpy(cfg->antiflick_color_filter_th, antiflick_color_filter_th, 3 * sizeof(unsigned int));
+    memcpy(cfg->antiflick_alpha_filter_n1, antiflick_alpha_filter_n1, 4 * sizeof(unsigned int));
+    memcpy(cfg->antiflick_alpha_filter_n2, antiflick_alpha_filter_n2, 4 * sizeof(unsigned int));
+    memcpy(cfg->antiflick_alpha_filter_n3, antiflick_alpha_filter_n3, 4 * sizeof(unsigned int));
+    memcpy(cfg->antiflick_alpha_filter_th, antiflick_alpha_filter_th, 3 * sizeof(unsigned int));    
    cfg->src1_vsc_bank_length = 4;
    cfg->src1_hsc_bank_length = 4;
    WRITE_MPEG_REG_BITS (GE2D_SC_MISC_CTRL, 
@@ -333,7 +364,76 @@ void ge2d_set_dp_gen (ge2d_dp_gen_t *cfg)
 
    WRITE_MPEG_REG_BITS(GE2D_SC_MISC_CTRL, ((cfg->src1_vsc_nearest_en <<1) |
                                   (cfg->src1_hsc_nearest_en << 0)), 29, 2);
+  if (cfg->antiflick_en == 1) {
+     //Wr(GE2D_ANTIFLICK_CTRL0, 0x81000100); 
+     WRITE_MPEG_REG(GE2D_ANTIFLICK_CTRL0, 0x80000000); 
+     WRITE_MPEG_REG(GE2D_ANTIFLICK_CTRL1, 
+            (cfg->antiflick_ycbcr_rgb_sel << 25) |
+            (cfg->antiflick_cbcr_en << 24) |
+            ((cfg->antiflick_r_coef & 0xff) << 16) |
+            ((cfg->antiflick_g_coef & 0xff) << 8) |
+            ((cfg->antiflick_b_coef & 0xff) << 0)
+            );
 
+     WRITE_MPEG_REG (GE2D_ANTIFLICK_COLOR_FILT0, 
+            ((cfg->antiflick_color_filter_th[0] & 0xff) << 24) | 
+            ((cfg->antiflick_color_filter_n3[0] & 0xff) << 16) | 
+            ((cfg->antiflick_color_filter_n2[0] & 0xff) << 8) | 
+            ((cfg->antiflick_color_filter_n1[0] & 0xff) << 0)
+            );
+            
+     WRITE_MPEG_REG (GE2D_ANTIFLICK_COLOR_FILT1, 
+            ((cfg->antiflick_color_filter_th[1] & 0xff) << 24) | 
+            ((cfg->antiflick_color_filter_n3[1] & 0xff) << 16) | 
+            ((cfg->antiflick_color_filter_n2[1] & 0xff) << 8) | 
+            ((cfg->antiflick_color_filter_n1[1] & 0xff) << 0)
+            );
+
+     WRITE_MPEG_REG (GE2D_ANTIFLICK_COLOR_FILT2, 
+            ((cfg->antiflick_color_filter_th[2] & 0xff) << 24) | 
+            ((cfg->antiflick_color_filter_n3[2] & 0xff) << 16) | 
+            ((cfg->antiflick_color_filter_n2[2] & 0xff) << 8) | 
+            ((cfg->antiflick_color_filter_n1[2] & 0xff) << 0)
+            );
+
+     WRITE_MPEG_REG (GE2D_ANTIFLICK_COLOR_FILT3, 
+            ((cfg->antiflick_color_filter_n3[3] & 0xff) << 16) | 
+            ((cfg->antiflick_color_filter_n2[3] & 0xff) << 8) | 
+            ((cfg->antiflick_color_filter_n1[3] & 0xff) << 0)
+            );
+
+
+     WRITE_MPEG_REG (GE2D_ANTIFLICK_ALPHA_FILT0, 
+            ((cfg->antiflick_alpha_filter_th[0] & 0xff) << 24) | 
+            ((cfg->antiflick_alpha_filter_n3[0] & 0xff) << 16) | 
+            ((cfg->antiflick_alpha_filter_n2[0] & 0xff) << 8) | 
+            ((cfg->antiflick_alpha_filter_n1[0] & 0xff) << 0)
+            );
+            
+     WRITE_MPEG_REG (GE2D_ANTIFLICK_ALPHA_FILT1, 
+            ((cfg->antiflick_alpha_filter_th[1] & 0xff) << 24) | 
+            ((cfg->antiflick_alpha_filter_n3[1] & 0xff) << 16) | 
+            ((cfg->antiflick_alpha_filter_n2[1] & 0xff) << 8) | 
+            ((cfg->antiflick_alpha_filter_n1[1] & 0xff) << 0)
+            );
+
+     WRITE_MPEG_REG (GE2D_ANTIFLICK_ALPHA_FILT2, 
+            ((cfg->antiflick_alpha_filter_th[2] & 0xff) << 24) | 
+            ((cfg->antiflick_alpha_filter_n3[2] & 0xff) << 16) | 
+            ((cfg->antiflick_alpha_filter_n2[2] & 0xff) << 8) | 
+            ((cfg->antiflick_alpha_filter_n1[2] & 0xff) << 0)
+            );
+
+     WRITE_MPEG_REG (GE2D_ANTIFLICK_ALPHA_FILT3, 
+            ((cfg->antiflick_alpha_filter_n3[3] & 0xff) << 16) | 
+            ((cfg->antiflick_alpha_filter_n2[3] & 0xff) << 8) | 
+            ((cfg->antiflick_alpha_filter_n1[3] & 0xff) << 0)
+            );
+  }
+  else
+  {
+     WRITE_MPEG_REG_BITS(GE2D_ANTIFLICK_CTRL0, 0, 31, 1);
+  }
   if (cfg->use_matrix_default == MATRIX_YCC_TO_RGB) {
      //ycbcr(16-235) to rgb(0-255)
      cfg->matrix_coef[0] = 0x4a8;
@@ -632,7 +732,6 @@ void ge2d_set_cmd (ge2d_cmd_t *cfg)
                        );  
     cfg->release_flag |= START_FLAG;                                        
 }
-
 //####################################################################################################
 // ge2d_wait_done
 //####################################################################################################
@@ -643,6 +742,7 @@ void ge2d_wait_done (void)
 		
 	}    
 }
+
 
 //####################################################################################################
 // ge2d_wait_done
