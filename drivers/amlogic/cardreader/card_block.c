@@ -22,10 +22,6 @@
 #include <asm/system.h>
 #include <asm/uaccess.h>
 
-#include <mach/am_regs.h>
-#include <linux/dma-mapping.h>
-#include <asm/cacheflush.h>
-#include <linux/sched.h>
 
 static int major;
 #define CARD_SHIFT	3
@@ -331,186 +327,6 @@ static int card_queue_thread(void *d)
 #define CONFIG_CARD_BLOCK_BOUNCE 1
 
 #ifdef CONFIG_CARD_BLOCK_BOUNCE
-
-static dma_addr_t card_desc[PAGE_SIZE>>2];
-/*
- * ndmacpy - memcpy with ndma module
- */
-void card_ndma_copy(void *to, void *from, size_t n, int to_buffer)
-{
-	dma_addr_t dma_desc=0;
-
-	BUG_ON(n > CARD_QUEUE_BOUNCESZ);
-	
-	// Add a descriptor to SDRAM at locations vdesc
-	//CONTROL: Descriptor Entry 0
-	card_desc[0] = (0<<30)|(1<<8);/*thread id 0 & no break*/
-	//SOURCE POINTER: Descriptor Entry 1
-	card_desc[1] = (dma_addr_t)from;
-	//DESTINATION POINTER: Descriptor Entry 2
-	card_desc[2] = (dma_addr_t)to;
-	//Bytes to Transfer: Descriptor Entry 3
-	card_desc[3] = n;
-
-	dmac_map_area(card_desc, PAGE_SIZE, DMA_TO_DEVICE);
-	dma_desc = virt_to_dma(NULL, card_desc);
-
-	dmac_map_area(from, n, DMA_FROM_DEVICE);
-	dmac_map_area(to, n, DMA_FROM_DEVICE);
-	
-	//reset table add reg
-	WRITE_CBUS_REG(NDMA_TABLE_ADD_REG, 0);
-	
-	//set thread 0 start descriptor addr
-	WRITE_CBUS_REG(NDMA_THREAD_TABLE_START0, dma_desc);
-	//set thread 0 end descriptor addr
-	WRITE_CBUS_REG(NDMA_THREAD_TABLE_END0, dma_desc+0x10);
-	
-	//init thread 0
-	WRITE_CBUS_REG(NDMA_THREAD_REG, 0x1<<24|0x1<<8|1);
-
-	// Indicate we just added a descriptor
-	WRITE_CBUS_REG(NDMA_TABLE_ADD_REG, 1);
-	// Enable the DMA Engine
-	WRITE_CBUS_REG(NDMA_CNTL_REG0, 1<<NDMA_ENABLE| 0x63<<16);
-
-	// Wait for DMA to complete (or use interrupts)
-	while(READ_CBUS_REG(NDMA_CNTL_REG0) & (1<<NDMA_STATUS)){
-		asm("nop");
-	}
-	
-	return ;
-}
-
-/**
- * sg_miter_next - proceed mapping iterator to the next mapping
- * @miter: sg mapping iter to proceed
- *
- * Description:
- *   Proceeds @miter@ to the next mapping.  @miter@ should have been
- *   started using sg_miter_start().  On successful return,
- *   @miter@->page, @miter@->addr and @miter@->length point to the
- *   current mapping.
- *
- * Context:
- *   IRQ disabled if SG_MITER_ATOMIC.  IRQ must stay disabled till
- *   @miter@ is stopped.  May sleep if !SG_MITER_ATOMIC.
- *
- * Returns:
- *   true if @miter contains the next mapping.  false if end of sg
- *   list is reached.
- */
-bool card_sg_miter_next(struct sg_mapping_iter *miter)
-{
-	unsigned int off, len;
-
-	/* check for end and drop resources from the last iteration */
-	if (!miter->__nents)
-		return false;
-
-	sg_miter_stop(miter);
-
-	/* get to the next sg if necessary.  __offset is adjusted by stop */
-	while (miter->__offset == miter->__sg->length) {
-		if (--miter->__nents) {
-			miter->__sg = sg_next(miter->__sg);
-			miter->__offset = 0;
-		} else
-			return false;
-	}
-
-	/* map the next page */
-	off = miter->__sg->offset + miter->__offset;
-	len = miter->__sg->length - miter->__offset;
-
-	miter->page = nth_page(sg_page(miter->__sg), off >> PAGE_SHIFT);
-	off &= ~PAGE_MASK;
-	//miter->length = min_t(unsigned int, len, PAGE_SIZE - off);
-	/*no need to copy every page, so copy every sg->length*/
-	miter->length = len;
-	
-	miter->consumed = miter->length;
-
-	if (miter->__flags & SG_MITER_ATOMIC)
-		miter->addr = kmap_atomic(miter->page, KM_BIO_SRC_IRQ) + off;
-	else
-		miter->addr = kmap(miter->page) + off;
-
-	return true;
-}
-
-static size_t card_sg_copy_buffer(struct scatterlist *sgl, unsigned int nents,
-			     void *buf, size_t buflen, int to_buffer)
-{
-	unsigned int offset = 0;
-	struct sg_mapping_iter miter;
-	unsigned long flags;
-	unsigned int sg_flags = SG_MITER_ATOMIC;
-
-	if (to_buffer)
-		sg_flags |= SG_MITER_FROM_SG;
-	else
-		sg_flags |= SG_MITER_TO_SG;
-
-	sg_miter_start(&miter, sgl, nents, sg_flags);
-
-	local_irq_save(flags);
-
-	while (card_sg_miter_next(&miter) && offset < buflen) {
-		unsigned int len;
-
-		len = min(miter.length, buflen - offset);
-
-		if (to_buffer)
-			card_ndma_copy(buf + offset, miter.addr, len, to_buffer);
-		else
-			card_ndma_copy(miter.addr, buf + offset, len, to_buffer);
-
-		offset += len;
-	}
-	
-	sg_miter_stop(&miter);
-
-	local_irq_restore(flags);
-	
-	return offset;
-}
-
-
-/**
- * sg_copy_from_buffer_for_sd - Copy from a linear buffer to an SG list
- * @sgl:		 The SG list
- * @nents:		 Number of SG entries
- * @buf:		 Where to copy from
- * @buflen:		 The number of bytes to copy
- *
- * Returns the number of copied bytes.
- *
- **/
-static size_t card_sg_copy_from_buffer(struct scatterlist *sgl, unsigned int nents,
-			   void *buf, size_t buflen)
-{
-	return card_sg_copy_buffer(sgl, nents, buf, buflen, 0);
-}
-
-/**
- * sg_copy_to_buffer - Copy from an SG list to a linear buffer
- * @sgl:		 The SG list
- * @nents:		 Number of SG entries
- * @buf:		 Where to copy to
- * @buflen:		 The number of bytes to copy
- *
- * Returns the number of copied bytes.
- *
- **/
-static size_t card_sg_copy_to_buffer(struct scatterlist *sgl, unsigned int nents,
-			 void *buf, size_t buflen)
-{
-	return card_sg_copy_buffer(sgl, nents, buf, buflen, 1);
-}
-
-
-
 /*
  * Prepare the sg list(s) to be handed of to the host driver
  */
@@ -539,8 +355,6 @@ static unsigned int card_queue_map_sg(struct card_queue *cq)
 	return 1;
 }
 
-extern unsigned char *sd_mmc_phy_buf;
-
 /*
  * If writing, bounce the data to the buffer before the request
  * is sent to the host driver
@@ -549,7 +363,7 @@ static void card_queue_bounce_pre(struct card_queue *cq)
 {
 	unsigned long flags;
 
-	if (!cq->bounce_buf || (cq->bounce_sg_len==1))
+	if (!cq->bounce_buf)
 		return;
 
 	if (rq_data_dir(cq->req) != WRITE)
@@ -557,10 +371,10 @@ static void card_queue_bounce_pre(struct card_queue *cq)
 	
 	local_irq_save(flags);
 		
-	card_sg_copy_to_buffer(cq->bounce_sg, cq->bounce_sg_len,
-		sd_mmc_phy_buf, cq->sg[0].length);	
+	sg_copy_to_buffer(cq->bounce_sg, cq->bounce_sg_len,
+		cq->bounce_buf, cq->sg[0].length);
 	
-	local_irq_restore(flags);
+	local_irq_restore(flags);	
 }
 
 /*
@@ -570,17 +384,17 @@ static void card_queue_bounce_pre(struct card_queue *cq)
 static void card_queue_bounce_post(struct card_queue *cq)
 {
 	unsigned long flags;
-	
-	if (!cq->bounce_buf || (cq->bounce_sg_len==1))
+
+	if (!cq->bounce_buf)
 		return;
 
 	if (rq_data_dir(cq->req) != READ)
 		return;
-
+	
 	local_irq_save(flags);
 	
-	card_sg_copy_from_buffer(cq->bounce_sg, cq->bounce_sg_len,
-		sd_mmc_phy_buf, cq->sg[0].length);
+	sg_copy_from_buffer(cq->bounce_sg, cq->bounce_sg_len,
+		cq->bounce_buf, cq->sg[0].length);
 		
 	local_irq_restore(flags);
 	
@@ -595,12 +409,16 @@ static int card_init_bounce_buf(struct card_queue *cq,
 			struct memory_card *card)
 {
 	int ret=0;
+	struct card_host *host = card->host;
 	unsigned int bouncesz;
 
 	bouncesz = CARD_QUEUE_BOUNCESZ;
 
+	if (bouncesz > host->max_req_size)
+		bouncesz = host->max_req_size;
+
 	if (bouncesz >= PAGE_CACHE_SIZE) {
-	//	cq->bounce_buf = kmalloc(bouncesz, GFP_KERNEL);
+		//cq->bounce_buf = kmalloc(bouncesz, GFP_KERNEL);
 		cq->bounce_buf = sd_mmc_buf;
 		if (!cq->bounce_buf) {
 			printk(KERN_WARNING "%s: unable to "
@@ -853,6 +671,8 @@ static int card_blk_issue_rq(struct card_queue *cq, struct request *req)
 
 	do {
 		brq.crq.cmd = rq_data_dir(req);
+		brq.crq.buf = cq->bounce_buf;
+		//	brq.crq.buf = req->buffer;
 
 		brq.card_data.lba = blk_rq_pos(req);
 		brq.card_data.blk_size = 1 << card_data->block_bits;
@@ -861,13 +681,6 @@ static int card_blk_issue_rq(struct card_queue *cq, struct request *req)
 		brq.card_data.sg = cq->sg;
 
 		brq.card_data.sg_len = card_queue_map_sg(cq);
-
-		if(cq->bounce_sg_len>1)
-			brq.crq.buf = cq->bounce_buf;
-		else
-			brq.crq.buf = req->buffer;
-		//printk("%s %d sg_len %d \t", brq.crq.cmd?"W":"R", brq.card_data.blk_nums, cq->bounce_sg_len);
-
 		//brq.card_data.sg_len = blk_rq_map_sg(req->q, req, brq.card_data.sg);
 
 		card->host->card_type = card->card_type;
