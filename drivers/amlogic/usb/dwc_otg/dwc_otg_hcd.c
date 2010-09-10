@@ -545,6 +545,7 @@ int dwc_otg_hcd_init(struct lm_device *_lmdev)
 	dwc_otg_hcd = hcd_to_dwc_otg_hcd(hcd);
 	dwc_otg_hcd->core_if = otg_dev->core_if;
 	otg_dev->hcd = dwc_otg_hcd;
+	dwc_otg_hcd->split_frm_num = 0;
 
 	/* Register the HCD CIL Callbacks */
 	dwc_otg_cil_register_hcd_callbacks(otg_dev->core_if,
@@ -1145,16 +1146,45 @@ int dwc_otg_hcd_urb_dequeue(struct usb_hcd *_hcd, struct urb *_urb)
 /** Frees resources in the DWC_otg controller related to a given endpoint. Also
  * clears state in the HCD related to the endpoint. Any URBs for the endpoint
  * must already be dequeued. */
+#define _WAIT_FOR_EMPTY 1
 void dwc_otg_hcd_endpoint_disable(struct usb_hcd *_hcd,
 				  struct usb_host_endpoint *_ep)
 {
 	dwc_otg_qh_t *qh;
 	dwc_otg_hcd_t *dwc_otg_hcd = hcd_to_dwc_otg_hcd(_hcd);
+#ifdef _WAIT_FOR_EMPTY
+	unsigned long flags;
+	int retry = 0;
+#endif
 
 	DWC_DEBUGPL(DBG_HCD,
 		    "DWC OTG HCD EP DISABLE: _bEndpointAddress=0x%02x, "
 		    "endpoint=%d\n", _ep->desc.bEndpointAddress,
 		    dwc_ep_addr_to_endpoint(_ep->desc.bEndpointAddress));
+#ifdef _WAIT_FOR_EMPTY
+rescan:
+	//SPIN_LOCK_IRQSAVE(&dwc_otg_hcd->lock, flags);
+	qh = (dwc_otg_qh_t *)(_ep->hcpriv);
+	if (!qh)
+		goto done;
+
+	/** Check that the QTD list is really empty */
+	if (!list_empty(&qh->qtd_list)) {
+		if (retry++ < 250) {
+			//SPIN_UNLOCK_IRQRESTORE(&dwc_otg_hcd->lock, flags);
+			schedule_timeout_uninterruptible(1);
+			goto rescan;
+		}
+
+		DWC_WARN("DWC OTG HCD EP DISABLE:"
+			 " QTD List for this endpoint is not empty\n");
+	}
+
+	dwc_otg_hcd_qh_remove_and_free(dwc_otg_hcd, qh);
+	_ep->hcpriv = NULL;
+done:
+	//SPIN_UNLOCK_IRQRESTORE(&dwc_otg_hcd->lock, flags);
+#else
 
 	qh = (dwc_otg_qh_t *) (_ep->hcpriv);
 	if (qh != NULL) {
@@ -1169,7 +1199,7 @@ void dwc_otg_hcd_endpoint_disable(struct usb_hcd *_hcd,
 		dwc_otg_hcd_qh_remove_and_free(dwc_otg_hcd, qh);
 		_ep->hcpriv = NULL;
 	}
-
+#endif
 	return;
 }
 
@@ -2443,7 +2473,12 @@ static int queue_transaction(dwc_otg_hcd_t * _hcd,
 
 	if (!_hcd || !_hc)
 		return 0;
-
+	if(_hc->qh->do_split){
+		_hcd->split_frm_num++;
+		if(_hcd->split_frm_num == 0xffffffff)
+			_hcd->split_frm_num = 0;
+		_hc->qh->current_num = _hcd->split_frm_num;
+	}
 	if (_hcd->core_if->dma_enable) {
 		if (!_hc->xfer_started) {
 			dwc_otg_hc_start_transfer(_hcd->core_if, _hc);
