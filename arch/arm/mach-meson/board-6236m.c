@@ -37,6 +37,12 @@
 #include <mach/gpio.h>
 #include "board-6236m.h"
 #include <mach/clk_set.h>
+#if defined(CONFIG_TOUCHSCREEN_ADS7846)
+#include <linux/spi/spi.h>
+#include <linux/spi/spi_gpio.h>
+#include <linux/spi/ads7846.h>
+//#include <linux/gpio.h>
+#endif
 
 #if defined(CONFIG_JPEGLOGO)
 static struct resource jpeglogo_resources[] = {
@@ -263,6 +269,126 @@ static struct platform_device audiodsp_device = {
 };
 #endif
 
+#if defined(CONFIG_TOUCHSCREEN_ADS7846)
+#define SPI_0		0
+#define SPI_1		1
+#define SPI_2		2
+
+// GPIOD_19 (pin208)
+#define GPIO_SPI_SCK		((GPIOD_bank_bit2_24(19)<<16) |GPIOD_bit_bit2_24(19)) 
+// GPIOD_20 (pin209)
+#define GPIO_SPI_MOSI		((GPIOD_bank_bit2_24(20)<<16) |GPIOD_bit_bit2_24(20)) 
+// GPIOD_21(pin210)
+#define GPIO_SPI_MISO		((GPIOD_bank_bit2_24(21)<<16) |GPIOD_bit_bit2_24(21))
+// GPIOD_18 (pin207)
+#define GPIO_TSC2046_CS	((GPIOD_bank_bit2_24(18)<<16) |GPIOD_bit_bit2_24(18)) 
+// GPIOC_10 (pin171)
+#define GPIO_TSC2046_PENDOWN	((GPIOC_bank_bit0_26(10)<<16) |GPIOC_bit_bit0_26(10)) 
+
+static const struct spi_gpio_platform_data spi_gpio_pdata = {
+	.sck = GPIO_SPI_SCK,
+	.mosi = GPIO_SPI_MOSI,
+	.miso = GPIO_SPI_MISO,
+	.num_chipselect = 1,
+};
+
+static struct platform_device spi_gpio = {
+	.name       = "spi_gpio",
+	.id         = SPI_2,
+	.dev = {
+		.platform_data = (void *)&spi_gpio_pdata,
+	},
+};
+
+static const struct ads7846_platform_data ads7846_pdata = {
+	.model = 7846,
+	.vref_delay_usecs = 100,
+	.vref_mv = 2500,
+	.keep_vref_on = false,
+	.swap_xy = 0,
+	.settle_delay_usecs = 10,
+	.penirq_recheck_delay_usecs = 0,
+	.x_plate_ohms  =500,
+	.y_plate_ohms = 500,
+
+	.x_min = 0,
+	.x_max = 0xfff,
+	.y_min = 0,
+	.y_max = 0xfff,
+	.pressure_min = 0,
+	.pressure_max = 0xfff,
+
+	.debounce_max = 0,
+	.debounce_tol = 0,
+	.debounce_rep = 0,
+	
+	.gpio_pendown = GPIO_TSC2046_PENDOWN,
+	.get_pendown_state =NULL,
+	
+	.filter_init = NULL,
+	.filter = NULL,
+	.filter_cleanup = NULL,
+	.wait_for_sync = NULL,
+	.wakeup = false,
+};
+
+static struct spi_board_info spi_board_info_list[] = {
+	[0] = {
+		.modalias = "ads7846",
+		.platform_data = (void *)&ads7846_pdata,
+		.controller_data = (void *)GPIO_TSC2046_CS,
+		.irq = INT_GPIO_0,
+		.max_speed_hz = 500000,
+		.bus_num = SPI_2,
+		.chip_select = 0,
+		.mode = SPI_MODE_0,
+	},
+};
+
+int ads7846_init_gpio(void)
+{
+/* memson
+	Bit(s)	Description
+	256-105	Unused
+	104		JTAG_TDO
+	103		JTAG_TDI
+	102		JTAG_TMS
+	101		JTAG_TCK
+	100		gpioA_23
+	99		gpioA_24
+	98		gpioA_25
+	97		gpioA_26
+	98-75	gpioE[21:0]
+	75-50	gpioD[24:0]
+	49-23	gpioC[26:0]
+	22-15	gpioB[22;15]
+	14-0		gpioA[14:0]
+ */
+
+	/* set input mode */
+	gpio_direction_input(GPIO_TSC2046_PENDOWN);
+	/* set gpio interrupt #0 source=GPIOC_10, and triggered by falling edge(=1) */
+	gpio_enable_edge_int(33, 1, 0);
+
+	// reg12 bit22,23,24,25
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_12, 0xf<<22);
+	// reg7 bit19
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_7, 0x1<<19);
+	// reg7 bit14,15,16
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_7, 0x7<<14);
+	// reg5 bit17
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_5, 0x1<<17);
+	// reg5 bit12
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_5, 0x1<<12);
+	// reg5 bit4,5,6,7
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_5, 0xf<<4);
+	// reg8 bit25,26,27,28
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, 0xf<<25);
+
+	return 0;
+}
+#endif
+
 
 static struct platform_device __initdata *platform_devs[] = {
     #if defined(CONFIG_JPEGLOGO)
@@ -288,6 +414,9 @@ static struct platform_device __initdata *platform_devs[] = {
     #if defined(CONFIG_KEYPADS_AM)||defined(CONFIG_VIRTUAL_REMOTE)||defined(CONFIG_KEYPADS_AM_MODULE) 
 		&input_device,
     #endif	
+#if defined(CONFIG_TOUCHSCREEN_ADS7846)
+	&spi_gpio,
+#endif
 };
 
 static void __init eth_pinmux_init(void)
@@ -315,6 +444,16 @@ static void __init device_pinmux_init(void )
 	set_gpio_mode(PREG_EGPIO,1<<4,GPIO_OUTPUT_MODE);
 	set_gpio_val(PREG_EGPIO,1<<4,1);
 	uart_set_pinmux(UART_PORT_A,UART_A_GPIO_C21_D22);
+#if 0
+#define GPIO_LED_BL_PWM	((GPIOA_bank_bit(8) << 16) | GPIOA_bit_bit0_14(8))	//pin31
+#define GPIO_EN_5V		((GPIOA_bank_bit(6) << 16) | GPIOA_bit_bit0_14(6))	//pin28
+#define GPIO_LCD_PWR_EN	((GPIOC_bank_bit0_26(4) << 16) | GPIOC_bit_bit0_26(4)) //pin165
+	gpio_direction_output(GPIO_LED_BL_PWM, 1);
+	// enable 5v
+	gpio_direction_output(GPIO_EN_5V, 1);
+	// lcd power on
+	gpio_direction_output(GPIO_LCD_PWR_EN, 0);
+#endif	
 	/*pinmux of eth*/
 	eth_pinmux_init();
 }
@@ -346,6 +485,10 @@ static __init void m1_init_machine(void)
 #ifdef CONFIG_SATA_DWC_AHCI
 	set_sata_phy_clk(SATA_PHY_CLOCK_SEL_DEMOD_PLL);
 	lm_device_register(&sata_ld);
+#endif
+#if defined(CONFIG_TOUCHSCREEN_ADS7846)
+	ads7846_init_gpio();
+	spi_register_board_info(spi_board_info_list, ARRAY_SIZE(spi_board_info_list));
 #endif
 }
 
