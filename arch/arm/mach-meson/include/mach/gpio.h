@@ -55,12 +55,45 @@ unsigned long  get_gpio_val(gpio_bank_t bank,int bit);
 #define GPIOC_bit_bit0_26(bit)			(bit)		
 
 #define GPIOD_bank_bit2_24(bit)		(PREG_GGPIO)
-#define GPIOD_bit_bit2_24(bit)			(bit-1)		
+#define GPIOD_bit_bit2_24(bit)			(bit-2)		
 
 #define GPIOE_bank_bit0_15(bit)		(PREG_HGPIO)
 #define GPIOE_bit_bit0_15(bit)			(bit)		
 
 #define GPIOE_bank_bit16_21(bit)		(PREG_HGPIO)
 #define GPIOE_bit_bit16_21(bit)			(bit)		
+
+/**
+ * enable gpio edge interrupt
+ *	
+ * @param [in] pin  index number of the chip, start with 0 up to 255 
+ * @param [in] flag rising(0) or falling(1) edge 
+ * @param [in] group  this interrupt belong to which interrupt group  from 0 to 7
+ */
+extern void gpio_enable_edge_int(int pin , int flag, int group);
+/**
+ * enable gpio level interrupt
+ *	
+ * @param [in] pin  index number of the chip, start with 0 up to 255 
+ * @param [in] flag high(0) or low(1) level 
+ * @param [in] group  this interrupt belong to which interrupt group  from 0 to 7
+ */
+extern void gpio_enable_level_int(int pin , int flag, int group);
+
+/**
+ * enable gpio interrupt filter
+ *
+ * @param [in] filter from 0~7(*222ns)
+ * @param [in] group  this interrupt belong to which interrupt group  from 0 to 7
+ */
+extern void gpio_enable_int_filter(int filter, int group);
+
+extern int gpio_is_valid(int number);
+extern int gpio_request(unsigned gpio, const char *label);
+extern void gpio_free(unsigned gpio);
+extern int gpio_direction_input(unsigned gpio);
+extern int gpio_direction_output(unsigned gpio, int value);
+extern void gpio_set_value(unsigned gpio, int value);
+extern int gpio_get_value(unsigned gpio);
 
 #endif
