@@ -33,12 +33,11 @@
 #include <mach/pinmux.h>
 
 /*
-此处屏参用于Innolux AT080TN42
-*/
-#define LCD_WIDTH       800
-#define LCD_HEIGHT      600
+For Ramos 6236M, Innolux AT070TN93 V.2 */ 
+#define LCD_WIDTH       800 
+#define LCD_HEIGHT      480
 #define MAX_WIDTH       1056
-#define MAX_HEIGHT      631
+#define MAX_HEIGHT      525
 #define VIDEO_ON_LINE   17
 
 static tcon_conf_t tcon_config =
@@ -48,7 +47,7 @@ static tcon_conf_t tcon_config =
     .max_width  = MAX_WIDTH,
     .max_height = MAX_HEIGHT,
     .video_on_line = VIDEO_ON_LINE,
-    .pll_ctrl = 0x063c,
+    .pll_ctrl = 0x0632,
     .clk_ctrl = 0x1fc1,
     .gamma_cntl_port = (1 << LCD_GAMMA_EN) | (0 << LCD_GAMMA_RVS_OUT) | (1 << LCD_GAMMA_VCOM_POL),
     .gamma_vcom_hswitch_addr = 0,
@@ -64,13 +63,13 @@ static tcon_conf_t tcon_config =
     .sth2_he_addr = 0,
     .sth2_vs_addr = 0,
     .sth2_ve_addr = 0,
-    .oeh_hs_addr = 50,
-    .oeh_he_addr = 66,
-    .oeh_vs_addr = 0,
-    .oeh_ve_addr = MAX_HEIGHT - 1,
-    .vcom_hswitch_addr = 5,
+    .oeh_hs_addr = 60,
+    .oeh_he_addr = 60+LCD_WIDTH-1,
+    .oeh_vs_addr = VIDEO_ON_LINE,
+    .oeh_ve_addr = VIDEO_ON_LINE+LCD_HEIGHT-1,
+    .vcom_hswitch_addr = 0,
     .vcom_vs_addr = 0,
-    .vcom_ve_addr = MAX_HEIGHT - 1,
+    .vcom_ve_addr = 0,
     .cpv1_hs_addr = 40,
     .cpv1_he_addr = 560,
     .cpv1_vs_addr = 0,
@@ -103,7 +102,7 @@ static tcon_conf_t tcon_config =
     .tcon_misc_sel_addr = (1<<LCD_STV1_SEL) | (1<<LCD_STV2_SEL),
     .dual_port_cntl_addr = (1<<LCD_TTL_SEL) | (1<<LCD_ANALOG_SEL_CPH3) | (1<<LCD_ANALOG_3PHI_CLK_SEL),
     .flags = 0,
-    .screen_width = 4,
+    .screen_width = 5,
     .screen_height = 3,
     .sync_duration_num = 89,
     .sync_duration_den = 2,
@@ -140,36 +139,53 @@ static void t13_setup_gama_table(tcon_conf_t *pConf)
 
 void power_on_backlight(void)
 {
-    /* Pull GPIO A10 to high */
-//    GPIOA_MODE(10, GPIO_OUTPUT_MODE);
-//    GPIOA_SET_PIN(10, PIN_UP);
+    /* PIN31, GPIOA_8, Pull high, BL_PWM Enable*/
+    set_gpio_val(GPIOA_bank_bit(8), GPIOA_bit_bit0_14(8), 1);
+    set_gpio_mode(GPIOA_bank_bit(8), GPIOA_bit_bit0_14(8), GPIO_OUTPUT_MODE);
+   
+    /* PIN28, GPIOA_6, Pull high, For En_5V */
+    set_gpio_val(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), 1);
+    set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);
 }
 
 void power_off_backlight(void)
 {
-    /* Pull GPIO A10 to low */
-//    GPIOA_MODE(10, GPIO_OUT_MODE);
-//    GPIOA_SET_PIN(10, PIN_DOWN);
+    /* PIN31, GPIOA_8, Pull low, BL_PWM Disable*/ 
+    set_gpio_val(GPIOA_bank_bit(8), GPIOA_bit_bit0_14(8), 0);
+    set_gpio_mode(GPIOA_bank_bit(8), GPIOA_bit_bit0_14(8), GPIO_OUTPUT_MODE);
+
+    /* PIN28, GPIOA_6, Pull low, For En_5v */
+    set_gpio_val(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), 0);
+    set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);
 }
 
 static void power_on_lcd(void)
 {
-    /* Pull GPIOC_13 to high */
-    CLEAR_CBUS_REG_MASK(PREG_FGPIO_EN_N,1<<13);
-    SET_CBUS_REG_MASK(PREG_FGPIO_O,1<<13);
+    /* PIN165, GPIOC_4, Pull low, For LCD_3.3V */
+    set_gpio_val(GPIOC_bank_bit0_26(4), GPIOC_bit_bit0_26(4), 0);
+    set_gpio_mode(GPIOC_bank_bit0_26(4), GPIOC_bit_bit0_26(4), GPIO_OUTPUT_MODE);
+
+    /* PIN172, GPIOC_11, Pull high, For AVDD */
+    set_gpio_val(GPIOC_bank_bit0_26(11), GPIOC_bit_bit0_26(11), 1);
+    set_gpio_mode(GPIOC_bank_bit0_26(11), GPIOC_bit_bit0_26(11), GPIO_OUTPUT_MODE);
 }
 
 static void power_off_lcd(void)
 {
-    /* Pull GPIOC_13 to low */
-    CLEAR_CBUS_REG_MASK(PREG_FGPIO_EN_N,1<<13);
-    CLEAR_CBUS_REG_MASK(PREG_FGPIO_O,1<<13);
+    /* PIN172, GPIOC_11, Pull low, For AVDD */
+    set_gpio_val(GPIOC_bank_bit0_26(11), GPIOC_bit_bit0_26(11), 0);
+    set_gpio_mode(GPIOC_bank_bit0_26(11), GPIOC_bit_bit0_26(11), GPIO_OUTPUT_MODE);
+    /* PIN165, GPIOC_4, Pull high, For LCD_3.3V */
+    set_gpio_val(GPIOC_bank_bit0_26(4), GPIOC_bit_bit0_26(4), 1);
+    set_gpio_mode(GPIOC_bank_bit0_26(4), GPIOC_bit_bit0_26(4), GPIO_OUTPUT_MODE);
 }
 
 static void set_tcon_pinmux(void)
 {
     /* TCON control pins pinmux */
-    set_mio_mux(0,0x7f<<10);
+    /* GPIOA_7 --> LCD_Clk, GPIOA_2 --> TCON_OEH, */
+    set_mio_mux(0, 1<<9);
+    set_mio_mux(0, 1<<14);
 
     /* RGB data pins */
     set_mio_mux(4,(1<<0)|(1<<2)|(1<<4));
@@ -177,6 +193,8 @@ static void set_tcon_pinmux(void)
 
 static void t13_io_init(void)
 {
+    printk("\n\nT13 LCD Init.\n\n");
+
     set_tcon_pinmux();
 
     power_on_backlight();
@@ -208,7 +226,8 @@ static void __exit t13_exit(void)
     platform_device_unregister(&tcon_dev);
 }
 
-module_init(t13_init);
+subsys_initcall(t13_init);
+//module_init(t13_init);
 module_exit(t13_exit);
 
 MODULE_DESCRIPTION("AMLOGIC T13 LCD panel driver");

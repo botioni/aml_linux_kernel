@@ -335,6 +335,7 @@ void osd_setup(struct osd_ctl_s *osd_ctl,
     	CLEAR_MPEG_REG_MASK(VPP_MISC, VPP_PREBLEND_EN |
                                   VPP_PRE_FG_OSD2 |
                                   VPP_POST_FG_OSD2);
+	WRITE_MPEG_REG(VPP_POSTBLEND_H_SIZE, 0x320);//800LCD is 0x320;1024 LCD is 0x400
 }
 
 void osd_setpal_hw(unsigned regno,
