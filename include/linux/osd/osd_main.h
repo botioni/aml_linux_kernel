@@ -61,10 +61,7 @@ static struct fb_var_screeninfo mydef_var[] = {
 	.vmode           = FB_VMODE_NONINTERLACED,
 	.rotate          = 0,
 	
-}
-
-#ifdef  CONFIG_FB_OSD2_ENABLE
-,
+},
 {
 	.xres            = 720,
 	.yres            = 576,
@@ -94,7 +91,6 @@ static struct fb_var_screeninfo mydef_var[] = {
 	.vmode           = FB_VMODE_NONINTERLACED,
 	.rotate          = 0,
 }
-#endif 
 };
 
 
