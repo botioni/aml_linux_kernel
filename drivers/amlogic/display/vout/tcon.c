@@ -243,7 +243,7 @@ static int lcd_set_current_vmode(vmode_t mode)
 {
 	if (mode != VMODE_LCD)
 		return -EINVAL;
-
+	WRITE_MPEG_REG(VPP_POSTBLEND_H_SIZE, 0x320);
 	return 0;
 }
 
@@ -341,7 +341,11 @@ static void __exit tcon_exit(void)
     platform_driver_unregister(&tcon_driver);
 }
 
+#if defined(CONFIG_JPEGLOGO) || defined(CONFIG_AM_LOGO)
+subsys_initcall(tcon_init);
+#else
 module_init(tcon_init);
+#endif
 module_exit(tcon_exit);
 
 MODULE_DESCRIPTION("AMLOGIC TCON controller driver");
