@@ -467,6 +467,14 @@ static int apollofb_pan_display(struct fb_var_screeninfo *var,
 	return 0;
 }
 
+#if defined(CONFIG_FB_OSD2_CURSOR)
+static int apollofb_cursor(struct fb_info *fbi, struct fb_cursor *var)
+{
+    apollodev_cursor((struct myfb_dev *)fbi->par, var->hot.x, var->hot.y);
+    return 0;
+}
+#endif
+
 static int apollofb_sync(struct fb_info *info)
 {
      	
@@ -486,6 +494,8 @@ static struct fb_ops apollofb_ops = {
     .fb_imageblit   = cfb_imageblit,
 #ifdef CONFIG_FB_SOFT_CURSOR
     .fb_cursor      = soft_cursor,
+#elif defined(CONFIG_FB_OSD2_CURSOR)
+    .fb_cursor      = apollofb_cursor,
 #endif
     .fb_ioctl       = apollofb_ioctl,
     .fb_open      = apollofb_open,

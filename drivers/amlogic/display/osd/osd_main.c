@@ -278,31 +278,40 @@ static int osd_pan_display(struct fb_var_screeninfo *var,
 	return 0;
 }
 
+#if defined(CONFIG_FB_OSD2_CURSOR)
+static int osd_cursor(struct fb_info *fbi, struct fb_cursor *var)
+{
+	osddev_cursor((struct myfb_dev *)fbi->par, var->hot.x, var->hot.y);
+	return 0;
+}
+#endif
+
 static int osd_sync(struct fb_info *info)
 {
-     	
-     	return 0;
+	return 0;
 }
 
 
 /* fb_ops structures */
 static struct fb_ops osd_ops = {
-    	.owner          = THIS_MODULE,
-    	.fb_check_var   = osd_check_var,
-    	.fb_set_par     = osd_set_par,
-    	.fb_setcolreg   = osd_setcolreg,
-    	.fb_setcmap     = osd_setcmap,
-    	.fb_fillrect    = cfb_fillrect,
-    	.fb_copyarea    =  cfb_copyarea,
-    	.fb_imageblit   = cfb_imageblit,
+	.owner          = THIS_MODULE,
+	.fb_check_var   = osd_check_var,
+	.fb_set_par     = osd_set_par,
+	.fb_setcolreg   = osd_setcolreg,
+	.fb_setcmap     = osd_setcmap,
+	.fb_fillrect    = cfb_fillrect,
+	.fb_copyarea    = cfb_copyarea,
+	.fb_imageblit   = cfb_imageblit,
 #ifdef CONFIG_FB_SOFT_CURSOR
-    	.fb_cursor      = soft_cursor,
+	.fb_cursor      = soft_cursor,
+#elif defined(CONFIG_FB_OSD2_CURSOR)
+	.fb_cursor      = osd_cursor,
 #endif
-    	.fb_ioctl       = osd_ioctl,
-    	.fb_open      = osd_open,
-    	.fb_blank       = osd_blank,
-    	.fb_pan_display = osd_pan_display,
-	.fb_sync	    = osd_sync,
+	.fb_ioctl       = osd_ioctl,
+	.fb_open        = osd_open,
+	.fb_blank       = osd_blank,
+	.fb_pan_display = osd_pan_display,
+	.fb_sync        = osd_sync,
 };
 
 int osd_notify_callback(struct notifier_block *block, unsigned long cmd , void *para)

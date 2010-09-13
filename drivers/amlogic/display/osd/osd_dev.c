@@ -139,6 +139,16 @@ void osddev_pan_display(struct myfb_dev *fbdev)
 
     fbdev_unlock(fbdev);
 }
+
+#if defined(CONFIG_FB_OSD2_CURSOR)
+void osddev_cursor(struct myfb_dev *fbdev, u16 x, u16 y)
+{
+    fbdev_lock(fbdev);
+    osd_cursor_hw(x, y, fbdev->fb_info->node);
+    fbdev_unlock(fbdev);
+}
+#endif
+
 void  osddev_set_colorkey(u32 index,u32 bpp,u32 colorkey )
 {
 	osd_set_colorkey_hw( index, bpp, colorkey );

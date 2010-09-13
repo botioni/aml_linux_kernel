@@ -19,6 +19,13 @@ config FB_OSD2_ENABLE
 	depends on  FB_AM
 	help  
 		if enable osd2 then we will have two OSD op layer
-	
-		
+
+
+config FB_OSD2_CURSOR
+	bool "Android OSD2 cursor support"
+	depends on FB_OSD2_ENABLE
+	default n
+	help
+		Enables support for a mouse cursor using OSD2.
+
 endmenu	
