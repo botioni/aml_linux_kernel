@@ -265,7 +265,7 @@ void Edid_ParseCEADetailedTimingDescriptors(HDMI_TX_INFO_t * info, unsigned char
 int Edid_Parse_check_HDMI_VSDB(HDMI_TX_INFO_t * info, unsigned char *buff)
 {
 	unsigned char  VSpecificBoundary, BlockAddr,  len;
-	int temp_addr;
+	int temp_addr=0;
 	VSpecificBoundary = buff[2] ;
 	if(VSpecificBoundary < 4)
 	{
@@ -943,10 +943,10 @@ int hdmitx_edid_parse(hdmitx_dev_t* hdmitx_device)
             }
             else
             {
-                Edid_MonitorCapable861(&hdmitx_device->hdmi_info, &EDID_buf[i * 128 + 3]);
+                Edid_MonitorCapable861(&hdmitx_device->hdmi_info, EDID_buf[i * 128 + 3]);
                 ret_val = Edid_ParsingCEADataBlockCollection(&hdmitx_device->hdmi_info, &EDID_buf[i * 128]);
                 Edid_ParseCEADetailedTimingDescriptors(&hdmitx_device->hdmi_info, 5, EDID_buf[i * 128 + 2], &EDID_buf[i * 128]);
-                if(&hdmitx_device->hdmi_info.output_state != CABLE_PLUGIN_DVI_OUT)
+                if(hdmitx_device->hdmi_info.output_state != CABLE_PLUGIN_DVI_OUT)
                     hdmitx_device->hdmi_info.output_state = CABLE_PLUGIN_HDMI_OUT;
 
             }
@@ -982,7 +982,7 @@ static struct{
     {"1080P24", HDMI_1080p24},
 };    
 
-HDMI_Video_Codes_t hdmitx_edid_get_VIC(hdmitx_dev_t* hdmitx_device, char* disp_mode, char force_flag)
+HDMI_Video_Codes_t hdmitx_edid_get_VIC(hdmitx_dev_t* hdmitx_device, const char* disp_mode, char force_flag)
 {
     rx_cap_t* pRXCap = &(hdmitx_device->RXCap);
 	  int  i,j,count=ARRAY_SIZE(dispmode_VIC_tab);

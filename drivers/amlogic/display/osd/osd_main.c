@@ -49,11 +49,7 @@
 
 MODULE_AMLOG(AMLOG_DEFAULT_LEVEL, 0, LOG_LEVEL_DESC, LOG_MASK_DESC);
 
-#ifdef CONFIG_FB_OSD2_ENABLE
 static myfb_dev_t  *gp_fbdev_list[OSD_COUNT]={NULL,NULL};
-#else
-static myfb_dev_t  *gp_fbdev_list[OSD_COUNT]={NULL};
-#endif
 
 static DEFINE_MUTEX(dbg_mutex);
 
@@ -376,9 +372,12 @@ osd_probe(struct platform_device *pdev)
 
    	if (NULL==init_logo_obj )
     	{
+#ifdef CONFIG_AM_TCON_OUTPUT
+		set_current_vmode(VMODE_LCD);
+#else
     		set_current_vmode(VMODE_720P);	
+#endif
     	}
-
     	for (index=0;index<OSD_COUNT;index++)
     	{
     		//platform resource 
@@ -389,6 +388,7 @@ osd_probe(struct platform_device *pdev)
 			goto failed2;
 		}
 		//if we have no resource then no need to create this device.
+		amlog_level(LOG_LEVEL_HIGH,"[osd%d] 0x%x-0x%x\n",index,mem->start,mem->end);
 		if (!mem || mem->start== 0 || mem->end==0 || mem->start==mem->end)
 		{
 			continue ;
@@ -424,7 +424,7 @@ osd_probe(struct platform_device *pdev)
 		}
 	
 		//clear framebuffer memory
-		amlog_mask_level(LOG_MASK_INIT,LOG_LEVEL_1,"Frame buffer memory assigned at phy:0x%08x, vir:0x%p, size=%dK\n",
+		 amlog_level(LOG_LEVEL_HIGH,"Frame buffer memory assigned at phy:0x%08x, vir:0x%p, size=%dK\n",
 	    	fbdev->fb_mem_paddr, fbdev->fb_mem_vaddr, fbdev->fb_len >> 10);
 		 
 
@@ -437,7 +437,7 @@ osd_probe(struct platform_device *pdev)
 			mydef_var[index].xres_virtual=init_logo_obj->dev->vinfo->width;
 			mydef_var[index].yres_virtual=init_logo_obj->dev->vinfo->height<<1;//logo always use double buffer
 			mydef_var[index].bits_per_pixel=bpp ;
-			amlog_mask_level(LOG_MASK_INIT,LOG_LEVEL_1,"init fbdev bpp is :%d\r\n",mydef_var[index].bits_per_pixel);
+			amlog_level(LOG_LEVEL_HIGH,"init fbdev bpp is :%d\r\n",mydef_var[index].bits_per_pixel);
 			
 			if(mydef_var[index].bits_per_pixel>32) 
 			{
@@ -487,7 +487,7 @@ osd_probe(struct platform_device *pdev)
 
 	index=0;
 
-	amlog_mask_level(LOG_MASK_INIT,LOG_LEVEL_LOW,"osd probe ok  \r\n");
+	amlog_level(LOG_LEVEL_HIGH,"osd probe ok  \r\n");
 	return 0;
 
 failed4:

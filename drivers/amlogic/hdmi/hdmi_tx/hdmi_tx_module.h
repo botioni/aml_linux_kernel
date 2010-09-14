@@ -30,9 +30,9 @@ typedef struct rx_cap_
     unsigned char AUD_count;
     unsigned char RxSpeakerAllocation;
     /*vendor*/    
-    unsigned long IEEEOUI;
-    unsigned long ColorDeepSupport;
-    unsigned long Max_TMDS_Clock; 
+    unsigned int IEEEOUI;
+    unsigned int ColorDeepSupport;
+    unsigned int Max_TMDS_Clock; 
     
 }rx_cap_t;
 
@@ -50,7 +50,7 @@ typedef struct hdmi_tx_dev_s {
         int (*SetDispMode)(Hdmi_tx_video_para_t *param);
         int (*SetAudMode)(struct hdmi_tx_dev_s* hdmitx_device, Hdmi_tx_audio_para_t* audio_param);
         void (*SetupIRQ)(struct hdmi_tx_dev_s* hdmitx_device);
-        void (*DebugFun)(unsigned char * buf);
+        void (*DebugFun)(const char * buf);
     }HWOp;
     
     //wait_queue_head_t   wait_queue;            /* wait queues */
@@ -68,7 +68,7 @@ typedef struct hdmi_tx_dev_s {
     
 }hdmitx_dev_t;
 
-#define HDMITX_VER "2010Sep08b"
+#define HDMITX_VER "2010Sep10a"
 /************************************
 *    hdmitx protocol level interface
 *************************************/
@@ -76,7 +76,7 @@ extern void hdmitx_init_parameters(HDMI_TX_INFO_t *info);
 
 extern int hdmitx_edid_parse(hdmitx_dev_t* hdmitx_device);
 
-HDMI_Video_Codes_t hdmitx_edid_get_VIC(hdmitx_dev_t* hdmitx_device,char* disp_mode, char force_flag);
+HDMI_Video_Codes_t hdmitx_edid_get_VIC(hdmitx_dev_t* hdmitx_device,const char* disp_mode, char force_flag);
 
 extern int hdmitx_edid_dump(hdmitx_dev_t* hdmitx_device, char* buffer, int buffer_len);
 
