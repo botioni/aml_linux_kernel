@@ -66,7 +66,7 @@ int audiodsp_start(void)
 	stop_audiodsp_monitor(priv);
 	dsp_stop(priv);
 	ret=dsp_start(priv,pmcode);
-	if(ret==0)
+	if(ret==0){
  		start_audiodsp_monitor(priv);
 
 #ifdef CONFIG_AM_VDEC_REAL
@@ -82,6 +82,7 @@ int audiodsp_start(void)
 		    dsp_mailbox_send(priv, 1, M2B_IRQ4_AUDIO_INFO, 0, (const char*)audio_info, sizeof(audio_info));
     }
 #endif
+     }
 	return ret;
 }
 

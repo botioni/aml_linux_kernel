@@ -53,20 +53,27 @@ static void	enable_dsp(int flag)
 
 void halt_dsp( struct audiodsp_priv *priv)
 {
+    int i;
 	if(DSP_RD(DSP_STATUS)==DSP_STATUS_RUNING)
 		{
 		dsp_mailbox_send(priv,1,M2B_IRQ0_DSP_SLEEP,0,0,0);
-		msleep(1);/*waiting cpu to self halted*/
-		}
+        for(i = 0; i< 100;i++)
+            {
+                if(DSP_RD(DSP_STATUS)== DSP_STATUS_SLEEP)
+                    break;
+		        msleep(1);/*waiting arc2 sleep*/
+            }
+        if(i == 100)
+           DSP_PRNT("warning: dsp is not sleeping when call dsp_stop\n"); 
+       }
     if(!priv->dsp_is_started){
 
 	    enable_dsp(0);/*hardware halt the cpu*/
         DSP_WD(DSP_STATUS, DSP_STATUS_HALT);
         priv->last_stream_fmt=-1;/*mask the stream format is not valid*/
-    }
+    }   
     else
         DSP_WD(DSP_STATUS, DSP_STATUS_SLEEP);
-
 	
 }
 void reset_dsp( struct audiodsp_priv *priv)
