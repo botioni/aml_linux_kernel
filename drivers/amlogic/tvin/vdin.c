@@ -29,14 +29,15 @@
 #include <asm/uaccess.h>
 
 /* Amlogic headers */
+#include <linux/amports/canvas.h>
 #include <mach/am_regs.h>
 #include "../amports/vframe.h"
-#include "../amports/vframe_provider.h"
 
 /* TVIN headers */
 #include "tvin_global.h"
 #include "vdin_regs.h"
 #include "vdin.h"
+#include "vdin_vf.h"
 #include "bt656_601_in.h"
 
 
@@ -86,16 +87,24 @@ const static char vdin_irq_id[] = "vdin_irq_id";
 
 static vdin_dev_t *vdin_devp[VDIN_COUNT];
 
-extern void canvas_config(u32 index, ulong addr, u32 width,
-                          u32 height, u32 wrap, u32 blkmode);
+static inline u32 index2canvas(u32 index)
+{
+    const u32 canvas_tab[8] = {
+        0x000070, 0x000071,0x000072, 0x000073,0x000074, 0x000075,0x000076, 0x000077
+    };
 
+    return canvas_tab[index];
+}
+
+
+#if 0
 void set_isr_func(vdin_dev_t * devp, irqreturn_t (*func)(int irq, void *dev_id))
 {
     devp->vdin_isr = func;
     return;
 }
 EXPORT_SYMBOL(set_isr_func);
-
+#endif
 
 union vdin_hist_u           vdin_hist;
 struct vdin_bbar_info_s     vdin_bbar;
@@ -187,16 +196,16 @@ static inline void vdin_set_afifo(enum vdin_src_e src)
         case VDIN_SRC_BT656IN:
             WRITE_CBUS_REG_BITS(VDIN_ASFIFO_CTRL0, 1, ASFIFO1_DE_EN_BIT,
                 ASFIFO1_DE_EN_WID);
-            WRITE_CBUS_REG_BITS(VDIN_ASFIFO_CTRL0, 1, ASFIFO2_GO_FLD_EN_BIT,
-                ASFIFO2_GO_FLD_EN_WID);
-            WRITE_CBUS_REG_BITS(VDIN_ASFIFO_CTRL0, 1, ASFIFO2_GO_LN_EN_BIT,
-                ASFIFO2_GO_LN_EN_WID);
-            WRITE_CBUS_REG_BITS(VDIN_ASFIFO_CTRL0, 0, ASFIFO2_NEG_ACTIVE_IN_VS_BIT,
-                ASFIFO2_NEG_ACTIVE_IN_VS_WID);
-            WRITE_CBUS_REG_BITS(VDIN_ASFIFO_CTRL0, 0, ASFIFO2_NEG_ACTIVE_IN_HS_BIT,
-                ASFIFO2_NEG_ACTIVE_IN_HS_WID);
-            WRITE_CBUS_REG_BITS(VDIN_ASFIFO_CTRL0, 1, ASFIFO2_VS_SOFT_RST_FIFO_EN_BIT,
-                ASFIFO2_VS_SOFT_RST_FIFO_EN_WID);
+            WRITE_CBUS_REG_BITS(VDIN_ASFIFO_CTRL0, 1, ASFIFO1_GO_FLD_EN_BIT,
+                ASFIFO1_GO_FLD_EN_WID);
+            WRITE_CBUS_REG_BITS(VDIN_ASFIFO_CTRL0, 1, ASFIFO1_GO_LN_EN_BIT,
+                ASFIFO1_GO_LN_EN_WID);
+            WRITE_CBUS_REG_BITS(VDIN_ASFIFO_CTRL0, 0, ASFIFO1_NEG_ACTIVE_IN_VS_BIT,
+                ASFIFO1_NEG_ACTIVE_IN_VS_WID);
+            WRITE_CBUS_REG_BITS(VDIN_ASFIFO_CTRL0, 0, ASFIFO1_NEG_ACTIVE_IN_HS_BIT,
+                ASFIFO1_NEG_ACTIVE_IN_HS_WID);
+            WRITE_CBUS_REG_BITS(VDIN_ASFIFO_CTRL0, 1, ASFIFO1_VS_SOFT_RST_FIFO_EN_BIT,
+                ASFIFO1_VS_SOFT_RST_FIFO_EN_WID);
             break;
         default:
             break;
@@ -585,7 +594,7 @@ static inline void vdin_set_lfifo(struct vdin_lfifo_cfg_s *lfifo_cfg)
     WRITE_MPEG_REG_BITS(VDIN_LFIFO_CTRL, lfifo_cfg->len,
         LFIFO_BUF_SIZE_BIT, LFIFO_BUF_SIZE_WID);
     WRITE_MPEG_REG_BITS(VDIN_WR_CTRL, lfifo_cfg->soft_reset_en,
-        LFIFO_SOFT_RST_EN_BIT, LFIFO_SOFT_RST_EN_BIT);
+        LFIFO_SOFT_RST_EN_BIT, LFIFO_SOFT_RST_EN_WID);
 }
 
 /* function collection - OUTPUT
@@ -604,7 +613,7 @@ static inline void vdin_set_output(struct vdin_output_cfg_s *output_cfg)
     else
         temp_data = 0;
 
-    WRITE_MPEG_REG_BITS(VDIN_WR_CTRL, temp_data, WR_FMT_BIT, WR_FMT_BIT);
+    WRITE_MPEG_REG_BITS(VDIN_WR_CTRL, temp_data, WR_FMT_BIT, WR_FMT_WID);
     WRITE_MPEG_REG_BITS(VDIN_WR_CTRL, output_cfg->canvas_shadow_en,
                         WR_CANVAS_BUF_EN_BIT, WR_CANVAS_BUF_EN_WID);
     WRITE_MPEG_REG_BITS(VDIN_WR_CTRL, output_cfg->req_urgent,
@@ -721,10 +730,10 @@ static inline void vdin_get_blackbar(void)
                 BLKBAR_LEFT2_CNT_BIT, BLKBAR_LEFT2_CNT_WID);
         vdin_bbar.lright_blk_pixs = val;
         val = READ_MPEG_REG_BITS(VDIN_BLKBAR_IND_RIGHT1_CNT,
-                BLKBAR_RIGHT1_CNT_BIT, BLKBAR_RIGHT1_CNT_BIT);
+                BLKBAR_RIGHT1_CNT_BIT, BLKBAR_RIGHT1_CNT_WID);
         vdin_bbar.rleft_blk_pixs = val;
         val = READ_MPEG_REG_BITS(VDIN_BLKBAR_IND_RIGHT2_CNT,
-                BLKBAR_RIGHT2_CNT_BIT, BLKBAR_RIGHT2_CNT_BIT);
+                BLKBAR_RIGHT2_CNT_BIT, BLKBAR_RIGHT2_CNT_WID);
         vdin_bbar.rright_blk_pixs = val;
         val = READ_MPEG_REG_BITS(VDIN_BLKBAR_STATUS0, BLKBAR_TOP_POS_BIT,
             BLKBAR_TOP_POS_WID);
@@ -764,40 +773,40 @@ static inline void vdin_set_blackbar(struct vdin_bbar_cfg_s  *blkbar_cfg)
                         BLKBAR_BLK_LVL_BIT, BLKBAR_BLK_LVL_WID);
     val = (2<<(unsigned int)(blkbar_cfg->region_wid_pow))-1;
     WRITE_MPEG_REG_BITS(VDIN_BLKBAR_CTRL0, val,
-                        BLKBAR_H_WIDTH_BIT, BLKBAR_H_WIDTH_BIT);
+                        BLKBAR_H_WIDTH_BIT, BLKBAR_H_WIDTH_WID);
     val = (unsigned int)(blkbar_cfg->src);
     WRITE_MPEG_REG_BITS(VDIN_BLKBAR_CTRL0, val,
-                        BLKBAR_COMP_SEL_BIT, BLKBAR_COMP_SEL_BIT);
+                        BLKBAR_COMP_SEL_BIT, BLKBAR_COMP_SEL_WID);
     val = blkbar_cfg->stat_en;
     WRITE_MPEG_REG_BITS(VDIN_BLKBAR_CTRL0, val,
                         BLKBAR_SW_STAT_EN_BIT, BLKBAR_SW_STAT_EN_WID);
     val = (unsigned int)(blkbar_cfg->mux);
     WRITE_MPEG_REG_BITS(VDIN_BLKBAR_CTRL0, val,
-                        BLKBAR_DIN_SEL_BIT, BLKBAR_DIN_SEL_BIT);
+                        BLKBAR_DIN_SEL_BIT, BLKBAR_DIN_SEL_WID);
     val = blkbar_cfg->en;
     WRITE_MPEG_REG_BITS(VDIN_BLKBAR_CTRL0, val,
                         BLKBAR_DET_TOP_EN_BIT, BLKBAR_DET_TOP_EN_WID);
     val = blkbar_cfg->lhstart;
     WRITE_MPEG_REG_BITS(VDIN_BLKBAR_H_START_END, val,
-                        BLKBAR_HSTART_BIT, BLKBAR_HSTART_BIT);
+                        BLKBAR_HSTART_BIT, BLKBAR_HSTART_WID);
     val = blkbar_cfg->rhend;
     WRITE_MPEG_REG_BITS(VDIN_BLKBAR_H_START_END, val,
-                        BLKBAR_HEND_BIT, BLKBAR_HEND_BIT);
+                        BLKBAR_HEND_BIT, BLKBAR_HEND_WID);
     val = blkbar_cfg->vstart;
     WRITE_MPEG_REG_BITS(VDIN_BLKBAR_V_START_END, val,
-                        BLKBAR_VSTART_BIT, BLKBAR_VSTART_BIT);
+                        BLKBAR_VSTART_BIT, BLKBAR_VSTART_WID);
     val = blkbar_cfg->vend;
     WRITE_MPEG_REG_BITS(VDIN_BLKBAR_V_START_END, val,
-                        BLKBAR_VEND_BIT, BLKBAR_VEND_BIT);
+                        BLKBAR_VEND_BIT, BLKBAR_VEND_WID);
     val = blkbar_cfg->bbar_thr;
     WRITE_MPEG_REG_BITS(VDIN_BLKBAR_CNT_THRESHOLD, val,
-                        BLKBAR_CNT_TH_BIT, BLKBAR_CNT_TH_BIT);
+                        BLKBAR_CNT_TH_BIT, BLKBAR_CNT_TH_WID);
     val = blkbar_cfg->bline_thr_top;
     WRITE_MPEG_REG_BITS(VDIN_BLKBAR_ROW_TH1_TH2, val,
-                        BLKBAR_ROW_TH1_BIT, BLKBAR_ROW_TH1_BIT);
+                        BLKBAR_ROW_TH1_BIT, BLKBAR_ROW_TH1_WID);
     val = blkbar_cfg->bline_thr_btm;
     WRITE_MPEG_REG_BITS(VDIN_BLKBAR_ROW_TH1_TH2, val,
-                        BLKBAR_ROW_TH2_BIT, BLKBAR_ROW_TH2_BIT);
+                        BLKBAR_ROW_TH2_BIT, BLKBAR_ROW_TH2_WID);
 
     vdin_reset_blackbar();
 }
@@ -891,45 +900,54 @@ static int vdin_canvas_init(struct vdin_dev_s *devp)
 }
 
 
+static void set_vframe_info(vframe_t *vf)
+{
+}
+
 static irqreturn_t vdin_isr(int irq, void *dev_id)
 {
     struct vdin_dev_s *devp = (struct vdin_dev_s *)dev_id;
     u32 reg, index;
-    vframe_t info = {
-            0xffffffff,         //type
-            0xffffffff,         //type_backup
-            0,                  //blend_mode
-            0,                  //recycle_by_di_pre
-            1600,               //duration
-            0,                  //duration_pulldown
-            0,                  //pts
-            0xff,               //canvas0Addr
-            0xff,               //canvas1Addr
-            1440,               //bufWidth
-            720,                //width
-            480,                //height
-            0,                  //ratio_control
-    };
-    vdin_output_cfg_t output_cfg = {
-            0xb,    //unsigned int   control; default value
-            0,      //enum tvin_color_space_e data_fmt; 0: 422, 1:444
-            0,      //unsigned int  canvas_shadow_en; disable the function
-            1,      //unsigned int            req_urgent;
-            1,      //unsigned int            req_en;
-            VDIN_CANVAS,    //unsigned int            canvas_id;
-            0,        //unsigned int            hstart;
-            719,    //unsigned int            hend;
-            0,      //unsigned int            vstart;
-            239,    //unsigned int            vend;
+    vframe_t *vf;
 
+    vdin_output_cfg_t output_cfg = {
+        .control            = 0xb,
+        .data_fmt           = TVIN_CS_YCbCr422_8BITS,
+        .canvas_shadow_en   = 0,
+        .req_urgent         = 1,
+        .req_en             = 1,
+        .canvas_id          = VDIN_CANVAS,
+        .hstart             = 0,
+        .hend               = 719,
+        .vstart             = 0,
+        .vend               = 239,
     };
+
+    /* pop out a new frame to be displayed */
+    vf = vfq_pop_newframe();
+    vf->index               = 0;
+    vf->type                = VIDTYPE_VIU_SINGLE_PLANE;
+    vf->type_backup         = 0xffffffff;
+    vf->blend_mode          = 0;
+    vf->duration            = 1600;
+    vf->duration_pulldown   = 0;
+    vf->pts                 = 0;
+
+    vf->canvas0Addr         = 0xff;
+    vf->canvas1Addr         = 0xff;
+
+    vf->bufWidth            = 1440;
+    vf->width               = 720;
+    vf->height              = 480;
+    vf->ratio_control       = 0;
+
 
     switch (devp->src)
     {
         case VDIN_SRC_MPEG:
             break;
         case VDIN_SRC_BT656IN:
-            amvdec_656_601_camera_in_run(&info); //If info.type ( --reture value )is 0xffffffff, the current field is error
+            amvdec_656_601_camera_in_run(vf); //If info.type ( --reture value )is 0xffffffff, the current field is error
             break;
         case VDIN_SRC_TVFE:
             break;
@@ -941,23 +959,40 @@ static irqreturn_t vdin_isr(int irq, void *dev_id)
             break;
     }
     //If info.type ( --reture value )is 0xffffffff, the current field is error
-    if(info.type == 0xffffffff)
+    if(vf->type == 0xffffffff)
     {
+        /* mpeg12 used spin_lock_irqsave(), @todo... */
+        vfq_push_recycle(vf);
         pr_error("decode data is error, skip the feild data \n");
     }
     else    //do buffer managerment, and send info into video display, please refer to vh264 decode
     {
-            //set info.canvas0Addr for display
-            //set info.canvas1Addr for display
-            //others
+        //set info.canvas0Addr for display
+        //set info.canvas1Addr for display
+        //others
 
-            vdin_devp[0]->wr_canvas_index++;
-            if(vdin_devp[0]->wr_canvas_index > VDIN_CANVAS + BT656IN_BUF_NUM)
-                vdin_devp[0]->wr_canvas_index = VDIN_CANVAS;
-            //set vdin setting for next field data
-            output_cfg.canvas_id = vdin_devp[0]->wr_canvas_index;
-            vdin_set_output(&output_cfg);
+        devp->wr_canvas_index++;
+        if(devp->wr_canvas_index > VDIN_CANVAS + BT656IN_BUF_NUM)
+            devp->wr_canvas_index = VDIN_CANVAS;
+        devp->rd_canvas_index++;
+        if(devp->rd_canvas_index > VDIN_CANVAS + BT656IN_BUF_NUM)
+            devp->rd_canvas_index = VDIN_CANVAS;
+        //set vdin setting for next field data
+        output_cfg.canvas_id = devp->wr_canvas_index;
+
+        //vf->index = 0;
+        vf->canvas0Addr = vf->canvas1Addr = devp->wr_canvas_index;
+        vfq_push_display(vf); /* push to display */
+
+        vdin_set_output(&output_cfg);
+        WRITE_MPEG_REG_BITS(VDIN_WR_CTRL, output_cfg.canvas_id,
+                    WR_CANVAS_BIT, WR_CANVAS_WID);
+        set_next_field_656_601_camera_in_anci_address(devp->rd_canvas_index);
     }
+    start_amvdec_656_601_camera_in(devp->sig_fmt);
+
+
+
     return IRQ_HANDLED;
 }
 
@@ -973,14 +1008,17 @@ static int vdin_open(struct inode *inode, struct file *file)
     devp = container_of(inode->i_cdev, vdin_dev_t, cdev);
     file->private_data = devp;
 
-    #if 0
+    #if 1
     ret = request_irq(INT_VDIN_VSYNC, vdin_isr, IRQF_SHARED, "vdin-irq", (void *)devp);
     if (ret) {
-        printk(KERN_ERR "vdin: irq register error.\n");
+        printk(KERN_ERR "vdin: irq regist error.\n");
         return -ENOENT;
     }
+    printk(KERN_ERR "vdin: irq regist ok.\n");
     #endif
 
+    vdin_vf_init();
+    vdin_reg_vf_provider();
     return 0;
 }
 
@@ -1006,6 +1044,8 @@ static int vdin_release(struct inode *inode, struct file *file)
             break;
     }
 
+    vdin_unreg_vf_provider();
+    printk(KERN_ERR "vdin: device release ok.\n");
     return 0;
 }
 
@@ -1262,7 +1302,7 @@ static int vdin_probe(struct platform_device *pdev)
         vdin_devp[i]->src  = VDIN_SRC_BT656IN;
     }
 
-    #if 1
+    #if 0
     ret = request_irq(INT_VDIN_VSYNC, &vdin_isr, IRQF_SHARED, VDIN_NAME, (void *)vdin_irq_id);
     if (ret ) {
           printk(KERN_ERR "vdin: irq register error.\n");
@@ -1286,6 +1326,8 @@ static int vdin_remove(struct platform_device *pdev)
         kfree(vdin_devp[i]);
     }
     class_destroy(vdin_clsp);
+
+    printk(KERN_ERR "vdin: driver removed ok.\n");
     return 0;
 }
 

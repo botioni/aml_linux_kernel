@@ -2,14 +2,14 @@
 # Makefile for TVIN.
 #
 
-obj-$(CONFIG_TVIN_BT656IN) += bt656in.o
-bt656in-objs := bt656_601_in.o
+obj-$(CONFIG_TVIN_BT656IN) += tvin_bt656in.o
+tvin_bt656in-objs := bt656_601_in.o
 
-obj-$(CONFIG_TVIN_DVIN) += dvin.o
-dvin-objs := dvin.o
+obj-$(CONFIG_TVIN_DVIN) += tvin_dvin.o
+tvin_dvin-objs := dvin.o
 
-obj-$(CONFIG_TVIN_VDIN) += vdin.o
-dvin-objs := vdin.o tvin_format_table.o
+obj-$(CONFIG_TVIN_VDIN) += tvin_vdin.o
+tvin_vdin-objs := tvin_format_table.o vdin_vf.o vdin.o
 
 
 #@todo add other device driver configuration...
