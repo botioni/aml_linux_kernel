@@ -22,6 +22,9 @@
 #ifndef VFRAME_H
 #define VFRAME_H
 
+#include <linux/types.h>
+
+
 #define VIDTYPE_PROGRESSIVE             0x0
 #define VIDTYPE_INTERLACE_TOP           0x1
 #define VIDTYPE_INTERLACE_BOTTOM        0x3
