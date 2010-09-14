@@ -238,6 +238,9 @@ exit:
 	if(priv->dsp_stack_start!=0)
 		kfree((void*)priv->dsp_stack_start);
 	priv->dsp_stack_start=0;
+	if(priv->dsp_gstack_start!=0)
+		kfree((void*)priv->dsp_gstack_start);
+	priv->dsp_gstack_start=0;
 	if(priv->dsp_heap_start!=0)
 		kfree((void*)priv->dsp_heap_start);
 	priv->dsp_heap_start=0;
