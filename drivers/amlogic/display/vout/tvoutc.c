@@ -210,6 +210,10 @@ int tvoutc_setclk(tvmode_t mode)
 		case TVMODE_1080I:
 		case TVMODE_1080P:
 			  setreg(&hd[xtal]);
+			  if(xtal == 1)
+			  {
+				WRITE_MPEG_REG(HHI_VID_CLK_DIV, 4);
+			  }
 			 // clk_set_rate(clk,297);
 			  break;
 		default:
