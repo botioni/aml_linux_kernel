@@ -305,7 +305,8 @@ static int snd_aml_audio_hw_params(struct snd_pcm_substream *substream,
 
 static int snd_aml_audio_hw_free(struct snd_pcm_substream *substream)
 {
-
+    if(substream->runtime->dma_area)
+        iounmap(substream->runtime->dma_area);
     return snd_pcm_lib_free_pages(substream);
 }
 
