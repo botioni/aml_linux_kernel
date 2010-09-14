@@ -24,14 +24,14 @@ dsp_register.h
 #define DSP_REG_END			(AUDIO_DSP_START_ADDR+ AUDIO_DSP_MEM_SIZE-4)
 #define DSP_REG(x)			(DSP_REG_OFFSET | ((x)<<5))
 
-#define DSP_STATUS				DSP_REG(0)
 #define DSP_STATUS_HALT		('H'<<24 | 'a'<<16|'l'<<8 |'t')
 #define DSP_STATUS_RUNING		('R'<<16|'u'<<8 |'n')
-#define DSP_JIFFIES				DSP_REG(1)
-#define DSP_STATUS_SLEEP  ('S'<<24 | 'L'<<16|'A'<<8 |'P')
-#define DSP_STATUS_WAKEUP  ('W'<<24 | 'A'<<16|'K'<<8 |'E')
+#define DSP_STATUS_SLEEP    ('S'<<24 | 'L'<<16|'E'<<8 |'P')
+#define DSP_STATUS_WAKEUP   ('W'<<24 | 'A'<<16|'K'<<8 |'E')
 #define DSP_AUDIOINFO_READY ('A'<<24 | 'I'<<16|'R'<<8 |'D')
 
+#define DSP_STATUS				DSP_REG(0)
+#define DSP_JIFFIES				DSP_REG(1)
 #define DSP_STACK_START   DSP_REG(3)
 #define DSP_STACK_END   	DSP_REG(4)
 #define DSP_GP_STACK_START   DSP_REG(5)
@@ -46,7 +46,7 @@ dsp_register.h
 #define DSP_DECODE_OUT_RD_ADDR  	  DSP_REG(11)
 #define DSP_DECODE_OUT_WD_ADDR  		DSP_REG(12)
 #define DSP_AUDIOINFO_STATUS              DSP_REG(13)
-		
+#define DSP_SLEEP_STATUS                DSP_REG(14)
 #define MAILBOX1_REG(n)	DSP_REG(40+n)
 #define MAILBOX2_REG(n)	DSP_REG(40+32+n)
 
