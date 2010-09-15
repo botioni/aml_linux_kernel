@@ -61,10 +61,6 @@
 	
 };
 
-struct real_cookinfo {
-   int valid;
-   char extradata[2044];
-};
 
 struct audiodsp_priv *audiodsp_privdata(void);
 

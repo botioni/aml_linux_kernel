@@ -36,6 +36,7 @@ char *data;
 #define MCODEC_FMT_COOK		(1<<5)
 #define MCODEC_FMT_AMR		(1<<6)
 #define MCODEC_FMT_RAAC     (1<<7)
+#define MCODEC_FMT_ADPCM	  (1<<8)
 
 #endif
 

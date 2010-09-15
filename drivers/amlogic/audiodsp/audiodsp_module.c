@@ -42,12 +42,12 @@ MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Zhou Zhi <zhi.zhou@amlogic.com>");
 MODULE_VERSION("1.0.0");
 
-extern int get_real_audio_info(void * audio_info, int size);
+extern struct audio_info * get_audio_info(void);
 void audiodsp_moniter(unsigned long);
 static struct audiodsp_priv *audiodsp_p;
 #define  DSP_DRIVER_NAME	"auidodsp"
 #define  DSP_NAME	"dsp"
-extern struct audio_info *get_audio_info(void );
+
 int audiodsp_start(void)
 {
 	struct audiodsp_priv *priv=audiodsp_privdata();
@@ -70,7 +70,7 @@ int audiodsp_start(void)
  		start_audiodsp_monitor(priv);
 
 #ifdef CONFIG_AM_VDEC_REAL
-	if(pmcode->fmt == MCODEC_FMT_COOK || pmcode->fmt == MCODEC_FMT_RAAC || pmcode->fmt == MCODEC_FMT_AMR)
+	if(pmcode->fmt == MCODEC_FMT_COOK || pmcode->fmt == MCODEC_FMT_RAAC || pmcode->fmt == MCODEC_FMT_AMR ||(pmcode->fmt == MCODEC_FMT_ADPCM))
 	{
     		for(i = 0; i< 1000;i++){
                 if(DSP_RD(DSP_AUDIOINFO_STATUS) == DSP_AUDIOINFO_READY)//maybe at audiodsp side,INT not enabled yet,so wait a while

@@ -22,11 +22,6 @@
 #ifndef VREAL_H
 #define VREAL_H
 
-struct real_cookinfo {
-   int valid;
-   char extradata[2044];
-};
-
 extern s32 vreal_init(void);
 
 extern s32 vreal_release(void);

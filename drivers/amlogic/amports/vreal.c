@@ -131,25 +131,6 @@ static const unsigned char RPR_size[9] = {0,1,1,2,2,3,3,3,3};
 
 static struct dec_sysinfo vreal_amstream_dec_info;
 
-static struct real_cookinfo real_cook_info;
-void set_real_audio_info(void *arg)
-{
-    copy_from_user((void *)&real_cook_info, (void *)arg, sizeof(real_cook_info));
-}
-
-int get_real_audio_info(void * audio_info, int size)
-{
-    int len;
-
-    len = sizeof(struct real_cookinfo);
-    if (size < len){
-        return -1;
-    }
-    memcpy(audio_info, &real_cook_info, sizeof(real_cook_info));
-    return 0;
-}
-EXPORT_SYMBOL(get_real_audio_info);
-
 static unsigned char aspect_ratio_table[16] = {
     PARC_FORBIDDEN,
     PARC_SQUARE,
