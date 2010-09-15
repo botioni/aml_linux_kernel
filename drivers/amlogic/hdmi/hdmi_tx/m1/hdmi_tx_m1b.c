@@ -71,7 +71,7 @@ static unsigned char hdmi_chip_type = 0;
 //static struct tasklet_struct EDID_tasklet;
 static unsigned serial_reg_val=0x22;
 static unsigned color_depth_f=0;
-static unsigned new_reset_sequence_flag=0;
+static unsigned new_reset_sequence_flag=1;
 
 static unsigned long modulo(unsigned long a, unsigned long b)
 {
@@ -103,7 +103,7 @@ static irqreturn_t intr_handler(int irq, void *dev_instance)
     hdmitx_dev_t* hdmitx_device = (hdmitx_dev_t*)dev_instance;
     
     data32 = hdmi_rd_reg(OTHER_BASE_ADDR + HDMI_OTHER_INTR_STAT); 
-    printk("HDMI irq %x\n",data32);
+    //printk("HDMI irq %x\n",data32);
     if (data32 & (1 << 0)) {  //HPD rising 
         hdmi_wr_only_reg(OTHER_BASE_ADDR + HDMI_OTHER_INTR_STAT_CLR,  1 << 0); //clear HPD rising interrupt in hdmi module
         // If HPD asserts, then start DDC transaction
@@ -114,7 +114,7 @@ static irqreturn_t intr_handler(int irq, void *dev_instance)
             hdmitx_device->hpd_event = 1;
         // Error if HPD deasserts
         } else {
-            printk("HDMI Error: HDMI HPD deasserts!\n");
+            //printk("HDMI Error: HDMI HPD deasserts!\n");
         }
     } else if (data32 & (1 << 1)) { //HPD falling
         hdmi_wr_only_reg(OTHER_BASE_ADDR + HDMI_OTHER_INTR_STAT_CLR,  1 << 1); //clear HPD falling interrupt in hdmi module 
@@ -129,7 +129,7 @@ static irqreturn_t intr_handler(int irq, void *dev_instance)
         //tasklet_schedule(&EDID_tasklet);
         hdmi_wr_only_reg(OTHER_BASE_ADDR + HDMI_OTHER_INTR_STAT_CLR,  1 << 2); //clear EDID rising interrupt in hdmi module 
     } else {
-        printk("HDMI Error: Unkown HDMI Interrupt source Process_Irq\n");
+        //printk("HDMI Error: Unkown HDMI Interrupt source Process_Irq\n");
         hdmi_wr_only_reg(OTHER_BASE_ADDR + HDMI_OTHER_INTR_STAT_CLR,  data32); //clear unkown interrupt in hdmi module 
     }
     return IRQ_HANDLED;

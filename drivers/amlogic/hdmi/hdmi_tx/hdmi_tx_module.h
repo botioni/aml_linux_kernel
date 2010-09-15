@@ -68,7 +68,7 @@ typedef struct hdmi_tx_dev_s {
     
 }hdmitx_dev_t;
 
-#define HDMITX_VER "2010Sep10a"
+#define HDMITX_VER "2010Sep15a"
 /************************************
 *    hdmitx protocol level interface
 *************************************/
