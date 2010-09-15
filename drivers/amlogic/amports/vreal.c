@@ -30,14 +30,14 @@
 #include <linux/amports/amstream.h>
 #include <linux/amports/ptsserv.h>
 #include <linux/amports/canvas.h>
+#include <linux/amports/vframe.h>
+#include <linux/amports/vframe_provider.h>
 #include <mach/am_regs.h>
 #include <asm/uaccess.h>
 
 #include "amvdec.h"
 #include "vreal_mc.h"
 
-#include "vframe.h"
-#include "vframe_provider.h"
 #include "streambuf.h"
 #include "streambuf_reg.h"
 

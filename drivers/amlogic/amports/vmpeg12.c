@@ -28,13 +28,23 @@
 #include <linux/amports/ptsserv.h>
 #include <linux/amports/amstream.h>
 #include <linux/amports/canvas.h>
+#include <linux/amports/vframe.h>
+#include <linux/amports/vframe_provider.h>
 #include <mach/am_regs.h>
+
+#ifdef CONFIG_AM_VDEC_MPEG12_LOG
+#define AMLOG
+#define LOG_LEVEL_VAR		amlog_level_vmpeg
+#define LOG_MASK_VAR		amlog_mask_vmpeg
+#define LOG_LEVEL_ERROR		0
+#define LOG_LEVEL_INFO		1
+#define LOG_LEVEL_DESC	"0:ERROR, 1:INFO"
+#endif
+#include <linux/amlog.h>
+MODULE_AMLOG(LOG_LEVEL_ERROR, 0, LOG_LEVEL_DESC, LOG_DEFAULT_MASK_DESC);
 
 #include "amvdec.h"
 #include "vmpeg12_mc.h"
-
-#include "vframe.h"
-#include "vframe_provider.h"
 
 #define DRIVER_NAME "amvdec_mpeg12"
 #define MODULE_NAME "amvdec_mpeg12"
@@ -180,7 +190,10 @@ static inline void vfq_init(vfq_t *q)
 static void set_frame_info(vframe_t *vf)
 {
     unsigned ar_bits;
+
+#ifdef CONFIG_AM_VDEC_MPEG12_LOG
     bool first =  (frame_width == 0) && (frame_height == 0);
+#endif
 
     vf->width  = frame_width = READ_MPEG_REG(MREG_PIC_WIDTH);
     vf->height = frame_height = READ_MPEG_REG(MREG_PIC_HEIGHT);
@@ -207,8 +220,7 @@ static void set_frame_info(vframe_t *vf)
         vf->ratio_control = 0;
     }
 
-    if (first)
-        printk("mpeg2dec: w(%d), h(%d), dur(%d), dur-ES(%d)\n", 
+	amlog_level_if(first, LOG_LEVEL_INFO, "mpeg2dec: w(%d), h(%d), dur(%d), dur-ES(%d)\n",
             frame_width,
             frame_height,
             frame_dur,
@@ -538,7 +550,7 @@ static s32 vmpeg12_init(void)
                     IRQF_SHARED, "vmpeg12-irq", (void *)vmpeg12_dec_id);
 
     if (r) {
-        printk("vmpeg12 irq register error.\n");
+		amlog_level(LOG_LEVEL_ERROR, "vmpeg12 irq register error.\n");
         return -ENOENT;
     }
 
@@ -569,10 +581,10 @@ static int amvdec_mpeg12_probe(struct platform_device *pdev)
 {
     struct resource *mem;
 
-    printk("amvdec_mpeg12 probe start.\n");
+    amlog_level(LOG_LEVEL_INFO, "amvdec_mpeg12 probe start.\n");
 
     if (!(mem = platform_get_resource(pdev, IORESOURCE_MEM, 0))) {
-        printk("amvdec_mpeg12 memory resource undefined.\n");
+		amlog_level(LOG_LEVEL_ERROR, "amvdec_mpeg12 memory resource undefined.\n");
         return -EFAULT;
     }
 
@@ -580,12 +592,12 @@ static int amvdec_mpeg12_probe(struct platform_device *pdev)
     buf_size  = mem->end - mem->start + 1;
 
     if (vmpeg12_init() < 0) {
-        printk("amvdec_mpeg12 init failed.\n");
+        amlog_level(LOG_LEVEL_ERROR, "amvdec_mpeg12 init failed.\n");
 
         return -ENODEV;
     }
 
-    printk("amvdec_mpeg12 probe end.\n");
+    amlog_level(LOG_LEVEL_INFO, "amvdec_mpeg12 probe end.\n");
 
     return 0;
 }
@@ -612,7 +624,7 @@ static int amvdec_mpeg12_remove(struct platform_device *pdev)
         stat &= ~STAT_VF_HOOK;
     }
 
-    printk("amvdec_mpeg12 remove.\n");
+    amlog_level(LOG_LEVEL_INFO, "amvdec_mpeg12 remove.\n");
 
     return 0;
 }
@@ -629,10 +641,10 @@ static struct platform_driver amvdec_mpeg12_driver = {
 
 static int __init amvdec_mpeg12_driver_init_module(void)
 {
-    printk("amvdec_mpeg12 module init\n");
+    amlog_level(LOG_LEVEL_INFO, "amvdec_mpeg12 module init\n");
 
     if (platform_driver_register(&amvdec_mpeg12_driver)) {
-        printk("failed to register amvdec_mpeg12 driver\n");
+        amlog_level(LOG_LEVEL_ERROR, "failed to register amvdec_mpeg12 driver\n");
         return -ENODEV;
     }
 
@@ -641,7 +653,7 @@ static int __init amvdec_mpeg12_driver_init_module(void)
 
 static void __exit amvdec_mpeg12_driver_remove_module(void)
 {
-    printk("amvdec_mpeg12 module remove.\n");
+    amlog_level(LOG_LEVEL_INFO, "amvdec_mpeg12 module remove.\n");
 
     platform_driver_unregister(&amvdec_mpeg12_driver);
 }

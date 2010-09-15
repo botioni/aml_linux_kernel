@@ -28,13 +28,12 @@
 #include <linux/amports/amstream.h>
 #include <linux/amports/ptsserv.h>
 #include <linux/amports/canvas.h>
+#include <linux/amports/vframe.h>
+#include <linux/amports/vframe_provider.h>
 #include <mach/am_regs.h>
 
 #include "amvdec.h"
 #include "vc1_mc.h"
-
-#include "vframe.h"
-#include "vframe_provider.h"
 
 #define DRIVER_NAME "amvdec_vc1"
 #define MODULE_NAME "amvdec_vc1"
