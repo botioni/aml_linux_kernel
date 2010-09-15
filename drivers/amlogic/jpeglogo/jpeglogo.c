@@ -25,6 +25,8 @@
 #include <linux/interrupt.h>
 #include <linux/platform_device.h>
 #include <linux/amports/canvas.h>
+#include <linux/amports/vframe.h>
+#include <linux/amports/vframe_provider.h>
 
 #include <mach/am_regs.h>
 #include <asm/uaccess.h>
@@ -32,8 +34,6 @@
 
 #include "../amports/amvdec.h"
 #include "../amports/vmjpeg_mc.h"
-#include "../amports/vframe.h"
-#include "../amports/vframe_provider.h"
 
 //#define DEBUG
 
