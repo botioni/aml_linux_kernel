@@ -32,6 +32,7 @@
 #include <linux/amports/vframe_provider.h>
 #include <mach/am_regs.h>
 
+//#define CONFIG_AM_VDEC_MPEG4_LOG
 #ifdef CONFIG_AM_VDEC_MPEG4_LOG
 #define AMLOG
 #define LOG_LEVEL_VAR		amlog_level_vmpeg4
@@ -126,6 +127,8 @@ u32 next_pts;
 #ifdef CONFIG_AM_VDEC_MPEG4_LOG
 u32 pts_hit, pts_missed, pts_i_hit, pts_i_missed;
 #endif
+u32 last_picture_type;
+u32 last_pts;
 
 static struct dec_sysinfo vmpeg4_amstream_dec_info;
 
@@ -243,13 +246,13 @@ static void vmpeg4_isr(void)
                         }
                 }                
 
-                repeat_count = READ_MPEG_REG(MP4_REPEAT_COUNT);
+                repeat_count = READ_MPEG_REG(MP4_REPEAT_COUNT) + 1;
                 buffer_index = ((reg & 0x7) - 1) & 3;
                 picture_type = (reg >> 3) & 7;
             #ifdef CONFIG_AM_VDEC_MPEG4_LOG
                 if (picture_type == I_PICTURE)
                 {
-                    amlog_mask(LOG_MASK_PTS, "I offset 0x%x, pts_valid %d\n", offset, pts_valid);
+                    amlog_mask(LOG_MASK_PTS, "I offset 0x%x, pts_valid %d reg=0x%x\n", offset, pts_valid,reg);
                     if (!pts_valid)
                         pts_i_missed++;
                     else
@@ -265,17 +268,31 @@ static void vmpeg4_isr(void)
                         vf->height = vmpeg4_amstream_dec_info.height;
                         vf->bufWidth = 1920;
 
-                        if ((I_PICTURE == picture_type) && pts_valid)
+                        if (((I_PICTURE == picture_type) || (P_PICTURE == picture_type)) && pts_valid)
                         {
-                                vf->pts = pts;
+                                if ((I_PICTURE == picture_type) && (B_PICTURE == last_picture_type))
+                                {
+                                    vf->pts = last_pts;
+                                }
+                                else if ((P_PICTURE == picture_type) && (B_PICTURE == last_picture_type))
+                                {
+                                    vf->pts = 0;
+                                }
+                                else
+                                {
+                                    vf->pts = pts;
+                                }
                                 if ((repeat_count > 1) && avi_flag)
                                 {
+                                        vf->duration = vmpeg4_amstream_dec_info.rate * repeat_count >> 1;
                                         next_pts = pts + (vmpeg4_amstream_dec_info.rate * repeat_count >> 1)*15/16;
                                 }
                                 else
                                 {
+                                        vf->duration = vmpeg4_amstream_dec_info.rate >> 1;
                                         next_pts = 0;
                                 }
+								amlog_mask(LOG_MASK_PTS, "[%s:%d]vf->duration=0x%x rate=%d\n", __FUNCTION__,__LINE__, vf->duration,vmpeg4_amstream_dec_info.rate);
                         }
                         else
                         {
@@ -293,7 +310,9 @@ static void vmpeg4_isr(void)
                                         vf->duration = vmpeg4_amstream_dec_info.rate >> 1;
                                         next_pts = 0;
                                 }
-                        }
+								amlog_mask(LOG_MASK_PTS, "[%s:%d]vf->duration=0x%x rate=%d picture_type=%d pts_valid=%d\n", 
+														__FUNCTION__,__LINE__, vf->duration,vmpeg4_amstream_dec_info.rate,picture_type,pts_valid);
+                       }
 
                         vf->duration_pulldown = 0;
                         vf->type = (reg & BOTTOM_FIELD_FIRST_FLAG) ? VIDTYPE_INTERLACE_BOTTOM : VIDTYPE_INTERLACE_TOP;
@@ -344,17 +363,33 @@ static void vmpeg4_isr(void)
                         vf->height = vmpeg4_amstream_dec_info.height;
                         vf->bufWidth = 1920;
 
-                        if ((I_PICTURE == picture_type) && pts_valid)
+                        if (((I_PICTURE == picture_type) || (P_PICTURE == picture_type))&& pts_valid)
                         {
-                                vf->pts = pts;
+                                if ((I_PICTURE == picture_type) && (B_PICTURE == last_picture_type))
+                                {
+                                    vf->pts = last_pts;
+                                }
+                                else if ((P_PICTURE == picture_type) && (B_PICTURE == last_picture_type))
+                                {
+                                    vf->pts = 0;
+                                }
+                                else
+                                {
+                                    vf->pts = pts;
+                                }
+                                
                                 if ((repeat_count > 1) && avi_flag)
                                 {
+                                        vf->duration = vmpeg4_amstream_dec_info.rate * repeat_count;
                                         next_pts = pts + (vmpeg4_amstream_dec_info.rate * repeat_count)*15/16;
                                 }
                                 else
                                 {
+                                        vf->duration = vmpeg4_amstream_dec_info.rate;
                                         next_pts = 0;
                                 }
+								amlog_mask(LOG_MASK_PTS, "[%s:%d]vf->duration=0x%x rate=%d picture_type=%d pts_valid=%d\n", 
+														__FUNCTION__,__LINE__, vf->duration,vmpeg4_amstream_dec_info.rate,picture_type,pts_valid);
                         }
                         else
                         {
@@ -372,6 +407,8 @@ static void vmpeg4_isr(void)
                                         vf->duration = vmpeg4_amstream_dec_info.rate;
                                         next_pts = 0;
                                 }
+								amlog_mask(LOG_MASK_PTS, "[%s:%d]vf->duration=0x%x rate=%d picture_type=%d pts_valid=%d\n", 
+														__FUNCTION__,__LINE__, vf->duration,vmpeg4_amstream_dec_info.rate,picture_type,pts_valid);
                         }
 
                         vf->duration_pulldown = 0;
@@ -388,6 +425,9 @@ static void vmpeg4_isr(void)
                 total_frame++;
 
                 WRITE_MPEG_REG(MREG_BUFFEROUT, 0);
+
+                last_picture_type = picture_type;
+                last_pts = pts;
         }
 
         WRITE_MPEG_REG(ASSIST_MBOX1_CLR_REG, 1);
@@ -582,6 +622,10 @@ static void vmpeg4_local_init(void)
 #ifdef CONFIG_AM_VDEC_MPEG4_LOG
         pts_hit = pts_missed = pts_i_hit = pts_i_missed = 0;
 #endif
+
+        last_picture_type = -1;
+
+        last_pts = 0;
 
         for (i = 0; i < 4; i++)
                 vfbuf_use[i] = 0;
