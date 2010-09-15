@@ -43,19 +43,26 @@
 #include <asm/dma-mapping.h>
 #include "asm/cacheflush.h"
 
+#ifdef CONFIG_DWC_USB_NO_SOF
 #define NO_HOST_SOF
+#endif
 
+#ifdef CONFIG_USB_HOST_ELECT_TEST
+#define DWC_HS_ELECT_TST
+#endif
+
+#ifdef CONFIG_DWC_USB_NAK_IN_TIMER
 /*
   * Open this macro to prevent many many NAKs in ISR.
   *     Many many NAKs will pull system to ISR, no other process
   *     can be executed.
   * Close this macro to improve performance.
   */
-//#define NAK_IN_TIMER
-
-#ifdef NAK_IN_TIMER
+#define NAK_IN_TIMER
 #define NAK_TIMER_INTERVAL		1
 #endif
+
+
 /**
  * @file 
  *

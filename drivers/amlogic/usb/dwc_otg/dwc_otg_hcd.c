@@ -1262,18 +1262,42 @@ int dwc_otg_hcd_hub_status_data(struct usb_hcd *_hcd, char *_buf)
  * directly.
  */
 
+/*
 dwc_otg_core_global_regs_t *global_regs;
 dwc_otg_host_global_regs_t *hc_global_regs;
 dwc_otg_hc_regs_t *hc_regs;
 uint32_t *data_fifo;
+*/
 
-static void do_setup(void)
+static void do_setup(dwc_otg_core_if_t *core_if )
 {
 	gintsts_data_t gintsts;
 	hctsiz_data_t hctsiz;
 	hcchar_data_t hcchar;
 	haint_data_t haint;
 	hcint_data_t hcint;
+	hprt0_data_t hprt0 = {0};
+
+	dwc_otg_core_global_regs_t *global_regs;
+	dwc_otg_host_global_regs_t *hc_global_regs;
+	dwc_otg_hc_regs_t *hc_regs;
+	uint32_t *data_fifo;
+	static uint32_t buffer[2]={0x01000680,0x00080000};
+
+	global_regs = core_if->core_global_regs;
+	hc_global_regs = core_if->host_if->host_global_regs;
+	hc_regs = (dwc_otg_hc_regs_t *)((char *)global_regs + 0x500);
+	data_fifo = (uint32_t *)((char *)global_regs + 0x1000);
+
+	/* Reset device for address 0 communication*/
+	hprt0.d32 = dwc_otg_read_hprt0 (core_if);
+	hprt0.b.prtrst = 1;
+	dwc_write_reg32(core_if->host_if->hprt0, hprt0.d32);
+
+	mdelay (60);
+	hprt0.b.prtrst = 0;
+	dwc_write_reg32(core_if->host_if->hprt0, hprt0.d32);
+	mdelay(30);
 
 	/* Enable HAINTs */
 	dwc_write_reg32(&hc_global_regs->haintmsk, 0x0001);
@@ -1355,6 +1379,10 @@ static void do_setup(void)
 		//}
 	}
 
+	if(core_if->dma_enable){
+		dwc_write_reg32(&hc_regs->hcdma,(uint32_t)buffer);
+	}
+
 	/* Set HCTSIZ */
 	hctsiz.d32 = 0;
 	hctsiz.b.xfersize = 8;
@@ -1373,8 +1401,16 @@ static void do_setup(void)
 
 	/* Fill FIFO with Setup data for Get Device Descriptor */
 	data_fifo = (uint32_t *) ((char *)global_regs + 0x1000);
-	dwc_write_reg32(data_fifo++, 0x01000680);
-	dwc_write_reg32(data_fifo++, 0x00080000);
+	if(!core_if->dma_enable){
+//        dwc_write_reg32(data_fifo++, 0x01000680);
+//        dwc_write_reg32(data_fifo++, 0x00080000);
+	dwc_write_reg32(data_fifo++, buffer[0]);
+	dwc_write_reg32(data_fifo++, buffer[1]);
+	}
+
+	//flush_cpu_cache();
+
+	mdelay(1);
 
 	gintsts.d32 = dwc_read_reg32(&global_regs->gintsts);
 	//fprintf(stderr, "Waiting for HCINTR intr 1, GINTSTS = %08x\n", gintsts.d32);
@@ -1418,7 +1454,7 @@ static void do_setup(void)
 	//fprintf(stderr, "GINTSTS: %08x\n", gintsts.d32);
 }
 
-static void do_in_ack(void)
+static void do_in_ack(dwc_otg_core_if_t *core_if )
 {
 	gintsts_data_t gintsts;
 	hctsiz_data_t hctsiz;
@@ -1426,6 +1462,17 @@ static void do_in_ack(void)
 	haint_data_t haint;
 	hcint_data_t hcint;
 	host_grxsts_data_t grxsts;
+
+
+	dwc_otg_core_global_regs_t *global_regs;
+	dwc_otg_host_global_regs_t *hc_global_regs;
+	dwc_otg_hc_regs_t *hc_regs;
+	uint32_t *data_fifo;
+
+	global_regs = core_if->core_global_regs;
+	hc_global_regs = core_if->host_if->host_global_regs;
+	hc_regs = (dwc_otg_hc_regs_t *)((char *)global_regs + 0x500);
+	data_fifo = (uint32_t *)((char *)global_regs + 0x1000);
 
 	/* Enable HAINTs */
 	dwc_write_reg32(&hc_global_regs->haintmsk, 0x0001);
@@ -1465,7 +1512,7 @@ static void do_in_ack(void)
 	/*
 	 * Receive Control In packet
 	 */
-
+	DWC_NOTICE("Receive Control IN packet...\n");
 	/* Make sure channel is disabled */
 	hcchar.d32 = dwc_read_reg32(&hc_regs->hcchar);
 	if (hcchar.b.chen) {
@@ -1507,6 +1554,8 @@ static void do_in_ack(void)
 		//}
 	}
 
+RESTART_TRANS:
+    
 	/* Set HCTSIZ */
 	hctsiz.d32 = 0;
 	hctsiz.b.xfersize = 8;
@@ -1523,13 +1572,26 @@ static void do_in_ack(void)
 	hcchar.b.chen = 1;
 	dwc_write_reg32(&hc_regs->hcchar, hcchar.d32);
 
+	//flush_cpu_cache();
+
 	gintsts.d32 = dwc_read_reg32(&global_regs->gintsts);
 	//fprintf(stderr, "Waiting for RXSTSQLVL intr 1, GINTSTS = %08x\n", gintsts.d32);
 
 	/* Wait for receive status queue interrupt */
+	/*
 	do {
 		gintsts.d32 = dwc_read_reg32(&global_regs->gintsts);
 	} while (gintsts.b.rxstsqlvl == 0);
+	*/
+	gintsts.d32 = dwc_read_reg32(&global_regs->gintsts);
+	if(!core_if->dma_enable){
+		if(gintsts.b.rxstsqlvl == 0)
+		goto RESTART_TRANS;
+	}else{
+		while(gintsts.b.hcintr == 0)
+		gintsts.d32 = dwc_read_reg32(&global_regs->gintsts);
+	}
+
 
 	//fprintf(stderr, "Got RXSTSQLVL intr 1, GINTSTS = %08x\n", gintsts.d32);
 
@@ -1540,6 +1602,7 @@ static void do_in_ack(void)
 	/* Clear RXSTSQLVL in GINTSTS */
 	gintsts.d32 = 0;
 	gintsts.b.rxstsqlvl = 1;
+	gintsts.b.hcintr = 1;
 	dwc_write_reg32(&global_regs->gintsts, gintsts.d32);
 
 	switch (grxsts.b.pktsts) {
@@ -1555,6 +1618,7 @@ static void do_in_ack(void)
 				(void)dwc_read_reg32(data_fifo++);
 			}
 		}
+
 		//fprintf(stderr, "Received %u bytes\n", (unsigned)grxsts.b.bcnt);
 		break;
 
@@ -1567,9 +1631,16 @@ static void do_in_ack(void)
 	//fprintf(stderr, "Waiting for RXSTSQLVL intr 2, GINTSTS = %08x\n", gintsts.d32);
 
 	/* Wait for receive status queue interrupt */
-	do {
-		gintsts.d32 = dwc_read_reg32(&global_regs->gintsts);
-	} while (gintsts.b.rxstsqlvl == 0);
+	if(!core_if->dma_enable){        
+		do {
+			gintsts.d32 = dwc_read_reg32(&global_regs->gintsts);
+		} while (gintsts.b.rxstsqlvl == 0);
+	}else{
+		do{
+			gintsts.d32 = dwc_read_reg32(&global_regs->gintsts);
+		}while(gintsts.b.hcintr == 0);
+	}
+        
 
 	//fprintf(stderr, "Got RXSTSQLVL intr 2, GINTSTS = %08x\n", gintsts.d32);
 
@@ -1626,14 +1697,15 @@ static void do_in_ack(void)
 	gintsts.d32 = dwc_read_reg32(&global_regs->gintsts);
 	//fprintf(stderr, "GINTSTS: %08x\n", gintsts.d32);
 
+	DWC_NOTICE("MDELAY(10000)\n");
 //      usleep(100000);
 //      mdelay(100);
-	mdelay(1);
+	mdelay(10000);
 
 	/*
 	 * Send handshake packet
 	 */
-
+	DWC_NOTICE("Send OUT handshake packet...\n");
 	/* Read HAINT */
 	haint.d32 = dwc_read_reg32(&hc_global_regs->haint);
 	//fprintf(stderr, "HAINT: %08x\n", haint.d32);
@@ -1715,6 +1787,10 @@ static void do_in_ack(void)
 	hcchar.b.mps = 8;
 	hcchar.b.chen = 1;
 	dwc_write_reg32(&hc_regs->hcchar, hcchar.d32);
+
+	//flush_cpu_cache();
+
+	mdelay(100);
 
 	gintsts.d32 = dwc_read_reg32(&global_regs->gintsts);
 	//fprintf(stderr, "Waiting for HCINTR intr 3, GINTSTS = %08x\n", gintsts.d32);
@@ -1961,7 +2037,9 @@ int dwc_otg_hcd_hub_control(struct usb_hcd *_hcd,
 		/* No HUB features supported */
 		break;
 	case SetPortFeature:
-		if (_wValue != USB_PORT_FEAT_TEST && (!_wIndex || _wIndex > 1))
+//		if (_wValue != USB_PORT_FEAT_TEST && (!_wIndex || _wIndex > 1))
+//			goto error;
+		if(_wValue != USB_PORT_FEAT_TEST && ((_wIndex & 0x0F) != 1) )
 			goto error;
 
 		if (!dwc_otg_hcd->flags.b.port_connect_status) {
@@ -1972,7 +2050,8 @@ int dwc_otg_hcd_hub_control(struct usb_hcd *_hcd,
 			 * register can't be written if the core is in device
 			 * mode.
 			 */
-			break;
+			 /* on Amlogic platform, Power is controlled by GPIO */
+			//break;
 		}
 
 		switch (_wValue) {
@@ -2038,12 +2117,30 @@ int dwc_otg_hcd_hub_control(struct usb_hcd *_hcd,
 				uint32_t t;
 				gintmsk_data_t gintmsk;
 
+				dwc_otg_core_global_regs_t *global_regs;
+				dwc_otg_host_global_regs_t *hc_global_regs;
+				dwc_otg_hc_regs_t *hc_regs;
+				uint32_t *data_fifo;
+				const char * test_name[8] = {
+					"TEST_SE0_NAK",
+					"TEST_J",
+					"TEST_K",
+					"TEST_PACKET",
+					"Reserved",
+					"HH_PORT_SUSPEND_RESUEME",
+					"SINGLE_STEP_GET_DEV_DESC",
+					"SINGLE_STEP_SET_FEATURE"
+				};
+
 				t = (_wIndex >> 8);	/* MSB wIndex USB */
 				DWC_DEBUGPL(DBG_HCD,
 					    "DWC OTG HCD HUB CONTROL - "
 					    "SetPortFeature - USB_PORT_FEAT_TEST %d\n",
 					    t);
-				warn("USB_PORT_FEAT_TEST %d\n", t);
+				printk("USB_PORT_FEAT_TEST %d\n", t);
+				if(t > 8 || t < 1)
+					break;
+				printk("Test mode: %s\n",test_name[t-1]);
 				if (t < 6) {
 					hprt0.d32 = dwc_otg_read_hprt0(core_if);
 					hprt0.b.prttstctl = t;
@@ -2126,8 +2223,16 @@ int dwc_otg_hcd_hub_control(struct usb_hcd *_hcd,
 						/* 15 second delay per the test spec */
 						mdelay(15000);
 
+						DWC_NOTICE("issue do_setup()\n");
+                                
 						/* Send the Setup packet */
-						do_setup();
+						do_setup(core_if);
+
+						mdelay(5000);
+
+						DWC_NOTICE("issue do_in_ack()\n");
+						/* Get data */
+						do_in_ack(core_if);
 
 						/* 15 second delay so nothing else happens for awhile */
 						mdelay(15000);
@@ -2149,13 +2254,13 @@ int dwc_otg_hcd_hub_control(struct usb_hcd *_hcd,
 						    (&global_regs->gintmsk, 0);
 
 						/* Send the Setup packet */
-						do_setup();
+						do_setup(core_if);
 
 						/* 15 second delay so nothing else happens for awhile */
 						mdelay(15000);
 
 						/* Send the In and Ack packets */
-						do_in_ack();
+						do_in_ack(core_if);
 
 						/* 15 second delay so nothing else happens for awhile */
 						mdelay(15000);
