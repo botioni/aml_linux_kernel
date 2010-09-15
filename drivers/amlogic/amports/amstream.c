@@ -312,6 +312,8 @@ struct audio_info *get_audio_info(void )
     return &audio_dec_info;
 }
 
+EXPORT_SYMBOL(get_audio_info);
+
 static  void video_port_release( stream_port_t *port,struct stream_buf_s * pbuf,int release_num)
 {
     switch(release_num)
