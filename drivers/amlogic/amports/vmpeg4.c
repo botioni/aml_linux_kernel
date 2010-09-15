@@ -28,13 +28,25 @@
 #include <linux/amports/amstream.h>
 #include <linux/amports/ptsserv.h>
 #include <linux/amports/canvas.h>
+#include <linux/amports/vframe.h>
+#include <linux/amports/vframe_provider.h>
 #include <mach/am_regs.h>
+
+#ifdef CONFIG_AM_VDEC_MPEG4_LOG
+#define AMLOG
+#define LOG_LEVEL_VAR		amlog_level_vmpeg4
+#define LOG_MASK_VAR		amlog_mask_vmpeg4
+#define LOG_LEVEL_ERROR		0
+#define LOG_LEVEL_INFO		1
+#define LOG_LEVEL_DESC	"0:ERROR, 1:INFO"
+#define LOG_MASK_PTS	0x01
+#define LOG_MASK_DESC	"0x01:DEBUG_PTS"
+#endif
+#include <linux/amlog.h>
+MODULE_AMLOG(LOG_LEVEL_ERROR, 0, LOG_LEVEL_DESC, LOG_DEFAULT_MASK_DESC);
 
 #include "amvdec.h"
 #include "vmpeg4_mc.h"
-
-#include "vframe.h"
-#include "vframe_provider.h"
 
 #define DRIVER_NAME "amvdec_mpeg4"
 #define MODULE_NAME "amvdec_mpeg4"
@@ -111,7 +123,7 @@ u32 vmpeg4_format;
 u32 pts_by_offset = 1;
 u32 total_frame;
 u32 next_pts;
-#ifdef DEBUG_PTS
+#ifdef CONFIG_AM_VDEC_MPEG4_LOG
 u32 pts_hit, pts_missed, pts_i_hit, pts_i_missed;
 #endif
 
@@ -207,7 +219,7 @@ static void vmpeg4_isr(void)
         u32 repeat_count;
         u32 picture_type;
         u32 buffer_index;
-        unsigned int pts, pts_valid=0, offset;
+        unsigned int pts, pts_valid=0, offset=0;
 
         reg = READ_MPEG_REG(MREG_BUFFEROUT);
 
@@ -219,13 +231,13 @@ static void vmpeg4_isr(void)
                         if (pts_lookup_offset(PTS_TYPE_VIDEO, offset, &pts, 0) == 0) 
                         {
                                 pts_valid = 1;
-                        #ifdef DEBUG_PTS
+                        #ifdef CONFIG_AM_VDEC_MPEG4_LOG
                                 pts_hit++;
                         #endif
                         }
                         else
                         {
-                        #ifdef DEBUG_PTS
+                        #ifdef CONFIG_AM_VDEC_MPEG4_LOG
                                 pts_missed++;
                         #endif
                         }
@@ -234,10 +246,10 @@ static void vmpeg4_isr(void)
                 repeat_count = READ_MPEG_REG(MP4_REPEAT_COUNT);
                 buffer_index = ((reg & 0x7) - 1) & 3;
                 picture_type = (reg >> 3) & 7;
-            #ifdef DEBUG_PTS
+            #ifdef CONFIG_AM_VDEC_MPEG4_LOG
                 if (picture_type == I_PICTURE)
                 {
-                    //printk("I offset 0x%x, pts_valid %d\n", offset, pts_valid);
+                    amlog_mask(LOG_MASK_PTS, "I offset 0x%x, pts_valid %d\n", offset, pts_valid);
                     if (!pts_valid)
                         pts_i_missed++;
                     else
@@ -567,7 +579,7 @@ static void vmpeg4_local_init(void)
 
         next_pts = 0;
 
-#ifdef DEBUG_PTS
+#ifdef CONFIG_AM_VDEC_MPEG4_LOG
         pts_hit = pts_missed = pts_i_hit = pts_i_missed = 0;
 #endif
 
@@ -577,7 +589,7 @@ static void vmpeg4_local_init(void)
 
 static s32 vmpeg4_init(void)
 {
-        printk("vmpeg4_init\n");
+        amlog_level(LOG_LEVEL_INFO, "vmpeg4_init\n");
         init_timer(&recycle_timer);
 
         stat |= STAT_TIMER_INIT;
@@ -586,43 +598,43 @@ static s32 vmpeg4_init(void)
 
         if (vmpeg4_amstream_dec_info.format == VIDEO_DEC_FORMAT_MPEG4_3)
         {
-                printk("load VIDEO_DEC_FORMAT_MPEG4_3\n");
+                amlog_level(LOG_LEVEL_INFO, "load VIDEO_DEC_FORMAT_MPEG4_3\n");
                 if (amvdec_loadmc(vmpeg4_mc_311) < 0) 
                 {
-                        printk("failed\n");
+                        amlog_level(LOG_LEVEL_ERROR, "VIDEO_DEC_FORMAT_MPEG4_3 ucode loading failed\n");
                         return -EBUSY;
                 }
         }
         else if (vmpeg4_amstream_dec_info.format == VIDEO_DEC_FORMAT_MPEG4_4)
         {
-                printk("load VIDEO_DEC_FORMAT_MPEG4_4\n");
+                amlog_level(LOG_LEVEL_INFO, "load VIDEO_DEC_FORMAT_MPEG4_4\n");
                 if (amvdec_loadmc(vmpeg4_mc_4) < 0) 
                 {
-                        printk("failed\n");
+                        amlog_level(LOG_LEVEL_ERROR, "VIDEO_DEC_FORMAT_MPEG4_4 ucode loading failed\n");
                         return -EBUSY;
                 }
         }
         else if (vmpeg4_amstream_dec_info.format == VIDEO_DEC_FORMAT_MPEG4_5)
         {
-                printk("load VIDEO_DEC_FORMAT_MPEG4_5\n");
+                amlog_level(LOG_LEVEL_INFO, "load VIDEO_DEC_FORMAT_MPEG4_5\n");
                 if (amvdec_loadmc(vmpeg4_mc_5) < 0) 
                 {
-                        printk("failed\n");
+                        amlog_level(LOG_LEVEL_ERROR, "VIDEO_DEC_FORMAT_MPEG4_5 ucode loading failed\n");
                         return -EBUSY;
                 }
         } 
         else if (vmpeg4_amstream_dec_info.format == VIDEO_DEC_FORMAT_H263)
         {
-                printk("load VIDEO_DEC_FORMAT_H263\n");
+                amlog_level(LOG_LEVEL_INFO, "load VIDEO_DEC_FORMAT_H263\n");
                 if (amvdec_loadmc(h263_mc) < 0) 
                 {
-                        printk("failed\n");
+                        amlog_level(LOG_LEVEL_ERROR, "VIDEO_DEC_FORMAT_H263 ucode loading failed\n");
                         return -EBUSY;
                 }
         } 
         else
         {
-                printk("not supported MPEG4 format\n");
+                amlog_level(LOG_LEVEL_ERROR, "not supported MPEG4 format\n");
         }    
 
         stat |= STAT_MC_LOAD;
@@ -634,7 +646,7 @@ static s32 vmpeg4_init(void)
         if (request_irq(INT_MAILBOX_1A, vmpeg4_isr,
                         IRQF_SHARED, "vmpeg4-irq", (void *)vmpeg4_dec_id))
         {
-                printk("vmpeg4 irq register error.\n");
+                amlog_level(LOG_LEVEL_ERROR, "vmpeg4 irq register error.\n");
                 return -ENOENT;
         }
 #endif
@@ -668,7 +680,7 @@ static int amvdec_mpeg4_probe(struct platform_device *pdev)
 
         if (!(mem = platform_get_resource(pdev, IORESOURCE_MEM, 0)))
         {
-                printk("amvdec_mpeg4 memory resource undefined.\n");
+                amlog_level(LOG_LEVEL_ERROR, "amvdec_mpeg4 memory resource undefined.\n");
                 return -EFAULT;
         }
 
@@ -680,7 +692,7 @@ static int amvdec_mpeg4_probe(struct platform_device *pdev)
 
         if (vmpeg4_init() < 0) 
         {
-                printk("amvdec_mpeg4 init failed.\n");
+                amlog_level(LOG_LEVEL_ERROR, "amvdec_mpeg4 init failed.\n");
 
                 return -ENODEV;
         }
@@ -714,10 +726,10 @@ static int amvdec_mpeg4_remove(struct platform_device *pdev)
                 stat &= ~STAT_VF_HOOK;
         }
 
-#ifdef DEBUG_PTS
-       printk("pts hit %d, pts missed %d, i hit %d, missed %d\n", pts_hit, pts_missed, pts_i_hit, pts_i_missed);
-       printk("total frame %d, avi_flag %d, rate %d\n", total_frame, avi_flag, vmpeg4_amstream_dec_info.rate);
-#endif
+        amlog_mask(LOG_MASK_PTS, "pts hit %d, pts missed %d, i hit %d, missed %d\n",
+            pts_hit, pts_missed, pts_i_hit, pts_i_missed);
+        amlog_mask(LOG_MASK_PTS, "total frame %d, avi_flag %d, rate %d\n",
+            total_frame, avi_flag, vmpeg4_amstream_dec_info.rate);
 
         return 0;
 }
@@ -734,11 +746,11 @@ static struct platform_driver amvdec_mpeg4_driver = {
 
 static int __init amvdec_mpeg4_driver_init_module(void)
 {
-        printk("amvdec_mpeg4 module init\n");
+        amlog_level(LOG_LEVEL_INFO, "amvdec_mpeg4 module init\n");
 
         if (platform_driver_register(&amvdec_mpeg4_driver)) 
         {
-                printk("failed to register amvdec_mpeg4 driver\n");
+                amlog_level(LOG_LEVEL_ERROR, "failed to register amvdec_mpeg4 driver\n");
                 return -ENODEV;
         }
 
@@ -747,7 +759,7 @@ static int __init amvdec_mpeg4_driver_init_module(void)
 
 static void __exit amvdec_mpeg4_driver_remove_module(void)
 {
-        printk("amvdec_mpeg4 module remove.\n");
+        amlog_level(LOG_LEVEL_INFO, "amvdec_mpeg4 module remove.\n");
 
         platform_driver_unregister(&amvdec_mpeg4_driver);
 }

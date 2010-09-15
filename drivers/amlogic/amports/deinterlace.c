@@ -5,9 +5,9 @@
 
 #include <mach/am_regs.h>
 #include <linux/amports/canvas.h>
+#include <linux/amports/vframe.h>
+#include <linux/amports/vframe_provider.h>
 
-#include "vframe.h"
-#include "vframe_provider.h"
 #include "deinterlace.h"
 
 #ifdef DEBUG

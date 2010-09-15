@@ -39,6 +39,8 @@
 #include <linux/amports/timestamp.h>
 #include <linux/amports/tsync.h>
 #include <linux/amports/canvas.h>
+#include <linux/amports/vframe.h>
+#include <linux/amports/vframe_provider.h>
 #include <linux/amports/amstream.h>
 #include <linux/vout/vout_notify.h>
 #include <linux/sched.h>
@@ -48,15 +50,13 @@
 #include <asm/uaccess.h>
 
 #include "videolog.h"
-//#define CONFIG_VIDEO_LOG
-#ifdef CONFIG_VIDEO_LOG
+
+#ifdef CONFIG_AM_VIDEO_LOG
 #define AMLOG
 #endif
 #include <linux/amlog.h>
 MODULE_AMLOG(LOG_LEVEL_ERROR, 0, LOG_DEFAULT_LEVEL_DESC, LOG_MASK_DESC);
 
-#include "vframe.h"
-#include "vframe_provider.h"
 #include "video.h"
 #include "vpp.h"
 
@@ -781,7 +781,7 @@ static irqreturn_t vsync_isr0(int irq, void *dev_id)
 	
     s32 i, vout_type;
     vframe_t *vf;
-#ifdef CONFIG_VIDEO_LOG
+#ifdef CONFIG_AM_VIDEO_LOG
     int toggle_cnt;
 #endif
 #ifdef FIQ_VSYNC
@@ -792,7 +792,7 @@ static irqreturn_t vsync_isr0(int irq, void *dev_id)
 		"sub    fp, sp, #256;\n");
 #endif			
 
-#ifdef CONFIG_VIDEO_LOG
+#ifdef CONFIG_AM_VIDEO_LOG
     toggle_cnt = 0;
 #endif
 
@@ -915,7 +915,7 @@ static irqreturn_t vsync_isr0(int irq, void *dev_id)
 
             break;
         }
-#ifdef CONFIG_VIDEO_LOG
+#ifdef CONFIG_AM_VIDEO_LOG
         toggle_cnt++;
 #endif
     }
@@ -1830,7 +1830,7 @@ static void vout_hook(void)
     if (vinfo)
         vsync_pts_inc = 90000 * vinfo->sync_duration_den / vinfo->sync_duration_num;
 
-#ifdef CONFIG_VIDEO_LOG
+#ifdef CONFIG_AM_VIDEO_LOG
     if (vinfo) {
 		amlog_mask(LOG_MASK_VINFO, "vinfo = %p\n", vinfo);
         amlog_mask(LOG_MASK_VINFO, "display platform %s:\n", vinfo->name);

@@ -46,7 +46,7 @@ static const unsigned int  signal_set[SIGNAL_SET_MAX][3]=
 	{
 		VIDEO_SIGNAL_TYPE_CVBS,            	//cvbs&svideo
 		VIDEO_SIGNAL_TYPE_SVIDEO_LUMA,    
-    		VIDEO_SIGNAL_TYPE_SVIDEO_CHROMA,   
+    	VIDEO_SIGNAL_TYPE_SVIDEO_CHROMA,   
 	},
 	{	VIDEO_SIGNAL_TYPE_PROGRESSIVE_Y,     //progressive.
 		VIDEO_SIGNAL_TYPE_PROGRESSIVE_PB,

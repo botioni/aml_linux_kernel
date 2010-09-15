@@ -21,8 +21,7 @@
 
 #include <linux/kernel.h>
 #include <linux/vout/vinfo.h>
-
-#include "vframe.h"
+#include <linux/amports/vframe.h>
 #include "video.h"
 #include "vpp.h"
 

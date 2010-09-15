@@ -28,6 +28,8 @@
 #include <linux/amports/amstream.h>
 #include <linux/amports/ptsserv.h>
 #include <linux/amports/canvas.h>
+#include <linux/amports/vframe.h>
+#include <linux/amports/vframe_provider.h>
 #include <linux/workqueue.h>
 #include <linux/dma-mapping.h>
 #include <asm/atomic.h>
@@ -36,9 +38,6 @@
 
 #include "amvdec.h"
 #include "vh264_mc.h"
-
-#include "vframe.h"
-#include "vframe_provider.h"
 
 #define DRIVER_NAME "amvdec_h264"
 #define MODULE_NAME "amvdec_h264"

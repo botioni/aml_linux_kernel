@@ -28,13 +28,23 @@
 #include <linux/amports/ptsserv.h>
 #include <linux/amports/amstream.h>
 #include <linux/amports/canvas.h>
+#include <linux/amports/vframe.h>
+#include <linux/amports/vframe_provider.h>
 #include <mach/am_regs.h>
+
+#ifdef CONFIG_AM_VDEC_MJPEG_LOG
+#define AMLOG
+#define LOG_LEVEL_VAR		amlog_level_vmjpeg
+#define LOG_MASK_VAR		amlog_mask_vmjpeg
+#define LOG_LEVEL_ERROR		0
+#define LOG_LEVEL_INFO		1
+#define LOG_LEVEL_DESC	"0:ERROR, 1:INFO"
+#endif
+#include <linux/amlog.h>
+MODULE_AMLOG(LOG_LEVEL_ERROR, 0, LOG_LEVEL_DESC, LOG_DEFAULT_MASK_DESC);
 
 #include "amvdec.h"
 #include "vmjpeg_mc.h"
-
-#include "vframe.h"
-#include "vframe_provider.h"
 
 #define DRIVER_NAME "amvdec_mjpeg"
 #define MODULE_NAME "amvdec_mjpeg"
@@ -453,7 +463,7 @@ static void vmjpeg_local_init(void)
     frame_height = vmjpeg_amstream_dec_info.height;
     frame_dur = vmjpeg_amstream_dec_info.rate;
 
-    printk("mjpegdec: w(%d), h(%d), dur(%d)\n", frame_width, frame_height, frame_dur);
+    amlog_level(LOG_LEVEL_INFO, "mjpegdec: w(%d), h(%d), dur(%d)\n", frame_width, frame_height, frame_dur);
 
     for (i = 0; i < 4; i++)
         vfbuf_use[i] = 0;
@@ -482,7 +492,7 @@ static s32 vmjpeg_init(void)
                     IRQF_SHARED, "vmjpeg-irq", (void *)vmjpeg_dec_id);
 
     if (r) {
-        printk("vmjpeg irq register error.\n");
+        amlog_level(LOG_LEVEL_ERROR, "vmjpeg irq register error.\n");
         return -ENOENT;
     }
 
@@ -513,10 +523,10 @@ static int amvdec_mjpeg_probe(struct platform_device *pdev)
 {
     struct resource *mem;
 
-    printk("amvdec_mjpeg probe start.\n");
+    amlog_level(LOG_LEVEL_INFO, "amvdec_mjpeg probe start.\n");
 
     if (!(mem = platform_get_resource(pdev, IORESOURCE_MEM, 0))) {
-        printk("amvdec_mjpeg memory resource undefined.\n");
+        amlog_level(LOG_LEVEL_ERROR, "amvdec_mjpeg memory resource undefined.\n");
         return -EFAULT;
     }
 
@@ -526,12 +536,12 @@ static int amvdec_mjpeg_probe(struct platform_device *pdev)
     memcpy(&vmjpeg_amstream_dec_info, (void *)mem[1].start, sizeof(vmjpeg_amstream_dec_info));
 
     if (vmjpeg_init() < 0) {
-        printk("amvdec_mjpeg init failed.\n");
+        amlog_level(LOG_LEVEL_ERROR, "amvdec_mjpeg init failed.\n");
 
         return -ENODEV;
     }
 
-    printk("amvdec_mjpeg probe end.\n");
+    amlog_level(LOG_LEVEL_INFO, "amvdec_mjpeg probe end.\n");
 
     return 0;
 }
@@ -558,7 +568,7 @@ static int amvdec_mjpeg_remove(struct platform_device *pdev)
         stat &= ~STAT_VF_HOOK;
     }
 
-    printk("amvdec_mjpeg remove.\n");
+    amlog_level(LOG_LEVEL_INFO, "amvdec_mjpeg remove.\n");
 
     return 0;
 }
@@ -575,10 +585,10 @@ static struct platform_driver amvdec_mjpeg_driver = {
 
 static int __init amvdec_mjpeg_driver_init_module(void)
 {
-    printk("amvdec_mjpeg module init\n");
+    amlog_level(LOG_LEVEL_INFO, "amvdec_mjpeg module init\n");
 
     if (platform_driver_register(&amvdec_mjpeg_driver)) {
-        printk("failed to register amvdec_mjpeg driver\n");
+        amlog_level(LOG_LEVEL_ERROR, "failed to register amvdec_mjpeg driver\n");
         return -ENODEV;
     }
 
@@ -587,7 +597,7 @@ static int __init amvdec_mjpeg_driver_init_module(void)
 
 static void __exit amvdec_mjpeg_driver_remove_module(void)
 {
-    printk("amvdec_mjpeg module remove.\n");
+    amlog_level(LOG_LEVEL_INFO, "amvdec_mjpeg module remove.\n");
 
     platform_driver_unregister(&amvdec_mjpeg_driver);
 }
