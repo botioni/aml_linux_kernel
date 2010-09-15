@@ -5,6 +5,17 @@
 #include <linux/amports/timestamp.h>
 #include <linux/amports/tsync.h>
 
+#ifdef CONFIG_AM_TIMESYNC_LOG
+#define AMLOG
+#define LOG_LEVEL_ERROR		0
+#define LOG_LEVEL_ATTENTION 1
+#define LOG_LEVEL_INFO		2
+#define LOG_LEVEL_VAR		amlog_level_tsync
+#define LOG_MASK_VAR		amlog_mask_tsync
+#endif
+#include <linux/amlog.h>
+MODULE_AMLOG(AMLOG_DEFAULT_LEVEL, 0, LOG_DEFAULT_LEVEL_DESC, LOG_DEFAULT_MASK_DESC);
+
 //#define DEBUG
 #define AVEVENT_FLAG_PARAM  0x01
 
@@ -82,11 +93,9 @@ void tsync_avevent(avevent_t event, u32 param)
         #endif
 
             tsync_stat = TSYNC_STAT_PCRSCR_SETUP_VIDEO;
-#ifdef DEBUG
-            printk("vpts to scr, apts = 0x%x, vpts = 0x%x\n",
+            amlog_level(LOG_LEVEL_INFO, "vpts to scr, apts = 0x%x, vpts = 0x%x\n",
                 timestamp_apts_get(),
                 timestamp_vpts_get());
-#endif
         }
 
         if (tsync_stat == TSYNC_STAT_PCRSCR_SETUP_AUDIO)
@@ -122,9 +131,9 @@ void tsync_avevent(avevent_t event, u32 param)
             timestamp_vpts_set(param);
 
             timestamp_pcrscr_set(param);
-#ifdef DEBUG
-            printk("reset scr from vpts to 0x%x\n", param);
-#endif
+
+            amlog_level(LOG_LEVEL_ATTENTION, "reset scr from vpts to 0x%x\n", param);
+
         } else if (tsync_enable)
             tsync_mode = TSYNC_MODE_AMASTER;
         break;
@@ -135,9 +144,7 @@ void tsync_avevent(avevent_t event, u32 param)
 
         t = timestamp_pcrscr_get();
     
-#ifdef DEBUG
-        printk("AUDIO_TSTAMP_DISCONTINUITY, 0x%x, 0x%x\n", t, param);
-#endif
+        amlog_level(LOG_LEVEL_ATTENTION, "AUDIO_TSTAMP_DISCONTINUITY, 0x%x, 0x%x\n", t, param);
 
         if (abs(param - t) > AV_DISCONTINUE_THREDHOLD) {
             /* switch tsync mode to free run mode,
@@ -146,9 +153,9 @@ void tsync_avevent(avevent_t event, u32 param)
             tsync_mode = TSYNC_MODE_VMASTER;
 
             timestamp_apts_set(param);
-#ifdef DEBUG
-            printk("apts interrupt: 0x%x\n", param);
-#endif
+
+            amlog_level(LOG_LEVEL_ATTENTION, "apts interrupt: 0x%x\n", param);
+
         } else
             tsync_mode = TSYNC_MODE_AMASTER;
         break;
@@ -159,10 +166,9 @@ void tsync_avevent(avevent_t event, u32 param)
 
         t = timestamp_pcrscr_get();
 
-#ifdef DEBUG
-        printk("[%s]param %d, t %d, tsync_abreak %d\n", 
+        amlog_level(LOG_LEVEL_INFO, "[%s]param %d, t %d, tsync_abreak %d\n", 
             __FUNCTION__, param, t, tsync_abreak);
-#endif
+
         if (tsync_abreak && (abs(param-t) > TIME_UNIT90K/10)) // 100ms, then wait to match
         {
             break;
@@ -184,9 +190,9 @@ void tsync_avevent(avevent_t event, u32 param)
         }
         timestamp_apts_set(param);
         tsync_stat = TSYNC_STAT_PCRSCR_SETUP_AUDIO;
-#ifdef DEBUG
-        printk("apts reset scr = 0x%x\n", param);
-#endif
+
+        amlog_level(LOG_LEVEL_INFO, "apts reset scr = 0x%x\n", param);
+
         timestamp_pcrscr_enable(1);
         break;
         
@@ -442,7 +448,7 @@ static int __init tsync_init(void)
     r = class_register(&tsync_class);
 
     if (r) {
-        printk("tsync class create fail.\n");
+        amlog_level(LOG_LEVEL_ERROR, "tsync class create fail.\n");
         return r;
     }
 
