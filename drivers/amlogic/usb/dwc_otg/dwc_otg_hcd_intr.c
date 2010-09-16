@@ -203,7 +203,8 @@ int32_t dwc_otg_hcd_handle_sof_intr(dwc_otg_hcd_t * _hcd)
 			 * Move QH to the ready list to be executed next
 			 * (micro)frame.
 			 */
-			list_move(&qh->qh_list_entry,
+			//list_move(&qh->qh_list_entry,
+			list_move_tail(&qh->qh_list_entry,
 				  &_hcd->periodic_sched_ready);
 		}
 	}
@@ -475,6 +476,7 @@ static int split_order(dwc_otg_hcd_t * _dwc_otg_hcd,haint_data_t *haint, int *or
 	
 	for(i  = 0;i < CHANNEL_NUM; i++){
 		s_order[i].channel_num = i;
+		s_order[i].current_num = 0;
 		if (haint->b2.chint & (1 << i)) {//has channel interrupt
 			hc = _dwc_otg_hcd->hc_ptr_array[i];
 				
@@ -482,6 +484,7 @@ static int split_order(dwc_otg_hcd_t * _dwc_otg_hcd,haint_data_t *haint, int *or
 				s_order[i].current_num= hc->qh->current_num;					
 				split_num++;
 			}					
+			
 		}
 	}
 	
@@ -490,7 +493,7 @@ static int split_order(dwc_otg_hcd_t * _dwc_otg_hcd,haint_data_t *haint, int *or
 			if(s_order[i].current_num==0)
 				continue;
 			else{
-				for(j = i+1;j<6;j++){
+				for(j = i+1;j<CHANNEL_NUM;j++){
 					if(s_order[j].current_num==0)
 						continue;
 					else{
@@ -970,7 +973,7 @@ static void halt_channel(dwc_otg_hcd_t * _hcd,
 			 * halt to be queued when the periodic schedule is
 			 * processed.
 			 */
-			list_move(&_hc->qh->qh_list_entry,
+			list_move_tail(&_hc->qh->qh_list_entry,
 				  &_hcd->periodic_sched_assigned);
 
 			/*

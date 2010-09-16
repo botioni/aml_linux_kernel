@@ -130,7 +130,8 @@ static void dwc_otg_hcd_handle_sof_func(unsigned long _p)
 			 * Move QH to the ready list to be executed next
 			 * (micro)frame.
 			 */
-			list_move(&qh->qh_list_entry,
+			//list_move(&qh->qh_list_entry,
+			list_move_tail(&qh->qh_list_entry,
 				  &_hcd->periodic_sched_ready);
 		}
 	}
@@ -148,7 +149,7 @@ static void dwc_otg_hcd_handle_sof_func(unsigned long _p)
 		 * periodic assigned schedule.
 		 */
 		qh_entry = qh_entry->next;
-		list_move(&qh->qh_list_entry, &_hcd->periodic_sched_assigned);
+		list_move_tail(&qh->qh_list_entry, &_hcd->periodic_sched_assigned);
 
 		tr_type = DWC_OTG_TRANSACTION_PERIODIC;
 	}

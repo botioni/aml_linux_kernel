@@ -573,10 +573,10 @@ void dwc_otg_hcd_qh_deactivate(dwc_otg_hcd_t * _hcd, dwc_otg_qh_t * _qh,
 			 * appropriate queue.
 			 */
 			if (_qh->sched_frame == frame_number) {
-				list_move(&_qh->qh_list_entry,
+				list_move_tail(&_qh->qh_list_entry,
 					  &_hcd->periodic_sched_ready);
 			} else {
-				list_move(&_qh->qh_list_entry,
+				list_move_tail(&_qh->qh_list_entry,
 					  &_hcd->periodic_sched_inactive);
 			}
 		}
@@ -695,7 +695,8 @@ int dwc_otg_hcd_qtd_add(dwc_otg_qtd_t * _qtd, dwc_otg_hcd_t * _dwc_otg_hcd,
 			 * Move QH to the ready list to be executed next
 			 * (micro)frame.
 			 */
-			list_move(&qh->qh_list_entry,
+			//list_move(&qh->qh_list_entry,
+			list_move_tail(&qh->qh_list_entry,
 				  &_dwc_otg_hcd->periodic_sched_ready);
 		}
 	}
