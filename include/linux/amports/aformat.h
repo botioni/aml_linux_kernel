@@ -37,7 +37,8 @@ typedef enum {
     AFORMAT_ADPCM = 11,
     AFORMAT_AMR  = 12,
     AFORMAT_RAAC  = 13,
-    AFORMAT_MAX    = 14
+    AFORMAT_WMA  = 14,
+    AFORMAT_MAX    = 15
 } aformat_t;
 
 #endif /* AFORMAT_H */

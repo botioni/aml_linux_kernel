@@ -70,7 +70,10 @@ int audiodsp_start(void)
  		start_audiodsp_monitor(priv);
 
 #ifdef CONFIG_AM_VDEC_REAL
-	if(pmcode->fmt == MCODEC_FMT_COOK || pmcode->fmt == MCODEC_FMT_RAAC || pmcode->fmt == MCODEC_FMT_AMR ||(pmcode->fmt == MCODEC_FMT_ADPCM))
+	if(pmcode->fmt == MCODEC_FMT_COOK || pmcode->fmt == MCODEC_FMT_RAAC 
+		|| pmcode->fmt == MCODEC_FMT_AMR || pmcode->fmt == MCODEC_FMT_WMA 
+		||(pmcode->fmt == MCODEC_FMT_ADPCM))
+
 	{
     		for(i = 0; i< 1000;i++){
                 if(DSP_RD(DSP_AUDIOINFO_STATUS) == DSP_AUDIOINFO_READY)//maybe at audiodsp side,INT not enabled yet,so wait a while
