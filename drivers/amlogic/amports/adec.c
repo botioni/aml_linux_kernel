@@ -60,6 +60,7 @@ static char *astream_format[] =
   "amadec_adpcm",
   "amadec_amr",
   "amadec_raac",
+  "amadec_wma",
 };
 
 static const char *na_string = "NA";
