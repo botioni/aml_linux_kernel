@@ -190,7 +190,7 @@ static inline int dsp_set_stream_buffer( struct audiodsp_priv *priv)
 	int res;
 	mutex_lock(&priv->dsp_mutex);		
 	halt_dsp(priv);
-	//if(priv->stream_fmt!=priv->last_stream_fmt)
+	if(priv->stream_fmt!=priv->last_stream_fmt)
 		{
 		if(auidodsp_microcode_load(audiodsp_privdata(),mcode)!=0)
 			{
@@ -242,6 +242,7 @@ exit:
  	//priv->dsp_is_started=0;
  	halt_dsp(priv);
 	priv->dsp_end_time=jiffies;
+#if 0	
 	if(priv->dsp_stack_start!=0)
 		kfree((void*)priv->dsp_stack_start);
 	priv->dsp_stack_start=0;
@@ -256,6 +257,7 @@ exit:
 		kfree(priv->stream_buffer_mem);
 		priv->stream_buffer_mem=NULL;		
 		}
+	#endif
 	mutex_unlock(&priv->dsp_mutex);	
 	return 0;
  	}
