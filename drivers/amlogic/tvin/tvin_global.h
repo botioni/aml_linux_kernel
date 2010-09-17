@@ -327,11 +327,16 @@ typedef enum tvin_video_status_e {
 
 #define VDIN_DEBUG
 #ifdef VDIN_DEBUG
-#define pr_dbg(fmt, args...) printk(KERN_DEBUG "amvdecvdin: " fmt, ## args)
+#define pr_dbg(fmt, args...) printk(fmt,## args)
 #else
 #define pr_dbg(fmt, args...)
 #endif
-#define pr_error(fmt, args...) printk(KERN_ERR "amvdecvdin: " fmt, ## args)
+#define pr_error(fmt, args...) printk(fmt,## args)
+
+
+#define VDIN_START_CANVAS               70U
+#define BT656IN_VF_POOL_SIZE            8
+#define BT656IN_ANCI_DATA_SIZE          0x4000 //save anci data from bt656in
 
 
 #endif // __TVIN_GLOBAL_H

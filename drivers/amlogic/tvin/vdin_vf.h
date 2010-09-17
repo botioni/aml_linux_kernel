@@ -15,8 +15,9 @@
 #define __AML_TVIN_VDIN_VF_H
 
 #include "../amports/vframe.h"
+#include "tvin_global.h"
 
-#define BT656IN_VF_POOL_SIZE 8
+
 
 typedef struct vfq_s{
 	struct vframe_s *pool[BT656IN_VF_POOL_SIZE];
