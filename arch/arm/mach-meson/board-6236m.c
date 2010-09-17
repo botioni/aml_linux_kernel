@@ -43,6 +43,12 @@
 #include <linux/spi/ads7846.h>
 //#include <linux/gpio.h>
 #endif
+#include <linux/mtd/mtd.h>
+#include <linux/mtd/nand.h>
+#include <linux/mtd/nand_ecc.h>
+#include <linux/mtd/partitions.h>
+#include <linux/device.h>
+#include <linux/spi/flash.h>
 
 #if defined(CONFIG_JPEGLOGO)
 static struct resource jpeglogo_resources[] = {
@@ -345,6 +351,84 @@ static struct spi_board_info spi_board_info_list[] = {
 	},
 };
 
+#ifdef CONFIG_AM_NAND
+
+static struct mtd_partition partition_info[] = 
+{
+	{
+		.name = "U-BOOT",
+		.offset = 0,
+		.size=4*1024*1024,
+	},
+	{
+		.name = "Kernel",
+		.offset = 6*1024*1024,
+		.size =   4* 1024*1024,
+	},
+	{
+		.name = "YAFFS2",
+		.offset =16*1024*1024,
+		.size =	100*0x100000,
+	},
+	{	.name="FTL_Part",
+		.offset=		MTDPART_OFS_APPEND, 	
+		.size=		MTDPART_SIZ_FULL,	
+	//	.set_flags=MTD_AVNFTL,
+	//	.dual_partnum=1,
+	}
+};
+
+static struct resource aml_nand_resources[] = 
+{
+	{
+		.start = 0xc1108600,
+		.end = 0xc1108624,
+		.flags = IORESOURCE_MEM,
+	},
+};
+//for  6236M MID 
+static struct aml_m1_nand_platform aml_Micron4GBABAnand_platform = 
+{
+	.page_size = 2048*2,
+	.spare_size= 224,		//for micron ABA 4GB
+	.erase_size=1024*1024,
+	.bch_mode=		3,		//BCH16
+	.encode_size=540,				
+	.timing_mode=5,
+	.onfi_mode=1,
+	.ce_num=1,
+	.partitions = partition_info,
+	.nr_partitions = ARRAY_SIZE(partition_info),
+};
+
+//for ref 
+static struct aml_m1_nand_platform aml_2Kpage128Kblocknand_platform = 
+{
+	.page_size = 2048,
+	.spare_size= 64,		
+	.erase_size= 128*1024,
+	.bch_mode  =  1,		//BCH8
+	.encode_size= 528,				
+	.timing_mode= 5,
+	.ce_num     = 1,
+	.partitions = partition_info,
+	.nr_partitions = ARRAY_SIZE(partition_info),
+};
+
+
+static struct platform_device aml_nand_device = 
+{
+	.name = "aml_m1_nand",
+	.id = 0,
+	.num_resources = ARRAY_SIZE(aml_nand_resources),
+	.resource = aml_nand_resources,
+	.dev = {
+	//	.platform_data = &aml_Micron4GBABAnand_platform,
+		.platform_data = &aml_2Kpage128Kblocknand_platform,
+	},
+};
+#endif
+
 int ads7846_init_gpio(void)
 {
 /* memson
@@ -417,6 +501,9 @@ static struct platform_device __initdata *platform_devs[] = {
 #if defined(CONFIG_TOUCHSCREEN_ADS7846)
 	&spi_gpio,
 #endif
+	 #if defined(CONFIG_AM_NAND)
+		&aml_nand_device,
+    #endif		
 };
 
 static void __init eth_pinmux_init(void)
