@@ -302,7 +302,7 @@ static struct mtd_partition partition_info[] =
 	}
 };
 
-static struct aml_m1_nand_platform aml_2Kpage128Kblocknand_platform = {
+static struct aml_m1_nand_platform aml_2kpage128kblocknand_platform = {
 	.page_size = 2048,
 	.spare_size= 64,		
 	.erase_size= 128*1024,
