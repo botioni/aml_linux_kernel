@@ -37,6 +37,7 @@ typedef enum vdin_src_e {
 	VDIN_SRC_TVFE,
 	VDIN_SRC_CVD2,
 	VDIN_SRC_HDMIRX,
+	VDIN_SRC_CAMERA,
 } vdin_src_t;
 
 typedef enum vdin_mux_e {

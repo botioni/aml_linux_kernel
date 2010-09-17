@@ -5,7 +5,7 @@
 #include "../amports/vframe_provider.h"
 //#define DEBUG
 
-extern void set_next_field_656_601_camera_in_anci_address(unsigned char index);
+//extern void set_next_field_656_601_camera_in_anci_address(unsigned char index);
 
 //below macro defined is from tvin_global.h, they maybe not exact.
 //input_mode is TVIN_SIG_FMT_NULL: disable 656in/601/camera decode;
@@ -20,8 +20,8 @@ extern void set_next_field_656_601_camera_in_anci_address(unsigned char index);
 //              TVIN_SIG_FMT_VGA_800X600P_60D317:800x600 camera inout(progressive)
 //              TVIN_SIG_FMT_VGA_1024X768P_60D004:1024x768 camera inout(progressive)
 //              .....
-extern void start_amvdec_656_601_camera_in(unsigned char input_mode);
-extern void stop_amvdec_656_601_camera_in(unsigned char input_mode);
+extern void start_amvdec_656_601_camera_in(tvin_sig_format_t input_mode);
+extern void stop_amvdec_656_601_camera_in(tvin_sig_format_t input_mode);
 
 extern int amvdec_656_601_camera_in_run(vframe_t *info);
 

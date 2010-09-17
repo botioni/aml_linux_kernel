@@ -12,6 +12,7 @@
  */
 
 #include <linux/types.h>
+#include <linux/kernel.h>
 #include "vdin_vf.h"
 #include "../amports/vframe_provider.h"
 
@@ -23,33 +24,13 @@ static void vdin_vf_put(vframe_t *vf);
 static vfq_t newframe_q, display_q, recycle_q;
 static struct vframe_s vfpool[BT656IN_VF_POOL_SIZE];
 
-#if 0
-inline vfq_t *newframe_vfq(void)
-{
-    return &newframe_q;
-}
-
-inline vfq_t *display_vfq(void)
-{
-    return &display_q;
-}
-
-inline vfq_t *recycle_vfq(void)
-{
-    return &recycle_q;
-}
-#endif
-
 
 static inline void ptr_atomic_wrap_inc(u32 *ptr)
 {
     u32 i = *ptr;
-
     i++;
-
     if (i >= BT656IN_VF_POOL_SIZE)
         i = 0;
-
     *ptr = i;
 }
 
@@ -77,7 +58,8 @@ inline bool vfq_empty_recycle(void)
 
 inline void vfq_push(vfq_t *q, vframe_t *vf)
 {
-	q->pool[q->wr_index] = vf;
+    u32 index = q->wr_index;
+    q->pool[index] = vf;
 	ptr_atomic_wrap_inc(&q->wr_index);
 }
 
@@ -115,7 +97,17 @@ inline vframe_t *vfq_pop(vfq_t *q)
 #if 1
 inline vframe_t *vfq_pop_newframe(void)
 {
-    return vfq_pop(&newframe_q);
+    vframe_t *vf;
+    u32 index = newframe_q.rd_index;
+//    printk("vfq_pop_newframe:  index is %d. ", index);
+//    vf = &vfpool[index];
+    vf = newframe_q.pool[index];
+//    printk("vf is %x, vf->type is %x . \n", vf, vf->type);
+    newframe_q.rd_index++;
+    if(newframe_q.rd_index > (BT656IN_VF_POOL_SIZE - 1))
+        newframe_q.rd_index = 0;
+
+    return(vf) ;
 }
 
 inline vframe_t *vfq_pop_display(void)
@@ -150,7 +142,7 @@ void vdin_vf_init(void)
 	vfq_init(&recycle_q);
 	vfq_init(&newframe_q);
 
-	for (i = 0; i < (BT656IN_VF_POOL_SIZE - 1); ++i)
+	for (i = 0; i < (BT656IN_VF_POOL_SIZE ); ++i)
 	{
 		vfq_push(&newframe_q, &vfpool[i]);
 	}
@@ -188,8 +180,8 @@ void vdin_unreg_vf_provider(void)
     vf_unreg_provider();
 }
 
-const u32 canvas_tab[8] = {
-        0x000070, 0x000071, 0x000072, 0x000073, 0x000074, 0x000075, 0x000076, 0x000077
-};
+
+
+
 
 

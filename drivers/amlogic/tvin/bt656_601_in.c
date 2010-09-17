@@ -18,6 +18,7 @@
 #include <linux/kernel.h>
 #include <linux/types.h>
 #include <linux/errno.h>
+#include <linux/etherdevice.h>
 #include <linux/interrupt.h>
 #include <linux/timer.h>
 #include <linux/platform_device.h>
@@ -26,10 +27,12 @@
 #include <linux/amports/canvas.h>
 #include <linux/workqueue.h>
 #include <linux/dma-mapping.h>
+#include <asm/delay.h>
 #include <asm/atomic.h>
 #include <mach/am_regs.h>
 #include "tvin_global.h"
 #include "bt656_601_in.h"
+#include "vdin_regs.h"
 
 
 #define DEVICE_NAME "amvdec_656in"
@@ -38,8 +41,8 @@
 
 //#define HANDLE_BT656IN_IRQ
 
-#define BT656IN_COUNT 			32
-#define BT656IN_ANCI_DATA_SIZE     	0x4000
+//#define BT656IN_COUNT 			32
+//#define BT656IN_ANCI_DATA_SIZE     	0x4000
 #define BR656IN_NTSC_FLAG		0x10
 
 
@@ -82,6 +85,11 @@ typedef struct {
 //              .....
     tvin_sig_format_t   input_mode;
 
+    unsigned char       rd_canvas_index;
+    unsigned char       wr_canvas_index;
+    unsigned char       buff_flag[BT656IN_VF_POOL_SIZE];
+
+
 }am656in_t;
 
 am656in_t am656in_dec_info = {
@@ -96,7 +104,16 @@ am656in_t am656in_dec_info = {
         .active_pixel = 720,
         .active_line = 288,
         .input_mode = TVIN_SIG_FMT_NULL,     //disable 656in/601/camera decode;
-
+        .rd_canvas_index = 0xff - (BT656IN_VF_POOL_SIZE + 2),
+        .wr_canvas_index =  BT656IN_VF_POOL_SIZE,
+        .buff_flag = {  VIDTYPE_INTERLACE_BOTTOM,
+                        VIDTYPE_INTERLACE_TOP,
+                        VIDTYPE_INTERLACE_BOTTOM,
+                        VIDTYPE_INTERLACE_TOP,
+                        VIDTYPE_INTERLACE_BOTTOM,
+                        VIDTYPE_INTERLACE_TOP,
+                        VIDTYPE_INTERLACE_BOTTOM,
+                        VIDTYPE_INTERLACE_TOP},
     };
 
 
@@ -182,6 +199,26 @@ static void init_656in_dec_parameter(unsigned char input_mode)
     return;
 }
 
+
+static inline u32 bt656_index2canvas(u32 index)
+{
+    const u32 canvas_tab[BT656IN_VF_POOL_SIZE] = {
+            VDIN_START_CANVAS,
+            VDIN_START_CANVAS + 1,
+            VDIN_START_CANVAS + 2,
+            VDIN_START_CANVAS + 3,
+            VDIN_START_CANVAS + 4,
+            VDIN_START_CANVAS + 5,
+            VDIN_START_CANVAS + 6,
+            VDIN_START_CANVAS + 7,
+    };
+    if(index < BT656IN_VF_POOL_SIZE)
+        return canvas_tab[index];
+    else
+        return 0xff;
+}
+
+
 //NTSC or PAL input(interlace mode): CLOCK + D0~D7(with SAV + EAV )
 static void reset_bt656in_dec(void)
 {
@@ -224,13 +261,13 @@ static void reset_bt656in_dec(void)
 
 		WRITE_CBUS_REG(BT_ERR_CNT, (626 << 16) | (1760));
 
-		if(am656in_dec_info.input_mode  == TVIN_SIG_FMT_COMPONENT_480I_59D940) //input is PAL
+		if(am656in_dec_info.input_mode  == TVIN_SIG_FMT_COMPONENT_576I_50D000 ) //input is PAL
 		{
 				WRITE_CBUS_REG(BT_VBIEND, 	22 | (22 << 16));		//field 0/1 VBI last line number
 				WRITE_CBUS_REG(BT_VIDEOSTART, 	23 | (23 << 16));	//Line number of the first video start line in field 0/1.
 				WRITE_CBUS_REG(BT_VIDEOEND , 	312 |          //  Line number of the last video line in field 1. added video end for avoid overflow.
 								(312 <<16));					// Line number of the last video line in field 0
-				WRITE_CBUS_REG(BT_CTRL ,	//(1 << BT_UPDATE_ST_SEL) |  //Update bt656 status register when start of frame.
+				WRITE_CBUS_REG(BT_CTRL ,	(0 << BT_UPDATE_ST_SEL) |  //Update bt656 status register when end of frame.
 								(1 << BT_COLOR_REPEAT) | //Repeated the color data when do 4:2:2 -> 4:4:4 data transfer.
 								(1 << BT_AUTO_FMT ) |			//use haREAD_CBUS_REGware to check the PAL/NTSC format input format if it's standaREAD_CBUS_REG BT656 input format.
 								(1 << BT_MODE_BIT     ) | // BT656 standaREAD_CBUS_REG interface.
@@ -239,13 +276,13 @@ static void reset_bt656in_dec(void)
 								(1 << BT_CLK27_SEL_BIT) |    // use external xclk27.
 								(1 << BT_XCLK27_EN_BIT)) ;    // xclk27 is input.
 		}
-		else if(am656in_dec_info.input_mode  == TVIN_SIG_FMT_COMPONENT_576I_50D000) //input is PAL	//input is NTSC
+		else if(am656in_dec_info.input_mode  == TVIN_SIG_FMT_COMPONENT_480I_59D940) //input is PAL	//input is NTSC
 		{
 				WRITE_CBUS_REG(BT_VBIEND, 	21 | (21 << 16));		//field 0/1 VBI last line number
 				WRITE_CBUS_REG(BT_VIDEOSTART, 	18 | (18 << 16));	//Line number of the first video start line in field 0/1.
 				WRITE_CBUS_REG(BT_VIDEOEND , 	257 |          //  Line number of the last video line in field 1. added video end for avoid overflow.
 								(257 <<16));					// Line number of the last video line in field 0
-				WRITE_CBUS_REG(BT_CTRL ,	//(1 << BT_UPDATE_ST_SEL) |  //Update bt656 status register when start of frame.
+				WRITE_CBUS_REG(BT_CTRL ,	(0 << BT_UPDATE_ST_SEL) |  //Update bt656 status register when end of frame.
 								(1 << BT_COLOR_REPEAT) | //Repeated the color data when do 4:2:2 -> 4:4:4 data transfer.
 								(1 << BT_AUTO_FMT ) |		//use haREAD_CBUS_REGware to check the PAL/NTSC format input format if it's standaREAD_CBUS_REG BT656 input format.
 								(1 << BT_MODE_BIT     ) | // BT656 standaREAD_CBUS_REG interface.
@@ -430,7 +467,14 @@ void set_next_field_656_601_camera_in_anci_address(unsigned char index)
 		unsigned pbufAddr;
 		pbufAddr = am656in_dec_info.pbufAddr + index * 0x200;
 //		//set next field ANCI.
-		WRITE_CBUS_REG(BT_ANCISADR, pbufAddr);
+    WRITE_CBUS_REG(BT_ANCISADR, pbufAddr);
+
+    WRITE_CBUS_REG(BT_AFIFO_CTRL,   (1 <<31) |     // load start and end address to afifo.
+                                    (1 << 6) |     // fill _en;
+                                    (1 << 3)) ;     // urgent
+
+
+
 }
 
 //below macro defined is from tvin_global.h, they maybe not exact.
@@ -446,7 +490,7 @@ void set_next_field_656_601_camera_in_anci_address(unsigned char index)
 //              TVIN_SIG_FMT_VGA_800X600P_60D317:800x600 camera inout(progressive)
 //              TVIN_SIG_FMT_VGA_1024X768P_60D004:1024x768 camera inout(progressive)
 //              .....
-void start_amvdec_656_601_camera_in(unsigned char input_mode)
+void start_amvdec_656_601_camera_in(tvin_sig_format_t input_mode)
 {
     if((am656in_dec_info.input_mode == TVIN_SIG_FMT_NULL) && (input_mode != TVIN_SIG_FMT_NULL))
     {
@@ -457,11 +501,15 @@ void start_amvdec_656_601_camera_in(unsigned char input_mode)
         {
             pr_dbg("bt656in decode. \n");
             reset_bt656in_dec();
+            am656in_dec_info.rd_canvas_index = 0xff - (BT656IN_VF_POOL_SIZE + 2);
+            am656in_dec_info.wr_canvas_index =  BT656IN_VF_POOL_SIZE;
         }
         else if((input_mode == TVIN_SIG_FMT_HDMI_1440x576I_50Hz) || (input_mode == TVIN_SIG_FMT_HDMI_1440x480I_60Hz))
         {
             pr_dbg("bt601in decode. \n");
             reset_bt601in_dec();
+            am656in_dec_info.rd_canvas_index = 0xff - (BT656IN_VF_POOL_SIZE + 2);
+            am656in_dec_info.wr_canvas_index =  BT656IN_VF_POOL_SIZE;
             if(am656in_dec_info.pin_mux_reg2 != 0)
                 SET_CBUS_REG_MASK(am656in_dec_info.pin_mux_reg2, am656in_dec_info.pin_mux_mask2);  //set the related pin mux
             if(am656in_dec_info.pin_mux_reg3 != 0)
@@ -477,6 +525,14 @@ void start_amvdec_656_601_camera_in(unsigned char input_mode)
         }
         if(am656in_dec_info.pin_mux_reg1 != 0)
             SET_CBUS_REG_MASK(am656in_dec_info.pin_mux_reg1, am656in_dec_info.pin_mux_mask1);  //set the related pin mux
+
+
+
+        CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_5, 0x3e07fe);
+        CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_7, 0x000fc000);
+        CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, 0xffc00000);
+        CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_10, 0xe0000000);
+        CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_12, 0xfff80000);
 
 
     }
@@ -497,7 +553,7 @@ void start_amvdec_656_601_camera_in(unsigned char input_mode)
 //              TVIN_SIG_FMT_VGA_800X600P_60D317:800x600 camera inout(progressive)
 //              TVIN_SIG_FMT_VGA_1024X768P_60D004:1024x768 camera inout(progressive)
 //              .....
-void stop_amvdec_656_601_camera_in(unsigned char input_mode)
+void stop_amvdec_656_601_camera_in(tvin_sig_format_t input_mode)
 {
     unsigned temp_data;
 		// reset BT656in module.
@@ -544,6 +600,7 @@ static irqreturn_t bt656in_dec_irq(int irq, void *dev_id)
 static void bt656_in_dec_run(vframe_t * info)
 {
     unsigned ccir656_status, field_total_line;
+    unsigned char last_receiver_buff_index, canvas_id;
 
     ccir656_status = READ_CBUS_REG(BT_STATUS);
 
@@ -559,6 +616,7 @@ static void bt656_in_dec_run(vframe_t * info)
     if((field_total_line < 200) || (field_total_line > 320))  //skip current field
     {
         pr_dbg("656 in total line is less than 200 or more than 320, \n");
+        reset_bt656in_dec();
         return;
     }
 
@@ -578,16 +636,72 @@ static void bt656_in_dec_run(vframe_t * info)
 
     else
     {
-        if(ccir656_status & 0x10)  // current field is field 1.
+        if(am656in_dec_info.wr_canvas_index == 0)
+              last_receiver_buff_index = BT656IN_VF_POOL_SIZE - 1;
+        else
+              last_receiver_buff_index = am656in_dec_info.wr_canvas_index - 1;
+
+        if(ccir656_status & 0x1000)  // previous field is field 1.
         {
-            info->type = VIDTYPE_VIU_422 | VIDTYPE_VIU_FIELD | VIDTYPE_INTERLACE_BOTTOM;
+            am656in_dec_info.buff_flag[am656in_dec_info.wr_canvas_index] = VIDTYPE_INTERLACE_BOTTOM;
+            //make sure that the data type received ..../top/bottom/top/buttom/top/buttom/....
+            if((am656in_dec_info.buff_flag[last_receiver_buff_index] & 0x0f) == VIDTYPE_INTERLACE_BOTTOM)  //pre field type is the same to cur field
+            {
+                return;
+            }
+
         }
         else
         {
-            info->type = VIDTYPE_VIU_422 | VIDTYPE_VIU_FIELD | VIDTYPE_INTERLACE_TOP;
+            am656in_dec_info.buff_flag[am656in_dec_info.wr_canvas_index] = VIDTYPE_INTERLACE_TOP;
+            //make sure that the data type received ..../top/bottom/top/buttom/top/buttom/....
+            if((am656in_dec_info.buff_flag[last_receiver_buff_index] & 0x0f) == VIDTYPE_INTERLACE_TOP)  //pre field type is the same to cur field
+            {
+                return;
+            }
+
         }
 
-        if(am656in_dec_info.input_mode == TVIN_SIG_FMT_COMPONENT_576I_50D000)	//the data in the buffer is PAL
+        if(am656in_dec_info.input_mode == TVIN_SIG_FMT_COMPONENT_576I_50D000)     //PAL data
+            am656in_dec_info.buff_flag[am656in_dec_info.wr_canvas_index] |= 0x10;
+
+        if((am656in_dec_info.rd_canvas_index > 0xf0) && (am656in_dec_info.rd_canvas_index < 0xff))
+         {
+             am656in_dec_info.rd_canvas_index += 1;
+             am656in_dec_info.wr_canvas_index += 1;
+             if(am656in_dec_info.wr_canvas_index > (BT656IN_VF_POOL_SIZE -1) )
+                 am656in_dec_info.wr_canvas_index = 0;
+             canvas_id = bt656_index2canvas(am656in_dec_info.wr_canvas_index);
+             WRITE_MPEG_REG_BITS(VDIN_WR_CTRL, canvas_id, WR_CANVAS_BIT, WR_CANVAS_WID);
+             set_next_field_656_601_camera_in_anci_address(am656in_dec_info.wr_canvas_index);
+             return;
+           }
+
+         else if(am656in_dec_info.rd_canvas_index == 0xff)
+         {
+            am656in_dec_info.rd_canvas_index = 0;
+         }
+
+        else
+        {
+            am656in_dec_info.rd_canvas_index++;
+            if(am656in_dec_info.rd_canvas_index > (BT656IN_VF_POOL_SIZE -1))
+            {
+                am656in_dec_info.rd_canvas_index = 0;
+            }
+        }
+
+        if((am656in_dec_info.buff_flag[am656in_dec_info.rd_canvas_index] & 0xf) == VIDTYPE_INTERLACE_BOTTOM)  // current field is field 1.
+        {
+            info->type = VIDTYPE_VIU_SINGLE_PLANE | VIDTYPE_VIU_422 | VIDTYPE_VIU_FIELD | VIDTYPE_INTERLACE_BOTTOM;
+        }
+        else
+        {
+            info->type = VIDTYPE_VIU_SINGLE_PLANE | VIDTYPE_VIU_422 | VIDTYPE_VIU_FIELD | VIDTYPE_INTERLACE_TOP;
+        }
+        info->canvas0Addr = info->canvas1Addr = bt656_index2canvas(am656in_dec_info.rd_canvas_index);
+
+        if(am656in_dec_info.buff_flag[am656in_dec_info.rd_canvas_index] & 0x10)     //PAL
         {
             info->width= 720;
             info->height = 576;
@@ -600,8 +714,16 @@ static void bt656_in_dec_run(vframe_t * info)
             info->duration = 1600;
         }
 
+
+        am656in_dec_info.wr_canvas_index += 1;
+        if(am656in_dec_info.wr_canvas_index > (BT656IN_VF_POOL_SIZE -1) )
+            am656in_dec_info.wr_canvas_index = 0;
+        canvas_id = bt656_index2canvas(am656in_dec_info.wr_canvas_index);
+        WRITE_MPEG_REG_BITS(VDIN_WR_CTRL, canvas_id, WR_CANVAS_BIT, WR_CANVAS_WID);
+        set_next_field_656_601_camera_in_anci_address(am656in_dec_info.wr_canvas_index);
     }
     return;
+
 }
 
 static void bt601_in_dec_run(vframe_t * info)
@@ -622,6 +744,7 @@ static void bt601_in_dec_run(vframe_t * info)
     if((field_total_line < 200) || (field_total_line > 320))  //skip current field
     {
         pr_dbg("601 in total line is less than 200 or more than 320 \n");
+        reset_bt601in_dec();
         return;
     }
 
@@ -643,11 +766,11 @@ static void bt601_in_dec_run(vframe_t * info)
     {
         if(ccir656_status & 0x10)  // current field is field 1.
         {
-            info->type = VIDTYPE_VIU_422 | VIDTYPE_VIU_FIELD | VIDTYPE_INTERLACE_BOTTOM;
+            info->type = VIDTYPE_VIU_SINGLE_PLANE | VIDTYPE_VIU_422 | VIDTYPE_VIU_FIELD | VIDTYPE_INTERLACE_BOTTOM;
         }
         else
         {
-            info->type = VIDTYPE_VIU_422 | VIDTYPE_VIU_FIELD | VIDTYPE_INTERLACE_TOP;
+            info->type = VIDTYPE_VIU_SINGLE_PLANE | VIDTYPE_VIU_422 | VIDTYPE_VIU_FIELD | VIDTYPE_INTERLACE_TOP;
         }
 
         if(am656in_dec_info.input_mode == TVIN_SIG_FMT_HDMI_1440x576I_50Hz)	//the data in the buffer is PAL
@@ -686,12 +809,13 @@ static void camera_in_dec_run(vframe_t * info)
     if(field_total_line < 200)   //skip current field
     {
         pr_dbg("601 in total line is less than 200 \n");
+        reset_camera_dec();
         return;
     }
 
     else
     {
-        info->type = VIDTYPE_PROGRESSIVE | VIDTYPE_VIU_FIELD | VIDTYPE_INTERLACE_BOTTOM;
+        info->type = VIDTYPE_VIU_SINGLE_PLANE | VIDTYPE_PROGRESSIVE | VIDTYPE_VIU_FIELD | VIDTYPE_INTERLACE_BOTTOM;
         info->width= am656in_dec_info.active_pixel;
         info->height = am656in_dec_info.active_line;
         info->duration = 96000/30;   //30 frame per second
@@ -720,7 +844,7 @@ int amvdec_656_601_camera_in_run(vframe_t *info)
 
 
     if(am656in_dec_info.input_mode == TVIN_SIG_FMT_NULL){
-        printk("bt656in decoder is not started\n");
+        pr_error("bt656in decoder is not started\n");
         return -1;
     }
 
@@ -739,7 +863,7 @@ int amvdec_656_601_camera_in_run(vframe_t *info)
     {
         camera_in_dec_run(info);
     }
-
+    WRITE_CBUS_REG_BITS(BT_CTRL, 1,BT_EN_BIT, 1);
     return 0;
 }
 
@@ -832,16 +956,17 @@ static int amvdec_656in_probe(struct platform_device *pdev)
 //				return r;
 //		}
 
-//    s = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-//    if(s != NULL)
-//    {
-//	        am656in_dec_info.pbufAddr = (unsigned )(s->start);
-//	        pbufSize = (unsigned )(s->end) - am656in_dec_info.pbufAddr + 1;
-//	        if(pbufSize < am656in_dec_info.pbufSize)
-//	        	pr_error("there is not enough memory for 656 decode \n");
-//     }
-//     else
-//             pr_error("error in getting resource parameters0 \n");
+    s = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+    if(s != NULL)
+    {
+	        am656in_dec_info.pbufAddr = (unsigned )(s->start);
+	        am656in_dec_info.pbufSize = (unsigned )(s->end) - am656in_dec_info.pbufAddr + 1;
+            pr_dbg(" am656in_dec_info memory start addr is %x, mem_size is %x . \n",
+                        am656in_dec_info.pbufAddr, am656in_dec_info.pbufSize);
+
+     }
+     else
+             pr_error("error in getting resource parameters0 \n");
 
     s = platform_get_resource(pdev, IORESOURCE_MEM, 1);
     if(s != NULL)
