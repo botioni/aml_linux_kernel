@@ -314,6 +314,7 @@ static  int  ge2d_stop_monitor(void)
 ************************************************************************/
 static inline int bpp(unsigned format)
 {
+	if(format & GE2D_FORMAT_YUV) return 8;
 	switch (format & GE2D_BPP_MASK) {
 		case GE2D_BPP_8BIT:
 			return 8;
