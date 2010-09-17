@@ -88,6 +88,9 @@ static  pin_config_t  pin_config[]={
 #endif
 } ;
 
+static __u16 key_map[256];
+static __u16 mouse_map[4]; /*Left Right Up Down*/
+
 int remote_printk(const char *fmt, ...)
 {
     va_list args;
@@ -100,11 +103,85 @@ int remote_printk(const char *fmt, ...)
     return r;
 }
 
+static int kp_mouse_event(struct input_dev *dev, unsigned int scancode, unsigned int type)
+{
+    __u16 mouse_code;
+    __s32 mouse_value;
+    static unsigned int repeat_count = 0;
+    __s32 move_accelerate[] = {0, 1, 1, 2, 2, 3, 4, 5, 6, 7, 8, 9};
+    unsigned int i;
+
+    for(i = 0; i < ARRAY_SIZE(mouse_map); i++)
+        if(mouse_map[i] == scancode)
+            break;
+    if(i>=4) return -1;
+    switch(type){
+        case 1 ://press
+            repeat_count = 0;
+            break;
+        case 2 ://repeat
+            if(repeat_count >= ARRAY_SIZE(move_accelerate) - 1)
+                repeat_count = ARRAY_SIZE(move_accelerate) - 1;
+            else
+                repeat_count ++;
+        }
+    switch(i){
+        case 0 :
+            mouse_code = REL_X;
+            mouse_value = -(1 + move_accelerate[repeat_count]);
+            break;
+        case 1 :
+            mouse_code = REL_X;
+            mouse_value = 1 + move_accelerate[repeat_count];
+            break;
+        case 2 :
+            mouse_code = REL_Y;
+            mouse_value = -(1 + move_accelerate[repeat_count]);
+            break;
+        case 3 :
+            mouse_code = REL_Y;
+            mouse_value = 1 + move_accelerate[repeat_count];
+            break;
+        }
+    if(type){
+        input_event(dev, EV_REL, mouse_code, mouse_value);
+        input_sync(dev);
+        input_dbg("mouse be %s moved %d.\n", mouse_code==REL_X?"horizontal":"vertical", mouse_value);
+        }
+    return 0;
+}
+
+void kp_send_key(struct input_dev *dev, unsigned int scancode, unsigned int type)
+{
+    if(kp_mouse_event(dev, scancode, type)){
+        if(scancode > ARRAY_SIZE(key_map)){
+            input_dbg("scancode is 0x%04x, out of key mapping.\n", scancode);
+            return;
+            }
+        if((key_map[scancode] >= KEY_MAX)||(key_map[scancode]==KEY_RESERVED)){
+            input_dbg("scancode is 0x%04x, invalid key is 0x%04x.\n", scancode, key_map[scancode]);
+            return;
+            }
+        input_event(dev, EV_KEY, key_map[scancode], type);
+        input_sync(dev);
+        switch(type){
+            case 0 :
+                input_dbg("release ircode = 0x%02x, scancode = 0x%04x\n", scancode, key_map[scancode]);
+                break;
+            case 1 :
+                input_dbg("press ircode = 0x%02x, scancode = 0x%04x\n", scancode, key_map[scancode]);
+                break;
+            case 2 :
+                input_dbg("repeat ircode = 0x%02x, scancode = 0x%04x\n", scancode, key_map[scancode]);
+                break;
+            }
+        }
+}
+
 void kp_timer_sr(unsigned long data)
 {
     struct kp *kp_data=(struct kp *)data;
-    input_report_key(kp_data->input,(kp_data->cur_keycode>>16)&0xff ,0);
-    input_dbg("key release 0x%02x\r\n", (kp_data->cur_keycode>>16)&0xff);
+    kp_send_key(kp_data->input, (kp_data->cur_keycode>>16)&0xff ,0);
     if(kp_data->work_mode==REMOTE_WORK_MODE_SW)
         kp_data->step   = REMOTE_STATUS_WAIT ;
 }
@@ -136,32 +213,33 @@ static inline int kp_hw_reprot_key(struct kp *kp_data )
         last_custom_code=scan_code&0xffff;
         if(kp_data->custom_code != last_custom_code )
         {
-               input_dbg("Wrong custom code is 0x%04x\n", last_custom_code);
+               input_dbg("Wrong custom code is 0x%08x\n", scan_code);
             return -1;
         }
         if(kp_data->timer.expires > jiffies){
-            input_report_key(kp_data->input,(kp_data->cur_keycode>>16)&0xff ,0);
-            input_dbg("key release 0x%02x\r\n", (kp_data->cur_keycode>>16)&0xff);
+            kp_send_key(kp_data->input, (kp_data->cur_keycode>>16)&0xff, 0);
             }
-        input_report_key(kp_data->input,(scan_code>>16)&0xff,1);
-        input_dbg("key pressed,scan code :0x%x\r\n",scan_code);
+        kp_send_key(kp_data->input, (scan_code>>16)&0xff, 1);
+        if(kp_data->repeat_enable)
+          kp_data->repeat_timer = jiffies + msecs_to_jiffies(kp_data->input->rep[REP_DELAY]);
     }
     else if(scan_code==0 && status&0x1) //repeate key
     {
         scan_code=last_scan_code;
-        if(kp_data->custom_code != last_custom_code )
-        {
+        if(kp_data->custom_code != last_custom_code ){
             return -1;
-        }
-              if(kp_data->repeat_enable){
-            input_report_key(kp_data->input,(scan_code>>16)&0xff,2);
-            input_dbg("key repeate,scan code :0x%x\r\n",scan_code);
+            }
+        if(kp_data->repeat_enable){
+            if(kp_data->repeat_timer < jiffies){
+                kp_send_key(kp_data->input, (scan_code>>16)&0xff, 2);
+                kp_data->repeat_timer += msecs_to_jiffies(kp_data->input->rep[REP_PERIOD]);
                 }
-              else{
-                  if(kp_data->timer.expires > jiffies)
-                    mod_timer(&kp_data->timer,jiffies+msecs_to_jiffies(kp_data->release_delay));
-                  return -1;
-                }
+            }
+        else{
+            if(kp_data->timer.expires > jiffies)
+                mod_timer(&kp_data->timer,jiffies+msecs_to_jiffies(kp_data->release_delay));
+            return -1;
+            }
     }
     last_scan_code=scan_code;
     kp_data->cur_keycode=last_scan_code;
@@ -297,10 +375,9 @@ static int
 remote_config_ioctl(struct inode *inode, struct file *filp,
                  unsigned int cmd, unsigned long args)
 {
-
     struct kp   *kp=(struct kp*)filp->private_data;
     void  __user* argp =(void __user*)args;
-    unsigned int   val;
+    unsigned int   val, i;
 
     disable_irq(NEC_REMOTE_IRQ_NO);
     if(args)
@@ -312,6 +389,34 @@ remote_config_ioctl(struct inode *inode, struct file *filp,
     switch(cmd)
     {
         // 1 set part
+        case REMOTE_IOC_RESET_KEY_MAPPING:
+        for(i = 0; i < ARRAY_SIZE(key_map); i++)
+            key_map[i] = KEY_RESERVED;
+        for(i = 0; i < ARRAY_SIZE(mouse_map); i++)
+            mouse_map[i] = 0xffff;
+        break;
+        case REMOTE_IOC_SET_KEY_MAPPING:
+            if((val >> 16) >= ARRAY_SIZE(key_map)){
+                mutex_unlock(&kp_file_mutex);
+                enable_irq(NEC_REMOTE_IRQ_NO);
+                return  -1;
+                }
+            key_map[val>>16] = val & 0xffff;
+        break;
+        case REMOTE_IOC_SET_MOUSE_MAPPING:
+            if((val >> 16) >= ARRAY_SIZE(mouse_map)){
+                mutex_unlock(&kp_file_mutex);
+                enable_irq(NEC_REMOTE_IRQ_NO);
+                return  -1;
+                }
+            mouse_map[val>>16] = val & 0xff;
+        break;
+        case REMOTE_IOC_SET_REPEAT_DELAY:
+        copy_from_user(&kp->repeat_delay,argp,sizeof(long));
+        break;
+        case REMOTE_IOC_SET_REPEAT_PERIOD:
+        copy_from_user(&kp->repeat_peroid,argp,sizeof(long));
+        break;
         case  REMOTE_IOC_SET_REPEAT_ENABLE:
         copy_from_user(&kp->repeat_enable,argp,sizeof(long));
         break;
@@ -410,8 +515,8 @@ remote_config_ioctl(struct inode *inode, struct file *filp,
         case REMOTE_IOC_SET_REPEAT_ENABLE:
         if (kp->repeat_enable)
         {
-            kp->input->rep[REP_DELAY]=1000;
-            kp->input->rep[REP_PERIOD]=250;
+            kp->input->rep[REP_DELAY] = kp->repeat_delay;
+            kp->input->rep[REP_PERIOD] = kp->repeat_peroid;
         }else{
             kp->input->rep[REP_DELAY]=0xffffffff;
             kp->input->rep[REP_PERIOD]=0xffffffff;
@@ -511,7 +616,12 @@ static int __init kp_probe(struct platform_device *pdev)
     kp->time_window[7]=0x1;
     /* Disable the interrupt for the MPUIO keyboard */
 
-
+    for(i = 0; i < ARRAY_SIZE(key_map); i++)
+        key_map[i] = KEY_RESERVED;
+    for(i = 0; i < ARRAY_SIZE(mouse_map); i++)
+        mouse_map[i] = 0xffff;
+    kp->repeat_delay = 250;
+    kp->repeat_peroid = 33;
 
     /* get the irq and init timer*/
     input_dbg("set drvdata completed\r\n");
@@ -530,15 +640,12 @@ static int __init kp_probe(struct platform_device *pdev)
     }
 
     input_dbg("device_create_file completed \r\n");
-    /* setup input device */
-    set_bit(EV_KEY, input_dev->evbit);
-    set_bit(EV_REP, input_dev->evbit);
-
-
+    input_dev->evbit[0] = BIT_MASK(EV_KEY) | BIT_MASK(EV_REP) | BIT_MASK(EV_REL);
+    input_dev->keybit[BIT_WORD(BTN_MOUSE)] = BIT_MASK(BTN_LEFT) |BIT_MASK(BTN_RIGHT);
+    input_dev->relbit[0] = BIT_MASK(REL_X) | BIT_MASK(REL_Y);
     for (i = 0; i<KEY_MAX; i++)
-    {
         set_bit( i, input_dev->keybit);
-    }
+
     //clear_bit(0,input_dev->keybit);
     input_dev->name = "keypad";
     input_dev->phys = "keypad/input0";
