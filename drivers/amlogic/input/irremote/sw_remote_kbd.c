@@ -104,37 +104,35 @@ static inline void kbd_software_mode_remote_leader(unsigned long data)
       		kp_data->step    = REMOTE_STATUS_WAIT ;
 	}
 
-	//RemoteStatus   = REMOTE_STATUS_DATA;
 	kp_data->cur_keycode = 0 ;
 	kp_data->bit_num = kp_data->bit_count ;
 }
 static inline void kbd_software_mode_remote_send_key(unsigned long data)
 {
-  	struct kp *kp_data = (struct kp *) data;
-	unsigned int  reort_key_code=kp_data->cur_keycode>>16&0xffff;
-	
-	kp_data->step   = REMOTE_STATUS_SYNC ;
-    	if(kp_data->repeate_flag)
-    	{
-		if(kp_data->custom_code != (kp_data->cur_keycode&0xffff ))
-		{
-			return ;
-		}
-		if(((reort_key_code&0xff)^(reort_key_code>>8&0xff))==0xff)
-		input_report_key(kp_data->input, (kp_data->cur_keycode>>16)&0xff, 2);
-		input_dbg("key repeate,scan code :0x%x\r\n", kp_data->cur_keycode);
-    	}else{
-		if(kp_data->custom_code != (kp_data->cur_keycode&0xffff ))
-		{
-		       input_dbg("Wrong custom code is 0x%04x\n", kp_data->cur_keycode&0xffff);
-			return ;
-		}
-		if(((reort_key_code&0xff)^(reort_key_code>>8&0xff))==0xff)
-		input_report_key(kp_data->input, (kp_data->cur_keycode>>16)&0xff, 1);	
-		input_dbg("key pressed,scan code :0x%x\r\n", kp_data->cur_keycode);
-    	}
-		
-    	
+    struct kp *kp_data = (struct kp *) data;
+    unsigned int  reort_key_code=kp_data->cur_keycode>>16&0xffff;
+
+    kp_data->step   = REMOTE_STATUS_SYNC ;
+    if(kp_data->repeate_flag){
+        if(kp_data->custom_code != (kp_data->cur_keycode&0xffff ))
+            return;
+        if(((reort_key_code&0xff)^(reort_key_code>>8&0xff))!=0xff)
+            return;
+        if(kp_data->repeat_timer < jiffies){
+            kp_send_key(kp_data->input, (kp_data->cur_keycode>>16)&0xff, 2);
+            kp_data->repeat_timer += msecs_to_jiffies(kp_data->input->rep[REP_PERIOD]);
+            }   
+        }
+    else{
+        if(kp_data->custom_code != (kp_data->cur_keycode&0xffff )){
+            input_dbg("Wrong custom code is 0x%08x\n", kp_data->cur_keycode);
+            return ;
+            }
+        if(((reort_key_code&0xff)^(reort_key_code>>8&0xff))==0xff)
+            kp_send_key(kp_data->input, (kp_data->cur_keycode>>16)&0xff, 1);
+        if(kp_data->repeat_enable)
+            kp_data->repeat_timer = jiffies + msecs_to_jiffies(kp_data->input->rep[REP_DELAY]);
+        }
 }
 static inline void kbd_software_mode_remote_data(unsigned long data)
 {
@@ -148,7 +146,7 @@ static inline void kbd_software_mode_remote_data(unsigned long data)
             	kp_data->bit_num--;
 	}
 	else if((pulse_width > kp_data->time_window[4]) && (pulse_width < kp_data->time_window[5])) {
-        	kp_data->cur_keycode |= 1<<(kp_data->bit_count-kp_data->bit_num) ;       //1
+        	kp_data->cur_keycode |= 1<<(kp_data->bit_count-kp_data->bit_num) ;
         	kp_data->bit_num--;
 	}
     	else {
@@ -158,6 +156,8 @@ static inline void kbd_software_mode_remote_data(unsigned long data)
     	{
      	 	kp_data->repeate_flag= 0;
 		kbd_software_mode_remote_send_key(data);
+            kp_data->timer.data=(unsigned long)kp_data;
+            mod_timer(&kp_data->timer,jiffies+msecs_to_jiffies(kp_data->release_delay));
     	}
 	
 }
@@ -179,8 +179,7 @@ static inline void kbd_software_mode_remote_sync(unsigned long data)
 	}
     	kp_data->step  = REMOTE_STATUS_SYNC ;
 	kp_data->timer.data=(unsigned long)kp_data;
-	mod_timer(&kp_data->timer,jiffies+msecs_to_jiffies(kp_data->release_delay));//6
-	
+	mod_timer(&kp_data->timer,jiffies+msecs_to_jiffies(kp_data->release_delay));	
 }
 void kp_sw_reprot_key(unsigned long data)
 {
@@ -208,6 +207,4 @@ void kp_sw_reprot_key(unsigned long data)
             break;
     	}
 }
-
-
 

@@ -2,7 +2,13 @@
 #define   _AMKBD_REMOTE_H
 #include  <asm/ioctl.h>
 //remote config  ioctl  cmd
-#define   REMOTE_IOC_SET_REPEAT_ENABLE			_IOW_BAD('I',8,sizeof(short))
+#define   REMOTE_IOC_RESET_KEY_MAPPING	    _IOW_BAD('I',3,sizeof(short))
+#define   REMOTE_IOC_SET_KEY_MAPPING		    _IOW_BAD('I',4,sizeof(short))
+#define   REMOTE_IOC_SET_MOUSE_MAPPING	    _IOW_BAD('I',5,sizeof(short))
+#define   REMOTE_IOC_SET_REPEAT_DELAY		    _IOW_BAD('I',6,sizeof(short))
+#define   REMOTE_IOC_SET_REPEAT_PERIOD	    _IOW_BAD('I',7,sizeof(short))
+
+#define   REMOTE_IOC_SET_REPEAT_ENABLE		_IOW_BAD('I',8,sizeof(short))
 #define	REMOTE_IOC_SET_DEBUG_ENABLE			_IOW_BAD('I',9,sizeof(short)) 
 #define	REMOTE_IOC_SET_MODE					_IOW_BAD('I',10,sizeof(short)) 
 
@@ -14,7 +20,7 @@
 #define   REMOTE_IOC_SET_REG_LEADER_ACT 		_IOW_BAD('I',103,sizeof(short))
 #define   REMOTE_IOC_SET_REG_LEADER_IDLE 		_IOW_BAD('I',104,sizeof(short))
 #define   REMOTE_IOC_SET_REG_REPEAT_LEADER 	_IOW_BAD('I',105,sizeof(short))
-#define   REMOTE_IOC_SET_REG_BIT0_TIME		 	_IOW_BAD('I',106,sizeof(short))
+#define   REMOTE_IOC_SET_REG_BIT0_TIME		 _IOW_BAD('I',106,sizeof(short))
 
 //sw
 #define   REMOTE_IOC_SET_BIT_COUNT			 	_IOW_BAD('I',107,sizeof(short))
@@ -52,14 +58,14 @@
 
 typedef  int   (*type_printk)(const char *fmt, ...) ;
 
-
 struct kp {
 	struct input_dev *input;
 	struct timer_list timer;
+       unsigned long repeat_timer;
 	int irq;
 	int work_mode ;
 	unsigned int cur_keycode;
-	unsigned int 	repeate_flag;
+	unsigned int repeate_flag;
 	unsigned int repeat_enable;
 	unsigned int debounce;
 	unsigned int custom_code;
@@ -79,12 +85,14 @@ struct kp {
 	char 		config_name[20];
 	struct class *config_class;
 	struct device *config_dev;
-	
+       unsigned int repeat_delay;
+       unsigned int repeat_peroid;
 };
 
 extern type_printk input_dbg;
 
 
 void kp_sw_reprot_key(unsigned long data);
+void kp_send_key(struct input_dev *dev, unsigned int scancode, unsigned int type);
 
 #endif   //_AMKBD_REMOTE_H
