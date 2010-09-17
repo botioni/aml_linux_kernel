@@ -2649,6 +2649,7 @@ static struct nand_flash_dev *nand_get_flash_type(struct mtd_info *mtd,
 		int extid;
 		/* The 3rd id byte holds MLC / multichip data */
 		chip->cellinfo = chip->read_byte(mtd);
+		third_id=chip->cellinfo;
 		/* The 4th id byte is the important one */
 		extid = chip->read_byte(mtd);
 		/* Calc pagesize */
@@ -2662,6 +2663,36 @@ static struct nand_flash_dev *nand_get_flash_type(struct mtd_info *mtd,
 		extid >>= 2;
 		/* Get buswidth information */
 		busw = (extid & 0x01) ? NAND_BUSWIDTH_16 : 0;
+		printk("Get NAND 3rd byte %d  writesize %d  oob size %d busw( 8 is 0)  %d \n", chip->cellinfo,mtd->writesize, 	mtd->oobsize,busw);
+
+		if((dev_id==0x68)||(dev_id==0x88))
+		{												
+			if((chip->ecc.size!=0)&&(chip->ecc.bytes!=0)&&(chip->phys_erase_shift!=0))
+			{
+				mtd->writesize=	chip->ecc.size;
+				mtd->oobsize=	chip->ecc.bytes;
+				mtd->erasesize=1<<(chip->phys_erase_shift);
+				busw=0;
+				printk("FIX NAND writesize %d  oob size %d erase size %d busw( 8 is 0)  %d \n",mtd->writesize, mtd->oobsize,mtd->erasesize,busw);
+			}else{
+			
+				BUG();
+			}
+		}else	if((dev_id==0xd7)&&(third_id==0x94))
+		{
+			if((chip->ecc.size!=0)&&(chip->ecc.bytes!=0)&&(chip->phys_erase_shift!=0))
+			{
+				mtd->writesize=	chip->ecc.size;
+				mtd->oobsize=	chip->ecc.bytes;
+				mtd->erasesize=1<<(chip->phys_erase_shift);
+				busw=0;
+				printk("FIX  24bit writesize %d  oob size %d erase size %d busw( 8 is 0)  %d \n",mtd->writesize, mtd->oobsize,mtd->erasesize,busw);
+			}	
+		}
+		
+		if(mtd->writesize!=chip->ecc.size)
+			BUG();
+
 
 	} else {
 		/*
