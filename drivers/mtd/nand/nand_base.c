@@ -2591,7 +2591,7 @@ static struct nand_flash_dev *nand_get_flash_type(struct mtd_info *mtd,
 	struct nand_flash_dev *type = NULL;
 	int i, dev_id, maf_idx;
 	int tmp_id, tmp_manf;
-
+	unsigned third_id;
 	/* Select the device */
 	chip->select_chip(mtd, 0);
 
