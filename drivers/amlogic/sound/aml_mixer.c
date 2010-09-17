@@ -216,7 +216,7 @@ static int pcm_pb_data_get(struct snd_kcontrol *kcontrol,
     unsigned int rd_ptr;
 
     rd_ptr = read_i2s_rd_ptr();
-    memcpy(uvalue->value.bytes.data, (unsigned char*)rd_ptr, 128);
+    memcpy(uvalue->value.bytes.data, (unsigned char*)phys_to_virt(rd_ptr), 128);
     return 0;
 }
 
