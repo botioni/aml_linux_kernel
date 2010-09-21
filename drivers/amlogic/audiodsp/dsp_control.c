@@ -190,7 +190,7 @@ static inline int dsp_set_stream_buffer( struct audiodsp_priv *priv)
 	int res;
 	mutex_lock(&priv->dsp_mutex);		
 	halt_dsp(priv);
-	if(priv->stream_fmt!=priv->last_stream_fmt)
+	if(priv->stream_fmt!=priv->last_stream_fmt ||priv->stream_fmt ==MCODEC_FMT_MPEG123 )//temp reload mp3 code everytime
 		{
 		if(auidodsp_microcode_load(audiodsp_privdata(),mcode)!=0)
 			{
