@@ -157,7 +157,6 @@ _init_osd_simple(u32 pix_x_start,
    		else
    		vmode=0;
    	}
-   	WRITE_MPEG_REG(VIU_OSD1_TCOLOR_AG0 + REG_OFFSET*index, (unsigned)0xffffff00);
    	data32 = (display_h_start & 0xfff) | (display_h_end & 0xfff) <<16 ;
       	WRITE_MPEG_REG(VIU_OSD1_BLK0_CFG_W3 + REG_OFFSET*index, data32);
    	data32 = (display_v_start & 0xfff) | (display_v_end & 0xfff) <<16 ;
@@ -180,7 +179,8 @@ _init_osd_simple(u32 pix_x_start,
 	WRITE_MPEG_REG(VIU_OSD2_BLK0_CFG_W2,
 		(pandata[1].y_start & 0x1fff) | (pandata[1].y_end & 0x1fff) << 16);
 
-	data32 = (vmode == 1) ? 2 : 0;
+	data32 = READ_MPEG_REG(VIU_OSD1_BLK0_CFG_W0+ REG_OFFSET*index) & (0x40);
+	data32 |= (vmode == 1) ? 2 : 0;
 
 	if (tv_irq_got == 0)
 	{
