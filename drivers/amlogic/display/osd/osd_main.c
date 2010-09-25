@@ -76,7 +76,7 @@ osd_check_var(struct fb_var_screeninfo *var, struct fb_info *info)
     	struct myfb_dev *fbdev=( struct myfb_dev*)info->par;
 	bpp_color_bit_define_t   *color_format_pt;
 
-    	fix = &info->fix;
+	fix = &info->fix;
 	color_format_pt=_find_color_format(var->bits_per_pixel);	
 	if (color_format_pt->type_index==0)
 	{
@@ -295,7 +295,7 @@ static int osd_pan_display(struct fb_var_screeninfo *var,
                         struct fb_info *fbi)
 {
 	
-    	osddev_pan_display((struct myfb_dev *)fbi->par);
+    	osddev_pan_display(var,fbi);
 	amlog_mask_level(LOG_MASK_PARA,LOG_LEVEL_LOW,"osd_pan_display:=>osd%d\r\n",fbi->node);
 	return 0;
 }
@@ -473,6 +473,7 @@ osd_probe(struct platform_device *pdev)
 		{
 			logo_osd_index= init_logo_obj->para.output_dev_type;
 		}else{
+			if(init_logo_obj->para.output_dev_type!=LOGO_DEV_VID)
 			init_logo_obj=NULL; //if logo device on video layer ,
 		}					 //we cant use it .
 		
