@@ -1023,8 +1023,7 @@ int hdmitx_edid_dump(hdmitx_dev_t* hdmitx_device, char* buffer, int buffer_len)
 {
     int i,pos=0;
     rx_cap_t* pRXCap = &(hdmitx_device->RXCap);
-    pos+=snprintf(buffer+pos, buffer_len-pos, "native Mode %x, VIC (native %d):\r\n",
-        pRXCap->native_Mode, pRXCap->native_VIC);
+    pos+=snprintf(buffer+pos, buffer_len-pos, "EDID block number: 0x%x\r\n",hdmitx_device->EDID_buf[0x7e]);
 
     pos+=snprintf(buffer+pos, buffer_len-pos, "native Mode %x, VIC (native %d):\r\n",
         pRXCap->native_Mode, pRXCap->native_VIC);
