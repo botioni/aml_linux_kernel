@@ -12,6 +12,6 @@ typedef  struct {
 #define		CMD_BITBLT				0x2
 #define		CMD_STRETCH_BLIT		0x3
 
-extern ge2d_context_t*	dev_ge2d_setup(ge2d_src_dst_t  type ,void* para);
+extern ge2d_context_t*	dev_ge2d_setup(void* para);
 extern int	dev_ge2d_cmd(ge2d_context_t *context ,int  cmd,src_dst_info_t  *info);
 #endif

@@ -15,6 +15,7 @@ typedef  struct{
 
 typedef  struct{
 	u32  component;
+	u32  out_canvas_index;
 }jpg_decoder_t;
 
 typedef  union{
@@ -26,6 +27,7 @@ typedef  struct{
 	unsigned int	width;
 	unsigned int	height;
 	unsigned int	color_info;
+	int	size; //file size
 }pic_info_t;
 
 struct logo_parser{
@@ -50,4 +52,5 @@ typedef  struct {
  extern int exit_logo(logo_object_t *logo);
  //all kind of parser setup .
  extern int bmp_setup(void);
+ extern int jpeg_setup(void);
 #endif

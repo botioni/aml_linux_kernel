@@ -52,7 +52,7 @@ typedef  struct {
 	struct logo_parser  *parser;
 	int	need_transfer;  //logo pic need transfer from parser output to
 					   // logo output device.
-	platform_resource_t platfrom_res[LOGO_DEV_MAX];				   
+	platform_resource_t platform_res[LOGO_DEV_MAX];				   
 }logo_object_t;
 
 #endif

@@ -13,6 +13,7 @@ typedef struct{
 	logo_rect_t screen;
 	int mem_start;
 	int mem_end;
+	u32 canvas_index;
 }dev_vid_t;
 
 typedef union{
@@ -46,5 +47,6 @@ typedef  struct{
 //function define 
 extern int  setup_output_device(logo_object_t *plogo);
 extern int dev_osd_setup(void);
+extern int dev_vid_setup(void) ;
 
 #endif
