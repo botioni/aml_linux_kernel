@@ -50,9 +50,10 @@
 **
 **************************************************************************/
 static  u32  osd_gbl_alpha[2]={OSD_GLOBAL_ALPHA_DEF,OSD_GLOBAL_ALPHA_DEF};
-static const u8 blkmode_reg[] = {5, 7, 0, 1, 2, 4, 4, 4, 4,/*32*/5,5,5,/*24*/7,7,7,7,7,/*16*/4,4,4,4};
-static const u8 colormat_reg[] = {0, 0, 0, 0, 0, 0, 1, 2, 3,/*32*/1,2,3,/*24*/5,1,2,3,4,/*16*/4,5,6,7};
-static const u8 modebits[] = {32,24,2,4,8,16,16,16,16,/*32*/32,32,32,/*24*/24,24,24,24,24,/*16*/16,16,16,16};
+
+static const u8 blkmode_reg[] = {5, 7, 0, 1, 2, 4, 4, 4, 4,/*32*/5,5,5,/*24*/7,7,7,7,7,/*16*/4,4,4,4,/*yuv*/3};
+static const u8 colormat_reg[] = {0, 0, 0, 0, 0, 0, 1, 2, 3,/*32*/1,2,3,/*24*/5,1,2,3,4,/*16*/4,5,6,7,/*yuv*/0};
+static const u8 modebits[] = {32,24,2,4,8,16,16,16,16,/*32*/32,32,32,/*24*/24,24,24,24,24,/*16*/16,16,16,16,/*yuv*/16};
 static pandata_t pandata[2];
 static spinlock_t osd_lock = SPIN_LOCK_UNLOCKED;
 static  u32   *reg_status;
@@ -385,9 +386,9 @@ void osd_pan_display_hw(unsigned int xoffset, unsigned int yoffset,int index )
 	
 	if (index >= 2)
 		return;
-
+    	
     spin_lock_irqsave(&osd_lock, flags);
-
+	//yoffset=yoffset > 0?0:720;
 	diff_x = xoffset - pandata[index].x_start;
 	diff_y = yoffset - pandata[index].y_start;
 
@@ -395,7 +396,9 @@ void osd_pan_display_hw(unsigned int xoffset, unsigned int yoffset,int index )
 	pandata[index].x_end   += diff_x;
 	pandata[index].y_start += diff_y;
 	pandata[index].y_end   += diff_y;
-
+    amlog_mask_level(LOG_MASK_HARDWARE,LOG_LEVEL_LOW,"offset[%d-%d]x[%d-%d]y[%d-%d]\n", \
+				xoffset,yoffset,pandata[index].x_start,pandata[index].x_end, \
+				pandata[index].y_start,pandata[index].y_end);
     spin_unlock_irqrestore(&osd_lock, flags);
 }
 

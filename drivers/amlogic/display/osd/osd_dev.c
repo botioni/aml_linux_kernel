@@ -40,7 +40,7 @@ void osddev_set(struct myfb_dev *fbdev)
 {
     enum osd_type_s type;
 	
-    const enum osd_type_s typeTab[33] = {
+    const enum osd_type_s typeTab[34] = {
         OSD_TYPE_02_PAL4  , OSD_TYPE_02_PAL4  , OSD_TYPE_02_PAL4  ,
         OSD_TYPE_04_PAL16 , OSD_TYPE_04_PAL16 ,
         OSD_TYPE_08_PAL256, OSD_TYPE_08_PAL256, OSD_TYPE_08_PAL256, OSD_TYPE_08_PAL256,
@@ -50,6 +50,7 @@ void osddev_set(struct myfb_dev *fbdev)
         OSD_TYPE_24_8565   , OSD_TYPE_24_5658   , OSD_TYPE_24_888_B   , OSD_TYPE_24_RGB /*24*/  ,
         OSD_TYPE_32_ARGB  , OSD_TYPE_32_ARGB  , OSD_TYPE_32_ARGB  , OSD_TYPE_32_ARGB  ,
         OSD_TYPE_32_BGRA  , OSD_TYPE_32_ABGR  , OSD_TYPE_32_RGBA  , OSD_TYPE_32_ARGB /*32*/ ,
+        OSD_TYPE_YUV_422  , //YUV 422
     };
 
 
@@ -127,17 +128,9 @@ void osddev_enable(int enable,int  index)
     osd_enable_hw(enable,index);
 }
 
-void osddev_pan_display(struct myfb_dev *fbdev)
+void osddev_pan_display(struct fb_var_screeninfo *var,struct fb_info *fbi)
 {
-    struct fb_var_screeninfo *var;
-
-    fbdev_lock(fbdev);
-
-    var = &fbdev->fb_info->var;
-    
-    osd_pan_display_hw(var->xoffset, var->yoffset,fbdev->fb_info->node);
-
-    fbdev_unlock(fbdev);
+    osd_pan_display_hw(var->xoffset, var->yoffset,fbi->node);
 }
 void  osddev_set_colorkey(u32 index,u32 bpp,u32 colorkey )
 {
