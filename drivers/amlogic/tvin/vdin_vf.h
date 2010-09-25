@@ -14,7 +14,7 @@
 #ifndef __AML_TVIN_VDIN_VF_H
 #define __AML_TVIN_VDIN_VF_H
 
-#include "../amports/vframe.h"
+#include <linux/amports/vframe.h>
 #include "tvin_global.h"
 
 

@@ -14,7 +14,7 @@
 #include <linux/types.h>
 #include <linux/kernel.h>
 #include "vdin_vf.h"
-#include "../amports/vframe_provider.h"
+#include <linux/amports/vframe_provider.h>
 
 
 static vframe_t *vdin_vf_peek(void);
