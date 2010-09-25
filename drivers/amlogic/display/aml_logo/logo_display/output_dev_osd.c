@@ -4,7 +4,7 @@
 #include "logo_dev_osd.h"
 #include "dev_ge2d.h"
 #include <linux/wait.h>
- #include	"amlogo_log.h"
+#include	"amlogo_log.h" 
 #include <linux/amlog.h>
 static  logo_output_dev_t   output_osd0={
 	.idx=LOGO_DEV_OSD0,
@@ -36,7 +36,7 @@ static int osd_hw_setup(logo_object_t *plogo)
         OSD_TYPE_16_655  , OSD_TYPE_16_844   , OSD_TYPE_16_6442   , OSD_TYPE_16_4444_R   ,
         OSD_TYPE_16_4642_R  , OSD_TYPE_16_1555_A   , OSD_TYPE_16_4444_A   , OSD_TYPE_16_565/*16*/   ,
         OSD_TYPE_24_RGB     , OSD_TYPE_24_RGB   , OSD_TYPE_24_6666_A   , OSD_TYPE_24_6666_R   ,
-        OSD_TYPE_24_8565   , OSD_TYPE_24_5658   , OSD_TYPE_24_RGB   , OSD_TYPE_24_888_B /*24*/  ,
+        OSD_TYPE_24_8565   , OSD_TYPE_24_5658   , OSD_TYPE_24_888_B   , OSD_TYPE_24_RGB /*24*/  ,
         OSD_TYPE_32_ARGB  , OSD_TYPE_32_ARGB  , OSD_TYPE_32_ARGB  , OSD_TYPE_32_ARGB  ,
         OSD_TYPE_32_BGRA  , OSD_TYPE_32_ABGR  , OSD_TYPE_32_RGBA  , OSD_TYPE_32_ARGB /*32*/ ,
         OSD_TYPE_YUV_422  , //YUV 422
@@ -79,6 +79,10 @@ static int osd0_init(logo_object_t *plogo)
 {
 	if(plogo->para.output_dev_type==output_osd0.idx)
 	{
+		if((plogo->platform_res[output_osd0.idx].mem_end - plogo->platform_res[output_osd0.idx].mem_start) ==0 ) 
+		{
+			return OUTPUT_DEV_UNFOUND;
+		}
 		set_current_vmode(plogo->para.vout_mode);
 		output_osd0.vinfo=get_current_vinfo();
 		plogo->dev=&output_osd0;
@@ -86,8 +90,8 @@ static int osd0_init(logo_object_t *plogo)
 		plogo->dev->window.y=0;
 		plogo->dev->window.w=plogo->dev->vinfo->width;
 		plogo->dev->window.h=plogo->dev->vinfo->height;
-		plogo->dev->output_dev.osd.mem_start=plogo->platfrom_res[LOGO_DEV_OSD0].mem_start;
-		plogo->dev->output_dev.osd.mem_end=plogo->platfrom_res[LOGO_DEV_OSD0].mem_end;
+		plogo->dev->output_dev.osd.mem_start=plogo->platform_res[LOGO_DEV_OSD0].mem_start;
+		plogo->dev->output_dev.osd.mem_end=plogo->platform_res[LOGO_DEV_OSD0].mem_end;
 		return OUTPUT_DEV_FOUND;
 	}
 	return OUTPUT_DEV_UNFOUND;
@@ -96,6 +100,10 @@ static int osd1_init(logo_object_t *plogo)
 {
 	if(plogo->para.output_dev_type==output_osd1.idx)
 	{
+		if((plogo->platform_res[output_osd1.idx].mem_end - plogo->platform_res[output_osd1.idx].mem_start) ==0)
+		{
+			return OUTPUT_DEV_UNFOUND;
+		}
 		set_current_vmode(plogo->para.vout_mode);
 		output_osd1.vinfo=get_current_vinfo();
 		plogo->dev=&output_osd1;
@@ -103,8 +111,8 @@ static int osd1_init(logo_object_t *plogo)
 		plogo->dev->window.y=0;
 		plogo->dev->window.w=plogo->dev->vinfo->width;
 		plogo->dev->window.h=plogo->dev->vinfo->height;
-		plogo->dev->output_dev.osd.mem_start=plogo->platfrom_res[LOGO_DEV_OSD1].mem_start;
-		plogo->dev->output_dev.osd.mem_end=plogo->platfrom_res[LOGO_DEV_OSD1].mem_end;
+		plogo->dev->output_dev.osd.mem_start=plogo->platform_res[LOGO_DEV_OSD1].mem_start;
+		plogo->dev->output_dev.osd.mem_end=plogo->platform_res[LOGO_DEV_OSD1].mem_end;
 		return OUTPUT_DEV_FOUND;
 	}
 	return OUTPUT_DEV_UNFOUND;
@@ -162,6 +170,10 @@ static  int  osd_transfer(logo_object_t *plogo)
 {
 	src_dst_info_t  op_info;
 	ge2d_context_t  *context;
+	config_para_t	ge2d_config;
+	u32  	canvas_index;
+	canvas_t	canvas;		
+	
 	if(!plogo->dev->hw_initialized) // hardware need initialized first .
 	{
 		if(osd_hw_setup(plogo))
@@ -169,7 +181,10 @@ static  int  osd_transfer(logo_object_t *plogo)
 		amlog_mask_level(LOG_MASK_DEVICE,LOG_LEVEL_LOW,"osd hardware initiate success\n");
 	}
 	if (plogo->need_transfer==FALSE) return -EDEV_NO_TRANSFER_NEED;
-	context=dev_ge2d_setup(plogo->dev->idx?OSD1_OSD1:OSD0_OSD0,NULL);
+
+	ge2d_config.src_dst_type=plogo->dev->idx?OSD1_OSD1:OSD0_OSD0;
+	ge2d_config.alu_const_color=0x000000ff;
+	context=dev_ge2d_setup(&ge2d_config);
 	//we use ge2d to strechblit pic.
 	if(NULL==context) return -OUTPUT_DEV_SETUP_FAIL;
 	amlog_mask_level(LOG_MASK_DEVICE,LOG_LEVEL_LOW,"logo setup ge2d device OK\n");
@@ -181,18 +196,18 @@ static  int  osd_transfer(logo_object_t *plogo)
 	op_info.dst_rect.w=plogo->dev->vinfo->width;
 	op_info.dst_rect.h=plogo->dev->vinfo->height;
 	dev_ge2d_cmd(context,CMD_FILLRECT,&op_info);
-	
 	amlog_mask_level(LOG_MASK_DEVICE,LOG_LEVEL_LOW,"fill==dst:%d-%d-%d-%d\n",op_info.dst_rect.x,op_info.dst_rect.y,op_info.dst_rect.w,op_info.dst_rect.h);	
-	//double buffer,bottom part stretchblit to upper part.
-	op_info.src_rect.x=0;
-	op_info.src_rect.y=0 + plogo->dev->vinfo->height;
+
+	op_info.src_rect.x=0;  //setup origin src rect 
+	op_info.src_rect.y=0;
 	op_info.src_rect.w=plogo->parser->logo_pic_info.width;
 	op_info.src_rect.h=plogo->parser->logo_pic_info.height;
+
 	switch (plogo->para.dis_mode)
 	{
 		case DISP_MODE_ORIGIN:
 		op_info.dst_rect.x=op_info.src_rect.x;
-		op_info.dst_rect.y=op_info.src_rect.y-plogo->dev->vinfo->height;
+		op_info.dst_rect.y=op_info.src_rect.y;
 		op_info.dst_rect.w=op_info.src_rect.w;
 		op_info.dst_rect.h=op_info.src_rect.h;
 		break;
@@ -209,10 +224,58 @@ static  int  osd_transfer(logo_object_t *plogo)
 		op_info.dst_rect.h=plogo->dev->vinfo->height;
 		break;	
 	}
+	if(strcmp(plogo->parser->name,"bmp")==0)
+	{
+		//double buffer,bottom part stretchblit to upper part.
+		op_info.src_rect.y+= plogo->dev->vinfo->height;
+	}
+	else if(strcmp(plogo->parser->name,"jpg")==0)
+	{// transfer from video layer to osd layer.
+		amlog_mask_level(LOG_MASK_DEVICE,LOG_LEVEL_LOW,"transfer from video layer to osd layer\n");
+		ge2d_config.src_dst_type=plogo->dev->idx?ALLOC_OSD1:ALLOC_OSD0;
+		ge2d_config.alu_const_color=0x000000ff;
+		canvas_index=plogo->parser->decoder.jpg.out_canvas_index;
+		if(plogo->parser->logo_pic_info.color_info==24)//we only support this format
+		{
+			ge2d_config.src_format=GE2D_FORMAT_M24_YUV420;
+			ge2d_config.dst_format=GE2D_FORMAT_S24_RGB;
+			canvas_read(canvas_index&0xff,&canvas);
+			if(canvas.addr==0) return FAIL;
+			ge2d_config.src_planes[0].addr = canvas.addr;
+			ge2d_config.src_planes[0].w = canvas.width;
+			ge2d_config.src_planes[0].h = canvas.height;
+			amlog_mask_level(LOG_MASK_DEVICE,LOG_LEVEL_LOW,"Y:[0x%x][%d*%d]\n",canvas.addr,canvas.width,canvas.height);
+			canvas_read(canvas_index>>8&0xff,&canvas);
+			if(canvas.addr==0) return FAIL;
+			ge2d_config.src_planes[1].addr = canvas.addr;
+			ge2d_config.src_planes[1].w = canvas.width;
+			ge2d_config.src_planes[1].h = canvas.height;
+			amlog_mask_level(LOG_MASK_DEVICE,LOG_LEVEL_LOW,"U:[0x%x][%d*%d]\n",canvas.addr,canvas.width,canvas.height);	
+			canvas_read(canvas_index>>16&0xff,&canvas);
+			if(canvas.addr==0) return FAIL;	
+			ge2d_config.src_planes[2].addr =  canvas.addr;
+			ge2d_config.src_planes[2].w = canvas.width;
+			ge2d_config.src_planes[2].h = canvas.height;
+			amlog_mask_level(LOG_MASK_DEVICE,LOG_LEVEL_LOW,"V:[0x%x][%d*%d]\n",canvas.addr,canvas.width,canvas.height);
+			context=dev_ge2d_setup(&ge2d_config);
+
+			
+		}else{
+			amlog_mask_level(LOG_MASK_DEVICE,LOG_LEVEL_LOW,"can't transfer unsupported jpg format\n");	
+			return FAIL;
+		}
+		
+		
+	}else
+	{
+		amlog_mask_level(LOG_MASK_DEVICE,LOG_LEVEL_LOW,"unsupported logo picture format format\n");	
+		return FAIL ;
+	}
 	amlog_mask_level(LOG_MASK_DEVICE,LOG_LEVEL_LOW,"blit==src:%d-%d-%d-%d\t",op_info.src_rect.x,op_info.src_rect.y,op_info.src_rect.w,op_info.src_rect.h);
 	amlog_mask_level(LOG_MASK_DEVICE,LOG_LEVEL_LOW,"dst:%d-%d-%d-%d\n",op_info.dst_rect.x,op_info.dst_rect.y,op_info.dst_rect.w,op_info.dst_rect.h);	
-	dev_ge2d_cmd(context,CMD_STRETCH_BLIT,&op_info);
 	amlog_mask_level(LOG_MASK_DEVICE,LOG_LEVEL_LOW,"move logo pic completed\n");
+	dev_ge2d_cmd(context,CMD_STRETCH_BLIT,&op_info);
+
 	if(plogo->para.progress) //need progress.
 	{
 		kernel_thread(thread_progress, plogo, 0);

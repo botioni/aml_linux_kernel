@@ -39,6 +39,7 @@ int  register_logo_parser(logo_parser_t* new_parser)
 static int  all_parser_setup(void)
 {
 	bmp_setup();
+	jpeg_setup();
 	return SUCCESS;
 }
  int start_logo(void)
@@ -96,4 +97,4 @@ int  unregister_logo_parser(void)
 	}
 	return SUCCESS;
 }
-subsys_initcall(start_logo);
+subsys_initcall_sync(start_logo);
