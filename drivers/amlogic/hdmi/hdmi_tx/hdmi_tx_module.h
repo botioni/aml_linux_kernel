@@ -37,7 +37,7 @@ typedef struct rx_cap_
 }rx_cap_t;
 
 
-#define EDID_MAX_BLOCK  6       //4
+#define EDID_MAX_BLOCK  20       //4
 typedef struct hdmi_tx_dev_s {
     struct cdev cdev;             /* The cdev structure */
 
@@ -55,6 +55,8 @@ typedef struct hdmi_tx_dev_s {
     
     //wait_queue_head_t   wait_queue;            /* wait queues */
     /*EDID*/
+    unsigned cur_edid_block;
+    unsigned cur_phy_block_ptr;
     unsigned char EDID_buf[EDID_MAX_BLOCK*128];    
     rx_cap_t RXCap;
     /*status*/
@@ -65,10 +67,9 @@ typedef struct hdmi_tx_dev_s {
     /**/
     unsigned char hpd_event; /* 1, plugin; 2, plugout */
     HDMI_TX_INFO_t hdmi_info;
-    
 }hdmitx_dev_t;
 
-#define HDMITX_VER "2010Sep15a"
+#define HDMITX_VER "2010Sep24a"
 /************************************
 *    hdmitx protocol level interface
 *************************************/

@@ -40,8 +40,6 @@
 #include "hdmi_info_global.h"
 #include "hdmi_tx_module.h"
 
-#define ADD_DEVICE
-
 #define DEVICE_NAME "amhdmitx"
 #define HDMI_TX_COUNT 32
 #define HDMI_TX_POOL_NUM  6
@@ -153,6 +151,26 @@ static ssize_t show_edid(struct device *dev, struct device_attribute *attr, char
     return hdmitx_edid_dump(&hdmitx_device, buf, PAGE_SIZE);
 }
 
+static ssize_t store_edid(struct device * dev, struct device_attribute *attr, const char * buf, size_t count)
+{
+    
+    if(buf[0]=='d'){
+        int ii,jj;
+        int block_idx;
+        block_idx=simple_strtoul(buf+1,NULL,16);
+        if(block_idx<EDID_MAX_BLOCK){
+            for(ii=0;ii<8;ii++){
+                for(jj=0;jj<16;jj++){
+                    printk("%02x ",hdmitx_device.EDID_buf[block_idx*128+ii*16+jj]);
+                }
+                printk("\n");
+            }
+            printk("\n");
+        }
+    }
+    return 16;    
+}
+
 /*config attr*/
 static ssize_t show_config(struct device * dev, struct device_attribute *attr, char * buf)
 {   
@@ -181,7 +199,7 @@ static ssize_t store_dbg(struct device * dev, struct device_attribute *attr, con
 
 static DEVICE_ATTR(disp_mode, S_IWUSR | S_IRUGO, show_disp_mode, store_disp_mode);
 static DEVICE_ATTR(aud_mode, S_IWUSR | S_IRUGO, show_aud_mode, store_aud_mode);
-static DEVICE_ATTR(edid, S_IWUSR | S_IRUGO, show_edid, NULL);
+static DEVICE_ATTR(edid, S_IWUSR | S_IRUGO, show_edid, store_edid);
 static DEVICE_ATTR(config, S_IWUSR | S_IRUGO, show_config, store_config);
 static DEVICE_ATTR(debug, S_IWUSR | S_IRUGO, NULL, store_dbg);
 
@@ -282,6 +300,7 @@ static int hdmi_task_handle(void *data)
                 hdmitx_edid_clear(hdmitx_device);
                 hdmitx_edid_parse(hdmitx_device);
                 set_disp_mode_auto();
+
                 hdmitx_device->hpd_event = 0;
             }    
         }
@@ -290,6 +309,8 @@ static int hdmi_task_handle(void *data)
             hdmitx_edid_clear(hdmitx_device);
             hdmitx_device->hpd_event = 0;
         }    
+        else{
+        }            
         msleep(500);
     }
 
