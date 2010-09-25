@@ -32,7 +32,7 @@
 /* Amlogic headers */
 #include <linux/amports/canvas.h>
 #include <mach/am_regs.h>
-#include "../amports/vframe.h"
+#include <linux/amports/vframe.h>
 
 /* TVIN headers */
 #include "tvin_global.h"
