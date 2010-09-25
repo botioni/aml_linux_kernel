@@ -291,7 +291,7 @@ static void change_speed(struct am_uart *info, unsigned long newbaud)
     if (!info->tty || !info->tty->termios)
         return;
 
-    if (!(port = info->port))
+    if (!(port = info->port) || newbaud==0)
         return;
 
     printk("Changing baud to %d\n", (int)newbaud);
