@@ -74,7 +74,7 @@ extern int osddev_setcolreg(unsigned regno, u16 red, u16 green, u16 blue,
         
 extern void osddev_enable(int enable,int index);
 
-extern void osddev_pan_display(struct myfb_dev *fbdev);
+extern void osddev_pan_display(struct fb_var_screeninfo *var,struct fb_info *fbi);
 extern  void  osddev_set_colorkey(u32 index,u32 bpp,u32 colorkey );
 extern  void  osddev_srckey_enable(u32  index,u8 enable);
 extern void  osddev_set_gbl_alpha(u32 index,u32 gbl_alpha) ;
