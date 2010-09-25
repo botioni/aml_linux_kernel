@@ -35,10 +35,10 @@ static  output_dev_list_t aml_output_dev[LOGO_DEV_MAX];
 	for(i=0;i<LOGO_DEV_MEM;i++)
 	{
 		 u32  num=i%2;
-		 strcpy(logo->platfrom_res[i].name,device_name[i]);
-		 amlog_mask_level(LOG_MASK_DEVICE,LOG_LEVEL_LOW,"device name:%s\n",logo->platfrom_res[i].name);
+		 strcpy(logo->platform_res[i].name,device_name[i]);
+		 amlog_mask_level(LOG_MASK_DEVICE,LOG_LEVEL_LOW,"device name:%s\n",logo->platform_res[i].name);
 		 if(1 != i) //osd1 special one
-		 dev=bus_find_device(&platform_bus_type, NULL, logo->platfrom_res[i].name, match_device_name) ;
+		 dev=bus_find_device(&platform_bus_type, NULL, logo->platform_res[i].name, match_device_name) ;
 		 if(dev)
 		{
 			
@@ -48,8 +48,8 @@ static  output_dev_list_t aml_output_dev[LOGO_DEV_MAX];
 			if(res)
 			{
 				amlog_mask_level(LOG_MASK_DEVICE,LOG_LEVEL_LOW,"resource: start=0x%x,end=0x%x\r\n",res->start,res->end);
-				logo->platfrom_res[i].mem_start=res->start;
-				logo->platfrom_res[i].mem_end=res->end;
+				logo->platform_res[i].mem_start=res->start;
+				logo->platform_res[i].mem_end=res->end;
 			}else{
 				amlog_mask_level(LOG_MASK_DEVICE,LOG_LEVEL_HIGH,"can't get device resource\n");
 			}
@@ -71,6 +71,7 @@ int  register_logo_output_dev(logo_output_dev_t* new_dev)
 static int  load_all_output_dev(void)
 {
 	dev_osd_setup();
+	dev_vid_setup();
 	return SUCCESS;
 }
 //entry point for this file .

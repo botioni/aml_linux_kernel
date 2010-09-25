@@ -38,7 +38,7 @@ static  int  setup_parser_output_addr(logo_object_t *plogo)
 	{											//not supported .
 		return -1;
 	}
-	screen_mem_start=plogo->platfrom_res[plogo->para.output_dev_type].mem_start;
+	screen_mem_start=plogo->platform_res[plogo->para.output_dev_type].mem_start;
 	screen_size=plogo->dev->vinfo->width*plogo->dev->vinfo->height*(plogo->parser->decoder.bmp.color_depth>>3);
 	//double buffer ,bottom part .
 	plogo->parser->output_addr=(char*)screen_mem_start + screen_size ;
@@ -81,9 +81,10 @@ static int bmp_init(logo_object_t *logo)
 	BITMAPFILEHEADER *header;
 	BITMAPINFOHEADER *bmp_info_header;
 	bmp_header_t		*bmp_header;
+	void  __iomem*	logo_vaddr=phys_to_virt((unsigned int)logo->para.mem_addr);
 
-	header=(BITMAPFILEHEADER*)logo->para.mem_addr;
-	bmp_info_header=(BITMAPINFOHEADER*)(logo->para.mem_addr+sizeof(BITMAPFILEHEADER));
+	header=(BITMAPFILEHEADER*)logo_vaddr;
+	bmp_info_header=(BITMAPINFOHEADER*)(logo_vaddr+sizeof(BITMAPFILEHEADER));
 	
 	
 	if (NULL==header) goto error; 
@@ -106,6 +107,7 @@ static int bmp_init(logo_object_t *logo)
 			bmp_header->bmp_file_header=header;
 			bmp_header->bmp_info_header=bmp_info_header;
 			logo->parser->priv=bmp_header ;
+			logo->para.mem_addr=(char *)logo_vaddr;
 			return PARSER_FOUND;
 		}
 		amlog_mask_level(LOG_MASK_PARSER,LOG_LEVEL_HIGH,"bmp can only display on osd0 or osd1 ,other layer not supported\n");

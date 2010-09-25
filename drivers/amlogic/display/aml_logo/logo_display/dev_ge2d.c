@@ -17,25 +17,15 @@
  #include "dev_ge2d.h"
  #include	"amlogo_log.h"
  #include <linux/amlog.h>
-ge2d_context_t*	dev_ge2d_setup(ge2d_src_dst_t  type ,void* para)
+ge2d_context_t*	dev_ge2d_setup(void* para)
 {
-	config_para_t  config;
+	config_para_t  *config=(config_para_t*)para;
 	static ge2d_context_t  context;	
 
-	config.src_dst_type=type;
-	config.alu_const_color=0x00;
-	switch(type)
-	{
-		case ALLOC_OSD0:
-		case ALLOC_OSD1:
-		case	 ALLOC_ALLOC:
-		//todo: prepartion work,setup src dst ge2d color format.and planes	
-		break;	
-		default:
-		amlog_mask_level(LOG_MASK_DEVICE,LOG_LEVEL_LOW,"current ge2d type:%d\n",type);	
-		break;
-	}
-	if(0==ge2d_context_config(&context,&config))
+	if(NULL==config) return NULL;
+
+	amlog_mask_level(LOG_MASK_DEVICE,LOG_LEVEL_LOW,"current ge2d type:%d\n",config->src_dst_type);	
+	if(0==ge2d_context_config(&context,config))
 	{
 		return &context;
 	}else{
