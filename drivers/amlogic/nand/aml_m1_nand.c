@@ -243,7 +243,7 @@ static void prepare_info_buf_before_write(struct mtd_info *mtd,int len, int ecc)
 	volatile uint8_t  *ptr	=(uint8_t *)chip->oob_poi;
 	volatile uint32_t *pinfobuf=(uint32_t *)aml_info->info_buf;
 
-	if(ecc!=NAND_ECC_NONE)
+	if(ecc!=AML_NAND_ECC_NONE)
 	{
 		for(i=0;i<len;i++)
 		{
@@ -286,7 +286,7 @@ static int  aml_m1_nand_dma_read(struct mtd_info *mtd, uint8_t *buf, int len,int
 	if(buf)
 		dma_unmap_single(aml_info->device,data_dma_addr,len,DMA_FROM_DEVICE);
 
-	if(ecc!=NAND_ECC_NONE)
+	if(ecc!=AML_NAND_ECC_NONE)
 		res=transfer_info_buf_after_read(mtd,(len+511)>>9);
 
 	return res;
@@ -313,12 +313,12 @@ static void aml_m1_nand_dma_write(struct mtd_info *mtd, const uint8_t *buf, int 
 
 static void aml_m1_nand_read_buf(struct mtd_info *mtd, uint8_t *buf, int len)
 {
-	aml_m1_nand_dma_read(mtd,buf,len,NAND_ECC_NONE);
+	aml_m1_nand_dma_read(mtd,buf,len,AML_NAND_ECC_NONE);
 }
 
 static void aml_m1_nand_write_buf(struct mtd_info *mtd, const uint8_t *buf, int len)
 {
-	aml_m1_nand_dma_write(mtd,buf,len,NAND_ECC_NONE);
+	aml_m1_nand_dma_write(mtd,buf,len,AML_NAND_ECC_NONE);
 }
 
 static int aml_m1_nand_read_page(struct mtd_info *mtd, struct nand_chip *chip,uint8_t *buf,int page)
