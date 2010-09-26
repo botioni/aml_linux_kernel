@@ -451,13 +451,17 @@ int pts_start(u8 type)
 
         spin_unlock_irqrestore(&lock, flags);
 
-        pTable->pts_recs = kcalloc(pTable->rec_num,
-                            sizeof(pts_rec_t), GFP_KERNEL);
+		if (!pTable->pts_recs)
+		{
+			printk("1111[%s:%d]kcalloc pTable->pts_recs!!\n",__FUNCTION__,__LINE__);
+	        pTable->pts_recs = kcalloc(pTable->rec_num,
+	                            sizeof(pts_rec_t), GFP_KERNEL);
+		}
 
         if (!pTable->pts_recs) {
             pTable->status = 0;
             return -ENOMEM;
-        }
+        }		
 
         if (type == PTS_TYPE_VIDEO) {
             pTable->buf_start = READ_MPEG_REG(VLD_MEM_VIFIFO_START_PTR);
@@ -521,10 +525,10 @@ int pts_stop(u8 type)
         pTable->status = PTS_DEINIT;
 
         spin_unlock_irqrestore(&lock, flags);
+		//printk("1111[%s:%d]free pTable->pts_recs!!\n",__FUNCTION__,__LINE__);
+        //kfree(pTable->pts_recs);
 
-        kfree(pTable->pts_recs);
-
-        pTable->pts_recs = NULL;
+        //pTable->pts_recs = NULL;
 
         INIT_LIST_HEAD(&pTable->valid_list);
         INIT_LIST_HEAD(&pTable->free_list);
