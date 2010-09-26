@@ -336,7 +336,10 @@ typedef enum tvin_video_status_e {
 
 #define VDIN_START_CANVAS               70U
 #define BT656IN_VF_POOL_SIZE            8
+#define CAMERA_IN_VF_POOL_SIZE          8   //4
+
 #define BT656IN_ANCI_DATA_SIZE          0x4000 //save anci data from bt656in
+#define CAMERA_IN_ANCI_DATA_SIZE        0x4000 //save anci data from bt656in
 
 
 #endif // __TVIN_GLOBAL_H
