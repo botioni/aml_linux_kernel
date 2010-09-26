@@ -139,7 +139,7 @@ static const char bt656in_dec_id[] = "bt656in-dev";
 //              TVIN_SIG_FMT_VGA_800X600P_60D317:800x600 camera inout(progressive)
 //              TVIN_SIG_FMT_VGA_1024X768P_60D004:1024x768 camera inout(progressive)
 //              .....
-static void init_656in_dec_parameter(unsigned char input_mode)
+static void init_656in_dec_parameter(tvin_sig_format_t input_mode)
 {
     am656in_dec_info.input_mode = input_mode;
     switch(input_mode)
@@ -218,6 +218,24 @@ static inline u32 bt656_index2canvas(u32 index)
         return 0xff;
 }
 
+static inline u32 camera_index2canvas(u32 index)
+{
+    const u32 canvas_tab[CAMERA_IN_VF_POOL_SIZE] = {
+            VDIN_START_CANVAS,
+            VDIN_START_CANVAS + 1,
+            VDIN_START_CANVAS + 2,
+            VDIN_START_CANVAS + 3,
+            VDIN_START_CANVAS + 4,
+            VDIN_START_CANVAS + 5,
+            VDIN_START_CANVAS + 6,
+            VDIN_START_CANVAS + 7,
+    };
+    if(index < CAMERA_IN_VF_POOL_SIZE)
+        return canvas_tab[index];
+    else
+        return 0xff;
+}
+
 
 //NTSC or PAL input(interlace mode): CLOCK + D0~D7(with SAV + EAV )
 static void reset_bt656in_dec(void)
@@ -275,6 +293,9 @@ static void reset_bt656in_dec(void)
 								(1 << BT_REF_MODE_BIT ) |    // timing reference is from bit stream.
 								(1 << BT_CLK27_SEL_BIT) |    // use external xclk27.
 								(1 << BT_XCLK27_EN_BIT)) ;    // xclk27 is input.
+                WRITE_CBUS_REG(VDIN_WR_V_START_END, 287 |     //v end
+                                        (0 << 16) );   // v start
+
 		}
 		else if(am656in_dec_info.input_mode  == TVIN_SIG_FMT_COMPONENT_480I_59D940) //input is PAL	//input is NTSC
 		{
@@ -291,6 +312,9 @@ static void reset_bt656in_dec(void)
 								(1 << BT_CLK27_SEL_BIT) |    // use external xclk27.
 								(1 << BT_XCLK27_EN_BIT) |		// xclk27 is input.
 								(1 << BT_FMT_MODE_BIT));   //input format is NTSC
+                WRITE_CBUS_REG(VDIN_WR_V_START_END, 239 |     //v end
+                                        (0 << 16) );   // v start
+
 		}
         else
            pr_dbg("bt656 input mode is invalid, do nothing \n");
@@ -365,6 +389,9 @@ static void reset_bt601in_dec(void)
                                             (0 << BT_FID_EN_BIT )   |     // use external fid pin.
                                             (1 << BT_CLK27_SEL_BIT) |  // use external xclk27.
                                             (1 << BT_XCLK27_EN_BIT) );   // xclk27 is input.
+                WRITE_CBUS_REG(VDIN_WR_V_START_END, 287 |     //v end
+                                        (0 << 16) );   // v start
+
      }
 
 		else if(am656in_dec_info.input_mode == TVIN_SIG_FMT_HDMI_1440x480I_60Hz) 	//input is NTSC
@@ -382,6 +409,9 @@ static void reset_bt601in_dec(void)
                                         (0 << BT_FID_EN_BIT )   |     // use external fid pin.
                                         (1 << BT_CLK27_SEL_BIT) |  // use external xclk27.
                                         (1 << BT_XCLK27_EN_BIT) );   // xclk27 is input.
+                WRITE_CBUS_REG(VDIN_WR_V_START_END, 239 |     //v end
+                                        (0 << 16) );   // v start
+
       }
       else
       {
@@ -502,14 +532,14 @@ void start_amvdec_656_601_camera_in(tvin_sig_format_t input_mode)
             pr_dbg("bt656in decode. \n");
             reset_bt656in_dec();
             am656in_dec_info.rd_canvas_index = 0xff - (BT656IN_VF_POOL_SIZE + 2);
-            am656in_dec_info.wr_canvas_index =  BT656IN_VF_POOL_SIZE;
+            am656in_dec_info.wr_canvas_index =  0;
         }
         else if((input_mode == TVIN_SIG_FMT_HDMI_1440x576I_50Hz) || (input_mode == TVIN_SIG_FMT_HDMI_1440x480I_60Hz))
         {
             pr_dbg("bt601in decode. \n");
             reset_bt601in_dec();
             am656in_dec_info.rd_canvas_index = 0xff - (BT656IN_VF_POOL_SIZE + 2);
-            am656in_dec_info.wr_canvas_index =  BT656IN_VF_POOL_SIZE;
+            am656in_dec_info.wr_canvas_index =  0;
             if(am656in_dec_info.pin_mux_reg2 != 0)
                 SET_CBUS_REG_MASK(am656in_dec_info.pin_mux_reg2, am656in_dec_info.pin_mux_mask2);  //set the related pin mux
             if(am656in_dec_info.pin_mux_reg3 != 0)
@@ -519,6 +549,8 @@ void start_amvdec_656_601_camera_in(tvin_sig_format_t input_mode)
         else
         {
             pr_dbg("camera in decode. \n");
+             am656in_dec_info.rd_canvas_index = 0xff - (CAMERA_IN_VF_POOL_SIZE + 2);
+            am656in_dec_info.wr_canvas_index =  0;
             reset_camera_dec();
              if(am656in_dec_info.pin_mux_reg2 != 0)
                 SET_CBUS_REG_MASK(am656in_dec_info.pin_mux_reg2, am656in_dec_info.pin_mux_mask2);  //set the related pin mux
@@ -794,6 +826,7 @@ static void bt601_in_dec_run(vframe_t * info)
 static void camera_in_dec_run(vframe_t * info)
 {
     unsigned ccir656_status, field_total_line;
+    unsigned char canvas_id;
 
     ccir656_status = READ_CBUS_REG(BT_STATUS);
 
@@ -815,11 +848,45 @@ static void camera_in_dec_run(vframe_t * info)
 
     else
     {
-        info->type = VIDTYPE_VIU_SINGLE_PLANE | VIDTYPE_PROGRESSIVE | VIDTYPE_VIU_FIELD | VIDTYPE_INTERLACE_BOTTOM;
+        if((am656in_dec_info.rd_canvas_index > 0xf0) && (am656in_dec_info.rd_canvas_index < 0xff))
+         {
+             am656in_dec_info.rd_canvas_index += 1;
+             am656in_dec_info.wr_canvas_index += 1;
+             if(am656in_dec_info.wr_canvas_index > (CAMERA_IN_VF_POOL_SIZE -1) )
+                 am656in_dec_info.wr_canvas_index = 0;
+             canvas_id = camera_index2canvas(am656in_dec_info.wr_canvas_index);
+             WRITE_MPEG_REG_BITS(VDIN_WR_CTRL, canvas_id, WR_CANVAS_BIT, WR_CANVAS_WID);
+             set_next_field_656_601_camera_in_anci_address(am656in_dec_info.wr_canvas_index);
+             return;
+        }
+
+         else if(am656in_dec_info.rd_canvas_index == 0xff)
+         {
+            am656in_dec_info.rd_canvas_index = 0;
+         }
+
+        else
+        {
+            am656in_dec_info.rd_canvas_index++;
+            if(am656in_dec_info.rd_canvas_index > (CAMERA_IN_VF_POOL_SIZE -1))
+            {
+                am656in_dec_info.rd_canvas_index = 0;
+            }
+        }
+
+
+
+        info->type = VIDTYPE_VIU_SINGLE_PLANE | VIDTYPE_VIU_422 | VIDTYPE_VIU_FIELD | VIDTYPE_PROGRESSIVE ;
         info->width= am656in_dec_info.active_pixel;
         info->height = am656in_dec_info.active_line;
-        info->duration = 96000/30;   //30 frame per second
-
+        info->duration = 9600000/1716;   //17.16 frame per second
+        info->canvas0Addr = info->canvas1Addr = camera_index2canvas(am656in_dec_info.rd_canvas_index);
+        am656in_dec_info.wr_canvas_index += 1;
+        if(am656in_dec_info.wr_canvas_index > (CAMERA_IN_VF_POOL_SIZE -1) )
+            am656in_dec_info.wr_canvas_index = 0;
+        canvas_id = camera_index2canvas(am656in_dec_info.wr_canvas_index);
+        WRITE_MPEG_REG_BITS(VDIN_WR_CTRL, canvas_id, WR_CANVAS_BIT, WR_CANVAS_WID);
+        set_next_field_656_601_camera_in_anci_address(am656in_dec_info.wr_canvas_index);
     }
 
     return;

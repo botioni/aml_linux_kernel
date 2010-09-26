@@ -57,8 +57,6 @@ static struct class *vdin_clsp;
 
 typedef struct vdin_dev_s {
     int                         index;
-//    unsigned int                rd_canvas_index;
-//    unsigned int                wr_canvas_index;
     struct cdev                 cdev;
     unsigned int                flags;
     unsigned int                mem_start;
@@ -118,11 +116,8 @@ static inline unsigned int vdin_get_afifo( enum vdin_src_e src)
     switch (src)
     {
         case VDIN_SRC_BT656IN:
-            ret = READ_CBUS_REG_BITS(VDIN_COM_STATUS1, FIFO1_OVFL_BIT, FIFO1_OVFL_WID);
-            break;
-
         case VDIN_SRC_CAMERA:
-
+            ret = READ_CBUS_REG_BITS(VDIN_COM_STATUS1, FIFO1_OVFL_BIT, FIFO1_OVFL_WID);
             break;
 
         default:
@@ -137,6 +132,7 @@ static inline void vdin_reset_afifo(enum vdin_src_e src)
     switch (src)
     {
         case VDIN_SRC_BT656IN:
+        case VDIN_SRC_CAMERA:
             WRITE_CBUS_REG_BITS(VDIN_ASFIFO_CTRL0, 1, ASFIFO1_SOFT_RST_BIT,
                 ASFIFO1_SOFT_RST_WID);
             WRITE_CBUS_REG_BITS(VDIN_ASFIFO_CTRL0, 0, ASFIFO1_SOFT_RST_BIT,
@@ -145,10 +141,6 @@ static inline void vdin_reset_afifo(enum vdin_src_e src)
                 ASFIFO1_OVFL_STATUS_CLR_WID);
             WRITE_CBUS_REG_BITS(VDIN_ASFIFO_CTRL0, 0, ASFIFO1_OVFL_STATUS_CLR_BIT,
                 ASFIFO1_OVFL_STATUS_CLR_WID);
-            break;
-
-        case VDIN_SRC_CAMERA:
-
             break;
 
         default:
@@ -175,6 +167,7 @@ static inline void vdin_set_afifo(enum vdin_src_e src)
     switch (src)
     {
         case VDIN_SRC_BT656IN:
+        case VDIN_SRC_CAMERA:
             WRITE_CBUS_REG_BITS(VDIN_ASFIFO_CTRL0, 1, ASFIFO1_DE_EN_BIT,
                 ASFIFO1_DE_EN_WID);
             WRITE_CBUS_REG_BITS(VDIN_ASFIFO_CTRL0, 1, ASFIFO1_GO_FLD_EN_BIT,
@@ -187,10 +180,6 @@ static inline void vdin_set_afifo(enum vdin_src_e src)
                 ASFIFO1_NEG_ACTIVE_IN_HS_WID);
             WRITE_CBUS_REG_BITS(VDIN_ASFIFO_CTRL0, 1, ASFIFO1_VS_SOFT_RST_FIFO_EN_BIT,
                 ASFIFO1_VS_SOFT_RST_FIFO_EN_WID);
-            break;
-
-        case VDIN_SRC_CAMERA:
-
             break;
 
         default:
@@ -248,17 +237,42 @@ static inline void vdin_set_src_mux( vdin_src_mux_cfg_t *src_mux_cfg, vdin_dev_t
     }
     else                                    // enable
     {
-        WRITE_CBUS_REG_BITS(VDIN_COM_CTRL0, src_mux_cfg->go_field_delay,
-                            DLY_GO_FLD_LN_NUM_BIT, DLY_GO_FLD_LN_NUM_WID);
-        WRITE_CBUS_REG_BITS(VDIN_COM_CTRL0, (src_mux_cfg->go_field_delay ? 1 : 0),
-                            DLY_GO_FLD_EN_BIT, DLY_GO_FLD_EN_WID);
-        WRITE_CBUS_REG_BITS(VDIN_COM_CTRL0, src_mux_cfg->hold_lines,
-                            HOLD_LN_BIT, HOLD_LN_WID);
-        vdin_set_mux(src_mux_cfg->mux);
 
-        WRITE_CBUS_REG_BITS(VDIN_COM_CTRL0, (unsigned int)(src_mux_cfg->src),
-                            VDIN_SEL_BIT, VDIN_SEL_WID);
-        WRITE_CBUS_REG_BITS(VDIN_COM_CTRL0, 1, COMMON_DATA_IN_EN_BIT, COMMON_DATA_IN_EN_WID);
+        switch (src_mux_cfg->src)
+        {
+            case VDIN_SRC_BT656IN:
+                WRITE_CBUS_REG_BITS(VDIN_COM_CTRL0, src_mux_cfg->go_field_delay,
+                                    DLY_GO_FLD_LN_NUM_BIT, DLY_GO_FLD_LN_NUM_WID);
+                WRITE_CBUS_REG_BITS(VDIN_COM_CTRL0, (src_mux_cfg->go_field_delay ? 1 : 0),
+                                    DLY_GO_FLD_EN_BIT, DLY_GO_FLD_EN_WID);
+                WRITE_CBUS_REG_BITS(VDIN_COM_CTRL0, src_mux_cfg->hold_lines,
+                                    HOLD_LN_BIT, HOLD_LN_WID);
+                WRITE_CBUS_REG_BITS(VDIN_COM_CTRL0, (unsigned int)(src_mux_cfg->src),
+                                    VDIN_SEL_BIT, VDIN_SEL_WID);
+                WRITE_CBUS_REG_BITS(VDIN_COM_CTRL0, 1, COMMON_DATA_IN_EN_BIT, COMMON_DATA_IN_EN_WID);
+                WRITE_CBUS_REG_BITS (VDIN_COM_CTRL0, 10, HOLD_LN_BIT, HOLD_LN_WID);       //there is 10 hold line after vsync
+
+                break;
+
+            case VDIN_SRC_CAMERA:
+                WRITE_CBUS_REG_BITS(VDIN_COM_CTRL0, src_mux_cfg->go_field_delay,
+                                    DLY_GO_FLD_LN_NUM_BIT, DLY_GO_FLD_LN_NUM_WID);
+                WRITE_CBUS_REG_BITS(VDIN_COM_CTRL0, (src_mux_cfg->go_field_delay ? 1 : 0),
+                                    DLY_GO_FLD_EN_BIT, DLY_GO_FLD_EN_WID);
+                WRITE_CBUS_REG_BITS(VDIN_COM_CTRL0, src_mux_cfg->hold_lines,
+                                    HOLD_LN_BIT, HOLD_LN_WID);
+                WRITE_CBUS_REG_BITS(VDIN_COM_CTRL0, (unsigned int)(src_mux_cfg->src),
+                                    VDIN_SEL_BIT, VDIN_SEL_WID);
+                WRITE_CBUS_REG_BITS(VDIN_COM_CTRL0, 1, COMMON_DATA_IN_EN_BIT, COMMON_DATA_IN_EN_WID);
+                WRITE_CBUS_REG_BITS (VDIN_COM_CTRL0, 0, HOLD_LN_BIT, HOLD_LN_WID);       //there is no hold line after vsync
+
+                break;
+
+            default:
+                break;
+        }
+
+        vdin_set_mux(src_mux_cfg->mux);
         vdin_set_afifo(src_mux_cfg->src);
     }
     //add sourec mux here
@@ -822,8 +836,22 @@ static void vdin_bt656in_canvas_init(struct vdin_dev_s *devp)
             canvas_width, canvas_height,
             CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_LINEAR);
     }
-//    devp->wr_canvas_index = 0;
-//    devp->rd_canvas_index = 0;
+}
+
+static void vdin_camera_in_canvas_init(struct vdin_dev_s *devp)
+{
+    int i = 0;
+    unsigned int canvas_width  = 1920 << 1;
+    unsigned int canvas_height = 1080;
+    unsigned int decbuf_size   = 0x400000;
+    unsigned int decbuf_start  = devp->mem_start + CAMERA_IN_ANCI_DATA_SIZE;
+
+    for ( i = 0; i < CAMERA_IN_VF_POOL_SIZE; i++)
+    {
+        canvas_config(VDIN_START_CANVAS + i, decbuf_start + i * decbuf_size,
+            canvas_width, canvas_height,
+            CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_LINEAR);
+    }
 }
 
 
@@ -849,7 +877,7 @@ static int vdin_canvas_init(struct vdin_dev_s *devp)
             vdin_bt656in_canvas_init(devp);
             break;
         case VDIN_SRC_CAMERA:
-
+            vdin_camera_in_canvas_init(devp);
             break;
         case VDIN_SRC_TVFE:
             break;
@@ -971,11 +999,8 @@ static irqreturn_t vdin_isr(int irq, void *dev_id)
             case VDIN_SRC_MPEG:
                 break;
             case VDIN_SRC_BT656IN:
-                amvdec_656_601_camera_in_run(vf);
-                break;
-
             case VDIN_SRC_CAMERA:
-
+                amvdec_656_601_camera_in_run(vf);
                 break;
 
             case VDIN_SRC_TVFE:
