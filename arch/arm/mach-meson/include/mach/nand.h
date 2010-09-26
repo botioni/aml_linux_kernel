@@ -80,7 +80,7 @@
 #define NFC_SEND_CMD(cmd)           (WRITE_CBUS_REG(NAND_CMD,cmd))
 #define NFC_READ_INFO()             (READ_CBUS_REG(NAND_CMD))
 /** ECC defination(M1) */
-#define NAND_ECC_NONE             0x0
+#define AML_NAND_ECC_NONE             0x0
 #define NAND_ECC_REV0             0x1
 #define NAND_ECC_REV1             0x2
 #define NAND_ECC_REV2             0x3

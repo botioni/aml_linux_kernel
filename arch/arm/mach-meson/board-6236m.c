@@ -47,8 +47,8 @@
 #include <linux/mtd/nand.h>
 #include <linux/mtd/nand_ecc.h>
 #include <linux/mtd/partitions.h>
-#include <linux/device.h>
-#include <linux/spi/flash.h>
+#include <mach/nand.h>
+
 
 #if defined(CONFIG_JPEGLOGO)
 static struct resource jpeglogo_resources[] = {
@@ -351,8 +351,52 @@ static struct spi_board_info spi_board_info_list[] = {
 	},
 };
 
-#ifdef CONFIG_AM_NAND
 
+int ads7846_init_gpio(void)
+{
+/* memson
+	Bit(s)	Description
+	256-105	Unused
+	104		JTAG_TDO
+	103		JTAG_TDI
+	102		JTAG_TMS
+	101		JTAG_TCK
+	100		gpioA_23
+	99		gpioA_24
+	98		gpioA_25
+	97		gpioA_26
+	98-75	gpioE[21:0]
+	75-50	gpioD[24:0]
+	49-23	gpioC[26:0]
+	22-15	gpioB[22;15]
+	14-0		gpioA[14:0]
+ */
+
+	/* set input mode */
+	gpio_direction_input(GPIO_TSC2046_PENDOWN);
+	/* set gpio interrupt #0 source=GPIOC_10, and triggered by falling edge(=1) */
+	gpio_enable_edge_int(33, 1, 0);
+
+	// reg12 bit22,23,24,25
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_12, 0xf<<22);
+	// reg7 bit19
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_7, 0x1<<19);
+	// reg7 bit14,15,16
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_7, 0x7<<14);
+	// reg5 bit17
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_5, 0x1<<17);
+	// reg5 bit12
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_5, 0x1<<12);
+	// reg5 bit4,5,6,7
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_5, 0xf<<4);
+	// reg8 bit25,26,27,28
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, 0xf<<25);
+
+	return 0;
+}
+#endif
+
+#if defined(CONFIG_AM_NAND)
 static struct mtd_partition partition_info[] = 
 {
 	{
@@ -427,50 +471,6 @@ static struct platform_device aml_nand_device =
 		.platform_data = &aml_2Kpage128Kblocknand_platform,
 	},
 };
-#endif
-
-int ads7846_init_gpio(void)
-{
-/* memson
-	Bit(s)	Description
-	256-105	Unused
-	104		JTAG_TDO
-	103		JTAG_TDI
-	102		JTAG_TMS
-	101		JTAG_TCK
-	100		gpioA_23
-	99		gpioA_24
-	98		gpioA_25
-	97		gpioA_26
-	98-75	gpioE[21:0]
-	75-50	gpioD[24:0]
-	49-23	gpioC[26:0]
-	22-15	gpioB[22;15]
-	14-0		gpioA[14:0]
- */
-
-	/* set input mode */
-	gpio_direction_input(GPIO_TSC2046_PENDOWN);
-	/* set gpio interrupt #0 source=GPIOC_10, and triggered by falling edge(=1) */
-	gpio_enable_edge_int(33, 1, 0);
-
-	// reg12 bit22,23,24,25
-	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_12, 0xf<<22);
-	// reg7 bit19
-	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_7, 0x1<<19);
-	// reg7 bit14,15,16
-	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_7, 0x7<<14);
-	// reg5 bit17
-	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_5, 0x1<<17);
-	// reg5 bit12
-	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_5, 0x1<<12);
-	// reg5 bit4,5,6,7
-	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_5, 0xf<<4);
-	// reg8 bit25,26,27,28
-	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, 0xf<<25);
-
-	return 0;
-}
 #endif
 
 
