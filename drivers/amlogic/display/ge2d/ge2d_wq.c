@@ -143,7 +143,7 @@ exit:
 static irqreturn_t ge2d_wq_handle(int  irq_number, void *para)
 {
 	wake_up(&ge2d_manager.event.cmd_complete) ;
-	return 0;
+	return IRQ_HANDLED;
 
 
 }
@@ -596,14 +596,6 @@ ge2d_context_t* create_ge2d_work_queue(void)
 	empty=list_empty(&ge2d_manager.process_queue);
 	list_add_tail(&ge2d_work_queue->list,&ge2d_manager.process_queue);
 	spin_unlock(&ge2d_manager.event.sem_lock);
-	if(empty)//the first work queue come in.
-	{
-		if(ge2d_start_monitor())
- 		{
- 			amlog_level(LOG_LEVEL_HIGH,"ge2d create thread error\r\n");	
-			return NULL;
- 		}
-	}
 	return ge2d_work_queue; //find it 
 }
 int  destroy_ge2d_work_queue(ge2d_context_t* ge2d_work_queue)
@@ -644,11 +636,6 @@ int  destroy_ge2d_work_queue(ge2d_context_t* ge2d_work_queue)
 		
      		kfree(ge2d_work_queue);
         	ge2d_work_queue=NULL;
-		if(empty) //the last work queue be killed. 
-		{
-			return ge2d_stop_monitor();
-		
-		}	
 		return 0;
     	}
 	
@@ -685,6 +672,11 @@ int ge2d_wq_init(void)
     	ge2d_gen_cfg.dp_onoff_mode   = 0;
     	ge2d_gen_cfg.vfmt_onoff_en   = 0;
     	ge2d_set_gen(&ge2d_gen_cfg);
+	if(ge2d_start_monitor())
+ 	{
+ 		amlog_level(LOG_LEVEL_HIGH,"ge2d create thread error\r\n");	
+		return -1;
+ 	}	
 	return 0;
 }
 int   ge2d_setup(void)
@@ -700,6 +692,7 @@ int   ge2d_setup(void)
 EXPORT_SYMBOL(ge2d_setup);
 int   ge2d_deinit( void )
 {
+	ge2d_stop_monitor();
 	amlog_mask_level(LOG_MASK_INIT,LOG_LEVEL_HIGH,"deinit ge2d device \r\n") ;
 	if (ge2d_manager.irq_num >= 0) {
       		free_irq(GE2D_IRQ_NO,&ge2d_manager);
