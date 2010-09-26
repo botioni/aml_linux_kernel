@@ -72,8 +72,8 @@ void osddev_set(struct myfb_dev *fbdev)
                fbdev->fb_info->var.yres_virtual,
                0,
                0,
-               fbdev->fb_info->var.xres-1,
-               fbdev->fb_info->var.yres-1,
+               fbdev->osd_ctl.disp_end_x,
+               fbdev->osd_ctl.disp_end_y,
                fbdev->fb_mem_paddr,
                type,
                fbdev->fb_info->node);	
