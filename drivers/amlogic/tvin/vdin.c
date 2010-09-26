@@ -24,7 +24,7 @@
 #include <linux/device.h>
 #include <linux/cdev.h>
 #include <linux/platform_device.h>
-#include <linux/etherdevice.h>
+//#include <linux/etherdevice.h>
 #include <linux/interrupt.h>
 #include <linux/errno.h>
 #include <asm/uaccess.h>
@@ -64,10 +64,20 @@ typedef struct vdin_dev_s {
 
     irqreturn_t (*vdin_isr) (int irq, void *dev_id);
 
-    union vdin_hist_u           hist;
-    struct vdin_bbar_info_s     bbar;
-    enum vdin_src_e             src;
+    //union vdin_hist_u           hist;
+    //struct vdin_bbar_info_s     bbar;
+    //enum vdin_src_e             src;
     enum tvin_sig_format_e      sig_fmt;
+
+    struct vdin_clkgate_cfg_s   clkgate_cfg;
+    struct vdin_mpeg_cfg_s      mpeg_cfg;
+    struct vdin_src_mux_cfg_s   src_mux_cfg;
+    struct vdin_hscl_cfg_s      hsc_cfg;
+    enum vdin_matrix_csc_e      matrix_csc;
+    struct vdin_lfifo_cfg_s     lfifo_cfg;
+    struct vdin_output_cfg_s    output_cfg;
+    struct vdin_hist_cfg_s      hist_cfg;
+    struct vdin_bbar_cfg_s      blkbar_cfg;
 } vdin_dev_t;
 
 const static char vdin_irq_id[] = "vdin_irq_id";
@@ -77,7 +87,6 @@ static struct timer_list vdin_recycle_timer;
 
 union vdin_hist_u           vdin_hist;
 struct vdin_bbar_info_s     vdin_bbar;
-enum   vdin_src_e           vdin_src;
 
 static inline void vdin_set_clkgate( vdin_clkgate_cfg_t *clkgate_cfg)
 {
@@ -227,9 +236,9 @@ static inline void vdin_set_mux(enum vdin_mux_e mux)
     }
 }
 
-static inline void vdin_set_src_mux( vdin_src_mux_cfg_t *src_mux_cfg, vdin_dev_t *devp)
+static inline void vdin_set_src_mux( vdin_src_mux_cfg_t *src_mux_cfg /*, vdin_dev_t *devp */)
 {
-    devp->src = src_mux_cfg->src;
+    //devp->src = src_mux_cfg->src;
 
     if (src_mux_cfg->src == VDIN_SRC_NULL)  // disable
     {
@@ -622,11 +631,20 @@ static inline void vdin_set_output(struct vdin_output_cfg_s *output_cfg)
                         WR_REQ_EN_BIT, WR_REQ_EN_WID);
     WRITE_MPEG_REG_BITS(VDIN_WR_CTRL, output_cfg->canvas_id,
                         WR_CANVAS_BIT, WR_CANVAS_WID);
-
+    #if 1
+    WRITE_MPEG_REG_BITS(VDIN_WR_H_START_END, output_cfg->hstart,
+                        WR_HSTART_BIT, WR_HSTART_WID);
+    WRITE_MPEG_REG_BITS(VDIN_WR_H_START_END, output_cfg->hend,
+                        WR_HEND_BIT, WR_HEND_WID);
+    WRITE_MPEG_REG_BITS(VDIN_WR_V_START_END, output_cfg->vstart,
+                        WR_VSTART_BIT, WR_VSTART_WID);
+    WRITE_MPEG_REG_BITS(VDIN_WR_V_START_END, output_cfg->vend,
+                        WR_VEND_BIT, WR_VEND_WID);
+    #else
     WRITE_MPEG_REG(VDIN_WR_H_START_END, output_cfg->hend | (output_cfg->hstart << WR_HSTART_BIT));
 
     WRITE_MPEG_REG(VDIN_WR_V_START_END, output_cfg->vend | (output_cfg->vstart << WR_VSTART_BIT));
-
+    #endif
 
 
 
@@ -637,7 +655,11 @@ static inline void vdin_get_histgram(void);
 static inline void vdin_set_histgram(struct vdin_histgram_cfg_s hist_cfg);
 */
 
-static inline void vdin_get_histgram(void)
+
+/* @todo add hist\blkbar\meas(frame frequncy measurement)
+         fields to structure vframe to be passed to vpp module
+*/
+static inline void vdin_get_histogram(void)
 {
     vdin_hist.reg[ 0] = READ_MPEG_REG(VDIN_HIST_MAX_MIN);
     vdin_hist.reg[ 1] = READ_MPEG_REG(VDIN_HIST_SPL_VAL);
@@ -677,7 +699,7 @@ static inline void vdin_get_histgram(void)
     vdin_hist.reg[35] = READ_MPEG_REG(VDIN_DNLP_HIST31);
 }
 
-static inline void vdin_set_histgram(struct vdin_hist_cfg_s *hist_cfg)
+static inline void vdin_set_histogram(struct vdin_hist_cfg_s *hist_cfg)
 {
     WRITE_MPEG_REG_BITS(VDIN_HIST_H_START_END, hist_cfg->hstart,
                         HIST_HSTART_BIT, HIST_HSTART_WID);
@@ -816,7 +838,6 @@ static void vdin_put_timer_func(unsigned long arg)
 {
     int i = 0;
     struct timer_list *timer = (struct timer_list *)arg;
-
     timer->expires = jiffies + VDIN_PUT_INTERVAL;
     add_timer(timer);
 }
@@ -869,7 +890,7 @@ static int vdin_canvas_init(struct vdin_dev_s *devp)
     if(devp->index > VDIN_COUNT)
         return -1;
 
-    switch (devp->src)
+    switch (devp->src_mux_cfg.src)
     {
         case VDIN_SRC_MPEG:
             break;
@@ -926,10 +947,9 @@ static void vdin_start_dec(struct vdin_dev_s *devp)
     add_timer(&vdin_recycle_timer);
 }
 
-
 static void vdin_stop_dec(struct vdin_dev_s *devp)
 {
-    switch (devp->src)
+    switch (devp->src_mux_cfg.src)
     {
         case VDIN_SRC_MPEG:
             break;
@@ -946,10 +966,9 @@ static void vdin_stop_dec(struct vdin_dev_s *devp)
         default:
             break;
     }
+
     vdin_unreg_vf_provider();
-
     del_timer_sync(&vdin_recycle_timer);
-
     vdin_release_canvas(devp);
 }
 
@@ -1002,15 +1021,12 @@ static irqreturn_t vdin_isr(int irq, void *dev_id)
             case VDIN_SRC_CAMERA:
                 amvdec_656_601_camera_in_run(vf);
                 break;
-
             case VDIN_SRC_TVFE:
                 break;
             case VDIN_SRC_CVD2:
                 break;
             case VDIN_SRC_HDMIRX:
                 break;
-
-
             default:
                 break;
         }
@@ -1020,22 +1036,16 @@ static irqreturn_t vdin_isr(int irq, void *dev_id)
         if(vf->type == 0xffffffff)
         {
             /* mpeg12 used spin_lock_irqsave(), @todo... */
-    //        vfq_push_recycle(vf);
+            //vfq_push_recycle(vf);
             pr_dbg("decode data is error, skip the feild data \n");
         }
         else    //do buffer managerment, and send info into video display, please refer to vh264 decode
         {
-        //            printk("decode data is ok, notice output to display  \n");
             vfq_push_display(vf); /* push to display */
-
         }
-
     }
     return IRQ_HANDLED;
 }
-
-
-
 
 static int vdin_open(struct inode *inode, struct file *file)
 {
@@ -1046,7 +1056,6 @@ static int vdin_open(struct inode *inode, struct file *file)
     devp = container_of(inode->i_cdev, vdin_dev_t, cdev);
     file->private_data = devp;
 
-
     return 0;
 }
 
@@ -1055,12 +1064,9 @@ static int vdin_release(struct inode *inode, struct file *file)
     vdin_dev_t *devp = file->private_data;
     file->private_data = NULL;
 
-
     printk(KERN_ERR "vdin: device release ok.\n");
     return 0;
 }
-
-
 
 static int vdin_ioctl(struct inode *inode, struct file *file, unsigned int cmd, unsigned long arg)
 {
@@ -1078,143 +1084,117 @@ static int vdin_ioctl(struct inode *inode, struct file *file, unsigned int cmd, 
     {
         case VDIN_IOCS_CLKGATE:
         {
-            struct vdin_clkgate_cfg_s clkgate_cfg = {
-                .bbar       = VDIN_CLK_AUTO,
-                .hist       = VDIN_CLK_AUTO,
-                .lfifo      = VDIN_CLK_AUTO,
-                .matrix     = VDIN_CLK_AUTO,
-                .hscl       = VDIN_CLK_AUTO,
-                .prehscl    = VDIN_CLK_AUTO,
-                .top        = VDIN_CLK_AUTO};
-            if (copy_from_user(&clkgate_cfg, argp, sizeof(vdin_clkgate_cfg_t)))
+            if (copy_from_user(&devp->clkgate_cfg, argp, sizeof(vdin_clkgate_cfg_t)))
             {
                 ret = -EFAULT;
                 break;
             }
 
-            vdin_set_clkgate(&clkgate_cfg);
+            vdin_set_clkgate(&devp->clkgate_cfg);
             break;
         }
 
         case VDIN_IOCS_MPEG:
         {
-            vdin_mpeg_cfg_t mpeg_cfg = {0, 0};
-            if (copy_from_user(&mpeg_cfg, argp, sizeof(vdin_mpeg_cfg_t)))
+            if (copy_from_user(&devp->mpeg_cfg, argp, sizeof(vdin_mpeg_cfg_t)))
             {
                 ret = -EFAULT;
                 break;
             }
 
-            vdin_set_mpeg(&mpeg_cfg);
+            vdin_set_mpeg(&devp->mpeg_cfg);
             break;
         }
 
         case VDIN_IOCS_SRC_MUX:
         {
-            vdin_src_mux_cfg_t src_mux_cfg = {0, 0, 0, 0};
-            if (copy_from_user(&src_mux_cfg, argp, sizeof(vdin_src_mux_cfg_t)))
+            if (copy_from_user(&devp->src_mux_cfg, argp, sizeof(vdin_src_mux_cfg_t)))
             {
                 ret = -EFAULT;
                 break;
             }
 
-            vdin_set_src_mux(&src_mux_cfg, devp);
+            vdin_set_src_mux(&devp->src_mux_cfg);
             break;
         }
 
         case VDIN_IOCS_HSCL:
         {
-            vdin_hscl_cfg_t hsc_cfg = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-            if (copy_from_user(&hsc_cfg, argp, sizeof(vdin_hscl_cfg_t)))
+            if (copy_from_user(&devp->hsc_cfg, argp, sizeof(vdin_hscl_cfg_t)))
             {
                 ret = -EFAULT;
                 break;
             }
 
-            vdin_set_hscaler(&hsc_cfg);
+            vdin_set_hscaler(&devp->hsc_cfg);
             break;
         }
 
         case VDIN_IOCS_MATRIX:
         {
-            enum vdin_matrix_csc_e matrix_csc = 0;
-            if (copy_from_user(&matrix_csc, argp, sizeof(enum vdin_matrix_csc_e)))
+            if (copy_from_user(&devp->matrix_csc, argp, sizeof(enum vdin_matrix_csc_e)))
             {
                 ret = -EFAULT;
                 break;
             }
 
-            vdin_set_matrix(matrix_csc);
+            vdin_set_matrix(devp->matrix_csc);
             break;
         }
 
         case VDIN_IOCS_LFIFO:
         {
-            vdin_lfifo_cfg_t lfifo_cfg = {0, 0};
-            if (copy_from_user(&lfifo_cfg, argp, sizeof(vdin_lfifo_cfg_t)))
+            if (copy_from_user(&devp->lfifo_cfg, argp, sizeof(vdin_lfifo_cfg_t)))
             {
                 ret = -EFAULT;
                 break;
             }
 
-            vdin_set_lfifo(&lfifo_cfg);
+            vdin_set_lfifo(&devp->lfifo_cfg);
             break;
         }
 
         case VDIN_IOCS_OUTPUT:
         {
-            vdin_output_cfg_t output_cfg = {
-                .control            = 0xb,
-                .data_fmt           = 0,
-                .canvas_shadow_en   = 0,
-                .req_urgent         = 1,
-                .req_en             = 1,
-                .canvas_id          = VDIN_START_CANVAS,
-                .hstart             = 0,
-                .hend               = 719,
-                .vstart             = 0,
-                .vend               = 239,
-            };
-
-            if (copy_from_user(&output_cfg, argp, sizeof(vdin_output_cfg_t)))
+            if (copy_from_user(&devp->output_cfg, argp, sizeof(vdin_output_cfg_t)))
             {
                 ret = -EFAULT;
                 break;
             }
 
-            vdin_set_output(&output_cfg);
+            vdin_set_output(&devp->output_cfg);
             break;
         }
 
         case VDIN_IOCS_HIST:
         {
-            vdin_hist_cfg_t hist_cfg = {0, 0, 0, 0, 0, 0, 0, 0};
-            if (copy_from_user(&hist_cfg, argp, sizeof(vdin_hist_cfg_t)))
+            if (copy_from_user(&devp->hist_cfg, argp, sizeof(vdin_hist_cfg_t)))
             {
                 ret = -EFAULT;
                 break;
             }
 
-            vdin_set_histgram(&hist_cfg);
+            vdin_set_histogram(&devp->hist_cfg);
             break;
         }
 
         case VDIN_IOCS_BBAR:
         {
-            vdin_bbar_cfg_t blkbar_cfg = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-            if (copy_from_user(&blkbar_cfg, argp, sizeof(vdin_bbar_cfg_t)))
+            if (copy_from_user(&devp->blkbar_cfg, argp, sizeof(vdin_bbar_cfg_t)))
             {
                 ret = -EFAULT;
                 break;
             }
 
-            vdin_set_blackbar(&blkbar_cfg);
+            vdin_set_blackbar(&devp->blkbar_cfg);
             break;
         }
 
+#if 0
         case VDIN_IOC_INIT:
             vdin_canvas_init(devp);
             break;
+#endif
 
         case VDIN_IOC_START_DEC:
         {
@@ -1234,7 +1214,6 @@ static int vdin_ioctl(struct inode *inode, struct file *file, unsigned int cmd, 
             }
             pr_dbg(KERN_ERR "vdin: irq regist ok.\n");
 #endif
-
 
             break;
         }
@@ -1321,7 +1300,7 @@ static int vdin_probe(struct platform_device *pdev)
 
         vdin_devp[i]->mem_start = res->start;
         vdin_devp[i]->mem_size  = res->end - res->start + 1;
-        vdin_devp[i]->src  = VDIN_SRC_BT656IN;
+        vdin_devp[i]->src_mux_cfg.src = VDIN_SRC_BT656IN;
         pr_dbg(" vdin[%d] memory start addr is %x, mem_size is %x . \n",i,
             vdin_devp[i]->mem_start,vdin_devp[i]->mem_size);
     }
