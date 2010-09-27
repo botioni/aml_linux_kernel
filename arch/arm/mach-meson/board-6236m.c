@@ -403,23 +403,36 @@ static struct mtd_partition partition_info[] =
 		.name = "U-BOOT",
 		.offset = 0,
 		.size=4*1024*1024,
+	//	.set_flags=0,
+	//	.dual_partnum=0,
+	},
+	{
+		.name = "Boot Para",
+		.offset = 4*1024*1024,
+		.size=4*1024*1024,
+	//	.set_flags=0,
+	//	.dual_partnum=0,
 	},
 	{
 		.name = "Kernel",
-		.offset = 6*1024*1024,
-		.size =   4* 1024*1024,
+		.offset = 8*1024*1024,
+		.size = 4 * 1024*1024,
+	//	.set_flags=0,
+	//	.dual_partnum=0,
 	},
 	{
 		.name = "YAFFS2",
-		.offset =16*1024*1024,
-		.size =	100*0x100000,
+		.offset=MTDPART_OFS_APPEND,
+		.size=MTDPART_SIZ_FULL,
+	//	.set_flags=0,
+	//	.dual_partnum=0,
 	},
-	{	.name="FTL_Part",
-		.offset=		MTDPART_OFS_APPEND, 	
-		.size=		MTDPART_SIZ_FULL,	
-	//	.set_flags=MTD_AVNFTL,
-	//	.dual_partnum=1,
-	}
+//	{	.name="FTL_Part",
+//		.offset=MTDPART_OFS_APPEND,
+//		.size=MTDPART_SIZ_FULL,
+//	//	.set_flags=MTD_AVNFTL,
+//	//	.dual_partnum=1,
+//	}
 };
 
 static struct resource aml_nand_resources[] = 
