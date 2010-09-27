@@ -38,6 +38,9 @@ extern void osd_setup(struct osd_ctl_s *osd_ctl,
 extern void osd_setpal_hw(unsigned regno, unsigned red, unsigned green, unsigned blue, unsigned transp,int index);
 extern void osd_enable_hw(int enable,int index );
 extern void osd_pan_display_hw(unsigned int xoffset, unsigned int yoffset,int index );
+#if defined(CONFIG_FB_OSD2_CURSOR)
+extern void osd_cursor_hw(u16 x, u16 y, int index);
+#endif
 extern void osd_suspend_hw(void);
 extern void osd_resume_hw(void);
 

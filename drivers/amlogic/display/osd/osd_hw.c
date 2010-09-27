@@ -83,10 +83,12 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
 	WRITE_MPEG_REG(VIU_OSD1_BLK0_CFG_W2,
 		(pandata[0].y_start & 0x1fff) | (pandata[0].y_end & 0x1fff) << 16);
 
+#if !defined(CONFIG_FB_OSD2_CURSOR)
 	WRITE_MPEG_REG(VIU_OSD2_BLK0_CFG_W1,
 		(pandata[1].x_start & 0x1fff) | (pandata[1].x_end & 0x1fff) << 16);
 	WRITE_MPEG_REG(VIU_OSD2_BLK0_CFG_W2,
 		(pandata[1].y_start & 0x1fff) | (pandata[1].y_end & 0x1fff) << 16);
+#endif
 
 	if (READ_MPEG_REG(ENCI_VIDEO_EN) & 1)
 		interlaced = 1;
@@ -155,7 +157,6 @@ _init_osd_simple(u32 pix_x_start,
    		else
    		vmode=0;
    	}
-   	WRITE_MPEG_REG(VIU_OSD1_TCOLOR_AG0 + REG_OFFSET*index, (unsigned)0xffffff00);
    	data32 = (display_h_start & 0xfff) | (display_h_end & 0xfff) <<16 ;
       	WRITE_MPEG_REG(VIU_OSD1_BLK0_CFG_W3 + REG_OFFSET*index, data32);
    	data32 = (display_v_start & 0xfff) | (display_v_end & 0xfff) <<16 ;
@@ -178,7 +179,8 @@ _init_osd_simple(u32 pix_x_start,
 	WRITE_MPEG_REG(VIU_OSD2_BLK0_CFG_W2,
 		(pandata[1].y_start & 0x1fff) | (pandata[1].y_end & 0x1fff) << 16);
 
-	data32 = (vmode == 1) ? 2 : 0;
+	data32 = READ_MPEG_REG(VIU_OSD1_BLK0_CFG_W0+ REG_OFFSET*index) & (0x40);
+	data32 |= (vmode == 1) ? 2 : 0;
 
 	if (tv_irq_got == 0)
 	{
@@ -333,13 +335,18 @@ void osd_setup(struct osd_ctl_s *osd_ctl,
 	SET_MPEG_REG_MASK(VPP_MISC, ((index == 0) ? VPP_OSD1_POSTBLEND :
 	                  VPP_OSD2_POSTBLEND) | VPP_POSTBLEND_EN);
 
-#ifndef FB_OSD2_ENABLE
+#if !defined(CONFIG_FB_OSD2_ENABLE)
     CLEAR_MPEG_REG_MASK(VPP_MISC, VPP_OSD2_POSTBLEND);
 #endif
 
+#if defined(CONFIG_FB_OSD2_CURSOR)
+    CLEAR_MPEG_REG_MASK(VPP_MISC, VPP_PREBLEND_EN);
+    SET_MPEG_REG_MASK(VPP_MISC, VPP_POST_FG_OSD2);
+#else
     CLEAR_MPEG_REG_MASK(VPP_MISC, VPP_PREBLEND_EN |
                                   VPP_PRE_FG_OSD2 |
                                   VPP_POST_FG_OSD2);
+#endif
 }
 
 void osd_setpal_hw(unsigned regno,
@@ -387,8 +394,12 @@ void osd_pan_display_hw(unsigned int xoffset, unsigned int yoffset,int index )
 {
 	ulong flags;
 	long diff_x, diff_y;
-	
+
+#if defined(CONFIG_FB_OSD2_CURSOR)
+	if (index >= 1)
+#else
 	if (index >= 2)
+#endif
 		return;
 
     spin_lock_irqsave(&osd_lock, flags);
@@ -403,6 +414,24 @@ void osd_pan_display_hw(unsigned int xoffset, unsigned int yoffset,int index )
 
     spin_unlock_irqrestore(&osd_lock, flags);
 }
+
+#if defined(CONFIG_FB_OSD2_CURSOR)
+void osd_cursor_hw(u16 x, u16 y, int index)
+{
+    ulong flags;
+    spin_lock_irqsave(&osd_lock, flags);
+
+    if (index == 1) {
+        // pandata[1].x/y_end is the width/height of the OSD.
+        WRITE_MPEG_REG(VIU_OSD2_BLK0_CFG_W3,
+            (x & 0xfff) | ((x + pandata[1].x_end) & 0xfff) << 16);
+        WRITE_MPEG_REG(VIU_OSD2_BLK0_CFG_W4,
+            (y & 0xfff) | ((y + pandata[1].y_end) & 0xfff) << 16);
+    }
+
+    spin_unlock_irqrestore(&osd_lock, flags);
+}
+#endif //CONFIG_FB_OSD2_CURSOR
 
 void  osd_suspend_hw(void)
 {

@@ -31,7 +31,11 @@
 #define DOUBLE_BUFFER	(2)
 
 #define OSD1_MAX_MEM		U_ALIGN(OSD_720_PIX*B32BpP*DOUBLE_BUFFER)
+#if defined(CONFIG_FB_OSD2_CURSOR)
+#define OSD2_MAX_MEM		U_ALIGN(32*32*B32BpP)
+#else
 #define OSD2_MAX_MEM		U_ALIGN(OSD_720_PIX*B32BpP*DOUBLE_BUFFER)
+#endif
 
 
 
@@ -50,7 +54,11 @@
 #else
 #define CODEC_MEM_SIZE		U_ALIGN(16*SZ_1M)
 #endif
+#if defined(CONFIG_FB_OSD2_ENABLE)
 #define CODEC_ADDR_START	U_ALIGN(OSD2_ADDR_END)
+#else
+#define CODEC_ADDR_START	U_ALIGN(OSD1_ADDR_END)
+#endif
 #define CODEC_ADDR_END		(CODEC_ADDR_START+CODEC_MEM_SIZE-1)
 
 /********VDIN memory configuration ***************/

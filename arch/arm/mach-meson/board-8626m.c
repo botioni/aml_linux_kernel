@@ -92,13 +92,21 @@ static struct platform_device input_device = {
 };
 #endif
 
-#ifdef CONFIG_FB_AM
+#if defined(CONFIG_FB_AM)
 static struct resource fb_device_resources[] = {
     [0] = {
         .start = OSD1_ADDR_START,
         .end   = OSD1_ADDR_END,
         .flags = IORESOURCE_MEM,
     },
+#if defined(CONFIG_FB_OSD2_ENABLE)
+    [1] = {
+        .start = OSD2_ADDR_START,
+        .end   = OSD2_ADDR_END,
+        .flags = IORESOURCE_MEM,
+    },
+#endif
+
 };
 
 static struct platform_device fb_device = {
