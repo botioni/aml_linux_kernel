@@ -142,7 +142,7 @@ void vdin_vf_init(void)
 	vfq_init(&recycle_q);
 	vfq_init(&newframe_q);
 
-	for (i = 0; i < (BT656IN_VF_POOL_SIZE ); ++i)
+	for (i = 0; i < (BT656IN_VF_POOL_SIZE - 1); ++i)
 	{
 		vfq_push(&newframe_q, &vfpool[i]);
 	}

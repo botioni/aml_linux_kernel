@@ -836,8 +836,13 @@ static inline void vdin_set_blackbar(struct vdin_bbar_cfg_s  *blkbar_cfg)
 
 static void vdin_put_timer_func(unsigned long arg)
 {
-    int i = 0;
     struct timer_list *timer = (struct timer_list *)arg;
+
+    while (!vfq_empty(&recycle_q)) {
+        vframe_t *vf = vfq_pop_recycle();
+		vfq_push_newframe(vf);
+    }
+
     timer->expires = jiffies + VDIN_PUT_INTERVAL;
     add_timer(timer);
 }
@@ -972,16 +977,24 @@ static void vdin_stop_dec(struct vdin_dev_s *devp)
     vdin_release_canvas(devp);
 }
 
+/**
+ * set the properties of vframe in the structure vframe_t.
+ *
+**/
+static void set_vframe_prop_info(vframe_t *vf)
+{
+    /* @todo... */
+}
+
 
 static irqreturn_t vdin_isr(int irq, void *dev_id)
 {
     struct vdin_dev_s *devp = (struct vdin_dev_s *)dev_id;
-   vframe_t *vf;
+    vframe_t *vf;
 
     /* pop out a new frame to be displayed */
-//    printk("vdin_isr: vf is %x,  \n", vf);
     vf = vfq_pop_newframe();
-//    printk("vdin_isr: vf is %x, NULL is %x . \n", vf, NULL);
+
     if(vf == NULL)
     {
         switch (devp->src)
@@ -991,20 +1004,16 @@ static irqreturn_t vdin_isr(int irq, void *dev_id)
             case VDIN_SRC_BT656IN:
             case VDIN_SRC_CAMERA:
                 WRITE_CBUS_REG_BITS(BT_CTRL, 1,BT_EN_BIT, 1);
-
-                    break;
-
-                case VDIN_SRC_TVFE:
-                    break;
-                case VDIN_SRC_CVD2:
-                    break;
-                case VDIN_SRC_HDMIRX:
-                    break;
-
-
-                default:
-                    break;
-            }
+                break;
+            case VDIN_SRC_TVFE:
+                break;
+            case VDIN_SRC_CVD2:
+                break;
+            case VDIN_SRC_HDMIRX:
+                break;
+            default:
+                break;
+        }
 
         pr_error("vdin_isr: don't get newframe \n");
         return;
@@ -1031,12 +1040,13 @@ static irqreturn_t vdin_isr(int irq, void *dev_id)
                 break;
         }
 
+        set_vframe_prop_info(vf);
 
         //If info.type ( --reture value )is 0xffffffff, the current field is error
         if(vf->type == 0xffffffff)
         {
             /* mpeg12 used spin_lock_irqsave(), @todo... */
-            //vfq_push_recycle(vf);
+            vfq_push_recycle(vf);
             pr_dbg("decode data is error, skip the feild data \n");
         }
         else    //do buffer managerment, and send info into video display, please refer to vh264 decode
