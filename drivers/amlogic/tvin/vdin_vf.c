@@ -97,17 +97,7 @@ inline vframe_t *vfq_pop(vfq_t *q)
 #if 1
 inline vframe_t *vfq_pop_newframe(void)
 {
-    vframe_t *vf;
-    u32 index = newframe_q.rd_index;
-//    printk("vfq_pop_newframe:  index is %d. ", index);
-//    vf = &vfpool[index];
-    vf = newframe_q.pool[index];
-//    printk("vf is %x, vf->type is %x . \n", vf, vf->type);
-    newframe_q.rd_index++;
-    if(newframe_q.rd_index > (BT656IN_VF_POOL_SIZE - 1))
-        newframe_q.rd_index = 0;
-
-    return(vf) ;
+    return vfq_pop(&newframe_q);
 }
 
 inline vframe_t *vfq_pop_display(void)

@@ -751,6 +751,7 @@ static void bt656_in_dec_run(vframe_t * info)
         if(am656in_dec_info.wr_canvas_index > (BT656IN_VF_POOL_SIZE -1) )
             am656in_dec_info.wr_canvas_index = 0;
         canvas_id = bt656_index2canvas(am656in_dec_info.wr_canvas_index);
+        info->index = canvas_id;
         WRITE_MPEG_REG_BITS(VDIN_WR_CTRL, canvas_id, WR_CANVAS_BIT, WR_CANVAS_WID);
         set_next_field_656_601_camera_in_anci_address(am656in_dec_info.wr_canvas_index);
     }
@@ -875,7 +876,6 @@ static void camera_in_dec_run(vframe_t * info)
         }
 
 
-
         info->type = VIDTYPE_VIU_SINGLE_PLANE | VIDTYPE_VIU_422 | VIDTYPE_VIU_FIELD | VIDTYPE_PROGRESSIVE ;
         info->width= am656in_dec_info.active_pixel;
         info->height = am656in_dec_info.active_line;
@@ -885,6 +885,7 @@ static void camera_in_dec_run(vframe_t * info)
         if(am656in_dec_info.wr_canvas_index > (CAMERA_IN_VF_POOL_SIZE -1) )
             am656in_dec_info.wr_canvas_index = 0;
         canvas_id = camera_index2canvas(am656in_dec_info.wr_canvas_index);
+        info->index = canvas_id;
         WRITE_MPEG_REG_BITS(VDIN_WR_CTRL, canvas_id, WR_CANVAS_BIT, WR_CANVAS_WID);
         set_next_field_656_601_camera_in_anci_address(am656in_dec_info.wr_canvas_index);
     }
@@ -930,7 +931,6 @@ int amvdec_656_601_camera_in_run(vframe_t *info)
     {
         camera_in_dec_run(info);
     }
-    WRITE_CBUS_REG_BITS(BT_CTRL, 1,BT_EN_BIT, 1);
     return 0;
 }
 
