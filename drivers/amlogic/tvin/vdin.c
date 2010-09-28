@@ -838,7 +838,7 @@ static void vdin_put_timer_func(unsigned long arg)
 {
     struct timer_list *timer = (struct timer_list *)arg;
 
-    while (!vfq_empty_recycle())) {
+    while (!vfq_empty_recycle()) {
         vframe_t *vf = vfq_pop_recycle();
 		vfq_push_newframe(vf);
     }
@@ -1020,7 +1020,6 @@ static irqreturn_t vdin_isr(int irq, void *dev_id)
         }
 #endif
         pr_dbg("vdin_isr: don't get newframe \n");
-        return;
     }
     else
     {
@@ -1062,6 +1061,7 @@ static irqreturn_t vdin_isr(int irq, void *dev_id)
 
         }
     }
+
     return IRQ_HANDLED;
 }
 
