@@ -57,6 +57,10 @@ static irqreturn_t rm_parser_isr(int irq, void *dev_id)
     return IRQ_HANDLED;
 }
 
+#ifdef CONFIG_AM_DVB
+extern int tsdemux_set_reset_flag(void);
+#endif
+
 s32 rmparser_init(void)
 {
     s32 r;
@@ -70,8 +74,15 @@ s32 rmparser_init(void)
     WRITE_MPEG_REG(RESET1_REGISTER, RESET_PARSER);
 
     /* TS data path */
+#ifndef CONFIG_AM_DVB
     WRITE_MPEG_REG(FEC_INPUT_CONTROL, 0);
+#else
+    tsdemux_set_reset_flag();
+#endif
     CLEAR_MPEG_REG_MASK(TS_HIU_CTL, 1 << USE_HI_BSF_INTERFACE);
+    CLEAR_MPEG_REG_MASK(TS_HIU_CTL_2, 1 << USE_HI_BSF_INTERFACE);
+	CLEAR_MPEG_REG_MASK(TS_HIU_CTL_3,1 << USE_HI_BSF_INTERFACE);
+
     CLEAR_MPEG_REG_MASK(TS_FILE_CONFIG, (1 << TS_HIU_ENABLE));
 
     /* hook stream buffer with PARSER */

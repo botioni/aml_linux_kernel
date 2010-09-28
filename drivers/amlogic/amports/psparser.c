@@ -725,6 +725,10 @@ static ssize_t _psparser_write(const char __user *buf, size_t count)
     return count-r;
 }
 
+#ifdef CONFIG_AM_DVB
+extern int tsdemux_set_reset_flag(void);
+#endif
+
 s32 psparser_init(u32 vid, u32 aid, u32 sid)
 {
     s32 r;
@@ -750,8 +754,14 @@ s32 psparser_init(u32 vid, u32 aid, u32 sid)
     WRITE_MPEG_REG(RESET1_REGISTER, RESET_PARSER);
 
     /* TS data path */
+#ifndef CONFIG_AM_DVB
     WRITE_MPEG_REG(FEC_INPUT_CONTROL, 0);
+#else
+    tsdemux_set_reset_flag();
+#endif
     CLEAR_MPEG_REG_MASK(TS_HIU_CTL, 1 << USE_HI_BSF_INTERFACE);
+    CLEAR_MPEG_REG_MASK(TS_HIU_CTL_2, 1 << USE_HI_BSF_INTERFACE);
+	CLEAR_MPEG_REG_MASK(TS_HIU_CTL_3,1 << USE_HI_BSF_INTERFACE);
     CLEAR_MPEG_REG_MASK(TS_FILE_CONFIG, (1 << TS_HIU_ENABLE));
 
     /* hook stream buffer with PARSER */

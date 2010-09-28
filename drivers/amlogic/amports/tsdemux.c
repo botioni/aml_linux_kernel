@@ -47,21 +47,51 @@ static u32 discontinued_counter;
 
 static int demux_skipbyte;
 
+
+
 static irqreturn_t tsdemux_isr(int irq, void *dev_id)
 {
-    u32 int_status = READ_MPEG_REG(STB_INT_STATUS);
+#ifndef CONFIG_AM_DVB
+	u32 int_status = READ_MPEG_REG(STB_INT_STATUS);
+#else
+	int id = (int)dev_id;
+	u32 int_status = id?READ_MPEG_REG(STB_INT_STATUS_2):READ_MPEG_REG(STB_INT_STATUS);
+#endif
 
-    if (int_status & (1 << NEW_PDTS_READY)) {
+	if (int_status & (1 << NEW_PDTS_READY)) {
+#ifndef CONFIG_AM_DVB
         u32 pdts_status = READ_MPEG_REG(STB_PTS_DTS_STATUS);
-        if (pdts_status & (1 << VIDEO_PTS_READY))
+		
+	if (pdts_status & (1 << VIDEO_PTS_READY))
             pts_checkin_wrptr(PTS_TYPE_VIDEO, 
-                READ_MPEG_REG(VIDEO_PDTS_WR_PTR), READ_MPEG_REG(VIDEO_PTS_DEMUX));
+                READ_MPEG_REG(VIDEO_PDTS_WR_PTR),
+				READ_MPEG_REG(VIDEO_PTS_DEMUX));
 
         if (pdts_status & (1 << AUDIO_PTS_READY))
             pts_checkin_wrptr(PTS_TYPE_AUDIO, 
-                READ_MPEG_REG(AUDIO_PDTS_WR_PTR), READ_MPEG_REG(AUDIO_PTS_DEMUX));
+                READ_MPEG_REG(AUDIO_PDTS_WR_PTR),
+				READ_MPEG_REG(AUDIO_PTS_DEMUX));
 
         WRITE_MPEG_REG(STB_PTS_DTS_STATUS, pdts_status);
+#else
+	u32 pdts_status = id?READ_MPEG_REG(STB_PTS_DTS_STATUS_2):READ_MPEG_REG(STB_PTS_DTS_STATUS);
+		
+	if (pdts_status & (1 << VIDEO_PTS_READY))
+            pts_checkin_wrptr(PTS_TYPE_VIDEO, 
+                id?READ_MPEG_REG(VIDEO_PDTS_WR_PTR_2):READ_MPEG_REG(VIDEO_PDTS_WR_PTR),
+				id?READ_MPEG_REG(VIDEO_PTS_DEMUX_2):READ_MPEG_REG(VIDEO_PTS_DEMUX));
+
+        if (pdts_status & (1 << AUDIO_PTS_READY))
+            pts_checkin_wrptr(PTS_TYPE_AUDIO, 
+                id?READ_MPEG_REG(AUDIO_PDTS_WR_PTR_2):READ_MPEG_REG(AUDIO_PDTS_WR_PTR),
+				id?READ_MPEG_REG(AUDIO_PTS_DEMUX_2):READ_MPEG_REG(AUDIO_PTS_DEMUX));
+		
+	if(id) {
+		WRITE_MPEG_REG(STB_PTS_DTS_STATUS_2, pdts_status);
+	} else {
+        	WRITE_MPEG_REG(STB_PTS_DTS_STATUS, pdts_status);
+	}
+#endif
     }
    if(int_status & (1<<DIS_CONTINUITY_PACKET) ){
 	discontinued_counter++; 
@@ -73,9 +103,9 @@ static irqreturn_t tsdemux_isr(int irq, void *dev_id)
         //printk("subtitle pes ready\n");
         wakeup_sub_poll();
     }
-   
+#ifndef CONFIG_AM_DVB
     WRITE_MPEG_REG(STB_INT_STATUS, int_status);
-
+#endif
     return IRQ_HANDLED;
 }
 
@@ -123,6 +153,14 @@ static ssize_t _tsdemux_write(const char __user *buf, size_t count)
     return count -r;
 }
 
+#ifdef CONFIG_AM_DVB
+extern int tsdemux_reset(void);
+extern int tsdemux_request_irq(irq_handler_t handler, void *data);
+extern int tsdemux_free_irq(void);
+extern int tsdemux_set_vid(int vpid);
+extern int tsdemux_set_aid(int apid);
+extern int tsdemux_set_sid(int spid);
+#endif
 
 s32 tsdemux_init(u32 vid, u32 aid, u32 sid)
 {
@@ -135,14 +173,20 @@ s32 tsdemux_init(u32 vid, u32 aid, u32 sid)
     parser_sub_end_ptr = READ_MPEG_REG(PARSER_SUB_END_PTR);
     parser_sub_rp = READ_MPEG_REG(PARSER_SUB_RP);
 
+#ifdef CONFIG_AM_DVB
+    WRITE_MPEG_REG(RESET1_REGISTER, RESET_PARSER);
+    tsdemux_reset();
+#else
     WRITE_MPEG_REG(RESET1_REGISTER, RESET_PARSER | RESET_DEMUXSTB);
 
     WRITE_MPEG_REG(STB_TOP_CONFIG, 0);
     WRITE_MPEG_REG(DEMUX_CONTROL, 0);
+#endif
 
     /* set PID filter */
     printk("tsdemux video_pid = 0x%x, audio_pid = 0x%x, sub_pid = 0x%x\n",
            vid, aid, sid);
+#ifndef CONFIG_AM_DVB
     WRITE_MPEG_REG(FM_WR_DATA,
                    (((vid & 0x1fff) | (VIDEO_PACKET << 13)) << 16) |
                     ((aid & 0x1fff) | (AUDIO_PACKET << 13)));
@@ -179,6 +223,7 @@ s32 tsdemux_init(u32 vid, u32 aid, u32 sid)
 
     /* enable TS demux */
     WRITE_MPEG_REG(DEMUX_CONTROL, (1 << STB_DEMUX_ENABLE) | (1 << KEEP_DUPLICATE_PACKAGE));
+#endif
 
     if (fetchbuf == 0)
     {
@@ -232,10 +277,12 @@ s32 tsdemux_init(u32 vid, u32 aid, u32 sid)
                     (void *)tsdemux_fetch_id);
     if (r) 
         goto err3;
+
     WRITE_MPEG_REG(PARSER_INT_STATUS, 0xffff);
     WRITE_MPEG_REG(PARSER_INT_ENABLE, PARSER_INTSTAT_FETCH_CMD << PARSER_INT_HOST_EN_BIT);
 
     discontinued_counter=0;
+#ifndef CONFIG_AM_DVB
     r = request_irq(INT_DEMUX, tsdemux_isr,
                     IRQF_SHARED, "tsdemux-irq",
                     (void *)tsdemux_irq_id);
@@ -245,6 +292,16 @@ s32 tsdemux_init(u32 vid, u32 aid, u32 sid)
                   | (1 << DIS_CONTINUITY_PACKET));
     if (r) 
         goto err4;
+#else
+    tsdemux_request_irq(tsdemux_isr, (void *)tsdemux_irq_id);
+    if(vid<0x1FFF)
+        tsdemux_set_vid(vid);
+    if(aid<0x1FFF)
+        tsdemux_set_aid(aid);
+    if(sid<0x1FFF)
+        tsdemux_set_sid(sid);
+
+#endif	  
 
     return 0;
 
@@ -261,14 +318,24 @@ err1:
 
 void tsdemux_release(void)
 {
+
+
     WRITE_MPEG_REG(PARSER_INT_ENABLE, 0);
-
     free_irq(INT_PARSER, (void *)tsdemux_fetch_id);
-
+	
+#ifndef CONFIG_AM_DVB
     WRITE_MPEG_REG(STB_INT_MASK, 0);
-
     free_irq(INT_DEMUX, (void *)tsdemux_irq_id);
+#else
 
+    tsdemux_set_aid(0xffff);
+    tsdemux_set_vid(0xffff);
+    tsdemux_set_sid(0xffff);
+    tsdemux_free_irq();
+	
+#endif
+
+	
     pts_stop(PTS_TYPE_VIDEO);
     pts_stop(PTS_TYPE_AUDIO);
 }
@@ -312,7 +379,7 @@ ssize_t tsdemux_write(struct file *file,
 	return -EAGAIN;
 }
 
-static ssize_t show_discontinue_counter(struct class *class, struct class_attribute *attr, char *buf)
+static ssize_t show_discontinue_counter(struct class *class, char *buf)
 {
     return sprintf(buf, "%d\n", discontinued_counter);
 }
@@ -345,22 +412,29 @@ void  tsdemux_class_unregister(void)
 
 void tsdemux_change_avid(unsigned int vid, unsigned int aid)
 {
+#ifndef CONFIG_AM_DVB
     WRITE_MPEG_REG(FM_WR_DATA,
                (((vid & 0x1fff) | (VIDEO_PACKET << 13)) << 16) |
                 ((aid & 0x1fff) | (AUDIO_PACKET << 13)));
     WRITE_MPEG_REG(FM_WR_ADDR, 0x8000);
     while (READ_MPEG_REG(FM_WR_ADDR) & 0x8000);
-
+#else
+	tsdemux_set_vid(vid);
+	tsdemux_set_aid(aid);
+#endif
     return;
 }
 
 void tsdemux_change_sid(unsigned int sid)
 {
+#ifndef CONFIG_AM_DVB
     WRITE_MPEG_REG(FM_WR_DATA, 
                (((sid & 0x1fff) | (SUB_PACKET << 13)) << 16) | 0xffff);
     WRITE_MPEG_REG(FM_WR_ADDR, 0x8001);
     while (READ_MPEG_REG(FM_WR_ADDR) & 0x8000);
-
+#else
+	tsdemux_set_sid(sid);
+#endif
     return;
 }
 

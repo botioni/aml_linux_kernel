@@ -46,6 +46,7 @@ source "drivers/amlogic/cmem/Kconfig"
 source "drivers/amlogic/jpeglogo/Kconfig"
 source "drivers/amlogic/mali/Kconfig"
 
+source "drivers/amlogic/dvb/Kconfig"
 
 endmenu	
 

@@ -535,6 +535,7 @@ advanced setting -- bit 7:0 force compare result
 #define TS_HIU_CTL_2            (STB_CBUS_BASE + DEMUX_2_OFFSET + 0x25)  // 0x1675
 #define TS_HIU_CTL_3            (STB_CBUS_BASE + DEMUX_3_OFFSET + 0x25)  // 0x16c5
     /*----------- bit define -----------*/
+    #define LAST_BURST_THRESHOLD       8
     #define USE_HI_BSF_INTERFACE       7
 
 // bit 15:0 -- base address for section buffer start (*0x10000 to get real base)

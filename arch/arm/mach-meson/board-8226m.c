@@ -372,14 +372,14 @@ static struct platform_device aml_nand_device = {
 
 static struct aml_sw_i2c_platform aml_sw_i2c_plat = {
 	.sw_pins = {
-		.scl_reg_out		= MESON_I2C_PREG_GPIOC_OUTLVL,
-		.scl_reg_in		= MESON_I2C_PREG_GPIOC_INLVL,
-		.scl_bit			= 13,	/*MESON_I2C_MASTER_B_GPIOC_13_REG*/
-		.scl_oe			= MESON_I2C_PREG_GPIOC_OE,
-		.sda_reg_out		= MESON_I2C_PREG_GPIOC_OUTLVL,
-		.sda_reg_in		= MESON_I2C_PREG_GPIOC_INLVL,
-		.sda_bit			= 14,	/*MESON_I2C_MASTER_B_GPIOC_14_BIT*/
-		.sda_oe			= MESON_I2C_PREG_GPIOC_OE,
+		.scl_reg_out		= MESON_I2C_PREG_GPIOE_OUTLVL,
+		.scl_reg_in		= MESON_I2C_PREG_GPIOE_INLVL,
+		.scl_bit			= 20,	/*MESON_GPIOE_20*/
+		.scl_oe			= MESON_I2C_PREG_GPIOE_OE,
+		.sda_reg_out		= MESON_I2C_PREG_GPIOE_OUTLVL,
+		.sda_reg_in		= MESON_I2C_PREG_GPIOE_INLVL,
+		.sda_bit			= 21,	/*MESON_GPIOE_21*/
+		.sda_oe			= MESON_I2C_PREG_GPIOE_OE,
 	},	
 	.udelay			= 10,
 	.timeout			= 100,
@@ -442,6 +442,88 @@ static struct platform_device aml_i2c_device = {
 };
 #endif
 
+
+static struct resource amlogic_dvb_resource[]  = {
+	[0] = {
+		.start = ((GPIOA_bank_bit(13)<<16) | GPIOA_bit_bit0_14(13)),                           //frontend 0 reset pin
+		.end   = ((GPIOA_bank_bit(13)<<16) | GPIOA_bit_bit0_14(13)),
+		.flags = IORESOURCE_MEM,
+		.name  = "frontend0_reset"
+	},
+	[1] = {
+		.start = 0,                                    //frontend 0 i2c adapter id
+		.end   = 0,
+		.flags = IORESOURCE_MEM,
+		.name  = "frontend0_i2c"
+	},
+	[2] = {
+		.start = 0xC0,                                 //frontend 0 tuner address
+		.end   = 0xC0,
+		.flags = IORESOURCE_MEM,
+		.name  = "frontend0_tuner_addr"
+	},
+	[3] = {
+		.start = 0x18,                                 //frontend 0 demod address
+		.end   = 0x18,
+		.flags = IORESOURCE_MEM,
+		.name  = "frontend0_demod_addr"
+	},
+	[4] = {
+		.start = INT_DEMUX,                   //demux 0 irq
+		.end   = INT_DEMUX,
+		.flags = IORESOURCE_IRQ,
+		.name  = "demux0_irq"
+	},
+	[5] = {
+		.start = INT_DEMUX_1,                    //demux 1 irq
+		.end   = INT_DEMUX_1,
+		.flags = IORESOURCE_IRQ,
+		.name  = "demux1_irq"
+	},
+	[6] = {
+		.start = INT_DEMUX_2,                    //demux 2 irq
+		.end   = INT_DEMUX_2,
+		.flags = IORESOURCE_IRQ,
+		.name  = "demux2_irq"
+	},	
+	[7] = {
+		.start = INT_ASYNC_FIFO_FILL,                   //dvr 0 irq
+		.end   = INT_ASYNC_FIFO_FLUSH,
+		.flags = IORESOURCE_IRQ,
+		.name  = "dvr0_irq"
+	},
+};
+
+static  struct platform_device amlogic_dvb_device = {
+	.name             = "amlogic-dvb",
+	.id               = -1,
+	.num_resources    = ARRAY_SIZE(amlogic_dvb_resource),
+	.resource         = amlogic_dvb_resource,
+};
+
+static struct resource amlogic_smc_resource[]  = {
+	[0] = {
+		.start = ((GPIOB_bank_bit0_7(4)<<16) | GPIOB_bit_bit0_7(4)),                          //smc RST gpio
+		.end   = ((GPIOB_bank_bit0_7(4)<<16) | GPIOB_bit_bit0_7(4)),
+		.flags = IORESOURCE_MEM,
+		.name  = "smc_reset"
+	},
+	[1] = {
+		.start = INT_SMART_CARD,                   //smc irq number
+		.end   = INT_SMART_CARD,
+		.flags = IORESOURCE_IRQ,
+		.name  = "smc_irq"
+	},
+
+};
+
+static  struct platform_device amlogic_smc_device = {
+	.name             = "amlogic-smc",
+	.id               = -1,
+	.num_resources    = ARRAY_SIZE(amlogic_smc_resource),
+	.resource         = amlogic_smc_resource,
+};
+
 static struct platform_device __initdata *platform_devs[] = {
     #if defined(CONFIG_JPEGLOGO)
 		&jpeglogo_device,
@@ -479,6 +561,11 @@ static struct platform_device __initdata *platform_devs[] = {
     #if defined(CONFIG_I2C_AML)
 		&aml_i2c_device,
     #endif
+    #if defined(CONFIG_AM_DVB)
+		&amlogic_dvb_device,
+    #endif
+		&amlogic_smc_device
+	
 };
 
 static void __init eth_pinmux_init(void)
