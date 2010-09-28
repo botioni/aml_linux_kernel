@@ -42,17 +42,24 @@ static void aml_sw_bit_setsda(void *data, int val)
 
 	/*printk("d%d ",val);*/
 	
-	//set output
-	oe = readl(i2c->sw_pins->sda_oe);
-	oe &= ~(1<<i2c->sw_pins->sda_bit);
-	writel(oe, i2c->sw_pins->sda_oe);
-
-	sda = readl(i2c->sw_pins->sda_reg_out);
-	if(val)
-		sda |= (1<<(i2c->sw_pins->sda_bit));
-	else
-		sda &= ~(1<<(i2c->sw_pins->sda_bit));
-	writel(sda, i2c->sw_pins->sda_reg_out);
+	if(val){
+		//set input
+		oe = readl(i2c->sw_pins->sda_oe);
+		oe |=  (1<<(i2c->sw_pins->sda_bit));
+		writel(oe, i2c->sw_pins->sda_oe);
+	} else {
+		//set output
+		oe = readl(i2c->sw_pins->sda_oe);
+		oe &= ~(1<<i2c->sw_pins->sda_bit);
+		writel(oe, i2c->sw_pins->sda_oe);
+	
+		sda = readl(i2c->sw_pins->sda_reg_out);
+		if(val)
+			sda |= (1<<(i2c->sw_pins->sda_bit));
+		else
+			sda &= ~(1<<(i2c->sw_pins->sda_bit));
+		writel(sda, i2c->sw_pins->sda_reg_out);
+	}
 }
 
 static int aml_sw_bit_getsda(void *data)
@@ -62,10 +69,10 @@ static int aml_sw_bit_getsda(void *data)
 	unsigned int oe;
 
 	//set input
-	oe = readl(i2c->sw_pins->sda_oe);
+/*	oe = readl(i2c->sw_pins->sda_oe);
 	oe |=  (1<<(i2c->sw_pins->sda_bit));
 	writel(oe, i2c->sw_pins->sda_oe);
-	
+*/	
 	sda = readl(i2c->sw_pins->sda_reg_in) & (1<<(i2c->sw_pins->sda_bit));
 
 	/*printk("g%d ",sda? 1 : 0);*/
@@ -83,11 +90,16 @@ static int aml_sw_i2c_setup(void *data)
 	oe &= ~(1<<(gdata->scl_bit));
 	writel(oe, gdata->scl_oe);
 
-	/*set sda output */
-	oe = readl(gdata->sda_oe);
+	/*OD, set sda output */
+/*	oe = readl(gdata->sda_oe);
 	oe &= ~(1<<(gdata->sda_bit));
 	writel(oe, gdata->sda_oe);
-			
+*/
+	//NOT OD, set sda input
+	oe = readl(gdata->sda_oe);
+	oe |=  (1<<(gdata->sda_bit));
+	writel(oe, gdata->sda_oe);
+
 	return 0;
 }	
 
@@ -106,7 +118,7 @@ static struct aml_sw_i2c aml_sw_i2cd = {
 		.pre_xfer			= NULL,
 		.post_xfer		= NULL,
 		.getscl			= NULL,
-		.udelay			= 30,
+		.udelay			= 30/*30*/,
 		.timeout			= 100,
 	},
 };

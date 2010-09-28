@@ -183,6 +183,10 @@ s32 es_apts_checkin(struct stream_buf_s *buf, u32 pts)
     return pts_checkin_offset(PTS_TYPE_AUDIO, audio_data_parsed, pts);
 }
 
+#ifdef CONFIG_AM_DVB
+extern int tsdemux_set_reset_flag(void);
+#endif
+
 s32 esparser_init(struct stream_buf_s *buf)
 {
     s32 r;
@@ -234,8 +238,15 @@ s32 esparser_init(struct stream_buf_s *buf)
         WRITE_MPEG_REG(RESET1_REGISTER, RESET_PARSER);
 
         /* TS data path */
+#ifndef CONFIG_AM_DVB
         WRITE_MPEG_REG(FEC_INPUT_CONTROL, 0);
+#else
+	tsdemux_set_reset_flag();
+#endif
         CLEAR_MPEG_REG_MASK(TS_HIU_CTL, 1 << USE_HI_BSF_INTERFACE);
+		CLEAR_MPEG_REG_MASK(TS_HIU_CTL_2, 1 << USE_HI_BSF_INTERFACE);
+		CLEAR_MPEG_REG_MASK(TS_HIU_CTL_3,1 << USE_HI_BSF_INTERFACE);
+
         CLEAR_MPEG_REG_MASK(TS_FILE_CONFIG, (1 << TS_HIU_ENABLE));
 
         WRITE_MPEG_REG(PARSER_CONFIG,
