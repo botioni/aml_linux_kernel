@@ -255,19 +255,22 @@ static void hdmi_tx_construct_avi_packet(Hdmi_tx_video_para_t *video_param, char
     unsigned char color, bar_info, aspect_ratio, cc, ss, sc, ec;
     ss = video_param->ss;
     bar_info = video_param->bar_info;
-    if(video_param->color == COLOR_SPACE_YUV444)
+    if(video_param->color == COLOR_SPACE_YUV444){
         color = 2;
-    if(video_param->color == COLOR_SPACE_YUV422)
+    }
+    else if(video_param->color == COLOR_SPACE_YUV422){
         color = 1;
-    else if(video_param->color == COLOR_SPACE_RGB444)
+    }
+    else{ //(video_param->color == COLOR_SPACE_RGB444)
         color = 0;
-    else
-        color = 3;
+    }
     AVI_DB[0] = (ss) | (bar_info << 2) | (1<<4) | (color << 5);
+    //AVI_DB[0] = (1<<4) | (color << 5);
 
     aspect_ratio = video_param->aspect_ratio;
     cc = video_param->cc;
     AVI_DB[1] = (aspect_ratio) | (aspect_ratio << 4) | (cc << 6);
+    //AVI_DB[1] = 8 | (aspect_ratio << 4) | (cc << 6);
 
     sc = video_param->sc;
     if(video_param->cc == CC_XVYCC601)
@@ -277,6 +280,7 @@ static void hdmi_tx_construct_avi_packet(Hdmi_tx_video_para_t *video_param, char
     else
         ec = 3;
     AVI_DB[2] = (sc) | (ec << 4);
+    //AVI_DB[2] = 0;
 
     AVI_DB[3] = video_param->VIC;
 
@@ -331,7 +335,6 @@ int hdmitx_set_display(hdmitx_dev_t* hdmitx_device, HDMI_Video_Codes_t VideoCode
             (hdmitx_device->RXCap.native_Mode&0x10) == 0){
             param->color = COLOR_SPACE_RGB444;        
         }
-        
         if(hdmitx_device->HWOp.SetDispMode(param)>=0){
     
             hdmi_tx_construct_avi_packet(param, AVI_DB);
