@@ -53,5 +53,7 @@ obj-y += sound/
 
 obj-y += hdmi/
 
+obj-y += demod/
+
 
 
