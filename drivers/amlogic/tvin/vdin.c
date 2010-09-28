@@ -49,7 +49,7 @@
 #define VDIN_CLASS_NAME         "vdin"
 
 #define VDIN_COUNT              1
-#define VDIN_PUT_INTERVAL        HZ*10
+#define VDIN_PUT_INTERVAL        (HZ/100)   //10ms
 
 
 static dev_t vdin_devno;
@@ -838,7 +838,7 @@ static void vdin_put_timer_func(unsigned long arg)
 {
     struct timer_list *timer = (struct timer_list *)arg;
 
-    while (!vfq_empty(&recycle_q)) {
+    while (!vfq_empty_recycle())) {
         vframe_t *vf = vfq_pop_recycle();
 		vfq_push_newframe(vf);
     }
@@ -922,7 +922,7 @@ static void vdin_start_dec(struct vdin_dev_s *devp)
 {
 
     vdin_canvas_init(devp);
-    switch (devp->src)
+    switch (devp->src_mux_cfg.src)
     {
         case VDIN_SRC_MPEG:
             break;
@@ -989,6 +989,7 @@ static void set_vframe_prop_info(vframe_t *vf)
 
 static irqreturn_t vdin_isr(int irq, void *dev_id)
 {
+    unsigned next_field_buffer_address;
     struct vdin_dev_s *devp = (struct vdin_dev_s *)dev_id;
     vframe_t *vf;
 
@@ -997,10 +998,13 @@ static irqreturn_t vdin_isr(int irq, void *dev_id)
 
     if(vf == NULL)
     {
-        switch (devp->src)
+#if 0
+        switch (devp->src_mux_cfg.src)
         {
             case VDIN_SRC_MPEG:
                 break;
+            /* enable bt656in engineer, otherwise the next interrupt
+               will not be triggered. */
             case VDIN_SRC_BT656IN:
             case VDIN_SRC_CAMERA:
                 WRITE_CBUS_REG_BITS(BT_CTRL, 1,BT_EN_BIT, 1);
@@ -1014,15 +1018,15 @@ static irqreturn_t vdin_isr(int irq, void *dev_id)
             default:
                 break;
         }
-
-        pr_error("vdin_isr: don't get newframe \n");
+#endif
+        pr_dbg("vdin_isr: don't get newframe \n");
         return;
     }
     else
     {
         vf->type = 0xffffffff;
 
-        switch (devp->src)
+        switch (devp->src_mux_cfg.src)
         {
             case VDIN_SRC_MPEG:
                 break;
@@ -1042,7 +1046,7 @@ static irqreturn_t vdin_isr(int irq, void *dev_id)
 
         set_vframe_prop_info(vf);
 
-        //If info.type ( --reture value )is 0xffffffff, the current field is error
+        //If vf->type ( --reture value )is 0xffffffff, the current field is error
         if(vf->type == 0xffffffff)
         {
             /* mpeg12 used spin_lock_irqsave(), @todo... */
@@ -1052,6 +1056,10 @@ static irqreturn_t vdin_isr(int irq, void *dev_id)
         else    //do buffer managerment, and send info into video display, please refer to vh264 decode
         {
             vfq_push_display(vf); /* push to display */
+
+            //vf->index: indicate the current decode will use buffer index in next field
+            next_field_buffer_address = canvas_get_addr(vf->index);
+
         }
     }
     return IRQ_HANDLED;
