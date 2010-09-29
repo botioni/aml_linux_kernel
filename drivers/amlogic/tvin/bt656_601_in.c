@@ -55,8 +55,8 @@
 
 //static struct am656in_dev_t am656in_dev_;
 typedef struct {
-    unsigned long   pbufAddr;
-    unsigned long   pbufSize;
+    unsigned        pbufAddr;
+    unsigned        pbufSize;
 
     unsigned        pin_mux_reg1;   //for bt656 input
     unsigned        pin_mux_mask1;
