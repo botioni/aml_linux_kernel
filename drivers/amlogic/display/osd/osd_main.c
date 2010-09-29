@@ -356,7 +356,9 @@ int osd_notify_callback(struct notifier_block *block, unsigned long cmd , void *
 	const vinfo_t *vinfo;
 	myfb_dev_t *fb_dev;
 	int  i,blank;
+	disp_rect_t  *disp_rect;
 
+	
 	vinfo = get_current_vinfo();
 	amlog_mask_level(LOG_MASK_PARA,LOG_LEVEL_LOW,"tv_server:vmode=%s\r\n", vinfo->name);
 
@@ -380,6 +382,44 @@ int osd_notify_callback(struct notifier_block *block, unsigned long cmd , void *
 			osd_blank(blank,fb_dev->fb_info);
 		}
 		break;
+		case   VOUT_EVENT_OSD_DISP_AXIS:
+		disp_rect=(disp_rect_t*)para;	
+		
+		for(i=0;i<OSD_COUNT;i++)
+		{	
+			if(!disp_rect)  break;
+			fb_dev=gp_fbdev_list[i];
+			fb_dev->osd_ctl.disp_start_x=disp_rect->x  ;
+			fb_dev->osd_ctl.disp_start_y=disp_rect->y  ;
+			amlog_mask_level(LOG_MASK_PARA,LOG_LEVEL_LOW,"set disp axis: x:%d y:%d w:%d h:%d\r\n"  , \
+					disp_rect->x, disp_rect->y,\
+					disp_rect->w, disp_rect->h );
+			
+			if(disp_rect->x+disp_rect->w > vinfo->width)
+			{
+				fb_dev->osd_ctl.disp_end_x=vinfo->width - 1;
+			}
+			else
+			{
+				fb_dev->osd_ctl.disp_end_x=fb_dev->osd_ctl.disp_start_x+disp_rect->w -1 ; 
+			}
+			if(disp_rect->y+ disp_rect->h>vinfo->height)
+			{
+				fb_dev->osd_ctl.disp_end_y=vinfo->height- 1;
+			}
+			else
+			{
+				fb_dev->osd_ctl.disp_end_y=fb_dev->osd_ctl.disp_start_y + disp_rect->h - 1 ;
+			}
+		
+			disp_rect ++;
+			amlog_mask_level(LOG_MASK_PARA,LOG_LEVEL_LOW,"new disp axis: startx:%d starty:%d endx:%d endy:%d\r\n"  , \
+					fb_dev->osd_ctl.disp_start_x, fb_dev->osd_ctl.disp_start_y,\
+					fb_dev->osd_ctl.disp_end_x,fb_dev->osd_ctl.disp_end_y);
+			osddev_set(fb_dev);
+		}
+		
+		break;
 	}
 	return 0;
 }
@@ -394,6 +434,7 @@ osd_probe(struct platform_device *pdev)
 {
 	int r;
        	struct fb_info *fbi=NULL;
+	const vinfo_t *vinfo;
     	struct fb_var_screeninfo *var;
   	struct fb_fix_screeninfo *fix;
 	struct resource *mem;
@@ -430,6 +471,7 @@ osd_probe(struct platform_device *pdev)
     		set_current_vmode(VMODE_720P);	
 #endif
     	}
+	vinfo = get_current_vinfo();
     	for (index=0;index<OSD_COUNT;index++)
     	{
     		//platform resource 
@@ -522,7 +564,7 @@ osd_probe(struct platform_device *pdev)
 	   	fbi->fbops = &osd_ops;
     		fbi->screen_base = (char __iomem *)fbdev->fb_mem_vaddr ;
 		fbi->screen_size = fix->smem_len;
-	
+		set_default_display_axis(&fbdev->fb_info->var,&fbdev->osd_ctl,vinfo);
 		osd_check_var(var, fbi);
     		register_framebuffer(fbi);
 		if(NULL==init_logo_obj )//if we have init a logo object ,then no need to setup hardware . 
