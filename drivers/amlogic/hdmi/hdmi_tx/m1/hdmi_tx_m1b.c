@@ -1213,8 +1213,18 @@ static void restart_edid_hdcp (void)
 static int hdmitx_m1b_set_dispmode(Hdmi_tx_video_para_t *param)
 {
     int ret=0;
-    printk("set mode\n");
+    if(param == NULL){ //disable HDMI
+        /* power down hdmi phy */
+        printk("power down hdmi\n");
+        hdmi_wr_reg(TX_SYS1_TERMINATION, hdmi_rd_reg(TX_SYS1_TERMINATION)&(~0xf));
+        hdmi_wr_reg(TX_SYS1_AFE_SPARE0, hdmi_rd_reg(TX_SYS1_AFE_SPARE0)&(~0xf));
+        hdmi_wr_reg(TX_SYS1_AFE_TEST, hdmi_rd_reg(TX_SYS1_AFE_TEST)&(~0x1f));
+        /**/
+        Wr(HHI_HDMI_PLL_CNTL, Rd(HHI_HDMI_PLL_CNTL)|(1<<30)); //disable HDMI PLL
+        return 0;
+    }
 
+    printk("set mode\n");
     hdmi_wr_reg(TX_HDCP_MODE, hdmi_rd_reg(TX_HDCP_MODE)&(~0x80)); //disable authentication
     check_chip_type(); /* check chip_type again */
     if((hdmi_chip_type == HDMI_M1B)&&(color_depth_f != 0)){
@@ -1616,6 +1626,33 @@ static void turn_off_shift_pattern (void)
 }
 #endif
 
+static void hdmitx_m1b_uninit(hdmitx_dev_t* hdmitx_device)
+{
+    Rd(A9_0_IRQ_IN1_INTR_STAT_CLR);
+    Wr(A9_0_IRQ_IN1_INTR_MASK, Rd(A9_0_IRQ_IN1_INTR_MASK)&(~(1 << 25)));
+    free_irq(INT_HDMI_TX, (void *)hdmitx_device);
+#ifdef CEC_SUPPORT
+    //CEC
+    Wr(A9_0_IRQ_IN1_INTR_MASK, Rd(A9_0_IRQ_IN1_INTR_MASK)&(~(1 << 23)));
+    free_irq(INT_HDMI_CEC, (void *)hdmitx_device);
+#endif    
+#ifdef HPD_DELAY_CHECK
+    del_timer(&hpd_timer);    
+#endif
+
+    printk("power down hdmi\n");
+    hdmi_wr_reg(TX_SYS1_TERMINATION, hdmi_rd_reg(TX_SYS1_TERMINATION)&(~0xf));
+    hdmi_wr_reg(TX_SYS1_AFE_SPARE0, hdmi_rd_reg(TX_SYS1_AFE_SPARE0)&(~0xf));
+    hdmi_wr_reg(TX_SYS1_AFE_TEST, hdmi_rd_reg(TX_SYS1_AFE_TEST)&(~0x1f));
+    /**/
+    Wr(HHI_HDMI_PLL_CNTL, Rd(HHI_HDMI_PLL_CNTL)|(1<<30)); //disable HDMI PLL
+    /**/
+    Wr(PERIPHS_PIN_MUX_0, Rd(PERIPHS_PIN_MUX_0)&(~((1 << 2) | // pm_hdmi_cec_en
+                               (1 << 1) | // pm_hdmi_hpd_5v_en , enable this signal after all init done to ensure fist HPD rising ok
+                               (1 << 0)))); // pm_hdmi_i2c_5v_en
+    
+}    
+
 static void hdmitx_m1b_debug(const char* buf)
 { 
     char tmpbuf[128];
@@ -1653,11 +1690,11 @@ static void hdmitx_m1b_debug(const char* buf)
     else if(tmpbuf[0]=='c'){
         if(tmpbuf[1]=='d'){
             color_depth_f=simple_strtoul(tmpbuf+2,NULL,10);
-        if((color_depth_f!=24)&&(color_depth_f!=30)&&(color_depth_f!=36)){
-            printk("Color depth %d is not supported\n", color_depth_f);
-            color_depth_f=0;
-        }
-        return;
+            if((color_depth_f!=24)&&(color_depth_f!=30)&&(color_depth_f!=36)){
+                printk("Color depth %d is not supported\n", color_depth_f);
+                color_depth_f=0;
+            }
+            return;
         }
         else if(tmpbuf[1]=='s'){
             color_space_f=simple_strtoul(tmpbuf+2,NULL,10);
@@ -1738,6 +1775,7 @@ void HDMITX_M1B_Init(hdmitx_dev_t* hdmitx_device)
     hdmitx_device->HWOp.SetAudMode = hdmitx_m1b_set_audmode;
     hdmitx_device->HWOp.SetupIRQ = hdmitx_m1b_setupirq;
     hdmitx_device->HWOp.DebugFun = hdmitx_m1b_debug;
+    hdmitx_device->HWOp.UnInit = hdmitx_m1b_uninit;
 #ifdef HPD_DELAY_CHECK
     /*hdp timer*/
     init_timer(&hpd_timer);
@@ -1766,8 +1804,7 @@ void HDMITX_M1B_Init(hdmitx_dev_t* hdmitx_device)
     // --------------------------------------------------------
 
     // Enable APB3 fail on error
-    //*((volatile unsigned long *) HDMI_CTRL_PORT) |= (1 << 15);        //APB3 err_en
-    WRITE_APB_REG(0x2008, READ_APB_REG(0x2008)|(1<<15));
+    WRITE_APB_REG(HDMI_CNTL_PORT, READ_APB_REG(HDMI_CNTL_PORT)|(1<<15)); //APB3 err_en
 
     /**/    
     hdmi_hw_init();

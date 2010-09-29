@@ -1008,6 +1008,20 @@ HDMI_Video_Codes_t hdmitx_edid_get_VIC(hdmitx_dev_t* hdmitx_device, const char* 
     return vic;
 }    
 
+char* hdmitx_edid_get_native_VIC(hdmitx_dev_t* hdmitx_device)
+{
+    rx_cap_t* pRXCap = &(hdmitx_device->RXCap);
+	  int  i,count=ARRAY_SIZE(dispmode_VIC_tab);
+	  char* disp_mode_ret=NULL;
+    for(i=0;i<count;i++){
+        if(pRXCap->native_VIC==dispmode_VIC_tab[i].VIC){
+            disp_mode_ret = dispmode_VIC_tab[i].disp_mode;
+            break;    
+        }
+    }    
+    return disp_mode_ret;
+}    
+
 void hdmitx_edid_clear(hdmitx_dev_t* hdmitx_device)
 {
     rx_cap_t* pRXCap = &(hdmitx_device->RXCap);

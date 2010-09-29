@@ -76,11 +76,9 @@ static  int  set_disp_mode(const char *mode)
     HDMI_Video_Codes_t vic;
     vic = hdmitx_edid_get_VIC(&hdmitx_device, mode, 1);
     hdmitx_device.cur_VIC = HDMI_Unkown;
-    if(vic != HDMI_Unkown ){
-        ret = hdmitx_set_display(&hdmitx_device, vic);
-        if(ret>=0){
-            hdmitx_device.cur_VIC = vic;    
-        }
+    ret = hdmitx_set_display(&hdmitx_device, vic);
+    if(ret>=0){
+        hdmitx_device.cur_VIC = vic;    
     }
     return ret;
 }
@@ -92,11 +90,9 @@ static int set_disp_mode_auto(void)
     HDMI_Video_Codes_t vic;
     vic = hdmitx_edid_get_VIC(&hdmitx_device, info->name, (hdmitx_device.disp_switch_config==DISP_SWITCH_FORCE)?1:0);
     hdmitx_device.cur_VIC = HDMI_Unkown;
-    if(vic != HDMI_Unkown ){
-        ret = hdmitx_set_display(&hdmitx_device, vic);
-        if(ret>=0){
-            hdmitx_device.cur_VIC = vic;    
-        }
+    ret = hdmitx_set_display(&hdmitx_device, vic); //if vic is HDMI_Unkown, hdmitx_set_display will disable HDMI
+    if(ret>=0){
+        hdmitx_device.cur_VIC = vic;    
     }
     return ret;
 }    
@@ -197,11 +193,31 @@ static ssize_t store_dbg(struct device * dev, struct device_attribute *attr, con
     return 16;    
 }
 
+/**/
+static ssize_t show_disp_cap(struct device * dev, struct device_attribute *attr, char * buf)
+{   
+    int i,pos=0;
+    char* disp_mode_t[]={"480i","480p","720p","1080i","1080p",NULL};
+    char* native_disp_mode = hdmitx_edid_get_native_VIC(&hdmitx_device);
+    HDMI_Video_Codes_t vic;
+    if(native_disp_mode){
+        pos += snprintf(buf+pos, PAGE_SIZE,"%s\n",native_disp_mode);
+        for(i=0; disp_mode_t[i]; i++){
+            vic = hdmitx_edid_get_VIC(&hdmitx_device, disp_mode_t[i], 0);
+            if( vic != HDMI_Unkown){
+                pos += snprintf(buf+pos, PAGE_SIZE,"%s\n",disp_mode_t[i]);
+            }
+        }
+    }
+    return pos;    
+}
+
 static DEVICE_ATTR(disp_mode, S_IWUSR | S_IRUGO, show_disp_mode, store_disp_mode);
 static DEVICE_ATTR(aud_mode, S_IWUSR | S_IRUGO, show_aud_mode, store_aud_mode);
 static DEVICE_ATTR(edid, S_IWUSR | S_IRUGO, show_edid, store_edid);
 static DEVICE_ATTR(config, S_IWUSR | S_IRUGO, show_config, store_config);
 static DEVICE_ATTR(debug, S_IWUSR | S_IRUGO, NULL, store_dbg);
+static DEVICE_ATTR(disp_cap, S_IWUSR | S_IRUGO, show_disp_cap, NULL);
 
 /*****************************
 *    hdmitx display client interface 
@@ -226,6 +242,7 @@ static struct notifier_block hdmitx_notifier_nb_v = {
 
 #define AOUT_EVENT_PREPARE  0x1
 extern int aout_register_client(struct notifier_block * ) ;
+extern int aout_unregister_client(struct notifier_block * ) ;
 
 #include <linux/soundcard.h>
 #include <sound/core.h>
@@ -292,7 +309,7 @@ static int hdmi_task_handle(void *data)
 
     hdmitx_device->HWOp.SetupIRQ(hdmitx_device);
 
-    while (1)
+    while (hdmitx_device->hpd_event != 0xff)
     {
         if (hdmitx_device->hpd_event == 1)
         {
@@ -307,6 +324,10 @@ static int hdmi_task_handle(void *data)
         else if(hdmitx_device->hpd_event == 2)
         {
             hdmitx_edid_clear(hdmitx_device);
+
+            //hdmitx_set_display(hdmitx_device, HDMI_Unkown);
+            hdmitx_device->cur_VIC = HDMI_Unkown;
+
             hdmitx_device->hpd_event = 0;
         }    
         else{
@@ -396,6 +417,7 @@ static int amhdmitx_probe(struct platform_device *pdev)
     device_create_file(hdmitx_dev, &dev_attr_edid);
     device_create_file(hdmitx_dev, &dev_attr_config);
     device_create_file(hdmitx_dev, &dev_attr_debug);
+    device_create_file(hdmitx_dev, &dev_attr_disp_cap);
     
     if (hdmitx_dev == NULL) {
         pr_error("device_create create error\n");
@@ -414,12 +436,24 @@ static int amhdmitx_probe(struct platform_device *pdev)
 
 static int amhdmitx_remove(struct platform_device *pdev)
 {
+    if(hdmitx_device.HWOp.UnInit){
+        hdmitx_device.HWOp.UnInit(&hdmitx_device);
+    }
+    hdmitx_device.hpd_event = 0xff;
+    kthread_stop(hdmitx_device.task);
+    
+    vout_unregister_client(&hdmitx_notifier_nb_v);    
+#ifndef DISABLE_AUDIO
+    aout_unregister_client(&hdmitx_notifier_nb_a);
+#endif
+
     /* Remove the cdev */
     device_remove_file(hdmitx_dev, &dev_attr_disp_mode);
     device_remove_file(hdmitx_dev, &dev_attr_aud_mode);
     device_remove_file(hdmitx_dev, &dev_attr_edid);
     device_remove_file(hdmitx_dev, &dev_attr_config);
     device_remove_file(hdmitx_dev, &dev_attr_debug);
+    device_remove_file(hdmitx_dev, &dev_attr_disp_cap);
 
     cdev_del(&hdmitx_device.cdev);
 
@@ -436,18 +470,11 @@ static struct platform_driver amhdmitx_driver = {
     .remove     = amhdmitx_remove,
     .driver     = {
         .name   = DEVICE_NAME,
+		    .owner	= THIS_MODULE,
     }
 };
 
-static struct platform_device amhdmi_tx_device = {
-.name = DEVICE_NAME,
-.id = 0,
-.num_resources = 0,
-};
-
-static struct platform_device *devices[] = {
-&amhdmi_tx_device,
-};
+static struct platform_device* amhdmi_tx_device = NULL;
 
 static int hdmitx_off = 0;
 
@@ -456,22 +483,37 @@ static int  __init amhdmitx_init(void)
     if(hdmitx_off)
         return 0;
         
-    pr_dbg("amhdmitx_init2\n");
+    pr_dbg("amhdmitx_init\n");
+	  amhdmi_tx_device = platform_device_alloc(DEVICE_NAME,0);
+    if (!amhdmi_tx_device) {
+        pr_error("failed to alloc amhdmi_tx_device\n");
+        return -ENOMEM;
+    }
     
-    if (platform_driver_register(&amhdmitx_driver)) {
-        pr_error("failed to register amhdmitx module\n");
+    if(platform_device_add(amhdmi_tx_device)){
+        platform_device_put(amhdmi_tx_device);
+        pr_error("failed to add amhdmi_tx_device\n");
         return -ENODEV;
     }
-    platform_add_devices(devices,1);
-
+    if (platform_driver_register(&amhdmitx_driver)) {
+        pr_error("failed to register amhdmitx module\n");
+        
+        platform_device_del(amhdmi_tx_device);
+        platform_device_put(amhdmi_tx_device);
+        return -ENODEV;
+    }
     return 0;
 }
+
+
+
 
 static void __exit amhdmitx_exit(void)
 {
     pr_dbg("amhdmitx_exit\n");
-
     platform_driver_unregister(&amhdmitx_driver);
+    platform_device_unregister(amhdmi_tx_device); 
+    amhdmi_tx_device = NULL;
     return ;
 }
 

@@ -343,6 +343,9 @@ int hdmitx_set_display(hdmitx_dev_t* hdmitx_device, HDMI_Video_Codes_t VideoCode
             ret = 0;
         }
     }
+    else{
+        hdmitx_device->HWOp.SetDispMode(NULL); //disable HDMI    
+    }
     return ret;
 
 }
