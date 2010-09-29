@@ -103,7 +103,12 @@ static struct fb_fix_screeninfo mydef_fix = {
 	.accel		= FB_ACCEL_NONE,
 };
 
-
+typedef  struct {
+	int x ;
+	int y ;
+	int w ;
+	int h ;
+}disp_rect_t;
 #define DRIVER_NAME "osdfb"
 #define MODULE_NAME "osdfb"
 #define  FBIOPUT_OSD_SRCCOLORKEY	0x46fb
