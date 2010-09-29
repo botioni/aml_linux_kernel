@@ -126,6 +126,32 @@ osd_check_var(struct fb_var_screeninfo *var, struct fb_info *info)
 static int
 osd_set_par(struct fb_info *info)
 {
+	const vinfo_t *vinfo;
+	struct myfb_dev *fbdev = (struct myfb_dev *)info->par;
+	osd_ctl_t *osd_ctrl=&fbdev->osd_ctl; 
+	u32  end;
+	
+	vinfo = get_current_vinfo();
+	if(info->var.xres  >vinfo->width)
+	{
+		osd_ctrl->disp_end_x=vinfo->width - 1 ;
+	}
+	else
+	{
+		end=osd_ctrl->disp_start_x+info->var.xres  ;
+		end=(end>vinfo->width?vinfo->width:end); 
+		osd_ctrl->disp_end_x=end -1;
+	}
+	if(info->var.yres  >vinfo->height)
+	{
+		osd_ctrl->disp_end_y=vinfo->height - 1;
+	}
+	else
+	{     
+		end=osd_ctrl->disp_start_y+info->var.yres;
+		end=(end>vinfo->height?vinfo->height:end); 
+		osd_ctrl->disp_end_y=end - 1; 
+	}
 	osddev_set((struct myfb_dev *)info->par);
        return  0;
 }
@@ -310,6 +336,32 @@ static struct fb_ops osd_ops = {
 	.fb_sync        = osd_sync,
 };
 
+void  set_default_display_axis(struct fb_var_screeninfo *var,osd_ctl_t *osd_ctrl,const vinfo_t *vinfo)
+{
+	
+	osd_ctrl->disp_start_x=0;
+	osd_ctrl->disp_start_y=0;
+	if(var->xres > vinfo->width)
+	{
+		osd_ctrl->disp_end_x=vinfo->width- 1 ;//screen axis 
+	}
+	else
+	{
+		osd_ctrl->disp_end_x=var->xres- 1 ;//screen axis 
+	}
+	if(var->yres > vinfo->height)
+	{
+		osd_ctrl->disp_end_y=vinfo->height- 1 ;
+	}
+	else
+	{
+		osd_ctrl->disp_end_y=var->yres- 1 ;//screen axis 
+	}
+	return ;
+	
+
+}
+
 int osd_notify_callback(struct notifier_block *block, unsigned long cmd , void *para)
 {
 	const vinfo_t *vinfo;
@@ -328,6 +380,7 @@ int osd_notify_callback(struct notifier_block *block, unsigned long cmd , void *
 		for(i=0;i<OSD_COUNT;i++)
 		{
 			if(NULL==(fb_dev=gp_fbdev_list[i])) continue;
+			set_default_display_axis(&fb_dev->fb_info->var,&fb_dev->osd_ctl,vinfo);
 			osddev_set(fb_dev);
 		}
 		break;
