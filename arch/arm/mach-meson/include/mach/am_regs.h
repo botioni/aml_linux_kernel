@@ -697,10 +697,10 @@
 #define BT_SLICELINE0                              0x2247
 #define BT_SLICELINE1                              0x2248
 #define BT_PORT_CTRL                               0x2249
-  #define BT_HSYNC_PHASE      0
-  #define BT_VSYNC_PHASE      1
-  #define BT_HSYNC_PULSE      2
-  #define BT_VSYNC_PULSE      3
+  #define BT_VSYNC_PHASE      0
+  #define BT_HSYNC_PHASE      1
+  #define BT_VSYNC_PULSE      2
+  #define BT_HSYNC_PULSE      3
   #define BT_FID_PHASE        4
   #define BT_FID_HSVS         5
   #define BT_IDQ_EN           6
