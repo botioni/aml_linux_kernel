@@ -548,10 +548,10 @@ osd_probe(struct platform_device *pdev)
 				mydef_var[index].bits_per_pixel=32;
 			}
 		}else{
-			mydef_var[index].xres=1280;
-			mydef_var[index].yres=720;
-			mydef_var[index].xres_virtual=1280;
-			mydef_var[index].yres_virtual=1440;
+			mydef_var[index].xres=1200;
+			mydef_var[index].yres=690;
+			mydef_var[index].xres_virtual=1200;
+			mydef_var[index].yres_virtual=1380;
 			mydef_var[index].bits_per_pixel=16;
 			memset((char*)fbdev->fb_mem_vaddr, 0, fbdev->fb_len);	
 		}
