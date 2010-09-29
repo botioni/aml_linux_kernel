@@ -446,9 +446,9 @@ static void reset_camera_dec(void)
         WRITE_CBUS_REG(BT_601_CTRL2 , ( 10 << 16));     // FID field check done point.
 
 		WRITE_CBUS_REG(BT_SWAP_CTRL,	( 7 << 0 ) | // suppose the input bitstream format is Cb0 Y0 Cr0 Y1.
-							( 4 << 4 ) |
-							( 6 << 8 ) |
-							( 5 << 12 ) );
+							( 6 << 4 ) |
+							( 5 << 8 ) |
+							( 4 << 12 ) );
 
         WRITE_CBUS_REG(BT_LINECTRL , ( 1 << 31 ) |   //software line ctrl enable.
                                     ((am656in_dec_info.active_pixel << 1)<< 16 ) |    //the number of active data per line
