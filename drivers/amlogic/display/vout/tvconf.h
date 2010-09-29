@@ -12,6 +12,7 @@
 typedef enum   {
 DISP_ATTR_ENABLE=0 ,
 DISP_ATTR_MODE,
+DISP_ATTR_AXIS,
 DISP_ATTR_VDAC_SETTING,
 DISP_ATTR_WR_REG,
 DISP_ATTR_RD_REG,
@@ -47,6 +48,7 @@ static void  parse_vdac_setting(char *para);
 static  void  read_reg(char *para);
 static  void  write_reg(char *para);
 static  void  set_disp_mode(char *mode) ;
+static void  set_disp_window(char *para) ;
 static  void   func_default_null(char  *str);
 
 #define  SHOW_INFO(name)      \

@@ -60,6 +60,7 @@ SET_DISP_DEVICE_ATTR(hdmi_mode,func_default_null)
 //class attribute
 SET_DISP_CLASS_ATTR(enable,func_default_null)
 SET_DISP_CLASS_ATTR(mode,set_disp_mode)
+SET_DISP_CLASS_ATTR(axis,set_disp_window)
 SET_DISP_CLASS_ATTR(vdac_setting,parse_vdac_setting)
 SET_DISP_CLASS_ATTR(wr_reg,write_reg)
 SET_DISP_CLASS_ATTR(rd_reg,read_reg)
@@ -187,6 +188,7 @@ static const vinfo_t tv_info[] =
 static  struct  class_attribute   *disp_attr[]={
 &class_display_attr_enable,
 &class_display_attr_mode,	
+&class_display_attr_axis ,
 &class_display_attr_vdac_setting,
 &class_display_attr_wr_reg,
 &class_display_attr_rd_reg,
@@ -389,6 +391,28 @@ static  void  set_disp_mode(char *mode)
 		OSD_ON   ;
 	}
 		
+}
+//axis type : 0x12  0x100 0x120 0x130
+static void  set_disp_window(char *para) 
+{
+#define   OSD_COUNT   2
+	char  count=OSD_COUNT*4;	
+	int  blank;
+	int   *pt=&info->disp_rect[0].x;
+	
+
+	//parse window para .
+	memcpy(pt,parse_para(para,&count),sizeof(disp_rect_t)*OSD_COUNT);
+	
+	if(count >=4 && count <8 )
+	{
+		info->disp_rect[1]=info->disp_rect[0] ;
+	}
+	amlog_mask_level(LOG_MASK_PARA,LOG_LEVEL_LOW,"osd0=>x:%d ,y:%d,w:%d,h:%d\r\n osd1=> x:%d,y:%d,w:%d,h:%d \r\n", \
+			*pt,*(pt+1),*(pt+2),*(pt+3),*(pt+4),*(pt+5),*(pt+6),*(pt+7));
+	OSD_OFF;
+	vout_notifier_call_chain(VOUT_EVENT_OSD_DISP_AXIS,&info->disp_rect) ;
+	OSD_ON;
 }
 
 static int  create_disp_attr(disp_module_info_t* info)
