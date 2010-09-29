@@ -1,9 +1,10 @@
 #
 # Automatically generated make config: don't edit
 # Linux kernel version: 2.6.34
-# Tue Sep  7 14:31:14 2010
+# Wed Sep 29 12:07:54 2010
 #
 CONFIG_ARM=y
+CONFIG_HOLES_IN_ZONE=y
 CONFIG_SYS_SUPPORTS_APM_EMULATION=y
 CONFIG_GENERIC_TIME=y
 CONFIG_GENERIC_CLOCKEVENTS=y
@@ -496,10 +497,6 @@ CONFIG_AM_UART=y
 #
 # Amlogic RTC support
 #
-
-#
-# Need RTC_CLASS 
-#
 # CONFIG_AML_RTC is not set
 # CONFIG_I2C_APOLLO is not set
 # CONFIG_I2C_AML is not set
@@ -522,6 +519,10 @@ CONFIG_USB_DWC_OTG_HCD=y
 
 #
 # Amlogic SATA Support
+#
+
+#
+# Need config 'Serial ATA and Parallel ATA drivers'
 #
 
 #
@@ -575,9 +576,9 @@ CONFIG_AM_TV_OUTPUT=y
 # Amlogic osd module
 #
 CONFIG_FB_AM=y
-# CONFIG_FB_OSD2_ENABLE is not set
+CONFIG_FB_OSD2_ENABLE=y
+CONFIG_FB_OSD2_CURSOR=y
 # CONFIG_AM_GE2D is not set
-# CONFIG_FB_AM_LOGO is not set
 
 #
 # AMLOGIC AV Streaming devices
