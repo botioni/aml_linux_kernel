@@ -60,7 +60,8 @@ extern int set_current_vmode(vmode_t);
 extern vmode_t validate_vmode(char *);
 
 #define VOUT_EVENT_MODE_CHANGE		0x00010000	
-#define VOUT_EVENT_OSD_BLANK		0x00020000
+#define VOUT_EVENT_OSD_BLANK			0x00020000
+#define VOUT_EVENT_OSD_DISP_AXIS			0x00030000
 
 
 #endif /* VOUT_NOTIFY_H */
