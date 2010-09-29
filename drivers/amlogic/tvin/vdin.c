@@ -49,7 +49,7 @@
 #define VDIN_CLASS_NAME         "vdin"
 
 #define VDIN_COUNT              1
-#define VDIN_PUT_INTERVAL        (HZ/100)   //10ms
+#define VDIN_PUT_INTERVAL       1    //(HZ/100)   //10ms, #define HZ 100
 
 
 static dev_t vdin_devno;
@@ -256,8 +256,7 @@ static inline void vdin_set_src_mux( vdin_src_mux_cfg_t *src_mux_cfg /*, vdin_de
                                     DLY_GO_FLD_EN_BIT, DLY_GO_FLD_EN_WID);
                 WRITE_CBUS_REG_BITS(VDIN_COM_CTRL0, src_mux_cfg->hold_lines,
                                     HOLD_LN_BIT, HOLD_LN_WID);
-                WRITE_CBUS_REG_BITS(VDIN_COM_CTRL0, (unsigned int)(src_mux_cfg->src),
-                                    VDIN_SEL_BIT, VDIN_SEL_WID);
+                WRITE_CBUS_REG_BITS(VDIN_COM_CTRL0, VDIN_SRC_BT656IN, VDIN_SEL_BIT, VDIN_SEL_WID);
                 WRITE_CBUS_REG_BITS(VDIN_COM_CTRL0, 1, COMMON_DATA_IN_EN_BIT, COMMON_DATA_IN_EN_WID);
                 WRITE_CBUS_REG_BITS (VDIN_COM_CTRL0, 10, HOLD_LN_BIT, HOLD_LN_WID);       //there is 10 hold line after vsync
 
@@ -270,8 +269,7 @@ static inline void vdin_set_src_mux( vdin_src_mux_cfg_t *src_mux_cfg /*, vdin_de
                                     DLY_GO_FLD_EN_BIT, DLY_GO_FLD_EN_WID);
                 WRITE_CBUS_REG_BITS(VDIN_COM_CTRL0, src_mux_cfg->hold_lines,
                                     HOLD_LN_BIT, HOLD_LN_WID);
-                WRITE_CBUS_REG_BITS(VDIN_COM_CTRL0, (unsigned int)(src_mux_cfg->src),
-                                    VDIN_SEL_BIT, VDIN_SEL_WID);
+                WRITE_CBUS_REG_BITS(VDIN_COM_CTRL0, VDIN_SRC_BT656IN, VDIN_SEL_BIT, VDIN_SEL_WID);
                 WRITE_CBUS_REG_BITS(VDIN_COM_CTRL0, 1, COMMON_DATA_IN_EN_BIT, COMMON_DATA_IN_EN_WID);
                 WRITE_CBUS_REG_BITS (VDIN_COM_CTRL0, 0, HOLD_LN_BIT, HOLD_LN_WID);       //there is no hold line after vsync
 
@@ -1067,7 +1065,6 @@ static irqreturn_t vdin_isr(int irq, void *dev_id)
 
 static int vdin_open(struct inode *inode, struct file *file)
 {
-    int ret = 0;
     vdin_dev_t *devp;
 
     /* Get the per-device structure that contains this cdev */
