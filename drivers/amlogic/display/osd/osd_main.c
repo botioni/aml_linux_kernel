@@ -303,7 +303,13 @@ static int osd_pan_display(struct fb_var_screeninfo *var,
 #if defined(CONFIG_FB_OSD2_CURSOR)
 static int osd_cursor(struct fb_info *fbi, struct fb_cursor *var)
 {
-	osddev_cursor((struct myfb_dev *)fbi->par, var->hot.x, var->hot.y);
+	short startx = 0, starty = 0;
+	myfb_dev_t *fb_dev = gp_fbdev_list[1];
+	if (fb_dev) {
+		startx = fb_dev->osd_ctl.disp_start_x;
+		starty = fb_dev->osd_ctl.disp_start_y;
+	}
+	osddev_cursor((struct myfb_dev *)fbi->par, startx + var->hot.x, starty + var->hot.y);
 	return 0;
 }
 #endif
