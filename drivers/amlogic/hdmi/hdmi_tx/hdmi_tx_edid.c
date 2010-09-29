@@ -1015,7 +1015,7 @@ char* hdmitx_edid_get_native_VIC(hdmitx_dev_t* hdmitx_device)
 	  char* disp_mode_ret=NULL;
     for(i=0;i<count;i++){
         if(pRXCap->native_VIC==dispmode_VIC_tab[i].VIC){
-            disp_mode_ret = dispmode_VIC_tab[i].disp_mode;
+            disp_mode_ret = (char*)(dispmode_VIC_tab[i].disp_mode);
             break;    
         }
     }    
