@@ -158,6 +158,7 @@ _init_osd_simple(u32 pix_x_start,
    		else
    		vmode=0;
    	}
+	
    	data32 = (display_h_start & 0xfff) | (display_h_end & 0xfff) <<16 ;
       	WRITE_MPEG_REG(VIU_OSD1_BLK0_CFG_W3 + REG_OFFSET*index, data32);
    	data32 = (display_v_start & 0xfff) | (display_v_end & 0xfff) <<16 ;
