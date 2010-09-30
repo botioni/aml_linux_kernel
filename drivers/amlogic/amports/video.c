@@ -62,11 +62,20 @@ MODULE_AMLOG(LOG_LEVEL_ERROR, 0, LOG_DEFAULT_LEVEL_DESC, LOG_MASK_DESC);
 
 #include "deinterlace.h"
 
+#include "linux/amports/ve.h"
+#include "linux/amports/cm.h"
+
+#include "ve_regs.h"
+#include "amve.h"
+#include "cm_regs.h"
+#include "amcm.h"
+
+
 #define DRIVER_NAME "amvideo"
 #define MODULE_NAME "amvideo"
 #define DEVICE_NAME "amvideo"
 
-//#define FIQ_VSYNC 
+//#define FIQ_VSYNC
 
 //#define SLOW_SYNC_REPEAT
 //#define INTERLACE_FIELD_MATCH_PROCESS
@@ -178,6 +187,49 @@ static const u8 skip_tab[6] = { 0x24, 0x04, 0x68, 0x48, 0x28, 0x08 };
 /* wait queue for poll */
 static wait_queue_head_t amvideo_trick_wait;
 
+#if 0
+/* video enhancement */
+static struct ve_bext_s ve_bext;
+static struct ve_dnlp_s ve_dnlp;
+static struct ve_hsvs_s ve_hsvs;
+static struct ve_ccor_s ve_ccor;
+static struct ve_benh_s ve_demo;
+static struct ve_demo_s ve_demo;
+
+typedef struct ve_regs_s {
+    unsigned val  : 32;
+    unsigned reg  : 14;
+    unsigned port :  2; // port port_addr            port_data            remark
+                        // 0    NA                   NA                   direct access
+                        // 1    VPP_CHROMA_ADDR_PORT VPP_CHROMA_DATA_PORT CM port registers
+                        // 2    NA                   NA                   reserved
+                        // 3    NA                   NA                   reserved
+    unsigned bit  :  5;
+    unsigned wid  :  5;
+    unsigned mode :  1; // 0:read, 1:write
+    unsigned rsv  :  5;
+} ve_regs_t;
+
+static uchar ve_dnlp_tgt[64], ve_dnlp_rt;
+static ulong ve_dnlp_lpf[64], ve_dnlp_reg[16];
+
+static ulong ve_benh_ve_benh_inv[32][2] = { // [0]: inv_10_0, [1]: inv_11
+    {2047, 1}, {2047, 1}, {   0, 1}, {1365, 0}, {1024, 0}, { 819, 0}, { 683, 0}, { 585, 0},
+    { 512, 0}, { 455, 0}, { 410, 0}, { 372, 0}, { 341, 0}, { 315, 0}, { 293, 0}, { 273, 0},
+    { 256, 0}, { 241, 0}, { 228, 0}, { 216, 0}, { 205, 0}, { 195, 0}, { 186, 0}, { 178, 0},
+    { 171, 0}, { 164, 0}, { 158, 0}, { 152, 0}, { 146, 0}, { 141, 0}, { 137, 0}, { 132, 0},
+};
+
+static ulong ve_reg_limit(ulong val, ulong wid)
+{
+    if (val < (1<<wid))
+        return(val);
+    else
+        return((1<<wid)-1);
+}
+
+#endif
+
 const vframe_provider_t * get_vfp(void)
 {
 	return vfp;
@@ -187,7 +239,7 @@ const vframe_provider_t * get_vfp(void)
 static inline vframe_t *vf_peek(void)
 {
 	int deinterlace_mode = get_deinterlace_mode();
-	
+
 	if ( deinterlace_mode == 2 )
 	{
 		int di_pre_recycle_buf = get_di_pre_recycle_buf();
@@ -214,7 +266,7 @@ static inline vframe_t *vf_peek(void)
 static inline vframe_t *vf_get(void)
 {
 	int deinterlace_mode = get_deinterlace_mode();
-	
+
 	if ( deinterlace_mode == 2 )
 	{
 		int di_pre_recycle_buf = get_di_pre_recycle_buf();
@@ -249,7 +301,7 @@ static inline vframe_t *vf_get(void)
 static inline void vf_put(vframe_t *vf)
 {
 	int deinterlace_mode = get_deinterlace_mode();
-	
+
 	if ( deinterlace_mode == 2 )
 	{
 		int di_pre_recycle_buf = get_di_pre_recycle_buf();
@@ -364,7 +416,7 @@ static void vsync_toggle_frame(vframe_t *vf)
     u32 first_picture = 0;
 
 	int deinterlace_mode = get_deinterlace_mode();
-	
+
     if ((vf->width == 0) && (vf->height == 0)) {
         amlog_level(LOG_LEVEL_ERROR, "Video: invalid frame dimension\n");
         return;
@@ -445,12 +497,12 @@ static void vsync_toggle_frame(vframe_t *vf)
         next_frame_par = (&frame_parms[0] == next_frame_par) ?
             &frame_parms[1] : &frame_parms[0];
 
-        if ( (deinterlace_mode != 0) 
+        if ( (deinterlace_mode != 0)
         	&& (vf->type & VIDTYPE_INTERLACE)
 #if defined(CONFIG_AM_DEINTERLACE_SD_ONLY)
             && (vf->width <= 720)
 #endif
-                ) 
+                )
         {
             vf->type &= ~VIDTYPE_TYPEMASK;
 
@@ -458,7 +510,7 @@ static void vsync_toggle_frame(vframe_t *vf)
            	{
             	inc_field_counter();
            	}
-        } 
+        }
 
         vpp_set_filters(wide_setting, vf, next_frame_par, vinfo);
 
@@ -467,12 +519,12 @@ static void vsync_toggle_frame(vframe_t *vf)
     }
     else
     {
-        if ( (deinterlace_mode != 0) 
+        if ( (deinterlace_mode != 0)
         	&& (vf->type & VIDTYPE_INTERLACE)
 #if defined(CONFIG_AM_DEINTERLACE_SD_ONLY)
             && (vf->width <= 720)
 #endif
-                ) 
+                )
 		{
             vf->type &= ~VIDTYPE_TYPEMASK;
 
@@ -524,7 +576,7 @@ static void viu_set_dcu(vpp_frame_par_t *frame_par, vframe_t *vf)
 
     WRITE_MPEG_REG(VD1_IF0_GEN_REG, r);
     WRITE_MPEG_REG(VD2_IF0_GEN_REG, r);
-    
+
 	/* chroma formatter */
  	if (vf->type & VIDTYPE_VIU_FIELD) {
  	    if (vf->type & VIDTYPE_VIU_444) {
@@ -532,15 +584,15 @@ static void viu_set_dcu(vpp_frame_par_t *frame_par, vframe_t *vf)
         	vrpt = 0;
         	vini_phase = 0;
         	vphase = 0;
-        	hformatter_en = 0;            
+        	hformatter_en = 0;
         	vformatter_en = 0;
     	} else {
         	hformat = HFORMATTER_YC_RATIO_2_1;
         	vrpt = VFORMATTER_RPTLINE0_EN;
         	vini_phase = 0xc << VFORMATTER_INIPHASE_BIT;
         	vphase = ((vf->type & VIDTYPE_VIU_422) ? 0x10 : 0x08) << VFORMATTER_PHASE_BIT;
-        	hformatter_en = HFORMATTER_EN;            
-        	vformatter_en = VFORMATTER_EN;	
+        	hformatter_en = HFORMATTER_EN;
+        	vformatter_en = VFORMATTER_EN;
         }
 
 	    WRITE_MPEG_REG(VIU_VD1_FMT_CTRL,
@@ -592,7 +644,7 @@ static void viu_set_dcu(vpp_frame_par_t *frame_par, vframe_t *vf)
 
  	if (vf->type & VIDTYPE_VIU_FIELD) {
  		loop = 0;
-    
+
         if (vf->type & VIDTYPE_INTERLACE) {
         	pat = vpat[frame_par->vscale_skip_count - 1];
         }
@@ -633,7 +685,7 @@ static void viu_set_dcu(vpp_frame_par_t *frame_par, vframe_t *vf)
 	if (((vf->type & VIDTYPE_INTERLACE) == 0) &&
 		((vf->type & VIDTYPE_VIU_FIELD) == 0)) {
 		/* progressive frame in two pictures */
-		WRITE_MPEG_REG(VD1_IF0_LUMA_PSEL, 
+		WRITE_MPEG_REG(VD1_IF0_LUMA_PSEL,
 			(2 << 26) |	/* two pic mode */
 			(2 << 24) | /* use own last line */
 			(2 << 8)  | /* toggle pic 0 and 1, use pic0 first */
@@ -686,13 +738,13 @@ static inline bool interlace_field_type_match(int vout_type, vframe_t *vf)
 	if (DUR2PTS(vf->duration) != vsync_pts_inc)
 		return false;
 
-	if ((vout_type == VOUT_TYPE_TOP_FIELD) && 
+	if ((vout_type == VOUT_TYPE_TOP_FIELD) &&
 		((vf->type & VIDTYPE_TYPEMASK) == VIDTYPE_INTERLACE_TOP))
 		return true;
-	else if ((vout_type == VOUT_TYPE_BOT_FIELD) && 
+	else if ((vout_type == VOUT_TYPE_BOT_FIELD) &&
 		((vf->type & VIDTYPE_TYPEMASK) == VIDTYPE_INTERLACE_BOTTOM))
 		return true;
-		
+
 	return false;
 }
 #endif
@@ -778,7 +830,7 @@ static irqreturn_t vsync_isr0(int irq, void *dev_id)
 {
 	int hold_line;
 	int deinterlace_mode = get_deinterlace_mode();
-	
+
     s32 i, vout_type;
     vframe_t *vf;
 #ifdef CONFIG_AM_VIDEO_LOG
@@ -790,7 +842,7 @@ static irqreturn_t vsync_isr0(int irq, void *dev_id)
 		"stmfd	sp!, {r0-r12, lr};\n"
 		"sub    sp, sp, #256;\n"
 		"sub    fp, sp, #256;\n");
-#endif			
+#endif
 
 #ifdef CONFIG_AM_VIDEO_LOG
     toggle_cnt = 0;
@@ -817,7 +869,7 @@ static irqreturn_t vsync_isr0(int irq, void *dev_id)
             frame_repeat_count = 0;
 #endif
 
-        } 
+        }
         else if ((cur_dispbuf == &vf_local) && (video_property_changed))
         {
             if (!blackout &&
@@ -841,10 +893,10 @@ static irqreturn_t vsync_isr0(int irq, void *dev_id)
 		else
 			return IRQ_HANDLED;
     }
-    
+
     /* buffer switch management */
     vf = vf_peek();
-    
+
 	/* setting video display property in underflow mode */
 	if ((!vf) && cur_dispbuf && (video_property_changed))
 		vsync_toggle_frame(cur_dispbuf);
@@ -854,7 +906,7 @@ static irqreturn_t vsync_isr0(int irq, void *dev_id)
 #ifdef INTERLACE_FIELD_MATCH_PROCESS
         	 || interlace_field_type_match(vout_type, vf)
 #endif
-        	 ) {            
+        	 ) {
             amlog_mask(LOG_MASK_TIMESTAMP,
 				"VIDEO_PTS = 0x%x, cur_dur=0x%x, next_pts=0x%x, scr = 0x%x\n",
 				timestamp_vpts_get(),
@@ -908,7 +960,7 @@ static irqreturn_t vsync_isr0(int irq, void *dev_id)
                 vf = vf_peek();
             }
 			else
-#endif            
+#endif
 			/* setting video display property in pause mode */
 			if (video_property_changed && cur_dispbuf)
 				vsync_toggle_frame(cur_dispbuf);
@@ -1069,7 +1121,7 @@ exit:
 #else
 	return IRQ_HANDLED;
 #endif
-	
+
 }
 
 static int alloc_keep_buffer(void)
@@ -1178,7 +1230,7 @@ static void vsync_fiq_up(void)
 static void vsync_fiq_down(void)
 {
 	unsigned int mask = 1 << IRQ_BIT(INT_VIU_VSYNC);
-	
+
 	disable_fiq(INT_VIU_VSYNC);
 	CLEAR_CBUS_REG_MASK(IRQ_FIQSEL_REG(INT_VIU_VSYNC), mask);
 }
@@ -1205,7 +1257,7 @@ void vf_unreg_provider(void)
     ulong flags;
 
 	int deinterlace_mode = get_deinterlace_mode();
-	
+
     spin_lock_irqsave(&lock, flags);
 
     if (cur_dispbuf) {
@@ -1257,14 +1309,14 @@ unsigned int get_post_canvas(void)
 static int canvas_dup(ulong *dst, ulong src_paddr, ulong size)
 {
 	void __iomem *p = ioremap_wc(src_paddr, size);
-	
+
 	if (p) {
 		memcpy(dst, p, size);
 		iounmap(p);
-		
+
 		return 1;
 	}
-	
+
 	return 0;
 }
 
@@ -1284,11 +1336,11 @@ unsigned int vf_keep_current(void)
 	if ( (deinterlace_mode != 0) && cur_dispbuf && (cur_dispbuf->duration > 0)
 #if defined(CONFIG_AM_DEINTERLACE_SD_ONLY)
 		&& (cur_dispbuf->width <= 720)
-#endif			
-		)	
-	{		
-		return 0;	
-	}    
+#endif
+		)
+	{
+		return 0;
+	}
 
 	if (!keep_y_addr_remap)
     {
@@ -1336,6 +1388,8 @@ static int amvideo_release(struct inode *inode, struct file *file)
 static int amvideo_ioctl(struct inode *inode, struct file *file,
                         unsigned int cmd, ulong arg)
 {
+    int ret = 0;
+
     switch (cmd)
     {
         case AMSTREAM_IOC_TRICKMODE:
@@ -1367,7 +1421,171 @@ static int amvideo_ioctl(struct inode *inode, struct file *file,
         case AMSTREAM_IOC_SYNCTHRESH:
             tsync_set_syncthresh(arg);
             break;
-            
+
+        /**********************************************************************
+        video enhancement ioctl
+        **********************************************************************/
+        case AMSTREAM_IOC_VE_DEBUG:
+        {
+            struct ve_regs_s data;
+            #if 0
+            if (get_user((unsigned long long)data, (void __user *)arg))
+            #else
+            if (copy_from_user(&data, (void __user *)arg, sizeof(struct ve_regs_s)))
+            #endif
+            {
+                ret = -EFAULT;
+            }
+            else
+            {
+                ve_set_regs(&data);
+                if (!(data.mode)) // read
+                {
+                    #if 0
+                    if (put_user((unsigned long long)data, (void __user *)arg))
+                    #else
+                    if (copy_to_user(&data, (void __user *)arg, sizeof(struct ve_regs_s)))
+                    #endif
+                    {
+                        ret = -EFAULT;
+                    }
+                }
+            }
+
+            break;
+        }
+        case AMSTREAM_IOC_VE_BEXT:
+        {
+            struct ve_bext_s ve_bext;
+            if (copy_from_user(&ve_bext, (void __user *)arg, sizeof(struct ve_bext_s)))
+            {
+                ret = -EFAULT;
+                break;
+            }
+            ve_set_bext(&ve_bext);
+            break;
+        }
+
+        case AMSTREAM_IOC_VE_DNLP:
+        {
+            struct ve_dnlp_s ve_dnlp;
+            if (copy_from_user(&ve_dnlp, (void __user *)arg, sizeof(struct ve_dnlp_s)))
+            {
+                ret = -EFAULT;
+                break;
+            }
+            ve_set_dnlp(&ve_dnlp);
+            break;
+        }
+
+        case AMSTREAM_IOC_VE_HSVS:
+        {
+            struct ve_hsvs_s ve_hsvs;
+            if (copy_from_user(&ve_hsvs, (void __user *)arg, sizeof(struct ve_hsvs_s)))
+            {
+                ret = -EFAULT;
+                break;
+            }
+            ve_set_hsvs(&ve_hsvs);
+            break;
+        }
+
+        case AMSTREAM_IOC_VE_CCOR:
+        {
+            struct ve_ccor_s ve_ccor;
+            if (copy_from_user(&ve_ccor, (void __user *)arg, sizeof(struct ve_ccor_s)))
+            {
+                ret = -EFAULT;
+                break;
+            }
+            ve_set_ccor(&ve_ccor);
+            break;
+        }
+
+        case AMSTREAM_IOC_VE_BENH:
+        {
+            struct ve_benh_s ve_benh;
+            if (copy_from_user(&ve_benh, (void __user *)arg, sizeof(struct ve_benh_s)))
+            {
+                ret = -EFAULT;
+                break;
+            }
+            ve_set_benh(&ve_benh);
+            break;
+        }
+
+        case AMSTREAM_IOC_VE_DEMO:
+        {
+            struct ve_demo_s ve_demo;
+            if (copy_from_user(&ve_demo, (void __user *)arg, sizeof(struct ve_demo_s)))
+            {
+                ret = -EFAULT;
+                break;
+            }
+            ve_set_demo(&ve_demo);
+            break;
+        }
+
+        /**********************************************************************
+        color management ioctl
+        **********************************************************************/
+        case AMSTREAM_IOC_CM_DEBUG:
+        {
+            struct cm_regs_s data;
+            if (copy_from_user(&data, (void __user *)arg, sizeof(struct cm_regs_s)))
+            {
+                ret = -EFAULT;
+            }
+            else
+            {
+                cm_set_regs(&data);
+                if (!(data.mode)) // read
+                {
+                    if (copy_to_user(&data, (void __user *)arg, sizeof(struct cm_regs_s)))
+                    {
+                        ret = -EFAULT;
+                    }
+                }
+            }
+            break;
+        }
+
+        case AMSTREAM_IOC_CM_REGION:
+        {
+            struct cm_region_s cm_region;
+            if (copy_from_user(&cm_region, (void __user *)arg, sizeof(struct cm_region_s)))
+            {
+                ret = -EFAULT;
+                break;
+            }
+            cm_set_region(&cm_region);
+            break;
+        }
+
+        case AMSTREAM_IOC_CM_TOP:
+        {
+            struct cm_top_s cm_top;
+            if (copy_from_user(&cm_top, (void __user *)arg, sizeof(struct cm_top_s)))
+            {
+                ret = -EFAULT;
+                break;
+            }
+            cm_set_top(&cm_top);
+            break;
+        }
+
+        case AMSTREAM_IOC_CM_DEMO:
+        {
+            struct cm_demo_s cm_demo;
+            if (copy_from_user(&cm_demo, (void __user *)arg, sizeof(struct cm_demo_s)))
+            {
+                ret = -EFAULT;
+                break;
+            }
+            cm_set_demo(&cm_demo);
+            break;
+        }
+
         default:
             return -EINVAL;
     }
@@ -1880,7 +2098,7 @@ static int __init video_init(void)
         goto err0;
     }
 #endif
-  
+
 
     /* sysfs node creation */
     r = class_register(&amvideo_class);
@@ -1935,7 +2153,7 @@ err0:
 static void __exit video_exit(void)
 {
     DisableVideoLayer();
-    
+
     vsync_fiq_down();
 
     device_destroy(&amvideo_class, MKDEV(AMVIDEO_MAJOR, 0));

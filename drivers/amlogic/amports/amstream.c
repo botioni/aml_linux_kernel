@@ -437,7 +437,7 @@ static int sub_port_reset(stream_port_t *port,struct stream_buf_s * pbuf)
         psparser_sub_reset();
 
     pbuf->flag |= BUF_FLAG_IN_USE;
-    
+
     return 0;
 }
 
@@ -796,7 +796,7 @@ static ssize_t amstream_sub_read(struct file *file, char __user *buf, size_t cou
         res = copy_to_user((void *)buf_map, (void *)sub_start, data_size - first_num);
         dma_unmap_single(st->class_dev, buf_map, data_size - first_num, DMA_FROM_DEVICE);
         if (res >= 0)
-        {            
+        {
             stbuf_sub_rp_set(sub_start + data_size - first_num - res);
         }
         return data_size-res;
@@ -898,7 +898,7 @@ static int amstream_release(struct inode *inode, struct file *file)
     this->flag=0;
 
     timestamp_pcrscr_set(0);
-    
+
     #ifdef DATA_DEBUG
     if (debug_filp)
     {
@@ -1145,8 +1145,8 @@ static int amstream_ioctl(struct inode *inode, struct file *file,
         case AMSTREAM_IOC_AUDIO_INFO:
 
 			if ((this->type & PORT_TYPE_VIDEO) || (this->type & PORT_TYPE_AUDIO))
-		   	{			  
-		 		copy_from_user(&audio_dec_info, arg, sizeof(audio_dec_info));
+		   	{
+		 		copy_from_user(&audio_dec_info, (void __user *)arg, sizeof(audio_dec_info));
 		   	}
 		   	else
 			   	r = -EINVAL;
@@ -1210,7 +1210,7 @@ static int amstream_ioctl(struct inode *inode, struct file *file,
     case AMSTREAM_IOC_SUB_TYPE:
         sub_type = (int)arg;
         break;
-        
+
         default:
             r = -ENOIOCTLCMD;
     }
@@ -1236,14 +1236,14 @@ static ssize_t ports_show(struct class *class, struct class_attribute *attr, cha
 		if(p->type&PORT_TYPE_ES)		pbuf+=sprintf(pbuf,"%s ","ES");
 		if(p->type&PORT_TYPE_RM)		pbuf+=sprintf(pbuf,"%s ","RM");
 		if(p->type&PORT_TYPE_SUB)	pbuf+=sprintf(pbuf,"%s ","Subtitle");
-		pbuf+=sprintf(pbuf,")\n"); 
+		pbuf+=sprintf(pbuf,")\n");
 		/*flag*/
 		pbuf+=sprintf(pbuf,"\tflag:%d( ",p->flag);
-		if(p->flag&PORT_FLAG_IN_USE)	
+		if(p->flag&PORT_FLAG_IN_USE)
 			pbuf+=sprintf(pbuf,"%s ","Used");
 		else
 			pbuf+=sprintf(pbuf,"%s ","Unused");
-		if(p->flag&PORT_FLAG_INITED)	
+		if(p->flag&PORT_FLAG_INITED)
 			pbuf+=sprintf(pbuf,"%s ","inited");
 		else
 			pbuf+=sprintf(pbuf,"%s ","uninited");
@@ -1273,29 +1273,29 @@ static ssize_t bufs_show(struct class *class, struct class_attribute *attr, char
 		pbuf+=sprintf(pbuf,"%s buffer:",buf_type[p->type]);
 		/*flag*/
 		pbuf+=sprintf(pbuf,"\tflag:%d( ",p->flag);
-		if(p->flag&BUF_FLAG_ALLOC)	
+		if(p->flag&BUF_FLAG_ALLOC)
 			pbuf+=sprintf(pbuf,"%s ","Alloc");
 		else
 			pbuf+=sprintf(pbuf,"%s ","Unalloc");
-		if(p->flag&BUF_FLAG_IN_USE)	
+		if(p->flag&BUF_FLAG_IN_USE)
 			pbuf+=sprintf(pbuf,"%s ","Used");
 		else
 			pbuf+=sprintf(pbuf,"%s ","Noused");
-		if(p->flag&BUF_FLAG_PARSER)	
+		if(p->flag&BUF_FLAG_PARSER)
 			pbuf+=sprintf(pbuf,"%s ","Parser");
 		else
 			pbuf+=sprintf(pbuf,"%s ","noParser");
-		if(p->flag&BUF_FLAG_FIRST_TSTAMP)	
+		if(p->flag&BUF_FLAG_FIRST_TSTAMP)
 			pbuf+=sprintf(pbuf,"%s ","firststamp");
 		else
 			pbuf+=sprintf(pbuf,"%s ","nofirststamp");
 		pbuf+=sprintf(pbuf,")\n");
 		/*buf stats*/
-		
+
 		pbuf+=sprintf(pbuf,"\tbuf addr:%#x\n",p->buf_start);
 		if(p->type!=BUF_TYPE_SUBTITLE)
 		{
-			
+
 			pbuf+=sprintf(pbuf,"\tbuf size:%#x\n",p->buf_size);
 			pbuf+=sprintf(pbuf,"\tbuf regbase:%#lx\n",p->reg_base);
 			pbuf+=sprintf(pbuf,"\tbuf level:%#x\n",stbuf_level(p));
@@ -1320,9 +1320,9 @@ static ssize_t bufs_show(struct class *class, struct class_attribute *attr, char
 			pbuf+=sprintf(pbuf,"\tbuf read pointer:%#x\n",sub_rp);
 			pbuf+=sprintf(pbuf,"\tbuf level:%#x\n",data_size);
 		}
-			
+
 		pbuf+=sprintf(pbuf,"\tbuf first_stamp:%#x\n",p->first_tstamp);
-		
+
 		pbuf+=sprintf(pbuf,"\tbuf wcnt:%#x\n\n",p->wcnt);
 	}
 	return pbuf-buf;
@@ -1344,7 +1344,7 @@ static int  amstream_probe(struct platform_device *pdev)
     stream_port_t *st;
 
     printk("Amlogic A/V streaming port init\n");
-	
+
      r = class_register(&amstream_class);
     if (r) {
         printk("amstream class create fail.\n");
@@ -1354,7 +1354,7 @@ static int  amstream_probe(struct platform_device *pdev)
     if (r) {
         return r;
     }
-	
+
 	r = vdec_dev_register();
 	if (r) {
 		   return r;
@@ -1477,7 +1477,7 @@ void wakeup_sub_poll(void)
 {
     atomic_set(&subdata_ready, 1);
     wake_up_interruptible(&amstream_sub_wait);
-    
+
     return;
 }
 

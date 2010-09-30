@@ -13,8 +13,12 @@
 
 #include <linux/types.h>
 #include <linux/kernel.h>
-#include "vdin_vf.h"
+
+#include <linux/amports/vframe.h>
 #include <linux/amports/vframe_provider.h>
+
+#include "tvin_global.h"
+#include "vdin_vf.h"
 
 
 static vframe_t *vdin_vf_peek(void);
@@ -23,6 +27,7 @@ static void vdin_vf_put(vframe_t *vf);
 
 static vfq_t newframe_q, display_q, recycle_q;
 static struct vframe_s vfpool[BT656IN_VF_POOL_SIZE];
+
 
 
 static inline void ptr_atomic_wrap_inc(u32 *ptr)
@@ -171,7 +176,26 @@ void vdin_unreg_vf_provider(void)
 }
 
 
+#if 0
+/******************************************************************************
+vframe properties definiton
+******************************************************************************/
+static struct vframe_prop_s vfp[VDIN_VF_POOL_MAX_SIZE];
 
 
+struct vframe_prop_s * vdin_get_vframe_prop(u32 index)
+{
+    if (index < VDIN_VF_POOL_MAX_SIZE)
+    {
+        return vfp[index];
+    }
+    else
+    {
+        return NULL;
+    }
+}
 
+EXPORT_SYMBOL(vdin_get_vframe_prop);
+
+#endif
 

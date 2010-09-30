@@ -831,6 +831,52 @@ static inline void vdin_set_blackbar(struct vdin_bbar_cfg_s  *blkbar_cfg)
     vdin_reset_blackbar();
 }
 
+static ulong vdin_reg_limit(ulong val, ulong wid)
+{
+    if (val < (1<<wid))
+        return(val);
+    else
+        return((1<<wid)-1);
+}
+
+static void vdin_set_regs(struct vdin_regs_s *p)
+{
+    if (!(p->mode)) // read
+    {
+        switch (p->port)
+        {
+            case 0:    // direct access
+                p->val = READ_CBUS_REG_BITS(p->reg, p->bit, p->wid);
+                break;
+            case 1:    // reserved
+                break;
+            case 2:    // reserved
+                break;
+            case 3:    // reserved
+                break;
+            default:   // NA
+                break;
+        }
+    }
+    else               // write
+    {
+        switch (p->port)
+        {
+            case 0:    // direct access
+                WRITE_CBUS_REG_BITS(p->reg, vdin_reg_limit(p->val, p->wid), p->bit, p->wid);
+                break;
+            case 1:    // reserved
+                break;
+            case 2:    // reserved
+                break;
+            case 3:    // reserved
+                break;
+            default:   // NA
+                break;
+        }
+    }
+}
+
 
 static void vdin_put_timer_func(unsigned long arg)
 {
@@ -975,13 +1021,116 @@ static void vdin_stop_dec(struct vdin_dev_s *devp)
     vdin_release_canvas(devp);
 }
 
+static void vdin_run_dec(struct vdin_dev_s *devp, struct vframe_s *vf)
+{
+    switch (devp->src_mux_cfg.src)
+    {
+        case VDIN_SRC_MPEG:
+            break;
+        case VDIN_SRC_BT656IN:
+        case VDIN_SRC_CAMERA:
+            amvdec_656_601_camera_in_run(vf);
+            break;
+        case VDIN_SRC_TVFE:
+            break;
+        case VDIN_SRC_CVD2:
+            break;
+        case VDIN_SRC_HDMIRX:
+            break;
+        default:
+            break;
+    }
+}
+
+
 /**
  * set the properties of vframe in the structure vframe_t.
  *
 **/
-static void set_vframe_prop_info(vframe_t *vf)
+static void vdin_set_vframe_prop_info(vframe_t *vf)
 {
-    /* @todo... */
+    // fetch hist info
+    //vf->prop.hist.luma_sum   = READ_CBUS_REG_BITS(VDIN_HIST_SPL_VAL,     HIST_LUMA_SUM_BIT,    HIST_LUMA_SUM_WID   );
+    vf->prop.hist.luma_sum   = READ_CBUS_REG(VDIN_HIST_SPL_VAL);
+    //vf->prop.hist.chroma_sum = READ_CBUS_REG_BITS(VDIN_HIST_CHROMA_SUM,  HIST_CHROMA_SUM_BIT,  HIST_CHROMA_SUM_WID );
+    vf->prop.hist.chroma_sum = READ_CBUS_REG(VDIN_HIST_CHROMA_SUM);
+    vf->prop.hist.pixel_sum  = READ_CBUS_REG_BITS(VDIN_HIST_SPL_PIX_CNT, HIST_PIX_CNT_BIT,     HIST_PIX_CNT_WID    );
+    vf->prop.hist.pixel_sum |= READ_CBUS_REG_BITS(VDIN_HIST_CTRL,        HIST_POW_BIT,         HIST_POW_WID        ) << 30;
+    vf->prop.hist.luma_max   = READ_CBUS_REG_BITS(VDIN_HIST_MAX_MIN,     HIST_MAX_BIT,         HIST_MAX_WID        );
+    vf->prop.hist.luma_min   = READ_CBUS_REG_BITS(VDIN_HIST_MAX_MIN,     HIST_MIN_BIT,         HIST_MIN_WID        );
+    vf->prop.hist.gamma[0]   = READ_CBUS_REG_BITS(VDIN_DNLP_HIST00,      HIST_ON_BIN_00_BIT,   HIST_ON_BIN_00_WID  );
+    vf->prop.hist.gamma[1]   = READ_CBUS_REG_BITS(VDIN_DNLP_HIST00,      HIST_ON_BIN_01_BIT,   HIST_ON_BIN_01_WID  );
+    vf->prop.hist.gamma[2]   = READ_CBUS_REG_BITS(VDIN_DNLP_HIST01,      HIST_ON_BIN_02_BIT,   HIST_ON_BIN_02_WID  );
+    vf->prop.hist.gamma[3]   = READ_CBUS_REG_BITS(VDIN_DNLP_HIST01,      HIST_ON_BIN_03_BIT,   HIST_ON_BIN_03_WID  );
+    vf->prop.hist.gamma[4]   = READ_CBUS_REG_BITS(VDIN_DNLP_HIST02,      HIST_ON_BIN_04_BIT,   HIST_ON_BIN_04_WID  );
+    vf->prop.hist.gamma[5]   = READ_CBUS_REG_BITS(VDIN_DNLP_HIST02,      HIST_ON_BIN_05_BIT,   HIST_ON_BIN_05_WID  );
+    vf->prop.hist.gamma[6]   = READ_CBUS_REG_BITS(VDIN_DNLP_HIST03,      HIST_ON_BIN_06_BIT,   HIST_ON_BIN_06_WID  );
+    vf->prop.hist.gamma[7]   = READ_CBUS_REG_BITS(VDIN_DNLP_HIST03,      HIST_ON_BIN_07_BIT,   HIST_ON_BIN_07_WID  );
+    vf->prop.hist.gamma[8]   = READ_CBUS_REG_BITS(VDIN_DNLP_HIST04,      HIST_ON_BIN_08_BIT,   HIST_ON_BIN_08_WID  );
+    vf->prop.hist.gamma[9]   = READ_CBUS_REG_BITS(VDIN_DNLP_HIST04,      HIST_ON_BIN_09_BIT,   HIST_ON_BIN_09_WID  );
+    vf->prop.hist.gamma[10]  = READ_CBUS_REG_BITS(VDIN_DNLP_HIST05,      HIST_ON_BIN_10_BIT,   HIST_ON_BIN_10_WID  );
+    vf->prop.hist.gamma[11]  = READ_CBUS_REG_BITS(VDIN_DNLP_HIST05,      HIST_ON_BIN_11_BIT,   HIST_ON_BIN_11_WID  );
+    vf->prop.hist.gamma[12]  = READ_CBUS_REG_BITS(VDIN_DNLP_HIST06,      HIST_ON_BIN_12_BIT,   HIST_ON_BIN_12_WID  );
+    vf->prop.hist.gamma[13]  = READ_CBUS_REG_BITS(VDIN_DNLP_HIST06,      HIST_ON_BIN_13_BIT,   HIST_ON_BIN_13_WID  );
+    vf->prop.hist.gamma[14]  = READ_CBUS_REG_BITS(VDIN_DNLP_HIST07,      HIST_ON_BIN_14_BIT,   HIST_ON_BIN_14_WID  );
+    vf->prop.hist.gamma[15]  = READ_CBUS_REG_BITS(VDIN_DNLP_HIST07,      HIST_ON_BIN_15_BIT,   HIST_ON_BIN_15_WID  );
+    vf->prop.hist.gamma[16]  = READ_CBUS_REG_BITS(VDIN_DNLP_HIST08,      HIST_ON_BIN_16_BIT,   HIST_ON_BIN_16_WID  );
+    vf->prop.hist.gamma[17]  = READ_CBUS_REG_BITS(VDIN_DNLP_HIST08,      HIST_ON_BIN_17_BIT,   HIST_ON_BIN_17_WID  );
+    vf->prop.hist.gamma[18]  = READ_CBUS_REG_BITS(VDIN_DNLP_HIST09,      HIST_ON_BIN_18_BIT,   HIST_ON_BIN_18_WID  );
+    vf->prop.hist.gamma[19]  = READ_CBUS_REG_BITS(VDIN_DNLP_HIST09,      HIST_ON_BIN_19_BIT,   HIST_ON_BIN_19_WID  );
+    vf->prop.hist.gamma[20]  = READ_CBUS_REG_BITS(VDIN_DNLP_HIST10,      HIST_ON_BIN_20_BIT,   HIST_ON_BIN_20_WID  );
+    vf->prop.hist.gamma[21]  = READ_CBUS_REG_BITS(VDIN_DNLP_HIST10,      HIST_ON_BIN_21_BIT,   HIST_ON_BIN_21_WID  );
+    vf->prop.hist.gamma[22]  = READ_CBUS_REG_BITS(VDIN_DNLP_HIST11,      HIST_ON_BIN_22_BIT,   HIST_ON_BIN_22_WID  );
+    vf->prop.hist.gamma[23]  = READ_CBUS_REG_BITS(VDIN_DNLP_HIST11,      HIST_ON_BIN_23_BIT,   HIST_ON_BIN_23_WID  );
+    vf->prop.hist.gamma[24]  = READ_CBUS_REG_BITS(VDIN_DNLP_HIST12,      HIST_ON_BIN_24_BIT,   HIST_ON_BIN_24_WID  );
+    vf->prop.hist.gamma[25]  = READ_CBUS_REG_BITS(VDIN_DNLP_HIST12,      HIST_ON_BIN_25_BIT,   HIST_ON_BIN_25_WID  );
+    vf->prop.hist.gamma[26]  = READ_CBUS_REG_BITS(VDIN_DNLP_HIST13,      HIST_ON_BIN_26_BIT,   HIST_ON_BIN_26_WID  );
+    vf->prop.hist.gamma[27]  = READ_CBUS_REG_BITS(VDIN_DNLP_HIST13,      HIST_ON_BIN_27_BIT,   HIST_ON_BIN_27_WID  );
+    vf->prop.hist.gamma[28]  = READ_CBUS_REG_BITS(VDIN_DNLP_HIST14,      HIST_ON_BIN_28_BIT,   HIST_ON_BIN_28_WID  );
+    vf->prop.hist.gamma[29]  = READ_CBUS_REG_BITS(VDIN_DNLP_HIST14,      HIST_ON_BIN_29_BIT,   HIST_ON_BIN_29_WID  );
+    vf->prop.hist.gamma[30]  = READ_CBUS_REG_BITS(VDIN_DNLP_HIST15,      HIST_ON_BIN_30_BIT,   HIST_ON_BIN_30_WID  );
+    vf->prop.hist.gamma[31]  = READ_CBUS_REG_BITS(VDIN_DNLP_HIST15,      HIST_ON_BIN_31_BIT,   HIST_ON_BIN_31_WID  );
+    vf->prop.hist.gamma[32]  = READ_CBUS_REG_BITS(VDIN_DNLP_HIST16,      HIST_ON_BIN_32_BIT,   HIST_ON_BIN_32_WID  );
+    vf->prop.hist.gamma[33]  = READ_CBUS_REG_BITS(VDIN_DNLP_HIST16,      HIST_ON_BIN_33_BIT,   HIST_ON_BIN_33_WID  );
+    vf->prop.hist.gamma[34]  = READ_CBUS_REG_BITS(VDIN_DNLP_HIST17,      HIST_ON_BIN_34_BIT,   HIST_ON_BIN_34_WID  );
+    vf->prop.hist.gamma[35]  = READ_CBUS_REG_BITS(VDIN_DNLP_HIST17,      HIST_ON_BIN_35_BIT,   HIST_ON_BIN_35_WID  );
+    vf->prop.hist.gamma[36]  = READ_CBUS_REG_BITS(VDIN_DNLP_HIST18,      HIST_ON_BIN_36_BIT,   HIST_ON_BIN_36_WID  );
+    vf->prop.hist.gamma[37]  = READ_CBUS_REG_BITS(VDIN_DNLP_HIST18,      HIST_ON_BIN_37_BIT,   HIST_ON_BIN_37_WID  );
+    vf->prop.hist.gamma[38]  = READ_CBUS_REG_BITS(VDIN_DNLP_HIST19,      HIST_ON_BIN_38_BIT,   HIST_ON_BIN_38_WID  );
+    vf->prop.hist.gamma[39]  = READ_CBUS_REG_BITS(VDIN_DNLP_HIST19,      HIST_ON_BIN_39_BIT,   HIST_ON_BIN_39_WID  );
+    vf->prop.hist.gamma[40]  = READ_CBUS_REG_BITS(VDIN_DNLP_HIST20,      HIST_ON_BIN_40_BIT,   HIST_ON_BIN_40_WID  );
+    vf->prop.hist.gamma[41]  = READ_CBUS_REG_BITS(VDIN_DNLP_HIST20,      HIST_ON_BIN_41_BIT,   HIST_ON_BIN_41_WID  );
+    vf->prop.hist.gamma[42]  = READ_CBUS_REG_BITS(VDIN_DNLP_HIST21,      HIST_ON_BIN_42_BIT,   HIST_ON_BIN_42_WID  );
+    vf->prop.hist.gamma[43]  = READ_CBUS_REG_BITS(VDIN_DNLP_HIST21,      HIST_ON_BIN_43_BIT,   HIST_ON_BIN_43_WID  );
+    vf->prop.hist.gamma[44]  = READ_CBUS_REG_BITS(VDIN_DNLP_HIST22,      HIST_ON_BIN_44_BIT,   HIST_ON_BIN_44_WID  );
+    vf->prop.hist.gamma[45]  = READ_CBUS_REG_BITS(VDIN_DNLP_HIST22,      HIST_ON_BIN_45_BIT,   HIST_ON_BIN_45_WID  );
+    vf->prop.hist.gamma[46]  = READ_CBUS_REG_BITS(VDIN_DNLP_HIST23,      HIST_ON_BIN_46_BIT,   HIST_ON_BIN_46_WID  );
+    vf->prop.hist.gamma[47]  = READ_CBUS_REG_BITS(VDIN_DNLP_HIST23,      HIST_ON_BIN_47_BIT,   HIST_ON_BIN_47_WID  );
+    vf->prop.hist.gamma[48]  = READ_CBUS_REG_BITS(VDIN_DNLP_HIST24,      HIST_ON_BIN_48_BIT,   HIST_ON_BIN_48_WID  );
+    vf->prop.hist.gamma[49]  = READ_CBUS_REG_BITS(VDIN_DNLP_HIST24,      HIST_ON_BIN_49_BIT,   HIST_ON_BIN_49_WID  );
+    vf->prop.hist.gamma[50]  = READ_CBUS_REG_BITS(VDIN_DNLP_HIST25,      HIST_ON_BIN_50_BIT,   HIST_ON_BIN_50_WID  );
+    vf->prop.hist.gamma[51]  = READ_CBUS_REG_BITS(VDIN_DNLP_HIST25,      HIST_ON_BIN_51_BIT,   HIST_ON_BIN_51_WID  );
+    vf->prop.hist.gamma[52]  = READ_CBUS_REG_BITS(VDIN_DNLP_HIST26,      HIST_ON_BIN_52_BIT,   HIST_ON_BIN_52_WID  );
+    vf->prop.hist.gamma[53]  = READ_CBUS_REG_BITS(VDIN_DNLP_HIST26,      HIST_ON_BIN_53_BIT,   HIST_ON_BIN_53_WID  );
+    vf->prop.hist.gamma[54]  = READ_CBUS_REG_BITS(VDIN_DNLP_HIST27,      HIST_ON_BIN_54_BIT,   HIST_ON_BIN_54_WID  );
+    vf->prop.hist.gamma[55]  = READ_CBUS_REG_BITS(VDIN_DNLP_HIST27,      HIST_ON_BIN_55_BIT,   HIST_ON_BIN_55_WID  );
+    vf->prop.hist.gamma[56]  = READ_CBUS_REG_BITS(VDIN_DNLP_HIST28,      HIST_ON_BIN_56_BIT,   HIST_ON_BIN_56_WID  );
+    vf->prop.hist.gamma[57]  = READ_CBUS_REG_BITS(VDIN_DNLP_HIST28,      HIST_ON_BIN_57_BIT,   HIST_ON_BIN_57_WID  );
+    vf->prop.hist.gamma[58]  = READ_CBUS_REG_BITS(VDIN_DNLP_HIST29,      HIST_ON_BIN_58_BIT,   HIST_ON_BIN_58_WID  );
+    vf->prop.hist.gamma[59]  = READ_CBUS_REG_BITS(VDIN_DNLP_HIST29,      HIST_ON_BIN_59_BIT,   HIST_ON_BIN_59_WID  );
+    vf->prop.hist.gamma[60]  = READ_CBUS_REG_BITS(VDIN_DNLP_HIST30,      HIST_ON_BIN_60_BIT,   HIST_ON_BIN_60_WID  );
+    vf->prop.hist.gamma[61]  = READ_CBUS_REG_BITS(VDIN_DNLP_HIST30,      HIST_ON_BIN_61_BIT,   HIST_ON_BIN_61_WID  );
+    vf->prop.hist.gamma[62]  = READ_CBUS_REG_BITS(VDIN_DNLP_HIST31,      HIST_ON_BIN_62_BIT,   HIST_ON_BIN_62_WID  );
+    vf->prop.hist.gamma[63]  = READ_CBUS_REG_BITS(VDIN_DNLP_HIST31,      HIST_ON_BIN_63_BIT,   HIST_ON_BIN_63_WID  );
+
+    // fetch bbar info
+    vf->prop.bbar.top        = READ_CBUS_REG_BITS(VDIN_BLKBAR_STATUS0,   BLKBAR_TOP_POS_BIT,   BLKBAR_TOP_POS_WID  );
+    vf->prop.bbar.bottom     = READ_CBUS_REG_BITS(VDIN_BLKBAR_STATUS0,   BLKBAR_BTM_POS_BIT,   BLKBAR_BTM_POS_WID  );
+    vf->prop.bbar.left       = READ_CBUS_REG_BITS(VDIN_BLKBAR_STATUS1,   BLKBAR_LEFT_POS_BIT,  BLKBAR_LEFT_POS_WID );
+    vf->prop.bbar.right      = READ_CBUS_REG_BITS(VDIN_BLKBAR_STATUS1,   BLKBAR_RIGHT_POS_BIT, BLKBAR_RIGHT_POS_WID);
+
+    // fetch meas info - For M2 or further chips only, not for M1 chip
+    vf->prop.meas.frin       = 0;
 }
 
 
@@ -996,52 +1145,13 @@ static irqreturn_t vdin_isr(int irq, void *dev_id)
 
     if(vf == NULL)
     {
-#if 0
-        switch (devp->src_mux_cfg.src)
-        {
-            case VDIN_SRC_MPEG:
-                break;
-            /* enable bt656in engineer, otherwise the next interrupt
-               will not be triggered. */
-            case VDIN_SRC_BT656IN:
-            case VDIN_SRC_CAMERA:
-                WRITE_CBUS_REG_BITS(BT_CTRL, 1,BT_EN_BIT, 1);
-                break;
-            case VDIN_SRC_TVFE:
-                break;
-            case VDIN_SRC_CVD2:
-                break;
-            case VDIN_SRC_HDMIRX:
-                break;
-            default:
-                break;
-        }
-#endif
         pr_dbg("vdin_isr: don't get newframe \n");
     }
     else
     {
         vf->type = 0xffffffff;
-
-        switch (devp->src_mux_cfg.src)
-        {
-            case VDIN_SRC_MPEG:
-                break;
-            case VDIN_SRC_BT656IN:
-            case VDIN_SRC_CAMERA:
-                amvdec_656_601_camera_in_run(vf);
-                break;
-            case VDIN_SRC_TVFE:
-                break;
-            case VDIN_SRC_CVD2:
-                break;
-            case VDIN_SRC_HDMIRX:
-                break;
-            default:
-                break;
-        }
-
-        set_vframe_prop_info(vf);
+        vdin_run_dec(devp, vf);
+        vdin_set_vframe_prop_info(vf);
 
         //If vf->type ( --reture value )is 0xffffffff, the current field is error
         if(vf->type == 0xffffffff)
@@ -1071,7 +1181,7 @@ static int vdin_open(struct inode *inode, struct file *file)
     devp = container_of(inode->i_cdev, vdin_dev_t, cdev);
     file->private_data = devp;
 
-    return 0;
+    return ret;
 }
 
 static int vdin_release(struct inode *inode, struct file *file)
@@ -1079,7 +1189,7 @@ static int vdin_release(struct inode *inode, struct file *file)
     vdin_dev_t *devp = file->private_data;
     file->private_data = NULL;
 
-    printk(KERN_ERR "vdin: device release ok.\n");
+    printk(KERN_ERR "vdin: device %d release ok.\n", devp->index);
     return 0;
 }
 
@@ -1237,6 +1347,29 @@ static int vdin_ioctl(struct inode *inode, struct file *file, unsigned int cmd, 
             vdin_stop_dec(devp);
             free_irq(INT_VDIN_VSYNC,(void *)vdin_irq_id);
             break;
+#if 1
+        case VDIN_IOC_DEBUG:
+        {
+            struct vdin_regs_s data;
+            if (copy_from_user(&data, (void __user *)arg, sizeof(struct vdin_regs_s)))
+            {
+                ret = -EFAULT;
+            }
+            else
+            {
+                vdin_set_regs(&data);
+                if (!(data.mode)) // read
+                {
+                    if (copy_to_user(&data, (void __user *)arg, sizeof(struct vdin_regs_s)))
+                    {
+                        ret = -EFAULT;
+                    }
+                }
+            }
+            break;
+        }
+#endif
+
         default:
             ret = -ENOIOCTLCMD;
             break;

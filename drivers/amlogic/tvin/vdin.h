@@ -272,6 +272,22 @@ typedef struct vdin_matrix_lup_s {
     unsigned int post_offset2;
 } vdin_matrix_lup_t;
 
+
+typedef struct vdin_regs_s {
+    unsigned int val  : 32;
+    unsigned int reg  : 14;
+    unsigned int port :  2; // port port_addr            port_data            remark
+                        // 0    NA                   NA                   direct access
+                        // 1    VPP_CHROMA_ADDR_PORT VPP_CHROMA_DATA_PORT CM port registers
+                        // 2    NA                   NA                   reserved
+                        // 3    NA                   NA                   reserved
+    unsigned int bit  :  5;
+    unsigned int wid  :  5;
+    unsigned int mode :  1; // 0:read, 1:write
+    unsigned int rsv  :  5;
+} vdin_regs_t;
+
+
 // ***************************************************************************
 // *** IOCTL command definitions *****************************************
 // ***************************************************************************
