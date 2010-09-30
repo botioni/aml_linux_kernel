@@ -381,16 +381,6 @@ int osd_notify_callback(struct notifier_block *block, unsigned long cmd , void *
 
 	switch(cmd)
 	{
-		case  VOUT_EVENT_MODE_CHANGE:
-		amlog_mask_level(LOG_MASK_PARA,LOG_LEVEL_LOW,"recevie change mode  message \r\n");
-		for(i=0;i<OSD_COUNT;i++)
-		{
-			if(NULL==(fb_dev=gp_fbdev_list[i])) continue;
-			set_default_display_axis(&fb_dev->fb_info->var,&fb_dev->osd_ctl,vinfo);
-			osddev_set(fb_dev);
-		}
-		break;
-
 		case VOUT_EVENT_OSD_BLANK:
 		blank=*(int*)para ;	
 		for(i=0;i<OSD_COUNT;i++)
