@@ -153,7 +153,7 @@ osd_set_par(struct fb_info *info)
 		osd_ctrl->disp_end_y=end - 1; 
 	}
 	osddev_set((struct myfb_dev *)info->par);
-       return  0;
+	return  0;
 }
 
 static int
@@ -341,31 +341,6 @@ static struct fb_ops osd_ops = {
 	.fb_pan_display = osd_pan_display,
 	.fb_sync        = osd_sync,
 };
-void  set_default_display_axis(struct fb_var_screeninfo *var,osd_ctl_t *osd_ctrl,const vinfo_t *vinfo)
-{
-	
-	osd_ctrl->disp_start_x=0;
-	osd_ctrl->disp_start_y=0;
-	if(var->xres > vinfo->width)
-	{
-		osd_ctrl->disp_end_x=vinfo->width- 1 ;//screen axis 
-	}
-	else
-	{
-		osd_ctrl->disp_end_x=var->xres- 1 ;//screen axis 
-	}
-	if(var->yres > vinfo->height)
-	{
-		osd_ctrl->disp_end_y=vinfo->height- 1 ;
-	}
-	else
-	{
-		osd_ctrl->disp_end_y=var->yres- 1 ;//screen axis 
-	}
-	return ;
-	
-
-}
 
 void  set_default_display_axis(struct fb_var_screeninfo *var,osd_ctl_t *osd_ctrl,const vinfo_t *vinfo)
 {
