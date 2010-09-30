@@ -74,7 +74,7 @@ extern int osddev_setcolreg(unsigned regno, u16 red, u16 green, u16 blue,
         
 extern void osddev_enable(int enable,int index);
 
-extern void osddev_pan_display(struct myfb_dev *fbdev);
+extern void osddev_pan_display(struct fb_var_screeninfo *var,struct fb_info *fbi);
 
 #if defined (CONFIG_FB_OSD2_CURSOR)
 extern void osddev_cursor(struct myfb_dev *fbdev, u16 x, u16 y);
