@@ -47,6 +47,10 @@ dsp_register.h
 #define DSP_DECODE_OUT_WD_ADDR  		DSP_REG(12)
 #define DSP_AUDIOINFO_STATUS              DSP_REG(13)
 #define DSP_SLEEP_STATUS                DSP_REG(14)
+//#define DEBUG_TIME_TEST
+#ifdef DEBUG_TIME_TEST
+#define DSP_TEST_TIME_VALUE                DSP_REG(15)
+#endif
 #define MAILBOX1_REG(n)	DSP_REG(40+n)
 #define MAILBOX2_REG(n)	DSP_REG(40+32+n)
 

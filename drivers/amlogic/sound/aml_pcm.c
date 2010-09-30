@@ -451,8 +451,13 @@ static int snd_aml_audio_playback_trigger(struct snd_pcm_substream
 //printk("snd_aml_audio_playback_ack\n");
 //      return 0;
 //}
-
+#ifdef DEBUG_TIME_TEST
+int debug_time_value=0;
+int debug_time_loop=0;
+#endif
 #define VOL_CTL(s) ( unsigned short)((unsigned int)(((signed short)(s))*(vol))>>VOLUME_SHIFT)
+//#define VOL_CTL(s) s
+
 static int snd_aml_audio_playback_copy(struct snd_pcm_substream *substream,
                                        int channel, snd_pcm_uframes_t pos,
                                        void __user * buf,
@@ -462,13 +467,28 @@ static int snd_aml_audio_playback_copy(struct snd_pcm_substream *substream,
     int res = 0;
     int n;
     int i = 0, j = 0;
+#ifdef DEBUG_TIME_TEST
+	int debug_temp_value=0;
+#endif
     register unsigned  int vol =(audio_mixer_control.output_volume*(1<<VOLUME_SHIFT))/VOLUME_SCALE;
     struct snd_pcm_runtime *runtime = substream->runtime;
     char *hwbuf = runtime->dma_area + frames_to_bytes(runtime, pos);
     //snd_assert(runtime->dma_area, return -EFAULT);
     //      if (copy_from_user(hwbuf, buf, frames_to_bytes(runtime, frames)))
     //              return -EFAULT;
- 
+#ifdef DEBUG_TIME_TEST
+    debug_time_loop++;
+	if(debug_time_loop>500)
+	{
+		debug_temp_value=DSP_RD(DSP_TEST_TIME_VALUE);
+		if(debug_temp_value!=debug_time_value)
+		{	
+			debug_time_value=debug_temp_value;
+			printk("[DEBUG TIME TEST]:+++++++++++++++++debug_time_value=%d\n",debug_time_value);
+		}
+		debug_time_loop=0;
+	}
+#endif
     tfrom = (unsigned short *)buf;
     to = (unsigned short *)hwbuf;
     n = frames_to_bytes(runtime, count);
