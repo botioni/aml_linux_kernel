@@ -22,6 +22,8 @@
 #ifndef VFRAME_PROVIDER_H
 #define VFRAME_PROVIDER_H
 
+#include <linux/amports/vframe.h>
+
 typedef struct vframe_provider_s {
     vframe_t * (*peek)(void);
     vframe_t * (*get )(void);

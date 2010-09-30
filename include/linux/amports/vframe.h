@@ -47,44 +47,50 @@
 #define DISP_RATIO_ASPECT_RATIO_MAX     0x3ff
 
 
+
+
 /*
- * Histogram (36 words)
- * If pixel_sum == 0, then all Histogram information are invalid
+ * If pixel_sum[21:0] == 0, then all Histogram information are invalid
  */
 typedef struct vframe_hist_s
 {
     unsigned int   luma_sum;
     unsigned int   chroma_sum;
-    unsigned int   pixel_sum;
+    unsigned int   pixel_sum;  // [31:30] POW [21:0] PIXEL_SUM
     unsigned char  luma_max;
     unsigned char  luma_min;
-    unsigned short rsv_s;
-    unsigned short region_cnt[64];
+    unsigned short gamma[64];
 } vframe_hist_t;
 
+
 /*
- * Blackbar (2 words)
  * If bottom == 0 or right == 0, then all Blackbar information are invalid
  */
-typedef struct vframe_blkbar_s
+typedef struct vframe_bbar_s
 {
     unsigned short top;
     unsigned short bottom;
     unsigned short left;
     unsigned short right;
-} vfame_blkbar_t;
+} vfame_bbar_t;
+
 
 /*
- * Meas (M2 only, 1 word)
  * If vsin == 0, then all Measurement information are invalid
  */
 typedef struct vframe_meas_s
 {
-    float          vsin;      // (Hz)
-    // reserved (1 word)
-    unsigned int   rsv_i;
+    float          frin;      // Frame Rate of Video Input in the unit of Hz
 } vframe_meas_t;
 
+
+/* vframe properties */
+typedef struct vframe_prop_s
+{
+    struct vframe_hist_s hist;
+    struct vframe_bbar_s bbar;
+    struct vframe_meas_s meas;
+} vframe_prop_t;
 
 typedef struct vframe_s {
     u32 index;
@@ -103,11 +109,15 @@ typedef struct vframe_s {
     u32 height;
     u32 ratio_control;
 
+#if 1
     /* vframe properties */
-    struct vframe_hist_s hist;
-    struct vframe_blkbar_s bbar;
-    struct vframe_meas_s meas;
+    struct vframe_prop_s prop;
+#endif
 } vframe_t;
+
+#if 0
+struct vframe_prop_s * vdin_get_vframe_prop(u32 index);
+#endif
 
 #endif /* VFRAME_H */
 
