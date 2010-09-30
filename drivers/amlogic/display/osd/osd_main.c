@@ -341,6 +341,31 @@ static struct fb_ops osd_ops = {
 	.fb_pan_display = osd_pan_display,
 	.fb_sync        = osd_sync,
 };
+void  set_default_display_axis(struct fb_var_screeninfo *var,osd_ctl_t *osd_ctrl,const vinfo_t *vinfo)
+{
+	
+	osd_ctrl->disp_start_x=0;
+	osd_ctrl->disp_start_y=0;
+	if(var->xres > vinfo->width)
+	{
+		osd_ctrl->disp_end_x=vinfo->width- 1 ;//screen axis 
+	}
+	else
+	{
+		osd_ctrl->disp_end_x=var->xres- 1 ;//screen axis 
+	}
+	if(var->yres > vinfo->height)
+	{
+		osd_ctrl->disp_end_y=vinfo->height- 1 ;
+	}
+	else
+	{
+		osd_ctrl->disp_end_y=var->yres- 1 ;//screen axis 
+	}
+	return ;
+	
+
+}
 
 void  set_default_display_axis(struct fb_var_screeninfo *var,osd_ctl_t *osd_ctrl,const vinfo_t *vinfo)
 {
@@ -382,13 +407,15 @@ int osd_notify_callback(struct notifier_block *block, unsigned long cmd , void *
 	switch(cmd)
 	{
 		case  VOUT_EVENT_MODE_CHANGE:
-                amlog_mask_level(LOG_MASK_PARA,LOG_LEVEL_LOW,"recevie change mode  message \r\n");
-                for(i=0;i<OSD_COUNT;i++)
-                {
-                        if(NULL==(fb_dev=gp_fbdev_list[i])) continue;
-                        osddev_set(fb_dev);
-                }
-                break;
+		amlog_mask_level(LOG_MASK_PARA,LOG_LEVEL_LOW,"recevie change mode  message \r\n");
+		for(i=0;i<OSD_COUNT;i++)
+		{
+			if(NULL==(fb_dev=gp_fbdev_list[i])) continue;
+			set_default_display_axis(&fb_dev->fb_info->var,&fb_dev->osd_ctl,vinfo);
+			osddev_set(fb_dev);
+		}
+		break;
+
 		case VOUT_EVENT_OSD_BLANK:
 		blank=*(int*)para ;	
 		for(i=0;i<OSD_COUNT;i++)
