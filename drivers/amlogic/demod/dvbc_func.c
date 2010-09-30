@@ -117,8 +117,17 @@ void dvbc_get_test_out(u8 sel, u32 len, u32 *buf)
 
     dvbc_set_test_bus(sel);
 
-    for (i=0; i<len; i++) {
+    for (i=0; i<len-4; i++) {
 	buf[i] = apb_read_reg(0, 0xb0);
+	if (buf[i]>>11&1) {
+	    buf[i++] = apb_read_reg(0, 0xb0);
+	    buf[i++] = apb_read_reg(0, 0xb0);
+	    buf[i++] = apb_read_reg(0, 0xb0);
+	    buf[i++] = apb_read_reg(0, 0xb0);
+	}
+	else {
+	    i--;
+	}
     }
 }
 
