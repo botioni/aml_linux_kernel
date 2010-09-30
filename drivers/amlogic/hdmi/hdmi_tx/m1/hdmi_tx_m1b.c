@@ -1225,7 +1225,9 @@ static int hdmitx_m1b_set_dispmode(Hdmi_tx_video_para_t *param)
     }
 
     printk("set mode\n");
+#ifdef ENABLE_HDCP
     hdmi_wr_reg(TX_HDCP_MODE, hdmi_rd_reg(TX_HDCP_MODE)&(~0x80)); //disable authentication
+#endif    
     check_chip_type(); /* check chip_type again */
     if((hdmi_chip_type == HDMI_M1B)&&(color_depth_f != 0)){
         if(color_depth_f==24)
@@ -1407,9 +1409,9 @@ static int hdmitx_m1b_set_dispmode(Hdmi_tx_video_para_t *param)
     else{
         ret = -1;
     }
-    
+#ifdef ENABLE_HDCP
     hdmi_wr_reg(TX_HDCP_MODE, hdmi_rd_reg(TX_HDCP_MODE)|0x80); //enable authentication
-    
+#endif    
     return ret;
 }    
 

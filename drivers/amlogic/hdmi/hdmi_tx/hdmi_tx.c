@@ -200,13 +200,16 @@ static ssize_t show_disp_cap(struct device * dev, struct device_attribute *attr,
     char* disp_mode_t[]={"480i","480p","720p","1080i","1080p",NULL};
     char* native_disp_mode = hdmitx_edid_get_native_VIC(&hdmitx_device);
     HDMI_Video_Codes_t vic;
-    if(native_disp_mode){
-        pos += snprintf(buf+pos, PAGE_SIZE,"%s\n",native_disp_mode);
-        for(i=0; disp_mode_t[i]; i++){
-            vic = hdmitx_edid_get_VIC(&hdmitx_device, disp_mode_t[i], 0);
-            if( vic != HDMI_Unkown){
-                pos += snprintf(buf+pos, PAGE_SIZE,"%s\n",disp_mode_t[i]);
+    for(i=0; disp_mode_t[i]; i++){
+        vic = hdmitx_edid_get_VIC(&hdmitx_device, disp_mode_t[i], 0);
+        if( vic != HDMI_Unkown){
+            pos += snprintf(buf+pos, PAGE_SIZE,"%s",disp_mode_t[i]);
+            if(native_disp_mode&&(strcmp(native_disp_mode, disp_mode_t[i])==0)){
+                pos += snprintf(buf+pos, PAGE_SIZE,"*\n");
             }
+            else{
+                pos += snprintf(buf+pos, PAGE_SIZE,"\n");
+            }                
         }
     }
     return pos;    
