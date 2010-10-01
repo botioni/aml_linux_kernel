@@ -97,7 +97,6 @@ static int clk_set_rate_other_pll(struct clk *clk, unsigned long rate)
     return ret;
 }
 
-
 static int clk_set_rate_clk81(struct clk *clk, unsigned long rate)
 {
     unsigned long r = rate;
@@ -107,9 +106,10 @@ static int clk_set_rate_clk81(struct clk *clk, unsigned long rate)
 	
     if (r < 1000)
         r = r * 1000000;
+
 	father_clk = clk_get_sys("clk_other_pll", NULL);
 	r1=clk_get_rate(father_clk);
-	if(r1!=r*2)
+	if(r1!=r*4)
 		{
 			ret=father_clk->set_rate(father_clk,r*2);
 			if(ret!=0)
@@ -117,9 +117,9 @@ static int clk_set_rate_clk81(struct clk *clk, unsigned long rate)
 		}
 	clk->rate=r;
 	/*for current it is alway equal=otherclk/2*/
-	WRITE_MPEG_REG(HHI_MPEG_CLK_CNTL,   // MPEG clk81 set to other/2
+	WRITE_MPEG_REG(HHI_MPEG_CLK_CNTL,   // MPEG clk81 set to other/4
 						(1 << 12) |                     // select other PLL
-						((3 - 1) << 0 ) |    // div1
+						((4 - 1) << 0 ) |    // div1
 						(1 << 7 ) |                     // cntl_hi_mpeg_div_en, enable gating
 						(1 << 8 )                    // Connect clk81 to the PLL divider output
 					);
@@ -343,3 +343,27 @@ static int __init a9_clock_setup(char *ptr)
 }
 __setup("a9_clk=",a9_clock_setup);
 
+static int __init clk81_clock_setup(char *ptr)
+{
+	init_clock=clkparse(ptr,0);
+    if (other_pll_setting(0, init_clock*4) == 0) {
+        int baudrate = (init_clock / (115200 * 4)) - 1;
+
+        clk_other_pll.rate = init_clock*4;
+        clk81.rate = init_clock;
+
+        WRITE_MPEG_REG(HHI_MPEG_CLK_CNTL,   // MPEG clk81 set to other/4
+		    (1 << 12) |                     // select other PLL
+			((4 - 1) << 0 ) |               // div1
+			(1 << 7 ) |                     // cntl_hi_mpeg_div_en, enable gating
+			(1 << 8 ));                     // Connect clk81 to the PLL divider output
+
+        CLEAR_CBUS_REG_MASK(UART0_CONTROL, (1 << 19) | 0xFFF);
+        SET_CBUS_REG_MASK(UART0_CONTROL, (baudrate & 0xfff));
+        CLEAR_CBUS_REG_MASK(UART1_CONTROL, (1 << 19) | 0xFFF);
+        SET_CBUS_REG_MASK(UART1_CONTROL, (baudrate & 0xfff));
+	}
+
+	return 0;
+}
+__setup("clk81=",clk81_clock_setup);
