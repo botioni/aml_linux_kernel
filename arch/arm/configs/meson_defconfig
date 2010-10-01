@@ -1,7 +1,7 @@
 #
 # Automatically generated make config: don't edit
 # Linux kernel version: 2.6.34
-# Wed Sep 29 12:07:54 2010
+# Thu Sep 30 15:09:40 2010
 #
 CONFIG_ARM=y
 CONFIG_HOLES_IN_ZONE=y
@@ -497,7 +497,7 @@ CONFIG_AM_UART=y
 #
 # Amlogic RTC support
 #
-# CONFIG_AML_RTC is not set
+CONFIG_AML_RTC=y
 # CONFIG_I2C_APOLLO is not set
 # CONFIG_I2C_AML is not set
 CONFIG_I2C_SW_AML=y
@@ -516,6 +516,9 @@ CONFIG_I2C_SW_AML=y
 # Amlogic USB Support
 #
 CONFIG_USB_DWC_OTG_HCD=y
+CONFIG_USB_HOST_ELECT_TEST=y
+# CONFIG_DWC_USB_NO_SOF is not set
+CONFIG_DWC_USB_NAK_IN_TIMER=y
 
 #
 # Amlogic SATA Support
@@ -543,6 +546,11 @@ CONFIG_SD_MMC=y
 # AMLOGIC NAND Flash  support
 #
 # CONFIG_AM_NAND is not set
+
+#
+# AMLOGIC DEMOD Support
+#
+# CONFIG_AM_DEMOD is not set
 
 #
 # Network devices
@@ -636,6 +644,12 @@ CONFIG_SND_AML=y
 # Mali 400 GPU OpenGL device driver
 #
 CONFIG_MALI=m
+
+#
+# AMLOGIC DVB driver
+#
+# CONFIG_AM_DVB is not set
+# CONFIG_AM_GX1001 is not set
 CONFIG_CONNECTOR=y
 CONFIG_PROC_EVENTS=y
 CONFIG_MTD=m

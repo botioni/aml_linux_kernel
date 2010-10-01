@@ -395,7 +395,7 @@ static void card_queue_bounce_post(struct card_queue *cq)
 	
 	sg_copy_from_buffer(cq->bounce_sg, cq->bounce_sg_len,
 		cq->bounce_buf, cq->sg[0].length);
-		
+
 	local_irq_restore(flags);
 	
 	bio_flush_dcache_pages(cq->req->bio);

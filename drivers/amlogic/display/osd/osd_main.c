@@ -554,7 +554,7 @@ osd_probe(struct platform_device *pdev)
 			{
 				mydef_var[index].bits_per_pixel=32;
 			}
-		}else{
+		} else {
 			mydef_var[index].xres=1200;
 			mydef_var[index].yres=690;
 			mydef_var[index].xres_virtual=1200;
