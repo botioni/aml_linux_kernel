@@ -1,7 +1,7 @@
 #
 # Automatically generated make config: don't edit
 # Linux kernel version: 2.6.34
-# Thu Sep 30 15:09:40 2010
+# Thu Sep 30 17:07:10 2010
 #
 CONFIG_ARM=y
 CONFIG_HOLES_IN_ZONE=y
@@ -516,9 +516,9 @@ CONFIG_I2C_SW_AML=y
 # Amlogic USB Support
 #
 CONFIG_USB_DWC_OTG_HCD=y
-CONFIG_USB_HOST_ELECT_TEST=y
-# CONFIG_DWC_USB_NO_SOF is not set
-CONFIG_DWC_USB_NAK_IN_TIMER=y
+# CONFIG_USB_HOST_ELECT_TEST is not set
+CONFIG_DWC_USB_NO_SOF=y
+# CONFIG_DWC_USB_NAK_IN_TIMER is not set
 
 #
 # Amlogic SATA Support
@@ -628,7 +628,7 @@ CONFIG_SND_AML=y
 #
 # Amlogic audio dsp process 
 #
-# CONFIG_AML_AUDIO_DSP is not set
+CONFIG_AML_AUDIO_DSP=y
 
 #
 # AMLOGIC Physical memory allocator
