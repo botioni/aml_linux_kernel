@@ -11,15 +11,15 @@
 #include "tmCompId.h"
 #include "tmFrontEnd.h"
 #include "tmbslFrontEndTypes.h"
-#include "tmsysFrontEndTypes.h"
+#include "tmbslNT220HN.h"
 
 struct aml_demod_i2c *I2C_adap;
 
 //*--------------------------------------------------------------------------------------
 //* Include Driver files
 //*--------------------------------------------------------------------------------------
-#include "tmsysOM3869.h"
-#include "tmbslNT220HN.h"
+//#include "tmsysOM3869.h"
+
 
 //*--------------------------------------------------------------------------------------
 //* Prototype of function to be provided by customer
@@ -33,113 +33,91 @@ tmErrorCode_t  	UserWrittenMutexDeInit( ptmbslFrontEndMutexHandle pMutex);
 tmErrorCode_t  	UserWrittenMutexAcquire(ptmbslFrontEndMutexHandle pMutex, UInt32 timeOut);
 tmErrorCode_t  	UserWrittenMutexRelease(ptmbslFrontEndMutexHandle pMutex);
 
-
 //*--------------------------------------------------------------------------------------
 //* Function Name       : Main
 //* Object              : Software entry point
 //* Input Parameters    : none.
 //* Output Parameters   : none.
 //*--------------------------------------------------------------------------------------
+int init_tuner_fj2207(struct aml_demod_sta *demod_sta, 
+		      struct aml_demod_i2c *adap)
+{
+    tmErrorCode_t err = TM_OK;
+    tmbslFrontEndDependency_t sSrvTunerFunc;
+
+    I2C_adap = adap;
+    
+    /* Low layer struct set-up to link with user written functions */
+    sSrvTunerFunc.sIo.Write             = UserWrittenI2CWrite;
+    sSrvTunerFunc.sIo.Read              = UserWrittenI2CRead;
+    sSrvTunerFunc.sTime.Get             = Null;
+    sSrvTunerFunc.sTime.Wait            = UserWrittenWait;
+    sSrvTunerFunc.sDebug.Print          = UserWrittenPrint;
+    sSrvTunerFunc.sMutex.Init           = UserWrittenMutexInit;
+    sSrvTunerFunc.sMutex.DeInit         = UserWrittenMutexDeInit;
+    sSrvTunerFunc.sMutex.Acquire        = UserWrittenMutexAcquire;
+    sSrvTunerFunc.sMutex.Release        = UserWrittenMutexRelease;
+    sSrvTunerFunc.dwAdditionalDataSize  = 0;
+    sSrvTunerFunc.pAdditionalData       = Null;
+   
+    printk("FJ2207: tmbslNT220xInit\n");
+    err = tmbslNT220xInit(0, &sSrvTunerFunc);
+    if(err != TM_OK) 
+	return err;
+    
+    printk("FJ2207: tmbslNT220xReset\n");
+    err = tmbslNT220xReset(0);
+    if(err != TM_OK) 
+	return err;
+
+    return err;
+}
+
 int set_tuner_fj2207(struct aml_demod_sta *demod_sta, 
 		     struct aml_demod_i2c *adap)
-{//* Begin
-   /* Variable declarations */
-   tmErrorCode_t err = TM_OK;
-   tmbslFrontEndDependency_t sSrvTunerFunc;
-   tmTunerOnlyRequest_t TuneRequest;
-   tmsysFrontEndState_t  LockStatus;
-   tmUnitSelect_t  Tuner_Master = 0;
-#ifdef SLAVETUNER
-   tmUnitSelect_t  Tuner_Slave= 1;
-#endif
+{
+    tmErrorCode_t err = TM_OK;
+    tmNT220xStandardMode_t StandardMode;
+    tmbslFrontEndState_t PLLLock;
+    UInt32 tmp;
+
     unsigned long ch_freq;
     int ch_if;
     int ch_bw;
-
+    
     ch_freq = demod_sta->ch_freq; // kHz
     ch_if   = demod_sta->ch_if;   // kHz 
     ch_bw   = demod_sta->ch_bw / 1000; // MHz
 
     printk("Set Tuner FJ2207 to %ld kHz\n", ch_freq);
-   
-   I2C_adap = adap;
+    ch_freq *= 1000; // Hz
 
-/* Low layer struct set-up to link with user written functions */
-   sSrvTunerFunc.sIo.Write             = UserWrittenI2CWrite;
-   sSrvTunerFunc.sIo.Read              = UserWrittenI2CRead;
-   sSrvTunerFunc.sTime.Get             = Null;
-   sSrvTunerFunc.sTime.Wait            = UserWrittenWait;
-   sSrvTunerFunc.sDebug.Print          = UserWrittenPrint;
-   sSrvTunerFunc.sMutex.Init           = UserWrittenMutexInit;
-   sSrvTunerFunc.sMutex.DeInit         = UserWrittenMutexDeInit;
-   sSrvTunerFunc.sMutex.Acquire        = UserWrittenMutexAcquire;
-   sSrvTunerFunc.sMutex.Release        = UserWrittenMutexRelease;
-   sSrvTunerFunc.dwAdditionalDataSize  = 0;
-   sSrvTunerFunc.pAdditionalData       = Null;
-   
-   /* OM3869 Master Driver low layer setup */
-   err = tmsysOM3869Init(Tuner_Master, &sSrvTunerFunc);
-   if(err != TM_OK)
-       return err;
-#ifdef SLAVETUNER
-   /* OM3869 Slave Driver low layer setup */
-   err = tmsysOM3869Init(Tuner_Slave, &sSrvTunerFunc);
-   if(err != TM_OK)
-       return err;
-#endif   
-   /* OM3869 Master Hardware power state */
-   err = tmsysOM3869SetPowerState(Tuner_Master, tmPowerOn);
+    StandardMode = demod_sta->dvb_mode==0 ?
+	tmNT220x_QAM_8MHz : tmNT220x_DVBT_8MHz;
 
-   /* OM3869 Master Hardware initialization */
-   err = tmsysOM3869Reset(Tuner_Master);
-   if(err != TM_OK)
-       return err;
-#ifdef SLAVETUNER   
-   /* OM3869 Slave Hardware power state */
-   err = tmsysOM3869SetPowerState(Tuner_Slave, tmPowerOn);
+    printk("StandardMode : %d\n", StandardMode);
+    err = tmbslNT220xSetStandardMode(0, StandardMode);
+    if(err != TM_OK) 
+	return err;
 
-   /* OM3869 Slave Hardware initialization */
-   err = tmsysOM3869Reset(Tuner_Slave);
-   if(err != TM_OK)
-       return err;
-#endif   
+    printk("RF : %lu\n", ch_freq);
+    err = tmbslNT220xSetRf(0, ch_freq);
+    if(err != TM_OK) 
+	return err;
 
-   TuneRequest.dwFrequency = ch_freq * 1000; 
-   TuneRequest.dwStandard = demod_sta->dvb_mode==0 ?
-       tmNT220x_QAM_8MHz : tmNT220x_DVBT_8MHz;
+    printk("Get Lock ----------------------------------------\n");
+    err = tmbslNT220xGetLockStatus(0, &PLLLock);
+    if(err != TM_OK) 
+	return err;
+    printk("Lock : %d\n", PLLLock);
 
-   err = tmsysOM3869SendRequest(Tuner_Master,&TuneRequest,sizeof(TuneRequest), TRT_TUNER_ONLY );
-   if(err != TM_OK)
-       return err;
-   /* OM3869 Master Get locked status */
-   err = tmsysOM3869GetLockStatus(Tuner_Master,&LockStatus);
-   if(err != TM_OK)
-       return err;
-  
-#ifdef SLAVETUNER   
-  /* OM3869 Slave Send Request 770 MHz standard DVB-C 8 Mhz */
-   TuneRequest.dwFrequency = 770000000;
-   TuneRequest.dwStandard = tmNT220x_QAM_8MHz;
-   err = tmsysOM3869SendRequest(Tuner_Slave,&TuneRequest,sizeof(TuneRequest), TRT_TUNER_ONLY );
-   if(err != TM_OK)
-       return err;
-   /* OM3869 Slave Get locked status */
-   err = tmsysOM3869GetLockStatus(Tuner_Slave,&LockStatus);
-   if(err != TM_OK)
-       return err;
+    err = tmbslNT220xGetIF(0, &tmp);
+    if(err != TM_OK) 
+	return err;
+    printk("IF : %lu\n", tmp);
 
-/* To clean OM3869 driver */
-
-/* DeInitialize OM3869 Slave Driver */
-   err = tmsysOM3869DeInit(Tuner_Slave);
-#endif
-
-/* DeInitialize OM3869 Master Driver */
-//uncomment this if required//   err = tmsysOM3869DeInit(Tuner_Master);
-
-   return err;
-
-}//* End
+    return err;
+}
 
 //*--------------------------------------------------------------------------------------
 //* Template of function to be provided by customer
@@ -237,8 +215,6 @@ tmErrorCode_t UserWrittenPrint(UInt32 level, const char* format, ...)
 {
     /* Variable declarations */
     tmErrorCode_t err = TM_OK;
-
-    printk("printk .... called!\n");
 
 /* Customer code here */
 /* ...*/

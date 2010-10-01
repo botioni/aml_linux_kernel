@@ -31,6 +31,8 @@
 #ifndef TMBSLFRONTENDTYPES_H
 #define TMBSLFRONTENDTYPES_H
 
+#include <linux/kernel.h>
+
 /*============================================================================*/
 /*                       INCLUDE FILES                                        */
 /*============================================================================*/
@@ -251,7 +253,7 @@ typedef struct tmSWSettingsVersion
 }
 #else
 //#define tmDBGPRINTEx(_level, _format, ...)
-#define tmDBGPRINTEx(_level, _format, ... /*__VA_ARGS__*/) //alex 2009Aug21 , __FUNCTION__
+#define tmDBGPRINTEx(_level, _format, _data) { printk(_format, _data); } 
 #endif
 
 #define tmASSERTExTR(_retVar, _expr, _strings)                                                      \
