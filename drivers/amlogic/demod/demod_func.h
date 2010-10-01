@@ -83,6 +83,11 @@ void dvbt_enable_irq (int dvbt_irq);
 void dvbt_disable_irq(int dvbt_irq);
 void dvbt_isr(struct aml_demod_sta *demod_sta);
 
+int init_tuner_fj2207(struct aml_demod_sta *demod_sta, 
+		      struct aml_demod_i2c *adap);
+int set_tuner_fj2207(struct aml_demod_sta *demod_sta, 
+		     struct aml_demod_i2c *adap);
+
 // i2c functions
 int test_bus(struct aml_demod_i2c *adap, char *name);
 int bit_xfer(struct aml_demod_i2c *adap, struct i2c_msg *msgs, int num);

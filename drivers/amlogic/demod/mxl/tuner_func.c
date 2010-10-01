@@ -4,9 +4,6 @@
 #include "../demod_func.h"
 #include "MxL5007_API.h"
 
-int set_tuner_fj2207(struct aml_demod_sta *demod_sta, 
-		     struct aml_demod_i2c *adap);
-
 static int set_tuner_MxL5007(struct aml_demod_sta *demod_sta, 
 			     struct aml_demod_i2c *adap)
 {

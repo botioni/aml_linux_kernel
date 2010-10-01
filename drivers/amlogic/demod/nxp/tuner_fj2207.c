@@ -1,6 +1,3 @@
-//*--------------------------------------------------------------------------------------
-//* Include Standard files
-//*--------------------------------------------------------------------------------------
 #include <linux/kernel.h>
 #include <linux/delay.h>
 #include <linux/i2c.h>
@@ -16,12 +13,6 @@
 struct aml_demod_i2c *I2C_adap;
 
 //*--------------------------------------------------------------------------------------
-//* Include Driver files
-//*--------------------------------------------------------------------------------------
-//#include "tmsysOM3869.h"
-
-
-//*--------------------------------------------------------------------------------------
 //* Prototype of function to be provided by customer
 //*--------------------------------------------------------------------------------------
 tmErrorCode_t 	UserWrittenI2CRead(tmUnitSelect_t tUnit,UInt32 AddrSize, UInt8* pAddr,UInt32 ReadLen, UInt8* pData);
@@ -33,12 +24,6 @@ tmErrorCode_t  	UserWrittenMutexDeInit( ptmbslFrontEndMutexHandle pMutex);
 tmErrorCode_t  	UserWrittenMutexAcquire(ptmbslFrontEndMutexHandle pMutex, UInt32 timeOut);
 tmErrorCode_t  	UserWrittenMutexRelease(ptmbslFrontEndMutexHandle pMutex);
 
-//*--------------------------------------------------------------------------------------
-//* Function Name       : Main
-//* Object              : Software entry point
-//* Input Parameters    : none.
-//* Output Parameters   : none.
-//*--------------------------------------------------------------------------------------
 int init_tuner_fj2207(struct aml_demod_sta *demod_sta, 
 		      struct aml_demod_i2c *adap)
 {
@@ -60,12 +45,10 @@ int init_tuner_fj2207(struct aml_demod_sta *demod_sta,
     sSrvTunerFunc.dwAdditionalDataSize  = 0;
     sSrvTunerFunc.pAdditionalData       = Null;
    
-    printk("FJ2207: tmbslNT220xInit\n");
     err = tmbslNT220xInit(0, &sSrvTunerFunc);
     if(err != TM_OK) 
 	return err;
     
-    printk("FJ2207: tmbslNT220xReset\n");
     err = tmbslNT220xReset(0);
     if(err != TM_OK) 
 	return err;
@@ -73,48 +56,57 @@ int init_tuner_fj2207(struct aml_demod_sta *demod_sta,
     return err;
 }
 
+char *NT220x_mode_name[] = {
+    "DVBT_6MHz ",
+    "DVBT_7MHz ",
+    "DVBT_8MHz ",
+    "QAM_6MHz  ",
+    "QAM_8MHz  ",
+    "ISDBT_6MHz",
+    "ATSC_6MHz ",
+    "DMBT_8MHz ",
+    "ScanXpress",
+    "Mode_Max  "};
+
 int set_tuner_fj2207(struct aml_demod_sta *demod_sta, 
 		     struct aml_demod_i2c *adap)
 {
     tmErrorCode_t err = TM_OK;
     tmNT220xStandardMode_t StandardMode;
     tmbslFrontEndState_t PLLLock;
-    UInt32 tmp;
+    UInt32 ch_if;
 
     unsigned long ch_freq;
-    int ch_if;
     int ch_bw;
     
     ch_freq = demod_sta->ch_freq; // kHz
-    ch_if   = demod_sta->ch_if;   // kHz 
     ch_bw   = demod_sta->ch_bw / 1000; // MHz
 
     printk("Set Tuner FJ2207 to %ld kHz\n", ch_freq);
     ch_freq *= 1000; // Hz
 
     StandardMode = demod_sta->dvb_mode==0 ?
-	tmNT220x_QAM_8MHz : tmNT220x_DVBT_8MHz;
+	(ch_bw<8 ? tmNT220x_QAM_6MHz : tmNT220x_QAM_8MHz) : 
+	(ch_bw-6 + tmNT220x_DVBT_6MHz);
 
-    printk("StandardMode : %d\n", StandardMode);
+    printk("Mode: %s\n", NT220x_mode_name[StandardMode]);
     err = tmbslNT220xSetStandardMode(0, StandardMode);
     if(err != TM_OK) 
 	return err;
 
-    printk("RF : %lu\n", ch_freq);
     err = tmbslNT220xSetRf(0, ch_freq);
     if(err != TM_OK) 
 	return err;
 
-    printk("Get Lock ----------------------------------------\n");
     err = tmbslNT220xGetLockStatus(0, &PLLLock);
     if(err != TM_OK) 
 	return err;
-    printk("Lock : %d\n", PLLLock);
 
-    err = tmbslNT220xGetIF(0, &tmp);
+    err = tmbslNT220xGetIF(0, &ch_if);
     if(err != TM_OK) 
 	return err;
-    printk("IF : %lu\n", tmp);
+    demod_sta->ch_if = ch_if / 1000;
+    printk("IF: %d kHz\n", demod_sta->ch_if);
 
     return err;
 }

@@ -300,6 +300,8 @@ int demod_set_sys(struct aml_demod_sta *demod_sta,
     }
     else {
 	test_bus(demod_i2c, "i2c");
+	if (demod_i2c->tuner == 3)
+	    init_tuner_fj2207(demod_sta, demod_i2c);
     }
 
     return ret;
