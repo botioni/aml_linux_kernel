@@ -1073,6 +1073,64 @@ static void hdmi_hw_reset(Hdmi_tx_video_para_t *param)
 
 static void hdmi_audio_init(unsigned char spdif_flag)
 {
+    unsigned tmp_add_data;
+#if 1
+    /* If TX_AUDIO_FORMAT is set as 0, "Channel Status" will not be sent out correctly */
+    /* TX_AUDIO_CONTROL[bit 0] should be 1, otherwise no sound??? */
+    if(spdif_flag){
+        tmp_add_data  = 0;
+        tmp_add_data |= TX_I2S_SPDIF    << 7; // [7]    I2S or SPDIF
+        tmp_add_data |= TX_I2S_8_CHANNEL<< 6; // [6]    8 or 2ch
+        tmp_add_data |= 2               << 4; // [5:4]  Serial Format: I2S format
+        tmp_add_data |= 3               << 2; // [3:2]  Bit Width: 24-bit
+        tmp_add_data |= 1               << 1; // [1]    WS Polarity: 1=WS high is left
+        tmp_add_data |= 1               << 0; // [0]    For I2S: 0=one-bit audio; 1=I2S;
+                                              //        For SPDIF: 0= channel status from input data; 1=from register
+        hdmi_wr_reg(TX_AUDIO_FORMAT, tmp_add_data); // 0x2f
+    
+        tmp_add_data  = 0;
+        tmp_add_data |= 0x4 << 4; // [7:4]  FIFO Depth=512
+        tmp_add_data |= 0x2 << 2; // [3:2]  Critical threshold=Depth/16
+        tmp_add_data |= 0x1 << 0; // [1:0]  Normal threshold=Depth/8
+        hdmi_wr_reg(TX_AUDIO_FIFO, tmp_add_data); // 0x49
+    
+        hdmi_wr_reg(TX_AUDIO_LIPSYNC, 0); // [7:0] Normalized lip-sync param: 0 means S(lipsync) = S(total)/2
+    
+        tmp_add_data  = 0;
+        tmp_add_data |= 0   << 7; // [7]    forced_audio_fifo_clear
+        tmp_add_data |= 1   << 6; // [6]    auto_audio_fifo_clear
+        tmp_add_data |= 0x0 << 4; // [5:4]  audio_packet_type: 0=audio sample packet; 1=one bit audio; 2=HBR audio packet; 3=DST audio packet.
+        tmp_add_data |= 0   << 3; // [3]    Rsrv
+        tmp_add_data |= 0   << 2; // [2]    Audio sample packet's valid bit: 0=valid bit is 0 for I2S, is input data for SPDIF; 1=valid bit from register
+        tmp_add_data |= 0   << 1; // [1]    Audio sample packet's user bit: 0=user bit is 0 for I2S, is input data for SPDIF; 1=user bit from register
+        tmp_add_data |= 0   << 0; // [0]    0=Audio sample packet's sample_flat bit is 1; 1=sample_flat is 0.
+        hdmi_wr_reg(TX_AUDIO_CONTROL, tmp_add_data); // 0x40
+    
+        tmp_add_data  = 0;
+        tmp_add_data |= TX_I2S_8_CHANNEL<< 7; // [7]    Audio sample packet's header layout bit: 0=layout0; 1=layout1
+        tmp_add_data |= 0               << 6; // [6]    Set normal_double bit in DST packet header.
+        tmp_add_data |= 0               << 0; // [5:0]  Rsrv
+        hdmi_wr_reg(TX_AUDIO_HEADER, tmp_add_data); // 0x00
+    
+        tmp_add_data  = TX_I2S_8_CHANNEL ? 0xff : 0x03;
+        hdmi_wr_reg(TX_AUDIO_SAMPLE, tmp_add_data); // Channel valid for up to 8 channels, 1 bit per channel.
+    
+        hdmi_wr_reg(TX_AUDIO_PACK, 0x01); // Enable audio sample packets
+    
+        // Set N = 4096 (N is not measured, N must be configured so as to be a reference to clock_meter)
+        hdmi_wr_reg(TX_SYS1_ACR_N_0, 0x00); // N[7:0]
+        hdmi_wr_reg(TX_SYS1_ACR_N_1, 0x18 /*0x10*/); // N[15:8]
+    
+        tmp_add_data  = 0;
+        tmp_add_data |= 0xa << 4;    // [7:4] Meas Tolerance
+        tmp_add_data |= 0x0 << 0;    // [3:0] N[19:16]
+        hdmi_wr_reg(TX_SYS1_ACR_N_2, tmp_add_data); // 0xa0
+    
+        hdmi_wr_reg(TX_AUDIO_CONTROL,   hdmi_rd_reg(TX_AUDIO_CONTROL)|0x1); 
+    }
+#else
+/* reference register setting */
+/* this register setting works for spdif_flag==1*/
     if(spdif_flag){
         hdmi_wr_reg(TX_AUDIO_CONTROL,   0x40);  // Address  0x5D=0x40   TX_AUDIO_CONTROL
         hdmi_wr_reg(TX_AUDIO_FIFO,   0x1 );  // Address  0x5B=0x1    TX_AUDIO_FIFO
@@ -1133,7 +1191,8 @@ static void hdmi_audio_init(unsigned char spdif_flag)
         hdmi_wr_reg(TX_SYS1_ACR_N_2,                    0x0 ); //Address  0x1E=0x0
         hdmi_wr_reg(TX_SYS1_ACR_N_1,                    0x2D); //Address  0x1D=0x2D
         hdmi_wr_reg(TX_SYS1_ACR_N_0,                    0x80); //Address  0x1C=0x80
-    }   
+    } 
+#endif      
 }
 
 static void enable_audio_spdif(void)
@@ -1143,6 +1202,8 @@ static void enable_audio_spdif(void)
         Wr( AIU_958_CTRL, 0x0240 );
 
     /* enable audio*/        
+        hdmi_wr_reg(TX_AUDIO_I2S,   0x0 );  // Address  0x5A=0x0    TX_AUDIO_I2S
+
         hdmi_wr_reg(TX_AUDIO_SPDIF, 1); // TX AUDIO SPDIF Enable
 
         Wr(AIU_CLK_CTRL,        Rd(AIU_CLK_CTRL) | 2); // enable iec958 clock which is audio_master_clk
@@ -1496,48 +1557,9 @@ static void hdmitx_m1b_setaudioinfoframe(unsigned char* AUD_DB, unsigned char* C
     if(CHAN_STAT_BUF){
         for(i=0;i<24;i++){
             hdmi_wr_reg(TX_IEC60958_SUB1_OFFSET+i, CHAN_STAT_BUF[i]);        
-            hdmi_wr_reg(TX_IEC60958_SUB2_OFFSET+i, CHAN_STAT_BUF[i]);
+            hdmi_wr_reg(TX_IEC60958_SUB2_OFFSET+i, CHAN_STAT_BUF[24+i]);
         }
     }
-
-#if 0        
-#if 0        
-        hdmi_wr_reg(TX_IEC60958_SUB1_OFFSET+0x3, 0x2);
-        hdmi_wr_reg(TX_IEC60958_SUB2_OFFSET+0x3, 0x2);
-#else
-        for(i=0;i<24;i++){
-            hdmi_wr_reg(TX_IEC60958_SUB1_OFFSET+i, 0);        
-            hdmi_wr_reg(TX_IEC60958_SUB2_OFFSET+i, 0);
-        }
-        hdmi_wr_reg(TX_IEC60958_SUB1_OFFSET+0x2, 0x11);
-        hdmi_wr_reg(TX_IEC60958_SUB2_OFFSET+0x2, 0x11);
-        hdmi_wr_reg(TX_IEC60958_SUB1_OFFSET+0x3, 0x2);
-        hdmi_wr_reg(TX_IEC60958_SUB2_OFFSET+0x3, 0x2);
-        hdmi_wr_reg(TX_IEC60958_SUB1_OFFSET+0x4, 0xd2);
-        hdmi_wr_reg(TX_IEC60958_SUB2_OFFSET+0x4, 0xd2);
-        
-#endif        
-
-        hdmi_wr_reg(TX_PKT_REG_AUDIO_INFO_BASE_ADDR+0x1F, 0x00ff); // Enable audio info frame
-        if (TX_I2S_SPDIF == 0) {
-            // TX Channel Status
-            //0xB0 - 00000000;     //0xC8 - 00000000;
-            //0xB1 - 00000000;     //0xC9 - 00000000;
-            //0xB2 - 00011000;     //0xCA - 00101000;
-            //0xB3 - 00000000;     //0xCB - 00000000;
-            //0xB4 - 11111011;     //0xCC - 11111011;
-            hdmi_wr_reg(TX_IEC60958_SUB1_OFFSET+0x00, 0x0000);
-            hdmi_wr_reg(TX_IEC60958_SUB1_OFFSET+0x01, 0x0000);
-            hdmi_wr_reg(TX_IEC60958_SUB1_OFFSET+0x02, 0x0018);
-            hdmi_wr_reg(TX_IEC60958_SUB1_OFFSET+0x03, 0x0000);
-            hdmi_wr_reg(TX_IEC60958_SUB1_OFFSET+0x04, 0x00fb);
-            hdmi_wr_reg(TX_IEC60958_SUB2_OFFSET+0x00, 0x0000);
-            hdmi_wr_reg(TX_IEC60958_SUB2_OFFSET+0x01, 0x0000);
-            hdmi_wr_reg(TX_IEC60958_SUB2_OFFSET+0x02, 0x0028);
-            hdmi_wr_reg(TX_IEC60958_SUB2_OFFSET+0x03, 0x0000);
-            hdmi_wr_reg(TX_IEC60958_SUB2_OFFSET+0x04, 0x00fb);
-        }
-#endif    
 }
     
 static int hdmitx_m1b_set_audmode(struct hdmi_tx_dev_s* hdmitx_device, Hdmi_tx_audio_para_t* audio_param)
