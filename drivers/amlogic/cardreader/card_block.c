@@ -355,8 +355,8 @@ void card_ndma_copy(void *to, void *from, size_t n, int to_buffer)
 	dmac_map_area(card_desc, PAGE_SIZE, DMA_TO_DEVICE);
 	dma_desc = virt_to_dma(NULL, card_desc);
 
-	dmac_map_area(phys_to_virt(from), n, DMA_FROM_DEVICE);
-	dmac_map_area(phys_to_virt(to), n, DMA_FROM_DEVICE);
+	dmac_map_area(from, n, DMA_FROM_DEVICE);
+	dmac_map_area(to, n, DMA_FROM_DEVICE);
 	
 	//reset table add reg
 	WRITE_CBUS_REG(NDMA_TABLE_ADD_REG, 0);
@@ -462,9 +462,9 @@ static size_t card_sg_copy_buffer(struct scatterlist *sgl, unsigned int nents,
 		len = min(miter.length, buflen - offset);
 
 		if (to_buffer)
-			card_ndma_copy(buf + offset, virt_to_phys(miter.addr), len, to_buffer);
+			card_ndma_copy(buf + offset, miter.addr, len, to_buffer);
 		else
-			card_ndma_copy(virt_to_phys(miter.addr), buf + offset, len, to_buffer);
+			card_ndma_copy(miter.addr, buf + offset, len, to_buffer);
 
 		offset += len;
 	}
