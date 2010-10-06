@@ -26,10 +26,10 @@
 #define VIDEO_WIDEOPTION_WIDE       1
 
 typedef  struct {
-	int x ;
-	int y ;
-	int w ;
-	int h ;
+	s32 x ;
+	s32 y ;
+	s32 w ;
+	s32 h ;
 } disp_rect_t;
 
 #endif /* VIDEO_H */

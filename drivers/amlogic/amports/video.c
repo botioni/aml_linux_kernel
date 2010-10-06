@@ -1622,77 +1622,68 @@ const static struct file_operations amvideo_fops = {
 #define AMVIDEO_CLASS_NAME "video"
 
 static DEFINE_MUTEX(video_module_mutex);
-static char video_axis[40];
+
 static char video_screen_mode[40];
 
-static int *parse_para(char *para, char *para_num)
+static int parse_para(const char *para, int para_num, int *result)
 {
-    static unsigned int buffer[MAX_NUMBER_PARA];
     char *endp;
-    int *pt = NULL;
+    const char *startp = para;
+    int *out = result;
     int len = 0, count = 0;
 
-    if (!para)
-        return NULL;
+    if (!startp)
+        return 0;
 
-    memset(buffer, 0, sizeof(buffer));
-
-    pt = &buffer[0];
-
-    len = strlen(para);
-
-    endp = (char *)buffer;
+    len = strlen(startp);
 
     do {
         //filter space out
-        while (para && (isspace(*para) || !isalnum(*para)) && len) {
-            para++;
+        while (startp && (isspace(*startp) || !isalnum(*startp)) && len) {
+            startp++;
             len--;
         }
 
         if (len == 0)
             break;
 
-        *pt++ = simple_strtoul(para, &endp, 0);
+        *out++ = simple_strtol(startp, &endp, 0);
 
-        para = endp;
+        len -= endp - startp;
+        startp = endp;
+        count++;
 
-        len = strlen(para);
+    } while ((endp) && (count < para_num) && (len > 0));
 
-    } while ((endp) && (++count < *para_num) && (count < MAX_NUMBER_PARA));
-
-    *para_num = count;
-
-    return buffer;
+    return count;
 }
 
-static void set_video_window(char *para)
+static void set_video_window(const char *para)
 {
-    char count = 4;
-    disp_rect_t disp_rect;
-    int *pt = &disp_rect.x;
+    int parsed[4];
 
-    //parse window para .
-    memcpy(pt, parse_para(para, &count), sizeof(disp_rect_t));
+    if (likely(parse_para(para, 4, parsed) == 4)) {
+        int w, h;
+
+        w = parsed[2] - parsed[0] + 1;
+        h = parsed[3] - parsed[1] + 1;
+
+        if ((w > 0) && (h > 0))
+            vpp_set_video_layer_position(parsed[0], parsed[1], w, h);
+    }
 
     amlog_mask(LOG_MASK_SYSFS,
-    	"video=>x0:%d ,y0:%d,x1:%d,y1:%d\r\n ",
-        *pt, *(pt + 1), *(pt + 2), *(pt + 3));
-
-    vpp_set_video_layer_position(*pt, *(pt + 1), *(pt + 2), *(pt + 3));
+    	"video=>x0:%d,y0:%d,x1:%d,y1:%d\r\n ",
+        parsed[0], parsed[1], parsed[2], parsed[3]);
 }
 
 static ssize_t video_axis_show(struct class *cla, struct class_attribute *attr, char *buf)
 {
-    disp_rect_t disp_rect;
-    int *pt = &disp_rect.x;
+    int x, y, w, h;
 
-    vpp_get_video_layer_position(pt, pt + 1, pt + 2, pt + 3);
+    vpp_get_video_layer_position(&x, &y, &w, &h);
 
-    sprintf(video_axis, "%d %d %d %d",
-            disp_rect.x, disp_rect.y, disp_rect.w, disp_rect.h);
-
-    return snprintf(buf, 40, "%s\n", video_axis);
+    return snprintf(buf, 40, "%d %d %d %d\n", x, y, x+w-1, y+h-1);
 }
 
 static ssize_t video_axis_store(struct class *cla, struct class_attribute *attr, const char *buf,
@@ -1700,13 +1691,9 @@ static ssize_t video_axis_store(struct class *cla, struct class_attribute *attr,
 {
     mutex_lock(&video_module_mutex);
 
-    snprintf(video_axis, 40, "%s", buf);
+    set_video_window(buf);
 
     mutex_unlock(&video_module_mutex);
-
-    set_video_window(video_axis);
-
-    video_property_changed = true;
 
     return strnlen(buf, count);
 }

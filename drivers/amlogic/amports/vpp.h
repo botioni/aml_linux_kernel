@@ -109,9 +109,9 @@ vpp_set_filters(u32 wide_mode, vframe_t * vf,
                 vpp_frame_par_t * next_frame_par, const vinfo_t *vinfo);
 
 extern void
-vpp_set_video_layer_position(s32 x0, s32 y0, s32 x1, s32 y1);
+vpp_set_video_layer_position(s32 x, s32 y, s32 w, s32 h);
 
 extern void
-vpp_get_video_layer_position(s32 *x0, s32 *y0, s32 *x1, s32 *y1);
+vpp_get_video_layer_position(s32 *x, s32 *y, s32 *w, s32 *h);
 
 #endif /* VPP_H */
