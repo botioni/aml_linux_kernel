@@ -669,9 +669,15 @@ static void hdmi_hw_init(void)
     //wire            pm_hdmi_cec_en              = pin_mux_reg0[2];
     //wire            pm_hdmi_hpd_5v_en           = pin_mux_reg0[1];
     //wire            pm_hdmi_i2c_5v_en           = pin_mux_reg0[0];
+#ifdef CEC_SUPPORT
     Wr(PERIPHS_PIN_MUX_0, Rd(PERIPHS_PIN_MUX_0)|((1 << 2) | // pm_hdmi_cec_en
                                (0 << 1) | // pm_hdmi_hpd_5v_en , enable this signal after all init done to ensure fist HPD rising ok
                                (1 << 0))); // pm_hdmi_i2c_5v_en
+#else
+    Wr(PERIPHS_PIN_MUX_0, Rd(PERIPHS_PIN_MUX_0)|((0 << 2) | // pm_hdmi_cec_en
+                               (0 << 1) | // pm_hdmi_hpd_5v_en , enable this signal after all init done to ensure fist HPD rising ok
+                               (1 << 0))); // pm_hdmi_i2c_5v_en
+#endif                               
 
     // Enable these interrupts: [2] tx_edit_int_rise [1] tx_hpd_int_fall [0] tx_hpd_int_rise
     hdmi_wr_reg(OTHER_BASE_ADDR + HDMI_OTHER_INTR_MASKN, 0x7);
