@@ -12,8 +12,8 @@
 
 int c_dbg_lvl = 0xff;
 #define RTC_DBG(lvl, x...) do{ if(c_dbg_lvl & lvl) printk(x);} while(0)
-#define RTC_DBG_VAL 0
-#define RTC_DBG_WR 1
+#define RTC_DBG_VAL 1 << 0
+#define RTC_DBG_WR 1 << 1
 
 // Define register RTC_ADDR0 bit map
 #define RTC_REG0_BIT_sclk_static     20
@@ -360,19 +360,22 @@ static void static_register_write(unsigned data)
 
 static int aml_rtc_read_time(struct device *dev, struct rtc_time *tm)
 {
-       unsigned int time_t;
-	//struct aml_rtc_priv *priv;
+    unsigned int time_t;
+    //struct aml_rtc_priv *priv;
 
-	//priv = platform_get_drvdata(dev);
-       RTC_DBG(RTC_DBG_VAL, "aml_rtc: read rtc time\n");
-	//spin_lock(priv->lock);
-	time_t = ser_access_read(RTC_COUNTER_ADDR);
-      // spin_unlock(priv->lock);
-      RTC_DBG(RTC_DBG_VAL, "aml_rtc: have read the rtc time, time is %d\n", time_t);
-	   
-	rtc_time_to_tm(time_t, tm);
+    //priv = platform_get_drvdata(dev);
+    RTC_DBG(RTC_DBG_VAL, "aml_rtc: read rtc time\n");
+    //spin_lock(priv->lock);
+    time_t = ser_access_read(RTC_COUNTER_ADDR);
+    // spin_unlock(priv->lock);
+    RTC_DBG(RTC_DBG_VAL, "aml_rtc: have read the rtc time, time is %d\n", time_t);
+    if (time_t < 0) {
+        RTC_DBG(RTC_DBG_VAL, "aml_rtc: time(%d) < 0, reset to 0", time_t);
+        time_t = 0;
+    }   
+    rtc_time_to_tm(time_t, tm);
 
-	return 0;
+    return 0;
 
 }
 
@@ -386,7 +389,7 @@ static int aml_rtc_write_time(struct device *dev, struct rtc_time *tm)
       rtc_tm_to_time(tm, &time_t);
      
       //spin_lock(&priv->lock);  
-      RTC_DBG(RTC_DBG_VAL, "aml_rtc : write the rtc time, time is %d\n", (unsigned int)time_t);
+      RTC_DBG(RTC_DBG_VAL, "aml_rtc : write the rtc time, time is %d\n", time_t);
       ser_access_write(RTC_COUNTER_ADDR, time_t);
       RTC_DBG(RTC_DBG_VAL, "aml_rtc : the time has been written\n");
       //spin_unlock(&priv->lock);  
