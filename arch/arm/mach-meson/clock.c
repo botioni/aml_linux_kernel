@@ -345,12 +345,12 @@ __setup("a9_clk=",a9_clock_setup);
 
 static int __init clk81_clock_setup(char *ptr)
 {
-	init_clock=clkparse(ptr,0);
-    if (other_pll_setting(0, init_clock*4) == 0) {
-        int baudrate = (init_clock / (115200 * 4)) - 1;
+	int clock=clkparse(ptr,0);
+    if (other_pll_setting(0, clock*4) == 0) {
+        int baudrate = (clock / (115200 * 4)) - 1;
 
-        clk_other_pll.rate = init_clock*4;
-        clk81.rate = init_clock;
+        clk_other_pll.rate = clock*4;
+        clk81.rate = clock;
 
         WRITE_MPEG_REG(HHI_MPEG_CLK_CNTL,   // MPEG clk81 set to other/4
 		    (1 << 12) |                     // select other PLL
