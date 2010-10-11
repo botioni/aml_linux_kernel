@@ -90,6 +90,17 @@
 #define WM8900_REG_ADDCTL_VMID_SOFTST 0x04
 #define WM8900_REG_ADDCTL_TEMP_SD     0x02
 
+#define WM8900_REG_GPIO_CSB_PD_ENA		(1<<13)
+#define WM8900_REG_GPIO_MODE_PU_ENA		(1<<12)
+#define WM8900_REG_GPIO_PIN_SEL_JDI		(0<<4)
+#define WM8900_REG_GPIO_PIN_SEL_RES		(1<<4)
+#define WM8900_REG_GPIO_PIN_SEL_TEM		(2<<4)
+#define WM8900_REG_GPIO_PIN_SEL_DJD		(3<<4)
+#define WM8900_REG_GPIO_PIN_SEL_SYS		(4<<4)
+#define WM8900_REG_GPIO_PIN_SEL_FLL		(5<<4)
+#define WM8900_REG_GPIO_PIN_SEL_0			(6<<4)
+#define WM8900_REG_GPIO_PIN_SEL_1			(7<<4)
+#define WM8900_REG_GPIO_PIN_MASK	(~(7<<4))
 #define WM8900_REG_GPIO_TEMP_ENA   0x2
 
 #define WM8900_REG_POWER1_STARTUP_BIAS_ENA 0x0100
@@ -113,6 +124,7 @@
 #define WM8900_REG_CLOCKING1_BCLK_MASK  (~0x01e)
 #define WM8900_REG_CLOCKING1_OPCLK_MASK (~0x7000)
 
+#define WM8900_REG_CLOCKING2_AIF_TRI		(1<<12)
 #define WM8900_REG_CLOCKING2_ADC_CLKDIV 0xe0
 #define WM8900_REG_CLOCKING2_DAC_CLKDIV 0x1c
 
@@ -283,6 +295,18 @@ static const DECLARE_TLV_DB_SCALE(adc_svol_tlv, -3600, 300, 0);
 
 static const DECLARE_TLV_DB_SCALE(adc_tlv, -7200, 75, 1);
 
+static const char *gpio_pin_func_txt[] = {
+	"Jack detect input",
+	"Reserved",
+	"Temperature ok",
+	"Debounced jack detect output",
+	"SYSCLK output",
+	"FLL lock",
+	"Logic 0",
+	"Logic 1"
+};
+static const struct soc_enum gpio_pin_func = 
+SOC_ENUM_SINGLE(WM8900_REG_GPIO, 4, 8, gpio_pin_func_txt);
 static const char *mic_bias_level_txt[] = { "0.9*AVDD", "0.65*AVDD" };
 
 static const struct soc_enum mic_bias_level =
@@ -334,6 +358,9 @@ static const struct soc_enum dacr_sidetone =
 SOC_ENUM_SINGLE(WM8900_REG_SIDETONE, 0, 3, sidetone_txt);
 
 static const struct snd_kcontrol_new wm8900_snd_controls[] = {
+SOC_ENUM("GPIO pin function select", gpio_pin_func),
+SOC_SINGLE("CSB PD ENA", WM8900_REG_GPIO, 13, 1, 0),
+SOC_SINGLE("AIF TRI", WM8900_REG_CLOCKING2, 12, 1, 0),
 SOC_ENUM("Mic Bias Level", mic_bias_level),
 
 SOC_SINGLE_TLV("Left Input PGA Volume", WM8900_REG_LINVOL, 0, 31, 0,
