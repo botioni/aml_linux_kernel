@@ -83,6 +83,7 @@ u32 dsp_codec_get_current_pts(struct audiodsp_priv *priv)
 	res=pts_lookup_offset(PTS_TYPE_AUDIO,priv->cur_frame_info.offset,&pts,0);
 	if(res==0)
 		{
+printk("pts_lookup_offset = %d\n", pts);
 		priv->out_len_after_last_valid_pts=0;
 		len=priv->cur_frame_info.buffered_len+dsp_codec_get_bufer_data_len(priv);
 		frame_nums=(len*8/(priv->frame_format.data_width*priv->frame_format.channel_num));
@@ -92,6 +93,8 @@ u32 dsp_codec_get_current_pts(struct audiodsp_priv *priv)
 		else
 			pts=0;
 		priv->last_valid_pts=pts;
+printk("len = %d, data_width = %d, channel_num = %d, frame_nums = %d, sample_rate = %d, pst = %d\n",
+    len, priv->frame_format.data_width,priv->frame_format.channel_num, frame_nums, priv->frame_format.sample_rate, pts);
 		}
 
 	else if(priv->last_valid_pts>0)
@@ -100,6 +103,9 @@ u32 dsp_codec_get_current_pts(struct audiodsp_priv *priv)
 		len=priv->out_len_after_last_valid_pts;
 		frame_nums=(len*8/(priv->frame_format.data_width*priv->frame_format.channel_num));
 		pts+=(frame_nums*90)/(priv->frame_format.sample_rate/1000);
+
+printk("last_pts = %d, len = %d, data_width = %d, channel_num = %d, frame_nums = %d, sample_rate = %d, pst = %d\n",
+    priv->last_valid_pts, len, priv->frame_format.data_width,priv->frame_format.channel_num, frame_nums, priv->frame_format.sample_rate, pts);
 		}
 
 	else

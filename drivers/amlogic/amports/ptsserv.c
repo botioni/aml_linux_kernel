@@ -8,9 +8,9 @@
 #include <mach/am_regs.h>
 
 //#define DEBUG_VIDEO
-//#define DEBUG_AUDIO
-//#define DEBUG_CHECKIN
-//#define DEBUG_CHECKOUT
+#define DEBUG_AUDIO
+#define DEBUG_CHECKIN
+#define DEBUG_CHECKOUT
 
 #define VIDEO_REC_SIZE  4096
 #define AUDIO_REC_SIZE  4096

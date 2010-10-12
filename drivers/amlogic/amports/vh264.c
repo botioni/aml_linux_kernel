@@ -469,7 +469,7 @@ static void vh264_isr(void)
                 {
                     if ( num_units_in_tick*120 >= time_scale )
                     {
-                        frame_dur = (96000 * 2 * num_units_in_tick / time_scale);
+                        frame_dur = div_u64(96000ULL * 2 * num_units_in_tick, time_scale);
                     }
                 }
 
