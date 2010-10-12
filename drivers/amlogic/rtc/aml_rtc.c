@@ -369,7 +369,7 @@ static int aml_rtc_read_time(struct device *dev, struct rtc_time *tm)
     time_t = ser_access_read(RTC_COUNTER_ADDR);
     // spin_unlock(priv->lock);
     RTC_DBG(RTC_DBG_VAL, "aml_rtc: have read the rtc time, time is %d\n", time_t);
-    if (time_t < 0) {
+    if ((int)time_t < 0) {
         RTC_DBG(RTC_DBG_VAL, "aml_rtc: time(%d) < 0, reset to 0", time_t);
         time_t = 0;
     }   
