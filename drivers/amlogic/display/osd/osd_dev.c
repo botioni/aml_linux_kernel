@@ -49,7 +49,7 @@ void osddev_set(struct myfb_dev *fbdev)
         OSD_TYPE_24_RGB     , OSD_TYPE_24_RGB   , OSD_TYPE_24_6666_A   , OSD_TYPE_24_6666_R   ,
         OSD_TYPE_24_8565   , OSD_TYPE_24_5658   , OSD_TYPE_24_888_B   , OSD_TYPE_24_RGB /*24*/  ,
         OSD_TYPE_32_ARGB  , OSD_TYPE_32_ARGB  , OSD_TYPE_32_ARGB  , OSD_TYPE_32_ARGB  ,
-        OSD_TYPE_32_BGRA  , OSD_TYPE_32_ABGR  , OSD_TYPE_32_RGBA  , OSD_TYPE_32_ARGB /*32*/ ,
+        OSD_TYPE_32_BGRA  , OSD_TYPE_32_ABGR  , OSD_TYPE_32_RGBA  , OSD_TYPE_32_RGBA /*32*/ ,
         OSD_TYPE_YUV_422  , //YUV 422
     };
 

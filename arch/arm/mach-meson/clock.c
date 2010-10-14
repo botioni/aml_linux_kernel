@@ -34,7 +34,7 @@ long clk_round_rate(struct clk *clk,unsigned long rate)
 		return clk->min;
 	if(rate>clk->max)
 		return clk->max;
-	return -1;
+	return rate;
 }
 EXPORT_SYMBOL(clk_round_rate);
 

@@ -323,13 +323,18 @@ static ssize_t store_apts(struct class *class,
         if (abs(pts - t) > tsync_av_thresh)
         {
             tsync_mode = TSYNC_MODE_VMASTER;
+            amlog_level(LOG_LEVEL_INFO, "apts 0x%x shift scr 0x%x too much, switch to TSYNC_MODE_VMASTER\n",
+                pts, t);
         }
-        else
+        else {
             timestamp_pcrscr_set(pts);
+            amlog_level(LOG_LEVEL_INFO, "apts set to scr 0x%x->0x%x\n", t, pts);
+        }
     }
     else {   
         if (abs(pts - t) <= tsync_av_thresh) {
             tsync_mode = TSYNC_MODE_AMASTER;
+            amlog_level(LOG_LEVEL_INFO, "switch to TSYNC_MODE_AMASTER\n");
 
             timestamp_pcrscr_set(pts);
         }
