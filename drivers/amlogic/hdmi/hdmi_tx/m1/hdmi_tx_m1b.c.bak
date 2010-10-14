@@ -48,7 +48,7 @@ static void hdmi_audio_init(unsigned char spdif_flag);
 
 #define CEC0_LOG_ADDR 0x4
 
-#undef LOW_P
+#define LOW_P
 //#define HPD_DELAY_CHECK
 //#define ENABLE_HDCP
 //#define CEC_SUPPORT

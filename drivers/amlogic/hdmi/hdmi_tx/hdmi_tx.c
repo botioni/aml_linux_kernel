@@ -34,6 +34,7 @@
 #include <linux/proc_fs.h> 
 #include <asm/uaccess.h>
 #include <mach/am_regs.h>
+#include <mach/power_gate.h>
 
 #include <linux/osd/osd_dev.h>
 
@@ -182,6 +183,16 @@ static ssize_t store_config(struct device * dev, struct device_attribute *attr, 
     }
     else if(strncmp(buf, "edid", 4)==0){
         hdmitx_device.disp_switch_config=DISP_SWITCH_EDID;
+    }
+    else if(strncmp(buf, "vdacoff", 7)==0){
+        video_dac_disable();
+    }
+    else if(strncmp(buf, "adacoff", 7)==0){
+        //CLK_GATE_ON(AIU_AUD_DAC);
+        //CLK_GATE_ON(AIU_AUD_DAC_CLK);
+        audio_internal_dac_disable();
+        //CLK_GATE_OFF(AIU_AUD_DAC_CLK);
+        //CLK_GATE_OFF(AIU_AUD_DAC);
     }
     return 16;    
 }
@@ -537,3 +548,4 @@ static  int __init hdmitx_off_setup(char *s)
 }
 
 __setup("hdmitx=",hdmitx_off_setup);
+
