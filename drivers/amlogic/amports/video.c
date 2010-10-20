@@ -472,9 +472,9 @@ static void vsync_toggle_frame(vframe_t *vf)
             	timestamp_vpts_inc(-1);
         	}
         }
-    }
 
-	vf->type_backup = vf->type;
+		vf->type_backup = vf->type;
+    }
 
     /* enable new config on the new frames */
     if ((first_picture) ||
@@ -873,18 +873,20 @@ static irqreturn_t vsync_isr0(int irq, void *dev_id)
         }
         else if ((cur_dispbuf == &vf_local) && (video_property_changed))
         {
-            if (!blackout &&
-            	( (deinterlace_mode == 0) || (cur_dispbuf->duration == 0)
-#if defined(CONFIG_AM_DEINTERLACE_SD_ONLY)
-				|| (cur_dispbuf->width > 720)
-#endif
-				))
+            if (!blackout)
             {
-                /* setting video display property in unregister mode */
-                u32 cur_index = cur_dispbuf->canvas0Addr;
-                canvas_update_addr(cur_index & 0xff, (u32)keep_y_addr);
-                canvas_update_addr((cur_index >> 8)& 0xff, (u32)keep_u_addr);
-                canvas_update_addr((cur_index >> 16)&0xff, (u32)keep_v_addr);
+            	if ( (deinterlace_mode == 0) || (cur_dispbuf->duration == 0)
+#if defined(CONFIG_AM_DEINTERLACE_SD_ONLY)
+					|| (cur_dispbuf->width > 720)
+#endif
+					)
+            	{
+	                /* setting video display property in unregister mode */
+	                u32 cur_index = cur_dispbuf->canvas0Addr;
+	                canvas_update_addr(cur_index & 0xff, (u32)keep_y_addr);
+	                canvas_update_addr((cur_index >> 8)& 0xff, (u32)keep_u_addr);
+	                canvas_update_addr((cur_index >> 16)&0xff, (u32)keep_v_addr);
+				}
 
                 vsync_toggle_frame(cur_dispbuf);
             }
