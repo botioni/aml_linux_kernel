@@ -10,7 +10,7 @@ config AM_TV_OUTPUT
 		tv output module
 		
 config AM_TCON_OUTPUT
-	tristate "LCD output" if !AM_TV_OUTPUT
+	tristate "LCD output" 
 	help  
 		LCD output module
 

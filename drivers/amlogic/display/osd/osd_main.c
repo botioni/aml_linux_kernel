@@ -54,37 +54,89 @@ static myfb_dev_t  *gp_fbdev_list[OSD_COUNT]={NULL,NULL};
 static DEFINE_MUTEX(dbg_mutex);
 
 
+const color_bit_define_t*	
+_find_color_format(struct fb_var_screeninfo * var)
+{
+	u32	upper_margin,lower_margin,i,level;
+	const color_bit_define_t *ret=NULL;
+	
+	level=(var->bits_per_pixel -1)/8; 
+	switch(level)
+	{
+		case 0:
+		upper_margin=COLOR_INDEX_08_PAL256;
+		lower_margin=COLOR_INDEX_02_PAL4;
+		break;
+		case 1:
+		upper_margin=COLOR_INDEX_16_565;
+		lower_margin=COLOR_INDEX_16_655;
+		break;	
+		case 2:
+		upper_margin=COLOR_INDEX_24_RGB;
+		lower_margin=COLOR_INDEX_24_6666_A;
+		break;		
+		case 3:
+		upper_margin=COLOR_INDEX_32_ARGB;
+		lower_margin=COLOR_INDEX_32_BGRA;
+		break;
+		case 4:
+		upper_margin=COLOR_INDEX_YUV_422;
+		lower_margin=COLOR_INDEX_YUV_422;	
+		break;
+		default : return NULL;
+	}
+	//if not provide color component length then we find the first depth match.
+	if((var->red.length==0)||(var->green.length==0)||(var->blue.length==0)||
+		var->bits_per_pixel != (var->red.length+var->green.length+var->blue.length+var->transp.length))
+	{
+		amlog_mask_level(LOG_MASK_PARA,LOG_LEVEL_LOW,"not provide color component length,use default color \n");
+		ret =&default_color_format_array[upper_margin];
+	}
+	else
+	{
+		for ( i=upper_margin;i>=lower_margin;i--)
+		{
+			if( (default_color_format_array[i].red_length==var->red.length)&&
+			(default_color_format_array[i].green_length==var->green.length)&&
+			(default_color_format_array[i].blue_length==var->blue.length)&&
+			(default_color_format_array[i].transp_length ==var->transp.length)&&
+			(default_color_format_array[i].transp_offset==var->transp.offset)&&
+			(default_color_format_array[i].green_offset==var->green.offset)&&
+			(default_color_format_array[i].blue_offset==var->blue.offset)&&
+			(default_color_format_array[i].red_offset==var->red.offset))
+			{
+				 ret = &default_color_format_array[i];
+				 break;
+			}
+		}
+	}
+	return ret;
+}
 static void __init
 _fbdev_set_default(struct myfb_dev *fbdev,int index )
 {
     	/* setup default value */
 	fbdev->fb_info->var = mydef_var[index];
 	fbdev->fb_info->fix = mydef_fix;
-	fbdev->bpp_type=fbdev->fb_info->var.bits_per_pixel ;
-	osddev_set(fbdev);
+	fbdev->color=_find_color_format(&fbdev->fb_info->var);
 }
 
-bpp_color_bit_define_t*	
-_find_color_format(int  bpp)
-{
-	return (bpp_color_bit_define_t*)&default_color_format_array[bpp];
-}
 static int
 osd_check_var(struct fb_var_screeninfo *var, struct fb_info *info)
 {
 	struct fb_fix_screeninfo *fix;
     	struct myfb_dev *fbdev=( struct myfb_dev*)info->par;
-	bpp_color_bit_define_t   *color_format_pt;
+	const color_bit_define_t   *color_format_pt;
 
 	fix = &info->fix;
-	color_format_pt=_find_color_format(var->bits_per_pixel);	
-	if (color_format_pt->type_index==0)
+	color_format_pt=_find_color_format(var);	
+	if (color_format_pt == NULL || color_format_pt->color_index==0)
 	{
 		return -EFAULT ;
 	}
-	amlog_mask_level(LOG_MASK_PARA,LOG_LEVEL_LOW,"select color format :index%d,bpp %d\r\n",color_format_pt->type_index, \
+	amlog_mask_level(LOG_MASK_PARA,LOG_LEVEL_LOW,"select color format :index%d,bpp %d\r\n",color_format_pt->color_index, \
 												color_format_pt->bpp) ;
-	fbdev->bpp_type=var->bits_per_pixel ;
+	fbdev->color=color_format_pt ;
 	var->red.offset = color_format_pt->red_offset;
 	var->red.length = color_format_pt->red_length;
 	var->red.msb_right= color_format_pt->red_msb_right ;
@@ -98,6 +150,12 @@ osd_check_var(struct fb_var_screeninfo *var, struct fb_info *info)
 	var->transp.length = color_format_pt->transp_length ;
 	var->transp.msb_right = color_format_pt->transp_msb_right ;
 	var->bits_per_pixel=color_format_pt->bpp ;
+	amlog_mask_level(LOG_MASK_PARA,LOG_LEVEL_LOW,
+					"rgba(L/O):%d/%d-%d/%d-%d/%d-%d/%d\n",
+					var->red.length,var->red.offset,
+					var->green.length,var->green.offset,
+					var->blue.length,var->blue.offset,
+					var->transp.length,var->transp.offset);
 	fix->visual=color_format_pt->color_type ;
 	//adjust memory length.	
  	fix->line_length = var->xres_virtual*var->bits_per_pixel/8;
@@ -233,29 +291,29 @@ osd_ioctl(struct fb_info *info, unsigned int cmd,
   	switch (cmd)
     	{
     		case FBIOPUT_OSD_SRCCOLORKEY:
-	    	switch(fbdev->bpp_type)
+	    	switch(fbdev->color->color_index)
 	  	{
-	 		case BPP_TYPE_16_655:
-			case BPP_TYPE_16_844:
-			case BPP_TYPE_16_565:
-			case BPP_TYPE_24_888_B:
-			case BPP_TYPE_24_RGB:
-			case BPP_TYPE_YUV_422:
+	 		case COLOR_INDEX_16_655:
+			case COLOR_INDEX_16_844:
+			case COLOR_INDEX_16_565:
+			case COLOR_INDEX_24_888_B:
+			case COLOR_INDEX_24_RGB:
+			case COLOR_INDEX_YUV_422:
 	  	   	amlog_mask_level(LOG_MASK_IOCTL,LOG_LEVEL_LOW,"set osd color key 0x%x\r\n",src_colorkey);
-	  	 	osddev_set_colorkey(info->node,fbdev->bpp_type,src_colorkey);
+	  	 	osddev_set_colorkey(info->node,fbdev->color->color_index,src_colorkey);
 			break;
 			default: break;
 	  	}
 	   	break ;
 	  	case FBIOPUT_OSD_SRCKEY_ENABLE:
-	   	switch(fbdev->bpp_type)
+	   	switch(fbdev->color->color_index)
 	  	{
-	 		case BPP_TYPE_16_655:
-			case BPP_TYPE_16_844:
-			case BPP_TYPE_16_565:
-			case BPP_TYPE_24_888_B:
-			case BPP_TYPE_24_RGB:
-			case BPP_TYPE_YUV_422:	
+	 		case COLOR_INDEX_16_655:
+			case COLOR_INDEX_16_844:
+			case COLOR_INDEX_16_565:
+			case COLOR_INDEX_24_888_B:
+			case COLOR_INDEX_24_RGB:
+			case COLOR_INDEX_YUV_422:	
 			amlog_mask_level(LOG_MASK_IOCTL,LOG_LEVEL_LOW,"set osd color key %s\r\n",srckey_enable?"enable":"disable");
 		   	osddev_srckey_enable(info->node,srckey_enable!=0?1:0);	
 			break;
@@ -342,7 +400,7 @@ static struct fb_ops osd_ops = {
 	.fb_sync        = osd_sync,
 };
 
-void  set_default_display_axis(struct fb_var_screeninfo *var,osd_ctl_t *osd_ctrl,const vinfo_t *vinfo)
+static  void  set_default_display_axis(struct fb_var_screeninfo *var,osd_ctl_t *osd_ctrl,const vinfo_t *vinfo)
 {
 	
 	osd_ctrl->disp_start_x=0;
@@ -387,7 +445,7 @@ int osd_notify_callback(struct notifier_block *block, unsigned long cmd , void *
 		{
 			if(NULL==(fb_dev=gp_fbdev_list[i])) continue;
 			set_default_display_axis(&fb_dev->fb_info->var,&fb_dev->osd_ctl,vinfo);
-			osddev_set(fb_dev);
+			osddev_update_disp_axis(fb_dev,1);
 		}
 		break;
 
@@ -433,7 +491,7 @@ int osd_notify_callback(struct notifier_block *block, unsigned long cmd , void *
 			amlog_mask_level(LOG_MASK_PARA,LOG_LEVEL_LOW,"new disp axis: startx:%d starty:%d endx:%d endy:%d\r\n"  , \
 					fb_dev->osd_ctl.disp_start_x, fb_dev->osd_ctl.disp_start_y,\
 					fb_dev->osd_ctl.disp_end_x,fb_dev->osd_ctl.disp_end_y);
-			osddev_set(fb_dev);
+			osddev_update_disp_axis(fb_dev,0);
 		}
 		
 		break;
@@ -531,7 +589,7 @@ osd_probe(struct platform_device *pdev)
 		{
 			amlog_level(LOG_LEVEL_HIGH,"failed to ioremap framebuffer\n");
         		r = -ENOMEM;
-        		goto failed3;
+        		goto failed1;
 		}
 	
 		//clear framebuffer memory
@@ -564,7 +622,12 @@ osd_probe(struct platform_device *pdev)
 		}
 	
 		_fbdev_set_default(fbdev,index);
-		Bpp=(fbdev->bpp_type >8?(fbdev->bpp_type>16?(fbdev->bpp_type>24?4:3):2):1);
+		if(NULL==fbdev->color)
+		{
+			r = -ENOENT;
+        		goto failed1;
+		}
+		Bpp=(fbdev->color->color_index >8?(fbdev->color->color_index>16?(fbdev->color->color_index>24?4:3):2):1);
 		fix->line_length=var->xres_virtual*Bpp;
 		fix->smem_start = fbdev->fb_mem_paddr;
 		fix->smem_len = fbdev->fb_len;
@@ -572,13 +635,13 @@ osd_probe(struct platform_device *pdev)
 		if (fb_alloc_cmap(&fbi->cmap, 16, 0) != 0) {
 			amlog_level(LOG_LEVEL_HIGH,"unable to allocate color map memory\n");
       		r = -ENOMEM;
-        	goto failed3;
+        	goto failed2;
     		}
 
 		if (!(fbi->pseudo_palette = kmalloc(sizeof(u32) * 16, GFP_KERNEL))) {
 			amlog_level(LOG_LEVEL_HIGH,"unable to allocate pseudo palette memory\n");
         	r = -ENOMEM;
-        	goto failed4;
+        	goto failed2;
 		}
 
 		memset(fbi->pseudo_palette, 0, sizeof(u32) * 16);
@@ -601,12 +664,8 @@ osd_probe(struct platform_device *pdev)
 	amlog_level(LOG_LEVEL_HIGH,"osd probe ok  \r\n");
 	return 0;
 
-failed4:
-	fb_dealloc_cmap(&fbi->cmap);
-failed3:
-	dev_set_drvdata(&pdev->dev, NULL);
 failed2:
-    	unregister_framebuffer(fbi);
+	fb_dealloc_cmap(&fbi->cmap);
 failed1:
     	amlog_level(LOG_LEVEL_HIGH,"Driver module insert failed.\n");
    	return r;

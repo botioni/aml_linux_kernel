@@ -38,21 +38,6 @@
 
 void osddev_set(struct myfb_dev *fbdev)
 {
-    enum osd_type_s type;
-	
-    const enum osd_type_s typeTab[34] = {
-        OSD_TYPE_02_PAL4  , OSD_TYPE_02_PAL4  , OSD_TYPE_02_PAL4  ,
-        OSD_TYPE_04_PAL16 , OSD_TYPE_04_PAL16 ,
-        OSD_TYPE_08_PAL256, OSD_TYPE_08_PAL256, OSD_TYPE_08_PAL256, OSD_TYPE_08_PAL256,
-        OSD_TYPE_16_655  , OSD_TYPE_16_844   , OSD_TYPE_16_6442   , OSD_TYPE_16_4444_R   ,
-        OSD_TYPE_16_4642_R  , OSD_TYPE_16_1555_A   , OSD_TYPE_16_4444_A   , OSD_TYPE_16_565/*16*/   ,
-        OSD_TYPE_24_RGB     , OSD_TYPE_24_RGB   , OSD_TYPE_24_6666_A   , OSD_TYPE_24_6666_R   ,
-        OSD_TYPE_24_8565   , OSD_TYPE_24_5658   , OSD_TYPE_24_888_B   , OSD_TYPE_24_RGB /*24*/  ,
-        OSD_TYPE_32_ARGB  , OSD_TYPE_32_ARGB  , OSD_TYPE_32_ARGB  , OSD_TYPE_32_ARGB  ,
-        OSD_TYPE_32_BGRA  , OSD_TYPE_32_ABGR  , OSD_TYPE_32_RGBA  , OSD_TYPE_32_RGBA /*32*/ ,
-        OSD_TYPE_YUV_422  , //YUV 422
-    };
-
 
 	
    
@@ -62,7 +47,6 @@ void osddev_set(struct myfb_dev *fbdev)
     //memset((char*) fbdev->fb_mem,0x0,fbdev->fb_len);
     
 
-    type = typeTab[fbdev->bpp_type];
     osd_setup(&fbdev->osd_ctl,
                fbdev->fb_info->var.xoffset,
                fbdev->fb_info->var.yoffset,
@@ -75,7 +59,7 @@ void osddev_set(struct myfb_dev *fbdev)
                fbdev->osd_ctl.disp_end_x,
                fbdev->osd_ctl.disp_end_y,
                fbdev->fb_mem_paddr,
-               type,
+               fbdev->color,
                fbdev->fb_info->node);	
 
 
@@ -84,15 +68,25 @@ void osddev_set(struct myfb_dev *fbdev)
     	
     return;
 }
-
+void osddev_update_disp_axis(struct myfb_dev *fbdev,int  mode_change)
+{
+	osddev_update_disp_axis_hw(	fbdev->osd_ctl.disp_start_x,
+								fbdev->osd_ctl.disp_end_x,
+               						fbdev->osd_ctl.disp_start_y,
+               						fbdev->osd_ctl.disp_end_y,
+               						fbdev->fb_info->var.xoffset,
+               						fbdev->fb_info->var.yoffset,
+               						mode_change,
+               						fbdev->fb_info->node);
+}
 int osddev_setcolreg(unsigned regno, u16 red, u16 green, u16 blue,
         u16 transp, struct myfb_dev *fbdev)
 {
     struct fb_info *info = fbdev->fb_info;
 
-    if ((fbdev->osd_ctl.type == OSD_TYPE_02_PAL4) ||
-        (fbdev->osd_ctl.type == OSD_TYPE_04_PAL16) ||
-        (fbdev->osd_ctl.type == OSD_TYPE_08_PAL256)) {
+    if ((fbdev->color->color_index== COLOR_INDEX_02_PAL4) ||
+        (fbdev->color->color_index == COLOR_INDEX_04_PAL16) ||
+        (fbdev->color->color_index == COLOR_INDEX_08_PAL256)) {
 
         fbdev_lock(fbdev);
 

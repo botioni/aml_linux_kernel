@@ -41,6 +41,7 @@ typedef struct {
 
 static tcon_dev_t *pDev = NULL;
 
+static void _tcon_init(tcon_conf_t *pConf) ;
 static void set_lcd_gamma_table(u16 *data, u32 rgb_mask)
 {
     int i;
@@ -243,7 +244,7 @@ static int lcd_set_current_vmode(vmode_t mode)
 {
 	if (mode != VMODE_LCD)
 		return -EINVAL;
-	WRITE_MPEG_REG(VPP_POSTBLEND_H_SIZE, 0x320);
+	WRITE_MPEG_REG(VPP_POSTBLEND_H_SIZE, pDev->lcd_info.width);
 	return 0;
 }
 
@@ -254,13 +255,41 @@ static vmode_t lcd_validate_vmode(char *mode)
 	
 	return VMODE_MAX;
 }
-
+static int lcd_vmode_is_supported(vmode_t mode)
+{
+	if(mode == VMODE_LCD)
+	return true;
+	return false;
+}
+#ifdef  CONFIG_PM
+static int lcd_suspend(void)
+{
+	BUG_ON(pDev==NULL);
+	pDev->conf.power_off?pDev->conf.power_off():0;
+	return 0;
+}
+static int lcd_resume(void)
+{
+	BUG_ON(pDev==NULL);
+	pDev->conf.power_on?pDev->conf.power_on():0;
+	_init_tvenc(&pDev->conf);
+    	_init_tcon(&pDev->conf);
+       	_enable_backlight(BL_MAX_LEVEL);
+    	_enable_vsync_interrupt();
+	return 0;
+}
+#endif
 static vout_server_t lcd_vout_server={
 	.name = "lcd_vout_server",
 	.op = {	
 		.get_vinfo = lcd_get_current_info,
 		.set_vmode = lcd_set_current_vmode,
 		.validate_vmode = lcd_validate_vmode,
+		.vmode_is_supported=lcd_vmode_is_supported,
+#ifdef  CONFIG_PM  
+		.vout_suspend=lcd_suspend,
+		.vout_resume=lcd_resume,
+#endif
 	},
 };
 
@@ -341,11 +370,7 @@ static void __exit tcon_exit(void)
     platform_driver_unregister(&tcon_driver);
 }
 
-#if defined(CONFIG_JPEGLOGO) || defined(CONFIG_AM_LOGO)
 subsys_initcall(tcon_init);
-#else
-module_init(tcon_init);
-#endif
 module_exit(tcon_exit);
 
 MODULE_DESCRIPTION("AMLOGIC TCON controller driver");

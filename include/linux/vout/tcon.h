@@ -210,6 +210,8 @@ typedef struct {
     u16 GammaTableR[256];
     u16 GammaTableG[256];
     u16 GammaTableB[256];
+	void  (*power_on)(void);
+	void  (*power_off)(void);
 } tcon_conf_t;
 
 #endif /* TCON_H */

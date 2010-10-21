@@ -32,9 +32,17 @@ extern void osd_setup(struct osd_ctl_s *osd_ctl,
                 u32 disp_end_x,
                 u32 disp_end_y,
                 u32 fbmem,
-                enum osd_type_s type,
+              	  const color_bit_define_t *color,
                 int index);
-
+extern void  osddev_update_disp_axis_hw(
+			u32 display_h_start,
+                  	u32 display_h_end,
+                  	u32 display_v_start,
+                  	u32 display_v_end,
+			u32 xoffset,
+                  	u32 yoffset,
+                  	u32 mode_change,
+                  	u32 index) ;
 extern void osd_setpal_hw(unsigned regno, unsigned red, unsigned green, unsigned blue, unsigned transp,int index);
 extern void osd_enable_hw(int enable,int index );
 extern void osd_pan_display_hw(unsigned int xoffset, unsigned int yoffset,int index );

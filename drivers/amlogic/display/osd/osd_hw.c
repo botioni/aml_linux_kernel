@@ -51,9 +51,6 @@
 **************************************************************************/
 static  u32  osd_gbl_alpha[2]={OSD_GLOBAL_ALPHA_DEF,OSD_GLOBAL_ALPHA_DEF};
 
-static const u8 blkmode_reg[] = {5, 7, 0, 1, 2, 4, 4, 4, 4,/*32*/5,5,5,/*24*/7,7,7,7,7,/*16*/4,4,4,4,/*yuv*/3};
-static const u8 colormat_reg[] = {0, 0, 0, 0, 0, 0, 1, 2, 3,/*32*/1,2,3,/*24*/5,1,2,3,4,/*16*/4,5,6,7,/*yuv*/0};
-static const u8 modebits[] = {32,24,2,4,8,16,16,16,16,/*32*/32,32,32,/*24*/24,24,24,24,24,/*16*/16,16,16,16,/*yuv*/16};
 static pandata_t pandata[2];
 static spinlock_t osd_lock = SPIN_LOCK_UNLOCKED;
 static  u32   *reg_status;
@@ -138,7 +135,7 @@ _init_osd_simple(u32 pix_x_start,
                   u32 display_h_end,
                   u32 display_v_end,
                   u32 canvas_index,
-                  enum osd_type_s type,
+                  const color_bit_define_t *color,
                   int  index)
 {
 	u32 data32;
@@ -181,9 +178,8 @@ _init_osd_simple(u32 pix_x_start,
 	WRITE_MPEG_REG(VIU_OSD2_BLK0_CFG_W2,
 		(pandata[1].y_start & 0x1fff) | (pandata[1].y_end & 0x1fff) << 16);
 
-	data32 = READ_MPEG_REG(VIU_OSD1_BLK0_CFG_W0+ REG_OFFSET*index) & (0x40);
-	data32 |= (vmode == 1) ? 2 : 0;
-
+	data32= (vmode == 1) ? 2 : 0;
+	data32 |=READ_MPEG_REG(VIU_OSD1_BLK0_CFG_W0+ REG_OFFSET*index)&0x40;
 	if (tv_irq_got == 0)
 	{
 		if ( request_irq(INT_VIU_VSYNC, &vsync_isr,
@@ -199,11 +195,11 @@ _init_osd_simple(u32 pix_x_start,
 	}
     	data32 |= canvas_index << 16 ;
 	data32 |= OSD_DATA_LITTLE_ENDIAN	 <<15 ;
-    	data32 |= colormat_reg[type]     << 2;	
+    	data32 |= color->hw_colormat    << 2;	
 	data32 |= OSD_TC_ALPHA_ENABLE_DEF   << 6;	
-	if(type < OSD_TYPE_YUV_422)
+	if(color->color_index < COLOR_INDEX_YUV_422)
 	data32 |= 1                      << 7; /* rgb enable */
-	data32 |= blkmode_reg[type]      << 8; /* osd_blk_mode */
+	data32 |=  color->hw_blkmode<< 8; /* osd_blk_mode */
 	WRITE_MPEG_REG(VIU_OSD1_BLK0_CFG_W0+ REG_OFFSET*index, data32);
 
     	// Program reg VIU_OSD1_FIFO_CTRL_STAT
@@ -235,43 +231,43 @@ u32  osd_get_gbl_alpha_hw(u32  index)
 {
 	return osd_gbl_alpha[index];
 }
-void  osd_set_colorkey_hw(u32 index,u32 bpp,u32 colorkey )
+void  osd_set_colorkey_hw(u32 index,u32 color_index,u32 colorkey )
 {
 	u8  r=0,g=0,b=0,a=(colorkey&0xff000000)>>24;
 	
 	u32  reg=VIU_OSD1_TCOLOR_AG0 + REG_OFFSET*index;
 
 	colorkey&=0x00ffffff;
-	 switch(bpp)
+	 switch(color_index)
 	  {
-	 		case BPP_TYPE_16_655:
+	 		case COLOR_INDEX_16_655:
 			r=(colorkey>>10&0x3f)<<2;
 			g=(colorkey>>5&0x1f)<<3;
 			b=(colorkey&0x1f)<<3;
 			break;	
-			case BPP_TYPE_16_844:
+			case COLOR_INDEX_16_844:
 			r=colorkey>>8&0xff;
 			g=(colorkey>>4&0xf)<<4;
 			b=(colorkey&0xf)<<4;	
 			break;	
-			case BPP_TYPE_16_565:
+			case COLOR_INDEX_16_565:
 			r=(colorkey>>11&0x1f)<<3;
 			g=(colorkey>>5&0x3f)<<2;
 			b=(colorkey&0x1f)<<3;		
 			break;	
-			case BPP_TYPE_24_888_B:
+			case COLOR_INDEX_24_888_B:
 			b=colorkey>>16&0xff;
 			g=colorkey>>8&0xff;
 			r=colorkey&0xff;			
 			break;
-			case BPP_TYPE_24_RGB:
-			case BPP_TYPE_YUV_422:	
+			case COLOR_INDEX_24_RGB:
+			case COLOR_INDEX_YUV_422:	
 			r=colorkey>>16&0xff;
 			g=colorkey>>8&0xff;
 			b=colorkey&0xff;			
 			break;	
 	 }	
-	amlog_mask_level(LOG_MASK_HARDWARE,LOG_LEVEL_LOW,"bpp:%d--r:0x%x g:0x%x b:0x%x ,a:0x%x\r\n",bpp,r,g,b,a);
+	amlog_mask_level(LOG_MASK_HARDWARE,LOG_LEVEL_LOW,"bpp:%d--r:0x%x g:0x%x b:0x%x ,a:0x%x\r\n",color_index,r,g,b,a);
 	WRITE_MPEG_REG(reg,r<<24|g<<16|b<<8|a);
 	return ;
 }
@@ -292,6 +288,61 @@ void  osd_srckey_enable_hw(u32  index,u8 enable)
 	WRITE_MPEG_REG(reg,data );
 }
 
+void  osddev_update_disp_axis_hw(
+			u32 display_h_start,
+                  	u32 display_h_end,
+                  	u32 display_v_start,
+                  	u32 display_v_end,
+			u32 xoffset,
+                  	u32 yoffset,
+                  	u32 mode_change,
+                  	u32 index)
+{
+	u32  vmode;
+	u32	data32;
+
+	if(mode_change)  //modify pandata .
+	{
+		 if(READ_MPEG_REG(ENCI_VIDEO_EN)&0x1)  //interlace
+       		{
+       			vmode=1;
+   		}
+   		else
+   		{
+   			if(READ_MPEG_REG(ENCP_VIDEO_MODE) & (1 << 12)) //1080i
+   			{
+   				vmode=1;
+   			}
+   			else
+   			vmode=0;
+   		}
+		data32=READ_MPEG_REG(VIU_OSD1_BLK0_CFG_W0+ REG_OFFSET*index);
+		data32=(data32&~(1<<1)) | (vmode <<1); //interlace enable
+		WRITE_MPEG_REG(VIU_OSD1_BLK0_CFG_W0+ REG_OFFSET*index,data32);
+		
+
+	}
+	data32 = (display_h_start & 0xfff) | (display_h_end & 0xfff) <<16 ;
+      	WRITE_MPEG_REG(VIU_OSD1_BLK0_CFG_W3 + REG_OFFSET*index, data32);
+   	data32 = (display_v_start & 0xfff) | (display_v_end & 0xfff) <<16 ;
+       WRITE_MPEG_REG(index?VIU_OSD2_BLK0_CFG_W4:VIU_OSD1_BLK0_CFG_W4, data32);
+	amlog_mask_level(LOG_MASK_HARDWARE,LOG_LEVEL_LOW,"[disp(x-y)] %d:%d-%d:%d\n",display_h_start,\
+														display_h_end,display_v_start,display_v_end);   
+	//if output mode change then reset pan ofFfset.
+	pandata[index].x_start = xoffset;
+	pandata[index].x_end   = xoffset + (display_h_end-display_h_start);
+	pandata[index].y_start = yoffset;
+	pandata[index].y_end   = yoffset + (display_v_end-display_v_start);
+	WRITE_MPEG_REG(VIU_OSD1_BLK0_CFG_W1,
+	(pandata[0].x_start & 0x1fff) | (pandata[0].x_end & 0x1fff) << 16);
+	WRITE_MPEG_REG(VIU_OSD1_BLK0_CFG_W2,
+	(pandata[0].y_start & 0x1fff) | (pandata[0].y_end & 0x1fff) << 16);
+	WRITE_MPEG_REG(VIU_OSD2_BLK0_CFG_W1,
+	(pandata[1].x_start & 0x1fff) | (pandata[1].x_end & 0x1fff) << 16);
+	WRITE_MPEG_REG(VIU_OSD2_BLK0_CFG_W2,
+	(pandata[1].y_start & 0x1fff) | (pandata[1].y_end & 0x1fff) << 16);													
+	
+}
 void osd_setup(struct osd_ctl_s *osd_ctl,
                 u32 xoffset,
                 u32 yoffset,
@@ -304,13 +355,12 @@ void osd_setup(struct osd_ctl_s *osd_ctl,
                 u32 disp_end_x,
                 u32 disp_end_y,
                 u32 fbmem,
-                enum osd_type_s type,
+                const color_bit_define_t *color,
                 int index 
                 )
 {
-    u32 w = (modebits[type] * xres_virtual + 7) >> 3;
+    u32 w = (color->bpp * xres_virtual + 7) >> 3;
 
-    osd_ctl->type = type;
     osd_ctl->xres = xres;
     osd_ctl->yres = yres;
     osd_ctl->xres_virtual = xres_virtual;
@@ -328,7 +378,7 @@ void osd_setup(struct osd_ctl_s *osd_ctl,
 	                 yoffset, yoffset + (disp_end_y-disp_start_y),
 	                 disp_start_x, disp_start_y,
 	                 disp_end_x,disp_end_y, osd_ctl->index,
-	                 type,index);
+	                 color,index);
 	
 	SET_MPEG_REG_MASK(VIU_OSD1_CTRL_STAT, 1 << 21);
 	SET_MPEG_REG_MASK(VIU_OSD2_CTRL_STAT, 1 << 21);	

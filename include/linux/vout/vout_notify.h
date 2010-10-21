@@ -25,6 +25,8 @@
 #define  VOUT_NOTIFY_H
 
 #include <linux/notifier.h>
+#include <linux/list.h>
+#include <linux/pm.h>
 #include "vinfo.h"
 
 typedef struct 
@@ -32,32 +34,40 @@ typedef struct
 	const vinfo_t* (*get_vinfo)(void);
 	int		 (*set_vmode)(vmode_t);
 	vmode_t  (*validate_vmode)(char *);
+	int		(*vmode_is_supported)(vmode_t);
+	int		(*vout_suspend)(void);
+	int		(*vout_resume)(void);
 }vout_op_t ;
+
+
+typedef  struct list_head  list_head_T;
+
 
 typedef struct 
 {
+	list_head_T  list;
 	char  	  *name;
 	vout_op_t  op;
 } vout_server_t;
 
-#define	INIT_TV_MODULE_SERVER(server_name) \
-	vout_server_t server_name ={ \
-		.name=NULL, \
-		.op ={ \
-			.get_vinfo = NULL, \
-		},\
-	}
+typedef struct {
+	list_head_T   vout_server_list;
+	vout_server_t *curr_vout_server;
+}vout_module_t;
 
 extern int vout_register_client(struct notifier_block * ) ;
 extern int vout_unregister_client(struct notifier_block *) ;
 extern int vout_register_server(vout_server_t *);
-extern int vout_unregister_server(void) ;
+extern int vout_unregister_server(vout_server_t*  );
 extern int vout_notifier_call_chain(unsigned long, void *) ;
 
 extern const vinfo_t *get_current_vinfo(void);
 extern vmode_t get_current_vmode(void);
 extern int set_current_vmode(vmode_t);
 extern vmode_t validate_vmode(char *);
+
+extern int vout_suspend(void); 
+extern int vout_resume(void);
 
 #define VOUT_EVENT_MODE_CHANGE		0x00010000	
 #define VOUT_EVENT_OSD_BLANK			0x00020000

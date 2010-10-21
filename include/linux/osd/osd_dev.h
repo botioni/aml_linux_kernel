@@ -40,9 +40,8 @@ typedef struct myfb_dev {
 	u32 fb_mem_paddr;
 	void __iomem *fb_mem_vaddr;
 	u32 fb_len;
-
+	const color_bit_define_t  *color;
     vmode_t vmode;
-	bpp_type_t   bpp_type;
     	
     struct osd_ctl_s osd_ctl;
 		
@@ -68,7 +67,7 @@ typedef  struct {
 extern int osddev_select_mode(struct myfb_dev *fbdev);
 
 extern void osddev_set(struct myfb_dev *fbdev);
-
+extern void osddev_update_disp_axis(struct myfb_dev *fbdev,int  mode_change) ;
 extern int osddev_setcolreg(unsigned regno, u16 red, u16 green, u16 blue,
         u16 transp, struct myfb_dev *fbdev);
         

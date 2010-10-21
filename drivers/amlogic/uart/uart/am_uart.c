@@ -99,16 +99,6 @@ DECLARE_MUTEX(tmp_buf_sem);
 
 static void am_uart_stop(struct tty_struct *tty)
 {
-#if 0
-    struct am_uart *info = (struct am_uart *)tty->driver_data;
-    am_uart_t *uart = uart_addr[info->line];
-    unsigned long mode;
-    mutex_lock(&info->info_mutex);
-    mode = __raw_readl(&uart->mode);
-    //mode &= ~(UART_TXENB | UART_RXENB);
-    __raw_writel(mode, &uart->mode);
-    mutex_unlock(&info->info_mutex);
-#endif
 }
 
 /*
@@ -135,7 +125,6 @@ void am_uart_print(int index,char *buffer)
 
 static void am_uart_start(struct tty_struct *tty)
 {
-#if 0
     struct am_uart *info = (struct am_uart *)tty->driver_data;
     am_uart_t *uart = uart_addr[info->line];
     unsigned long mode;
@@ -144,7 +133,6 @@ static void am_uart_start(struct tty_struct *tty)
     mode |=UART_TXENB | UART_RXENB;
     __raw_writel(mode, &uart->mode);
     mutex_unlock(&info->info_mutex);
-#endif
 }
 
 /*
@@ -356,7 +344,6 @@ static void shutdown(struct am_uart *info)
 {
     if (!(info->flags & ASYNC_INITIALIZED))
         return;
-
 
     if (info->xmit_buf) {
         free_page((unsigned long)info->xmit_buf);
@@ -852,8 +839,8 @@ static int __init am_uart_init(void)
         mutex_init(&info->info_mutex);
         INIT_WORK(&info->tqueue,am_uart_workqueue);
 
-        //set_mask(&uart->mode, UART_RXRST);
-        //clear_mask(&uart->mode, UART_RXRST);
+        set_mask(&uart->mode, UART_RXRST);
+        clear_mask(&uart->mode, UART_RXRST);
 
         set_mask(&uart->mode, UART_RXINT_EN | UART_TXINT_EN);
         __raw_writel(1 << 7 | 1, &uart->intctl);
@@ -958,11 +945,13 @@ int am_uart_console_setup(struct console *cp, char *arg)
     if (baud < 300 || baud > 115200)
         baud = 115200;
 
+    clear_mask(&uart->mode, (1 << 19));
+
     sysclk = clk_get_sys("clk81", NULL);
 
     if (!IS_ERR(sysclk)) {
         baudrate = (clk_get_rate(sysclk) / (baud * 4)) - 1;
-        clear_mask(&uart->mode, (1 << 19) | 0xFFF);
+        clear_mask(&uart->mode, 0xFFF);
         set_mask(&uart->mode, (baudrate & 0xfff));
         set_mask(&uart->mode, (1 << 12) | 1 << 13);
         set_mask(&uart->mode, (7 << 22));
