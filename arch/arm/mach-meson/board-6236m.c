@@ -112,6 +112,22 @@ static struct platform_device fb_device = {
     .resource      = fb_device_resources,
 };
 #endif
+#if  defined(CONFIG_AM_TV_OUTPUT)||defined(CONFIG_AM_TCON_OUTPUT)
+static struct resource vout_device_resources[] = {
+    [0] = {
+        .start = 0,
+        .end   = 0,
+        .flags = IORESOURCE_MEM,
+    },
+};
+
+static struct platform_device vout_device = {
+    .name       = "mesonvout",
+    .id         = 0,
+    .num_resources = ARRAY_SIZE(vout_device_resources),
+    .resource      = vout_device_resources,
+};
+#endif
 #ifdef CONFIG_USB_DWC_OTG_HCD
 static void set_usb_a_vbus_power(char is_power_on)
 {
@@ -494,6 +510,9 @@ static struct platform_device __initdata *platform_devs[] = {
     #if defined(CONFIG_FB_AM)
     	&fb_device,
     #endif
+    #if  defined(CONFIG_AM_TV_OUTPUT)||defined(CONFIG_AM_TCON_OUTPUT)
+       &vout_device,	
+    #endif		
     #if defined(CONFIG_AM_STREAMING)
 		&codec_device,
     #endif
