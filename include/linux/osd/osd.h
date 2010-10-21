@@ -162,7 +162,7 @@ static const  bpp_color_bit_define_t   default_color_format_array[]={
 	{BPP_TYPE_32_BGRA,/*red*/ 8,8,0,/*green*/16,8,0,/*blue*/24,8,0,/*trans*/0,8,0,FB_VISUAL_TRUECOLOR,32},
 	{BPP_TYPE_32_ABGR,/*red*/ 0,8,0,/*green*/8,8,0,/*blue*/16,8,0,/*trans*/24,8,0,FB_VISUAL_TRUECOLOR,32},
 	{BPP_TYPE_32_RGBA,/*red*/ 24,8,0,/*green*/16,8,0,/*blue*/8,8,0,/*trans*/0,8,0,FB_VISUAL_TRUECOLOR,32},
-	{BPP_TYPE_32_ABGR,/*red*/ 0,8,0,/*green*/8,8,0,/*blue*/16,8,0,/*trans*/24,8,0,FB_VISUAL_TRUECOLOR,32},
+	{BPP_TYPE_32_RGBA,/*red*/ 24,8,0,/*green*/16,8,0,/*blue*/8,8,0,/*trans*/0,8,0,FB_VISUAL_TRUECOLOR,32},
 	//{BPP_TYPE_32_ARGB,/*red*/ 16,8,0,/*green*/8,8,0,/*blue*/0,8,0,/*trans*/24,8,0,FB_VISUAL_TRUECOLOR,32},
 /*YUV color*/
 	{BPP_TYPE_YUV_422,0,0,0, 0,0,0, 0,0,0, 0,0,0, 0,16},
