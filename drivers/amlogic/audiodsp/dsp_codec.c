@@ -17,9 +17,14 @@
 #include "dsp_mailbox.h"
 
 #include "dsp_codec.h"
-
+static int ffff;
  int dsp_codec_start( struct audiodsp_priv *priv)
  	{
+        ffff = 0;
+        priv->last_valid_pts = 0;
+        priv->out_len_after_last_valid_pts = 0;
+        priv->cur_frame_info.offset=0;
+        
  		return dsp_mailbox_send(priv,1,M2B_IRQ2_DECODE_START,0,0,0);
 		 
  	}
@@ -70,19 +75,28 @@ u32 dsp_codec_get_current_pts(struct audiodsp_priv *priv)
 	int len;
 	int frame_nums;
 	int res;
+	int ttt;
 	
 	mutex_lock(&priv->stream_buffer_mutex);
-	if(priv->stream_fmt == MCODEC_FMT_COOK)
+
+if (0)//	if(priv->stream_fmt == MCODEC_FMT_COOK)
 		{
 		pts = priv->cur_frame_info.offset;
 		mutex_unlock(&priv->stream_buffer_mutex);
 		}
 	else
 		{
-
+if (priv->stream_fmt == MCODEC_FMT_COOK) {
+		pts = priv->cur_frame_info.offset;
+        if (pts) res = 0;
+    }else{    
 	res=pts_lookup_offset(PTS_TYPE_AUDIO,priv->cur_frame_info.offset,&pts,0);
-	if(res==0)
+}
+	ttt = pts;
+
+	if((res==0) && (ffff==0))
 		{
+        ffff = 1;
 //printk("pts_lookup_offset = %d\n", pts);
 		priv->out_len_after_last_valid_pts=0;
 		len=priv->cur_frame_info.buffered_len+dsp_codec_get_bufer_data_len(priv);
@@ -92,6 +106,7 @@ u32 dsp_codec_get_current_pts(struct audiodsp_priv *priv)
 			pts-=delay_pts;
 		else
 			pts=0;
+
 		priv->last_valid_pts=pts;
 //printk("len = %d, data_width = %d, channel_num = %d, frame_nums = %d, sample_rate = %d, pts = %d\n",
 //    len, priv->frame_format.data_width,priv->frame_format.channel_num, frame_nums, priv->frame_format.sample_rate, pts);
@@ -104,12 +119,40 @@ u32 dsp_codec_get_current_pts(struct audiodsp_priv *priv)
 		frame_nums=(len*8/(priv->frame_format.data_width*priv->frame_format.channel_num));
 		pts+=(frame_nums*90)/(priv->frame_format.sample_rate/1000);
 
-//printk("last_pts = %d, len = %d, data_width = %d, channel_num = %d, frame_nums = %d, sample_rate = %d, pts = %d\n",
-//    priv->last_valid_pts, len, priv->frame_format.data_width,priv->frame_format.channel_num, frame_nums, priv->frame_format.sample_rate, pts);
-		}
+            printk("out_len_after_last_valid_pts = %d, pts inc = %d\n", len, (frame_nums*90)/(priv->frame_format.sample_rate/1000));
 
+#if 0
+printk("last_pts = %d, len = %d, data_width = %d, channel_num = %d, frame_nums = %d, sample_rate = %d, pts = %d\n",
+    priv->last_valid_pts, len, priv->frame_format.data_width,priv->frame_format.channel_num, frame_nums, priv->frame_format.sample_rate, pts);
+#else
+//printk("lookup = %d, pts = %d\n", priv->cur_frame_info.offset, pts);
+#endif
+
+#if 1
+        if (res == 0) {
+if (priv->stream_fmt == MCODEC_FMT_COOK) {
+    len = dsp_codec_get_bufer_data_len(priv);
+} else {
+		    len=priv->cur_frame_info.buffered_len+dsp_codec_get_bufer_data_len(priv);
+}
+		    frame_nums=(len*8/(priv->frame_format.data_width*priv->frame_format.channel_num));
+		    delay_pts=(frame_nums*90)/(priv->frame_format.sample_rate/1000);
+            printk("lookup = %d - %d (len=%d,rd=%d,wr=%d)\n", ttt, delay_pts, 
+                len,dsp_codec_get_rd_addr(priv)-priv->stream_buffer_start,dsp_codec_get_wd_addr(priv)-priv->stream_buffer_start);
+
+		    if(ttt>delay_pts)
+			    ttt-=delay_pts;
+		    else
+			    ttt=0;
+            
+            printk("pts=%d, lookup=%d, diff = %d, buffered_len=%d\n",
+                pts, ttt, pts - ttt,priv->cur_frame_info.buffered_len);
+        }
+#endif
+		}
 	else
 		{
+printk("pts = -1\n");
 		pts=-1;
 		}
 

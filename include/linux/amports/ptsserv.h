@@ -49,4 +49,6 @@ extern int pts_start(u8 type);
 
 extern int pts_stop(u8 type);
 
+extern int pts_get_first(u8 type, u32 *pts);
+
 #endif /* PTSSERV_H */
