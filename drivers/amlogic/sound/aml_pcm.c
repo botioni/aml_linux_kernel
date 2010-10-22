@@ -9,7 +9,7 @@
 #include <linux/dma-mapping.h>
 #include <linux/soundcard.h>
 #include <linux/timer.h>
-
+#include <linux/debugfs.h>
 #include <sound/core.h>
 #include <sound/pcm.h>
 #include <sound/initval.h>
@@ -767,6 +767,158 @@ static int aml_alsa_audio_remove(struct platform_device *dev)
 
     return 0;
 }
+#ifdef CONFIG_DEBUG_FS
+
+static struct dentry *debugfs_root;
+static struct dentry *debugfs_regs;
+
+static int regs_open_file(struct inode *inode, struct file *file)
+{
+	return 0;
+}
+
+/**
+ *	cat regs
+ */
+static ssize_t regs_read_file(struct file *file, char __user *user_buf,
+			       size_t count, loff_t *ppos)
+{
+	ssize_t ret;
+	char *buf = kmalloc(PAGE_SIZE, GFP_KERNEL);
+	if (!buf)
+		return -ENOMEM;
+		
+	ret = sprintf(buf, "Usage: \n"
+										 "	echo base reg val >regs\t(set the register)\n"
+										 "	echo base reg >regs\t(show the register)\n"
+										 "	base -> c(cbus), x(aix), p(apb), h(ahb) \n"
+									);
+		
+	if (ret >= 0)
+		ret = simple_read_from_buffer(user_buf, count, ppos, buf, ret);
+	kfree(buf);	
+	
+	return ret;
+}
+
+static int read_regs(char base, int reg)
+{
+	int val = 0;
+	switch(base){
+		case 'c':
+			val = READ_CBUS_REG(reg);
+			break;
+		case 'x':
+			val = READ_AXI_REG(reg);
+			break;
+		case 'p':
+			val = READ_APB_REG(reg);
+			break;
+		case 'h':
+			val = READ_AHB_REG(reg);
+			break;
+		default:
+			break;
+	};
+	printk("\tReg %x = %x\n", reg, val);
+	return val;
+}
+
+static void write_regs(char base, int reg, int val)
+{
+	switch(base){
+		case 'c':
+			WRITE_CBUS_REG(reg, val);
+			break;
+		case 'x':
+			WRITE_AXI_REG(reg, val);
+			break;
+		case 'p':
+			WRITE_APB_REG(reg, val);
+			break;
+		case 'h':
+			WRITE_AHB_REG(reg, val);
+			break;
+		default:
+			break;
+	};
+	printk("Write reg:%x = %x\n", reg, val);
+}
+static ssize_t regs_write_file(struct file *file,
+		const char __user *user_buf, size_t count, loff_t *ppos)
+{
+	char buf[32];
+	int buf_size = 0;
+	char *start = buf;
+	unsigned long reg, value;
+	int step = 1;
+	char base;
+	
+	buf_size = min(count, (sizeof(buf)-1));
+	
+	if (copy_from_user(buf, user_buf, buf_size))
+		return -EFAULT;
+	buf[buf_size] = 0;
+	while (*start == ' ')
+		start++;
+		
+	base = *start;
+	start ++;
+	if(!(base =='c' || base == 'x' || base == 'p' || base == 'h')){
+		return -EINVAL;
+	}
+	
+	while (*start == ' ')
+		start++;
+		
+	reg = simple_strtoul(start, &start, 16);
+	
+	while (*start == ' ')
+		start++;
+		
+	if (strict_strtoul(start, 16, &value))
+	{
+			read_regs(base, reg);
+			return -EINVAL;
+	}
+	
+	write_regs(base, reg, value);
+	
+	return buf_size;
+}
+
+static const struct file_operations regs_fops = {
+	.open = regs_open_file,
+	.read = regs_read_file,
+	.write = regs_write_file,
+};
+
+static void aml_pcm_init_debugfs()
+{
+		debugfs_root = debugfs_create_dir("aml_pcm_debug",NULL);
+		if (IS_ERR(debugfs_root) || !debugfs_root) {
+			printk("aml_pcm: Failed to create debugfs directory\n");
+			debugfs_root = NULL;
+		}
+		
+		debugfs_regs = debugfs_create_file("regs", 0644, debugfs_root, NULL, &regs_fops);
+		if(!debugfs_regs){
+			printk("aml_pcm: Failed to create debugfs file\n");
+		}
+}
+static void aml_pcm_cleanup_debugfs()
+{
+	debugfs_remove_recursive(debugfs_root);
+}
+#else
+static void aml_pcm_init_debugfs()
+{
+}
+static void aml_pcm_cleanup_debugfs()
+{
+}
+#endif
+
 
 #define aml_ALSA "aml_ALSA"
 
@@ -786,7 +938,9 @@ static struct platform_driver aml_alsa_audio_driver = {
 static int __init aml_alsa_audio_init(void)
 {
     int err;
-
+	
+	aml_pcm_init_debugfs();
+		
     if ((err = platform_driver_register(&aml_alsa_audio_driver)) < 0)
         return err;
 
