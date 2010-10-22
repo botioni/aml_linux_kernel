@@ -48,6 +48,25 @@
 		return len;
  }
 
+int dsp_codec_get_bufer_data_len1(struct audiodsp_priv *priv, unsigned long wd_ptr)
+{
+
+#define REVERSD_BYTES	32
+#define CACHE_ALIGNED(x)	(x&(~0x1f))
+  		unsigned long rp,wp,len,flags;
+		local_irq_save(flags);
+  		rp=dsp_codec_get_rd_addr(priv);
+		wp=ARC_2_ARM_ADDR_SWAP(wd_ptr);
+		if(rp>wp)
+			len=priv->stream_buffer_size-(rp-wp);
+		else
+			len=(wp-rp);
+		len=(len>REVERSD_BYTES)?(len-REVERSD_BYTES):0;
+		len=CACHE_ALIGNED(len);
+		local_irq_restore(flags);
+		return len;
+ }
+
 unsigned long dsp_codec_inc_rd_addr(struct audiodsp_priv *priv,int size)
 {
 	unsigned long rd,flags;
@@ -70,6 +89,7 @@ u32 dsp_codec_get_current_pts(struct audiodsp_priv *priv)
 	int len;
 	int frame_nums;
 	int res;
+	u32 offset, buffered_len, wp; 
 	
 	mutex_lock(&priv->stream_buffer_mutex);
 	if(priv->stream_fmt == MCODEC_FMT_COOK)
@@ -79,13 +99,16 @@ u32 dsp_codec_get_current_pts(struct audiodsp_priv *priv)
 		}
 	else
 		{
+		
 
-	res=pts_lookup_offset(PTS_TYPE_AUDIO,priv->cur_frame_info.offset,&pts,0);
+	buffered_len=DSP_RD(DSP_BUFFERED_LEN);
+	wp = DSP_RD(DSP_DECODE_OUT_WD_PTR);
+	res=pts_lookup_offset(PTS_TYPE_AUDIO,DSP_RD(DSP_AFIFO_RD_OFFSET1),&pts,0);
 	if(res==0)
 		{
 //printk("pts_lookup_offset = %d\n", pts);
 		priv->out_len_after_last_valid_pts=0;
-		len=priv->cur_frame_info.buffered_len+dsp_codec_get_bufer_data_len(priv);
+		len=buffered_len+dsp_codec_get_bufer_data_len1(priv, wp);
 		frame_nums=(len*8/(priv->frame_format.data_width*priv->frame_format.channel_num));
 		delay_pts=(frame_nums*90)/(priv->frame_format.sample_rate/1000);
 		if(pts>delay_pts)

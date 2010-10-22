@@ -53,6 +53,10 @@ dsp_register.h
 #endif
 #define DSP_ARM_REF_CLK_VAL                DSP_REG(16)
 
+#define DSP_DECODE_OUT_WD_PTR       DSP_REG(18)
+#define DSP_BUFFERED_LEN  		DSP_REG(19)
+#define DSP_AFIFO_RD_OFFSET1  		DSP_REG(20)
+
 #define MAILBOX1_REG(n)	DSP_REG(40+n)
 #define MAILBOX2_REG(n)	DSP_REG(40+32+n)
 
