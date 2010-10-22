@@ -30,5 +30,19 @@ int eth_set_pinmux(int bank_id,int clk_in_out_id,unsigned long ext_msk);
 #define UART_B_GPIO_E18_E19	(9)
 void uart_set_pinmux(int port,int uart_bank);
 
+/*AUDIO*/
+
+#define AUDIO_OUT_JTAG				0
+#define AUDIO_OUT_GPIOA				1
+#define AUDIO_OUT_TEST_N			2
+#define AUDIO_IN_JTAG					3
+#define SPDIF_OUT_GPIOA				4
+#define SPDIF_OUT_GPIOB				5
+#define SPDIF_OUT_TEST_N			6
+#define SPDIF_IN_GPIOA				7
+#define SPDIF_IN_GPIOB				8
+
+void set_audio_pinmux(int type);
+
 #endif
 

@@ -21,7 +21,7 @@ static void audiodsp_monitor(unsigned long arg)
 	unsigned long dsp_status;
 
 	
-	old_dsp_jiffies=DSP_RD(DSP_JIFFIES);
+	dsp_jiffies=DSP_RD(DSP_JIFFIES);
 	dsp_status=DSP_RD(DSP_STATUS);
 
 	if(old_dsp_jiffies==dsp_jiffies)

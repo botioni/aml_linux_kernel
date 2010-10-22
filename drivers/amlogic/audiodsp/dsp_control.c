@@ -20,6 +20,7 @@
 
 #include "dsp_mailbox.h"
 #include <linux/delay.h>
+#include <linux/clk.h>
 
 #define MIN_CACHE_ALIGN(x)	(((x-4)&(~0x1f)))
 #define MAX_CACHE_ALIGN(x)	((x+0x1f)&(~0x1f))
@@ -29,6 +30,8 @@
 #define RESET_AUD_ARC	(1<<13)
 static void	enable_dsp(int flag)
 {	
+	struct clk *clk;
+	int xtal = 0;
 
 	/* RESET DSP */
 
@@ -48,6 +51,16 @@ static void	enable_dsp(int flag)
         if (flag) {
 		    SET_MPEG_REG_MASK(AUD_ARC_CTL, 1);
 		    CLEAR_MPEG_REG_MASK(AUD_ARC_CTL, 1);
+		    clk=clk_get_sys("a9_clk", NULL);
+		    if(!clk)
+			{
+				printk(KERN_ERR "can't find clk %s for a9_clk SETTING!\n\n","clk_xtal");
+			}
+			else
+			{
+				xtal=clk_get_rate(clk);				
+			}
+		    DSP_WD(DSP_ARM_REF_CLK_VAL, xtal);
 	}
 }
 

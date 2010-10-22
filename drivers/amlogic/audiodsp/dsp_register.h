@@ -51,6 +51,8 @@ dsp_register.h
 #ifdef DEBUG_TIME_TEST
 #define DSP_TEST_TIME_VALUE                DSP_REG(15)
 #endif
+#define DSP_ARM_REF_CLK_VAL                DSP_REG(16)
+
 #define MAILBOX1_REG(n)	DSP_REG(40+n)
 #define MAILBOX2_REG(n)	DSP_REG(40+32+n)
 
