@@ -399,7 +399,6 @@ static struct fb_ops osd_ops = {
 	.fb_pan_display = osd_pan_display,
 	.fb_sync        = osd_sync,
 };
-
 static  void  set_default_display_axis(struct fb_var_screeninfo *var,osd_ctl_t *osd_ctrl,const vinfo_t *vinfo)
 {
 	
@@ -541,8 +540,10 @@ osd_probe(struct platform_device *pdev)
    	if (NULL==init_logo_obj )
     	{
 #ifdef CONFIG_AM_TCON_OUTPUT
+		printk("select LCD output \n");
 		set_current_vmode(VMODE_LCD);
 #else
+		printk("select TV output 720p");
     		set_current_vmode(VMODE_720P);	
 #endif
     	}

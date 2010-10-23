@@ -182,8 +182,8 @@ vmode_t validate_vmode(char *name)
 EXPORT_SYMBOL(validate_vmode);
 
 /*
-*here below we offer two functions to get and register tv module server
-*tv module server will set and store tvmode attributes for tv encoder
+*here we offer two functions to get and register vout module server
+*vout module server will set and store tvmode attributes for vout encoder
 *we can ensure TVMOD SET MODULE independent with these two function.
 */
 
