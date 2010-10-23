@@ -54,6 +54,9 @@ typedef  enum {
 	COLOR_INDEX_YUV_422=33,
 	
 }color_index_t;
+
+
+
 typedef  struct {
 	color_index_t	color_index;
 	u8	hw_colormat;

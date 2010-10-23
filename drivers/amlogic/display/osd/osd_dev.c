@@ -38,14 +38,10 @@
 
 void osddev_set(struct myfb_dev *fbdev)
 {
-
 	
-   
-
     fbdev_lock(fbdev);
 
     //memset((char*) fbdev->fb_mem,0x0,fbdev->fb_len);
-    
 
     osd_setup(&fbdev->osd_ctl,
                fbdev->fb_info->var.xoffset,

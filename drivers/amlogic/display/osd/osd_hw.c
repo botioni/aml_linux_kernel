@@ -50,7 +50,6 @@
 **
 **************************************************************************/
 static  u32  osd_gbl_alpha[2]={OSD_GLOBAL_ALPHA_DEF,OSD_GLOBAL_ALPHA_DEF};
-
 static pandata_t pandata[2];
 static spinlock_t osd_lock = SPIN_LOCK_UNLOCKED;
 static  u32   *reg_status;
@@ -360,7 +359,6 @@ void osd_setup(struct osd_ctl_s *osd_ctl,
                 )
 {
     u32 w = (color->bpp * xres_virtual + 7) >> 3;
-
     osd_ctl->xres = xres;
     osd_ctl->yres = yres;
     osd_ctl->xres_virtual = xres_virtual;

@@ -252,8 +252,6 @@ static  int  osd_transfer(logo_object_t *plogo)
 			amlog_mask_level(LOG_MASK_DEVICE,LOG_LEVEL_LOW,"can't transfer unsupported jpg format\n");	
 			return FAIL;
 		}
-		
-		
 	}else
 	{
 		amlog_mask_level(LOG_MASK_DEVICE,LOG_LEVEL_LOW,"unsupported logo picture format format\n");	
