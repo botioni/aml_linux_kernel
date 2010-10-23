@@ -26,7 +26,9 @@
 #define TVOUTC_H
 
 #include "tvmode.h"
+
 #define  	DEFAULT_VDAC_SEQUENCE   	0x120120
+
 typedef  enum{
 	INTERALCE_COMPONENT=0,
 	CVBS_SVIDEO,

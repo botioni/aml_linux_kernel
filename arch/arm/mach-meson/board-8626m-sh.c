@@ -123,6 +123,7 @@ static struct platform_device vout_device = {
     .resource      = vout_device_resources,
 };
 #endif
+
 #if defined(CONFIG_AMLOGIC_SPI_NOR)
 static struct mtd_partition spi_partition_info[] = {
 	{

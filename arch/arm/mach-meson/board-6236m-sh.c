@@ -114,6 +114,7 @@ static struct platform_device vout_device = {
     .resource      = vout_device_resources,
 };
 #endif
+
 #if defined(CONFIG_AM_STREAMING)
 static struct resource codec_resources[] = {
     [0] = {

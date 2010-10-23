@@ -133,6 +133,23 @@ static struct platform_device vout_device = {
 };
 #endif
 
+#if  defined(CONFIG_AM_TV_OUTPUT)||defined(CONFIG_AM_TCON_OUTPUT)
+static struct resource vout_device_resources[] = {
+    [0] = {
+        .start = 0,
+        .end   = 0,
+        .flags = IORESOURCE_MEM,
+    },
+};
+
+static struct platform_device vout_device = {
+    .name       = "mesonvout",
+    .id         = 0,
+    .num_resources = ARRAY_SIZE(vout_device_resources),
+    .resource      = vout_device_resources,
+};
+#endif
+
 #if defined(CONFIG_AMLOGIC_SPI_NOR)
 static struct mtd_partition spi_partition_info[] = {
 	{
