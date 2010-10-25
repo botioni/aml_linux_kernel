@@ -20,6 +20,8 @@
 
  int dsp_codec_start( struct audiodsp_priv *priv)
  	{
+ 		DSP_WD(DSP_AFIFO_RD_OFFSET1, 0);
+		DSP_WD(DSP_BUFFERED_LEN, 0);
  		return dsp_mailbox_send(priv,1,M2B_IRQ2_DECODE_START,0,0,0);
 		 
  	}
@@ -54,6 +56,8 @@ int dsp_codec_get_bufer_data_len1(struct audiodsp_priv *priv, unsigned long wd_p
 #define REVERSD_BYTES	32
 #define CACHE_ALIGNED(x)	(x&(~0x1f))
   		unsigned long rp,wp,len,flags;
+//if(wd_ptr != DSP_RD(DSP_DECODE_OUT_WD_ADDR))
+//	printk("w1 == %x , w2 == %x, r == %x\n", DSP_RD(DSP_DECODE_OUT_WD_ADDR), wd_ptr, DSP_RD(DSP_DECODE_OUT_RD_ADDR));
 		local_irq_save(flags);
   		rp=dsp_codec_get_rd_addr(priv);
 		wp=ARC_2_ARM_ADDR_SWAP(wd_ptr);
@@ -92,18 +96,28 @@ u32 dsp_codec_get_current_pts(struct audiodsp_priv *priv)
 	u32 offset, buffered_len, wp; 
 	
 	mutex_lock(&priv->stream_buffer_mutex);
+#if 0
 	if(priv->stream_fmt == MCODEC_FMT_COOK)
 		{
 		pts = priv->cur_frame_info.offset;
 		mutex_unlock(&priv->stream_buffer_mutex);
 		}
 	else
+#endif
 		{
 		
 
 	buffered_len=DSP_RD(DSP_BUFFERED_LEN);
 	wp = DSP_RD(DSP_DECODE_OUT_WD_PTR);
-	res=pts_lookup_offset(PTS_TYPE_AUDIO,DSP_RD(DSP_AFIFO_RD_OFFSET1),&pts,0);
+	offset = DSP_RD(DSP_AFIFO_RD_OFFSET1);
+	if(priv->stream_fmt == MCODEC_FMT_COOK || priv->stream_fmt == MCODEC_FMT_RAAC)
+		{
+		pts = DSP_RD(DSP_AFIFO_RD_OFFSET1);
+		res = 0;
+		}
+	else
+		res=pts_lookup_offset(PTS_TYPE_AUDIO,offset,&pts,0);
+
 	if(res==0)
 		{
 //printk("pts_lookup_offset = %d\n", pts);
