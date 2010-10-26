@@ -112,7 +112,10 @@ int osddev_setcolreg(unsigned regno, u16 red, u16 green, u16 blue,
 
     return 0;
 }
-
+void osddev_init(void)
+{
+	osd_init_hw();
+}
 void osddev_enable(int enable,int  index)
 {
     osd_enable_hw(enable,index);

@@ -70,7 +70,7 @@ extern void osddev_set(struct myfb_dev *fbdev);
 extern void osddev_update_disp_axis(struct myfb_dev *fbdev,int  mode_change) ;
 extern int osddev_setcolreg(unsigned regno, u16 red, u16 green, u16 blue,
         u16 transp, struct myfb_dev *fbdev);
-        
+extern void osddev_init(void) ;        
 extern void osddev_enable(int enable,int index);
 
 extern void osddev_pan_display(struct fb_var_screeninfo *var,struct fb_info *fbi);

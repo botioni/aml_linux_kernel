@@ -207,7 +207,7 @@ void ge2dgen_src_clip(ge2d_context_t *wq,
     		src1_gen_cfg->clipx_end   = w;
     		src1_gen_cfg->clipy_start = y;
     		src1_gen_cfg->clipy_end   = h;
-		wq->config.update_flag |= UPDATE_DST_DATA;	
+		wq->config.update_flag |= UPDATE_SRC_GEN;	
 	}
 }
 

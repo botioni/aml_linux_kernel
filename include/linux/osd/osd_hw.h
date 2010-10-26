@@ -1,6 +1,31 @@
 #ifndef  OSD_HW_H
 #define OSD_HW_H
 
+typedef  enum{
+	OSD1=0,
+	OSD2
+}osd_index_t;
+
+typedef  enum{
+	DISABLE=0,
+	ENABLE
+}osd_enable_t;
+
+typedef  enum{
+	SCAN_MODE_INTERLACE,
+	SCAN_MODE_PROGRESSIVE	
+}scan_mode_t;
+
+typedef  enum{
+	OSD_COLOR_MODE=0,
+	OSD_ENABLE,
+	OSD_COLOR_KEY,
+	OSD_COLOR_KEY_ENABLE,
+	OSD_GBL_ALPHA,
+	DISP_GEOMETRY,
+	HW_REG_INDEX_MAX
+}hw_reg_index;
+
 
 typedef struct {
 	s32 x_start;
@@ -51,5 +76,5 @@ extern void osd_cursor_hw(u16 x, u16 y, int index);
 #endif
 extern void osd_suspend_hw(void);
 extern void osd_resume_hw(void);
-
+extern void osd_init_hw(void);
 #endif 

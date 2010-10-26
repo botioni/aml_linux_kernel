@@ -47,13 +47,11 @@
 #include "osd_log.h"
 #include <linux/amlog.h>
 
-MODULE_AMLOG(AMLOG_DEFAULT_LEVEL, 0, LOG_LEVEL_DESC, LOG_MASK_DESC);
+MODULE_AMLOG(AMLOG_DEFAULT_LEVEL, 0x0, LOG_LEVEL_DESC, LOG_MASK_DESC);
 
 static myfb_dev_t  *gp_fbdev_list[OSD_COUNT]={NULL,NULL};
 
 static DEFINE_MUTEX(dbg_mutex);
-
-
 
 
 const color_bit_define_t*	
@@ -61,7 +59,7 @@ _find_color_format(struct fb_var_screeninfo * var)
 {
 	u32	upper_margin,lower_margin,i,level;
 	const color_bit_define_t *ret=NULL;
-	printk("var bits per pixel:%d\n",var->bits_per_pixel);
+	
 	level=(var->bits_per_pixel -1)/8; 
 	switch(level)
 	{
@@ -122,6 +120,7 @@ _fbdev_set_default(struct myfb_dev *fbdev,int index )
 	fbdev->fb_info->fix = mydef_fix;
 	fbdev->color=_find_color_format(&fbdev->fb_info->var);
 }
+
 static int
 osd_check_var(struct fb_var_screeninfo *var, struct fb_info *info)
 {
@@ -129,7 +128,6 @@ osd_check_var(struct fb_var_screeninfo *var, struct fb_info *info)
     	struct myfb_dev *fbdev=( struct myfb_dev*)info->par;
 	const color_bit_define_t   *color_format_pt;
 
-	printk("start check var\n");
 	fix = &info->fix;
 	color_format_pt=_find_color_format(var);	
 	if (color_format_pt == NULL || color_format_pt->color_index==0)
@@ -401,6 +399,7 @@ static struct fb_ops osd_ops = {
 	.fb_pan_display = osd_pan_display,
 	.fb_sync        = osd_sync,
 };
+
 static  void  set_default_display_axis(struct fb_var_screeninfo *var,osd_ctl_t *osd_ctrl,const vinfo_t *vinfo)
 {
 	
@@ -542,12 +541,11 @@ osd_probe(struct platform_device *pdev)
    	if (NULL==init_logo_obj )
     	{
 #ifdef CONFIG_AM_TCON_OUTPUT
-		printk("select LCD output \n");
 		set_current_vmode(VMODE_LCD);
 #else
-		printk("select TV output 720p");
     		set_current_vmode(VMODE_720P);	
 #endif
+		osd_init_hw();
     	}
 	vinfo = get_current_vinfo();
     	for (index=0;index<OSD_COUNT;index++)
@@ -557,7 +555,7 @@ osd_probe(struct platform_device *pdev)
 		{
 			amlog_level(LOG_LEVEL_HIGH,"No frame buffer memory define.\n");
 			r = -EFAULT;
-			goto failed1;
+			goto failed2;
 		}
 		//if we have no resource then no need to create this device.
 		amlog_level(LOG_LEVEL_HIGH,"[osd%d] 0x%x-0x%x\n",index,mem->start,mem->end);
@@ -602,11 +600,13 @@ osd_probe(struct platform_device *pdev)
 
 		if(init_logo_obj && index==logo_osd_index ) //adjust default var info
 		{
+			int  bpp=init_logo_obj->dev->output_dev.osd.color_depth;//bytes per pixel
+		
 			mydef_var[index].xres=init_logo_obj->dev->vinfo->width;
 			mydef_var[index].yres=init_logo_obj->dev->vinfo->height;	
 			mydef_var[index].xres_virtual=init_logo_obj->dev->vinfo->width;
 			mydef_var[index].yres_virtual=init_logo_obj->dev->vinfo->height<<1;//logo always use double buffer
-			mydef_var[index].bits_per_pixel=init_logo_obj->dev->output_dev.osd.color_depth ;
+			mydef_var[index].bits_per_pixel=bpp ;
 			amlog_level(LOG_LEVEL_HIGH,"init fbdev bpp is :%d\r\n",mydef_var[index].bits_per_pixel);
 			
 			if(mydef_var[index].bits_per_pixel>32) 

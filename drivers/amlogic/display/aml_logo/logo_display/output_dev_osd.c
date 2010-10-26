@@ -44,7 +44,7 @@ static int osd_hw_setup(logo_object_t *plogo)
 	osd_ctl.disp_end_x=osd_ctl.xres -1;
 	osd_ctl.disp_start_y=0;
 	osd_ctl.disp_end_y=osd_ctl.yres-1;
-	
+	osd_init_hw();
 	osd_setup(&osd_ctl, \
 					0, \
 					0, \
@@ -59,7 +59,6 @@ static int osd_hw_setup(logo_object_t *plogo)
 					osd_ctl.addr, \
 					color, \
 					osd_ctl.index) ;
-	WRITE_MPEG_REG(VPP_MISC, (1<<(12+plogo->dev->idx))|(1<<7)|(0<<4)|(1<<0));
 	return SUCCESS;
 	
 }
