@@ -33,6 +33,7 @@
 #include <asm/uaccess.h>
 #include <asm/delay.h>
 #include <mach/am_regs.h>
+#include <mach/power_gate.h>
 
 #include "../hdmi_info_global.h"
 #include "../hdmi_tx_module.h"
@@ -48,7 +49,6 @@ static void hdmi_audio_init(unsigned char spdif_flag);
 
 #define CEC0_LOG_ADDR 0x4
 
-#undef LOW_P
 //#define HPD_DELAY_CHECK
 //#define ENABLE_HDCP
 //#define CEC_SUPPORT
@@ -94,7 +94,9 @@ static struct timer_list hpd_timer;
 static unsigned serial_reg_val=0x22;
 static unsigned color_depth_f=0;
 static unsigned color_space_f=0;
-static unsigned new_reset_sequence_flag=1;
+static unsigned char new_reset_sequence_flag=1;
+static unsigned char low_power_flag=0;
+static unsigned char power_off_vdac_flag=0;
 
 static unsigned long modulo(unsigned long a, unsigned long b)
 {
@@ -633,7 +635,7 @@ static void hdmi_tvenc_set(Hdmi_tx_video_para_t *param)
     }
 }    
 
-static void hdmi_hw_init(void)
+static void hdmi_hw_init(hdmitx_dev_t* hdmitx_device)
 {
     unsigned int tmp_add_data;
     if(hdmi_chip_type == HDMI_M1A){
@@ -659,11 +661,12 @@ static void hdmi_hw_init(void)
         hdmi_wr_reg(0x018, serial_reg_val);   //Serializer Internal clock setting ,please fix to vaue 24 ,other setting is only for debug  
     }
     hdmi_wr_reg(0x01a, 0xfb);   //bit[2:0]=011 ,CK channel output TMDS CLOCK ,bit[2:0]=101 ,ck channel output PHYCLCK 
-#ifdef LOW_P
-    hdmi_wr_reg(0x016, 0x00);
-#else
-    hdmi_wr_reg(0x016, 0x04);   // Bit[3:0] is HDMI-PHY's output swing control register
-#endif    
+
+    if(low_power_flag)
+        hdmi_wr_reg(0x016, 0x00);
+    else 
+        hdmi_wr_reg(0x016, 0x04);   // Bit[3:0] is HDMI-PHY's output swing control register
+
     hdmi_wr_reg(0x0F7, 0x0F);   // Termination resistor calib value
   //hdmi_wr_reg(0x014, 0x07);   // This register is for pre-emphasis control ,we need test different TMDS Clcok speed then write down the suggested     value for each one ;
   //hdmi_wr_reg(0x014, 0x01);   // This is a sample for Pre-emphasis setting ,recommended for 225MHz's TMDS Setting & ** meters HDMI Cable  
@@ -756,12 +759,12 @@ static void hdmi_hw_init(void)
     tmp_add_data = 0x40;
     hdmi_wr_reg(TX_HDCP_MODE, tmp_add_data);
 
-#ifdef LOW_P
-    hdmi_wr_reg(TX_CORE_CALIB_MODE, 0xc);
-    hdmi_wr_reg(TX_CORE_CALIB_VALUE, 0x0);
+    if(low_power_flag){
+        hdmi_wr_reg(TX_CORE_CALIB_MODE, 0xc);
+        hdmi_wr_reg(TX_CORE_CALIB_VALUE, 0x0);
 
-    hdmi_wr_reg(0x010, 0x0);
-#endif
+        hdmi_wr_reg(0x010, 0x0);
+    }
 
     // --------------------------------------------------------
     // Release TX out of reset
@@ -825,11 +828,12 @@ static void hdmi_hw_reset(Hdmi_tx_video_para_t *param)
         }
     }
     hdmi_wr_reg(0x01a, 0xfb);   //bit[2:0]=011 ,CK channel output TMDS CLOCK ,bit[2:0]=101 ,ck channel output PHYCLCK 
-#ifdef LOW_P
-    hdmi_wr_reg(0x016, 0x00);
-#else
-    hdmi_wr_reg(0x016, 0x04);   // Bit[3:0] is HDMI-PHY's output swing control register
-#endif    
+
+    if(low_power_flag)
+        hdmi_wr_reg(0x016, 0x00);
+    else
+        hdmi_wr_reg(0x016, 0x04);   // Bit[3:0] is HDMI-PHY's output swing control register
+
     hdmi_wr_reg(0x0F7, 0x0F);   // Termination resistor calib value
   //hdmi_wr_reg(0x014, 0x07);   // This register is for pre-emphasis control ,we need test different TMDS Clcok speed then write down the suggested     value for each one ;
   //hdmi_wr_reg(0x014, 0x01);   // This is a sample for Pre-emphasis setting ,recommended for 225MHz's TMDS Setting & ** meters HDMI Cable  
@@ -1036,15 +1040,15 @@ static void hdmi_hw_reset(Hdmi_tx_video_para_t *param)
         hdmi_wr_reg(TX_VIDEO_CSC_COEFF_CR0, 0xd0);        
         hdmi_wr_reg(TX_VIDEO_CSC_COEFF_CR1, 0x66);        
     }    
-    
-#ifdef LOW_P
-    hdmi_wr_reg(TX_CORE_CALIB_MODE, 0xc);
-    hdmi_wr_reg(TX_CORE_CALIB_VALUE, 0x0);
 
-    hdmi_wr_reg(0x010, 0x0);
+    if(low_power_flag){
+        hdmi_wr_reg(TX_CORE_CALIB_MODE, 0xc);
+        hdmi_wr_reg(TX_CORE_CALIB_VALUE, 0x0);
+
+        hdmi_wr_reg(0x010, 0x0);
     
-    hdmi_wr_reg(0x01a, 0x3);
-#endif
+        hdmi_wr_reg(0x01a, 0x3);
+    }
     
     // --------------------------------------------------------
     // Release TX out of reset
@@ -1505,6 +1509,10 @@ static int hdmitx_m1b_set_dispmode(Hdmi_tx_video_para_t *param)
 #ifdef ENABLE_HDCP
     hdmi_wr_reg(TX_HDCP_MODE, hdmi_rd_reg(TX_HDCP_MODE)|0x80); //enable authentication
 #endif    
+    if((ret>=0)&&(power_off_vdac_flag)){
+        //video_dac_disable();
+        SET_CBUS_REG_MASK(VENC_VDAC_SETTING, 0x1f);
+    }
     return ret;
 }    
 
@@ -1709,6 +1717,41 @@ static void hdmitx_m1b_uninit(hdmitx_dev_t* hdmitx_device)
     
 }    
 
+static void hdmitx_m1b_cntl(hdmitx_dev_t* hdmitx_device, int cmd, unsigned argv)
+{
+    if(cmd == HDMITX_HWCMD_LOWPOWER_SWITCH){
+        if(argv==0){
+            low_power_flag=0;    
+        }
+        else{
+            low_power_flag=1;
+        }    
+        if(low_power_flag){
+            hdmi_wr_reg(0x016, 0x00);
+            
+            hdmi_wr_reg(TX_CORE_CALIB_MODE, 0xc);
+            hdmi_wr_reg(TX_CORE_CALIB_VALUE, 0x0);
+
+            hdmi_wr_reg(0x010, 0x0);
+            hdmi_wr_reg(0x01a, 0x3);
+        }
+        else{
+            hdmi_wr_reg(0x016, 0x04);   // Bit[3:0] is HDMI-PHY's output swing control register
+
+            hdmi_wr_reg(TX_CORE_CALIB_MODE, 0x8);
+            hdmi_wr_reg(TX_CORE_CALIB_VALUE, 0xf);
+
+            hdmi_wr_reg(0x010, 0x3);
+            hdmi_wr_reg(0x01a, 0xfb);
+        }
+    }
+    else if(cmd == HDMITX_HWCMD_VDAC_OFF){
+        power_off_vdac_flag=1;
+        //video_dac_disable();
+        SET_CBUS_REG_MASK(VENC_VDAC_SETTING, 0x1f);
+    }
+}
+
 static void hdmitx_m1b_debug(const char* buf)
 { 
     char tmpbuf[128];
@@ -1737,6 +1780,8 @@ static void hdmitx_m1b_debug(const char* buf)
     else if(tmpbuf[0]=='v'){
         printk("Hdmitx driver version: %s\nSerial %x\nColor Depth %d\n", HDMITX_VER, serial_reg_val, color_depth_f);
         printk("reset sequence %d\n", new_reset_sequence_flag);
+        printk("low power %s\n", low_power_flag?"on":"off");
+        printk("vdac %s\n", power_off_vdac_flag?"off":"on");
         return;    
     }
     else if(tmpbuf[0]=='s'){
@@ -1780,7 +1825,10 @@ static void hdmitx_m1b_debug(const char* buf)
         else if(buf[1]=='c'){
             WRITE_MPEG_REG(adr, value);
         }
-        printk("write %x to %s reg[%x]\n",value, buf[1]=='h'?"HDMI":"CBUS", adr);
+        else if(buf[1]=='p'){
+            WRITE_APB_REG(adr, value);   
+        }
+        printk("write %x to %s reg[%x]\n",value,buf[1]=='p'?"APB":(buf[1]=='h'?"HDMI":"CBUS"), adr);
     }
     else if(tmpbuf[0]=='r'){
         adr=simple_strtoul(tmpbuf+2, NULL, 16);
@@ -1791,7 +1839,10 @@ static void hdmitx_m1b_debug(const char* buf)
         else if(buf[1]=='c'){
             value = READ_MPEG_REG(adr);
         }
-        printk("%s reg[%x]=%x\n",buf[1]=='h'?"HDMI":"CBUS", adr, value);
+        else if(buf[1]=='p'){
+            value = READ_APB_REG(adr);
+        }
+        printk("%s reg[%x]=%x\n",buf[1]=='p'?"APB":(buf[1]=='h'?"HDMI":"CBUS"), adr, value);
     }
 }
 
@@ -1832,6 +1883,7 @@ void HDMITX_M1B_Init(hdmitx_dev_t* hdmitx_device)
     hdmitx_device->HWOp.SetupIRQ = hdmitx_m1b_setupirq;
     hdmitx_device->HWOp.DebugFun = hdmitx_m1b_debug;
     hdmitx_device->HWOp.UnInit = hdmitx_m1b_uninit;
+    hdmitx_device->HWOp.Cntl = hdmitx_m1b_cntl;
 #ifdef HPD_DELAY_CHECK
     /*hdp timer*/
     init_timer(&hpd_timer);
@@ -1863,7 +1915,7 @@ void HDMITX_M1B_Init(hdmitx_dev_t* hdmitx_device)
     WRITE_APB_REG(HDMI_CNTL_PORT, READ_APB_REG(HDMI_CNTL_PORT)|(1<<15)); //APB3 err_en
 
     /**/    
-    hdmi_hw_init();
+    hdmi_hw_init(hdmitx_device);
     
 #ifdef CEC_SUPPORT    
     /*cec config*/
