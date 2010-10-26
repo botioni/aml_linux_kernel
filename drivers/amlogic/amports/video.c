@@ -1356,7 +1356,8 @@ unsigned int vf_keep_current(void)
     u_index = (cur_index >> 8) & 0xff;
     v_index = (cur_index >> 16) & 0xff;
 
-	if (canvas_dup(keep_y_addr_remap, canvas_get_addr(y_index), Y_BUFFER_SIZE) &&
+	if (keep_y_addr!=canvas_get_addr(y_index) &&/*must not the same address*/
+		canvas_dup(keep_y_addr_remap, canvas_get_addr(y_index), Y_BUFFER_SIZE) &&
     	canvas_dup(keep_u_addr_remap, canvas_get_addr(u_index), U_BUFFER_SIZE) &&
     	canvas_dup(keep_v_addr_remap, canvas_get_addr(v_index), V_BUFFER_SIZE)) {
 	    canvas_update_addr(y_index, (u32)keep_y_addr);
