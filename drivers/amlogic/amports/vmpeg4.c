@@ -427,7 +427,7 @@ static void vmpeg4_isr(void)
                 WRITE_MPEG_REG(MREG_BUFFEROUT, 0);
 
                 last_picture_type = picture_type;
-                last_pts = pts;
+                last_pts = pts_valid ? pts : 0;
         }
 
         WRITE_MPEG_REG(ASSIST_MBOX1_CLR_REG, 1);
