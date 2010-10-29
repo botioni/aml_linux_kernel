@@ -252,7 +252,8 @@ static  bool   check_cmd_support(unsigned int cmd)
    	 return   	(cmd == FBIOPUT_OSD_SRCCOLORKEY) ||
            		(cmd == FBIOPUT_OSD_SRCKEY_ENABLE) ||
            		(cmd == FBIOPUT_OSD_SET_GBL_ALPHA)||
-           		(cmd == FBIOGET_OSD_GET_GBL_ALPHA);
+           		(cmd == FBIOGET_OSD_GET_GBL_ALPHA)||
+           		(cmd == FBIOPUT_OSD_2X_SCALE);
        
 }
 static int
@@ -282,6 +283,7 @@ osd_ioctl(struct fb_info *info, unsigned int cmd,
 			copy_from_user(&gbl_alpha,argp,sizeof(u32));
 			break;
 		case FBIOGET_OSD_GET_GBL_ALPHA:
+		case FBIOPUT_OSD_2X_SCALE:	
 			break;
 		default :
 			return -1;
@@ -290,6 +292,9 @@ osd_ioctl(struct fb_info *info, unsigned int cmd,
 
   	switch (cmd)
     	{
+    		case FBIOPUT_OSD_2X_SCALE: //arg :higher 16 bit h_scale_enable, lower 16 bit v_scale_enable
+		osddev_set_2x_scale(info->node,arg&0xffff0000?1:0,arg&0xffff?1:0);
+		break;		
     		case FBIOPUT_OSD_SRCCOLORKEY:
 	    	switch(fbdev->color->color_index)
 	  	{
@@ -545,7 +550,7 @@ osd_probe(struct platform_device *pdev)
 #else
     		set_current_vmode(VMODE_720P);	
 #endif
-		osd_init_hw();
+		osddev_init();
     	}
 	vinfo = get_current_vinfo();
     	for (index=0;index<OSD_COUNT;index++)

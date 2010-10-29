@@ -235,6 +235,11 @@ static int tv_vmode_is_supported(vmode_t mode)
 	}
 	return false;
 }
+static int tv_module_disable(vmode_t cur_vmod)
+{
+	video_dac_disable();
+	return 0;
+}
 #ifdef  CONFIG_PM
 static int tv_suspend(void)
 {
@@ -255,6 +260,7 @@ static vout_server_t tv_server={
 		.set_vmode=tv_set_current_vmode,
 		.validate_vmode=tv_validate_vmode,
 		.vmode_is_supported=tv_vmode_is_supported,
+		.disable = tv_module_disable,
 #ifdef  CONFIG_PM  
 		.vout_suspend=tv_suspend,
 		.vout_resume=tv_resume,

@@ -29,6 +29,10 @@ typedef  struct{
 	u32  canvas_idx;
 	u32	addr;
 }fb_geometry_t;
+typedef  struct{
+	u16	h_enable;
+	u16	v_enable;
+}osd_scale_t;
 typedef  pandata_t  dispdata_t;
 
 typedef  struct {
@@ -39,6 +43,7 @@ typedef  struct {
 	u32				color_key_enable[HW_OSD_COUNT];
 	u32				enable[HW_OSD_COUNT];
 	u32				*reg_status;
+	osd_scale_t		scale[HW_OSD_COUNT];
 	fb_geometry_t		fb_gem[HW_OSD_COUNT];
 	const color_bit_define_t *color_info[HW_OSD_COUNT];
 	u32				scan_mode;
@@ -56,7 +61,7 @@ static  void  osd2_update_color_key_enable(void);
 static  void  osd2_update_color_key(void);
 static  void  osd2_update_gbl_alpha(void);
 static  void  osd2_update_disp_geometry(void);
-
+static  void  osd2_update_disp_scale_enable(void);
 
 
 static  void  osd1_update_color_mode(void);
@@ -65,7 +70,7 @@ static  void  osd1_update_color_key(void);
 static  void  osd1_update_color_key_enable(void);
 static  void  osd1_update_gbl_alpha(void);
 static  void  osd1_update_disp_geometry(void);
-
+static  void  osd1_update_disp_scale_enable(void);
 
 
 /************************************************************************
@@ -85,6 +90,7 @@ static update_func_t     hw_func_array[HW_OSD_COUNT][HW_REG_INDEX_MAX]={
 		osd1_update_color_key_enable,
 		osd1_update_gbl_alpha,
 		osd1_update_disp_geometry,
+		osd1_update_disp_scale_enable,
 	},
 	{
 		osd2_update_color_mode,
@@ -93,6 +99,7 @@ static update_func_t     hw_func_array[HW_OSD_COUNT][HW_REG_INDEX_MAX]={
 		osd2_update_color_key_enable,
 		osd2_update_gbl_alpha,
 		osd2_update_disp_geometry,
+		osd2_update_disp_scale_enable,
 	},
 };
 

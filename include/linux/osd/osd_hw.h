@@ -23,6 +23,7 @@ typedef  enum{
 	OSD_COLOR_KEY_ENABLE,
 	OSD_GBL_ALPHA,
 	DISP_GEOMETRY,
+	DISP_SCALE_ENABLE,
 	HW_REG_INDEX_MAX
 }hw_reg_index;
 
@@ -68,6 +69,7 @@ extern void  osddev_update_disp_axis_hw(
                   	u32 yoffset,
                   	u32 mode_change,
                   	u32 index) ;
+extern void osd_set_2x_scale_hw(u32 index,u16 h_scale_enable,u16 v_scale_enable);
 extern void osd_setpal_hw(unsigned regno, unsigned red, unsigned green, unsigned blue, unsigned transp,int index);
 extern void osd_enable_hw(int enable,int index );
 extern void osd_pan_display_hw(unsigned int xoffset, unsigned int yoffset,int index );

@@ -35,6 +35,7 @@ typedef struct
 	int		 (*set_vmode)(vmode_t);
 	vmode_t  (*validate_vmode)(char *);
 	int		(*vmode_is_supported)(vmode_t);
+	int		(*disable)(vmode_t );
 	int		(*vout_suspend)(void);
 	int		(*vout_resume)(void);
 }vout_op_t ;

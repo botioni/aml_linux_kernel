@@ -33,6 +33,7 @@
 #include <mach/am_regs.h>
 
 #define BL_MAX_LEVEL 0x100
+#define PANEL_NAME	"panel"
 
 typedef struct {
 	tcon_conf_t conf;
@@ -223,7 +224,6 @@ static inline void _enable_vsync_interrupt(void)
         WRITE_MPEG_REG(VENC_INTCTRL, 0x2);
     }
 }
-
 static void _enable_backlight(u32 brightness_level)
 {
 	u32 l = brightness_level;
@@ -233,6 +233,15 @@ static void _enable_backlight(u32 brightness_level)
 		
     WRITE_MPEG_REG(LCD_PWM0_LO_ADDR, BL_MAX_LEVEL - l);
     WRITE_MPEG_REG(LCD_PWM0_HI_ADDR, l);
+}
+static void _lcd_module_enable(void)
+{
+	BUG_ON(pDev==NULL);
+	pDev->conf.power_on?pDev->conf.power_on():0;
+	_init_tvenc(&pDev->conf);
+    	_init_tcon(&pDev->conf);
+       	_enable_backlight(BL_MAX_LEVEL);
+    	_enable_vsync_interrupt();
 }
 
 static const vinfo_t *lcd_get_current_info(void)
@@ -245,12 +254,13 @@ static int lcd_set_current_vmode(vmode_t mode)
 	if (mode != VMODE_LCD)
 		return -EINVAL;
 	WRITE_MPEG_REG(VPP_POSTBLEND_H_SIZE, pDev->lcd_info.width);
+	_lcd_module_enable();
 	return 0;
 }
 
 static vmode_t lcd_validate_vmode(char *mode)
 {
-	if ((strncmp(mode, "lcd", 3)) == 0)
+	if ((strncmp(mode, PANEL_NAME, strlen(PANEL_NAME))) == 0)
 		return VMODE_LCD;
 	
 	return VMODE_MAX;
@@ -261,6 +271,12 @@ static int lcd_vmode_is_supported(vmode_t mode)
 	return true;
 	return false;
 }
+static int lcd_module_disable(vmode_t cur_vmod)
+{
+	BUG_ON(pDev==NULL);
+	pDev->conf.power_off?pDev->conf.power_off():0;
+	return 0;
+}
 #ifdef  CONFIG_PM
 static int lcd_suspend(void)
 {
@@ -270,12 +286,7 @@ static int lcd_suspend(void)
 }
 static int lcd_resume(void)
 {
-	BUG_ON(pDev==NULL);
-	pDev->conf.power_on?pDev->conf.power_on():0;
-	_init_tvenc(&pDev->conf);
-    	_init_tcon(&pDev->conf);
-       	_enable_backlight(BL_MAX_LEVEL);
-    	_enable_vsync_interrupt();
+	_lcd_module_enable();
 	return 0;
 }
 #endif
@@ -286,6 +297,7 @@ static vout_server_t lcd_vout_server={
 		.set_vmode = lcd_set_current_vmode,
 		.validate_vmode = lcd_validate_vmode,
 		.vmode_is_supported=lcd_vmode_is_supported,
+		.disable=lcd_module_disable,
 #ifdef  CONFIG_PM  
 		.vout_suspend=lcd_suspend,
 		.vout_resume=lcd_resume,
@@ -295,7 +307,7 @@ static vout_server_t lcd_vout_server={
 
 static void _init_vout(tcon_dev_t *pDev)
 {
-	pDev->lcd_info.name = "lcd";
+	pDev->lcd_info.name = PANEL_NAME;
 	pDev->lcd_info.mode = VMODE_LCD;
 	pDev->lcd_info.width = pDev->conf.width;
 	pDev->lcd_info.height = pDev->conf.height;
@@ -310,11 +322,8 @@ static void _init_vout(tcon_dev_t *pDev)
 
 static void _tcon_init(tcon_conf_t *pConf)
 {
-    _init_tvenc(pConf);
-    _init_tcon(pConf);
-    _init_vout(pDev);
-    _enable_backlight(BL_MAX_LEVEL);
-    _enable_vsync_interrupt();
+	_init_vout(pDev);
+    	_lcd_module_enable();
 }
 
 static int tcon_probe(struct platform_device *pdev)

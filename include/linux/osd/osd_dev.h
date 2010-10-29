@@ -65,7 +65,7 @@ typedef  struct {
 #define fbdev_unlock(dev) mutex_unlock(&dev->lock);
 
 extern int osddev_select_mode(struct myfb_dev *fbdev);
-
+extern void osddev_set_2x_scale(u32 index,u16 h_scale_enable,u16 v_scale_enable);
 extern void osddev_set(struct myfb_dev *fbdev);
 extern void osddev_update_disp_axis(struct myfb_dev *fbdev,int  mode_change) ;
 extern int osddev_setcolreg(unsigned regno, u16 red, u16 green, u16 blue,

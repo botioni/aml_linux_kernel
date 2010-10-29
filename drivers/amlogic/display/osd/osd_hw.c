@@ -286,7 +286,12 @@ void osd_enable_hw(int enable ,int index )
 		add_to_update_list(index,OSD_ENABLE);
 	}
 }
-
+void osd_set_2x_scale_hw(u32 index,u16 h_scale_enable,u16 v_scale_enable)
+{
+	osd_hw.scale[index].h_enable=h_scale_enable;
+	osd_hw.scale[index].v_enable=v_scale_enable;
+	add_to_update_list(index,DISP_SCALE_ENABLE);	
+}
 void osd_pan_display_hw(unsigned int xoffset, unsigned int yoffset,int index )
 {
 	long diff_x, diff_y;
@@ -313,9 +318,51 @@ void osd_pan_display_hw(unsigned int xoffset, unsigned int yoffset,int index )
 				osd_hw.pandata[index].y_start ,osd_hw.pandata[index].y_end );
     	}
 }
-
-
-
+static  void  osd1_update_disp_scale_enable(void)
+{
+	if(osd_hw.scale[OSD1].h_enable)
+	{
+		SET_MPEG_REG_MASK(VIU_OSD1_BLK0_CFG_W0, 3<<12);
+	}
+	else
+	{
+		CLEAR_MPEG_REG_MASK(VIU_OSD1_BLK0_CFG_W0, 3<<12);
+	}
+	if(osd_hw.scan_mode != SCAN_MODE_INTERLACE)
+	{
+		if(osd_hw.scale[OSD1].v_enable)
+		{
+			SET_MPEG_REG_MASK(VIU_OSD1_BLK0_CFG_W0, 1<<14);
+		}
+		else
+		{
+			CLEAR_MPEG_REG_MASK(VIU_OSD1_BLK0_CFG_W0, 1<<14);
+		}
+	}	
+}
+static  void  osd2_update_disp_scale_enable(void)
+{
+	if(osd_hw.scale[OSD2].h_enable)
+	{
+		SET_MPEG_REG_MASK(VIU_OSD2_BLK0_CFG_W0, 3<<12);
+	}
+	else
+	{
+		CLEAR_MPEG_REG_MASK(VIU_OSD2_BLK0_CFG_W0, 3<<12);
+	}
+	if(osd_hw.scan_mode != SCAN_MODE_INTERLACE)
+	{
+		if(osd_hw.scale[OSD2].v_enable)
+		{
+			SET_MPEG_REG_MASK(VIU_OSD2_BLK0_CFG_W0, 1<<14);
+		}
+		else
+		{
+			CLEAR_MPEG_REG_MASK(VIU_OSD2_BLK0_CFG_W0, 1<<14);
+		}
+	}
+	
+}
 static  inline void  osd1_update_color_mode(void)
 {
 	u32  data32;
@@ -482,6 +529,8 @@ void osd_init_hw(void)
 	osd_hw.gbl_alpha[OSD2]=OSD_GLOBAL_ALPHA_DEF;
 	osd_hw.color_info[OSD1]=NULL;
 	osd_hw.color_info[OSD2]=NULL;
+	osd_hw.scale[OSD1].h_enable=osd_hw.scale[OSD1].v_enable=0;
+	osd_hw.scale[OSD2].h_enable=osd_hw.scale[OSD2].v_enable=0;
 	data32  = 0x1          << 0; // osd_blk_enable
     	data32 |= OSD_GLOBAL_ALPHA_DEF<< 12;
 	data32 |= (1<<21)	;

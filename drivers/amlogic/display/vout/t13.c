@@ -197,8 +197,9 @@ static void set_tcon_pinmux(void)
 static void t13_power_on(void)
 {
 	set_tcon_pinmux();
+	power_on_lcd();
 	power_on_backlight();
-       power_on_lcd();
+      
 }
 static void t13_power_off(void)
 {
@@ -212,8 +213,8 @@ static void t13_io_init(void)
 
     set_tcon_pinmux();
 
-    power_on_backlight();
     power_on_lcd();
+    power_on_backlight();
 }
 
 static struct platform_device tcon_dev = {

@@ -147,7 +147,11 @@ int set_current_vmode(vmode_t mode)
 		{
 			vout_module.curr_vout_server=p_server;
 			r=p_server->op.set_vmode(mode);
-			break;
+			//break;  do not exit , should disable other modules
+		}
+		else
+		{
+			p_server->op.disable(mode);
 		}
 	}
 	
