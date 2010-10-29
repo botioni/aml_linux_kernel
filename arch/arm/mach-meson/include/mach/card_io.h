@@ -2,6 +2,7 @@
 #define __CARD_IO_H
 
 #include <mach/am_regs.h>
+#include <linux/types.h>
 
 /**
  * @file card_io.h
@@ -32,8 +33,59 @@ typedef struct _Card_Config
 	int ms2_enabled;
 	int xd_enabled;
 	int sm_enabled;
-	int sd_wifi_enable; //wmr add
+	int sd_wifi_enable;
 } Card_Config_t;
+
+typedef enum _SDIO_Pad_Type
+{
+	SDIO_CARD_7_12,
+	SDIO_CARD_13_19,
+	SDIO_CARD_20_25,
+	SDIO_CARD_4_5_16,
+	SDIO_CARD_2_3_16,
+	SDIO_GPIOA_0_5,
+	SDIO_GPIOA_9_14,
+	SDIO_GPIOB_2_7,
+	SDIO_GPIOE_6_11
+} SDIO_Pad_Type_t;
+
+typedef enum _Card_Work_Mode
+{
+	CARD_HW_MODE,
+	CARD_SW_MODE
+} Card_Work_Mode_t;
+
+struct aml_card_info {
+	char *name;			/* card name  */
+	Card_Work_Mode_t work_mode;	/* work mode select*/
+	SDIO_Pad_Type_t  io_pad_type;	/* hw io pin pad */
+	unsigned card_ins_en_reg;
+	unsigned card_ins_en_mask;
+	unsigned card_ins_input_reg;
+	unsigned card_ins_input_mask;
+	unsigned card_power_en_reg;
+	unsigned card_power_en_mask;
+	unsigned card_power_output_reg;
+	unsigned card_power_output_mask;
+	unsigned char card_power_en_lev;
+	unsigned card_wp_en_reg;
+	unsigned card_wp_en_mask;
+	unsigned card_wp_input_reg;
+	unsigned card_wp_input_mask;
+	void (*card_extern_init)(void);
+};
+
+struct aml_card_platform {
+	u8 card_num;
+	struct aml_card_info *card_info;
+};
+
+struct card_partition {
+	char *name;			/* identifier string */
+	uint64_t size;			/* partition size */
+	uint64_t offset;		/* offset within the memory card space */
+	uint32_t mask_flags;		/* master card flags to mask out for this partition */
+};
 
 #define CARD_PIN_MUX_0					0x202C
 
@@ -48,31 +100,21 @@ typedef struct _Card_Config
 
 /// Muxing contorl
 #define CARD_PIN_MUX_4					0x2030  
-
-
-
-typedef enum _SDIO_Pad_Type
-{
-	SDIO_PAD_M2_D5_0,
-	SDIO_PAD_FEC_D7_2,
-	SDIO_PAD_EGPIO_5_0,
-	SDIO_PAD_EGPIO_11_6,
-	SDIO_PAD_EGPIO_17_12,
-	SDIO_PAD_AT_D5_0,
-	SDIO_PAD_AT_D15_10,
-	SDIO_CARD_7_12,
-	SDIO_CARD_13_19,
-	SDIO_CARD_20_25,
-	SDIO_GPIOB_10_15,
-	SDIO_GPIOC_15_20
-} SDIO_Pad_Type_t;
+#define CARD_PIN_MUX_5					0x2031
+#define CARD_PIN_MUX_6					0x2032
+#define CARD_PIN_MUX_7					0x2033
+#define CARD_PIN_MUX_8					0x2034
+#define CARD_PIN_MUX_9					0x2035
+#define CARD_PIN_MUX_10					0x2036
+#define CARD_PIN_MUX_11					0x2037
+#define CARD_PIN_MUX_12					0x2038
 
 #define CARD_GPIO_ENABLE				0x0120002CL
 #define CARD_GPIO_OUTPUT				0x0120002CL
 #define CARD_GPIO_INPUT					0x0120002CL
 
 #define EGPIO_GPIOA_ENABLE			CBUS_REG_ADDR(PREG_EGPIO_EN_N)
-#define EGPIO_GPIOA_OUTPUT		CBUS_REG_ADDR(PREG_EGPIO_O)
+#define EGPIO_GPIOA_OUTPUT			CBUS_REG_ADDR(PREG_EGPIO_O)
 #define EGPIO_GPIOA_INPUT			CBUS_REG_ADDR(PREG_EGPIO_I)
 
 #define EGPIO_GPIOB_ENABLE			CBUS_REG_ADDR(PREG_EGPIO_EN_N)
@@ -84,7 +126,7 @@ typedef enum _SDIO_Pad_Type
 #define EGPIO_GPIOC_INPUT			CBUS_REG_ADDR(PREG_FGPIO_I)
 
 #define EGPIO_GPIOD_ENABLE			CBUS_REG_ADDR(PREG_GGPIO_EN_N)
-#define EGPIO_GPIOD_OUTPUT		CBUS_REG_ADDR(PREG_GGPIO_EN_N)
+#define EGPIO_GPIOD_OUTPUT			CBUS_REG_ADDR(PREG_GGPIO_O)
 #define EGPIO_GPIOD_INPUT			CBUS_REG_ADDR(PREG_GGPIO_I)
 
 #define EGPIO_GPIOE_ENABLE			CBUS_REG_ADDR(PREG_HGPIO_EN_N)
@@ -147,6 +189,7 @@ typedef enum _SDIO_Pad_Type
 
 #define PREG_IO_0_3_MASK				0x0000000FL
 #define PREG_IO_2_5_MASK				0x0000003CL
+#define PREG_IO_4_7_MASK				0x000000F0L
 #define PREG_IO_0_7_MASK				0x000000FFL
 #define PREG_IO_8_11_MASK				0x00000F00L
 #define PREG_IO_8_15_MASK				0x0000FF00L
@@ -157,6 +200,7 @@ typedef enum _SDIO_Pad_Type
 #define PREG_IO_14_17_MASK				0x0003C000L
 #define PREG_IO_17_20_MASK				0x001E0000L
 #define PREG_IO_22_25_MASK				0x03C00000L
+#define PREG_IO_23_26_MASK				0x07800000L
 #define PREG_IO_24_27_MASK				0x0F000000L
 #define PREG_IO_22_29_MASK				0x3FC00000L
 

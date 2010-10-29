@@ -7,7 +7,7 @@
     
 //Following I/O configurations are just for default case if no any known PCB defined
     
-//#define SD_IO_EXTERNAL
+#define SD_IO_EXTERNAL
     
 //Port operation for SD BUS
 //write it as such form that could be replaced by function later if needed
@@ -61,9 +61,8 @@ extern unsigned SD_WORK_MODE;
 #define SD_MMC_POWER_CONTROL
 //#define SD_MMC_WP_CHECK
 
-extern void sd_sdio_enable(void);
-
-extern void sd_gpio_enable(void);
+extern void sd_sdio_enable(SDIO_Pad_Type_t io_pad_type);
+extern void sd_gpio_enable(SDIO_Pad_Type_t io_pad_type);
 
 #else				//SD_IO_EXTERNAL
 

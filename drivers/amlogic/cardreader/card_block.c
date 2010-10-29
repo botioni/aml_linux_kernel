@@ -171,8 +171,8 @@ static struct block_device_operations card_ops = {
 
 static inline int card_claim_card(struct memory_card *card)
 {
-	if(cr_mon.card_status[card->card_type] == CARD_REMOVED)
-		return ENODEV;
+	if(card->card_status == CARD_REMOVED)
+		return -ENODEV;
 	return __card_claim_host(card->host, card);
 }
 
@@ -401,7 +401,6 @@ static void card_queue_bounce_post(struct card_queue *cq)
 	bio_flush_dcache_pages(cq->req->bio);
 }
 
-extern unsigned char *sd_mmc_buf;
 /*
  * Alloc bounce buf for read/write numbers of pages in one request
  */
@@ -419,7 +418,7 @@ static int card_init_bounce_buf(struct card_queue *cq,
 
 	if (bouncesz >= PAGE_CACHE_SIZE) {
 		//cq->bounce_buf = kmalloc(bouncesz, GFP_KERNEL);
-		cq->bounce_buf = sd_mmc_buf;
+		cq->bounce_buf = host->dma_buf;
 		if (!cq->bounce_buf) {
 			printk(KERN_WARNING "%s: unable to "
 				"allocate bounce buffer\n", card->name);
@@ -658,7 +657,6 @@ static int card_blk_issue_rq(struct card_queue *cq, struct request *req)
 	struct card_blk_request brq;
 	int ret;
 
-	//printk("card issue request %d sector num: %d\n", req->sector, req->nr_sectors);
 	if (card_claim_card(card)) {
 		spin_lock_irq(&card_data->lock);
 		ret = 1;

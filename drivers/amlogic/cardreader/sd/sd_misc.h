@@ -43,7 +43,7 @@
 */ 
     
 #ifdef SD_MMC_ALLOC_MEMORY
-#define sd_mmc_malloc				kmalloc
+#define sd_mmc_malloc				kzalloc
 #define sd_mmc_free					kfree
 #endif				/*  */
     

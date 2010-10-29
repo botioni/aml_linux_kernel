@@ -96,6 +96,7 @@ unsigned long sd_cal_clks_nac(unsigned char TAAC, unsigned char NSAC)
 	if(SD_WORK_MODE == CARD_SW_MODE)
 		return 10*(sd_mmc_TAAC(TAAC)/1000*FREQ_OP/1000000 + NSAC*100);
 #endif
+	return 3*(sd_mmc_TAAC(TAAC)/1000*FREQ_OP/1000000 + NSAC*100);
 }
 
 

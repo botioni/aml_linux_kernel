@@ -15,6 +15,7 @@
 #include <linux/sched.h>
 #include <linux/module.h>
 #include <linux/list.h>
+#include <mach/card_io.h>
 /**
  * @file cardreader.h
  * @addtogroup Card
@@ -41,10 +42,9 @@
 typedef enum {
 	CARD_XD_PICTURE = 0,
 	CARD_MEMORY_STICK,
-	CARD_MEMORY_STICK_MICRO,
     CARD_SECURE_DIGITAL,
+    CARD_SDIO,
     CARD_INAND,
-    CARD_SMART_MEDIA,
     CARD_COMPACT_FLASH,   
     CARD_TYPE_UNKNOW
 } CARD_TYPE_t;
@@ -54,41 +54,15 @@ typedef enum {
 #define CARD_STRING_LEN			   13
 #define CARD_MS_NAME_STR           "ms"
 #define CARD_SD_NAME_STR           "sd"
+#define CARD_INAND_NAME_STR        "inand"
+#define CARD_SDIO_NAME_STR         "sdio"
 #define CARD_XD_NAME_STR           "xd"
 #define CARD_CF_NAME_STR           "cf"
 #define CARD_UNKNOW_NAME_STR       "xx"
 #define CARD_5IN1CARD_NAME_STR     "5in1"
 
- /**/ typedef unsigned char (*CARD_DETECTOR) (void);	// INSERTED: 1  REMOVED: 0
- /**/ typedef unsigned char (*CARD_PROCESS) (void);
- /**/ typedef int (*CARD_OPERATION) (unsigned long lba, unsigned long byte_cnt, unsigned char *data_buf);
- /**/ typedef int (*CARD_IOCTL) (unsigned dev, int req, void *argp);
-    
-typedef struct _card_reader_monitor {
-	unsigned time;
-	unsigned char slot_detector;
-	unsigned card_slot_mode;
-
-	unsigned char card_register_flag[CARD_MAX_UNIT];
-	char card_power_off_flag[CARD_MAX_UNIT];
-	char card_in_event_status[CARD_MAX_UNIT];
-	char card_out_event_status[CARD_MAX_UNIT];
-	char card_status[CARD_MAX_UNIT];
-	unsigned blk_length[CARD_MAX_UNIT];	// block length byte
-	unsigned capacity[CARD_MAX_UNIT];	// capacity in block unit
-	unsigned char unit_state[CARD_MAX_UNIT];
-	unsigned raw_cid[CARD_MAX_UNIT][4];
-	char name[CARD_MAX_UNIT][CARD_STRING_LEN];	
-
-	CARD_DETECTOR card_detector[CARD_MAX_UNIT];
-	CARD_PROCESS card_insert_process[CARD_MAX_UNIT];
-	CARD_PROCESS card_remove_process[CARD_MAX_UNIT];
-	CARD_OPERATION card_read_data[CARD_MAX_UNIT];
-	CARD_OPERATION card_write_data[CARD_MAX_UNIT];
-}CARD_READER_MONITOR;
 //extern wait_queue_head_t     sdio_wait_event;
 
-extern CARD_READER_MONITOR cr_mon;
 extern struct completion sdio_int_complete;
 extern void sdio_open_host_interrupt(unsigned int_resource);
 extern void sdio_clear_host_interrupt(unsigned int_resource);
