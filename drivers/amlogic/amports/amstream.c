@@ -218,8 +218,15 @@ const static struct file_operations sub_fops = {
     .owner    = THIS_MODULE,
     .open     = amstream_open,
     .release  = amstream_release,
-    .read     = amstream_sub_read,
     .write    = amstream_sub_write,
+    .ioctl    = amstream_ioctl,
+};
+
+const static struct file_operations sub_read_fops = {
+    .owner    = THIS_MODULE,
+    .open     = amstream_open,
+    .release  = amstream_release,
+    .read     = amstream_sub_read,
     .poll     = amstream_sub_poll,
     .ioctl    = amstream_ioctl,
 };
@@ -239,6 +246,7 @@ static DEFINE_MUTEX(amstream_mutex);
 
 atomic_t subdata_ready = ATOMIC_INIT(0);
 static int sub_type;
+static int sub_port_inited;
 /* wait queue for poll */
 static wait_queue_head_t amstream_sub_wait;
 
@@ -273,6 +281,11 @@ static stream_port_t ports[] =
         .name  = "amstream_sub",
         .type  = PORT_TYPE_SUB,
         .fops  = &sub_fops,
+    },
+    {
+        .name  = "amstream_sub_read",
+        .type  = PORT_TYPE_SUB_RD,
+        .fops  = &sub_read_fops,
     }
 };
 
@@ -424,6 +437,8 @@ static int sub_port_reset(stream_port_t *port,struct stream_buf_s * pbuf)
 {
     int r;
 
+    port->flag &= (~PORT_FLAG_INITED);
+    
     stbuf_release(pbuf);
 
     r = stbuf_init(pbuf);
@@ -436,8 +451,13 @@ static int sub_port_reset(stream_port_t *port,struct stream_buf_s * pbuf)
     if(port->type & PORT_TYPE_MPPS)
         psparser_sub_reset();
 
+    if(port->sid == 0xffff) // es sub
+        esparser_sub_reset();
+
     pbuf->flag |= BUF_FLAG_IN_USE;
 
+    port->flag|=PORT_FLAG_INITED;
+    
     return 0;
 }
 
@@ -480,6 +500,7 @@ static void sub_port_release(stream_port_t *port,struct stream_buf_s * pbuf)
         esparser_release(pbuf);
     }
     stbuf_release(pbuf);
+    sub_port_inited = 0;
     return;
 }
 
@@ -506,6 +527,7 @@ static int sub_port_init(stream_port_t *port,struct stream_buf_s * pbuf)
         }
     }
 
+    sub_port_inited = 1;
     return 0;
 }
 
@@ -757,9 +779,10 @@ static ssize_t amstream_sub_read(struct file *file, char __user *buf, size_t cou
 {
     u32 sub_rp, sub_wp, sub_start, data_size, res;
     stream_buf_t *s_buf = &bufs[BUF_TYPE_SUBTITLE];
-    stream_port_t *st = (stream_port_t *)file->private_data;
-    dma_addr_t buf_map;
 
+    if (sub_port_inited == 0)
+        return 0;
+    
     sub_rp = stbuf_sub_rp_get();
     sub_wp = stbuf_sub_wp_get();
     sub_start = stbuf_sub_start_get();
@@ -780,9 +803,7 @@ static ssize_t amstream_sub_read(struct file *file, char __user *buf, size_t cou
     {
         int first_num = s_buf->buf_size - (sub_rp - sub_start);
 
-        buf_map = dma_map_single(st->class_dev, (void *)buf, first_num, DMA_FROM_DEVICE);
-        res = copy_to_user((void *)buf_map, (void *)sub_rp, first_num);
-        dma_unmap_single(st->class_dev, buf_map, first_num, DMA_FROM_DEVICE);
+        res = copy_to_user((void *)buf, (void *)(phys_to_virt(sub_rp)), first_num);
         if (res)
         {
             if (res > 0)
@@ -792,9 +813,7 @@ static ssize_t amstream_sub_read(struct file *file, char __user *buf, size_t cou
             return first_num-res;
         }
 
-        buf_map = dma_map_single(st->class_dev, (void *)buf + first_num, data_size - first_num, DMA_FROM_DEVICE);
-        res = copy_to_user((void *)buf_map, (void *)sub_start, data_size - first_num);
-        dma_unmap_single(st->class_dev, buf_map, data_size - first_num, DMA_FROM_DEVICE);
+        res = copy_to_user((void *)buf, (void *)(phys_to_virt(sub_start)), data_size - first_num);
         if (res >= 0)
         {
             stbuf_sub_rp_set(sub_start + data_size - first_num - res);
@@ -803,9 +822,7 @@ static ssize_t amstream_sub_read(struct file *file, char __user *buf, size_t cou
     }
     else
     {
-        buf_map = dma_map_single(st->class_dev, (void *)buf, data_size, DMA_FROM_DEVICE);
-        res = copy_to_user((void *)buf_map, (void *)sub_rp, data_size);
-        dma_unmap_single(st->class_dev, buf_map, data_size, DMA_FROM_DEVICE);
+        res = copy_to_user((void *)buf, (void *)(phys_to_virt(sub_rp)), data_size);
         if (res >= 0)
         {
             stbuf_sub_rp_set(sub_rp + data_size - res);
@@ -827,7 +844,13 @@ static ssize_t amstream_sub_write(struct file *file, const char *buf,
 	   		return r;
 	}
 
-    return esparser_write(file,pbuf, buf, count);
+    r = esparser_write(file,pbuf, buf, count);
+    if (r<0)
+        return r;
+
+    wakeup_sub_poll();
+
+    return r;
 }
 
 
@@ -1175,7 +1198,7 @@ static int amstream_ioctl(struct inode *inode, struct file *file,
         break;
 
     case AMSTREAM_IOC_SUB_LENGTH:
-        if (this->type & PORT_TYPE_SUB)
+        if (this->type & PORT_TYPE_SUB || this->type & PORT_TYPE_SUB_RD)
         {
             u32 sub_wp, sub_rp;
             stream_buf_t *psbuf = &bufs[BUF_TYPE_SUBTITLE];
@@ -1236,7 +1259,8 @@ static ssize_t ports_show(struct class *class, struct class_attribute *attr, cha
 		if(p->type&PORT_TYPE_ES)		pbuf+=sprintf(pbuf,"%s ","ES");
 		if(p->type&PORT_TYPE_RM)		pbuf+=sprintf(pbuf,"%s ","RM");
 		if(p->type&PORT_TYPE_SUB)	pbuf+=sprintf(pbuf,"%s ","Subtitle");
-		pbuf+=sprintf(pbuf,")\n");
+        if(p->type&PORT_TYPE_SUB_RD)	pbuf+=sprintf(pbuf,"%s ","Subtitle_Read");
+		pbuf+=sprintf(pbuf,")\n"); 
 		/*flag*/
 		pbuf+=sprintf(pbuf,"\tflag:%d( ",p->flag);
 		if(p->flag&PORT_FLAG_IN_USE)

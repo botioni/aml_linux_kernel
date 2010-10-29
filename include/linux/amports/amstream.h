@@ -42,6 +42,7 @@
 #define PORT_TYPE_ES        0x10
 #define PORT_TYPE_RM        0x20
 #define PORT_TYPE_SUB       0x40
+#define PORT_TYPE_SUB_RD    0x80
 #endif
 
 #define AMSTREAM_IOC_MAGIC  'S'
