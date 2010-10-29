@@ -148,52 +148,87 @@ static inline void am_uart_sched_event(struct am_uart *info, int event)
 static void receive_chars(struct am_uart *info, struct pt_regs *regs,
               unsigned short rx)
 {
-    struct tty_struct *tty = info->tty;
-    unsigned long ch, flag;
     am_uart_t *uart = uart_addr[info->line];
     int status;
     int mode;
+      
+	if (!info->tty) {
+    	    goto clear_and_exit;
+	}
+	status = __raw_readl(&uart->status);
+	if (status & UART_OVERFLOW_ERR) {
+              info->rx_error |= UART_OVERFLOW_ERR;
+              mode = __raw_readl(&uart->mode) | UART_CLEAR_ERR;
+		__raw_writel(mode, &uart->mode);
+	} else if (status & UART_FRAME_ERR) {
+		info->rx_error |= UART_FRAME_ERR;
+		//uart->mode|= UART_CLEAR_ERR;  
+		mode = __raw_readl(&uart->mode) | UART_CLEAR_ERR;
+		__raw_writel(mode, &uart->mode);
+	} else if (status & UART_PARITY_ERR) {
+		info->rx_error |= UART_PARITY_ERR;
+		mode = __raw_readl(&uart->mode) | UART_CLEAR_ERR;
+		__raw_writel(mode, &uart->mode);
+	}
+	do {    
+              info->rx_buf[info->rx_tail] = (rx & 0x00ff);
+              info->rx_tail = (info->rx_tail+1) & (SERIAL_XMIT_SIZE - 1);
+		info->rx_cnt++;
+		if (info->rx_cnt >= SERIAL_XMIT_SIZE) {
+			goto clear_and_exit;
+		}
+		if ((status = __raw_readl(&uart->status) & 0x3f))
+			rx = __raw_readl(&uart->rdata);
+		/* keep reading characters till the RxFIFO becomes empty */
+	} while (status);
 
-    tty->low_latency = 1;   // Originally added by Sameer, serial I/O slow without this
+clear_and_exit:
+	return;
+}
+
+static void BH_receive_chars(struct am_uart *info)
+{
+	struct tty_struct *tty = info->tty;
+	unsigned long flag;
+	int status;
+	int cnt = info->rx_cnt;
+    
     if (!tty) {
-        printk("Uart : missing tty on line %d\n", info->line);
+		//printk("Uart : missing tty on line %d\n", info->line);
         goto clear_and_exit;
     }
+       tty->low_latency = 1;	// Originally added by Sameer, serial I/O slow without this 
     flag = TTY_NORMAL;
-    status = __raw_readl(&uart->status);
+	status = info->rx_error;
     if (status & UART_OVERFLOW_ERR) {
         printk
             ("Uart  Driver: Overflow Error while receiving a character\n");
         flag = TTY_OVERRUN;
-        mode = __raw_readl(&uart->mode) | UART_CLEAR_ERR;
-        __raw_writel(mode, &uart->mode);
     } else if (status & UART_FRAME_ERR) {
         printk
             ("Uart  Driver: Framing Error while receiving a character\n");
         flag = TTY_FRAME;
-        //uart->mode|= UART_CLEAR_ERR;
-        mode = __raw_readl(&uart->mode) | UART_CLEAR_ERR;
-        __raw_writel(mode, &uart->mode);
     } else if (status & UART_PARITY_ERR) {
         printk
             ("Uart  Driver: Parity Error while receiving a character\n");
         flag = TTY_PARITY;
-        mode = __raw_readl(&uart->mode) | UART_CLEAR_ERR;
-        __raw_writel(mode, &uart->mode);
     }
 
-    do {
-        ch = rx & 0x00ff;
-        tty_insert_flip_char(tty, ch, flag);
+       info->rx_error = 0;
+       if(cnt)
+       {
+            if(info->rx_head > info->rx_tail)
+                cnt = SERIAL_XMIT_SIZE-info->rx_head;
 
-        if ((status = __raw_readl(&uart->status) & 0x7f))
-            rx = __raw_readl(&uart->rdata);
-        /* keep reading characters till the RxFIFO becomes empty */
-    } while (status);
+            tty_insert_flip_string(tty,info->rx_buf+info->rx_head,cnt);
+            info->rx_head = (info->rx_head+cnt) & (SERIAL_XMIT_SIZE - 1);
+            info->rx_cnt -=cnt; 
 
     tty_flip_buffer_push(tty);
-
+       }
 clear_and_exit:
+        if (info->rx_cnt>0)
+		am_uart_sched_event(info, 0);
     return;
 }
 
@@ -203,7 +238,6 @@ static void transmit_chars(struct am_uart *info)
     unsigned int ch;
 
     mutex_lock(&info->info_mutex);
-
     if (info->x_char) {
         __raw_writel(info->x_char, &uart->wdata);
         info->x_char = 0;
@@ -237,6 +271,28 @@ clear_and_return:
 static irqreturn_t am_uart_interrupt(int irq, void *dev, struct pt_regs *regs)
 {
     struct am_uart *info=(struct am_uart *)dev;
+
+       am_uart_t *uart = NULL;
+	struct tty_struct *tty = NULL;
+
+	if (!info)
+           goto out;
+
+      	tty = info->tty;
+	if (!tty)
+       {   
+	    goto out;
+       }
+	uart = (am_uart_t *) info->port;
+	if (!uart)
+		goto out;
+
+       if ((__raw_readl(&uart->mode) & UART_RXENB)
+	    && !(__raw_readl(&uart->status) & UART_RXEMPTY)) {
+		receive_chars(info, 0, __raw_readl(&uart->rdata));
+	}
+       
+out:	
     am_uart_sched_event(info, 0);
     return IRQ_HANDLED;
 }
@@ -254,10 +310,9 @@ static void am_uart_workqueue(struct work_struct *work)
     uart = (am_uart_t *) info->port;
     if (!uart)
         goto out;
-    if ((__raw_readl(&uart->mode) & UART_RXENB)
-        && !(__raw_readl(&uart->status) & UART_RXEMPTY)) {
-        receive_chars(info, 0, __raw_readl(&uart->rdata));
-    }
+
+       if (info->rx_cnt>0)
+            BH_receive_chars(info);
 
     if ((__raw_readl(&uart->mode) & UART_TXENB)
         &&((__raw_readl(&uart->status) & 0xff00) < 0x3f00)) {
@@ -313,6 +368,11 @@ static int startup(struct am_uart *info)
             return -ENOMEM;
     }
 
+       if (!info->rx_buf) {
+		info->rx_buf = (unsigned char *)get_zeroed_page(GFP_KERNEL);
+		if (!info->rx_buf)
+			return -ENOMEM;
+	}
 
     mutex_lock(&info->info_mutex);
 
@@ -324,12 +384,13 @@ static int startup(struct am_uart *info)
         clear_bit(TTY_IO_ERROR, &info->tty->flags);
 
     info->xmit_cnt = info->xmit_rd = info->xmit_wr = 0;
+    info->rx_cnt = info->rx_head = info->rx_tail = 0;
 
     mutex_unlock(&info->info_mutex);
     /*
      * and set the speed of the serial port
      */
-    change_speed(info, BASE_BAUD);
+	//change_speed(info, BASE_BAUD);
 
     info->flags |= ASYNC_INITIALIZED;
 
@@ -349,6 +410,10 @@ static void shutdown(struct am_uart *info)
         free_page((unsigned long)info->xmit_buf);
         info->xmit_buf = 0;
     }
+       if (info->rx_buf) {
+		free_page((unsigned long)info->rx_buf);
+		info->rx_buf = 0;
+	}
 
     if (info->tty)
         set_bit(TTY_IO_ERROR, &info->tty->flags);
@@ -750,9 +815,9 @@ int am_uart_open(struct tty_struct *tty, struct file *filp)
     if (retval)
         return retval;
 
-    retval = block_til_ready(tty, filp, info);
-    if (retval)
-        return retval;
+	//retval = block_til_ready(tty, filp, info);
+	//if (retval)
+	//	return retval;
 
     am_uart_sched_event(info,0);
     return 0;
@@ -844,6 +909,8 @@ static int __init am_uart_init(void)
 
         set_mask(&uart->mode, UART_RXINT_EN | UART_TXINT_EN);
         __raw_writel(1 << 7 | 1, &uart->intctl);
+
+        clear_mask(&uart->mode, (1 << 19)) ;
 
         sprintf(info->name,"UART_ttyS%d:",info->line);
         if (request_irq(info->irq, (irq_handler_t) am_uart_interrupt, IRQF_SHARED,

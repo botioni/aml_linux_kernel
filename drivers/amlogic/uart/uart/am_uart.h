@@ -56,6 +56,13 @@ struct am_uart{
     int         xmit_rd;
     int         xmit_wr;
     int         xmit_cnt;
+
+       unsigned char *rx_buf;
+       int                  rx_head;
+       int                  rx_tail;
+       int                  rx_cnt;
+       int                  rx_error;
+       
     struct mutex    info_mutex;
 
     struct work_struct  tqueue;

@@ -26,6 +26,16 @@ config MACH_MESON_8226M
 	help
 	  Include support for the AMLOGIC M1 8226M Emulation Baseboard platform.
 
+config MACH_MESON_8726M
+	bool "Support M1 8726(mid_8726m1_v1.0) platform(machid=2956)"
+	help
+	  Include support for the AMLOGIC M1 8726M Emulation Baseboard platform.
+
+config MACH_MESON_8726M-ARM
+	bool "Support M1 8726(for arm board) platform(machid=2956)"
+	help
+	  Include support for the AMLOGIC M1 8726M Emulation Baseboard platform.
+	  	  
 config MESON_CLOCK_TICK_RATE
     int "Clock Tick Rate"
 	default 25000000

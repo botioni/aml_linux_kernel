@@ -154,6 +154,7 @@ void uart_set_pinmux(int port,int uart_bank)
 		switch(uart_bank)
 		{
 			case UART_B_TCK_TDO://JTAG=TCK,TDO
+				CLEAR_CBUS_REG_MASK(PREG_JTAG_GPIO_ADDR,1<<3);
 				SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_1, (1<<18)|(1<<22));
 				break;
 			case UART_B_GPIO_B0_B1://GPIO+B0.B1

@@ -46,6 +46,8 @@ obj-$(CONFIG_AML_AUDIO_DSP) += audiodsp/
 
 obj-$(CONFIG_AML_RTC)+= rtc/
 
+obj-$(CONFIG_AMLOGIC_PM)+= power/
+
 obj-y += tvin/
 
 #####Sound system is later init in kernel default..######################

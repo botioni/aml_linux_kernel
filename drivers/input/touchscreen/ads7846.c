@@ -603,12 +603,23 @@ static void ads7846_rx(void *ads)
 
 		if (ts->swap_xy)
 			swap(x, y);
-
+		int x0 = y;
+		y = x;
+		x = x0;
+		if(y < 250)
+			y = 250;
+		if(y>3800)
+			y = 3800;
+		y = 3800 -y + 250;
+//        x = x*800/3800;
+//        y = y*480/3700;
 		input_report_abs(input, ABS_X, x);
 		input_report_abs(input, ABS_Y, y);
 		input_report_abs(input, ABS_PRESSURE, ts->pressure_max - Rt);
 
 		input_sync(input);
+		
+//		printk("%4d/%4d/%4d\n", x, y, Rt);
 		dev_vdbg(&ts->spi->dev, "%4d/%4d/%4d\n", x, y, Rt);
 	}
 
@@ -1180,13 +1191,15 @@ static int __devinit ads7846_probe(struct spi_device *spi)
 			spi->dev.driver->name, ts)) {
 		dev_info(&spi->dev,
 			"trying pin change workaround on irq %d\n", spi->irq);
-//		err = request_irq(spi->irq, ads7846_irq,
-//				  IRQF_TRIGGER_FALLING | IRQF_TRIGGER_RISING,
-//				  spi->dev.driver->name, ts);
-//		if (err) {
-//			dev_dbg(&spi->dev, "irq %d busy?\n", spi->irq);
-//			goto err_disable_regulator;
-//		}
+#if 0
+		err = request_irq(spi->irq, ads7846_irq,
+				  IRQF_TRIGGER_FALLING | IRQF_TRIGGER_RISING,
+				  spi->dev.driver->name, ts);
+		if (err) {
+			dev_dbg(&spi->dev, "irq %d busy?\n", spi->irq);
+			goto err_disable_regulator;
+		}
+#endif
 	}
 
 	err = ads784x_hwmon_register(spi, ts);

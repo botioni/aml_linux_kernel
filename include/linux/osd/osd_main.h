@@ -61,15 +61,18 @@ static struct fb_var_screeninfo mydef_var[] = {
 	.vmode           = FB_VMODE_NONINTERLACED,
 	.rotate          = 0,
 	
-},
+}
+
+#ifdef  CONFIG_FB_OSD2_ENABLE
+,
 {
-	.xres            = 720,
-	.yres            = 576,
-	.xres_virtual    = 720,
-	.yres_virtual    = 1152,
+	.xres            = 32,
+	.yres            = 32,
+	.xres_virtual    = 32,
+	.yres_virtual    = 32,
 	.xoffset         = 0,
 	.yoffset         = 0,
-	.bits_per_pixel  = 8,
+	.bits_per_pixel  = 32,
 	.grayscale       = 0,
 	.red             = {0, 0, 0},  //leave as it is ,set by system.
 	.green           = {0, 0, 0},
@@ -91,6 +94,7 @@ static struct fb_var_screeninfo mydef_var[] = {
 	.vmode           = FB_VMODE_NONINTERLACED,
 	.rotate          = 0,
 }
+#endif 
 };
 
 
