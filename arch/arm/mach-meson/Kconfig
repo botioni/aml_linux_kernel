@@ -31,7 +31,7 @@ config MACH_MESON_8726M
 	help
 	  Include support for the AMLOGIC M1 8726M Emulation Baseboard platform.
 
-config MACH_MESON_8726M-ARM
+config MACH_MESON_8726M_ARM
 	bool "Support M1 8726(for arm board) platform(machid=2956)"
 	help
 	  Include support for the AMLOGIC M1 8726M Emulation Baseboard platform.
