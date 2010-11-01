@@ -85,8 +85,13 @@ static void card_reader_initialize(struct card_host *host)
 	struct memory_card *card;
 	int i, err = 0;
 
+printk("card_reader_initialize(host=%p)\n", host);
+printk("card_reader_initialize(host=%p), aml_host=%p\n", host, aml_host);
+printk("card_reader_initialize(host=%p), card_platform=%p\n", host, card_platform);
+printk("card_reader_initialize(host=%p), card_platform->card_num=%d\n", host, card_platform->card_num);
 	for (i=0; i<card_platform->card_num; i++) {
 		card_plat_info = &card_platform->card_info[i];
+printk("card_reader_initialize(host=%p), i=%d card_plat_info=%p name=%s\n", host, i, card_plat_info, card_plat_info->name);
 
 		if (!strcmp("xd_card", card_plat_info->name)) {
 #ifdef CONFIG_XD
