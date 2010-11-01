@@ -6,13 +6,13 @@ menu "AMLOGIC DVB driver"
 
 config AM_DVB
 	tristate "AMLOGIC DVB driver"
-	default y
+	default n
 	help
 		Select to enable AMLogic DVB driver.
 
 config AM_GX1001
 	tristate "GX1001 demod driver"
-	default y
+	default n
 	help
 		Select to enable GX1001 demod driver.
 
