@@ -16,55 +16,38 @@
 #include <linux/platform_device.h>
 #include <linux/io.h>
 #include <linux/dma-mapping.h>
-#include <linux/mtd/mtd.h>
-#include <linux/mtd/nand.h>
-#include <linux/mtd/nand_ecc.h>
-#include <linux/mtd/partitions.h>
-#include <linux/device.h>
-#include <linux/spi/flash.h>
 #include <mach/hardware.h>
 #include <mach/platform.h>
 #include <mach/memory.h>
+#include <mach/memory.h>
+#include <mach/pinmux.h>
+#include <mach/lm.h>
 #include <mach/clock.h>
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>
-#include <asm/setup.h>
-#include <mach/lm.h>
-#include <asm/memory.h>
 #include <asm/mach/map.h>
+#include <mach/am_regs.h>
 #include <mach/am_eth_pinmux.h>
-#include <mach/nand.h>
-#include <mach/card_io.h>
-#include <linux/i2c.h>
-#include <linux/i2c-aml.h>
+#include <asm/setup.h>
+#include <linux/delay.h>
 #ifdef CONFIG_CACHE_L2X0
 #include <asm/hardware/cache-l2x0.h>
 #endif
 #include <mach/pinmux.h>
 #include <mach/gpio.h>
-#include <linux/delay.h>
-#include <mach/clk_set.h>
 #include "board-6236m.h"
-
+#include <mach/clk_set.h>
 #if defined(CONFIG_TOUCHSCREEN_ADS7846)
 #include <linux/spi/spi.h>
 #include <linux/spi/spi_gpio.h>
 #include <linux/spi/ads7846.h>
+//#include <linux/gpio.h>
 #endif
-
-#ifdef CONFIG_ANDROID_PMEM
-#include <linux/slab.h>
-#include <linux/dma-mapping.h>
-#include <linux/android_pmem.h>
-#endif
-
-#ifdef CONFIG_SENSORS_MXC622X
-#include <linux/mxc622x.h>
-#endif
-
-#ifdef CONFIG_SENSORS_MMC31XX
-#include <linux/mmc31xx.h>
-#endif
+#include <linux/mtd/mtd.h>
+#include <linux/mtd/nand.h>
+#include <linux/mtd/nand_ecc.h>
+#include <linux/mtd/partitions.h>
+#include <mach/nand.h>
 
 
 #if defined(CONFIG_JPEGLOGO)
@@ -89,7 +72,7 @@ static struct platform_device jpeglogo_device = {
 };
 #endif
 
-#if defined(CONFIG_KEYPADS_AM)||defined(CONFIG_KEYPADS_AM_MODULE)
+#if defined(CONFIG_KEYPADS_AM)||defined(CONFIG_KEYPADS_AM_MODULE) 
 static struct resource intput_resources[] = {
 	{
 		.start = 0x0,
@@ -108,30 +91,18 @@ static struct platform_device input_device = {
 };
 #endif
 
-#if defined(CONFIG_ADC_KEYPADS_AM)||defined(CONFIG_ADC_KEYPADS_AM_MODULE)
-static struct platform_device input_device_adc = {
-	.name = "m1-adckp",
-	.id = 0,
-	.num_resources = 0,
-	.resource = NULL,
-	
-};
-#endif
-
-#if defined(CONFIG_FB_AM)
+#ifdef CONFIG_FB_AM
 static struct resource fb_device_resources[] = {
     [0] = {
         .start = OSD1_ADDR_START,
         .end   = OSD1_ADDR_END,
         .flags = IORESOURCE_MEM,
     },
-#if defined(CONFIG_FB_OSD2_ENABLE)
     [1] = {
         .start = OSD2_ADDR_START,
-        .end   = OSD2_ADDR_END,
+        .end   =OSD2_ADDR_END,
         .flags = IORESOURCE_MEM,
     },
-#endif
 };
 
 static struct platform_device fb_device = {
@@ -141,12 +112,29 @@ static struct platform_device fb_device = {
     .resource      = fb_device_resources,
 };
 #endif
+#if  defined(CONFIG_AM_TV_OUTPUT)||defined(CONFIG_AM_TCON_OUTPUT)
+static struct resource vout_device_resources[] = {
+    [0] = {
+        .start = 0,
+        .end   = 0,
+        .flags = IORESOURCE_MEM,
+    },
+};
+
+static struct platform_device vout_device = {
+    .name       = "mesonvout",
+    .id         = 0,
+    .num_resources = ARRAY_SIZE(vout_device_resources),
+    .resource      = vout_device_resources,
+};
+#endif
 #ifdef CONFIG_USB_DWC_OTG_HCD
 static void set_usb_a_vbus_power(char is_power_on)
 {
-//Only for Ramos 6236m MID
-#define USB_A_POW_GPIO	PREG_EGPIO
-#define USB_A_POW_GPIO_BIT	5
+#if 0
+codes for 8626m, 6236m gpio need redefined!
+#define USB_A_POW_GPIO	PREG_HGPIO
+#define USB_A_POW_GPIO_BIT	20
 #define USB_A_POW_GPIO_BIT_ON	1
 #define USB_A_POW_GPIO_BIT_OFF	0
 	if(is_power_on){
@@ -159,6 +147,7 @@ static void set_usb_a_vbus_power(char is_power_on)
 		set_gpio_mode(USB_A_POW_GPIO,USB_A_POW_GPIO_BIT,GPIO_OUTPUT_MODE);
 		set_gpio_val(USB_A_POW_GPIO,USB_A_POW_GPIO_BIT,USB_A_POW_GPIO_BIT_OFF);		
 	}
+#endif
 }
 //usb_a is OTG port
 static struct lm_device usb_ld_a = {
@@ -172,6 +161,18 @@ static struct lm_device usb_ld_a = {
 	.port_speed = USB_PORT_SPEED_DEFAULT,
 	.dma_config = USB_DMA_BURST_SINGLE,
 	.set_vbus_power = set_usb_a_vbus_power,
+};
+static struct lm_device usb_ld_b = {
+	.type = LM_DEVICE_TYPE_USB,
+	.id = 1,
+	.irq = INT_USB_B,
+	.resource.start = IO_USB_B_BASE,
+	.resource.end = -1,
+	.dma_mask_room = DMA_BIT_MASK(32),
+	.port_type = USB_PORT_TYPE_HOST,
+	.port_speed = USB_PORT_SPEED_DEFAULT,
+	.dma_config = USB_DMA_BURST_SINGLE,
+	.set_vbus_power = 0,
 };
 #endif
 #ifdef CONFIG_SATA_DWC_AHCI
@@ -199,23 +200,6 @@ static struct platform_device codec_device = {
     .id         = 0,
     .num_resources = ARRAY_SIZE(codec_resources),
     .resource      = codec_resources,
-};
-#endif
-
-#if defined(CONFIG_AM_VIDEO)
-static struct resource deinterlace_resources[] = {
-    [0] = {
-        .start =  DI_ADDR_START,
-        .end   = DI_ADDR_END,
-        .flags = IORESOURCE_MEM,
-    },
-};
-
-static struct platform_device deinterlace_device = {
-    .name       = "deinterlace",
-    .id         = 0,
-    .num_resources = ARRAY_SIZE(deinterlace_resources),
-    .resource      = deinterlace_resources,
 };
 #endif
 
@@ -281,41 +265,12 @@ static struct resource amlogic_card_resource[]  = {
 	}
 };
 
-static struct aml_card_info  amlogic_card_info[] = {
-	[0] = {
-		.name = "sd_card",
-		.work_mode = CARD_HW_MODE,
-		.io_pad_type = SDIO_GPIOA_9_14,
-		.card_ins_en_reg = EGPIO_GPIOA_ENABLE,
-		.card_ins_en_mask = PREG_IO_3_MASK,
-		.card_ins_input_reg = EGPIO_GPIOA_INPUT,
-		.card_ins_input_mask = PREG_IO_3_MASK,
-		.card_power_en_reg = JTAG_GPIO_ENABLE,
-		.card_power_en_mask = PREG_IO_16_MASK,
-		.card_power_output_reg = JTAG_GPIO_OUTPUT,
-		.card_power_output_mask = PREG_IO_20_MASK,
-		.card_power_en_lev = 0,
-		.card_wp_en_reg = EGPIO_GPIOA_ENABLE,
-		.card_wp_en_mask = PREG_IO_11_MASK,
-		.card_wp_input_reg = EGPIO_GPIOA_INPUT,
-		.card_wp_input_mask = PREG_IO_11_MASK,
-		.card_extern_init = 0,
-	},
-};
-
-static struct aml_card_platform amlogic_card_platform = {
-	.card_num = ARRAY_SIZE(amlogic_card_info),
-	.card_info = amlogic_card_info,
-};
 
 static struct platform_device amlogic_card_device = { 
 	.name = "AMLOGIC_CARD", 
 	.id    = -1,
 	.num_resources = ARRAY_SIZE(amlogic_card_resource),
 	.resource = amlogic_card_resource,
-	.dev = {
-		.platform_data = &amlogic_card_platform,
-	},
 };
 #endif
 
@@ -336,19 +291,6 @@ static struct platform_device audiodsp_device = {
 };
 #endif
 
-static struct resource aml_m1_audio_resource[]={
-		[0]	=	{
-				.start 	=	0,
-				.end		=	0,
-				.flags	=	IORESOURCE_MEM,
-		},
-};
-static struct platform_device aml_audio={
-		.name 				= "aml_m1_audio_wm8900",
-		.id 					= -1,
-		.resource 		=	aml_m1_audio_resource,
-		.num_resources	=	ARRAY_SIZE(aml_m1_audio_resource),
-};
 #if defined(CONFIG_TOUCHSCREEN_ADS7846)
 #define SPI_0		0
 #define SPI_1		1
@@ -425,7 +367,8 @@ static struct spi_board_info spi_board_info_list[] = {
 	},
 };
 
-static int ads7846_init_gpio(void)
+
+int ads7846_init_gpio(void)
 {
 /* memson
 	Bit(s)	Description
@@ -469,107 +412,96 @@ static int ads7846_init_gpio(void)
 }
 #endif
 
-#ifdef CONFIG_ANDROID_PMEM
-static struct android_pmem_platform_data pmem_data =
+#if defined(CONFIG_AM_NAND)
+static struct mtd_partition partition_info[] = 
 {
-	.name = "pmem",
-	.start = PMEM_START,
-	.size = PMEM_SIZE,
-	.no_allocator = 1,
-	.cached = 1,
+	{
+		.name = "U-BOOT",
+		.offset = 0,
+		.size=4*1024*1024,
+	//	.set_flags=0,
+	//	.dual_partnum=0,
+	},
+	{
+		.name = "Boot Para",
+		.offset = 4*1024*1024,
+		.size=4*1024*1024,
+	//	.set_flags=0,
+	//	.dual_partnum=0,
+	},
+	{
+		.name = "Kernel",
+		.offset = 8*1024*1024,
+		.size = 4 * 1024*1024,
+	//	.set_flags=0,
+	//	.dual_partnum=0,
+	},
+	{
+		.name = "YAFFS2",
+		.offset=MTDPART_OFS_APPEND,
+		.size=MTDPART_SIZ_FULL,
+	//	.set_flags=0,
+	//	.dual_partnum=0,
+	},
+//	{	.name="FTL_Part",
+//		.offset=MTDPART_OFS_APPEND,
+//		.size=MTDPART_SIZ_FULL,
+//	//	.set_flags=MTD_AVNFTL,
+//	//	.dual_partnum=1,
+//	}
 };
 
-static struct platform_device android_pmem_device =
+static struct resource aml_nand_resources[] = 
 {
-	.name = "android_pmem",
+	{
+		.start = 0xc1108600,
+		.end = 0xc1108624,
+		.flags = IORESOURCE_MEM,
+	},
+};
+//for  6236M MID 
+static struct aml_m1_nand_platform aml_Micron4GBABAnand_platform = 
+{
+	.page_size = 2048*2,
+	.spare_size= 224,		//for micron ABA 4GB
+	.erase_size=1024*1024,
+	.bch_mode=		3,		//BCH16
+	.encode_size=540,				
+	.timing_mode=5,
+	.onfi_mode=1,
+	.ce_num=1,
+	.partitions = partition_info,
+	.nr_partitions = ARRAY_SIZE(partition_info),
+};
+
+//for ref 
+static struct aml_m1_nand_platform aml_2Kpage128Kblocknand_platform = 
+{
+	.page_size = 2048,
+	.spare_size= 64,		
+	.erase_size= 128*1024,
+	.bch_mode  =  1,		//BCH8
+	.encode_size= 528,				
+	.timing_mode= 5,
+	.ce_num     = 1,
+	.partitions = partition_info,
+	.nr_partitions = ARRAY_SIZE(partition_info),
+};
+
+
+static struct platform_device aml_nand_device = 
+{
+	.name = "aml_m1_nand",
 	.id = 0,
+	.num_resources = ARRAY_SIZE(aml_nand_resources),
+	.resource = aml_nand_resources,
 	.dev = {
-		.platform_data = &pmem_data,
+	//	.platform_data = &aml_Micron4GBABAnand_platform,
+		.platform_data = &aml_2Kpage128Kblocknand_platform,
 	},
 };
 #endif
 
-#if defined(CONFIG_AML_RTC)
-static	struct platform_device aml_rtc_device = {
-      		.name            = "aml_rtc",
-      		.id               = -1,
-	};
-#endif
-
-
-#if defined(CONFIG_I2C_SW_AML)
-
-static struct aml_sw_i2c_platform aml_sw_i2c_plat = {
-	.sw_pins = {
-		.scl_reg_out		= MESON_I2C_PREG_GPIOB_OUTLVL,
-		.scl_reg_in		= MESON_I2C_PREG_GPIOB_INLVL,
-		.scl_bit			= 2,	/*MESON_I2C_MASTER_A_GPIOB_2_REG*/
-		.scl_oe			= MESON_I2C_PREG_GPIOB_OE,
-		.sda_reg_out		= MESON_I2C_PREG_GPIOB_OUTLVL,
-		.sda_reg_in		= MESON_I2C_PREG_GPIOB_INLVL,
-		.sda_bit			= 3,	/*MESON_I2C_MASTER_A_GPIOB_3_BIT*/
-		.sda_oe			= MESON_I2C_PREG_GPIOB_OE,
-	},	
-	.udelay			= 2,
-	.timeout			= 100,
-};
-
-static struct platform_device aml_sw_i2c_device = {
-	.name		  = "aml-sw-i2c",
-	.id		  = -1,
-	.dev = {
-		.platform_data = &aml_sw_i2c_plat,
-	},
-};
-
-#endif
-
-#if defined(CONFIG_I2C_AML)
-static struct aml_i2c_platform aml_i2c_plat = {
-	.wait_count		= 1000000,
-	.wait_ack_interval	= 5,
-	.wait_read_interval	= 5,
-	.wait_xfer_interval	= 5,
-	.master_no		= AML_I2C_MASTER_A,
-	.use_pio			= 0,
-	.master_i2c_speed	= AML_I2C_SPPED_400K,
-
-	.master_a_pinmux = {
-		.scl_reg	= MESON_I2C_MASTER_A_GPIOB_2_REG,
-		.scl_bit	= MESON_I2C_MASTER_A_GPIOB_2_BIT,
-		.sda_reg	= MESON_I2C_MASTER_A_GPIOB_3_REG,
-		.sda_bit	= MESON_I2C_MASTER_A_GPIOB_3_BIT,
-	}
-};
-
-static struct resource aml_i2c_resource[] = {
-	[0] = {/*master a*/
-		.start = 	MESON_I2C_MASTER_A_START,
-		.end   = 	MESON_I2C_MASTER_A_END,
-		.flags = 	IORESOURCE_MEM,
-	},
-	[1] = {/*master b*/
-		.start = 	MESON_I2C_MASTER_B_START,
-		.end   = 	MESON_I2C_MASTER_B_END,
-		.flags = 	IORESOURCE_MEM,
-	},
-	[2] = {/*slave*/
-		.start = 	MESON_I2C_SLAVE_START,
-		.end   = 	MESON_I2C_SLAVE_END,
-		.flags = 	IORESOURCE_MEM,
-	},
-};
-
-static struct platform_device aml_i2c_device = {
-	.name		  = "aml-i2c",
-	.id		  = -1,
-	.num_resources	  = ARRAY_SIZE(aml_i2c_resource),
-	.resource	  = aml_i2c_resource,
-	.dev = {
-		.platform_data = &aml_i2c_plat,
-	},
-};
-#endif
 
 static struct platform_device __initdata *platform_devs[] = {
     #if defined(CONFIG_JPEGLOGO)
@@ -578,71 +510,33 @@ static struct platform_device __initdata *platform_devs[] = {
     #if defined(CONFIG_FB_AM)
     	&fb_device,
     #endif
+    #if  defined(CONFIG_AM_TV_OUTPUT)||defined(CONFIG_AM_TCON_OUTPUT)
+       &vout_device,	
+    #endif		
     #if defined(CONFIG_AM_STREAMING)
 		&codec_device,
-    #endif
-    #if defined(CONFIG_AM_VIDEO)
-		&deinterlace_device,
     #endif
     #if defined(CONFIG_TVIN_VDIN)
         &vdin_device,
 		&bt656in_device,
+
     #endif
 	#if defined(CONFIG_AML_AUDIO_DSP)
 		&audiodsp_device,
 	#endif
-		&aml_audio,
 	#if defined(CONFIG_CARDREADER)
     	&amlogic_card_device,
     #endif
     #if defined(CONFIG_KEYPADS_AM)||defined(CONFIG_VIRTUAL_REMOTE)||defined(CONFIG_KEYPADS_AM_MODULE) 
 		&input_device,
     #endif	
-    #if defined(CONFIG_ADC_KEYPADS_AM)||defined(CONFIG_ADC_KEYPADS_AM_MODULE)
-		&input_device_adc,
-    #endif
-	#if defined(CONFIG_TOUCHSCREEN_ADS7846)
-		&spi_gpio,
-	#endif
-    #if defined(CONFIG_AML_RTC)
-		&aml_rtc_device,
-    #endif
-    #if defined(CONFIG_ANDROID_PMEM)
-		&android_pmem_device,
-    #endif
-    #if defined(CONFIG_I2C_SW_AML)
-		&aml_sw_i2c_device,
-    #endif
-    #if defined(CONFIG_I2C_AML)
-		&aml_i2c_device,
-    #endif
-};
-static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
-
-#ifdef CONFIG_SENSORS_MMC31XX
-	{
-		I2C_BOARD_INFO(MMC31XX_I2C_NAME,  MMC31XX_I2C_ADDR),
-	},
+#if defined(CONFIG_TOUCHSCREEN_ADS7846)
+	&spi_gpio,
 #endif
-
-#ifdef CONFIG_SENSORS_MXC622X
-	{
-		I2C_BOARD_INFO(MXC622X_I2C_NAME,  MXC622X_I2C_ADDR),
-	},
-#endif
-	{
-		I2C_BOARD_INFO("wm8900", 0x1A),
-	},
+	 #if defined(CONFIG_AM_NAND)
+		&aml_nand_device,
+    #endif		
 };
-
-
-static int __init aml_i2c_init(void)
-{
-
-	i2c_register_board_info(0, aml_i2c_bus_info,
-			ARRAY_SIZE(aml_i2c_bus_info));
-	return 0;
-}
 
 static void __init eth_pinmux_init(void)
 {
@@ -660,9 +554,7 @@ static void __init eth_pinmux_init(void)
 	set_gpio_val(PREG_FGPIO,26,0);
 	udelay(100);	//waiting reset end;
 	set_gpio_val(PREG_FGPIO,26,1);
-	aml_i2c_init();
 }
-
 static void __init device_pinmux_init(void )
 {
 	clearall_pinmux();
@@ -671,9 +563,18 @@ static void __init device_pinmux_init(void )
 	set_gpio_mode(PREG_EGPIO,1<<4,GPIO_OUTPUT_MODE);
 	set_gpio_val(PREG_EGPIO,1<<4,1);
 	uart_set_pinmux(UART_PORT_A,UART_A_GPIO_C21_D22);
+#if 0
+#define GPIO_LED_BL_PWM	((GPIOA_bank_bit(8) << 16) | GPIOA_bit_bit0_14(8))	//pin31
+#define GPIO_EN_5V		((GPIOA_bank_bit(6) << 16) | GPIOA_bit_bit0_14(6))	//pin28
+#define GPIO_LCD_PWR_EN	((GPIOC_bank_bit0_26(4) << 16) | GPIOC_bit_bit0_26(4)) //pin165
+	gpio_direction_output(GPIO_LED_BL_PWM, 1);
+	// enable 5v
+	gpio_direction_output(GPIO_EN_5V, 1);
+	// lcd power on
+	gpio_direction_output(GPIO_LCD_PWR_EN, 0);
+#endif	
 	/*pinmux of eth*/
 	eth_pinmux_init();
-	set_audio_pinmux(AUDIO_OUT_JTAG);
 }
 
 static void __init  device_clk_setting(void)
@@ -698,6 +599,7 @@ static __init void m1_init_machine(void)
 #ifdef CONFIG_USB_DWC_OTG_HCD
 	set_usb_phy_clk(USB_PHY_CLOCK_SEL_XTAL_DIV2);
 	lm_device_register(&usb_ld_a);
+	lm_device_register(&usb_ld_b);
 #endif
 #ifdef CONFIG_SATA_DWC_AHCI
 	set_sata_phy_clk(SATA_PHY_CLOCK_SEL_DEMOD_PLL);
