@@ -141,12 +141,19 @@ void key_input_polling(unsigned long data)
                 {
                     print_dbg("key %d pressed.\n", ki_data->pdata->key_code_list[i]);
                     input_report_key(ki_data->input, ki_data->pdata->key_code_list[i], 1);
+                    ki_data->key_state_list_1[i] = 1;
                     ki_data->key_hold_time_list[i] = 0;
                 }
             }
             else
             {
-                ki_data->key_hold_time_list[i] = 0;
+                if(ki_data->key_state_list_1[i])
+                {
+                    print_dbg("key %d released.\n", ki_data->pdata->key_code_list[i]);
+                    input_report_key(ki_data->input, ki_data->pdata->key_code_list[i], 0);
+                    ki_data->key_state_list_1[i] = 0;
+                    ki_data->key_hold_time_list[i] = 0;
+                }
             }
         }
     }
