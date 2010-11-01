@@ -669,7 +669,7 @@ static void set_charge(int flags)
 extern int get_adc_sample(int chan);
 static int get_bat_vol(void)
 {
-	return 1000;//get_adc_sample(5);
+	return get_adc_sample(5);
 }
 
 static int get_charge_status()

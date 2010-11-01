@@ -68,13 +68,21 @@ static void init_adc(void)
     printk("reg3=%x,detect_idle=%x,chan_10_sw=%x", READ_CBUS_REG(SAR_ADC_REG3), READ_CBUS_REG(SAR_ADC_DETECT_IDLE_SW), READ_CBUS_REG(SAR_ADC_CHAN_10_SW));
 }
 
-static unsigned int get_adc_sample(void)
+int get_adc_sample(int chan)
 {
+    static int sample_busy = 0;
 	unsigned long data[7] = {0};
 	int count = 0;
 	int sum = 0;
 	int i = 0;
 	int res = 0x3ff;
+
+    if (sample_busy)
+        return -1;
+    sample_busy = 1;
+    
+    WRITE_CBUS_REG(SAR_ADC_DETECT_IDLE_SW, (READ_CBUS_REG(SAR_ADC_DETECT_IDLE_SW) & ~(0x03FF << 0)) | (chan << 7));
+    WRITE_CBUS_REG(SAR_ADC_CHAN_10_SW, (READ_CBUS_REG(SAR_ADC_CHAN_10_SW) & ~(0x03FF << 0)) | (chan << 7));
 
     // Disable the sampling engine
         WRITE_CBUS_REG(SAR_ADC_REG0, READ_CBUS_REG(SAR_ADC_REG0) & ~(1 << 0));
@@ -109,6 +117,7 @@ static unsigned int get_adc_sample(void)
 	if(count != 0)
 		res = (int)sum/count;
 	
+    sample_busy	= 0;
     return res;	
 }
 
@@ -116,7 +125,10 @@ static void adckp_timer_sr(unsigned long data)
 {
 	  unsigned int result;
     struct kp *kp_data=(struct kp *)data;
-    result = get_adc_sample();
+    int ret = get_adc_sample(4);
+    if (ret < 0)
+        goto restart_timer;
+    result = ret;
     if (result>=0x3e0){
         if (kp_data->cur_keycode != 0){
             input_report_key(kp_data->input,kp_data->cur_keycode, 0);	
@@ -155,6 +167,7 @@ static void adckp_timer_sr(unsigned long data)
     else{
 		printk("adc ch4 sample = unknown key %x, pressed.\n", result);
     }
+restart_timer:
     mod_timer(&kp_data->timer,jiffies+msecs_to_jiffies(200));
 }
 
