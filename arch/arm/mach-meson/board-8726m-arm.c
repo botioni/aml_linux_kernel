@@ -217,10 +217,23 @@ static struct lm_device usb_ld_a = {
 	.resource.start = IO_USB_A_BASE,
 	.resource.end = -1,
 	.dma_mask_room = DMA_BIT_MASK(32),
-	.port_type = USB_PORT_TYPE_HOST,
+	.port_type =USB_PORT_TYPE_SLAVE,//USB_PORT_TYPE_HOST,
 	.port_speed = USB_PORT_SPEED_DEFAULT,
 	.dma_config = USB_DMA_BURST_SINGLE,
 	.set_vbus_power = set_usb_a_vbus_power,
+};
+//usb_b is host port
+static struct lm_device usb_ld_b = {
+        .type = LM_DEVICE_TYPE_USB,
+        .id = 1,
+        .irq = INT_USB_B,
+        .resource.start = IO_USB_B_BASE,
+        .resource.end = -1,
+        .dma_mask_room = DMA_BIT_MASK(32),
+        .port_type = USB_PORT_TYPE_HOST,
+        .port_speed = USB_PORT_SPEED_DEFAULT,
+        .dma_config = USB_DMA_BURST_SINGLE,
+        .set_vbus_power = 0,
 };
 #endif
 #ifdef CONFIG_SATA_DWC_AHCI
@@ -357,6 +370,7 @@ static struct aml_card_info  amlogic_card_info[] = {
 		.card_wp_input_mask = PREG_IO_11_MASK,
 		.card_extern_init = 0,
 	},
+	/*
 	[1] = {
 		.name = "sdio_card",
 		.work_mode = CARD_HW_MODE,
@@ -375,7 +389,7 @@ static struct aml_card_info  amlogic_card_info[] = {
 		.card_wp_input_reg = 0,
 		.card_wp_input_mask = 0,
 		.card_extern_init = sdio_extern_init,
-	},
+	},*/
 };
 
 static struct aml_card_platform amlogic_card_platform = {
@@ -743,28 +757,14 @@ static struct mtd_partition partition_info[] =
 	//	.dual_partnum=0,
 	},
 	{
-		.name = "recovery",
+		.name = "Kernel",
 		.offset = 8*1024*1024,
 		.size = 4 * 1024*1024,
 	//	.set_flags=0,
 	//	.dual_partnum=0,
 	},
 	{
-		.name = "boot",
-		.offset = 12*1024*1024,
-		.size = 4 * 1024*1024,
-	//	.set_flags=0,
-	//	.dual_partnum=0,
-	},
-	{
-		.name = "system",
-		.offset = 16*1024*1024,
-		.size = 128 * 1024*1024,
-	//	.set_flags=0,
-	//	.dual_partnum=0,
-	},
-	{
-		.name = "userdata",
+		.name = "YAFFS2",
 		.offset=MTDPART_OFS_APPEND,
 		.size=MTDPART_SIZ_FULL,
 	//	.set_flags=0,
@@ -1121,6 +1121,7 @@ static __init void m1_init_machine(void)
 #ifdef CONFIG_USB_DWC_OTG_HCD
 	set_usb_phy_clk(USB_PHY_CLOCK_SEL_XTAL_DIV2);
 	lm_device_register(&usb_ld_a);
+	lm_device_register(&usb_ld_b);
 #endif
 #ifdef CONFIG_SATA_DWC_AHCI
 	set_sata_phy_clk(SATA_PHY_CLOCK_SEL_DEMOD_PLL);
