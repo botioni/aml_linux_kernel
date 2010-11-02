@@ -529,6 +529,7 @@ void osd_init_hw(void)
 	osd_hw.gbl_alpha[OSD2]=OSD_GLOBAL_ALPHA_DEF;
 	osd_hw.color_info[OSD1]=NULL;
 	osd_hw.color_info[OSD2]=NULL;
+	osd_hw.color_key[OSD1]=osd_hw.color_key[OSD2]=0xffffffff;
 	osd_hw.scale[OSD1].h_enable=osd_hw.scale[OSD1].v_enable=0;
 	osd_hw.scale[OSD2].h_enable=osd_hw.scale[OSD2].v_enable=0;
 	data32  = 0x1          << 0; // osd_blk_enable
