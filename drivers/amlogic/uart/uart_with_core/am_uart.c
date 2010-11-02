@@ -256,15 +256,13 @@ static void transmit_chars(struct am_uart_port *info)
   if (uart_circ_empty(xmit) || uart_tx_stopped(up))
 		goto clear_and_return;
 
-	while (((__raw_readl(&uart->status) & 0xff00) < 0x3f00)) {
+  while(!uart_circ_empty(xmit))
+  {
+       if(((__raw_readl(&uart->status) & 0xff00) < 0x3f00)) {
 		ch = xmit->buf[xmit->tail];
 		__raw_writel(ch, &uart->wdata);
 		xmit->tail = (xmit->tail+1) & (SERIAL_XMIT_SIZE - 1);
-	
-		if (uart_circ_empty(xmit)) {
-			goto clear_and_return;
 		}
-
 	}
 clear_and_return:
 	mutex_unlock(&info->info_mutex);
@@ -373,10 +371,13 @@ static void am_uart_start_tx(struct uart_port *port)
 	mode |= UART_TXENB;
 	__raw_writel(mode, &uart->mode);	
 
+  while(!uart_circ_empty(xmit))
+  {
   if (((__raw_readl(&uart->status) & 0xff00) < 0x3f00)) {
 		ch = xmit->buf[xmit->tail];
 		__raw_writel(ch, &uart->wdata);
 		xmit->tail = (xmit->tail+1) & (SERIAL_XMIT_SIZE - 1);
+  }
   }
   mutex_unlock(&info->info_mutex);
 }
@@ -485,15 +486,15 @@ static int am_uart_startup(struct uart_port *port)
 
 static void am_uart_shutdown(struct uart_port *port)
 {
-  struct am_uart_port * info = &am_ports[port->line];
-  am_uart_t *uart = uart_addr[info->line];
-	unsigned int mode ;
+ // struct am_uart_port * info = &am_ports[port->line];
+ // am_uart_t *uart = uart_addr[info->line];
+//	unsigned int mode ;
 				/* All off! */
-  mutex_lock(&info->info_mutex);
-	mode = __raw_readl(&uart->mode);
-	mode &= ~(UART_TXENB | UART_RXENB);
-	__raw_writel(mode, &uart->mode);
-  mutex_unlock(&info->info_mutex);
+//  mutex_lock(&info->info_mutex);
+//	mode = __raw_readl(&uart->mode);
+//	mode &= ~(UART_TXENB | UART_RXENB);
+//	__raw_writel(mode, &uart->mode);
+//  mutex_unlock(&info->info_mutex);
 
 }
 
