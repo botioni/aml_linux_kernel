@@ -247,15 +247,6 @@ osd_setcmap(struct fb_cmap *cmap, struct fb_info *info)
 	return 0;
 }
 
-static  bool   check_cmd_support(unsigned int cmd)
-{
-   	 return   	(cmd == FBIOPUT_OSD_SRCCOLORKEY) ||
-           		(cmd == FBIOPUT_OSD_SRCKEY_ENABLE) ||
-           		(cmd == FBIOPUT_OSD_SET_GBL_ALPHA)||
-           		(cmd == FBIOGET_OSD_GET_GBL_ALPHA)||
-           		(cmd == FBIOPUT_OSD_2X_SCALE);
-       
-}
 static int
 osd_ioctl(struct fb_info *info, unsigned int cmd,
                unsigned long arg)
@@ -266,11 +257,6 @@ osd_ioctl(struct fb_info *info, unsigned int cmd,
    	 u32  srckey_enable;
 	 u32  gbl_alpha;
 
-	if (! check_cmd_support(cmd))
-    	{
-     	   amlog_mask_level(LOG_MASK_IOCTL,LOG_LEVEL_HIGH,"command not supported\r\n ");
-     	   return -1;
-    	}
     	switch (cmd)
   	{
    		case  FBIOPUT_OSD_SRCKEY_ENABLE:
@@ -286,6 +272,7 @@ osd_ioctl(struct fb_info *info, unsigned int cmd,
 		case FBIOPUT_OSD_2X_SCALE:	
 			break;
 		default :
+			amlog_mask_level(LOG_MASK_IOCTL,LOG_LEVEL_HIGH,"command not supported\r\n ");
 			return -1;
 	}
 	mutex_lock(&fbdev->lock);
