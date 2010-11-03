@@ -137,15 +137,15 @@ static void adckp_timer_sr(unsigned long data)
         }
     }
 	else if (result>=0x0 && result<0x60 ) {
-		if (kp_data->cur_keycode!=KEY_HOME){
-    	  kp_data->cur_keycode = KEY_HOME;
+		if (kp_data->cur_keycode!=KEY_PAGEDOWN){
+    	  kp_data->cur_keycode = KEY_PAGEDOWN;
     	  input_report_key(kp_data->input,kp_data->cur_keycode, 1);	
     	  printk("adc ch4 sample = %x, keypad pressed.\n", result);
 		}
     }
 	else if (result>=0x110 && result<0x170 ) {
-		if (kp_data->cur_keycode!=KEY_ENTER){
-    	  kp_data->cur_keycode = KEY_ENTER;
+		if (kp_data->cur_keycode!=KEY_PAGEUP){
+    	  kp_data->cur_keycode = KEY_PAGEUP;
     	  input_report_key(kp_data->input,kp_data->cur_keycode, 1);	
     	  printk("adc ch4 sample = %x, keypad pressed.\n", result);
 		}
@@ -235,9 +235,12 @@ static int __init kp_probe(struct platform_device *pdev)
     set_bit(EV_KEY, input_dev->evbit);
     set_bit(EV_REP, input_dev->evbit);
     set_bit(KEY_TAB, input_dev->keybit);
-	set_bit(KEY_HOME, input_dev->keybit);
+	//set_bit(KEY_HOME, input_dev->keybit);
 	set_bit(KEY_LEFTMETA, input_dev->keybit);
-	set_bit(KEY_ENTER, input_dev->keybit);
+	//set_bit(KEY_ENTER, input_dev->keybit);
+	set_bit(KEY_PAGEUP, input_dev->keybit);
+	set_bit(KEY_PAGEDOWN, input_dev->keybit);
+	
     
     input_dev->name = "adc_keypad";
     input_dev->phys = "adc_keypad/input0";
