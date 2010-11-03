@@ -2016,6 +2016,9 @@ void dwc_otg_ep_activate(dwc_otg_core_if_t * _core_if, dwc_ep_t * _ep)
 	if (_ep->is_in == 1) {
 		addr = &dev_if->in_ep_regs[_ep->num]->diepctl;
 		daintmsk.ep.in = 1 << _ep->num;
+		//dbg by jshan
+		depctl.d32 = dwc_read_reg32(addr);
+		//printk("dwc_otg_ep_activ: the depctl.d32 before clear stall is %p\n", depctl.d32);
 	} else {
 		addr = &dev_if->out_ep_regs[_ep->num]->doepctl;
 		daintmsk.ep.out = 1 << _ep->num;
@@ -2024,6 +2027,8 @@ void dwc_otg_ep_activate(dwc_otg_core_if_t * _core_if, dwc_ep_t * _ep)
 	/* If the EP is already active don't change the EP Control
 	 * register. */
 	depctl.d32 = dwc_read_reg32(addr);
+	//dbg by jshan
+	//printk("dwc_otg_ep_activ: the depctl.d32 after clear stallis %p\n", depctl.d32);
 	if (!depctl.b.usbactep) {
 		depctl.b.mps = _ep->maxpacket;
 		depctl.b.eptype = _ep->type;
@@ -2068,12 +2073,14 @@ void dwc_otg_ep_deactivate(dwc_otg_core_if_t * _core_if, dwc_ep_t * _ep)
 	if (_ep->is_in == 1) {
 		addr = &_core_if->dev_if->in_ep_regs[_ep->num]->diepctl;
 		daintmsk.ep.in = 1 << _ep->num;
+		
 	} else {
 		addr = &_core_if->dev_if->out_ep_regs[_ep->num]->doepctl;
 		daintmsk.ep.out = 1 << _ep->num;
 	}
 
 	depctl.b.usbactep = 0;
+	depctl.b.snak = 1;
 	dwc_write_reg32(addr, depctl.d32);
 
 	/* Disable the Interrupt for this EP */
@@ -2157,6 +2164,7 @@ void dwc_otg_ep_start_transfer(dwc_otg_core_if_t * _core_if, dwc_ep_t * _ep)
 	depctl.b.epena = 1;
 	/* IN endpoint */
 	if (_ep->is_in == 1) {
+		
 		txstatus.d32 =
 		    dwc_read_reg32(&_core_if->core_global_regs->gnptxsts);
 
@@ -2232,6 +2240,7 @@ void dwc_otg_ep_start_transfer(dwc_otg_core_if_t * _core_if, dwc_ep_t * _ep)
 		dwc_otg_dev_in_ep_regs_t *in_regs =
 		    _core_if->dev_if->in_ep_regs[_ep->num];
 
+
 		gnptxsts_data_t gtxstatus;
 
 		gtxstatus.d32 =
@@ -2247,6 +2256,7 @@ void dwc_otg_ep_start_transfer(dwc_otg_core_if_t * _core_if, dwc_ep_t * _ep)
 
 		depctl.d32 = dwc_read_reg32(&(in_regs->diepctl));
 		deptsiz.d32 = dwc_read_reg32(&(in_regs->dieptsiz));
+
 
 		/* Zero Length Packet? */
 		if (_ep->xfer_len == 0) {
@@ -3086,7 +3096,7 @@ extern void dwc_otg_flush_tx_fifo(dwc_otg_core_if_t * _core_if, const int _num)
 	/* Wait for 3 PHY Clocks */
 	UDELAY(1);
 }
-
+ 
 /**
  * Flush Rx FIFO.
  *

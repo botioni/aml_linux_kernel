@@ -906,6 +906,7 @@ static int __init dwc_otg_driver_probe(struct lm_device *_lmdev)
 		retval = -ENOMEM;
 		goto fail;
 	}
+
 	/*
 	 * Validate parameter values.
 	 */
@@ -1074,7 +1075,7 @@ static int __init dwc_otg_driver_init(void)
 	return retval;
 }
 
-module_init(dwc_otg_driver_init);
+subsys_initcall(dwc_otg_driver_init);
 
 /** 
  * This function is called when the driver is removed from the kernel

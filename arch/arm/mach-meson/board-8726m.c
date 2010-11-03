@@ -77,6 +77,10 @@
 #include <linux/aml_power.h>
 #endif
 
+#ifdef CONFIG_USB_ANDROID
+#include <linux/usb/android_composite.h>
+#endif
+
 #if defined(CONFIG_JPEGLOGO)
 static struct resource jpeglogo_resources[] = {
     [0] = {
@@ -951,6 +955,66 @@ static struct platform_device vout_device = {
 };
 #endif
 
+#ifdef CONFIG_USB_ANDROID
+#ifdef CONFIG_USB_ANDROID_MASS_STORAGE
+static struct usb_mass_storage_platform_data mass_storage_pdata = {
+       .nluns = 1,
+       .vendor = "AMLOGIC",
+       .product = "Android MID",
+       .release = 0x0100,
+};
+static struct platform_device usb_mass_storage_device = {
+       .name = "usb_mass_storage",
+       .id = -1,
+       .dev = {
+               .platform_data = &mass_storage_pdata,
+               },
+};
+#endif
+static char *usb_functions[] = { "usb_mass_storage" };
+static char *usb_functions_adb[] = { 
+#ifdef CONFIG_USB_ANDROID_MASS_STORAGE
+"usb_mass_storage", 
+#endif
+
+#ifdef CONFIG_USB_ANDROID_ADB
+"adb" 
+#endif
+};
+static struct android_usb_product usb_products[] = {
+       {
+               .product_id     = 0x0c01,
+               .num_functions  = ARRAY_SIZE(usb_functions),
+               .functions      = usb_functions,
+       },
+       {
+               .product_id     = 0x0c02,
+               .num_functions  = ARRAY_SIZE(usb_functions_adb),
+               .functions      = usb_functions_adb,
+       },
+};
+
+static struct android_usb_platform_data android_usb_pdata = {
+       .vendor_id      = 0x0bb4,
+       .product_id     = 0x0c01,
+       .version        = 0x0100,
+       .product_name   = "Android MID",
+       .manufacturer_name = "AMLOGIC",
+       .num_products = ARRAY_SIZE(usb_products),
+       .products = usb_products,
+       .num_functions = ARRAY_SIZE(usb_functions_adb),
+       .functions = usb_functions_adb,
+};
+
+static struct platform_device android_usb_device = {
+       .name   = "android_usb",
+       .id             = -1,
+       .dev            = {
+               .platform_data = &android_usb_pdata,
+       },
+};
+#endif
+
 static struct platform_device __initdata *platform_devs[] = {
     #if defined(CONFIG_JPEGLOGO)
 		&jpeglogo_device,
@@ -1013,6 +1077,12 @@ static struct platform_device __initdata *platform_devs[] = {
     #endif
     #if  defined(CONFIG_AM_TV_OUTPUT)||defined(CONFIG_AM_TCON_OUTPUT)
        &vout_device,	
+    #endif
+     #ifdef CONFIG_USB_ANDROID
+		&android_usb_device,
+      #ifdef CONFIG_USB_ANDROID_MASS_STORAGE
+		&usb_mass_storage_device,
+      #endif
     #endif		
 };
 static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
