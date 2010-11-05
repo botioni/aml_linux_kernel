@@ -38,6 +38,7 @@
 #include <linux/i2c-aml.h>
 #include <mach/power_gate.h>
 #include <linux/aml_bl.h>
+#include <linux/tca6424.h>
 
 #ifdef CONFIG_AM_UART_WITH_S_CORE 
 #include <linux/uart-aml.h>
@@ -76,6 +77,8 @@
 #include <linux/power_supply.h>
 #include <linux/aml_power.h>
 #endif
+
+
 
 #if defined(CONFIG_JPEGLOGO)
 static struct resource jpeglogo_resources[] = {
@@ -1097,6 +1100,8 @@ static void disable_unused_model(void)
 }
 static void __init power_hold(void)
 {
+    unsigned char value;
+    
     printk(KERN_INFO "power hold set high!\n");
 	set_gpio_val(GPIOA_bank_bit(8), GPIOA_bit_bit0_14(8), 1);
     set_gpio_mode(GPIOA_bank_bit(8), GPIOA_bit_bit0_14(8), GPIO_OUTPUT_MODE);
@@ -1104,6 +1109,17 @@ static void __init power_hold(void)
         /* PIN28, GPIOA_6, Pull high, For En_5V */
     set_gpio_val(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), 1);
     set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);
+    
+    //extern io P0 for usb powre
+#ifdef CONFIG_TCA6424    
+    value = get_configIO(0);
+    value = value&(~(1<<0));
+    configIO(0, value); 
+
+    value = getIO_level(0);
+    value = value|(1<<0);
+    setIO_level(0,value);
+#endif    
 }
 
 static __init void m1_init_machine(void)
