@@ -137,6 +137,12 @@ typedef struct {
 
 void audio_set_aiubuf(u32 addr, u32 size);
 void audio_set_958outbuf(u32 addr, u32 size);
+void audio_in_i2s_set_buf(u32 addr, u32 size);
+void audio_in_spdif_set_buf(u32 addr, u32 size);
+void audio_in_i2s_enable(int flag);
+void audio_in_spdif_enable(int flag);
+unsigned int audio_in_i2s_rd_ptr(void);
+unsigned int audio_in_i2s_wr_ptr(void);
 void audio_set_i2s_mode(u32 mode);
 void audio_set_clk(unsigned freq, unsigned fs_config);
 void audio_enable_ouput(int flag);

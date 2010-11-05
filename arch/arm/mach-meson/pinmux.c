@@ -195,6 +195,7 @@ void set_audio_pinmux(int type)
 				set_mio_mux(0, (1<<18));
 		}
 		else if(type == AUDIO_IN_JTAG){
+			clear_mio_mux(1, (1<<6));
 			set_mio_mux(8, (1<<8)|(1<<9)|(1<<10));
 			set_mio_mux(8, (1<<11));
 		}

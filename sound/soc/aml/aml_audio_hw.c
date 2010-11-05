@@ -51,8 +51,6 @@ void audio_set_aiubuf(u32 addr, u32 size)
 #else
 	WRITE_MPEG_REG(AIU_I2S_MISC,		0x0004);	// Hold I2S
 	WRITE_MPEG_REG(AIU_I2S_MUTE_SWAP,	0x0000);	// No mute, no swap
-	WRITE_MPEG_REG(AIU_I2S_DAC_CFG, 	0x000f);	// Payload 24-bit, Msb first, alrclk = aoclk/64
-	WRITE_MPEG_REG(AIU_I2S_SOURCE_DESC, 0x0001);	// four 2-channel
 	// As the default amclk is 24.576MHz, set i2s and iec958 divisor appropriately so as not to exceed the maximum sample rate.
 	WRITE_MPEG_REG(AIU_I2S_MISC,		0x0010 );	// Release hold and force audio data to left or right
 	
@@ -81,6 +79,69 @@ void audio_set_958outbuf(u32 addr, u32 size)
         WRITE_MPEG_REG(AIU_MEM_IEC958_BUF_CNTL, 1 | (0 << 1));
         WRITE_MPEG_REG(AIU_MEM_IEC958_BUF_CNTL, 0 | (0 << 1));
     }
+}
+void audio_in_i2s_set_buf(u32 addr, u32 size)
+{
+	WRITE_MPEG_REG(AUDIN_FIFO0_START, addr & 0xffffffc0);
+	WRITE_MPEG_REG(AUDIN_FIFO0_END, (addr&0xffffffc0) + (size&0xffffffc0) -64);
+	WRITE_MPEG_REG(AUDIN_FIFO0_CTRL, (1<<0)	// FIFO0_EN
+																	|(1<<2)	// load start address./* AUDIN_FIFO0_LOAD */
+																	|(1<<3)	// DIN from i2sin./* AUDIN_FIFO0_DIN_SEL */ 
+																	|(1<<6)	// 32 bits data in./*AUDIN_FIFO0_D32b */ 
+																	|(0<<7)	// put the 24bits data to  low 24 bits./* AUDIN_FIFO0_h24b */16bit 
+																	|(4<<8)	// /*AUDIN_FIFO0_ENDIAN */
+																	|(2<<11)//2 channel./* AUDIN_FIFO0_CHAN*/
+																	|(0<<16)	//to DDR
+																	|(1<<19)	//hold 0 enable
+																	|(0<<22)	// hold0 to aififo																	
+														);			
+	WRITE_MPEG_REG(AUDIN_I2SIN_CTRL, (0<<I2SIN_SIZE)			///*bit8*/  16bit
+																	|(1<<I2SIN_CHAN_EN)		/*bit10~13*/ //2 channel 
+																	|(1<<I2SIN_POS_SYNC)	
+																	|(1<<I2SIN_LRCLK_SKEW)
+																	|(0<<I2SIN_CLK_SEL)
+																	|(0<<I2SIN_LRCLK_SEL)
+																	|(0<<I2SIN_DIR)
+														);															
+}
+void audio_in_spdif_set_buf(u32 addr, u32 size)
+{
+}
+void audio_in_i2s_enable(int flag)
+{
+		WRITE_MPEG_REG_BITS(AUDIN_FIFO0_CTRL, 1, 1, 1); // reset FIFO 0
+		if(flag){
+				WRITE_MPEG_REG_BITS(AUDIN_I2SIN_CTRL, 1, I2SIN_EN, 1);
+		}else{
+				WRITE_MPEG_REG_BITS(AUDIN_I2SIN_CTRL, 1, I2SIN_EN, 0);
+		}
+}
+void audio_in_spdif_enable(int flag)
+{
+		WRITE_MPEG_REG_BITS(AUDIN_FIFO1_CTRL, 1, 1, 1); // reset FIFO 1
+		if(flag){
+		}else{
+		}
+}
+unsigned int audio_in_i2s_rd_ptr(void)
+{
+	unsigned int val;
+	val = READ_MPEG_REG(AUDIN_FIFO0_RDPTR);
+	printk("audio in i2s rd ptr: %x\n", val);
+	return val;
+}
+unsigned int audio_in_i2s_wr_ptr(void)
+{
+	unsigned int val;
+	val = READ_MPEG_REG(AUDIN_FIFO0_PTR);
+	if(val%64){
+		printk("un-algined val=%x\n", val);
+	}
+	return (val)&(~0x3F);
+}
+void audio_in_i2s_set_wrptr(unsigned int val)
+{
+	WRITE_MPEG_REG(AUDIN_FIFO0_RDPTR, val);
 }
 
 void audio_set_i2s_mode(u32 mode)
@@ -283,7 +344,11 @@ int audio_dac_set(unsigned freq)
 							(2 <<  2) | // i2s divisor: 0=no div; 1=div by 2; 2=div by 4; 3=div by 8.
 							(1 <<  0)); // enable I2S clock
     //delay_us(1500000); // The IP's behavioral model needs 1.5s to power-up.
-    return 0;
+ 
+  WRITE_MPEG_REG(AIU_I2S_DAC_CFG, 	0x000f);	// Payload 24-bit, Msb first, alrclk = aoclk/64
+	WRITE_MPEG_REG(AIU_I2S_SOURCE_DESC, 0x0001);	// four 2-channel
+	
+  return 0;
 }
 
 void audio_set_clk(unsigned freq, unsigned fs_config)

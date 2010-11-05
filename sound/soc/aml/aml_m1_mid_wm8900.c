@@ -69,7 +69,11 @@ printk("***Entered %s:%s: %d\n", __FILE__,__func__, level);
 }
 
 static const struct snd_soc_dapm_widget aml_m1_dapm_widgets[] = {
-	SND_SOC_DAPM_LINE("Ext Spk", NULL),
+	SND_SOC_DAPM_SPK("Ext Spk", NULL),
+	SND_SOC_DAPM_HP("HP", NULL),
+	SND_SOC_DAPM_MIC("MIC IN", NULL),
+	SND_SOC_DAPM_MIC("HP MIC", NULL),
+	SND_SOC_DAPM_LINE("FM IN", NULL),
 };
 
 static const struct snd_soc_dapm_route intercon[] = {
@@ -78,8 +82,14 @@ static const struct snd_soc_dapm_route intercon[] = {
 	{"Ext Spk", NULL, "LINEOUT1L"},
 	{"Ext Spk", NULL, "LINEOUT1R"},
 	/* mic is connected to Mic Jack, with WM8731 Mic Bias */
-//	{"MICIN", NULL, "Mic Bias"},
-//	{"Mic Bias", NULL, "Int Mic"},
+	{"HP", NULL, "HP_L"},
+	{"HP", NULL, "HP_R"},
+	{"LINPUT2", NULL, "Mic Bias"},
+	{"Mic Bias", NULL, "MIC IN"},
+	{"RINPUT2", NULL, "Mic Bias"},
+	{"Mic Bias", NULL, "HP MIC"},
+	{"LINPUT3", NULL, "FM IN"},
+	{"RINPUT3", NULL, "FM IN"},
 };
 
 static int aml_m1_codec_init(struct snd_soc_codec *codec)
@@ -96,6 +106,10 @@ printk("***Entered %s:%s\n", __FILE__,__func__);
 		snd_soc_dapm_nc_pin(codec,"RINPUT1");
 		
 		snd_soc_dapm_enable_pin(codec, "Ext Spk");
+		snd_soc_dapm_enable_pin(codec, "HP");
+		snd_soc_dapm_enable_pin(codec, "MIC IN");
+		snd_soc_dapm_enable_pin(codec, "HP MIC");
+		snd_soc_dapm_enable_pin(codec, "FM IN");
 		
 		snd_soc_dapm_sync(codec);
 
