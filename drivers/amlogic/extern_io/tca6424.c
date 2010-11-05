@@ -110,7 +110,7 @@ static const struct i2c_device_id tca6424_id[] = {
 
 static struct i2c_driver tca6424_driver = {
 	.probe 		= tca6424_probe,
-	.remove 	= tca6424_remove,
+	.remove 	= tca6424_client_remove,
 	.id_table	= tca6424_id,
 	.driver 	= {
 		.name	= "tca6424",

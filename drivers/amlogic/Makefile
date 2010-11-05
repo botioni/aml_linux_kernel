@@ -30,7 +30,7 @@ obj-y += amports/
 
 obj-y += i2c/
 
-obj-(CONFIG_EXTERN_IO) += extern_io/
+obj-$(CONFIG_TCA6424) += extern_io/
 
 obj-y += input/
 

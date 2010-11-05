@@ -22,11 +22,6 @@
 #ifndef __TCA6424_H__
 #define __TCA6424_H__
 
-
-
-
-
-
 unsigned char get_configIO(unsigned char port);
 
 
