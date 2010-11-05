@@ -96,6 +96,9 @@ u32 dsp_codec_get_current_pts(struct audiodsp_priv *priv)
 	u32 offset, buffered_len, wp; 
 	
 	mutex_lock(&priv->stream_buffer_mutex);
+	
+	if(priv->frame_format.channel_num == 0 || priv->frame_format.sample_rate == 0 || priv->frame_format.data_width == 0)
+		return -1;
 #if 0
 	if(priv->stream_fmt == MCODEC_FMT_COOK)
 		{
