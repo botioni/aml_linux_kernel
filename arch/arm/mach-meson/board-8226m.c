@@ -518,13 +518,6 @@ static struct platform_device android_pmem_device =
 };
 #endif
 
-#if defined(CONFIG_AML_RTC)
-	struct platform_device aml_rtc_device = {
-      		.name            = "aml_rtc",
-      		.id               = -1,
-	};
-#endif
-
 static struct resource amlogic_dvb_resource[]  = {
 	[0] = {
 		.start = ((GPIOA_bank_bit(13)<<16) | GPIOA_bit_bit0_14(13)),                           //frontend 0 reset pin
