@@ -30,6 +30,8 @@ obj-y += amports/
 
 obj-y += i2c/
 
+obj-(CONFIG_EXTERN_IO) += extern_io/
+
 obj-y += input/
 
 obj-y += spi_nor/

@@ -12,8 +12,8 @@ source "drivers/amlogic/rtc/Kconfig"
 source "drivers/amlogic/i2c/Kconfig"
 source "drivers/amlogic/input/Kconfig"
 source "drivers/amlogic/power/Kconfig"
+source "drivers/amlogic/extern_io/Kconfig"
 
-#
 #	Block devices
 #
 comment "Block devices"
