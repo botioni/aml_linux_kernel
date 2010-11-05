@@ -1108,18 +1108,7 @@ static void __init power_hold(void)
     
         /* PIN28, GPIOA_6, Pull high, For En_5V */
     set_gpio_val(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), 1);
-    set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);
-    
-    //extern io P0 for usb powre
-#ifdef CONFIG_TCA6424    
-    value = get_configIO(0);
-    value = value&(~(1<<0));
-    configIO(0, value); 
-
-    value = getIO_level(0);
-    value = value|(1<<0);
-    setIO_level(0,value);
-#endif    
+    set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);   
 }
 
 static __init void m1_init_machine(void)
