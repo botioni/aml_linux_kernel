@@ -85,7 +85,7 @@ static int aml_power_get_property(struct power_supply *psy,
 			val->intval = POWER_SUPPLY_STATUS_DISCHARGING;
 		break;
 	case POWER_SUPPLY_PROP_CAPACITY:	
-	    capacty = 100*(pdata->get_bat_vol() - 491)/87;
+	    capacty = 100*(pdata->get_bat_vol() - 540)/80;
 		val->intval = capacty>100? 100:capacty;
 		printk("current capacity is %d%%\n,",val->intval);
 		break;
