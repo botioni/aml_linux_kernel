@@ -733,14 +733,14 @@ static struct platform_device aml_uart_device = {
 static struct mtd_partition partition_info[] = 
 {
 	{
-		.name = "U-BOOT",
+		.name = "bootloader",
 		.offset = 0,
 		.size=4*1024*1024,
 	//	.set_flags=0,
 	//	.dual_partnum=0,
 	},
 	{
-		.name = "Boot Para",
+		.name = "environment",
 		.offset = 4*1024*1024,
 		.size=4*1024*1024,
 	//	.set_flags=0,
@@ -749,26 +749,40 @@ static struct mtd_partition partition_info[] =
 	{
 		.name = "recovery",
 		.offset = 8*1024*1024,
-		.size = 4 * 1024*1024,
+		.size = 16 * 1024*1024,
 	//	.set_flags=0,
 	//	.dual_partnum=0,
 	},
 	{
 		.name = "boot",
-		.offset = 12*1024*1024,
-		.size = 4 * 1024*1024,
+		.offset = 24*1024*1024,
+		.size = 16 * 1024*1024,
 	//	.set_flags=0,
 	//	.dual_partnum=0,
 	},
 	{
 		.name = "system",
-		.offset = 16*1024*1024,
-		.size = 128 * 1024*1024,
+		.offset = 40*1024*1024,
+		.size = 180 * 1024*1024,
+	//	.set_flags=0,
+	//	.dual_partnum=0,
+	},
+	{
+		.name = "cache",
+		.offset = 220*1024*1024,
+		.size = 16 * 1024*1024,
 	//	.set_flags=0,
 	//	.dual_partnum=0,
 	},
 	{
 		.name = "userdata",
+		.offset= 236*1024*1024,
+		.size= 512 * 1024*1024,
+	//	.set_flags=0,
+	//	.dual_partnum=0,
+	},
+	{
+		.name = "media",
 		.offset=MTDPART_OFS_APPEND,
 		.size=MTDPART_SIZ_FULL,
 	//	.set_flags=0,
