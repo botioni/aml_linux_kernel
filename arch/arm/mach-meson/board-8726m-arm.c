@@ -38,7 +38,6 @@
 #include <linux/i2c-aml.h>
 #include <mach/power_gate.h>
 #include <linux/aml_bl.h>
-#include <linux/tca6424.h>
 
 #ifdef CONFIG_AM_UART_WITH_S_CORE 
 #include <linux/uart-aml.h>
@@ -373,7 +372,6 @@ static struct aml_card_info  amlogic_card_info[] = {
 		.card_wp_input_mask = PREG_IO_11_MASK,
 		.card_extern_init = 0,
 	},
-	/*
 	[1] = {
 		.name = "sdio_card",
 		.work_mode = CARD_HW_MODE,
@@ -382,17 +380,17 @@ static struct aml_card_info  amlogic_card_info[] = {
 		.card_ins_en_mask = 0,
 		.card_ins_input_reg = 0,
 		.card_ins_input_mask = 0,
-		.card_power_en_reg = EGPIO_GPIOD_ENABLE,
-		.card_power_en_mask = PREG_IO_10_MASK,
-		.card_power_output_reg = EGPIO_GPIOD_OUTPUT,
-		.card_power_output_mask = PREG_IO_10_MASK,
-		.card_power_en_lev = 1,
+		.card_power_en_reg = 0,//EGPIO_GPIOD_ENABLE,
+		.card_power_en_mask = 0,//PREG_IO_10_MASK,
+		.card_power_output_reg = 0,//EGPIO_GPIOD_OUTPUT,
+		.card_power_output_mask = 0,//PREG_IO_10_MASK,
+		.card_power_en_lev = 0,//1,
 		.card_wp_en_reg = 0,
 		.card_wp_en_mask = 0,
 		.card_wp_input_reg = 0,
 		.card_wp_input_mask = 0,
 		.card_extern_init = sdio_extern_init,
-	},*/
+	},
 };
 
 static struct aml_card_platform amlogic_card_platform = {
@@ -780,7 +778,7 @@ static struct mtd_partition partition_info[] =
 //	//	.dual_partnum=1,
 //	}
 };
-/*
+
 static struct aml_m1_nand_platform aml_2kpage128kblocknand_platform = {
 	.page_size = 2048,
 	.spare_size=64,
@@ -793,8 +791,8 @@ static struct aml_m1_nand_platform aml_2kpage128kblocknand_platform = {
 	.partitions = partition_info,
 	.nr_partitions = ARRAY_SIZE(partition_info),
 };
-*/
 
+/*
 static struct aml_m1_nand_platform aml_Micron4GBABAnand_platform = 
 {
 	.page_size = 2048*2,
@@ -808,7 +806,7 @@ static struct aml_m1_nand_platform aml_Micron4GBABAnand_platform =
 	.partitions = partition_info,
 	.nr_partitions = ARRAY_SIZE(partition_info),
 };
-
+*/
 static struct resource aml_nand_resources[] = {
 	{
 		.start = 0xc1108600,
@@ -823,7 +821,7 @@ static struct platform_device aml_nand_device = {
 	.num_resources = ARRAY_SIZE(aml_nand_resources),
 	.resource = aml_nand_resources,
 	.dev = {
-		.platform_data = &aml_Micron4GBABAnand_platform,
+		.platform_data = &aml_2kpage128kblocknand_platform,
 	},
 };
 #endif
@@ -1071,8 +1069,8 @@ static void __init device_pinmux_init(void )
 	clearall_pinmux();
 	/*other deivce power on*/
 	/*GPIOA_200e_bit4..usb/eth/YUV power on*/
-	set_gpio_mode(PREG_EGPIO,1<<4,GPIO_OUTPUT_MODE);
-	set_gpio_val(PREG_EGPIO,1<<4,1);
+//	set_gpio_mode(PREG_EGPIO,1<<4,GPIO_OUTPUT_MODE);
+//	set_gpio_val(PREG_EGPIO,1<<4,1);
 	uart_set_pinmux(UART_PORT_A,PINMUX_UART_A);
 	uart_set_pinmux(UART_PORT_B,PINMUX_UART_B);
 	/*pinmux of eth*/
@@ -1100,7 +1098,6 @@ static void disable_unused_model(void)
 }
 static void __init power_hold(void)
 {
-    unsigned char value;
     
     printk(KERN_INFO "power hold set high!\n");
 	set_gpio_val(GPIOA_bank_bit(8), GPIOA_bit_bit0_14(8), 1);
@@ -1118,7 +1115,7 @@ static __init void m1_init_machine(void)
 		 * Bits:  .... .... .000 0010 0000 .... .... .... */
 		l2x0_init((void __iomem *)IO_PL310_BASE, 0x00020000, 0xff800fff);
 #endif
-	power_hold();
+	//power_hold();
 	device_clk_setting();
 	device_pinmux_init();
 	platform_add_devices(platform_devs, ARRAY_SIZE(platform_devs));
