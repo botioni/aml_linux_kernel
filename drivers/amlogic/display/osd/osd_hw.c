@@ -39,6 +39,17 @@
 /**********************************************************************/
 /**********				 osd vsync irq handler   				***************/
 /**********************************************************************/
+static inline void  osd_update_3d_mode(int enable_osd1,int enable_osd2)
+{
+	if(enable_osd1)
+	{
+		osd1_update_disp_3d_mode();
+	}
+	if(enable_osd2)
+	{
+		osd2_update_disp_3d_mode();
+	}
+}
 static irqreturn_t vsync_isr(int irq, void *dev_id)
 {
 	unsigned  int  fb0_cfg_w0,fb1_cfg_w0;
@@ -51,14 +62,7 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
 		osd_hw.scan_mode= SCAN_MODE_INTERLACE;
 	else
 		osd_hw.scan_mode= SCAN_MODE_PROGRESSIVE;
-
-	if(!list_empty(&update_list))
-	{
-		list_for_each_entry_safe(p_update_list,tmp, &update_list, list)
-		{
-			p_update_list->update_func();
-		}
-	}
+	
 	if (osd_hw.scan_mode== SCAN_MODE_INTERLACE)
 	{
 		fb0_cfg_w0=READ_MPEG_REG(VIU_OSD1_BLK0_CFG_W0);
@@ -83,7 +87,16 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
 		WRITE_MPEG_REG(VIU_OSD1_BLK0_CFG_W0, fb0_cfg_w0);
 		WRITE_MPEG_REG(VIU_OSD1_BLK0_CFG_W0+ REG_OFFSET, fb1_cfg_w0);
 	}
-		
+	//go through update list
+	if(!list_empty(&update_list))
+	{
+		list_for_each_entry_safe(p_update_list,tmp, &update_list, list)
+		{
+			p_update_list->update_func();
+		}
+	}
+	osd_update_3d_mode(osd_hw.mode_3d[OSD1].enable,osd_hw.mode_3d[OSD2].enable);
+	
        if (READ_MPEG_REG(VENC_ENCI_LINE) >= 12)
              READ_MPEG_REG(VENC_ENCI_LINE);
 
@@ -277,7 +290,29 @@ void osd_setpal_hw(unsigned regno,
         WRITE_MPEG_REG(VIU_OSD1_COLOR+REG_OFFSET*index, pal);
     }
 }
-
+void osd_enable_3d_mode_hw(int index,int enable)
+{
+	spin_lock_irqsave(&osd_lock, lock_flags);
+	osd_hw.mode_3d[index].enable=enable;
+	spin_unlock_irqrestore(&osd_lock, lock_flags);
+	if(enable)  //when disable 3d mode ,we should return to stardard state.
+	{
+		osd_hw.mode_3d[index].left_right=LEFT;
+		osd_hw.mode_3d[index].l_start=osd_hw.pandata[index].x_start;
+		osd_hw.mode_3d[index].l_end= (osd_hw.pandata[index].x_end +  osd_hw.pandata[index].x_start)>>1;
+		osd_hw.mode_3d[index].r_start=osd_hw.mode_3d[index].l_end + 1;
+		osd_hw.mode_3d[index].r_end=osd_hw.pandata[index].x_end;
+		osd_hw.mode_3d[index].origin_scale.h_enable=osd_hw.scale[index].h_enable;
+		osd_hw.mode_3d[index].origin_scale.v_enable=osd_hw.scale[index].v_enable;
+		osd_set_2x_scale_hw(index,1,0);
+	}
+	else
+	{
+		
+		osd_set_2x_scale_hw(index,osd_hw.mode_3d[index].origin_scale.h_enable,
+								osd_hw.mode_3d[index].origin_scale.v_enable);
+	}
+}
 void osd_enable_hw(int enable ,int index )
 {
    	if(osd_hw.enable[index] != enable)
@@ -495,6 +530,39 @@ static inline  void  osd2_update_disp_geometry(void)
 	WRITE_MPEG_REG(VIU_OSD2_BLK0_CFG_W2,data32);
 	remove_from_update_list(OSD2,DISP_GEOMETRY);
 }
+static  void  osd1_update_disp_3d_mode(void)
+{
+	/*step 1 . set pan data */
+	u32  data32;
+	
+	if(osd_hw.mode_3d[OSD1].left_right==LEFT)
+	{
+		data32=(osd_hw.mode_3d[OSD1].l_start& 0x1fff) | (osd_hw.mode_3d[OSD1].l_end& 0x1fff) << 16;
+		WRITE_MPEG_REG(VIU_OSD1_BLK0_CFG_W1,data32);
+	}
+	else
+	{
+		data32=(osd_hw.mode_3d[OSD1].r_start& 0x1fff) | (osd_hw.mode_3d[OSD1].r_end& 0x1fff) << 16;
+		WRITE_MPEG_REG(VIU_OSD1_BLK0_CFG_W1,data32);		
+	}
+	osd_hw.mode_3d[OSD1].left_right^=1;
+}
+static  void  osd2_update_disp_3d_mode(void)
+{
+	u32  data32;
+	
+	if(osd_hw.mode_3d[OSD2].left_right==LEFT)
+	{
+		data32=(osd_hw.mode_3d[OSD2].l_start& 0x1fff) | (osd_hw.mode_3d[OSD2].l_end& 0x1fff) << 16;
+		WRITE_MPEG_REG(VIU_OSD2_BLK0_CFG_W1,data32);
+	}
+	else
+	{
+		data32=(osd_hw.mode_3d[OSD2].r_start& 0x1fff) | (osd_hw.mode_3d[OSD2].r_end& 0x1fff) << 16;
+		WRITE_MPEG_REG(VIU_OSD2_BLK0_CFG_W1,data32);		
+	}
+	osd_hw.mode_3d[OSD2].left_right^=1;
+}
 void osd_init_hw(void)
 {
 	u32 group,idx,data32;
@@ -532,6 +600,7 @@ void osd_init_hw(void)
 	osd_hw.color_key[OSD1]=osd_hw.color_key[OSD2]=0xffffffff;
 	osd_hw.scale[OSD1].h_enable=osd_hw.scale[OSD1].v_enable=0;
 	osd_hw.scale[OSD2].h_enable=osd_hw.scale[OSD2].v_enable=0;
+	osd_hw.mode_3d[OSD2].enable=osd_hw.mode_3d[OSD1].enable=0;
 	data32  = 0x1          << 0; // osd_blk_enable
     	data32 |= OSD_GLOBAL_ALPHA_DEF<< 12;
 	data32 |= (1<<21)	;
