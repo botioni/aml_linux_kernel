@@ -129,6 +129,7 @@ osd_check_var(struct fb_var_screeninfo *var, struct fb_info *info)
 	const color_bit_define_t   *color_format_pt;
 
 	fix = &info->fix;
+	
 	color_format_pt=_find_color_format(var);	
 	if (color_format_pt == NULL || color_format_pt->color_index==0)
 	{
@@ -270,6 +271,7 @@ osd_ioctl(struct fb_info *info, unsigned int cmd,
 			break;
 		case FBIOGET_OSD_GET_GBL_ALPHA:
 		case FBIOPUT_OSD_2X_SCALE:	
+		case FBIOPUT_OSD_ENABLE_3D_MODE:	
 			break;
 		default :
 			amlog_mask_level(LOG_MASK_IOCTL,LOG_LEVEL_HIGH,"command not supported\r\n ");
@@ -279,6 +281,9 @@ osd_ioctl(struct fb_info *info, unsigned int cmd,
 
   	switch (cmd)
     	{
+    		case FBIOPUT_OSD_ENABLE_3D_MODE:
+		osddev_enable_3d_mode(info->node,arg);
+		break;		
     		case FBIOPUT_OSD_2X_SCALE: //arg :higher 16 bit h_scale_enable, lower 16 bit v_scale_enable
 		osddev_set_2x_scale(info->node,arg&0xffff0000?1:0,arg&0xffff?1:0);
 		break;		

@@ -116,6 +116,10 @@ void osddev_init(void)
 {
 	osd_init_hw();
 }
+void osddev_enable_3d_mode(u32 index ,u32 enable)
+{
+	osd_enable_3d_mode_hw(index,enable);
+}
 void osddev_set_2x_scale(u32 index,u16 h_scale_enable,u16 v_scale_enable)
 {
 	osd_set_2x_scale_hw(index,h_scale_enable,v_scale_enable);

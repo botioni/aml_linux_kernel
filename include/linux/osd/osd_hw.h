@@ -69,6 +69,7 @@ extern void  osddev_update_disp_axis_hw(
                   	u32 yoffset,
                   	u32 mode_change,
                   	u32 index) ;
+extern void osd_enable_3d_mode_hw(int index,int enable);
 extern void osd_set_2x_scale_hw(u32 index,u16 h_scale_enable,u16 v_scale_enable);
 extern void osd_setpal_hw(unsigned regno, unsigned red, unsigned green, unsigned blue, unsigned transp,int index);
 extern void osd_enable_hw(int enable,int index );
