@@ -16,5 +16,8 @@ config SND_AML_M1_MID_WM8900
 	depends on SND_AML_SOC
         select SND_SOC_WM8900 if SND_AML_M1_MID_WM8900
 
-
+config SND_AML_M1_ARMDEV_WM8900
+	tristate "AML8726M ARM Dev board with WM8900"
+	depends on SND_AML_SOC
+		select SND_SOC_WM8900 if SND_AML_M1_ARMDEV_WM8900
 	

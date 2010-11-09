@@ -56,21 +56,6 @@ printk("***Entered %s:%s\n", __FILE__,__func__);
 	return ret;
 }
 
-static const struct snd_soc_dapm_widget aml_m1_dapm_widgets[] = {
-	SND_SOC_DAPM_MIC("Int Mic", NULL),
-	SND_SOC_DAPM_SPK("Ext Spk", NULL),
-};
-
-static const struct snd_soc_dapm_route intercon[] = {
-
-	/* speaker connected to LHPOUT */
-	{"Ext Spk", NULL, "LHPOUT"},
-
-	/* mic is connected to Mic Jack, with WM8731 Mic Bias */
-	{"MICIN", NULL, "Mic Bias"},
-	{"Mic Bias", NULL, "Int Mic"},
-};
-
 static int aml_m1_codec_init(struct snd_soc_codec *codec)
 {
 printk("***Entered %s:%s\n", __FILE__,__func__);
