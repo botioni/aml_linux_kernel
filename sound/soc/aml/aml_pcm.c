@@ -411,7 +411,7 @@ static int aml_pcm_copy_playback(struct snd_pcm_runtime *runtime, int channel,
     tfrom = (unsigned short *)buf;
     to = (unsigned short *)hwbuf;
     n = frames_to_bytes(runtime, count);
-    //printk("count=%d, n=%d\n", count, n);
+//    printk("count=%d, n=%d\n", count, n);
     if(access_ok(VERIFY_READ, buf, frames_to_bytes(runtime, count))){
 		    left = to;
 		    right = to + 16;
