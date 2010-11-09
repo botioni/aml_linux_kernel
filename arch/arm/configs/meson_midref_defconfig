@@ -1,7 +1,7 @@
 #
 # Automatically generated make config: don't edit
 # Linux kernel version: 2.6.34
-# Mon Nov  8 11:26:23 2010
+# Tue Nov  9 14:20:39 2010
 #
 CONFIG_ARM=y
 CONFIG_HOLES_IN_ZONE=y
@@ -709,7 +709,9 @@ CONFIG_MALI=m
 
 # Amlogic WIFI Support
 #
-# CONFIG_SDIO_DHD_CDC_WIFI is not set
+CONFIG_SDIO_DHD_CDC_WIFI=y
+CONFIG_BCM4329_FW_PATH="broadcm_4329/sdio-g-cdc-full11n-reclaim-roml-wme-idsup.bin"
+CONFIG_BCM4329_NVRAM_PATH="broadcm_4329/nvram.txt"
 CONFIG_CONNECTOR=y
 CONFIG_PROC_EVENTS=y
 CONFIG_MTD=y
