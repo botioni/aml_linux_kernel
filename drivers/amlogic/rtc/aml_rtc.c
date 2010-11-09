@@ -425,8 +425,9 @@ static int aml_rtc_probe(struct platform_device *pdev)
 	}
 
 	spin_lock_init(&priv->lock);
-	ser_access_write(RTC_GPO_COUNTER_ADDR,0x100000);
+	//ser_access_write(RTC_GPO_COUNTER_ADDR,0x100000);
 	static_register_write(0x0004);
+	ser_access_write(RTC_GPO_COUNTER_ADDR,0x100000);
 
 	//check_osc_clk();
 	//ser_access_write(RTC_COUNTER_ADDR, 0);
