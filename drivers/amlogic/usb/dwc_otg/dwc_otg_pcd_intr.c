@@ -1603,7 +1603,7 @@ static void complete_ep(dwc_otg_pcd_ep_t * _ep)
 	    dev_if->in_ep_regs[_ep->dwc_ep.num];
 	deptsiz_data_t deptsiz;
 	dwc_otg_pcd_request_t *req = 0;
-	int is_last = 0;
+	int is_last = 0, xfer_cnt = 0;
 
 	DWC_DEBUGPL(DBG_PCDV, "%s() %s-%s\n", __func__, _ep->ep.name,
 		    (_ep->dwc_ep.is_in ? "IN" : "OUT"));
@@ -1628,6 +1628,8 @@ static void complete_ep(dwc_otg_pcd_ep_t * _ep)
 
 		if (deptsiz.b.xfersize == 0 && deptsiz.b.pktcnt == 0 &&
 		    _ep->dwc_ep.xfer_count == _ep->dwc_ep.xfer_len) {
+			if (core_if->dma_enable)
+				req->req.actual =  _ep->dwc_ep.xfer_len - deptsiz.b.xfersize;
 			is_last = 1;
 		} else {
 			DWC_WARN
@@ -1649,17 +1651,17 @@ static void complete_ep(dwc_otg_pcd_ep_t * _ep)
 			    _ep->dwc_ep.xfer_len, _ep->dwc_ep.xfer_count,
 			    deptsiz.b.xfersize, deptsiz.b.pktcnt);
 #endif
+		if (core_if->dma_enable) {
+			xfer_cnt = (_ep->dwc_ep.xfer_len + (_ep->dwc_ep.maxpacket - 1)) /_ep->dwc_ep.maxpacket;
+			req->req.actual = xfer_cnt*_ep->dwc_ep.maxpacket - deptsiz.b.xfersize;
+		}
 		is_last = 1;
 	}
 
 	/* Complete the request */
 	if (is_last) {
 
-		if (core_if->dma_enable) {
-			req->req.actual =
-			    _ep->dwc_ep.xfer_len - deptsiz.b.xfersize;
-			dwc_otg_pcd_dma_unmap(&_ep->dwc_ep);
-		} else {
+		if(!core_if->dma_enable) {
 			req->req.actual = _ep->dwc_ep.xfer_count;
 		}
 
