@@ -33,10 +33,10 @@
 
 static struct fb_var_screeninfo mydef_var[] = {
 {
-	.xres            = 800,
-	.yres            = 480,
-	.xres_virtual    = 800,
-	.yres_virtual    = 960,
+	.xres            = 1200,
+	.yres            = 690,
+	.xres_virtual    = 1200,
+	.yres_virtual    = 1380,
 	.xoffset         = 0,
 	.yoffset         = 0,
 	.bits_per_pixel  = 16,
@@ -63,13 +63,13 @@ static struct fb_var_screeninfo mydef_var[] = {
 	
 },
 {
-	.xres            = 720,
-	.yres            = 576,
-	.xres_virtual    = 720,
-	.yres_virtual    = 1152,
+	.xres            = 32,
+	.yres            = 32,
+	.xres_virtual    = 32,
+	.yres_virtual    = 32,
 	.xoffset         = 0,
 	.yoffset         = 0,
-	.bits_per_pixel  = 8,
+	.bits_per_pixel  = 32,
 	.grayscale       = 0,
 	.red             = {0, 0, 0},  //leave as it is ,set by system.
 	.green           = {0, 0, 0},
