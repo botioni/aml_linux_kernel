@@ -81,6 +81,10 @@
 #include <linux/usb/android_composite.h>
 #endif
 
+#ifdef CONFIG_SUSPEND
+#include <mach/pm.h>
+#endif
+
 #if defined(CONFIG_JPEGLOGO)
 static struct resource jpeglogo_resources[] = {
     [0] = {
@@ -576,6 +580,20 @@ static	struct platform_device aml_rtc_device = {
 	};
 #endif
 
+#if defined(CONFIG_SUSPEND)
+
+static struct meson_pm_config aml_pm_pdata = {
+	.sleepcount = 128,
+};
+
+static struct platform_device aml_pm_device = {
+	.name           = "pm-meson",
+	.dev = {
+		.platform_data	= &aml_pm_pdata,
+	},
+	.id             = -1,
+};
+#endif
 
 #if defined(CONFIG_I2C_SW_AML)
 
@@ -1073,6 +1091,9 @@ static struct platform_device __initdata *platform_devs[] = {
     #endif		
     #if defined(CONFIG_AML_RTC)
 		&aml_rtc_device,
+    #endif
+	#if defined(CONFIG_SUSPEND)
+		&aml_pm_device,
     #endif
     #if defined(CONFIG_ANDROID_PMEM)
 		&android_pmem_device,
