@@ -1,3 +1,13 @@
+/*
+ * Meson Power Management Routines
+ *
+ * Copyright (C) 2010 Amlogic, Inc. http://www.amlogic.com/
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ */
+
 #include <linux/pm.h>
 #include <linux/suspend.h>
 #include <linux/module.h>
@@ -10,17 +20,23 @@
 
 #include <mach/pm.h>
 #include <mach/am_regs.h>
+#include <mach/sram.h>
 
-
-
+static void (*meson_sram_suspend) (struct meson_pm_config *);
 static struct meson_pm_config *pdata;
+
+static void meson_sram_push(void *dest, void *src, unsigned int size)
+{
+	memcpy(dest, src, size);
+	flush_icache_range((unsigned long)dest, (unsigned long)(dest + size));
+}
 
 static void meson_pm_suspend(void)
 {
 	printk(KERN_INFO "enter meson_pm_suspend!\n");
 
 	WRITE_CBUS_REG(0x21d0/*RTC_ADDR0*/, (READ_CBUS_REG(0x21d0/*RTC_ADDR0*/) &~(1<<11)));
-    WRITE_CBUS_REG(0x21d1/*RTC_ADDR0*/, (READ_CBUS_REG(0x21d1/*RTC_ADDR0*/) &~(1<<3)));
+	WRITE_CBUS_REG(0x21d1/*RTC_ADDR0*/, (READ_CBUS_REG(0x21d1/*RTC_ADDR0*/) &~(1<<3)));
 	int powerPress = 0;
 	while(1){
 		udelay(jiffies+msecs_to_jiffies(20));
@@ -67,9 +83,18 @@ static int __init meson_pm_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "cannot get platform data\n");
 		return -ENOENT;
 	}
-	
-	suspend_set_ops(&meson_pm_ops);
 
+	meson_sram_suspend = sram_alloc(meson_cpu_suspend_sz);
+	if (!meson_sram_suspend) {
+		dev_err(&pdev->dev, "cannot allocate SRAM memory\n");
+		return -ENOMEM;
+	}
+
+	meson_sram_push(meson_sram_suspend, meson_cpu_suspend,
+						meson_cpu_suspend_sz);
+
+	suspend_set_ops(&meson_pm_ops);
+	printk(KERN_INFO "meson_pm_probe done 0x%x %d!\n", meson_sram_suspend, meson_cpu_suspend_sz);
 	return 0;
 }
 
