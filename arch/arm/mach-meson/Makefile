@@ -13,7 +13,7 @@ obj-$(CONFIG_ARCH_MESON)	+= pinmux.o
 obj-$(CONFIG_ARCH_MESON)	+= gpio.o
 obj-$(CONFIG_ARCH_MESON)	+= power_gate.o
 
-obj-$(CONFIG_ARCH_MESON)	+= lm.o usbclock.o sataclock.o clk_set.o sram.o
+obj-$(CONFIG_ARCH_MESON)	+= lm.o usbclock.o sataclock.o clk_set.o sram.o sleep.o
 
 obj-$(CONFIG_MACH_MESON_6236M)	+= board-6236m.o
 obj-$(CONFIG_MACH_MESON_8626M)	+= board-8626m.o
