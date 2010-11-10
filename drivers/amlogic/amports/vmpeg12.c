@@ -471,7 +471,7 @@ static void vmpeg12_canvas_init(void)
         }
     }
 
-	WRITE_MPEG_REG(MREG_CO_MV_START, buf_start + buf_start + 4 * decbuf_size);
+	  WRITE_MPEG_REG(MREG_CO_MV_START, buf_start + 4 * decbuf_size);
 
 }
 
