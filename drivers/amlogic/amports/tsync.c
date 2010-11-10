@@ -57,6 +57,7 @@ static tsync_stat_t tsync_stat = TSYNC_STAT_PCRSCR_SETUP_NONE;
 static int tsync_enable = 1;
 static int tsync_abreak = 0;
 static int tsync_trickmode = 0;
+static int vpause_flag = 0;
 static unsigned int tsync_av_thresh = AV_DISCONTINUE_THREDHOLD;
 static unsigned int tsync_syncthresh = 1;
 static int tsync_dec_reset_flag = 0;
@@ -110,7 +111,7 @@ void tsync_avevent(avevent_t event, u32 param)
                 timestamp_pcrscr_set(param);
             }
         }
-		if(tsync_mode == TSYNC_MODE_VMASTER)
+		if(tsync_mode == TSYNC_MODE_VMASTER && !vpause_flag)
         	timestamp_pcrscr_enable(1);
         break;
 
@@ -220,6 +221,11 @@ void tsync_avevent(avevent_t event, u32 param)
         break;
 
     case VIDEO_PAUSE:
+		amlog_level(LOG_LEVEL_INFO, "video pause! param=%d\n", param);
+		if(param == 1)
+			vpause_flag = 1;
+		else
+			vpause_flag = 0;
         timestamp_pcrscr_enable(1-param);
         break;
 
