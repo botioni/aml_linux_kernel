@@ -29,26 +29,52 @@ static void meson_sram_push(void *dest, void *src, unsigned int size)
 {
 	memcpy(dest, src, size);
 	flush_icache_range((unsigned long)dest, (unsigned long)(dest + size));
+	int res = 0;
+	res = memcmp(dest,src,size);
+	printk("meson_sram_push (%d)", res);
 }
 
 static void meson_pm_suspend(void)
 {
+	//int mask_save[4];
 	printk(KERN_INFO "enter meson_pm_suspend!\n");
-
+	
 	WRITE_CBUS_REG(0x21d0/*RTC_ADDR0*/, (READ_CBUS_REG(0x21d0/*RTC_ADDR0*/) &~(1<<11)));
 	WRITE_CBUS_REG(0x21d1/*RTC_ADDR0*/, (READ_CBUS_REG(0x21d1/*RTC_ADDR0*/) &~(1<<3)));
+
+	//mask_save[0] = READ_CBUS_REG(A9_0_IRQ_IN0_INTR_MASK);
+	//mask_save[1] = READ_CBUS_REG(A9_0_IRQ_IN1_INTR_MASK);
+	//mask_save[2] = READ_CBUS_REG(A9_0_IRQ_IN2_INTR_MASK);
+	//mask_save[3] = READ_CBUS_REG(A9_0_IRQ_IN3_INTR_MASK);
+	//WRITE_CBUS_REG(A9_0_IRQ_IN0_INTR_MASK, 0x00008000);
+	//WRITE_CBUS_REG(A9_0_IRQ_IN1_INTR_MASK, 0x0);
+	//WRITE_CBUS_REG(A9_0_IRQ_IN2_INTR_MASK, READ_CBUS_REG(A9_0_IRQ_IN2_INTR_MASK)&(~0x800));
+	//WRITE_CBUS_REG(A9_0_IRQ_IN3_INTR_MASK, 0x0);
+		
 	int powerPress = 0;
 	while(1){
-		udelay(jiffies+msecs_to_jiffies(20));
+		//udelay(jiffies+msecs_to_jiffies(20));
+
+		meson_sram_suspend(pdata);
+		printk("intr stat %x %x %x %x\n", READ_CBUS_REG(A9_0_IRQ_IN0_INTR_STAT), READ_CBUS_REG(A9_0_IRQ_IN1_INTR_STAT),
+		READ_CBUS_REG(A9_0_IRQ_IN2_INTR_STAT),READ_CBUS_REG(A9_0_IRQ_IN3_INTR_STAT));
+
 		powerPress = ((READ_CBUS_REG(0x21d1/*RTC_ADDR1*/) >> 2) & 1) ? 0 : 1;
 		if(powerPress)
 			break;
 	}
+	//WRITE_CBUS_REG(A9_0_IRQ_IN0_INTR_MASK, mask_save[0]);
+	//WRITE_CBUS_REG(A9_0_IRQ_IN1_INTR_MASK, mask_save[1]);
+	//WRITE_CBUS_REG(A9_0_IRQ_IN2_INTR_MASK, READ_CBUS_REG(A9_0_IRQ_IN2_INTR_MASK)|(0x800));
+	//WRITE_CBUS_REG(A9_0_IRQ_IN3_INTR_MASK, mask_save[3]);
+
 }
 
 static int meson_pm_prepare(void)
 {
 	printk(KERN_INFO "enter meson_pm_prepare!\n");
+	meson_sram_push(meson_sram_suspend, meson_cpu_suspend,
+						meson_cpu_suspend_sz);
 	return 0;
 }
 

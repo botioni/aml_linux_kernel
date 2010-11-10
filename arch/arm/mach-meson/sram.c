@@ -11,6 +11,7 @@
 #include <linux/module.h>
 #include <linux/init.h>
 #include <linux/genalloc.h>
+#include <linux/io.h>
 
 #include <mach/sram.h>
 
@@ -30,6 +31,7 @@ void *sram_alloc(size_t len)
 }
 EXPORT_SYMBOL(sram_alloc);
 
+int sram_vaddr;
 void sram_free(void *addr, size_t len)
 {
 	gen_pool_free(sram_pool, (unsigned long) addr, len);
@@ -39,13 +41,15 @@ EXPORT_SYMBOL(sram_free);
 static int __init sram_init(void)
 {
 	int status = 0;
+	sram_vaddr = ioremap(0xc9000000, SRAM_SIZE);
+	printk("sram vaddr = %x", sram_vaddr);
 
 	sram_pool = gen_pool_create(ilog2(SRAM_GRANULARITY), -1);
 	if (!sram_pool){
 		status = -ENOMEM;
 	}
 	if (sram_pool)
-		status = gen_pool_add(sram_pool, SRAM_VIRT, SRAM_SIZE, -1);
+		status = gen_pool_add(sram_pool, sram_vaddr /*SRAM_VIRT*/, SRAM_SIZE, -1);
 	WARN_ON(status < 0);
 	return status;
 }
