@@ -126,7 +126,8 @@ static u32 real_recycle_q[REAL_RECYCLE_Q_SIZE];
 static u32 real_recycle_rd; 
 static u32 real_recycle_wr;
 
-static unsigned short pic_sz_tbl[12] __attribute__ ((aligned (8)));
+static unsigned short pic_sz_tbl[12] __attribute__ ((aligned (32)));
+static dma_addr_t pic_sz_tbl_map;
 static const unsigned char RPR_size[9] = {0,1,1,2,2,3,3,3,3};
 
 static struct dec_sysinfo vreal_amstream_dec_info;
@@ -579,9 +580,6 @@ static void load_block_data(unsigned int dest, unsigned int count)
     src_tbl[0] = RPR_size[vreal_amstream_dec_info.extra+1];
     copy_from_user((void *)&src_tbl[1], vreal_amstream_dec_info.param, 2<<src_tbl[0]);
     
-	/* TODO: use kmalloc and DMA API */
-	dma_sync_single_for_device(NULL, (dma_addr_t)src_tbl, sizeof(src_tbl), DMA_TO_DEVICE);
-
 #if 0    
     for(i=0; i<12; i++)
     {
@@ -596,8 +594,10 @@ static void load_block_data(unsigned int dest, unsigned int count)
         pdest[i*4+2] = src_tbl[i*4+1];
         pdest[i*4+3] = src_tbl[i*4];
     }
-	dma_sync_single_for_device(NULL, (dma_addr_t)pdest, sizeof(src_tbl), DMA_TO_DEVICE);
-    
+
+    pic_sz_tbl_map = dma_map_single(NULL, &pic_sz_tbl,
+        sizeof(pic_sz_tbl), DMA_TO_DEVICE);
+
     return;
 }
 
@@ -624,7 +624,7 @@ s32 vreal_init(void)
         load_block_data((unsigned int)pic_sz_tbl,12);
 
         //  TODO: need to load the table into lmem
-        WRITE_MPEG_REG(LMEM_DMA_ADR, (unsigned)pic_sz_tbl);
+        WRITE_MPEG_REG(LMEM_DMA_ADR, (unsigned)pic_sz_tbl_map);
         WRITE_MPEG_REG(LMEM_DMA_COUNT, 10);
         WRITE_MPEG_REG(LMEM_DMA_CTRL, 0xc178|(3<<11));
         while(READ_MPEG_REG(LMEM_DMA_CTRL) & 0x8000){};
@@ -740,6 +740,8 @@ static int amvdec_real_remove(struct platform_device *pdev)
         vf_unreg_provider();
         stat &= ~STAT_VF_HOOK;
     }
+    
+    dma_unmap_single(NULL, pic_sz_tbl_map, sizeof(pic_sz_tbl), DMA_TO_DEVICE);
 
     printk("frame duration %d, frames %d\n", frame_dur, frame_count);
     return 0;
