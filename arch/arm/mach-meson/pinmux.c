@@ -176,3 +176,41 @@ void uart_set_pinmux(int port,int uart_bank)
 	}
 }
 
+void set_audio_pinmux(int type)
+{
+		if(type == AUDIO_OUT_JTAG){
+				set_mio_mux(1,	
+					(1<<6)|(1<<11)|(1<<15)|(1<<19)
+					);
+		}
+		else if(type == AUDIO_OUT_GPIOA){
+			set_mio_mux(1, 
+					(1<<16)|(1<<11)|(1<<15)|(1<<19)
+					);
+			set_mio_mux(8, (1<<5));
+		}
+		else if(type == AUDIO_OUT_TEST_N){
+				set_mio_mux(1, (1<<11)|(1<<15)|(1<<19));
+				set_mio_mux(0, (1<<18));
+		}
+		else if(type == AUDIO_IN_JTAG){
+			set_mio_mux(8, (1<<8)|(1<<9)|(1<<10));
+			set_mio_mux(8, (1<<11));
+		}
+		else if(type == SPDIF_OUT_GPIOA){
+			set_mio_mux(0, (1<<19));
+		}
+		else if(type == SPDIF_OUT_GPIOB){
+			set_mio_mux(2, (1<<1));
+		}
+		else if(type == SPDIF_OUT_TEST_N){
+			set_mio_mux(0, (1<<17));
+		}
+		else if(type == SPDIF_IN_GPIOA){
+			set_mio_mux(0, (1<<20));
+		}
+		else if(type == SPDIF_IN_GPIOB){
+			set_mio_mux(2, (1<<0));
+		}
+}
+EXPORT_SYMBOL(set_audio_pinmux);

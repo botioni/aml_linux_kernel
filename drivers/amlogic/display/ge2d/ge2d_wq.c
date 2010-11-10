@@ -538,7 +538,7 @@ int   ge2d_context_config(ge2d_context_t *context, config_para_t *ge2d_config)
 	}
 	if(src.bpp < 16 || dst.bpp < 16 )
 	{
-		amlog_mask_level(LOG_MASK_CONFIG,LOG_LEVEL_HIGH,"8 bit ge2d not support \r\n");
+		amlog_mask_level(LOG_MASK_CONFIG,LOG_LEVEL_HIGH,"src dst bpp type, src=%d,dst=%d \r\n",src.bpp,dst.bpp);
 	}
 	
 	//next will config regs

@@ -57,6 +57,7 @@ static tsync_stat_t tsync_stat = TSYNC_STAT_PCRSCR_SETUP_NONE;
 static int tsync_enable = 1;
 static int tsync_abreak = 0;
 static int tsync_trickmode = 0;
+static int vpause_flag = 0;
 static unsigned int tsync_av_thresh = AV_DISCONTINUE_THREDHOLD;
 static unsigned int tsync_syncthresh = 1;
 static int tsync_dec_reset_flag = 0;
@@ -66,7 +67,8 @@ void tsync_avevent(avevent_t event, u32 param)
     ulong flags;
     u32 t;
     ulong fiq_flag;
-
+	amlog_level(LOG_LEVEL_INFO, "[%s]event:%d, param %d\n", 
+            __FUNCTION__, event, param);
     spin_lock_irqsave(&lock, flags);
     
     raw_local_save_flags(fiq_flag);
@@ -109,8 +111,8 @@ void tsync_avevent(avevent_t event, u32 param)
                 timestamp_pcrscr_set(param);
             }
         }
-
-        timestamp_pcrscr_enable(1);
+		if(tsync_mode == TSYNC_MODE_VMASTER && !vpause_flag)
+        	timestamp_pcrscr_enable(1);
         break;
 
     case VIDEO_STOP:
@@ -219,6 +221,11 @@ void tsync_avevent(avevent_t event, u32 param)
         break;
 
     case VIDEO_PAUSE:
+		amlog_level(LOG_LEVEL_INFO, "video pause! param=%d\n", param);
+		if(param == 1)
+			vpause_flag = 1;
+		else
+			vpause_flag = 0;
         timestamp_pcrscr_enable(1-param);
         break;
 
@@ -323,13 +330,18 @@ static ssize_t store_apts(struct class *class,
         if (abs(pts - t) > tsync_av_thresh)
         {
             tsync_mode = TSYNC_MODE_VMASTER;
+            amlog_level(LOG_LEVEL_INFO, "apts 0x%x shift scr 0x%x too much, switch to TSYNC_MODE_VMASTER\n",
+                pts, t);
         }
-        else
+        else {
             timestamp_pcrscr_set(pts);
+            amlog_level(LOG_LEVEL_INFO, "apts set to scr 0x%x->0x%x\n", t, pts);
+        }
     }
     else {   
         if (abs(pts - t) <= tsync_av_thresh) {
             tsync_mode = TSYNC_MODE_AMASTER;
+            amlog_level(LOG_LEVEL_INFO, "switch to TSYNC_MODE_AMASTER\n");
 
             timestamp_pcrscr_set(pts);
         }

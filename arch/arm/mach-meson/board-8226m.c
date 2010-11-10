@@ -45,6 +45,12 @@
 #include <mach/clk_set.h>
 #include "board-8626m.h"
 
+#ifdef CONFIG_ANDROID_PMEM
+#include <linux/slab.h>
+#include <linux/dma-mapping.h>
+#include <linux/android_pmem.h>
+#endif
+
 #if defined(CONFIG_JPEGLOGO)
 static struct resource jpeglogo_resources[] = {
     [0] = {
@@ -86,18 +92,21 @@ static struct platform_device input_device = {
 };
 #endif
 
-#ifdef CONFIG_FB_AM
+#if defined(CONFIG_FB_AM)
 static struct resource fb_device_resources[] = {
     [0] = {
         .start = OSD1_ADDR_START,
         .end   = OSD1_ADDR_END,
         .flags = IORESOURCE_MEM,
     },
+#if defined(CONFIG_FB_OSD2_ENABLE)
     [1] = {
         .start = OSD2_ADDR_START,
-        .end   =OSD2_ADDR_END,
+        .end   = OSD2_ADDR_END,
         .flags = IORESOURCE_MEM,
     },
+#endif
+
 };
 
 static struct platform_device fb_device = {
@@ -105,6 +114,23 @@ static struct platform_device fb_device = {
     .id         = 0,
     .num_resources = ARRAY_SIZE(fb_device_resources),
     .resource      = fb_device_resources,
+};
+#endif
+
+#if  defined(CONFIG_AM_TV_OUTPUT)||defined(CONFIG_AM_TCON_OUTPUT)
+static struct resource vout_device_resources[] = {
+    [0] = {
+        .start = 0,
+        .end   = 0,
+        .flags = IORESOURCE_MEM,
+    },
+};
+
+static struct platform_device vout_device = {
+    .name       = "mesonvout",
+    .id         = 0,
+    .num_resources = ARRAY_SIZE(vout_device_resources),
+    .resource      = vout_device_resources,
 };
 #endif
 
@@ -442,6 +468,25 @@ static struct platform_device aml_i2c_device = {
 };
 #endif
 
+#ifdef CONFIG_ANDROID_PMEM
+static struct android_pmem_platform_data pmem_data =
+{
+	.name = "pmem",
+	.start = PMEM_START,
+	.size = PMEM_SIZE,
+	.no_allocator = 1,
+	.cached = 1,
+};
+
+static struct platform_device android_pmem_device =
+{
+	.name = "android_pmem",
+	.id = 0,
+	.dev = {
+		.platform_data = &pmem_data,
+	},
+};
+#endif
 
 static struct resource amlogic_dvb_resource[]  = {
 	[0] = {
@@ -531,6 +576,9 @@ static struct platform_device __initdata *platform_devs[] = {
     #if defined(CONFIG_FB_AM)
     	&fb_device,
     #endif
+    #if  defined(CONFIG_AM_TV_OUTPUT)||defined(CONFIG_AM_TCON_OUTPUT)
+       &vout_device,	
+    #endif		
     #if defined(CONFIG_AM_STREAMING)
 		&codec_device,
     #endif
@@ -560,6 +608,9 @@ static struct platform_device __initdata *platform_devs[] = {
     #endif
     #if defined(CONFIG_I2C_AML)
 		&aml_i2c_device,
+    #endif
+    #if defined(CONFIG_ANDROID_PMEM)
+		&android_pmem_device,
     #endif
     #if defined(CONFIG_AM_DVB)
 		&amlogic_dvb_device,

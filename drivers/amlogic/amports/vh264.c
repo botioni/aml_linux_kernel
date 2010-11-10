@@ -43,7 +43,7 @@
 #define MODULE_NAME "amvdec_h264"
 
 #define HANDLE_H264_IRQ
-//#define DEBUG_PTS
+#define DEBUG_PTS
 
 /* 12M for L41 */
 #define MAX_DPB_BUFF_SIZE       (12*1024*1024)
@@ -681,7 +681,7 @@ static void vh264_isr(void)
                     }
                     else
                     {
-                        if ( idr_flag )
+                        if ( idr_flag && pts_valid)
                                 pts += neg_poc_counter*(frame_dur-(frame_dur>>4));
                         else
                                 pts = 0;
@@ -981,7 +981,8 @@ static void vh264_local_init(void)
         frame_width = vh264_amstream_dec_info.width;
         frame_height = vh264_amstream_dec_info.height;
         frame_dur = vh264_amstream_dec_info.rate;
-        pts_outside = (u32)vh264_amstream_dec_info.param;
+        pts_outside = ((u32)vh264_amstream_dec_info.param)&0x01;
+        sync_outside = sync_outside = ((u32)vh264_amstream_dec_info.param & 0x02) >> 1;
 
         buffer_for_recycle_rd = 0;
         buffer_for_recycle_wr = 0;
@@ -1172,8 +1173,8 @@ static int amvdec_h264_remove(struct platform_device *pdev)
         atomic_set(&vh264_active, 0);
         
 #ifdef DEBUG_PTS
-        printk("pts missed %ld, pts hit %ld, pts_outside %d, duration %d\n", 
-        pts_missed, pts_hit, pts_outside, frame_dur);
+        printk("pts missed %ld, pts hit %ld, pts_outside %d, duration %d, sync_outside %d\n", 
+        pts_missed, pts_hit, pts_outside, frame_dur, sync_outside);
 #endif
 
         return 0;

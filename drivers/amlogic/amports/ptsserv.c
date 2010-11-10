@@ -8,9 +8,9 @@
 #include <mach/am_regs.h>
 
 //#define DEBUG_VIDEO
-#define DEBUG_AUDIO
-#define DEBUG_CHECKIN
-#define DEBUG_CHECKOUT
+//#define DEBUG_AUDIO
+//#define DEBUG_CHECKIN
+//#define DEBUG_CHECKOUT
 
 #define VIDEO_REC_SIZE  4096
 #define AUDIO_REC_SIZE  4096
@@ -18,6 +18,7 @@
 #define AUDIO_LOOKUP_RESOLUTION 1024
 
 #define OFFSET_LATER(x, y) ((int)(x) > (int)(y))
+#define OFFSET_EQLATER(x, y) ((int)(x) >= (int)(y))
 #define OFFSET_DIFF(x, y)  ((int)(x - y))
 
 enum {
@@ -319,7 +320,7 @@ if (type == PTS_TYPE_VIDEO)
     look_cnt++;
 #endif
 
-                if (p->offset > offset) {
+                if (OFFSET_LATER(p->offset, offset)) {
                     break;
                 }
 
@@ -335,7 +336,7 @@ if (type == PTS_TYPE_VIDEO)
 #ifdef DEBUG
     look_cnt++;
 #endif
-                if (p->offset <= offset) {
+                if (OFFSET_EQLATER(offset, p->offset)) {
                     p2 = p;
                     break;
                 }
@@ -345,7 +346,7 @@ if (type == PTS_TYPE_VIDEO)
             p2 = p;
 
         if ((p2) &&
-            (OFFSET_DIFF(p2->offset, offset) < lookup_threshold)) {
+            (OFFSET_DIFF(offset, p2->offset) < lookup_threshold)) {
 #ifdef DEBUG_CHECKOUT
 #ifdef DEBUG_VIDEO
             if (type == PTS_TYPE_VIDEO)

@@ -34,6 +34,7 @@
 
 
 static int used_audio_pll=-1;
+static u32 curr_vdac_setting=DEFAULT_VDAC_SEQUENCE;
 #include "tvregs.h"
 
 #define  SET_VDAC(index,val)   (WRITE_MPEG_REG((index+VENC_VDAC_DACSEL0),val))
@@ -71,6 +72,10 @@ static  const  char*   signal_table[]={
          "PROGEESSIVE_B",   /**< Progressive B signal */
 		
 	};
+int 	 get_current_vdac_setting(void)
+{
+	return curr_vdac_setting;
+}
 //120120
 void  change_vdac_setting(unsigned int  vdec_setting,vmode_t  mode)
 {
@@ -100,6 +105,7 @@ void  change_vdac_setting(unsigned int  vdec_setting,vmode_t  mode)
 		SET_VDAC(idx,signal_set[signal_set_index][i]);
 		bit--;
 	}
+	curr_vdac_setting=vdec_setting;
 	
 }
 static void enable_vsync_interrupt(void)

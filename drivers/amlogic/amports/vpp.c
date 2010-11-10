@@ -529,21 +529,21 @@ vpp_set_filters(u32 wide_mode,
                      next_frame_par);
 }
 
-void vpp_set_video_layer_position(s32 x0, s32 y0, s32 x1, s32 y1)
+void vpp_set_video_layer_position(s32 x, s32 y, s32 w, s32 h)
 {
-	if ((x1 <= x0) || (y1 <= y0))
+	if ((w < 0) || (h < 0))
 		return;
 
-    video_layer_top = y0;
-    video_layer_left = x0;
-    video_layer_width = x1-x0;
-    video_layer_height = y1-y0;
+    video_layer_left = x;
+    video_layer_top = y;
+    video_layer_width = w;
+    video_layer_height = h;
 }
 
-void vpp_get_video_layer_position(s32 *x0, s32 *y0, s32 *x1, s32 *y1)
+void vpp_get_video_layer_position(s32 *x, s32 *y, s32 *w, s32 *h)
 {
-    *x0 = video_layer_left;
-    *y0 = video_layer_top;
-    *x1 = video_layer_left + video_layer_width;
-    *y1 = video_layer_top + video_layer_height;
+    *x = video_layer_left;
+    *y = video_layer_top;
+    *w = video_layer_width;
+    *h = video_layer_height;
 }

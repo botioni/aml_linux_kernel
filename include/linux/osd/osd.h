@@ -25,72 +25,43 @@
 #ifndef OSD_H
 #define OSD_H
 #include  <linux/fb.h>
-//do not change this order
 
-enum osd_type_s {
-    OSD_TYPE_32_RGBA    = 0,  // 0
-    OSD_TYPE_24_RGB     = 1,   // 0
-    OSD_TYPE_02_PAL4    = 2,  // 0
-    OSD_TYPE_04_PAL16   = 3, // 0
-    OSD_TYPE_08_PAL256  = 4,// 0
-    OSD_TYPE_16_655     = 5,  // 0
-    OSD_TYPE_16_844     = 6,  // 1
-    OSD_TYPE_16_6442    = 7, // 2 
-    OSD_TYPE_16_4444_R    = 8, // 3
-  
-    OSD_TYPE_32_ARGB =9, // 1 
-    OSD_TYPE_32_ABGR =10,// 2
-    OSD_TYPE_32_BGRA =11,// 3 
-
-    OSD_TYPE_24_888_B=12, //RGB  5
-    OSD_TYPE_24_5658=13,  //RGBA  1
-    OSD_TYPE_24_8565=14,  // 2
-    OSD_TYPE_24_6666_R=15, //RGBA 3 
-    OSD_TYPE_24_6666_A=16, //ARGB 4 
-    
-
-    OSD_TYPE_16_565 = 17 , //RGB 4
-    OSD_TYPE_16_4444_A   = 18, // 5
-    OSD_TYPE_16_1555_A  = 19, // 6
-    OSD_TYPE_16_4642_R    = 20, // 7
-
-    //YUV  mode
-    OSD_TYPE_YUV_422 =21 ,
-
-    
-
-    OSD_TYPE_INVALID=0xff
-};
 typedef  enum {
-	BPP_TYPE_02_PAL4    = 2,  // 0
-    	BPP_TYPE_04_PAL16   = 4, // 0
-	BPP_TYPE_08_PAL256=8,
-	BPP_TYPE_16_655 =9,
-	BPP_TYPE_16_844 =10,
-	BPP_TYPE_16_6442 =11 ,
-	BPP_TYPE_16_4444_R = 12,
-	BPP_TYPE_16_4642_R = 13,
-	BPP_TYPE_16_1555_A=14,
-	BPP_TYPE_16_4444_A = 15,
-	BPP_TYPE_16_565 =16,
+	COLOR_INDEX_02_PAL4    = 2,  // 0
+    	COLOR_INDEX_04_PAL16   = 4, // 0
+	COLOR_INDEX_08_PAL256=8,
+	COLOR_INDEX_16_655 =9,
+	COLOR_INDEX_16_844 =10,
+	COLOR_INDEX_16_6442 =11 ,
+	COLOR_INDEX_16_4444_R = 12,
+	COLOR_INDEX_16_4642_R = 13,
+	COLOR_INDEX_16_1555_A=14,
+	COLOR_INDEX_16_4444_A = 15,
+	COLOR_INDEX_16_565 =16,
 	
-	BPP_TYPE_24_6666_A=19,
-	BPP_TYPE_24_6666_R=20,
-	BPP_TYPE_24_8565 =21,
-	BPP_TYPE_24_5658 = 22,
-	BPP_TYPE_24_888_B = 23,
-	BPP_TYPE_24_RGB = 24,
+	COLOR_INDEX_24_6666_A=19,
+	COLOR_INDEX_24_6666_R=20,
+	COLOR_INDEX_24_8565 =21,
+	COLOR_INDEX_24_5658 = 22,
+	COLOR_INDEX_24_888_B = 23,
+	COLOR_INDEX_24_RGB = 24,
 
-	BPP_TYPE_32_BGRA=29,
-	BPP_TYPE_32_ABGR = 30,
-	BPP_TYPE_32_RGBA=31,
-	BPP_TYPE_32_ARGB=32,
+	COLOR_INDEX_32_BGRA=29,
+	COLOR_INDEX_32_ABGR = 30,
+	COLOR_INDEX_32_RGBA=31,
+	COLOR_INDEX_32_ARGB=32,
 
-	BPP_TYPE_YUV_422=33,
+	COLOR_INDEX_YUV_422=33,
 	
-}bpp_type_t;
+}color_index_t;
+
+
+
 typedef  struct {
-	bpp_type_t	type_index;
+	color_index_t	color_index;
+	u8	hw_colormat;
+	u8	hw_blkmode;
+
 	u8	red_offset ;
 	u8	red_length;
 	u8	red_msb_right;
@@ -109,10 +80,11 @@ typedef  struct {
 
 	u8	color_type;
 	u8	bpp;
+
+		
 	
-}bpp_color_bit_define_t;
+}color_bit_define_t;
 typedef struct osd_ctl_s {
-    enum osd_type_s type;
     u32  xres_virtual;
     u32  yres_virtual;
     u32  xres;
@@ -126,45 +98,45 @@ typedef struct osd_ctl_s {
 } osd_ctl_t;
 #define  INVALID_BPP_ITEM    {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
 
-static const  bpp_color_bit_define_t   default_color_format_array[]={
+static const  color_bit_define_t   default_color_format_array[]={
 	INVALID_BPP_ITEM,
 	INVALID_BPP_ITEM,
-	{BPP_TYPE_02_PAL4,/*red*/ 0,2,0,/*green*/0,2,0,/*blue*/0,2,0,/*trans*/0,0,0,FB_VISUAL_PSEUDOCOLOR,8},
+	{COLOR_INDEX_02_PAL4,0,0,/*red*/ 0,2,0,/*green*/0,2,0,/*blue*/0,2,0,/*trans*/0,0,0,FB_VISUAL_PSEUDOCOLOR,2},
 	INVALID_BPP_ITEM,	
-	{BPP_TYPE_04_PAL16,/*red*/ 0,4,0,/*green*/0,4,0,/*blue*/0,4,0,/*trans*/0,0,0,FB_VISUAL_PSEUDOCOLOR,8},
+	{COLOR_INDEX_04_PAL16,0,1,/*red*/ 0,4,0,/*green*/0,4,0,/*blue*/0,4,0,/*trans*/0,0,0,FB_VISUAL_PSEUDOCOLOR,4},
 	INVALID_BPP_ITEM,	
 	INVALID_BPP_ITEM,	
 	INVALID_BPP_ITEM,	
-	{BPP_TYPE_08_PAL256,/*red*/ 0,8,0,/*green*/0,8,0,/*blue*/0,8,0,/*trans*/0,0,0,FB_VISUAL_PSEUDOCOLOR,8},
+	{COLOR_INDEX_08_PAL256,0,2,/*red*/ 0,8,0,/*green*/0,8,0,/*blue*/0,8,0,/*trans*/0,0,0,FB_VISUAL_PSEUDOCOLOR,8},
 /*16 bit color*/
-	{BPP_TYPE_16_655,/*red*/ 10,6,0,/*green*/5,5,0,/*blue*/0,5,0,/*trans*/0,0,0,FB_VISUAL_TRUECOLOR,16},
-	{BPP_TYPE_16_844,/*red*/ 8,8,0,/*green*/4,4,0,/*blue*/0,4,0,/*trans*/0,0,0,FB_VISUAL_TRUECOLOR,16},
-	{BPP_TYPE_16_6442,/*red*/ 10,6,0,/*green*/6,4,0,/*blue*/2,4,0,/*trans*/0,2,0,FB_VISUAL_TRUECOLOR,16},
-	{BPP_TYPE_16_4444_R,/*red*/ 12,4,0,/*green*/8,4,0,/*blue*/4,4,0,/*trans*/0,4,0,FB_VISUAL_TRUECOLOR,16},
-	{BPP_TYPE_16_4642_R,/*red*/ 12,4,0,/*green*/6,6,0,/*blue*/2,4,0,/*trans*/0,2,0,FB_VISUAL_TRUECOLOR,16},
-	{BPP_TYPE_16_1555_A,/*red*/ 10,5,0,/*green*/5,5,0,/*blue*/0,5,0,/*trans*/15,1,0,FB_VISUAL_TRUECOLOR,16},
-	{BPP_TYPE_16_4444_A,/*red*/ 8,4,0,/*green*/4,4,0,/*blue*/0,4,0,/*trans*/12,4,0,FB_VISUAL_TRUECOLOR,16},
-	{BPP_TYPE_16_565,/*red*/ 11,5,0,/*green*/5,6,0,/*blue*/0,5,0,/*trans*/12,4,0,FB_VISUAL_TRUECOLOR,16},
+	{COLOR_INDEX_16_655,0,4,/*red*/ 10,6,0,/*green*/5,5,0,/*blue*/0,5,0,/*trans*/0,0,0,FB_VISUAL_TRUECOLOR,16},
+	{COLOR_INDEX_16_844,1,4,/*red*/ 8,8,0,/*green*/4,4,0,/*blue*/0,4,0,/*trans*/0,0,0,FB_VISUAL_TRUECOLOR,16},
+	{COLOR_INDEX_16_6442,2,4,/*red*/ 10,6,0,/*green*/6,4,0,/*blue*/2,4,0,/*trans*/0,2,0,FB_VISUAL_TRUECOLOR,16},
+	{COLOR_INDEX_16_4444_R,3,4,/*red*/ 12,4,0,/*green*/8,4,0,/*blue*/4,4,0,/*trans*/0,4,0,FB_VISUAL_TRUECOLOR,16,},
+	{COLOR_INDEX_16_4642_R,7,4,/*red*/ 12,4,0,/*green*/6,6,0,/*blue*/2,4,0,/*trans*/0,2,0,FB_VISUAL_TRUECOLOR,16},
+	{COLOR_INDEX_16_1555_A,6,4,/*red*/ 10,5,0,/*green*/5,5,0,/*blue*/0,5,0,/*trans*/15,1,0,FB_VISUAL_TRUECOLOR,16},
+	{COLOR_INDEX_16_4444_A,5,4,/*red*/ 8,4,0,/*green*/4,4,0,/*blue*/0,4,0,/*trans*/12,4,0,FB_VISUAL_TRUECOLOR,16},
+	{COLOR_INDEX_16_565,4,4,/*red*/ 11,5,0,/*green*/5,6,0,/*blue*/0,5,0,/*trans*/0,0,0,FB_VISUAL_TRUECOLOR,16},
 /*24 bit color*/
 	INVALID_BPP_ITEM,
 	INVALID_BPP_ITEM,
-	{BPP_TYPE_24_6666_A,/*red*/ 12,6,0,/*green*/6,6,0,/*blue*/0,6,0,/*trans*/18,6,0,FB_VISUAL_TRUECOLOR,24},
-	{BPP_TYPE_24_6666_R,/*red*/ 18,6,0,/*green*/12,6,0,/*blue*/6,6,0,/*trans*/0,6,0,FB_VISUAL_TRUECOLOR,24},
-	{BPP_TYPE_24_8565,/*red*/ 11,5,0,/*green*/5,6,0,/*blue*/0,5,0,/*trans*/16,8,0,FB_VISUAL_TRUECOLOR,24},
-	{BPP_TYPE_24_5658,/*red*/ 19,5,0,/*green*/13,6,0,/*blue*/8,5,0,/*trans*/0,8,0,FB_VISUAL_TRUECOLOR,24},
-	{BPP_TYPE_24_888_B,/*red*/ 0,8,0,/*green*/8,8,0,/*blue*/16,8,0,/*trans*/0,0,0,FB_VISUAL_TRUECOLOR,24},
-	{BPP_TYPE_24_RGB,/*red*/ 16,8,0,/*green*/8,8,0,/*blue*/0,8,0,/*trans*/0,0,0,FB_VISUAL_TRUECOLOR,24},
+	{COLOR_INDEX_24_6666_A,4,7,/*red*/ 12,6,0,/*green*/6,6,0,/*blue*/0,6,0,/*trans*/18,6,0,FB_VISUAL_TRUECOLOR,24},
+	{COLOR_INDEX_24_6666_R,3,7,/*red*/ 18,6,0,/*green*/12,6,0,/*blue*/6,6,0,/*trans*/0,6,0,FB_VISUAL_TRUECOLOR,24},
+	{COLOR_INDEX_24_8565,2,7,/*red*/ 11,5,0,/*green*/5,6,0,/*blue*/0,5,0,/*trans*/16,8,0,FB_VISUAL_TRUECOLOR,24},
+	{COLOR_INDEX_24_5658,1,7,/*red*/ 19,5,0,/*green*/13,6,0,/*blue*/8,5,0,/*trans*/0,8,0,FB_VISUAL_TRUECOLOR,24},
+	{COLOR_INDEX_24_888_B,5,7,/*red*/ 0,8,0,/*green*/8,8,0,/*blue*/16,8,0,/*trans*/0,0,0,FB_VISUAL_TRUECOLOR,24},
+	{COLOR_INDEX_24_RGB,0,7,/*red*/ 16,8,0,/*green*/8,8,0,/*blue*/0,8,0,/*trans*/0,0,0,FB_VISUAL_TRUECOLOR,24},
 /*32 bit color*/
 	INVALID_BPP_ITEM,
 	INVALID_BPP_ITEM,
 	INVALID_BPP_ITEM,
 	INVALID_BPP_ITEM,
-	{BPP_TYPE_32_BGRA,/*red*/ 8,8,0,/*green*/16,8,0,/*blue*/24,8,0,/*trans*/0,8,0,FB_VISUAL_TRUECOLOR,32},
-	{BPP_TYPE_32_ABGR,/*red*/ 0,8,0,/*green*/8,8,0,/*blue*/16,8,0,/*trans*/24,8,0,FB_VISUAL_TRUECOLOR,32},
-	{BPP_TYPE_32_RGBA,/*red*/ 24,8,0,/*green*/16,8,0,/*blue*/8,8,0,/*trans*/0,8,0,FB_VISUAL_TRUECOLOR,32},
-	{BPP_TYPE_32_ARGB,/*red*/ 16,8,0,/*green*/8,8,0,/*blue*/0,8,0,/*trans*/24,8,0,FB_VISUAL_TRUECOLOR,32},
+	{COLOR_INDEX_32_BGRA,3,5,/*red*/ 8,8,0,/*green*/16,8,0,/*blue*/24,8,0,/*trans*/0,8,0,FB_VISUAL_TRUECOLOR,32},
+	{COLOR_INDEX_32_ABGR,2,5,/*red*/ 0,8,0,/*green*/8,8,0,/*blue*/16,8,0,/*trans*/24,8,0,FB_VISUAL_TRUECOLOR,32},
+	{COLOR_INDEX_32_RGBA,0,5,/*red*/ 24,8,0,/*green*/16,8,0,/*blue*/8,8,0,/*trans*/0,8,0,FB_VISUAL_TRUECOLOR,32},
+	{COLOR_INDEX_32_ARGB,1,5,/*red*/ 16,8,0,/*green*/8,8,0,/*blue*/0,8,0,/*trans*/24,8,0,FB_VISUAL_TRUECOLOR,32},
 /*YUV color*/
-	{BPP_TYPE_YUV_422,0,0,0, 0,0,0, 0,0,0, 0,0,0, 0,16},
+	{COLOR_INDEX_YUV_422,0,3,0,0,0, 0,0,0, 0,0,0, 0,0,0, 0,16},
 };
 
 typedef struct reg_val_pair{

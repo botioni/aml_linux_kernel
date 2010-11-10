@@ -29,6 +29,11 @@ struct clk {
 	unsigned long min;
 	unsigned long max;
 	int source_clk;
+	/* for clock gate */
+	unsigned char clock_index;
+	unsigned clock_gate_reg_adr;
+	unsigned clock_gate_reg_mask;
+	/**/
 	unsigned long	(*get_rate)(struct clk *);
 	int	(*set_rate)(struct clk *, unsigned long);
 };

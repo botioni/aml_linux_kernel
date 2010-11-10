@@ -29,25 +29,13 @@ static  logo_output_dev_t   output_osd1={
 
 static int osd_hw_setup(logo_object_t *plogo)
 {
-    	const enum osd_type_s typeTab[34] = {
-        OSD_TYPE_02_PAL4  , OSD_TYPE_02_PAL4  , OSD_TYPE_02_PAL4  ,
-        OSD_TYPE_04_PAL16 , OSD_TYPE_04_PAL16 ,
-        OSD_TYPE_08_PAL256, OSD_TYPE_08_PAL256, OSD_TYPE_08_PAL256, OSD_TYPE_08_PAL256,
-        OSD_TYPE_16_655  , OSD_TYPE_16_844   , OSD_TYPE_16_6442   , OSD_TYPE_16_4444_R   ,
-        OSD_TYPE_16_4642_R  , OSD_TYPE_16_1555_A   , OSD_TYPE_16_4444_A   , OSD_TYPE_16_565/*16*/   ,
-        OSD_TYPE_24_RGB     , OSD_TYPE_24_RGB   , OSD_TYPE_24_6666_A   , OSD_TYPE_24_6666_R   ,
-        OSD_TYPE_24_8565   , OSD_TYPE_24_5658   , OSD_TYPE_24_888_B   , OSD_TYPE_24_RGB /*24*/  ,
-        OSD_TYPE_32_ARGB  , OSD_TYPE_32_ARGB  , OSD_TYPE_32_ARGB  , OSD_TYPE_32_ARGB  ,
-        OSD_TYPE_32_BGRA  , OSD_TYPE_32_ABGR  , OSD_TYPE_32_RGBA  , OSD_TYPE_32_ARGB /*32*/ ,
-        OSD_TYPE_YUV_422  , //YUV 422
-        
-   	 };
 	struct osd_ctl_s  osd_ctl;
+	const color_bit_define_t  *color;
 
 	osd_ctl.addr=plogo->dev->output_dev.osd.mem_start;
 	osd_ctl.index=plogo->dev->idx;
-	osd_ctl.type=typeTab[plogo->parser->logo_pic_info.color_info];//osd device color mode same as 
 	plogo->dev->output_dev.osd.color_depth=plogo->parser->logo_pic_info.color_info;
+	color=&default_color_format_array[plogo->dev->output_dev.osd.color_depth];
 	osd_ctl.xres=plogo->dev->vinfo->width ;					//logo pic.	
 	osd_ctl.yres=plogo->dev->vinfo->height;
 	osd_ctl.xres_virtual=plogo->dev->vinfo->width ;
@@ -56,7 +44,7 @@ static int osd_hw_setup(logo_object_t *plogo)
 	osd_ctl.disp_end_x=osd_ctl.xres -1;
 	osd_ctl.disp_start_y=0;
 	osd_ctl.disp_end_y=osd_ctl.yres-1;
-	
+	osd_init_hw();
 	osd_setup(&osd_ctl, \
 					0, \
 					0, \
@@ -69,9 +57,8 @@ static int osd_hw_setup(logo_object_t *plogo)
 					osd_ctl.disp_end_x, \
 					osd_ctl.disp_end_y, \
 					osd_ctl.addr, \
-					osd_ctl.type, \
+					color, \
 					osd_ctl.index) ;
-	WRITE_MPEG_REG(VPP_MISC, (1<<(12+plogo->dev->idx))|(1<<7)|(0<<4)|(1<<0));
 	return SUCCESS;
 	
 }
@@ -244,19 +231,19 @@ static  int  osd_transfer(logo_object_t *plogo)
 			ge2d_config.src_planes[0].addr = canvas.addr;
 			ge2d_config.src_planes[0].w = canvas.width;
 			ge2d_config.src_planes[0].h = canvas.height;
-			amlog_mask_level(LOG_MASK_DEVICE,LOG_LEVEL_LOW,"Y:[0x%x][%d*%d]\n",canvas.addr,canvas.width,canvas.height);
+			amlog_mask_level(LOG_MASK_DEVICE,LOG_LEVEL_LOW,"Y:[0x%x][%d*%d]\n",(u32)canvas.addr,canvas.width,canvas.height);
 			canvas_read(canvas_index>>8&0xff,&canvas);
 			if(canvas.addr==0) return FAIL;
 			ge2d_config.src_planes[1].addr = canvas.addr;
 			ge2d_config.src_planes[1].w = canvas.width;
 			ge2d_config.src_planes[1].h = canvas.height;
-			amlog_mask_level(LOG_MASK_DEVICE,LOG_LEVEL_LOW,"U:[0x%x][%d*%d]\n",canvas.addr,canvas.width,canvas.height);	
+			amlog_mask_level(LOG_MASK_DEVICE,LOG_LEVEL_LOW,"U:[0x%x][%d*%d]\n",(u32)canvas.addr,canvas.width,canvas.height);	
 			canvas_read(canvas_index>>16&0xff,&canvas);
 			if(canvas.addr==0) return FAIL;	
 			ge2d_config.src_planes[2].addr =  canvas.addr;
 			ge2d_config.src_planes[2].w = canvas.width;
 			ge2d_config.src_planes[2].h = canvas.height;
-			amlog_mask_level(LOG_MASK_DEVICE,LOG_LEVEL_LOW,"V:[0x%x][%d*%d]\n",canvas.addr,canvas.width,canvas.height);
+			amlog_mask_level(LOG_MASK_DEVICE,LOG_LEVEL_LOW,"V:[0x%x][%d*%d]\n",(u32)canvas.addr,canvas.width,canvas.height);
 			context=dev_ge2d_setup(&ge2d_config);
 
 			
@@ -264,8 +251,6 @@ static  int  osd_transfer(logo_object_t *plogo)
 			amlog_mask_level(LOG_MASK_DEVICE,LOG_LEVEL_LOW,"can't transfer unsupported jpg format\n");	
 			return FAIL;
 		}
-		
-		
 	}else
 	{
 		amlog_mask_level(LOG_MASK_DEVICE,LOG_LEVEL_LOW,"unsupported logo picture format format\n");	

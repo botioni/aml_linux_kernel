@@ -2474,7 +2474,7 @@ void di_pre_isr(struct work_struct *work)
 			pre_field_counter++;
 		}
 
-		if ( pre_field_counter >= field_counter+DI_BUF_NUM-2 )
+		if ( pre_field_counter >= field_counter+DI_BUF_NUM-3 )
 		{
 #ifdef DEBUG
 			di_pre_overflow++;
@@ -2499,7 +2499,7 @@ void di_pre_isr(struct work_struct *work)
 	}
 	else
 	{
-		if ( pre_field_counter >= field_counter+DI_BUF_NUM-2 )
+		if ( pre_field_counter >= field_counter+DI_BUF_NUM-3 )
 			return;
 		
     	cur_buf = vfp->peek();
@@ -2561,7 +2561,7 @@ void di_pre_isr(struct work_struct *work)
     	WRITE_MPEG_REG(DI_INTR_CTRL, 0x000f000f);
 		initial_di_pre(cur_buf->width, cur_buf->height/2, PRE_HOLD_LINE);
 
-		di_checked_field = (field_counter+di_checked_field+2) % DI_BUF_NUM;
+		di_checked_field = (field_counter+di_checked_field+1) % DI_BUF_NUM;
 		pre_field_counter = field_counter = 0;
 		di_p32_info = di_p22_info = di_p32_info_2 = di_p22_info_2 = 0;
 		pattern_len = 0;
@@ -2925,7 +2925,7 @@ void run_deinterlace(unsigned zoom_start_x_lines, unsigned zoom_end_x_lines, uns
     	post_blend_en = 1;
     	post_blend_mode = mode;
 
-    	if ( field_counter < 2 )
+    	if ( (post_blend_mode == 3) && (field_counter <= 2) )
     	{
     		post_blend_en = 0;
     		post_blend_mode = 2;
@@ -2939,7 +2939,7 @@ void run_deinterlace(unsigned zoom_start_x_lines, unsigned zoom_end_x_lines, uns
 	    		&di_mtnprd_mif,
 	    		1, 																// ei enable
 	    		post_blend_en,													// blend enable
-	    		(field_counter>=2),												// blend mtn enable           
+	    		post_blend_en,													// blend mtn enable           
 	    		post_blend_mode,												// blend mode.  
 	    		1,                 												// di_vpp_en.           
 	    		0,                 												// di_ddr_en.           

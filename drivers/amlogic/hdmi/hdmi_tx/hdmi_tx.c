@@ -78,7 +78,7 @@ static  int  set_disp_mode(const char *mode)
     hdmitx_device.cur_VIC = HDMI_Unkown;
     ret = hdmitx_set_display(&hdmitx_device, vic);
     if(ret>=0){
-        hdmitx_device.cur_VIC = vic;    
+        hdmitx_device.cur_VIC = vic;  
     }
     return ret;
 }
@@ -183,6 +183,30 @@ static ssize_t store_config(struct device * dev, struct device_attribute *attr, 
     else if(strncmp(buf, "edid", 4)==0){
         hdmitx_device.disp_switch_config=DISP_SWITCH_EDID;
     }
+    else if(strncmp(buf, "vdacoff", 7)==0){
+        if(hdmitx_device.HWOp.Cntl){
+            hdmitx_device.HWOp.Cntl(&hdmitx_device, HDMITX_HWCMD_VDAC_OFF, 0);    
+        }
+    }
+    else if(strncmp(buf, "low_power_on", 12)==0){
+        if(hdmitx_device.HWOp.Cntl){
+            hdmitx_device.HWOp.Cntl(&hdmitx_device, HDMITX_HWCMD_LOWPOWER_SWITCH, 1); 
+        }
+    }        
+    else if(strncmp(buf, "low_power_off", 13)==0){
+        if(hdmitx_device.HWOp.Cntl){
+            hdmitx_device.HWOp.Cntl(&hdmitx_device, HDMITX_HWCMD_LOWPOWER_SWITCH, 0);    
+        }
+    }        
+#if 0
+    else if(strncmp(buf, "adacoff", 7)==0){
+        //CLK_GATE_ON(AIU_AUD_DAC);
+        //CLK_GATE_ON(AIU_AUD_DAC_CLK);
+        audio_internal_dac_disable();
+        //CLK_GATE_OFF(AIU_AUD_DAC_CLK);
+        //CLK_GATE_OFF(AIU_AUD_DAC);
+    }
+#endif
     return 16;    
 }
   
@@ -537,3 +561,4 @@ static  int __init hdmitx_off_setup(char *s)
 }
 
 __setup("hdmitx=",hdmitx_off_setup);
+

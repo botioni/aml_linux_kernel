@@ -52,6 +52,7 @@ typedef struct hdmi_tx_dev_s {
         void (*SetupIRQ)(struct hdmi_tx_dev_s* hdmitx_device);
         void (*DebugFun)(const char * buf);
         void (*UnInit)(struct hdmi_tx_dev_s* hdmitx_device);
+        void (*Cntl)(struct hdmi_tx_dev_s* hdmitx_device, int cmd, unsigned arg);
     }HWOp;
     
     //wait_queue_head_t   wait_queue;            /* wait queues */
@@ -70,7 +71,7 @@ typedef struct hdmi_tx_dev_s {
     HDMI_TX_INFO_t hdmi_info;
 }hdmitx_dev_t;
 
-#define HDMITX_VER "2010Sep30a"
+#define HDMITX_VER "2010Oct27a"
 /************************************
 *    hdmitx protocol level interface
 *************************************/
@@ -98,5 +99,8 @@ extern int hdmitx_set_audio(hdmitx_dev_t* hdmitx_device, Hdmi_tx_audio_para_t* a
 extern void HDMITX_M1A_Init(hdmitx_dev_t* hdmitx_device);
 
 extern void HDMITX_M1B_Init(hdmitx_dev_t* hdmitx_device);
+
+#define HDMITX_HWCMD_LOWPOWER_SWITCH    0x1
+#define HDMITX_HWCMD_VDAC_OFF           0x2
 
 #endif

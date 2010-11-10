@@ -40,6 +40,9 @@ For Ramos 6236M, Innolux AT070TN93 V.2 */
 #define MAX_HEIGHT      525
 #define VIDEO_ON_LINE   17
 
+static void t13_power_on(void);
+static void t13_power_off(void);
+
 static tcon_conf_t tcon_config =
 {
     .width      = LCD_WIDTH,
@@ -106,8 +109,9 @@ static tcon_conf_t tcon_config =
     .screen_height = 3,
     .sync_duration_num = 89,
     .sync_duration_den = 2,
+    .power_on=t13_power_on,
+    .power_off=t13_power_off,
 };
-
 static struct resource tcon_resources[] = {
     [0] = {
         .start = (ulong)&tcon_config,
@@ -190,6 +194,18 @@ static void set_tcon_pinmux(void)
     /* RGB data pins */
     set_mio_mux(4,(1<<0)|(1<<2)|(1<<4));
 }
+static void t13_power_on(void)
+{
+	set_tcon_pinmux();
+	power_on_lcd();
+	power_on_backlight();
+      
+}
+static void t13_power_off(void)
+{
+	power_off_backlight();
+    	power_off_lcd();
+}
 
 static void t13_io_init(void)
 {
@@ -197,8 +213,8 @@ static void t13_io_init(void)
 
     set_tcon_pinmux();
 
-    power_on_backlight();
     power_on_lcd();
+    power_on_backlight();
 }
 
 static struct platform_device tcon_dev = {

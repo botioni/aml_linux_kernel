@@ -20,6 +20,8 @@
 
  int dsp_codec_start( struct audiodsp_priv *priv)
  	{
+ 		DSP_WD(DSP_AFIFO_RD_OFFSET1, 0);
+		DSP_WD(DSP_BUFFERED_LEN, 0);
  		return dsp_mailbox_send(priv,1,M2B_IRQ2_DECODE_START,0,0,0);
 		 
  	}
@@ -38,6 +40,27 @@
 		local_irq_save(flags);
   		rp=dsp_codec_get_rd_addr(priv);
 		wp=dsp_codec_get_wd_addr(priv);
+		if(rp>wp)
+			len=priv->stream_buffer_size-(rp-wp);
+		else
+			len=(wp-rp);
+		len=(len>REVERSD_BYTES)?(len-REVERSD_BYTES):0;
+		len=CACHE_ALIGNED(len);
+		local_irq_restore(flags);
+		return len;
+ }
+
+int dsp_codec_get_bufer_data_len1(struct audiodsp_priv *priv, unsigned long wd_ptr)
+{
+
+#define REVERSD_BYTES	32
+#define CACHE_ALIGNED(x)	(x&(~0x1f))
+  		unsigned long rp,wp,len,flags;
+//if(wd_ptr != DSP_RD(DSP_DECODE_OUT_WD_ADDR))
+//	printk("w1 == %x , w2 == %x, r == %x\n", DSP_RD(DSP_DECODE_OUT_WD_ADDR), wd_ptr, DSP_RD(DSP_DECODE_OUT_RD_ADDR));
+		local_irq_save(flags);
+  		rp=dsp_codec_get_rd_addr(priv);
+		wp=ARC_2_ARM_ADDR_SWAP(wd_ptr);
 		if(rp>wp)
 			len=priv->stream_buffer_size-(rp-wp);
 		else
@@ -70,22 +93,39 @@ u32 dsp_codec_get_current_pts(struct audiodsp_priv *priv)
 	int len;
 	int frame_nums;
 	int res;
+	u32 offset, buffered_len, wp; 
 	
 	mutex_lock(&priv->stream_buffer_mutex);
+	
+	if(priv->frame_format.channel_num == 0 || priv->frame_format.sample_rate == 0 || priv->frame_format.data_width == 0)
+		return -1;
+#if 0
 	if(priv->stream_fmt == MCODEC_FMT_COOK)
 		{
 		pts = priv->cur_frame_info.offset;
 		mutex_unlock(&priv->stream_buffer_mutex);
 		}
 	else
+#endif
 		{
+		
 
-	res=pts_lookup_offset(PTS_TYPE_AUDIO,priv->cur_frame_info.offset,&pts,0);
+	buffered_len=DSP_RD(DSP_BUFFERED_LEN);
+	wp = DSP_RD(DSP_DECODE_OUT_WD_PTR);
+	offset = DSP_RD(DSP_AFIFO_RD_OFFSET1);
+	if(priv->stream_fmt == MCODEC_FMT_COOK || priv->stream_fmt == MCODEC_FMT_RAAC)
+		{
+		pts = DSP_RD(DSP_AFIFO_RD_OFFSET1);
+		res = 0;
+		}
+	else
+		res=pts_lookup_offset(PTS_TYPE_AUDIO,offset,&pts,0);
+
 	if(res==0)
 		{
-printk("pts_lookup_offset = %d\n", pts);
+//printk("pts_lookup_offset = %d\n", pts);
 		priv->out_len_after_last_valid_pts=0;
-		len=priv->cur_frame_info.buffered_len+dsp_codec_get_bufer_data_len(priv);
+		len=buffered_len+dsp_codec_get_bufer_data_len1(priv, wp);
 		frame_nums=(len*8/(priv->frame_format.data_width*priv->frame_format.channel_num));
 		delay_pts=(frame_nums*90)/(priv->frame_format.sample_rate/1000);
 		if(pts>delay_pts)
@@ -93,8 +133,8 @@ printk("pts_lookup_offset = %d\n", pts);
 		else
 			pts=0;
 		priv->last_valid_pts=pts;
-printk("len = %d, data_width = %d, channel_num = %d, frame_nums = %d, sample_rate = %d, pst = %d\n",
-    len, priv->frame_format.data_width,priv->frame_format.channel_num, frame_nums, priv->frame_format.sample_rate, pts);
+//printk("len = %d, data_width = %d, channel_num = %d, frame_nums = %d, sample_rate = %d, pts = %d\n",
+//    len, priv->frame_format.data_width,priv->frame_format.channel_num, frame_nums, priv->frame_format.sample_rate, pts);
 		}
 
 	else if(priv->last_valid_pts>0)
@@ -104,8 +144,8 @@ printk("len = %d, data_width = %d, channel_num = %d, frame_nums = %d, sample_rat
 		frame_nums=(len*8/(priv->frame_format.data_width*priv->frame_format.channel_num));
 		pts+=(frame_nums*90)/(priv->frame_format.sample_rate/1000);
 
-printk("last_pts = %d, len = %d, data_width = %d, channel_num = %d, frame_nums = %d, sample_rate = %d, pst = %d\n",
-    priv->last_valid_pts, len, priv->frame_format.data_width,priv->frame_format.channel_num, frame_nums, priv->frame_format.sample_rate, pts);
+//printk("last_pts = %d, len = %d, data_width = %d, channel_num = %d, frame_nums = %d, sample_rate = %d, pts = %d\n",
+//    priv->last_valid_pts, len, priv->frame_format.data_width,priv->frame_format.channel_num, frame_nums, priv->frame_format.sample_rate, pts);
 		}
 
 	else

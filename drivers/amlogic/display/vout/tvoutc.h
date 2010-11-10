@@ -26,6 +26,9 @@
 #define TVOUTC_H
 
 #include "tvmode.h"
+
+#define  	DEFAULT_VDAC_SEQUENCE   	0x120120
+
 typedef  enum{
 	INTERALCE_COMPONENT=0,
 	CVBS_SVIDEO,
@@ -52,5 +55,6 @@ typedef enum {
 } video_signal_type_t;
 
 int tvoutc_setmode(tvmode_t mode);
+int 	 get_current_vdac_setting(void) ;
 void  change_vdac_setting(unsigned int  vdec_setting,vmode_t mode);
 #endif /* TVOUTC_H */

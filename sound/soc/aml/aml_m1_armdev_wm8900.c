@@ -6,7 +6,6 @@
 #include <linux/interrupt.h>
 #include <linux/platform_device.h>
 #include <linux/i2c.h>
-#include <linux/workqueue.h>
 
 #include <sound/core.h>
 #include <sound/pcm.h>
@@ -23,7 +22,7 @@
 #include "aml_pcm.h"
 #include "../codecs/wm8900.h"
 
-#define HP_DET	1
+#define HP_DET	0
 
 #if HP_DET
 static struct timer_list timer;
@@ -83,27 +82,26 @@ printk("***Entered %s:%s: %d\n", __FILE__,__func__, level);
 }
 
 static const struct snd_soc_dapm_widget aml_m1_dapm_widgets[] = {
-	SND_SOC_DAPM_SPK("Ext Spk", NULL),
-	SND_SOC_DAPM_HP("HP", NULL),
-	SND_SOC_DAPM_MIC("MIC IN", NULL),
-	SND_SOC_DAPM_MIC("HP MIC", NULL),
-	SND_SOC_DAPM_LINE("FM IN", NULL),
+	SND_SOC_DAPM_SPK("AVout Jack", NULL),
+	SND_SOC_DAPM_HP("Headphone Jack", NULL),
+	SND_SOC_DAPM_MIC("Headphone Mic", NULL),
 };
 
 static const struct snd_soc_dapm_route intercon[] = {
 
 	/* speaker connected to LINEOUT */
-	{"Ext Spk", NULL, "LINEOUT1L"},
-	{"Ext Spk", NULL, "LINEOUT1R"},
-	/* mic is connected to Mic Jack, with WM8731 Mic Bias */
-	{"HP", NULL, "HP_L"},
-	{"HP", NULL, "HP_R"},
-	{"LINPUT2", NULL, "Mic Bias"},
-	{"Mic Bias", NULL, "MIC IN"},
+	{"AVout Jack", NULL, "LINEOUT1L"},
+	{"AVout Jack", NULL, "LINEOUT1R"},
+	
+	{"Headphone Jack", NULL, "HP_L"},
+	{"Headphone Jack", NULL, "HP_R"},
+	
+	/* input */
+/*
 	{"RINPUT2", NULL, "Mic Bias"},
-	{"Mic Bias", NULL, "HP MIC"},
-	{"LINPUT3", NULL, "FM IN"},
-	{"RINPUT3", NULL, "FM IN"},
+	{"LINPUT2", NULL, "Headphone Mic"},
+	{"Mic Bias", NULL, "Headphone Mic"},	
+*/	
 };
 
 #if HP_DET
@@ -113,23 +111,29 @@ static const struct snd_soc_dapm_route intercon[] = {
 static struct snd_soc_jack hp_jack;
 
 static struct snd_soc_jack_pin hp_jack_pins[] = {
-	{ .pin = "HP", .mask = SND_JACK_HEADSET },
+	{ .pin = "Headphone Jack", .mask = SND_JACK_HEADSET },
+};
+
+static struct snd_soc_jack av_jack;
+
+static struct snd_soc_jack_pin av_jack_pins[] = {
+	{ .pin = "AVout Jack", .mask = SND_JACK_AVOUT },
 };
 
 // use LED_CS1 as detect pin
 
 /*
- * 潞炉脢媒脙没拢潞inner_cs_input_level
- * 脫脙脥戮拢潞脢鹿脫脙脛脷脰脙VGHL B/L碌脛路麓脌隆CS0/1脳枚脢盲脠毛.
- * 脝陆脤篓: AML8726-M_DEV_BOARD 2010-10-11_V1.0
- * 脪媒陆脜拢潞P4(VGHL_CS0/1)   T2(LED_CS1)  T1(LED_CS0)
- * 脳垄脪芒拢潞脢盲脠毛陆脜碌脛赂脽碌莽脝陆脨猫麓贸脫脷0.7V拢卢碌脥碌莽脝陆脨猫脨隆脫脷0.4V
- * 脠毛驴脷虏脦脢媒
- * 路碌禄脴虏脦脢媒拢潞
-       level[12]  <-->  VGHL_CS1脡脧碌脛脗脽录颅碌莽脝陆
-       level[ 8]  <-->  VGHL_CS0脡脧碌脛脗脽录颅碌莽脝陆
-       level[ 4]  <-->  LED_CS1脡脧碌脛脗脽录颅碌莽脝陆
-       level[ 0]  <-->  LED_CS0脡脧碌脛脗脽录颅碌莽脝陆
+ * 函数名：inner_cs_input_level
+ * 用途：使用内置VGHL B/L的反馈CS0/1做输入.
+ * 平台: AML8726-M_DEV_BOARD 2010-10-11_V1.0
+ * 引脚：P4(VGHL_CS0/1)   T2(LED_CS1)  T1(LED_CS0)
+ * 注意：输入脚的高电平需大于0.7V，低电平需小于0.4V
+ * 入口参数
+ * 返回参数：
+       level[12]  <-->  VGHL_CS1上的逻辑电平
+       level[ 8]  <-->  VGHL_CS0上的逻辑电平
+       level[ 4]  <-->  LED_CS1上的逻辑电平
+       level[ 0]  <-->  LED_CS0上的逻辑电平
  */
 #define PWM_TCNT        (600-1)
 #define PWM_MAX_VAL    (420)
@@ -212,7 +216,6 @@ static unsigned int inner_cs_input_level()
      WRITE_CBUS_REG(VGHL_PWM_REG2,   (0 << 31)       |       // disable timeout test mode
                             (0 << 30)       |       // timeout based on the comparator output
                             (0 << 16)       |       // timeout = 10uS
-
                             (0 << 13)       |       // Select oscillator as the clock (just for grins)
                             (1 << 11)       |       // 1:Enable OverCurrent Portection  0:Disable
                             (3 << 8)        |       // Filter: shift every 3 ticks
@@ -241,40 +244,25 @@ static unsigned int inner_cs_input_level()
 }
 
 static int hp_detect_flag = 0;
-static spinlock_t lock;
-static void wm8900_hp_detect_queue(struct work_struct*);
-static struct wm8900_work_t{
-   unsigned long data;
-   struct work_struct wm8900_workqueue;
-}wm8900_work;
-
-static void wm8900_hp_detect_queue(struct work_struct* work)
-{
-	int level = inner_cs_input_level();
-	struct wm8900_work_t* pwork = container_of(work,struct wm8900_work_t, wm8900_workqueue);
-	struct snd_soc_codec* codec = (struct snd_soc_codec*)(pwork->data);
-
-        if(level == 0x1 && hp_detect_flag!= 0x1){       // HP	
-           printk("level = %x\n", level);		
-	   snd_soc_dapm_disable_pin(codec, "Ext Spk");
-	   snd_soc_dapm_sync(codec);
-           snd_soc_jack_report(&hp_jack, SND_JACK_HEADSET, SND_JACK_HEADSET);
-           hp_detect_flag = 0x1;
-        }else if(level != hp_detect_flag){      // HDMI
-           printk("level = %x\n", level);
-	   snd_soc_dapm_enable_pin(codec, "Ext Spk");
-	   snd_soc_dapm_sync(codec);
-           snd_soc_jack_report(&hp_jack,0, SND_JACK_HEADSET);
-           hp_detect_flag = level;
-        } 
-}
 
 static void wm8900_hp_detect_timer(unsigned long data)
 {
-	struct snd_soc_codec *codec = (struct snd_soc_codec*) data;
-	wm8900_work.data = (unsigned long)codec;
-	schedule_work(&wm8900_work.wm8900_workqueue);
-	mod_timer(&timer, jiffies + HZ*1);
+		struct snd_soc_codec *codec = (struct snd_soc_codec*) data;
+		int level = inner_cs_input_level();
+		printk("level = %x\n", level);
+		
+		if(level == 0x1 && hp_detect_flag!= 0x1){	// HP
+			snd_soc_jack_report(&hp_jack, SND_JACK_HEADSET, SND_JACK_HEADSET);
+			hp_detect_flag = 0x1;
+		}else if(level == 0x10 && hp_detect_flag != 0x10){	// AV
+			snd_soc_jack_report(&av_jack, SND_JACK_AVOUT, SND_JACK_AVOUT);
+			hp_detect_flag = 0x10;
+		}else if(level != hp_detect_flag){	// HDMI
+			snd_soc_jack_report(&hp_jack,0, SND_JACK_HEADSET);
+			snd_soc_jack_report(&av_jack,0, SND_JACK_AVOUT);
+			hp_detect_flag = level;
+		}
+		mod_timer(&timer, jiffies + HZ*1);
 }
 
 #endif
@@ -285,6 +273,41 @@ static int aml_m1_codec_init(struct snd_soc_codec *codec)
 		struct snd_soc_card *card = codec->socdev->card;
 	
 		int err;
+		//hook switch
+#if HP_DET
+		hp_detect_flag = 0;
+				
+		err = snd_soc_jack_new(card, "hp_switch",
+				SND_JACK_HEADSET, &hp_jack);
+		if(err){
+			dev_warn(card->dev, "Failed to alloc resource for hook switch\n");
+		}else{
+				err = snd_soc_jack_add_pins(&hp_jack,
+						ARRAY_SIZE(hp_jack_pins),
+						hp_jack_pins);
+				if(err){
+						dev_warn(card->dev, "Failed to setup hook hp jack pin\n");
+				}
+		}
+		
+		err =	snd_soc_jack_new(card, "av_switch",
+				SND_JACK_HEADSET, &av_jack);
+		if(err){
+				dev_warn(card->dev, "Failed to alloc resource for av hook switch\n");
+		}else{		
+			err = snd_soc_jack_add_pins(&av_jack,
+						ARRAY_SIZE(av_jack_pins),
+						av_jack_pins);
+				if(err){
+						dev_warn(card->dev, "Failed to setup hook av jack pin\n");
+				}			
+		}		
+		// create a timer to poll the HP IN status
+		timer.function = &wm8900_hp_detect_timer;
+  	timer.data = (unsigned long)codec;
+  	timer.expires = jiffies + HZ*1;
+  	init_timer(&timer);
+#endif  
 		//Add board specific DAPM widgets and routes
 		err = snd_soc_dapm_new_controls(codec, aml_m1_dapm_widgets, ARRAY_SIZE(aml_m1_dapm_widgets));
 		if(err){
@@ -299,39 +322,12 @@ static int aml_m1_codec_init(struct snd_soc_codec *codec)
 			return 0;
 		}
 		
-#if HP_DET
-                hp_detect_flag = 0;
-
-                err = snd_soc_jack_new(card, "hp_switch",
-                                SND_JACK_HEADSET, &hp_jack);
-                if(err){
-                        dev_warn(card->dev, "Failed to alloc resource for hook switch\n");
-                }else{
-                        err = snd_soc_jack_add_pins(&hp_jack,
-                                  ARRAY_SIZE(hp_jack_pins),
-                                  hp_jack_pins);
-                       if(err){
-                            dev_warn(card->dev, "Failed to setup hook hp jack pin\n");
-                       }
-                }
-
-                // create a timer to poll the HP IN status
-		spin_lock_init(&lock);
-                timer.function = &wm8900_hp_detect_timer;
-        	timer.data = (unsigned long)codec;
-        	timer.expires = jiffies + HZ*1;
-        	init_timer(&timer);
-		INIT_WORK(&wm8900_work.wm8900_workqueue, wm8900_hp_detect_queue);
-#endif
-
 		snd_soc_dapm_nc_pin(codec,"LINPUT1");
 		snd_soc_dapm_nc_pin(codec,"RINPUT1");
 		
-		snd_soc_dapm_enable_pin(codec, "Ext Spk");
-		snd_soc_dapm_disable_pin(codec, "HP");
-		snd_soc_dapm_enable_pin(codec, "MIC IN");
-		snd_soc_dapm_disable_pin(codec, "HP MIC");
-		snd_soc_dapm_disable_pin(codec, "FM IN");
+		snd_soc_dapm_enable_pin(codec, "AVout Jack");
+		snd_soc_dapm_disable_pin(codec, "Headphone Jack");
+		snd_soc_dapm_disable_pin(codec, "Headphone Mic");
 		
 		snd_soc_dapm_sync(codec);
 
@@ -399,7 +395,6 @@ printk("***Entered %s:%s\n", __FILE__,__func__);
 
 #if HP_DET		
 		del_timer_sync(&timer);
-		
 #endif
 		platform_device_unregister(aml_m1_snd_device);
 		return 0;

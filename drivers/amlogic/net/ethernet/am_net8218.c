@@ -696,7 +696,7 @@ void net_tasklet(unsigned long dev_instance)
 				}
 				len = len - 4;	//clear the crc       
 #ifdef DMA_USE_SKB_BUF
-				if (IS_ERR(rx->skb)) {
+				if (rx->skb==NULL) {
 					printk("NET skb pointer error\n");
 					break;
 				}
@@ -743,7 +743,7 @@ void net_tasklet(unsigned long dev_instance)
 			      to_next:
 #ifdef DMA_USE_SKB_BUF
 				rx->skb = dev_alloc_skb(np->rx_buf_sz + 4);
-				if (IS_ERR(rx->skb)) {
+				if (rx->skb==NULL) {
 					printk(KERN_ERR
 					       "error to alloc the skb\n");
 					rx->buf = 0;

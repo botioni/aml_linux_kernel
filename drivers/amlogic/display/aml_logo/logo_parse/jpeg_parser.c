@@ -16,8 +16,8 @@
 #include <linux/amports/canvas.h>
 #include "amvdec.h"
 #include "vmjpeg_mc.h"
-#include "vframe.h"
-#include "vframe_provider.h"
+#include <linux/amports/vframe.h>
+#include <linux/amports/vframe_provider.h>
 #include "jpeg_parser.h"
 #include <linux/delay.h>
 #include <linux/syscalls.h>
@@ -366,7 +366,7 @@ static int hardware_init(logo_object_t *plogo,int logo_size)
         return -ENOENT;
     	}
 	amlog_mask_level(LOG_MASK_PARSER,LOG_LEVEL_LOW,"jpeg irq request ok\n");	
-	setup_vb((u32)plogo->para.mem_addr,logo_size);
+	setup_vb((u32)virt_to_phys(plogo->para.mem_addr),logo_size);
 	WRITE_MPEG_REG(M4_CONTROL_REG, 0x0300);
 	WRITE_MPEG_REG(POWER_CTL_VLD, 0);
     	SET_MPEG_REG_MASK(VPP_MISC,VPP_VD1_PREBLEND | VPP_VD1_POSTBLEND); //disable video layer.
@@ -385,11 +385,11 @@ static int jpeg_init(logo_object_t *plogo)
 	void  __iomem* vaddr;
 	jpeg_private_t  *priv;
 
-	vaddr=phys_to_virt((unsigned int)plogo->para.mem_addr);
+	vaddr=(unsigned int)plogo->para.mem_addr;
 	amlog_mask_level(LOG_MASK_PARSER,LOG_LEVEL_LOW,"logo vaddr:0x%p\n ",vaddr);
 	if((logo_size=parse_jpeg_info(vaddr,plogo)) <=0 )
 	return PARSER_UNFOUND;
-	vaddr = ioremap_wc((unsigned int)plogo->para.mem_addr, logo_size + PADDINGSIZE);
+	vaddr = ioremap_wc((unsigned int)virt_to_phys(plogo->para.mem_addr), logo_size + PADDINGSIZE);
 	if(NULL==vaddr)
 	{
 		amlog_mask_level(LOG_MASK_PARSER,LOG_LEVEL_LOW,"remapping logo data failed\n");

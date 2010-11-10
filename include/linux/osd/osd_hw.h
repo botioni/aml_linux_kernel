@@ -1,6 +1,32 @@
 #ifndef  OSD_HW_H
 #define OSD_HW_H
 
+typedef  enum{
+	OSD1=0,
+	OSD2
+}osd_index_t;
+
+typedef  enum{
+	DISABLE=0,
+	ENABLE
+}osd_enable_t;
+
+typedef  enum{
+	SCAN_MODE_INTERLACE,
+	SCAN_MODE_PROGRESSIVE	
+}scan_mode_t;
+
+typedef  enum{
+	OSD_COLOR_MODE=0,
+	OSD_ENABLE,
+	OSD_COLOR_KEY,
+	OSD_COLOR_KEY_ENABLE,
+	OSD_GBL_ALPHA,
+	DISP_GEOMETRY,
+	DISP_SCALE_ENABLE,
+	HW_REG_INDEX_MAX
+}hw_reg_index;
+
 
 typedef struct {
 	s32 x_start;
@@ -32,9 +58,19 @@ extern void osd_setup(struct osd_ctl_s *osd_ctl,
                 u32 disp_end_x,
                 u32 disp_end_y,
                 u32 fbmem,
-                enum osd_type_s type,
+              	  const color_bit_define_t *color,
                 int index);
-
+extern void  osddev_update_disp_axis_hw(
+			u32 display_h_start,
+                  	u32 display_h_end,
+                  	u32 display_v_start,
+                  	u32 display_v_end,
+			u32 xoffset,
+                  	u32 yoffset,
+                  	u32 mode_change,
+                  	u32 index) ;
+extern void osd_enable_3d_mode_hw(int index,int enable);
+extern void osd_set_2x_scale_hw(u32 index,u16 h_scale_enable,u16 v_scale_enable);
 extern void osd_setpal_hw(unsigned regno, unsigned red, unsigned green, unsigned blue, unsigned transp,int index);
 extern void osd_enable_hw(int enable,int index );
 extern void osd_pan_display_hw(unsigned int xoffset, unsigned int yoffset,int index );
@@ -43,5 +79,5 @@ extern void osd_cursor_hw(u16 x, u16 y, int index);
 #endif
 extern void osd_suspend_hw(void);
 extern void osd_resume_hw(void);
-
+extern void osd_init_hw(void);
 #endif 

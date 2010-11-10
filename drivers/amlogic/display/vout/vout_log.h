@@ -4,8 +4,8 @@
 #define DEBUG
 #ifdef  DEBUG
 #define  AMLOG   1
-#define LOG_LEVEL_VAR amlog_level_tv
-#define LOG_MASK_VAR amlog_mask_tv
+#define LOG_LEVEL_VAR amlog_level_vout
+#define LOG_MASK_VAR amlog_mask_vout
 #endif
 
 

@@ -21,7 +21,6 @@ source "drivers/amlogic/sata/Kconfig"
 source "drivers/amlogic/cardreader/Kconfig"
 source "drivers/amlogic/spi_nor/Kconfig"
 source "drivers/amlogic/nand/Kconfig"
-source "drivers/amlogic/demod/Kconfig"
 
 
 #

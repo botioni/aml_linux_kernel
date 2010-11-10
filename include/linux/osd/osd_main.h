@@ -33,17 +33,17 @@
 
 static struct fb_var_screeninfo mydef_var[] = {
 {
-	.xres            = 800,
-	.yres            = 480,
-	.xres_virtual    = 800,
-	.yres_virtual    = 960,
+	.xres            = 1200,
+	.yres            = 690,
+	.xres_virtual    = 1200,
+	.yres_virtual    = 1380,
 	.xoffset         = 0,
 	.yoffset         = 0,
 	.bits_per_pixel  = 16,
 	.grayscale       = 0,
-	.red             = {0, 8, 0},
-	.green           = {0, 8, 0},
-	.blue            = {0, 8, 0},
+	.red             = {0, 0, 0},
+	.green           = {0, 0, 0},
+	.blue            = {0, 0, 0},
 	.transp          = {0, 0, 0},
 	.nonstd          = 0,
 	.activate        = FB_ACTIVATE_NOW,
@@ -63,17 +63,17 @@ static struct fb_var_screeninfo mydef_var[] = {
 	
 },
 {
-	.xres            = 720,
-	.yres            = 576,
-	.xres_virtual    = 720,
-	.yres_virtual    = 1152,
+	.xres            = 32,
+	.yres            = 32,
+	.xres_virtual    = 32,
+	.yres_virtual    = 32,
 	.xoffset         = 0,
 	.yoffset         = 0,
-	.bits_per_pixel  = 8,
+	.bits_per_pixel  = 32,
 	.grayscale       = 0,
-	.red             = {0, 8, 0},
-	.green           = {0, 8, 0},
-	.blue            = {0, 8, 0},
+	.red             = {0, 0, 0},  //leave as it is ,set by system.
+	.green           = {0, 0, 0},
+	.blue            = {0, 0, 0},
 	.transp          = {0, 0, 0},
 	.nonstd          = 0,
 	.activate        = FB_ACTIVATE_NOW,
@@ -115,6 +115,8 @@ typedef  struct {
 #define  FBIOPUT_OSD_SRCKEY_ENABLE	0x46fa
 #define  FBIOPUT_OSD_SET_GBL_ALPHA	0x4500
 #define  FBIOGET_OSD_GET_GBL_ALPHA	0x4501
+#define  FBIOPUT_OSD_2X_SCALE		0x4502	
+#define  FBIOPUT_OSD_ENABLE_3D_MODE	0x4503
 
 
 
