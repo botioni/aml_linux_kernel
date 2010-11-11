@@ -238,10 +238,9 @@ static int __init kp_probe(struct platform_device *pdev)
 	//set_bit(KEY_HOME, input_dev->keybit);
 	set_bit(KEY_LEFTMETA, input_dev->keybit);
 	//set_bit(KEY_ENTER, input_dev->keybit);
-	set_bit(KEY_PAGEUP, input_dev->keybit);
 	set_bit(KEY_PAGEDOWN, input_dev->keybit);
-	
-    
+	set_bit(KEY_PAGEUP, input_dev->keybit);
+
     input_dev->name = "adc_keypad";
     input_dev->phys = "adc_keypad/input0";
     input_dev->dev.parent = &pdev->dev;
