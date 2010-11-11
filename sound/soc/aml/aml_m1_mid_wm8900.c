@@ -139,7 +139,7 @@ static unsigned int inner_cs_input_level()
 		unsigned int level = 0;
     unsigned int cs_no = 0;
     //pin64 LED_CS0
-    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0, (3<<21));
+    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0, (1<<21));
     // Enable VBG_EN
     WRITE_CBUS_REG_BITS(PREG_AM_ANALOG_ADDR, 1, 0, 1);
     // pin mux 
@@ -189,7 +189,7 @@ static unsigned int inner_cs_input_level()
       level |= (1<<0);
     if(cs_no &(1<<15))
       level |= (1<<4);
-      
+/*      
     WRITE_CBUS_REG(VGHL_PWM_REG0, 0);
     WRITE_CBUS_REG(VGHL_PWM_REG1, 0);
     WRITE_CBUS_REG(VGHL_PWM_REG2, 0);
@@ -236,7 +236,7 @@ static unsigned int inner_cs_input_level()
       level |= (1<<8);
     if(cs_no &(1<<15))
       level |= (1<<12);
-
+*/
     return level;
 }
 
