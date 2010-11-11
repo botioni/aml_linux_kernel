@@ -20,8 +20,6 @@
 
  int dsp_codec_start( struct audiodsp_priv *priv)
  	{
- 		DSP_WD(DSP_AFIFO_RD_OFFSET1, 0);
-		DSP_WD(DSP_BUFFERED_LEN, 0);
  		return dsp_mailbox_send(priv,1,M2B_IRQ2_DECODE_START,0,0,0);
 		 
  	}
@@ -123,7 +121,7 @@ u32 dsp_codec_get_current_pts(struct audiodsp_priv *priv)
 
 	if(res==0)
 		{
-//printk("pts_lookup_offset = %d\n", pts);
+//printk("pts_lookup_offset = %d, buffer_len == %d\n", offset, buffered_len);
 		priv->out_len_after_last_valid_pts=0;
 		len=buffered_len+dsp_codec_get_bufer_data_len1(priv, wp);
 		frame_nums=(len*8/(priv->frame_format.data_width*priv->frame_format.channel_num));
@@ -133,8 +131,9 @@ u32 dsp_codec_get_current_pts(struct audiodsp_priv *priv)
 		else
 			pts=0;
 		priv->last_valid_pts=pts;
+
 //printk("len = %d, data_width = %d, channel_num = %d, frame_nums = %d, sample_rate = %d, pts = %d\n",
-//    len, priv->frame_format.data_width,priv->frame_format.channel_num, frame_nums, priv->frame_format.sample_rate, pts);
+ //   len, priv->frame_format.data_width,priv->frame_format.channel_num, frame_nums, priv->frame_format.sample_rate, pts);
 		}
 
 	else if(priv->last_valid_pts>0)
