@@ -1,7 +1,7 @@
 #
 # Automatically generated make config: don't edit
 # Linux kernel version: 2.6.34
-# Tue Nov  2 16:29:20 2010
+# Mon Nov  8 11:26:23 2010
 #
 CONFIG_ARM=y
 CONFIG_HOLES_IN_ZONE=y
@@ -558,6 +558,11 @@ CONFIG_KEY_INPUT_CUSTOM_AM=y
 CONFIG_AMLOGIC_PM=y
 
 #
+# Extern io tca6424 Support
+#
+# CONFIG_TCA6424 is not set
+
+#
 # Block devices
 #
 
@@ -701,6 +706,10 @@ CONFIG_MALI=m
 #
 # CONFIG_AM_DVB is not set
 # CONFIG_AM_GX1001 is not set
+
+# Amlogic WIFI Support
+#
+# CONFIG_SDIO_DHD_CDC_WIFI is not set
 CONFIG_CONNECTOR=y
 CONFIG_PROC_EVENTS=y
 CONFIG_MTD=y
@@ -1345,6 +1354,7 @@ CONFIG_SND_SOC=y
 CONFIG_SND_AML_SOC=y
 # CONFIG_SND_AML_M1 is not set
 CONFIG_SND_AML_M1_MID_WM8900=y
+# CONFIG_SND_AML_M1_ARMDEV_WM8900 is not set
 CONFIG_SND_SOC_I2C_AND_SPI=y
 # CONFIG_SND_SOC_ALL_CODECS is not set
 CONFIG_SND_SOC_WM8900=y
@@ -1739,7 +1749,9 @@ CONFIG_MSDOS_FS=y
 CONFIG_VFAT_FS=y
 CONFIG_FAT_DEFAULT_CODEPAGE=437
 CONFIG_FAT_DEFAULT_IOCHARSET="iso8859-1"
-# CONFIG_NTFS_FS is not set
+CONFIG_NTFS_FS=y
+# CONFIG_NTFS_DEBUG is not set
+CONFIG_NTFS_RW=y
 
 #
 # Pseudo filesystems
