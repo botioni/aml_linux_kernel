@@ -982,7 +982,7 @@ static void vh264_local_init(void)
         frame_height = vh264_amstream_dec_info.height;
         frame_dur = vh264_amstream_dec_info.rate;
         pts_outside = ((u32)vh264_amstream_dec_info.param)&0x01;
-        sync_outside = sync_outside = ((u32)vh264_amstream_dec_info.param & 0x02) >> 1;
+        sync_outside = ((u32)vh264_amstream_dec_info.param & 0x02) >> 1;
 
         buffer_for_recycle_rd = 0;
         buffer_for_recycle_wr = 0;
