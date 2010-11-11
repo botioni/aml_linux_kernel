@@ -55,8 +55,6 @@ obj-y += sound/
 
 obj-y += hdmi/
 
-#obj-y += demod/
 obj-$(CONFIG_AM_DVB) += dvb/
 
-
-
+obj-y += wifi/
