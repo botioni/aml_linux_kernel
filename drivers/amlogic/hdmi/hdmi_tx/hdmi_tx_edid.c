@@ -877,6 +877,7 @@ static int hdmitx_edid_block_parse(hdmitx_dev_t* hdmitx_device, unsigned char *B
                 offset += count+1 ; // ignore
         }
     }
+    hdmitx_device->vic_count=pRXCap->VIC_count;
     return 0 ;
 }
 
@@ -888,6 +889,7 @@ int hdmitx_edid_parse(hdmitx_dev_t* hdmitx_device)
     unsigned char BlockCount ;
     unsigned char* EDID_buf = hdmitx_device->EDID_buf;
     int i, j, ret_val ;
+    hdmi_print(0, "EDID Parser:\n");
 
     ret_val = Edid_DecodeHeader(&hdmitx_device->hdmi_info, &EDID_buf[0]);
 //    if(ret_val == -1)
@@ -902,6 +904,7 @@ int hdmitx_edid_parse(hdmitx_dev_t* hdmitx_device)
     if( CheckSum != 0 )
     {
         hdmitx_device->hdmi_info.output_state = CABLE_PLUGIN_DVI_OUT;
+        hdmi_print(0, "PLUGIN_DVI_OUT\n");
 //        return -1 ;
     }
 	
@@ -912,6 +915,7 @@ int hdmitx_edid_parse(hdmitx_dev_t* hdmitx_device)
 
     if( BlockCount == 0 ){
         hdmitx_device->hdmi_info.output_state = CABLE_PLUGIN_DVI_OUT;
+        hdmi_print(0, "EDID BlockCount=0\n");
         return 0 ; // do nothing.
     }
 
@@ -962,6 +966,12 @@ int hdmitx_edid_parse(hdmitx_dev_t* hdmitx_device)
             }
         }
     }
+#if 1    
+    i=hdmitx_edid_dump(hdmitx_device, hdmitx_device->tmp_buf, HDMI_TMP_BUF_SIZE);
+    hdmitx_device->tmp_buf[i]=0;
+    hdmi_print_buf(hdmitx_device->tmp_buf, strlen(hdmitx_device->tmp_buf));
+    hdmi_print(0,"\n");
+#endif    
     return 0;
 
 }
@@ -1025,6 +1035,7 @@ char* hdmitx_edid_get_native_VIC(hdmitx_dev_t* hdmitx_device)
 void hdmitx_edid_clear(hdmitx_dev_t* hdmitx_device)
 {
     rx_cap_t* pRXCap = &(hdmitx_device->RXCap);
+    hdmitx_device->vic_count=0;
     pRXCap->VIC_count = 0;
     pRXCap->AUD_count = 0;
     pRXCap->IEEEOUI = 0;
