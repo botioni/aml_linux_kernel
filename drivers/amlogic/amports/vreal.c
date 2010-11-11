@@ -569,6 +569,8 @@ static void vreal_local_init(void)
 
     real_recycle_rd = 0;
     real_recycle_wr = 0;
+
+    pic_sz_tbl_map = 0;
 }
 
 static void load_block_data(unsigned int dest, unsigned int count)
@@ -741,7 +743,10 @@ static int amvdec_real_remove(struct platform_device *pdev)
         stat &= ~STAT_VF_HOOK;
     }
     
-    dma_unmap_single(NULL, pic_sz_tbl_map, sizeof(pic_sz_tbl), DMA_TO_DEVICE);
+    if (pic_sz_tbl_map != 0)
+    {
+        dma_unmap_single(NULL, pic_sz_tbl_map, sizeof(pic_sz_tbl), DMA_TO_DEVICE);
+    }
 
     printk("frame duration %d, frames %d\n", frame_dur, frame_count);
     return 0;
