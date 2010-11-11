@@ -108,8 +108,8 @@ static tcon_conf_t tcon_config =
     .flags = 0,
     .screen_width = 5,
     .screen_height = 3,
-    .sync_duration_num = 89,
-    .sync_duration_den = 2,
+    .sync_duration_num = 481,
+    .sync_duration_den = 8,
     .power_on=t13_power_on,
     .power_off=t13_power_off,
 };
