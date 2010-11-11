@@ -57,6 +57,7 @@ static int aml_power_get_property(struct power_supply *psy,
 				  enum power_supply_property psp,
 				  union power_supply_propval *val)
 {
+    int capacty;
 	switch (psp) {
 	case POWER_SUPPLY_PROP_ONLINE:
 		printk("get POWER_SUPPLY_TYPE_MAINS\n");
@@ -83,8 +84,9 @@ static int aml_power_get_property(struct power_supply *psy,
 		else
 			val->intval = POWER_SUPPLY_STATUS_DISCHARGING;
 		break;
-	case POWER_SUPPLY_PROP_CAPACITY:		
-		val->intval = 100*(pdata->get_bat_vol())/800;
+	case POWER_SUPPLY_PROP_CAPACITY:	
+	    capacty = 100*(pdata->get_bat_vol() - 491)/87;
+		val->intval = capacty>100? 100:capacty;
 		printk("current capacity is %d%%\n,",val->intval);
 		break;
 	default:
