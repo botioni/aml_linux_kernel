@@ -146,8 +146,12 @@ void power_on_backlight(void)
 {
     #ifdef CONFIG_MACH_MESON_8726M
     /* PIN31, GPIOA_7, Pull high, BL_PWM Enable*/
-    set_gpio_val(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), 1);
-    set_gpio_mode(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), GPIO_OUTPUT_MODE);
+    //set_gpio_val(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), 1);
+    //set_gpio_mode(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), GPIO_OUTPUT_MODE);
+    SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<31)); 
+    SET_CBUS_REG_MASK(PWM_MISC_REG_AB, (1 << 0));         
+    WRITE_CBUS_REG_BITS(PWM_PWM_A,40000,0,16);  //low
+    WRITE_CBUS_REG_BITS(PWM_PWM_A,20000,16,16);  //hi 
     #else
     /* PIN31, GPIOA_8, Pull high, BL_PWM Enable*/
     set_gpio_val(GPIOA_bank_bit(8), GPIOA_bit_bit0_14(8), 1);

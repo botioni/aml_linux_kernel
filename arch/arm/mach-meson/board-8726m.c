@@ -912,23 +912,44 @@ static void aml_8726m_bl_init(void)
           (1000 <<  0) ;    // dimmer_freq = 1KHz
     WRITE_CBUS_REG(VGHL_PWM_REG4, val);
 }
-
+static unsigned bl_level;
 static unsigned aml_8726m_get_bl_level(void)
 {
-    unsigned level = 0;
-
-    WRITE_CBUS_REG_BITS(VGHL_PWM_REG0, 1, 31, 1);
-    WRITE_CBUS_REG_BITS(VGHL_PWM_REG4, 0, 30, 1);
-    level = READ_CBUS_REG_BITS(VGHL_PWM_REG0, 0, 4);
-    return level;
+//    unsigned level = 0;
+//
+//    WRITE_CBUS_REG_BITS(VGHL_PWM_REG0, 1, 31, 1);
+//    WRITE_CBUS_REG_BITS(VGHL_PWM_REG4, 0, 30, 1);
+//    level = READ_CBUS_REG_BITS(VGHL_PWM_REG0, 0, 4);
+    return bl_level;
 }
-
+#define BL_MAX_LEVEL 60000
 static void aml_8726m_set_bl_level(unsigned level)
 {
-    if( 15 == level )
-        WRITE_CBUS_REG_BITS(VGHL_PWM_REG0, 0, 31, 1);
-    else
-        WRITE_CBUS_REG_BITS(VGHL_PWM_REG0, level, 0, 4);
+    unsigned cs_level,pwm_level,low,hi;
+    
+    bl_level = level;
+    
+    level = level*179/255;
+    if(level>=120){ //120 - 179
+        cs_level = 9 -(level - 120)/15;
+        pwm_level = 85 + (level - 120)%15;   
+    }
+    else if(level>=20){ //20 - 119
+        cs_level = 13 - (level -20)/25;
+        pwm_level = 75 + (level - 20)%25;   
+    }
+    else{  //  <20
+        cs_level = 13;
+        pwm_level = 0;           
+    }
+        
+    hi = (BL_MAX_LEVEL/100)*pwm_level;
+    low = BL_MAX_LEVEL - hi;
+    WRITE_CBUS_REG_BITS(VGHL_PWM_REG0, cs_level, 0, 4);   
+    SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<31)); 
+    SET_CBUS_REG_MASK(PWM_MISC_REG_AB, (1 << 0));         
+    WRITE_CBUS_REG_BITS(PWM_PWM_A,low,0,16);  //low
+    WRITE_CBUS_REG_BITS(PWM_PWM_A,hi,16,16);  //hi   
 }
 
 static void aml_8726m_power_on_bl(void)
@@ -1199,6 +1220,19 @@ static void disable_unused_model(void)
 	CLK_GATE_OFF(WIFI);
 	video_dac_disable();
 	//audio_internal_dac_disable();
+	 //disable wifi
+	SET_CBUS_REG_MASK(HHI_GCLK_MPEG2, (1<<5)); 
+	SET_CBUS_REG_MASK(HHI_WIFI_CLK_CNTL, (1<<0)); 	
+	__raw_writel(0x8AF,0xC9320ED8);
+	__raw_writel((__raw_readl(0xC9320EF0))&0xF9FFFFFF,0xC9320EF0);
+	CLEAR_CBUS_REG_MASK(HHI_GCLK_MPEG2, (1<<5)); 
+	CLEAR_CBUS_REG_MASK(HHI_WIFI_CLK_CNTL, (1<<0)); 		
+	///disable demod
+	SET_CBUS_REG_MASK(HHI_DEMOD_CLK_CNTL, (1<<8));//enable demod core digital clock
+	SET_CBUS_REG_MASK(HHI_DEMOD_PLL_CNTL, (1<<15));//enable demod adc clock
+	CLEAR_APB_REG_MASK(0x4004,(1<<31));  //disable analog demod adc
+	CLEAR_CBUS_REG_MASK(HHI_DEMOD_PLL_CNTL, (1<<15));//disable demod adc clock	
+	CLEAR_CBUS_REG_MASK(HHI_DEMOD_CLK_CNTL, (1<<8));//disable demod core digital clock	
 }
 static void __init power_hold(void)
 {
