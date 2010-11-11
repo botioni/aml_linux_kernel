@@ -38,6 +38,9 @@
 #include <mach/card_io.h>
 #include <linux/i2c.h>
 #include <linux/i2c-aml.h>
+#ifdef CONFIG_AM_UART_WITH_S_CORE 
+#include <linux/uart-aml.h>
+#endif
 #ifdef CONFIG_CACHE_L2X0
 #include <asm/hardware/cache-l2x0.h>
 #endif
@@ -540,6 +543,34 @@ static struct platform_device aml_nand_device =
 };
 #endif
 
+#define PINMUX_UART_A   UART_A_GPIO_C21_D22
+#define PINMUX_UART_B	UART_B_GPIO_E18_E19
+
+#if defined(CONFIG_AM_UART_WITH_S_CORE)
+
+#if defined(CONFIG_AM_UART0_SET_PORT_A)
+#define UART_0_PORT		UART_A
+#define UART_1_PORT		UART_B
+#elif defined(CONFIG_AM_UART0_SET_PORT_B)
+#define UART_0_PORT		UART_B
+#define UART_1_PORT		UART_A
+#endif
+
+static struct aml_uart_platform aml_uart_plat = {
+    .uart_line[0]		=	UART_0_PORT,
+    .uart_line[1]		=	UART_1_PORT
+};
+
+static struct platform_device aml_uart_device = {	
+    .name         = "am_uart",  
+    .id       = -1, 
+    .num_resources    = 0,  
+    .resource     = NULL,   
+    .dev = {        
+                .platform_data = &aml_uart_plat,  
+           },
+};
+#endif
 
 static struct platform_device __initdata *platform_devs[] = {
     #if defined(CONFIG_JPEGLOGO)
@@ -553,6 +584,12 @@ static struct platform_device __initdata *platform_devs[] = {
     #endif		
     #if defined(CONFIG_AM_STREAMING)
 		&codec_device,
+    #endif
+    #if defined(CONFIG_AM_UART_WITH_S_CORE)
+        &aml_uart_device,
+    #endif
+    #if defined(CONFIG_AM_VIDEO)
+		&deinterlace_device,
     #endif
     #if defined(CONFIG_TVIN_VDIN)
         &vdin_device,
@@ -600,17 +637,8 @@ static void __init device_pinmux_init(void )
 	/*GPIOA_200e_bit4..usb/eth/YUV power on*/
 	set_gpio_mode(PREG_EGPIO,1<<4,GPIO_OUTPUT_MODE);
 	set_gpio_val(PREG_EGPIO,1<<4,1);
-	uart_set_pinmux(UART_PORT_A,UART_A_GPIO_C21_D22);
-#if 0
-#define GPIO_LED_BL_PWM	((GPIOA_bank_bit(8) << 16) | GPIOA_bit_bit0_14(8))	//pin31
-#define GPIO_EN_5V		((GPIOA_bank_bit(6) << 16) | GPIOA_bit_bit0_14(6))	//pin28
-#define GPIO_LCD_PWR_EN	((GPIOC_bank_bit0_26(4) << 16) | GPIOC_bit_bit0_26(4)) //pin165
-	gpio_direction_output(GPIO_LED_BL_PWM, 1);
-	// enable 5v
-	gpio_direction_output(GPIO_EN_5V, 1);
-	// lcd power on
-	gpio_direction_output(GPIO_LCD_PWR_EN, 0);
-#endif	
+	uart_set_pinmux(UART_PORT_A,PINMUX_UART_A);
+	uart_set_pinmux(UART_PORT_B,PINMUX_UART_B);
 	/*pinmux of eth*/
 	eth_pinmux_init();
 }
