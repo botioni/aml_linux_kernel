@@ -31,6 +31,7 @@
 #include <mach/gpio.h>
 #include <mach/am_regs.h>
 #include <mach/pinmux.h>
+#include <mach/power_gate.h>
 
 /*
 For Ramos 6236M, Innolux AT070TN93 V.2 */ 
@@ -170,8 +171,8 @@ void power_off_backlight(void)
     #endif
 
     /* PIN28, GPIOA_6, Pull low, For En_5v */
-    set_gpio_val(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), 0);
-    set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);
+    //set_gpio_val(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), 0);
+    //set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);
 }
 
 static void power_on_lcd(void)
@@ -243,6 +244,7 @@ static void set_tcon_pinmux(void)
 }
 static void t13_power_on(void)
 {
+    video_dac_disable();
 	set_tcon_pinmux();
 	power_on_lcd();
 	power_on_backlight();
