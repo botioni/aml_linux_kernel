@@ -22,7 +22,7 @@
 #include "aml_pcm.h"
 #include "../codecs/wm8900.h"
 
-#define HP_DET	0
+#define HP_DET	1
 
 #if HP_DET
 static struct timer_list timer;
@@ -244,24 +244,41 @@ static unsigned int inner_cs_input_level()
 }
 
 static int hp_detect_flag = 0;
+static spinlock_t lock;
+static void wm8900_hp_detect_queue(struct work_struct*);
+static struct wm8900_work_t{
+   unsigned long data;
+   struct work_struct wm8900_workqueue;
+}wm8900_work;
+
+static void wm8900_hp_detect_queue(struct work_struct* work)
+{
+	int level = inner_cs_input_level();
+	struct wm8900_work_t* pwork = container_of(work,struct wm8900_work_t, wm8900_workqueue);
+	struct snd_soc_codec* codec = (struct snd_soc_codec*)(pwork->data);
+		
+		if(level == 0x1 && hp_detect_flag!= 0x1){	// HP
+			snd_soc_dapm_disable_pin(codec, "AVout Jack");
+	   		snd_soc_dapm_sync(codec);
+			snd_soc_jack_report(&hp_jack, SND_JACK_HEADSET, SND_JACK_HEADSET);
+			hp_detect_flag = 0x1;
+		}else if(level == 0x10 && hp_detect_flag != 0x10){	// AV
+			
+			snd_soc_jack_report(&av_jack, SND_JACK_AVOUT, SND_JACK_AVOUT);
+			hp_detect_flag = 0x10;
+		}else if(level != hp_detect_flag){	// HDMI
+			snd_soc_dapm_disable_pin(codec, "AVout Jack");
+			snd_soc_dapm_disable_pin(codec, "Headphone Jack");
+	   		snd_soc_dapm_sync(codec);
+			hp_detect_flag = level;
+		}
+}
 
 static void wm8900_hp_detect_timer(unsigned long data)
 {
 		struct snd_soc_codec *codec = (struct snd_soc_codec*) data;
-		int level = inner_cs_input_level();
-		printk("level = %x\n", level);
-		
-		if(level == 0x1 && hp_detect_flag!= 0x1){	// HP
-			snd_soc_jack_report(&hp_jack, SND_JACK_HEADSET, SND_JACK_HEADSET);
-			hp_detect_flag = 0x1;
-		}else if(level == 0x10 && hp_detect_flag != 0x10){	// AV
-			snd_soc_jack_report(&av_jack, SND_JACK_AVOUT, SND_JACK_AVOUT);
-			hp_detect_flag = 0x10;
-		}else if(level != hp_detect_flag){	// HDMI
-			snd_soc_jack_report(&hp_jack,0, SND_JACK_HEADSET);
-			snd_soc_jack_report(&av_jack,0, SND_JACK_AVOUT);
-			hp_detect_flag = level;
-		}
+		wm8900_work.data = (unsigned long)codec;
+		schedule_work(&wm8900_work.wm8900_workqueue);
 		mod_timer(&timer, jiffies + HZ*1);
 }
 
@@ -273,6 +290,21 @@ static int aml_m1_codec_init(struct snd_soc_codec *codec)
 		struct snd_soc_card *card = codec->socdev->card;
 	
 		int err;
+ 
+		//Add board specific DAPM widgets and routes
+		err = snd_soc_dapm_new_controls(codec, aml_m1_dapm_widgets, ARRAY_SIZE(aml_m1_dapm_widgets));
+		if(err){
+			dev_warn(card->dev, "Failed to register DAPM widgets\n");
+			return 0;
+		}
+		
+		err = snd_soc_dapm_add_routes(codec, intercon,
+				      ARRAY_SIZE(intercon));
+		if(err){
+			dev_warn(card->dev, "Failed to setup dapm widgets routine\n");
+			return 0;
+		}
+		
 		//hook switch
 #if HP_DET
 		hp_detect_flag = 0;
@@ -307,21 +339,7 @@ static int aml_m1_codec_init(struct snd_soc_codec *codec)
   	timer.data = (unsigned long)codec;
   	timer.expires = jiffies + HZ*1;
   	init_timer(&timer);
-#endif  
-		//Add board specific DAPM widgets and routes
-		err = snd_soc_dapm_new_controls(codec, aml_m1_dapm_widgets, ARRAY_SIZE(aml_m1_dapm_widgets));
-		if(err){
-			dev_warn(card->dev, "Failed to register DAPM widgets\n");
-			return 0;
-		}
-		
-		err = snd_soc_dapm_add_routes(codec, intercon,
-				      ARRAY_SIZE(intercon));
-		if(err){
-			dev_warn(card->dev, "Failed to setup dapm widgets routine\n");
-			return 0;
-		}
-		
+#endif 
 		snd_soc_dapm_nc_pin(codec,"LINPUT1");
 		snd_soc_dapm_nc_pin(codec,"RINPUT1");
 		
