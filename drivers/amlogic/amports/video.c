@@ -163,6 +163,11 @@ static vframe_t *cur_dispbuf = NULL;
 static vframe_t vf_local;
 static u32 vsync_pts_inc;
 
+/* frame rate calculate */
+static u32 last_frame_count = 0;
+static u32 frame_count = 0;
+static u32 last_frame_time = 0;
+
 static vpp_frame_par_t *cur_frame_par, *next_frame_par;
 static vpp_frame_par_t frame_parms[2];
 
@@ -849,6 +854,8 @@ static irqreturn_t vsync_isr0(int irq, void *dev_id)
     toggle_cnt = 0;
 #endif
 
+    frame_count ++;
+        
     vout_type = detect_vout_type();
 	hold_line = calc_hold_line();
 
@@ -1957,6 +1964,21 @@ static ssize_t frame_aspect_ratio_show(struct class *cla, struct class_attribute
     return sprintf(buf, "NA\n");
 }
 
+static ssize_t frame_rate_show(struct class *cla, struct class_attribute* attr, char* buf)
+{
+    u32 cnt = frame_count - last_frame_count;
+    u32 time = jiffies;
+    u32 tmp = time;
+    u32 rate = 0;	    
+    time -= last_frame_time;
+    last_frame_time = tmp;
+    last_frame_count = frame_count;
+    rate = cnt*HZ/time;
+    size_t ret = sprintf(buf, "Frame rate is %d, and the panel refresh rate is %d, duration is: %d\n", 
+		rate,vinfo->sync_duration_num/vinfo->sync_duration_den, time);          	
+    return ret;
+}
+
 static struct class_attribute amvideo_class_attrs[] = {
     __ATTR(axis,
            S_IRUGO | S_IWUSR,
@@ -1993,6 +2015,7 @@ static struct class_attribute amvideo_class_attrs[] = {
     __ATTR_RO(frame_height),
     __ATTR_RO(frame_format),
     __ATTR_RO(frame_aspect_ratio),
+    __ATTR_RO(frame_rate),
     __ATTR_NULL
 };
 
