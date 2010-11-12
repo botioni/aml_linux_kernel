@@ -33,10 +33,26 @@
 
 static struct fb_var_screeninfo mydef_var[] = {
 {
+#if defined(CONFIG_FB_OSD1_DEFAULT_WIDTH)
+	.xres            = CONFIG_FB_OSD1_DEFAULT_WIDTH,
+#else
 	.xres            = 1200,
+#endif
+#if defined(CONFIG_FB_OSD1_DEFAULT_HEIGHT)
+	.yres            = CONFIG_FB_OSD1_DEFAULT_HEIGHT,
+#else
 	.yres            = 690,
+#endif
+#if defined(CONFIG_FB_OSD1_DEFAULT_WIDTH_VIRTUAL)
+	.xres_virtual    = CONFIG_FB_OSD1_DEFAULT_WIDTH_VIRTUAL,
+#else
 	.xres_virtual    = 1200,
+#endif
+#if defined(CONFIG_FB_OSD1_DEFAULT_HEIGHT_VIRTUAL)
+	.yres_virtual    = CONFIG_FB_OSD1_DEFAULT_HEIGHT_VIRTUAL,
+#else
 	.yres_virtual    = 1380,
+#endif
 	.xoffset         = 0,
 	.yoffset         = 0,
 	.bits_per_pixel  = 16,
@@ -66,10 +82,26 @@ static struct fb_var_screeninfo mydef_var[] = {
 #ifdef  CONFIG_FB_OSD2_ENABLE
 ,
 {
+#if defined(CONFIG_FB_OSD2_DEFAULT_WIDTH)
+	.xres            = CONFIG_FB_OSD2_DEFAULT_WIDTH,
+#else
 	.xres            = 32,
+#endif
+#if defined(CONFIG_FB_OSD2_DEFAULT_HEIGHT)
+	.yres            = CONFIG_FB_OSD2_DEFAULT_HEIGHT,
+#else
 	.yres            = 32,
+#endif
+#if defined(CONFIG_FB_OSD2_DEFAULT_WIDTH_VIRTUAL)
+	.xres_virtual    = CONFIG_FB_OSD2_DEFAULT_WIDTH_VIRTUAL,
+#else
 	.xres_virtual    = 32,
+#endif
+#if defined(CONFIG_FB_OSD2_DEFAULT_HEIGHT_VIRTUAL)
+	.yres_virtual    = CONFIG_FB_OSD2_DEFAULT_HEIGHT_VIRTUAL,
+#else
 	.yres_virtual    = 32,
+#endif
 	.xoffset         = 0,
 	.yoffset         = 0,
 	.bits_per_pixel  = 32,

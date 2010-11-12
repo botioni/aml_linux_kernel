@@ -684,6 +684,7 @@ static int is_ac_connected(void)
 static void set_charge(int flags)
 {
 	//GPIOD_22 low: fast charge high: slow charge
+    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_7, (1<<18));
 	set_gpio_val(GPIOD_bank_bit2_24(22), GPIOD_bit_bit2_24(22), 1);
     set_gpio_mode(GPIOD_bank_bit2_24(22), GPIOD_bit_bit2_24(22), GPIO_OUTPUT_MODE);
 }
@@ -1199,7 +1200,8 @@ static void __init device_pinmux_init(void )
 	uart_set_pinmux(UART_PORT_A,PINMUX_UART_A);
 	uart_set_pinmux(UART_PORT_B,PINMUX_UART_B);
 	/*pinmux of eth*/
-	eth_pinmux_init();
+	//eth_pinmux_init();
+	aml_i2c_init();
 	set_audio_pinmux(AUDIO_OUT_JTAG);
 }
 
