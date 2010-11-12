@@ -588,9 +588,6 @@ static struct platform_device __initdata *platform_devs[] = {
     #if defined(CONFIG_AM_UART_WITH_S_CORE)
         &aml_uart_device,
     #endif
-    #if defined(CONFIG_AM_VIDEO)
-		&deinterlace_device,
-    #endif
     #if defined(CONFIG_TVIN_VDIN)
         &vdin_device,
 		&bt656in_device,
