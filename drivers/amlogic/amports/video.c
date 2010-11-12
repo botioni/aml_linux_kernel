@@ -76,7 +76,11 @@ MODULE_AMLOG(LOG_LEVEL_ERROR, 0, LOG_DEFAULT_LEVEL_DESC, LOG_MASK_DESC);
 #define MODULE_NAME "amvideo"
 #define DEVICE_NAME "amvideo"
 
-//#define FIQ_VSYNC
+#define FIQ_VSYNC
+
+#if defined(FIQ_VSYNC) && defined(CONFIG_FB_AM)
+extern irqreturn_t osd_fiq_isr(void);
+#endif
 
 //#define SLOW_SYNC_REPEAT
 //#define INTERLACE_FIELD_MATCH_PROCESS
@@ -561,7 +565,7 @@ static void viu_set_dcu(vpp_frame_par_t *frame_par, vframe_t *vf)
     u32 r;
     u32 hformat, vphase, vini_phase, vrpt, hformatter_en, vformatter_en;
     u32 pat, loop;
-    const u32 vpat[] = {0, 0x8, 0x9, 0xa, 0xb, 0xc};
+    static const u32 vpat[] = {0, 0x8, 0x9, 0xa, 0xb, 0xc};
 
     r = (3 << VDIF_URGENT_BIT) |
         (17 << VDIF_HOLD_LINES_BIT) |
@@ -835,7 +839,7 @@ static irqreturn_t vsync_isr0(int irq, void *dev_id)
 #endif
 {
 	int hold_line;
-	int deinterlace_mode = get_deinterlace_mode();
+	int deinterlace_mode;
 
     s32 i, vout_type;
     vframe_t *vf;
@@ -849,6 +853,8 @@ static irqreturn_t vsync_isr0(int irq, void *dev_id)
 		"sub    sp, sp, #256;\n"
 		"sub    fp, sp, #256;\n");
 #endif
+
+    deinterlace_mode = get_deinterlace_mode();
 
 #ifdef CONFIG_AM_VIDEO_LOG
     toggle_cnt = 0;
@@ -901,7 +907,7 @@ static irqreturn_t vsync_isr0(int irq, void *dev_id)
                 video_property_changed = false;
         }
 		else
-			return IRQ_HANDLED;
+			goto exit;
     }
 
     /* buffer switch management */
@@ -1122,10 +1128,13 @@ static irqreturn_t vsync_isr0(int irq, void *dev_id)
 	    READ_MPEG_REG(ENCP_VIDEO_VAVON_BLINE))
 		printk("line over limit\n");
 
-
-#ifdef FIQ_VSYNC
 exit:
+#ifdef FIQ_VSYNC
 	WRITE_MPEG_REG(IRQ_CLR_REG(INT_VIU_VSYNC), 1 << IRQ_BIT(INT_VIU_VSYNC));
+
+#ifdef CONFIG_FB_AM
+    osd_fiq_isr();
+#endif
 
 	dsb();
 
@@ -1969,12 +1978,13 @@ static ssize_t frame_rate_show(struct class *cla, struct class_attribute* attr, 
     u32 cnt = frame_count - last_frame_count;
     u32 time = jiffies;
     u32 tmp = time;
-    u32 rate = 0;	    
+    u32 rate = 0;
+    size_t ret;   
     time -= last_frame_time;
     last_frame_time = tmp;
     last_frame_count = frame_count;
     rate = cnt*HZ/time;
-    size_t ret = sprintf(buf, "Frame rate is %d, and the panel refresh rate is %d, duration is: %d\n", 
+    ret = sprintf(buf, "Frame rate is %d, and the panel refresh rate is %d, duration is: %d\n", 
 		rate,vinfo->sync_duration_num/vinfo->sync_duration_den, time);          	
     return ret;
 }

@@ -36,6 +36,8 @@
 #include <linux/amlog.h>
 #include "osd_hw_def.h"
 
+#define FIQ_VSYNC
+
 /**********************************************************************/
 /**********				 osd vsync irq handler   				***************/
 /**********************************************************************/
@@ -50,7 +52,12 @@ static inline void  osd_update_3d_mode(int enable_osd1,int enable_osd2)
 		osd2_update_disp_3d_mode();
 	}
 }
+
+#ifdef FIQ_VSYNC
+irqreturn_t osd_fiq_isr(void)
+#else
 static irqreturn_t vsync_isr(int irq, void *dev_id)
+#endif
 {
 	unsigned  int  fb0_cfg_w0,fb1_cfg_w0;
 	unsigned  int  current_field;
@@ -103,6 +110,9 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
 	return  IRQ_HANDLED ;
 }
 
+#ifdef FIQ_VSYNC
+EXPORT_SYMBOL(osd_fiq_isr);
+#endif
 
 void  osd_set_gbl_alpha_hw(u32 index,u32 gbl_alpha)
 {
@@ -607,13 +617,13 @@ void osd_init_hw(void)
     	WRITE_MPEG_REG(VIU_OSD1_CTRL_STAT , data32);
 	WRITE_MPEG_REG(VIU_OSD2_CTRL_STAT , data32);
 	
-	//request  irq
-
+#ifndef FIQ_VSYNC
 	if ( request_irq(INT_VIU_VSYNC, &vsync_isr,
                     IRQF_SHARED , "am_osd_tv", osd_setup))
     	{
     		amlog_level(LOG_LEVEL_HIGH,"can't request irq for vsync\r\n");
     	}
+#endif
 	return ;
 	
 }
@@ -646,8 +656,10 @@ void  osd_suspend_hw(void)
 	u32 data;
 	u32  *preg;
 	
+#ifndef FIQ_VSYNC
 	//free irq ,we can not disable it ,maybe video still use it .
 	free_irq(INT_VIU_VSYNC,(void *)osd_setup);
+#endif
 	//save all status
 	osd_hw.reg_status=(u32*)kmalloc(sizeof(u32)*RESTORE_MEMORY_SIZE,GFP_KERNEL);
 	if(IS_ERR (osd_hw.reg_status))
@@ -733,12 +745,13 @@ void osd_resume_hw(void)
 		// osd relative clock	
 	}
 	
-	//request irq again
+#ifndef FIQ_VSYNC
 	if ( request_irq(INT_VIU_VSYNC, &vsync_isr,
                     IRQF_SHARED , "am_osd_tv", osd_setup))
     	{
     		amlog_level(LOG_LEVEL_HIGH,"can't request irq when osd resume\r\n");
     	}
+#endif
 	return ;
 }
 
