@@ -30,6 +30,7 @@
 #include <linux/slab.h>
 #include <linux/aml_bl.h>
 
+//#define AML_BL_DBG
 
 struct aml_bl {
 	const struct aml_bl_platform_data	*pdata;
@@ -41,8 +42,9 @@ static int aml_bl_update_status(struct backlight_device *bd)
 {
 	struct aml_bl *amlbl = bl_get_data(bd);
 	int brightness = bd->props.brightness;	
-
+#ifdef AML_BL_DBG
     printk(KERN_INFO "enter aml_bl_update_status\n");
+#endif
 //	if (bd->props.power != FB_BLANK_UNBLANK)
 //		brightness = 0;
 //	if (bd->props.fb_blank != FB_BLANK_UNBLANK)
@@ -55,9 +57,10 @@ static int aml_bl_update_status(struct backlight_device *bd)
 
     if( amlbl->pdata->set_bl_level )
         amlbl->pdata->set_bl_level(brightness);
+#ifdef AML_BL_DBG
     if( amlbl->pdata->get_bl_level )
 	    printk(KERN_INFO "%d\n", amlbl->pdata->get_bl_level());
-
+#endif
 	return 0;
 }
 
@@ -65,12 +68,14 @@ static int aml_bl_get_brightness(struct backlight_device *bd)
 {
 	struct aml_bl *amlbl = bl_get_data(bd);
 	int brightness;
-
+#ifdef AML_BL_DBG
     printk(KERN_INFO "enter aml_bl_get_brightness\n");
+#endif
     if( amlbl->pdata->get_bl_level )
 	    brightness = amlbl->pdata->get_bl_level();
+#ifdef AML_BL_DBG
     printk(KERN_INFO "%d\n", brightness);
-    
+#endif    
 	return brightness;
 }
 

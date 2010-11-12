@@ -21,6 +21,8 @@
 #include <linux/jiffies.h>
 #include <linux/usb/otg.h>
 
+//#define AML_POWER_DBG
+
 static inline unsigned int get_irq_flags(struct resource *res)
 {
 	unsigned int flags = IRQF_SAMPLE_RANDOM | IRQF_SHARED;
@@ -62,7 +64,9 @@ static int aml_power_get_property(struct power_supply *psy,
     int capacty;
 	switch (psp) {
 	case POWER_SUPPLY_PROP_ONLINE:
-		printk("get POWER_SUPPLY_TYPE_MAINS\n");
+#ifdef AML_POWER_DBG
+		printk(KERN_INFO "get POWER_SUPPLY_TYPE_MAINS\n");
+#endif
 		if (psy->type == POWER_SUPPLY_TYPE_MAINS)
 			val->intval = pdata->is_ac_online ?
 				      pdata->is_ac_online() : 0;
@@ -72,10 +76,14 @@ static int aml_power_get_property(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_VOLTAGE_NOW:
 		val->intval = pdata->get_bat_vol()*(3300*2/1024);
-		printk("curren voltage is :%dmV\n",val->intval);
+#ifdef AML_POWER_DBG
+		printk(KERN_INFO "curren voltage is :%dmV\n",val->intval);
+#endif
 		break;
 	case POWER_SUPPLY_PROP_STATUS:
-		printk("get POWER_SUPPLY_PROP_STATUS\n");
+#ifdef AML_POWER_DBG
+		printk(KERN_INFO "get POWER_SUPPLY_PROP_STATUS\n");
+#endif
 		if(pdata->is_ac_online())
 		{
 			if(pdata->get_charge_status())
@@ -89,7 +97,9 @@ static int aml_power_get_property(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_CAPACITY:	
 	    capacty = 100*(pdata->get_bat_vol() - 540)/80;
 		val->intval = capacty>100? 100:capacty;
-		printk("current capacity is %d%%\n,",val->intval);
+#ifdef AML_POWER_DBG
+		printk(KERN_INFO "current capacity is %d%%\n,",val->intval);
+#endif
 		break;
 	default:
 		return -EINVAL;
