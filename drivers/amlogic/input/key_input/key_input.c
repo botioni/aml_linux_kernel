@@ -199,6 +199,12 @@ static int register_key_input_dev(struct key_input  *ki_data)
     return ret;
 }
 
+static irqreturn_t am_key_interrupt(int irq, void *dev, struct pt_regs *regs){
+	printk("=== am_key_interrupt RTC_ADDR0(%x) RTC_ADDR1(%x) ===\n", READ_CBUS_REG(RTC_ADDR0), READ_CBUS_REG(RTC_ADDR1) );
+	WRITE_CBUS_REG(RTC_ADDR1, (READ_CBUS_REG(RTC_ADDR1) | (0x00008000)));
+	return IRQ_HANDLED;
+}
+
 static int __init key_input_probe(struct platform_device *pdev)
 {
     struct key_input  *ki_data = NULL;
@@ -274,6 +280,11 @@ static int __init key_input_probe(struct platform_device *pdev)
         ret = -EINVAL;
         goto    CATCH_ERR;
     }
+
+    request_irq(INT_RTC, (irq_handler_t) am_key_interrupt, IRQF_SHARED,"power key", pdev);
+    WRITE_CBUS_REG(RTC_ADDR0, (READ_CBUS_REG(RTC_ADDR0) | (0x00008000)));
+    enable_irq(INT_RTC);
+
     printk("Key input register input device completed.\r\n");
     register_key_input_dev(KeyInput);
     return 0;

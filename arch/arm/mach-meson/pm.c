@@ -53,16 +53,16 @@ static void meson_pm_suspend(void)
 		
 	int powerPress = 0;
 	while(1){
-		//udelay(jiffies+msecs_to_jiffies(20));
-
 		meson_sram_suspend(pdata);
-		printk("intr stat %x %x %x %x\n", READ_CBUS_REG(A9_0_IRQ_IN0_INTR_STAT), READ_CBUS_REG(A9_0_IRQ_IN1_INTR_STAT),
-		READ_CBUS_REG(A9_0_IRQ_IN2_INTR_STAT),READ_CBUS_REG(A9_0_IRQ_IN3_INTR_STAT));
-
-		powerPress = ((READ_CBUS_REG(0x21d1/*RTC_ADDR1*/) >> 2) & 1) ? 0 : 1;
+		powerPress = ((READ_CBUS_REG(RTC_ADDR1) >> 2) & 1) ? 0 : 1;
 		if(powerPress)
 			break;
 	}
+	printk("intr stat %x %x %x %x\n", 
+		READ_CBUS_REG(A9_0_IRQ_IN0_INTR_STAT), 
+		READ_CBUS_REG(A9_0_IRQ_IN1_INTR_STAT),
+		READ_CBUS_REG(A9_0_IRQ_IN2_INTR_STAT),
+		READ_CBUS_REG(A9_0_IRQ_IN3_INTR_STAT));
 	//WRITE_CBUS_REG(A9_0_IRQ_IN0_INTR_MASK, mask_save[0]);
 	//WRITE_CBUS_REG(A9_0_IRQ_IN1_INTR_MASK, mask_save[1]);
 	//WRITE_CBUS_REG(A9_0_IRQ_IN2_INTR_MASK, READ_CBUS_REG(A9_0_IRQ_IN2_INTR_MASK)|(0x800));
