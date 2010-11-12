@@ -301,7 +301,7 @@ static int __init key_input_probe(struct platform_device *pdev)
 #ifdef USE_RTC_INTR
     request_irq(INT_RTC, (irq_handler_t) am_key_interrupt, IRQF_SHARED, "power key", (void*)am_key_interrupt);
     WRITE_CBUS_REG(RTC_ADDR0, (READ_CBUS_REG(RTC_ADDR0) | (0x0000c000)));
-    enable_irq(INT_RTC);
+//    enable_irq(INT_RTC);
 #endif
 
     printk("Key input register input device completed.\r\n");
@@ -336,10 +336,10 @@ static int key_input_remove(struct platform_device *pdev)
 {
     struct key_input *ki_data = platform_get_drvdata(pdev);
 #ifdef USE_RTC_INTR
-    disable_irq(INT_RTC);
+	disable_irq(INT_RTC);
     free_irq(INT_RTC, am_key_interrupt);
 #endif
-    input_unregister_device(ki_data->input);
+	input_unregister_device(ki_data->input);
     input_free_device(ki_data->input);
     unregister_chrdev(ki_data->major,ki_data->name);
     if(ki_data->class)
