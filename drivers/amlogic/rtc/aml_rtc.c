@@ -10,7 +10,7 @@
 #include<mach/am_regs.h>
 
 
-int c_dbg_lvl = 0xff;
+int c_dbg_lvl = 0;
 #define RTC_DBG(lvl, x...) do{ if(c_dbg_lvl & lvl) printk(x);} while(0)
 #define RTC_DBG_VAL 1 << 0
 #define RTC_DBG_WR 1 << 1
