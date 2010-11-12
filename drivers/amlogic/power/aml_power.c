@@ -52,6 +52,8 @@ static int new_ac_status = -1;
 static int new_usb_status = -1;
 static int ac_status = -1;
 static int usb_status = -1;
+static int battery_capacity = -1;
+static int new_battery_capacity = -1;
 
 static int aml_power_get_property(struct power_supply *psy,
 				  enum power_supply_property psp,
@@ -252,6 +254,12 @@ static void polling_timer_func(unsigned long unused)
 	if (changed)
 		psy_changed();
 
+    new_battery_capacity = pdata->get_bat_vol();
+	if(new_battery_capacity != battery_capacity){
+		battery_capacity = new_battery_capacity;
+		power_supply_changed(&aml_psy_bat);
+    }	
+    
 	mod_timer(&polling_timer,
 		  jiffies + msecs_to_jiffies(pdata->polling_interval));
 }
