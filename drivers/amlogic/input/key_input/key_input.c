@@ -209,11 +209,11 @@ static irqreturn_t am_key_interrupt(int irq, void *dev){
     WRITE_CBUS_REG(RTC_ADDR1, (READ_CBUS_REG(RTC_ADDR1) | (0x0000c000)));
     if (status&0x8000){
         input_report_key(KeyInput->input, KeyInput->pdata->key_code_list[0], 0);
-        print_dbg("=== key up ===\n");
+        printk(KERN_INFO "=== key %d up ===\n", KeyInput->pdata->key_code_list[0]);
     }
     else if (status&0x4000){
         input_report_key(KeyInput->input, KeyInput->pdata->key_code_list[0], 1);
-        print_dbg("=== key down ===\n");
+        printk(KERN_INFO "=== key %d down ===\n", KeyInput->pdata->key_code_list[0]);
     }
     return IRQ_HANDLED;
 }

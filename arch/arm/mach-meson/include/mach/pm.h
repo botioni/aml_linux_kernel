@@ -6,12 +6,8 @@
  * of the members of this structure.
  */
 struct meson_pm_config {
-	void __iomem *ddr2_ctlr_base;
-	void __iomem *ddrpsc_reg_base;
-	int ddrpsc_num;
-	void __iomem *ddrpll_reg_base;
-	void __iomem *deepsleep_reg;
-	void __iomem *cpupll_reg_base;
+	void __iomem *ddr2_reg_refresh;
+	void __iomem *ddr2_reg_phy;
 	/*
 	 * Note on SLEEPCOUNT:
 	 * The SLEEPCOUNT feature is mainly intended for cases in which

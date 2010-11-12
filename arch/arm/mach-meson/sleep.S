@@ -20,6 +20,8 @@
 #include <asm/assembler.h>
 #include <mach/memory.h>
 
+#define DDR_PHY_OFFSET 0x1380
+
 	.text
 /*
  * Move Meson into deep sleep state
@@ -29,12 +31,19 @@
  */
 ENTRY(meson_cpu_suspend)
 	stmfd	sp!, {r0-r12, lr}		@ save registers on stack
-	ldmia	r0, {r0-r4}
+	ldmia	r0, {r0-r1}
 
 	/*
 	 * Switch DDR to self-refresh mode.
 	 */
+#if 1
+    mov	r2, #0x3
+	str	r2, [r0]
 
+	ldr	r2, [r1]
+	orr	r2, r2, #0x1
+	str	r2, [r1]
+#endif    
 	/* Disable DDR PHY */
 
 	/* Power down the PLL */
@@ -51,6 +60,15 @@ ENTRY(meson_cpu_suspend)
 	/* Wait for PLL to lock */
 
 	/* turn on DDR PHY */
+#if 1
+	ldr	r2, [r1]
+	bic	r2, r2, #0x1
+	str	r2, [r1]
+
+    mov	r2, #0x4
+	str	r2, [r0]
+#endif
+
 	/* Restore registers and return */
 	ldmfd   sp!, {r0-r12, pc}
 
