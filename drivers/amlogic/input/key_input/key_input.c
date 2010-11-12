@@ -61,6 +61,8 @@
 #include <asm/uaccess.h>
 #include <linux/input/key_input.h>
 
+#define USE_RTC_INTR
+
 struct key_input {
     struct input_dev *input;
     struct timer_list timer;
@@ -126,6 +128,7 @@ static void key_scan(struct key_input *ki_data)
 */
 }
 
+#ifndef USE_RTC_INTR
 void key_input_polling(unsigned long data)
 {
     int keyindex = -1 , delay_time = 0, i;
@@ -159,6 +162,7 @@ void key_input_polling(unsigned long data)
     }
     mod_timer(&ki_data->timer,jiffies+msecs_to_jiffies(ki_data->pdata->fuzz_time));
 }
+#endif
 
 static int
 key_input_open(struct inode *inode, struct file *file)
@@ -199,11 +203,21 @@ static int register_key_input_dev(struct key_input  *ki_data)
     return ret;
 }
 
+#ifdef USE_RTC_INTR
 static irqreturn_t am_key_interrupt(int irq, void *dev){
-	printk("=== am_key_interrupt RTC_ADDR0(%x) RTC_ADDR1(%x) ===\n", READ_CBUS_REG(RTC_ADDR0), READ_CBUS_REG(RTC_ADDR1) );
-	WRITE_CBUS_REG(RTC_ADDR1, (READ_CBUS_REG(RTC_ADDR1) | (0x00008000)));
-	return IRQ_HANDLED;
+    unsigned status = READ_CBUS_REG(RTC_ADDR1);
+    WRITE_CBUS_REG(RTC_ADDR1, (READ_CBUS_REG(RTC_ADDR1) | (0x0000c000)));
+    if (status&0x8000){
+        input_report_key(KeyInput->input, KeyInput->pdata->key_code_list[0], 0);
+        print_dbg("=== key up ===\n");
+    }
+    else if (status&0x4000){
+        input_report_key(KeyInput->input, KeyInput->pdata->key_code_list[0], 1);
+        print_dbg("=== key down ===\n");
+    }
+    return IRQ_HANDLED;
 }
+#endif
 
 static int __init key_input_probe(struct platform_device *pdev)
 {
@@ -246,8 +260,11 @@ static int __init key_input_probe(struct platform_device *pdev)
     {
         ki_data->pdata->fuzz_time = 100;
     }
+
+#ifndef USE_RTC_INTR
     setup_timer(&ki_data->timer, key_input_polling, ki_data) ;
     mod_timer(&ki_data->timer, jiffies+msecs_to_jiffies(ki_data->pdata->fuzz_time));
+#endif
 
     /* setup input device */
     set_bit(EV_KEY, input_dev->evbit);
@@ -281,9 +298,11 @@ static int __init key_input_probe(struct platform_device *pdev)
         goto    CATCH_ERR;
     }
 
-    request_irq(INT_RTC, (irq_handler_t) am_key_interrupt, IRQF_SHARED, "power key", NULL);
-    WRITE_CBUS_REG(RTC_ADDR0, (READ_CBUS_REG(RTC_ADDR0) | (0x00008000)));
+#ifdef USE_RTC_INTR
+    request_irq(INT_RTC, (irq_handler_t) am_key_interrupt, IRQF_SHARED, "power key", (void*)am_key_interrupt);
+    WRITE_CBUS_REG(RTC_ADDR0, (READ_CBUS_REG(RTC_ADDR0) | (0x0000c000)));
     enable_irq(INT_RTC);
+#endif
 
     printk("Key input register input device completed.\r\n");
     register_key_input_dev(KeyInput);
@@ -316,8 +335,10 @@ CATCH_ERR:
 static int key_input_remove(struct platform_device *pdev)
 {
     struct key_input *ki_data = platform_get_drvdata(pdev);
+#ifdef USE_RTC_INTR
     disable_irq(INT_RTC);
-	free_irq(INT_RTC, am_key_interrupt);
+    free_irq(INT_RTC, am_key_interrupt);
+#endif
     input_unregister_device(ki_data->input);
     input_free_device(ki_data->input);
     unregister_chrdev(ki_data->major,ki_data->name);
