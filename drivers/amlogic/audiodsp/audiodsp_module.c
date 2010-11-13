@@ -232,8 +232,8 @@ ssize_t audiodsp_read(struct file * file, char __user * ubuf, size_t size,
 
 
 
-	#define MIN_READ	4	// 2 channel * 2 bytes per sample
-	#define PCM_DATA_MIN	4
+	#define MIN_READ	2	// 1 channel * 2 bytes per sample
+	#define PCM_DATA_MIN	2
 	#define PCM_DATA_ALGIN(x) (x & (~(PCM_DATA_MIN-1)))
 	#define MAX_WAIT		HZ/10
 	
