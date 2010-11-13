@@ -995,7 +995,7 @@ static int32_t dwc_otg_pcd_suspend_cb(void *_p)
 		SPIN_LOCK(&pcd->lock);
 	}
 
-	return 1;
+	return 0;
 }
 
 /**
@@ -1022,7 +1022,7 @@ static int32_t dwc_otg_pcd_resume_cb(void *_p)
 			del_timer(&pcd->srp_timer);
 		}
 	}
-	return 1;
+	return 0;
 }
 
 /**
