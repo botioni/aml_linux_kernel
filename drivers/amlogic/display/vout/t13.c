@@ -39,7 +39,7 @@ For Ramos 6236M, Innolux AT070TN93 V.2 */
 #define LCD_HEIGHT      480
 #define MAX_WIDTH       1056
 #define MAX_HEIGHT      525
-#define VIDEO_ON_LINE   17
+#define VIDEO_ON_LINE   22
 
 static void t13_power_on(void);
 static void t13_power_off(void);
