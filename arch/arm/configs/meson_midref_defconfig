@@ -1,7 +1,7 @@
 #
 # Automatically generated make config: don't edit
 # Linux kernel version: 2.6.34
-# Sat Nov 13 16:07:57 2010
+# Sat Nov 13 18:37:09 2010
 #
 CONFIG_ARM=y
 CONFIG_HOLES_IN_ZONE=y
@@ -568,6 +568,7 @@ CONFIG_I2C_AML=y
 CONFIG_SARADC_AM=y
 CONFIG_ADC_TOUCHSCREEN_AM=y
 CONFIG_ADC_KEYPADS_AM=y
+CONFIG_KEY_INPUT_CUSTOM_AM=y
 
 #
 # Amlogic Power Management Support
