@@ -6,19 +6,28 @@
 **        Revision : 1.0                                        **
 **                                                              **
 *****************************************************************/  
+#include <linux/types.h>
+#include <linux/kernel.h>
+#include <linux/err.h>
+#include <linux/slab.h>
 #include <linux/module.h>
 #include <linux/init.h>
+#include <linux/delay.h>
+#include <linux/io.h>
+#include <linux/mii.h>
+#include <linux/skbuff.h>
 #include <linux/mutex.h>
 #include <linux/delay.h>
 #include <linux/interrupt.h>
 #include <linux/irqreturn.h>
-#include <linux/err.h>
 #include <linux/device.h>
 #include <linux/pagemap.h>
 #include <linux/platform_device.h>
+#include <linux/cardreader/sdio.h>
 #include <linux/cardreader/cardreader.h>
 #include <linux/cardreader/card_block.h>
-    
+
+#include <asm/cacheflush.h>
 #include <mach/am_regs.h>
 #include <mach/irqs.h>
 #include <mach/card_io.h>
@@ -28,7 +37,8 @@ static DEFINE_MUTEX(init_lock);
 
 struct amlogic_card_host 
 {
-	struct card_host *card;
+	struct card_host *host;
+	struct aml_card_platform *board_data;
 	int present;
  
 	/*
@@ -44,42 +54,161 @@ struct amlogic_card_host
 	int transfer_index;
 };
 
-CARD_READER_MONITOR cr_mon;
-
 //wait_queue_head_t     sdio_wait_event;
 
 static int card_reader_monitor(void *arg);
 void card_detect_change(struct card_host *host, unsigned long delay);
 struct card_host *card_alloc_host(int extra, struct device *dev);
 static void card_setup(struct card_host *host);
-static void amlogic_card_request(struct card_host *card, struct card_blk_request *brq);
-static struct memory_card *card_find_card(struct card_host *host, u32 * raw_cid);
+static void amlogic_card_request(struct card_host *host, struct card_blk_request *brq);
+static struct memory_card *card_find_card(struct card_host *host, u8 card_type);
 
-void card_reader_initialize(struct card_host *card) 
+static struct memory_card *card_alloc_card(struct card_host *host) 
 {
-	unsigned card_num;
+	struct memory_card *card;
 
-	for (card_num = CARD_XD_PICTURE; card_num < CARD_MAX_UNIT; card_num++) {	
-		cr_mon.unit_state[card_num] = CARD_UNIT_NOT_READY;		
-		cr_mon.blk_length[card_num] = 0;	
-		cr_mon.capacity[card_num] = 0;	
-	}
-	
-	cr_mon.card_detector[CARD_TYPE_UNKNOW] = NULL;	
-	cr_mon.card_insert_process[CARD_TYPE_UNKNOW] = NULL;	
-	cr_mon.card_remove_process[CARD_TYPE_UNKNOW] = NULL;	
-	cr_mon.card_read_data[CARD_TYPE_UNKNOW] = NULL;	
-	cr_mon.card_write_data[CARD_TYPE_UNKNOW] = NULL;	
-	strcpy(cr_mon.name[CARD_TYPE_UNKNOW], CARD_UNKNOW_NAME_STR);	//   "/dev/disk/xx"
+	card = kzalloc(sizeof(struct memory_card), GFP_KERNEL);
+	if (!card)
+		return ERR_PTR(-ENOMEM);
 
+	card_init_card(card, host);
+	list_add(&card->node, &host->cards);
+
+	return card;
 }
 
-static int card_reader_init(struct card_host *card) 
+static void card_reader_initialize(struct card_host *host) 
+{
+	struct amlogic_card_host *aml_host = card_priv(host);
+	struct aml_card_platform *card_platform = aml_host->board_data;
+	struct aml_card_info *card_plat_info;
+	struct memory_card *card;
+	int i, err = 0;
+
+	for (i=0; i<card_platform->card_num; i++) {
+		card_plat_info = &card_platform->card_info[i];
+
+		if (!strcmp("xd_card", card_plat_info->name)) {
+#ifdef CONFIG_XD
+			card = card_find_card(host, CARD_XD_PICTURE);
+			if (card)
+				continue;
+			card = card_alloc_card(host);
+			if (!card)
+				continue;
+
+			card->unit_state = CARD_UNIT_NOT_READY;
+			strcpy(card->name, CARD_XD_NAME_STR);
+			card->card_type = CARD_XD_PICTURE;
+			card->card_plat_info = card_plat_info;
+			err = xd_probe(card);
+			if (err)
+				continue;
+#endif
+		}
+		else if (!strcmp("ms_card", card_plat_info->name)) {
+#ifdef CONFIG_MS_MSPRO
+			card = card_find_card(host, CARD_MEMORY_STICK);
+			if (card)
+				continue;
+			card = card_alloc_card(host);
+			if (!card)
+				continue;
+
+			card->unit_state = CARD_UNIT_NOT_READY;
+			strcpy(card->name, CARD_MS_NAME_STR);
+			card->card_type = CARD_MEMORY_STICK;
+			card->card_plat_info = card_plat_info;
+			err = ms_probe(card);
+			if (err)
+				continue;
+#endif
+		}
+		else if (!strcmp("sd_card", card_plat_info->name)) {
+#ifdef CONFIG_SD_MMC
+			card = card_find_card(host, CARD_SECURE_DIGITAL);
+			if (card)
+				continue;
+			card = card_alloc_card(host);
+			if (!card)
+				continue;
+
+			card->unit_state = CARD_UNIT_NOT_READY;
+			strcpy(card->name, CARD_SD_NAME_STR);
+			card->card_type = CARD_SECURE_DIGITAL;
+			card->card_plat_info = card_plat_info;
+			err = sd_mmc_probe(card);
+			if (err)
+				continue;
+#endif
+		}
+		else if (!strcmp("inand_card", card_plat_info->name)) {
+#ifdef CONFIG_INAND
+			card = card_find_card(host, CARD_INAND);
+			if (card)
+				continue;
+			card = card_alloc_card(host);
+			if (!card)
+				continue;
+
+			card->unit_state = CARD_UNIT_NOT_READY;
+			strcpy(card->name, CARD_INAND_NAME_STR);
+			card->card_type = CARD_INAND;
+			card->card_plat_info = card_plat_info;
+			err = inand_probe(card);
+			if (err)
+				continue;
+#endif
+		}
+		else if (!strcmp("sdio_card", card_plat_info->name)) {
+#ifdef CONFIG_SDIO
+			card = card_find_card(host, CARD_SDIO);
+			if (card)
+				continue;
+			card = card_alloc_card(host);
+			if (!card)
+				continue;
+
+			card->unit_state = CARD_UNIT_NOT_READY;
+			strcpy(card->name, CARD_SDIO_NAME_STR);
+			card->card_type = CARD_SDIO;
+			card->card_plat_info = card_plat_info;
+			err = sdio_probe(card);
+			if (err)
+				continue;
+#endif
+		}
+		else if (!strcmp("cf_card", card_plat_info->name)) {
+#ifdef CONFIG_CF
+			card = card_find_card(host, CARD_COMPACT_FLASH);
+			if (card)
+				continue;
+			card = card_alloc_card(host);
+			if (!card)
+				continue;
+
+			card->unit_state = CARD_UNIT_NOT_READY;
+			strcpy(card->name, CARD_CF_NAME_STR);
+			card->card_type = CARD_COMPACT_FLASH;
+			card->card_plat_info = card_plat_info;
+			err = cf_probe(card);
+			if (err)
+				continue;
+#endif
+		}
+	}
+}
+
+static int card_reader_init(struct card_host *host) 
 {	
 	int ret;	
 
-	card_reader_initialize(card);	
-	ret = kernel_thread(card_reader_monitor, card, CLONE_KERNEL | SIGCHLD);
+	host->dma_buf = dma_alloc_coherent(NULL, host->max_req_size, (dma_addr_t *)&host->dma_phy_buf, GFP_KERNEL);
+	if(host->dma_buf == NULL)
+		return -ENOMEM;
+
+	card_reader_initialize(host);	
+	ret = kernel_thread(card_reader_monitor, host, CLONE_KERNEL | SIGCHLD);
 	if (ret < 0)	
 		printk("card creat process failed\n");
 	else	
@@ -91,7 +220,8 @@ static int card_reader_monitor(void *data)
 {
     unsigned card_type, card_4in1_init_type;
     struct card_host *card_host = (struct card_host *)data;
-    struct memory_card *card;
+    struct memory_card *card = NULL;
+    unsigned char slot_detector = 0;
     card_4in1_init_type = 0;
 
 	daemonize("card_read_monitor");
@@ -101,52 +231,50 @@ static int card_reader_monitor(void *data)
 
 		mutex_lock(&init_lock);
 		for(card_type=CARD_XD_PICTURE; card_type<CARD_MAX_UNIT; card_type++) {
-			if(cr_mon.card_detector[card_type] && (!cr_mon.card_power_off_flag[card_type]))
-				cr_mon.card_status[card_type] = (*cr_mon.card_detector[card_type])();
 
-	    	if((cr_mon.card_status[card_type] == CARD_INSERTED) && (cr_mon.unit_state[card_type] != CARD_UNIT_READY) && ((card_type == CARD_COMPACT_FLASH) ||(cr_mon.slot_detector == CARD_REMOVED)||(cr_mon.card_slot_mode == CARD_SLOT_DISJUNCT))) {
-				if(cr_mon.card_insert_process[card_type])
-					cr_mon.unit_state[card_type] = (*cr_mon.card_insert_process[card_type])();
-				else
-					cr_mon.unit_state[card_type] = CARD_UNIT_READY;
+			card_reader_initialize(card_host);
+			card = card_find_card(card_host, card_type);
+			if (card == NULL)
+				continue;
 
-				if(cr_mon.unit_state[card_type] == CARD_UNIT_PROCESSED) {
-					if(cr_mon.card_slot_mode == CARD_SLOT_4_1) {
-	                	if (card_type != CARD_COMPACT_FLASH) {
-	                		cr_mon.slot_detector = CARD_INSERTED;
+			card->card_io_init(card);
+			card->card_detector(card);
+
+	    	if((card->card_status == CARD_INSERTED) && (card->unit_state != CARD_UNIT_READY) && ((card_type == CARD_SDIO) 
+	    		||(slot_detector == CARD_REMOVED)||(card->card_slot_mode == CARD_SLOT_DISJUNCT))) {
+
+				card->card_insert_process(card);
+
+				if(card->unit_state == CARD_UNIT_PROCESSED) {
+					if(card->card_slot_mode == CARD_SLOT_4_1) {
+	                	if (card_type != CARD_SDIO) {
+	                		slot_detector = CARD_INSERTED;
 	                		card_4in1_init_type = card_type;
 	                	}
 					}
-					cr_mon.unit_state[card_type] = CARD_UNIT_READY;
-					cr_mon.card_register_flag[card_type] = CARD_REGISTERED;
+					card->unit_state = CARD_UNIT_READY;
 					card_host->card_type = card_type;
+					card->state = CARD_STATE_INITED;
 					card_detect_change(card_host, 0);
 	            }
 	        }
-	        else if((cr_mon.card_status[card_type] == CARD_REMOVED) && (cr_mon.unit_state[card_type] != CARD_UNIT_NOT_READY)) {
-				if(cr_mon.card_slot_mode == CARD_SLOT_4_1) {                       
+	        else if((card->card_status == CARD_REMOVED) && (card->unit_state != CARD_UNIT_NOT_READY)) {
+
+				if(card->card_slot_mode == CARD_SLOT_4_1) {                       
 					if (card_type == card_4in1_init_type) 
-						cr_mon.slot_detector = CARD_REMOVED;
+						slot_detector = CARD_REMOVED;
 				}
 
-				if(cr_mon.card_remove_process[card_type])
-					cr_mon.unit_state[card_type] = (*cr_mon.card_remove_process[card_type])();
-				else
-					cr_mon.unit_state[card_type] = CARD_UNIT_NOT_READY;
+				card->card_remove_process(card);
 
-				if(cr_mon.unit_state[card_type] == CARD_UNIT_PROCESSED) {
-					cr_mon.unit_state[card_type] = CARD_UNIT_NOT_READY;
+				if(card->unit_state == CARD_UNIT_PROCESSED) {
+					card->unit_state = CARD_UNIT_NOT_READY;
 
-					if(cr_mon.card_register_flag[card_type] == CARD_REGISTERED) {
-						cr_mon.card_register_flag[card_type] = CARD_UNREGISTERED;
-						card = card_find_card(card_host, cr_mon.raw_cid[card_type]);
-						if(card) {
-							list_del(&card->node);
-							card_remove_card(card);
-						}
+					if(card) {
+						list_del(&card->node);
+						card_remove_card(card);
 					}
-					
-	            }
+				}
 	        }
 		}
 		mutex_unlock(&init_lock);
@@ -203,6 +331,8 @@ int __card_claim_host(struct card_host *host, struct memory_card *card)
 	}
 	set_current_state(TASK_RUNNING);
 	host->card_busy = card;
+	if (!host->claimed)
+		host->claimed = 1;
 	spin_unlock_irqrestore(&host->lock, flags);
 	remove_wait_queue(&host->wq, &wait);
 
@@ -215,33 +345,75 @@ int __card_claim_host(struct card_host *host, struct memory_card *card)
 
 EXPORT_SYMBOL(__card_claim_host);
 
+static int card_sdio_init_func(struct memory_card *card, unsigned int fn)
+{
+	//int ret;
+	struct sdio_func *func;
+
+	BUG_ON(fn > SDIO_MAX_FUNCS);
+
+	func = sdio_alloc_func(card);
+	if (IS_ERR(func))
+		return PTR_ERR(func);
+
+	func->num = fn;
+
+	card->sdio_func[fn - 1] = func;
+
+	return 0;
+}
+
+static int card_sdio_init_card(struct memory_card *card)
+{
+	int err, i;
+
+	for (i = 0; i < card->sdio_funcs; i++) {
+		err = card_sdio_init_func(card, i + 1);
+		if (err) 
+			return err;
+
+		err = sdio_add_func(card->sdio_func[i]);
+		if (err) 
+			return err;
+	}
+
+	return 0;
+}
+
+/*
+ * Host is being removed. Free up the current card.
+ */
+static void card_sdio_remove(struct card_host *host)
+{
+	int i;
+
+	BUG_ON(!host);
+	BUG_ON(!host->card);
+
+	for (i = 0;i < host->card->sdio_funcs;i++) {
+		if (host->card->sdio_func[i]) {
+			sdio_remove_func(host->card->sdio_func[i]);
+			host->card->sdio_func[i] = NULL;
+		}
+	}
+
+	card_remove_card(host->card);
+	host->card = NULL;
+}
+
 /*
  * Locate a Memory card on this Memory host given a raw CID.
  */ 
-static struct memory_card *card_find_card(struct card_host *host, u32 * raw_cid) 
+static struct memory_card *card_find_card(struct card_host *host, u8 card_type) 
 {
 	struct memory_card *card;
 	
 	list_for_each_entry(card, &host->cards, node) {
-		if (memcmp(card->raw_cid, raw_cid, sizeof(card->raw_cid)) == 0)		
+		if (card->card_type == card_type)		
 			return card;
 	}
 
 	return NULL;
-}
-
-static struct memory_card *card_alloc_card(struct card_host *host, u32 * raw_cid) 
-{
-	struct memory_card *card;
-
-	card = kmalloc(sizeof(struct memory_card), GFP_KERNEL);
-	if (!card)
-		return ERR_PTR(-ENOMEM);
-
-	card_init_card(card, host);
-	memcpy(card->raw_cid, raw_cid, sizeof(card->raw_cid));
-
-	return card;
 }
 
 /**
@@ -276,6 +448,13 @@ void card_remove_host(struct card_host *host)
 		card_remove_card(card);
 	} 
 
+	if (host->dma_buf != NULL)
+	{
+	   dma_free_coherent(NULL, host->max_req_size, host->dma_buf, (dma_addr_t )host->dma_phy_buf);
+	   host->dma_buf  = NULL;
+	   host->dma_phy_buf = NULL;
+	}
+
 	card_remove_host_sysfs(host);
 } 
 
@@ -294,20 +473,23 @@ void card_free_host(struct card_host *host)
 
 static void card_discover_cards(struct card_host *host) 
 {
-	struct memory_card *card;
 	int err;
+	struct memory_card *card;
+
+	BUG_ON(host->card_busy == NULL);
 	
-	card = card_find_card(host, cr_mon.raw_cid[host->card_type]);
+	card = card_find_card(host, host->card_type);
 	if (!card) {	
-		card = card_alloc_card(host, cr_mon.raw_cid[host->card_type]);
+		card = card_alloc_card(host);
 		if (IS_ERR(card)) {	
 			err = PTR_ERR(card);		
 		}	
 		list_add(&card->node, &host->cards);
 	}
 
-	card->capacity = cr_mon.capacity[host->card_type];
-	card->card_type = host->card_type;	
+	if (card->card_type == CARD_SDIO)
+		host->card = card;
+	
 	card->state &= (~CARD_STATE_DEAD);
 }
 
@@ -330,12 +512,14 @@ void card_release_host(struct card_host *host)
 	BUG_ON(host->card_busy == NULL);
 	spin_lock_irqsave(&host->lock, flags);
 	host->card_busy = NULL;
+	host->claimed = 0;
 	spin_unlock_irqrestore(&host->lock, flags);
 	wake_up(&host->wq);
 } 
 
 static void card_reader_rescan(struct work_struct *work) 
 {	
+	int err = 0;
 	struct list_head *l, *n;
 	struct card_host *host = container_of(work, struct card_host, detect);
 
@@ -349,16 +533,23 @@ static void card_reader_rescan(struct work_struct *work)
 
 	list_for_each_safe(l, n, &host->cards) {
 		struct memory_card *card = card_list_to_card(l);
+
 		/*
 		* If this is a new and good card, register it.
 		*/ 
-		if ((!(card->state & CARD_STATE_PRESENT)) && (!(card->state & CARD_STATE_DEAD))) {
-			if (card_register_card(card, cr_mon.name[host->card_type]))	
+		if ((!(card->state & CARD_STATE_PRESENT)) && (!(card->state & CARD_STATE_DEAD) && (card->state & CARD_STATE_INITED))) {
+			if (card_register_card(card))	
 				card->state = CARD_STATE_DEAD;
 			else	
 				card->state = CARD_STATE_PRESENT;	
+
+			if ((card->card_type == CARD_SDIO)) {
+				err = card_sdio_init_card(card);
+				if (err)
+					card_sdio_remove(host);
+			}
 		}
-		
+
 		/*
 		* If this card is dead, destroy it.
 		*/ 
@@ -367,6 +558,7 @@ static void card_reader_rescan(struct work_struct *work)
 			card_remove_card(card);
 		}
 	}
+
 }
 
 struct card_host *card_alloc_host(int extra, struct device *dev) 
@@ -388,7 +580,8 @@ struct card_host *card_alloc_host(int extra, struct device *dev)
 		host->max_phys_segs = 1;
 		host->max_sectors = 1 << (PAGE_CACHE_SHIFT - 5);
 		host->max_seg_size = PAGE_CACHE_SIZE;
-		
+		host->max_blk_size = 512;
+		host->max_blk_count = 256;
 		host->max_req_size = 512*256;	/*for CONFIG_CARD_BLOCK_BOUNCE fix me*/
 		printk("card max_req_size is %dK \n", host->max_req_size/1024);
 	}
@@ -422,39 +615,50 @@ void card_detect_change(struct card_host *host, unsigned long delay)
 } 
 EXPORT_SYMBOL(card_detect_change);
 
+static void amlogic_enable_sdio_irq(struct card_host *host, int enable)
+{
+	if (enable)
+		sdio_open_host_interrupt(SDIO_IF_INT);
+	else
+		sdio_close_host_interrupt(SDIO_IF_INT);
+
+	return;
+}
+
 static struct card_host_ops amlogic_card_ops = { 
 	.request = amlogic_card_request, 
+	.enable_sdio_irq = amlogic_enable_sdio_irq,
 };
 
 static int amlogic_card_probe(struct platform_device *pdev) 
 {
-	struct card_host *card;
-	struct amlogic_card_host *host;
+	struct card_host *host;
+	struct amlogic_card_host *aml_host;
 	int ret;	
 
-	card = card_alloc_host(sizeof(struct amlogic_card_host), &pdev->dev);
-	if (!card) {	
+	host = card_alloc_host(sizeof(struct amlogic_card_host), &pdev->dev);
+	if (!host) {	
 		printk("Failed to allocate card host\n");	
 		return -ENOMEM;	
 	}
 
-	card->ops = &amlogic_card_ops;
-	host = card_priv(card);	
-	host->card = card;	
-	host->bus_mode = 0;
-	//host->board = pdev->dev.platform_data;
+	host->ops = &amlogic_card_ops;
+	aml_host = card_priv(host);	
+	aml_host->host = host;	
+	aml_host->bus_mode = 0;
+	aml_host->board_data = pdev->dev.platform_data;
   
-	platform_set_drvdata(pdev, card);
+	platform_set_drvdata(pdev, host);
 	/*
 	* Add host to CARD layer
 	*/ 
-	ret = card_add_host(card);
+	ret = card_add_host(host);
 	/*
 	* monitor card insertion/removal if we can
 	*/ 
-	ret = card_reader_init(card);
+	ret = card_reader_init(host);
 	if (ret) {
-		card_free_host(card);
+		card_free_host(host);
 		return ret;	
 	}
 
@@ -481,26 +685,17 @@ static int amlogic_card_remove(struct platform_device *pdev)
 	return 0;
 }
 
-static void amlogic_card_request(struct card_host *card, struct card_blk_request *brq)
+static void amlogic_card_request(struct card_host *host, struct card_blk_request *brq)
 {
-	int ret;
-	unsigned int lba, byte_cnt;
-	unsigned char *data_buf;
+	struct memory_card *card = host->card_busy;
 
-	lba = brq->card_data.lba;
-	byte_cnt = brq->card_data.blk_size * brq->card_data.blk_nums;
-	data_buf = brq->crq.buf;
+	BUG_ON(card == NULL);
 
 	mutex_lock(&init_lock);
-	if(brq->crq.cmd == READ) {
-		ret = cr_mon.card_read_data[card->card_type](lba, byte_cnt, data_buf);
-				brq->card_data.error = ret;
-	}
-	else if(brq->crq.cmd == WRITE) {
-		ret = cr_mon.card_write_data[card->card_type](lba, byte_cnt, data_buf);
-				brq->card_data.error = ret;
-	}
+	card->card_request_process(card, brq);
 	mutex_unlock(&init_lock);
+
+	return;
 }
 
 static struct platform_driver amlogic_card_driver = { 

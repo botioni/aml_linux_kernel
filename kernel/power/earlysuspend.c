@@ -27,7 +27,7 @@ enum {
 	DEBUG_USER_STATE = 1U << 0,
 	DEBUG_SUSPEND = 1U << 2,
 };
-static int debug_mask = DEBUG_USER_STATE;
+static int debug_mask = DEBUG_USER_STATE | DEBUG_SUSPEND;
 module_param_named(debug_mask, debug_mask, int, S_IRUGO | S_IWUSR | S_IWGRP);
 
 static DEFINE_MUTEX(early_suspend_lock);
@@ -75,7 +75,8 @@ static void early_suspend(struct work_struct *work)
 	struct early_suspend *pos;
 	unsigned long irqflags;
 	int abort = 0;
-
+	if (debug_mask & DEBUG_SUSPEND)
+		pr_info("Start: early_suspend_work\n");
 	mutex_lock(&early_suspend_lock);
 	spin_lock_irqsave(&state_lock, irqflags);
 	if (state == SUSPEND_REQUESTED)
@@ -115,6 +116,9 @@ static void late_resume(struct work_struct *work)
 	struct early_suspend *pos;
 	unsigned long irqflags;
 	int abort = 0;
+
+	if (debug_mask & DEBUG_SUSPEND)
+		pr_info("Start: late_resume_work\n");
 
 	mutex_lock(&early_suspend_lock);
 	spin_lock_irqsave(&state_lock, irqflags);
@@ -161,9 +165,13 @@ void request_suspend_state(suspend_state_t new_state)
 			tm.tm_hour, tm.tm_min, tm.tm_sec, ts.tv_nsec);
 	}
 	if (!old_sleep && new_state != PM_SUSPEND_ON) {
+		if (debug_mask & DEBUG_USER_STATE)
+			pr_info("Queue work: early_suspend_work\n");
 		state |= SUSPEND_REQUESTED;
 		queue_work(suspend_work_queue, &early_suspend_work);
 	} else if (old_sleep && new_state == PM_SUSPEND_ON) {
+		if (debug_mask & DEBUG_USER_STATE)
+			pr_info("Queue work: late_resume_work\n");
 		state &= ~SUSPEND_REQUESTED;
 		wake_lock(&main_wake_lock);
 		queue_work(suspend_work_queue, &late_resume_work);

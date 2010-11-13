@@ -96,6 +96,7 @@ void request_done(dwc_otg_pcd_ep_t * _ep, dwc_otg_pcd_request_t * _req,
 		  int _status)
 {
 	unsigned stopped = _ep->stopped;
+	dwc_otg_core_if_t *core_if = GET_CORE_IF(_ep->pcd);
 
 	DWC_DEBUGPL(DBG_PCDV, "%s(%p)\n", __func__, _ep);
 	list_del_init(&_req->queue);
@@ -117,6 +118,10 @@ void request_done(dwc_otg_pcd_ep_t * _ep, dwc_otg_pcd_request_t * _req,
 	}
 
 	_ep->stopped = stopped;
+
+	///dbg by jshan
+	if(core_if->dma_enable)
+		dwc_otg_pcd_dma_unmap(&_ep->dwc_ep);
 }
 
 /**
@@ -468,6 +473,7 @@ static void dwc_otg_pcd_free_buffer(struct usb_ep *_ep, void *_buf,
 */
 void dwc_otg_pcd_dma_map(dwc_ep_t *ep, struct usb_request *_req)
 {
+
 	if(ep->is_in){
 			ep->dma_addr = dma_map_single(NULL, _req->buf, \
 				                                          _req->length, DMA_TO_DEVICE);
@@ -476,6 +482,7 @@ void dwc_otg_pcd_dma_map(dwc_ep_t *ep, struct usb_request *_req)
 			ep->dma_addr = dma_map_single(NULL, _req->buf, \
 				                                          _req->length, DMA_FROM_DEVICE);
 		}
+
 		ep->dma_mapping = 1;
 }
 
@@ -493,10 +500,13 @@ void dwc_otg_pcd_dma_unmap(dwc_ep_t *ep)
               else
 			dma_unmap_single(NULL, ep->dma_addr, \
 			                                ep->xfer_len, DMA_FROM_DEVICE);
+
 	      ep->dma_mapping = 0;
 
 	}
+	
 }
+
 /**
  * This function is used to submit an I/O Request to an EP.
  *
@@ -568,6 +578,7 @@ static int dwc_otg_pcd_ep_queue(struct usb_ep *_ep,
 		//_req->zero = 1;
 	}
 
+
 	/* Start the transfer */
 	if (list_empty(&ep->queue) && !ep->stopped) {
 		if(GET_CORE_IF(pcd)->dma_enable){
@@ -600,7 +611,7 @@ static int dwc_otg_pcd_ep_queue(struct usb_ep *_ep,
 				return -EL2HLT;
 			}
 
-			//ep->dwc_ep.dma_addr = (dma_addr_t)_req->buf;//_req->dma;
+			//ep->dwc_ep.dma_addr = _req->dma;
 			ep->dwc_ep.start_xfer_buff = _req->buf;
 			ep->dwc_ep.xfer_buff = _req->buf;
 			ep->dwc_ep.xfer_len = _req->length;
@@ -611,7 +622,7 @@ static int dwc_otg_pcd_ep_queue(struct usb_ep *_ep,
 						   &ep->dwc_ep);
 		} else {
 			/* Setup and start the Transfer */
-			//ep->dwc_ep.dma_addr = (dma_addr_t)_req->buf;//_req->dma; //
+			//ep->dwc_ep.dma_addr = _req->dma; //
 			ep->dwc_ep.start_xfer_buff = _req->buf;
 			ep->dwc_ep.xfer_buff = _req->buf;
 			ep->dwc_ep.xfer_len = _req->length;
@@ -984,7 +995,7 @@ static int32_t dwc_otg_pcd_suspend_cb(void *_p)
 		SPIN_LOCK(&pcd->lock);
 	}
 
-	return 1;
+	return 0;
 }
 
 /**
@@ -1011,7 +1022,7 @@ static int32_t dwc_otg_pcd_resume_cb(void *_p)
 			del_timer(&pcd->srp_timer);
 		}
 	}
-	return 1;
+	return 0;
 }
 
 /**

@@ -608,26 +608,43 @@ typedef enum SD_SPEED_CLASS {
 typedef struct SD_MMC_Card_Info {
 	
 	SD_Card_Type_t card_type;	
-	SDIO_Card_Type_t sdio_card_type;	
+	SDIO_Card_Type_t sdio_card_type[8];	
 	SD_Operation_Mode_t operation_mode;	
 	SD_Bus_Width_t bus_width;	
 	SD_SPEC_VERSION_t spec_version;	
 	MMC_SPEC_VERSION_t mmc_spec_version;	
 	SD_SPEED_CLASS_t speed_class;	
 	SD_REG_CID_t raw_cid;	
+	SDIO_Pad_Type_t  io_pad_type;	/* hw io pin pad */
 
 	unsigned short card_rca;
-	unsigned sdio_function_no;
+	unsigned char sdio_function_nums;
 	unsigned sdio_clk_unit;
-	unsigned long blk_len;
-	unsigned long blk_nums;	
-	unsigned long clks_nac;
+	unsigned blk_len;
+	unsigned sdio_blk_len[8];
+	unsigned sdio_cis_addr[8];
+	unsigned blk_nums;	
+	unsigned clks_nac;
 	int write_protected_flag;
 	int inited_flag;
 	int removed_flag;
 	int init_retry;	
 	int single_blk_failed;
 	int sdio_init_flag;	
+
+	unsigned sd_save_hw_io_flag;
+	unsigned sd_save_hw_io_config;
+	unsigned sd_save_hw_io_mult_config;
+	unsigned read_multi_block_failed;
+	unsigned write_multi_block_failed;
+	unsigned sdio_read_crc_close;
+	unsigned sd_mmc_power_delay ;
+	unsigned disable_high_speed;
+	unsigned disable_wide_bus;
+	unsigned max_blk_count;
+
+	unsigned char *sd_mmc_buf;
+	unsigned char *sd_mmc_phy_buf;
 
 	void (*sd_mmc_power) (int power_on);
 	int (*sd_mmc_get_ins) (void);	
@@ -675,7 +692,7 @@ typedef struct SD_MMC_Card_Info {
 #define SDIO_E4MI_EN_MASK			  0x20
 #define SDIO_RES_bit				  0x08
     
-#define SDIO_BLOCK_SIZE				  128
+#define SDIO_BLOCK_SIZE				  512
     
 //SD/MMC Card bus commands          CMD     type    argument                response
     
@@ -823,69 +840,69 @@ typedef struct SD_MMC_Card_Info {
 //Following functions are the API used for outside routine
     
 //SD Initialization...
-int sd_mmc_init(void);
+int sd_mmc_init(SD_MMC_Card_Info_t *sd_mmc_info);
 
-void sd_mmc_exit(void);
+void sd_mmc_exit(SD_MMC_Card_Info_t *sd_mmc_info);
 
-void sd_mmc_prepare_init(void);
+void sd_mmc_prepare_init(SD_MMC_Card_Info_t *sd_mmc_info);
 
 //get sd_mmc card information
 //void sd_mmc_get_info(blkdev_stat_t *info);
 //Check if any card is connected to adapter
-    SD_Card_Type_t sd_mmc_check_present(void);
+SD_Card_Type_t sd_mmc_check_present(SD_MMC_Card_Info_t *sd_mmc_info);
 
 //Check if any card is inserted according to pull up resistor
-int sd_mmc_check_insert(void);
+int sd_mmc_check_insert(SD_MMC_Card_Info_t *sd_mmc_info);
 
 //Read data from SD/MMC card
-int sd_mmc_read_data(unsigned long lba, unsigned long byte_cnt,
+int sd_mmc_read_data(SD_MMC_Card_Info_t *sd_mmc_info, unsigned long lba, unsigned long byte_cnt,
 		     unsigned char *data_buf);
 
 //Write data to SD/MMC card
-int sd_mmc_write_data(unsigned long lba, unsigned long byte_cnt,
+int sd_mmc_write_data(SD_MMC_Card_Info_t *sd_mmc_info, unsigned long lba, unsigned long byte_cnt,
 		      unsigned char *data_buf);
 
 
-int sdio_read_data_block_hw(int function_no, int buf_or_fifo,
+int sdio_read_data_block_hw(SD_MMC_Card_Info_t *sd_mmc_info, int function_no, int buf_or_fifo,
 			      unsigned long sdio_addr,
 			      unsigned long block_count,
 			      unsigned char *data_buf);
 
-int sdio_read_data_byte_hw(int function_no, int buf_or_fifo,
+int sdio_read_data_byte_hw(SD_MMC_Card_Info_t *sd_mmc_info, int function_no, int buf_or_fifo,
 			    unsigned long sdio_addr, unsigned long byte_count,
 			    unsigned char *data_buf);
 
-int sdio_write_data_block_hw(int function_no, int buf_or_fifo,
+int sdio_write_data_block_hw(SD_MMC_Card_Info_t *sd_mmc_info, int function_no, int buf_or_fifo,
 			      unsigned long sdio_addr,
 			      unsigned long block_count,
 			      unsigned char *data_buf);
 
-int sdio_write_data_byte_hw(int function_no, int buf_or_fifo,
+int sdio_write_data_byte_hw(SD_MMC_Card_Info_t *sd_mmc_info, int function_no, int buf_or_fifo,
 			     unsigned long sdio_addr, unsigned long byte_count,
 			     unsigned char *data_buf);
 
-int sdio_read_reg(int function_no, unsigned long sdio_register,
+int sdio_read_reg(SD_MMC_Card_Info_t *sd_mmc_info, int function_no, unsigned long sdio_register,
 		   unsigned char *reg_data);
 
-int sdio_write_reg(int function_no, unsigned long sdio_register,
+int sdio_write_reg(SD_MMC_Card_Info_t *sd_mmc_info, int function_no, unsigned int sdio_register,
 		    unsigned char *reg_data, unsigned read_after_write_flag);
 
-int sdio_read_data(int function_no, int buf_or_fifo, unsigned long sdio_addr,
+int sdio_read_data(SD_MMC_Card_Info_t *sd_mmc_info, int function_no, int buf_or_fifo, unsigned long sdio_addr,
 		    unsigned long byte_count, unsigned char *data_buf);
 
-int sdio_write_data(int function_no, int buf_or_fifo, unsigned long sdio_addr,
+int sdio_write_data(SD_MMC_Card_Info_t *sd_mmc_info, int function_no, int buf_or_fifo, unsigned long sdio_addr,
 		     unsigned long byte_count, unsigned char *data_buf);
 
-int sdio_close_target_interrupt(int function_no);
+int sdio_close_target_interrupt(SD_MMC_Card_Info_t *sd_mmc_info, int function_no);
 
-int sdio_open_target_interrupt(int function_no);
+int sdio_open_target_interrupt(SD_MMC_Card_Info_t *sd_mmc_info, int function_no);
 
 //SD Power on/off
-void sd_mmc_power_on(void);
+void sd_mmc_power_on(SD_MMC_Card_Info_t *sd_mmc_info);
 
-void sd_mmc_power_off(void);
+void sd_mmc_power_off(SD_MMC_Card_Info_t *sd_mmc_info);
 
-void sd_mmc_prepare_init(void);
+void sd_mmc_prepare_init(SD_MMC_Card_Info_t *sd_mmc_info);
 
 #endif				//_H_SD_PROTOCOL
     

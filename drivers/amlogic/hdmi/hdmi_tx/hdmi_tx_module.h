@@ -38,6 +38,7 @@ typedef struct rx_cap_
 
 
 #define EDID_MAX_BLOCK  20       //4
+#define HDMI_TMP_BUF_SIZE            1024
 typedef struct hdmi_tx_dev_s {
     struct cdev cdev;             /* The cdev structure */
 
@@ -50,7 +51,7 @@ typedef struct hdmi_tx_dev_s {
         int (*SetDispMode)(Hdmi_tx_video_para_t *param);
         int (*SetAudMode)(struct hdmi_tx_dev_s* hdmitx_device, Hdmi_tx_audio_para_t* audio_param);
         void (*SetupIRQ)(struct hdmi_tx_dev_s* hdmitx_device);
-        void (*DebugFun)(const char * buf);
+        void (*DebugFun)(struct hdmi_tx_dev_s* hdmitx_device, const char * buf);
         void (*UnInit)(struct hdmi_tx_dev_s* hdmitx_device);
         void (*Cntl)(struct hdmi_tx_dev_s* hdmitx_device, int cmd, unsigned arg);
     }HWOp;
@@ -59,19 +60,22 @@ typedef struct hdmi_tx_dev_s {
     /*EDID*/
     unsigned cur_edid_block;
     unsigned cur_phy_block_ptr;
-    unsigned char EDID_buf[EDID_MAX_BLOCK*128];    
+    unsigned char EDID_buf[EDID_MAX_BLOCK*128]; 
     rx_cap_t RXCap;
+    int vic_count;
     /*status*/
 #define DISP_SWITCH_FORCE       0
 #define DISP_SWITCH_EDID        1    
     unsigned char disp_switch_config; /* 0, force; 1,edid */
     unsigned char cur_VIC;
+    unsigned char unplug_powerdown;
     /**/
     unsigned char hpd_event; /* 1, plugin; 2, plugout */
     HDMI_TX_INFO_t hdmi_info;
+    unsigned char tmp_buf[HDMI_TMP_BUF_SIZE];
 }hdmitx_dev_t;
 
-#define HDMITX_VER "2010Oct27a"
+#define HDMITX_VER "2010Nov10a"
 /************************************
 *    hdmitx protocol level interface
 *************************************/
@@ -90,6 +94,10 @@ extern char* hdmitx_edid_get_native_VIC(hdmitx_dev_t* hdmitx_device);
 extern int hdmitx_set_display(hdmitx_dev_t* hdmitx_device, HDMI_Video_Codes_t VideoCode);
 
 extern int hdmitx_set_audio(hdmitx_dev_t* hdmitx_device, Hdmi_tx_audio_para_t* audio_param);
+
+extern int hdmi_print(int printk_flag, const char *fmt, ...);
+
+extern  int hdmi_print_buf(char* buf, int len);
 
 /************************************
 *    hdmitx hardware level interface

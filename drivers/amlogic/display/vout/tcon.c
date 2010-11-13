@@ -29,6 +29,7 @@
 #include <linux/vout/vinfo.h>
 #include <linux/vout/vout_notify.h>
 #include <linux/kernel.h>
+#include <linux/interrupt.h>
 
 #include <mach/am_regs.h>
 
@@ -141,10 +142,10 @@ static inline void _init_tvenc(tcon_conf_t *pConf)
     WRITE_MPEG_REG(ENCP_VIDEO_FILT_CTRL,    0x1000);
     WRITE_MPEG_REG(VENC_DVI_SETTING,        0x11);
   
-    WRITE_MPEG_REG(HHI_AUD_PLL_CNTL, pConf->pll_ctrl);
+    WRITE_MPEG_REG(HHI_VID_PLL_CNTL, pConf->pll_ctrl);
     WRITE_MPEG_REG(HHI_VID_CLK_CNTL, pConf->clk_ctrl);
     WRITE_MPEG_REG(HHI_VID_CLK_DIV, (pConf->clk_ctrl)&0xf);
-    WRITE_MPEG_REG(HHI_MPEG_CLK_CNTL, READ_MPEG_REG(HHI_MPEG_CLK_CNTL)|(1<<11));  //[11]=1:aud clk mux to cph 
+    WRITE_MPEG_REG(HHI_MPEG_CLK_CNTL, READ_MPEG_REG(HHI_MPEG_CLK_CNTL)|(0<<11));  //[11]=1:aud clk mux to cph 
 
     WRITE_MPEG_REG(ENCP_VIDEO_MODE,         0x0040);
     WRITE_MPEG_REG(ENCP_VIDEO_MODE_ADV,     0x418);
@@ -281,11 +282,16 @@ static int lcd_module_disable(vmode_t cur_vmod)
 static int lcd_suspend(void)
 {
 	BUG_ON(pDev==NULL);
+	printk("lcd_suspend (%d)\n", pDev->conf.power_off);
+	
 	pDev->conf.power_off?pDev->conf.power_off():0;
+	disable_irq(INT_VIU_VSYNC);
 	return 0;
 }
 static int lcd_resume(void)
 {
+	printk("lcd_resume\n");
+	enable_irq(INT_VIU_VSYNC);
 	_lcd_module_enable();
 	return 0;
 }

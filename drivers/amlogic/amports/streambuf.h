@@ -74,6 +74,7 @@ typedef struct stream_port_s {
 extern ulong fetchbuf, *fetchbuf_remap;
 
 extern u32 stbuf_level(struct stream_buf_s *buf);
+extern u32 stbuf_rp(struct stream_buf_s *buf);
 extern u32 stbuf_space(struct stream_buf_s *buf);
 extern u32 stbuf_size(struct stream_buf_s *buf);
 

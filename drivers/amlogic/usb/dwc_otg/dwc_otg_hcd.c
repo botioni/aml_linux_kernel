@@ -745,8 +745,10 @@ int dwc_otg_hcd_start(struct usb_hcd *_hcd)
 	/* Initialize the bus state.  If the core is in Device Mode
 	 * HALT the USB bus and return. */
 	if (dwc_otg_is_device_mode(core_if)) {
+#if 0
 		_hcd->state = HC_STATE_HALT;
 		return 0;
+#endif
 	}
 	_hcd->state = HC_STATE_RUNNING;
 
@@ -769,8 +771,10 @@ int dwc_otg_hcd_start(struct usb_hcd *_hcd)
 		}
 */
 	}
+	if (dwc_otg_is_host_mode(core_if)) {
+		hcd_reinit(dwc_otg_hcd);
+	}
 
-	hcd_reinit(dwc_otg_hcd);
 
 #if 0
 //#ifdef NO_HOST_SOF

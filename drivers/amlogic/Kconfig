@@ -11,8 +11,9 @@ source "drivers/amlogic/uart/Kconfig"
 source "drivers/amlogic/rtc/Kconfig"
 source "drivers/amlogic/i2c/Kconfig"
 source "drivers/amlogic/input/Kconfig"
+source "drivers/amlogic/power/Kconfig"
+source "drivers/amlogic/extern_io/Kconfig"
 
-#
 #	Block devices
 #
 comment "Block devices"
@@ -46,6 +47,6 @@ source "drivers/amlogic/jpeglogo/Kconfig"
 source "drivers/amlogic/mali/Kconfig"
 
 source "drivers/amlogic/dvb/Kconfig"
+source "drivers/amlogic/wifi/Kconfig"
 
 endmenu	
-

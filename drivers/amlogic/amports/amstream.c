@@ -1050,6 +1050,7 @@ static int amstream_ioctl(struct inode *inode, struct file *file,
                 p->status.size=buf->buf_size;
                 p->status.data_len=stbuf_level(buf);
                 p->status.free_len=stbuf_space(buf);
+                p->status.read_pointer=stbuf_rp(buf);
             } else
                 r = -EINVAL;
             break;
@@ -1065,6 +1066,7 @@ static int amstream_ioctl(struct inode *inode, struct file *file,
                 p->status.size=buf->buf_size;
                 p->status.data_len=stbuf_level(buf);
                 p->status.free_len=stbuf_space(buf);
+                p->status.read_pointer=stbuf_rp(buf);
             } else
                 r = -EINVAL;
             break;
@@ -1169,6 +1171,7 @@ static int amstream_ioctl(struct inode *inode, struct file *file,
 
 			if ((this->type & PORT_TYPE_VIDEO) || (this->type & PORT_TYPE_AUDIO))
 		   	{
+		   	    int i;
 		 		copy_from_user(&audio_dec_info, (void __user *)arg, sizeof(audio_dec_info));
 		   	}
 		   	else

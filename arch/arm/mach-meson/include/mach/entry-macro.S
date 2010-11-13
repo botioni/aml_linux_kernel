@@ -22,24 +22,36 @@
 	ldr	\base, = CBUS_REG_ADDR(A9_0_IRQ_IN0_INTR_STAT)
 
 	ldr	\irqstat, [\base, #0]
+	ldr	\tmp, [\base, #12]
+	mvn	\tmp, \tmp
+	and	\irqstat, \tmp, \irqstat
 	mov	\irqnr, #0
 	teq	\irqstat, #0
 	bne	1004f
 
 1001:
 	ldr	\irqstat, [\base, #16]
+	ldr	\tmp, [\base, #28]
+	mvn	\tmp, \tmp
+	and	\irqstat, \tmp, \irqstat
 	mov	\irqnr, #32
 	teq	\irqstat, #0
 	bne	1004f
 
 1002:
 	ldr	\irqstat, [\base, #32]
+	ldr	\tmp, [\base, #44]
+	mvn	\tmp, \tmp
+	and	\irqstat, \tmp, \irqstat
 	mov	\irqnr, #64
 	teq	\irqstat, #0
 	bne	1004f
 
 1003:
 	ldr	\irqstat, [\base, #48]
+	ldr	\tmp, [\base, #60]
+	mvn	\tmp, \tmp
+	and	\irqstat, \tmp, \irqstat
 	mov	\irqnr, #96
 	teq	\irqstat, #0
 	beq	1005f

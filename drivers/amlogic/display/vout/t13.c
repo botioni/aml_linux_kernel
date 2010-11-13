@@ -31,6 +31,7 @@
 #include <mach/gpio.h>
 #include <mach/am_regs.h>
 #include <mach/pinmux.h>
+#include <mach/power_gate.h>
 
 /*
 For Ramos 6236M, Innolux AT070TN93 V.2 */ 
@@ -38,7 +39,7 @@ For Ramos 6236M, Innolux AT070TN93 V.2 */
 #define LCD_HEIGHT      480
 #define MAX_WIDTH       1056
 #define MAX_HEIGHT      525
-#define VIDEO_ON_LINE   17
+#define VIDEO_ON_LINE   22
 
 static void t13_power_on(void);
 static void t13_power_off(void);
@@ -66,8 +67,8 @@ static tcon_conf_t tcon_config =
     .sth2_he_addr = 0,
     .sth2_vs_addr = 0,
     .sth2_ve_addr = 0,
-    .oeh_hs_addr = 60,
-    .oeh_he_addr = 60+LCD_WIDTH-1,
+    .oeh_hs_addr = 67,
+    .oeh_he_addr = 67+LCD_WIDTH-1,
     .oeh_vs_addr = VIDEO_ON_LINE,
     .oeh_ve_addr = VIDEO_ON_LINE+LCD_HEIGHT-1,
     .vcom_hswitch_addr = 0,
@@ -143,10 +144,19 @@ static void t13_setup_gama_table(tcon_conf_t *pConf)
 
 void power_on_backlight(void)
 {
+    #ifdef CONFIG_MACH_MESON_8726M
+    /* PIN31, GPIOA_7, Pull high, BL_PWM Enable*/
+    //set_gpio_val(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), 1);
+    //set_gpio_mode(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), GPIO_OUTPUT_MODE);
+    SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<31)); 
+    //SET_CBUS_REG_MASK(PWM_MISC_REG_AB, (1 << 0));         
+    //WRITE_CBUS_REG_BITS(PWM_PWM_A,40000,0,16);  //low
+    //WRITE_CBUS_REG_BITS(PWM_PWM_A,20000,16,16);  //hi 
+    #else
     /* PIN31, GPIOA_8, Pull high, BL_PWM Enable*/
     set_gpio_val(GPIOA_bank_bit(8), GPIOA_bit_bit0_14(8), 1);
     set_gpio_mode(GPIOA_bank_bit(8), GPIOA_bit_bit0_14(8), GPIO_OUTPUT_MODE);
-   
+    #endif
     /* PIN28, GPIOA_6, Pull high, For En_5V */
     set_gpio_val(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), 1);
     set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);
@@ -154,48 +164,92 @@ void power_on_backlight(void)
 
 void power_off_backlight(void)
 {
+    #ifdef CONFIG_MACH_MESON_8726M
+    /* PIN31, GPIOA_7, Pull high, BL_PWM Enable*/
+    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<31)); 
+    set_gpio_val(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), 0);
+    set_gpio_mode(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), GPIO_OUTPUT_MODE);
+    #else
     /* PIN31, GPIOA_8, Pull low, BL_PWM Disable*/ 
     set_gpio_val(GPIOA_bank_bit(8), GPIOA_bit_bit0_14(8), 0);
     set_gpio_mode(GPIOA_bank_bit(8), GPIOA_bit_bit0_14(8), GPIO_OUTPUT_MODE);
+    #endif
 
     /* PIN28, GPIOA_6, Pull low, For En_5v */
-    set_gpio_val(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), 0);
-    set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);
+    //set_gpio_val(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), 0);
+    //set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);
 }
 
 static void power_on_lcd(void)
 {
     /* PIN165, GPIOC_4, Pull low, For LCD_3.3V */
+    #ifdef CONFIG_MACH_MESON_8726M
+    #else
     set_gpio_val(GPIOC_bank_bit0_26(4), GPIOC_bit_bit0_26(4), 0);
     set_gpio_mode(GPIOC_bank_bit0_26(4), GPIOC_bit_bit0_26(4), GPIO_OUTPUT_MODE);
-
+    #endif
+    #ifdef CONFIG_MACH_MESON_8726M
+    /* PIN172, GPIOC_3, Pull high, For AVDD */
+    set_gpio_val(GPIOC_bank_bit0_26(3), GPIOC_bit_bit0_26(3), 1);
+    set_gpio_mode(GPIOC_bank_bit0_26(3), GPIOC_bit_bit0_26(3), GPIO_OUTPUT_MODE);
+    #else
     /* PIN172, GPIOC_11, Pull high, For AVDD */
     set_gpio_val(GPIOC_bank_bit0_26(11), GPIOC_bit_bit0_26(11), 1);
     set_gpio_mode(GPIOC_bank_bit0_26(11), GPIOC_bit_bit0_26(11), GPIO_OUTPUT_MODE);
+    #endif
 }
 
 static void power_off_lcd(void)
 {
+    #ifdef CONFIG_MACH_MESON_8726M
+    /* PIN172, GPIOC_3, Pull high, For AVDD */
+    set_gpio_val(GPIOC_bank_bit0_26(3), GPIOC_bit_bit0_26(3), 0);
+    set_gpio_mode(GPIOC_bank_bit0_26(3), GPIOC_bit_bit0_26(3), GPIO_OUTPUT_MODE);
+    #else
     /* PIN172, GPIOC_11, Pull low, For AVDD */
     set_gpio_val(GPIOC_bank_bit0_26(11), GPIOC_bit_bit0_26(11), 0);
     set_gpio_mode(GPIOC_bank_bit0_26(11), GPIOC_bit_bit0_26(11), GPIO_OUTPUT_MODE);
+    #endif
     /* PIN165, GPIOC_4, Pull high, For LCD_3.3V */
+    #ifdef CONFIG_MACH_MESON_8726M
+    #else
     set_gpio_val(GPIOC_bank_bit0_26(4), GPIOC_bit_bit0_26(4), 1);
-    set_gpio_mode(GPIOC_bank_bit0_26(4), GPIOC_bit_bit0_26(4), GPIO_OUTPUT_MODE);
+    set_gpio_mode(GPIOC_bank_bit0_26(4), GPIOC_bit_bit0_26(4), GPIO_OUTPUT_MODE); 
+    #endif
 }
 
 static void set_tcon_pinmux(void)
 {
     /* TCON control pins pinmux */
+    
+    /* GPIOD_12 --> U/D */
+    #ifdef CONFIG_MACH_MESON_8726M
+    set_gpio_val(GPIOC_bank_bit0_26(12), GPIOC_bit_bit0_26(12), 0);
+    set_gpio_mode(GPIOC_bank_bit0_26(12), GPIOC_bit_bit0_26(12), GPIO_OUTPUT_MODE);
+    #else
+    set_gpio_val(GPIOD_bank_bit2_24(12), GPIOD_bit_bit2_24(12), 0);
+    set_gpio_mode(GPIOD_bank_bit2_24(12), GPIOD_bit_bit2_24(12), GPIO_OUTPUT_MODE);
+    #endif
+    #ifdef CONFIG_MACH_MESON_8726M
+    /* GPIOA_5 --> LCD_Clk, GPIOA_2 --> TCON_OEH, */
+    set_mio_mux(0, 1<<11);
+    set_mio_mux(0, 1<<14);
+
+    /* RGB data pins */
+    set_mio_mux(4,(0x3f<<0));   //For 8bits
+//    set_mio_mux(4,(0x1<<0)|(1<<2)|(1<<4));   //For 6bits
+    #else
     /* GPIOA_7 --> LCD_Clk, GPIOA_2 --> TCON_OEH, */
     set_mio_mux(0, 1<<9);
     set_mio_mux(0, 1<<14);
 
     /* RGB data pins */
     set_mio_mux(4,(1<<0)|(1<<2)|(1<<4));
+    #endif
 }
 static void t13_power_on(void)
 {
+    video_dac_disable();
 	set_tcon_pinmux();
 	power_on_lcd();
 	power_on_backlight();

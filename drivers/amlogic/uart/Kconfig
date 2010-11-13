@@ -1,13 +1,44 @@
 
-menu "Amlogic UART Support"
+choice
+        prompt "Amlogic UART Support"
+        default AM_UART_WITH_S_CORE
 
-config AM_UART
-        bool "Amlogic Uart support"
-        default y
+config AM_UART_WITH_S_CORE
+        bool "with serial core"
         depends on ARCH_MESON
         select SERIAL_CORE
         select SERIAL_CORE_CONSOLE
         help
            hardware uart
 
-endmenu
+config AM_UART_WITHOUT_S_CORE
+        bool "without serial core"
+        depends on ARCH_MESON
+        select SERIAL_CORE
+        select SERIAL_CORE_CONSOLE
+        help
+           hardware uart
+
+endchoice
+
+choice
+        prompt "---SET UART0 PORT"
+        default AM_UART0_SET_PORT_A
+
+config AM_UART0_SET_PORT_A
+        bool "uart port A"
+        depends on ARCH_MESON && AM_UART_WITH_S_CORE
+        select SERIAL_CORE
+        select SERIAL_CORE_CONSOLE
+        help
+           hardware uart
+
+config AM_UART0_SET_PORT_B
+        bool "uart port B"
+        depends on ARCH_MESON && AM_UART_WITH_S_CORE
+        select SERIAL_CORE
+        select SERIAL_CORE_CONSOLE
+        help
+           hardware uart
+
+endchoice

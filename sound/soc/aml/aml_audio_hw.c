@@ -344,7 +344,11 @@ int audio_dac_set(unsigned freq)
 							(2 <<  2) | // i2s divisor: 0=no div; 1=div by 2; 2=div by 4; 3=div by 8.
 							(1 <<  0)); // enable I2S clock
     //delay_us(1500000); // The IP's behavioral model needs 1.5s to power-up.
-    return 0;
+ 
+  WRITE_MPEG_REG(AIU_I2S_DAC_CFG, 	0x000f);	// Payload 24-bit, Msb first, alrclk = aoclk/64
+	WRITE_MPEG_REG(AIU_I2S_SOURCE_DESC, 0x0001);	// four 2-channel
+	
+  return 0;
 }
 
 void audio_set_clk(unsigned freq, unsigned fs_config)

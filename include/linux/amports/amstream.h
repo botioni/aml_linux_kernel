@@ -124,6 +124,8 @@ struct buf_status {
         int size;
         int data_len;
         int free_len;
+        unsigned int read_pointer;
+        unsigned int write_pointer;
 };
 
 

@@ -6,10 +6,7 @@
 #include <mach/irqs.h>
 #include <mach/card_io.h>
     
-
 int i_GPIO_timer;
-unsigned SD_WORK_MODE = CARD_HW_MODE;
-unsigned MS_WORK_MODE = CARD_HW_MODE;
 int ATA_MASTER_DISABLED = 0;
 int ATA_SLAVE_ENABLED = 0;
 unsigned ATA_EIGHT_BIT_ENABLED = 1;
@@ -27,6 +24,74 @@ struct completion sdio_int_complete;
 /**/ void (*cf_reset_register) (int reset_high) = NULL;
 /**/ int (*cf_ins_register) (void) = NULL;
 /**/ void (*cf_io_release_register) (void) = NULL;
+
+void sd_sdio_enable(SDIO_Pad_Type_t io_pad_type)
+{
+	switch (io_pad_type) {
+
+		case SDIO_GPIOA_0_5:
+			SET_CBUS_REG_MASK(CARD_PIN_MUX_1, 0x3F);
+			SET_CBUS_REG_MASK(SDIO_MULT_CONFIG, (1));
+			break;
+
+		case SDIO_GPIOA_9_14:
+			CLEAR_CBUS_REG_MASK(CARD_PIN_MUX_2, ((0xF<<16) | (1<<8) | (1<<12)));
+			SET_CBUS_REG_MASK(CARD_PIN_MUX_0, (0x3F<<23));
+			SET_CBUS_REG_MASK(SDIO_MULT_CONFIG, (0));
+			break;
+
+		case SDIO_GPIOB_2_7:
+			//CLEAR_CBUS_REG_MASK(CARD_PIN_MUX_0, (0x3F<<23));
+			//CLEAR_CBUS_REG_MASK(CARD_PIN_MUX_5, ((1<<5)));
+			SET_CBUS_REG_MASK(CARD_PIN_MUX_2, ((0xF<<16) | (1<<8) | (1<<12)));
+			SET_CBUS_REG_MASK(SDIO_MULT_CONFIG, (2));
+			break;
+
+		case SDIO_GPIOE_6_11:
+			SET_CBUS_REG_MASK(CARD_PIN_MUX_7, ((0xF<<26) | (1<<24)));
+			SET_CBUS_REG_MASK(SDIO_MULT_CONFIG, (1));
+			break;
+
+		default :
+			printk("invalid hw io pad!!!\n");
+			break;
+	}
+	
+	return;
+}
+
+void sd_gpio_enable(SDIO_Pad_Type_t io_pad_type)
+{
+	switch (io_pad_type) {
+
+		case SDIO_GPIOA_0_5:
+			CLEAR_CBUS_REG_MASK(CARD_PIN_MUX_1, 0x3F);
+			CLEAR_CBUS_REG_MASK(SDIO_MULT_CONFIG, (1));
+			break;
+
+		case SDIO_GPIOA_9_14:
+			CLEAR_CBUS_REG_MASK(CARD_PIN_MUX_0, (0x3F<<23));
+			CLEAR_CBUS_REG_MASK(SDIO_MULT_CONFIG, (0));
+			SET_CBUS_REG_MASK(CARD_PIN_MUX_2, ((0xF<<16) | (1<<8) | (1<<12)));
+			break;
+
+		case SDIO_GPIOB_2_7:
+			CLEAR_CBUS_REG_MASK(CARD_PIN_MUX_2, ((0xF<<16) | (1<<8) | (1<<12)));
+			CLEAR_CBUS_REG_MASK(SDIO_MULT_CONFIG, (2));
+			break;
+
+		case SDIO_GPIOE_6_11:
+			CLEAR_CBUS_REG_MASK(CARD_PIN_MUX_7, ((0xF<<26) | (1<<24)));
+			CLEAR_CBUS_REG_MASK(SDIO_MULT_CONFIG, (1));
+			break;
+
+		default :
+			printk("invalid hw io pad!!!\n");
+			break;
+	}
+	
+	return;
+}
 
 void sdio_open_host_interrupt(unsigned int_resource) 
 {	
@@ -180,7 +245,7 @@ void sdio_cmd_int_handle(void)
 
 void sdio_timeout_int_handle(void) 
 {
-	if ((++sdio_timeout_int_num >= sdio_timeout_int_times) || cr_mon.card_status[CARD_SECURE_DIGITAL] == CARD_REMOVED) {
+	if ((++sdio_timeout_int_num >= sdio_timeout_int_times)) {
 		sdio_close_host_interrupt(SDIO_TIMEOUT_INT);
 		sdio_timeout_int_num = 0;
 		sdio_timeout_int_times = 0;

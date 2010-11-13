@@ -132,21 +132,19 @@ int sys_clkpll_setting(unsigned crystal_freq,unsigned  out_freq)
 	m=out_M/(middle_freq);
 	if(n>(1<<5)-1)
 	{
-		printk(KERN_ERR "sys_clk_setting  error, n is too bigger n=%d,crys_M=%ldM,out=%ldM\n",
-		n,crys_M,out_M);
+//		printk(KERN_ERR "sys_clk_setting  error, n is too bigger n=%d,crys_M=%ldM,out=%ldM\n",n,crys_M,out_M);
 		return -1;
 	}
 	if(m>(1<<9)-1)
 	{
-		printk(KERN_ERR "sys_clk_setting  error, m is too bigger m=%d,crys_M=%ldM,out=%ldM\n",
-		m,crys_M,out_M);
+//		printk(KERN_ERR "sys_clk_setting  error, m is too bigger m=%d,crys_M=%ldM,out=%ldM\n",m,crys_M,out_M);
 		return -2;
 	}
-	if(out_freq>1300*CLK_1M ||out_freq<700*CLK_1M)
+	if(out_freq>1600*CLK_1M ||out_freq<400*CLK_1M)
 	{
 		printk(KERN_WARNING"sys_clk_setting  warning,VCO may no support out_freq,crys_M=%ldM,out=%ldM\n",crys_M,out_M);
 	}
-	printk(KERN_INFO "a9_clk_setting crystal_req=%ld,out_freq=%ld,n=%d,m=%d\n",crys_M,out_M,n,m);
+//	printk(KERN_INFO "a9_clk_setting crystal_req=%ld,out_freq=%ld,n=%d,m=%d\n",crys_M,out_M,n,m);
 	local_irq_save(flags);
 	WRITE_MPEG_REG(HHI_SYS_PLL_CNTL, m<<0 | n<<9); // system PLL
 	WRITE_MPEG_REG(HHI_A9_CLK_CNTL, // A9 clk set to system clock/2

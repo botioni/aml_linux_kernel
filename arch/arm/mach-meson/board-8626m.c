@@ -34,6 +34,7 @@
 #include <asm/mach/map.h>
 #include <mach/am_eth_pinmux.h>
 #include <mach/nand.h>
+#include <mach/card_io.h>
 #include <linux/i2c.h>
 #include <linux/i2c-aml.h>
 #ifdef CONFIG_CACHE_L2X0
@@ -324,12 +325,41 @@ static struct resource amlogic_card_resource[]  = {
 	}
 };
 
+static struct aml_card_info  amlogic_card_info[] = {
+	[0] = {
+		.name = "sd_card",
+		.work_mode = CARD_HW_MODE,
+		.io_pad_type = SDIO_GPIOA_9_14,
+		.card_ins_en_reg = EGPIO_GPIOA_ENABLE,
+		.card_ins_en_mask = PREG_IO_11_MASK,
+		.card_ins_input_reg = EGPIO_GPIOA_INPUT,
+		.card_ins_input_mask = PREG_IO_11_MASK,
+		.card_power_en_reg = EGPIO_GPIOA_ENABLE,
+		.card_power_en_mask = PREG_IO_9_MASK,
+		.card_power_output_reg = EGPIO_GPIOA_OUTPUT,
+		.card_power_output_mask = PREG_IO_9_MASK,
+		.card_power_en_lev = 0,
+		.card_wp_en_reg = EGPIO_GPIOA_ENABLE,
+		.card_wp_en_mask = PREG_IO_12_MASK,
+		.card_wp_input_reg = EGPIO_GPIOA_INPUT,
+		.card_wp_input_mask = PREG_IO_12_MASK,
+		.card_extern_init = 0,
+	},
+};
+
+static struct aml_card_platform amlogic_card_platform = {
+	.card_num = ARRAY_SIZE(amlogic_card_info),
+	.card_info = amlogic_card_info,
+};
 
 static struct platform_device amlogic_card_device = { 
 	.name = "AMLOGIC_CARD", 
 	.id    = -1,
 	.num_resources = ARRAY_SIZE(amlogic_card_resource),
 	.resource = amlogic_card_resource,
+	.dev = {
+		.platform_data = &amlogic_card_platform,
+	},
 };
 #endif
 
@@ -509,7 +539,7 @@ static struct platform_device android_pmem_device =
 #endif
 
 #if defined(CONFIG_AML_RTC)
-	struct platform_device aml_rtc_device = {
+static	struct platform_device aml_rtc_device = {
       		.name            = "aml_rtc",
       		.id               = -1,
 	};

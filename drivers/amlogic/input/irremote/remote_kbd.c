@@ -82,7 +82,14 @@ static  pin_config_t  pin_config[]={
 #if  defined(CONFIG_MACH_MESON_6236M)	
 		{
 			.platform_name="6236",
-			.pin_mux=1,
+			.pin_mux=5,
+			.bit=(1<<31),
+		},
+#endif
+#if  defined(CONFIG_MACH_MESON_8726M)	
+		{
+			.platform_name="8726",
+			.pin_mux=5,
 			.bit=(1<<31),
 		},
 #endif
@@ -178,7 +185,7 @@ void kp_send_key(struct input_dev *dev, unsigned int scancode, unsigned int type
         }
 }
 
-void kp_timer_sr(unsigned long data)
+static void kp_timer_sr(unsigned long data)
 {
     struct kp *kp_data=(struct kp *)data;
     kp_send_key(kp_data->input, (kp_data->cur_keycode>>16)&0xff ,0);
@@ -332,7 +339,10 @@ static int    hardware_init(struct platform_device *pdev)
 			break;
 		}
 	}
-	if(NULL==config)  return -1;
+	if(NULL==config){
+        printk("can not get config for remote keybrd.\n");
+        return -1;
+    }
 	set_mio_mux(config->pin_mux,config->bit); 	
     //step 1 :set reg IR_DEC_CONTROL
     	control_value = 3<<28|(0xFA0 << 12) |0x13;
@@ -681,7 +691,7 @@ static int __init kp_probe(struct platform_device *pdev)
     printk("physical address:0x%x\n",(unsigned int )virt_to_phys(remote_log_buf));
     return 0;
 err3:
-     free_irq(NEC_REMOTE_IRQ_NO,kp_interrupt);
+//     free_irq(NEC_REMOTE_IRQ_NO,kp_interrupt);
     input_unregister_device(kp->input);
     input_dev = NULL;
 err2:

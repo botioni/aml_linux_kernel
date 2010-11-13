@@ -726,6 +726,8 @@ static irqreturn_t dwc_otg_common_irq(int _irq, void *_dev
 static void dwc_otg_driver_remove(struct lm_device *_lmdev)
 {
 	dwc_otg_device_t *otg_dev = lm_get_drvdata(_lmdev);
+	int port_type = _lmdev->port_type;
+	
 	DWC_DEBUGPL(DBG_ANY, "%s(%p)\n", __func__, _lmdev);
 
 	if (otg_dev == NULL) {
@@ -739,17 +741,28 @@ static void dwc_otg_driver_remove(struct lm_device *_lmdev)
 	if (otg_dev->common_irq_installed) {
 		free_irq(_lmdev->irq, otg_dev);
 	}
-#ifndef DWC_DEVICE_ONLY
+
+
+	if(port_type == USB_PORT_TYPE_HOST){
+		if (otg_dev->hcd != NULL) {
+			dwc_otg_hcd_remove( _lmdev );
+		}
+	}
+	else if(port_type == USB_PORT_TYPE_SLAVE){
+		if (otg_dev->pcd != NULL) {
+			dwc_otg_pcd_remove( _lmdev );
+		}
+	}
+	else if(port_type == USB_PORT_TYPE_OTG){
 	if (otg_dev->hcd != NULL) {
 		dwc_otg_hcd_remove(_lmdev);
 	}
-#endif
-
-#ifndef DWC_HOST_ONLY
 	if (otg_dev->pcd != NULL) {
 		dwc_otg_pcd_remove(_lmdev);
 	}
-#endif
+	}
+
+
 	if (otg_dev->core_if != NULL) {
 		dwc_otg_cil_remove(otg_dev->core_if);
 	}
@@ -849,6 +862,7 @@ static int __init dwc_otg_driver_probe(struct lm_device *_lmdev)
 	switch (port_type) {
 	case USB_PORT_TYPE_HOST:
 	case USB_PORT_TYPE_SLAVE:
+	case USB_PORT_TYPE_OTG:
 		pcore_para = &dwc_otg_module_params;
 		break;
 	default:
@@ -857,9 +871,15 @@ static int __init dwc_otg_driver_probe(struct lm_device *_lmdev)
 		goto fail;
 	}
 
+	/*
+	 *	config speed
+	 */
 	if (port_speed == USB_PORT_SPEED_FULL) {
+		dev_dbg(&_lmdev->dev,"Force core work at Full speed.\n");
 		pcore_para->speed = DWC_SPEED_PARAM_FULL;
-		dev_err(&_lmdev->dev, "force work in full speed mode\n");
+	}else{
+		dev_dbg(&_lmdev->dev,"core work at High speed.\n");
+		pcore_para->speed = DWC_SPEED_PARAM_HIGH;
 	}
 
 	dev_dbg(&_lmdev->dev,"DMA config: %s\n",dma_config_name[dma_config]);
@@ -906,6 +926,7 @@ static int __init dwc_otg_driver_probe(struct lm_device *_lmdev)
 		retval = -ENOMEM;
 		goto fail;
 	}
+
 	/*
 	 * Validate parameter values.
 	 */
@@ -990,26 +1011,29 @@ static int __init dwc_otg_driver_probe(struct lm_device *_lmdev)
 			goto fail;
 		}
 	}
-#if 0
-	else if (port_type == USB_PORT_TYPE_SW_OTG) {
-		DWC_WARN("Config as OTG Mode\n");
 
-		dwc_otg_device_soft_disconnect(dwc_otg_device->core_if);
-		retval = dwc_otg_pcd_init(pmdev);
+	else if (port_type == USB_PORT_TYPE_OTG) {
+		dev_dbg(&_lmdev->dev,"Working on port type = OTG\n");
+		dev_dbg(&_lmdev->dev,"Current port type: %s\n",
+			dwc_otg_mode(dwc_otg_device->core_if)?"HOST":"SLAVE");
+		
+		retval = dwc_otg_hcd_init(_lmdev);
+		if (retval != 0) {
+			DWC_ERROR("dwc_otg_hcd_init failed(in otg mode)\n");
+			dwc_otg_device->hcd = NULL;
+			goto fail;
+		}
+
+		//dwc_otg_device_soft_disconnect(dwc_otg_device->core_if);
+		retval = dwc_otg_pcd_init(_lmdev);
 		if (retval != 0) {
 			DWC_ERROR("dwc_otg_pcd_init failed(in otg mode)\n");
 			dwc_otg_device->pcd = NULL;
 			goto fail;
 		}
 
-		retval = dwc_otg_hcd_init(pmdev);
-		if (retval != 0) {
-			DWC_ERROR("dwc_otg_hcd_init failed(in otg mode)\n");
-			dwc_otg_device->hcd = NULL;
-			goto fail;
-		}
 	}
-#endif
+
 	else {
 		DWC_ERROR("can't config as right mode\n");
 		goto fail;
@@ -1074,7 +1098,7 @@ static int __init dwc_otg_driver_init(void)
 	return retval;
 }
 
-module_init(dwc_otg_driver_init);
+subsys_initcall(dwc_otg_driver_init);
 
 /** 
  * This function is called when the driver is removed from the kernel

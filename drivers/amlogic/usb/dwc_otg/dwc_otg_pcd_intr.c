@@ -690,15 +690,18 @@ int32_t dwc_otg_pcd_handle_usb_reset_intr(dwc_otg_pcd_t * _pcd)
 {
 	dwc_otg_core_if_t *core_if = GET_CORE_IF(_pcd);
 	dwc_otg_dev_if_t *dev_if = core_if->dev_if;
-	depctl_data_t doepctl = {.d32 = 0 };
-	daint_data_t daintmsk = {.d32 = 0 };
-	doepmsk_data_t doepmsk = {.d32 = 0 };
-	diepmsk_data_t diepmsk = {.d32 = 0 };
-	dcfg_data_t dcfg = {.d32 = 0 };
-	grstctl_t resetctl = {.d32 = 0 };
-	dctl_data_t dctl = {.d32 = 0 };
+        depctl_data_t doepctl = { 0};
+        daint_data_t daintmsk = { 0};
+        doepmsk_data_t doepmsk = { 0};
+        diepmsk_data_t diepmsk = { 0};
+        dcfg_data_t dcfg = { 0 };
+        depctl_data_t diepctl = { 0};
+        depctl_data_t diepctl_rd = { 0};	
+        grstctl_t resetctl = { 0 };
+        dctl_data_t dctl = { 0 };
 	int i = 0;
 	gintsts_data_t gintsts;
+
 
 	DWC_PRINT("USB RESET\n");
 
@@ -708,6 +711,19 @@ int32_t dwc_otg_pcd_handle_usb_reset_intr(dwc_otg_pcd_t * _pcd)
 	/* Clear the Remote Wakeup Signalling */
 	dctl.b.rmtwkupsig = 1;
 	dwc_modify_reg32(&core_if->dev_if->dev_global_regs->dctl, dctl.d32, 0);
+
+/// dbg by jshan
+        /* Disable all active IN EPs for bulk in ep problem when disconnect*/
+        diepctl.b.epdis = 1;
+        diepctl.b.snak = 1;
+        for (i=0; i < dev_if->num_in_eps; i++) {
+                diepctl_rd.d32 = dwc_read_reg32(&dev_if->in_ep_regs[i]->diepctl);
+                if (diepctl_rd.b.epena) {
+                        dwc_write_reg32( &dev_if->in_ep_regs[i]->diepctl, 
+                                         diepctl.d32 );  
+                }
+        }
+///
 
 	/* Set NAK for all OUT EPs */
 	doepctl.b.snak = 1;
@@ -974,8 +990,10 @@ static inline void do_gadget_setup(dwc_otg_pcd_t * _pcd,
 				   struct usb_ctrlrequest *_ctrl)
 {
 	int ret = 0;
+
 	if (_pcd->driver && _pcd->driver->setup) {
 		SPIN_UNLOCK(&_pcd->lock);
+
 		ret = _pcd->driver->setup(&_pcd->gadget, _ctrl);
 		SPIN_LOCK(&_pcd->lock);
 		if (ret < 0) {
@@ -998,6 +1016,7 @@ static inline void do_gadget_setup(dwc_otg_pcd_t * _pcd,
 			_pcd->request_config = 1;
 		}
 	}
+        
 }
 
 /**
@@ -1510,7 +1529,9 @@ static int32_t ep0_complete_request(dwc_otg_pcd_ep_t * _ep)
 
 	if (pcd->ep0state == EP0_STATUS) {
 		is_last = 1;
-	} else if (req->req.zero) {
+/*
+	} 
+	else if (req->req.zero) {
 		req->req.actual = _ep->dwc_ep.xfer_count;
 		//do_setup_in_status_phase (pcd);
 		req->req.zero = 0;
@@ -1519,6 +1540,7 @@ static int32_t ep0_complete_request(dwc_otg_pcd_ep_t * _ep)
 		_ep->dwc_ep.sent_zlp = 1;
 		dwc_otg_ep0_start_transfer(GET_CORE_IF(pcd), &_ep->dwc_ep);
 		return 1;
+*/
 	} else if (_ep->dwc_ep.is_in) {
 		deptsiz.d32 = dwc_read_reg32(&in_ep_regs->dieptsiz);
 #ifdef DEBUG_EP0
@@ -1555,9 +1577,12 @@ static int32_t ep0_complete_request(dwc_otg_pcd_ep_t * _ep)
 
 	/* Complete the request */
 	if (is_last) {
-		if(core_if->dma_enable)
-			dwc_otg_pcd_dma_unmap(&_ep->dwc_ep);
+		///dbg by jshan
+		//if(core_if->dma_enable)
+			//dwc_otg_pcd_dma_unmap(&_ep->dwc_ep);
+		
 		request_done(_ep, req, 0);
+		
 		_ep->dwc_ep.start_xfer_buff = 0;
 		_ep->dwc_ep.xfer_buff = 0;
 		_ep->dwc_ep.xfer_len = 0;
@@ -1578,7 +1603,7 @@ static void complete_ep(dwc_otg_pcd_ep_t * _ep)
 	    dev_if->in_ep_regs[_ep->dwc_ep.num];
 	deptsiz_data_t deptsiz;
 	dwc_otg_pcd_request_t *req = 0;
-	int is_last = 0;
+	int is_last = 0, xfer_cnt = 0;
 
 	DWC_DEBUGPL(DBG_PCDV, "%s() %s-%s\n", __func__, _ep->ep.name,
 		    (_ep->dwc_ep.is_in ? "IN" : "OUT"));
@@ -1603,6 +1628,8 @@ static void complete_ep(dwc_otg_pcd_ep_t * _ep)
 
 		if (deptsiz.b.xfersize == 0 && deptsiz.b.pktcnt == 0 &&
 		    _ep->dwc_ep.xfer_count == _ep->dwc_ep.xfer_len) {
+			if (core_if->dma_enable)
+				req->req.actual =  _ep->dwc_ep.xfer_len - deptsiz.b.xfersize;
 			is_last = 1;
 		} else {
 			DWC_WARN
@@ -1624,17 +1651,17 @@ static void complete_ep(dwc_otg_pcd_ep_t * _ep)
 			    _ep->dwc_ep.xfer_len, _ep->dwc_ep.xfer_count,
 			    deptsiz.b.xfersize, deptsiz.b.pktcnt);
 #endif
+		if (core_if->dma_enable) {
+			xfer_cnt = (_ep->dwc_ep.xfer_len + (_ep->dwc_ep.maxpacket - 1)) /_ep->dwc_ep.maxpacket;
+			req->req.actual = xfer_cnt*_ep->dwc_ep.maxpacket - deptsiz.b.xfersize;
+		}
 		is_last = 1;
 	}
 
 	/* Complete the request */
 	if (is_last) {
 
-		if (core_if->dma_enable) {
-			req->req.actual =
-			    _ep->dwc_ep.xfer_len - deptsiz.b.xfersize;
-			dwc_otg_pcd_dma_unmap(&_ep->dwc_ep);
-		} else {
+		if(!core_if->dma_enable) {
 			req->req.actual = _ep->dwc_ep.xfer_count;
 		}
 
@@ -2041,10 +2068,12 @@ do { \
 					complete_ep(ep);
 				}
 			}
+
 			/* Endpoint disable      */
 			if (diepint.b.epdisabled) {
 				DWC_DEBUGPL(DBG_ANY, "EP%d IN disabled\n",
 					    epnum);
+				
 				handle_in_ep_disable_intr(_pcd, epnum);
 
 				/* Clear the bit in DIEPINTn for this interrupt */

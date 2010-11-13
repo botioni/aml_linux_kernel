@@ -9,6 +9,7 @@ obj-$(CONFIG_CARDREADER) +=  card_sysfs.o
 obj-$(CONFIG_CARDREADER) +=  card_block.o
 obj-$(CONFIG_CARDREADER) +=  cardreader.o
 obj-$(CONFIG_CARDREADER) +=  card_io.o
+obj-$(CONFIG_SDIO) += sdio_sys.o sdio_io.o sdio_ops.o
 obj-$(CONFIG_SD_MMC) += sd/
 obj-$(CONFIG_AM_ATA) += ata/
 obj-$(CONFIG_CF) += cf/

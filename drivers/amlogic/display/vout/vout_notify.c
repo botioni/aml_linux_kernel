@@ -94,19 +94,14 @@ EXPORT_SYMBOL(get_current_vmode);
 int vout_suspend(void)
 {
 	int ret=0 ;
-	vout_server_t  *p_server;
+	vout_server_t  *p_server = vout_module.curr_vout_server;
 
 	mutex_lock(&vout_mutex);
-	list_for_each_entry(p_server, &vout_module.vout_server_list, list)
+	if (p_server)
 	{
-		if(p_server->op.vout_suspend )
+		if(p_server->op.vout_suspend)
 		{
-			ret= p_server->op.vout_suspend() ;
-			if(ret)//if error occured when suspend ,then stop it
-			{
-				
-				break; 
-			}
+			ret = p_server->op.vout_suspend() ;
 		}
 	}
 	
@@ -116,12 +111,12 @@ int vout_suspend(void)
 EXPORT_SYMBOL(vout_suspend);
 int vout_resume(void)
 {
-	vout_server_t  *p_server;
+	vout_server_t  *p_server = vout_module.curr_vout_server;
 
 	mutex_lock(&vout_mutex);
-	list_for_each_entry(p_server, &vout_module.vout_server_list, list)
+	if (p_server)
 	{
-		if(p_server->op.vout_resume )
+		if (p_server->op.vout_resume)
 		{
 			p_server->op.vout_resume() ; //ignore error when resume.
 		}

@@ -200,7 +200,7 @@ static int wm8900_volatile_register(unsigned int reg)
 {
 	switch (reg) {
 	case WM8900_REG_ID:
-	case WM8900_REG_POWER1:
+//	case WM8900_REG_POWER1:
 		return 1;
 	default:
 		return 0;
@@ -307,6 +307,12 @@ static const char *gpio_pin_func_txt[] = {
 };
 static const struct soc_enum gpio_pin_func = 
 SOC_ENUM_SINGLE(WM8900_REG_GPIO, 4, 8, gpio_pin_func_txt);
+static const char* adclrc_pin_func_text[]={
+	"ADCLRC frame clock for ADC",
+	"GPIO pin"
+};
+static const struct soc_enum adclrc_pin_func = 
+SOC_ENUM_SINGLE(WM8900_REG_AUDIO2, 6, 2, adclrc_pin_func_text);
 static const char *mic_bias_level_txt[] = { "0.9*AVDD", "0.65*AVDD" };
 
 static const struct soc_enum mic_bias_level =
@@ -361,6 +367,8 @@ static const struct snd_kcontrol_new wm8900_snd_controls[] = {
 SOC_ENUM("GPIO pin function select", gpio_pin_func),
 SOC_SINGLE("CSB PD ENA", WM8900_REG_GPIO, 13, 1, 0),
 SOC_SINGLE("AIF TRI", WM8900_REG_CLOCKING2, 12, 1, 0),
+SOC_SINGLE("Enable VMID Buf", WM8900_REG_POWER1, 2, 1, 0),
+SOC_ENUM("ADCLRC/GPIO function select", adclrc_pin_func),
 SOC_ENUM("Mic Bias Level", mic_bias_level),
 
 SOC_SINGLE_TLV("Left Input PGA Volume", WM8900_REG_LINVOL, 0, 31, 0,
@@ -1264,9 +1272,9 @@ static __devinit int wm8900_i2c_probe(struct i2c_client *i2c,
 	}
 
 	/* Read back from the chip */
-	reg = snd_soc_read(codec, WM8900_REG_POWER1);
-	reg = (reg >> 12) & 0xf;
-	dev_info(&i2c->dev, "WM8900 revision %d\n", reg);
+//	reg = snd_soc_read(codec, WM8900_REG_POWER1);
+//	reg = (reg >> 12) & 0xf;
+//	dev_info(&i2c->dev, "WM8900 revision %d\n", reg);
 
 	wm8900_reset(codec);
 

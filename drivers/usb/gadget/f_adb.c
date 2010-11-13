@@ -29,7 +29,7 @@
 #include <linux/types.h>
 #include <linux/device.h>
 #include <linux/miscdevice.h>
-
+#include <linux/sched.h>
 #include <linux/usb/android_composite.h>
 
 #define BULK_BUFFER_SIZE           4096

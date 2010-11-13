@@ -13,6 +13,12 @@ config SD_MMC
 	default y
 	depends on CARDREADER
 
+config SDIO
+	bool "sdio interface driver support"
+	default y
+	depends on CARDREADER
+	select SD_MMC
+	
 config AM_ATA
 	bool "ATA/ATAPI driver support"
 	default n

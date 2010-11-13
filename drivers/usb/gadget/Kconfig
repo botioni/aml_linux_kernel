@@ -560,7 +560,7 @@ config USB_DUMMY_HCD
 endchoice
 
 config USB_GADGET_DUALSPEED
-	bool
+	bool "USB_GADGET_DUALSPEED"
 	depends on USB_GADGET
 	default n
 	help

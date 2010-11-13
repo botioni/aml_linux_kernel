@@ -239,12 +239,18 @@ static int pm_op(struct device *dev,
 #ifdef CONFIG_SUSPEND
 	case PM_EVENT_SUSPEND:
 		if (ops->suspend) {
+			pr_info("suspend %s+ @ %i, parent: %s\n",
+				dev_name(dev), task_pid_nr(current),
+				dev->parent ? dev_name(dev->parent) : "none");
 			error = ops->suspend(dev);
 			suspend_report_result(ops->suspend, error);
 		}
 		break;
 	case PM_EVENT_RESUME:
 		if (ops->resume) {
+			pr_info("resume %s+ @ %i, parent: %s\n",
+				dev_name(dev), task_pid_nr(current),
+				dev->parent ? dev_name(dev->parent) : "none");
 			error = ops->resume(dev);
 			suspend_report_result(ops->resume, error);
 		}
@@ -314,12 +320,18 @@ static int pm_noirq_op(struct device *dev,
 #ifdef CONFIG_SUSPEND
 	case PM_EVENT_SUSPEND:
 		if (ops->suspend_noirq) {
+			pr_info("suspend_noirq  %s+ @ %i, parent: %s\n",
+				dev_name(dev), task_pid_nr(current),
+				dev->parent ? dev_name(dev->parent) : "none");
 			error = ops->suspend_noirq(dev);
 			suspend_report_result(ops->suspend_noirq, error);
 		}
 		break;
 	case PM_EVENT_RESUME:
 		if (ops->resume_noirq) {
+			pr_info("resume_noirq  %s+ @ %i, parent: %s\n",
+				dev_name(dev), task_pid_nr(current),
+				dev->parent ? dev_name(dev->parent) : "none");
 			error = ops->resume_noirq(dev);
 			suspend_report_result(ops->resume_noirq, error);
 		}

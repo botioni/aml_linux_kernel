@@ -61,7 +61,13 @@ static struct class *hdmitx_class;
 static struct device *hdmitx_dev;
 
 //static HDMI_TX_INFO_t hdmi_info;
+#define INIT_FLAG_VDACOFF        0x1
+#define INIT_FLAG_POWERDOWN      0x2
 
+#define INIT_FLAG_NOT_LOAD 0x80
+
+static unsigned char init_flag=0;
+static unsigned char init_powermode=0;
 #undef DISABLE_AUDIO
 
 /*****************************
@@ -188,16 +194,14 @@ static ssize_t store_config(struct device * dev, struct device_attribute *attr, 
             hdmitx_device.HWOp.Cntl(&hdmitx_device, HDMITX_HWCMD_VDAC_OFF, 0);    
         }
     }
-    else if(strncmp(buf, "low_power_on", 12)==0){
+    else if(strncmp(buf, "powermode", 9)==0){
+        int tmp;
+        tmp = simple_strtoul(buf+9,NULL,10);
         if(hdmitx_device.HWOp.Cntl){
-            hdmitx_device.HWOp.Cntl(&hdmitx_device, HDMITX_HWCMD_LOWPOWER_SWITCH, 1); 
+            hdmitx_device.HWOp.Cntl(&hdmitx_device, HDMITX_HWCMD_LOWPOWER_SWITCH, tmp); 
+            printk("hdmi: set powermode %d\n", tmp);
         }
-    }        
-    else if(strncmp(buf, "low_power_off", 13)==0){
-        if(hdmitx_device.HWOp.Cntl){
-            hdmitx_device.HWOp.Cntl(&hdmitx_device, HDMITX_HWCMD_LOWPOWER_SWITCH, 0);    
-        }
-    }        
+    }
 #if 0
     else if(strncmp(buf, "adacoff", 7)==0){
         //CLK_GATE_ON(AIU_AUD_DAC);
@@ -213,7 +217,7 @@ static ssize_t store_config(struct device * dev, struct device_attribute *attr, 
     
 static ssize_t store_dbg(struct device * dev, struct device_attribute *attr, const char * buf, size_t count)
 {
-    hdmitx_device.HWOp.DebugFun(buf);
+    hdmitx_device.HWOp.DebugFun(&hdmitx_device, buf);
     return 16;    
 }
 
@@ -239,12 +243,133 @@ static ssize_t show_disp_cap(struct device * dev, struct device_attribute *attr,
     return pos;    
 }
 
+static unsigned char* hdmi_log_buf=NULL;
+static unsigned int hdmi_log_wr_pos=0;
+static unsigned int hdmi_log_rd_pos=0;
+static unsigned int hdmi_log_buf_size=0;
+
+static DEFINE_SPINLOCK(hdmi_print_lock);
+
+#define PRINT_TEMP_BUF_SIZE 512
+int hdmi_print_buf(char* buf, int len)
+{
+    unsigned long flags;
+    int pos;
+    int hdmi_log_rd_pos_;
+    if(hdmi_log_buf_size==0)
+        return 0;
+    
+    spin_lock_irqsave(&hdmi_print_lock, flags);
+    hdmi_log_rd_pos_=hdmi_log_rd_pos;
+    if(hdmi_log_wr_pos>=hdmi_log_rd_pos)
+        hdmi_log_rd_pos_+=hdmi_log_buf_size;
+
+    for(pos=0;pos<len && hdmi_log_wr_pos<(hdmi_log_rd_pos_-1);pos++,hdmi_log_wr_pos++){
+        if(hdmi_log_wr_pos>=hdmi_log_buf_size)
+            hdmi_log_buf[hdmi_log_wr_pos-hdmi_log_buf_size]=buf[pos];
+        else
+            hdmi_log_buf[hdmi_log_wr_pos]=buf[pos];
+    }    
+    if(hdmi_log_wr_pos>=hdmi_log_buf_size)
+        hdmi_log_wr_pos-=hdmi_log_buf_size;
+    spin_unlock_irqrestore(&hdmi_print_lock, flags);
+    return pos;
+    
+}
+
+int hdmi_print(int printk_flag, const char *fmt, ...)
+{
+    va_list args;
+    int avail = PRINT_TEMP_BUF_SIZE;
+    char buf[PRINT_TEMP_BUF_SIZE];
+    int pos,len=0;
+    if(printk_flag){
+        va_start(args, fmt);
+	      vprintk(fmt, args);
+        va_end(args);	
+    }
+    if(hdmi_log_buf_size==0)
+        return 0;
+        
+    va_start(args, fmt);
+    len += vsnprintf(buf+len, avail-len, fmt, args);
+    va_end(args);	
+
+    if ((avail-len) <= 0) {
+        buf[PRINT_TEMP_BUF_SIZE - 1] = '\0';
+    }
+    pos = hdmi_print_buf(buf, len);
+    //printk("hdmi_print:%d %d\n", hdmi_log_wr_pos, hdmi_log_rd_pos);
+	  return pos;
+}
+
+static ssize_t show_log(struct device * dev, struct device_attribute *attr, char * buf)
+{   
+    unsigned long flags;
+    int read_size=0;
+    if(hdmi_log_buf_size==0)
+        return 0;
+    //printk("show_log:%d %d\n", hdmi_log_wr_pos, hdmi_log_rd_pos);
+    spin_lock_irqsave(&hdmi_print_lock, flags);
+    if(hdmi_log_rd_pos<hdmi_log_wr_pos){
+        read_size = hdmi_log_wr_pos-hdmi_log_rd_pos;
+    }
+    else if(hdmi_log_rd_pos>hdmi_log_wr_pos){
+        read_size = hdmi_log_buf_size-hdmi_log_rd_pos;
+    }
+    if(read_size>PAGE_SIZE)
+        read_size=PAGE_SIZE;
+    if(read_size>0)
+        memcpy(buf, hdmi_log_buf+hdmi_log_rd_pos, read_size);
+    
+    hdmi_log_rd_pos += read_size;  
+    if(hdmi_log_rd_pos>=hdmi_log_buf_size)
+        hdmi_log_rd_pos = 0;
+    spin_unlock_irqrestore(&hdmi_print_lock, flags);
+    return read_size;    
+}
+
+static ssize_t store_log(struct device * dev, struct device_attribute *attr, const char * buf, size_t count)
+{
+    int tmp;
+    unsigned long flags;
+    if(strncmp(buf, "bufsize", 7)==0){
+        tmp = simple_strtoul(buf+7,NULL,10);
+        spin_lock_irqsave(&hdmi_print_lock, flags);
+        if(tmp==0){
+            if(hdmi_log_buf){
+                kfree(hdmi_log_buf);
+                hdmi_log_buf=NULL; 
+                hdmi_log_buf_size=0;
+                hdmi_log_rd_pos=0;   
+                hdmi_log_wr_pos=0;   
+            }    
+        }    
+        if((tmp>=1024)&&(hdmi_log_buf==NULL)){
+            hdmi_log_buf_size=0;
+            hdmi_log_rd_pos=0;   
+            hdmi_log_wr_pos=0;   
+            hdmi_log_buf=kmalloc(tmp, GFP_KERNEL);
+            if(hdmi_log_buf){
+                hdmi_log_buf_size=tmp;
+            }
+        }            
+        spin_unlock_irqrestore(&hdmi_print_lock, flags);
+        //printk("hdmi_store:set bufsize tmp %d %d\n",tmp, hdmi_log_buf_size);
+    }
+    else{
+        hdmi_print(0, "%s", buf);
+    }
+    return 16;
+}
+
 static DEVICE_ATTR(disp_mode, S_IWUSR | S_IRUGO, show_disp_mode, store_disp_mode);
 static DEVICE_ATTR(aud_mode, S_IWUSR | S_IRUGO, show_aud_mode, store_aud_mode);
 static DEVICE_ATTR(edid, S_IWUSR | S_IRUGO, show_edid, store_edid);
 static DEVICE_ATTR(config, S_IWUSR | S_IRUGO, show_config, store_config);
 static DEVICE_ATTR(debug, S_IWUSR | S_IRUGO, NULL, store_dbg);
 static DEVICE_ATTR(disp_cap, S_IWUSR | S_IRUGO, show_disp_cap, NULL);
+static DEVICE_ATTR(log, S_IWUSR | S_IRUGO, show_log, store_log);
 
 /*****************************
 *    hdmitx display client interface 
@@ -255,6 +380,9 @@ static int hdmitx_notify_callback_v(struct notifier_block *block, unsigned long 
     if (cmd != VOUT_EVENT_MODE_CHANGE)
         return -1;
 
+    if((hdmitx_device.unplug_powerdown)&&(hdmitx_device.vic_count==0))
+        return 0;
+        
     set_disp_mode_auto();
 
     return 0;
@@ -313,7 +441,7 @@ static int hdmitx_notify_callback_a(struct notifier_block *block, unsigned long 
                 break;
         }
         hdmitx_set_audio(&hdmitx_device, &audio_param);
-        printk("HDMI: aout notify rate %d\n", substream->runtime->rate);
+        hdmi_print(1, "HDMI: aout notify rate %d\n", substream->runtime->rate);
         return 0;
     }
     return -1;
@@ -336,6 +464,19 @@ static int hdmi_task_handle(void *data)
 
     hdmitx_device->HWOp.SetupIRQ(hdmitx_device);
 
+    if(hdmitx_device->HWOp.Cntl){
+        if(init_flag&INIT_FLAG_VDACOFF){
+            hdmitx_device->HWOp.Cntl(hdmitx_device, HDMITX_HWCMD_VDAC_OFF, 0);    
+        }
+        if(init_powermode&0x80){
+            hdmitx_device->HWOp.Cntl(hdmitx_device, HDMITX_HWCMD_LOWPOWER_SWITCH, init_powermode&0x1f);    
+        }
+    }
+    if(init_flag&INIT_FLAG_POWERDOWN){
+        hdmitx_device->HWOp.SetDispMode(NULL); //power down
+        hdmitx_device->unplug_powerdown=1;
+    }
+
     while (hdmitx_device->hpd_event != 0xff)
     {
         if (hdmitx_device->hpd_event == 1)
@@ -352,7 +493,9 @@ static int hdmi_task_handle(void *data)
         {
             hdmitx_edid_clear(hdmitx_device);
 
-            //hdmitx_set_display(hdmitx_device, HDMI_Unkown);
+            if(hdmitx_device->unplug_powerdown){
+                hdmitx_set_display(hdmitx_device, HDMI_Unkown);
+            }
             hdmitx_device->cur_VIC = HDMI_Unkown;
 
             hdmitx_device->hpd_event = 0;
@@ -431,7 +574,8 @@ static int amhdmitx_probe(struct platform_device *pdev)
         return -1;
         //return PTR_ERR(aoe_class);
     }
-
+    hdmitx_device.unplug_powerdown=0;
+    hdmitx_device.vic_count=0;
     cdev_init(&(hdmitx_device.cdev), &amhdmitx_fops);
     hdmitx_device.cdev.owner = THIS_MODULE;
     cdev_add(&(hdmitx_device.cdev), hdmitx_id, HDMI_TX_COUNT);
@@ -445,6 +589,7 @@ static int amhdmitx_probe(struct platform_device *pdev)
     device_create_file(hdmitx_dev, &dev_attr_config);
     device_create_file(hdmitx_dev, &dev_attr_debug);
     device_create_file(hdmitx_dev, &dev_attr_disp_cap);
+    device_create_file(hdmitx_dev, &dev_attr_log);
     
     if (hdmitx_dev == NULL) {
         pr_error("device_create create error\n");
@@ -481,6 +626,7 @@ static int amhdmitx_remove(struct platform_device *pdev)
     device_remove_file(hdmitx_dev, &dev_attr_config);
     device_remove_file(hdmitx_dev, &dev_attr_debug);
     device_remove_file(hdmitx_dev, &dev_attr_disp_cap);
+    device_remove_file(hdmitx_dev, &dev_attr_log);
 
     cdev_del(&hdmitx_device.cdev);
 
@@ -503,14 +649,19 @@ static struct platform_driver amhdmitx_driver = {
 
 static struct platform_device* amhdmi_tx_device = NULL;
 
-static int hdmitx_off = 0;
 
 static int  __init amhdmitx_init(void)
 {
-    if(hdmitx_off)
+    if(init_flag&INIT_FLAG_NOT_LOAD)
         return 0;
         
     pr_dbg("amhdmitx_init\n");
+    if(hdmi_log_buf_size>0){
+        hdmi_log_buf=kmalloc(hdmi_log_buf_size, GFP_KERNEL);
+        if(hdmi_log_buf==NULL){
+            hdmi_log_buf_size=0;
+        }
+    }
 	  amhdmi_tx_device = platform_device_alloc(DEVICE_NAME,0);
     if (!amhdmi_tx_device) {
         pr_error("failed to alloc amhdmi_tx_device\n");
@@ -552,13 +703,95 @@ MODULE_DESCRIPTION("AMLOGIC HDMI TX driver");
 MODULE_LICENSE("GPL");
 MODULE_VERSION("1.0.0");
 
-static  int __init hdmitx_off_setup(char *s)
-{
-	if((s[0]=='o')&&(s[1]=='f')&&(s[2]=='f')){
-			hdmitx_off = 1;
-	}
-	return 0;
+
+static char* next_token_ex(char* seperator, char *buf, unsigned size, unsigned offset, unsigned *token_len, unsigned *token_offset)
+{ /* besides characters defined in seperator, '\"' are used as seperator; and any characters in '\"' will not act as seperator */
+	char *pToken = NULL;
+    char last_seperator = 0;
+    char trans_char_flag = 0;
+    if(buf){
+    	for (;offset<size;offset++){
+    	    int ii=0;
+    	    char ch;
+            if (buf[offset] == '\\'){
+                trans_char_flag = 1;
+                continue;
+            }
+    	    while(((ch=seperator[ii++])!=buf[offset])&&(ch)){
+    	    }
+    	    if (ch){
+                if (!pToken){
+    	            continue;
+                }
+    	        else {
+                    if (last_seperator != '"'){
+    	                *token_len = (unsigned)(buf + offset - pToken);
+    	                *token_offset = offset;
+    	                return pToken;
+    	            }
+    	        }
+            }
+    	    else if (!pToken)
+            {
+                if (trans_char_flag&&(buf[offset] == '"'))
+                    last_seperator = buf[offset];
+    	        pToken = &buf[offset];
+            }
+            else if ((trans_char_flag&&(buf[offset] == '"'))&&(last_seperator == '"')){
+                *token_len = (unsigned)(buf + offset - pToken - 2);
+                *token_offset = offset + 1;
+                return pToken + 1;
+            }
+            trans_char_flag = 0;
+        }        
+        if (pToken) {
+            *token_len = (unsigned)(buf + offset - pToken);
+            *token_offset = offset;
+        }
+    }
+	return pToken;
 }
 
-__setup("hdmitx=",hdmitx_off_setup);
+static  int __init hdmitx_boot_para_setup(char *s)
+{
+    char separator[]={' ',',',';',0x0};
+    char *token;
+    unsigned token_len, token_offset, offset=0;
+    int size=strlen(s);
+    do{
+        token=next_token_ex(separator, s, size, offset, &token_len, &token_offset);
+        if(token){
+            if((token_len==3) && (strncmp(token, "off", token_len)==0)){
+                init_flag|=INIT_FLAG_NOT_LOAD;
+            }
+            else if((token_len==7) && (strncmp(token, "vdacoff", token_len)==0)){
+                init_flag|=INIT_FLAG_VDACOFF;
+            }
+            else if((token_len==16) && (strncmp(token, "unplug_powerdown", token_len)==0)){
+                init_flag|=INIT_FLAG_POWERDOWN;
+            }
+            else if(strncmp(token, "bufsize", 7)==0){
+                int tmp;
+                tmp = simple_strtoul(token+7,NULL,10);
+                if(tmp>=1024){
+                    hdmi_log_buf_size=0;
+                    hdmi_log_rd_pos=0;   
+                    hdmi_log_wr_pos=0;   
+                    hdmi_log_buf_size=tmp;
+                    printk("hdmi: set log buffer size %d\n", tmp);
+                }            
+            }
+            else if(strncmp(token, "powermode", 9)==0){
+                int tmp;
+                tmp = simple_strtoul(token+9,NULL,10);
+                init_powermode=tmp|0x80;
+                printk("hdmi: set init powermode %d\n", tmp);                
+            }
+        }    
+        offset=token_offset;
+    }while(token);
+    return 0;
+}
+
+__setup("hdmitx=",hdmitx_boot_para_setup);
 

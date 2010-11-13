@@ -15,6 +15,7 @@
 #include <linux/idr.h>
 #include <linux/workqueue.h>
 #include <linux/err.h>
+#include <linux/cardreader/sdio.h>
 #include <linux/cardreader/card_block.h>
 
 #define dev_to_memory_card(d)	container_of(d, struct memory_card, dev)
@@ -66,6 +67,8 @@ static int card_bus_probe(struct device *dev)
 	struct card_driver *drv = to_card_driver(dev->driver);
 	struct memory_card *card = dev_to_memory_card(dev);
 
+	if (card->card_type == CARD_SDIO)
+		return 0;
 	return drv->probe(card);
 }
 
@@ -130,10 +133,9 @@ EXPORT_SYMBOL(card_init_card);
 /*
  * Internal function.  Register a new card card with the driver model.
  */
-int card_register_card(struct memory_card *card, char *card_name)
+int card_register_card(struct memory_card *card)
 {
-	strcpy(card->name, card_name);
-	dev_set_name(&card->dev, "%s:%s", card_hostname(card->host), card_name);
+	dev_set_name(&card->dev, "%s:%s", card_hostname(card->host), card->name);
 
 	return device_add(&card->dev);
 }
@@ -258,27 +260,90 @@ void card_flush_scheduled_work(void)
 	flush_workqueue(workqueue);
 }
 
+/**
+ *	card_align_data_size - pads a transfer size to a more optimal value
+ *	@card: the Memory card associated with the data transfer
+ *	@sz: original transfer size
+ *
+ *	Pads the original data size with a number of extra bytes in
+ *	order to avoid controller bugs and/or performance hits
+ *	(e.g. some controllers revert to PIO for certain sizes).
+ *
+ *	Returns the improved size, which might be unmodified.
+ *
+ *	Note that this function is only relevant when issuing a
+ *	single scatter gather entry.
+ */
+unsigned int card_align_data_size(struct memory_card *card, unsigned int sz)
+{
+	/*
+	 * FIXME: We don't have a system for the controller to tell
+	 * the core about its problems yet, so for now we just 32-bit
+	 * align the size.
+	 */
+	sz = ((sz + 3) / 4) * 4;
+
+	return sz;
+}
+EXPORT_SYMBOL(card_align_data_size);
+
+int card_register_host_class(void)
+{
+	return class_register(&card_host_class);
+}
+
+void card_unregister_host_class(void)
+{
+	class_unregister(&card_host_class);
+}
+
+int card_register_bus(void)
+{
+	return bus_register(&card_bus_type);
+}
+
+void card_unregister_bus(void)
+{
+	return bus_unregister(&card_bus_type);
+}
+
 static int __init card_init(void)
 {
-	int ret;
+	int ret = 0;
 
 	workqueue = create_singlethread_workqueue("kcardd");
 	if (!workqueue)
 		return -ENOMEM;
 
-	ret = bus_register(&card_bus_type);
-	if (ret == 0) {
-		ret = class_register(&card_host_class);
+	ret = card_register_bus();
 		if (ret)
-			bus_unregister(&card_bus_type);
-	}
+		goto destroy_workqueue;
+
+	ret = card_register_host_class();
+	if (ret)
+		goto unregister_bus;
+
+	ret = sdio_register_bus();
+	if (ret)
+		goto unregister_host_class;
+
+	return 0;
+
+unregister_host_class:
+	card_unregister_host_class();
+unregister_bus:
+	card_unregister_bus();
+destroy_workqueue:
+	destroy_workqueue(workqueue);
+
 	return ret;
 }
 
 static void __exit card_exit(void)
 {
-	class_unregister(&card_host_class);
-	bus_unregister(&card_bus_type);
+	sdio_unregister_bus();
+	card_unregister_host_class();
+	card_unregister_bus();
 	destroy_workqueue(workqueue);
 }
 

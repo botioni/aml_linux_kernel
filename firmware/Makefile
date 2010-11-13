@@ -26,6 +26,7 @@ fw-shipped- += acenic/tg1.bin
 else
 acenic-objs := acenic/tg1.bin acenic/tg2.bin
 endif
+fw-shipped-$(CONFIG_SDIO_DHD_CDC_WIFI) += broadcm_4329/sdio-g-cdc-full11n-reclaim-roml-wme-idsup.bin broadcm_4329/nvram.txt
 fw-shipped-$(CONFIG_3C359) += 3com/3C359.bin
 fw-shipped-$(CONFIG_ACENIC) += $(acenic-objs)
 fw-shipped-$(CONFIG_ADAPTEC_STARFIRE) += adaptec/starfire_rx.bin \

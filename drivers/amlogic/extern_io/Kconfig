@@ -1,0 +1,12 @@
+
+menu "Extern io tca6424 Support"
+
+
+config TCA6424
+	bool "tca6424 extern io support"
+	depends on I2C_AML
+	default n
+	---help---
+	  This module adds support for tca6424 extern io
+
+endmenu

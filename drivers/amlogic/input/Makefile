@@ -5,4 +5,9 @@
 # Each configuration option enables a list of files.
 
 obj-y	+= irremote/
+obj-y	+= saradc/
+obj-y	+= adc_ts/
+obj-y	+= adc_keypad/
+
+
 
