@@ -654,7 +654,7 @@ static void aml_pcm_mixer_controls_init(aml_audio_t * aml_audio)
     memset(audio_control, 0, sizeof(audio_mixer_control_t));
 
     audio_control->output_devide = SOUND_MASK_VOLUME | SOUND_MASK_PCM;
-    audio_control->output_volume = 50;
+    audio_control->output_volume = 255;
 }
 
 static void aml_pcm_audio_init(aml_audio_t * aml_audio)
