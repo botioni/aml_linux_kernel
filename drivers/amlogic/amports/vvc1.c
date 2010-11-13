@@ -733,6 +733,10 @@ static int amvdec_vc1_remove(struct platform_device *pdev)
 static struct platform_driver amvdec_vc1_driver = {
         .probe  = amvdec_vc1_probe,
         .remove = amvdec_vc1_remove,
+#ifdef CONFIG_PM
+        .suspend = amvdec_suspend,
+        .resume  = amvdec_resume,
+#endif
         .driver = {
                 .name = DRIVER_NAME,
         }

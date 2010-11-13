@@ -757,6 +757,10 @@ static int amvdec_real_remove(struct platform_device *pdev)
 static struct platform_driver amvdec_real_driver = {
     .probe  = amvdec_real_probe,
     .remove = amvdec_real_remove,
+#ifdef CONFIG_PM
+    .suspend = amvdec_suspend,
+    .resume  = amvdec_resume,
+#endif
     .driver = {
             .name = DRIVER_NAME,
     }

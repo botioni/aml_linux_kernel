@@ -27,11 +27,36 @@
 #include <linux/slab.h>
 #include <linux/dma-mapping.h>
 #include <linux/amports/vformat.h>
-#include <mach/am_regs.h>
 
+#ifdef CONFIG_PM
+#include <linux/pm.h>
+#endif
+
+#include <mach/am_regs.h>
+#include <mach/power_gate.h>
 #include "amvdec.h"
 
 #define MC_SIZE (4096 * 4)
+
+static void amvdec_pg_enable(bool enable)
+{
+    if (enable) {
+        CLK_GATE_ON(MDEC_CLK_PIC_DC);
+        CLK_GATE_ON(MDEC_CLK_DBLK);
+        CLK_GATE_ON(MC_CLK);
+        CLK_GATE_ON(IQIDCT_CLK);
+        //CLK_GATE_ON(VLD_CLK);
+        CLK_GATE_ON(AMRISC);
+    }
+    else {
+        CLK_GATE_OFF(AMRISC);
+        CLK_GATE_OFF(MDEC_CLK_PIC_DC);
+        CLK_GATE_OFF(MDEC_CLK_DBLK);
+        CLK_GATE_OFF(MC_CLK);
+        CLK_GATE_OFF(IQIDCT_CLK);
+        //CLK_GATE_OFF(VLD_CLK);
+    }
+}
 
 s32 amvdec_loadmc(const u32 *p)
 {
@@ -40,13 +65,13 @@ s32 amvdec_loadmc(const u32 *p)
     dma_addr_t mc_addr_map;
     s32 ret = 0;
 
-	mc_addr = kmalloc(MC_SIZE, GFP_KERNEL);
-	if (!mc_addr)
-		return -ENOMEM;
+    mc_addr = kmalloc(MC_SIZE, GFP_KERNEL);
+    if (!mc_addr)
+        return -ENOMEM;
 		
-	memcpy(mc_addr, p, MC_SIZE);
+    memcpy(mc_addr, p, MC_SIZE);
 
-   	mc_addr_map = dma_map_single(NULL, mc_addr, MC_SIZE, DMA_TO_DEVICE);
+    mc_addr_map = dma_map_single(NULL, mc_addr, MC_SIZE, DMA_TO_DEVICE);
 
     WRITE_MPEG_REG(MPSR, 0);
     WRITE_MPEG_REG(CPSR, 0);
@@ -64,22 +89,31 @@ s32 amvdec_loadmc(const u32 *p)
     while(READ_MPEG_REG(IMEM_DMA_CTRL) & 0x8000) {
         if (time_before(jiffies, timeout)) {
             schedule();
-        } else {
+        }
+        else {
             printk("vdec load mc error\n");
-			ret = -EBUSY;
-			break;
+            ret = -EBUSY;
+            break;
         }
     }
 
-	dma_unmap_single(NULL, mc_addr_map, MC_SIZE, DMA_TO_DEVICE);
+    dma_unmap_single(NULL, mc_addr_map, MC_SIZE, DMA_TO_DEVICE);
 
-	kfree(mc_addr);
+    kfree(mc_addr);
 
     return ret;
 }
 
 void amvdec_start(void)
 {
+    amvdec_pg_enable(true);
+
+    /* additional cbus dummy register reading for timing control */
+    READ_MPEG_REG(RESET0_REGISTER);
+    READ_MPEG_REG(RESET0_REGISTER);
+    READ_MPEG_REG(RESET0_REGISTER);
+    READ_MPEG_REG(RESET0_REGISTER);
+
     WRITE_MPEG_REG(RESET0_REGISTER, RESET_VCPU | RESET_CCPU);
 
     READ_MPEG_REG(RESET0_REGISTER);
@@ -93,11 +127,39 @@ void amvdec_stop(void)
 {
     WRITE_MPEG_REG(MPSR, 0);
     WRITE_MPEG_REG(RESET0_REGISTER, RESET_VCPU | RESET_CCPU);
+
+    /* additional cbus dummy register reading for timing control */
+    READ_MPEG_REG(RESET0_REGISTER);
+    READ_MPEG_REG(RESET0_REGISTER);
+    READ_MPEG_REG(RESET0_REGISTER);
+    READ_MPEG_REG(RESET0_REGISTER);
+
+    amvdec_pg_enable(false);
 }
+
+#ifdef CONFIG_PM
+int amvdec_suspend(struct platform_device *dev, pm_message_t event)
+{
+    amvdec_pg_enable(false);
+
+    return 0;
+}
+
+int amvdec_resume(struct platform_device *dev)
+{
+    amvdec_pg_enable(true);
+
+    return 0;
+}
+#endif
 
 EXPORT_SYMBOL(amvdec_loadmc);
 EXPORT_SYMBOL(amvdec_start);
 EXPORT_SYMBOL(amvdec_stop);
+#ifdef CONFIG_PM
+EXPORT_SYMBOL(amvdec_suspend);
+EXPORT_SYMBOL(amvdec_resume);
+#endif
 
 MODULE_DESCRIPTION("Amlogic Video Decoder Utility Driver");
 MODULE_LICENSE("GPL");

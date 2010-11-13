@@ -578,6 +578,10 @@ static int amvdec_mjpeg_remove(struct platform_device *pdev)
 static struct platform_driver amvdec_mjpeg_driver = {
     .probe      = amvdec_mjpeg_probe,
     .remove     = amvdec_mjpeg_remove,
+#ifdef CONFIG_PM
+    .suspend = amvdec_suspend,
+    .resume  = amvdec_resume,
+#endif
     .driver     = {
         .name   = DRIVER_NAME,
     }

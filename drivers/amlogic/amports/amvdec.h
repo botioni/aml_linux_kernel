@@ -31,4 +31,9 @@ extern void amvdec_start(void);
 
 extern void amvdec_stop(void);
 
+#ifdef CONFIG_PM
+extern int amvdec_suspend(struct platform_device *dev, pm_message_t event);
+extern int amvdec_resume(struct platform_device *dec);
+#endif
+
 #endif /* AMVDEC_H */

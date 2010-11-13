@@ -1183,9 +1183,13 @@ static int amvdec_h264_remove(struct platform_device *pdev)
 /****************************************/
 
 static struct platform_driver amvdec_h264_driver = {
-        .probe  = amvdec_h264_probe,
-        .remove = amvdec_h264_remove,
-        .driver = {
+        .probe   = amvdec_h264_probe,
+        .remove  = amvdec_h264_remove,
+#ifdef CONFIG_PM
+	.suspend = amvdec_suspend,
+	.resume  = amvdec_resume,
+#endif
+        .driver  = {
                 .name = DRIVER_NAME,
         }
 };

@@ -783,6 +783,10 @@ static int amvdec_mpeg4_remove(struct platform_device *pdev)
 static struct platform_driver amvdec_mpeg4_driver = {
         .probe  = amvdec_mpeg4_probe,
         .remove = amvdec_mpeg4_remove,
+#ifdef CONFIG_PM
+        .suspend = amvdec_suspend,
+        .resume  = amvdec_resume,
+#endif
         .driver = {
                 .name = DRIVER_NAME,
         }
