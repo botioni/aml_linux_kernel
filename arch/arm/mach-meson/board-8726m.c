@@ -160,10 +160,10 @@ static struct platform_device adc_ts_device = {
 
 static struct adc_key adc_kp_key[] = {
 #if 1	// w10
-	{KEY_HOME,		"home",	CHAN_4,	0, 60},	// 0v	102
-	{KEY_ENTER,		"enter",	CHAN_4,	306, 60},	// 0v	28
-	{KEY_LEFTMETA,	"leftmeta",CHAN_4,	602, 60},	// 0v	125
-	{KEY_TAB,		"tab",	CHAN_4,	760, 60},	// 0v	15
+	{KEY_PAGEDOWN,		"vol-",	CHAN_4,	0, 60},	// 0v	102
+	{KEY_PAGEUP,		"vol+",	CHAN_4,	306, 60},	// 0v	28
+	{KEY_TAB,	             "exit",     CHAN_4,	602, 60},	// 0v	15
+	{KEY_LEFTMETA,		"menu",	CHAN_4,	760, 60},	// 0v	125
 #else // arm
 	{KEY_MENU,		"menu",	CHAN_4,	0, 60},	// 0v
 	{KEY_UP,			"up",		CHAN_4, 180, 60},	// 0.58v
@@ -816,56 +816,28 @@ static struct platform_device aml_uart_device = {
 static struct mtd_partition partition_info[] = 
 {
 	{
-		.name = "bootloader",
+		.name = "U-BOOT",
 		.offset = 0,
 		.size=4*1024*1024,
 	//	.set_flags=0,
 	//	.dual_partnum=0,
 	},
 	{
-		.name = "environment",
+		.name = "Boot Para",
 		.offset = 4*1024*1024,
 		.size=4*1024*1024,
 	//	.set_flags=0,
 	//	.dual_partnum=0,
 	},
 	{
-		.name = "recovery",
+		.name = "Kernel",
 		.offset = 8*1024*1024,
-		.size = 16 * 1024*1024,
+		.size = 4 * 1024*1024,
 	//	.set_flags=0,
 	//	.dual_partnum=0,
 	},
 	{
-		.name = "boot",
-		.offset = 24*1024*1024,
-		.size = 16 * 1024*1024,
-	//	.set_flags=0,
-	//	.dual_partnum=0,
-	},
-	{
-		.name = "system",
-		.offset = 40*1024*1024,
-		.size = 180 * 1024*1024,
-	//	.set_flags=0,
-	//	.dual_partnum=0,
-	},
-	{
-		.name = "cache",
-		.offset = 220*1024*1024,
-		.size = 16 * 1024*1024,
-	//	.set_flags=0,
-	//	.dual_partnum=0,
-	},
-	{
-		.name = "userdata",
-		.offset= 236*1024*1024,
-		.size= 512 * 1024*1024,
-	//	.set_flags=0,
-	//	.dual_partnum=0,
-	},
-	{
-		.name = "media",
+		.name = "YAFFS2",
 		.offset=MTDPART_OFS_APPEND,
 		.size=MTDPART_SIZ_FULL,
 	//	.set_flags=0,
