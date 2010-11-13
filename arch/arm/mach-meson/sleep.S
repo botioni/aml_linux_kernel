@@ -36,14 +36,13 @@ ENTRY(meson_cpu_suspend)
 	/*
 	 * Switch DDR to self-refresh mode.
 	 */
-#if 1
     mov	r2, #0x3
 	str	r2, [r0]
 
 	ldr	r2, [r1]
 	orr	r2, r2, #0x1
 	str	r2, [r1]
-#endif    
+   
 	/* Disable DDR PHY */
 
 	/* Power down the PLL */
@@ -60,14 +59,16 @@ ENTRY(meson_cpu_suspend)
 	/* Wait for PLL to lock */
 
 	/* turn on DDR PHY */
-#if 1
 	ldr	r2, [r1]
 	bic	r2, r2, #0x1
 	str	r2, [r1]
 
     mov	r2, #0x4
 	str	r2, [r0]
-#endif
+
+    mov	r2, #0x1000
+2:  subs	r2, r2, #0x1
+    bne	2b
 
 	/* Restore registers and return */
 	ldmfd   sp!, {r0-r12, pc}

@@ -22,6 +22,8 @@
 #include <mach/am_regs.h>
 #include <mach/sram.h>
 
+#define WAKE_UP_BY_IRQ
+
 static void (*meson_sram_suspend) (struct meson_pm_config *);
 static struct meson_pm_config *pdata;
 
@@ -39,6 +41,7 @@ static void meson_pm_suspend(void)
 	int mask_save[4];
 	printk(KERN_INFO "enter meson_pm_suspend!\n");
 
+#ifdef WAKE_UP_BY_IRQ	
 	mask_save[0] = READ_CBUS_REG(A9_0_IRQ_IN0_INTR_MASK);
 	mask_save[1] = READ_CBUS_REG(A9_0_IRQ_IN1_INTR_MASK);
 	mask_save[2] = READ_CBUS_REG(A9_0_IRQ_IN2_INTR_MASK);
@@ -57,7 +60,15 @@ static void meson_pm_suspend(void)
 	WRITE_CBUS_REG(A9_0_IRQ_IN1_INTR_MASK, mask_save[1]);
 	WRITE_CBUS_REG(A9_0_IRQ_IN2_INTR_MASK, mask_save[2]);
 	WRITE_CBUS_REG(A9_0_IRQ_IN3_INTR_MASK, mask_save[3]);
-
+#else
+	int powerPress = 0;
+	while(1){
+		udelay(jiffies+msecs_to_jiffies(20));
+		powerPress = ((READ_CBUS_REG(0x21d1/*RTC_ADDR1*/) >> 2) & 1) ? 0 : 1;
+		if(powerPress)
+			break;
+	}
+#endif
 }
 
 static int meson_pm_prepare(void)
