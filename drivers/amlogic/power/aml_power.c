@@ -95,8 +95,7 @@ static int aml_power_get_property(struct power_supply *psy,
 			val->intval = POWER_SUPPLY_STATUS_DISCHARGING;
 		break;
 	case POWER_SUPPLY_PROP_CAPACITY:	
-	    capacty = 100*(pdata->get_bat_vol() - 540)/80;
-		val->intval = capacty>100? 100:capacty;
+		val->intval = new_battery_capacity;
 #ifdef AML_POWER_DBG
 		printk(KERN_INFO "current capacity is %d%%\n,",val->intval);
 #endif
@@ -192,6 +191,14 @@ static void update_charger(void)
 		}
 	}
 }
+static void get_bat_capacity(void)
+{
+    int value;
+    value = 100*(pdata->get_bat_vol() - 540)/80;
+    value = value>100? 100:value;
+    value = (value/5)*5;
+    new_battery_capacity = value;   
+}
 
 static void supply_timer_func(unsigned long unused)
 {
@@ -264,7 +271,7 @@ static void polling_timer_func(unsigned long unused)
 	if (changed)
 		psy_changed();
 
-    new_battery_capacity = pdata->get_bat_vol();
+    get_bat_capacity();
 	if(new_battery_capacity != battery_capacity){
 		battery_capacity = new_battery_capacity;
 		power_supply_changed(&aml_psy_bat);

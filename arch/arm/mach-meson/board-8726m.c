@@ -692,9 +692,25 @@ static void set_charge(int flags)
 }
 
 extern int get_adc_sample(int chan);
+static int bat_val[10] = {0};
+static char bat_read_count = 0;
 static int get_bat_vol(void)
 {
-	return get_adc_sample(5);
+    int i,ret = 0;
+    bat_val[bat_read_count] = get_adc_sample(5);
+    for(i=0;i<10;i++)
+    {
+      ret = ret + bat_val[i];
+    }
+    
+    ret = ret/10;
+    
+    if(bat_read_count<9)
+        bat_read_count++;
+    else
+        bat_read_count = 0;
+        
+	return ret;
 }
 
 static int get_charge_status()
