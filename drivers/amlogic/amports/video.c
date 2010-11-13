@@ -47,6 +47,11 @@
 #include <linux/poll.h>
 #include <linux/clk.h>
 
+#ifdef CONFIG_PM
+#include <linux/delay.h>
+#include <linux/pm.h>
+#endif
+
 #include <asm/fiq.h>
 #include <asm/uaccess.h>
 
@@ -111,6 +116,14 @@ extern irqreturn_t osd_fiq_isr(void);
 
 const char video_dev_id[] = "amvideo-dev";
 
+#ifdef CONFIG_PM
+typedef struct {
+    int event;
+    u32 vpp_misc;
+} video_pm_state_t;
+
+static video_pm_state_t pm_state;
+#endif
 
 static spinlock_t lock = SPIN_LOCK_UNLOCKED;
 static u32 frame_par_ready_to_set, frame_par_force_to_set;
@@ -2029,9 +2042,38 @@ static struct class_attribute amvideo_class_attrs[] = {
     __ATTR_NULL
 };
 
+#ifdef CONFIG_PM
+static int amvideo_class_suspend(struct device *dev, pm_message_t state)
+{
+    pm_state.event = state.event;
+
+    if (state.event == PM_EVENT_SUSPEND) {
+        pm_state.vpp_misc = READ_MPEG_REG(VPP_MISC);
+        DisableVideoLayer();
+        msleep(50);
+    }
+
+    return 0;
+}
+
+static int amvideo_class_resume(struct device *dev)
+{
+    if (pm_state.event == PM_EVENT_SUSPEND) {
+        WRITE_MPEG_REG(VPP_MISC, pm_state.vpp_misc);
+        pm_state.event = -1;
+    }
+
+    return 0;
+}
+#endif
+
 static struct class amvideo_class = {
     .name = AMVIDEO_CLASS_NAME,
     .class_attrs = amvideo_class_attrs,
+#ifdef CONFIG_PM
+    .suspend = amvideo_class_suspend,
+    .resume = amvideo_class_resume,
+#endif
 };
 
 static struct device *amvideo_dev;

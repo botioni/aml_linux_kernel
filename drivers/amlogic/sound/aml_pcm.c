@@ -927,8 +927,8 @@ static struct platform_driver aml_alsa_audio_driver = {
     .probe = aml_alsa_audio_probe,
     .remove = aml_alsa_audio_remove,
 #ifdef CONFIG_PM
-    .suspend = snd_aml_audio_suspend,
-    .resume = snd_aml_audio_resume,
+    //.suspend = snd_aml_audio_suspend,
+    //.resume = snd_aml_audio_resume,
 #endif
     .driver = {
                .name = "aml_ALSA",
