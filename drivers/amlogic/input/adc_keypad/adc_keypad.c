@@ -40,95 +40,80 @@
 #include <linux/major.h>
 #include <linux/slab.h>
 #include <asm/uaccess.h>
+#include <linux/saradc.h>
+#include <linux/adc_keypad.h>
 
 struct kp {
 	struct input_dev *input;
 	struct timer_list timer;
 	unsigned int cur_keycode;
-	int			config_major;
-	char 		config_name[20];
+	int config_major;
+	char config_name[20];
 	struct class *config_class;
 	struct device *config_dev;
+	int chan[SARADC_CHAN_NUM];
+	int chan_num;
+	struct adc_key *key;
+	int key_num;
 };
 
 static struct kp *gp_kp=NULL;
 
-static void init_adc(void)
+static int kp_search_key(struct kp *kp)
 {
-    WRITE_CBUS_REG(SAR_ADC_REG3, (READ_CBUS_REG(SAR_ADC_REG3) & ~(0x3f << 10)) | ((1 << 30) | (20 << 10)));
-    // Enable ADC
-    WRITE_CBUS_REG(SAR_ADC_REG3, READ_CBUS_REG(SAR_ADC_REG3) | (1<<21));
-    // Setup ADC_CTRL[4:0]
-    WRITE_CBUS_REG(SAR_ADC_REG3, (READ_CBUS_REG(SAR_ADC_REG3) & ~(0x1F << 23)) | (0 << 23));
-    // Setup MSR_A[2:0]
-    WRITE_CBUS_REG(SAR_ADC_DETECT_IDLE_SW, (READ_CBUS_REG(SAR_ADC_DETECT_IDLE_SW) & ~(0x03FF << 0)) | (4 << 7));
-    WRITE_CBUS_REG(SAR_ADC_CHAN_10_SW, (READ_CBUS_REG(SAR_ADC_CHAN_10_SW) & ~(0x03FF << 0)) | (4 << 7));
-    // TEMPSEN_PD12, TEMPSEN_MODE
-    WRITE_CBUS_REG(SAR_ADC_REG3, (READ_CBUS_REG(SAR_ADC_REG3) & ~(0x3 << 28)) | ((0 << 29) | (0 << 28)));
-    printk("reg3=%x,detect_idle=%x,chan_10_sw=%x", READ_CBUS_REG(SAR_ADC_REG3), READ_CBUS_REG(SAR_ADC_DETECT_IDLE_SW), READ_CBUS_REG(SAR_ADC_CHAN_10_SW));
-}
-
-int get_adc_sample(int chan)
-{
-    static int sample_busy = 0;
-	unsigned long data[7] = {0};
-	int count = 0;
-	int sum = 0;
-	int i = 0;
-	int res = 0x3ff;
-
-    if (sample_busy)
-        return -1;
-    sample_busy = 1;
-    
-    WRITE_CBUS_REG(SAR_ADC_DETECT_IDLE_SW, (READ_CBUS_REG(SAR_ADC_DETECT_IDLE_SW) & ~(0x03FF << 0)) | (chan << 7));
-    WRITE_CBUS_REG(SAR_ADC_CHAN_10_SW, (READ_CBUS_REG(SAR_ADC_CHAN_10_SW) & ~(0x03FF << 0)) | (chan << 7));
-
-    // Disable the sampling engine
-        WRITE_CBUS_REG(SAR_ADC_REG0, READ_CBUS_REG(SAR_ADC_REG0) & ~(1 << 0));
+	struct adc_key *key = kp->key;
+	int value, i, j;
 	
-    // Enable the sampling engine
-        WRITE_CBUS_REG(SAR_ADC_REG0, READ_CBUS_REG(SAR_ADC_REG0) | (1 << 0));
-
-	// Start Sample
-        WRITE_CBUS_REG(SAR_ADC_REG0, READ_CBUS_REG(SAR_ADC_REG0) | (1 << 2));
-
-	//wait fifo full
-        while (((READ_CBUS_REG(SAR_ADC_REG0) >> 21) & 0x1f) < 7) {;}
-
-	//Stop sample and wait all engine stop
-	WRITE_CBUS_REG(SAR_ADC_REG0, READ_CBUS_REG(SAR_ADC_REG0) | (1 << 14));
-	while (((READ_CBUS_REG(SAR_ADC_REG0) >> 28) & 0x7)) {;}
-
-	for( i = 0; i < 7; i++){
-		data[i] = (READ_CBUS_REG(SAR_ADC_FIFO_RD) & 0x3ff);
-	}
-
-	//printk("get_adc_sample = %x,%x,%x,%x,%x,%x.\n", data[0],data[1],data[2],data[3],data[4],data[5]);
-	//Ignore the first value
-	for( i = 1; i < 7; i++){
-		//Ignore invalidate value
-		if(data[i] < 0x3e0 && data[i] != 0x1fe ){
-			sum += data[i];
-			count++;
+	for (i=0; i<kp->chan_num; i++) {
+		value = get_adc_sample(kp->chan[i]);
+		if (value < 0) {
+			continue;
+		}
+	 	 for (j=0; j<kp->key_num; j++) {
+			if ((key->chan == kp->chan[i])
+			&& (value >= key->value - key->tolerance)
+			&& (value <= key->value + key->tolerance)) {
+				return key->code;
+			}
+			key++;
 		}
 	}
-
-	if(count != 0)
-		res = (int)sum/count;
 	
-    sample_busy	= 0;
-    return res;	
+	return 0;
 }
 
-static void adckp_timer_sr(unsigned long data)
+static void kp_work(struct kp *kp)
 {
-	  unsigned int result;
+	int code = kp_search_key(kp);
+	
+	if (kp->cur_keycode) {
+		if (!code) {
+			printk("key %d released.\n", kp->cur_keycode);
+			input_report_key(kp->input, kp->cur_keycode, 0);
+			kp->cur_keycode = 0;
+		}
+		else {
+			// detect another key while pressed
+		}
+	}
+	else {
+		if (code) {
+			kp->cur_keycode = code;
+			printk("key %d pressed.\n", kp->cur_keycode);
+			input_report_key(kp->input, kp->cur_keycode, 1);
+		}
+	}
+}
+
+void kp_timer_sr(unsigned long data)
+{
     struct kp *kp_data=(struct kp *)data;
-    int ret = get_adc_sample(4);
-    if (ret < 0)
-        goto restart_timer;
-    result = ret;
+
+#if 1
+    kp_work(kp_data);
+#else
+    unsigned int result;
+    result = get_adc_sample();
     if (result>=0x3e0){
         if (kp_data->cur_keycode != 0){
             input_report_key(kp_data->input,kp_data->cur_keycode, 0);	
@@ -137,29 +122,29 @@ static void adckp_timer_sr(unsigned long data)
         }
     }
 	else if (result>=0x0 && result<0x60 ) {
-		if (kp_data->cur_keycode!=KEY_PAGEDOWN){
-    	  kp_data->cur_keycode = KEY_PAGEDOWN;
+		if (kp_data->cur_keycode!=KEY_HOME){
+    	  kp_data->cur_keycode = KEY_HOME;
     	  input_report_key(kp_data->input,kp_data->cur_keycode, 1);	
     	  printk("adc ch4 sample = %x, keypad pressed.\n", result);
 		}
     }
 	else if (result>=0x110 && result<0x170 ) {
-		if (kp_data->cur_keycode!=KEY_PAGEUP){
-    	  kp_data->cur_keycode = KEY_PAGEUP;
+		if (kp_data->cur_keycode!=KEY_ENTER){
+    	  kp_data->cur_keycode = KEY_ENTER;
     	  input_report_key(kp_data->input,kp_data->cur_keycode, 1);	
     	  printk("adc ch4 sample = %x, keypad pressed.\n", result);
 		}
     }
 	else if (result>=0x240 && result<0x290 ) {
-		if (kp_data->cur_keycode!= KEY_TAB ){
-    	  kp_data->cur_keycode = KEY_TAB;
+		if (kp_data->cur_keycode!= KEY_LEFTMETA ){
+    	  kp_data->cur_keycode = KEY_LEFTMETA;
     	  input_report_key(kp_data->input,kp_data->cur_keycode, 1);	
     	  printk("adc ch4 sample = %x, keypad pressed.\n", result);
 		}
     }
 	else if (result>=0x290 && result<0x380 ) {
-		if (kp_data->cur_keycode!= KEY_LEFTMETA ){
-    	  kp_data->cur_keycode = KEY_LEFTMETA;
+		if (kp_data->cur_keycode!= KEY_TAB ){
+    	  kp_data->cur_keycode = KEY_TAB;
     	  input_report_key(kp_data->input,kp_data->cur_keycode, 1);	
     	  printk("adc ch4 sample = %x, keypad pressed.\n", result);
     }
@@ -167,7 +152,7 @@ static void adckp_timer_sr(unsigned long data)
     else{
 		printk("adc ch4 sample = unknown key %x, pressed.\n", result);
     }
-restart_timer:
+#endif
     mod_timer(&kp_data->timer,jiffies+msecs_to_jiffies(200));
 }
 
@@ -205,7 +190,8 @@ static int register_keypad_dev(struct kp  *kp)
     kp->config_major=ret;
     printk("adc keypad major:%d\r\n",ret);
     kp->config_class=class_create(THIS_MODULE,kp->config_name);
-    kp->config_dev=device_create(kp->config_class,NULL,MKDEV(kp->config_major,0),NULL,kp->config_name);
+    kp->config_dev=device_create(kp->config_class,	NULL,
+    		MKDEV(kp->config_major,0),NULL,kp->config_name);
     return ret;
 }
 
@@ -213,8 +199,14 @@ static int __init kp_probe(struct platform_device *pdev)
 {
     struct kp *kp;
     struct input_dev *input_dev;
-    int ret;
+    int i, j, ret;
+    struct adc_kp_platform_data *pdata = pdev->dev.platform_data;
 
+    if (!pdata) {
+        dev_err(&pdev->dev, "platform data is required!\n");
+        return -EINVAL;
+    }
+   
     kp = kzalloc(sizeof(struct kp), GFP_KERNEL);
     input_dev = input_allocate_device();
     if (!kp || !input_dev) {
@@ -226,21 +218,40 @@ static int __init kp_probe(struct platform_device *pdev)
 
     platform_set_drvdata(pdev, kp);
     kp->input = input_dev;
-
-	  kp->cur_keycode = 0;
-    setup_timer(&kp->timer, adckp_timer_sr, kp) ;
+    kp->cur_keycode = 0;
+     
+    setup_timer(&kp->timer, kp_timer_sr, kp) ;
     mod_timer(&kp->timer, jiffies+msecs_to_jiffies(100));
 
     /* setup input device */
     set_bit(EV_KEY, input_dev->evbit);
     set_bit(EV_REP, input_dev->evbit);
-    set_bit(KEY_TAB, input_dev->keybit);
-	//set_bit(KEY_HOME, input_dev->keybit);
-	set_bit(KEY_LEFTMETA, input_dev->keybit);
-	//set_bit(KEY_ENTER, input_dev->keybit);
-	set_bit(KEY_PAGEDOWN, input_dev->keybit);
-	set_bit(KEY_PAGEUP, input_dev->keybit);
+        
+    kp->key = pdata->key;
+    kp->key_num = pdata->key_num;
 
+    struct adc_key *key = pdata->key;
+    int new_chan_flag;
+    kp->chan_num = 0;
+    for (i=0; i<kp->key_num; i++) {
+        set_bit(key->code, input_dev->keybit);
+        /* search the key chan */
+        new_chan_flag = 1;
+        for (j=0; j<kp->chan_num; j++) {
+            if (key->chan == kp->chan[j]) {
+                new_chan_flag = 0;
+                break;
+            }
+        }
+        if (new_chan_flag) {
+            kp->chan[kp->chan_num] = key->chan;
+            printk(KERN_INFO "chan #%d used for ADC key\n", key->chan);
+            kp->chan_num++;
+        }    
+        printk(KERN_INFO "%s key(%d) registed.\n", key->name, key->code);
+        key++;
+    }
+    
     input_dev->name = "adc_keypad";
     input_dev->phys = "adc_keypad/input0";
     input_dev->dev.parent = &pdev->dev;
@@ -264,7 +275,6 @@ static int __init kp_probe(struct platform_device *pdev)
 		    return -EINVAL;
     }
     printk("adc keypad register input device completed.\r\n");
-		init_adc();
     register_keypad_dev(gp_kp);
     return 0;
 }
@@ -300,7 +310,6 @@ static struct platform_driver kp_driver = {
 static int __devinit kp_init(void)
 {
     printk(KERN_INFO "ADC Keypad Driver init.\n");
-
     return platform_driver_register(&kp_driver);
 }
 
