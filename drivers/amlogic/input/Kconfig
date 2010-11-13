@@ -6,9 +6,11 @@ menu "Amlogic Input device support"
 
 source "drivers/amlogic/input/irremote/Kconfig"
 
-source "drivers/amlogic/input/adc_keypad/Kconfig"
+source "drivers/amlogic/input/saradc/Kconfig"
 
-source "drivers/amlogic/input/key_input/Kconfig"
+source "drivers/amlogic/input/adc_ts/Kconfig"
+
+source "drivers/amlogic/input/adc_keypad/Kconfig"
 
 endmenu
 

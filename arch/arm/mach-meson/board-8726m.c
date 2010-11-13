@@ -126,15 +126,71 @@ static struct platform_device input_device = {
 };
 #endif
 
+#ifdef CONFIG_SARADC_AM
+#include <linux/saradc.h>
+static struct platform_device saradc_device = {
+	.name = "saradc",
+	.id = 0,
+	.dev = {
+		.platform_data = NULL,
+	},
+};
+#endif
+
+#ifdef CONFIG_ADC_TOUCHSCREEN_AM
+#include <linux/adc_ts.h>
+
+static struct adc_ts_platform_data adc_ts_pdata = {
+	.irq = -1,	//INT_SAR_ADC
+	.x_plate_ohms = 400,
+};
+
+static struct platform_device adc_ts_device = {
+	.name = "adc_ts",
+	.id = 0,
+	.dev = {
+		.platform_data = &adc_ts_pdata,
+	},
+};
+#endif
+
 #if defined(CONFIG_ADC_KEYPADS_AM)||defined(CONFIG_ADC_KEYPADS_AM_MODULE)
-static struct platform_device input_device_adc = {
+#include <linux/input.h>
+#include <linux/adc_keypad.h>
+
+static struct adc_key adc_kp_key[] = {
+#if 1	// w10
+	{KEY_HOME,		"home",	CHAN_4,	0, 60},	// 0v	102
+	{KEY_ENTER,		"enter",	CHAN_4,	306, 60},	// 0v	28
+	{KEY_LEFTMETA,	"leftmeta",CHAN_4,	602, 60},	// 0v	125
+	{KEY_TAB,		"tab",	CHAN_4,	760, 60},	// 0v	15
+#else // arm
+	{KEY_MENU,		"menu",	CHAN_4,	0, 60},	// 0v
+	{KEY_UP,			"up",		CHAN_4, 180, 60},	// 0.58v
+	{KEY_DOWN,		"down",	CHAN_4, 285, 60},	// 0.92v
+	{KEY_LEFT,		"left",	CHAN_4, 400, 60},	// 1.29v
+	{KEY_RIGHT,		"right",	CHAN_4, 505, 60},	// 1.63v
+	{KEY_EXIT,		"exit",	CHAN_4, 624, 60},	// 2.01v
+	{KEY_OK,		"ok",		CHAN_4, 850, 60},	// 2.74v
+#endif
+};
+
+static struct adc_kp_platform_data adc_kp_pdata = {
+	.key = &adc_kp_key[0],
+	.key_num = ARRAY_SIZE(adc_kp_key),
+};
+
+static struct platform_device adc_kp_device = {
 	.name = "m1-adckp",
 	.id = 0,
 	.num_resources = 0,
 	.resource = NULL,
-	
+	.dev = {
+		.platform_data = &adc_kp_pdata,
+	}
 };
 #endif
+
 
 #if defined(CONFIG_KEY_INPUT_CUSTOM_AM) || defined(CONFIG_KEY_INPUT_CUSTOM_AM_MODULE)
 #include <linux/input.h>
@@ -691,26 +747,16 @@ static void set_charge(int flags)
     set_gpio_mode(GPIOD_bank_bit2_24(22), GPIOD_bit_bit2_24(22), GPIO_OUTPUT_MODE);
 }
 
+#ifdef CONFIG_SARADC_AM
 extern int get_adc_sample(int chan);
-static int bat_val[10] = {0};
-static char bat_read_count = 0;
+#endif
 static int get_bat_vol(void)
 {
-    int i,ret = 0;
-    bat_val[bat_read_count] = get_adc_sample(5);
-    for(i=0;i<10;i++)
-    {
-      ret = ret + bat_val[i];
-    }
-    
-    ret = ret/10;
-    
-    if(bat_read_count<9)
-        bat_read_count++;
-    else
-        bat_read_count = 0;
-        
-	return ret;
+#ifdef CONFIG_SARADC_AM
+	return get_adc_sample(5);
+#else
+        return 0;
+#endif
 }
 
 static int get_charge_status()
@@ -1117,8 +1163,14 @@ static struct platform_device __initdata *platform_devs[] = {
     #if defined(CONFIG_KEYPADS_AM)||defined(CONFIG_VIRTUAL_REMOTE)||defined(CONFIG_KEYPADS_AM_MODULE)
 		&input_device,
     #endif	
+#ifdef CONFIG_SARADC_AM
+		&saradc_device,
+#endif
+#ifdef CONFIG_ADC_TOUCHSCREEN_AM
+		&adc_ts_device,
+#endif
     #if defined(CONFIG_ADC_KEYPADS_AM)||defined(CONFIG_ADC_KEYPADS_AM_MODULE)
-		&input_device_adc,
+		&adc_kp_device,
     #endif
     #if defined(CONFIG_KEY_INPUT_CUSTOM_AM) || defined(CONFIG_KEY_INPUT_CUSTOM_AM_MODULE)
 		&input_device_key,  //changed by Elvis
