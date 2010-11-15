@@ -638,6 +638,8 @@ static s32 vmpeg4_init(void)
 
         stat |= STAT_TIMER_INIT;
 
+        amvdec_enable();
+
         vmpeg4_local_init();
 
         if (vmpeg4_amstream_dec_info.format == VIDEO_DEC_FORMAT_MPEG4_3)
@@ -645,6 +647,8 @@ static s32 vmpeg4_init(void)
                 amlog_level(LOG_LEVEL_INFO, "load VIDEO_DEC_FORMAT_MPEG4_3\n");
                 if (amvdec_loadmc(vmpeg4_mc_311) < 0) 
                 {
+                        amvdec_disable();
+
                         amlog_level(LOG_LEVEL_ERROR, "VIDEO_DEC_FORMAT_MPEG4_3 ucode loading failed\n");
                         return -EBUSY;
                 }
@@ -654,6 +658,8 @@ static s32 vmpeg4_init(void)
                 amlog_level(LOG_LEVEL_INFO, "load VIDEO_DEC_FORMAT_MPEG4_4\n");
                 if (amvdec_loadmc(vmpeg4_mc_4) < 0) 
                 {
+                        amvdec_disable();
+
                         amlog_level(LOG_LEVEL_ERROR, "VIDEO_DEC_FORMAT_MPEG4_4 ucode loading failed\n");
                         return -EBUSY;
                 }
@@ -663,6 +669,8 @@ static s32 vmpeg4_init(void)
                 amlog_level(LOG_LEVEL_INFO, "load VIDEO_DEC_FORMAT_MPEG4_5\n");
                 if (amvdec_loadmc(vmpeg4_mc_5) < 0) 
                 {
+                        amvdec_disable();
+
                         amlog_level(LOG_LEVEL_ERROR, "VIDEO_DEC_FORMAT_MPEG4_5 ucode loading failed\n");
                         return -EBUSY;
                 }
@@ -672,6 +680,8 @@ static s32 vmpeg4_init(void)
                 amlog_level(LOG_LEVEL_INFO, "load VIDEO_DEC_FORMAT_H263\n");
                 if (amvdec_loadmc(h263_mc) < 0) 
                 {
+                        amvdec_disable();
+
                         amlog_level(LOG_LEVEL_ERROR, "VIDEO_DEC_FORMAT_H263 ucode loading failed\n");
                         return -EBUSY;
                 }
@@ -690,6 +700,8 @@ static s32 vmpeg4_init(void)
         if (request_irq(INT_MAILBOX_1A, vmpeg4_isr,
                         IRQF_SHARED, "vmpeg4-irq", (void *)vmpeg4_dec_id))
         {
+                amvdec_disable();
+
                 amlog_level(LOG_LEVEL_ERROR, "vmpeg4 irq register error.\n");
                 return -ENOENT;
         }
@@ -769,6 +781,8 @@ static int amvdec_mpeg4_remove(struct platform_device *pdev)
                 vf_unreg_provider();
                 stat &= ~STAT_VF_HOOK;
         }
+
+        amvdec_disable();
 
         amlog_mask(LOG_MASK_PTS, "pts hit %d, pts missed %d, i hit %d, missed %d\n",
             pts_hit, pts_missed, pts_i_hit, pts_i_missed);

@@ -477,9 +477,13 @@ static s32 vmjpeg_init(void)
 
     stat |= STAT_TIMER_INIT;
 
+    amvdec_enable();
+
     vmjpeg_local_init();
 
     if (amvdec_loadmc(vmjpeg_mc) < 0) {
+        amvdec_disable();
+
         return -EBUSY;
     }
 
@@ -492,6 +496,8 @@ static s32 vmjpeg_init(void)
                     IRQF_SHARED, "vmjpeg-irq", (void *)vmjpeg_dec_id);
 
     if (r) {
+        amvdec_disable();
+
         amlog_level(LOG_LEVEL_ERROR, "vmjpeg irq register error.\n");
         return -ENOENT;
     }
@@ -567,6 +573,8 @@ static int amvdec_mjpeg_remove(struct platform_device *pdev)
         vf_unreg_provider();
         stat &= ~STAT_VF_HOOK;
     }
+
+    amvdec_disable();
 
     amlog_level(LOG_LEVEL_INFO, "amvdec_mjpeg remove.\n");
 
