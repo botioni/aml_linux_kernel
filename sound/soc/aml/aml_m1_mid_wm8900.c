@@ -139,7 +139,7 @@ static unsigned int inner_cs_input_level()
 		unsigned int level = 0;
     unsigned int cs_no = 0;
     //pin64 LED_CS0
-    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0, (1<<21));
+//    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0, (1<<21));
     // Enable VBG_EN
     WRITE_CBUS_REG_BITS(PREG_AM_ANALOG_ADDR, 1, 0, 1);
     // pin mux 
@@ -252,20 +252,31 @@ static void wm8900_hp_detect_queue(struct work_struct* work)
 {
 	int level = inner_cs_input_level();
 	struct wm8900_work_t* pwork = container_of(work,struct wm8900_work_t, wm8900_workqueue);
+	int gpio_status = 0;
 	struct snd_soc_codec* codec = (struct snd_soc_codec*)(pwork->data);
-
-        if(level == 0x1 && hp_detect_flag!= 0x1){       // HP	
-           printk("level = %x\n", level);		
+//printk("level = %x, hp_detect_flag = %x\n", level, hp_detect_flag);
+        if(level == 0x11&& hp_detect_flag!= 0x11){       // HP	
+           printk("Headphone pluged in\n");		
 	   snd_soc_dapm_disable_pin(codec, "Ext Spk");
 	   snd_soc_dapm_sync(codec);
+	// pull down the gpio to mute spk
+	   gpio_status = snd_soc_read(codec, WM8900_REG_GPIO);
+	   gpio_status &= ~(7<<4);
+	   gpio_status |= (6<<4);
+	   snd_soc_write(codec, WM8900_REG_GPIO, gpio_status);
+	
            snd_soc_jack_report(&hp_jack, SND_JACK_HEADSET, SND_JACK_HEADSET);
-           hp_detect_flag = 0x1;
+           hp_detect_flag = level;
         }else if(level != hp_detect_flag){      // HDMI
-           printk("level = %x\n", level);
+           printk("Headphone unpluged\n");
 	   snd_soc_dapm_enable_pin(codec, "Ext Spk");
 	   snd_soc_dapm_sync(codec);
            snd_soc_jack_report(&hp_jack,0, SND_JACK_HEADSET);
            hp_detect_flag = level;
+	   gpio_status = snd_soc_read(codec, WM8900_REG_GPIO);
+	   gpio_status &= ~(7<<4);
+	   gpio_status |= (7<<4);
+	   snd_soc_write(codec, WM8900_REG_GPIO, gpio_status);
         } 
 }
 
