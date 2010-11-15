@@ -822,7 +822,7 @@ static inline bool vpts_expire(vframe_t *cur_vf, vframe_t *next_vf)
 
     systime = timestamp_pcrscr_get();
 
-    if (pts == 0)
+    if ((pts == 0) && (cur_dispbuf != &vf_local))
         pts = timestamp_vpts_get() + (cur_vf ? DUR2PTS(cur_vf->duration) : 0);
     /* check video PTS discontinuity */
     else if (abs(systime - pts) > tsync_vpts_discontinuity_margin()) {
