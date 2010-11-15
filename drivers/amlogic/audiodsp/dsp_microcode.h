@@ -2,7 +2,7 @@
 #ifndef AUDIODSP_MICROCODE_HEADER
 #define AUDIODSP_MICROCODE_HEADER
 #include "audiodsp_module.h"
-struct auidodsp_microcode
+struct audiodsp_microcode
 {
 	int 	id;
 	int 	fmt;//support format;
@@ -14,9 +14,9 @@ struct auidodsp_microcode
 
 
 
-extern int auidodsp_microcode_register(struct audiodsp_priv*priv,int fmt,char *filename);
-extern struct auidodsp_microcode *  audiodsp_find_supoort_mcode(struct audiodsp_priv*priv,int fmt);
-extern int auidodsp_microcode_load(struct audiodsp_priv*priv,struct auidodsp_microcode *pmcode);
-int auidodsp_microcode_free(struct audiodsp_priv*priv);
+extern int audiodsp_microcode_register(struct audiodsp_priv*priv,int fmt,char *filename);
+extern struct audiodsp_microcode *  audiodsp_find_supoort_mcode(struct audiodsp_priv*priv,int fmt);
+extern int audiodsp_microcode_load(struct audiodsp_priv*priv,struct audiodsp_microcode *pmcode);
+int audiodsp_microcode_free(struct audiodsp_priv*priv);
  #endif
 

@@ -197,7 +197,7 @@ static inline int dsp_set_stream_buffer( struct audiodsp_priv *priv)
 }
 
 
- int dsp_start( struct audiodsp_priv *priv, struct auidodsp_microcode *mcode)
+ int dsp_start( struct audiodsp_priv *priv, struct audiodsp_microcode *mcode)
  {
 	int i;
 	int res;
@@ -205,7 +205,7 @@ static inline int dsp_set_stream_buffer( struct audiodsp_priv *priv)
 	halt_dsp(priv);
 	if(priv->stream_fmt!=priv->last_stream_fmt) // remove the trick, bug fixed on dsp side
 		{
-		if(auidodsp_microcode_load(audiodsp_privdata(),mcode)!=0)
+		if(audiodsp_microcode_load(audiodsp_privdata(),mcode)!=0)
 			{
 			printk("load microcode error\n");
 			res=-1;

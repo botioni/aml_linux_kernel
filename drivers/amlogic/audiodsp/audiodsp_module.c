@@ -45,13 +45,13 @@ MODULE_VERSION("1.0.0");
 extern struct audio_info * get_audio_info(void);
 void audiodsp_moniter(unsigned long);
 static struct audiodsp_priv *audiodsp_p;
-#define  DSP_DRIVER_NAME	"auidodsp"
+#define  DSP_DRIVER_NAME	"audiodsp"
 #define  DSP_NAME	"dsp"
 
 int audiodsp_start(void)
 {
 	struct audiodsp_priv *priv=audiodsp_privdata();
-	struct auidodsp_microcode *pmcode;
+	struct audiodsp_microcode *pmcode;
 	struct audio_info *audio_info;
 	int ret,i;
 	priv->frame_format.valid=0;
@@ -123,7 +123,7 @@ static int audiodsp_ioctl(struct inode *node, struct file *file, unsigned int cm
 				}
 			break;
 		case AUDIODSP_STOP:
-			//DSP_PRNT("auidodsp command stop\n");
+			//DSP_PRNT("audiodsp command stop\n");
 			stop_audiodsp_monitor(priv);
 			dsp_stop(priv);
 			
@@ -171,12 +171,12 @@ static int audiodsp_ioctl(struct inode *node, struct file *file, unsigned int cm
 			len=a_cmd->data_len>64?64:a_cmd->data_len;
 			copy_from_user(name,a_cmd->data,len);
 			name[len]='\0';
-			ret=auidodsp_microcode_register(priv,
+			ret=audiodsp_microcode_register(priv,
 								a_cmd->fmt,
 								name);
 			break;
 		case AUDIODSP_UNREGISTER_ALLFIRMWARE:
-			  auidodsp_microcode_free(priv);
+			  audiodsp_microcode_free(priv);
 			break;
 		case AUDIODSP_GET_CHANNELS_NUM: 
 			*val=-1;/*mask data is not valid*/
@@ -299,7 +299,7 @@ ssize_t audiodsp_write(struct file * file, const char __user * ubuf, size_t size
 	struct audiodsp_priv *priv=audiodsp_privdata();
 	// int dsp_codec_start( struct audiodsp_priv *priv);
 	// int dsp_codec_stop( struct audiodsp_priv *priv);
-	auidodsp_microcode_register(priv,
+	audiodsp_microcode_register(priv,
 								MCODEC_FMT_COOK,
 								"audiodsp_codec_cook.bin");
 	priv->stream_fmt=MCODEC_FMT_COOK;
@@ -451,7 +451,7 @@ static void __exit audiodsp_exit_module(void)
 	stop_audiodsp_monitor(priv);
 	audiodsp_release_mailbox(priv);
 	release_audiodsp_monitor(priv);
-	auidodsp_microcode_free(priv);
+	audiodsp_microcode_free(priv);
     iounmap(priv->p);
 	device_destroy(priv->class, MKDEV(AUDIODSP_MAJOR, 0));
 	class_destroy(priv->class);

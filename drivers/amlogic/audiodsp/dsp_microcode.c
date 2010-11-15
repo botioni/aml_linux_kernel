@@ -21,7 +21,7 @@
 #include "dsp_microcode.h"
 #include <linux/dma-mapping.h>
 
-static  int auidodsp_microcode_insert(struct audiodsp_priv*priv,struct auidodsp_microcode *pmcode)
+static  int audiodsp_microcode_insert(struct audiodsp_priv*priv,struct audiodsp_microcode *pmcode)
 {
 	unsigned long flags;
 	
@@ -35,10 +35,10 @@ static  int auidodsp_microcode_insert(struct audiodsp_priv*priv,struct auidodsp_
 	return priv->mcode_id;
 }
 
-struct auidodsp_microcode *  audiodsp_find_supoort_mcode(struct audiodsp_priv*priv,int fmt)
+struct audiodsp_microcode *  audiodsp_find_supoort_mcode(struct audiodsp_priv*priv,int fmt)
 {
-	struct auidodsp_microcode *pmcode=NULL;
-	struct auidodsp_microcode *p=NULL;
+	struct audiodsp_microcode *pmcode=NULL;
+	struct audiodsp_microcode *p=NULL;
 	unsigned long flags;
 	spin_lock_irqsave(&priv->mcode_lock, flags);
 	list_for_each_entry(p,&priv->mcode_list,list)
@@ -52,10 +52,10 @@ struct auidodsp_microcode *  audiodsp_find_supoort_mcode(struct audiodsp_priv*pr
 	spin_unlock_irqrestore(&priv->mcode_lock, flags);
 	return pmcode;
 }
-static struct auidodsp_microcode *  audiodsp_find_mcode_by_name(struct audiodsp_priv*priv,char *name)
+static struct audiodsp_microcode *  audiodsp_find_mcode_by_name(struct audiodsp_priv*priv,char *name)
 {
-	struct auidodsp_microcode *pmcode=NULL;
-	struct auidodsp_microcode *p=NULL;
+	struct audiodsp_microcode *pmcode=NULL;
+	struct audiodsp_microcode *p=NULL;
 	unsigned long flags;
 	spin_lock_irqsave(&priv->mcode_lock, flags);
 	list_for_each_entry(p,&priv->mcode_list,list)
@@ -70,7 +70,7 @@ static struct auidodsp_microcode *  audiodsp_find_mcode_by_name(struct audiodsp_
 	return pmcode;
 }
 
- int auidodsp_microcode_load(struct audiodsp_priv*priv,struct auidodsp_microcode *pmcode)
+ int audiodsp_microcode_load(struct audiodsp_priv*priv,struct audiodsp_microcode *pmcode)
 {
 	
 	const struct firmware *firmware;
@@ -106,9 +106,9 @@ error1:
 	return err;
 }
 
- int auidodsp_microcode_register(struct audiodsp_priv*priv,int fmt,char *filename)
+ int audiodsp_microcode_register(struct audiodsp_priv*priv,int fmt,char *filename)
 {
-	struct auidodsp_microcode *pmcode;
+	struct audiodsp_microcode *pmcode;
 	int len;
 	pmcode=audiodsp_find_mcode_by_name(priv,filename);
 	if(pmcode!=NULL)
@@ -124,7 +124,7 @@ error1:
 		}
 	else
 		{
-			pmcode=kmalloc(sizeof(struct auidodsp_microcode ),GFP_KERNEL);
+			pmcode=kmalloc(sizeof(struct audiodsp_microcode ),GFP_KERNEL);
 			if(pmcode==NULL)
 				return -ENOMEM;
 			pmcode->fmt=fmt;
@@ -132,7 +132,7 @@ error1:
 			len=min(64,(int)strlen(filename));
 			memcpy(pmcode->file_name,filename,len);
 			pmcode->file_name[len]='\0';
-			pmcode->id=auidodsp_microcode_insert(priv,pmcode);
+			pmcode->id=audiodsp_microcode_insert(priv,pmcode);
 			if(pmcode->id<0)
 				{
 				kfree(pmcode);
@@ -146,17 +146,17 @@ error1:
 
 }
 
-  int auidodsp_microcode_free(struct audiodsp_priv*priv)
+  int audiodsp_microcode_free(struct audiodsp_priv*priv)
   {
   	unsigned long flags;
-	struct auidodsp_microcode *pmcode;
+	struct audiodsp_microcode *pmcode;
 	struct list_head  *list,*head;
 	local_irq_save(flags);
 	head=&priv->mcode_list;
 	while(!list_empty(head))
 		{
 		list=head->prev;
-		pmcode=list_entry(list, struct auidodsp_microcode, list);
+		pmcode=list_entry(list, struct audiodsp_microcode, list);
 		list_del(list);
 		kfree(pmcode);
 		}

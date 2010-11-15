@@ -9,7 +9,7 @@
 
 void halt_dsp( struct audiodsp_priv *priv);
 void reset_dsp( struct audiodsp_priv *priv);
- int dsp_start( struct audiodsp_priv *priv, struct auidodsp_microcode *mcode);
+ int dsp_start( struct audiodsp_priv *priv, struct audiodsp_microcode *mcode);
  int dsp_stop( struct audiodsp_priv *priv);
 
 #define DSP_RD(reg)	  (*((volatile unsigned long *)reg))
