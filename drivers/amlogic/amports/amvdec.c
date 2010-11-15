@@ -50,10 +50,10 @@ static void amvdec_pg_enable(bool enable)
     }
     else {
         CLK_GATE_OFF(AMRISC);
-        CLK_GATE_OFF(MDEC_CLK_PIC_DC);
-        CLK_GATE_OFF(MDEC_CLK_DBLK);
-        CLK_GATE_OFF(MC_CLK);
-        CLK_GATE_OFF(IQIDCT_CLK);
+        //CLK_GATE_OFF(MDEC_CLK_PIC_DC);
+        //CLK_GATE_OFF(MDEC_CLK_DBLK);
+        //CLK_GATE_OFF(MC_CLK);
+        //CLK_GATE_OFF(IQIDCT_CLK);
         //CLK_GATE_OFF(VLD_CLK);
     }
 }
