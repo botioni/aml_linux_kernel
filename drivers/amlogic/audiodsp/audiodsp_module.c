@@ -57,6 +57,7 @@ int audiodsp_start(void)
 	priv->frame_format.valid=0;
 	priv->decode_error_count=0;
 	priv->last_valid_pts=0;
+	priv->out_len_after_last_valid_pts = 0;
 	pmcode=audiodsp_find_supoort_mcode(priv,priv->stream_fmt);
 	if(pmcode==NULL)
 		{

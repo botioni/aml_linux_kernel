@@ -95,8 +95,10 @@ u32 dsp_codec_get_current_pts(struct audiodsp_priv *priv)
 	
 	mutex_lock(&priv->stream_buffer_mutex);
 	
-	if(priv->frame_format.channel_num == 0 || priv->frame_format.sample_rate == 0 || priv->frame_format.data_width == 0)
+	if(priv->frame_format.channel_num == 0 || priv->frame_format.sample_rate == 0 || priv->frame_format.data_width == 0){
+		printk("unvalib audio format!\n");
 		return -1;
+	}
 #if 0
 	if(priv->stream_fmt == MCODEC_FMT_COOK)
 		{
@@ -118,14 +120,16 @@ u32 dsp_codec_get_current_pts(struct audiodsp_priv *priv)
 		}
 	else
 		res=pts_lookup_offset(PTS_TYPE_AUDIO,offset,&pts,0);
-
+		//printk("pts_lookup_offset = %d, buffer_len = %d, res = %d\n", offset, buffered_len, res);
+		
 	if(res==0)
 		{
-//printk("pts_lookup_offset = %d, buffer_len == %d\n", offset, buffered_len);
+		//printk("check out pts == %x\n", pts);
 		priv->out_len_after_last_valid_pts=0;
 		len=buffered_len+dsp_codec_get_bufer_data_len1(priv, wp);
 		frame_nums=(len*8/(priv->frame_format.data_width*priv->frame_format.channel_num));
 		delay_pts=(frame_nums*90)/(priv->frame_format.sample_rate/1000);
+		//printk("cal delay pts == %x\n", delay_pts);
 		if(pts>delay_pts)
 			pts-=delay_pts;
 		else
@@ -136,7 +140,7 @@ u32 dsp_codec_get_current_pts(struct audiodsp_priv *priv)
  //   len, priv->frame_format.data_width,priv->frame_format.channel_num, frame_nums, priv->frame_format.sample_rate, pts);
 		}
 
-	else if(priv->last_valid_pts>0)
+	else if(priv->last_valid_pts>=0)
 		{
 		pts=priv->last_valid_pts;
 		len=priv->out_len_after_last_valid_pts;
@@ -149,6 +153,7 @@ u32 dsp_codec_get_current_pts(struct audiodsp_priv *priv)
 
 	else
 		{
+		printk("checkout audio pts failed!\n");
 		pts=-1;
 		}
 
