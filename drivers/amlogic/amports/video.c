@@ -1137,10 +1137,6 @@ static irqreturn_t vsync_isr0(int irq, void *dev_id)
 			)
     	run_deinterlace(zoom_start_x_lines, zoom_end_x_lines, zoom_start_y_lines, zoom_end_y_lines, cur_dispbuf->type_backup, cur_dispbuf->blend_mode, hold_line);
 
-	if (READ_MPEG_REG(VENC_ENCP_LINE) >=
-	    READ_MPEG_REG(ENCP_VIDEO_VAVON_BLINE))
-		printk("line over limit\n");
-
 exit:
 #ifdef FIQ_VSYNC
 	WRITE_MPEG_REG(IRQ_CLR_REG(INT_VIU_VSYNC), 1 << IRQ_BIT(INT_VIU_VSYNC));
