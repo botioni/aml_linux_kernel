@@ -134,6 +134,7 @@ int get_adc_sample(int chan)
 	int count;
 	int value = -1;
 	int sum;
+	int i;
 	
 	if (!gp_saradc)
 		return -1;
@@ -141,41 +142,38 @@ int get_adc_sample(int chan)
 	spin_lock(&gp_saradc->lock);
 
 	set_chan_list(chan, 1);
-	set_sample_mux(chan, chan_mux[chan]);
+//	set_sample_mux(chan, chan_mux[chan]);
 	set_detect_mux(chan_mux[chan]);
 	set_idle_mux(chan_mux[chan]); // for revb
-//	enable_sample_engine();
+
+	enable_sample_engine();
 	start_sample();
 
-	// Read any CBUS register to delay one clock cycle after starting the sampling engine
-	// The bus is really fast and we may miss that it started
-	{ count = get_reg(ISA_TIMERE); }
+	while (get_fifo_cnt() < 7) {;}
+    stop_sample();
+    
+	while (delta_busy() || sample_busy() || avg_busy()) {;}
 
-	count = 0;
-	while (delta_busy() || sample_busy() || avg_busy()) {
-		if (++count > 10000) {
-        			printk(KERN_ERR "ADC busy error.\n");
-			goto end;
-		}
+    sum = 0;
+    count = 0;
+    value = get_fifo_sample();
+	for( i = 0; i < 6; i++){
+        value = get_fifo_sample() & 0x3ff;
+        if ((value != 0x1fe) && (value != 0x1ff)) {
+            sum += value;
+            count++;
+        }
 	}
-	stop_sample();
-	
-	sum = 0;
-	count = 0;
-	while (get_fifo_cnt()) {
-		value = get_fifo_sample();
-		if (((value >> 12) & 0x7) == chan) {
-			sum += value & 0x3ff;
-			count++;
-		}
-	}
+
 
 	if (count) {
 		value = sum / count;
 	}
+	else
+	    value = -1;
 end:
-//	printk("ch%d = %d, count=%d\n", chan, value, count);
-//	disable_sample_engine();
+	//printk("ch%d = %d, count=%d\n", chan, value, count);
+	disable_sample_engine();
 	spin_unlock(&gp_saradc->lock);
 	return value;
 }
