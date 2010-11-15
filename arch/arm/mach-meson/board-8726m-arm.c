@@ -372,6 +372,7 @@ static struct aml_card_info  amlogic_card_info[] = {
 		.card_wp_input_mask = PREG_IO_11_MASK,
 		.card_extern_init = 0,
 	},
+#if 0
 	[1] = {
 		.name = "sdio_card",
 		.work_mode = CARD_HW_MODE,
@@ -391,6 +392,7 @@ static struct aml_card_info  amlogic_card_info[] = {
 		.card_wp_input_mask = 0,
 		.card_extern_init = sdio_extern_init,
 	},
+#endif
 };
 
 static struct aml_card_platform amlogic_card_platform = {
