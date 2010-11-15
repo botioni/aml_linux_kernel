@@ -41,10 +41,10 @@
 static void amvdec_pg_enable(bool enable)
 {
     if (enable) {
-        CLK_GATE_ON(MDEC_CLK_PIC_DC);
-        CLK_GATE_ON(MDEC_CLK_DBLK);
-        CLK_GATE_ON(MC_CLK);
-        CLK_GATE_ON(IQIDCT_CLK);
+        //CLK_GATE_ON(MDEC_CLK_PIC_DC);
+        //CLK_GATE_ON(MDEC_CLK_DBLK);
+        //CLK_GATE_ON(MC_CLK);
+        //CLK_GATE_ON(IQIDCT_CLK);
         //CLK_GATE_ON(VLD_CLK);
         CLK_GATE_ON(AMRISC);
     }
@@ -69,6 +69,8 @@ s32 amvdec_loadmc(const u32 *p)
     if (!mc_addr)
         return -ENOMEM;
 		
+    CLK_GATE_ON(AMRISC);
+
     memcpy(mc_addr, p, MC_SIZE);
 
     mc_addr_map = dma_map_single(NULL, mc_addr, MC_SIZE, DMA_TO_DEVICE);
@@ -100,6 +102,8 @@ s32 amvdec_loadmc(const u32 *p)
     dma_unmap_single(NULL, mc_addr_map, MC_SIZE, DMA_TO_DEVICE);
 
     kfree(mc_addr);
+
+    CLK_GATE_OFF(AMRISC);
 
     return ret;
 }
