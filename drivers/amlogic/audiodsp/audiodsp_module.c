@@ -1,5 +1,3 @@
-
-
 #include <linux/version.h>
 #include <linux/module.h>
 #include <linux/kernel.h>
@@ -48,6 +46,47 @@ static struct audiodsp_priv *audiodsp_p;
 #define  DSP_DRIVER_NAME	"audiodsp"
 #define  DSP_NAME	"dsp"
 
+/**
+ *  Audio codec necessary MIPS (KHz)
+ */
+static unsigned int audiodsp_mips[]={
+    200000, //#define MCODEC_FMT_MPEG123 (1<<0)
+    200000, //#define MCODEC_FMT_AAC 	  (1<<1)
+    200000, //#define MCODEC_FMT_AC3 	  (1<<2)
+    200000, //#define MCODEC_FMT_DTS		  (1<<3)
+    200000, //#define MCODEC_FMT_FLAC	  (1<<4)
+    200000, //#define MCODEC_FMT_COOK		(1<<5)
+    200000, //#define MCODEC_FMT_AMR		(1<<6)
+    200000, //#define MCODEC_FMT_RAAC     (1<<7)
+    200000, //#define MCODEC_FMT_ADPCM	  (1<<8)
+    200000, //#define MCODEC_FMT_WMA     (1<<9)
+    200000, //#define MCODEC_FMT_PCM      (1<<10)
+};
+
+#ifdef CONFIG_PM
+typedef struct {
+    int event;
+    //
+}audiodsp_pm_state_t;
+
+static audiodsp_pm_state_t pm_state;
+
+#endif
+
+static void audiodsp_prevent_sleep(void)
+{
+    struct audiodsp_priv* priv = audiodsp_privdata();
+    printk("audiodsp prevent sleep\n");
+    wake_lock(&priv->wakelock);
+}
+
+static void audiodsp_allow_sleep(void)
+{
+    struct audiodsp_priv *priv=audiodsp_privdata();
+    printk("audiodsp allow sleep\n");
+    wake_unlock(&priv->wakelock);
+}
+
 int audiodsp_start(void)
 {
 	struct audiodsp_priv *priv=audiodsp_privdata();
@@ -60,10 +99,11 @@ int audiodsp_start(void)
 	priv->out_len_after_last_valid_pts = 0;
 	pmcode=audiodsp_find_supoort_mcode(priv,priv->stream_fmt);
 	if(pmcode==NULL)
-		{
+	{
 		DSP_PRNT("have not find a valid mcode for fmt(0x%x)\n",priv->stream_fmt);
 		return -1;
-		}
+	}
+
 	stop_audiodsp_monitor(priv);
 	dsp_stop(priv);
 	ret=dsp_start(priv,pmcode);
@@ -93,6 +133,7 @@ int audiodsp_start(void)
 static int audiodsp_open(struct inode *node, struct file *file)
 {
 	DSP_PRNT("dsp_open\n");
+	audiodsp_prevent_sleep();
 	return 0;
 
 }
@@ -213,6 +254,7 @@ static int audiodsp_ioctl(struct inode *node, struct file *file, unsigned int cm
 static int audiodsp_release(struct inode *node, struct file *file)
 {
 	DSP_PRNT("dsp_release\n");
+	audiodsp_allow_sleep();
 	return 0;
 }
 
@@ -366,6 +408,71 @@ static int audiodsp_init_mcode(struct audiodsp_priv *priv)
 	return 0;
 }
 
+static ssize_t codec_fmt_show(struct class* cla, struct class_attribute* attr, char* buf)
+{
+    size_t ret = 0;
+    struct audiodsp_priv *priv = audiodsp_privdata();
+    ret = sprintf(buf, "The codec Format %d\n", priv->stream_fmt);
+    return ret;
+}
+
+static ssize_t codec_mips_show(struct class* cla, struct class_attribute* attr, char* buf)
+{
+    size_t ret = 0;
+    struct audiodsp_priv *priv = audiodsp_privdata();
+    if(priv->stream_fmt < sizeof(audiodsp_mips)){    
+        ret = sprintf(buf, "%d\n", audiodsp_mips[priv->stream_fmt]);        
+    }
+    else{
+        ret = sprintf(buf, "%d\n", 200000);
+    }
+    return ret;
+}
+
+static struct class_attribute audiodsp_attrs[]={
+    __ATTR_RO(codec_fmt),
+    __ATTR_RO(codec_mips),
+    __ATTR_NULL
+};
+
+#ifdef CONFIG_PM
+static int audiodsp_suspend(struct device* dev, pm_message_t state)
+{
+     struct audiodsp_priv *priv = audiodsp_privdata();
+    if(wake_lock_active(&priv->wakelock)){
+        return -1; // please stop dsp first
+    }
+    pm_state.event = state.event;
+    if(state.event == PM_EVENT_SUSPEND){
+        // should sleep cpu2 here after RevC chip
+        msleep(50);
+    }
+    printk("audiodsp suspend\n");
+    return 0;
+}
+
+static int audiodsp_resume(struct device* dev)
+{
+    if(pm_state.event == PM_EVENT_SUSPEND){
+        // wakeup cpu2 
+        pm_state.event = -1;
+    }
+    printk("audiodsp resumed\n");
+    return 0;
+}
+#endif
+
+static struct class audiodsp_class = {
+    .name = DSP_DRIVER_NAME,
+    .class_attrs = audiodsp_attrs,
+#ifdef CONFIG_PM
+    .suspend = audiodsp_suspend,
+    .resume = audiodsp_resume,
+#else
+    .suspend = NULL,
+    .resume = NULL,
+#endif
+};
 
 int audiodsp_probe(void )
 {
@@ -394,12 +501,14 @@ int audiodsp_probe(void )
 		DSP_PRNT("register " DSP_NAME " to char divece(%d)\n",
 			  AUDIODSP_MAJOR);
 	}
-	priv->class = class_create(THIS_MODULE, DSP_DRIVER_NAME);
-	if (priv->class == NULL) {
-		DSP_PRNT("class_create create error\n");
-		res = -EEXIST;
-		goto error2;
+
+	res = class_register(&audiodsp_class);
+	if(res <0 ){
+	    DSP_PRNT("Create audiodsp class failed\n");
+	    res = -EEXIST;
+	    goto error2;
 	}
+	priv->class = &audiodsp_class;
 	priv->dev = device_create(priv->class,
 					    NULL, MKDEV(AUDIODSP_MAJOR, 0),
 					    NULL, "audiodsp0");
@@ -410,6 +519,7 @@ int audiodsp_probe(void )
 		}
 	audiodsp_init_mailbox(priv);
 	init_audiodsp_monitor(priv);
+	wake_lock_init(&priv->wakelock,WAKE_LOCK_SUSPEND, "audiodsp");
 #ifdef CONFIG_AM_STREAMING	
 	set_adec_func(audiodsp_get_status);
 #endif

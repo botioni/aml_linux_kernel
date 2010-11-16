@@ -78,6 +78,7 @@ static irqreturn_t audiodsp_mailbox_irq(int irq, void *data)
 	struct audiodsp_priv *priv=(struct audiodsp_priv *)data;
 	unsigned long status,fiq_mask;
 	struct mail_msg msg;
+	int i = 0;
 	status=READ_MPEG_REG(ASSIST_MBOX1_IRQ_REG); 
 	fiq_mask=READ_MPEG_REG(ASSIST_MBOX1_FIQ_SEL); 
 	status=status&fiq_mask;
@@ -155,10 +156,10 @@ static irqreturn_t audiodsp_mailbox_irq(int irq, void *data)
             DSP_WD((0x84100000-4096+20*20),0);
     		SYS_CLEAR_IRQ(M1B_IRQ5_STREAM_RD_WD_TEST);
     		get_mailbox_data(priv,M1B_IRQ5_STREAM_RD_WD_TEST,&msg);
-            int i;
+            
             for(i = 0;i<12;i++){
                 if((DSP_RD((0x84100000-512*1024+i*20)))!= (0xff00|i)){
-                    DSP_PRNT("a9 read dsp reg error ,now 0x%x, should be 0x%x \n",(DSP_RD((0x84100000-512*1024+i*20))),12-i);
+                    DSP_PRNT("a9 read dsp reg error ,now 0x%lx, should be 0x%x \n",(DSP_RD((0x84100000-512*1024+i*20))),12-i);
                 }
                // DSP_PRNT("A9 audio dsp reg%d value 0x%x\n",i,DSP_RD((0x84100000-4096+i*20)));
             }
