@@ -874,7 +874,7 @@ static struct mtd_partition partition_info[] =
 	{
 		.name = "media",
 		.offset = MTDPART_OFS_APPEND,
-		.size = (0x200000000-(356+512)*1024*1024),
+		.size = (0x200000000-(356+256)*1024*1024),
 		.set_flags = MTD_AVNFTL,
 		.dual_partnum = 1|MTD_AVFTL_PLANE|MTD_AVNFTL_INTERL,
 	//	.set_flags=0,
