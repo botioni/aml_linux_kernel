@@ -743,7 +743,10 @@ static void set_charge(int flags)
 {
 	//GPIOD_22 low: fast charge high: slow charge
     CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_7, (1<<18));
-	set_gpio_val(GPIOD_bank_bit2_24(22), GPIOD_bit_bit2_24(22), 1);
+    if(flags == 1)
+	    set_gpio_val(GPIOD_bank_bit2_24(22), GPIOD_bit_bit2_24(22), 0); //fast charge
+    else
+    	set_gpio_val(GPIOD_bank_bit2_24(22), GPIOD_bit_bit2_24(22), 1);	//slow charge
     set_gpio_mode(GPIOD_bank_bit2_24(22), GPIOD_bit_bit2_24(22), GPIO_OUTPUT_MODE);
 }
 
