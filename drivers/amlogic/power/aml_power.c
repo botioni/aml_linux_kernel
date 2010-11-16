@@ -164,7 +164,12 @@ static void update_charger(void)
 	int max_uA = pdata->ac_max_uA;
 
 	if (pdata->set_charge) {
-		if (new_ac_status > 0) {
+		pdata->set_charge(0);//ac always charge slow except standby
+#ifdef AML_POWER_DBG
+		printk("AC in,charger low power\n");
+#endif
+		
+		/*if (new_ac_status > 0) {
 			dev_dbg(dev, "charger on (AC)\n");
 			pdata->set_charge(AML_POWER_CHARGE_AC);
 		} else if (new_usb_status > 0) {
@@ -173,7 +178,7 @@ static void update_charger(void)
 		} else {
 			dev_dbg(dev, "charger off\n");
 			pdata->set_charge(0);
-		}
+		}*/
 	} else if (ac_draw) {
 		if (new_ac_status > 0) {
 			regulator_set_current_limit(ac_draw, max_uA, max_uA);
@@ -194,7 +199,10 @@ static void update_charger(void)
 static void get_bat_capacity(void)
 {
     int value;
-    value = 100*(pdata->get_bat_vol() - 540)/80;
+    value = pdata->get_bat_vol();
+    if(value == -1)
+        return;
+    value = 100*(value - 540)/80;
     value = value>100? 100:value;
     value = (value/5)*5;
     new_battery_capacity = value;   
@@ -481,7 +489,20 @@ static int aml_power_suspend(struct platform_device *pdev, pm_message_t state)
 		if (usb_irq)
 			usb_wakeup_enabled = !enable_irq_wake(usb_irq->start);
 	}
-
+	if (pdata->set_charge) {
+		if (ac_status > 0) {
+#ifdef AML_POWER_DBG
+			printk("fast charger on standby\n");
+#endif
+			pdata->set_charge(AML_POWER_CHARGE_AC);
+		}else {
+#ifdef AML_POWER_DBG
+			printk("set slow charge\n");
+#endif
+			pdata->set_charge(0);
+		}
+	}       
+    
 	return 0;
 }
 
@@ -493,6 +514,12 @@ static int aml_power_resume(struct platform_device *pdev)
 		if (ac_irq && ac_wakeup_enabled)
 			disable_irq_wake(ac_irq->start);
 	}
+	if (pdata->set_charge) {
+#ifdef AML_POWER_DBG
+			printk("set slow charge\n");
+#endif
+		pdata->set_charge(0);
+	}       
 
 	return 0;
 }
