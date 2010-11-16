@@ -42,7 +42,7 @@ static void saradc_reset(void)
 
 	set_input_delay(10, INPUT_DELAY_TB_1US);
 	set_sample_delay(10, SAMPLE_DELAY_TB_1US);
-	set_block_delay(10, BLOCK_DELAY_TB_1MS);
+	set_block_delay(10, BLOCK_DELAY_TB_1US);
 	
 	// channels sampling mode setting
 	for(i=0; i<SARADC_CHAN_NUM; i++) {
@@ -132,9 +132,8 @@ static int saradc_get_cal_value(struct calibration *cal, int num, int val)
 int get_adc_sample(int chan)
 {
 	int count;
-	int value = -1;
+	int value;
 	int sum;
-	int i;
 	
 	if (!gp_saradc)
 		return -1;
@@ -142,35 +141,38 @@ int get_adc_sample(int chan)
 	spin_lock(&gp_saradc->lock);
 
 	set_chan_list(chan, 1);
-//	set_sample_mux(chan, chan_mux[chan]);
+	set_avg_mode(chan, NO_AVG_MODE, SAMPLE_NUM_8);
+	set_sample_mux(chan, chan_mux[chan]);
 	set_detect_mux(chan_mux[chan]);
 	set_idle_mux(chan_mux[chan]); // for revb
-
 	enable_sample_engine();
 	start_sample();
 
-	while (get_fifo_cnt() < 7) {;}
+	// Read any CBUS register to delay one clock cycle after starting the sampling engine
+	// The bus is really fast and we may miss that it started
+	{ count = get_reg(ISA_TIMERE); }
+
+	count = 0;
+	while (delta_busy() || sample_busy() || avg_busy()) {
+		if (++count > 10000) {
+        			printk(KERN_ERR "ADC busy error.\n");
+			goto end;
+		}
+	}
     stop_sample();
     
-	while (delta_busy() || sample_busy() || avg_busy()) {;}
-
     sum = 0;
     count = 0;
     value = get_fifo_sample();
-	for( i = 0; i < 6; i++){
+	while (get_fifo_cnt()) {
         value = get_fifo_sample() & 0x3ff;
         if ((value != 0x1fe) && (value != 0x1ff)) {
-            sum += value;
+			sum += value & 0x3ff;
             count++;
         }
 	}
+	value = (count) ? (sum / count) : (-1);
 
-
-	if (count) {
-		value = sum / count;
-	}
-	else
-	    value = -1;
 end:
 	//printk("ch%d = %d, count=%d\n", chan, value, count);
 	disable_sample_engine();
