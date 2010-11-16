@@ -387,7 +387,7 @@ static __exit void tv_exit_module(void)
 }
 
 
-subsys_initcall(tv_init_module);
+arch_initcall(tv_init_module);
 module_exit(tv_exit_module);
 
 MODULE_DESCRIPTION("display configure  module");

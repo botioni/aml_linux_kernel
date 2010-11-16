@@ -97,4 +97,4 @@ int  unregister_logo_parser(void)
 	}
 	return SUCCESS;
 }
-subsys_initcall_sync(start_logo);
+subsys_initcall(start_logo);

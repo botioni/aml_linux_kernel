@@ -296,7 +296,7 @@ static void __exit t13_exit(void)
     platform_device_unregister(&tcon_dev);
 }
 
-subsys_initcall(t13_init);
+arch_initcall(t13_init);
 //module_init(t13_init);
 module_exit(t13_exit);
 

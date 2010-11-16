@@ -26,7 +26,14 @@ static  logo_output_dev_t   output_osd1={
 		.deinit=osd_deinit,
 		},
 };
+static  inline void  setup_color_mode(color_bit_define_t *color,u32  reg)
+{
+	u32  data32;
 
+	data32 =READ_MPEG_REG(reg)&(~(0xf<<8));
+	data32 |=  color->hw_blkmode<< 8; /* osd_blk_mode */
+	WRITE_MPEG_REG(reg, data32);
+}
 static int osd_hw_setup(logo_object_t *plogo)
 {
 	struct osd_ctl_s  osd_ctl;
@@ -36,6 +43,7 @@ static int osd_hw_setup(logo_object_t *plogo)
 	osd_ctl.index=plogo->dev->idx;
 	plogo->dev->output_dev.osd.color_depth=plogo->parser->logo_pic_info.color_info;
 	color=&default_color_format_array[plogo->dev->output_dev.osd.color_depth];
+	
 	osd_ctl.xres=plogo->dev->vinfo->width ;					//logo pic.	
 	osd_ctl.yres=plogo->dev->vinfo->height;
 	osd_ctl.xres_virtual=plogo->dev->vinfo->width ;
@@ -45,6 +53,8 @@ static int osd_hw_setup(logo_object_t *plogo)
 	osd_ctl.disp_start_y=0;
 	osd_ctl.disp_end_y=osd_ctl.yres-1;
 	osd_init_hw();
+	setup_color_mode(color,osd_ctl.index==0?VIU_OSD1_BLK0_CFG_W0:VIU_OSD2_BLK0_CFG_W0);
+	
 	osd_setup(&osd_ctl, \
 					0, \
 					0, \
@@ -177,7 +187,7 @@ static  int  osd_transfer(logo_object_t *plogo)
 	amlog_mask_level(LOG_MASK_DEVICE,LOG_LEVEL_LOW,"logo setup ge2d device OK\n");
 	plogo->dev->ge2d_context=context;
 	//clear dst rect
-	op_info.color=0x000000ff;
+	op_info.color=0x00ff00ff;
 	op_info.dst_rect.x=0;
 	op_info.dst_rect.y=0;
 	op_info.dst_rect.w=plogo->dev->vinfo->width;
