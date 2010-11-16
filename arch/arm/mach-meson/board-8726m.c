@@ -825,7 +825,14 @@ static struct mtd_partition partition_info[] =
 	{
 		.name = "environment",
 		.offset = 4*1024*1024,
-		.size=4*1024*1024,
+		.size=2*1024*1024,
+	//	.set_flags=0,
+	//	.dual_partnum=0,
+	},
+	{
+		.name = "splash",
+		.offset = 6*1024*1024,
+		.size=2*1024*1024,
 	//	.set_flags=0,
 	//	.dual_partnum=0,
 	},
@@ -860,7 +867,7 @@ static struct mtd_partition partition_info[] =
 	{
 		.name = "userdata",
 		.offset= 356*1024*1024,
-		.size= 512 * 1024*1024,
+		.size= 256 * 1024*1024,
 	//	.set_flags=0,
 	//	.dual_partnum=0,
 	},
