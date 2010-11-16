@@ -71,8 +71,8 @@ static const struct hc_driver dwc_otg_hc_driver = {
 
 	//.reset =
 	.start = dwc_otg_hcd_start,
-	//.suspend =            
-	//.resume =             
+	.bus_suspend = dwc_otg_hcd_suspend,
+	.bus_resume =  dwc_otg_hcd_resume,           
 	.stop = dwc_otg_hcd_stop,
 
 	.urb_enqueue = dwc_otg_hcd_urb_enqueue,
@@ -842,6 +842,36 @@ void dwc_otg_hcd_stop(struct usb_hcd *_hcd)
 	dwc_otg_set_vbus_power(dwc_otg_hcd->core_if, 0);
 
 	return;
+}
+
+/** HCD Suspend */
+int dwc_otg_hcd_suspend(struct usb_hcd *_hcd)
+{
+	dwc_otg_hcd_t *dwc_otg_hcd = hcd_to_dwc_otg_hcd(_hcd);
+	hfnum_data_t hfnum;
+
+	DWC_WARN("DWC OTG HCD SUSPEND\n");
+
+	hfnum.d32 =
+	    dwc_read_reg32(&dwc_otg_hcd->core_if->host_if->
+			   host_global_regs->hfnum);
+
+
+	return 0;
+}
+/** HCD resume */
+int dwc_otg_hcd_resume(struct usb_hcd *_hcd)
+{
+	dwc_otg_hcd_t *dwc_otg_hcd = hcd_to_dwc_otg_hcd(_hcd);
+	hfnum_data_t hfnum;
+
+	DWC_WARN("DWC OTG HCD RESUME\n");
+
+	hfnum.d32 =
+	    dwc_read_reg32(&dwc_otg_hcd->core_if->host_if->
+			   host_global_regs->hfnum);
+
+	return 0;
 }
 
 /** Returns the current frame number. */

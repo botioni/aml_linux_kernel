@@ -419,6 +419,8 @@ extern int dwc_otg_hcd_start(struct usb_hcd *hcd);
 extern void dwc_otg_hcd_stop(struct usb_hcd *hcd);
 extern int dwc_otg_hcd_get_frame_number(struct usb_hcd *hcd);
 extern void dwc_otg_hcd_free(struct usb_hcd *hcd);
+extern int dwc_otg_hcd_suspend(struct usb_hcd *hcd);
+extern int dwc_otg_hcd_resume(struct usb_hcd *hcd);
 
 #if (LINUX_VERSION_CODE >=KERNEL_VERSION(2,6,26))
 extern int dwc_otg_hcd_urb_enqueue(struct usb_hcd *hcd,
