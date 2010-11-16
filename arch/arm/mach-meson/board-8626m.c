@@ -37,6 +37,10 @@
 #include <mach/card_io.h>
 #include <linux/i2c.h>
 #include <linux/i2c-aml.h>
+#ifdef CONFIG_AM_UART_WITH_S_CORE 
+#include <linux/uart-aml.h>
+#endif
+
 #ifdef CONFIG_CACHE_L2X0
 #include <asm/hardware/cache-l2x0.h>
 #endif
@@ -518,6 +522,34 @@ static struct platform_device aml_i2c_device = {
 };
 #endif
 
+#define PINMUX_UART_A   UART_A_GPIO_B2_B3
+#define PINMUX_UART_B	UART_B_TCK_TDO
+
+#if defined(CONFIG_AM_UART_WITH_S_CORE)
+
+#if defined(CONFIG_AM_UART0_SET_PORT_A)
+#define UART_0_PORT		UART_A
+#define UART_1_PORT		UART_B
+#elif defined(CONFIG_AM_UART0_SET_PORT_B)
+#define UART_0_PORT		UART_B
+#define UART_1_PORT		UART_A
+#endif
+
+static struct aml_uart_platform aml_uart_plat = {
+    .uart_line[0]		=	UART_0_PORT,
+    .uart_line[1]		=	UART_1_PORT
+};
+
+static struct platform_device aml_uart_device = {	
+    .name         = "am_uart",  
+    .id       = -1, 
+    .num_resources    = 0,  
+    .resource     = NULL,   
+    .dev = {        
+                .platform_data = &aml_uart_plat,  
+           },
+};
+#endif
 #ifdef CONFIG_ANDROID_PMEM
 static struct android_pmem_platform_data pmem_data =
 {
@@ -546,6 +578,9 @@ static	struct platform_device aml_rtc_device = {
 #endif
 
 static struct platform_device __initdata *platform_devs[] = {
+#if defined(CONFIG_AM_UART_WITH_S_CORE)
+        &aml_uart_device,
+    #endif
     #if defined(CONFIG_JPEGLOGO)
 		&jpeglogo_device,
 	#endif	
@@ -625,8 +660,9 @@ static void __init device_pinmux_init(void )
 	set_gpio_mode(PREG_EGPIO,1<<4,GPIO_OUTPUT_MODE);
 	set_gpio_val(PREG_EGPIO,1<<4,1);
 
-	/* uart port A */
-	uart_set_pinmux(UART_PORT_A,UART_A_GPIO_B2_B3);
+	uart_set_pinmux(UART_PORT_A,PINMUX_UART_A);
+	uart_set_pinmux(UART_PORT_B,PINMUX_UART_B);
+
 
 	/* pinmux of eth */
 	eth_pinmux_init();
