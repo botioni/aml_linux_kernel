@@ -845,38 +845,34 @@ static struct mtd_partition partition_info[] =
 	},
 	{
 		.name = "system",
-		.offset = 40*1024*1024,
+		.offset = 40*4*1024*1024,
 		.size = 180 * 1024*1024,
 	//	.set_flags=0,
 	//	.dual_partnum=0,
 	},
 	{
 		.name = "cache",
-		.offset = 220*1024*1024,
+		.offset = 340*1024*1024,
 		.size = 16 * 1024*1024,
 	//	.set_flags=0,
 	//	.dual_partnum=0,
 	},
 	{
 		.name = "userdata",
-		.offset= 236*1024*1024,
+		.offset= 356*1024*1024,
 		.size= 512 * 1024*1024,
 	//	.set_flags=0,
 	//	.dual_partnum=0,
 	},
 	{
 		.name = "media",
-		.offset=MTDPART_OFS_APPEND,
-		.size=MTDPART_SIZ_FULL,
+		.offset = MTDPART_OFS_APPEND,
+		.size = (0x200000000-(356+512)*1024*1024),
+		.set_flags = MTD_AVNFTL,
+		.dual_partnum = 1|MTD_AVFTL_PLANE|MTD_AVNFTL_INTERL,
 	//	.set_flags=0,
 	//	.dual_partnum=0,
 	},
-//	{	.name="FTL_Part",
-//		.offset=MTDPART_OFS_APPEND,
-//		.size=MTDPART_SIZ_FULL,
-//	//	.set_flags=MTD_AVNFTL,
-//	//	.dual_partnum=1,
-//	}
 };
 /*
 static struct aml_m1_nand_platform aml_2kpage128kblocknand_platform = {
@@ -893,6 +889,7 @@ static struct aml_m1_nand_platform aml_2kpage128kblocknand_platform = {
 };
 */
 
+#if 0
 static struct aml_m1_nand_platform aml_Micron4GBABAnand_platform = 
 {
 	.page_size = 2048*2,
@@ -906,6 +903,24 @@ static struct aml_m1_nand_platform aml_Micron4GBABAnand_platform =
 	.partitions = partition_info,
 	.nr_partitions = ARRAY_SIZE(partition_info),
 };
+#endif
+static struct aml_m1_nand_platform aml_Micron8GBABAnand_platform =
+{
+	.page_size = 2048*2,
+	.spare_size= 224,		//for micron ABA 4GB
+	.erase_size=1024*1024,
+	.bch_mode=	  3,		//BCH16
+	.encode_size=540,
+	.timing_mode=5,
+	.onfi_mode=1,
+	.interlmode=1,
+	.planemode=1,
+	.ce_num=2,
+	.chip_num=2,
+	.partitions = partition_info,
+	.nr_partitions = ARRAY_SIZE(partition_info),
+};
+
 
 static struct resource aml_nand_resources[] = {
 	{
@@ -921,7 +936,8 @@ static struct platform_device aml_nand_device = {
 	.num_resources = ARRAY_SIZE(aml_nand_resources),
 	.resource = aml_nand_resources,
 	.dev = {
-		.platform_data = &aml_Micron4GBABAnand_platform,
+	//	.platform_data = &aml_Micron4GBABAnand_platform,
+		.platform_data = &aml_Micron8GBABAnand_platform,
 	},
 };
 #endif
@@ -1253,10 +1269,12 @@ static void __init eth_pinmux_init(void)
 	SET_CBUS_REG_MASK(PREG_ETHERNET_ADDR0, 1);
 	udelay(100);
 	/*reset*/
-	set_gpio_mode(GPIOE_bank_bit16_21(16),GPIOE_bit_bit16_21(16),GPIO_OUTPUT_MODE);
-	set_gpio_val(GPIOE_bank_bit16_21(16),GPIOE_bit_bit16_21(16),0);
-	udelay(100);	//GPIOE_bank_bit16_21(16) reset end;
-	set_gpio_val(GPIOE_bank_bit16_21(16),GPIOE_bit_bit16_21(16),1);
+#if 0
+//	set_gpio_mode(GPIOE_bank_bit16_21(16),GPIOE_bit_bit16_21(16),GPIO_OUTPUT_MODE);
+//	set_gpio_val(GPIOE_bank_bit16_21(16),GPIOE_bit_bit16_21(16),0);
+//	udelay(100);	//GPIOE_bank_bit16_21(16) reset end;
+//	set_gpio_val(GPIOE_bank_bit16_21(16),GPIOE_bit_bit16_21(16),1);
+#endif
 	aml_i2c_init();
 }
 
