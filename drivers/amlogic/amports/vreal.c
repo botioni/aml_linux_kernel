@@ -612,11 +612,15 @@ s32 vreal_init(void)
 
     stat |= STAT_TIMER_INIT;
 
+    amvdec_enable();
+
     vreal_local_init();
 
     r = rmparser_init();
     if (r)
     {
+        amvdec_disable();
+
         printk("rm parser init failed\n");
         return r;
     }
@@ -634,6 +638,8 @@ s32 vreal_init(void)
         printk("load VIDEO_DEC_FORMAT_REAL_8\n");
         if (amvdec_loadmc(vreal_mc_8) < 0) 
         {
+            amvdec_disable();
+
             printk("failed\n");
             return -EBUSY;
         }
@@ -643,6 +649,8 @@ s32 vreal_init(void)
         printk("load VIDEO_DEC_FORMAT_REAL_9\n");
         if (amvdec_loadmc(vreal_mc_9) < 0) 
         {
+            amvdec_disable();
+
             printk("failed\n");
             return -EBUSY;
         }
@@ -661,6 +669,8 @@ s32 vreal_init(void)
     if (request_irq(INT_MAILBOX_1A, vreal_isr,
                     IRQF_SHARED, "vreal-irq", (void *)vreal_dec_id))
     {
+        amvdec_disable();
+
         printk("vreal irq register error.\n");
         return -ENOENT;
     }
@@ -747,6 +757,8 @@ static int amvdec_real_remove(struct platform_device *pdev)
     {
         dma_unmap_single(NULL, pic_sz_tbl_map, sizeof(pic_sz_tbl), DMA_TO_DEVICE);
     }
+
+    amvdec_disable();
 
     printk("frame duration %d, frames %d\n", frame_dur, frame_count);
     return 0;

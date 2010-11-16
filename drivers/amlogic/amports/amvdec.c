@@ -41,19 +41,19 @@
 static void amvdec_pg_enable(bool enable)
 {
     if (enable) {
-        //CLK_GATE_ON(MDEC_CLK_PIC_DC);
-        //CLK_GATE_ON(MDEC_CLK_DBLK);
-        //CLK_GATE_ON(MC_CLK);
-        //CLK_GATE_ON(IQIDCT_CLK);
+        CLK_GATE_ON(MDEC_CLK_PIC_DC);
+        CLK_GATE_ON(MDEC_CLK_DBLK);
+        CLK_GATE_ON(MC_CLK);
+        CLK_GATE_ON(IQIDCT_CLK);
         //CLK_GATE_ON(VLD_CLK);
         CLK_GATE_ON(AMRISC);
     }
     else {
         CLK_GATE_OFF(AMRISC);
-        //CLK_GATE_OFF(MDEC_CLK_PIC_DC);
-        //CLK_GATE_OFF(MDEC_CLK_DBLK);
-        //CLK_GATE_OFF(MC_CLK);
-        //CLK_GATE_OFF(IQIDCT_CLK);
+        CLK_GATE_OFF(MDEC_CLK_PIC_DC);
+        CLK_GATE_OFF(MDEC_CLK_DBLK);
+        CLK_GATE_OFF(MC_CLK);
+        CLK_GATE_OFF(IQIDCT_CLK);
         //CLK_GATE_OFF(VLD_CLK);
     }
 }
@@ -69,8 +69,6 @@ s32 amvdec_loadmc(const u32 *p)
     if (!mc_addr)
         return -ENOMEM;
 		
-    CLK_GATE_ON(AMRISC);
-
     memcpy(mc_addr, p, MC_SIZE);
 
     mc_addr_map = dma_map_single(NULL, mc_addr, MC_SIZE, DMA_TO_DEVICE);
@@ -103,15 +101,11 @@ s32 amvdec_loadmc(const u32 *p)
 
     kfree(mc_addr);
 
-    CLK_GATE_OFF(AMRISC);
-
     return ret;
 }
 
 void amvdec_start(void)
 {
-    amvdec_pg_enable(true);
-
     /* additional cbus dummy register reading for timing control */
     READ_MPEG_REG(RESET0_REGISTER);
     READ_MPEG_REG(RESET0_REGISTER);
@@ -137,7 +131,15 @@ void amvdec_stop(void)
     READ_MPEG_REG(RESET0_REGISTER);
     READ_MPEG_REG(RESET0_REGISTER);
     READ_MPEG_REG(RESET0_REGISTER);
+}
 
+void amvdec_enable(void)
+{
+    amvdec_pg_enable(true);
+}
+
+void amvdec_disable(void)
+{
     amvdec_pg_enable(false);
 }
 
@@ -160,6 +162,8 @@ int amvdec_resume(struct platform_device *dev)
 EXPORT_SYMBOL(amvdec_loadmc);
 EXPORT_SYMBOL(amvdec_start);
 EXPORT_SYMBOL(amvdec_stop);
+EXPORT_SYMBOL(amvdec_enable);
+EXPORT_SYMBOL(amvdec_disable);
 #ifdef CONFIG_PM
 EXPORT_SYMBOL(amvdec_suspend);
 EXPORT_SYMBOL(amvdec_resume);

@@ -537,7 +537,10 @@ static s32 vmpeg12_init(void)
 
     vmpeg12_local_init();
 
+    amvdec_enable();
+
     if (amvdec_loadmc(vmpeg12_mc) < 0) {
+        amvdec_disable();
         return -EBUSY;
     }
 
@@ -550,7 +553,8 @@ static s32 vmpeg12_init(void)
                     IRQF_SHARED, "vmpeg12-irq", (void *)vmpeg12_dec_id);
 
     if (r) {
-		amlog_level(LOG_LEVEL_ERROR, "vmpeg12 irq register error.\n");
+        amvdec_disable();
+        amlog_level(LOG_LEVEL_ERROR, "vmpeg12 irq register error.\n");
         return -ENOENT;
     }
 
@@ -623,6 +627,8 @@ static int amvdec_mpeg12_remove(struct platform_device *pdev)
         vf_unreg_provider();
         stat &= ~STAT_VF_HOOK;
     }
+
+    amvdec_disable();
 
     amlog_level(LOG_LEVEL_INFO, "amvdec_mpeg12 remove.\n");
 

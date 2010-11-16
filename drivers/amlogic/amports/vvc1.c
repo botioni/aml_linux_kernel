@@ -606,19 +606,21 @@ static s32 vvc1_init(void)
 
         stat |= STAT_TIMER_INIT;
 
+        amvdec_enable();
+
         vvc1_local_init();
 
         if (vvc1_amstream_dec_info.format == VIDEO_DEC_FORMAT_WMV3)
         {
                 printk("WMV3 dec format\n");
-				vvc1_format = VIDEO_DEC_FORMAT_WMV3;
-        		WRITE_MPEG_REG(AV_SCRATCH_4, 0);
+                vvc1_format = VIDEO_DEC_FORMAT_WMV3;
+                WRITE_MPEG_REG(AV_SCRATCH_4, 0);
         }
         else if (vvc1_amstream_dec_info.format == VIDEO_DEC_FORMAT_WVC1)
         {
                 printk("WVC1 dec format\n");
-				vvc1_format = VIDEO_DEC_FORMAT_WVC1;
-        		WRITE_MPEG_REG(AV_SCRATCH_4, 1);
+                vvc1_format = VIDEO_DEC_FORMAT_WVC1;
+                WRITE_MPEG_REG(AV_SCRATCH_4, 1);
         }
         else
         {
@@ -627,6 +629,8 @@ static s32 vvc1_init(void)
 
         if (amvdec_loadmc(vc1_mc) < 0) 
         {
+                amvdec_disable();
+
                 printk("failed\n");
                 return -EBUSY;
         }
@@ -640,6 +644,8 @@ static s32 vvc1_init(void)
         if (request_irq(INT_MAILBOX_1A, vvc1_isr,
                         IRQF_SHARED, "vvc1-irq", (void *)vvc1_dec_id))
         {
+                amvdec_disable();
+
                 printk("vvc1 irq register error.\n");
                 return -ENOENT;
         }
@@ -719,6 +725,8 @@ static int amvdec_vc1_remove(struct platform_device *pdev)
                 vf_unreg_provider();
                 stat &= ~STAT_VF_HOOK;
         }
+
+        amvdec_disable();
 
 #ifdef DEBUG_PTS
        printk("pts hit %d, pts missed %d, i hit %d, missed %d\n", pts_hit, pts_missed, pts_i_hit, pts_i_missed);

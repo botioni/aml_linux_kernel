@@ -1018,12 +1018,12 @@ static void vh264_local_init(void)
 
 static s32 vh264_init(void)
 {
-		void __iomem *p = ioremap_nocache(MEM_HEADER_CPU_BASE, MEM_SWAP_SIZE);
-	
-		if (!p) {
-				printk("\nvh264_init: Cannot remap ucode swapping memory\n");
-				return -ENOMEM;
-		}
+        void __iomem *p = ioremap_nocache(MEM_HEADER_CPU_BASE, MEM_SWAP_SIZE);
+
+        if (!p) {
+                printk("\nvh264_init: Cannot remap ucode swapping memory\n");
+                return -ENOMEM;
+        }
 
         printk("\nvh264_init\n");
         init_timer(&recycle_timer);
@@ -1032,27 +1032,30 @@ static s32 vh264_init(void)
 
         vh264_local_init();
 
+        amvdec_enable();
+
         if (amvdec_loadmc(vh264_mc) < 0) 
         {
+                amvdec_disable();
                 return -EBUSY;
         }
 
         memcpy(p,
-        	vh264_header_mc, sizeof(vh264_header_mc));
+                vh264_header_mc, sizeof(vh264_header_mc));
 
         memcpy((void *)((ulong)p + 0x1000),
-        	vh264_data_mc, sizeof(vh264_data_mc));
+                vh264_data_mc, sizeof(vh264_data_mc));
 
         memcpy((void *)((ulong)p + 0x2000),
-        	vh264_mmco_mc, sizeof(vh264_mmco_mc));
+                vh264_mmco_mc, sizeof(vh264_mmco_mc));
 
         memcpy((void *)((ulong)p + 0x3000),
-        	vh264_list_mc, sizeof(vh264_list_mc));
+                vh264_list_mc, sizeof(vh264_list_mc));
 
         memcpy((void *)((ulong)p + 0x4000),
-        	vh264_slice_mc, sizeof(vh264_slice_mc));
+                vh264_slice_mc, sizeof(vh264_slice_mc));
 
-		iounmap(p);
+        iounmap(p);
 			
         stat |= STAT_MC_LOAD;
 
@@ -1064,6 +1067,7 @@ static s32 vh264_init(void)
                         IRQF_SHARED, "vh264-irq", (void *)vh264_dec_id))
         {
                 printk("vh264 irq register error.\n");
+                amvdec_disable();
                 return -ENOENT;
         }
 #endif
@@ -1119,6 +1123,8 @@ static int vh264_stop(void)
                 vf_unreg_provider();
                 stat &= ~STAT_VF_HOOK;
         }
+
+        amvdec_disable();
 
         return 0;
 }
