@@ -805,6 +805,7 @@ static void __init do_pre_smp_initcalls(void)
 static void run_init_process(char *init_filename)
 {
 	argv_init[0] = init_filename;
+	printk(KERN_INFO "run_init_process %s(%s %s).\n", init_filename, argv_init, envp_init);
 	kernel_execve(init_filename, argv_init, envp_init);
 }
 
@@ -821,6 +822,7 @@ void build_console(void)
 static noinline int init_post(void)
 	__releases(kernel_lock)
 {
+	printk(KERN_INFO "init_post.\n");
 	/* need to finish all async __init code before freeing the memory */
 	async_synchronize_full();
 	free_initmem();
