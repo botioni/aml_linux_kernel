@@ -906,9 +906,29 @@ static int dwc_otg_pcd_wakeup(struct usb_gadget *_gadget)
 	return 0;
 }
 
+static int dwc_otg_pcd_pullup(struct usb_gadget *_gadget, int is_on)
+{
+	dwc_otg_pcd_t *pcd;
+
+	DWC_DEBUGPL(DBG_PCDV, "%s(%p)\n", __func__, _gadget);
+
+	if (_gadget == 0) 
+		return -ENODEV;	
+
+	pcd = container_of(_gadget, dwc_otg_pcd_t, gadget);
+
+	if(is_on)
+		dwc_otg_device_soft_connect(GET_CORE_IF(pcd));
+	else
+		dwc_otg_device_soft_disconnect(GET_CORE_IF(pcd));
+
+	return 0;
+}
+
 static const struct usb_gadget_ops dwc_otg_pcd_ops = {
 	.get_frame = dwc_otg_pcd_get_frame,
 	.wakeup = dwc_otg_pcd_wakeup,
+	.pullup	= dwc_otg_pcd_pullup,
 	// current versions must always be self-powered
 };
 

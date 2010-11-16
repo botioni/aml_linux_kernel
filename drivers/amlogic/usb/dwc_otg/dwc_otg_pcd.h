@@ -191,6 +191,14 @@ typedef struct dwc_otg_pcd_request {
 	struct list_head queue;		/**< queue of these requests. */
 } dwc_otg_pcd_request_t;
 
+static inline void dwc_otg_device_soft_connect(dwc_otg_core_if_t *_core_if) {
+        dwc_modify_reg32( &_core_if->dev_if->dev_global_regs->dctl,2,0); //clr
+}
+
+static inline void dwc_otg_device_soft_disconnect(dwc_otg_core_if_t *_core_if) {
+    	 dwc_modify_reg32( &_core_if->dev_if->dev_global_regs->dctl,0,2);  //set
+}
+
 extern int __init dwc_otg_pcd_init(struct lm_device *_lmdev);
 
 //extern void dwc_otg_pcd_remove( struct dwc_otg_device *_otg_dev );

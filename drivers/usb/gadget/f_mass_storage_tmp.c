@@ -1096,7 +1096,7 @@ static int fsync_sub(struct lun *curlun)
 		return -EINVAL;
 
 	inode = filp->f_path.dentry->d_inode;
-	mutex_lock(&inode->i_mutex);
+	mutex_lock(&inode->i_mapping->host->i_mutex);
 	rc = filemap_fdatawrite(inode->i_mapping);
 	err = filp->f_op->fsync(filp, filp->f_path.dentry, 1);
 	if (!rc)
@@ -1104,7 +1104,7 @@ static int fsync_sub(struct lun *curlun)
 	err = filemap_fdatawait(inode->i_mapping);
 	if (!rc)
 		rc = err;
-	mutex_unlock(&inode->i_mutex);
+	mutex_unlock(&inode->i_mapping->host->i_mutex);
 	VLDBG(curlun, "fdatasync -> %d\n", rc);
 	return rc;
 }
