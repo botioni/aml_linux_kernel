@@ -38,10 +38,29 @@ static int do_blktrans_request(struct mtd_blktrans_ops *tr,
 {
 	unsigned long block, nsect;
 	char *buf;
-
-	block = blk_rq_pos(req) << 9 >> tr->blkshift;
+	uint64_t tmp=0;
+	struct req_iterator iter;
+	struct bio_vec *bvec;
+ 
+	
+	//block = blk_rq_pos(req) << 9 >> tr->blkshift;
+//	tmp= (uint64_t)blk_rq_pos(req)*512 ;
+//	block=	tmp>>(tr->blkshift);
+	block=blk_rq_pos(req)>>(tr->blkshift-9);
 	nsect = blk_rq_cur_bytes(req) >> tr->blkshift;
 
+
+/*	if(blk_rq_pos(req)%8)
+	{
+	//	BUG();  yfs root mtdblock herre
+	}
+
+	if(blk_rq_cur_bytes(req)%(1<<tr->blkshift))
+	{
+	//	BUG();
+	}
+//	if(blk_rq_cur_bytes(req))	
+*/
 	buf = req->buffer;
 
 	if (!blk_fs_request(req))
@@ -60,6 +79,7 @@ static int do_blktrans_request(struct mtd_blktrans_ops *tr,
 			if (tr->readsect(dev, block, buf))
 				return -EIO;
 		rq_flush_dcache_pages(req);
+	
 		return 0;
 
 	case WRITE:
@@ -67,6 +87,7 @@ static int do_blktrans_request(struct mtd_blktrans_ops *tr,
 			return -EIO;
 
 		rq_flush_dcache_pages(req);
+	
 		for (; nsect > 0; nsect--, block++, buf += tr->blksize)
 			if (tr->writesect(dev, block, buf))
 				return -EIO;
@@ -214,6 +235,7 @@ int add_mtd_blktrans_dev(struct mtd_blktrans_dev *new)
 	struct mtd_blktrans_dev *d;
 	int last_devnum = -1;
 	struct gendisk *gd;
+	uint64_t tmp;
 
 	if (mutex_trylock(&mtd_table_mutex)) {
 		mutex_unlock(&mtd_table_mutex);
@@ -276,7 +298,11 @@ int add_mtd_blktrans_dev(struct mtd_blktrans_dev *new)
 
 	/* 2.5 has capacity in units of 512 bytes while still
 	   having BLOCK_SIZE_BITS set to 10. Just to keep us amused. */
-	set_capacity(gd, (new->size * tr->blksize) >> 9);
+	set_capacity(gd, (new->size )*( tr->blksize>>9));
+
+	 tmp=(new->size * tr->blksize)>>9;
+	printk("\nSet cap sector siez %ld(unit %d) \n", new->size,tr->blksize);
+	printk("\nGet afters set gd nr_sector(512) 0x%llx  need 0x%llx\n ",(uint64_t)gd->part0.nr_sects,(uint64_t)tmp);
 
 	gd->private_data = new;
 	new->blkcore_priv = gd;

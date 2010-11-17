@@ -1348,11 +1348,15 @@ static int nand_do_read_ops(struct mtd_info *mtd, loff_t from,
 		ops->oobretlen = ops->ooblen - oobreadlen;
 
 	if (ret)
+	{
+		printk(" nand dio read ret %d \n",ret);
 		return ret;
-
+	}
 	if (mtd->ecc_stats.failed - stats.failed)
+	{
+		printk(" nand dio read ecc fail ret %d \n", -EBADMSG);
 		return -EBADMSG;
-
+	}
 	return  mtd->ecc_stats.corrected - stats.corrected ? -EUCLEAN : 0;
 }
 
@@ -1862,7 +1866,10 @@ static int nand_write_page(struct mtd_info *mtd, struct nand_chip *chip,
 					       page);
 
 		if (status & NAND_STATUS_FAIL)
+		{
+			//printk("nand_write_page sta fail\n");
 			return -EIO;
+		}
 	} else {
 		chip->cmdfunc(mtd, NAND_CMD_CACHEDPROG, -1, -1);
 		status = chip->waitfunc(mtd, chip);
@@ -2590,8 +2597,7 @@ static struct nand_flash_dev *nand_get_flash_type(struct mtd_info *mtd,
 {
 	struct nand_flash_dev *type = NULL;
 	int i, dev_id, maf_idx;
-	int tmp_id, tmp_manf;
-	unsigned third_id;
+	int tmp_id, tmp_manf,third_id, multi_size=0;
 	/* Select the device */
 	chip->select_chip(mtd, 0);
 
@@ -2663,6 +2669,10 @@ static struct nand_flash_dev *nand_get_flash_type(struct mtd_info *mtd,
 		extid >>= 2;
 		/* Get buswidth information */
 		busw = (extid & 0x01) ? NAND_BUSWIDTH_16 : 0;
+
+		if(mtd->oobsize!=chip->ecc.bytes)
+				mtd->oobsize=chip->ecc.bytes;
+	
 		printk("Get NAND 3rd byte %d  writesize %d  oob size %d busw( 8 is 0)  %d \n", chip->cellinfo,mtd->writesize, 	mtd->oobsize,busw);
 
 		if((dev_id==0x68)||(dev_id==0x88))
@@ -2693,6 +2703,24 @@ static struct nand_flash_dev *nand_get_flash_type(struct mtd_info *mtd,
 		if(mtd->writesize!=chip->ecc.size)
 			BUG();
 
+		if(chip->planemode==1)
+		{
+			mtd->writesize*=2;
+			mtd->oobsize *=2;
+			mtd->erasesize*=2;
+			printk("FIX PLANE MODE  writesize %d  oob size %d erase size %d busw( 8 is 0)  %d \n",mtd->writesize, mtd->oobsize,mtd->erasesize,busw);
+		}
+
+		if(chip->interlmode==1)
+		{
+			//	if(chip->chip_num==1)
+			//		BUG();
+
+			mtd->writesize*=2;
+			mtd->oobsize *=2;
+			mtd->erasesize*=2;
+			printk("FIX INTERL MODE  writesize %d  oob size %d erase size %d busw( 8 is 0)  %d \n",mtd->writesize, mtd->oobsize,mtd->erasesize,busw);
+		}
 
 	} else {
 		/*
@@ -2725,9 +2753,31 @@ static struct nand_flash_dev *nand_get_flash_type(struct mtd_info *mtd,
 	}
 
 	/* Calculate the address shift from the page size */
-	chip->page_shift = ffs(mtd->writesize) - 1;
+	chip->page_shift = ffs(mtd->writesize) - 1;								//for planemode this 2X
 	/* Convert chipsize to number of pages per chip -1. */
-	chip->pagemask = (chip->chipsize >> chip->page_shift) - 1;
+	if((chip->interlmode==0)&&(chip->planemode==0))
+		chip->pagemask = (chip->chipsize >> chip->page_shift) - 1;
+	else
+	{
+		if((chip->planemode!=0))
+			multi_size=chip->ecc.size*2;
+		else
+			multi_size=chip->ecc.size;
+	
+
+		chip->pagemask = (chip->chipsize >> (ffs(multi_size)-1)) - 1;
+		printk("NAND CHIP MASK is %d \n",chip->pagemask);	
+	}
+
+/*	if(chip->interlmode==1) 
+		chip->pagemask = (chip->chipsize >>(chip->page_shift-1)) - 1;	
+
+	if(multi_num!=0)
+	{
+	//	chip->pagemask = (chip->chipsize >>(chip->page_shift-multi_num)) - 1;
+		printk("NAND CHIP MASK is %d \n",chip->pagemask);	
+	}
+*/
 
 	chip->bbt_erase_shift = chip->phys_erase_shift =
 		ffs(mtd->erasesize) - 1;
@@ -2758,9 +2808,10 @@ static struct nand_flash_dev *nand_get_flash_type(struct mtd_info *mtd,
 	/* Check for AND chips with 4 page planes */
 	if (chip->options & NAND_4PAGE_ARRAY)
 		chip->erase_cmd = multi_erase_cmd;
-	else
-		chip->erase_cmd = single_erase_cmd;
-
+	else{
+		if(!chip->erase_cmd)
+			chip->erase_cmd = single_erase_cmd;
+	}
 	/* Do not replace user supplied command function ! */
 	if (mtd->writesize > 512 && chip->cmdfunc == nand_command)
 		chip->cmdfunc = nand_command_lp;
