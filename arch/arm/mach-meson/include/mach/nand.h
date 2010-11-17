@@ -80,11 +80,7 @@
 #define NFC_SEND_CMD(cmd)           (WRITE_CBUS_REG(NAND_CMD,cmd))
 #define NFC_READ_INFO()             (READ_CBUS_REG(NAND_CMD))
 /** ECC defination(M1) */
-
-
-#define AML_NAND_ECC_NONE         0x8
-
-
+#define AML_NAND_ECC_NONE             0x0
 #define NAND_ECC_REV0             0x1
 #define NAND_ECC_REV1             0x2
 #define NAND_ECC_REV2             0x3
@@ -122,10 +118,6 @@
 #define NFC_SEND_CMD_N2M(size,ecc)          NFC_SEND_CMD(N2M |(ecc<<14)|(1<<16)|(size&0x3fff))
 #define NFC_SEND_CMD_DWR(data)              NFC_SEND_CMD(DWR     |(data&0xff  ))
 #define NFC_SEND_CMD_DRD( size  )              NFC_SEND_CMD(DRD |  size   )
-#define NFC_SEND_CMD_RB_INT(ce,time,ibit)      NFC_SEND_CMD( (ibit<<14) |(ce)|RB  |(time&0x3ff))		//ce 
-#define NFC_SEND_CMD_M2N_RAW(size)          NFC_SEND_CMD(M2N |(0<<16)|(size&0x3fff))
-
-
 /**
     Cmd Info Macros
 */
@@ -166,8 +158,6 @@ struct aml_m1_nand_platform
 	 	 unsigned long long 	chip_size;
 		 unsigned int 			ce_num;
 		 unsigned int 			chip_num;
-		 unsigned int 			planemode;
-		 unsigned int 			interlmode;
 		 unsigned int 			timing_mode;
 		 unsigned int 			bch_mode;
 		 unsigned int 			encode_size;

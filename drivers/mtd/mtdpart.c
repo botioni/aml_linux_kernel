@@ -23,13 +23,13 @@
 static LIST_HEAD(mtd_partitions);
 
 /* Our partition node structure */
-/*struct mtd_part {
+struct mtd_part {
 	struct mtd_info mtd;
 	struct mtd_info *master;
 	uint64_t offset;
 	struct list_head list;
 };
-*/
+
 /*
  * Given a pointer to the MTD object in the mtd_part structure, we can retrieve
  * the pointer to that structure with this macro.
@@ -346,7 +346,6 @@ static struct mtd_part *add_one_partition(struct mtd_info *master,
 	/* set up the MTD object for this partition */
 	slave->mtd.type = master->type;
 	slave->mtd.flags = master->flags & ~part->mask_flags;
-//	slave->mtd.flags|=part->set_flags;	//for ftl part init check	 maybe no use 
 	slave->mtd.size = part->size;
 	slave->mtd.writesize = master->writesize;
 	slave->mtd.oobsize = master->oobsize;
@@ -488,18 +487,13 @@ static struct mtd_part *add_one_partition(struct mtd_info *master,
 	slave->mtd.ecclayout = master->ecclayout;
 	if (master->block_isbad) {
 		uint64_t offs = 0;
-	
-		//FIXME SLOW
+
 		while (offs < slave->mtd.size) {
 			if (master->block_isbad(master,
 						offs + slave->offset))
 				slave->mtd.ecc_stats.badblocks++;
 			offs += slave->mtd.erasesize;
 		}
-	}
-
-	if(part->set_flags==MTD_AVNFTL){
-		slave->ftl_subpart_num=MTD_AVNFTL|part->dual_partnum;		
 	}
 
 out_register:
