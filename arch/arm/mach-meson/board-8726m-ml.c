@@ -50,7 +50,7 @@
 #include <mach/gpio.h>
 #include <linux/delay.h>
 #include <mach/clk_set.h>
-#include "board-8726m.h"
+#include "board-8726m-ml.h"
 
 #if defined(CONFIG_TOUCHSCREEN_ADS7846)
 #include <linux/spi/spi.h>
@@ -126,6 +126,54 @@ static struct platform_device input_device = {
 };
 #endif
 
+#ifdef CONFIG_SINTEK_CAPACITIVE_TOUCHSCREEN
+#include <linux/i2c/stkxxx.h>
+
+//GPIOC_4
+#define GPIO_STK_PENIRQ	((GPIOC_bank_bit0_26(4)<<16) |GPIOC_bit_bit0_26(4)) 
+//GPIOC_0
+#define GPIO_STK_RST		((GPIOC_bank_bit0_26(0)<<16) |GPIOC_bit_bit0_26(0)) 
+
+static int stkxxx_init_irq(void)
+{
+/* memson
+	Bit(s)	Description
+	256-105	Unused
+	104		JTAG_TDO
+	103		JTAG_TDI
+	102		JTAG_TMS
+	101		JTAG_TCK
+	100		gpioA_23
+	99		gpioA_24
+	98		gpioA_25
+	97		gpioA_26
+	98-75	gpioE[21:0]
+	75-50	gpioD[24:0]
+	49-23	gpioC[26:0]
+	22-15	gpioB[22;15]
+	14-0		gpioA[14:0]
+ */
+
+	/* set input mode */
+	gpio_direction_input(GPIO_STK_PENIRQ);
+	/* set gpio interrupt #0 source=GPIOC_4, and triggered by falling edge(=1) */
+	gpio_enable_edge_int(27, 1, 0);
+
+	gpio_direction_output(GPIO_STK_RST, 1);
+
+	return 0;
+}
+static int stkxxx_get_irq_level(void)
+{
+	return gpio_get_value(GPIO_STK_PENIRQ);
+}
+
+static struct stkxxx_platform_data stkxxx_pdata = {
+	.init_irq = &stkxxx_init_irq,
+	.get_irq_level = &stkxxx_get_irq_level,
+};
+#endif
+
 #ifdef CONFIG_SARADC_AM
 #include <linux/saradc.h>
 static struct platform_device saradc_device = {
@@ -190,7 +238,6 @@ static struct platform_device adc_kp_device = {
 	}
 };
 #endif
-
 
 #if defined(CONFIG_KEY_INPUT_CUSTOM_AM) || defined(CONFIG_KEY_INPUT_CUSTOM_AM_MODULE)
 #include <linux/input.h>
@@ -258,6 +305,7 @@ static struct platform_device fb_device = {
 static void set_usb_a_vbus_power(char is_power_on)
 {
 //Only for Ramos 8726m MID
+#if 0
 #define USB_A_POW_GPIO	PREG_EGPIO
 #define USB_A_POW_GPIO_BIT	3
 #define USB_A_POW_GPIO_BIT_ON	1
@@ -272,6 +320,7 @@ static void set_usb_a_vbus_power(char is_power_on)
 		set_gpio_mode(USB_A_POW_GPIO,USB_A_POW_GPIO_BIT,GPIO_OUTPUT_MODE);
 		set_gpio_val(USB_A_POW_GPIO,USB_A_POW_GPIO_BIT,USB_A_POW_GPIO_BIT_OFF);		
 	}
+#endif
 }
 //usb_a is OTG port
 static struct lm_device usb_ld_a = {
@@ -286,6 +335,19 @@ static struct lm_device usb_ld_a = {
 	.dma_config = USB_DMA_BURST_SINGLE,
 	.set_vbus_power = set_usb_a_vbus_power,
 };
+static struct lm_device usb_ld_b = {
+	.type = LM_DEVICE_TYPE_USB,
+	.id = 1,
+	.irq = INT_USB_B,
+	.resource.start = IO_USB_B_BASE,
+	.resource.end = -1,
+	.dma_mask_room = DMA_BIT_MASK(32),
+	.port_type = USB_PORT_TYPE_HOST,
+	.port_speed = USB_PORT_SPEED_DEFAULT,
+	.dma_config = USB_DMA_BURST_SINGLE,
+	.set_vbus_power = 0,
+};
+
 #endif
 #ifdef CONFIG_SATA_DWC_AHCI
 static struct lm_device sata_ld = {
@@ -396,10 +458,46 @@ static struct resource amlogic_card_resource[]  = {
 
 void sdio_extern_init(void)
 {
-	CLEAR_CBUS_REG_MASK(CARD_PIN_MUX_5, ((3<<4)));
-	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<18));
-	SET_CBUS_REG_MASK(PREG_GGPIO_O, (1<<18));
+	CLEAR_CBUS_REG_MASK(CARD_PIN_MUX_8, ((1<<5)));
+	CLEAR_CBUS_REG_MASK(CARD_PIN_MUX_12, ((1<<11)));
+	CLEAR_CBUS_REG_MASK(CARD_PIN_MUX_0, ((1<<13)));
+	CLEAR_CBUS_REG_MASK(CARD_PIN_MUX_1, ((1<<2)));
+	CLEAR_CBUS_REG_MASK(PREG_EGPIO_EN_N, (1<<7));
+	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1 <<8));
+	CLEAR_CBUS_REG_MASK(PREG_GGPIO_O, (1<<8));
+	SET_CBUS_REG_MASK(PREG_EGPIO_O, (1<<7));
 }
+
+void inand_extern_init(void)
+{
+	CLEAR_CBUS_REG_MASK(CARD_PIN_MUX_1,( (1<<29) | (1<<27) | (1<<25) | (1<<23)|0x3f));
+	CLEAR_CBUS_REG_MASK(CARD_PIN_MUX_6,0x7fff);
+	/*attension, PINMUX 7 not 0x3d<<24 */
+	SET_CBUS_REG_MASK(CARD_PIN_MUX_7,(0x3f<<24));
+}
+static struct mtd_partition inand_partition_info[] = 
+{
+	{
+		.name = "U-BOOT",
+		.offset = 0,
+		.size=4*1024*1024,
+	},
+	{
+		.name = "Boot Para",
+		.offset = 4*1024*1024,
+		.size=4*1024*1024,
+	},
+	{
+		.name = "Kernel",
+		.offset = 8*1024*1024,
+		.size = 4 * 1024*1024,
+	},
+	{
+		.name = "ROOTFS",
+		.offset=MTDPART_OFS_APPEND,
+		.size=MTDPART_SIZ_FULL,
+	},
+};
 
 static struct aml_card_info  amlogic_card_info[] = {
 	[0] = {
@@ -429,16 +527,37 @@ static struct aml_card_info  amlogic_card_info[] = {
 		.card_ins_en_mask = 0,
 		.card_ins_input_reg = 0,
 		.card_ins_input_mask = 0,
-		.card_power_en_reg = EGPIO_GPIOD_ENABLE,
-		.card_power_en_mask = PREG_IO_10_MASK,
-		.card_power_output_reg = EGPIO_GPIOD_OUTPUT,
-		.card_power_output_mask = PREG_IO_10_MASK,
+		.card_power_en_reg = EGPIO_GPIOA_ENABLE,
+		.card_power_en_mask = PREG_IO_8_MASK,
+		.card_power_output_reg = EGPIO_GPIOA_OUTPUT,
+		.card_power_output_mask = PREG_IO_8_MASK,
 		.card_power_en_lev = 1,
 		.card_wp_en_reg = 0,
 		.card_wp_en_mask = 0,
 		.card_wp_input_reg = 0,
 		.card_wp_input_mask = 0,
 		.card_extern_init = sdio_extern_init,
+	},
+	[2] = {
+		.name = "inand_card",
+		.work_mode = CARD_HW_MODE,
+		.io_pad_type = SDIO_GPIOE_6_11,
+		.card_ins_en_reg = 0,
+		.card_ins_en_mask = 0,
+		.card_ins_input_reg = 0,
+		.card_ins_input_mask = 0,
+		.card_power_en_reg = 0,
+		.card_power_en_mask = 0,
+		.card_power_output_reg = 0,
+		.card_power_output_mask = 0,
+		.card_power_en_lev = 0,
+		.card_wp_en_reg = 0,
+		.card_wp_en_mask = 0,
+		.card_wp_input_reg = 0,
+		.card_wp_input_mask = 0,
+		.card_extern_init = inand_extern_init,
+		.partitions = inand_partition_info,
+		.nr_partitions = ARRAY_SIZE(inand_partition_info),
 	},
 };
 
@@ -741,13 +860,7 @@ static int is_ac_connected(void)
 
 static void set_charge(int flags)
 {
-	//GPIOD_22 low: fast charge high: slow charge
-    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_7, (1<<18));
-    if(flags == 1)
-	    set_gpio_val(GPIOD_bank_bit2_24(22), GPIOD_bit_bit2_24(22), 0); //fast charge
-    else
-    	set_gpio_val(GPIOD_bank_bit2_24(22), GPIOD_bit_bit2_24(22), 1);	//slow charge
-    set_gpio_mode(GPIOD_bank_bit2_24(22), GPIOD_bit_bit2_24(22), GPIO_OUTPUT_MODE);
+    return;
 }
 
 #ifdef CONFIG_SARADC_AM
@@ -756,21 +869,34 @@ extern int get_adc_sample(int chan);
 static int get_bat_vol(void)
 {
 #ifdef CONFIG_SARADC_AM
-	return get_adc_sample(5);
+    return 0;
 #else
-        return 0;
+    return 0;
 #endif
 }
 
 static int get_charge_status()
 {
-	return (READ_CBUS_REG(ASSIST_HW_REV)&(1<<8))? 1:0;
+    int stat1 = 0;
+    int stat2 = 0;
+    stat1 = (READ_CBUS_REG(ASSIST_HW_REV)&(1<<8))?1:0;
+    stat2 = (READ_CBUS_REG(ASSIST_HW_REV)&(1<<10))?1:0;
+    switch(((stat2<<2)|stat1))
+    {
+        case 0:
+        case 1:
+            return 0;
+        case 2:
+            return 1;
+        default:
+            return 0;
+    }
 }
 
 static struct aml_power_pdata power_pdata = {
 	.is_ac_online	= is_ac_connected,
 	//.is_usb_online	= is_usb_connected,
-	.set_charge = set_charge,
+	//.set_charge = set_charge,
 	.get_bat_vol = get_bat_vol,
 	.get_charge_status = get_charge_status,
 	//.supplied_to = supplicants,
@@ -815,7 +941,7 @@ static struct platform_device aml_uart_device = {
 };
 #endif
 
-#ifdef CONFIG_NAND_FLASH_DRIVER_BASE_OPERATE
+#ifdef CONFIG_AM_NAND
 static struct mtd_partition partition_info[] = 
 {
 	{
@@ -828,14 +954,7 @@ static struct mtd_partition partition_info[] =
 	{
 		.name = "environment",
 		.offset = 4*1024*1024,
-		.size=2*1024*1024,
-	//	.set_flags=0,
-	//	.dual_partnum=0,
-	},
-	{
-		.name = "splash",
-		.offset = 6*1024*1024,
-		.size=2*1024*1024,
+		.size=4*1024*1024,
 	//	.set_flags=0,
 	//	.dual_partnum=0,
 	},
@@ -870,134 +989,14 @@ static struct mtd_partition partition_info[] =
 	{
 		.name = "userdata",
 		.offset= 356*1024*1024,
-		.size= 256 * 1024*1024,
+		.size= 512 * 1024*1024,
 	//	.set_flags=0,
 	//	.dual_partnum=0,
 	},
 	{
 		.name = "media",
 		.offset = MTDPART_OFS_APPEND,
-		.size = (0x100000000-(356+256)*1024*1024),
-		.set_flags = MTD_AVNFTL,
-		.dual_partnum = 1,
-	//	.dual_partnum = 1|MTD_AVFTL_PLANE|MTD_AVNFTL_INTERL,
-	//	.set_flags=0,
-	//	.dual_partnum=0,
-	},
-};
-/*
-static struct aml_m1_nand_platform aml_2kpage128kblocknand_platform = {
-	.page_size = 2048,
-	.spare_size=64,
-	.erase_size= 128*1024,
-	.bch_mode=1,			//BCH8
-	.encode_size=528,
-	.timing_mode=5,
-	.ce_num=1,
-	.onfi_mode=0,
-	.partitions = partition_info,
-	.nr_partitions = ARRAY_SIZE(partition_info),
-};
-*/
-
-static struct aml_m1_nand_platform aml_Micron4GBABAnand_platform = 
-{
-	.page_size = 2048*2,
-	.spare_size= 224,		//for micron ABA 4GB
-	.erase_size=1024*1024,
-	.bch_mode=	  3,		//BCH16
-	.encode_size=540,				
-	.timing_mode=5,
-	.onfi_mode=1,
-	.ce_num=1,
-	.partitions = partition_info,
-	.nr_partitions = ARRAY_SIZE(partition_info),
-};
-
-
-static struct resource aml_nand_resources[] = {
-	{
-		.start = 0xc1108600,
-		.end = 0xc1108624,
-		.flags = IORESOURCE_MEM,
-	},
-};
-
-static struct platform_device aml_nand_device = {
-	.name = "aml_m1_nand",
-	.id = 0,
-	.num_resources = ARRAY_SIZE(aml_nand_resources),
-	.resource = aml_nand_resources,
-	.dev = {
-		.platform_data = &aml_Micron4GBABAnand_platform,
-	//	.platform_data = &aml_Micron8GBABAnand_platform,
-	},
-};
-#endif  //CONFIG_NAND_FLASH_DRIVER_BASE_OPERATE
-
-#ifdef CONFIG_NAND_FLASH_DRIVER_MULTIPLANE_CE
-static struct mtd_partition partition_info[] = 
-{
-	{
-		.name = "bootloader",
-		.offset = 0,
-		.size=4*1024*1024,
-	//	.set_flags=0,
-	//	.dual_partnum=0,
-	},
-	{
-		.name = "environment",
-		.offset = 4*1024*1024,
-		.size=4*1024*1024,
-	//	.set_flags=0,
-	//	.dual_partnum=0,
-	},
-	{
-		.name = "splash",
-		.offset = 8*1024*1024,
-		.size=4*1024*1024,
-	//	.set_flags=0,
-	//	.dual_partnum=0,
-	},
-	{
-		.name = "recovery",
-		.offset = 12*1024*1024,
-		.size = 16 * 1024*1024,
-	//	.set_flags=0,
-	//	.dual_partnum=0,
-	},
-	{
-		.name = "boot",
-		.offset = 28*1024*1024,
-		.size = 16 * 1024*1024,
-	//	.set_flags=0,
-	//	.dual_partnum=0,
-	},
-	{
-		.name = "system",
-		.offset = 44*4*1024*1024,
-		.size = 240 * 1024*1024,
-	//	.set_flags=0,
-	//	.dual_partnum=0,
-	},
-	{
-		.name = "cache",
-		.offset = 416*1024*1024,
-		.size = 16 * 1024*1024,
-	//	.set_flags=0,
-	//	.dual_partnum=0,
-	},
-	{
-		.name = "userdata",
-		.offset= 432*1024*1024,
-		.size= 256 * 1024*1024,
-	//	.set_flags=0,
-	//	.dual_partnum=0,
-	},
-	{
-		.name = "media",
-		.offset = MTDPART_OFS_APPEND,
-		.size = (0x200000000-(432+256)*1024*1024),
+		.size = (0x200000000-(356+512)*1024*1024),
 		.set_flags = MTD_AVNFTL,
 		.dual_partnum = 1|MTD_AVFTL_PLANE|MTD_AVNFTL_INTERL,
 	//	.set_flags=0,
@@ -1019,7 +1018,21 @@ static struct aml_m1_nand_platform aml_2kpage128kblocknand_platform = {
 };
 */
 
-
+#if 0
+static struct aml_m1_nand_platform aml_Micron4GBABAnand_platform = 
+{
+	.page_size = 2048*2,
+	.spare_size= 224,		//for micron ABA 4GB
+	.erase_size=1024*1024,
+	.bch_mode=	  3,		//BCH16
+	.encode_size=540,				
+	.timing_mode=5,
+	.onfi_mode=1,
+	.ce_num=1,
+	.partitions = partition_info,
+	.nr_partitions = ARRAY_SIZE(partition_info),
+};
+#endif
 static struct aml_m1_nand_platform aml_Micron8GBABAnand_platform =
 {
 	.page_size = 2048*2,
@@ -1056,7 +1069,7 @@ static struct platform_device aml_nand_device = {
 		.platform_data = &aml_Micron8GBABAnand_platform,
 	},
 };
-#endif  //CONFIG_NAND_FLASH_DRIVER_MULTIPLANE_CE
+#endif
 
 #if defined(CONFIG_AMLOGIC_BACKLIGHT)
 
@@ -1310,10 +1323,7 @@ static struct platform_device __initdata *platform_devs[] = {
 	#if defined(CONFIG_TOUCHSCREEN_ADS7846)
 		&spi_gpio,
 	#endif
-    #if defined(CONFIG_NAND_FLASH_DRIVER_BASE_OPERATE)
-		&aml_nand_device,
-    #endif		
-    #if defined(CONFIG_NAND_FLASH_DRIVER_MULTIPLANE_CE)
+    #if defined(CONFIG_AM_NAND)
 		&aml_nand_device,
     #endif		
     #if defined(CONFIG_AML_RTC)
@@ -1363,6 +1373,15 @@ static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
 	{
 		I2C_BOARD_INFO("wm8900", 0x1A),
 	},
+
+#ifdef CONFIG_SINTEK_CAPACITIVE_TOUCHSCREEN
+	{
+		I2C_BOARD_INFO("stkxxx", 0x5C),
+		.irq = INT_GPIO_0,
+		.platform_data = (void *)&stkxxx_pdata,
+	},
+#endif
+
 };
 
 
@@ -1469,6 +1488,7 @@ static __init void m1_init_machine(void)
 #ifdef CONFIG_USB_DWC_OTG_HCD
 	set_usb_phy_clk(USB_PHY_CLOCK_SEL_XTAL_DIV2);
 	lm_device_register(&usb_ld_a);
+	lm_device_register(&usb_ld_b);
 #endif
 #ifdef CONFIG_SATA_DWC_AHCI
 	set_sata_phy_clk(SATA_PHY_CLOCK_SEL_DEMOD_PLL);

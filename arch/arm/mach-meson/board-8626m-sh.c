@@ -323,7 +323,7 @@ static struct platform_device audiodsp_device = {
 };
 #endif
 
-#ifdef CONFIG_AM_NAND
+#ifdef CONFIG_NAND_FLASH_DRIVER_BASE_OPERATE
 static struct mtd_partition partition_info[] = 
 {
 	{
@@ -407,7 +407,7 @@ static struct platform_device __initdata *platform_devs[] = {
     #if defined(CONFIG_KEYPADS_AM)||defined(CONFIG_VIRTUAL_REMOTE)||defined(CONFIG_KEYPADS_AM_MODULE) 
 		&input_device,
     #endif	
-    #if defined(CONFIG_AM_NAND)
+    #if defined(CONFIG_NAND_FLASH_DRIVER_BASE_OPERATE)
 		&aml_nand_device,
     #endif		
 	

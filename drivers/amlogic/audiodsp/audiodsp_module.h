@@ -2,6 +2,7 @@
 #define AUDIO_DSP_MODULES_H
 #include <linux/device.h>
 #include <linux/timer.h>
+#include <linux/wakelock.h>
 /*
 #include <asm/dsp/audiodsp_control.h>
 #include <asm/dsp/dsp_register.h>
@@ -58,7 +59,8 @@
 
 	struct completion	decode_completion;
     void __iomem *p;	
-	
+// for power management
+    struct wake_lock wakelock;
 };
 
 

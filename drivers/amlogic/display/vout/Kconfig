@@ -20,5 +20,17 @@ config AML_TCON_T13
 	help  
 		T13 LCD panel module
 
+config AML_TCON_W10
+	tristate "W10 panel driver"
+	depends on  AM_TCON_OUTPUT
+	help  
+		W10 LCD panel module
+
+config AML_TCON_W7
+	tristate "W7 panel driver"
+	depends on  AM_TCON_OUTPUT
+	help  
+		W7 LCD panel module
+
 endmenu
 	

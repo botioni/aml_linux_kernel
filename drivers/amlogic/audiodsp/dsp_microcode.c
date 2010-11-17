@@ -97,7 +97,7 @@ static struct audiodsp_microcode *  audiodsp_find_mcode_by_name(struct audiodsp_
 	memcpy((char *)((unsigned)priv->p+dsp_code_text_start), (char*)firmware->data+dsp_code_text_start,firmware->size-dsp_code_text_start);
 
 	pmcode->code_size=firmware->size;
-	DSP_PRNT("load mcode size=%d\n,load addr 0x%x mcode name %s",firmware->size,pmcode->code_start_addr,pmcode->file_name);
+	DSP_PRNT("load mcode size=%d\n,load addr 0x%lx mcode name %s",firmware->size,pmcode->code_start_addr,pmcode->file_name);
 release:	
 	release_firmware(firmware);
 

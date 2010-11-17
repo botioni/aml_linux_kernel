@@ -453,7 +453,7 @@ int ads7846_init_gpio(void)
 }
 #endif
 
-#if defined(CONFIG_AM_NAND)
+#if defined(CONFIG_NAND_FLASH_DRIVER_BASE_OPERATE)
 static struct mtd_partition partition_info[] = 
 {
 	{
@@ -605,7 +605,7 @@ static struct platform_device __initdata *platform_devs[] = {
 #if defined(CONFIG_TOUCHSCREEN_ADS7846)
 	&spi_gpio,
 #endif
-	 #if defined(CONFIG_AM_NAND)
+	 #if defined(CONFIG_NAND_FLASH_DRIVER_BASE_OPERATE)
 		&aml_nand_device,
     #endif		
 };

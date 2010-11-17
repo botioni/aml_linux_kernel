@@ -10,5 +10,9 @@ obj-$(CONFIG_AM_TCON_OUTPUT)  += tcon.o
 
 obj-$(CONFIG_AML_TCON_T13)  += t13.o
 
+obj-$(CONFIG_AML_TCON_W10)  += w10.o
+
+obj-$(CONFIG_AML_TCON_W7)  += w7.o
+
 #EXTRA_CFLAGS += -DCONFIG_PM
 
