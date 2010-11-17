@@ -43,6 +43,12 @@ config MACH_MESON_8726M_ARM
 	help
 	  Include support for the AMLOGIC M1 8726M Emulation Baseboard platform.
 
+config MACH_MESON_8726M_DVBC
+	select GENERIC_ALLOCATOR
+	bool "Support M1 8726(DVBC_8726M1_V1.0) platform(machid=2957)"
+	help
+	  Include support for the AMLOGIC M1 8726M DVBC Emulation Baseboard platform.
+
 config MACH_MESON_8726M_ML
 	select GENERIC_ALLOCATOR
 	bool "Support M1 8726(ML) platform(machid=2956)"
