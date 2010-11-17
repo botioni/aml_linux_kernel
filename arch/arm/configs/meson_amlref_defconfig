@@ -1,7 +1,7 @@
 #
 # Automatically generated make config: don't edit
 # Linux kernel version: 2.6.34
-# Tue Nov 16 12:39:55 2010
+# Wed Nov 17 14:02:42 2010
 #
 CONFIG_ARM=y
 CONFIG_HOLES_IN_ZONE=y
@@ -64,7 +64,8 @@ CONFIG_TREE_RCU=y
 CONFIG_RCU_FANOUT=32
 # CONFIG_RCU_FANOUT_EXACT is not set
 # CONFIG_TREE_RCU_TRACE is not set
-# CONFIG_IKCONFIG is not set
+CONFIG_IKCONFIG=y
+CONFIG_IKCONFIG_PROC=y
 CONFIG_LOG_BUF_SHIFT=17
 # CONFIG_CGROUPS is not set
 # CONFIG_SYSFS_DEPRECATED_V2 is not set
@@ -583,11 +584,8 @@ CONFIG_SDIO=y
 # AMLOGIC SPI NOR Flash  support
 #
 # CONFIG_AMLOGIC_SPI_NOR is not set
-
-#
-# AMLOGIC NAND Flash  support
-#
-CONFIG_AM_NAND=y
+CONFIG_NAND_FLASH_DRIVER_BASE_OPERATE=y
+# CONFIG_NAND_FLASH_DRIVER_MULTIPLANE_CE is not set
 
 #
 # Network devices
