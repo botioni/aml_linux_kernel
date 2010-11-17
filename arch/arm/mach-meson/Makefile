@@ -22,6 +22,8 @@ obj-$(CONFIG_MACH_MESON_8626M_SH)	+= board-8626m-sh.o
 obj-$(CONFIG_MACH_MESON_8226M)	+= board-8226m.o
 obj-$(CONFIG_MACH_MESON_8726M)	+= board-8726m.o
 obj-$(CONFIG_MACH_MESON_8726M_ARM)	+= board-8726m-arm.o
-
+obj-$(CONFIG_MACH_MESON_8726M_ML)	+= board-8726m-ml.o
+obj-$(CONFIG_MACH_MESON_8726M_W10)	+= board-8726m-w10.o
+obj-$(CONFIG_MACH_MESON_8726M_W7)	+= board-8726m-w7.o
 # Power Management
 obj-$(CONFIG_SUSPEND)			+= pm.o
