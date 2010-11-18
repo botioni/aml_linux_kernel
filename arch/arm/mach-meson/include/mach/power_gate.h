@@ -8,6 +8,7 @@
 #define CLK_GATE_ON(_MOD) \
     do{                     \
         if(GCLK_ref[GCLK_IDX_##_MOD]++ == 0){ \
+            printk("gate on %s %x, %x\n", GCLK_NAME_##_MOD, GCLK_REG_##_MOD, GCLK_MASK_##_MOD); \
             SET_CBUS_REG_MASK(GCLK_REG_##_MOD, GCLK_MASK_##_MOD); \
         } \
     }while(0)
@@ -18,10 +19,14 @@
         if(GCLK_ref[GCLK_IDX_##_MOD] == 0)    \
             break;                  \
         if(--GCLK_ref[GCLK_IDX_##_MOD] == 0){ \
+            printk("gate off %s %x, %x\n", GCLK_NAME_##_MOD, GCLK_REG_##_MOD, GCLK_MASK_##_MOD); \
             CLEAR_CBUS_REG_MASK(GCLK_REG_##_MOD, GCLK_MASK_##_MOD); \
         } \
     }while(0)
 
+#define IS_CLK_GATE_ON(_MOD) (READ_CBUS_REG(GCLK_REG_##_MOD) & (GCLK_MASK_##_MOD))
+#define GATE_INIT(_MOD) GCLK_ref[GCLK_IDX_##_MOD] = IS_CLK_GATE_ON(_MOD)?1:0
+            
 #define GCLK_IDX_AHB_BRIDGE         0
 #define GCLK_NAME_AHB_BRIDGE      "AHB_BRIDGE"
 #define GCLK_DEV_AHB_BRIDGE      "CLKGATE_AHB_BRIDGE"
