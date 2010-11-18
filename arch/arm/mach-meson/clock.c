@@ -112,7 +112,7 @@ static int clk_set_rate_clk81(struct clk *clk, unsigned long rate)
 	r1=clk_get_rate(father_clk);
 	if(r1!=r*4)
 		{
-			ret=father_clk->set_rate(father_clk,r*2);
+			ret=father_clk->set_rate(father_clk,r*4);
 			if(ret!=0)
 				return ret;
 		}
