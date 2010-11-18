@@ -17,9 +17,9 @@
 #define VIDEO_LOOKUP_RESOLUTION 2500
 #define AUDIO_LOOKUP_RESOLUTION 1024
 
-#define OFFSET_LATER(x, y) ((int)(x) > (int)(y))
-#define OFFSET_EQLATER(x, y) ((int)(x) >= (int)(y))
 #define OFFSET_DIFF(x, y)  ((int)(x - y))
+#define OFFSET_LATER(x, y) (OFFSET_DIFF(x, y) > 0)
+#define OFFSET_EQLATER(x, y) (OFFSET_DIFF(x, y) >= 0)
 
 enum {
     PTS_IDLE       = 0,
