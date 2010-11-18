@@ -26,6 +26,7 @@ struct aml_power_pdata {
 	int (*get_charge_status)(void);
 	void (*set_charge)(int flags);
 	void (*exit)(struct device *dev);
+	void (*set_bat_off)(void);
 
 	char **supplied_to;
 	size_t num_supplicants;
