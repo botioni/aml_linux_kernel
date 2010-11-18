@@ -32,9 +32,9 @@ static void meson_sram_push(void *dest, void *src, unsigned int size)
 {
     int res = 0;
     memcpy(dest, src, size);
-	flush_icache_range((unsigned long)dest, (unsigned long)(dest + size));
-	res = memcmp(dest,src,size);
-	printk("meson_sram_push (%d)\n", res);
+    flush_icache_range((unsigned long)dest, (unsigned long)(dest + size));
+    res = memcmp(dest,src,size);
+    printk("meson_sram_push (%d)\n", res);
 }
 
 #define GATE_OFF(_MOD) do {power_gate_flag[GCLK_IDX_##_MOD] = IS_CLK_GATE_ON(_MOD);CLK_GATE_OFF(_MOD);} while(0)
@@ -159,7 +159,7 @@ void power_gate_switch(int flag)
     GATE_SWITCH(flag, BLK_MOV);
     GATE_SWITCH(flag, BT656_IN);
     GATE_SWITCH(flag, DEMUX);
-    //GATE_SWITCH(flag, MMC_DDR);
+    GATE_SWITCH(flag, MMC_DDR);
     //GATE_SWITCH(flag, DDR);
     GATE_SWITCH(flag, DIG_VID_IN);
     GATE_SWITCH(flag, ETHERNET);
@@ -203,7 +203,7 @@ void power_gate_switch(int flag)
     GATE_SWITCH(flag, SAR_ADC);
     GATE_SWITCH(flag, I2C);
     GATE_SWITCH(flag, IR_REMOTE);
-//    GATE_SWITCH(flag, _1200XXX);
+    //GATE_SWITCH(flag, _1200XXX);
     GATE_SWITCH(flag, SATA);
     GATE_SWITCH(flag, SPI1);
     GATE_SWITCH(flag, USB1);
@@ -232,138 +232,167 @@ void power_gate_switch(int flag)
 
 static void meson_pm_suspend(void)
 {
-	int mask_save[4];
-    
-    printk("power gate stat before suspend %x %x %x %x\n", 
+    int mask_save[4];
+#if 0
+    struct clk *sys_clk;
+    unsigned long sys_clk_rate;
+    unsigned long sleep_clk_rate = 48000000;
+    int baudrate;
+    sys_clk = clk_get_sys("clk81", NULL);
+    sys_clk_rate = clk_get_rate(sys_clk);
+    baudrate = (sys_clk_rate / (115200 * 4)) - 1;
+#endif    
+
+    printk(KERN_INFO "enter meson_pm_suspend!\n");
+    printk(KERN_INFO "power gate stat before suspend %x %x %x %x\n", 
            READ_CBUS_REG(HHI_GCLK_MPEG0), 
            READ_CBUS_REG(HHI_GCLK_MPEG1),
            READ_CBUS_REG(HHI_GCLK_MPEG2),
            READ_CBUS_REG(HHI_GCLK_OTHER));    
-	printk(KERN_INFO "enter meson_pm_suspend!\n");
-
-#ifdef WAKE_UP_BY_IRQ	
-	mask_save[0] = READ_CBUS_REG(A9_0_IRQ_IN0_INTR_MASK);
-	mask_save[1] = READ_CBUS_REG(A9_0_IRQ_IN1_INTR_MASK);
-	mask_save[2] = READ_CBUS_REG(A9_0_IRQ_IN2_INTR_MASK);
-	mask_save[3] = READ_CBUS_REG(A9_0_IRQ_IN3_INTR_MASK);
-	WRITE_CBUS_REG(A9_0_IRQ_IN0_INTR_MASK, 0x0);
-	WRITE_CBUS_REG(A9_0_IRQ_IN1_INTR_MASK, 0x0);
-	WRITE_CBUS_REG(A9_0_IRQ_IN2_INTR_MASK, (1<<8));
-	WRITE_CBUS_REG(A9_0_IRQ_IN3_INTR_MASK, 0x0);
+                  
+#ifdef WAKE_UP_BY_IRQ    
+    mask_save[0] = READ_CBUS_REG(A9_0_IRQ_IN0_INTR_MASK);
+    mask_save[1] = READ_CBUS_REG(A9_0_IRQ_IN1_INTR_MASK);
+    mask_save[2] = READ_CBUS_REG(A9_0_IRQ_IN2_INTR_MASK);
+    mask_save[3] = READ_CBUS_REG(A9_0_IRQ_IN3_INTR_MASK);
+    WRITE_CBUS_REG(A9_0_IRQ_IN0_INTR_MASK, 0x0);
+    WRITE_CBUS_REG(A9_0_IRQ_IN1_INTR_MASK, 0x0);
+    WRITE_CBUS_REG(A9_0_IRQ_IN2_INTR_MASK, (1<<8));
+    WRITE_CBUS_REG(A9_0_IRQ_IN3_INTR_MASK, 0x0);
     
     audio_internal_dac_disable();
     video_dac_disable();
 
     power_gate_switch(0);
-    printk("power gate stat in suspend %x %x %x %x\n", 
+    printk(KERN_INFO "power gate stat in suspend %x %x %x %x\n", 
            READ_CBUS_REG(HHI_GCLK_MPEG0), 
            READ_CBUS_REG(HHI_GCLK_MPEG1),
            READ_CBUS_REG(HHI_GCLK_MPEG2),
            READ_CBUS_REG(HHI_GCLK_OTHER));    
     
-	WRITE_MPEG_REG(HHI_A9_CLK_CNTL, READ_MPEG_REG(HHI_A9_CLK_CNTL)&~(1<<7));
-	meson_sram_suspend(pdata);
-	WRITE_MPEG_REG(HHI_A9_CLK_CNTL, READ_MPEG_REG(HHI_A9_CLK_CNTL)|(1<<7));
-	
-    printk("intr stat %x %x %x %x\n", 
-		READ_CBUS_REG(A9_0_IRQ_IN0_INTR_STAT), 
-		READ_CBUS_REG(A9_0_IRQ_IN1_INTR_STAT),
-		READ_CBUS_REG(A9_0_IRQ_IN2_INTR_STAT),
-		READ_CBUS_REG(A9_0_IRQ_IN3_INTR_STAT));
+    WRITE_MPEG_REG(HHI_A9_CLK_CNTL, READ_MPEG_REG(HHI_A9_CLK_CNTL)&~(1<<7));
+    WRITE_MPEG_REG(HHI_A9_CLK_CNTL, READ_MPEG_REG(HHI_A9_CLK_CNTL)|(1<<9));
+    WRITE_MPEG_REG(HHI_MALI_CLK_CNTL, READ_MPEG_REG(HHI_MALI_CLK_CNTL)&~(1<<8));
+    WRITE_MPEG_REG(HHI_HDMI_CLK_CNTL, READ_MPEG_REG(HHI_HDMI_CLK_CNTL)&~(1<<8));
+    WRITE_MPEG_REG(HHI_DEMOD_CLK_CNTL, READ_MPEG_REG(HHI_DEMOD_CLK_CNTL)&~(1<<8));    
+    WRITE_MPEG_REG(HHI_SATA_CLK_CNTL, READ_MPEG_REG(HHI_SATA_CLK_CNTL)&~(1<<8));    
+    WRITE_MPEG_REG(HHI_MPEG_CLK_CNTL, READ_MPEG_REG(HHI_MPEG_CLK_CNTL)&~(1<<8)); 
+    //clk_set_rate(sys_clk, sleep_clk_rate);
+    meson_sram_suspend(pdata);
+#if 0
+    clk_set_rate(sys_clk, sys_clk_rate);
+    CLEAR_CBUS_REG_MASK(UART0_CONTROL, (1 << 19) | 0xFFF);
+    SET_CBUS_REG_MASK(UART0_CONTROL, (baudrate & 0xfff));
+    CLEAR_CBUS_REG_MASK(UART1_CONTROL, (1 << 19) | 0xFFF);
+    SET_CBUS_REG_MASK(UART1_CONTROL, (baudrate & 0xfff));
+#endif
+    WRITE_MPEG_REG(HHI_MPEG_CLK_CNTL, READ_MPEG_REG(HHI_MPEG_CLK_CNTL)|(1<<8)); 
+    WRITE_MPEG_REG(HHI_SATA_CLK_CNTL, READ_MPEG_REG(HHI_SATA_CLK_CNTL)|(1<<8));
+    WRITE_MPEG_REG(HHI_DEMOD_CLK_CNTL, READ_MPEG_REG(HHI_DEMOD_CLK_CNTL)|(1<<8));
+    WRITE_MPEG_REG(HHI_HDMI_CLK_CNTL, READ_MPEG_REG(HHI_HDMI_CLK_CNTL)|(1<<8));
+    WRITE_MPEG_REG(HHI_MALI_CLK_CNTL, READ_MPEG_REG(HHI_MALI_CLK_CNTL)|(1<<8));
+    WRITE_MPEG_REG(HHI_A9_CLK_CNTL, READ_MPEG_REG(HHI_A9_CLK_CNTL)&~(1<<9));
+    WRITE_MPEG_REG(HHI_A9_CLK_CNTL, READ_MPEG_REG(HHI_A9_CLK_CNTL)|(1<<7));
+    
+    printk(KERN_INFO "intr stat %x %x %x %x\n", 
+        READ_CBUS_REG(A9_0_IRQ_IN0_INTR_STAT), 
+        READ_CBUS_REG(A9_0_IRQ_IN1_INTR_STAT),
+        READ_CBUS_REG(A9_0_IRQ_IN2_INTR_STAT),
+        READ_CBUS_REG(A9_0_IRQ_IN3_INTR_STAT));
 
     power_gate_switch(1);
 
     WRITE_CBUS_REG(A9_0_IRQ_IN0_INTR_MASK, mask_save[0]);
-	WRITE_CBUS_REG(A9_0_IRQ_IN1_INTR_MASK, mask_save[1]);
-	WRITE_CBUS_REG(A9_0_IRQ_IN2_INTR_MASK, mask_save[2]);
-	WRITE_CBUS_REG(A9_0_IRQ_IN3_INTR_MASK, mask_save[3]);
-    printk("power gate stat after suspend %x %x %x %x\n", 
+    WRITE_CBUS_REG(A9_0_IRQ_IN1_INTR_MASK, mask_save[1]);
+    WRITE_CBUS_REG(A9_0_IRQ_IN2_INTR_MASK, mask_save[2]);
+    WRITE_CBUS_REG(A9_0_IRQ_IN3_INTR_MASK, mask_save[3]);
+    printk(KERN_INFO "power gate stat after suspend %x %x %x %x\n", 
            READ_CBUS_REG(HHI_GCLK_MPEG0), 
            READ_CBUS_REG(HHI_GCLK_MPEG1),
            READ_CBUS_REG(HHI_GCLK_MPEG2),
            READ_CBUS_REG(HHI_GCLK_OTHER));
 #else
-	int powerPress = 0;
-	while(1){
-		udelay(jiffies+msecs_to_jiffies(20));
-		powerPress = ((READ_CBUS_REG(0x21d1/*RTC_ADDR1*/) >> 2) & 1) ? 0 : 1;
-		if(powerPress)
-			break;
-	}
+    int powerPress = 0;
+    while(1){
+        udelay(jiffies+msecs_to_jiffies(20));
+        powerPress = ((READ_CBUS_REG(0x21d1/*RTC_ADDR1*/) >> 2) & 1) ? 0 : 1;
+        if(powerPress)
+            break;
+    }
 #endif
 }
 
 static int meson_pm_prepare(void)
 {
-	printk(KERN_INFO "enter meson_pm_prepare!\n");
-	meson_sram_push(meson_sram_suspend, meson_cpu_suspend,
-						meson_cpu_suspend_sz);
-	return 0;
+    printk(KERN_INFO "enter meson_pm_prepare!\n");
+    meson_sram_push(meson_sram_suspend, meson_cpu_suspend,
+                        meson_cpu_suspend_sz);
+    return 0;
 }
 
 static int meson_pm_enter(suspend_state_t state)
 {
-	int ret = 0;
+    int ret = 0;
 
-	switch (state) {
-	case PM_SUSPEND_STANDBY:
-	case PM_SUSPEND_MEM:
-		meson_pm_suspend();
-		break;
-	default:
-		ret = -EINVAL;
-	}
+    switch (state) {
+    case PM_SUSPEND_STANDBY:
+    case PM_SUSPEND_MEM:
+        meson_pm_suspend();
+        break;
+    default:
+        ret = -EINVAL;
+    }
 
-	return ret;
+    return ret;
 }
 
 static struct platform_suspend_ops meson_pm_ops = {
-	.enter		= meson_pm_enter,
-	.prepare    = meson_pm_prepare,
-	.valid		= suspend_valid_only_mem,
+    .enter        = meson_pm_enter,
+    .prepare    = meson_pm_prepare,
+    .valid        = suspend_valid_only_mem,
 };
 
 static int __init meson_pm_probe(struct platform_device *pdev)
 {
-	printk(KERN_INFO "enter meson_pm_probe!\n");
+    printk(KERN_INFO "enter meson_pm_probe!\n");
 
     power_gate_init();
 
     pdata = pdev->dev.platform_data;
-	if (!pdata) {
-		dev_err(&pdev->dev, "cannot get platform data\n");
-		return -ENOENT;
-	}
+    if (!pdata) {
+        dev_err(&pdev->dev, "cannot get platform data\n");
+        return -ENOENT;
+    }
 
-	meson_sram_suspend = sram_alloc(meson_cpu_suspend_sz);
-	if (!meson_sram_suspend) {
-		dev_err(&pdev->dev, "cannot allocate SRAM memory\n");
-		return -ENOMEM;
-	}
+    meson_sram_suspend = sram_alloc(meson_cpu_suspend_sz);
+    if (!meson_sram_suspend) {
+        dev_err(&pdev->dev, "cannot allocate SRAM memory\n");
+        return -ENOMEM;
+    }
 
-	meson_sram_push(meson_sram_suspend, meson_cpu_suspend,
-						meson_cpu_suspend_sz);
+    meson_sram_push(meson_sram_suspend, meson_cpu_suspend,
+                        meson_cpu_suspend_sz);
 
-	suspend_set_ops(&meson_pm_ops);
-	printk(KERN_INFO "meson_pm_probe done 0x%x %d!\n", (unsigned)meson_sram_suspend, meson_cpu_suspend_sz);
-	return 0;
+    suspend_set_ops(&meson_pm_ops);
+    printk(KERN_INFO "meson_pm_probe done 0x%x %d!\n", (unsigned)meson_sram_suspend, meson_cpu_suspend_sz);
+    return 0;
 }
 
 static int __exit meson_pm_remove(struct platform_device *pdev)
 {
-	return 0;
+    return 0;
 }
 
 static struct platform_driver meson_pm_driver = {
-	.driver = {
-		.name	 = "pm-meson",
-		.owner	 = THIS_MODULE,
-	},
-	.remove = __exit_p(meson_pm_remove),
+    .driver = {
+        .name     = "pm-meson",
+        .owner     = THIS_MODULE,
+    },
+    .remove = __exit_p(meson_pm_remove),
 };
 
 static int __init meson_pm_init(void)
 {
-	return platform_driver_probe(&meson_pm_driver, meson_pm_probe);
+    return platform_driver_probe(&meson_pm_driver, meson_pm_probe);
 }
 late_initcall(meson_pm_init);
