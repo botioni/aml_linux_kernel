@@ -55,7 +55,12 @@
 
 static unsigned int uart_irqs[UART_NR] = { INT_UART,INT_UART_1 };
 static am_uart_t *uart_addr[UART_NR] = { UART_BASEADDR0,UART_BASEADDR1 };
+
+#ifdef CONFIG_AM_UART0_SET_PORT_A
 static int default_index = 0;
+#else
+static int default_index = 1;
+#endif
 static int inited_ports_flag = 0;
 #ifndef outl
 #define outl(v,addr)	__raw_writel(v,(unsigned long)addr)
@@ -732,7 +737,10 @@ static int __init am_uart_console_setup(struct console *co, char *options)
 	int parity = 'n';
 	int flow = 'n';
        int index = am_ports[co->index].line;
-	am_uart_t *uart = uart_addr[index];
+       am_uart_t *uart;
+	if(inited_ports_flag==0)
+                     index =default_index;
+	 uart = uart_addr[index];
 	/* TODO: pinmux */
 #if 0
 	if(cp->index==1)/*PORT B*/
@@ -813,7 +821,10 @@ static int __init am_uart_console_setup(struct console *co, char *options)
 static void am_uart_console_write(struct console *co, const char *s, u_int count)
 {
        int index = am_ports[co->index].line;
-       
+
+        if(inited_ports_flag==0)
+                     index =default_index;      
+
        if (index!=default_index)
 		am_uart_console_setup(co, NULL);
        
