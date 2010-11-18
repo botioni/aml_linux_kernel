@@ -36,7 +36,7 @@
 #include <linux/amlog.h>
 #include "osd_hw_def.h"
 
-//#define  FIQ_VSYNC
+#define  FIQ_VSYNC
 
 /**********************************************************************/
 /**********				 osd vsync irq handler   				***************/
