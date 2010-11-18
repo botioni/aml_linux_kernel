@@ -75,7 +75,7 @@ typedef struct hdmi_tx_dev_s {
     unsigned char tmp_buf[HDMI_TMP_BUF_SIZE];
 }hdmitx_dev_t;
 
-#define HDMITX_VER "2010Nov10a"
+#define HDMITX_VER "2010Nov11a"
 /************************************
 *    hdmitx protocol level interface
 *************************************/

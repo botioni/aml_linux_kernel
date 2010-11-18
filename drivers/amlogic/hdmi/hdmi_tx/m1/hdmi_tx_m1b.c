@@ -52,6 +52,8 @@ static void hdmi_audio_init(unsigned char spdif_flag);
 //#define HPD_DELAY_CHECK
 //#define ENABLE_HDCP
 //#define CEC_SUPPORT
+
+//#define MORE_LOW_P
 #define LOG_EDID
 
 #ifdef CEC_SUPPORT
@@ -782,8 +784,9 @@ static void hdmi_hw_init(hdmitx_dev_t* hdmitx_device)
         hdmi_wr_reg(0x014, 0x02);             
         hdmi_wr_reg(TX_CORE_CALIB_MODE, 0xc);
         hdmi_wr_reg(TX_CORE_CALIB_VALUE, 0x0);
-
+#ifdef MORE_LOW_P
         hdmi_wr_reg(0x010, 0x0);
+#endif        
     }
 
     // --------------------------------------------------------
@@ -817,7 +820,13 @@ static void hdmi_hw_reset(Hdmi_tx_video_para_t *param)
         TX_OUTPUT_COLOR_FORMAT=0;
     }
     // Configure HDMI PLL
-    //Wr(HHI_HDMI_PLL_CNTL2, 0x50e8);
+    if(hdmi_chip_type == HDMI_M1A){
+        Wr(HHI_HDMI_PLL_CNTL2, 0x50e8);
+    }
+    else{
+        Wr(HHI_HDMI_PLL_CNTL2, 0x40e8);
+    }
+
     if(new_reset_sequence_flag){
         Wr(HHI_HDMI_PLL_CNTL1, 0x00040003); //should turn on always for new reset sequence
     }
@@ -1070,10 +1079,11 @@ static void hdmi_hw_reset(Hdmi_tx_video_para_t *param)
         hdmi_wr_reg(0x014, 0x02); 
         hdmi_wr_reg(TX_CORE_CALIB_MODE, 0xc);
         hdmi_wr_reg(TX_CORE_CALIB_VALUE, 0x0);
-
+#ifdef MORE_LOW_P
         hdmi_wr_reg(0x010, 0x0);
     
         hdmi_wr_reg(0x01a, 0x3);
+#endif        
     }
     
     // --------------------------------------------------------
@@ -1359,6 +1369,7 @@ static int hdmitx_m1b_set_dispmode(Hdmi_tx_video_para_t *param)
         hdmi_wr_reg(TX_SYS1_AFE_TEST, hdmi_rd_reg(TX_SYS1_AFE_TEST)&(~0x1f));
         /**/
         Wr(HHI_HDMI_PLL_CNTL, Rd(HHI_HDMI_PLL_CNTL)|(1<<30)); //disable HDMI PLL
+        Wr(HHI_HDMI_PLL_CNTL2, Rd(HHI_HDMI_PLL_CNTL2)&(~0x38));
         return 0;
     }
 
@@ -1786,6 +1797,7 @@ static void hdmitx_m1b_uninit(hdmitx_dev_t* hdmitx_device)
     hdmi_wr_reg(TX_SYS1_AFE_TEST, hdmi_rd_reg(TX_SYS1_AFE_TEST)&(~0x1f));
     /**/
     Wr(HHI_HDMI_PLL_CNTL, Rd(HHI_HDMI_PLL_CNTL)|(1<<30)); //disable HDMI PLL
+    Wr(HHI_HDMI_PLL_CNTL2, Rd(HHI_HDMI_PLL_CNTL2)&(~0x38));
     /**/
     Wr(PERIPHS_PIN_MUX_0, Rd(PERIPHS_PIN_MUX_0)&(~((1 << 2) | // pm_hdmi_cec_en
                                (1 << 1) | // pm_hdmi_hpd_5v_en , enable this signal after all init done to ensure fist HPD rising ok
@@ -1803,18 +1815,20 @@ static void hdmitx_m1b_cntl(hdmitx_dev_t* hdmitx_device, int cmd, unsigned argv)
             
             hdmi_wr_reg(TX_CORE_CALIB_MODE, 0xc);
             hdmi_wr_reg(TX_CORE_CALIB_VALUE, 0x0);
-
+#ifdef MORE_LOW_P
             hdmi_wr_reg(0x010, 0x0);
             hdmi_wr_reg(0x01a, 0x3);
+#endif            
         }
         else{
             hdmi_wr_reg(0x016, 0x03); //hdmi_wr_reg(0x016, 0x04);   // Bit[3:0] is HDMI-PHY's output swing control register
 
             hdmi_wr_reg(TX_CORE_CALIB_MODE, 0x8);
             hdmi_wr_reg(TX_CORE_CALIB_VALUE, 0xf);
-
+#ifdef MORE_LOW_P
             hdmi_wr_reg(0x010, 0x3);
             hdmi_wr_reg(0x01a, 0xfb);
+#endif            
         }
     }
     else if(cmd == HDMITX_HWCMD_VDAC_OFF){
@@ -1934,15 +1948,14 @@ static void hdmitx_m1b_debug(hdmitx_dev_t* hdmitx_device, const char* buf)
             }
         }
     }
-    else if(tmpbuf[0]=='o'){
-        if(tmpbuf[1]=='n'){
-            turn_on_shift_pattern();
-            printk("Shift Pattern On\n");
-        }
-        else if(tmpbuf[1]=='f'){
-            turn_off_shift_pattern();
-            printk("Shift Pattern Off\n");
-        }
+    else if(strncmp(tmpbuf, "pattern_on", 10)==0){
+        turn_on_shift_pattern();
+        printk("Shift Pattern On\n");
+        return;        
+    }
+    else if(strncmp(tmpbuf, "pattern_off", 11)==0){
+        turn_off_shift_pattern();
+        printk("Shift Pattern Off\n");
         return;        
     }
     else if(strncmp(tmpbuf, "prbs", 4)==0){
