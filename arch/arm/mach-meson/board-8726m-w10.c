@@ -396,9 +396,9 @@ static struct resource amlogic_card_resource[]  = {
 
 void sdio_extern_init(void)
 {
-	CLEAR_CBUS_REG_MASK(CARD_PIN_MUX_5, ((3<<4)));
-	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<18));
-	SET_CBUS_REG_MASK(PREG_GGPIO_O, (1<<18));
+//	CLEAR_CBUS_REG_MASK(CARD_PIN_MUX_5, ((3<<4)));
+//	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<18));
+//	SET_CBUS_REG_MASK(PREG_GGPIO_O, (1<<18));
 }
 
 static struct aml_card_info  amlogic_card_info[] = {
@@ -609,6 +609,51 @@ static int ads7846_init_gpio(void)
 }
 #endif
 
+#ifdef CONFIG_ITK_CAPACITIVE_TOUCHSCREEN
+#include <linux/i2c/itk.h>
+
+//GPIOD_24
+#define GPIO_ITK_PENIRQ ((GPIOD_bank_bit2_24(24)<<16) |GPIOD_bit_bit2_24(24)) 
+#define GPIO_ITK_RST
+
+static int itk_init_irq(void)
+{
+/* memson
+    Bit(s)  Description
+    256-105 Unused
+    104     JTAG_TDO
+    103     JTAG_TDI
+    102     JTAG_TMS
+    101     JTAG_TCK
+    100     gpioA_23
+    99      gpioA_24
+    98      gpioA_25
+    97      gpioA_26
+    98-7    gpioE[21:0]
+    75-50   gpioD[24:0]
+    49-23   gpioC[26:0]
+    22-15   gpioB[22;15]
+    14-0    gpioA[14:0]
+ */
+
+    /* set input mode */
+    gpio_direction_input(GPIO_ITK_PENIRQ);
+    /* set gpio interrupt #0 source=GPIOD_24, and triggered by falling edge(=1) */
+    gpio_enable_edge_int(50+24, 1, 0);
+
+    return 0;
+}
+static int itk_get_irq_level(void)
+{
+    return gpio_get_value(GPIO_ITK_PENIRQ);
+}
+
+static struct itk_platform_data itk_pdata = {
+    .init_irq = &itk_init_irq,
+    .get_irq_level = &itk_get_irq_level,
+};
+#endif
+
 #ifdef CONFIG_ANDROID_PMEM
 static struct android_pmem_platform_data pmem_data =
 {
@@ -815,7 +860,7 @@ static struct platform_device aml_uart_device = {
 };
 #endif
 
-#ifdef CONFIG_AM_NAND
+#ifdef CONFIG_NAND_FLASH_DRIVER_BASE_OPERATE
 static struct mtd_partition partition_info[] = 
 {
 	{
@@ -877,7 +922,127 @@ static struct mtd_partition partition_info[] =
 	{
 		.name = "media",
 		.offset = MTDPART_OFS_APPEND,
-		.size = (0x200000000-(356+256)*1024*1024),
+		.size = (0x100000000-(356+256)*1024*1024),
+		.set_flags = MTD_AVNFTL,
+		.dual_partnum = 1,
+	//	.dual_partnum = 1|MTD_AVFTL_PLANE|MTD_AVNFTL_INTERL,
+	//	.set_flags=0,
+	//	.dual_partnum=0,
+	},
+};
+/*
+static struct aml_m1_nand_platform aml_2kpage128kblocknand_platform = {
+	.page_size = 2048,
+	.spare_size=64,
+	.erase_size= 128*1024,
+	.bch_mode=1,			//BCH8
+	.encode_size=528,
+	.timing_mode=5,
+	.ce_num=1,
+	.onfi_mode=0,
+	.partitions = partition_info,
+	.nr_partitions = ARRAY_SIZE(partition_info),
+};
+*/
+
+static struct aml_m1_nand_platform aml_Micron4GBABAnand_platform = 
+{
+	.page_size = 2048*2,
+	.spare_size= 224,		//for micron ABA 4GB
+	.erase_size=1024*1024,
+	.bch_mode=	  3,		//BCH16
+	.encode_size=540,				
+	.timing_mode=5,
+	.onfi_mode=1,
+	.ce_num=1,
+	.partitions = partition_info,
+	.nr_partitions = ARRAY_SIZE(partition_info),
+};
+
+
+static struct resource aml_nand_resources[] = {
+	{
+		.start = 0xc1108600,
+		.end = 0xc1108624,
+		.flags = IORESOURCE_MEM,
+	},
+};
+
+static struct platform_device aml_nand_device = {
+	.name = "aml_m1_nand",
+	.id = 0,
+	.num_resources = ARRAY_SIZE(aml_nand_resources),
+	.resource = aml_nand_resources,
+	.dev = {
+		.platform_data = &aml_Micron4GBABAnand_platform,
+	//	.platform_data = &aml_Micron8GBABAnand_platform,
+	},
+};
+#endif  //CONFIG_NAND_FLASH_DRIVER_BASE_OPERATE
+
+#ifdef CONFIG_NAND_FLASH_DRIVER_MULTIPLANE_CE
+static struct mtd_partition partition_info[] = 
+{
+	{
+		.name = "bootloader",
+		.offset = 0,
+		.size=4*1024*1024,
+	//	.set_flags=0,
+	//	.dual_partnum=0,
+	},
+	{
+		.name = "environment",
+		.offset = 4*1024*1024,
+		.size=4*1024*1024,
+	//	.set_flags=0,
+	//	.dual_partnum=0,
+	},
+	{
+		.name = "splash",
+		.offset = 8*1024*1024,
+		.size=4*1024*1024,
+	//	.set_flags=0,
+	//	.dual_partnum=0,
+	},
+	{
+		.name = "recovery",
+		.offset = 12*1024*1024,
+		.size = 16 * 1024*1024,
+	//	.set_flags=0,
+	//	.dual_partnum=0,
+	},
+	{
+		.name = "boot",
+		.offset = 28*1024*1024,
+		.size = 16 * 1024*1024,
+	//	.set_flags=0,
+	//	.dual_partnum=0,
+	},
+	{
+		.name = "system",
+		.offset = 44*4*1024*1024,
+		.size = 240 * 1024*1024,
+	//	.set_flags=0,
+	//	.dual_partnum=0,
+	},
+	{
+		.name = "cache",
+		.offset = 416*1024*1024,
+		.size = 16 * 1024*1024,
+	//	.set_flags=0,
+	//	.dual_partnum=0,
+	},
+	{
+		.name = "userdata",
+		.offset= 432*1024*1024,
+		.size= 256 * 1024*1024,
+	//	.set_flags=0,
+	//	.dual_partnum=0,
+	},
+	{
+		.name = "media",
+		.offset = MTDPART_OFS_APPEND,
+		.size = (0x200000000-(432+256)*1024*1024),
 		.set_flags = MTD_AVNFTL,
 		.dual_partnum = 1|MTD_AVFTL_PLANE|MTD_AVNFTL_INTERL,
 	//	.set_flags=0,
@@ -899,21 +1064,7 @@ static struct aml_m1_nand_platform aml_2kpage128kblocknand_platform = {
 };
 */
 
-#if 0
-static struct aml_m1_nand_platform aml_Micron4GBABAnand_platform = 
-{
-	.page_size = 2048*2,
-	.spare_size= 224,		//for micron ABA 4GB
-	.erase_size=1024*1024,
-	.bch_mode=	  3,		//BCH16
-	.encode_size=540,				
-	.timing_mode=5,
-	.onfi_mode=1,
-	.ce_num=1,
-	.partitions = partition_info,
-	.nr_partitions = ARRAY_SIZE(partition_info),
-};
-#endif
+
 static struct aml_m1_nand_platform aml_Micron8GBABAnand_platform =
 {
 	.page_size = 2048*2,
@@ -950,7 +1101,7 @@ static struct platform_device aml_nand_device = {
 		.platform_data = &aml_Micron8GBABAnand_platform,
 	},
 };
-#endif
+#endif  //CONFIG_NAND_FLASH_DRIVER_MULTIPLANE_CE
 
 #if defined(CONFIG_AMLOGIC_BACKLIGHT)
 
@@ -1204,7 +1355,10 @@ static struct platform_device __initdata *platform_devs[] = {
 	#if defined(CONFIG_TOUCHSCREEN_ADS7846)
 		&spi_gpio,
 	#endif
-    #if defined(CONFIG_AM_NAND)
+    #if defined(CONFIG_NAND_FLASH_DRIVER_BASE_OPERATE)
+		&aml_nand_device,
+    #endif		
+    #if defined(CONFIG_NAND_FLASH_DRIVER_MULTIPLANE_CE)
 		&aml_nand_device,
     #endif		
     #if defined(CONFIG_AML_RTC)
@@ -1258,6 +1412,13 @@ static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
 #ifdef CONFIG_SN7325
 	{
 		I2C_BOARD_INFO("sn7325", 0x59),
+	},
+#endif
+#ifdef CONFIG_ITK_CAPACITIVE_TOUCHSCREEN
+	{
+		I2C_BOARD_INFO("itk", 0x04),
+		.irq = INT_GPIO_0,
+		.platform_data = (void *)&itk_pdata,
 	},
 #endif
 };
