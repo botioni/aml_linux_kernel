@@ -295,6 +295,30 @@ static int otg_is_usb_online(void)
 	return (transceiver->state == OTG_STATE_B_PERIPHERAL);
 }
 #endif
+static ssize_t store_powerhold(struct class *class, 
+			struct class_attribute *attr,	const char *buf, size_t count)
+{
+	unsigned int reg, val, ret;
+
+	if(buf[0] == 'y'){
+#ifdef AML_POWER_DBG
+		printk("system off\n");
+#endif	    
+        pdata->set_bat_off();
+    }
+
+	return 0;
+}
+
+static struct class_attribute powerhold_class_attrs[] = {
+    __ATTR(bat-off,  S_IRUGO | S_IWUSR, NULL,    store_powerhold),
+    __ATTR_NULL
+};
+
+static struct class powerhold_class = {
+    .name = "powerhold",
+    .class_attrs = powerhold_class_attrs,
+};
 
 static int aml_power_probe(struct platform_device *pdev)
 {
@@ -372,7 +396,10 @@ static int aml_power_probe(struct platform_device *pdev)
 			polling = 1;
 		}
 	}
-
+   	ret = class_register(&powerhold_class);
+	if(ret){
+		printk(" class register powerhold_class fail!\n");
+	}
 #ifdef CONFIG_USB_OTG_UTILS
 	transceiver = otg_get_transceiver();
 	if (transceiver && !pdata->is_usb_online) {

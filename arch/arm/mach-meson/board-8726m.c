@@ -767,12 +767,20 @@ static int get_charge_status()
 	return (READ_CBUS_REG(ASSIST_HW_REV)&(1<<8))? 1:0;
 }
 
+static void set_bat_off(void)
+{
+	set_gpio_val(GPIOA_bank_bit(8), GPIOA_bit_bit0_14(8), 0);
+    set_gpio_mode(GPIOA_bank_bit(8), GPIOA_bit_bit0_14(8), GPIO_OUTPUT_MODE);
+
+}
+
 static struct aml_power_pdata power_pdata = {
 	.is_ac_online	= is_ac_connected,
 	//.is_usb_online	= is_usb_connected,
 	.set_charge = set_charge,
 	.get_bat_vol = get_bat_vol,
 	.get_charge_status = get_charge_status,
+	.set_bat_off = set_bat_off,
 	//.supplied_to = supplicants,
 	//.num_supplicants = ARRAY_SIZE(supplicants),
 };
