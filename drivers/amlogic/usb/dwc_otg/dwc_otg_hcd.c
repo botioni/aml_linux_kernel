@@ -848,14 +848,16 @@ void dwc_otg_hcd_stop(struct usb_hcd *_hcd)
 int dwc_otg_hcd_suspend(struct usb_hcd *_hcd)
 {
 	dwc_otg_hcd_t *dwc_otg_hcd = hcd_to_dwc_otg_hcd(_hcd);
-	hfnum_data_t hfnum;
+	pcgcctl_data_t pcgcctl = {.d32 = 0 };
 
 	DWC_WARN("DWC OTG HCD SUSPEND\n");
 
-	hfnum.d32 =
-	    dwc_read_reg32(&dwc_otg_hcd->core_if->host_if->
-			   host_global_regs->hfnum);
 
+	pcgcctl.b.stoppclk = 1;
+	pcgcctl.b.gatehclk = 1;
+	pcgcctl.b.pwrclmp = 1;
+	pcgcctl.b.rstpdwnmodule = 1;
+	dwc_write_reg32(dwc_otg_hcd->core_if->pcgcctl, pcgcctl.d32);
 
 	return 0;
 }
@@ -863,13 +865,16 @@ int dwc_otg_hcd_suspend(struct usb_hcd *_hcd)
 int dwc_otg_hcd_resume(struct usb_hcd *_hcd)
 {
 	dwc_otg_hcd_t *dwc_otg_hcd = hcd_to_dwc_otg_hcd(_hcd);
-	hfnum_data_t hfnum;
+	pcgcctl_data_t pcgcctl ;
 
 	DWC_WARN("DWC OTG HCD RESUME\n");
 
-	hfnum.d32 =
-	    dwc_read_reg32(&dwc_otg_hcd->core_if->host_if->
-			   host_global_regs->hfnum);
+	pcgcctl.d32 = dwc_read_reg32(dwc_otg_hcd->core_if->pcgcctl);
+	pcgcctl.b.stoppclk = 0;
+	pcgcctl.b.gatehclk = 0;
+	pcgcctl.b.pwrclmp = 0;
+	pcgcctl.b.rstpdwnmodule = 0;
+	dwc_write_reg32(dwc_otg_hcd->core_if->pcgcctl, pcgcctl.d32);
 
 	return 0;
 }
