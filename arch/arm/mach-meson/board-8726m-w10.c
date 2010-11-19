@@ -72,6 +72,10 @@
 #include <linux/mmc31xx.h>
 #endif
 
+#ifdef CONFIG_SN7325
+#include <linux/sn7325.h>
+#endif
+
 #ifdef CONFIG_AMLOGIC_PM
 #include <linux/power_supply.h>
 #include <linux/aml_power.h>
@@ -394,8 +398,30 @@ static struct resource amlogic_card_resource[]  = {
 	}
 };
 
+#ifdef CONFIG_SN7325
+void extern_wifi_power(int is_power)
+{
+    if (0 == is_power)
+    {
+        #ifdef CONFIG_SN7325
+        configIO(0, 0);
+        setIO_level(0, 0, 5);
+        #endif
+    }
+    else
+    {
+        #ifdef CONFIG_SN7325
+        configIO(0, 0);
+        setIO_level(0, 1, 5);
+        #endif
+    }
+    return;
+}
+#endif
+
 void sdio_extern_init(void)
 {
+    extern_wifi_power(1);
 //	CLEAR_CBUS_REG_MASK(CARD_PIN_MUX_5, ((3<<4)));
 //	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<18));
 //	SET_CBUS_REG_MASK(PREG_GGPIO_O, (1<<18));
@@ -456,6 +482,7 @@ static struct platform_device amlogic_card_device = {
 		.platform_data = &amlogic_card_platform,
 	},
 };
+
 #endif
 
 #if defined(CONFIG_AML_AUDIO_DSP)
