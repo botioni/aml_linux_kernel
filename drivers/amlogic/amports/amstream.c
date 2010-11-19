@@ -1171,7 +1171,6 @@ static int amstream_ioctl(struct inode *inode, struct file *file,
 
 			if ((this->type & PORT_TYPE_VIDEO) || (this->type & PORT_TYPE_AUDIO))
 		   	{
-		   	    int i;
 		 		copy_from_user(&audio_dec_info, (void __user *)arg, sizeof(audio_dec_info));
 		   	}
 		   	else

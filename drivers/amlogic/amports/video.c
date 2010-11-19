@@ -81,7 +81,7 @@ MODULE_AMLOG(LOG_LEVEL_ERROR, 0, LOG_DEFAULT_LEVEL_DESC, LOG_MASK_DESC);
 #define MODULE_NAME "amvideo"
 #define DEVICE_NAME "amvideo"
 
-//#define FIQ_VSYNC
+#define FIQ_VSYNC
 
 #if defined(FIQ_VSYNC) && defined(CONFIG_FB_AM)
 extern irqreturn_t osd_fiq_isr(void);

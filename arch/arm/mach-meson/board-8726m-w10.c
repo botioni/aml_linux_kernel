@@ -72,6 +72,10 @@
 #include <linux/mmc31xx.h>
 #endif
 
+#ifdef CONFIG_SN7325
+#include <linux/sn7325.h>
+#endif
+
 #ifdef CONFIG_AMLOGIC_PM
 #include <linux/power_supply.h>
 #include <linux/aml_power.h>
@@ -394,8 +398,30 @@ static struct resource amlogic_card_resource[]  = {
 	}
 };
 
+#ifdef CONFIG_SN7325
+void extern_wifi_power(int is_power)
+{
+    if (0 == is_power)
+    {
+        #ifdef CONFIG_SN7325
+        configIO(0, 0);
+        setIO_level(0, 0, 5);
+        #endif
+    }
+    else
+    {
+        #ifdef CONFIG_SN7325
+        configIO(0, 0);
+        setIO_level(0, 1, 5);
+        #endif
+    }
+    return;
+}
+#endif
+
 void sdio_extern_init(void)
 {
+    extern_wifi_power(1);
 //	CLEAR_CBUS_REG_MASK(CARD_PIN_MUX_5, ((3<<4)));
 //	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<18));
 //	SET_CBUS_REG_MASK(PREG_GGPIO_O, (1<<18));
@@ -456,6 +482,7 @@ static struct platform_device amlogic_card_device = {
 		.platform_data = &amlogic_card_platform,
 	},
 };
+
 #endif
 
 #if defined(CONFIG_AML_AUDIO_DSP)
@@ -812,12 +839,20 @@ static int get_charge_status()
 	return (READ_CBUS_REG(ASSIST_HW_REV)&(1<<8))? 1:0;
 }
 
+static void set_bat_off(void)
+{
+    set_gpio_val(GPIOA_bank_bit(8), GPIOA_bit_bit0_14(8), 0);
+    set_gpio_mode(GPIOA_bank_bit(8), GPIOA_bit_bit0_14(8), GPIO_OUTPUT_MODE);
+
+}
+
 static struct aml_power_pdata power_pdata = {
 	.is_ac_online	= is_ac_connected,
 	//.is_usb_online	= is_usb_connected,
 	.set_charge = set_charge,
 	.get_bat_vol = get_bat_vol,
 	.get_charge_status = get_charge_status,
+	.set_bat_off = set_bat_off,
 	//.supplied_to = supplicants,
 	//.num_supplicants = ARRAY_SIZE(supplicants),
 };
@@ -860,127 +895,7 @@ static struct platform_device aml_uart_device = {
 };
 #endif
 
-#ifdef CONFIG_NAND_FLASH_DRIVER_BASE_OPERATE
-static struct mtd_partition partition_info[] = 
-{
-	{
-		.name = "bootloader",
-		.offset = 0,
-		.size=4*1024*1024,
-	//	.set_flags=0,
-	//	.dual_partnum=0,
-	},
-	{
-		.name = "environment",
-		.offset = 4*1024*1024,
-		.size=2*1024*1024,
-	//	.set_flags=0,
-	//	.dual_partnum=0,
-	},
-	{
-		.name = "splash",
-		.offset = 6*1024*1024,
-		.size=2*1024*1024,
-	//	.set_flags=0,
-	//	.dual_partnum=0,
-	},
-	{
-		.name = "recovery",
-		.offset = 8*1024*1024,
-		.size = 16 * 1024*1024,
-	//	.set_flags=0,
-	//	.dual_partnum=0,
-	},
-	{
-		.name = "boot",
-		.offset = 24*1024*1024,
-		.size = 16 * 1024*1024,
-	//	.set_flags=0,
-	//	.dual_partnum=0,
-	},
-	{
-		.name = "system",
-		.offset = 40*4*1024*1024,
-		.size = 180 * 1024*1024,
-	//	.set_flags=0,
-	//	.dual_partnum=0,
-	},
-	{
-		.name = "cache",
-		.offset = 340*1024*1024,
-		.size = 16 * 1024*1024,
-	//	.set_flags=0,
-	//	.dual_partnum=0,
-	},
-	{
-		.name = "userdata",
-		.offset= 356*1024*1024,
-		.size= 256 * 1024*1024,
-	//	.set_flags=0,
-	//	.dual_partnum=0,
-	},
-	{
-		.name = "media",
-		.offset = MTDPART_OFS_APPEND,
-		.size = (0x100000000-(356+256)*1024*1024),
-		.set_flags = MTD_AVNFTL,
-		.dual_partnum = 1,
-	//	.dual_partnum = 1|MTD_AVFTL_PLANE|MTD_AVNFTL_INTERL,
-	//	.set_flags=0,
-	//	.dual_partnum=0,
-	},
-};
-/*
-static struct aml_m1_nand_platform aml_2kpage128kblocknand_platform = {
-	.page_size = 2048,
-	.spare_size=64,
-	.erase_size= 128*1024,
-	.bch_mode=1,			//BCH8
-	.encode_size=528,
-	.timing_mode=5,
-	.ce_num=1,
-	.onfi_mode=0,
-	.partitions = partition_info,
-	.nr_partitions = ARRAY_SIZE(partition_info),
-};
-*/
-
-static struct aml_m1_nand_platform aml_Micron4GBABAnand_platform = 
-{
-	.page_size = 2048*2,
-	.spare_size= 224,		//for micron ABA 4GB
-	.erase_size=1024*1024,
-	.bch_mode=	  3,		//BCH16
-	.encode_size=540,				
-	.timing_mode=5,
-	.onfi_mode=1,
-	.ce_num=1,
-	.partitions = partition_info,
-	.nr_partitions = ARRAY_SIZE(partition_info),
-};
-
-
-static struct resource aml_nand_resources[] = {
-	{
-		.start = 0xc1108600,
-		.end = 0xc1108624,
-		.flags = IORESOURCE_MEM,
-	},
-};
-
-static struct platform_device aml_nand_device = {
-	.name = "aml_m1_nand",
-	.id = 0,
-	.num_resources = ARRAY_SIZE(aml_nand_resources),
-	.resource = aml_nand_resources,
-	.dev = {
-		.platform_data = &aml_Micron4GBABAnand_platform,
-	//	.platform_data = &aml_Micron8GBABAnand_platform,
-	},
-};
-#endif  //CONFIG_NAND_FLASH_DRIVER_BASE_OPERATE
-
-#ifdef CONFIG_NAND_FLASH_DRIVER_MULTIPLANE_CE
+#if defined(CONFIG_NAND_FLASH_DRIVER_BASE_OPERATE) || defined(CONFIG_NAND_FLASH_DRIVER_MULTIPLANE_CE)
 static struct mtd_partition partition_info[] = 
 {
 	{
@@ -1049,6 +964,60 @@ static struct mtd_partition partition_info[] =
 	//	.dual_partnum=0,
 	},
 };
+#endif
+#ifdef CONFIG_NAND_FLASH_DRIVER_BASE_OPERATE
+/*
+static struct aml_m1_nand_platform aml_2kpage128kblocknand_platform = {
+	.page_size = 2048,
+	.spare_size=64,
+	.erase_size= 128*1024,
+	.bch_mode=1,			//BCH8
+	.encode_size=528,
+	.timing_mode=5,
+	.ce_num=1,
+	.onfi_mode=0,
+	.partitions = partition_info,
+	.nr_partitions = ARRAY_SIZE(partition_info),
+};
+*/
+
+static struct aml_m1_nand_platform aml_Micron4GBABAnand_platform = 
+{
+	.page_size = 2048*2,
+	.spare_size= 224,		//for micron ABA 4GB
+	.erase_size=1024*1024,
+	.bch_mode=	  3,		//BCH16
+	.encode_size=540,				
+	.timing_mode=5,
+	.onfi_mode=1,
+	.ce_num=1,
+	.partitions = partition_info,
+	.nr_partitions = ARRAY_SIZE(partition_info),
+};
+
+
+static struct resource aml_nand_resources[] = {
+	{
+		.start = 0xc1108600,
+		.end = 0xc1108624,
+		.flags = IORESOURCE_MEM,
+	},
+};
+
+static struct platform_device aml_nand_device = {
+	.name = "aml_m1_nand",
+	.id = 0,
+	.num_resources = ARRAY_SIZE(aml_nand_resources),
+	.resource = aml_nand_resources,
+	.dev = {
+		.platform_data = &aml_Micron4GBABAnand_platform,
+	//	.platform_data = &aml_Micron8GBABAnand_platform,
+	},
+};
+#endif  //CONFIG_NAND_FLASH_DRIVER_BASE_OPERATE
+
+#ifdef CONFIG_NAND_FLASH_DRIVER_MULTIPLANE_CE
+
 /*
 static struct aml_m1_nand_platform aml_2kpage128kblocknand_platform = {
 	.page_size = 2048,

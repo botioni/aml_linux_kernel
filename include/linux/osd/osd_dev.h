@@ -41,9 +41,11 @@ typedef struct myfb_dev {
 	void __iomem *fb_mem_vaddr;
 	u32 fb_len;
 	const color_bit_define_t  *color;
-    vmode_t vmode;
+   	 vmode_t vmode;
     	
-    struct osd_ctl_s osd_ctl;
+    	struct osd_ctl_s osd_ctl;
+	u32  scale;	
+	u32  enable_3d;
 		
 } myfb_dev_t;
 typedef  struct list_head   list_head_t ;

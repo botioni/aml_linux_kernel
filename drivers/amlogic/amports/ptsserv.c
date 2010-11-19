@@ -324,6 +324,9 @@ if (type == PTS_TYPE_VIDEO)
                     break;
                 }
 
+                if (type == PTS_TYPE_AUDIO)
+                    list_move_tail(&p2->list, &pTable->free_list);
+
                 p2 = p;
             }
         }
@@ -366,7 +369,7 @@ if (type == PTS_TYPE_VIDEO)
             pTable->lookup_cache_valid = true;
 
             /* update next look up search start point */
-            pTable->pts_search = p2->list.next;
+            pTable->pts_search = p2->list.prev;
 
             list_move_tail(&p2->list, &pTable->free_list);
 
