@@ -1150,7 +1150,7 @@ static struct platform_device vout_device = {
 #ifdef CONFIG_USB_ANDROID
 #ifdef CONFIG_USB_ANDROID_MASS_STORAGE
 static struct usb_mass_storage_platform_data mass_storage_pdata = {
-       .nluns = 1,
+       .nluns = 2,
        .vendor = "AMLOGIC",
        .product = "Android MID",
        .release = 0x0100,
