@@ -499,7 +499,48 @@ int osd_notify_callback(struct notifier_block *block, unsigned long cmd , void *
 static struct notifier_block osd_notifier_nb = {
 	.notifier_call	= osd_notify_callback,
 };
+static ssize_t store_enable_3d(struct device *device, struct device_attribute *attr,
+			 const char *buf, size_t count)
+{
+	struct fb_info *fb_info = dev_get_drvdata(device);
+	struct myfb_dev *fbdev = (struct myfb_dev *)fb_info->par;
+	int err;
+	fbdev->enable_3d= simple_strtoul(buf, NULL, 0);
+	if ((err = osd_ioctl(fb_info,FBIOPUT_OSD_ENABLE_3D_MODE,fbdev->enable_3d)))
+		return err;
+	return count;
+}
 
+static ssize_t show_enable_3d(struct device *device, struct device_attribute *attr,
+			char *buf)
+{
+	struct fb_info *fb_info = dev_get_drvdata(device);
+	struct myfb_dev *fbdev = (struct myfb_dev *)fb_info->par;
+	return snprintf(buf, PAGE_SIZE, "3d_enable:[0x%x]\n",fbdev->enable_3d);
+}
+static ssize_t store_scale(struct device *device, struct device_attribute *attr,
+			 const char *buf, size_t count)
+{
+	struct fb_info *fb_info = dev_get_drvdata(device);
+	struct myfb_dev *fbdev = (struct myfb_dev *)fb_info->par;
+	int err;
+	fbdev->scale = simple_strtoul(buf, NULL, 0);
+	if ((err = osd_ioctl(fb_info,FBIOPUT_OSD_2X_SCALE,fbdev->scale)))
+		return err;
+	return count;
+}
+
+static ssize_t show_scale(struct device *device, struct device_attribute *attr,
+			char *buf)
+{
+	struct fb_info *fb_info = dev_get_drvdata(device);
+	struct myfb_dev *fbdev = (struct myfb_dev *)fb_info->par;
+	return snprintf(buf, PAGE_SIZE, "scale:[0x%x]\n",fbdev->scale);
+}
+static struct device_attribute osd_attrs[] = {
+	__ATTR(scale, S_IRUGO|S_IWUSR, show_scale, store_scale),
+	__ATTR(enable_3d, S_IRUGO|S_IWUSR, show_enable_3d, store_enable_3d),	
+};		
 
 static int __init
 osd_probe(struct platform_device *pdev)
@@ -512,7 +553,7 @@ osd_probe(struct platform_device *pdev)
 	struct resource *mem;
 	int  index,Bpp;
 	logo_object_t  *init_logo_obj=NULL;
-	int  logo_osd_index=0;
+	int  logo_osd_index=0,i;
 	myfb_dev_t 	*fbdev = NULL;
 	
 	
@@ -611,6 +652,11 @@ osd_probe(struct platform_device *pdev)
 				mydef_var[index].bits_per_pixel=32;
 			}
 		} else {
+			mydef_var[index].xres=1200;
+			mydef_var[index].yres=690;
+			mydef_var[index].xres_virtual=1200;
+			mydef_var[index].yres_virtual=1380;
+			mydef_var[index].bits_per_pixel=16;
 			memset((char*)fbdev->fb_mem_vaddr, 0, fbdev->fb_len);	
 		}
 	
@@ -649,9 +695,11 @@ osd_probe(struct platform_device *pdev)
 		{
 			osddev_set(fbdev);
 		}
+		for(i=0;i<ARRAY_SIZE(osd_attrs);i++)
+		device_create_file(fbi->dev, &osd_attrs[i]);
 		
    	}	
-
+	
 	index=0;
 
 	amlog_level(LOG_LEVEL_HIGH,"osd probe ok  \r\n");
@@ -679,11 +727,15 @@ osd_remove(struct platform_device *pdev)
 	
 	for(i=0;i<OSD_COUNT;i++)
 	{
+		int j;
+		
 		if(gp_fbdev_list[i])
 		{
 			myfb_dev_t * fbdev=gp_fbdev_list[i];
 
 			fbi = fbdev->fb_info;
+			for(i=0;i<ARRAY_SIZE(osd_attrs);j++)
+			device_remove_file(fbi->dev, &osd_attrs[j]);
 			iounmap(fbdev->fb_mem_vaddr);
       			kfree(fbi->pseudo_palette);
      			fb_dealloc_cmap(&fbi->cmap);
