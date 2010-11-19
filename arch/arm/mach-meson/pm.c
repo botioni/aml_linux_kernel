@@ -233,6 +233,12 @@ void power_gate_switch(int flag)
 static void meson_pm_suspend(void)
 {
     int mask_save[4];
+    int divider;
+    int divider_sel;
+    //o   Set bits[3:2]=11 for 0x0167
+    
+    //o   Set bits[13:8]=0x3f for 0x1067
+    
 #if 0
     struct clk *sys_clk;
     unsigned long sys_clk_rate;
@@ -270,13 +276,20 @@ static void meson_pm_suspend(void)
            READ_CBUS_REG(HHI_GCLK_MPEG2),
            READ_CBUS_REG(HHI_GCLK_OTHER));    
     
-    WRITE_MPEG_REG(HHI_A9_CLK_CNTL, READ_MPEG_REG(HHI_A9_CLK_CNTL)&~(1<<7));
-    WRITE_MPEG_REG(HHI_A9_CLK_CNTL, READ_MPEG_REG(HHI_A9_CLK_CNTL)|(1<<9));
     WRITE_MPEG_REG(HHI_MALI_CLK_CNTL, READ_MPEG_REG(HHI_MALI_CLK_CNTL)&~(1<<8));
     WRITE_MPEG_REG(HHI_HDMI_CLK_CNTL, READ_MPEG_REG(HHI_HDMI_CLK_CNTL)&~(1<<8));
     WRITE_MPEG_REG(HHI_DEMOD_CLK_CNTL, READ_MPEG_REG(HHI_DEMOD_CLK_CNTL)&~(1<<8));    
     WRITE_MPEG_REG(HHI_SATA_CLK_CNTL, READ_MPEG_REG(HHI_SATA_CLK_CNTL)&~(1<<8));    
     WRITE_MPEG_REG(HHI_MPEG_CLK_CNTL, READ_MPEG_REG(HHI_MPEG_CLK_CNTL)&~(1<<8)); 
+           
+    divider = READ_MPEG_REG_BITS(HHI_A9_CLK_CNTL, 8, 6);
+    divider_sel = READ_MPEG_REG_BITS(HHI_A9_CLK_CNTL, 2, 2);
+    WRITE_MPEG_REG(HHI_A9_CLK_CNTL, READ_MPEG_REG(HHI_A9_CLK_CNTL)&~(1<<7));
+    WRITE_MPEG_REG(HHI_A9_CLK_CNTL, READ_MPEG_REG(HHI_A9_CLK_CNTL)|(1<<9));
+    WRITE_MPEG_REG_BITS(HHI_A9_CLK_CNTL, 0x03, 2, 2);
+    WRITE_MPEG_REG_BITS(HHI_A9_CLK_CNTL, 0x3f, 8, 6);
+    WRITE_MPEG_REG(HHI_A9_CLK_CNTL, READ_MPEG_REG(HHI_A9_CLK_CNTL)|(1<<7));
+    
     //clk_set_rate(sys_clk, sleep_clk_rate);
     meson_sram_suspend(pdata);
 #if 0
@@ -286,13 +299,18 @@ static void meson_pm_suspend(void)
     CLEAR_CBUS_REG_MASK(UART1_CONTROL, (1 << 19) | 0xFFF);
     SET_CBUS_REG_MASK(UART1_CONTROL, (baudrate & 0xfff));
 #endif
+    
+    WRITE_MPEG_REG(HHI_A9_CLK_CNTL, READ_MPEG_REG(HHI_A9_CLK_CNTL)&~(1<<7));
+    WRITE_MPEG_REG_BITS(HHI_A9_CLK_CNTL, divider_sel, 2, 2);
+    WRITE_MPEG_REG_BITS(HHI_A9_CLK_CNTL, divider, 8, 6);
+    WRITE_MPEG_REG(HHI_A9_CLK_CNTL, READ_MPEG_REG(HHI_A9_CLK_CNTL)&~(1<<9));
+    WRITE_MPEG_REG(HHI_A9_CLK_CNTL, READ_MPEG_REG(HHI_A9_CLK_CNTL)|(1<<7));
+
     WRITE_MPEG_REG(HHI_MPEG_CLK_CNTL, READ_MPEG_REG(HHI_MPEG_CLK_CNTL)|(1<<8)); 
     WRITE_MPEG_REG(HHI_SATA_CLK_CNTL, READ_MPEG_REG(HHI_SATA_CLK_CNTL)|(1<<8));
     WRITE_MPEG_REG(HHI_DEMOD_CLK_CNTL, READ_MPEG_REG(HHI_DEMOD_CLK_CNTL)|(1<<8));
     WRITE_MPEG_REG(HHI_HDMI_CLK_CNTL, READ_MPEG_REG(HHI_HDMI_CLK_CNTL)|(1<<8));
     WRITE_MPEG_REG(HHI_MALI_CLK_CNTL, READ_MPEG_REG(HHI_MALI_CLK_CNTL)|(1<<8));
-    WRITE_MPEG_REG(HHI_A9_CLK_CNTL, READ_MPEG_REG(HHI_A9_CLK_CNTL)&~(1<<9));
-    WRITE_MPEG_REG(HHI_A9_CLK_CNTL, READ_MPEG_REG(HHI_A9_CLK_CNTL)|(1<<7));
     
     printk(KERN_INFO "intr stat %x %x %x %x\n", 
         READ_CBUS_REG(A9_0_IRQ_IN0_INTR_STAT), 
