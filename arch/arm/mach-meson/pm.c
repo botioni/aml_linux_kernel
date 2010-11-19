@@ -159,7 +159,7 @@ void power_gate_switch(int flag)
     GATE_SWITCH(flag, BLK_MOV);
     GATE_SWITCH(flag, BT656_IN);
     GATE_SWITCH(flag, DEMUX);
-    GATE_SWITCH(flag, MMC_DDR);
+    //GATE_SWITCH(flag, MMC_DDR);
     //GATE_SWITCH(flag, DDR);
     GATE_SWITCH(flag, DIG_VID_IN);
     GATE_SWITCH(flag, ETHERNET);
@@ -230,24 +230,139 @@ void power_gate_switch(int flag)
     GATE_SWITCH(flag, WIFI);
 }
 
+#define CLK_COUNT 9
+static char clk_flag[CLK_COUNT];
+static unsigned clks[CLK_COUNT]={
+    HHI_VID_CLK_CNTL,
+    HHI_AUD_CLK_CNTL,
+    HHI_MALI_CLK_CNTL,
+    HHI_HDMI_CLK_CNTL,
+    HHI_DEMOD_CLK_CNTL,
+    HHI_SATA_CLK_CNTL,
+    HHI_ETH_CLK_CNTL,
+    HHI_WIFI_CLK_CNTL,
+    HHI_MPEG_CLK_CNTL
+};
+
+void clk_switch(int flag)
+{
+    int i;
+    if (flag){
+        if (clk_flag[0]) SET_CBUS_REG_MASK(clks[0], 1);
+        for (i=1;i<CLK_COUNT;i++){
+            if (clk_flag[i]) SET_CBUS_REG_MASK(clks[i], (1<<8));
+        }
+    }
+    else{
+        clk_flag[0] = READ_CBUS_REG_BITS(clks[0], 1, 1);
+        CLEAR_CBUS_REG_MASK(clks[0], 1);
+        for (i=1;i<CLK_COUNT;i++){
+            clk_flag[i] = READ_CBUS_REG_BITS(clks[i], 8, 1) ? 1 : 0;
+            CLEAR_CBUS_REG_MASK(clks[i], (1<<8));
+        }
+    }
+}
+
+#define PLL_COUNT 5
+static char pll_flag[PLL_COUNT];
+static unsigned plls[PLL_COUNT]={
+    //HHI_OTHER_PLL_CNTL,
+    //HHI_SYS_PLL_CNTL,
+    HHI_VID_PLL_CNTL,
+    HHI_AUD_PLL_CNTL,
+    HHI_WIFI_PLL_CNTL,
+    HHI_DEMOD_PLL_CNTL
+};
+
+void pll_switch(int flag)
+{
+    int i;
+    if (flag){
+        for (i=0;i<PLL_COUNT;i++){
+            if (pll_flag[i]) CLEAR_CBUS_REG_MASK(plls[i], (1<<15));
+        }
+    }
+    else{
+        for (i=0;i<PLL_COUNT;i++){
+            pll_flag[i] = READ_CBUS_REG_BITS(plls[i], 15, 1) ? 0 : 1;
+            SET_CBUS_REG_MASK(plls[i], (1<<15));
+        }
+    }
+}
+    
+#if 0
+static int regs[128];
+int dump_regs()
+{
+    int i=0;
+    regs[i++] = READ_CBUS_REG(HHI_A9_AUTO_CLK1);
+    regs[i++] = READ_CBUS_REG(HHI_A9_CLK_CNTL);
+    regs[i++] = READ_CBUS_REG(HHI_ARC625_AUTO_CLK1);
+    regs[i++] = READ_CBUS_REG(HHI_AUD_CLK_CNTL);
+    regs[i++] = READ_CBUS_REG(HHI_AUD_PLL_CNTL);
+    regs[i++] = READ_CBUS_REG(HHI_DDR_PLL_CNTL);
+    regs[i++] = READ_CBUS_REG(HHI_DEMOD_CLK_CNTL);
+    regs[i++] = READ_CBUS_REG(HHI_DEMOD_PLL_CNTL);
+    regs[i++] = READ_CBUS_REG(HHI_DEMOD_PLL_CNTL2);
+    regs[i++] = READ_CBUS_REG(HHI_DEMOD_PLL_CNTL3);
+    regs[i++] = READ_CBUS_REG(HHI_GCLK_MPEG0);
+    regs[i++] = READ_CBUS_REG(HHI_GCLK_MPEG1);
+    regs[i++] = READ_CBUS_REG(HHI_GCLK_MPEG2);
+    regs[i++] = READ_CBUS_REG(HHI_GCLK_OTHER);
+    regs[i++] = READ_CBUS_REG(HHI_HDMI_AFC_CNTL);
+    regs[i++] = READ_CBUS_REG(HHI_HDMI_CLK_CNTL);
+    regs[i++] = READ_CBUS_REG(HHI_HDMI_PLL_CNTL);
+    regs[i++] = READ_CBUS_REG(HHI_HDMI_PLL_CNTL1);
+    regs[i++] = READ_CBUS_REG(HHI_HDMI_PLL_CNTL2);
+    regs[i++] = READ_CBUS_REG(HHI_MALI_CLK_CNTL);
+    regs[i++] = READ_CBUS_REG(HHI_MPEG_CLK_CNTL);
+    regs[i++] = READ_CBUS_REG(HHI_OTHER_PLL_CNTL);
+    regs[i++] = READ_CBUS_REG(HHI_SYS_PLL_CNTL);
+    regs[i++] = READ_CBUS_REG(HHI_VID_CLK_CNTL);
+    regs[i++] = READ_CBUS_REG(HHI_VID_PLL_CNTL);
+    regs[i++] = READ_CBUS_REG(HHI_WIFI_CLK_CNTL);
+    return i;
+}
+
+void print_regs()
+{
+    int i=0;
+    printk(KERN_INFO "HHI_A9_AUTO_CLK1\t= 0x%08x", regs[i++]);
+    printk(KERN_INFO "HHI_A9_CLK_CNTL\t= 0x%08x", regs[i++]);
+    printk(KERN_INFO "HHI_ARC625_AUTO_CLK1\t= 0x%08x", regs[i++]);
+    printk(KERN_INFO "HHI_AUD_CLK_CNTL\t= 0x%08x", regs[i++]);
+    printk(KERN_INFO "HHI_AUD_PLL_CNTL\t= 0x%08x", regs[i++]);
+    printk(KERN_INFO "HHI_DDR_PLL_CNTL\t= 0x%08x", regs[i++]);
+    printk(KERN_INFO "HHI_DEMOD_CLK_CNTL\t= 0x%08x", regs[i++]);
+    printk(KERN_INFO "HHI_DEMOD_PLL_CNTL\t= 0x%08x", regs[i++]);
+    printk(KERN_INFO "HHI_DEMOD_PLL_CNTL2\t= 0x%08x", regs[i++]);
+    printk(KERN_INFO "HHI_DEMOD_PLL_CNTL3\t= 0x%08x", regs[i++]);
+    printk(KERN_INFO "HHI_GCLK_MPEG0\t= 0x%08x", regs[i++]);
+    printk(KERN_INFO "HHI_GCLK_MPEG1\t= 0x%08x", regs[i++]);
+    printk(KERN_INFO "HHI_GCLK_MPEG2\t= 0x%08x", regs[i++]);
+    printk(KERN_INFO "HHI_GCLK_OTHER\t= 0x%08x", regs[i++]);
+    printk(KERN_INFO "HHI_HDMI_AFC_CNTL\t= 0x%08x", regs[i++]);
+    printk(KERN_INFO "HHI_HDMI_CLK_CNTL\t= 0x%08x", regs[i++]);
+    printk(KERN_INFO "HHI_HDMI_PLL_CNTL\t= 0x%08x", regs[i++]);
+    printk(KERN_INFO "HHI_HDMI_PLL_CNTL1\t= 0x%08x", regs[i++]);
+    printk(KERN_INFO "HHI_HDMI_PLL_CNTL2\t= 0x%08x", regs[i++]);
+    printk(KERN_INFO "HHI_MALI_CLK_CNTL\t= 0x%08x", regs[i++]);
+    printk(KERN_INFO "HHI_MPEG_CLK_CNTL\t= 0x%08x", regs[i++]);
+    printk(KERN_INFO "HHI_OTHER_PLL_CNTL\t= 0x%08x", regs[i++]);
+    printk(KERN_INFO "HHI_SYS_PLL_CNTL\t= 0x%08x", regs[i++]);
+    printk(KERN_INFO "HHI_VID_CLK_CNTL\t= 0x%08x", regs[i++]);
+    printk(KERN_INFO "HHI_VID_PLL_CNTL\t= 0x%08x", regs[i++]);
+    printk(KERN_INFO "HHI_WIFI_CLK_CNTL\t= 0x%08x", regs[i++]);
+}
+#endif
+
 static void meson_pm_suspend(void)
 {
     int mask_save[4];
     int divider;
     int divider_sel;
-    //o   Set bits[3:2]=11 for 0x0167
-    
-    //o   Set bits[13:8]=0x3f for 0x1067
-    
-#if 0
-    struct clk *sys_clk;
-    unsigned long sys_clk_rate;
-    unsigned long sleep_clk_rate = 48000000;
-    int baudrate;
-    sys_clk = clk_get_sys("clk81", NULL);
-    sys_clk_rate = clk_get_rate(sys_clk);
-    baudrate = (sys_clk_rate / (115200 * 4)) - 1;
-#endif    
+    int od;
+    int scale;
 
     printk(KERN_INFO "enter meson_pm_suspend!\n");
     printk(KERN_INFO "power gate stat before suspend %x %x %x %x\n", 
@@ -269,48 +384,49 @@ static void meson_pm_suspend(void)
     audio_internal_dac_disable();
     video_dac_disable();
 
+    clk_switch(0);
+    
     power_gate_switch(0);
     printk(KERN_INFO "power gate stat in suspend %x %x %x %x\n", 
            READ_CBUS_REG(HHI_GCLK_MPEG0), 
            READ_CBUS_REG(HHI_GCLK_MPEG1),
            READ_CBUS_REG(HHI_GCLK_MPEG2),
            READ_CBUS_REG(HHI_GCLK_OTHER));    
-    
-    WRITE_MPEG_REG(HHI_MALI_CLK_CNTL, READ_MPEG_REG(HHI_MALI_CLK_CNTL)&~(1<<8));
-    WRITE_MPEG_REG(HHI_HDMI_CLK_CNTL, READ_MPEG_REG(HHI_HDMI_CLK_CNTL)&~(1<<8));
-    WRITE_MPEG_REG(HHI_DEMOD_CLK_CNTL, READ_MPEG_REG(HHI_DEMOD_CLK_CNTL)&~(1<<8));    
-    WRITE_MPEG_REG(HHI_SATA_CLK_CNTL, READ_MPEG_REG(HHI_SATA_CLK_CNTL)&~(1<<8));    
-    WRITE_MPEG_REG(HHI_MPEG_CLK_CNTL, READ_MPEG_REG(HHI_MPEG_CLK_CNTL)&~(1<<8)); 
-           
-    divider = READ_MPEG_REG_BITS(HHI_A9_CLK_CNTL, 8, 6);
-    divider_sel = READ_MPEG_REG_BITS(HHI_A9_CLK_CNTL, 2, 2);
-    WRITE_MPEG_REG(HHI_A9_CLK_CNTL, READ_MPEG_REG(HHI_A9_CLK_CNTL)&~(1<<7));
-    WRITE_MPEG_REG(HHI_A9_CLK_CNTL, READ_MPEG_REG(HHI_A9_CLK_CNTL)|(1<<9));
-    WRITE_MPEG_REG_BITS(HHI_A9_CLK_CNTL, 0x03, 2, 2);
-    WRITE_MPEG_REG_BITS(HHI_A9_CLK_CNTL, 0x3f, 8, 6);
-    WRITE_MPEG_REG(HHI_A9_CLK_CNTL, READ_MPEG_REG(HHI_A9_CLK_CNTL)|(1<<7));
-    
-    //clk_set_rate(sys_clk, sleep_clk_rate);
-    meson_sram_suspend(pdata);
-#if 0
-    clk_set_rate(sys_clk, sys_clk_rate);
-    CLEAR_CBUS_REG_MASK(UART0_CONTROL, (1 << 19) | 0xFFF);
-    SET_CBUS_REG_MASK(UART0_CONTROL, (baudrate & 0xfff));
-    CLEAR_CBUS_REG_MASK(UART1_CONTROL, (1 << 19) | 0xFFF);
-    SET_CBUS_REG_MASK(UART1_CONTROL, (baudrate & 0xfff));
-#endif
-    
-    WRITE_MPEG_REG(HHI_A9_CLK_CNTL, READ_MPEG_REG(HHI_A9_CLK_CNTL)&~(1<<7));
-    WRITE_MPEG_REG_BITS(HHI_A9_CLK_CNTL, divider_sel, 2, 2);
-    WRITE_MPEG_REG_BITS(HHI_A9_CLK_CNTL, divider, 8, 6);
-    WRITE_MPEG_REG(HHI_A9_CLK_CNTL, READ_MPEG_REG(HHI_A9_CLK_CNTL)&~(1<<9));
-    WRITE_MPEG_REG(HHI_A9_CLK_CNTL, READ_MPEG_REG(HHI_A9_CLK_CNTL)|(1<<7));
+       
+    divider = READ_CBUS_REG_BITS(HHI_A9_CLK_CNTL, 8, 6);
+    divider_sel = READ_CBUS_REG_BITS(HHI_A9_CLK_CNTL, 2, 2);
+    WRITE_CBUS_REG(HHI_A9_CLK_CNTL, READ_CBUS_REG(HHI_A9_CLK_CNTL)&~(1<<7));
+    WRITE_CBUS_REG(HHI_A9_CLK_CNTL, READ_CBUS_REG(HHI_A9_CLK_CNTL)|(1<<9));
+    WRITE_CBUS_REG_BITS(HHI_A9_CLK_CNTL, 0x03, 2, 2);
+    WRITE_CBUS_REG_BITS(HHI_A9_CLK_CNTL, 0x3f, 8, 6);
+    WRITE_CBUS_REG(HHI_A9_CLK_CNTL, READ_CBUS_REG(HHI_A9_CLK_CNTL)|(1<<7));
 
-    WRITE_MPEG_REG(HHI_MPEG_CLK_CNTL, READ_MPEG_REG(HHI_MPEG_CLK_CNTL)|(1<<8)); 
-    WRITE_MPEG_REG(HHI_SATA_CLK_CNTL, READ_MPEG_REG(HHI_SATA_CLK_CNTL)|(1<<8));
-    WRITE_MPEG_REG(HHI_DEMOD_CLK_CNTL, READ_MPEG_REG(HHI_DEMOD_CLK_CNTL)|(1<<8));
-    WRITE_MPEG_REG(HHI_HDMI_CLK_CNTL, READ_MPEG_REG(HHI_HDMI_CLK_CNTL)|(1<<8));
-    WRITE_MPEG_REG(HHI_MALI_CLK_CNTL, READ_MPEG_REG(HHI_MALI_CLK_CNTL)|(1<<8));
+    pll_switch(0);
+    
+    //dump_regs();
+
+    // calculate ddr target pll
+    scale=1;
+    od = READ_CBUS_REG_BITS(HHI_DDR_PLL_CNTL, 16, 2);
+    while (od<3) {
+        od++;
+        scale*=2;
+    }
+    pdata->ddr_pll_target = (READ_CBUS_REG(HHI_DDR_PLL_CNTL)&0xfffcc1ff)|(od<<16);
+
+    //flush_cache_all();
+
+    meson_sram_suspend(pdata);
+    
+    pll_switch(1);
+    
+    WRITE_CBUS_REG(HHI_A9_CLK_CNTL, READ_CBUS_REG(HHI_A9_CLK_CNTL)&~(1<<7));
+    WRITE_CBUS_REG_BITS(HHI_A9_CLK_CNTL, divider_sel, 2, 2);
+    WRITE_CBUS_REG_BITS(HHI_A9_CLK_CNTL, divider, 8, 6);
+    WRITE_CBUS_REG(HHI_A9_CLK_CNTL, READ_CBUS_REG(HHI_A9_CLK_CNTL)&~(1<<9));
+    WRITE_CBUS_REG(HHI_A9_CLK_CNTL, READ_CBUS_REG(HHI_A9_CLK_CNTL)|(1<<7));
+
+    //print_regs();
     
     printk(KERN_INFO "intr stat %x %x %x %x\n", 
         READ_CBUS_REG(A9_0_IRQ_IN0_INTR_STAT), 
@@ -319,7 +435,9 @@ static void meson_pm_suspend(void)
         READ_CBUS_REG(A9_0_IRQ_IN3_INTR_STAT));
 
     power_gate_switch(1);
-
+    
+    clk_switch(1);
+    
     WRITE_CBUS_REG(A9_0_IRQ_IN0_INTR_MASK, mask_save[0]);
     WRITE_CBUS_REG(A9_0_IRQ_IN1_INTR_MASK, mask_save[1]);
     WRITE_CBUS_REG(A9_0_IRQ_IN2_INTR_MASK, mask_save[2]);

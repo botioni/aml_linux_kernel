@@ -8,6 +8,9 @@
 struct meson_pm_config {
 	void __iomem *ddr2_reg_refresh;
 	void __iomem *ddr2_reg_phy;
+	void __iomem *ddr_pll_ctrl;
+	void __iomem *ddr_power_gate;
+	int ddr_pll_target;
 	/*
 	 * Note on SLEEPCOUNT:
 	 * The SLEEPCOUNT feature is mainly intended for cases in which

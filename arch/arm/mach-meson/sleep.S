@@ -31,49 +31,67 @@
  */
 ENTRY(meson_cpu_suspend)
 	stmfd	sp!, {r0-r12, lr}		@ save registers on stack
-	ldmia	r0, {r0-r1}
+
+	ldmia	r0, {r0-r4}
 
 	/*
 	 * Switch DDR to self-refresh mode.
 	 */
-    mov	r2, #0x3
-	str	r2, [r0]
+	mov	r5, #0x3
+	str	r5, [r0]
 
-	ldr	r2, [r1]
-	orr	r2, r2, #0x1
-	str	r2, [r1]
-   
 	/* Disable DDR PHY */
+	ldr	r5, [r1]
+	orr	r5, r5, #0x1
+	str	r5, [r1]
 
-	/* Power down the PLL */
+	ldr	r5, [r3]
+	bic	r5, r5, #0x41
+	str	r5, [r3]
+
+	/* scale down PLL */
+	ldr	r6, [r2]
+	mov	r5, #(4<<9)
+	orr	r5, r5, r6
+	str	r5, [r2]
+
+	mov	r5, #0x1000
+1:  subs	r5, r5, #0x1
+	bne	1b
 
 	/* System goes to sleep beyond after this instruction */
 	wfi
 
 	/* Wake up from sleep */
 
-	/* initialize the DDR PLL controller */
+	ldr	r5, [r3]
+	orr	r5, r5, #0x41
+	str	r5, [r3]
 
-	/* Bring PLL up */
+	/* scale PLL up */
+	str	r6, [r2]
 
 	/* Wait for PLL to lock */
 
 	/* turn on DDR PHY */
-	ldr	r2, [r1]
-	bic	r2, r2, #0x1
-	str	r2, [r1]
+	ldr	r5, [r1]
+	bic	r5, r5, #0x1
+	str	r5, [r1]
 
-    mov	r2, #0x4
-	str	r2, [r0]
+    mov	r5, #0x4
+	str	r5, [r0]
 
-    mov	r2, #0x1000
-2:  subs	r2, r2, #0x1
-    bne	2b
+    mov	r5, #0x1000
+5:  subs	r5, r5, #0x1
+    bne	5b
 
 	/* Restore registers and return */
 	ldmfd   sp!, {r0-r12, pc}
 
 ENDPROC(meson_cpu_suspend)
+
+CACHE_FLUSH:
+	.word	v7_flush_kern_cache_all
 
 ENTRY(meson_cpu_suspend_sz)
 	.word	. - meson_cpu_suspend
