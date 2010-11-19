@@ -1301,21 +1301,16 @@ static void choose_wakeup(struct usb_device *udev, pm_message_t msg)
 /* The device lock is held by the PM core */
 int usb_suspend(struct device *dev, pm_message_t msg)
 {
-#if 0 // FIX ME!!!
 	struct usb_device	*udev = to_usb_device(dev);
 
 	do_unbind_rebind(udev, DO_UNBIND);
 	choose_wakeup(udev, msg);
 	return usb_suspend_both(udev, msg);
-#else
-	return 0;
-#endif
 }
 
 /* The device lock is held by the PM core */
 int usb_resume(struct device *dev, pm_message_t msg)
 {
-#if 0 // FIX ME!!!
 	struct usb_device	*udev = to_usb_device(dev);
 	int			status;
 
@@ -1344,9 +1339,6 @@ int usb_resume(struct device *dev, pm_message_t msg)
 	if (status == -ENODEV)
 		status = 0;
 	return status;
-#else
-	return 0;
-#endif
 }
 
 #endif /* CONFIG_PM */
