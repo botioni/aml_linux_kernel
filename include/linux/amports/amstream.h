@@ -118,6 +118,8 @@ enum VIDEO_DEC_TYPE
         VIDEO_DEC_FORMAT_REAL_9,
         VIDEO_DEC_FORMAT_WMV3,
         VIDEO_DEC_FORMAT_WVC1,
+        VIDEO_DEC_FORMAT_SW,
+    	VIDEO_DEC_FORMAT_MAX
 };
 
 struct buf_status {
