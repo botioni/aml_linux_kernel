@@ -163,38 +163,27 @@ static struct platform_device adc_ts_device = {
 #include <linux/adc_keypad.h>
 
 static struct adc_key adc_kp_key[] = {
-#if 1	// w10
-	{KEY_PAGEDOWN,		"vol-",	CHAN_4,	0, 60},	// 0v	102
-	{KEY_PAGEUP,		"vol+",	CHAN_4,	306, 60},	// 0v	28
-	{KEY_TAB,	             "exit",     CHAN_4,	602, 60},	// 0v	15
-	{KEY_LEFTMETA,		"menu",	CHAN_4,	760, 60},	// 0v	125
-#else // arm
-	{KEY_MENU,		"menu",	CHAN_4,	0, 60},	// 0v
-	{KEY_UP,			"up",		CHAN_4, 180, 60},	// 0.58v
-	{KEY_DOWN,		"down",	CHAN_4, 285, 60},	// 0.92v
-	{KEY_LEFT,		"left",	CHAN_4, 400, 60},	// 1.29v
-	{KEY_RIGHT,		"right",	CHAN_4, 505, 60},	// 1.63v
-	{KEY_EXIT,		"exit",	CHAN_4, 624, 60},	// 2.01v
-	{KEY_OK,		"ok",		CHAN_4, 850, 60},	// 2.74v
-#endif
+    {KEY_PAGEDOWN,          "vol-", CHAN_4, 0, 60},
+    {KEY_PAGEUP,            "vol+", CHAN_4, 306, 60},
+    {KEY_TAB,               "exit", CHAN_4, 602, 60},
+    {KEY_LEFTMETA,          "menu", CHAN_4, 760, 60},
 };
 
 static struct adc_kp_platform_data adc_kp_pdata = {
-	.key = &adc_kp_key[0],
-	.key_num = ARRAY_SIZE(adc_kp_key),
+    .key = &adc_kp_key[0],
+    .key_num = ARRAY_SIZE(adc_kp_key),
 };
 
 static struct platform_device adc_kp_device = {
-	.name = "m1-adckp",
-	.id = 0,
-	.num_resources = 0,
-	.resource = NULL,
-	.dev = {
-		.platform_data = &adc_kp_pdata,
-	}
+    .name = "m1-adckp",
+    .id = 0,
+    .num_resources = 0,
+    .resource = NULL,
+    .dev = {
+    .platform_data = &adc_kp_pdata,
+    }
 };
 #endif
-
 
 #if defined(CONFIG_KEY_INPUT_CUSTOM_AM) || defined(CONFIG_KEY_INPUT_CUSTOM_AM_MODULE)
 #include <linux/input.h>
@@ -1281,114 +1270,115 @@ static struct platform_device android_usb_device = {
 
 static struct platform_device __initdata *platform_devs[] = {
     #if defined(CONFIG_JPEGLOGO)
-		&jpeglogo_device,
-	#endif
-	#if defined (CONFIG_AMLOGIC_PM)
-		&power_dev,
-	#endif	
+        &jpeglogo_device,
+    #endif
+    #if defined (CONFIG_AMLOGIC_PM)
+        &power_dev,
+    #endif	
     #if defined(CONFIG_FB_AM)
-    	&fb_device,
+        &fb_device,
     #endif
     #if defined(CONFIG_AM_STREAMING)
-		&codec_device,
+        &codec_device,
     #endif
     #if defined(CONFIG_AM_VIDEO)
-		&deinterlace_device,
+        &deinterlace_device,
     #endif
     #if defined(CONFIG_TVIN_VDIN)
         &vdin_device,
-		&bt656in_device,
+        &bt656in_device,
     #endif
-	#if defined(CONFIG_AML_AUDIO_DSP)
-		&audiodsp_device,
-	#endif
-		&aml_audio,
-	#if defined(CONFIG_CARDREADER)
-    	&amlogic_card_device,
+    #if defined(CONFIG_AML_AUDIO_DSP)
+        &audiodsp_device,
+    #endif
+        &aml_audio,
+    #if defined(CONFIG_CARDREADER)
+        &amlogic_card_device,
     #endif
     #if defined(CONFIG_KEYPADS_AM)||defined(CONFIG_VIRTUAL_REMOTE)||defined(CONFIG_KEYPADS_AM_MODULE)
-		&input_device,
-    #endif	
-#ifdef CONFIG_SARADC_AM
-		&saradc_device,
-#endif
-#ifdef CONFIG_ADC_TOUCHSCREEN_AM
-		&adc_ts_device,
-#endif
+        &input_device,
+    #endif
+    #ifdef CONFIG_SARADC_AM
+    &saradc_device,
+    #endif
+    #ifdef CONFIG_ADC_TOUCHSCREEN_AM
+        &adc_ts_device,
+    #endif
     #if defined(CONFIG_ADC_KEYPADS_AM)||defined(CONFIG_ADC_KEYPADS_AM_MODULE)
-		&adc_kp_device,
+        &adc_kp_device,
     #endif
     #if defined(CONFIG_KEY_INPUT_CUSTOM_AM) || defined(CONFIG_KEY_INPUT_CUSTOM_AM_MODULE)
-		&input_device_key,  //changed by Elvis
+        &input_device_key,  //changed by Elvis
     #endif
-	#if defined(CONFIG_TOUCHSCREEN_ADS7846)
-		&spi_gpio,
-	#endif
+    #if defined(CONFIG_TOUCHSCREEN_ADS7846)
+        &spi_gpio,
+    #endif
     #if defined(CONFIG_NAND_FLASH_DRIVER_BASE_OPERATE)
-		&aml_nand_device,
-    #endif		
-    #if defined(CONFIG_NAND_FLASH_DRIVER_MULTIPLANE_CE)
-		&aml_nand_device,
-    #endif		
-    #if defined(CONFIG_AML_RTC)
-		&aml_rtc_device,
+        &aml_nand_device,
     #endif
-	#if defined(CONFIG_SUSPEND)
-		&aml_pm_device,
+    #if defined(CONFIG_NAND_FLASH_DRIVER_MULTIPLANE_CE)
+        &aml_nand_device,
+    #endif
+    #if defined(CONFIG_AML_RTC)
+        &aml_rtc_device,
+    #endif
+    #if defined(CONFIG_SUSPEND)
+        &aml_pm_device,
     #endif
     #if defined(CONFIG_ANDROID_PMEM)
-		&android_pmem_device,
+        &android_pmem_device,
     #endif
     #if defined(CONFIG_I2C_SW_AML)
-		&aml_sw_i2c_device,
+        &aml_sw_i2c_device,
     #endif
     #if defined(CONFIG_I2C_AML)
-		&aml_i2c_device,
+        &aml_i2c_device,
     #endif
-#if defined(CONFIG_AM_UART_WITH_S_CORE)
+    #if defined(CONFIG_AM_UART_WITH_S_CORE)
         &aml_uart_device,
     #endif
     #if defined(CONFIG_AMLOGIC_BACKLIGHT)
         &aml_bl_device,
     #endif
-    #if  defined(CONFIG_AM_TV_OUTPUT)||defined(CONFIG_AM_TCON_OUTPUT)
-       &vout_device,	
+    #if defined(CONFIG_AM_TV_OUTPUT)||defined(CONFIG_AM_TCON_OUTPUT)
+        &vout_device,	
     #endif
-     #ifdef CONFIG_USB_ANDROID
-		&android_usb_device,
-      #ifdef CONFIG_USB_ANDROID_MASS_STORAGE
-		&usb_mass_storage_device,
-      #endif
-    #endif		
+    #ifdef CONFIG_USB_ANDROID
+        &android_usb_device,
+        #ifdef CONFIG_USB_ANDROID_MASS_STORAGE
+            &usb_mass_storage_device,
+        #endif
+    #endif
 };
 static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
 
 #ifdef CONFIG_SENSORS_MMC31XX
-	{
-		I2C_BOARD_INFO(MMC31XX_I2C_NAME,  MMC31XX_I2C_ADDR),
-	},
+    {
+        I2C_BOARD_INFO(MMC31XX_I2C_NAME,  MMC31XX_I2C_ADDR),
+    },
 #endif
 
 #ifdef CONFIG_SENSORS_MXC622X
-	{
-		I2C_BOARD_INFO(MXC622X_I2C_NAME,  MXC622X_I2C_ADDR),
-	},
+    {
+        I2C_BOARD_INFO(MXC622X_I2C_NAME,  MXC622X_I2C_ADDR),
+    },
 #endif
-	{
-		I2C_BOARD_INFO("wm8900", 0x1A),
-	},
+    {
+        I2C_BOARD_INFO("wm8900", 0x1A),
+    },
 
 #ifdef CONFIG_SN7325
-	{
-		I2C_BOARD_INFO("sn7325", 0x59),
-	},
+    {
+        I2C_BOARD_INFO("sn7325", 0x59),
+    },
 #endif
+
 #ifdef CONFIG_ITK_CAPACITIVE_TOUCHSCREEN
-	{
-		I2C_BOARD_INFO("itk", 0x04),
-		.irq = INT_GPIO_0,
-		.platform_data = (void *)&itk_pdata,
-	},
+    {
+        I2C_BOARD_INFO("itk", 0x04),
+        .irq = INT_GPIO_0,
+        .platform_data = (void *)&itk_pdata,
+    },
 #endif
 };
 
@@ -1396,9 +1386,9 @@ static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
 static int __init aml_i2c_init(void)
 {
 
-	i2c_register_board_info(0, aml_i2c_bus_info,
-			ARRAY_SIZE(aml_i2c_bus_info));
-	return 0;
+    i2c_register_board_info(0, aml_i2c_bus_info,
+        ARRAY_SIZE(aml_i2c_bus_info));
+    return 0;
 }
 
 static void __init eth_pinmux_init(void)
