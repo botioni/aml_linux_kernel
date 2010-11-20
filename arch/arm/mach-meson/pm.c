@@ -266,8 +266,8 @@ void clk_switch(int flag)
 #define PLL_COUNT 5
 static char pll_flag[PLL_COUNT];
 static unsigned plls[PLL_COUNT]={
-    //HHI_OTHER_PLL_CNTL,
-    //HHI_SYS_PLL_CNTL,
+//    HHI_OTHER_PLL_CNTL,
+//    HHI_SYS_PLL_CNTL,
     HHI_VID_PLL_CNTL,
     HHI_AUD_PLL_CNTL,
     HHI_WIFI_PLL_CNTL,
@@ -279,13 +279,19 @@ void pll_switch(int flag)
     int i;
     if (flag){
         for (i=0;i<PLL_COUNT;i++){
-            if (pll_flag[i]) CLEAR_CBUS_REG_MASK(plls[i], (1<<15));
+            if (pll_flag[i]) {
+                CLEAR_CBUS_REG_MASK(plls[i], (1<<7));
+                CLEAR_CBUS_REG_MASK(plls[i], (1<<15));
+                SET_CBUS_REG_MASK(plls[i], (1<<7));
+            }
         }
     }
     else{
         for (i=0;i<PLL_COUNT;i++){
             pll_flag[i] = READ_CBUS_REG_BITS(plls[i], 15, 1) ? 0 : 1;
+            CLEAR_CBUS_REG_MASK(plls[i], (1<<7));
             SET_CBUS_REG_MASK(plls[i], (1<<15));
+            SET_CBUS_REG_MASK(plls[i], (1<<7));
         }
     }
 }
