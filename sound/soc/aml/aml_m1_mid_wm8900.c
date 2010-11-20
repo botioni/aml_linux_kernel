@@ -27,6 +27,7 @@
 
 #if HP_DET
 static struct timer_list timer;
+void mute_spk(struct snd_soc_codec* codec, int flag);
 #endif
 
 static int aml_m1_hw_params(struct snd_pcm_substream *substream,
@@ -59,6 +60,7 @@ static int aml_m1_set_bias_level(struct snd_soc_card *card,
 					enum snd_soc_bias_level level)
 {
 	int ret = 0;
+	struct snd_soc_codec *codec = card->codec;
 	// TODO
 printk("***Entered %s:%s: %d\n", __FILE__,__func__, level);
 	switch (level) {
@@ -69,12 +71,14 @@ printk("***Entered %s:%s: %d\n", __FILE__,__func__, level);
 		timer.expires = jiffies + HZ*1;
 		del_timer(&timer);
 		add_timer(&timer);
+		mute_spk(codec, 0);
 #endif		
 		break;
 	case SND_SOC_BIAS_OFF:
 	case SND_SOC_BIAS_STANDBY:
 #if HP_DET		
 		del_timer(&timer);
+		mute_spk(codec,1);
 #endif		
 		break;
 	};
@@ -248,6 +252,22 @@ static struct wm8900_work_t{
    struct work_struct wm8900_workqueue;
 }wm8900_work;
 
+void mute_spk(struct snd_soc_codec* codec, int flag)
+{
+		int gpio_status = 0;
+		if(flag){
+				gpio_status = snd_soc_read(codec, WM8900_REG_GPIO);
+		   	gpio_status &= ~(7<<4);
+		   	gpio_status |= (6<<4);
+		   	snd_soc_write(codec, WM8900_REG_GPIO, gpio_status);
+		}else{
+				gpio_status = snd_soc_read(codec, WM8900_REG_GPIO);
+			  gpio_status &= ~(7<<4);
+			  gpio_status |= (7<<4);
+			  snd_soc_write(codec, WM8900_REG_GPIO, gpio_status);
+		}
+}
+
 static void wm8900_hp_detect_queue(struct work_struct* work)
 {
 	int level = inner_cs_input_level();
@@ -255,29 +275,22 @@ static void wm8900_hp_detect_queue(struct work_struct* work)
 	int gpio_status = 0;
 	struct snd_soc_codec* codec = (struct snd_soc_codec*)(pwork->data);
 //printk("level = %x, hp_detect_flag = %x\n", level, hp_detect_flag);
-        if(level == 0x11&& hp_detect_flag!= 0x11){       // HP	
-           printk("Headphone pluged in\n");		
-	   snd_soc_dapm_disable_pin(codec, "Ext Spk");
-	   snd_soc_dapm_sync(codec);
-	// pull down the gpio to mute spk
-	   gpio_status = snd_soc_read(codec, WM8900_REG_GPIO);
-	   gpio_status &= ~(7<<4);
-	   gpio_status |= (6<<4);
-	   snd_soc_write(codec, WM8900_REG_GPIO, gpio_status);
-	
-           snd_soc_jack_report(&hp_jack, SND_JACK_HEADSET, SND_JACK_HEADSET);
-           hp_detect_flag = level;
-        }else if(level != hp_detect_flag){      // HDMI
-           printk("Headphone unpluged\n");
-	   snd_soc_dapm_enable_pin(codec, "Ext Spk");
-	   snd_soc_dapm_sync(codec);
-           snd_soc_jack_report(&hp_jack,0, SND_JACK_HEADSET);
-           hp_detect_flag = level;
-	   gpio_status = snd_soc_read(codec, WM8900_REG_GPIO);
-	   gpio_status &= ~(7<<4);
-	   gpio_status |= (7<<4);
-	   snd_soc_write(codec, WM8900_REG_GPIO, gpio_status);
-        } 
+	if(level == 0x11&& hp_detect_flag!= 0x11){       // HP	
+		printk("Headphone pluged in\n");		
+		snd_soc_dapm_disable_pin(codec, "Ext Spk");
+		snd_soc_dapm_sync(codec);
+		// pull down the gpio to mute spk
+		mute_spk(codec, 1);
+		snd_soc_jack_report(&hp_jack, SND_JACK_HEADSET, SND_JACK_HEADSET);
+		hp_detect_flag = level;
+	}else if(level != hp_detect_flag){      // HDMI
+		printk("Headphone unpluged\n");
+		snd_soc_dapm_enable_pin(codec, "Ext Spk");
+		snd_soc_dapm_sync(codec);
+		snd_soc_jack_report(&hp_jack,0, SND_JACK_HEADSET);
+		hp_detect_flag = level;
+		mute_spk(codec, 0);
+	} 
 }
 
 static void wm8900_hp_detect_timer(unsigned long data)
@@ -311,23 +324,23 @@ static int aml_m1_codec_init(struct snd_soc_codec *codec)
 		}
 		
 #if HP_DET
-                hp_detect_flag = 0;
+      hp_detect_flag = 0;
 
-                err = snd_soc_jack_new(card, "hp_switch",
-                                SND_JACK_HEADSET, &hp_jack);
-                if(err){
-                        dev_warn(card->dev, "Failed to alloc resource for hook switch\n");
-                }else{
-                        err = snd_soc_jack_add_pins(&hp_jack,
-                                  ARRAY_SIZE(hp_jack_pins),
-                                  hp_jack_pins);
-                       if(err){
-                            dev_warn(card->dev, "Failed to setup hook hp jack pin\n");
-                       }
-                }
+      err = snd_soc_jack_new(card, "hp_switch",
+                      SND_JACK_HEADSET, &hp_jack);
+      if(err){
+              dev_warn(card->dev, "Failed to alloc resource for hook switch\n");
+      }else{
+              err = snd_soc_jack_add_pins(&hp_jack,
+                        ARRAY_SIZE(hp_jack_pins),
+                        hp_jack_pins);
+             if(err){
+                  dev_warn(card->dev, "Failed to setup hook hp jack pin\n");
+             }
+      }
 
-                // create a timer to poll the HP IN status
-		spin_lock_init(&lock);
+       // create a timer to poll the HP IN status
+			spin_lock_init(&lock);
                 timer.function = &wm8900_hp_detect_timer;
         	timer.data = (unsigned long)codec;
         	timer.expires = jiffies + HZ*1;

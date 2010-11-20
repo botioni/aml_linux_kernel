@@ -610,7 +610,7 @@ static int aml_pcm_suspend(struct snd_soc_dai *dai)
 
 	/* disable the PDC and save the PDC registers */
 	// TODO
-	
+	printk("aml pcm suspend\n");	
 
 	return 0;
 }
@@ -628,7 +628,7 @@ static int aml_pcm_resume(struct snd_soc_dai *dai)
 
 	/* restore the PDC registers and enable the PDC */
 	// TODO
-	
+	printk("aml pcm resume\n");
 	return 0;
 }
 #else

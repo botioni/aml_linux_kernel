@@ -1085,7 +1085,7 @@ static int wm8900_resume(struct platform_device *pdev)
 			GFP_KERNEL);
 
 	wm8900_reset(codec);
-	wm8900_set_bias_level(codec, SND_SOC_BIAS_STANDBY);
+//	wm8900_set_bias_level(codec, SND_SOC_BIAS_STANDBY);
 
 	/* Restart the FLL? */
 	if (wm8900->fll_out) {
@@ -1108,7 +1108,9 @@ static int wm8900_resume(struct platform_device *pdev)
 		kfree(cache);
 	} else
 		dev_err(&pdev->dev, "Unable to allocate register cache\n");
-
+	// avoid standby status overwrited by the backup setting 	
+	wm8900_set_bias_level(codec, SND_SOC_BIAS_STANDBY);
+	
 	return 0;
 }
 
