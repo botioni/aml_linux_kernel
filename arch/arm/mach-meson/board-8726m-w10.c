@@ -387,7 +387,6 @@ static struct resource amlogic_card_resource[]  = {
 	}
 };
 
-#ifdef CONFIG_SN7325
 void extern_wifi_power(int is_power)
 {
     if (0 == is_power)
@@ -395,6 +394,8 @@ void extern_wifi_power(int is_power)
         #ifdef CONFIG_SN7325
         configIO(0, 0);
         setIO_level(0, 0, 5);
+        #else
+        return;
         #endif
     }
     else
@@ -402,11 +403,12 @@ void extern_wifi_power(int is_power)
         #ifdef CONFIG_SN7325
         configIO(0, 0);
         setIO_level(0, 1, 5);
+        #else
+        return;
         #endif
     }
     return;
 }
-#endif
 
 void sdio_extern_init(void)
 {
@@ -645,7 +647,7 @@ static int itk_init_irq(void)
     99      gpioA_24
     98      gpioA_25
     97      gpioA_26
-    98-7    gpioE[21:0]
+    98-76    gpioE[21:0]
     75-50   gpioD[24:0]
     49-23   gpioC[26:0]
     22-15   gpioB[22;15]

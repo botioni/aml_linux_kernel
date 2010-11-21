@@ -201,14 +201,14 @@ static int itk_read_sensor(struct itk *ts)
     int id = (data[1]>>2)& 0x1f;
     event = &ts->event[id];
     event->x = (data[3] << 8) | data[2];
-//    printk(KERN_INFO "data[3][2] = 0x%x%x\n", data[3], data[2]);
-    event->x = (event->x*1024)/17407;
-//    printk(KERN_INFO "caculate event->x = %d\n", event->x);
+    //printk(KERN_INFO "data[3][2] = 0x%2x%2x\n", data[3], data[2]);
+    event->x = (event->x*1024)/17407; //(event->x*800)/32752;
+    //printk(KERN_INFO "caculate event->x = %d\n\n", event->x);
     
     event->y = (data[5] << 8) | data[4];
-//    printk(KERN_INFO "data[5][4] = 0x%x%x\n", data[5], data[4]);
-    event->y = (event->y*768)/12799;
-//    printk(KERN_INFO "caculate event->y = %d\n", event->y);
+    //printk(KERN_INFO "data[5][4] = 0x%2x%2x\n", data[5], data[4]);
+    event->y = (event->y*768)/12799; //(event->y*600)/32752;
+    //printk(KERN_INFO "caculate event->y = %d\n\n", event->y);
     ts->touching_num++;
     return 0;
 }

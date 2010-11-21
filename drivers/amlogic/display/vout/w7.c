@@ -108,7 +108,7 @@ static tcon_conf_t tcon_config =
     .oev3_ve_addr = 0,
     .inv_cnt_addr = (0<<LCD_INV_EN) | (0<<LCD_INV_CNT),
     .tcon_misc_sel_addr = (1<<LCD_STV1_SEL) | (1<<LCD_STV2_SEL),
-    .dual_port_cntl_addr = (1<<LCD_TTL_SEL) | (1<<LCD_ANALOG_SEL_CPH3) | (1<<LCD_ANALOG_3PHI_CLK_SEL),
+    .dual_port_cntl_addr = (1<<LCD_TTL_SEL) | (1<<LCD_ANALOG_SEL_CPH3) | (1<<LCD_ANALOG_3PHI_CLK_SEL) | (1<<1) | (1<<0),
     .flags = 0,
     .screen_width = 4,
     .screen_height = 3,
@@ -154,8 +154,8 @@ void power_on_backlight(void)
     
     //BL_adj -> VGHL_CS0: 0x21e0[3:0]=0x0
     //Idim=(375*(0x21e0[3:0])/15)uA; BL_max_level:0x21e0[3:0]=0x0 / BL_min_level:0x21e0[3:0]=0xf
-    (*(volatile unsigned long *)(0xc1100000+0x21e0<<2)) &= ~(0xf<<0);
-    (*(volatile unsigned long *)(0xc1100000+0x21e0<<2)) |= (0<<0);
+//    (*(volatile unsigned long *)(0xc1100000+0x21e0<<4)) &= ~(0xf<<0);
+//    (*(volatile unsigned long *)(0xc1100000+0x21e0<<4)) |= (0<<0);
 }
 
 void power_off_backlight(void)

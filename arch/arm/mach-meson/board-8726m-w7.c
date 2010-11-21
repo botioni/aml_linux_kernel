@@ -72,6 +72,10 @@
 #include <linux/mmc31xx.h>
 #endif
 
+#ifdef CONFIG_SN7325
+#include <linux/sn7325.h>
+#endif
+
 #ifdef CONFIG_AMLOGIC_PM
 #include <linux/power_supply.h>
 #include <linux/aml_power.h>
@@ -159,38 +163,27 @@ static struct platform_device adc_ts_device = {
 #include <linux/adc_keypad.h>
 
 static struct adc_key adc_kp_key[] = {
-#if 1	// w10
-	{KEY_PAGEDOWN,		"vol-",	CHAN_4,	0, 60},	// 0v	102
-	{KEY_PAGEUP,		"vol+",	CHAN_4,	306, 60},	// 0v	28
-	{KEY_TAB,	             "exit",     CHAN_4,	602, 60},	// 0v	15
-	{KEY_LEFTMETA,		"menu",	CHAN_4,	760, 60},	// 0v	125
-#else // arm
-	{KEY_MENU,		"menu",	CHAN_4,	0, 60},	// 0v
-	{KEY_UP,			"up",		CHAN_4, 180, 60},	// 0.58v
-	{KEY_DOWN,		"down",	CHAN_4, 285, 60},	// 0.92v
-	{KEY_LEFT,		"left",	CHAN_4, 400, 60},	// 1.29v
-	{KEY_RIGHT,		"right",	CHAN_4, 505, 60},	// 1.63v
-	{KEY_EXIT,		"exit",	CHAN_4, 624, 60},	// 2.01v
-	{KEY_OK,		"ok",		CHAN_4, 850, 60},	// 2.74v
-#endif
+    {KEY_PAGEDOWN,          "vol-", CHAN_4, 0, 60},
+    {KEY_PAGEUP,            "vol+", CHAN_4, 306, 60},
+    {KEY_TAB,               "exit", CHAN_4, 602, 60},
+    {KEY_LEFTMETA,          "menu", CHAN_4, 760, 60},
 };
 
 static struct adc_kp_platform_data adc_kp_pdata = {
-	.key = &adc_kp_key[0],
-	.key_num = ARRAY_SIZE(adc_kp_key),
+    .key = &adc_kp_key[0],
+    .key_num = ARRAY_SIZE(adc_kp_key),
 };
 
 static struct platform_device adc_kp_device = {
-	.name = "m1-adckp",
-	.id = 0,
-	.num_resources = 0,
-	.resource = NULL,
-	.dev = {
-		.platform_data = &adc_kp_pdata,
-	}
+    .name = "m1-adckp",
+    .id = 0,
+    .num_resources = 0,
+    .resource = NULL,
+    .dev = {
+    .platform_data = &adc_kp_pdata,
+    }
 };
 #endif
-
 
 #if defined(CONFIG_KEY_INPUT_CUSTOM_AM) || defined(CONFIG_KEY_INPUT_CUSTOM_AM_MODULE)
 #include <linux/input.h>
@@ -396,9 +389,9 @@ static struct resource amlogic_card_resource[]  = {
 
 void sdio_extern_init(void)
 {
-	CLEAR_CBUS_REG_MASK(CARD_PIN_MUX_5, ((3<<4)));
-	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<18));
-	SET_CBUS_REG_MASK(PREG_GGPIO_O, (1<<18));
+//    CLEAR_CBUS_REG_MASK(CARD_PIN_MUX_5, ((3<<4)));
+//    CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<18));
+//    SET_CBUS_REG_MASK(PREG_GGPIO_O, (1<<18));
 }
 
 static struct aml_card_info  amlogic_card_info[] = {
@@ -456,6 +449,7 @@ static struct platform_device amlogic_card_device = {
 		.platform_data = &amlogic_card_platform,
 	},
 };
+
 #endif
 
 #if defined(CONFIG_AML_AUDIO_DSP)
@@ -607,6 +601,51 @@ static int ads7846_init_gpio(void)
 
 	return 0;
 }
+#endif
+
+#ifdef CONFIG_ITK_CAPACITIVE_TOUCHSCREEN
+#include <linux/i2c/itk.h>
+
+//GPIOD_24
+#define GPIO_ITK_PENIRQ ((GPIOD_bank_bit2_24(24)<<16) |GPIOD_bit_bit2_24(24)) 
+#define GPIO_ITK_RST
+
+static int itk_init_irq(void)
+{
+/* memson
+    Bit(s)  Description
+    256-105 Unused
+    104     JTAG_TDO
+    103     JTAG_TDI
+    102     JTAG_TMS
+    101     JTAG_TCK
+    100     gpioA_23
+    99      gpioA_24
+    98      gpioA_25
+    97      gpioA_26
+    98-76    gpioE[21:0]
+    75-50   gpioD[24:0]
+    49-23   gpioC[26:0]
+    22-15   gpioB[22;15]
+    14-0    gpioA[14:0]
+ */
+
+    /* set input mode */
+    gpio_direction_input(GPIO_ITK_PENIRQ);
+    /* set gpio interrupt #0 source=GPIOD_24, and triggered by falling edge(=1) */
+    gpio_enable_edge_int(50+24, 1, 0);
+
+    return 0;
+}
+static int itk_get_irq_level(void)
+{
+    return gpio_get_value(GPIO_ITK_PENIRQ);
+}
+
+static struct itk_platform_data itk_pdata = {
+    .init_irq = &itk_init_irq,
+    .get_irq_level = &itk_get_irq_level,
+};
 #endif
 
 #ifdef CONFIG_ANDROID_PMEM
@@ -767,12 +806,20 @@ static int get_charge_status()
 	return (READ_CBUS_REG(ASSIST_HW_REV)&(1<<8))? 1:0;
 }
 
+static void set_bat_off(void)
+{
+    set_gpio_val(GPIOA_bank_bit(8), GPIOA_bit_bit0_14(8), 0);
+    set_gpio_mode(GPIOA_bank_bit(8), GPIOA_bit_bit0_14(8), GPIO_OUTPUT_MODE);
+
+}
+
 static struct aml_power_pdata power_pdata = {
 	.is_ac_online	= is_ac_connected,
 	//.is_usb_online	= is_usb_connected,
 	.set_charge = set_charge,
 	.get_bat_vol = get_bat_vol,
 	.get_charge_status = get_charge_status,
+	.set_bat_off = set_bat_off,
 	//.supplied_to = supplicants,
 	//.num_supplicants = ARRAY_SIZE(supplicants),
 };
@@ -815,7 +862,7 @@ static struct platform_device aml_uart_device = {
 };
 #endif
 
-#ifdef CONFIG_AM_NAND
+#if defined(CONFIG_NAND_FLASH_DRIVER_BASE_OPERATE) || defined(CONFIG_NAND_FLASH_DRIVER_MULTIPLANE_CE)
 static struct mtd_partition partition_info[] = 
 {
 	{
@@ -828,48 +875,48 @@ static struct mtd_partition partition_info[] =
 	{
 		.name = "environment",
 		.offset = 4*1024*1024,
-		.size=2*1024*1024,
+		.size=4*1024*1024,
 	//	.set_flags=0,
 	//	.dual_partnum=0,
 	},
 	{
 		.name = "splash",
-		.offset = 6*1024*1024,
-		.size=2*1024*1024,
+		.offset = 8*1024*1024,
+		.size=4*1024*1024,
 	//	.set_flags=0,
 	//	.dual_partnum=0,
 	},
 	{
 		.name = "recovery",
-		.offset = 8*1024*1024,
+		.offset = 12*1024*1024,
 		.size = 16 * 1024*1024,
 	//	.set_flags=0,
 	//	.dual_partnum=0,
 	},
 	{
 		.name = "boot",
-		.offset = 24*1024*1024,
+		.offset = 28*1024*1024,
 		.size = 16 * 1024*1024,
 	//	.set_flags=0,
 	//	.dual_partnum=0,
 	},
 	{
 		.name = "system",
-		.offset = 40*4*1024*1024,
-		.size = 180 * 1024*1024,
+		.offset = 44*4*1024*1024,
+		.size = 240 * 1024*1024,
 	//	.set_flags=0,
 	//	.dual_partnum=0,
 	},
 	{
 		.name = "cache",
-		.offset = 340*1024*1024,
+		.offset = 416*1024*1024,
 		.size = 16 * 1024*1024,
 	//	.set_flags=0,
 	//	.dual_partnum=0,
 	},
 	{
 		.name = "userdata",
-		.offset= 356*1024*1024,
+		.offset= 432*1024*1024,
 		.size= 256 * 1024*1024,
 	//	.set_flags=0,
 	//	.dual_partnum=0,
@@ -877,13 +924,15 @@ static struct mtd_partition partition_info[] =
 	{
 		.name = "media",
 		.offset = MTDPART_OFS_APPEND,
-		.size = (0x200000000-(356+256)*1024*1024),
+		.size = (0x200000000-(432+256)*1024*1024),
 		.set_flags = MTD_AVNFTL,
 		.dual_partnum = 1|MTD_AVFTL_PLANE|MTD_AVNFTL_INTERL,
 	//	.set_flags=0,
 	//	.dual_partnum=0,
 	},
 };
+#endif
+#ifdef CONFIG_NAND_FLASH_DRIVER_BASE_OPERATE
 /*
 static struct aml_m1_nand_platform aml_2kpage128kblocknand_platform = {
 	.page_size = 2048,
@@ -899,7 +948,6 @@ static struct aml_m1_nand_platform aml_2kpage128kblocknand_platform = {
 };
 */
 
-#if 0
 static struct aml_m1_nand_platform aml_Micron4GBABAnand_platform = 
 {
 	.page_size = 2048*2,
@@ -913,7 +961,46 @@ static struct aml_m1_nand_platform aml_Micron4GBABAnand_platform =
 	.partitions = partition_info,
 	.nr_partitions = ARRAY_SIZE(partition_info),
 };
-#endif
+
+
+static struct resource aml_nand_resources[] = {
+	{
+		.start = 0xc1108600,
+		.end = 0xc1108624,
+		.flags = IORESOURCE_MEM,
+	},
+};
+
+static struct platform_device aml_nand_device = {
+	.name = "aml_m1_nand",
+	.id = 0,
+	.num_resources = ARRAY_SIZE(aml_nand_resources),
+	.resource = aml_nand_resources,
+	.dev = {
+		.platform_data = &aml_Micron4GBABAnand_platform,
+	//	.platform_data = &aml_Micron8GBABAnand_platform,
+	},
+};
+#endif  //CONFIG_NAND_FLASH_DRIVER_BASE_OPERATE
+
+#ifdef CONFIG_NAND_FLASH_DRIVER_MULTIPLANE_CE
+
+/*
+static struct aml_m1_nand_platform aml_2kpage128kblocknand_platform = {
+	.page_size = 2048,
+	.spare_size=64,
+	.erase_size= 128*1024,
+	.bch_mode=1,			//BCH8
+	.encode_size=528,
+	.timing_mode=5,
+	.ce_num=1,
+	.onfi_mode=0,
+	.partitions = partition_info,
+	.nr_partitions = ARRAY_SIZE(partition_info),
+};
+*/
+
+
 static struct aml_m1_nand_platform aml_Micron8GBABAnand_platform =
 {
 	.page_size = 2048*2,
@@ -950,7 +1037,7 @@ static struct platform_device aml_nand_device = {
 		.platform_data = &aml_Micron8GBABAnand_platform,
 	},
 };
-#endif
+#endif  //CONFIG_NAND_FLASH_DRIVER_MULTIPLANE_CE
 
 #if defined(CONFIG_AMLOGIC_BACKLIGHT)
 
@@ -1161,104 +1248,115 @@ static struct platform_device android_usb_device = {
 
 static struct platform_device __initdata *platform_devs[] = {
     #if defined(CONFIG_JPEGLOGO)
-		&jpeglogo_device,
-	#endif
-	#if defined (CONFIG_AMLOGIC_PM)
-		&power_dev,
-	#endif	
+        &jpeglogo_device,
+    #endif
+    #if defined (CONFIG_AMLOGIC_PM)
+        &power_dev,
+    #endif	
     #if defined(CONFIG_FB_AM)
-    	&fb_device,
+        &fb_device,
     #endif
     #if defined(CONFIG_AM_STREAMING)
-		&codec_device,
+        &codec_device,
     #endif
     #if defined(CONFIG_AM_VIDEO)
-		&deinterlace_device,
+        &deinterlace_device,
     #endif
     #if defined(CONFIG_TVIN_VDIN)
         &vdin_device,
-		&bt656in_device,
+        &bt656in_device,
     #endif
-	#if defined(CONFIG_AML_AUDIO_DSP)
-		&audiodsp_device,
-	#endif
-		&aml_audio,
-	#if defined(CONFIG_CARDREADER)
-    	&amlogic_card_device,
+    #if defined(CONFIG_AML_AUDIO_DSP)
+        &audiodsp_device,
+    #endif
+        &aml_audio,
+    #if defined(CONFIG_CARDREADER)
+        &amlogic_card_device,
     #endif
     #if defined(CONFIG_KEYPADS_AM)||defined(CONFIG_VIRTUAL_REMOTE)||defined(CONFIG_KEYPADS_AM_MODULE)
-		&input_device,
-    #endif	
-#ifdef CONFIG_SARADC_AM
-		&saradc_device,
-#endif
-#ifdef CONFIG_ADC_TOUCHSCREEN_AM
-		&adc_ts_device,
-#endif
+        &input_device,
+    #endif
+    #ifdef CONFIG_SARADC_AM
+    &saradc_device,
+    #endif
+    #ifdef CONFIG_ADC_TOUCHSCREEN_AM
+        &adc_ts_device,
+    #endif
     #if defined(CONFIG_ADC_KEYPADS_AM)||defined(CONFIG_ADC_KEYPADS_AM_MODULE)
-		&adc_kp_device,
+        &adc_kp_device,
     #endif
     #if defined(CONFIG_KEY_INPUT_CUSTOM_AM) || defined(CONFIG_KEY_INPUT_CUSTOM_AM_MODULE)
-		&input_device_key,  //changed by Elvis
+        &input_device_key,  //changed by Elvis
     #endif
-	#if defined(CONFIG_TOUCHSCREEN_ADS7846)
-		&spi_gpio,
-	#endif
-    #if defined(CONFIG_AM_NAND)
-		&aml_nand_device,
-    #endif		
+    #if defined(CONFIG_TOUCHSCREEN_ADS7846)
+        &spi_gpio,
+    #endif
+    #if defined(CONFIG_NAND_FLASH_DRIVER_BASE_OPERATE)
+        &aml_nand_device,
+    #endif
+    #if defined(CONFIG_NAND_FLASH_DRIVER_MULTIPLANE_CE)
+        &aml_nand_device,
+    #endif
     #if defined(CONFIG_AML_RTC)
-		&aml_rtc_device,
+        &aml_rtc_device,
     #endif
-	#if defined(CONFIG_SUSPEND)
-		&aml_pm_device,
+    #if defined(CONFIG_SUSPEND)
+        &aml_pm_device,
     #endif
     #if defined(CONFIG_ANDROID_PMEM)
-		&android_pmem_device,
+        &android_pmem_device,
     #endif
     #if defined(CONFIG_I2C_SW_AML)
-		&aml_sw_i2c_device,
+        &aml_sw_i2c_device,
     #endif
     #if defined(CONFIG_I2C_AML)
-		&aml_i2c_device,
+        &aml_i2c_device,
     #endif
-#if defined(CONFIG_AM_UART_WITH_S_CORE)
+    #if defined(CONFIG_AM_UART_WITH_S_CORE)
         &aml_uart_device,
     #endif
     #if defined(CONFIG_AMLOGIC_BACKLIGHT)
         &aml_bl_device,
     #endif
-    #if  defined(CONFIG_AM_TV_OUTPUT)||defined(CONFIG_AM_TCON_OUTPUT)
-       &vout_device,	
+    #if defined(CONFIG_AM_TV_OUTPUT)||defined(CONFIG_AM_TCON_OUTPUT)
+        &vout_device,	
     #endif
-     #ifdef CONFIG_USB_ANDROID
-		&android_usb_device,
-      #ifdef CONFIG_USB_ANDROID_MASS_STORAGE
-		&usb_mass_storage_device,
-      #endif
-    #endif		
+    #ifdef CONFIG_USB_ANDROID
+        &android_usb_device,
+        #ifdef CONFIG_USB_ANDROID_MASS_STORAGE
+            &usb_mass_storage_device,
+        #endif
+    #endif
 };
 static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
 
 #ifdef CONFIG_SENSORS_MMC31XX
-	{
-		I2C_BOARD_INFO(MMC31XX_I2C_NAME,  MMC31XX_I2C_ADDR),
-	},
+    {
+        I2C_BOARD_INFO(MMC31XX_I2C_NAME,  MMC31XX_I2C_ADDR),
+    },
 #endif
 
 #ifdef CONFIG_SENSORS_MXC622X
-	{
-		I2C_BOARD_INFO(MXC622X_I2C_NAME,  MXC622X_I2C_ADDR),
-	},
+    {
+        I2C_BOARD_INFO(MXC622X_I2C_NAME,  MXC622X_I2C_ADDR),
+    },
 #endif
-	{
-		I2C_BOARD_INFO("wm8900", 0x1A),
-	},
+    {
+        I2C_BOARD_INFO("wm8900", 0x1A),
+    },
 
 #ifdef CONFIG_SN7325
-	{
-		I2C_BOARD_INFO("sn7325", 0x59),
-	},
+    {
+        I2C_BOARD_INFO("sn7325", 0x58),
+    },
+#endif
+
+#ifdef CONFIG_ITK_CAPACITIVE_TOUCHSCREEN
+    {
+        I2C_BOARD_INFO("itk", 0x04),
+        .irq = INT_GPIO_0,
+        .platform_data = (void *)&itk_pdata,
+    },
 #endif
 };
 
@@ -1266,9 +1364,9 @@ static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
 static int __init aml_i2c_init(void)
 {
 
-	i2c_register_board_info(0, aml_i2c_bus_info,
-			ARRAY_SIZE(aml_i2c_bus_info));
-	return 0;
+    i2c_register_board_info(0, aml_i2c_bus_info,
+        ARRAY_SIZE(aml_i2c_bus_info));
+    return 0;
 }
 
 static void __init eth_pinmux_init(void)

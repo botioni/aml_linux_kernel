@@ -1,7 +1,7 @@
 #
 # Automatically generated make config: don't edit
 # Linux kernel version: 2.6.34
-# Thu Nov 18 21:36:41 2010
+# Fri Nov 19 22:47:41 2010
 #
 CONFIG_ARM=y
 CONFIG_HOLES_IN_ZONE=y
@@ -576,6 +576,7 @@ CONFIG_ADC_KEYPADS_AM=y
 CONFIG_KEY_INPUT_CUSTOM_AM=y
 # CONFIG_SINTEK_CAPACITIVE_TOUCHSCREEN is not set
 CONFIG_ITK_CAPACITIVE_TOUCHSCREEN=y
+CONFIG_TOUCH_KEY_PAD_IT7230=y
 
 #
 # Amlogic Power Management Support
@@ -587,6 +588,11 @@ CONFIG_AMLOGIC_PM=y
 #
 # CONFIG_TCA6424 is not set
 CONFIG_SN7325=y
+
+#
+# Amlogic GPIO Driver
+#
+# CONFIG_AM_GPIO is not set
 
 #
 # Block devices
