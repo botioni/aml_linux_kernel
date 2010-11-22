@@ -358,13 +358,20 @@ static int itk_probe(struct i2c_client *client,
     ts->client = client;
     itk_reset(ts);
 
+    ts->pdata = client->dev.platform_data;
+    if (!ts->pdata)
+    {
+        ts->xmax = ts->pdata->max_width;
+        ts->ymax = ts->pdata->max_height;
+    }
+
     if (itk_register_input(ts) < 0) {
         dev_err(&client->dev, "register input fail!\n");
         goto fail;
     }
 
     /* setup platform-specific hooks */
-    ts->pdata = client->dev.platform_data;
+
     if (!ts->pdata || !ts->pdata->init_irq || !ts->pdata->get_irq_level) {
         dev_err(&client->dev, "no platform-specific callbacks "
             "provided\n");

@@ -224,6 +224,28 @@ static struct platform_device input_device_key = {
 };
 #endif
 
+#ifdef CONFIG_SN7325
+
+static int sn7325_pwr_rst(void)
+{
+    //reset
+    set_gpio_val(GPIOA_bank_bit(4), GPIOA_bit_bit0_14(4), 0); //low
+    set_gpio_mode(GPIOA_bank_bit(4), GPIOA_bit_bit0_14(4), GPIO_OUTPUT_MODE);
+
+    udelay(2); //delay 2us
+
+    set_gpio_val(GPIOA_bank_bit(4), GPIOA_bit_bit0_14(4), 1); //low
+    set_gpio_mode(GPIOA_bank_bit(4), GPIOA_bit_bit0_14(4), GPIO_OUTPUT_MODE);
+    //end
+
+    return 0;
+}
+
+static struct sn7325_platform_data sn7325_pdata = {
+    .pwr_rst = &sn7325_pwr_rst,
+};
+#endif
+
 #if defined(CONFIG_FB_AM)
 static struct resource fb_device_resources[] = {
     [0] = {
@@ -645,6 +667,8 @@ static int itk_get_irq_level(void)
 static struct itk_platform_data itk_pdata = {
     .init_irq = &itk_init_irq,
     .get_irq_level = &itk_get_irq_level,
+    .max_width = 800,
+    .max_height = 600,
 };
 #endif
 
@@ -1348,6 +1372,7 @@ static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
 #ifdef CONFIG_SN7325
     {
         I2C_BOARD_INFO("sn7325", 0x58),
+        .platform_data = (void *)&sn7325_pdata,
     },
 #endif
 
