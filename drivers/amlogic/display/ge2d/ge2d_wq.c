@@ -18,6 +18,7 @@
 #include <linux/list.h>
 #include  <linux/spinlock.h>
 #include <linux/kthread.h>
+#include <mach/power_gate.h>
 #include "ge2d_log.h"
 #include <linux/amlog.h>
 static  ge2d_manager_t  ge2d_manager;
@@ -271,11 +272,12 @@ static int ge2d_monitor_thread(void *data)
 	{
 		down_timeout(&manager->event.cmd_in_sem,6000);
 		//got new cmd arrived in signal,
+		CLK_GATE_ON(GE2D);
 		while((manager->current_wq=get_next_work_queue(manager))!=NULL)
 		{
 			ge2d_process_work_queue(manager->current_wq);
 		}
-		
+		CLK_GATE_OFF(GE2D);
 	}
 	amlog_level(LOG_LEVEL_HIGH,"exit ge2d_monitor_thread\r\n");
 	return 0;

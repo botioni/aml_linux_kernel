@@ -22,6 +22,7 @@
 #ifndef AMSTREAM_H
 #define AMSTREAM_H
 
+#include <linux/interrupt.h>
 #include "ve.h"
 
 #ifdef __KERNEL__
@@ -118,6 +119,8 @@ enum VIDEO_DEC_TYPE
         VIDEO_DEC_FORMAT_REAL_9,
         VIDEO_DEC_FORMAT_WMV3,
         VIDEO_DEC_FORMAT_WVC1,
+        VIDEO_DEC_FORMAT_SW,
+    	VIDEO_DEC_FORMAT_MAX
 };
 
 struct buf_status {
@@ -183,6 +186,22 @@ struct dec_sysinfo {
 };
 
 #ifdef __KERNEL__
+#ifdef ENABLE_DEMUX_DRIVER
+/*TS demux operation interface*/
+struct tsdemux_ops {
+    int (*reset)(void);
+    int (*set_reset_flag)(void);
+    int (*request_irq)(irq_handler_t handler, void *data);
+    int (*free_irq)(void);
+    int (*set_vid)(int vpid);
+    int (*set_aid)(int apid);
+    int (*set_sid)(int spid);
+};
+
+void tsdemux_set_ops(struct tsdemux_ops *ops);
+int tsdemux_set_reset_flag(void);
+
+#endif /*ENABLE_DEMUX_DRIVER*/
 void set_vdec_func(int (*vdec_func)(struct vdec_status *));
 void set_adec_func(int (*adec_func)(struct adec_status *));
 void set_trickmode_func(int (*trickmode_func)(unsigned long trickmode));

@@ -47,11 +47,221 @@ static u32 discontinued_counter;
 
 static int demux_skipbyte;
 
+#ifdef ENABLE_DEMUX_DRIVER
+static struct tsdemux_ops *demux_ops = NULL;
+static irq_handler_t       demux_handler;
+static void               *demux_data;
+int dvb_playing=0;
+static DEFINE_SPINLOCK(demux_ops_lock);
 
+void tsdemux_set_ops(struct tsdemux_ops *ops)
+{
+	unsigned long flags;
+
+	spin_lock_irqsave(&demux_ops_lock, flags);
+	demux_ops = ops;
+	spin_unlock_irqrestore(&demux_ops_lock, flags);
+}
+
+EXPORT_SYMBOL(tsdemux_set_ops);
+
+int tsdemux_set_reset_flag(void)
+{
+	unsigned long flags;
+	int r;
+
+	spin_lock_irqsave(&demux_ops_lock, flags);
+	if(demux_ops && demux_ops->set_reset_flag) {
+		r = demux_ops->set_reset_flag();
+	} else {
+		WRITE_MPEG_REG(FEC_INPUT_CONTROL, 0);
+		r = 0;
+	}
+	spin_unlock_irqrestore(&demux_ops_lock, flags);
+	
+	return r;
+}
+
+static int tsdemux_reset(void)
+{
+	unsigned long flags;
+	int r;
+
+	spin_lock_irqsave(&demux_ops_lock, flags);
+	if(demux_ops && demux_ops->reset) {
+		r = demux_ops->reset();
+	} else {
+		WRITE_MPEG_REG(RESET1_REGISTER, RESET_DEMUXSTB);
+		WRITE_MPEG_REG(STB_TOP_CONFIG, 0);
+		WRITE_MPEG_REG(DEMUX_CONTROL, 0);
+		r = 0;
+	}
+	spin_unlock_irqrestore(&demux_ops_lock, flags);
+	
+	return r;
+}
+
+static irqreturn_t tsdemux_default_isr_handler(int irq, void *dev_id)
+{
+	u32 int_status = READ_MPEG_REG(STB_INT_STATUS);
+	
+	if(demux_handler) {
+		demux_handler(irq, (void*)0);
+	}
+	
+	WRITE_MPEG_REG(STB_INT_STATUS, int_status);
+	return IRQ_HANDLED;
+}
+
+static int tsdemux_request_irq(irq_handler_t handler, void *data)
+{
+	unsigned long flags;
+	int r;
+	
+	spin_lock_irqsave(&demux_ops_lock, flags);
+	if(demux_ops && demux_ops->request_irq) {
+		r = demux_ops->request_irq(handler, data);
+	} else {
+		demux_handler = handler;
+		demux_data    = data;
+		r = request_irq(INT_DEMUX, tsdemux_default_isr_handler,
+			IRQF_SHARED, "tsdemux-irq",
+			(void *)tsdemux_irq_id);
+		WRITE_MPEG_REG(STB_INT_MASK, 
+			(1 << SUB_PES_READY) 
+			| (1 << NEW_PDTS_READY)
+			| (1 << DIS_CONTINUITY_PACKET));
+	}
+	spin_unlock_irqrestore(&demux_ops_lock, flags);
+	
+	return r;
+}
+
+static int tsdemux_free_irq(void)
+{
+	unsigned long flags;
+	int r;
+
+	spin_lock_irqsave(&demux_ops_lock, flags);
+	if(demux_ops && demux_ops->free_irq) {
+		r = demux_ops->free_irq();
+	} else {
+		WRITE_MPEG_REG(STB_INT_MASK, 0);
+		free_irq(INT_DEMUX, (void *)tsdemux_irq_id);
+		r = 0;
+	}
+	spin_unlock_irqrestore(&demux_ops_lock, flags);
+	
+	return r;
+}
+
+static int tsdemux_set_vid(int vpid)
+{
+	unsigned long flags;
+	int r;
+
+	spin_lock_irqsave(&demux_ops_lock, flags);
+	if(demux_ops && demux_ops->set_vid) {
+		r = demux_ops->set_vid(vpid);
+	} else if((vpid>=0) && (vpid<0x1FFF)) {
+		u32 data = READ_MPEG_REG(FM_WR_DATA);
+		WRITE_MPEG_REG(FM_WR_DATA,
+			(((vpid & 0x1fff) | (VIDEO_PACKET << 13)) << 16) |
+			(data&0xffff));
+		WRITE_MPEG_REG(FM_WR_ADDR, 0x8000);
+		while (READ_MPEG_REG(FM_WR_ADDR) & 0x8000);
+		WRITE_MPEG_REG(MAX_FM_COMP_ADDR, 1);
+		r = 0;
+	}
+	spin_unlock_irqrestore(&demux_ops_lock, flags);
+	
+	return r;
+}
+
+static int tsdemux_set_aid(int apid)
+{
+	unsigned long flags;
+	int r;
+
+	spin_lock_irqsave(&demux_ops_lock, flags);
+	if(demux_ops && demux_ops->set_aid) {
+		r = demux_ops->set_aid(apid);
+	} else if((apid>=0) && (apid<0x1FFF)) {
+		u32 data = READ_MPEG_REG(FM_WR_DATA);
+		WRITE_MPEG_REG(FM_WR_DATA,
+			((apid & 0x1fff) | (AUDIO_PACKET << 13)) |
+			(data&0xffff0000));
+		WRITE_MPEG_REG(FM_WR_ADDR, 0x8000);
+		while (READ_MPEG_REG(FM_WR_ADDR) & 0x8000);
+		WRITE_MPEG_REG(MAX_FM_COMP_ADDR, 1);
+		r = 0;
+	}
+	spin_unlock_irqrestore(&demux_ops_lock, flags);
+	
+	return r;
+}
+
+static int tsdemux_set_sid(int spid)
+{
+	unsigned long flags;
+	int r;
+
+	spin_lock_irqsave(&demux_ops_lock, flags);
+	if(demux_ops && demux_ops->set_sid) {
+		r = demux_ops->set_sid(spid);
+	} else if((spid>=0) && (spid<0x1FFF)) {
+		WRITE_MPEG_REG(FM_WR_DATA, 
+			(((spid & 0x1fff) | (SUB_PACKET << 13)) << 16) | 0xffff);
+		WRITE_MPEG_REG(FM_WR_ADDR, 0x8001);
+		while (READ_MPEG_REG(FM_WR_ADDR) & 0x8000);
+		WRITE_MPEG_REG(MAX_FM_COMP_ADDR, 1);
+		r = 0;
+	}
+	spin_unlock_irqrestore(&demux_ops_lock, flags);
+	
+	return r;
+}
+
+static int tsdemux_config(void)
+{
+	unsigned long flags;
+
+	spin_lock_irqsave(&demux_ops_lock, flags);
+
+	if(!demux_ops) {
+		WRITE_MPEG_REG(STB_INT_MASK, 0);
+		WRITE_MPEG_REG(STB_INT_STATUS, 0xffff);
+
+		/* TS data path */
+		WRITE_MPEG_REG(FEC_INPUT_CONTROL, 0x7000);
+		WRITE_MPEG_REG(DEMUX_MEM_REQ_EN,
+			(1 << VIDEO_PACKET) |
+			(1 << AUDIO_PACKET) |
+			(1 << SUB_PACKET));
+		WRITE_MPEG_REG(DEMUX_ENDIAN,
+			(7 << OTHER_ENDIAN)  |
+			(7 << BYPASS_ENDIAN) |
+			(0 << SECTION_ENDIAN));
+		WRITE_MPEG_REG(TS_HIU_CTL, 1 << USE_HI_BSF_INTERFACE);
+		WRITE_MPEG_REG(TS_FILE_CONFIG,
+			(demux_skipbyte << 16)                  |
+			(6 << DES_OUT_DLY)                      |
+			(3 << TRANSPORT_SCRAMBLING_CONTROL_ODD) |
+			(1 << TS_HIU_ENABLE)                    |
+			(4 << FEC_FILE_CLK_DIV));
+
+		/* enable TS demux */
+		WRITE_MPEG_REG(DEMUX_CONTROL, (1 << STB_DEMUX_ENABLE));
+	}
+
+	spin_unlock_irqrestore(&demux_ops_lock, flags);
+	return 0;
+}
+#endif /*ENABLE_DEMUX_DRIVER*/
 
 static irqreturn_t tsdemux_isr(int irq, void *dev_id)
 {
-#ifndef CONFIG_AM_DVB
+#ifndef ENABLE_DEMUX_DRIVER
 	u32 int_status = READ_MPEG_REG(STB_INT_STATUS);
 #else
 	int id = (int)dev_id;
@@ -59,7 +269,7 @@ static irqreturn_t tsdemux_isr(int irq, void *dev_id)
 #endif
 
 	if (int_status & (1 << NEW_PDTS_READY)) {
-#ifndef CONFIG_AM_DVB
+#ifndef ENABLE_DEMUX_DRIVER
         u32 pdts_status = READ_MPEG_REG(STB_PTS_DTS_STATUS);
 		
 	if (pdts_status & (1 << VIDEO_PTS_READY))
@@ -103,7 +313,7 @@ static irqreturn_t tsdemux_isr(int irq, void *dev_id)
         //printk("subtitle pes ready\n");
         wakeup_sub_poll();
     }
-#ifndef CONFIG_AM_DVB
+#ifndef ENABLE_DEMUX_DRIVER
     WRITE_MPEG_REG(STB_INT_STATUS, int_status);
 #endif
     return IRQ_HANDLED;
@@ -153,28 +363,20 @@ static ssize_t _tsdemux_write(const char __user *buf, size_t count)
     return count -r;
 }
 
-#ifdef CONFIG_AM_DVB
-extern int tsdemux_reset(void);
-extern int tsdemux_request_irq(irq_handler_t handler, void *data);
-extern int tsdemux_free_irq(void);
-extern int tsdemux_set_vid(int vpid);
-extern int tsdemux_set_aid(int apid);
-extern int tsdemux_set_sid(int spid);
-#endif
-
 s32 tsdemux_init(u32 vid, u32 aid, u32 sid)
 {
     s32 r;
     u32 parser_sub_start_ptr;
     u32 parser_sub_end_ptr;
     u32 parser_sub_rp;
-
+dvb_playing=1;
     parser_sub_start_ptr = READ_MPEG_REG(PARSER_SUB_START_PTR);
     parser_sub_end_ptr = READ_MPEG_REG(PARSER_SUB_END_PTR);
     parser_sub_rp = READ_MPEG_REG(PARSER_SUB_RP);
 
-#ifdef CONFIG_AM_DVB
     WRITE_MPEG_REG(RESET1_REGISTER, RESET_PARSER);
+    
+#ifdef ENABLE_DEMUX_DRIVER
     tsdemux_reset();
 #else
     WRITE_MPEG_REG(RESET1_REGISTER, RESET_PARSER | RESET_DEMUXSTB);
@@ -186,7 +388,7 @@ s32 tsdemux_init(u32 vid, u32 aid, u32 sid)
     /* set PID filter */
     printk("tsdemux video_pid = 0x%x, audio_pid = 0x%x, sub_pid = 0x%x\n",
            vid, aid, sid);
-#ifndef CONFIG_AM_DVB
+#ifndef ENABLE_DEMUX_DRIVER
     WRITE_MPEG_REG(FM_WR_DATA,
                    (((vid & 0x1fff) | (VIDEO_PACKET << 13)) << 16) |
                     ((aid & 0x1fff) | (AUDIO_PACKET << 13)));
@@ -282,7 +484,7 @@ s32 tsdemux_init(u32 vid, u32 aid, u32 sid)
     WRITE_MPEG_REG(PARSER_INT_ENABLE, PARSER_INTSTAT_FETCH_CMD << PARSER_INT_HOST_EN_BIT);
 
     discontinued_counter=0;
-#ifndef CONFIG_AM_DVB
+#ifndef ENABLE_DEMUX_DRIVER
     r = request_irq(INT_DEMUX, tsdemux_isr,
                     IRQF_SHARED, "tsdemux-irq",
                     (void *)tsdemux_irq_id);
@@ -293,6 +495,7 @@ s32 tsdemux_init(u32 vid, u32 aid, u32 sid)
     if (r) 
         goto err4;
 #else
+    tsdemux_config();  
     tsdemux_request_irq(tsdemux_isr, (void *)tsdemux_irq_id);
     if(vid<0x1FFF)
         tsdemux_set_vid(vid);
@@ -323,7 +526,7 @@ void tsdemux_release(void)
     WRITE_MPEG_REG(PARSER_INT_ENABLE, 0);
     free_irq(INT_PARSER, (void *)tsdemux_fetch_id);
 	
-#ifndef CONFIG_AM_DVB
+#ifndef ENABLE_DEMUX_DRIVER
     WRITE_MPEG_REG(STB_INT_MASK, 0);
     free_irq(INT_DEMUX, (void *)tsdemux_irq_id);
 #else
@@ -338,6 +541,7 @@ void tsdemux_release(void)
 	
     pts_stop(PTS_TYPE_VIDEO);
     pts_stop(PTS_TYPE_AUDIO);
+    dvb_playing=0;
 }
 
 ssize_t tsdemux_write(struct file *file,
@@ -412,7 +616,7 @@ void  tsdemux_class_unregister(void)
 
 void tsdemux_change_avid(unsigned int vid, unsigned int aid)
 {
-#ifndef CONFIG_AM_DVB
+#ifndef ENABLE_DEMUX_DRIVER
     WRITE_MPEG_REG(FM_WR_DATA,
                (((vid & 0x1fff) | (VIDEO_PACKET << 13)) << 16) |
                 ((aid & 0x1fff) | (AUDIO_PACKET << 13)));
@@ -427,7 +631,7 @@ void tsdemux_change_avid(unsigned int vid, unsigned int aid)
 
 void tsdemux_change_sid(unsigned int sid)
 {
-#ifndef CONFIG_AM_DVB
+#ifndef ENABLE_DEMUX_DRIVER
     WRITE_MPEG_REG(FM_WR_DATA, 
                (((sid & 0x1fff) | (SUB_PACKET << 13)) << 16) | 0xffff);
     WRITE_MPEG_REG(FM_WR_ADDR, 0x8001);

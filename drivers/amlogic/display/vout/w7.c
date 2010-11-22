@@ -72,9 +72,9 @@ static tcon_conf_t tcon_config =
     .sth2_vs_addr = 0,
     .sth2_ve_addr = 0,
     .oeh_hs_addr = 67,
-    .oeh_he_addr = 67+LCD_WIDTH,
+    .oeh_he_addr = 67+LCD_WIDTH-1,
     .oeh_vs_addr = VIDEO_ON_LINE,
-    .oeh_ve_addr = VIDEO_ON_LINE+LCD_HEIGHT,
+    .oeh_ve_addr = VIDEO_ON_LINE+LCD_HEIGHT-1,
     .vcom_hswitch_addr = 0,
     .vcom_vs_addr = 0,
     .vcom_ve_addr = 0,
@@ -221,6 +221,13 @@ static void set_tcon_pinmux(void)
     /* GPIOA_5 -> LCD_Clk, GPIOA_0 -> TCON_STH1, GPIOA_1 -> TCON_STV1, GPIOA_2 -> TCON_OEH, */
     set_mio_mux(0, ((1<<11)|(1<<14)|(1<<15)|(1<<16)));
     set_mio_mux(4,(3<<0)|(3<<2)|(3<<4));   //For 8bits
+    //PP1 -> UPDN:0, PP2 -> SHLR:1
+#ifdef CONFIG_SN7325
+    configIO(1, 0);
+    setIO_level(1, 0, 1);
+    configIO(0, 0);
+    setIO_level(1, 1, 2);
+#endif
 }
 static void t13_power_on(void)
 {

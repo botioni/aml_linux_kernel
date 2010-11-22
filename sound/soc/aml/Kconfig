@@ -7,7 +7,7 @@ config SND_AML_SOC
 	  to select the audio interfaces to support below.
 	  
 config SND_AML_M1
-	tristate "AML7266M/AML6236M evaluation board with internel audio dac"
+	tristate "M1 evaluation board with internel audio dac"
 	depends on SND_AML_SOC
 
 

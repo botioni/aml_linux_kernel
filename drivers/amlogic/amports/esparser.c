@@ -64,7 +64,7 @@ const static char esparser_id[] = "esparser-id";
 static DECLARE_WAIT_QUEUE_HEAD(wq);
 
 static struct tasklet_struct esparser_tasklet;
-static u32 fetch_done, search_done;
+static volatile u32 search_done;
 static u32 video_data_parsed;
 static u32 audio_data_parsed;
 static atomic_t esparser_use_count = ATOMIC_INIT(0);
@@ -76,13 +76,7 @@ static void parser_tasklet(ulong data)
 
     WRITE_MPEG_REG(PARSER_INT_STATUS, int_status);
 
-    if (int_status & PARSER_INTSTAT_FETCH_CMD) {
-        fetch_done = 1;
-        wake_up_interruptible(&wq);
-    }
-
-    if (int_status & PARSER_INTSTAT_SC_FOUND)
-    {
+    if (int_status & PARSER_INTSTAT_SC_FOUND) {
         WRITE_MPEG_REG(PFIFO_RD_PTR, 0);
         WRITE_MPEG_REG(PFIFO_WR_PTR, 0);
         search_done = 1;
@@ -116,35 +110,23 @@ static ssize_t _esparser_write(const char __user *buf, size_t count, u32 type)
 
         copy_from_user(fetchbuf_remap, p, len);
 
-        fetch_done = 0;
-
-        wmb();
-
         WRITE_MPEG_REG_BITS(PARSER_CONTROL, len, ES_PACK_SIZE_BIT, ES_PACK_SIZE_WID);
         WRITE_MPEG_REG_BITS(PARSER_CONTROL,
-            parser_type | PARSER_WRITE | PARSER_AUTOSEARCH,
-            ES_CTRL_BIT, ES_CTRL_WID);
+                    parser_type | PARSER_WRITE | PARSER_AUTOSEARCH,
+                    ES_CTRL_BIT, ES_CTRL_WID);
 
         WRITE_MPEG_REG(PARSER_FETCH_ADDR, fetchbuf);
         WRITE_MPEG_REG(PARSER_FETCH_CMD,
-                       (7 << FETCH_ENDIAN) | len);
-
-        if (wait_event_interruptible(wq, fetch_done != 0))
-            return -ERESTARTSYS;
+                   (7 << FETCH_ENDIAN) | len);
 
         search_done = 0;
-
-        wmb();
 
         WRITE_MPEG_REG(PARSER_FETCH_ADDR, search_pattern_map);
         WRITE_MPEG_REG(PARSER_FETCH_CMD,
                        (7 << FETCH_ENDIAN) | SEARCH_PATTERN_LEN);
 
-        if (wait_event_interruptible(wq, (search_done != 0) && (fetch_done != 0)))
+        if (wait_event_interruptible(wq, (search_done != 0)))
             return -ERESTARTSYS;
-
-        p += len;
-        r -= len;
     }
 
     if (type == BUF_TYPE_VIDEO)
@@ -336,7 +318,7 @@ s32 esparser_init(struct stream_buf_s *buf)
 
         WRITE_MPEG_REG(PARSER_INT_STATUS, 0xffff);
         WRITE_MPEG_REG(PARSER_INT_ENABLE,
-                   PARSER_INT_ALL << PARSER_INT_HOST_EN_BIT);
+                   PARSER_INTSTAT_SC_FOUND << PARSER_INT_HOST_EN_BIT);
     }
 
     return 0;

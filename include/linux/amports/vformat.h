@@ -30,6 +30,8 @@ typedef enum {
     VFORMAT_REAL,
     VFORMAT_JPEG,
     VFORMAT_VC1,
+    VFORMAT_AVS,
+    VFORMAT_SW,
     VFORMAT_MAX
 } vformat_t;
 

@@ -36,6 +36,7 @@
 #include <asm/uaccess.h>
 #include <mach/pinmux.h>
 #include <mach/gpio.h>
+#include <linux/sn7325.h>
 
 static struct i2c_client *sn7325_client;
 
@@ -88,13 +89,19 @@ static int sn7325_i2c_write(unsigned char *buff, unsigned len)
 static int sn7325_probe(struct i2c_client *client, const struct i2c_device_id *id)
 {
     int res = 0;
-
+    struct sn7325_platform_data *pdata = NULL;
     if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C)) {
         pr_err("%s: functionality check failed\n", __FUNCTION__);
         res = -ENODEV;
         goto out;
     }
     sn7325_client = client;
+    pdata = client->dev.platform_data;
+    
+    if (pdata && pdata->pwr_rst)
+    {
+        pdata->pwr_rst();
+    }
 
 out:
     return res;
@@ -122,14 +129,6 @@ static struct i2c_driver sn7325_driver = {
 static int __init sn7325_init(void)
 {
     int res;
-
-    //reset
-    set_gpio_val(GPIOD_bank_bit2_24(20), GPIOD_bit_bit2_24(20), 0); //low
-    set_gpio_mode(GPIOD_bank_bit2_24(20), GPIOD_bit_bit2_24(20), GPIO_OUTPUT_MODE);
-    udelay(2); //delay 2us
-    set_gpio_val(GPIOD_bank_bit2_24(20), GPIOD_bit_bit2_24(20), 1); //high
-    set_gpio_mode(GPIOD_bank_bit2_24(20), GPIOD_bit_bit2_24(20), GPIO_OUTPUT_MODE);
-    //end
 
     if (sn7325_client)
     {

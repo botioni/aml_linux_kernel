@@ -240,8 +240,14 @@ static void set_tcon_pinmux(void)
 {
     /* TCON control pins pinmux */
     /* GPIOA_5 -> LCD_Clk, GPIOA_0 -> TCON_STH1, GPIOA_1 -> TCON_STV1, GPIOA_2 -> TCON_OEH, */
-    set_mio_mux(0, ((1<<11)|(1<<14)|(1<<15)|(1<<16)) );    
+    set_mio_mux(0, ((1<<11)|(1<<14)|(1<<15)|(1<<16)) );
     set_mio_mux(4, (1<<0)|(1<<2)|(1<<4) );   //For 6bits
+#ifdef CONFIG_SN7325
+    configIO(1, 0);
+    setIO_level(1, 0, 1);
+    configIO(0, 0);
+    setIO_level(1, 1, 2);
+#endif
 }
 static void t13_power_on(void)
 {

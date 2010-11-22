@@ -185,6 +185,7 @@ static void itk_reset(struct itk *ts)
 #define XZ_OFFSET       12
 #define YZ_OFFSET       13
 
+static short pre_x = 0, pre_y = 0;
 static int itk_read_sensor(struct itk *ts)
 {
     int ret,i;
@@ -201,14 +202,22 @@ static int itk_read_sensor(struct itk *ts)
     int id = (data[1]>>2)& 0x1f;
     event = &ts->event[id];
     event->x = (data[3] << 8) | data[2];
-//    printk(KERN_INFO "data[3][2] = 0x%x%x\n", data[3], data[2]);
-    event->x = (event->x*1024)/17407;
-//    printk(KERN_INFO "caculate event->x = %d\n", event->x);
-    
     event->y = (data[5] << 8) | data[4];
-//    printk(KERN_INFO "data[5][4] = 0x%x%x\n", data[5], data[4]);
+    if ((event->x == 0 && event->y == 0) && (pre_x != 0 || pre_y != 0))
+    {
+        event->x = pre_x;
+        event->y = pre_y;
+        printk(KERN_INFO "pre_x = 0x%4x, pre_y = 0x%4x\n", pre_x, pre_y);
+    }
+    pre_x = event->x;
+    pre_y = event->y;
+    printk(KERN_INFO "data[3][2] = 0x%2x%2x\n", data[3], data[2]);
+    event->x = (event->x*1024)/17407;
+    printk(KERN_INFO "caculate event->x = %d\n\n", event->x);
+
+    printk(KERN_INFO "data[5][4] = 0x%2x%2x\n", data[5], data[4]);
     event->y = (event->y*768)/12799;
-//    printk(KERN_INFO "caculate event->y = %d\n", event->y);
+    printk(KERN_INFO "caculate event->y = %d\n\n", event->y);
     ts->touching_num++;
     return 0;
 }
@@ -268,6 +277,8 @@ restart:
         /* enable IRQ after the pen was lifted */
         if (ts->pendown) {
             ts->pendown = 0;
+            pre_x = 0;
+            pre_y = 0;
             input_report_key(ts->input, BTN_TOUCH, 0);
             input_report_abs(ts->input, ABS_PRESSURE, 0);
             input_sync(ts->input);
@@ -347,13 +358,20 @@ static int itk_probe(struct i2c_client *client,
     ts->client = client;
     itk_reset(ts);
 
+    ts->pdata = client->dev.platform_data;
+    if (!ts->pdata)
+    {
+        ts->xmax = ts->pdata->max_width;
+        ts->ymax = ts->pdata->max_height;
+    }
+
     if (itk_register_input(ts) < 0) {
         dev_err(&client->dev, "register input fail!\n");
         goto fail;
     }
 
     /* setup platform-specific hooks */
-    ts->pdata = client->dev.platform_data;
+
     if (!ts->pdata || !ts->pdata->init_irq || !ts->pdata->get_irq_level) {
         dev_err(&client->dev, "no platform-specific callbacks "
             "provided\n");

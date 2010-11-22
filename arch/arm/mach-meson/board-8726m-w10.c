@@ -224,6 +224,28 @@ static struct platform_device input_device_key = {
 };
 #endif
 
+#ifdef CONFIG_SN7325
+
+static int sn7325_pwr_rst(void)
+{
+    //reset
+    set_gpio_val(GPIOD_bank_bit2_24(20), GPIOD_bit_bit2_24(20), 0); //low
+    set_gpio_mode(GPIOD_bank_bit2_24(20), GPIOD_bit_bit2_24(20), GPIO_OUTPUT_MODE);
+
+    udelay(2); //delay 2us
+
+    set_gpio_val(GPIOD_bank_bit2_24(20), GPIOD_bit_bit2_24(20), 1); //high
+    set_gpio_mode(GPIOD_bank_bit2_24(20), GPIOD_bit_bit2_24(20), GPIO_OUTPUT_MODE);
+    //end
+
+    return 0;
+}
+
+static struct sn7325_platform_data sn7325_pdata = {
+    .pwr_rst = &sn7325_pwr_rst,
+};
+#endif
+
 #if defined(CONFIG_FB_AM)
 static struct resource fb_device_resources[] = {
     [0] = {
@@ -387,7 +409,6 @@ static struct resource amlogic_card_resource[]  = {
 	}
 };
 
-#ifdef CONFIG_SN7325
 void extern_wifi_power(int is_power)
 {
     if (0 == is_power)
@@ -395,6 +416,8 @@ void extern_wifi_power(int is_power)
         #ifdef CONFIG_SN7325
         configIO(0, 0);
         setIO_level(0, 0, 5);
+        #else
+        return;
         #endif
     }
     else
@@ -402,11 +425,12 @@ void extern_wifi_power(int is_power)
         #ifdef CONFIG_SN7325
         configIO(0, 0);
         setIO_level(0, 1, 5);
+        #else
+        return;
         #endif
     }
     return;
 }
-#endif
 
 void sdio_extern_init(void)
 {
@@ -645,7 +669,7 @@ static int itk_init_irq(void)
     99      gpioA_24
     98      gpioA_25
     97      gpioA_26
-    98-7    gpioE[21:0]
+    98-76    gpioE[21:0]
     75-50   gpioD[24:0]
     49-23   gpioC[26:0]
     22-15   gpioB[22;15]
@@ -667,6 +691,8 @@ static int itk_get_irq_level(void)
 static struct itk_platform_data itk_pdata = {
     .init_irq = &itk_init_irq,
     .get_irq_level = &itk_get_irq_level,
+    .max_width = 1024,
+    .max_height = 768,
 };
 #endif
 
@@ -1370,6 +1396,7 @@ static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
 #ifdef CONFIG_SN7325
     {
         I2C_BOARD_INFO("sn7325", 0x59),
+        .platform_data = (void *)&sn7325_pdata,
     },
 #endif
 
