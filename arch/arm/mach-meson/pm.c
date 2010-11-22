@@ -263,7 +263,7 @@ void clk_switch(int flag)
     }
 }
 
-#define PLL_COUNT 5
+#define PLL_COUNT 4
 static char pll_flag[PLL_COUNT];
 static unsigned plls[PLL_COUNT]={
 //    HHI_OTHER_PLL_CNTL,
