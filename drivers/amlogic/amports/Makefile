@@ -45,3 +45,5 @@ amtsync-objs := tsync.o timestamp.o
 amtsync-y    := tsync.o timestamp.o
 
 obj-$(CONFIG_AM_PTSSERVER) += ptsserv.o
+
+EXTRA_CFLAGS = -DENABLE_DEMUX_DRIVER

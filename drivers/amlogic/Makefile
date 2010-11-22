@@ -60,4 +60,6 @@ obj-y += hdmi/
 
 obj-$(CONFIG_AM_DVB) += dvb/
 
+obj-y += demod/
+
 obj-y += wifi/

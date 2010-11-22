@@ -425,7 +425,7 @@ static struct platform_device aml_nand_device = {
 
 #if defined(CONFIG_I2C_SW_AML)
 
-static struct aml_sw_i2c_platform aml_sw_i2c_plat = {
+static struct aml_sw_i2c_platform aml_sw_i2c_plat_fe1 = {
 	.sw_pins = {
 		.scl_reg_out		= MESON_I2C_PREG_GPIOE_OUTLVL,
 		.scl_reg_in		= MESON_I2C_PREG_GPIOE_INLVL,
@@ -436,15 +436,38 @@ static struct aml_sw_i2c_platform aml_sw_i2c_plat = {
 		.sda_bit			= 21,	/*MESON_GPIOE_21*/
 		.sda_oe			= MESON_I2C_PREG_GPIOE_OE,
 	},	
-	.udelay			= 10,
+	.udelay			= 30,
 	.timeout			= 100,
 };
 
-static struct platform_device aml_sw_i2c_device = {
+static struct platform_device aml_sw_i2c_device_fe1 = {
 	.name		  = "aml-sw-i2c",
-	.id		  = -1,
+	.id		  = 0,
 	.dev = {
-		.platform_data = &aml_sw_i2c_plat,
+		.platform_data = &aml_sw_i2c_plat_fe1,
+	},
+};
+
+static struct aml_sw_i2c_platform aml_sw_i2c_plat_fe2 = {
+	.sw_pins = {
+		.scl_reg_out		= MESON_I2C_PREG_GPIOA_OUTLVL,
+		.scl_reg_in		= MESON_I2C_PREG_GPIOA_INLVL,
+		.scl_bit			= 15,	/*MESON_GPIOA_11 + 4*/
+		.scl_oe			= MESON_I2C_PREG_GPIOA_OE,
+		.sda_reg_out		= MESON_I2C_PREG_GPIOA_OUTLVL,
+		.sda_reg_in		= MESON_I2C_PREG_GPIOA_INLVL,
+		.sda_bit			= 16,	/*MESON_GPIOA_12 + 4*/
+		.sda_oe			= MESON_I2C_PREG_GPIOA_OE,
+	},	
+	.udelay			= 2,
+	.timeout			= 100,
+};
+
+static struct platform_device aml_sw_i2c_device_fe2 = {
+	.name		  = "aml-sw-i2c",
+	.id		  = 1,
+	.dev = {
+		.platform_data = &aml_sw_i2c_plat_fe2,
 	},
 };
 
@@ -517,10 +540,87 @@ static struct platform_device android_pmem_device =
 };
 #endif
 
-static struct resource amlogic_dvb_resource[]  = {
+#if defined(CONFIG_AML_RTC)
+static	struct platform_device aml_rtc_device = {
+      		.name            = "aml_rtc",
+      		.id               = -1,
+	};
+#endif
+
+#if defined(CONFIG_AM_DVB)
+static struct resource gx1001_resource[]  = {
 	[0] = {
 		.start = ((GPIOA_bank_bit(13)<<16) | GPIOA_bit_bit0_14(13)),                           //frontend 0 reset pin
 		.end   = ((GPIOA_bank_bit(13)<<16) | GPIOA_bit_bit0_14(13)),
+		.flags = IORESOURCE_MEM,
+		.name  = "frontend0_reset"
+	},
+	[1] = {
+		.start = 0,                                    //frontend 0 i2c adapter id
+		.end   = 0,
+		.flags = IORESOURCE_MEM,
+		.name  = "frontend0_i2c"
+	},
+	[2] = {
+		.start = 0xC0,                                 //frontend 0 tuner address
+		.end   = 0xC0,
+		.flags = IORESOURCE_MEM,
+		.name  = "frontend0_tuner_addr"
+	},
+	[3] = {
+		.start = 0x18,                                 //frontend 0 demod address
+		.end   = 0x18,
+		.flags = IORESOURCE_MEM,
+		.name  = "frontend0_demod_addr"
+	},
+};
+
+static  struct platform_device gx1001_device = {
+	.name             = "gx1001",
+	.id               = -1,
+	.num_resources    = ARRAY_SIZE(gx1001_resource),
+	.resource         = gx1001_resource,
+};
+
+static struct resource amlfe_resource[]  = {
+
+	[0] = {
+		.start = 1,                                    //frontend  i2c adapter id
+		.end   = 1,
+		.flags = IORESOURCE_MEM,
+		.name  = "frontend0_i2c"
+	},
+	[1] = {
+		.start = 0xC0,                                 //frontend  tuner address
+		.end   = 0xC0,
+		.flags = IORESOURCE_MEM,
+		.name  = "frontend0_tuner_addr"
+	},
+	[2] = {
+		.start = 0,                   //frontend   type 0-dct7070 1-fj2207
+		.end   = 0,
+		.flags = IORESOURCE_MEM,
+		.name  = "frontend0_mode"
+	},
+	[3] = {
+		.start = 1,                   //frontend  tuner 0-NULL, 1-DCT7070, 2-Maxliner, 3-FJ2207, 4-TD1316
+		.end   = 1,
+		.flags = IORESOURCE_MEM,
+		.name  = "frontend0_tuner"
+	},
+};
+
+static  struct platform_device amlfe_device = {
+	.name             = "amlfe",
+	.id               = -1,
+	.num_resources    = ARRAY_SIZE(amlfe_resource),
+	.resource         = amlfe_resource,
+};
+
+static struct resource amlogic_dvb_resource[]  = {
+	[0] = {
+		.start = ((GPIOD_bank_bit2_24(9)<<16) | GPIOD_bit_bit2_24(9)),                           //frontend 0 reset pin
+		.end   = ((GPIOD_bank_bit2_24(9)<<16) | GPIOD_bit_bit2_24(9)),
 		.flags = IORESOURCE_MEM,
 		.name  = "frontend0_reset"
 	},
@@ -574,13 +674,14 @@ static  struct platform_device amlogic_dvb_device = {
 	.num_resources    = ARRAY_SIZE(amlogic_dvb_resource),
 	.resource         = amlogic_dvb_resource,
 };
+#endif
 
 static struct resource amlogic_smc_resource[]  = {
 	[0] = {
-		.start = ((GPIOB_bank_bit0_7(4)<<16) | GPIOB_bit_bit0_7(4)),                          //smc RST gpio
-		.end   = ((GPIOB_bank_bit0_7(4)<<16) | GPIOB_bit_bit0_7(4)),
+		.start = ((GPIOD_bank_bit2_24(11)<<16) | GPIOD_bit_bit2_24(11)),                          //smc POWER gpio
+		.end   = ((GPIOD_bank_bit2_24(11)<<16) | GPIOD_bit_bit2_24(11)),
 		.flags = IORESOURCE_MEM,
-		.name  = "smc_reset"
+		.name  = "smc_power"
 	},
 	[1] = {
 		.start = INT_SMART_CARD,                   //smc irq number
@@ -633,7 +734,8 @@ static struct platform_device __initdata *platform_devs[] = {
     #endif		
 	
     #if defined(CONFIG_I2C_SW_AML)
-		&aml_sw_i2c_device,
+		&aml_sw_i2c_device_fe1,
+		&aml_sw_i2c_device_fe2,
     #endif
     #if defined(CONFIG_I2C_AML)
 		&aml_i2c_device,
@@ -641,8 +743,13 @@ static struct platform_device __initdata *platform_devs[] = {
     #if defined(CONFIG_ANDROID_PMEM)
 		&android_pmem_device,
     #endif
+    #if defined(CONFIG_AML_RTC)
+              &aml_rtc_device,
+    #endif
     #if defined(CONFIG_AM_DVB)
 		&amlogic_dvb_device,
+		&gx1001_device,
+		&amlfe_device,
     #endif
 		&amlogic_smc_device
 	
@@ -686,6 +793,10 @@ static void __init device_pinmux_init(void )
 
 	/* IR decoder pinmux */
 	set_mio_mux(1, 1<<31);
+
+	/* SmartCard pinmux */
+	set_mio_mux(2, 0xF<<20);
+
 }
 static void __init  device_clk_setting(void)
 {

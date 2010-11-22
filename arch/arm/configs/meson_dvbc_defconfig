@@ -1,7 +1,7 @@
 #
 # Automatically generated make config: don't edit
 # Linux kernel version: 2.6.34
-# Sun Nov 21 14:25:27 2010
+# Mon Nov 22 13:55:13 2010
 #
 CONFIG_ARM=y
 CONFIG_HOLES_IN_ZONE=y
@@ -610,6 +610,14 @@ CONFIG_NAND_FLASH_DRIVER_BASE_OPERATE=y
 # CONFIG_NAND_FLASH_DRIVER_MULTIPLANE_CE is not set
 
 #
+# AMLOGIC DEMOD Support
+#
+CONFIG_AM_DEMOD=y
+# CONFIG_AM_DEMOD_DEBUG is not set
+CONFIG_AM_AMDEMOD_DVBC=y
+CONFIG_AM_AMDEMOD_DVBT=y
+
+#
 # Network devices
 #
 
@@ -719,7 +727,7 @@ CONFIG_MALI=m
 #
 # AMLOGIC DVB driver
 #
-# CONFIG_AM_DVB is not set
+CONFIG_AM_DVB=y
 CONFIG_AM_GX1001=y
 
 #
