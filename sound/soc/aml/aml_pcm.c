@@ -84,19 +84,29 @@ static int aml_pcm_preallocate_dma_buffer(struct snd_pcm *pcm,
 	size_t size = 0;
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK){
 		size = aml_pcm_hardware.buffer_bytes_max;
-	}else{
-		size = aml_pcm_hardware.buffer_bytes_max*2;
-	}
-	buf->dev.type = SNDRV_DMA_TYPE_DEV;
-	buf->dev.dev = pcm->card->dev;
-	buf->private_data = NULL;
-	buf->area = dma_alloc_coherent(pcm->card->dev, size,
+		buf->dev.type = SNDRV_DMA_TYPE_DEV;
+		buf->dev.dev = pcm->card->dev;
+		buf->private_data = NULL;
+		buf->area = dma_alloc_coherent(pcm->card->dev, size,
 					  &buf->addr, GFP_KERNEL);
-	printk("aml-pcm:"
-		"preallocate_dma_buffer: area=%p, addr=%p, size=%d\n",
+		printk("aml-pcm %d:"
+		"preallocate_dma_buffer: area=%p, addr=%p, size=%d\n", stream,
 		(void *) buf->area,
 		(void *) buf->addr,
 		size);
+	}else{
+		size = aml_pcm_hardware.buffer_bytes_max;
+		buf->dev.type = SNDRV_DMA_TYPE_DEV;
+		buf->dev.dev = pcm->card->dev;
+		buf->private_data = NULL;
+		buf->area = dma_alloc_coherent(pcm->card->dev, size*2,
+					  &buf->addr, GFP_KERNEL);
+		printk("aml-pcm %d:"
+		"preallocate_dma_buffer: area=%p, addr=%p, size=%d\n", stream,
+		(void *) buf->area,
+		(void *) buf->addr,
+		size);
+	}
 
 	if (!buf->area)
 		return -ENOMEM;
@@ -178,17 +188,23 @@ static int aml_pcm_prepare(struct snd_pcm_substream *substream)
 			break;	
 	};
 	audio_set_clk(s->sample_rate, AUDIO_CLK_256FS);
+	audio_util_set_dac_format(AUDIO_ALGOUT_DAC_FORMAT_DSP);
+#ifdef CONFIG_SND_AML_M1	
 	audio_dac_set(s->sample_rate);
+#endif	
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK){
 			printk("aml_pcm_prepare SNDRV_PCM_STREAM_PLAYBACK: dma_addr=%x, dma_bytes=%x\n", runtime->dma_addr, runtime->dma_bytes);
 			audio_set_aiubuf(runtime->dma_addr, runtime->dma_bytes);
+			memset((void*)runtime->dma_area,0,runtime->dma_bytes);
 	}
 	else{
 			printk("aml_pcm_prepare SNDRV_PCM_STREAM_CAPTURE: dma_addr=%x, dma_bytes=%x\n", runtime->dma_addr, runtime->dma_bytes);
-			audio_in_i2s_set_buf(runtime->dma_addr, runtime->dma_bytes);
+			audio_in_i2s_set_buf(runtime->dma_addr, runtime->dma_bytes*2);
+			memset((void*)runtime->dma_area,0,runtime->dma_bytes*2);
+			int * ppp = (int*)(runtime->dma_area+runtime->dma_bytes*2-8);
+			ppp[0] = 0x78787878;
+			ppp[1] = 0x78787878;
 	}
-	
-	memset((void*)runtime->dma_area,0,runtime->dma_bytes);
 
     aout_notifier_call_chain(AOUT_EVENT_PREPARE, substream);
 
@@ -216,7 +232,7 @@ static int aml_pcm_trigger(struct snd_pcm_substream *substream,
 		// TODO
 		if(substream->stream == SNDRV_PCM_STREAM_PLAYBACK){
 		printk("aml_pcm_trigger: SNDRV_PCM_TRIGGER_START\n");
-		audio_enable_ouput(1);
+			audio_enable_ouput(1);
 		}else{
 			printk("aml_pcm_trigger: SNDRV_PCM_TRIGGER_CAPTURE\n");
 			audio_in_i2s_enable(1);
@@ -232,7 +248,7 @@ static int aml_pcm_trigger(struct snd_pcm_substream *substream,
 		printk("aml_pcm_trigger: SNDRV_PCM_TRIGGER_STOP\n");
 		s->active = 0;
 		if(substream->stream == SNDRV_PCM_STREAM_PLAYBACK){
-		audio_enable_ouput(0);
+				audio_enable_ouput(0);
 		}else{
 				audio_in_i2s_enable(0);
 		}
@@ -244,9 +260,9 @@ static int aml_pcm_trigger(struct snd_pcm_substream *substream,
 		printk("aml_pcm_trigger: SNDRV_PCM_TRIGGER_RESUME\n");
 		s->active = 1;
 		if(substream->stream == SNDRV_PCM_STREAM_PLAYBACK){
-		audio_enable_ouput(1);
+				audio_enable_ouput(1);
 		}else{
-				audio_in_i2s_enable(0);
+				audio_in_i2s_enable(1);
 		}
 		
 		break;
@@ -274,7 +290,7 @@ static snd_pcm_uframes_t aml_pcm_pointer(
 	}else{
 			ptr = audio_in_i2s_wr_ptr();
 			addr = ptr - s->I2S_addr;			
-			return bytes_to_frames(runtime, addr);
+			return bytes_to_frames(runtime, addr)/2;
 	}
 	
 	return 0;
@@ -288,7 +304,7 @@ static void aml_pcm_timer_callback(unsigned long data)
 		audio_stream_t *s = &prtd->s[substream->stream];
 
     unsigned int last_ptr, size;
-	
+
 		if(substream->stream == SNDRV_PCM_STREAM_PLAYBACK){
 				if(s->active == 1){
 						spin_lock(&s->lock);
@@ -314,7 +330,7 @@ static void aml_pcm_timer_callback(unsigned long data)
 		}else{
 				if(s->active == 1){
 						spin_lock(&s->lock);
-						last_ptr = audio_in_i2s_wr_ptr();
+						last_ptr = audio_in_i2s_wr_ptr()/2;
 						if (last_ptr < s->last_ptr) {
 				        size = runtime->dma_bytes + last_ptr - (s->last_ptr);
 				    } else {
@@ -357,10 +373,14 @@ static int aml_pcm_open(struct snd_pcm_substream *substream)
 	ret = snd_pcm_hw_constraint_integer(runtime,
 						SNDRV_PCM_HW_PARAM_PERIODS);
 	if (ret < 0)
+	{
+		printk("set period error\n");
 		goto out;
+	}
 
 	prtd = kzalloc(sizeof(struct aml_runtime_data), GFP_KERNEL);
 	if (prtd == NULL) {
+		printk("alloc aml_runtime_data error\n");
 		ret = -ENOMEM;
 		goto out;
 	}
@@ -448,7 +468,11 @@ static int aml_pcm_copy_capture(struct snd_pcm_runtime *runtime, int channel,
     to = (unsigned short *)buf;
     tfrom = (unsigned int *)hwbuf;	// 32bit buffer
     n = frames_to_bytes(runtime, count);
-printk("hwbuf = %x, count=%x, n = %x\n", hwbuf, count, n);
+//printk("hwbuf = %x, count=%x, n = %x, pos=%x\n", hwbuf, count, n, pos);
+		char *magic = runtime->dma_area + runtime->dma_bytes*2 - 8;
+    if(hwbuf + n*2 >= magic){
+    	// TODO, maybe a bug
+    }
     
     unsigned int t1, t2;
 
@@ -458,20 +482,21 @@ printk("hwbuf = %x, count=%x, n = %x\n", hwbuf, count, n);
 		    if (pos % 8) {
 		        printk("audio data unligned\n");
 		    }
-/*		    
+#if 1		    
 		    for (j = 0; j < n; j += 64) {
 		        for (i = 0; i < 8; i++) {
 		        	t1 = (*left++);
 		        	t2 = (*right++);
-		        	printk("%08x,%08x,", t1, t2);
+		        	//printk("%08x,%08x,", t1, t2);
 	              *to++ = (unsigned short)((t1>>8)&0xffff);
 	              *to++ = (unsigned short)((t2>>8)&0xffff);
 		         }
-		         printk("\n");
+		         //printk("\n");
 		        left += 8;
 		        right += 8;
 		    }
-*/
+#else
+
 				for(j = 0; j<n; j+= 64){
 					printk("tfrom = %08x\n", tfrom);
 						for(i=0; i< 2; i++){
@@ -489,7 +514,13 @@ printk("hwbuf = %x, count=%x, n = %x\n", hwbuf, count, n);
 								printk("%08x, %08x\n", t1, t2);
 						}
 						printk("\n");
-				}		    
+				}	
+#endif					    
+		}
+	
+		if((hwbuf + n*2) >= magic && 
+			(magic[0]!=0x78 && magic[1]!=0x78 && magic[2]!=0x78 && magic[3]!=0x78&&
+			magic[4]!=0x78 && magic[5]!=0x78&&magic[6]!=0x78&&magic[7]!=0x78)){
 		}
 		
 		return res;
@@ -640,6 +671,7 @@ static int aml_pcm_resume(struct snd_soc_dai *dai)
 
 static struct dentry *debugfs_root;
 static struct dentry *debugfs_regs;
+static struct dentry *debugfs_mems;
 
 static int regs_open_file(struct inode *inode, struct file *file)
 {
@@ -762,17 +794,93 @@ static const struct file_operations regs_fops = {
 	.write = regs_write_file,
 };
 
+static int mems_open_file(struct inode *inode, struct file *file)
+{
+	return 0;
+}
+static ssize_t mems_read_file(struct file *file, char __user *user_buf,
+			       size_t count, loff_t *ppos)
+{
+	ssize_t ret;
+	char *buf = kmalloc(PAGE_SIZE, GFP_KERNEL);
+	if (!buf)
+		return -ENOMEM;
+		
+	ret = sprintf(buf, "Usage: \n"
+										 "	echo vmem >mems\t(read 64 bytes from vmem)\n"
+										 "	echo vmem val >mems (write int value to vmem\n"
+									);
+		
+	if (ret >= 0)
+		ret = simple_read_from_buffer(user_buf, count, ppos, buf, ret);
+	kfree(buf);	
+	
+	return ret;
+}
+
+static ssize_t mems_write_file(struct file *file,
+		const char __user *user_buf, size_t count, loff_t *ppos)
+{
+	char buf[256];
+	int buf_size = 0;
+	char *start = buf;
+	unsigned long mem, value;
+	int i=0;
+	unsigned* addr = 0;
+		
+	buf_size = min(count, (sizeof(buf)-1));
+	
+	if (copy_from_user(buf, user_buf, buf_size))
+		return -EFAULT;
+	buf[buf_size] = 0;
+	
+	while (*start == ' ')
+		start++;
+	
+	mem = simple_strtoul(start, &start, 16);
+	
+	while (*start == ' ')
+		start++;
+		
+	if (strict_strtoul(start, 16, &value))
+	{
+			addr = (unsigned*)mem;
+			printk("%p: ", addr);
+			for(i = 0; i< 8; i++){
+				printk("%08x, ", addr[i]);
+			}
+			printk("\n");
+			return -EINVAL;
+	}
+	addr = (unsigned*)mem;
+	printk("%p: %08x\n", addr, *addr);
+	*addr = value;
+	printk("%p: %08x^\n", addr, *addr);
+	
+	return buf_size;
+}
+static const struct file_operations mems_fops={
+	.open = mems_open_file,
+	.read = mems_read_file,
+	.write = mems_write_file,
+};
+
 static void aml_pcm_init_debugfs()
 {
-		debugfs_root = debugfs_create_dir("aml_pcm_debug",NULL);
+		debugfs_root = debugfs_create_dir("aml",NULL);
 		if (IS_ERR(debugfs_root) || !debugfs_root) {
-			printk("aml_pcm: Failed to create debugfs directory\n");
+			printk("aml: Failed to create debugfs directory\n");
 			debugfs_root = NULL;
 		}
 		
 		debugfs_regs = debugfs_create_file("regs", 0644, debugfs_root, NULL, &regs_fops);
 		if(!debugfs_regs){
-			printk("aml_pcm: Failed to create debugfs file\n");
+			printk("aml: Failed to create debugfs file\n");
+		}
+		
+		debugfs_mems = debugfs_create_file("mems", 0644, debugfs_root, NULL, &mems_fops);
+		if(debugfs_mems){
+			printk("aml: Failed to create debugfs file\n");
 		}
 }
 static void aml_pcm_cleanup_debugfs()

@@ -153,26 +153,22 @@ void audio_util_set_dac_format(unsigned format);
 void audio_hw_set_958_mode(unsigned mode, _aiu_958_raw_setting_t * set);
 unsigned int read_i2s_mute_swap_reg(void);
 void audio_i2s_swap_left_right(unsigned int flag);
-
-
-
 int audio_dac_set(unsigned freq);
 
-
-#define ADAC_RESET                		(0x5000+0x00*4)
-#define ADAC_LATCH                		(0x5000+0x01*4)
-#define ADAC_CLOCK                		(0x5000+0x02*4)
-#define ADAC_I2S_CONFIG_REG1      		(0x5000+0x0c*4)
-#define ADAC_I2S_CONFIG_REG2      		(0x5000+0x0d*4)
-#define ADAC_POWER_CTRL_REG1      		(0x5000+0x10*4)
-#define ADAC_POWER_CTRL_REG2      		(0x5000+0x11*4)
-#define ADAC_POWER_CTRL_REG3      		(0x5000+0x12*4)
-#define ADAC_MUTE_CTRL_REG1       		(0x5000+0x18*4)
-#define ADAC_DAC_ADC_MIXER        		(0x5000+0x1a*4)
-#define ADAC_PLAYBACK_VOL_CTRL_LSB              (0x5000+0x20*4)
-#define ADAC_PLAYBACK_VOL_CTRL_MSB              (0x5000+0x21*4)
-#define ADAC_STEREO_HS_VOL_CTRL_LSB             (0x5000+0x22*4)
-#define ADAC_STEREO_HS_VOL_CTRL_MSB             (0x5000+0x23*4)
+#define APB_ADAC_RESET                		(0x5000+0x00*4)
+#define APB_ADAC_LATCH                		(0x5000+0x01*4)
+#define APB_ADAC_CLOCK                		(0x5000+0x02*4)
+#define APB_ADAC_I2S_CONFIG_REG1      		(0x5000+0x0c*4)
+#define APB_ADAC_I2S_CONFIG_REG2      		(0x5000+0x0d*4)
+#define APB_ADAC_POWER_CTRL_REG1      		(0x5000+0x10*4)
+#define APB_ADAC_POWER_CTRL_REG2      		(0x5000+0x11*4)
+#define APB_ADAC_POWER_CTRL_REG3      		(0x5000+0x12*4)
+#define APB_ADAC_MUTE_CTRL_REG1       		(0x5000+0x18*4)
+#define APB_ADAC_DAC_ADC_MIXER        		(0x5000+0x1a*4)
+#define APB_ADAC_PLAYBACK_VOL_CTRL_LSB              (0x5000+0x20*4)
+#define APB_ADAC_PLAYBACK_VOL_CTRL_MSB              (0x5000+0x21*4)
+#define APB_ADAC_STEREO_HS_VOL_CTRL_LSB             (0x5000+0x22*4)
+#define APB_ADAC_STEREO_HS_VOL_CTRL_MSB             (0x5000+0x23*4)
 
 
 

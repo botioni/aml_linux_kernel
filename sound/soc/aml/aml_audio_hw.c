@@ -83,7 +83,8 @@ void audio_set_958outbuf(u32 addr, u32 size)
 void audio_in_i2s_set_buf(u32 addr, u32 size)
 {
 	WRITE_MPEG_REG(AUDIN_FIFO0_START, addr & 0xffffffc0);
-	WRITE_MPEG_REG(AUDIN_FIFO0_END, (addr&0xffffffc0) + (size&0xffffffc0) -64);
+	//WRITE_MPEG_REG(AUDIN_FIFO0_END, (addr&0xffffffc0) + (size&0xffffffc0) -64);
+	WRITE_MPEG_REG(AUDIN_FIFO0_END, (addr&0xffffffc0) + (size&0xffffffc0));
 	WRITE_MPEG_REG(AUDIN_FIFO0_CTRL, (1<<0)	// FIFO0_EN
 																	|(1<<2)	// load start address./* AUDIN_FIFO0_LOAD */
 																	|(1<<3)	// DIN from i2sin./* AUDIN_FIFO0_DIN_SEL */ 
@@ -99,9 +100,9 @@ void audio_in_i2s_set_buf(u32 addr, u32 size)
 																	|(1<<I2SIN_CHAN_EN)		/*bit10~13*/ //2 channel 
 																	|(1<<I2SIN_POS_SYNC)	
 																	|(1<<I2SIN_LRCLK_SKEW)
-																	|(0<<I2SIN_CLK_SEL)
-																	|(0<<I2SIN_LRCLK_SEL)
-																	|(0<<I2SIN_DIR)
+																	|(1<<I2SIN_CLK_SEL)
+																	|(1<<I2SIN_LRCLK_SEL)
+																	|(1<<I2SIN_DIR)
 														);															
 }
 void audio_in_spdif_set_buf(u32 addr, u32 size)
@@ -113,7 +114,7 @@ void audio_in_i2s_enable(int flag)
 		if(flag){
 				WRITE_MPEG_REG_BITS(AUDIN_I2SIN_CTRL, 1, I2SIN_EN, 1);
 		}else{
-				WRITE_MPEG_REG_BITS(AUDIN_I2SIN_CTRL, 1, I2SIN_EN, 0);
+				WRITE_MPEG_REG_BITS(AUDIN_I2SIN_CTRL, 0, I2SIN_EN, 1);
 		}
 }
 void audio_in_spdif_enable(int flag)
@@ -134,7 +135,7 @@ unsigned int audio_in_i2s_wr_ptr(void)
 {
 	unsigned int val;
 	val = READ_MPEG_REG(AUDIN_FIFO0_PTR);
-	if(val%64){
+	if(val%8){
 		printk("un-algined val=%x\n", val);
 	}
 	return (val)&(~0x3F);
@@ -203,20 +204,31 @@ const _aiu_clk_setting_t freq_tab_256fs[7] = {
 
 void audio_util_set_dac_format(unsigned format)
 {
+    WRITE_MPEG_REG(AIU_CLK_CTRL_MORE,	 0x0000);	 // i2s_divisor_more does not take effect    
+    
+	WRITE_MPEG_REG(AIU_CLK_CTRL,		 (0 << 12) | // 958 divisor more, if true, divided by 2, 4, 6, 8.
+							(1 <<  8) | // alrclk skew: 1=alrclk transitions on the cycle before msb is sent
+							(1 <<  6) | // invert aoclk
+							(1 <<  4) | // 958 divisor: 0=no div; 1=div by 2; 2=div by 3; 3=div by 4.
+							(2 <<  2) | // i2s divisor: 0=no div; 1=div by 2; 2=div by 4; 3=div by 8.
+							(1 <<  0)); // enable I2S clock
     if (format == AUDIO_ALGOUT_DAC_FORMAT_DSP) {
         WRITE_MPEG_REG_BITS(AIU_CLK_CTRL, 1, 8, 2);
     } else if (format == AUDIO_ALGOUT_DAC_FORMAT_LEFT_JUSTIFY) {
         WRITE_MPEG_REG_BITS(AIU_CLK_CTRL, 0, 8, 2);
     }
-
+ 
+    WRITE_MPEG_REG(AIU_I2S_DAC_CFG, 	0x000f);	// Payload 24-bit, Msb first, alrclk = aoclk/64
+	WRITE_MPEG_REG(AIU_I2S_SOURCE_DESC, 0x0001);	// four 2-channel
 }
+#ifdef CONFIG_SND_AML_M1
 void latch (void)
 {
     int latch;
     latch = 1;
-    WRITE_APB_REG(ADAC_LATCH, latch);
+    WRITE_APB_REG(APB_ADAC_LATCH, latch);
     latch = 0;
-    WRITE_APB_REG(ADAC_LATCH, latch);
+    WRITE_APB_REG(APB_ADAC_LATCH, latch);
 }
 
 void wr_adac_regbank (unsigned long rstdpz,
@@ -238,25 +250,31 @@ void wr_adac_regbank (unsigned long rstdpz,
                   unsigned long lmvol,
                   unsigned long hsvol)
 {
-    WRITE_APB_REG(ADAC_RESET, (rstdpz<<1));
-    WRITE_APB_REG(ADAC_CLOCK, (mclksel<<0));
+    WRITE_APB_REG(APB_ADAC_RESET, (rstdpz<<1));
+    WRITE_APB_REG(APB_ADAC_RESET, (rstdpz<<1));
+    WRITE_APB_REG(APB_ADAC_RESET, (rstdpz<<1));
+    WRITE_APB_REG(APB_ADAC_RESET, (rstdpz<<1));
+    WRITE_APB_REG(APB_ADAC_RESET, (rstdpz<<1));
+    WRITE_APB_REG(APB_ADAC_RESET, (rstdpz<<1));
+    
+    WRITE_APB_REG(APB_ADAC_CLOCK, (mclksel<<0));
   
-    WRITE_APB_REG(ADAC_I2S_CONFIG_REG1, (i2sfsdac<<0));
+    WRITE_APB_REG(APB_ADAC_I2S_CONFIG_REG1, (i2sfsdac<<0));
 
-    WRITE_APB_REG(ADAC_I2S_CONFIG_REG1, (i2sfsdac<<0));	// BUG
+    WRITE_APB_REG(APB_ADAC_I2S_CONFIG_REG1, (i2sfsdac<<0));	// BUG
     
-    WRITE_APB_REG(ADAC_I2S_CONFIG_REG2, (i2ssplit<<3) | (i2smode<<0));
+    WRITE_APB_REG(APB_ADAC_I2S_CONFIG_REG2, (i2ssplit<<3) | (i2smode<<0));
     
-    WRITE_APB_REG(ADAC_POWER_CTRL_REG1, (pdauxdrvrz<<7) | (pdauxdrvlz<<6) | (pdhsdrvrz<<5) | (pdhsdrvlz<<4) | (pddacrz<<1) | (pddaclz<<0));
-    WRITE_APB_REG(ADAC_POWER_CTRL_REG1, (pdauxdrvrz<<7) | (pdauxdrvlz<<6) | (pdhsdrvrz<<5) | (pdhsdrvlz<<4) | (pddacrz<<1) | (pddaclz<<0));	// BUG
+    WRITE_APB_REG(APB_ADAC_POWER_CTRL_REG1, (pdauxdrvrz<<7) | (pdauxdrvlz<<6) | (pdhsdrvrz<<5) | (pdhsdrvlz<<4) | (pddacrz<<1) | (pddaclz<<0));
+    WRITE_APB_REG(APB_ADAC_POWER_CTRL_REG1, (pdauxdrvrz<<7) | (pdauxdrvlz<<6) | (pdhsdrvrz<<5) | (pdhsdrvlz<<4) | (pddacrz<<1) | (pddaclz<<0));	// BUG
     
-    WRITE_APB_REG(ADAC_POWER_CTRL_REG2, (pdz<<7));
-    WRITE_APB_REG(ADAC_MUTE_CTRL_REG1, (hsmute<<6) | (lmmute<<0));
-    WRITE_APB_REG(ADAC_DAC_ADC_MIXER, (lmmix<<5) | (ctr<<1));
-    WRITE_APB_REG(ADAC_PLAYBACK_VOL_CTRL_LSB, (lmvol&0xff));
-    WRITE_APB_REG(ADAC_PLAYBACK_VOL_CTRL_MSB, (lmvol>>8));
-    WRITE_APB_REG(ADAC_STEREO_HS_VOL_CTRL_LSB, (hsvol&0xff));
-    WRITE_APB_REG(ADAC_STEREO_HS_VOL_CTRL_MSB, (hsvol>>8));    
+    WRITE_APB_REG(APB_ADAC_POWER_CTRL_REG2, (pdz<<7));
+    WRITE_APB_REG(APB_ADAC_MUTE_CTRL_REG1, (hsmute<<6) | (lmmute<<0));
+    WRITE_APB_REG(APB_ADAC_DAC_ADC_MIXER, (lmmix<<5) | (ctr<<1));
+    WRITE_APB_REG(APB_ADAC_PLAYBACK_VOL_CTRL_LSB, (lmvol&0xff));
+    WRITE_APB_REG(APB_ADAC_PLAYBACK_VOL_CTRL_MSB, (lmvol>>8));
+    WRITE_APB_REG(APB_ADAC_STEREO_HS_VOL_CTRL_LSB, (hsvol&0xff));
+    WRITE_APB_REG(APB_ADAC_STEREO_HS_VOL_CTRL_MSB, (hsvol>>8));    
 } /* wr_regbank */
 
 int audio_dac_set(unsigned freq)
@@ -322,34 +340,32 @@ int audio_dac_set(unsigned freq)
 	                            // 0=-40dB, 1=-39dB, ..., 0x28=0dB, ..., 0x2e=6dB, >=0x2f Rsrv.
 
     latch();
-	WRITE_APB_REG(ADAC_POWER_CTRL_REG2, (0<<7));
+	WRITE_APB_REG(APB_ADAC_POWER_CTRL_REG2, (0<<7));
     latch();
-	WRITE_APB_REG(ADAC_POWER_CTRL_REG2, (1<<7));
+	WRITE_APB_REG(APB_ADAC_POWER_CTRL_REG2, (1<<7));
     latch();
 
-	WRITE_APB_REG(ADAC_RESET, (0<<1));
+	WRITE_APB_REG(APB_ADAC_RESET, (0<<1));
     latch();
-	WRITE_APB_REG(ADAC_RESET, (1<<1));
+	WRITE_APB_REG(APB_ADAC_RESET, (1<<1));
     latch();
 	for (i = 0; i < 1500000; i++) ;
 	for (i = 0; i < 1500000; i++) ;
 	for (i = 0; i < 1500000; i++) ;
 	for (i = 0; i < 1500000; i++) ;
-	
-	WRITE_MPEG_REG(AIU_CLK_CTRL_MORE,	 0x0000);	 // i2s_divisor_more does not take effect
-	WRITE_MPEG_REG(AIU_CLK_CTRL,		 (0 << 12) | // 958 divisor more, if true, divided by 2, 4, 6, 8.
-							(1 <<  8) | // alrclk skew: 1=alrclk transitions on the cycle before msb is sent
-							(1 <<  6) | // invert aoclk
-							(1 <<  4) | // 958 divisor: 0=no div; 1=div by 2; 2=div by 3; 3=div by 4.
-							(2 <<  2) | // i2s divisor: 0=no div; 1=div by 2; 2=div by 4; 3=div by 8.
-							(1 <<  0)); // enable I2S clock
-    //delay_us(1500000); // The IP's behavioral model needs 1.5s to power-up.
- 
-  WRITE_MPEG_REG(AIU_I2S_DAC_CFG, 	0x000f);	// Payload 24-bit, Msb first, alrclk = aoclk/64
-	WRITE_MPEG_REG(AIU_I2S_SOURCE_DESC, 0x0001);	// four 2-channel
 	
   return 0;
 }
+
+#endif
+
+#define AUDIO_CLK_FREQ_192  0
+#define AUDIO_CLK_FREQ_1764 1
+#define AUDIO_CLK_FREQ_96   2
+#define AUDIO_CLK_FREQ_882  3
+#define AUDIO_CLK_FREQ_48   4
+#define AUDIO_CLK_FREQ_441  5
+#define AUDIO_CLK_FREQ_32   6
 
 void audio_set_clk(unsigned freq, unsigned fs_config)
 {
@@ -361,47 +377,28 @@ void audio_set_clk(unsigned freq, unsigned fs_config)
     
    // if (fs_config == AUDIO_CLK_256FS) {
    if(1){
-#if 0
-        //WRITE_MPEG_REG_BITS(MREG_AUDIO_CLK_CTRL, 0, 8, 1);
-        WRITE_MPEG_REG(HHI_AUD_PLL_CNTL, freq_tab_256fs[freq].pll);
-        for (i = 0; i < 100000; i++) ;
-        WRITE_MPEG_REG(HHI_AUD_CLK_CNTL, freq_tab_256fs[freq].mux);
-        WRITE_MPEG_REG_BITS(HHI_AUD_CLK_CNTL, 1, 8, 1);
-
-        WRITE_MPEG_REG_BITS(AIU_CLK_CTRL,
-                            freq_tab_256fs[freq].devisor, 0, 8);
-        WRITE_MPEG_REG(AIU_I2S_DAC_CFG, AUDIO_256FS_DAC_CFG);
-#else
-#define AUDIO_CLK_FREQ_192  0
-#define AUDIO_CLK_FREQ_1764 1
-#define AUDIO_CLK_FREQ_96   2
-#define AUDIO_CLK_FREQ_882  3
-#define AUDIO_CLK_FREQ_48   4
-#define AUDIO_CLK_FREQ_441  5
-#define AUDIO_CLK_FREQ_32   6
-
-	int index=0;
-	switch(freq)
-	{
-		case AUDIO_CLK_FREQ_192:
-			index=4;
-			break;
-		case AUDIO_CLK_FREQ_96:
-			index=3;
-			break;
-		case AUDIO_CLK_FREQ_48:
-			index=2;
-			break;
-		case AUDIO_CLK_FREQ_441:
-			index=1;
-			break;
-		case AUDIO_CLK_FREQ_32:
-			index=0;
-			break;
-		default:
-			index=0;
-			break;
-	};
+		int index=0;
+		switch(freq)
+		{
+			case AUDIO_CLK_FREQ_192:
+				index=4;
+				break;
+			case AUDIO_CLK_FREQ_96:
+				index=3;
+				break;
+			case AUDIO_CLK_FREQ_48:
+				index=2;
+				break;
+			case AUDIO_CLK_FREQ_441:
+				index=1;
+				break;
+			case AUDIO_CLK_FREQ_32:
+				index=0;
+				break;
+			default:
+				index=0;
+				break;
+		};
 	// get system crystal freq
 		clk=clk_get_sys("clk_xtal", NULL);
 		if(!clk)
@@ -444,14 +441,14 @@ void audio_set_clk(unsigned freq, unsigned fs_config)
     WRITE_MPEG_REG( HHI_AUD_PLL_CNTL, READ_MPEG_REG(HHI_AUD_PLL_CNTL) & ~(1 << 15));
 
     // gate the clock on
-    WRITE_MPEG_REG( HHI_AUD_CLK_CNTL, READ_MPEG_REG(HHI_AUD_CLK_CNTL) | (1 << 8)|(1<<23));
-    
+    WRITE_MPEG_REG( HHI_AUD_CLK_CNTL, READ_MPEG_REG(HHI_AUD_CLK_CNTL) | (1 << 8));
+#ifdef CONFIG_SND_AML_M1
+		WRITE_MPEG_REG(HHI_AUD_CLK_CNTL, READ_MPEG_REG(HHI_AUD_CLK_CNTL) |(1<<23));
+#endif    
     // delay 2uS
 	//udelay(2);
 	for (i = 0; i < 200000; i++) ;
 
-#endif
-		
     } else if (fs_config == AUDIO_CLK_384FS) {
         //WRITE_MPEG_REG_BITS(MREG_AUDIO_CLK_CTRL, 0, 8, 1);
         WRITE_MPEG_REG(HHI_AUD_PLL_CNTL, freq_tab_384fs[freq].pll);
