@@ -254,7 +254,7 @@ void clk_switch(int flag)
         }
     }
     else{
-        clk_flag[0] = READ_CBUS_REG_BITS(clks[0], 1, 1);
+        clk_flag[0] = READ_CBUS_REG_BITS(clks[0], 0, 1);
         CLEAR_CBUS_REG_MASK(clks[0], 1);
         for (i=1;i<CLK_COUNT;i++){
             clk_flag[i] = READ_CBUS_REG_BITS(clks[i], 8, 1) ? 1 : 0;
@@ -280,18 +280,14 @@ void pll_switch(int flag)
     if (flag){
         for (i=0;i<PLL_COUNT;i++){
             if (pll_flag[i]) {
-                CLEAR_CBUS_REG_MASK(plls[i], (1<<7));
                 CLEAR_CBUS_REG_MASK(plls[i], (1<<15));
-                SET_CBUS_REG_MASK(plls[i], (1<<7));
             }
         }
     }
     else{
         for (i=0;i<PLL_COUNT;i++){
             pll_flag[i] = READ_CBUS_REG_BITS(plls[i], 15, 1) ? 0 : 1;
-            CLEAR_CBUS_REG_MASK(plls[i], (1<<7));
             SET_CBUS_REG_MASK(plls[i], (1<<15));
-            SET_CBUS_REG_MASK(plls[i], (1<<7));
         }
     }
 }
@@ -387,8 +383,8 @@ static void meson_pm_suspend(void)
     WRITE_CBUS_REG(A9_0_IRQ_IN2_INTR_MASK, (1<<8));
     WRITE_CBUS_REG(A9_0_IRQ_IN3_INTR_MASK, 0x0);
     
-    audio_internal_dac_disable();
-    video_dac_disable();
+    //audio_internal_dac_disable();
+    //video_dac_disable();
 
     clk_switch(0);
     
