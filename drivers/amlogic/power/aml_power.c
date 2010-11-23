@@ -56,6 +56,9 @@ static int ac_status = -1;
 static int usb_status = -1;
 static int battery_capacity = -1;
 static int new_battery_capacity = -1;
+static int power_on_with_ac = -1;
+static int charge_status = -1;
+static int new_charge_status = -1;
 
 static int aml_power_get_property(struct power_supply *psy,
 				  enum power_supply_property psp,
@@ -149,6 +152,70 @@ static struct power_supply aml_psy_bat = {
 	.get_property = aml_power_get_property,
 };
 
+static unsigned bat_matrix[10] = {0};
+static char count = 0;
+static void get_bat_capacity(void)
+{
+    int value,i,num,sum;
+    int min,max;
+            
+    if(power_on_with_ac){
+        new_battery_capacity = 16;
+        return;
+    }  
+    
+    if(new_ac_status > 0)
+        return;
+         
+    value = pdata->get_bat_vol();
+#ifdef AML_POWER_DBG
+		printk("get_bat_vol = %d\n",value);
+#endif    
+    if(value == -1)
+        return;
+    if((new_ac_status == 0)&&(ac_status > 0)){
+        for(i = 0;i<=9;i++){
+            bat_matrix[i] = 0;
+            count = 0;
+        }  
+    }   
+    
+    bat_matrix[count] = value;
+    count ++;
+    if(count > 9)
+        count = 0;
+       
+    sum = 0;
+    num = 0;
+    min = 0x3ff;
+    max = 0;  
+    for(i = 0;i<=9;i++){
+        if(bat_matrix[i]){
+            sum += bat_matrix[i];
+            num ++;
+            if(max < bat_matrix[i])
+                max = bat_matrix[i];
+            if(min > bat_matrix[i])
+                min = bat_matrix[i];           
+        }
+    }
+
+    if(num>3){
+        sum = sum - max -min;
+        num = num -2;
+    }
+    
+    value = sum/num;    
+    
+    value = 100*(value - 540)/80;
+    value = value>100? 100:value;
+    value = (value/5)*5;
+#ifdef AML_POWER_DBG
+		printk("bat = %d,max = %d,min = %d,sum = %d,num = %d\n",value,max,min,sum,num);
+#endif    
+    new_battery_capacity = value;   
+}
+
 static void update_status(void)
 {
 	if (pdata->is_ac_online)
@@ -156,6 +223,21 @@ static void update_status(void)
 
 	if (pdata->is_usb_online)
 		new_usb_status = !!pdata->is_usb_online();
+		
+	if (pdata->get_charge_status&&pdata->is_ac_online){
+		if(pdata->is_ac_online())
+		{
+			if(pdata->get_charge_status())
+				new_charge_status = POWER_SUPPLY_STATUS_FULL;
+			else
+				new_charge_status = POWER_SUPPLY_STATUS_CHARGING;
+		}
+		else
+			new_charge_status = POWER_SUPPLY_STATUS_DISCHARGING;	   
+    }
+    
+    get_bat_capacity();  
+      
 }
 
 static void update_charger(void)
@@ -196,29 +278,30 @@ static void update_charger(void)
 		}
 	}
 }
-static void get_bat_capacity(void)
-{
-    int value;
-    value = pdata->get_bat_vol();
-    if(value == -1)
-        return;
-    value = 100*(value - 540)/80;
-    value = value>100? 100:value;
-    value = (value/5)*5;
-    new_battery_capacity = value;   
-}
 
 static void supply_timer_func(unsigned long unused)
 {
 	if (ac_status == AML_PSY_TO_CHANGE) {
 		ac_status = new_ac_status;
 		power_supply_changed(&aml_psy_ac);
+		if(new_ac_status == 0)
+		  power_on_with_ac = 0;
 	}
 
 	if (usb_status == AML_PSY_TO_CHANGE) {
 		usb_status = new_usb_status;
 		power_supply_changed(&aml_psy_usb);
 	}
+	
+	if (charge_status == AML_PSY_TO_CHANGE) {
+		charge_status = new_charge_status;
+		power_supply_changed(&aml_psy_bat);
+	}
+
+	if (battery_capacity == AML_PSY_TO_CHANGE) {
+		battery_capacity = new_battery_capacity;
+		power_supply_changed(&aml_psy_bat);
+	}			
 }
 
 static void psy_changed(void)
@@ -276,14 +359,18 @@ static void polling_timer_func(unsigned long unused)
 		changed = 1;
 	}
 
+	if (!ac_irq && charge_status != new_charge_status) {
+		charge_status = AML_PSY_TO_CHANGE;
+		changed = 1;
+	}
+	
+	if(!ac_irq&&new_battery_capacity != battery_capacity){
+		battery_capacity = AML_PSY_TO_CHANGE;
+		changed = 1;
+    }
+    	
 	if (changed)
 		psy_changed();
-
-    get_bat_capacity();
-	if(new_battery_capacity != battery_capacity){
-		battery_capacity = new_battery_capacity;
-		power_supply_changed(&aml_psy_bat);
-    }	
     
 	mod_timer(&polling_timer,
 		  jiffies + msecs_to_jiffies(pdata->polling_interval));
@@ -377,6 +464,7 @@ static int aml_power_probe(struct platform_device *pdev)
 	}
 
 	if (pdata->is_ac_online) {
+	    power_on_with_ac = pdata->is_ac_online();
 		ret = power_supply_register(&pdev->dev, &aml_psy_ac);
 		if (ret) {
 			dev_err(dev, "failed to register %s power supply\n",
