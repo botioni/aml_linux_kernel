@@ -78,8 +78,10 @@ struct itk {
        struct ts_event event[5];
        unsigned pendown:1;
        int touching_num;
-       int xmax;
-       int ymax;
+       int lcd_xmax;
+       int lcd_ymax;
+       int tp_xmax;
+       int tp_ymax;
        int vendor;
        struct itk_platform_data *pdata;
 
@@ -115,8 +117,8 @@ static int itk_register_input(struct itk *ts)
 
     dev->evbit[0] = BIT_MASK(EV_KEY) | BIT_MASK(EV_ABS);
     dev->keybit[BIT_WORD(BTN_TOUCH)] = BIT_MASK(BTN_TOUCH);
-    input_set_abs_params(dev, ABS_X, 0, ts->xmax, 0, 0);
-    input_set_abs_params(dev, ABS_Y, 0, ts->ymax, 0, 0);
+    input_set_abs_params(dev, ABS_X, 0, ts->lcd_xmax, 0, 0);
+    input_set_abs_params(dev, ABS_Y, 0, ts->lcd_ymax, 0, 0);
     input_set_abs_params(dev, ABS_PRESSURE, 0, 200, 0, 0);
 
 #if 0//def MULTI_TOUCH
@@ -126,8 +128,8 @@ static int itk_register_input(struct itk *ts)
     set_bit(ABS_MT_POSITION_Y, dev->absbit);
     set_bit(ABS_TOOL_WIDTH, dev->absbit);
 
-    input_set_abs_params(dev, ABS_MT_POSITION_X, 0, ts->xmax, 0, 0);
-    input_set_abs_params(dev, ABS_MT_POSITION_Y, 0, ts->ymax, 0, 0);
+    input_set_abs_params(dev, ABS_MT_POSITION_X, 0, ts->lcd_xmax, 0, 0);
+    input_set_abs_params(dev, ABS_MT_POSITION_Y, 0, ts->lcd_ymax, 0, 0);
     input_set_abs_params(dev, ABS_MT_TOUCH_MAJOR, 0, 255, 0, 0);
     input_set_abs_params(dev, ABS_MT_WIDTH_MAJOR, 0, 255, 0, 0);
 #endif
@@ -212,11 +214,11 @@ static int itk_read_sensor(struct itk *ts)
     pre_x = event->x;
     pre_y = event->y;
     printk(KERN_INFO "data[3][2] = 0x%2x%2x\n", data[3], data[2]);
-    event->x = (event->x*1024)/17407;
+    event->x = (event->x*ts->lcd_xmax)/(ts->tp_xmax);
     printk(KERN_INFO "caculate event->x = %d\n\n", event->x);
 
     printk(KERN_INFO "data[5][4] = 0x%2x%2x\n", data[5], data[4]);
-    event->y = (event->y*768)/12799;
+    event->y = (event->y*ts->lcd_ymax)/(ts->tp_ymax);
     printk(KERN_INFO "caculate event->y = %d\n\n", event->y);
     ts->touching_num++;
     return 0;
@@ -358,25 +360,26 @@ static int itk_probe(struct i2c_client *client,
     ts->client = client;
     itk_reset(ts);
 
-    ts->pdata = client->dev.platform_data;
-    if (!ts->pdata)
-    {
-        ts->xmax = ts->pdata->max_width;
-        ts->ymax = ts->pdata->max_height;
-    }
-
     if (itk_register_input(ts) < 0) {
         dev_err(&client->dev, "register input fail!\n");
         goto fail;
     }
 
     /* setup platform-specific hooks */
-
+    ts->pdata = (struct itk_platform_data*)client->dev.platform_data;
     if (!ts->pdata || !ts->pdata->init_irq || !ts->pdata->get_irq_level) {
         dev_err(&client->dev, "no platform-specific callbacks "
             "provided\n");
         err = -ENXIO;
         goto fail;
+    }
+    else
+    {
+        ts->lcd_xmax = ((struct itk_platform_data*) client->dev.platform_data)->lcd_max_width;
+        ts->lcd_ymax = ((struct itk_platform_data*) client->dev.platform_data)->lcd_max_height;
+        ts->tp_xmax = ((struct itk_platform_data*) client->dev.platform_data)->tp_max_width;
+        ts->tp_ymax = ((struct itk_platform_data*) client->dev.platform_data)->tp_max_width;
+        printk(KERN_INFO "\nlcd_xmax = %d, lcd_ymax = %d, tp_xmax = %d, tp_ymax = %d\n\n", ts->lcd_xmax, ts->lcd_ymax, ts->tp_xmax, ts->tp_ymax);
     }
 
     if (ts->pdata->init_irq) {

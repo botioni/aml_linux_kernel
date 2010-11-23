@@ -691,8 +691,10 @@ static int itk_get_irq_level(void)
 static struct itk_platform_data itk_pdata = {
     .init_irq = &itk_init_irq,
     .get_irq_level = &itk_get_irq_level,
-    .max_width = 1024,
-    .max_height = 768,
+    .tp_max_width = 17407,
+    .tp_max_height = 12799,
+    .lcd_max_width = 1024,
+    .lcd_max_height = 768,
 };
 #endif
 
@@ -726,8 +728,13 @@ static	struct platform_device aml_rtc_device = {
 #if defined(CONFIG_SUSPEND)
 
 static struct meson_pm_config aml_pm_pdata = {
-    .ddr2_reg_refresh = IO_APB_BUS_BASE+4,
+    .ddr2_reg_refresh = IO_APB_BUS_BASE+0x0004,
     .ddr2_reg_phy = IO_APB_BUS_BASE+0x1380,
+    .ddr_pll_ctrl = CBUS_REG_ADDR(HHI_DDR_PLL_CNTL),
+    .ddr_power_gate = CBUS_REG_ADDR(HHI_GCLK_MPEG0),
+    .sys_clk = CBUS_REG_ADDR(HHI_MPEG_CLK_CNTL),
+    .sys_pll = CBUS_REG_ADDR(HHI_SYS_PLL_CNTL),
+    .ddr_pll_target = 0x00110220,
     .sleepcount = 128,
 };
 
@@ -1237,7 +1244,7 @@ static struct platform_device vout_device = {
 #ifdef CONFIG_USB_ANDROID
 #ifdef CONFIG_USB_ANDROID_MASS_STORAGE
 static struct usb_mass_storage_platform_data mass_storage_pdata = {
-       .nluns = 1,
+       .nluns = 2,
        .vendor = "AMLOGIC",
        .product = "Android MID",
        .release = 0x0100,

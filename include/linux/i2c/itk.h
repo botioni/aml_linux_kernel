@@ -22,8 +22,10 @@
 struct itk_platform_data {
        int (*init_irq)(void);
        int (*get_irq_level)(void);
-       int max_width;
-       int max_height;
+       int tp_max_width;
+       int tp_max_height;
+       int lcd_max_width;
+       int lcd_max_height;
 };
 
 #endif /* !_LINUX_I2C_ITK_H_*/
