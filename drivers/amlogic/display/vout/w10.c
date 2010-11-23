@@ -43,7 +43,7 @@ For Malata 8726M, CPT10.2" */
 #define LCD_HEIGHT      768
 #define MAX_WIDTH       1344//1100
 #define MAX_HEIGHT      806
-#define VIDEO_ON_LINE   17
+#define VIDEO_ON_LINE   22
 
 static void t13_power_on(void);
 static void t13_power_off(void);
