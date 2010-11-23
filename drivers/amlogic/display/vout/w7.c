@@ -43,7 +43,7 @@ For WA 8726M, Hanstar HSD070ISN1-B00 */
 #define LCD_HEIGHT      600
 #define MAX_WIDTH       1000
 #define MAX_HEIGHT      660
-#define VIDEO_ON_LINE   17
+#define VIDEO_ON_LINE   22
 
 static void t13_power_on(void);
 static void t13_power_off(void);
