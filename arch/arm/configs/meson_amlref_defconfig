@@ -1,7 +1,7 @@
 #
 # Automatically generated make config: don't edit
 # Linux kernel version: 2.6.34
-# Wed Nov 17 14:02:42 2010
+# Tue Nov 23 10:57:29 2010
 #
 CONFIG_ARM=y
 CONFIG_HOLES_IN_ZONE=y
@@ -250,6 +250,10 @@ CONFIG_ARCH_MESON=y
 # CONFIG_MACH_MESON_8226M is not set
 # CONFIG_MACH_MESON_8726M is not set
 CONFIG_MACH_MESON_8726M_ARM=y
+# CONFIG_MACH_MESON_8726M_DVBC is not set
+# CONFIG_MACH_MESON_8726M_ML is not set
+# CONFIG_MACH_MESON_8726M_W10 is not set
+# CONFIG_MACH_MESON_8726M_W7 is not set
 CONFIG_MESON_CLOCK_TICK_RATE=25000000
 
 #
@@ -539,6 +543,8 @@ CONFIG_SARADC_AM=y
 # CONFIG_ADC_TOUCHSCREEN_AM is not set
 CONFIG_ADC_KEYPADS_AM=y
 # CONFIG_KEY_INPUT_CUSTOM_AM is not set
+# CONFIG_SINTEK_CAPACITIVE_TOUCHSCREEN is not set
+# CONFIG_ITK_CAPACITIVE_TOUCHSCREEN is not set
 
 #
 # Amlogic Power Management Support
@@ -546,9 +552,15 @@ CONFIG_ADC_KEYPADS_AM=y
 # CONFIG_AMLOGIC_PM is not set
 
 #
-# Extern io tca6424 Support
+# Extern IO Support
 #
 # CONFIG_TCA6424 is not set
+# CONFIG_SN7325 is not set
+
+#
+# Amlogic GPIO Driver
+#
+# CONFIG_AM_GPIO is not set
 
 #
 # Block devices
@@ -586,6 +598,10 @@ CONFIG_SDIO=y
 # CONFIG_AMLOGIC_SPI_NOR is not set
 CONFIG_NAND_FLASH_DRIVER_BASE_OPERATE=y
 # CONFIG_NAND_FLASH_DRIVER_MULTIPLANE_CE is not set
+
+#
+# AMLOGIC DEMOD Support
+#
 
 #
 # Network devices
@@ -697,13 +713,12 @@ CONFIG_MALI=m
 #
 # AMLOGIC DVB driver
 #
-# CONFIG_AM_DVB is not set
-# CONFIG_AM_GX1001 is not set
 
 #
 # Amlogic WIFI Support
 #
 # CONFIG_SDIO_DHD_CDC_WIFI is not set
+# CONFIG_RTL8712_8188_8191_8192SU_USB_WIFI is not set
 CONFIG_CONNECTOR=y
 CONFIG_PROC_EVENTS=y
 CONFIG_MTD=y
@@ -1617,7 +1632,8 @@ CONFIG_EXT3_FS_XATTR=y
 # CONFIG_EXT3_FS_POSIX_ACL is not set
 # CONFIG_EXT3_FS_SECURITY is not set
 # CONFIG_EXT4_FS is not set
-# CONFIG_EXFAT_FS is not set
+CONFIG_EXFAT_FS=y
+# CONFIG_EXFAT_FS_DEBUG is not set
 CONFIG_JBD=y
 # CONFIG_JBD_DEBUG is not set
 CONFIG_FS_MBCACHE=y
@@ -1683,7 +1699,7 @@ CONFIG_MISC_FILESYSTEMS=y
 # CONFIG_AFFS_FS is not set
 # CONFIG_ECRYPT_FS is not set
 # CONFIG_HFS_FS is not set
-# CONFIG_HFSPLUS_FS is not set
+CONFIG_HFSPLUS_FS=y
 # CONFIG_BEFS_FS is not set
 # CONFIG_BFS_FS is not set
 # CONFIG_EFS_FS is not set
