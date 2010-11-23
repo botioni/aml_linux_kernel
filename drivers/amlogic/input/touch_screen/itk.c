@@ -378,7 +378,7 @@ static int itk_probe(struct i2c_client *client,
         ts->lcd_xmax = ((struct itk_platform_data*) client->dev.platform_data)->lcd_max_width;
         ts->lcd_ymax = ((struct itk_platform_data*) client->dev.platform_data)->lcd_max_height;
         ts->tp_xmax = ((struct itk_platform_data*) client->dev.platform_data)->tp_max_width;
-        ts->tp_ymax = ((struct itk_platform_data*) client->dev.platform_data)->tp_max_width;
+        ts->tp_ymax = ((struct itk_platform_data*) client->dev.platform_data)->tp_max_height;
         printk(KERN_INFO "\nlcd_xmax = %d, lcd_ymax = %d, tp_xmax = %d, tp_ymax = %d\n\n", ts->lcd_xmax, ts->lcd_ymax, ts->tp_xmax, ts->tp_ymax);
     }
 
