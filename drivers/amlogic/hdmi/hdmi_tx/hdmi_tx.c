@@ -441,7 +441,7 @@ static int hdmitx_notify_callback_a(struct notifier_block *block, unsigned long 
                 break;
         }
         hdmitx_set_audio(&hdmitx_device, &audio_param);
-        hdmi_print(1, "HDMI: aout notify rate %d\n", substream->runtime->rate);
+        hdmi_print(0, "HDMI: aout notify rate %d\n", substream->runtime->rate);
         return 0;
     }
     return -1;

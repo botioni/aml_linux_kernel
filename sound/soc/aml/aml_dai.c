@@ -59,7 +59,7 @@ static int aml_dai_prepare(struct snd_pcm_substream *substream,
 			     struct snd_soc_dai *dai)
 {
 		struct snd_soc_pcm_runtime *rtd = snd_pcm_substream_chip(substream);
-printk("***Entered %s:%s\n", __FILE__,__func__);
+//printk("***Entered %s:%s\n", __FILE__,__func__);
 	return 0;
 }
 

@@ -193,7 +193,7 @@ static int aml_pcm_prepare(struct snd_pcm_substream *substream)
 	audio_dac_set(s->sample_rate);
 #endif	
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK){
-			printk("aml_pcm_prepare SNDRV_PCM_STREAM_PLAYBACK: dma_addr=%x, dma_bytes=%x\n", runtime->dma_addr, runtime->dma_bytes);
+			//printk("aml_pcm_prepare SNDRV_PCM_STREAM_PLAYBACK: dma_addr=%x, dma_bytes=%x\n", runtime->dma_addr, runtime->dma_bytes);
 			audio_set_aiubuf(runtime->dma_addr, runtime->dma_bytes);
 			memset((void*)runtime->dma_area,0,runtime->dma_bytes);
 	}
@@ -231,7 +231,7 @@ static int aml_pcm_trigger(struct snd_pcm_substream *substream,
         
 		// TODO
 		if(substream->stream == SNDRV_PCM_STREAM_PLAYBACK){
-		printk("aml_pcm_trigger: SNDRV_PCM_TRIGGER_START\n");
+			//printk("aml_pcm_trigger: SNDRV_PCM_TRIGGER_START\n");
 			audio_enable_ouput(1);
 		}else{
 			printk("aml_pcm_trigger: SNDRV_PCM_TRIGGER_CAPTURE\n");
@@ -245,7 +245,7 @@ static int aml_pcm_trigger(struct snd_pcm_substream *substream,
 	case SNDRV_PCM_TRIGGER_PAUSE_PUSH:
 	case SNDRV_PCM_TRIGGER_STOP:
 		// TODO
-		printk("aml_pcm_trigger: SNDRV_PCM_TRIGGER_STOP\n");
+		//printk("aml_pcm_trigger: SNDRV_PCM_TRIGGER_STOP\n");
 		s->active = 0;
 		if(substream->stream == SNDRV_PCM_STREAM_PLAYBACK){
 				audio_enable_ouput(0);
