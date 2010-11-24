@@ -191,8 +191,12 @@ void set_audio_pinmux(int type)
 			set_mio_mux(8, (1<<5));
 		}
 		else if(type == AUDIO_OUT_TEST_N){
-				set_mio_mux(1, (1<<11)|(1<<15)|(1<<19));
-				set_mio_mux(0, (1<<18));
+			clear_mio_mux(1, (1<<6));
+			clear_mio_mux(0, (1<<17));
+			clear_mio_mux(6, (1<<24));
+			WRITE_CBUS_REG_BITS(0x200b,0,16,1); //Set TEST_N Output mode
+			set_mio_mux(1, (1<<11)|(1<<15)|(1<<19));
+			set_mio_mux(0, (1<<18));
 		}
 		else if(type == AUDIO_IN_JTAG){
 			clear_mio_mux(1, (1<<6));

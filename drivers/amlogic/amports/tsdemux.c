@@ -158,7 +158,7 @@ static int tsdemux_free_irq(void)
 static int tsdemux_set_vid(int vpid)
 {
 	unsigned long flags;
-	int r;
+	int r = 0;
 
 	spin_lock_irqsave(&demux_ops_lock, flags);
 	if(demux_ops && demux_ops->set_vid) {
@@ -181,7 +181,7 @@ static int tsdemux_set_vid(int vpid)
 static int tsdemux_set_aid(int apid)
 {
 	unsigned long flags;
-	int r;
+	int r = 0;
 
 	spin_lock_irqsave(&demux_ops_lock, flags);
 	if(demux_ops && demux_ops->set_aid) {
@@ -204,7 +204,7 @@ static int tsdemux_set_aid(int apid)
 static int tsdemux_set_sid(int spid)
 {
 	unsigned long flags;
-	int r;
+	int r = 0;
 
 	spin_lock_irqsave(&demux_ops_lock, flags);
 	if(demux_ops && demux_ops->set_sid) {
@@ -508,8 +508,10 @@ dvb_playing=1;
 
     return 0;
 
+#ifndef ENABLE_DEMUX_DRIVER
 err4:
     free_irq(INT_PARSER, (void *)tsdemux_fetch_id);
+#endif
 err3:
     pts_stop(PTS_TYPE_AUDIO);
 err2:
@@ -583,13 +585,13 @@ ssize_t tsdemux_write(struct file *file,
 	return -EAGAIN;
 }
 
-static ssize_t show_discontinue_counter(struct class *class, char *buf)
+static ssize_t show_discontinue_counter(struct class *class, struct class_attribute *attr, char *buf)
 {
     return sprintf(buf, "%d\n", discontinued_counter);
 }
 
 static struct class_attribute tsdemux_class_attrs[] = {
-    __ATTR(discontinue_counter,  S_IRUGO, show_discontinue_counter,    NULL  ),
+    __ATTR(discontinue_counter,  S_IRUGO, show_discontinue_counter, NULL),
     __ATTR_NULL
 };
 

@@ -31,7 +31,7 @@ source "drivers/amlogic/demod/Kconfig"
 #
 comment "Network devices"
 source "drivers/amlogic/net/Kconfig"
-
+source "drivers/amlogic/wifi/Kconfig"
 
 #
 #	Media devices
@@ -49,6 +49,6 @@ source "drivers/amlogic/jpeglogo/Kconfig"
 source "drivers/amlogic/mali/Kconfig"
 
 source "drivers/amlogic/dvb/Kconfig"
-source "drivers/amlogic/wifi/Kconfig"
+
 
 endmenu	
