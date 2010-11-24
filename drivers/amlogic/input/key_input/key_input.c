@@ -63,6 +63,9 @@
 
 #define USE_RTC_INTR
 
+static void ki_tasklet(unsigned long);
+DECLARE_TASKLET_DISABLED(tasklet, ki_tasklet, 0);
+
 struct key_input {
     struct input_dev *input;
     struct timer_list timer;
@@ -74,6 +77,9 @@ struct key_input {
     struct class *class;
     struct device *dev;
     struct key_input_platform_data *pdata;
+    unsigned status;
+    unsigned pending;
+    unsigned suspend;
 };
 
 static struct key_input *KeyInput = NULL;
@@ -204,17 +210,23 @@ static int register_key_input_dev(struct key_input  *ki_data)
 }
 
 #ifdef USE_RTC_INTR
-static irqreturn_t am_key_interrupt(int irq, void *dev){
-    unsigned status = READ_CBUS_REG(RTC_ADDR1);
-    WRITE_CBUS_REG(RTC_ADDR1, (READ_CBUS_REG(RTC_ADDR1) | (0x0000c000)));
-    if (status&0x8000){
+static void ki_tasklet(unsigned long data)
+{
+    if (KeyInput->status){
         input_report_key(KeyInput->input, KeyInput->pdata->key_code_list[0], 0);
         printk(KERN_INFO "=== key %d up ===\n", KeyInput->pdata->key_code_list[0]);
     }
-    else if (status&0x4000){
+    else{
         input_report_key(KeyInput->input, KeyInput->pdata->key_code_list[0], 1);
         printk(KERN_INFO "=== key %d down ===\n", KeyInput->pdata->key_code_list[0]);
     }
+}
+
+static irqreturn_t am_key_interrupt(int irq, void *dev)
+{
+    KeyInput->status = (READ_CBUS_REG(RTC_ADDR1)>>2)&1;
+    WRITE_CBUS_REG(RTC_ADDR1, (READ_CBUS_REG(RTC_ADDR1) | (0x0000c000)));
+    tasklet_schedule(&tasklet);
     return IRQ_HANDLED;
 }
 #endif
@@ -299,6 +311,8 @@ static int __init key_input_probe(struct platform_device *pdev)
     }
 
 #ifdef USE_RTC_INTR
+    tasklet_enable(&tasklet);
+    tasklet.data = (unsigned long)KeyInput;
     request_irq(INT_RTC, (irq_handler_t) am_key_interrupt, IRQF_SHARED, "power key", (void*)am_key_interrupt);
     WRITE_CBUS_REG(RTC_ADDR0, (READ_CBUS_REG(RTC_ADDR0) | (0x0000c000)));
 //    enable_irq(INT_RTC);
@@ -335,11 +349,14 @@ CATCH_ERR:
 static int key_input_remove(struct platform_device *pdev)
 {
     struct key_input *ki_data = platform_get_drvdata(pdev);
+
 #ifdef USE_RTC_INTR
-	disable_irq(INT_RTC);
+    tasklet_disable(&tasklet);
+    tasklet_kill(&tasklet);
+    disable_irq(INT_RTC);
     free_irq(INT_RTC, am_key_interrupt);
 #endif
-	input_unregister_device(ki_data->input);
+    input_unregister_device(ki_data->input);
     input_free_device(ki_data->input);
     unregister_chrdev(ki_data->major,ki_data->name);
     if(ki_data->class)
@@ -357,11 +374,23 @@ static int key_input_remove(struct platform_device *pdev)
     return 0;
 }
 
+static key_input_suspend(void)
+{
+    KeyInput->suspend = 1;
+    return 0;
+}
+
+static key_input_resume(void)
+{
+    KeyInput->suspend = 0;
+    return 0;
+}
+
 static struct platform_driver key_input_driver = {
     .probe      = key_input_probe,
     .remove     = key_input_remove,
-    .suspend    = NULL,
-    .resume     = NULL,
+    .suspend    = key_input_suspend,
+    .resume     = key_input_resume,
     .driver     = {
         .name   = "m1-keyinput",
     },
