@@ -1367,8 +1367,8 @@ static void __init device_pinmux_init(void )
 	    set_audio_pinmux(AUDIO_OUT_JTAG);
     }
 	else{
-        set_audio_pinmux£¨AUDIO_OUT_TEST_N£©
-        set_audio_pinmux(AUDIO_IN_JTAG)    
+        set_audio_pinmux(AUDIO_OUT_TEST_N);
+        set_audio_pinmux(AUDIO_IN_JTAG);
 	}
     //set clk for wifi
     SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, (1<<18));
