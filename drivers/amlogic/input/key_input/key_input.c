@@ -379,13 +379,13 @@ static int key_input_remove(struct platform_device *pdev)
     return 0;
 }
 
-static key_input_suspend(void)
+static int key_input_suspend(void)
 {
     KeyInput->suspend = 1;
     return 0;
 }
 
-static key_input_resume(void)
+static int key_input_resume(void)
 {
     KeyInput->suspend = 0;
     return 0;
