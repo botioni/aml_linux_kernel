@@ -1460,7 +1460,7 @@ static void __init device_pinmux_init(void )
 	/*pinmux of eth*/
 	//eth_pinmux_init();
 	aml_i2c_init();
-	set_audio_pinmux(AUDIO_OUT_JTAG);
+	set_audio_pinmux(AUDIO_OUT_TEST_N);
 }
 
 static void __init  device_clk_setting(void)
