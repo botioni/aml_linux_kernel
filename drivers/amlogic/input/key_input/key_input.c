@@ -61,11 +61,13 @@
 #include <asm/uaccess.h>
 #include <linux/input/key_input.h>
 
-//#define USE_RTC_INTR
+#define USE_RTC_INTR
 #define AML_KEYINPUT_DBG
 
-static void ki_tasklet(unsigned long);
-DECLARE_TASKLET_DISABLED(tasklet, ki_tasklet, 0);
+#ifdef USE_RTC_INTR
+static void keyinput_tasklet(unsigned long data);
+DECLARE_TASKLET_DISABLED(tasklet, keyinput_tasklet, 0);
+#endif
 
 struct key_input {
     struct input_dev *input;
@@ -85,60 +87,10 @@ struct key_input {
 
 static struct key_input *KeyInput = NULL;
 
-/*
-static int kp_search_key(struct adc_keypad_platform_data *pdata)
-{
-	int *chan = pdata->chan;
-	int chan_num = pdata->chan_num;
-	struct adc_key *adc_key = pdata->key;
-	int key_num = pdata->key_num;
-	int value, i, j;
-	
-	for (i=0; i<chan_num; i++) {
-		value = pdata->get_sample(chan[i]);
-	 	 for (j=0; j<key_num; j++) {
-			if ((adc_key->chan == chan[i])
-			&& (value >= adc_key->value - adc_key->range)
-			&& (value <= adc_key->value + adc_key->range)) {
-				return adc_key->code;
-			}
-		}
-	}
-	
-	return 0;
-}
-*/
-
-static void key_scan(struct key_input *ki_data)
-{
-/*
-	struct adc_keypad_platform_data *pdata = kp->pdata;
-	int code = kp_search_key(pdata);
-	
-	if (kp->cur_keycode) {
-		if (!code) {
-			printk("key %d released.\n", kp->cur_keycode);
-			input_report_key(kp->input, kp->cur_keycode, 0);
-			kp->cur_keycode = 0;
-		}
-		else {
-			// detect another key while pressed
-		}
-	}
-	else {
-		if (code) {
-			printk("key %d pressed.\n", kp->cur_keycode);
-			input_report_key(kp->input, kp->cur_keycode, 1);	
-			kp->cur_keycode = 1;
-		}
-	}
-*/
-}
-
 #ifndef USE_RTC_INTR
 void key_input_polling(unsigned long data)
 {
-    int keyindex = -1 , delay_time = 0, i;
+    int i;
     struct key_input *ki_data=(struct key_input*)data;
 
     if(ki_data->pdata->scan_func(ki_data->key_state_list_0) >= 0)
@@ -215,7 +167,7 @@ static int register_key_input_dev(struct key_input  *ki_data)
 }
 
 #ifdef USE_RTC_INTR
-static void ki_tasklet(unsigned long data)
+static void keyinput_tasklet(unsigned long data)
 {
     if (KeyInput->status){
         input_report_key(KeyInput->input, KeyInput->pdata->key_code_list[0], 0);
@@ -379,17 +331,22 @@ static int key_input_remove(struct platform_device *pdev)
     return 0;
 }
 
-static int key_input_suspend(void)
+#ifdef CONFIG_PM
+static int key_input_suspend(struct platform_device *dev, pm_message_t state)
 {
     KeyInput->suspend = 1;
     return 0;
 }
 
-static int key_input_resume(void)
+static int key_input_resume(struct platform_device *dev)
 {
     KeyInput->suspend = 0;
     return 0;
 }
+#else
+#define key_input_suspend NULL
+#define key_input_resume  NULL
+#endif
 
 static struct platform_driver key_input_driver = {
     .probe      = key_input_probe,
