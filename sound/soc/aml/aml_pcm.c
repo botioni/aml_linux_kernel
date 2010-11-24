@@ -361,12 +361,12 @@ static int aml_pcm_open(struct snd_pcm_substream *substream)
 
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK){
 		snd_soc_set_runtime_hwparams(substream, &aml_pcm_hardware);
-		printk("pinmux audio out\n");
-		set_audio_pinmux(AUDIO_OUT_JTAG);
+		//printk("pinmux audio out\n");
+		//set_audio_pinmux(AUDIO_OUT_JTAG);
 	}else{
 		snd_soc_set_runtime_hwparams(substream, &aml_pcm_hardware);
-		printk("pinmux audio in\n");
-		set_audio_pinmux(AUDIO_IN_JTAG);
+		//printk("pinmux audio in\n");
+		//set_audio_pinmux(AUDIO_IN_JTAG);
 	}
 	
 	/* ensure that buffer size is a multiple of period size */
