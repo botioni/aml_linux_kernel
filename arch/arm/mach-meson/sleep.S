@@ -56,31 +56,31 @@ ENTRY(meson_cpu_suspend)
     ldr     r5, [r3, #POWERGATE0_OFFSET]
     bic     r5, r5, #0x41
     str     r5, [r3, #POWERGATE0_OFFSET]
-#if 0
+
     /* sys pll */
-    ldr     r5, [r3, #SYSPLL_OFFSET]
-    orr     r5, r5, #0x8000
-    str     r5, [r3, #SYSPLL_OFFSET]
+//    ldr     r5, [r3, #SYSPLL_OFFSET]
+//    orr     r5, r5, #0x8000
+//    str     r5, [r3, #SYSPLL_OFFSET]
 
     /* other pll */
     ldr     r5, [r3, #OTHERPLL_OFFSET]
     orr     r5, r5, #0x8000
     str     r5, [r3, #OTHERPLL_OFFSET]
-#endif
+
     /* System goes to sleep beyond after this instruction */
     wfi
     /* Wake up from sleep */
-#if 0
+
     /* other pll */
     ldr     r5, [r3, #OTHERPLL_OFFSET]
     bic     r5, r5, #0x8000
     str     r5, [r3, #OTHERPLL_OFFSET]
 
     /* sys pll */
-    ldr     r5, [r3, #SYSPLL_OFFSET]
-    bic     r5, r5, #0x8000
-    str     r5, [r3, #SYSPLL_OFFSET]
-#endif
+//    ldr     r5, [r3, #SYSPLL_OFFSET]
+//    bic     r5, r5, #0x8000
+//    str     r5, [r3, #SYSPLL_OFFSET]
+
     /* ddr power gate */
     ldr     r5, [r3, #POWERGATE0_OFFSET]
     orr     r5, r5, #0x41

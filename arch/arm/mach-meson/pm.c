@@ -411,8 +411,14 @@ static void meson_pm_suspend(void)
     while(1){
         udelay(jiffies+msecs_to_jiffies(20));
         powerPress = ((READ_CBUS_REG(0x21d1/*RTC_ADDR1*/) >> 2) & 1) ? 0 : 1;
-        if(powerPress)
+        if(powerPress){
+            printk(KERN_INFO "intr stat %x %x %x %x\n", 
+                   READ_CBUS_REG(A9_0_IRQ_IN0_INTR_STAT), 
+                   READ_CBUS_REG(A9_0_IRQ_IN1_INTR_STAT),
+                   READ_CBUS_REG(A9_0_IRQ_IN2_INTR_STAT),
+                   READ_CBUS_REG(A9_0_IRQ_IN3_INTR_STAT));            
             break;
+        }
     }
     printk(KERN_INFO "... wake up\n");
 #endif

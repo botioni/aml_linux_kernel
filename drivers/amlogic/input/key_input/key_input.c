@@ -183,7 +183,10 @@ static irqreturn_t am_key_interrupt(int irq, void *dev)
 {
     KeyInput->status = (READ_CBUS_REG(RTC_ADDR1)>>2)&1;
     WRITE_CBUS_REG(RTC_ADDR1, (READ_CBUS_REG(RTC_ADDR1) | (0x0000c000)));
-    tasklet_schedule(&tasklet);
+//    if (!KeyInput->suspend)
+        tasklet_schedule(&tasklet);
+//    else
+//        printk("key interrupt when suspend\n");
     return IRQ_HANDLED;
 }
 #endif
