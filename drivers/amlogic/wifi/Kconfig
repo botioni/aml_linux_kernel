@@ -42,4 +42,12 @@ config RTL8712_8188_8191_8192SU_USB_WIFI
 	  This module adds support for wireless USB dongle based on
 	  Realtek 8712 8188 8191 8192SU chipset.
 
+config RTL8192CU_USB_WIFI
+	tristate "Realtek 8192CU Wireless USB Dongle support"
+	default n
+	depends on MAC80211 && USB
+	---help---
+	  This module adds support for wireless USB dongle based on
+	  Realtek 8192CU chipset.
+
 endmenu
