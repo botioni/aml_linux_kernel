@@ -61,7 +61,8 @@
 #include <asm/uaccess.h>
 #include <linux/input/key_input.h>
 
-#define USE_RTC_INTR
+//#define USE_RTC_INTR
+#define AML_KEYINPUT_DBG
 
 struct key_input {
     struct input_dev *input;
@@ -142,7 +143,9 @@ void key_input_polling(unsigned long data)
             {
                 if((ki_data->key_hold_time_list[i] += ki_data->pdata->scan_period) > ki_data->pdata->fuzz_time)
                 {
+#ifdef AML_KEYINPUT_DBG                    
                     print_dbg("key %d pressed.\n", ki_data->pdata->key_code_list[i]);
+#endif                    
                     input_report_key(ki_data->input, ki_data->pdata->key_code_list[i], 1);
                     ki_data->key_state_list_1[i] = 1;
                     ki_data->key_hold_time_list[i] = 0;
@@ -152,7 +155,9 @@ void key_input_polling(unsigned long data)
             {
                 if(ki_data->key_state_list_1[i])
                 {
+#ifdef AML_KEYINPUT_DBG                         
                     print_dbg("key %d released.\n", ki_data->pdata->key_code_list[i]);
+#endif                    
                     input_report_key(ki_data->input, ki_data->pdata->key_code_list[i], 0);
                     ki_data->key_state_list_1[i] = 0;
                     ki_data->key_hold_time_list[i] = 0;
