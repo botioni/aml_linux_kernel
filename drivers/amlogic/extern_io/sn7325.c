@@ -98,9 +98,14 @@ static int sn7325_probe(struct i2c_client *client, const struct i2c_device_id *i
     sn7325_client = client;
     pdata = client->dev.platform_data;
     
-    if (pdata && pdata->pwr_rst)
+    if (pdata->pwr_rst)
     {
         pdata->pwr_rst();
+        printk("***sn7325 reset***\n");
+    }
+    else
+    {
+        printk("***sn7325 no reset***\n");
     }
 
 out:
