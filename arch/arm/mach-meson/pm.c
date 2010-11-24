@@ -28,7 +28,7 @@
 #define OFF 0
 
 #define WAKE_UP_BY_IRQ
-#define SUPPORT_UART_DEBUG
+//#define SUPPORT_UART_DEBUG
 
 static void (*meson_sram_suspend) (struct meson_pm_config *);
 static struct meson_pm_config *pdata;
