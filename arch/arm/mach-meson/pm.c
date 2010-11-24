@@ -248,17 +248,25 @@ void clk_switch(int flag)
 {
     int i;
     if (flag){
-        if (clk_flag[0]) SET_CBUS_REG_MASK(clks[0], 1);
-        for (i=1;i<CLK_COUNT;i++){
-            if (clk_flag[i]) SET_CBUS_REG_MASK(clks[i], (1<<8));
+        for (i=0;i<CLK_COUNT;i++){
+            if (clk_flag[i]){
+                if (clks[i] == HHI_VID_CLK_CNTL)
+                    SET_CBUS_REG_MASK(clks[i], 1);
+                else
+                    SET_CBUS_REG_MASK(clks[i], (1<<8));
+            }
         }
     }
     else{
-        clk_flag[0] = READ_CBUS_REG_BITS(clks[0], 0, 1);
-        CLEAR_CBUS_REG_MASK(clks[0], 1);
-        for (i=1;i<CLK_COUNT;i++){
-            clk_flag[i] = READ_CBUS_REG_BITS(clks[i], 8, 1) ? 1 : 0;
-            CLEAR_CBUS_REG_MASK(clks[i], (1<<8));
+        for (i=0;i<CLK_COUNT;i++){
+            if (clks[i] == HHI_VID_CLK_CNTL){
+                clk_flag[i] = READ_CBUS_REG_BITS(clks[i], 0, 1);
+                CLEAR_CBUS_REG_MASK(clks[i], 1);
+            }
+            else{
+                clk_flag[i] = READ_CBUS_REG_BITS(clks[i], 8, 1) ? 1 : 0;
+                CLEAR_CBUS_REG_MASK(clks[i], (1<<8));
+            }
         }
     }
 }
