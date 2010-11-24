@@ -107,7 +107,7 @@ static dwc_otg_core_params_t dwc_otg_module_params = {
 				   -1},	/* 15 */
 	.host_rx_fifo_size = 256,
 	.host_nperio_tx_fifo_size = 256,
-	.host_perio_tx_fifo_size = 64,
+	.host_perio_tx_fifo_size = 16,
 	.max_transfer_size = 65535,
 	.max_packet_count = -1,
 	.host_channels = 6,
