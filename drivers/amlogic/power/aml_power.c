@@ -286,6 +286,7 @@ static void supply_timer_func(unsigned long unused)
 		power_supply_changed(&aml_psy_ac);
 		if(new_ac_status == 0)
 		  power_on_with_ac = 0;
+		  get_bat_capacity();
 	}
 
 	if (usb_status == AML_PSY_TO_CHANGE) {
