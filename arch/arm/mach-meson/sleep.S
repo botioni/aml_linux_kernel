@@ -20,79 +20,97 @@
 #include <asm/assembler.h>
 #include <mach/memory.h>
 
-#define DDR_PHY_OFFSET 0x1380
-
-	.text
+#define POWERGATE0_OFFSET   0x50
+#define SYSPLL_OFFSET       0x5a
+#define OTHERPLL_OFFSET     0x70
+    .text
 /*
  * Move Meson into deep sleep state
  *
  * Note: This code is copied to internal SRAM by PM code. When the Meson
- *	 wakes up it continues execution at the point it went to sleep.
+ *     wakes up it continues execution at the point it went to sleep.
  */
 ENTRY(meson_cpu_suspend)
-	stmfd	sp!, {r0-r12, lr}		@ save registers on stack
+    stmfd   sp!, {r0-r12, lr}        @ save registers on stack
 
-	ldmia	r0, {r0-r4}
+    ldmia   r0, {r0-r4}
 
-	/*
-	 * Switch DDR to self-refresh mode.
-	 */
-	mov	r5, #0x3
-	str	r5, [r0]
+    /*
+     * Switch DDR to self-refresh mode.
+     */
+    mov     r5, #0x3
+    str     r5, [r0]
 
-	/* Disable DDR PHY */
-	ldr	r5, [r1]
-	orr	r5, r5, #0x1
-	str	r5, [r1]
+    /* Disable DDR PHY */
+    ldr     r5, [r1]
+    orr     r5, r5, #0x1
+    str     r5, [r1]
 
-	ldr	r5, [r3]
-	bic	r5, r5, #0x41
-	str	r5, [r3]
+    /* scale down PLL */
+    ldr     r6, [r2]
+    mov     r5, #(4<<9)
+    orr     r5, r5, r6
+    str     r5, [r2]
 
-	/* scale down PLL */
-	ldr	r6, [r2]
-	mov	r5, #(4<<9)
-	orr	r5, r5, r6
-	str	r5, [r2]
+    /* ddr power gate */
+    ldr     r5, [r3, #POWERGATE0_OFFSET]
+    bic     r5, r5, #0x41
+    str     r5, [r3, #POWERGATE0_OFFSET]
+#if 0
+    /* sys pll */
+    ldr     r5, [r3, #SYSPLL_OFFSET]
+    orr     r5, r5, #0x8000
+    str     r5, [r3, #SYSPLL_OFFSET]
 
-	mov	r5, #0x1000
-1:  subs	r5, r5, #0x1
-	bne	1b
+    /* other pll */
+    ldr     r5, [r3, #OTHERPLL_OFFSET]
+    orr     r5, r5, #0x8000
+    str     r5, [r3, #OTHERPLL_OFFSET]
+#endif
+    /* System goes to sleep beyond after this instruction */
+    wfi
+    /* Wake up from sleep */
+#if 0
+    /* other pll */
+    ldr     r5, [r3, #OTHERPLL_OFFSET]
+    bic     r5, r5, #0x8000
+    str     r5, [r3, #OTHERPLL_OFFSET]
 
-	/* System goes to sleep beyond after this instruction */
-	wfi
+    /* sys pll */
+    ldr     r5, [r3, #SYSPLL_OFFSET]
+    bic     r5, r5, #0x8000
+    str     r5, [r3, #SYSPLL_OFFSET]
+#endif
+    /* ddr power gate */
+    ldr     r5, [r3, #POWERGATE0_OFFSET]
+    orr     r5, r5, #0x41
+    str     r5, [r3, #POWERGATE0_OFFSET]
 
-	/* Wake up from sleep */
+    /* scale PLL up */
+    str     r6, [r2]
 
-	ldr	r5, [r3]
-	orr	r5, r5, #0x41
-	str	r5, [r3]
+    /* turn on DDR PHY */
+    ldr     r5, [r1]
+    bic     r5, r5, #0x1
+    str     r5, [r1]
 
-	/* scale PLL up */
-	str	r6, [r2]
+    /* ddr back to normal mode */
+    mov     r5, #0x4
+    str     r5, [r0]
 
-	/* Wait for PLL to lock */
+    /* Wait for PLL to lock */
+    mov     r5, #0x1000
+5:  subs    r5, r5, #0x1
+    bne     5b
 
-	/* turn on DDR PHY */
-	ldr	r5, [r1]
-	bic	r5, r5, #0x1
-	str	r5, [r1]
-
-    mov	r5, #0x4
-	str	r5, [r0]
-
-    mov	r5, #0x1000
-5:  subs	r5, r5, #0x1
-    bne	5b
-
-	/* Restore registers and return */
-	ldmfd   sp!, {r0-r12, pc}
+    /* Restore registers and return */
+    ldmfd   sp!, {r0-r12, pc}
 
 ENDPROC(meson_cpu_suspend)
 
 CACHE_FLUSH:
-	.word	v7_flush_kern_cache_all
+    .word    v7_flush_kern_cache_all
 
 ENTRY(meson_cpu_suspend_sz)
-	.word	. - meson_cpu_suspend
+    .word    . - meson_cpu_suspend
 ENDPROC(meson_cpu_suspend_sz)

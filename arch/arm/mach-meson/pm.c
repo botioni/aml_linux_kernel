@@ -14,6 +14,7 @@
 #include <linux/platform_device.h>
 #include <linux/clk.h>
 #include <linux/spinlock.h>
+#include <linux/clk.h>
 
 #include <asm/cacheflush.h>
 #include <asm/delay.h>
@@ -23,10 +24,15 @@
 #include <mach/sram.h>
 #include <mach/power_gate.h>
 
+#define ON  1
+#define OFF 0
+
 #define WAKE_UP_BY_IRQ
+#define SUPPORT_UART_DEBUG
 
 static void (*meson_sram_suspend) (struct meson_pm_config *);
 static struct meson_pm_config *pdata;
+static int mask_save[4];
 
 static void meson_sram_push(void *dest, void *src, unsigned int size)
 {
@@ -34,7 +40,6 @@ static void meson_sram_push(void *dest, void *src, unsigned int size)
     memcpy(dest, src, size);
     flush_icache_range((unsigned long)dest, (unsigned long)(dest + size));
     res = memcmp(dest,src,size);
-    printk("meson_sram_push (%d)\n", res);
 }
 
 #define GATE_OFF(_MOD) do {power_gate_flag[GCLK_IDX_##_MOD] = IS_CLK_GATE_ON(_MOD);CLK_GATE_OFF(_MOD);} while(0)
@@ -244,14 +249,40 @@ static unsigned clks[CLK_COUNT]={
     HHI_MPEG_CLK_CNTL
 };
 
+static char clks_name[CLK_COUNT][32]={
+    "HHI_VID_CLK_CNTL",
+    "HHI_AUD_CLK_CNTL",
+    "HHI_MALI_CLK_CNTL",
+    "HHI_HDMI_CLK_CNTL",
+    "HHI_DEMOD_CLK_CNTL",
+    "HHI_SATA_CLK_CNTL",
+    "HHI_ETH_CLK_CNTL",
+    "HHI_WIFI_CLK_CNTL",
+    "HHI_MPEG_CLK_CNTL"
+};
+
 void clk_switch(int flag)
 {
     int i;
+#ifdef SUPPORT_UART_DEBUG
+    struct clk *sys_clk;
+#endif
     if (flag){
         for (i=0;i<CLK_COUNT;i++){
             if (clk_flag[i]){
+                printk(KERN_INFO "clk %s(%x) on\n", clks_name[i], clks[i]);
                 if (clks[i] == HHI_VID_CLK_CNTL)
                     SET_CBUS_REG_MASK(clks[i], 1);
+#ifdef SUPPORT_UART_DEBUG
+                else if (clks[i] == HHI_MPEG_CLK_CNTL){
+                    sys_clk = clk_get_sys("clk81", NULL);
+                    SET_CBUS_REG_MASK(clks[i], (1<<8));
+                    CLEAR_CBUS_REG_MASK(UART0_CONTROL, (1 << 19) | 0xFFF);
+                    SET_CBUS_REG_MASK(UART0_CONTROL, (((sys_clk->rate / (115200 * 4)) - 1) & 0xfff));
+                    CLEAR_CBUS_REG_MASK(UART1_CONTROL, (1 << 19) | 0xFFF);
+                    SET_CBUS_REG_MASK(UART1_CONTROL, (((sys_clk->rate / (115200 * 4)) - 1) & 0xfff));
+                }
+#endif
                 else
                     SET_CBUS_REG_MASK(clks[i], (1<<8));
             }
@@ -259,10 +290,22 @@ void clk_switch(int flag)
     }
     else{
         for (i=0;i<CLK_COUNT;i++){
+            printk(KERN_INFO "clk %s(%x) off\n", clks_name[i], clks[i]);
             if (clks[i] == HHI_VID_CLK_CNTL){
                 clk_flag[i] = READ_CBUS_REG_BITS(clks[i], 0, 1);
                 CLEAR_CBUS_REG_MASK(clks[i], 1);
             }
+#ifdef SUPPORT_UART_DEBUG
+            else if (clks[i] == HHI_MPEG_CLK_CNTL){
+                sys_clk = clk_get_sys("clk_xtal", NULL);
+                clk_flag[i] = READ_CBUS_REG_BITS(clks[i], 8, 1) ? 1 : 0;
+                CLEAR_CBUS_REG_MASK(clks[i], (1<<8));
+                CLEAR_CBUS_REG_MASK(UART0_CONTROL, (1 << 19) | 0xFFF);
+                SET_CBUS_REG_MASK(UART0_CONTROL, (((sys_clk->rate / (115200 * 4)) - 1) & 0xfff));
+                CLEAR_CBUS_REG_MASK(UART1_CONTROL, (1 << 19) | 0xFFF);
+                SET_CBUS_REG_MASK(UART1_CONTROL, (((sys_clk->rate / (115200 * 4)) - 1) & 0xfff));
+            }
+#endif
             else{
                 clk_flag[i] = READ_CBUS_REG_BITS(clks[i], 8, 1) ? 1 : 0;
                 CLEAR_CBUS_REG_MASK(clks[i], (1<<8));
@@ -271,15 +314,33 @@ void clk_switch(int flag)
     }
 }
 
+
+#ifdef WAKE_UP_BY_IRQ
 #define PLL_COUNT 4
+#else
+#define PLL_COUNT 6
+#endif
 static char pll_flag[PLL_COUNT];
 static unsigned plls[PLL_COUNT]={
-//    HHI_OTHER_PLL_CNTL,
-//    HHI_SYS_PLL_CNTL,
+#ifndef WAKE_UP_BY_IRQ
+    HHI_SYS_PLL_CNTL,
+    HHI_OTHER_PLL_CNTL,
+#endif
     HHI_VID_PLL_CNTL,
     HHI_AUD_PLL_CNTL,
     HHI_WIFI_PLL_CNTL,
-    HHI_DEMOD_PLL_CNTL
+    HHI_DEMOD_PLL_CNTL,
+};
+
+static char plls_name[PLL_COUNT][32]={
+#ifndef WAKE_UP_BY_IRQ
+    "HHI_SYS_PLL_CNTL",
+    "HHI_OTHER_PLL_CNTL",
+#endif
+    "HHI_VID_PLL_CNTL",
+    "HHI_AUD_PLL_CNTL",
+    "HHI_WIFI_PLL_CNTL",
+    "HHI_DEMOD_PLL_CNTL",
 };
 
 void pll_switch(int flag)
@@ -288,189 +349,102 @@ void pll_switch(int flag)
     if (flag){
         for (i=0;i<PLL_COUNT;i++){
             if (pll_flag[i]) {
+                printk(KERN_INFO "pll %s(%x) on\n", plls_name[i], plls[i]);
                 CLEAR_CBUS_REG_MASK(plls[i], (1<<15));
             }
         }
     }
     else{
         for (i=0;i<PLL_COUNT;i++){
+            printk(KERN_INFO "pll %s(%x) off\n", plls_name[i], plls[i]);
             pll_flag[i] = READ_CBUS_REG_BITS(plls[i], 15, 1) ? 0 : 1;
             SET_CBUS_REG_MASK(plls[i], (1<<15));
         }
     }
 }
-    
-#if 0
-static int regs[128];
-int dump_regs()
-{
-    int i=0;
-    regs[i++] = READ_CBUS_REG(HHI_A9_AUTO_CLK1);
-    regs[i++] = READ_CBUS_REG(HHI_A9_CLK_CNTL);
-    regs[i++] = READ_CBUS_REG(HHI_ARC625_AUTO_CLK1);
-    regs[i++] = READ_CBUS_REG(HHI_AUD_CLK_CNTL);
-    regs[i++] = READ_CBUS_REG(HHI_AUD_PLL_CNTL);
-    regs[i++] = READ_CBUS_REG(HHI_DDR_PLL_CNTL);
-    regs[i++] = READ_CBUS_REG(HHI_DEMOD_CLK_CNTL);
-    regs[i++] = READ_CBUS_REG(HHI_DEMOD_PLL_CNTL);
-    regs[i++] = READ_CBUS_REG(HHI_DEMOD_PLL_CNTL2);
-    regs[i++] = READ_CBUS_REG(HHI_DEMOD_PLL_CNTL3);
-    regs[i++] = READ_CBUS_REG(HHI_GCLK_MPEG0);
-    regs[i++] = READ_CBUS_REG(HHI_GCLK_MPEG1);
-    regs[i++] = READ_CBUS_REG(HHI_GCLK_MPEG2);
-    regs[i++] = READ_CBUS_REG(HHI_GCLK_OTHER);
-    regs[i++] = READ_CBUS_REG(HHI_HDMI_AFC_CNTL);
-    regs[i++] = READ_CBUS_REG(HHI_HDMI_CLK_CNTL);
-    regs[i++] = READ_CBUS_REG(HHI_HDMI_PLL_CNTL);
-    regs[i++] = READ_CBUS_REG(HHI_HDMI_PLL_CNTL1);
-    regs[i++] = READ_CBUS_REG(HHI_HDMI_PLL_CNTL2);
-    regs[i++] = READ_CBUS_REG(HHI_MALI_CLK_CNTL);
-    regs[i++] = READ_CBUS_REG(HHI_MPEG_CLK_CNTL);
-    regs[i++] = READ_CBUS_REG(HHI_OTHER_PLL_CNTL);
-    regs[i++] = READ_CBUS_REG(HHI_SYS_PLL_CNTL);
-    regs[i++] = READ_CBUS_REG(HHI_VID_CLK_CNTL);
-    regs[i++] = READ_CBUS_REG(HHI_VID_PLL_CNTL);
-    regs[i++] = READ_CBUS_REG(HHI_WIFI_CLK_CNTL);
-    return i;
-}
 
-void print_regs()
+void analog_switch(int flag)
 {
-    int i=0;
-    printk(KERN_INFO "HHI_A9_AUTO_CLK1\t= 0x%08x", regs[i++]);
-    printk(KERN_INFO "HHI_A9_CLK_CNTL\t= 0x%08x", regs[i++]);
-    printk(KERN_INFO "HHI_ARC625_AUTO_CLK1\t= 0x%08x", regs[i++]);
-    printk(KERN_INFO "HHI_AUD_CLK_CNTL\t= 0x%08x", regs[i++]);
-    printk(KERN_INFO "HHI_AUD_PLL_CNTL\t= 0x%08x", regs[i++]);
-    printk(KERN_INFO "HHI_DDR_PLL_CNTL\t= 0x%08x", regs[i++]);
-    printk(KERN_INFO "HHI_DEMOD_CLK_CNTL\t= 0x%08x", regs[i++]);
-    printk(KERN_INFO "HHI_DEMOD_PLL_CNTL\t= 0x%08x", regs[i++]);
-    printk(KERN_INFO "HHI_DEMOD_PLL_CNTL2\t= 0x%08x", regs[i++]);
-    printk(KERN_INFO "HHI_DEMOD_PLL_CNTL3\t= 0x%08x", regs[i++]);
-    printk(KERN_INFO "HHI_GCLK_MPEG0\t= 0x%08x", regs[i++]);
-    printk(KERN_INFO "HHI_GCLK_MPEG1\t= 0x%08x", regs[i++]);
-    printk(KERN_INFO "HHI_GCLK_MPEG2\t= 0x%08x", regs[i++]);
-    printk(KERN_INFO "HHI_GCLK_OTHER\t= 0x%08x", regs[i++]);
-    printk(KERN_INFO "HHI_HDMI_AFC_CNTL\t= 0x%08x", regs[i++]);
-    printk(KERN_INFO "HHI_HDMI_CLK_CNTL\t= 0x%08x", regs[i++]);
-    printk(KERN_INFO "HHI_HDMI_PLL_CNTL\t= 0x%08x", regs[i++]);
-    printk(KERN_INFO "HHI_HDMI_PLL_CNTL1\t= 0x%08x", regs[i++]);
-    printk(KERN_INFO "HHI_HDMI_PLL_CNTL2\t= 0x%08x", regs[i++]);
-    printk(KERN_INFO "HHI_MALI_CLK_CNTL\t= 0x%08x", regs[i++]);
-    printk(KERN_INFO "HHI_MPEG_CLK_CNTL\t= 0x%08x", regs[i++]);
-    printk(KERN_INFO "HHI_OTHER_PLL_CNTL\t= 0x%08x", regs[i++]);
-    printk(KERN_INFO "HHI_SYS_PLL_CNTL\t= 0x%08x", regs[i++]);
-    printk(KERN_INFO "HHI_VID_CLK_CNTL\t= 0x%08x", regs[i++]);
-    printk(KERN_INFO "HHI_VID_PLL_CNTL\t= 0x%08x", regs[i++]);
-    printk(KERN_INFO "HHI_WIFI_CLK_CNTL\t= 0x%08x", regs[i++]);
+    if (flag){
+        printk(KERN_INFO "analog on\n");
+        CLEAR_CBUS_REG_MASK(SAR_ADC_REG3, 1<<28);
+        SET_CBUS_REG_MASK(AM_ANALOG_TOP_REG0, 1<<1);
+    }
+    else{
+        printk(KERN_INFO "analog off\n");
+        SET_CBUS_REG_MASK(SAR_ADC_REG3, 1<<28);         // set 0x21a3 bit[28] 1 to power down
+        CLEAR_CBUS_REG_MASK(AM_ANALOG_TOP_REG0, 1<<1);  // set 0x206e bit[1] 0 to shutdown
+    }
 }
-#endif
 
 static void meson_pm_suspend(void)
 {
-    int mask_save[4];
+
     int divider;
     int divider_sel;
-    int od;
-    int scale;
 
     printk(KERN_INFO "enter meson_pm_suspend!\n");
-    printk(KERN_INFO "power gate stat before suspend %x %x %x %x\n", 
-           READ_CBUS_REG(HHI_GCLK_MPEG0), 
-           READ_CBUS_REG(HHI_GCLK_MPEG1),
-           READ_CBUS_REG(HHI_GCLK_MPEG2),
-           READ_CBUS_REG(HHI_GCLK_OTHER));    
                   
-#ifdef WAKE_UP_BY_IRQ    
-    mask_save[0] = READ_CBUS_REG(A9_0_IRQ_IN0_INTR_MASK);
-    mask_save[1] = READ_CBUS_REG(A9_0_IRQ_IN1_INTR_MASK);
-    mask_save[2] = READ_CBUS_REG(A9_0_IRQ_IN2_INTR_MASK);
-    mask_save[3] = READ_CBUS_REG(A9_0_IRQ_IN3_INTR_MASK);
-    WRITE_CBUS_REG(A9_0_IRQ_IN0_INTR_MASK, 0x0);
-    WRITE_CBUS_REG(A9_0_IRQ_IN1_INTR_MASK, 0x0);
-    WRITE_CBUS_REG(A9_0_IRQ_IN2_INTR_MASK, (1<<8));
-    WRITE_CBUS_REG(A9_0_IRQ_IN3_INTR_MASK, 0x0);
-    
-    //audio_internal_dac_disable();
-    //video_dac_disable();
-
-    clk_switch(0);
-    
-    power_gate_switch(0);
-    printk(KERN_INFO "power gate stat in suspend %x %x %x %x\n", 
-           READ_CBUS_REG(HHI_GCLK_MPEG0), 
-           READ_CBUS_REG(HHI_GCLK_MPEG1),
-           READ_CBUS_REG(HHI_GCLK_MPEG2),
-           READ_CBUS_REG(HHI_GCLK_OTHER));    
-       
     divider = READ_CBUS_REG_BITS(HHI_A9_CLK_CNTL, 8, 6);
     divider_sel = READ_CBUS_REG_BITS(HHI_A9_CLK_CNTL, 2, 2);
     WRITE_CBUS_REG(HHI_A9_CLK_CNTL, READ_CBUS_REG(HHI_A9_CLK_CNTL)&~(1<<7));
+#ifndef SUPPORT_UART_DEBUG
     WRITE_CBUS_REG(HHI_A9_CLK_CNTL, READ_CBUS_REG(HHI_A9_CLK_CNTL)|(1<<9));
     WRITE_CBUS_REG_BITS(HHI_A9_CLK_CNTL, 0x03, 2, 2);
     WRITE_CBUS_REG_BITS(HHI_A9_CLK_CNTL, 0x3f, 8, 6);
     WRITE_CBUS_REG(HHI_A9_CLK_CNTL, READ_CBUS_REG(HHI_A9_CLK_CNTL)|(1<<7));
+#endif
+    analog_switch(OFF);
 
-    pll_switch(0);
+    power_gate_switch(OFF);
     
-    //dump_regs();
-
-    // calculate ddr target pll
-    scale=1;
-    od = READ_CBUS_REG_BITS(HHI_DDR_PLL_CNTL, 16, 2);
-    while (od<3) {
-        od++;
-        scale*=2;
-    }
-    pdata->ddr_pll_target = (READ_CBUS_REG(HHI_DDR_PLL_CNTL)&0xfffcc1ff)|(od<<16);
-
-    //flush_cache_all();
-
+    clk_switch(OFF);
+    
+    pll_switch(OFF);
+    
+#ifdef WAKE_UP_BY_IRQ 
+    WRITE_CBUS_REG(A9_0_IRQ_IN2_INTR_MASK, (1<<8));
     meson_sram_suspend(pdata);
-    
-    pll_switch(1);
-    
-    WRITE_CBUS_REG(HHI_A9_CLK_CNTL, READ_CBUS_REG(HHI_A9_CLK_CNTL)&~(1<<7));
-    WRITE_CBUS_REG_BITS(HHI_A9_CLK_CNTL, divider_sel, 2, 2);
-    WRITE_CBUS_REG_BITS(HHI_A9_CLK_CNTL, divider, 8, 6);
-    WRITE_CBUS_REG(HHI_A9_CLK_CNTL, READ_CBUS_REG(HHI_A9_CLK_CNTL)&~(1<<9));
-    WRITE_CBUS_REG(HHI_A9_CLK_CNTL, READ_CBUS_REG(HHI_A9_CLK_CNTL)|(1<<7));
-
-    //print_regs();
-    
-    printk(KERN_INFO "intr stat %x %x %x %x\n", 
-        READ_CBUS_REG(A9_0_IRQ_IN0_INTR_STAT), 
-        READ_CBUS_REG(A9_0_IRQ_IN1_INTR_STAT),
-        READ_CBUS_REG(A9_0_IRQ_IN2_INTR_STAT),
-        READ_CBUS_REG(A9_0_IRQ_IN3_INTR_STAT));
-
-    power_gate_switch(1);
-    
-    clk_switch(1);
-    
-    WRITE_CBUS_REG(A9_0_IRQ_IN0_INTR_MASK, mask_save[0]);
-    WRITE_CBUS_REG(A9_0_IRQ_IN1_INTR_MASK, mask_save[1]);
-    WRITE_CBUS_REG(A9_0_IRQ_IN2_INTR_MASK, mask_save[2]);
-    WRITE_CBUS_REG(A9_0_IRQ_IN3_INTR_MASK, mask_save[3]);
-    printk(KERN_INFO "power gate stat after suspend %x %x %x %x\n", 
-           READ_CBUS_REG(HHI_GCLK_MPEG0), 
-           READ_CBUS_REG(HHI_GCLK_MPEG1),
-           READ_CBUS_REG(HHI_GCLK_MPEG2),
-           READ_CBUS_REG(HHI_GCLK_OTHER));
 #else
     int powerPress = 0;
+    printk(KERN_INFO "sleep ...\n");
     while(1){
         udelay(jiffies+msecs_to_jiffies(20));
         powerPress = ((READ_CBUS_REG(0x21d1/*RTC_ADDR1*/) >> 2) & 1) ? 0 : 1;
         if(powerPress)
             break;
     }
+    printk(KERN_INFO "... wake up\n");
 #endif
+    
+    pll_switch(ON);
+    
+    clk_switch(ON);
+        
+    power_gate_switch(ON);
+
+    analog_switch(ON);
+    
+#ifndef SUPPORT_UART_DEBUG    
+    WRITE_CBUS_REG(HHI_A9_CLK_CNTL, READ_CBUS_REG(HHI_A9_CLK_CNTL)&~(1<<7));
+    WRITE_CBUS_REG_BITS(HHI_A9_CLK_CNTL, divider_sel, 2, 2);
+    WRITE_CBUS_REG_BITS(HHI_A9_CLK_CNTL, divider, 8, 6);
+    WRITE_CBUS_REG(HHI_A9_CLK_CNTL, READ_CBUS_REG(HHI_A9_CLK_CNTL)&~(1<<9));
+#endif
+    WRITE_CBUS_REG(HHI_A9_CLK_CNTL, READ_CBUS_REG(HHI_A9_CLK_CNTL)|(1<<7));
 }
 
 static int meson_pm_prepare(void)
 {
     printk(KERN_INFO "enter meson_pm_prepare!\n");
+    mask_save[0] = READ_CBUS_REG(A9_0_IRQ_IN0_INTR_MASK);
+    mask_save[1] = READ_CBUS_REG(A9_0_IRQ_IN1_INTR_MASK);
+    mask_save[2] = READ_CBUS_REG(A9_0_IRQ_IN2_INTR_MASK);
+    mask_save[3] = READ_CBUS_REG(A9_0_IRQ_IN3_INTR_MASK);
+    WRITE_CBUS_REG(A9_0_IRQ_IN0_INTR_MASK, 0x0);
+    WRITE_CBUS_REG(A9_0_IRQ_IN1_INTR_MASK, 0x0);
+    WRITE_CBUS_REG(A9_0_IRQ_IN2_INTR_MASK, 0x0);
+    WRITE_CBUS_REG(A9_0_IRQ_IN3_INTR_MASK, 0x0);
     meson_sram_push(meson_sram_suspend, meson_cpu_suspend,
                         meson_cpu_suspend_sz);
     return 0;
@@ -492,9 +466,19 @@ static int meson_pm_enter(suspend_state_t state)
     return ret;
 }
 
+static void meson_pm_finish(void)
+{
+    printk(KERN_INFO "enter meson_pm_finish!\n");
+    WRITE_CBUS_REG(A9_0_IRQ_IN0_INTR_MASK, mask_save[0]);
+    WRITE_CBUS_REG(A9_0_IRQ_IN1_INTR_MASK, mask_save[1]);
+    WRITE_CBUS_REG(A9_0_IRQ_IN2_INTR_MASK, mask_save[2]);
+    WRITE_CBUS_REG(A9_0_IRQ_IN3_INTR_MASK, mask_save[3]);
+}
+
 static struct platform_suspend_ops meson_pm_ops = {
     .enter        = meson_pm_enter,
-    .prepare    = meson_pm_prepare,
+    .prepare      = meson_pm_prepare,
+    .finish       = meson_pm_finish,
     .valid        = suspend_valid_only_mem,
 };
 
