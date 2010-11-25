@@ -857,7 +857,12 @@ int dwc_otg_hcd_suspend(struct usb_hcd *_hcd)
 	pcgcctl.b.gatehclk = 1;
 	pcgcctl.b.pwrclmp = 1;
 	pcgcctl.b.rstpdwnmodule = 1;
-	dwc_write_reg32(dwc_otg_hcd->core_if->pcgcctl, pcgcctl.d32);
+	/*
+	  *  Temp disable set pm register.
+	  *  Write this register wil bring id_change intr.
+	  *  -- Victor 2010.11.25
+	  */
+	//dwc_write_reg32(dwc_otg_hcd->core_if->pcgcctl, pcgcctl.d32);
 
 	return 0;
 }
@@ -1123,7 +1128,7 @@ int dwc_otg_hcd_urb_dequeue(struct usb_hcd *_hcd, struct urb *_urb)
 	urb_qtd = (dwc_otg_qtd_t *) _urb->hcpriv;
 	qh = (dwc_otg_qh_t *) _ep->hcpriv;
 
-	if(!urb_qtd && !qh->qtd_in_process)
+	if(!urb_qtd || !qh->qtd_in_process)
 	{
 		DWC_PRINT("urb already finished!\n");
 		local_irq_restore(flags);

@@ -200,7 +200,7 @@ int _key_code_list[] = {KEY_POWER};
 
 static int key_input_init_func(void)
 {
-    if(board_ver == 2){
+    if(board_ver == 0){
         WRITE_CBUS_REG(0x21d0/*RTC_ADDR0*/, (READ_CBUS_REG(0x21d0/*RTC_ADDR0*/) &~(1<<11)));
         WRITE_CBUS_REG(0x21d1/*RTC_ADDR0*/, (READ_CBUS_REG(0x21d1/*RTC_ADDR0*/) &~(1<<3)));
     }  
@@ -209,7 +209,7 @@ static int key_input_init_func(void)
 static int key_scan(int *key_state_list)
 {
     int ret = 0;
-    if(board_ver == 2)
+    if(board_ver == 0)
         key_state_list[0] = ((READ_CBUS_REG(0x21d1/*RTC_ADDR1*/) >> 2) & 1) ? 0 : 1;
     else
         key_state_list[0] = (READ_CBUS_REG(ASSIST_HW_REV)&(1<<10))? 0:1;  //GP_INPUT2  bit 10
@@ -1010,6 +1010,33 @@ static struct platform_device aml_nand_device = {
 #endif  //CONFIG_NAND_FLASH_DRIVER_MULTIPLANE_CE
 
 #if defined(CONFIG_AMLOGIC_BACKLIGHT)
+static void power_on_panel(void)
+{
+    CLK_GATE_ON(LCD);
+    /* GPIOA_3, Pull low, power up LCD_3.3V */
+    set_gpio_val(GPIOA_bank_bit(3), GPIOA_bit_bit0_14(3), 0);
+    set_gpio_mode(GPIOA_bank_bit(3), GPIOA_bit_bit0_14(3), GPIO_OUTPUT_MODE);        
+
+    /* PIN172, GPIOC_3, Pull high, For AVDD */
+    set_gpio_val(GPIOC_bank_bit0_26(3), GPIOC_bit_bit0_26(3), 1);
+    set_gpio_mode(GPIOC_bank_bit0_26(3), GPIOC_bit_bit0_26(3), GPIO_OUTPUT_MODE);
+
+}
+
+static void power_off_panel(void)
+{
+    /* GPIOA_3, Pull hi, power down LCD_3.3V */
+    set_gpio_val(GPIOA_bank_bit(3), GPIOA_bit_bit0_14(3), 1);
+    set_gpio_mode(GPIOA_bank_bit(3), GPIOA_bit_bit0_14(3), GPIO_OUTPUT_MODE);    
+    
+    /* PIN172, GPIOC_3, Pull high, For AVDD */
+    set_gpio_val(GPIOC_bank_bit0_26(3), GPIOC_bit_bit0_26(3), 0);
+    set_gpio_mode(GPIOC_bank_bit0_26(3), GPIOC_bit_bit0_26(3), GPIO_OUTPUT_MODE);
+    
+    CLK_GATE_OFF(LCD);
+    
+}
+
 
 #define PWM_TCNT        (600-1)
 #define PWM_MAX_VAL    (420)
@@ -1061,6 +1088,7 @@ static void aml_8726m_bl_init(void)
     WRITE_CBUS_REG(VGHL_PWM_REG4, val);
 }
 static unsigned bl_level;
+static unsigned panel_state = 0;
 static unsigned aml_8726m_get_bl_level(void)
 {
 //    unsigned level = 0;
@@ -1076,7 +1104,7 @@ static void aml_8726m_set_bl_level(unsigned level)
     unsigned cs_level,pwm_level,low,hi;
     
     bl_level = level;
-    
+        
     level = level*179/255;
     if(level>=120){ //120 - 179
         cs_level = 9 -(level - 120)/15;
@@ -1098,6 +1126,14 @@ static void aml_8726m_set_bl_level(unsigned level)
     SET_CBUS_REG_MASK(PWM_MISC_REG_AB, (1 << 0));         
     WRITE_CBUS_REG_BITS(PWM_PWM_A,low,0,16);  //low
     WRITE_CBUS_REG_BITS(PWM_PWM_A,hi,16,16);  //hi   
+    if(bl_level <30&&panel_state == 1){
+        panel_state = 0;
+        power_off_panel();
+    }   
+    if(bl_level >=30&&panel_state == 0){
+        panel_state = 1;
+        power_on_panel();
+    }       
 }
 
 static void aml_8726m_power_on_bl(void)
@@ -1360,7 +1396,7 @@ static void __init device_pinmux_init(void )
 	/*pinmux of eth*/
 	//eth_pinmux_init();
 	aml_i2c_init();
-	if(board_ver == 2){
+	if(board_ver == 0){
 	    set_audio_pinmux(AUDIO_OUT_JTAG);
     }
 	else{

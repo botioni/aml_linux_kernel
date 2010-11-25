@@ -159,12 +159,12 @@ static void get_bat_capacity(void)
     int value,i,num,sum;
     int min,max;
             
-    if(power_on_with_ac){
+    if(power_on_with_ac&&(charge_status!=POWER_SUPPLY_STATUS_FULL)){
         new_battery_capacity = 16;
         return;
     }  
     
-    if(new_ac_status > 0)
+    if((new_ac_status > 0)&&(charge_status!=POWER_SUPPLY_STATUS_FULL))
         return;
          
     value = pdata->get_bat_vol();
@@ -297,6 +297,9 @@ static void supply_timer_func(unsigned long unused)
 	if (charge_status == AML_PSY_TO_CHANGE) {
 		charge_status = new_charge_status;
 		power_supply_changed(&aml_psy_bat);
+		if(charge_status == POWER_SUPPLY_STATUS_FULL){
+		    get_bat_capacity(); 
+		}
 	}
 
 	if (battery_capacity == AML_PSY_TO_CHANGE) {

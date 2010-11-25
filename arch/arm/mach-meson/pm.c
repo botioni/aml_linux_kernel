@@ -377,9 +377,26 @@ void analog_switch(int flag)
     }
 }
 
+void usb_switch(int flag,int ctrl)
+{
+    int msk = PREI_USB_PHY_A_POR;
+	
+    if(ctrl == 1)
+        msk = PREI_USB_PHY_B_POR;
+
+    if (flag){
+        printk(KERN_INFO "usb %d on\n",ctrl);
+        CLEAR_CBUS_REG_MASK(PREI_USB_PHY_REG, msk);
+    }
+    else{
+        printk(KERN_INFO "usb %d off\n",ctrl);
+        SET_CBUS_REG_MASK(PREI_USB_PHY_REG, msk);
+    }
+}
+
 static void meson_pm_suspend(void)
 {
-
+    int i;
     int divider;
     int divider_sel;
 
@@ -401,6 +418,9 @@ static void meson_pm_suspend(void)
     clk_switch(OFF);
     
     pll_switch(OFF);
+    
+    usb_switch(OFF,0);
+    usb_switch(OFF,1);
     
 #ifdef WAKE_UP_BY_IRQ 
     WRITE_CBUS_REG(A9_0_IRQ_IN2_INTR_MASK, (1<<8));
@@ -428,6 +448,9 @@ static void meson_pm_suspend(void)
     clk_switch(ON);
         
     power_gate_switch(ON);
+
+    usb_switch(ON,0);
+    usb_switch(ON,1);
 
     analog_switch(ON);
     
