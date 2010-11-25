@@ -200,7 +200,7 @@ int _key_code_list[] = {KEY_POWER};
 
 static int key_input_init_func(void)
 {
-    if(board_ver == 2){
+    if(board_ver == 0){
         WRITE_CBUS_REG(0x21d0/*RTC_ADDR0*/, (READ_CBUS_REG(0x21d0/*RTC_ADDR0*/) &~(1<<11)));
         WRITE_CBUS_REG(0x21d1/*RTC_ADDR0*/, (READ_CBUS_REG(0x21d1/*RTC_ADDR0*/) &~(1<<3)));
     }  
@@ -209,7 +209,7 @@ static int key_input_init_func(void)
 static int key_scan(int *key_state_list)
 {
     int ret = 0;
-    if(board_ver == 2)
+    if(board_ver == 0)
         key_state_list[0] = ((READ_CBUS_REG(0x21d1/*RTC_ADDR1*/) >> 2) & 1) ? 0 : 1;
     else
         key_state_list[0] = (READ_CBUS_REG(ASSIST_HW_REV)&(1<<10))? 0:1;  //GP_INPUT2  bit 10
@@ -1396,7 +1396,7 @@ static void __init device_pinmux_init(void )
 	/*pinmux of eth*/
 	//eth_pinmux_init();
 	aml_i2c_init();
-	if(board_ver == 2){
+	if(board_ver == 0){
 	    set_audio_pinmux(AUDIO_OUT_JTAG);
     }
 	else{
