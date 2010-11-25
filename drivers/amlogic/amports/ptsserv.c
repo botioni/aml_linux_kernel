@@ -44,6 +44,8 @@ typedef struct pts_table_s {
     u32 lookup_cache_pts;
     u32 buf_start;
     u32 buf_size;
+	int first_checkin_pts;
+	int first_lookup_ok;
     pts_rec_t *pts_recs;
     struct list_head *pts_search;
     struct list_head valid_list;
@@ -56,7 +58,7 @@ static pts_table_t pts_table[PTS_TYPE_MAX] =
 {
     {	.status = PTS_IDLE,
      	.rec_num = VIDEO_REC_SIZE,
-     	.lookup_threshold = VIDEO_LOOKUP_RESOLUTION,
+     	.lookup_threshold = VIDEO_LOOKUP_RESOLUTION,     	
     },
     {	.status = PTS_IDLE,
      	.rec_num = AUDIO_REC_SIZE,
@@ -152,6 +154,26 @@ int pts_checkin_offset(u8 type, u32 offset, u32 val)
     if (likely((pTable->status == PTS_RUNNING) ||
                (pTable->status == PTS_LOADING))) {
         pts_rec_t *rec;
+
+		if (type == PTS_TYPE_VIDEO && pTable->first_checkin_pts == -1)
+		{
+			pTable->first_checkin_pts = val;
+#ifdef DEBUG_CHECKIN
+#ifdef DEBUG_VIDEO        
+            printk("first check in vpts <0x%x:0x%x> ok!\n", offset, val);
+#endif
+#endif
+		}
+		if (type == PTS_TYPE_AUDIO && pTable->first_checkin_pts == -1)
+		{
+			pTable->first_checkin_pts = val;
+#ifdef DEBUG_CHECKIN
+#ifdef DEBUG_AUDIO        
+            printk("first check in apts <0x%x:0x%x> ok!\n", offset, val);
+#endif
+#endif
+		}
+		
 #ifdef DEBUG_CHECKIN
 #ifdef DEBUG_VIDEO
         if (type == PTS_TYPE_VIDEO)
@@ -161,7 +183,7 @@ int pts_checkin_offset(u8 type, u32 offset, u32 val)
         if (type == PTS_TYPE_AUDIO)
             printk("check in apts <0x%x:0x%x>\n", offset, val);
 #endif
-#endif
+#endif	
         if (list_empty(&pTable->free_list)) {
             rec = list_entry(pTable->valid_list.next, pts_rec_t, list);
         } else {
@@ -229,7 +251,7 @@ int pts_checkin(u8 type, u32 val)
 
     if (type == PTS_TYPE_VIDEO) {
     	offset = page * pts_table[PTS_TYPE_VIDEO].buf_size + offset;
-		pts_checkin_offset(PTS_TYPE_VIDEO, offset, val);
+		pts_checkin_offset(PTS_TYPE_VIDEO, offset, val);		
 		return 0;
 	}
     else if (type == PTS_TYPE_AUDIO) {
@@ -375,9 +397,43 @@ if (type == PTS_TYPE_VIDEO)
 
             spin_unlock_irqrestore(&lock, flags);
 
+			if(!pTable->first_lookup_ok)
+			{
+				pTable->first_lookup_ok = 1;
+#ifdef DEBUG_CHECKOUT
+#ifdef DEBUG_VIDEO  
+			 if (type == PTS_TYPE_VIDEO)
+           		printk("=====first vpts look up offset<0x%x> --> <0x%x:0x%x> ok!\n", offset, p2->offset, p2->val);
+#endif
+#ifdef DEBUG_AUDIO  
+			 if (type == PTS_TYPE_AUDIO)
+           		printk("====first apts look up offset<0x%x> --> <0x%x:0x%x> ok!\n", offset, p2->offset, p2->val);
+#endif
+#endif			
+			}			
             return 0;
 
         } else {
+        	if (type == PTS_TYPE_VIDEO && !pTable->first_lookup_ok)
+        	{
+        		*val = pTable->first_checkin_pts;
+				pTable->first_lookup_ok = 1;
+#ifdef DEBUG_CHECKOUT
+#ifdef DEBUG_VIDEO            
+           printk("first vpts look up offset<0x%x> failed, return first_checkin_pts<0x%x>\n", offset, *val);
+#endif
+#endif
+        	}
+			if (type == PTS_TYPE_AUDIO && !pTable->first_lookup_ok)
+        	{
+        		*val = pTable->first_checkin_pts;
+				pTable->first_lookup_ok = 1;
+#ifdef DEBUG_CHECKOUT
+#ifdef DEBUG_AUDIO           
+           printk("first apts look up offset<0x%x> failed, return first_checkin_pts<0x%x>\n", offset, *val);
+#endif
+#endif
+        	}
 #ifdef DEBUG_CHECKOUT
 #ifdef DEBUG_VIDEO
             if (type == PTS_TYPE_VIDEO)
@@ -478,6 +534,8 @@ int pts_start(u8 type)
 			//BUG_ON(pTable->buf_size <= 0x10000);
 
             WRITE_MPEG_REG(VIDEO_PTS, 0);
+			pTable->first_checkin_pts = -1;
+			pTable->first_lookup_ok = 0;
         }
         else if (type == PTS_TYPE_AUDIO) {
             pTable->buf_start = READ_MPEG_REG(AIU_MEM_AIFIFO_START_PTR);
@@ -487,6 +545,8 @@ int pts_start(u8 type)
 			//BUG_ON(pTable->buf_size <= 0x10000);
 
             WRITE_MPEG_REG(AUDIO_PTS, 0);
+			pTable->first_checkin_pts = -1;
+			pTable->first_lookup_ok = 0;
         }
 
         INIT_LIST_HEAD(&pTable->valid_list);
