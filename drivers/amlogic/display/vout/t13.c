@@ -214,9 +214,12 @@ static void power_off_lcd(void)
     set_gpio_val(GPIOC_bank_bit0_26(11), GPIOC_bit_bit0_26(11), 0);
     set_gpio_mode(GPIOC_bank_bit0_26(11), GPIOC_bit_bit0_26(11), GPIO_OUTPUT_MODE);
     #endif
-    /* PIN165, GPIOC_4, Pull high, For LCD_3.3V */
     #ifdef CONFIG_MACH_MESON_8726M
+    /* GPIOA_3, Pull hi, power down LCD_3.3V */
+    set_gpio_val(GPIOA_bank_bit(3), GPIOA_bit_bit0_14(3), 1);
+    set_gpio_mode(GPIOA_bank_bit(3), GPIOA_bit_bit0_14(3), GPIO_OUTPUT_MODE);        
     #else
+    /* PIN165, GPIOC_4, Pull high, For LCD_3.3V */
     set_gpio_val(GPIOC_bank_bit0_26(4), GPIOC_bit_bit0_26(4), 1);
     set_gpio_mode(GPIOC_bank_bit0_26(4), GPIOC_bit_bit0_26(4), GPIO_OUTPUT_MODE); 
     #endif
