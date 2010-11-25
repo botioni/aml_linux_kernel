@@ -306,6 +306,9 @@ int pts_lookup_offset(u8 type, u32 offset, u32 *val, u32 pts_margin)
     else
         lookup_threshold = pts_margin;
 
+	if(!pTable->first_lookup_ok)
+		lookup_threshold <<= 1;
+	
     spin_lock_irqsave(&lock, flags);
 
     if (likely(pTable->status == PTS_RUNNING)) {
