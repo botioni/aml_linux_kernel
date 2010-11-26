@@ -1533,9 +1533,9 @@ static  int __init board_ver_setup(char *s)
 {
     if(strncmp(s, "v2", 2)==0){
         board_ver = 2;
-#if defined(CONFIG_KEY_INPUT_CUSTOM_AM) || defined(CONFIG_KEY_INPUT_CUSTOM_AM_MODULE)
-        key_input_pdata.config = 2;
-#endif
+//#if defined(CONFIG_KEY_INPUT_CUSTOM_AM) || defined(CONFIG_KEY_INPUT_CUSTOM_AM_MODULE)
+//        key_input_pdata.config = 2;
+//#endif
     }
     printk("board_ver = %s",s);      
     return 0;
