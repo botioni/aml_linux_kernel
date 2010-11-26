@@ -61,13 +61,15 @@
 #include <asm/uaccess.h>
 #include <linux/input/key_input.h>
 
-#define USE_RTC_INTR
-#define AML_KEYINPUT_DBG
+//#define USE_RTC_INTR
+//#define AML_KEYINPUT_DBG
+#define AML_KEYINPUT_INTR     0
+#define AML_KEYINPUT_POLLING   2
 
-#ifdef USE_RTC_INTR
+//#ifdef USE_RTC_INTR
 static void keyinput_tasklet(unsigned long data);
 DECLARE_TASKLET_DISABLED(tasklet, keyinput_tasklet, 0);
-#endif
+//#endif
 
 struct key_input {
     struct input_dev *input;
@@ -87,7 +89,7 @@ struct key_input {
 
 static struct key_input *KeyInput = NULL;
 
-#ifndef USE_RTC_INTR
+//#ifndef USE_RTC_INTR
 void key_input_polling(unsigned long data)
 {
     int i;
@@ -125,7 +127,7 @@ void key_input_polling(unsigned long data)
     }
     mod_timer(&ki_data->timer,jiffies+msecs_to_jiffies(ki_data->pdata->fuzz_time));
 }
-#endif
+//#endif
 
 static int
 key_input_open(struct inode *inode, struct file *file)
@@ -166,7 +168,7 @@ static int register_key_input_dev(struct key_input  *ki_data)
     return ret;
 }
 
-#ifdef USE_RTC_INTR
+//#ifdef USE_RTC_INTR
 static void keyinput_tasklet(unsigned long data)
 {
     if (KeyInput->status){
@@ -189,7 +191,7 @@ static irqreturn_t am_key_interrupt(int irq, void *dev)
 //        printk("key interrupt when suspend\n");
     return IRQ_HANDLED;
 }
-#endif
+//#endif
 
 static int __init key_input_probe(struct platform_device *pdev)
 {
@@ -233,10 +235,12 @@ static int __init key_input_probe(struct platform_device *pdev)
         ki_data->pdata->fuzz_time = 100;
     }
 
-#ifndef USE_RTC_INTR
-    setup_timer(&ki_data->timer, key_input_polling, ki_data) ;
-    mod_timer(&ki_data->timer, jiffies+msecs_to_jiffies(ki_data->pdata->fuzz_time));
-#endif
+//#ifndef USE_RTC_INTR
+    if(ki_data->pdata->config == AML_KEYINPUT_POLLING){
+        setup_timer(&ki_data->timer, key_input_polling, ki_data) ;
+        mod_timer(&ki_data->timer, jiffies+msecs_to_jiffies(ki_data->pdata->fuzz_time));
+    }
+//#endif
 
     /* setup input device */
     set_bit(EV_KEY, input_dev->evbit);
@@ -270,13 +274,16 @@ static int __init key_input_probe(struct platform_device *pdev)
         goto    CATCH_ERR;
     }
 
-#ifdef USE_RTC_INTR
-    tasklet_enable(&tasklet);
-    tasklet.data = (unsigned long)KeyInput;
-    request_irq(INT_RTC, (irq_handler_t) am_key_interrupt, IRQF_SHARED, "power key", (void*)am_key_interrupt);
-    WRITE_CBUS_REG(RTC_ADDR0, (READ_CBUS_REG(RTC_ADDR0) | (0x0000c000)));
-//    enable_irq(INT_RTC);
-#endif
+//#ifdef USE_RTC_INTR
+    if(ki_data->pdata->config == AML_KEYINPUT_INTR){
+
+        tasklet_enable(&tasklet);
+        tasklet.data = (unsigned long)KeyInput;
+        request_irq(INT_RTC, (irq_handler_t) am_key_interrupt, IRQF_SHARED, "power key", (void*)am_key_interrupt);
+        WRITE_CBUS_REG(RTC_ADDR0, (READ_CBUS_REG(RTC_ADDR0) | (0x0000c000)));
+    //    enable_irq(INT_RTC);
+     }
+//#endif
 
     printk("Key input register input device completed.\r\n");
     register_key_input_dev(KeyInput);
@@ -310,12 +317,14 @@ static int key_input_remove(struct platform_device *pdev)
 {
     struct key_input *ki_data = platform_get_drvdata(pdev);
 
-#ifdef USE_RTC_INTR
-    tasklet_disable(&tasklet);
-    tasklet_kill(&tasklet);
-    disable_irq(INT_RTC);
-    free_irq(INT_RTC, am_key_interrupt);
-#endif
+//#ifdef USE_RTC_INTR
+    if(ki_data->pdata->config == AML_KEYINPUT_INTR){
+        tasklet_disable(&tasklet);
+        tasklet_kill(&tasklet);
+        disable_irq(INT_RTC);
+        free_irq(INT_RTC, am_key_interrupt);
+    }
+//#endif
     input_unregister_device(ki_data->input);
     input_free_device(ki_data->input);
     unregister_chrdev(ki_data->major,ki_data->name);
