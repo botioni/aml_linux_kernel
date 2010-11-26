@@ -76,6 +76,10 @@
 #include <linux/sn7325.h>
 #endif
 
+#ifdef CONFIG_TOUCH_KEY_PAD_IT7230
+#include <linux/i2c/it7230.h>
+#endif
+
 #ifdef CONFIG_AMLOGIC_PM
 #include <linux/power_supply.h>
 #include <linux/aml_power.h>
@@ -243,6 +247,40 @@ static int sn7325_pwr_rst(void)
 
 static struct sn7325_platform_data sn7325_pdata = {
     .pwr_rst = &sn7325_pwr_rst,
+};
+#endif
+
+#ifdef CONFIG_TOUCH_KEY_PAD_IT7230
+#include <linux/input.h>
+//GPIOA_3
+#define GPIO_IT7230_ATTN ((GPIOA_bank_bit(3)<<16) | GPIOA_bit_bit0_14(3))
+
+static int it7230_init_irq(void)
+{
+    /* set input mode */
+    gpio_direction_input(GPIO_IT7230_ATTN);
+    /* set gpio interrupt #1 source=GPIOA_3, and triggered by falling edge(=1) */
+    gpio_enable_edge_int(0+3, 1, 1);
+    return 0;
+}
+
+static int it7230_get_irq_level(void)
+{
+    return gpio_get_value(GPIO_IT7230_ATTN);
+}
+
+static struct cap_key it7230_keys[] = {
+    { KEY_ZOOM,   0x0001, "search"},
+    { KEY_HOME,     0x0002, "home"},
+    { KEY_MENU,     0x0004, "menu"},
+    { KEY_BACK,     0x0008, "back"},
+};
+
+static struct it7230_platform_data it7230_pdata = {
+    .init_irq = it7230_init_irq,
+    .get_irq_level = it7230_get_irq_level,
+    .key = it7230_keys,
+    .key_num = ARRAY_SIZE(it7230_keys),
 };
 #endif
 
@@ -1409,6 +1447,14 @@ static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
         I2C_BOARD_INFO("itk", 0x04),
         .irq = INT_GPIO_0,
         .platform_data = (void *)&itk_pdata,
+    },
+#endif
+
+#ifdef CONFIG_TOUCH_KEY_PAD_IT7230
+    {
+        I2C_BOARD_INFO("it7230", 0x46),
+        .irq = INT_GPIO_1,
+        .platform_data = (void *)&it7230_pdata,
     },
 #endif
 };

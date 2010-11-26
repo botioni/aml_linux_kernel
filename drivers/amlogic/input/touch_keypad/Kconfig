@@ -1,0 +1,13 @@
+#
+# Input core configuration
+#
+
+config TOUCH_KEY_PAD_IT7230
+	tristate "IT7230 touch key pad support"
+	default n
+	help
+	  Say Y here if you want to use the IT7230 touch key pad support.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called .
+

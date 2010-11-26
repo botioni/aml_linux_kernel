@@ -10,5 +10,6 @@ obj-y	+= adc_ts/
 obj-y	+= adc_keypad/
 obj-y	+= key_input/
 obj-y	+= touch_screen/
+obj-y	+= touch_keypad/
 
 
