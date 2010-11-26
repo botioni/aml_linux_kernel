@@ -788,6 +788,9 @@ static void __init device_pinmux_init(void )
 	/* uart port A */
 	uart_set_pinmux(UART_PORT_A,UART_A_GPIO_B2_B3);
 
+	/* uart port B */
+	uart_set_pinmux(UART_PORT_B,UART_B_TCK_TDO);
+
 	/* pinmux of eth */
 	eth_pinmux_init();
 
