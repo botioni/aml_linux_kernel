@@ -295,6 +295,7 @@ void SetBWMode(_adapter *padapter, unsigned short bwmode, unsigned char channel_
 unsigned int decide_wait_for_beacon_timeout(unsigned int bcn_interval);
 
 void write_cam(_adapter *padapter, u8 entry, u16 ctrl, u8 *mac, u8 *key);
+void read_cam(_adapter *padapter ,u8 entry);
 
 void invalidate_cam_all(_adapter *padapter);
 void CAM_mark_invalid(PADAPTER Adapter, u8 ucIndex);

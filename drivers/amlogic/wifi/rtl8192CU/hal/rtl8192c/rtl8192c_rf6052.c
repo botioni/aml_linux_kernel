@@ -248,14 +248,16 @@ PHY_RF6052SetCckTxPower(
 	u8			idx1, idx2;
 	u8*			ptr;
 	
-	if(pEEPROM->EEPROMRegulatory != 0)
+	// 2010/10/18 MH Accorsing to SD3 eechou's suggestion, we need to disable turbo scan for RU.	
+	// Otherwise, external PA will be broken if power index > 0x20.
+	if((pEEPROM->EEPROMRegulatory != 0)||( pHalData->ExternalPA))
 		TurboScanOff = _TRUE;
 
 		
 	if( pmlmeext->sitesurvey_res.state == _TRUE)
 	{
-		//TxAGC[RF90_PATH_A] = 0x3f3f3f3f;
-		//TxAGC[RF90_PATH_B] = 0x3f3f3f3f;
+		TxAGC[RF90_PATH_A] = 0x3f3f3f3f;
+		TxAGC[RF90_PATH_B] = 0x3f3f3f3f;
 
 		TurboScanOff = _TRUE;
 		
@@ -266,11 +268,21 @@ PHY_RF6052SetCckTxPower(
 				TxAGC[idx1] = 
 					pPowerlevel[idx1] | (pPowerlevel[idx1]<<8) |
 					(pPowerlevel[idx1]<<16) | (pPowerlevel[idx1]<<24);
+
+#if (DEV_BUS_TYPE == DEV_BUS_USB_INTERFACE)
+				// 2010/10/18 MH For external PA module. We need to limit power index to be less than 0x20.
+				if (TxAGC[idx1] > 0x20 && pHalData->ExternalPA)
+					TxAGC[idx1] = 0x20;
+#endif
 			}
 		}
 	}
 	else
 	{
+// 20100427 Joseph: Driver dynamic Tx power shall not affect Tx power. It shall be determined by power training mechanism.
+// Currently, we cannot fully disable driver dynamic tx power mechanism because it is referenced by BT coexist mechanism.
+// In the future, two mechanism shall be separated from each other and maintained independantly. Thanks for Lanhsin's reminder.
+#if 0
 		if(pdmpriv->DynamicTxHighPowerLvl == TxHighPwrLevel_Level1)
 		{	
 			TxAGC[RF90_PATH_A] = 0x10101010;
@@ -282,6 +294,7 @@ PHY_RF6052SetCckTxPower(
 			TxAGC[RF90_PATH_B] = 0x00000000;
 		}
 		else
+#endif
 		{
 			for(idx1=RF90_PATH_A; idx1<=RF90_PATH_B; idx1++)
 			{

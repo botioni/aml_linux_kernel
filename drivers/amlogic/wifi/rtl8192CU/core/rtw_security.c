@@ -276,6 +276,7 @@ _func_enter_;
 	//start to decrypt recvframe
 	if((prxattrib->encrypt==_WEP40_)||(prxattrib->encrypt==_WEP104_))
 	{
+		//printk("#### rx data,to perform sw rtw_wep_decrypt\n");
 		iv=pframe+prxattrib->hdrlen;
 		keyindex=(iv[3]&0x3);
 		keylength=psecuritypriv->dot11DefKeylen[keyindex];

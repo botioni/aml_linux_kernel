@@ -49,6 +49,12 @@
 	#include <net/iw_handler.h>
 	#include <linux/proc_fs.h>	// Necessary because we use the proc fs
 	
+#if (LINUX_VERSION_CODE>=KERNEL_VERSION(2,6,22))
+#ifdef CONFIG_USB_SUSPEND
+#define CONFIG_AUTOSUSPEND	1
+#endif
+#endif
+
 
 #ifdef CONFIG_USB_HCI
 	typedef struct urb *  PURB;

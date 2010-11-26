@@ -76,7 +76,12 @@ int rtw_scan_mode = 1;//active, passive
 int rtw_adhoc_tx_pwr = 1;
 int rtw_soft_ap = 0;
 //int smart_ps = 1;  
+//#ifdef CONFIG_BEST_BATTERYLIFE
+#ifdef CONFIG_POWER_SAVING
+int rtw_power_mgnt = 1;
+#else
 int rtw_power_mgnt = PS_MODE_ACTIVE;
+#endif	
 int rtw_radio_enable = 1;
 int rtw_long_retry_lmt = 7;
 int rtw_short_retry_lmt = 7;
@@ -116,8 +121,12 @@ int AcceptAddbaReq = _TRUE;// 0:Reject AP's Add BA req, 1:Accept AP's Add BA req
 #ifdef CONFIG_ANTENNA_DIVERSITY
 int  antdiv_cfg = 2; // 0:OFF , 1:ON, 2:decide by Efuse config
 #endif
-
+#ifdef CONFIG_USB_AUTOSUSPEND
 int enusbss = 1;//0:disable,1:enable
+#else
+int enusbss = 0;//0:disable,1:enable
+#endif
+
 int hwpdn_mode=2;//0:disable,1:enable,2: by EFUSE config
 int hwpwrp_detect = 1; //HW power  ping detect 0:disable , 1:enable
 
@@ -506,7 +515,7 @@ struct net_device *rtw_init_netdev(void)
 	//pnetdev->init = NULL;
 #if (LINUX_VERSION_CODE>=KERNEL_VERSION(2,6,29))
 
-	printk("register rtl8712_netdev_ops to netdev_ops\n");
+	printk("register rtl8192_netdev_ops to netdev_ops\n");
 	pnetdev->netdev_ops = &rtw_netdev_ops;
 
 #else
@@ -720,7 +729,7 @@ u8 reset_drv_sw(_adapter *padapter)
 	psitesurveyctrl->traffic_busy = _FALSE;	
 	pHalData->IQKInitialized = _FALSE;
 #ifdef CONFIG_AUTOSUSPEND
-	#if (LINUX_VERSION_CODE<KERNEL_VERSION(2,6,35))
+	#if (LINUX_VERSION_CODE>=KERNEL_VERSION(2,6,22) && LINUX_VERSION_CODE<=KERNEL_VERSION(2,6,34))
 	padapter->dvobjpriv.pusbdev->autosuspend_disabled = 1;//autosuspend disabled by the user
 	#endif
 #endif

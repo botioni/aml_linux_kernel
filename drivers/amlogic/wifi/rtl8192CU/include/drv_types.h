@@ -367,6 +367,9 @@ struct _ADAPTER{
 #ifdef CONFIG_PLATFORM_ANDROID
 	u8 bdisassoc_by_assoc;
 #endif
+#ifdef CONFIG_AUTOSUSPEND
+	u8	bDisableAutosuspend;
+#endif
 };	
   
 __inline static u8 *myid(struct eeprom_priv *peepriv)

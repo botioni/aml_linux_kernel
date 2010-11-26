@@ -852,14 +852,20 @@ unsigned int OnDisassoc(_adapter *padapter, union recv_frame *precv_frame)
 {
 	struct mlme_ext_priv	*pmlmeext = &padapter->mlmeextpriv;
 	struct mlme_ext_info	*pmlmeinfo = &(pmlmeext->mlmext_info);
+	struct mlme_priv *pmlmepriv= &padapter->mlmepriv;	
+	struct sitesurvey_ctrl *psitesurveyctrl=&pmlmepriv->sitesurveyctrl;
+	
 	u8 *pframe = precv_frame->u.hdr.rx_data;
 	uint len = precv_frame->u.hdr.len;
+    	unsigned short	reason;
 
 	//check A3
 	if (!(_rtw_memcmp(GetAddr3Ptr(pframe), get_my_bssid(&pmlmeinfo->network), ETH_ALEN)))
 		return _SUCCESS;
 	
-	DBG_871X("%s\n", __FUNCTION__);
+	reason = le16_to_cpu(*(unsigned short *)(pframe + WLAN_HDR_A3_LEN));
+	DBG_871X("%s Reason code(%d)\n", __FUNCTION__,reason);
+	psitesurveyctrl->traffic_busy= _FALSE;
 	
 	receive_disconnect(padapter, GetAddr3Ptr(pframe));
 	
@@ -1454,6 +1460,9 @@ void issue_auth(_adapter *padapter, struct sta_info *psta, unsigned short status
 		else if(pmlmeinfo->auth_algo == dot11AuthAlgrthm_Auto)
 		{
 			printk("%s auth_algo= %s auth_seq=%d\n",__FUNCTION__,"AUTO",pmlmeinfo->auth_seq);
+		}else
+		{
+			printk("%s auth_algo= %s(algo:%d) auth_seq=%d\n",__FUNCTION__,"#####",pmlmeinfo->auth_algo,pmlmeinfo->auth_seq);
 		}
 
 		
@@ -1474,7 +1483,8 @@ void issue_auth(_adapter *padapter, struct sta_info *psta, unsigned short status
 		// setting auth seq number
 		val16 = pmlmeinfo->auth_seq;
 		val16 = cpu_to_le16(val16);	
-		pframe = rtw_set_fixed_ie(pframe, _AUTH_SEQ_NUM_, (unsigned char *)&val16, &(pattrib->pktlen));
+		printk("==> %s set auth_seq_num(%d)\n",__FUNCTION__,val16);
+              pframe = rtw_set_fixed_ie(pframe, _AUTH_SEQ_NUM_, (unsigned char *)&val16, &(pattrib->pktlen));
 
 		
 		// setting status code...
@@ -2047,10 +2057,12 @@ void site_survey(_adapter *padapter)
 
 		if(IS_NORMAL_CHIP(pHalData->VersionID))
 		{
-			if((pmlmeinfo->state&0x03) == WIFI_FW_AP_STATE)
+			if((pmlmeinfo->state&0x03) == WIFI_FW_AP_STATE){
 				rtw_write32(padapter, REG_RCR, rtw_read32(padapter, REG_RCR)|RCR_CBSSID_BCN);
-			else			
+			    }
+			else {			
 			        rtw_write32(padapter, REG_RCR, rtw_read32(padapter, REG_RCR)|RCR_CBSSID_DATA|RCR_CBSSID_BCN);
+			    }
 		}
 		else
 		{
@@ -2303,6 +2315,21 @@ void start_clnt_join(_adapter* padapter)
 
 		(pmlmeinfo->auth_algo == dot11AuthAlgrthm_8021X)? rtw_write8(padapter, REG_SECCFG, 0xcc): rtw_write8(padapter, REG_SECCFG, 0xcf);
 
+		//2010-11-05 georgia for test
+	#if ( RTL8192C_WEP_ISSUE==1)		
+		{
+			HAL_DATA_TYPE		*pHalData	= GET_HAL_DATA(padapter);
+			struct pwrctrl_priv 	*pwrctrlpriv = &padapter->pwrctrlpriv;
+			if(( pwrctrlpriv->power_mgnt != PS_MODE_ACTIVE )  && IS_92C_SERIAL(pHalData->VersionID)){
+				if (	( padapter->securitypriv.dot11PrivacyAlgrthm == _WEP40_ ) ||
+					( padapter->securitypriv.dot11PrivacyAlgrthm == _WEP104_ )){				
+					//workaround_#1 use sw descryption
+					rtw_write8(padapter, REG_SECCFG, (rtw_read8(padapter, REG_SECCFG)&(~BIT3)));			
+				}			
+			}
+		}		
+	#endif
+    
 		//switch channel
 		//SelectChannel(padapter, pmlmeext->cur_channel, HAL_PRIME_CHNL_OFFSET_DONT_CARE);
 		set_channel_bwmode(padapter, pmlmeext->cur_channel, HAL_PRIME_CHNL_OFFSET_DONT_CARE, HT_CHANNEL_WIDTH_20);
@@ -2914,7 +2941,7 @@ void mlmeext_sta_add_event_callback(_adapter *padapter, struct sta_info *psta)
 		rtw_write32(padapter, REG_RCR, rtw_read32(padapter, REG_RCR)|RCR_CBSSID_DATA|RCR_CBSSID_BCN);
 
 		//accept all data frame
-		rtw_write16(padapter, REG_RXFLTMAP2, 0xff);
+		rtw_write16(padapter, REG_RXFLTMAP2, 0xFFFF);
 
 		//enable update TSF
 		rtw_write8(padapter, REG_BCN_CTRL, rtw_read8(padapter, REG_BCN_CTRL)&(~BIT(4)));

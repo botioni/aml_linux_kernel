@@ -422,6 +422,7 @@ u8 rtl8192c_disconnect_hdl(_adapter *padapter, unsigned char *pbuf)
 	struct mlme_ext_priv	*pmlmeext = &padapter->mlmeextpriv;
 	struct mlme_ext_info	*pmlmeinfo = &(pmlmeext->mlmext_info);
 	WLAN_BSSID_EX		*pnetwork = (WLAN_BSSID_EX*)(&(pmlmeinfo->network));
+	struct	mlme_priv 	*pmlmepriv = &padapter->mlmepriv;	
 	
 	if (is_client_associated_to_ap(padapter))
 	{
@@ -465,6 +466,7 @@ u8 rtl8192c_disconnect_hdl(_adapter *padapter, unsigned char *pbuf)
 
 	pmlmeinfo->state = WIFI_FW_NULL_STATE;
 	
+	pmlmepriv->sitesurveyctrl.traffic_busy = _FALSE;		
 	set_channel_bwmode(padapter, pmlmeext->cur_channel, pmlmeext->cur_ch_offset, pmlmeext->cur_bwmode);
 
 	flush_all_cam_entry(padapter);
@@ -564,6 +566,7 @@ u8 rtl8192c_setauth_hdl(_adapter *padapter, unsigned char *pbuf)
 	return 	H2C_SUCCESS;
 }
 
+#define CAM_CFG_VALID BIT15
 u8 rtl8192c_setkey_hdl(_adapter *padapter, u8 *pbuf)
 {
 	unsigned short				ctrl;
@@ -575,7 +578,7 @@ u8 rtl8192c_setkey_hdl(_adapter *padapter, u8 *pbuf)
 	pmlmeinfo->key_index = pparm->keyid;
 	
 	//write cam
-	ctrl = BIT(15) | ((pparm->algorithm) << 2) | pparm->keyid;	
+	ctrl = CAM_CFG_VALID | ((pparm->algorithm) << 2) | pparm->keyid;	
 	
 	write_cam(padapter, pparm->keyid, ctrl, null_sta, pparm->key);
 	
@@ -1296,6 +1299,7 @@ u8 rtl8192c_h2c_msg_hdl(_adapter *padapter, unsigned char *pbuf)
 
 	return H2C_SUCCESS;
 }
+#ifdef CONFIG_AUTOSUSPEND
 #ifdef SUPPORT_HW_RFOFF_DETECTED
 u8 set_FWSelectSuspend_cmd(_adapter *padapter ,u8 bfwpoll, u16 period)
 {
@@ -1307,6 +1311,7 @@ u8 set_FWSelectSuspend_cmd(_adapter *padapter ,u8 bfwpoll, u16 period)
 	FillH2CCmd(padapter, SELECTIVE_SUSPEND_ROF_CMD, sizeof(param), (u8*)(&param));		
 	return res;
 }
+#endif
 #endif
 
 u8 set_rssi_cmd(_adapter*padapter, u8 *param)
@@ -1507,7 +1512,7 @@ _func_enter_;
 
 	H2CSetPwrMode.Mode = Mode;
 	H2CSetPwrMode.SmartPS = 1;
-	H2CSetPwrMode.BcnPassTime = 1;//pPSC->RegMaxLPSAwakeIntvl;
+	H2CSetPwrMode.AwakeInterval = 1;//pPSC->RegMaxLPSAwakeIntvl;
 
 	FillH2CCmd(padapter, SET_PWRMODE_EID, sizeof(H2CSetPwrMode), (u8 *)&H2CSetPwrMode);
 	
@@ -1933,7 +1938,7 @@ void SetFwRsvdPagePkt(PADAPTER Adapter, BOOLEAN bDLFinished)
 
 	if(bDLOK)
 	{
-		DBG_871X("Set RSVD page location to Fw.\n");
+		DBG_871X("Set RSVD page location to Fw Len(%d).\n",sizeof(RsvdPageLoc));		
 		FillH2CCmd(Adapter, RSVD_PAGE_EID, sizeof(RsvdPageLoc), (u8 *)&RsvdPageLoc);
 	}
 
@@ -2012,7 +2017,7 @@ _func_enter_;
 	}
 
 	JoinBssRptParm.OpMode = mstatus;
-
+	printk("%s H2C len(%d)\n",__FUNCTION__,sizeof(JoinBssRptParm));
 	FillH2CCmd(padapter, JOINBSS_RPT_EID, sizeof(JoinBssRptParm), (u8 *)&JoinBssRptParm);
 	
 _func_exit_;

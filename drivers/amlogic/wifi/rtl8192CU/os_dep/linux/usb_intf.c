@@ -78,7 +78,7 @@ static int rtw_drv_init(struct usb_interface *pusb_intf,const struct usb_device_
 static void rtw_dev_remove(struct usb_interface *pusb_intf);
 
 #define USB_VENDER_ID_REALTEK		0x0BDA
-//2010-10-19 DID_USB_V3.4
+//2010-10-19 DID_USB_V38
 static struct usb_device_id rtw_usb_id_tbl[] ={
 
 	/*=== Realtek demoboard ===*/		
@@ -116,9 +116,10 @@ static struct usb_device_id rtw_usb_id_tbl[] ={
 	{USB_DEVICE(0x050D, 0x1102)},//Belkin - Edimax
 	{USB_DEVICE(0x2019, 0xAB2A)},//Planex - Abocom
 	{USB_DEVICE(0x20F4, 0x648B)},//TRENDnet - Cameo
+	{USB_DEVICE(0x4855, 0x0090)},// 	- Feixun
 
 	{USB_DEVICE(0x3358, 0x13D3)},// -Azwave 8188CE-VAU
-	{USB_DEVICE(0x3359, 0x13D3)},//Russian customer -Azwave (8188CE-VAU  b/g mode only)
+	{USB_DEVICE(0x3359, 0x13D3)},//Russian customer -Azwave (8188CE-VAU  g mode)
 	
 	/****** 8192CU ********/	
 	{USB_DEVICE(0x07b8, 0x8178)},//Funai -Abocom
@@ -129,13 +130,17 @@ static struct usb_device_id rtw_usb_id_tbl[] ={
 	{USB_DEVICE(0x7392, 0x7822)},//Edimax -Edimax	
 	{USB_DEVICE(0x2019, 0xAB2B)},//Planex -Abocom
 	{USB_DEVICE(0x07B8, 0x8178)},//Abocom -Abocom	
-	{USB_DEVICE(0x07AA, 0x0056)},//ATKK-Gemtek
+	{USB_DEVICE(0x07AA, 0x0056)},//ATKK-Gemtek	
+	{USB_DEVICE(0x4855, 0x0091)},// 	-Feixun
 	{}
 };
 
 static struct specific_device_id specific_device_id_tbl[] = {
+		{.idVendor=USB_VENDER_ID_REALTEK, .idProduct=0x817E, .flags=SPEC_DEV_ID_DISABLE_HT},
+		{.idVendor=USB_VENDER_ID_REALTEK, .idProduct=0x8177, .flags=SPEC_DEV_ID_DISABLE_HT},		
 		{.idVendor=0x0b05, .idProduct=0x1791, .flags=SPEC_DEV_ID_DISABLE_HT},
 		{.idVendor=0x13D3, .idProduct=0x3311, .flags=SPEC_DEV_ID_DISABLE_HT},
+		{.idVendor=0x13D3, .idProduct=0x3359, .flags=SPEC_DEV_ID_DISABLE_HT},		
 	{}
 };
 
@@ -641,23 +646,26 @@ int rtw_resume(struct usb_interface *pusb_intf)
 #ifdef CONFIG_AUTOSUSPEND
 		if(pwrpriv->bInternalAutoSuspend )
 		{
+			HAL_DATA_TYPE *pHalData = GET_HAL_DATA(padapter);
 			pwrpriv->current_rfpwrstate = rf_on;	
 			pwrpriv->bkeepfwalive = _FALSE;
 			pwrpriv->bInternalAutoSuspend = _FALSE;
 			pwrpriv->brfoffbyhw = _FALSE;
-
+	#if ( RTL8192C_WEP_ISSUE==1)	
+			if(!IS_92C_SERIAL(pHalData->VersionID))
+	#endif
+			{
 			printk("enc_algorithm(%x),wepkeymask(%x)\n",padapter->securitypriv.dot11PrivacyAlgrthm,pwrpriv->wepkeymask);
 			if((_WEP40_ == padapter->securitypriv.dot11PrivacyAlgrthm) ||(_WEP104_ == padapter->securitypriv.dot11PrivacyAlgrthm))
 			{
 				sint keyid;
-				for(keyid=0;keyid<4;keyid++)
-				{				
-					if(pwrpriv->wepkeymask & BIT(keyid))
-					{
-						rtw_set_key(padapter,&padapter->securitypriv, keyid);	
+
+					for(keyid=0;keyid<4;keyid++){				
+						if(pwrpriv->wepkeymask & BIT(keyid))
+							rtw_set_key(padapter,&padapter->securitypriv, keyid);	
 					}
 				}
-			}			
+			}
 		}
 #endif
 		_exit_pwrlock(&pwrpriv->lock);
@@ -752,14 +760,18 @@ static int rtw_drv_init(struct usb_interface *pusb_intf, const struct usb_device
 			device_init_wakeup(&pusb_intf->dev, 1);
 		}
 		
-		{ 	/* autosuspend (2s delay) */
+		if(padapter->registrypriv.usbss_enable ){ 	/* autosuspend (2s delay) */
 			pdvobjpriv->pusbdev->autosuspend_delay = 0 * HZ;//15 * HZ; idle-delay time		 	
 
 			#if (LINUX_VERSION_CODE>=KERNEL_VERSION(2,6,35))
 			usb_enable_autosuspend(padapter->dvobjpriv.pusbdev);
-			#else
-			padapter->dvobjpriv.pusbdev->autosuspend_disabled = 0;//autosuspend disabled by the user	
 			#endif
+
+			#if (LINUX_VERSION_CODE>=KERNEL_VERSION(2,6,22) && LINUX_VERSION_CODE<=KERNEL_VERSION(2,6,34))
+			padapter->bDisableAutosuspend = padapter->dvobjpriv.pusbdev->autosuspend_disabled ;
+			padapter->dvobjpriv.pusbdev->autosuspend_disabled = 0;//autosuspend disabled by the user
+			#endif
+
 			usb_autopm_get_interface(padapter->dvobjpriv.pusbintf );//init pm_usage_cnt ,let it start from 1
 
 			#if (LINUX_VERSION_CODE>=KERNEL_VERSION(2,6,32))
@@ -926,7 +938,7 @@ static void rtw_dev_remove(struct usb_interface *pusb_intf)
 {
 	struct net_device *pnetdev=usb_get_intfdata(pusb_intf);
 	_adapter *padapter = (_adapter*)netdev_priv(pnetdev);
-
+	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(padapter);
 _func_exit_;
 
 	usb_set_intfdata(pusb_intf, NULL);
@@ -958,7 +970,7 @@ _func_exit_;
 			#if (LINUX_VERSION_CODE>=KERNEL_VERSION(2,6,35))
 			usb_disable_autosuspend(padapter->dvobjpriv.pusbdev);
 			#else
-			padapter->dvobjpriv.pusbdev->autosuspend_disabled = 1;//autosuspend disabled by the user
+			padapter->dvobjpriv.pusbdev->autosuspend_disabled =  padapter->bDisableAutosuspend;// 1;//autosuspend disabled by the user
 			#endif
 		}
 		#endif

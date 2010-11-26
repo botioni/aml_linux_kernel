@@ -904,6 +904,7 @@ _func_enter_;
 		switch(pattrib->encrypt){
 		case _WEP40_:
 		case _WEP104_:
+			//printk("### xmitframe_swencrypt WEP ###########\n");
 			rtw_wep_encrypt(padapter, (u8 *)pxmitframe);
 			break;
 		case _TKIP_:

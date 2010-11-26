@@ -107,7 +107,7 @@ struct security_priv
 
 	u32 dot118021XGrpPrivacy;	// This specify the privacy algthm. used for Grp key 
 	u32	dot118021XGrpKeyid;		// key id used for Grp Key
-	union Keytype	dot118021XGrpKey[2];	// 802.1x Group Key, for inx0 and inx1	
+	union Keytype	dot118021XGrpKey[4];	// 802.1x Group Key, for inx0 and inx1	
 	union Keytype	dot118021XGrptxmickey;
 	union Keytype	dot118021XGrprxmickey;
 	union pn48		dot11Grptxpn;			// PN48 used for Grp Key xmit.

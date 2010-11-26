@@ -410,7 +410,7 @@ struct hal_priv
 	u8					framesyncMonitor;
 	u8					DefaultInitialGain[4];
 	u8					pwrGroupCnt;
-	u32					MCSTxPowerLevelOriginalOffset[4][16];
+	u32					MCSTxPowerLevelOriginalOffset[7][16];	// 7 gropus of pwr diff by rates
 	u32					CCKTxPowerLevelOriginalOffset;
 	u8					TxPowerLevelCCK[14];			// CCK channel 1~14
 	u8					TxPowerLevelOFDM24G[14];		// OFDM 2.4G channel 1~14
@@ -472,7 +472,7 @@ struct hal_priv
 	u32				IQK_BB_backup[10];
 	//RDG enable
 	BOOLEAN	 	bRDGEnable;
-
+	u8		bDumpRxPkt;
 
 	//for host message to fw
 	u8 LastHMEBoxNum;

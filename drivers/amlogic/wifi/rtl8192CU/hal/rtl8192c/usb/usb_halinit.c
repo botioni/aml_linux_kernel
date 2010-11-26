@@ -2210,6 +2210,7 @@ _func_enter_;
 	pHalData->CurrentChannel = 6;//default set to 6
 
 	status = PHY_MACConfig8192C(padapter);
+	rtw_write32(padapter, REG_RCR, rtw_read32(padapter, REG_RCR) & ~RCR_ADF);
 	if(status == _FAIL)
 	{
 		goto exit;
@@ -2226,12 +2227,14 @@ _func_enter_;
 
 	// 92CU use 3-wire to r/w RF
 	//pHalData->Rf_Mode = RF_OP_By_SW_3wire;
+#ifdef CONFIG_AUTOSUSPEND	
 #ifdef SUPPORT_HW_RFOFF_DETECTED
 	// The FW command register update must after MAC and FW init ready.
 	if((padapter->bFWReady) && ( padapter->pwrctrlpriv.bHWPwrPindetect ) && (padapter->registrypriv.usbss_enable ))
 	{
 		set_FWSelectSuspend_cmd(padapter,_TRUE ,500);//note fw to support hw power down ping detect
 	}
+#endif
 #endif
 	status = PHY_RFConfig8192C(padapter);	
 	if(status == _FAIL)
@@ -2316,6 +2319,7 @@ _func_enter_;
 
 	rtw_write8(padapter, 0x15, 0xe9);//suggest by Johnny for lower temperature
 	//_dbg_dump_macreg(padapter);
+	pHalData->bDumpRxPkt = _FAIL;
 
 exit:
 

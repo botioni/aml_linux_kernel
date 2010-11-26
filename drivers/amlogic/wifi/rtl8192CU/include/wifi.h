@@ -409,7 +409,7 @@ __inline static unsigned char * get_hdr_bssid(unsigned char *pframe)
 			sa = GetAddr1Ptr(pframe);
 			break;
 		default:	// ToDs=1, FromDs=1
-			sa =NULL; //???????
+			sa = GetAddr2Ptr(pframe);
 			break;
 	}
 

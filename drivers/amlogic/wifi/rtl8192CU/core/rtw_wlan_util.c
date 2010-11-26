@@ -598,6 +598,33 @@ void write_cam(_adapter *padapter, u8 entry, u16 ctrl, u8 *mac, u8 *key)
 
 }
 
+static u32 _ReadCAM(_adapter *padapter ,u32 addr)
+{
+	u32 count = 0, cmd;
+	cmd = CAM_POLLINIG |addr ;
+	rtw_write32(padapter, RWCAM, cmd);
+
+	do{
+		if(0 == (rtw_read32(padapter,REG_CAMCMD) & CAM_POLLINIG)){
+			break;
+		}
+	}while(count++ < 100);		
+
+	return rtw_read32(padapter,REG_CAMREAD);	
+}
+void read_cam(_adapter *padapter ,u8 entry)
+{
+	u32	j,count = 0, addr, cmd;
+	addr = entry << 3;
+
+	printk("********* DUMP CAM Entry_#%02d***************\n",entry);
+	for (j = 0; j < 6; j++)
+	{	
+		cmd = _ReadCAM(padapter ,addr+j);
+		printk("offset:0x%02x => 0x%08x \n",addr+j,cmd);
+	}
+	printk("*********************************\n");
+}
 int allocate_cam_entry(_adapter *padapter)
 {
 	unsigned int cam_idx;

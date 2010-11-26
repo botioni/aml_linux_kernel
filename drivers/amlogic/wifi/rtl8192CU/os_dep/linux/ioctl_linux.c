@@ -1336,7 +1336,13 @@ static int rtw_wx_set_priv(struct net_device *dev,
 				char *extra)
 {
 
-	int ret = 0, len = 0;
+#ifdef CONFIG_DEBUG_RTW_WX_SET_PRIV
+	char *ext_dbg;
+#endif
+
+	int ret = 0;
+#ifdef CONFIG_PLATFORM_ANDROID
+	int len = 0;
 	char *ext;
 
 	_adapter *padapter = netdev_priv(dev);
@@ -1467,6 +1473,7 @@ FREE_EXT:
 
 	//DBG_8192C("rtw_wx_set_priv: (SIOCSIWPRIV) %s ret=%d\n", 
 	//		dev->name, ret);
+#endif
 	return ret;
 	
 }
@@ -1657,6 +1664,10 @@ struct	iw_mlme
 int rfpwrstate_check(_adapter *padapter)
 {
 	struct pwrctrl_priv *pwrpriv = &padapter->pwrctrlpriv;
+	struct pwrctrl_priv *pwrctrlpriv = &padapter->pwrctrlpriv;
+		
+	if( pwrctrlpriv->power_mgnt == PS_MODE_ACTIVE )
+		return _TRUE;		
 		
 	if(rf_off == pwrpriv->current_rfpwrstate )
 	{		
@@ -1730,9 +1741,16 @@ static int rtw_wx_set_scan(struct net_device *dev, struct iw_request_info *a,
 		goto exit;
 	}
 
-	if ((check_fwstate(pmlmepriv, _FW_UNDER_SURVEY|_FW_UNDER_LINKING) == _TRUE) ||
-	    (pmlmepriv->sitesurveyctrl.traffic_busy == _TRUE))
+	if (check_fwstate(pmlmepriv, _FW_UNDER_SURVEY|_FW_UNDER_LINKING) == _TRUE) 
 	{
+		printk("%s exit cause fw state(%x) mismatch\n",__FUNCTION__,pmlmepriv->fw_state);
+		ret = -1;
+		goto exit;
+	}
+
+	if(pmlmepriv->sitesurveyctrl.traffic_busy == _TRUE)
+	{
+		printk("%s exit cause traffic_busy(%x) RCR(0x%04x)\n",__FUNCTION__,pmlmepriv->sitesurveyctrl.traffic_busy,rtw_read16(padapter,REG_RCR));
 		ret = -1;
 		goto exit;
 	} 
@@ -3546,6 +3564,7 @@ static int rtw_dbg_port(struct net_device *dev,
 	struct security_priv *psecuritypriv = &padapter->securitypriv;
 	struct wlan_network *cur_network = &(pmlmepriv->cur_network);
 	struct sta_priv *pstapriv = &padapter->stapriv;
+	HAL_DATA_TYPE		*pHalData = GET_HAL_DATA(padapter);	
 	
 
 	pdata = (u32*)&wrqu->data;	
@@ -3793,8 +3812,21 @@ static int rtw_dbg_port(struct net_device *dev,
 							
 					}
 					break;
-
-
+				case 0x0c:
+					{
+						printk("dump rx packet (%d)\n",extra_arg);
+						pHalData->bDumpRxPkt =extra_arg;						
+					}
+					break;
+				case 0x0d:
+					{
+						//u8 entry = (u8) extra_arg;
+						u8 entry=0;
+						//dump cam
+						for(entry=0;entry<32;entry++)
+							read_cam(padapter,entry);
+					}				
+					break;
 				case 0xdd://dump registers
 					{
 						int i,j=1,path;

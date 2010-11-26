@@ -56,7 +56,7 @@ enum LPS_CTRL_TYPE
 typedef struct _SETPWRMODE_PARM{
 	u8 	Mode;
 	u8 	SmartPS;
-	u8	BcnPassTime;	// unit: 100ms
+	unsigned char  AwakeInterval; //Unit: beacon interval, this field is only valid in PS_DTIM mode
 }SETPWRMODE_PARM, *PSETPWRMODE_PARM;
 
 typedef struct JOINBSSRPT_PARM{
@@ -75,12 +75,14 @@ void set_FwPwrMode_cmd(_adapter*padapter, u8 Mode);
 void set_FwJoinBssReport_cmd(_adapter* padapter, u8 mstatus);
 #endif
 
+#ifdef CONFIG_AUTOSUSPEND
 #ifdef  SUPPORT_HW_RFOFF_DETECTED
 struct H2C_SS_RFOFF_PARAM{
 	u8 	ROFOn; // 1: on, 0:off
 	u16	gpio_period; // unit: 1024 us
 }__attribute__ ((packed));
 u8 set_FWSelectSuspend_cmd(_adapter*padapter,u8 bfwpoll, u16 period);
+#endif
 #endif
 
 #ifdef CONFIG_ANTENNA_DIVERSITY

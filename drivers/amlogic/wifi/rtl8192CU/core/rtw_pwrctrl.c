@@ -55,8 +55,10 @@ void autosuspend_enter(_adapter* padapter)
 		
 		#if (LINUX_VERSION_CODE>=KERNEL_VERSION(2,6,33))
 			usb_autopm_put_interface(padapter->dvobjpriv.pusbintf);	
-		#else		
+		#elif (LINUX_VERSION_CODE>=KERNEL_VERSION(2,6,20))		
 			usb_autopm_enable(padapter->dvobjpriv.pusbintf);
+              #else		
+			usb_autosuspend_device(padapter->dvobjpriv.pusbdev, 1);
 		#endif
 	}
 	#if (LINUX_VERSION_CODE>=KERNEL_VERSION(2,6,32))
@@ -86,9 +88,10 @@ int autoresume_enter(_adapter* padapter)
 				result = _FAIL;
 				goto error_exit;
 			}
-			
-		#else		
+		#elif (LINUX_VERSION_CODE>=KERNEL_VERSION(2,6,20))				
 			usb_autopm_disable(padapter->dvobjpriv.pusbintf);
+		#else
+			usb_autoresume_device(padapter->dvobjpriv.pusbdev, 1);
 		#endif
 
 		#if (LINUX_VERSION_CODE>=KERNEL_VERSION(2,6,32))
@@ -234,17 +237,15 @@ void before_assoc_ps_ctrl_wk_hdl(_adapter *padapter, u8 *pbuf, int sz)
 	{
 		return;
 	}
-
+#if (DEV_BUS_TYPE==DEV_BUS_USB_INTERFACE)		
+#ifdef CONFIG_AUTOSUSPEND		
 	if(padapter->registrypriv.usbss_enable)
 	{
-#if (DEV_BUS_TYPE==DEV_BUS_USB_INTERFACE)		
-#ifdef CONFIG_AUTOSUSPEND			
 		autosuspend_enter(padapter);
-	
+	}
+	else	
 #endif	
 #endif
-	}
-	else
 	{
 #ifdef CONFIG_IPS			
 		ips_enter(padapter);					
@@ -306,14 +307,16 @@ void InactivePSWorkItemCallback(struct work_struct *work)
 
 #ifdef SUPPORT_HW_RFOFF_DETECTED
 	pm_message_t message;
-	//printk("==> fw report state(0x%x)\n",rtw_read8(padapter,0x1ca));
 	if(pwrpriv->bips_processing == _TRUE)	return;
-	if(padapter->net_closed == _TRUE)		return;
 		
+	//printk("==> fw report state(0x%x)\n",rtw_read8(padapter,0x1ca));
 	if(padapter->pwrctrlpriv.bHWPwrPindetect) 
 	{
+	#ifdef CONFIG_AUTOSUSPEND
 		if(padapter->registrypriv.usbss_enable)
 		{
+			if(padapter->net_closed == _TRUE)	return;
+			
 			if(pwrpriv->current_rfpwrstate == rf_on)
 			{
 				rfpwrstate = RfOnOffDetect(padapter);
@@ -332,6 +335,7 @@ void InactivePSWorkItemCallback(struct work_struct *work)
 			}			
 		}
 		else
+       #endif
 		{
 			rfpwrstate = RfOnOffDetect(padapter);
 			printk("@@@@- #2  %s==> rfstate:%s \n",__FUNCTION__,(rfpwrstate==rf_on)?"rf_on":"rf_off");
@@ -340,6 +344,7 @@ void InactivePSWorkItemCallback(struct work_struct *work)
 			{
 				if(rfpwrstate == rf_off)
 				{					
+					pwrpriv->bkeepfwalive = _TRUE;	
 					pwrpriv->change_rfpwrstate = rf_off;
 					pwrpriv->brfoffbyhw = _TRUE;
 					pwrpriv->bInternalAutoSuspend = _TRUE;
@@ -357,6 +362,7 @@ void InactivePSWorkItemCallback(struct work_struct *work)
 	}
 	
 #endif
+	if(padapter->net_closed == _TRUE)	return;
 
 	if((pwrpriv->current_rfpwrstate == rf_on) && ((pwrpriv->pwr_state_check_cnts%4)==0))
 	{
@@ -409,7 +415,7 @@ void pwr_state_check_handler(void *FunctionContext)
 		return;	
 
 #ifdef SUPPORT_HW_RFOFF_DETECTED
-	printk("%s...bHWPwrPindetect(%d)\n",__FUNCTION__,padapter->pwrctrlpriv.bHWPwrPindetect);
+	//printk("%s...bHWPwrPindetect(%d)\n",__FUNCTION__,padapter->pwrctrlpriv.bHWPwrPindetect);
 	if(padapter->pwrctrlpriv.bHWPwrPindetect)
 	{
 	#if 0
@@ -665,6 +671,7 @@ _func_exit_;
 void LeaveAllPowerSaveMode(IN PADAPTER Adapter)
 {
 	struct mlme_priv	*pmlmepriv = &(Adapter->mlmepriv);
+	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(Adapter);
 	u32 LPSLeaveTimeOut = 10000;
 	//u32 IPSLeaveTimeOut = 10000;
 
@@ -702,8 +709,10 @@ _func_enter_;
 			{
 				#if (LINUX_VERSION_CODE>=KERNEL_VERSION(2,6,35))
 				//usb_disable_autosuspend(padapter->dvobjpriv.pusbdev);
-				#else
-				Adapter->dvobjpriv.pusbdev->autosuspend_disabled = 1;//autosuspend disabled by the user
+				//#else
+				#endif
+				#if (LINUX_VERSION_CODE>=KERNEL_VERSION(2,6,22) && LINUX_VERSION_CODE<=KERNEL_VERSION(2,6,34))
+				Adapter->dvobjpriv.pusbdev->autosuspend_disabled = Adapter->bDisableAutosuspend;//autosuspend disabled by the user
 				#endif
 			}
 			else

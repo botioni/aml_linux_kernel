@@ -866,6 +866,7 @@ static int is_desired_network(_adapter *adapter, struct wlan_network *pnetwork)
 {
 	struct security_priv *psecuritypriv = &adapter->securitypriv;
 	struct mlme_priv *pmlmepriv = &adapter->mlmepriv;
+       struct registry_priv	 *pregpriv = &adapter->registrypriv;
 	u32 desired_encmode;
 	u32 privacy;
 
@@ -892,8 +893,11 @@ static int is_desired_network(_adapter *adapter, struct wlan_network *pnetwork)
 		}	
 	}
 
-	if ((desired_encmode == Ndis802_11EncryptionDisabled) && (privacy != 0))
-            bselected = _FALSE;
+	if (pregpriv->wifi_spec == 1) //for  correct flow of 8021X  to do....
+	{
+	    if ((desired_encmode == Ndis802_11EncryptionDisabled) && (privacy != 0))
+                bselected = _FALSE;
+	}
 
  	if ((desired_encmode != Ndis802_11EncryptionDisabled) && (privacy == 0))
 		bselected = _FALSE;
@@ -1344,9 +1348,9 @@ _func_enter_;
 					pcur_wlan->fixed = _FALSE;					
 
 					pcur_sta = rtw_get_stainfo(pstapriv, cur_network->network.MacAddress);
-					_enter_critical(&(pstapriv->sta_hash_lock), &irqL2);
+					_enter_critical_bh(&(pstapriv->sta_hash_lock), &irqL2);
 					rtw_free_stainfo(adapter,  pcur_sta);
-					_exit_critical(&(pstapriv->sta_hash_lock), &irqL2);
+					_exit_critical_bh(&(pstapriv->sta_hash_lock), &irqL2);
 
 					ptarget_wlan = find_network(&pmlmepriv->scanned_queue, pnetwork->network.MacAddress);
 					if(ptarget_wlan)	ptarget_wlan->fixed = _TRUE;						
@@ -1690,11 +1694,11 @@ _func_enter_;
 	{
 		psta = rtw_get_stainfo(&adapter->stapriv, pstadel->macaddr);
 		
-		_enter_critical(&(pstapriv->sta_hash_lock), &irqL);
+		_enter_critical_bh(&(pstapriv->sta_hash_lock), &irqL);
 		
 		rtw_free_stainfo(adapter,  psta);
 		
-		_exit_critical(&(pstapriv->sta_hash_lock), &irqL);
+		_exit_critical_bh(&(pstapriv->sta_hash_lock), &irqL);
 		
 		if(adapter->stapriv.asoc_sta_count== 1) //a sta + bc/mc_stainfo (not Ibss_stainfo)
 		{ 
@@ -1768,7 +1772,7 @@ void _rtw_sitesurvey_ctrl_handler (_adapter *adapter)
 	struct	sitesurvey_ctrl	*psitesurveyctrl=&pmlmepriv->sitesurveyctrl;
 	struct	registry_priv	*pregistrypriv=&adapter->registrypriv;
 	u64 current_tx_pkts;
-	uint current_rx_pkts;
+	u64 current_rx_pkts;
 	
 _func_enter_;		
 	
@@ -1780,6 +1784,7 @@ _func_enter_;
 
 	if( (current_tx_pkts>pregistrypriv->busy_thresh)||(current_rx_pkts>pregistrypriv->busy_thresh)) 
 	{		
+		//printk("traffic_busy Curr_tx(%lld),Curr_rx(%lld)\n",current_tx_pkts,current_rx_pkts);
 		psitesurveyctrl->traffic_busy= _TRUE;
 	}
 	else 
@@ -1880,7 +1885,7 @@ void dynamic_check_timer_handlder(_adapter *adapter)
 
 	//pbc_polling_wk_cmd(adapter);
 
-	//if(check_fwstate(pmlmepriv, _FW_LINKED) == _TRUE)
+	if(check_fwstate(pmlmepriv, _FW_LINKED) == _TRUE)
 	      _rtw_sitesurvey_ctrl_handler(adapter);
 
 

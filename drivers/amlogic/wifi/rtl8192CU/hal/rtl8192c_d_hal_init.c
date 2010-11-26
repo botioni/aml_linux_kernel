@@ -1305,8 +1305,8 @@ static void _ReadHWPDSelection(IN PADAPTER Adapter,IN u8*PROMContent,IN	u8	Autol
 		// if hw supported, 8051 (SIE) will generate WeakUP frame when autoresume
 		Adapter->pwrctrlpriv.bSupportRemoteWakeup = (PROMContent[EEPROM_TEST_USB_OPT] & BIT1)?_TRUE :_FALSE;
 
-		if(SUPPORT_HW_RADIO_DETECT(Adapter))	
-			Adapter->registrypriv.usbss_enable = Adapter->pwrctrlpriv.bSupportRemoteWakeup ;
+		//if(SUPPORT_HW_RADIO_DETECT(Adapter))	
+			//Adapter->registrypriv.usbss_enable = Adapter->pwrctrlpriv.bSupportRemoteWakeup ;
 		
 		DBG_8192C("%s...bHWPwrPindetect(%d) bSupportRemoteWakeup(%x)\n",__FUNCTION__,Adapter->pwrctrlpriv.bHWPwrPindetect,Adapter->pwrctrlpriv.bSupportRemoteWakeup);
 	}

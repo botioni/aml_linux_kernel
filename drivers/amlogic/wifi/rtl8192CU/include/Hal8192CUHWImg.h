@@ -22,9 +22,10 @@
 
 /*Created on  2010/ 5/25,  2:21*/
 
-#define TSMCImgArrayLength 16278 
+#define TSMCImgArrayLength 16076 //v60
+//#define TSMCImgArrayLength 13540 //v49
 extern unsigned char Rtl8192CUFwTSMCImgArray[TSMCImgArrayLength];
-#define UMCImgArrayLength 16278
+#define UMCImgArrayLength 16076 //V60
 extern unsigned char Rtl8192CUFwUMCImgArray[UMCImgArrayLength];
 #define UMC8723ImgArrayLength 16288
 extern unsigned char Rtl8192CUFwUMC8723ImgArray[UMC8723ImgArrayLength];

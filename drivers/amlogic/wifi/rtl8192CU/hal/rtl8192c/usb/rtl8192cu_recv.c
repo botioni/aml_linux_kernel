@@ -238,6 +238,9 @@ void rtl8192cu_update_recvframe_attrib_from_recvstat(union recv_frame *precvfram
 	u16 drvinfo_sz=0;
 	struct rx_pkt_attrib *pattrib = &precvframe->u.hdr.attrib;		
 	_adapter *padapter = precvframe->u.hdr.adapter;
+
+	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(padapter);
+	
 	u8 bPacketMatchBSSID=_FALSE;
 	u8 bPacketToSelf = _FALSE;
 	u8 bPacketBeacon = _FALSE;
@@ -294,22 +297,28 @@ void rtl8192cu_update_recvframe_attrib_from_recvstat(union recv_frame *precvfram
 
 
 #if 0 //dump rxdesc for debug
-	printk("drvinfo_sz=%d\n", drvinfo_sz);
-	printk("physt=%d\n", physt);
-	printk("shift=%d\n", shift);
-	printk("qos=%d\n", qos);
-	printk("icverr=%d\n", icverr);
-	printk("htc=%d\n", htc);
-	printk("bdecrypted=%d\n", pattrib->bdecrypted);
-	printk("mcs_rate=%d\n", pattrib->mcs_rate);
-	printk("rxht=%d\n", pattrib->rxht);
+	if(pHalData->bDumpRxPkt){
+		printk("### rxdw0=0x%08x #### \n", le32_to_cpu(prxstat->rxdw0));	
+		printk("pkt_len=0x%04x\n",(le32_to_cpu(prxstat->rxdw0)&0x3FFF));
+    	       printk("drvinfo_sz=%d\n", drvinfo_sz);
+	       printk("physt=%d\n", physt);
+	       printk("shift=%d\n", shift);
+	       printk("qos=%d\n", qos);
+	       printk("icverr=%d\n", icverr);
+	       printk("htc=%d\n", htc);
+	       printk("bdecrypted=%d\n", pattrib->bdecrypted);
+	       printk("mcs_rate=%d\n", pattrib->mcs_rate);
+	       printk("rxht=%d\n", pattrib->rxht);
+	}
 #endif
 	
 	//phy_info
 	if(drvinfo_sz && physt)
 	{
-		bPacketMatchBSSID = ((!IsFrameTypeCtrl(precvframe->u.hdr.rx_data)) && !icverr && !crcerr &&
-			_rtw_memcmp(get_hdr_bssid(precvframe->u.hdr.rx_data), get_my_bssid(&padapter->mlmeextpriv.mlmext_info.network), ETH_ALEN));
+		bPacketMatchBSSID = ((!IsFrameTypeCtrl(precvframe->u.hdr.rx_data)) && 
+							!icverr && !crcerr && _rtw_memcmp(get_hdr_bssid(precvframe->u.hdr.rx_data), 
+							get_my_bssid(&padapter->mlmeextpriv.mlmext_info.network), ETH_ALEN));
+
 			
 
 		bPacketToSelf = bPacketMatchBSSID &&  (_rtw_memcmp(get_da(precvframe->u.hdr.rx_data), myid(&padapter->eeprompriv), ETH_ALEN));

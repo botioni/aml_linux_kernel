@@ -3389,7 +3389,7 @@ dm_SW_AntennaSwitch(
 		return;
 	}
 #endif
-	printk("\n............................ %s.........................\n",__FUNCTION__);
+	//printk("\n............................ %s.........................\n",__FUNCTION__);
 	// Handling step mismatch condition.
 	// Peak step is not finished at last time. Recover the variable and check again.
 	if( Step != pDM_SWAT_Table->try_flag	)
