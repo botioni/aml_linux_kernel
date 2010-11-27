@@ -191,10 +191,9 @@ static unsigned int inner_cs_input_level()
     
     if(cs_no &(1<<14))
       level |= (1<<0);
-    if(cs_no &(1<<15))
-      level |= (1<<4);
+    //if(cs_no &(1<<15))
+     // level |= (1<<4);
       
-    printk("level = %d",level);
 /*      
     WRITE_CBUS_REG(VGHL_PWM_REG0, 0);
     WRITE_CBUS_REG(VGHL_PWM_REG1, 0);
