@@ -644,13 +644,26 @@ static	struct platform_device aml_rtc_device = {
 #endif
 
 #if defined(CONFIG_SUSPEND)
-
+static void set_vccx2(int power_on)
+{
+    if(power_on){
+        printk(KERN_INFO "set_vccx2 power up\n");
+        set_gpio_val(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), 1);
+        set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);        
+    }
+    else{
+        printk(KERN_INFO "set_vccx2 power down\n");        
+        set_gpio_val(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), 0);
+        set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);   
+    }
+}
 static struct meson_pm_config aml_pm_pdata = {
     .ddr2_reg_refresh = IO_APB_BUS_BASE+0x0004,
     .ddr2_reg_phy = IO_APB_BUS_BASE+0x1380,
     .ddr_pll_ctrl = CBUS_REG_ADDR(HHI_DDR_PLL_CNTL),
     .hiu_base = CBUS_REG_ADDR(0x1000),
     .sleepcount = 128,
+    .set_vccx2 = set_vccx2,
 };
 
 static struct platform_device aml_pm_device = {

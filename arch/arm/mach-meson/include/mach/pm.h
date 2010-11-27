@@ -30,6 +30,7 @@ struct meson_pm_config {
 	 * adequate.
 	 */
 	int sleepcount;
+	void (*set_vccx2)(int power_on);
 };
 
 extern unsigned int meson_cpu_suspend_sz;

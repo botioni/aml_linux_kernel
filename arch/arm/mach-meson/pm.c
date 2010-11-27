@@ -422,6 +422,10 @@ static void meson_pm_suspend(void)
     usb_switch(OFF,0);
     usb_switch(OFF,1);
     
+    if(pdata->set_vccx2){
+        pdata->set_vccx2(OFF);
+    }
+     
 #ifdef WAKE_UP_BY_IRQ 
     WRITE_CBUS_REG(A9_0_IRQ_IN2_INTR_MASK, (1<<8));
     meson_sram_suspend(pdata);
@@ -442,6 +446,10 @@ static void meson_pm_suspend(void)
     }
     printk(KERN_INFO "... wake up\n");
 #endif
+
+    if(pdata->set_vccx2){
+        pdata->set_vccx2(ON);
+    }
     
     pll_switch(ON);
     
