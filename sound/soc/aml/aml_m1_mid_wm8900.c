@@ -193,6 +193,8 @@ static unsigned int inner_cs_input_level()
       level |= (1<<0);
     if(cs_no &(1<<15))
       level |= (1<<4);
+      
+    printk("level = %d",level);
 /*      
     WRITE_CBUS_REG(VGHL_PWM_REG0, 0);
     WRITE_CBUS_REG(VGHL_PWM_REG1, 0);
@@ -275,7 +277,7 @@ static void wm8900_hp_detect_queue(struct work_struct* work)
 	int gpio_status = 0;
 	struct snd_soc_codec* codec = (struct snd_soc_codec*)(pwork->data);
 //printk("level = %x, hp_detect_flag = %x\n", level, hp_detect_flag);
-	if(level == 0x11&& hp_detect_flag!= 0x11){       // HP	
+	if(level == 0x1&& hp_detect_flag!= 0x1){       // HP	
 		printk("Headphone pluged in\n");		
 		snd_soc_dapm_disable_pin(codec, "Ext Spk");
 		snd_soc_dapm_sync(codec);
