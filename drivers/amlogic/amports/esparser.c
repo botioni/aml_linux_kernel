@@ -109,7 +109,10 @@ static ssize_t _esparser_write(const char __user *buf, size_t count, u32 type)
         len = min(r, (size_t)FETCHBUF_SIZE);
 
         copy_from_user(fetchbuf_remap, p, len);
-
+	// reset the Write and read pointer to zero again
+	WRITE_MPEG_REG(PFIFO_RD_PTR, 0);
+	WRITE_MPEG_REG(PFIFO_WR_PTR, 0);
+	
         WRITE_MPEG_REG_BITS(PARSER_CONTROL, len, ES_PACK_SIZE_BIT, ES_PACK_SIZE_WID);
         WRITE_MPEG_REG_BITS(PARSER_CONTROL,
                     parser_type | PARSER_WRITE | PARSER_AUTOSEARCH,
