@@ -482,14 +482,15 @@ static struct i2c_adapter aml_i2c_pio_adapter = {
 
 /***************i2c class****************/
 
-static ssize_t show_i2c_debug(struct class *class, char *buf)
+static ssize_t show_i2c_debug(struct class *class, 
+			struct class_attribute *attr,	char *buf)
 {
 	struct aml_i2c *i2c = &aml_i2c_ddata;
 	return sprintf(buf, "i2c debug is 0x%x\n", i2c->i2c_debug);
 }
 
-static ssize_t store_i2c_debug(struct class *class, const char *buf, 
-											size_t count)
+static ssize_t store_i2c_debug(struct class *class, 
+			struct class_attribute *attr,	const char *buf, size_t count)
 {
 	unsigned int dbg;
 	ssize_t r;
@@ -503,7 +504,8 @@ static ssize_t store_i2c_debug(struct class *class, const char *buf,
 	return count;
 }
 
-static ssize_t show_i2c_info(struct class *class, char *buf)
+static ssize_t show_i2c_info(struct class *class, 
+			struct class_attribute *attr,	char *buf)
 {
 	struct aml_i2c *i2c = &aml_i2c_ddata;
 	struct aml_i2c_reg_ctrl* ctrl;
@@ -554,9 +556,34 @@ static ssize_t show_i2c_info(struct class *class, char *buf)
 	return 0;
 }
 
+static ssize_t store_register(struct class *class, 
+			struct class_attribute *attr,	const char *buf, size_t count)
+{
+	unsigned int reg, val, ret;
+
+	if(buf[0] == 'w'){
+		ret = sscanf(buf, "w %x %x", &reg, &val);
+		//printk("sscanf w reg = %x, val = %x\n",reg, val);
+		printk("write cbus reg 0x%x value %x\n", reg, val);
+		WRITE_CBUS_REG(reg, val);
+	}
+	else{
+		ret =  sscanf(buf, "%x", &reg);
+		//printk("sscanf r reg = %x\n", reg);
+		val = READ_CBUS_REG(reg);
+		printk("read cbus reg 0x%x value %x\n", reg, val);
+	}
+	
+	if (ret != 1 || ret !=2)
+		return -EINVAL;
+
+	return 0;
+}
+
 static struct class_attribute i2c_class_attrs[] = {
     __ATTR(debug,  S_IRUGO | S_IWUSR, show_i2c_debug,    store_i2c_debug),
     __ATTR(info,       S_IRUGO | S_IWUSR, show_i2c_info,    NULL),
+    __ATTR(cbus_reg,  S_IRUGO | S_IWUSR, NULL,    store_register),
     __ATTR_NULL
 };
 
@@ -654,7 +681,7 @@ static void __exit aml_i2c_exit(void)
 	platform_driver_unregister(&aml_i2c_driver);
 } 
 
-module_init(aml_i2c_init);
+arch_initcall(aml_i2c_init);
 module_exit(aml_i2c_exit);
 
 MODULE_AUTHOR("AMLOGIC");
