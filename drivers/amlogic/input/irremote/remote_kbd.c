@@ -86,7 +86,7 @@ static  pin_config_t  pin_config[]={
 			.bit=(1<<31),
 		},
 #endif
-#if  defined(CONFIG_MACH_MESON_8726M)	
+#if  defined(CONFIG_MACH_MESON_8726M) || defined(CONFIG_MACH_MESON_8726M_ARM) || defined(CONFIG_MACH_MESON_8726M_DVBC)
 		{
 			.platform_name="8726",
 			.pin_mux=5,
