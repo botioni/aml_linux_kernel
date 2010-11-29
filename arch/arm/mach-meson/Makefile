@@ -26,5 +26,6 @@ obj-$(CONFIG_MACH_MESON_8726M_DVBC)	+= board-8726m-dvbc.o
 obj-$(CONFIG_MACH_MESON_8726M_ML)	+= board-8726m-ml.o
 obj-$(CONFIG_MACH_MESON_8726M_W10)	+= board-8726m-w10.o
 obj-$(CONFIG_MACH_MESON_8726M_W7)	+= board-8726m-w7.o
+obj-$(CONFIG_MACH_MESON_8726M_K7)	+= board-8726m-k7.o
 # Power Management
 obj-$(CONFIG_SUSPEND)			+= pm.o
