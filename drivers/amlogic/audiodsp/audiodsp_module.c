@@ -61,6 +61,7 @@ static unsigned int audiodsp_mips[]={
     200000, //#define MCODEC_FMT_ADPCM	  (1<<8)
     200000, //#define MCODEC_FMT_WMA     (1<<9)
     200000, //#define MCODEC_FMT_PCM      (1<<10)
+    200000, //#define MCODEC_FMT_WMAPRO      (1<<11)
 };
 
 #ifdef CONFIG_PM
@@ -114,6 +115,7 @@ int audiodsp_start(void)
 	if(pmcode->fmt == MCODEC_FMT_COOK || pmcode->fmt == MCODEC_FMT_RAAC 
 		|| pmcode->fmt == MCODEC_FMT_AMR || pmcode->fmt == MCODEC_FMT_WMA 
 		|| pmcode->fmt == MCODEC_FMT_ADPCM || pmcode->fmt == MCODEC_FMT_PCM)
+		||(pmcode->fmt == MCODEC_FMT_WMAPRO))
 
 	{
     		for(i = 0; i< 1000;i++){

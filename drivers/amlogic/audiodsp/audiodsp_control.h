@@ -39,5 +39,6 @@ char *data;
 #define MCODEC_FMT_ADPCM	  (1<<8)
 #define MCODEC_FMT_WMA     (1<<9)
 #define MCODEC_FMT_PCM      (1<<10)
+#define MCODEC_FMT_WMAPRO     (1<<11)
 #endif
 
