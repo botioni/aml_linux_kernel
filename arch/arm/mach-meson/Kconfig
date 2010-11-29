@@ -67,7 +67,7 @@ config MACH_MESON_8726M_W7
 	help
 	  Include support for the AMLOGIC M1 8726M Emulation Baseboard platform.
 
-config MACH_MESON_8726M_W10
+config MACH_MESON_8726M_K10
 	select GENERIC_ALLOCATOR
 	bool "Support M1 8726(K7) platform(machid=2956)"
 	help
