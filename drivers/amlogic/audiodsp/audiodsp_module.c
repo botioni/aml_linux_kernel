@@ -112,10 +112,13 @@ int audiodsp_start(void)
  		start_audiodsp_monitor(priv);
 
 #ifdef CONFIG_AM_VDEC_REAL
-	if(pmcode->fmt == MCODEC_FMT_COOK || pmcode->fmt == MCODEC_FMT_RAAC 
-		|| pmcode->fmt == MCODEC_FMT_AMR || pmcode->fmt == MCODEC_FMT_WMA 
-		|| pmcode->fmt == MCODEC_FMT_ADPCM || pmcode->fmt == MCODEC_FMT_PCM)
-		||(pmcode->fmt == MCODEC_FMT_WMAPRO))
+	if((pmcode->fmt == MCODEC_FMT_COOK) || 
+	   (pmcode->fmt == MCODEC_FMT_RAAC) || 
+	   (pmcode->fmt == MCODEC_FMT_AMR)  || 
+	   (pmcode->fmt == MCODEC_FMT_WMA)  ||
+	   (pmcode->fmt == MCODEC_FMT_ADPCM)|| 
+	   (pmcode->fmt == MCODEC_FMT_PCM)  ||
+	   (pmcode->fmt == MCODEC_FMT_WMAPRO))
 
 	{
     		for(i = 0; i< 1000;i++){
