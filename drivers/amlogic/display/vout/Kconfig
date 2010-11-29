@@ -32,5 +32,10 @@ config AML_TCON_W7
 	help  
 		W7 LCD panel module
 
+config AML_TCON_K7
+	tristate "K7 panel driver"
+	depends on  AM_TCON_OUTPUT
+	help  
+		K7 LCD panel module
 endmenu
 	
