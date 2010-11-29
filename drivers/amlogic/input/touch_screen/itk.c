@@ -22,47 +22,56 @@
 #include <linux/i2c/itk.h>
 
 
-#define        DRIVER_NAME     "itk"
-#define        DRIVER_VERSION  "1"
+#define DRIVER_NAME "itk"
+#define DRIVER_VERSION "1"
 
-/* basic commands */
-#define CANDO           1
-#define SINTEK          0
-#define SINTEK_NEW      2
-
+//#define ITK_TS_DEBUG
 //#define TS_DELAY_WORK
-#define MULTI_TOUCH
 
 /* periodic polling delay and period */
-#define        TS_POLL_DELAY   (1 * 1000000)
-#define        TS_POLL_PERIOD  (5 * 1000000)
+#define TS_POLL_DELAY   (1 * 1000000)
+#define TS_POLL_PERIOD  (5 * 1000000)
+
+#define MAX_SUPPORT_POINT   5 //just support 2 point now
+#define ITK_INFO_ADDR       0x4
+#define ITK_INFO_LEN        10
 
 /**
  * struct ts_event - touchscreen event structure
- * @pendown:   state of the pen
- * @x:         X-coordinate of the event
- * @y:         Y-coordinate of the event
- * @z:         pressure of the event
+ * @contactid:  num id
+ * @pendown:    state of the pen
+ * @valid:      is valid data
+ * @x:          X-coordinate of the event
+ * @y:          Y-coordinate of the event
+ * @z:          pressure of the event
  */
 struct ts_event {
-       short x;
-       short y;
-       short xz;
-       short yz;
-       short xw;
-       short yw;
+        short contactid;
+        short pendown;
+        short valid;
+        short x;
+        short y;
+        short xz;
+        short yz;
+        short xw;
+        short yw;
 };
 
 /**
  * struct itk - touchscreen controller context
- * @client:    I2C client
- * @input:     touchscreen input device
- * @lock:      lock for resource protection
- * @timer:     timer for periodical polling
- * @work:      workqueue structure
- * @pendown:   current pen state
- * @event:     current touchscreen event
- * @pdata:     platform-specific information
+ * @client:         I2C client
+ * @input:          touchscreen input device
+ * @lock:           lock for resource protection
+ * @timer:          timer for periodical polling
+ * @work:           workqueue structure
+ * @event[]:        touchscreen event buff
+ * @pendown:        current pen state
+ * @touching_num:   count for check touching fingers
+ * @lcd_xmax:       lcd resolution
+ * @lcd_ymax:       lcd resolution
+ * @tp_xmax:        max virtual resolution
+ * @tp_ymax:        max virtual resolution
+ * @pdata:          platform-specific information
  */
 struct itk {
        struct i2c_client *client;
@@ -75,17 +84,15 @@ struct itk {
        struct work_struct work;
        struct workqueue_struct *workqueue;
 #endif
-       struct ts_event event[5];
+       struct ts_event event[MAX_SUPPORT_POINT];
        unsigned pendown:1;
-       int touching_num;
+       unsigned touching_num;
        int lcd_xmax;
        int lcd_ymax;
        int tp_xmax;
        int tp_ymax;
-       int vendor;
        struct itk_platform_data *pdata;
-
-       struct delayed_work cal_work;
+//       struct delayed_work cal_work;
 };
 
 /**
@@ -111,28 +118,28 @@ static int itk_register_input(struct itk *ts)
     if (dev == NULL)
         return -1;
 
-    dev->name = "sintek capacitive touchscreen";
-    //dev->phys = ts->phys;
+    dev->name = "Touch Screen";
+    dev->phys = "I2C";
     dev->id.bustype = BUS_I2C;
 
-    dev->evbit[0] = BIT_MASK(EV_KEY) | BIT_MASK(EV_ABS);
-    dev->keybit[BIT_WORD(BTN_TOUCH)] = BIT_MASK(BTN_TOUCH);
-    input_set_abs_params(dev, ABS_X, 0, ts->lcd_xmax, 0, 0);
-    input_set_abs_params(dev, ABS_Y, 0, ts->lcd_ymax, 0, 0);
-    input_set_abs_params(dev, ABS_PRESSURE, 0, 200, 0, 0);
-
-#if 0//def MULTI_TOUCH
+    set_bit(EV_ABS, dev->evbit);
+    set_bit(EV_KEY, dev->evbit);
+    set_bit(BTN_TOUCH, dev->keybit);
     set_bit(ABS_MT_TOUCH_MAJOR, dev->absbit);
     set_bit(ABS_MT_WIDTH_MAJOR, dev->absbit);
     set_bit(ABS_MT_POSITION_X, dev->absbit);
     set_bit(ABS_MT_POSITION_Y, dev->absbit);
-    set_bit(ABS_TOOL_WIDTH, dev->absbit);
+    set_bit(ABS_MT_TRACKING_ID, dev->absbit);
+    //set_bit(ABS_MT_PRESSURE, dev->absbit);
 
+    input_set_abs_params(dev, ABS_X, 0, ts->lcd_xmax, 0, 0);
+    input_set_abs_params(dev, ABS_Y, 0, ts->lcd_ymax, 0, 0);
     input_set_abs_params(dev, ABS_MT_POSITION_X, 0, ts->lcd_xmax, 0, 0);
     input_set_abs_params(dev, ABS_MT_POSITION_Y, 0, ts->lcd_ymax, 0, 0);
-    input_set_abs_params(dev, ABS_MT_TOUCH_MAJOR, 0, 255, 0, 0);
-    input_set_abs_params(dev, ABS_MT_WIDTH_MAJOR, 0, 255, 0, 0);
-#endif
+    input_set_abs_params(dev, ABS_MT_TOUCH_MAJOR, 0, ts->lcd_xmax, 0, 0);
+    input_set_abs_params(dev, ABS_MT_WIDTH_MAJOR, 0, ts->lcd_xmax, 0, 0);
+    input_set_abs_params(dev, ABS_MT_TRACKING_ID, 0, 10, 0, 0);
+    //input_set_abs_params(dev, ABS_MT_PRESSURE, 0, ???, 0, 0);
 
     ret = input_register_device(dev);
     if (ret < 0) {
@@ -151,12 +158,13 @@ static int itk_read_block(struct i2c_client *client, u8 addr, u8 len, u8 *data)
     u16 flags = client->flags;
     struct i2c_msg msg[2] = { 
         { slave, flags, 1, msgbuf0 },
-        { slave, flags | I2C_M_RD, len, data }
+        { slave, flags|I2C_M_RD, len, data }
     };
 
     return i2c_transfer(client->adapter, msg, ARRAY_SIZE(msg));
 }
 
+/* //just mark for not used warning
 static int itk_write_block(struct i2c_client *client, u8 addr, u8 len, u8 *data)
 {
     u8 msgbuf0[1] = { addr };
@@ -169,58 +177,49 @@ static int itk_write_block(struct i2c_client *client, u8 addr, u8 len, u8 *data)
 
     return i2c_transfer(client->adapter, msg, ARRAY_SIZE(msg));
 }
-
+*/
 
 static void itk_reset(struct itk *ts)
 {
+    int i = 0;
+    if (NULL == ts)
+        return;
+    memset(ts->event, 0, sizeof(struct ts_event)*MAX_SUPPORT_POINT);
+    for (i=0; i<MAX_SUPPORT_POINT; i++)
+    {
+        ts->event[i].pendown = -1;
+    }
     return;
 }
 
-#define ITK_INFO_ADDR   4
-#define ITK_INFO_LEN        10
-
-#define FIRST_POINT_ADDR    2
-#define X_OFFSET            0
-#define Y_OFFSET            2
-#define XW_OFFSET       8
-#define YW_OFFSET       9
-#define XZ_OFFSET       12
-#define YZ_OFFSET       13
-
-static short pre_x = 0, pre_y = 0;
 static int itk_read_sensor(struct itk *ts)
 {
-    int ret,i;
+    int ret=-1, up_down=0, id=0, valid=0;
     u8 data[ITK_INFO_LEN];
     struct ts_event *event;
-    
+
     /* To ensure data coherency, read the sensor with a single transaction. */
     ret = itk_read_block(ts->client, ITK_INFO_ADDR, ITK_INFO_LEN, data);
     if (ret < 0) {
         dev_err(&ts->client->dev, "Read block failed: %d\n", ret);
         return ret;
     }
-
-    int id = (data[1]>>2)& 0x1f;
-    event = &ts->event[id];
+    up_down = data[1]&0x1;
+    valid = (data[1]&0x80)?(1):(0);
+    id = (data[1]>>2)& 0x1f;
+    event = &ts->event[ts->touching_num++];
+    event->contactid = id;
+    event->pendown = up_down;
+    event->valid = valid;
     event->x = (data[3] << 8) | data[2];
     event->y = (data[5] << 8) | data[4];
-    if ((event->x == 0 && event->y == 0) && (pre_x != 0 || pre_y != 0))
-    {
-        event->x = pre_x;
-        event->y = pre_y;
-        printk(KERN_INFO "pre_x = 0x%4x, pre_y = 0x%4x\n", pre_x, pre_y);
-    }
-    pre_x = event->x;
-    pre_y = event->y;
-    printk(KERN_INFO "data[3][2] = 0x%2x%2x\n", data[3], data[2]);
     event->x = (event->x*ts->lcd_xmax)/(ts->tp_xmax);
-    printk(KERN_INFO "caculate event->x = %d\n\n", event->x);
-
-    printk(KERN_INFO "data[5][4] = 0x%2x%2x\n", data[5], data[4]);
     event->y = (event->y*ts->lcd_ymax)/(ts->tp_ymax);
-    printk(KERN_INFO "caculate event->y = %d\n\n", event->y);
-    ts->touching_num++;
+    #ifdef ITK_TS_DEBUG
+    printk(KERN_INFO "\nread_sensor id = %d, event->x = %d, event->y = %d\n", id, event->x, event->y);
+    #endif
+    if (ts->touching_num > 1)
+        ts->touching_num = 0;
     return 0;
 }
 
@@ -236,38 +235,61 @@ static void itk_work(struct work_struct *work)
     struct itk *ts = container_of(work, struct itk, work);
 #endif
     struct ts_event *event;
-    int i;
+    int i = 0;
 
-//  printk(KERN_INFO "itk work runing\n");
-    if (itk_get_pendown_state(ts)) { 
+    if (itk_get_pendown_state(ts)) {
         if (itk_read_sensor(ts) < 0) {
             printk(KERN_INFO "work read i2c failed\n");
             goto restart;
         }
-        event = &ts->event[0];
-        input_report_abs(ts->input, ABS_X, event->x);
-        input_report_abs(ts->input, ABS_Y, event->y);
-        //input_report_abs(ts->input, ABS_PRESSURE, event->xz + event->yz);
-        input_report_abs(ts->input, ABS_PRESSURE, 100);
         if (!ts->pendown) {
             ts->pendown = 1;
-            input_report_key(ts->input, BTN_TOUCH, 1);
-                printk(KERN_INFO "DOWN\n");
+            //input_report_key(ts->input, BTN_TOUCH, 1);
+            #ifdef ITK_TS_DEBUG
+            printk(KERN_INFO "DOWN\n\n");
+            #endif
         }
-        
-        for (i=0; i<ts->touching_num; i++) {
-//          printk(KERN_INFO "point%d x=%d y=%d pressue=%d\n",
-//              i, event->x, event->y, event->xz + event->yz);
-#ifdef MULTI_TOUCH
-            input_report_abs(ts->input, ABS_MT_POSITION_X, event->x);
-            input_report_abs(ts->input, ABS_MT_POSITION_Y, event->y);
-            //input_report_abs(ts->input, ABS_MT_PRESSURE, event->xz + event->yz);
-            input_report_abs(ts->input, ABS_MT_PRESSURE, 100);
-            input_mt_sync(ts->input);
-#endif
-            event++;
+        if (ts->touching_num == 1) //tow points event got
+        {
+            for (i=0; i<2; i++) //to deliver two points separately
+            {
+                event = &ts->event[i];
+                if ((event->valid == 1) && (event->pendown == 1))
+                {
+                    input_report_abs(ts->input, ABS_MT_TRACKING_ID, event->contactid);
+                    #ifdef ITK_TS_DEBUG
+                    printk(KERN_INFO "\nreport ABS_MT_TRACKING_ID %d\n", event->contactid);
+                    #endif
+                    input_report_abs(ts->input, ABS_MT_TOUCH_MAJOR, event->pendown);
+                    #ifdef ITK_TS_DEBUG
+                    printk(KERN_INFO "report ABS_MT_TOUCH_MAJOR %d\n", event->pendown);
+                    #endif
+                    input_report_abs(ts->input, ABS_MT_WIDTH_MAJOR, 0);
+                    #ifdef ITK_TS_DEBUG
+                    printk(KERN_INFO "report ABS_MT_WIDTH_MAJOR %d\n", 0);
+                    #endif
+                    input_report_abs(ts->input, ABS_MT_POSITION_X, event->x);
+                    input_report_abs(ts->input, ABS_MT_POSITION_Y, event->y);
+                    #ifdef ITK_TS_DEBUG
+                    printk(KERN_INFO "report ABS_MT_POSITION_XY %d,%d\n", event->x, event->y);
+                    #endif
+                    input_mt_sync(ts->input);
+                    #ifdef ITK_TS_DEBUG
+                    printk(KERN_INFO "input_mt_sync\n");
+                    #endif
+                    if ((i == 0) && 
+                        (ts->event[i].contactid != ts->event[i+1].contactid)
+                        && ts->event[i+1].valid && event[i+1].pendown) //two fingers, just need one input_sync report.
+                    {
+                        continue;
+                    }
+                    input_sync(ts->input);
+                    #ifdef ITK_TS_DEBUG
+                    printk(KERN_INFO "input_sync\n");
+                    #endif
+                }
+            }
         }
-        input_sync(ts->input);
 restart:
 #ifdef TS_DELAY_WORK
         schedule_delayed_work(&ts->work, msecs_to_jiffies(TS_POLL_PERIOD));
@@ -279,21 +301,20 @@ restart:
         /* enable IRQ after the pen was lifted */
         if (ts->pendown) {
             ts->pendown = 0;
-            pre_x = 0;
-            pre_y = 0;
-            input_report_key(ts->input, BTN_TOUCH, 0);
-            input_report_abs(ts->input, ABS_PRESSURE, 0);
+            input_mt_sync(ts->input);
+            #ifdef ITK_TS_DEBUG
+            printk(KERN_INFO "\ninput_mt_sync\n");
+            #endif
             input_sync(ts->input);
-                    printk(KERN_INFO "UP\n");
+            #ifdef ITK_TS_DEBUG
+            printk(KERN_INFO "input_sync\n");
+            printk(KERN_INFO "UP\n");
+            #endif
+            itk_reset(ts);
         }
         ts->touching_num = 0;
         enable_irq(ts->client->irq);
     }
-}
-
-static void itk_cal_work(struct work_struct *work)
-{
-    printk(KERN_INFO "\n ***********re-calibration************\n\n");
 }
 
 #ifndef TS_DELAY_WORK
@@ -308,7 +329,7 @@ static enum hrtimer_restart itk_timer(struct hrtimer *timer)
     
     spin_lock_irqsave(&ts->lock, flags);
 //  printk(KERN_INFO "enter timer\n");
-    queue_work(ts->workqueue, &ts->work);   
+    queue_work(ts->workqueue, &ts->work);
     spin_unlock_irqrestore(&ts->lock, flags);
     return HRTIMER_NORESTART;
 }
@@ -326,7 +347,9 @@ static irqreturn_t itk_interrupt(int irq, void *dev_id)
     unsigned long flags;
     
     spin_lock_irqsave(&ts->lock, flags);
+    #ifdef ITK_TS_DEBUG
     printk(KERN_INFO "enter penirq\n");
+    #endif
     /* if the pen is down, disable IRQ and start timer chain */
     if (itk_get_pendown_state(ts)) {
         disable_irq_nosync(client->irq);
@@ -379,7 +402,6 @@ static int itk_probe(struct i2c_client *client,
         ts->lcd_ymax = ((struct itk_platform_data*) client->dev.platform_data)->lcd_max_height;
         ts->tp_xmax = ((struct itk_platform_data*) client->dev.platform_data)->tp_max_width;
         ts->tp_ymax = ((struct itk_platform_data*) client->dev.platform_data)->tp_max_height;
-        printk(KERN_INFO "\nlcd_xmax = %d, lcd_ymax = %d, tp_xmax = %d, tp_ymax = %d\n\n", ts->lcd_xmax, ts->lcd_ymax, ts->tp_xmax, ts->tp_ymax);
     }
 
     if (ts->pdata->init_irq) {
@@ -404,7 +426,9 @@ static int itk_probe(struct i2c_client *client,
         err = -ENOMEM;
         goto fail;
     }
+    #ifdef ITK_TS_DEBUG
     printk("work create: %x\n", ts->workqueue);
+    #endif
 #endif
 
     ts->pendown = 0;
@@ -419,8 +443,7 @@ static int itk_probe(struct i2c_client *client,
     }
 
     i2c_set_clientdata(client, ts);
-    INIT_DELAYED_WORK(&ts->cal_work, itk_cal_work);
-    schedule_delayed_work(&ts->cal_work, 20*HZ);
+    //schedule_delayed_work(&ts->cal_work, 20*HZ);
     err = 0;
     goto out;
 
@@ -461,7 +484,7 @@ static const struct i2c_device_id itk_ids[] = {
 };
 
 MODULE_DEVICE_TABLE(i2c, itk_ids);
-/* SINTEK I2C Capacitive Touch Screen driver */
+/* ITK I2C Capacitive Touch Screen driver */
 static struct i2c_driver itk_driver = {
     .driver = {
     .name = DRIVER_NAME,
