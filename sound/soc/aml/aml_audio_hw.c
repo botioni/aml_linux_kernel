@@ -84,7 +84,7 @@ void audio_in_i2s_set_buf(u32 addr, u32 size)
 {
 	WRITE_MPEG_REG(AUDIN_FIFO0_START, addr & 0xffffffc0);
 	//WRITE_MPEG_REG(AUDIN_FIFO0_END, (addr&0xffffffc0) + (size&0xffffffc0) -64);
-	WRITE_MPEG_REG(AUDIN_FIFO0_END, (addr&0xffffffc0) + (size&0xffffffc0));
+	WRITE_MPEG_REG(AUDIN_FIFO0_END, (addr&0xffffffc0) + (size&0xffffffc0)-8);
 	WRITE_MPEG_REG(AUDIN_FIFO0_CTRL, (1<<0)	// FIFO0_EN
 																	|(1<<2)	// load start address./* AUDIN_FIFO0_LOAD */
 																	|(1<<3)	// DIN from i2sin./* AUDIN_FIFO0_DIN_SEL */ 

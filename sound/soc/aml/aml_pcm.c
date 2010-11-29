@@ -464,16 +464,12 @@ static int aml_pcm_copy_capture(struct snd_pcm_runtime *runtime, int channel,
 		int n;
     int i = 0, j = 0;
     char *hwbuf = runtime->dma_area + frames_to_bytes(runtime, pos)*2;
+    char *magic = runtime->dma_area + runtime->dma_bytes*2 - 8;
     
     to = (unsigned short *)buf;
     tfrom = (unsigned int *)hwbuf;	// 32bit buffer
     n = frames_to_bytes(runtime, count);
 //printk("hwbuf = %x, count=%x, n = %x, pos=%x\n", hwbuf, count, n, pos);
-		char *magic = runtime->dma_area + runtime->dma_bytes*2 - 8;
-    if(hwbuf + n*2 >= magic){
-    	// TODO, maybe a bug
-    }
-    
     unsigned int t1, t2;
 
 		if(access_ok(VERIFY_WRITE, buf, frames_to_bytes(runtime, count))){
@@ -482,8 +478,7 @@ static int aml_pcm_copy_capture(struct snd_pcm_runtime *runtime, int channel,
 		    if (pos % 8) {
 		        printk("audio data unligned\n");
 		    }
-#if 1		    
-		    for (j = 0; j < n; j += 64) {
+		    for (j = 0; j < n*2 ; j += 64) {
 		        for (i = 0; i < 8; i++) {
 		        	t1 = (*left++);
 		        	t2 = (*right++);
@@ -495,32 +490,17 @@ static int aml_pcm_copy_capture(struct snd_pcm_runtime *runtime, int channel,
 		        left += 8;
 		        right += 8;
 		    }
-#else
-
-				for(j = 0; j<n; j+= 64){
-					printk("tfrom = %08x\n", tfrom);
-						for(i=0; i< 2; i++){
-								t1 = *tfrom ++;
-								t2 = *tfrom ++;
-								printk("%08x, %08x\n", t1, t2);
-								t1 = *tfrom ++;
-								t2 = *tfrom ++;
-								printk("%08x, %08x\n", t1, t2);
-								t1 = *tfrom ++;
-								t2 = *tfrom ++;
-								printk("%08x, %08x\n", t1, t2);
-								t1 = *tfrom ++;
-								t2 = *tfrom ++;
-								printk("%08x, %08x\n", t1, t2);
-						}
-						printk("\n");
-				}	
-#endif					    
+				
+	    	if(hwbuf + n*2 >= magic){
+//					magic[0] = 0x78; magic[1] = 0x78; magic[2] = 0x78; magic[3] = 0x78;
+//					magic[4] = 0x78; magic[5] = 0x78; magic[6] = 0x78; magic[7] = 0x78;
+	    	}
 		}
 	
 		if((hwbuf + n*2) >= magic && 
 			(magic[0]!=0x78 && magic[1]!=0x78 && magic[2]!=0x78 && magic[3]!=0x78&&
 			magic[4]!=0x78 && magic[5]!=0x78&&magic[6]!=0x78&&magic[7]!=0x78)){
+				
 		}
 		
 		return res;
