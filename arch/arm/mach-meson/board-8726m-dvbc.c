@@ -450,14 +450,14 @@ static struct platform_device aml_sw_i2c_device_fe1 = {
 
 static struct aml_sw_i2c_platform aml_sw_i2c_plat_fe2 = {
 	.sw_pins = {
-		.scl_reg_out		= MESON_I2C_PREG_GPIOA_OUTLVL,
-		.scl_reg_in		= MESON_I2C_PREG_GPIOA_INLVL,
-		.scl_bit			= 15,	/*MESON_GPIOA_11 + 4*/
-		.scl_oe			= MESON_I2C_PREG_GPIOA_OE,
-		.sda_reg_out		= MESON_I2C_PREG_GPIOA_OUTLVL,
-		.sda_reg_in		= MESON_I2C_PREG_GPIOA_INLVL,
-		.sda_bit			= 16,	/*MESON_GPIOA_12 + 4*/
-		.sda_oe			= MESON_I2C_PREG_GPIOA_OE,
+		.scl_reg_out		= MESON_I2C_PREG_GPIOC_OUTLVL,
+		.scl_reg_in		= MESON_I2C_PREG_GPIOC_INLVL,
+		.scl_bit			= 13,	/*MESON_GPIOC_13*/
+		.scl_oe			= MESON_I2C_PREG_GPIOC_OE,
+		.sda_reg_out		= MESON_I2C_PREG_GPIOC_OUTLVL,
+		.sda_reg_in		= MESON_I2C_PREG_GPIOC_INLVL,
+		.sda_bit			= 14,	/*MESON_GPIOC_14*/
+		.sda_oe			= MESON_I2C_PREG_GPIOC_OE,
 	},	
 	.udelay			= 2,
 	.timeout			= 100,
@@ -795,7 +795,7 @@ static void __init device_pinmux_init(void )
 	eth_pinmux_init();
 
 	/* IR decoder pinmux */
-	set_mio_mux(1, 1<<31);
+	set_mio_mux(5, 1<<31);
 
 	/* SmartCard pinmux */
 	set_mio_mux(2, 0xF<<20);
