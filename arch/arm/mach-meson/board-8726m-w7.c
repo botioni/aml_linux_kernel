@@ -521,7 +521,7 @@ int wm8900_is_hp_pluged(void)
     // Enable VBG_EN
     WRITE_CBUS_REG_BITS(PREG_AM_ANALOG_ADDR, 1, 0, 1);
     // wire pm_gpioA_7_led_pwm = pin_mux_reg0[22];
-    WRITE_CBUS_REG(LED_PWM_REG2,(0 << 31)   |       // disable the overall circuit
+    WRITE_CBUS_REG(LED_PWM_REG0,(0 << 31)   |       // disable the overall circuit
                                 (0 << 30)   |       // 1:Closed Loop  0:Open Loop
                                 (0 << 16)   |       // PWM total count
                                 (0 << 13)   |       // Enable
@@ -531,7 +531,7 @@ int wm8900_is_hp_pluged(void)
                                 (7 << 4)    |       // CS1 REF, Current FeedBack: about 0.505V
                                 (0 << 0));           // DIMCTL Analog dimmer
     cs_no = READ_CBUS_REG(LED_PWM_REG3);
-    if(cs_no &(1<<14))
+    if(cs_no &(1<<15))
       level |= (1<<0);
     return (level == 0)?(1):(0); //return 1: hp pluged, 0: hp unpluged.
 }
