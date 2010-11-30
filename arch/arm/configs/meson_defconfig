@@ -1,7 +1,7 @@
 #
 # Automatically generated make config: don't edit
 # Linux kernel version: 2.6.34
-# Wed Nov 17 14:04:21 2010
+# Mon Nov 29 16:19:00 2010
 #
 CONFIG_ARM=y
 CONFIG_HOLES_IN_ZONE=y
@@ -250,6 +250,10 @@ CONFIG_MACH_MESON_8626M=y
 # CONFIG_MACH_MESON_8226M is not set
 # CONFIG_MACH_MESON_8726M is not set
 # CONFIG_MACH_MESON_8726M_ARM is not set
+# CONFIG_MACH_MESON_8726M_DVBC is not set
+# CONFIG_MACH_MESON_8726M_ML is not set
+# CONFIG_MACH_MESON_8726M_W10 is not set
+# CONFIG_MACH_MESON_8726M_W7 is not set
 CONFIG_MESON_CLOCK_TICK_RATE=25000000
 
 #
@@ -280,6 +284,7 @@ CONFIG_HAS_TLS_REG=y
 CONFIG_OUTER_CACHE=y
 CONFIG_OUTER_CACHE_SYNC=y
 CONFIG_CACHE_L2X0=y
+CONFIG_CACHE_PL310=y
 CONFIG_ARM_L1_CACHE_SHIFT=5
 CONFIG_CPU_HAS_PMU=y
 # CONFIG_ARM_ERRATA_430973 is not set
@@ -509,6 +514,8 @@ CONFIG_AML_RTC=y
 # CONFIG_VIRTUAL_REMOTE is not set
 # CONFIG_SARADC_AM is not set
 # CONFIG_KEY_INPUT_CUSTOM_AM is not set
+# CONFIG_SINTEK_CAPACITIVE_TOUCHSCREEN is not set
+# CONFIG_ITK_CAPACITIVE_TOUCHSCREEN is not set
 
 #
 # Amlogic Power Management Support
@@ -516,8 +523,13 @@ CONFIG_AML_RTC=y
 # CONFIG_AMLOGIC_PM is not set
 
 #
-# Extern io tca6424 Support
+# Extern IO Support
 #
+
+#
+# Amlogic GPIO Driver
+#
+# CONFIG_AM_GPIO is not set
 
 #
 # Block devices
@@ -552,6 +564,10 @@ CONFIG_SDIO=y
 # CONFIG_AMLOGIC_SPI_NOR is not set
 CONFIG_NAND_FLASH_DRIVER_BASE_OPERATE=y
 # CONFIG_NAND_FLASH_DRIVER_MULTIPLANE_CE is not set
+
+#
+# AMLOGIC DEMOD Support
+#
 
 #
 # Network devices
@@ -663,8 +679,6 @@ CONFIG_MALI=m
 #
 # AMLOGIC DVB driver
 #
-# CONFIG_AM_DVB is not set
-# CONFIG_AM_GX1001 is not set
 
 #
 # Amlogic WIFI Support
