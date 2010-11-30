@@ -99,4 +99,10 @@ config AM_STREAMING
 	help
 	  Driver for the AV streaming ports.
 
+config AM_SUBTITLE
+	bool	"AMLOGIC SubTitle support"
+	default y
+	help 
+		Internal Sub Title support driver
+
 endmenu
