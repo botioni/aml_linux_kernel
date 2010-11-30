@@ -800,6 +800,7 @@ static void __init device_pinmux_init(void )
 	/* SmartCard pinmux */
 	set_mio_mux(2, 0xF<<20);
 
+	set_audio_pinmux(AUDIO_IN_JTAG); // for MIC input
 }
 static void __init  device_clk_setting(void)
 {

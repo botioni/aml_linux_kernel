@@ -158,6 +158,7 @@ static void wm8900_hp_detect_queue(struct work_struct* work)
     if(level == 0x1 && hp_detect_flag!= 0x1){ // HP
         printk("Headphone pluged in\n");
         snd_soc_dapm_disable_pin(codec, "Ext Spk");
+        snd_soc_dapm_enable_pin(codec, "MIC IN");
         snd_soc_dapm_sync(codec);
         // pull down the gpio to mute spk
         mute_spk(codec, 1);
@@ -166,6 +167,7 @@ static void wm8900_hp_detect_queue(struct work_struct* work)
     }else if(level != hp_detect_flag){ // HDMI
         printk("Headphone unpluged\n");
         snd_soc_dapm_enable_pin(codec, "Ext Spk");
+        snd_soc_dapm_enable_pin(codec, "MIC IN");
         snd_soc_dapm_sync(codec);
         snd_soc_jack_report(&hp_jack,0, SND_JACK_HEADSET);
         hp_detect_flag = level;

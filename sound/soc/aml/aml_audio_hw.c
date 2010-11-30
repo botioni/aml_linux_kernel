@@ -138,8 +138,8 @@ unsigned int audio_in_i2s_wr_ptr(void)
 	if(val%8){
 		printk("un-algined val=%x\n", val);
 	}
-	//return (val)&(~0x3F);
-	return val&(~0x7);
+	return (val)&(~0x3F);
+	//return val&(~0x7);
 }
 void audio_in_i2s_set_wrptr(unsigned int val)
 {
