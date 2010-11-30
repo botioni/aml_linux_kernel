@@ -1,7 +1,7 @@
 #
 # Automatically generated make config: don't edit
 # Linux kernel version: 2.6.34
-# Wed Nov 17 18:56:15 2010
+# Mon Nov 29 14:04:35 2010
 #
 CONFIG_ARM=y
 CONFIG_HOLES_IN_ZONE=y
@@ -250,9 +250,11 @@ CONFIG_ARCH_MESON=y
 # CONFIG_MACH_MESON_8226M is not set
 CONFIG_MACH_MESON_8726M=y
 # CONFIG_MACH_MESON_8726M_ARM is not set
+# CONFIG_MACH_MESON_8726M_DVBC is not set
 # CONFIG_MACH_MESON_8726M_ML is not set
 # CONFIG_MACH_MESON_8726M_W10 is not set
 # CONFIG_MACH_MESON_8726M_W7 is not set
+# CONFIG_MACH_MESON_8726M_K7 is not set
 CONFIG_MESON_CLOCK_TICK_RATE=25000000
 
 #
@@ -574,6 +576,9 @@ CONFIG_SARADC_AM=y
 # CONFIG_ADC_TOUCHSCREEN_AM is not set
 CONFIG_ADC_KEYPADS_AM=y
 CONFIG_KEY_INPUT_CUSTOM_AM=y
+# CONFIG_SINTEK_CAPACITIVE_TOUCHSCREEN is not set
+# CONFIG_ITK_CAPACITIVE_TOUCHSCREEN is not set
+# CONFIG_TOUCH_KEY_PAD_IT7230 is not set
 
 #
 # Amlogic Power Management Support
@@ -581,9 +586,15 @@ CONFIG_KEY_INPUT_CUSTOM_AM=y
 CONFIG_AMLOGIC_PM=y
 
 #
-# Extern io tca6424 Support
+# Extern IO Support
 #
 # CONFIG_TCA6424 is not set
+# CONFIG_SN7325 is not set
+
+#
+# Amlogic GPIO Driver
+#
+# CONFIG_AM_GPIO is not set
 
 #
 # Block devices
@@ -623,6 +634,10 @@ CONFIG_SDIO=y
 CONFIG_NAND_FLASH_DRIVER_MULTIPLANE_CE=y
 
 #
+# AMLOGIC DEMOD Support
+#
+
+#
 # Network devices
 #
 
@@ -630,6 +645,15 @@ CONFIG_NAND_FLASH_DRIVER_MULTIPLANE_CE=y
 # Amlogic Net Device Support
 #
 # CONFIG_AM_ETHERNET is not set
+
+#
+# Amlogic WIFI Support
+#
+CONFIG_SDIO_DHD_CDC_WIFI=y
+CONFIG_BCM4329_FW_PATH="broadcm_4329/sdio-g-cdc-full11n-reclaim-roml-wme-idsup.bin"
+CONFIG_BCM4329_NVRAM_PATH="broadcm_4329/nvram.txt"
+# CONFIG_RTL8712_8188_8191_8192SU_USB_WIFI is not set
+# CONFIG_RTL8192CU_USB_WIFI is not set
 
 #
 # Media devices
@@ -650,6 +674,9 @@ CONFIG_AM_CANVAS=y
 CONFIG_AM_TV_OUTPUT=y
 CONFIG_AM_TCON_OUTPUT=y
 CONFIG_AML_TCON_T13=y
+# CONFIG_AML_TCON_W10 is not set
+# CONFIG_AML_TCON_W7 is not set
+# CONFIG_AML_TCON_K7 is not set
 
 #
 # Amlogic osd module
@@ -733,15 +760,6 @@ CONFIG_MALI=m
 #
 # AMLOGIC DVB driver
 #
-# CONFIG_AM_DVB is not set
-# CONFIG_AM_GX1001 is not set
-
-#
-# Amlogic WIFI Support
-#
-CONFIG_SDIO_DHD_CDC_WIFI=y
-CONFIG_BCM4329_FW_PATH="broadcm_4329/sdio-g-cdc-full11n-reclaim-roml-wme-idsup.bin"
-CONFIG_BCM4329_NVRAM_PATH="broadcm_4329/nvram.txt"
 CONFIG_CONNECTOR=y
 CONFIG_PROC_EVENTS=y
 CONFIG_MTD=y
@@ -1772,7 +1790,8 @@ CONFIG_PRINT_QUOTA_WARNING=y
 CONFIG_QUOTACTL=y
 # CONFIG_AUTOFS_FS is not set
 # CONFIG_AUTOFS4_FS is not set
-# CONFIG_FUSE_FS is not set
+CONFIG_FUSE_FS=y
+# CONFIG_CUSE is not set
 CONFIG_GENERIC_ACL=y
 
 #
