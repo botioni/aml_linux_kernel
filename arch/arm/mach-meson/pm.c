@@ -387,15 +387,11 @@ void usb_switch(int flag,int ctrl)
 
     if (flag){
         printk(KERN_INFO "usb %d on\n",ctrl);
-        set_gpio_val(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), 1); // turn on VCCx2
-        set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);
         CLEAR_CBUS_REG_MASK(PREI_USB_PHY_REG, msk);
     }
     else{
         printk(KERN_INFO "usb %d off\n",ctrl);
         SET_CBUS_REG_MASK(PREI_USB_PHY_REG, msk);
-        set_gpio_val(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), 0); // turn off VCCx2
-        set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);
     }
 }
 
