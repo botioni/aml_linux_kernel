@@ -85,6 +85,10 @@
 #include <mach/pm.h>
 #endif
 
+#ifdef CONFIG_SND_AML_M1_MID_WM8900
+#include <sound/wm8900.h>
+#endif
+
 #if defined(CONFIG_JPEGLOGO)
 static struct resource jpeglogo_resources[] = {
     [0] = {
