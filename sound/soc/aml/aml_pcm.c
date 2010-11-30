@@ -330,7 +330,7 @@ static void aml_pcm_timer_callback(unsigned long data)
 		}else{
 				if(s->active == 1){
 						spin_lock(&s->lock);
-						last_ptr = audio_in_i2s_wr_ptr()/2;
+						last_ptr = (audio_in_i2s_wr_ptr() - s->I2S_addr) / 2;
 						if (last_ptr < s->last_ptr) {
 				        size = runtime->dma_bytes + last_ptr - (s->last_ptr);
 				    } else {
@@ -477,6 +477,9 @@ static int aml_pcm_copy_capture(struct snd_pcm_runtime *runtime, int channel,
 		    right = tfrom + 8;
 		    if (pos % 8) {
 		        printk("audio data unligned\n");
+		    }
+		    if((n*2)%64){
+		    		printk("audio data unaligned 64 bytes\n");
 		    }
 		    for (j = 0; j < n*2 ; j += 64) {
 		        for (i = 0; i < 8; i++) {
