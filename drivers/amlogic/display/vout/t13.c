@@ -184,6 +184,8 @@ static void power_on_lcd(void)
 {
     #ifdef CONFIG_MACH_MESON_8726M
     set_mio_mux(4,(0x3f<<0));
+    set_mio_mux(0, 1<<11);
+    set_mio_mux(0, 1<<14);    
     /* GPIOA_3, Pull low, For LCD_3.3V */
     set_gpio_val(GPIOA_bank_bit(3), GPIOA_bit_bit0_14(3), 0);
     set_gpio_mode(GPIOA_bank_bit(3), GPIOA_bit_bit0_14(3), GPIO_OUTPUT_MODE);        
@@ -220,6 +222,8 @@ static void power_off_lcd(void)
     set_gpio_val(GPIOA_bank_bit(3), GPIOA_bit_bit0_14(3), 1);
     set_gpio_mode(GPIOA_bank_bit(3), GPIOA_bit_bit0_14(3), GPIO_OUTPUT_MODE);        
     clear_mio_mux(4,(0x3f<<0));
+    clear_mio_mux(0, 1<<11);
+    clear_mio_mux(0, 1<<14);        
     #else
     /* PIN165, GPIOC_4, Pull high, For LCD_3.3V */
     set_gpio_val(GPIOC_bank_bit0_26(4), GPIOC_bit_bit0_26(4), 1);
