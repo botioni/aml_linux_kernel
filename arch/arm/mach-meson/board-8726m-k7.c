@@ -930,7 +930,25 @@ static int get_bat_vol(void)
 
 static int get_charge_status()
 {
-	return (READ_CBUS_REG(ASSIST_HW_REV)&(1<<8))? 1:0;//GP_INPUT0
+	//return (READ_CBUS_REG(ASSIST_HW_REV)&(1<<8))? 1:0;//GP_INPUT0
+	//change to LED_CS0
+    int level = 0;
+    int cs_no = 0;
+    WRITE_CBUS_REG_BITS(PREG_AM_ANALOG_ADDR, 1, 0, 1);
+    WRITE_CBUS_REG(LED_PWM_REG0,(0 << 31)   |       // disable the overall circuit
+                                (0 << 30)   |       // 1:Closed Loop  0:Open Loop
+                                (0 << 16)   |       // PWM total count
+                                (0 << 13)   |       // Enable
+                                (1 << 12)   |       // enable
+                                (0 << 10)   |       // test
+                                (7 << 7)    |       // CS0 REF, Voltage FeedBack: about 0.505V
+                                (7 << 4)    |       // CS1 REF, Current FeedBack: about 0.505V
+                                (0 << 0));           // DIMCTL Analog dimmer
+    cs_no = READ_CBUS_REG(LED_PWM_REG3);
+    if(cs_no &(1<<14))
+      level |= (1<<0);
+    return (level == 0)?(1):(0); //return 1: hp pluged, 0: hp unpluged.
+	
 }
 
 static void set_bat_off(void)
