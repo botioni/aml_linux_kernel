@@ -1195,6 +1195,7 @@ static __devinit int wm8900_i2c_probe(struct i2c_client *i2c,
 	snd_soc_write(codec, WM8900_REG_OUTBIASCTL, 0x81);
 
 	wm8900_dai.dev = &i2c->dev;
+	wm8900_dai.ac97_pdata = i2c->dev.platform_data;
 
 	wm8900_codec = codec;
 
