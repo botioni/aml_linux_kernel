@@ -527,8 +527,7 @@ int wm8900_is_hp_pluged(void)
           level |= (1<<0);
     }
     else{
-        if(cs_no &(1<<15))
-          level |= (1<<0);
+          level = 0;   //old pcb always hp unplug
     }
     //printk("level = %d,board_ver = %d\n",level,board_ver);
     return (level == 1)?(1):(0); //return 1: hp pluged, 0: hp unpluged.
