@@ -630,23 +630,53 @@ void osd_init_hw(void)
 
 
 #if defined(CONFIG_FB_OSD2_CURSOR)
-void osd_cursor_hw(u16 x, u16 y, int index)
+void osd_cursor_hw(s16 x, s16 y, u32 osd_w, u32 osd_h, int index)
 {
-	int  diff_x,diff_y;
-	
-	if (index != 1) return ;
+	if (index != 1) return;
 
-	if(x !=osd_hw.dispdata[1].x_start || y !=osd_hw.dispdata[1].y_start)
-    	{
-    		diff_x = x - osd_hw.dispdata[1].x_start;
-		diff_y = y - osd_hw.dispdata[1].y_start;
-
-		osd_hw.dispdata[1].x_start += diff_x;
-		osd_hw.dispdata[1].x_end   += diff_x;
-		osd_hw.dispdata[1].y_start += diff_y;
-		osd_hw.dispdata[1].y_end   += diff_y;
-		add_to_update_list(OSD2,DISP_GEOMETRY);
+	/**
+	 * Use pandata to show a partial cursor when it is at the edge because the
+	 * registers can't have negative values and because we need to manually
+	 * clip the cursor when it is past the edge.  The edge is hardcoded
+	 * to the OSD0 area.
+	 */
+	osd_hw.dispdata[OSD2].x_start = x;
+	osd_hw.dispdata[OSD2].y_start = y;
+	if (x < osd_hw.dispdata[OSD1].x_start) {
+		// if negative position, set osd to 0,y and pan.
+		if ((osd_hw.dispdata[OSD1].x_start - x) < osd_w) {
+			osd_hw.pandata[OSD2].x_start = osd_hw.dispdata[OSD1].x_start - x;
+			osd_hw.pandata[OSD2].x_end = osd_w - 1;
+		}
+		osd_hw.dispdata[OSD2].x_start = 0;
+	} else {
+		osd_hw.pandata[OSD2].x_start = 0;
+		if (x + osd_w > osd_hw.dispdata[OSD1].x_end) {
+			// if past positive edge, set osd to inside of the edge and pan.
+			if (x < osd_hw.dispdata[OSD1].x_end)
+				osd_hw.pandata[OSD2].x_end = osd_hw.dispdata[OSD1].x_end - x;
+		} else {
+			osd_hw.pandata[OSD2].x_end = osd_w - 1;
+		}
 	}
+	if (y < osd_hw.dispdata[OSD1].y_start) {
+		if ((osd_hw.dispdata[OSD1].y_start - y) < osd_h) {
+			osd_hw.pandata[OSD2].y_start = osd_hw.dispdata[OSD1].y_start - y;
+			osd_hw.pandata[OSD2].y_end = osd_h - 1;
+		}
+		osd_hw.dispdata[OSD2].y_start = 0;
+	} else {
+		osd_hw.pandata[OSD2].y_start = 0;
+		if (y + osd_h > osd_hw.dispdata[OSD1].y_end) {
+			if (y < osd_hw.dispdata[OSD1].y_end)
+				osd_hw.pandata[OSD2].y_end = osd_hw.dispdata[OSD1].y_end - y;
+		} else {
+			osd_hw.pandata[OSD2].y_end = osd_h - 1;
+		}
+	}
+	osd_hw.dispdata[OSD2].x_end = osd_hw.dispdata[OSD2].x_start + osd_hw.pandata[OSD2].x_end - osd_hw.pandata[OSD2].x_start;
+	osd_hw.dispdata[OSD2].y_end = osd_hw.dispdata[OSD2].y_start + osd_hw.pandata[OSD2].y_end - osd_hw.pandata[OSD2].y_start;
+	add_to_update_list(OSD2,DISP_GEOMETRY);
 }
 #endif //CONFIG_FB_OSD2_CURSOR
 

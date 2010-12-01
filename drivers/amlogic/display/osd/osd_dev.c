@@ -135,10 +135,10 @@ void osddev_pan_display(struct fb_var_screeninfo *var,struct fb_info *fbi)
 }
 
 #if defined(CONFIG_FB_OSD2_CURSOR)
-void osddev_cursor(struct myfb_dev *fbdev, u16 x, u16 y)
+void osddev_cursor(struct myfb_dev *fbdev, s16 x, s16 y, u32 osd_w, u32 osd_h)
 {
     fbdev_lock(fbdev);
-    osd_cursor_hw(x, y, fbdev->fb_info->node);
+    osd_cursor_hw(x, y, osd_w, osd_h, fbdev->fb_info->node);
     fbdev_unlock(fbdev);
 }
 #endif

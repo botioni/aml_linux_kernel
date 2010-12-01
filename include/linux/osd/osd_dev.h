@@ -79,7 +79,7 @@ extern void osddev_enable(int enable,int index);
 extern void osddev_pan_display(struct fb_var_screeninfo *var,struct fb_info *fbi);
 
 #if defined (CONFIG_FB_OSD2_CURSOR)
-extern void osddev_cursor(struct myfb_dev *fbdev, u16 x, u16 y);
+extern void osddev_cursor(struct myfb_dev *fbdev, s16 x, s16 y, u32 osd_w, u32 osd_h);
 #endif
 
 extern  void  osddev_set_colorkey(u32 index,u32 bpp,u32 colorkey );
