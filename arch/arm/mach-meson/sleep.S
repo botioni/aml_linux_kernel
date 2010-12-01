@@ -52,9 +52,7 @@ ENTRY(meson_cpu_suspend)
 
     /* scale down PLL */
     ldr     r6, [r2]
-    mov     r5, #(4<<9)
-    orr     r5, r5, r6
-    str     r5, [r2]
+    str     r4, [r2]
 
     /* ddr power gate */
     ldr     r5, [r3, #POWERGATE0_OFFSET]
@@ -84,6 +82,11 @@ ENTRY(meson_cpu_suspend)
     /* scale PLL up */
     str     r6, [r2]
 
+    /* Wait for PLL to lock */
+    mov     r5, #0x1000
+5:  subs    r5, r5, #0x1
+    bne     5b
+    
     /* turn on DDR PHY */
     ldr     r5, [r1]
     bic     r5, r5, #0x1
@@ -92,11 +95,6 @@ ENTRY(meson_cpu_suspend)
     /* ddr back to normal mode */
     mov     r5, #0x4
     str     r5, [r0]
-
-    /* Wait for PLL to lock */
-    mov     r5, #0x1000
-5:  subs    r5, r5, #0x1
-    bne     5b
 #endif
 
     /* Restore registers and return */

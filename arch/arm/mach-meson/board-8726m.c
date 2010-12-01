@@ -711,6 +711,7 @@ static struct meson_pm_config aml_pm_pdata = {
     .ddr2_reg_phy = IO_APB_BUS_BASE+0x1380,
     .ddr_pll_ctrl = CBUS_REG_ADDR(HHI_DDR_PLL_CNTL),
     .hiu_base = CBUS_REG_ADDR(0x1000),
+    .ddr_clk = 0x00110820,
     .sleepcount = 128,
     .set_vccx2 = set_vccx2,
 };

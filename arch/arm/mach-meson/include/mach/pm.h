@@ -10,6 +10,7 @@ struct meson_pm_config {
 	void __iomem *ddr2_reg_phy;
 	void __iomem *ddr_pll_ctrl;
     void __iomem *hiu_base;
+    unsigned ddr_clk;
 	/*
 	 * Note on SLEEPCOUNT:
 	 * The SLEEPCOUNT feature is mainly intended for cases in which
