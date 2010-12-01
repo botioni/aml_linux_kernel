@@ -21,10 +21,7 @@
 #include <mach/memory.h>
 
 #define DDR_SUSPEND
-
-#define POWERGATE0_OFFSET   0x50
-#define SYSPLL_OFFSET       0x5a
-#define OTHERPLL_OFFSET     0x70
+#define WFI_SUSPEND
 
     .text
 /*
@@ -36,65 +33,66 @@
 ENTRY(meson_cpu_suspend)
     stmfd   sp!, {r0-r12, lr}        @ save registers on stack
 
-    ldmia   r0, {r0-r4}
+    ldmia   r0, {r0-r5}
 
 #ifdef DDR_SUSPEND
     /*
      * Switch DDR to self-refresh mode.
      */
-    mov     r5, #0x3
-    str     r5, [r0]
+    mov     r8, #0x3
+    str     r8, [r0]
 
     /* Disable DDR PHY */
-    ldr     r5, [r1]
-    orr     r5, r5, #0x1
-    str     r5, [r1]
+    ldr     r8, [r1]
+    orr     r8, r8, #0x1
+    str     r8, [r1]
 
     /* scale down PLL */
     ldr     r6, [r2]
-    str     r4, [r2]
+    str     r5, [r2]
 
     /* ddr power gate */
-    ldr     r5, [r3, #POWERGATE0_OFFSET]
-    bic     r5, r5, #0x41
-    str     r5, [r3, #POWERGATE0_OFFSET]
+    ldr     r8, [r3]
+    bic     r8, r8, #0x41
+    str     r8, [r3]
 #endif
 
     /* System goes to sleep beyond after this instruction */
-#if 1
+#ifdef WFI_SUSPEND
     wfi
     nop
     nop
     nop
 #else
-    mov     r5, #0x1000
-1:  subs    r5, r5, #0x1
-    bne     1b
+1:  ldr     r8, [r4]
+    and     r8, r8, #4
+    cmp     r8, #4
+    beq     1b
 #endif
     /* Wake up from sleep */
 
 #ifdef DDR_SUSPEND
     /* ddr power gate */
-    ldr     r5, [r3, #POWERGATE0_OFFSET]
-    orr     r5, r5, #0x41
-    str     r5, [r3, #POWERGATE0_OFFSET]
+    ldr     r8, [r3]
+    orr     r8, r8, #0x41
+    str     r8, [r3]
 
     /* scale PLL up */
     str     r6, [r2]
 
     /* Wait for PLL to lock */
-    mov     r5, #0x1000
-5:  subs    r5, r5, #0x1
+    mov     r8, #0x1000
+5:  subs    r8, r8, #0x1
     bne     5b
     
     /* turn on DDR PHY */
-    ldr     r5, [r1]
-    bic     r5, r5, #0x1
-    str     r5, [r1]
+    ldr     r8, [r1]
+    bic     r8, r8, #0x1
+    str     r8, [r1]
 
     /* ddr back to normal mode */
-    mov     r5, #0x4
-    str     r5, [r0]
+    mov     r8, #0x4
+    str     r8, [r0]
 #endif
 
     /* Restore registers and return */
