@@ -27,7 +27,7 @@ choice
 
 config AM_UART0_SET_PORT_A
         bool "uart port A"
-        depends on ARCH_MESON && AM_UART_WITH_S_CORE
+        depends on ARCH_MESON
         select SERIAL_CORE
         select SERIAL_CORE_CONSOLE
         help
@@ -35,7 +35,7 @@ config AM_UART0_SET_PORT_A
 
 config AM_UART0_SET_PORT_B
         bool "uart port B"
-        depends on ARCH_MESON && AM_UART_WITH_S_CORE
+        depends on ARCH_MESON
         select SERIAL_CORE
         select SERIAL_CORE_CONSOLE
         help

@@ -50,11 +50,13 @@ static struct am_uart am_uart_info[NR_PORTS];   //the value of NR_PORTS is given
 
 struct am_uart *IRQ_ports[NR_IRQS];
 
-
+#ifdef CONFIG_AM_UART0_SET_PORT_A
 static unsigned int uart_irqs[NR_PORTS] = { INT_UART,INT_UART_1 };
-
-
 static am_uart_t *uart_addr[NR_PORTS] = { UART_BASEADDR0,UART_BASEADDR1 };
+#else
+static unsigned int uart_irqs[NR_PORTS] = { INT_UART_1,INT_UART };
+static am_uart_t *uart_addr[NR_PORTS] = { UART_BASEADDR1,UART_BASEADDR0 };
+#endif
 static int console_inited[2] ={ 0,0};   /* have we initialized the console already? */
 static int default_index = 0;   /* have we initialized the console index? */
 static struct tty_driver *am_uart_driver;
