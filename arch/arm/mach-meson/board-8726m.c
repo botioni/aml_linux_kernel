@@ -527,8 +527,7 @@ int wm8900_is_hp_pluged(void)
           level |= (1<<0);
     }
     else{
-        if(cs_no &(1<<15))
-          level |= (1<<0);
+          level = 0;   //old pcb always hp unplug
     }
     //printk("level = %d,board_ver = %d\n",level,board_ver);
     return (level == 1)?(1):(0); //return 1: hp pluged, 0: hp unpluged.
@@ -1076,6 +1075,9 @@ static struct platform_device aml_nand_device = {
 static void power_on_panel(void)
 {
     CLK_GATE_ON(LCD);
+    set_mio_mux(4,(0x3f<<0));
+    set_mio_mux(0, 1<<11);
+    set_mio_mux(0, 1<<14);     
     /* GPIOA_3, Pull low, power up LCD_3.3V */
     set_gpio_val(GPIOA_bank_bit(3), GPIOA_bit_bit0_14(3), 0);
     set_gpio_mode(GPIOA_bank_bit(3), GPIOA_bit_bit0_14(3), GPIO_OUTPUT_MODE);        
@@ -1097,7 +1099,9 @@ static void power_off_panel(void)
     set_gpio_mode(GPIOC_bank_bit0_26(3), GPIOC_bit_bit0_26(3), GPIO_OUTPUT_MODE);
     
     CLK_GATE_OFF(LCD);
-    
+    clear_mio_mux(4,(0x3f<<0));
+    clear_mio_mux(0, 1<<11);
+    clear_mio_mux(0, 1<<14); 
 }
 
 
@@ -1184,19 +1188,22 @@ static void aml_8726m_set_bl_level(unsigned level)
         
     hi = (BL_MAX_LEVEL/100)*pwm_level;
     low = BL_MAX_LEVEL - hi;
+    
+    if(bl_level >=30&&panel_state == 0){
+        panel_state = 1;
+        power_on_panel();
+    }       
     WRITE_CBUS_REG_BITS(VGHL_PWM_REG0, cs_level, 0, 4);   
     //SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<31)); 
     SET_CBUS_REG_MASK(PWM_MISC_REG_AB, (1 << 0));         
     WRITE_CBUS_REG_BITS(PWM_PWM_A,low,0,16);  //low
     WRITE_CBUS_REG_BITS(PWM_PWM_A,hi,16,16);  //hi   
+    
     if(bl_level <30&&panel_state == 1){
         panel_state = 0;
         power_off_panel();
-    }   
-    if(bl_level >=30&&panel_state == 0){
-        panel_state = 1;
-        power_on_panel();
-    }       
+    }     
+      
 }
 
 static void aml_8726m_power_on_bl(void)
