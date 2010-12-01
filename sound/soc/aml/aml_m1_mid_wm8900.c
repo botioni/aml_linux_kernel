@@ -150,10 +150,9 @@ static void wm8900_hp_detect_queue(struct work_struct* work)
     struct wm8900_work_t* pwork = container_of(work,struct wm8900_work_t, wm8900_workqueue);
     struct snd_soc_codec* codec = (struct snd_soc_codec*)(pwork->data);
 
-    if (((struct wm8900_platform_data *) (wm8900_dai.ac97_pdata))->is_hp_pluged)
+    if ((wm8900_dai.ac97_pdata) && ((struct wm8900_platform_data *) (wm8900_dai.ac97_pdata))->is_hp_pluged)
         level = ((struct wm8900_platform_data *) (wm8900_dai.ac97_pdata))->is_hp_pluged();
-    else
-        hp_detect_flag = 1;
+
     //printk("level = %x, hp_detect_flag = %x\n", level, hp_detect_flag);
     if(level == 0x1 && hp_detect_flag!= 0x1){ // HP
         printk("Headphone pluged in\n");
@@ -205,10 +204,10 @@ static int aml_m1_codec_init(struct snd_soc_codec *codec)
     }
 
 #if HP_DET
-    if (((struct wm8900_platform_data *) (wm8900_dai.ac97_pdata))->is_hp_pluged)
+    if ((wm8900_dai.ac97_pdata) && ((struct wm8900_platform_data *) (wm8900_dai.ac97_pdata))->is_hp_pluged)
         hp_detect_flag = ((struct wm8900_platform_data *) (wm8900_dai.ac97_pdata))->is_hp_pluged() ? (0) : (1);
     else
-        hp_detect_flag = 0;
+        hp_detect_flag = 1; // If is_hp_pluged function is not registered in bsp, set speaker as default.
 
     err = snd_soc_jack_new(card, "hp_switch",
         SND_JACK_HEADSET, &hp_jack);
