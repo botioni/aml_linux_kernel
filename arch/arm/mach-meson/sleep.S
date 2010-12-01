@@ -20,9 +20,12 @@
 #include <asm/assembler.h>
 #include <mach/memory.h>
 
+#define DDR_SUSPEND
+
 #define POWERGATE0_OFFSET   0x50
 #define SYSPLL_OFFSET       0x5a
 #define OTHERPLL_OFFSET     0x70
+
     .text
 /*
  * Move Meson into deep sleep state
@@ -35,6 +38,7 @@ ENTRY(meson_cpu_suspend)
 
     ldmia   r0, {r0-r4}
 
+#ifdef DDR_SUSPEND
     /*
      * Switch DDR to self-refresh mode.
      */
@@ -56,31 +60,22 @@ ENTRY(meson_cpu_suspend)
     ldr     r5, [r3, #POWERGATE0_OFFSET]
     bic     r5, r5, #0x41
     str     r5, [r3, #POWERGATE0_OFFSET]
-
-    /* other pll */
-    ldr     r5, [r3, #OTHERPLL_OFFSET]
-    orr     r5, r5, #0x8000
-    str     r5, [r3, #OTHERPLL_OFFSET]
-
-    /* sys pll */
-//    ldr     r5, [r3, #SYSPLL_OFFSET]
-//    orr     r5, r5, #0x8000
-//    str     r5, [r3, #SYSPLL_OFFSET]
+#endif
 
     /* System goes to sleep beyond after this instruction */
+#if 1
     wfi
+    nop
+    nop
+    nop
+#else
+    mov     r5, #0x1000
+1:  subs    r5, r5, #0x1
+    bne     1b
+#endif
     /* Wake up from sleep */
 
-    /* sys pll */
-//    ldr     r5, [r3, #SYSPLL_OFFSET]
-//    bic     r5, r5, #0x8000
-//    str     r5, [r3, #SYSPLL_OFFSET]
-
-    /* other pll */
-    ldr     r5, [r3, #OTHERPLL_OFFSET]
-    bic     r5, r5, #0x8000
-    str     r5, [r3, #OTHERPLL_OFFSET]
-
+#ifdef DDR_SUSPEND
     /* ddr power gate */
     ldr     r5, [r3, #POWERGATE0_OFFSET]
     orr     r5, r5, #0x41
@@ -102,6 +97,7 @@ ENTRY(meson_cpu_suspend)
     mov     r5, #0x1000
 5:  subs    r5, r5, #0x1
     bne     5b
+#endif
 
     /* Restore registers and return */
     ldmfd   sp!, {r0-r12, pc}
