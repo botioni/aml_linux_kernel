@@ -184,7 +184,7 @@ s32 stbuf_init(struct stream_buf_s *buf)
     r = _stbuf_alloc(buf);
     if (r < 0)
         return r;
-    phy_addr = virt_to_phys(buf->buf_start);
+    phy_addr = virt_to_phys((void *)buf->buf_start);
     init_waitqueue_head(&buf->wq);
 
     _WRITE_ST_REG(CONTROL, 0);
