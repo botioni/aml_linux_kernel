@@ -78,7 +78,7 @@ static struct resource intput_resources[] = {
 	{
 		.start = 0x0,
 		.end = 0x0,
-		.name="8626",
+		.name="8726",
 		.flags = IORESOURCE_IO,
 	},
 };
@@ -799,8 +799,10 @@ static void __init device_pinmux_init(void )
 	/* IR decoder pinmux */
 	set_mio_mux(5, 1<<31);
 
+#ifdef CONFIG_I2C_SW_AML   /*for multak*/
 	/* SmartCard pinmux */
 	set_mio_mux(2, 0xF<<20);
+#endif
 
 	set_audio_pinmux(AUDIO_IN_JTAG); // for MIC input
 }
