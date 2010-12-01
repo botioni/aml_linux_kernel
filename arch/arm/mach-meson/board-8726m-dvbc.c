@@ -788,8 +788,10 @@ static void __init device_pinmux_init(void )
 	/* uart port A */
 	uart_set_pinmux(UART_PORT_A,UART_A_GPIO_B2_B3);
 
+#ifndef CONFIG_I2C_SW_AML
 	/* uart port B */
-	uart_set_pinmux(UART_PORT_B,UART_B_TCK_TDO);
+	uart_set_pinmux(UART_PORT_B,UART_B_GPIO_C13_C14);
+#endif
 
 	/* pinmux of eth */
 	eth_pinmux_init();
