@@ -64,7 +64,7 @@ static void inline _bitblt_noalpha(ge2d_context_t *wq,
     ge2d_cmd_cfg->color_blend_mode = OPERATION_LOGIC;
     ge2d_cmd_cfg->color_logic_op   = LOGIC_OPERATION_COPY;  
     ge2d_cmd_cfg->alpha_blend_mode = OPERATION_LOGIC;
-    ge2d_cmd_cfg->alpha_logic_op   = LOGIC_OPERATION_CLEAR; 
+    ge2d_cmd_cfg->alpha_logic_op   = LOGIC_OPERATION_SET; 
     ge2d_cmd_cfg->wait_done_flag   = block;
 
     ge2d_wq_add_work(wq);
