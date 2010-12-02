@@ -68,7 +68,9 @@ MODULE_PARM_DESC(iProduct, "USB Product string");
 static char *iSerialNumber;
 module_param(iSerialNumber, charp, 0);
 MODULE_PARM_DESC(iSerialNumber, "SerialNumber string");
-
+#ifdef CONFIG_AMLOGIC_PM 
+extern int pc_connect(int status); 
+#endif
 /*-------------------------------------------------------------------------*/
 
 static ssize_t enable_show(struct device *dev, struct device_attribute *attr,
@@ -798,6 +800,9 @@ composite_setup(struct usb_gadget *gadget, const struct usb_ctrlrequest *ctrl)
 		switch (w_value >> 8) {
 
 		case USB_DT_DEVICE:
+#ifdef CONFIG_AMLOGIC_PM 
+            pc_connect(1); 
+#endif		    
 			cdev->desc.bNumConfigurations =
 				count_configs(cdev, USB_DT_DEVICE);
 			value = min(w_length, (u16) sizeof cdev->desc);
@@ -976,6 +981,9 @@ static void composite_disconnect(struct usb_gadget *gadget)
 	 * disconnect callbacks?
 	 */
 	spin_lock_irqsave(&cdev->lock, flags);
+#ifdef CONFIG_AMLOGIC_PM 
+    pc_connect(0); 
+#endif		
 	if (cdev->config)
 		reset_config(cdev);
 	spin_unlock_irqrestore(&cdev->lock, flags);

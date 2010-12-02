@@ -22,6 +22,7 @@
 #include <linux/usb/otg.h>
 
 //#define AML_POWER_DBG
+#define BATTERY_ARROW_NUM  40
 
 static inline unsigned int get_irq_flags(struct resource *res)
 {
@@ -64,7 +65,7 @@ static int aml_power_get_property(struct power_supply *psy,
 				  enum power_supply_property psp,
 				  union power_supply_propval *val)
 {
-    int capacty;
+    //int capacty;
 	switch (psp) {
 	case POWER_SUPPLY_PROP_ONLINE:
 #ifdef AML_POWER_DBG
@@ -152,8 +153,8 @@ static struct power_supply aml_psy_bat = {
 	.get_property = aml_power_get_property,
 };
 
-static unsigned bat_matrix[10] = {0};
-static char count = 0;
+static unsigned bat_matrix[BATTERY_ARROW_NUM] = {0};
+static int count = 0;
 static void get_bat_capacity(void)
 {
     int value,i,num,sum;
@@ -174,7 +175,7 @@ static void get_bat_capacity(void)
     if(value == -1)
         return;
     if((new_ac_status == 0)&&(ac_status > 0)){
-        for(i = 0;i<=9;i++){
+        for(i = 0;i <= (BATTERY_ARROW_NUM-1);i++){
             bat_matrix[i] = 0;
             count = 0;
         }  
@@ -182,14 +183,14 @@ static void get_bat_capacity(void)
     
     bat_matrix[count] = value;
     count ++;
-    if(count > 9)
+    if(count > (BATTERY_ARROW_NUM-1))
         count = 0;
        
     sum = 0;
     num = 0;
     min = 0x3ff;
     max = 0;  
-    for(i = 0;i<=9;i++){
+    for(i = 0;i<=(BATTERY_ARROW_NUM-1);i++){
         if(bat_matrix[i]){
             sum += bat_matrix[i];
             num ++;
@@ -221,8 +222,8 @@ static void update_status(void)
 	if (pdata->is_ac_online)
 		new_ac_status = !!pdata->is_ac_online();
 
-	if (pdata->is_usb_online)
-		new_usb_status = !!pdata->is_usb_online();
+	//if (pdata->is_usb_online)  //usb not use polling
+		//new_usb_status = !!pdata->is_usb_online();
 		
 	if (pdata->get_charge_status&&pdata->is_ac_online){
 		if(pdata->is_ac_online())
@@ -386,11 +387,26 @@ static int otg_is_usb_online(void)
 	return (transceiver->state == OTG_STATE_B_PERIPHERAL);
 }
 #endif
+#ifdef CONFIG_USB_ANDROID
+int pc_connect(int status) 
+{
+    new_usb_status = status; 
+    if(new_usb_status == status)
+        return 1;
+    usb_status = AML_PSY_TO_CHANGE;
+    psy_changed; 
+    return 0;
+} 
+static int gadget_is_usb_online(void)
+{
+	return usb_status;
+}
+EXPORT_SYMBOL(pc_connect);
+
+#endif
 static ssize_t store_powerhold(struct class *class, 
 			struct class_attribute *attr,	const char *buf, size_t count)
 {
-	unsigned int reg, val, ret;
-
 	if(buf[0] == 'y'){
 #ifdef AML_POWER_DBG
 		printk("system off\n");
@@ -498,7 +514,9 @@ static int aml_power_probe(struct platform_device *pdev)
 		pdata->is_usb_online = otg_is_usb_online;
 	}
 #endif
-
+#ifdef CONFIG_USB_ANDROID
+    pdata->is_usb_online = gadget_is_usb_online;
+#endif
 	if (pdata->is_usb_online) {
 		ret = power_supply_register(&pdev->dev, &aml_psy_usb);
 		if (ret) {
