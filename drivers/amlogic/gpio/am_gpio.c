@@ -101,7 +101,7 @@ static inline int _gpio_setup_bank_bit(cmd_t  *op)
 		op->bank=GPIOD_bank_bit2_24(0);
 		if(op->bit < 25 && op->bit > 1)//bit2..24
 		{
-			op->bit =GPIOD_bank_bit2_24(op->bit);
+			op->bit =GPIOD_bit_bit2_24(op->bit);
 		}
 		else
 		{
