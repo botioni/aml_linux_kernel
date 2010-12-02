@@ -457,7 +457,18 @@ void extern_wifi_power(int is_power)
     {
         #ifdef CONFIG_SN7325
         configIO(0, 0);
-        setIO_level(0, 0, 5);
+        setIO_level(0, 0, 0);//OD0
+        setIO_level(0, 1, 1);//OD1
+        setIO_level(0, 1, 4);//OD4
+        setIO_level(0, 1, 5);//OD5
+        setIO_level(0, 0, 6);//OD6
+        configIO(1, 0);
+        setIO_level(1, 1, 4);//PP4
+        setIO_level(1, 1, 0);//PP0
+        setIO_level(1, 0, 1);//PP1
+        setIO_level(1, 1, 5);//PP5
+        setIO_level(1, 0, 6);//PP6
+        setIO_level(1, 1, 7);//PP7
         #else
         return;
         #endif
@@ -466,7 +477,18 @@ void extern_wifi_power(int is_power)
     {
         #ifdef CONFIG_SN7325
         configIO(0, 0);
-        setIO_level(0, 1, 5);
+        setIO_level(0, 0, 0);//OD0
+        setIO_level(0, 1, 1);//OD1
+        setIO_level(0, 1, 4);//OD4
+        setIO_level(0, 1, 5);//OD5
+        setIO_level(0, 0, 6);//OD6
+        configIO(1, 0);
+        setIO_level(1, 1, 4);//PP4
+        setIO_level(1, 1, 0);//PP0
+        setIO_level(1, 0, 1);//PP1
+        setIO_level(1, 1, 5);//PP5
+        setIO_level(1, 0, 6);//PP6
+        setIO_level(1, 1, 7);//PP7
         #else
         return;
         #endif
