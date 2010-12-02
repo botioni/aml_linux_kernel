@@ -207,7 +207,10 @@ static int itk_read_sensor(struct itk *ts)
     up_down = data[1]&0x1;
     valid = (data[1]&0x80)?(1):(0);
     id = (data[1]>>2)& 0x1f;
-    event = &ts->event[ts->touching_num++];
+    if (ts->touching_num > 1)
+        event = &ts->event[0];
+    else
+        event = &ts->event[ts->touching_num];
     event->contactid = id;
     event->pendown = up_down;
     event->valid = valid;
@@ -216,10 +219,9 @@ static int itk_read_sensor(struct itk *ts)
     event->x = (event->x*ts->lcd_xmax)/(ts->tp_xmax);
     event->y = (event->y*ts->lcd_ymax)/(ts->tp_ymax);
     #ifdef ITK_TS_DEBUG
-    printk(KERN_INFO "\nread_sensor id = %d, event->x = %d, event->y = %d\n", id, event->x, event->y);
+    printk(KERN_INFO "\nread_sensor id = %d, pendown = %d, event[%d]->x = %d, event[%d]->y = %d\n", id, event->pendown, ts->touching_num, event->x, ts->touching_num, event->y);
     #endif
-    if (ts->touching_num > 1)
-        ts->touching_num = 0;
+    ts->touching_num++;
     return 0;
 }
 
@@ -246,15 +248,23 @@ static void itk_work(struct work_struct *work)
             ts->pendown = 1;
             //input_report_key(ts->input, BTN_TOUCH, 1);
             #ifdef ITK_TS_DEBUG
-            printk(KERN_INFO "DOWN\n\n");
+            printk(KERN_INFO "DOWN\n");
             #endif
         }
-        if (ts->touching_num == 1) //tow points event got
+        if (ts->touching_num == 2) //tow points event got
         {
             for (i=0; i<2; i++) //to deliver two points separately
             {
+                if ((i == 0) && (ts->event[i].contactid == ts->event[i+1].contactid)
+                    && (ts->event[i].pendown == ts->event[i+1].pendown)
+                    && (ts->event[i].x == ts->event[i+1].x)
+                    && (ts->event[i].y == ts->event[i+1].y)
+                    ) // if one finger and same position, sent one report
+                {
+                    continue;
+                }
                 event = &ts->event[i];
-                if ((event->valid == 1) && (event->pendown == 1))
+                if (event->valid == 1)
                 {
                     input_report_abs(ts->input, ABS_MT_TRACKING_ID, event->contactid);
                     #ifdef ITK_TS_DEBUG
@@ -279,16 +289,25 @@ static void itk_work(struct work_struct *work)
                     #endif
                     if ((i == 0) && 
                         (ts->event[i].contactid != ts->event[i+1].contactid)
-                        && ts->event[i+1].valid && event[i+1].pendown) //two fingers, just need one input_sync report.
+                        && ts->event[i+1].valid) //two fingers, just need one input_sync report.
                     {
                         continue;
+                    }
+                    #ifdef ITK_TS_DEBUG
+                    else
+                    {
+                        if (i == 0)
+                            printk(KERN_INFO "[%d].contactid = %d, [%d].contactid = %d, [%d].valid = %d, [%d].pendown = %d\n", 
+                            i, ts->event[i].contactid, i+1, ts->event[i+1].contactid, i+1, ts->event[i+1].valid, i+1, ts->event[i+1].pendown);
+                        #endif
                     }
                     input_sync(ts->input);
                     #ifdef ITK_TS_DEBUG
                     printk(KERN_INFO "input_sync\n");
-                    #endif
                 }
+                #endif
             }
+            ts->touching_num = 0;
         }
 restart:
 #ifdef TS_DELAY_WORK
@@ -458,6 +477,8 @@ fail:
 
     i2c_set_clientdata(client, NULL);
 out:
+    itk_read_sensor(ts);
+    itk_reset(ts);
     printk("itk touch screen driver ok\n");
     return err;
 }
