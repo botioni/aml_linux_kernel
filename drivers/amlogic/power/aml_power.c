@@ -52,9 +52,9 @@ enum {
 	AML_PSY_TO_CHANGE,
 };
 static int new_ac_status = -1;
-static int new_usb_status = -1;
+static int new_usb_status = 0;
 static int ac_status = -1;
-static int usb_status = -1;
+static int usb_status = 0;
 static int battery_capacity = -1;
 static int new_battery_capacity = -1;
 static int power_on_with_ac = -1;
