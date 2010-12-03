@@ -416,9 +416,18 @@ static void meson_pm_suspend(void)
 {
     int divider;
     int divider_sel;
+    unsigned ddr_clk_N;
 
     printk(KERN_INFO "enter meson_pm_suspend!\n");
-                  
+    
+    pdata->ddr_clk = READ_CBUS_REG(HHI_DDR_PLL_CNTL);
+    ddr_clk_N = (pdata->ddr_clk>>9)&0x1f;
+    ddr_clk_N = ddr_clk_N*4; // N*4
+    if (ddr_clk_N>0x1f)
+        ddr_clk_N=0x1f;
+    pdata->ddr_clk &= ~(0x1f<<9);
+    pdata->ddr_clk |= ddr_clk_N<<9;
+    printk(KERN_INFO "target ddr clock 0x%x!\n", pdata->ddr_clk);
     divider = READ_CBUS_REG_BITS(HHI_A9_CLK_CNTL, 8, 6);
     divider_sel = READ_CBUS_REG_BITS(HHI_A9_CLK_CNTL, 2, 2);
     WRITE_CBUS_REG(HHI_A9_CLK_CNTL, READ_CBUS_REG(HHI_A9_CLK_CNTL)&~(1<<7));

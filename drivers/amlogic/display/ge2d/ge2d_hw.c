@@ -530,8 +530,10 @@ void ge2d_set_dp_gen (ge2d_dp_gen_t *cfg)
    WRITE_MPEG_REG(GE2D_MATRIX_COEF22_CTRL, 
                         (cfg->matrix_coef[8] << 16) | 
                         (cfg->matrix_sat_in_en << 7) |
+#if 0
                         (cfg->matrix_minus_16_ctrl << 4) |
                         (cfg->matrix_sign_ctrl << 1) |
+#endif
                         (cfg->conv_matrix_en << 0)
                         ); 
 

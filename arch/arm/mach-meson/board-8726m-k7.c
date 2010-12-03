@@ -457,7 +457,18 @@ void extern_wifi_power(int is_power)
     {
         #ifdef CONFIG_SN7325
         configIO(0, 0);
-        setIO_level(0, 0, 5);
+        setIO_level(0, 0, 0);//OD0
+        setIO_level(0, 1, 1);//OD1
+        setIO_level(0, 1, 4);//OD4
+        setIO_level(0, 1, 5);//OD5
+        setIO_level(0, 0, 6);//OD6
+        configIO(1, 0);
+        setIO_level(1, 1, 4);//PP4
+        setIO_level(1, 1, 0);//PP0
+        setIO_level(1, 0, 1);//PP1
+        setIO_level(1, 1, 5);//PP5
+        setIO_level(1, 0, 6);//PP6
+        setIO_level(1, 1, 7);//PP7
         #else
         return;
         #endif
@@ -466,7 +477,18 @@ void extern_wifi_power(int is_power)
     {
         #ifdef CONFIG_SN7325
         configIO(0, 0);
-        setIO_level(0, 1, 5);
+        setIO_level(0, 0, 0);//OD0
+        setIO_level(0, 1, 1);//OD1
+        setIO_level(0, 1, 4);//OD4
+        setIO_level(0, 1, 5);//OD5
+        setIO_level(0, 0, 6);//OD6
+        configIO(1, 0);
+        setIO_level(1, 1, 4);//PP4
+        setIO_level(1, 1, 0);//PP0
+        setIO_level(1, 0, 1);//PP1
+        setIO_level(1, 1, 5);//PP5
+        setIO_level(1, 0, 6);//PP6
+        setIO_level(1, 1, 7);//PP7
         #else
         return;
         #endif
@@ -806,8 +828,11 @@ static struct meson_pm_config aml_pm_pdata = {
     .ddr2_reg_refresh = IO_APB_BUS_BASE+0x0004,
     .ddr2_reg_phy = IO_APB_BUS_BASE+0x1380,
     .ddr_pll_ctrl = CBUS_REG_ADDR(HHI_DDR_PLL_CNTL),
-    .hiu_base = CBUS_REG_ADDR(0x1000),
+    .clock_gate = CBUS_REG_ADDR(HHI_GCLK_MPEG0),
+    .power_key = CBUS_REG_ADDR(RTC_ADDR1),
+    .ddr_clk = 0x00110820,
     .sleepcount = 128,
+    //.set_vccx2 = set_vccx2,
 };
 
 static struct platform_device aml_pm_device = {

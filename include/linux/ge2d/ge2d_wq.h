@@ -38,6 +38,13 @@ typedef  enum
 		ALLOC_ALLOC,
 		TYPE_INVALID,
 }ge2d_src_dst_t;
+typedef enum  	
+{
+    CANVAS_OSD0 =0,
+    CANVAS_OSD1,	 
+    CANVAS_ALLOC,
+    CANVAS_TYPE_INVALID,
+}ge2d_src_canvas_type;
 typedef  struct {
   struct list_head  list;
   ge2d_cmd_t   cmd ;
@@ -179,9 +186,61 @@ typedef    struct {
 	src_key_ctrl_t  src_key;
 }config_para_t;
 
+typedef  struct  {
+    int  canvas_index;
+    int  top;
+    int  left;
+    int  width;
+    int  height;
+    int  format;
+    int  mem_type;
+    int  color;
+    unsigned char x_rev;
+    unsigned char y_rev;
+    unsigned char fill_color_en;
+    unsigned char fill_mode;    
+}src_dst_para_ex_t ;
+
+typedef    struct {
+    src_dst_para_ex_t src_para;
+    src_dst_para_ex_t src2_para;
+    src_dst_para_ex_t dst_para;
+
+//key mask
+    src_key_ctrl_t  src_key;
+    src_key_ctrl_t  src2_key;
+
+    int alu_const_color;
+    unsigned src1_gb_alpha;
+    unsigned op_mode;
+    unsigned char bitmask_en;
+    unsigned char bytemask_only;
+    unsigned int  bitmask;
+    unsigned char dst_xy_swap;
+
+// scaler and phase releated
+    unsigned hf_init_phase;
+    int hf_rpt_num;
+    unsigned hsc_start_phase_step;
+    int hsc_phase_slope;
+    unsigned vf_init_phase;
+    int vf_rpt_num;
+    unsigned vsc_start_phase_step;
+    int vsc_phase_slope;
+    unsigned char src1_vsc_phase0_always_en;
+    unsigned char src1_hsc_phase0_always_en;
+    unsigned char src1_hsc_rpt_ctrl;  //1bit, 0: using minus, 1: using repeat data
+    unsigned char src1_vsc_rpt_ctrl;  //1bit, 0: using minus  1: using repeat data
+
+//canvas info
+    config_planes_t src_planes[4];
+    config_planes_t src2_planes[4];
+    config_planes_t dst_planes[4];
+}config_para_ex_t;
 extern int   ge2d_setup(void);
 extern int   ge2d_deinit(void);
 extern int   ge2d_context_config(ge2d_context_t *context, config_para_t *ge2d_config);
+extern int   ge2d_context_config_ex(ge2d_context_t *context, config_para_ex_t *ge2d_config);
 	
 extern int ge2d_wq_init(void);
 extern int  destroy_ge2d_work_queue(ge2d_context_t* ) ;

@@ -84,8 +84,11 @@ int set_sata_phy_clk(int sel)
 			SET_CBUS_REG_MASK(HHI_SATA_CLK_CNTL, (7 << SATA_PHY_CLK_DIV));
 			break;
 	}
-
+#ifdef CONFIG_MACH_MESON_8726M_DVBC
+	SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_11, (0xF << 2));
+#else
 	SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_11, (0xF << 6));
+#endif
 	i=0;
 	while(i++<time_dly){};
 	SET_CBUS_REG_MASK(RESET3_REGISTER, (1 << 1));

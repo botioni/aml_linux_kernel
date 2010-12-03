@@ -48,6 +48,7 @@ ge2d_ioctl(struct inode *inode, struct file *filp,
 	void  __user* argp =(void __user*)args;
 	config_para_t     ge2d_config;	
 	ge2d_para_t  para ;
+    config_para_ex_t  ge2d_config_ex;
 	int  ret=0;    	
 
 	if(!command_valid(cmd))  return -1;
@@ -57,8 +58,11 @@ ge2d_ioctl(struct inode *inode, struct file *filp,
 		case  GE2D_SRCCOLORKEY:	
 		copy_from_user(&ge2d_config,argp,sizeof(config_para_t));
 		break;
+		case  GE2D_CONFIG_EX:
+		copy_from_user(&ge2d_config_ex,argp,sizeof(config_para_ex_t));
+		break;
 		case  GE2D_SET_COEF:
-		case	  GE2D_ANTIFLICKER_ENABLE:	
+		case  GE2D_ANTIFLICKER_ENABLE:	
 		break;
 		default :
 		copy_from_user(&para,argp,sizeof(ge2d_para_t));	
@@ -70,13 +74,16 @@ ge2d_ioctl(struct inode *inode, struct file *filp,
 		case GE2D_CONFIG:
 		ret=ge2d_context_config(context,&ge2d_config) ;
 	  	break;
+		case GE2D_CONFIG_EX:
+		ret=ge2d_context_config_ex(context,&ge2d_config_ex) ;
+	  	break;
 		case GE2D_SET_COEF:
 		ge2d_wq_set_scale_coef(context,args&0xff,args>>16);
 		break;
 		case GE2D_ANTIFLICKER_ENABLE:
 		ge2d_antiflicker_enable(context,args);	
 		break;
-    	  	case GE2D_SRCCOLORKEY:
+        case GE2D_SRCCOLORKEY:
 		ge2dgen_src_key(context , ge2d_config.src_key.key_enable,ge2d_config.src_key.key_color, ge2d_config.src_key.key_mask,ge2d_config.src_key.key_mode);  //RGBA MODE		
 		break;
 		case GE2D_FILLRECTANGLE:
