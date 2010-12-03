@@ -163,8 +163,8 @@ void dwc_otg_hcd_qh_init(dwc_otg_hcd_t * _hcd, dwc_otg_qh_t * _qh,
 		/** @todo Account for split transfers in the bus time. */
 		int bytecount =
 		    dwc_hb_mult(_qh->maxp) * dwc_max_packet(_qh->maxp);
-		int usecs =
-		    usb_calc_bus_time(_urb->dev->speed, usb_pipein(_urb->pipe),
+		int usecs = /*FIXME: hardcode to highspeed, to fix Full/Low speed device via Hub*/
+		    usb_calc_bus_time(/*_urb->dev->speed*/USB_SPEED_HIGH, usb_pipein(_urb->pipe),
 				      (_qh->ep_type == USB_ENDPOINT_XFER_ISOC),
 				      bytecount);
 		_qh->usecs = NS_TO_US(usecs);
@@ -197,30 +197,32 @@ void dwc_otg_hcd_qh_init(dwc_otg_hcd_t * _hcd, dwc_otg_qh_t * _qh,
 		    usb_pipeendpoint(_urb->pipe),
 		    usb_pipein(_urb->pipe) == USB_DIR_IN ? "IN" : "OUT");
 	DWC_DEBUGPL(DBG_HCDV, "DWC OTG HCD QH  - Speed = %s\n", ( {
-								 char *speed;
-								 switch
-								 (_urb->
-								  dev->speed) {
-case USB_SPEED_LOW:
-speed = "low"; break; case USB_SPEED_FULL:
-speed = "full"; break; case USB_SPEED_HIGH:
-speed = "high"; break; default:
-								 speed = "?";
-								 break;};
-								 speed;}
-		    )) ;
+			 char *speed;
+			 switch(_urb->dev->speed) {
+				case USB_SPEED_LOW:
+					speed = "low"; break; 
+				case USB_SPEED_FULL:
+					speed = "full"; break; 
+				case USB_SPEED_HIGH:
+					speed = "high"; break; 
+				default:
+					 speed = "?"; break;};
+			 speed;})) ;
 	DWC_DEBUGPL(DBG_HCDV, "DWC OTG HCD QH  - Type = %s\n", ( {
-								char *type;
-								switch
-								(_qh->ep_type) {
-case USB_ENDPOINT_XFER_ISOC:
-type = "isochronous"; break; case USB_ENDPOINT_XFER_INT:
-type = "interrupt"; break; case USB_ENDPOINT_XFER_CONTROL:
-type = "control"; break; case USB_ENDPOINT_XFER_BULK:
-type = "bulk"; break; default:
-								type = "?";
-								break;}; type;}
-		    )) ;
+			char *type;
+			switch(_qh->ep_type) {
+				case USB_ENDPOINT_XFER_ISOC:
+					type = "isochronous"; break; 
+				case USB_ENDPOINT_XFER_INT:
+					type = "interrupt"; break; 
+				case USB_ENDPOINT_XFER_CONTROL:
+					type = "control"; break; 
+				case USB_ENDPOINT_XFER_BULK:
+					type = "bulk"; break; 
+				default:
+					type = "?";
+				break;}; 
+			type;} )) ;
 #ifdef DEBUG
 	if (_qh->ep_type == USB_ENDPOINT_XFER_INT) {
 		DWC_DEBUGPL(DBG_HCDV, "DWC OTG HCD QH - usecs = %d\n",
