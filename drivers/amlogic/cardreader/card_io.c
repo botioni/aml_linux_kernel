@@ -72,7 +72,7 @@ void sd_gpio_enable(SDIO_Pad_Type_t io_pad_type)
 		case SDIO_GPIOA_9_14:
 			CLEAR_CBUS_REG_MASK(CARD_PIN_MUX_0, (0x3F<<23));
 			CLEAR_CBUS_REG_MASK(SDIO_MULT_CONFIG, (0));
-			SET_CBUS_REG_MASK(CARD_PIN_MUX_2, ((0xF<<16) | (1<<8) | (1<<12)));
+			//SET_CBUS_REG_MASK(CARD_PIN_MUX_2, ((0xF<<16) | (1<<8) | (1<<12)));
 			break;
 
 		case SDIO_GPIOB_2_7:
