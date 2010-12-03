@@ -359,6 +359,20 @@ static struct platform_device audiodsp_device = {
 };
 #endif
 
+static struct resource aml_m1_audio_resource[]={
+		[0]	=	{
+				.start 	=	0,
+				.end		=	0,
+				.flags	=	IORESOURCE_MEM,
+		},
+};
+static struct platform_device aml_sound_card={
+		.name 				= "aml_m1_audio",//"aml_m1_audio_wm8900",
+		.id 					= -1,
+		.resource 		=	aml_m1_audio_resource,
+		.num_resources	=	ARRAY_SIZE(aml_m1_audio_resource),
+};
+
 #ifdef CONFIG_NAND_FLASH_DRIVER_BASE_OPERATE
 static struct mtd_partition partition_info[] = 
 {
@@ -720,6 +734,7 @@ static struct platform_device __initdata *platform_devs[] = {
 	#if defined(CONFIG_AML_AUDIO_DSP)
 		&audiodsp_device,
 	#endif
+		&aml_sound_card,
 	#if defined(CONFIG_CARDREADER)
     	&amlogic_card_device,
     #endif
