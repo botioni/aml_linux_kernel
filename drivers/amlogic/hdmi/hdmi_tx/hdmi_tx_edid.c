@@ -985,11 +985,18 @@ static struct{
     {"480i", HDMI_480i60_16x9},
     {"480p", HDMI_480p60},
     {"480p", HDMI_480p60_16x9},
+    {"576i", HDMI_576i50},
+    {"576i", HDMI_576i50_16x9},
+    {"576p", HDMI_576p50},
+    {"576p", HDMI_576p50_16x9},
     {"720p", HDMI_720p60},
     {"1080i", HDMI_1080i60},
     {"1080p", HDMI_1080p60},
     {"1080P30", HDMI_1080p30},
     {"1080P24", HDMI_1080p24},
+    {"720p50hz", HDMI_720p50},
+    {"1080i50hz", HDMI_1080i50},
+    {"1080p50hz", HDMI_1080p50},
 };    
 
 HDMI_Video_Codes_t hdmitx_edid_get_VIC(hdmitx_dev_t* hdmitx_device, const char* disp_mode, char force_flag)
@@ -997,21 +1004,26 @@ HDMI_Video_Codes_t hdmitx_edid_get_VIC(hdmitx_dev_t* hdmitx_device, const char* 
     rx_cap_t* pRXCap = &(hdmitx_device->RXCap);
 	  int  i,j,count=ARRAY_SIZE(dispmode_VIC_tab);
 	  HDMI_Video_Codes_t vic=HDMI_Unkown;
-    for(i=0;i<count;i++){
-        if(strncmp(disp_mode, dispmode_VIC_tab[i].disp_mode, strlen(dispmode_VIC_tab[i].disp_mode))==0){
-            if(force_flag){
+    int mode_name_len=0;
+    printk("disp_mode is %s\n", disp_mode);
+    for(i=0;i<count;i++)
+    {
+        if(strncmp(disp_mode, dispmode_VIC_tab[i].disp_mode, strlen(dispmode_VIC_tab[i].disp_mode))==0)
+        {
+            if((vic==HDMI_Unkown)||(strlen(dispmode_VIC_tab[i].disp_mode)>mode_name_len)){
                 vic = dispmode_VIC_tab[i].VIC;
-                break;
+                mode_name_len = strlen(dispmode_VIC_tab[i].disp_mode);
             }
-            else{
-                for( j = 0 ; j < pRXCap->VIC_count ; j++ ){
-                    if(pRXCap->VIC[j]==dispmode_VIC_tab[i].VIC)
-                        break;    
-                }
-                if(j<pRXCap->VIC_count){
-                    vic = dispmode_VIC_tab[i].VIC;
-                    break;        
-                }
+        }
+    }
+    if(vic!=HDMI_Unkown){
+        if(force_flag==0){
+            for( j = 0 ; j < pRXCap->VIC_count ; j++ ){
+                if(pRXCap->VIC[j]==vic)
+                    break;    
+            }
+            if(j>=pRXCap->VIC_count){
+                vic = HDMI_Unkown;
             }
         }
     }    

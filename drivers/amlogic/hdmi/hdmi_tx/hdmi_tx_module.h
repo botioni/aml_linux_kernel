@@ -45,7 +45,7 @@ typedef struct hdmi_tx_dev_s {
     struct proc_dir_entry *proc_file;
     struct task_struct *task;
     struct {
-        void (*SetAVI)(unsigned char* AVI_DB, unsigned char* AVI_HB);
+        void (*SetPacket)(int type, unsigned char* DB, unsigned char* HB);
         void (*SetAudioInfoFrame)(unsigned char* AUD_DB, unsigned char* CHAN_STAT_BUF);
         unsigned char (*GetEDIDData)(struct hdmi_tx_dev_s* hdmitx_device);
         int (*SetDispMode)(Hdmi_tx_video_para_t *param);
@@ -74,8 +74,15 @@ typedef struct hdmi_tx_dev_s {
     HDMI_TX_INFO_t hdmi_info;
     unsigned char tmp_buf[HDMI_TMP_BUF_SIZE];
 }hdmitx_dev_t;
+#define HDMI_SOURCE_DESCRIPTION 0
+#define HDMI_PACKET_VEND        1
+#define HDMI_MPEG_SOURCE_INFO   2
+#define HDMI_PACKET_AVI         3
+#define HDMI_AUDIO_INFO         4
+#define HDMI_AUDIO_CONTENT_PROTECTION   5
 
-#define HDMITX_VER "2010Nov11a"
+
+#define HDMITX_VER "2010Dec02a"
 /************************************
 *    hdmitx protocol level interface
 *************************************/
@@ -92,6 +99,8 @@ extern void hdmitx_edid_clear(hdmitx_dev_t* hdmitx_device);
 extern char* hdmitx_edid_get_native_VIC(hdmitx_dev_t* hdmitx_device);
 
 extern int hdmitx_set_display(hdmitx_dev_t* hdmitx_device, HDMI_Video_Codes_t VideoCode);
+
+extern int hdmi_set_3d(hdmitx_dev_t* hdmitx_device, int type, unsigned int param);
 
 extern int hdmitx_set_audio(hdmitx_dev_t* hdmitx_device, Hdmi_tx_audio_para_t* audio_param);
 
