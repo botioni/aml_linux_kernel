@@ -202,15 +202,20 @@ static ssize_t store_config(struct device * dev, struct device_attribute *attr, 
             printk("hdmi: set powermode %d\n", tmp);
         }
     }
-#if 0
-    else if(strncmp(buf, "adacoff", 7)==0){
-        //CLK_GATE_ON(AIU_AUD_DAC);
-        //CLK_GATE_ON(AIU_AUD_DAC_CLK);
-        audio_internal_dac_disable();
-        //CLK_GATE_OFF(AIU_AUD_DAC_CLK);
-        //CLK_GATE_OFF(AIU_AUD_DAC);
+    else if(strncmp(buf, "3d", 2)==0){
+        if(strncmp(buf+2, "tb", 2)==0){
+            hdmi_set_3d(&hdmitx_device, 6, 0);
+        }
+        else if(strncmp(buf+2, "lr", 2)==0){
+            int sub_sample_mode=0; 
+            if(buf[2])
+                sub_sample_mode = simple_strtoul(buf+2,NULL,10);
+            hdmi_set_3d(&hdmitx_device, 8, sub_sample_mode); //side by side
+        }
+        else if(strncmp(buf+2, "off", 3)==0){
+            hdmi_set_3d(&hdmitx_device, 0xf, 0);
+        }
     }
-#endif
     return 16;    
 }
   
@@ -225,7 +230,7 @@ static ssize_t store_dbg(struct device * dev, struct device_attribute *attr, con
 static ssize_t show_disp_cap(struct device * dev, struct device_attribute *attr, char * buf)
 {   
     int i,pos=0;
-    char* disp_mode_t[]={"480i","480p","720p","1080i","1080p",NULL};
+    char* disp_mode_t[]={"480i","480p","576i","576p","720p","1080i","1080p","720p50hz","1080i50hz","1080p50hz",NULL};
     char* native_disp_mode = hdmitx_edid_get_native_VIC(&hdmitx_device);
     HDMI_Video_Codes_t vic;
     for(i=0; disp_mode_t[i]; i++){
@@ -352,6 +357,7 @@ static ssize_t store_log(struct device * dev, struct device_attribute *attr, con
             hdmi_log_buf=kmalloc(tmp, GFP_KERNEL);
             if(hdmi_log_buf){
                 hdmi_log_buf_size=tmp;
+                hdmitx_device.HWOp.DebugFun(&hdmitx_device, "v");
             }
         }            
         spin_unlock_irqrestore(&hdmi_print_lock, flags);
@@ -441,7 +447,7 @@ static int hdmitx_notify_callback_a(struct notifier_block *block, unsigned long 
                 break;
         }
         hdmitx_set_audio(&hdmitx_device, &audio_param);
-        hdmi_print(0, "HDMI: aout notify rate %d\n", substream->runtime->rate);
+        hdmi_print(1, "HDMI: aout notify rate %d\n", substream->runtime->rate);
         return 0;
     }
     return -1;

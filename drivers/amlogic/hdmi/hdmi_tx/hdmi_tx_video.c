@@ -339,7 +339,7 @@ int hdmitx_set_display(hdmitx_dev_t* hdmitx_device, HDMI_Video_Codes_t VideoCode
     
             hdmi_tx_construct_avi_packet(param, AVI_DB);
     
-            hdmitx_device->HWOp.SetAVI(AVI_DB, AVI_HB);
+            hdmitx_device->HWOp.SetPacket(HDMI_PACKET_AVI, AVI_DB, AVI_HB);
             ret = 0;
         }
     }
@@ -349,4 +349,33 @@ int hdmitx_set_display(hdmitx_dev_t* hdmitx_device, HDMI_Video_Codes_t VideoCode
     return ret;
 
 }
+
+int hdmi_set_3d(hdmitx_dev_t* hdmitx_device, int type, unsigned int param)
+{
+    int i;
+    unsigned char VEN_DB[6];
+    unsigned char VEN_HB[3];
+    VEN_HB[0] = 0x81 ; 
+    VEN_HB[1] = 0x01 ; 
+    VEN_HB[2] = 0x6 ; 
+    if(type==0xf){
+        hdmitx_device->HWOp.SetPacket(HDMI_PACKET_VEND, NULL, VEN_HB);
+    }
+    else{
+        for(i=0;i<0x6;i++){
+            VEN_DB[i]=0;
+        }
+        VEN_DB[0]=0x03;
+        VEN_DB[1]=0x0c;
+        VEN_DB[2]=0x00;
+        
+        VEN_DB[3]=0x40;
+        VEN_DB[4]=type<<4;
+        VEN_DB[5]=param<<4;    
+        hdmitx_device->HWOp.SetPacket(HDMI_PACKET_VEND, VEN_DB, VEN_HB);
+    }  
+    return 0;          
+
+}    
+
 
