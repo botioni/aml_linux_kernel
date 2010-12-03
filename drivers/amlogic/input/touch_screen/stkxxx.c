@@ -166,6 +166,18 @@ static int stkxxx_write_block(struct i2c_client *client, u8 addr, u8 len, u8 *da
 	return i2c_transfer(client->adapter, msg, ARRAY_SIZE(msg));
 }
 
+static int stkxxx_write_reg(struct i2c_client *client, u8 addr,  u8 data)
+{
+	u8 buf[2] = {addr, data};
+	struct i2c_msg msg = {
+		.addr = client->addr,
+		.flags = !I2C_M_RD,
+		.len = 2,
+		.buf = buf,
+	};
+	
+	return i2c_transfer(client->adapter, &msg, 1);
+}
 
 static void stkxxx_reset(struct stkxxx *ts)
 {
@@ -195,8 +207,11 @@ static void stkxxx_reset(struct stkxxx *ts)
 		ts->vendor = SINTEK;
 	}
 	
-	data[0] = 0x03;
-	stkxxx_write_block(ts->client, 55, 1, data);
+	if (stkxxx_write_reg(ts->client, 55, 0x03) < 0) {
+		printk("calibration reg failed\n");
+	}
+	else
+		printk("calibration reg ok\n");
 }
 
 #define STK_INFO_ADDR	0
@@ -304,12 +319,13 @@ restart:
 
 static void stkxxx_cal_work(struct work_struct *work)
 {
-	unsigned char data[2] = {0, 0};
 	struct stkxxx *ts = container_of(to_delayed_work(work), struct stkxxx, cal_work);
 	
-	data[0] = 0x03;
-	stkxxx_write_block(ts->client, 55, 1, data);
-	printk(KERN_INFO "\n ***********re-calibration************\n\n");
+	if (stkxxx_write_reg(ts->client, 55, 0x03) < 0) {
+		printk("re-calibration reg failed\n");
+	}
+	else
+		printk("re-calibration reg ok\n");
 }
 
 #ifndef TS_DELAY_WORK
@@ -427,8 +443,8 @@ static int stkxxx_probe(struct i2c_client *client,
        }
 
        i2c_set_clientdata(client, ts);
-	INIT_DELAYED_WORK(&ts->cal_work, stkxxx_cal_work);
-	schedule_delayed_work(&ts->cal_work, 20*HZ);
+//	INIT_DELAYED_WORK(&ts->cal_work, stkxxx_cal_work);
+//	schedule_delayed_work(&ts->cal_work, 20*HZ);
        err = 0;
        goto out;
 
