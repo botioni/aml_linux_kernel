@@ -354,7 +354,7 @@ void sdio_extern_init(void)
 
 static struct aml_card_info  amlogic_card_info[] = {
 	[0] = {
-		.name = "sdio_card",
+		.name = "sd_card",
 		.work_mode = CARD_HW_MODE,
 		.io_pad_type = SDIO_GPIOA_9_14,
 		.card_ins_en_reg = EGPIO_GPIOC_ENABLE,
