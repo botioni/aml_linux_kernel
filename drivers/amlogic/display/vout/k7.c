@@ -157,8 +157,28 @@ void power_on_backlight(void)
     
     //EIO -> OD4: 0
 #ifdef CONFIG_SN7325
-    configIO(0, 0);
-	setIO_level(0, 0, 4);
+        printk("power on 7325 0\n");
+        setIO_level(0, 0, 0);//OD0
+        configIO(0, 0);
+        setIO_level(0, 1, 1);//OD1
+        configIO(0, 0);
+        setIO_level(0, 1, 4);//OD4
+        configIO(0, 0);
+        setIO_level(0, 1, 5);//OD5
+        configIO(0, 0);
+        setIO_level(0, 0, 6);//OD6
+        configIO(1, 0);
+        setIO_level(1, 1, 4);//PP4
+        configIO(1, 0);
+        setIO_level(1, 1, 0);//PP0
+        configIO(1, 0);
+        setIO_level(1, 0, 1);//PP1
+        configIO(1, 0);
+        setIO_level(1, 1, 5);//PP5
+        configIO(1, 0);
+        setIO_level(1, 0, 6);//PP6
+        configIO(1, 0);
+        setIO_level(1, 1, 7);//PP7
 #endif
 
     set_gpio_val(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), 1);
@@ -180,10 +200,6 @@ void power_off_backlight(void)
 //    set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);
 
     //EIO -> OD4: 1
-#ifdef CONFIG_SN7325
-    configIO(0, 0);
-	setIO_level(0, 1, 4);
-#endif
 
     set_gpio_val(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), 0);
     set_gpio_mode(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), GPIO_OUTPUT_MODE);
@@ -221,8 +237,28 @@ static void power_on_lcd(void)
     
     delay_ms(50);
 #ifdef CONFIG_SN7325
-    configIO(0, 0);
-	setIO_level(0, 0, 0);
+        printk("power on 7325 1\n");
+        setIO_level(0, 0, 0);//OD0
+        configIO(0, 0);
+        setIO_level(0, 1, 1);//OD1
+        configIO(0, 0);
+        setIO_level(0, 1, 4);//OD4
+        configIO(0, 0);
+        setIO_level(0, 1, 5);//OD5
+        configIO(0, 0);
+        setIO_level(0, 0, 6);//OD6
+        configIO(1, 0);
+        setIO_level(1, 1, 4);//PP4
+        configIO(1, 0);
+        setIO_level(1, 1, 0);//PP0
+        configIO(1, 0);
+        setIO_level(1, 0, 1);//PP1
+        configIO(1, 0);
+        setIO_level(1, 1, 5);//PP5
+        configIO(1, 0);
+        setIO_level(1, 0, 6);//PP6
+        configIO(1, 0);
+        setIO_level(1, 1, 7);//PP7
 #endif
 }
 
@@ -258,10 +294,6 @@ static void power_off_lcd(void)
     delay_ms(20);
     //LCD_3.3V: LCD_VCC_EN -> EIO_OD0: 1
     
-#ifdef CONFIG_SN7325
-	configIO(0, 0);
-    setIO_level(0, 1, 0);
-#endif
 }
 
 static void set_tcon_pinmux(void)
@@ -270,12 +302,6 @@ static void set_tcon_pinmux(void)
     /* GPIOA_5 -> LCD_Clk, GPIOA_0 -> TCON_STH1, GPIOA_1 -> TCON_STV1, GPIOA_2 -> TCON_OEH, */
     set_mio_mux(0, ((1<<11)|(1<<14)|(1<<15)|(1<<16));    
     set_mio_mux(4,(3<<0)|(3<<2)|(3<<4));   //For 8bits
-#ifdef CONFIG_SN7325
-    configIO(1, 0);
-    setIO_level(1, 0, 1);
-    configIO(0, 0);
-    setIO_level(1, 1, 2);
-#endif
 }
 static void t13_power_on(void)
 {
