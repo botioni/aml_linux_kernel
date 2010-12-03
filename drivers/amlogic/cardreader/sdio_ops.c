@@ -61,6 +61,8 @@ int sdio_io_rw_direct(struct memory_card *card, int write, unsigned fn,
 	return sdio_io_rw_direct_host(card->host, write, fn, addr, in, out);
 }
 
+EXPORT_SYMBOL(sdio_io_rw_direct);
+
 int sdio_io_rw_extended(struct memory_card *card, int write, unsigned fn,
 	unsigned addr, int incr_addr, u8 *buf, unsigned blocks, unsigned blksz)
 {
@@ -94,6 +96,8 @@ int sdio_io_rw_extended(struct memory_card *card, int write, unsigned fn,
 
 	return brq.card_data.error;
 }
+
+EXPORT_SYMBOL(sdio_io_rw_extended);
 
 int sdio_reset(struct card_host *host)
 {
