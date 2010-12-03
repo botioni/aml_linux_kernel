@@ -16,15 +16,28 @@
 #endif
 unsigned ENABLE_IEC958 = 0;
 
-int audio_clock_config_table[][5][2]=
+
+/*
+                                fIn * (M)          
+            Fout   =  -----------------------------
+                      		(N) * (OD+1) * (XD)
+*/                      
+int audio_clock_config_table[][11][2]=
 {
+	/*{M, N, OD, XD-1*/
 	{
 	//24M
 		{(71 <<  0) |(4   <<  9) | (1   << 14), (26-1)},//32K	
 		{(143 <<  0) |(8   <<  9) | (1   << 14), (19-1)},//44.1K	
 		{(128 <<  0) |(5   <<  9) | (1   << 14), (25-1)},//48K	
 		{(128 <<  0) |(5   <<  9) | (0   << 14), (25-1)},//96K	
-		{(213 <<  0) |(8   <<  9) | (0   << 14), (13-1)}//192K	    
+		{(213 <<  0) |(8   <<  9) | (0   << 14), (13-1)},//192K	 
+		{(71 <<  0) |(8   <<  9) | (1   << 14), (52-1)},// 8K
+		{(143 <<  0) |(8   <<  9) | (1   << 14), (76-1)},// 11025
+		{(32 <<  0) |(5   <<  9) | (1   << 14), (25-1)},// 12K
+		{(71 <<  0) |(8   <<  9) | (1   << 14), (26-1)},// 16K
+		{(143 <<  0) |(8   <<  9) | (1   << 14), (38-1)},// 22050
+		{(64 <<  0) |(5   <<  9) | (1   << 14), (25-1)}   // 24K
 	},
 	{
 	//25M
@@ -32,7 +45,13 @@ int audio_clock_config_table[][5][2]=
 		{(28 <<  0) |(1   <<  9) | (1   << 14), (31-1)},//44.1K	
 		{(173 <<  0) |(8   <<  9) | (1   << 14), (22-1)},//48K	
 		{(173 <<  0) |(8   <<  9) | (1   << 14), (11-1)},//96K	
-		{(118 <<  0) |(5   <<  9) | (1   << 14), (6-1)}//192K	               
+		{(118 <<  0) |(5   <<  9) | (1   << 14), (6-1)},//192K	  
+		{(19 <<  0) |(4   <<  9) | (1   << 14), (29-1)},// 8K
+		{(7 <<  0) |(1   <<  9) | (1   << 14), (31-1)},// 11025
+		{(173 <<  0) |(8   <<  9) | (1   << 14), (88-1)},// 12K
+		{(19 <<  0) |(2   <<  9) | (1   << 14), (29-1)},// 16K
+		{(14 <<  0) |(1   <<  9) | (1   << 14), (31-1)},// 22050
+		{(173 <<  0) |(8   <<  9) | (1   << 14), (44-1)}// 24K
 	}
 };
 
@@ -315,6 +334,25 @@ int audio_dac_set(unsigned freq)
 		case AUDIO_CLK_FREQ_32:
 			data32=6;
 			break;
+		case AUDIO_CLK_FREQ_8:
+			data32 = 0;
+			break;
+		case AUDIO_CLK_FREQ_11:
+			data32 = 1;
+			break;
+		case AUDIO_CLK_FREQ_22:
+			data32 = 4;
+			break;
+		case AUDIO_CLK_FREQ_24:
+			data32 = 5;
+			break;
+		case AUDIO_CLK_FREQ_16:
+			data32 = 3;
+			break;
+		case AUDIO_CLK_FREQ_12:
+			data32 = 2;
+			break;
+			
 		default:
 			data32=6;
 			break;
@@ -360,14 +398,6 @@ int audio_dac_set(unsigned freq)
 
 #endif
 
-#define AUDIO_CLK_FREQ_192  0
-#define AUDIO_CLK_FREQ_1764 1
-#define AUDIO_CLK_FREQ_96   2
-#define AUDIO_CLK_FREQ_882  3
-#define AUDIO_CLK_FREQ_48   4
-#define AUDIO_CLK_FREQ_441  5
-#define AUDIO_CLK_FREQ_32   6
-
 void audio_set_clk(unsigned freq, unsigned fs_config)
 {
     int i;
@@ -395,6 +425,24 @@ void audio_set_clk(unsigned freq, unsigned fs_config)
 				break;
 			case AUDIO_CLK_FREQ_32:
 				index=0;
+				break;
+			case AUDIO_CLK_FREQ_8:
+				index = 5;
+				break;
+			case AUDIO_CLK_FREQ_11:
+				index = 6;
+				break;
+			case AUDIO_CLK_FREQ_12:
+				index = 7;
+				break;
+			case AUDIO_CLK_FREQ_16:
+				index = 8;
+				break;
+			case AUDIO_CLK_FREQ_22:
+				index = 9;
+				break;
+			case AUDIO_CLK_FREQ_24:
+				index = 10;
 				break;
 			default:
 				index=0;

@@ -123,6 +123,14 @@ typedef struct {
 #define AUDIO_CLK_FREQ_441  5
 #define AUDIO_CLK_FREQ_32   6
 
+#define AUDIO_CLK_FREQ_8		7
+#define AUDIO_CLK_FREQ_11		8
+#define AUDIO_CLK_FREQ_12		9
+#define AUDIO_CLK_FREQ_16		10
+#define AUDIO_CLK_FREQ_22		11
+#define AUDIO_CLK_FREQ_24		12
+
+
 #define AIU_958_MODE_RAW    0
 #define AIU_958_MODE_PCM24  1
 #define AIU_958_MODE_PCM16  2

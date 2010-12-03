@@ -52,12 +52,31 @@ static const struct snd_pcm_hardware aml_pcm_hardware = {
 	
 	.rate_min = 32000,
   .rate_max = 48000,
-  .channels_min = 1,
+  .channels_min = 2,
   .channels_max = 2,
   .fifo_size = 0,  
 };
 
+static const struct snd_pcm_hardware aml_pcm_capture = {
+	.info			= SNDRV_PCM_INFO_INTERLEAVED|
+							SNDRV_PCM_INFO_BLOCK_TRANSFER|
+							SNDRV_PCM_INFO_MMAP |
+				  		SNDRV_PCM_INFO_MMAP_VALID |
+				  		SNDRV_PCM_INFO_PAUSE,
+				  		
+	.formats		= SNDRV_PCM_FMTBIT_S16_LE,
+	.period_bytes_min	= 64,
+	.period_bytes_max	= 8*1024,
+	.periods_min		= 2,
+	.periods_max		= 1024,
+	.buffer_bytes_max	= 32 * 1024,
 
+	.rate_min = 8000,
+  .rate_max = 48000,
+  .channels_min = 2,
+  .channels_max = 2,
+  .fifo_size = 0,  
+};
 
 /*--------------------------------------------------------------------------*\
  * Data types
@@ -95,7 +114,7 @@ static int aml_pcm_preallocate_dma_buffer(struct snd_pcm *pcm,
 		(void *) buf->addr,
 		size);
 	}else{
-		size = aml_pcm_hardware.buffer_bytes_max;
+		size = aml_pcm_capture.buffer_bytes_max;
 		buf->dev.type = SNDRV_DMA_TYPE_DEV;
 		buf->dev.dev = pcm->card->dev;
 		buf->private_data = NULL;
@@ -183,6 +202,24 @@ static int aml_pcm_prepare(struct snd_pcm_substream *substream)
 		case 32000:	
 			s->sample_rate	=	AUDIO_CLK_FREQ_32;
 			break;
+		case 8000:
+			s->sample_rate	=	AUDIO_CLK_FREQ_8;
+			break;
+		case 11025:
+			s->sample_rate	=	AUDIO_CLK_FREQ_11;
+			break;	
+		case 16000:
+			s->sample_rate	=	AUDIO_CLK_FREQ_16;
+			break;		
+		case 22050:	
+			s->sample_rate	=	AUDIO_CLK_FREQ_22;
+			break;	
+		case 12000:
+			s->sample_rate	=	AUDIO_CLK_FREQ_12;
+			break;
+		case 24000:
+			s->sample_rate	=	AUDIO_CLK_FREQ_22;
+			break;
 		default:
 			s->sample_rate	=	AUDIO_CLK_FREQ_441;
 			break;	
@@ -208,6 +245,14 @@ static int aml_pcm_prepare(struct snd_pcm_substream *substream)
 
     aout_notifier_call_chain(AOUT_EVENT_PREPARE, substream);
 
+	printk("Audio Parameters:\n");
+	printk("\tsample rate: %d\n", runtime->rate);
+	printk("\tchannel: %d\n", runtime->channels);
+	printk("\tsample bits: %d\n", runtime->sample_bits);
+	printk("\tperiod size: %d\n", runtime->period_size);
+	printk("\tperiods: %d\n", runtime->periods);
+	
+	
 	return 0;
 }
 
@@ -364,7 +409,7 @@ static int aml_pcm_open(struct snd_pcm_substream *substream)
 		//printk("pinmux audio out\n");
 		//set_audio_pinmux(AUDIO_OUT_JTAG);
 	}else{
-		snd_soc_set_runtime_hwparams(substream, &aml_pcm_hardware);
+		snd_soc_set_runtime_hwparams(substream, &aml_pcm_capture);
 		//printk("pinmux audio in\n");
 		//set_audio_pinmux(AUDIO_IN_JTAG);
 	}
