@@ -16,6 +16,9 @@
 #include <linux/mutex.h>
 #include <linux/scatterlist.h>
 #include <linux/err.h>
+#include <linux/mtd/mtd.h>
+#include <linux/mtd/partitions.h>
+#include <linux/proc_fs.h>
 #include <linux/genhd.h>
 #include <linux/cardreader/card_block.h>
 
@@ -24,7 +27,7 @@
 
 
 static int major;
-#define CARD_SHIFT	3
+#define CARD_SHIFT	4
 #define CARD_QUEUE_EXIT		(1 << 0)
 #define CARD_QUEUE_SUSPENDED	(1 << 1)
 
@@ -32,6 +35,8 @@ static int major;
 
 #define CARD_NUM_MINORS	(256 >> CARD_SHIFT)
 static unsigned long dev_use[CARD_NUM_MINORS / (8 * sizeof(unsigned long))];
+
+#define CARD_INAND_START_MINOR		40
 
 static int card_blk_issue_rq(struct card_queue *cq, struct request *req);
 static int card_blk_probe(struct memory_card *card);
@@ -583,6 +588,10 @@ static struct card_blk_data *card_blk_alloc(struct memory_card *card)
 	int devidx, ret;
 
 	devidx = find_first_zero_bit(dev_use, CARD_NUM_MINORS);
+
+	if(card->card_type == CARD_INAND)
+		devidx = CARD_INAND_START_MINOR>>CARD_SHIFT;
+	
 	if (devidx >= CARD_NUM_MINORS)
 		return ERR_PTR(-ENOSPC);
 	__set_bit(devidx, dev_use);
@@ -780,16 +789,119 @@ static int card_blk_resume(struct memory_card *card)
 #define card_blk_resume		NULL
 #endif
 
+#ifdef CONFIG_PROC_FS
+
+/*====================================================================*/
+/* Support for /proc/mtd */
+
+static struct proc_dir_entry *proc_card;
+struct mtd_partition *card_table[MAX_MTD_DEVICES];
+
+static inline int card_proc_info (char *buf, char* dev_name, int i)
+{
+	struct mtd_partition *this = card_table[i];
+
+	if (!this)
+		return 0;
+
+	return sprintf(buf, "%s%d: %8.8llx %8.8x \"%s\"\n", dev_name,
+		        i+1,(unsigned long long)this->size,
+		       CARD_QUEUE_BOUNCESZ, this->name);
+}
+
+static int card_read_proc (char *page, char **start, off_t off, int count,
+			  int *eof, void *data_unused)
+{
+	int len, l, i;
+        off_t   begin = 0;
+
+	len = sprintf(page, "dev:    size   erasesize  name\n");
+        for (i=0; i< MAX_MTD_DEVICES; i++) {
+
+                l = card_proc_info(page + len, "inand", i);
+                len += l;
+                if (len+begin > off+count)
+                        goto done;
+                if (len+begin < off) {
+                        begin += len;
+                        len = 0;
+                }
+        }
+
+        *eof = 1;
+
+done:
+        if (off >= len+begin)
+                return 0;
+        *start = page + (off-begin);
+        return ((count < begin+len-off) ? count : begin+len-off);
+}
+
+#endif /* CONFIG_PROC_FS */
+
+/**
+ * add_card_partition : add card partition , refer to 
+ * board-****.c  inand_partition_info[]
+ * @disk: add partitions in which disk
+ * @part: partition table
+ * @nr_part: partition numbers
+ */
+int add_card_partition(struct gendisk * disk, struct mtd_partition * part, 
+				unsigned int nr_part)
+{
+	unsigned int i;
+	struct hd_struct * ret;
+	uint64_t cur_offset=0;
+	uint64_t offset, size;
+	
+	if(!part)
+		return 0;
+
+	for(i=0; i<nr_part; i++){
+		offset = part[i].offset>>9;
+		size = part[i].size>>9;
+		if (part[i].offset== MTDPART_OFS_APPEND)
+			offset = cur_offset;
+		if (part[i].size == MTDPART_SIZ_FULL)
+			size = disk->part0.nr_sects - offset;
+		ret = add_partition(disk, 1+i, offset, size, 0);
+		printk("[%s] %20s  offset 0x%012llx, len 0x%012llx %s\n", 
+				disk->disk_name, part[i].name, offset<<9, size<<9, 
+				IS_ERR(ret) ? "add fail":"");
+		//if(IS_ERR(ret)){
+		//	printk("errno = %d, offset = %x, size = %x, disk->part0.nr_sects = %x\n", ret, offset, size);
+		//	return ERR_PTR(ret);
+		//}
+		cur_offset = offset + size;
+		
+		card_table[i] = &part[i];
+		card_table[i]->offset = offset<<9;
+		card_table[i]->size = size<<9;
+	}
+
+#ifdef CONFIG_PROC_FS
+	if (!proc_card && (proc_card = create_proc_entry( "inand", 0, NULL )))
+		proc_card->read_proc = card_read_proc;
+#endif /* CONFIG_PROC_FS */
+
+	return 0;
+}
+
+
 static int card_blk_probe(struct memory_card *card)
 {
 	struct card_blk_data *card_data;
+	struct aml_card_info *pinfo = card->card_plat_info;
 
 	card_data = card_blk_alloc(card);
 	if (IS_ERR(card_data))
 		return PTR_ERR(card_data);
 
 	card_set_drvdata(card, card_data);
+
 	add_disk(card_data->disk);
+	add_card_partition(card_data->disk, pinfo->partitions,
+			pinfo->nr_partitions);
 
 	return 0;
 }

@@ -479,6 +479,45 @@ int sdio_probe(struct memory_card *card)
 	return 0;
 }
 
+#ifdef CONFIG_INAND
+
+
+
+int inand_probe(struct memory_card *card)
+{
+	struct aml_card_info *aml_card_info = card->card_plat_info;
+
+	SD_MMC_Card_Info_t *sdio_info = sd_mmc_malloc(sizeof(SD_MMC_Card_Info_t), GFP_KERNEL);
+	if (sdio_info == NULL)
+		return -ENOMEM;
+
+	if (card->host->dma_buf != NULL) {
+		sdio_info->sd_mmc_buf = card->host->dma_buf;
+		sdio_info->sd_mmc_phy_buf = card->host->dma_phy_buf;
+	}
+
+	card->card_info = sdio_info;
+	card->card_io_init = sd_io_init;
+	card->card_detector = sd_insert_detector;
+	card->card_insert_process = sd_open;
+	card->card_remove_process = sd_close;
+	card->card_request_process = sd_request;
+
+	if (aml_card_info->card_extern_init)
+		aml_card_info->card_extern_init();
+	card->card_io_init(card);
+	sd_mmc_prepare_init(sdio_info);
+	sdio_info->io_pad_type = aml_card_info->io_pad_type;
+	sdio_info->bus_width = SD_BUS_SINGLE;
+	sdio_info->sdio_clk_unit = 3000;
+	sdio_info->clks_nac = SD_MMC_TIME_NAC_DEFAULT;
+	sdio_info->max_blk_count = card->host->max_blk_count;
+
+	return 0;
+}
+
+#endif
+
 static int __init sd_init(void)
 {
 	if (request_irq(INT_SDIO, (irq_handler_t) sdio_interrupt_monitor, 0, "sd_mmc", NULL)) {

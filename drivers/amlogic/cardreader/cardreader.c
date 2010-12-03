@@ -240,9 +240,11 @@ static int card_reader_monitor(void *data)
 			card->card_io_init(card);
 			card->card_detector(card);
 
-	    	if((card->card_status == CARD_INSERTED) && (card->unit_state != CARD_UNIT_READY) && ((card_type == CARD_SDIO) 
-	    		||(slot_detector == CARD_REMOVED)||(card->card_slot_mode == CARD_SLOT_DISJUNCT))) {
+	    	if((card->card_status == CARD_INSERTED) && (card->unit_state != CARD_UNIT_READY) && 
+			((card_type == CARD_SDIO) ||(card_type == CARD_INAND)	||
+			(slot_detector == CARD_REMOVED)||(card->card_slot_mode == CARD_SLOT_DISJUNCT))) {
 
+				printk("insert process\n");
 				card->card_insert_process(card);
 
 				if(card->unit_state == CARD_UNIT_PROCESSED) {
@@ -255,6 +257,8 @@ static int card_reader_monitor(void *data)
 					card->unit_state = CARD_UNIT_READY;
 					card_host->card_type = card_type;
 					card->state = CARD_STATE_INITED;
+					if (card_type == CARD_SDIO)
+						card_host->card = card;
 					card_detect_change(card_host, 0);
 	            }
 	        }
@@ -345,6 +349,8 @@ int __card_claim_host(struct card_host *host, struct memory_card *card)
 
 EXPORT_SYMBOL(__card_claim_host);
 
+#ifdef CONFIG_SDIO
+
 static int card_sdio_init_func(struct memory_card *card, unsigned int fn)
 {
 	//int ret;
@@ -401,6 +407,26 @@ static void card_sdio_remove(struct card_host *host)
 	host->card = NULL;
 }
 
+#else
+static int card_sdio_init_func(struct memory_card *card, unsigned int fn)
+{
+	return 0;
+}
+
+static int card_sdio_init_card(struct memory_card *card)
+{
+	return 0;
+}
+
+/*
+ * Host is being removed. Free up the current card.
+ */
+static void card_sdio_remove(struct card_host *host)
+{
+}
+
+
+#endif
 /*
  * Locate a Memory card on this Memory host given a raw CID.
  */ 

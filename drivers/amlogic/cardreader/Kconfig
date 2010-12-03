@@ -39,4 +39,10 @@ config XD
 	default n
 	depends on CARDREADER
 
+config INAND
+	bool "inand card driver support"
+	default n
+	depends on CARDREADER
+	select SD_MMC
+	
 endmenu

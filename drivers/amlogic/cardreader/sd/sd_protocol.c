@@ -3330,14 +3330,14 @@ int sd_mmc_init(SD_MMC_Card_Info_t *sd_mmc_info)
 	    }
 	}
 
-	error = sd_check_data_consistency(sd_mmc_info);
-	if(error)
-	{
-#ifdef  SD_MMC_DEBUG
-		Debug_Printf("#%s error occured in sd_check_data_consistency()!\n", sd_error_to_string(error));
-#endif
-		goto error;
-	}
+//	error = sd_check_data_consistency(sd_mmc_info);
+//	if(error)
+//	{
+//#ifdef  SD_MMC_DEBUG
+//		Debug_Printf("#%s error occured in sd_check_data_consistency()!\n", sd_error_to_string(error));
+//#endif
+//		goto error;
+//	}
 
 #ifdef SD_MMC_DEBUG
 	Debug_Printf("sd_mmc_init() is completed successfully!\n");

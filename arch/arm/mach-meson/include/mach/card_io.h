@@ -73,6 +73,9 @@ struct aml_card_info {
 	unsigned card_wp_input_reg;
 	unsigned card_wp_input_mask;
 	void (*card_extern_init)(void);
+	/*for inand partition: struct mtd_partition, easy porting from nand*/
+	struct mtd_partition    *partitions;
+	unsigned int           nr_partitions;
 };
 
 struct aml_card_platform {

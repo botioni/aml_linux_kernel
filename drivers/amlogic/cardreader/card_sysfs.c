@@ -323,9 +323,11 @@ static int __init card_init(void)
 	if (ret)
 		goto unregister_bus;
 
+#ifdef CONFIG_SDIO
 	ret = sdio_register_bus();
 	if (ret)
 		goto unregister_host_class;
+#endif
 
 	return 0;
 
@@ -341,7 +343,9 @@ destroy_workqueue:
 
 static void __exit card_exit(void)
 {
+#ifdef CONFIG_SDIO
 	sdio_unregister_bus();
+#endif
 	card_unregister_host_class();
 	card_unregister_bus();
 	destroy_workqueue(workqueue);
