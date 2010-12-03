@@ -26,3 +26,6 @@ obj-$(CONFIG_SND_AML_M1_MID_WM8900) += snd-soc-aml-m1-mid-wm8900.o
 snd-soc-aml-m1-armdev-wm8900-objs := aml_m1_armdev_wm8900.o
 obj-$(CONFIG_SND_AML_M1_ARMDEV_WM8900) += snd-soc-aml-m1-armdev-wm8900.o
 
+#AML M1 MID with RT5621 support
+snd-soc-aml-m1-mid-rt5621-objs := aml_m1_mid_rt5621.o
+obj-$(CONFIG_SND_AML_M1_MID_RT5621) += snd-soc-aml-m1-mid-rt5621.o

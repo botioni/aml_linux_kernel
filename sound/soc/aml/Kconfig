@@ -21,3 +21,7 @@ config SND_AML_M1_ARMDEV_WM8900
 	depends on SND_AML_SOC
 		select SND_SOC_WM8900 if SND_AML_M1_ARMDEV_WM8900
 	
+config SND_AML_M1_MID_RT5621
+	tristate "AML8726M MID board with RT5621"
+	depends on SND_AML_SOC
+		select SND_SOC_RT5621 if SND_AML_M1_MID_RT5621
