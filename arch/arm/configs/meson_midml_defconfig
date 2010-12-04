@@ -595,7 +595,8 @@ CONFIG_TOUCH_KEY_PAD_SO340010=y
 #
 # Amlogic Power Management Support
 #
-CONFIG_AMLOGIC_PM=y
+# CONFIG_AMLOGIC_PM is not set
+CONFIG_SMBA10XX_BATTERY=y
 
 #
 # Extern IO Support

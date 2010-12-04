@@ -77,6 +77,11 @@
 #include <linux/aml_power.h>
 #endif
 
+#ifdef CONFIG_SMBA10XX_BATTERY
+#include <linux/power_supply.h>
+#include <linux/smba10xx_battery.h>
+#endif
+
 #ifdef CONFIG_USB_ANDROID
 #include <linux/usb/android_composite.h>
 #endif
@@ -1067,6 +1072,45 @@ static struct platform_device power_dev = {
 };
 #endif
 
+#ifdef CONFIG_SMBA10XX_BATTERY
+static int is_ac_connected(void)
+{
+	return (READ_CBUS_REG(ASSIST_HW_REV)&(1<<9))? 1:0;
+}
+
+static void set_charge(int flags)
+{
+    return;
+}
+
+static int get_charge_status()
+{
+    return (READ_CBUS_REG(ASSIST_HW_REV)&(1<<9))? 1:0;
+}
+
+static void set_bat_off(void)
+{
+	set_gpio_mode(GPIOA_bank_bit(8), GPIOA_bit_bit0_14(8), GPIO_OUTPUT_MODE);
+	set_gpio_val(GPIOA_bank_bit(8), GPIOA_bit_bit0_14(8), 0);
+}
+
+static struct smba10xx_battery_power_pdata smart_battery_dev_pdata = {
+	.is_ac_online	= is_ac_connected,
+	.set_charge = set_charge,
+	.get_charge_status = get_charge_status,
+	.set_bat_off = set_bat_off,
+};
+
+static struct platform_device smba10xx_battery_device = {
+	.name = SMBA10XX_POWER_MANAGER_NAME,
+	.id = -1,
+	.dev = {
+		.platform_data	= &smart_battery_dev_pdata,
+	},
+};
+#endif
+
+
 #define PINMUX_UART_A   UART_A_GPIO_C9_C10
 #define PINMUX_UART_B	UART_B_GPIO_E18_E19
 
@@ -1677,7 +1721,10 @@ static struct platform_device __initdata *platform_devs[] = {
       #ifdef CONFIG_USB_ANDROID_MASS_STORAGE
 		&usb_mass_storage_device,
       #endif
-    #endif		
+    #endif
+	#ifdef CONFIG_SMBA10XX_BATTERY
+		&smba10xx_battery_device,
+	#endif
 };
 static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
 
@@ -1731,11 +1778,19 @@ static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
 };
 
 
+static struct i2c_board_info __initdata aml_i2c_sbus_info[] = {
+#ifdef CONFIG_SMBA10XX_BATTERY
+	{
+		I2C_BOARD_INFO(SMBA10XX_I2C_NAME, SMBA10XX_I2C_ADDR),
+	},
+#endif
+};
 static int __init aml_i2c_init(void)
 {
-
 	i2c_register_board_info(0, aml_i2c_bus_info,
 			ARRAY_SIZE(aml_i2c_bus_info));
+	i2c_register_board_info(1, aml_i2c_sbus_info,
+			ARRAY_SIZE(aml_i2c_sbus_info));
 	return 0;
 }
 
