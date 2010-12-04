@@ -446,12 +446,6 @@ static int smart_battery_probe(struct platform_device *pdev)
 
 	pdata = pdev->dev.platform_data;
 
-	if (pdata->init) {
-		ret = pdata->init(dev);
-		if (ret < 0)
-			goto init_failed;
-	}
-
 	smart_battery_init_values();
 
 	update_ac_state();
@@ -476,7 +470,6 @@ static int smart_battery_probe(struct platform_device *pdev)
 	
 	logd("battery: probe() OUT");
 
-init_failed:
 wrongid:
 	logd("battery_probe failed... ");
 	return -1;
