@@ -798,7 +798,19 @@ static  struct platform_device aml_rtc_device = {
 #endif
 
 #if defined(CONFIG_SUSPEND)
-
+static void set_vccx2(int power_on)
+{
+    if(power_on)
+    {
+        set_gpio_val(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), 1);
+        set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);
+    }
+    else
+    {
+        set_gpio_val(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), 0);
+        set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);
+    }
+}
 static struct meson_pm_config aml_pm_pdata = {
     .ddr2_reg_refresh = IO_APB_BUS_BASE+0x0004,
     .ddr2_reg_phy = IO_APB_BUS_BASE+0x1380,
@@ -807,6 +819,7 @@ static struct meson_pm_config aml_pm_pdata = {
     .power_key = CBUS_REG_ADDR(RTC_ADDR1),
     .ddr_clk = 0x00110820,
     .sleepcount = 128,
+    .set_vccx2 = set_vccx2,
 };
 
 static struct platform_device aml_pm_device = {
