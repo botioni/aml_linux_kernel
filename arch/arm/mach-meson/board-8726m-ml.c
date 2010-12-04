@@ -85,6 +85,10 @@
 #include <mach/pm.h>
 #endif
 
+#ifdef CONFIG_TOUCH_KEY_PAD_SO340010
+#include <linux/i2c/so340010.h>
+#endif
+
 #if defined(CONFIG_JPEGLOGO)
 static struct resource jpeglogo_resources[] = {
     [0] = {
@@ -242,18 +246,25 @@ static struct platform_device adc_kp_device = {
 #if defined(CONFIG_KEY_INPUT_CUSTOM_AM) || defined(CONFIG_KEY_INPUT_CUSTOM_AM_MODULE)
 #include <linux/input.h>
 #include <linux/input/key_input.h>
-
+static int board_ver = 0;
 int _key_code_list[] = {KEY_POWER};
 
-static inline int key_input_init_func(void)
+static int key_input_init_func(void)
 {
-    WRITE_CBUS_REG(0x21d0/*RTC_ADDR0*/, (READ_CBUS_REG(0x21d0/*RTC_ADDR0*/) &~(1<<11)));
-    WRITE_CBUS_REG(0x21d1/*RTC_ADDR0*/, (READ_CBUS_REG(0x21d1/*RTC_ADDR0*/) &~(1<<3)));
+    if(board_ver == 0){
+        WRITE_CBUS_REG(0x21d0/*RTC_ADDR0*/, (READ_CBUS_REG(0x21d0/*RTC_ADDR0*/) &~(1<<11)));
+        WRITE_CBUS_REG(0x21d1/*RTC_ADDR0*/, (READ_CBUS_REG(0x21d1/*RTC_ADDR0*/) &~(1<<3)));
+    }  
+    return 1;
 }
-static inline int key_scan(int *key_state_list)
+static int key_scan(int *key_state_list)
 {
     int ret = 0;
-    key_state_list[0] = ((READ_CBUS_REG(0x21d1/*RTC_ADDR1*/) >> 2) & 1) ? 0 : 1;
+    if(board_ver == 0)
+        key_state_list[0] = ((READ_CBUS_REG(0x21d1/*RTC_ADDR1*/) >> 2) & 1) ? 0 : 1;
+    else
+        key_state_list[0] = (READ_CBUS_REG(ASSIST_HW_REV)&(1<<10))? 0:1;  //GP_INPUT2  bit 10
+                        
     return ret;
 }
 
@@ -475,24 +486,67 @@ void inand_extern_init(void)
 static struct mtd_partition inand_partition_info[] = 
 {
 	{
-		.name = "U-BOOT",
+		.name = "bootloader",
 		.offset = 0,
 		.size=4*1024*1024,
+	//	.set_flags=0,
+	//	.dual_partnum=0,
 	},
 	{
-		.name = "Boot Para",
+		.name = "environment",
 		.offset = 4*1024*1024,
 		.size=4*1024*1024,
+	//	.set_flags=0,
+	//	.dual_partnum=0,
 	},
 	{
-		.name = "Kernel",
+		.name = "splash",
 		.offset = 8*1024*1024,
-		.size = 4 * 1024*1024,
+		.size=4*1024*1024,
+	//	.set_flags=0,
+	//	.dual_partnum=0,
 	},
 	{
-		.name = "ROOTFS",
-		.offset=MTDPART_OFS_APPEND,
-		.size=MTDPART_SIZ_FULL,
+		.name = "recovery",
+		.offset = 12*1024*1024,
+		.size = 16 * 1024*1024,
+	//	.set_flags=0,
+	//	.dual_partnum=0,
+	},
+	{
+		.name = "boot",
+		.offset = 28*1024*1024,
+		.size = 16 * 1024*1024,
+	//	.set_flags=0,
+	//	.dual_partnum=0,
+	},
+	{
+		.name = "system",
+		.offset = 44 * 1024*1024,
+		.size = 240 * 1024*1024,
+	//	.set_flags=0,
+	//	.dual_partnum=0,
+	},
+	{
+		.name = "cache",
+		.offset = 284*1024*1024,
+		.size = 16 * 1024*1024,
+	//	.set_flags=0,
+	//	.dual_partnum=0,
+	},
+	{
+		.name = "userdata",
+		.offset= 300*1024*1024,
+		.size= 256 * 1024*1024,
+	//	.set_flags=0,
+	//	.dual_partnum=0,
+	},
+	{
+		.name = "media",
+		.offset = MTDPART_OFS_APPEND,
+		.size = (0x200000000-(300+256)*1024*1024),
+	//	.set_flags=0,
+	//	.dual_partnum=0,
 	},
 };
 
@@ -598,12 +652,59 @@ static struct resource aml_m1_audio_resource[]={
 				.flags	=	IORESOURCE_MEM,
 		},
 };
+#ifdef CONFIG_SND_AML_M1_MID_WM8900
 static struct platform_device aml_audio={
 		.name 				= "aml_m1_audio_wm8900",
 		.id 					= -1,
 		.resource 		=	aml_m1_audio_resource,
 		.num_resources	=	ARRAY_SIZE(aml_m1_audio_resource),
 };
+
+
+//use LED_CS1 as hp detect pin
+#define PWM_TCNT    (600-1)
+#define PWM_MAX_VAL (420)
+int wm8900_is_hp_pluged(void)
+{
+    int level = 0;
+    int cs_no = 0;
+    // Enable VBG_EN
+    WRITE_CBUS_REG_BITS(PREG_AM_ANALOG_ADDR, 1, 0, 1);
+    // wire pm_gpioA_7_led_pwm = pin_mux_reg0[22];
+    WRITE_CBUS_REG(LED_PWM_REG0,(0 << 31)   |       // disable the overall circuit
+                                (0 << 30)   |       // 1:Closed Loop  0:Open Loop
+                                (0 << 16)   |       // PWM total count
+                                (0 << 13)   |       // Enable
+                                (1 << 12)   |       // enable
+                                (0 << 10)   |       // test
+                                (7 << 7)    |       // CS0 REF, Voltage FeedBack: about 0.505V
+                                (7 << 4)    |       // CS1 REF, Current FeedBack: about 0.505V
+                                (0 << 0));           // DIMCTL Analog dimmer
+    cs_no = READ_CBUS_REG(LED_PWM_REG3);
+    if(board_ver == 2){
+        if(cs_no &(1<<14))
+          level |= (1<<0);
+    }
+    else{
+          level = 0;   //old pcb always hp unplug
+    }
+    //printk("level = %d,board_ver = %d\n",level,board_ver);
+    return (level == 1)?(1):(0); //return 1: hp pluged, 0: hp unpluged.
+}
+
+static struct wm8900_platform_data wm8900_pdata = {
+    .is_hp_pluged = &wm8900_is_hp_pluged,
+};
+#endif
+
+#ifdef CONFIG_SND_SOC_RT5621
+static struct platform_device aml_audio={
+		.name 				= "aml_m1_audio_rt5621",
+		.id 					= -1,
+		.resource 		=	aml_m1_audio_resource,
+		.num_resources	=	ARRAY_SIZE(aml_m1_audio_resource),
+};
+#endif
 #if defined(CONFIG_TOUCHSCREEN_ADS7846)
 #define SPI_0		0
 #define SPI_1		1
@@ -725,6 +826,39 @@ static int ads7846_init_gpio(void)
 }
 #endif
 
+#ifdef CONFIG_TOUCH_KEY_PAD_SO340010
+#include <linux/input.h>
+//GPIOC_1
+#define GPIO_SO340010_ATTN	((GPIOC_bank_bit0_26(1)<<16) |GPIOC_bit_bit0_26(1)) 
+static int so340010_init_irq(void)
+{
+	/* set input mode */
+	gpio_direction_input(GPIO_SO340010_ATTN);
+	/* set gpio interrupt #1 source=GPIOC_1, and triggered by falling edge(=1) */
+	gpio_enable_edge_int(23+1, 1, 1);
+	return 0;
+}
+
+static int so340010_get_irq_level(void)
+{
+	return gpio_get_value(GPIO_SO340010_ATTN);
+}
+
+static struct cap_key so340010_keys[] = {
+	{ KEY_SEARCH,	0x0001,	"search"},
+	{ KEY_HOME,		0x0002,	"home"},
+	{ KEY_MENU,		0x0004,	"menu"},
+	{ KEY_BACK,		0x0008,	"back"},
+};
+
+static struct so340010_platform_data so340010_pdata = {
+	.init_irq = so340010_init_irq,
+	.get_irq_level = so340010_get_irq_level,
+	.key = so340010_keys,
+	.key_num = ARRAY_SIZE(so340010_keys),
+};
+#endif
+
 #ifdef CONFIG_ANDROID_PMEM
 static struct android_pmem_platform_data pmem_data =
 {
@@ -753,11 +887,34 @@ static	struct platform_device aml_rtc_device = {
 #endif
 
 #if defined(CONFIG_SUSPEND)
-
+static void set_vccx2(int power_on)
+{
+    if(power_on){
+        printk(KERN_INFO "set_vccx2 power up\n");
+        set_gpio_val(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), 1);
+        set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);        
+        //set clk for wifi
+        SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, (1<<18));
+        CLEAR_CBUS_REG_MASK(PREG_EGPIO_EN_N, (1<<4));	              
+    }
+    else{
+        printk(KERN_INFO "set_vccx2 power down\n");        
+        set_gpio_val(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), 0);
+        set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);   
+        //disable wifi clk
+        CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, (1<<18));
+        SET_CBUS_REG_MASK(PREG_EGPIO_EN_N, (1<<4));	        
+    }
+}
 static struct meson_pm_config aml_pm_pdata = {
-    .ddr2_reg_refresh = IO_APB_BUS_BASE+4,
+    .ddr2_reg_refresh = IO_APB_BUS_BASE+0x0004,
     .ddr2_reg_phy = IO_APB_BUS_BASE+0x1380,
+    .ddr_pll_ctrl = CBUS_REG_ADDR(HHI_DDR_PLL_CNTL),
+    .clock_gate = CBUS_REG_ADDR(HHI_GCLK_MPEG0),
+    .power_key = CBUS_REG_ADDR(RTC_ADDR1),
+    .ddr_clk = 0x00110820,
     .sleepcount = 128,
+    .set_vccx2 = set_vccx2,
 };
 
 static struct platform_device aml_pm_device = {
@@ -857,7 +1014,13 @@ static int is_ac_connected(void)
 
 static void set_charge(int flags)
 {
-    return;
+	//GPIOD_22 low: fast charge high: slow charge
+    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_7, (1<<18));
+    if(flags == 1)
+	    set_gpio_val(GPIOD_bank_bit2_24(22), GPIOD_bit_bit2_24(22), 0); //fast charge
+    else
+    	set_gpio_val(GPIOD_bank_bit2_24(22), GPIOD_bit_bit2_24(22), 1);	//slow charge
+    set_gpio_mode(GPIOD_bank_bit2_24(22), GPIOD_bit_bit2_24(22), GPIO_OUTPUT_MODE);
 }
 
 #ifdef CONFIG_SARADC_AM
@@ -866,7 +1029,7 @@ extern int get_adc_sample(int chan);
 static int get_bat_vol(void)
 {
 #ifdef CONFIG_SARADC_AM
-    return 0;
+	return get_adc_sample(5);
 #else
     return 0;
 #endif
@@ -874,28 +1037,23 @@ static int get_bat_vol(void)
 
 static int get_charge_status()
 {
-    int stat1 = 0;
-    int stat2 = 0;
-    stat1 = (READ_CBUS_REG(ASSIST_HW_REV)&(1<<8))?1:0;
-    stat2 = (READ_CBUS_REG(ASSIST_HW_REV)&(1<<10))?1:0;
-    switch(((stat2<<2)|stat1))
-    {
-        case 0:
-        case 1:
-            return 0;
-        case 2:
-            return 1;
-        default:
-            return 0;
-    }
+	return (READ_CBUS_REG(ASSIST_HW_REV)&(1<<8))? 1:0;
+}
+
+static void set_bat_off(void)
+{
+	set_gpio_val(GPIOA_bank_bit(8), GPIOA_bit_bit0_14(8), 0);
+    set_gpio_mode(GPIOA_bank_bit(8), GPIOA_bit_bit0_14(8), GPIO_OUTPUT_MODE);
+
 }
 
 static struct aml_power_pdata power_pdata = {
 	.is_ac_online	= is_ac_connected,
 	//.is_usb_online	= is_usb_connected,
-	//.set_charge = set_charge,
+	.set_charge = set_charge,
 	.get_bat_vol = get_bat_vol,
 	.get_charge_status = get_charge_status,
+	.set_bat_off = set_bat_off,
 	//.supplied_to = supplicants,
 	//.num_supplicants = ARRAY_SIZE(supplicants),
 };
@@ -938,7 +1096,7 @@ static struct platform_device aml_uart_device = {
 };
 #endif
 
-#ifdef CONFIG_AM_NAND
+#if defined(CONFIG_NAND_FLASH_DRIVER_BASE_OPERATE) || defined(CONFIG_NAND_FLASH_DRIVER_MULTIPLANE_CE)
 static struct mtd_partition partition_info[] = 
 {
 	{
@@ -956,50 +1114,59 @@ static struct mtd_partition partition_info[] =
 	//	.dual_partnum=0,
 	},
 	{
-		.name = "recovery",
+		.name = "splash",
 		.offset = 8*1024*1024,
+		.size=4*1024*1024,
+	//	.set_flags=0,
+	//	.dual_partnum=0,
+	},
+	{
+		.name = "recovery",
+		.offset = 12*1024*1024,
 		.size = 16 * 1024*1024,
 	//	.set_flags=0,
 	//	.dual_partnum=0,
 	},
 	{
 		.name = "boot",
-		.offset = 24*1024*1024,
+		.offset = 28*1024*1024,
 		.size = 16 * 1024*1024,
 	//	.set_flags=0,
 	//	.dual_partnum=0,
 	},
 	{
 		.name = "system",
-		.offset = 40*4*1024*1024,
-		.size = 180 * 1024*1024,
+		.offset = 44*4*1024*1024,
+		.size = 240 * 1024*1024,
 	//	.set_flags=0,
 	//	.dual_partnum=0,
 	},
 	{
 		.name = "cache",
-		.offset = 340*1024*1024,
+		.offset = 416*1024*1024,
 		.size = 16 * 1024*1024,
 	//	.set_flags=0,
 	//	.dual_partnum=0,
 	},
 	{
 		.name = "userdata",
-		.offset= 356*1024*1024,
-		.size= 512 * 1024*1024,
+		.offset= 432*1024*1024,
+		.size= 256 * 1024*1024,
 	//	.set_flags=0,
 	//	.dual_partnum=0,
 	},
 	{
 		.name = "media",
 		.offset = MTDPART_OFS_APPEND,
-		.size = (0x200000000-(356+512)*1024*1024),
+		.size = (0x200000000-(432+256)*1024*1024),
 		.set_flags = MTD_AVNFTL,
 		.dual_partnum = 1|MTD_AVFTL_PLANE|MTD_AVNFTL_INTERL,
 	//	.set_flags=0,
 	//	.dual_partnum=0,
 	},
 };
+#endif
+#ifdef CONFIG_NAND_FLASH_DRIVER_BASE_OPERATE
 /*
 static struct aml_m1_nand_platform aml_2kpage128kblocknand_platform = {
 	.page_size = 2048,
@@ -1015,7 +1182,6 @@ static struct aml_m1_nand_platform aml_2kpage128kblocknand_platform = {
 };
 */
 
-#if 0
 static struct aml_m1_nand_platform aml_Micron4GBABAnand_platform = 
 {
 	.page_size = 2048*2,
@@ -1029,7 +1195,46 @@ static struct aml_m1_nand_platform aml_Micron4GBABAnand_platform =
 	.partitions = partition_info,
 	.nr_partitions = ARRAY_SIZE(partition_info),
 };
+
+
+static struct resource aml_nand_resources[] = {
+	{
+		.start = 0xc1108600,
+		.end = 0xc1108624,
+		.flags = IORESOURCE_MEM,
+	},
+};
+
+static struct platform_device aml_nand_device = {
+	.name = "aml_m1_nand",
+	.id = 0,
+	.num_resources = ARRAY_SIZE(aml_nand_resources),
+	.resource = aml_nand_resources,
+	.dev = {
+		.platform_data = &aml_Micron4GBABAnand_platform,
+	//	.platform_data = &aml_Micron8GBABAnand_platform,
+	},
+};
 #endif
+
+#ifdef CONFIG_NAND_FLASH_DRIVER_MULTIPLANE_CE
+
+/*
+static struct aml_m1_nand_platform aml_2kpage128kblocknand_platform = {
+	.page_size = 2048,
+	.spare_size=64,
+	.erase_size= 128*1024,
+	.bch_mode=1,			//BCH8
+	.encode_size=528,
+	.timing_mode=5,
+	.ce_num=1,
+	.onfi_mode=0,
+	.partitions = partition_info,
+	.nr_partitions = ARRAY_SIZE(partition_info),
+};
+*/
+
+
 static struct aml_m1_nand_platform aml_Micron8GBABAnand_platform =
 {
 	.page_size = 2048*2,
@@ -1070,11 +1275,73 @@ static struct platform_device aml_nand_device = {
 
 #if defined(CONFIG_AMLOGIC_BACKLIGHT)
 
+#ifdef CONFIG_AML_TCON_ML10
+	extern void power_on_backlight(void);
+	extern void power_off_backlight(void);
+	extern void power_on_lcd(void);
+	extern void power_off_lcd(void);
+#endif
+
+
+static void power_on_panel(void)
+{
+#ifdef CONFIG_AML_TCON_ML10
+	power_on_lcd();
+	power_on_backlight();
+#else
+    CLK_GATE_ON(LCD);
+    set_mio_mux(4,(0x3f<<0));
+    set_mio_mux(0, 1<<11);
+    set_mio_mux(0, 1<<14);     
+    /* GPIOA_3, Pull low, power up LCD_3.3V */
+    set_gpio_val(GPIOA_bank_bit(3), GPIOA_bit_bit0_14(3), 0);
+    set_gpio_mode(GPIOA_bank_bit(3), GPIOA_bit_bit0_14(3), GPIO_OUTPUT_MODE);        
+
+    /* PIN172, GPIOC_3, Pull high, For AVDD */
+    set_gpio_val(GPIOC_bank_bit0_26(3), GPIOC_bit_bit0_26(3), 1);
+    set_gpio_mode(GPIOC_bank_bit0_26(3), GPIOC_bit_bit0_26(3), GPIO_OUTPUT_MODE);
+#endif
+}
+
+static void power_off_panel(void)
+{
+#ifdef CONFIG_AML_TCON_ML10
+	power_off_backlight();
+	power_off_lcd();
+#else
+    /* GPIOA_3, Pull hi, power down LCD_3.3V */
+    set_gpio_val(GPIOA_bank_bit(3), GPIOA_bit_bit0_14(3), 1);
+    set_gpio_mode(GPIOA_bank_bit(3), GPIOA_bit_bit0_14(3), GPIO_OUTPUT_MODE);    
+    
+    /* PIN172, GPIOC_3, Pull high, For AVDD */
+    set_gpio_val(GPIOC_bank_bit0_26(3), GPIOC_bit_bit0_26(3), 0);
+    set_gpio_mode(GPIOC_bank_bit0_26(3), GPIOC_bit_bit0_26(3), GPIO_OUTPUT_MODE);
+    
+    CLK_GATE_OFF(LCD);
+    clear_mio_mux(4,(0x3f<<0));
+    clear_mio_mux(0, 1<<11);
+    clear_mio_mux(0, 1<<14);
+#endif
+}
+
+
 #define PWM_TCNT        (600-1)
 #define PWM_MAX_VAL    (420)
 
 static void aml_8726m_bl_init(void)
 {
+#ifdef CONFIG_AML_TCON_ML10
+	WRITE_CBUS_REG_BITS(PWM_MISC_REG_AB, 0, 3, 1);
+	WRITE_CBUS_REG_BITS(PWM_MISC_REG_AB, 1, 1, 1);
+	
+	WRITE_CBUS_REG_BITS(PERIPHS_PIN_MUX_0, 0, 8, 1);
+	WRITE_CBUS_REG_BITS(PERIPHS_PIN_MUX_0, 0, 21, 1);
+	WRITE_CBUS_REG_BITS(PERIPHS_PIN_MUX_2, 0, 28, 1);
+	WRITE_CBUS_REG_BITS(PERIPHS_PIN_MUX_9, 0, 23, 1);
+	WRITE_CBUS_REG_BITS(PERIPHS_PIN_MUX_12, 0, 6, 1);
+
+	WRITE_CBUS_REG_BITS(PERIPHS_PIN_MUX_2, 1, 30, 1);
+#else
     unsigned val;
     
     WRITE_CBUS_REG_BITS(PERIPHS_PIN_MUX_0, 0, 22, 1);
@@ -1118,8 +1385,10 @@ static void aml_8726m_bl_init(void)
           (1000 << 14) |    // Digital dimmer_duty = 0%, the most darkness
           (1000 <<  0) ;    // dimmer_freq = 1KHz
     WRITE_CBUS_REG(VGHL_PWM_REG4, val);
+#endif
 }
 static unsigned bl_level;
+static unsigned panel_state = 0;
 static unsigned aml_8726m_get_bl_level(void)
 {
 //    unsigned level = 0;
@@ -1132,6 +1401,38 @@ static unsigned aml_8726m_get_bl_level(void)
 #define BL_MAX_LEVEL 60000
 static void aml_8726m_set_bl_level(unsigned level)
 {
+#ifdef CONFIG_AML_TCON_ML10
+	unsigned pwm_level,low,hi;
+    
+    bl_level = level;
+    
+    level = level*179/255;
+    if(level>=120){ //120 - 179
+        pwm_level = 85 + (level - 120)%15;
+    }
+    else if(level>=20){ //20 - 119
+        pwm_level = 75 + (level - 20)%25;
+    }
+    else{  //  <20
+        pwm_level = 0;
+    }
+        
+    hi = (BL_MAX_LEVEL/100)*pwm_level;
+    low = BL_MAX_LEVEL - hi;
+    
+    if(bl_level >=30&&panel_state == 0){
+        panel_state = 1;
+        power_on_panel();
+    }
+	
+	WRITE_CBUS_REG_BITS(PWM_PWM_B,low,0,16);  //low
+	WRITE_CBUS_REG_BITS(PWM_PWM_B,hi,16,16);  //low
+    
+    if(bl_level <30&&panel_state == 1){
+        panel_state = 0;
+        power_off_panel();
+    }
+#else
     unsigned cs_level,pwm_level,low,hi;
     
     bl_level = level;
@@ -1152,15 +1453,29 @@ static void aml_8726m_set_bl_level(unsigned level)
         
     hi = (BL_MAX_LEVEL/100)*pwm_level;
     low = BL_MAX_LEVEL - hi;
+    
+    if(bl_level >=30&&panel_state == 0){
+        panel_state = 1;
+        power_on_panel();
+    }       
     WRITE_CBUS_REG_BITS(VGHL_PWM_REG0, cs_level, 0, 4);   
-    SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<31)); 
+    //SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<31)); 
     SET_CBUS_REG_MASK(PWM_MISC_REG_AB, (1 << 0));         
     WRITE_CBUS_REG_BITS(PWM_PWM_A,low,0,16);  //low
     WRITE_CBUS_REG_BITS(PWM_PWM_A,hi,16,16);  //hi   
+    
+    if(bl_level <30&&panel_state == 1){
+        panel_state = 0;
+        power_off_panel();
+    }     
+#endif      
 }
 
 static void aml_8726m_power_on_bl(void)
 {
+#ifdef CONFIG_AML_TCON_ML10
+	power_on_backlight();
+#else
     WRITE_CBUS_REG_BITS(PREG_EGPIO_EN_N, 0, 12, 1);
     WRITE_CBUS_REG_BITS(PREG_EGPIO_O, 1, 12, 1);
 
@@ -1168,15 +1483,20 @@ static void aml_8726m_power_on_bl(void)
     WRITE_CBUS_REG_BITS(PREG_EGPIO_O, 1, 7, 1);
     
     aml_8726m_set_bl_level(0);
+#endif
 }
 
 static void aml_8726m_power_off_bl(void)
 {
+#ifdef CONFIG_AML_TCON_ML10
+	power_off_backlight();
+#else
     WRITE_CBUS_REG_BITS(PREG_EGPIO_EN_N, 0, 12, 1);
     WRITE_CBUS_REG_BITS(PREG_EGPIO_O, 0, 12, 1);
 
     WRITE_CBUS_REG_BITS(PREG_EGPIO_EN_N, 0, 7, 1);
     WRITE_CBUS_REG_BITS(PREG_EGPIO_O, 0, 7, 1);
+#endif
 }
 
 struct aml_bl_platform_data aml_bl_platform =
@@ -1218,7 +1538,7 @@ static struct platform_device vout_device = {
 #ifdef CONFIG_USB_ANDROID
 #ifdef CONFIG_USB_ANDROID_MASS_STORAGE
 static struct usb_mass_storage_platform_data mass_storage_pdata = {
-       .nluns = 1,
+       .nluns = 2,
        .vendor = "AMLOGIC",
        .product = "Android MID",
        .release = 0x0100,
@@ -1298,7 +1618,9 @@ static struct platform_device __initdata *platform_devs[] = {
 	#if defined(CONFIG_AML_AUDIO_DSP)
 		&audiodsp_device,
 	#endif
+	#if defined(CONFIG_SND_AML_M1_MID_WM8900) || defined(CONFIG_SND_SOC_RT5621)
 		&aml_audio,
+	#endif
 	#if defined(CONFIG_CARDREADER)
     	&amlogic_card_device,
     #endif
@@ -1320,7 +1642,10 @@ static struct platform_device __initdata *platform_devs[] = {
 	#if defined(CONFIG_TOUCHSCREEN_ADS7846)
 		&spi_gpio,
 	#endif
-    #if defined(CONFIG_AM_NAND)
+    #if defined(CONFIG_NAND_FLASH_DRIVER_BASE_OPERATE)
+		&aml_nand_device,
+    #endif		
+    #if defined(CONFIG_NAND_FLASH_DRIVER_MULTIPLANE_CE)
 		&aml_nand_device,
     #endif		
     #if defined(CONFIG_AML_RTC)
@@ -1367,9 +1692,26 @@ static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
 		I2C_BOARD_INFO(MXC622X_I2C_NAME,  MXC622X_I2C_ADDR),
 	},
 #endif
+
+#ifdef CONFIG_SND_AML_M1_MID_WM8900
+    {
+        I2C_BOARD_INFO("wm8900", 0x1A),
+        .platform_data = (void *)&wm8900_pdata,
+    },
+#endif
+
+#ifdef CONFIG_MXC_MMA7660
 	{
-		I2C_BOARD_INFO("wm8900", 0x1A),
+		I2C_BOARD_INFO("mma7660", 0x4C),
 	},
+#endif
+
+
+#ifdef CONFIG_SND_SOC_RT5621
+	{
+		I2C_BOARD_INFO("rt5621", 0x1A),
+	},
+#endif
 
 #ifdef CONFIG_SINTEK_CAPACITIVE_TOUCHSCREEN
 	{
@@ -1379,6 +1721,13 @@ static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
 	},
 #endif
 
+#ifdef CONFIG_TOUCH_KEY_PAD_SO340010
+	{
+		I2C_BOARD_INFO("so340010", 0x2c),
+		.irq = INT_GPIO_1,
+		.platform_data = (void *)&so340010_pdata,
+	},
+#endif
 };
 
 
@@ -1425,7 +1774,18 @@ static void __init device_pinmux_init(void )
 	/*pinmux of eth*/
 	//eth_pinmux_init();
 	aml_i2c_init();
-	set_audio_pinmux(AUDIO_OUT_JTAG);
+	if(board_ver == 0){
+		#ifdef CONFIG_SND_SOC_RT5621
+			set_audio_pinmux(AUDIO_OUT_TEST_N);
+			//set_audio_pinmux(AUDIO_OUT_JTAG);
+		#else
+			set_audio_pinmux(AUDIO_OUT_JTAG);
+		#endif
+    }
+	else{
+        set_audio_pinmux(AUDIO_OUT_TEST_N);
+        set_audio_pinmux(AUDIO_IN_JTAG);
+	}
 }
 
 static void __init  device_clk_setting(void)
@@ -1470,6 +1830,24 @@ static void __init power_hold(void)
     set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);
 }
 
+#ifdef CONFIG_MXC_MMA7660
+static void __init set_mma7660_regs(void)
+{
+	//GSEN_INT-->H22 (7422y v1.pdf)
+	//GPIOC_2(M1-Apps v25- 2010-07-19-BGA372_297-6.xls serach H22)
+
+	//pull up reg
+	WRITE_CBUS_REG( PAD_PULL_UP_REG0, READ_CBUS_REG(PAD_PULL_UP_REG0) & ~(1<<31) );	// Meson-pull-up-down_table.xlsx ( gpioC_2 is PULL_UP_REG0---0x203b 31bits)
+	
+	/* set input mode */
+	gpio_direction_input( (GPIOC_bank_bit0_26(2)<<16) | GPIOC_bit_bit0_26(2) ); //OEN=1 (input)  Input Level=1(pull high)
+	
+	/* set gpio interrupt #0 source=GPIOC_2, and triggered by falling edge(=1)  设定中断脚为input，下降沿中断*/
+	gpio_enable_edge_int(25, 1, 2);  //M1-ISA-Registers.docx page 6   ( 49-23	gpioC[26:0])
+}
+#endif
+
+
 static __init void m1_init_machine(void)
 {
 #ifdef CONFIG_CACHE_L2X0
@@ -1494,6 +1872,9 @@ static __init void m1_init_machine(void)
 #if defined(CONFIG_TOUCHSCREEN_ADS7846)
 	ads7846_init_gpio();
 	spi_register_board_info(spi_board_info_list, ARRAY_SIZE(spi_board_info_list));
+#endif
+#ifdef CONFIG_MXC_MMA7660
+	set_mma7660_regs();
 #endif
 	disable_unused_model();
 }
@@ -1547,3 +1928,18 @@ MACHINE_START(MESON_8726M, "AMLOGIC MESON-M1 8726M SZ")
 	.video_start	= RESERVED_MEM_START,
 	.video_end		= RESERVED_MEM_END,
 MACHINE_END
+
+
+
+static  int __init board_ver_setup(char *s)
+{
+    if(strncmp(s, "v2", 2)==0){
+        board_ver = 2;
+//#if defined(CONFIG_KEY_INPUT_CUSTOM_AM) || defined(CONFIG_KEY_INPUT_CUSTOM_AM_MODULE)
+//        key_input_pdata.config = 2;
+//#endif
+    }
+    printk("board_ver = %s",s);      
+    return 0;
+}
+__setup("board_ver=",board_ver_setup) ;
