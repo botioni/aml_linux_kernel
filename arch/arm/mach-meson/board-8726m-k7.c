@@ -797,6 +797,45 @@ static struct itk_platform_data itk_pdata = {
 };
 #endif
 
+#ifdef CONFIG_SIS92XX_CAPACITIVE_TOUCHSCREEN
+#include <linux/capts.h>
+
+#define GPIO_SIS92XX_IRQ ((GPIOD_bank_bit2_24(24)<<16) |GPIOD_bit_bit2_24(24)) 
+
+static int sis92xx_init_irq(void)
+{
+    /* set input mode */
+    gpio_direction_input(GPIO_SIS92XX_IRQ);
+    /* set gpio interrupt #0 source=GPIOD_24, and triggered by falling edge(=1) */
+    gpio_enable_edge_int(50+24, 1, 0);
+
+    return 0;
+}
+static int sis92xx_get_irq_level(void)
+{
+    return gpio_get_value(GPIO_SIS92XX_IRQ);
+}
+
+static struct ts_platform_data sis92xx_pdata = {
+    .irq = INT_GPIO_0,
+    .init_irq = &sis92xx_init_irq,
+    .get_irq_level = &sis92xx_get_irq_level,
+    .info = {
+        .xmin = 0,
+        .xmax = 3600,
+        .ymin = 0,
+        .ymax = 2200,
+        .zmin = 0,
+        .zmax = 1,
+        .wmin = 0,
+        .wmax = 1,
+        .swap_xy = 0,
+        .x_pol = 1,
+        .y_pol = 1
+    }
+};
+#endif
+
 #ifdef CONFIG_ANDROID_PMEM
 static struct android_pmem_platform_data pmem_data =
 {
@@ -881,7 +920,7 @@ static struct aml_i2c_platform aml_i2c_plat = {
 	.wait_xfer_interval	= 5,
 	.master_no		= AML_I2C_MASTER_B,
 	.use_pio			= 0,
-	.master_i2c_speed	= AML_I2C_SPPED_400K,
+	.master_i2c_speed	= AML_I2C_SPPED_100K,
 
 	.master_b_pinmux = {
 		.scl_reg	= MESON_I2C_MASTER_B_GPIOB_0_REG,
@@ -1542,6 +1581,13 @@ static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
         .platform_data = (void *)&it7230_pdata,
     },
 #endif
+#ifdef CONFIG_SIS92XX_CAPACITIVE_TOUCHSCREEN
+    {
+        I2C_BOARD_INFO("sis92xx", 0x05),
+        .platform_data = (void *)&sis92xx_pdata,
+    },
+#endif
+
 };
 
 
