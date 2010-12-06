@@ -20,9 +20,9 @@
 #ifndef _RTL871X_IOCTL_RTL_H
 #define _RTL871X_IOCTL_RTL_H
 
-#include "drv_conf.h"
-#include "osdep_service.h"
-#include "drv_types.h"
+#include <drv_conf.h>
+#include <osdep_service.h>
+#include <drv_types.h>
 
 //************** oid_rtl_seg_01_01 ************** 
 NDIS_STATUS oid_rt_get_signal_quality_hdl(struct oid_par_priv* poid_par_priv);//84

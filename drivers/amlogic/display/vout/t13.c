@@ -33,8 +33,6 @@
 #include <mach/pinmux.h>
 #include <mach/power_gate.h>
 
-/*
-For Ramos 6236M, Innolux AT070TN93 V.2 */ 
 #define LCD_WIDTH       800 
 #define LCD_HEIGHT      480
 #define MAX_WIDTH       1056

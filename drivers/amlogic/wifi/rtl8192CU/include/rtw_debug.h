@@ -20,9 +20,9 @@
 #ifndef __RTL871X_DEBUG_H__
 #define __RTL871X_DEBUG_H__
 
-#include "drv_conf.h"
-#include "osdep_service.h"
-#include "drv_types.h"
+#include <drv_conf.h>
+#include <osdep_service.h>
+#include <drv_types.h>
 
 
 #define _drv_emerg_			1

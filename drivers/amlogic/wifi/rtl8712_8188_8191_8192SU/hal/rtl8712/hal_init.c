@@ -19,12 +19,12 @@
  ******************************************************************************/ 
 
 #define _HAL_INIT_C_
-#include "../../include/drv_conf.h"
-#include "../../include/osdep_service.h"
-#include "../../include/drv_types.h"
-#include "../../include/rtl871x_byteorder.h"
+#include <drv_conf.h>
+#include <osdep_service.h>
+#include <drv_types.h>
+#include <rtl871x_byteorder.h>
 
-#include "../../include/hal_init.h"
+#include <hal_init.h>
 
 
 #ifdef CONFIG_SDIO_HCI
@@ -33,7 +33,7 @@
 #include <linux/mmc/sdio_func.h>
 #endif
 #elif defined(CONFIG_USB_HCI)
-#include "../../include/usb_hal.h"
+#include <usb_hal.h>
 #endif	
 
 #ifdef PLATFORM_OS_CE

@@ -2,8 +2,8 @@
 #ifndef __DRV_TYPES_XP_H__
 #define __DRV_TYPES_XP_H__
 
-#include "rv_conf.h"
-#include "sdep_service.h"
+#include <drv_conf.h>
+#include <osdep_service.h>
 
 
 

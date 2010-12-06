@@ -19,10 +19,10 @@
  ******************************************************************************/ 
 #define _IO_OSDEP_C_
 
-#include "../../include/drv_conf.h"
-#include "../../include/osdep_service.h"
-#include "../../include/drv_types.h"
-#include "../../include/osdep_intf.h"
+#include <drv_conf.h>
+#include <osdep_service.h>
+#include <drv_types.h>
+#include <osdep_intf.h>
 
 #if defined (PLATFORM_LINUX) && defined (PLATFORM_WINDOWS)
 
@@ -64,7 +64,7 @@
 #endif
 	
 #ifdef CONFIG_EMBEDDED_FWIMG
-#include "../../include/farray.h"
+#include <farray.h>
 #endif
 
 

@@ -19,7 +19,7 @@
  ******************************************************************************/ 
 #define _OS_INTFS_C_
 
-#include "../../include/drv_conf.h"
+#include <drv_conf.h>
 
 #if defined (PLATFORM_LINUX) && defined (PLATFORM_WINDOWS)
 
@@ -31,12 +31,12 @@
 #include <linux/module.h>
 #include <linux/init.h>
 
-#include "../../include/osdep_service.h"
-#include "../../include/drv_types.h"
-#include "../../include/xmit_osdep.h"
-#include "../../include/recv_osdep.h"
-#include "../../include/hal_init.h"
-#include "../../include/rtl871x_ioctl.h"
+#include <osdep_service.h>
+#include <drv_types.h>
+#include <xmit_osdep.h>
+#include <recv_osdep.h>
+#include <hal_init.h>
+#include <rtl871x_ioctl.h>
 
 #ifdef CONFIG_SDIO_HCI
 #include <sdio_osintf.h>
@@ -45,7 +45,7 @@
 #endif
 
 #ifdef CONFIG_USB_HCI
-#include "../../include/usb_osintf.h"
+#include <usb_osintf.h>
 #endif
 
 MODULE_LICENSE("GPL");
@@ -449,6 +449,7 @@ u8 init_default_value(_adapter *padapter)
 	
 
 	//mlme_priv
+	pmlmepriv->passive_mode=1; // 1: active, 0: pasive. Maybe someday we should rename this varable to "active_mode" (Jeff)
 	
 	//qos_priv
 	//pmlmepriv->qospriv.qos_option = pregistrypriv->wmm_enable;
@@ -801,9 +802,9 @@ static int netdev_close(struct net_device *pnetdev)
 				netif_stop_queue(pnetdev);
      		}
 		
-		#ifdef CONFIG_PLATFORM_ANDROID
-		if(!padapter->bdisassoc_by_assoc) {
-		#endif
+		#ifndef CONFIG_PLATFORM_ANDROID
+		//if(!padapter->bdisassoc_by_assoc) {
+		//#endif
 			
 		//s2.	
 		//s2-1.  issue disassoc_cmd to fw
@@ -816,12 +817,9 @@ static int netdev_close(struct net_device *pnetdev)
 		free_network_queue(padapter);
 
 
-		//Stop driver mlme relation timer
-		stop_drv_timers(padapter);
-
-		#ifdef CONFIG_PLATFORM_ANDROID
-		} 
-		padapter->bdisassoc_by_assoc=0;//FON
+		//#ifdef CONFIG_PLATFORM_ANDROID
+		//} 
+		//padapter->bdisassoc_by_assoc=0;//FON
 		#endif
 			
 
@@ -840,7 +838,7 @@ static int netdev_close(struct net_device *pnetdev)
 
 #ifdef CONFIG_R871X_TEST
 
-#include "../../include/mlme_osdep.h"
+#include <mlme_osdep.h>
 
 int start_pseudo_adhoc(_adapter *padapter)
 {

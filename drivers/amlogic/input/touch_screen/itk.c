@@ -1,8 +1,6 @@
 /*
  * linux/drivers/input/touchscreen/itk.c
  *
- * Copyright (C) 2007-2008 Avionic Design Development GmbH
- * Copyright (C) 2008-2009 Avionic Design GmbH
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -25,7 +23,8 @@
 #define DRIVER_NAME "itk"
 #define DRIVER_VERSION "1"
 
-//#define ITK_TS_DEBUG
+//#define ITK_TS_DEBUG_REPORT
+#define ITK_TS_DEBUG_READ
 //#define TS_DELAY_WORK
 
 /* periodic polling delay and period */
@@ -218,8 +217,8 @@ static int itk_read_sensor(struct itk *ts)
     event->y = (data[5] << 8) | data[4];
     event->x = (event->x*ts->lcd_xmax)/(ts->tp_xmax);
     event->y = (event->y*ts->lcd_ymax)/(ts->tp_ymax);
-    #ifdef ITK_TS_DEBUG
-    printk(KERN_INFO "\nread_sensor id = %d, pendown = %d, event[%d]->x = %d, event[%d]->y = %d\n", id, event->pendown, ts->touching_num, event->x, ts->touching_num, event->y);
+    #ifdef ITK_TS_DEBUG_READ
+    printk(KERN_INFO "\nread_sensor valid = %d, id = %d, pendown = %d, event[%d]->x = %d, event[%d]->y = %d\n", event->valid, id, event->pendown, ts->touching_num, event->x, ts->touching_num, event->y);
     #endif
     ts->touching_num++;
     return 0;
@@ -247,7 +246,7 @@ static void itk_work(struct work_struct *work)
         if (!ts->pendown) {
             ts->pendown = 1;
             //input_report_key(ts->input, BTN_TOUCH, 1);
-            #ifdef ITK_TS_DEBUG
+            #ifdef ITK_TS_DEBUG_REPORT
             printk(KERN_INFO "DOWN\n");
             #endif
         }
@@ -267,24 +266,24 @@ static void itk_work(struct work_struct *work)
                 if (event->valid == 1)
                 {
                     input_report_abs(ts->input, ABS_MT_TRACKING_ID, event->contactid);
-                    #ifdef ITK_TS_DEBUG
+                    #ifdef ITK_TS_DEBUG_REPORT
                     printk(KERN_INFO "\nreport ABS_MT_TRACKING_ID %d\n", event->contactid);
                     #endif
                     input_report_abs(ts->input, ABS_MT_TOUCH_MAJOR, event->pendown);
-                    #ifdef ITK_TS_DEBUG
+                    #ifdef ITK_TS_DEBUG_REPORT
                     printk(KERN_INFO "report ABS_MT_TOUCH_MAJOR %d\n", event->pendown);
                     #endif
                     input_report_abs(ts->input, ABS_MT_WIDTH_MAJOR, 0);
-                    #ifdef ITK_TS_DEBUG
+                    #ifdef ITK_TS_DEBUG_REPORT
                     printk(KERN_INFO "report ABS_MT_WIDTH_MAJOR %d\n", 0);
                     #endif
                     input_report_abs(ts->input, ABS_MT_POSITION_X, event->x);
                     input_report_abs(ts->input, ABS_MT_POSITION_Y, event->y);
-                    #ifdef ITK_TS_DEBUG
+                    #ifdef ITK_TS_DEBUG_REPORT
                     printk(KERN_INFO "report ABS_MT_POSITION_XY %d,%d\n", event->x, event->y);
                     #endif
                     input_mt_sync(ts->input);
-                    #ifdef ITK_TS_DEBUG
+                    #ifdef ITK_TS_DEBUG_REPORT
                     printk(KERN_INFO "input_mt_sync\n");
                     #endif
                     if ((i == 0) && 
@@ -293,17 +292,23 @@ static void itk_work(struct work_struct *work)
                     {
                         continue;
                     }
-                    #ifdef ITK_TS_DEBUG
+                    #ifdef ITK_TS_DEBUG_REPORT
                     else
                     {
                         if (i == 0)
                             printk(KERN_INFO "[%d].contactid = %d, [%d].contactid = %d, [%d].valid = %d, [%d].pendown = %d\n", 
                             i, ts->event[i].contactid, i+1, ts->event[i+1].contactid, i+1, ts->event[i+1].valid, i+1, ts->event[i+1].pendown);
-                        #endif
                     }
+                    #endif
                     input_sync(ts->input);
-                    #ifdef ITK_TS_DEBUG
+                    #ifdef ITK_TS_DEBUG_REPORT
                     printk(KERN_INFO "input_sync\n");
+                    #endif
+                }
+                #ifdef ITK_TS_DEBUG_READ
+                else
+                {
+                    printk(KERN_INFO "Invalid Key %d\n", i);
                 }
                 #endif
             }
@@ -321,11 +326,11 @@ restart:
         if (ts->pendown) {
             ts->pendown = 0;
             input_mt_sync(ts->input);
-            #ifdef ITK_TS_DEBUG
+            #ifdef ITK_TS_DEBUG_REPORT
             printk(KERN_INFO "\ninput_mt_sync\n");
             #endif
             input_sync(ts->input);
-            #ifdef ITK_TS_DEBUG
+            #ifdef ITK_TS_DEBUG_REPORT
             printk(KERN_INFO "input_sync\n");
             printk(KERN_INFO "UP\n");
             #endif
@@ -366,7 +371,7 @@ static irqreturn_t itk_interrupt(int irq, void *dev_id)
     unsigned long flags;
     
     spin_lock_irqsave(&ts->lock, flags);
-    #ifdef ITK_TS_DEBUG
+    #ifdef ITK_TS_DEBUG_REPORT
     printk(KERN_INFO "enter penirq\n");
     #endif
     /* if the pen is down, disable IRQ and start timer chain */
@@ -445,7 +450,7 @@ static int itk_probe(struct i2c_client *client,
         err = -ENOMEM;
         goto fail;
     }
-    #ifdef ITK_TS_DEBUG
+    #ifdef ITK_TS_DEBUG_REPORT
     printk("work create: %x\n", ts->workqueue);
     #endif
 #endif

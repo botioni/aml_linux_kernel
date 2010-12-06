@@ -119,7 +119,7 @@ u32 dsp_codec_get_current_pts(struct audiodsp_priv *priv)
 		res = 0;
 		}
 	else
-		res=pts_lookup_offset(PTS_TYPE_AUDIO,offset,&pts,0);
+		res=pts_lookup_offset(PTS_TYPE_AUDIO,offset,&pts,300);
 		//printk("pts_lookup_offset = %d, buffer_len = %d, res = %d\n", offset, buffered_len, res);
 		
 	if(res==0)

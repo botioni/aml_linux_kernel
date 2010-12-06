@@ -19,14 +19,14 @@
  ******************************************************************************/
 #define _HCI_INTF_C_
 
-#include "../../include/drv_conf.h"
-#include "../../include/osdep_service.h"
-#include "../../include/drv_types.h"
-#include "../../include/recv_osdep.h"
-#include "../../include/xmit_osdep.h"
-#include "../../include/hal_init.h"
-#include "../../include/rtl8712_efuse.h"
-#include "../../include/rtw_version.h"
+#include <drv_conf.h>
+#include <osdep_service.h>
+#include <drv_types.h>
+#include <recv_osdep.h>
+#include <xmit_osdep.h>
+#include <hal_init.h>
+#include <rtl8712_efuse.h>
+#include <rtw_version.h>
 
 #ifndef CONFIG_USB_HCI
 
@@ -34,10 +34,10 @@
 
 #endif
 
-#include "../../include/usb_vendor_req.h"
-#include "../../include/usb_ops.h"
-#include "../../include/usb_osintf.h"
-#include "../../include/usb_hal.h"
+#include <usb_vendor_req.h>
+#include <usb_ops.h>
+#include <usb_osintf.h>
+#include <usb_hal.h>
 
 #if defined (PLATFORM_LINUX) && defined (PLATFORM_WINDOWS)
 
@@ -65,11 +65,11 @@ extern void cancel_all_timer(_adapter *padapter);
 extern int  ips_netdrv_open(_adapter *padapter);
 extern void ips_dev_unload(_adapter *padapter);
 #endif
-#ifdef CONFIG_PM
+
 extern int pm_netdev_open(struct net_device *pnetdev);
 int rtw_suspend(struct usb_interface *intf, pm_message_t message);
 int rtw_resume(struct usb_interface *intf);
-#endif
+
 
 extern u8 reset_drv_sw(_adapter *padapter);
 static void rtw_dev_unload(_adapter *padapter);
@@ -117,7 +117,7 @@ static struct usb_device_id rtw_usb_id_tbl[] ={
 	{USB_DEVICE(0x2019, 0xAB2A)},//Planex - Abocom
 	{USB_DEVICE(0x20F4, 0x648B)},//TRENDnet - Cameo
 	{USB_DEVICE(0x4855, 0x0090)},// 	- Feixun
-
+	
 	{USB_DEVICE(0x3358, 0x13D3)},// -Azwave 8188CE-VAU
 	{USB_DEVICE(0x3359, 0x13D3)},//Russian customer -Azwave (8188CE-VAU  g mode)
 	
@@ -156,16 +156,10 @@ static drv_priv drvpriv = {
 	.rtw_usb_drv.probe = rtw_drv_init,
 	.rtw_usb_drv.disconnect = rtw_dev_remove,
 	.rtw_usb_drv.id_table = rtw_usb_id_tbl,
-
-#ifdef CONFIG_PM	
 	.rtw_usb_drv.suspend =  rtw_suspend,
 	.rtw_usb_drv.resume = rtw_resume,
-#else	
-	.rtw_usb_drv.suspend = NULL,
-	.rtw_usb_drv.resume = NULL,	
-#endif
-#ifdef CONFIG_AUTOSUSPEND
-	.rtw_usb_drv.supports_autosuspend = 1,
+#ifdef CONFIG_AUTOSUSPEND	
+	.rtw_usb_drv.supports_autosuspend = 1,	
 #endif
 };
 
@@ -394,6 +388,9 @@ static void rtw_intf_stop(_adapter *padapter)
 void ips_dev_unload(_adapter *padapter)
 {
 	struct net_device *pnetdev= (struct net_device*)padapter->pnetdev;
+	struct xmit_priv	*pxmitpriv = &(padapter->xmitpriv);
+	u8 trycnt = 100;
+	RT_TRACE(_module_hci_intfs_c_,_drv_err_,("+ips_dev_unload\n"));
 
 	RT_TRACE(_module_hci_intfs_c_,_drv_err_,("+ips_dev_unload\n"));
 	printk("%s...\n",__FUNCTION__);
@@ -404,7 +401,24 @@ void ips_dev_unload(_adapter *padapter)
 		//padapter->bDriverStopped = _TRUE;
 
 		//s3.
-		rtw_write8(padapter,0x522,0xff);//pause tx/rx
+		rtw_write8(padapter,0x522,0xff);//pause tx
+		//keep sn
+		pxmitpriv->nqos_ssn = rtw_read16(padapter,0x4dc);
+		//RX DMA stop
+		rtw_write32(padapter,0x284,(rtw_read32(padapter,0x284)|BIT18));
+		do{
+			if(!(rtw_read32(padapter,0x284)&BIT17))
+				break;				
+		}while(trycnt--);
+		if(trycnt ==0)
+		{
+			printk("Stop RX DMA failed \n");
+		}
+		//RQPN Load 0
+		rtw_write16(padapter,0x214,0x0);
+		rtw_write32(padapter,0x200,0x80000000);
+		rtw_mdelay_os(6);
+		
 		rtw_intf_stop(padapter);//cancel read /write port
 
 		//s5.
@@ -526,7 +540,7 @@ static void disable_ht_for_spec_devid(const struct usb_device_id *pdid)
 #endif
 }
 
-#ifdef CONFIG_PM
+
 int rtw_suspend(struct usb_interface *pusb_intf, pm_message_t message)
 {
 	struct net_device *pnetdev=usb_get_intfdata(pusb_intf);
@@ -655,11 +669,11 @@ int rtw_resume(struct usb_interface *pusb_intf)
 			if(!IS_92C_SERIAL(pHalData->VersionID))
 	#endif
 			{
-			printk("enc_algorithm(%x),wepkeymask(%x)\n",padapter->securitypriv.dot11PrivacyAlgrthm,pwrpriv->wepkeymask);
-			if((_WEP40_ == padapter->securitypriv.dot11PrivacyAlgrthm) ||(_WEP104_ == padapter->securitypriv.dot11PrivacyAlgrthm))
-			{
-				sint keyid;
-
+				printk("enc_algorithm(%x),wepkeymask(%x)\n",padapter->securitypriv.dot11PrivacyAlgrthm,pwrpriv->wepkeymask);
+				if((_WEP40_ == padapter->securitypriv.dot11PrivacyAlgrthm) ||(_WEP104_ == padapter->securitypriv.dot11PrivacyAlgrthm))
+				{
+					sint keyid;	
+			
 					for(keyid=0;keyid<4;keyid++){				
 						if(pwrpriv->wepkeymask & BIT(keyid))
 							rtw_set_key(padapter,&padapter->securitypriv, keyid);	
@@ -682,7 +696,7 @@ error_exit:
 	printk("%s, Open net dev failed \n",__FUNCTION__);
 	return (-1);
 }
-#endif
+
 
 static u8 key_char2num(u8 ch)
 {

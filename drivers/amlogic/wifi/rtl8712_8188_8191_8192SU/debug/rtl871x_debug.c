@@ -21,9 +21,9 @@
 #define _RTL871X_DEBUG_C_
 
 
-#include "../include/drv_conf.h"
-#include "../include/osdep_service.h"
-#include "../include/drv_types.h"
+#include <drv_conf.h>
+#include <osdep_service.h>
+#include <drv_types.h>
 		
 #ifdef CONFIG_DEBUG_RTL871X
 

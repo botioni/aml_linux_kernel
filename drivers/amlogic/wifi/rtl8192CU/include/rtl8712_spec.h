@@ -20,7 +20,7 @@
 #ifndef __RTL8712_SPEC_H__
 #define __RTL8712_SPEC_H__
 
-#include "rv_conf.h"
+#include <drv_conf.h>
 
 #define RTL8712_IOBASE_TXPKT			0x10200000	//IOBASE_TXPKT
 #define RTL8712_IOBASE_RXPKT			0x10210000	//IOBASE_RXPKT

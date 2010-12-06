@@ -76,7 +76,7 @@ void set_FwJoinBssReport_cmd(_adapter* padapter, u8 mstatus);
 #endif
 
 #ifdef CONFIG_AUTOSUSPEND
-#ifdef  SUPPORT_HW_RFOFF_DETECTED
+#ifdef SUPPORT_HW_RFOFF_DETECTED
 struct H2C_SS_RFOFF_PARAM{
 	u8 	ROFOn; // 1: on, 0:off
 	u16	gpio_period; // unit: 1024 us

@@ -19,11 +19,11 @@
  ******************************************************************************/
 #define _RTL871X_IOCTL_QUERY_C_
 
-#include "../include/drv_conf.h"
-#include "../include/osdep_service.h"
-#include "../include/drv_types.h"
-#include "../include/rtw_ioctl_query.h"
-#include "../include/wifi.h"
+#include <drv_conf.h>
+#include <osdep_service.h>
+#include <drv_types.h>
+#include <rtw_ioctl_query.h>
+#include <wifi.h>
 
 
 #ifdef PLATFORM_WINDOWS

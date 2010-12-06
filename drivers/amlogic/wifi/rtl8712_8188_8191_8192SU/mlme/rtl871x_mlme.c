@@ -20,9 +20,9 @@
 #define _RTL871X_MLME_C_
 
 
-#include "../include/drv_conf.h"
-#include "../include/osdep_service.h"
-#include "../include/drv_types.h"
+#include <drv_conf.h>
+#include <osdep_service.h>
+#include <drv_types.h>
 
 
 #ifdef PLATFORM_LINUX
@@ -48,13 +48,13 @@
 #endif
 
 
-#include "../include/recv_osdep.h"
-#include "../include/xmit_osdep.h"
-#include "../include/hal_init.h"
-#include "../include/mlme_osdep.h"
-#include "../include/sta_info.h"
-#include "../include/wifi.h"
-#include "../include/wlan_bssdef.h"
+#include <recv_osdep.h>
+#include <xmit_osdep.h>
+#include <hal_init.h>
+#include <mlme_osdep.h>
+#include <sta_info.h>
+#include <wifi.h>
+#include <wlan_bssdef.h>
 
 
 sint _init_mlme_priv(_adapter* padapter)
@@ -73,6 +73,7 @@ _func_enter_;
 	pmlmepriv->pscanned = NULL;
 	pmlmepriv->fw_state = 0;
 	pmlmepriv->cur_network.network.InfrastructureMode = Ndis802_11AutoUnknown;
+	pmlmepriv->passive_mode=1; // 1: active, 0: pasive. Maybe someday we should rename this varable to "active_mode" (Jeff)
 
 	_spinlock_init(&(pmlmepriv->lock));
 	_init_queue(&(pmlmepriv->free_bss_pool));

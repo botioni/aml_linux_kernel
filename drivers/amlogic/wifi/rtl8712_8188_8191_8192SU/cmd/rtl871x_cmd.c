@@ -19,13 +19,13 @@
  ******************************************************************************/ 
 #define _RTL871X_CMD_C_
 
-#include "../include/drv_conf.h"
-#include "../include/osdep_service.h"
-#include "../include/drv_types.h"
-#include "../include/recv_osdep.h"
-#include "../include/cmd_osdep.h"
-#include "../include/mlme_osdep.h"
-#include "../include/rtl871x_byteorder.h"
+#include <drv_conf.h>
+#include <osdep_service.h>
+#include <drv_types.h>
+#include <recv_osdep.h>
+#include <cmd_osdep.h>
+#include <mlme_osdep.h>
+#include <rtl871x_byteorder.h>
 
 #ifdef PLATFORM_LINUX
 #include <linux/compiler.h>
@@ -527,7 +527,7 @@ _func_enter_;
 	init_h2fwcmd_w_parm_no_rsp(ph2c, psurveyPara, GEN_CMD_CODE(_SiteSurvey));
 
 	psurveyPara->bsslimit = cpu_to_le32(48);
-	psurveyPara->passive_mode = cpu_to_le32(1);
+	psurveyPara->passive_mode = cpu_to_le32(pmlmepriv->passive_mode);
 	psurveyPara->ss_ssidlen= cpu_to_le32(0);// pssid->SsidLength;
 	_memset(psurveyPara->ss_ssid, 0, IW_ESSID_MAX_SIZE + 1);
 	if ((pssid != NULL) && (pssid->SsidLength)) {

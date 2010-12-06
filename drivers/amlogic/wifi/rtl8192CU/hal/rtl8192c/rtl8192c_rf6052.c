@@ -43,16 +43,16 @@
 
 #define _HAL_RF6052_C_
 
-#include "../../include/drv_conf.h"
-#include "../../include/osdep_service.h"
-#include "../../include/drv_types.h"
-#include "../../include/rtw_byteorder.h"
+#include <drv_conf.h>
+#include <osdep_service.h>
+#include <drv_types.h>
+#include <rtw_byteorder.h>
 
-#include "../../include/hal_init.h"
+#include <hal_init.h>
 
-#include "../../include/Hal8192CPhyReg.h"
-#include "../../include/Hal8192CPhyCfg.h"
-#include "../../include/HalRf.h"
+#include "Hal8192CPhyReg.h"
+#include "Hal8192CPhyCfg.h"
+#include "HalRf.h"
 
 
 
@@ -247,7 +247,7 @@ PHY_RF6052SetCckTxPower(
 	BOOLEAN			TurboScanOff = _FALSE;
 	u8			idx1, idx2;
 	u8*			ptr;
-	
+
 	// 2010/10/18 MH Accorsing to SD3 eechou's suggestion, we need to disable turbo scan for RU.	
 	// Otherwise, external PA will be broken if power index > 0x20.
 	if((pEEPROM->EEPROMRegulatory != 0)||( pHalData->ExternalPA))

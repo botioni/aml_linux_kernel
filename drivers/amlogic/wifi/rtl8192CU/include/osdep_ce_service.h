@@ -4,15 +4,15 @@
 #define __OSDEP_CE_SERVICE_H_
 
 
-#include "dis.h"
-#include "tddndis.h"
+#include <ndis.h>
+#include <ntddndis.h>
 
 #ifdef CONFIG_SDIO_HCI
 #include "SDCardDDK.h"
 #endif
 
 #ifdef CONFIG_USB_HCI
-#include "sbdi.h"
+#include <usbdi.h>
 #endif
 
 typedef HANDLE 	_sema;

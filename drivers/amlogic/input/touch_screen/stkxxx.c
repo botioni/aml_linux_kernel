@@ -1,14 +1,12 @@
 /*
  * linux/drivers/input/touchscreen/stkxxx.c
  *
- * Copyright (C) 2007-2008 Avionic Design Development GmbH
- * Copyright (C) 2008-2009 Avionic Design GmbH
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
  *
- * Written by Thierry Reding <thierry.reding@xxxxxxxxxxxxxxxxx>
+ * Written by x
  */
 
 #include <linux/delay.h>
@@ -21,21 +19,22 @@
 #include <linux/workqueue.h>
 #include <linux/i2c/stkxxx.h>
 
+//#define STKXXX_DEBUG
 
-#define        DRIVER_NAME     "stkxxx"
-#define        DRIVER_VERSION  "1"
+#define DRIVER_NAME     "stkxxx"
+#define DRIVER_VERSION  "1"
 
 /* basic commands */
-#define CANDO			1
-#define SINTEK 			0
-#define SINTEK_NEW		2
+#define CANDO           1
+#define SINTEK          0
+#define SINTEK_NEW      2
 
 //#define TS_DELAY_WORK
 #define MULTI_TOUCH
 
 /* periodic polling delay and period */
-#define        TS_POLL_DELAY   (1 * 1000000)
-#define        TS_POLL_PERIOD  (5 * 1000000)
+#define TS_POLL_DELAY   (1 * 1000000)
+#define TS_POLL_PERIOD  (5 * 1000000)
 
 /**
  * struct ts_event - touchscreen event structure
@@ -77,9 +76,12 @@ struct stkxxx {
 #endif
        struct ts_event event[5];
        unsigned pendown:1;
-       int touching_num;
-       int xmax;
-       int ymax;
+       unsigned touching_num;
+       unsigned pre_touching_num;
+       int lcd_xmax;
+       int lcd_ymax;
+       int tp_xmax;
+       int tp_ymax;
        int vendor;
        struct stkxxx_platform_data *pdata;
 
@@ -102,156 +104,170 @@ static int stkxxx_get_pendown_state(struct stkxxx *ts)
 
 static int stkxxx_register_input(struct stkxxx *ts)
 {
-	int ret;
-	struct input_dev *dev;
+    int ret;
+    struct input_dev *dev;
 
-	dev = input_allocate_device();
-	if (dev == NULL)
-		return -1;
+    dev = input_allocate_device();
+    if (dev == NULL)
+        return -1;
 
-	dev->name = "sintek capacitive touchscreen";
-	//dev->phys = ts->phys;
-	dev->id.bustype = BUS_I2C;
+    dev->name = "sintek capacitive touchscreen";
+    dev->phys = "I2C";
+    dev->id.bustype = BUS_I2C;
 
-	dev->evbit[0] = BIT_MASK(EV_KEY) | BIT_MASK(EV_ABS);
-	dev->keybit[BIT_WORD(BTN_TOUCH)] = BIT_MASK(BTN_TOUCH);
-	input_set_abs_params(dev, ABS_X, 0, ts->xmax, 0, 0);
-	input_set_abs_params(dev, ABS_Y, 0, ts->ymax, 0, 0);
-	input_set_abs_params(dev, ABS_PRESSURE, 0, 200, 0, 0);
+    set_bit(EV_ABS, dev->evbit);
+    set_bit(EV_KEY, dev->evbit);
+    set_bit(BTN_TOUCH, dev->keybit);
+    set_bit(ABS_MT_TOUCH_MAJOR, dev->absbit);
+    set_bit(ABS_MT_WIDTH_MAJOR, dev->absbit);
+    set_bit(ABS_MT_POSITION_X, dev->absbit);
+    set_bit(ABS_MT_POSITION_Y, dev->absbit);
+    set_bit(ABS_MT_TRACKING_ID, dev->absbit);
+    //set_bit(ABS_MT_PRESSURE, dev->absbit);
 
-#if 0//def MULTI_TOUCH
-	set_bit(ABS_MT_TOUCH_MAJOR, dev->absbit);
-	set_bit(ABS_MT_WIDTH_MAJOR, dev->absbit);
-	set_bit(ABS_MT_POSITION_X, dev->absbit);
-	set_bit(ABS_MT_POSITION_Y, dev->absbit);
-	set_bit(ABS_TOOL_WIDTH, dev->absbit);
+    input_set_abs_params(dev, ABS_X, 0, ts->lcd_xmax, 0, 0);
+    input_set_abs_params(dev, ABS_Y, 0, ts->lcd_ymax, 0, 0);
+    input_set_abs_params(dev, ABS_MT_POSITION_X, 0, ts->lcd_xmax, 0, 0);
+    input_set_abs_params(dev, ABS_MT_POSITION_Y, 0, ts->lcd_ymax, 0, 0);
+    input_set_abs_params(dev, ABS_MT_TOUCH_MAJOR, 0, ts->lcd_xmax, 0, 0);
+    input_set_abs_params(dev, ABS_MT_WIDTH_MAJOR, 0, ts->lcd_xmax, 0, 0);
+    input_set_abs_params(dev, ABS_MT_TRACKING_ID, 0, 10, 0, 0);
+    //input_set_abs_params(dev, ABS_MT_PRESSURE, 0, ???, 0, 0);
 
-	input_set_abs_params(dev, ABS_MT_POSITION_X, 0, ts->xmax, 0, 0);
-	input_set_abs_params(dev, ABS_MT_POSITION_Y, 0, ts->ymax, 0, 0);
-	input_set_abs_params(dev, ABS_MT_TOUCH_MAJOR, 0, 255, 0, 0);
-	input_set_abs_params(dev, ABS_MT_WIDTH_MAJOR, 0, 255, 0, 0);
-#endif
-
-	ret = input_register_device(dev);
-	if (ret < 0) {
-		input_free_device(dev);
-		return -1;
-	}
-	
-	ts->input = dev;
-	return 0;
+    ret = input_register_device(dev);
+    if (ret < 0) {
+        input_free_device(dev);
+        return -1;
+    }
+    
+    ts->input = dev;
+    return 0;
 }
 
 static int stkxxx_read_block(struct i2c_client *client, u8 addr, u8 len, u8 *data)
 {
-	u8 msgbuf0[1] = { addr };
-	u16 slave = client->addr;
-	u16 flags = client->flags;
-	struct i2c_msg msg[2] = { { slave, flags, 1, msgbuf0 },
-				  { slave, flags | I2C_M_RD, len, data }
-	};
+    u8 msgbuf0[1] = { addr };
+    u16 slave = client->addr;
+    u16 flags = client->flags;
+    struct i2c_msg msg[2] = { 
+        { slave, flags, 1, msgbuf0 },
+        { slave, flags|I2C_M_RD, len, data }
+    };
 
-	return i2c_transfer(client->adapter, msg, ARRAY_SIZE(msg));
+    return i2c_transfer(client->adapter, msg, ARRAY_SIZE(msg));
 }
 
 static int stkxxx_write_block(struct i2c_client *client, u8 addr, u8 len, u8 *data)
 {
-	u8 msgbuf0[1] = { addr };
-	u16 slave = client->addr;
-	u16 flags = client->flags;
-	struct i2c_msg msg[2] = { { slave, flags, 1, msgbuf0 },
-				  { slave, flags, len, data }
-	};
+    u8 msgbuf0[1] = { addr };
+    u16 slave = client->addr;
+    u16 flags = client->flags;
+    struct i2c_msg msg[2] = {
+        { slave, flags, 1, msgbuf0 },
+        { slave, flags, len, data }
+    };
 
-	return i2c_transfer(client->adapter, msg, ARRAY_SIZE(msg));
+    return i2c_transfer(client->adapter, msg, ARRAY_SIZE(msg));
 }
 
 static int stkxxx_write_reg(struct i2c_client *client, u8 addr,  u8 data)
 {
-	u8 buf[2] = {addr, data};
-	struct i2c_msg msg = {
-		.addr = client->addr,
-		.flags = !I2C_M_RD,
-		.len = 2,
-		.buf = buf,
-	};
-	
-	return i2c_transfer(client->adapter, &msg, 1);
+    u8 buf[2] = {addr, data};
+    struct i2c_msg msg = {
+        .addr = client->addr,
+        .flags = !I2C_M_RD,
+        .len = 2,
+        .buf = buf,
+    };
+    
+    return i2c_transfer(client->adapter, &msg, 1);
 }
 
 static void stkxxx_reset(struct stkxxx *ts)
 {
-	unsigned char data[6] = {0, 0, 0, 0 ,0, 0};
-	int ret;
-	
-	ret = stkxxx_read_block(ts->client, 26, 6, data);
-	printk(" (26)=%d, (27)=%d,  (28)=%d, (29)=%d, (30)=%d,(31)=%d , kk=%d\n",
-			data[0], data[1], data[2], data[3],data[4], data[5], ret);
-	if (ret < 0) {
-		dev_err(&ts->client->dev, "Read pannel info failed: %d\n", ret);
-		return ret;
-	}
+    unsigned char data[6] = {0, 0, 0, 0 ,0, 0};
+    int ret;
+    
+    ret = stkxxx_read_block(ts->client, 26, 6, data);
+    #ifdef STKXXX_DEBUG
+    printk(" (26)=%d, (27)=%d,  (28)=%d, (29)=%d, (30)=%d,(31)=%d , kk=%d\n",
+            data[0], data[1], data[2], data[3],data[4], data[5], ret);
+    #endif
+    if (ret < 0) {
+        dev_err(&ts->client->dev, "Read pannel info failed: %d\n", ret);
+        return ret;
+    }
 
-	if (data[4] ==CANDO)
-	{
-		ts->xmax = data[1]<<8|data[0];
-		ts->ymax = data[3]<<8|data[2];
-		printk("CANDO: xmax=%d, ymax=%d\n", ts->xmax, ts->ymax);
-		ts->vendor = CANDO;
-	}
-	else if (data[4] ==SINTEK||data[4] ==SINTEK_NEW)
-	{
-		ts->xmax = 1024;
-		ts->ymax = 600;	
-		printk("SINTEK: xmax=%d, ymax=%d\n", ts->xmax, ts->ymax);
-		ts->vendor = SINTEK;
-	}
-	
-	if (stkxxx_write_reg(ts->client, 55, 0x03) < 0) {
-		printk("calibration reg failed\n");
-	}
-	else
-		printk("calibration reg ok\n");
+    if (data[4] ==CANDO)
+    {
+        ts->lcd_xmax = data[1]<<8|data[0];
+        ts->lcd_ymax = data[3]<<8|data[2];
+        #ifdef STKXXX_DEBUG
+        printk("CANDO: xmax=%d, ymax=%d\n", ts->lcd_xmax, ts->lcd_ymax);
+        #endif
+        ts->vendor = CANDO;
+    }
+    else if (data[4] ==SINTEK||data[4] ==SINTEK_NEW)
+    {
+        ts->lcd_xmax = 1024;
+        ts->lcd_ymax = 600; 
+        #ifdef STKXXX_DEBUG
+        printk("SINTEK: xmax=%d, ymax=%d\n", ts->lcd_xmax, ts->lcd_ymax);
+        #endif
+        ts->vendor = SINTEK;
+    }
+    
+    if (stkxxx_write_reg(ts->client, 55, 0x03) < 0) {
+        printk("calibration reg failed\n");
+    }
+    else
+        printk("calibration reg ok\n");
 }
-
-#define STK_INFO_ADDR	0
-#define STK_INFO_LEN		20
-
-#define FIRST_POINT_ADDR	2
-#define X_OFFSET			0
-#define Y_OFFSET			2
-#define XW_OFFSET		8
-#define YW_OFFSET		9
-#define XZ_OFFSET		12
-#define YZ_OFFSET		13
+#define STK_INFO_LEN        20
+#define STK_INFO_ADDR       0
+#define PRE_INFO_ADDR       1
+#define FIRST_POINT_ADDR    2
+#define X_OFFSET            0
+#define Y_OFFSET            2
+#define XW_OFFSET           8
+#define YW_OFFSET           9
+#define XZ_OFFSET           12
+#define YZ_OFFSET           13
 
 static int stkxxx_read_sensor(struct stkxxx *ts)
 {
-	int ret,i;
-	u8 data[STK_INFO_LEN];
-	struct ts_event *event;
-	
-	/* To ensure data coherency, read the sensor with a single transaction. */
-	ret = stkxxx_read_block(ts->client, STK_INFO_ADDR, STK_INFO_LEN, data);
-	if (ret < 0) {
-		dev_err(&ts->client->dev, "Read block failed: %d\n", ret);
-		return ret;
-	}
-	ts->touching_num = data[0];
-	event = &ts->event[0];
-	int ba = 2;
-	for (i=0; i<ts->touching_num; i++) {
-		event->x = (data[ba+X_OFFSET+1] << 8) | data[ba+X_OFFSET];
-		event->y = (data[ba+Y_OFFSET+1] << 8) | data[ba+Y_OFFSET];
-		event->xw = data[ba+XW_OFFSET];
-		event->yw = data[ba+YW_OFFSET];
-		event->xz = data[ba+XZ_OFFSET];
-		event->yz = data[ba+YZ_OFFSET];
-		ba += 4;
-		event++;
-	}
-	
-	return 0;
+    int ret,i;
+    u8 data[STK_INFO_LEN];
+    struct ts_event *event;
+    
+    /* To ensure data coherency, read the sensor with a single transaction. */
+    ret = stkxxx_read_block(ts->client, STK_INFO_ADDR, STK_INFO_LEN, data);
+    if (ret < 0) {
+        dev_err(&ts->client->dev, "Read block failed: %d\n", ret);
+        return ret;
+    }
+    ts->touching_num = data[0];
+    ts->pre_touching_num = data[1];
+    event = &ts->event[0];
+    int ba = 2;
+    #ifdef STKXXX_DEBUG
+    printk(KERN_INFO "num = %d, pre_num = %d\n", ts->touching_num, ts->pre_touching_num);
+    #endif
+    for (i=0; i<ts->touching_num; i++) {
+        event->x = (data[ba+X_OFFSET+1] << 8) | data[ba+X_OFFSET];
+        event->y = (data[ba+Y_OFFSET+1] << 8) | data[ba+Y_OFFSET];
+        event->xw = data[ba+XW_OFFSET];
+        event->yw = data[ba+YW_OFFSET];
+        event->xz = data[ba+XZ_OFFSET];
+        event->yz = data[ba+YZ_OFFSET];
+        #ifdef STKXXX_DEBUG
+        printk(KERN_INFO "id = %d, x = %d, y = %d\n", i, event->x, event->y);
+        #endif
+        ba += 4;
+        event++;
+    }
+    
+    return 0;
 }
 
 /**
@@ -261,71 +277,87 @@ static int stkxxx_read_sensor(struct stkxxx *ts)
 static void stkxxx_work(struct work_struct *work)
 {
 #ifdef TS_DELAY_WORK
-	struct stkxxx *ts = container_of(to_delayed_work(work), struct stkxxx, work);
+    struct stkxxx *ts = container_of(to_delayed_work(work), struct stkxxx, work);
 #else
-	struct stkxxx *ts = container_of(work, struct stkxxx, work);
+    struct stkxxx *ts = container_of(work, struct stkxxx, work);
 #endif
-	struct ts_event *event;
-	int i;
+    struct ts_event *event;
+    int i;
 
-//	printk(KERN_INFO "stkxxx work runing\n");
-	if (stkxxx_get_pendown_state(ts)) {	
-		if (stkxxx_read_sensor(ts) < 0) {
-			printk(KERN_INFO "work read i2c failed\n");
-			goto restart;
-		}
-		event = &ts->event[0];
-		input_report_abs(ts->input, ABS_X, event->x);
-		input_report_abs(ts->input, ABS_Y, event->y);	
-		input_report_abs(ts->input, ABS_PRESSURE, event->xz + event->yz);
-		if (!ts->pendown) {
-			ts->pendown = 1;
-			input_report_key(ts->input, BTN_TOUCH,  1);
-	             	printk(KERN_INFO "DOWN\n");
-		}
-		
-		for (i=0; i<ts->touching_num; i++) {
-//			printk(KERN_INFO "point%d x=%d y=%d pressue=%d\n",
-//					i, event->x, event->y, event->xz + event->yz);
-#ifdef MULTI_TOUCH
-			input_report_abs(ts->input, ABS_MT_POSITION_X, event->x);
-			input_report_abs(ts->input, ABS_MT_POSITION_Y, event->y);
-			input_report_abs(ts->input, ABS_MT_PRESSURE, event->xz + event->yz);
-			input_mt_sync(ts->input);
-#endif
-			event++;
-		}
-		input_sync(ts->input);
-restart:		
+    if (stkxxx_get_pendown_state(ts)) { 
+        if (stkxxx_read_sensor(ts) < 0) {
+            printk(KERN_INFO "work read i2c failed\n");
+            goto restart;
+        }
+        event = &ts->event[0];
+        if (!ts->pendown) {
+            ts->pendown = 1;
+            //input_report_key(ts->input, BTN_TOUCH, 1);
+            printk(KERN_INFO "DOWN\n");
+        }
+        
+        for (i=0; i<ts->touching_num; i++) {
+            input_report_abs(ts->input, ABS_MT_TRACKING_ID, i);
+            #ifdef STKXXX_DEBUG
+            printk(KERN_INFO "ABS_MT_TRACKING_ID = %d\n", i);
+            #endif
+            input_report_abs(ts->input, ABS_MT_TOUCH_MAJOR, 1);
+            #ifdef STKXXX_DEBUG
+            printk(KERN_INFO "ABS_MT_TOUCH_MAJOR = %d\n", 1);
+            #endif
+            input_report_abs(ts->input, ABS_MT_WIDTH_MAJOR, 0);
+            #ifdef STKXXX_DEBUG
+            printk(KERN_INFO "ABS_MT_WIDTH_MAJOR = %d\n", 0);
+            #endif
+            input_report_abs(ts->input, ABS_MT_POSITION_X, event->x);
+            #ifdef STKXXX_DEBUG
+            printk(KERN_INFO "ABS_MT_POSITION_X = %d\n", event->x);
+            #endif
+            input_report_abs(ts->input, ABS_MT_POSITION_Y, event->y);
+            #ifdef STKXXX_DEBUG
+            printk(KERN_INFO "ABS_MT_POSITION_Y = %d\n", event->y);
+            #endif
+            input_mt_sync(ts->input);
+            #ifdef STKXXX_DEBUG
+            printk(KERN_INFO "input_mt_sync\n");
+            #endif
+            event++;
+        }
+        input_sync(ts->input);
+        #ifdef STKXXX_DEBUG
+        printk(KERN_INFO "input_sync\n");
+        #endif
+restart:
 #ifdef TS_DELAY_WORK
-		schedule_delayed_work(&ts->work, msecs_to_jiffies(TS_POLL_PERIOD));
+        schedule_delayed_work(&ts->work, msecs_to_jiffies(TS_POLL_PERIOD));
 #else
-		hrtimer_start(&ts->timer, ktime_set(0, TS_POLL_PERIOD), HRTIMER_MODE_REL);
+        hrtimer_start(&ts->timer, ktime_set(0, TS_POLL_PERIOD), HRTIMER_MODE_REL);
 #endif
-	}
-	
-	else {
-		/* enable IRQ after the pen was lifted */
-		if (ts->pendown) {
-			ts->pendown = 0;
-			input_report_key(ts->input, BTN_TOUCH, 0);
-			input_report_abs(ts->input, ABS_PRESSURE, 0);
-			input_sync(ts->input);
-	             	printk(KERN_INFO "UP\n");
-		}
-		enable_irq(ts->client->irq);
-	}
+    }
+    
+    else {
+        /* enable IRQ after the pen was lifted */
+        if (ts->pendown) {
+            ts->pendown = 0;
+            input_mt_sync(ts->input);
+            input_sync(ts->input);
+            printk(KERN_INFO "UP\n");
+        }
+        ts->touching_num = 0;
+        ts->pre_touching_num = 0;
+        enable_irq(ts->client->irq);
+    }
 }
 
 static void stkxxx_cal_work(struct work_struct *work)
 {
-	struct stkxxx *ts = container_of(to_delayed_work(work), struct stkxxx, cal_work);
-	
-	if (stkxxx_write_reg(ts->client, 55, 0x03) < 0) {
-		printk("re-calibration reg failed\n");
-	}
-	else
-		printk("re-calibration reg ok\n");
+    struct stkxxx *ts = container_of(to_delayed_work(work), struct stkxxx, cal_work);
+    
+    if (stkxxx_write_reg(ts->client, 55, 0x03) < 0) {
+        printk("re-calibration reg failed\n");
+    }
+    else
+        printk("re-calibration reg ok\n");
 }
 
 #ifndef TS_DELAY_WORK
@@ -335,14 +367,14 @@ static void stkxxx_cal_work(struct work_struct *work)
  */
 static enum hrtimer_restart stkxxx_timer(struct hrtimer *timer)
 {
-	struct stkxxx *ts = container_of(timer, struct stkxxx, timer);
-	unsigned long flags = 0;
-	
-	spin_lock_irqsave(&ts->lock, flags);
-//	printk(KERN_INFO "enter timer\n");
-	queue_work(ts->workqueue, &ts->work);	
-	spin_unlock_irqrestore(&ts->lock, flags);
-	return HRTIMER_NORESTART;
+    struct stkxxx *ts = container_of(timer, struct stkxxx, timer);
+    unsigned long flags = 0;
+    
+    spin_lock_irqsave(&ts->lock, flags);
+//  printk(KERN_INFO "enter timer\n");
+    queue_work(ts->workqueue, &ts->work);   
+    spin_unlock_irqrestore(&ts->lock, flags);
+    return HRTIMER_NORESTART;
 }
 #endif
 
@@ -353,23 +385,23 @@ static enum hrtimer_restart stkxxx_timer(struct hrtimer *timer)
  */
 static irqreturn_t stkxxx_interrupt(int irq, void *dev_id)
 {
-	struct i2c_client *client = (struct i2c_client *)dev_id;
-	struct stkxxx *ts = i2c_get_clientdata(client);
-	unsigned long flags;
-	
-	spin_lock_irqsave(&ts->lock, flags);
-//	printk(KERN_INFO "enter penirq\n");
-	/* if the pen is down, disable IRQ and start timer chain */
-	if (stkxxx_get_pendown_state(ts)) {
-		disable_irq_nosync(client->irq);
+    struct i2c_client *client = (struct i2c_client *)dev_id;
+    struct stkxxx *ts = i2c_get_clientdata(client);
+    unsigned long flags;
+    
+    spin_lock_irqsave(&ts->lock, flags);
+//  printk(KERN_INFO "enter penirq\n");
+    /* if the pen is down, disable IRQ and start timer chain */
+    if (stkxxx_get_pendown_state(ts)) {
+        disable_irq_nosync(client->irq);
 #ifdef TS_DELAY_WORK
-		schedule_delayed_work(&ts->work,	msecs_to_jiffies(TS_POLL_DELAY));
+        schedule_delayed_work(&ts->work, msecs_to_jiffies(TS_POLL_DELAY));
 #else
-		hrtimer_start(&ts->timer, ktime_set(0, TS_POLL_DELAY), HRTIMER_MODE_REL);
+        hrtimer_start(&ts->timer, ktime_set(0, TS_POLL_DELAY), HRTIMER_MODE_REL);
 #endif
-	}
-	spin_unlock_irqrestore(&ts->lock, flags);
-	return IRQ_HANDLED;
+    }
+    spin_unlock_irqrestore(&ts->lock, flags);
+    return IRQ_HANDLED;
 }
 
 /**
@@ -389,13 +421,13 @@ static int stkxxx_probe(struct i2c_client *client,
                goto fail;
        }
 
-	ts->client = client;
-	stkxxx_reset(ts);
-	
-	if (stkxxx_register_input(ts) < 0) {
-		dev_err(&client->dev, "register input fail!\n");
-		goto fail;
-	}
+    ts->client = client;
+    stkxxx_reset(ts);
+    
+    if (stkxxx_register_input(ts) < 0) {
+        dev_err(&client->dev, "register input fail!\n");
+        goto fail;
+    }
 
        /* setup platform-specific hooks */
        ts->pdata = client->dev.platform_data;
@@ -417,23 +449,23 @@ static int stkxxx_probe(struct i2c_client *client,
 
        spin_lock_init(&ts->lock);
 #ifdef TS_DELAY_WORK
-	INIT_DELAYED_WORK(&ts->work, stkxxx_work);
+    INIT_DELAYED_WORK(&ts->work, stkxxx_work);
 #else
        hrtimer_init(&ts->timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
        ts->timer.function = stkxxx_timer;
-	INIT_WORK(&ts->work, stkxxx_work);
-	ts->workqueue = create_singlethread_workqueue("stkxxx");
-	if (ts->workqueue == NULL) {
-		dev_err(&client->dev, "can't create work queue\n");
-		err = -ENOMEM;
-		goto fail;
-	}
-	printk("work create: %x\n", ts->workqueue);
+    INIT_WORK(&ts->work, stkxxx_work);
+    ts->workqueue = create_singlethread_workqueue("stkxxx");
+    if (ts->workqueue == NULL) {
+        dev_err(&client->dev, "can't create work queue\n");
+        err = -ENOMEM;
+        goto fail;
+    }
+    printk("work create: %x\n", ts->workqueue);
 #endif
       
        ts->pendown = 0;
        ts->touching_num = 0;
-       
+       ts->pre_touching_num = 0;
        err = request_irq(client->irq, stkxxx_interrupt, IRQF_TRIGGER_FALLING,
                        client->dev.driver->name, client);
        if (err) {
@@ -443,8 +475,8 @@ static int stkxxx_probe(struct i2c_client *client,
        }
 
        i2c_set_clientdata(client, ts);
-//	INIT_DELAYED_WORK(&ts->cal_work, stkxxx_cal_work);
-//	schedule_delayed_work(&ts->cal_work, 20*HZ);
+//  INIT_DELAYED_WORK(&ts->cal_work, stkxxx_cal_work);
+//  schedule_delayed_work(&ts->cal_work, 20*HZ);
        err = 0;
        goto out;
 

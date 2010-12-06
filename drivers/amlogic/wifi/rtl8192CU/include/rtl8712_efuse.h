@@ -20,8 +20,8 @@
 #ifndef __RTL8712_EFUSE_H__
 #define __RTL8712_EFUSE_H__
 
-#include "drv_conf.h"
-#include "osdep_service.h"
+#include <drv_conf.h>
+#include <osdep_service.h>
 
 
 #define _REPEAT_THRESHOLD_	3

@@ -19,14 +19,14 @@
  ******************************************************************************/
 #define _RTL871X_XMIT_C_
 
-#include "../include/drv_conf.h"
-#include "../include/osdep_service.h"
-#include "../include/drv_types.h"
-#include "../include/rtw_byteorder.h"
-#include "../include/wifi.h"
-#include "../include/osdep_intf.h"
-#include "../include/circ_buf.h"
-#include "../include/ip.h"
+#include <drv_conf.h>
+#include <osdep_service.h>
+#include <drv_types.h>
+#include <rtw_byteorder.h>
+#include <wifi.h>
+#include <osdep_intf.h>
+#include <circ_buf.h>
+#include <ip.h>
 
 #if defined (PLATFORM_LINUX) && defined (PLATFORM_WINDOWS)
 #error "Shall be Linux or Windows, but not both!\n"
@@ -42,7 +42,7 @@
 #endif
 
 #ifdef CONFIG_USB_HCI
-#include "../include/usb_ops.h"
+#include <usb_ops.h>
 #endif
 
 
@@ -901,6 +901,7 @@ _func_enter_;
 	{
 		//printk("start xmitframe_swencrypt\n");
 		RT_TRACE(_module_rtl871x_xmit_c_,_drv_alert_,("### xmitframe_swencrypt\n"));
+		
 		switch(pattrib->encrypt){
 		case _WEP40_:
 		case _WEP104_:

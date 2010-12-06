@@ -21,9 +21,9 @@
 #define __CMD_OSDEP_H_
 
 
-#include "drv_conf.h"
-#include "osdep_service.h"
-#include "drv_types.h"
+#include <drv_conf.h>
+#include <osdep_service.h>
+#include <drv_types.h>
 
 extern sint _rtw_init_cmd_priv (struct	cmd_priv *pcmdpriv);
 extern sint _rtw_init_evt_priv(struct evt_priv *pevtpriv);

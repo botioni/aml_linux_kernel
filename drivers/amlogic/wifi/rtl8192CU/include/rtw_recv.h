@@ -20,9 +20,9 @@
 #ifndef _RTL871X_RECV_H_
 #define _RTL871X_RECV_H_
 
-#include "drv_conf.h"
-#include "osdep_service.h"
-#include "drv_types.h"
+#include <drv_conf.h>
+#include <osdep_service.h>
+#include <drv_types.h>
 
 #ifdef PLATFORM_OS_XP
 #define NR_RECVFRAME 256
@@ -143,7 +143,7 @@ struct rx_pkt_attrib	{
 
 	u32 RxPWDBAll;
 	s32	RecvSignalPower;
-	
+	int 	RxSNRdB[2];
 };
 
 
@@ -229,6 +229,8 @@ struct recv_priv {
 	u8 signal_strength;
 	u8 signal_qual;
 	u8 noise;
+	
+	int RxSNRdB[2];
 	struct smooth_rssi_data signal_qual_data;
 	struct smooth_rssi_data signal_strength_data;
 	

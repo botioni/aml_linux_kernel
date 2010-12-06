@@ -32,8 +32,6 @@
 #include <mach/am_regs.h>
 #include <mach/pinmux.h>
 
-/*
-For Malata 8726M, CPT10.2" */ 
 #define LCD_WIDTH       1024 
 #define LCD_HEIGHT      600
 #define MAX_WIDTH       1344//1100
@@ -179,7 +177,7 @@ void power_off_backlight(void)
     set_gpio_mode(GPIOC_bank_bit0_26(3), GPIOC_bit_bit0_26(3), GPIO_OUTPUT_MODE);
 }
 
-static void power_on_lcd(void)
+void power_on_lcd(void)
 {
     /* PIN_F21, GPIOC_11, Pull low, For LCD_3.3V */
     set_gpio_val(GPIOC_bank_bit0_26(11), GPIOC_bit_bit0_26(11), 0);
@@ -190,7 +188,7 @@ static void power_on_lcd(void)
     set_gpio_mode(GPIOC_bank_bit0_26(12), GPIOC_bit_bit0_26(12), GPIO_OUTPUT_MODE);
 }
 
-static void power_off_lcd(void)
+void power_off_lcd(void)
 {
     /* PIN_F20, GPIOC_12, Pull low, For LVDS IC */
     set_gpio_val(GPIOC_bank_bit0_26(12), GPIOC_bit_bit0_26(12), 0);

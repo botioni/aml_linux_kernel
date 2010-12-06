@@ -20,9 +20,9 @@
 #ifndef _RTL871X_RECV_H_
 #define _RTL871X_RECV_H_
 
-#include "drv_conf.h"
-#include "osdep_service.h"
-#include "drv_types.h"
+#include <drv_conf.h>
+#include <osdep_service.h>
+#include <drv_types.h>
 
 #ifdef PLATFORM_OS_XP
 #define NR_RECVFRAME 256

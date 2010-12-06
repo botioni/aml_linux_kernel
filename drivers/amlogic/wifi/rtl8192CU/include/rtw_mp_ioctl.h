@@ -20,13 +20,13 @@
 #ifndef _RTL871X_MP_IOCTL_H
 #define _RTL871X_MP_IOCTL_H
 
-#include "drv_conf.h"
-#include "osdep_service.h"
-#include "drv_types.h"
-#include "mp_custom_oid.h"
-#include "rtw_ioctl.h"
-#include "rtw_ioctl_rtl.h"
-#include "rtl8712_efuse.h"
+#include <drv_conf.h>
+#include <osdep_service.h>
+#include <drv_types.h>
+#include <mp_custom_oid.h>
+#include <rtw_ioctl.h>
+#include <rtw_ioctl_rtl.h>
+#include <rtl8712_efuse.h>
 
 
 #define TESTFWCMDNUMBER			1000000

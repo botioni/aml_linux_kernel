@@ -20,8 +20,8 @@
 #ifndef __IOCTL_QUERY_H
 #define __IOCTL_QUERY_H
 
-#include "drv_conf.h"
-#include "drv_types.h"
+#include <drv_conf.h>
+#include <drv_types.h>
 
 
 #ifdef PLATFORM_WINDOWS

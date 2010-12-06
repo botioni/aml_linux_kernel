@@ -1,7 +1,5 @@
 EXTRA_CFLAGS += -O1 -Wno-unused-variable -Wno-unused-value -Wno-unused-label -Wno-unused-parameter -Wno-uninitialized
-EXTRA_CFLAGS += -Wno-unused -Wno-unused-function
-
-export TOPDIR := $(PWD)
+EXTRA_CFLAGS += -I$(src)/include  -Wno-unused -Wno-unused-function
 
 include $(src)/config
 
@@ -41,6 +39,7 @@ endif
 
 ifeq ($(CONFIG_USB_HCI), y)
  
+
 _OS_INTFS_FILES := os_intf/osdep_service.o \
 				   os_intf/linux/os_intfs.o \
 				   os_intf/linux/usb_intf.o \
@@ -53,8 +52,6 @@ _HAL_INTFS_FILES := hal/$(RTL871X)/hal_init.o \
 		
 endif
 
-
-PWD := $(shell pwd)
 
 
 ifeq ($(CONFIG_PLATFORM_I386_PC), y)
@@ -132,6 +129,13 @@ KVER:= 2.6.28.10
 KSRC:= /home/mstar/mstar_linux/2.6.28.9/
 endif
 
+ifeq ($(CONFIG_PLATFORM_ARM_TCC8900), y)
+EXTRA_CFLAGS += -DCONFIG_LITTLE_ENDIAN -DCONFIG_PLATFORM_ANDROID #-DCONFIG_DEBUG_RTW_WX_SET_PRIV
+ARCH := arm
+CROSS_COMPILE = /usr/src/telechip/SDK_0127_20101006/prebuilt/linux-x86/toolchain/arm-eabi-4.3.1/bin/arm-eabi-
+KSRC := /usr/src/telechip/SDK_0127_20101006/kernel
+endif
+
 ifeq ($(CONFIG_PLATFORM_ARM_ANDROID_AML8726M), y)
 EXTRA_CFLAGS += -DCONFIG_LITTLE_ENDIAN -DCONFIG_PLATFORM_ANDROID
 ARCH ?= arm
@@ -142,7 +146,6 @@ endif
 
 ifneq ($(KERNELRELEASE),)
 
-obj-$(CONFIG_RTL8712_8188_8191_8192SU_USB_WIFI)	:= $(MODULE_NAME).o
 
 $(MODULE_NAME)-y += cmd/rtl871x_cmd.o cmd/$(RTL871X)_cmd.o
 
@@ -186,12 +189,18 @@ $(MODULE_NAME)-y += sta_mgt/rtl871x_sta_mgt.o
 
 $(MODULE_NAME)-y += xmit/rtl871x_xmit.o xmit/$(RTL871X)_xmit.o
 
+
+obj-$(CONFIG_RTL8712_8188_8191_8192SU_USB_WIFI)	:= $(MODULE_NAME).o
+
 else
+
+export CONFIG_RTL8712_8188_8191_8192SU_USB_WIFI = m
 
 all: modules
 
 modules:
-	$(MAKE) ARCH=$(ARCH) CROSS_COMPILE=$(CROSS_COMPILE) -C $(KSRC) M=$(PWD)  modules
+	$(MAKE) ARCH=$(ARCH) CROSS_COMPILE=$(CROSS_COMPILE) -C $(KSRC) M=$(shell pwd)  modules
+	arm-none-linux-gnueabi-strip --strip-debug --strip-unneeded $(MODDESTDIR)/$(MODULE_NAME).ko
 
 install:
 	install -p -m 644 $(MODULE_NAME).ko  $(MODDESTDIR)

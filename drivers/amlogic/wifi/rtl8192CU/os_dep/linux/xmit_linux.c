@@ -19,18 +19,18 @@
  ******************************************************************************/
 #define _XMIT_OSDEP_C_
 
-#include "../../include/drv_conf.h"
-#include "../../include/osdep_service.h"
-#include "../../include/drv_types.h"
+#include <drv_conf.h>
+#include <osdep_service.h>
+#include <drv_types.h>
 
-#include "../../include/if_ether.h"
-#include "../../include/ip.h"
-#include "../../include/rtw_byteorder.h"
-#include "../../include/wifi.h"
-#include "../../include/mlme_osdep.h"
-#include "../../include/xmit_osdep.h"
-#include "../../include/osdep_intf.h"
-#include "../../include/circ_buf.h"
+#include <if_ether.h>
+#include <ip.h>
+#include <rtw_byteorder.h>
+#include <wifi.h>
+#include <mlme_osdep.h>
+#include <xmit_osdep.h>
+#include <osdep_intf.h>
+#include <circ_buf.h>
 
 #ifdef CONFIG_RTL8712_TCP_CSUM_OFFLOAD_TX
 #include <linux/in.h>

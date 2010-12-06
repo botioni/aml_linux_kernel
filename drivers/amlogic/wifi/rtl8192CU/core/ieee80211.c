@@ -19,11 +19,11 @@
  ******************************************************************************/
 #define _IEEE80211_C
 
-#include "../include/drv_types.h"
-#include "../include/ieee80211.h"
-#include "../include/wifi.h"
-#include "../include/osdep_service.h"
-#include "../include/wlan_bssdef.h"
+#include <drv_types.h>
+#include <ieee80211.h>
+#include <wifi.h>
+#include <osdep_service.h>
+#include <wlan_bssdef.h>
 
 
 //-----------------------------------------------------------

@@ -20,8 +20,8 @@
 #ifndef	__RTL871X_RF_H_ 
 #define __RTL871X_RF_H_
 
-#include "drv_conf.h"
-#include "rtl871x_cmd.h"
+#include <drv_conf.h>
+#include <rtl871x_cmd.h>
 
 #define OFDM_PHY		1
 #define MIXED_PHY		2

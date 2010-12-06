@@ -19,12 +19,12 @@
  ******************************************************************************/ 
 #define _HCI_OPS_OS_C_
 
-#include "../../include/drv_conf.h"
-#include "../../include/osdep_service.h"
-#include "../../include/drv_types.h"
-#include "../../include/osdep_intf.h"
-#include "../../include/usb_ops.h"
-#include "../../include/circ_buf.h"
+#include <drv_conf.h>
+#include <osdep_service.h>
+#include <drv_types.h>
+#include <osdep_intf.h>
+#include <usb_ops.h>
+#include <circ_buf.h>
 
 #if defined (PLATFORM_LINUX) && defined (PLATFORM_WINDOWS)
 

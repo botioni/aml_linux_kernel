@@ -21,10 +21,10 @@
 
 #define _MLME_OSDEP_C_
 
-#include "../../include/drv_conf.h"
-#include "../../include/osdep_service.h"
-#include "../../include/drv_types.h"
-#include "../../include/mlme_osdep.h"
+#include <drv_conf.h>
+#include <osdep_service.h>
+#include <drv_types.h>
+#include <mlme_osdep.h>
 
 #include <linux/compiler.h>
 #include <linux/kernel.h>

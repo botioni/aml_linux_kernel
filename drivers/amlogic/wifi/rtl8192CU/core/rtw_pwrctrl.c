@@ -19,10 +19,10 @@
  ******************************************************************************/
 #define _RTL871X_PWRCTRL_C_
 
-#include "../include/drv_conf.h"
-#include "../include/osdep_service.h"
-#include "../include/drv_types.h"
-#include "../include/osdep_intf.h"
+#include <drv_conf.h>
+#include <osdep_service.h>
+#include <drv_types.h>
+#include <osdep_intf.h>
 
 #ifdef CONFIG_SDIO_HCI
 #ifdef PLATFORM_LINUX
@@ -57,7 +57,7 @@ void autosuspend_enter(_adapter* padapter)
 			usb_autopm_put_interface(padapter->dvobjpriv.pusbintf);	
 		#elif (LINUX_VERSION_CODE>=KERNEL_VERSION(2,6,20))		
 			usb_autopm_enable(padapter->dvobjpriv.pusbintf);
-              #else		
+		#else
 			usb_autosuspend_device(padapter->dvobjpriv.pusbdev, 1);
 		#endif
 	}
@@ -87,7 +87,7 @@ int autoresume_enter(_adapter* padapter)
 				printk( "can't get autopm: %d\n", result);
 				result = _FAIL;
 				goto error_exit;
-			}
+			}			
 		#elif (LINUX_VERSION_CODE>=KERNEL_VERSION(2,6,20))				
 			usb_autopm_disable(padapter->dvobjpriv.pusbintf);
 		#else
@@ -241,9 +241,9 @@ void before_assoc_ps_ctrl_wk_hdl(_adapter *padapter, u8 *pbuf, int sz)
 #ifdef CONFIG_AUTOSUSPEND		
 	if(padapter->registrypriv.usbss_enable)
 	{
-		autosuspend_enter(padapter);
+		autosuspend_enter(padapter);	
 	}
-	else	
+	else
 #endif	
 #endif
 	{
@@ -306,10 +306,11 @@ void InactivePSWorkItemCallback(struct work_struct *work)
 	rt_rf_power_state rfpwrstate;
 
 #ifdef SUPPORT_HW_RFOFF_DETECTED
-	pm_message_t message;
-	if(pwrpriv->bips_processing == _TRUE)	return;
-		
-	//printk("==> fw report state(0x%x)\n",rtw_read8(padapter,0x1ca));
+	pm_message_t message;	
+
+	if(pwrpriv->bips_processing == _TRUE)	return;		
+	
+	//printk("==> fw report state(0x%x)\n",rtw_read8(padapter,0x1ca));	
 	if(padapter->pwrctrlpriv.bHWPwrPindetect) 
 	{
 	#ifdef CONFIG_AUTOSUSPEND
@@ -335,7 +336,7 @@ void InactivePSWorkItemCallback(struct work_struct *work)
 			}			
 		}
 		else
-       #endif
+	#endif
 		{
 			rfpwrstate = RfOnOffDetect(padapter);
 			printk("@@@@- #2  %s==> rfstate:%s \n",__FUNCTION__,(rfpwrstate==rf_on)?"rf_on":"rf_off");

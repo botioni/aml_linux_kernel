@@ -21,9 +21,9 @@
 #define __RTL871X_SECURITY_H_
 
 
-#include "drv_conf.h"
-#include "osdep_service.h"
-#include "drv_types.h"
+#include <drv_conf.h>
+#include <osdep_service.h>
+#include <drv_types.h>
 
 
 #define _NO_PRIVACY_	0x0

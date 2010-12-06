@@ -20,9 +20,9 @@
 #ifndef __IOCTL_H
 #define __IOCTL_H
 
-#include "drv_conf.h"
-#include "osdep_service.h"
-#include "drv_types.h"
+#include <drv_conf.h>
+#include <osdep_service.h>
+#include <drv_types.h>
 
 #ifndef OID_802_11_CAPABILITY
 	#define OID_802_11_CAPABILITY                   0x0d010122

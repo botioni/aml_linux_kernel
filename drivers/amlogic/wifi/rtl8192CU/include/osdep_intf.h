@@ -21,9 +21,9 @@
 #ifndef __OSDEP_INTF_H_
 #define __OSDEP_INTF_H_
 
-#include "drv_conf.h"
-#include "osdep_service.h"
-#include "drv_types.h"
+#include <drv_conf.h>
+#include <osdep_service.h>
+#include <drv_types.h>
 
 #ifdef PLATFORM_LINUX
 
@@ -45,9 +45,9 @@
 #endif
 
 #ifdef CONFIG_USB_HCI
-#include "usb.h"
-#include "usbioctl.h"
-#include "usbdlib.h"
+#include <usb.h>
+#include <usbioctl.h>
+#include <usbdlib.h>
 #endif
 
 #endif

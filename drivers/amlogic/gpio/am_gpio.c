@@ -140,7 +140,7 @@ static inline int _gpio_bank_read(cmd_t  *op)
 	
 	return op->val ;
 }
-static  inline int _gpio_run_cmd(char *cmd,cmd_t  *op)
+static  inline int _gpio_run_cmd(const char *cmd,cmd_t  *op)
 {
 #define  MAX_NUMBER_PARA	10
 
@@ -232,7 +232,7 @@ static ssize_t am_gpio_write(struct file *file, const char __user *buf,
 	
 	
 }
-static int am_gpio_ioctl(struct tty_struct *tty, struct file *file,
+static int am_gpio_ioctl(struct inode *inode, struct file *file,
 		 		unsigned int ctl_cmd, unsigned long arg)
 {
 	cmd_t  *op=file->private_data;
@@ -282,7 +282,7 @@ static const struct file_operations am_gpio_fops = {
 	.poll		= NULL,
 };
 
-ssize_t gpio_cmd_restore(struct class *cla,struct class_attribute *attr,char *buf)
+ssize_t gpio_cmd_restore(struct class *cla,struct class_attribute *attr,const char *buf,size_t count)
 {
 	cmd_t   op;
 	_gpio_run_cmd(buf,&op);

@@ -20,9 +20,9 @@
 #ifndef _IO_H_
 #define _IO_H_
 
-#include "drv_conf.h"
-#include "osdep_service.h"
-#include "osdep_intf.h"
+#include <drv_conf.h>
+#include <osdep_service.h>
+#include <osdep_intf.h>
 
 #ifdef PLATFORM_LINUX
 #include <asm/byteorder.h>

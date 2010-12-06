@@ -20,7 +20,7 @@
 #ifndef __BASIC_TYPES_H__
 #define __BASIC_TYPES_H__
 
-#include "drv_conf.h"
+#include <drv_conf.h>
 
 
 #define SUCCESS	0

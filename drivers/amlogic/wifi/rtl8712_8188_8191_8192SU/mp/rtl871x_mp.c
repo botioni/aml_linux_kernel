@@ -19,12 +19,12 @@
  ******************************************************************************/ 
 #define _RTL871X_MP_C_
 
-#include "../include/drv_conf.h"
-#include "../include/osdep_service.h"
-#include "../include/drv_types.h"
+#include <drv_conf.h>
+#include <osdep_service.h>
+#include <drv_types.h>
 
-#include "../include/rtl871x_mp_phy_regdef.h"
-#include "../include/rtl8712_cmd.h"
+#include <rtl871x_mp_phy_regdef.h>
+#include <rtl8712_cmd.h>
 
 #ifdef CONFIG_MP_INCLUDED
 

@@ -20,10 +20,10 @@
 
 #define _OSDEP_SERVICE_C_
 
-#include "../include/drv_conf.h"
-#include "../include/osdep_service.h"
-#include "../include/drv_types.h"
-#include "../include/recv_osdep.h"
+#include <drv_conf.h>
+#include <osdep_service.h>
+#include <drv_types.h>
+#include <recv_osdep.h>
 
 
 #define RT_TAG	'1178'

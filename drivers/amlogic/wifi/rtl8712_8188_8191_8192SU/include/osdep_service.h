@@ -20,8 +20,8 @@
 #ifndef __OSDEP_SERVICE_H_
 #define __OSDEP_SERVICE_H_
 
-#include "drv_conf.h"
-#include "basic_types.h"
+#include <drv_conf.h>
+#include <basic_types.h>
 //#include <rtl871x_byteorder.h>
 
 #define _SUCCESS	1
@@ -313,7 +313,7 @@ static __inline void _set_workitem(_workitem *pwork)
 #include <osdep_ce_service.h>
 #endif
 
-#include "rtl871x_byteorder.h"
+#include <rtl871x_byteorder.h>
 
 #ifndef BIT
 	#define BIT(x)	( 1 << (x))

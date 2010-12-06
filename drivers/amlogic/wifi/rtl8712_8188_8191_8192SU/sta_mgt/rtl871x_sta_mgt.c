@@ -19,11 +19,11 @@
  ******************************************************************************/ 
 #define _RTL871X_STA_MGT_C_
 
-#include "../include/drv_conf.h"
-#include "../include/osdep_service.h"
-#include "../include/drv_types.h"
-#include "../include/recv_osdep.h"
-#include "../include/xmit_osdep.h"
+#include <drv_conf.h>
+#include <osdep_service.h>
+#include <drv_types.h>
+#include <recv_osdep.h>
+#include <xmit_osdep.h>
 
 
 #if defined (PLATFORM_LINUX) && defined (PLATFORM_WINDOWS)
@@ -32,7 +32,7 @@
 
 #endif
 
-#include "../include/sta_info.h"
+#include <sta_info.h>
 
 
 static void _init_stainfo(struct sta_info *psta)

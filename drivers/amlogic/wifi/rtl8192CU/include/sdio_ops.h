@@ -20,13 +20,13 @@
 #ifndef __SDIO_OPS_H_
 #define __SDIO_OPS_H_
 
-#include "drv_conf.h"
-#include "osdep_service.h"
-#include "drv_types.h"
-#include "osdep_intf.h"
+#include <drv_conf.h>
+#include <osdep_service.h>
+#include <drv_types.h>
+#include <osdep_intf.h>
 
 #ifdef PLATFORM_LINUX
-#include "sdio_ops_linux.h"
+#include <sdio_ops_linux.h>
 #endif
 
 

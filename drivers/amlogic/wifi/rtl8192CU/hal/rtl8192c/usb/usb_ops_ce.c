@@ -17,10 +17,10 @@
 *******************************************************************************/
 #define _HCI_OPS_OS_C_
 
-#include "../../../include/drv_conf.h"
-#include "../../../include/osdep_service.h"
-#include "../../../include/drv_types.h"
-#include "../../../include/osdep_intf.h"
+#include <drv_conf.h>
+#include <osdep_service.h>
+#include <drv_types.h>
+#include <osdep_intf.h>
 
 #ifndef PLATFORM_OS_CE
     #error "PLATFORM_OS_CE shall be set \n"
@@ -30,11 +30,11 @@
 	#error "CONFIG_USB_HCI shall be on!\n"
 #endif
 
-#include "../../../include/rtl8712_spec.h"
-#include "../../../include/usb_ops.h"
-#include "../../../include/recv_osdep.h"
+#include <rtl8712_spec.h>
+#include <usb_ops.h>
+#include <recv_osdep.h>
 
-#include "../../../include/circ_buf.h"
+#include <circ_buf.h>
 
 
 struct zero_bulkout_context

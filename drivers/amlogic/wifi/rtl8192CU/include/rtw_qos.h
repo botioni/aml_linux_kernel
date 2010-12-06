@@ -21,8 +21,8 @@
 
 #ifndef _RTL871X_QOS_H_
 #define _RTL871X_QOS_H_
-#include "drv_conf.h"
-#include "osdep_service.h"
+#include <drv_conf.h>
+#include <osdep_service.h>
 
 
 

@@ -19,18 +19,18 @@
  ******************************************************************************/ 
 #define _RTL871X_IOCTL_LINUX_C_
 
-#include "../include/drv_conf.h"
-#include "../include/osdep_service.h"
-#include "../include/drv_types.h"
-#include "../include/wlan_bssdef.h"
-#include "../include/rtl871x_debug.h"
-#include "../include/wifi.h"
-#include "../include/rtl871x_mlme.h"
-#include "../include/rtl871x_ioctl.h"
-#include "../include/rtl871x_ioctl_set.h"
-#include "../include/rtl871x_ioctl_query.h"
+#include <drv_conf.h>
+#include <osdep_service.h>
+#include <drv_types.h>
+#include <wlan_bssdef.h>
+#include <rtl871x_debug.h>
+#include <wifi.h>
+#include <rtl871x_mlme.h>
+#include <rtl871x_ioctl.h>
+#include <rtl871x_ioctl_set.h>
+#include <rtl871x_ioctl_query.h>
 #ifdef CONFIG_MP_INCLUDED
-#include "../include/rtl871x_mp_ioctl.h"
+#include <rtl871x_mp_ioctl.h>
 #endif
 
 #include <linux/wireless.h>
@@ -3845,7 +3845,11 @@ static struct iw_statistics *r871x_get_wireless_stats(struct net_device *dev)
 	}
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,14))
 	//	Use the percentage for signal, noise display.
-	piwstats->qual.updated = IW_QUAL_ALL_UPDATED;
+	piwstats->qual.updated = IW_QUAL_ALL_UPDATED
+		#ifdef CONFIG_PLATFORM_ANDROID
+		| IW_QUAL_DBM
+		#endif
+		;
 #else
 	//IW_QUAL_DBM= 0x8, if driver use this flag, wireless extension will show value of dbm.
 	//remove this flag for show percentage 0~100

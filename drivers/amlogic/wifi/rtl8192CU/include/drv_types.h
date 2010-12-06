@@ -28,9 +28,9 @@
 #ifndef __DRV_TYPES_H__
 #define __DRV_TYPES_H__
 
-#include "drv_conf.h"
-#include "osdep_service.h"
-#include "wlan_bssdef.h"
+#include <drv_conf.h>
+#include <osdep_service.h>
+#include <wlan_bssdef.h>
 
 
 #ifdef CONFIG_RTL8711
@@ -40,7 +40,7 @@
 #include <rtl8712_spec.h>
 #endif
 #ifdef CONFIG_RTL8192C
-#include "rtl8192c_spec.h"
+#include <rtl8192c_spec.h>
 #endif
 
 
@@ -53,7 +53,7 @@
 #endif
 
 #ifdef PLATFORM_LINUX
-#include "drv_types_linux.h"
+#include <drv_types_linux.h>
 #endif
 
 enum _NIC_VERSION {
@@ -72,31 +72,31 @@ enum{
 typedef struct _ADAPTER _adapter, ADAPTER,*PADAPTER;
 
 #ifdef CONFIG_80211N_HT
-#include "rtw_ht.h"
+#include <rtw_ht.h>
 #endif
 
-#include "rtw_cmd.h"
-#include "wlan_bssdef.h"
-#include "rtw_xmit.h"
-#include "rtw_recv.h"
-#include "hal_init.h"
-#include "rtw_qos.h"
-#include "rtw_security.h"
-#include "rtw_pwrctrl.h"
-#include "rtw_io.h"
-#include "rtw_eeprom.h"
-#include "sta_info.h"
-#include "rtw_mlme.h"
-#include "rtw_mp.h"
-#include "rtw_debug.h"
-#include "rtw_rf.h"
-#include "rtw_event.h"
-#include "rtw_led.h"
-#include "rtw_mlme_ext.h"
+#include <rtw_cmd.h>
+#include <wlan_bssdef.h>
+#include <rtw_xmit.h>
+#include <rtw_recv.h>
+#include <hal_init.h>
+#include <rtw_qos.h>
+#include <rtw_security.h>
+#include <rtw_pwrctrl.h>
+#include <rtw_io.h>
+#include <rtw_eeprom.h>
+#include <sta_info.h>
+#include <rtw_mlme.h>
+#include <rtw_mp.h>
+#include <rtw_debug.h>
+#include <rtw_rf.h>
+#include <rtw_event.h>
+#include <rtw_led.h>
+#include <rtw_mlme_ext.h>
 
 #ifdef CONFIG_DRVEXT_MODULE
-#include "tl871x_drvext.h"
-#include "sc_api.h"
+#include <rtl871x_drvext.h>
+#include <wsc_api.h>
 #endif
 
 

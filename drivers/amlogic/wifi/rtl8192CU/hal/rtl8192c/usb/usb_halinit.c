@@ -19,11 +19,11 @@
  ******************************************************************************/
 #define _HCI_HAL_INIT_C_
 
-#include "../../../include/drv_conf.h"
-#include "../../../include/osdep_service.h"
-#include "../../../include/drv_types.h"
-#include "../../../include/hal_init.h"
-#include "../../../include/rtl8712_efuse.h"
+#include <drv_conf.h>
+#include <osdep_service.h>
+#include <drv_types.h>
+#include <hal_init.h>
+#include <rtl8712_efuse.h>
 
 #if defined (PLATFORM_LINUX) && defined (PLATFORM_WINDOWS)
 
@@ -37,9 +37,9 @@
 
 #endif
 
-#include "../../../include/usb_ops.h"
-#include "../../../include/usb_hal.h"
-#include "../../../include/usb_osintf.h"
+#include <usb_ops.h>
+#include <usb_hal.h>
+#include <usb_osintf.h>
 
 //endpoint number 1,2,3,4,5
 // bult in : 1
@@ -359,7 +359,7 @@ void rtl8192cu_interface_configure(_adapter *padapter)
 #endif
 
 #if USB_RX_AGGREGATION_92C
-	pHalData->UsbRxAggMode		= USB_RX_AGG_DMA_USB;// USB_RX_AGG_DMA;
+	pHalData->UsbRxAggMode		=USB_RX_AGG_DMA;  // USB_RX_AGG_MIX;
 	pHalData->UsbRxAggBlockCount	= 8; //unit : 512b
 	pHalData->UsbRxAggBlockTimeout	= 0x6;
 	pHalData->UsbRxAggPageCount	= 48; //uint :128 b //0x0A;	// 10 = MAX_RX_DMA_BUFFER_SIZE/2/pHalData->UsbBulkOutSize
@@ -1361,7 +1361,7 @@ _InitUsbAggregationSetting(
 			valueDMA &= ~RXDMA_AGG_EN;
 			valueUSB |= USB_AGG_EN;
 			break;
-		case USB_RX_AGG_DMA_USB:
+		case USB_RX_AGG_MIX:
 			valueDMA |= RXDMA_AGG_EN;
 			valueUSB |= USB_AGG_EN;
 			break;
@@ -1385,7 +1385,7 @@ _InitUsbAggregationSetting(
 			rtw_write8(Adapter, REG_USB_AGG_TH, pHalData->UsbRxAggBlockCount);
 			rtw_write8(Adapter, REG_USB_AGG_TO, pHalData->UsbRxAggBlockTimeout);
 			break;
-		case USB_RX_AGG_DMA_USB:
+		case USB_RX_AGG_MIX:
 			rtw_write8(Adapter, REG_RXDMA_AGG_PG_TH, pHalData->UsbRxAggPageCount);
 			rtw_write8(Adapter, REG_USB_DMA_AGG_TO, pHalData->UsbRxAggPageTimeout);
 			rtw_write8(Adapter, REG_USB_AGG_TH, pHalData->UsbRxAggBlockCount);
@@ -2165,7 +2165,6 @@ _func_enter_;
 	_InitBeaconMaxError(padapter, _TRUE);
 	_BeaconFunctionEnable(padapter, _FALSE, _FALSE);
 	
-
 #if ENABLE_USB_DROP_INCORRECT_OUT
 	_InitHardwareDropIncorrectBulkOut(padapter);
 #endif
@@ -2173,7 +2172,6 @@ _func_enter_;
 	if(pHalData->bRDGEnable){
 		_InitRDGSetting(padapter);
 	}
-
 #if ((0 == MP_DRIVER) && RTL8192CU_FW_DOWNLOAD_ENABLE)
 	status = FirmwareDownload92C(padapter);
 	if(status == _FAIL)
@@ -2197,26 +2195,24 @@ _func_enter_;
 		DBG_8192C("fw download ok!\n");	
 	}
 #endif
-
 	//if(pMgntInfo->RegRfOff == TRUE){
 	//	pHalData->eRFPowerState = eRfOff;
 	//}
 
 	// Set RF type for BB/RF configuration	
 	_InitRFType(padapter);//->_ReadRFType()
-
 	// Save target channel
 	// <Roger_Notes> Current Channel will be updated again later.
 	pHalData->CurrentChannel = 6;//default set to 6
 
 	status = PHY_MACConfig8192C(padapter);
 	rtw_write32(padapter, REG_RCR, rtw_read32(padapter, REG_RCR) & ~RCR_ADF);
+	
+	
 	if(status == _FAIL)
 	{
 		goto exit;
 	}
-
-	//
 	//d. Initialize BB related configurations.
 	//
 	status = PHY_BBConfig8192C(padapter);
@@ -2224,7 +2220,6 @@ _func_enter_;
 	{
 		goto exit;
 	}
-
 	// 92CU use 3-wire to r/w RF
 	//pHalData->Rf_Mode = RF_OP_By_SW_3wire;
 #ifdef CONFIG_AUTOSUSPEND	
@@ -2236,12 +2231,12 @@ _func_enter_;
 	}
 #endif
 #endif
+
 	status = PHY_RFConfig8192C(padapter);	
 	if(status == _FAIL)
 	{
 		goto exit;
 	}
-
 	if(IS_VENDOR_UMC_A_CUT(pHalData->VersionID) && !IS_92C_SERIAL(pHalData->VersionID))
 	{
 		PHY_SetRFReg(padapter, RF90_PATH_A, RF_RX_G1, bMaskDWord, 0x30255);
@@ -2256,7 +2251,6 @@ _func_enter_;
 
 	_BBTurnOnBlock(padapter);
 	//NicIFSetMacAddress(padapter, padapter->PermanentAddress);
-
 	_InitSecuritySetting(padapter);
 	_RfPowerSave(padapter);
 
@@ -2292,6 +2286,7 @@ _func_enter_;
 	rtw_write8(padapter, 0xfe40, 0xe0);
 	rtw_write8(padapter, 0xfe41, 0x8d);
 	rtw_write8(padapter, 0xfe42, 0x80);
+	rtw_write32(padapter,0x20c,0xfd0320);
 #endif
 
 	//misc
@@ -2320,7 +2315,6 @@ _func_enter_;
 	rtw_write8(padapter, 0x15, 0xe9);//suggest by Johnny for lower temperature
 	//_dbg_dump_macreg(padapter);
 	pHalData->bDumpRxPkt = _FAIL;
-
 exit:
 
 _func_exit_;

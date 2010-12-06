@@ -18,14 +18,14 @@
  *
  ******************************************************************************/
 #define _RTL8192C_XMIT_C_
-#include "../../../include/drv_conf.h"
-#include "../../../include/osdep_service.h"
-#include "../../../include/drv_types.h"
-#include "../../../include/rtw_byteorder.h"
-#include "../../../include/wifi.h"
-#include "../../../include/osdep_intf.h"
-#include "../../../include/circ_buf.h"
-#include "../../../include/usb_ops.h"
+#include <drv_conf.h>
+#include <osdep_service.h>
+#include <drv_types.h>
+#include <rtw_byteorder.h>
+#include <wifi.h>
+#include <osdep_intf.h>
+#include <circ_buf.h>
+#include <usb_ops.h>
 
 #if defined (PLATFORM_LINUX) && defined (PLATFORM_WINDOWS)
 #error "Shall be Linux or Windows, but not both!\n"
@@ -1104,7 +1104,7 @@ s32 pre_xmitframe(_adapter *padapter, struct xmit_frame *pxmitframe)
 
 	rtw_do_queue_select(padapter, pattrib);
 	
-	_enter_critical(&pxmitpriv->lock, &irqL);
+	_enter_critical_bh(&pxmitpriv->lock, &irqL);
 	
 	if (rtw_txframes_sta_ac_pending(padapter, pattrib) > 0)
 		goto enqueue;
@@ -1115,7 +1115,7 @@ s32 pre_xmitframe(_adapter *padapter, struct xmit_frame *pxmitframe)
 #ifdef CONFIG_AP_MODE
 	if(xmitframe_enqueue_for_sleeping_sta(padapter, pxmitframe) == _TRUE)
 	{
-		_exit_critical(&pxmitpriv->lock, &irqL);
+		_exit_critical_bh(&pxmitpriv->lock, &irqL);
 		return _FALSE;
 	}
 #endif
@@ -1124,7 +1124,7 @@ s32 pre_xmitframe(_adapter *padapter, struct xmit_frame *pxmitframe)
 	if (pxmitbuf == NULL)
 		goto enqueue;
 	
-        _exit_critical(&pxmitpriv->lock, &irqL);
+        _exit_critical_bh(&pxmitpriv->lock, &irqL);
 
 	pxmitframe->pxmitbuf = pxmitbuf;
 	pxmitframe->buf_addr = pxmitbuf->pbuf;
@@ -1139,7 +1139,7 @@ s32 pre_xmitframe(_adapter *padapter, struct xmit_frame *pxmitframe)
 
 enqueue:
 	res = xmitframe_enqueue(padapter, pxmitframe);
-	_exit_critical(&pxmitpriv->lock, &irqL);
+	_exit_critical_bh(&pxmitpriv->lock, &irqL);
 
 	if (res != _SUCCESS) {
 		RT_TRACE(_module_xmit_osdep_c_, _drv_err_, ("pre_xmitframe: enqueue xmitframe fail\n"));

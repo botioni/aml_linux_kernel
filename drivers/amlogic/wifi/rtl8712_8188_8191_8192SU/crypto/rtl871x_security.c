@@ -19,11 +19,11 @@
  ******************************************************************************/ 
 #define  _RTL871X_SECURITY_C_
 
-#include "../include/drv_conf.h"
-#include "../include/osdep_service.h"
-#include "../include/drv_types.h"
-#include "../include/wifi.h"
-#include "../include/osdep_intf.h"
+#include <drv_conf.h>
+#include <osdep_service.h>
+#include <drv_types.h>
+#include <wifi.h>
+#include <osdep_intf.h>
 
 
 

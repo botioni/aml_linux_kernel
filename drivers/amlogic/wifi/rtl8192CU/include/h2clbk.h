@@ -22,8 +22,8 @@
 #define _H2CLBK_H_
 
 
-#include "tl8711_spec.h"
-#include "ypeDef.h"
+#include <rtl8711_spec.h>
+#include <TypeDef.h>
 
 
 void _lbk_cmd(PADAPTER Adapter);

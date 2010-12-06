@@ -19,12 +19,12 @@
  ******************************************************************************/ 
 #define _HCI_OPS_C_
 
-#include "../../include/drv_conf.h"
-#include "../../include/osdep_service.h"
-#include "../../include/drv_types.h"
-#include "../../include/osdep_intf.h"
-#include "../../include/usb_ops.h"
-#include "../../include/recv_osdep.h"
+#include <drv_conf.h>
+#include <osdep_service.h>
+#include <drv_types.h>
+#include <osdep_intf.h>
+#include <usb_ops.h>
+#include <recv_osdep.h>
 
 #if defined (PLATFORM_LINUX) && defined (PLATFORM_WINDOWS)
 	#error "Shall be Linux or Windows, but not both!\n"
@@ -46,7 +46,7 @@
 #endif
 #endif
 
-#include "../../include/rtl871x_byteorder.h"
+#include <rtl871x_byteorder.h>
 
 u8 usb_read8(struct intf_hdl *pintfhdl, u32 addr)
 {

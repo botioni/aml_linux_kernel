@@ -19,14 +19,14 @@
  ******************************************************************************/
 #define _RTL871X_MP_IOCTL_C_
 
-#include "../include/drv_conf.h"
-#include "../include/osdep_service.h"
-#include "../include/drv_types.h"
-#include "../include/mlme_osdep.h"
+#include <drv_conf.h>
+#include <osdep_service.h>
+#include <drv_types.h>
+#include <mlme_osdep.h>
 
-#include "../include/rtw_mp.h"
-#include "../include/rtw_mp_ioctl.h"
-#include "../include/rtw_mp_phy_regdef.h"
+#include <rtw_mp.h>
+#include <rtw_mp_ioctl.h>
+#include <rtw_mp_phy_regdef.h>
 
 #ifdef PLATFORM_LINUX
 NDIS_STATUS oid_null_function(struct oid_par_priv *poid_par_priv)

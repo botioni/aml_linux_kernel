@@ -18,17 +18,17 @@
  *
  ******************************************************************************/
 #define _RTL8192CU_RECV_C_
-#include "../../../include/drv_conf.h"
-#include "../../../include/osdep_service.h"
-#include "../../../include/drv_types.h"
-#include "../../../include/recv_osdep.h"
-#include "../../../include/mlme_osdep.h"
-#include "../../../include/ip.h"
-#include "../../../include/if_ether.h"
-#include "../../../include/ethernet.h"
+#include <drv_conf.h>
+#include <osdep_service.h>
+#include <drv_types.h>
+#include <recv_osdep.h>
+#include <mlme_osdep.h>
+#include <ip.h>
+#include <if_ether.h>
+#include <ethernet.h>
 
 #ifdef CONFIG_USB_HCI
-#include "../../../include/usb_ops.h"
+#include <usb_ops.h>
 #endif
 
 #if defined (PLATFORM_LINUX) && defined (PLATFORM_WINDOWS)
@@ -37,8 +37,8 @@
 
 #endif
 
-#include "../../../include/wifi.h"
-#include "../../../include/circ_buf.h"
+#include <wifi.h>
+#include <circ_buf.h>
 
 
 int	rtw_init_recv_priv(struct recv_priv *precvpriv, _adapter *padapter)
@@ -300,15 +300,15 @@ void rtl8192cu_update_recvframe_attrib_from_recvstat(union recv_frame *precvfram
 	if(pHalData->bDumpRxPkt){
 		printk("### rxdw0=0x%08x #### \n", le32_to_cpu(prxstat->rxdw0));	
 		printk("pkt_len=0x%04x\n",(le32_to_cpu(prxstat->rxdw0)&0x3FFF));
-    	       printk("drvinfo_sz=%d\n", drvinfo_sz);
-	       printk("physt=%d\n", physt);
-	       printk("shift=%d\n", shift);
-	       printk("qos=%d\n", qos);
-	       printk("icverr=%d\n", icverr);
-	       printk("htc=%d\n", htc);
-	       printk("bdecrypted=%d\n", pattrib->bdecrypted);
-	       printk("mcs_rate=%d\n", pattrib->mcs_rate);
-	       printk("rxht=%d\n", pattrib->rxht);
+		printk("drvinfo_sz=%d\n", drvinfo_sz);
+		printk("physt=%d\n", physt);
+		printk("shift=%d\n", shift);
+		printk("qos=%d\n", qos);
+		printk("icverr=%d\n", icverr);
+		printk("htc=%d\n", htc);
+		printk("bdecrypted=%d\n", pattrib->bdecrypted);
+		printk("mcs_rate=%d\n", pattrib->mcs_rate);
+		printk("rxht=%d\n", pattrib->rxht);
 	}
 #endif
 	

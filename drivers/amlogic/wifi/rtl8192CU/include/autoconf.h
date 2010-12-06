@@ -48,7 +48,6 @@
 
 #define CONFIG_IPS	1
 #define CONFIG_LPS	1
-#define CONFIG_PM 	1
 #define CONFIG_BT_COEXIST  	1
 #define CONFIG_ANTENNA_DIVERSITY	1
 

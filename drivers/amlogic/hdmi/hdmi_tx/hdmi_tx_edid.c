@@ -1005,7 +1005,7 @@ HDMI_Video_Codes_t hdmitx_edid_get_VIC(hdmitx_dev_t* hdmitx_device, const char* 
 	  int  i,j,count=ARRAY_SIZE(dispmode_VIC_tab);
 	  HDMI_Video_Codes_t vic=HDMI_Unkown;
     int mode_name_len=0;
-    printk("disp_mode is %s\n", disp_mode);
+    //printk("disp_mode is %s\n", disp_mode);
     for(i=0;i<count;i++)
     {
         if(strncmp(disp_mode, dispmode_VIC_tab[i].disp_mode, strlen(dispmode_VIC_tab[i].disp_mode))==0)

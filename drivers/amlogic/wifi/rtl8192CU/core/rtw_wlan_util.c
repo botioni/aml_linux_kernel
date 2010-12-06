@@ -19,10 +19,10 @@
  ******************************************************************************/
 #define _RTL871X_WLAN_UTIL_C_
 
-#include "../include/drv_conf.h"
-#include "../include/osdep_service.h"
-#include "../include/drv_types.h"
-#include "../include/wifi.h"
+#include <drv_conf.h>
+#include <osdep_service.h>
+#include <drv_types.h>
+#include <wifi.h>
 
 unsigned int EDCAParam[maxAP][3] =
 {          // UL			DL
@@ -597,6 +597,7 @@ void write_cam(_adapter *padapter, u8 entry, u16 ctrl, u8 *mac, u8 *key)
 	}
 
 }
+
 
 static u32 _ReadCAM(_adapter *padapter ,u32 addr)
 {
