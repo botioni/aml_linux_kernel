@@ -225,7 +225,6 @@ static void set_tcon_pinmux(void)
 #ifdef CONFIG_SN7325
     configIO(1, 0);
     setIO_level(1, 0, 1);
-    configIO(0, 0);
     setIO_level(1, 1, 2);
 #endif
 }
