@@ -339,6 +339,8 @@ restart:
         /* enable IRQ after the pen was lifted */
         if (ts->pendown) {
             ts->pendown = 0;
+            input_report_abs(ts->input, ABS_MT_TOUCH_MAJOR, 0);
+            input_report_abs(ts->input, ABS_MT_WIDTH_MAJOR, 0);
             input_mt_sync(ts->input);
             input_sync(ts->input);
             printk(KERN_INFO "UP\n");

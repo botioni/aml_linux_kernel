@@ -269,7 +269,7 @@ static void itk_work(struct work_struct *work)
                     #ifdef ITK_TS_DEBUG_REPORT
                     printk(KERN_INFO "\nreport ABS_MT_TRACKING_ID %d\n", event->contactid);
                     #endif
-                    input_report_abs(ts->input, ABS_MT_TOUCH_MAJOR, event->pendown);
+                    input_report_abs(ts->input, ABS_MT_TOUCH_MAJOR, 1);
                     #ifdef ITK_TS_DEBUG_REPORT
                     printk(KERN_INFO "report ABS_MT_TOUCH_MAJOR %d\n", event->pendown);
                     #endif
@@ -325,6 +325,8 @@ restart:
         /* enable IRQ after the pen was lifted */
         if (ts->pendown) {
             ts->pendown = 0;
+            input_report_abs(ts->input, ABS_MT_TOUCH_MAJOR, 0);
+            input_report_abs(ts->input, ABS_MT_WIDTH_MAJOR, 0);
             input_mt_sync(ts->input);
             #ifdef ITK_TS_DEBUG_REPORT
             printk(KERN_INFO "\ninput_mt_sync\n");
