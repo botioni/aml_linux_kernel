@@ -599,7 +599,12 @@ int ge2d_context_config_ex(ge2d_context_t *context, config_para_ex_t *ge2d_confi
     src_dst_para_t  tmp;
     unsigned index = 0;
     unsigned alloc_canvas_offset = 0;
-
+    ge2d_src1_gen_t *src1_gen_cfg  ;
+    ge2d_src2_dst_data_t *src2_dst_data_cfg;
+    ge2d_src2_dst_gen_t *src2_dst_gen_cfg;	
+    ge2d_dp_gen_t *dp_gen_cfg ;	
+    ge2d_cmd_t *ge2d_cmd_cfg ;
+	
     //setup src and dst  
     switch (ge2d_config->src_para.mem_type){
         case  CANVAS_OSD0:
@@ -712,7 +717,7 @@ int ge2d_context_config_ex(ge2d_context_t *context, config_para_ex_t *ge2d_confi
     ge2dgen_dst(context,ge2d_config->dst_para.canvas_index,ge2d_config->dst_para.format); 
     ge2dgen_dst_clip(context,ge2d_config->dst_para.left, ge2d_config->dst_para.top, ge2d_config->dst_para.width, ge2d_config->dst_para.height, DST_CLIP_MODE_INSIDE); 
 
-    ge2d_src1_gen_t *src1_gen_cfg = ge2d_wq_get_src_gen(context);     
+    src1_gen_cfg = ge2d_wq_get_src_gen(context);     
     src1_gen_cfg->fill_mode = ge2d_config->src_para.fill_mode;
     src1_gen_cfg->chfmt_rpt_pix = 0;
     src1_gen_cfg->cvfmt_rpt_pix = 0;
@@ -721,13 +726,13 @@ int ge2d_context_config_ex(ge2d_context_t *context, config_para_ex_t *ge2d_confi
     //src1_gen_cfg->clipy_start_ex = 1;
     //src1_gen_cfg->clipy_end_ex = 1;
 
-    ge2d_src2_dst_data_t *src2_dst_data_cfg = ge2d_wq_get_dst_data(context);
+    src2_dst_data_cfg = ge2d_wq_get_dst_data(context);
     src2_dst_data_cfg->src2_def_color = ge2d_config->src2_para.color;
     
-    ge2d_src2_dst_gen_t *src2_dst_gen_cfg = ge2d_wq_get_dst_gen(context);
+    src2_dst_gen_cfg = ge2d_wq_get_dst_gen(context);
     src2_dst_gen_cfg->src2_fill_mode = ge2d_config->src2_para.fill_mode;    
 
-    ge2d_dp_gen_t *dp_gen_cfg = ge2d_wq_get_dp_gen(context);
+    dp_gen_cfg = ge2d_wq_get_dp_gen(context);
     
     dp_gen_cfg->src1_vsc_phase0_always_en = ge2d_config->src1_hsc_phase0_always_en;
     dp_gen_cfg->src1_hsc_phase0_always_en = ge2d_config->src1_vsc_phase0_always_en;
@@ -743,7 +748,7 @@ int ge2d_context_config_ex(ge2d_context_t *context, config_para_ex_t *ge2d_confi
     dp_gen_cfg->bitmask= ge2d_config->bitmask;
     dp_gen_cfg->bytemask_only = ge2d_config->bytemask_only;
 
-    ge2d_cmd_t *ge2d_cmd_cfg = ge2d_wq_get_cmd(context);
+    ge2d_cmd_cfg = ge2d_wq_get_cmd(context);
 	
     ge2d_cmd_cfg->src1_fill_color_en = ge2d_config->src_para.fill_color_en;
 

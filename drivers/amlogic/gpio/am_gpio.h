@@ -21,7 +21,7 @@ typedef   struct{
 	struct device *dev ;
 	int	major ;
 }gpio_t;
-extern ssize_t gpio_cmd_restore(struct class *cla,struct class_attribute *attr,char *buf) ;
+extern ssize_t gpio_cmd_restore(struct class *cla,struct class_attribute *attr,const char *buf,size_t count) ;
 
 static struct class_attribute gpio_class_attrs[] = {
     __ATTR(cmd,

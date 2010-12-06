@@ -26,7 +26,7 @@ static  logo_output_dev_t   output_osd1={
 		.deinit=osd_deinit,
 		},
 };
-static  inline void  setup_color_mode(color_bit_define_t *color,u32  reg)
+static  inline void  setup_color_mode(const color_bit_define_t *color,u32  reg)
 {
 	u32  data32;
 

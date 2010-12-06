@@ -731,7 +731,7 @@ osd_remove(struct platform_device *pdev)
 			myfb_dev_t * fbdev=gp_fbdev_list[i];
 
 			fbi = fbdev->fb_info;
-			for(i=0;i<ARRAY_SIZE(osd_attrs);j++)
+			for(j=0;j<ARRAY_SIZE(osd_attrs);j++)
 			device_remove_file(fbi->dev, &osd_attrs[j]);
 			iounmap(fbdev->fb_mem_vaddr);
       			kfree(fbi->pseudo_palette);
