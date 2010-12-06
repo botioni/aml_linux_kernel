@@ -189,9 +189,9 @@ int configIO(unsigned char port, unsigned char ioflag)
 
 static unsigned char getIOport_level(unsigned char port)
 {
-    unsigned char iobits = 0;
+    unsigned char iobits = port;
 
-    switch( port )
+    switch(port)
     {
         case 0:
         case 1:
