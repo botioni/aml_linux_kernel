@@ -7,7 +7,7 @@ EXTRA_CFLAGS += -O1
 #EXTRA_CFLAGS += -Wshadow -Wpointer-arith -Wcast-qual -Wstrict-prototypes -Wmissing-prototypes 
 EXTRA_CFLAGS += -Wno-unused-variable -Wno-unused-value -Wno-unused-label -Wno-unused-parameter -Wno-uninitialized
 EXTRA_CFLAGS += -Wno-unused -Wno-unused-function
-#EXTRA_CFLAGS += -I$(src)/include
+EXTRA_CFLAGS += -I$(src)/include
 
 CONFIG_RTL8712			=	n
 CONFIG_RTL8192C			=       y
@@ -15,22 +15,23 @@ CONFIG_RTL8192C			=       y
 CONFIG_USB_HCI			=	y
 CONFIG_SDIO_HCI			= 	n
 CONFIG_MP_INCLUDED		=	n
+CONFIG_POWER_SAVING			=	n
+CONFIG_USB_AUTOSUSPEND			=	n
 
-CONFIG_PLATFORM_I386_PC	      =	n
-CONFIG_PLATFORM_ANDROID_X86		=		n
-CONFIG_PLATFORM_ARM_S3C2K4		= 	n
-CONFIG_PLATFORM_ARM_PXA2XX		= 	n
-CONFIG_PLATFORM_ARM_S3C6K4		= 	n
-CONFIG_PLATFORM_MIPS_RMI	= 	n
+CONFIG_PLATFORM_I386_PC		=	n
+CONFIG_PLATFORM_ANDROID_X86	=	n
+CONFIG_PLATFORM_ARM_S3C2K4	=	n
+CONFIG_PLATFORM_ARM_PXA2XX	=	n
+CONFIG_PLATFORM_ARM_S3C6K4	=	n
+CONFIG_PLATFORM_MIPS_RMI	=	n
 CONFIG_PLATFORM_RTD2880B	=	n
-CONFIG_PLATFORM_MIPS_AR9132	= 	n
-CONFIG_PLATFORM_MT53XX			=	n
-CONFIG_PLATFORM_RTK_DMP			=	n
-CONFIG_PLATFORM_ARM_ANDROID_AML8726M			=	y
+CONFIG_PLATFORM_MIPS_AR9132	=	n
+CONFIG_PLATFORM_MT53XX		=	n
+CONFIG_PLATFORM_RTK_DMP		=	n
+CONFIG_PLATFORM_ARM_TCC8900	=	n
+CONFIG_PLATFORM_ARM_ANDROID_AML8726M	=	y
 
-CONFIG_DRVEXT_MODULE	        =       n
-
-export TopDIR ?= $(shell pwd)
+CONFIG_DRVEXT_MODULE	=	n
 
 
 ifeq ($(CONFIG_RTL8712), y)
@@ -41,7 +42,6 @@ ifeq ($(CONFIG_SDIO_HCI), y)
 MODULE_NAME = 8712s
 endif
 ifeq ($(CONFIG_USB_HCI), y)
-MODULE_NAME_ = 8192cu
 MODULE_NAME = 8712u
 endif
 
@@ -55,7 +55,6 @@ ifeq ($(CONFIG_SDIO_HCI), y)
 MODULE_NAME = 8192cs
 endif
 ifeq ($(CONFIG_USB_HCI), y)
-MODULE_NAME_ = 8192cu
 MODULE_NAME = 8192cu
 endif
 
@@ -80,6 +79,18 @@ endif
 
 ifeq ($(CONFIG_USB_HCI), y)
  
+#ifeq ($(CONFIG_BEST_BATTERYLIFE), y)
+#EXTRA_CFLAGS += -DCONFIG_BEST_BATTERYLIFE
+#endif
+
+ifeq ($(CONFIG_POWER_SAVING), y)
+EXTRA_CFLAGS += -DCONFIG_POWER_SAVING
+endif
+
+ifeq ($(CONFIG_USB_AUTOSUSPEND), y)
+EXTRA_CFLAGS += -DCONFIG_USB_AUTOSUSPEND
+endif
+
 ifeq ($(CONFIG_PLATFORM_I386_PC), y)
 EXTRA_CFLAGS += -DCONFIG_LITTLE_ENDIAN
 SUBARCH := $(shell uname -m | sed -e s/i.86/i386/)
@@ -178,6 +189,13 @@ KVER:=
 KSRC ?= /root/Desktop/SVN/linux-2.6.12
 endif
 
+ifeq ($(CONFIG_PLATFORM_ARM_TCC8900), y)
+EXTRA_CFLAGS += -DCONFIG_LITTLE_ENDIAN -DCONFIG_PLATFORM_ANDROID
+ARCH ?= arm
+CROSS_COMPILE ?= /usr/src/telechip/SDK_0127_20101006/prebuilt/linux-x86/toolchain/arm-eabi-4.3.1/bin/arm-eabi-
+KSRC ?= /usr/src/telechip/SDK_0127_20101006/kernel
+endif
+
 ifeq ($(CONFIG_PLATFORM_ARM_ANDROID_AML8726M), y)
 EXTRA_CFLAGS += -DCONFIG_LITTLE_ENDIAN -DCONFIG_PLATFORM_ANDROID
 ARCH ?= arm
@@ -204,8 +222,8 @@ _HAL_INTFS_FILES :=	hal/hal_init.o \
 			hal/$(RTL871X)/usb/usb_ops_linux.o \
 			hal/$(RTL871X)/usb/usb_halinit.o \
 			hal/$(RTL871X)/usb/Hal8192CUHWImg.o \
-			hal/$(RTL871X)/usb/rtl$(MODULE_NAME_)_xmit.o \
-			hal/$(RTL871X)/usb/rtl$(MODULE_NAME_)_recv.o \
+			hal/$(RTL871X)/usb/rtl$(MODULE_NAME)_xmit.o \
+			hal/$(RTL871X)/usb/rtl$(MODULE_NAME)_recv.o \
 			hal/$(RTL871X)/usb/$(RTL871X)_cmd.o \
 		
 endif
@@ -230,10 +248,8 @@ rtk_core :=	core/rtw_cmd.o \
 		core/rtw_sta_mgt.o \
 		core/rtw_xmit.o \
 
-obj-$(CONFIG_RTL8192CU_USB_WIFI)	:= $(MODULE_NAME).o
 
 $(MODULE_NAME)-y += $(rtk_core)
-
 									
 $(MODULE_NAME)-y += core/efuse/rtl8712_efuse.o
 
@@ -248,7 +264,12 @@ $(MODULE_NAME)-$(CONFIG_MP_INCLUDED) += mp/rtl871x_mp.o \
 					mp/rtl871x_mp_ioctl.o \
 					ioctl/rtl871x_ioctl_rtl.o
 
+obj-$(CONFIG_RTL8192CU_USB_WIFI)	:= $(MODULE_NAME).o
+
+
 else
+
+export CONFIG_RTL8192CU_USB_WIFI = m
 
 all: modules
 

@@ -19,13 +19,13 @@
  ******************************************************************************/
 #define _RTL871X_CMD_C_
 
-#include "../include/drv_conf.h"
-#include "../include/osdep_service.h"
-#include "../include/drv_types.h"
-#include "../include/recv_osdep.h"
-#include "../include/cmd_osdep.h"
-#include "../include/mlme_osdep.h"
-#include "../include/rtw_byteorder.h"
+#include <drv_conf.h>
+#include <osdep_service.h>
+#include <drv_types.h>
+#include <recv_osdep.h>
+#include <cmd_osdep.h>
+#include <mlme_osdep.h>
+#include <rtw_byteorder.h>
 
 #ifdef PLATFORM_LINUX
 #include <linux/compiler.h>

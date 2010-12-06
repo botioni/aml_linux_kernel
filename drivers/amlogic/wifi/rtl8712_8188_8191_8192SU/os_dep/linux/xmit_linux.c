@@ -20,19 +20,19 @@
 #define _XMIT_OSDEP_C_
 
 
-#include "../../include/drv_conf.h"
-#include "../../include/osdep_service.h"
-#include "../../include/drv_types.h"
+#include <drv_conf.h>
+#include <osdep_service.h>
+#include <drv_types.h>
 
 
-#include "../../include/if_ether.h"
-#include "../../include/ip.h"
-#include "../../include/rtl871x_byteorder.h"
-#include "../../include/wifi.h"
-#include "../../include/mlme_osdep.h"
-#include "../../include/xmit_osdep.h"
-#include "../../include/osdep_intf.h"
-#include "../../include/circ_buf.h"
+#include <if_ether.h>
+#include <ip.h>
+#include <rtl871x_byteorder.h>
+#include <wifi.h>
+#include <mlme_osdep.h>
+#include <xmit_osdep.h>
+#include <osdep_intf.h>
+#include <circ_buf.h>
  #ifdef CONFIG_SDIO_HCI
 #include <linux/mmc/sdio_func.h> 
 #endif

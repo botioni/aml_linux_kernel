@@ -19,9 +19,9 @@
  ******************************************************************************/ 
 #define _RTL8712_RF_C_
 
-#include "../include/drv_conf.h"
-#include "../include/osdep_service.h"
-#include "../include/drv_types.h"
+#include <drv_conf.h>
+#include <osdep_service.h>
+#include <drv_types.h>
 
 
 //io_cmd format : (class<<24)|index

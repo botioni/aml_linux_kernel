@@ -19,11 +19,11 @@
  ******************************************************************************/
 #define _RTL871X_RF_C_
 
-#include "../include/drv_conf.h"
-#include "../include/osdep_service.h"
-#include "../include/drv_types.h"
-#include "../include/recv_osdep.h"
-#include "../include/xmit_osdep.h"
+#include <drv_conf.h>
+#include <osdep_service.h>
+#include <drv_types.h>
+#include <recv_osdep.h>
+#include <xmit_osdep.h>
 
 #define _A_BAND		BIT(1)
 

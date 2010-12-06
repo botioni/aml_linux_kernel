@@ -20,8 +20,8 @@
 #ifndef _RTL871X_HT_H_
 #define _RTL871X_HT_H_
 
-#include "drv_conf.h"
-#include "osdep_service.h"
+#include <drv_conf.h>
+#include <osdep_service.h>
 #include "wifi.h"
 
 struct ht_priv

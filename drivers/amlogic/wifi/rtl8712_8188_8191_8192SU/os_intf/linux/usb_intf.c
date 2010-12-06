@@ -19,14 +19,14 @@
  ******************************************************************************/ 
 #define _HCI_INTF_C_
 
-#include "../../include/drv_conf.h"
-#include "../../include/osdep_service.h"
-#include "../../include/drv_types.h"
-#include "../../include/recv_osdep.h"
-#include "../../include/xmit_osdep.h"
-#include "../../include/hal_init.h"
-#include "../../include/rtl8712_efuse.h"
-#include "../../include/version.h"
+#include <drv_conf.h>
+#include <osdep_service.h>
+#include <drv_types.h>
+#include <recv_osdep.h>
+#include <xmit_osdep.h>
+#include <hal_init.h>
+#include <rtl8712_efuse.h>
+#include <version.h>
 
 #ifndef CONFIG_USB_HCI
 
@@ -34,10 +34,10 @@
 
 #endif
 
-#include "../../include/usb_vendor_req.h"
-#include "../../include/usb_ops.h"
-#include "../../include/usb_osintf.h"
-#include "../../include/usb_hal.h"
+#include <usb_vendor_req.h>
+#include <usb_ops.h>
+#include <usb_osintf.h>
+#include <usb_hal.h>
 
 #if defined (PLATFORM_LINUX) && defined (PLATFORM_WINDOWS)
 
@@ -55,6 +55,7 @@ static struct usb_interface *pintf;
 
 extern u32 start_drv_threads(_adapter *padapter);
 extern void stop_drv_threads (_adapter *padapter);
+extern void stop_drv_timers (_adapter *padapter);
 extern u8 init_drv_sw(_adapter *padapter);
 extern u8 free_drv_sw(_adapter *padapter);
 extern struct net_device *init_netdev(void);
@@ -976,6 +977,9 @@ _func_exit_;
 		flush_scheduled_work();
 #endif
 		udelay_os(1);
+
+		//Stop driver mlme relation timer
+		stop_drv_timers(padapter);
 
 		r871x_dev_unload(padapter);
 

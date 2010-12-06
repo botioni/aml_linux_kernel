@@ -20,10 +20,10 @@
 #ifndef __USB_OPS_H_
 #define __USB_OPS_H_
 
-#include "drv_conf.h"
-#include "osdep_service.h"
-#include "drv_types.h"
-#include "osdep_intf.h"
+#include <drv_conf.h>
+#include <osdep_service.h>
+#include <drv_types.h>
+#include <osdep_intf.h>
 
 #define REALTEK_USB_VENQT_READ		0xC0
 #define REALTEK_USB_VENQT_WRITE		0x40

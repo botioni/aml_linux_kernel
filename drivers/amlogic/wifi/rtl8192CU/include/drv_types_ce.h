@@ -2,10 +2,10 @@
 #ifndef __DRV_TYPES_CE_H__
 #define __DRV_TYPES_CE_H__
 
-#include "rv_conf.h"
-#include "sdep_service.h"
+#include <drv_conf.h>
+#include <osdep_service.h>
 
-#include "dcardddk.h"
+#include <Sdcardddk.h>
 
 #define MAX_ACTIVE_REG_PATH 256
 

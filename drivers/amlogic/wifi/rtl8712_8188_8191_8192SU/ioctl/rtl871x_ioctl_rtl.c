@@ -19,19 +19,19 @@
  ******************************************************************************/ 
 #define  _RTL871X_IOCTL_RTL_C_
 
-#include "../include/drv_conf.h"
-#include "../include/osdep_service.h"
-#include "../include/drv_types.h"
-#include "../include/wlan_bssdef.h"
-#include "../include/wifi.h"
-#include "../include/rtl871x_ioctl.h"
-#include "../include/rtl871x_ioctl_set.h"
-#include "../include/rtl871x_ioctl_query.h"
-#include "../include/rtl871x_ioctl_rtl.h"
-#include "../include/mp_custom_oid.h"
+#include <drv_conf.h>
+#include <osdep_service.h>
+#include <drv_types.h>
+#include <wlan_bssdef.h>
+#include <wifi.h>
+#include <rtl871x_ioctl.h>
+#include <rtl871x_ioctl_set.h>
+#include <rtl871x_ioctl_query.h>
+#include <rtl871x_ioctl_rtl.h>
+#include <mp_custom_oid.h>
 #ifdef CONFIG_MP_INCLUDED
-#include "../include/rtl871x_mp.h"
-#include "../include/rtl871x_mp_ioctl.h"
+#include <rtl871x_mp.h>
+#include <rtl871x_mp_ioctl.h>
 #endif
 
 struct oid_obj_priv oid_rtl_seg_01_01[] =

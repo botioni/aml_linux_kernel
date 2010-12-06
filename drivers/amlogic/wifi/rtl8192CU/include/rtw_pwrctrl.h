@@ -20,9 +20,9 @@
 #ifndef __RTL871X_PWRCTRL_H_
 #define __RTL871X_PWRCTRL_H_
 
-#include "drv_conf.h"
-#include "osdep_service.h"		
-#include "drv_types.h"
+#include <drv_conf.h>
+#include <osdep_service.h>		
+#include <drv_types.h>
 
 
 #define FW_PWR0	0	

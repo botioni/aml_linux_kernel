@@ -20,9 +20,9 @@
 #ifndef __RECV_OSDEP_H_
 #define __RECV_OSDEP_H_
 
-#include "drv_conf.h"
-#include "osdep_service.h"
-#include "drv_types.h"
+#include <drv_conf.h>
+#include <osdep_service.h>
+#include <drv_types.h>
 
 
 extern sint _init_recv_priv(struct recv_priv *precvpriv, _adapter *padapter);

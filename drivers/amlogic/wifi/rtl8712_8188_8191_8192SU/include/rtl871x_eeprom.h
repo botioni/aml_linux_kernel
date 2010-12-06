@@ -20,8 +20,8 @@
 #ifndef __RTL871X_EEPROM_H__
 #define __RTL871X_EEPROM_H__
 
-#include "drv_conf.h"
-#include "osdep_service.h"
+#include <drv_conf.h>
+#include <osdep_service.h>
 
 #define	RTL8712_EEPROM_ID			0x8712
 #define	EEPROM_MAX_SIZE			256

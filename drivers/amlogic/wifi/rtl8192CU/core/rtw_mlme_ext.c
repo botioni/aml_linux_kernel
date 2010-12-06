@@ -19,14 +19,14 @@
  ******************************************************************************/
 #define _RTL871X_MLME_EXT_C_
 
-#include "../include/drv_conf.h"
-#include "../include/osdep_service.h"
-#include "../include/drv_types.h"
-#include "../include/wifi.h"
-#include "../include/rtw_mlme_ext.h"
-#include "../include/wlan_bssdef.h"
-#include "../include/mlme_osdep.h"
-#include "../include/recv_osdep.h"
+#include <drv_conf.h>
+#include <osdep_service.h>
+#include <drv_types.h>
+#include <wifi.h>
+#include <rtw_mlme_ext.h>
+#include <wlan_bssdef.h>
+#include <mlme_osdep.h>
+#include <recv_osdep.h>
 
 static RT_CHANNEL_PLAN	DefaultChannelPlan[RT_CHANNEL_DOMAIN_MAX] = {
 							{{1,2,3,4,5,6,7,8,9,10,11,36,40,44,48,52,56,60,64,149,153,157,161,165},24},	// RT_CHANNEL_DOMAIN_FCC
@@ -834,15 +834,19 @@ unsigned int OnDeAuth(_adapter *padapter, union recv_frame *precv_frame)
 {
 	struct mlme_ext_priv	*pmlmeext = &padapter->mlmeextpriv;
 	struct mlme_ext_info	*pmlmeinfo = &(pmlmeext->mlmext_info);
+	struct mlme_priv *pmlmepriv= &padapter->mlmepriv;	
+	struct sitesurvey_ctrl *psitesurveyctrl=&pmlmepriv->sitesurveyctrl;
+	
 	u8 *pframe = precv_frame->u.hdr.rx_data;
 	uint len = precv_frame->u.hdr.len;
 	unsigned short	reason;
 	//check A3
 	if (!(_rtw_memcmp(GetAddr3Ptr(pframe), get_my_bssid(&pmlmeinfo->network), ETH_ALEN)))
 		return _SUCCESS;
-	reason = le16_to_cpu(*(unsigned short *)(pframe + WLAN_HDR_A3_LEN + 1));
+	reason = le16_to_cpu(*(unsigned short *)(pframe + WLAN_HDR_A3_LEN));
 	DBG_871X("%s Reason code(%d)\n", __FUNCTION__,reason);
-	
+
+	psitesurveyctrl->traffic_busy= _FALSE;
 	receive_disconnect(padapter, GetAddr3Ptr(pframe));
 	
 	return _SUCCESS;
@@ -857,16 +861,13 @@ unsigned int OnDisassoc(_adapter *padapter, union recv_frame *precv_frame)
 	
 	u8 *pframe = precv_frame->u.hdr.rx_data;
 	uint len = precv_frame->u.hdr.len;
-    	unsigned short	reason;
-
+	unsigned short	reason;
 	//check A3
 	if (!(_rtw_memcmp(GetAddr3Ptr(pframe), get_my_bssid(&pmlmeinfo->network), ETH_ALEN)))
 		return _SUCCESS;
-	
 	reason = le16_to_cpu(*(unsigned short *)(pframe + WLAN_HDR_A3_LEN));
 	DBG_871X("%s Reason code(%d)\n", __FUNCTION__,reason);
 	psitesurveyctrl->traffic_busy= _FALSE;
-	
 	receive_disconnect(padapter, GetAddr3Ptr(pframe));
 	
 	return _SUCCESS;
@@ -1442,7 +1443,8 @@ void issue_auth(_adapter *padapter, struct sta_info *psta, unsigned short status
 		_rtw_memcpy(pwlanhdr->addr1, get_my_bssid(&pmlmeinfo->network), ETH_ALEN);
 		_rtw_memcpy(pwlanhdr->addr2, myid(&padapter->eeprompriv), ETH_ALEN);
 		_rtw_memcpy(pwlanhdr->addr3, get_my_bssid(&pmlmeinfo->network), ETH_ALEN);
-	
+
+		
 		// setting auth algo number		
 		val16 = (pmlmeinfo->auth_algo == dot11AuthAlgrthm_Shared)? 1: 0;// 0:OPEN System, 1:Shared key
 		if (val16)	{
@@ -1484,7 +1486,7 @@ void issue_auth(_adapter *padapter, struct sta_info *psta, unsigned short status
 		val16 = pmlmeinfo->auth_seq;
 		val16 = cpu_to_le16(val16);	
 		printk("==> %s set auth_seq_num(%d)\n",__FUNCTION__,val16);
-              pframe = rtw_set_fixed_ie(pframe, _AUTH_SEQ_NUM_, (unsigned char *)&val16, &(pattrib->pktlen));
+		pframe = rtw_set_fixed_ie(pframe, _AUTH_SEQ_NUM_, (unsigned char *)&val16, &(pattrib->pktlen));
 
 		
 		// setting status code...
@@ -2059,10 +2061,10 @@ void site_survey(_adapter *padapter)
 		{
 			if((pmlmeinfo->state&0x03) == WIFI_FW_AP_STATE){
 				rtw_write32(padapter, REG_RCR, rtw_read32(padapter, REG_RCR)|RCR_CBSSID_BCN);
-			    }
-			else {			
+			}
+			else	{		
 			        rtw_write32(padapter, REG_RCR, rtw_read32(padapter, REG_RCR)|RCR_CBSSID_DATA|RCR_CBSSID_BCN);
-			    }
+			}
 		}
 		else
 		{
@@ -2281,7 +2283,6 @@ void start_create_ibss(_adapter* padapter)
 			val32 &= ~(RCR_CBSSID_DATA | RCR_CBSSID_BCN);
 			rtw_write32(padapter, REG_RCR, val32);
 
-					
 			report_join_res(padapter, 1);
 			
 			pmlmeinfo->state |= WIFI_FW_ASSOC_SUCCESS;
@@ -2329,7 +2330,7 @@ void start_clnt_join(_adapter* padapter)
 			}
 		}		
 	#endif
-    
+
 		//switch channel
 		//SelectChannel(padapter, pmlmeext->cur_channel, HAL_PRIME_CHNL_OFFSET_DONT_CARE);
 		set_channel_bwmode(padapter, pmlmeext->cur_channel, HAL_PRIME_CHNL_OFFSET_DONT_CARE, HT_CHANNEL_WIDTH_20);
@@ -2837,14 +2838,12 @@ void mlmeext_joinbss_event_callback(_adapter *padapter)
 		if(IS_NORMAL_CHIP(pHalData->VersionID))
 		{
 			rtw_write32(padapter, REG_RCR, rtw_read32(padapter, REG_RCR)|RCR_CBSSID_DATA|RCR_CBSSID_BCN);
-
 			//enable update TSF
 			rtw_write8(padapter, REG_BCN_CTRL, rtw_read8(padapter, REG_BCN_CTRL)&(~BIT(4)));
 		}
 		else
 		{
 			rtw_write32(padapter, REG_RCR, rtw_read32(padapter, REG_RCR)|RCR_CBSSID_DATA);
-
 			//enable update TSF
 			rtw_write8(padapter, REG_BCN_CTRL, rtw_read8(padapter, REG_BCN_CTRL)&(~(BIT(4)|BIT(5))));
 		}
@@ -2939,7 +2938,6 @@ void mlmeext_sta_add_event_callback(_adapter *padapter, struct sta_info *psta)
 		}
 
 		rtw_write32(padapter, REG_RCR, rtw_read32(padapter, REG_RCR)|RCR_CBSSID_DATA|RCR_CBSSID_BCN);
-
 		//accept all data frame
 		rtw_write16(padapter, REG_RXFLTMAP2, 0xFFFF);
 
@@ -2974,6 +2972,7 @@ void mlmeext_sta_del_event_callback(_adapter *padapter)
 
 	if (is_client_associated_to_ap(padapter) || is_IBSS_empty(padapter))
 	{
+		u32 v ;
 		//set_opmode_cmd(padapter, infra_client_with_mlme);	
 
 		//switch to the 20M Hz mode after disconnect
@@ -2983,6 +2982,8 @@ void mlmeext_sta_del_event_callback(_adapter *padapter)
 	
 		//Set RCR to not to receive data frame when NO LINK state
 		//rtw_write32(padapter, REG_RCR, rtw_read32(padapter, REG_RCR) & ~RCR_ADF);
+		v= rtw_read32(padapter, REG_RCR);
+		v &= ~(RCR_CBSSID_DATA | RCR_CBSSID_BCN );
 		rtw_write16(padapter, REG_RXFLTMAP2,0x00);
 
 		//reset TSF
@@ -3043,6 +3044,14 @@ void linked_status_chk(_adapter *padapter)
 
 	if (is_client_associated_to_ap(padapter))
 	{
+	#if 0
+		printk("============ linked status check ===================\n");
+		printk("pathA Rx SNRdb:%d\n",padapter->recvpriv.RxSNRdB[0]);
+		printk("Rx RSSI:%d\n",padapter->recvpriv.rssi);
+		printk("Rx Signal_strength:%d\n",padapter->recvpriv.signal_strength);
+		printk("Rx Signal_qual:%d \n",padapter->recvpriv.signal_qual);
+		printk("============ linked status check ===================\n");
+	#endif	
 		//linked infrastructure client mode
 		if ((psta = rtw_get_stainfo(pstapriv, pmlmeinfo->network.MacAddress)) != NULL)
 		{
@@ -3052,7 +3061,7 @@ void linked_status_chk(_adapter *padapter)
 				//	Commented by Albert 2010/07/21
 				//	In this case, there is no any rx packet received by driver.
 				
-			        if(retry<3)
+			        if(retry<8)// Alter the retry limit to 8 
 				{
 					if(retry==0)
 					{

@@ -18,9 +18,9 @@
  *
  ******************************************************************************/
 #define _RTL8192C_RECV_C_
-#include "../../include/drv_conf.h"
-#include "../../include/osdep_service.h"
-#include "../../include/drv_types.h"
+#include <drv_conf.h>
+#include <osdep_service.h>
+#include <drv_types.h>
     
 
 static u8 evm_db2percentage(s8 value)
@@ -103,6 +103,36 @@ static s32  translate2dbm(_adapter *padapter,u8 signal_strength_idx	)
 	return signal_power;
 }
 
+typedef struct _Phy_OFDM_Rx_Status_Report_8192cd
+{
+	unsigned char	trsw_gain_X[4];
+	unsigned char	pwdb_all;
+	unsigned char	cfosho_X[4];
+	unsigned char	cfotail_X[4];
+	unsigned char	rxevm_X[2];
+	unsigned char	rxsnr_X[4];
+	unsigned char	pdsnr_X[2];
+	unsigned char	csi_current_X[2];
+	unsigned char	csi_target_X[2];
+	unsigned char	sigevm;
+	unsigned char	max_ex_pwr;
+//#ifdef RTL8192SE
+#ifdef	_LITTLE_ENDIAN_
+	unsigned char ex_intf_flg:1;
+	unsigned char sgi_en:1;
+	unsigned char rxsc:2;
+	unsigned char rsvd:4;
+#else	// _BIG_ENDIAN_
+	unsigned char rsvd:4;
+	unsigned char rxsc:2;
+	unsigned char sgi_en:1;
+	unsigned char ex_intf_flg:1;
+#endif
+//#else	// RTL8190, RTL8192E
+//	unsigned char	sgi_en;
+//	unsigned char	rxsc_sgien_exflg;
+//#endif
+} PHY_STS_OFDM_8192CD_T;
 
 void rtl8192c_query_rx_phy_status(union recv_frame *prframe, struct recv_stat *prxstat)
 {
@@ -118,6 +148,8 @@ void rtl8192c_query_rx_phy_status(union recv_frame *prframe, struct recv_stat *p
 	struct eeprom_priv	*peeprompriv = &(padapter->eeprompriv);
 	struct phy_stat		*pphy_stat = (struct phy_stat *)(prxstat+1);
 	u8	*pphy_head=(u8 *)(prxstat+1);
+	u8 tmp_rxsnr;
+	s8 rx_snrX;
 
 	// Record it for next packet processing
 	bcck_rate=(pattrib->mcs_rate<=3? 1:0);
@@ -258,7 +290,7 @@ void rtl8192c_query_rx_phy_status(union recv_frame *prframe, struct recv_stat *p
 	}
 	else //OFDM/HT
 	{
-	
+		PHY_STS_OFDM_8192CD_T	*pOfdm_buf = (PHY_STS_OFDM_8192CD_T *)pphy_head;;
 		//
 		// (1)Get RSSI per-path
 		//
@@ -266,6 +298,17 @@ void rtl8192c_query_rx_phy_status(union recv_frame *prframe, struct recv_stat *p
 		{
 			rf_rx_num++;
 			rx_pwr[i] = ((pphy_head[PHY_STAT_GAIN_TRSW_SHT+i]&0x3F)*2) - 110;
+
+
+			//if (priv->pshare->rf_ft_var.rssi_dump) 
+			{
+				tmp_rxsnr =	pOfdm_buf->rxsnr_X[i];
+				rx_snrX = (s8)(tmp_rxsnr);
+				rx_snrX >>= 1;
+				pattrib->RxSNRdB[i] = (int)rx_snrX;
+			}
+			
+
 
 			/* Translate DBM to percentage. */
 			rssi=query_rx_pwr_percentage(rx_pwr[i]);
@@ -387,6 +430,9 @@ static void process_rssi(_adapter *padapter,union recv_frame *prframe)
 {
 	u32	last_rssi, tmp_val;
 	struct rx_pkt_attrib *pattrib = &prframe->u.hdr.attrib;
+
+	padapter->recvpriv.RxSNRdB[0] =  pattrib->RxSNRdB[0];
+	padapter->recvpriv.RxSNRdB[1] =  pattrib->RxSNRdB[1];
 
 	//printk("process_rssi=> pattrib->rssil(%d) signal_strength(%d)\n ",pattrib->RecvSignalPower,pattrib->signal_strength);
 	//if(pRfd->Status.bPacketToSelf || pRfd->Status.bPacketBeacon)

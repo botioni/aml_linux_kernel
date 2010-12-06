@@ -20,9 +20,9 @@
 #ifndef __HAL_INIT_H__
 #define __HAL_INIT_H__
 
-#include "drv_conf.h"
-#include "osdep_service.h"
-#include "drv_types.h"
+#include <drv_conf.h>
+#include <osdep_service.h>
+#include <drv_types.h>
 
 
 

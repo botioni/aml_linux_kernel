@@ -29,17 +29,17 @@
 //============================================================
 // include files
 //============================================================
-#include "../../include/drv_conf.h"
-#include "../../include/osdep_service.h"
-#include "../../include/drv_types.h"
-#include "../../include/rtw_byteorder.h"
+#include <drv_conf.h>
+#include <osdep_service.h>
+#include <drv_types.h>
+#include <rtw_byteorder.h>
 
-#include "../../include/hal_init.h"
+#include <hal_init.h>
 //#include <linux/math64.h>
 
-#include "../../include/Hal8192CPhyReg.h"
-#include "../../include/Hal8192CPhyCfg.h"
-#include "../../include/rtl8192c_dm.h"
+#include "Hal8192CPhyReg.h"
+#include "Hal8192CPhyCfg.h"
+#include "rtl8192c_dm.h"
 
 //============================================================
 // Global var

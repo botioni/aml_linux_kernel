@@ -19,11 +19,11 @@
  ******************************************************************************/
 
 #define _RTL871X_IO_C_
-#include "../include/drv_conf.h"
-#include "../include/osdep_service.h"
-#include "../include/drv_types.h"
-#include "../include/rtw_io.h"
-#include "../include/osdep_intf.h"
+#include <drv_conf.h>
+#include <osdep_service.h>
+#include <drv_types.h>
+#include <rtw_io.h>
+#include <osdep_intf.h>
 
 #if defined (PLATFORM_LINUX) && defined (PLATFORM_WINDOWS)
 #error "Shall be Linux or Windows, but not both!\n"
@@ -62,7 +62,7 @@
 #endif
 
 #ifdef CONFIG_USB_HCI
-#include "../include/usb_ops.h"
+#include <usb_ops.h>
 #endif
 
 

@@ -19,9 +19,9 @@
  ******************************************************************************/ 
 #define _CMD_OSDEP_C_
 
-#include "../../include/drv_conf.h"
-#include "../../include/osdep_service.h"
-#include "../../include/drv_types.h"
+#include <drv_conf.h>
+#include <osdep_service.h>
+#include <drv_types.h>
 
 
 #include <linux/compiler.h>

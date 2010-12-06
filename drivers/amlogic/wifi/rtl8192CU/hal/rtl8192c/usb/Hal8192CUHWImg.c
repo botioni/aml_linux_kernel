@@ -20,7 +20,7 @@
 
 /*Created on  2010/ 5/25,  2:21*/
 
-#include "../../../include/Hal8192CUHWImg.h"
+#include "Hal8192CUHWImg.h"
 // FW-V60 2010-10-28
 // =================== TSMC V60 =====================================
 #if 1

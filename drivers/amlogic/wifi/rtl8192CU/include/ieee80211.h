@@ -23,9 +23,9 @@
 
 #ifndef CONFIG_RTL8711FW
 
-	#include "drv_conf.h"
-	#include "osdep_service.h"
-	#include "drv_types.h"
+	#include <drv_conf.h>
+	#include <osdep_service.h>
+	#include <drv_types.h>
 	#include "wifi.h"
 
 	#if defined PLATFORM_OS_XP
@@ -36,7 +36,7 @@
 	#endif
 #else
 	
-	#include "ist.h"
+	#include <list.h>
 
 #endif
 

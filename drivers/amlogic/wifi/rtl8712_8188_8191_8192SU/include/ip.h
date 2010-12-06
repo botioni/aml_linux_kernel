@@ -35,7 +35,7 @@
  */
 #ifndef _LINUX_IP_H
 #define _LINUX_IP_H
-#include "rtl871x_byteorder.h"
+#include <rtl871x_byteorder.h>
 
 /* SOL_IP socket options */
 

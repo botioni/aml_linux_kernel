@@ -19,10 +19,10 @@
  ******************************************************************************/ 
 #define _HCI_HAL_INIT_C_
 
-#include "../../include/drv_conf.h"
-#include "../../include/osdep_service.h"
-#include "../../include/drv_types.h"
-#include "../../include/hal_init.h"
+#include <drv_conf.h>
+#include <osdep_service.h>
+#include <drv_types.h>
+#include <hal_init.h>
 
 #if defined (PLATFORM_LINUX) && defined (PLATFORM_WINDOWS)
 
@@ -37,9 +37,9 @@
 #endif
 
 
-#include "../../include/usb_ops.h"
-#include "../../include/usb_hal.h"
-#include "../../include/usb_osintf.h"
+#include <usb_ops.h>
+#include <usb_hal.h>
+#include <usb_osintf.h>
 
 
 u8 usb_hal_bus_init(_adapter * padapter)

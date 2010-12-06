@@ -18,13 +18,13 @@
  *
  ******************************************************************************/ 
 #define _RTL8712_XMIT_C_
-#include "../include/drv_conf.h"
-#include "../include/osdep_service.h"
-#include "../include/drv_types.h"
-#include "../include/rtl871x_byteorder.h"
-#include "../include/wifi.h"
-#include "../include/osdep_intf.h"
-#include "../include/circ_buf.h"
+#include <drv_conf.h>
+#include <osdep_service.h>
+#include <drv_types.h>
+#include <rtl871x_byteorder.h>
+#include <wifi.h>
+#include <osdep_intf.h>
+#include <circ_buf.h>
 
 #if defined (PLATFORM_LINUX) && defined (PLATFORM_WINDOWS)
 #error "Shall be Linux or Windows, but not both!\n"
@@ -42,7 +42,7 @@
 #endif
 
 #ifdef CONFIG_USB_HCI
-#include "../include/usb_ops.h"
+#include <usb_ops.h>
 #endif
 
 sint _init_hw_txqueue(struct hw_txqueue* phw_txqueue, u8 ac_tag)

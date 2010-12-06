@@ -20,15 +20,15 @@
 #ifndef __RTL871X_CMD_H_
 #define __RTL871X_CMD_H_
 
-#include "drv_conf.h"
-#include "wlan_bssdef.h"
-#include "rtl871x_rf.h"
+#include <drv_conf.h>
+#include <wlan_bssdef.h>
+#include <rtl871x_rf.h>
 #define C2H_MEM_SZ (16*1024)
 
 #ifndef CONFIG_RTL8711FW
 
-	#include "osdep_service.h"
-	#include "ieee80211.h"
+	#include <osdep_service.h>
+	#include <ieee80211.h> // <ieee80211/ieee80211.h>
 
 
 	#define FREE_CMDOBJ_SZ	128

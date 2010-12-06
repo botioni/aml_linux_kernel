@@ -20,10 +20,10 @@
 #ifndef __RTL871X_MLME_H_
 #define __RTL871X_MLME_H_
 
-#include "drv_conf.h"
-#include "osdep_service.h"
-#include "drv_types.h"
-#include "wlan_bssdef.h"
+#include <drv_conf.h>
+#include <osdep_service.h>
+#include <drv_types.h>
+#include <wlan_bssdef.h>
 
 
 #ifndef CONFIG_RTL8711FW

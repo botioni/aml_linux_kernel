@@ -20,15 +20,15 @@
 #define _RTL871X_IOCTL_SET_C_
 
 
-#include "../include/drv_conf.h"
-#include "../include/osdep_service.h"
-#include "../include/drv_types.h"
-#include "../include/rtw_ioctl_set.h"
-#include "../include/hal_init.h"
+#include <drv_conf.h>
+#include <osdep_service.h>
+#include <drv_types.h>
+#include <rtw_ioctl_set.h>
+#include <hal_init.h>
 
 #ifdef CONFIG_USB_HCI
-#include "../include/usb_osintf.h"
-#include "../include/usb_ops.h"
+#include <usb_osintf.h>
+#include <usb_ops.h>
 #endif
 #ifdef CONFIG_SDIO_HCI
 #include <sdio_osintf.h>

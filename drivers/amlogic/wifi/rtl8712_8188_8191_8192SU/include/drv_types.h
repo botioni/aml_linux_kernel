@@ -27,16 +27,16 @@
 #ifndef __DRV_TYPES_H__
 #define __DRV_TYPES_H__
 
-#include "drv_conf.h"
-#include "osdep_service.h"
-#include "wlan_bssdef.h"
+#include <drv_conf.h>
+#include <osdep_service.h>
+#include <wlan_bssdef.h>
 
 
 #ifdef CONFIG_RTL8711
 #include <rtl8711_spec.h>
 #endif
 #ifdef CONFIG_RTL8712
-#include "rtl8712_spec.h"
+#include <rtl8712_spec.h>
 #endif
 
 #ifdef PLATFORM_OS_XP
@@ -48,7 +48,7 @@
 #endif
 
 #ifdef PLATFORM_LINUX
-#include "drv_types_linux.h"
+#include <drv_types_linux.h>
 #endif
 
 enum _NIC_VERSION {
@@ -64,36 +64,36 @@ enum _NIC_VERSION {
 typedef struct _ADAPTER _adapter, ADAPTER,*PADAPTER;
 
 #ifdef CONFIG_80211N_HT
-#include "rtl871x_ht.h"
+#include <rtl871x_ht.h>
 #endif
 
-#include "rtl871x_cmd.h"
-#include "wlan_bssdef.h"
-#include "rtl871x_xmit.h"
-#include "rtl871x_recv.h"
-#include "rtl871x_qos.h"
-#include "rtl871x_security.h"
-#include "rtl871x_pwrctrl.h"
-#include "rtl871x_io.h"
-#include "rtl871x_eeprom.h"
-#include "sta_info.h"
-#include "rtl871x_mlme.h"
-#include "rtl871x_mp.h"
-#include "rtl871x_debug.h"
-#include "rtl871x_rf.h"
-#include "rtl871x_event.h"
-#include "hal_init.h"
-#include "rtl871x_led.h"
+#include <rtl871x_cmd.h>
+#include <wlan_bssdef.h>
+#include <rtl871x_xmit.h>
+#include <rtl871x_recv.h>
+#include <rtl871x_qos.h>
+#include <rtl871x_security.h>
+#include <rtl871x_pwrctrl.h>
+#include <rtl871x_io.h>
+#include <rtl871x_eeprom.h>
+#include <sta_info.h>
+#include <rtl871x_mlme.h>
+#include <rtl871x_mp.h>
+#include <rtl871x_debug.h>
+#include <rtl871x_rf.h>
+#include <rtl871x_event.h>
+#include <hal_init.h>
+#include <rtl871x_led.h>
 
 #ifdef CONFIG_DRVEXT_MODULE
-#include "rtl871x_drvext.h"
-#include "wsc_api.h"
+#include <rtl871x_drvext.h>
+#include <wsc_api.h>
 #endif
 
 #ifdef CONFIG_MLME_EXT
-#include "rtl871x_mlme_ext.h"
-#include "rtl871x_wlan_mlme.h"
-#include "rtl871x_wlan_sme.h"
+#include <rtl871x_mlme_ext.h>
+#include <rtl871x_wlan_mlme.h>
+#include <rtl871x_wlan_sme.h>
 #endif
 
 #define SPEC_DEV_ID_NONE BIT(0)

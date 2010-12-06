@@ -21,9 +21,9 @@
 #define __RTL871X_SECURITY_H_
 
 
-#include "drv_conf.h"
-#include "osdep_service.h"
-#include "drv_types.h"
+#include <drv_conf.h>
+#include <osdep_service.h>
+#include <drv_types.h>
 
 
 #define _NO_PRIVACY_	0x0
@@ -32,6 +32,7 @@
 #define _TKIP_WTMIC_	0x3
 #define _AES_			0x4
 #define _WEP104_		0x5
+
 
 #define _WPA_IE_ID_	0xdd
 #define _WPA2_IE_ID_	0x30

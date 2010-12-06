@@ -21,7 +21,7 @@
 #define _RTL871X_DEBUG_C_
 
 
-#include "../include/rtw_debug.h"
+#include <rtw_debug.h>
 
 #ifdef CONFIG_DEBUG_RTL871X
 

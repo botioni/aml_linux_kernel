@@ -20,10 +20,10 @@
 #ifndef _RTL871X_XMIT_H_
 #define _RTL871X_XMIT_H_
 
-#include "drv_conf.h"
-#include "osdep_service.h"
-#include "drv_types.h"
-#include "xmit_osdep.h"
+#include <drv_conf.h>
+#include <osdep_service.h>
+#include <drv_types.h>
+#include <xmit_osdep.h>
 
 #ifdef CONFIG_SDIO_HCI
 #define MAX_XMITBUF_SZ (30720)//	(2048)

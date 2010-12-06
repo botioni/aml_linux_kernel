@@ -1,10 +1,10 @@
 #ifndef _SDIO_OPS_XP_H_
 #define _SDIO_OPS_XP_H_
 
-#include "drv_conf.h"
-#include "osdep_service.h"
-#include "drv_types.h"
-#include "osdep_intf.h"
+#include <drv_conf.h>
+#include <osdep_service.h>
+#include <drv_types.h>
+#include <osdep_intf.h>
 
 
 #ifdef PLATFORM_OS_XP

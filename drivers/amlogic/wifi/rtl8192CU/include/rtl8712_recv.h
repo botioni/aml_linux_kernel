@@ -20,9 +20,9 @@
 #ifndef _RTL8712_RECV_H_
 #define _RTL8712_RECV_H_
 
-#include "rv_conf.h"
-#include "sdep_service.h"
-#include "rv_types.h"
+#include <drv_conf.h>
+#include <osdep_service.h>
+#include <drv_types.h>
 
 
 #ifdef PLATFORM_OS_XP

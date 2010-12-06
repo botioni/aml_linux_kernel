@@ -20,7 +20,7 @@
 #ifndef _WIFI_H_
 #define _WIFI_H_
 
-#include "rtl871x_byteorder.h"
+#include <rtl871x_byteorder.h>
 
 #ifdef BIT
 //#error	"BIT define occurred earlier elsewhere!\n"

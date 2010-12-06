@@ -20,9 +20,9 @@
 #ifndef __IEEE80211_EXT_H
 #define __IEEE80211_EXT_H
 
-#include "rv_conf.h"
-#include "sdep_service.h"
-#include "rv_types.h"
+#include <drv_conf.h>
+#include <osdep_service.h>
+#include <drv_types.h>
 
 #define WMM_OUI_TYPE 2
 #define WMM_OUI_SUBTYPE_INFORMATION_ELEMENT 0

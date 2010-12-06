@@ -20,9 +20,9 @@
 #define _RTL871X_MLME_C_
 
 
-#include "../include/drv_conf.h"
-#include "../include/osdep_service.h"
-#include "../include/drv_types.h"
+#include <drv_conf.h>
+#include <osdep_service.h>
+#include <drv_types.h>
 
 
 #ifdef PLATFORM_LINUX
@@ -48,13 +48,13 @@
 #endif
 
 
-#include "../include/recv_osdep.h"
-#include "../include/xmit_osdep.h"
-#include "../include/hal_init.h"
-#include "../include/mlme_osdep.h"
-#include "../include/sta_info.h"
-#include "../include/wifi.h"
-#include "../include/wlan_bssdef.h"
+#include <recv_osdep.h>
+#include <xmit_osdep.h>
+#include <hal_init.h>
+#include <mlme_osdep.h>
+#include <sta_info.h>
+#include <wifi.h>
+#include <wlan_bssdef.h>
 
 sint	_rtw_init_mlme_priv (_adapter* padapter)
 {
@@ -72,6 +72,7 @@ _func_enter_;
 	pmlmepriv->pscanned = NULL;
 	pmlmepriv->fw_state = 0;
 	pmlmepriv->cur_network.network.InfrastructureMode = Ndis802_11AutoUnknown;
+	pmlmepriv->passive_mode=1;// 1: active, 0: pasive. Maybe someday we should rename this varable to "active_mode" (Jeff)
 
 	_rtw_spinlock_init(&(pmlmepriv->lock));	
 	_rtw_init_queue(&(pmlmepriv->free_bss_pool));
@@ -866,7 +867,7 @@ static int is_desired_network(_adapter *adapter, struct wlan_network *pnetwork)
 {
 	struct security_priv *psecuritypriv = &adapter->securitypriv;
 	struct mlme_priv *pmlmepriv = &adapter->mlmepriv;
-       struct registry_priv	 *pregpriv = &adapter->registrypriv;
+	struct registry_priv	 *pregpriv = &adapter->registrypriv;
 	u32 desired_encmode;
 	u32 privacy;
 
@@ -892,12 +893,12 @@ static int is_desired_network(_adapter *adapter, struct wlan_network *pnetwork)
 			return _FALSE;
 		}	
 	}
-
 	if (pregpriv->wifi_spec == 1) //for  correct flow of 8021X  to do....
 	{
-	    if ((desired_encmode == Ndis802_11EncryptionDisabled) && (privacy != 0))
-                bselected = _FALSE;
+		if ((desired_encmode == Ndis802_11EncryptionDisabled) && (privacy != 0))	
+				bselected = _FALSE;
 	}
+	
 
  	if ((desired_encmode != Ndis802_11EncryptionDisabled) && (privacy == 0))
 		bselected = _FALSE;
@@ -1783,8 +1784,8 @@ _func_enter_;
 	psitesurveyctrl->last_rx_pkts=adapter->recvpriv.rx_pkts;
 
 	if( (current_tx_pkts>pregistrypriv->busy_thresh)||(current_rx_pkts>pregistrypriv->busy_thresh)) 
-	{		
-		//printk("traffic_busy Curr_tx(%lld),Curr_rx(%lld)\n",current_tx_pkts,current_rx_pkts);
+	{	
+		//printk("%s traffic_busy = true,Curr_tx(%lld),Curr_rx(%lld)\n",__FUNCTION__,current_tx_pkts,current_rx_pkts);
 		psitesurveyctrl->traffic_busy= _TRUE;
 	}
 	else 
@@ -1886,7 +1887,7 @@ void dynamic_check_timer_handlder(_adapter *adapter)
 	//pbc_polling_wk_cmd(adapter);
 
 	if(check_fwstate(pmlmepriv, _FW_LINKED) == _TRUE)
-	      _rtw_sitesurvey_ctrl_handler(adapter);
+		_rtw_sitesurvey_ctrl_handler(adapter);
 
 
 	if(pmlmepriv->scan_interval >0)

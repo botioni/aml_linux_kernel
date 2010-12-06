@@ -20,7 +20,7 @@
 #ifndef __RTL8192C_SPEC_H__
 #define __RTL8192C_SPEC_H__
 
-#include "drv_conf.h"
+#include <drv_conf.h>
 
 #ifndef BIT
 #define BIT(x)		(1 << (x))

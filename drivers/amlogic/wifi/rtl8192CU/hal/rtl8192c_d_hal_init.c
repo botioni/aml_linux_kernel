@@ -19,13 +19,13 @@
  ******************************************************************************/
 
 #define _RTL8192C_D_HAL_INIT_C_
-#include "../include/drv_conf.h"
-#include "../include/osdep_service.h"
-#include "../include/drv_types.h"
-#include "../include/rtw_byteorder.h"
+#include <drv_conf.h>
+#include <osdep_service.h>
+#include <drv_types.h>
+#include <rtw_byteorder.h>
 
-#include "../include/hal_init.h"
-#include "../include/rtl8712_efuse.h"
+#include <hal_init.h>
+#include <rtl8712_efuse.h>
 
 #ifdef CONFIG_SDIO_HCI
 			#include <sdio_hal.h>
@@ -33,7 +33,7 @@
 	#include <linux/mmc/sdio_func.h>
 #endif
 #elif defined(CONFIG_USB_HCI)
-			#include "../include/usb_hal.h"
+			#include <usb_hal.h>
 #endif	
 
 
@@ -1245,9 +1245,9 @@ _ReadThermalMeter(
 		pEEPROM->EEPROMThermalMeter = 0x12;
 	
 	//pHalData->ThermalMeter[0] = pEEPROM->EEPROMThermalMeter;//?
-	//pHalData->ThermalValue = pEEPROM->EEPROMThermalMeter;
+	pHalData->ThermalValue = pEEPROM->EEPROMThermalMeter;
 
-	pHalData->ThermalValue = 0;//set to 0, will be update when do dm_txpower_tracking
+//	pHalData->ThermalValue = 0;//set to 0, will be update when do dm_txpower_tracking
 	
 	//RTPRINT(FINIT, INIT_TxPower, ("ThermalMeter = 0x%x\n", pHalData->EEPROMThermalMeter));
 	

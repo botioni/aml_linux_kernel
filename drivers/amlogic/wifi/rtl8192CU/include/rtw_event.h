@@ -19,12 +19,12 @@
  ******************************************************************************/
 #ifndef _RTL871x_EVENT_H_
 #define _RTL871x_EVENT_H_
-#include "drv_conf.h"
-#include "osdep_service.h"
+#include <drv_conf.h>
+#include <osdep_service.h>
 
 #ifndef CONFIG_RTL8711FW
 #ifdef PLATFORM_LINUX
-#include "wlan_bssdef.h"
+#include <wlan_bssdef.h>
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(2,6,26))
 #include <asm/semaphore.h>
 #else
@@ -33,13 +33,13 @@
 #include <linux/sem.h>
 #endif
 #else
-#include "wlan_bssdef.h"
+#include <wlan_bssdef.h>
 #endif//CONFIG_RTL8711FW
 
 
 
 #ifdef CONFIG_H2CLBK
-#include "h2clbk.h"
+#include <h2clbk.h>
 #endif
 
 /*

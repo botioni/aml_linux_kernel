@@ -20,11 +20,11 @@
 #ifndef	__RTL8712_RF_H_ 
 #define __RTL8712_RF_H_
 
-#include "drv_conf.h"
-#include "osdep_service.h"
-#include "drv_types.h"
+#include <drv_conf.h>
+#include <osdep_service.h>
+#include <drv_types.h>
 
-#include "rtl871x_mp_phy_regdef.h"
+#include <rtl871x_mp_phy_regdef.h>
 
 #define WIFI_20MHZ_MODE			0x0000
 #define WIFI_40MHZ_MODE			0x8000

@@ -19,10 +19,10 @@
  ******************************************************************************/ 
 #define _RTL871X_PWRCTRL_C_
 
-#include "../include/drv_conf.h"
-#include "../include/osdep_service.h"
-#include "../include/drv_types.h"
-#include "../include/osdep_intf.h"
+#include <drv_conf.h>
+#include <osdep_service.h>
+#include <drv_types.h>
+#include <osdep_intf.h>
 
 #ifdef CONFIG_SDIO_HCI
 #ifdef PLATFORM_LINUX

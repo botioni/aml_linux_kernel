@@ -18,17 +18,17 @@
  *
  ******************************************************************************/
 #define _RTL871X_RECV_C_
-#include "../include/drv_conf.h"
-#include "../include/osdep_service.h"
-#include "../include/drv_types.h"
-#include "../include/recv_osdep.h"
-#include "../include/mlme_osdep.h"
-#include "../include/ip.h"
-#include "../include/if_ether.h"
-#include "../include/ethernet.h"
+#include <drv_conf.h>
+#include <osdep_service.h>
+#include <drv_types.h>
+#include <recv_osdep.h>
+#include <mlme_osdep.h>
+#include <ip.h>
+#include <if_ether.h>
+#include <ethernet.h>
 
 #ifdef CONFIG_USB_HCI
-#include "../include/usb_ops.h"
+#include <usb_ops.h>
 #endif
 
 #if defined (PLATFORM_LINUX) && defined (PLATFORM_WINDOWS)
@@ -37,8 +37,8 @@
 
 #endif
 
-#include "../include/wifi.h"
-#include "../include/circ_buf.h"
+#include <wifi.h>
+#include <circ_buf.h>
 
 
 void _rtw_init_sta_recv_priv(struct sta_recv_priv *psta_recvpriv)
@@ -1234,6 +1234,7 @@ static sint validate_recv_frame(_adapter *adapter, union recv_frame *precv_frame
 	u8  ver =(unsigned char) (*ptr)&0x3 ;
  
 _func_enter_;
+
 
 
 

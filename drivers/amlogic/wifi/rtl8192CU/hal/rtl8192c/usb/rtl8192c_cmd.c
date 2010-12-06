@@ -19,15 +19,15 @@
  ******************************************************************************/
 #define _RTL8192C_CMD_C_
 
-#include "../../../include/drv_conf.h"
-#include "../../../include/osdep_service.h"
-#include "../../../include/drv_types.h"
-#include "../../../include/recv_osdep.h"
-#include "../../../include/cmd_osdep.h"
-#include "../../../include/mlme_osdep.h"
-#include "../../../include/rtw_byteorder.h"
-#include "../../../include/circ_buf.h"
-#include "../../../include/rtw_ioctl_set.h"
+#include <drv_conf.h>
+#include <osdep_service.h>
+#include <drv_types.h>
+#include <recv_osdep.h>
+#include <cmd_osdep.h>
+#include <mlme_osdep.h>
+#include <rtw_byteorder.h>
+#include <circ_buf.h>
+#include <rtw_ioctl_set.h>
 
 
 #ifdef PLATFORM_LINUX
@@ -465,7 +465,7 @@ u8 rtl8192c_disconnect_hdl(_adapter *padapter, unsigned char *pbuf)
 	}
 
 	pmlmeinfo->state = WIFI_FW_NULL_STATE;
-	
+
 	pmlmepriv->sitesurveyctrl.traffic_busy = _FALSE;		
 	set_channel_bwmode(padapter, pmlmeext->cur_channel, pmlmeext->cur_ch_offset, pmlmeext->cur_bwmode);
 
@@ -473,6 +473,7 @@ u8 rtl8192c_disconnect_hdl(_adapter *padapter, unsigned char *pbuf)
 		
 	_cancel_timer_ex(&pmlmeext->link_timer);
 	pmlmeext->linked_to = 0;
+
 	
 	return 	H2C_SUCCESS;
 }
@@ -532,7 +533,6 @@ u8 rtl8192c_sitesurvey_cmd_hdl(_adapter *padapter, u8 *pbuf)
 		{
 			//config RCR to receive different BSSID & not to receive data frame			
 			rtw_write32(padapter, REG_RCR, rtw_read32(padapter, REG_RCR) & 0xfffff7bf);
-
 
 			//disable update TSF
 			rtw_write8(padapter, REG_BCN_CTRL, rtw_read8(padapter, REG_BCN_CTRL)|BIT(4)|BIT(5));
@@ -881,19 +881,30 @@ void dynamic_chk_wk_hdl(_adapter *padapter, u8 *pbuf, int sz)
 {
 	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(padapter);
 	struct mlme_ext_priv *pmlmeext = &padapter->mlmeextpriv;
+	struct mlme_priv *pmlmepriv = &(padapter->mlmepriv);
 
-	if(pmlmeext->linked_to > 0)
+
+	/*
+	 * Commented by Jeff 2010/12/25
+	 * Long-time site survey will occpuy the medium causing no beacon
+	 * or probe respons is received form current AP.
+	 * If under site surveying, we don't decrese the "linked_to" counter
+	 * to prevent "linked_status_chk" 's over killing.
+	*/
+	if(check_fwstate(pmlmepriv, WIFI_SITE_MONITOR) == _FALSE)
 	{
-		pmlmeext->linked_to--;	
-		if(pmlmeext->linked_to==0)
-		    linked_status_chk(padapter);		
+		if(pmlmeext->linked_to > 0)
+		{
+			pmlmeext->linked_to--;	
+			if(pmlmeext->linked_to==0)
+			    linked_status_chk(padapter);		
+		}
 	}
 
 	if(pHalData->hal_ops.hal_dm_watchdog)
 		pHalData->hal_ops.hal_dm_watchdog(padapter);
 
 	//check_hw_pbc(padapter, pdrvextra_cmd->pbuf, pdrvextra_cmd->sz);	
-
 }
 
 u8 rtl8192c_drvextra_cmd_hdl(_adapter *padapter, unsigned char *pbuf)
@@ -1058,6 +1069,10 @@ void FillH2CCmd(_adapter* padapter, u8 ElementID, u32 CmdLen, u8* pCmdBuffer)
 	if(CmdLen > RTL92C_MAX_CMD_LEN){
 		return ;
 	}
+	if(padapter->bFWReady == _FALSE)		
+	{
+		return;
+	}
 	//pay attention to if  race condition happened in  H2C cmd setting.
 	do{
 		h2c_box_num = pHalData->LastHMEBoxNum;
@@ -1078,7 +1093,7 @@ void FillH2CCmd(_adapter* padapter, u8 ElementID, u32 CmdLen, u8* pCmdBuffer)
 		}
 
 		*(u8*)(&h2c_cmd) |= ElementID;
-		
+			
 		if(h2c_cmd & BIT(7)){
 			msgbox_ex_addr = REG_HMEBOX_EXT_0 + (h2c_box_num *EX_MESSAGE_BOX_SIZE);
 			h2c_cmd_ex = cpu_to_le16( h2c_cmd_ex );

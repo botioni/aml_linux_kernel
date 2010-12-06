@@ -19,11 +19,11 @@
  ******************************************************************************/
 #define _RTL8712_EFUSE_C_
 
-#include "../../include/drv_conf.h"
-#include "../../include/osdep_service.h"
-#include "../../include/drv_types.h"
+#include <drv_conf.h>
+#include <osdep_service.h>
+#include <drv_types.h>
 
-#include "../../include/rtl8712_efuse.h"
+#include <rtl8712_efuse.h>
 //------------------------------------------------------------------------------
 static void efuse_reg_ctrl(_adapter *padapter, u8 bPowerOn)
 {

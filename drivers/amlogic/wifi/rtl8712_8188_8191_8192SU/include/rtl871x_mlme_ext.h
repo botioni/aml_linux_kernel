@@ -20,11 +20,11 @@
 #ifndef __RTL871X_MLME_EXT_H_
 #define __RTL871X_MLME_EXT_H_
 
-#include "drv_conf.h"
-#include "osdep_service.h"
-#include "drv_types.h"
-#include "wlan_bssdef.h"
-#include "wifi.h"
+#include <drv_conf.h>
+#include <osdep_service.h>
+#include <drv_types.h>
+#include <wlan_bssdef.h>
+#include <wifi.h>
 
 struct mlme_handler {
 	unsigned int   num;

@@ -20,7 +20,7 @@
 #ifndef _RTL871X_WLAN_MLME_H_
 #define _RTL871X_WLAN_MLME_H_
 
-#include "ieee80211_ext.h"
+#include <ieee80211_ext.h>
 
 
 #define SURVEY_TO		(200)

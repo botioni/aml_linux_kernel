@@ -17,11 +17,11 @@
 *******************************************************************************/
 #define _HCI_OPS_OS_C_
 
-#include "../../../include/drv_conf.h"
-#include "../../../include/osdep_service.h"
-#include "../../../include/drv_types.h"
-#include "../../../include/osdep_intf.h"
-#include "../../../include/circ_buf.h"
+#include <drv_conf.h>
+#include <osdep_service.h>
+#include <drv_types.h>
+#include <osdep_intf.h>
+#include <circ_buf.h>
 
 #if defined (PLATFORM_LINUX) && defined (PLATFORM_WINDOWS)
 	#error "Shall be Linux or Windows, but not both!\n"
@@ -32,14 +32,14 @@
 #endif
 
 
-#include "../../../include/usb.h"
-#include "../../../include/usbdlib.h"
-#include "../../../include/usbioctl.h"
+#include <usb.h>
+#include <usbdlib.h>
+#include <usbioctl.h>
 
-#include "../../../include/usb_ops.h"
-#include "../../../include/recv_osdep.h"
+#include <usb_ops.h>
+#include <recv_osdep.h>
 
-#include "../../../include/usb_osintf.h"
+#include <usb_osintf.h>
 
 
 struct zero_bulkout_context
