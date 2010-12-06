@@ -2,17 +2,29 @@
 #include <linux/spinlock.h>
 #include <linux/kernel.h>
 #include <linux/device.h>
+#include <linux/vmalloc.h>
 
 #include <linux/amlog.h>
 MODULE_AMLOG(AMLOG_DEFAULT_LEVEL, 0, LOG_DEFAULT_LEVEL_DESC, LOG_DEFAULT_MASK_DESC);
 
+#define MAX_SUBTITLE_PACKET 10
+
+typedef struct{
+	int subtitle_size;
+	int subtitle_pts;
+	char * data;
+}subtitle_data_t;
+static subtitle_data_t subtitle_data[MAX_SUBTITLE_PACKET];
 static int subtitle_enable = 1;
 static int subtitle_total = 0;
 static int subtitle_width = 0;
 static int subtitle_height = 0;
 static int subtitle_type = -1;
 static int subtitle_current = 0; // no subtitle
-
+static int subtitle_size = 0;
+static int subtitle_read_pos = 0;
+static int subtitle_write_pos = 0;
+//static int *subltitle_address[MAX_SUBTITLE_PACKET];
 
 // total
 // curr
@@ -41,8 +53,8 @@ static ssize_t store_curr(struct class *class,
     ssize_t r;
 
     r = sscanf(buf, "%d", &curr);
-    if ((r != 1))
-        return -EINVAL;
+    //if ((r != 1))
+        //return -EINVAL;
 
     subtitle_current = curr;
 
@@ -66,8 +78,8 @@ static ssize_t store_type(struct class *class,
     ssize_t r;
 
     r = sscanf(buf, "%d", &type);
-    if ((r != 1))
-        return -EINVAL;
+    //if ((r != 1))
+      //  return -EINVAL;
 
     subtitle_type = type;
 
@@ -90,8 +102,8 @@ static ssize_t store_width(struct class *class,
     ssize_t r;
 
     r = sscanf(buf, "%d", &width);
-    if ((r != 1))
-        return -EINVAL;
+    //if ((r != 1))
+        //return -EINVAL;
 
     subtitle_width = width;
 
@@ -114,8 +126,8 @@ static ssize_t store_height(struct class *class,
     ssize_t r;
 
     r = sscanf(buf, "%d", &height);
-    if ((r != 1))
-        return -EINVAL;
+    //if ((r != 1))
+        //return -EINVAL;
 
     subtitle_height = height;
 
@@ -138,9 +150,9 @@ static ssize_t store_total(struct class *class,
     ssize_t r;
 
     r = sscanf(buf, "%d", &total);
-    if ((r != 1))
+    if ((r <= 0))
         return -EINVAL;
-
+	printk("subtitle num is %d\n", total);
     subtitle_total = total;
 
     return size;
@@ -167,10 +179,71 @@ static ssize_t store_enable(struct class *class,
     r = sscanf(buf, "%d", &mode);
     if ((r != 1))
         return -EINVAL;
-
+	printk("subtitle enable is %d\n", mode);
     subtitle_enable = mode ? 1 : 0;
 
     return size;
+}
+
+static ssize_t show_size(struct class *class,
+                           struct class_attribute *attr,
+                           char *buf)
+{
+    if (subtitle_enable)
+        return sprintf(buf, "1: enabled\n");
+
+    return sprintf(buf, "0: disabled\n");
+}
+
+static ssize_t store_size(struct class *class,
+                            struct class_attribute *attr,
+                            const char *buf,
+                            size_t size)
+{
+    unsigned ssize;
+    ssize_t r;
+
+    r = sscanf(buf, "%d", &ssize);
+    if ((r <= 0))
+        return -EINVAL;
+	printk("subtitle size is %d\n", ssize);
+    subtitle_data[subtitle_write_pos].subtitle_size = ssize;
+
+    return size;
+}
+
+static ssize_t show_data(struct class *class,
+                           struct class_attribute *attr,
+                           char *buf)
+{
+    if (subtitle_data[subtitle_write_pos].data)
+        return sprintf(buf, "%d\n", (int)(subtitle_data[subtitle_write_pos].data));
+
+    return sprintf(buf, "0: disabled\n");
+}
+
+static ssize_t store_data(struct class *class,
+                            struct class_attribute *attr,
+                            const char *buf,
+                            size_t size)
+{
+    unsigned address;
+    ssize_t r;
+
+    r = sscanf(buf, "%d", &address);
+    if ((r == 0))
+        return -EINVAL;
+	if(subtitle_data[subtitle_write_pos].subtitle_size > 0){
+		subtitle_data[subtitle_write_pos].data = vmalloc((subtitle_data[subtitle_write_pos].subtitle_size));
+		if(subtitle_data[subtitle_write_pos].data)
+			memcpy(subtitle_data[subtitle_write_pos].data,(char *)address, 
+			subtitle_data[subtitle_write_pos].subtitle_size);
+	}
+	printk("subtitle data address is %x", (unsigned int)(subtitle_data[subtitle_write_pos].data));
+	subtitle_write_pos++;
+	if(subtitle_write_pos >= MAX_SUBTITLE_PACKET)
+		subtitle_write_pos = 0;
+    return 1;
 }
 
 
@@ -181,6 +254,8 @@ static struct class_attribute subtitle_class_attrs[] = {
     __ATTR(height,     S_IRUGO | S_IWUSR, show_height,  store_height),
     __ATTR(type,     S_IRUGO | S_IWUSR, show_type,  store_type),
     __ATTR(curr,     S_IRUGO | S_IWUSR, show_curr,  store_curr),
+    __ATTR(size,     S_IRUGO | S_IWUSR, show_size,  store_size),
+    __ATTR(data,     S_IRUGO | S_IWUSR, show_data,  store_data),
     __ATTR_NULL
 };
 
