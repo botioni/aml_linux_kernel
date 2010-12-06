@@ -37,8 +37,6 @@
 #include <mach/pinmux.h>
 #include <mach/power_gate.h>
 
-/*
-For WA 8726M, Hanstar HSD070ISN1-B00 */ 
 #define LCD_WIDTH       800 
 #define LCD_HEIGHT      600
 #define MAX_WIDTH       1000

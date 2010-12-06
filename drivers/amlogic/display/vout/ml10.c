@@ -32,8 +32,6 @@
 #include <mach/am_regs.h>
 #include <mach/pinmux.h>
 
-/*
-For Malata 8726M, CPT10.2" */ 
 #define LCD_WIDTH       1024 
 #define LCD_HEIGHT      600
 #define MAX_WIDTH       1344//1100
