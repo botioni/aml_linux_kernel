@@ -36,7 +36,7 @@
 #include <mach/am_regs.h>
 #include <mach/pinmux.h>
 #include <mach/power_gate.h>
-
+#include <linux/delay.h>
  
 #define LCD_WIDTH       1024 
 #define LCD_HEIGHT      600
@@ -156,30 +156,6 @@ void power_on_backlight(void)
 //    set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);
     
     //EIO -> OD4: 0
-#ifdef CONFIG_SN7325
-        printk("power on 7325 0\n");
-        setIO_level(0, 0, 0);//OD0
-        configIO(0, 0);
-        setIO_level(0, 1, 1);//OD1
-        configIO(0, 0);
-        setIO_level(0, 1, 4);//OD4
-        configIO(0, 0);
-        setIO_level(0, 1, 5);//OD5
-        configIO(0, 0);
-        setIO_level(0, 0, 6);//OD6
-        configIO(1, 0);
-        setIO_level(1, 1, 4);//PP4
-        configIO(1, 0);
-        setIO_level(1, 1, 0);//PP0
-        configIO(1, 0);
-        setIO_level(1, 0, 1);//PP1
-        configIO(1, 0);
-        setIO_level(1, 1, 5);//PP5
-        configIO(1, 0);
-        setIO_level(1, 0, 6);//PP6
-        configIO(1, 0);
-        setIO_level(1, 1, 7);//PP7
-#endif
 
     set_gpio_val(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), 1);
     set_gpio_mode(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), GPIO_OUTPUT_MODE);
@@ -225,41 +201,32 @@ static void power_on_lcd(void)
     
     //Power on sequence: STBYB -> VDD -> AVDD -> VGL -> VGH -> DATA -> B/L
     //LCD_3.3V: LCD_VCC_EN -> EIO_OD0: 0   
-    
-    delay_ms(50);
-    //AVDD_power: LCD_PWR_EN -> EIO_PP4: 1
-    
-    delay_ms(20);
-    //VGH_EN: LCD_VGH_EN -> EIO_PP7: 1
-    
-    delay_ms(20);
-    //DATA: LCD_DISP_ON -> EIO_OD5: 1
-    
-    delay_ms(50);
 #ifdef CONFIG_SN7325
-        printk("power on 7325 1\n");
+        configIO(0, 0);
         setIO_level(0, 0, 0);//OD0
-        configIO(0, 0);
-        setIO_level(0, 1, 1);//OD1
-        configIO(0, 0);
-        setIO_level(0, 1, 4);//OD4
-        configIO(0, 0);
-        setIO_level(0, 1, 5);//OD5
-        configIO(0, 0);
-        setIO_level(0, 0, 6);//OD6
+#endif
+    msleep(50);
+#ifdef CONFIG_SN7325
         configIO(1, 0);
         setIO_level(1, 1, 4);//PP4
-        configIO(1, 0);
-        setIO_level(1, 1, 0);//PP0
-        configIO(1, 0);
-        setIO_level(1, 0, 1);//PP1
-        configIO(1, 0);
-        setIO_level(1, 1, 5);//PP5
-        configIO(1, 0);
-        setIO_level(1, 0, 6);//PP6
+#endif
+    //AVDD_power: LCD_PWR_EN -> EIO_PP4: 1
+    
+    msleep(20);
+#ifdef CONFIG_SN7325
         configIO(1, 0);
         setIO_level(1, 1, 7);//PP7
 #endif
+    //VGH_EN: LCD_VGH_EN -> EIO_PP7: 1
+    
+    msleep(20);
+#ifdef CONFIG_SN7325
+        printk("power on 7325 1\n");
+        configIO(0, 0);
+        setIO_level(0, 1, 5);//OD5
+#endif
+    //DATA: LCD_DISP_ON -> EIO_OD5: 1
+    msleep(50);
 }
 
 static void power_off_lcd(void)
@@ -279,20 +246,32 @@ static void power_off_lcd(void)
 //    set_gpio_val(GPIOC_bank_bit0_26(4), GPIOC_bit_bit0_26(4), 1);
 //    set_gpio_mode(GPIOC_bank_bit0_26(4), GPIOC_bit_bit0_26(4), GPIO_OUTPUT_MODE); 
 //    #endif
-    
-    //EIO -> OD0: 1
     //Power off sequence: B/L -> STBYB -> DATA -> VGH -> VGL -> AVDD -> VDD
-    delay_ms(20);
+
+    msleep(20);
     //DATA: LCD_DISP_ON -> EIO_OD5: 0
-    
-    delay_ms(10);
+#ifdef CONFIG_SN7325
+        configIO(0, 0);
+        setIO_level(0, 0, 5);//OD5
+#endif
+    msleep(10);
     //VGH_EN: LCD_VGH_EN -> EIO_PP7: 0
-    
-    delay_ms(20);
+#ifdef CONFIG_SN7325
+        configIO(1, 0);
+        setIO_level(1, 0, 7);//PP7
+#endif
+    msleep(20);
     //AVDD_power: LCD_PWR_EN -> EIO_PP4: 0
-    
-    delay_ms(20);
+#ifdef CONFIG_SN7325
+        configIO(1, 0);
+        setIO_level(1, 0, 4);//PP4
+#endif
+    msleep(20);
     //LCD_3.3V: LCD_VCC_EN -> EIO_OD0: 1
+#ifdef CONFIG_SN7325
+        configIO(0, 0);
+        setIO_level(0, 1, 0);//OD0
+#endif
     
 }
 
@@ -300,7 +279,7 @@ static void set_tcon_pinmux(void)
 {
     /* TCON control pins pinmux */
     /* GPIOA_5 -> LCD_Clk, GPIOA_0 -> TCON_STH1, GPIOA_1 -> TCON_STV1, GPIOA_2 -> TCON_OEH, */
-    set_mio_mux(0, ((1<<11)|(1<<14)|(1<<15)|(1<<16));    
+    set_mio_mux(0, ((1<<11)|(1<<14)|(1<<15)|(1<<16)));    
     set_mio_mux(4,(3<<0)|(3<<2)|(3<<4));   //For 8bits
 }
 static void t13_power_on(void)
