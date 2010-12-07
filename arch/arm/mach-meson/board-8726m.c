@@ -1076,17 +1076,29 @@ static struct platform_device aml_nand_device = {
 #if defined(CONFIG_AMLOGIC_BACKLIGHT)
 static void power_on_panel(void)
 {
+    int i;
+    /* GPIOA_3, Pull low, power up LCD_3.3V */
+    set_gpio_val(GPIOA_bank_bit(3), GPIOA_bit_bit0_14(3), 0);
+    set_gpio_mode(GPIOA_bank_bit(3), GPIOA_bit_bit0_14(3), GPIO_OUTPUT_MODE);
+    i=2;
+    while(i--)
+        udelay(1000);
+    
+    /* PIN172, GPIOC_3, Pull high, For AVDD */
+    set_gpio_val(GPIOC_bank_bit0_26(3), GPIOC_bit_bit0_26(3), 1);
+    set_gpio_mode(GPIOC_bank_bit0_26(3), GPIOC_bit_bit0_26(3), GPIO_OUTPUT_MODE);
+    i=4;
+    while(i--)
+        udelay(1000);
+    
     CLK_GATE_ON(LCD);
     set_mio_mux(4,(0x3f<<0));
     set_mio_mux(0, 1<<11);
     set_mio_mux(0, 1<<14);     
-    /* GPIOA_3, Pull low, power up LCD_3.3V */
-    set_gpio_val(GPIOA_bank_bit(3), GPIOA_bit_bit0_14(3), 0);
-    set_gpio_mode(GPIOA_bank_bit(3), GPIOA_bit_bit0_14(3), GPIO_OUTPUT_MODE);        
-
-    /* PIN172, GPIOC_3, Pull high, For AVDD */
-    set_gpio_val(GPIOC_bank_bit0_26(3), GPIOC_bit_bit0_26(3), 1);
-    set_gpio_mode(GPIOC_bank_bit0_26(3), GPIOC_bit_bit0_26(3), GPIO_OUTPUT_MODE);
+    
+    i=4;
+    while(i--)
+        udelay(1000);
 
 }
 
@@ -1171,6 +1183,7 @@ static unsigned aml_8726m_get_bl_level(void)
 static void aml_8726m_set_bl_level(unsigned level)
 {
     unsigned cs_level,pwm_level,low,hi;
+    int i;
     
     bl_level = level;
         
@@ -1194,16 +1207,25 @@ static void aml_8726m_set_bl_level(unsigned level)
     if(bl_level >=30&&panel_state == 0){
         panel_state = 1;
         power_on_panel();
+        for(i = 0;i<=200;i++){
+    	    udelay(1000);   
+        }	         
     }       
-    WRITE_CBUS_REG_BITS(VGHL_PWM_REG0, cs_level, 0, 4);   
     //SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<31)); 
-    SET_CBUS_REG_MASK(PWM_MISC_REG_AB, (1 << 0));         
+    WRITE_CBUS_REG_BITS(VGHL_PWM_REG0, cs_level, 0, 4);        
     WRITE_CBUS_REG_BITS(PWM_PWM_A,low,0,16);  //low
-    WRITE_CBUS_REG_BITS(PWM_PWM_A,hi,16,16);  //hi   
+    WRITE_CBUS_REG_BITS(PWM_PWM_A,hi,16,16);  //hi  
+    SET_CBUS_REG_MASK(PWM_MISC_REG_AB, (1 << 0)); 
+    SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<31));         
     
     if(bl_level <30&&panel_state == 1){
         panel_state = 0;
+        set_gpio_val(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), 0);
+        set_gpio_mode(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), GPIO_OUTPUT_MODE);
+        CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<31)); 
+        CLEAR_CBUS_REG_MASK(PWM_MISC_REG_AB, (1 << 0));  
         power_off_panel();
+        
     }     
       
 }
