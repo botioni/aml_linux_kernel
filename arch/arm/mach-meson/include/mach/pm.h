@@ -37,5 +37,11 @@ struct meson_pm_config {
 
 extern unsigned int meson_cpu_suspend_sz;
 extern void meson_cpu_suspend(struct meson_pm_config *);
+extern void power_gate_switch(int flag);
+extern void clk_switch(int flag);
+extern void pll_switch(int flag);
+extern void early_power_gate_switch(int flag);
+extern void early_clk_switch(int flag);
+extern void early_pll_switch(int flag);
 
 #endif

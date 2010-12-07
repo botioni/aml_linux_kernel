@@ -29,10 +29,7 @@
 #define OFF 0
 
 #define WAKE_UP_BY_IRQ
-//#define SUPPORT_UART_DEBUG
 #define SYSCLK_32K
-//#define A9CLK_32K_DIV_128
-//#define SYSCLK_32K_DIV_128
 
 static void (*meson_sram_suspend) (struct meson_pm_config *);
 static struct meson_pm_config *pdata;
@@ -51,6 +48,12 @@ static void meson_sram_push(void *dest, void *src, unsigned int size)
 #define GATE_ON(_MOD) do {if (power_gate_flag[GCLK_IDX_##_MOD]) CLK_GATE_ON(_MOD);} while(0)
 #define GATE_SWITCH(flag, _MOD) do {if (flag) GATE_ON(_MOD); else GATE_OFF(_MOD);} while(0)
 static int power_gate_flag[GCLK_IDX_MAX];
+
+#define EARLY_GATE_OFF(_MOD) do {early_power_gate_flag[GCLK_IDX_##_MOD] = IS_CLK_GATE_ON(_MOD);CLK_GATE_OFF(_MOD);} while(0)
+#define EARLY_GATE_ON(_MOD) do {if (early_power_gate_flag[GCLK_IDX_##_MOD]) CLK_GATE_ON(_MOD);} while(0)
+#define EARLY_GATE_SWITCH(flag, _MOD) do {if (flag) EARLY_GATE_ON(_MOD); else EARLY_GATE_OFF(_MOD);} while(0)
+static int early_power_gate_flag[GCLK_IDX_MAX];
+
 void power_gate_init(void)
 {
     GATE_INIT(AHB_BRIDGE);
@@ -145,6 +148,23 @@ void power_gate_init(void)
     GATE_INIT(WIFI);
 }
 
+void power_init_off(void)
+{
+    GATE_OFF(BT656_IN);
+    GATE_OFF(DIG_VID_IN);
+    GATE_OFF(VIDEO_IN);
+    GATE_OFF(GE2D);
+    GATE_OFF(DEMUX);
+    GATE_OFF(ETHERNET);
+    GATE_OFF(WIFI);
+    CLEAR_CBUS_REG_MASK(HHI_DEMOD_CLK_CNTL, (1<<8));
+    CLEAR_CBUS_REG_MASK(HHI_SATA_CLK_CNTL, (1<<8));
+    CLEAR_CBUS_REG_MASK(HHI_ETH_CLK_CNTL, (1<<8));
+    CLEAR_CBUS_REG_MASK(HHI_WIFI_CLK_CNTL, (1<<8));
+    SET_CBUS_REG_MASK(HHI_WIFI_PLL_CNTL, (1<<15));
+    SET_CBUS_REG_MASK(HHI_DEMOD_PLL_CNTL, (1<<15));
+}
+
 void power_gate_switch(int flag)
 {
     //GATE_SWITCH(flag, AHB_BRIDGE);
@@ -196,7 +216,6 @@ void power_gate_switch(int flag)
     GATE_SWITCH(flag, MC_CLK);
     GATE_SWITCH(flag, IQIDCT_CLK);
     GATE_SWITCH(flag, VLD_CLK);
-
     GATE_SWITCH(flag, NAND);
     GATE_SWITCH(flag, RESERVED0);
     GATE_SWITCH(flag, VGHL_PWM);
@@ -239,6 +258,49 @@ void power_gate_switch(int flag)
     GATE_SWITCH(flag, VIDEO_IN);
     GATE_SWITCH(flag, WIFI);
 }
+EXPORT_SYMBOL(power_gate_switch);
+
+void early_power_gate_switch(int flag)
+{
+    EARLY_GATE_SWITCH(flag, AMRISC);
+    EARLY_GATE_SWITCH(flag, AUD_IN);
+    EARLY_GATE_SWITCH(flag, BLK_MOV);
+    EARLY_GATE_SWITCH(flag, BT656_IN);
+    EARLY_GATE_SWITCH(flag, DIG_VID_IN);
+    EARLY_GATE_SWITCH(flag, GE2D);
+    EARLY_GATE_SWITCH(flag, ROM_CLK);
+    EARLY_GATE_SWITCH(flag, EFUSE);
+    EARLY_GATE_SWITCH(flag, MDEC_CLK_PIC_DC);
+    EARLY_GATE_SWITCH(flag, MDEC_CLK_DBLK);
+    EARLY_GATE_SWITCH(flag, MDEC_CLK_PSC);
+    EARLY_GATE_SWITCH(flag, MDEC_CLK_ASSIST);
+    EARLY_GATE_SWITCH(flag, MC_CLK);
+    EARLY_GATE_SWITCH(flag, IQIDCT_CLK);
+    EARLY_GATE_SWITCH(flag, VLD_CLK);
+    EARLY_GATE_SWITCH(flag, RESERVED0);
+    EARLY_GATE_SWITCH(flag, VGHL_PWM);
+    EARLY_GATE_SWITCH(flag, LED_PWM);
+    EARLY_GATE_SWITCH(flag, VI_CORE);
+    EARLY_GATE_SWITCH(flag, LCD);
+    EARLY_GATE_SWITCH(flag, ENC480P_MPEG_DOMAIN);
+    EARLY_GATE_SWITCH(flag, ENC480I);
+    EARLY_GATE_SWITCH(flag, VENC_MISC);
+    EARLY_GATE_SWITCH(flag, ENC480P);
+    EARLY_GATE_SWITCH(flag, HDMI);
+    EARLY_GATE_SWITCH(flag, VCLK3_DAC);
+    EARLY_GATE_SWITCH(flag, VCLK3_MISC);
+    EARLY_GATE_SWITCH(flag, VCLK3_DVI);
+    EARLY_GATE_SWITCH(flag, VCLK2_VIU);
+    EARLY_GATE_SWITCH(flag, VCLK2_VENC_DVI);
+    EARLY_GATE_SWITCH(flag, VCLK2_VENC_ENC480P);
+    EARLY_GATE_SWITCH(flag, VCLK2_VENC_BIST);
+    EARLY_GATE_SWITCH(flag, VCLK1_VENC_656);
+    EARLY_GATE_SWITCH(flag, VCLK1_VENC_DVI);
+    EARLY_GATE_SWITCH(flag, VCLK1_VENC_ENCI);
+    EARLY_GATE_SWITCH(flag, VCLK1_VENC_BIST);
+    EARLY_GATE_SWITCH(flag, VIDEO_IN);
+}
+EXPORT_SYMBOL(early_power_gate_switch);
 
 #define CLK_COUNT 9
 static char clk_flag[CLK_COUNT];
@@ -270,76 +332,146 @@ static unsigned clk81_backup;
 void clk_switch(int flag)
 {
     int i;
-#ifdef SUPPORT_UART_DEBUG
+#ifndef SYSCLK_32K
     struct clk *sys_clk;
 #endif
     if (flag){
         for (i=0;i<CLK_COUNT;i++){
             if (clk_flag[i]){
-                printk(KERN_INFO "clk %s(%x) on\n", clks_name[i], clks[i]);
-                if (clks[i] == HHI_VID_CLK_CNTL)
+                if (clks[i] == HHI_VID_CLK_CNTL){
                     SET_CBUS_REG_MASK(clks[i], 1);
+                }
                 else if (clks[i] == HHI_MPEG_CLK_CNTL){
-#ifdef SUPPORT_UART_DEBUG
+#ifdef SYSCLK_32K
+                    SET_CBUS_REG_MASK(clks[i], clk81_backup);
+#else
                     sys_clk = clk_get_sys("clk81", NULL);
                     SET_CBUS_REG_MASK(clks[i], (1<<8));
                     CLEAR_CBUS_REG_MASK(UART0_CONTROL, (1 << 19) | 0xFFF);
                     SET_CBUS_REG_MASK(UART0_CONTROL, (((sys_clk->rate / (115200 * 4)) - 1) & 0xfff));
                     CLEAR_CBUS_REG_MASK(UART1_CONTROL, (1 << 19) | 0xFFF);
                     SET_CBUS_REG_MASK(UART1_CONTROL, (((sys_clk->rate / (115200 * 4)) - 1) & 0xfff));
-#else
-#ifdef SYSCLK_32K
-                    SET_CBUS_REG_MASK(clks[i], clk81_backup);
-#else
-                    SET_CBUS_REG_MASK(clks[i], (1<<8));
-#endif
 #endif
                 }
-                else
+                else{
                     SET_CBUS_REG_MASK(clks[i], (1<<8));
+                }
+                printk(KERN_INFO "clk %s(%x) on\n", clks_name[i], clks[i]);
             }
         }
     }
     else{
         for (i=0;i<CLK_COUNT;i++){
-            printk(KERN_INFO "clk %s(%x) off\n", clks_name[i], clks[i]);
             if (clks[i] == HHI_VID_CLK_CNTL){
                 clk_flag[i] = READ_CBUS_REG_BITS(clks[i], 0, 1);
-                CLEAR_CBUS_REG_MASK(clks[i], 1);
+                if (clk_flag[i]){
+                    CLEAR_CBUS_REG_MASK(clks[i], 1);
+                }
             }
             else if (clks[i] == HHI_MPEG_CLK_CNTL){
-#ifdef SUPPORT_UART_DEBUG
-                sys_clk = clk_get_sys("clk_xtal", NULL);
                 clk_flag[i] = READ_CBUS_REG_BITS(clks[i], 8, 1) ? 1 : 0;
-                CLEAR_CBUS_REG_MASK(clks[i], (1<<8));
-                CLEAR_CBUS_REG_MASK(UART0_CONTROL, (1 << 19) | 0xFFF);
-                SET_CBUS_REG_MASK(UART0_CONTROL, (((sys_clk->rate / (115200 * 4)) - 1) & 0xfff));
-                CLEAR_CBUS_REG_MASK(UART1_CONTROL, (1 << 19) | 0xFFF);
-                SET_CBUS_REG_MASK(UART1_CONTROL, (((sys_clk->rate / (115200 * 4)) - 1) & 0xfff));
-#else
-                clk_flag[i] = READ_CBUS_REG_BITS(clks[i], 8, 1) ? 1 : 0;
+                if (clk_flag[i]){
 #ifdef SYSCLK_32K
-                clk81_backup = READ_CBUS_REG(clks[i]);
-                CLEAR_CBUS_REG_MASK(clks[i], (1<<8));
-#ifdef SYSCLK_32K_DIV_128
-                WRITE_CBUS_REG_BITS(clks[i], 0x7f, 0, 6);
+                    clk81_backup = READ_CBUS_REG(clks[i]);
+                    CLEAR_CBUS_REG_MASK(clks[i], (1<<8));
+                    WRITE_CBUS_REG_BITS(clks[i], 0, 0, 6);
+                    WRITE_CBUS_REG_BITS(clks[i], 0, 12, 2);
+                    SET_CBUS_REG_MASK(clks[i], (1<<8));
 #else
-                WRITE_CBUS_REG_BITS(clks[i], 0, 0, 6);
+                    sys_clk = clk_get_sys("clk_xtal", NULL);
+                    CLEAR_CBUS_REG_MASK(clks[i], (1<<8));
+                    CLEAR_CBUS_REG_MASK(UART0_CONTROL, (1 << 19) | 0xFFF);
+                    SET_CBUS_REG_MASK(UART0_CONTROL, (((sys_clk->rate / (115200 * 4)) - 1) & 0xfff));
+                    CLEAR_CBUS_REG_MASK(UART1_CONTROL, (1 << 19) | 0xFFF);
+                    SET_CBUS_REG_MASK(UART1_CONTROL, (((sys_clk->rate / (115200 * 4)) - 1) & 0xfff));
 #endif
-                WRITE_CBUS_REG_BITS(clks[i], 0, 12, 2);
-                SET_CBUS_REG_MASK(clks[i], (1<<8));
-#endif
-                CLEAR_CBUS_REG_MASK(clks[i], (1<<8));
-#endif
+                }
             }
             else{
                 clk_flag[i] = READ_CBUS_REG_BITS(clks[i], 8, 1) ? 1 : 0;
-                CLEAR_CBUS_REG_MASK(clks[i], (1<<8));
+                if (clk_flag[i])    
+                    CLEAR_CBUS_REG_MASK(clks[i], (1<<8));
             }
+            if (clk_flag[i])
+                printk(KERN_INFO "clk %s(%x) off\n", clks_name[i], clks[i]);
         }
     }
 }
+EXPORT_SYMBOL(clk_switch);
 
+#define EARLY_CLK_COUNT 6
+static char early_clk_flag[EARLY_CLK_COUNT];
+static unsigned early_clks[EARLY_CLK_COUNT]={
+    HHI_VID_CLK_CNTL,
+    HHI_DEMOD_CLK_CNTL,
+    HHI_SATA_CLK_CNTL,
+    HHI_ETH_CLK_CNTL,
+    HHI_WIFI_CLK_CNTL,
+    HHI_MPEG_CLK_CNTL,
+};
+
+static char early_clks_name[EARLY_CLK_COUNT][32]={
+    "HHI_VID_CLK_CNTL",
+    "HHI_DEMOD_CLK_CNTL",
+    "HHI_SATA_CLK_CNTL",
+    "HHI_ETH_CLK_CNTL",
+    "HHI_WIFI_CLK_CNTL",
+    "HHI_MPEG_CLK_CNTL",
+};
+
+void early_clk_switch(int flag)
+{
+    int i;
+    struct clk *sys_clk;
+
+    if (flag){
+        for (i=0;i<EARLY_CLK_COUNT;i++){
+            if (early_clk_flag[i]){
+                if (early_clks[i] == HHI_VID_CLK_CNTL){
+                    SET_CBUS_REG_MASK(clks[i], 1);
+                }
+                else if (early_clks[i] == HHI_MPEG_CLK_CNTL){
+                    sys_clk = clk_get_sys("clk81", NULL);
+                    SET_CBUS_REG_MASK(early_clks[i], (1<<8));
+                    CLEAR_CBUS_REG_MASK(UART0_CONTROL, (1 << 19) | 0xFFF);
+                    SET_CBUS_REG_MASK(UART0_CONTROL, (((sys_clk->rate / (115200 * 4)) - 1) & 0xfff));
+                    CLEAR_CBUS_REG_MASK(UART1_CONTROL, (1 << 19) | 0xFFF);
+                    SET_CBUS_REG_MASK(UART1_CONTROL, (((sys_clk->rate / (115200 * 4)) - 1) & 0xfff));
+                }
+                else{
+                    SET_CBUS_REG_MASK(early_clks[i], (1<<8));
+                }
+                printk(KERN_INFO "late clk %s(%x) on\n", early_clks_name[i], early_clks[i]);
+            }
+        }
+    }
+    else{
+        for (i=0;i<EARLY_CLK_COUNT;i++){
+            if (early_clks[i] == HHI_VID_CLK_CNTL){
+                early_clk_flag[i] = READ_CBUS_REG_BITS(early_clks[i], 0, 1);
+                if (early_clk_flag[i]){
+                    CLEAR_CBUS_REG_MASK(early_clks[i], 1);
+                }
+            }
+            else{
+                early_clk_flag[i] = READ_CBUS_REG_BITS(early_clks[i], 8, 1) ? 1 : 0;
+                if (early_clk_flag[i]){
+                    CLEAR_CBUS_REG_MASK(early_clks[i], (1<<8));
+                    if (early_clks[i] == HHI_MPEG_CLK_CNTL){
+                        sys_clk = clk_get_sys("clk_xtal", NULL);
+                        CLEAR_CBUS_REG_MASK(UART0_CONTROL, (1 << 19) | 0xFFF);
+                        SET_CBUS_REG_MASK(UART0_CONTROL, (((sys_clk->rate / (115200 * 4)) - 1) & 0xfff));
+                        CLEAR_CBUS_REG_MASK(UART1_CONTROL, (1 << 19) | 0xFFF);
+                        SET_CBUS_REG_MASK(UART1_CONTROL, (((sys_clk->rate / (115200 * 4)) - 1) & 0xfff));                        
+                    }
+                }
+            }
+            if (early_clk_flag[i])
+                printk(KERN_INFO "early clk %s(%x) off\n", early_clks_name[i], early_clks[i]);
+        }
+    }
+}
+EXPORT_SYMBOL(early_clk_switch);
 
 #define PLL_COUNT 6
 static char pll_flag[PLL_COUNT];
@@ -367,19 +499,63 @@ void pll_switch(int flag)
     if (flag){
         for (i=0;i<PLL_COUNT;i++){
             if (pll_flag[i]) {
-                printk(KERN_INFO "pll %s(%x) on\n", plls_name[i], plls[i]);
                 CLEAR_CBUS_REG_MASK(plls[i], (1<<15));
+                printk(KERN_INFO "pll %s(%x) on\n", plls_name[i], plls[i]);
             }
         }
+        udelay(1000);
     }
     else{
         for (i=0;i<PLL_COUNT;i++){
-            printk(KERN_INFO "pll %s(%x) off\n", plls_name[i], plls[i]);
             pll_flag[i] = READ_CBUS_REG_BITS(plls[i], 15, 1) ? 0 : 1;
-            SET_CBUS_REG_MASK(plls[i], (1<<15));
+            if (pll_flag[i]){
+                printk(KERN_INFO "pll %s(%x) off\n", plls_name[i], plls[i]);
+                SET_CBUS_REG_MASK(plls[i], (1<<15));
+            }
         }
     }
 }
+EXPORT_SYMBOL(pll_switch);
+
+#define EARLY_PLL_COUNT 2
+static char early_pll_flag[EARLY_PLL_COUNT];
+static unsigned early_plls[EARLY_PLL_COUNT]={
+//    HHI_OTHER_PLL_CNTL,
+//    HHI_VID_PLL_CNTL,
+    HHI_WIFI_PLL_CNTL,
+    HHI_DEMOD_PLL_CNTL,
+};
+
+static char early_plls_name[EARLY_PLL_COUNT][32]={
+//    "HHI_OTHER_PLL_CNTL",
+//    "HHI_VID_PLL_CNTL",
+    "HHI_WIFI_PLL_CNTL",
+    "HHI_DEMOD_PLL_CNTL",
+};
+
+void early_pll_switch(int flag)
+{
+    int i;
+    if (flag){
+        for (i=0;i<EARLY_PLL_COUNT;i++){
+            if (early_pll_flag[i]) {
+                CLEAR_CBUS_REG_MASK(plls[i], (1<<15));
+                printk(KERN_INFO "late pll %s(%x) on\n", early_plls_name[i], early_plls[i]);
+            }
+        }
+        udelay(1000);
+    }
+    else{
+        for (i=0;i<EARLY_PLL_COUNT;i++){
+            early_pll_flag[i] = READ_CBUS_REG_BITS(plls[i], 15, 1) ? 0 : 1;
+            if (early_pll_flag[i]){
+                printk(KERN_INFO "early pll %s(%x) off\n", early_plls_name[i], early_plls[i]);
+                SET_CBUS_REG_MASK(early_plls[i], (1<<15));
+            }
+        }
+    }
+}
+EXPORT_SYMBOL(early_pll_switch);
 
 void analog_switch(int flag)
 {
@@ -431,13 +607,8 @@ static void meson_pm_suspend(void)
     divider = READ_CBUS_REG_BITS(HHI_A9_CLK_CNTL, 8, 6);
     divider_sel = READ_CBUS_REG_BITS(HHI_A9_CLK_CNTL, 2, 2);
     WRITE_CBUS_REG(HHI_A9_CLK_CNTL, READ_CBUS_REG(HHI_A9_CLK_CNTL)&~(1<<7));
-#ifndef SUPPORT_UART_DEBUG
+#ifdef SYSCLK_32K
     WRITE_CBUS_REG(HHI_A9_CLK_CNTL, READ_CBUS_REG(HHI_A9_CLK_CNTL)|(1<<9));
-#ifdef A9CLK_32K_DIV_128
-    WRITE_CBUS_REG_BITS(HHI_A9_CLK_CNTL, 0x03, 2, 2);
-    WRITE_CBUS_REG_BITS(HHI_A9_CLK_CNTL, 0x3f, 8, 6);
-    WRITE_CBUS_REG(HHI_A9_CLK_CNTL, READ_CBUS_REG(HHI_A9_CLK_CNTL)|(1<<7));
-#endif
 #endif
     analog_switch(OFF);
 
@@ -492,12 +663,7 @@ static void meson_pm_suspend(void)
 
     analog_switch(ON);
     
-#ifndef SUPPORT_UART_DEBUG    
-#ifdef A9CLK_32K_DIV_128
-    WRITE_CBUS_REG(HHI_A9_CLK_CNTL, READ_CBUS_REG(HHI_A9_CLK_CNTL)&~(1<<7));
-    WRITE_CBUS_REG_BITS(HHI_A9_CLK_CNTL, divider_sel, 2, 2);
-    WRITE_CBUS_REG_BITS(HHI_A9_CLK_CNTL, divider, 8, 6);
-#endif
+#ifdef SYSCLK_32K    
     WRITE_CBUS_REG(HHI_A9_CLK_CNTL, READ_CBUS_REG(HHI_A9_CLK_CNTL)&~(1<<9));
 #endif
     WRITE_CBUS_REG(HHI_A9_CLK_CNTL, READ_CBUS_REG(HHI_A9_CLK_CNTL)|(1<<7));
@@ -555,6 +721,7 @@ static int __init meson_pm_probe(struct platform_device *pdev)
 {
     printk(KERN_INFO "enter meson_pm_probe!\n");
 
+    power_init_off();
     power_gate_init();
 
     pdata = pdev->dev.platform_data;
