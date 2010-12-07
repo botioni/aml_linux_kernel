@@ -2243,11 +2243,7 @@ static void __exit video_exit(void)
     class_unregister(&amvideo_class);
 }
 
-#ifdef CONFIG_AM_LOGO
-arch_initcall_sync(video_init);
-#else
 module_init(video_init);
-#endif
 module_exit(video_exit);
 
 MODULE_DESCRIPTION("AMLOGIC video output driver");

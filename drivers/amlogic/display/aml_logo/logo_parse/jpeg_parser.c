@@ -369,8 +369,6 @@ static int hardware_init(logo_object_t *plogo,int logo_size)
 	setup_vb((u32)virt_to_phys(plogo->para.mem_addr),logo_size);
 	WRITE_MPEG_REG(M4_CONTROL_REG, 0x0300);
 	WRITE_MPEG_REG(POWER_CTL_VLD, 0);
-    	SET_MPEG_REG_MASK(VPP_MISC,VPP_VD1_PREBLEND | VPP_VD1_POSTBLEND); //disable video layer.
-    	CLEAR_MPEG_REG_MASK(VPP_MISC, VPP_OSD1_POSTBLEND | VPP_OSD2_POSTBLEND);
 	//set initial screen mode :
 	
 	

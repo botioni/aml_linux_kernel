@@ -571,7 +571,7 @@ osd_probe(struct platform_device *pdev)
 		{
 			logo_osd_index= init_logo_obj->para.output_dev_type;
 		}else{
-			if(init_logo_obj->para.output_dev_type!=LOGO_DEV_VID)
+			if(init_logo_obj->para.output_dev_type==LOGO_DEV_VID)
 			init_logo_obj=NULL; //if logo device on video layer ,
 		}					 //we cant use it .
 		
