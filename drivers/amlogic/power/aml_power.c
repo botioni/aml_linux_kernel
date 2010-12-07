@@ -23,6 +23,8 @@
 
 //#define AML_POWER_DBG
 #define BATTERY_ARROW_NUM  40
+#define FAKE_BAT_LEVEL
+#define CHARGE_TIME          675//((3000/400)*3600/2)*5/100
 
 static inline unsigned int get_irq_flags(struct resource *res)
 {
@@ -60,6 +62,7 @@ static int new_battery_capacity = -1;
 static int power_on_with_ac = -1;
 static int charge_status = -1;
 static int new_charge_status = -1;
+static int charge_count = 0;
 
 static int aml_power_get_property(struct power_supply *psy,
 				  enum power_supply_property psp,
@@ -159,15 +162,19 @@ static void get_bat_capacity(void)
 {
     int value,i,num,sum;
     int min,max;
-            
-    if(power_on_with_ac&&(charge_status!=POWER_SUPPLY_STATUS_FULL)){
-        new_battery_capacity = 16;
-        return;
-    }  
-    
-    if((new_ac_status > 0)&&(charge_status!=POWER_SUPPLY_STATUS_FULL))
-        return;
          
+#ifdef FAKE_BAT_LEVEL  
+    if((new_ac_status > 0)&&(charge_status!=POWER_SUPPLY_STATUS_FULL)){
+        charge_count ++;
+        if(charge_count >CHARGE_TIME){
+            charge_count = 0;
+            if(new_battery_capacity < 95)
+                new_battery_capacity = new_battery_capacity + 5;
+        }
+        return;
+    } 
+#endif
+  
     value = pdata->get_bat_vol();
 #ifdef AML_POWER_DBG
 		printk("get_bat_vol = %d\n",value);
@@ -208,7 +215,7 @@ static void get_bat_capacity(void)
     
     value = sum/num;    
     
-    value = 100*(value - 540)/80;
+    value = 100*(value - 540)/70;
     value = value>100? 100:value;
     value = (value/5)*5;
 #ifdef AML_POWER_DBG
@@ -285,8 +292,9 @@ static void supply_timer_func(unsigned long unused)
 	if (ac_status == AML_PSY_TO_CHANGE) {
 		ac_status = new_ac_status;
 		power_supply_changed(&aml_psy_ac);
-		if(new_ac_status == 0)
+		if(new_ac_status == 0){
 		  power_on_with_ac = 0;
+		}
 		  get_bat_capacity();
 	}
 
@@ -485,6 +493,10 @@ static int aml_power_probe(struct platform_device *pdev)
 
 	if (pdata->is_ac_online) {
 	    power_on_with_ac = pdata->is_ac_online();
+	    
+	    if(power_on_with_ac)
+            new_battery_capacity = 20;	    
+            
 		ret = power_supply_register(&pdev->dev, &aml_psy_ac);
 		if (ret) {
 			dev_err(dev, "failed to register %s power supply\n",
