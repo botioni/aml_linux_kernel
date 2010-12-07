@@ -170,11 +170,13 @@ static struct platform_device adc_ts_device = {
 #include <linux/input.h>
 #include <linux/adc_keypad.h>
 
-static struct adc_key adc_kp_key[] = {
-    {KEY_PAGEDOWN,          "vol-", CHAN_4, 0, 60},
-    {KEY_PAGEUP,            "vol+", CHAN_4, 306, 60},
-    {KEY_TAB,               "exit", CHAN_4, 602, 60},
-    {KEY_LEFTMETA,          "menu", CHAN_4, 760, 60},
+static struct adc_key adc_kp_key[] = {// android\rootfs\device\amlogic\m1ref\aml-usbkbd.kl
+    {125,  "menu", CHAN_4, 0, 60},
+    {104,  "vol+", CHAN_4, 179, 60},
+    {109,  "vol-", CHAN_4, 285, 60},
+    {127,  "search", CHAN_4, 400, 60},
+    {15,   "back", CHAN_4, 518, 60},
+    {102,  "home", CHAN_4, 648, 60},
 };
 
 static struct adc_kp_platform_data adc_kp_pdata = {
