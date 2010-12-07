@@ -9,7 +9,6 @@
 #endif
 
 typedef struct audio_stream {
-    char *id;
     int stream_id;
     int active;
     unsigned int last_ptr;

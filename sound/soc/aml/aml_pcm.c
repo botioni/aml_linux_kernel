@@ -28,8 +28,6 @@
 #define AOUT_EVENT_PREPARE  0x1
 extern int aout_notifier_call_chain(unsigned long val, void *v);
 
-static struct timer_list timer;
-
 /*--------------------------------------------------------------------------*\
  * Hardware definition
 \*--------------------------------------------------------------------------*/
@@ -87,7 +85,8 @@ struct aml_runtime_data {
 	dma_addr_t dma_buffer_end;	/* first address beyond DMA buffer */
 
 	struct snd_pcm *pcm;
-	audio_stream_t s[2];	
+	audio_stream_t s;	
+	struct timer_list timer;	// timeer for playback and capture
 };
 
 
@@ -147,7 +146,7 @@ static int aml_pcm_hw_params(struct snd_pcm_substream *substream,
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	struct aml_runtime_data *prtd = runtime->private_data;
 	struct snd_soc_pcm_runtime *rtd = snd_pcm_substream_chip(substream);
-	audio_stream_t *s = &prtd->s[substream->stream];
+	audio_stream_t *s = &prtd->s;
 	
 	/* this may get called several times by oss emulation
 	 * with different params */
@@ -175,7 +174,7 @@ static int aml_pcm_prepare(struct snd_pcm_substream *substream)
 {
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	struct aml_runtime_data *prtd = runtime->private_data;
-	audio_stream_t *s = &prtd->s[substream->stream];
+	audio_stream_t *s = &prtd->s;
 	
 	if(prtd == 0)
 		return 0;
@@ -261,18 +260,18 @@ static int aml_pcm_trigger(struct snd_pcm_substream *substream,
 {
 	struct snd_pcm_runtime *rtd = substream->runtime;
 	struct aml_runtime_data *prtd = rtd->private_data;
-	audio_stream_t *s = &prtd->s[substream->stream];
+	audio_stream_t *s = &prtd->s;
 	int ret = 0;
 	
 	spin_lock(&s->lock);
 	switch (cmd) {
 	case SNDRV_PCM_TRIGGER_START:
 		
-		del_timer_sync(&timer);
+		del_timer_sync(&prtd->timer);
 		
-		timer.expires = jiffies + 1;
-    del_timer(&timer);
-    add_timer(&timer);
+		prtd->timer.expires = jiffies + 1;
+    del_timer(&prtd->timer);
+    add_timer(&prtd->timer);
         
 		// TODO
 		if(substream->stream == SNDRV_PCM_STREAM_PLAYBACK){
@@ -324,7 +323,7 @@ static snd_pcm_uframes_t aml_pcm_pointer(
 {
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	struct aml_runtime_data *prtd = runtime->private_data;
-	audio_stream_t *s = &prtd->s[substream->stream];
+	audio_stream_t *s = &prtd->s;
 	
 	unsigned int addr, ptr;
 	
@@ -346,7 +345,7 @@ static void aml_pcm_timer_callback(unsigned long data)
     struct snd_pcm_substream *substream = (struct snd_pcm_substream *)data;
     struct snd_pcm_runtime *runtime = substream->runtime;
     struct aml_runtime_data *prtd = runtime->private_data;
-		audio_stream_t *s = &prtd->s[substream->stream];
+		audio_stream_t *s = &prtd->s;
 
     unsigned int last_ptr, size;
 
@@ -367,10 +366,10 @@ static void aml_pcm_timer_callback(unsigned long data)
 				        snd_pcm_period_elapsed(substream);
 				        spin_lock(&s->lock);
 				    }
-				    mod_timer(&timer, jiffies + 1);
+				    mod_timer(&prtd->timer, jiffies + 1);
    					spin_unlock(&s->lock);
 				}else{
-						 mod_timer(&timer, jiffies + 1);
+						 mod_timer(&prtd->timer, jiffies + 1);
 				}
 		}else{
 				if(s->active == 1){
@@ -389,10 +388,10 @@ static void aml_pcm_timer_callback(unsigned long data)
 				        snd_pcm_period_elapsed(substream);
 				        spin_lock(&s->lock);
 				    }
-				    mod_timer(&timer, jiffies + 1);
+				    mod_timer(&prtd->timer, jiffies + 1);
    					spin_unlock(&s->lock);
 				}else{
-						 mod_timer(&timer, jiffies + 1);
+						 mod_timer(&prtd->timer, jiffies + 1);
 				}
 		}    
 }
@@ -430,24 +429,14 @@ static int aml_pcm_open(struct snd_pcm_substream *substream)
 		goto out;
 	}
 	
-	prtd->s[SNDRV_PCM_STREAM_PLAYBACK].id = "AML Audio out";
-  prtd->s[SNDRV_PCM_STREAM_PLAYBACK].stream_id =
-      SNDRV_PCM_STREAM_PLAYBACK;
-  prtd->s[SNDRV_PCM_STREAM_CAPTURE].id = "AML Audio in";
-  prtd->s[SNDRV_PCM_STREAM_CAPTURE].stream_id =
- 			SNDRV_PCM_STREAM_CAPTURE;
- 			
 	prtd->pcm = substream->pcm;
+	prtd->timer.function = &aml_pcm_timer_callback;
+  prtd->timer.data = (unsigned long)substream;
+  init_timer(&prtd->timer);
 	
 	runtime->private_data = prtd;
-
-	spin_lock_init(&prtd->s[0].lock);
-	spin_lock_init(&prtd->s[1].lock);
 	
-	timer.function = &aml_pcm_timer_callback;
-  timer.data = (unsigned long)substream;
-  init_timer(&timer);
-    
+	spin_lock_init(&prtd->s.lock);
  out:
 	return ret;
 }
@@ -456,7 +445,7 @@ static int aml_pcm_close(struct snd_pcm_substream *substream)
 {
 	struct aml_runtime_data *prtd = substream->runtime->private_data;
 	
-	del_timer_sync(&timer);
+	del_timer_sync(&prtd->timer);
 	
 	kfree(prtd);
 	
