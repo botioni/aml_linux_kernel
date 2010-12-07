@@ -97,6 +97,8 @@ static u32 avi_flag = 0;
 static u32 vvc1_ratio;
 static u32 vvc1_format;
 
+static u32 intra_output;
+
 static u32 pts_by_offset = 1;
 static u32 total_frame;
 static u32 next_pts;
@@ -235,6 +237,22 @@ static void vvc1_isr(void)
                 repeat_count = READ_MPEG_REG(VC1_REPEAT_COUNT);
                 buffer_index = ((reg & 0x7) - 1) & 3;
                 picture_type = (reg >> 3) & 7;
+
+                if ( (intra_output == 0) && (picture_type != 0) )
+                {
+                    WRITE_MPEG_REG(VC1_BUFFERIN, ~(1<<buffer_index));
+                	WRITE_MPEG_REG(VC1_BUFFEROUT, 0);
+        			WRITE_MPEG_REG(ASSIST_MBOX1_CLR_REG, 1);
+
+#ifdef HANDLE_VC1_IRQ
+        			return IRQ_HANDLED;
+#else
+        			return;
+#endif
+                }
+
+                intra_output = 1;
+                
             #ifdef DEBUG_PTS
                 if (picture_type == I_PICTURE)
                 {
@@ -376,7 +394,7 @@ static void vvc1_isr(void)
 
                 total_frame++;
                 
-                //printk("PicType = %d, PTS = 0x%x\n", picture_type, vf->pts);
+                //printk("PicType = %d, PTS = 0x%x, repeat count %d\n", picture_type, vf->pts, repeat_count);
                 WRITE_MPEG_REG(VC1_BUFFEROUT, 0);
         }
 
@@ -606,6 +624,7 @@ static s32 vvc1_init(void)
 
         stat |= STAT_TIMER_INIT;
 
+        intra_output = 0;
         amvdec_enable();
 
         vvc1_local_init();
