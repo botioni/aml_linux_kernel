@@ -24,7 +24,7 @@
 #define DRIVER_VERSION "1"
 
 //#define ITK_TS_DEBUG_REPORT
-#define ITK_TS_DEBUG_READ
+//#define ITK_TS_DEBUG_READ
 //#define TS_DELAY_WORK
 
 /* periodic polling delay and period */
