@@ -151,12 +151,15 @@ static void receive_chars(struct am_uart *info, struct pt_regs *regs,
               unsigned short rx)
 {
     am_uart_t *uart = uart_addr[info->line];
+    struct tty_struct *tty = info->tty;
     int status;
     int mode;
-      
+    char ch;
+    unsigned long flag = TTY_NORMAL;  
 	if (!info->tty) {
     	    goto clear_and_exit;
 	}
+        tty->low_latency = 1;
 	status = __raw_readl(&uart->status);
 	if (status & UART_OVERFLOW_ERR) {
               info->rx_error |= UART_OVERFLOW_ERR;
@@ -173,12 +176,17 @@ static void receive_chars(struct am_uart *info, struct pt_regs *regs,
 		__raw_writel(mode, &uart->mode);
 	}
 	do {    
-              info->rx_buf[info->rx_tail] = (rx & 0x00ff);
-              info->rx_tail = (info->rx_tail+1) & (SERIAL_XMIT_SIZE - 1);
+              //info->rx_buf[info->rx_tail] = (rx & 0x00ff);
+              //info->rx_tail = (info->rx_tail+1) & (SERIAL_XMIT_SIZE - 1);
+	      //	info->rx_cnt++;
+		//if (info->rx_cnt >= SERIAL_XMIT_SIZE) {
+	//		goto clear_and_exit;
+	//	}
+                ch = (rx & 0x00ff);
+                tty_insert_flip_char(tty,ch,flag);
+                 
 		info->rx_cnt++;
-		if (info->rx_cnt >= SERIAL_XMIT_SIZE) {
-			goto clear_and_exit;
-		}
+                   
 		if ((status = __raw_readl(&uart->status) & 0x3f))
 			rx = __raw_readl(&uart->rdata);
 		/* keep reading characters till the RxFIFO becomes empty */
@@ -219,12 +227,15 @@ static void BH_receive_chars(struct am_uart *info)
        info->rx_error = 0;
        if(cnt)
        {
-            if(info->rx_head > info->rx_tail)
-                cnt = SERIAL_XMIT_SIZE-info->rx_head;
-
-            tty_insert_flip_string(tty,info->rx_buf+info->rx_head,cnt);
-            info->rx_head = (info->rx_head+cnt) & (SERIAL_XMIT_SIZE - 1);
-            info->rx_cnt -=cnt; 
+            //if(info->rx_head > info->rx_tail){
+            //    cnt = SERIAL_XMIT_SIZE-info->rx_head;
+            //    if(PRINT_DEBUG)
+    		//	if(info->line == 1)
+      //printk("am_uart  BH_receive_chars rx_cnt = %d, rx_head = %d, rx_tail = %d\n",info->rx_cnt,info->rx_head,info->rx_tail);
+        //    }
+          //  tty_insert_flip_string(tty,info->rx_buf+info->rx_head,cnt);
+            //info->rx_head = (info->rx_head+cnt) & (SERIAL_XMIT_SIZE - 1);
+           info->rx_cnt =0;
 
     tty_flip_buffer_push(tty);
        }
@@ -470,11 +481,11 @@ static int am_uart_write(struct tty_struct *tty, const unsigned char *buf,
     if (!tty || !info->xmit_buf || (count <= 0))
         return 0;
 
-    mutex_lock(&info->info_mutex);
+    //mutex_lock(&info->info_mutex);
 
-	for (c=0; c<count; c++)
-		if (buf[c] == 0xff)
-			printk("am_uart_write 0xff, count = %d", count);
+//	for (c=0; c<count; c++)
+//		if (buf[c] == 0xff)
+//			printk("am_uart_write 0xff, count = %d", count);
 
     total = min_t(int, count, (SERIAL_XMIT_SIZE - info->xmit_cnt - 1));
     c = min_t(int, total, (SERIAL_XMIT_SIZE - info->xmit_wr));
@@ -488,7 +499,7 @@ static int am_uart_write(struct tty_struct *tty, const unsigned char *buf,
 
 
 
-    mutex_unlock(&info->info_mutex);
+    //mutex_unlock(&info->info_mutex);
 
     if (info->xmit_cnt && !tty->stopped && !tty->hw_stopped) {
         am_uart_sched_event(info, 0);
