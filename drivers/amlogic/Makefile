@@ -55,7 +55,7 @@ obj-$(CONFIG_AM_GPIO) +=gpio/
 obj-y += tvin/
 
 #####Sound system is later init in kernel default..######################
-obj-y += sound/
+obj-$(CONFIG_SND_AML) += sound/
 
 obj-y += hdmi/
 
