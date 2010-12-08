@@ -215,7 +215,7 @@ static void get_bat_capacity(void)
     
     value = sum/num;    
     
-    value = 100*(value - 540)/70;
+    value = 100*(value - 540)/75;
     value = value>100? 100:value;
     value = (value/5)*5;
 #ifdef AML_POWER_DBG

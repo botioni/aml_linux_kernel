@@ -40,7 +40,7 @@
  
 #define LCD_WIDTH       1024 
 #define LCD_HEIGHT      600
-#define MAX_WIDTH       1344
+#define MAX_WIDTH       1332
 #define MAX_HEIGHT      635
 #define VIDEO_ON_LINE   22
 
@@ -111,8 +111,8 @@ static tcon_conf_t tcon_config =
     .flags = 0,
     .screen_width = 17,
     .screen_height = 10,
-    .sync_duration_num = 89,
-    .sync_duration_den = 2,
+    .sync_duration_num = 606,
+    .sync_duration_den = 10,
     .power_on=t13_power_on,
     .power_off=t13_power_off,
 };
