@@ -188,29 +188,11 @@ osd_set_par(struct fb_info *info)
 	const vinfo_t *vinfo;
 	struct myfb_dev *fbdev = (struct myfb_dev *)info->par;
 	osd_ctl_t *osd_ctrl=&fbdev->osd_ctl; 
-	u32  end;
 	
 	vinfo = get_current_vinfo();
-	if(info->var.xres  >vinfo->width)
-	{
-		osd_ctrl->disp_end_x=vinfo->width - 1 ;
-	}
-	else
-	{
-		end=osd_ctrl->disp_start_x+info->var.xres  ;
-		end=(end>vinfo->width?vinfo->width:end); 
-		osd_ctrl->disp_end_x=end -1;
-	}
-	if(info->var.yres  >vinfo->height)
-	{
-		osd_ctrl->disp_end_y=vinfo->height - 1;
-	}
-	else
-	{     
-		end=osd_ctrl->disp_start_y+info->var.yres;
-		end=(end>vinfo->height?vinfo->height:end); 
-		osd_ctrl->disp_end_y=end - 1; 
-	}
+	osd_ctrl->disp_end_x=vinfo->width - 1 ;
+	osd_ctrl->disp_end_y=vinfo->height - 1;
+	
 	osddev_set((struct myfb_dev *)info->par);
 	return  0;
 }
@@ -401,28 +383,9 @@ static struct fb_ops osd_ops = {
 
 static  void  set_default_display_axis(struct fb_var_screeninfo *var,osd_ctl_t *osd_ctrl,const vinfo_t *vinfo)
 {
-	
-	osd_ctrl->disp_start_x=0;
-	osd_ctrl->disp_start_y=0;
-	if(var->xres > vinfo->width)
-	{
-		osd_ctrl->disp_end_x=vinfo->width- 1 ;//screen axis 
-	}
-	else
-	{
-		osd_ctrl->disp_end_x=var->xres- 1 ;//screen axis 
-	}
-	if(var->yres > vinfo->height)
-	{
-		osd_ctrl->disp_end_y=vinfo->height- 1 ;
-	}
-	else
-	{
-		osd_ctrl->disp_end_y=var->yres- 1 ;//screen axis 
-	}
+	osd_ctrl->disp_end_x=vinfo->width- 1 ;//screen axis 
+	osd_ctrl->disp_end_y=vinfo->height- 1 ;
 	return ;
-	
-
 }
 
 int osd_notify_callback(struct notifier_block *block, unsigned long cmd , void *para)
@@ -468,24 +431,9 @@ int osd_notify_callback(struct notifier_block *block, unsigned long cmd , void *
 			amlog_mask_level(LOG_MASK_PARA,LOG_LEVEL_LOW,"set disp axis: x:%d y:%d w:%d h:%d\r\n"  , \
 					disp_rect->x, disp_rect->y,\
 					disp_rect->w, disp_rect->h );
-			
-			if(disp_rect->x+disp_rect->w > vinfo->width)
-			{
-				fb_dev->osd_ctl.disp_end_x=vinfo->width - 1;
-			}
-			else
-			{
-				fb_dev->osd_ctl.disp_end_x=fb_dev->osd_ctl.disp_start_x+disp_rect->w -1 ; 
-			}
-			if(disp_rect->y+ disp_rect->h>vinfo->height)
-			{
-				fb_dev->osd_ctl.disp_end_y=vinfo->height- 1;
-			}
-			else
-			{
-				fb_dev->osd_ctl.disp_end_y=fb_dev->osd_ctl.disp_start_y + disp_rect->h - 1 ;
-			}
-		
+
+			fb_dev->osd_ctl.disp_end_x=vinfo->width - 1;
+			fb_dev->osd_ctl.disp_end_y=vinfo->height- 1;
 			disp_rect ++;
 			amlog_mask_level(LOG_MASK_PARA,LOG_LEVEL_LOW,"new disp axis: startx:%d starty:%d endx:%d endy:%d\r\n"  , \
 					fb_dev->osd_ctl.disp_start_x, fb_dev->osd_ctl.disp_start_y,\

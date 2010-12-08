@@ -1789,7 +1789,7 @@ static void hdmitx_m1b_set_packet(int type, unsigned char* DB, unsigned char* HB
 static void hdmitx_m1b_setaudioinfoframe(unsigned char* AUD_DB, unsigned char* CHAN_STAT_BUF)
 {
     int i ;
-    unsigned char ucData ;
+    //unsigned char ucData ;
     char AUD_HB[3]={0x84, 0x1, 0xa};
     hdmitx_m1b_set_packet(HDMI_AUDIO_INFO, AUD_DB, AUD_HB);    
     //channel status
