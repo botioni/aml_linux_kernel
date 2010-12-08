@@ -249,7 +249,7 @@ static int card_reader_monitor(void *data)
 
 				if(card->unit_state == CARD_UNIT_PROCESSED) {
 					if(card->card_slot_mode == CARD_SLOT_4_1) {
-	                	if (card_type != CARD_SDIO) {
+						if (card_type != CARD_SDIO && card_type != CARD_INAND) {
 	                		slot_detector = CARD_INSERTED;
 	                		card_4in1_init_type = card_type;
 	                	}
