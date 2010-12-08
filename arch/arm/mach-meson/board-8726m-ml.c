@@ -1320,213 +1320,90 @@ static struct platform_device aml_nand_device = {
 #if defined(CONFIG_AMLOGIC_BACKLIGHT)
 
 #ifdef CONFIG_AML_TCON_ML10
-	extern void power_on_backlight(void);
-	extern void power_off_backlight(void);
-	extern void power_on_lcd(void);
-	extern void power_off_lcd(void);
+
+#define BL_MAX_LEVEL		( 24000 )
+#define	BL_HIGH_LEVEL		(BL_MAX_LEVEL * 90 / 100)
+#define	BL_LOW_LEVEL		(BL_MAX_LEVEL - BL_HIGH_LEVEL)
+
+//the follow functions defined in the drivers/amlogic/display/vout/ml10.c
+extern void power_on_backlight(void);
+extern void power_off_backlight(void);
+extern void power_on_lcd(void);
+extern void power_off_lcd(void);
+
+static unsigned bl_level;
+static unsigned panel_state = 0;
+
 #endif
-
-
-static void power_on_panel(void)
-{
-#ifdef CONFIG_AML_TCON_ML10
-	power_on_lcd();
-	power_on_backlight();
-#else
-    CLK_GATE_ON(LCD);
-    set_mio_mux(4,(0x3f<<0));
-    set_mio_mux(0, 1<<11);
-    set_mio_mux(0, 1<<14);     
-    /* GPIOA_3, Pull low, power up LCD_3.3V */
-    set_gpio_val(GPIOA_bank_bit(3), GPIOA_bit_bit0_14(3), 0);
-    set_gpio_mode(GPIOA_bank_bit(3), GPIOA_bit_bit0_14(3), GPIO_OUTPUT_MODE);        
-
-    /* PIN172, GPIOC_3, Pull high, For AVDD */
-    set_gpio_val(GPIOC_bank_bit0_26(3), GPIOC_bit_bit0_26(3), 1);
-    set_gpio_mode(GPIOC_bank_bit0_26(3), GPIOC_bit_bit0_26(3), GPIO_OUTPUT_MODE);
-#endif
-}
-
-static void power_off_panel(void)
-{
-#ifdef CONFIG_AML_TCON_ML10
-	power_off_backlight();
-	power_off_lcd();
-#else
-    /* GPIOA_3, Pull hi, power down LCD_3.3V */
-    set_gpio_val(GPIOA_bank_bit(3), GPIOA_bit_bit0_14(3), 1);
-    set_gpio_mode(GPIOA_bank_bit(3), GPIOA_bit_bit0_14(3), GPIO_OUTPUT_MODE);    
-    
-    /* PIN172, GPIOC_3, Pull high, For AVDD */
-    set_gpio_val(GPIOC_bank_bit0_26(3), GPIOC_bit_bit0_26(3), 0);
-    set_gpio_mode(GPIOC_bank_bit0_26(3), GPIOC_bit_bit0_26(3), GPIO_OUTPUT_MODE);
-    
-    CLK_GATE_OFF(LCD);
-    clear_mio_mux(4,(0x3f<<0));
-    clear_mio_mux(0, 1<<11);
-    clear_mio_mux(0, 1<<14);
-#endif
-}
-
-
-#define PWM_TCNT        (600-1)
-#define PWM_MAX_VAL    (420)
 
 static void aml_8726m_bl_init(void)
 {
 #ifdef CONFIG_AML_TCON_ML10
-	WRITE_CBUS_REG_BITS(PWM_MISC_REG_AB, 0, 3, 1);
-	WRITE_CBUS_REG_BITS(PWM_MISC_REG_AB, 1, 1, 1);
+	WRITE_CBUS_REG_BITS(PWM_PWM_A,BL_LOW_LEVEL,0,16);		//low_level
+	WRITE_CBUS_REG_BITS(PWM_PWM_A,BL_HIGH_LEVEL,16,16);		//hi_level
 	
-	WRITE_CBUS_REG_BITS(PERIPHS_PIN_MUX_0, 0, 8, 1);
-	WRITE_CBUS_REG_BITS(PERIPHS_PIN_MUX_0, 0, 21, 1);
-	WRITE_CBUS_REG_BITS(PERIPHS_PIN_MUX_2, 0, 28, 1);
-	WRITE_CBUS_REG_BITS(PERIPHS_PIN_MUX_9, 0, 23, 1);
-	WRITE_CBUS_REG_BITS(PERIPHS_PIN_MUX_12, 0, 6, 1);
+	WRITE_CBUS_REG_BITS(PWM_MISC_REG_AB, 0, 2, 1);
+	WRITE_CBUS_REG_BITS(PWM_MISC_REG_AB, 1, 0, 1);
+	
+	WRITE_CBUS_REG_BITS(PERIPHS_PIN_MUX_0, 0, 9, 1);
+	WRITE_CBUS_REG_BITS(PERIPHS_PIN_MUX_0, 0, 22, 1);
+	WRITE_CBUS_REG_BITS(PERIPHS_PIN_MUX_2, 0, 29, 1);
+	WRITE_CBUS_REG_BITS(PERIPHS_PIN_MUX_9, 0, 22, 1);
+	WRITE_CBUS_REG_BITS(PERIPHS_PIN_MUX_12, 0, 7, 1);
 
-	WRITE_CBUS_REG_BITS(PERIPHS_PIN_MUX_2, 1, 30, 1);
-#else
-    unsigned val;
-    
-    WRITE_CBUS_REG_BITS(PERIPHS_PIN_MUX_0, 0, 22, 1);
-    WRITE_CBUS_REG_BITS(PREG_AM_ANALOG_ADDR, 1, 0, 1);
-    WRITE_CBUS_REG(VGHL_PWM_REG0, 0);
-    WRITE_CBUS_REG(VGHL_PWM_REG1, 0);
-    WRITE_CBUS_REG(VGHL_PWM_REG2, 0);
-    WRITE_CBUS_REG(VGHL_PWM_REG3, 0);
-    WRITE_CBUS_REG(VGHL_PWM_REG4, 0);
-    val = (0 << 31)           |       // disable the overall circuit
-          (0 << 30)           |       // 1:Closed Loop  0:Open Loop
-          (PWM_TCNT << 16)    |       // PWM total count
-          (0 << 13)           |       // Enable
-          (1 << 12)           |       // enable
-          (0 << 10)           |       // test
-          (3 << 7)            |       // CS0 REF, Voltage FeedBack: about 0.27V
-          (7 << 4)            |       // CS1 REF, Current FeedBack: about 0.54V
-          (0 << 0);                   // DIMCTL Analog dimmer
-    WRITE_CBUS_REG(VGHL_PWM_REG0, val);
-    val = (1 << 30)           |       // enable high frequency clock
-          (PWM_MAX_VAL << 16) |       // MAX PWM value
-          (0 << 0);                  // MIN PWM value
-    WRITE_CBUS_REG(VGHL_PWM_REG1, val);
-    val = (0 << 31)       |       // disable timeout test mode
-          (0 << 30)       |       // timeout based on the comparator output
-          (0 << 16)       |       // timeout = 10uS
-          (0 << 13)       |       // Select oscillator as the clock (just for grins)
-          (1 << 11)       |       // 1:Enable OverCurrent Portection  0:Disable
-          (3 << 8)        |       // Filter: shift every 3 ticks
-          (0 << 6)        |       // Filter: count 1uS ticks
-          (0 << 5)        |       // PWM polarity : negative
-          (0 << 4)        |       // comparator: negative, Different with NikeD3
-          (1 << 0);               // +/- 1
-    WRITE_CBUS_REG(VGHL_PWM_REG2, val);
-    val = (   1 << 16) |    // Feedback down-sampling = PWM_freq/1 = PWM_freq
-          (   1 << 14) |    // enable to re-write MATCH_VAL
-          ( 210 <<  0) ;  // preset PWM_duty = 50%
-    WRITE_CBUS_REG(VGHL_PWM_REG3, val);
-    val = (   0 << 30) |    // 1:Digital Dimmer  0:Analog Dimmer
-          (   2 << 28) |    // dimmer_timebase = 1uS
-          (1000 << 14) |    // Digital dimmer_duty = 0%, the most darkness
-          (1000 <<  0) ;    // dimmer_freq = 1KHz
-    WRITE_CBUS_REG(VGHL_PWM_REG4, val);
+	WRITE_CBUS_REG_BITS(PERIPHS_PIN_MUX_2, 1, 31, 1);
 #endif
 }
-static unsigned bl_level;
-static unsigned panel_state = 0;
 static unsigned aml_8726m_get_bl_level(void)
 {
-//    unsigned level = 0;
-//
-//    WRITE_CBUS_REG_BITS(VGHL_PWM_REG0, 1, 31, 1);
-//    WRITE_CBUS_REG_BITS(VGHL_PWM_REG4, 0, 30, 1);
-//    level = READ_CBUS_REG_BITS(VGHL_PWM_REG0, 0, 4);
+#ifdef CONFIG_AML_TCON_ML10
     return bl_level;
+#else
+	return 120;
+#endif
 }
-#define BL_MAX_LEVEL 60000
 static void aml_8726m_set_bl_level(unsigned level)
 {
 #ifdef CONFIG_AML_TCON_ML10
-	unsigned pwm_level,low,hi;
-    
-    bl_level = level;
-    
-    level = level*179/255;
-    if(level>=120){ //120 - 179
-        pwm_level = 85 + (level - 120)%15;
-    }
-    else if(level>=20){ //20 - 119
-        pwm_level = 75 + (level - 20)%25;
-    }
-    else{  //  <20
-        pwm_level = 0;
-    }
-        
-    hi = (BL_MAX_LEVEL/100)*pwm_level;
-    low = BL_MAX_LEVEL - hi;
-    
-    if(bl_level >=30&&panel_state == 0){
-        panel_state = 1;
-        power_on_panel();
-    }
+	unsigned pwm_level, low_level, hi_level;
 	
-	WRITE_CBUS_REG_BITS(PWM_PWM_B,low,0,16);  //low
-	WRITE_CBUS_REG_BITS(PWM_PWM_B,hi,16,16);  //low
-    
-    if(bl_level <30&&panel_state == 1){
-        panel_state = 0;
-        power_off_panel();
-    }
-#else
-    unsigned cs_level,pwm_level,low,hi;
-    
-    bl_level = level;
-    
-    level = level*179/255;
-    if(level>=120){ //120 - 179
-        cs_level = 9 -(level - 120)/15;
-        pwm_level = 85 + (level - 120)%15;   
-    }
-    else if(level>=20){ //20 - 119
-        cs_level = 13 - (level -20)/25;
-        pwm_level = 75 + (level - 20)%25;   
-    }
-    else{  //  <20
-        cs_level = 13;
-        pwm_level = 0;           
-    }
-        
-    hi = (BL_MAX_LEVEL/100)*pwm_level;
-    low = BL_MAX_LEVEL - hi;
-    
-    if(bl_level >=30&&panel_state == 0){
-        panel_state = 1;
-        power_on_panel();
-    }       
-    WRITE_CBUS_REG_BITS(VGHL_PWM_REG0, cs_level, 0, 4);   
-    //SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<31)); 
-    SET_CBUS_REG_MASK(PWM_MISC_REG_AB, (1 << 0));         
-    WRITE_CBUS_REG_BITS(PWM_PWM_A,low,0,16);  //low
-    WRITE_CBUS_REG_BITS(PWM_PWM_A,hi,16,16);  //hi   
-    
-    if(bl_level <30&&panel_state == 1){
-        panel_state = 0;
-        power_off_panel();
-    }     
-#endif      
-}
+	if( level > 255 )
+		level = 255;
 
+	bl_level = level;
+	pwm_level = bl_level;
+
+	if( bl_level <= 20 )
+		pwm_level = 0;
+
+	if( bl_level >= 30 && panel_state == 0 )
+	{
+		panel_state = 1;
+        power_on_lcd();
+	}
+	
+	hi_level = (BL_HIGH_LEVEL - BL_LOW_LEVEL) / 256 * pwm_level;
+    low_level = (BL_HIGH_LEVEL - BL_LOW_LEVEL) - hi_level;
+
+	printk("level = %d, low = 0x%x, hi = 0x%x\n", level, low_level, hi_level);
+	printk("PWM_PWM_A0 = 0x%x\n", hi_level << 16 | low_level);
+
+	WRITE_CBUS_REG_BITS(PWM_PWM_A,low_level,0,16);			//low_level
+	WRITE_CBUS_REG_BITS(PWM_PWM_A,hi_level,16,16);			//hi_level
+
+	printk("PWM_PWM_A1 = 0x%x\n", READ_CBUS_REG(PWM_PWM_A));
+ 
+    if( bl_level < 30 && panel_state == 1 )
+	{
+        panel_state = 0;
+        power_off_lcd();
+    }
+#endif
+}
 static void aml_8726m_power_on_bl(void)
 {
 #ifdef CONFIG_AML_TCON_ML10
 	power_on_backlight();
-#else
-    WRITE_CBUS_REG_BITS(PREG_EGPIO_EN_N, 0, 12, 1);
-    WRITE_CBUS_REG_BITS(PREG_EGPIO_O, 1, 12, 1);
-
-    WRITE_CBUS_REG_BITS(PREG_EGPIO_EN_N, 0, 7, 1);
-    WRITE_CBUS_REG_BITS(PREG_EGPIO_O, 1, 7, 1);
-    
-    aml_8726m_set_bl_level(0);
 #endif
 }
 
@@ -1534,12 +1411,6 @@ static void aml_8726m_power_off_bl(void)
 {
 #ifdef CONFIG_AML_TCON_ML10
 	power_off_backlight();
-#else
-    WRITE_CBUS_REG_BITS(PREG_EGPIO_EN_N, 0, 12, 1);
-    WRITE_CBUS_REG_BITS(PREG_EGPIO_O, 0, 12, 1);
-
-    WRITE_CBUS_REG_BITS(PREG_EGPIO_EN_N, 0, 7, 1);
-    WRITE_CBUS_REG_BITS(PREG_EGPIO_O, 0, 7, 1);
 #endif
 }
 
@@ -1562,6 +1433,7 @@ static struct platform_device aml_bl_device = {
     },
 };
 #endif
+
 #if  defined(CONFIG_AM_TV_OUTPUT)||defined(CONFIG_AM_TCON_OUTPUT)
 static struct resource vout_device_resources[] = {
     [0] = {
@@ -1841,6 +1713,9 @@ static void __init device_pinmux_init(void )
         set_audio_pinmux(AUDIO_OUT_TEST_N);
         set_audio_pinmux(AUDIO_IN_JTAG);
 	}
+    //set clk for wifi
+    SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, (1<<18));
+    CLEAR_CBUS_REG_MASK(PREG_EGPIO_EN_N, (1<<4));	
 }
 
 static void __init  device_clk_setting(void)
