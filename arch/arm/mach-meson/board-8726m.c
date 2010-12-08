@@ -168,6 +168,7 @@ static struct adc_key adc_kp_key[] = {
 	{KEY_PAGEUP,		"vol+",	CHAN_4,	306, 60},	// 0v	28
 	{KEY_TAB,	             "exit",     CHAN_4,	602, 60},	// 0v	15
 	{KEY_LEFTMETA,		"menu",	CHAN_4,	760, 60},	// 0v	125
+	{KEY_HOME,		"home",	CHAN_4,	854, 60},	// 0v	125		
 #else // arm
 	{KEY_MENU,		"menu",	CHAN_4,	0, 60},	// 0v
 	{KEY_UP,			"up",		CHAN_4, 180, 60},	// 0.58v
