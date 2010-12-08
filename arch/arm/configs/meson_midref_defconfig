@@ -1,7 +1,7 @@
 #
 # Automatically generated make config: don't edit
 # Linux kernel version: 2.6.34
-# Mon Nov 29 14:04:35 2010
+# Wed Dec  8 19:15:16 2010
 #
 CONFIG_ARM=y
 CONFIG_HOLES_IN_ZONE=y
@@ -252,6 +252,7 @@ CONFIG_MACH_MESON_8726M=y
 # CONFIG_MACH_MESON_8726M_ARM is not set
 # CONFIG_MACH_MESON_8726M_DVBC is not set
 # CONFIG_MACH_MESON_8726M_ML is not set
+# CONFIG_MACH_MESON_8726M_MLMBX is not set
 # CONFIG_MACH_MESON_8726M_W10 is not set
 # CONFIG_MACH_MESON_8726M_W7 is not set
 # CONFIG_MACH_MESON_8726M_K7 is not set
@@ -496,7 +497,31 @@ CONFIG_NET_ACTIVITY_STATS=y
 # CONFIG_HAMRADIO is not set
 # CONFIG_CAN is not set
 # CONFIG_IRDA is not set
-# CONFIG_BT is not set
+CONFIG_BT=y
+CONFIG_BT_L2CAP=y
+CONFIG_BT_SCO=y
+CONFIG_BT_RFCOMM=y
+CONFIG_BT_RFCOMM_TTY=y
+# CONFIG_BT_BNEP is not set
+# CONFIG_BT_HIDP is not set
+
+#
+# Bluetooth device drivers
+#
+# CONFIG_BT_HCIBTUSB is not set
+CONFIG_BT_HCIUART=y
+CONFIG_BT_HCIUART_H4=y
+# CONFIG_BT_HCIUART_BCSP is not set
+# CONFIG_BT_HCIUART_LL is not set
+# CONFIG_BT_HCIBCM203X is not set
+# CONFIG_BT_HCIBPA10X is not set
+# CONFIG_BT_HCIBFUSB is not set
+# CONFIG_BT_HCIDTL1 is not set
+# CONFIG_BT_HCIBT3C is not set
+# CONFIG_BT_HCIBLUECARD is not set
+# CONFIG_BT_HCIBTUART is not set
+# CONFIG_BT_HCIVHCI is not set
+# CONFIG_BT_MRVL is not set
 # CONFIG_AF_RXRPC is not set
 CONFIG_WIRELESS=y
 CONFIG_WIRELESS_EXT=y
@@ -525,7 +550,9 @@ CONFIG_MAC80211_RC_DEFAULT="minstrel"
 # CONFIG_MAC80211_DEBUGFS is not set
 # CONFIG_MAC80211_DEBUG_MENU is not set
 # CONFIG_WIMAX is not set
-# CONFIG_RFKILL is not set
+CONFIG_RFKILL=y
+CONFIG_RFKILL_PM=y
+CONFIG_RFKILL_INPUT=y
 # CONFIG_NET_9P is not set
 
 #
@@ -578,12 +605,15 @@ CONFIG_ADC_KEYPADS_AM=y
 CONFIG_KEY_INPUT_CUSTOM_AM=y
 # CONFIG_SINTEK_CAPACITIVE_TOUCHSCREEN is not set
 # CONFIG_ITK_CAPACITIVE_TOUCHSCREEN is not set
+# CONFIG_SIS92XX_CAPACITIVE_TOUCHSCREEN is not set
 # CONFIG_TOUCH_KEY_PAD_IT7230 is not set
+# CONFIG_TOUCH_KEY_PAD_SO340010 is not set
 
 #
 # Amlogic Power Management Support
 #
 CONFIG_AMLOGIC_PM=y
+# CONFIG_SMBA10XX_BATTERY is not set
 
 #
 # Extern IO Support
@@ -625,6 +655,7 @@ CONFIG_SDIO=y
 # CONFIG_AM_ATA is not set
 # CONFIG_MS_MSPRO is not set
 # CONFIG_XD is not set
+# CONFIG_INAND is not set
 
 #
 # AMLOGIC SPI NOR Flash  support
@@ -654,6 +685,7 @@ CONFIG_BCM4329_FW_PATH="broadcm_4329/sdio-g-cdc-full11n-reclaim-roml-wme-idsup.b
 CONFIG_BCM4329_NVRAM_PATH="broadcm_4329/nvram.txt"
 # CONFIG_RTL8712_8188_8191_8192SU_USB_WIFI is not set
 # CONFIG_RTL8192CU_USB_WIFI is not set
+# CONFIG_SDIO_ATHEROS_6K_WIFI is not set
 
 #
 # Media devices
@@ -674,6 +706,7 @@ CONFIG_AM_CANVAS=y
 CONFIG_AM_TV_OUTPUT=y
 CONFIG_AM_TCON_OUTPUT=y
 CONFIG_AML_TCON_T13=y
+# CONFIG_AML_TCON_ML10 is not set
 # CONFIG_AML_TCON_W10 is not set
 # CONFIG_AML_TCON_W7 is not set
 # CONFIG_AML_TCON_K7 is not set
@@ -716,6 +749,7 @@ CONFIG_AM_VDEC_REAL=y
 # CONFIG_AM_JPEGDEC is not set
 CONFIG_AM_TIMESYNC=y
 CONFIG_AM_STREAMING=y
+CONFIG_AM_SUBTITLE=y
 
 #
 # Amlogic HDMI Support
@@ -731,11 +765,6 @@ CONFIG_AML_HDMI_TX=y
 # CONFIG_TVIN_DVIN is not set
 # CONFIG_TVIN_AFE is not set
 # CONFIG_TVIN_VDIN is not set
-
-#
-# Amlogic ALSA Audio devices
-#
-# CONFIG_SND_AML is not set
 
 #
 # Amlogic audio dsp process 
@@ -919,6 +948,7 @@ CONFIG_ANDROID_PMEM=y
 # CONFIG_DS1682 is not set
 # CONFIG_TI_DAC7512 is not set
 # CONFIG_UID_STAT is not set
+# CONFIG_WL127X_RFKILL is not set
 # CONFIG_APANIC is not set
 # CONFIG_C2PORT is not set
 
@@ -1053,6 +1083,7 @@ CONFIG_PCMCIA_RAYCS=m
 # CONFIG_USB_PEGASUS is not set
 # CONFIG_USB_RTL8150 is not set
 # CONFIG_USB_USBNET is not set
+# CONFIG_USB_HSO is not set
 # CONFIG_USB_IPHETH is not set
 # CONFIG_NET_PCMCIA is not set
 # CONFIG_WAN is not set
@@ -1416,6 +1447,7 @@ CONFIG_SND_AML_SOC=y
 # CONFIG_SND_AML_M1 is not set
 CONFIG_SND_AML_M1_MID_WM8900=y
 # CONFIG_SND_AML_M1_ARMDEV_WM8900 is not set
+# CONFIG_SND_AML_M1_MID_RT5621 is not set
 CONFIG_SND_SOC_I2C_AND_SPI=y
 # CONFIG_SND_SOC_ALL_CODECS is not set
 CONFIG_SND_SOC_WM8900=y
