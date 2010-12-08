@@ -412,11 +412,21 @@ static struct resource amlogic_card_resource[] = {
     }
 };
 
+void extern_wifi_power(int is_power)
+{
+//For this board, wifi power designed by HW is always enabled.
+//    if (0 == is_power)
+//    {
+//    }
+//    else
+//    {
+//    }
+    return;
+}
+
 void sdio_extern_init(void)
 {
-//    CLEAR_CBUS_REG_MASK(CARD_PIN_MUX_5, ((3<<4)));
-//    CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<18));
-//    SET_CBUS_REG_MASK(PREG_GGPIO_O, (1<<18));
+    extern_wifi_power(1);
 }
 
 static struct aml_card_info  amlogic_card_info[] = {
@@ -1120,6 +1130,53 @@ static struct platform_device aml_nand_device = {
 #endif  //CONFIG_NAND_FLASH_DRIVER_MULTIPLANE_CE
 
 #if defined(CONFIG_AMLOGIC_BACKLIGHT)
+static void power_on_panel(void)
+{
+    int i;
+    /* Power up LCD_3.3V */
+    #ifdef CONFIG_SN7325
+    configIO(0, 0);
+    setIO_level(0, 0, 7);
+    #endif
+
+    i=2;
+    while(i--)
+        udelay(1000);
+
+    /* No pin for AVDD control*/
+
+    early_pll_switch(1);
+    early_clk_switch(1);
+    early_power_gate_switch(1);
+//    CLK_GATE_ON(LCD);
+    set_mio_mux(4,(0x3f<<0));
+    set_mio_mux(0, 1<<11);
+    set_mio_mux(0, 1<<14);
+    
+    i=4;
+    while(i--)
+        udelay(1000);
+
+}
+
+static void power_off_panel(void)
+{
+    /* Power down LCD_3.3V */
+    #ifdef CONFIG_SN7325
+    configIO(0, 0);
+    setIO_level(0, 1, 7);
+    #endif
+
+    /* No pin for AVDD control*/
+
+//    CLK_GATE_OFF(LCD);
+    early_power_gate_switch(0);
+    early_clk_switch(0);
+    early_pll_switch(0);    
+    clear_mio_mux(4,(0x3f<<0));
+    clear_mio_mux(0, 1<<11);
+    clear_mio_mux(0, 1<<14); 
+}
 
 #define PWM_TCNT        (600-1)
 #define PWM_MAX_VAL    (420)
@@ -1171,6 +1228,7 @@ static void aml_8726m_bl_init(void)
     WRITE_CBUS_REG(VGHL_PWM_REG4, val);
 }
 static unsigned bl_level;
+static unsigned panel_state = 0;
 static unsigned aml_8726m_get_bl_level(void)
 {
 //    unsigned level = 0;
@@ -1184,6 +1242,7 @@ static unsigned aml_8726m_get_bl_level(void)
 static void aml_8726m_set_bl_level(unsigned level)
 {
     unsigned cs_level,pwm_level,low,hi;
+    int i;
     
     bl_level = level;
     
@@ -1203,11 +1262,30 @@ static void aml_8726m_set_bl_level(unsigned level)
 
     hi = (BL_MAX_LEVEL/100)*pwm_level;
     low = BL_MAX_LEVEL - hi;
+
+    if(bl_level >=30&&panel_state == 0){
+        panel_state = 1;
+        power_on_panel();
+        for(i = 0;i<=200;i++){
+            udelay(1000);
+        }
+    }
+
     WRITE_CBUS_REG_BITS(VGHL_PWM_REG0, cs_level, 0, 4);
-    SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<31));
-    SET_CBUS_REG_MASK(PWM_MISC_REG_AB, (1 << 0));
     WRITE_CBUS_REG_BITS(PWM_PWM_A,low,0,16);  //low
     WRITE_CBUS_REG_BITS(PWM_PWM_A,hi,16,16);  //hi
+    SET_CBUS_REG_MASK(PWM_MISC_REG_AB, (1 << 0)); 
+    SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<31));
+
+    if(bl_level <30&&panel_state == 1){
+        panel_state = 0;
+        set_gpio_val(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), 0);
+        set_gpio_mode(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), GPIO_OUTPUT_MODE);
+        CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<31));
+        CLEAR_CBUS_REG_MASK(PWM_MISC_REG_AB, (1 << 0));
+        power_off_panel();
+        
+    }
 }
 
 static void aml_8726m_power_on_bl(void)
@@ -1490,6 +1568,7 @@ static void __init device_pinmux_init(void )
     //eth_pinmux_init();
     aml_i2c_init();
     set_audio_pinmux(AUDIO_OUT_TEST_N);
+    set_audio_pinmux(AUDIO_IN_JTAG);
 }
 
 static void __init  device_clk_setting(void)

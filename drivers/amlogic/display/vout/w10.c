@@ -29,17 +29,17 @@
 #include <linux/vout/tcon.h>
 
 #ifdef CONFIG_SN7325
-	#include <linux/sn7325.h>
+#include <linux/sn7325.h>
 #endif
 
 #include <mach/gpio.h>
 #include <mach/am_regs.h>
 #include <mach/pinmux.h>
 #include <mach/power_gate.h>
- 
-#define LCD_WIDTH       1024 
+
+#define LCD_WIDTH       1024
 #define LCD_HEIGHT      768
-#define MAX_WIDTH       1344
+#define MAX_WIDTH       1337
 #define MAX_HEIGHT      806
 #define VIDEO_ON_LINE   22
 
@@ -53,7 +53,7 @@ static tcon_conf_t tcon_config =
     .max_width  = MAX_WIDTH,
     .max_height = MAX_HEIGHT,
     .video_on_line = VIDEO_ON_LINE,
-    .pll_ctrl = 0x0651,
+    .pll_ctrl = 0x0661,
     .clk_ctrl = 0x1fc1,
     .gamma_cntl_port = (1 << LCD_GAMMA_EN) | (0 << LCD_GAMMA_RVS_OUT) | (1 << LCD_GAMMA_VCOM_POL),
     .gamma_vcom_hswitch_addr = 0,
@@ -110,8 +110,8 @@ static tcon_conf_t tcon_config =
     .flags = 0,
     .screen_width = 4,
     .screen_height = 3,
-    .sync_duration_num = 89,
-    .sync_duration_den = 2,
+    .sync_duration_num = 60,
+    .sync_duration_den = 1,
     .power_on=t13_power_on,
     .power_off=t13_power_off,
 };
@@ -146,18 +146,10 @@ static void t13_setup_gama_table(tcon_conf_t *pConf)
 
 void power_on_backlight(void)
 {
-//    /* PIN31, GPIOA_8, Pull high, BL_PWM Enable*/
-//    set_gpio_val(GPIOA_bank_bit(8), GPIOA_bit_bit0_14(8), 1);
-//    set_gpio_mode(GPIOA_bank_bit(8), GPIOA_bit_bit0_14(8), GPIO_OUTPUT_MODE);
-//   
-//    /* PIN28, GPIOA_6, Pull high, For En_5V */
-//    set_gpio_val(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), 1);
-//    set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);
-    
     //EIO -> OD4: 0
 #ifdef CONFIG_SN7325
     configIO(0, 0);
-	setIO_level(0, 0, 4);
+    setIO_level(0, 0, 4);
 #endif
 
     set_gpio_val(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), 1);
@@ -166,18 +158,10 @@ void power_on_backlight(void)
 
 void power_off_backlight(void)
 {
-//    /* PIN31, GPIOA_8, Pull low, BL_PWM Disable*/ 
-//    set_gpio_val(GPIOA_bank_bit(8), GPIOA_bit_bit0_14(8), 0);
-//    set_gpio_mode(GPIOA_bank_bit(8), GPIOA_bit_bit0_14(8), GPIO_OUTPUT_MODE);
-//
-//    /* PIN28, GPIOA_6, Pull low, For En_5v */
-//    set_gpio_val(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), 0);
-//    set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);
-
     //EIO -> OD4: 1
 #ifdef CONFIG_SN7325
     configIO(0, 0);
-	setIO_level(0, 1, 4);
+    setIO_level(0, 1, 4);
 #endif
 
     set_gpio_val(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), 0);
@@ -186,50 +170,18 @@ void power_off_backlight(void)
 
 static void power_on_lcd(void)
 {
-//    /* PIN165, GPIOC_4, Pull low, For LCD_3.3V */
-//    #ifdef CONFIG_MACH_MESON_8726M
-//    #else
-//    set_gpio_val(GPIOC_bank_bit0_26(4), GPIOC_bit_bit0_26(4), 0);
-//    set_gpio_mode(GPIOC_bank_bit0_26(4), GPIOC_bit_bit0_26(4), GPIO_OUTPUT_MODE);
-//    #endif
-//    #ifdef CONFIG_MACH_MESON_8726M
-//    /* PIN172, GPIOC_3, Pull high, For AVDD */
-//    set_gpio_val(GPIOC_bank_bit0_26(3), GPIOC_bit_bit0_26(3), 1);
-//    set_gpio_mode(GPIOC_bank_bit0_26(3), GPIOC_bit_bit0_26(3), GPIO_OUTPUT_MODE);
-//    #else
-//    /* PIN172, GPIOC_11, Pull high, For AVDD */
-//    set_gpio_val(GPIOC_bank_bit0_26(11), GPIOC_bit_bit0_26(11), 1);
-//    set_gpio_mode(GPIOC_bank_bit0_26(11), GPIOC_bit_bit0_26(11), GPIO_OUTPUT_MODE);
-//    #endif
-    
     //EIO -> OD0: 0
 #ifdef CONFIG_SN7325
     configIO(0, 0);
-	setIO_level(0, 0, 0);
+    setIO_level(0, 0, 0);
 #endif
 }
 
 static void power_off_lcd(void)
 {
-//    #ifdef CONFIG_MACH_MESON_8726M
-//    /* PIN172, GPIOC_3, Pull high, For AVDD */
-//    set_gpio_val(GPIOC_bank_bit0_26(3), GPIOC_bit_bit0_26(3), 0);
-//    set_gpio_mode(GPIOC_bank_bit0_26(3), GPIOC_bit_bit0_26(3), GPIO_OUTPUT_MODE);
-//    #else
-//    /* PIN172, GPIOC_11, Pull low, For AVDD */
-//    set_gpio_val(GPIOC_bank_bit0_26(11), GPIOC_bit_bit0_26(11), 0);
-//    set_gpio_mode(GPIOC_bank_bit0_26(11), GPIOC_bit_bit0_26(11), GPIO_OUTPUT_MODE);
-//    #endif
-//    /* PIN165, GPIOC_4, Pull high, For LCD_3.3V */
-//    #ifdef CONFIG_MACH_MESON_8726M
-//    #else
-//    set_gpio_val(GPIOC_bank_bit0_26(4), GPIOC_bit_bit0_26(4), 1);
-//    set_gpio_mode(GPIOC_bank_bit0_26(4), GPIOC_bit_bit0_26(4), GPIO_OUTPUT_MODE); 
-//    #endif
-    
     //EIO -> OD0: 1
 #ifdef CONFIG_SN7325
-	configIO(0, 0);
+    configIO(0, 0);
     setIO_level(0, 1, 0);
 #endif
 }
@@ -238,8 +190,9 @@ static void set_tcon_pinmux(void)
 {
     /* TCON control pins pinmux */
     /* GPIOA_5 -> LCD_Clk, GPIOA_0 -> TCON_STH1, GPIOA_1 -> TCON_STV1, GPIOA_2 -> TCON_OEH, */
-    set_mio_mux(0, ((1<<11)|(1<<14)|(1<<15)|(1<<16)) );
+    set_mio_mux(0, ((1<<11)|(1<<14)|(1<<15)|(1<<16)));
     set_mio_mux(4, (1<<0)|(1<<2)|(1<<4) );   //For 6bits
+    //PP1 -> UPDN:0, PP2 -> SHLR:1
 #ifdef CONFIG_SN7325
     configIO(1, 0);
     setIO_level(1, 0, 1);

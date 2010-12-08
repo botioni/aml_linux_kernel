@@ -32,9 +32,9 @@
 #include <mach/am_regs.h>
 #include <mach/pinmux.h>
 
-#define LCD_WIDTH       1024 
+#define LCD_WIDTH       1024
 #define LCD_HEIGHT      600
-#define MAX_WIDTH       1344//1100
+#define MAX_WIDTH       1330
 #define MAX_HEIGHT      635
 #define VIDEO_ON_LINE   22
 
@@ -48,7 +48,7 @@ static tcon_conf_t tcon_config =
     .max_width  = MAX_WIDTH,
     .max_height = MAX_HEIGHT,
     .video_on_line = VIDEO_ON_LINE,
-    .pll_ctrl = 0x063f,   //42M
+    .pll_ctrl = 0x064c,
     .clk_ctrl = 0x1fc1,
     .gamma_cntl_port = (1 << LCD_GAMMA_EN) | (0 << LCD_GAMMA_RVS_OUT) | (1 << LCD_GAMMA_VCOM_POL),
     .gamma_vcom_hswitch_addr = 0,
@@ -103,10 +103,10 @@ static tcon_conf_t tcon_config =
     .tcon_misc_sel_addr = (1<<LCD_STV1_SEL) | (1<<LCD_STV2_SEL),
     .dual_port_cntl_addr = (1<<LCD_TTL_SEL) | (1<<LCD_ANALOG_SEL_CPH3) | (1<<LCD_ANALOG_3PHI_CLK_SEL),
     .flags = 0,
-    .screen_width = 5,
-    .screen_height = 3,
-    .sync_duration_num = 89,
-    .sync_duration_den = 2,
+    .screen_width = 16,
+    .screen_height = 9,
+    .sync_duration_num = 60,
+    .sync_duration_den = 1,
     .power_on=t13_power_on,
     .power_off=t13_power_off,
 };
