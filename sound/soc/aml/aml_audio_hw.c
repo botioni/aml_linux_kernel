@@ -15,6 +15,7 @@
 #define AIU_958_chstat1	AIU_958_CHSTAT_L1
 #endif
 unsigned ENABLE_IEC958 = 0;
+static unsigned dac_reset_flag = 0;
 
 
 /*
@@ -270,13 +271,16 @@ void wr_adac_regbank (unsigned long rstdpz,
                   unsigned long lmvol,
                   unsigned long hsvol)
 {
-    WRITE_APB_REG(APB_ADAC_RESET, (rstdpz<<1));
-    WRITE_APB_REG(APB_ADAC_RESET, (rstdpz<<1));
-    WRITE_APB_REG(APB_ADAC_RESET, (rstdpz<<1));
-    WRITE_APB_REG(APB_ADAC_RESET, (rstdpz<<1));
-    WRITE_APB_REG(APB_ADAC_RESET, (rstdpz<<1));
-    WRITE_APB_REG(APB_ADAC_RESET, (rstdpz<<1));
-    
+	if(!dac_reset_flag){
+	   	WRITE_APB_REG(APB_ADAC_RESET, (rstdpz<<1));
+	    WRITE_APB_REG(APB_ADAC_RESET, (rstdpz<<1));
+	    WRITE_APB_REG(APB_ADAC_RESET, (rstdpz<<1));
+	    WRITE_APB_REG(APB_ADAC_RESET, (rstdpz<<1));
+	    WRITE_APB_REG(APB_ADAC_RESET, (rstdpz<<1));
+	    WRITE_APB_REG(APB_ADAC_RESET, (rstdpz<<1));
+			
+	}	
+
     WRITE_APB_REG(APB_ADAC_CLOCK, (mclksel<<0));
   
     WRITE_APB_REG(APB_ADAC_I2S_CONFIG_REG1, (i2sfsdac<<0));
@@ -383,16 +387,17 @@ int audio_dac_set(unsigned freq)
     latch();
 	WRITE_APB_REG(APB_ADAC_POWER_CTRL_REG2, (1<<7));
     latch();
-
-	WRITE_APB_REG(APB_ADAC_RESET, (0<<1));
-    latch();
-	WRITE_APB_REG(APB_ADAC_RESET, (1<<1));
-    latch();
-	for (i = 0; i < 1500000; i++) ;
-	for (i = 0; i < 1500000; i++) ;
-	for (i = 0; i < 1500000; i++) ;
-	for (i = 0; i < 1500000; i++) ;
-	
+    if(!dac_reset_flag){
+		WRITE_APB_REG(APB_ADAC_RESET, (0<<1));
+	    latch();
+		WRITE_APB_REG(APB_ADAC_RESET, (1<<1));
+	    latch();
+		for (i = 0; i < 1500000; i++) ;
+		for (i = 0; i < 1500000; i++) ;
+		for (i = 0; i < 1500000; i++) ;
+		for (i = 0; i < 1500000; i++) ;
+		dac_reset_flag = 1;
+    }
   return 0;
 }
 
