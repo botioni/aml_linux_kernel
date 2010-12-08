@@ -1004,30 +1004,47 @@ HDMI_Video_Codes_t hdmitx_edid_get_VIC(hdmitx_dev_t* hdmitx_device, const char* 
     rx_cap_t* pRXCap = &(hdmitx_device->RXCap);
 	  int  i,j,count=ARRAY_SIZE(dispmode_VIC_tab);
 	  HDMI_Video_Codes_t vic=HDMI_Unkown;
+	  HDMI_Video_Codes_t vic16x9=HDMI_Unkown;
+	  HDMI_Video_Codes_t vicret=HDMI_Unkown;
     int mode_name_len=0;
     //printk("disp_mode is %s\n", disp_mode);
     for(i=0;i<count;i++)
-    {
+    { /* below code assumes "16x9 mode" follows it's "normal mode" in dispmode_VIC_tab[] */
         if(strncmp(disp_mode, dispmode_VIC_tab[i].disp_mode, strlen(dispmode_VIC_tab[i].disp_mode))==0)
         {
-            if((vic==HDMI_Unkown)||(strlen(dispmode_VIC_tab[i].disp_mode)>mode_name_len)){
+            if((vic!=HDMI_Unkown)||(strlen(dispmode_VIC_tab[i].disp_mode)==mode_name_len)){
+                vic16x9 = dispmode_VIC_tab[i].VIC;
+            }
+            else if((vic==HDMI_Unkown)||(strlen(dispmode_VIC_tab[i].disp_mode)>mode_name_len)){
                 vic = dispmode_VIC_tab[i].VIC;
+                vic16x9 = HDMI_Unkown;
                 mode_name_len = strlen(dispmode_VIC_tab[i].disp_mode);
             }
         }
     }
     if(vic!=HDMI_Unkown){
-        if(force_flag==0){
+        /* normal mode has high priority */
             for( j = 0 ; j < pRXCap->VIC_count ; j++ ){
-                if(pRXCap->VIC[j]==vic)
+            if(pRXCap->VIC[j]==vic){ 
+                vicret = vic;
                     break;    
             }
-            if(j>=pRXCap->VIC_count){
-                vic = HDMI_Unkown;
+        }
+        if((j>=pRXCap->VIC_count)&&(vic16x9!=HDMI_Unkown)){
+            for( j = 0 ; j < pRXCap->VIC_count ; j++ ){
+                if(pRXCap->VIC[j]==vic16x9){
+                    vicret = vic16x9;
+                    break;
+                }
+            }
+        }
+        if(force_flag){ 
+            if((vicret==HDMI_Unkown)&&(vic!=HDMI_Unkown)){
+                vicret = vic;    
             }
         }
     }    
-    return vic;
+    return vicret;
 }    
 
 char* hdmitx_edid_get_native_VIC(hdmitx_dev_t* hdmitx_device)
