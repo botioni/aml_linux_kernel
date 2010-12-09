@@ -835,6 +835,7 @@ static noinline int init_post(void)
 	current->signal->flags |= SIGNAL_UNKILLABLE;
 
 	if (ramdisk_execute_command) {
+		(void) sys_dup(0);
 		run_init_process(ramdisk_execute_command);
 		printk(KERN_WARNING "Failed to execute %s\n",
 				ramdisk_execute_command);
