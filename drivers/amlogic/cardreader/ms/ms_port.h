@@ -3,9 +3,8 @@
 
 #include <asm/types.h>
 #include <asm/io.h>
-#include <asm/arch/am_regs.h>
-
-#include <asm/drivers/cardreader/card_io.h>
+#include <mach/am_regs.h>
+#include <mach/card_io.h>
     
 //Following I/O configurations are just for default case if no any known PCB defined
     
@@ -14,6 +13,13 @@
 //Port operation for MS BUS
 //write it as such form that could be replaced by function later if needed
 extern int i_GPIO_timer;
+extern void (*ms_mspro_power_register) (int power_on);
+extern int (*ms_mspro_ins_register) (void);
+extern int (*ms_mspro_wp_register) (void);
+extern void (*ms_mspro_io_release_register) (void);
+
+extern void sd_sdio_enable(SDIO_Pad_Type_t io_pad_type);
+extern void sd_gpio_enable(SDIO_Pad_Type_t io_pad_type);
 
 #ifdef MS_IO_EXTERNAL
 extern unsigned MS_BS_OUTPUT_EN_REG;
@@ -51,8 +57,10 @@ extern int i_GPIO_timer;
     //extern void (*ms_mspro_io_release_register)(void);
     
 #define MS_MSPRO_POWER_CONTROL
-void ms_sdio_enable(void);
-void ms_gpio_enable(void);
+//void ms_sdio_enable(void);
+//void ms_gpio_enable(void);
+#define ms_sdio_enable sd_sdio_enable
+#define ms_gpio_enable sd_gpio_enable
 
 #else				//MS_IO_EXTERNAL
     
@@ -93,8 +101,8 @@ extern int i_GPIO_timer;
     
 #define MS_MSPRO_POWER_CONTROL          
     
-#define ms_sdio_enable()				{SET_PERIPHS_REG_BITS(PERIPHS_PIN_MUX_2, 0x3F);SET_PERIPHS_REG_BITS(SDIO_MULT_CONFIG, (1));}      
-#define ms_gpio_enable()				{CLEAR_PERIPHS_REG_BITS(PERIPHS_PIN_MUX_2, 0x3F);CLEAR_PERIPHS_REG_BITS(SDIO_MULT_CONFIG, (1));}  
+#define ms_sdio_enable()			{SET_CBUS_REG_MASK(CARD_PIN_MUX_0, (0x3F<<23));SET_CBUS_REG_MASK(SDIO_MULT_CONFIG, (0));}
+#define ms_gpio_enable()			{CLEAR_CBUS_REG_MASK(CARD_PIN_MUX_0, (0x3F<<23));CLEAR_CBUS_REG_MASK(SDIO_MULT_CONFIG, (0));}
     
 #endif				//MS_IO_EXTERNAL                     
     

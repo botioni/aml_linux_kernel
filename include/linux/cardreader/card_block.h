@@ -196,6 +196,7 @@ static inline void card_claim_host(struct card_host *host)
 extern int sd_mmc_probe(struct memory_card *card);
 extern int sdio_probe(struct memory_card *card);
 extern int inand_probe(struct memory_card *card);
+extern int ms_probe(struct memory_card *card);
 extern int add_card_partition(struct gendisk * disk, 
 		struct mtd_partition * part, unsigned int nr_part);
 

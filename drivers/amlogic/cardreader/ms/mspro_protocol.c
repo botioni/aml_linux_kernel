@@ -7,8 +7,10 @@ unsigned char read_sector_type;
 extern unsigned short mass_counter;
 extern unsigned mspro_access_status_reg_after_read;
 
-int mspro_media_type_identification()
+int mspro_media_type_identification(MS_MSPRO_Card_Info_t *ms_mspro_info)
 {
+	MS_MSPRO_Card_Buffer_t *ms_mspro_buf = (MS_MSPRO_Card_Buffer_t *)(ms_mspro_info->ms_mspro_buf);
+
 	if (ms_mspro_buf->mspro.regs.Type_Reg != 0x01)
 		return MS_MSPRO_ERROR_MEDIA_TYPE;
 		
@@ -38,10 +40,11 @@ int mspro_media_type_identification()
 }
 }
 
-int mspro_cpu_startup(void)
+int mspro_cpu_startup(MS_MSPRO_Card_Info_t *ms_mspro_info)
 {
 	MS_MSPRO_TPC_Packet_t packet;
 	MS_MSPRO_INT_Register_t * pIntReg;
+	MS_MSPRO_Card_Buffer_t *ms_mspro_buf = (MS_MSPRO_Card_Buffer_t *)(ms_mspro_info->ms_mspro_buf);
 	
 	int error;
 	
@@ -55,7 +58,7 @@ int mspro_cpu_startup(void)
 		packet.TPC_cmd.value = TPC_MS_MSPRO_GET_INT;        //SET_CMD
 		packet.param.in.count = 1;
 		packet.param.in.buffer = &ms_mspro_buf->mspro.regs.INT_Reg;
-		error = ms_mspro_packet_communicate(&packet);
+		error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 		if(error)
 			continue;
 			
@@ -67,7 +70,7 @@ int mspro_cpu_startup(void)
 		packet.TPC_cmd.value = TPC_MS_MSPRO_GET_INT;        //SET_CMD
 		packet.param.in.count = 1;
 		packet.param.in.buffer = &ms_mspro_buf->mspro.regs.INT_Reg;
-		error = ms_mspro_packet_communicate(&packet);
+		error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 		if(error)
 			continue;
 
@@ -97,14 +100,15 @@ int mspro_cpu_startup(void)
 			return MS_MSPRO_NO_ERROR;
 }
 
-int mspro_confirm_attribute_information(unsigned char * data_buf)
+int mspro_confirm_attribute_information(MS_MSPRO_Card_Info_t *ms_mspro_info, unsigned char * data_buf)
 {
 	int error,i;
+	MS_MSPRO_Card_Buffer_t *ms_mspro_buf = (MS_MSPRO_Card_Buffer_t *)(ms_mspro_info->ms_mspro_buf);
 	
 	unsigned char entry_cnt = 0, entry_index = 0;
 
 	// read attribute information
-	error = mspro_read_attribute_sector(0, 1, data_buf);
+	error = mspro_read_attribute_sector(ms_mspro_info, 0, 1, data_buf);
 	if(error)
 		return error;
 		
@@ -153,11 +157,12 @@ int mspro_confirm_attribute_information(unsigned char * data_buf)
 	return MS_MSPRO_NO_ERROR;
 }
 
-int mspro_confirm_system_information(unsigned char * data_buf)
+int mspro_confirm_system_information(MS_MSPRO_Card_Info_t *ms_mspro_info, unsigned char * data_buf)
 {
 	int error;
 	
 	unsigned short sector_addr, data_offset, data_size;
+	MS_MSPRO_Card_Buffer_t *ms_mspro_buf = (MS_MSPRO_Card_Buffer_t *)(ms_mspro_info->ms_mspro_buf);
 	
 	
 	sector_addr = ms_mspro_buf->mspro.device_information_entry[ms_mspro_buf->mspro.system_entry_index].Address / MSPRO_SECTOR_SIZE;
@@ -165,7 +170,7 @@ int mspro_confirm_system_information(unsigned char * data_buf)
 	data_size = ms_mspro_buf->mspro.device_information_entry[ms_mspro_buf->mspro.system_entry_index].Size;
 	
 	// read system information
-	error = mspro_read_attribute_sector(sector_addr, 1, data_buf);
+	error = mspro_read_attribute_sector(ms_mspro_info, sector_addr, 1, data_buf);
 	if(error)
 		return error;
 	// save system information
@@ -174,7 +179,7 @@ int mspro_confirm_system_information(unsigned char * data_buf)
 	if(data_size > (MSPRO_SECTOR_SIZE-data_offset))
 	{
 		// read system information
-		error = mspro_read_attribute_sector(sector_addr+1, 1, data_buf);
+		error = mspro_read_attribute_sector(ms_mspro_info, sector_addr+1, 1, data_buf);
 		if(error)
 			return error;
 		// save system information
@@ -231,15 +236,16 @@ int mspro_recognize_file_system()
 	return MS_MSPRO_NO_ERROR;
 }
 
-int mspro_read_user_sector(unsigned long sector_addr, unsigned short sector_count, unsigned char * data_buf)
+int mspro_read_user_sector(MS_MSPRO_Card_Info_t *ms_mspro_info, unsigned long sector_addr, unsigned short sector_count, unsigned char * data_buf)
 {
 	MS_MSPRO_TPC_Packet_t packet;
 	MS_MSPRO_INT_Register_t * pIntReg;
 	unsigned long data_offset = 0;
+	MS_MSPRO_Card_Buffer_t *ms_mspro_buf = (MS_MSPRO_Card_Buffer_t *)(ms_mspro_info->ms_mspro_buf);
 
 	int error;
 	
-	unsigned char buf[8] = {0,0,0,0,0,0,0,0};
+	unsigned char* buf = ms_mspro_info->data_buf;
 		
 	mass_counter=0;
 	
@@ -254,7 +260,7 @@ int mspro_read_user_sector(unsigned long sector_addr, unsigned short sector_coun
 		ms_mspro_buf->mspro.reg_set.write_addr = 0x11;
 		ms_mspro_buf->mspro.reg_set.write_size = 0x06;
 		packet.param.out.buffer = (unsigned char *)&ms_mspro_buf->mspro.reg_set;
-		error = ms_mspro_packet_communicate(&packet);
+		error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 		if(error)
 			return error;
 	}
@@ -271,7 +277,7 @@ int mspro_read_user_sector(unsigned long sector_addr, unsigned short sector_coun
 		ms_mspro_buf->mspro.regs.parameters.data.Data_Address_Reg1 = (sector_addr>>8) & 0xFF;
 		ms_mspro_buf->mspro.regs.parameters.data.Data_Address_Reg0 = sector_addr & 0xFF;
 		packet.param.out.buffer = &ms_mspro_buf->mspro.regs.Data_Count_Reg1;
-		error = ms_mspro_packet_communicate(&packet);
+		error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 		if(error)
 			return error;
 
@@ -279,7 +285,7 @@ int mspro_read_user_sector(unsigned long sector_addr, unsigned short sector_coun
 		packet.param.out.count = 1;
 		packet.param.out.buffer = buf;
 		packet.param.out.buffer[0] = read_sector_type ? CMD_MSPRO_READ_ATRB : CMD_MSPRO_READ_DATA;
-		error = ms_mspro_packet_communicate(&packet);
+		error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 		if(error)
 			return error;
 	}
@@ -297,7 +303,7 @@ int mspro_read_user_sector(unsigned long sector_addr, unsigned short sector_coun
 		packet.param.out.buffer[4] = (sector_addr>>16) & 0xFF;
 		packet.param.out.buffer[5] = (sector_addr>>8) & 0xFF;
 		packet.param.out.buffer[6] = sector_addr & 0xFF;
-		error = ms_mspro_packet_communicate(&packet);
+		error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 		if(error)
 			return error;
 }
@@ -305,7 +311,7 @@ int mspro_read_user_sector(unsigned long sector_addr, unsigned short sector_coun
 
 	while(1)
 	{
-		error = ms_mspro_wait_int(&packet);
+		error = ms_mspro_wait_int(ms_mspro_info, &packet);
 		if(error)
 			return error;
 			
@@ -319,7 +325,7 @@ int mspro_read_user_sector(unsigned long sector_addr, unsigned short sector_coun
 			packet.TPC_cmd.value = TPC_MS_MSPRO_GET_INT;        //SET_CMD
 			packet.param.in.count = 1;
 			packet.param.in.buffer = &ms_mspro_buf->mspro.regs.INT_Reg;
-			error = ms_mspro_packet_communicate(&packet);
+			error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 			if(error)
 				return error;
 		}
@@ -354,7 +360,7 @@ int mspro_read_user_sector(unsigned long sector_addr, unsigned short sector_coun
 		packet.TPC_cmd.value = TPC_MSPRO_READ_LONG_DATA;    //READ_LONG_DATA
 		packet.param.in.count = MSPRO_SECTOR_SIZE;      //READ_ADRS,READ_SIZE,WRITE_ADRS,WRITE_SIZE
 		packet.param.in.buffer = data_buf+data_offset;
-		error = ms_mspro_packet_communicate(&packet);
+		error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 		if(error)
 			return error;
 
@@ -375,14 +381,14 @@ int mspro_read_user_sector(unsigned long sector_addr, unsigned short sector_coun
 		ms_mspro_buf->ms.reg_set.read_addr = 0x02;           //READ_ADRS = 0x02
 		ms_mspro_buf->ms.reg_set.read_size = 0x01;           //READ_SIZE = 0x06
 		packet.param.out.buffer = (unsigned char *)&ms_mspro_buf->ms.reg_set;
-		error = ms_mspro_packet_communicate(&packet);
+		error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 		if(error)
 			return error;
 
 		packet.TPC_cmd.value = TPC_MS_MSPRO_READ_REG;       //READ_REG
 		packet.param.in.count = 1;              //READ_ADRS,READ_SIZE,WRITE_ADRS,WRITE_SIZE
 		packet.param.in.buffer = &ms_mspro_buf->ms.regs.Status_Reg0;
-		error = ms_mspro_packet_communicate(&packet);
+		error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 		if(error)
 			return error;
 	}
@@ -390,15 +396,16 @@ int mspro_read_user_sector(unsigned long sector_addr, unsigned short sector_coun
 	return MS_MSPRO_NO_ERROR;
 }
 
-int mspro_write_user_sector(unsigned long sector_addr, unsigned short sector_count, unsigned char * data_buf)
+int mspro_write_user_sector(MS_MSPRO_Card_Info_t *ms_mspro_info, unsigned long sector_addr, unsigned short sector_count, unsigned char * data_buf)
 {
 	MS_MSPRO_TPC_Packet_t packet;
 	MS_MSPRO_INT_Register_t * pIntReg;
 	unsigned long data_offset = 0;
+	MS_MSPRO_Card_Buffer_t *ms_mspro_buf = (MS_MSPRO_Card_Buffer_t *)(ms_mspro_info->ms_mspro_buf);
 	
 	int error;
 	
-	unsigned char buf[8] = {0,0,0,0,0,0,0,0};
+	unsigned char* buf = ms_mspro_info->data_buf;
 
 	mass_counter=0;
 
@@ -413,7 +420,7 @@ int mspro_write_user_sector(unsigned long sector_addr, unsigned short sector_cou
 		ms_mspro_buf->mspro.reg_set.write_addr = 0x11;
 		ms_mspro_buf->mspro.reg_set.write_size = 0x06;
 		packet.param.out.buffer = (unsigned char *)&ms_mspro_buf->mspro.reg_set;
-		error = ms_mspro_packet_communicate(&packet);
+		error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 		if(error)
 			return error;
 	}
@@ -430,7 +437,7 @@ int mspro_write_user_sector(unsigned long sector_addr, unsigned short sector_cou
 		ms_mspro_buf->mspro.regs.parameters.data.Data_Address_Reg1 = (sector_addr>>8) & 0xFF;
 		ms_mspro_buf->mspro.regs.parameters.data.Data_Address_Reg0 = sector_addr & 0xFF;
 		packet.param.out.buffer = &ms_mspro_buf->mspro.regs.Data_Count_Reg1;
-		error = ms_mspro_packet_communicate(&packet);
+		error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 		if(error)
 			return error;
 
@@ -438,7 +445,7 @@ int mspro_write_user_sector(unsigned long sector_addr, unsigned short sector_cou
 		packet.param.out.count = 1;
 		packet.param.out.buffer = buf;
 		packet.param.out.buffer[0] = CMD_MSPRO_WRITE_DATA;
-		error = ms_mspro_packet_communicate(&packet);
+		error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 		if(error)
 			return error;
 	}
@@ -457,7 +464,7 @@ int mspro_write_user_sector(unsigned long sector_addr, unsigned short sector_cou
 		packet.param.out.buffer[4] = (sector_addr>>16) & 0xFF;
 		packet.param.out.buffer[5] = (sector_addr>>8) & 0xFF;
 		packet.param.out.buffer[6] = sector_addr & 0xFF;
-		error = ms_mspro_packet_communicate(&packet);
+		error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 		if(error)
 			return error;
 	}
@@ -465,7 +472,7 @@ int mspro_write_user_sector(unsigned long sector_addr, unsigned short sector_cou
 
 	while(1)
 	{
-		error = ms_mspro_wait_int(&packet);
+		error = ms_mspro_wait_int(ms_mspro_info, &packet);
 		if(error)
 			return error;
 			
@@ -479,7 +486,7 @@ int mspro_write_user_sector(unsigned long sector_addr, unsigned short sector_cou
 			packet.TPC_cmd.value = TPC_MS_MSPRO_GET_INT;        //SET_CMD
 			packet.param.in.count = 1;
 			packet.param.in.buffer = &ms_mspro_buf->mspro.regs.INT_Reg;
-			error = ms_mspro_packet_communicate(&packet);
+			error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 			if(error)
 				return error;
 	}
@@ -506,7 +513,7 @@ int mspro_write_user_sector(unsigned long sector_addr, unsigned short sector_cou
 		packet.TPC_cmd.value = TPC_MSPRO_WRITE_LONG_DATA;   //WRITE_LONG_DATA
 		packet.param.out.count = MSPRO_SECTOR_SIZE;     //READ_ADRS,READ_SIZE,WRITE_ADRS,WRITE_SIZE
 		packet.param.out.buffer = data_buf+data_offset;
-		error = ms_mspro_packet_communicate(&packet);
+		error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 		if(error)
 			return error;
 
@@ -518,16 +525,18 @@ int mspro_write_user_sector(unsigned long sector_addr, unsigned short sector_cou
 	return MS_MSPRO_NO_ERROR;
 }
 
-int mspro_erase_user_sector(unsigned long sector_addr, unsigned short sector_count)
+int mspro_erase_user_sector(MS_MSPRO_Card_Info_t *ms_mspro_info, unsigned long sector_addr, unsigned short sector_count)
 {
 	MS_MSPRO_TPC_Packet_t packet;
 	MS_MSPRO_INT_Register_t * pIntReg;
-	unsigned char report_buf[MSPRO_REPORT_SIZE];
+	//unsigned char report_buf[MSPRO_REPORT_SIZE];
 	unsigned long all_sectorts = 0, processed_sectors = 0;
+	MS_MSPRO_Card_Buffer_t *ms_mspro_buf = (MS_MSPRO_Card_Buffer_t *)(ms_mspro_info->ms_mspro_buf);
 
 	int error;
 	
-	unsigned char buf[8] = {0,0,0,0,0,0,0,0};
+	unsigned char* buf = ms_mspro_info->data_buf;
+	unsigned char* report_buf = ms_mspro_info->data_buf;
 	
 	memset(report_buf, 0, MSPRO_REPORT_SIZE);
 		
@@ -545,7 +554,7 @@ int mspro_erase_user_sector(unsigned long sector_addr, unsigned short sector_cou
 			ms_mspro_buf->mspro.reg_set.write_addr = 0x11;
 			ms_mspro_buf->mspro.reg_set.write_size = 0x06;
 			packet.param.out.buffer = (unsigned char *)&ms_mspro_buf->mspro.reg_set;
-			error = ms_mspro_packet_communicate(&packet);
+			error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 			if(error)
 				return error;
 		}
@@ -562,7 +571,7 @@ int mspro_erase_user_sector(unsigned long sector_addr, unsigned short sector_cou
 			ms_mspro_buf->mspro.reg_set.write_addr = 0x11;
 			ms_mspro_buf->mspro.reg_set.write_size = 0x07;
 			packet.param.out.buffer = (unsigned char *)&ms_mspro_buf->mspro.reg_set;
-			error = ms_mspro_packet_communicate(&packet);
+			error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 			if(error)
 				return error;
 		}
@@ -586,7 +595,7 @@ int mspro_erase_user_sector(unsigned long sector_addr, unsigned short sector_cou
 	ms_mspro_buf->mspro.regs.parameters.data.Data_Address_Reg0 = sector_addr & 0xFF;
 	ms_mspro_buf->mspro.regs.parameters.data.TPC_Pamameter_Reg = MSPRO_REPORT_TYPE;
 	packet.param.out.buffer = &ms_mspro_buf->mspro.regs.Data_Count_Reg1;
-	error = ms_mspro_packet_communicate(&packet);
+	error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 	if(error)
 		return error;
 
@@ -598,7 +607,7 @@ int mspro_erase_user_sector(unsigned long sector_addr, unsigned short sector_cou
 		ms_mspro_buf->mspro.reg_set.write_addr = 0x17;
 		ms_mspro_buf->mspro.reg_set.write_size = 0x01;
 		packet.param.out.buffer = (unsigned char *)&ms_mspro_buf->mspro.reg_set;
-		error = ms_mspro_packet_communicate(&packet);
+		error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 		if(error)
 			return error;
 	
@@ -606,7 +615,7 @@ int mspro_erase_user_sector(unsigned long sector_addr, unsigned short sector_cou
 		packet.param.out.count = 1;             //READ_ADRS,READ_SIZE,WRITE_ADRS,WRITE_SIZE
 		ms_mspro_buf->mspro.regs.parameters.data.TPC_Pamameter_Reg = MSPRO_REPORT_TYPE;
 		packet.param.out.buffer = &ms_mspro_buf->mspro.regs.parameters.data.TPC_Pamameter_Reg;
-		error = ms_mspro_packet_communicate(&packet);
+		error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 		if(error)
 			return error;
 	}
@@ -617,13 +626,13 @@ int mspro_erase_user_sector(unsigned long sector_addr, unsigned short sector_cou
 	packet.param.out.count = 1;
 	packet.param.out.buffer = buf;
 	packet.param.out.buffer[0] = CMD_MSPRO_ERASE;
-	error = ms_mspro_packet_communicate(&packet);
+	error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 	if(error)
 		return error;
 
 	while(1)
 	{
-		error = ms_mspro_wait_int(&packet);
+		error = ms_mspro_wait_int(ms_mspro_info, &packet);
 		if(error)
 			return error;
 			
@@ -637,7 +646,7 @@ int mspro_erase_user_sector(unsigned long sector_addr, unsigned short sector_cou
 			packet.TPC_cmd.value = TPC_MS_MSPRO_GET_INT;        //SET_CMD
 			packet.param.in.count = 1;
 			packet.param.in.buffer = &ms_mspro_buf->mspro.regs.INT_Reg;
-			error = ms_mspro_packet_communicate(&packet);
+			error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 			if(error)
 				return error;
 		}
@@ -660,7 +669,7 @@ int mspro_erase_user_sector(unsigned long sector_addr, unsigned short sector_cou
 		packet.TPC_cmd.value = TPC_MSPRO_READ_SHORT_DATA;   //READ_SHORT_DATA
 		packet.param.in.count = MSPRO_REPORT_SIZE;      //READ_ADRS,READ_SIZE,WRITE_ADRS,WRITE_SIZE
 		packet.param.in.buffer = report_buf;
-		error = ms_mspro_packet_communicate(&packet);
+		error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 		if(error)
 			return error;
 
@@ -674,16 +683,17 @@ int mspro_erase_user_sector(unsigned long sector_addr, unsigned short sector_cou
 		return MS_MSPRO_NO_ERROR;
 }
 
-int mspro_read_attribute_sector(unsigned long sector_addr, unsigned short sector_count, unsigned char * data_buf)
+int mspro_read_attribute_sector(MS_MSPRO_Card_Info_t *ms_mspro_info, unsigned long sector_addr, unsigned short sector_count, unsigned char * data_buf)
 {
 	MS_MSPRO_INT_Register_t * pIntReg;
+	MS_MSPRO_Card_Buffer_t *ms_mspro_buf = (MS_MSPRO_Card_Buffer_t *)(ms_mspro_info->ms_mspro_buf);
 	
 #ifdef MS_MSPRO_HW_CONTROL
 	if(MS_WORK_MODE == CARD_HW_MODE)
 	{
 		int error,tracer;
 		read_sector_type=1;
-		error = mspro_read_user_sector(sector_addr, sector_count, data_buf);
+		error = mspro_read_user_sector(ms_mspro_info, sector_addr, sector_count, data_buf);
 		tracer=0;
 		while (1)
 		{
@@ -698,7 +708,7 @@ int mspro_read_attribute_sector(unsigned long sector_addr, unsigned short sector
 			sector_addr += mass_counter;
 			sector_count -= mass_counter;
 			data_buf += MSPRO_SECTOR_SIZE*mass_counter;
-			error = mspro_read_user_sector(sector_addr, sector_count, data_buf);
+			error = mspro_read_user_sector(ms_mspro_info, sector_addr, sector_count, data_buf);
 		}	
 		read_sector_type=0;
 		return error;
@@ -714,7 +724,7 @@ int mspro_read_attribute_sector(unsigned long sector_addr, unsigned short sector
 	
 	int error;
 	
-	unsigned char buf[8] = {0,0,0,0,0,0,0,0};
+	unsigned char* buf = ms_mspro_info->data_buf;
 		
 	if(sector_count == 0)
 		return MS_MSPRO_ERROR_PARAMETER;
@@ -727,7 +737,7 @@ int mspro_read_attribute_sector(unsigned long sector_addr, unsigned short sector
 		ms_mspro_buf->mspro.reg_set.write_addr = 0x11;
 		ms_mspro_buf->mspro.reg_set.write_size = 0x06;
 		packet.param.out.buffer = (unsigned char *)&ms_mspro_buf->mspro.reg_set;
-		error = ms_mspro_packet_communicate(&packet);
+		error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 		if(error)
 			return error;
 	}
@@ -742,13 +752,13 @@ int mspro_read_attribute_sector(unsigned long sector_addr, unsigned short sector
 	packet.param.out.buffer[4] = 0;
 	packet.param.out.buffer[5] = 0;
 	packet.param.out.buffer[6] = sector_addr;
-	error = ms_mspro_packet_communicate(&packet);
+	error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 	if(error)
 		return error;
 
 	while(1)
 	{
-		error = ms_mspro_wait_int(&packet);
+		error = ms_mspro_wait_int(ms_mspro_info, &packet);
 		if(error)
 			return error;
 			
@@ -762,7 +772,7 @@ int mspro_read_attribute_sector(unsigned long sector_addr, unsigned short sector
 			packet.TPC_cmd.value = TPC_MS_MSPRO_GET_INT;        //SET_CMD
 			packet.param.in.count = 1;
 			packet.param.in.buffer = &ms_mspro_buf->mspro.regs.INT_Reg;
-			error = ms_mspro_packet_communicate(&packet);
+			error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 			if(error)
 				return error;
 		}
@@ -785,7 +795,7 @@ int mspro_read_attribute_sector(unsigned long sector_addr, unsigned short sector
 		packet.TPC_cmd.value = TPC_MSPRO_READ_LONG_DATA;    //READ_LONG_DATA
 		packet.param.in.count = MSPRO_SECTOR_SIZE;      //READ_ADRS,READ_SIZE,WRITE_ADRS,WRITE_SIZE
 		packet.param.in.buffer = data_buf+data_offset;
-		error = ms_mspro_packet_communicate(&packet);
+		error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 		if(error)
 			return error;
 
@@ -796,7 +806,7 @@ int mspro_read_attribute_sector(unsigned long sector_addr, unsigned short sector
 	
 	}
 #endif
-
+	return 0;
 }
 
 int mspro_read_information_block()
