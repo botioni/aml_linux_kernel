@@ -3,6 +3,7 @@
 
 #include <linux/kernel.h>
 #include <linux/types.h>
+#include <linux/genhd.h>
 #include <linux/errno.h>
 #include <linux/platform_device.h>
 #include <linux/sched.h>

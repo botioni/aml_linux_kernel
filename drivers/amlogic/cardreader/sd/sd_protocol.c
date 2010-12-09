@@ -1,3 +1,4 @@
+#include <linux/clk.h>
 #include "sd_port.h"
 #include "sd_misc.h"
 #include "sd_protocol.h"
@@ -632,6 +633,7 @@ int sd_send_cmd_hw(SD_MMC_Card_Info_t *sd_mmc_info, unsigned char cmd, unsigned 
 			
 	}
 
+	#define SD_MMC_CMD_COUNT				20000//20
 	#define SD_MMC_READ_BUSY_COUNT		2000000//20
 	#define SD_MMC_WRITE_BUSY_COUNT		50000000//500000
 	#define SD_MMC_WAIT_STOP_COUNT		50000000
@@ -653,7 +655,7 @@ int sd_send_cmd_hw(SD_MMC_Card_Info_t *sd_mmc_info, unsigned char cmd, unsigned 
     	else if(cmd == IO_RW_EXTENDED)
     		timeout = SD_MMC_READ_BUSY_COUNT * (cmd_send_reg->repeat_package_times + 1);
         else
-    	    timeout = SD_MMC_READ_BUSY_COUNT;
+    	    timeout = SD_MMC_CMD_COUNT;
     }
     
     if(cmd == SD_MMC_STOP_TRANSMISSION)
@@ -2663,7 +2665,6 @@ int sd_write_multi_block_sw(SD_MMC_Card_Info_t *sd_mmc_info, unsigned long lba, 
 int sd_hw_reset(SD_MMC_Card_Info_t *sd_mmc_info)
 {
 	int ret=SD_MMC_NO_ERROR;
-	
 	sd_mmc_info->operation_mode = CARD_INDENTIFICATION_MODE;
 
 #ifdef SD_MMC_HW_CONTROL
@@ -2931,7 +2932,8 @@ int sd_identify_process(SD_MMC_Card_Info_t *sd_mmc_info)
 #endif
 	}
 
-	sd_delay_ms(10);  //for samsung card
+	sd_delay_ms(50);  //for MUSE 64MB CARD sd_identify_process timeout
+	//sd_delay_ms(10);  //for samsung card
 	/* Assign IDs to all devices found */
 	slot_id = 1;
 	delay_time = 10;
@@ -3220,7 +3222,8 @@ int sd_identify_process(SD_MMC_Card_Info_t *sd_mmc_info)
 		}
 		else
 		{
-			config_reg->cmd_clk_divide = 3;
+			//config_reg->cmd_clk_divide = 3;
+			config_reg->cmd_clk_divide = 4;
 			sd_mmc_info->sdio_clk_unit = 1000/SD_MMC_TRANSFER_CLK;
 		}
 
@@ -4150,8 +4153,14 @@ int sd_mmc_switch_function(SD_MMC_Card_Info_t *sd_mmc_info)
 		sd_mmc_info->sdio_clk_unit = 1000/SD_MMC_TRANSFER_CLK;
     }
 
-	printk("set sd_mmc config_reg->cmd_clk_divide %d, CLK %dM\n", 
-			config_reg->cmd_clk_divide, 90/(config_reg->cmd_clk_divide + 1) );
+	if(!config_reg){
+		sdio_config = READ_CBUS_REG(SDIO_CONFIG);
+		config_reg = (void *)&sdio_config;
+	}
+	printk("set sd_mmc config_reg->cmd_clk_divide %d, CLK %ldM\n", 
+		config_reg->cmd_clk_divide, 
+		clk_get_rate(clk_get_sys("clk81", NULL))/2000000/(config_reg->cmd_clk_divide + 1));
+	
 	return SD_MMC_NO_ERROR;
 }
 
