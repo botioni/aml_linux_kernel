@@ -721,14 +721,13 @@ static int ads7846_init_gpio(void)
 }
 #endif
 
-#ifdef CONFIG_ITK_CAPACITIVE_TOUCHSCREEN
-#include <linux/i2c/itk.h>
+#ifdef CONFIG_TOUCHSCREEN_TSC2007
+#include <linux/i2c/tsc2007.h>
 
 //GPIOD_24
-#define GPIO_ITK_PENIRQ ((GPIOD_bank_bit2_24(24)<<16) |GPIOD_bit_bit2_24(24)) 
-#define GPIO_ITK_RST
+#define GPIO_TSC2007_PENIRQ ((GPIOD_bank_bit2_24(24)<<16) |GPIOD_bit_bit2_24(24)) 
 
-static int itk_init_irq(void)
+static int tsc2007_init_platform_hw(void)
 {
 /* memson
     Bit(s)  Description
@@ -749,24 +748,27 @@ static int itk_init_irq(void)
  */
 
     /* set input mode */
-    gpio_direction_input(GPIO_ITK_PENIRQ);
+    gpio_direction_input(GPIO_TSC2007_PENIRQ);
     /* set gpio interrupt #0 source=GPIOD_24, and triggered by falling edge(=1) */
     gpio_enable_edge_int(50+24, 1, 0);
 
     return 0;
 }
-static int itk_get_irq_level(void)
+static int tsc2007_get_pendown_state(void)
 {
-    return gpio_get_value(GPIO_ITK_PENIRQ);
+    return !gpio_get_value(GPIO_TSC2007_PENIRQ);
 }
 
-static struct itk_platform_data itk_pdata = {
-    .init_irq = &itk_init_irq,
-    .get_irq_level = &itk_get_irq_level,
-    .tp_max_width = 17407,
-    .tp_max_height = 12799,
-    .lcd_max_width = 1024,
-    .lcd_max_height = 768,
+static struct tsc2007_platform_data tsc2007_pdata = {
+    .model = 2007,
+    .x_plate_ohms = 400,
+    .get_pendown_state = tsc2007_get_pendown_state,
+    .clear_penirq = NULL,
+    .init_platform_hw = tsc2007_init_platform_hw,
+    .exit_platform_hw = NULL,
+    .swap_xy = 1,
+    .xpol = 0,
+    .ypol = 1,
 };
 #endif
 
@@ -1315,6 +1317,8 @@ static void aml_8726m_set_bl_level(unsigned level)
     }
 
     WRITE_CBUS_REG_BITS(VGHL_PWM_REG0, cs_level, 0, 4);
+    SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<31));
+    SET_CBUS_REG_MASK(PWM_MISC_REG_AB, (1 << 0));
     WRITE_CBUS_REG_BITS(PWM_PWM_A,low,0,16);  //low
     WRITE_CBUS_REG_BITS(PWM_PWM_A,hi,16,16);  //hi
     SET_CBUS_REG_MASK(PWM_MISC_REG_AB, (1 << 0)); 
@@ -1557,11 +1561,11 @@ static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
     },
 #endif
 
-#ifdef CONFIG_ITK_CAPACITIVE_TOUCHSCREEN
+#ifdef CONFIG_TOUCHSCREEN_TSC2007
     {
-        I2C_BOARD_INFO("itk", 0x04),
+        I2C_BOARD_INFO("tsc2007", 0x48),
         .irq = INT_GPIO_0,
-        .platform_data = (void *)&itk_pdata,
+        .platform_data = (void *)&tsc2007_pdata,
     },
 #endif
 

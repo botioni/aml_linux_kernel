@@ -81,28 +81,25 @@ struct tsc2007 {
 
 	int			(*get_pendown_state)(void);
 	void			(*clear_penirq)(void);
+	unsigned short swap_xy:1;
+	unsigned short xpol:1;
+	unsigned short ypol:1;
 };
 
 static inline int tsc2007_xfer(struct tsc2007 *tsc, u8 cmd)
 {
-	s32 data;
-	u16 val;
-
-	data = i2c_smbus_read_word_data(tsc->client, cmd);
-	if (data < 0) {
-		dev_err(&tsc->client->dev, "i2c io error: %d\n", data);
-		return data;
+	int ret;
+	u8 buf[2];
+	
+	buf[0] = cmd;
+	ret = i2c_master_send(tsc->client, buf, 1);
+	if (ret >= 0 ) {
+		ret = i2c_master_recv(tsc->client, buf, 2);
+		if (ret >= 0) {
+		    ret = (buf[0] << 4) | (buf[1] >> 4);
+		}
 	}
-
-	/* The protocol and raw data format from i2c interface:
-	 * S Addr Wr [A] Comm [A] S Addr Rd [A] [DataLow] A [DataHigh] NA P
-	 * Where DataLow has [D11-D4], DataHigh has [D3-D0 << 4 | Dummy 4bit].
-	 */
-	val = swab16(data) >> 4;
-
-	dev_dbg(&tsc->client->dev, "data: 0x%x, val: 0x%x\n", data, val);
-
-	return val;
+	return ret;
 }
 
 static void tsc2007_read_values(struct tsc2007 *tsc, struct ts_event *tc)
@@ -119,6 +116,13 @@ static void tsc2007_read_values(struct tsc2007 *tsc, struct ts_event *tc)
 
 	/* Prepare for next touch reading - power down ADC, enable PENIRQ */
 	tsc2007_xfer(tsc, PWRDOWN);
+	
+	if (tsc->swap_xy)
+	    swap(tc->x, tc->y);
+	if (tsc->xpol)
+	    tc->x = MAX_12BIT - tc->x;
+	if (tsc->ypol)
+	    tc->y = MAX_12BIT - tc->y;	    
 }
 
 static u32 tsc2007_calculate_pressure(struct tsc2007 *tsc, struct ts_event *tc)
@@ -145,7 +149,7 @@ static void tsc2007_send_up_event(struct tsc2007 *tsc)
 {
 	struct input_dev *input = tsc->input;
 
-	dev_dbg(&tsc->client->dev, "UP\n");
+	dev_info(&tsc->client->dev, "UP\n");
 
 	input_report_key(input, BTN_TOUCH, 0);
 	input_report_abs(input, ABS_PRESSURE, 0);
@@ -178,7 +182,7 @@ static void tsc2007_work(struct work_struct *work)
 			goto out;
 		}
 
-		dev_dbg(&ts->client->dev, "pen is still down\n");
+		dev_info(&ts->client->dev, "pen is still down\n");
 	}
 
 	tsc2007_read_values(ts, &tc);
@@ -190,7 +194,7 @@ static void tsc2007_work(struct work_struct *work)
 		 * beyond the maximum. Don't report it to user space,
 		 * repeat at least once more the measurement.
 		 */
-		dev_dbg(&ts->client->dev, "ignored pressure %d\n", rt);
+		dev_info(&ts->client->dev, "ignored pressure %d\n", rt);
 		goto out;
 
 	}
@@ -199,7 +203,7 @@ static void tsc2007_work(struct work_struct *work)
 		struct input_dev *input = ts->input;
 
 		if (!ts->pendown) {
-			dev_dbg(&ts->client->dev, "DOWN\n");
+			dev_info(&ts->client->dev, "DOWN\n");
 
 			input_report_key(input, BTN_TOUCH, 1);
 			ts->pendown = true;
@@ -211,7 +215,7 @@ static void tsc2007_work(struct work_struct *work)
 
 		input_sync(input);
 
-		dev_dbg(&ts->client->dev, "point(%4d,%4d), pressure (%4u)\n",
+		dev_info(&ts->client->dev, "point(%4d,%4d), pressure (%4u)\n",
 			tc.x, tc.y, rt);
 
 	} else if (!ts->get_pendown_state && ts->pendown) {
@@ -275,7 +279,7 @@ static int __devinit tsc2007_probe(struct i2c_client *client,
 	}
 
 	if (!i2c_check_functionality(client->adapter,
-				     I2C_FUNC_SMBUS_READ_WORD_DATA))
+				     I2C_FUNC_I2C))
 		return -EIO;
 
 	ts = kzalloc(sizeof(struct tsc2007), GFP_KERNEL);
@@ -294,6 +298,9 @@ static int __devinit tsc2007_probe(struct i2c_client *client,
 	ts->x_plate_ohms      = pdata->x_plate_ohms;
 	ts->get_pendown_state = pdata->get_pendown_state;
 	ts->clear_penirq      = pdata->clear_penirq;
+	ts->swap_xy = pdata->swap_xy;
+	ts->xpol = pdata->xpol;
+	ts->ypol = pdata->ypol;
 
 	snprintf(ts->phys, sizeof(ts->phys),
 		 "%s/input0", dev_name(&client->dev));
@@ -312,24 +319,27 @@ static int __devinit tsc2007_probe(struct i2c_client *client,
 	if (pdata->init_platform_hw)
 		pdata->init_platform_hw();
 
-	err = request_irq(ts->irq, tsc2007_irq, 0,
+	err = request_irq(ts->irq, tsc2007_irq, IRQF_TRIGGER_FALLING,
 			client->dev.driver->name, ts);
 	if (err < 0) {
 		dev_err(&client->dev, "irq %d busy?\n", ts->irq);
+		printk("request gpio irq failed\n");
 		goto err_free_mem;
 	}
 
 	/* Prepare for touch readings - power down ADC and enable PENIRQ */
 	err = tsc2007_xfer(ts, PWRDOWN);
-	if (err < 0)
+	if (err < 0) {
+		printk("i2c power down command failed\n");
 		goto err_free_irq;
-
+	}
 	err = input_register_device(input_dev);
 	if (err)
 		goto err_free_irq;
 
 	i2c_set_clientdata(client, ts);
 
+	printk("tsc2007 probe ok\n");
 	return 0;
 
  err_free_irq:
