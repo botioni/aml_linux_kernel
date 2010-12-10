@@ -571,7 +571,8 @@ static int __init hci_uart_init(void)
 	CLEAR_CBUS_REG_MASK(PREG_GGPIO_O, (1<<19));	
 	
 	/* UART RTS */
-	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<15));
+	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<16));
+        CLEAR_CBUS_REG_MASK(PREG_GGPIO_O, (1<<16));
 		
 	/* BG wakeup high 
 	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<14));
