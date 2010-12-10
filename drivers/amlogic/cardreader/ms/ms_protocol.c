@@ -5,8 +5,10 @@
 
 extern unsigned check_one_boot_block;
 
-int ms_media_type_identification()
+int ms_media_type_identification(MS_MSPRO_Card_Info_t *ms_mspro_info)
 {
+	MS_MSPRO_Card_Buffer_t *ms_mspro_buf = (MS_MSPRO_Card_Buffer_t *)(ms_mspro_info->ms_mspro_buf);
+	
 	if((ms_mspro_buf->ms.regs.Type_Reg >= 0x01) && (ms_mspro_buf->ms.regs.Type_Reg <= 0xFE))
 		return MS_MSPRO_ERROR_MEDIA_TYPE;
 		
@@ -51,18 +53,19 @@ int ms_media_type_identification()
 	return MS_MSPRO_NO_ERROR;
 }
 
-int ms_search_boot_block(unsigned char * data_buf)
+int ms_search_boot_block(MS_MSPRO_Card_Info_t *ms_mspro_info, unsigned char * data_buf)
 {
 	int i;
 	
 	int error;
+	MS_MSPRO_Card_Buffer_t *ms_mspro_buf = (MS_MSPRO_Card_Buffer_t *)(ms_mspro_info->ms_mspro_buf);
 	
 	ms_mspro_buf->ms.boot_area_protection_process_flag = 0;
 	ms_mspro_buf->ms.boot_block_nums = 0;
 	
 	for(i=0; i<=12; i++)
 	{
-		error = ms_read_page(i, 0, data_buf);
+		error = ms_read_page(ms_mspro_info, i, 0, data_buf);
 		if(error)
 			continue;
 			
@@ -109,12 +112,13 @@ int ms_search_boot_block(unsigned char * data_buf)
 		return MS_MSPRO_NO_ERROR;
 }
 
-int ms_check_boot_block(unsigned char * data_buf)
+int ms_check_boot_block(MS_MSPRO_Card_Info_t *ms_mspro_info, unsigned char * data_buf)
 {
 	int error;
+	MS_MSPRO_Card_Buffer_t *ms_mspro_buf = (MS_MSPRO_Card_Buffer_t *)(ms_mspro_info->ms_mspro_buf);
 	
 	// Acquire Boot & Attribute Information form effective Boot Block
-	error = ms_read_page(ms_mspro_buf->ms.boot_block_no[0], 0, data_buf);
+	error = ms_read_page(ms_mspro_info, ms_mspro_buf->ms.boot_block_no[0], 0, data_buf);
 	if(error)
 		return error;
 		
@@ -324,14 +328,15 @@ int ms_check_boot_block(unsigned char * data_buf)
 	return MS_MSPRO_NO_ERROR;
 }
 
-int ms_check_disabled_block(unsigned char * data_buf)
+int ms_check_disabled_block(MS_MSPRO_Card_Info_t *ms_mspro_info, unsigned char * data_buf)
 {
 	int error;
+	MS_MSPRO_Card_Buffer_t *ms_mspro_buf = (MS_MSPRO_Card_Buffer_t *)(ms_mspro_info->ms_mspro_buf);
 	
 	unsigned short block_no,i;
 	
 	// Acquire Boot & Attribute Information form effective Boot Block
-	error = ms_read_page(ms_mspro_buf->ms.boot_block_no[0], 1, data_buf);
+	error = ms_read_page(ms_mspro_info, ms_mspro_buf->ms.boot_block_no[0], 1, data_buf);
 	if(error)
 		return MS_ERROR_DISABLED_BLOCK;
 	
@@ -352,9 +357,10 @@ int ms_check_disabled_block(unsigned char * data_buf)
 	return MS_MSPRO_NO_ERROR;
 }
 
-int ms_boot_area_protection(unsigned char * data_buf)
+int ms_boot_area_protection(MS_MSPRO_Card_Info_t *ms_mspro_info, unsigned char * data_buf)
 {
 	int error,i,j,k;
+	MS_MSPRO_Card_Buffer_t *ms_mspro_buf = (MS_MSPRO_Card_Buffer_t *)(ms_mspro_info->ms_mspro_buf);
 	
 	unsigned char last_block_no = 0;
 	unsigned long pages_per_block = ms_mspro_buf->ms.boot_attribute_information.Block_Size*2;
@@ -379,7 +385,7 @@ int ms_boot_area_protection(unsigned char * data_buf)
 				continue;
 		}
 		
-		error = ms_read_page(i, 0, data_buf);
+		error = ms_read_page(ms_mspro_info, i, 0, data_buf);
 		if(error)
 			continue;
 			
@@ -391,7 +397,7 @@ int ms_boot_area_protection(unsigned char * data_buf)
 			// copy the contents of this block to User Area (alternative block)
 			for(j=(last_block_no+1); j<(MS_BLOCKS_PER_SEGMENT-2); j++)
 			{
-				error = ms_read_page(j, 0, data_buf);
+				error = ms_read_page(ms_mspro_info, j, 0, data_buf);
 				if(error)
 					continue;
 					
@@ -399,7 +405,7 @@ int ms_boot_area_protection(unsigned char * data_buf)
 				{
 					for(k=0; k<pages_per_block; k++)
 					{
-						error = ms_copy_page(i, k, j, k, data_buf);
+						error = ms_copy_page(ms_mspro_info, i, k, j, k, data_buf);
 						if(error)
 							break;
 					}
@@ -411,7 +417,7 @@ int ms_boot_area_protection(unsigned char * data_buf)
 			}
 		}
 		
-		ms_overwrite_extra_data(i, 0, 0x7F);
+		ms_overwrite_extra_data(ms_mspro_info, i, 0, 0x7F);
 	}
 	
 	return MS_MSPRO_NO_ERROR;
@@ -437,10 +443,11 @@ int ms_read_boot_idi(unsigned char * data_buf)
 #endif
 
 static unsigned short logical_physical_table[MS_LOGICAL_SIZE_PER_SEGMENT], free_table[MS_BLOCKS_PER_SEGMENT];
-int ms_logical_physical_table_creation(unsigned short seg_no)
+int ms_logical_physical_table_creation(MS_MSPRO_Card_Info_t *ms_mspro_info, unsigned short seg_no)
 {
 	int error;
 	unsigned char US;
+	MS_MSPRO_Card_Buffer_t *ms_mspro_buf = (MS_MSPRO_Card_Buffer_t *)(ms_mspro_info->ms_mspro_buf);
 	
 	//unsigned short logical_physical_table[MS_LOGICAL_SIZE_PER_SEGMENT], free_table[MS_BLOCKS_PER_SEGMENT];
 	unsigned long physical_blk_no,last_seg_no;
@@ -487,18 +494,18 @@ int ms_logical_physical_table_creation(unsigned short seg_no)
 		if(i != ms_mspro_buf->ms.disabled_block_data.disabled_block_nums)
 			continue;
 			
-		error = ms_read_extra_data(physical_blk_no, 0);
+		error = ms_read_extra_data(ms_mspro_info, physical_blk_no, 0);
 		if(error)
 		{
 			if(error == MS_MSPRO_ERROR_FLASH_READ)
-				ms_overwrite_extra_data(physical_blk_no, 0, ms_mspro_buf->ms.regs.Overwrite_Flag_Reg&0x7F);
+				ms_overwrite_extra_data(ms_mspro_info, physical_blk_no, 0, ms_mspro_buf->ms.regs.Overwrite_Flag_Reg&0x7F);
 			continue;
 		}
 				
 		if((seg_no == last_seg_no) &&
 		  !((MS_Management_Flag_Register_t*)(&ms_mspro_buf->ms.regs.Management_Flag_Reg))->ATFLG)
 		{
-			ms_erase_block(physical_blk_no);
+			ms_erase_block(ms_mspro_info, physical_blk_no);
 		}
 		
 		if(((MS_Overwrite_Flag_Register_t*)(&ms_mspro_buf->ms.regs.Overwrite_Flag_Reg))->BKST)
@@ -506,14 +513,14 @@ int ms_logical_physical_table_creation(unsigned short seg_no)
 			unsigned char PS = ((MS_Overwrite_Flag_Register_t*)(&ms_mspro_buf->ms.regs.Overwrite_Flag_Reg))->PGST1<<1 | ((MS_Overwrite_Flag_Register_t*)(&ms_mspro_buf->ms.regs.Overwrite_Flag_Reg))->PGST0;
 			if((PS != 0) && (PS != 3))
 			{
-				ms_overwrite_extra_data(physical_blk_no, 0, ms_mspro_buf->ms.regs.Overwrite_Flag_Reg&0x7F);
+				ms_overwrite_extra_data(ms_mspro_info, physical_blk_no, 0, ms_mspro_buf->ms.regs.Overwrite_Flag_Reg&0x7F);
 				continue;
 			}
 			
 			logical_address = ms_mspro_buf->ms.regs.Logical_Address_Reg1<<8 | ms_mspro_buf->ms.regs.Logical_Address_Reg0;
 			if((logical_address == 0xFFFF) || (logical_address < start_logical_addr) || (logical_address > end_logical_addr))
 			{
-				ms_erase_block(physical_blk_no);
+				ms_erase_block(ms_mspro_info, physical_blk_no);
 				free_table[free_table_data_nums++] = physical_blk_no;
 				continue;
 			}
@@ -525,7 +532,7 @@ int ms_logical_physical_table_creation(unsigned short seg_no)
 			}
 			
 			US = ((MS_Overwrite_Flag_Register_t*)(&ms_mspro_buf->ms.regs.Overwrite_Flag_Reg))->UDST;
-			error = ms_read_extra_data(physical_blk_no, 0);
+			error = ms_read_extra_data(ms_mspro_info, physical_blk_no, 0);
 			if(error)
 			{
 				continue;
@@ -534,12 +541,12 @@ int ms_logical_physical_table_creation(unsigned short seg_no)
 			{
 				if(physical_blk_no < logical_physical_table[logical_address-start_logical_addr])
 				{
-					ms_erase_block(physical_blk_no);
+					ms_erase_block(ms_mspro_info, physical_blk_no);
 					free_table[free_table_data_nums++] = physical_blk_no;
 				}
 				else
 				{
-					ms_erase_block(logical_physical_table[logical_address-start_logical_addr]);
+					ms_erase_block(ms_mspro_info, logical_physical_table[logical_address-start_logical_addr]);
 					free_table[free_table_data_nums++] = logical_physical_table[logical_address-start_logical_addr];
 					logical_physical_table[logical_address-start_logical_addr] = physical_blk_no;
 				}
@@ -548,13 +555,13 @@ int ms_logical_physical_table_creation(unsigned short seg_no)
 			{
 				if(US == 0)
 				{
-					ms_erase_block(logical_physical_table[logical_address-start_logical_addr]);
+					ms_erase_block(ms_mspro_info, logical_physical_table[logical_address-start_logical_addr]);
 					free_table[free_table_data_nums++] = logical_physical_table[logical_address-start_logical_addr];
 					logical_physical_table[logical_address-start_logical_addr] = physical_blk_no;
 				}
 				else
 				{
-					ms_erase_block(physical_blk_no);
+					ms_erase_block(ms_mspro_info, physical_blk_no);
 					free_table[free_table_data_nums++] = physical_blk_no;
 				}
 			}
@@ -570,7 +577,7 @@ int ms_logical_physical_table_creation(unsigned short seg_no)
 	  
 		if(logical_physical_table[logical_address-start_logical_addr] == 0xFFFF)
 		{
-			error = ms_read_extra_data(free_table[free_table_data_nums-1], 0);
+			error = ms_read_extra_data(ms_mspro_info, free_table[free_table_data_nums-1], 0);
 			if(error)
 			{
 				free_table_data_nums--;
@@ -579,7 +586,7 @@ int ms_logical_physical_table_creation(unsigned short seg_no)
 			{
 				ms_mspro_buf->ms.regs.Logical_Address_Reg1 = (logical_address >> 8) & 0xFF;
 				ms_mspro_buf->ms.regs.Logical_Address_Reg0 = logical_address & 0xFF;
-				error = ms_write_extra_data(free_table[free_table_data_nums-1], 0);
+				error = ms_write_extra_data(ms_mspro_info, free_table[free_table_data_nums-1], 0);
 					
 				logical_physical_table[logical_address-start_logical_addr] = free_table[free_table_data_nums-1];
 				free_table[free_table_data_nums-1] = 0xFFFF;
@@ -612,15 +619,16 @@ int ms_logical_physical_table_creation(unsigned short seg_no)
 	return MS_MSPRO_NO_ERROR;
 }
 
-int ms_read_page(unsigned long block_addr, unsigned char page_addr, unsigned char * data_buf)
+int ms_read_page(MS_MSPRO_Card_Info_t *ms_mspro_info, unsigned long block_addr, unsigned char page_addr, unsigned char * data_buf)
 {
 	MS_MSPRO_TPC_Packet_t packet;
 	MS_MSPRO_INT_Register_t * pIntReg;
 	MS_Status_Register1_t * pStatusReg1;
+	MS_MSPRO_Card_Buffer_t *ms_mspro_buf = (MS_MSPRO_Card_Buffer_t *)(ms_mspro_info->ms_mspro_buf);
 	
 	int error;
 	
-	unsigned char buf[4] = {0,0,0,0};
+	unsigned char* buf = ms_mspro_info->data_buf;
 
 #ifdef MS_MSPRO_HW_CONTROL
 	if(MS_WORK_MODE == CARD_HW_MODE)
@@ -637,7 +645,7 @@ int ms_read_page(unsigned long block_addr, unsigned char page_addr, unsigned cha
 			ms_mspro_buf->ms.reg_set.write_addr = 0x10;
 			ms_mspro_buf->ms.reg_set.write_size = 0x06;
 			packet.param.out.buffer = (unsigned char *)&ms_mspro_buf->ms.reg_set;
-			error = ms_mspro_packet_communicate(&packet);
+			error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 			if(error)
 				return error;
 		}
@@ -658,7 +666,7 @@ int ms_read_page(unsigned long block_addr, unsigned char page_addr, unsigned cha
 			ms_mspro_buf->ms.reg_set.write_addr = 0x10;
 			ms_mspro_buf->ms.reg_set.write_size = 0x06;
 			packet.param.out.buffer = (unsigned char *)&ms_mspro_buf->ms.reg_set;
-			error = ms_mspro_packet_communicate(&packet);
+			error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 			if(error)
 				return error;
 		}
@@ -673,7 +681,7 @@ int ms_read_page(unsigned long block_addr, unsigned char page_addr, unsigned cha
 	ms_mspro_buf->ms.regs.CMD_Parameter_Reg = 0x20;
 	ms_mspro_buf->ms.regs.Page_Address_Reg = page_addr;
 	packet.param.out.buffer = &ms_mspro_buf->ms.regs.System_Parameter_Reg;
-	error = ms_mspro_packet_communicate(&packet);
+	error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 	if(error)
 		return error;
 
@@ -681,11 +689,11 @@ int ms_read_page(unsigned long block_addr, unsigned char page_addr, unsigned cha
 	packet.param.out.count = 1;
 	packet.param.out.buffer = buf;
 	packet.param.out.buffer[0] = CMD_MS_BLOCK_READ;
-	error = ms_mspro_packet_communicate(&packet);
+	error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 	if(error)
 		return error;
 
-	error = ms_mspro_wait_int(&packet);
+	error = ms_mspro_wait_int(ms_mspro_info, &packet);
 	if(error)
 		return error;
 
@@ -699,7 +707,7 @@ int ms_read_page(unsigned long block_addr, unsigned char page_addr, unsigned cha
 		packet.param.in.count = 0x19;               //READ_ADRS,READ_SIZE,WRITE_ADRS,WRITE_SIZE
 #endif
 	packet.param.in.buffer = &ms_mspro_buf->ms.regs.INT_Reg;
-	error = ms_mspro_packet_communicate(&packet);
+	error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 	if(error)
 		return error;
 
@@ -713,14 +721,14 @@ int ms_read_page(unsigned long block_addr, unsigned char page_addr, unsigned cha
 		ms_mspro_buf->ms.reg_set.write_addr = 0x10;
 		ms_mspro_buf->ms.reg_set.write_size = 0x06;
 		packet.param.out.buffer = (unsigned char *)&ms_mspro_buf->ms.reg_set;
-		error = ms_mspro_packet_communicate(&packet);
+		error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 		if(error)
 			return error;
 		
 		packet.TPC_cmd.value = TPC_MS_MSPRO_READ_REG;       //READ_REG
 		packet.param.in.count = 0x19-0x10;               //READ_ADRS,READ_SIZE,WRITE_ADRS,WRITE_SIZE
 		packet.param.in.buffer = &ms_mspro_buf->ms.regs.Block_Address_Reg2;
-		error = ms_mspro_packet_communicate(&packet);
+		error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 		if(error)
 			return error;
 	}
@@ -748,7 +756,7 @@ int ms_read_page(unsigned long block_addr, unsigned char page_addr, unsigned cha
 	packet.TPC_cmd.value = TPC_MS_READ_PAGE_DATA;       //READ_PAGE_DATA
 	packet.param.in.count = MS_PAGE_SIZE;           //READ_ADRS,READ_SIZE,WRITE_ADRS,WRITE_SIZE
 	packet.param.in.buffer = data_buf;
-	error = ms_mspro_packet_communicate(&packet);
+	error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 	if(error)
 		return error;
 
@@ -757,13 +765,14 @@ int ms_read_page(unsigned long block_addr, unsigned char page_addr, unsigned cha
 
 #ifdef MS_WRITE_PATTERN_1
 //pattern 1
-int ms_write_page(unsigned long block_addr, unsigned char page_addr, unsigned char * data_buf)
+int ms_write_page(MS_MSPRO_Card_Info_t *ms_mspro_info, unsigned long block_addr, unsigned char page_addr, unsigned char * data_buf)
 {
 	MS_MSPRO_TPC_Packet_t packet;
+	MS_MSPRO_Card_Buffer_t *ms_mspro_buf = (MS_MSPRO_Card_Buffer_t *)(ms_mspro_info->ms_mspro_buf);
 	
 	int error;
 	
-	unsigned char buf[4] = {0,0,0,0};
+	unsigned char* buf = ms_mspro_info->data_buf;
 
 #ifdef MS_MSPRO_HW_CONTROL
 	if(MS_WORK_MODE == CARD_HW_MODE)
@@ -776,7 +785,7 @@ int ms_write_page(unsigned long block_addr, unsigned char page_addr, unsigned ch
 			ms_mspro_buf->ms.reg_set.write_addr = 0x10;
 			ms_mspro_buf->ms.reg_set.write_size = 0x06;
 			packet.param.out.buffer = (unsigned char *)&ms_mspro_buf->ms.reg_set;
-			error = ms_mspro_packet_communicate(&packet);
+			error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 			if(error)
 				return error;
 		}
@@ -793,7 +802,7 @@ int ms_write_page(unsigned long block_addr, unsigned char page_addr, unsigned ch
 			ms_mspro_buf->ms.reg_set.write_addr = 0x10;
 			ms_mspro_buf->ms.reg_set.write_size = 0x0A;
 			packet.param.out.buffer = (unsigned char *)&ms_mspro_buf->ms.reg_set;
-			error = ms_mspro_packet_communicate(&packet);
+			error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 			if(error)
 				return error;
 		}
@@ -815,7 +824,7 @@ int ms_write_page(unsigned long block_addr, unsigned char page_addr, unsigned ch
 	ms_mspro_buf->ms.regs.CMD_Parameter_Reg = 0x20;
 	ms_mspro_buf->ms.regs.Page_Address_Reg = page_addr;
 	packet.param.out.buffer = &ms_mspro_buf->ms.regs.System_Parameter_Reg;
-	error = ms_mspro_packet_communicate(&packet);
+	error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 	if(error)
 		return error;
 
@@ -827,14 +836,14 @@ int ms_write_page(unsigned long block_addr, unsigned char page_addr, unsigned ch
 		ms_mspro_buf->ms.reg_set.write_addr = 0x10+0x06;
 		ms_mspro_buf->ms.reg_set.write_size = 0x0A-0x06;
 		packet.param.out.buffer = (unsigned char *)&ms_mspro_buf->ms.reg_set;
-		error = ms_mspro_packet_communicate(&packet);
+		error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 		if(error)
 			return error;
 		
 		packet.TPC_cmd.value = TPC_MS_MSPRO_WRITE_REG;      //WRITE_REG
 		packet.param.out.count = 0x0A-0x06;              //READ_ADRS,READ_SIZE,WRITE_ADRS,WRITE_SIZE
 		packet.param.out.buffer = &ms_mspro_buf->ms.regs.Overwrite_Flag_Reg;
-		error = ms_mspro_packet_communicate(&packet);
+		error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 		if(error)
 			return error;
 	}
@@ -844,11 +853,11 @@ int ms_write_page(unsigned long block_addr, unsigned char page_addr, unsigned ch
 	packet.param.out.count = 1;
 	packet.param.out.buffer = buf;
 	packet.param.out.buffer[0] = CMD_MS_BLOCK_WRITE;
-	error = ms_mspro_packet_communicate(&packet);
+	error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 	if(error)
 		return error;
 
-	error = ms_mspro_wait_int(&packet);
+	error = ms_mspro_wait_int(ms_mspro_info, &packet);
 	if(error)
 		return error;
 		
@@ -862,7 +871,7 @@ int ms_write_page(unsigned long block_addr, unsigned char page_addr, unsigned ch
 		packet.TPC_cmd.value = TPC_MS_MSPRO_GET_INT;        //SET_CMD
 		packet.param.in.count = 1;
 		packet.param.in.buffer = &ms_mspro_buf->ms.regs.INT_Reg;
-		error = ms_mspro_packet_communicate(&packet);
+		error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 		if(error)
 			return error;
 	}
@@ -878,11 +887,11 @@ int ms_write_page(unsigned long block_addr, unsigned char page_addr, unsigned ch
 	packet.TPC_cmd.value = TPC_MS_WRITE_PAGE_DATA;      //WRITE_PAGE_DATA
 	packet.param.out.count = MS_PAGE_SIZE;          //READ_ADRS,READ_SIZE,WRITE_ADRS,WRITE_SIZE
 	packet.param.out.buffer = data_buf;
-	error = ms_mspro_packet_communicate(&packet);
+	error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 	if(error)
 		return error;
 
-	error = ms_mspro_wait_int(&packet);
+	error = ms_mspro_wait_int(ms_mspro_info, &packet);
 	if(error)
 		return error;
 		
@@ -896,7 +905,7 @@ int ms_write_page(unsigned long block_addr, unsigned char page_addr, unsigned ch
 		packet.TPC_cmd.value = TPC_MS_MSPRO_GET_INT;        //SET_CMD
 		packet.param.in.count = 1;
 		packet.param.in.buffer = &ms_mspro_buf->ms.regs.INT_Reg;
-		error = ms_mspro_packet_communicate(&packet);
+		error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 		if(error)
 			return error;
 	}
@@ -911,10 +920,11 @@ int ms_write_page(unsigned long block_addr, unsigned char page_addr, unsigned ch
 
 #ifdef MS_WRITE_PATTERN_2
 //pattern 2
-int ms_write_page(unsigned long block_addr, unsigned char page_addr, unsigned char * data_buf)
+int ms_write_page(MS_MSPRO_Card_Info_t *ms_mspro_info, unsigned long block_addr, unsigned char page_addr, unsigned char * data_buf)
 {
 	MS_MSPRO_TPC_Packet_t packet;
 	MS_MSPRO_INT_Register_t * pIntReg;
+	MS_MSPRO_Card_Buffer_t *ms_mspro_buf = (MS_MSPRO_Card_Buffer_t *)(ms_mspro_info->ms_mspro_buf);
 	
 	int error;
 	
@@ -931,7 +941,7 @@ int ms_write_page(unsigned long block_addr, unsigned char page_addr, unsigned ch
 			ms_mspro_buf->ms.reg_set.write_addr = 0x10;
 			ms_mspro_buf->ms.reg_set.write_size = 0x06;
 			packet.param.out.buffer = (unsigned char *)&ms_mspro_buf->ms.reg_set;
-			error = ms_mspro_packet_communicate(&packet);
+			error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 			if(error)
 				return error;
 		}	
@@ -948,7 +958,7 @@ int ms_write_page(unsigned long block_addr, unsigned char page_addr, unsigned ch
 			ms_mspro_buf->ms.reg_set.write_addr = 0x10;
 			ms_mspro_buf->ms.reg_set.write_size = 0x0A;
 			packet.param.out.buffer = (unsigned char *)&ms_mspro_buf->ms.reg_set;
-			error = ms_mspro_packet_communicate(&packet);
+			error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 			if(error)
 				return error;
 		}
@@ -970,7 +980,7 @@ int ms_write_page(unsigned long block_addr, unsigned char page_addr, unsigned ch
 	ms_mspro_buf->ms.regs.CMD_Parameter_Reg = 0x20;
 	ms_mspro_buf->ms.regs.Page_Address_Reg = page_addr;
 	packet.param.out.buffer = &ms_mspro_buf->ms.regs.System_Parameter_Reg;
-	error = ms_mspro_packet_communicate(&packet);
+	error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 	if(error)
 		return error;
 
@@ -982,14 +992,14 @@ int ms_write_page(unsigned long block_addr, unsigned char page_addr, unsigned ch
 		ms_mspro_buf->ms.reg_set.write_addr = 0x10+0x06;
 		ms_mspro_buf->ms.reg_set.write_size = 0x0A-0x06;
 		packet.param.out.buffer = (unsigned char *)&ms_mspro_buf->ms.reg_set;
-		error = ms_mspro_packet_communicate(&packet);
+		error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 		if(error)
 			return error;
 		
 		packet.TPC_cmd.value = TPC_MS_MSPRO_WRITE_REG;      //WRITE_REG
 		packet.param.out.count = 0x0A-0x06;              //READ_ADRS,READ_SIZE,WRITE_ADRS,WRITE_SIZE
 		packet.param.out.buffer = &ms_mspro_buf->ms.regs.Overwrite_Flag_Reg;
-		error = ms_mspro_packet_communicate(&packet);
+		error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 		if(error)
 			return error;
 	}
@@ -998,7 +1008,7 @@ int ms_write_page(unsigned long block_addr, unsigned char page_addr, unsigned ch
 	packet.TPC_cmd.value = TPC_MS_WRITE_PAGE_DATA;      //WRITE_PAGE_DATA
 	packet.param.out.count = MS_PAGE_SIZE;          //READ_ADRS,READ_SIZE,WRITE_ADRS,WRITE_SIZE
 	packet.param.out.buffer = data_buf;
-	error = ms_mspro_packet_communicate(&packet);
+	error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 	if(error)
 		return error;
 
@@ -1006,11 +1016,11 @@ int ms_write_page(unsigned long block_addr, unsigned char page_addr, unsigned ch
 	packet.param.out.count = 1;
 	packet.param.out.buffer = buf;
 	packet.param.out.buffer[0] = CMD_MS_BLOCK_WRITE;
-	error = ms_mspro_packet_communicate(&packet);
+	error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 	if(error)
 		return error;
 
-	error = ms_mspro_wait_int(&packet);
+	error = ms_mspro_wait_int(ms_mspro_info, &packet);
 	if(error)
 		return error;
 		
@@ -1024,7 +1034,7 @@ int ms_write_page(unsigned long block_addr, unsigned char page_addr, unsigned ch
 		packet.TPC_cmd.value = TPC_MS_MSPRO_GET_INT;        //SET_CMD
 		packet.param.in.count = 1;
 		packet.param.in.buffer = &ms_mspro_buf->ms.regs.INT_Reg;
-		error = ms_mspro_packet_communicate(&packet);
+		error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 		if(error)
 			return error;
 	}
@@ -1040,15 +1050,16 @@ int ms_write_page(unsigned long block_addr, unsigned char page_addr, unsigned ch
 }
 #endif //MS_WRITE_PATTERN_2
 
-int ms_copy_page(unsigned long source_block_addr, unsigned char source_page_addr, unsigned long dest_block_addr, unsigned char dest_page_addr, unsigned char * data_buf)
+int ms_copy_page(MS_MSPRO_Card_Info_t *ms_mspro_info, unsigned long source_block_addr, unsigned char source_page_addr, unsigned long dest_block_addr, unsigned char dest_page_addr, unsigned char * data_buf)
 {
 	MS_MSPRO_TPC_Packet_t packet;
 	MS_MSPRO_INT_Register_t * pIntReg;
 	MS_Status_Register1_t * pStatusReg1;
+	MS_MSPRO_Card_Buffer_t *ms_mspro_buf = (MS_MSPRO_Card_Buffer_t *)(ms_mspro_info->ms_mspro_buf);
 	
 	int error;
 	
-	unsigned char buf[4] = {0,0,0,0};
+	unsigned char* buf = ms_mspro_info->data_buf;
 
 #ifdef MS_MSPRO_HW_CONTROL
 	if(MS_WORK_MODE == CARD_HW_MODE)
@@ -1065,7 +1076,7 @@ int ms_copy_page(unsigned long source_block_addr, unsigned char source_page_addr
 			ms_mspro_buf->ms.reg_set.write_addr = 0x10;
 			ms_mspro_buf->ms.reg_set.write_size = 0x06;
 			packet.param.out.buffer = (unsigned char *)&ms_mspro_buf->ms.reg_set;
-			error = ms_mspro_packet_communicate(&packet);
+			error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 			if(error)
 				return error;
 		}
@@ -1086,7 +1097,7 @@ int ms_copy_page(unsigned long source_block_addr, unsigned char source_page_addr
 			ms_mspro_buf->ms.reg_set.write_addr = 0x10;
 			ms_mspro_buf->ms.reg_set.write_size = 0x06;
 			packet.param.out.buffer = (unsigned char *)&ms_mspro_buf->ms.reg_set;
-			error = ms_mspro_packet_communicate(&packet);
+			error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 			if(error)
 				return error;
 		}
@@ -1102,7 +1113,7 @@ int ms_copy_page(unsigned long source_block_addr, unsigned char source_page_addr
 	ms_mspro_buf->ms.regs.CMD_Parameter_Reg = 0x20;
 	ms_mspro_buf->ms.regs.Page_Address_Reg = source_page_addr;
 	packet.param.out.buffer = &ms_mspro_buf->ms.regs.System_Parameter_Reg;
-	error = ms_mspro_packet_communicate(&packet);
+	error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 	if(error)
 		return error;
 
@@ -1110,11 +1121,11 @@ int ms_copy_page(unsigned long source_block_addr, unsigned char source_page_addr
 	packet.param.out.count = 1;
 	packet.param.out.buffer = buf;
 	packet.param.out.buffer[0] = CMD_MS_BLOCK_READ;
-	error = ms_mspro_packet_communicate(&packet);
+	error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 	if(error)
 		return error;
 
-	error = ms_mspro_wait_int(&packet);
+	error = ms_mspro_wait_int(ms_mspro_info, &packet);
 	if(error)
 		return error;
 	
@@ -1128,7 +1139,7 @@ int ms_copy_page(unsigned long source_block_addr, unsigned char source_page_addr
 		packet.param.in.count = 0x19;               //READ_ADRS,READ_SIZE,WRITE_ADRS,WRITE_SIZE
 #endif
 	packet.param.in.buffer = &ms_mspro_buf->ms.regs.INT_Reg;
-	error = ms_mspro_packet_communicate(&packet);
+	error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 	if(error)
 		return error;
 
@@ -1142,14 +1153,14 @@ int ms_copy_page(unsigned long source_block_addr, unsigned char source_page_addr
 		ms_mspro_buf->ms.reg_set.write_addr = 0x10;
 		ms_mspro_buf->ms.reg_set.write_size = 0x06;
 		packet.param.out.buffer = (unsigned char *)&ms_mspro_buf->ms.reg_set;
-		error = ms_mspro_packet_communicate(&packet);
+		error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 		if(error)
 		return error;
 		
 		packet.TPC_cmd.value = TPC_MS_MSPRO_READ_REG;       //READ_REG
 		packet.param.in.count = 0x19-0x10;               //READ_ADRS,READ_SIZE,WRITE_ADRS,WRITE_SIZE
 		packet.param.in.buffer = &ms_mspro_buf->ms.regs.Block_Address_Reg2;
-		error = ms_mspro_packet_communicate(&packet);
+		error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 		if(error)
 			return error;
 	}
@@ -1174,7 +1185,7 @@ int ms_copy_page(unsigned long source_block_addr, unsigned char source_page_addr
 		packet.TPC_cmd.value = TPC_MS_READ_PAGE_DATA;       //READ_PAGE_DATA
 		packet.param.in.count = MS_PAGE_SIZE;           //READ_ADRS,READ_SIZE,WRITE_ADRS,WRITE_SIZE
 		packet.param.in.buffer = data_buf;
-		error = ms_mspro_packet_communicate(&packet);
+		error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 		if(error)
 			return error;
 
@@ -1185,7 +1196,7 @@ int ms_copy_page(unsigned long source_block_addr, unsigned char source_page_addr
 		packet.TPC_cmd.value = TPC_MS_WRITE_PAGE_DATA;      //WRITE_PAGE_DATA
 		packet.param.out.count = MS_PAGE_SIZE;          //READ_ADRS,READ_SIZE,WRITE_ADRS,WRITE_SIZE
 		packet.param.out.buffer = data_buf;
-		error = ms_mspro_packet_communicate(&packet);
+		error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 		if(error)
 			return error;
 	}
@@ -1202,7 +1213,7 @@ int ms_copy_page(unsigned long source_block_addr, unsigned char source_page_addr
 		ms_mspro_buf->ms.reg_set.write_size = 0x0A;
 #endif
 	packet.param.out.buffer = (unsigned char *)&ms_mspro_buf->ms.reg_set;
-	error = ms_mspro_packet_communicate(&packet);
+	error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 	if(error)
 		return error;
 
@@ -1222,7 +1233,7 @@ int ms_copy_page(unsigned long source_block_addr, unsigned char source_page_addr
 	ms_mspro_buf->ms.regs.CMD_Parameter_Reg = 0x20;
 	ms_mspro_buf->ms.regs.Page_Address_Reg = dest_page_addr;
 	packet.param.out.buffer = &ms_mspro_buf->ms.regs.System_Parameter_Reg;
-	error = ms_mspro_packet_communicate(&packet);
+	error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 	if(error)
 		return error;
 
@@ -1234,14 +1245,14 @@ int ms_copy_page(unsigned long source_block_addr, unsigned char source_page_addr
 		ms_mspro_buf->ms.reg_set.write_addr = 0x10+0x06;
 		ms_mspro_buf->ms.reg_set.write_size = 0x0A-0x06;
 		packet.param.out.buffer = (unsigned char *)&ms_mspro_buf->ms.reg_set;
-		error = ms_mspro_packet_communicate(&packet);
+		error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 		if(error)
 			return error;
 		
 		packet.TPC_cmd.value = TPC_MS_MSPRO_WRITE_REG;      //WRITE_REG
 		packet.param.out.count = 0x0A-0x06;              //READ_ADRS,READ_SIZE,WRITE_ADRS,WRITE_SIZE
 		packet.param.out.buffer = &ms_mspro_buf->ms.regs.Overwrite_Flag_Reg;
-		error = ms_mspro_packet_communicate(&packet);
+		error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 		if(error)
 			return error;
 	}
@@ -1251,11 +1262,11 @@ int ms_copy_page(unsigned long source_block_addr, unsigned char source_page_addr
 	packet.param.out.count = 1;
 	packet.param.out.buffer = buf;
 	packet.param.out.buffer[0] = CMD_MS_BLOCK_WRITE;
-	error = ms_mspro_packet_communicate(&packet);
+	error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 	if(error)
 		return error;
 
-	error = ms_mspro_wait_int(&packet);
+	error = ms_mspro_wait_int(ms_mspro_info, &packet);
 	if(error)
 		return error;
 		
@@ -1269,7 +1280,7 @@ int ms_copy_page(unsigned long source_block_addr, unsigned char source_page_addr
 		packet.TPC_cmd.value = TPC_MS_MSPRO_GET_INT;        //SET_CMD
 		packet.param.in.count = 1;
 		packet.param.in.buffer = &ms_mspro_buf->ms.regs.INT_Reg;
-		error = ms_mspro_packet_communicate(&packet);
+		error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 		if(error)
 			return error;
 	}
@@ -1284,16 +1295,17 @@ int ms_copy_page(unsigned long source_block_addr, unsigned char source_page_addr
 	return MS_MSPRO_NO_ERROR;
 }
 
-int ms_read_block(unsigned long block_addr, unsigned char page_addr, unsigned short page_nums, unsigned char * data_buf)
+int ms_read_block(MS_MSPRO_Card_Info_t *ms_mspro_info, unsigned long block_addr, unsigned char page_addr, unsigned short page_nums, unsigned char * data_buf)
 {
 	MS_MSPRO_TPC_Packet_t packet;
 	MS_MSPRO_INT_Register_t * pIntReg;
+	MS_MSPRO_Card_Buffer_t *ms_mspro_buf = (MS_MSPRO_Card_Buffer_t *)(ms_mspro_info->ms_mspro_buf);
 	
 	unsigned long data_offset = 0;
 	
 	int error;
 	
-	unsigned char buf[4] = {0,0,0,0};
+	unsigned char* buf = ms_mspro_info->data_buf;
 		
 	if(page_nums == 0)
 		return MS_MSPRO_ERROR_PARAMETER;
@@ -1310,7 +1322,7 @@ int ms_read_block(unsigned long block_addr, unsigned char page_addr, unsigned sh
 		ms_mspro_buf->ms.reg_set.write_addr = 0x10;
 		ms_mspro_buf->ms.reg_set.write_size = 0x06;
 		packet.param.out.buffer = (unsigned char *)&ms_mspro_buf->ms.reg_set;
-		error = ms_mspro_packet_communicate(&packet);
+		error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 		if(error)
 			return error;
 	}
@@ -1324,7 +1336,7 @@ int ms_read_block(unsigned long block_addr, unsigned char page_addr, unsigned sh
 	ms_mspro_buf->ms.regs.CMD_Parameter_Reg = 0x00;
 	ms_mspro_buf->ms.regs.Page_Address_Reg = page_addr;
 	packet.param.out.buffer = &ms_mspro_buf->ms.regs.System_Parameter_Reg;
-	error = ms_mspro_packet_communicate(&packet);
+	error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 	if(error)
 		return error;
 
@@ -1332,13 +1344,13 @@ int ms_read_block(unsigned long block_addr, unsigned char page_addr, unsigned sh
 	packet.param.out.count = 1;
 	packet.param.out.buffer = buf;
 	packet.param.out.buffer[0] = CMD_MS_BLOCK_READ;
-	error = ms_mspro_packet_communicate(&packet);
+	error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 	if(error)
 		return error;
 
 	while(1)
 	{
-		error = ms_mspro_wait_int(&packet);
+		error = ms_mspro_wait_int(ms_mspro_info, &packet);
 		if(error)
 			return error;
 		
@@ -1352,7 +1364,7 @@ int ms_read_block(unsigned long block_addr, unsigned char page_addr, unsigned sh
 			packet.TPC_cmd.value = TPC_MS_MSPRO_GET_INT;        //SET_CMD
 			packet.param.in.count = 1;
 			packet.param.in.buffer = &ms_mspro_buf->ms.regs.INT_Reg;
-			error = ms_mspro_packet_communicate(&packet);
+			error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 			if(error)
 				return error;
 		}
@@ -1381,14 +1393,14 @@ int ms_read_block(unsigned long block_addr, unsigned char page_addr, unsigned sh
 			packet.TPC_cmd.value = TPC_MS_MSPRO_READ_REG;       //READ_REG
 			packet.param.in.count = 0x08;               //READ_ADRS,READ_SIZE,WRITE_ADRS,WRITE_SIZE
 			packet.param.in.buffer = &ms_mspro_buf->ms.regs.Overwrite_Flag_Reg;
-			error = ms_mspro_packet_communicate(&packet);
+			error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 			if(error)
 				return error;
 
 			packet.TPC_cmd.value = TPC_MS_READ_PAGE_DATA;       //READ_PAGE_DATA
 			packet.param.in.count = MS_PAGE_SIZE;           //READ_ADRS,READ_SIZE,WRITE_ADRS,WRITE_SIZE
 			packet.param.in.buffer = data_buf+data_offset;
-			error = ms_mspro_packet_communicate(&packet);
+			error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 			if(error)
 				return error;
 
@@ -1404,7 +1416,7 @@ int ms_read_block(unsigned long block_addr, unsigned char page_addr, unsigned sh
 			packet.param.out.count = 1;
 			packet.param.out.buffer = buf;
 			packet.param.out.buffer[0] = CMD_MS_BLOCK_END;
-			error = ms_mspro_packet_communicate(&packet);
+			error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 			if(error)
 				return error;
 		}
@@ -1415,14 +1427,14 @@ int ms_read_block(unsigned long block_addr, unsigned char page_addr, unsigned sh
 		packet.TPC_cmd.value = TPC_MS_MSPRO_READ_REG;       //READ_REG
 		packet.param.in.count = 0x08;               //READ_ADRS,READ_SIZE,WRITE_ADRS,WRITE_SIZE
 		packet.param.in.buffer = &ms_mspro_buf->ms.regs.Overwrite_Flag_Reg;
-		error = ms_mspro_packet_communicate(&packet);
+		error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 		if(error)
 			return error;
 
 		packet.TPC_cmd.value = TPC_MS_READ_PAGE_DATA;       //READ_PAGE_DATA
 		packet.param.in.count = MS_PAGE_SIZE;           //READ_ADRS,READ_SIZE,WRITE_ADRS,WRITE_SIZE
 		packet.param.in.buffer = data_buf+data_offset;
-		error = ms_mspro_packet_communicate(&packet);
+		error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 		if(error)
 			return error;
 	}
@@ -1430,16 +1442,17 @@ int ms_read_block(unsigned long block_addr, unsigned char page_addr, unsigned sh
 	return MS_MSPRO_NO_ERROR;
 }
 
-int ms_write_block(unsigned long block_addr, unsigned char page_addr, unsigned short page_nums, unsigned char * data_buf)
+int ms_write_block(MS_MSPRO_Card_Info_t *ms_mspro_info, unsigned long block_addr, unsigned char page_addr, unsigned short page_nums, unsigned char * data_buf)
 {
 	MS_MSPRO_TPC_Packet_t packet;
 	MS_MSPRO_INT_Register_t * pIntReg;
+	MS_MSPRO_Card_Buffer_t *ms_mspro_buf = (MS_MSPRO_Card_Buffer_t *)(ms_mspro_info->ms_mspro_buf);
 	
 	unsigned long data_offset = 0;
 	
 	int error;
 	
-	unsigned char buf[4] = {0,0,0,0};
+	unsigned char* buf = ms_mspro_info->data_buf;
 		
 	if(page_nums == 0)
 		return MS_MSPRO_ERROR_PARAMETER;
@@ -1455,7 +1468,7 @@ int ms_write_block(unsigned long block_addr, unsigned char page_addr, unsigned s
 			ms_mspro_buf->ms.reg_set.write_addr = 0x10;
 			ms_mspro_buf->ms.reg_set.write_size = 0x06;
 			packet.param.out.buffer = (unsigned char *)&ms_mspro_buf->ms.reg_set;
-			error = ms_mspro_packet_communicate(&packet);
+			error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 			if(error)
 				return error;
 		}
@@ -1472,7 +1485,7 @@ int ms_write_block(unsigned long block_addr, unsigned char page_addr, unsigned s
 			ms_mspro_buf->ms.reg_set.write_addr = 0x10;
 			ms_mspro_buf->ms.reg_set.write_size = 0x0A;
 			packet.param.out.buffer = (unsigned char *)&ms_mspro_buf->ms.reg_set;
-			error = ms_mspro_packet_communicate(&packet);
+			error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 			if(error)
 				return error;
 		}
@@ -1495,7 +1508,7 @@ int ms_write_block(unsigned long block_addr, unsigned char page_addr, unsigned s
 	ms_mspro_buf->ms.regs.CMD_Parameter_Reg = 0x00;
 	ms_mspro_buf->ms.regs.Page_Address_Reg = page_addr;
 	packet.param.out.buffer = &ms_mspro_buf->ms.regs.System_Parameter_Reg;
-	error = ms_mspro_packet_communicate(&packet);
+	error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 	if(error)
 		return error;
 
@@ -1507,14 +1520,14 @@ int ms_write_block(unsigned long block_addr, unsigned char page_addr, unsigned s
 		ms_mspro_buf->ms.reg_set.write_addr = 0x10+0x06;
 		ms_mspro_buf->ms.reg_set.write_size = 0x0A-0x06;
 		packet.param.out.buffer = (unsigned char *)&ms_mspro_buf->ms.reg_set;
-		error = ms_mspro_packet_communicate(&packet);
+		error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 		if(error)
 			return error;
 		
 		packet.TPC_cmd.value = TPC_MS_MSPRO_WRITE_REG;      //WRITE_REG
 		packet.param.out.count = 0x0A-0x06;              //READ_ADRS,READ_SIZE,WRITE_ADRS,WRITE_SIZE
 		packet.param.out.buffer = &ms_mspro_buf->ms.regs.Overwrite_Flag_Reg;
-		error = ms_mspro_packet_communicate(&packet);
+		error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 		if(error)
 			return error;
 	}
@@ -1524,13 +1537,13 @@ int ms_write_block(unsigned long block_addr, unsigned char page_addr, unsigned s
 	packet.param.out.count = 1;
 	packet.param.out.buffer = buf;
 	packet.param.out.buffer[0] = CMD_MS_BLOCK_WRITE;
-	error = ms_mspro_packet_communicate(&packet);
+	error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 	if(error)
 		return error;
 
 	while(1)
 	{
-		error = ms_mspro_wait_int(&packet);
+		error = ms_mspro_wait_int(ms_mspro_info, &packet);
 		if(error)
 			return error;
 		
@@ -1544,7 +1557,7 @@ int ms_write_block(unsigned long block_addr, unsigned char page_addr, unsigned s
 			packet.TPC_cmd.value = TPC_MS_MSPRO_GET_INT;        //SET_CMD
 			packet.param.in.count = 1;
 			packet.param.in.buffer = &ms_mspro_buf->ms.regs.INT_Reg;
-			error = ms_mspro_packet_communicate(&packet);
+			error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 			if(error)
 				return error;
 		}
@@ -1565,7 +1578,7 @@ int ms_write_block(unsigned long block_addr, unsigned char page_addr, unsigned s
 			packet.TPC_cmd.value = TPC_MS_WRITE_PAGE_DATA;      //WRITE_PAGE_DATA
 			packet.param.out.count = MS_PAGE_SIZE;          //READ_ADRS,READ_SIZE,WRITE_ADRS,WRITE_SIZE
 			packet.param.out.buffer = data_buf+data_offset;
-			error = ms_mspro_packet_communicate(&packet);
+			error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 			if(error)
 				return error;
 
@@ -1577,7 +1590,7 @@ int ms_write_block(unsigned long block_addr, unsigned char page_addr, unsigned s
 			packet.param.out.count = 1;
 			packet.param.out.buffer = buf;
 			packet.param.out.buffer[0] = CMD_MS_BLOCK_END;
-			error = ms_mspro_packet_communicate(&packet);
+			error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 			if(error)
 				return error;
 		}
@@ -1586,14 +1599,15 @@ int ms_write_block(unsigned long block_addr, unsigned char page_addr, unsigned s
 	return MS_MSPRO_NO_ERROR;
 }
 
-int ms_erase_block(unsigned long block_addr)
+int ms_erase_block(MS_MSPRO_Card_Info_t *ms_mspro_info, unsigned long block_addr)
 {
 	MS_MSPRO_TPC_Packet_t packet;
 	MS_MSPRO_INT_Register_t * pIntReg;
+	MS_MSPRO_Card_Buffer_t *ms_mspro_buf = (MS_MSPRO_Card_Buffer_t *)(ms_mspro_info->ms_mspro_buf);
 	
 	int error;
 	
-	unsigned char buf[4] = {0,0,0,0};
+	unsigned char* buf = ms_mspro_info->data_buf;
 		
 	if((ms_mspro_buf->ms.reg_set.write_addr != 0x10) ||
 	   (ms_mspro_buf->ms.reg_set.write_size != 0x04))
@@ -1603,7 +1617,7 @@ int ms_erase_block(unsigned long block_addr)
 		ms_mspro_buf->ms.reg_set.write_addr = 0x10;
 		ms_mspro_buf->ms.reg_set.write_size = 0x04;
 		packet.param.out.buffer = (unsigned char *)&ms_mspro_buf->ms.reg_set;
-		error = ms_mspro_packet_communicate(&packet);
+		error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 		if(error)
 			return error;
 	}
@@ -1615,7 +1629,7 @@ int ms_erase_block(unsigned long block_addr)
 	ms_mspro_buf->ms.regs.Block_Address_Reg1 = (block_addr >> 8) & 0xFF;
 	ms_mspro_buf->ms.regs.Block_Address_Reg0 = block_addr & 0xFF;
 	packet.param.out.buffer = &ms_mspro_buf->ms.regs.System_Parameter_Reg;
-	error = ms_mspro_packet_communicate(&packet);
+	error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 	if(error)
 		return error;
 
@@ -1623,11 +1637,11 @@ int ms_erase_block(unsigned long block_addr)
 	packet.param.out.count = 1;
 	packet.param.out.buffer = buf;
 	packet.param.out.buffer[0] = CMD_MS_BLOCK_ERASE;
-	error = ms_mspro_packet_communicate(&packet);
+	error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 	if(error)
 		return error;
 
-	error = ms_mspro_wait_int(&packet);
+	error = ms_mspro_wait_int(ms_mspro_info, &packet);
 	if(error)
 		return error;
 		
@@ -1641,7 +1655,7 @@ int ms_erase_block(unsigned long block_addr)
 		packet.TPC_cmd.value = TPC_MS_MSPRO_GET_INT;        //SET_CMD
 		packet.param.in.count = 1;
 		packet.param.in.buffer = &ms_mspro_buf->ms.regs.INT_Reg;
-		error = ms_mspro_packet_communicate(&packet);
+		error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 		if(error)
 			return error;
 	}
@@ -1658,15 +1672,16 @@ int ms_erase_block(unsigned long block_addr)
 	return MS_MSPRO_NO_ERROR;
 }
 
-int ms_read_extra_data(unsigned long block_addr, unsigned char page_addr)
+int ms_read_extra_data(MS_MSPRO_Card_Info_t *ms_mspro_info, unsigned long block_addr, unsigned char page_addr)
 {
 	MS_MSPRO_TPC_Packet_t packet;
 	MS_MSPRO_INT_Register_t * pIntReg;
 	MS_Status_Register1_t * pStatusReg1;
+	MS_MSPRO_Card_Buffer_t *ms_mspro_buf = (MS_MSPRO_Card_Buffer_t *)(ms_mspro_info->ms_mspro_buf);
 	
 	int error;
 	
-	unsigned char buf[4] = {0,0,0,0};
+	unsigned char* buf = ms_mspro_info->data_buf;
 
 #ifdef MS_MSPRO_HW_CONTROL
 	if(MS_WORK_MODE == CARD_HW_MODE)
@@ -1683,7 +1698,7 @@ int ms_read_extra_data(unsigned long block_addr, unsigned char page_addr)
 			ms_mspro_buf->ms.reg_set.write_addr = 0x10;
 			ms_mspro_buf->ms.reg_set.write_size = 0x06;
 			packet.param.out.buffer = (unsigned char *)&ms_mspro_buf->ms.reg_set;
-			error = ms_mspro_packet_communicate(&packet);
+			error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 			if(error)
 				return error;
 		}
@@ -1704,7 +1719,7 @@ int ms_read_extra_data(unsigned long block_addr, unsigned char page_addr)
 			ms_mspro_buf->ms.reg_set.write_addr = 0x10;
 			ms_mspro_buf->ms.reg_set.write_size = 0x06;
 			packet.param.out.buffer = (unsigned char *)&ms_mspro_buf->ms.reg_set;
-			error = ms_mspro_packet_communicate(&packet);
+			error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 			if(error)
 				return error;
 		}
@@ -1720,7 +1735,7 @@ int ms_read_extra_data(unsigned long block_addr, unsigned char page_addr)
 	ms_mspro_buf->ms.regs.CMD_Parameter_Reg = 0x40;
 	ms_mspro_buf->ms.regs.Page_Address_Reg = page_addr;
 	packet.param.out.buffer = &ms_mspro_buf->ms.regs.System_Parameter_Reg;
-	error = ms_mspro_packet_communicate(&packet);
+	error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 	if(error)
 		return error;
 
@@ -1728,11 +1743,11 @@ int ms_read_extra_data(unsigned long block_addr, unsigned char page_addr)
 	packet.param.out.count = 1;
 	packet.param.out.buffer = buf;
 	packet.param.out.buffer[0] = CMD_MS_BLOCK_READ;
-	error = ms_mspro_packet_communicate(&packet);
+	error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 	if(error)
 		return error;
 
-	error = ms_mspro_wait_int(&packet);
+	error = ms_mspro_wait_int(ms_mspro_info, &packet);
 	if(error)
 		return error;
 	
@@ -1746,7 +1761,7 @@ int ms_read_extra_data(unsigned long block_addr, unsigned char page_addr)
 		packet.param.in.count = 0x19;               //READ_ADRS,READ_SIZE,WRITE_ADRS,WRITE_SIZE
 #endif
 	packet.param.in.buffer = &ms_mspro_buf->ms.regs.INT_Reg;
-	error = ms_mspro_packet_communicate(&packet);
+	error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 	if(error)
 		return error;
 
@@ -1760,14 +1775,14 @@ int ms_read_extra_data(unsigned long block_addr, unsigned char page_addr)
 		ms_mspro_buf->ms.reg_set.write_addr = 0x10;
 		ms_mspro_buf->ms.reg_set.write_size = 0x06;
 		packet.param.out.buffer = (unsigned char *)&ms_mspro_buf->ms.reg_set;
-		error = ms_mspro_packet_communicate(&packet);
+		error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 		if(error)
 			return error;
 		
 		packet.TPC_cmd.value = TPC_MS_MSPRO_READ_REG;       //READ_REG
 		packet.param.in.count = 0x19-0x10;               //READ_ADRS,READ_SIZE,WRITE_ADRS,WRITE_SIZE
 		packet.param.in.buffer = &ms_mspro_buf->ms.regs.Block_Address_Reg2;
-		error = ms_mspro_packet_communicate(&packet);
+		error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 		if(error)
 			return error;
 	}
@@ -1792,14 +1807,15 @@ int ms_read_extra_data(unsigned long block_addr, unsigned char page_addr)
 	return MS_MSPRO_NO_ERROR;
 }
 
-int ms_write_extra_data(unsigned long block_addr, unsigned char page_addr)
+int ms_write_extra_data(MS_MSPRO_Card_Info_t *ms_mspro_info, unsigned long block_addr, unsigned char page_addr)
 {
 	MS_MSPRO_TPC_Packet_t packet;
 	MS_MSPRO_INT_Register_t * pIntReg;
+	MS_MSPRO_Card_Buffer_t *ms_mspro_buf = (MS_MSPRO_Card_Buffer_t *)(ms_mspro_info->ms_mspro_buf);
 	
 	int error;
 	
-	unsigned char buf[4] = {0,0,0,0};
+	unsigned char* buf = ms_mspro_info->data_buf;
 
 #ifdef MS_MSPRO_HW_CONTROL
 	if(MS_WORK_MODE == CARD_HW_MODE)
@@ -1812,7 +1828,7 @@ int ms_write_extra_data(unsigned long block_addr, unsigned char page_addr)
 			ms_mspro_buf->ms.reg_set.write_size = 0x06;
 
 			packet.param.out.buffer = (unsigned char *)&ms_mspro_buf->ms.reg_set;
-			error = ms_mspro_packet_communicate(&packet);
+			error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 			if(error)
 				return error;
 		}
@@ -1829,7 +1845,7 @@ int ms_write_extra_data(unsigned long block_addr, unsigned char page_addr)
 			ms_mspro_buf->ms.reg_set.write_addr = 0x10;
 			ms_mspro_buf->ms.reg_set.write_size = 0x0A;
 			packet.param.out.buffer = (unsigned char *)&ms_mspro_buf->ms.reg_set;
-			error = ms_mspro_packet_communicate(&packet);
+			error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 			if(error)
 				return error;
 		}
@@ -1852,7 +1868,7 @@ int ms_write_extra_data(unsigned long block_addr, unsigned char page_addr)
 	ms_mspro_buf->ms.regs.CMD_Parameter_Reg = 0x40;
 	ms_mspro_buf->ms.regs.Page_Address_Reg = page_addr;
 	packet.param.out.buffer = &ms_mspro_buf->ms.regs.System_Parameter_Reg;
-	error = ms_mspro_packet_communicate(&packet);
+	error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 	if(error)
 		return error;
 
@@ -1864,14 +1880,14 @@ int ms_write_extra_data(unsigned long block_addr, unsigned char page_addr)
 		ms_mspro_buf->ms.reg_set.write_addr = 0x10+0x06;
 		ms_mspro_buf->ms.reg_set.write_size = 0x0A-0x06;
 		packet.param.out.buffer = (unsigned char *)&ms_mspro_buf->ms.reg_set;
-		error = ms_mspro_packet_communicate(&packet);
+		error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 		if(error)
 			return error;
 		
 		packet.TPC_cmd.value = TPC_MS_MSPRO_WRITE_REG;      //WRITE_REG
 		packet.param.out.count = 0x0A-0x06;              //READ_ADRS,READ_SIZE,WRITE_ADRS,WRITE_SIZE
 		packet.param.out.buffer = &ms_mspro_buf->ms.regs.Overwrite_Flag_Reg;
-		error = ms_mspro_packet_communicate(&packet);
+		error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 		if(error)
 			return error;
 	}
@@ -1881,11 +1897,11 @@ int ms_write_extra_data(unsigned long block_addr, unsigned char page_addr)
 	packet.param.out.count = 1;
 	packet.param.out.buffer = buf;
 	packet.param.out.buffer[0] = CMD_MS_BLOCK_WRITE;
-	error = ms_mspro_packet_communicate(&packet);
+	error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 	if(error)
 		return error;
 
-	error = ms_mspro_wait_int(&packet);
+	error = ms_mspro_wait_int(ms_mspro_info, &packet);
 	if(error)
 		return error;
 		
@@ -1899,7 +1915,7 @@ int ms_write_extra_data(unsigned long block_addr, unsigned char page_addr)
 		packet.TPC_cmd.value = TPC_MS_MSPRO_GET_INT;        //SET_CMD
 		packet.param.in.count = 1;
 		packet.param.in.buffer = &ms_mspro_buf->ms.regs.INT_Reg;
-		error = ms_mspro_packet_communicate(&packet);
+		error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 		if(error)
 			return error;
 	}
@@ -1916,14 +1932,15 @@ int ms_write_extra_data(unsigned long block_addr, unsigned char page_addr)
 	return MS_MSPRO_NO_ERROR;
 }
 
-int ms_overwrite_extra_data(unsigned long block_addr, unsigned char page_addr, unsigned char mask_data)
+int ms_overwrite_extra_data(MS_MSPRO_Card_Info_t *ms_mspro_info, unsigned long block_addr, unsigned char page_addr, unsigned char mask_data)
 {
 	MS_MSPRO_TPC_Packet_t packet;
 	MS_MSPRO_INT_Register_t * pIntReg;
+	MS_MSPRO_Card_Buffer_t *ms_mspro_buf = (MS_MSPRO_Card_Buffer_t *)(ms_mspro_info->ms_mspro_buf);
 	
 	int error;
 	
-	unsigned char buf[4] = {0,0,0,0};
+	unsigned char* buf = ms_mspro_info->data_buf;
 
 #ifdef MS_MSPRO_HW_CONTROL
 	if(MS_WORK_MODE == CARD_HW_MODE)
@@ -1937,7 +1954,7 @@ int ms_overwrite_extra_data(unsigned long block_addr, unsigned char page_addr, u
 			ms_mspro_buf->ms.reg_set.write_size = 0x06;
 
 			packet.param.out.buffer = (unsigned char *)&ms_mspro_buf->ms.reg_set;
-			error = ms_mspro_packet_communicate(&packet);
+			error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 			if(error)
 				return error;
 		}
@@ -1954,7 +1971,7 @@ int ms_overwrite_extra_data(unsigned long block_addr, unsigned char page_addr, u
 			ms_mspro_buf->ms.reg_set.write_addr = 0x10;
 			ms_mspro_buf->ms.reg_set.write_size = 0x07;
 			packet.param.out.buffer = (unsigned char *)&ms_mspro_buf->ms.reg_set;
-			error = ms_mspro_packet_communicate(&packet);
+			error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 			if(error)
 				return error;
 		}
@@ -1978,7 +1995,7 @@ int ms_overwrite_extra_data(unsigned long block_addr, unsigned char page_addr, u
 	ms_mspro_buf->ms.regs.Page_Address_Reg = page_addr;
 	ms_mspro_buf->ms.regs.Overwrite_Flag_Reg = mask_data;
 	packet.param.out.buffer = &ms_mspro_buf->ms.regs.System_Parameter_Reg;
-	error = ms_mspro_packet_communicate(&packet);
+	error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 	if(error)
 		return error;
 
@@ -1990,14 +2007,14 @@ int ms_overwrite_extra_data(unsigned long block_addr, unsigned char page_addr, u
 		ms_mspro_buf->ms.reg_set.write_addr = 0x10+0x06;
 		ms_mspro_buf->ms.reg_set.write_size = 0x07-0x06;
 		packet.param.out.buffer = (unsigned char *)&ms_mspro_buf->ms.reg_set;
-		error = ms_mspro_packet_communicate(&packet);
+		error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 		if(error)
 			return error;
 		
 		packet.TPC_cmd.value = TPC_MS_MSPRO_WRITE_REG;      //WRITE_REG
 		packet.param.out.count = 0x07-0x06;              //READ_ADRS,READ_SIZE,WRITE_ADRS,WRITE_SIZE
 		packet.param.out.buffer = &ms_mspro_buf->ms.regs.Overwrite_Flag_Reg;
-		error = ms_mspro_packet_communicate(&packet);
+		error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 		if(error)
 			return error;
 	}
@@ -2007,11 +2024,11 @@ int ms_overwrite_extra_data(unsigned long block_addr, unsigned char page_addr, u
 	packet.param.out.count = 1;
 	packet.param.out.buffer = buf;
 	packet.param.out.buffer[0] = CMD_MS_BLOCK_WRITE;
-	error = ms_mspro_packet_communicate(&packet);
+	error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 	if(error)
 		return error;
 
-	error = ms_mspro_wait_int(&packet);
+	error = ms_mspro_wait_int(ms_mspro_info, &packet);
 	if(error)
 		return error;
 		
@@ -2025,7 +2042,7 @@ int ms_overwrite_extra_data(unsigned long block_addr, unsigned char page_addr, u
 		packet.TPC_cmd.value = TPC_MS_MSPRO_GET_INT;        //SET_CMD
 		packet.param.in.count = 1;
 		packet.param.in.buffer = &ms_mspro_buf->ms.regs.INT_Reg;
-		error = ms_mspro_packet_communicate(&packet);
+		error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 		if(error)
 			return error;
 	}
@@ -2057,19 +2074,19 @@ int ms_flash_stop(void)
 	return 0;
 }
 
-int ms_reset(void)
+int ms_reset(MS_MSPRO_Card_Info_t *ms_mspro_info)
 {
 	MS_MSPRO_TPC_Packet_t packet;
 	
 	int error;
 	
-	unsigned char buf[4] = {0,0,0,0};
+	unsigned char* buf = ms_mspro_info->data_buf;
 	
 	packet.TPC_cmd.value = TPC_MS_MSPRO_SET_CMD;        //SET_CMD
 	packet.param.out.count = 1;
 	packet.param.out.buffer = buf;
 	packet.param.out.buffer[0] = CMD_MS_RESET;
-	error = ms_mspro_packet_communicate(&packet);
+	error = ms_mspro_packet_communicate(ms_mspro_info, &packet);
 	if(error)
 		return error;
 	return 0;

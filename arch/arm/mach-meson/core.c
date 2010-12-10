@@ -136,7 +136,7 @@ static __initdata struct map_desc meson_io_desc[] = {
 		.type		= MT_DEVICE,
 	} , {
 		.virtual	= IO_PL310_BASE,
-		.pfn		= __phys_to_pfn(IO_AXI_BUS_PHY_BASE),
+		.pfn		= __phys_to_pfn(IO_PL310_PHY_BASE),
 		.length		= SZ_4K,
 		.type		= MT_DEVICE,
 	} , {

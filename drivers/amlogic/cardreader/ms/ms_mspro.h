@@ -4,11 +4,12 @@
 #include <linux/slab.h>
 #include <linux/types.h>
     
-#include <asm/drivers/cardreader/cardreader.h>
-#include <asm/drivers/cardreader/card_io.h>
-#include <asm/drivers/cardreader/sdio_hw.h>
+#include <linux/cardreader/card_block.h>
+#include <linux/cardreader/cardreader.h>
+#include <linux/cardreader/sdio_hw.h>
+#include <mach/card_io.h>
+
 #include "ms_protocol.h"
-#include "mspro_protocol.h"
     
 #pragma pack(1)
 typedef struct _MS_MSPRO_INT_Register  {
@@ -55,44 +56,76 @@
 } MS_MSPRO_Reg_Set_t;
 
 #pragma pack()
-typedef enum _MS_MSPRO_Card_Type 
-    { CARD_NONE_TYPE = 0, CARD_TYPE_MS, CARD_TYPE_MSPRO 
+typedef enum _MS_MSPRO_Card_Type 
+{ 
+	CARD_NONE_TYPE = 0, 
+	CARD_TYPE_MS, 
+	CARD_TYPE_MSPRO 
 } MS_MSPRO_Card_Type_t;
-typedef enum _MS_MSPRO_Interface_Mode 
-    { INTERFACE_SERIAL = 1, INTERFACE_PARALLEL = 4 
+
+typedef enum _MS_MSPRO_Interface_Mode 
+{ 
+	INTERFACE_SERIAL = 1, 
+	INTERFACE_PARALLEL = 4 
 } MS_MSPRO_Interface_Mode_t;
-typedef enum _MS_MSPRO_Error_Status 
-    { MS_MSPRO_NO_ERROR =
-0, MS_MSPRO_ERROR_TPC_FORMAT, MS_MSPRO_ERROR_RDY_TIMEOUT, MS_MSPRO_ERROR_INT_TIMEOUT,
-	MS_MSPRO_ERROR_DATA_CRC, MS_MSPRO_ERROR_MEDIA_TYPE,
-	MS_MSPRO_ERROR_CMDNK, MS_MSPRO_ERROR_CED,
-	MS_MSPRO_ERROR_FLASH_READ, MS_MSPRO_ERROR_FLASH_WRITE,
-	MS_MSPRO_ERROR_FLASH_ERASE,
-	MS_MSPRO_ERROR_PARAMETER, MS_MSPRO_ERROR_WRITE_PROTECTED,
-	MS_MSPRO_ERROR_READ_ONLY,
-	MS_ERROR_BOOT_SEARCH, MS_ERROR_MEMORY_STICK_TYPE,
-	MS_ERROR_FORMAT_TYPE, MS_ERROR_BLOCK_NUMBER_SIZE,
-	MS_ERROR_DISABLED_BLOCK, MS_ERROR_NO_FREE_BLOCK,
-	MS_ERROR_LOGICAL_PHYSICAL_TABLE, MS_ERROR_BOOT_IDI,
-	MSPRO_ERROR_MEDIA_BREAKDOWN, MSPRO_ERROR_STARTUP_TIMEOUT,
-	MSPRO_ERROR_WRITE_DISABLED, 
-#ifdef MS_MSPRO_HW_CONTROL
-	    MS_MSPRO_ERROR_TIMEOUT, MS_MSPRO_ERROR_UNSUPPORTED, 
-#endif				/*  */
-	MS_MSPRO_ERROR_NO_MEMORY, MS_MSPRO_ERROR_NO_READ 
+
+typedef enum _MS_MSPRO_Error_Status 
+{ 
+    	MS_MSPRO_NO_ERROR =0, 
+    	MS_MSPRO_ERROR_TPC_FORMAT, 
+    	MS_MSPRO_ERROR_RDY_TIMEOUT, 
+    	MS_MSPRO_ERROR_INT_TIMEOUT,
+    	MS_MSPRO_ERROR_DATA_CRC, 
+    	MS_MSPRO_ERROR_MEDIA_TYPE,
+	MS_MSPRO_ERROR_CMDNK, 
+	MS_MSPRO_ERROR_CED,
+	MS_MSPRO_ERROR_FLASH_READ, 
+	MS_MSPRO_ERROR_FLASH_WRITE,
+	MS_MSPRO_ERROR_FLASH_ERASE,
+	MS_MSPRO_ERROR_PARAMETER, 
+	MS_MSPRO_ERROR_WRITE_PROTECTED,
+	MS_MSPRO_ERROR_READ_ONLY,
+	MS_ERROR_BOOT_SEARCH, 
+	MS_ERROR_MEMORY_STICK_TYPE,
+	MS_ERROR_FORMAT_TYPE, 
+	MS_ERROR_BLOCK_NUMBER_SIZE,
+	MS_ERROR_DISABLED_BLOCK, 
+	MS_ERROR_NO_FREE_BLOCK,
+	MS_ERROR_LOGICAL_PHYSICAL_TABLE, 
+	MS_ERROR_BOOT_IDI,
+	MSPRO_ERROR_MEDIA_BREAKDOWN, 
+	MSPRO_ERROR_STARTUP_TIMEOUT,
+	MSPRO_ERROR_WRITE_DISABLED, 
+	MS_MSPRO_ERROR_TIMEOUT, 
+	MS_MSPRO_ERROR_UNSUPPORTED, 
+	MS_MSPRO_ERROR_NO_MEMORY, 
+	MS_MSPRO_ERROR_NO_READ 
 } MS_MSPRO_Error_Status_t;
-typedef enum _MS_MSPRO_Media_Type 
-    { MEMORY_STICK_ERROR, MEMORY_STICK, MEMORY_STICK_WITH_SP,
-	MEMORY_STICK_ROM, MEMORY_STICK_R, MEMORY_STICK_ROM_WITH_SP,
-	MEMORY_STICK_R_WITH_SP,
-	MEMORY_STICK_PRO, MEMORY_STICK_PRO_ROM, MEMORY_STICK_PRO_R,
-	MEMORY_STICK_IO,
-	MEMORY_STICK_PRO_IO 
+
+typedef enum _MS_MSPRO_Media_Type 
+{ 
+	MEMORY_STICK_ERROR, 
+	MEMORY_STICK, 
+	MEMORY_STICK_WITH_SP,
+	MEMORY_STICK_ROM, 
+	MEMORY_STICK_R, 
+	MEMORY_STICK_ROM_WITH_SP,
+	MEMORY_STICK_R_WITH_SP,
+	MEMORY_STICK_PRO, 
+	MEMORY_STICK_PRO_ROM, 
+	MEMORY_STICK_PRO_R,
+	MEMORY_STICK_IO,
+	MEMORY_STICK_PRO_IO 
 } MS_MSPRO_Media_Type_t;
-typedef enum _Endian_Type 
-    { ENDIAN_TYPE_WORD = 2, ENDIAN_TYPE_DWORD = 4, ENDIAN_TYPE_QWORD = 8 
+
+typedef enum _Endian_Type 
+{ 
+	ENDIAN_TYPE_WORD = 2, 
+	ENDIAN_TYPE_DWORD = 4, 
+	ENDIAN_TYPE_QWORD = 8 
 } Endian_Type_t;
-typedef union _MS_MSPRO_Card_Buffer  {
+
+typedef union _MS_MSPRO_Card_Buffer  {
 	struct  {
 		MS_Registers_t regs;
 		MS_MSPRO_Reg_Set_t reg_set;
@@ -121,6 +154,7 @@
 		MSPRO_System_Information_t system_information;
 	} mspro;
 } MS_MSPRO_Card_Buffer_t;
+
 typedef struct _MS_MSPRO_Card_Info  {
 	MS_MSPRO_Card_Type_t card_type;
 	MS_MSPRO_Media_Type_t media_type;
@@ -134,12 +168,23 @@
 	int init_retry;
 	u32 raw_cid;
 	unsigned ms_clk_unit;
+	
 	void (*ms_mspro_power) (int power_on);
 	int (*ms_mspro_get_ins) (void);
 	void (*ms_mspro_io_release) (void);
+	
+	SDIO_Pad_Type_t  io_pad_type;	/* hw io pin pad */
+	
+	unsigned char *dma_buf;
+	unsigned char *dma_phy_buf;
+
+	unsigned char *ms_mspro_buf;
+	unsigned char *ms_mspro_phy_buf;
+
+	unsigned char* data_buf;
+	unsigned char* data_phy_buf;
+	
 } MS_MSPRO_Card_Info_t;
-extern MS_MSPRO_Card_Info_t *ms_mspro_info;
-extern MS_MSPRO_Card_Buffer_t *ms_mspro_buf;
 
 //Transfer Protocol Command (TPC)
 #define TPC_MS_READ_PAGE_DATA               0x2D
@@ -165,27 +210,5 @@
 #define MS_MSPRO_TRANSFER_HIGHSPEED_CLK				25	//M HZ
     
 #define MS_WRITE_ESPECIAL_CAPACITY_BLOCKS				130000
-//Following functions only used in ms_protocol.c and mspro_protocol.c
-int ms_mspro_wait_int(MS_MSPRO_TPC_Packet_t * tpc_packet);
-int ms_mspro_wait_rdy(MS_MSPRO_TPC_Packet_t * tpc_packet);
-int ms_mspro_write_tpc(MS_MSPRO_TPC_Packet_t * tpc_packet);
-int ms_mspro_read_data_line(MS_MSPRO_TPC_Packet_t * tpc_packet);
-int ms_mspro_write_data_line(MS_MSPRO_TPC_Packet_t * tpc_packet);
-int ms_mspro_packet_communicate(MS_MSPRO_TPC_Packet_t * tpc_packet);
-char *ms_mspro_error_to_string(int errcode);
-void ms_mspro_endian_convert(Endian_Type_t data_type, void *data);
-
-//Following functions are the API used for outside routinue
-//void ms_mspro_get_info(blkdev_stat_t *info);
-int ms_mspro_init(MS_MSPRO_Card_Info_t * card_info);
-void ms_mspro_exit(void);
-void ms_mspro_prepare_init(void);
-int ms_mspro_check_insert(void);
-int ms_mspro_read_data(unsigned long lba, unsigned long byte_cnt,
-			unsigned char *data_buf);
-int ms_mspro_write_data(unsigned long lba, unsigned long byte_cnt,
-			 unsigned char *data_buf);
-void ms_mspro_power_on(void);
-void ms_mspro_power_off(void);
 
 #endif				//_H_MS_MSPRO

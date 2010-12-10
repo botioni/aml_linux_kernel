@@ -25,11 +25,12 @@
 
 //#define ITK_TS_DEBUG_REPORT
 //#define ITK_TS_DEBUG_READ
+//#define ITK_TS_DEBUG_INFO
 //#define TS_DELAY_WORK
 
 /* periodic polling delay and period */
-#define TS_POLL_DELAY   (1 * 1000000)
-#define TS_POLL_PERIOD  (5 * 1000000)
+#define TS_POLL_DELAY   (30 * 1000000)
+#define TS_POLL_PERIOD  (2 * 1000000)
 
 #define MAX_SUPPORT_POINT   5 //just support 2 point now
 #define ITK_INFO_ADDR       0x4
@@ -246,7 +247,7 @@ static void itk_work(struct work_struct *work)
         if (!ts->pendown) {
             ts->pendown = 1;
             //input_report_key(ts->input, BTN_TOUCH, 1);
-            #ifdef ITK_TS_DEBUG_REPORT
+            #ifdef ITK_TS_DEBUG_INFO
             printk(KERN_INFO "DOWN\n");
             #endif
         }
@@ -271,7 +272,7 @@ static void itk_work(struct work_struct *work)
                     #endif
                     input_report_abs(ts->input, ABS_MT_TOUCH_MAJOR, 1);
                     #ifdef ITK_TS_DEBUG_REPORT
-                    printk(KERN_INFO "report ABS_MT_TOUCH_MAJOR %d\n", event->pendown);
+                    printk(KERN_INFO "report ABS_MT_TOUCH_MAJOR %d\n", 1);
                     #endif
                     input_report_abs(ts->input, ABS_MT_WIDTH_MAJOR, 0);
                     #ifdef ITK_TS_DEBUG_REPORT
@@ -286,6 +287,7 @@ static void itk_work(struct work_struct *work)
                     #ifdef ITK_TS_DEBUG_REPORT
                     printk(KERN_INFO "input_mt_sync\n");
                     #endif
+
                     if ((i == 0) && 
                         (ts->event[i].contactid != ts->event[i+1].contactid)
                         && ts->event[i+1].valid) //two fingers, just need one input_sync report.
@@ -325,16 +327,24 @@ restart:
         /* enable IRQ after the pen was lifted */
         if (ts->pendown) {
             ts->pendown = 0;
+            #ifdef ITK_TS_DEBUG_INFO
+            printk(KERN_INFO "UP\n");
+            #endif
             input_report_abs(ts->input, ABS_MT_TOUCH_MAJOR, 0);
+            #ifdef ITK_TS_DEBUG_REPORT
+            printk(KERN_INFO "report ABS_MT_TOUCH_MAJOR %d\n", 0);
+            #endif
             input_report_abs(ts->input, ABS_MT_WIDTH_MAJOR, 0);
+            #ifdef ITK_TS_DEBUG_REPORT
+            printk(KERN_INFO "report ABS_MT_WIDTH_MAJOR %d\n", 0);
+            #endif
             input_mt_sync(ts->input);
             #ifdef ITK_TS_DEBUG_REPORT
-            printk(KERN_INFO "\ninput_mt_sync\n");
+            printk(KERN_INFO "input_mt_sync\n");
             #endif
             input_sync(ts->input);
             #ifdef ITK_TS_DEBUG_REPORT
             printk(KERN_INFO "input_sync\n");
-            printk(KERN_INFO "UP\n");
             #endif
             itk_reset(ts);
         }

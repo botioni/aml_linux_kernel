@@ -24,6 +24,10 @@ struct completion sdio_int_complete;
 /**/ void (*cf_reset_register) (int reset_high) = NULL;
 /**/ int (*cf_ins_register) (void) = NULL;
 /**/ void (*cf_io_release_register) (void) = NULL;
+/* */ void (*ms_mspro_power_register) (int power_on) = NULL;
+/* */ int (*ms_mspro_ins_register) (void) = NULL;
+/* */ int (*ms_mspro_wp_register) (void) = NULL;
+/* */ void (*ms_mspro_io_release_register) (void) = NULL;
 
 void sd_sdio_enable(SDIO_Pad_Type_t io_pad_type)
 {

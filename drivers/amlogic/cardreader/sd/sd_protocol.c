@@ -2891,7 +2891,7 @@ int sd_voltage_validation(SD_MMC_Card_Info_t *sd_mmc_info)
 			return SD_MMC_NO_ERROR;
 		}
 		
-		//sd_delay_ms(delay_time);
+		sd_delay_ms(delay_time);
 		delay_cnt++;
 	} while(delay_cnt < (SD_MMC_IDENTIFY_TIMEOUT/delay_time));
 

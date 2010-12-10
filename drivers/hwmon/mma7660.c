@@ -272,7 +272,7 @@ static int mma7660_init_client(struct i2c_client *client)
 		IRQF_TRIGGER_FALLING , MMA7660_DRV_NAME, NULL);
 	assert(result==0);*/
 
-	result = request_irq(INT_GPIO_2, mmx7660_irq_handler,
+	result = request_irq(client->irq, mmx7660_irq_handler,
 		IRQF_TRIGGER_FALLING , MMA7660_DRV_NAME, NULL);
 	assert(result==0);
 
@@ -385,7 +385,7 @@ static int __devexit mma7660_remove(struct i2c_client *client)
 	assert(result==0);
 
 	//free_irq(plat_data->irq, NULL);
-	free_irq(INT_GPIO_2, NULL);
+	free_irq(client->irq, NULL);
 	sysfs_remove_group(&client->dev.kobj, &mma7660_group);
 	hwmon_device_unregister(hwmon_dev);
 

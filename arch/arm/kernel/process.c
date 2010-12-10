@@ -35,6 +35,7 @@
 #include <asm/thread_notify.h>
 #include <asm/stacktrace.h>
 #include <asm/mach/time.h>
+#include <asm/cacheflush.h>
 
 static const char *processor_modes[] = {
   "USER_26", "FIQ_26" , "IRQ_26" , "SVC_26" , "UK4_26" , "UK5_26" , "UK6_26" , "UK7_26" ,
@@ -84,6 +85,16 @@ __setup("hlt", hlt_setup);
 
 void arm_machine_restart(char mode, const char *cmd)
 {
+    int sram_vaddr;
+    
+    if(cmd){   
+        if(strcmp(cmd, "recovery") == 0){
+            sram_vaddr = ioremap(0xC9001E00, 4); 
+            *(int*)sram_vaddr = (int)0x05050505;
+            flush_cache_vmap(sram_vaddr,sram_vaddr + 4);
+            mdelay(1000);  
+        }  
+    }   
 	/*
 	 * Clean and disable cache, and turn off interrupts
 	 */

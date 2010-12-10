@@ -249,33 +249,6 @@
     
 //#define MS_WRITE_PATTERN_1
 #define MS_WRITE_PATTERN_2
-int ms_media_type_identification(void);
-int ms_search_boot_block(unsigned char *data_buf);
-int ms_check_boot_block(unsigned char *data_buf);
-int ms_check_disabled_block(unsigned char *data_buf);
-int ms_boot_area_protection(unsigned char *data_buf);
-int ms_logical_physical_table_creation(unsigned short seg_no);
 
-//int ms_read_boot_idi(unsigned char * data_buf);
-int ms_read_page(unsigned long block_addr, unsigned char page_addr,
-		  unsigned char *data_buf);
-int ms_write_page(unsigned long block_addr, unsigned char page_addr,
-		   unsigned char *data_buf);
-int ms_copy_page(unsigned long source_block_addr,
-		  unsigned char source_page_addr, unsigned long dest_block_addr,
-		  unsigned char dest_page_addr, unsigned char *data_buf);
-int ms_read_block(unsigned long block_addr, unsigned char page_addr,
-		   unsigned short page_nums, unsigned char *data_buf);
-int ms_write_block(unsigned long block_addr, unsigned char page_addr,
-		    unsigned short page_nums, unsigned char *data_buf);
-int ms_erase_block(unsigned long block_addr);
-int ms_read_extra_data(unsigned long block_addr, unsigned char page_addr);
-int ms_write_extra_data(unsigned long block_addr, unsigned char page_addr);
-int ms_overwrite_extra_data(unsigned long block_addr, unsigned char page_addr,
-			     unsigned char mask_data);
-int ms_sleep(void);
-int ms_clear_buffer(void);
-int ms_flash_stop(void);
-int ms_reset(void);
 
 #endif				//_H_MS_PROTOCOL

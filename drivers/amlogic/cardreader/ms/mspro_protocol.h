@@ -290,25 +290,5 @@
     
 //#define MSPRO_STARTUP_TIMEOUT                         (1000*TIMER_1MS)
 #define MSPRO_STARTUP_TIMEOUT                           300
-int mspro_media_type_identification(void);
-int mspro_cpu_startup(void);
-int mspro_confirm_attribute_information(unsigned char *data_buf);
-int mspro_confirm_system_information(unsigned char *data_buf);
-int mspro_recognize_file_system(void);
-int mspro_read_user_sector(unsigned long sector_addr,
-			     unsigned short sector_count,
-			     unsigned char *data_buf);
-int mspro_write_user_sector(unsigned long sector_addr,
-			     unsigned short sector_count,
-			     unsigned char *data_buf);
-int mspro_erase_user_sector(unsigned long sector_addr,
-			     unsigned short sector_count);
-int mspro_read_attribute_sector(unsigned long sector_addr,
-				 unsigned short sector_count,
-				 unsigned char *data_buf);
-int mspro_read_information_block(void);
-int mspro_update_imformation_block(void);
-int mspro_format(void);
-int mspro_sleep(void);
 
 #endif				//_H_MSPRO_PROTOCOL

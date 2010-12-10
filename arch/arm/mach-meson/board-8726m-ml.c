@@ -1622,6 +1622,7 @@ static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
 #ifdef CONFIG_MXC_MMA7660
 	{
 		I2C_BOARD_INFO("mma7660", 0x4C),
+		.irq = INT_GPIO_2,
 	},
 #endif
 

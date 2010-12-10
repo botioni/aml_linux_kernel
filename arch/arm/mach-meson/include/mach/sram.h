@@ -11,7 +11,7 @@
 #define __MACH_SRAM_H
 
 #define SRAM_VIRT		0xf9000000
-#define SRAM_SIZE		8*1024
+#define SRAM_SIZE		7*1024 + 512
 #define SRAM_GRANULARITY	512
 
 /*

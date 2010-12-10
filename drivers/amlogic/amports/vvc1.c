@@ -272,16 +272,21 @@ static void vvc1_isr(void)
                         vf->height = vvc1_amstream_dec_info.height;
                         vf->bufWidth = 1920;
 
-                        if ((I_PICTURE == picture_type) && pts_valid)
+                        if (pts_valid)
                         {
-                                vf->pts = pts;
-                                if ((repeat_count > 1) && avi_flag)
+                                if (!avi_flag || (avi_flag && (I_PICTURE == picture_type)))
                                 {
-                                        next_pts = pts + (vvc1_amstream_dec_info.rate * repeat_count >> 1)*15/16;
-                                }
-                                else
-                                {
-                                        next_pts = 0;
+                                        vf->pts = pts;
+                                        if ((repeat_count > 1) && avi_flag)
+                                        {
+                                                vf->duration = vvc1_amstream_dec_info.rate * repeat_count >> 1;
+                                                next_pts = pts + (vvc1_amstream_dec_info.rate * repeat_count >> 1)*15/16;
+                                        }
+                                        else
+                                        {
+                                                vf->duration = vvc1_amstream_dec_info.rate >> 1;
+                                                next_pts = 0;
+                                        }
                                 }
                         }
                         else
@@ -351,16 +356,21 @@ static void vvc1_isr(void)
                         vf->height = vvc1_amstream_dec_info.height;
                         vf->bufWidth = 1920;
 
-                        if ((I_PICTURE == picture_type) && pts_valid)
+                        if (pts_valid)
                         {
-                                vf->pts = pts;
-                                if ((repeat_count > 1) && avi_flag)
+                                if (!avi_flag || (avi_flag && (I_PICTURE == picture_type)))
                                 {
-                                        next_pts = pts + (vvc1_amstream_dec_info.rate * repeat_count)*15/16;
-                                }
-                                else
-                                {
-                                        next_pts = 0;
+                                        vf->pts = pts;
+                                        if ((repeat_count > 1) && avi_flag)
+                                        {
+                                                vf->duration = vvc1_amstream_dec_info.rate * repeat_count;
+                                                next_pts = pts + (vvc1_amstream_dec_info.rate * repeat_count)*15/16;
+                                        }
+                                        else
+                                        {
+                                                vf->duration = vvc1_amstream_dec_info.rate;
+                                                next_pts = 0;
+                                        }
                                 }
                         }
                         else

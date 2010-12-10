@@ -1,7 +1,7 @@
 #
 # Automatically generated make config: don't edit
 # Linux kernel version: 2.6.34
-# Wed Dec  8 19:15:16 2010
+# Thu Dec  9 20:39:46 2010
 #
 CONFIG_ARM=y
 CONFIG_HOLES_IN_ZONE=y
@@ -580,8 +580,8 @@ CONFIG_EXTRA_FIRMWARE=""
 #
 # Char devices
 #
-CONFIG_AM_UART_WITH_S_CORE=y
-# CONFIG_AM_UART_WITHOUT_S_CORE is not set
+# CONFIG_AM_UART_WITH_S_CORE is not set
+CONFIG_AM_UART_WITHOUT_S_CORE=y
 # CONFIG_AM_UART0_SET_PORT_A is not set
 CONFIG_AM_UART0_SET_PORT_B=y
 

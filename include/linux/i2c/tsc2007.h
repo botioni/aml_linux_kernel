@@ -12,6 +12,9 @@ struct tsc2007_platform_data {
 						   interrupt source */
 	int	(*init_platform_hw)(void);
 	void	(*exit_platform_hw)(void);
+	unsigned short swap_xy:1;
+	unsigned short xpol:1;
+	unsigned short ypol:1;
 };
 
 #endif
