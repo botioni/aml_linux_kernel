@@ -137,6 +137,12 @@ void audio_in_i2s_enable(int flag)
 				WRITE_MPEG_REG_BITS(AUDIN_I2SIN_CTRL, 0, I2SIN_EN, 1);
 		}
 }
+
+int if_audio_in_i2s_enable()
+{
+	return READ_MPEG_REG_BITS(AUDIN_I2SIN_CTRL, I2SIN_EN, 1);
+}
+
 void audio_in_spdif_enable(int flag)
 {
 		WRITE_MPEG_REG_BITS(AUDIN_FIFO1_CTRL, 1, 1, 1); // reset FIFO 1
@@ -542,6 +548,11 @@ void audio_enable_ouput(int flag)
 //              WRITE_MPEG_REG_BITS(MREG_AIU_MEM_IEC958_CONTROL, 1, 0, 1);
         }
     }
+}
+
+int if_audio_out_enable()
+{
+	return READ_MPEG_REG_BITS(AIU_MEM_I2S_CONTROL, 1, 2);
 }
 
 unsigned int read_i2s_rd_ptr(void)
