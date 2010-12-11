@@ -307,29 +307,37 @@ void early_power_gate_switch(int flag)
 }
 EXPORT_SYMBOL(early_power_gate_switch);
 
+#ifndef CONFIG_HAS_EARLYSUSPEND
 #define CLK_COUNT 9
+#else
+#define CLK_COUNT 4
+#endif
 static char clk_flag[CLK_COUNT];
 static unsigned clks[CLK_COUNT]={
-    HHI_VID_CLK_CNTL,
     HHI_AUD_CLK_CNTL,
     HHI_MALI_CLK_CNTL,
     HHI_HDMI_CLK_CNTL,
+#ifndef CONFIG_HAS_EARLYSUSPEND    
+    HHI_VID_CLK_CNTL,
     HHI_DEMOD_CLK_CNTL,
     HHI_SATA_CLK_CNTL,
     HHI_ETH_CLK_CNTL,
     HHI_WIFI_CLK_CNTL,
+#endif
     HHI_MPEG_CLK_CNTL
 };
 
 static char clks_name[CLK_COUNT][32]={
-    "HHI_VID_CLK_CNTL",
     "HHI_AUD_CLK_CNTL",
     "HHI_MALI_CLK_CNTL",
     "HHI_HDMI_CLK_CNTL",
+#ifndef CONFIG_HAS_EARLYSUSPEND
+    "HHI_VID_CLK_CNTL",
     "HHI_DEMOD_CLK_CNTL",
     "HHI_SATA_CLK_CNTL",
     "HHI_ETH_CLK_CNTL",
     "HHI_WIFI_CLK_CNTL",
+#endif
     "HHI_MPEG_CLK_CNTL"
 };
 
@@ -361,6 +369,7 @@ void clk_switch(int flag)
                 else{
                     SET_CBUS_REG_MASK(clks[i], (1<<8));
                 }
+                clk_flag[i] = 0;
                 printk(KERN_INFO "clk %s(%x) on\n", clks_name[i], clks[i]);
             }
         }
@@ -404,26 +413,27 @@ void clk_switch(int flag)
 }
 EXPORT_SYMBOL(clk_switch);
 
+#ifdef CONFIG_HAS_EARLYSUSPEND
+
 #define EARLY_CLK_COUNT 5
 static char early_clk_flag[EARLY_CLK_COUNT];
 static unsigned early_clks[EARLY_CLK_COUNT]={
-    //HHI_VID_CLK_CNTL,
+    HHI_VID_CLK_CNTL,
     HHI_DEMOD_CLK_CNTL,
     HHI_SATA_CLK_CNTL,
     HHI_ETH_CLK_CNTL,
     HHI_WIFI_CLK_CNTL,
-    HHI_MPEG_CLK_CNTL,
 };
 
 static char early_clks_name[EARLY_CLK_COUNT][32]={
-    //"HHI_VID_CLK_CNTL",
+    "HHI_VID_CLK_CNTL",
     "HHI_DEMOD_CLK_CNTL",
     "HHI_SATA_CLK_CNTL",
     "HHI_ETH_CLK_CNTL",
     "HHI_WIFI_CLK_CNTL",
-    "HHI_MPEG_CLK_CNTL",
 };
 
+static unsigned nand_timing;
 void early_clk_switch(int flag)
 {
     int i;
@@ -442,11 +452,13 @@ void early_clk_switch(int flag)
                     SET_CBUS_REG_MASK(UART0_CONTROL, (((sys_clk->rate / (115200 * 4)) - 1) & 0xfff));
                     CLEAR_CBUS_REG_MASK(UART1_CONTROL, (1 << 19) | 0xFFF);
                     SET_CBUS_REG_MASK(UART1_CONTROL, (((sys_clk->rate / (115200 * 4)) - 1) & 0xfff));
+                    WRITE_CBUS_REG_BITS(NAND_CFG,nand_timing,0,14); 
                 }
                 else{
                     SET_CBUS_REG_MASK(early_clks[i], (1<<8));
                 }
-                printk(KERN_INFO "late clk %s(%x) on\n", early_clks_name[i], early_clks[i]);
+                printk(KERN_INFO "clk %s(%x) on\n", early_clks_name[i], early_clks[i]);
+                early_clk_flag[i] = 0;
             }
         }
     }
@@ -467,35 +479,47 @@ void early_clk_switch(int flag)
                         CLEAR_CBUS_REG_MASK(UART0_CONTROL, (1 << 19) | 0xFFF);
                         SET_CBUS_REG_MASK(UART0_CONTROL, (((sys_clk->rate / (115200 * 4)) - 1) & 0xfff));
                         CLEAR_CBUS_REG_MASK(UART1_CONTROL, (1 << 19) | 0xFFF);
-                        SET_CBUS_REG_MASK(UART1_CONTROL, (((sys_clk->rate / (115200 * 4)) - 1) & 0xfff));                        
+                        SET_CBUS_REG_MASK(UART1_CONTROL, (((sys_clk->rate / (115200 * 4)) - 1) & 0xfff));   
+                        nand_timing = READ_CBUS_REG_BITS(NAND_CFG,0,14);
+                        WRITE_CBUS_REG_BITS(NAND_CFG,((5)|(((-6)&0xf)<<10)|((0&7)<<5)),0,14);                 
                     }
                 }
             }
             if (early_clk_flag[i])
-                printk(KERN_INFO "early clk %s(%x) off\n", early_clks_name[i], early_clks[i]);
+                printk(KERN_INFO "clk %s(%x) off\n", early_clks_name[i], early_clks[i]);
         }
     }
 }
 EXPORT_SYMBOL(early_clk_switch);
+#endif
 
+#ifndef CONFIG_HAS_EARLYSUSPEND
 #define PLL_COUNT 6
+#else
+#define PLL_COUNT 4
+#endif
+
 static char pll_flag[PLL_COUNT];
 static unsigned plls[PLL_COUNT]={
     HHI_SYS_PLL_CNTL,
     HHI_OTHER_PLL_CNTL,
-    HHI_VID_PLL_CNTL,
     HHI_AUD_PLL_CNTL,
+    HHI_VID_PLL_CNTL,
+#ifndef CONFIG_HAS_EARLYSUSPEND
     HHI_WIFI_PLL_CNTL,
     HHI_DEMOD_PLL_CNTL,
+#endif
 };
 
 static char plls_name[PLL_COUNT][32]={
     "HHI_SYS_PLL_CNTL",
     "HHI_OTHER_PLL_CNTL",
-    "HHI_VID_PLL_CNTL",
     "HHI_AUD_PLL_CNTL",
+    "HHI_VID_PLL_CNTL",
+#ifndef CONFIG_HAS_EARLYSUSPEND
     "HHI_WIFI_PLL_CNTL",
     "HHI_DEMOD_PLL_CNTL",
+#endif
 };
 
 void pll_switch(int flag)
@@ -505,6 +529,7 @@ void pll_switch(int flag)
         for (i=0;i<PLL_COUNT;i++){
             if (pll_flag[i]) {
                 CLEAR_CBUS_REG_MASK(plls[i], (1<<15));
+                pll_flag[i] = 0;
                 printk(KERN_INFO "pll %s(%x) on\n", plls_name[i], plls[i]);
             }
         }
@@ -522,18 +547,16 @@ void pll_switch(int flag)
 }
 EXPORT_SYMBOL(pll_switch);
 
+#ifdef CONFIG_HAS_EARLYSUSPEND
+
 #define EARLY_PLL_COUNT 2
 static char early_pll_flag[EARLY_PLL_COUNT];
 static unsigned early_plls[EARLY_PLL_COUNT]={
-//    HHI_OTHER_PLL_CNTL,
-//    HHI_VID_PLL_CNTL,
     HHI_WIFI_PLL_CNTL,
     HHI_DEMOD_PLL_CNTL,
 };
 
 static char early_plls_name[EARLY_PLL_COUNT][32]={
-//    "HHI_OTHER_PLL_CNTL",
-//    "HHI_VID_PLL_CNTL",
     "HHI_WIFI_PLL_CNTL",
     "HHI_DEMOD_PLL_CNTL",
 };
@@ -545,7 +568,8 @@ void early_pll_switch(int flag)
         for (i=0;i<EARLY_PLL_COUNT;i++){
             if (early_pll_flag[i]) {
                 CLEAR_CBUS_REG_MASK(plls[i], (1<<15));
-                printk(KERN_INFO "late pll %s(%x) on\n", early_plls_name[i], early_plls[i]);
+                early_pll_flag[i] = 0;
+                printk(KERN_INFO "pll %s(%x) on\n", early_plls_name[i], early_plls[i]);
             }
         }
         udelay(1000);
@@ -554,13 +578,14 @@ void early_pll_switch(int flag)
         for (i=0;i<EARLY_PLL_COUNT;i++){
             early_pll_flag[i] = READ_CBUS_REG_BITS(plls[i], 15, 1) ? 0 : 1;
             if (early_pll_flag[i]){
-                printk(KERN_INFO "early pll %s(%x) off\n", early_plls_name[i], early_plls[i]);
+                printk(KERN_INFO "pll %s(%x) off\n", early_plls_name[i], early_plls[i]);
                 SET_CBUS_REG_MASK(early_plls[i], (1<<15));
             }
         }
     }
 }
 EXPORT_SYMBOL(early_pll_switch);
+#endif
 
 void analog_switch(int flag)
 {
@@ -677,10 +702,17 @@ static void meson_pm_suspend(void)
     }
     
     pll_switch(ON);
-    
+#ifdef CONFIG_HAS_EARLYSUSPEND
+    early_pll_switch(ON);
+#endif    
     clk_switch(ON);
-        
+#ifdef CONFIG_HAS_EARLYSUSPEND
+    early_clk_switch(ON);
+#endif    
     power_gate_switch(ON);
+#ifdef CONFIG_HAS_EARLYSUSPEND
+    early_power_gate_switch(ON);
+#endif
 
     usb_switch(ON,0);
     usb_switch(ON,1);

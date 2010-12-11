@@ -138,7 +138,8 @@ struct ads7846 {
 
 	void			(*wait_for_sync)(void);
 #ifdef CONFIG_HAS_EARLYSUSPEND
-	struct  early_suspend early_suspend;
+	struct      early_suspend early_suspend;
+	int         suspend_flag;
 #endif
 };
 
@@ -834,6 +835,9 @@ static int ads7846_suspend(struct spi_device *spi, pm_message_t message)
 {
 	struct ads7846 *ts = dev_get_drvdata(&spi->dev);
 
+    if (ts->suspend_flag)
+        return 0;
+
 	spin_lock_irq(&ts->lock);
 
 	ts->is_suspended = 1;
@@ -843,7 +847,8 @@ static int ads7846_suspend(struct spi_device *spi, pm_message_t message)
 
 	if (device_may_wakeup(&ts->spi->dev))
 		enable_irq_wake(ts->spi->irq);
-
+    
+    ts->suspend_flag = 1;
     printk("touch_suspend\n");
 	return 0;
 
@@ -852,6 +857,9 @@ static int ads7846_suspend(struct spi_device *spi, pm_message_t message)
 static int ads7846_resume(struct spi_device *spi)
 {
 	struct ads7846 *ts = dev_get_drvdata(&spi->dev);
+
+    if (!ts->suspend_flag)
+        return 0;
 
 	if (device_may_wakeup(&ts->spi->dev))
 		disable_irq_wake(ts->spi->irq);
@@ -863,6 +871,7 @@ static int ads7846_resume(struct spi_device *spi)
 
 	spin_unlock_irq(&ts->lock);
 
+    ts->suspend_flag = 0;
     printk("touch_resume\n");
 	return 0;
 }
