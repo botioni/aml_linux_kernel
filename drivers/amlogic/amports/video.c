@@ -155,7 +155,7 @@ static u32 zoom_start_y_lines;
 static u32 zoom_end_y_lines;
 
 /* wide settings */
-static u32 wide_setting; // 1  fill content .
+static u32 wide_setting;
 
 /* black out policy */
 #if defined(CONFIG_JPEGLOGO)
@@ -1656,8 +1656,6 @@ const static struct file_operations amvideo_fops = {
 
 static DEFINE_MUTEX(video_module_mutex);
 
-static char video_screen_mode[40];
-
 static int parse_para(const char *para, int para_num, int *result)
 {
     char *endp;
@@ -1733,37 +1731,28 @@ static ssize_t video_axis_store(struct class *cla, struct class_attribute *attr,
 
 static ssize_t video_screen_mode_show(struct class *cla, struct class_attribute *attr, char *buf)
 {
-    sprintf(video_screen_mode, "%d:%s", wide_setting,wide_setting?"full screen":"normal");
-    return snprintf(buf, 40, "%s\n", video_screen_mode);
+    const char *wide_str[] = {"normal", "full stretch", "4-3", "16-9"};
+
+    if (wide_setting < ARRAY_SIZE(wide_str))
+        return sprintf(buf, "%d:%s\n", wide_setting, wide_str[wide_setting]);
+    else
+        return 0;
 }
 
 static ssize_t video_screen_mode_store(struct class *cla, struct class_attribute *attr, const char *buf,
                                 size_t count)
 {
-    mutex_lock(&video_module_mutex);
+    unsigned long mode;
+    char *endp;
 
-    snprintf(video_screen_mode, 40, "%s", buf);
+    mode = simple_strtol(buf, &endp, 0);
 
-    mutex_unlock(&video_module_mutex);
-
-    if(strchr(video_screen_mode,'0'))
-    {
-        if (0 != wide_setting)
-        {
-			video_property_changed = true;
-            wide_setting=0;
-        }
-    }
-    else if(strchr(video_screen_mode,'1'))
-    {
-        if (1 != wide_setting)
-        {
-			video_property_changed = true;
-            wide_setting=1;
-        }
+    if ((mode < VIDEO_WIDEOPTION_MAX) && (mode != wide_setting)) {
+        wide_setting = mode;
+        video_property_changed = true;
     }
 
-    return strnlen(buf, count);
+    return count;
 }
 
 static ssize_t video_blackout_policy_show(struct class *cla, struct class_attribute *attr, char *buf)
