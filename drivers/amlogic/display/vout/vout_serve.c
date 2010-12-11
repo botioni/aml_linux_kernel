@@ -47,7 +47,7 @@
 #ifdef CONFIG_HAS_EARLYSUSPEND
 #include <linux/earlysuspend.h>
 static struct early_suspend early_suspend;
-static int suspend_flag = 0;
+static int early_suspend_flag = 0;
 #endif
 
 MODULE_AMLOG(0, 0xff, LOG_LEVEL_DESC, LOG_MASK_DESC);
@@ -220,18 +220,20 @@ static int  create_vout_attr(void)
 #ifdef  CONFIG_PM
 static int  meson_vout_suspend(struct platform_device *pdev, pm_message_t state)
 {	
-    if (suspend_flag)
+#ifdef CONFIG_HAS_EARLYSUSPEND
+    if (early_suspend_flag)
         return 0;
-    suspend_flag = 1;
+#endif
 	vout_suspend();
 	return 0;
 }
 
 static int  meson_vout_resume(struct platform_device *pdev)
 {
-    if (!suspend_flag)
+#ifdef CONFIG_HAS_EARLYSUSPEND
+    if (early_suspend_flag)
         return 0;
-    suspend_flag = 0;
+#endif
 	vout_resume();
 	return 0;
 }
@@ -240,11 +242,17 @@ static int  meson_vout_resume(struct platform_device *pdev)
 #ifdef CONFIG_HAS_EARLYSUSPEND
 static void meson_vout_early_suspend(struct early_suspend *h)
 {
+    if (early_suspend_flag)
+        return 0;
     meson_vout_suspend((struct platform_device *)h->param, PMSG_SUSPEND);
+    early_suspend_flag = 1;
 }
 
 static void meson_vout_late_resume(struct early_suspend *h)
 {
+    if (!early_suspend_flag)
+        return 0;
+    early_suspend_flag = 0;
     meson_vout_resume((struct platform_device *)h->param);
 }
 #endif

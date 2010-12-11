@@ -1077,6 +1077,7 @@ static struct platform_device aml_nand_device = {
 #if defined(CONFIG_AMLOGIC_BACKLIGHT)
 static void power_on_panel(void)
 {
+#ifndef CONFIG_HAS_EARLYSUSPEND
     int i;
     /* GPIOA_3, Pull low, power up LCD_3.3V */
     set_gpio_val(GPIOA_bank_bit(3), GPIOA_bit_bit0_14(3), 0);
@@ -1100,11 +1101,12 @@ static void power_on_panel(void)
     i=4;
     while(i--)
         udelay(1000);
-
+#endif
 }
 
 static void power_off_panel(void)
 {
+#ifndef CONFIG_HAS_EARLYSUSPEND
     /* GPIOA_3, Pull hi, power down LCD_3.3V */
     set_gpio_val(GPIOA_bank_bit(3), GPIOA_bit_bit0_14(3), 1);
     set_gpio_mode(GPIOA_bank_bit(3), GPIOA_bit_bit0_14(3), GPIO_OUTPUT_MODE);    
@@ -1118,6 +1120,7 @@ static void power_off_panel(void)
     clear_mio_mux(4,(0x3f<<0));
     clear_mio_mux(0, 1<<11);
     clear_mio_mux(0, 1<<14); 
+#endif
 }
 
 

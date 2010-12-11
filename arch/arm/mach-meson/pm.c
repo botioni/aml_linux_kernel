@@ -28,6 +28,7 @@
 #ifdef CONFIG_HAS_EARLYSUSPEND
 #include <linux/earlysuspend.h>
 static struct early_suspend early_suspend;
+static int early_suspend_flag = 0;
 #endif
 
 #define ON  1
@@ -53,11 +54,6 @@ static void meson_sram_push(void *dest, void *src, unsigned int size)
 #define GATE_ON(_MOD) do {if (power_gate_flag[GCLK_IDX_##_MOD]) CLK_GATE_ON(_MOD);} while(0)
 #define GATE_SWITCH(flag, _MOD) do {if (flag) GATE_ON(_MOD); else GATE_OFF(_MOD);} while(0)
 static int power_gate_flag[GCLK_IDX_MAX];
-
-#define EARLY_GATE_OFF(_MOD) do {early_power_gate_flag[GCLK_IDX_##_MOD] = IS_CLK_GATE_ON(_MOD);CLK_GATE_OFF(_MOD);} while(0)
-#define EARLY_GATE_ON(_MOD) do {if (early_power_gate_flag[GCLK_IDX_##_MOD]) CLK_GATE_ON(_MOD);} while(0)
-#define EARLY_GATE_SWITCH(flag, _MOD) do {if (flag) EARLY_GATE_ON(_MOD); else EARLY_GATE_OFF(_MOD);} while(0)
-static int early_power_gate_flag[GCLK_IDX_MAX];
 
 void power_gate_init(void)
 {
@@ -188,17 +184,12 @@ void power_gate_switch(int flag)
     GATE_SWITCH(flag, AIU_I2S_SLOW);
     GATE_SWITCH(flag, AIU_AUD_DAC_CLK);
     //GATE_SWITCH(flag, ASSIST_MISC);
-    GATE_SWITCH(flag, AMRISC);
     GATE_SWITCH(flag, AUD_BUF);
-    GATE_SWITCH(flag, AUD_IN);
     GATE_SWITCH(flag, BLK_MOV);
-    GATE_SWITCH(flag, BT656_IN);
     GATE_SWITCH(flag, DEMUX);
     //GATE_SWITCH(flag, MMC_DDR);
     //GATE_SWITCH(flag, DDR);
-    GATE_SWITCH(flag, DIG_VID_IN);
     GATE_SWITCH(flag, ETHERNET);
-    GATE_SWITCH(flag, GE2D);
     GATE_SWITCH(flag, HDMI_MPEG_DOMAIN);
     //GATE_SWITCH(flag, HIU_PARSER);
     //GATE_SWITCH(flag, HIU_PARSER_TOP);
@@ -210,21 +201,10 @@ void power_gate_switch(int flag)
     //GATE_SWITCH(flag, AHB_CONTROL_BUS);
     //GATE_SWITCH(flag, AHB_DATA_BUS);
     //GATE_SWITCH(flag, AXI_BUS);
-    GATE_SWITCH(flag, ROM_CLK);
-    GATE_SWITCH(flag, EFUSE);
     //GATE_SWITCH(flag, AHB_ARB0);
     //GATE_SWITCH(flag, RESET);
-    GATE_SWITCH(flag, MDEC_CLK_PIC_DC);
-    GATE_SWITCH(flag, MDEC_CLK_DBLK);
-    GATE_SWITCH(flag, MDEC_CLK_PSC);
-    GATE_SWITCH(flag, MDEC_CLK_ASSIST);
-    GATE_SWITCH(flag, MC_CLK);
-    GATE_SWITCH(flag, IQIDCT_CLK);
-    GATE_SWITCH(flag, VLD_CLK);
     GATE_SWITCH(flag, NAND);
     GATE_SWITCH(flag, RESERVED0);
-    GATE_SWITCH(flag, VGHL_PWM);
-    GATE_SWITCH(flag, LED_PWM);
     //GATE_SWITCH(flag, UART1);
     GATE_SWITCH(flag, SDIO);
     GATE_SWITCH(flag, ASYNC_FIFO);
@@ -242,6 +222,30 @@ void power_gate_switch(int flag)
     GATE_SWITCH(flag, SPI1);
     GATE_SWITCH(flag, USB1);
     GATE_SWITCH(flag, USB0);
+    GATE_SWITCH(flag, WIFI);
+}
+EXPORT_SYMBOL(power_gate_switch);
+
+void early_power_gate_switch(int flag)
+{
+    GATE_SWITCH(flag, AMRISC);
+    GATE_SWITCH(flag, AUD_IN);
+    GATE_SWITCH(flag, BLK_MOV);
+    GATE_SWITCH(flag, BT656_IN);
+    GATE_SWITCH(flag, DIG_VID_IN);
+    GATE_SWITCH(flag, GE2D);
+    GATE_SWITCH(flag, ROM_CLK);
+    GATE_SWITCH(flag, EFUSE);
+    GATE_SWITCH(flag, MDEC_CLK_PIC_DC);
+    GATE_SWITCH(flag, MDEC_CLK_DBLK);
+    GATE_SWITCH(flag, MDEC_CLK_PSC);
+    GATE_SWITCH(flag, MDEC_CLK_ASSIST);
+    GATE_SWITCH(flag, MC_CLK);
+    GATE_SWITCH(flag, IQIDCT_CLK);
+    GATE_SWITCH(flag, VLD_CLK);
+    GATE_SWITCH(flag, RESERVED0);
+    GATE_SWITCH(flag, VGHL_PWM);
+    GATE_SWITCH(flag, LED_PWM);
     GATE_SWITCH(flag, VI_CORE);
     GATE_SWITCH(flag, LCD);
     GATE_SWITCH(flag, ENC480P_MPEG_DOMAIN);
@@ -261,69 +265,16 @@ void power_gate_switch(int flag)
     GATE_SWITCH(flag, VCLK1_VENC_ENCI);
     GATE_SWITCH(flag, VCLK1_VENC_BIST);
     GATE_SWITCH(flag, VIDEO_IN);
-    GATE_SWITCH(flag, WIFI);
-}
-EXPORT_SYMBOL(power_gate_switch);
-
-void early_power_gate_switch(int flag)
-{
-    EARLY_GATE_SWITCH(flag, AMRISC);
-    EARLY_GATE_SWITCH(flag, AUD_IN);
-    EARLY_GATE_SWITCH(flag, BLK_MOV);
-    EARLY_GATE_SWITCH(flag, BT656_IN);
-    EARLY_GATE_SWITCH(flag, DIG_VID_IN);
-    EARLY_GATE_SWITCH(flag, GE2D);
-    EARLY_GATE_SWITCH(flag, ROM_CLK);
-    EARLY_GATE_SWITCH(flag, EFUSE);
-    EARLY_GATE_SWITCH(flag, MDEC_CLK_PIC_DC);
-    EARLY_GATE_SWITCH(flag, MDEC_CLK_DBLK);
-    EARLY_GATE_SWITCH(flag, MDEC_CLK_PSC);
-    EARLY_GATE_SWITCH(flag, MDEC_CLK_ASSIST);
-    EARLY_GATE_SWITCH(flag, MC_CLK);
-    EARLY_GATE_SWITCH(flag, IQIDCT_CLK);
-    EARLY_GATE_SWITCH(flag, VLD_CLK);
-    EARLY_GATE_SWITCH(flag, RESERVED0);
-    EARLY_GATE_SWITCH(flag, VGHL_PWM);
-    EARLY_GATE_SWITCH(flag, LED_PWM);
-    EARLY_GATE_SWITCH(flag, VI_CORE);
-    EARLY_GATE_SWITCH(flag, LCD);
-    EARLY_GATE_SWITCH(flag, ENC480P_MPEG_DOMAIN);
-    EARLY_GATE_SWITCH(flag, ENC480I);
-    EARLY_GATE_SWITCH(flag, VENC_MISC);
-    EARLY_GATE_SWITCH(flag, ENC480P);
-    EARLY_GATE_SWITCH(flag, HDMI);
-    EARLY_GATE_SWITCH(flag, VCLK3_DAC);
-    EARLY_GATE_SWITCH(flag, VCLK3_MISC);
-    EARLY_GATE_SWITCH(flag, VCLK3_DVI);
-    EARLY_GATE_SWITCH(flag, VCLK2_VIU);
-    EARLY_GATE_SWITCH(flag, VCLK2_VENC_DVI);
-    EARLY_GATE_SWITCH(flag, VCLK2_VENC_ENC480P);
-    EARLY_GATE_SWITCH(flag, VCLK2_VENC_BIST);
-    EARLY_GATE_SWITCH(flag, VCLK1_VENC_656);
-    EARLY_GATE_SWITCH(flag, VCLK1_VENC_DVI);
-    EARLY_GATE_SWITCH(flag, VCLK1_VENC_ENCI);
-    EARLY_GATE_SWITCH(flag, VCLK1_VENC_BIST);
-    EARLY_GATE_SWITCH(flag, VIDEO_IN);
 }
 EXPORT_SYMBOL(early_power_gate_switch);
 
-#ifndef CONFIG_HAS_EARLYSUSPEND
-#define CLK_COUNT 9
-#else
-#define CLK_COUNT 4
-#endif
+#define CLK_COUNT 5
 static char clk_flag[CLK_COUNT];
 static unsigned clks[CLK_COUNT]={
     HHI_AUD_CLK_CNTL,
     HHI_MALI_CLK_CNTL,
     HHI_HDMI_CLK_CNTL,
-#ifndef CONFIG_HAS_EARLYSUSPEND    
     HHI_VID_CLK_CNTL,
-    HHI_DEMOD_CLK_CNTL,
-    HHI_SATA_CLK_CNTL,
-    HHI_ETH_CLK_CNTL,
-    HHI_WIFI_CLK_CNTL,
-#endif
     HHI_MPEG_CLK_CNTL
 };
 
@@ -331,13 +282,7 @@ static char clks_name[CLK_COUNT][32]={
     "HHI_AUD_CLK_CNTL",
     "HHI_MALI_CLK_CNTL",
     "HHI_HDMI_CLK_CNTL",
-#ifndef CONFIG_HAS_EARLYSUSPEND
     "HHI_VID_CLK_CNTL",
-    "HHI_DEMOD_CLK_CNTL",
-    "HHI_SATA_CLK_CNTL",
-    "HHI_ETH_CLK_CNTL",
-    "HHI_WIFI_CLK_CNTL",
-#endif
     "HHI_MPEG_CLK_CNTL"
 };
 
@@ -349,7 +294,7 @@ void clk_switch(int flag)
     struct clk *sys_clk;
 #endif
     if (flag){
-        for (i=0;i<CLK_COUNT;i++){
+        for (i=CLK_COUNT-1;i>=0;i--){
             if (clk_flag[i]){
                 if (clks[i] == HHI_VID_CLK_CNTL){
                     SET_CBUS_REG_MASK(clks[i], 1);
@@ -413,12 +358,9 @@ void clk_switch(int flag)
 }
 EXPORT_SYMBOL(clk_switch);
 
-#ifdef CONFIG_HAS_EARLYSUSPEND
-
-#define EARLY_CLK_COUNT 5
+#define EARLY_CLK_COUNT 4
 static char early_clk_flag[EARLY_CLK_COUNT];
 static unsigned early_clks[EARLY_CLK_COUNT]={
-    HHI_VID_CLK_CNTL,
     HHI_DEMOD_CLK_CNTL,
     HHI_SATA_CLK_CNTL,
     HHI_ETH_CLK_CNTL,
@@ -426,7 +368,6 @@ static unsigned early_clks[EARLY_CLK_COUNT]={
 };
 
 static char early_clks_name[EARLY_CLK_COUNT][32]={
-    "HHI_VID_CLK_CNTL",
     "HHI_DEMOD_CLK_CNTL",
     "HHI_SATA_CLK_CNTL",
     "HHI_ETH_CLK_CNTL",
@@ -440,10 +381,10 @@ void early_clk_switch(int flag)
     struct clk *sys_clk;
 
     if (flag){
-        for (i=0;i<EARLY_CLK_COUNT;i++){
+        for (i=EARLY_CLK_COUNT-1;i>=0;i--){
             if (early_clk_flag[i]){
                 if (early_clks[i] == HHI_VID_CLK_CNTL){
-                    SET_CBUS_REG_MASK(clks[i], 1);
+                    SET_CBUS_REG_MASK(early_clks[i], 1);
                 }
                 else if (early_clks[i] == HHI_MPEG_CLK_CNTL){
                     sys_clk = clk_get_sys("clk81", NULL);
@@ -491,42 +432,29 @@ void early_clk_switch(int flag)
     }
 }
 EXPORT_SYMBOL(early_clk_switch);
-#endif
 
-#ifndef CONFIG_HAS_EARLYSUSPEND
-#define PLL_COUNT 6
-#else
 #define PLL_COUNT 4
-#endif
 
 static char pll_flag[PLL_COUNT];
 static unsigned plls[PLL_COUNT]={
-    HHI_SYS_PLL_CNTL,
-    HHI_OTHER_PLL_CNTL,
     HHI_AUD_PLL_CNTL,
     HHI_VID_PLL_CNTL,
-#ifndef CONFIG_HAS_EARLYSUSPEND
-    HHI_WIFI_PLL_CNTL,
-    HHI_DEMOD_PLL_CNTL,
-#endif
+    HHI_SYS_PLL_CNTL,
+    HHI_OTHER_PLL_CNTL,
 };
 
 static char plls_name[PLL_COUNT][32]={
-    "HHI_SYS_PLL_CNTL",
-    "HHI_OTHER_PLL_CNTL",
     "HHI_AUD_PLL_CNTL",
     "HHI_VID_PLL_CNTL",
-#ifndef CONFIG_HAS_EARLYSUSPEND
-    "HHI_WIFI_PLL_CNTL",
-    "HHI_DEMOD_PLL_CNTL",
-#endif
+    "HHI_SYS_PLL_CNTL",
+    "HHI_OTHER_PLL_CNTL",
 };
 
 void pll_switch(int flag)
 {
     int i;
     if (flag){
-        for (i=0;i<PLL_COUNT;i++){
+        for (i=PLL_COUNT-1;i>=0;i--){
             if (pll_flag[i]) {
                 CLEAR_CBUS_REG_MASK(plls[i], (1<<15));
                 pll_flag[i] = 0;
@@ -547,8 +475,6 @@ void pll_switch(int flag)
 }
 EXPORT_SYMBOL(pll_switch);
 
-#ifdef CONFIG_HAS_EARLYSUSPEND
-
 #define EARLY_PLL_COUNT 2
 static char early_pll_flag[EARLY_PLL_COUNT];
 static unsigned early_plls[EARLY_PLL_COUNT]={
@@ -565,9 +491,9 @@ void early_pll_switch(int flag)
 {
     int i;
     if (flag){
-        for (i=0;i<EARLY_PLL_COUNT;i++){
+        for (i=EARLY_PLL_COUNT-1;i>=0;i--){
             if (early_pll_flag[i]) {
-                CLEAR_CBUS_REG_MASK(plls[i], (1<<15));
+                CLEAR_CBUS_REG_MASK(early_plls[i], (1<<15));
                 early_pll_flag[i] = 0;
                 printk(KERN_INFO "pll %s(%x) on\n", early_plls_name[i], early_plls[i]);
             }
@@ -576,7 +502,7 @@ void early_pll_switch(int flag)
     }
     else{
         for (i=0;i<EARLY_PLL_COUNT;i++){
-            early_pll_flag[i] = READ_CBUS_REG_BITS(plls[i], 15, 1) ? 0 : 1;
+            early_pll_flag[i] = READ_CBUS_REG_BITS(early_plls[i], 15, 1) ? 0 : 1;
             if (early_pll_flag[i]){
                 printk(KERN_INFO "pll %s(%x) off\n", early_plls_name[i], early_plls[i]);
                 SET_CBUS_REG_MASK(early_plls[i], (1<<15));
@@ -585,7 +511,6 @@ void early_pll_switch(int flag)
     }
 }
 EXPORT_SYMBOL(early_pll_switch);
-#endif
 
 void analog_switch(int flag)
 {
@@ -621,18 +546,24 @@ void usb_switch(int flag,int ctrl)
 #ifdef CONFIG_HAS_EARLYSUSPEND
 static void meson_system_early_suspend(struct early_suspend *h)
 {
-    printk(KERN_INFO "sys_suspend\n");
-    early_power_gate_switch(OFF);
-    early_clk_switch(OFF);
-    early_pll_switch(OFF);
+    if (!early_suspend_flag){
+        printk(KERN_INFO "sys_suspend\n");
+        early_power_gate_switch(OFF);
+        early_clk_switch(OFF);
+        early_pll_switch(OFF);
+        early_suspend_flag=1;
+    }
 }
 
 static void meson_system_late_resume(struct early_suspend *h)
 {
-    early_pll_switch(ON);
-    early_clk_switch(ON);
-    early_power_gate_switch(ON);
-    printk(KERN_INFO "sys_resume\n");
+    if (early_suspend_flag){
+        early_pll_switch(ON);
+        early_clk_switch(ON);
+        early_power_gate_switch(ON);
+        early_suspend_flag = 0;
+        printk(KERN_INFO "sys_resume\n");
+    }
 }
 #endif
 
@@ -653,6 +584,7 @@ static void meson_pm_suspend(void)
     pdata->ddr_clk &= ~(0x1f<<9);
     pdata->ddr_clk |= ddr_clk_N<<9;
     printk(KERN_INFO "target ddr clock 0x%x!\n", pdata->ddr_clk);
+
     divider = READ_CBUS_REG_BITS(HHI_A9_CLK_CNTL, 8, 6);
     divider_sel = READ_CBUS_REG_BITS(HHI_A9_CLK_CNTL, 2, 2);
     WRITE_CBUS_REG(HHI_A9_CLK_CNTL, READ_CBUS_REG(HHI_A9_CLK_CNTL)&~(1<<7));
@@ -673,7 +605,7 @@ static void meson_pm_suspend(void)
     clk_switch(OFF);
     
     pll_switch(OFF);
-    
+
     meson_sram_push(meson_sram_suspend, meson_cpu_suspend,
                         meson_cpu_suspend_sz);
      
@@ -702,17 +634,10 @@ static void meson_pm_suspend(void)
     }
     
     pll_switch(ON);
-#ifdef CONFIG_HAS_EARLYSUSPEND
-    early_pll_switch(ON);
-#endif    
+
     clk_switch(ON);
-#ifdef CONFIG_HAS_EARLYSUSPEND
-    early_clk_switch(ON);
-#endif    
+
     power_gate_switch(ON);
-#ifdef CONFIG_HAS_EARLYSUSPEND
-    early_power_gate_switch(ON);
-#endif
 
     usb_switch(ON,0);
     usb_switch(ON,1);
@@ -785,7 +710,7 @@ static int __init meson_pm_probe(struct platform_device *pdev)
     early_suspend.suspend = meson_system_early_suspend;
     early_suspend.resume = meson_system_late_resume;
     early_suspend.param = pdev;
-	register_early_suspend(&early_suspend);
+//	register_early_suspend(&early_suspend);
 #endif
 
     pdata = pdev->dev.platform_data;
