@@ -262,13 +262,23 @@ RESTART:
     aspect_factor = (vpp_flags & VPP_FLAG_AR_MASK) >> VPP_FLAG_AR_BITS;
 
     /* keep 8 bits resolution for aspect conversion */
-    if ((aspect_factor == 0) || (wide_mode == VIDEO_WIDEOPTION_WIDE)) {
+    if ((aspect_factor == 0) || (wide_mode == VIDEO_WIDEOPTION_FULL_STRETCH)) {
         aspect_factor = 0x100;
 
     } else {
+        if (wide_mode == VIDEO_WIDEOPTION_4_3) {
+            aspect_factor = 0xc0;
+            wide_mode = VIDEO_WIDEOPTION_NORMAL;
+        }
+        else if (wide_mode == VIDEO_WIDEOPTION_16_9) {
+            aspect_factor = 0x90;
+            wide_mode = VIDEO_WIDEOPTION_NORMAL;
+        }        
+
         aspect_factor = (width_in * height_out * aspect_factor << 3) /
             ((width_out * height_in * aspect_ratio_out) >> 5);
     }
+
     height_after_ratio = (height_in * aspect_factor) >> 8;
 
     /* if we have ever set a cropped display area for video layer
@@ -489,13 +499,13 @@ vpp_set_filters(u32 wide_mode,
      */
     if (vf->ratio_control & DISP_RATIO_FORCECONFIG) {
         if ((vf->ratio_control & DISP_RATIO_CTRL_MASK) == DISP_RATIO_KEEPRATIO) {
-            if (wide_mode == VIDEO_WIDEOPTION_WIDE) {
+            if (wide_mode == VIDEO_WIDEOPTION_FULL_STRETCH) {
                 wide_mode = VIDEO_WIDEOPTION_NORMAL;
             }
 
         } else {
             if (wide_mode == VIDEO_WIDEOPTION_NORMAL) {
-                wide_mode = VIDEO_WIDEOPTION_WIDE;
+                wide_mode = VIDEO_WIDEOPTION_FULL_STRETCH;
             }
         }
     }
