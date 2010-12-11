@@ -31,3 +31,4 @@ obj-$(CONFIG_MACH_MESON_8726M_K7)	+= board-8726m-k7.o
 obj-$(CONFIG_MACH_MESON_8726M_C7)	+= board-8726m-c7.o
 # Power Management
 obj-$(CONFIG_SUSPEND)			+= pm.o
+obj-$(CONFIG_BCM_BT)	+= bcm-bt.o

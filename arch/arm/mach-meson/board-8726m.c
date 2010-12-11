@@ -1348,6 +1348,13 @@ static struct platform_device android_usb_device = {
 };
 #endif
 
+#ifdef CONFIG_BCM_BT
+static struct platform_device bcm_bt_device = {
+	.name             = "bcm-bt",
+	.id               = -1,
+};
+#endif
+
 static struct platform_device __initdata *platform_devs[] = {
     #if defined(CONFIG_JPEGLOGO)
 		&jpeglogo_device,
@@ -1428,7 +1435,10 @@ static struct platform_device __initdata *platform_devs[] = {
       #ifdef CONFIG_USB_ANDROID_MASS_STORAGE
 		&usb_mass_storage_device,
       #endif
-    #endif		
+    #endif	
+    #ifdef CONFIG_BCM_BT  
+        &bcm_bt_device,
+    #endif    	
 };
 static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
 
