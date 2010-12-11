@@ -1,7 +1,7 @@
 #
 # Automatically generated make config: don't edit
 # Linux kernel version: 2.6.34
-# Thu Nov 25 10:14:53 2010
+# Sat Dec 11 16:41:17 2010
 #
 CONFIG_ARM=y
 CONFIG_HOLES_IN_ZONE=y
@@ -256,6 +256,7 @@ CONFIG_ARCH_MESON=y
 # CONFIG_MACH_MESON_8726M_W10 is not set
 # CONFIG_MACH_MESON_8726M_W7 is not set
 CONFIG_MACH_MESON_8726M_K7=y
+# CONFIG_MACH_MESON_8726M_C7 is not set
 CONFIG_MESON_CLOCK_TICK_RATE=25000000
 
 #
@@ -684,6 +685,7 @@ CONFIG_AM_TCON_OUTPUT=y
 # CONFIG_AML_TCON_W10 is not set
 # CONFIG_AML_TCON_W7 is not set
 CONFIG_AML_TCON_K7=y
+# CONFIG_AML_TCON_C7 is not set
 
 #
 # Amlogic osd module
@@ -705,7 +707,7 @@ CONFIG_FB_OSD2_DEFAULT_HEIGHT_VIRTUAL=32
 #
 CONFIG_AMLOGIC_BACKLIGHT=y
 CONFIG_AM_GE2D=y
-# CONFIG_AM_LOGO is not set
+CONFIG_AM_LOGO=y
 
 #
 # AMLOGIC AV Streaming devices
@@ -739,11 +741,6 @@ CONFIG_AML_HDMI_TX=y
 # CONFIG_TVIN_DVIN is not set
 # CONFIG_TVIN_AFE is not set
 # CONFIG_TVIN_VDIN is not set
-
-#
-# Amlogic ALSA Audio devices
-#
-# CONFIG_SND_AML is not set
 
 #
 # Amlogic audio dsp process 
