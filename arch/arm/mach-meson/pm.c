@@ -25,6 +25,11 @@
 #include <mach/power_gate.h>
 #include <mach/gpio.h>
 
+#ifdef CONFIG_HAS_EARLYSUSPEND
+#include <linux/earlysuspend.h>
+static struct early_suspend early_suspend;
+#endif
+
 #define ON  1
 #define OFF 0
 
@@ -588,6 +593,25 @@ void usb_switch(int flag,int ctrl)
     }
 }
 
+#ifdef CONFIG_HAS_EARLYSUSPEND
+static void meson_system_early_suspend(struct early_suspend *h)
+{
+    printk(KERN_INFO "sys_suspend\n");
+    early_power_gate_switch(OFF);
+    early_clk_switch(OFF);
+    early_pll_switch(OFF);
+}
+
+static void meson_system_late_resume(struct early_suspend *h)
+{
+    early_pll_switch(ON);
+    early_clk_switch(ON);
+    early_power_gate_switch(ON);
+    printk(KERN_INFO "sys_resume\n");
+}
+#endif
+
+
 static void meson_pm_suspend(void)
 {
     int divider;
@@ -724,6 +748,14 @@ static int __init meson_pm_probe(struct platform_device *pdev)
     power_init_off();
     power_gate_init();
 
+#ifdef CONFIG_HAS_EARLYSUSPEND
+    early_suspend.level = EARLY_SUSPEND_LEVEL_DISABLE_FB;
+    early_suspend.suspend = meson_system_early_suspend;
+    early_suspend.resume = meson_system_late_resume;
+    early_suspend.param = pdev;
+	register_early_suspend(&early_suspend);
+#endif
+
     pdata = pdev->dev.platform_data;
     if (!pdata) {
         dev_err(&pdev->dev, "cannot get platform data\n");
@@ -746,6 +778,9 @@ static int __init meson_pm_probe(struct platform_device *pdev)
 
 static int __exit meson_pm_remove(struct platform_device *pdev)
 {
+#ifdef CONFIG_HAS_EARLYSUSPEND
+    unregister_early_suspend(&early_suspend);
+#endif
     return 0;
 }
 

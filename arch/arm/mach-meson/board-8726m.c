@@ -1092,10 +1092,7 @@ static void power_on_panel(void)
     while(i--)
         udelay(1000);
 
-    early_pll_switch(1);
-    early_clk_switch(1);
-    early_power_gate_switch(1);
-//    CLK_GATE_ON(LCD);
+    CLK_GATE_ON(LCD);
     set_mio_mux(4,(0x3f<<0));
     set_mio_mux(0, 1<<11);
     set_mio_mux(0, 1<<14);     
@@ -1116,10 +1113,8 @@ static void power_off_panel(void)
     set_gpio_val(GPIOC_bank_bit0_26(3), GPIOC_bit_bit0_26(3), 0);
     set_gpio_mode(GPIOC_bank_bit0_26(3), GPIOC_bit_bit0_26(3), GPIO_OUTPUT_MODE);
 
-//    CLK_GATE_OFF(LCD);
-    early_power_gate_switch(0);
-    early_clk_switch(0);
-    early_pll_switch(0);    
+    CLK_GATE_OFF(LCD);
+
     clear_mio_mux(4,(0x3f<<0));
     clear_mio_mux(0, 1<<11);
     clear_mio_mux(0, 1<<14); 

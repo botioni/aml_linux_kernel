@@ -44,6 +44,10 @@
 #include "tvmode.h"
 #include "vout_log.h"
 #include <linux/amlog.h>
+#ifdef CONFIG_HAS_EARLYSUSPEND
+#include <linux/earlysuspend.h>
+static struct early_suspend early_suspend;
+#endif
 
 MODULE_AMLOG(0, 0xff, LOG_LEVEL_DESC, LOG_MASK_DESC);
 //class attribute
@@ -211,6 +215,33 @@ static int  create_vout_attr(void)
 	}
 	return   0;
 }
+
+#ifdef  CONFIG_PM
+static int  meson_vout_suspend(struct platform_device *pdev, pm_message_t state)
+{	
+	vout_suspend();
+	return 0;
+}
+
+static int  meson_vout_resume(struct platform_device *pdev)
+{
+	vout_resume();
+	return 0;
+}
+#endif 
+
+#ifdef CONFIG_HAS_EARLYSUSPEND
+static void meson_vout_early_suspend(struct early_suspend *h)
+{
+    meson_vout_suspend((struct platform_device *)h->param, PMSG_SUSPEND);
+}
+
+static void meson_vout_late_resume(struct early_suspend *h)
+{
+    meson_vout_resume((struct platform_device *)h->param);
+}
+#endif
+
 /*****************************************************************
 **
 **	vout driver interface  
@@ -223,6 +254,14 @@ static int __init
 	
 	vout_info.base_class=NULL;
 	amlog_mask_level(LOG_MASK_INIT,LOG_LEVEL_HIGH,"start init vout module \r\n");
+#ifdef CONFIG_HAS_EARLYSUSPEND
+    early_suspend.level = EARLY_SUSPEND_LEVEL_BLANK_SCREEN;
+    early_suspend.suspend = meson_vout_early_suspend;
+    early_suspend.resume = meson_vout_late_resume;
+    early_suspend.param = pdev;
+	register_early_suspend(&early_suspend);
+#endif
+
 	ret =create_vout_attr();
 	if(ret==0)
 	{
@@ -240,6 +279,9 @@ static int
 {
    	int i;
 	if(vout_info.base_class==NULL) return -1;
+#ifdef CONFIG_HAS_EARLYSUSPEND
+    unregister_early_suspend(&early_suspend);
+#endif
 	
 	for(i=0;i<VOUT_ATTR_MAX;i++)
 	{
@@ -251,21 +293,7 @@ static int
 	return 0;
 }
 
-#ifdef  CONFIG_PM
-static int  meson_vout_suspend(struct platform_device *pdev, pm_message_t state)
-{	
-	vout_suspend();
-	return 0;
-}
 
-static int  meson_vout_resume(struct platform_device *pdev)
-{
-	vout_resume();
-	return 0;
-}
-
-
-#endif 
 
 static struct platform_driver
 vout_driver = {

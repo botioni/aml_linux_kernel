@@ -730,6 +730,7 @@ void  osd_suspend_hw(void)
 		}
 		preg++;
 	}
+	printk("osd_suspend\n");
 	//disable osd relative clock
 	return ;
 	
@@ -782,6 +783,7 @@ void osd_resume_hw(void)
     		amlog_level(LOG_LEVEL_HIGH,"can't request irq when osd resume\r\n");
     	}
 #endif
+    printk("osd_resume\n");
 	return ;
 }
 
