@@ -316,7 +316,6 @@ static struct platform_device fb_device = {
 #ifdef CONFIG_USB_DWC_OTG_HCD
 static void set_usb_a_vbus_power(char is_power_on)
 {
-//Only for Ramos 8726m MID
 #define USB_A_POW_GPIO	PREG_EGPIO
 #define USB_A_POW_GPIO_BIT	3
 #define USB_A_POW_GPIO_BIT_ON	1
@@ -460,18 +459,7 @@ void extern_wifi_power(int is_power)
         #ifdef CONFIG_SN7325
         printk("power on 7325 3\n");
         configIO(0, 0);
-        setIO_level(0, 0, 0);//OD0
-        setIO_level(0, 1, 1);//OD1
-        setIO_level(0, 1, 4);//OD4
-        setIO_level(0, 1, 5);//OD5
-        setIO_level(0, 0, 6);//OD6
-        configIO(1, 0);
-        setIO_level(1, 1, 4);//PP4
-        setIO_level(1, 1, 0);//PP0
-        setIO_level(1, 0, 1);//PP1
-        setIO_level(1, 1, 5);//PP5
-        setIO_level(1, 0, 6);//PP6
-        setIO_level(1, 1, 7);//PP7
+        setIO_level(0, 0, 1);
         #else
         return;
         #endif
@@ -503,9 +491,6 @@ void extern_wifi_power(int is_power)
 void sdio_extern_init(void)
 {
     extern_wifi_power(1);
-//	CLEAR_CBUS_REG_MASK(CARD_PIN_MUX_5, ((3<<4)));
-//	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<18));
-//	SET_CBUS_REG_MASK(PREG_GGPIO_O, (1<<18));
 }
 
 static struct aml_card_info  amlogic_card_info[] = {
@@ -1637,6 +1622,7 @@ static void __init device_pinmux_init(void )
 	//eth_pinmux_init();
 	aml_i2c_init();
 	set_audio_pinmux(AUDIO_OUT_TEST_N);
+    set_audio_pinmux(AUDIO_IN_JTAG);
 }
 
 static void __init  device_clk_setting(void)
