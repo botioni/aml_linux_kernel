@@ -77,16 +77,6 @@ void enable_di_mode_check (
         int field_32lvl,  int field_22lvl
 	);
 
-void enable_di_prepost_simple ( 
-   		int cav_inp_num,     int cav_mem_num, int cav_chan2_num, 
-   		int cav_disp_num,    int cav_nrwr_num, int cav_diwr_num, 
-   		int cav_mtn_inp_num, int cav_mtn_cur_num,
-   		int start_x, int end_x, int start_y, int end_y,
-   		int nr_en, int mtn_en, int pd32_check_en, int pd22_check_en, int hist_check_en, 
-   		int ei_en, int blend_en, int blend_mtn_en, int di_vpp_en, int di_ddr_en,
-   		int post_field_num, int pre_field_num, int prepost_link, int hold_line
-	);
-
 void enable_di_prepost_full (  
    		DI_MIF_t        *di_inp_mif,
    		DI_MIF_t        *di_mem_mif,
@@ -100,6 +90,11 @@ void enable_di_prepost_full (
    		DI_SIM_MIF_t    *di_mtnprd_mif,
    		int nr_en, int mtn_en, int pd32_check_en, int pd22_check_en, int hist_check_en, 
    		int ei_en, int blend_en, int blend_mtn_en, int blend_mode, int di_vpp_en, int di_ddr_en,
+#if defined(CONFIG_ARCH_MESON) 
+#elif defined(CONFIG_ARCH_MESON2)
+		int nr_hfilt_en, int nr_hfilt_mb_en, int mtn_modify_en,
+   		int blend_mtn_filt_en, int blend_data_filt_en, int post_mb_en,
+#endif
    		int post_field_num, int pre_field_num, int prepost_link, int hold_line
 	);
 
@@ -113,17 +108,6 @@ void set_di_inp_fmt_more (
         int y_length,
         int c_length,
         int hz_rpt              //1bit
-	);
-
-void set_di_inp_combined_simple (
-		unsigned long   x_start,
-		unsigned long   x_end,
-		unsigned long   y_start,
-		unsigned long   y_end,
-		unsigned long   mode,           // 1 = RGB (3 bytes per pixel), 0 = 4:2:2 (2 bytes per pixel)
-		unsigned long   urgent,
-		unsigned long   canvas,
-		int             hold_line 
 	);
 
 void set_di_inp_mif ( DI_MIF_t  * mif, int urgent, int hold_line);
@@ -140,17 +124,6 @@ void set_di_mem_fmt_more (
     	int hz_rpt              //1bit
 	);
 
-void set_di_mem_combined_simple (
-		unsigned long   x_start,
-		unsigned long   x_end,
-		unsigned long   y_start,
-		unsigned long   y_end,
-		unsigned long   mode,           // 1 = RGB (3 bytes per pixel), 0 = 4:2:2 (2 bytes per pixel)
-		unsigned long   urgent,
-		unsigned long   canvas,
-		int             hold_line 
-	);
-
 void set_di_mem_mif ( DI_MIF_t * mif, int urgent, int hold_line );
 
 void set_di_if1_fmt_more (
@@ -165,42 +138,9 @@ void set_di_if1_fmt_more (
         int hz_rpt              //1bit
     );
 
-void set_di_if1_combined_simple (
-		unsigned long   x_start,
-		unsigned long   x_end,
-		unsigned long   y_start,
-		unsigned long   y_end,
-		unsigned long   mode,           // 1 = RGB (3 bytes per pixel), 0 = 4:2:2 (2 bytes per pixel)
-		unsigned long   urgent,
-		unsigned long   canvas,
-		int             hold_line 
-	);
-
 void set_di_if1_mif ( DI_MIF_t * mif, int urgent, int hold_line );
 
-void set_di_chan2_combined_simple (
-		unsigned long   x_start,
-		unsigned long   x_end,
-		unsigned long   y_start,
-		unsigned long   y_end,
-		unsigned long   mode,           // 1 = RGB (3 bytes per pixel), 0 = 4:2:2 (2 bytes per pixel)
-		unsigned long   urgent,
-		unsigned long   canvas,
-		int             hold_line 
-	);
-
 void set_di_chan2_mif ( DI_MIF_t *mif, int urgent, int hold_line );
-
-void set_di_if0_combined_simple (
-		unsigned long   x_start,
-		unsigned long   x_end,
-		unsigned long   y_start,
-		unsigned long   y_end,
-		unsigned long   mode,           // 1 = RGB (3 bytes per pixel), 0 = 4:2:2 (2 bytes per pixel)
-		unsigned long   urgent,
-		unsigned long   canvas,
-		int             hold_line 
-	);
 
 void set_di_if0_mif ( DI_MIF_t *mif, int urgent, int hold_line );
 
@@ -211,6 +151,10 @@ void enable_di_pre (
    		DI_SIM_MIF_t    *di_nrwr_mif,
    		DI_SIM_MIF_t    *di_mtnwr_mif,
    		int nr_en, int mtn_en, int pd32_check_en, int pd22_check_en, int hist_check_en, 
+#if defined(CONFIG_ARCH_MESON)
+#elif defined(CONFIG_ARCH_MESON2)
+		int nr_hfilt_en, int nr_hfilt_mb_en, int mtn_modify_en,
+#endif
    		int pre_field_num, int pre_viu_link, int hold_line
    	);
 
@@ -221,6 +165,10 @@ void enable_di_post (
    		DI_SIM_MIF_t    *di_mtncrd_mif,
    		DI_SIM_MIF_t    *di_mtnprd_mif,
    		int ei_en, int blend_en, int blend_mtn_en, int blend_mode, int di_vpp_en, int di_ddr_en,
+#if defined(CONFIG_ARCH_MESON)
+#elif defined(CONFIG_ARCH_MESON2)
+   		int blend_mtn_filt_en, int blend_data_filt_en, int post_mb_en,
+#endif
    		int post_field_num, int hold_line
    	);
 
@@ -230,6 +178,10 @@ void enable_region_blend (
         int reg2_en, int reg2_start_x, int reg2_end_x, int reg2_start_y, int reg2_end_y, int reg2_mode,
         int reg3_en, int reg3_start_x, int reg3_end_x, int reg3_start_y, int reg3_end_y, int reg3_mode 
     );
+
+void set_vdin_par(int flag, vframe_t *buf);
+
+void di_pre_process(void);
 
 void run_deinterlace(unsigned zoom_start_x_lines, unsigned zoom_end_x_lines, unsigned zoom_start_y_lines, unsigned zoom_end_y_lines, 
 	unsigned type, int mode, int hold_line);
