@@ -851,7 +851,27 @@ static	struct platform_device aml_rtc_device = {
 #endif
 
 #if defined(CONFIG_SUSPEND)
-
+static void set_vccx2(int power_on)
+{
+    if(power_on)
+    {
+        //set_gpio_val(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), 1);
+        //set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);
+        #ifdef CONFIG_SN7325
+        configIO(1, 0);
+        setIO_level(1, 1, 4);
+        #endif
+    }
+    else
+    {
+        //set_gpio_val(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), 0);
+       // set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);
+        #ifdef CONFIG_SN7325
+        configIO(1, 0);
+        setIO_level(1, 0, 4);
+        #endif
+    }
+}
 static struct meson_pm_config aml_pm_pdata = {
     .ddr2_reg_refresh = IO_APB_BUS_BASE+0x0004,
     .ddr2_reg_phy = IO_APB_BUS_BASE+0x1380,
@@ -860,7 +880,7 @@ static struct meson_pm_config aml_pm_pdata = {
     .power_key = CBUS_REG_ADDR(RTC_ADDR1),
     .ddr_clk = 0x00110820,
     .sleepcount = 128,
-    //.set_vccx2 = set_vccx2,
+    .set_vccx2 = set_vccx2,
 };
 
 static struct platform_device aml_pm_device = {
@@ -1238,6 +1258,37 @@ static struct platform_device aml_nand_device = {
 #endif  //CONFIG_NAND_FLASH_DRIVER_MULTIPLANE_CE
 
 #if defined(CONFIG_AMLOGIC_BACKLIGHT)
+static void power_on_panel(void)
+{
+    int i;
+    /* Power up LCD_3.3V */
+    set_gpio_val(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), 1);
+    set_gpio_mode(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), GPIO_OUTPUT_MODE);
+	WRITE_CBUS_REG(VGHL_PWM_REG0, (READ_CBUS_REG(VGHL_PWM_REG0) &~(0xf<<0)));
+	
+    while(i--)
+        udelay(1000);
+
+    CLK_GATE_ON(LCD);
+    set_mio_mux(4,(0x3f<<0));
+    set_mio_mux(0, 1<<11);
+    set_mio_mux(0, 1<<14);     
+    
+    i=4;
+    while(i--)
+        udelay(1000);
+
+}
+
+static void power_off_panel(void)
+{
+    set_gpio_val(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), 0);
+    set_gpio_mode(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), GPIO_OUTPUT_MODE);
+    CLK_GATE_OFF(LCD);
+    clear_mio_mux(4,(0x3f<<0));
+    clear_mio_mux(0, 1<<11);
+    clear_mio_mux(0, 1<<14); 
+}
 
 #define PWM_TCNT        (600-1)
 #define PWM_MAX_VAL    (420)
@@ -1289,6 +1340,7 @@ static void aml_8726m_bl_init(void)
     WRITE_CBUS_REG(VGHL_PWM_REG4, val);
 }
 static unsigned bl_level;
+static unsigned panel_state = 0;
 static unsigned aml_8726m_get_bl_level(void)
 {
 //    unsigned level = 0;
@@ -1302,6 +1354,7 @@ static unsigned aml_8726m_get_bl_level(void)
 static void aml_8726m_set_bl_level(unsigned level)
 {
     unsigned cs_level,pwm_level,low,hi;
+    int i;
     
     bl_level = level;
     
@@ -1321,11 +1374,30 @@ static void aml_8726m_set_bl_level(unsigned level)
         
     hi = (BL_MAX_LEVEL/100)*pwm_level;
     low = BL_MAX_LEVEL - hi;
-    WRITE_CBUS_REG_BITS(VGHL_PWM_REG0, cs_level, 0, 4);   
-    SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<31)); 
-    SET_CBUS_REG_MASK(PWM_MISC_REG_AB, (1 << 0));         
+
+    if(bl_level >=30&&panel_state == 0){
+        panel_state = 1;
+        power_on_panel();
+        for(i = 0;i<=200;i++){
+            udelay(1000);
+        }
+    }
+
+    WRITE_CBUS_REG_BITS(VGHL_PWM_REG0, cs_level, 0, 4);
     WRITE_CBUS_REG_BITS(PWM_PWM_A,low,0,16);  //low
-    WRITE_CBUS_REG_BITS(PWM_PWM_A,hi,16,16);  //hi   
+    WRITE_CBUS_REG_BITS(PWM_PWM_A,hi,16,16);  //hi
+    SET_CBUS_REG_MASK(PWM_MISC_REG_AB, (1 << 0)); 
+    SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<31));
+
+    if(bl_level <30&&panel_state == 1){
+        panel_state = 0;
+        set_gpio_val(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), 0);
+        set_gpio_mode(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), GPIO_OUTPUT_MODE);
+        CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<31));
+        CLEAR_CBUS_REG_MASK(PWM_MISC_REG_AB, (1 << 0));
+        power_off_panel();
+        
+    }
 }
 
 static void aml_8726m_power_on_bl(void)
