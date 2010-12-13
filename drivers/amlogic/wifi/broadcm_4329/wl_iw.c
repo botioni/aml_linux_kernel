@@ -1008,6 +1008,7 @@ wl_iw_send_priv_event(
 	return 0;
 }
 
+int dhd_deep_sleep(int flag);
 
 int
 wl_control_wl_start(struct net_device *dev)
@@ -1026,17 +1027,17 @@ wl_control_wl_start(struct net_device *dev)
 	MUTEX_LOCK(iw->pub);
 
 	if (g_onoff == G_WLAN_SET_OFF) {
-		dhd_customer_gpio_wlan_ctrl(WLAN_RESET_ON);
-
-#if defined(BCMLXSDMMC)
-		sdioh_start(NULL, 0);
-#endif
-
-		dhd_dev_reset(dev, 0);
-
-#if defined(BCMLXSDMMC)
-		sdioh_start(NULL, 1);
-#endif
+//		dhd_customer_gpio_wlan_ctrl(WLAN_RESET_ON);
+	dhd_deep_sleep(FALSE);
+//#if defined(BCMLXSDMMC)
+//		sdioh_start(NULL, 0);
+//#endif
+//
+//		dhd_dev_reset(dev, 0);
+//
+//#if defined(BCMLXSDMMC)
+//		sdioh_start(NULL, 1);
+//#endif
 
 		dhd_dev_init_ioctl(dev);
 
@@ -1078,7 +1079,7 @@ wl_iw_control_wl_off(
 		g_iscan->iscan_state = ISCAN_STATE_IDLE;
 #endif 
 
-		dhd_dev_reset(dev, 1);
+//		dhd_dev_reset(dev, 1);
 
 #if defined(WL_IW_USE_ISCAN)
 #if !defined(CSCAN)
@@ -1094,11 +1095,11 @@ wl_iw_control_wl_off(
 		g_first_broadcast_scan = BROADCAST_SCAN_FIRST_IDLE;
 #endif 
 
-#if defined(BCMLXSDMMC)
-		sdioh_stop(NULL);
-#endif
-
-		dhd_customer_gpio_wlan_ctrl(WLAN_RESET_OFF);
+//#if defined(BCMLXSDMMC)
+//		sdioh_stop(NULL);
+//#endif
+   dhd_deep_sleep(TRUE);
+		//dhd_customer_gpio_wlan_ctrl(WLAN_RESET_OFF);
 
 		wl_iw_send_priv_event(dev, "STOP");
 
@@ -7400,6 +7401,24 @@ wl_iw_bt_release(void)
 	g_bt = NULL;
 }
 
+static struct net_device *my_dev;
+void dhd_store_device(struct net_device *dev)
+{
+	my_dev = dev;
+}
+
+void dhd_tele_on(void)
+{
+	if(my_dev)
+		wl_iw_control_wl_on(my_dev,NULL);
+}
+
+void dhd_tele_off(void)
+{
+	if(my_dev)
+		wl_iw_control_wl_off(my_dev,NULL);
+}
+
 static int
 wl_iw_bt_init(struct net_device *dev)
 {
@@ -7442,6 +7461,7 @@ int wl_iw_attach(struct net_device *dev, void * dhdp)
 	if (!dev)
 		return 0;
 
+dhd_store_device(dev);
 	
 #ifdef CSCAN
 	params_size = (WL_SCAN_PARAMS_FIXED_SIZE + OFFSETOF(wl_iscan_params_t, params)) +

@@ -15,7 +15,7 @@
 #include <mach/am_regs.h>
 #include <mach/irqs.h>
 #include <mach/card_io.h>
-
+#include <mach/power_gate.h>
 #include <linux/cardreader/card_block.h>
 #include <linux/cardreader/cardreader.h>
 #include <linux/cardreader/sdio.h>
@@ -106,6 +106,11 @@ void sd_close(struct memory_card *card)
 {
 	SD_MMC_Card_Info_t *sd_mmc_info = (SD_MMC_Card_Info_t *)card->card_info;
 
+	if(!sd_mmc_info)
+	{
+		printk("error: no card to exit\n");
+		return;
+	}
 	sd_mmc_exit(sd_mmc_info);
 	sd_mmc_free(sd_mmc_info);
 	sd_mmc_info = NULL;
@@ -113,6 +118,41 @@ void sd_close(struct memory_card *card)
 	card->unit_state =  CARD_UNIT_PROCESSED;
 
 	return;
+}
+
+void sd_suspend(struct memory_card *card)
+{
+	struct aml_card_info *aml_card_info = card->card_plat_info;
+	
+	SD_MMC_Card_Info_t *sd_mmc_info = (SD_MMC_Card_Info_t *)card->card_info;
+
+	printk("***Entered %s:%s\n", __FILE__,__func__);	
+	
+	CLK_GATE_OFF(SDIO);  
+	 
+	if(card->card_type == CARD_SDIO)
+	{
+		return;
+	}
+		        
+	memset(sd_mmc_info, 0, sizeof(SD_MMC_Card_Info_t));
+	if (card->host->dma_buf != NULL) {
+		sd_mmc_info->sd_mmc_buf = card->host->dma_buf;
+		sd_mmc_info->sd_mmc_phy_buf = card->host->dma_phy_buf;
+	}	
+	card->card_io_init(card);
+	sd_mmc_info->io_pad_type = aml_card_info->io_pad_type;
+	sd_mmc_info->bus_width = SD_BUS_SINGLE;
+	sd_mmc_info->sdio_clk_unit = 3000;
+	sd_mmc_info->clks_nac = SD_MMC_TIME_NAC_DEFAULT;
+	sd_mmc_info->max_blk_count = card->host->max_blk_count;
+	
+}
+
+void sd_resume(struct memory_card *card)
+{
+	printk("***Entered %s:%s\n", __FILE__,__func__);
+	CLK_GATE_ON(SDIO);
 }
 
 void sd_io_init(struct memory_card *card)
@@ -432,7 +472,8 @@ int sd_mmc_probe(struct memory_card *card)
 	card->card_insert_process = sd_open;
 	card->card_remove_process = sd_close;
 	card->card_request_process = sd_request;
-
+	card->card_suspend = sd_suspend;
+	card->card_resume = sd_resume;
 	if (aml_card_info->card_extern_init)
 		aml_card_info->card_extern_init();
 	card->card_io_init(card);
@@ -465,7 +506,8 @@ int sdio_probe(struct memory_card *card)
 	card->card_insert_process = sd_open;
 	card->card_remove_process = sd_close;
 	card->card_request_process = sdio_request;
-
+        card->card_suspend = sd_suspend;
+        card->card_resume = sd_resume;
 	if (aml_card_info->card_extern_init)
 		aml_card_info->card_extern_init();
 	card->card_io_init(card);

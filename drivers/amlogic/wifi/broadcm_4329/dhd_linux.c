@@ -547,15 +547,17 @@ int dhd_set_suspend(int value, dhd_pub_t *dhd)
 
 	return 0;
 }
-
+void dhd_tele_on(void);
+void dhd_tele_off(void);
 static void dhd_early_suspend(struct early_suspend *h)
 {
 	struct dhd_info *dhdp;
 	dhdp = container_of(h, struct dhd_info, early_suspend);
 
 	DHD_TRACE(("%s: enter\n", __FUNCTION__));
-
-	dhd_set_suspend(1, &dhdp->pub);
+	printk("%s: enter\n", __FUNCTION__);
+	dhd_tele_off();
+	//dhd_set_suspend(1, &dhdp->pub);
 }
 
 static void dhd_late_resume(struct early_suspend *h)
@@ -564,8 +566,9 @@ static void dhd_late_resume(struct early_suspend *h)
 	dhdp = container_of(h, struct dhd_info, early_suspend);
 
 	DHD_TRACE(("%s: enter\n", __FUNCTION__));
-
-	dhd_set_suspend(0, &dhdp->pub);
+	printk("%s: enter\n", __FUNCTION__);
+	dhd_tele_on();
+	//dhd_set_suspend(0, &dhdp->pub);
 }
 #endif /* defined(CONFIG_HAS_EARLYSUSPEND) */
 

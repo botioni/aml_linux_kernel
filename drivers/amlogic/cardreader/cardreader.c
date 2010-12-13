@@ -26,7 +26,7 @@
 #include <linux/cardreader/sdio.h>
 #include <linux/cardreader/cardreader.h>
 #include <linux/cardreader/card_block.h>
-
+#include <linux/kthread.h>
 #include <asm/cacheflush.h>
 #include <mach/am_regs.h>
 #include <mach/irqs.h>
@@ -201,15 +201,13 @@ static void card_reader_initialize(struct card_host *host)
 
 static int card_reader_init(struct card_host *host) 
 {	
-	int ret;	
-
 	host->dma_buf = dma_alloc_coherent(NULL, host->max_req_size, (dma_addr_t *)&host->dma_phy_buf, GFP_KERNEL);
 	if(host->dma_buf == NULL)
 		return -ENOMEM;
 
 	card_reader_initialize(host);	
-	ret = kernel_thread(card_reader_monitor, host, CLONE_KERNEL | SIGCHLD);
-	if (ret < 0)	
+	host->card_task = kthread_run(card_reader_monitor, host, "card");
+	if (!host->card_task)	
 		printk("card creat process failed\n");
 	else	
 		printk("card creat process sucessful\n");
@@ -221,7 +219,6 @@ static int card_reader_monitor(void *data)
     unsigned card_type, card_4in1_init_type;
     struct card_host *card_host = (struct card_host *)data;
     struct memory_card *card = NULL;
-    unsigned char slot_detector = 0;
     card_4in1_init_type = 0;
 
 	daemonize("card_read_monitor");
@@ -230,6 +227,14 @@ static int card_reader_monitor(void *data)
 		msleep(200);
 
 		mutex_lock(&init_lock);
+		if(card_host->card_task_state)
+		{
+			set_current_state(TASK_INTERRUPTIBLE);
+			mutex_unlock(&init_lock);
+			schedule();
+			set_current_state(TASK_RUNNING);
+			mutex_lock(&init_lock);
+		}
 		for(card_type=CARD_XD_PICTURE; card_type<CARD_MAX_UNIT; card_type++) {
 
 			card_reader_initialize(card_host);
@@ -242,7 +247,7 @@ static int card_reader_monitor(void *data)
 
 	    	if((card->card_status == CARD_INSERTED) && (card->unit_state != CARD_UNIT_READY) && 
 			((card_type == CARD_SDIO) ||(card_type == CARD_INAND)	||
-			(slot_detector == CARD_REMOVED)||(card->card_slot_mode == CARD_SLOT_DISJUNCT))) {
+			(card_host->slot_detector == CARD_REMOVED)||(card->card_slot_mode == CARD_SLOT_DISJUNCT))) {
 
 				printk("insert process\n");
 				card->card_insert_process(card);
@@ -250,12 +255,13 @@ static int card_reader_monitor(void *data)
 				if(card->unit_state == CARD_UNIT_PROCESSED) {
 					if(card->card_slot_mode == CARD_SLOT_4_1) {
 						if (card_type != CARD_SDIO && card_type != CARD_INAND) {
-	                		slot_detector = CARD_INSERTED;
+	                		card_host->slot_detector = CARD_INSERTED;
 	                		card_4in1_init_type = card_type;
 	                	}
 					}
 					card->unit_state = CARD_UNIT_READY;
 					card_host->card_type = card_type;
+					if(card->state != CARD_STATE_PRESENT)
 					card->state = CARD_STATE_INITED;
 					if (card_type == CARD_SDIO)
 						card_host->card = card;
@@ -266,7 +272,7 @@ static int card_reader_monitor(void *data)
 
 				if(card->card_slot_mode == CARD_SLOT_4_1) {                       
 					if (card_type == card_4in1_init_type) 
-						slot_detector = CARD_REMOVED;
+						card_host->slot_detector = CARD_REMOVED;
 				}
 
 				card->card_remove_process(card);
