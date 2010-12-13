@@ -24,6 +24,7 @@ static int subtitle_current = 0; // no subtitle
 static int subtitle_size = 0;
 static int subtitle_read_pos = 0;
 static int subtitle_write_pos = 0;
+static int subtitle_start_pts = 0;
 //static int *subltitle_address[MAX_SUBTITLE_PACKET];
 
 // total
@@ -212,6 +213,30 @@ static ssize_t store_size(struct class *class,
     return size;
 }
 
+static ssize_t show_startpts(struct class *class,
+                           struct class_attribute *attr,
+                           char *buf)
+{
+    return sprintf(buf, "%d: pts\n", subtitle_start_pts);
+}
+
+static ssize_t store_startpts(struct class *class,
+                            struct class_attribute *attr,
+                            const char *buf,
+                            size_t size)
+{
+    unsigned spts;
+    ssize_t r;
+
+    r = sscanf(buf, "%d", &spts);
+    if ((r <= 0))
+        return -EINVAL;
+	printk("subtitle start pts is %x\n", spts);
+    subtitle_start_pts = spts;
+
+    return size;
+}
+
 static ssize_t show_data(struct class *class,
                            struct class_attribute *attr,
                            char *buf)
@@ -256,6 +281,7 @@ static struct class_attribute subtitle_class_attrs[] = {
     __ATTR(curr,     S_IRUGO | S_IWUSR, show_curr,  store_curr),
     __ATTR(size,     S_IRUGO | S_IWUSR, show_size,  store_size),
     __ATTR(data,     S_IRUGO | S_IWUSR, show_data,  store_data),
+    __ATTR(startpts,     S_IRUGO | S_IWUSR, show_startpts,  store_startpts), 
     __ATTR_NULL
 };
 
