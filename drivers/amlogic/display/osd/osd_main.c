@@ -368,7 +368,8 @@ static int osd_cursor(struct fb_info *fbi, struct fb_cursor *var)
 		starty = fb_dev->osd_ctl.disp_start_y;
 	}
 	osddev_cursor((struct myfb_dev *)fbi->par,
-                  startx + (s16)var->hot.x, starty + (s16)var->hot.y,
+                  (s16)var->hot.x, (s16)var->hot.y,
+                  startx, starty,
                   fbi->var.xres, fbi->var.yres);
 	return 0;
 }

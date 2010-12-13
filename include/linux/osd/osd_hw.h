@@ -76,7 +76,7 @@ extern void osd_setpal_hw(unsigned regno, unsigned red, unsigned green, unsigned
 extern void osd_enable_hw(int enable,int index );
 extern void osd_pan_display_hw(unsigned int xoffset, unsigned int yoffset,int index );
 #if defined(CONFIG_FB_OSD2_CURSOR)
-extern void osd_cursor_hw(s16 x, s16 y, u32 osd_w, u32 osd_h, int index);
+extern void osd_cursor_hw(s16 x, s16 y, s16 xstart, s16 ystart, u32 osd_w, u32 osd_h, int index);
 #endif
 extern void osd_suspend_hw(void);
 extern void osd_resume_hw(void);
