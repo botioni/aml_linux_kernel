@@ -41,6 +41,7 @@ struct early_suspend {
 	int level;
 	void (*suspend)(struct early_suspend *h);
 	void (*resume)(struct early_suspend *h);
+	void *param;
 #endif
 };
 

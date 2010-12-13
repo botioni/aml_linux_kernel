@@ -1,5 +1,5 @@
 /*
- * AMLOGIC Audio/Video streaming port driver.
+ * AMLOGIC Audio port driver.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -15,26 +15,28 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307, USA
  *
- * Author:  Tim Yao <timyao@amlogic.com>
+ * Author:  Kevin Wang <kevin.wang@amlogic.com>
  *
  */
+#ifndef AMAUDIO_H
+#define AMAUDIO_H
 
-#ifndef VIDEO_H
-#define VIDEO_H
+#include <linux/interrupt.h>
 
-enum {
-    VIDEO_WIDEOPTION_NORMAL       = 0,
-    VIDEO_WIDEOPTION_FULL_STRETCH = 1,
-    VIDEO_WIDEOPTION_4_3          = 2,
-    VIDEO_WIDEOPTION_16_9         = 3,
-    VIDEO_WIDEOPTION_MAX          = 4
-};
+#define AMAUDIO_IOC_MAGIC  'A'
 
-typedef  struct {
-	s32 x ;
-	s32 y ;
-	s32 w ;
-	s32 h ;
-} disp_rect_t;
+#define AMAUDIO_IOC_GET_I2S_OUT_SIZE		_IOW(AMAUDIO_IOC_MAGIC, 0x00, int)
 
-#endif /* VIDEO_H */
+#define AMAUDIO_IOC_GET_I2S_OUT_PTR			_IOW(AMAUDIO_IOC_MAGIC, 0x01, int)
+
+#define AMAUDIO_IOC_SET_I2S_OUT_OP_PTR	_IOW(AMAUDIO_IOC_MAGIC, 0x02, int)
+
+#define AMAUDIO_IOC_GET_I2S_IN_SIZE			_IOW(AMAUDIO_IOC_MAGIC, 0x03, int)
+
+#define AMAUDIO_IOC_GET_I2S_IN_PTR			_IOW(AMAUDIO_IOC_MAGIC, 0x04, int)
+
+#define AMAUDIO_IOC_SET_I2S_IN_OP_PTR		_IOW(AMAUDIO_IOC_MAGIC, 0x05, int)
+
+
+#endif
+

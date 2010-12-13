@@ -28,6 +28,9 @@
 #include <linux/spi/spi.h>
 #include <linux/spi/ads7846.h>
 #include <linux/regulator/consumer.h>
+#ifdef CONFIG_HAS_EARLYSUSPEND
+#include <linux/earlysuspend.h>
+#endif
 #include <asm/irq.h>
 
 /*
@@ -134,6 +137,10 @@ struct ads7846 {
 	int			gpio_pendown;
 
 	void			(*wait_for_sync)(void);
+#ifdef CONFIG_HAS_EARLYSUSPEND
+	struct      early_suspend early_suspend;
+	int         suspend_flag;
+#endif
 };
 
 /* leave chip selected when we're done, for quicker re-select? */
@@ -828,6 +835,9 @@ static int ads7846_suspend(struct spi_device *spi, pm_message_t message)
 {
 	struct ads7846 *ts = dev_get_drvdata(&spi->dev);
 
+    if (ts->suspend_flag)
+        return 0;
+
 	spin_lock_irq(&ts->lock);
 
 	ts->is_suspended = 1;
@@ -837,7 +847,9 @@ static int ads7846_suspend(struct spi_device *spi, pm_message_t message)
 
 	if (device_may_wakeup(&ts->spi->dev))
 		enable_irq_wake(ts->spi->irq);
-
+    
+    ts->suspend_flag = 1;
+    printk("touch_suspend\n");
 	return 0;
 
 }
@@ -845,6 +857,9 @@ static int ads7846_suspend(struct spi_device *spi, pm_message_t message)
 static int ads7846_resume(struct spi_device *spi)
 {
 	struct ads7846 *ts = dev_get_drvdata(&spi->dev);
+
+    if (!ts->suspend_flag)
+        return 0;
 
 	if (device_may_wakeup(&ts->spi->dev))
 		disable_irq_wake(ts->spi->irq);
@@ -856,8 +871,22 @@ static int ads7846_resume(struct spi_device *spi)
 
 	spin_unlock_irq(&ts->lock);
 
+    ts->suspend_flag = 0;
+    printk("touch_resume\n");
 	return 0;
 }
+
+#ifdef CONFIG_HAS_EARLYSUSPEND
+static void ads7846_early_suspend(struct early_suspend *h)
+{
+    ads7846_suspend((struct spi_device *)h->param, PMSG_SUSPEND);
+}
+
+static void ads7846_late_resume(struct early_suspend *h)
+{
+    ads7846_resume((struct spi_device *)h->param);
+}
+#endif
 
 static int __devinit setup_pendown(struct spi_device *spi, struct ads7846 *ts)
 {
@@ -1222,6 +1251,14 @@ static int __devinit ads7846_probe(struct spi_device *spi)
 	if (err)
 		goto err_remove_attr_group;
 
+#ifdef CONFIG_HAS_EARLYSUSPEND
+    ts->early_suspend.level = EARLY_SUSPEND_LEVEL_BLANK_SCREEN;
+    ts->early_suspend.suspend = ads7846_early_suspend;
+    ts->early_suspend.resume = ads7846_late_resume;
+    ts->early_suspend.param = spi;
+	register_early_suspend(&ts->early_suspend);
+#endif
+
 	device_init_wakeup(&spi->dev, pdata->wakeup);
 	printk(KERN_INFO "ads7846 probe ok\n");	
 	return 0;
@@ -1257,6 +1294,11 @@ static int __devexit ads7846_remove(struct spi_device *spi)
 	device_init_wakeup(&spi->dev, false);
 
 	ads784x_hwmon_unregister(spi, ts);
+
+#ifdef CONFIG_HAS_EARLYSUSPEND
+    unregister_early_suspend(&ts->early_suspend);
+#endif
+
 	input_unregister_device(ts->input);
 
 	ads7846_suspend(spi, PMSG_SUSPEND);

@@ -10,6 +10,8 @@
 #include <linux/soundcard.h>
 #include <linux/timer.h>
 #include <linux/debugfs.h>
+#include <linux/major.h>
+
 #include <sound/core.h>
 #include <sound/pcm.h>
 #include <sound/initval.h>
@@ -17,9 +19,11 @@
 #include <sound/soc.h>
 #include <sound/pcm_params.h>
 
+
 #include <mach/am_regs.h>
 #include <mach/pinmux.h>
 
+#include <linux/amports/amaudio.h>
 
 #include "aml_pcm.h"
 #include "aml_audio_hw.h"
@@ -896,7 +900,7 @@ static void aml_pcm_init_debugfs()
 		}
 		
 		debugfs_mems = debugfs_create_file("mems", 0644, debugfs_root, NULL, &mems_fops);
-		if(debugfs_mems){
+		if(!debugfs_mems){
 			printk("aml: Failed to create debugfs file\n");
 		}
 }
@@ -912,6 +916,159 @@ static void aml_pcm_cleanup_debugfs()
 {
 }
 #endif
+
+typedef struct {
+	unsigned int in_op_ptr;
+	unsigned int out_op_ptr;
+	unsigned int type;
+}amaudio_t;
+
+static ssize_t amaudio_write(struct file *file, const char *buf,
+                                size_t count, loff_t * ppos)
+{
+	amaudio_t * amaudio = (amaudio_t *)file->private_data;
+	int len = 0;
+	int start = 0;
+	if(amaudio->type == 1){
+		if(!if_audio_in_i2s_enable()){
+			printk("amaudio input can not write now\n");
+			return -EINVAL;
+		}
+		start = amaudio->in_op_ptr + READ_MPEG_REG(AUDIN_FIFO0_START);
+		copy_from_user((void*)phys_to_virt(start), (void*)buf, count);
+	}else{
+		if(!if_audio_out_enable()){
+			printk("amaudio output can not write now\n");
+			return -EINVAL;
+		}
+		start = amaudio->out_op_ptr + READ_MPEG_REG(AIU_MEM_I2S_START_PTR);
+		copy_from_user((void*)phys_to_virt(start), (void*)buf, count);
+	}
+	
+	return count;
+}
+static ssize_t amaudio_read(struct file *file, char __user *buf, 
+															size_t count, loff_t * ppos)
+{
+	amaudio_t * amaudio = (amaudio_t *)file->private_data;
+	int len = 0;
+	int start = 0;
+	if(amaudio->type == 1){
+		if(!if_audio_in_i2s_enable()){
+			printk("amaudio input can not read now\n");
+			return -EINVAL;
+		}
+		start = amaudio->in_op_ptr + READ_MPEG_REG(AUDIN_FIFO0_START);
+		len = copy_to_user((void*)buf, (void*)phys_to_virt(start), count);
+		if(len){
+			printk("amaudio read i2s in data failed\n");
+		}
+	}
+	else{
+		if(!if_audio_out_enable()){
+			printk("amaudio output can not read now\n");
+			return -EINVAL;
+		}
+		start = amaudio->out_op_ptr + READ_MPEG_REG(AIU_MEM_I2S_START_PTR);
+		len = copy_to_user((void*)buf, (void*)phys_to_virt(start), count);
+		if(len){
+			printk("amaudio read i2s out data failed\n");
+		}
+	}
+	return count - len;
+}
+
+static int amaudio_open(struct inode *inode, struct file *file)
+{
+		amaudio_t * amaudio = kzalloc(sizeof(amaudio_t), GFP_KERNEL);
+		if(iminor(inode) == 0){ // audio out
+				printk("open audio out\n");
+				amaudio->type = 0;				
+		}else{									// audio in
+				printk("open audio in\n");
+				amaudio->type = 1;
+		}
+		file->private_data = amaudio;
+		return 0;
+}
+static int amaudio_release(struct inode *inode, struct file *file)
+{
+	amaudio_t * amaudio = (amaudio_t *)file->private_data;
+	kfree(amaudio);
+	return 0;
+}
+static int amaudio_ioctl(struct inode *inode, struct file *file,
+                        unsigned int cmd, ulong arg)
+{
+	s32 r = 0;
+	amaudio_t * amaudio = (amaudio_t *)file->private_data;
+	switch(cmd){
+		case AMAUDIO_IOC_GET_I2S_OUT_SIZE:
+			if(if_audio_out_enable()){
+				r = READ_MPEG_REG(AIU_MEM_I2S_END_PTR) - READ_MPEG_REG(AIU_MEM_I2S_START_PTR) + 64;
+			}else{
+				r = -EINVAL;
+			}
+			break;
+		case AMAUDIO_IOC_GET_I2S_OUT_PTR:
+			if(if_audio_out_enable()){
+				r = read_i2s_rd_ptr() - READ_MPEG_REG(AIU_MEM_I2S_START_PTR);
+			}else{
+				r = -EINVAL;
+			}
+			break;
+		case AMAUDIO_IOC_SET_I2S_OUT_OP_PTR:
+			if(if_audio_out_enable()){
+				if(arg < 0 || arg > (read_i2s_rd_ptr() - READ_MPEG_REG(AIU_MEM_I2S_START_PTR))){
+					r = -EINVAL;
+				}else{
+					amaudio->out_op_ptr = arg;
+				}
+			}else{
+				r = -EINVAL;
+			}
+			break;
+		case AMAUDIO_IOC_GET_I2S_IN_SIZE:
+			if(if_audio_in_i2s_enable()){
+				r = READ_MPEG_REG(AUDIN_FIFO0_END) - READ_MPEG_REG(AUDIN_FIFO0_START) + 8;
+			}else{
+				r = -EINVAL;
+			}
+			break;
+		case AMAUDIO_IOC_GET_I2S_IN_PTR:
+			if(if_audio_in_i2s_enable()){
+				r = audio_in_i2s_wr_ptr() - READ_MPEG_REG(AUDIN_FIFO0_START);
+			}else{
+				r = -EINVAL;
+			}
+		case AMAUDIO_IOC_SET_I2S_IN_OP_PTR:
+			if(if_audio_in_i2s_enable()){
+				if(arg < 0 || arg > (audio_in_i2s_wr_ptr() - READ_MPEG_REG(AUDIN_FIFO0_START))){
+					r = -EINVAL;
+				}else{
+					amaudio->in_op_ptr = arg;
+				}
+			}else{
+				r = -EINVAL;
+			}
+			break;
+		default:
+			break;
+		
+	};
+	return 0;
+}
+														
+static const struct file_operations amaudio_fops =
+{
+	.owner	= THIS_MODULE,
+	.open	= amaudio_open,
+	.release  = amaudio_release,
+	.read 		= amaudio_read,
+	.write		= amaudio_write,
+	.ioctl    = amaudio_ioctl,
+};
+
 struct snd_soc_platform aml_soc_platform = {
 	.name		= "aml-audio",
 	.pcm_ops 	= &aml_pcm_ops,
@@ -923,15 +1080,43 @@ struct snd_soc_platform aml_soc_platform = {
 
 EXPORT_SYMBOL_GPL(aml_soc_platform);
 
+static struct class *aml_pcm_class;
 static int __init aml_alsa_audio_init(void)
 {
+		int res = 0;
 		aml_pcm_init_debugfs();
 		
+		res = register_chrdev(AMAUDIO_MAJOR, "amaudio", &amaudio_fops);
+		if(res<0){
+			printk("register audio out chardev failed!!!\n");
+			goto error;
+		}
+		
+		aml_pcm_class = class_create(THIS_MODULE, "amaudio");
+		device_create(aml_pcm_class, NULL,MKDEV(AMAUDIO_MAJOR, 0), NULL, "amaudio_out");
+		device_create(aml_pcm_class, NULL,MKDEV(AMAUDIO_MAJOR, 1), NULL, "amaudio_in");
+		
 		return snd_soc_register_platform(&aml_soc_platform);
+
+error:
+		unregister_chrdev(AMAUDIO_MAJOR,"amaudio");		
+		
+		device_destroy(aml_pcm_class, MKDEV(AMAUDIO_MAJOR, 0));
+		device_destroy(aml_pcm_class, MKDEV(AMAUDIO_MAJOR, 1));
+		class_destroy(aml_pcm_class);
+		
+		snd_soc_unregister_platform(&aml_soc_platform);
+		
+		return res;
 }
 
 static void __exit aml_alsa_audio_exit(void)
 {
+		unregister_chrdev(AMAUDIO_MAJOR,"audio_out");
+		device_destroy(aml_pcm_class, MKDEV(AMAUDIO_MAJOR, 0));
+		device_destroy(aml_pcm_class, MKDEV(AMAUDIO_MAJOR, 1));
+		class_destroy(aml_pcm_class);
+		
 		aml_pcm_cleanup_debugfs();
     snd_soc_unregister_platform(&aml_soc_platform);
 }

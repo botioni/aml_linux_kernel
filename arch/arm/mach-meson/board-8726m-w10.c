@@ -1181,41 +1181,46 @@ static struct platform_device aml_nand_device = {
 #if defined(CONFIG_AMLOGIC_BACKLIGHT)
 static void power_on_panel(void)
 {
+    int i;
     /* Power up LCD_3.3V */
     #ifdef CONFIG_SN7325
     configIO(0, 0);
     setIO_level(0, 0, 0);
     #endif
 
-    msleep(20);
+    i=2;
+    while(i--)
+        udelay(1000);
+
     /* No pin for AVDD control*/
 
-    early_pll_switch(1);
-    early_clk_switch(1);
-    early_power_gate_switch(1);
-//    CLK_GATE_ON(LCD);
+    i=4;
+    while(i--)
+        udelay(1000);
+
+    CLK_GATE_ON(LCD);
     set_mio_mux(4,(0x3f<<0));
     set_mio_mux(0, 1<<11);
     set_mio_mux(0, 1<<14);
-    msleep(50);
+    
+    i=4;
+    while(i--)
+        udelay(1000);
 
 }
 
 static void power_off_panel(void)
 {
-    msleep(50);
     /* Power down LCD_3.3V */
     #ifdef CONFIG_SN7325
     configIO(0, 0);
     setIO_level(0, 1, 0);
     #endif
-    msleep(20);
+
     /* No pin for AVDD control*/
 
-//    CLK_GATE_OFF(LCD);
-    early_power_gate_switch(0);
-    early_clk_switch(0);
-    early_pll_switch(0);    
+    CLK_GATE_OFF(LCD);
+
     clear_mio_mux(4,(0x3f<<0));
     clear_mio_mux(0, 1<<11);
     clear_mio_mux(0, 1<<14); 

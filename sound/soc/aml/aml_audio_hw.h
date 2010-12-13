@@ -162,6 +162,9 @@ void audio_hw_set_958_mode(unsigned mode, _aiu_958_raw_setting_t * set);
 unsigned int read_i2s_mute_swap_reg(void);
 void audio_i2s_swap_left_right(unsigned int flag);
 int audio_dac_set(unsigned freq);
+int if_audio_out_enable();
+int if_audio_in_i2s_enable();
+
 
 #define APB_ADAC_RESET                		(0x5000+0x00*4)
 #define APB_ADAC_LATCH                		(0x5000+0x01*4)

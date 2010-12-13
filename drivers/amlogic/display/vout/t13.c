@@ -27,6 +27,7 @@
 #include <linux/module.h>
 #include <linux/platform_device.h>
 #include <linux/vout/tcon.h>
+#include <linux/delay.h>
 
 #include <mach/gpio.h>
 #include <mach/am_regs.h>
@@ -181,12 +182,10 @@ void power_off_backlight(void)
 static void power_on_lcd(void)
 {
     #ifdef CONFIG_MACH_MESON_8726M
-    set_mio_mux(4,(0x3f<<0));
-    set_mio_mux(0, 1<<11);
-    set_mio_mux(0, 1<<14);    
     /* GPIOA_3, Pull low, For LCD_3.3V */
     set_gpio_val(GPIOA_bank_bit(3), GPIOA_bit_bit0_14(3), 0);
-    set_gpio_mode(GPIOA_bank_bit(3), GPIOA_bit_bit0_14(3), GPIO_OUTPUT_MODE);        
+    set_gpio_mode(GPIOA_bank_bit(3), GPIOA_bit_bit0_14(3), GPIO_OUTPUT_MODE);   
+    udelay(1000);     
     #else
     set_mio_mux(4,(1<<0)|(1<<2)|(1<<4));
     /* PIN165, GPIOC_4, Pull low, For LCD_3.3V */    
@@ -197,6 +196,12 @@ static void power_on_lcd(void)
     /* PIN172, GPIOC_3, Pull high, For AVDD */
     set_gpio_val(GPIOC_bank_bit0_26(3), GPIOC_bit_bit0_26(3), 1);
     set_gpio_mode(GPIOC_bank_bit0_26(3), GPIOC_bit_bit0_26(3), GPIO_OUTPUT_MODE);
+    udelay(1000);
+    CLK_GATE_ON(LCD);    
+    set_mio_mux(4,(0x3f<<0));
+    set_mio_mux(0, 1<<11);
+    set_mio_mux(0, 1<<14);
+    udelay(1000);
     #else
     /* PIN172, GPIOC_11, Pull high, For AVDD */
     set_gpio_val(GPIOC_bank_bit0_26(11), GPIOC_bit_bit0_26(11), 1);
@@ -218,7 +223,8 @@ static void power_off_lcd(void)
     #ifdef CONFIG_MACH_MESON_8726M
     /* GPIOA_3, Pull hi, power down LCD_3.3V */
     set_gpio_val(GPIOA_bank_bit(3), GPIOA_bit_bit0_14(3), 1);
-    set_gpio_mode(GPIOA_bank_bit(3), GPIOA_bit_bit0_14(3), GPIO_OUTPUT_MODE);        
+    set_gpio_mode(GPIOA_bank_bit(3), GPIOA_bit_bit0_14(3), GPIO_OUTPUT_MODE);   
+    CLK_GATE_OFF(LCD);     
     clear_mio_mux(4,(0x3f<<0));
     clear_mio_mux(0, 1<<11);
     clear_mio_mux(0, 1<<14);        
@@ -262,15 +268,15 @@ static void set_tcon_pinmux(void)
 static void t13_power_on(void)
 {
     video_dac_disable();
-	set_tcon_pinmux();
-	power_on_lcd();
-	power_on_backlight();
-      
+    set_tcon_pinmux();
+    power_on_lcd();
+    power_on_backlight();
 }
+
 static void t13_power_off(void)
 {
-	power_off_backlight();
-    	power_off_lcd();
+    power_off_backlight();
+    power_off_lcd();
 }
 
 static void t13_io_init(void)
