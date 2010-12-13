@@ -316,40 +316,6 @@ void sd_io_init(struct memory_card *card)
 	return;
 }
 
-static irqreturn_t sdio_interrupt_monitor(int irq, void *dev_id, struct pt_regs *regs) 
-{
-	unsigned sdio_interrupt_resource;
-
-	sdio_interrupt_resource = sdio_check_interrupt();
-	switch (sdio_interrupt_resource) {
-		case SDIO_IF_INT:
-		    //sdio_if_int_handler();
-		    break;
-
-		case SDIO_CMD_INT:
-			sdio_cmd_int_handle();
-			break;
-
-		case SDIO_TIMEOUT_INT:
-			sdio_timeout_int_handle();
-			break;
-	
-		case SDIO_SOFT_INT:
-		    //AVDetachIrq(sdio_int_handler);
-		    //sdio_int_handler = -1;
-		    break;
-	
-		case SDIO_NO_INT:	
-			break;
-
-		default:	
-			break;	
-	}
-
-    return IRQ_HANDLED; 
-
-}
-
 static int sd_request(struct memory_card *card, struct card_blk_request *brq)
 {
 	SD_MMC_Card_Info_t *sd_mmc_info = (SD_MMC_Card_Info_t *)card->card_info;
@@ -559,25 +525,6 @@ int inand_probe(struct memory_card *card)
 }
 
 #endif
-
-static int __init sd_init(void)
-{
-	if (request_irq(INT_SDIO, (irq_handler_t) sdio_interrupt_monitor, 0, "sd_mmc", NULL)) {
-		printk("request SDIO irq error!!!\n");
-		return -1;
-	}
-
-	return 0;
-}
-
-static void __exit sd_exit(void)
-{
-	free_irq(INT_SDIO, NULL);
-}
-
-module_init(sd_init);
-
-module_exit(sd_exit);
 
 MODULE_DESCRIPTION("Amlogic sd card Interface driver");
 

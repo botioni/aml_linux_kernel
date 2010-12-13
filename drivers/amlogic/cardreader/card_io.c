@@ -240,22 +240,23 @@ unsigned sdio_check_interrupt(void)
 		return SDIO_NO_INT;
 }
 
-void sdio_cmd_int_handle(void) 
+void sdio_cmd_int_handle(struct memory_card *card) 
 {
 	sdio_timeout_int_num = 0;
-	//wake_up_interruptible(&sdio_wait_event);
 	complete(&sdio_int_complete);
+	return;
 } 
 
-void sdio_timeout_int_handle(void) 
+void sdio_timeout_int_handle(struct memory_card *card) 
 {
-	if ((++sdio_timeout_int_num >= sdio_timeout_int_times)) {
+	card->card_detector(card);
+	if ((card->card_status == CARD_REMOVED) || (++sdio_timeout_int_num >= sdio_timeout_int_times)) {
 		sdio_close_host_interrupt(SDIO_TIMEOUT_INT);
 		sdio_timeout_int_num = 0;
 		sdio_timeout_int_times = 0;
-		//wake_up_interruptible(&sdio_wait_event);
 		complete(&sdio_int_complete);		
 	}
+	return;
 }
 
 

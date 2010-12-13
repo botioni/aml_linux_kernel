@@ -738,7 +738,7 @@ static int card_blk_issue_rq(struct card_queue *cq, struct request *req)
 	} while (ret);
 
 	card_release_host(card->host);
-	//printk("card request completely %d sector num: %d communiction dir %d\n", req->sector, req->nr_sectors, brq.crq.cmd);
+	//printk("card request completely %d sector num: %d communiction dir %d\n", brq.card_data.lba, brq.card_data.blk_nums, brq.crq.cmd);
 	return 1;
 }
 
