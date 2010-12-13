@@ -1056,7 +1056,7 @@ static int amaudio_ioctl(struct inode *inode, struct file *file,
 			break;
 		
 	};
-	return 0;
+	return r;
 }
 														
 static const struct file_operations amaudio_fops =
