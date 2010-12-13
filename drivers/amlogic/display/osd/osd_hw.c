@@ -678,12 +678,11 @@ void osd_cursor_hw(s16 x, s16 y, s16 xstart, s16 ystart, u32 osd_w, u32 osd_h, i
 	if (index != 1) return;
 
 	if(osd_hw.scale[OSD1].h_enable && osd_hw.scale[OSD1].h_enable) {
-        x *= 2;
-        y *= 2;
-    }
-    x += xstart;
-    y += ystart;
-    printk("xstart=%d,ystart=%d\n", xstart, ystart);
+		x *= 2;
+		y *= 2;
+	}
+	x += xstart;
+	y += ystart;
 
 	/**
 	 * Use pandata to show a partial cursor when it is at the edge because the
