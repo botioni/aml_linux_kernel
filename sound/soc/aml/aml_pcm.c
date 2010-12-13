@@ -1019,7 +1019,7 @@ static int amaudio_ioctl(struct inode *inode, struct file *file,
 			break;
 		case AMAUDIO_IOC_SET_I2S_OUT_OP_PTR:
 			if(if_audio_out_enable()){
-				if(arg < 0 || arg > (read_i2s_rd_ptr() - READ_MPEG_REG(AIU_MEM_I2S_START_PTR))){
+				if(arg < 0 || arg > (READ_MPEG_REG(AIU_MEM_I2S_END_PTR) - READ_MPEG_REG(AIU_MEM_I2S_START_PTR)+64)){
 					r = -EINVAL;
 				}else{
 					amaudio->out_op_ptr = arg;
@@ -1041,9 +1041,10 @@ static int amaudio_ioctl(struct inode *inode, struct file *file,
 			}else{
 				r = -EINVAL;
 			}
+			break;
 		case AMAUDIO_IOC_SET_I2S_IN_OP_PTR:
 			if(if_audio_in_i2s_enable()){
-				if(arg < 0 || arg > (audio_in_i2s_wr_ptr() - READ_MPEG_REG(AUDIN_FIFO0_START))){
+				if(arg < 0 || arg > (READ_MPEG_REG(AUDIN_FIFO0_END)- READ_MPEG_REG(AUDIN_FIFO0_START)+8)){
 					r = -EINVAL;
 				}else{
 					amaudio->in_op_ptr = arg;
