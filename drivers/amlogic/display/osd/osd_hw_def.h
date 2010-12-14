@@ -1,6 +1,7 @@
 #ifndef   _OSD_HW_DEF_H
 #define	_OSD_HW_DEF_H
 #include <linux/osd/osd_hw.h>
+#include <linux/amports/vframe_provider.h>
 
 /************************************************************************
 **
@@ -95,6 +96,7 @@ LIST_HEAD(update_list);
 static spinlock_t osd_lock = SPIN_LOCK_UNLOCKED;
 static hw_para_t  osd_hw;
 static unsigned long 	lock_flags;
+static vframe_t vf;
 static update_func_t     hw_func_array[HW_OSD_COUNT][HW_REG_INDEX_MAX]={
 	{
 		osd1_update_color_mode,

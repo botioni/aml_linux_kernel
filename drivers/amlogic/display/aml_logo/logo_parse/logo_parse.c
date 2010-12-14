@@ -72,6 +72,7 @@ static int  all_parser_setup(void)
 	plogo->dev->op.transfer(plogo);
 	plogo->dev->op.deinit();
 	plogo->parser->op.deinit(plogo);
+
 	return SUCCESS;
 	
  }
