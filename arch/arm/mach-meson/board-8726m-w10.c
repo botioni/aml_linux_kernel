@@ -1179,101 +1179,14 @@ static struct platform_device aml_nand_device = {
 #endif  //CONFIG_NAND_FLASH_DRIVER_MULTIPLANE_CE
 
 #if defined(CONFIG_AMLOGIC_BACKLIGHT)
-static void power_on_panel(void)
-{
-    int i;
-    /* Power up LCD_3.3V */
-    #ifdef CONFIG_SN7325
-    configIO(0, 0);
-    setIO_level(0, 0, 0);
-    #endif
-
-    i=2;
-    while(i--)
-        udelay(1000);
-
-    /* No pin for AVDD control*/
-
-    i=4;
-    while(i--)
-        udelay(1000);
-
-    CLK_GATE_ON(LCD);
-    set_mio_mux(4,(0x3f<<0));
-    set_mio_mux(0, 1<<11);
-    set_mio_mux(0, 1<<14);
-    
-    i=4;
-    while(i--)
-        udelay(1000);
-
-}
-
-static void power_off_panel(void)
-{
-    /* Power down LCD_3.3V */
-    #ifdef CONFIG_SN7325
-    configIO(0, 0);
-    setIO_level(0, 1, 0);
-    #endif
-
-    /* No pin for AVDD control*/
-
-    CLK_GATE_OFF(LCD);
-
-    clear_mio_mux(4,(0x3f<<0));
-    clear_mio_mux(0, 1<<11);
-    clear_mio_mux(0, 1<<14); 
-}
 
 #define PWM_TCNT        (600-1)
 #define PWM_MAX_VAL    (420)
 
 static void aml_8726m_bl_init(void)
 {
-    unsigned val;
-    
-    WRITE_CBUS_REG_BITS(PERIPHS_PIN_MUX_0, 0, 22, 1);
-    WRITE_CBUS_REG_BITS(PREG_AM_ANALOG_ADDR, 1, 0, 1);
-    WRITE_CBUS_REG(VGHL_PWM_REG0, 0);
-    WRITE_CBUS_REG(VGHL_PWM_REG1, 0);
-    WRITE_CBUS_REG(VGHL_PWM_REG2, 0);
-    WRITE_CBUS_REG(VGHL_PWM_REG3, 0);
-    WRITE_CBUS_REG(VGHL_PWM_REG4, 0);
-    val = (0 << 31)           |       // disable the overall circuit
-          (0 << 30)           |       // 1:Closed Loop  0:Open Loop
-          (PWM_TCNT << 16)    |       // PWM total count
-          (0 << 13)           |       // Enable
-          (1 << 12)           |       // enable
-          (0 << 10)           |       // test
-          (3 << 7)            |       // CS0 REF, Voltage FeedBack: about 0.27V
-          (7 << 4)            |       // CS1 REF, Current FeedBack: about 0.54V
-          (0 << 0);                   // DIMCTL Analog dimmer
-    WRITE_CBUS_REG(VGHL_PWM_REG0, val);
-    val = (1 << 30)           |       // enable high frequency clock
-          (PWM_MAX_VAL << 16) |       // MAX PWM value
-          (0 << 0);                  // MIN PWM value
-    WRITE_CBUS_REG(VGHL_PWM_REG1, val);
-    val = (0 << 31)       |       // disable timeout test mode
-          (0 << 30)       |       // timeout based on the comparator output
-          (0 << 16)       |       // timeout = 10uS
-          (0 << 13)       |       // Select oscillator as the clock (just for grins)
-          (1 << 11)       |       // 1:Enable OverCurrent Portection  0:Disable
-          (3 << 8)        |       // Filter: shift every 3 ticks
-          (0 << 6)        |       // Filter: count 1uS ticks
-          (0 << 5)        |       // PWM polarity : negative
-          (0 << 4)        |       // comparator: negative, Different with NikeD3
-          (1 << 0);               // +/- 1
-    WRITE_CBUS_REG(VGHL_PWM_REG2, val);
-    val = (   1 << 16) |    // Feedback down-sampling = PWM_freq/1 = PWM_freq
-          (   1 << 14) |    // enable to re-write MATCH_VAL
-          ( 210 <<  0) ;  // preset PWM_duty = 50%
-    WRITE_CBUS_REG(VGHL_PWM_REG3, val);
-    val = (   0 << 30) |    // 1:Digital Dimmer  0:Analog Dimmer
-          (   2 << 28) |    // dimmer_timebase = 1uS
-          (1000 << 14) |    // Digital dimmer_duty = 0%, the most darkness
-          (1000 <<  0) ;    // dimmer_freq = 1KHz
-    WRITE_CBUS_REG(VGHL_PWM_REG4, val);
+    SET_CBUS_REG_MASK(PWM_MISC_REG_AB, (1 << 0));
+    SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<31));
 }
 static unsigned bl_level;
 static unsigned panel_state = 0;
@@ -1289,51 +1202,29 @@ static unsigned aml_8726m_get_bl_level(void)
 #define BL_MAX_LEVEL 60000
 static void aml_8726m_set_bl_level(unsigned level)
 {
-    unsigned cs_level,pwm_level,low,hi;
-    int i;
+    unsigned cs_level, hi, low;
     
-    bl_level = level;
-    
-    level = level*179/255;
-    if(level>=120){ //120 - 179
-        cs_level = 9 -(level - 120)/15;
-        pwm_level = 85 + (level - 120)%15;
+    if (level < 30)
+    {
+        cs_level = 0;
     }
-    else if(level>=20){ //20 - 119
-        cs_level = 13 - (level -20)/25;
-        pwm_level = 75 + (level - 20)%25;
+    else if (level == 30)
+    {
+        cs_level = 1760;
     }
-    else{  //  <20
-        cs_level = 13;
-        pwm_level = 0;
+    else if (level > 30 && level < 256)
+    {
+        cs_level = (level - 31) * 260 + 1760;
     }
+    else
+        cs_level = BL_MAX_LEVEL;
 
-    hi = (BL_MAX_LEVEL/100)*pwm_level;
+    hi = cs_level;
     low = BL_MAX_LEVEL - hi;
 
-    if(bl_level >=30&&panel_state == 0){
-        panel_state = 1;
-        power_on_panel();
-        for(i = 0;i<=200;i++){
-            udelay(1000);
-        }
-    }
 
-    WRITE_CBUS_REG_BITS(VGHL_PWM_REG0, cs_level, 0, 4);
     WRITE_CBUS_REG_BITS(PWM_PWM_A,low,0,16);  //low
     WRITE_CBUS_REG_BITS(PWM_PWM_A,hi,16,16);  //hi
-    SET_CBUS_REG_MASK(PWM_MISC_REG_AB, (1 << 0)); 
-    SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<31));
-
-    if(bl_level <30&&panel_state == 1){
-        panel_state = 0;
-        set_gpio_val(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), 0);
-        set_gpio_mode(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), GPIO_OUTPUT_MODE);
-        CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<31));
-        CLEAR_CBUS_REG_MASK(PWM_MISC_REG_AB, (1 << 0));
-        power_off_panel();
-        
-    }
 }
 
 static void aml_8726m_power_on_bl(void)
