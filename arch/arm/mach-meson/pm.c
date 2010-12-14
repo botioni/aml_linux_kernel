@@ -354,7 +354,7 @@ void clk_switch(int flag)
 }
 EXPORT_SYMBOL(clk_switch);
 
-#define EARLY_CLK_COUNT 5
+#define EARLY_CLK_COUNT 6
 static char early_clk_flag[EARLY_CLK_COUNT];
 static unsigned early_clks[EARLY_CLK_COUNT]={
     HHI_DEMOD_CLK_CNTL,
@@ -433,19 +433,17 @@ void early_clk_switch(int flag)
 }
 EXPORT_SYMBOL(early_clk_switch);
 
-#define PLL_COUNT 4
+#define PLL_COUNT 3
 
 static char pll_flag[PLL_COUNT];
 static unsigned plls[PLL_COUNT]={
     HHI_AUD_PLL_CNTL,
-    HHI_VID_PLL_CNTL,
     HHI_SYS_PLL_CNTL,
     HHI_OTHER_PLL_CNTL,
 };
 
 static char plls_name[PLL_COUNT][32]={
     "HHI_AUD_PLL_CNTL",
-    "HHI_VID_PLL_CNTL",
     "HHI_SYS_PLL_CNTL",
     "HHI_OTHER_PLL_CNTL",
 };
@@ -475,16 +473,18 @@ void pll_switch(int flag)
 }
 EXPORT_SYMBOL(pll_switch);
 
-#define EARLY_PLL_COUNT 2
+#define EARLY_PLL_COUNT 3
 static char early_pll_flag[EARLY_PLL_COUNT];
 static unsigned early_plls[EARLY_PLL_COUNT]={
     HHI_WIFI_PLL_CNTL,
     HHI_DEMOD_PLL_CNTL,
+    HHI_VID_PLL_CNTL,
 };
 
 static char early_plls_name[EARLY_PLL_COUNT][32]={
     "HHI_WIFI_PLL_CNTL",
     "HHI_DEMOD_PLL_CNTL",
+    "HHI_VID_PLL_CNTL",
 };
 
 void early_pll_switch(int flag)
