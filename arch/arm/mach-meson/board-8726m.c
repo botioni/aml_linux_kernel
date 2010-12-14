@@ -1075,53 +1075,53 @@ static struct platform_device aml_nand_device = {
 #endif  //CONFIG_NAND_FLASH_DRIVER_MULTIPLANE_CE
 
 #if defined(CONFIG_AMLOGIC_BACKLIGHT)
-static void power_on_panel(void)
-{
-#ifndef CONFIG_HAS_EARLYSUSPEND
-    int i;
-    /* GPIOA_3, Pull low, power up LCD_3.3V */
-    set_gpio_val(GPIOA_bank_bit(3), GPIOA_bit_bit0_14(3), 0);
-    set_gpio_mode(GPIOA_bank_bit(3), GPIOA_bit_bit0_14(3), GPIO_OUTPUT_MODE);
-    i=2;
-    while(i--)
-        udelay(1000);
-    
-    /* PIN172, GPIOC_3, Pull high, For AVDD */
-    set_gpio_val(GPIOC_bank_bit0_26(3), GPIOC_bit_bit0_26(3), 1);
-    set_gpio_mode(GPIOC_bank_bit0_26(3), GPIOC_bit_bit0_26(3), GPIO_OUTPUT_MODE);
-    i=4;
-    while(i--)
-        udelay(1000);
-
-    CLK_GATE_ON(LCD);
-    set_mio_mux(4,(0x3f<<0));
-    set_mio_mux(0, 1<<11);
-    set_mio_mux(0, 1<<14);     
-    
-    i=4;
-    while(i--)
-        udelay(1000);
-#endif
-}
-
-static void power_off_panel(void)
-{
-#ifndef CONFIG_HAS_EARLYSUSPEND
-    /* GPIOA_3, Pull hi, power down LCD_3.3V */
-    set_gpio_val(GPIOA_bank_bit(3), GPIOA_bit_bit0_14(3), 1);
-    set_gpio_mode(GPIOA_bank_bit(3), GPIOA_bit_bit0_14(3), GPIO_OUTPUT_MODE);    
-    
-    /* PIN172, GPIOC_3, Pull high, For AVDD */
-    set_gpio_val(GPIOC_bank_bit0_26(3), GPIOC_bit_bit0_26(3), 0);
-    set_gpio_mode(GPIOC_bank_bit0_26(3), GPIOC_bit_bit0_26(3), GPIO_OUTPUT_MODE);
-
-    CLK_GATE_OFF(LCD);
-
-    clear_mio_mux(4,(0x3f<<0));
-    clear_mio_mux(0, 1<<11);
-    clear_mio_mux(0, 1<<14); 
-#endif
-}
+//static void power_on_panel(void)
+//{
+//#ifndef CONFIG_HAS_EARLYSUSPEND
+//    int i;
+//    /* GPIOA_3, Pull low, power up LCD_3.3V */
+//    set_gpio_val(GPIOA_bank_bit(3), GPIOA_bit_bit0_14(3), 0);
+//    set_gpio_mode(GPIOA_bank_bit(3), GPIOA_bit_bit0_14(3), GPIO_OUTPUT_MODE);
+//    i=2;
+//    while(i--)
+//        udelay(1000);
+//    
+//    /* PIN172, GPIOC_3, Pull high, For AVDD */
+//    set_gpio_val(GPIOC_bank_bit0_26(3), GPIOC_bit_bit0_26(3), 1);
+//    set_gpio_mode(GPIOC_bank_bit0_26(3), GPIOC_bit_bit0_26(3), GPIO_OUTPUT_MODE);
+//    i=4;
+//    while(i--)
+//        udelay(1000);
+//
+//    CLK_GATE_ON(LCD);
+//    set_mio_mux(4,(0x3f<<0));
+//    set_mio_mux(0, 1<<11);
+//    set_mio_mux(0, 1<<14);     
+//    
+//    i=4;
+//    while(i--)
+//        udelay(1000);
+//#endif
+//}
+//
+//static void power_off_panel(void)
+//{
+//#ifndef CONFIG_HAS_EARLYSUSPEND
+//    /* GPIOA_3, Pull hi, power down LCD_3.3V */
+//    set_gpio_val(GPIOA_bank_bit(3), GPIOA_bit_bit0_14(3), 1);
+//    set_gpio_mode(GPIOA_bank_bit(3), GPIOA_bit_bit0_14(3), GPIO_OUTPUT_MODE);    
+//    
+//    /* PIN172, GPIOC_3, Pull high, For AVDD */
+//    set_gpio_val(GPIOC_bank_bit0_26(3), GPIOC_bit_bit0_26(3), 0);
+//    set_gpio_mode(GPIOC_bank_bit0_26(3), GPIOC_bit_bit0_26(3), GPIO_OUTPUT_MODE);
+//
+//    CLK_GATE_OFF(LCD);
+//
+//    clear_mio_mux(4,(0x3f<<0));
+//    clear_mio_mux(0, 1<<11);
+//    clear_mio_mux(0, 1<<14); 
+//#endif
+//}
 
 
 #define PWM_TCNT        (600-1)
@@ -1172,6 +1172,10 @@ static void aml_8726m_bl_init(void)
           (1000 << 14) |    // Digital dimmer_duty = 0%, the most darkness
           (1000 <<  0) ;    // dimmer_freq = 1KHz
     WRITE_CBUS_REG(VGHL_PWM_REG4, val);
+    
+    SET_CBUS_REG_MASK(PWM_MISC_REG_AB, (1 << 0)); 
+    SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<31));            
+    
 }
 static unsigned bl_level;
 static unsigned panel_state = 0;
@@ -1209,29 +1213,28 @@ static void aml_8726m_set_bl_level(unsigned level)
     hi = (BL_MAX_LEVEL/100)*pwm_level;
     low = BL_MAX_LEVEL - hi;
     
-    if(bl_level >=30&&panel_state == 0){
-        panel_state = 1;
-        power_on_panel();
-        for(i = 0;i<=200;i++){
-    	    udelay(1000);   
-        }	         
-    }       
-    //SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<31)); 
+//    if(bl_level >=30&&panel_state == 0){
+//        panel_state = 1;
+//        power_on_panel();
+//        for(i = 0;i<=200;i++){
+//    	    udelay(1000);   
+//        }	         
+//    }       
+
     WRITE_CBUS_REG_BITS(VGHL_PWM_REG0, cs_level, 0, 4);        
     WRITE_CBUS_REG_BITS(PWM_PWM_A,low,0,16);  //low
     WRITE_CBUS_REG_BITS(PWM_PWM_A,hi,16,16);  //hi  
-    SET_CBUS_REG_MASK(PWM_MISC_REG_AB, (1 << 0)); 
-    SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<31));         
+     
     
-    if(bl_level <30&&panel_state == 1){
-        panel_state = 0;
-        set_gpio_val(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), 0);
-        set_gpio_mode(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), GPIO_OUTPUT_MODE);
-        CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<31)); 
-        CLEAR_CBUS_REG_MASK(PWM_MISC_REG_AB, (1 << 0));  
-        power_off_panel();
-        
-    }     
+//    if(bl_level <30&&panel_state == 1){
+//        panel_state = 0;
+//        set_gpio_val(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), 0);
+//        set_gpio_mode(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), GPIO_OUTPUT_MODE);
+//        CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<31)); 
+//        CLEAR_CBUS_REG_MASK(PWM_MISC_REG_AB, (1 << 0));  
+//        power_off_panel();
+//        
+//    }     
       
 }
 
