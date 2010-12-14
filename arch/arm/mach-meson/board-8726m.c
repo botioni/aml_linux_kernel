@@ -1247,6 +1247,7 @@ static void aml_8726m_power_on_bl(void)
     WRITE_CBUS_REG_BITS(PREG_EGPIO_O, 1, 7, 1);
     
     aml_8726m_set_bl_level(0);
+    printk("backlight on\n");
 }
 
 static void aml_8726m_power_off_bl(void)
@@ -1256,6 +1257,7 @@ static void aml_8726m_power_off_bl(void)
 
     WRITE_CBUS_REG_BITS(PREG_EGPIO_EN_N, 0, 7, 1);
     WRITE_CBUS_REG_BITS(PREG_EGPIO_O, 0, 7, 1);
+    printk("backlight off\n");
 }
 
 struct aml_bl_platform_data aml_bl_platform =

@@ -157,8 +157,7 @@ void power_on_backlight(void)
     set_gpio_mode(GPIOA_bank_bit(8), GPIOA_bit_bit0_14(8), GPIO_OUTPUT_MODE);
     #endif
     /* PIN28, GPIOA_6, Pull high, For En_5V */
-    set_gpio_val(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), 1);
-    set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);
+    printk("panel backlight on\n");
 }
 
 void power_off_backlight(void)
@@ -166,26 +165,29 @@ void power_off_backlight(void)
     #ifdef CONFIG_MACH_MESON_8726M
     /* PIN31, GPIOA_7, Pull high, BL_PWM Enable*/
     CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<31)); 
-    set_gpio_val(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), 0);
-    set_gpio_mode(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), GPIO_OUTPUT_MODE);
     #else
     /* PIN31, GPIOA_8, Pull low, BL_PWM Disable*/ 
     set_gpio_val(GPIOA_bank_bit(8), GPIOA_bit_bit0_14(8), 0);
     set_gpio_mode(GPIOA_bank_bit(8), GPIOA_bit_bit0_14(8), GPIO_OUTPUT_MODE);
     #endif
-
+    
     /* PIN28, GPIOA_6, Pull low, For En_5v */
     //set_gpio_val(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), 0);
     //set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);
+    printk("panel backlight off\n");
 }
 
 static void power_on_lcd(void)
 {
+    int i;
     #ifdef CONFIG_MACH_MESON_8726M
+    CLK_GATE_ON(LCD);    
+    set_mio_mux(4,(0x3f<<0));
+    set_mio_mux(0, 1<<11);
+    set_mio_mux(0, 1<<14);
     /* GPIOA_3, Pull low, For LCD_3.3V */
     set_gpio_val(GPIOA_bank_bit(3), GPIOA_bit_bit0_14(3), 0);
     set_gpio_mode(GPIOA_bank_bit(3), GPIOA_bit_bit0_14(3), GPIO_OUTPUT_MODE);   
-    udelay(1000);     
     #else
     set_mio_mux(4,(1<<0)|(1<<2)|(1<<4));
     /* PIN165, GPIOC_4, Pull low, For LCD_3.3V */    
@@ -196,17 +198,14 @@ static void power_on_lcd(void)
     /* PIN172, GPIOC_3, Pull high, For AVDD */
     set_gpio_val(GPIOC_bank_bit0_26(3), GPIOC_bit_bit0_26(3), 1);
     set_gpio_mode(GPIOC_bank_bit0_26(3), GPIOC_bit_bit0_26(3), GPIO_OUTPUT_MODE);
-    udelay(1000);
-    CLK_GATE_ON(LCD);    
-    set_mio_mux(4,(0x3f<<0));
-    set_mio_mux(0, 1<<11);
-    set_mio_mux(0, 1<<14);
-    udelay(1000);
     #else
     /* PIN172, GPIOC_11, Pull high, For AVDD */
     set_gpio_val(GPIOC_bank_bit0_26(11), GPIOC_bit_bit0_26(11), 1);
     set_gpio_mode(GPIOC_bank_bit0_26(11), GPIOC_bit_bit0_26(11), GPIO_OUTPUT_MODE);
     #endif
+    printk("panel power on\n");
+    for (i=0;i<200;i++) // delay for vsync
+        udelay(1000);
 }
 
 static void power_off_lcd(void)
@@ -234,6 +233,7 @@ static void power_off_lcd(void)
     set_gpio_mode(GPIOC_bank_bit0_26(4), GPIOC_bit_bit0_26(4), GPIO_OUTPUT_MODE); 
     clear_mio_mux(4,(1<<0)|(1<<2)|(1<<4));
     #endif
+    printk("panel power off\n");
 }
 
 static void set_tcon_pinmux(void)
@@ -265,18 +265,26 @@ static void set_tcon_pinmux(void)
     set_mio_mux(4,(1<<0)|(1<<2)|(1<<4));
     #endif
 }
+
+static int panel_on_flag = 0;
 static void t13_power_on(void)
 {
     video_dac_disable();
     set_tcon_pinmux();
-    power_on_lcd();
-    power_on_backlight();
+    if (!panel_on_flag){
+        power_on_lcd();
+        power_on_backlight();
+        panel_on_flag = 1;
+    }
 }
 
 static void t13_power_off(void)
 {
-    power_off_backlight();
-    power_off_lcd();
+    if (panel_on_flag){
+        power_off_backlight();
+        power_off_lcd();
+        panel_on_flag = 0;
+    }
 }
 
 static void t13_io_init(void)
