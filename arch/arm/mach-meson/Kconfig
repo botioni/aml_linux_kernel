@@ -83,7 +83,13 @@ config MACH_MESON_8726M_C7
 	select GENERIC_ALLOCATOR
 	bool "Support M1 8726(C7) platform(machid=2956)"
 	help
-	  Include support for the AMLOGIC M1 8726M Emulation Baseboard platform.	  
+	  Include support for the AMLOGIC M1 8726M Emulation Baseboard platform.
+	  
+config MACH_MESON_8726M_K8
+	select GENERIC_ALLOCATOR
+	bool "Support M1 8726(K8) platform(machid=2956)"
+	help
+	  Include support for the AMLOGIC M1 8726M Emulation Baseboard platform.  
 	  
 config MESON_CLOCK_TICK_RATE
     int "Clock Tick Rate"
