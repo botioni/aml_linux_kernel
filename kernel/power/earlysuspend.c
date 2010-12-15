@@ -99,11 +99,12 @@ static void early_suspend(struct work_struct *work)
 			pos->suspend(pos);
 	}
 	mutex_unlock(&early_suspend_lock);
-
+#if 0
 	if (debug_mask & DEBUG_SUSPEND)
 		pr_info("early_suspend: sync\n");
 
 	sys_sync();
+#endif
 abort:
 	spin_lock_irqsave(&state_lock, irqflags);
 	if (state == SUSPEND_REQUESTED_AND_SUSPENDED)

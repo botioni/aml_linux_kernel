@@ -356,7 +356,7 @@ void clk_switch(int flag)
 }
 EXPORT_SYMBOL(clk_switch);
 
-#define EARLY_CLK_COUNT 5
+#define EARLY_CLK_COUNT 6
 static char early_clk_flag[EARLY_CLK_COUNT];
 static unsigned early_clks[EARLY_CLK_COUNT]={
     HHI_DEMOD_CLK_CNTL,
@@ -391,7 +391,7 @@ static int set_a9_clk(unsigned long crystal_freq, unsigned long out_freq)
 	unsigned long crys_M,out_M,middle_freq,flags;
 	crys_M=crystal_freq/1000000;
 	out_M=out_freq*2/1000000;
-#if 0
+#if 1
 	if (out_M < 200)
 	    od = 2;
 	else if (out_M < 400)
