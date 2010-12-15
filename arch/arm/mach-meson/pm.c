@@ -291,6 +291,7 @@ void clk_switch(int flag)
 #ifndef SYSCLK_32K
     struct clk *sys_clk;
 #endif
+
     if (flag){
         for (i=CLK_COUNT-1;i>=0;i--){
             if (clk_flag[i]){
@@ -299,7 +300,8 @@ void clk_switch(int flag)
                 }
                 else if (clks[i] == HHI_MPEG_CLK_CNTL){
 #ifdef SYSCLK_32K
-                    SET_CBUS_REG_MASK(clks[i], clk81_backup);
+                    CLEAR_CBUS_REG_MASK(clks[i], (1<<8));
+                    WRITE_CBUS_REG(clks[i], clk81_backup);
 #else
                     sys_clk = clk_get_sys("clk81", NULL);
                     SET_CBUS_REG_MASK(clks[i], (1<<8));
@@ -374,7 +376,62 @@ static char early_clks_name[EARLY_CLK_COUNT][32]={
     "HHI_MPEG_CLK_CNTL"
 };
 
+static int get_max_common_divisor(int a,int b){
+        while(b){
+                int temp=b;
+                b=a%b;
+                a=temp;
+        }
+        return a;
+}
+
+static int set_a9_clk(unsigned long crystal_freq, unsigned long out_freq)
+{
+	int n,m,od;
+	unsigned long crys_M,out_M,middle_freq,flags;
+	crys_M=crystal_freq/1000000;
+	out_M=out_freq*2/1000000;
+#if 0
+	if (out_M < 200)
+	    od = 2;
+	else if (out_M < 400)
+        od = 1;
+    else
+#endif
+        od = 0;
+	out_M <<= od;
+	middle_freq=get_max_common_divisor(crys_M,out_M);
+	n=crys_M/middle_freq;
+	m=out_M/(middle_freq);
+	if(n>(1<<5)-1)
+	{
+	    printk(KERN_ERR "sys_clk_setting  error, n is too bigger n=%d,crys_M=%ldM,out=%ldM\n",n,crys_M,out_M);
+		return -1;
+	}
+	if(m>(1<<9)-1)
+	{
+	    printk(KERN_ERR "sys_clk_setting  error, m is too bigger m=%d,crys_M=%ldM,out=%ldM\n",m,crys_M,out_M);
+		return -2;
+	}
+	local_irq_save(flags);
+	udelay(10);
+	WRITE_MPEG_REG(HHI_SYS_PLL_CNTL, m<<0 | n<<9 | od<<16); // system PLL
+	WRITE_MPEG_REG(HHI_A9_CLK_CNTL, // A9 clk set to system clock/2
+                        (0 << 10) | // 0 - sys_pll_clk, 1 - audio_pll_clk
+                        (1 << 0 ) | // 1 - sys/audio pll clk, 0 - XTAL
+                        (1 << 4 ) | // APB_CLK_ENABLE
+                        (1 << 5 ) | // AT_CLK_ENABLE
+                        (0 << 2 ) | // div1
+                        (1 << 7 )); // Connect A9 to the PLL divider output
+	printk(KERN_INFO "a9_clk_setting freq=%ld,crystal_req=%ld,out_freq=%ld,n=%d,m=%d,od=%d\n",out_freq/1000000,crys_M,out_M,n,m,od);
+	udelay(10);
+	local_irq_restore(flags);
+	return 0;
+}
+
+extern int sys_clkpll_setting(unsigned crystal_freq,unsigned  out_freq);
 static unsigned nand_timing;
+static unsigned sys_clk_backup;
 void early_clk_switch(int flag)
 {
     int i;
@@ -387,8 +444,11 @@ void early_clk_switch(int flag)
                     SET_CBUS_REG_MASK(early_clks[i], 1);
                 }
                 else if (early_clks[i] == HHI_MPEG_CLK_CNTL){
+                    sys_clk = clk_get_sys("clk_xtal", NULL);
+                    set_a9_clk(sys_clk->rate, 200000000);
+                    CLEAR_CBUS_REG_MASK(early_clks[i], (1<<8));
+                    WRITE_CBUS_REG(early_clks[i], sys_clk_backup); // clk81 back to normal
                     sys_clk = clk_get_sys("clk81", NULL);
-                    SET_CBUS_REG_MASK(early_clks[i], (1<<8));
                     CLEAR_CBUS_REG_MASK(UART0_CONTROL, (1 << 19) | 0xFFF);
                     SET_CBUS_REG_MASK(UART0_CONTROL, (((sys_clk->rate / (115200 * 4)) - 1) & 0xfff));
                     CLEAR_CBUS_REG_MASK(UART1_CONTROL, (1 << 19) | 0xFFF);
@@ -411,19 +471,23 @@ void early_clk_switch(int flag)
                     CLEAR_CBUS_REG_MASK(early_clks[i], 1);
                 }
             }
+            else if (early_clks[i] == HHI_MPEG_CLK_CNTL){
+                early_clk_flag[i] = 1;
+                sys_clk_backup = READ_CBUS_REG(early_clks[i]);
+                CLEAR_CBUS_REG_MASK(early_clks[i], (1<<8)); // 24M
+                sys_clk = clk_get_sys("clk_xtal", NULL);
+                CLEAR_CBUS_REG_MASK(UART0_CONTROL, (1 << 19) | 0xFFF);
+                SET_CBUS_REG_MASK(UART0_CONTROL, (((sys_clk->rate / (115200 * 4)) - 1) & 0xfff));
+                CLEAR_CBUS_REG_MASK(UART1_CONTROL, (1 << 19) | 0xFFF);
+                SET_CBUS_REG_MASK(UART1_CONTROL, (((sys_clk->rate / (115200 * 4)) - 1) & 0xfff)); 
+                nand_timing = READ_CBUS_REG_BITS(NAND_CFG,0,14);
+                WRITE_CBUS_REG_BITS(NAND_CFG,((5)|(((-6)&0xf)<<10)|((0&7)<<5)),0,14);
+                set_a9_clk(sys_clk->rate, 100000000);
+            }
             else{
                 early_clk_flag[i] = READ_CBUS_REG_BITS(early_clks[i], 8, 1) ? 1 : 0;
                 if (early_clk_flag[i]){
                     CLEAR_CBUS_REG_MASK(early_clks[i], (1<<8));
-                    if (early_clks[i] == HHI_MPEG_CLK_CNTL){
-                        sys_clk = clk_get_sys("clk_xtal", NULL);
-                        CLEAR_CBUS_REG_MASK(UART0_CONTROL, (1 << 19) | 0xFFF);
-                        SET_CBUS_REG_MASK(UART0_CONTROL, (((sys_clk->rate / (115200 * 4)) - 1) & 0xfff));
-                        CLEAR_CBUS_REG_MASK(UART1_CONTROL, (1 << 19) | 0xFFF);
-                        SET_CBUS_REG_MASK(UART1_CONTROL, (((sys_clk->rate / (115200 * 4)) - 1) & 0xfff));   
-                        nand_timing = READ_CBUS_REG_BITS(NAND_CFG,0,14);
-                        WRITE_CBUS_REG_BITS(NAND_CFG,((5)|(((-6)&0xf)<<10)|((0&7)<<5)),0,14);                 
-                    }
                 }
             }
             if (early_clk_flag[i])
@@ -710,7 +774,7 @@ static int __init meson_pm_probe(struct platform_device *pdev)
     early_suspend.suspend = meson_system_early_suspend;
     early_suspend.resume = meson_system_late_resume;
     early_suspend.param = pdev;
-//	register_early_suspend(&early_suspend);
+	register_early_suspend(&early_suspend);
 #endif
 
     pdata = pdev->dev.platform_data;
