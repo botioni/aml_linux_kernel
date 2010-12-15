@@ -25,6 +25,7 @@
 #include <linux/slab.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
+#include <linux/delay.h>
 #include <linux/platform_device.h>
 #include <linux/vout/tcon.h>
 
@@ -147,6 +148,7 @@ static void t13_setup_gama_table(tcon_conf_t *pConf)
 void power_on_backlight(void)
 {
     //BL_PWM -> GPIOA_7: 1
+    msleep(200);
     set_gpio_val(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), 1);
     set_gpio_mode(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), GPIO_OUTPUT_MODE); 
 }
