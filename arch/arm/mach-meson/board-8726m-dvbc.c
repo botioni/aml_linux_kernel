@@ -36,6 +36,10 @@
 #include <mach/card_io.h>
 #include <linux/i2c.h>
 #include <linux/i2c-aml.h>
+#ifdef CONFIG_AM_UART_WITH_S_CORE 
+#include <linux/uart-aml.h>
+#endif
+
 #ifdef CONFIG_CACHE_L2X0
 #include <asm/hardware/cache-l2x0.h>
 #endif
@@ -239,6 +243,23 @@ static struct platform_device codec_device = {
     .id         = 0,
     .num_resources = ARRAY_SIZE(codec_resources),
     .resource      = codec_resources,
+};
+#endif
+
+#if defined(CONFIG_AM_VIDEO)
+static struct resource deinterlace_resources[] = {
+    [0] = {
+        .start =  DI_ADDR_START,
+        .end   = DI_ADDR_END,
+        .flags = IORESOURCE_MEM,
+    },
+};
+
+static struct platform_device deinterlace_device = {
+    .name       = "deinterlace",
+    .id         = 0,
+    .num_resources = ARRAY_SIZE(deinterlace_resources),
+    .resource      = deinterlace_resources,
 };
 #endif
 
@@ -534,6 +555,32 @@ static struct platform_device aml_i2c_device = {
 };
 #endif
 
+#if defined(CONFIG_AM_UART_WITH_S_CORE)
+
+#if defined(CONFIG_AM_UART0_SET_PORT_A)
+#define UART_0_PORT		UART_A
+#define UART_1_PORT		UART_B
+#elif defined(CONFIG_AM_UART0_SET_PORT_B)
+#define UART_0_PORT		UART_B
+#define UART_1_PORT		UART_A
+#endif
+
+static struct aml_uart_platform aml_uart_plat = {
+    .uart_line[0]		=	UART_0_PORT,
+    .uart_line[1]		=	UART_1_PORT
+};
+
+static struct platform_device aml_uart_device = {	
+    .name         = "am_uart",  
+    .id       = -1, 
+    .num_resources    = 0,  
+    .resource     = NULL,   
+    .dev = {        
+                .platform_data = &aml_uart_plat,  
+           },
+};
+#endif
+
 #ifdef CONFIG_ANDROID_PMEM
 static struct android_pmem_platform_data pmem_data =
 {
@@ -714,9 +761,12 @@ static  struct platform_device amlogic_smc_device = {
 };
 
 static struct platform_device __initdata *platform_devs[] = {
+    #if defined(CONFIG_AM_UART_WITH_S_CORE)
+        &aml_uart_device,
+    #endif
     #if defined(CONFIG_JPEGLOGO)
-		&jpeglogo_device,
-	#endif	
+	&jpeglogo_device,
+    #endif	
     #if defined(CONFIG_FB_AM)
     	&fb_device,
     #endif
@@ -726,16 +776,18 @@ static struct platform_device __initdata *platform_devs[] = {
     #if defined(CONFIG_AM_STREAMING)
 		&codec_device,
     #endif
+    #if defined(CONFIG_AM_VIDEO)
+	&deinterlace_device,
+    #endif
     #if defined(CONFIG_TVIN_VDIN)
         &vdin_device,
-		&bt656in_device,
-
+	&bt656in_device,
     #endif
-	#if defined(CONFIG_AML_AUDIO_DSP)
-		&audiodsp_device,
-	#endif
-		&aml_sound_card,
-	#if defined(CONFIG_CARDREADER)
+    #if defined(CONFIG_AML_AUDIO_DSP)
+	&audiodsp_device,
+    #endif
+	&aml_sound_card,
+    #if defined(CONFIG_CARDREADER)
     	&amlogic_card_device,
     #endif
     #if defined(CONFIG_KEYPADS_AM)||defined(CONFIG_VIRTUAL_REMOTE)||defined(CONFIG_KEYPADS_AM_MODULE) 
@@ -806,6 +858,7 @@ static void __init device_pinmux_init(void )
 #ifndef CONFIG_I2C_SW_AML
 	/* uart port B */
 	uart_set_pinmux(UART_PORT_B,UART_B_GPIO_C13_C14);
+	//uart_set_pinmux(UART_PORT_B,UART_B_TCK_TDO);
 #endif
 
 	/* pinmux of eth */
