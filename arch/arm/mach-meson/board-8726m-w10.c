@@ -256,15 +256,15 @@ static struct sn7325_platform_data sn7325_pdata = {
 
 #ifdef CONFIG_TOUCH_KEY_PAD_IT7230
 #include <linux/input.h>
-//GPIOA_3
-#define GPIO_IT7230_ATTN ((GPIOA_bank_bit(3)<<16) | GPIOA_bit_bit0_14(3))
+//GPIOA_4
+#define GPIO_IT7230_ATTN ((GPIOA_bank_bit(4)<<16) | GPIOA_bit_bit0_14(4))
 
 static int it7230_init_irq(void)
 {
     /* set input mode */
     gpio_direction_input(GPIO_IT7230_ATTN);
-    /* set gpio interrupt #1 source=GPIOA_3, and triggered by falling edge(=1) */
-    gpio_enable_edge_int(0+3, 1, 1);
+    /* set gpio interrupt #1 source=GPIOA_4, and triggered by falling edge(=1) */
+    gpio_enable_edge_int(0+4, 1, 1);
     return 0;
 }
 
