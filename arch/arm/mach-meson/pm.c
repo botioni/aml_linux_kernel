@@ -356,7 +356,7 @@ void clk_switch(int flag)
 }
 EXPORT_SYMBOL(clk_switch);
 
-#define EARLY_CLK_COUNT 6
+#define EARLY_CLK_COUNT 5
 static char early_clk_flag[EARLY_CLK_COUNT];
 static unsigned early_clks[EARLY_CLK_COUNT]={
     HHI_DEMOD_CLK_CNTL,
