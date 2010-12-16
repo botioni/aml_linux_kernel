@@ -746,7 +746,7 @@ static enum hrtimer_restart ads7846_timer(struct hrtimer *handle)
 			enable_irq(ts->spi->irq);
 		}
 		ts->pending = 0;
-		printk(KERN_INFO "ads7846 lift up\n");
+		//printk(KERN_INFO "ads7846 lift up\n");
 	} else {
 		/* pen is still down, continue with the measurement */
 		ts->msg_idx = 0;
@@ -773,7 +773,7 @@ static irqreturn_t ads7846_irq(int irq, void *handle)
 			 * even after they've been disabled.  We work around
 			 * that here.  (The "generic irq" framework may help...)
 			 */
-			printk(KERN_INFO "ads7846 press down\n");
+			//printk(KERN_INFO "ads7846 press down\n");
 			ts->irq_disabled = 1;
 			disable_irq_nosync(ts->spi->irq);
 			ts->pending = 1;

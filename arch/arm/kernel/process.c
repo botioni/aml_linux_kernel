@@ -87,14 +87,18 @@ void arm_machine_restart(char mode, const char *cmd)
 {
     int sram_vaddr;
     
+    sram_vaddr = ioremap(0xC9001E00, 4); 
+    *(int*)sram_vaddr = (int)0x06060606;
+    
     if(cmd){   
         if(strcmp(cmd, "recovery") == 0){
-            sram_vaddr = ioremap(0xC9001E00, 4); 
             *(int*)sram_vaddr = (int)0x05050505;
-            flush_cache_vmap(sram_vaddr,sram_vaddr + 4);
-            mdelay(1000);  
         }  
-    }   
+    }
+    
+    flush_cache_vmap(sram_vaddr,sram_vaddr + 4);    
+    mdelay(1000); 
+         
 	/*
 	 * Clean and disable cache, and turn off interrupts
 	 */
