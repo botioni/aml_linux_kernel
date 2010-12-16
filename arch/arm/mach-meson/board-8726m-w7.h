@@ -25,12 +25,13 @@
 #define OSD_480_PIX			(640*480)
 #define OSD_576_PIX			(768*576)
 #define OSD_720_PIX			(1280*720)
-#define OSD_1080_PIX		(1920*1088)
+#define OSD_1080_PIX		(1920*1080)
+#define OSD_PANEL_PIX		(800*600)
 #define B16BpP	(2)
 #define B32BpP	(4)
 #define DOUBLE_BUFFER	(2)
 
-#define OSD1_MAX_MEM		U_ALIGN(OSD_1080_PIX*B16BpP*DOUBLE_BUFFER)
+#define OSD1_MAX_MEM		U_ALIGN(OSD_PANEL_PIX*B16BpP*DOUBLE_BUFFER)
 #define OSD2_MAX_MEM		U_ALIGN(32*32*B32BpP)
 
 /******** Reserved memory configuration ***************/
@@ -44,7 +45,7 @@
 #else
 #define PMEM_START		U_ALIGN(OSD1_ADDR_END)
 #endif
-#define PMEM_SIZE			(64*SZ_1M)
+#define PMEM_SIZE			(32*SZ_1M)
 #define PMEM_END			(PMEM_START + PMEM_SIZE-1)
 
 #if defined(CONFIG_AM_VDEC_H264)
