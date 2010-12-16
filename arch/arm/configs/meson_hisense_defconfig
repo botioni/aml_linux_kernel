@@ -1,7 +1,7 @@
 #
 # Automatically generated make config: don't edit
 # Linux kernel version: 2.6.34
-# Thu Dec 16 12:23:49 2010
+# Thu Dec 16 12:37:55 2010
 #
 CONFIG_ARM=y
 CONFIG_HOLES_IN_ZONE=y
@@ -617,7 +617,7 @@ CONFIG_SDIO=y
 #
 # AMLOGIC SPI NOR Flash  support
 #
-# CONFIG_AMLOGIC_SPI_NOR is not set
+CONFIG_AMLOGIC_SPI_NOR=y
 CONFIG_NAND_FLASH_DRIVER_BASE_OPERATE=y
 # CONFIG_NAND_FLASH_DRIVER_MULTIPLANE_CE is not set
 
@@ -792,6 +792,9 @@ CONFIG_MTD_CFI_I2=y
 #
 # Self-contained MTD device drivers
 #
+# CONFIG_MTD_DATAFLASH is not set
+# CONFIG_MTD_M25P80 is not set
+# CONFIG_MTD_SST25L is not set
 # CONFIG_MTD_SLRAM is not set
 # CONFIG_MTD_PHRAM is not set
 # CONFIG_MTD_MTDRAM is not set
@@ -842,6 +845,7 @@ CONFIG_MISC_DEVICES=y
 CONFIG_ANDROID_PMEM=y
 # CONFIG_ENCLOSURE_SERVICES is not set
 # CONFIG_KERNEL_DEBUGGER_CORE is not set
+# CONFIG_TI_DAC7512 is not set
 # CONFIG_UID_STAT is not set
 # CONFIG_APANIC is not set
 # CONFIG_C2PORT is not set
@@ -849,6 +853,7 @@ CONFIG_ANDROID_PMEM=y
 #
 # EEPROM support
 #
+# CONFIG_EEPROM_AT25 is not set
 # CONFIG_EEPROM_93CX6 is not set
 CONFIG_HAVE_IDE=y
 # CONFIG_IDE is not set
@@ -1056,6 +1061,7 @@ CONFIG_SERIAL_NONSTANDARD=y
 #
 # Non-8250 serial port support
 #
+# CONFIG_SERIAL_MAX3100 is not set
 CONFIG_SERIAL_CORE=y
 CONFIG_SERIAL_CORE_CONSOLE=y
 # CONFIG_SERIAL_TIMBERDALE is not set
@@ -1087,7 +1093,23 @@ CONFIG_TCG_NSC=m
 CONFIG_TCG_ATMEL=m
 # CONFIG_DCC_TTY is not set
 # CONFIG_I2C is not set
-# CONFIG_SPI is not set
+CONFIG_SPI=y
+# CONFIG_SPI_DEBUG is not set
+CONFIG_SPI_MASTER=y
+
+#
+# SPI Master Controller Drivers
+#
+# CONFIG_SPI_BITBANG is not set
+# CONFIG_SPI_GPIO is not set
+# CONFIG_SPI_XILINX is not set
+# CONFIG_SPI_DESIGNWARE is not set
+
+#
+# SPI Protocol Masters
+#
+# CONFIG_SPI_SPIDEV is not set
+# CONFIG_SPI_TLE62X0 is not set
 
 #
 # PPS support
@@ -1124,6 +1146,9 @@ CONFIG_HTC_PASIC3=m
 # CONFIG_MFD_TMIO is not set
 # CONFIG_MFD_T7L66XB is not set
 # CONFIG_MFD_TC6387XB is not set
+# CONFIG_MFD_MC13783 is not set
+# CONFIG_EZX_PCAP is not set
+# CONFIG_AB4500_CORE is not set
 # CONFIG_REGULATOR is not set
 CONFIG_MEDIA_SUPPORT=y
 
@@ -1283,6 +1308,7 @@ CONFIG_SND_VERBOSE_PROCFS=y
 # CONFIG_SND_EMU10K1_SEQ is not set
 # CONFIG_SND_DRIVERS is not set
 # CONFIG_SND_ARM is not set
+CONFIG_SND_SPI=y
 CONFIG_SND_USB=y
 CONFIG_SND_USB_AUDIO=y
 # CONFIG_SND_USB_UA101 is not set
@@ -1294,6 +1320,7 @@ CONFIG_SND_AML_M1=y
 # CONFIG_SND_AML_M1_MID_WM8900 is not set
 # CONFIG_SND_AML_M1_ARMDEV_WM8900 is not set
 # CONFIG_SND_AML_M1_MID_RT5621 is not set
+CONFIG_SND_SOC_I2C_AND_SPI=y
 # CONFIG_SND_SOC_ALL_CODECS is not set
 # CONFIG_SOUND_PRIME is not set
 CONFIG_HID_SUPPORT=y
@@ -1525,6 +1552,14 @@ CONFIG_RTC_INTF_ALARM_DEV=y
 #
 # SPI RTC drivers
 #
+# CONFIG_RTC_DRV_M41T94 is not set
+# CONFIG_RTC_DRV_DS1305 is not set
+# CONFIG_RTC_DRV_DS1390 is not set
+# CONFIG_RTC_DRV_MAX6902 is not set
+# CONFIG_RTC_DRV_R9701 is not set
+# CONFIG_RTC_DRV_RS5C348 is not set
+# CONFIG_RTC_DRV_DS3234 is not set
+# CONFIG_RTC_DRV_PCF2123 is not set
 
 #
 # Platform RTC drivers
