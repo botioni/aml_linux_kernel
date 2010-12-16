@@ -400,19 +400,33 @@ static struct mtd_partition partition_info[] =
 	{
 		.name = "U-BOOT",
 		.offset = 0,
-		.size=2*1024*1024,
+		.size = (2*1024*1024) - (16*1024),
 	//	.set_flags=0,
 	//	.dual_partnum=0,
 	},
+        {
+                .name = "CONFIG",
+                .offset = (2*1024*1024) - (16*1024),
+                .size = 16*1024,
+        //      .set_flags=0,
+        //      .dual_partnum=0,
+        },
 	{
-		.name = "Kernel",
+		.name = "boot",
 		.offset = 2*1024*1024,
-		.size = 4 * 1024*1024,
+		.size = 4*1024*1024,
 	//	.set_flags=0,
 	//	.dual_partnum=0,
 	},
+        {
+                .name = "system",
+                .offset = 6*1024*1024,
+                .size = 122*1024*1024,
+        //      .set_flags=0,
+        //      .dual_partnum=0,
+        },
 	{
-		.name = "YAFFS2",
+		.name = "userdata",
 		.offset=MTDPART_OFS_APPEND,
 		.size=MTDPART_SIZ_FULL,
 	//	.set_flags=0,
@@ -737,6 +751,7 @@ static  struct platform_device amlogic_dvb_device = {
 };
 #endif
 
+#ifdef AM_DEMOD
 static struct resource amlogic_smc_resource[]  = {
 	[0] = {
 		.start = ((GPIOD_bank_bit2_24(11)<<16) | GPIOD_bit_bit2_24(11)),                          //smc POWER gpio
@@ -759,6 +774,7 @@ static  struct platform_device amlogic_smc_device = {
 	.num_resources    = ARRAY_SIZE(amlogic_smc_resource),
 	.resource         = amlogic_smc_resource,
 };
+#endif
 
 static struct platform_device __initdata *platform_devs[] = {
     #if defined(CONFIG_AM_UART_WITH_S_CORE)

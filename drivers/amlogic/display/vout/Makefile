@@ -16,11 +16,13 @@ obj-$(CONFIG_AML_TCON_W10)  += w10.o
 
 obj-$(CONFIG_AML_TCON_W7)  += w7.o
 
+obj-$(CONFIG_AML_TCON_W8)  += w8.o
+
 obj-$(CONFIG_AML_TCON_K7)  += k7.o
 
 obj-$(CONFIG_AML_TCON_C7)  += c7.o
 
-obj-$(CONFIG_AML_TCON_C7)  += k8.o
+obj-$(CONFIG_AML_TCON_K8)  += k8.o
 
 #EXTRA_CFLAGS += -DCONFIG_PM
 
