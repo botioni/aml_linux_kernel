@@ -391,13 +391,12 @@ static int set_a9_clk(unsigned long crystal_freq, unsigned long out_freq)
 	unsigned long crys_M,out_M,middle_freq,flags;
 	crys_M=crystal_freq/1000000;
 	out_M=out_freq*2/1000000;
-#if 1
+
 	if (out_M < 200)
 	    od = 2;
 	else if (out_M < 400)
         od = 1;
     else
-#endif
         od = 0;
 	out_M <<= od;
 	middle_freq=get_max_common_divisor(crys_M,out_M);
@@ -415,6 +414,7 @@ static int set_a9_clk(unsigned long crystal_freq, unsigned long out_freq)
 	}
 	local_irq_save(flags);
 	udelay(10);
+	WRITE_CBUS_REG(HHI_A9_CLK_CNTL, READ_CBUS_REG(HHI_A9_CLK_CNTL)&~(1<<7));
 	WRITE_MPEG_REG(HHI_SYS_PLL_CNTL, m<<0 | n<<9 | od<<16); // system PLL
 	WRITE_MPEG_REG(HHI_A9_CLK_CNTL, // A9 clk set to system clock/2
                         (0 << 10) | // 0 - sys_pll_clk, 1 - audio_pll_clk
@@ -482,7 +482,7 @@ void early_clk_switch(int flag)
                 SET_CBUS_REG_MASK(UART1_CONTROL, (((sys_clk->rate / (115200 * 4)) - 1) & 0xfff)); 
                 nand_timing = READ_CBUS_REG_BITS(NAND_CFG,0,14);
                 WRITE_CBUS_REG_BITS(NAND_CFG,((5)|(((-6)&0xf)<<10)|((0&7)<<5)),0,14);
-                set_a9_clk(sys_clk->rate, 100000000);
+                set_a9_clk(sys_clk->rate, 80000000);
             }
             else{
                 early_clk_flag[i] = READ_CBUS_REG_BITS(early_clks[i], 8, 1) ? 1 : 0;
@@ -641,12 +641,14 @@ static void meson_pm_suspend(void)
     printk(KERN_INFO "enter meson_pm_suspend!\n");
     
     pdata->ddr_clk = READ_CBUS_REG(HHI_DDR_PLL_CNTL);
+
     ddr_clk_N = (pdata->ddr_clk>>9)&0x1f;
     ddr_clk_N = ddr_clk_N*4; // N*4
     if (ddr_clk_N>0x1f)
         ddr_clk_N=0x1f;
     pdata->ddr_clk &= ~(0x1f<<9);
     pdata->ddr_clk |= ddr_clk_N<<9;
+    
     printk(KERN_INFO "target ddr clock 0x%x!\n", pdata->ddr_clk);
 
     divider = READ_CBUS_REG_BITS(HHI_A9_CLK_CNTL, 8, 6);
