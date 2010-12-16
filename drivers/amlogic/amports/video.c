@@ -531,6 +531,7 @@ static void vsync_toggle_frame(vframe_t *vf)
 
            	if ( deinterlace_mode == 1 )
            	{
+           		vf->type |= VIDTYPE_VIU_FIELD;
             	inc_field_counter();
            	}
         }
@@ -553,6 +554,7 @@ static void vsync_toggle_frame(vframe_t *vf)
 
            	if ( deinterlace_mode == 1 )
            	{
+           		vf->type |= VIDTYPE_VIU_FIELD;
             	inc_field_counter();
            	}
 		}
