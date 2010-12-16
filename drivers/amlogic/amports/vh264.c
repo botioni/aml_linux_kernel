@@ -163,6 +163,8 @@ static struct work_struct error_wd_work;
 static struct dec_sysinfo vh264_amstream_dec_info;
 extern u32 trickmode_i;
 
+static spinlock_t lock = SPIN_LOCK_UNLOCKED;
+
 static int vh264_stop(void);
 static s32 vh264_init(void);
 
@@ -1120,6 +1122,10 @@ static int vh264_stop(void)
 
         if (stat & STAT_VF_HOOK)
         {
+                ulong flags;
+                spin_lock_irqsave(&lock, flags);
+                fill_ptr = get_ptr = put_ptr = putting_ptr = 0;
+                spin_unlock_irqrestore(&lock, flags);
                 vf_unreg_provider();
                 stat &= ~STAT_VF_HOOK;
         }

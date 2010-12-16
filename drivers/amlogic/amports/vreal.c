@@ -126,6 +126,8 @@ static u32 real_recycle_q[REAL_RECYCLE_Q_SIZE];
 static u32 real_recycle_rd; 
 static u32 real_recycle_wr;
 
+static spinlock_t lock = SPIN_LOCK_UNLOCKED;
+
 static unsigned short pic_sz_tbl[12] __attribute__ ((aligned (32)));
 static dma_addr_t pic_sz_tbl_map;
 static const unsigned char RPR_size[9] = {0,1,1,2,2,3,3,3,3};
@@ -749,6 +751,11 @@ static int amvdec_real_remove(struct platform_device *pdev)
 
     if (stat & STAT_VF_HOOK) 
     {
+        ulong flags;
+        spin_lock_irqsave(&lock, flags);
+        fill_ptr = get_ptr = put_ptr = putting_ptr = 0;
+        spin_unlock_irqrestore(&lock, flags);
+                
         vf_unreg_provider();
         stat &= ~STAT_VF_HOOK;
     }
