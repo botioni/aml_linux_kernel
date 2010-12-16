@@ -737,6 +737,7 @@ static  struct platform_device amlogic_dvb_device = {
 };
 #endif
 
+#ifdef AM_DEMOD
 static struct resource amlogic_smc_resource[]  = {
 	[0] = {
 		.start = ((GPIOD_bank_bit2_24(11)<<16) | GPIOD_bit_bit2_24(11)),                          //smc POWER gpio
@@ -759,6 +760,7 @@ static  struct platform_device amlogic_smc_device = {
 	.num_resources    = ARRAY_SIZE(amlogic_smc_resource),
 	.resource         = amlogic_smc_resource,
 };
+#endif
 
 static struct platform_device __initdata *platform_devs[] = {
     #if defined(CONFIG_AM_UART_WITH_S_CORE)
