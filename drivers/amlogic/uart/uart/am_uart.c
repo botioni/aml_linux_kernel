@@ -61,6 +61,8 @@ static int console_inited[2] ={ 0,0};   /* have we initialized the console alrea
 static int default_index = 0;   /* have we initialized the console index? */
 static struct tty_driver *am_uart_driver;
 
+//#define PRINT_DEBUG
+
 #define MAX_NAMED_UART 4
 
 #ifndef outl
@@ -130,6 +132,11 @@ static void am_uart_start(struct tty_struct *tty)
     struct am_uart *info = (struct am_uart *)tty->driver_data;
     am_uart_t *uart = uart_addr[info->line];
     unsigned long mode;
+
+#ifdef PRINT_DEBUG
+    if(info->line == 1)
+        printk("%s\n", __FUNCTION__);
+#endif
     mutex_lock(&info->info_mutex);
     mode = __raw_readl(&uart->mode);
     mode |=UART_TXENB | UART_RXENB;
@@ -348,6 +355,11 @@ static void change_speed(struct am_uart *info, unsigned long newbaud)
     unsigned short port;
     unsigned long tmp;
 
+#ifdef PRINT_DEBUG
+    if(info->line == 1)
+        printk("%s\n", __FUNCTION__);
+#endif
+
     if (!info->tty || !info->tty->termios)
         return;
 
@@ -374,6 +386,11 @@ static int startup(struct am_uart *info)
     unsigned long mode;
     if (info->flags & ASYNC_INITIALIZED)
         return 0;
+
+#ifdef PRINT_DEBUG
+    if(info->line == 1)
+        printk("%s\n", __FUNCTION__);
+#endif
 
     if (!info->xmit_buf) {
         info->xmit_buf = (unsigned char *)get_zeroed_page(GFP_KERNEL);
@@ -419,6 +436,11 @@ static void shutdown(struct am_uart *info)
     if (!(info->flags & ASYNC_INITIALIZED))
         return;
 
+#ifdef PRINT_DEBUG
+    if(info->line == 1)
+        printk("%s\n", __FUNCTION__);
+#endif
+
     if (info->xmit_buf) {
         free_page((unsigned long)info->xmit_buf);
         info->xmit_buf = 0;
@@ -438,6 +460,11 @@ static void am_uart_set_ldisc(struct tty_struct *tty)
 {
     struct am_uart *info = (struct am_uart *)tty->driver_data;
     info->is_cons = (tty->termios->c_line == N_TTY);
+
+#ifdef PRINT_DEBUG
+    if(info->line == 1)
+        printk("%s,is_cons = %d\n", __FUNCTION__,info->is_cons);
+#endif
 }
 
 static void am_uart_flush_chars(struct tty_struct *tty)
@@ -445,6 +472,11 @@ static void am_uart_flush_chars(struct tty_struct *tty)
     struct am_uart *info = (struct am_uart *)tty->driver_data;
     am_uart_t *uart = uart_addr[info->line];
     unsigned long c;
+
+#ifdef PRINT_DEBUG
+    if(info->line == 1)
+        printk("%s,cnt = %d\n", __FUNCTION__,info->xmit_cnt);
+#endif
 
     mutex_lock(&info->info_mutex);
     if (info->xmit_cnt <= 0 || tty->stopped || tty->hw_stopped ||
@@ -512,6 +544,10 @@ static int am_uart_write_room(struct tty_struct *tty)
     struct am_uart *info = (struct am_uart *)tty->driver_data;
     int ret;
 
+#ifdef PRINT_DEBUG
+    if(info->line == 1)
+        printk("%s\n", __FUNCTION__);
+#endif
 
     ret = (SERIAL_XMIT_SIZE - info->xmit_cnt) - 1;
     if (ret < 0)
@@ -523,6 +559,11 @@ static int am_uart_write_room(struct tty_struct *tty)
 static int am_uart_chars_in_buffer(struct tty_struct *tty)
 {
     struct am_uart *info = (struct am_uart *)tty->driver_data;
+
+#ifdef PRINT_DEBUG
+    if(info->line == 1)
+        printk("%s, %d\n", __FUNCTION__,info->xmit_cnt);
+#endif
 
     return info->xmit_cnt;
 }
@@ -549,6 +590,11 @@ static void am_uart_throttle(struct tty_struct *tty)
 {
     struct am_uart *info = (struct am_uart *)tty->driver_data;
 
+#ifdef PRINT_DEBUG
+    if(info->line == 1)
+        printk("%s\n", __FUNCTION__);
+#endif
+
     if (I_IXOFF(tty))
         info->x_char = STOP_CHAR(tty);
 
@@ -559,6 +605,10 @@ static void am_uart_unthrottle(struct tty_struct *tty)
 {
     struct am_uart *info = (struct am_uart *)tty->driver_data;
 
+#ifdef PRINT_DEBUG
+    if(info->line == 1)
+        printk("%s\n", __FUNCTION__);
+#endif
 
     if (I_IXOFF(tty)) {
         if (info->x_char)
@@ -582,13 +632,25 @@ static int am_uart_ioctl(struct tty_struct *tty, struct file *file,
     struct am_uart *info = (struct am_uart *)tty->driver_data;
     unsigned long tmpul;
 
+#ifdef PRINT_DEBUG
+    if(info->line == 1)
+        printk("%s\n", __FUNCTION__);
+#endif
 
     switch (cmd) {
     case GET_BAUD:
+#ifdef PRINT_DEBUG
+    if(info->line == 1)
+        printk("get baud: %ld\n", info->baud);
+#endif
         return copy_to_user((void *)arg, &(info->baud),
                     sizeof(unsigned long)) ? -EFAULT : 0;
 
     case SET_BAUD:
+#ifdef PRINT_DEBUG
+    if(info->line == 1)
+        printk("set baud\n");
+#endif
         if (copy_from_user
             ((void *)&tmpul, (void *)arg, sizeof(unsigned long)))
             return -EFAULT;
@@ -606,6 +668,11 @@ static void am_uart_set_termios(struct tty_struct *tty,
                 struct ktermios *old_termios)
 {
     struct am_uart *info = (struct am_uart *)tty->driver_data;
+
+#ifdef PRINT_DEBUG
+    if(info->line == 1)
+        printk("%s,new_cflag = 0x%x,old_cflag = 0x%x\n", __FUNCTION__,tty->termios->c_cflag,old_termios->c_cflag);
+#endif
 
     if (tty->termios->c_cflag == old_termios->c_cflag)
         return;
@@ -636,6 +703,10 @@ static void am_uart_close(struct tty_struct *tty, struct file *filp)
     if (tty_hung_up_p(filp)) {
         return;
     }
+#ifdef PRINT_DEBUG
+    if(info->line == 1)
+        printk("%s\n", __FUNCTION__);
+#endif
 
     if ((tty->count == 1) && (info->count != 1)) {
         /*
@@ -722,6 +793,10 @@ static int block_til_ready(struct tty_struct *tty, struct file *filp,
     DECLARE_WAITQUEUE(wait, current);
     int retval;
 
+#ifdef PRINT_DEBUG
+    if(info->line == 1)
+        printk("%s\n", __FUNCTION__);
+#endif
 
     /*
      * If the device is in the middle of being closed, then block
@@ -815,6 +890,10 @@ int am_uart_open(struct tty_struct *tty, struct file *filp)
     }
 
     info = &am_uart_info[line];
+#ifdef PRINT_DEBUG
+    if(info->line == 1)
+        printk("%s\n", __FUNCTION__);
+#endif
     mutex_lock(&info->info_mutex);
     info->count++;
     tty->driver_data = info;
@@ -839,6 +918,17 @@ int am_uart_open(struct tty_struct *tty, struct file *filp)
 
 void am_uart_wait_until_sent(struct tty_struct *tty, int timeout)
 {
+#ifdef PRINT_DEBUG
+    struct am_uart *info;
+    int line;
+
+    line = tty->index;
+
+    info = &am_uart_info[line];
+
+    if(info->line == 1)
+        printk("%s\n", __FUNCTION__);
+#endif
     am_uart_flush_chars(tty);
 }
 
