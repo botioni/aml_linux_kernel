@@ -180,7 +180,7 @@ static inline void _init_tvenc(tcon_conf_t *pConf)
     WRITE_MPEG_REG(VENC_VIDEO_PROG_MODE,    0x100);
     WRITE_MPEG_REG(ENCP_VIDEO_EN, 1);
 
-    WRITE_MPEG_REG(VPP_POSTBLEND_VD1_H_START_END,		pConf->width);
+//    WRITE_MPEG_REG(VPP_POSTBLEND_VD1_H_START_END,		pConf->width);
 }
 
 static inline void _enable_vsync_interrupt(void)
