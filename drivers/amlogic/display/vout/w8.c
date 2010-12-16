@@ -38,10 +38,10 @@
 #include <mach/pinmux.h>
 #include <mach/power_gate.h>
 
-#define LCD_WIDTH       800 
-#define LCD_HEIGHT      600
-#define MAX_WIDTH       1010
-#define MAX_HEIGHT      660
+#define LCD_WIDTH       1024
+#define LCD_HEIGHT      768
+#define MAX_WIDTH       1337
+#define MAX_HEIGHT      806
 #define VIDEO_ON_LINE   22
 
 static void t13_power_on(void);
@@ -54,16 +54,16 @@ static tcon_conf_t tcon_config =
     .max_width  = MAX_WIDTH,
     .max_height = MAX_HEIGHT,
     .video_on_line = VIDEO_ON_LINE,
-    .pll_ctrl = 0x063c,
+    .pll_ctrl = 0x0661,
     .clk_ctrl = 0x1fc1,
     .gamma_cntl_port = (1 << LCD_GAMMA_EN) | (0 << LCD_GAMMA_RVS_OUT) | (1 << LCD_GAMMA_VCOM_POL),
     .gamma_vcom_hswitch_addr = 0,
     .rgb_base_addr = 0xf0,
     .rgb_coeff_addr = 0x74a,
     .pol_cntl_addr = (0x0 << LCD_CPH1_POL) |(0x1 << LCD_HS_POL) | (0x1 << LCD_VS_POL),
-    .dith_cntl_addr = 0x400,
-    .sth1_hs_addr = 27,
-    .sth1_he_addr = 979,
+    .dith_cntl_addr = 0x600,
+    .sth1_hs_addr = 40,
+    .sth1_he_addr = 30,
     .sth1_vs_addr = 0,
     .sth1_ve_addr = MAX_HEIGHT - 1,
     .sth2_hs_addr = 0,
@@ -71,7 +71,7 @@ static tcon_conf_t tcon_config =
     .sth2_vs_addr = 0,
     .sth2_ve_addr = 0,
     .oeh_hs_addr = 67,
-    .oeh_he_addr = 67+LCD_WIDTH-1,
+    .oeh_he_addr = 67+LCD_WIDTH,
     .oeh_vs_addr = VIDEO_ON_LINE,
     .oeh_ve_addr = VIDEO_ON_LINE+LCD_HEIGHT-1,
     .vcom_hswitch_addr = 0,
@@ -87,8 +87,8 @@ static tcon_conf_t tcon_config =
     .cpv2_ve_addr = 0,
     .stv1_hs_addr = 0,
     .stv1_he_addr = MAX_WIDTH - 1,
-    .stv1_vs_addr = 639,
-    .stv1_ve_addr = 638,
+    .stv1_vs_addr = 13,
+    .stv1_ve_addr = 10,
     .stv2_hs_addr = 0,
     .stv2_he_addr = 0,
     .stv2_vs_addr = 0,

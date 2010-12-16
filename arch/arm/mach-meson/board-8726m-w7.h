@@ -1,5 +1,5 @@
-#ifndef __BOARD_8626M_H
-#define __BOARD_8626M_H
+#ifndef __BOARD_8626M_W7_H
+#define __BOARD_8626M_W7_H
 
 #include <asm/page.h>
 
