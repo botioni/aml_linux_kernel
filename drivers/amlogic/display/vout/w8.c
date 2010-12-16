@@ -107,7 +107,7 @@ static tcon_conf_t tcon_config =
     .oev3_ve_addr = 0,
     .inv_cnt_addr = (0<<LCD_INV_EN) | (0<<LCD_INV_CNT),
     .tcon_misc_sel_addr = (1<<LCD_STV1_SEL) | (1<<LCD_STV2_SEL),
-    .dual_port_cntl_addr = (1<<LCD_TTL_SEL) | (1<<LCD_ANALOG_SEL_CPH3) | (1<<LCD_ANALOG_3PHI_CLK_SEL) | (1<<1) | (1<<0),
+    .dual_port_cntl_addr = (1<<LCD_TTL_SEL) | (1<<LCD_ANALOG_SEL_CPH3) | (1<<LCD_ANALOG_3PHI_CLK_SEL),
     .flags = 0,
     .screen_width = 4,
     .screen_height = 3,
@@ -147,34 +147,46 @@ static void t13_setup_gama_table(tcon_conf_t *pConf)
 
 void power_on_backlight(void)
 {
-    //BL_PWM -> GPIOA_7: 1
-    msleep(200);
-    set_gpio_val(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), 1);
-    set_gpio_mode(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), GPIO_OUTPUT_MODE);
+    msleep(100);
+    SET_CBUS_REG_MASK(PWM_MISC_REG_AB, (1 << 0));
+    msleep(100);
+    SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<31));
+    msleep(100);
+    //EIO -> OD4: 0
+    #ifdef CONFIG_SN7325
+    configIO(0, 0);
+    setIO_level(0, 0, 4);
+    #endif
 }
 
 void power_off_backlight(void)
 {
-    //BL_PWM -> GPIOA_7: 0
+    //EIO -> OD4: 1
+#ifdef CONFIG_SN7325
+    configIO(0, 0);
+    setIO_level(0, 1, 4);
+#endif
+    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<31));
+    CLEAR_CBUS_REG_MASK(PWM_MISC_REG_AB, (1 << 0));
     set_gpio_val(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), 0);
     set_gpio_mode(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), GPIO_OUTPUT_MODE);
 }
 
 static void power_on_lcd(void)
 {
-    //EIO -> OD7: 0
+    //EIO -> OD0: 0
 #ifdef CONFIG_SN7325
     configIO(0, 0);
-    setIO_level(0, 0, 7);
+    setIO_level(0, 0, 0);
 #endif
 }
 
 static void power_off_lcd(void)
 {
-    //EIO -> OD7: 1
+    //EIO -> OD0: 1
 #ifdef CONFIG_SN7325
     configIO(0, 0);
-    setIO_level(0, 1, 7);
+    setIO_level(0, 1, 0);
 #endif
 }
 
@@ -183,7 +195,7 @@ static void set_tcon_pinmux(void)
     /* TCON control pins pinmux */
     /* GPIOA_5 -> LCD_Clk, GPIOA_0 -> TCON_STH1, GPIOA_1 -> TCON_STV1, GPIOA_2 -> TCON_OEH, */
     set_mio_mux(0, ((1<<11)|(1<<14)|(1<<15)|(1<<16)));
-    set_mio_mux(4,(3<<0)|(3<<2)|(3<<4));   //For 8bits
+    set_mio_mux(4, (1<<0)|(1<<2)|(1<<4) );   //For 6bits
     //PP1 -> UPDN:0, PP2 -> SHLR:1
 #ifdef CONFIG_SN7325
     configIO(1, 0);

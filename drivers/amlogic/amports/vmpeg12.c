@@ -624,6 +624,13 @@ static int amvdec_mpeg12_remove(struct platform_device *pdev)
     }
 
     if (stat & STAT_VF_HOOK) {
+        ulong flags;
+        spin_lock_irqsave(&lock, flags);
+        vfq_init(&display_q);
+        vfq_init(&recycle_q);
+        vfq_init(&newframe_q);
+        spin_unlock_irqrestore(&lock, flags);
+
         vf_unreg_provider();
         stat &= ~STAT_VF_HOOK;
     }

@@ -813,10 +813,14 @@ static inline bool vpts_expire(vframe_t *cur_vf, vframe_t *next_vf)
     u32 pts = next_vf->pts;
     u32 systime;
 
-    if ((trickmode_i == 1)
-        || ((trickmode_fffb == 1) && (0 == atomic_read(&trickmode_framedone))))
-        return true;
-
+    if ((trickmode_i == 1) || ((trickmode_fffb == 1)))
+    {
+        if (0 == atomic_read(&trickmode_framedone))
+            return true;
+        else 
+            return false;
+    }
+    
     if (next_vf->duration == 0)
         return true;
 
@@ -1304,7 +1308,7 @@ void vf_unreg_provider(void)
     if (blackout)
         DisableVideoLayer();
 
-    if (!trickmode_fffb)
+    //if (!trickmode_fffb)
     {
         vf_keep_current();
     }
