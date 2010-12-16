@@ -960,13 +960,13 @@ static struct mtd_partition partition_info[] =
 	{
 		.name = "userdata",
 		.offset= 452*1024*1024,
-		.size= 1024 * 1024*1024,
+		.size= 512 * 1024*1024,
 	//	.set_flags=0,
 	//	.dual_partnum=0,
 	},
 	{
 		.name = "media",
-		.offset = (452+1024)*1024*1024,//MTDPART_SIZ_FULL;//MTDPART_OFS_APPEND,
+		.offset = (452+512)*1024*1024,//MTDPART_SIZ_FULL;//MTDPART_OFS_APPEND,
 		.size = MTDPART_SIZ_FULL,//(0x100000000-(432+256)*1024*1024),
 		.set_flags = MTD_AVNFTL,
 		.dual_partnum = 1|MTD_AVFTL_PLANE|MTD_AVNFTL_INTERL,
