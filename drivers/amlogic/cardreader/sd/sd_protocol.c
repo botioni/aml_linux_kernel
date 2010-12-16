@@ -3821,7 +3821,7 @@ void sd_mmc_power_on(SD_MMC_Card_Info_t *sd_mmc_info)
 	{
 		sd_set_disable();
 	}
-	sd_delay_ms(50);
+	sd_delay_ms(200);
 
 	if(sd_mmc_info->sd_mmc_power)
 	{
@@ -3837,7 +3837,7 @@ void sd_mmc_power_on(SD_MMC_Card_Info_t *sd_mmc_info)
 			sd_set_enable();
 		}
 	}
-	sd_delay_ms(20);
+	sd_delay_ms(200);
 #else
 	sd_delay_ms(10);
 #endif
@@ -4035,6 +4035,16 @@ void sd_mmc_exit(SD_MMC_Card_Info_t *sd_mmc_info)
 	if(sd_mmc_info->sd_mmc_io_release != NULL)
 		sd_mmc_info->sd_mmc_io_release();
 
+	if(sd_mmc_info->card_type == CARD_TYPE_SD)
+		Debug_Printf("SD card unpluged!\n\n");
+	else if(sd_mmc_info->card_type == CARD_TYPE_SDHC)
+		Debug_Printf("SDHC card unpluged!\n\n");
+	else if(sd_mmc_info->card_type == CARD_TYPE_SDIO)
+		Debug_Printf("SDIO card unpluged!\n\n");
+	else
+		Debug_Printf("MMC card unpluged!\n\n");
+
+	return;
 }
 
 void sd_mmc_prepare_init(SD_MMC_Card_Info_t *sd_mmc_info)

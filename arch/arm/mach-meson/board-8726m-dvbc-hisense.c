@@ -47,7 +47,7 @@
 #include <mach/gpio.h>
 #include <linux/delay.h>
 #include <mach/clk_set.h>
-#include "board-8726m-dvbc.h"
+#include "board-8726m-dvbc-hisense.h"
 
 #ifdef CONFIG_ANDROID_PMEM
 #include <linux/slab.h>
@@ -779,10 +779,6 @@ static struct platform_device __initdata *platform_devs[] = {
     #if defined(CONFIG_AM_VIDEO)
 	&deinterlace_device,
     #endif
-    #if defined(CONFIG_TVIN_VDIN)
-        &vdin_device,
-	&bt656in_device,
-    #endif
     #if defined(CONFIG_AML_AUDIO_DSP)
 	&audiodsp_device,
     #endif
@@ -813,13 +809,6 @@ static struct platform_device __initdata *platform_devs[] = {
     #if defined(CONFIG_AML_RTC)
               &aml_rtc_device,
     #endif
-    #if defined(CONFIG_AM_DVB)
-		&amlogic_dvb_device,
-		&gx1001_device,
-		&amlfe_device,
-    #endif
-		&amlogic_smc_device
-	
 };
 
 static void __init eth_pinmux_init(void)
@@ -847,32 +836,17 @@ static void __init device_pinmux_init(void )
 {
 	clearall_pinmux();
 
-	/* other deivce power on */
-	/* GPIOA_200e_bit4..usb/eth/YUV power on */
-	//set_gpio_mode(PREG_EGPIO,1<<4,GPIO_OUTPUT_MODE);
-	//set_gpio_val(PREG_EGPIO,1<<4,1);
-
 	/* uart port A */
 	uart_set_pinmux(UART_PORT_A,UART_A_GPIO_B2_B3);
 
-#ifndef CONFIG_I2C_SW_AML
 	/* uart port B */
-	uart_set_pinmux(UART_PORT_B,UART_B_GPIO_C13_C14);
-	//uart_set_pinmux(UART_PORT_B,UART_B_TCK_TDO);
-#endif
+	uart_set_pinmux(UART_PORT_B,UART_B_TCK_TDO);
 
 	/* pinmux of eth */
 	eth_pinmux_init();
 
 	/* IR decoder pinmux */
 	set_mio_mux(5, 1<<31);
-
-#ifdef CONFIG_I2C_SW_AML   /*for multak*/
-	/* SmartCard pinmux */
-	set_mio_mux(2, 0xF<<20);
-#endif
-
-	set_audio_pinmux(AUDIO_IN_JTAG); // for MIC input
 }
 static void __init  device_clk_setting(void)
 {

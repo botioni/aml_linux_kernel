@@ -851,7 +851,27 @@ static	struct platform_device aml_rtc_device = {
 #endif
 
 #if defined(CONFIG_SUSPEND)
-
+static void set_vccx2(int power_on)
+{
+    if(power_on)
+    {
+        //set_gpio_val(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), 1);
+        //set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);
+        #ifdef CONFIG_SN7325
+        configIO(1, 0);
+        setIO_level(1, 1, 4);
+        #endif
+    }
+    else
+    {
+        //set_gpio_val(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), 0);
+       // set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);
+        #ifdef CONFIG_SN7325
+        configIO(1, 0);
+        setIO_level(1, 0, 4);
+        #endif
+    }
+}
 static struct meson_pm_config aml_pm_pdata = {
     .ddr2_reg_refresh = IO_APB_BUS_BASE+0x0004,
     .ddr2_reg_phy = IO_APB_BUS_BASE+0x1380,
@@ -860,7 +880,7 @@ static struct meson_pm_config aml_pm_pdata = {
     .power_key = CBUS_REG_ADDR(RTC_ADDR1),
     .ddr_clk = 0x00110820,
     .sleepcount = 128,
-    //.set_vccx2 = set_vccx2,
+    .set_vccx2 = set_vccx2,
 };
 
 static struct platform_device aml_pm_device = {
@@ -963,10 +983,22 @@ static void set_charge(int flags)
 	//GPIOD_22 low: fast charge high: slow charge
     CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_7, (1<<18));
     if(flags == 1)
-	    set_gpio_val(GPIOD_bank_bit2_24(22), GPIOD_bit_bit2_24(22), 0); //fast charge
+        {
+	    //set_gpio_val(GPIOD_bank_bit2_24(22), GPIOD_bit_bit2_24(22), 0); //fast charge
+	    #ifdef CONFIG_SN7325
+        configIO(1, 0);
+        setIO_level(1, 1, 1);
+        #endif
+	    }
     else
-    	set_gpio_val(GPIOD_bank_bit2_24(22), GPIOD_bit_bit2_24(22), 1);	//slow charge
-    set_gpio_mode(GPIOD_bank_bit2_24(22), GPIOD_bit_bit2_24(22), GPIO_OUTPUT_MODE);
+        {
+    	//set_gpio_val(GPIOD_bank_bit2_24(22), GPIOD_bit_bit2_24(22), 1);	//slow charge
+	    #ifdef CONFIG_SN7325
+        configIO(1, 0);
+        setIO_level(1, 0, 1);
+        #endif
+        }
+    //set_gpio_mode(GPIOD_bank_bit2_24(22), GPIOD_bit_bit2_24(22), GPIO_OUTPUT_MODE);
 }
 
 #ifdef CONFIG_SARADC_AM
@@ -1289,6 +1321,7 @@ static void aml_8726m_bl_init(void)
     WRITE_CBUS_REG(VGHL_PWM_REG4, val);
 }
 static unsigned bl_level;
+static unsigned panel_state = 0;
 static unsigned aml_8726m_get_bl_level(void)
 {
 //    unsigned level = 0;
@@ -1298,34 +1331,27 @@ static unsigned aml_8726m_get_bl_level(void)
 //    level = READ_CBUS_REG_BITS(VGHL_PWM_REG0, 0, 4);
     return bl_level;
 }
-#define BL_MAX_LEVEL 60000
 static void aml_8726m_set_bl_level(unsigned level)
 {
-    unsigned cs_level,pwm_level,low,hi;
-    
-    bl_level = level;
-    
-    level = level*179/255;
-    if(level>=120){ //120 - 179
-        cs_level = 9 -(level - 120)/15;
-        pwm_level = 85 + (level - 120)%15;   
+    unsigned cs_level;
+
+    if (level < 30)
+    {
+        cs_level = 15;
     }
-    else if(level>=20){ //20 - 119
-        cs_level = 13 - (level -20)/25;
-        pwm_level = 75 + (level - 20)%25;   
+    else if (level == 30)
+    {
+        cs_level = 12;
     }
-    else{  //  <20
-        cs_level = 13;
-        pwm_level = 0;           
+    else if (level >30 && level < 256)
+    {
+        cs_level = 11-((level - 31)/28);
     }
-        
-    hi = (BL_MAX_LEVEL/100)*pwm_level;
-    low = BL_MAX_LEVEL - hi;
-    WRITE_CBUS_REG_BITS(VGHL_PWM_REG0, cs_level, 0, 4);   
-    SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<31)); 
-    SET_CBUS_REG_MASK(PWM_MISC_REG_AB, (1 << 0));         
-    WRITE_CBUS_REG_BITS(PWM_PWM_A,low,0,16);  //low
-    WRITE_CBUS_REG_BITS(PWM_PWM_A,hi,16,16);  //hi   
+    else
+        cs_level = 3;
+
+
+    WRITE_CBUS_REG_BITS(VGHL_PWM_REG0, cs_level, 0, 4);
 }
 
 static void aml_8726m_power_on_bl(void)

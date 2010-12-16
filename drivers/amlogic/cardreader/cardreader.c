@@ -26,7 +26,7 @@
 #include <linux/cardreader/sdio.h>
 #include <linux/cardreader/cardreader.h>
 #include <linux/cardreader/card_block.h>
-
+#include <linux/kthread.h>
 #include <asm/cacheflush.h>
 #include <mach/am_regs.h>
 #include <mach/irqs.h>
@@ -55,6 +55,9 @@ struct amlogic_card_host
 };
 
 //wait_queue_head_t     sdio_wait_event;
+
+extern void sdio_cmd_int_handle(struct memory_card *card);
+extern void sdio_timeout_int_handle(struct memory_card *card);
 
 static int card_reader_monitor(void *arg);
 void card_detect_change(struct card_host *host, unsigned long delay);
@@ -199,20 +202,60 @@ static void card_reader_initialize(struct card_host *host)
 	}
 }
 
+static irqreturn_t sdio_interrupt_monitor(int irq, void *dev_id, struct pt_regs *regs) 
+{
+	struct card_host *host = (struct card_host *)dev_id;
+	struct memory_card *card = host->card_busy;
+	unsigned sdio_interrupt_resource;
+
+	sdio_interrupt_resource = sdio_check_interrupt();
+	switch (sdio_interrupt_resource) {
+		case SDIO_IF_INT:
+		    //sdio_if_int_handler();
+		    break;
+
+		case SDIO_CMD_INT:
+			sdio_cmd_int_handle(card);
+			break;
+
+		case SDIO_TIMEOUT_INT:
+			sdio_timeout_int_handle(card);
+			break;
+	
+		case SDIO_SOFT_INT:
+		    //AVDetachIrq(sdio_int_handler);
+		    //sdio_int_handler = -1;
+		    break;
+	
+		case SDIO_NO_INT:	
+			break;
+
+		default:	
+			break;	
+	}
+
+    return IRQ_HANDLED; 
+
+} 
+
 static int card_reader_init(struct card_host *host) 
 {	
-	int ret;	
-
 	host->dma_buf = dma_alloc_coherent(NULL, host->max_req_size, (dma_addr_t *)&host->dma_phy_buf, GFP_KERNEL);
 	if(host->dma_buf == NULL)
 		return -ENOMEM;
 
 	card_reader_initialize(host);	
-	ret = kernel_thread(card_reader_monitor, host, CLONE_KERNEL | SIGCHLD);
-	if (ret < 0)	
+	host->card_task = kthread_run(card_reader_monitor, host, "card");
+	if (!host->card_task)	
 		printk("card creat process failed\n");
 	else	
 		printk("card creat process sucessful\n");
+
+	if (request_irq(INT_SDIO, (irq_handler_t) sdio_interrupt_monitor, 0, "sd_mmc", host)) {
+		printk("request SDIO irq error!!!\n");
+		return -1;
+	}
+
 	return 0;
 } 
 
@@ -221,7 +264,6 @@ static int card_reader_monitor(void *data)
     unsigned card_type, card_4in1_init_type;
     struct card_host *card_host = (struct card_host *)data;
     struct memory_card *card = NULL;
-    unsigned char slot_detector = 0;
     card_4in1_init_type = 0;
 
 	daemonize("card_read_monitor");
@@ -230,6 +272,14 @@ static int card_reader_monitor(void *data)
 		msleep(200);
 
 		mutex_lock(&init_lock);
+		if(card_host->card_task_state)
+		{
+			set_current_state(TASK_INTERRUPTIBLE);
+			mutex_unlock(&init_lock);
+			schedule();
+			set_current_state(TASK_RUNNING);
+			mutex_lock(&init_lock);
+		}
 		for(card_type=CARD_XD_PICTURE; card_type<CARD_MAX_UNIT; card_type++) {
 
 			card_reader_initialize(card_host);
@@ -240,22 +290,24 @@ static int card_reader_monitor(void *data)
 			card->card_io_init(card);
 			card->card_detector(card);
 
-	    	if((card->card_status == CARD_INSERTED) && (card->unit_state != CARD_UNIT_READY) && 
-			((card_type == CARD_SDIO) ||(card_type == CARD_INAND)	||
-			(slot_detector == CARD_REMOVED)||(card->card_slot_mode == CARD_SLOT_DISJUNCT))) {
+	    	if((card->card_status == CARD_INSERTED) && (card->unit_state != CARD_UNIT_READY) 
+				&& ((card_type == CARD_SDIO) ||(card_type == CARD_INAND)
+				|| (card_host->slot_detector == CARD_REMOVED)||(card->card_slot_mode == CARD_SLOT_DISJUNCT))) {
 
-				printk("insert process\n");
+				__card_claim_host(card_host, card);
 				card->card_insert_process(card);
+				card_release_host(card_host);
 
 				if(card->unit_state == CARD_UNIT_PROCESSED) {
 					if(card->card_slot_mode == CARD_SLOT_4_1) {
 						if (card_type != CARD_SDIO && card_type != CARD_INAND) {
-	                		slot_detector = CARD_INSERTED;
+	                		card_host->slot_detector = CARD_INSERTED;
 	                		card_4in1_init_type = card_type;
 	                	}
 					}
 					card->unit_state = CARD_UNIT_READY;
 					card_host->card_type = card_type;
+					if(card->state != CARD_STATE_PRESENT)
 					card->state = CARD_STATE_INITED;
 					if (card_type == CARD_SDIO)
 						card_host->card = card;
@@ -266,7 +318,7 @@ static int card_reader_monitor(void *data)
 
 				if(card->card_slot_mode == CARD_SLOT_4_1) {                       
 					if (card_type == card_4in1_init_type) 
-						slot_detector = CARD_REMOVED;
+						card_host->slot_detector = CARD_REMOVED;
 				}
 
 				card->card_remove_process(card);
@@ -481,6 +533,7 @@ void card_remove_host(struct card_host *host)
 	   host->dma_phy_buf = NULL;
 	}
 
+	free_irq(INT_SDIO, host);
 	card_remove_host_sysfs(host);
 } 
 

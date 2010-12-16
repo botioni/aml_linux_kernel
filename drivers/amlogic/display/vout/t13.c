@@ -67,7 +67,7 @@ static tcon_conf_t tcon_config =
     .sth2_vs_addr = 0,
     .sth2_ve_addr = 0,
     .oeh_hs_addr = 67,
-    .oeh_he_addr = 67+LCD_WIDTH-1,
+    .oeh_he_addr = 67+LCD_WIDTH+1,
     .oeh_vs_addr = VIDEO_ON_LINE,
     .oeh_ve_addr = VIDEO_ON_LINE+LCD_HEIGHT-1,
     .vcom_hswitch_addr = 0,
@@ -143,10 +143,18 @@ static void t13_setup_gama_table(tcon_conf_t *pConf)
 
 void power_on_backlight(void)
 {
+    int i;
     #ifdef CONFIG_MACH_MESON_8726M
     /* PIN31, GPIOA_7, Pull high, BL_PWM Enable*/
     //set_gpio_val(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), 1);
     //set_gpio_mode(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), GPIO_OUTPUT_MODE);
+    i=100;
+    while(i--)
+        udelay(1000);
+    SET_CBUS_REG_MASK(PWM_MISC_REG_AB, (1 << 0)); 
+    i=100;
+    while(i--)
+        udelay(1000);    
     SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<31)); 
     //SET_CBUS_REG_MASK(PWM_MISC_REG_AB, (1 << 0));         
     //WRITE_CBUS_REG_BITS(PWM_PWM_A,40000,0,16);  //low
@@ -168,6 +176,7 @@ void power_off_backlight(void)
     CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<31)); 
     set_gpio_val(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), 0);
     set_gpio_mode(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), GPIO_OUTPUT_MODE);
+    CLEAR_CBUS_REG_MASK(PWM_MISC_REG_AB, (1 << 0)); 
     #else
     /* PIN31, GPIOA_8, Pull low, BL_PWM Disable*/ 
     set_gpio_val(GPIOA_bank_bit(8), GPIOA_bit_bit0_14(8), 0);

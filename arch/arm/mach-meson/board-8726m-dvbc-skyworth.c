@@ -47,7 +47,7 @@
 #include <mach/gpio.h>
 #include <linux/delay.h>
 #include <mach/clk_set.h>
-#include "board-8726m-dvbc.h"
+#include "board-8726m-dvbc-skyworth.h"
 
 #ifdef CONFIG_ANDROID_PMEM
 #include <linux/slab.h>

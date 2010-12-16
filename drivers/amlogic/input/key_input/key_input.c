@@ -68,7 +68,7 @@
 
 //#ifdef USE_RTC_INTR
 static void keyinput_tasklet(unsigned long data);
-DECLARE_TASKLET_DISABLED(tasklet, keyinput_tasklet, 0);
+DECLARE_TASKLET_DISABLED(ki_tasklet, keyinput_tasklet, 0);
 //#endif
 
 struct key_input {
@@ -186,7 +186,7 @@ static irqreturn_t am_key_interrupt(int irq, void *dev)
     KeyInput->status = (READ_CBUS_REG(RTC_ADDR1)>>2)&1;
     WRITE_CBUS_REG(RTC_ADDR1, (READ_CBUS_REG(RTC_ADDR1) | (0x0000c000)));
 //    if (!KeyInput->suspend)
-        tasklet_schedule(&tasklet);
+        tasklet_schedule(&ki_tasklet);
 //    else
 //        printk("key interrupt when suspend\n");
     return IRQ_HANDLED;
@@ -277,8 +277,8 @@ static int __init key_input_probe(struct platform_device *pdev)
 //#ifdef USE_RTC_INTR
     if(ki_data->pdata->config == AML_KEYINPUT_INTR){
 
-        tasklet_enable(&tasklet);
-        tasklet.data = (unsigned long)KeyInput;
+        tasklet_enable(&ki_tasklet);
+        ki_tasklet.data = (unsigned long)KeyInput;
         request_irq(INT_RTC, (irq_handler_t) am_key_interrupt, IRQF_SHARED, "power key", (void*)am_key_interrupt);
         WRITE_CBUS_REG(RTC_ADDR0, (READ_CBUS_REG(RTC_ADDR0) | (0x0000c000)));
     //    enable_irq(INT_RTC);
@@ -319,8 +319,8 @@ static int key_input_remove(struct platform_device *pdev)
 
 //#ifdef USE_RTC_INTR
     if(ki_data->pdata->config == AML_KEYINPUT_INTR){
-        tasklet_disable(&tasklet);
-        tasklet_kill(&tasklet);
+        tasklet_disable(&ki_tasklet);
+        tasklet_kill(&ki_tasklet);
         disable_irq(INT_RTC);
         free_irq(INT_RTC, am_key_interrupt);
     }

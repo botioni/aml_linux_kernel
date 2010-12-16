@@ -46,7 +46,7 @@ int wifi_get_mac_addr(unsigned char *buf);
 
 extern int dhd_preinit_ioctls(dhd_pub_t *dhd);
 
-
+#define ENABLE_DEEP_SLEEP
 /* Packet alignment for most efficient SDIO (can change based on platform) */
 #ifndef DHD_SDALIGN
 #define DHD_SDALIGN	32
@@ -510,6 +510,56 @@ dhd_prot_dstats(dhd_pub_t *dhd)
 	return;
 }
 
+#ifdef ENABLE_DEEP_SLEEP
+static dhd_pub_t *dhdpub = NULL;
+
+int dhd_deep_sleep(int flag)
+{
+    char iovbuf[20] = {0};
+    uint powervar   = 0;
+printk("=== john debug===: enter dhd_deep_sleep\n");
+    DHD_ERROR(("[WIFI] dhd_deep_sleep: Enter.. Flag-> %d \n", flag));
+
+    switch(flag) {
+	case 1: /* DEEPSLEEP ON*/
+		   printk(KERN_INFO "********* [WIFI] Deep Sleep ON ********** \n");
+	
+		   /* Disable MPC */	
+		   powervar = 0;
+		   bcm_mkiovar("mpc", (char *)&powervar, 4, iovbuf, sizeof(iovbuf));
+		   dhdcdc_set_ioctl(dhdpub, 0, WLC_SET_VAR, iovbuf, sizeof(iovbuf));
+
+		   /* Enable Deep Sleep */
+		   powervar = 1;
+		   bcm_mkiovar("deepsleep", (char *)&powervar, 4, iovbuf, sizeof(iovbuf));
+		   dhdcdc_set_ioctl(dhdpub, 0, WLC_SET_VAR, iovbuf, sizeof(iovbuf));
+		   break;
+
+	case 0: /*DEEPSLEEP OFF*/
+		   printk(KERN_INFO "********** [WIFI] Deep Sleep OFF ************ \n");
+
+		   /* Disable Deep Sleep */	
+		   powervar = 0;
+		   bcm_mkiovar("deepsleep", (char *)&powervar, 4, iovbuf, sizeof(iovbuf));
+		   dhdcdc_set_ioctl(dhdpub, 0, WLC_SET_VAR, iovbuf, sizeof(iovbuf));
+
+		   /* Enable MPC */
+		   powervar = 1;
+		   bcm_mkiovar("mpc", (char *)&powervar, 4, iovbuf, sizeof(iovbuf));
+		   dhdcdc_set_ioctl(dhdpub, 0, WLC_SET_VAR, iovbuf, sizeof(iovbuf));
+		   break;
+
+	default: 
+		   printk("Faulty Input Arg to %s",__FUNCTION__);
+
+    }
+
+    return 0;
+
+}
+
+#endif
+
 int
 dhd_prot_init(dhd_pub_t *dhd)
 {
@@ -517,7 +567,9 @@ dhd_prot_init(dhd_pub_t *dhd)
 	char buf[128];
 
 	DHD_TRACE(("%s: Enter\n", __FUNCTION__));
-
+#ifdef ENABLE_DEEP_SLEEP
+	dhdpub = dhd;
+#endif /*ENABLE_DEEP_SLEEP*/
 	dhd_os_proto_block(dhd);
 
 	/* Get the device MAC address */
@@ -546,3 +598,4 @@ dhd_prot_stop(dhd_pub_t *dhd)
 {
 	/* Nothing to do for CDC */
 }
+

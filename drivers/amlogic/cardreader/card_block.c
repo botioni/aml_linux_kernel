@@ -20,8 +20,9 @@
 #include <linux/mtd/partitions.h>
 #include <linux/proc_fs.h>
 #include <linux/genhd.h>
+#include <linux/kthread.h>
 #include <linux/cardreader/card_block.h>
-
+#include <linux/cardreader/cardreader.h>
 #include <asm/system.h>
 #include <asm/uaccess.h>
 
@@ -490,7 +491,7 @@ int card_init_queue(struct card_queue *cq, struct memory_card *card,
 {
 	struct card_host *host = card->host;
 	u64 limit = BLK_BOUNCE_HIGH;
-	int ret, card_quene_num;
+	int ret=0, card_quene_num;
 	struct card_queue_list *cq_node_current;
 	struct card_queue_list *cq_node_prev = NULL;
 
@@ -541,8 +542,8 @@ int card_init_queue(struct card_queue *cq, struct memory_card *card,
 		init_completion(&card_thread_complete);
 		init_waitqueue_head(&card_thread_wq);
 		init_MUTEX(&card_thread_sem);
-		ret = kernel_thread(card_queue_thread, cq, CLONE_KERNEL | SIGCHLD);
-		if (ret >= 0)
+		host->queue_task = kthread_run(card_queue_thread, cq, "card_queue");
+		if (host->queue_task)
 		{
 			wait_for_completion(&card_thread_complete);
 			init_completion(&card_thread_complete);
@@ -737,7 +738,7 @@ static int card_blk_issue_rq(struct card_queue *cq, struct request *req)
 	} while (ret);
 
 	card_release_host(card->host);
-	//printk("card request completely %d sector num: %d communiction dir %d\n", req->sector, req->nr_sectors, brq.crq.cmd);
+	//printk("card request completely %d sector num: %d communiction dir %d\n", brq.card_data.lba, brq.card_data.blk_nums, brq.crq.cmd);
 	return 1;
 }
 
@@ -767,17 +768,60 @@ static void card_blk_remove(struct memory_card *card)
 static int card_blk_suspend(struct memory_card *card, pm_message_t state)
 {
 	struct card_blk_data *card_data = card_get_drvdata(card);
+	struct card_host *host = card->host;
+	
+	printk("Enter %s suspend\n",card->name);
+	printk("***Entered %s:%s\n", __FILE__,__func__);
 
-	if (card_data) {
+
+	if (card_data) 
+	{
 		card_queue_suspend(&card_data->queue);
 	}
+	if(!host->sdio_task_state)
+	{
+		host->sdio_task_state = 1;
+	}
+	if(!host->card_task_state)
+	{
+		host->card_task_state = 1;
+	}
+	if(card->card_suspend)
+	{
+		card->card_suspend(card);
+	}
+	if(card->card_type == CARD_SDIO)
+		return 0;
+	card->unit_state = CARD_UNIT_NOT_READY;
+	host->slot_detector = CARD_REMOVED;
 	return 0;
 }
 
 static int card_blk_resume(struct memory_card *card)
 {
 	struct card_blk_data *card_data = card_get_drvdata(card);
+	struct card_host *host = card->host;
+	
+	printk("***Entered %s:%s\n", __FILE__,__func__);
+	
+	printk("Enter %s resume\n",card->name);
 
+	if(card->card_resume)
+	{
+		card->card_resume(card);
+	}
+	if(host->card_task_state)
+	{
+		host->card_task_state = 0;
+		if(host->card_task)
+			wake_up_process(host->card_task);
+	}
+	if(host->sdio_task_state)
+	{
+		host->sdio_task_state = 0;
+		if(host->sdio_irq_thread)
+			wake_up_process(host->sdio_irq_thread);
+	}
 	if (card_data) {
 		//mmc_blk_set_blksize(md, card);
 		card_queue_resume(&card_data->queue);

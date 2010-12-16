@@ -15,7 +15,7 @@
 #include <mach/am_regs.h>
 #include <mach/irqs.h>
 #include <mach/card_io.h>
-
+#include <mach/power_gate.h>
 #include <linux/cardreader/card_block.h>
 #include <linux/cardreader/cardreader.h>
 #include <linux/cardreader/sdio.h>
@@ -106,6 +106,11 @@ void sd_close(struct memory_card *card)
 {
 	SD_MMC_Card_Info_t *sd_mmc_info = (SD_MMC_Card_Info_t *)card->card_info;
 
+	if(!sd_mmc_info)
+	{
+		printk("error: no card to exit\n");
+		return;
+	}
 	sd_mmc_exit(sd_mmc_info);
 	sd_mmc_free(sd_mmc_info);
 	sd_mmc_info = NULL;
@@ -113,6 +118,41 @@ void sd_close(struct memory_card *card)
 	card->unit_state =  CARD_UNIT_PROCESSED;
 
 	return;
+}
+
+void sd_suspend(struct memory_card *card)
+{
+	struct aml_card_info *aml_card_info = card->card_plat_info;
+	
+	SD_MMC_Card_Info_t *sd_mmc_info = (SD_MMC_Card_Info_t *)card->card_info;
+
+	printk("***Entered %s:%s\n", __FILE__,__func__);	
+	
+	CLK_GATE_OFF(SDIO);  
+	 
+	if(card->card_type == CARD_SDIO)
+	{
+		return;
+	}
+		        
+	memset(sd_mmc_info, 0, sizeof(SD_MMC_Card_Info_t));
+	if (card->host->dma_buf != NULL) {
+		sd_mmc_info->sd_mmc_buf = card->host->dma_buf;
+		sd_mmc_info->sd_mmc_phy_buf = card->host->dma_phy_buf;
+	}	
+	card->card_io_init(card);
+	sd_mmc_info->io_pad_type = aml_card_info->io_pad_type;
+	sd_mmc_info->bus_width = SD_BUS_SINGLE;
+	sd_mmc_info->sdio_clk_unit = 3000;
+	sd_mmc_info->clks_nac = SD_MMC_TIME_NAC_DEFAULT;
+	sd_mmc_info->max_blk_count = card->host->max_blk_count;
+	
+}
+
+void sd_resume(struct memory_card *card)
+{
+	printk("***Entered %s:%s\n", __FILE__,__func__);
+	CLK_GATE_ON(SDIO);
 }
 
 void sd_io_init(struct memory_card *card)
@@ -276,40 +316,6 @@ void sd_io_init(struct memory_card *card)
 	return;
 }
 
-static irqreturn_t sdio_interrupt_monitor(int irq, void *dev_id, struct pt_regs *regs) 
-{
-	unsigned sdio_interrupt_resource;
-
-	sdio_interrupt_resource = sdio_check_interrupt();
-	switch (sdio_interrupt_resource) {
-		case SDIO_IF_INT:
-		    //sdio_if_int_handler();
-		    break;
-
-		case SDIO_CMD_INT:
-			sdio_cmd_int_handle();
-			break;
-
-		case SDIO_TIMEOUT_INT:
-			sdio_timeout_int_handle();
-			break;
-	
-		case SDIO_SOFT_INT:
-		    //AVDetachIrq(sdio_int_handler);
-		    //sdio_int_handler = -1;
-		    break;
-	
-		case SDIO_NO_INT:	
-			break;
-
-		default:	
-			break;	
-	}
-
-    return IRQ_HANDLED; 
-
-}
-
 static int sd_request(struct memory_card *card, struct card_blk_request *brq)
 {
 	SD_MMC_Card_Info_t *sd_mmc_info = (SD_MMC_Card_Info_t *)card->card_info;
@@ -432,7 +438,8 @@ int sd_mmc_probe(struct memory_card *card)
 	card->card_insert_process = sd_open;
 	card->card_remove_process = sd_close;
 	card->card_request_process = sd_request;
-
+	card->card_suspend = sd_suspend;
+	card->card_resume = sd_resume;
 	if (aml_card_info->card_extern_init)
 		aml_card_info->card_extern_init();
 	card->card_io_init(card);
@@ -465,7 +472,8 @@ int sdio_probe(struct memory_card *card)
 	card->card_insert_process = sd_open;
 	card->card_remove_process = sd_close;
 	card->card_request_process = sdio_request;
-
+        card->card_suspend = sd_suspend;
+        card->card_resume = sd_resume;
 	if (aml_card_info->card_extern_init)
 		aml_card_info->card_extern_init();
 	card->card_io_init(card);
@@ -517,25 +525,6 @@ int inand_probe(struct memory_card *card)
 }
 
 #endif
-
-static int __init sd_init(void)
-{
-	if (request_irq(INT_SDIO, (irq_handler_t) sdio_interrupt_monitor, 0, "sd_mmc", NULL)) {
-		printk("request SDIO irq error!!!\n");
-		return -1;
-	}
-
-	return 0;
-}
-
-static void __exit sd_exit(void)
-{
-	free_irq(INT_SDIO, NULL);
-}
-
-module_init(sd_init);
-
-module_exit(sd_exit);
 
 MODULE_DESCRIPTION("Amlogic sd card Interface driver");
 

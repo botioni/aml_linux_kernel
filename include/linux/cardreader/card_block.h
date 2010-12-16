@@ -53,6 +53,8 @@ struct memory_card {
 	void (*card_detector) (struct memory_card *card);
 	void (*card_insert_process) (struct memory_card *card);
 	void (*card_remove_process) (struct memory_card *card);
+	void (*card_suspend) (struct memory_card *card);
+	void (*card_resume) (struct memory_card *card);
 	int (*card_request_process) (struct memory_card *card, struct card_blk_request *brq);
 };
 
@@ -105,6 +107,11 @@ struct card_host_ops {
 struct card_host {
 	struct device		*parent;
 	struct device	class_dev;
+	struct task_struct *card_task;
+	struct task_struct *queue_task;
+	unsigned char  card_task_state; //1:stop
+	unsigned char  queue_task_state;
+	
 	int			index;
 	const struct card_host_ops *ops;
 	u32			ocr_avail;
@@ -149,11 +156,12 @@ struct card_host {
 	struct memory_card		*card_selected;	/* the selected MEMORY card */
 
 	CARD_TYPE_t			card_type;	/* card type*/
-	
+	unsigned char 		slot_detector;	
 	struct work_struct	detect;
 
 	unsigned int		sdio_irqs;
 	struct task_struct	*sdio_irq_thread;
+	unsigned char 	sdio_task_state;
 	atomic_t		sdio_irq_thread_abort;
 	card_pm_flag_t		pm_flags;	/* requested pm features */
 

@@ -116,6 +116,13 @@ void osddev_init(void)
 {
 	osd_init_hw();
 }
+void osddev_random_scale_enable(u32 index ,u32 enable)
+{
+	//at present we only support osd1 & osd2 have the same random scale mode.
+	osd_random_scale_enable_hw(index,enable);
+	
+}
+
 void osddev_enable_3d_mode(u32 index ,u32 enable)
 {
 	osd_enable_3d_mode_hw(index,enable);
@@ -135,10 +142,10 @@ void osddev_pan_display(struct fb_var_screeninfo *var,struct fb_info *fbi)
 }
 
 #if defined(CONFIG_FB_OSD2_CURSOR)
-void osddev_cursor(struct myfb_dev *fbdev, s16 x, s16 y, u32 osd_w, u32 osd_h)
+void osddev_cursor(struct myfb_dev *fbdev, s16 x, s16 y, s16 xstart, s16 ystart, u32 osd_w, u32 osd_h)
 {
     fbdev_lock(fbdev);
-    osd_cursor_hw(x, y, osd_w, osd_h, fbdev->fb_info->node);
+    osd_cursor_hw(x, y, xstart, ystart, osd_w, osd_h, fbdev->fb_info->node);
     fbdev_unlock(fbdev);
 }
 #endif

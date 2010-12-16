@@ -65,7 +65,7 @@ typedef  struct {
 
 #define fbdev_lock(dev) mutex_lock(&dev->lock);
 #define fbdev_unlock(dev) mutex_unlock(&dev->lock);
-
+extern void osddev_random_scale_enable(u32 index ,u32 enable);
 extern int osddev_select_mode(struct myfb_dev *fbdev);
 extern void osddev_enable_3d_mode(u32 index ,u32 enable);
 extern void osddev_set_2x_scale(u32 index,u16 h_scale_enable,u16 v_scale_enable);
@@ -79,7 +79,7 @@ extern void osddev_enable(int enable,int index);
 extern void osddev_pan_display(struct fb_var_screeninfo *var,struct fb_info *fbi);
 
 #if defined (CONFIG_FB_OSD2_CURSOR)
-extern void osddev_cursor(struct myfb_dev *fbdev, s16 x, s16 y, u32 osd_w, u32 osd_h);
+extern void osddev_cursor(struct myfb_dev *fbdev, s16 x, s16 y, s16 xstart, s16 ystart, u32 osd_w, u32 osd_h);
 #endif
 
 extern  void  osddev_set_colorkey(u32 index,u32 bpp,u32 colorkey );

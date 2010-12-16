@@ -68,7 +68,5 @@ extern void sdio_open_host_interrupt(unsigned int_resource);
 extern void sdio_clear_host_interrupt(unsigned int_resource);
 extern unsigned sdio_check_interrupt(void);
 extern void sdio_close_host_interrupt(unsigned int_resource);
-extern void sdio_cmd_int_handle(void);
-extern void sdio_timeout_int_handle(void);
 /*@}*/
 #endif // CARD__READER_H

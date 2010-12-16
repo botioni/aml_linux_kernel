@@ -6,6 +6,12 @@
 #include <linux/wait.h>
 #include	"amlogo_log.h" 
 #include <linux/amlog.h>
+
+#define DisableVideoLayer() \
+    do { CLEAR_MPEG_REG_MASK(VPP_MISC, \
+         VPP_VD1_PREBLEND | VPP_VD1_POSTBLEND); \
+    } while (0)
+
 static  logo_output_dev_t   output_osd0={
 	.idx=LOGO_DEV_OSD0,
 	.hw_initialized=0,	
@@ -53,6 +59,7 @@ static int osd_hw_setup(logo_object_t *plogo)
 	osd_ctl.disp_start_y=0;
 	osd_ctl.disp_end_y=osd_ctl.yres-1;
 	osd_init_hw();
+	DisableVideoLayer();
 	setup_color_mode(color,osd_ctl.index==0?VIU_OSD1_BLK0_CFG_W0:VIU_OSD2_BLK0_CFG_W0);
 	
 	osd_setup(&osd_ctl, \
@@ -187,7 +194,7 @@ static  int  osd_transfer(logo_object_t *plogo)
 	amlog_mask_level(LOG_MASK_DEVICE,LOG_LEVEL_LOW,"logo setup ge2d device OK\n");
 	plogo->dev->ge2d_context=context;
 	//clear dst rect
-	op_info.color=0x00ff00ff;
+	op_info.color=0x000000ff;
 	op_info.dst_rect.x=0;
 	op_info.dst_rect.y=0;
 	op_info.dst_rect.w=plogo->dev->vinfo->width;

@@ -38,6 +38,28 @@
 
 #define  FIQ_VSYNC
 
+/********************************************************************/
+/***********		osd psedu frame provider 			*****************/
+/********************************************************************/
+static vframe_t *osd_vf_peek(void)
+{
+	return (vf.width ==0 && vf.height==0) ? NULL:&vf ;
+}
+
+static vframe_t *osd_vf_get(void)
+{
+	if (vf.width !=0 && vf.height !=0) {
+		return &vf;
+	}
+	return NULL;
+}
+
+static const struct vframe_provider_s osd_vf_provider =
+{
+    .peek = osd_vf_peek,
+    .get  = osd_vf_get,
+    .put  = NULL,
+};
 /**********************************************************************/
 /**********				 osd vsync irq handler   				***************/
 /**********************************************************************/
@@ -62,7 +84,7 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
 	unsigned  int  fb0_cfg_w0,fb1_cfg_w0;
 	unsigned  int  current_field;
 	hw_list_t		*p_update_list,*tmp;
-
+	
 	if (READ_MPEG_REG(ENCI_VIDEO_EN) & 1)
 		osd_hw.scan_mode= SCAN_MODE_INTERLACE;
 	else if (READ_MPEG_REG(ENCP_VIDEO_MODE) & (1 << 12))
@@ -239,6 +261,9 @@ void osd_setup(struct osd_ctl_s *osd_ctl,
 	u32  w=(color->bpp * xres_virtual + 7) >> 3;
 	dispdata_t   disp_data;
 	pandata_t    pan_data;
+#ifdef CONFIG_AM_LOGO	
+	static u32	    logo_setup_ok=0;
+#endif
 
 	pan_data.x_start=xoffset;
 	pan_data.x_end=xoffset + (disp_end_x-disp_start_x);
@@ -278,6 +303,17 @@ void osd_setup(struct osd_ctl_s *osd_ctl,
 		memcpy(&osd_hw.dispdata[index],&disp_data,sizeof(dispdata_t));
 		add_to_update_list(index,DISP_GEOMETRY);
 	}
+#ifdef CONFIG_AM_LOGO
+	if(!logo_setup_ok)
+	{
+#ifdef FIQ_VSYNC
+		osd_fiq_isr();
+#else
+		vsync_isr(INT_VIU_VSYNC,NULL);
+#endif
+		logo_setup_ok++;
+	}
+#endif
 }
 
 void osd_setpal_hw(unsigned regno,
@@ -299,6 +335,12 @@ void osd_setpal_hw(unsigned regno,
         WRITE_MPEG_REG(VIU_OSD1_COLOR_ADDR+REG_OFFSET*index, regno);
         WRITE_MPEG_REG(VIU_OSD1_COLOR+REG_OFFSET*index, pal);
     }
+}
+void osd_random_scale_enable_hw(u32 index,u32 enable)
+{
+	//at present we only support osd1 & osd2 have the same random scale mode.
+	
+	
 }
 void osd_enable_3d_mode_hw(int index,int enable)
 {
@@ -607,6 +649,7 @@ void osd_init_hw(void)
 	osd_hw.gbl_alpha[OSD2]=OSD_GLOBAL_ALPHA_DEF;
 	osd_hw.color_info[OSD1]=NULL;
 	osd_hw.color_info[OSD2]=NULL;
+	vf.width =vf.height=0;
 	osd_hw.color_key[OSD1]=osd_hw.color_key[OSD2]=0xffffffff;
 	osd_hw.scale[OSD1].h_enable=osd_hw.scale[OSD1].v_enable=0;
 	osd_hw.scale[OSD2].h_enable=osd_hw.scale[OSD2].v_enable=0;
@@ -630,9 +673,16 @@ void osd_init_hw(void)
 
 
 #if defined(CONFIG_FB_OSD2_CURSOR)
-void osd_cursor_hw(s16 x, s16 y, u32 osd_w, u32 osd_h, int index)
+void osd_cursor_hw(s16 x, s16 y, s16 xstart, s16 ystart, u32 osd_w, u32 osd_h, int index)
 {
 	if (index != 1) return;
+
+	if(osd_hw.scale[OSD1].h_enable && osd_hw.scale[OSD1].h_enable) {
+		x *= 2;
+		y *= 2;
+	}
+	x += xstart;
+	y += ystart;
 
 	/**
 	 * Use pandata to show a partial cursor when it is at the edge because the
@@ -730,7 +780,6 @@ void  osd_suspend_hw(void)
 		}
 		preg++;
 	}
-	printk("osd_suspend\n");
 	//disable osd relative clock
 	return ;
 	
@@ -783,7 +832,6 @@ void osd_resume_hw(void)
     		amlog_level(LOG_LEVEL_HIGH,"can't request irq when osd resume\r\n");
     	}
 #endif
-    printk("osd_resume\n");
 	return ;
 }
 
