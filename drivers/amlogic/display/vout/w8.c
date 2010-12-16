@@ -147,11 +147,10 @@ static void t13_setup_gama_table(tcon_conf_t *pConf)
 
 void power_on_backlight(void)
 {
-    msleep(100);
-    SET_CBUS_REG_MASK(PWM_MISC_REG_AB, (1 << 0));
-    msleep(100);
-    SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<31));
-    msleep(100);
+    //BL_PWM -> GPIOA_7: 1
+    msleep(200);
+    set_gpio_val(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), 1);
+    set_gpio_mode(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), GPIO_OUTPUT_MODE);
     //EIO -> OD4: 0
     #ifdef CONFIG_SN7325
     configIO(0, 0);
@@ -166,8 +165,6 @@ void power_off_backlight(void)
     configIO(0, 0);
     setIO_level(0, 1, 4);
 #endif
-    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<31));
-    CLEAR_CBUS_REG_MASK(PWM_MISC_REG_AB, (1 << 0));
     set_gpio_val(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), 0);
     set_gpio_mode(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), GPIO_OUTPUT_MODE);
 }

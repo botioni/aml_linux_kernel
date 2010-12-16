@@ -1196,11 +1196,6 @@ static void aml_8726m_bl_init(void)
 static unsigned bl_level;
 static unsigned aml_8726m_get_bl_level(void)
 {
-//    unsigned level = 0;
-//
-//    WRITE_CBUS_REG_BITS(VGHL_PWM_REG0, 1, 31, 1);
-//    WRITE_CBUS_REG_BITS(VGHL_PWM_REG4, 0, 30, 1);
-//    level = READ_CBUS_REG_BITS(VGHL_PWM_REG0, 0, 4);
     return bl_level;
 }
 static void aml_8726m_set_bl_level(unsigned level)
