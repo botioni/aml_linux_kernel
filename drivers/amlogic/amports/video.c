@@ -2122,6 +2122,17 @@ static void vout_hook(void)
 }
 
 /*********************************************************/
+static int __init video_early_init(void)
+{
+	WRITE_MPEG_REG_BITS(VPP_OFIFO_SIZE, 0x300,
+                        VPP_OFIFO_SIZE_BIT, VPP_OFIFO_SIZE_WID);
+    	CLEAR_MPEG_REG_MASK(VPP_VSC_PHASE_CTRL, VPP_PHASECTL_TYPE_INTERLACE);
+#ifndef CONFIG_FB_AML_TCON
+	SET_MPEG_REG_MASK(VPP_MISC, VPP_OUT_SATURATE);
+#endif
+ 	WRITE_MPEG_REG(VPP_HOLD_LINES, 0x08080808);
+	return 0;
+}
 static int __init video_init(void)
 {
     int r = 0;
@@ -2146,15 +2157,6 @@ static int __init video_init(void)
 #endif
 
     DisableVideoLayer();
-
-    WRITE_MPEG_REG_BITS(VPP_OFIFO_SIZE, 0x300,
-                        VPP_OFIFO_SIZE_BIT, VPP_OFIFO_SIZE_WID);
-    CLEAR_MPEG_REG_MASK(VPP_VSC_PHASE_CTRL, VPP_PHASECTL_TYPE_INTERLACE);
-#ifndef CONFIG_FB_AML_TCON
-    SET_MPEG_REG_MASK(VPP_MISC, VPP_OUT_SATURATE);
-#endif
-    WRITE_MPEG_REG(VPP_HOLD_LINES, 0x08080808);
-
     cur_dispbuf = NULL;
 
     /* hook vsync isr */
@@ -2237,7 +2239,7 @@ static void __exit video_exit(void)
 
     class_unregister(&amvideo_class);
 }
-
+arch_initcall(video_early_init);
 module_init(video_init);
 module_exit(video_exit);
 
