@@ -236,6 +236,7 @@ void early_power_gate_switch(int flag)
     GATE_SWITCH(flag, GE2D);
     GATE_SWITCH(flag, ROM_CLK);
     GATE_SWITCH(flag, EFUSE);
+#if 0
     GATE_SWITCH(flag, MDEC_CLK_PIC_DC);
     GATE_SWITCH(flag, MDEC_CLK_DBLK);
     GATE_SWITCH(flag, MDEC_CLK_PSC);
@@ -243,6 +244,7 @@ void early_power_gate_switch(int flag)
     GATE_SWITCH(flag, MC_CLK);
     GATE_SWITCH(flag, IQIDCT_CLK);
     GATE_SWITCH(flag, VLD_CLK);
+#endif
     GATE_SWITCH(flag, RESERVED0);
     GATE_SWITCH(flag, VGHL_PWM);
     GATE_SWITCH(flag, LED_PWM);
