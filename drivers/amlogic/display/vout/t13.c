@@ -312,7 +312,12 @@ static void t13_io_init(void)
 #ifdef CONFIG_AM_LOGO
 void Power_on_bl(void)
 {
-    bl_state = BL_OFF;  
+    bl_state = BL_OFF; 
+    
+    //set a init bl level
+    WRITE_CBUS_REG_BITS(PWM_PWM_A,560,0,16);
+    WRITE_CBUS_REG_BITS(PWM_PWM_A,40,16,16);    
+    
     power_on_backlight();    
 }
 EXPORT_SYMBOL(Power_on_bl);

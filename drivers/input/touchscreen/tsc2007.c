@@ -27,8 +27,8 @@
 #include <linux/i2c.h>
 #include <linux/i2c/tsc2007.h>
 
-#define TS_POLL_DELAY			1 /* ms delay between samples */
-#define TS_POLL_PERIOD			1 /* ms delay between samples */
+#define TS_POLL_DELAY			40 /* ms delay between samples */
+#define TS_POLL_PERIOD			10 /* ms delay between samples */
 
 #define TSC2007_MEASURE_TEMP0		(0x0 << 4)
 #define TSC2007_MEASURE_AUX		(0x2 << 4)
@@ -60,6 +60,11 @@
 #define READ_X		(ADC_ON_12BIT | TSC2007_MEASURE_X)
 #define PWRDOWN		(TSC2007_12BIT | TSC2007_POWER_OFF_IRQ_EN)
 
+#define XMIN 100
+#define XMAX 3900
+#define YMIN 200
+#define YMAX 3900
+
 struct ts_event {
 	u16	x;
 	u16	y;
@@ -81,10 +86,23 @@ struct tsc2007 {
 
 	int			(*get_pendown_state)(void);
 	void			(*clear_penirq)(void);
+	struct ts_event  tc_cache;
 	unsigned short swap_xy:1;
 	unsigned short xpol:1;
 	unsigned short ypol:1;
 };
+
+#define tsc2007_cache_out(ts, tc) do { \
+    tc = ts->tc_cache; \
+} while(0)
+
+#define tsc2007_cache_in(ts, tc) do { \
+    ts->tc_cache = tc; \
+} while(0)
+
+#define tsc2007_clear_cache(ts) do { \
+    memset(&ts->tc_cache, 0 , sizeof(struct ts_event)); \
+} while(0)
 
 static inline int tsc2007_xfer(struct tsc2007 *tsc, u8 cmd)
 {
@@ -127,6 +145,7 @@ static void tsc2007_read_values(struct tsc2007 *tsc, struct ts_event *tc)
 
 static u32 tsc2007_calculate_pressure(struct tsc2007 *tsc, struct ts_event *tc)
 {
+        return 200;
 	u32 rt = 0;
 
 	/* range filtering */
@@ -184,9 +203,13 @@ static void tsc2007_work(struct work_struct *work)
 
 		dev_info(&ts->client->dev, "pen is still down\n");
 	}
-
-	tsc2007_read_values(ts, &tc);
-
+	tsc2007_cache_out(ts, tc);
+	tsc2007_read_values(ts, &ts->tc_cache);
+	if ((tc.x== 0) && (tc.y == 0)) {
+		schedule_delayed_work(&ts->work,
+				msecs_to_jiffies(TS_POLL_PERIOD));
+		return;
+	}
 	rt = tsc2007_calculate_pressure(ts, &tc);
 	if (rt > MAX_12BIT) {
 		/*
@@ -232,8 +255,10 @@ static void tsc2007_work(struct work_struct *work)
 	if (ts->pendown)
 		schedule_delayed_work(&ts->work,
 				      msecs_to_jiffies(TS_POLL_PERIOD));
-	else
+	else {
 		enable_irq(ts->irq);
+		tsc2007_clear_cache(ts);
+	}
 }
 
 static irqreturn_t tsc2007_irq(int irq, void *handle)
@@ -301,6 +326,7 @@ static int __devinit tsc2007_probe(struct i2c_client *client,
 	ts->swap_xy = pdata->swap_xy;
 	ts->xpol = pdata->xpol;
 	ts->ypol = pdata->ypol;
+	tsc2007_clear_cache(ts);
 
 	snprintf(ts->phys, sizeof(ts->phys),
 		 "%s/input0", dev_name(&client->dev));
@@ -312,8 +338,8 @@ static int __devinit tsc2007_probe(struct i2c_client *client,
 	input_dev->evbit[0] = BIT_MASK(EV_KEY) | BIT_MASK(EV_ABS);
 	input_dev->keybit[BIT_WORD(BTN_TOUCH)] = BIT_MASK(BTN_TOUCH);
 
-	input_set_abs_params(input_dev, ABS_X, 0, MAX_12BIT, 0, 0);
-	input_set_abs_params(input_dev, ABS_Y, 0, MAX_12BIT, 0, 0);
+	input_set_abs_params(input_dev, ABS_X, XMIN, XMAX, 0, 0);
+	input_set_abs_params(input_dev, ABS_Y, YMIN, YMAX, 0, 0);
 	input_set_abs_params(input_dev, ABS_PRESSURE, 0, MAX_12BIT, 0, 0);
 
 	if (pdata->init_platform_hw)
