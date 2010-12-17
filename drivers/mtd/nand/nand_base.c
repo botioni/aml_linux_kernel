@@ -2599,6 +2599,7 @@ static struct nand_flash_dev *nand_get_flash_type(struct mtd_info *mtd,
 	int i, dev_id, maf_idx;
 	int tmp_id, tmp_manf,third_id, multi_size=0;
 	/* Select the device */
+	unsigned char flash_id[7];
 	chip->select_chip(mtd, 0);
 
 	/*
@@ -2609,17 +2610,20 @@ static struct nand_flash_dev *nand_get_flash_type(struct mtd_info *mtd,
 
 	/* Send the command for reading device ID */
 	chip->cmdfunc(mtd, NAND_CMD_READID, 0x00, -1);
-
+	for (i=0;i<7;i++)
+	{
+		flash_id[i]= chip->read_byte(mtd);
+		printk("flash_id[%d]=0x%x \n",i,flash_id[i]);
+	}
 	/* Read manufacturer and device IDs */
-	*maf_id = chip->read_byte(mtd);
-	dev_id = chip->read_byte(mtd);
+	*maf_id = flash_id[0];//chip->read_byte(mtd);
+	dev_id = flash_id[1];//chip->read_byte(mtd);
 
 	/* Try again to make sure, as some systems the bus-hold or other
 	 * interface concerns can cause random data which looks like a
 	 * possibly credible NAND flash to appear. If the two results do
 	 * not match, ignore the device completely.
 	 */
-
 	chip->cmdfunc(mtd, NAND_CMD_READID, 0x00, -1);
 
 	/* Read manufacturer and device IDs */
@@ -2677,27 +2681,28 @@ static struct nand_flash_dev *nand_get_flash_type(struct mtd_info *mtd,
 
 		if((dev_id==0x68)||(dev_id==0x88))
 		{												
-			if((chip->ecc.size!=0)&&(chip->ecc.bytes!=0)&&(chip->phys_erase_shift!=0))
-			{
-				mtd->writesize=	chip->ecc.size;
-				mtd->oobsize=	chip->ecc.bytes;
-				mtd->erasesize=1<<(chip->phys_erase_shift);
+			//if((chip->ecc.size!=0)&&(chip->ecc.bytes!=0)&&(chip->phys_erase_shift!=0))
+			
+			//{
+				mtd->writesize=	chip->ecc.size = 4096;
+				mtd->oobsize=	chip->ecc.bytes = 224;
+				mtd->erasesize=1*1024*1024;//1<<(chip->phys_erase_shift);
 				busw=0;
 				printk("FIX NAND writesize %d  oob size %d erase size %d busw( 8 is 0)  %d \n",mtd->writesize, mtd->oobsize,mtd->erasesize,busw);
-			}else{
+			//}else{
 			
-				BUG();
-			}
+				//BUG();
+			//}
 		}else	if((dev_id==0xd7)&&(third_id==0x94))
 		{
-			if((chip->ecc.size!=0)&&(chip->ecc.bytes!=0)&&(chip->phys_erase_shift!=0))
-			{
-				mtd->writesize=	chip->ecc.size;
-				mtd->oobsize=	chip->ecc.bytes;
-				mtd->erasesize=1<<(chip->phys_erase_shift);
+			//if((chip->ecc.size!=0)&&(chip->ecc.bytes!=0)&&(chip->phys_erase_shift!=0))
+			//{
+				mtd->writesize=	chip->ecc.size = 8192 ;
+				mtd->oobsize=	chip->ecc.bytes = 448;
+				mtd->erasesize= 2*1024*1024;//1<<(chip->phys_erase_shift); 
 				busw=0;
 				printk("FIX  24bit writesize %d  oob size %d erase size %d busw( 8 is 0)  %d \n",mtd->writesize, mtd->oobsize,mtd->erasesize,busw);
-			}	
+			//}	
 		}
 		
 		if(mtd->writesize!=chip->ecc.size)
@@ -2751,6 +2756,10 @@ static struct nand_flash_dev *nand_get_flash_type(struct mtd_info *mtd,
 		       busw ? 16 : 8);
 		return ERR_PTR(-EINVAL);
 	}
+	mtd->name = nand_manuf_ids[maf_idx].name;//
+	printk("mtd->name = %s \n",mtd->name);
+	if(!(strcmp(mtd->name,"Hynix")))
+		printk("mtd->name = %s \n",mtd->name);
 
 	/* Calculate the address shift from the page size */
 	chip->page_shift = ffs(mtd->writesize) - 1;								//for planemode this 2X
@@ -2864,10 +2873,13 @@ int nand_scan_ident(struct mtd_info *mtd, int maxchips)
 		/* Read manufacturer and device IDs */
 		if (nand_maf_id != chip->read_byte(mtd) ||
 		    type->id != chip->read_byte(mtd))
-			break;
+		   {
+    		    printk("read %d nand chip id fail!\n",(i+1));
+    			break;
+		   }
 	}
 	if (i > 1)
-		printk(KERN_INFO "%d NAND chips detected\n", i);
+		printk("%d NAND chips detected\n", i);
 
 	/* Store the number of chips and calc total size for mtd */
 	chip->numchips = i;

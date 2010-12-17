@@ -843,6 +843,14 @@ static int get_charge_status()
 
 static void set_bat_off(void)
 {
+    /* PIN31, GPIOA_7, Pull low, BL_PWM disable*/
+    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<31)); 
+    set_gpio_val(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), 0);
+    set_gpio_mode(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), GPIO_OUTPUT_MODE);
+    //set_vccx2 power down    
+    set_gpio_val(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), 0);
+    set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);  
+     
 	set_gpio_val(GPIOA_bank_bit(8), GPIOA_bit_bit0_14(8), 0);
     set_gpio_mode(GPIOA_bank_bit(8), GPIOA_bit_bit0_14(8), GPIO_OUTPUT_MODE);
 
@@ -945,21 +953,21 @@ static struct mtd_partition partition_info[] =
 	{
 		.name = "cache",
 		.offset = 416*1024*1024,
-		.size = 16 * 1024*1024,
+		.size = 36 * 1024*1024,
 	//	.set_flags=0,
 	//	.dual_partnum=0,
 	},
 	{
 		.name = "userdata",
-		.offset= 432*1024*1024,
-		.size= 256 * 1024*1024,
+		.offset= 452*1024*1024,
+		.size= 512 * 1024*1024,
 	//	.set_flags=0,
 	//	.dual_partnum=0,
 	},
 	{
 		.name = "media",
-		.offset = MTDPART_OFS_APPEND,
-		.size = (0x200000000-(432+256)*1024*1024),
+		.offset = (452+512)*1024*1024,//MTDPART_SIZ_FULL;//MTDPART_OFS_APPEND,
+		.size = MTDPART_SIZ_FULL,//(0x100000000-(432+256)*1024*1024),
 		.set_flags = MTD_AVNFTL,
 		.dual_partnum = 1|MTD_AVFTL_PLANE|MTD_AVNFTL_INTERL,
 	//	.set_flags=0,
@@ -1036,23 +1044,38 @@ static struct aml_m1_nand_platform aml_2kpage128kblocknand_platform = {
 */
 
 
-static struct aml_m1_nand_platform aml_Micron8GBABAnand_platform =
+//static struct aml_m1_nand_platform aml_Micron8GBABAnand_platform =
+//{
+//	.page_size = 2048*2,
+//	.spare_size= 224,		//for micron ABA 4GB
+//	.erase_size=1024*1024,
+//	.bch_mode=	  3,		//BCH16
+//	.encode_size=540,
+//	.timing_mode=5,
+//	.onfi_mode=1,
+//	.interlmode=0,
+//	.planemode=1,
+//	.ce_num=2,
+//	.chip_num=2,
+//	.partitions = partition_info,
+//	.nr_partitions = ARRAY_SIZE(partition_info),
+//};
+static struct aml_m1_nand_platform aml_nand_platform =
 {
-	.page_size = 2048*2,
-	.spare_size= 224,		//for micron ABA 4GB
-	.erase_size=1024*1024,
+//	.page_size = 8192,
+//	.spare_size= 448,		//for micron ABA 4GB
+//	.erase_size=2*1024*1024,
 	.bch_mode=	  3,		//BCH16
 	.encode_size=540,
 	.timing_mode=5,
 	.onfi_mode=1,
-	.interlmode=1,
+	.interlmode=0,
 	.planemode=1,
 	.ce_num=2,
 	.chip_num=2,
 	.partitions = partition_info,
 	.nr_partitions = ARRAY_SIZE(partition_info),
 };
-
 
 static struct resource aml_nand_resources[] = {
 	{
@@ -1069,61 +1092,12 @@ static struct platform_device aml_nand_device = {
 	.resource = aml_nand_resources,
 	.dev = {
 	//	.platform_data = &aml_Micron4GBABAnand_platform,
-		.platform_data = &aml_Micron8GBABAnand_platform,
+		.platform_data = &aml_nand_platform,
 	},
 };
 #endif  //CONFIG_NAND_FLASH_DRIVER_MULTIPLANE_CE
 
 #if defined(CONFIG_AMLOGIC_BACKLIGHT)
-//static void power_on_panel(void)
-//{
-//#ifndef CONFIG_HAS_EARLYSUSPEND
-//    int i;
-//    /* GPIOA_3, Pull low, power up LCD_3.3V */
-//    set_gpio_val(GPIOA_bank_bit(3), GPIOA_bit_bit0_14(3), 0);
-//    set_gpio_mode(GPIOA_bank_bit(3), GPIOA_bit_bit0_14(3), GPIO_OUTPUT_MODE);
-//    i=2;
-//    while(i--)
-//        udelay(1000);
-//    
-//    /* PIN172, GPIOC_3, Pull high, For AVDD */
-//    set_gpio_val(GPIOC_bank_bit0_26(3), GPIOC_bit_bit0_26(3), 1);
-//    set_gpio_mode(GPIOC_bank_bit0_26(3), GPIOC_bit_bit0_26(3), GPIO_OUTPUT_MODE);
-//    i=4;
-//    while(i--)
-//        udelay(1000);
-//
-//    CLK_GATE_ON(LCD);
-//    set_mio_mux(4,(0x3f<<0));
-//    set_mio_mux(0, 1<<11);
-//    set_mio_mux(0, 1<<14);     
-//    
-//    i=4;
-//    while(i--)
-//        udelay(1000);
-//#endif
-//}
-//
-//static void power_off_panel(void)
-//{
-//#ifndef CONFIG_HAS_EARLYSUSPEND
-//    /* GPIOA_3, Pull hi, power down LCD_3.3V */
-//    set_gpio_val(GPIOA_bank_bit(3), GPIOA_bit_bit0_14(3), 1);
-//    set_gpio_mode(GPIOA_bank_bit(3), GPIOA_bit_bit0_14(3), GPIO_OUTPUT_MODE);    
-//    
-//    /* PIN172, GPIOC_3, Pull high, For AVDD */
-//    set_gpio_val(GPIOC_bank_bit0_26(3), GPIOC_bit_bit0_26(3), 0);
-//    set_gpio_mode(GPIOC_bank_bit0_26(3), GPIOC_bit_bit0_26(3), GPIO_OUTPUT_MODE);
-//
-//    CLK_GATE_OFF(LCD);
-//
-//    clear_mio_mux(4,(0x3f<<0));
-//    clear_mio_mux(0, 1<<11);
-//    clear_mio_mux(0, 1<<14); 
-//#endif
-//}
-
-
 #define PWM_TCNT        (600-1)
 #define PWM_MAX_VAL    (420)
 
@@ -1178,14 +1152,8 @@ static void aml_8726m_bl_init(void)
     
 }
 static unsigned bl_level;
-static unsigned panel_state = 0;
 static unsigned aml_8726m_get_bl_level(void)
 {
-//    unsigned level = 0;
-//
-//    WRITE_CBUS_REG_BITS(VGHL_PWM_REG0, 1, 31, 1);
-//    WRITE_CBUS_REG_BITS(VGHL_PWM_REG4, 0, 30, 1);
-//    level = READ_CBUS_REG_BITS(VGHL_PWM_REG0, 0, 4);
     return bl_level;
 }
 #define BL_MAX_LEVEL 60000
@@ -1213,49 +1181,19 @@ static void aml_8726m_set_bl_level(unsigned level)
     hi = (BL_MAX_LEVEL/100)*pwm_level;
     low = BL_MAX_LEVEL - hi;
     
-//    if(bl_level >=30&&panel_state == 0){
-//        panel_state = 1;
-//        power_on_panel();
-//        for(i = 0;i<=200;i++){
-//    	    udelay(1000);   
-//        }	         
-//    }       
-
     WRITE_CBUS_REG_BITS(VGHL_PWM_REG0, cs_level, 0, 4);        
     WRITE_CBUS_REG_BITS(PWM_PWM_A,low,0,16);  //low
     WRITE_CBUS_REG_BITS(PWM_PWM_A,hi,16,16);  //hi  
-     
-    
-//    if(bl_level <30&&panel_state == 1){
-//        panel_state = 0;
-//        set_gpio_val(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), 0);
-//        set_gpio_mode(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), GPIO_OUTPUT_MODE);
-//        CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<31)); 
-//        CLEAR_CBUS_REG_MASK(PWM_MISC_REG_AB, (1 << 0));  
-//        power_off_panel();
-//        
-//    }     
-      
 }
 
 static void aml_8726m_power_on_bl(void)
-{
-    WRITE_CBUS_REG_BITS(PREG_EGPIO_EN_N, 0, 12, 1);
-    WRITE_CBUS_REG_BITS(PREG_EGPIO_O, 1, 12, 1);
-
-    WRITE_CBUS_REG_BITS(PREG_EGPIO_EN_N, 0, 7, 1);
-    WRITE_CBUS_REG_BITS(PREG_EGPIO_O, 1, 7, 1);
-    
-    aml_8726m_set_bl_level(0);
+{ 
+    printk("backlight on\n");
 }
 
 static void aml_8726m_power_off_bl(void)
 {
-    WRITE_CBUS_REG_BITS(PREG_EGPIO_EN_N, 0, 12, 1);
-    WRITE_CBUS_REG_BITS(PREG_EGPIO_O, 0, 12, 1);
-
-    WRITE_CBUS_REG_BITS(PREG_EGPIO_EN_N, 0, 7, 1);
-    WRITE_CBUS_REG_BITS(PREG_EGPIO_O, 0, 7, 1);
+    printk("backlight off\n");
 }
 
 struct aml_bl_platform_data aml_bl_platform =
@@ -1359,6 +1297,73 @@ static struct platform_device bcm_bt_device = {
 	.name             = "bcm-bt",
 	.id               = -1,
 };
+
+static void hci_uart_pin_init()
+{
+    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_12, (1<<29));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_12, (1<<22));
+	
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_7, (1<<19));
+	
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_5, (1<<20));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_5, (1<<17));
+	
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_5, (1<<14));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0, (1<<12));
+	
+	
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_5, (1<<4));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_7, (1<<13));
+	
+	
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_7, (1<<12));
+	
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, (1<<21));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, (1<<28));
+	
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_12, (1<<23));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_7, (1<<14));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_5, (1<<17));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0, (1<<12));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_5, (1<<5));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, (1<<27));
+	
+	
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_12, (1<<27));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_5, (1<<18));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0, (1<<12));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_5, (1<<9));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, (1<<23));
+	
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_12, (1<<26));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_7, (1<<17));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_5, (1<<17));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0, (1<<12));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_5, (1<<8));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, (1<<24));
+	
+	/* WLBT_REGON */
+	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<18));
+	SET_CBUS_REG_MASK(PREG_GGPIO_O, (1<<18));	
+	
+	/* reset */
+	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<12));
+	CLEAR_CBUS_REG_MASK(PREG_GGPIO_O, (1<<12));	
+	msleep(200);	
+	SET_CBUS_REG_MASK(PREG_GGPIO_O, (1<<12));	
+	
+	/* BG/GPS low */
+	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<19));
+	CLEAR_CBUS_REG_MASK(PREG_GGPIO_O, (1<<19));	
+	
+	/* UART RTS */
+	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<16));
+    CLEAR_CBUS_REG_MASK(PREG_GGPIO_O, (1<<16));
+		
+	/* BG wakeup high 
+	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<14));
+	SET_CBUS_REG_MASK(PREG_GGPIO_O, (1<<14));*/
+}
 #endif
 
 static struct platform_device __initdata *platform_devs[] = {
@@ -1522,6 +1527,9 @@ static void __init device_pinmux_init(void )
     //set clk for wifi
     SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, (1<<18));
     CLEAR_CBUS_REG_MASK(PREG_EGPIO_EN_N, (1<<4));	
+#ifdef CONFIG_BCM_BT
+    hci_uart_pin_init();
+#endif
 }
 
 static void __init  device_clk_setting(void)

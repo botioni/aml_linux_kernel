@@ -105,6 +105,7 @@ static u32 next_pts;
 #ifdef DEBUG_PTS
 static u32 pts_hit, pts_missed, pts_i_hit, pts_i_missed;
 #endif
+static spinlock_t lock = SPIN_LOCK_UNLOCKED;
 
 static struct dec_sysinfo vvc1_amstream_dec_info;
 
@@ -751,6 +752,11 @@ static int amvdec_vc1_remove(struct platform_device *pdev)
 
         if (stat & STAT_VF_HOOK) 
         {
+                ulong flags;
+                spin_lock_irqsave(&lock, flags);
+                fill_ptr = get_ptr = put_ptr = putting_ptr = 0;
+                spin_unlock_irqrestore(&lock, flags);
+                
                 vf_unreg_provider();
                 stat &= ~STAT_VF_HOOK;
         }

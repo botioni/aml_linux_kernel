@@ -683,6 +683,8 @@ static void __init device_pinmux_init(void )
 
 	/* IR decoder pinmux */
 	set_mio_mux(1, 1<<31);
+
+	set_audio_pinmux(AUDIO_IN_JTAG); // for MIC input
 }
 static void __init  device_clk_setting(void)
 {

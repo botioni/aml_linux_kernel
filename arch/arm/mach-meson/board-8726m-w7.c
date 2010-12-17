@@ -200,6 +200,7 @@ static inline int key_input_init_func(void)
 {
     WRITE_CBUS_REG(0x21d0/*RTC_ADDR0*/, (READ_CBUS_REG(0x21d0/*RTC_ADDR0*/) &~(1<<11)));
     WRITE_CBUS_REG(0x21d1/*RTC_ADDR0*/, (READ_CBUS_REG(0x21d1/*RTC_ADDR0*/) &~(1<<3)));
+    return 0;
 }
 static inline int key_scan(int *key_state_list)
 {
@@ -239,7 +240,7 @@ static int sn7325_pwr_rst(void)
 
     udelay(2); //delay 2us
 
-    set_gpio_val(GPIOA_bank_bit(4), GPIOA_bit_bit0_14(4), 1); //low
+    set_gpio_val(GPIOA_bank_bit(4), GPIOA_bit_bit0_14(4), 1); //high
     set_gpio_mode(GPIOA_bank_bit(4), GPIOA_bit_bit0_14(4), GPIO_OUTPUT_MODE);
     //end
 
@@ -417,7 +418,7 @@ void extern_wifi_power(int is_power)
 {
     if (0 == is_power)
     {
-        set_gpio_val(GPIOD_bank_bit2_24(20), GPIOD_bit_bit2_24(20), 0); //high
+        set_gpio_val(GPIOD_bank_bit2_24(20), GPIOD_bit_bit2_24(20), 1); //high
         set_gpio_mode(GPIOD_bank_bit2_24(20), GPIOD_bit_bit2_24(20), GPIO_OUTPUT_MODE);
     }
     else
@@ -895,13 +896,21 @@ static int get_bat_vol(void)
 #endif
 }
 
-static int get_charge_status()
+static int get_charge_status(void)
 {
     return (READ_CBUS_REG(ASSIST_HW_REV)&(1<<8))? 1:0;
 }
 
 static void set_bat_off(void)
 {
+    //BL_PWM power off
+    set_gpio_val(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), 0);
+    set_gpio_mode(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), GPIO_OUTPUT_MODE);
+
+    //VCCx2 power down
+    set_vccx2(0);
+
+    //Power hold down
     set_gpio_val(GPIOA_bank_bit(8), GPIOA_bit_bit0_14(8), 0);
     set_gpio_mode(GPIOA_bank_bit(8), GPIOA_bit_bit0_14(8), GPIO_OUTPUT_MODE);
 
@@ -1185,14 +1194,8 @@ static void aml_8726m_bl_init(void)
     WRITE_CBUS_REG(VGHL_PWM_REG4, val);
 }
 static unsigned bl_level;
-static unsigned panel_state = 0;
 static unsigned aml_8726m_get_bl_level(void)
 {
-//    unsigned level = 0;
-//
-//    WRITE_CBUS_REG_BITS(VGHL_PWM_REG0, 1, 31, 1);
-//    WRITE_CBUS_REG_BITS(VGHL_PWM_REG4, 0, 30, 1);
-//    level = READ_CBUS_REG_BITS(VGHL_PWM_REG0, 0, 4);
     return bl_level;
 }
 static void aml_8726m_set_bl_level(unsigned level)
@@ -1220,22 +1223,10 @@ static void aml_8726m_set_bl_level(unsigned level)
 
 static void aml_8726m_power_on_bl(void)
 {
-    WRITE_CBUS_REG_BITS(PREG_EGPIO_EN_N, 0, 12, 1);
-    WRITE_CBUS_REG_BITS(PREG_EGPIO_O, 1, 12, 1);
-
-    WRITE_CBUS_REG_BITS(PREG_EGPIO_EN_N, 0, 7, 1);
-    WRITE_CBUS_REG_BITS(PREG_EGPIO_O, 1, 7, 1);
-    
-    aml_8726m_set_bl_level(0);
 }
 
 static void aml_8726m_power_off_bl(void)
 {
-    WRITE_CBUS_REG_BITS(PREG_EGPIO_EN_N, 0, 12, 1);
-    WRITE_CBUS_REG_BITS(PREG_EGPIO_O, 0, 12, 1);
-
-    WRITE_CBUS_REG_BITS(PREG_EGPIO_EN_N, 0, 7, 1);
-    WRITE_CBUS_REG_BITS(PREG_EGPIO_O, 0, 7, 1);
 }
 
 struct aml_bl_platform_data aml_bl_platform =
@@ -1538,9 +1529,8 @@ static void __init power_hold(void)
     set_gpio_val(GPIOA_bank_bit(8), GPIOA_bit_bit0_14(8), 1);
     set_gpio_mode(GPIOA_bank_bit(8), GPIOA_bit_bit0_14(8), GPIO_OUTPUT_MODE);
     
-        /* PIN28, GPIOA_6, Pull high, For En_5V */
-    set_gpio_val(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), 1);
-    set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);
+    //VCCx2 power up
+    set_vccx2(1);
 }
 
 static __init void m1_init_machine(void)

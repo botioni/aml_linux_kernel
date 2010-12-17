@@ -383,7 +383,7 @@ static int jpeg_init(logo_object_t *plogo)
 	void  __iomem* vaddr;
 	jpeg_private_t  *priv;
 
-	vaddr=(unsigned int)plogo->para.mem_addr;
+	vaddr=(void  __iomem*)plogo->para.mem_addr;
 	amlog_mask_level(LOG_MASK_PARSER,LOG_LEVEL_LOW,"logo vaddr:0x%p\n ",vaddr);
 	if((logo_size=parse_jpeg_info(vaddr,plogo)) <=0 )
 	return PARSER_UNFOUND;

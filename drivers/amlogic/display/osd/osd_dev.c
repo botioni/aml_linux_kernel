@@ -116,6 +116,13 @@ void osddev_init(void)
 {
 	osd_init_hw();
 }
+void osddev_random_scale_enable(u32 index ,u32 enable)
+{
+	//at present we only support osd1 & osd2 have the same random scale mode.
+	osd_random_scale_enable_hw(index,enable);
+	
+}
+
 void osddev_enable_3d_mode(u32 index ,u32 enable)
 {
 	osd_enable_3d_mode_hw(index,enable);

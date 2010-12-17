@@ -38,15 +38,28 @@ config AML_TCON_W7
 	help  
 		W7 LCD panel module
 
+config AML_TCON_W8
+	tristate "W8 panel driver"
+	depends on  AM_TCON_OUTPUT
+	help  
+		W8 LCD panel module
+
 config AML_TCON_K7
 	tristate "K7 panel driver"
 	depends on  AM_TCON_OUTPUT
 	help  
 		K7 LCD panel module
+		
 config AML_TCON_C7
 	tristate "C7 panel driver"
 	depends on  AM_TCON_OUTPUT
 	help  
 		C7 LCD panel module	
+		
+config AML_TCON_K8
+	tristate "K8 panel driver"
+	depends on  AM_TCON_OUTPUT
+	help  
+		K8 LCD panel module
 endmenu
 	

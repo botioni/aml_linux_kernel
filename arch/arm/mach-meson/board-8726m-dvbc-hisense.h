@@ -1,5 +1,5 @@
-#ifndef __BOARD_8626M_W7_H
-#define __BOARD_8626M_W7_H
+#ifndef __BOARD_8626M_H
+#define __BOARD_8626M_H
 
 #include <asm/page.h>
 
@@ -26,27 +26,28 @@
 #define OSD_576_PIX			(768*576)
 #define OSD_720_PIX			(1280*720)
 #define OSD_1080_PIX		(1920*1080)
-#define OSD_PANEL_PIX		(800*600)
 #define B16BpP	(2)
 #define B32BpP	(4)
 #define DOUBLE_BUFFER	(2)
 
-#define OSD1_MAX_MEM		U_ALIGN(OSD_PANEL_PIX*B16BpP*DOUBLE_BUFFER)
-#define OSD2_MAX_MEM		U_ALIGN(32*32*B32BpP)
+#define OSD1_MAX_MEM		U_ALIGN(OSD_720_PIX*B32BpP*DOUBLE_BUFFER)
+#define OSD2_MAX_MEM		U_ALIGN(640*480*B16BpP)
+
+
 
 /******** Reserved memory configuration ***************/
 #define OSD1_ADDR_START		U_ALIGN(AUDIODSP_ADDR_END )
 #define OSD1_ADDR_END		(OSD1_ADDR_START+OSD1_MAX_MEM - 1)
 #define OSD2_ADDR_START		U_ALIGN(OSD1_ADDR_END)
-#define OSD2_ADDR_END		(OSD2_ADDR_START +OSD2_MAX_MEM -1)
+#define OSD2_ADDR_END		(OSD2_ADDR_START+OSD2_MAX_MEM -1)
 
 #if defined(CONFIG_FB_OSD2_ENABLE)
 #define PMEM_START		U_ALIGN(OSD2_ADDR_END)
 #else
 #define PMEM_START		U_ALIGN(OSD1_ADDR_END)
 #endif
-#define PMEM_SIZE			(32*SZ_1M)
-#define PMEM_END			(PMEM_START + PMEM_SIZE-1)
+#define PMEM_SIZE		(64*SZ_1M)
+#define PMEM_END		(PMEM_START + PMEM_SIZE-1)
 
 #if defined(CONFIG_AM_VDEC_H264)
 #define CODEC_MEM_SIZE		U_ALIGN(32*SZ_1M)

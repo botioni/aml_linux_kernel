@@ -41,10 +41,10 @@ typedef struct {
 #define GE2D_MAX_CANVAS_INDEX   0x5f
 
 #define DISPLAY_CANVAS_BASE_INDEX   0x60
-#define DISPLAY_CANVAS_MAX_INDEX    0x62 
+#define DISPLAY_CANVAS_MAX_INDEX    0x65 
 
-#define DEINTERLACE_CANVAS_BASE_INDEX	0x63
-#define DEINTERLACE_CANVAS_MAX_INDEX	0x6a
+#define DEINTERLACE_CANVAS_BASE_INDEX	0x78
+#define DEINTERLACE_CANVAS_MAX_INDEX	0x7f
 
 extern void canvas_config(u32 index, ulong addr, u32 width,
                           u32 height, u32 wrap, u32 blkmode);

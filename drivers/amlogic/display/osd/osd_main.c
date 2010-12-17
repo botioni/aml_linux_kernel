@@ -46,11 +46,6 @@
 #include <asm/uaccess.h>
 #include "osd_log.h"
 #include <linux/amlog.h>
-#ifdef CONFIG_HAS_EARLYSUSPEND
-#include <linux/earlysuspend.h>
-static struct early_suspend early_suspend;
-static int early_suspend_flag = 0;
-#endif
 
 MODULE_AMLOG(AMLOG_DEFAULT_LEVEL, 0x0, LOG_LEVEL_DESC, LOG_MASK_DESC);
 
@@ -275,7 +270,8 @@ osd_ioctl(struct fb_info *info, unsigned int cmd,
 			break;
 		case FBIOGET_OSD_GET_GBL_ALPHA:
 		case FBIOPUT_OSD_2X_SCALE:	
-		case FBIOPUT_OSD_ENABLE_3D_MODE:	
+		case FBIOPUT_OSD_ENABLE_3D_MODE:
+		case FBIOPUT_OSD_RANDOM_SCALE_ENABLE:	
 			break;
 		default :
 			amlog_mask_level(LOG_MASK_IOCTL,LOG_LEVEL_HIGH,"command not supported\r\n ");
@@ -285,6 +281,9 @@ osd_ioctl(struct fb_info *info, unsigned int cmd,
 
   	switch (cmd)
     	{
+    		case FBIOPUT_OSD_RANDOM_SCALE_ENABLE:
+		osddev_random_scale_enable(info->node,arg);			
+		break;		
     		case FBIOPUT_OSD_ENABLE_3D_MODE:
 		osddev_enable_3d_mode(info->node,arg);
 		break;		
@@ -545,46 +544,6 @@ static struct device_attribute osd_attrs[] = {
 	__ATTR(enable_3d, S_IRUGO|S_IWUSR, show_enable_3d, store_enable_3d),	
 };		
 
-#ifdef  CONFIG_PM
-static int osd_suspend(struct platform_device *pdev, pm_message_t state)
-{
-#ifdef CONFIG_HAS_EARLYSUSPEND
-    if (early_suspend_flag)
-        return 0;
-#endif
-	osddev_suspend();
-	return 0;
-}
-
-static int osd_resume(struct platform_device *pdev)
-{
-#ifdef CONFIG_HAS_EARLYSUSPEND
-    if (early_suspend_flag)
-        return 0;
-#endif
-	osddev_resume();
-	return 0;
-}
-#endif 
-
-#ifdef CONFIG_HAS_EARLYSUSPEND
-static void osd_early_suspend(struct early_suspend *h)
-{
-    if (early_suspend_flag)
-        return 0;
-    osd_suspend((struct platform_device *)h->param, PMSG_SUSPEND);
-    early_suspend_flag = 1;
-}
-
-static void osd_late_resume(struct early_suspend *h)
-{
-    if (!early_suspend_flag)
-        return 0;
-    early_suspend_flag = 0;
-    osd_resume((struct platform_device *)h->param);
-}
-#endif
-
 static int __init
 osd_probe(struct platform_device *pdev)
 {
@@ -740,14 +699,6 @@ osd_probe(struct platform_device *pdev)
 	
 	index=0;
 
-#ifdef CONFIG_HAS_EARLYSUSPEND
-    early_suspend.level = EARLY_SUSPEND_LEVEL_STOP_DRAWING;
-    early_suspend.suspend = osd_early_suspend;
-    early_suspend.resume = osd_late_resume;
-    early_suspend.param = pdev;
-	register_early_suspend(&early_suspend);
-#endif
-
 	amlog_level(LOG_LEVEL_HIGH,"osd probe ok  \r\n");
 	return 0;
 
@@ -767,10 +718,6 @@ osd_remove(struct platform_device *pdev)
     	amlog_level(LOG_LEVEL_HIGH,"osd_remove.\n");
 	if (!pdev)
 		return -ENODEV;
-
-#ifdef CONFIG_HAS_EARLYSUSPEND
-    unregister_early_suspend(&early_suspend);
-#endif
 	
 	vout_unregister_client(&osd_notifier_nb);
 	
@@ -823,6 +770,23 @@ exit:
 }
 
 #endif
+
+#ifdef  CONFIG_PM
+static int osd_suspend(struct platform_device *pdev, pm_message_t state)
+{
+	osddev_suspend();
+	return 0;
+}
+
+static int osd_resume(struct platform_device *pdev)
+{
+	osddev_resume();
+	return 0;
+}
+
+
+#endif 
+
 
 /****************************************/
 

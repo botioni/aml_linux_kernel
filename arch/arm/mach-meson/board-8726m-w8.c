@@ -50,7 +50,7 @@
 #include <mach/gpio.h>
 #include <linux/delay.h>
 #include <mach/clk_set.h>
-#include "board-8726m-w10.h"
+#include "board-8726m-w8.h"
 
 #if defined(CONFIG_TOUCHSCREEN_ADS7846)
 #include <linux/spi/spi.h>
@@ -201,14 +201,13 @@ int _key_code_list[] = {KEY_POWER};
 
 static inline int key_input_init_func(void)
 {
-    WRITE_CBUS_REG(0x21d0/*RTC_ADDR0*/, (READ_CBUS_REG(0x21d0/*RTC_ADDR0*/) &~(1<<11)));
-    WRITE_CBUS_REG(0x21d1/*RTC_ADDR0*/, (READ_CBUS_REG(0x21d1/*RTC_ADDR0*/) &~(1<<3)));
+    //GP_INPUT2 no init
     return 0;
 }
 static inline int key_scan(int *key_state_list)
 {
     int ret = 0;
-    key_state_list[0] = ((READ_CBUS_REG(0x21d1/*RTC_ADDR1*/) >> 2) & 1) ? 0 : 1;
+    key_state_list[0] = ((READ_CBUS_REG(0x1f53) >> 10) & 1) ? 0 : 1; //Read GP_INPUT2
     return ret;
 }
 
@@ -949,8 +948,6 @@ static int get_charge_status(void)
 static void set_bat_off(void)
 {
     //BL_PWM power off
-    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<31));
-    CLEAR_CBUS_REG_MASK(PWM_MISC_REG_AB, (1 << 0));
     set_gpio_val(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), 0);
     set_gpio_mode(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), GPIO_OUTPUT_MODE);
 
@@ -1196,40 +1193,76 @@ static struct platform_device aml_nand_device = {
 
 static void aml_8726m_bl_init(void)
 {
-    SET_CBUS_REG_MASK(PWM_MISC_REG_AB, (1 << 0));
-    SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<31));
+    unsigned val;
+    
+    WRITE_CBUS_REG_BITS(PERIPHS_PIN_MUX_0, 0, 22, 1);
+    WRITE_CBUS_REG_BITS(PREG_AM_ANALOG_ADDR, 1, 0, 1);
+    WRITE_CBUS_REG(VGHL_PWM_REG0, 0);
+    WRITE_CBUS_REG(VGHL_PWM_REG1, 0);
+    WRITE_CBUS_REG(VGHL_PWM_REG2, 0);
+    WRITE_CBUS_REG(VGHL_PWM_REG3, 0);
+    WRITE_CBUS_REG(VGHL_PWM_REG4, 0);
+    val = (0 << 31)           |       // disable the overall circuit
+          (0 << 30)           |       // 1:Closed Loop  0:Open Loop
+          (PWM_TCNT << 16)    |       // PWM total count
+          (0 << 13)           |       // Enable
+          (1 << 12)           |       // enable
+          (0 << 10)           |       // test
+          (3 << 7)            |       // CS0 REF, Voltage FeedBack: about 0.27V
+          (7 << 4)            |       // CS1 REF, Current FeedBack: about 0.54V
+          (0 << 0);                   // DIMCTL Analog dimmer
+    WRITE_CBUS_REG(VGHL_PWM_REG0, val);
+    val = (1 << 30)           |       // enable high frequency clock
+          (PWM_MAX_VAL << 16) |       // MAX PWM value
+          (0 << 0);                  // MIN PWM value
+    WRITE_CBUS_REG(VGHL_PWM_REG1, val);
+    val = (0 << 31)       |       // disable timeout test mode
+          (0 << 30)       |       // timeout based on the comparator output
+          (0 << 16)       |       // timeout = 10uS
+          (0 << 13)       |       // Select oscillator as the clock (just for grins)
+          (1 << 11)       |       // 1:Enable OverCurrent Portection  0:Disable
+          (3 << 8)        |       // Filter: shift every 3 ticks
+          (0 << 6)        |       // Filter: count 1uS ticks
+          (0 << 5)        |       // PWM polarity : negative
+          (0 << 4)        |       // comparator: negative, Different with NikeD3
+          (1 << 0);               // +/- 1
+    WRITE_CBUS_REG(VGHL_PWM_REG2, val);
+    val = (   1 << 16) |    // Feedback down-sampling = PWM_freq/1 = PWM_freq
+          (   1 << 14) |    // enable to re-write MATCH_VAL
+          ( 210 <<  0) ;  // preset PWM_duty = 50%
+    WRITE_CBUS_REG(VGHL_PWM_REG3, val);
+    val = (   0 << 30) |    // 1:Digital Dimmer  0:Analog Dimmer
+          (   2 << 28) |    // dimmer_timebase = 1uS
+          (1000 << 14) |    // Digital dimmer_duty = 0%, the most darkness
+          (1000 <<  0) ;    // dimmer_freq = 1KHz
+    WRITE_CBUS_REG(VGHL_PWM_REG4, val);
 }
 static unsigned bl_level;
 static unsigned aml_8726m_get_bl_level(void)
 {
     return bl_level;
 }
-#define BL_MAX_LEVEL 60000
 static void aml_8726m_set_bl_level(unsigned level)
 {
-    unsigned cs_level, hi, low;
-    
+    unsigned cs_level;
+
     if (level < 30)
     {
-        cs_level = 0;
+        cs_level = 15;
     }
     else if (level == 30)
     {
-        cs_level = 1760;
+        cs_level = 12;
     }
-    else if (level > 30 && level < 256)
+    else if (level >30 && level < 256)
     {
-        cs_level = (level - 31) * 260 + 1760;
+        cs_level = 11-((level - 31)/28);
     }
     else
-        cs_level = BL_MAX_LEVEL;
-
-    hi = cs_level;
-    low = BL_MAX_LEVEL - hi;
+        cs_level = 3;
 
 
-    WRITE_CBUS_REG_BITS(PWM_PWM_A,low,0,16);  //low
-    WRITE_CBUS_REG_BITS(PWM_PWM_A,hi,16,16);  //hi
+    WRITE_CBUS_REG_BITS(VGHL_PWM_REG0, cs_level, 0, 4);
 }
 
 static void aml_8726m_power_on_bl(void)

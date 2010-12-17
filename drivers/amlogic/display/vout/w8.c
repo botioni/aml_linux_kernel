@@ -25,23 +25,23 @@
 #include <linux/slab.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
+#include <linux/delay.h>
 #include <linux/platform_device.h>
 #include <linux/vout/tcon.h>
 
 #ifdef CONFIG_SN7325
-	#include <linux/sn7325.h>
+#include <linux/sn7325.h>
 #endif
 
 #include <mach/gpio.h>
 #include <mach/am_regs.h>
 #include <mach/pinmux.h>
 #include <mach/power_gate.h>
-#include <linux/delay.h>
- 
-#define LCD_WIDTH       1024 
-#define LCD_HEIGHT      600
-#define MAX_WIDTH       1332
-#define MAX_HEIGHT      635
+
+#define LCD_WIDTH       1024
+#define LCD_HEIGHT      768
+#define MAX_WIDTH       1337
+#define MAX_HEIGHT      806
 #define VIDEO_ON_LINE   22
 
 static void t13_power_on(void);
@@ -54,16 +54,16 @@ static tcon_conf_t tcon_config =
     .max_width  = MAX_WIDTH,
     .max_height = MAX_HEIGHT,
     .video_on_line = VIDEO_ON_LINE,
-    .pll_ctrl = 0x064d,   //51.3M, for 60Hz frame rate
+    .pll_ctrl = 0x0661,
     .clk_ctrl = 0x1fc1,
     .gamma_cntl_port = (1 << LCD_GAMMA_EN) | (0 << LCD_GAMMA_RVS_OUT) | (1 << LCD_GAMMA_VCOM_POL),
     .gamma_vcom_hswitch_addr = 0,
     .rgb_base_addr = 0xf0,
     .rgb_coeff_addr = 0x74a,
     .pol_cntl_addr = (0x0 << LCD_CPH1_POL) |(0x1 << LCD_HS_POL) | (0x1 << LCD_VS_POL),
-    .dith_cntl_addr = 0x400,
-    .sth1_hs_addr = 28,
-    .sth1_he_addr = 18,
+    .dith_cntl_addr = 0x600,
+    .sth1_hs_addr = 40,
+    .sth1_he_addr = 30,
     .sth1_vs_addr = 0,
     .sth1_ve_addr = MAX_HEIGHT - 1,
     .sth2_hs_addr = 0,
@@ -71,7 +71,7 @@ static tcon_conf_t tcon_config =
     .sth2_vs_addr = 0,
     .sth2_ve_addr = 0,
     .oeh_hs_addr = 67,
-    .oeh_he_addr = 67+LCD_WIDTH-1,
+    .oeh_he_addr = 67+LCD_WIDTH,
     .oeh_vs_addr = VIDEO_ON_LINE,
     .oeh_ve_addr = VIDEO_ON_LINE+LCD_HEIGHT-1,
     .vcom_hswitch_addr = 0,
@@ -87,8 +87,8 @@ static tcon_conf_t tcon_config =
     .cpv2_ve_addr = 0,
     .stv1_hs_addr = 0,
     .stv1_he_addr = MAX_WIDTH - 1,
-    .stv1_vs_addr = 5,
-    .stv1_ve_addr = 2,
+    .stv1_vs_addr = 13,
+    .stv1_ve_addr = 10,
     .stv2_hs_addr = 0,
     .stv2_he_addr = 0,
     .stv2_vs_addr = 0,
@@ -109,10 +109,10 @@ static tcon_conf_t tcon_config =
     .tcon_misc_sel_addr = (1<<LCD_STV1_SEL) | (1<<LCD_STV2_SEL),
     .dual_port_cntl_addr = (1<<LCD_TTL_SEL) | (1<<LCD_ANALOG_SEL_CPH3) | (1<<LCD_ANALOG_3PHI_CLK_SEL),
     .flags = 0,
-    .screen_width = 17,
-    .screen_height = 10,
-    .sync_duration_num = 606,
-    .sync_duration_den = 10,
+    .screen_width = 4,
+    .screen_height = 3,
+    .sync_duration_num = 60,
+    .sync_duration_den = 1,
     .power_on=t13_power_on,
     .power_off=t13_power_off,
 };
@@ -147,88 +147,58 @@ static void t13_setup_gama_table(tcon_conf_t *pConf)
 
 void power_on_backlight(void)
 {
+    //BL_PWM -> GPIOA_7: 1
     msleep(200);
     set_gpio_val(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), 1);
     set_gpio_mode(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), GPIO_OUTPUT_MODE);
+    //EIO -> OD4: 0
+    #ifdef CONFIG_SN7325
+    configIO(0, 0);
+    setIO_level(0, 0, 4);
+    #endif
 }
 
 void power_off_backlight(void)
 {
-
+    //EIO -> OD4: 1
+#ifdef CONFIG_SN7325
+    configIO(0, 0);
+    setIO_level(0, 1, 4);
+#endif
     set_gpio_val(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), 0);
     set_gpio_mode(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), GPIO_OUTPUT_MODE);
 }
 
 static void power_on_lcd(void)
 {
-    
-    //Power on sequence: STBYB -> VDD -> AVDD -> VGL -> VGH -> DATA -> B/L
-    //LCD_3.3V: LCD_VCC_EN -> EIO_OD0: 0   
+    //EIO -> OD0: 0
 #ifdef CONFIG_SN7325
-        configIO(0, 0);
-        setIO_level(0, 0, 0);//OD0
+    configIO(0, 0);
+    setIO_level(0, 0, 0);
 #endif
-    msleep(50);
-#ifdef CONFIG_SN7325
-        configIO(1, 0);
-        setIO_level(1, 1, 4);//PP4
-#endif
-    //AVDD_power: LCD_PWR_EN -> EIO_PP4: 1
-    
-    msleep(20);
-#ifdef CONFIG_SN7325
-        configIO(1, 0);
-        setIO_level(1, 1, 7);//PP7
-#endif
-    //VGH_EN: LCD_VGH_EN -> EIO_PP7: 1
-    
-    msleep(20);
-#ifdef CONFIG_SN7325
-        printk("power on 7325 1\n");
-        configIO(0, 0);
-        setIO_level(0, 1, 5);//OD5
-#endif
-    //DATA: LCD_DISP_ON -> EIO_OD5: 1
-    msleep(50);
 }
 
 static void power_off_lcd(void)
 {
-    //Power off sequence: B/L -> STBYB -> DATA -> VGH -> VGL -> AVDD -> VDD
-
-    msleep(20);
-    //DATA: LCD_DISP_ON -> EIO_OD5: 0
+    //EIO -> OD0: 1
 #ifdef CONFIG_SN7325
-        configIO(0, 0);
-        setIO_level(0, 0, 5);//OD5
+    configIO(0, 0);
+    setIO_level(0, 1, 0);
 #endif
-    msleep(10);
-    //VGH_EN: LCD_VGH_EN -> EIO_PP7: 0
-#ifdef CONFIG_SN7325
-        configIO(1, 0);
-        setIO_level(1, 0, 7);//PP7
-#endif
-    msleep(20);
-    //AVDD_power: LCD_PWR_EN -> EIO_PP4: 0
-#ifdef CONFIG_SN7325
-        configIO(1, 0);
-        setIO_level(1, 0, 4);//PP4
-#endif
-    msleep(20);
-    //LCD_3.3V: LCD_VCC_EN -> EIO_OD0: 1
-#ifdef CONFIG_SN7325
-        configIO(0, 0);
-        setIO_level(0, 1, 0);//OD0
-#endif
-    
 }
 
 static void set_tcon_pinmux(void)
 {
     /* TCON control pins pinmux */
     /* GPIOA_5 -> LCD_Clk, GPIOA_0 -> TCON_STH1, GPIOA_1 -> TCON_STV1, GPIOA_2 -> TCON_OEH, */
-    set_mio_mux(0, ((1<<11)|(1<<14)|(1<<15)|(1<<16)));    
-    set_mio_mux(4,(3<<0)|(3<<2)|(3<<4));   //For 8bits
+    set_mio_mux(0, ((1<<11)|(1<<14)|(1<<15)|(1<<16)));
+    set_mio_mux(4, (1<<0)|(1<<2)|(1<<4) );   //For 6bits
+    //PP1 -> UPDN:0, PP2 -> SHLR:1
+#ifdef CONFIG_SN7325
+    configIO(1, 0);
+    setIO_level(1, 0, 1);
+    setIO_level(1, 1, 2);
+#endif
 }
 static void t13_power_on(void)
 {

@@ -40,8 +40,13 @@
 #define MAX_HEIGHT      525
 #define VIDEO_ON_LINE   22
 
+#define BL_ON            1
+#define BL_OFF           0
 static void t13_power_on(void);
 static void t13_power_off(void);
+#ifdef CONFIG_AM_LOGO
+static int bl_state = BL_ON;
+#endif
 
 static tcon_conf_t tcon_config =
 {
@@ -67,7 +72,7 @@ static tcon_conf_t tcon_config =
     .sth2_vs_addr = 0,
     .sth2_ve_addr = 0,
     .oeh_hs_addr = 67,
-    .oeh_he_addr = 67+LCD_WIDTH-1,
+    .oeh_he_addr = 67+LCD_WIDTH+1,
     .oeh_vs_addr = VIDEO_ON_LINE,
     .oeh_ve_addr = VIDEO_ON_LINE+LCD_HEIGHT-1,
     .vcom_hswitch_addr = 0,
@@ -144,10 +149,12 @@ static void t13_setup_gama_table(tcon_conf_t *pConf)
 void power_on_backlight(void)
 {
     int i;
+#ifdef CONFIG_AM_LOGO    
+    if(bl_state == BL_ON)
+        return;
+    bl_state = BL_ON;  
+#endif      
     #ifdef CONFIG_MACH_MESON_8726M
-    /* PIN31, GPIOA_7, Pull high, BL_PWM Enable*/
-    //set_gpio_val(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), 1);
-    //set_gpio_mode(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), GPIO_OUTPUT_MODE);
     i=100;
     while(i--)
         udelay(1000);
@@ -156,9 +163,7 @@ void power_on_backlight(void)
     while(i--)
         udelay(1000);    
     SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<31)); 
-    //SET_CBUS_REG_MASK(PWM_MISC_REG_AB, (1 << 0));         
-    //WRITE_CBUS_REG_BITS(PWM_PWM_A,40000,0,16);  //low
-    //WRITE_CBUS_REG_BITS(PWM_PWM_A,20000,16,16);  //hi 
+
     #else
     /* PIN31, GPIOA_8, Pull high, BL_PWM Enable*/
     set_gpio_val(GPIOA_bank_bit(8), GPIOA_bit_bit0_14(8), 1);
@@ -171,6 +176,11 @@ void power_on_backlight(void)
 
 void power_off_backlight(void)
 {
+#ifdef CONFIG_AM_LOGO    
+    if(bl_state == BL_OFF)
+        return;
+    bl_state = BL_OFF;
+#endif    
     #ifdef CONFIG_MACH_MESON_8726M
     /* PIN31, GPIOA_7, Pull high, BL_PWM Enable*/
     CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<31)); 
@@ -295,9 +305,18 @@ static void t13_io_init(void)
     set_tcon_pinmux();
 
     power_on_lcd();
+#ifndef CONFIG_AM_LOGO    
     power_on_backlight();
+#endif    
 }
-
+#ifdef CONFIG_AM_LOGO
+void Power_on_bl(void)
+{
+    bl_state = BL_OFF;  
+    power_on_backlight();    
+}
+EXPORT_SYMBOL(Power_on_bl);
+#endif
 static struct platform_device tcon_dev = {
     .name = "tcon-dev",
     .id   = 0,

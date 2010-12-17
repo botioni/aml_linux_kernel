@@ -133,6 +133,8 @@ static u32 last_anch_pts, vop_time_inc_since_last_anch, frame_num_since_last_anc
 u32 pts_hit, pts_missed, pts_i_hit, pts_i_missed;
 #endif
 
+static spinlock_t lock = SPIN_LOCK_UNLOCKED;
+
 static struct dec_sysinfo vmpeg4_amstream_dec_info;
 
 static unsigned char aspect_ratio_table[16] = {
@@ -792,6 +794,11 @@ static int amvdec_mpeg4_remove(struct platform_device *pdev)
 
         if (stat & STAT_VF_HOOK) 
         {
+                ulong flags;
+                spin_lock_irqsave(&lock, flags);
+                fill_ptr = get_ptr = put_ptr = putting_ptr = 0;
+                spin_unlock_irqrestore(&lock, flags);
+
                 vf_unreg_provider();
                 stat &= ~STAT_VF_HOOK;
         }

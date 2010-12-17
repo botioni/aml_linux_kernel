@@ -958,8 +958,6 @@ void dwc_otg_core_dev_init(dwc_otg_core_if_t * _core_if)
 				 msk.d32);
 	}
 
-	dwc_otg_set_vbus_power(_core_if, 0);	//Power off VBus   
-
 }
 
 /** 
@@ -1148,12 +1146,13 @@ void dwc_otg_core_host_init(dwc_otg_core_if_t * _core_if)
 	if (_core_if->op_state == A_HOST) {
 		hprt0.d32 = dwc_otg_read_hprt0(_core_if);
 		DWC_PRINT("Init: Power Port (%d)\n", hprt0.b.prtpwr);
-		if (hprt0.b.prtpwr == 0) {
+		//FIXME: prtpwr is set to 1 by unknown rutine, 20101215 vw
+		//if (hprt0.b.prtpwr == 0) {
 			hprt0.b.prtpwr = 1;
 			dwc_write_reg32(host_if->hprt0, hprt0.d32);
 			/*  pull gpio to switch power */
 			dwc_otg_set_vbus_power(_core_if, 1);
-		}
+		//}
 	}
 
 	dwc_otg_enable_host_interrupts(_core_if);
