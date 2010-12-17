@@ -167,11 +167,9 @@ static struct platform_device adc_ts_device = {
 #include <linux/adc_keypad.h>
 
 static struct adc_key adc_kp_key[] = {
-    {KEY_LEFTMETA,          "menu", CHAN_4, 0, 60},
-    {KEY_PAGEDOWN,          "vol-", CHAN_4, 282, 60},
-    {KEY_PAGEUP,            "vol+", CHAN_4, 506, 60},
-    {KEY_TAB,               "exit", CHAN_4, 622, 60},
-    {KEY_HOME,              "home", CHAN_4, 852, 60},
+    {125,            "vol+", CHAN_4, 0, 60},
+    {15,               "exit", CHAN_4, 623, 60},
+    {102,          "menu", CHAN_4, 849, 60},
 };
 
 static struct adc_kp_platform_data adc_kp_pdata = {
@@ -418,6 +416,7 @@ void extern_wifi_power(int is_power)
     if (0 == is_power)
     {
         #ifdef CONFIG_SN7325
+        printk("power on 7325 3\n");
         configIO(0, 0);
         setIO_level(0, 0, 5);
         #else
@@ -427,8 +426,18 @@ void extern_wifi_power(int is_power)
     else
     {
         #ifdef CONFIG_SN7325
+        printk("power on 7325 4\n");
         configIO(0, 0);
-        setIO_level(0, 1, 5);
+        setIO_level(0, 0, 0);//OD0
+        setIO_level(0, 1, 4);//OD4
+        setIO_level(0, 1, 5);//OD5
+        setIO_level(0, 0, 6);//OD6
+        configIO(1, 0);
+        setIO_level(1, 1, 0);//PP0
+        setIO_level(1, 0, 1);//PP1
+        setIO_level(1, 1, 5);//PP5
+        setIO_level(1, 0, 6);//PP6
+        setIO_level(1, 0, 7);//PP7
         #else
         return;
         #endif
@@ -763,16 +772,16 @@ static  struct platform_device aml_rtc_device = {
 #if defined(CONFIG_SUSPEND)
 static void set_vccx2(int power_on)
 {
-    if(power_on){
-        printk(KERN_INFO "set_vccx2 power up\n");
+    if(power_on)
+    {
         set_gpio_val(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), 1);
         set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);        
         //set clk for wifi
         SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, (1<<18));
         CLEAR_CBUS_REG_MASK(PREG_EGPIO_EN_N, (1<<4));	              
     }
-    else{
-        printk(KERN_INFO "set_vccx2 power down\n");        
+    else
+    {
         set_gpio_val(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), 0);
         set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);   
         //disable wifi clk
@@ -891,10 +900,22 @@ static void set_charge(int flags)
     //GPIOD_22 low: fast charge high: slow charge
     CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_7, (1<<18));
     if(flags == 1)
-        set_gpio_val(GPIOD_bank_bit2_24(22), GPIOD_bit_bit2_24(22), 0); //fast charge
+        {
+	    //set_gpio_val(GPIOD_bank_bit2_24(22), GPIOD_bit_bit2_24(22), 0); //fast charge
+	    #ifdef CONFIG_SN7325
+        configIO(1, 0);
+        setIO_level(1, 1, 7);
+        #endif
+	    }
     else
-        set_gpio_val(GPIOD_bank_bit2_24(22), GPIOD_bit_bit2_24(22), 1); //slow charge
-    set_gpio_mode(GPIOD_bank_bit2_24(22), GPIOD_bit_bit2_24(22), GPIO_OUTPUT_MODE);
+        {
+    	//set_gpio_val(GPIOD_bank_bit2_24(22), GPIOD_bit_bit2_24(22), 1);	//slow charge
+	    #ifdef CONFIG_SN7325
+        configIO(1, 0);
+        setIO_level(1, 0, 7);
+        #endif
+        }
+    //set_gpio_mode(GPIOD_bank_bit2_24(22), GPIOD_bit_bit2_24(22), GPIO_OUTPUT_MODE);
 }
 
 #ifdef CONFIG_SARADC_AM
