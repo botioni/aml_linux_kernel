@@ -36,6 +36,7 @@ ENTRY(meson_cpu_suspend)
     ldmia   r0, {r0-r5}
 
 #ifdef DDR_SUSPEND
+#if 0
     add     r6, r0, #0x1000
     mov     r8, #0
     str     r8, [r6]
@@ -43,6 +44,7 @@ ENTRY(meson_cpu_suspend)
     mov     r8, #0x1000
 2:  subs    r8, r8, #0x1
     bne     2b
+#endif
     
     /*
      * Switch DDR to self-refresh mode.
@@ -106,9 +108,11 @@ ENTRY(meson_cpu_suspend)
 6:  subs    r8, r8, #0x1
     bne     6b
 
+#if 0
     add     r6, r0, #0x1000
     mov     r8, #0xff
     str     r8, [r6]
+#endif
 #endif
 
     /* Restore registers and return */
