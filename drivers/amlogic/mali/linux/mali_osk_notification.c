@@ -21,9 +21,8 @@
 
 #include <linux/sched.h>
 #include <linux/mm.h>
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,26)
-#include <linux/workqueue.h>
 #include <linux/slab.h>
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,26)
 #include <linux/semaphore.h>
 #else /* pre 2.6.26 the file was in the arch specific location */
 #include <asm/semaphore.h>
