@@ -378,60 +378,6 @@ static char early_clks_name[EARLY_CLK_COUNT][32]={
     "HHI_MPEG_CLK_CNTL"
 };
 
-static int get_max_common_divisor(int a,int b){
-        while(b){
-                int temp=b;
-                b=a%b;
-                a=temp;
-        }
-        return a;
-}
-
-static int set_a9_clk(unsigned long crystal_freq, unsigned long out_freq)
-{
-	int n,m,od;
-	unsigned long crys_M,out_M,middle_freq,flags;
-	crys_M=crystal_freq/1000000;
-	out_M=out_freq*2/1000000;
-
-	if (out_M < 200)
-	    od = 2;
-	else if (out_M < 400)
-        od = 1;
-    else
-        od = 0;
-	out_M <<= od;
-	middle_freq=get_max_common_divisor(crys_M,out_M);
-	n=crys_M/middle_freq;
-	m=out_M/(middle_freq);
-	if(n>(1<<5)-1)
-	{
-	    printk(KERN_ERR "sys_clk_setting  error, n is too bigger n=%d,crys_M=%ldM,out=%ldM\n",n,crys_M,out_M);
-		return -1;
-	}
-	if(m>(1<<9)-1)
-	{
-	    printk(KERN_ERR "sys_clk_setting  error, m is too bigger m=%d,crys_M=%ldM,out=%ldM\n",m,crys_M,out_M);
-		return -2;
-	}
-	local_irq_save(flags);
-	udelay(10);
-	WRITE_CBUS_REG(HHI_A9_CLK_CNTL, READ_CBUS_REG(HHI_A9_CLK_CNTL)&~(1<<7));
-	WRITE_MPEG_REG(HHI_SYS_PLL_CNTL, m<<0 | n<<9 | od<<16); // system PLL
-	WRITE_MPEG_REG(HHI_A9_CLK_CNTL, // A9 clk set to system clock/2
-                        (0 << 10) | // 0 - sys_pll_clk, 1 - audio_pll_clk
-                        (1 << 0 ) | // 1 - sys/audio pll clk, 0 - XTAL
-                        (1 << 4 ) | // APB_CLK_ENABLE
-                        (1 << 5 ) | // AT_CLK_ENABLE
-                        (0 << 2 ) | // div1
-                        (1 << 7 )); // Connect A9 to the PLL divider output
-	printk(KERN_INFO "a9_clk_setting freq=%ld,crystal_req=%ld,out_freq=%ld,n=%d,m=%d,od=%d\n",out_freq/1000000,crys_M,out_M,n,m,od);
-	udelay(10);
-	local_irq_restore(flags);
-	return 0;
-}
-
-extern int sys_clkpll_setting(unsigned crystal_freq,unsigned  out_freq);
 static unsigned nand_timing;
 static unsigned sys_clk_backup;
 void early_clk_switch(int flag)
@@ -446,10 +392,15 @@ void early_clk_switch(int flag)
                     SET_CBUS_REG_MASK(early_clks[i], 1);
                 }
                 else if (early_clks[i] == HHI_MPEG_CLK_CNTL){
-                    sys_clk = clk_get_sys("clk_xtal", NULL);
-                    set_a9_clk(sys_clk->rate, 200000000);
+                    WRITE_CBUS_REG(HHI_A9_CLK_CNTL, READ_CBUS_REG(HHI_A9_CLK_CNTL)&~(1<<7));
+                    CLEAR_CBUS_REG_MASK(HHI_SYS_PLL_CNTL, (1<<16));
+                    udelay(1000);
+                    WRITE_CBUS_REG(HHI_A9_CLK_CNTL, READ_CBUS_REG(HHI_A9_CLK_CNTL)|(1<<7));
+
                     CLEAR_CBUS_REG_MASK(early_clks[i], (1<<8));
                     WRITE_CBUS_REG(early_clks[i], sys_clk_backup); // clk81 back to normal
+                    SET_CBUS_REG_MASK(early_clks[i], (1<<8));
+                    
                     sys_clk = clk_get_sys("clk81", NULL);
                     CLEAR_CBUS_REG_MASK(UART0_CONTROL, (1 << 19) | 0xFFF);
                     SET_CBUS_REG_MASK(UART0_CONTROL, (((sys_clk->rate / (115200 * 4)) - 1) & 0xfff));
@@ -475,8 +426,9 @@ void early_clk_switch(int flag)
             }
             else if (early_clks[i] == HHI_MPEG_CLK_CNTL){
                 early_clk_flag[i] = 1;
-                sys_clk_backup = READ_CBUS_REG(early_clks[i]);
                 CLEAR_CBUS_REG_MASK(early_clks[i], (1<<8)); // 24M
+                sys_clk_backup = READ_CBUS_REG(early_clks[i]);
+                
                 sys_clk = clk_get_sys("clk_xtal", NULL);
                 CLEAR_CBUS_REG_MASK(UART0_CONTROL, (1 << 19) | 0xFFF);
                 SET_CBUS_REG_MASK(UART0_CONTROL, (((sys_clk->rate / (115200 * 4)) - 1) & 0xfff));
@@ -484,7 +436,11 @@ void early_clk_switch(int flag)
                 SET_CBUS_REG_MASK(UART1_CONTROL, (((sys_clk->rate / (115200 * 4)) - 1) & 0xfff)); 
                 nand_timing = READ_CBUS_REG_BITS(NAND_CFG,0,14);
                 WRITE_CBUS_REG_BITS(NAND_CFG,((5)|(((-6)&0xf)<<10)|((0&7)<<5)),0,14);
-                set_a9_clk(sys_clk->rate, 80000000);
+
+                WRITE_CBUS_REG(HHI_A9_CLK_CNTL, READ_CBUS_REG(HHI_A9_CLK_CNTL)&~(1<<7));
+                CLEAR_CBUS_REG_MASK(HHI_SYS_PLL_CNTL, (1<<16));
+                udelay(1000);
+                WRITE_CBUS_REG(HHI_A9_CLK_CNTL, READ_CBUS_REG(HHI_A9_CLK_CNTL)|(1<<7));
             }
             else{
                 early_clk_flag[i] = READ_CBUS_REG_BITS(early_clks[i], 8, 1) ? 1 : 0;
@@ -636,8 +592,6 @@ static void meson_system_late_resume(struct early_suspend *h)
 
 static void meson_pm_suspend(void)
 {
-    int divider;
-    int divider_sel;
     unsigned ddr_clk_N;
 
     printk(KERN_INFO "enter meson_pm_suspend!\n");
@@ -653,8 +607,6 @@ static void meson_pm_suspend(void)
     
     printk(KERN_INFO "target ddr clock 0x%x!\n", pdata->ddr_clk);
 
-    divider = READ_CBUS_REG_BITS(HHI_A9_CLK_CNTL, 8, 6);
-    divider_sel = READ_CBUS_REG_BITS(HHI_A9_CLK_CNTL, 2, 2);
     WRITE_CBUS_REG(HHI_A9_CLK_CNTL, READ_CBUS_REG(HHI_A9_CLK_CNTL)&~(1<<7));
 #ifdef SYSCLK_32K
     WRITE_CBUS_REG(HHI_A9_CLK_CNTL, READ_CBUS_REG(HHI_A9_CLK_CNTL)|(1<<9));
