@@ -44,8 +44,12 @@
 #else
 #define PMEM_START		U_ALIGN(OSD1_ADDR_END)
 #endif
-#define PMEM_SIZE			(64*SZ_1M)
-#define PMEM_END			(PMEM_START + PMEM_SIZE-1)
+#ifdef CONFIG_ANDROID_PMEM
+#define PMEM_SIZE		(64*SZ_1M)
+#else
+#define PMEM_SIZE		0
+#endif
+#define PMEM_END                (PMEM_START + PMEM_SIZE-1)
 
 #if defined(CONFIG_AM_VDEC_H264)
 #define CODEC_MEM_SIZE		U_ALIGN(32*SZ_1M)
