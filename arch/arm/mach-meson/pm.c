@@ -438,7 +438,7 @@ void early_clk_switch(int flag)
                 WRITE_CBUS_REG_BITS(NAND_CFG,((5)|(((-6)&0xf)<<10)|((0&7)<<5)),0,14);
 
                 WRITE_CBUS_REG(HHI_A9_CLK_CNTL, READ_CBUS_REG(HHI_A9_CLK_CNTL)&~(1<<7));
-                CLEAR_CBUS_REG_MASK(HHI_SYS_PLL_CNTL, (1<<16));
+                SET_CBUS_REG_MASK(HHI_SYS_PLL_CNTL, (1<<16));
                 udelay(1000);
                 WRITE_CBUS_REG(HHI_A9_CLK_CNTL, READ_CBUS_REG(HHI_A9_CLK_CNTL)|(1<<7));
             }
