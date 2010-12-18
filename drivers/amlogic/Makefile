@@ -42,6 +42,8 @@ obj-$(CONFIG_JPEGLOGO) += jpeglogo/
 
 obj-$(CONFIG_CARDREADER) += cardreader/
 
+obj-$(CONFIG_UMP) += ump/
+
 obj-$(CONFIG_MALI) += mali/
 
 obj-$(CONFIG_AML_AUDIO_DSP) += audiodsp/
