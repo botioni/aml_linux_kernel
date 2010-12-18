@@ -39,7 +39,9 @@
 #define KP_POLL_DELAY       (1 * 1000000)
 #define KP_POLL_PERIOD      (5 * 1000000)
 
-//#define _DEBUG_IT7230_
+//#define _DEBUG_IT7230_I2C
+//#define _DEBUG_IT7230_READ_
+#define _DEBUG_IT7230_INIT_
 
 struct it7230 {
     spinlock_t lock;
@@ -162,7 +164,7 @@ int it7230_read_reg(unsigned char page, unsigned char addr_byte)
         },
     };
 
-    #ifdef _DEBUG_IT7230_
+    #ifdef _DEBUG_IT7230_I2C
     printk(KERN_INFO " read address = 0x%x\n", addr_byte);
     #endif
     if (page != current_page ) {
@@ -198,7 +200,7 @@ int it7230_write_reg(unsigned char page, unsigned char addr_byte, unsigned short
             .buf = buf,
         }
     };
-    #ifdef _DEBUG_IT7230_
+    #ifdef _DEBUG_IT7230_I2C
     printk(KERN_INFO " write address = 0x%x\n", addr_byte);
     printk(KERN_INFO " current_page = %d\n", current_page);
     printk(KERN_INFO " page = %d\n", page);
@@ -223,16 +225,16 @@ static int it7230_power_on_init(void)
     int ret1 = 0;
     int ret2 = 0;
     unsigned char temp = 0x00;
-    #ifdef _DEBUG_IT7230_
+    #ifdef _DEBUG_IT7230_INIT_
     unsigned short read_buff = 0xaa;
     #endif
 
     while (temp < (sizeof(asInitCapSReg)/sizeof(sInitCapSReg))) {
-        #ifdef _DEBUG_IT7230_
+        #ifdef _DEBUG_IT7230_INIT_
         printk(KERN_INFO "\n");
         #endif
         ret1 = it7230_write_reg(asInitCapSReg[temp].page, asInitCapSReg[temp].reg, asInitCapSReg[temp].value);
-        #ifdef _DEBUG_IT7230_
+        #ifdef _DEBUG_IT7230_INIT_
         if (ret1 < 0)
             printk(KERN_INFO "***Write asInitCapSReg[%d] failed***, ret = %d\n", temp, ret1);
         else
@@ -242,7 +244,7 @@ static int it7230_power_on_init(void)
         if ( temp<=4) {
             msleep(5);//delay 5ms
         }
-        #ifdef _DEBUG_IT7230_
+        #ifdef _DEBUG_IT7230_INIT_
         read_buff = it7230_read_reg(asInitCapSReg[temp-1].page, asInitCapSReg[temp-1].reg);
         printk(KERN_INFO "Read asInitCapSReg[%d], .page = %d, .reg = 0x%x, .value = 0x%x\n", temp-1, asInitCapSReg[temp-1].page, asInitCapSReg[temp-1].reg, read_buff);
         printk(KERN_INFO "\n");
@@ -254,35 +256,35 @@ static int it7230_power_on_init(void)
     msleep(200);//delay the time is 50 to 200 ms
 
     ret2 = it7230_write_reg(PAGE_1, CAPS_RTR, 0x05f);//set the cab  time.
-    #ifdef _DEBUG_IT7230_
+    #ifdef _DEBUG_IT7230_INIT_
     if (ret2 < 0)
         printk(KERN_INFO "***it7230_write_reg(PAGE_1, CAPS_RTR, 0x05f) failed*** ret = %d\n", ret2);
     #endif
     ret |= ret2;
     ret = it7230_write_reg(PAGE_1, CAPS_CTR, 0x001f);
-    #ifdef _DEBUG_IT7230_
+    #ifdef _DEBUG_IT7230_INIT_
     if (ret2 < 0)
         printk(KERN_INFO "***it7230_write_reg(PAGE_1, CAPS_CTR, 0x001f) failed ret = %d***\n", ret2);
     #endif
     ret |= ret2;
-    #ifdef _DEBUG_IT7230_
+    #ifdef _DEBUG_IT7230_INIT_
     ret2 = it7230_write_reg(PAGE_1, CAPS_CFER, 0xC000);
     if (ret2 < 0)
         printk(KERN_INFO "***it7230_write_reg(PAGE_1, CAPS_CFER, 0xC000) failed ret = %d***\n", ret2);
     #endif
     ret2 = it7230_write_reg(PAGE_1, CAPS_LEDCMR0, 0x10DD);
-    #ifdef _DEBUG_IT7230_
+    #ifdef _DEBUG_IT7230_INIT_
     if (ret2 < 0)
         printk(KERN_INFO "***it7230_write_reg(PAGE_1, CAPS_LEDCMR0, 0x10DD) failed ret = %d***\n", ret2);
     #endif
     ret2 = it7230_write_reg(PAGE_1, CAPS_LEDCMR1, 0x3DD2);
-    #ifdef _DEBUG_IT7230_
+    #ifdef _DEBUG_IT7230_INIT_
     if (ret2 < 0)
         printk(KERN_INFO "***it7230_write_reg(PAGE_1, CAPS_LEDCMR1, 0x3DD2) failed ret = %d***\n", ret2);
     #endif
     ret |= ret2;
     ret1 = it7230_read_reg(PAGE_0, CAPS_SIR);//to clear contact interrupts if any.
-    #ifdef _DEBUG_IT7230_
+    #ifdef _DEBUG_IT7230_INIT_
     printk(KERN_INFO "***it7230_read_reg(PAGE_0, CAPS_SIR) = 0x%x\n", ret2);
     #endif
     ret2 = it7230_write_reg(PAGE_0, CAPS_SXCHAIER, 0x000f);//set the any key to have interrupts(contact high)
@@ -305,7 +307,7 @@ static int it7230_sleep(void)
 static void it7230_work(struct work_struct *work)
 {
     int i;
-    #ifdef _DEBUG_IT7230_
+    #ifdef _DEBUG_IT7230_READ_
     int gpio_val = 0;
     #endif
     int button_val = 0;
@@ -313,35 +315,46 @@ static void it7230_work(struct work_struct *work)
     struct cap_key *key;
 
     kp = (struct it7230 *)container_of(work, struct it7230, work);
-    button_val = it7230_read_reg(PAGE_0, CAPS_SXCHSR);
-    if (button_val >> 5){ //note, just use 5 keys currently, if you have more key define, you need change this value.
-        #ifdef _DEBUG_IT7230_
-        printk(KERN_INFO "Error, invalid Key!!!!!!!!\n");
+    
+    if ((!kp->get_irq_level()) || (kp->pending_keys)) 
+    {
+        button_val = it7230_read_reg(PAGE_0, CAPS_SXCHSR);
+        if (button_val >> 5){ //note, just use 5 keys currently, if you have more key define, you need change this value.
+            #ifdef _DEBUG_IT7230_READ_
+            printk(KERN_INFO "Error! Invalid touch key 0x%04x!\n", button_val);
+            #endif
+            kp->pending_keys = 0;
+            goto restart;
+        }
+        #ifdef _DEBUG_IT7230_READ_
+        printk(KERN_INFO "button_val = 0x%04x\n", button_val);
         #endif
-        return;
-    }
-    #ifdef _DEBUG_IT7230_
-    printk(KERN_INFO "gpio_val=0x%04x, button_val = 0x%04x\r\n", gpio_val, button_val);
-    #endif
-    key = kp->key;
-    for (i = 0; i < kp->key_num; i++) {
-        if (button_val & key->mask) {
-            if (!(kp->pending_keys & key->mask)) {
-                kp->pending_keys |= key->mask;
-                input_report_key(kp->input, key->code, 1);
-                #ifdef _DEBUG_IT7230_
-                printk(KERN_INFO"%s key(%d) pressed\n", key->name, key->code);
+        key = kp->key;
+        for (i = 0; i < kp->key_num; i++) {
+            if (button_val & key->mask) {
+                if (!(kp->pending_keys & key->mask)) {
+                    kp->pending_keys |= key->mask;
+                    input_report_key(kp->input, key->code, 1);
+                    #ifdef _DEBUG_IT7230_READ_
+                    printk(KERN_INFO"%s key(%d) pressed\n", key->name, key->code);
+                    #endif
+                }
+            }
+            else if (kp->pending_keys & key->mask) {
+                input_report_key(kp->input, key->code, 0);
+                kp->pending_keys &= ~(key->mask);
+                #ifdef _DEBUG_IT7230_READ_
+                printk(KERN_INFO"%s key(%d) released\n", key->name, key->code);
                 #endif
             }
+            key++;
         }
-        else if (kp->pending_keys & key->mask) {
-            input_report_key(kp->input, key->code, 0);
-            kp->pending_keys &= ~(key->mask);
-            #ifdef _DEBUG_IT7230_
-            printk(KERN_INFO"%s key(%d) released\n", key->name, key->code);
-            #endif
-        }
-        key++;
+restart:
+        hrtimer_start(&kp->timer, ktime_set(0, KP_POLL_PERIOD), HRTIMER_MODE_REL);
+    }
+    else
+    {
+        enable_irq(kp->client->irq);
     }
 }
 
@@ -358,7 +371,7 @@ static struct input_dev* it7230_register_input(struct cap_key *key, int key_num)
 
         for (i=0; i<key_num; i++) {
             set_bit(key->code, input->keybit);
-            printk(KERN_INFO "%s key(%d) registed.\n", key->name, key->code);
+            printk(KERN_INFO "%s it7230 touch key(%d) registed.\n", key->name, key->code);
             key++;
         }
 
@@ -395,12 +408,8 @@ static enum hrtimer_restart it7230_timer(struct hrtimer *timer)
     unsigned long flags = 0;
     
     spin_lock_irqsave(&kp->lock, flags);
-    if (!kp->get_irq_level() && ((jiffies_to_msecs(jiffies) - kp->last_read) > 200)) {
-        queue_work(kp->workqueue, &kp->work);
-        kp->last_read = jiffies_to_msecs(jiffies);
-    }
+    queue_work(kp->workqueue, &kp->work);
     spin_unlock_irqrestore(&kp->lock, flags);
-    hrtimer_start(&kp->timer, ktime_set(0, KP_POLL_PERIOD), HRTIMER_MODE_REL);
     return HRTIMER_NORESTART;
 }
 
@@ -410,9 +419,8 @@ static irqreturn_t it7230_interrupt(int irq, void *context)
     unsigned long flags;
     
     spin_lock_irqsave(&kp->lock, flags);
-    printk(KERN_INFO "enter penirq\n");
-    /* if the attn low, disable IRQ and start timer chain */
-    if (!kp->get_irq_level()) {
+    /* if the attn low or data not clear, disable IRQ and start timer chain */
+    if ((!kp->get_irq_level()) || (kp->pending_keys)) {
         disable_irq_nosync(kp->client->irq);
         hrtimer_start(&kp->timer, ktime_set(0, KP_POLL_DELAY), HRTIMER_MODE_REL);
     }
@@ -498,7 +506,7 @@ static int it7230_probe(struct i2c_client *client, const struct i2c_device_id *i
         printk(KERN_INFO "it7230 regs init failed\n");
     else
         printk(KERN_INFO "it7230 regs init successful\n");
-        hrtimer_init(&kp->timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
+    hrtimer_init(&kp->timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
     kp->timer.function = it7230_timer;
     INIT_WORK(&kp->work, it7230_work);
     kp->workqueue = create_singlethread_workqueue(DRIVER_NAME);
