@@ -1,5 +1,5 @@
 /*
- * linux/drivers/input/touchscreen/itk.c
+ * linux/drivers/input/touchscreen/eeti.c
  *
  *
  * This program is free software; you can redistribute it and/or modify
@@ -17,24 +17,24 @@
 #include <linux/device.h>
 #include <linux/platform_device.h>
 #include <linux/workqueue.h>
-#include <linux/i2c/itk.h>
+#include <linux/i2c/eeti.h>
 
 
-#define DRIVER_NAME "itk"
+#define DRIVER_NAME "eeti"
 #define DRIVER_VERSION "1"
 
-//#define ITK_TS_DEBUG_REPORT
-//#define ITK_TS_DEBUG_READ
-//#define ITK_TS_DEBUG_INFO
+//#define EETI_TS_DEBUG_REPORT
+//#define EETI_TS_DEBUG_READ
+//#define EETI_TS_DEBUG_INFO
 //#define TS_DELAY_WORK
 
 /* periodic polling delay and period */
 #define TS_POLL_DELAY   (50 * 1000000)
-#define TS_POLL_PERIOD  (5 * 1000000)
+#define TS_POLL_PERIOD  (2 * 1000000)
 
 #define MAX_SUPPORT_POINT   5 //just support 2 point now
-#define ITK_INFO_ADDR       0x10
-#define ITK_INFO_LEN        9
+#define EETI_INFO_ADDR       0x4
+#define EETI_INFO_LEN        10
 
 /**
  * struct ts_event - touchscreen event structure
@@ -58,7 +58,7 @@ struct ts_event {
 };
 
 /**
- * struct itk - touchscreen controller context
+ * struct eeti - touchscreen controller context
  * @client:         I2C client
  * @input:          touchscreen input device
  * @lock:           lock for resource protection
@@ -73,7 +73,7 @@ struct ts_event {
  * @tp_ymax:        max virtual resolution
  * @pdata:          platform-specific information
  */
-struct itk {
+struct eeti {
        struct i2c_client *client;
        struct input_dev *input;
        spinlock_t lock;
@@ -91,15 +91,15 @@ struct itk {
        int lcd_ymax;
        int tp_xmax;
        int tp_ymax;
-       struct itk_platform_data *pdata;
+       struct eeti_platform_data *pdata;
 //       struct delayed_work cal_work;
 };
 
 /**
- * itk_get_pendown_state() - obtain the current pen state
+ * eeti_get_pendown_state() - obtain the current pen state
  * @ts:                touchscreen controller context
  */
-static int itk_get_pendown_state(struct itk *ts)
+static int eeti_get_pendown_state(struct eeti *ts)
 {
        int state = 0;
 
@@ -109,7 +109,7 @@ static int itk_get_pendown_state(struct itk *ts)
        return state;
 }
 
-static int itk_register_input(struct itk *ts)
+static int eeti_register_input(struct eeti *ts)
 {
     int ret;
     struct input_dev *dev;
@@ -151,7 +151,7 @@ static int itk_register_input(struct itk *ts)
     return 0;
 }
 
-static int itk_read_block(struct i2c_client *client, u8 addr, u8 len, u8 *data)
+static int eeti_read_block(struct i2c_client *client, u8 addr, u8 len, u8 *data)
 {
     u8 msgbuf0[1] = { addr };
     u16 slave = client->addr;
@@ -165,7 +165,7 @@ static int itk_read_block(struct i2c_client *client, u8 addr, u8 len, u8 *data)
 }
 
 /* //just mark for not used warning
-static int itk_write_block(struct i2c_client *client, u8 addr, u8 len, u8 *data)
+static int eeti_write_block(struct i2c_client *client, u8 addr, u8 len, u8 *data)
 {
     u8 msgbuf0[1] = { addr };
     u16 slave = client->addr;
@@ -179,7 +179,7 @@ static int itk_write_block(struct i2c_client *client, u8 addr, u8 len, u8 *data)
 }
 */
 
-static void itk_reset(struct itk *ts)
+static void eeti_reset(struct eeti *ts)
 {
     int i = 0;
     if (NULL == ts)
@@ -192,118 +192,129 @@ static void itk_reset(struct itk *ts)
     return;
 }
 
-static int itk_read_sensor(struct itk *ts)
+static int eeti_read_sensor(struct eeti *ts)
 {
-    int ret=-1, status = 0;
-    u8 data[ITK_INFO_LEN];
+    int ret=-1, up_down=0, id=0, valid=0;
+    u8 data[EETI_INFO_LEN];
+    struct ts_event *event;
 
     /* To ensure data coherency, read the sensor with a single transaction. */
-    ret = itk_read_block(ts->client, ITK_INFO_ADDR, ITK_INFO_LEN, data);
+    ret = eeti_read_block(ts->client, EETI_INFO_ADDR, EETI_INFO_LEN, data);
     if (ret < 0) {
         dev_err(&ts->client->dev, "Read block failed: %d\n", ret);
         return ret;
     }
-    status = data[0]&0x3;
-    ts->event[0].x = data[2]<<8|data[1];
-    ts->event[0].y = data[4]<<8|data[3];
-    ts->event[0].x = (ts->event[0].x*ts->lcd_xmax)/(ts->tp_xmax);
-    ts->event[0].y = (ts->event[0].y*ts->lcd_ymax)/(ts->tp_ymax);
-    ts->event[1].x = data[6]<<8|data[5];
-    ts->event[1].y = data[8]<<8|data[7];
-    ts->event[1].x = (ts->event[1].x*ts->lcd_xmax)/(ts->tp_xmax);
-    ts->event[1].y = (ts->event[1].y*ts->lcd_ymax)/(ts->tp_ymax);
-    ts->touching_num = status;
-    #ifdef ITK_TS_DEBUG_READ
-    printk(KERN_INFO "\nread_sensor status = %d, event[0]->x = %d, event[0]->y = %d, event[1]->x = %d, event[1]->y = %d\n", 
-        ts->touching_num, ts->event[0].x, ts->event[0].y, ts->event[1].x, ts->event[1].y);
+    up_down = data[1]&0x1;
+    valid = (data[1]&0x80)?(1):(0);
+    id = (data[1]>>2)& 0x1f;
+    if (ts->touching_num > 1)
+        event = &ts->event[0];
+    else
+        event = &ts->event[ts->touching_num];
+    event->contactid = id;
+    event->pendown = up_down;
+    event->valid = valid;
+    event->x = (data[3] << 8) | data[2];
+    event->y = (data[5] << 8) | data[4];
+    event->x = (event->x*ts->lcd_xmax)/(ts->tp_xmax);
+    event->y = (event->y*ts->lcd_ymax)/(ts->tp_ymax);
+    #ifdef EETI_TS_DEBUG_READ
+    printk(KERN_INFO "\nread_sensor valid = %d, id = %d, pendown = %d, event[%d]->x = %d, event[%d]->y = %d\n", event->valid, id, event->pendown, ts->touching_num, event->x, ts->touching_num, event->y);
     #endif
+    ts->touching_num++;
     return 0;
 }
 
 /**
- * itk_work() - work queue handler (initiated by the interrupt handler)
+ * eeti_work() - work queue handler (initiated by the interrupt handler)
  * @work:      work queue to handle
  */
-static void itk_work(struct work_struct *work)
+static void eeti_work(struct work_struct *work)
 {
 #ifdef TS_DELAY_WORK
-    struct itk *ts = container_of(to_delayed_work(work), struct itk, work);
+    struct eeti *ts = container_of(to_delayed_work(work), struct eeti, work);
 #else
-    struct itk *ts = container_of(work, struct itk, work);
+    struct eeti *ts = container_of(work, struct eeti, work);
 #endif
     struct ts_event *event;
-    int i = 0, j = 1;
+    int i = 0;
 
-    if (itk_get_pendown_state(ts)) {
-        if (itk_read_sensor(ts) < 0) {
+    if (eeti_get_pendown_state(ts)) {
+        if (eeti_read_sensor(ts) < 0) {
             printk(KERN_INFO "work read i2c failed\n");
             goto restart;
         }
         if (!ts->pendown) {
             ts->pendown = 1;
-            #ifdef ITK_TS_DEBUG_INFO
+            //input_report_key(ts->input, BTN_TOUCH, 1);
+            #ifdef EETI_TS_DEBUG_INFO
             printk(KERN_INFO "DOWN\n");
             #endif
         }
-        switch (ts->touching_num)
+        if (ts->touching_num == 2) //tow points event got
         {
-            case 0x1:
-                i = 0;
-                j = 1;
-                break;
-            case 0x2:
-                i = 1;
-                j = 2;
-                break;
-            case 0x3:
-                i = 0;
-                j = 2;
-                break;
-            case 0x0:
-            default:
-                i = 0;
-                j = 0;
-                break;
-        }
-        for (; i<j; i++)
-        {
-            event = &ts->event[i];
-
-            input_report_abs(ts->input, ABS_MT_TRACKING_ID, i);
-            #ifdef ITK_TS_DEBUG_REPORT
-            printk(KERN_INFO "\nreport ABS_MT_TRACKING_ID %d\n", i);
-            #endif
-
-            input_report_abs(ts->input, ABS_MT_TOUCH_MAJOR, 1);
-            #ifdef ITK_TS_DEBUG_REPORT
-            printk(KERN_INFO "report ABS_MT_TOUCH_MAJOR %d\n", 1);
-            #endif
-
-            input_report_abs(ts->input, ABS_MT_WIDTH_MAJOR, 0);
-            #ifdef ITK_TS_DEBUG_REPORT
-            printk(KERN_INFO "report ABS_MT_WIDTH_MAJOR %d\n", 0);
-            #endif
-
-            input_report_abs(ts->input, ABS_MT_POSITION_X, event->x);
-            input_report_abs(ts->input, ABS_MT_POSITION_Y, event->y);
-            #ifdef ITK_TS_DEBUG_REPORT
-            printk(KERN_INFO "report ABS_MT_POSITION_XY %d,%d\n", event->x, event->y);
-            #endif
-
-            input_mt_sync(ts->input);
-            #ifdef ITK_TS_DEBUG_REPORT
-            printk(KERN_INFO "input_mt_sync\n");
-            #endif
-
-            if (ts->touching_num == 0x3)
+            for (i=0; i<2; i++) //to deliver two points separately
             {
-                if (i == 0)
+                if ((i == 0) && (ts->event[i].contactid == ts->event[i+1].contactid)
+                    && (ts->event[i].pendown == ts->event[i+1].pendown)
+                    && (ts->event[i].x == ts->event[i+1].x)
+                    && (ts->event[i].y == ts->event[i+1].y)
+                    ) // if one finger and same position, sent one report
+                {
                     continue;
+                }
+                event = &ts->event[i];
+                if (event->valid == 1)
+                {
+                    input_report_abs(ts->input, ABS_MT_TRACKING_ID, event->contactid);
+                    #ifdef EETI_TS_DEBUG_REPORT
+                    printk(KERN_INFO "\nreport ABS_MT_TRACKING_ID %d\n", event->contactid);
+                    #endif
+                    input_report_abs(ts->input, ABS_MT_TOUCH_MAJOR, 1);
+                    #ifdef EETI_TS_DEBUG_REPORT
+                    printk(KERN_INFO "report ABS_MT_TOUCH_MAJOR %d\n", 1);
+                    #endif
+                    input_report_abs(ts->input, ABS_MT_WIDTH_MAJOR, 0);
+                    #ifdef EETI_TS_DEBUG_REPORT
+                    printk(KERN_INFO "report ABS_MT_WIDTH_MAJOR %d\n", 0);
+                    #endif
+                    input_report_abs(ts->input, ABS_MT_POSITION_X, event->x);
+                    input_report_abs(ts->input, ABS_MT_POSITION_Y, event->y);
+                    #ifdef EETI_TS_DEBUG_REPORT
+                    printk(KERN_INFO "report ABS_MT_POSITION_XY %d,%d\n", event->x, event->y);
+                    #endif
+                    input_mt_sync(ts->input);
+                    #ifdef EETI_TS_DEBUG_REPORT
+                    printk(KERN_INFO "input_mt_sync\n");
+                    #endif
+
+                    if ((i == 0) && 
+                        (ts->event[i].contactid != ts->event[i+1].contactid)
+                        && ts->event[i+1].valid) //two fingers, just need one input_sync report.
+                    {
+                        continue;
+                    }
+                    #ifdef EETI_TS_DEBUG_REPORT
+                    else
+                    {
+                        if (i == 0)
+                            printk(KERN_INFO "[%d].contactid = %d, [%d].contactid = %d, [%d].valid = %d, [%d].pendown = %d\n", 
+                            i, ts->event[i].contactid, i+1, ts->event[i+1].contactid, i+1, ts->event[i+1].valid, i+1, ts->event[i+1].pendown);
+                    }
+                    #endif
+                    input_sync(ts->input);
+                    #ifdef EETI_TS_DEBUG_REPORT
+                    printk(KERN_INFO "input_sync\n");
+                    #endif
+                }
+                #ifdef EETI_TS_DEBUG_READ
+                else
+                {
+                    printk(KERN_INFO "Invalid Key %d\n", i);
+                }
+                #endif
             }
-            input_sync(ts->input);
-            #ifdef ITK_TS_DEBUG_REPORT
-            printk(KERN_INFO "input_sync\n");
-            #endif
+            ts->touching_num = 0;
         }
 restart:
 #ifdef TS_DELAY_WORK
@@ -316,26 +327,26 @@ restart:
         /* enable IRQ after the pen was lifted */
         if (ts->pendown) {
             ts->pendown = 0;
-            #ifdef ITK_TS_DEBUG_INFO
+            #ifdef EETI_TS_DEBUG_INFO
             printk(KERN_INFO "UP\n");
             #endif
             input_report_abs(ts->input, ABS_MT_TOUCH_MAJOR, 0);
-            #ifdef ITK_TS_DEBUG_REPORT
+            #ifdef EETI_TS_DEBUG_REPORT
             printk(KERN_INFO "report ABS_MT_TOUCH_MAJOR %d\n", 0);
             #endif
             input_report_abs(ts->input, ABS_MT_WIDTH_MAJOR, 0);
-            #ifdef ITK_TS_DEBUG_REPORT
+            #ifdef EETI_TS_DEBUG_REPORT
             printk(KERN_INFO "report ABS_MT_WIDTH_MAJOR %d\n", 0);
             #endif
             input_mt_sync(ts->input);
-            #ifdef ITK_TS_DEBUG_REPORT
+            #ifdef EETI_TS_DEBUG_REPORT
             printk(KERN_INFO "input_mt_sync\n");
             #endif
             input_sync(ts->input);
-            #ifdef ITK_TS_DEBUG_REPORT
+            #ifdef EETI_TS_DEBUG_REPORT
             printk(KERN_INFO "input_sync\n");
             #endif
-            itk_reset(ts);
+            eeti_reset(ts);
         }
         ts->touching_num = 0;
         enable_irq(ts->client->irq);
@@ -344,12 +355,12 @@ restart:
 
 #ifndef TS_DELAY_WORK
 /**
- * itk_timer() - timer callback function
+ * eeti_timer() - timer callback function
  * @timer:     timer that caused this function call
  */
-static enum hrtimer_restart itk_timer(struct hrtimer *timer)
+static enum hrtimer_restart eeti_timer(struct hrtimer *timer)
 {
-    struct itk *ts = container_of(timer, struct itk, timer);
+    struct eeti *ts = container_of(timer, struct eeti, timer);
     unsigned long flags = 0;
     
     spin_lock_irqsave(&ts->lock, flags);
@@ -361,22 +372,22 @@ static enum hrtimer_restart itk_timer(struct hrtimer *timer)
 #endif
 
 /**
- * itk_interrupt() - interrupt handler for touch events
+ * eeti_interrupt() - interrupt handler for touch events
  * @irq:       interrupt to handle
  * @dev_id:    device-specific information
  */
-static irqreturn_t itk_interrupt(int irq, void *dev_id)
+static irqreturn_t eeti_interrupt(int irq, void *dev_id)
 {
     struct i2c_client *client = (struct i2c_client *)dev_id;
-    struct itk *ts = i2c_get_clientdata(client);
+    struct eeti *ts = i2c_get_clientdata(client);
     unsigned long flags;
     
     spin_lock_irqsave(&ts->lock, flags);
-    #ifdef ITK_TS_DEBUG_REPORT
+    #ifdef EETI_TS_DEBUG_REPORT
     printk(KERN_INFO "enter penirq\n");
     #endif
     /* if the pen is down, disable IRQ and start timer chain */
-    if (itk_get_pendown_state(ts)) {
+    if (eeti_get_pendown_state(ts)) {
         disable_irq_nosync(client->irq);
 #ifdef TS_DELAY_WORK
         schedule_delayed_work(&ts->work, msecs_to_jiffies(TS_POLL_DELAY));
@@ -389,32 +400,32 @@ static irqreturn_t itk_interrupt(int irq, void *dev_id)
 }
 
 /**
- * itk_probe() - initialize the I2C client
+ * eeti_probe() - initialize the I2C client
  * @client:    client to initialize
  * @id:                I2C device ID
  */
-static int itk_probe(struct i2c_client *client,
+static int eeti_probe(struct i2c_client *client,
     const struct i2c_device_id *id)
 {
-    struct itk *ts;
+    struct eeti *ts;
     int err = 0;
 
-    ts = kzalloc(sizeof(struct itk), GFP_KERNEL);
+    ts = kzalloc(sizeof(struct eeti), GFP_KERNEL);
     if (!ts) {
         err = -ENOMEM;
         goto fail;
     }
 
     ts->client = client;
-    itk_reset(ts);
+    eeti_reset(ts);
 
-    if (itk_register_input(ts) < 0) {
+    if (eeti_register_input(ts) < 0) {
         dev_err(&client->dev, "register input fail!\n");
         goto fail;
     }
 
     /* setup platform-specific hooks */
-    ts->pdata = (struct itk_platform_data*)client->dev.platform_data;
+    ts->pdata = (struct eeti_platform_data*)client->dev.platform_data;
     if (!ts->pdata || !ts->pdata->init_irq || !ts->pdata->get_irq_level) {
         dev_err(&client->dev, "no platform-specific callbacks "
             "provided\n");
@@ -423,10 +434,10 @@ static int itk_probe(struct i2c_client *client,
     }
     else
     {
-        ts->lcd_xmax = ((struct itk_platform_data*) client->dev.platform_data)->lcd_max_width;
-        ts->lcd_ymax = ((struct itk_platform_data*) client->dev.platform_data)->lcd_max_height;
-        ts->tp_xmax = ((struct itk_platform_data*) client->dev.platform_data)->tp_max_width;
-        ts->tp_ymax = ((struct itk_platform_data*) client->dev.platform_data)->tp_max_height;
+        ts->lcd_xmax = ((struct eeti_platform_data*) client->dev.platform_data)->lcd_max_width;
+        ts->lcd_ymax = ((struct eeti_platform_data*) client->dev.platform_data)->lcd_max_height;
+        ts->tp_xmax = ((struct eeti_platform_data*) client->dev.platform_data)->tp_max_width;
+        ts->tp_ymax = ((struct eeti_platform_data*) client->dev.platform_data)->tp_max_height;
     }
 
     if (ts->pdata->init_irq) {
@@ -440,18 +451,18 @@ static int itk_probe(struct i2c_client *client,
 
     spin_lock_init(&ts->lock);
 #ifdef TS_DELAY_WORK
-    INIT_DELAYED_WORK(&ts->work, itk_work);
+    INIT_DELAYED_WORK(&ts->work, eeti_work);
 #else
     hrtimer_init(&ts->timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
-    ts->timer.function = itk_timer;
-    INIT_WORK(&ts->work, itk_work);
-    ts->workqueue = create_singlethread_workqueue("itk");
+    ts->timer.function = eeti_timer;
+    INIT_WORK(&ts->work, eeti_work);
+    ts->workqueue = create_singlethread_workqueue("eeti");
     if (ts->workqueue == NULL) {
         dev_err(&client->dev, "can't create work queue\n");
         err = -ENOMEM;
         goto fail;
     }
-    #ifdef ITK_TS_DEBUG_REPORT
+    #ifdef EETI_TS_DEBUG_REPORT
     printk("work create: %x\n", ts->workqueue);
     #endif
 #endif
@@ -459,7 +470,7 @@ static int itk_probe(struct i2c_client *client,
     ts->pendown = 0;
     ts->touching_num = 0;
 
-    err = request_irq(client->irq, itk_interrupt, IRQF_TRIGGER_FALLING,
+    err = request_irq(client->irq, eeti_interrupt, IRQF_TRIGGER_FALLING,
         client->dev.driver->name, client);
     if (err) {
         dev_err(&client->dev, "failed to request IRQ#%d: %d\n",
@@ -483,19 +494,19 @@ fail:
 
     i2c_set_clientdata(client, NULL);
 out:
-    itk_read_sensor(ts);
-    itk_reset(ts);
-    printk("itk touch screen driver ok\n");
+    eeti_read_sensor(ts);
+    eeti_reset(ts);
+    printk("eeti touch screen driver ok\n");
     return err;
 }
 
 /**
- * itk_remove() - cleanup the I2C client
+ * eeti_remove() - cleanup the I2C client
  * @client:    client to clean up
  */
-static int itk_remove(struct i2c_client *client)
+static int eeti_remove(struct i2c_client *client)
 {
-    struct itk *priv = i2c_get_clientdata(client);
+    struct eeti *priv = i2c_get_clientdata(client);
 
     free_irq(client->irq, client);
     i2c_set_clientdata(client, NULL);
@@ -505,44 +516,44 @@ static int itk_remove(struct i2c_client *client)
     return 0;
 }
 
-static const struct i2c_device_id itk_ids[] = {
+static const struct i2c_device_id eeti_ids[] = {
     { DRIVER_NAME, 0 },
     { }
 };
 
-MODULE_DEVICE_TABLE(i2c, itk_ids);
-/* ITK I2C Capacitive Touch Screen driver */
-static struct i2c_driver itk_driver = {
+MODULE_DEVICE_TABLE(i2c, eeti_ids);
+/* EETI I2C Capacitive Touch Screen driver */
+static struct i2c_driver eeti_driver = {
     .driver = {
     .name = DRIVER_NAME,
     .owner = THIS_MODULE,
     },
-    .probe = itk_probe,
-    .remove = __devexit_p(itk_remove),
-    .id_table = itk_ids,
+    .probe = eeti_probe,
+    .remove = __devexit_p(eeti_remove),
+    .id_table = eeti_ids,
 };
 
 /**
- * itk_init() - module initialization
+ * eeti_init() - module initialization
  */
-static int __init itk_init(void)
+static int __init eeti_init(void)
 {
-    return i2c_add_driver(&itk_driver);
+    return i2c_add_driver(&eeti_driver);
 }
 
 /**
- * itk_exit() - module cleanup
+ * eeti_exit() - module cleanup
  */
-static void __exit itk_exit(void)
+static void __exit eeti_exit(void)
 {
-    i2c_del_driver(&itk_driver);
+    i2c_del_driver(&eeti_driver);
 }
 
-module_init(itk_init);
-module_exit(itk_exit);
+module_init(eeti_init);
+module_exit(eeti_exit);
 
 MODULE_AUTHOR("");
-MODULE_DESCRIPTION("itk I2C Capacitive Touch Screen driver");
+MODULE_DESCRIPTION("eeti I2C Capacitive Touch Screen driver");
 MODULE_LICENSE("GPL v2");
 MODULE_VERSION(DRIVER_VERSION);
 

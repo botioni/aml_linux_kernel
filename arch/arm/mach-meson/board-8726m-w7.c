@@ -677,14 +677,14 @@ static int ads7846_init_gpio(void)
 }
 #endif
 
-#ifdef CONFIG_ITK_CAPACITIVE_TOUCHSCREEN
-#include <linux/i2c/itk.h>
+#ifdef CONFIG_EETI_CAPACITIVE_TOUCHSCREEN
+#include <linux/i2c/eeti.h>
 
 //GPIOD_24
-#define GPIO_ITK_PENIRQ ((GPIOD_bank_bit2_24(24)<<16) |GPIOD_bit_bit2_24(24)) 
-#define GPIO_ITK_RST
+#define GPIO_EETI_PENIRQ ((GPIOD_bank_bit2_24(24)<<16) |GPIOD_bit_bit2_24(24)) 
+#define GPIO_EETI_RST
 
-static int itk_init_irq(void)
+static int eeti_init_irq(void)
 {
 /* memson
     Bit(s)  Description
@@ -705,20 +705,20 @@ static int itk_init_irq(void)
  */
 
     /* set input mode */
-    gpio_direction_input(GPIO_ITK_PENIRQ);
+    gpio_direction_input(GPIO_EETI_PENIRQ);
     /* set gpio interrupt #0 source=GPIOD_24, and triggered by falling edge(=1) */
     gpio_enable_edge_int(50+24, 1, 0);
 
     return 0;
 }
-static int itk_get_irq_level(void)
+static int eeti_get_irq_level(void)
 {
-    return gpio_get_value(GPIO_ITK_PENIRQ);
+    return gpio_get_value(GPIO_EETI_PENIRQ);
 }
 
-static struct itk_platform_data itk_pdata = {
-    .init_irq = &itk_init_irq,
-    .get_irq_level = &itk_get_irq_level,
+static struct eeti_platform_data eeti_pdata = {
+    .init_irq = &eeti_init_irq,
+    .get_irq_level = &eeti_get_irq_level,
     .tp_max_width = 32752,
     .tp_max_height = 32752,
     .lcd_max_width = 800,
@@ -1435,11 +1435,11 @@ static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
     },
 #endif
 
-#ifdef CONFIG_ITK_CAPACITIVE_TOUCHSCREEN
+#ifdef CONFIG_EETI_CAPACITIVE_TOUCHSCREEN
     {
-        I2C_BOARD_INFO("itk", 0x04),
+        I2C_BOARD_INFO("eeti", 0x04),
         .irq = INT_GPIO_0,
-        .platform_data = (void *)&itk_pdata,
+        .platform_data = (void *)&eeti_pdata,
     },
 #endif
 };

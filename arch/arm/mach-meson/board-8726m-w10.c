@@ -722,6 +722,55 @@ static int ads7846_init_gpio(void)
 }
 #endif
 
+#ifdef CONFIG_EETI_CAPACITIVE_TOUCHSCREEN
+#include <linux/i2c/eeti.h>
+
+//GPIOD_24
+#define GPIO_EETI_PENIRQ ((GPIOD_bank_bit2_24(24)<<16) |GPIOD_bit_bit2_24(24)) 
+#define GPIO_EETI_RST
+
+static int eeti_init_irq(void)
+{
+/* memson
+    Bit(s)  Description
+    256-105 Unused
+    104     JTAG_TDO
+    103     JTAG_TDI
+    102     JTAG_TMS
+    101     JTAG_TCK
+    100     gpioA_23
+    99      gpioA_24
+    98      gpioA_25
+    97      gpioA_26
+    98-76    gpioE[21:0]
+    75-50   gpioD[24:0]
+    49-23   gpioC[26:0]
+    22-15   gpioB[22;15]
+    14-0    gpioA[14:0]
+ */
+
+    /* set input mode */
+    gpio_direction_input(GPIO_EETI_PENIRQ);
+    /* set gpio interrupt #0 source=GPIOD_24, and triggered by falling edge(=1) */
+    gpio_enable_edge_int(50+24, 1, 0);
+
+    return 0;
+}
+static int eeti_get_irq_level(void)
+{
+    return gpio_get_value(GPIO_EETI_PENIRQ);
+}
+
+static struct eeti_platform_data eeti_pdata = {
+    .init_irq = &eeti_init_irq,
+    .get_irq_level = &eeti_get_irq_level,
+    .tp_max_width = 17407,
+    .tp_max_height = 12799,
+    .lcd_max_width = 1024,
+    .lcd_max_height = 768,
+};
+#endif
+
 #ifdef CONFIG_ITK_CAPACITIVE_TOUCHSCREEN
 #include <linux/i2c/itk.h>
 
@@ -770,6 +819,7 @@ static struct itk_platform_data itk_pdata = {
     .lcd_max_height = 768,
 };
 #endif
+
 
 #ifdef CONFIG_ANDROID_PMEM
 static struct android_pmem_platform_data pmem_data =
@@ -1443,6 +1493,14 @@ static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
     {
         I2C_BOARD_INFO("sn7325", 0x59),
         .platform_data = (void *)&sn7325_pdata,
+    },
+#endif
+
+#ifdef CONFIG_EETI_CAPACITIVE_TOUCHSCREEN
+    {
+        I2C_BOARD_INFO("eeti", 0x04),
+        .irq = INT_GPIO_0,
+        .platform_data = (void *)&eeti_pdata,
     },
 #endif
 
