@@ -400,43 +400,45 @@ if (type == PTS_TYPE_VIDEO)
 
             spin_unlock_irqrestore(&lock, flags);
 
-			if(!pTable->first_lookup_ok)
-			{
-				pTable->first_lookup_ok = 1;
+            if(!pTable->first_lookup_ok) {
+                pTable->first_lookup_ok = 1;
 #ifdef DEBUG_CHECKOUT
 #ifdef DEBUG_VIDEO  
-			 if (type == PTS_TYPE_VIDEO)
-           		printk("=====first vpts look up offset<0x%x> --> <0x%x:0x%x> ok!\n", offset, p2->offset, p2->val);
+                if (type == PTS_TYPE_VIDEO)
+                    printk("=====first vpts look up offset<0x%x> --> <0x%x:0x%x> ok!\n", offset, p2->offset, p2->val);
 #endif
 #ifdef DEBUG_AUDIO  
-			 if (type == PTS_TYPE_AUDIO)
-           		printk("====first apts look up offset<0x%x> --> <0x%x:0x%x> ok!\n", offset, p2->offset, p2->val);
+                if (type == PTS_TYPE_AUDIO)
+                    printk("====first apts look up offset<0x%x> --> <0x%x:0x%x> ok!\n", offset, p2->offset, p2->val);
 #endif
-#endif			
-			}			
+#endif	
+            }			
             return 0;
 
         } else {
-        	if (type == PTS_TYPE_VIDEO && !pTable->first_lookup_ok)
-        	{
-        		*val = pTable->first_checkin_pts;
-				pTable->first_lookup_ok = 1;
+            /* when first pts lookup failed, use first checkin pts instead */
+            if (!pTable->first_lookup_ok) {
+                *val = pTable->first_checkin_pts;
+                pTable->first_lookup_ok = 1;
+
 #ifdef DEBUG_CHECKOUT
-#ifdef DEBUG_VIDEO            
-           printk("first vpts look up offset<0x%x> failed, return first_checkin_pts<0x%x>\n", offset, *val);
+#ifdef DEBUG_VIDEO
+                if (type == PTS_TYPE_VIDEO)
+                    printk("first vpts look up offset<0x%x> failed, return first_checkin_pts<0x%x>\n",
+                         offset, *val);
+#endif
+
+#ifdef DEBUG_AUDIO
+                if (type == PTS_TYPE_AUDIO)
+                    printk("first apts look up offset<0x%x> failed, return first_checkin_pts<0x%x>\n", 
+                         offset, *val);
 #endif
 #endif
-        	}
-			if (type == PTS_TYPE_AUDIO && !pTable->first_lookup_ok)
-        	{
-        		*val = pTable->first_checkin_pts;
-				pTable->first_lookup_ok = 1;
-#ifdef DEBUG_CHECKOUT
-#ifdef DEBUG_AUDIO           
-           printk("first apts look up offset<0x%x> failed, return first_checkin_pts<0x%x>\n", offset, *val);
-#endif
-#endif
-        	}
+                spin_unlock_irqrestore(&lock, flags);
+
+                return 0;
+            }
+
 #ifdef DEBUG_CHECKOUT
 #ifdef DEBUG_VIDEO
             if (type == PTS_TYPE_VIDEO)
