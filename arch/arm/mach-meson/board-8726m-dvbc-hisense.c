@@ -141,14 +141,9 @@ static struct platform_device vout_device = {
 #if defined(CONFIG_AMLOGIC_SPI_NOR)
 static struct mtd_partition spi_partition_info[] = {
 	{
-		.name = "U boot",
-		.offset = 0,
-		.size = 0x80000,
-	},
-	{
-		.name = "conf",
-		.offset = 0x80000,
-		.size = 0xf0000-0x80000,
+		.name = "ubootenv",
+		.offset = 0x2e000,
+		.size = 0x2000,
 	},
 };
 
@@ -398,30 +393,44 @@ static struct platform_device aml_sound_card={
 static struct mtd_partition partition_info[] = 
 {
 	{
-		.name = "U-BOOT",
+		.name = "uboot",
 		.offset = 0,
-		.size = (2*1024*1024) - (16*1024),
+		.size = 2*1024*1024,
 	//	.set_flags=0,
 	//	.dual_partnum=0,
 	},
         {
-                .name = "CONFIG",
-                .offset = (2*1024*1024) - (16*1024),
-                .size = 16*1024,
+                .name = "ubootenv",
+                .offset = 2*1024*1024,
+                .size = 0x2000,
+        //      .set_flags=0,
+        //      .dual_partnum=0,
+        },
+        {
+                .name = "recovery",
+                .offset = 4*1024*1024,
+                .size = 4*1024*1024,
         //      .set_flags=0,
         //      .dual_partnum=0,
         },
 	{
 		.name = "boot",
-		.offset = 2*1024*1024,
+		.offset = 8*1024*1024,
 		.size = 4*1024*1024,
 	//	.set_flags=0,
 	//	.dual_partnum=0,
 	},
         {
                 .name = "system",
-                .offset = 6*1024*1024,
-                .size = 122*1024*1024,
+                .offset = 12*1024*1024,
+                .size = 116*1024*1024,
+        //      .set_flags=0,
+        //      .dual_partnum=0,
+        },
+        {
+                .name = "cache",
+                .offset = 128*1024*1024,
+                .size = 16*1024*1024,
         //      .set_flags=0,
         //      .dual_partnum=0,
         },
