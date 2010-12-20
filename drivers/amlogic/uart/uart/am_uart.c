@@ -513,9 +513,9 @@ static int am_uart_write(struct tty_struct *tty, const unsigned char *buf,
     if (!tty || !info->xmit_buf || (count <= 0))
         return 0;
 
-    mutex_lock(&info->info_mutex);
+    //mutex_lock(&info->info_mutex);
 
-	msleep(1);
+	//msleep(1);
 	//for (c=0; c<count; c++)
 	//	if (buf[c] == 0xff)
 	//		printk("am_uart_write 0xff, count = %d", count);
@@ -532,7 +532,7 @@ static int am_uart_write(struct tty_struct *tty, const unsigned char *buf,
 
 
 
-    mutex_unlock(&info->info_mutex);
+    //mutex_unlock(&info->info_mutex);
 
     if (info->xmit_cnt && !tty->stopped && !tty->hw_stopped) {
         am_uart_sched_event(info, 0);
