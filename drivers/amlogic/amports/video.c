@@ -90,8 +90,10 @@ extern irqreturn_t osd_fiq_isr(void);
 //#define SLOW_SYNC_REPEAT
 //#define INTERLACE_FIELD_MATCH_PROCESS
 
+#ifdef FIQ_VSYNC
 #define BRIDGE_IRQ	INT_TIMER_D
 #define BRIDGE_IRQ_SET() WRITE_CBUS_REG(ISA_TIMERD, 1)
+#endif
 
 #define RESERVE_CLR_FRAME
 
@@ -959,8 +961,8 @@ static irqreturn_t vsync_isr0(int irq, void *dev_id)
             {
                 atomic_set(&trickmode_framedone, 1);
 #ifdef FIQ_VSYNC
-				/* bridge to dummy IRQ */
-				BRIDGE_IRQ_SET();
+                /* bridge to dummy IRQ */
+                //BRIDGE_IRQ_SET();
 #else
                 wake_up_interruptible(&amvideo_trick_wait);
 #endif
