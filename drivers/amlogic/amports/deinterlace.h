@@ -50,6 +50,8 @@ void disable_post_deinterlace(void);
 
 int get_deinterlace_mode(void);
 
+void set_deinterlace_mode(int mode);
+
 int get_di_pre_recycle_buf(void);
 
 const vframe_provider_t * get_vfp(void);

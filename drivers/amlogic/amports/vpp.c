@@ -25,6 +25,9 @@
 #include "video.h"
 #include "vpp.h"
 
+#include <linux/amports/vframe_provider.h>
+#include "deinterlace.h"
+
 #include "videolog.h"
 //#define CONFIG_VIDEO_LOG
 #ifdef CONFIG_VIDEO_LOG
@@ -248,6 +251,8 @@ vpp_set_filters2(u32 width_in,
     u32 aspect_factor;
     s32 ini_vphase;
 
+	int deinterlace_mode = get_deinterlace_mode();
+
     next_frame_par->vscale_skip_count = 0;
 
     if (vpp_flags & VPP_FLAG_INTERLACE_IN) {
@@ -378,6 +383,9 @@ RESTART:
         filter->vpp_vert_coeff = filter_table[COEF_BILINEAR];
     else
         filter->vpp_vert_coeff = filter_table[COEF_BICUBIC];
+
+    if ( deinterlace_mode )
+    	filter->vpp_vert_coeff = filter_table[COEF_3POINT_TRIANGLE];
 
     filter->vpp_vsc_start_phase_step = ratio_y << 6;
 
