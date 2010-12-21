@@ -17,9 +17,37 @@
 #include <linux/gpio.h>
 #include <linux/rfkill.h>
 
+#include <mach/am_regs.h>
+
+static void bcm_bt_on()
+{
+    /* reset */
+	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<12));
+	CLEAR_CBUS_REG_MASK(PREG_GGPIO_O, (1<<12));	
+	msleep(200);	
+	SET_CBUS_REG_MASK(PREG_GGPIO_O, (1<<12));	
+}
+
+static void bcm_bt_off()
+{
+    /* reset */
+	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<12));
+	CLEAR_CBUS_REG_MASK(PREG_GGPIO_O, (1<<12));	
+	msleep(200);	
+	//CLEAR_CBUS_REG_MASK(PREG_GGPIO_O, (1<<12));	
+}
 
 static int bcm_bt_set_block(void *data, bool blocked)
 {
+    pr_info("BT_RADIO going: %s\n", blocked ? "off" : "on");
+
+	if (!blocked) {
+		pr_info("BCM_BT: going ON\n");
+		bcm_bt_on();
+	} else {
+		pr_info("BCM_BT: going OFF\n");
+		bcm_bt_off();
+	}
     return 0;
 }
 

@@ -131,7 +131,8 @@ static int sdio_irq_thread(void *_host)
 			host->ops->enable_sdio_irq(host, 1);
 		if (!kthread_should_stop())
 			schedule_timeout(period);
-		while(host->sdio_task_state)
+                set_current_state(TASK_INTERRUPTIBLE);
+		if(host->sdio_task_state)
 		{
 			schedule();
 		}

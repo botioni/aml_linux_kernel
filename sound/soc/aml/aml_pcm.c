@@ -435,8 +435,8 @@ static int aml_pcm_open(struct snd_pcm_substream *substream)
 	
 	prtd->pcm = substream->pcm;
 	prtd->timer.function = &aml_pcm_timer_callback;
-  prtd->timer.data = (unsigned long)substream;
-  init_timer(&prtd->timer);
+	prtd->timer.data = (unsigned long)substream;
+	init_timer(&prtd->timer);
 	
 	runtime->private_data = prtd;
 	
@@ -921,6 +921,8 @@ typedef struct {
 	unsigned int in_op_ptr;
 	unsigned int out_op_ptr;
 	unsigned int type;
+	unsigned int in_start;
+	unsigned int out_start;	
 }amaudio_t;
 
 static ssize_t amaudio_write(struct file *file, const char *buf,
@@ -928,21 +930,18 @@ static ssize_t amaudio_write(struct file *file, const char *buf,
 {
 	amaudio_t * amaudio = (amaudio_t *)file->private_data;
 	int len = 0;
-	int start = 0;
 	if(amaudio->type == 1){
 		if(!if_audio_in_i2s_enable()){
 			printk("amaudio input can not write now\n");
 			return -EINVAL;
 		}
-		start = amaudio->in_op_ptr + READ_MPEG_REG(AUDIN_FIFO0_START);
-		copy_from_user((void*)phys_to_virt(start), (void*)buf, count);
+		copy_from_user((void*)amaudio->in_op_ptr+amaudio->in_start, (void*)buf, count);
 	}else{
 		if(!if_audio_out_enable()){
 			printk("amaudio output can not write now\n");
 			return -EINVAL;
 		}
-		start = amaudio->out_op_ptr + READ_MPEG_REG(AIU_MEM_I2S_START_PTR);
-		copy_from_user((void*)phys_to_virt(start), (void*)buf, count);
+		copy_from_user((void*)amaudio->out_op_ptr+amaudio->out_start, (void*)buf, count);
 	}
 	
 	return count;
@@ -952,14 +951,13 @@ static ssize_t amaudio_read(struct file *file, char __user *buf,
 {
 	amaudio_t * amaudio = (amaudio_t *)file->private_data;
 	int len = 0;
-	int start = 0;
+
 	if(amaudio->type == 1){
 		if(!if_audio_in_i2s_enable()){
 			printk("amaudio input can not read now\n");
 			return -EINVAL;
 		}
-		start = amaudio->in_op_ptr + READ_MPEG_REG(AUDIN_FIFO0_START);
-		len = copy_to_user((void*)buf, (void*)phys_to_virt(start), count);
+		len = copy_to_user((void*)buf, (void*)amaudio->in_op_ptr+amaudio->in_start, count);
 		if(len){
 			printk("amaudio read i2s in data failed\n");
 		}
@@ -969,8 +967,7 @@ static ssize_t amaudio_read(struct file *file, char __user *buf,
 			printk("amaudio output can not read now\n");
 			return -EINVAL;
 		}
-		start = amaudio->out_op_ptr + READ_MPEG_REG(AIU_MEM_I2S_START_PTR);
-		len = copy_to_user((void*)buf, (void*)phys_to_virt(start), count);
+		len = copy_to_user((void*)buf, (void*)amaudio->out_op_ptr+amaudio->out_start, count);
 		if(len){
 			printk("amaudio read i2s out data failed\n");
 		}
@@ -981,6 +978,16 @@ static ssize_t amaudio_read(struct file *file, char __user *buf,
 static int amaudio_open(struct inode *inode, struct file *file)
 {
 		amaudio_t * amaudio = kzalloc(sizeof(amaudio_t), GFP_KERNEL);
+		if (if_audio_in_i2s_enable()){
+			amaudio->in_start = ioremap_nocache(READ_MPEG_REG(AUDIN_FIFO0_START), 65536);
+			printk("######amaudio->in_start = %x \n", amaudio->in_start);
+			printk("######(AUDIN_FIFO0_START) = %x \n", READ_MPEG_REG(AUDIN_FIFO0_START));
+		}
+		if (if_audio_out_enable()){
+			amaudio->out_start = ioremap_nocache(READ_MPEG_REG(AIU_MEM_I2S_START_PTR), 32768);
+			printk("######amaudio->out_start = %x \n", amaudio->out_start);
+			printk("######(AIU_MEM_I2S_START_PTR) = %x \n", READ_MPEG_REG(AIU_MEM_I2S_START_PTR));
+		}
 		if(iminor(inode) == 0){ // audio out
 				printk("open audio out\n");
 				amaudio->type = 0;				
@@ -995,6 +1002,12 @@ static int amaudio_release(struct inode *inode, struct file *file)
 {
 	amaudio_t * amaudio = (amaudio_t *)file->private_data;
 	kfree(amaudio);
+	if (if_audio_in_i2s_enable()){
+		iounmap(amaudio->in_start);
+	}
+	if (if_audio_out_enable()){
+		iounmap(amaudio->out_start);
+	}	
 	return 0;
 }
 static int amaudio_ioctl(struct inode *inode, struct file *file,

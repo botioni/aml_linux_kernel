@@ -38,6 +38,14 @@
 
 #define  FIQ_VSYNC
 
+#ifdef FIQ_VSYNC
+#define BRIDGE_IRQ INT_TIMER_D
+#define BRIDGE_IRQ_SET() WRITE_CBUS_REG(ISA_TIMERD, 1)
+#endif
+
+static DECLARE_WAIT_QUEUE_HEAD(osd_vsync_wq);
+static bool vsync_hit = false;
+
 /********************************************************************/
 /***********		osd psedu frame provider 			*****************/
 /********************************************************************/
@@ -60,9 +68,7 @@ static const struct vframe_provider_s osd_vf_provider =
     .get  = osd_vf_get,
     .put  = NULL,
 };
-/**********************************************************************/
-/**********				 osd vsync irq handler   				***************/
-/**********************************************************************/
+
 static inline void  osd_update_3d_mode(int enable_osd1,int enable_osd2)
 {
 	if(enable_osd1)
@@ -74,6 +80,24 @@ static inline void  osd_update_3d_mode(int enable_osd1,int enable_osd2)
 		osd2_update_disp_3d_mode();
 	}
 }
+
+static inline void wait_vsync_wakeup(void)
+{
+	vsync_hit = true;
+	wake_up_interruptible(&osd_vsync_wq);
+}
+
+/**********************************************************************/
+/**********          osd vsync irq handler              ***************/
+/**********************************************************************/
+#ifdef FIQ_VSYNC
+static irqreturn_t vsync_isr(int irq, void *dev_id)
+{
+	wait_vsync_wakeup();
+
+	return IRQ_HANDLED;
+}
+#endif
 
 #ifdef FIQ_VSYNC
 irqreturn_t osd_fiq_isr(void)
@@ -126,8 +150,17 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
 	}
 	osd_update_3d_mode(osd_hw.mode_3d[OSD1].enable,osd_hw.mode_3d[OSD2].enable);
 	
-       if (READ_MPEG_REG(VENC_ENCI_LINE) >= 12)
-             READ_MPEG_REG(VENC_ENCI_LINE);
+	if (READ_MPEG_REG(VENC_ENCI_LINE) >= 12)
+		READ_MPEG_REG(VENC_ENCI_LINE);
+
+	if (!vsync_hit)
+	{
+#ifdef FIQ_VSYNC
+		BRIDGE_IRQ_SET();
+#else
+		wait_vsync_wakeup();
+#endif
+	}
 
 	return  IRQ_HANDLED ;
 }
@@ -136,14 +169,22 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
 EXPORT_SYMBOL(osd_fiq_isr);
 #endif
 
+void osd_wait_vsync_hw(void)
+{
+	vsync_hit = false;
+
+	wait_event_interruptible_timeout(osd_vsync_wq, vsync_hit, HZ);
+}
+
 void  osd_set_gbl_alpha_hw(u32 index,u32 gbl_alpha)
 {
-	
 	if(osd_hw.gbl_alpha[index] != gbl_alpha)
 	{
 		
 		osd_hw.gbl_alpha[index]=gbl_alpha;
 		add_to_update_list(index,OSD_GBL_ALPHA);
+		
+		osd_wait_vsync_hw();
 	}
 }
 u32  osd_get_gbl_alpha_hw(u32  index)
@@ -191,6 +232,8 @@ void  osd_set_colorkey_hw(u32 index,u32 color_index,u32 colorkey )
 		 osd_hw.color_key[index]=data32;
 		amlog_mask_level(LOG_MASK_HARDWARE,LOG_LEVEL_LOW,"bpp:%d--r:0x%x g:0x%x b:0x%x ,a:0x%x\r\n",color_index,r,g,b,a);
 		add_to_update_list(index,OSD_COLOR_KEY);
+		
+		osd_wait_vsync_hw();
 	}
 
 	return ;
@@ -201,6 +244,8 @@ void  osd_srckey_enable_hw(u32  index,u8 enable)
 	{
 		osd_hw.color_key_enable[index]=enable;
 		add_to_update_list(index,OSD_COLOR_KEY_ENABLE);
+		
+		osd_wait_vsync_hw();
 	}
 	
 }
@@ -222,6 +267,8 @@ void  osddev_update_disp_axis_hw(
 	if(mode_change)  //modify pandata .
 	{
 		add_to_update_list(index,OSD_COLOR_MODE);
+		
+		osd_wait_vsync_hw();
 	}
 	disp_data.x_start=display_h_start;
 	disp_data.y_start=display_v_start;
@@ -240,6 +287,8 @@ void  osddev_update_disp_axis_hw(
 		memcpy(&osd_hw.pandata[index],&pan_data,sizeof(pandata_t));
 		memcpy(&osd_hw.dispdata[index],&disp_data,sizeof(dispdata_t));
 		add_to_update_list(index,DISP_GEOMETRY);
+		
+		osd_wait_vsync_hw();
 	}
 }
 void osd_setup(struct osd_ctl_s *osd_ctl,
@@ -303,6 +352,7 @@ void osd_setup(struct osd_ctl_s *osd_ctl,
 		memcpy(&osd_hw.dispdata[index],&disp_data,sizeof(dispdata_t));
 		add_to_update_list(index,DISP_GEOMETRY);
 	}
+
 #ifdef CONFIG_AM_LOGO
 	if(!logo_setup_ok)
 	{
@@ -314,6 +364,8 @@ void osd_setup(struct osd_ctl_s *osd_ctl,
 		logo_setup_ok++;
 	}
 #endif
+
+	osd_wait_vsync_hw();
 }
 
 void osd_setpal_hw(unsigned regno,
@@ -371,6 +423,8 @@ void osd_enable_hw(int enable ,int index )
 	{
 		osd_hw.enable[index]=enable;
 		add_to_update_list(index,OSD_ENABLE);
+		
+		osd_wait_vsync_hw();
 	}
 }
 void osd_set_2x_scale_hw(u32 index,u16 h_scale_enable,u16 v_scale_enable)
@@ -378,6 +432,8 @@ void osd_set_2x_scale_hw(u32 index,u16 h_scale_enable,u16 v_scale_enable)
 	osd_hw.scale[index].h_enable=h_scale_enable;
 	osd_hw.scale[index].v_enable=v_scale_enable;
 	add_to_update_list(index,DISP_SCALE_ENABLE);	
+	
+	osd_wait_vsync_hw();
 }
 void osd_pan_display_hw(unsigned int xoffset, unsigned int yoffset,int index )
 {
@@ -400,6 +456,9 @@ void osd_pan_display_hw(unsigned int xoffset, unsigned int yoffset,int index )
 		osd_hw.pandata[index].y_start += diff_y;
 		osd_hw.pandata[index].y_end   += diff_y;
 		add_to_update_list(index,DISP_GEOMETRY);
+		
+		osd_wait_vsync_hw();
+		
 		amlog_mask_level(LOG_MASK_HARDWARE,LOG_LEVEL_LOW,"offset[%d-%d]x[%d-%d]y[%d-%d]\n", \
 				xoffset,yoffset,osd_hw.pandata[index].x_start ,osd_hw.pandata[index].x_end , \
 				osd_hw.pandata[index].y_start ,osd_hw.pandata[index].y_end );
@@ -660,15 +719,18 @@ void osd_init_hw(void)
     	WRITE_MPEG_REG(VIU_OSD1_CTRL_STAT , data32);
 	WRITE_MPEG_REG(VIU_OSD2_CTRL_STAT , data32);
 	
-#ifndef FIQ_VSYNC
+#ifdef FIQ_VSYNC
+	if ( request_irq(BRIDGE_IRQ, &vsync_isr,
+		IRQF_SHARED , "am_osd_vsync_bridge", osd_setup))
+#else
 	if ( request_irq(INT_VIU_VSYNC, &vsync_isr,
-                    IRQF_SHARED , "am_osd_tv", osd_setup))
-    	{
-    		amlog_level(LOG_LEVEL_HIGH,"can't request irq for vsync\r\n");
-    	}
+		IRQF_SHARED , "am_osd_vsync", osd_setup))
 #endif
+	{
+		amlog_level(LOG_LEVEL_HIGH,"can't request irq for vsync\r\n");
+	}
+
 	return ;
-	
 }
 
 
@@ -727,6 +789,8 @@ void osd_cursor_hw(s16 x, s16 y, s16 xstart, s16 ystart, u32 osd_w, u32 osd_h, i
 	osd_hw.dispdata[OSD2].x_end = osd_hw.dispdata[OSD2].x_start + osd_hw.pandata[OSD2].x_end - osd_hw.pandata[OSD2].x_start;
 	osd_hw.dispdata[OSD2].y_end = osd_hw.dispdata[OSD2].y_start + osd_hw.pandata[OSD2].y_end - osd_hw.pandata[OSD2].y_start;
 	add_to_update_list(OSD2,DISP_GEOMETRY);
+	
+	osd_wait_vsync_hw();
 }
 #endif //CONFIG_FB_OSD2_CURSOR
 
@@ -826,14 +890,17 @@ void osd_resume_hw(void)
 		// osd relative clock	
 	}
 	
-#ifndef FIQ_VSYNC
+#ifdef FIQ_VSYNC
+	if ( request_irq(BRIDGE_IRQ, &vsync_isr,
+		IRQF_SHARED, "am_osd_vsync_bridge", osd_setup))
+#else
 	if ( request_irq(INT_VIU_VSYNC, &vsync_isr,
-                    IRQF_SHARED , "am_osd_tv", osd_setup))
-    	{
-    		amlog_level(LOG_LEVEL_HIGH,"can't request irq when osd resume\r\n");
-    	}
+		IRQF_SHARED , "am_osd_vsync", osd_setup))
 #endif
-    printk("osd_resume\n");
+	{
+		amlog_level(LOG_LEVEL_HIGH,"can't request irq when osd resume\r\n");
+	}
+
 	return ;
 }
 

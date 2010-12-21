@@ -44,6 +44,7 @@
 #include <linux/fcntl.h>
 #include <linux/fs.h>
 #include <linux/firmware.h>
+#include <linux/rtnetlink.h>
 
 #include <asm/uaccess.h>
 #include <asm/unaligned.h>
@@ -556,7 +557,13 @@ static void dhd_early_suspend(struct early_suspend *h)
 
 	DHD_TRACE(("%s: enter\n", __FUNCTION__));
 	printk("%s: enter\n", __FUNCTION__);
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27))
+				rtnl_lock();
+#endif
 	dhd_tele_off();
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27))
+				rtnl_unlock();
+#endif	
 	//dhd_set_suspend(1, &dhdp->pub);
 }
 
@@ -567,7 +574,13 @@ static void dhd_late_resume(struct early_suspend *h)
 
 	DHD_TRACE(("%s: enter\n", __FUNCTION__));
 	printk("%s: enter\n", __FUNCTION__);
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27))
+				rtnl_lock();
+#endif
 	dhd_tele_on();
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27))
+				rtnl_unlock();
+#endif
 	//dhd_set_suspend(0, &dhdp->pub);
 }
 #endif /* defined(CONFIG_HAS_EARLYSUSPEND) */
@@ -2027,7 +2040,7 @@ dhd_attach(osl_t *osh, struct dhd_bus *bus, uint bus_hdrlen)
 	WAKE_LOCK_INIT(&dhd->pub, WAKE_LOCK_TMOUT, "dhd_wake_lock");
 	WAKE_LOCK_INIT(&dhd->pub, WAKE_LOCK_LINK_DOWN_TMOUT, "dhd_wake_lock_link_dw_event");
 
-#if 0//def CONFIG_HAS_EARLYSUSPEND
+#ifdef CONFIG_HAS_EARLYSUSPEND
 	dhd->early_suspend.level = EARLY_SUSPEND_LEVEL_BLANK_SCREEN + 20;
 	dhd->early_suspend.suspend = dhd_early_suspend;
 	dhd->early_suspend.resume = dhd_late_resume;
