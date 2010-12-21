@@ -24,5 +24,7 @@ obj-$(CONFIG_AML_TCON_C7)  += c7.o
 
 obj-$(CONFIG_AML_TCON_K8)  += k8.o
 
+obj-$(CONFIG_AML_TCON_G7)  += g7.o
+
 #EXTRA_CFLAGS += -DCONFIG_PM
 

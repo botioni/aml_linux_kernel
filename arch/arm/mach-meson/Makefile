@@ -33,6 +33,7 @@ obj-$(CONFIG_MACH_MESON_8726M_C7)	+= board-8726m-c7.o
 obj-$(CONFIG_MACH_MESON_8726M_K8)	+= board-8726m-k8.o
 obj-$(CONFIG_MACH_MESON_8726M_DVBC_SKYWORTH)	+= board-8726m-dvbc-skyworth.o
 obj-$(CONFIG_MACH_MESON_8726M_DVBC_HISENSE)	+= board-8726m-dvbc-hisense.o
+obj-$(CONFIG_MACH_MESON_8726M_G7)	+= board-8726m-g7.o
 # Power Management
 obj-$(CONFIG_SUSPEND)			+= pm.o
 obj-$(CONFIG_BCM_BT)	+= bcm-bt.o

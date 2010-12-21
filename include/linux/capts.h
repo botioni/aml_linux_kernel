@@ -13,6 +13,16 @@ struct ts_event {
     unsigned char state;
 };
 
+enum ts_mode {
+    TS_MODE_INT_FALLING,
+    TS_MODE_INT_RISING,
+    TS_MODE_INT_LOW,
+    TS_MODE_INT_HIGH,
+    TS_MODE_TIMER_LOW,
+    TS_MODE_TIMER_HIGH,
+    TS_MODE_TIMER_READ,
+    TS_MODE_NUM,
+};
 
 struct ts_info {
     unsigned short xmin;
@@ -31,10 +41,12 @@ struct ts_info {
 
 
 struct ts_platform_data {
+    int mode;
     int irq;
     int (*init_irq)(void);
     int (*get_irq_level)(void);
     struct ts_info info;
+    void *data;
 };
 
 struct ts_chip {
@@ -47,5 +59,7 @@ struct ts_chip {
 
 extern int capts_probe(struct device *dev, struct ts_chip *chip);
 extern int capts_remove(struct device *dev);
+int capts_suspend(struct device *dev, pm_message_t msg);
+int capts_resume(struct device *dev);
 
 #endif

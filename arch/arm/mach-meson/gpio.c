@@ -22,12 +22,23 @@ static struct gpio_addr gpio_addrs[]=
 
 int set_gpio_mode(gpio_bank_t bank,int bit,gpio_mode_t mode)
 {
+#ifdef CONFIG_EXGPIO
+	if (bank >= EXGPIO_BANK0) {
+		set_exgpio_mode(bank - EXGPIO_BANK0, bit, mode);
+		return 0;
+	}
+#endif
 	unsigned long addr=gpio_addrs[bank].mode_addr;
 	WRITE_CBUS_REG_BITS(addr,mode,bit,1);
 	return 0;
 }
 gpio_mode_t get_gpio_mode(gpio_bank_t bank,int bit)
 {
+#ifdef CONFIG_EXGPIO
+	if (bank >= EXGPIO_BANK0) {
+		return get_exgpio_mode(bank - EXGPIO_BANK0, bit);
+	}
+#endif
 	unsigned long addr=gpio_addrs[bank].mode_addr;
 	return (READ_CBUS_REG_BITS(addr,bit,1)>0)?(GPIO_INPUT_MODE):(GPIO_OUTPUT_MODE);
 }
@@ -35,6 +46,12 @@ gpio_mode_t get_gpio_mode(gpio_bank_t bank,int bit)
 
 int set_gpio_val(gpio_bank_t bank,int bit,unsigned long val)
 {
+#ifdef CONFIG_EXGPIO
+	if (bank >= EXGPIO_BANK0) {
+		set_exgpio_val(bank - EXGPIO_BANK0, bit, val);
+		return 0;
+	}
+#endif
 	unsigned long addr=gpio_addrs[bank].out_addr;
 	WRITE_CBUS_REG_BITS(addr,val?1:0,bit,1);
 
@@ -43,6 +60,11 @@ int set_gpio_val(gpio_bank_t bank,int bit,unsigned long val)
 
 unsigned long  get_gpio_val(gpio_bank_t bank,int bit)
 {
+#ifdef CONFIG_EXGPIO
+	if (bank >= EXGPIO_BANK0) {
+		return get_exgpio_val(bank - EXGPIO_BANK0, bit);
+	}
+#endif
 	unsigned long addr=gpio_addrs[bank].in_addr;
 	return READ_CBUS_REG_BITS(addr,bit,1);
 }

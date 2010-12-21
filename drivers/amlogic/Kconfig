@@ -14,6 +14,7 @@ source "drivers/amlogic/input/Kconfig"
 source "drivers/amlogic/power/Kconfig"
 source "drivers/amlogic/extern_io/Kconfig"
 source "drivers/amlogic/gpio/Kconfig"
+source "drivers/amlogic/minilvds/Kconfig"
 
 #	Block devices
 #

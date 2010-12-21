@@ -14,33 +14,23 @@
 #include <linux/device.h>
 #include <linux/platform_device.h>
 #include <linux/workqueue.h>
+#include <mach/gpio.h>
 #include <linux/capts.h>
 
 
 #define MULTI_TOUCH
 
-#define capts_info  printk
-#define capts_err  printk
+#define capts_debug_info  printk
 
 /* periodic polling delay and period */
 #define TS_POLL_DELAY     (1 * 1000000)
-#define TS_POLL_PERIOD   (5 * 1000000)
+#define TS_POLL_PERIOD   (10 * 1000000)
 
-/**
- * struct capts - touchscreen controller context
- * @dev:    device
- * @input:     touchscreen input device
- * @lock:      lock for resource protection
- * @work:     delayed work
- * @chip:   ts chip interface
- * @version:    chip version infomation
- * @event:     current touchscreen event
- * @event_num:     current event number
- */
 struct capts {
     struct device *dev;
     struct input_dev *input;
     spinlock_t lock;
+    int irq;
     struct hrtimer timer;
     struct work_struct work;
     struct workqueue_struct *workqueue;
@@ -48,8 +38,30 @@ struct capts {
     struct ts_platform_data *pdata;
     struct ts_event event[EVENT_MAX];
     int event_num;
+    unsigned short use_attr_group :1;
+    unsigned short pending :1;
+    unsigned short is_suspended :1;
 };
 
+int capts_irq_type[TS_MODE_NUM] = {
+    IRQF_TRIGGER_FALLING,
+    IRQF_TRIGGER_RISING,
+    IRQF_TRIGGER_LOW,
+    IRQF_TRIGGER_HIGH,
+    IRQF_TRIGGER_NONE,
+    IRQF_TRIGGER_NONE,
+    IRQF_TRIGGER_NONE,
+};
+
+static inline int capts_get_fingdown_state(struct capts *ts)
+{
+    int ret = 1;
+    if (ts->pdata->mode < TS_MODE_TIMER_READ) {
+        ret = ts->pdata->get_irq_level();
+        ret = !(ret ^ (ts->pdata->mode & 1));
+    }
+    return ret;
+}
 
 static struct input_dev* capts_register_input(const char *name, struct ts_info *info)
 {
@@ -97,7 +109,7 @@ static void capts_report_down(struct input_dev *input, struct ts_event *event, i
     
 #ifdef MULTI_TOUCH
     for (i=0; i<event_num; i++) {
-        capts_info("point_%d: x=%d, y=%d, z=%d, w=%d\n",
+        capts_debug_info("point_%d: x=%d, y=%d, z=%d, w=%d\n",
             event->id, event->x, event->y, event->z, event->w);
         input_report_abs(input, ABS_MT_POSITION_X, event->x);
         input_report_abs(input, ABS_MT_POSITION_Y, event->y);
@@ -142,8 +154,8 @@ static ssize_t capts_read(struct device *dev, struct device_attribute *attr, cha
         return strlen(ts->chip->version);
     }
     else if (!strcmp(attr->attr.name, "information")) {
-        memcpy(buf, &ts->pdata->info, 8);
-        return 8;
+        memcpy(buf, &ts->pdata->info, sizeof(struct ts_info));
+        return sizeof(struct ts_info);
     } 
  
     return 0;
@@ -151,19 +163,38 @@ static ssize_t capts_read(struct device *dev, struct device_attribute *attr, cha
 
 static ssize_t capts_write(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
 {
+    int ret = 0;
     struct capts *ts = (struct capts *)dev_get_drvdata(dev);
 
-    if (!strcmp(attr->attr.name, "calibration")) {    
-        capts_info("\n\ncalibrating... please don't touch your panel!\n");
-        disable_irq_nosync(ts->pdata->irq);
-        if (ts->chip->reset(ts->dev) < 0) {
-            capts_err("calibration failed, please restart machine!\n\n");
+    if (!strcmp(attr->attr.name, "calibration")) {
+        if (!ts->chip->calibration) {
+            printk("no need to calibrate!\n");
             return 0;
         }
-        else {
-            capts_info("calibration ok\n\n");
-            enable_irq(ts->pdata->irq);
+        printk("calibrating... don't touch your panel!\n");
+        spin_lock_irq(&ts->lock);
+        while (ts->pending) {
+            spin_unlock_irq(&ts->lock);
+            msleep(1);
+            spin_lock_irq(&ts->lock);
+        }        
+        if (ts->irq) {
+            disable_irq(ts->irq);
         }
+
+        if (ts->chip->calibration(dev) < 0) {
+            printk("calibration failed\n");
+            ret = 0;
+        }
+        else {
+            printk("calibration ok\n");
+            ret = count;
+        }
+
+        if (ts->irq) {
+            enable_irq(ts->irq);
+        }
+        spin_unlock_irq(&ts->lock);
     }
     
     return count;
@@ -192,45 +223,57 @@ static struct attribute_group capts_attr_group = {
  */
 static void capts_work(struct work_struct *work)
 {
-    struct capts *ts = container_of(work, struct capts, work);
     int event_num;
-
-    if (!ts->pdata->get_irq_level()) {
-        event_num = ts->chip->get_event(ts->dev, &ts->event[0]);
-        event_num %= EVENT_MAX;
-        if (event_num > 0) {
-            capts_report_down(ts->input, ts->event, event_num);             
-            if (!ts->event_num) {
-                ts->event_num = event_num;
-                capts_info( "DOWN\n");
-            }
-        }
-        else {
-             capts_err("read event failed, %d\n", event_num);
-        }
-        hrtimer_start(&ts->timer, ktime_set(0, TS_POLL_PERIOD), HRTIMER_MODE_REL);
-    }
-    else {
+    struct capts *ts = container_of(work, struct capts, work);
+    int fingdown = capts_get_fingdown_state(ts);
+    
+    event_num = ts->chip->get_event(ts->dev, &ts->event[0]);
+    event_num %= EVENT_MAX;   
+    capts_debug_info( "event_num=%d, fingdown=%d\n", event_num, fingdown);
+    if (!event_num || !fingdown) {
+        ts->pending = 0;
         if (ts->event_num) {
             capts_report_up(ts->input);
             ts->event_num = 0;
-            capts_info( "UP\n");
+            capts_debug_info( "UP\n");
         }
-        /* enable IRQ after the pen was lifted */
-        enable_irq(ts->pdata->irq);
+    }
+    else {
+        ts->pending = 1;
+        capts_report_down(ts->input, ts->event, event_num);
+        if (!ts->event_num) {
+            ts->event_num = event_num;
+            capts_debug_info( "DOWN\n");
+        }
+    }
+    
+    if ((ts->pdata->mode == TS_MODE_TIMER_LOW)
+    || (ts->pdata->mode == TS_MODE_TIMER_HIGH)
+    || (ts->pdata->mode == TS_MODE_TIMER_READ)) {
+        hrtimer_start(&ts->timer, ktime_set(0, TS_POLL_PERIOD),
+        HRTIMER_MODE_REL);
+    }
+    else if ((ts->pdata->mode == TS_MODE_INT_FALLING)
+    || (ts->pdata->mode == TS_MODE_INT_RISING)) {
+        enable_irq(ts->irq);
+    }
+    else if (ts->event_num) {
+        hrtimer_start(&ts->timer, ktime_set(0, TS_POLL_PERIOD),
+        HRTIMER_MODE_REL);
+    }
+    else {
+        enable_irq(ts->irq);
     }
 }
 
 
 static enum hrtimer_restart capts_timer(struct hrtimer *timer)
 {
-	struct capts *ts = container_of(timer, struct capts, timer);
-	unsigned long flags = 0;
-	
-	spin_lock_irqsave(&ts->lock, flags);
-	queue_work(ts->workqueue, &ts->work);	
-	spin_unlock_irqrestore(&ts->lock, flags);
-	return HRTIMER_NORESTART;
+    struct capts *ts = container_of(timer, struct capts, timer);
+    
+    queue_work(ts->workqueue, &ts->work);	
+
+    return HRTIMER_NORESTART;
 }
 
 
@@ -243,13 +286,12 @@ static irqreturn_t capts_interrupt(int irq, void *context)
 {
     struct capts *ts = (struct capts *) context;
     unsigned long flags;
-    
-    capts_info( "enter interrrupt\n");
+
     spin_lock_irqsave(&ts->lock, flags);
-    /* if the pen is down, disable IRQ and start timer chain */
-    if (!ts->pdata->get_irq_level()) {
-        disable_irq_nosync(ts->pdata->irq);
-        hrtimer_start(&ts->timer, ktime_set(0, TS_POLL_DELAY), HRTIMER_MODE_REL);
+    if (capts_get_fingdown_state(ts)) {
+        ts->pending = 1;
+        disable_irq_nosync(ts->irq);
+        queue_work(ts->workqueue, &ts->work);
     }
     spin_unlock_irqrestore(&ts->lock, flags);
     
@@ -263,59 +305,78 @@ static irqreturn_t capts_interrupt(int irq, void *context)
  */
 int capts_probe(struct device *dev, struct ts_chip *chip)
 {
-    struct capts *ts;
+    struct capts *ts = 0;
     struct ts_platform_data *pdata = dev->platform_data;
     int err = 0;
-
-    capts_info("\ncapaticive touchscreen probe start\n");
    
-    if (!chip || !pdata || !pdata->init_irq || !pdata->get_irq_level) {
+    if (!dev || !chip || !pdata) {
         err = -ENODEV;
-        capts_err("no chip registered\n");
-        goto fail;
+        printk("capacitive touch screen: no chip registered\n");
+        return err;
     }
      
     ts = kzalloc(sizeof(struct capts), GFP_KERNEL);
     if (!ts) {
         err = -ENOMEM;
-        capts_err("allocate ts failed\n");
-        goto fail;
+        printk("%s: allocate ts failed\n", ts->chip->name);
+        return err;
     }
     
     ts->dev = dev;
     ts->pdata = pdata;
     ts->chip = chip;
     ts->event_num = 0;
-    dev_set_drvdata(dev, ts);
+    ts->irq = 0;
+    ts->timer.function = 0;
+    ts->use_attr_group = 0;
+    ts->pending = 0;
+    ts->is_suspended = 0;
     spin_lock_init(&ts->lock);
+    dev_set_drvdata(dev, ts);
 
-    hrtimer_init(&ts->timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
-    ts->timer.function = capts_timer;
     INIT_WORK(&ts->work, capts_work);
     ts->workqueue = create_singlethread_workqueue(dev->driver->name);
-    if (ts->workqueue == NULL) {
+    if (!ts->workqueue) {
         err = -ENOMEM;
-        capts_err("can't create work queue\n");
+        printk("%s: can't create work queue\n", ts->chip->name);
         goto fail;
     }
     
-    pdata->init_irq();
-    err = request_irq(ts->pdata->irq, capts_interrupt,
-            IRQF_TRIGGER_FALLING, dev->driver->name, ts);
-    if (err) {
-        capts_err("request gpio irq failed\n");
-        goto fail;
+    if (ts->chip->reset) {
+        err = ts->chip->reset(dev);
+        if (err) {
+            printk("%s: reset failed, %d\n", ts->chip->name, err);
+            goto fail;
+        }
     }
 
-    disable_irq_nosync(ts->pdata->irq);
-    capts_info("reseting...\n");
-    err = ts->chip->reset(ts->dev);
-    if (err) {
-        capts_err("reset failed\n");
-        goto fail;
+    if (pdata->init_irq) {
+        pdata->init_irq();
     }
-    capts_info("reset ok\n");
-    enable_irq(ts->pdata->irq);
+    if ((pdata->mode == TS_MODE_TIMER_LOW)
+    || (pdata->mode == TS_MODE_TIMER_HIGH)
+    || (pdata->mode == TS_MODE_TIMER_READ)) {
+        /* no interrupt, use timer only */
+        hrtimer_init(&ts->timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
+        ts->timer.function = capts_timer;
+        hrtimer_start(&ts->timer, ktime_set(0, TS_POLL_PERIOD),
+        HRTIMER_MODE_REL);
+    }
+    else {
+        if ((pdata->mode == TS_MODE_INT_LOW)
+        || (pdata->mode == TS_MODE_INT_HIGH)) {
+            /*use both interrupt & timer */
+            hrtimer_init(&ts->timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
+            ts->timer.function = capts_timer;
+        }
+        err = request_irq(pdata->irq, capts_interrupt,
+        capts_irq_type[pdata->mode], dev->driver->name, ts);
+        if (err) {
+            printk("%s: request gpio irq failed, %d\n", ts->chip->name, err);
+            goto fail;
+        }
+        ts->irq = pdata->irq;
+    }
     
     ts->input = capts_register_input(dev->driver->name, &ts->pdata->info);
     if (!ts->input) {
@@ -325,23 +386,16 @@ int capts_probe(struct device *dev, struct ts_chip *chip)
     
     err = sysfs_create_group(&dev->kobj, &capts_attr_group);
     if (err) {
-        capts_err("create device attribute group failed\n");
+        printk("%s: create device attribute group failed\n", ts->chip->name);
         goto fail;
     }
-
-    capts_info("capaticive touchscreen probe ok\n");
+    ts->use_attr_group = 1;
+    
+    printk("%s: init ok\n", ts->chip->name);
     return 0;
     
 fail:
-    capts_info("capaticive touchscreen probe failed\n");
-    dev_set_drvdata(dev, NULL);
-    if (ts) {
-        free_irq(ts->pdata->irq, ts);
-        if (ts->input) {
-            input_free_device(ts->input);
-        }
-        kfree(ts);
-    }
+    capts_remove(dev);
     return err;
 }
 
@@ -350,12 +404,72 @@ fail:
  * @dev:    device to clean up
  */
 int capts_remove(struct device *dev)
-{
-       struct capts *ts = dev_get_drvdata(dev);
-       free_irq(ts->pdata->irq, ts);
-       dev_set_drvdata(dev, NULL);
-       input_unregister_device(ts->input);
-       kfree(ts);
+{  
+    struct capts *ts = dev_get_drvdata(dev);
+    
+    dev_set_drvdata(dev, NULL);
+    if (ts) {
+        if (ts->irq) {
+            free_irq(ts->irq, ts);
+        }
+        if (ts->timer.function) {
+            hrtimer_cancel(&ts->timer);
+        }
+        if (ts->workqueue) {
+            destroy_workqueue(ts->workqueue);
+        }
+        if (ts->input) {
+            input_unregister_device(ts->input);
+        }
+        if (ts->use_attr_group) {
+            sysfs_remove_group(&dev->kobj, &capts_attr_group);
+        }
+        kfree(ts);
+    }
+    
+    return 0;
+}
 
-       return 0;
+int capts_suspend(struct device *dev, pm_message_t msg)
+{
+    struct capts *ts = dev_get_drvdata(dev);
+    
+    spin_lock_irq(&ts->lock);
+
+    ts->is_suspended = 1;
+    while (ts->pending) {
+        spin_unlock_irq(&ts->lock);
+        msleep(1);
+        spin_lock_irq(&ts->lock);
+    }
+    
+    if (ts->irq) {
+        disable_irq(ts->irq);
+        if (device_may_wakeup(dev)) {
+            enable_irq_wake(ts->irq);
+        }
+    }
+
+    spin_unlock_irq(&ts->lock);
+   
+    return 0;
+}
+
+int capts_resume(struct device *dev)
+{
+    struct capts *ts = dev_get_drvdata(dev);
+
+    spin_lock_irq(&ts->lock);
+
+    ts->is_suspended = 0;
+    if (ts->irq) {
+        enable_irq(ts->irq);
+        if (device_may_wakeup(dev)) {
+            disable_irq_wake(ts->irq);
+        }
+    }
+
+    spin_unlock_irq(&ts->lock);
+    
+    return 0;
 }

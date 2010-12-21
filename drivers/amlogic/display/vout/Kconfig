@@ -61,5 +61,11 @@ config AML_TCON_K8
 	depends on  AM_TCON_OUTPUT
 	help  
 		K8 LCD panel module
+		
+config AML_TCON_G7
+	tristate "G7 panel driver"
+	depends on  AM_TCON_OUTPUT
+	help  
+		G7 LCD panel module		
 endmenu
 	

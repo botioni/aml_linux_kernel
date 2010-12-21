@@ -38,3 +38,13 @@ config SIS92XX_CAPACITIVE_TOUCHSCREEN
 
 	  To compile this driver as a module, choose M here: the
 	  module will be called .
+
+config HX8520_CAPACITIVE_TOUCHSCREEN
+	tristate "HX8520 capacitive touch panel"
+	depends on I2C
+	default n
+	help
+	  Say Y here if you want to use the HX8520 capacitive panel.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called .

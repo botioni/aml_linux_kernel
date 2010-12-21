@@ -91,35 +91,39 @@ unsigned short crc16_ccitt(const unsigned char *buf, int len)
 
 
 static int sis92xx_write_block(struct i2c_client *client, u8 addr, u8 *buf, int len)
-{
-    buf[0] = addr;
-
-    struct i2c_msg msg[1] = {
-        [0] = {
-            .addr = client->addr,
-            .flags = client->flags,
-            .len = len+1,
-            .buf = buf
-        },
-    };
-    
-    return i2c_transfer(client->adapter, msg, ARRAY_SIZE(msg));
-}
-
-static int sis92xx_read_block(struct i2c_client *client, u8 addr, u8 *buf)
 { 
-    buf[0] = addr;
     struct i2c_msg msg[2] = {
         [0] = {
             .addr = client->addr,
             .flags = client->flags,
             .len = 1,
+            .buf = &addr
+        },
+        [1] = {
+            .addr = client->addr,
+            .flags = client->flags | I2C_M_NOSTART,
+            .len = len,
             .buf = buf
+        },
+    };
+    int msg_num = len ? ARRAY_SIZE(msg) : 1;
+    return i2c_transfer(client->adapter, msg, msg_num);
+}
+
+
+static int sis92xx_read_block(struct i2c_client *client, u8 addr, u8 *buf, int len)
+{ 
+    struct i2c_msg msg[2] = {
+        [0] = {
+            .addr = client->addr,
+            .flags = client->flags,
+            .len = 1,
+            .buf = &addr
         },
         [1] = {
             .addr = client->addr,
             .flags = client->flags | I2C_M_RD,
-            .len = SIS92XX_PACKET_SIZE,
+            .len = len,
             .buf = buf
         },
     };
@@ -132,11 +136,11 @@ int sis92xx_reset(struct device *dev)
 {
     int ret = -1;
     struct i2c_client *client = container_of(dev, struct i2c_client, dev);
-    u8 buf[SIS92XX_PACKET_SIZE];
+    u8 buf[6];
     int retry = 100;
     
     return 0;   
-    while(retry && (sis92xx_read_block(client, SIS92XX_CMD_RESET, buf) > 0)) {
+    while(retry && (sis92xx_read_block(client, SIS92XX_CMD_RESET, buf, 6) > 0)) {
         if ((buf[0] == 4) && (buf[1] == 0) && (buf[2] == 0x40)) {
             retry--;
             msleep(100);
@@ -157,10 +161,10 @@ int sis92xx_calibration(struct device *dev)
 {
     int ret = -1;
     struct i2c_client *client = container_of(dev, struct i2c_client, dev);
-    u8 buf[SIS92XX_PACKET_SIZE];
+    u8 buf[6];
     int retry = 100;
     
-    while(retry && (sis92xx_read_block(client, SIS92XX_CMD_RECALIBRATE, buf) > 0)) {
+    while(retry && (sis92xx_read_block(client,SIS92XX_CMD_RECALIBRATE, buf, 6) > 0)) {
         if ((buf[0] == 4) && (buf[1] == 0) && (buf[2] == 0x40)) {
             retry--;
             msleep(100);
@@ -184,7 +188,8 @@ int sis92xx_get_event (struct device *dev, struct ts_event *event)
     u8 event_num = 0;
      int i;
     memset(buf, 0, SIS92XX_PACKET_SIZE);   
-    if (sis92xx_read_block(client, SIS92XX_CMD_NORMAL, buf) < 0) {
+    if (sis92xx_read_block(client, SIS92XX_CMD_NORMAL,
+            buf, SIS92XX_PACKET_SIZE) < 0) {
         /* i2c read failed */
         return 0;
     }
@@ -234,25 +239,27 @@ int sis92xx_get_event (struct device *dev, struct ts_event *event)
 }
 
 
-/**
- * sis92xx_probe() - initialize the I2C client
- * @client:    client to initialize
- * @id:                I2C device ID
- */
 static int sis92xx_probe(struct i2c_client *client, const struct i2c_device_id *id)
 {
     return capts_probe(&client->dev, &sis92xx_chip);
 }
 
-/**
- * capts_remove() - cleanup the I2C client
- * @client:    client to clean up
- */
+
 static int sis92xx_remove(struct i2c_client *client)
 {
-    capts_remove(&client->dev);
-    i2c_set_clientdata(client, NULL);
-    return 0;
+    return capts_remove(&client->dev);
+}
+
+
+static int sis92xx_suspend(struct i2c_client *client, pm_message_t msg)
+{
+    return capts_suspend(&client->dev, msg);
+}
+
+
+static int sis92xx_resume(struct i2c_client *client)
+{
+    return capts_resume(&client->dev);
 }
 
 static const struct i2c_device_id sis92xx_ids[] = {
@@ -268,7 +275,9 @@ static struct i2c_driver sis92xx_driver = {
         .owner = THIS_MODULE,
     },
     .probe = sis92xx_probe,
-    .remove = __devexit_p(sis92xx_remove),
+    .remove = sis92xx_remove,
+    .suspend = sis92xx_suspend,
+    .resume = sis92xx_resume,
     .id_table = sis92xx_ids,
 };
 

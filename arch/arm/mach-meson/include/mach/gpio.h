@@ -21,12 +21,23 @@
 // ----------------------------
 */
 
+#ifdef CONFIG_TCA6424
+#include <linux/tca6424.h>
+#define CONFIG_EXGPIO
+#endif
+
 typedef enum gpio_bank
 {
 	PREG_EGPIO=0,
 	PREG_FGPIO,
 	PREG_GGPIO,
-	PREG_HGPIO
+	PREG_HGPIO,
+#ifdef CONFIG_EXGPIO
+	EXGPIO_BANK0,
+	EXGPIO_BANK1,
+	EXGPIO_BANK2,
+	EXGPIO_BANK3
+#endif
 }gpio_bank_t;
 
 
@@ -63,6 +74,22 @@ unsigned long  get_gpio_val(gpio_bank_t bank,int bit);
 #define GPIOE_bank_bit16_21(bit)		(PREG_HGPIO)
 #define GPIOE_bit_bit16_21(bit)			(bit)		
 
+enum {
+    GPIOA_IDX = 0,
+    GPIOB_IDX = 15,
+    GPIOC_IDX = 23,
+    GPIOD_IDX = 50,
+    GPIOE_IDX = 75,
+    GPIOA_26_IDX = 97,
+    GPIOA_25_IDX = 98,
+    GPIOA_24_IDX = 99,
+    GPIOA_23_IDX = 100,
+    JTAG_TCK_IDX = 101,
+    JTAG_TMS_IDX = 102,
+    JTAG_TDI_IDX = 103,
+    JTAG_TDO_IDX = 104,
+};
+
 /**
  * enable gpio edge interrupt
  *	
@@ -95,5 +122,38 @@ extern int gpio_direction_input(unsigned gpio);
 extern int gpio_direction_output(unsigned gpio, int value);
 extern void gpio_set_value(unsigned gpio, int value);
 extern int gpio_get_value(unsigned gpio);
+
+
+#ifdef CONFIG_EXGPIO
+static inline int set_exgpio_mode(gpio_bank_t bank,int bit,gpio_mode_t mode)
+{
+    int bank_mode = get_configIO(bank);
+    
+    bank_mode &= ~(1 << bit);
+    bank_mode |= mode << bit;
+    configIO(bank, bank_mode);
+    return 0;
+}
+
+static inline gpio_mode_t get_exgpio_mode(gpio_bank_t bank,int bit)
+{
+    return (get_configIO(bank) >> bit) & 1;
+}
+
+static inline int set_exgpio_val(gpio_bank_t bank,int bit,unsigned long val)
+{
+    int bank_val = getIO_level(bank);
+    
+    bank_val &= ~(1 << bit);
+    bank_val |= val << bit;
+    setIO_level(bank, bank_val);
+    return 0;
+}
+
+static inline unsigned long  get_exgpio_val(gpio_bank_t bank,int bit)
+{
+    return (getIO_level(bank) >> bit) & 1;
+}
+#endif
 
 #endif
