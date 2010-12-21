@@ -1719,6 +1719,7 @@ void dwc_otg_hc_start_transfer(dwc_otg_core_if_t * _core_if, dwc_hc_t * _hc)
 
 	if (_core_if->dma_enable) {
 		dwc_write_reg32(&hc_regs->hcdma, (uint32_t) _hc->xfer_buff);
+		wmb();
 		//dma_cache_maint((unsigned long)_hc->xfer_buff,(unsigned long) _hc->xfer_len);
 	}
 
