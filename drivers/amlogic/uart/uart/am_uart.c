@@ -975,7 +975,7 @@ static int __init am_uart_init(void)
     am_uart_driver->init_termios = tty_std_termios;
 
     am_uart_driver->init_termios.c_cflag =
-        B9600 | CS8 | CREAD | HUPCL | CLOCAL;
+        B115200 | CS8 | CREAD | HUPCL | CLOCAL;
     am_uart_driver->flags = TTY_DRIVER_REAL_RAW;
     tty_set_operations(am_uart_driver, &am_uart_ops);
 
