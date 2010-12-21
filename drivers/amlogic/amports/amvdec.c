@@ -32,11 +32,18 @@
 #include <linux/pm.h>
 #endif
 
+#ifdef CONFIG_WAKELOCK
+#include <linux/wakelock.h>
+#endif
+
 #include <mach/am_regs.h>
 #include <mach/power_gate.h>
 #include "amvdec.h"
 
 #define MC_SIZE (4096 * 4)
+
+static struct wake_lock amvdec_lock;
+static int amvdec_lock_init_flag = 0;
 
 static void amvdec_pg_enable(bool enable)
 {
@@ -106,6 +113,14 @@ s32 amvdec_loadmc(const u32 *p)
 
 void amvdec_start(void)
 {
+#ifdef CONFIG_WAKELOCK
+    if (!amvdec_lock_init_flag){    
+        wake_lock_init(&amvdec_lock, WAKE_LOCK_IDLE, "amvdec_lock");
+        amvdec_lock_init_flag = 1;
+    }
+    wake_lock(&amvdec_lock);
+#endif
+
     /* additional cbus dummy register reading for timing control */
     READ_MPEG_REG(RESET0_REGISTER);
     READ_MPEG_REG(RESET0_REGISTER);
@@ -131,6 +146,11 @@ void amvdec_stop(void)
     READ_MPEG_REG(RESET0_REGISTER);
     READ_MPEG_REG(RESET0_REGISTER);
     READ_MPEG_REG(RESET0_REGISTER);
+
+#ifdef CONFIG_WAKELOCK
+    if (amvdec_lock_init_flag)
+        wake_unlock(&amvdec_lock);
+#endif
 }
 
 void amvdec_enable(void)

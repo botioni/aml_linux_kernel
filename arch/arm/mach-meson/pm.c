@@ -25,6 +25,10 @@
 #include <mach/power_gate.h>
 #include <mach/gpio.h>
 
+#ifdef CONFIG_WAKELOCK
+#include <linux/wakelock.h>
+#endif
+
 #ifdef CONFIG_HAS_EARLYSUSPEND
 #include <linux/earlysuspend.h>
 static struct early_suspend early_suspend;
@@ -425,22 +429,32 @@ void early_clk_switch(int flag)
                 }
             }
             else if (early_clks[i] == HHI_MPEG_CLK_CNTL){
-                early_clk_flag[i] = 1;
-                CLEAR_CBUS_REG_MASK(early_clks[i], (1<<8)); // 24M
-                sys_clk_backup = READ_CBUS_REG(early_clks[i]);
-                
-                sys_clk = clk_get_sys("clk_xtal", NULL);
-                CLEAR_CBUS_REG_MASK(UART0_CONTROL, (1 << 19) | 0xFFF);
-                SET_CBUS_REG_MASK(UART0_CONTROL, (((sys_clk->rate / (115200 * 4)) - 1) & 0xfff));
-                CLEAR_CBUS_REG_MASK(UART1_CONTROL, (1 << 19) | 0xFFF);
-                SET_CBUS_REG_MASK(UART1_CONTROL, (((sys_clk->rate / (115200 * 4)) - 1) & 0xfff)); 
-                nand_timing = READ_CBUS_REG_BITS(NAND_CFG,0,14);
-                WRITE_CBUS_REG_BITS(NAND_CFG,((5)|(((-6)&0xf)<<10)|((0&7)<<5)),0,14);
+#ifdef CONFIG_WAKELOCK
+                if (!has_wake_lock(WAKE_LOCK_IDLE)){
+#endif
+                    early_clk_flag[i] = 1;
+                    CLEAR_CBUS_REG_MASK(early_clks[i], (1<<8)); // 24M
+                    sys_clk_backup = READ_CBUS_REG(early_clks[i]);
+                    
+                    sys_clk = clk_get_sys("clk_xtal", NULL);
+                    CLEAR_CBUS_REG_MASK(UART0_CONTROL, (1 << 19) | 0xFFF);
+                    SET_CBUS_REG_MASK(UART0_CONTROL, (((sys_clk->rate / (115200 * 4)) - 1) & 0xfff));
+                    CLEAR_CBUS_REG_MASK(UART1_CONTROL, (1 << 19) | 0xFFF);
+                    SET_CBUS_REG_MASK(UART1_CONTROL, (((sys_clk->rate / (115200 * 4)) - 1) & 0xfff)); 
+                    nand_timing = READ_CBUS_REG_BITS(NAND_CFG,0,14);
+                    WRITE_CBUS_REG_BITS(NAND_CFG,((5)|(((-6)&0xf)<<10)|((0&7)<<5)),0,14);
 
-                WRITE_CBUS_REG(HHI_A9_CLK_CNTL, READ_CBUS_REG(HHI_A9_CLK_CNTL)&~(1<<7));
-                SET_CBUS_REG_MASK(HHI_SYS_PLL_CNTL, (1<<16));
-                udelay(1000);
-                WRITE_CBUS_REG(HHI_A9_CLK_CNTL, READ_CBUS_REG(HHI_A9_CLK_CNTL)|(1<<7));
+                    WRITE_CBUS_REG(HHI_A9_CLK_CNTL, READ_CBUS_REG(HHI_A9_CLK_CNTL)&~(1<<7));
+                    SET_CBUS_REG_MASK(HHI_SYS_PLL_CNTL, (1<<16));
+                    udelay(1000);
+                    WRITE_CBUS_REG(HHI_A9_CLK_CNTL, READ_CBUS_REG(HHI_A9_CLK_CNTL)|(1<<7));
+#ifdef CONFIG_WAKELOCK
+                }
+                else{
+                    printk(KERN_INFO "Has WAKE_LOCK_IDLE wake lock!\n");
+                    early_clk_flag[i] = 0;
+                }
+#endif
             }
             else{
                 early_clk_flag[i] = READ_CBUS_REG_BITS(early_clks[i], 8, 1) ? 1 : 0;
