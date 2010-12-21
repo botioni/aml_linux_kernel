@@ -140,16 +140,25 @@ static struct platform_device vout_device = {
 
 #if defined(CONFIG_AMLOGIC_SPI_NOR)
 static struct mtd_partition spi_partition_info[] = {
-	{
-		.name = "U boot",
-		.offset = 0,
-		.size = 0x80000,
-	},
-	{
-		.name = "conf",
-		.offset = 0x80000,
-		.size = 0xf0000-0x80000,
-	},
+/* Hide uboot partition
+        {
+                .name = "uboot",
+                .offset = 0,
+                .size = 0x3e000,
+        },
+//*/
+        {
+                .name = "ubootenv",
+                .offset = 0x3e000,
+                .size = 0x2000,
+        },
+/* Hide recovery partition
+        {
+                .name = "recovery",
+                .offset = 0x4000,
+                .size = 0x1c0000,
+        },
+//*/
 };
 
 static struct flash_platform_data amlogic_spi_platform = {
@@ -397,27 +406,61 @@ static struct platform_device aml_sound_card={
 #ifdef CONFIG_NAND_FLASH_DRIVER_BASE_OPERATE
 static struct mtd_partition partition_info[] = 
 {
-	{
-		.name = "U-BOOT",
-		.offset = 0,
-		.size=2*1024*1024,
-	//	.set_flags=0,
-	//	.dual_partnum=0,
-	},
-	{
-		.name = "Kernel",
-		.offset = 2*1024*1024,
-		.size = 4 * 1024*1024,
-	//	.set_flags=0,
-	//	.dual_partnum=0,
-	},
-	{
-		.name = "YAFFS2",
-		.offset=MTDPART_OFS_APPEND,
-		.size=MTDPART_SIZ_FULL,
-	//	.set_flags=0,
-	//	.dual_partnum=0,
-	},
+#ifndef CONFIG_AMLOGIC_SPI_NOR
+/* Hide uboot partition
+        {
+                .name = "uboot",
+                .offset = 0,
+                .size = 2*1024*1024,
+        //      .set_flags=0,
+        //      .dual_partnum=0,
+        },
+//*/
+        {
+                .name = "ubootenv",
+                .offset = 2*1024*1024,
+                .size = 0x2000,
+        //      .set_flags=0,
+        //      .dual_partnum=0,
+        },
+/* Hide recovery partition
+        {
+                .name = "recovery",
+                .offset = 4*1024*1024,
+                .size = 4*1024*1024,
+        //      .set_flags=0,
+        //      .dual_partnum=0,
+        },
+//*/
+#endif
+        {
+                .name = "boot",
+                .offset = 8*1024*1024,
+                .size = 4*1024*1024,
+        //      .set_flags=0,
+        //      .dual_partnum=0,
+        },
+        {
+                .name = "system",
+                .offset = 12*1024*1024,
+                .size = 116*1024*1024,
+        //      .set_flags=0,
+        //      .dual_partnum=0,
+        },
+        {
+                .name = "cache",
+                .offset = 128*1024*1024,
+                .size = 16*1024*1024,
+        //      .set_flags=0,
+        //      .dual_partnum=0,
+        },
+        {
+                .name = "userdata",
+                .offset=MTDPART_OFS_APPEND,
+                .size=MTDPART_SIZ_FULL,
+        //      .set_flags=0,
+        //      .dual_partnum=0,
+        },
 //	{	.name="FTL_Part",
 //		.offset=MTDPART_OFS_APPEND,
 //		.size=MTDPART_SIZ_FULL,

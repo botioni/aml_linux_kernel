@@ -140,11 +140,25 @@ static struct platform_device vout_device = {
 
 #if defined(CONFIG_AMLOGIC_SPI_NOR)
 static struct mtd_partition spi_partition_info[] = {
+/* Hide uboot partition
+        {
+                .name = "uboot",
+                .offset = 0,
+                .size = 0x3e000,
+        },
+//*/
 	{
 		.name = "ubootenv",
-		.offset = 0x2e000,
+		.offset = 0x3e000,
 		.size = 0x2000,
 	},
+/* Hide recovery partition
+        {
+                .name = "recovery",
+                .offset = 0x4000,
+                .size = 0x1c0000,
+        },
+//*/
 };
 
 static struct flash_platform_data amlogic_spi_platform = {
@@ -392,6 +406,8 @@ static struct platform_device aml_sound_card={
 #ifdef CONFIG_NAND_FLASH_DRIVER_BASE_OPERATE
 static struct mtd_partition partition_info[] = 
 {
+#ifndef CONFIG_AMLOGIC_SPI_NOR
+/* Hide uboot partition
 	{
 		.name = "uboot",
 		.offset = 0,
@@ -399,6 +415,7 @@ static struct mtd_partition partition_info[] =
 	//	.set_flags=0,
 	//	.dual_partnum=0,
 	},
+//*/
         {
                 .name = "ubootenv",
                 .offset = 2*1024*1024,
@@ -406,6 +423,7 @@ static struct mtd_partition partition_info[] =
         //      .set_flags=0,
         //      .dual_partnum=0,
         },
+/* Hide recovery partition
         {
                 .name = "recovery",
                 .offset = 4*1024*1024,
@@ -413,6 +431,8 @@ static struct mtd_partition partition_info[] =
         //      .set_flags=0,
         //      .dual_partnum=0,
         },
+//*/
+#endif
 	{
 		.name = "boot",
 		.offset = 8*1024*1024,

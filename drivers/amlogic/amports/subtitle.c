@@ -25,6 +25,8 @@ static int subtitle_size = 0;
 static int subtitle_read_pos = 0;
 static int subtitle_write_pos = 0;
 static int subtitle_start_pts = 0;
+static int subtitle_fps = 0;
+static int subtitle_subtype = 0;
 //static int *subltitle_address[MAX_SUBTITLE_PACKET];
 
 // total
@@ -139,7 +141,7 @@ static ssize_t show_total(struct class *class,
                            struct class_attribute *attr,
                            char *buf)
 {
-    return sprintf(buf, "%d: disabled\n", subtitle_total);
+    return sprintf(buf, "%d: num\n", subtitle_total);
 }
 
 static ssize_t store_total(struct class *class,
@@ -191,9 +193,9 @@ static ssize_t show_size(struct class *class,
                            char *buf)
 {
     if (subtitle_enable)
-        return sprintf(buf, "1: enabled\n");
+        return sprintf(buf, "1: size\n");
 
-    return sprintf(buf, "0: disabled\n");
+    return sprintf(buf, "0: size\n");
 }
 
 static ssize_t store_size(struct class *class,
@@ -271,6 +273,53 @@ static ssize_t store_data(struct class *class,
     return 1;
 }
 
+static ssize_t show_fps(struct class *class,
+                           struct class_attribute *attr,
+                           char *buf)
+{
+    return sprintf(buf, "%d: fps\n", subtitle_fps);
+}
+
+static ssize_t store_fps(struct class *class,
+                            struct class_attribute *attr,
+                            const char *buf,
+                            size_t size)
+{
+    unsigned ssize;
+    ssize_t r;
+
+    r = sscanf(buf, "%d", &ssize);
+    if ((r <= 0))
+        return -EINVAL;
+	printk("subtitle fps is %d\n", ssize);
+    subtitle_fps = ssize;
+
+    return size;
+}
+
+static ssize_t show_subtype(struct class *class,
+                           struct class_attribute *attr,
+                           char *buf)
+{
+    return sprintf(buf, "%d: subtype\n", subtitle_subtype);
+}
+
+static ssize_t store_subtype(struct class *class,
+                            struct class_attribute *attr,
+                            const char *buf,
+                            size_t size)
+{
+    unsigned ssize;
+    ssize_t r;
+
+    r = sscanf(buf, "%d", &ssize);
+    if ((r <= 0))
+        return -EINVAL;
+	printk("subtitle subtype is %d\n", ssize);
+    subtitle_subtype= ssize;
+
+    return size;
+}
 
 static struct class_attribute subtitle_class_attrs[] = {
     __ATTR(enable,     S_IRUGO | S_IWUSR, show_enable,  store_enable),
@@ -281,7 +330,9 @@ static struct class_attribute subtitle_class_attrs[] = {
     __ATTR(curr,     S_IRUGO | S_IWUSR, show_curr,  store_curr),
     __ATTR(size,     S_IRUGO | S_IWUSR, show_size,  store_size),
     __ATTR(data,     S_IRUGO | S_IWUSR, show_data,  store_data),
-    __ATTR(startpts,     S_IRUGO | S_IWUSR, show_startpts,  store_startpts), 
+    __ATTR(startpts,     S_IRUGO | S_IWUSR, show_startpts,  store_startpts),
+    __ATTR(fps,     S_IRUGO | S_IWUSR, show_fps,  store_fps),
+    __ATTR(subtype,     S_IRUGO | S_IWUSR, show_subtype,  store_subtype),
     __ATTR_NULL
 };
 
