@@ -72,27 +72,21 @@ typedef  struct {
 	unsigned int  bit;
 }pin_config_t;
 static  pin_config_t  pin_config[]={
-#if defined(CONFIG_MACH_MESON_8626M)	
 		{
 			.platform_name="8626",
 			.pin_mux=1,
 			.bit=(1<<31),
 		},
-#endif
-#if  defined(CONFIG_MACH_MESON_6236M)	
 		{
 			.platform_name="6236",
 			.pin_mux=5,
 			.bit=(1<<31),
 		},
-#endif
-#if  defined(CONFIG_MACH_MESON_8726M) || defined(CONFIG_MACH_MESON_8726M_ARM) || defined(CONFIG_MACH_MESON_8726M_DVBC)
 		{
 			.platform_name="8726",
 			.pin_mux=5,
 			.bit=(1<<31),
 		},
-#endif
 } ;
 
 static __u16 key_map[256];
