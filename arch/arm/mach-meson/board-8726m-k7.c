@@ -604,7 +604,7 @@ int wm8900_is_hp_pluged(void)
                                 (7 << 4)    |       // CS1 REF, Current FeedBack: about 0.505V
                                 (0 << 0));           // DIMCTL Analog dimmer
     cs_no = READ_CBUS_REG(LED_PWM_REG3);
-    if(cs_no &(1<<15))
+    if(cs_no &(1<<14))
       level |= (1<<0);
     return (level == 0)?(1):(0); //return 1: hp pluged, 0: hp unpluged.
 }
@@ -1030,9 +1030,9 @@ static int get_charge_status()
                                 (7 << 4)    |       // CS1 REF, Current FeedBack: about 0.505V
                                 (0 << 0));           // DIMCTL Analog dimmer
     cs_no = READ_CBUS_REG(LED_PWM_REG3);
-    if(cs_no &(1<<14))
+    if(cs_no &(1<<15))
       level |= (1<<0);
-    return (level == 0)?(1):(0); //return 1: hp pluged, 0: hp unpluged.
+    return (level == 1)?(1):(0); 
 	
 }
 
