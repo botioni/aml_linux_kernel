@@ -764,7 +764,7 @@ static void card_blk_remove(struct memory_card *card)
 	card_set_drvdata(card, NULL);
 }
 
-#if 0//def CONFIG_PM
+#ifdef CONFIG_PM
 static int card_blk_suspend(struct memory_card *card, pm_message_t state)
 {
 	struct card_blk_data *card_data = card_get_drvdata(card);
