@@ -43,9 +43,6 @@
 #include <linux/uart-aml.h>
 #endif
 #include <mach/card_io.h>
-#ifdef CONFIG_CACHE_L2X0
-#include <asm/hardware/cache-l2x0.h>
-#endif
 #include <mach/pinmux.h>
 #include <mach/gpio.h>
 #include <linux/delay.h>
@@ -830,7 +827,7 @@ static struct android_pmem_platform_data pmem_data =
 	.start = PMEM_START,
 	.size = PMEM_SIZE,
 	.no_allocator = 1,
-	.cached = 1,
+	.cached = 0,
 };
 
 static struct platform_device android_pmem_device =
@@ -1695,11 +1692,8 @@ static void __init power_hold(void)
 
 static __init void m1_init_machine(void)
 {
-#ifdef CONFIG_CACHE_L2X0
-		/* 128kb (16KB/way), 8-way associativity, evmon/parity/share disabled
-		 * Bits:  .... .... .000 0010 0000 .... .... .... */
-		l2x0_init((void __iomem *)IO_PL310_BASE, 0x00020000, 0xff800fff);
-#endif
+	meson_cache_init();
+
 	power_hold();
 	device_clk_setting();
 	device_pinmux_init();

@@ -27,9 +27,6 @@
 #include <mach/am_eth_pinmux.h>
 #include <asm/setup.h>
 #include <linux/delay.h>
-#ifdef CONFIG_CACHE_L2X0
-#include <asm/hardware/cache-l2x0.h>
-#endif
 #include <mach/pinmux.h>
 #include <mach/gpio.h>
 #include "board-6236m-sh.h"
@@ -268,11 +265,8 @@ static void __init  device_clk_setting(void)
 
 static __init void m1_init_machine(void)
 {
-#ifdef CONFIG_CACHE_L2X0
-		/* 128kb (16KB/way), 8-way associativity, evmon/parity/share disabled
-		 * Bits:  .... .... .000 0010 0000 .... .... .... */
-		l2x0_init((void __iomem *)IO_PL310_BASE, 0x00020000, 0xff800fff);
-#endif
+	meson_cache_init();
+
 	device_clk_setting();
 	device_pinmux_init();
 	platform_add_devices(platform_devs, ARRAY_SIZE(platform_devs));
