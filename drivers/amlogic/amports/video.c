@@ -2248,7 +2248,9 @@ err3:
     unregister_chrdev(AMVIDEO_MAJOR, DEVICE_NAME);
 
 err2:
+#ifdef FIQ_VSYNC
     free_irq(BRIDGE_IRQ, (void *)video_dev_id);
+#endif
 
 err1:
     class_unregister(&amvideo_class);

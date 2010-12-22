@@ -34,9 +34,10 @@
 #include <linux/amports/canvas.h>
 #include "osd_log.h"
 #include <linux/amlog.h>
-#include "osd_hw_def.h"
 
-#define  FIQ_VSYNC
+#define FIQ_VSYNC
+
+#include "osd_hw_def.h"
 
 #ifdef FIQ_VSYNC
 #define BRIDGE_IRQ INT_TIMER_D
@@ -800,8 +801,9 @@ void  osd_suspend_hw(void)
 	u32 data;
 	u32  *preg;
 	
-#ifndef FIQ_VSYNC
-	//free irq ,we can not disable it ,maybe video still use it .
+#ifdef FIQ_VSYNC
+	free_irq(BRIDGE_IRQ, (void *)osd_setup);
+#else
 	free_irq(INT_VIU_VSYNC,(void *)osd_setup);
 #endif
 	//save all status

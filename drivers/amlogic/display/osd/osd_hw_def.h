@@ -96,6 +96,9 @@ LIST_HEAD(update_list);
 static spinlock_t osd_lock = SPIN_LOCK_UNLOCKED;
 static hw_para_t  osd_hw;
 static unsigned long 	lock_flags;
+#ifdef FIQ_VSYNC
+static unsigned long	fiq_flag;
+#endif
 static vframe_t vf;
 static update_func_t     hw_func_array[HW_OSD_COUNT][HW_REG_INDEX_MAX]={
 	{
@@ -130,11 +133,26 @@ static  int reg_index[]={
 	VPP_MISC,
 	VIU_OSD1_COLOR_ADDR,
 };
+
+#ifdef FIQ_VSYNC
+#define add_to_update_list(osd_idx,cmd_idx) \
+	spin_lock_irqsave(&osd_lock, lock_flags); \
+	raw_local_save_flags(fiq_flag); \
+	local_fiq_disable(); \
+	if(osd_hw.reg[osd_idx][cmd_idx].list.next==NULL) \
+	list_add_tail(&osd_hw.reg[osd_idx][cmd_idx].list,&update_list); \
+	raw_local_irq_restore(fiq_flag); \
+	spin_unlock_irqrestore(&osd_lock, lock_flags);
+#else
 #define add_to_update_list(osd_idx,cmd_idx) \
 	spin_lock_irqsave(&osd_lock, lock_flags); \
 	if(osd_hw.reg[osd_idx][cmd_idx].list.next==NULL) \
 	list_add_tail(&osd_hw.reg[osd_idx][cmd_idx].list,&update_list); \
 	spin_unlock_irqrestore(&osd_lock, lock_flags); 
+#endif
+
+
+
 
 #define remove_from_update_list(osd_idx,cmd_idx) \
 	list_del(&osd_hw.reg[osd_idx][cmd_idx].list); \
