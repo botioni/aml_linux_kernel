@@ -16,6 +16,7 @@
 void meson_map_io(void);
 void meson_init_irq(void);
 void meson_init_devices(void);
+void meson_cache_init(void);
 extern struct sys_timer meson_sys_timer;
 
 #endif

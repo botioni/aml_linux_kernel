@@ -78,6 +78,11 @@ int get_deinterlace_mode(void)
 	return deinterlace_mode;
 }
 
+void set_deinterlace_mode(int mode)
+{
+	deinterlace_mode = mode;
+}
+
 int get_di_pre_recycle_buf(void)
 {
 	return di_pre_recycle_buf;
@@ -680,6 +685,7 @@ void set_di_inp_fmt_more (int hfmt_en,
                 int hz_rpt              //1bit
     	)
 {
+	int repeat_l0_en = 1, nrpt_phase0_en = 0;
     int vt_phase_step = (16 >> vt_yc_ratio);  
 
     WRITE_MPEG_REG(DI_INP_FMT_CTRL,      
@@ -688,8 +694,8 @@ void set_di_inp_fmt_more (int hfmt_en,
                               (0 << 23)         	|        	//repeat p0 enable
                               (hz_yc_ratio << 21)  	|     		//hz yc ratio
                               (hfmt_en << 20)   	|        	//hz enable
-                              (1 << 17)         	|        	//nrpt_phase0 enable
-                              (0 << 16)         	|        	//repeat l0 enable
+                              (nrpt_phase0_en << 17) |        	//nrpt_phase0 enable
+                              (repeat_l0_en << 16)	|        	//repeat l0 enable
                               (0 << 12)         	|        	//skip line num
                               (vt_ini_phase << 8)  	|     		//vt ini phase
                               (vt_phase_step << 1) 	|     		//vt phase step (3.4)
@@ -712,6 +718,7 @@ void set_di_inp_mif ( DI_MIF_t *mif, int urgent,int hold_line)
     unsigned long chroma0_rpt_loop_start;
     unsigned long chroma0_rpt_loop_end;
     unsigned long chroma0_rpt_loop_pat;
+    unsigned long vt_ini_phase = 0;
 
     if ( mif->set_separate_en == 1 && mif->src_field_mode == 1 ) 
     {
@@ -722,6 +729,11 @@ void set_di_inp_mif ( DI_MIF_t *mif, int urgent,int hold_line)
       	chroma0_rpt_loop_end = 1;
         luma0_rpt_loop_pat = 0x80;
         chroma0_rpt_loop_pat = 0x80;
+
+        if ( mif->output_field_num == 0 )
+        	vt_ini_phase = 0xe;
+        else
+        	vt_ini_phase = 0xa;
     } 
     else if ( mif->set_separate_en == 1 && mif->src_field_mode == 0 ) 
     {
@@ -828,7 +840,7 @@ void set_di_inp_mif ( DI_MIF_t *mif, int urgent,int hold_line)
                         0,                									// hz_ini_phase
                         1,                									// vfmt_en
                         1,                									// vt_yc_ratio
-                        0,                									// vt_ini_phase
+                        vt_ini_phase,      									// vt_ini_phase
                         mif->luma_x_end0 - mif->luma_x_start0 + 1, 			// y_length
                         mif->chroma_x_end0 - mif->chroma_x_start0 + 1 , 	// c length 
                         0 );                 								// hz repeat.
