@@ -24,10 +24,20 @@
 
 #include <linux/amports/vframe.h>
 
+typedef struct vframe_states {
+	int vf_pool_size;
+	int fill_ptr;
+	int get_ptr;
+	int put_ptr;
+	int putting_ptr;
+	/*more*/
+}vframe_states_t;
+
 typedef struct vframe_provider_s {
     vframe_t * (*peek)(void);
     vframe_t * (*get )(void);
     void       (*put )(vframe_t *);
+	int 	   (*vf_states)(vframe_states_t *states);
 } vframe_provider_t;
 
 void vf_reg_provider(const vframe_provider_t *p);

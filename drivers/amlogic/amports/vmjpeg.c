@@ -86,6 +86,8 @@ static struct dec_sysinfo vmjpeg_amstream_dec_info;
 static vframe_t *vmjpeg_vf_peek(void);
 static vframe_t *vmjpeg_vf_get(void);
 static void vmjpeg_vf_put(vframe_t *);
+static int  vmjpeg_vf_states(vframe_states_t *states);
+
 
 static const char vmjpeg_dec_id[] = "vmjpeg-dev";
 static const struct vframe_provider_s vmjpeg_vf_provider =
@@ -93,6 +95,7 @@ static const struct vframe_provider_s vmjpeg_vf_provider =
     .peek = vmjpeg_vf_peek,
     .get  = vmjpeg_vf_get,
     .put  = vmjpeg_vf_put,
+    .vf_states=vmjpeg_vf_states,
 };
 
 static struct vframe_s vfpool[VF_POOL_SIZE];
@@ -103,6 +106,7 @@ static u32 frame_width, frame_height, frame_dur;
 static struct timer_list recycle_timer;
 static u32 stat;
 static u32 buf_start, buf_size;
+static spinlock_t lock = SPIN_LOCK_UNLOCKED;
 
 static inline u32 index2canvas0(u32 index)
 {
@@ -259,6 +263,18 @@ static vframe_t *vmjpeg_vf_get(void)
 static void vmjpeg_vf_put(vframe_t *vf)
 {
     INCPTR(putting_ptr);
+}
+static int  vmjpeg_vf_states(vframe_states_t *states)
+{
+	unsigned long flags;
+	spin_lock_irqsave(&lock, flags);
+	states->vf_pool_size=VF_POOL_SIZE;
+	states->fill_ptr=fill_ptr;
+	states->get_ptr=get_ptr;
+	states->putting_ptr=putting_ptr;
+	states->put_ptr=put_ptr;
+	spin_unlock_irqrestore(&lock, flags);
+	return 0;
 }
 
 static void vmjpeg_put_timer_func(unsigned long arg)

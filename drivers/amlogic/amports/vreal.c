@@ -95,6 +95,7 @@
 static vframe_t *vreal_vf_peek(void);
 static vframe_t *vreal_vf_get(void);
 static void vreal_vf_put(vframe_t *);
+static int  vreal_vf_states(vframe_states_t *states);
 
 static const char vreal_dec_id[] = "vreal-dev";
 
@@ -102,6 +103,7 @@ static const struct vframe_provider_s vreal_vf_provider = {
         .peek = vreal_vf_peek,
         .get = vreal_vf_get,
         .put = vreal_vf_put,
+        .vf_states=vreal_vf_states,
 };
 
 static struct vframe_s vfpool[VF_POOL_SIZE];
@@ -371,6 +373,18 @@ static vframe_t *vreal_vf_get(void)
 static void vreal_vf_put(vframe_t *vf)
 {
     INCPTR(putting_ptr);
+}
+static int  vreal_vf_states(vframe_states_t *states)
+{
+	unsigned long flags;
+	spin_lock_irqsave(&lock, flags);
+	states->vf_pool_size=VF_POOL_SIZE;
+	states->fill_ptr=fill_ptr;
+	states->get_ptr=get_ptr;
+	states->putting_ptr=putting_ptr;
+	states->put_ptr=put_ptr;
+	spin_unlock_irqrestore(&lock, flags);
+	return 0;
 }
 
 static void vreal_put_timer_func(unsigned long arg)

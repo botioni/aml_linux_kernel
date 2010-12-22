@@ -106,6 +106,7 @@ MODULE_AMLOG(LOG_LEVEL_ERROR, 0, LOG_LEVEL_DESC, LOG_DEFAULT_MASK_DESC);
 static vframe_t *vmpeg_vf_peek(void);
 static vframe_t *vmpeg_vf_get(void);
 static void vmpeg_vf_put(vframe_t *);
+static int  vmpeg_vf_states(vframe_states_t *states);
 
 static const char vmpeg4_dec_id[] = "vmpeg4-dev";
 
@@ -113,6 +114,7 @@ static const struct vframe_provider_s vmpeg_vf_provider = {
         .peek = vmpeg_vf_peek,
         .get = vmpeg_vf_get,
         .put = vmpeg_vf_put,
+        .vf_states=vmpeg_vf_states,
 };
 
 static struct vframe_s vfpool[VF_POOL_SIZE];
@@ -481,6 +483,18 @@ static vframe_t *vmpeg_vf_get(void)
 static void vmpeg_vf_put(vframe_t *vf)
 {
         INCPTR(putting_ptr);
+}
+static int  vmpeg_vf_states(vframe_states_t *states)
+{
+	unsigned long flags;
+	spin_lock_irqsave(&lock, flags);
+	states->vf_pool_size=VF_POOL_SIZE;
+	states->fill_ptr=fill_ptr;
+	states->get_ptr=get_ptr;
+	states->putting_ptr=putting_ptr;
+	states->put_ptr=put_ptr;
+	spin_unlock_irqrestore(&lock, flags);
+	return 0;
 }
 
 static void vmpeg_put_timer_func(unsigned long arg)
