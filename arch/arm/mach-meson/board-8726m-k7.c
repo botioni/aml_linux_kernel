@@ -786,27 +786,17 @@ static struct itk_platform_data itk_pdata = {
 
 #ifdef CONFIG_SIS92XX_CAPACITIVE_TOUCHSCREEN
 #include <linux/capts.h>
+/* GPIOD_24 */
+#define TS_IRQ_GPIO  ((GPIOD_bank_bit2_24(24)<<16) |GPIOD_bit_bit2_24(24))
+#define TS_IRQ_IDX     (GPIOD_IDX + 24)
 
-#define GPIO_SIS92XX_IRQ ((GPIOD_bank_bit2_24(24)<<16) |GPIOD_bit_bit2_24(24)) 
-
-static int sis92xx_init_irq(void)
-{
-    /* set input mode */
-    gpio_direction_input(GPIO_SIS92XX_IRQ);
-    /* set gpio interrupt #0 source=GPIOD_24, and triggered by falling edge(=1) */
-    gpio_enable_edge_int(50+24, 1, 0);
-
-    return 0;
-}
-static int sis92xx_get_irq_level(void)
-{
-    return gpio_get_value(GPIO_SIS92XX_IRQ);
-}
-
-static struct ts_platform_data sis92xx_pdata = {
+static int ts_init_irq(void);
+static int ts_get_irq_level(void);
+static struct ts_platform_data ts_pdata = {
+    .mode = TS_MODE_INT_LOW,
     .irq = INT_GPIO_0,
-    .init_irq = &sis92xx_init_irq,
-    .get_irq_level = &sis92xx_get_irq_level,
+    .init_irq = ts_init_irq,
+    .get_irq_level = ts_get_irq_level,
     .info = {
         .xmin = 0,
         .xmax = 3600,
@@ -819,8 +809,37 @@ static struct ts_platform_data sis92xx_pdata = {
         .swap_xy = 0,
         .x_pol = 1,
         .y_pol = 1
-    }
+    },
+    .data = 0,
 };
+
+static int ts_init_irq(void)
+{
+    int group = ts_pdata.irq - INT_GPIO_0;
+    int mode =  ts_pdata.mode;
+
+    if (mode < TS_MODE_TIMER_READ) {
+        gpio_direction_input(TS_IRQ_GPIO);
+        if (mode == TS_MODE_INT_FALLING) {
+            gpio_enable_edge_int(TS_IRQ_IDX, 1, group);
+        }
+        else if (mode == TS_MODE_INT_RISING) {
+            gpio_enable_edge_int(TS_IRQ_IDX, 0, group);
+        }
+        else if (mode == TS_MODE_INT_LOW) {
+            gpio_enable_level_int(TS_IRQ_IDX, 1, group);
+        }
+        else if (mode == TS_MODE_INT_HIGH) {
+            gpio_enable_level_int(TS_IRQ_IDX, 0, group);
+        }
+    }
+    return 0;
+}
+
+static int ts_get_irq_level(void)
+{
+    return gpio_get_value(TS_IRQ_GPIO);
+}
 #endif
 
 #ifdef CONFIG_ANDROID_PMEM
@@ -1597,7 +1616,7 @@ static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
 #ifdef CONFIG_SIS92XX_CAPACITIVE_TOUCHSCREEN
     {
         I2C_BOARD_INFO("sis92xx", 0x05),
-        .platform_data = (void *)&sis92xx_pdata,
+        .platform_data = (void *)&ts_pdata,
     },
 #endif
 
