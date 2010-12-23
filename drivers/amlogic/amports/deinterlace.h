@@ -52,6 +52,11 @@ int get_deinterlace_mode(void);
 
 void set_deinterlace_mode(int mode);
 
+#if defined(CONFIG_ARCH_MESON2)
+int get_noise_reduction_level(void);
+void set_noise_reduction_level(int level);
+#endif
+
 int get_di_pre_recycle_buf(void);
 
 const vframe_provider_t * get_vfp(void);

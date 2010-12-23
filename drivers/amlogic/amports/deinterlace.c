@@ -34,6 +34,10 @@ unsigned long debug_array[4*1024];
 // 2 - pre-post separate, only post in vsync
 static int deinterlace_mode = 0;
 
+#if defined(CONFIG_ARCH_MESON2)
+static int noise_reduction_level = 2;
+#endif
+
 static struct timer_list di_pre_timer;
 static struct work_struct di_pre_work;
 
@@ -82,6 +86,18 @@ void set_deinterlace_mode(int mode)
 {
 	deinterlace_mode = mode;
 }
+
+#if defined(CONFIG_ARCH_MESON2)
+int get_noise_reduction_level(void)
+{
+	return noise_reduction_level;
+}
+
+void set_noise_reduction_level(int level)
+{
+	noise_reduction_level = level;
+}
+#endif
 
 int get_di_pre_recycle_buf(void)
 {
@@ -409,6 +425,23 @@ void enable_di_prepost_full (
   	int ei_only;
   	int buf1_en;
 
+#if defined(CONFIG_ARCH_MESON2)
+  	int nr_zone_0, nr_zone_1, nr_zone_2;
+
+	if ( noise_reduction_level == 0 )
+	{
+		nr_zone_0 = 1;
+		nr_zone_1 = 3;
+		nr_zone_2 = 5;
+	}
+	else
+	{
+		nr_zone_0 = 3;
+		nr_zone_1 = 6;
+		nr_zone_2 = 10;
+	}
+#endif
+
   	hist_check_only = hist_check_en && !nr_en && !mtn_en && !pd22_check_en && !pd32_check_en; 
   	ei_only = ei_en && !blend_en && (di_vpp_en || di_ddr_en );
 #if defined(CONFIG_ARCH_MESON)
@@ -467,9 +500,9 @@ void enable_di_prepost_full (
                        	(0 << 29 ) |          												// max of 3 point.
                        	(nr_hfilt_en << 28 ) |          									// nr hfilter enable.
                        	(nr_hfilt_mb_en << 27 ) |          									// nr hfilter motion_blur enable.
-                       	(10 <<16) |           												// zone 2
-                       	(6 << 8 ) |           												// zone 1
-                       	(3 << 0 ) );          												// zone 0
+                       	(nr_zone_2 <<16 ) |   												// zone 2
+                       	(nr_zone_1 << 8 ) |    												// zone 1
+                       	(nr_zone_0 << 0 ) );   												// zone 0
      	WRITE_MPEG_REG(DI_NR_CTRL2, ( 10 << 24 ) |         									//intra noise level
                      	( 1 << 16 )  |         												// intra no noise level.
                      	( 10 << 8 ) |          												// inter noise level.
@@ -1467,6 +1500,23 @@ void enable_di_pre (
 {
   	int hist_check_only;
 
+#if defined(CONFIG_ARCH_MESON2)
+  	int nr_zone_0, nr_zone_1, nr_zone_2;
+
+	if ( noise_reduction_level == 0 )
+	{
+		nr_zone_0 = 1;
+		nr_zone_1 = 3;
+		nr_zone_2 = 5;
+	}
+	else
+	{
+		nr_zone_0 = 3;
+		nr_zone_1 = 6;
+		nr_zone_2 = 10;
+	}
+#endif
+
   	hist_check_only = hist_check_en && !nr_en && !mtn_en && !pd22_check_en && !pd32_check_en ; 
 
   	if ( nr_en | mtn_en | pd22_check_en || pd32_check_en ) 
@@ -1494,9 +1544,9 @@ void enable_di_pre (
                        	(0 << 29 ) |          												// max of 3 point.
                        	(nr_hfilt_en << 28 ) |          									// nr hfilter enable.
                        	(nr_hfilt_mb_en << 27 ) |          									// nr hfilter motion_blur enable.
-                       	(10 <<16) |           												// zone 2
-                       	(6 << 8 ) |           												// zone 1
-                       	(3 << 0 ) );          												// zone 0
+                       	(nr_zone_2 <<16 ) |   												// zone 2
+                       	(nr_zone_1 << 8 ) |    												// zone 1
+                       	(nr_zone_0 << 0 ) );   												// zone 0
      	WRITE_MPEG_REG(DI_NR_CTRL2, ( 10 << 24 ) |         									//intra noise level
                      	( 1 << 16 )  |         												// intra no noise level.
                      	( 10 << 8 ) |          												// inter noise level.
@@ -2093,6 +2143,21 @@ void di_pre_process(void)
 
 	const vframe_provider_t *vfp = get_vfp();
 	
+#if defined(CONFIG_ARCH_MESON2)
+	int nr_hfilt_en, nr_hfilt_mb_en;
+
+	if ( noise_reduction_level == 2 )
+	{
+		nr_hfilt_en = 1;
+		nr_hfilt_mb_en = 1;
+	}
+	else
+	{
+		nr_hfilt_en = 0;
+		nr_hfilt_mb_en = 0;
+	}
+#endif
+
 	if ( deinterlace_mode != 2 )
 		return;
 
@@ -2356,8 +2421,8 @@ void di_pre_process(void)
 			1,                      											// hist check_en
 #elif defined(CONFIG_ARCH_MESON2)
 			0,                      											// hist check_en
-			1,																	// nr_hfilt_en
-			1, 																	// nr_hfilt_mb_en
+			nr_hfilt_en,														// nr_hfilt_en
+			nr_hfilt_mb_en,														// nr_hfilt_mb_en
 			1,	 																// mtn_modify_en,
 #endif
 			(prev_struct==1) ? 1 : 0,                      						// field num for chan2. 1 bottom, 0 top.
@@ -2378,6 +2443,23 @@ void run_deinterlace(unsigned zoom_start_x_lines, unsigned zoom_end_x_lines, uns
 	unsigned type, int mode, int hold_line)
 {
     int di_width, di_height, di_start_x, di_end_x, di_start_y, di_end_y, size_change, position_change;
+
+#if defined(CONFIG_ARCH_MESON2)
+	int nr_hfilt_en, nr_hfilt_mb_en, post_mb_en;
+
+	if ( noise_reduction_level == 2 )
+	{
+		nr_hfilt_en = 1;
+		nr_hfilt_mb_en = 1;
+		post_mb_en = 1;
+	}
+	else
+	{
+		nr_hfilt_en = 0;
+		nr_hfilt_mb_en = 0;
+		post_mb_en = 0;
+	}
+#endif
 
     di_start_x = zoom_start_x_lines;
     di_end_x = zoom_end_x_lines;
@@ -2615,12 +2697,12 @@ void run_deinterlace(unsigned zoom_start_x_lines, unsigned zoom_end_x_lines, uns
 	                   	(field_counter<3 ? 2 : blend_mode),								// blend mode
 	                   	1,                    	 										// deinterlace output to VPP.
 	                   	0,                     											// deinterlace output to DDR SDRAM at same time.
-						1,																// nr_hfilt_en
-						1, 																// nr_hfilt_mb_en
+						nr_hfilt_en,													// nr_hfilt_en
+						nr_hfilt_mb_en,													// nr_hfilt_mb_en
 						1,	 															// mtn_modify_en,
    						1,																// blend_mtn_filt_en
    						1, 																// blend_data_filt_en
-   						1, 																// post_mb_en
+   						post_mb_en,														// post_mb_en
 	                   	0,                     											// 1 = current display field is bottom field, we need generated top field.
 	                   	1,                     											// pre field num: 1 = current chan2 input field is bottom field.
 	                   	(field_counter>=2),                      						// prepost link.  for the first field it look no need to be propost_link.
@@ -2651,12 +2733,12 @@ void run_deinterlace(unsigned zoom_start_x_lines, unsigned zoom_end_x_lines, uns
 	                   	(field_counter<3 ? 2 : blend_mode),								// blend mode: 3 motion adapative blend.
 	                   	1,                    	 										// deinterlace output to VPP.
 	                   	0,                     											// deinterlace output to DDR SDRAM at same time.
-						1,																// nr_hfilt_en
-						1, 																// nr_hfilt_mb_en
+						nr_hfilt_en,													// nr_hfilt_en
+						nr_hfilt_mb_en,													// nr_hfilt_mb_en
 						1,	 															// mtn_modify_en,
    						1,																// blend_mtn_filt_en
    						1, 																// blend_data_filt_en
-   						1, 																// post_mb_en
+   						post_mb_en,														// post_mb_en
 	                   	1,                     											// 1 = current display field is bottom field, we need generated top field.
 	                   	0,                     											// pre field num.  1 = current chan2 input field is bottom field.
 	                   	(field_counter>=2),                      						// prepost link.  for the first field it look no need to be propost_link.
@@ -2719,7 +2801,7 @@ void run_deinterlace(unsigned zoom_start_x_lines, unsigned zoom_end_x_lines, uns
 #elif defined(CONFIG_ARCH_MESON2)
 				1,																// blend_mtn_filt_en
 				1, 																// blend_data_filt_en
-				1, 																// post_mb_en
+				post_mb_en,														// post_mb_en
 #endif
 	    		(type & VIDTYPE_TYPEMASK)==VIDTYPE_INTERLACE_TOP ? 0 : 1,		// 1 bottom generate top
 	    		hold_line
@@ -2827,6 +2909,10 @@ static void __exit deinterlace_module_exit(void)
 
 MODULE_PARM_DESC(deinterlace_mode, "\n deinterlace mode \n");
 module_param(deinterlace_mode, int, 0664);
+#if defined(CONFIG_ARCH_MESON2)
+MODULE_PARM_DESC(noise_reduction_level, "\n noise reduction level \n");
+module_param(noise_reduction_level, int, 0664);
+#endif
 module_init(deinterlace_module_init);
 module_exit(deinterlace_module_exit);
 
