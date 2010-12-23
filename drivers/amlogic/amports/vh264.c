@@ -102,6 +102,8 @@ typedef struct {
 static vframe_t *vh264_vf_peek(void);
 static vframe_t *vh264_vf_get(void);
 static void vh264_vf_put(vframe_t *);
+static int  vh264_vf_states(vframe_states_t *states);
+
 static void vh264_prot_init(void);
 static void vh264_local_init(void);
 static void vh264_put_timer_func(unsigned long arg);
@@ -112,6 +114,7 @@ static const struct vframe_provider_s vh264_vf_provider = {
         .peek = vh264_vf_peek,
         .get = vh264_vf_get,
         .put = vh264_vf_put,
+        .vf_states=vh264_vf_states,
 };
 
 static u32 frame_buffer_size;
@@ -233,6 +236,18 @@ static vframe_t *vh264_vf_get(void)
 static void vh264_vf_put(vframe_t *vf)
 {
         INCPTR(putting_ptr);
+}
+static int  vh264_vf_states(vframe_states_t *states)
+{
+	unsigned long flags;
+	spin_lock_irqsave(&lock, flags);
+	states->vf_pool_size=VF_POOL_SIZE;
+	states->fill_ptr=fill_ptr;
+	states->get_ptr=get_ptr;
+	states->putting_ptr=putting_ptr;
+	states->put_ptr=put_ptr;
+	spin_unlock_irqrestore(&lock, flags);
+	return 0;
 }
 
 static void set_frame_info(vframe_t *vf)

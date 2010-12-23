@@ -2757,6 +2757,8 @@ void deinterlace_init(void)
 	memcpy(&di_buf1_mif, &di_mem_mif, sizeof(DI_MIF_t));
 	memcpy(&di_chan2_mif, &di_buf1_mif, sizeof(DI_MIF_t));
 
+    WRITE_MPEG_REG(DI_PRE_HOLD, (1 << 31) | (31 << 16) | 31);
+    
 #if defined(CONFIG_ARCH_MESON)
    	WRITE_MPEG_REG(DI_NRMTN_CTRL0, 0xb00a0603);
 #endif

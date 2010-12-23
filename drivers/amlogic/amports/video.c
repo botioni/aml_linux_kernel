@@ -322,6 +322,16 @@ static inline vframe_t *vf_get(void)
 
     return NULL;
 }
+static int  vf_get_states(vframe_states_t *states)
+{
+	int ret=-1;
+	unsigned long flags;
+	spin_lock_irqsave(&lock, flags);
+	if (vfp && vfp->vf_states)
+		ret=vfp->vf_states(states);
+	spin_unlock_irqrestore(&lock, flags);
+	return ret;
+}
 
 static inline void vf_put(vframe_t *vf)
 {
@@ -1994,7 +2004,30 @@ static ssize_t frame_rate_show(struct class *cla, struct class_attribute* attr, 
 		rate,vinfo->sync_duration_num/vinfo->sync_duration_den, time);          	
     return ret;
 }
-
+static ssize_t vframe_states_show(struct class *cla, struct class_attribute* attr, char* buf)
+{
+	int ret=0;
+	vframe_states_t states;
+	if(vf_get_states(&states)==0)
+	{
+		int ready;
+		ret+=sprintf(buf+ret,"vframe_pool_size=%d\n",states.vf_pool_size);
+		ret+=sprintf(buf+ret,"vframe get prt=%d\n",states.get_ptr);
+		ret+=sprintf(buf+ret,"vframe fill ptr=%d\n",states.fill_ptr);
+ 		ret+=sprintf(buf+ret,"vframe put ptr=%d\n",states.put_ptr);
+ 		ret+=sprintf(buf+ret,"vframe puting ptr=%d\n",states.putting_ptr);
+ 		if(states.fill_ptr>=states.get_ptr)
+ 			ready=states.fill_ptr-states.get_ptr;
+ 		else
+ 			ready=states.fill_ptr-states.get_ptr+states.vf_pool_size-1;
+		ret+=sprintf(buf+ret,"vframe ready num=%d\n",ready);
+	}
+	else
+	{
+		ret+=sprintf(buf+ret,"vframe no states\n");
+	}
+	return ret;
+}
 static struct class_attribute amvideo_class_attrs[] = {
     __ATTR(axis,
            S_IRUGO | S_IWUSR,
@@ -2023,7 +2056,7 @@ static struct class_attribute amvideo_class_attrs[] = {
     __ATTR(saturation,
            S_IRUGO | S_IWUSR,
            video_saturation_show,
-           video_saturation_store),
+           video_saturation_store),   
     __ATTR_RO(frame_addr),
     __ATTR_RO(frame_canvas_width),
     __ATTR_RO(frame_canvas_height),
@@ -2032,6 +2065,7 @@ static struct class_attribute amvideo_class_attrs[] = {
     __ATTR_RO(frame_format),
     __ATTR_RO(frame_aspect_ratio),
     __ATTR_RO(frame_rate),
+    __ATTR_RO(vframe_states),
     __ATTR_NULL
 };
 
@@ -2214,7 +2248,9 @@ err3:
     unregister_chrdev(AMVIDEO_MAJOR, DEVICE_NAME);
 
 err2:
+#ifdef FIQ_VSYNC
     free_irq(BRIDGE_IRQ, (void *)video_dev_id);
+#endif
 
 err1:
     class_unregister(&amvideo_class);
