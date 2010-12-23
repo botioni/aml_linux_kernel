@@ -20,11 +20,16 @@
 #include <linux/timer.h>
 #include <linux/jiffies.h>
 #include <linux/usb/otg.h>
+#ifdef CONFIG_HAS_EARLYSUSPEND
+#include <linux/earlysuspend.h>
+static struct early_suspend power_early_suspend;
+#endif
 
 //#define AML_POWER_DBG
 #define BATTERY_ARROW_NUM  40
-#define FAKE_BAT_LEVEL
+//#define FAKE_BAT_LEVEL
 #define CHARGE_TIME          675//((3000/400)*3600/2)*5/100
+
 
 static inline unsigned int get_irq_flags(struct resource *res)
 {
@@ -59,10 +64,93 @@ static int ac_status = -1;
 static int usb_status = 0;
 static int battery_capacity = -1;
 static int new_battery_capacity = -1;
-static int power_on_with_ac = -1;
+
 static int charge_status = -1;
 static int new_charge_status = -1;
+
+#ifdef FAKE_BAT_LEVEL
+static int power_on_with_ac = -1;
 static int charge_count = 0;
+#endif
+
+static int bat_value_table[36]={
+540,//0
+544,//4
+547,//10
+550,//15
+553,//16
+556,//18
+559,//20
+561,//23
+563,//26
+565,//29
+567,//32
+568,//35
+569,//37
+570,//40
+571,//43
+573,//46
+574,//49
+576,//51
+578,//54
+580,//57
+582,//60
+585,//63
+587,//66
+590,//68
+593,//71
+596,//74
+599,//77
+602,//80
+605,//83
+608,//85
+612,//88
+615,//91
+619,//95
+622,//97
+626,//100
+626 //100
+};
+
+static int bat_level_table[36]={
+0,
+4,
+10,
+15,
+16,
+18,
+20,
+23,
+26,
+29,
+32,
+35,
+37,
+40,
+43,
+46,
+49,
+51,
+54,
+57,
+60,
+63,
+66,
+68,
+71,
+74,
+77,
+80,
+83,
+85,
+88,
+91,
+95,
+97,
+100,
+100  
+};
+
 
 static int aml_power_get_property(struct power_supply *psy,
 				  enum power_supply_property psp,
@@ -158,6 +246,8 @@ static struct power_supply aml_psy_bat = {
 
 static unsigned bat_matrix[BATTERY_ARROW_NUM] = {0};
 static int count = 0;
+
+
 static void get_bat_capacity(void)
 {
     int value,i,num,sum;
@@ -174,17 +264,19 @@ static void get_bat_capacity(void)
         return;
     } 
 #endif
-  
-    value = pdata->get_bat_vol();
+    if(new_ac_status > 0)//dc in state   
+        value = pdata->get_bat_vol() - 12;
+    else        
+        value = pdata->get_bat_vol();
 #ifdef AML_POWER_DBG
 		printk("get_bat_vol = %d\n",value);
 #endif    
     if(value == -1)
         return;
-    if((new_ac_status == 0)&&(ac_status > 0)){
+    if((new_ac_status == 0)&&(ac_status > 0)){//unplug dc,update bat level immediately
+        count = 0;
         for(i = 0;i <= (BATTERY_ARROW_NUM-1);i++){
             bat_matrix[i] = 0;
-            count = 0;
         }  
     }   
     
@@ -214,15 +306,56 @@ static void get_bat_capacity(void)
     }
     
     value = sum/num;    
+    for(i=0; i<35; i++){
+        if((bat_value_table[i]<=value)&&(bat_value_table[i+1]>value))break;
+    }
     
-    value = 100*(value - 540)/75;
-    value = value>100? 100:value;
-    value = (value/5)*5;
+    new_battery_capacity = bat_level_table[i];      
+    
 #ifdef AML_POWER_DBG
-		printk("bat = %d,max = %d,min = %d,sum = %d,num = %d\n",value,max,min,sum,num);
+    printk("battery_capacity = %d,max = %d,min = %d,sum = %d,num = %d,value = %d\n",new_battery_capacity,max,min,sum,num,value);
 #endif    
-    new_battery_capacity = value;   
+ 
 }
+#ifdef CONFIG_HAS_EARLYSUSPEND
+static void aml_power_early_suspend(struct early_suspend *h)
+{
+	if (pdata->set_charge) {
+		if (ac_status > 0) {
+			pdata->set_charge(AML_POWER_CHARGE_AC);
+#ifdef AML_POWER_DBG
+			printk("fast charger on early_suspend\n");
+#endif			
+		}else {
+
+			pdata->set_charge(0);
+#ifdef AML_POWER_DBG
+			printk("set slow charge\n");
+#endif			
+		}
+	}       
+}
+
+static void aml_power_late_resume(struct early_suspend *h)
+{
+    int i;
+    
+	if (pdata->set_charge) {
+		pdata->set_charge(0);
+#ifdef AML_POWER_DBG
+        printk("set slow charge\n");
+#endif
+	} 
+	
+	//late resume update bat level immediately 
+    count = 0;
+    for(i = 0;i <= (BATTERY_ARROW_NUM-1);i++){
+        bat_matrix[i] = 0;
+    }  	
+    
+    get_bat_capacity();
+}
+#endif
 
 static void update_status(void)
 {
@@ -256,7 +389,7 @@ static void update_charger(void)
 	if (pdata->set_charge) {
 		pdata->set_charge(0);//ac always charge slow except standby
 #ifdef AML_POWER_DBG
-		printk("AC in,charger low power\n");
+		printk("AC in,charger slow\n");
 #endif
 		
 		/*if (new_ac_status > 0) {
@@ -292,10 +425,12 @@ static void supply_timer_func(unsigned long unused)
 	if (ac_status == AML_PSY_TO_CHANGE) {
 		ac_status = new_ac_status;
 		power_supply_changed(&aml_psy_ac);
+#ifdef	FAKE_BAT_LEVEL	
 		if(new_ac_status == 0){
 		  power_on_with_ac = 0;
 		}
-		  get_bat_capacity();
+#endif		
+		  get_bat_capacity();		  
 	}
 
 	if (usb_status == AML_PSY_TO_CHANGE) {
@@ -402,7 +537,7 @@ int pc_connect(int status)
     if(new_usb_status == status)
         return 1;
     usb_status = AML_PSY_TO_CHANGE;
-    psy_changed; 
+    psy_changed(); 
     return 0;
 } 
 static int gadget_is_usb_online(void)
@@ -492,11 +627,12 @@ static int aml_power_probe(struct platform_device *pdev)
 	}
 
 	if (pdata->is_ac_online) {
+#ifdef FAKE_BAT_LEVEL
 	    power_on_with_ac = pdata->is_ac_online();
-	    
+    
 	    if(power_on_with_ac)
             new_battery_capacity = 20;	    
-            
+#endif	            
 		ret = power_supply_register(&pdev->dev, &aml_psy_ac);
 		if (ret) {
 			dev_err(dev, "failed to register %s power supply\n",
@@ -565,6 +701,13 @@ static int aml_power_probe(struct platform_device *pdev)
 
 	if (ac_irq || usb_irq)
 		device_init_wakeup(&pdev->dev, 1);
+#ifdef CONFIG_HAS_EARLYSUSPEND
+    power_early_suspend.level = EARLY_SUSPEND_LEVEL_BLANK_SCREEN;
+    power_early_suspend.suspend = aml_power_early_suspend;
+    power_early_suspend.resume = aml_power_late_resume;
+    power_early_suspend.param = pdev;
+	register_early_suspend(&power_early_suspend);
+#endif
 
 	return 0;
 bat_supply_failed:
@@ -622,7 +765,9 @@ static int aml_power_remove(struct platform_device *pdev)
 	}
 	if (pdata->exit)
 		pdata->exit(dev);
-
+#ifdef CONFIG_HAS_EARLYSUSPEND
+    unregister_early_suspend(&power_early_suspend);
+#endif
 	return 0;
 }
 
@@ -638,19 +783,6 @@ static int aml_power_suspend(struct platform_device *pdev, pm_message_t state)
 		if (usb_irq)
 			usb_wakeup_enabled = !enable_irq_wake(usb_irq->start);
 	}
-	if (pdata->set_charge) {
-		if (ac_status > 0) {
-#ifdef AML_POWER_DBG
-			printk("fast charger on standby\n");
-#endif
-			pdata->set_charge(AML_POWER_CHARGE_AC);
-		}else {
-#ifdef AML_POWER_DBG
-			printk("set slow charge\n");
-#endif
-			pdata->set_charge(0);
-		}
-	}       
     
 	return 0;
 }
@@ -663,14 +795,8 @@ static int aml_power_resume(struct platform_device *pdev)
 		if (ac_irq && ac_wakeup_enabled)
 			disable_irq_wake(ac_irq->start);
 	}
-	if (pdata->set_charge) {
-#ifdef AML_POWER_DBG
-			printk("set slow charge\n");
-#endif
-		pdata->set_charge(0);
-	}       
-
-	return 0;
+	
+    return 0;
 }
 #else
 #define aml_power_suspend NULL
