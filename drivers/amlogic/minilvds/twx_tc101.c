@@ -119,8 +119,8 @@ static int twx_tc101_probe(struct i2c_client *client, const struct i2c_device_id
 	twx_tc101_send(0xf840, 0x80);msleep(10);//
 	twx_tc101_send(0xf881, 0xec);msleep(10);//
 
-	twx_tc101_send(0xf841, 0x02);msleep(10);
-	twx_tc101_send(0xf882, 0x18);msleep(10);
+	//twx_tc101_send(0xf841, 0x02);msleep(10);
+	//twx_tc101_send(0xf882, 0x18);msleep(10);
 
 	// twx_tc101_send(0xf820, 0x41);msleep(10);
 	// twx_tc101_send(0xf826, 0x1b);msleep(10);

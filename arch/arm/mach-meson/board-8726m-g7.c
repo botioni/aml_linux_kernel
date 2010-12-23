@@ -168,11 +168,11 @@ static struct platform_device adc_ts_device = {
 #include <linux/adc_keypad.h>
 
 static struct adc_key adc_kp_key[] = {
-    {KEY_LEFTMETA,          "menu", CHAN_4, 0, 60},
-    {KEY_PAGEDOWN,          "vol-", CHAN_4, 282, 60},
-    {KEY_PAGEUP,            "vol+", CHAN_4, 506, 60},
-    {KEY_TAB,               "exit", CHAN_4, 622, 60},
-    {KEY_HOME,              "home", CHAN_4, 852, 60},
+    {KEY_LEFTMETA,          "menu", CHAN_4, 0, 60},		//0v
+    {KEY_PAGEDOWN,          "vol-", CHAN_4, 180, 60},	//0.58
+    {KEY_PAGEUP,            "vol+", CHAN_4, 398, 60},		//1.286
+    {KEY_TAB,               "exit", CHAN_4, 623, 60},		//2.01
+    {KEY_HOME,              "home", CHAN_4, 849, 60},	//2.74
 };
 
 static struct adc_kp_platform_data adc_kp_pdata = {
@@ -701,16 +701,16 @@ static struct ts_platform_data ts_pdata = {
     .get_irq_level = ts_get_irq_level,
     .info = {
         .xmin = 0,
-        .xmax = 3600,
+        .xmax = 1280,
         .ymin = 0,
-        .ymax = 2200,
+        .ymax = 768,
         .zmin = 0,
         .zmax = 1,
         .wmin = 0,
         .wmax = 1,
         .swap_xy = 0,
         .x_pol = 0,
-        .y_pol = 0
+        .y_pol = 1
     },
     .data = (void *)(TS_RESET_GPIO+1),
 };

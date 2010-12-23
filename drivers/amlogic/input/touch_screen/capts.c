@@ -238,6 +238,7 @@ static void capts_work(struct work_struct *work)
             capts_debug_info( "UP\n");
         }
     }
+	else if (event_num < 0) {}
     else {
         ts->pending = 1;
         capts_report_down(ts->input, ts->event, event_num);

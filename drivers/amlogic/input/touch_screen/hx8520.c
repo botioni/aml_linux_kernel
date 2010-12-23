@@ -143,7 +143,7 @@ int hx8520_get_event (struct device *dev, struct ts_event *event)
             buf, ARRAY_SIZE(buf)) < 0) {    
         /* i2c read failed */
         hx8520_debug_info("hx8520 read i2c failed!\n");
-        return 0;
+        return -1;
     }
     hx8520_debug_info("%d, %d, %d, %d\n", buf[0], buf[1], buf[2], buf[3]);
     hx8520_debug_info("%d, %d, %d, %d\n", buf[4], buf[5], buf[6], buf[7]);
@@ -180,7 +180,7 @@ int hx8520_get_event (struct device *dev, struct ts_event *event)
         u8 ebuf[128];
         hx8520_debug_info("hx8520 stack error\n");       
         hx8520_read_block(client, HX8520_CMD_START, ebuf, ARRAY_SIZE(ebuf));    
-        return 0;
+        return -1;
     }
     
     return event_num;

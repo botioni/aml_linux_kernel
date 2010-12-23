@@ -40,10 +40,10 @@
 
 /*
 For 8726M, Hanstar 7" */ 
-#define LCD_WIDTH       800 
-#define LCD_HEIGHT      480
-#define MAX_WIDTH       928
-#define MAX_HEIGHT      525
+#define LCD_WIDTH       1280
+#define LCD_HEIGHT      768
+#define MAX_WIDTH       1440
+#define MAX_HEIGHT      798
 #define VIDEO_ON_LINE   22
 
 //extern void msleep(unsigned int msecs);
@@ -111,7 +111,7 @@ static tcon_conf_t tcon_config =
     .oev3_ve_addr = 0,
     .inv_cnt_addr = (0<<LCD_INV_EN) | (0<<LCD_INV_CNT),
     .tcon_misc_sel_addr = (1<<LCD_STV1_SEL) | (1<<LCD_STV2_SEL),
-    .dual_port_cntl_addr = (1<<LCD_TTL_SEL) | (1<<LCD_ANALOG_SEL_CPH3) | (1<<LCD_ANALOG_3PHI_CLK_SEL) | (0<<1) | (0<<0),
+    .dual_port_cntl_addr = (1<<LCD_TTL_SEL) | (1<<LCD_ANALOG_SEL_CPH3) | (1<<LCD_ANALOG_3PHI_CLK_SEL) | (0<<RGB_SWP) | (0<<BIT_SWP),
     .flags = 0,
     .screen_width = 5,
     .screen_height = 3,

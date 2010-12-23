@@ -5,7 +5,6 @@ menu "MINI LVDS Support"
 config TWX_TC101
 	bool "TWX_TC101 mini LVDS support"
 	depends on I2C_AML
-	default y
 	---help---
 	  This module adds support for twx_tc101 mini LVDS
 
