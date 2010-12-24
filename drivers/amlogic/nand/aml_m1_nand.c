@@ -594,6 +594,7 @@ static int  aml_m1_nand_dma_read(struct mtd_info *mtd, uint8_t *buf, int len,int
 	if((ecc!=NAND_ECC_NONE))
 		res=transfer_info_buf_after_read(mtd,(len+511)>>9);			//FIXME 2*page
 
+	rmb();
 	return res;
 }
 static void aml_m1_nand_dma_write(struct mtd_info *mtd, const uint8_t *buf, int len,int ecc)
@@ -862,6 +863,7 @@ static int aml_m1_nand_read_page(struct mtd_info *mtd, struct nand_chip *chip,ui
 		//printk("%s  wer\n",__func__);
 			    //unsigned *temp1=(unsigned*)buf;
 		        //printk("%d:%x %x \n",__LINE__,temp[0],temp1[0]);
+		rmb();
 		memcpy(buf_i,aml_info->aml_nand_dma_buf,mtd->writesize);
 	}else{
 		//        printk("%d:%x %x\n",__LINE__,buf_i,aml_info->aml_nand_dma_buf);
