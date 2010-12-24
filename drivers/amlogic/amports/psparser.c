@@ -739,11 +739,16 @@ s32 psparser_init(u32 vid, u32 aid, u32 sid)
     parser_sub_start_ptr = READ_MPEG_REG(PARSER_SUB_START_PTR);
     parser_sub_end_ptr = READ_MPEG_REG(PARSER_SUB_END_PTR);
     parser_sub_rp = READ_MPEG_REG(PARSER_SUB_RP);
-
+	
     video_id = vid;
     audio_id = aid;
     sub_id = sid;
-
+	audio_got_first_pts = 0;
+	video_got_first_dts= 0;
+	sub_got_first_pts = 0;
+	first_apts = 0;
+	first_vpts = 0;
+	
     printk("video 0x%x, audio 0x%x, sub 0x%x\n", video_id, audio_id, sub_id);
     if (fetchbuf == 0)
     {
@@ -853,7 +858,7 @@ void psparser_release(void)
     free_irq(INT_PARSER, (void *)psparser_id);
 
     pts_stop(PTS_TYPE_VIDEO);
-    pts_stop(PTS_TYPE_AUDIO);
+    pts_stop(PTS_TYPE_AUDIO);	
 }
 
 ssize_t psparser_write(struct file *file,
