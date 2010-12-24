@@ -26,7 +26,20 @@ config FB_OSD2_CURSOR
 	default n
 	help
 		Enables support for a mouse cursor using OSD2.
-
+config FB_OSD1_DEFAULT_BITS_PER_PIXEL
+	depends on FB_AM
+	int "default OSD1 BPP"
+	range 16  32
+	default  16
+	---help---
+	 The default osd1 color depth.
+config FB_OSD2_DEFAULT_BITS_PER_PIXEL
+	depends on FB_AM && FB_OSD2_ENABLE
+	int "default OSD2 BPP"
+	range 16  32
+	default  32
+	---help---
+	 The default osd2 color depth.
 config FB_OSD1_DEFAULT_WIDTH
 	depends on FB_AM
 	int "Default OSD1 width"
