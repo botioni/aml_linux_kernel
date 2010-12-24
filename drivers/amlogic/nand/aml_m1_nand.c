@@ -586,6 +586,7 @@ static int  aml_m1_nand_dma_read(struct mtd_info *mtd, uint8_t *buf, int len,int
 	NFC_SEND_CMD_AIL(aml_info->aml_nand_info_dma_addr);
 	NFC_SEND_CMD_AIH((aml_info->aml_nand_info_dma_addr));
 	NFC_SEND_CMD_N2M(len,ecc);
+//	rmb();
 	while(NFC_CMDFIFO_SIZE()>0);
 	while(NAND_INFO_DONE(*pbuf)==0);
 	//	    dma_unmap_single(aml_info->device,data_dma_addr,len,DMA_FROM_DEVICE);
@@ -939,73 +940,75 @@ static void aml_m1_nand_write_page(struct mtd_info *mtd, struct nand_chip *chip,
 	}
 	else if((aml_info->planemode!=0)&&((aml_info->interlmode==0)))
 	{
-			volatile unsigned char status;
-			unsigned len=mtd->writesize/2;
+		volatile unsigned char status;
+		unsigned len=mtd->writesize/2;
 
-	    NFC_SET_DADDR(aml_info->aml_nand_dma_buf_dma_addr);
-	    NFC_SET_IADDR(aml_info->aml_nand_info_dma_addr); 	
-			memcpy(aml_info->aml_nand_dma_buf,buf_i,len);
-			prepare_info_buf_before_write(mtd,(len+511)>>9,aml_info->bch_mode);
-			NFC_SEND_CMD_RB(aml_info->ce_sel,0);
-			tmp_pag = (aml_info->curpage/aml_info->ppb) *(aml_info-> ppb) + aml_info->curpage;
-				
+		NFC_SET_DADDR(aml_info->aml_nand_dma_buf_dma_addr);
+		NFC_SET_IADDR(aml_info->aml_nand_info_dma_addr); 	
+		memcpy(aml_info->aml_nand_dma_buf,buf_i,len);
+		wmb();
+		prepare_info_buf_before_write(mtd,(len+511)>>9,aml_info->bch_mode);
+		NFC_SEND_CMD_RB(aml_info->ce_sel,0);
+		tmp_pag = (aml_info->curpage/aml_info->ppb) *(aml_info-> ppb) + aml_info->curpage;
+
+		chip->cmd_ctrl(mtd, 0x80, NAND_CLE );
+		chip->cmd_ctrl(mtd, 0, NAND_ALE);
+		chip->cmd_ctrl(mtd, 0, NAND_ALE);
+		chip->cmd_ctrl(mtd, tmp_pag, NAND_ALE);
+		chip->cmd_ctrl(mtd, (tmp_pag) >> 8, NAND_ALE);
+		chip->cmd_ctrl(mtd,	(tmp_pag)>> 16,NAND_ALE);
+		NFC_SEND_CMD_M2N(len,aml_info->bch_mode);
+		chip->cmd_ctrl(mtd, 0x11, NAND_CLE );
+
+		memcpy(&(aml_info->aml_nand_dma_buf[len]),&buf_i[len],len);
+		memcpy(&(aml_info->info_buf[((len)>>7)]),aml_info->info_buf,(len)>>7);
+		wmb();
+		NFC_SEND_CMD_IDLE(aml_info->ce_sel,0);
+		NFC_SEND_CMD_RB(aml_info->ce_sel,31);
+		do{
+			status = NFC_GET_RB_STATUS(aml_info->ce_sel);
+		}while((status!=1)&&(status!=2));
+		if(!(strcmp(mtd->name,"Hynix")))
+		{
+			chip->cmd_ctrl(mtd, 0x81, NAND_CLE );
+		}
+		else if(!(strcmp(mtd->name,"Micron")))
+		{
 			chip->cmd_ctrl(mtd, 0x80, NAND_CLE );
-			chip->cmd_ctrl(mtd, 0, NAND_ALE);
-			chip->cmd_ctrl(mtd, 0, NAND_ALE);
-			chip->cmd_ctrl(mtd, tmp_pag, NAND_ALE);
-			chip->cmd_ctrl(mtd, (tmp_pag) >> 8, NAND_ALE);
-			chip->cmd_ctrl(mtd,	(tmp_pag)>> 16,NAND_ALE);
-			NFC_SEND_CMD_M2N(len,aml_info->bch_mode);
-			chip->cmd_ctrl(mtd, 0x11, NAND_CLE );
-		
-			memcpy(&(aml_info->aml_nand_dma_buf[len]),&buf_i[len],len);
-	  	memcpy(&(aml_info->info_buf[((len)>>7)]),aml_info->info_buf,(len)>>7);
-	  	NFC_SEND_CMD_IDLE(aml_info->ce_sel,0);
-			NFC_SEND_CMD_RB(aml_info->ce_sel,31);
-			do{
-				status = NFC_GET_RB_STATUS(aml_info->ce_sel);
-			}while((status!=1)&&(status!=2));
-			if(!(strcmp(mtd->name,"Hynix")))
-			{
-				chip->cmd_ctrl(mtd, 0x81, NAND_CLE );
-			}
-			else if(!(strcmp(mtd->name,"Micron")))
-			{
-				chip->cmd_ctrl(mtd, 0x80, NAND_CLE );
-			}
-			chip->cmd_ctrl(mtd, 0, NAND_ALE);
-			chip->cmd_ctrl(mtd, 0, NAND_ALE);
-			chip->cmd_ctrl(mtd, tmp_pag+aml_info->ppb, NAND_ALE);
-			chip->cmd_ctrl(mtd, (tmp_pag+aml_info->ppb) >> 8, NAND_ALE);
-			chip->cmd_ctrl(mtd,	( tmp_pag+aml_info->ppb)>> 16,NAND_ALE);
+		}
+		chip->cmd_ctrl(mtd, 0, NAND_ALE);
+		chip->cmd_ctrl(mtd, 0, NAND_ALE);
+		chip->cmd_ctrl(mtd, tmp_pag+aml_info->ppb, NAND_ALE);
+		chip->cmd_ctrl(mtd, (tmp_pag+aml_info->ppb) >> 8, NAND_ALE);
+		chip->cmd_ctrl(mtd,	( tmp_pag+aml_info->ppb)>> 16,NAND_ALE);
 
-			NFC_SEND_CMD_M2N(len,aml_info->bch_mode);
-			chip->cmd_ctrl(mtd, 0x10, NAND_CLE );
-			while(NFC_CMDFIFO_SIZE()>0);	
-			NFC_SEND_CMD_IDLE(aml_info->ce_sel,0);
-			NFC_SEND_CMD_RB(aml_info->ce_sel,31);
-			do{
-				status = NFC_GET_RB_STATUS(aml_info->ce_sel);
-			}while((status!=1)&&(status!=2));	
-			
-			chip->cmd_ctrl(mtd, 0x70, NAND_CLE );
-			NFC_SEND_CMD_IDLE(aml_info->ce_sel,0);
-			do{
-				status = NFC_GET_RB_STATUS(aml_info->ce_sel);
-			}while((status!=1)&&(status!=2));	
-			
-	    NFC_SEND_CMD_IDLE(aml_info->ce_sel,3);
-	    NFC_SEND_CMD_RB(aml_info->ce_sel,0);
-		  NFC_SEND_CMD_N2M (4,0);
-		  NFC_SEND_CMD_IDLE(aml_info->ce_sel,0);
-		  NFC_SEND_CMD_IDLE(aml_info->ce_sel,0);
-		  NFC_SEND_CMD_RB(aml_info->ce_sel,0);		 
-		  while(NFC_CMDFIFO_SIZE()>0);	 
-		  status = NFC_GET_BUF();
-		  if(status&0x1==1)
-		    	printk("write error status=%d \n",status);
+		NFC_SEND_CMD_M2N(len,aml_info->bch_mode);
+		chip->cmd_ctrl(mtd, 0x10, NAND_CLE );
+		while(NFC_CMDFIFO_SIZE()>0);	
+		NFC_SEND_CMD_IDLE(aml_info->ce_sel,0);
+		NFC_SEND_CMD_RB(aml_info->ce_sel,31);
+		do{
+			status = NFC_GET_RB_STATUS(aml_info->ce_sel);
+		}while((status!=1)&&(status!=2));	
 
-	
+		chip->cmd_ctrl(mtd, 0x70, NAND_CLE );
+		NFC_SEND_CMD_IDLE(aml_info->ce_sel,0);
+		do{
+			status = NFC_GET_RB_STATUS(aml_info->ce_sel);
+		}while((status!=1)&&(status!=2));	
+
+		NFC_SEND_CMD_IDLE(aml_info->ce_sel,3);
+		NFC_SEND_CMD_RB(aml_info->ce_sel,0);
+		NFC_SEND_CMD_N2M (4,0);
+		NFC_SEND_CMD_IDLE(aml_info->ce_sel,0);
+		NFC_SEND_CMD_IDLE(aml_info->ce_sel,0);
+		NFC_SEND_CMD_RB(aml_info->ce_sel,0);		 
+		while(NFC_CMDFIFO_SIZE()>0);	 
+		status = NFC_GET_BUF();
+		if(status&0x1==1)
+			printk("write error status=%d \n",status);
+
+
 	}
 	else if((aml_info->planemode!=0)&&((aml_info->interlmode!=0)))
 	{
