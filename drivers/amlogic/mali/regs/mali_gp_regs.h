@@ -200,9 +200,7 @@ typedef enum
 #if defined(USING_MALI200)
 #define MALI_GP_PRODUCT_ID 0xA07
 #elif defined(USING_MALI400)
-#define MALI300_GP_PRODUCT_ID 0xC07
-#define MALI400_GP_PRODUCT_ID 0xB07
-#define MALI_GP_PRODUCT_ID MALI400_GP_PRODUCT_ID
+#define MALI_GP_PRODUCT_ID 0xB07
 #else
 #error "No supported mali core defined"
 #endif
