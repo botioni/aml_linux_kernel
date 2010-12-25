@@ -350,13 +350,14 @@ static void get_bat_capacity(void)
     value = sum/num;    
     if(new_ac_status > 0){
         for(i=0; i<36; i++){
-            if((bat_value_table[i]<=value)&&(bat_value_table[i+1]>value))break;
-        }
+            if((bat_charge_value_table[i]<=value)&&(bat_charge_value_table[i+1]>value))break;
+        } 
     }
     else{
+ 
         for(i=0; i<36; i++){
-            if((bat_charge_value_table[i]<=value)&&(bat_charge_value_table[i+1]>value))break;
-        }    
+            if((bat_value_table[i]<=value)&&(bat_value_table[i+1]>value))break;
+        }          
     }
     
     new_battery_capacity = bat_level_table[i];      
