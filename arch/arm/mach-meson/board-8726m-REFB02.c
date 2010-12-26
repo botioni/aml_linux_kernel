@@ -810,13 +810,12 @@ static int itk_get_irq_level(void)
 static struct itk_platform_data itk_pdata = {
     .init_irq = &itk_init_irq,
     .get_irq_level = &itk_get_irq_level,
-    .tp_max_width = 17407,
-    .tp_max_height = 12799,
+    .tp_max_width = 4352,
+    .tp_max_height = 3200,
     .lcd_max_width = 1024,
     .lcd_max_height = 768,
 };
 #endif
-
 
 #ifdef CONFIG_ANDROID_PMEM
 static struct android_pmem_platform_data pmem_data =
@@ -1107,21 +1106,21 @@ static struct mtd_partition partition_info[] =
     {
         .name = "cache",
         .offset = 416*1024*1024,
-        .size = 16 * 1024*1024,
+        .size = 36 * 1024*1024,
     //  .set_flags=0,
     //  .dual_partnum=0,
     },
     {
         .name = "userdata",
-        .offset= 432*1024*1024,
-        .size= 256 * 1024*1024,
+        .offset = 452*1024*1024,
+        .size = 512 * 1024*1024,
     //  .set_flags=0,
     //  .dual_partnum=0,
     },
     {
         .name = "media",
-        .offset = MTDPART_OFS_APPEND,
-        .size = (0x200000000-(432+256)*1024*1024),
+        .offset = (452+512)*1024*1024,
+        .size = MTDPART_SIZ_FULL,
         .set_flags = MTD_AVNFTL,
         .dual_partnum = 1|MTD_AVFTL_PLANE|MTD_AVNFTL_INTERL,
     //  .set_flags=0,
@@ -1198,16 +1197,13 @@ static struct aml_m1_nand_platform aml_2kpage128kblocknand_platform = {
 */
 
 
-static struct aml_m1_nand_platform aml_Micron8GBABAnand_platform =
+static struct aml_m1_nand_platform aml_nand_platform =
 {
-    .page_size = 2048*2,
-    .spare_size= 224,       //for micron ABA 4GB
-    .erase_size=1024*1024,
     .bch_mode=    3,        //BCH16
     .encode_size=540,
     .timing_mode=5,
     .onfi_mode=1,
-    .interlmode=1,
+    .interlmode=0,
     .planemode=1,
     .ce_num=2,
     .chip_num=2,
@@ -1230,8 +1226,7 @@ static struct platform_device aml_nand_device = {
     .num_resources = ARRAY_SIZE(aml_nand_resources),
     .resource = aml_nand_resources,
     .dev = {
-    //  .platform_data = &aml_Micron4GBABAnand_platform,
-        .platform_data = &aml_Micron8GBABAnand_platform,
+        .platform_data = &aml_nand_platform,
     },
 };
 #endif  //CONFIG_NAND_FLASH_DRIVER_MULTIPLANE_CE
@@ -1245,6 +1240,7 @@ static void aml_8726m_bl_init(void)
 {
     SET_CBUS_REG_MASK(PWM_MISC_REG_AB, (1 << 0));
     SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<31));
+    printk("\n\nBacklight init.\n\n");
 }
 static unsigned bl_level;
 static unsigned aml_8726m_get_bl_level(void)
@@ -1255,7 +1251,7 @@ static unsigned aml_8726m_get_bl_level(void)
 static void aml_8726m_set_bl_level(unsigned level)
 {
     unsigned cs_level, hi, low;
-    
+
     if (level < 30)
     {
         cs_level = 0;
@@ -1281,10 +1277,29 @@ static void aml_8726m_set_bl_level(unsigned level)
 
 static void aml_8726m_power_on_bl(void)
 {
+    msleep(100);
+    SET_CBUS_REG_MASK(PWM_MISC_REG_AB, (1 << 0));
+    msleep(100);
+    SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<31));
+    msleep(100);
+    //EIO -> OD4: 0
+    #ifdef CONFIG_SN7325
+    configIO(0, 0);
+    setIO_level(0, 0, 4);
+    #endif
 }
 
 static void aml_8726m_power_off_bl(void)
 {
+    //EIO -> OD4: 1
+#ifdef CONFIG_SN7325
+    configIO(0, 0);
+    setIO_level(0, 1, 4);
+#endif
+    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<31));
+    CLEAR_CBUS_REG_MASK(PWM_MISC_REG_AB, (1 << 0));
+    set_gpio_val(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), 0);
+    set_gpio_mode(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), GPIO_OUTPUT_MODE);
 }
 
 struct aml_bl_platform_data aml_bl_platform =
@@ -1503,7 +1518,7 @@ static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
 
 #ifdef CONFIG_ITK_CAPACITIVE_TOUCHSCREEN
     {
-        I2C_BOARD_INFO("itk", 0x04),
+        I2C_BOARD_INFO("itk", 0x41),
         .irq = INT_GPIO_0,
         .platform_data = (void *)&itk_pdata,
     },
