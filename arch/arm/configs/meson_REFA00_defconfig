@@ -1,7 +1,7 @@
 #
 # Automatically generated make config: don't edit
 # Linux kernel version: 2.6.34
-# Sat Dec 25 12:49:50 2010
+# Sun Dec 26 15:18:26 2010
 #
 CONFIG_ARM=y
 CONFIG_HOLES_IN_ZONE=y
@@ -255,7 +255,7 @@ CONFIG_MACH_MESON_8726M_REFA00=y
 # CONFIG_MACH_MESON_8726M_REFB06 is not set
 # CONFIG_MACH_MESON_8726M_REFB02 is not set
 # CONFIG_MACH_MESON_8726M_REFB01 is not set
-# CONFIG_MACH_MESON_8726M_W8 is not set
+# CONFIG_MACH_MESON_8726M_REFB08 is not set
 # CONFIG_MACH_MESON_8726M_REFB03 is not set
 # CONFIG_MACH_MESON_8726M_REFB07 is not set
 # CONFIG_MACH_MESON_8726M_REFB04 is not set
