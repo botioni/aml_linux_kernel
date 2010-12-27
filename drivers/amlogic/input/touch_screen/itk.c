@@ -29,7 +29,7 @@
 //#define TS_DELAY_WORK
 
 /* periodic polling delay and period */
-#define TS_POLL_DELAY   (50 * 1000000)
+#define TS_POLL_DELAY   (1 * 1000000)
 #define TS_POLL_PERIOD  (5 * 1000000)
 
 #define MAX_SUPPORT_POINT   5 //just support 2 point now

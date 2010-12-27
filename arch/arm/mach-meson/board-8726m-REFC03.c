@@ -1,6 +1,5 @@
 /*
- *
- * arch/arm/mach-meson/meson.c
+ * arch/arm/mach-meson/board-8726m-dvbc.c
  *
  *  Copyright (C) 2010 AMLOGIC, INC.
  *
@@ -45,7 +44,7 @@
 #include <mach/gpio.h>
 #include <linux/delay.h>
 #include <mach/clk_set.h>
-#include "board-8626m.h"
+#include "board-8726m-REFC03.h"
 
 #ifdef CONFIG_ANDROID_PMEM
 #include <linux/slab.h>
@@ -80,7 +79,7 @@ static struct resource intput_resources[] = {
 	{
 		.start = 0x0,
 		.end = 0x0,
-		.name="8626",
+		.name="8726",
 		.flags = IORESOURCE_IO,
 	},
 };
@@ -178,19 +177,16 @@ static struct platform_device amlogic_spi_nor_device = {
 #ifdef CONFIG_USB_DWC_OTG_HCD
 static void set_usb_a_vbus_power(char is_power_on)
 {
-#define USB_A_POW_GPIO	PREG_HGPIO
 #define USB_A_POW_GPIO_BIT	20
-#define USB_A_POW_GPIO_BIT_ON	1
-#define USB_A_POW_GPIO_BIT_OFF	0
 	if(is_power_on){
 		printk(KERN_INFO "set usb port power on (board gpio %d)!\n",USB_A_POW_GPIO_BIT);
-		set_gpio_mode(USB_A_POW_GPIO,USB_A_POW_GPIO_BIT,GPIO_OUTPUT_MODE);
-		set_gpio_val(USB_A_POW_GPIO,USB_A_POW_GPIO_BIT,USB_A_POW_GPIO_BIT_ON);
+		set_gpio_mode(PREG_HGPIO,USB_A_POW_GPIO_BIT,GPIO_OUTPUT_MODE);
+		set_gpio_val(PREG_HGPIO,USB_A_POW_GPIO_BIT,1);
 	}
 	else	{
 		printk(KERN_INFO "set usb port power off (board gpio %d)!\n",USB_A_POW_GPIO_BIT);		
-		set_gpio_mode(USB_A_POW_GPIO,USB_A_POW_GPIO_BIT,GPIO_OUTPUT_MODE);
-		set_gpio_val(USB_A_POW_GPIO,USB_A_POW_GPIO_BIT,USB_A_POW_GPIO_BIT_OFF);		
+		set_gpio_mode(PREG_HGPIO,USB_A_POW_GPIO_BIT,GPIO_OUTPUT_MODE);
+		set_gpio_val(PREG_HGPIO,USB_A_POW_GPIO_BIT,0);		
 	}
 }
 //usb_a is OTG port
@@ -331,19 +327,19 @@ static struct aml_card_info  amlogic_card_info[] = {
 		.name = "sd_card",
 		.work_mode = CARD_HW_MODE,
 		.io_pad_type = SDIO_GPIOA_9_14,
-		.card_ins_en_reg = EGPIO_GPIOA_ENABLE,
-		.card_ins_en_mask = PREG_IO_11_MASK,
-		.card_ins_input_reg = EGPIO_GPIOA_INPUT,
-		.card_ins_input_mask = PREG_IO_11_MASK,
-		.card_power_en_reg = EGPIO_GPIOA_ENABLE,
-		.card_power_en_mask = PREG_IO_9_MASK,
-		.card_power_output_reg = EGPIO_GPIOA_OUTPUT,
-		.card_power_output_mask = PREG_IO_9_MASK,
+		.card_ins_en_reg = EGPIO_GPIOC_ENABLE,
+		.card_ins_en_mask = PREG_IO_25_MASK,
+		.card_ins_input_reg = EGPIO_GPIOC_INPUT,
+		.card_ins_input_mask = PREG_IO_25_MASK,
+		.card_power_en_reg = EGPIO_GPIOC_ENABLE,
+		.card_power_en_mask = PREG_IO_26_MASK,
+		.card_power_output_reg = EGPIO_GPIOC_OUTPUT,
+		.card_power_output_mask = PREG_IO_26_MASK,
 		.card_power_en_lev = 0,
-		.card_wp_en_reg = EGPIO_GPIOA_ENABLE,
-		.card_wp_en_mask = PREG_IO_12_MASK,
-		.card_wp_input_reg = EGPIO_GPIOA_INPUT,
-		.card_wp_input_mask = PREG_IO_12_MASK,
+		.card_wp_en_reg = EGPIO_GPIOC_ENABLE,
+		.card_wp_en_mask = PREG_IO_23_MASK,
+		.card_wp_input_reg = EGPIO_GPIOC_INPUT,
+		.card_wp_input_mask = PREG_IO_23_MASK,
 		.card_extern_init = 0,
 	},
 };
@@ -380,6 +376,7 @@ static struct platform_device audiodsp_device = {
     .resource      = audiodsp_resources,
 };
 #endif
+
 static struct resource aml_m1_audio_resource[]={
 		[0]	=	{
 				.start 	=	0,
@@ -460,26 +457,49 @@ static struct platform_device aml_nand_device = {
 
 #if defined(CONFIG_I2C_SW_AML)
 
-static struct aml_sw_i2c_platform aml_sw_i2c_plat = {
+static struct aml_sw_i2c_platform aml_sw_i2c_plat_fe1 = {
 	.sw_pins = {
-		.scl_reg_out		= MESON_I2C_PREG_GPIOC_OUTLVL,
-		.scl_reg_in		= MESON_I2C_PREG_GPIOC_INLVL,
-		.scl_bit			= 13,	/*MESON_I2C_MASTER_B_GPIOC_13_REG*/
-		.scl_oe			= MESON_I2C_PREG_GPIOC_OE,
-		.sda_reg_out		= MESON_I2C_PREG_GPIOC_OUTLVL,
-		.sda_reg_in		= MESON_I2C_PREG_GPIOC_INLVL,
-		.sda_bit			= 14,	/*MESON_I2C_MASTER_B_GPIOC_14_BIT*/
-		.sda_oe			= MESON_I2C_PREG_GPIOC_OE,
+		.scl_reg_out		= MESON_I2C_PREG_GPIOE_OUTLVL,
+		.scl_reg_in		= MESON_I2C_PREG_GPIOE_INLVL,
+		.scl_bit			= 20,	/*MESON_GPIOE_20*/
+		.scl_oe			= MESON_I2C_PREG_GPIOE_OE,
+		.sda_reg_out		= MESON_I2C_PREG_GPIOE_OUTLVL,
+		.sda_reg_in		= MESON_I2C_PREG_GPIOE_INLVL,
+		.sda_bit			= 21,	/*MESON_GPIOE_21*/
+		.sda_oe			= MESON_I2C_PREG_GPIOE_OE,
 	},	
-	.udelay			= 10,
+	.udelay			= 30,
 	.timeout			= 100,
 };
 
-static struct platform_device aml_sw_i2c_device = {
+static struct platform_device aml_sw_i2c_device_fe1 = {
 	.name		  = "aml-sw-i2c",
-	.id		  = -1,
+	.id		  = 0,
 	.dev = {
-		.platform_data = &aml_sw_i2c_plat,
+		.platform_data = &aml_sw_i2c_plat_fe1,
+	},
+};
+
+static struct aml_sw_i2c_platform aml_sw_i2c_plat_fe2 = {
+	.sw_pins = {
+		.scl_reg_out		= MESON_I2C_PREG_GPIOC_OUTLVL,
+		.scl_reg_in		= MESON_I2C_PREG_GPIOC_INLVL,
+		.scl_bit			= 13,	/*MESON_GPIOC_13*/
+		.scl_oe			= MESON_I2C_PREG_GPIOC_OE,
+		.sda_reg_out		= MESON_I2C_PREG_GPIOC_OUTLVL,
+		.sda_reg_in		= MESON_I2C_PREG_GPIOC_INLVL,
+		.sda_bit			= 14,	/*MESON_GPIOC_14*/
+		.sda_oe			= MESON_I2C_PREG_GPIOC_OE,
+	},	
+	.udelay			= 2,
+	.timeout			= 100,
+};
+
+static struct platform_device aml_sw_i2c_device_fe2 = {
+	.name		  = "aml-sw-i2c",
+	.id		  = 1,
+	.dev = {
+		.platform_data = &aml_sw_i2c_plat_fe2,
 	},
 };
 
@@ -532,9 +552,6 @@ static struct platform_device aml_i2c_device = {
 };
 #endif
 
-#define PINMUX_UART_A   UART_A_GPIO_B2_B3
-#define PINMUX_UART_B	UART_B_TCK_TDO
-
 #if defined(CONFIG_AM_UART_WITH_S_CORE)
 
 #if defined(CONFIG_AM_UART0_SET_PORT_A)
@@ -560,6 +577,7 @@ static struct platform_device aml_uart_device = {
            },
 };
 #endif
+
 #ifdef CONFIG_ANDROID_PMEM
 static struct android_pmem_platform_data pmem_data =
 {
@@ -587,13 +605,165 @@ static	struct platform_device aml_rtc_device = {
 	};
 #endif
 
+#if defined(CONFIG_AM_DVB)
+static struct resource gx1001_resource[]  = {
+	[0] = {
+		.start = ((GPIOA_bank_bit(13)<<16) | GPIOA_bit_bit0_14(13)),                           //frontend 0 reset pin
+		.end   = ((GPIOA_bank_bit(13)<<16) | GPIOA_bit_bit0_14(13)),
+		.flags = IORESOURCE_MEM,
+		.name  = "frontend0_reset"
+	},
+	[1] = {
+		.start = 0,                                    //frontend 0 i2c adapter id
+		.end   = 0,
+		.flags = IORESOURCE_MEM,
+		.name  = "frontend0_i2c"
+	},
+	[2] = {
+		.start = 0xC0,                                 //frontend 0 tuner address
+		.end   = 0xC0,
+		.flags = IORESOURCE_MEM,
+		.name  = "frontend0_tuner_addr"
+	},
+	[3] = {
+		.start = 0x18,                                 //frontend 0 demod address
+		.end   = 0x18,
+		.flags = IORESOURCE_MEM,
+		.name  = "frontend0_demod_addr"
+	},
+};
+
+static  struct platform_device gx1001_device = {
+	.name             = "gx1001",
+	.id               = -1,
+	.num_resources    = ARRAY_SIZE(gx1001_resource),
+	.resource         = gx1001_resource,
+};
+
+static struct resource amlfe_resource[]  = {
+
+	[0] = {
+		.start = 1,                                    //frontend  i2c adapter id
+		.end   = 1,
+		.flags = IORESOURCE_MEM,
+		.name  = "frontend0_i2c"
+	},
+	[1] = {
+		.start = 0xC0,                                 //frontend  tuner address
+		.end   = 0xC0,
+		.flags = IORESOURCE_MEM,
+		.name  = "frontend0_tuner_addr"
+	},
+	[2] = {
+		.start = 0,                   //frontend   type 0-dct7070 1-fj2207
+		.end   = 0,
+		.flags = IORESOURCE_MEM,
+		.name  = "frontend0_mode"
+	},
+	[3] = {
+		.start = 1,                   //frontend  tuner 0-NULL, 1-DCT7070, 2-Maxliner, 3-FJ2207, 4-TD1316
+		.end   = 1,
+		.flags = IORESOURCE_MEM,
+		.name  = "frontend0_tuner"
+	},
+};
+
+static  struct platform_device amlfe_device = {
+	.name             = "amlfe",
+	.id               = -1,
+	.num_resources    = ARRAY_SIZE(amlfe_resource),
+	.resource         = amlfe_resource,
+};
+
+static struct resource amlogic_dvb_resource[]  = {
+	[0] = {
+		.start = ((GPIOD_bank_bit2_24(9)<<16) | GPIOD_bit_bit2_24(9)),                           //frontend 0 reset pin
+		.end   = ((GPIOD_bank_bit2_24(9)<<16) | GPIOD_bit_bit2_24(9)),
+		.flags = IORESOURCE_MEM,
+		.name  = "frontend0_reset"
+	},
+	[1] = {
+		.start = 0,                                    //frontend 0 i2c adapter id
+		.end   = 0,
+		.flags = IORESOURCE_MEM,
+		.name  = "frontend0_i2c"
+	},
+	[2] = {
+		.start = 0xC0,                                 //frontend 0 tuner address
+		.end   = 0xC0,
+		.flags = IORESOURCE_MEM,
+		.name  = "frontend0_tuner_addr"
+	},
+	[3] = {
+		.start = 0x18,                                 //frontend 0 demod address
+		.end   = 0x18,
+		.flags = IORESOURCE_MEM,
+		.name  = "frontend0_demod_addr"
+	},
+	[4] = {
+		.start = INT_DEMUX,                   //demux 0 irq
+		.end   = INT_DEMUX,
+		.flags = IORESOURCE_IRQ,
+		.name  = "demux0_irq"
+	},
+	[5] = {
+		.start = INT_DEMUX_1,                    //demux 1 irq
+		.end   = INT_DEMUX_1,
+		.flags = IORESOURCE_IRQ,
+		.name  = "demux1_irq"
+	},
+	[6] = {
+		.start = INT_DEMUX_2,                    //demux 2 irq
+		.end   = INT_DEMUX_2,
+		.flags = IORESOURCE_IRQ,
+		.name  = "demux2_irq"
+	},	
+	[7] = {
+		.start = INT_ASYNC_FIFO_FILL,                   //dvr 0 irq
+		.end   = INT_ASYNC_FIFO_FLUSH,
+		.flags = IORESOURCE_IRQ,
+		.name  = "dvr0_irq"
+	},
+};
+
+static  struct platform_device amlogic_dvb_device = {
+	.name             = "amlogic-dvb",
+	.id               = -1,
+	.num_resources    = ARRAY_SIZE(amlogic_dvb_resource),
+	.resource         = amlogic_dvb_resource,
+};
+#endif
+
+static struct resource amlogic_smc_resource[]  = {
+	[0] = {
+		.start = ((GPIOD_bank_bit2_24(11)<<16) | GPIOD_bit_bit2_24(11)),                          //smc POWER gpio
+		.end   = ((GPIOD_bank_bit2_24(11)<<16) | GPIOD_bit_bit2_24(11)),
+		.flags = IORESOURCE_MEM,
+		.name  = "smc_power"
+	},
+	[1] = {
+		.start = INT_SMART_CARD,                   //smc irq number
+		.end   = INT_SMART_CARD,
+		.flags = IORESOURCE_IRQ,
+		.name  = "smc_irq"
+	},
+
+};
+
+static  struct platform_device amlogic_smc_device = {
+	.name             = "amlogic-smc",
+	.id               = -1,
+	.num_resources    = ARRAY_SIZE(amlogic_smc_resource),
+	.resource         = amlogic_smc_resource,
+};
+
 static struct platform_device __initdata *platform_devs[] = {
-#if defined(CONFIG_AM_UART_WITH_S_CORE)
+    #if defined(CONFIG_AM_UART_WITH_S_CORE)
         &aml_uart_device,
     #endif
     #if defined(CONFIG_JPEGLOGO)
-		&jpeglogo_device,
-	#endif	
+	&jpeglogo_device,
+    #endif	
     #if defined(CONFIG_FB_AM)
     	&fb_device,
     #endif
@@ -604,18 +774,17 @@ static struct platform_device __initdata *platform_devs[] = {
 		&codec_device,
     #endif
     #if defined(CONFIG_AM_VIDEO)
-		&deinterlace_device,
+	&deinterlace_device,
     #endif
     #if defined(CONFIG_TVIN_VDIN)
         &vdin_device,
-		&bt656in_device,
-
+	&bt656in_device,
     #endif
-	#if defined(CONFIG_AML_AUDIO_DSP)
-		&audiodsp_device,
-	#endif
+    #if defined(CONFIG_AML_AUDIO_DSP)
+	&audiodsp_device,
+    #endif
 	&aml_sound_card,
-	#if defined(CONFIG_CARDREADER)
+    #if defined(CONFIG_CARDREADER)
     	&amlogic_card_device,
     #endif
     #if defined(CONFIG_KEYPADS_AM)||defined(CONFIG_VIRTUAL_REMOTE)||defined(CONFIG_KEYPADS_AM_MODULE) 
@@ -629,36 +798,45 @@ static struct platform_device __initdata *platform_devs[] = {
     #endif		
 	
     #if defined(CONFIG_I2C_SW_AML)
-		&aml_sw_i2c_device,
+		&aml_sw_i2c_device_fe1,
+		&aml_sw_i2c_device_fe2,
     #endif
     #if defined(CONFIG_I2C_AML)
 		&aml_i2c_device,
     #endif
-    
     #if defined(CONFIG_ANDROID_PMEM)
 		&android_pmem_device,
     #endif
     #if defined(CONFIG_AML_RTC)
-    &aml_rtc_device,
+              &aml_rtc_device,
     #endif
+    #if defined(CONFIG_AM_DVB)
+		&amlogic_dvb_device,
+		&gx1001_device,
+		&amlfe_device,
+    #endif
+		&amlogic_smc_device
+	
 };
 
 static void __init eth_pinmux_init(void)
 {
 
 	/*for dpf_sz with ethernet*/	
-		///GPIOD15-24 for 8626M;
-	///GPIOE_16/NA	nRst;
+		///GPIOC17 -int
+	///GPIOC19/NA	nRst;
+	printk("eth pinmux init\n");
 	eth_set_pinmux(ETH_BANK2_GPIOD15_D23,ETH_CLK_OUT_GPIOD24_REG5_1,0);
 	CLEAR_CBUS_REG_MASK(PREG_ETHERNET_ADDR0, 1);
 	SET_CBUS_REG_MASK(PREG_ETHERNET_ADDR0, (1 << 1));
 	SET_CBUS_REG_MASK(PREG_ETHERNET_ADDR0, 1);
 	udelay(100);
 	/*reset*/
-	set_gpio_mode(PREG_HGPIO,16,GPIO_OUTPUT_MODE);
-	set_gpio_val(PREG_HGPIO,16,0);
+	///GPIOC19/NA	nRst;
+	set_gpio_mode(PREG_GGPIO,12,GPIO_OUTPUT_MODE);
+	set_gpio_val(PREG_GGPIO,12,0);
 	udelay(100);	//waiting reset end;
-	set_gpio_val(PREG_HGPIO,16,1);
+	set_gpio_val(PREG_GGPIO,12,1);
 	udelay(10);	//waiting reset end;
 }
 
@@ -668,18 +846,28 @@ static void __init device_pinmux_init(void )
 
 	/* other deivce power on */
 	/* GPIOA_200e_bit4..usb/eth/YUV power on */
-	set_gpio_mode(PREG_EGPIO,1<<4,GPIO_OUTPUT_MODE);
-	set_gpio_val(PREG_EGPIO,1<<4,1);
+	//set_gpio_mode(PREG_EGPIO,1<<4,GPIO_OUTPUT_MODE);
+	//set_gpio_val(PREG_EGPIO,1<<4,1);
 
-	uart_set_pinmux(UART_PORT_A,PINMUX_UART_A);
-	uart_set_pinmux(UART_PORT_B,PINMUX_UART_B);
+	/* uart port A */
+	uart_set_pinmux(UART_PORT_A,UART_A_GPIO_B2_B3);
 
+#ifndef CONFIG_I2C_SW_AML
+	/* uart port B */
+	uart_set_pinmux(UART_PORT_B,UART_B_GPIO_C13_C14);
+	//uart_set_pinmux(UART_PORT_B,UART_B_TCK_TDO);
+#endif
 
 	/* pinmux of eth */
 	eth_pinmux_init();
 
 	/* IR decoder pinmux */
-	set_mio_mux(1, 1<<31);
+	set_mio_mux(5, 1<<31);
+
+#ifdef CONFIG_I2C_SW_AML   /*for multak*/
+	/* SmartCard pinmux */
+	set_mio_mux(2, 0xF<<20);
+#endif
 
 	set_audio_pinmux(AUDIO_IN_JTAG); // for MIC input
 }
@@ -748,7 +936,7 @@ static __init void m1_fixup(struct machine_desc *mach, struct tag *tag, char **c
 	m->nr_banks++;
 }
 
-MACHINE_START(MESON_8626M, "AMLOGIC MESON-M1 8626M SZ")
+MACHINE_START(MESON_8726M_DVBC, "AMLOGIC MESON-M1 8726M DVBC")
 	.phys_io		= MESON_PERIPHS1_PHYS_BASE,
 	.io_pg_offst	= (MESON_PERIPHS1_PHYS_BASE >> 18) & 0xfffc,
 	.boot_params	= BOOT_PARAMS_OFFSET,

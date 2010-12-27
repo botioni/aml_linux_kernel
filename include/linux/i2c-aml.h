@@ -114,6 +114,8 @@
 
 #define AML_I2C_SPPED_50K			50000
 #define AML_I2C_SPPED_100K			100000
+#define AML_I2C_SPPED_200K			200000
+#define AML_I2C_SPPED_300K			300000
 #define AML_I2C_SPPED_400K			400000
 
 struct aml_pinmux_reg_bit {

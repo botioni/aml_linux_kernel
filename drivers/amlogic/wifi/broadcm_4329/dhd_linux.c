@@ -550,6 +550,7 @@ int dhd_set_suspend(int value, dhd_pub_t *dhd)
 }
 void dhd_tele_on(void);
 void dhd_tele_off(void);
+int sleep_flag = 0;
 static void dhd_early_suspend(struct early_suspend *h)
 {
 	struct dhd_info *dhdp;
@@ -564,6 +565,8 @@ static void dhd_early_suspend(struct early_suspend *h)
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27))
 				rtnl_unlock();
 #endif	
+	sleep_flag = 1;
+	printk("current sleep status is: %d **********\n",sleep_flag);
 	//dhd_set_suspend(1, &dhdp->pub);
 }
 
@@ -581,6 +584,8 @@ static void dhd_late_resume(struct early_suspend *h)
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27))
 				rtnl_unlock();
 #endif
+	sleep_flag = 0;
+	printk("current sleep status is: %d **********\n",sleep_flag);
 	//dhd_set_suspend(0, &dhdp->pub);
 }
 #endif /* defined(CONFIG_HAS_EARLYSUSPEND) */
@@ -962,6 +967,9 @@ _dhd_sysioc_thread(void *data)
 					continue;
 				}
 #endif /* SOFTAP */
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27))
+				rtnl_lock();
+#endif
 				if (dhd->set_multicast) {
 					dhd->set_multicast = FALSE;
 					_dhd_set_multicast_list(dhd, i);
@@ -970,6 +978,9 @@ _dhd_sysioc_thread(void *data)
 					dhd->set_macaddress = FALSE;
 					_dhd_set_mac_address(dhd, i, &dhd->macvalue);
 				}
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27))
+				rtnl_unlock();
+#endif
 			}
 		}
 	}

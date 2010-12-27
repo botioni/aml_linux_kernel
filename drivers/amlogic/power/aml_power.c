@@ -73,7 +73,8 @@ static int power_on_with_ac = -1;
 static int charge_count = 0;
 #endif
 
-static int bat_value_table[36]={
+static int bat_value_table[37]={
+0,  //0    
 540,//0
 544,//4
 547,//10
@@ -112,7 +113,48 @@ static int bat_value_table[36]={
 626 //100
 };
 
-static int bat_level_table[36]={
+static int bat_charge_value_table[37]={
+0,  //0    
+547,//0
+551,//4
+553,//10
+556,//15
+558,//16
+560,//18
+562,//20
+564,//23
+566,//26
+567,//29
+568,//32
+569,//35
+570,//37
+571,//40
+572,//43
+573,//46
+574,//49
+576,//51
+578,//54
+580,//57
+582,//60
+585,//63
+587,//66
+590,//68
+593,//71
+596,//74
+599,//77
+602,//80
+605,//83
+608,//85
+612,//88
+615,//91
+617,//95
+618,//97
+620,//100
+620 //100
+};
+
+static int bat_level_table[37]={
+0,
 0,
 4,
 10,
@@ -306,8 +348,16 @@ static void get_bat_capacity(void)
     }
     
     value = sum/num;    
-    for(i=0; i<35; i++){
-        if((bat_value_table[i]<=value)&&(bat_value_table[i+1]>value))break;
+    if(new_ac_status > 0){
+        for(i=0; i<36; i++){
+            if((bat_charge_value_table[i]<=value)&&(bat_charge_value_table[i+1]>value))break;
+        } 
+    }
+    else{
+ 
+        for(i=0; i<36; i++){
+            if((bat_value_table[i]<=value)&&(bat_value_table[i+1]>value))break;
+        }          
     }
     
     new_battery_capacity = bat_level_table[i];      

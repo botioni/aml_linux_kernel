@@ -6396,8 +6396,9 @@ static int wl_iw_set_priv(
 				kfree(extra);
 				return -EFAULT;
 			} else {
-				wl_iw_control_wl_on(dev, info);
+				//wl_iw_control_wl_on(dev, info);
 				WL_TRACE(("%s, Received regular START command\n", __FUNCTION__));
+				printk("\n####### %s, Received regular START command #######\n", __FUNCTION__);
 			}
 		}
 
@@ -6423,7 +6424,10 @@ static int wl_iw_set_priv(
 	    else if (strnicmp(extra, "COUNTRY", strlen("COUNTRY")) == 0)
 			ret = wl_iw_set_country(dev, info, (union iwreq_data *)dwrq, extra);
 	    else if (strnicmp(extra, "STOP", strlen("STOP")) == 0)
+	    {
+	    	printk("\n#######  STOP   ############");
 			ret = wl_iw_control_wl_off(dev, info);
+		}
 	    else if (strnicmp(extra, BAND_GET_CMD, strlen(BAND_GET_CMD)) == 0)
 			ret = wl_iw_get_band(dev, info, (union iwreq_data *)dwrq, extra);
 	    else if (strnicmp(extra, BAND_SET_CMD, strlen(BAND_SET_CMD)) == 0)
