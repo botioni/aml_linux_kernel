@@ -371,19 +371,11 @@ static void get_bat_capacity(void)
 static void aml_power_early_suspend(struct early_suspend *h)
 {
 	if (pdata->set_charge) {
-		if (ac_status > 0) {
-			pdata->set_charge(AML_POWER_CHARGE_AC);
+		pdata->set_charge(AML_POWER_CHARGE_AC);
 #ifdef AML_POWER_DBG
-			printk("fast charger on early_suspend\n");
-#endif			
-		}else {
-
-			pdata->set_charge(0);
-#ifdef AML_POWER_DBG
-			printk("set slow charge\n");
-#endif			
-		}
-	}       
+        printk("fast charger on early_suspend\n\n");
+#endif
+	}      
 }
 
 static void aml_power_late_resume(struct early_suspend *h)
@@ -431,44 +423,6 @@ static void update_status(void)
       
 }
 
-static void update_charger(void)
-{
-	static int regulator_enabled;
-	int max_uA = pdata->ac_max_uA;
-
-	if (pdata->set_charge) {
-		pdata->set_charge(0);//ac always charge slow except standby
-#ifdef AML_POWER_DBG
-		printk("AC in,charger slow\n");
-#endif
-		
-		/*if (new_ac_status > 0) {
-			dev_dbg(dev, "charger on (AC)\n");
-			pdata->set_charge(AML_POWER_CHARGE_AC);
-		} else if (new_usb_status > 0) {
-			dev_dbg(dev, "charger on (USB)\n");
-			pdata->set_charge(AML_POWER_CHARGE_USB);
-		} else {
-			dev_dbg(dev, "charger off\n");
-			pdata->set_charge(0);
-		}*/
-	} else if (ac_draw) {
-		if (new_ac_status > 0) {
-			regulator_set_current_limit(ac_draw, max_uA, max_uA);
-			if (!regulator_enabled) {
-				dev_dbg(dev, "charger on (AC)\n");
-				regulator_enable(ac_draw);
-				regulator_enabled = 1;
-			}
-		} else {
-			if (regulator_enabled) {
-				dev_dbg(dev, "charger off\n");
-				regulator_disable(ac_draw);
-				regulator_enabled = 0;
-			}
-		}
-	}
-}
 
 static void supply_timer_func(unsigned long unused)
 {
@@ -504,7 +458,6 @@ static void supply_timer_func(unsigned long unused)
 
 static void psy_changed(void)
 {
-	update_charger();
 
 	/*
 	 * Okay, charger set. Now wait a bit before notifying supplicants,
@@ -642,7 +595,6 @@ static int aml_power_probe(struct platform_device *pdev)
 	}
 
 	update_status();
-	update_charger();
 
 	if (!pdata->wait_for_status)
 		pdata->wait_for_status = 500;
@@ -759,6 +711,10 @@ static int aml_power_probe(struct platform_device *pdev)
 	register_early_suspend(&power_early_suspend);
 #endif
 
+	if (pdata->set_charge) {
+		pdata->set_charge(0);
+	}
+	
 	return 0;
 bat_supply_failed:
 	power_supply_unregister(&aml_psy_bat);
