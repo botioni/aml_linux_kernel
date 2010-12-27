@@ -928,7 +928,6 @@ static struct platform_device aml_i2c_device = {
 #endif
 
 #ifdef CONFIG_AMLOGIC_PM
-
 static int is_ac_connected(void)
 {
     return (READ_CBUS_REG(ASSIST_HW_REV)&(1<<9))? 1:0;
@@ -941,13 +940,21 @@ static int is_ac_connected(void)
 
 static void set_charge(int flags)
 {
-    //GPIOD_22 low: fast charge high: slow charge
-    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_7, (1<<18));
-    if(flags == 1)
-        set_gpio_val(GPIOD_bank_bit2_24(22), GPIOD_bit_bit2_24(22), 0); //fast charge
-    else
-        set_gpio_val(GPIOD_bank_bit2_24(22), GPIOD_bit_bit2_24(22), 1); //slow charge
-    set_gpio_mode(GPIOD_bank_bit2_24(22), GPIOD_bit_bit2_24(22), GPIO_OUTPUT_MODE);
+    //EXT io pp3 low: fast charge high: slow charge
+	if(flags == 1)//fast charge
+	{
+#ifdef CONFIG_SN7325
+		configIO(1, 0);
+		setIO_level(1, 0, 3);
+#endif
+	}
+	else//slow charge
+	{
+#ifdef CONFIG_SN7325
+		configIO(1, 0);
+		setIO_level(1, 1, 3);
+#endif
+	}
 }
 
 #ifdef CONFIG_SARADC_AM
