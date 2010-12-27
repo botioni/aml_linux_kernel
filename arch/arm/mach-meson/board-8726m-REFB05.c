@@ -91,6 +91,14 @@
 #include <linux/i2c/so340010.h>
 #endif
 
+#ifdef CONFIG_SND_AML_M1_MID_WM8900
+#include <sound/wm8900.h>
+#endif
+
+#ifdef CONFIG_SND_SOC_RT5621
+#include <sound/rt5621.h>
+#endif
+
 #if defined(CONFIG_JPEGLOGO)
 static struct resource jpeglogo_resources[] = {
     [0] = {
@@ -546,7 +554,7 @@ static struct mtd_partition inand_partition_info[] =
 	{
 		.name = "media",
 		.offset = MTDPART_OFS_APPEND,
-		.size = (0x200000000-(300+256)*1024*1024),
+		.size = MTDPART_SIZ_FULL,
 	//	.set_flags=0,
 	//	.dual_partnum=0,
 	},
@@ -706,7 +714,42 @@ static struct platform_device aml_audio={
 		.resource 		=	aml_m1_audio_resource,
 		.num_resources	=	ARRAY_SIZE(aml_m1_audio_resource),
 };
+
+// use LED_CS1 as detect pin
+#define PWM_TCNT        (600-1)
+#define PWM_MAX_VAL		(420)
+static unsigned int rt5621_is_hp_pluged()
+{
+	int level = 0;
+    int cs_no = 0;
+    // Enable VBG_EN
+    WRITE_CBUS_REG_BITS(PREG_AM_ANALOG_ADDR, 1, 0, 1);
+    // wire pm_gpioA_7_led_pwm = pin_mux_reg0[22];
+    WRITE_CBUS_REG(LED_PWM_REG0,(0 << 31)   |       // disable the overall circuit
+                                (0 << 30)   |       // 1:Closed Loop  0:Open Loop
+                                (0 << 16)   |       // PWM total count
+                                (0 << 13)   |       // Enable
+                                (1 << 12)   |       // enable
+                                (0 << 10)   |       // test
+                                (7 << 7)    |       // CS0 REF, Voltage FeedBack: about 0.505V
+                                (7 << 4)    |       // CS1 REF, Current FeedBack: about 0.505V
+                                (0 << 0));           // DIMCTL Analog dimmer
+    cs_no = READ_CBUS_REG(LED_PWM_REG3);
+    if(board_ver == 2){
+        if(cs_no &(1<<14))
+          level |= (1<<0);
+    }
+    else{
+          level = 0;   //old pcb always hp unplug
+    }
+    //printk("level = %d,board_ver = %d\n",level,board_ver);
+    return (level == 1)?(1):(0); //return 1: hp pluged, 0: hp unpluged.
+}
+static struct rt5621_platform_data rt5621_pdata = {
+    .is_hp_pluged = &rt5621_is_hp_pluged,
+};
 #endif
+
 #if defined(CONFIG_TOUCHSCREEN_ADS7846)
 #define SPI_0		0
 #define SPI_1		1
@@ -1627,6 +1670,7 @@ static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
 #ifdef CONFIG_SND_SOC_RT5621
 	{
 		I2C_BOARD_INFO("rt5621", 0x1A),
+		.platform_data = (void *)&rt5621_pdata,
 	},
 #endif
 
@@ -1702,7 +1746,6 @@ static void __init device_pinmux_init(void )
 	if(board_ver == 0){
 		#ifdef CONFIG_SND_SOC_RT5621
 			set_audio_pinmux(AUDIO_OUT_TEST_N);
-			//set_audio_pinmux(AUDIO_OUT_JTAG);
 		#else
 			set_audio_pinmux(AUDIO_OUT_JTAG);
 		#endif
