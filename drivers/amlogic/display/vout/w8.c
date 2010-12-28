@@ -46,6 +46,8 @@
 
 static void t13_power_on(void);
 static void t13_power_off(void);
+void power_on_backlight(void);
+void power_off_backlight(void);
 
 static tcon_conf_t tcon_config =
 {
@@ -115,6 +117,8 @@ static tcon_conf_t tcon_config =
     .sync_duration_den = 10,
     .power_on=t13_power_on,
     .power_off=t13_power_off,
+    .backlight_on = power_on_backlight,
+    .backlight_off = power_off_backlight,
 };
 static struct resource tcon_resources[] = {
     [0] = {
@@ -151,6 +155,7 @@ void power_on_backlight(void)
     msleep(200);
     set_gpio_val(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), 1);
     set_gpio_mode(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), GPIO_OUTPUT_MODE);
+    printk("\n\npower_on_backlight.\n\n");
 }
 
 void power_off_backlight(void)
@@ -212,14 +217,12 @@ static void set_tcon_pinmux(void)
 static void t13_power_on(void)
 {
     video_dac_disable();
-	set_tcon_pinmux();
-	power_on_lcd();
-	power_on_backlight();
-      
+    set_tcon_pinmux();
+    power_on_lcd();
+    printk("\n\nt13_power_on...\n\n");
 }
 static void t13_power_off(void)
 {
-	power_off_backlight();
     	power_off_lcd();
 }
 
@@ -228,9 +231,7 @@ static void t13_io_init(void)
     printk("\n\nT13 LCD Init.\n\n");
 
     set_tcon_pinmux();
-
     power_on_lcd();
-    power_on_backlight();
 }
 
 static struct platform_device tcon_dev = {

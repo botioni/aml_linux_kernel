@@ -44,6 +44,8 @@
 #define BL_OFF           0
 static void t13_power_on(void);
 static void t13_power_off(void);
+void power_on_backlight(void);
+void power_off_backlight(void);
 #ifdef CONFIG_AM_LOGO
 static int bl_state = BL_ON;
 #endif
@@ -116,6 +118,8 @@ static tcon_conf_t tcon_config =
     .sync_duration_den = 8,
     .power_on=t13_power_on,
     .power_off=t13_power_off,
+    .backlight_on = power_on_backlight,
+    .backlight_off = power_off_backlight,
 };
 static struct resource tcon_resources[] = {
     [0] = {

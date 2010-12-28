@@ -36,7 +36,8 @@ typedef enum {
     VMODE_1080I ,
     VMODE_1080P ,
     VMODE_LCD	,
-    VMODE_MAX   
+    VMODE_MAX,
+    VMODE_INIT_NULL,
 } vmode_t;
 
 typedef struct {
