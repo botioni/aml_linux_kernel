@@ -103,13 +103,13 @@ config MACH_MESON_8726M_REFB04
 	help
 	  Include support for the AMLOGIC M1 8726M Emulation Baseboard platform.  
 
-config MACH_MESON_8726M_DVBC_SKYWORTH
+config MACH_MESON_8726M_REFC05
         select GENERIC_ALLOCATOR
         bool "Support M1 8726(Skyworth base on DVBC_8726M1_V1.0) platform(machid=2957)"
         help
           Include support for the AMLOGIC M1 8726M Skyworth platform.
 
-config MACH_MESON_8726M_DVBC_HISENSE
+config MACH_MESON_8726M_REFC04
         select GENERIC_ALLOCATOR
         bool "Support M1 8726(Hisense base on DVBC_8726M1_V1.0) platform(machid=2957)"
         help
