@@ -580,6 +580,22 @@ static int  register_remote_dev(struct kp  *kp)
     return ret;
 }
 
+static void setup_hisense_remote(struct kp *kp)
+{
+    printk("Enter %s\n", __FUNCTION__);
+    kp->custom_code = 0xbf00;
+    kp->work_mode = REMOTE_WORK_MODE_HW;
+    kp->repeat_enable = 0;
+    kp->release_delay = 150;
+    WRITE_MPEG_REG(IR_DEC_REG1, 0xfbe40);
+    key_map[0x19] = 105;
+    key_map[0x18] = 106;
+    key_map[0x16] = 103;
+    key_map[0x17] = 108;
+    key_map[0x15] = 28;
+    key_map[0x14] = 15;
+}
+
 static int __init kp_probe(struct platform_device *pdev)
 {
     struct kp *kp;
@@ -683,6 +699,9 @@ static int __init kp_probe(struct platform_device *pdev)
     remote_log_buf = (char*)__get_free_pages(GFP_KERNEL,REMOTE_LOG_BUF_ORDER);
     remote_log_buf[0]='\0';
     printk("physical address:0x%x\n",(unsigned int )virt_to_phys(remote_log_buf));
+#ifdef CONFIG_IR_REMOTE_HISENSE
+    setup_hisense_remote(kp);
+#endif
     return 0;
 err3:
 //     free_irq(NEC_REMOTE_IRQ_NO,kp_interrupt);

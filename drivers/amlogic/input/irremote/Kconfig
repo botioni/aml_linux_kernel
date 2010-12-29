@@ -4,14 +4,29 @@
 
 
 
-config KEYPADS_AM
-	tristate "Amlogic ir remote  keypads support"
+menuconfig KEYPADS_AM
+	bool "Amlogic ir remote control support"
 	default n
 	help
-	  Say Y here if you want to use the amlogic remote keypad.
+	  Say Y here if you want to use the amlogic remote control.
 
 	  To compile this driver as a module, choose M here: the
 	  module will be called .
+
+choice
+        prompt "Choice remote control type"
+        depends on KEYPADS_AM
+
+config IR_REMOTE_DEFAULT
+        bool "Default NULL key map"
+
+config IR_REMOTE_HISENSE
+        bool "Support for Hisense Remote Control"
+
+config IR_REMOTE_SKYWORTH
+        bool "Support for Skyworth Remote Control"
+
+endchoice
 
 config VIRTUAL_REMOTE
 	tristate "Amlogic virtual ir remote support (only for QA test)"
