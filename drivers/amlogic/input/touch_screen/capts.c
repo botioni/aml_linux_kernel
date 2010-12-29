@@ -20,7 +20,7 @@
 
 #define MULTI_TOUCH
 
-#define capts_debug_info  printk
+#define capts_debug_info//  printk
 
 /* periodic polling delay and period */
 #define TS_POLL_DELAY     (1 * 1000000)

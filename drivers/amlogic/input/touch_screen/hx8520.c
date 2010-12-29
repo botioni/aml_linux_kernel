@@ -18,8 +18,8 @@
 #define HX8520_CMD_START    0x86
 #define HX8520_PACKET_SIZE  20
 
-#define hx8520_debug_info printk
-#define buf_to_short(buf)   ((*buf << 8) +*(buf+1))
+#define hx8520_debug_info// printk
+#define buf_to_short(buf)   ((*buf << 8) | *(buf+1))
 
 int hx8520_reset(struct device *dev);
 int hx8520_calibration(struct device *dev);
@@ -140,7 +140,7 @@ int hx8520_get_event (struct device *dev, struct ts_event *event)
 
     memset(buf, 0, ARRAY_SIZE(buf));
     if (hx8520_read_block(client, HX8520_CMD_START,
-            buf, ARRAY_SIZE(buf)) < 0) {    
+            buf, HX8520_PACKET_SIZE) < 0) {    
         /* i2c read failed */
         hx8520_debug_info("hx8520 read i2c failed!\n");
         return -1;
@@ -153,34 +153,37 @@ int hx8520_get_event (struct device *dev, struct ts_event *event)
      
     event_num = 0;
     for(i=0; i<4; i++) {
-        event->x = buf_to_short(&buf[i*4]);
-        event->y = buf_to_short(&buf[i*4 + 2]);
+        event->x  = (buf[i*4] << 8) | buf[i*4+1];
+        event->y  = (buf[i*4+2] << 8) | buf[i*4+3];
+        if (info->swap_xy) {
+            swap(event->x, event->y);
+        }
         if ((event->x >= info->xmin) && (event->x < info->xmax)
         &&(event->y >= info->ymin) && (event->y < info->ymax)) {
-            event->z = 1;
-            event->w = 1;
-            event->id = i;
-    
-            if (info->swap_xy) {
-                swap(event->x, event->y);
-            }
             if (info->x_pol) {
                 event->x = info->xmax + info->xmin - event->x;
             }
             if (info->y_pol) {
                 event->y = info->ymax + info->ymin - event->y;
             }
-            
+            event->z = 1;
+            event->w = 1;
+            event->id = i;
             event++;
             event_num++;
         }
+        else if ((event->x != -1) || (event->y != -1)) {
+            hx8520_debug_info("hx8520 data%d error, %d, %d\n", i, event->x, event->y);            
+            event_num = -1;
+            break;
+        }
     }
     
-    if ((event_num != buf[16]) || (event_num > 2)) {
-        u8 ebuf[128];
-        hx8520_debug_info("hx8520 stack error\n");       
-        hx8520_read_block(client, HX8520_CMD_START, ebuf, ARRAY_SIZE(ebuf));    
-        return -1;
+    if ((event_num < 0) || (event_num > 2) || (event_num != buf[16])) {
+        hx8520_debug_info("hx8520 stack error\n");
+        hx8520_write_block(client, 0x88, 0, 0); // Execute CMD 0x88H to clear stack
+        hx8520_read_block(client, HX8520_CMD_START, buf, HX8520_PACKET_SIZE);
+        return -2;
     }
     
     return event_num;
