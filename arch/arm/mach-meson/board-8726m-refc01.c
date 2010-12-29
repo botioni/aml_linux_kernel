@@ -189,6 +189,54 @@ static struct platform_device fb_device = {
     .resource      = fb_device_resources,
 };
 #endif
+
+#if defined(CONFIG_AMLOGIC_SPI_NOR)
+static struct mtd_partition spi_partition_info[] = {
+/* Hide uboot partition
+        {
+                .name = "uboot",
+                .offset = 0,
+                .size = 0x3e000,
+        },
+//*/
+	{
+		.name = "ubootenv",
+		.offset = 0x3e000,
+		.size = 0x2000,
+	},
+/* Hide recovery partition
+        {
+                .name = "recovery",
+                .offset = 0x40000,
+                .size = 0x1c0000,
+        },
+//*/
+};
+
+static struct flash_platform_data amlogic_spi_platform = {
+	.parts = spi_partition_info,
+	.nr_parts = ARRAY_SIZE(spi_partition_info),
+};
+
+static struct resource amlogic_spi_nor_resources[] = {
+	{
+		.start = 0xc1800000,
+		.end = 0xc1ffffff,
+		.flags = IORESOURCE_MEM,
+	},
+};
+
+static struct platform_device amlogic_spi_nor_device = {
+	.name = "AMLOGIC_SPI_NOR",
+	.id = -1,
+	.num_resources = ARRAY_SIZE(amlogic_spi_nor_resources),
+	.resource = amlogic_spi_nor_resources,
+	.dev = {
+		.platform_data = &amlogic_spi_platform,
+	},
+};
+#endif
+
 #ifdef CONFIG_USB_DWC_OTG_HCD
 static void set_usb_a_vbus_power(char is_power_on)
 {
@@ -742,29 +790,56 @@ static struct platform_device aml_uart_device = {
 #ifdef CONFIG_NAND_FLASH_DRIVER_BASE_OPERATE
 static struct mtd_partition partition_info[] = 
 {
+#ifndef CONFIG_AMLOGIC_SPI_NOR
+/* Hide uboot partition
 	{
-		.name = "U-BOOT",
+		.name = "uboot",
 		.offset = 0,
-		.size=4*1024*1024,
+		.size = 2*1024*1024,
 	//	.set_flags=0,
 	//	.dual_partnum=0,
 	},
+//*/
+        {
+                .name = "ubootenv",
+                .offset = 2*1024*1024,
+                .size = 0x2000,
+        //      .set_flags=0,
+        //      .dual_partnum=0,
+        },
+/* Hide recovery partition
+        {
+                .name = "recovery",
+                .offset = 4*1024*1024,
+                .size = 4*1024*1024,
+        //      .set_flags=0,
+        //      .dual_partnum=0,
+        },
+//*/
+#endif
 	{
-		.name = "Boot Para",
-		.offset = 4*1024*1024,
-		.size=4*1024*1024,
-	//	.set_flags=0,
-	//	.dual_partnum=0,
-	},
-	{
-		.name = "Kernel",
+		.name = "boot",
 		.offset = 8*1024*1024,
-		.size = 4 * 1024*1024,
+		.size = 4*1024*1024,
 	//	.set_flags=0,
 	//	.dual_partnum=0,
 	},
+        {
+                .name = "system",
+                .offset = 12*1024*1024,
+                .size = 116*1024*1024,
+        //      .set_flags=0,
+        //      .dual_partnum=0,
+        },
+        {
+                .name = "cache",
+                .offset = 128*1024*1024,
+                .size = 16*1024*1024,
+        //      .set_flags=0,
+        //      .dual_partnum=0,
+        },
 	{
-		.name = "YAFFS2",
+		.name = "userdata",
 		.offset=MTDPART_OFS_APPEND,
 		.size=MTDPART_SIZ_FULL,
 	//	.set_flags=0,
@@ -981,6 +1056,9 @@ static struct platform_device __initdata *platform_devs[] = {
     #if defined(CONFIG_KEYPADS_AM)||defined(CONFIG_VIRTUAL_REMOTE)||defined(CONFIG_KEYPADS_AM_MODULE)
 		&input_device,
     #endif	
+    #if defined(CONFIG_AMLOGIC_SPI_NOR)
+    		&amlogic_spi_nor_device,
+    #endif
     #if defined(CONFIG_ADC_KEYPADS_AM)||defined(CONFIG_ADC_KEYPADS_AM_MODULE)
 		&input_device_adc,
     #endif
