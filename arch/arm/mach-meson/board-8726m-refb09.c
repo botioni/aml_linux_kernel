@@ -167,12 +167,12 @@ static struct platform_device adc_ts_device = {
 #include <linux/adc_keypad.h>
 
 static struct adc_key adc_kp_key[] = {
-    {KEY_LEFTMETA,              "menu",     CHAN_4, 0,  60},
-    {KEY_HOME,                  "home",     CHAN_4, 180, 60},
-    {KEY_SELECT,                "enter",    CHAN_4, 285, 60},
-    {KEY_PAGEDOWN,              "vol-",     CHAN_4, 400, 60},
-    {KEY_PAGEUP,                "vol+",     CHAN_4, 505, 60},
-    {KEY_TAB,                   "exit",     CHAN_4, 623, 60},
+    {KEY_PAGEDOWN,      "vol-",     CHAN_4, 0,  60},
+    {KEY_PAGEUP,        "vol+",     CHAN_4, 183, 60},
+    {KEY_HOME,          "home",     CHAN_4, 291, 60},
+    {KEY_LEFTMETA,      "menu",     CHAN_4, 408, 60},
+    {KEY_TAB,           "exit",     CHAN_4, 511, 60},
+    {KEY_ZOOM,          "zoom",     CHAN_4, 630, 60},
 };
 
 static struct adc_kp_platform_data adc_kp_pdata = {
