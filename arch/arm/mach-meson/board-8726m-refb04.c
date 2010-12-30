@@ -278,12 +278,16 @@ static void set_usb_a_vbus_power(char is_power_on)
 #define USB_A_POW_GPIO_BIT_ON   1
 #define USB_A_POW_GPIO_BIT_OFF  0
     if(is_power_on) {
+        set_gpio_val(GPIOA_bank_bit(26), GPIOA_bit_bit23_26(26), 1);
+        set_gpio_mode(GPIOA_bank_bit(26), GPIOA_bit_bit23_26(26), GPIO_OUTPUT_MODE);
         printk(KERN_INFO "set usb port power on (board gpio %d)!\n",USB_A_POW_GPIO_BIT);
         set_gpio_mode(USB_A_POW_GPIO,USB_A_POW_GPIO_BIT,GPIO_OUTPUT_MODE);
         set_gpio_val(USB_A_POW_GPIO,USB_A_POW_GPIO_BIT,USB_A_POW_GPIO_BIT_ON);
     }
     else {
         printk(KERN_INFO "set usb port power off (board gpio %d)!\n",USB_A_POW_GPIO_BIT);
+        set_gpio_val(GPIOA_bank_bit(26), GPIOA_bit_bit23_26(26), 0);
+        set_gpio_mode(GPIOA_bank_bit(26), GPIOA_bit_bit23_26(26), GPIO_OUTPUT_MODE);
         set_gpio_mode(USB_A_POW_GPIO,USB_A_POW_GPIO_BIT,GPIO_OUTPUT_MODE);
         set_gpio_val(USB_A_POW_GPIO,USB_A_POW_GPIO_BIT,USB_A_POW_GPIO_BIT_OFF);
     }
