@@ -26,6 +26,7 @@
 #define BUF_FLAG_IN_USE         0x02
 #define BUF_FLAG_PARSER         0x04
 #define BUF_FLAG_FIRST_TSTAMP   0x08
+#define BUF_FLAG_IOMEM			0x10
 
 #define BUF_TYPE_VIDEO      0
 #define BUF_TYPE_AUDIO      1
