@@ -443,7 +443,7 @@ int vreal_dec_status(struct vdec_status *vstatus)
     else
         vstatus->fps = 96000;
     vstatus->error_count = real_err_count;
-    vstatus->status = READ_MPEG_REG(STATUS_AMRISC) | stat;
+    vstatus->status = (READ_MPEG_REG(STATUS_AMRISC)<<16) | stat;
     return 0;
 }
 
