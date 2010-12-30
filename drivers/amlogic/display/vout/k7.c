@@ -168,6 +168,11 @@ static void power_on_lcd(void)
     
     //Power on sequence: STBYB -> VDD -> AVDD -> VGL -> VGH -> DATA -> B/L
     //LCD_3.3V: LCD_VCC_EN -> EIO_OD0: 0   
+         #ifdef CONFIG_SN7325
+        printk("power on 7325 1\n");
+        configIO(1, 0);
+        setIO_level(1, 0, 1);//PP1
+        #endif
 #ifdef CONFIG_SN7325
         configIO(0, 0);
         setIO_level(0, 0, 0);//OD0
