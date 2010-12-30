@@ -44,7 +44,7 @@
 #include <mach/gpio.h>
 #include <linux/delay.h>
 #include <mach/clk_set.h>
-#include "board-8726m-dvbc-skyworth.h"
+#include "board-8726m-refc04.h"
 
 #ifdef CONFIG_ANDROID_PMEM
 #include <linux/slab.h>
@@ -144,11 +144,11 @@ static struct mtd_partition spi_partition_info[] = {
                 .size = 0x3e000,
         },
 //*/
-        {
-                .name = "ubootenv",
-                .offset = 0x3e000,
-                .size = 0x2000,
-        },
+	{
+		.name = "ubootenv",
+		.offset = 0x3e000,
+		.size = 0x2000,
+	},
 /* Hide recovery partition
         {
                 .name = "recovery",
@@ -405,13 +405,13 @@ static struct mtd_partition partition_info[] =
 {
 #ifndef CONFIG_AMLOGIC_SPI_NOR
 /* Hide uboot partition
-        {
-                .name = "uboot",
-                .offset = 0,
-                .size = 2*1024*1024,
-        //      .set_flags=0,
-        //      .dual_partnum=0,
-        },
+	{
+		.name = "uboot",
+		.offset = 0,
+		.size = 2*1024*1024,
+	//	.set_flags=0,
+	//	.dual_partnum=0,
+	},
 //*/
         {
                 .name = "ubootenv",
@@ -430,13 +430,13 @@ static struct mtd_partition partition_info[] =
         },
 //*/
 #endif
-        {
-                .name = "boot",
-                .offset = 8*1024*1024,
-                .size = 4*1024*1024,
-        //      .set_flags=0,
-        //      .dual_partnum=0,
-        },
+	{
+		.name = "boot",
+		.offset = 8*1024*1024,
+		.size = 4*1024*1024,
+	//	.set_flags=0,
+	//	.dual_partnum=0,
+	},
         {
                 .name = "system",
                 .offset = 12*1024*1024,
@@ -451,13 +451,13 @@ static struct mtd_partition partition_info[] =
         //      .set_flags=0,
         //      .dual_partnum=0,
         },
-        {
-                .name = "userdata",
-                .offset=MTDPART_OFS_APPEND,
-                .size=MTDPART_SIZ_FULL,
-        //      .set_flags=0,
-        //      .dual_partnum=0,
-        },
+	{
+		.name = "userdata",
+		.offset=MTDPART_OFS_APPEND,
+		.size=MTDPART_SIZ_FULL,
+	//	.set_flags=0,
+	//	.dual_partnum=0,
+	},
 //	{	.name="FTL_Part",
 //		.offset=MTDPART_OFS_APPEND,
 //		.size=MTDPART_SIZ_FULL,
@@ -777,6 +777,7 @@ static  struct platform_device amlogic_dvb_device = {
 };
 #endif
 
+#ifdef AM_DEMOD
 static struct resource amlogic_smc_resource[]  = {
 	[0] = {
 		.start = ((GPIOD_bank_bit2_24(11)<<16) | GPIOD_bit_bit2_24(11)),                          //smc POWER gpio
@@ -799,6 +800,7 @@ static  struct platform_device amlogic_smc_device = {
 	.num_resources    = ARRAY_SIZE(amlogic_smc_resource),
 	.resource         = amlogic_smc_resource,
 };
+#endif
 
 static struct platform_device __initdata *platform_devs[] = {
     #if defined(CONFIG_AM_UART_WITH_S_CORE)
@@ -818,10 +820,6 @@ static struct platform_device __initdata *platform_devs[] = {
     #endif
     #if defined(CONFIG_AM_VIDEO)
 	&deinterlace_device,
-    #endif
-    #if defined(CONFIG_TVIN_VDIN)
-        &vdin_device,
-	&bt656in_device,
     #endif
     #if defined(CONFIG_AML_AUDIO_DSP)
 	&audiodsp_device,
@@ -853,13 +851,6 @@ static struct platform_device __initdata *platform_devs[] = {
     #if defined(CONFIG_AML_RTC)
               &aml_rtc_device,
     #endif
-    #if defined(CONFIG_AM_DVB)
-		&amlogic_dvb_device,
-		&gx1001_device,
-		&amlfe_device,
-    #endif
-		&amlogic_smc_device
-	
 };
 
 static void __init eth_pinmux_init(void)
@@ -887,32 +878,17 @@ static void __init device_pinmux_init(void )
 {
 	clearall_pinmux();
 
-	/* other deivce power on */
-	/* GPIOA_200e_bit4..usb/eth/YUV power on */
-	//set_gpio_mode(PREG_EGPIO,1<<4,GPIO_OUTPUT_MODE);
-	//set_gpio_val(PREG_EGPIO,1<<4,1);
-
 	/* uart port A */
 	uart_set_pinmux(UART_PORT_A,UART_A_GPIO_B2_B3);
 
-#ifndef CONFIG_I2C_SW_AML
 	/* uart port B */
-	uart_set_pinmux(UART_PORT_B,UART_B_GPIO_C13_C14);
-	//uart_set_pinmux(UART_PORT_B,UART_B_TCK_TDO);
-#endif
+	uart_set_pinmux(UART_PORT_B,UART_B_TCK_TDO);
 
 	/* pinmux of eth */
 	eth_pinmux_init();
 
 	/* IR decoder pinmux */
 	set_mio_mux(5, 1<<31);
-
-#ifdef CONFIG_I2C_SW_AML   /*for multak*/
-	/* SmartCard pinmux */
-	set_mio_mux(2, 0xF<<20);
-#endif
-
-	set_audio_pinmux(AUDIO_IN_JTAG); // for MIC input
 }
 static void __init  device_clk_setting(void)
 {

@@ -227,21 +227,18 @@ static inline void _enable_vsync_interrupt(void)
 }
 static void _enable_backlight(u32 brightness_level)
 {
-	u32 l = brightness_level;
-	
-	if (l > BL_MAX_LEVEL)
-		l = BL_MAX_LEVEL;
-		
-    WRITE_MPEG_REG(LCD_PWM0_LO_ADDR, BL_MAX_LEVEL - l);
-    WRITE_MPEG_REG(LCD_PWM0_HI_ADDR, l);
+    pDev->conf.backlight_on?pDev->conf.backlight_on():0;
+}
+static void _disable_backlight(void)
+{
+    pDev->conf.backlight_off?pDev->conf.backlight_off():0;
 }
 static void _lcd_module_enable(void)
 {
-	BUG_ON(pDev==NULL);
-	pDev->conf.power_on?pDev->conf.power_on():0;
-	_init_tvenc(&pDev->conf);
+    BUG_ON(pDev==NULL);
+    pDev->conf.power_on?pDev->conf.power_on():0;
+    _init_tvenc(&pDev->conf);
     	_init_tcon(&pDev->conf);
-       	//_enable_backlight(BL_MAX_LEVEL);
     	_enable_vsync_interrupt();
 }
 
@@ -253,9 +250,14 @@ static const vinfo_t *lcd_get_current_info(void)
 static int lcd_set_current_vmode(vmode_t mode)
 {
 	if (mode != VMODE_LCD)
-		return -EINVAL;
-	WRITE_MPEG_REG(VPP_POSTBLEND_H_SIZE, pDev->lcd_info.width);
-	_lcd_module_enable();
+        return -EINVAL;
+    WRITE_MPEG_REG(VPP_POSTBLEND_H_SIZE, pDev->lcd_info.width);
+    _lcd_module_enable();
+    if (VMODE_INIT_NULL == pDev->lcd_info.mode)
+        pDev->lcd_info.mode = VMODE_LCD;
+    else
+        _enable_backlight(BL_MAX_LEVEL);
+    printk("\n\nlcd_set_current_vmode.\n\n");
 	return 0;
 }
 
@@ -275,6 +277,7 @@ static int lcd_vmode_is_supported(vmode_t mode)
 static int lcd_module_disable(vmode_t cur_vmod)
 {
 	BUG_ON(pDev==NULL);
+    _disable_backlight();
 	pDev->conf.power_off?pDev->conf.power_off():0;
 	return 0;
 }
@@ -282,8 +285,8 @@ static int lcd_module_disable(vmode_t cur_vmod)
 static int lcd_suspend(void)
 {
 	BUG_ON(pDev==NULL);
-	printk("lcd_suspend (%d)\n", pDev->conf.power_off);
-	
+    printk("lcd_suspend \n");
+    _disable_backlight();
 	pDev->conf.power_off?pDev->conf.power_off():0;
 	disable_irq(INT_VIU_VSYNC);
 	return 0;
@@ -293,6 +296,7 @@ static int lcd_resume(void)
 	printk("lcd_resume\n");
 	enable_irq(INT_VIU_VSYNC);
 	_lcd_module_enable();
+    _enable_backlight(BL_MAX_LEVEL);
 	return 0;
 }
 #endif
@@ -314,7 +318,7 @@ static vout_server_t lcd_vout_server={
 static void _init_vout(tcon_dev_t *pDev)
 {
 	pDev->lcd_info.name = PANEL_NAME;
-	pDev->lcd_info.mode = VMODE_LCD;
+    pDev->lcd_info.mode = VMODE_INIT_NULL;
 	pDev->lcd_info.width = pDev->conf.width;
 	pDev->lcd_info.height = pDev->conf.height;
 	pDev->lcd_info.field_height = pDev->conf.height;

@@ -38,6 +38,7 @@
 #include <linux/i2c-aml.h>
 #include <mach/power_gate.h>
 #include <linux/aml_bl.h>
+#include <linux/reboot.h>
 
 #ifdef CONFIG_AM_UART_WITH_S_CORE 
 #include <linux/uart-aml.h>
@@ -47,7 +48,7 @@
 #include <mach/gpio.h>
 #include <linux/delay.h>
 #include <mach/clk_set.h>
-#include "board-8726m-REFB01.h"
+#include "board-8726m-refb12.h"
 
 #if defined(CONFIG_TOUCHSCREEN_ADS7846)
 #include <linux/spi/spi.h>
@@ -164,11 +165,11 @@ static struct platform_device adc_ts_device = {
 #include <linux/adc_keypad.h>
 
 static struct adc_key adc_kp_key[] = {
-    {KEY_LEFTMETA,          "menu", CHAN_4, 0, 60},
-    {KEY_PAGEDOWN,          "vol-", CHAN_4, 282, 60},
-    {KEY_PAGEUP,            "vol+", CHAN_4, 506, 60},
-    {KEY_TAB,               "exit", CHAN_4, 622, 60},
-    {KEY_HOME,              "home", CHAN_4, 852, 60},
+    {KEY_LEFTMETA,          "menu", CHAN_4, 0, 60},		//0v
+    {KEY_PAGEDOWN,          "vol-", CHAN_4, 180, 60},	//0.58
+    {KEY_PAGEUP,            "vol+", CHAN_4, 398, 60},		//1.286
+    {KEY_TAB,               "exit", CHAN_4, 623, 60},		//2.01
+    {KEY_HOME,              "home", CHAN_4, 849, 60},	//2.74
 };
 
 static struct adc_kp_platform_data adc_kp_pdata = {
@@ -197,7 +198,6 @@ static inline int key_input_init_func(void)
 {
     WRITE_CBUS_REG(0x21d0/*RTC_ADDR0*/, (READ_CBUS_REG(0x21d0/*RTC_ADDR0*/) &~(1<<11)));
     WRITE_CBUS_REG(0x21d1/*RTC_ADDR0*/, (READ_CBUS_REG(0x21d1/*RTC_ADDR0*/) &~(1<<3)));
-    return 0;
 }
 static inline int key_scan(int *key_state_list)
 {
@@ -232,13 +232,13 @@ static struct platform_device input_device_key = {
 static int sn7325_pwr_rst(void)
 {
     //reset
-    set_gpio_val(GPIOA_bank_bit(4), GPIOA_bit_bit0_14(4), 0); //low
-    set_gpio_mode(GPIOA_bank_bit(4), GPIOA_bit_bit0_14(4), GPIO_OUTPUT_MODE);
+    set_gpio_val(GPIOD_bank_bit2_24(20), GPIOD_bit_bit2_24(20), 0); //low
+    set_gpio_mode(GPIOD_bank_bit2_24(20), GPIOD_bit_bit2_24(20), GPIO_OUTPUT_MODE);
 
     udelay(2); //delay 2us
 
-    set_gpio_val(GPIOA_bank_bit(4), GPIOA_bit_bit0_14(4), 1); //high
-    set_gpio_mode(GPIOA_bank_bit(4), GPIOA_bit_bit0_14(4), GPIO_OUTPUT_MODE);
+    set_gpio_val(GPIOD_bank_bit2_24(20), GPIOD_bit_bit2_24(20), 1); //high
+    set_gpio_mode(GPIOD_bank_bit2_24(20), GPIOD_bit_bit2_24(20), GPIO_OUTPUT_MODE);
     //end
 
     return 0;
@@ -413,15 +413,20 @@ static struct resource amlogic_card_resource[] = {
 
 void extern_wifi_power(int is_power)
 {
+	//OD5
     if (0 == is_power)
     {
-        set_gpio_val(GPIOD_bank_bit2_24(20), GPIOD_bit_bit2_24(20), 1); //high
-        set_gpio_mode(GPIOD_bank_bit2_24(20), GPIOD_bit_bit2_24(20), GPIO_OUTPUT_MODE);
+        #ifdef CONFIG_SN7325
+        configIO(0, 0);
+        setIO_level(0, 0, 5);
+        #endif
     }
     else
     {
-        set_gpio_val(GPIOD_bank_bit2_24(20), GPIOD_bit_bit2_24(20), 0); //low
-        set_gpio_mode(GPIOD_bank_bit2_24(20), GPIOD_bit_bit2_24(20), GPIO_OUTPUT_MODE);
+        #ifdef CONFIG_SN7325
+        configIO(0, 0);
+        setIO_level(0, 1, 5);
+        #endif
     }
     return;
 }
@@ -545,7 +550,7 @@ int wm8900_is_hp_pluged(void)
     cs_no = READ_CBUS_REG(LED_PWM_REG3);
     if(cs_no &(1<<15))
       level |= (1<<0);
-    return (level == 0)?(1):(0); //return 1: hp pluged, 0: hp unpluged.
+    return (level == 1)?(1):(0); //return 1: hp pluged, 0: hp unpluged.
 }
 
 static struct wm8900_platform_data wm8900_pdata = {
@@ -674,14 +679,14 @@ static int ads7846_init_gpio(void)
 }
 #endif
 
-#ifdef CONFIG_EETI_CAPACITIVE_TOUCHSCREEN
-#include <linux/i2c/eeti.h>
+#ifdef CONFIG_ITK_CAPACITIVE_TOUCHSCREEN
+#include <linux/i2c/itk.h>
 
 //GPIOD_24
-#define GPIO_EETI_PENIRQ ((GPIOD_bank_bit2_24(24)<<16) |GPIOD_bit_bit2_24(24)) 
-#define GPIO_EETI_RST
+#define GPIO_ITK_PENIRQ ((GPIOD_bank_bit2_24(24)<<16) |GPIOD_bit_bit2_24(24)) 
+#define GPIO_ITK_RST
 
-static int eeti_init_irq(void)
+static int itk_init_irq(void)
 {
 /* memson
     Bit(s)  Description
@@ -702,26 +707,103 @@ static int eeti_init_irq(void)
  */
 
     /* set input mode */
-    gpio_direction_input(GPIO_EETI_PENIRQ);
+    gpio_direction_input(GPIO_ITK_PENIRQ);
     /* set gpio interrupt #0 source=GPIOD_24, and triggered by falling edge(=1) */
     gpio_enable_edge_int(50+24, 1, 0);
 
     return 0;
 }
-static int eeti_get_irq_level(void)
+static int itk_get_irq_level(void)
 {
-    return gpio_get_value(GPIO_EETI_PENIRQ);
+    return gpio_get_value(GPIO_ITK_PENIRQ);
 }
 
-static struct eeti_platform_data eeti_pdata = {
-    .init_irq = &eeti_init_irq,
-    .get_irq_level = &eeti_get_irq_level,
-    .tp_max_width = 32752,
-    .tp_max_height = 32752,
-    .lcd_max_width = 800,
-    .lcd_max_height = 600,
+static struct itk_platform_data itk_pdata = {
+    .init_irq = &itk_init_irq,
+    .get_irq_level = &itk_get_irq_level,
+    .tp_max_width = 3840,
+    .tp_max_height = 2944,
+    .lcd_max_width = 1024,
+    .lcd_max_height = 768,
 };
 #endif
+
+#ifdef CONFIG_RAYDIUM_CAPACITIVE_TOUCHSCREEN
+#include <linux/capts.h>
+/* GPIOD_24 */
+#define TS_IRQ_GPIO  ((GPIOD_bank_bit2_24(24)<<16) |GPIOD_bit_bit2_24(24))
+#define TS_IRQ_IDX     (GPIOD_IDX + 24)
+#define TS_RESET_GPIO  ((GPIOD_bank_bit2_24(23)<<16) |GPIOD_bit_bit2_24(23))
+
+static int ts_init_irq(void);
+static int ts_get_irq_level(void);
+static struct ts_platform_data ts_pdata = {
+    .mode = TS_MODE_INT_LOW,
+    .irq = INT_GPIO_0,
+    .init_irq = ts_init_irq,
+    .get_irq_level = ts_get_irq_level,
+    .info = {
+        .xmin = 0,
+        .xmax = 800,
+        .ymin = 0,
+        .ymax = 600,
+        .zmin = 0,
+        .zmax = 1,
+        .wmin = 0,
+        .wmax = 1,
+        .swap_xy = 0,
+        .x_pol = 0,
+        .y_pol = 0
+    },
+    .data = (void *)(TS_RESET_GPIO+1),
+};
+
+static int ts_init_irq(void)
+{
+    int group = ts_pdata.irq - INT_GPIO_0;
+    int mode =  ts_pdata.mode;
+    
+    if (mode < TS_MODE_TIMER_READ) {
+        gpio_direction_input(TS_IRQ_GPIO);
+        if (mode == TS_MODE_INT_FALLING) {
+            gpio_enable_edge_int(TS_IRQ_IDX, 1, group);
+        }
+        else if (mode == TS_MODE_INT_RISING) {
+            gpio_enable_edge_int(TS_IRQ_IDX, 0, group);
+        }
+        else if (mode == TS_MODE_INT_LOW) {
+            gpio_enable_level_int(TS_IRQ_IDX, 1, group);
+        }
+        else if (mode == TS_MODE_INT_HIGH) {
+            gpio_enable_level_int(TS_IRQ_IDX, 0, group);
+        }
+    }
+    return 0;
+}
+
+static int ts_get_irq_level(void)
+{
+    return gpio_get_value(TS_IRQ_GPIO);
+}
+#endif
+
+
+//#ifdef CONFIG_RAYDIUM_CAPACITIVE_TOUCHSCREEN
+//#include <linux/i2c/raydium_ts.h>
+//#define TS_RESET_GPIO  ((GPIOD_bank_bit2_24(23)<<16) |GPIOD_bit_bit2_24(23))
+//#define TS_IRQ_GPIO  ((GPIOD_bank_bit2_24(24)<<16) |GPIOD_bit_bit2_24(24))
+//#define TS_IRQ_IDX     (GPIOD_IDX + 24)
+//#define TS_IRQ              INT_GPIO_0
+
+//static void ts_init(void)
+//{
+//    gpio_direction_input(TS_IRQ_GPIO);
+//    gpio_enable_edge_int(TS_IRQ_IDX, 1, TS_IRQ - INT_GPIO_0);
+//    gpio_direction_output(TS_RESET_GPIO, 0);
+//    msleep(10);
+//    gpio_direction_output(TS_RESET_GPIO, 1);
+//}
+//#endif
 
 #ifdef CONFIG_ANDROID_PMEM
 static struct android_pmem_platform_data pmem_data =
@@ -756,12 +838,18 @@ static void set_vccx2(int power_on)
     if(power_on)
     {
         set_gpio_val(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), 1);
-        set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);
+        set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);        
+        //set clk for wifi
+        SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, (1<<18));
+        CLEAR_CBUS_REG_MASK(PREG_EGPIO_EN_N, (1<<4));	              
     }
     else
     {
         set_gpio_val(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), 0);
-        set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);
+        set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);   
+        //disable wifi clk
+        CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, (1<<18));
+        SET_CBUS_REG_MASK(PREG_EGPIO_EN_N, (1<<4));	        
     }
 }
 static struct meson_pm_config aml_pm_pdata = {
@@ -872,13 +960,21 @@ static int is_ac_connected(void)
 
 static void set_charge(int flags)
 {
-    //GPIOD_22 low: fast charge high: slow charge
-    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_7, (1<<18));
+    //EX io PP3 low: fast charge high: slow charge
     if(flags == 1)
-        set_gpio_val(GPIOD_bank_bit2_24(22), GPIOD_bit_bit2_24(22), 0); //fast charge
+        {
+	    #ifdef CONFIG_SN7325
+        configIO(1, 0);
+        setIO_level(1, 0, 3);
+        #endif
+	    }
     else
-        set_gpio_val(GPIOD_bank_bit2_24(22), GPIOD_bit_bit2_24(22), 1); //slow charge
-    set_gpio_mode(GPIOD_bank_bit2_24(22), GPIOD_bit_bit2_24(22), GPIO_OUTPUT_MODE);
+        {
+	    #ifdef CONFIG_SN7325
+        configIO(1, 0);
+        setIO_level(1, 1, 3);
+        #endif
+        }
 }
 
 #ifdef CONFIG_SARADC_AM
@@ -893,7 +989,7 @@ static int get_bat_vol(void)
 #endif
 }
 
-static int get_charge_status(void)
+static int get_charge_status()
 {
     return (READ_CBUS_REG(ASSIST_HW_REV)&(1<<8))? 1:0;
 }
@@ -901,12 +997,15 @@ static int get_charge_status(void)
 static void set_bat_off(void)
 {
     //BL_PWM power off
+    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<31));
+    CLEAR_CBUS_REG_MASK(PWM_MISC_REG_AB, (1 << 0));
     set_gpio_val(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), 0);
     set_gpio_mode(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), GPIO_OUTPUT_MODE);
-
     //VCCx2 power down
     set_vccx2(0);
-
+    if(is_ac_connected()){ //AC in after power off press
+        kernel_restart("reboot");
+    }
     //Power hold down
     set_gpio_val(GPIOA_bank_bit(8), GPIOA_bit_bit0_14(8), 0);
     set_gpio_mode(GPIOA_bank_bit(8), GPIOA_bit_bit0_14(8), GPIO_OUTPUT_MODE);
@@ -965,71 +1064,71 @@ static struct platform_device aml_uart_device = {
 #if defined(CONFIG_NAND_FLASH_DRIVER_BASE_OPERATE) || defined(CONFIG_NAND_FLASH_DRIVER_MULTIPLANE_CE)
 static struct mtd_partition partition_info[] = 
 {
-    {
-        .name = "bootloader",
-        .offset = 0,
-        .size=4*1024*1024,
-    //  .set_flags=0,
-    //  .dual_partnum=0,
-    },
-    {
-        .name = "environment",
-        .offset = 4*1024*1024,
-        .size=4*1024*1024,
-    //  .set_flags=0,
-    //  .dual_partnum=0,
-    },
-    {
-        .name = "splash",
-        .offset = 8*1024*1024,
-        .size=4*1024*1024,
-    //  .set_flags=0,
-    //  .dual_partnum=0,
-    },
-    {
-        .name = "recovery",
-        .offset = 12*1024*1024,
-        .size = 16 * 1024*1024,
-    //  .set_flags=0,
-    //  .dual_partnum=0,
-    },
-    {
-        .name = "boot",
-        .offset = 28*1024*1024,
-        .size = 16 * 1024*1024,
-    //  .set_flags=0,
-    //  .dual_partnum=0,
-    },
-    {
-        .name = "system",
-        .offset = 44*4*1024*1024,
-        .size = 240 * 1024*1024,
-    //  .set_flags=0,
-    //  .dual_partnum=0,
-    },
-    {
-        .name = "cache",
-        .offset = 416*1024*1024,
-        .size = 36 * 1024*1024,
-    //  .set_flags=0,
-    //  .dual_partnum=0,
-    },
-    {
-        .name = "userdata",
-        .offset = 452*1024*1024,
-        .size = 512 * 1024*1024,
-    //  .set_flags=0,
-    //  .dual_partnum=0,
-    },
-    {
-        .name = "media",
-        .offset = (452+512)*1024*1024,
-        .size = MTDPART_SIZ_FULL,
-        .set_flags = MTD_AVNFTL,
-        .dual_partnum = 1|MTD_AVFTL_PLANE|MTD_AVNFTL_INTERL,
-    //  .set_flags=0,
-    //  .dual_partnum=0,
-    },
+	{
+		.name = "bootloader",
+		.offset = 0,
+		.size=4*1024*1024,
+	//	.set_flags=0,
+	//	.dual_partnum=0,
+	},
+	{
+		.name = "environment",
+		.offset = 4*1024*1024,
+		.size=4*1024*1024,
+	//	.set_flags=0,
+	//	.dual_partnum=0,
+	},
+	{
+		.name = "splash",
+		.offset = 8*1024*1024,
+		.size=4*1024*1024,
+	//	.set_flags=0,
+	//	.dual_partnum=0,
+	},
+	{
+		.name = "recovery",
+		.offset = 12*1024*1024,
+		.size = 16 * 1024*1024,
+	//	.set_flags=0,
+	//	.dual_partnum=0,
+	},
+	{
+		.name = "boot",
+		.offset = 28*1024*1024,
+		.size = 16 * 1024*1024,
+	//	.set_flags=0,
+	//	.dual_partnum=0,
+	},
+	{
+		.name = "system",
+		.offset = 44*4*1024*1024,
+		.size = 240 * 1024*1024,
+	//	.set_flags=0,
+	//	.dual_partnum=0,
+	},
+	{
+		.name = "cache",
+		.offset = 416*1024*1024,
+		.size = 36 * 1024*1024,
+	//	.set_flags=0,
+	//	.dual_partnum=0,
+	},
+	{
+		.name = "userdata",
+		.offset= 452*1024*1024,
+		.size= 512 * 1024*1024,
+	//	.set_flags=0,
+	//	.dual_partnum=0,
+	},
+	{
+		.name = "media",
+		.offset = (452+512)*1024*1024,//MTDPART_SIZ_FULL;//MTDPART_OFS_APPEND,
+		.size = MTDPART_SIZ_FULL,//(0x100000000-(432+256)*1024*1024),
+		.set_flags = MTD_AVNFTL,
+		.dual_partnum = 1|MTD_AVFTL_PLANE|MTD_AVNFTL_INTERL,
+	//	.set_flags=0,
+	//	.dual_partnum=0,
+	},
 };
 #endif
 #ifdef CONFIG_NAND_FLASH_DRIVER_BASE_OPERATE
@@ -1101,18 +1200,37 @@ static struct aml_m1_nand_platform aml_2kpage128kblocknand_platform = {
 */
 
 
+//static struct aml_m1_nand_platform aml_Micron8GBABAnand_platform =
+//{
+//	.page_size = 2048*2,
+//	.spare_size= 224,		//for micron ABA 4GB
+//	.erase_size=1024*1024,
+//	.bch_mode=	  3,		//BCH16
+//	.encode_size=540,
+//	.timing_mode=5,
+//	.onfi_mode=1,
+//	.interlmode=0,
+//	.planemode=1,
+//	.ce_num=2,
+//	.chip_num=2,
+//	.partitions = partition_info,
+//	.nr_partitions = ARRAY_SIZE(partition_info),
+//};
 static struct aml_m1_nand_platform aml_nand_platform =
 {
-    .bch_mode=    3,        //BCH16
-    .encode_size=540,
-    .timing_mode=5,
-    .onfi_mode=1,
-    .interlmode=0,
-    .planemode=1,
-    .ce_num=2,
-    .chip_num=2,
-    .partitions = partition_info,
-    .nr_partitions = ARRAY_SIZE(partition_info),
+//	.page_size = 8192,
+//	.spare_size= 448,		//for micron ABA 4GB
+//	.erase_size=2*1024*1024,
+	.bch_mode=	  3,		//BCH16
+	.encode_size=540,
+	.timing_mode=5,
+	.onfi_mode=1,
+	.interlmode=0,
+	.planemode=1,
+	.ce_num=2,
+	.chip_num=2,
+	.partitions = partition_info,
+	.nr_partitions = ARRAY_SIZE(partition_info),
 };
 
 
@@ -1125,13 +1243,14 @@ static struct resource aml_nand_resources[] = {
 };
 
 static struct platform_device aml_nand_device = {
-    .name = "aml_m1_nand",
-    .id = 0,
-    .num_resources = ARRAY_SIZE(aml_nand_resources),
-    .resource = aml_nand_resources,
-    .dev = {
-        .platform_data = &aml_nand_platform,
-    },
+	.name = "aml_m1_nand",
+	.id = 0,
+	.num_resources = ARRAY_SIZE(aml_nand_resources),
+	.resource = aml_nand_resources,
+	.dev = {
+	//	.platform_data = &aml_Micron4GBABAnand_platform,
+		.platform_data = &aml_nand_platform,
+	},
 };
 #endif  //CONFIG_NAND_FLASH_DRIVER_MULTIPLANE_CE
 
@@ -1143,7 +1262,7 @@ static struct platform_device aml_nand_device = {
 static void aml_8726m_bl_init(void)
 {
     unsigned val;
-
+    
     WRITE_CBUS_REG_BITS(PERIPHS_PIN_MUX_0, 0, 22, 1);
     WRITE_CBUS_REG_BITS(PREG_AM_ANALOG_ADDR, 1, 0, 1);
     WRITE_CBUS_REG(VGHL_PWM_REG0, 0);
@@ -1185,13 +1304,23 @@ static void aml_8726m_bl_init(void)
           (1000 << 14) |    // Digital dimmer_duty = 0%, the most darkness
           (1000 <<  0) ;    // dimmer_freq = 1KHz
     WRITE_CBUS_REG(VGHL_PWM_REG4, val);
-    printk("\n\nBacklight init.\n\n");
+    
+    SET_CBUS_REG_MASK(PWM_MISC_REG_AB, (1 << 0)); 
+    SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<31));            
+    
 }
 static unsigned bl_level;
+static unsigned panel_state = 0;
 static unsigned aml_8726m_get_bl_level(void)
 {
+//    unsigned level = 0;
+//
+//    WRITE_CBUS_REG_BITS(VGHL_PWM_REG0, 1, 31, 1);
+//    WRITE_CBUS_REG_BITS(VGHL_PWM_REG4, 0, 30, 1);
+//    level = READ_CBUS_REG_BITS(VGHL_PWM_REG0, 0, 4);
     return bl_level;
 }
+#if 0
 static void aml_8726m_set_bl_level(unsigned level)
 {
     unsigned cs_level;
@@ -1214,20 +1343,46 @@ static void aml_8726m_set_bl_level(unsigned level)
 
     WRITE_CBUS_REG_BITS(VGHL_PWM_REG0, cs_level, 0, 4);
 }
-
-static void aml_8726m_power_on_bl(void)
+#else
+#define BL_MAX_LEVEL 60000
+static void aml_8726m_set_bl_level(unsigned level)
 {
-    //BL_PWM -> GPIOA_7: 1
-    msleep(200);
-    set_gpio_val(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), 1);
-    set_gpio_mode(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), GPIO_OUTPUT_MODE);
+    unsigned cs_level,pwm_level,low,hi;
+    int i;
+    
+    bl_level = level;
+        
+    level = level*179/255;
+    if(level>=120){ //120 - 179
+        cs_level = 9 -(level - 120)/15;
+        pwm_level = 85 + (level - 120)%15;   
+    }
+    else if(level>=20){ //20 - 119
+        cs_level = 13 - (level -20)/25;
+        pwm_level = 75 + (level - 20)%25;   
+    }
+    else{  //  <20
+        cs_level = 13;
+        pwm_level = 0;           
+    }
+        
+    hi = (BL_MAX_LEVEL/100)*pwm_level;
+    low = BL_MAX_LEVEL - hi;
+    
+    WRITE_CBUS_REG_BITS(VGHL_PWM_REG0, cs_level, 0, 4);        
+    WRITE_CBUS_REG_BITS(PWM_PWM_A,low,0,16);  //low
+    WRITE_CBUS_REG_BITS(PWM_PWM_A,hi,16,16);  //hi  
+}
+
+#endif
+static void aml_8726m_power_on_bl(void)
+{ 
+    printk("backlight on\n");
 }
 
 static void aml_8726m_power_off_bl(void)
 {
-    //BL_PWM -> GPIOA_7: 0
-    set_gpio_val(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), 0);
-    set_gpio_mode(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), GPIO_OUTPUT_MODE);
+    printk("backlight off\n");
 }
 
 struct aml_bl_platform_data aml_bl_platform =
@@ -1431,18 +1586,32 @@ static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
 
 #ifdef CONFIG_SN7325
     {
-        I2C_BOARD_INFO("sn7325", 0x58),
+        I2C_BOARD_INFO("sn7325", 0x59),
         .platform_data = (void *)&sn7325_pdata,
     },
 #endif
 
-#ifdef CONFIG_EETI_CAPACITIVE_TOUCHSCREEN
+#ifdef CONFIG_ITK_CAPACITIVE_TOUCHSCREEN
     {
-        I2C_BOARD_INFO("eeti", 0x04),
+        I2C_BOARD_INFO("itk", 0x41),
         .irq = INT_GPIO_0,
-        .platform_data = (void *)&eeti_pdata,
+        .platform_data = (void *)&itk_pdata,
     },
 #endif
+
+//#ifdef CONFIG_RAYDIUM_CAPACITIVE_TOUCHSCREEN
+//    {
+//        I2C_BOARD_INFO(RM310XX_I2C_TS_NAME,  0x5C),
+//        .irq = TS_IRQ,
+//    },
+//#endif
+#ifdef CONFIG_RAYDIUM_CAPACITIVE_TOUCHSCREEN
+    {
+        I2C_BOARD_INFO("raydium", 0x5c),
+        .platform_data = (void *)&ts_pdata,
+    },
+#endif
+
 };
 
 
@@ -1491,6 +1660,9 @@ static void __init device_pinmux_init(void )
     aml_i2c_init();
     set_audio_pinmux(AUDIO_OUT_TEST_N);
     set_audio_pinmux(AUDIO_IN_JTAG);
+    //set clk for wifi
+    SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, (1<<18));
+    CLEAR_CBUS_REG_MASK(PREG_EGPIO_EN_N, (1<<4));	
 }
 
 static void __init  device_clk_setting(void)
@@ -1530,8 +1702,9 @@ static void __init power_hold(void)
     set_gpio_val(GPIOA_bank_bit(8), GPIOA_bit_bit0_14(8), 1);
     set_gpio_mode(GPIOA_bank_bit(8), GPIOA_bit_bit0_14(8), GPIO_OUTPUT_MODE);
     
-    //VCCx2 power up
-    set_vccx2(1);
+        /* PIN28, GPIOA_6, Pull high, For En_5V */
+    set_gpio_val(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), 1);
+    set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);
 }
 
 static __init void m1_init_machine(void)
@@ -1555,6 +1728,9 @@ static __init void m1_init_machine(void)
     ads7846_init_gpio();
     spi_register_board_info(spi_board_info_list, ARRAY_SIZE(spi_board_info_list));
 #endif
+//#ifdef CONFIG_RAYDIUM_CAPACITIVE_TOUCHSCREEN
+//		ts_init();
+//#endif
     disable_unused_model();
 }
 

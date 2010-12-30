@@ -1104,7 +1104,7 @@ static int aml_m1_nand_write_oob(struct mtd_info *mtd, struct nand_chip *chip,in
 static int aml_m1_nand_block_markbad(struct mtd_info *mtd, loff_t ofs)
 {
 	printk(" MARK the BAD BLOCK , NOT IMPLENMENT\n");
-	BUG();
+	//BUG();
 	return 0;
 }
 static int aml_m1_nand_read_oob(struct mtd_info *mtd, struct nand_chip *chip,int page, int sndcmd)

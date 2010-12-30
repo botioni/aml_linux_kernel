@@ -29,7 +29,7 @@
 //#define TS_DELAY_WORK
 
 /* periodic polling delay and period */
-#define TS_POLL_DELAY   (50 * 1000000)
+#define TS_POLL_DELAY   (80 * 1000000)
 #define TS_POLL_PERIOD  (2 * 1000000)
 
 #define MAX_SUPPORT_POINT   5 //just support 2 point now
@@ -132,12 +132,12 @@ static int eeti_register_input(struct eeti *ts)
     set_bit(ABS_MT_TRACKING_ID, dev->absbit);
     //set_bit(ABS_MT_PRESSURE, dev->absbit);
 
-    input_set_abs_params(dev, ABS_X, 0, ts->lcd_xmax, 0, 0);
-    input_set_abs_params(dev, ABS_Y, 0, ts->lcd_ymax, 0, 0);
-    input_set_abs_params(dev, ABS_MT_POSITION_X, 0, ts->lcd_xmax, 0, 0);
-    input_set_abs_params(dev, ABS_MT_POSITION_Y, 0, ts->lcd_ymax, 0, 0);
-    input_set_abs_params(dev, ABS_MT_TOUCH_MAJOR, 0, ts->lcd_xmax, 0, 0);
-    input_set_abs_params(dev, ABS_MT_WIDTH_MAJOR, 0, ts->lcd_xmax, 0, 0);
+    input_set_abs_params(dev, ABS_X, 0, ts->tp_xmax, 0, 0);
+    input_set_abs_params(dev, ABS_Y, 0, ts->tp_ymax, 0, 0);
+    input_set_abs_params(dev, ABS_MT_POSITION_X, 0, ts->tp_xmax, 0, 0);
+    input_set_abs_params(dev, ABS_MT_POSITION_Y, 0, ts->tp_ymax, 0, 0);
+    input_set_abs_params(dev, ABS_MT_TOUCH_MAJOR, 0, 255, 0, 0);
+    input_set_abs_params(dev, ABS_MT_WIDTH_MAJOR, 0, 255, 0, 0);
     input_set_abs_params(dev, ABS_MT_TRACKING_ID, 0, 10, 0, 0);
     //input_set_abs_params(dev, ABS_MT_PRESSURE, 0, ???, 0, 0);
 
@@ -216,8 +216,6 @@ static int eeti_read_sensor(struct eeti *ts)
     event->valid = valid;
     event->x = (data[3] << 8) | data[2];
     event->y = (data[5] << 8) | data[4];
-    event->x = (event->x*ts->lcd_xmax)/(ts->tp_xmax);
-    event->y = (event->y*ts->lcd_ymax)/(ts->tp_ymax);
     #ifdef EETI_TS_DEBUG_READ
     printk(KERN_INFO "\nread_sensor valid = %d, id = %d, pendown = %d, event[%d]->x = %d, event[%d]->y = %d\n", event->valid, id, event->pendown, ts->touching_num, event->x, ts->touching_num, event->y);
     #endif
@@ -419,11 +417,6 @@ static int eeti_probe(struct i2c_client *client,
     ts->client = client;
     eeti_reset(ts);
 
-    if (eeti_register_input(ts) < 0) {
-        dev_err(&client->dev, "register input fail!\n");
-        goto fail;
-    }
-
     /* setup platform-specific hooks */
     ts->pdata = (struct eeti_platform_data*)client->dev.platform_data;
     if (!ts->pdata || !ts->pdata->init_irq || !ts->pdata->get_irq_level) {
@@ -438,6 +431,11 @@ static int eeti_probe(struct i2c_client *client,
         ts->lcd_ymax = ((struct eeti_platform_data*) client->dev.platform_data)->lcd_max_height;
         ts->tp_xmax = ((struct eeti_platform_data*) client->dev.platform_data)->tp_max_width;
         ts->tp_ymax = ((struct eeti_platform_data*) client->dev.platform_data)->tp_max_height;
+    }
+
+    if (eeti_register_input(ts) < 0) {
+        dev_err(&client->dev, "register input fail!\n");
+        goto fail;
     }
 
     if (ts->pdata->init_irq) {

@@ -47,7 +47,7 @@
 #include <mach/gpio.h>
 #include <linux/delay.h>
 #include <mach/clk_set.h>
-#include "board-8726m-REFB02.h"
+#include "board-8726m-refb07.h"
 
 #if defined(CONFIG_TOUCHSCREEN_ADS7846)
 #include <linux/spi/spi.h>
@@ -169,9 +169,9 @@ static struct platform_device adc_ts_device = {
 
 static struct adc_key adc_kp_key[] = {
     {KEY_PAGEDOWN,          "vol-", CHAN_4, 0, 60},
-    {KEY_PAGEUP,            "vol+", CHAN_4, 306, 60},
-    {KEY_TAB,               "exit", CHAN_4, 602, 60},
-    {KEY_LEFTMETA,          "menu", CHAN_4, 760, 60},
+    {KEY_PAGEUP,            "vol+", CHAN_4, 398, 60},
+    {KEY_TAB,               "exit", CHAN_4, 623, 60},
+    {KEY_LEFTMETA,          "menu", CHAN_4, 849, 60},
 };
 
 static struct adc_kp_platform_data adc_kp_pdata = {
@@ -200,7 +200,6 @@ static inline int key_input_init_func(void)
 {
     WRITE_CBUS_REG(0x21d0/*RTC_ADDR0*/, (READ_CBUS_REG(0x21d0/*RTC_ADDR0*/) &~(1<<11)));
     WRITE_CBUS_REG(0x21d1/*RTC_ADDR0*/, (READ_CBUS_REG(0x21d1/*RTC_ADDR0*/) &~(1<<3)));
-    return 0;
 }
 static inline int key_scan(int *key_state_list)
 {
@@ -254,15 +253,15 @@ static struct sn7325_platform_data sn7325_pdata = {
 
 #ifdef CONFIG_TOUCH_KEY_PAD_IT7230
 #include <linux/input.h>
-//GPIOA_4
-#define GPIO_IT7230_ATTN ((GPIOA_bank_bit(4)<<16) | GPIOA_bit_bit0_14(4))
+//GPIOA_3
+#define GPIO_IT7230_ATTN ((GPIOA_bank_bit(3)<<16) | GPIOA_bit_bit0_14(3))
 
 static int it7230_init_irq(void)
 {
     /* set input mode */
     gpio_direction_input(GPIO_IT7230_ATTN);
-    /* set gpio interrupt #1 source=GPIOA_4, and triggered by falling edge(=1) */
-    gpio_enable_edge_int(0+4, 1, 1);
+    /* set gpio interrupt #1 source=GPIOA_3, and triggered by falling edge(=1) */
+    gpio_enable_edge_int(0+3, 1, 1);
     return 0;
 }
 
@@ -272,10 +271,10 @@ static int it7230_get_irq_level(void)
 }
 
 static struct cap_key it7230_keys[] = {
-    { KEY_ZOOM,         0x0001, "zoom"},
-    { KEY_HOME,         0x0002, "home"},
-    { KEY_LEFTMETA,     0x0004, "menu"},
-    { KEY_TAB,          0x0008, "exit"},
+    { KEY_ZOOM,   0x0001, "search"},
+    { KEY_HOME,     0x0002, "home"},
+    { KEY_MENU,     0x0004, "menu"},
+    { KEY_BACK,     0x0008, "back"},
 };
 
 static struct it7230_platform_data it7230_pdata = {
@@ -719,14 +718,13 @@ static int ads7846_init_gpio(void)
 }
 #endif
 
-#ifdef CONFIG_EETI_CAPACITIVE_TOUCHSCREEN
-#include <linux/i2c/eeti.h>
+#ifdef CONFIG_TOUCHSCREEN_TSC2007
+#include <linux/i2c/tsc2007.h>
 
 //GPIOD_24
-#define GPIO_EETI_PENIRQ ((GPIOD_bank_bit2_24(24)<<16) |GPIOD_bit_bit2_24(24)) 
-#define GPIO_EETI_RST
+#define GPIO_TSC2007_PENIRQ ((GPIOD_bank_bit2_24(24)<<16) |GPIOD_bit_bit2_24(24)) 
 
-static int eeti_init_irq(void)
+static int tsc2007_init_platform_hw(void)
 {
 /* memson
     Bit(s)  Description
@@ -747,73 +745,27 @@ static int eeti_init_irq(void)
  */
 
     /* set input mode */
-    gpio_direction_input(GPIO_EETI_PENIRQ);
+    gpio_direction_input(GPIO_TSC2007_PENIRQ);
     /* set gpio interrupt #0 source=GPIOD_24, and triggered by falling edge(=1) */
     gpio_enable_edge_int(50+24, 1, 0);
 
     return 0;
 }
-static int eeti_get_irq_level(void)
+static int tsc2007_get_pendown_state(void)
 {
-    return gpio_get_value(GPIO_EETI_PENIRQ);
+    return !gpio_get_value(GPIO_TSC2007_PENIRQ);
 }
 
-static struct eeti_platform_data eeti_pdata = {
-    .init_irq = &eeti_init_irq,
-    .get_irq_level = &eeti_get_irq_level,
-    .tp_max_width = 17407,
-    .tp_max_height = 12799,
-    .lcd_max_width = 1024,
-    .lcd_max_height = 768,
-};
-#endif
-
-#ifdef CONFIG_ITK_CAPACITIVE_TOUCHSCREEN
-#include <linux/i2c/itk.h>
-
-//GPIOD_24
-#define GPIO_ITK_PENIRQ ((GPIOD_bank_bit2_24(24)<<16) |GPIOD_bit_bit2_24(24)) 
-#define GPIO_ITK_RST
-
-static int itk_init_irq(void)
-{
-/* memson
-    Bit(s)  Description
-    256-105 Unused
-    104     JTAG_TDO
-    103     JTAG_TDI
-    102     JTAG_TMS
-    101     JTAG_TCK
-    100     gpioA_23
-    99      gpioA_24
-    98      gpioA_25
-    97      gpioA_26
-    98-76    gpioE[21:0]
-    75-50   gpioD[24:0]
-    49-23   gpioC[26:0]
-    22-15   gpioB[22;15]
-    14-0    gpioA[14:0]
- */
-
-    /* set input mode */
-    gpio_direction_input(GPIO_ITK_PENIRQ);
-    /* set gpio interrupt #0 source=GPIOD_24, and triggered by falling edge(=1) */
-    gpio_enable_edge_int(50+24, 1, 0);
-
-    return 0;
-}
-static int itk_get_irq_level(void)
-{
-    return gpio_get_value(GPIO_ITK_PENIRQ);
-}
-
-static struct itk_platform_data itk_pdata = {
-    .init_irq = &itk_init_irq,
-    .get_irq_level = &itk_get_irq_level,
-    .tp_max_width = 4352,
-    .tp_max_height = 3200,
-    .lcd_max_width = 1024,
-    .lcd_max_height = 768,
+static struct tsc2007_platform_data tsc2007_pdata = {
+    .model = 2007,
+    .x_plate_ohms = 400,
+    .get_pendown_state = tsc2007_get_pendown_state,
+    .clear_penirq = NULL,
+    .init_platform_hw = tsc2007_init_platform_hw,
+    .exit_platform_hw = NULL,
+    .swap_xy = 1,
+    .xpol = 0,
+    .ypol = 1,
 };
 #endif
 
@@ -966,13 +918,21 @@ static int is_ac_connected(void)
 
 static void set_charge(int flags)
 {
-    //GPIOD_22 low: fast charge high: slow charge
-    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_7, (1<<18));
-    if(flags == 1)
-        set_gpio_val(GPIOD_bank_bit2_24(22), GPIOD_bit_bit2_24(22), 0); //fast charge
-    else
-        set_gpio_val(GPIOD_bank_bit2_24(22), GPIOD_bit_bit2_24(22), 1); //slow charge
-    set_gpio_mode(GPIOD_bank_bit2_24(22), GPIOD_bit_bit2_24(22), GPIO_OUTPUT_MODE);
+    //EXT io pp3 low: fast charge high: slow charge
+    if(flags == 1)//fast charge
+    {
+#ifdef CONFIG_SN7325
+        configIO(1, 0);
+        setIO_level(1, 0, 3);
+#endif
+    }
+    else//slow charge
+    {
+#ifdef CONFIG_SN7325
+        configIO(1, 0);
+        setIO_level(1, 1, 3);
+#endif
+    }
 }
 
 #ifdef CONFIG_SARADC_AM
@@ -987,23 +947,13 @@ static int get_bat_vol(void)
 #endif
 }
 
-static int get_charge_status(void)
+static int get_charge_status()
 {
     return (READ_CBUS_REG(ASSIST_HW_REV)&(1<<8))? 1:0;
 }
 
 static void set_bat_off(void)
 {
-    //BL_PWM power off
-    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<31));
-    CLEAR_CBUS_REG_MASK(PWM_MISC_REG_AB, (1 << 0));
-    set_gpio_val(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), 0);
-    set_gpio_mode(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), GPIO_OUTPUT_MODE);
-
-    //VCCx2 power down
-    set_vccx2(0);
-
-    //Power hold down
     set_gpio_val(GPIOA_bank_bit(8), GPIOA_bit_bit0_14(8), 0);
     set_gpio_mode(GPIOA_bank_bit(8), GPIOA_bit_bit0_14(8), GPIO_OUTPUT_MODE);
 
@@ -1106,21 +1056,21 @@ static struct mtd_partition partition_info[] =
     {
         .name = "cache",
         .offset = 416*1024*1024,
-        .size = 36 * 1024*1024,
+        .size = 16 * 1024*1024,
     //  .set_flags=0,
     //  .dual_partnum=0,
     },
     {
         .name = "userdata",
-        .offset = 452*1024*1024,
-        .size = 512 * 1024*1024,
+        .offset= 432*1024*1024,
+        .size= 256 * 1024*1024,
     //  .set_flags=0,
     //  .dual_partnum=0,
     },
     {
         .name = "media",
-        .offset = (452+512)*1024*1024,
-        .size = MTDPART_SIZ_FULL,
+        .offset = MTDPART_OFS_APPEND,
+        .size = (0x200000000-(432+256)*1024*1024),
         .set_flags = MTD_AVNFTL,
         .dual_partnum = 1|MTD_AVFTL_PLANE|MTD_AVNFTL_INTERL,
     //  .set_flags=0,
@@ -1197,13 +1147,16 @@ static struct aml_m1_nand_platform aml_2kpage128kblocknand_platform = {
 */
 
 
-static struct aml_m1_nand_platform aml_nand_platform =
+static struct aml_m1_nand_platform aml_Micron8GBABAnand_platform =
 {
+    .page_size = 2048*2,
+    .spare_size= 224,       //for micron ABA 4GB
+    .erase_size=1024*1024,
     .bch_mode=    3,        //BCH16
     .encode_size=540,
     .timing_mode=5,
     .onfi_mode=1,
-    .interlmode=0,
+    .interlmode=1,
     .planemode=1,
     .ce_num=2,
     .chip_num=2,
@@ -1226,80 +1179,185 @@ static struct platform_device aml_nand_device = {
     .num_resources = ARRAY_SIZE(aml_nand_resources),
     .resource = aml_nand_resources,
     .dev = {
-        .platform_data = &aml_nand_platform,
+    //  .platform_data = &aml_Micron4GBABAnand_platform,
+        .platform_data = &aml_Micron8GBABAnand_platform,
     },
 };
 #endif  //CONFIG_NAND_FLASH_DRIVER_MULTIPLANE_CE
 
 #if defined(CONFIG_AMLOGIC_BACKLIGHT)
+static void power_on_panel(void)
+{
+    /* Power up LCD_3.3V */
+    #ifdef CONFIG_SN7325
+    configIO(0, 0);
+    setIO_level(0, 0, 0);
+    #endif
+
+    msleep(20);
+    /* No pin for AVDD control*/
+
+    early_pll_switch(1);
+    early_clk_switch(1);
+    early_power_gate_switch(1);
+//    CLK_GATE_ON(LCD);
+    set_mio_mux(4,(0x3f<<0));
+    set_mio_mux(0, 1<<11);
+    set_mio_mux(0, 1<<14);
+    msleep(50);
+
+}
+
+static void power_off_panel(void)
+{
+    msleep(50);
+    /* Power down LCD_3.3V */
+    #ifdef CONFIG_SN7325
+    configIO(0, 0);
+    setIO_level(0, 1, 0);
+    #endif
+    msleep(20);
+    /* No pin for AVDD control*/
+
+//    CLK_GATE_OFF(LCD);
+    early_power_gate_switch(0);
+    early_clk_switch(0);
+    early_pll_switch(0);    
+    clear_mio_mux(4,(0x3f<<0));
+    clear_mio_mux(0, 1<<11);
+    clear_mio_mux(0, 1<<14); 
+}
 
 #define PWM_TCNT        (600-1)
 #define PWM_MAX_VAL    (420)
 
 static void aml_8726m_bl_init(void)
 {
-    SET_CBUS_REG_MASK(PWM_MISC_REG_AB, (1 << 0));
-    SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<31));
-    printk("\n\nBacklight init.\n\n");
+    unsigned val;
+    
+    WRITE_CBUS_REG_BITS(PERIPHS_PIN_MUX_0, 0, 22, 1);
+    WRITE_CBUS_REG_BITS(PREG_AM_ANALOG_ADDR, 1, 0, 1);
+    WRITE_CBUS_REG(VGHL_PWM_REG0, 0);
+    WRITE_CBUS_REG(VGHL_PWM_REG1, 0);
+    WRITE_CBUS_REG(VGHL_PWM_REG2, 0);
+    WRITE_CBUS_REG(VGHL_PWM_REG3, 0);
+    WRITE_CBUS_REG(VGHL_PWM_REG4, 0);
+    val = (0 << 31)           |       // disable the overall circuit
+          (0 << 30)           |       // 1:Closed Loop  0:Open Loop
+          (PWM_TCNT << 16)    |       // PWM total count
+          (0 << 13)           |       // Enable
+          (1 << 12)           |       // enable
+          (0 << 10)           |       // test
+          (3 << 7)            |       // CS0 REF, Voltage FeedBack: about 0.27V
+          (7 << 4)            |       // CS1 REF, Current FeedBack: about 0.54V
+          (0 << 0);                   // DIMCTL Analog dimmer
+    WRITE_CBUS_REG(VGHL_PWM_REG0, val);
+    val = (1 << 30)           |       // enable high frequency clock
+          (PWM_MAX_VAL << 16) |       // MAX PWM value
+          (0 << 0);                  // MIN PWM value
+    WRITE_CBUS_REG(VGHL_PWM_REG1, val);
+    val = (0 << 31)       |       // disable timeout test mode
+          (0 << 30)       |       // timeout based on the comparator output
+          (0 << 16)       |       // timeout = 10uS
+          (0 << 13)       |       // Select oscillator as the clock (just for grins)
+          (1 << 11)       |       // 1:Enable OverCurrent Portection  0:Disable
+          (3 << 8)        |       // Filter: shift every 3 ticks
+          (0 << 6)        |       // Filter: count 1uS ticks
+          (0 << 5)        |       // PWM polarity : negative
+          (0 << 4)        |       // comparator: negative, Different with NikeD3
+          (1 << 0);               // +/- 1
+    WRITE_CBUS_REG(VGHL_PWM_REG2, val);
+    val = (   1 << 16) |    // Feedback down-sampling = PWM_freq/1 = PWM_freq
+          (   1 << 14) |    // enable to re-write MATCH_VAL
+          ( 210 <<  0) ;  // preset PWM_duty = 50%
+    WRITE_CBUS_REG(VGHL_PWM_REG3, val);
+    val = (   0 << 30) |    // 1:Digital Dimmer  0:Analog Dimmer
+          (   2 << 28) |    // dimmer_timebase = 1uS
+          (1000 << 14) |    // Digital dimmer_duty = 0%, the most darkness
+          (1000 <<  0) ;    // dimmer_freq = 1KHz
+    WRITE_CBUS_REG(VGHL_PWM_REG4, val);
 }
 static unsigned bl_level;
+static unsigned panel_state = 0;
 static unsigned aml_8726m_get_bl_level(void)
 {
+//    unsigned level = 0;
+//
+//    WRITE_CBUS_REG_BITS(VGHL_PWM_REG0, 1, 31, 1);
+//    WRITE_CBUS_REG_BITS(VGHL_PWM_REG4, 0, 30, 1);
+//    level = READ_CBUS_REG_BITS(VGHL_PWM_REG0, 0, 4);
     return bl_level;
 }
 #define BL_MAX_LEVEL 60000
 static void aml_8726m_set_bl_level(unsigned level)
 {
-    unsigned cs_level, hi, low;
+    unsigned cs_level,pwm_level,low,hi;
+    int i;
+    
+    bl_level = level;
+    
+    level = level*179/255;
+    if(level>=120){ //120 - 179
+        cs_level = 9 -(level - 120)/15;
+        pwm_level = 85 + (level - 120)%15;
+    }
+    else if(level>=20){ //20 - 119
+        cs_level = 13 - (level -20)/25;
+        pwm_level = 75 + (level - 20)%25;
+    }
+    else{  //  <20
+        cs_level = 13;
+        pwm_level = 0;
+    }
 
-    if (level < 30)
-    {
-        cs_level = 0;
-    }
-    else if (level == 30)
-    {
-        cs_level = 1760;
-    }
-    else if (level > 30 && level < 256)
-    {
-        cs_level = (level - 31) * 260 + 1760;
-    }
-    else
-        cs_level = BL_MAX_LEVEL;
-
-    hi = cs_level;
+    hi = (BL_MAX_LEVEL/100)*pwm_level;
     low = BL_MAX_LEVEL - hi;
 
+    if(bl_level >=30&&panel_state == 0){
+        panel_state = 1;
+        power_on_panel();
+        for(i = 0;i<=200;i++){
+            udelay(1000);
+        }
+    }
 
+    WRITE_CBUS_REG_BITS(VGHL_PWM_REG0, cs_level, 0, 4);
+    SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<31));
+    SET_CBUS_REG_MASK(PWM_MISC_REG_AB, (1 << 0));
     WRITE_CBUS_REG_BITS(PWM_PWM_A,low,0,16);  //low
     WRITE_CBUS_REG_BITS(PWM_PWM_A,hi,16,16);  //hi
+    SET_CBUS_REG_MASK(PWM_MISC_REG_AB, (1 << 0)); 
+    SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<31));
+
+    if(bl_level <30&&panel_state == 1){
+        panel_state = 0;
+        set_gpio_val(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), 0);
+        set_gpio_mode(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), GPIO_OUTPUT_MODE);
+        CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<31));
+        CLEAR_CBUS_REG_MASK(PWM_MISC_REG_AB, (1 << 0));
+        power_off_panel();
+        
+    }
 }
 
 static void aml_8726m_power_on_bl(void)
 {
-    msleep(100);
-    SET_CBUS_REG_MASK(PWM_MISC_REG_AB, (1 << 0));
-    msleep(100);
-    SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<31));
-    msleep(100);
-    //EIO -> OD4: 0
-    #ifdef CONFIG_SN7325
-    configIO(0, 0);
-    setIO_level(0, 0, 4);
-    #endif
+    WRITE_CBUS_REG_BITS(PREG_EGPIO_EN_N, 0, 12, 1);
+    WRITE_CBUS_REG_BITS(PREG_EGPIO_O, 1, 12, 1);
+
+    WRITE_CBUS_REG_BITS(PREG_EGPIO_EN_N, 0, 7, 1);
+    WRITE_CBUS_REG_BITS(PREG_EGPIO_O, 1, 7, 1);
+    
+    aml_8726m_set_bl_level(0);
 }
 
 static void aml_8726m_power_off_bl(void)
 {
-    //EIO -> OD4: 1
-#ifdef CONFIG_SN7325
-    configIO(0, 0);
-    setIO_level(0, 1, 4);
-#endif
-    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<31));
-    CLEAR_CBUS_REG_MASK(PWM_MISC_REG_AB, (1 << 0));
-    set_gpio_val(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), 0);
-    set_gpio_mode(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), GPIO_OUTPUT_MODE);
+    WRITE_CBUS_REG_BITS(PREG_EGPIO_EN_N, 0, 12, 1);
+    WRITE_CBUS_REG_BITS(PREG_EGPIO_O, 0, 12, 1);
+
+    WRITE_CBUS_REG_BITS(PREG_EGPIO_EN_N, 0, 7, 1);
+    WRITE_CBUS_REG_BITS(PREG_EGPIO_O, 0, 7, 1);
 }
 
 struct aml_bl_platform_data aml_bl_platform =
@@ -1508,19 +1566,11 @@ static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
     },
 #endif
 
-#ifdef CONFIG_EETI_CAPACITIVE_TOUCHSCREEN
+#ifdef CONFIG_TOUCHSCREEN_TSC2007
     {
-        I2C_BOARD_INFO("eeti", 0x04),
+        I2C_BOARD_INFO("tsc2007", 0x48),
         .irq = INT_GPIO_0,
-        .platform_data = (void *)&eeti_pdata,
-    },
-#endif
-
-#ifdef CONFIG_ITK_CAPACITIVE_TOUCHSCREEN
-    {
-        I2C_BOARD_INFO("itk", 0x41),
-        .irq = INT_GPIO_0,
-        .platform_data = (void *)&itk_pdata,
+        .platform_data = (void *)&tsc2007_pdata,
     },
 #endif
 
@@ -1618,8 +1668,9 @@ static void __init power_hold(void)
     set_gpio_val(GPIOA_bank_bit(8), GPIOA_bit_bit0_14(8), 1);
     set_gpio_mode(GPIOA_bank_bit(8), GPIOA_bit_bit0_14(8), GPIO_OUTPUT_MODE);
     
-    //VCCx2 power up
-    set_vccx2(1);
+        /* PIN28, GPIOA_6, Pull high, For En_5V */
+    set_gpio_val(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), 1);
+    set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);
 }
 
 static __init void m1_init_machine(void)

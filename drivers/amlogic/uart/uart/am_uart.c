@@ -46,6 +46,12 @@
 
 #include "am_uart.h"
 
+//#define FIQ_UART
+
+#ifdef FIQ_UART
+#include <asm/fiq.h>
+#endif
+
 static struct am_uart am_uart_info[NR_PORTS];   //the value of NR_PORTS is given in the .config
 
 struct am_uart *IRQ_ports[NR_IRQS];
@@ -61,6 +67,10 @@ static int console_inited[2] ={ 0,0};   /* have we initialized the console alrea
 static int default_index = 0;   /* have we initialized the console index? */
 static struct tty_driver *am_uart_driver;
 
+#ifdef FIQ_UART
+char * fiq_buf=NULL;
+int fiq_read,fiq_write,fiq_cnt;
+#endif
 //#define PRINT_DEBUG
 
 #define MAX_NAMED_UART 4
@@ -164,7 +174,7 @@ static void receive_chars(struct am_uart *info, struct pt_regs *regs,
     char ch;
     unsigned long flag = TTY_NORMAL;  
 	if (!info->tty) {
-    	    goto clear_and_exit;
+    	return;
 	}
         tty->low_latency = 1;
 	status = __raw_readl(&uart->status);
@@ -182,24 +192,17 @@ static void receive_chars(struct am_uart *info, struct pt_regs *regs,
 		mode = __raw_readl(&uart->mode) | UART_CLEAR_ERR;
 		__raw_writel(mode, &uart->mode);
 	}
-	do {    
-              //info->rx_buf[info->rx_tail] = (rx & 0x00ff);
-              //info->rx_tail = (info->rx_tail+1) & (SERIAL_XMIT_SIZE - 1);
-	      //	info->rx_cnt++;
-		//if (info->rx_cnt >= SERIAL_XMIT_SIZE) {
-	//		goto clear_and_exit;
-	//	}
-                ch = (rx & 0x00ff);
-                tty_insert_flip_char(tty,ch,flag);
-                 
-		info->rx_cnt++;
-                   
-		if ((status = __raw_readl(&uart->status) & 0x3f))
-			rx = __raw_readl(&uart->rdata);
-		/* keep reading characters till the RxFIFO becomes empty */
-	} while (status);
-
-clear_and_exit:
+    	do {    
+            ch = (rx & 0x00ff);
+            tty_insert_flip_char(tty,ch,flag);
+                     
+    		info->rx_cnt++;
+                       
+    		if ((status = __raw_readl(&uart->status) & 0x3f))
+    			rx = __raw_readl(&uart->rdata);
+    		/* keep reading characters till the RxFIFO becomes empty */
+    	} while (status);
+    
 	return;
 }
 
@@ -231,24 +234,15 @@ static void BH_receive_chars(struct am_uart *info)
         flag = TTY_PARITY;
     }
 
-       info->rx_error = 0;
-       if(cnt)
-       {
-            //if(info->rx_head > info->rx_tail){
-            //    cnt = SERIAL_XMIT_SIZE-info->rx_head;
-            //    if(PRINT_DEBUG)
-    		//	if(info->line == 1)
-      //printk("am_uart  BH_receive_chars rx_cnt = %d, rx_head = %d, rx_tail = %d\n",info->rx_cnt,info->rx_head,info->rx_tail);
-        //    }
-          //  tty_insert_flip_string(tty,info->rx_buf+info->rx_head,cnt);
-            //info->rx_head = (info->rx_head+cnt) & (SERIAL_XMIT_SIZE - 1);
-           info->rx_cnt =0;
-
-    tty_flip_buffer_push(tty);
-       }
+        info->rx_error = 0;
+        if(cnt)
+        {
+            info->rx_cnt = 0;
+            tty_flip_buffer_push(tty);
+        }
 clear_and_exit:
         if (info->rx_cnt>0)
-		am_uart_sched_event(info, 0);
+        am_uart_sched_event(info, 0);
     return;
 }
 
@@ -285,6 +279,137 @@ clear_and_return:
     return;
 }
 
+#ifdef FIQ_UART
+/* 4K size of FIQ stack size */
+static u8 fiq_stack[4096];
+/* parameter for fiq handler */
+static void *fiq_param;
+/* fiq number */
+static int fiq_intr;
+
+static void __attribute__ ((naked)) fiq_vector(void)
+{
+	asm __volatile__ ("mov pc, r8 ;");
+}
+
+static void request_fiq(int intr, void(*handler)(void), void *param)
+{
+	struct pt_regs regs;
+	unsigned int mask = 1 << IRQ_BIT(intr);
+
+	/* prep the special FIQ mode regs */
+	memset(&regs, 0, sizeof(regs));
+	regs.ARM_r8 = (unsigned long)handler;
+	regs.ARM_sp = (unsigned long)fiq_stack + sizeof(fiq_stack) - 4;
+	set_fiq_regs(&regs);
+	set_fiq_handler(fiq_vector, 8);
+	fiq_param = param;
+	fiq_intr = intr;
+
+	SET_CBUS_REG_MASK(IRQ_FIQSEL_REG(intr), mask);
+	enable_fiq(intr);
+}
+
+static void free_fiq(int intr)
+{
+	unsigned int mask = 1 << IRQ_BIT(intr);
+
+	disable_fiq(intr);
+	CLEAR_CBUS_REG_MASK(IRQ_FIQSEL_REG(intr), mask);
+}
+
+static void __attribute__ ((naked)) am_uart_fiq_interrupt(void)
+{
+    am_uart_t *uart = uart_addr[1];
+    //am_uart_t *uart = (am_uart_t *)fiq_param;	
+    char ch;
+	asm __volatile__ (
+		"mov    ip, sp;\n"
+		"stmfd	sp!, {r0-r12, lr};\n"
+		"sub    sp, sp, #256;\n"
+		"sub    fp, sp, #256;\n");
+
+    //am_uart_put_char(0,'@');
+    //raw_num(__raw_readl(UART_BASEADDR1+12) & 0x3f, 1);
+    
+    while (__raw_readl(&uart->status) & 0x3f){
+       	ch = __raw_readl(&uart->rdata) & 0xff;
+
+	fiq_buf[fiq_write]=ch;
+	fiq_write= (fiq_write+1) & (SERIAL_XMIT_SIZE - 1);
+	fiq_cnt++;
+       	if (fiq_cnt >= SERIAL_XMIT_SIZE) {
+       	    	am_uart_put_char(0,'^');
+        	break;
+        }
+         
+    }
+
+out:	
+	WRITE_MPEG_REG(IRQ_CLR_REG(fiq_intr), 1 << IRQ_BIT(fiq_intr));
+	dsb();
+	asm __volatile__ (
+		"add	sp, sp, #256 ;\n"
+		"ldmia	sp!, {r0-r12, lr};\n"
+		"subs	pc, lr, #4;\n");
+}
+
+static void am_uart_timer_sr(unsigned long param)
+{
+	struct am_uart *info=(struct am_uart *)param;
+	struct tty_struct *tty;
+	am_uart_t *uart = NULL;
+  	int cnt,ch;
+	if (!info)
+           return;
+
+      	tty = info->tty;
+	if (!tty)
+	{   
+	    goto exit_timer;
+	}
+
+	uart = (am_uart_t *) info->port;
+	if (!uart)
+	    goto exit_timer;
+
+	cnt = fiq_cnt;
+	if(cnt)
+        {
+            if(fiq_read+cnt > SERIAL_XMIT_SIZE)
+            {
+                tty_insert_flip_string(tty,fiq_buf+fiq_read,SERIAL_XMIT_SIZE-fiq_read);
+		tty_insert_flip_string(tty,fiq_buf,cnt-(SERIAL_XMIT_SIZE-fiq_read));
+            }
+	    else
+	    {
+		tty_insert_flip_string(tty,fiq_buf+fiq_read,cnt);
+            }
+            fiq_read = (fiq_read+cnt) & (SERIAL_XMIT_SIZE - 1);
+            fiq_cnt -=cnt; 
+            
+    	    tty_flip_buffer_push(tty);
+       }
+       else
+       {
+	    cnt = __raw_readl(&uart->status) & 0x3f;
+	    if(cnt)
+            {
+       	        while (cnt--){
+		    ch = __raw_readl(&uart->rdata) & 0xff;
+		    tty_insert_flip_char(tty,ch,TTY_NORMAL);
+		}
+		tty_flip_buffer_push(tty);
+	    }
+       }
+
+exit_timer:
+	mod_timer(&info->timer, jiffies+msecs_to_jiffies(1));
+
+	return;
+}
+#endif
+
 /*
  * This is the serial driver's generic interrupt routine
  */
@@ -292,26 +417,26 @@ static irqreturn_t am_uart_interrupt(int irq, void *dev, struct pt_regs *regs)
 {
     struct am_uart *info=(struct am_uart *)dev;
 
-       am_uart_t *uart = NULL;
+    am_uart_t *uart = NULL;
 	struct tty_struct *tty = NULL;
 
-	if (!info)
-           goto out;
+    if (!info)
+       goto out;
 
-      	tty = info->tty;
-	if (!tty)
-       {   
-	    goto out;
-       }
-	uart = (am_uart_t *) info->port;
-	if (!uart)
+    tty = info->tty;
+    if (!tty)
+    {   
+        goto out;
+    }
+    uart = (am_uart_t *) info->port;
+    if (!uart)
 		goto out;
 
-       if ((__raw_readl(&uart->mode) & UART_RXENB)
+    if ((__raw_readl(&uart->mode) & UART_RXENB)
 	    && !(__raw_readl(&uart->status) & UART_RXEMPTY)) {
 		receive_chars(info, 0, __raw_readl(&uart->rdata));
 	}
-       
+
 out:	
     am_uart_sched_event(info, 0);
     return IRQ_HANDLED;
@@ -331,8 +456,8 @@ static void am_uart_workqueue(struct work_struct *work)
     if (!uart)
         goto out;
 
-       if (info->rx_cnt>0)
-            BH_receive_chars(info);
+    if (info->rx_cnt>0)
+        BH_receive_chars(info);
 
     if ((__raw_readl(&uart->mode) & UART_TXENB)
         &&((__raw_readl(&uart->status) & 0xff00) < 0x3f00)) {
@@ -398,12 +523,12 @@ static int startup(struct am_uart *info)
             return -ENOMEM;
     }
 
-       if (!info->rx_buf) {
-		info->rx_buf = (unsigned char *)get_zeroed_page(GFP_KERNEL);
-		if (!info->rx_buf)
-			return -ENOMEM;
-	}
-
+    if (!info->rx_buf) {
+	info->rx_buf = (unsigned char *)get_zeroed_page(GFP_KERNEL);
+	if (!info->rx_buf)
+	    return -ENOMEM;
+    }
+	
     mutex_lock(&info->info_mutex);
 
     mode = __raw_readl(&uart->mode);
@@ -1011,12 +1136,34 @@ static int __init am_uart_init(void)
         set_mask(&uart->mode, UART_RXRST);
         clear_mask(&uart->mode, UART_RXRST);
 
+#ifdef FIQ_UART
+        set_mask(&uart->mode, UART_RXINT_EN /*| UART_TXINT_EN*/);
+	if (i==1)
+		__raw_writel(/*1 << 7 | */0x30, &uart->intctl);
+	else
+		__raw_writel(/*1 << 7 | */0x1, &uart->intctl);
+#else
         set_mask(&uart->mode, UART_RXINT_EN | UART_TXINT_EN);
         __raw_writel(1 << 7 | 1, &uart->intctl);
+#endif
 
         clear_mask(&uart->mode, (1 << 19)) ;
 
         sprintf(info->name,"UART_ttyS%d:",info->line);
+#ifdef FIQ_UART
+        if (i==1){
+	    if(!fiq_buf)
+	    {
+		fiq_buf = (unsigned char *)get_zeroed_page(GFP_KERNEL);
+	    }
+	    fiq_read = fiq_write=fiq_cnt=0;
+            request_fiq(info->irq, am_uart_fiq_interrupt, uart_addr[i]);
+            setup_timer(&info->timer, am_uart_timer_sr, (unsigned long)info) ;
+            mod_timer(&info->timer, jiffies+msecs_to_jiffies(1));
+            printk("request fiq %d done!\n", info->irq);
+        }
+        else
+#endif
         if (request_irq(info->irq, (irq_handler_t) am_uart_interrupt, IRQF_SHARED,
              info->name, info)) {
             printk("request irq error!!!\n");

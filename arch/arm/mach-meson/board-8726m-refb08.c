@@ -1,4 +1,4 @@
-/*
+ /*
  *
  * arch/arm/mach-meson/meson.c
  *
@@ -47,7 +47,7 @@
 #include <mach/gpio.h>
 #include <linux/delay.h>
 #include <mach/clk_set.h>
-#include "board-8726m-REFB04.h"
+#include "board-8726m-refb08.h"
 
 #if defined(CONFIG_TOUCHSCREEN_ADS7846)
 #include <linux/spi/spi.h>
@@ -71,6 +71,10 @@
 
 #ifdef CONFIG_SN7325
 #include <linux/sn7325.h>
+#endif
+
+#ifdef CONFIG_TOUCH_KEY_PAD_IT7230
+#include <linux/i2c/it7230.h>
 #endif
 
 #ifdef CONFIG_AMLOGIC_PM
@@ -164,9 +168,10 @@ static struct platform_device adc_ts_device = {
 #include <linux/adc_keypad.h>
 
 static struct adc_key adc_kp_key[] = {
-    {125,            "vol+", CHAN_4, 0, 60},
-    {15,               "exit", CHAN_4, 623, 60},
-    {102,          "menu", CHAN_4, 849, 60},
+    {KEY_PAGEDOWN,          "vol-", CHAN_4, 0, 60},
+    {KEY_PAGEUP,            "vol+", CHAN_4, 306, 60},
+    {KEY_TAB,               "exit", CHAN_4, 602, 60},
+    {KEY_LEFTMETA,          "menu", CHAN_4, 760, 60},
 };
 
 static struct adc_kp_platform_data adc_kp_pdata = {
@@ -193,13 +198,13 @@ int _key_code_list[] = {KEY_POWER};
 
 static inline int key_input_init_func(void)
 {
-    WRITE_CBUS_REG(0x21d0/*RTC_ADDR0*/, (READ_CBUS_REG(0x21d0/*RTC_ADDR0*/) &~(1<<11)));
-    WRITE_CBUS_REG(0x21d1/*RTC_ADDR0*/, (READ_CBUS_REG(0x21d1/*RTC_ADDR0*/) &~(1<<3)));
+    //GP_INPUT2 no init
+    return 0;
 }
 static inline int key_scan(int *key_state_list)
 {
     int ret = 0;
-    key_state_list[0] = ((READ_CBUS_REG(0x21d1/*RTC_ADDR1*/) >> 2) & 1) ? 0 : 1;
+    key_state_list[0] = ((READ_CBUS_REG(0x1f53) >> 10) & 1) ? 0 : 1; //Read GP_INPUT2
     return ret;
 }
 
@@ -243,6 +248,40 @@ static int sn7325_pwr_rst(void)
 
 static struct sn7325_platform_data sn7325_pdata = {
     .pwr_rst = &sn7325_pwr_rst,
+};
+#endif
+
+#ifdef CONFIG_TOUCH_KEY_PAD_IT7230
+#include <linux/input.h>
+//GPIOA_4
+#define GPIO_IT7230_ATTN ((GPIOA_bank_bit(4)<<16) | GPIOA_bit_bit0_14(4))
+
+static int it7230_init_irq(void)
+{
+    /* set input mode */
+    gpio_direction_input(GPIO_IT7230_ATTN);
+    /* set gpio interrupt #1 source=GPIOA_4, and triggered by falling edge(=1) */
+    gpio_enable_edge_int(0+4, 1, 1);
+    return 0;
+}
+
+static int it7230_get_irq_level(void)
+{
+    return gpio_get_value(GPIO_IT7230_ATTN);
+}
+
+static struct cap_key it7230_keys[] = {
+    { KEY_HOME,         0x0001, "home"},
+    { KEY_LEFTMETA,     0x0002, "menu"},
+    { KEY_TAB,          0x0004, "exit"},
+    { KEY_ZOOM,         0x0008, "zoom"},
+};
+
+static struct it7230_platform_data it7230_pdata = {
+    .init_irq = it7230_init_irq,
+    .get_irq_level = it7230_get_irq_level,
+    .key = it7230_keys,
+    .key_num = ARRAY_SIZE(it7230_keys),
 };
 #endif
 
@@ -413,7 +452,6 @@ void extern_wifi_power(int is_power)
     if (0 == is_power)
     {
         #ifdef CONFIG_SN7325
-        printk("power on 7325 3\n");
         configIO(0, 0);
         setIO_level(0, 0, 5);
         #else
@@ -423,18 +461,8 @@ void extern_wifi_power(int is_power)
     else
     {
         #ifdef CONFIG_SN7325
-        printk("power on 7325 4\n");
         configIO(0, 0);
-        setIO_level(0, 0, 0);//OD0
-        setIO_level(0, 1, 4);//OD4
-        setIO_level(0, 1, 5);//OD5
-        setIO_level(0, 0, 6);//OD6
-        configIO(1, 0);
-        setIO_level(1, 1, 0);//PP0
-        setIO_level(1, 0, 1);//PP1
-        setIO_level(1, 1, 5);//PP5
-        setIO_level(1, 0, 6);//PP6
-        setIO_level(1, 0, 7);//PP7
+        setIO_level(0, 1, 5);
         #else
         return;
         #endif
@@ -559,9 +587,9 @@ int wm8900_is_hp_pluged(void)
                                 (7 << 4)    |       // CS1 REF, Current FeedBack: about 0.505V
                                 (0 << 0));           // DIMCTL Analog dimmer
     cs_no = READ_CBUS_REG(LED_PWM_REG3);
-    if(cs_no &(1<<15))
+    if(cs_no &(1<<14))
       level |= (1<<0);
-    return (level == 0)?(1):(0); //return 1: hp pluged, 0: hp unpluged.
+    return (level == 1)?(1):(0); //return 1: hp pluged, 0: hp unpluged.
 }
 
 static struct wm8900_platform_data wm8900_pdata = {
@@ -772,18 +800,12 @@ static void set_vccx2(int power_on)
     if(power_on)
     {
         set_gpio_val(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), 1);
-        set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);        
-        //set clk for wifi
-        SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, (1<<18));
-        CLEAR_CBUS_REG_MASK(PREG_EGPIO_EN_N, (1<<4));	              
+        set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);
     }
     else
     {
         set_gpio_val(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), 0);
-        set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);   
-        //disable wifi clk
-        CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, (1<<18));
-        SET_CBUS_REG_MASK(PREG_EGPIO_EN_N, (1<<4));	        
+        set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);
     }
 }
 static struct meson_pm_config aml_pm_pdata = {
@@ -841,7 +863,7 @@ static struct aml_i2c_platform aml_i2c_plat = {
     .wait_xfer_interval = 5,
     .master_no      = AML_I2C_MASTER_B,
     .use_pio            = 0,
-    .master_i2c_speed   = AML_I2C_SPPED_400K,
+    .master_i2c_speed   = AML_I2C_SPPED_300K,
 
     .master_b_pinmux = {
         .scl_reg    = MESON_I2C_MASTER_B_GPIOB_0_REG,
@@ -897,22 +919,10 @@ static void set_charge(int flags)
     //GPIOD_22 low: fast charge high: slow charge
     CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_7, (1<<18));
     if(flags == 1)
-        {
-	    //set_gpio_val(GPIOD_bank_bit2_24(22), GPIOD_bit_bit2_24(22), 0); //fast charge
-	    #ifdef CONFIG_SN7325
-        configIO(1, 0);
-        setIO_level(1, 1, 7);
-        #endif
-	    }
+        set_gpio_val(GPIOD_bank_bit2_24(22), GPIOD_bit_bit2_24(22), 0); //fast charge
     else
-        {
-    	//set_gpio_val(GPIOD_bank_bit2_24(22), GPIOD_bit_bit2_24(22), 1);	//slow charge
-	    #ifdef CONFIG_SN7325
-        configIO(1, 0);
-        setIO_level(1, 0, 7);
-        #endif
-        }
-    //set_gpio_mode(GPIOD_bank_bit2_24(22), GPIOD_bit_bit2_24(22), GPIO_OUTPUT_MODE);
+        set_gpio_val(GPIOD_bank_bit2_24(22), GPIOD_bit_bit2_24(22), 1); //slow charge
+    set_gpio_mode(GPIOD_bank_bit2_24(22), GPIOD_bit_bit2_24(22), GPIO_OUTPUT_MODE);
 }
 
 #ifdef CONFIG_SARADC_AM
@@ -927,13 +937,21 @@ static int get_bat_vol(void)
 #endif
 }
 
-static int get_charge_status()
+static int get_charge_status(void)
 {
     return (READ_CBUS_REG(ASSIST_HW_REV)&(1<<8))? 1:0;
 }
 
 static void set_bat_off(void)
 {
+    //BL_PWM power off
+    set_gpio_val(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), 0);
+    set_gpio_mode(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), GPIO_OUTPUT_MODE);
+
+    //VCCx2 power down
+    set_vccx2(0);
+
+    //Power hold down
     set_gpio_val(GPIOA_bank_bit(8), GPIOA_bit_bit0_14(8), 0);
     set_gpio_mode(GPIOA_bank_bit(8), GPIOA_bit_bit0_14(8), GPIO_OUTPUT_MODE);
 
@@ -1036,21 +1054,21 @@ static struct mtd_partition partition_info[] =
     {
         .name = "cache",
         .offset = 416*1024*1024,
-        .size = 16 * 1024*1024,
+        .size = 36 * 1024*1024,
     //  .set_flags=0,
     //  .dual_partnum=0,
     },
     {
         .name = "userdata",
-        .offset= 432*1024*1024,
-        .size= 256 * 1024*1024,
+        .offset = 452*1024*1024,
+        .size = 512 * 1024*1024,
     //  .set_flags=0,
     //  .dual_partnum=0,
     },
     {
         .name = "media",
-        .offset = MTDPART_OFS_APPEND,
-        .size = (0x200000000-(432+256)*1024*1024),
+        .offset = (452+512)*1024*1024,
+        .size = MTDPART_SIZ_FULL,
         .set_flags = MTD_AVNFTL,
         .dual_partnum = 1|MTD_AVFTL_PLANE|MTD_AVNFTL_INTERL,
     //  .set_flags=0,
@@ -1127,16 +1145,13 @@ static struct aml_m1_nand_platform aml_2kpage128kblocknand_platform = {
 */
 
 
-static struct aml_m1_nand_platform aml_Micron8GBABAnand_platform =
+static struct aml_m1_nand_platform aml_nand_platform =
 {
-    .page_size = 2048*2,
-    .spare_size= 224,       //for micron ABA 4GB
-    .erase_size=1024*1024,
     .bch_mode=    3,        //BCH16
     .encode_size=540,
     .timing_mode=5,
     .onfi_mode=1,
-    .interlmode=1,
+    .interlmode=0,
     .planemode=1,
     .ce_num=2,
     .chip_num=2,
@@ -1159,8 +1174,7 @@ static struct platform_device aml_nand_device = {
     .num_resources = ARRAY_SIZE(aml_nand_resources),
     .resource = aml_nand_resources,
     .dev = {
-    //  .platform_data = &aml_Micron4GBABAnand_platform,
-        .platform_data = &aml_Micron8GBABAnand_platform,
+        .platform_data = &aml_nand_platform,
     },
 };
 #endif  //CONFIG_NAND_FLASH_DRIVER_MULTIPLANE_CE
@@ -1173,7 +1187,7 @@ static struct platform_device aml_nand_device = {
 static void aml_8726m_bl_init(void)
 {
     unsigned val;
-    
+
     WRITE_CBUS_REG_BITS(PERIPHS_PIN_MUX_0, 0, 22, 1);
     WRITE_CBUS_REG_BITS(PREG_AM_ANALOG_ADDR, 1, 0, 1);
     WRITE_CBUS_REG(VGHL_PWM_REG0, 0);
@@ -1215,16 +1229,11 @@ static void aml_8726m_bl_init(void)
           (1000 << 14) |    // Digital dimmer_duty = 0%, the most darkness
           (1000 <<  0) ;    // dimmer_freq = 1KHz
     WRITE_CBUS_REG(VGHL_PWM_REG4, val);
+    printk("\n\nBacklight init.\n\n");
 }
 static unsigned bl_level;
-static unsigned panel_state = 0;
 static unsigned aml_8726m_get_bl_level(void)
 {
-//    unsigned level = 0;
-//
-//    WRITE_CBUS_REG_BITS(VGHL_PWM_REG0, 1, 31, 1);
-//    WRITE_CBUS_REG_BITS(VGHL_PWM_REG4, 0, 30, 1);
-//    level = READ_CBUS_REG_BITS(VGHL_PWM_REG0, 0, 4);
     return bl_level;
 }
 static void aml_8726m_set_bl_level(unsigned level)
@@ -1252,22 +1261,17 @@ static void aml_8726m_set_bl_level(unsigned level)
 
 static void aml_8726m_power_on_bl(void)
 {
-    WRITE_CBUS_REG_BITS(PREG_EGPIO_EN_N, 0, 12, 1);
-    WRITE_CBUS_REG_BITS(PREG_EGPIO_O, 1, 12, 1);
-
-    WRITE_CBUS_REG_BITS(PREG_EGPIO_EN_N, 0, 7, 1);
-    WRITE_CBUS_REG_BITS(PREG_EGPIO_O, 1, 7, 1);
-    
-    aml_8726m_set_bl_level(0);
+    //BL_PWM -> GPIOA_7: 1
+    msleep(200);
+    set_gpio_val(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), 1);
+    set_gpio_mode(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), GPIO_OUTPUT_MODE);
 }
 
 static void aml_8726m_power_off_bl(void)
 {
-    WRITE_CBUS_REG_BITS(PREG_EGPIO_EN_N, 0, 12, 1);
-    WRITE_CBUS_REG_BITS(PREG_EGPIO_O, 0, 12, 1);
-
-    WRITE_CBUS_REG_BITS(PREG_EGPIO_EN_N, 0, 7, 1);
-    WRITE_CBUS_REG_BITS(PREG_EGPIO_O, 0, 7, 1);
+    //BL_PWM -> GPIOA_7: 0 (E1)
+    set_gpio_val(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), 0);
+    set_gpio_mode(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), GPIO_OUTPUT_MODE);
 }
 
 struct aml_bl_platform_data aml_bl_platform =
@@ -1483,6 +1487,14 @@ static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
         .platform_data = (void *)&itk_pdata,
     },
 #endif
+
+#ifdef CONFIG_TOUCH_KEY_PAD_IT7230
+    {
+        I2C_BOARD_INFO("it7230", 0x46),
+        .irq = INT_GPIO_1,
+        .platform_data = (void *)&it7230_pdata,
+    },
+#endif
 };
 
 
@@ -1531,9 +1543,6 @@ static void __init device_pinmux_init(void )
     aml_i2c_init();
     set_audio_pinmux(AUDIO_OUT_TEST_N);
     set_audio_pinmux(AUDIO_IN_JTAG);
-    //set clk for wifi
-    SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, (1<<18));
-    CLEAR_CBUS_REG_MASK(PREG_EGPIO_EN_N, (1<<4));	
 }
 
 static void __init  device_clk_setting(void)
@@ -1573,9 +1582,8 @@ static void __init power_hold(void)
     set_gpio_val(GPIOA_bank_bit(8), GPIOA_bit_bit0_14(8), 1);
     set_gpio_mode(GPIOA_bank_bit(8), GPIOA_bit_bit0_14(8), GPIO_OUTPUT_MODE);
     
-        /* PIN28, GPIOA_6, Pull high, For En_5V */
-    set_gpio_val(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), 1);
-    set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);
+    //VCCx2 power up
+    set_vccx2(1);
 }
 
 static __init void m1_init_machine(void)

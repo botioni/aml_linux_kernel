@@ -38,16 +38,14 @@
 #include <mach/pinmux.h>
 #include <mach/power_gate.h>
 
-#define LCD_WIDTH       1024 
-#define LCD_HEIGHT      768
-#define MAX_WIDTH       1344
-#define MAX_HEIGHT      806
+#define LCD_WIDTH       800
+#define LCD_HEIGHT      600
+#define MAX_WIDTH       1056
+#define MAX_HEIGHT      631
 #define VIDEO_ON_LINE   22
 
 static void t13_power_on(void);
 static void t13_power_off(void);
-void power_on_backlight(void);
-void power_off_backlight(void);
 
 static tcon_conf_t tcon_config =
 {
@@ -56,13 +54,13 @@ static tcon_conf_t tcon_config =
     .max_width  = MAX_WIDTH,
     .max_height = MAX_HEIGHT,
     .video_on_line = VIDEO_ON_LINE,
-    .pll_ctrl = 0x0652,      //54.7MHz
+    .pll_ctrl = 0x063c,      //40MHz
     .clk_ctrl = 0x1fc1,
     .gamma_cntl_port = (1 << LCD_GAMMA_EN) | (0 << LCD_GAMMA_RVS_OUT) | (1 << LCD_GAMMA_VCOM_POL),
     .gamma_vcom_hswitch_addr = 0,
     .rgb_base_addr = 0xf0,
     .rgb_coeff_addr = 0x74a,
-    .pol_cntl_addr = (0x0 << LCD_CPH1_POL) |(0x1 << LCD_HS_POL) | (0x1 << LCD_VS_POL),
+    .pol_cntl_addr = (0x1 << LCD_CPH1_POL) |(0x1 << LCD_HS_POL) | (0x1 << LCD_VS_POL),
     .dith_cntl_addr = 0x400,
     .sth1_hs_addr = 27,
     .sth1_he_addr = 17,
@@ -113,12 +111,10 @@ static tcon_conf_t tcon_config =
     .flags = 0,
     .screen_width = 4,
     .screen_height = 3,
-    .sync_duration_num = 101,
-    .sync_duration_den = 2,
+    .sync_duration_num = 60,
+    .sync_duration_den = 1,
     .power_on=t13_power_on,
     .power_off=t13_power_off,
-    .backlight_on = power_on_backlight,
-    .backlight_off = power_off_backlight,
 };
 static struct resource tcon_resources[] = {
     [0] = {

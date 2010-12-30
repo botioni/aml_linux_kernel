@@ -46,6 +46,8 @@
 
 static void t13_power_on(void);
 static void t13_power_off(void);
+void power_on_backlight(void);
+void power_off_backlight(void);
 
 static tcon_conf_t tcon_config =
 {
@@ -115,6 +117,8 @@ static tcon_conf_t tcon_config =
     .sync_duration_den = 1,
     .power_on=t13_power_on,
     .power_off=t13_power_off,
+    .backlight_on = power_on_backlight,
+    .backlight_off = power_off_backlight,
 };
 static struct resource tcon_resources[] = {
     [0] = {
@@ -157,6 +161,7 @@ void power_on_backlight(void)
     configIO(0, 0);
     setIO_level(0, 0, 4);
     #endif
+    printk("\n\npower_on_backlight.\n\n");
 }
 
 void power_off_backlight(void)
@@ -208,12 +213,10 @@ static void t13_power_on(void)
     video_dac_disable();
 	set_tcon_pinmux();
 	power_on_lcd();
-	power_on_backlight();
-      
+    printk("\n\nt13_power_on...\n\n");
 }
 static void t13_power_off(void)
 {
-	power_off_backlight();
     	power_off_lcd();
 }
 
@@ -222,9 +225,7 @@ static void t13_io_init(void)
     printk("\n\nT13 LCD Init.\n\n");
 
     set_tcon_pinmux();
-
     power_on_lcd();
-    power_on_backlight();
 }
 
 static struct platform_device tcon_dev = {

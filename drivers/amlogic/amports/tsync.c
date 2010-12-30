@@ -55,6 +55,7 @@ static spinlock_t lock = SPIN_LOCK_UNLOCKED;
 static tsync_mode_t tsync_mode = TSYNC_MODE_AMASTER;
 static tsync_stat_t tsync_stat = TSYNC_STAT_PCRSCR_SETUP_NONE;
 static int tsync_enable = 1;
+static int pts_discontinue = 0;
 static int tsync_abreak = 0;
 static int tsync_trickmode = 0;
 static int vpause_flag = 0;
@@ -135,6 +136,8 @@ void tsync_avevent(avevent_t event, u32 param)
 
             timestamp_pcrscr_set(param);
 
+			pts_discontinue = 1;
+
             amlog_level(LOG_LEVEL_ATTENTION, "reset scr from vpts to 0x%x\n", param);
 
         } else if (tsync_enable)
@@ -148,7 +151,7 @@ void tsync_avevent(avevent_t event, u32 param)
         t = timestamp_pcrscr_get();
     
         amlog_level(LOG_LEVEL_ATTENTION, "AUDIO_TSTAMP_DISCONTINUITY, 0x%x, 0x%x\n", t, param);
-
+		pts_discontinue = 1;
         if (abs(param - t) > AV_DISCONTINUE_THREDHOLD) {
             /* switch tsync mode to free run mode,
              * making system time updated by itself.
@@ -438,7 +441,32 @@ static ssize_t store_enable(struct class *class,
 
     return size;
 }
+static ssize_t show_discontinue(struct class *class,
+                           struct class_attribute *attr,
+                           char *buf)
+{
+    if (pts_discontinue)
+        return sprintf(buf, "1: pts_discontinue\n");
 
+    return sprintf(buf, "0: pts_continue\n");
+}
+
+static ssize_t store_discontinue(struct class *class,
+                            struct class_attribute *attr,
+                            const char *buf,
+                            size_t size)
+{
+    unsigned discontinue;
+    ssize_t r;
+
+    r = sscanf(buf, "%d", &discontinue);
+    if ((r != 1))
+        return -EINVAL;
+
+    pts_discontinue = discontinue ? 1 : 0;
+
+    return size;
+}
 static struct class_attribute tsync_class_attrs[] = {
     __ATTR(pts_video,  S_IRUGO | S_IWUSR, show_vpts,    store_vpts  ),
     __ATTR(pts_audio,  S_IRUGO | S_IWUSR, show_apts,    store_apts  ),
@@ -446,6 +474,7 @@ static struct class_attribute tsync_class_attrs[] = {
     __ATTR(event,      S_IRUGO | S_IWUSR, NULL,         store_event ),
     __ATTR(mode,       S_IRUGO | S_IWUSR, show_mode,    NULL        ),
     __ATTR(enable,     S_IRUGO | S_IWUSR, show_enable,  store_enable),
+    __ATTR(discontinue, S_IRUGO | S_IWUGO, show_discontinue,  store_discontinue),
     __ATTR_NULL
 };
 
