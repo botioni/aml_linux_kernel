@@ -39,6 +39,7 @@ vframe_t *vfq_pop(vfq_t *q);
 vframe_t *vfq_pop_newframe(void);
 vframe_t *vfq_pop_display(void);
 vframe_t *vfq_pop_recycle(void);
+vframe_t *vfq_get_curframe(void);
 
 void vdin_vf_init(void);
 

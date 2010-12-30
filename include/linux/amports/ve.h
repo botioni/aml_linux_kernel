@@ -19,8 +19,10 @@
 // ***************************************************************************
 
 typedef enum ve_demo_pos_e {
-  VE_DEMO_POS_RIGHT = 0,
+  VE_DEMO_POS_TOP = 0,
+  VE_DEMO_POS_BOTTOM,
   VE_DEMO_POS_LEFT,
+  VE_DEMO_POS_RIGHT,
 } ve_demo_pos_t;
 
 typedef enum ve_dnlp_rt_e {
@@ -137,6 +139,13 @@ typedef struct ve_benh_s {
     unsigned char err_cbn;
 } ve_benh_t;
 
+typedef struct ve_cbar_s {
+    unsigned char en;
+    unsigned char wid;
+    unsigned char cr;
+    unsigned char cb;
+    unsigned char y;
+} ve_cbar_t;
 typedef struct ve_demo_s {
     unsigned char bext;
     unsigned char dnlp;
@@ -145,7 +154,16 @@ typedef struct ve_demo_s {
     unsigned char benh;
     enum  ve_demo_pos_e  pos;
     unsigned long wid;
+    struct ve_cbar_s   cbar;
 } ve_demo_t;
+
+typedef struct vdo_meas_s {
+    //...
+} vdo_meas_t;
+
+typedef struct ve_regmap_s {
+    ulong reg[43];
+} ve_regmap_t;
 
 // ***************************************************************************
 // *** MACRO definitions **********
