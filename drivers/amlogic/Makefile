@@ -58,6 +58,8 @@ obj-$(CONFIG_AM_GPIO) +=gpio/
 
 obj-y += tvin/
 
+obj-$(CONFIG_EFUSE)+=efuse/
+
 #####Sound system is later init in kernel default..######################
 obj-$(CONFIG_SND_AML) += sound/
 
