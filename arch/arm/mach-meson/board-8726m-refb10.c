@@ -47,7 +47,7 @@
 #include <mach/gpio.h>
 #include <linux/delay.h>
 #include <mach/clk_set.h>
-#include "board-8726m-g7.h"
+#include "board-8726m-refb10.h"
 
 #if defined(CONFIG_TOUCHSCREEN_ADS7846)
 #include <linux/spi/spi.h>
@@ -325,6 +325,11 @@ static struct resource codec_resources[] = {
         .start =  CODEC_ADDR_START,
         .end   = CODEC_ADDR_END,
         .flags = IORESOURCE_MEM,
+    },
+    [1] = {
+        .start = STREAMBUF_ADDR_START,
+	 .end = STREAMBUF_ADDR_END,
+	 .flags = IORESOURCE_MEM,
     },
 };
 

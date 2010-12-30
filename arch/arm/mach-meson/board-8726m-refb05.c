@@ -385,6 +385,11 @@ static struct resource codec_resources[] = {
         .end   = CODEC_ADDR_END,
         .flags = IORESOURCE_MEM,
     },
+    [1] = {
+        .start = STREAMBUF_ADDR_START,
+	 .end = STREAMBUF_ADDR_END,
+	 .flags = IORESOURCE_MEM,
+    },
 };
 
 static struct platform_device codec_device = {
@@ -419,8 +424,21 @@ static struct resource vdin_resources[] = {
         .end   = VDIN_ADDR_END,				//pbufAddr + size
         .flags = IORESOURCE_MEM,
     },
-
-
+    [1] = {
+        .start = VDIN_ADDR_START,
+        .end   = VDIN_ADDR_END,
+        .flags = IORESOURCE_MEM,
+    },
+    [2] = {
+        .start = INT_VDIN_VSYNC,
+        .end   = INT_VDIN_VSYNC,
+        .flags = IORESOURCE_IRQ,
+    },
+    [3] = {
+        .start = INT_VDIN_VSYNC,
+        .end   = INT_VDIN_VSYNC,
+        .flags = IORESOURCE_IRQ,
+    },
 };
 
 static struct platform_device vdin_device = {
@@ -429,8 +447,11 @@ static struct platform_device vdin_device = {
     .num_resources = ARRAY_SIZE(vdin_resources),
     .resource      = vdin_resources,
 };
+#endif
 
+#ifdef CONFIG_TVIN_BT656IN
 //add pin mux info for bt656 input
+#if 0
 static struct resource bt656in_resources[] = {
     [0] = {
         .start =  VDIN_ADDR_START,		//pbufAddr
@@ -456,12 +477,13 @@ static struct resource bt656in_resources[] = {
     },
 
 };
+#endif
 
 static struct platform_device bt656in_device = {
     .name       = "amvdec_656in",
     .id         = -1,
-    .num_resources = ARRAY_SIZE(bt656in_resources),
-    .resource      = bt656in_resources,
+//    .num_resources = ARRAY_SIZE(bt656in_resources),
+//    .resource      = bt656in_resources,
 };
 #endif
 
@@ -931,6 +953,18 @@ static	struct platform_device aml_rtc_device = {
 	};
 #endif
 
+#ifdef CONFIG_CAMERA_OV5640
+
+//add power down control for camera
+
+
+static struct platform_device camera_device = {
+    .name       = "camera_ov5640",
+    .id         = -1,
+
+};
+
+#endif
 #if defined(CONFIG_SUSPEND)
 static void set_vccx2(int power_on)
 {
@@ -1569,6 +1603,8 @@ static struct platform_device __initdata *platform_devs[] = {
     #endif
     #if defined(CONFIG_TVIN_VDIN)
         &vdin_device,
+    #endif
+    #if defined(CONFIG_TVIN_BT656IN)
 		&bt656in_device,
     #endif
 	#if defined(CONFIG_AML_AUDIO_DSP)
@@ -1606,6 +1642,9 @@ static struct platform_device __initdata *platform_devs[] = {
     #endif		
     #if defined(CONFIG_AML_RTC)
 		&aml_rtc_device,
+    #endif
+    #ifdef CONFIG_CAMERA_OV5640
+        &camera_device,
     #endif
 	#if defined(CONFIG_SUSPEND)
 		&aml_pm_device,
@@ -1689,6 +1728,12 @@ static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
 		.platform_data = (void *)&so340010_pdata,
 	},
 #endif
+#ifdef CONFIG_CAMERA_OV5640
+	{
+	    /*ov5640 i2c address if 0x60*/
+		I2C_BOARD_INFO("ov5640_i2c",  0x78 >> 1),
+	},
+#endif
 };
 
 
@@ -1708,6 +1753,20 @@ static int __init aml_i2c_init(void)
 	return 0;
 }
 
+#if defined(CONFIG_TVIN_BT656IN)
+static void __init bt656in_pinmux_init(void)
+{
+    set_mio_mux(5, 0x1f000);   //mask--mux gpioD 15 to bt656 clk;  mux gpioD 16:23 to be bt656 dt_in
+                                //mask--mux gpioD 12 to bt601 FIQ; mux gpioD 13 to bt601HS; mux gpioD 14 to bt601 VS;
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_5, 0x3e07fe);
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_7, 0x000fc000);
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, 0xffc00000);
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_10, 0xe0000000);
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_12, 0xfff80000);                                
+}
+
+
+#endif
 static void __init eth_pinmux_init(void)
 {
 	eth_set_pinmux(ETH_BANK2_GPIOD15_D23,ETH_CLK_OUT_GPIOD24_REG5_1,0);		
@@ -1728,9 +1787,33 @@ static void __init eth_pinmux_init(void)
 //	udelay(100);	//GPIOE_bank_bit16_21(16) reset end;
 //	set_gpio_val(GPIOE_bank_bit16_21(16),GPIOE_bit_bit16_21(16),1);
 #endif
-	aml_i2c_init();
+
 }
 
+#ifdef CONFIG_CAMERA_OV5640
+static void __init camera_power_on_init(void)
+{
+    //reset pin is low
+//    CLEAR_CBUS_REG_MASK(0x2015, (1 << 16));     //bit8 :  mux GPIO_E16 to GPIO output mode
+//    CLEAR_CBUS_REG_MASK(0x2016, (1 << 16));     //bit8 :  mux GPIO_E16 to GPIO output low
+	SET_CBUS_REG_MASK(0x2012,(1 << 22)); //pan 
+ //power down pin is hith level --power down mode
+    CLEAR_CBUS_REG_MASK(0x2012,(1 << 10));     // mux GPIO_D12 to GPIO output mode
+    SET_CBUS_REG_MASK(0x2013, (1 << 10));     //mux GPIO_D12 to GPIO output hith level
+		
+    udelay(2000);
+    
+    //power down pin is low--normal mode
+    CLEAR_CBUS_REG_MASK(0x2012,(1 << 10));     //  mux GPIO_D12 to GPIO output mode
+    CLEAR_CBUS_REG_MASK(0x2013, (1 << 10));     // mux GPIO_D12 to GPIO output low
+	
+	SET_CBUS_REG_MASK(0x2012,(1 << 22)); //pan 
+    //resetpin is high
+//    SET_CBUS_REG_MASK(0x2015, (1 << 16));     //bit8 :  mux GPIO_E16 to GPIO output mode
+//    SET_CBUS_REG_MASK(0x2016, (1 << 16));     //bit8 :  mux GPIO_E16 to GPIO output high
+
+}
+#endif
 static void __init device_pinmux_init(void )
 {
 	clearall_pinmux();
@@ -1743,6 +1826,9 @@ static void __init device_pinmux_init(void )
 	/*pinmux of eth*/
 	//eth_pinmux_init();
 	aml_i2c_init();
+#if defined(CONFIG_TVIN_BT656IN)
+	bt656in_pinmux_init();
+#endif
 	if(board_ver == 0){
 		#ifdef CONFIG_SND_SOC_RT5621
 			set_audio_pinmux(AUDIO_OUT_TEST_N);
@@ -1755,8 +1841,8 @@ static void __init device_pinmux_init(void )
         set_audio_pinmux(AUDIO_IN_JTAG);
 	}
     //set clk for wifi
-    SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, (1<<18));
-    CLEAR_CBUS_REG_MASK(PREG_EGPIO_EN_N, (1<<4));	
+   // SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, (1<<18));
+   // CLEAR_CBUS_REG_MASK(PREG_EGPIO_EN_N, (1<<4));	
 }
 
 static void __init  device_clk_setting(void)
@@ -1826,6 +1912,9 @@ static __init void m1_init_machine(void)
 	power_hold();
 	device_clk_setting();
 	device_pinmux_init();
+#ifdef CONFIG_CAMERA_OV5640
+    camera_power_on_init();
+#endif
 	platform_add_devices(platform_devs, ARRAY_SIZE(platform_devs));
 
 #ifdef CONFIG_USB_DWC_OTG_HCD

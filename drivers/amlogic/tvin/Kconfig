@@ -31,6 +31,7 @@ config TVIN_DVIN
 config TVIN_AFE
 	bool "Amlogic TVIN TVAFE device"
 	default n
+	depends on ARCH_MESON2
 	help
 		AFE device driver.
 
@@ -39,5 +40,7 @@ config TVIN_VDIN
 	default n
 	help
 		VDIN devices driver.
+
+source "drivers/amlogic/tvin/tuners/Kconfig"
 
 endmenu

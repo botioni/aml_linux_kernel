@@ -41,8 +41,10 @@ typedef enum cm_hue_shape_e {
 } cm_hue_shape_t;
 
 typedef enum cm_demo_pos_e {
-    CM_DEMO_POS_RIGHT = 0,
+    CM_DEMO_POS_TOP = 0,
+    CM_DEMO_POS_BOTTOM,
     CM_DEMO_POS_LEFT,
+    CM_DEMO_POS_RIGHT,
 } cm_demo_pos_t;
 
 typedef enum cm_sat_sel_e {
@@ -109,12 +111,23 @@ typedef struct cm_top_s {
     enum cm_csc_e       csc_sel;
 } cm_top_t;
 
+typedef struct cm_cbar_s {
+    unsigned char en;
+    unsigned char wid;
+    unsigned char cr;
+    unsigned char cb;
+    unsigned char y;
+} cm_cbar_t;
 typedef struct cm_demo_s {
     unsigned char       en;
     enum cm_demo_pos_e  pos;
     unsigned char       hlight_adj;
     ushort              wid;
+    struct cm_cbar_s   cbar;
 } cm_demo_t;
 
+typedef struct cm_regmap_s {
+    ulong reg[50];
+} cm_regmap_t;
 
 #endif  // _TVOUT_CM_H

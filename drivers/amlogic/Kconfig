@@ -15,6 +15,7 @@ source "drivers/amlogic/power/Kconfig"
 source "drivers/amlogic/extern_io/Kconfig"
 source "drivers/amlogic/gpio/Kconfig"
 source "drivers/amlogic/minilvds/Kconfig"
+source "drivers/amlogic/efuse/Kconfig"
 
 #	Block devices
 #
@@ -50,6 +51,9 @@ source "drivers/amlogic/jpeglogo/Kconfig"
 source "drivers/amlogic/ump/Kconfig"
 source "drivers/amlogic/mali/Kconfig"
 source "drivers/amlogic/dvb/Kconfig"
-
+#
+#	camera devices
+#
+source "drivers/amlogic/camera/Kconfig"
 
 endmenu	
