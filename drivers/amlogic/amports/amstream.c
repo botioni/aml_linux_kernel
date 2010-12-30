@@ -954,7 +954,8 @@ static int amstream_ioctl(struct inode *inode, struct file *file,
         case AMSTREAM_IOC_VB_SIZE:
             if ((this->type & PORT_TYPE_VIDEO) &&
                 ((bufs[BUF_TYPE_VIDEO].flag & BUF_FLAG_IN_USE) == 0)) {
-                    r=stbuf_change_size(&bufs[BUF_TYPE_VIDEO],arg);
+                    if(bufs[BUF_TYPE_VIDEO].flag & BUF_FLAG_ALLOC)
+                        r=stbuf_change_size(&bufs[BUF_TYPE_VIDEO],arg);
             }
             else
                 r = -EINVAL;
@@ -972,7 +973,8 @@ static int amstream_ioctl(struct inode *inode, struct file *file,
         case AMSTREAM_IOC_AB_SIZE:
             if ((this->type & PORT_TYPE_AUDIO) &&
                 ((bufs[BUF_TYPE_AUDIO].flag & BUF_FLAG_IN_USE) == 0)) {
-                r=stbuf_change_size(&bufs[BUF_TYPE_AUDIO],arg);
+                if(bufs[BUF_TYPE_AUDIO].flag & BUF_FLAG_ALLOC)
+                    r=stbuf_change_size(&bufs[BUF_TYPE_AUDIO],arg);
             }
             else
                 r = -EINVAL;
@@ -1306,7 +1308,7 @@ static ssize_t bufs_show(struct class *class, struct class_attribute *attr, char
 		if(p->flag&BUF_FLAG_IN_USE)
 			pbuf+=sprintf(pbuf,"%s ","Used");
 		else
-			pbuf+=sprintf(pbuf,"%s ","Noused");
+			pbuf+=sprintf(pbuf,"%s ","Noused");
 		if(p->flag&BUF_FLAG_PARSER)
 			pbuf+=sprintf(pbuf,"%s ","Parser");
 		else
@@ -1368,6 +1370,7 @@ static int  amstream_probe(struct platform_device *pdev)
     int i;
     int r;
     stream_port_t *st;
+    struct resource *res;
 
     printk("Amlogic A/V streaming port init\n");
 
@@ -1411,21 +1414,37 @@ static int  amstream_probe(struct platform_device *pdev)
          r= (-EIO);
          goto error3;
         }
-     if(stbuf_change_size(&bufs[BUF_TYPE_VIDEO],DEFAULT_VIDEO_BUFFER_SIZE)!=0)
-        {
-         r= (-ENOMEM);
-         goto error4;
+
+    res = platform_get_resource(pdev, IORESOURCE_MEM, 1);
+    if(!res){
+	 printk("Can not obtain I/O memory, and will allocate stream buffer!\n");
+	 
+        if(stbuf_change_size(&bufs[BUF_TYPE_VIDEO],DEFAULT_VIDEO_BUFFER_SIZE)!=0){
+            r= (-ENOMEM);
+            goto error4;
         }
-    if(stbuf_change_size(&bufs[BUF_TYPE_AUDIO],DEFAULT_AUDIO_BUFFER_SIZE)!=0)
-        {
-             r= (-ENOMEM);
-         goto error5;
+        if(stbuf_change_size(&bufs[BUF_TYPE_AUDIO],DEFAULT_AUDIO_BUFFER_SIZE)!=0){
+            r= (-ENOMEM);
+            goto error5;
         }
-    if(stbuf_change_size(&bufs[BUF_TYPE_SUBTITLE],DEFAULT_SUBTITLE_BUFFER_SIZE)!=0)
-        {
+        if(stbuf_change_size(&bufs[BUF_TYPE_SUBTITLE],DEFAULT_SUBTITLE_BUFFER_SIZE)!=0){
             r= (-ENOMEM);
             goto error6;
         }
+    } else {
+        bufs[BUF_TYPE_VIDEO].buf_start = res->start;
+	 bufs[BUF_TYPE_VIDEO].buf_size = resource_size(res)-DEFAULT_AUDIO_BUFFER_SIZE-DEFAULT_SUBTITLE_BUFFER_SIZE;
+	 bufs[BUF_TYPE_VIDEO].flag |= BUF_FLAG_IOMEM;
+
+	 bufs[BUF_TYPE_AUDIO].buf_start = res->start + bufs[BUF_TYPE_VIDEO].buf_size;
+	 bufs[BUF_TYPE_AUDIO].buf_size = DEFAULT_AUDIO_BUFFER_SIZE;
+	 bufs[BUF_TYPE_AUDIO].flag |= BUF_FLAG_IOMEM;
+
+	 bufs[BUF_TYPE_SUBTITLE].buf_start = res->start + resource_size(res) -DEFAULT_SUBTITLE_BUFFER_SIZE;
+	 bufs[BUF_TYPE_SUBTITLE].buf_size = DEFAULT_SUBTITLE_BUFFER_SIZE;
+	 bufs[BUF_TYPE_SUBTITLE].flag = BUF_FLAG_IOMEM;
+    }
+	
     if(stbuf_fetch_init()!=0)
         {
             r= (-ENOMEM);
@@ -1436,11 +1455,14 @@ static int  amstream_probe(struct platform_device *pdev)
 	return 0;
 
 error7:
-    stbuf_change_size(&bufs[BUF_TYPE_SUBTITLE],0);
+    if(bufs[BUF_TYPE_SUBTITLE].flag & BUF_FLAG_ALLOC)
+        stbuf_change_size(&bufs[BUF_TYPE_SUBTITLE],0);
 error6:
-    stbuf_change_size(&bufs[BUF_TYPE_AUDIO],0);
+    if(bufs[BUF_TYPE_AUDIO].flag & BUF_FLAG_ALLOC)
+        stbuf_change_size(&bufs[BUF_TYPE_AUDIO],0);
 error5:
-    stbuf_change_size(&bufs[BUF_TYPE_VIDEO],0);
+    if(bufs[BUF_TYPE_VIDEO].flag & BUF_FLAG_ALLOC)
+        stbuf_change_size(&bufs[BUF_TYPE_VIDEO],0);
 error4:
     tsdemux_class_unregister();
 error3:
@@ -1458,8 +1480,10 @@ static int  amstream_remove(struct platform_device *pdev)
 {
     int i;
     stream_port_t *st;
-    stbuf_change_size(&bufs[BUF_TYPE_VIDEO],0);
-    stbuf_change_size(&bufs[BUF_TYPE_AUDIO],0);
+    if(bufs[BUF_TYPE_VIDEO].flag & BUF_FLAG_ALLOC)
+        stbuf_change_size(&bufs[BUF_TYPE_VIDEO],0);
+    if(bufs[BUF_TYPE_AUDIO].flag & BUF_FLAG_ALLOC)
+        stbuf_change_size(&bufs[BUF_TYPE_AUDIO],0);
     stbuf_fetch_release();
     tsdemux_class_unregister();
     for (st = &ports[0], i = 0; i < MAX_PORT_NUM; i++, st++) {

@@ -326,6 +326,11 @@ static struct resource codec_resources[] = {
         .end   = CODEC_ADDR_END,
         .flags = IORESOURCE_MEM,
     },
+    [1] = {
+        .start = STREAMBUF_ADDR_START,
+	 .end = STREAMBUF_ADDR_END,
+	 .flags = IORESOURCE_MEM,
+    },
 };
 
 static struct platform_device codec_device = {
