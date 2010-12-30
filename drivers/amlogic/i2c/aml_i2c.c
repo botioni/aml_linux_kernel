@@ -595,10 +595,76 @@ static ssize_t store_register(struct class *class,
 	return 0;
 }
 
+static unsigned int clock81_reading(void)
+{
+	int val;
+	
+	val = READ_CBUS_REG(0x1070);
+	printk( "1070=%x\n", val);
+	val = READ_CBUS_REG(0x105d);
+	printk( "105d=%x\n", val);
+	return 148;
+}
+
+static ssize_t rw_special_reg(struct class *class, 
+			struct class_attribute *attr,	const char *buf, size_t count)
+{
+	unsigned int id, val, ret;
+	
+	if(buf[0] == 'w'){
+		ret = sscanf(buf, "w %x", &id);
+		switch(id)
+		{
+			case 0:
+				break;
+			default:
+				printk( "'echo h > customize' for help\n");
+				break;
+		}
+		//printk("sscanf w reg = %x, val = %x\n",reg, val);
+		//printk("write cbus reg 0x%x value %x\n", reg, val);
+		//WRITE_CBUS_REG(reg, val);
+	}
+	else if(buf[0] == 'r'){
+		ret =  sscanf(buf, "r %x", &id);
+		switch(id)
+		{
+			case 0:
+				val = clock81_reading();
+				printk("Reading Value=%04d Mhz\n", val);
+				break;
+			default:
+				printk( "'echo h > customize' for help\n");
+				break;
+		}
+		//printk("sscanf r reg = %x\n", reg);
+		//val = READ_CBUS_REG(reg);
+		//printk("read cbus reg 0x%x value %x\n", reg, val);
+	}
+	else if(buf[0] == 'h'){
+		printk( "Customize sys fs help\n");
+		printk( "**********************************************************\n");
+		printk( "This interface for customer special register value getting\n");
+		printk( "echo w id > customize: for write the value to customer specified register\n");
+		printk( "echo r id > customize: for read the value from customer specified register\n");
+		printk( "reading ID: 0--for clock81 reading\n");
+		printk( "writting ID: reserved currently \n");
+		printk( "**********************************************************\n");
+	}
+	else
+		printk( "'echo h > customize' for help\n");
+
+	if (ret != 1 || ret !=2)
+		return -EINVAL;
+		
+	return 0;
+}
+
 static struct class_attribute i2c_class_attrs[] = {
     __ATTR(debug,  S_IRUGO | S_IWUSR, show_i2c_debug,    store_i2c_debug),
     __ATTR(info,       S_IRUGO | S_IWUSR, show_i2c_info,    NULL),
     __ATTR(cbus_reg,  S_IRUGO | S_IWUSR, NULL,    store_register),
+    __ATTR(customize,  S_IRUGO | S_IWUSR, NULL,    rw_special_reg),
     __ATTR_NULL
 };
 
