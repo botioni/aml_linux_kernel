@@ -918,7 +918,6 @@ static int is_ac_connected(void)
 static void set_charge(int flags)
 {
     //GPIOD_22 low: fast charge high: slow charge
-    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_7, (1<<18));
     if(flags == 1)
         {
 	    //set_gpio_val(GPIOD_bank_bit2_24(22), GPIOD_bit_bit2_24(22), 0); //fast charge
@@ -957,6 +956,9 @@ static int get_charge_status()
 
 static void set_bat_off(void)
 {
+    //set_vccx2 power down    
+    set_gpio_val(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), 0);
+    set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);  
     if(is_ac_connected()){ //AC in after power off press
         kernel_restart("reboot");
     }
