@@ -5,7 +5,7 @@
 #include <linux/amports/timestamp.h>
 #include <linux/amports/tsync.h>
 
-#define CONFIG_AM_TIMESYNC_LOG
+//#define CONFIG_AM_TIMESYNC_LOG
 #ifdef CONFIG_AM_TIMESYNC_LOG
 #define AMLOG
 #define LOG_LEVEL_ERROR		0
