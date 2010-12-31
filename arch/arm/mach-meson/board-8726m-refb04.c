@@ -278,16 +278,16 @@ static void set_usb_a_vbus_power(char is_power_on)
 #define USB_A_POW_GPIO_BIT_ON   1
 #define USB_A_POW_GPIO_BIT_OFF  0
     if(is_power_on) {
-        set_gpio_val(GPIOA_bank_bit(26), GPIOA_bit_bit23_26(26), 1);
-        set_gpio_mode(GPIOA_bank_bit(26), GPIOA_bit_bit23_26(26), GPIO_OUTPUT_MODE);
+        //set_gpio_val(GPIOA_bank_bit(26), GPIOA_bit_bit23_26(26), 1);
+        //set_gpio_mode(GPIOA_bank_bit(26), GPIOA_bit_bit23_26(26), GPIO_OUTPUT_MODE);
         printk(KERN_INFO "set usb port power on (board gpio %d)!\n",USB_A_POW_GPIO_BIT);
         set_gpio_mode(USB_A_POW_GPIO,USB_A_POW_GPIO_BIT,GPIO_OUTPUT_MODE);
         set_gpio_val(USB_A_POW_GPIO,USB_A_POW_GPIO_BIT,USB_A_POW_GPIO_BIT_ON);
     }
     else {
         printk(KERN_INFO "set usb port power off (board gpio %d)!\n",USB_A_POW_GPIO_BIT);
-        set_gpio_val(GPIOA_bank_bit(26), GPIOA_bit_bit23_26(26), 0);
-        set_gpio_mode(GPIOA_bank_bit(26), GPIOA_bit_bit23_26(26), GPIO_OUTPUT_MODE);
+        //set_gpio_val(GPIOA_bank_bit(26), GPIOA_bit_bit23_26(26), 0);
+        //set_gpio_mode(GPIOA_bank_bit(26), GPIOA_bit_bit23_26(26), GPIO_OUTPUT_MODE);
         set_gpio_mode(USB_A_POW_GPIO,USB_A_POW_GPIO_BIT,GPIO_OUTPUT_MODE);
         set_gpio_val(USB_A_POW_GPIO,USB_A_POW_GPIO_BIT,USB_A_POW_GPIO_BIT_OFF);
     }
@@ -796,6 +796,8 @@ static void set_vccx2(int power_on)
     {
         set_gpio_val(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), 1);
         set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);        
+        set_gpio_val(GPIOA_bank_bit(26), GPIOA_bit_bit23_26(26), 1);//USB A power 
+        set_gpio_mode(GPIOA_bank_bit(26), GPIOA_bit_bit23_26(26), GPIO_OUTPUT_MODE);    
         //set clk for wifi
         SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, (1<<18));
         CLEAR_CBUS_REG_MASK(PREG_EGPIO_EN_N, (1<<4));	              
@@ -804,6 +806,8 @@ static void set_vccx2(int power_on)
     {
         set_gpio_val(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), 0);
         set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);   
+        set_gpio_val(GPIOA_bank_bit(26), GPIOA_bit_bit23_26(26), 0);//USB A power 
+        set_gpio_mode(GPIOA_bank_bit(26), GPIOA_bit_bit23_26(26), GPIO_OUTPUT_MODE);
         //disable wifi clk
         CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, (1<<18));
         SET_CBUS_REG_MASK(PREG_EGPIO_EN_N, (1<<4));	        
@@ -1610,6 +1614,8 @@ static void __init power_hold(void)
         /* PIN28, GPIOA_6, Pull high, For En_5V */
     set_gpio_val(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), 1);
     set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);
+    set_gpio_val(GPIOA_bank_bit(26), GPIOA_bit_bit23_26(26), 1);//USB A power 
+    set_gpio_mode(GPIOA_bank_bit(26), GPIOA_bit_bit23_26(26), GPIO_OUTPUT_MODE);
 }
 
 static __init void m1_init_machine(void)
