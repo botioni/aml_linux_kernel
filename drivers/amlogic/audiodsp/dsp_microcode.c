@@ -93,7 +93,11 @@ static struct audiodsp_microcode *  audiodsp_find_mcode_by_name(struct audiodsp_
 		goto release;
 		}
     if(priv->dsp_is_started)
+#ifndef AUDIODSP_RESET
         dsp_code_text_start = 0x800;//after dsp is running,only load from the text section of the microcode.
+#else
+	 dsp_code_text_start = 0;
+#endif /* AUDIODSP_RESET */
 	memcpy((char *)((unsigned)priv->p+dsp_code_text_start), (char*)firmware->data+dsp_code_text_start,firmware->size-dsp_code_text_start);
 
 	pmcode->code_size=firmware->size;
