@@ -181,10 +181,18 @@ s32 stbuf_init(struct stream_buf_s *buf)
     s32 r;
     u32 dummy;
     u32 phy_addr;
-    r = _stbuf_alloc(buf);
-    if (r < 0)
-        return r;
-    phy_addr = virt_to_phys((void *)buf->buf_start);
+
+    if(buf->flag & BUF_FLAG_IOMEM)
+    {
+	phy_addr = buf->buf_start;
+    }
+    else
+    {
+        r = _stbuf_alloc(buf);
+        if (r < 0)
+            return r;
+        phy_addr = virt_to_phys((void *)buf->buf_start);
+    }
     init_waitqueue_head(&buf->wq);
 
     _WRITE_ST_REG(CONTROL, 0);
@@ -261,8 +269,11 @@ s32 stbuf_wait_space(struct stream_buf_s *stream_buf, size_t count)
 
 void stbuf_release(struct stream_buf_s *buf)
 { 
-	buf->first_tstamp=INVALID_PTS;
-    buf->flag = 0;
+    buf->first_tstamp=INVALID_PTS;
+    if(buf->flag & BUF_FLAG_IOMEM)
+        buf->flag = BUF_FLAG_IOMEM;
+    else
+        buf->flag = 0;
 }
 
 u32 stbuf_sub_rp_get(void)
