@@ -562,14 +562,14 @@ static struct mtd_partition inand_partition_info[] =
 	{
 		.name = "cache",
 		.offset = 284*1024*1024,
-		.size = 16 * 1024*1024,
+		.size = 36*1024*1024,
 	//	.set_flags=0,
 	//	.dual_partnum=0,
 	},
 	{
 		.name = "userdata",
-		.offset= 300*1024*1024,
-		.size= 256 * 1024*1024,
+		.offset= 320*1024*1024,
+		.size= 512*1024*1024,
 	//	.set_flags=0,
 	//	.dual_partnum=0,
 	},
@@ -757,15 +757,11 @@ static unsigned int rt5621_is_hp_pluged()
                                 (7 << 4)    |       // CS1 REF, Current FeedBack: about 0.505V
                                 (0 << 0));           // DIMCTL Analog dimmer
     cs_no = READ_CBUS_REG(LED_PWM_REG3);
-    if(board_ver == 2){
-        if(cs_no &(1<<14))
-          level |= (1<<0);
-    }
-    else{
-          level = 0;   //old pcb always hp unplug
-    }
-    //printk("level = %d,board_ver = %d\n",level,board_ver);
-    return (level == 1)?(1):(0); //return 1: hp pluged, 0: hp unpluged.
+	
+	if( cs_no & ( 1 << 15 ) )
+		level = 1;
+
+    return level;	//return 1: hp pluged, 0: hp unpluged.
 }
 static struct rt5621_platform_data rt5621_pdata = {
     .is_hp_pluged = &rt5621_is_hp_pluged,
@@ -1262,21 +1258,21 @@ static struct mtd_partition partition_info[] =
 	{
 		.name = "cache",
 		.offset = 416*1024*1024,
-		.size = 16 * 1024*1024,
+		.size = 36 * 1024*1024,
 	//	.set_flags=0,
 	//	.dual_partnum=0,
 	},
 	{
 		.name = "userdata",
-		.offset= 432*1024*1024,
-		.size= 256 * 1024*1024,
+		.offset= 452*1024*1024,
+		.size= 512 * 1024*1024,
 	//	.set_flags=0,
 	//	.dual_partnum=0,
 	},
 	{
 		.name = "media",
-		.offset = MTDPART_OFS_APPEND,
-		.size = (0x200000000-(432+256)*1024*1024),
+		.offset = (452+512)*1024*1024,//MTDPART_SIZ_FULL;//MTDPART_OFS_APPEND,
+		.size = MTDPART_SIZ_FULL,//(0x100000000-(432+256)*1024*1024),
 		.set_flags = MTD_AVNFTL,
 		.dual_partnum = 1|MTD_AVFTL_PLANE|MTD_AVNFTL_INTERL,
 	//	.set_flags=0,
@@ -1585,6 +1581,80 @@ static struct platform_device android_usb_device = {
 };
 #endif
 
+#ifdef CONFIG_BCM_BT
+static struct platform_device bcm_bt_device = {
+	.name             = "bcm-bt",
+	.id               = -1,
+};
+
+static void hci_uart_pin_init()
+{
+    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_12, (1<<29));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_12, (1<<22));
+	
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_7, (1<<19));
+	
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_5, (1<<20));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_5, (1<<17));
+	
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_5, (1<<14));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0, (1<<12));
+	
+	
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_5, (1<<4));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_7, (1<<13));
+	
+	
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_7, (1<<12));
+	
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, (1<<21));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, (1<<28));
+	
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_12, (1<<23));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_7, (1<<14));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_5, (1<<17));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0, (1<<12));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_5, (1<<5));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, (1<<27));
+	
+	
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_12, (1<<27));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_5, (1<<18));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0, (1<<12));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_5, (1<<9));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, (1<<23));
+	
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_12, (1<<26));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_7, (1<<17));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_5, (1<<17));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0, (1<<12));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_5, (1<<8));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, (1<<24));
+	
+	/* WLBT_REGON */
+	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<18));
+	SET_CBUS_REG_MASK(PREG_GGPIO_O, (1<<18));	
+	
+	/* reset */
+	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<12));
+	CLEAR_CBUS_REG_MASK(PREG_GGPIO_O, (1<<12));	
+	msleep(200);	
+	SET_CBUS_REG_MASK(PREG_GGPIO_O, (1<<12));	
+	
+	/* BG/GPS low */
+	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<19));
+	CLEAR_CBUS_REG_MASK(PREG_GGPIO_O, (1<<19));	
+	
+	/* UART RTS */
+	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<16));
+    CLEAR_CBUS_REG_MASK(PREG_GGPIO_O, (1<<16));
+		
+	/* BG wakeup high 
+	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<14));
+	SET_CBUS_REG_MASK(PREG_GGPIO_O, (1<<14));*/
+}
+#endif
+
 static struct platform_device __initdata *platform_devs[] = {
     #if defined(CONFIG_JPEGLOGO)
 		&jpeglogo_device,
@@ -1676,6 +1746,9 @@ static struct platform_device __initdata *platform_devs[] = {
 	#ifdef CONFIG_SMBA10XX_BATTERY
 		&smba10xx_battery_device,
 	#endif
+    #ifdef CONFIG_BCM_BT  
+        &bcm_bt_device,
+    #endif    	
 };
 static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
 
@@ -1698,17 +1771,9 @@ static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
     },
 #endif
 
-#ifdef CONFIG_MXC_MMA7660
-	{
-		I2C_BOARD_INFO("mma7660", 0x4C),
-		.irq = INT_GPIO_2,
-	},
-#endif
-
-
 #ifdef CONFIG_SND_SOC_RT5621
 	{
-		I2C_BOARD_INFO("rt5621", 0x1A),
+		I2C_BOARD_INFO(RT5621_I2C_NAME, RT5621_I2C_ADDR),
 		.platform_data = (void *)&rt5621_pdata,
 	},
 #endif
@@ -1741,6 +1806,13 @@ static struct i2c_board_info __initdata aml_i2c_sbus_info[] = {
 #ifdef CONFIG_SMBA10XX_BATTERY
 	{
 		I2C_BOARD_INFO(SMBA10XX_I2C_NAME, SMBA10XX_I2C_ADDR),
+	},
+#endif
+
+#ifdef CONFIG_MXC_MMA7660
+	{
+		I2C_BOARD_INFO("mma7660", 0x4C),
+		.irq = INT_GPIO_2,
 	},
 #endif
 };
@@ -1843,6 +1915,9 @@ static void __init device_pinmux_init(void )
     //set clk for wifi
    // SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, (1<<18));
    // CLEAR_CBUS_REG_MASK(PREG_EGPIO_EN_N, (1<<4));	
+#ifdef CONFIG_BCM_BT
+    hci_uart_pin_init();
+#endif
 }
 
 static void __init  device_clk_setting(void)

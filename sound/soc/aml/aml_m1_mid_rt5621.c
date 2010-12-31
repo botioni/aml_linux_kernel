@@ -178,13 +178,14 @@ static int aml_m1_codec_init(struct snd_soc_codec *codec)
 	    dev_warn(card->dev, "Failed to register DAPM widgets\n");
 		return 0;
 	}
-
+/*
     err = snd_soc_dapm_add_routes(codec, intercon,
         ARRAY_SIZE(intercon));
     if(err){
         dev_warn(card->dev, "Failed to setup dapm widgets routine\n");
         return 0;
     }
+*/
 
 #if HP_DET
     if ((rt5621_dai.ac97_pdata) && ((struct rt5621_platform_data *) (rt5621_dai.ac97_pdata))->is_hp_pluged)
@@ -210,6 +211,7 @@ static int aml_m1_codec_init(struct snd_soc_codec *codec)
     timer.expires = jiffies + HZ*1;
     init_timer(&timer);
 	INIT_WORK(&rt5621_work.rt5621_workqueue, rt5621_hp_detect_queue);
+	add_timer(&timer);
 #endif
 
     snd_soc_dapm_nc_pin(codec,"LINPUT1");
@@ -247,7 +249,7 @@ static struct snd_soc_card snd_soc_aml_m1 = {
 //flove111810_S
 static struct rt5621_setup_data aml_rt5621_setup =
 {
-    .i2c_address = 0x1a,
+    .i2c_address = RT5621_I2C_ADDR,
     .i2c_bus = 0,
 };
 //flove111810_E
