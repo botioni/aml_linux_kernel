@@ -21,4 +21,10 @@ config CAMERA_OV5640
 	default n
 	help
 		MICRON 5M Bayer Sensor with AutoFocus
+		
+config CAMERA_GC0308
+	tristate "CAMERA GC0308 Driver"
+	default n
+	help
+		GalaxyCore GC0308
 endmenu

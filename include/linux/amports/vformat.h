@@ -31,7 +31,7 @@ typedef enum {
     VFORMAT_JPEG,
     VFORMAT_VC1,
     VFORMAT_AVS,
-    VFORMAT_SW,
+    VFORMAT_YUV,    // Use SW decoder
     VFORMAT_MAX
 } vformat_t;
 

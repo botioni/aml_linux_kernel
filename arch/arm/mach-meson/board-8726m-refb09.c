@@ -362,8 +362,21 @@ static struct resource vdin_resources[] = {
         .end   = VDIN_ADDR_END,     //pbufAddr + size
         .flags = IORESOURCE_MEM,
     },
-
-
+    [1] = {
+        .start = VDIN_ADDR_START,
+        .end   = VDIN_ADDR_END,
+        .flags = IORESOURCE_MEM,
+    },
+    [2] = {
+        .start = INT_VDIN_VSYNC,
+        .end   = INT_VDIN_VSYNC,
+        .flags = IORESOURCE_IRQ,
+    },
+    [3] = {
+        .start = INT_VDIN_VSYNC,
+        .end   = INT_VDIN_VSYNC,
+        .flags = IORESOURCE_IRQ,
+    },
 };
 
 static struct platform_device vdin_device = {
@@ -372,8 +385,11 @@ static struct platform_device vdin_device = {
     .num_resources = ARRAY_SIZE(vdin_resources),
     .resource      = vdin_resources,
 };
+#endif
 
+#ifdef CONFIG_TVIN_BT656IN
 //add pin mux info for bt656 input
+#if 0
 static struct resource bt656in_resources[] = {
     [0] = {
         .start =  VDIN_ADDR_START,      //pbufAddr
@@ -399,12 +415,13 @@ static struct resource bt656in_resources[] = {
     },
 
 };
+#endif
 
 static struct platform_device bt656in_device = {
     .name       = "amvdec_656in",
     .id         = -1,
-    .num_resources = ARRAY_SIZE(bt656in_resources),
-    .resource      = bt656in_resources,
+//    .num_resources = ARRAY_SIZE(bt656in_resources),
+//    .resource      = bt656in_resources,
 };
 #endif
 
@@ -819,6 +836,12 @@ static  struct platform_device aml_rtc_device = {
     };
 #endif
 
+#ifdef CONFIG_CAMERA_GC0308
+static struct platform_device camera_device = {
+    .name       = "camera_gc0308",
+    .id         = -1,
+};
+#endif
 #if defined(CONFIG_SUSPEND)
 static void set_vccx2(int power_on)
 {
@@ -1427,6 +1450,8 @@ static struct platform_device __initdata *platform_devs[] = {
     #endif
     #if defined(CONFIG_TVIN_VDIN)
         &vdin_device,
+    #endif
+    #if defined(CONFIG_TVIN_BT656IN)
         &bt656in_device,
     #endif
     #if defined(CONFIG_AML_AUDIO_DSP)
@@ -1481,6 +1506,9 @@ static struct platform_device __initdata *platform_devs[] = {
     #if defined(CONFIG_AMLOGIC_BACKLIGHT)
         &aml_bl_device,
     #endif
+    #ifdef CONFIG_CAMERA_GC0308
+        &camera_device,
+    #endif
     #if defined(CONFIG_AM_TV_OUTPUT)||defined(CONFIG_AM_TCON_OUTPUT)
         &vout_device,   
     #endif
@@ -1505,6 +1533,12 @@ static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
     },
 #endif
 
+#ifdef CONFIG_CAMERA_GC0308
+    {
+        /*gc0309 i2c address is 0x42/0x43*/
+        I2C_BOARD_INFO("cg0308_i2c",  0x42 >> 1 ),
+    },
+#endif
 #ifdef CONFIG_SND_AML_M1_MID_WM8900
     {
         I2C_BOARD_INFO("wm8900", 0x1A),
@@ -1545,6 +1579,16 @@ static int __init aml_i2c_init(void)
     return 0;
 }
 
+#if defined(CONFIG_TVIN_BT656IN)
+static void __init bt656in_pinmux_init(void)
+{
+    set_mio_mux(3, 0xf000);   //mask--mux gpio_c3 to bt656 clk;  mux gpioc[4:11] to be bt656 dt_in
+    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, 0x0f000000);
+    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_3, 0x01be07fc);
+    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_4, 0x0c000000);
+}
+#endif
+
 static void __init eth_pinmux_init(void)
 {
     eth_set_pinmux(ETH_BANK2_GPIOD15_D23,ETH_CLK_OUT_GPIOD24_REG5_1,0);
@@ -1568,6 +1612,17 @@ static void __init eth_pinmux_init(void)
     aml_i2c_init();
 }
 
+#ifdef CONFIG_CAMERA_GC0308
+static void __init camera_power_on_init(void)
+{
+    udelay(1000);
+    SET_CBUS_REG_MASK(HHI_DEMOD_PLL_CNTL,0x232);// 24M XTAL
+    SET_CBUS_REG_MASK(HHI_DEMOD_PLL_CNTL,0x232);// 24M XTAL
+
+    eth_set_pinmux(ETH_BANK0_GPIOC3_C12,ETH_CLK_OUT_GPIOC12_REG3_1, 1);		
+}
+#endif
+
 static void __init device_pinmux_init(void )
 {
     clearall_pinmux();
@@ -1580,6 +1635,9 @@ static void __init device_pinmux_init(void )
     /*pinmux of eth*/
     //eth_pinmux_init();
     aml_i2c_init();
+#if defined(CONFIG_TVIN_BT656IN)
+    bt656in_pinmux_init();
+#endif
     set_audio_pinmux(AUDIO_OUT_TEST_N);
     set_audio_pinmux(AUDIO_IN_JTAG);
     //set clk for wifi
@@ -1636,6 +1694,9 @@ static __init void m1_init_machine(void)
     power_hold();
     device_clk_setting();
     device_pinmux_init();
+#ifdef CONFIG_CAMERA_GC0308
+    camera_power_on_init();
+#endif
     platform_add_devices(platform_devs, ARRAY_SIZE(platform_devs));
 
 #ifdef CONFIG_USB_DWC_OTG_HCD
