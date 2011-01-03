@@ -38,6 +38,7 @@
 #include <linux/i2c-aml.h>
 #include <mach/power_gate.h>
 #include <linux/aml_bl.h>
+#include <linux/reboot.h>
 
 #ifdef CONFIG_AM_UART_WITH_S_CORE 
 #include <linux/uart-aml.h>
@@ -952,14 +953,14 @@ static void set_charge(int flags)
     {
         #ifdef CONFIG_SN7325
         configIO(1, 0);
-        setIO_level(1, 1, 7);
+        setIO_level(1, 1, 3);
         #endif
     }
     else
     {
         #ifdef CONFIG_SN7325
         configIO(1, 0);
-        setIO_level(1, 0, 7);
+        setIO_level(1, 0, 3);
         #endif
     }
 }
@@ -983,6 +984,12 @@ static int get_charge_status(void)
 
 static void set_bat_off(void)
 {
+    //BL_PWM -> GPIOA_7: 0
+    set_gpio_val(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), 0);
+    set_gpio_mode(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), GPIO_OUTPUT_MODE);
+    if(is_ac_connected()){ //AC in after power off press
+        kernel_restart("reboot");
+    }
     set_gpio_val(GPIOA_bank_bit(8), GPIOA_bit_bit0_14(8), 0);
     set_gpio_mode(GPIOA_bank_bit(8), GPIOA_bit_bit0_14(8), GPIO_OUTPUT_MODE);
 
