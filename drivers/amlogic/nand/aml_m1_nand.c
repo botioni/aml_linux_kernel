@@ -388,9 +388,11 @@ static void aml_m1_erase_cmd(struct mtd_info *mtd, int page)
 		chip->cmd_ctrl(mtd, 0xD0, NAND_CLE );
 		NFC_SEND_CMD_RB(CE1|CE0,31);
 		while(NFC_CMDFIFO_SIZE()>0);
+        wmb();
 		NFC_SET_DADDR(aml_info->aml_nand_dma_buf_dma_addr);
 		NFC_SET_IADDR(aml_info->aml_nand_info_dma_addr);
 		memset(aml_info->info_buf,0,8);
+        wmb();
 		volatile unsigned * i=(unsigned*)&aml_info->info_buf[4];
 		aml_info->ce_sel=CE0;
 		chip->cmd_ctrl(mtd, 0x70, NAND_CLE );
@@ -406,8 +408,10 @@ static void aml_m1_erase_cmd(struct mtd_info *mtd, int page)
 	    NFC_SEND_CMD_N2M (512,0);
 	    NFC_SEND_CMD_IDLE(CE1,0);
 	    NFC_SEND_CMD_IDLE(CE1,0);
+        rmb();
 	    while(NFC_CMDFIFO_SIZE()>0);
 	    while(*i==0);
+        rmb();
 	    i=(unsigned*)aml_info->aml_nand_dma_buf;
 	}
 }
@@ -578,6 +582,7 @@ static int  aml_m1_nand_dma_read(struct mtd_info *mtd, uint8_t *buf, int len,int
 	volatile 	unsigned int * pbuf=(unsigned int *)((unsigned char *)aml_info->info_buf+((len>>9)-1)*4);
 	memset(aml_info->info_buf,0,MAX_INFO_LEN*sizeof(int));
 
+    wmb();
 	NFC_SEND_CMD(aml_info->ce_sel|IDLE | 1);
 	//	while(NFC_CMDFIFO_SIZE()>0);
 	//	    data_dma_addr=dma_map_single(aml_info->device,(void *)buf,len,DMA_FROM_DEVICE);
@@ -586,15 +591,14 @@ static int  aml_m1_nand_dma_read(struct mtd_info *mtd, uint8_t *buf, int len,int
 	NFC_SEND_CMD_AIL(aml_info->aml_nand_info_dma_addr);
 	NFC_SEND_CMD_AIH((aml_info->aml_nand_info_dma_addr));
 	NFC_SEND_CMD_N2M(len,ecc);
-//	rmb();
 	while(NFC_CMDFIFO_SIZE()>0);
 	while(NAND_INFO_DONE(*pbuf)==0);
 	//	    dma_unmap_single(aml_info->device,data_dma_addr,len,DMA_FROM_DEVICE);
+    rmb();
 
 	if((ecc!=NAND_ECC_NONE))
 		res=transfer_info_buf_after_read(mtd,(len+511)>>9);			//FIXME 2*page
 
-	rmb();
 	return res;
 }
 static void aml_m1_nand_dma_write(struct mtd_info *mtd, const uint8_t *buf, int len,int ecc)
@@ -604,6 +608,7 @@ static void aml_m1_nand_dma_write(struct mtd_info *mtd, const uint8_t *buf, int 
 	prepare_info_buf_before_write(mtd,(len+511)>>9,ecc);
 	
 	data_dma_addr=dma_map_single(aml_info->device,(void *)buf,len,DMA_TO_DEVICE);	
+    wmb();
 	NFC_SEND_CMD_ADL(data_dma_addr);         
 	NFC_SEND_CMD_ADH(data_dma_addr);
 	NFC_SEND_CMD_AIL(aml_info->aml_nand_info_dma_addr); 
@@ -612,6 +617,7 @@ static void aml_m1_nand_dma_write(struct mtd_info *mtd, const uint8_t *buf, int 
 	NFC_SEND_CMD_IDLE(aml_info->ce_sel,0);
 	NFC_SEND_CMD_IDLE(aml_info->ce_sel,0);
 	while(NFC_CMDFIFO_SIZE()>0);
+    rmb();
 	dma_unmap_single(aml_info->device,data_dma_addr,len,DMA_TO_DEVICE);
 }
 
@@ -665,6 +671,7 @@ static int aml_m1_nand_read_page(struct mtd_info *mtd, struct nand_chip *chip,ui
 			do{
 				status = NFC_GET_RB_STATUS(aml_info->ce_sel);
 		    }while((status!=1)&&(status!=2));
+            rmb();
 
 			chip->cmd_ctrl(mtd, 0x00, NAND_CLE );
 			chip->cmd_ctrl(mtd, 0, NAND_ALE);
@@ -677,6 +684,7 @@ static int aml_m1_nand_read_page(struct mtd_info *mtd, struct nand_chip *chip,ui
 			chip->cmd_ctrl(mtd, 0, NAND_ALE);
 			chip->cmd_ctrl(mtd, 0xe0,NAND_CLE);
 			while(NFC_CMDFIFO_SIZE()>0);
+            rmb();
 			rc0=aml_m1_nand_dma_read(mtd,buf,mtd->writesize/2,aml_info->bch_mode);
 			if(rc0!=0)
 			{
@@ -697,6 +705,7 @@ static int aml_m1_nand_read_page(struct mtd_info *mtd, struct nand_chip *chip,ui
 			chip->cmd_ctrl(mtd, 0, NAND_ALE);
 			chip->cmd_ctrl(mtd, 0xe0,NAND_CLE);
 			while(NFC_CMDFIFO_SIZE()>0);
+            rmb();
 			rc1=aml_m1_nand_dma_read(mtd,buf+mtd->writesize/2,mtd->writesize/2,aml_info->bch_mode);
 			if(rc1!=0)
 			{
@@ -723,6 +732,7 @@ static int aml_m1_nand_read_page(struct mtd_info *mtd, struct nand_chip *chip,ui
 			chip->cmd_ctrl(mtd, NAND_CMD_READSTART,NAND_CLE);
 			while(NFC_CMDFIFO_SIZE()>0);
 
+            rmb();
 			NFC_SEND_CMD_RB(aml_info->ce_sel,0);
 			rc0=aml_m1_nand_dma_read(mtd,buf,mtd->writesize/2,aml_info->bch_mode);
 	
@@ -735,6 +745,7 @@ static int aml_m1_nand_read_page(struct mtd_info *mtd, struct nand_chip *chip,ui
 			chip->cmd_ctrl(mtd, (tmp_pag+aml_info->ppb) >> 8, NAND_ALE);
 			chip->cmd_ctrl(mtd,	( tmp_pag+aml_info->ppb)>> 16,NAND_ALE);
 			chip->cmd_ctrl(mtd, 0xe0, NAND_CLE );
+            rmb();
 			rc1=aml_m1_nand_dma_read(mtd,buf+mtd->writesize/2,mtd->writesize/2,aml_info->bch_mode);
 			if(rc1!=0){
 	
@@ -770,6 +781,7 @@ static int aml_m1_nand_read_page(struct mtd_info *mtd, struct nand_chip *chip,ui
 		chip->cmd_ctrl(mtd,	( tmp_pag+aml_info->ppb)>> 16,NAND_ALE);
 		chip->cmd_ctrl(mtd, NAND_CMD_READSTART,NAND_CLE);
 		while(NFC_CMDFIFO_SIZE()>0);
+        rmb();
 		
 		if(aml_info->cur_rd_len==(512))
 		{
@@ -793,6 +805,7 @@ static int aml_m1_nand_read_page(struct mtd_info *mtd, struct nand_chip *chip,ui
 		chip->cmd_ctrl(mtd,	( tmp_pag+aml_info->ppb)>> 16,NAND_ALE);
 		chip->cmd_ctrl(mtd, NAND_CMD_READSTART,NAND_CLE);
 		while(NFC_CMDFIFO_SIZE()>0);
+        rmb();
 		aml_info->ce_sel=CE0;
 		NFC_SEND_CMD_RB(aml_info->ce_sel,0);
 		rc0=aml_m1_nand_dma_read(mtd,buf,mtd->writesize/4,aml_info->bch_mode);
@@ -806,6 +819,7 @@ static int aml_m1_nand_read_page(struct mtd_info *mtd, struct nand_chip *chip,ui
 		chip->cmd_ctrl(mtd, (tmp_pag+aml_info->ppb) >> 8, NAND_ALE);
 		chip->cmd_ctrl(mtd,	( tmp_pag+aml_info->ppb)>> 16,NAND_ALE);
 		chip->cmd_ctrl(mtd, 0xe0, NAND_CLE );
+        rmb();
 		rc1=aml_m1_nand_dma_read(mtd,buf+mtd->writesize/4,mtd->writesize/4,aml_info->bch_mode);
 		if(rc1!=0){
 
@@ -830,6 +844,7 @@ static int aml_m1_nand_read_page(struct mtd_info *mtd, struct nand_chip *chip,ui
 		chip->cmd_ctrl(mtd, (tmp_pag+aml_info->ppb) >> 8, NAND_ALE);
 		chip->cmd_ctrl(mtd,	( tmp_pag+aml_info->ppb)>> 16,NAND_ALE);
 		chip->cmd_ctrl(mtd, 0xe0, NAND_CLE );
+        rmb();
 		rc1=aml_m1_nand_dma_read(mtd,buf+(3*mtd->writesize)/4,mtd->writesize/4,aml_info->bch_mode);
 		if(rc1!=0){
 			//			printk("%d:%d %d %d %d %x\n",__LINE__,rc0,rc1,buf[0],((unsigned)buf)&7,temp[0]);
@@ -863,7 +878,7 @@ static int aml_m1_nand_read_page(struct mtd_info *mtd, struct nand_chip *chip,ui
 		//printk("%s  wer\n",__func__);
 			    //unsigned *temp1=(unsigned*)buf;
 		        //printk("%d:%x %x \n",__LINE__,temp[0],temp1[0]);
-		rmb();
+        rmb();
 		memcpy(buf_i,aml_info->aml_nand_dma_buf,mtd->writesize);
 	}else{
 		//        printk("%d:%x %x\n",__LINE__,buf_i,aml_info->aml_nand_dma_buf);
@@ -942,75 +957,78 @@ static void aml_m1_nand_write_page(struct mtd_info *mtd, struct nand_chip *chip,
 	}
 	else if((aml_info->planemode!=0)&&((aml_info->interlmode==0)))
 	{
-		volatile unsigned char status;
-		unsigned len=mtd->writesize/2;
+			volatile unsigned char status;
+			unsigned len=mtd->writesize/2;
 
-		NFC_SET_DADDR(aml_info->aml_nand_dma_buf_dma_addr);
-		NFC_SET_IADDR(aml_info->aml_nand_info_dma_addr); 	
-		memcpy(aml_info->aml_nand_dma_buf,buf_i,len);
-		wmb();
-		prepare_info_buf_before_write(mtd,(len+511)>>9,aml_info->bch_mode);
-		NFC_SEND_CMD_RB(aml_info->ce_sel,0);
-		tmp_pag = (aml_info->curpage/aml_info->ppb) *(aml_info-> ppb) + aml_info->curpage;
-
-		chip->cmd_ctrl(mtd, 0x80, NAND_CLE );
-		chip->cmd_ctrl(mtd, 0, NAND_ALE);
-		chip->cmd_ctrl(mtd, 0, NAND_ALE);
-		chip->cmd_ctrl(mtd, tmp_pag, NAND_ALE);
-		chip->cmd_ctrl(mtd, (tmp_pag) >> 8, NAND_ALE);
-		chip->cmd_ctrl(mtd,	(tmp_pag)>> 16,NAND_ALE);
-		NFC_SEND_CMD_M2N(len,aml_info->bch_mode);
-		chip->cmd_ctrl(mtd, 0x11, NAND_CLE );
-
-		memcpy(&(aml_info->aml_nand_dma_buf[len]),&buf_i[len],len);
-		memcpy(&(aml_info->info_buf[((len)>>7)]),aml_info->info_buf,(len)>>7);
-		wmb();
-		NFC_SEND_CMD_IDLE(aml_info->ce_sel,0);
-		NFC_SEND_CMD_RB(aml_info->ce_sel,31);
-		do{
-			status = NFC_GET_RB_STATUS(aml_info->ce_sel);
-		}while((status!=1)&&(status!=2));
-		if(!(strcmp(mtd->name,"Hynix")))
-		{
-			chip->cmd_ctrl(mtd, 0x81, NAND_CLE );
-		}
-		else if(!(strcmp(mtd->name,"Micron")))
-		{
+	    NFC_SET_DADDR(aml_info->aml_nand_dma_buf_dma_addr);
+	    NFC_SET_IADDR(aml_info->aml_nand_info_dma_addr); 	
+			memcpy(aml_info->aml_nand_dma_buf,buf_i,len);
+			prepare_info_buf_before_write(mtd,(len+511)>>9,aml_info->bch_mode);
+            wmb();
+			NFC_SEND_CMD_RB(aml_info->ce_sel,0);
+			tmp_pag = (aml_info->curpage/aml_info->ppb) *(aml_info-> ppb) + aml_info->curpage;
+				
 			chip->cmd_ctrl(mtd, 0x80, NAND_CLE );
-		}
-		chip->cmd_ctrl(mtd, 0, NAND_ALE);
-		chip->cmd_ctrl(mtd, 0, NAND_ALE);
-		chip->cmd_ctrl(mtd, tmp_pag+aml_info->ppb, NAND_ALE);
-		chip->cmd_ctrl(mtd, (tmp_pag+aml_info->ppb) >> 8, NAND_ALE);
-		chip->cmd_ctrl(mtd,	( tmp_pag+aml_info->ppb)>> 16,NAND_ALE);
+			chip->cmd_ctrl(mtd, 0, NAND_ALE);
+			chip->cmd_ctrl(mtd, 0, NAND_ALE);
+			chip->cmd_ctrl(mtd, tmp_pag, NAND_ALE);
+			chip->cmd_ctrl(mtd, (tmp_pag) >> 8, NAND_ALE);
+			chip->cmd_ctrl(mtd,	(tmp_pag)>> 16,NAND_ALE);
+			NFC_SEND_CMD_M2N(len,aml_info->bch_mode);
+			chip->cmd_ctrl(mtd, 0x11, NAND_CLE );
+		
+			memcpy(&(aml_info->aml_nand_dma_buf[len]),&buf_i[len],len);
+	  	memcpy(&(aml_info->info_buf[((len)>>7)]),aml_info->info_buf,(len)>>7);
+        wmb();
+	  	NFC_SEND_CMD_IDLE(aml_info->ce_sel,0);
+			NFC_SEND_CMD_RB(aml_info->ce_sel,31);
+			do{
+				status = NFC_GET_RB_STATUS(aml_info->ce_sel);
+			}while((status!=1)&&(status!=2));
+            rmb();
+			if(!(strcmp(mtd->name,"Hynix")))
+			{
+				chip->cmd_ctrl(mtd, 0x81, NAND_CLE );
+			}
+			else if(!(strcmp(mtd->name,"Micron")))
+			{
+				chip->cmd_ctrl(mtd, 0x80, NAND_CLE );
+			}
+			chip->cmd_ctrl(mtd, 0, NAND_ALE);
+			chip->cmd_ctrl(mtd, 0, NAND_ALE);
+			chip->cmd_ctrl(mtd, tmp_pag+aml_info->ppb, NAND_ALE);
+			chip->cmd_ctrl(mtd, (tmp_pag+aml_info->ppb) >> 8, NAND_ALE);
+			chip->cmd_ctrl(mtd,	( tmp_pag+aml_info->ppb)>> 16,NAND_ALE);
 
-		NFC_SEND_CMD_M2N(len,aml_info->bch_mode);
-		chip->cmd_ctrl(mtd, 0x10, NAND_CLE );
-		while(NFC_CMDFIFO_SIZE()>0);	
-		NFC_SEND_CMD_IDLE(aml_info->ce_sel,0);
-		NFC_SEND_CMD_RB(aml_info->ce_sel,31);
-		do{
-			status = NFC_GET_RB_STATUS(aml_info->ce_sel);
-		}while((status!=1)&&(status!=2));	
+			NFC_SEND_CMD_M2N(len,aml_info->bch_mode);
+			chip->cmd_ctrl(mtd, 0x10, NAND_CLE );
+			while(NFC_CMDFIFO_SIZE()>0);	
+			NFC_SEND_CMD_IDLE(aml_info->ce_sel,0);
+			NFC_SEND_CMD_RB(aml_info->ce_sel,31);
+			do{
+				status = NFC_GET_RB_STATUS(aml_info->ce_sel);
+			}while((status!=1)&&(status!=2));	
+            rmb();
+			
+			chip->cmd_ctrl(mtd, 0x70, NAND_CLE );
+			NFC_SEND_CMD_IDLE(aml_info->ce_sel,0);
+			do{
+				status = NFC_GET_RB_STATUS(aml_info->ce_sel);
+			}while((status!=1)&&(status!=2));	
+            rmb();
+			
+	    NFC_SEND_CMD_IDLE(aml_info->ce_sel,3);
+	    NFC_SEND_CMD_RB(aml_info->ce_sel,0);
+		  NFC_SEND_CMD_N2M (4,0);
+		  NFC_SEND_CMD_IDLE(aml_info->ce_sel,0);
+		  NFC_SEND_CMD_IDLE(aml_info->ce_sel,0);
+		  NFC_SEND_CMD_RB(aml_info->ce_sel,0);		 
+		  while(NFC_CMDFIFO_SIZE()>0);	 
+		  status = NFC_GET_BUF();
+		  if(status&0x1==1)
+		    	printk("write error status=%d \n",status);
 
-		chip->cmd_ctrl(mtd, 0x70, NAND_CLE );
-		NFC_SEND_CMD_IDLE(aml_info->ce_sel,0);
-		do{
-			status = NFC_GET_RB_STATUS(aml_info->ce_sel);
-		}while((status!=1)&&(status!=2));	
-
-		NFC_SEND_CMD_IDLE(aml_info->ce_sel,3);
-		NFC_SEND_CMD_RB(aml_info->ce_sel,0);
-		NFC_SEND_CMD_N2M (4,0);
-		NFC_SEND_CMD_IDLE(aml_info->ce_sel,0);
-		NFC_SEND_CMD_IDLE(aml_info->ce_sel,0);
-		NFC_SEND_CMD_RB(aml_info->ce_sel,0);		 
-		while(NFC_CMDFIFO_SIZE()>0);	 
-		status = NFC_GET_BUF();
-		if(status&0x1==1)
-			printk("write error status=%d \n",status);
-
-
+	
 	}
 	else if((aml_info->planemode!=0)&&((aml_info->interlmode!=0)))
 	{
@@ -1023,6 +1041,7 @@ static void aml_m1_nand_write_page(struct mtd_info *mtd, struct nand_chip *chip,
 		memcpy(aml_info->aml_nand_dma_buf,buf_i,len);
 	//	memcpy(aml_info->aml_nand_dma_buf,buf_i,mtd->writesize);			//bug 
 		prepare_info_buf_before_write(mtd,(len+511)>>9,aml_info->bch_mode);
+        wmb();
 	
 	    aml_info->ce_sel=CE0;
 		tmp_pag = (aml_info->curpage/aml_info->ppb) *(aml_info-> ppb) + aml_info->curpage;
@@ -1038,6 +1057,7 @@ static void aml_m1_nand_write_page(struct mtd_info *mtd, struct nand_chip *chip,
 		aml_info->ce_sel=CE0;
 			memcpy(&(aml_info->aml_nand_dma_buf[len]),&buf_i[len],len);
 	  	memcpy(&(aml_info->info_buf[((len)>>7)]),aml_info->info_buf,(len)>>7);
+        wmb();
 		NFC_SEND_CMD_IDLE(CE0,10);
 		NFC_SEND_CMD_RB(CE0,31);
 		chip->cmd_ctrl(mtd, 0x80, NAND_CLE );
@@ -1055,6 +1075,7 @@ static void aml_m1_nand_write_page(struct mtd_info *mtd, struct nand_chip *chip,
 		aml_info->ce_sel=CE1;
 			memcpy(&(aml_info->aml_nand_dma_buf[2*len]),&buf_i[2*len],len);
 		memcpy(&(aml_info->info_buf[2*((len)>>7)]),aml_info->info_buf,(len)>>7);
+        wmb();
 		chip->cmd_ctrl(mtd, 0x80, NAND_CLE );
 		chip->cmd_ctrl(mtd, 0, NAND_ALE);
 		chip->cmd_ctrl(mtd, 0, NAND_ALE);
@@ -1070,6 +1091,7 @@ static void aml_m1_nand_write_page(struct mtd_info *mtd, struct nand_chip *chip,
 		aml_info->ce_sel=CE1;
 		memcpy(&(aml_info->aml_nand_dma_buf[3*len]),&buf_i[3*len],len);
 		memcpy(&(aml_info->info_buf[3*((len)>>7)]),aml_info->info_buf,(len)>>7);
+        wmb();
 		NFC_SEND_CMD_IDLE(CE1,10);
 		NFC_SEND_CMD_RB(CE1,31);
 		chip->cmd_ctrl(mtd, 0x80, NAND_CLE );
@@ -1104,7 +1126,7 @@ static int aml_m1_nand_write_oob(struct mtd_info *mtd, struct nand_chip *chip,in
 static int aml_m1_nand_block_markbad(struct mtd_info *mtd, loff_t ofs)
 {
 	printk(" MARK the BAD BLOCK , NOT IMPLENMENT\n");
-	//BUG();
+	BUG();
 	return 0;
 }
 static int aml_m1_nand_read_oob(struct mtd_info *mtd, struct nand_chip *chip,int page, int sndcmd)
@@ -1119,6 +1141,7 @@ static int aml_m1_nand_read_oob(struct mtd_info *mtd, struct nand_chip *chip,int
 
 	//res=aml_m1_nand_dma_read(mtd,aml_info->aml_nand_dma_buf,mtd->writesize,aml_info->bch_mode);	
 	res=chip->ecc.read_page(mtd,chip,aml_info->aml_nand_dma_buf,mtd->writesize);
+    rmb();
 	
 	//NFC_CLEAR_SPARE_ONLY();
 
@@ -1150,7 +1173,9 @@ static int aml_m1_nand_block_bad(struct mtd_info *mtd, loff_t ofs, int getchip)
 	
 	NFC_SET_SPARE_ONLY();
 	chip->cmdfunc(mtd, NAND_CMD_READ0, 0, page);
+    rmb();
 	ret=chip->ecc.read_page(mtd,chip,aml_info->aml_nand_dma_buf,size);
+    rmb();
 	NFC_CLEAR_SPARE_ONLY();
 
 	if(getchip) 
