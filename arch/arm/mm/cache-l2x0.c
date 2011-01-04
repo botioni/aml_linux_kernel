@@ -237,7 +237,7 @@ void __init l2x0_init(void __iomem *base, __u32 aux_val, __u32 aux_mask)
 		l2x0_inv_all();
 
 		/* enable L2X0 */
-		//writel(1, l2x0_base + L2X0_CTRL);
+		writel(1, l2x0_base + L2X0_CTRL);
 	}
 
 	outer_cache.inv_range = l2x0_inv_range;
