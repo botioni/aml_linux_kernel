@@ -36,6 +36,10 @@ struct aml_power_pdata {
 	unsigned int polling_interval; /* msecs, default is 2000 */
 
 	unsigned long ac_max_uA; /* current to draw when on AC */
+	int *bat_value_table;
+	int *bat_charge_value_table;
+	int *bat_level_table;	
+	int bat_table_len;	
 };
 
 #endif /* __AML_POWER_H__ */
