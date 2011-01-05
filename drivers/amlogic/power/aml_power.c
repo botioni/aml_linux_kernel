@@ -242,6 +242,12 @@ static void get_bat_capacity(void)
     
     new_battery_capacity = (pdata->bat_level_table)[i];      
     
+    if(new_ac_status > 0
+       &&new_charge_status==POWER_SUPPLY_STATUS_CHARGING
+       &&new_battery_capacity==100){
+        new_battery_capacity = 99;
+    }
+    
 #ifdef AML_POWER_DBG
     printk("battery_capacity = %d,max = %d,min = %d,sum = %d,num = %d,value = %d\n",new_battery_capacity,max,min,sum,num,value);
 #endif    
