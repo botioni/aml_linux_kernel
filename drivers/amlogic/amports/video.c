@@ -82,6 +82,7 @@ MODULE_AMLOG(LOG_LEVEL_ERROR, 0, LOG_DEFAULT_LEVEL_DESC, LOG_MASK_DESC);
 #define DEVICE_NAME "amvideo"
 
 #define FIQ_VSYNC
+//#define SHARED_FIQ
 
 #if defined(FIQ_VSYNC) && defined(CONFIG_FB_AM)
 extern irqreturn_t osd_fiq_isr(void);
@@ -864,7 +865,11 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
 	return IRQ_HANDLED;
 }
 
+#ifndef SHARED_FIQ
 static void __attribute__ ((naked)) vsync_fiq_isr(void)
+#else
+static void vsync_fiq_isr()
+#endif
 #else
 static irqreturn_t vsync_isr0(int irq, void *dev_id)
 #endif
@@ -878,11 +883,13 @@ static irqreturn_t vsync_isr0(int irq, void *dev_id)
     int toggle_cnt;
 #endif
 #ifdef FIQ_VSYNC
+#ifndef SHARED_FIQ
 	asm __volatile__ (
 		"mov    ip, sp;\n"
 		"stmfd	sp!, {r0-r12, lr};\n"
 		"sub    sp, sp, #256;\n"
 		"sub    fp, sp, #256;\n");
+#endif
 #endif
 
     deinterlace_mode = get_deinterlace_mode();
@@ -1163,12 +1170,14 @@ exit:
     osd_fiq_isr();
 #endif
 
+#ifndef SHARED_FIQ
 	dsb();
 
 	asm __volatile__ (
 		"add	sp, sp, #256 ;\n"
 		"ldmia	sp!, {r0-r12, lr};\n"
 		"subs	pc, lr, #4;\n");
+#endif
 #else
 	return IRQ_HANDLED;
 #endif
@@ -1245,6 +1254,7 @@ err1:
  * FIQ Routines
  *********************************************************/
 #ifdef FIQ_VSYNC
+#ifndef SHARED_FIQ
 /* 4K size of FIQ stack size */
 static u8 fiq_stack[4096];
 
@@ -1253,11 +1263,13 @@ static void __attribute__ ((naked)) fiq_vector(void)
 	asm __volatile__ ("mov pc, r8 ;");
 }
 #endif
+#endif
 
 static void vsync_fiq_up(void)
 {
 
 #ifdef  FIQ_VSYNC
+#ifndef SHARED_FIQ
 	struct pt_regs regs;
 	unsigned int mask = 1 << IRQ_BIT(INT_VIU_VSYNC);
 
@@ -1271,6 +1283,9 @@ static void vsync_fiq_up(void)
 	SET_CBUS_REG_MASK(IRQ_FIQSEL_REG(INT_VIU_VSYNC), mask);
 	enable_fiq(INT_VIU_VSYNC);
 #else
+    request_fiq(INT_VIU_VSYNC, vsync_fiq_isr);
+#endif
+#else
    int r;
    r = request_irq(INT_VIU_VSYNC, &vsync_isr0,
                     IRQF_SHARED, "am_sync0",
@@ -1280,10 +1295,14 @@ static void vsync_fiq_up(void)
 
 static void vsync_fiq_down(void)
 {
+#ifndef SHARED_FIQ
 	unsigned int mask = 1 << IRQ_BIT(INT_VIU_VSYNC);
 
 	disable_fiq(INT_VIU_VSYNC);
 	CLEAR_CBUS_REG_MASK(IRQ_FIQSEL_REG(INT_VIU_VSYNC), mask);
+#else
+    free_fiq(INT_VIU_VSYNC);
+#endif
 }
 
 /*********************************************************
@@ -2213,7 +2232,11 @@ static int __init video_init(void)
     r = class_register(&amvideo_class);
     if (r) {
 		amlog_level(LOG_LEVEL_ERROR, "create video class fail.\n");
+#ifdef FIQ_VSYNC
+        free_irq(BRIDGE_IRQ, (void *)video_dev_id);
+#else
         free_irq(INT_VIU_VSYNC, (void *)video_dev_id);
+#endif
         goto err1;
     }
 
