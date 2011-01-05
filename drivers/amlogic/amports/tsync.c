@@ -437,7 +437,7 @@ static ssize_t store_enable(struct class *class,
     if ((r != 1))
         return -EINVAL;
 
-    tsync_enable = 0;   //mode ? 1 : 0;
+    tsync_enable = mode ? 1 : 0;
 
     return size;
 }
