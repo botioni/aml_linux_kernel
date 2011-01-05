@@ -38,6 +38,7 @@
 #include <linux/i2c-aml.h>
 #include <mach/power_gate.h>
 #include <linux/aml_bl.h>
+#include <linux/reboot.h>
 
 #ifdef CONFIG_AM_UART_WITH_S_CORE 
 #include <linux/uart-aml.h>
@@ -827,15 +828,21 @@ static  struct platform_device aml_rtc_device = {
 #if defined(CONFIG_SUSPEND)
 static void set_vccx2(int power_on)
 {
-    if(power_on)
-    {
+    if(power_on){
+        printk(KERN_INFO "set_vccx2 power up\n");
         set_gpio_val(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), 1);
-        set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);
+        set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);        
+        //set clk for wifi
+        SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, (1<<18));
+        CLEAR_CBUS_REG_MASK(PREG_EGPIO_EN_N, (1<<4));	              
     }
-    else
-    {
+    else{
+        printk(KERN_INFO "set_vccx2 power down\n");        
         set_gpio_val(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), 0);
-        set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);
+        set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);   
+        //disable wifi clk
+        CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, (1<<18));
+        SET_CBUS_REG_MASK(PREG_EGPIO_EN_N, (1<<4));	        
     }
 }
 static struct meson_pm_config aml_pm_pdata = {
@@ -989,6 +996,9 @@ static void set_bat_off(void)
 
     //VCCx2 power down
     set_vccx2(0);
+if(is_ac_connected()){ //AC in after power off press
+        kernel_restart("reboot");
+    }
 
     //Power hold down
     set_gpio_val(GPIOA_bank_bit(8), GPIOA_bit_bit0_14(8), 0);
@@ -1093,13 +1103,13 @@ static struct mtd_partition partition_info[] =
     {
         .name = "cache",
         .offset = 416*1024*1024,
-        .size = 16 * 1024*1024,
+        .size = 36 * 1024*1024,
     //  .set_flags=0,
     //  .dual_partnum=0,
     },
     {
         .name = "userdata",
-        .offset= 432*1024*1024,
+        .offset= 452*1024*1024,
         .size= 256 * 1024*1024,
     //  .set_flags=0,
     //  .dual_partnum=0,
@@ -1184,7 +1194,23 @@ static struct aml_m1_nand_platform aml_2kpage128kblocknand_platform = {
 */
 
 
-static struct aml_m1_nand_platform aml_Micron8GBABAnand_platform =
+//static struct aml_m1_nand_platform aml_Micron8GBABAnand_platform =
+//{
+//	.page_size = 2048*2,
+//	.spare_size= 224,		//for micron ABA 4GB
+//	.erase_size=1024*1024,
+//	.bch_mode=	  3,		//BCH16
+//	.encode_size=540,
+//	.timing_mode=5,
+//	.onfi_mode=1,
+//	.interlmode=0,
+//	.planemode=1,
+//	.ce_num=2,
+//	.chip_num=2,
+//	.partitions = partition_info,
+//	.nr_partitions = ARRAY_SIZE(partition_info),
+//};
+static struct aml_m1_nand_platform aml_nand_platform =
 {
     .page_size = 2048*2,
     .spare_size= 224,       //for micron ABA 4GB
@@ -1193,7 +1219,7 @@ static struct aml_m1_nand_platform aml_Micron8GBABAnand_platform =
     .encode_size=540,
     .timing_mode=5,
     .onfi_mode=1,
-    .interlmode=1,
+    .interlmode=0,
     .planemode=1,
     .ce_num=2,
     .chip_num=2,
@@ -1211,14 +1237,14 @@ static struct resource aml_nand_resources[] = {
 };
 
 static struct platform_device aml_nand_device = {
-    .name = "aml_m1_nand",
-    .id = 0,
-    .num_resources = ARRAY_SIZE(aml_nand_resources),
-    .resource = aml_nand_resources,
-    .dev = {
-    //  .platform_data = &aml_Micron4GBABAnand_platform,
-        .platform_data = &aml_Micron8GBABAnand_platform,
-    },
+	.name = "aml_m1_nand",
+	.id = 0,
+	.num_resources = ARRAY_SIZE(aml_nand_resources),
+	.resource = aml_nand_resources,
+	.dev = {
+	//	.platform_data = &aml_Micron4GBABAnand_platform,
+		.platform_data = &aml_nand_platform,
+	},
 };
 #endif  //CONFIG_NAND_FLASH_DRIVER_MULTIPLANE_CE
 
@@ -1302,11 +1328,13 @@ static void aml_8726m_set_bl_level(unsigned level)
 }
 
 static void aml_8726m_power_on_bl(void)
-{
+{ 
+    printk("backlight on\n");
 }
 
 static void aml_8726m_power_off_bl(void)
 {
+    printk("backlight off\n");
 }
 
 struct aml_bl_platform_data aml_bl_platform =
@@ -1582,6 +1610,7 @@ static void __init device_pinmux_init(void )
     aml_i2c_init();
     set_audio_pinmux(AUDIO_OUT_TEST_N);
     set_audio_pinmux(AUDIO_IN_JTAG);
+	
 }
 
 static void __init  device_clk_setting(void)

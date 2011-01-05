@@ -793,22 +793,7 @@ static int ts_get_irq_level(void)
 #endif
 
 
-//#ifdef CONFIG_RAYDIUM_CAPACITIVE_TOUCHSCREEN
-//#include <linux/i2c/raydium_ts.h>
-//#define TS_RESET_GPIO  ((GPIOD_bank_bit2_24(23)<<16) |GPIOD_bit_bit2_24(23))
-//#define TS_IRQ_GPIO  ((GPIOD_bank_bit2_24(24)<<16) |GPIOD_bit_bit2_24(24))
-//#define TS_IRQ_IDX     (GPIOD_IDX + 24)
-//#define TS_IRQ              INT_GPIO_0
 
-//static void ts_init(void)
-//{
-//    gpio_direction_input(TS_IRQ_GPIO);
-//    gpio_enable_edge_int(TS_IRQ_IDX, 1, TS_IRQ - INT_GPIO_0);
-//    gpio_direction_output(TS_RESET_GPIO, 0);
-//    msleep(10);
-//    gpio_direction_output(TS_RESET_GPIO, 1);
-//}
-//#endif
 
 #ifdef CONFIG_ANDROID_PMEM
 static struct android_pmem_platform_data pmem_data =
@@ -840,16 +825,16 @@ static  struct platform_device aml_rtc_device = {
 #if defined(CONFIG_SUSPEND)
 static void set_vccx2(int power_on)
 {
-    if(power_on)
-    {
+    if(power_on){
+        printk(KERN_INFO "set_vccx2 power up\n");
         set_gpio_val(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), 1);
         set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);        
         //set clk for wifi
         SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, (1<<18));
         CLEAR_CBUS_REG_MASK(PREG_EGPIO_EN_N, (1<<4));	              
     }
-    else
-    {
+    else{
+        printk(KERN_INFO "set_vccx2 power down\n");        
         set_gpio_val(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), 0);
         set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);   
         //disable wifi clk
@@ -1604,12 +1589,6 @@ static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
     },
 #endif
 
-//#ifdef CONFIG_RAYDIUM_CAPACITIVE_TOUCHSCREEN
-//    {
-//        I2C_BOARD_INFO(RM310XX_I2C_TS_NAME,  0x5C),
-//        .irq = TS_IRQ,
-//    },
-//#endif
 #ifdef CONFIG_RAYDIUM_CAPACITIVE_TOUCHSCREEN
     {
         I2C_BOARD_INFO("raydium", 0x5c),
@@ -1665,9 +1644,7 @@ static void __init device_pinmux_init(void )
     aml_i2c_init();
     set_audio_pinmux(AUDIO_OUT_TEST_N);
     set_audio_pinmux(AUDIO_IN_JTAG);
-    //set clk for wifi
-    SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, (1<<18));
-    CLEAR_CBUS_REG_MASK(PREG_EGPIO_EN_N, (1<<4));	
+	
 }
 
 static void __init  device_clk_setting(void)
@@ -1707,9 +1684,8 @@ static void __init power_hold(void)
     set_gpio_val(GPIOA_bank_bit(8), GPIOA_bit_bit0_14(8), 1);
     set_gpio_mode(GPIOA_bank_bit(8), GPIOA_bit_bit0_14(8), GPIO_OUTPUT_MODE);
     
-        /* PIN28, GPIOA_6, Pull high, For En_5V */
-    set_gpio_val(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), 1);
-    set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);
+    //VCCx2 power up
+    set_vccx2(1);
 }
 
 static __init void m1_init_machine(void)
@@ -1733,9 +1709,7 @@ static __init void m1_init_machine(void)
     ads7846_init_gpio();
     spi_register_board_info(spi_board_info_list, ARRAY_SIZE(spi_board_info_list));
 #endif
-//#ifdef CONFIG_RAYDIUM_CAPACITIVE_TOUCHSCREEN
-//		ts_init();
-//#endif
+
     disable_unused_model();
 }
 
