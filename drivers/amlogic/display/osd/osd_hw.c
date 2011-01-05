@@ -269,8 +269,6 @@ void  osddev_update_disp_axis_hw(
 	if(mode_change)  //modify pandata .
 	{
 		add_to_update_list(index,OSD_COLOR_MODE);
-		
-		osd_wait_vsync_hw();
 	}
 	disp_data.x_start=display_h_start;
 	disp_data.y_start=display_v_start;
@@ -283,15 +281,11 @@ void  osddev_update_disp_axis_hw(
 	pan_data.y_end=yoffset + (display_v_end-display_v_start);
 	
 	//if output mode change then reset pan ofFfset.
-	if(memcmp(&pan_data,&osd_hw.pandata[index],sizeof(pandata_t))!= 0 ||
-		memcmp(&disp_data,&osd_hw.dispdata[index],sizeof(dispdata_t))!=0)
-	{
-		memcpy(&osd_hw.pandata[index],&pan_data,sizeof(pandata_t));
-		memcpy(&osd_hw.dispdata[index],&disp_data,sizeof(dispdata_t));
-		add_to_update_list(index,DISP_GEOMETRY);
-		
-		osd_wait_vsync_hw();
-	}
+	memcpy(&osd_hw.pandata[index],&pan_data,sizeof(pandata_t));
+	memcpy(&osd_hw.dispdata[index],&disp_data,sizeof(dispdata_t));
+	add_to_update_list(index,DISP_GEOMETRY);
+	osd_wait_vsync_hw();
+	
 }
 void osd_setup(struct osd_ctl_s *osd_ctl,
                 u32 xoffset,
@@ -712,9 +706,17 @@ static inline  void  osd2_update_gbl_alpha(void)
 static inline  void  osd1_update_disp_geometry(void)
 {
 	u32 data32;
+	
    	data32 = (osd_hw.dispdata[OSD1].x_start& 0xfff) | (osd_hw.dispdata[OSD1].x_end & 0xfff) <<16 ;
       	WRITE_MPEG_REG(VIU_OSD1_BLK0_CFG_W3 , data32);
-   	data32 = (osd_hw.dispdata[OSD1].y_start & 0xfff) | (osd_hw.dispdata[OSD1].y_end & 0xfff) <<16 ;
+	if(osd_hw.scan_mode== SCAN_MODE_INTERLACE)
+	{
+		data32=((osd_hw.dispdata[OSD1].y_start >>1) & 0xfff) | ((((osd_hw.dispdata[OSD1].y_end+1)>>1)-1) & 0xfff) <<16 ;
+	}
+	else
+	{
+   		data32 = (osd_hw.dispdata[OSD1].y_start & 0xfff) | (osd_hw.dispdata[OSD1].y_end & 0xfff) <<16 ;
+	}
        WRITE_MPEG_REG(VIU_OSD1_BLK0_CFG_W4, data32);
 
 	data32=(osd_hw.pandata[OSD1].x_start & 0x1fff) | (osd_hw.pandata[OSD1].x_end & 0x1fff) << 16;
@@ -728,8 +730,15 @@ static inline  void  osd2_update_disp_geometry(void)
 	u32 data32;
    	data32 = (osd_hw.dispdata[OSD2].x_start& 0xfff) | (osd_hw.dispdata[OSD2].x_end & 0xfff) <<16 ;
       	WRITE_MPEG_REG(VIU_OSD2_BLK0_CFG_W3 , data32);
-   	data32 = (osd_hw.dispdata[OSD2].y_start & 0xfff) | (osd_hw.dispdata[OSD2].y_end & 0xfff) <<16 ;
-       WRITE_MPEG_REG(VIU_OSD2_BLK0_CFG_W4, data32);
+	if(osd_hw.scan_mode== SCAN_MODE_INTERLACE)
+	{
+		data32=((osd_hw.dispdata[OSD2].y_start >>1) & 0xfff) | ((((osd_hw.dispdata[OSD2].y_end+1)>>1)-1) & 0xfff) <<16 ;
+	}
+	else
+	{
+   		data32 = (osd_hw.dispdata[OSD2].y_start & 0xfff) | (osd_hw.dispdata[OSD2].y_end & 0xfff) <<16 ;
+	}	
+   	WRITE_MPEG_REG(VIU_OSD2_BLK0_CFG_W4, data32);
 
 	data32=(osd_hw.pandata[OSD2].x_start & 0x1fff) | (osd_hw.pandata[OSD2].x_end & 0x1fff) << 16;
 	WRITE_MPEG_REG(VIU_OSD2_BLK0_CFG_W1,data32);
