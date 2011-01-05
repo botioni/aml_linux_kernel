@@ -245,8 +245,7 @@ obj-$(CONFIG_FIRMWARE_IN_KERNEL) += $(patsubst %,%.gen.o, $(fw-shipped-y))
 
 # Remove .S files and binaries created from ihex
 # (during 'make clean' .config isn't included so they're all in $(fw-shipped-))
-targets := $(fw-shipped-) $(patsubst $(obj)/%,%, \
-				$(shell find $(obj) -name \*.gen.S 2>/dev/null))
+targets := $(shell find $(obj) -name \*.gen.S 2>/dev/null))
 
 # Without this, built-in.o won't be created when it's empty, and the
 # final vmlinux link will fail.
