@@ -73,126 +73,6 @@ static int power_on_with_ac = -1;
 static int charge_count = 0;
 #endif
 
-static int bat_value_table[37]={
-0,  //0    
-540,//0
-544,//4
-547,//10
-550,//15
-553,//16
-556,//18
-559,//20
-561,//23
-563,//26
-565,//29
-567,//32
-568,//35
-569,//37
-570,//40
-571,//43
-573,//46
-574,//49
-576,//51
-578,//54
-580,//57
-582,//60
-585,//63
-587,//66
-590,//68
-593,//71
-596,//74
-599,//77
-602,//80
-605,//83
-608,//85
-612,//88
-615,//91
-619,//95
-622,//97
-626,//100
-626 //100
-};
-
-static int bat_charge_value_table[37]={
-0,  //0    
-547,//0
-551,//4
-553,//10
-556,//15
-558,//16
-560,//18
-562,//20
-564,//23
-566,//26
-567,//29
-568,//32
-569,//35
-570,//37
-571,//40
-572,//43
-573,//46
-574,//49
-576,//51
-578,//54
-580,//57
-582,//60
-585,//63
-587,//66
-590,//68
-593,//71
-596,//74
-599,//77
-602,//80
-605,//83
-608,//85
-612,//88
-615,//91
-617,//95
-618,//97
-620,//100
-620 //100
-};
-
-static int bat_level_table[37]={
-0,
-0,
-4,
-10,
-15,
-16,
-18,
-20,
-23,
-26,
-29,
-32,
-35,
-37,
-40,
-43,
-46,
-49,
-51,
-54,
-57,
-60,
-63,
-66,
-68,
-71,
-74,
-77,
-80,
-83,
-85,
-88,
-91,
-95,
-97,
-100,
-100  
-};
-
 
 static int aml_power_get_property(struct power_supply *psy,
 				  enum power_supply_property psp,
@@ -349,18 +229,18 @@ static void get_bat_capacity(void)
     
     value = sum/num;    
     if(new_ac_status > 0){
-        for(i=0; i<36; i++){
-            if((bat_charge_value_table[i]<=value)&&(bat_charge_value_table[i+1]>value))break;
+        for(i=0; i<(pdata->bat_table_len -1); i++){
+            if(((pdata->bat_charge_value_table)[i]<=value)&&((pdata->bat_charge_value_table)[i+1]>value))break;
         } 
     }
     else{
  
-        for(i=0; i<36; i++){
-            if((bat_value_table[i]<=value)&&(bat_value_table[i+1]>value))break;
+        for(i=0; i<(pdata->bat_table_len -1); i++){
+            if(((pdata->bat_value_table)[i]<=value)&&((pdata->bat_value_table)[i+1]>value))break;
         }          
     }
     
-    new_battery_capacity = bat_level_table[i];      
+    new_battery_capacity = (pdata->bat_level_table)[i];      
     
 #ifdef AML_POWER_DBG
     printk("battery_capacity = %d,max = %d,min = %d,sum = %d,num = %d,value = %d\n",new_battery_capacity,max,min,sum,num,value);
@@ -593,7 +473,14 @@ static int aml_power_probe(struct platform_device *pdev)
 		if (ret < 0)
 			goto init_failed;
 	}
-
+    if(pdata->bat_value_table == NULL
+        ||pdata->bat_charge_value_table == NULL
+        ||pdata->bat_level_table == NULL
+        ||pdata->bat_table_len <= 0
+        ){
+        goto init_failed;        
+    }
+        
 	update_status();
 
 	if (!pdata->wait_for_status)

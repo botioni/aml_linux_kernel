@@ -55,11 +55,7 @@ static struct fb_var_screeninfo mydef_var[] = {
 #endif
 	.xoffset         = 0,
 	.yoffset         = 0,
-#if  defined(CONFIG_FB_OSD1_DEFAULT_BITS_PER_PIXEL)	
-	.bits_per_pixel  = CONFIG_FB_OSD1_DEFAULT_BITS_PER_PIXEL,
-#else
-	.bits_per_pixel = 16,
-#endif 	
+	.bits_per_pixel  = 16,
 	.grayscale       = 0,
 	.red             = {0, 0, 0},
 	.green           = {0, 0, 0},
@@ -108,11 +104,7 @@ static struct fb_var_screeninfo mydef_var[] = {
 #endif
 	.xoffset         = 0,
 	.yoffset         = 0,
-#if  defined(CONFIG_FB_OSD2_DEFAULT_BITS_PER_PIXEL)	
-	.bits_per_pixel  = CONFIG_FB_OSD2_DEFAULT_BITS_PER_PIXEL,
-#else
-	.bits_per_pixel = 32,
-#endif 
+	.bits_per_pixel  = 32,
 	.grayscale       = 0,
 	.red             = {0, 0, 0},  //leave as it is ,set by system.
 	.green           = {0, 0, 0},
@@ -161,7 +153,9 @@ typedef  struct {
 #define  FBIOGET_OSD_GET_GBL_ALPHA	0x4501
 #define  FBIOPUT_OSD_2X_SCALE		0x4502	
 #define  FBIOPUT_OSD_ENABLE_3D_MODE	0x4503
-#define  FBIOPUT_OSD_RANDOM_SCALE_ENABLE	0x4504
+#define  FBIOPUT_OSD_FREE_SCALE_ENABLE	0x4504
+#define  FBIOPUT_OSD_FREE_SCALE_WIDTH	0x4505
+#define  FBIOPUT_OSD_FREE_SCALE_HEIGHT	0x4506
 
 
 

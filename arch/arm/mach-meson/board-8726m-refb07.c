@@ -964,15 +964,139 @@ static void set_bat_off(void)
 
 }
 
+static int bat_value_table[37]={
+0,  //0    
+540,//0
+544,//4
+547,//10
+550,//15
+553,//16
+556,//18
+559,//20
+561,//23
+563,//26
+565,//29
+567,//32
+568,//35
+569,//37
+570,//40
+571,//43
+573,//46
+574,//49
+576,//51
+578,//54
+580,//57
+582,//60
+585,//63
+587,//66
+590,//68
+593,//71
+596,//74
+599,//77
+602,//80
+605,//83
+608,//85
+612,//88
+615,//91
+619,//95
+622,//97
+626,//100
+626 //100
+};
+
+static int bat_charge_value_table[37]={
+0,  //0    
+547,//0
+551,//4
+553,//10
+556,//15
+558,//16
+560,//18
+562,//20
+564,//23
+566,//26
+567,//29
+568,//32
+569,//35
+570,//37
+571,//40
+572,//43
+573,//46
+574,//49
+576,//51
+578,//54
+580,//57
+582,//60
+585,//63
+587,//66
+590,//68
+593,//71
+596,//74
+599,//77
+602,//80
+605,//83
+608,//85
+612,//88
+615,//91
+617,//95
+618,//97
+620,//100
+620 //100
+};
+
+static int bat_level_table[37]={
+0,
+0,
+4,
+10,
+15,
+16,
+18,
+20,
+23,
+26,
+29,
+32,
+35,
+37,
+40,
+43,
+46,
+49,
+51,
+54,
+57,
+60,
+63,
+66,
+68,
+71,
+74,
+77,
+80,
+83,
+85,
+88,
+91,
+95,
+97,
+100,
+100  
+};
+
 static struct aml_power_pdata power_pdata = {
-    .is_ac_online   = is_ac_connected,
-    //.is_usb_online    = is_usb_connected,
-    .set_charge = set_charge,
-    .get_bat_vol = get_bat_vol,
-    .get_charge_status = get_charge_status,
-    .set_bat_off = set_bat_off,
-    //.supplied_to = supplicants,
-    //.num_supplicants = ARRAY_SIZE(supplicants),
+	.is_ac_online	= is_ac_connected,
+	//.is_usb_online	= is_usb_connected,
+	.set_charge = set_charge,
+	.get_bat_vol = get_bat_vol,
+	.get_charge_status = get_charge_status,
+	.set_bat_off = set_bat_off,
+	.bat_value_table = bat_value_table,
+	.bat_charge_value_table = bat_charge_value_table,
+	.bat_level_table = bat_level_table,
+	.bat_table_len = 37,		
+	//.supplied_to = supplicants,
+	//.num_supplicants = ARRAY_SIZE(supplicants),
 };
 
 static struct platform_device power_dev = {

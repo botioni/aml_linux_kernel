@@ -69,6 +69,7 @@ void halt_dsp( struct audiodsp_priv *priv)
     int i;
 	if(DSP_RD(DSP_STATUS)==DSP_STATUS_RUNING)
 		{
+#ifndef AUDIODSP_RESET
 		dsp_mailbox_send(priv,1,M2B_IRQ0_DSP_SLEEP,0,0,0);
         for(i = 0; i< 100;i++)
             {
@@ -78,7 +79,18 @@ void halt_dsp( struct audiodsp_priv *priv)
             }
         if(i == 100)
            DSP_PRNT("warning: dsp is not sleeping when call dsp_stop\n"); 
+#else
+		dsp_mailbox_send(priv,1,M2B_IRQ0_DSP_HALT,0,0,0);
+		msleep(1);/*waiting arc2 sleep*/
+#endif
        }
+#ifdef AUDIODSP_RESET	
+	if(DSP_RD(DSP_STATUS)!=DSP_STATUS_RUNING)
+		{
+		DSP_WD(DSP_STATUS, DSP_STATUS_HALT);
+		return ;
+		}
+#endif
     if(!priv->dsp_is_started){
 
 	    enable_dsp(0);/*hardware halt the cpu*/
@@ -252,7 +264,9 @@ exit:
  int dsp_stop( struct audiodsp_priv *priv)
  	{
  	mutex_lock(&priv->dsp_mutex);		
- 	//priv->dsp_is_started=0;
+#ifdef AUDIODSP_RESET	
+ 	priv->dsp_is_started=0;
+#endif
  	halt_dsp(priv);
 	priv->dsp_end_time=jiffies;
 #if 0	

@@ -165,9 +165,15 @@ static struct platform_device adc_ts_device = {
 #include <linux/adc_keypad.h>
 
 static struct adc_key adc_kp_key[] = {
-    {125,            "vol+", CHAN_4, 0, 60},
-    {15,               "exit", CHAN_4, 623, 60},
-    {102,          "menu", CHAN_4, 849, 60},
+#if 0
+    {KEY_PAGEUP,            "vol+", CHAN_4, 0, 60},
+    {KEY_PAGEDOWN,               "vol-", CHAN_4, 623, 60},
+    {KEY_LEFTMETA,          "menu", CHAN_4, 849, 60},
+#else
+    {KEY_PAGEDOWN,            "vol-", CHAN_4, 0, 60},
+    {KEY_TAB,               "exit", CHAN_4, 623, 60},
+    {KEY_PAGEUP,          "vol+", CHAN_4, 849, 60},
+#endif
 };
 
 static struct adc_kp_platform_data adc_kp_pdata = {
@@ -278,12 +284,16 @@ static void set_usb_a_vbus_power(char is_power_on)
 #define USB_A_POW_GPIO_BIT_ON   1
 #define USB_A_POW_GPIO_BIT_OFF  0
     if(is_power_on) {
+        //set_gpio_val(GPIOA_bank_bit(26), GPIOA_bit_bit23_26(26), 1);
+        //set_gpio_mode(GPIOA_bank_bit(26), GPIOA_bit_bit23_26(26), GPIO_OUTPUT_MODE);
         printk(KERN_INFO "set usb port power on (board gpio %d)!\n",USB_A_POW_GPIO_BIT);
         set_gpio_mode(USB_A_POW_GPIO,USB_A_POW_GPIO_BIT,GPIO_OUTPUT_MODE);
         set_gpio_val(USB_A_POW_GPIO,USB_A_POW_GPIO_BIT,USB_A_POW_GPIO_BIT_ON);
     }
     else {
         printk(KERN_INFO "set usb port power off (board gpio %d)!\n",USB_A_POW_GPIO_BIT);
+        //set_gpio_val(GPIOA_bank_bit(26), GPIOA_bit_bit23_26(26), 0);
+        //set_gpio_mode(GPIOA_bank_bit(26), GPIOA_bit_bit23_26(26), GPIO_OUTPUT_MODE);
         set_gpio_mode(USB_A_POW_GPIO,USB_A_POW_GPIO_BIT,GPIO_OUTPUT_MODE);
         set_gpio_val(USB_A_POW_GPIO,USB_A_POW_GPIO_BIT,USB_A_POW_GPIO_BIT_OFF);
     }
@@ -301,6 +311,19 @@ static struct lm_device usb_ld_a = {
     .dma_config = USB_DMA_BURST_SINGLE,
     .set_vbus_power = set_usb_a_vbus_power,
 };
+static struct lm_device usb_ld_b = {
+	.type = LM_DEVICE_TYPE_USB,
+	.id = 1,
+	.irq = INT_USB_B,
+	.resource.start = IO_USB_B_BASE,
+	.resource.end = -1,
+	.dma_mask_room = DMA_BIT_MASK(32),
+	.port_type = USB_PORT_TYPE_HOST,
+	.port_speed = USB_PORT_SPEED_DEFAULT,
+	.dma_config = USB_DMA_BURST_SINGLE,
+	.set_vbus_power = 0,
+};
+
 #endif
 #ifdef CONFIG_SATA_DWC_AHCI
 static struct lm_device sata_ld = {
@@ -565,7 +588,7 @@ int wm8900_is_hp_pluged(void)
                                 (7 << 4)    |       // CS1 REF, Current FeedBack: about 0.505V
                                 (0 << 0));           // DIMCTL Analog dimmer
     cs_no = READ_CBUS_REG(LED_PWM_REG3);
-    if(cs_no &(1<<15))
+    if(cs_no &(1<<14))
       level |= (1<<0);
     return (level == 0)?(1):(0); //return 1: hp pluged, 0: hp unpluged.
 }
@@ -779,6 +802,8 @@ static void set_vccx2(int power_on)
     {
         set_gpio_val(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), 1);
         set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);        
+        set_gpio_val(GPIOA_bank_bit(26), GPIOA_bit_bit23_26(26), 1);//USB A power 
+        set_gpio_mode(GPIOA_bank_bit(26), GPIOA_bit_bit23_26(26), GPIO_OUTPUT_MODE);    
         //set clk for wifi
         SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, (1<<18));
         CLEAR_CBUS_REG_MASK(PREG_EGPIO_EN_N, (1<<4));	              
@@ -787,6 +812,8 @@ static void set_vccx2(int power_on)
     {
         set_gpio_val(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), 0);
         set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);   
+        set_gpio_val(GPIOA_bank_bit(26), GPIOA_bit_bit23_26(26), 0);//USB A power 
+        set_gpio_mode(GPIOA_bank_bit(26), GPIOA_bit_bit23_26(26), GPIO_OUTPUT_MODE);
         //disable wifi clk
         CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, (1<<18));
         SET_CBUS_REG_MASK(PREG_EGPIO_EN_N, (1<<4));	        
@@ -901,7 +928,6 @@ static int is_ac_connected(void)
 static void set_charge(int flags)
 {
     //GPIOD_22 low: fast charge high: slow charge
-    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_7, (1<<18));
     if(flags == 1)
         {
 	    //set_gpio_val(GPIOD_bank_bit2_24(22), GPIOD_bit_bit2_24(22), 0); //fast charge
@@ -940,6 +966,9 @@ static int get_charge_status()
 
 static void set_bat_off(void)
 {
+    //set_vccx2 power down    
+    set_gpio_val(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), 0);
+    set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);  
     if(is_ac_connected()){ //AC in after power off press
         kernel_restart("reboot");
     }
@@ -948,15 +977,139 @@ static void set_bat_off(void)
 
 }
 
+static int bat_value_table[37]={
+0,  //0    
+540,//0
+544,//4
+547,//10
+550,//15
+553,//16
+556,//18
+559,//20
+561,//23
+563,//26
+565,//29
+567,//32
+568,//35
+569,//37
+570,//40
+571,//43
+573,//46
+574,//49
+576,//51
+578,//54
+580,//57
+582,//60
+585,//63
+587,//66
+590,//68
+593,//71
+596,//74
+599,//77
+602,//80
+605,//83
+608,//85
+612,//88
+615,//91
+619,//95
+622,//97
+626,//100
+626 //100
+};
+
+static int bat_charge_value_table[37]={
+0,  //0    
+547,//0
+551,//4
+553,//10
+556,//15
+558,//16
+560,//18
+562,//20
+564,//23
+566,//26
+567,//29
+568,//32
+569,//35
+570,//37
+571,//40
+572,//43
+573,//46
+574,//49
+576,//51
+578,//54
+580,//57
+582,//60
+585,//63
+587,//66
+590,//68
+593,//71
+596,//74
+599,//77
+602,//80
+605,//83
+608,//85
+612,//88
+615,//91
+617,//95
+618,//97
+620,//100
+620 //100
+};
+
+static int bat_level_table[37]={
+0,
+0,
+4,
+10,
+15,
+16,
+18,
+20,
+23,
+26,
+29,
+32,
+35,
+37,
+40,
+43,
+46,
+49,
+51,
+54,
+57,
+60,
+63,
+66,
+68,
+71,
+74,
+77,
+80,
+83,
+85,
+88,
+91,
+95,
+97,
+100,
+100  
+};
+
 static struct aml_power_pdata power_pdata = {
-    .is_ac_online   = is_ac_connected,
-    //.is_usb_online    = is_usb_connected,
-    .set_charge = set_charge,
-    .get_bat_vol = get_bat_vol,
-    .get_charge_status = get_charge_status,
-    .set_bat_off = set_bat_off,
-    //.supplied_to = supplicants,
-    //.num_supplicants = ARRAY_SIZE(supplicants),
+	.is_ac_online	= is_ac_connected,
+	//.is_usb_online	= is_usb_connected,
+	.set_charge = set_charge,
+	.get_bat_vol = get_bat_vol,
+	.get_charge_status = get_charge_status,
+	.set_bat_off = set_bat_off,
+	.bat_value_table = bat_value_table,
+	.bat_charge_value_table = bat_charge_value_table,
+	.bat_level_table = bat_level_table,
+	.bat_table_len = 37,		
+	//.supplied_to = supplicants,
+	//.num_supplicants = ARRAY_SIZE(supplicants),
 };
 
 static struct platform_device power_dev = {
@@ -1591,6 +1744,8 @@ static void __init power_hold(void)
         /* PIN28, GPIOA_6, Pull high, For En_5V */
     set_gpio_val(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), 1);
     set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);
+    set_gpio_val(GPIOA_bank_bit(26), GPIOA_bit_bit23_26(26), 1);//USB A power 
+    set_gpio_mode(GPIOA_bank_bit(26), GPIOA_bit_bit23_26(26), GPIO_OUTPUT_MODE);
 }
 
 static __init void m1_init_machine(void)
@@ -1605,6 +1760,7 @@ static __init void m1_init_machine(void)
 #ifdef CONFIG_USB_DWC_OTG_HCD
     set_usb_phy_clk(USB_PHY_CLOCK_SEL_XTAL_DIV2);
     lm_device_register(&usb_ld_a);
+	lm_device_register(&usb_ld_b);
 #endif
 #ifdef CONFIG_SATA_DWC_AHCI
     set_sata_phy_clk(SATA_PHY_CLOCK_SEL_DEMOD_PLL);

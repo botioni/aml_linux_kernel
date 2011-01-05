@@ -424,8 +424,21 @@ static struct resource vdin_resources[] = {
         .end   = VDIN_ADDR_END,				//pbufAddr + size
         .flags = IORESOURCE_MEM,
     },
-
-
+    [1] = {
+        .start = VDIN_ADDR_START,
+        .end   = VDIN_ADDR_END,
+        .flags = IORESOURCE_MEM,
+    },
+    [2] = {
+        .start = INT_VDIN_VSYNC,
+        .end   = INT_VDIN_VSYNC,
+        .flags = IORESOURCE_IRQ,
+    },
+    [3] = {
+        .start = INT_VDIN_VSYNC,
+        .end   = INT_VDIN_VSYNC,
+        .flags = IORESOURCE_IRQ,
+    },
 };
 
 static struct platform_device vdin_device = {
@@ -434,8 +447,11 @@ static struct platform_device vdin_device = {
     .num_resources = ARRAY_SIZE(vdin_resources),
     .resource      = vdin_resources,
 };
+#endif
 
+#ifdef CONFIG_TVIN_BT656IN
 //add pin mux info for bt656 input
+#if 0
 static struct resource bt656in_resources[] = {
     [0] = {
         .start =  VDIN_ADDR_START,		//pbufAddr
@@ -461,12 +477,13 @@ static struct resource bt656in_resources[] = {
     },
 
 };
+#endif
 
 static struct platform_device bt656in_device = {
     .name       = "amvdec_656in",
     .id         = -1,
-    .num_resources = ARRAY_SIZE(bt656in_resources),
-    .resource      = bt656in_resources,
+//    .num_resources = ARRAY_SIZE(bt656in_resources),
+//    .resource      = bt656in_resources,
 };
 #endif
 
@@ -545,14 +562,14 @@ static struct mtd_partition inand_partition_info[] =
 	{
 		.name = "cache",
 		.offset = 284*1024*1024,
-		.size = 16 * 1024*1024,
+		.size = 36*1024*1024,
 	//	.set_flags=0,
 	//	.dual_partnum=0,
 	},
 	{
 		.name = "userdata",
-		.offset= 300*1024*1024,
-		.size= 256 * 1024*1024,
+		.offset= 320*1024*1024,
+		.size= 512*1024*1024,
 	//	.set_flags=0,
 	//	.dual_partnum=0,
 	},
@@ -740,15 +757,11 @@ static unsigned int rt5621_is_hp_pluged()
                                 (7 << 4)    |       // CS1 REF, Current FeedBack: about 0.505V
                                 (0 << 0));           // DIMCTL Analog dimmer
     cs_no = READ_CBUS_REG(LED_PWM_REG3);
-    if(board_ver == 2){
-        if(cs_no &(1<<14))
-          level |= (1<<0);
-    }
-    else{
-          level = 0;   //old pcb always hp unplug
-    }
-    //printk("level = %d,board_ver = %d\n",level,board_ver);
-    return (level == 1)?(1):(0); //return 1: hp pluged, 0: hp unpluged.
+	
+	if( cs_no & ( 1 << 15 ) )
+		level = 1;
+
+    return level;	//return 1: hp pluged, 0: hp unpluged.
 }
 static struct rt5621_platform_data rt5621_pdata = {
     .is_hp_pluged = &rt5621_is_hp_pluged,
@@ -936,6 +949,18 @@ static	struct platform_device aml_rtc_device = {
 	};
 #endif
 
+#ifdef CONFIG_CAMERA_OV5640
+
+//add power down control for camera
+
+
+static struct platform_device camera_device = {
+    .name       = "camera_ov5640",
+    .id         = -1,
+
+};
+
+#endif
 #if defined(CONFIG_SUSPEND)
 static void set_vccx2(int power_on)
 {
@@ -1097,6 +1122,126 @@ static void set_bat_off(void)
 
 }
 
+static int bat_value_table[37]={
+0,  //0    
+540,//0
+544,//4
+547,//10
+550,//15
+553,//16
+556,//18
+559,//20
+561,//23
+563,//26
+565,//29
+567,//32
+568,//35
+569,//37
+570,//40
+571,//43
+573,//46
+574,//49
+576,//51
+578,//54
+580,//57
+582,//60
+585,//63
+587,//66
+590,//68
+593,//71
+596,//74
+599,//77
+602,//80
+605,//83
+608,//85
+612,//88
+615,//91
+619,//95
+622,//97
+626,//100
+626 //100
+};
+
+static int bat_charge_value_table[37]={
+0,  //0    
+547,//0
+551,//4
+553,//10
+556,//15
+558,//16
+560,//18
+562,//20
+564,//23
+566,//26
+567,//29
+568,//32
+569,//35
+570,//37
+571,//40
+572,//43
+573,//46
+574,//49
+576,//51
+578,//54
+580,//57
+582,//60
+585,//63
+587,//66
+590,//68
+593,//71
+596,//74
+599,//77
+602,//80
+605,//83
+608,//85
+612,//88
+615,//91
+617,//95
+618,//97
+620,//100
+620 //100
+};
+
+static int bat_level_table[37]={
+0,
+0,
+4,
+10,
+15,
+16,
+18,
+20,
+23,
+26,
+29,
+32,
+35,
+37,
+40,
+43,
+46,
+49,
+51,
+54,
+57,
+60,
+63,
+66,
+68,
+71,
+74,
+77,
+80,
+83,
+85,
+88,
+91,
+95,
+97,
+100,
+100  
+};
+
 static struct aml_power_pdata power_pdata = {
 	.is_ac_online	= is_ac_connected,
 	//.is_usb_online	= is_usb_connected,
@@ -1104,6 +1249,10 @@ static struct aml_power_pdata power_pdata = {
 	.get_bat_vol = get_bat_vol,
 	.get_charge_status = get_charge_status,
 	.set_bat_off = set_bat_off,
+	.bat_value_table = bat_value_table,
+	.bat_charge_value_table = bat_charge_value_table,
+	.bat_level_table = bat_level_table,
+	.bat_table_len = 37,		
 	//.supplied_to = supplicants,
 	//.num_supplicants = ARRAY_SIZE(supplicants),
 };
@@ -1233,21 +1382,21 @@ static struct mtd_partition partition_info[] =
 	{
 		.name = "cache",
 		.offset = 416*1024*1024,
-		.size = 16 * 1024*1024,
+		.size = 36 * 1024*1024,
 	//	.set_flags=0,
 	//	.dual_partnum=0,
 	},
 	{
 		.name = "userdata",
-		.offset= 432*1024*1024,
-		.size= 256 * 1024*1024,
+		.offset= 452*1024*1024,
+		.size= 512 * 1024*1024,
 	//	.set_flags=0,
 	//	.dual_partnum=0,
 	},
 	{
 		.name = "media",
-		.offset = MTDPART_OFS_APPEND,
-		.size = (0x200000000-(432+256)*1024*1024),
+		.offset = (452+512)*1024*1024,//MTDPART_SIZ_FULL;//MTDPART_OFS_APPEND,
+		.size = MTDPART_SIZ_FULL,//(0x100000000-(432+256)*1024*1024),
 		.set_flags = MTD_AVNFTL,
 		.dual_partnum = 1|MTD_AVFTL_PLANE|MTD_AVNFTL_INTERL,
 	//	.set_flags=0,
@@ -1556,6 +1705,80 @@ static struct platform_device android_usb_device = {
 };
 #endif
 
+#ifdef CONFIG_BCM_BT
+static struct platform_device bcm_bt_device = {
+	.name             = "bcm-bt",
+	.id               = -1,
+};
+
+static void hci_uart_pin_init()
+{
+    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_12, (1<<29));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_12, (1<<22));
+	
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_7, (1<<19));
+	
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_5, (1<<20));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_5, (1<<17));
+	
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_5, (1<<14));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0, (1<<12));
+	
+	
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_5, (1<<4));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_7, (1<<13));
+	
+	
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_7, (1<<12));
+	
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, (1<<21));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, (1<<28));
+	
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_12, (1<<23));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_7, (1<<14));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_5, (1<<17));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0, (1<<12));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_5, (1<<5));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, (1<<27));
+	
+	
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_12, (1<<27));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_5, (1<<18));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0, (1<<12));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_5, (1<<9));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, (1<<23));
+	
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_12, (1<<26));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_7, (1<<17));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_5, (1<<17));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0, (1<<12));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_5, (1<<8));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, (1<<24));
+	
+	/* WLBT_REGON */
+	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<18));
+	SET_CBUS_REG_MASK(PREG_GGPIO_O, (1<<18));	
+	
+	/* reset */
+	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<12));
+	CLEAR_CBUS_REG_MASK(PREG_GGPIO_O, (1<<12));	
+	msleep(200);	
+	SET_CBUS_REG_MASK(PREG_GGPIO_O, (1<<12));	
+	
+	/* BG/GPS low */
+	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<19));
+	CLEAR_CBUS_REG_MASK(PREG_GGPIO_O, (1<<19));	
+	
+	/* UART RTS */
+	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<16));
+    CLEAR_CBUS_REG_MASK(PREG_GGPIO_O, (1<<16));
+		
+	/* BG wakeup high 
+	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<14));
+	SET_CBUS_REG_MASK(PREG_GGPIO_O, (1<<14));*/
+}
+#endif
+
 static struct platform_device __initdata *platform_devs[] = {
     #if defined(CONFIG_JPEGLOGO)
 		&jpeglogo_device,
@@ -1574,6 +1797,8 @@ static struct platform_device __initdata *platform_devs[] = {
     #endif
     #if defined(CONFIG_TVIN_VDIN)
         &vdin_device,
+    #endif
+    #if defined(CONFIG_TVIN_BT656IN)
 		&bt656in_device,
     #endif
 	#if defined(CONFIG_AML_AUDIO_DSP)
@@ -1612,6 +1837,9 @@ static struct platform_device __initdata *platform_devs[] = {
     #if defined(CONFIG_AML_RTC)
 		&aml_rtc_device,
     #endif
+    #ifdef CONFIG_CAMERA_OV5640
+        &camera_device,
+    #endif
 	#if defined(CONFIG_SUSPEND)
 		&aml_pm_device,
     #endif
@@ -1642,6 +1870,9 @@ static struct platform_device __initdata *platform_devs[] = {
 	#ifdef CONFIG_SMBA10XX_BATTERY
 		&smba10xx_battery_device,
 	#endif
+    #ifdef CONFIG_BCM_BT  
+        &bcm_bt_device,
+    #endif    	
 };
 static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
 
@@ -1664,17 +1895,9 @@ static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
     },
 #endif
 
-#ifdef CONFIG_MXC_MMA7660
-	{
-		I2C_BOARD_INFO("mma7660", 0x4C),
-		.irq = INT_GPIO_2,
-	},
-#endif
-
-
 #ifdef CONFIG_SND_SOC_RT5621
 	{
-		I2C_BOARD_INFO("rt5621", 0x1A),
+		I2C_BOARD_INFO(RT5621_I2C_NAME, RT5621_I2C_ADDR),
 		.platform_data = (void *)&rt5621_pdata,
 	},
 #endif
@@ -1694,6 +1917,12 @@ static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
 		.platform_data = (void *)&so340010_pdata,
 	},
 #endif
+#ifdef CONFIG_CAMERA_OV5640
+	{
+	    /*ov5640 i2c address if 0x60*/
+		I2C_BOARD_INFO("ov5640_i2c",  0x78 >> 1),
+	},
+#endif
 };
 
 
@@ -1701,6 +1930,13 @@ static struct i2c_board_info __initdata aml_i2c_sbus_info[] = {
 #ifdef CONFIG_SMBA10XX_BATTERY
 	{
 		I2C_BOARD_INFO(SMBA10XX_I2C_NAME, SMBA10XX_I2C_ADDR),
+	},
+#endif
+
+#ifdef CONFIG_MXC_MMA7660
+	{
+		I2C_BOARD_INFO("mma7660", 0x4C),
+		.irq = INT_GPIO_2,
 	},
 #endif
 };
@@ -1713,6 +1949,20 @@ static int __init aml_i2c_init(void)
 	return 0;
 }
 
+#if defined(CONFIG_TVIN_BT656IN)
+static void __init bt656in_pinmux_init(void)
+{
+    set_mio_mux(5, 0x1f000);   //mask--mux gpioD 15 to bt656 clk;  mux gpioD 16:23 to be bt656 dt_in
+                                //mask--mux gpioD 12 to bt601 FIQ; mux gpioD 13 to bt601HS; mux gpioD 14 to bt601 VS;
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_5, 0x3e07fe);
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_7, 0x000fc000);
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, 0xffc00000);
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_10, 0xe0000000);
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_12, 0xfff80000);                                
+}
+
+
+#endif
 static void __init eth_pinmux_init(void)
 {
 	eth_set_pinmux(ETH_BANK2_GPIOD15_D23,ETH_CLK_OUT_GPIOD24_REG5_1,0);		
@@ -1733,9 +1983,33 @@ static void __init eth_pinmux_init(void)
 //	udelay(100);	//GPIOE_bank_bit16_21(16) reset end;
 //	set_gpio_val(GPIOE_bank_bit16_21(16),GPIOE_bit_bit16_21(16),1);
 #endif
-	aml_i2c_init();
+
 }
 
+#ifdef CONFIG_CAMERA_OV5640
+static void __init camera_power_on_init(void)
+{
+    //reset pin is low
+//    CLEAR_CBUS_REG_MASK(0x2015, (1 << 16));     //bit8 :  mux GPIO_E16 to GPIO output mode
+//    CLEAR_CBUS_REG_MASK(0x2016, (1 << 16));     //bit8 :  mux GPIO_E16 to GPIO output low
+	SET_CBUS_REG_MASK(0x2012,(1 << 22)); //pan 
+ //power down pin is hith level --power down mode
+    CLEAR_CBUS_REG_MASK(0x2012,(1 << 10));     // mux GPIO_D12 to GPIO output mode
+    SET_CBUS_REG_MASK(0x2013, (1 << 10));     //mux GPIO_D12 to GPIO output hith level
+		
+    udelay(2000);
+    
+    //power down pin is low--normal mode
+    CLEAR_CBUS_REG_MASK(0x2012,(1 << 10));     //  mux GPIO_D12 to GPIO output mode
+    CLEAR_CBUS_REG_MASK(0x2013, (1 << 10));     // mux GPIO_D12 to GPIO output low
+	
+	SET_CBUS_REG_MASK(0x2012,(1 << 22)); //pan 
+    //resetpin is high
+//    SET_CBUS_REG_MASK(0x2015, (1 << 16));     //bit8 :  mux GPIO_E16 to GPIO output mode
+//    SET_CBUS_REG_MASK(0x2016, (1 << 16));     //bit8 :  mux GPIO_E16 to GPIO output high
+
+}
+#endif
 static void __init device_pinmux_init(void )
 {
 	clearall_pinmux();
@@ -1748,6 +2022,9 @@ static void __init device_pinmux_init(void )
 	/*pinmux of eth*/
 	//eth_pinmux_init();
 	aml_i2c_init();
+#if defined(CONFIG_TVIN_BT656IN)
+	bt656in_pinmux_init();
+#endif
 	if(board_ver == 0){
 		#ifdef CONFIG_SND_SOC_RT5621
 			set_audio_pinmux(AUDIO_OUT_TEST_N);
@@ -1760,8 +2037,11 @@ static void __init device_pinmux_init(void )
         set_audio_pinmux(AUDIO_IN_JTAG);
 	}
     //set clk for wifi
-    SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, (1<<18));
-    CLEAR_CBUS_REG_MASK(PREG_EGPIO_EN_N, (1<<4));	
+   // SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, (1<<18));
+   // CLEAR_CBUS_REG_MASK(PREG_EGPIO_EN_N, (1<<4));	
+#ifdef CONFIG_BCM_BT
+    hci_uart_pin_init();
+#endif
 }
 
 static void __init  device_clk_setting(void)
@@ -1831,6 +2111,9 @@ static __init void m1_init_machine(void)
 	power_hold();
 	device_clk_setting();
 	device_pinmux_init();
+#ifdef CONFIG_CAMERA_OV5640
+    camera_power_on_init();
+#endif
 	platform_add_devices(platform_devs, ARRAY_SIZE(platform_devs));
 
 #ifdef CONFIG_USB_DWC_OTG_HCD

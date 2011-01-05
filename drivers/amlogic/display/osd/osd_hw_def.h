@@ -56,6 +56,9 @@ typedef  struct {
 	u32				enable[HW_OSD_COUNT];
 	u32				*reg_status;
 	osd_scale_t		scale[HW_OSD_COUNT];
+	u32				free_scale_enable[HW_OSD_COUNT];
+	u32				free_scale_width[HW_OSD_COUNT];
+	u32				free_scale_height[HW_OSD_COUNT];
 	fb_geometry_t		fb_gem[HW_OSD_COUNT];
 	const color_bit_define_t *color_info[HW_OSD_COUNT];
 	u32				scan_mode;
@@ -99,7 +102,7 @@ static unsigned long 	lock_flags;
 #ifdef FIQ_VSYNC
 static unsigned long	fiq_flag;
 #endif
-static vframe_t vf;
+static vframe_t vf,vf_w;
 static update_func_t     hw_func_array[HW_OSD_COUNT][HW_REG_INDEX_MAX]={
 	{
 		osd1_update_color_mode,

@@ -24,6 +24,7 @@
 static vframe_t *vdin_vf_peek(void);
 static vframe_t *vdin_vf_get(void);
 static void vdin_vf_put(vframe_t *vf);
+static vframe_t *curframe_q;
 
 static vfq_t newframe_q, display_q, recycle_q;
 static struct vframe_s vfpool[BT656IN_VF_POOL_SIZE];
@@ -102,7 +103,15 @@ inline vframe_t *vfq_pop(vfq_t *q)
 #if 1
 inline vframe_t *vfq_pop_newframe(void)
 {
-    return vfq_pop(&newframe_q);
+    vframe_t *vf;
+    vf = vfq_pop(&newframe_q);
+    curframe_q = vf;
+    return vf;
+}
+
+inline vframe_t *vfq_get_curframe(void)
+{
+    return curframe_q;
 }
 
 inline vframe_t *vfq_pop_display(void)
@@ -158,6 +167,7 @@ static void vdin_vf_put(vframe_t *vf)
 	vfq_push(&recycle_q, vf);
 }
 
+
 static const struct vframe_provider_s vdin_vf_provider =
 {
     .peek = vdin_vf_peek,
@@ -176,26 +186,7 @@ void vdin_unreg_vf_provider(void)
 }
 
 
-#if 0
-/******************************************************************************
-vframe properties definiton
-******************************************************************************/
-static struct vframe_prop_s vfp[VDIN_VF_POOL_MAX_SIZE];
 
 
-struct vframe_prop_s * vdin_get_vframe_prop(u32 index)
-{
-    if (index < VDIN_VF_POOL_MAX_SIZE)
-    {
-        return vfp[index];
-    }
-    else
-    {
-        return NULL;
-    }
-}
 
-EXPORT_SYMBOL(vdin_get_vframe_prop);
-
-#endif
 

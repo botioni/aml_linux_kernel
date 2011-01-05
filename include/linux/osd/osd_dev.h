@@ -65,7 +65,9 @@ typedef  struct {
 
 #define fbdev_lock(dev) mutex_lock(&dev->lock);
 #define fbdev_unlock(dev) mutex_unlock(&dev->lock);
-extern void osddev_random_scale_enable(u32 index ,u32 enable);
+extern void osddev_free_scale_enable(u32 index ,u32 enable);
+extern void osddev_free_scale_width(u32 index ,u32 width);
+extern void osddev_free_scale_height(u32 index ,u32 height);
 extern int osddev_select_mode(struct myfb_dev *fbdev);
 extern void osddev_enable_3d_mode(u32 index ,u32 enable);
 extern void osddev_set_2x_scale(u32 index,u16 h_scale_enable,u16 v_scale_enable);

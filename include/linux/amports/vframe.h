@@ -36,6 +36,7 @@
 #define VIDTYPE_VIU_FIELD               0x1000
 #define VIDTYPE_VIU_SINGLE_PLANE        0x2000
 #define VIDTYPE_VIU_444                 0x4000
+#define VIDTYPE_CANVAS_TOGGLE           0x8000
 
 #define DISP_RATIO_FORCECONFIG          0x80000000
 #define DISP_RATIO_CTRL_MASK            0x00000003
@@ -80,7 +81,13 @@ typedef struct vframe_bbar_s
  */
 typedef struct vframe_meas_s
 {
-    float          frin;      // Frame Rate of Video Input in the unit of Hz
+    //float          frin;      // Frame Rate of Video Input in the unit of Hz
+    unsigned int        vs_span_cnt;
+    unsigned long long  vs_cnt;
+    unsigned int        hs_cnt0;
+    unsigned int        hs_cnt1;
+    unsigned int        hs_cnt2;
+    unsigned int        hs_cnt3;
 } vframe_meas_t;
 
 

@@ -276,7 +276,9 @@ osd_ioctl(struct fb_info *info, unsigned int cmd,
 		case FBIOGET_OSD_GET_GBL_ALPHA:
 		case FBIOPUT_OSD_2X_SCALE:	
 		case FBIOPUT_OSD_ENABLE_3D_MODE:
-		case FBIOPUT_OSD_RANDOM_SCALE_ENABLE:	
+		case FBIOPUT_OSD_FREE_SCALE_ENABLE:
+		case FBIOPUT_OSD_FREE_SCALE_WIDTH:
+		case FBIOPUT_OSD_FREE_SCALE_HEIGHT:	
 			break;
 		default :
 			amlog_mask_level(LOG_MASK_IOCTL,LOG_LEVEL_HIGH,"command not supported\r\n ");
@@ -286,8 +288,14 @@ osd_ioctl(struct fb_info *info, unsigned int cmd,
 
   	switch (cmd)
     	{
-    		case FBIOPUT_OSD_RANDOM_SCALE_ENABLE:
-		osddev_random_scale_enable(info->node,arg);			
+    		case FBIOPUT_OSD_FREE_SCALE_WIDTH:
+		osddev_free_scale_width(info->node,arg);			
+		break;
+		case FBIOPUT_OSD_FREE_SCALE_HEIGHT:
+		osddev_free_scale_height(info->node,arg);		
+		break;
+    		case FBIOPUT_OSD_FREE_SCALE_ENABLE:
+		osddev_free_scale_enable(info->node,arg);			
 		break;		
     		case FBIOPUT_OSD_ENABLE_3D_MODE:
 		osddev_enable_3d_mode(info->node,arg);
@@ -525,6 +533,39 @@ static ssize_t show_enable_3d(struct device *device, struct device_attribute *at
 	struct myfb_dev *fbdev = (struct myfb_dev *)fb_info->par;
 	return snprintf(buf, PAGE_SIZE, "3d_enable:[0x%x]\n",fbdev->enable_3d);
 }
+static ssize_t store_scale_width(struct device *device, struct device_attribute *attr,
+			 const char *buf, size_t count)
+{
+	struct fb_info *fb_info = dev_get_drvdata(device);
+	unsigned int free_scale_width=0;
+	int err;
+	 free_scale_width= simple_strtoul(buf, NULL, 0);
+	if ((err = osd_ioctl(fb_info,FBIOPUT_OSD_FREE_SCALE_WIDTH,free_scale_width)))
+		return err;
+	return count;
+}
+static ssize_t store_scale_height(struct device *device, struct device_attribute *attr,
+			 const char *buf, size_t count)
+{
+	struct fb_info *fb_info = dev_get_drvdata(device);
+	unsigned int free_scale_height=0;
+	int err;
+	 free_scale_height= simple_strtoul(buf, NULL, 0);
+	if ((err = osd_ioctl(fb_info,FBIOPUT_OSD_FREE_SCALE_HEIGHT,free_scale_height)))
+		return err;
+	return count;
+}
+static ssize_t store_free_scale(struct device *device, struct device_attribute *attr,
+			 const char *buf, size_t count)
+{
+	struct fb_info *fb_info = dev_get_drvdata(device);
+	unsigned int free_scale_enable=0;
+	int err;
+	 free_scale_enable= simple_strtoul(buf, NULL, 0);
+	if ((err = osd_ioctl(fb_info,FBIOPUT_OSD_FREE_SCALE_ENABLE,free_scale_enable)))
+		return err;
+	return count;
+}
 static ssize_t store_scale(struct device *device, struct device_attribute *attr,
 			 const char *buf, size_t count)
 {
@@ -546,7 +587,10 @@ static ssize_t show_scale(struct device *device, struct device_attribute *attr,
 }
 static struct device_attribute osd_attrs[] = {
 	__ATTR(scale, S_IRUGO|S_IWUSR, show_scale, store_scale),
-	__ATTR(enable_3d, S_IRUGO|S_IWUSR, show_enable_3d, store_enable_3d),	
+	__ATTR(enable_3d, S_IRUGO|S_IWUSR, show_enable_3d, store_enable_3d),
+	__ATTR(free_scale, S_IRUGO|S_IWUSR, NULL, store_free_scale),
+	__ATTR(scale_width, S_IRUGO|S_IWUSR, NULL, store_scale_width),
+	__ATTR(scale_height, S_IRUGO|S_IWUSR, NULL, store_scale_height),
 };		
 
 #ifdef  CONFIG_PM

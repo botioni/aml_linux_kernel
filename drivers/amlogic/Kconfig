@@ -51,6 +51,9 @@ source "drivers/amlogic/jpeglogo/Kconfig"
 source "drivers/amlogic/ump/Kconfig"
 source "drivers/amlogic/mali/Kconfig"
 source "drivers/amlogic/dvb/Kconfig"
-
+#
+#	camera devices
+#
+source "drivers/amlogic/camera/Kconfig"
 
 endmenu	

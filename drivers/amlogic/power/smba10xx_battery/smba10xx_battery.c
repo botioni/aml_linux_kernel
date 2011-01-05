@@ -304,7 +304,7 @@ int update_battery_state(void)
 	}
 
 	bat_info.present = 1;
-#if 0
+
 	bat_info.temperature = temperature / 10;		// 0.1K to 1K
 	bat_info.rsoc = rsoc;
 	bat_info.voltage_now = voltage_now * 1000;	// mV to uV
@@ -317,20 +317,7 @@ int update_battery_state(void)
 	bat_info.chemistry = POWER_SUPPLY_TECHNOLOGY_LION;
 //	bat_info.health = health;
 //	bat_info.ac_online = (bat_info.status != POWER_SUPPLY_STATUS_DISCHARGING);
-#else
-	bat_info.temperature = temperature / 100;
-	bat_info.rsoc = rsoc;
-	bat_info.voltage_now = voltage_now;						// mV
-//	bat_info.voltage_avg = voltage_avg;
-	bat_info.current_now = current_now;						// mA
-	bat_info.current_avg = current_avg;						// mA to uA
-	bat_info.time_to_empty_now = time_to_empty_now * 60;	// min to sec
-	bat_info.time_to_empty_avg = time_to_empty_avg * 60;	// min to sec
-	bat_info.time_to_full_avg = time_to_full_avg * 60;		// min to sec
-	bat_info.chemistry = POWER_SUPPLY_TECHNOLOGY_LION;
-//	bat_info.health = health;
-//	bat_info.ac_online = (bat_info.status != POWER_SUPPLY_STATUS_DISCHARGING);
-#endif
+
 	logd("Present=%d\r\n", bat_info.present);
 	logd("Temperature=%d\r\n", bat_info.temperature);
 	logd("RelativeStateOfChage=%d\r\n", bat_info.rsoc);

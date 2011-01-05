@@ -5,7 +5,7 @@
 #include <linux/amports/timestamp.h>
 #include <linux/amports/tsync.h>
 
-#define CONFIG_AM_TIMESYNC_LOG
+//#define CONFIG_AM_TIMESYNC_LOG
 #ifdef CONFIG_AM_TIMESYNC_LOG
 #define AMLOG
 #define LOG_LEVEL_ERROR		0
@@ -54,7 +54,7 @@ const static char *tsync_mode_str[] =
 static spinlock_t lock = SPIN_LOCK_UNLOCKED;
 static tsync_mode_t tsync_mode = TSYNC_MODE_AMASTER;
 static tsync_stat_t tsync_stat = TSYNC_STAT_PCRSCR_SETUP_NONE;
-static int tsync_enable = 1;
+static int tsync_enable = 0;   //1;
 static int pts_discontinue = 0;
 static int tsync_abreak = 0;
 static int tsync_trickmode = 0;
@@ -437,7 +437,7 @@ static ssize_t store_enable(struct class *class,
     if ((r != 1))
         return -EINVAL;
 
-    tsync_enable = mode ? 1 : 0;
+    tsync_enable = 0;   //mode ? 1 : 0;
 
     return size;
 }
