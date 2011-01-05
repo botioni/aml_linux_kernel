@@ -400,7 +400,7 @@ void osd_free_scale_enable_hw(u32 index,u32 enable)
 			{
 				vf.width=osd_hw.free_scale_width[OSD1];
 				vf.height=osd_hw.free_scale_height[OSD1];
-				vf.type = VIDTYPE_PROGRESSIVE | VIDTYPE_VIU_FIELD;
+				vf.type = (osd_hw.scan_mode==SCAN_MODE_INTERLACE ?VIDTYPE_INTERLACE:VIDTYPE_PROGRESSIVE) | VIDTYPE_VIU_FIELD;
 				vf.ratio_control=DISP_RATIO_FORCECONFIG|DISP_RATIO_NO_KEEPRATIO;
 				vf_reg_provider(&osd_vf_provider);
 
@@ -558,7 +558,7 @@ static  inline void  osd1_update_color_mode(void)
 	data32 |= osd_hw.fb_gem[OSD1].canvas_idx << 16 ;
 	data32 |= OSD_DATA_LITTLE_ENDIAN	 <<15 ;
     	data32 |= osd_hw.color_info[OSD1]->hw_colormat<< 2;	
-	if(osd_hw.color_info[OSD1]->hw_colormat < COLOR_INDEX_YUV_422)
+	if(osd_hw.color_info[OSD1]->color_index < COLOR_INDEX_YUV_422)
 	data32 |= 1                      << 7; /* rgb enable */
 	data32 |=  osd_hw.color_info[OSD1]->hw_blkmode<< 8; /* osd_blk_mode */
 	WRITE_MPEG_REG(VIU_OSD1_BLK0_CFG_W0, data32);
@@ -568,13 +568,13 @@ static  inline void  osd1_update_color_mode(void)
 static  inline void  osd2_update_color_mode(void)
 {
 	u32  data32;
-	printk("osd2 update color mode\n") ;
+	printk("osd2 update color mode,%d\n",data32) ;
 	data32= (osd_hw.scan_mode== SCAN_MODE_INTERLACE) ? 2 : 0;
 	data32 |=READ_MPEG_REG(VIU_OSD2_BLK0_CFG_W0)&0x40;
 	data32 |= osd_hw.fb_gem[OSD2].canvas_idx << 16 ;
 	data32 |= OSD_DATA_LITTLE_ENDIAN	 <<15 ;
     	data32 |= osd_hw.color_info[OSD2]->hw_colormat<< 2;	
-	if(osd_hw.color_info[OSD2]->hw_colormat < COLOR_INDEX_YUV_422)
+	if(osd_hw.color_info[OSD2]->color_index < COLOR_INDEX_YUV_422)
 	data32 |= 1                      << 7; /* rgb enable */
 	data32 |=  osd_hw.color_info[OSD2]->hw_blkmode<< 8; /* osd_blk_mode */
 	WRITE_MPEG_REG(VIU_OSD2_BLK0_CFG_W0, data32);
