@@ -844,7 +844,7 @@ void vdin_set_all_regs(struct vdin_dev_s *devp)
 {
     unsigned int h = tvin_fmt_tbl[devp->para.fmt].h_active;
     unsigned int write_format444 = vdin_get_write_format444(devp->para.port, devp->hdmi_rgb);
-    pr_info("%s \n",__FUNCTION__);
+
 #if defined(CONFIG_ARCH_MESON2)
 //  ** Decimation sub-module **
     h = vdin_set_decimation(devp->index, devp->para.fmt);

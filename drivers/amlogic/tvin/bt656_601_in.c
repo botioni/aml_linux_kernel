@@ -593,7 +593,6 @@ static void start_amvdec_656_601_camera_in(unsigned int mem_start, unsigned int 
         init_656in_dec_parameter(TVIN_SIG_FMT_BT601IN_576I);
         reinit_bt601in_dec();
         reset_656in_dec_parameter();
-
         am656in_dec_info.para.port = TVIN_PORT_BT601;
         am656in_dec_info.dec_status = 1;
 
@@ -608,14 +607,6 @@ static void start_amvdec_656_601_camera_in(unsigned int mem_start, unsigned int 
         am656in_dec_info.para.port = TVIN_PORT_CAMERA;
         reinit_camera_dec();
         am656in_dec_info.dec_status = 1;
-
-#if 0
-        CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_5, 0x3e07fe);
-       CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_7, 0x000fc000);
-       CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, 0xffc00000);
-       CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_10, 0xe0000000);
-       CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_12, 0xfff80000);
-#endif
     }
     else
     {
@@ -653,15 +644,14 @@ static void stop_amvdec_656_601_camera_in(void)
 static void check_amvdec_656_601_camera_fromat( void )
 {
     enum tvin_sig_fmt_e format ;
-    unsigned ccir656_status, vdin_com_status;
+    unsigned ccir656_status;
     unsigned active_line_1, active_pixel;
 //    unsigned  active_line, total_line;
     am656in_dec_info.watch_dog++;
     if(am656in_dec_info.watch_dog > 5)
     {
         ccir656_status = READ_CBUS_REG(BT_STATUS);
-        vdin_com_status = READ_CBUS_REG(VDIN_COM_STATUS1);
-        if((ccir656_status & 0xf0) || (vdin_com_status & 0x20)) //AFIFO overflow
+        if(ccir656_status & 0xf0)   //AFIFO OVERFLOW
         {
             if(am656in_dec_info.para.port == TVIN_PORT_BT656)  //NTSC or PAL input(interlace mode): D0~D7(with SAV + EAV )
             {
@@ -678,6 +668,7 @@ static void check_amvdec_656_601_camera_fromat( void )
             WRITE_CBUS_REG(BT_STATUS, ccir656_status | (1 << 9));   //WRITE_CBUS_REGite 1 to clean the SOF interrupt bit
 //            pr_dbg("there is no vdin interrupt, and error in bt656in. \n");
         }
+
         am656in_dec_info.para.status = TVIN_SIG_STATUS_NOSIG;
         am656in_dec_info.watch_dog = 0;
         return ;
@@ -1145,19 +1136,22 @@ static void camera_in_dec_run(vframe_t * info)
     return;
 }
 
-
+/*as use the spin_lock,
+ *1--there is no sleep,
+ *2--it is better to shorter the time,
+*/
 int amvdec_656_601_camera_in_run(vframe_t *info)
 {
     unsigned ccir656_status;
-    unsigned char canvas_id, last_receiver_buff_index;
+    unsigned char canvas_id = 0;
+    unsigned char last_receiver_buff_index = 0;
 
     if(am656in_dec_info.dec_status == 0){
-        pr_error("bt656in decoder is not started\n");
+//        pr_error("bt656in decoder is not started\n");
         return -1;
     }
     am656in_dec_info.watch_dog = 0;
     ccir656_status = READ_CBUS_REG(BT_STATUS);
-
 
     if(ccir656_status & 0x80)
     {
@@ -1177,8 +1171,9 @@ int amvdec_656_601_camera_in_run(vframe_t *info)
         return 0;
     }
 
-    if(am656in_dec_info.para.flag & TVIN_PARM_FLAG_CAP)
+    if(vdin_devp_bt656->para.flag & TVIN_PARM_FLAG_CAP)
     {
+#if 1 
         if(am656in_dec_info.wr_canvas_index == 0)
               last_receiver_buff_index = am656in_dec_info.canvas_total_count - 1;
         else
@@ -1193,9 +1188,12 @@ int amvdec_656_601_camera_in_run(vframe_t *info)
             else
                   canvas_id = am656in_dec_info.wr_canvas_index + 1;
         }
-
+#else
+        canvas_id = am656in_dec_info.rd_canvas_index;
+#endif
         vdin_devp_bt656->para.cap_addr = am656in_dec_info.pbufAddr +
                 (am656in_dec_info.decbuf_size * canvas_id) + BT656IN_ANCI_DATA_SIZE ;
+        vdin_devp_bt656->para.cap_size = am656in_dec_info.decbuf_size;
         WRITE_CBUS_REG(BT_STATUS, ccir656_status | (1 << 9));   //WRITE_CBUS_REGite 1 to clean the SOF interrupt bit
         return 0;
     }
@@ -1216,6 +1214,10 @@ int amvdec_656_601_camera_in_run(vframe_t *info)
     return 0;
 }
 
+/*as use the spin_lock,
+ *1--there is no sleep,
+ *2--it is better to shorter the time,
+*/
 int amvdec_656_601_camera_in_run_bh(vframe_t *info)
 {
 
@@ -1234,11 +1236,11 @@ static int bt656in_check_callback(struct notifier_block *block, unsigned long cm
             {
                 //pr_dbg("bt656in format update: cap_flag = %d, format = %d, status = %d ",
                 //vdin_devp_bt656->para.flag, vdin_devp_bt656->para.fmt, vdin_devp_bt656->para.status);
-//                check_amvdec_656_601_camera_fromat();
-//                if (am656in_dec_info.para.fmt != vdin_devp_bt656->para.fmt)
-//                {
-//                    vdin_info_update(vdin_devp_bt656, &am656in_dec_info.para);
-//                }
+                check_amvdec_656_601_camera_fromat();
+                if (am656in_dec_info.para.fmt != vdin_devp_bt656->para.fmt)
+                {
+                    vdin_info_update(vdin_devp_bt656, &am656in_dec_info.para);
+                }
                 ret = NOTIFY_STOP_MASK;
             }
             break;
