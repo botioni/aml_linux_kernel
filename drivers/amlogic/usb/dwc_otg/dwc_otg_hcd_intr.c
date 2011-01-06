@@ -669,6 +669,12 @@ static int update_urb_state_xfer_comp(dwc_hc_t * _hc,
 			_urb->status = 0;
 		}
 	}
+
+	if(_urb->actual_length > _urb->transfer_buffer_length){
+		DWC_WARN("_urb->actual_length(%d) > _urb->transfer_buffer_length(%d)!\n",
+			_urb->actual_length , _urb->transfer_buffer_length);
+		xfer_done = 1;
+	}
 #ifdef DEBUG
 	{
 		hctsiz_data_t hctsiz;
