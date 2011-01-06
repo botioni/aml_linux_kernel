@@ -864,12 +864,10 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
 
 	return IRQ_HANDLED;
 }
-
-#ifndef SHARED_FIQ
-static void __attribute__ ((naked)) vsync_fiq_isr(void)
-#else
-static void vsync_fiq_isr()
 #endif
+
+#ifdef FIQ_VSYNC
+void vsync_isr0(void)
 #else
 static irqreturn_t vsync_isr0(int irq, void *dev_id)
 #endif
@@ -881,15 +879,6 @@ static irqreturn_t vsync_isr0(int irq, void *dev_id)
     vframe_t *vf;
 #ifdef CONFIG_AM_VIDEO_LOG
     int toggle_cnt;
-#endif
-#ifdef FIQ_VSYNC
-#ifndef SHARED_FIQ
-	asm __volatile__ (
-		"mov    ip, sp;\n"
-		"stmfd	sp!, {r0-r12, lr};\n"
-		"sub    sp, sp, #256;\n"
-		"sub    fp, sp, #256;\n");
-#endif
 #endif
 
     deinterlace_mode = get_deinterlace_mode();
@@ -1169,15 +1158,6 @@ exit:
 #ifdef CONFIG_FB_AM
     osd_fiq_isr();
 #endif
-
-#ifndef SHARED_FIQ
-	dsb();
-
-	asm __volatile__ (
-		"add	sp, sp, #256 ;\n"
-		"ldmia	sp!, {r0-r12, lr};\n"
-		"subs	pc, lr, #4;\n");
-#endif
 #else
 	return IRQ_HANDLED;
 #endif
@@ -1253,38 +1233,11 @@ err1:
 /*********************************************************
  * FIQ Routines
  *********************************************************/
-#ifdef FIQ_VSYNC
-#ifndef SHARED_FIQ
-/* 4K size of FIQ stack size */
-static u8 fiq_stack[4096];
-
-static void __attribute__ ((naked)) fiq_vector(void)
-{
-	asm __volatile__ ("mov pc, r8 ;");
-}
-#endif
-#endif
 
 static void vsync_fiq_up(void)
 {
-
 #ifdef  FIQ_VSYNC
-#ifndef SHARED_FIQ
-	struct pt_regs regs;
-	unsigned int mask = 1 << IRQ_BIT(INT_VIU_VSYNC);
-
-	/* prep the special FIQ mode regs */
-	memset(&regs, 0, sizeof(regs));
-	regs.ARM_r8 = (unsigned long)vsync_fiq_isr;
-	regs.ARM_sp = (unsigned long)fiq_stack + sizeof(fiq_stack) - 4;
-	set_fiq_regs(&regs);
-	set_fiq_handler(fiq_vector, 8);
-
-	SET_CBUS_REG_MASK(IRQ_FIQSEL_REG(INT_VIU_VSYNC), mask);
-	enable_fiq(INT_VIU_VSYNC);
-#else
-    request_fiq(INT_VIU_VSYNC, vsync_fiq_isr);
-#endif
+	request_fiq(INT_VIU_VSYNC, &vsync_isr0);
 #else
    int r;
    r = request_irq(INT_VIU_VSYNC, &vsync_isr0,
@@ -1295,13 +1248,10 @@ static void vsync_fiq_up(void)
 
 static void vsync_fiq_down(void)
 {
-#ifndef SHARED_FIQ
-	unsigned int mask = 1 << IRQ_BIT(INT_VIU_VSYNC);
-
-	disable_fiq(INT_VIU_VSYNC);
-	CLEAR_CBUS_REG_MASK(IRQ_FIQSEL_REG(INT_VIU_VSYNC), mask);
-#else
+#ifdef FIQ_VSYNC
     free_fiq(INT_VIU_VSYNC);
+#else
+    free_irq(INT_VIU_VSYNC, (void *)video_dev_id);
 #endif
 }
 
