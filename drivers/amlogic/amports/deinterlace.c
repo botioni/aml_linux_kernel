@@ -2247,6 +2247,14 @@ void di_pre_process(void)
     	cur_buf = vfp->get();
 		}
 
+		if ( ((cur_buf->type & VIDTYPE_TYPEMASK) == VIDTYPE_INTERLACE_TOP && prev_struct == 1)
+			|| ((cur_buf->type & VIDTYPE_TYPEMASK) == VIDTYPE_INTERLACE_BOTTOM && prev_struct == 2) )
+		{
+			if ( !vdin_en )
+				vfp->put(cur_buf);
+			return;
+		}
+
 	    di_inp_top_mif.canvas0_addr0 = di_inp_bot_mif.canvas0_addr0 = cur_buf->canvas0Addr & 0xff;
 	    di_inp_top_mif.canvas0_addr1 = di_inp_bot_mif.canvas0_addr1 = (cur_buf->canvas0Addr>>8) & 0xff;
 	    di_inp_top_mif.canvas0_addr2 = di_inp_bot_mif.canvas0_addr2 = (cur_buf->canvas0Addr>>16) & 0xff;
