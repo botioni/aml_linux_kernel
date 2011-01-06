@@ -45,6 +45,8 @@ struct ts_platform_data {
     int irq;
     int (*init_irq)(void);
     int (*get_irq_level)(void);
+    int poll_period;
+    bool cache_enable;
     struct ts_info info;
     void *data;
 };
