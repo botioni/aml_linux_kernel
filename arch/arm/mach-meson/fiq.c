@@ -32,9 +32,9 @@ static void __attribute__ ((naked)) fiq_isr(void)
 		"sub    fp, sp, #256;\n");
 
     for (i=0;i<MAX_FIQ;i++){
-        if ((fiq_index[0]!=0xff)&&(fiq_func[0]!=NULL))
+        if ((fiq_index[i]!=0xff)&&(fiq_func[i]!=NULL))
    	        if (READ_CBUS_REG(IRQ_STATUS_REG(fiq_index[i])) & (1<<IRQ_BIT(fiq_index[i])))
-   	            fiq_func[0]();
+   	            fiq_func[i]();
     }
 
 	dsb();
