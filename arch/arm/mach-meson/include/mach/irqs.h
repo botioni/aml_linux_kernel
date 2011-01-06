@@ -138,5 +138,8 @@
 
 /* All interrupts are FIQ capable */
 #define FIQ_START					AM_IRQ0(0)
+extern void init_fiq(void);
+extern void request_fiq(int fiq, void (*isr)(void));
+extern void free_fiq(int fiq);
 
 #endif

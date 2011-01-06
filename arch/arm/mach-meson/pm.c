@@ -362,7 +362,8 @@ void clk_switch(int flag)
 }
 EXPORT_SYMBOL(clk_switch);
 
-#define EARLY_CLK_COUNT 6
+//#define EARLY_CLK_COUNT 6
+#define EARLY_CLK_COUNT 5
 static char early_clk_flag[EARLY_CLK_COUNT];
 static unsigned early_clks[EARLY_CLK_COUNT]={
     HHI_DEMOD_CLK_CNTL,
@@ -370,7 +371,7 @@ static unsigned early_clks[EARLY_CLK_COUNT]={
     HHI_ETH_CLK_CNTL,
     HHI_WIFI_CLK_CNTL,
     HHI_VID_CLK_CNTL,
-    HHI_MPEG_CLK_CNTL
+    //HHI_MPEG_CLK_CNTL
 };
 
 static char early_clks_name[EARLY_CLK_COUNT][32]={
@@ -379,7 +380,7 @@ static char early_clks_name[EARLY_CLK_COUNT][32]={
     "HHI_ETH_CLK_CNTL",
     "HHI_WIFI_CLK_CNTL",
     "HHI_VID_CLK_CNTL",
-    "HHI_MPEG_CLK_CNTL"
+    //"HHI_MPEG_CLK_CNTL"
 };
 
 static unsigned nand_timing;

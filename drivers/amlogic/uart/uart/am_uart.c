@@ -46,7 +46,7 @@
 
 #include "am_uart.h"
 
-//#define FIQ_UART
+#define FIQ_UART
 
 #ifdef FIQ_UART
 #include <asm/fiq.h>
@@ -280,78 +280,23 @@ clear_and_return:
 }
 
 #ifdef FIQ_UART
-/* 4K size of FIQ stack size */
-static u8 fiq_stack[4096];
-/* parameter for fiq handler */
-static void *fiq_param;
-/* fiq number */
-static int fiq_intr;
-
-static void __attribute__ ((naked)) fiq_vector(void)
-{
-	asm __volatile__ ("mov pc, r8 ;");
-}
-
-static void request_fiq(int intr, void(*handler)(void), void *param)
-{
-	struct pt_regs regs;
-	unsigned int mask = 1 << IRQ_BIT(intr);
-
-	/* prep the special FIQ mode regs */
-	memset(&regs, 0, sizeof(regs));
-	regs.ARM_r8 = (unsigned long)handler;
-	regs.ARM_sp = (unsigned long)fiq_stack + sizeof(fiq_stack) - 4;
-	set_fiq_regs(&regs);
-	set_fiq_handler(fiq_vector, 8);
-	fiq_param = param;
-	fiq_intr = intr;
-
-	SET_CBUS_REG_MASK(IRQ_FIQSEL_REG(intr), mask);
-	enable_fiq(intr);
-}
-
-static void free_fiq(int intr)
-{
-	unsigned int mask = 1 << IRQ_BIT(intr);
-
-	disable_fiq(intr);
-	CLEAR_CBUS_REG_MASK(IRQ_FIQSEL_REG(intr), mask);
-}
-
-static void __attribute__ ((naked)) am_uart_fiq_interrupt(void)
+void am_uart_fiq_interrupt(void)
 {
     am_uart_t *uart = uart_addr[1];
-    //am_uart_t *uart = (am_uart_t *)fiq_param;	
     char ch;
-	asm __volatile__ (
-		"mov    ip, sp;\n"
-		"stmfd	sp!, {r0-r12, lr};\n"
-		"sub    sp, sp, #256;\n"
-		"sub    fp, sp, #256;\n");
 
-    //am_uart_put_char(0,'@');
-    //raw_num(__raw_readl(UART_BASEADDR1+12) & 0x3f, 1);
-    
     while (__raw_readl(&uart->status) & 0x3f){
        	ch = __raw_readl(&uart->rdata) & 0xff;
 
-	fiq_buf[fiq_write]=ch;
-	fiq_write= (fiq_write+1) & (SERIAL_XMIT_SIZE - 1);
-	fiq_cnt++;
+        fiq_buf[fiq_write]=ch;
+        fiq_write= (fiq_write+1) & (SERIAL_XMIT_SIZE - 1);
+        fiq_cnt++;
        	if (fiq_cnt >= SERIAL_XMIT_SIZE) {
        	    	am_uart_put_char(0,'^');
         	break;
         }
-         
     }
-
-out:	
-	WRITE_MPEG_REG(IRQ_CLR_REG(fiq_intr), 1 << IRQ_BIT(fiq_intr));
-	dsb();
-	asm __volatile__ (
-		"add	sp, sp, #256 ;\n"
-		"ldmia	sp!, {r0-r12, lr};\n"
-		"subs	pc, lr, #4;\n");
+	WRITE_MPEG_REG(IRQ_CLR_REG(uart_irqs[1]), 1 << IRQ_BIT(uart_irqs[1]));
 }
 
 static void am_uart_timer_sr(unsigned long param)
@@ -1152,12 +1097,12 @@ static int __init am_uart_init(void)
         sprintf(info->name,"UART_ttyS%d:",info->line);
 #ifdef FIQ_UART
         if (i==1){
-	    if(!fiq_buf)
-	    {
-		fiq_buf = (unsigned char *)get_zeroed_page(GFP_KERNEL);
-	    }
-	    fiq_read = fiq_write=fiq_cnt=0;
-            request_fiq(info->irq, am_uart_fiq_interrupt, uart_addr[i]);
+            if(!fiq_buf)
+            {
+                fiq_buf = (unsigned char *)get_zeroed_page(GFP_KERNEL);
+            }
+            fiq_read = fiq_write=fiq_cnt=0;
+            request_fiq(info->irq, am_uart_fiq_interrupt);
             setup_timer(&info->timer, am_uart_timer_sr, (unsigned long)info) ;
             mod_timer(&info->timer, jiffies+msecs_to_jiffies(1));
             printk("request fiq %d done!\n", info->irq);
