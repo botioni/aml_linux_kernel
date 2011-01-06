@@ -19,7 +19,6 @@
 #define HX8520_PACKET_SIZE  20
 
 #define hx8520_debug_info// printk
-#define buf_to_short(buf)   ((*buf << 8) | *(buf+1))
 
 int hx8520_reset(struct device *dev);
 int hx8520_calibration(struct device *dev);
@@ -152,12 +151,14 @@ int hx8520_get_event (struct device *dev, struct ts_event *event)
     hx8520_debug_info("%d, %d, %d, %d\n", buf[16], buf[17], buf[18], buf[19]);
      
     event_num = 0;
+    int zero_num = 0;
     for(i=0; i<4; i++) {
         event->x  = (buf[i*4] << 8) | buf[i*4+1];
         event->y  = (buf[i*4+2] << 8) | buf[i*4+3];
         if (info->swap_xy) {
             swap(event->x, event->y);
         }
+        if ((event->x == 0) && (event->y == 0)) zero_num++;
         if ((event->x >= info->xmin) && (event->x < info->xmax)
         &&(event->y >= info->ymin) && (event->y < info->ymax)) {
             if (info->x_pol) {
@@ -179,6 +180,9 @@ int hx8520_get_event (struct device *dev, struct ts_event *event)
         }
     }
     
+    if ((zero_num == 4) && (buf[16] == 0)) {
+        return 0;
+    }
     if ((event_num < 0) || (event_num > 2) || (event_num != buf[16])) {
         hx8520_debug_info("hx8520 stack error\n");
         hx8520_write_block(client, 0x88, 0, 0); // Execute CMD 0x88H to clear stack

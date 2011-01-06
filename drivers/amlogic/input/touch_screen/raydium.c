@@ -109,7 +109,7 @@ int raydium_get_event (struct device *dev, struct ts_event *event)
     struct ts_info *info = &pdata->info;
     u8 buf[RAYDIUM_PACKET_SIZE];
     int event_num;
-    int i;
+    int i, ba;
 
     memset(buf, 0, ARRAY_SIZE(buf));
     if (raydium_read_block(client, RAYDIUM_CMD_START,
@@ -121,26 +121,28 @@ int raydium_get_event (struct device *dev, struct ts_event *event)
     raydium_debug_info("org data =%d, %d, %d, %d, ", buf[0], buf[1], buf[2], buf[3]);
     raydium_debug_info("%d, %d, %d, %d\n", buf[4], buf[5], buf[6], buf[7]);
 
-	event_num = 0;
-	event->x = ((buf[1] << 8) | buf[0]);
-	event->y = ((buf[3] << 8) | buf[2]);
-	if ((event->x != 0) || (event->y != 0)) {
-		event->z = 1;
-		event->w = 1;
-		event++;
-		event_num++;
-	}
-
-	event->x = ((buf[5] << 8) | buf[4]);
-	event->y = ((buf[7] << 8) | buf[6]);
-	if((event->x != 0) || (event->y != 0)) {
-		event->z = 1;
-		event->w = 1;
-		event++;
-		event_num++;
-	}
-		   
-	return event_num;
+    event_num = 0;
+    for (i=0; i<2; i++) {
+        ba = i*4;
+        event->x = (buf[ba+1] << 8) | buf[ba];
+        event->y = (buf[ba+3] << 8) | buf[ba+2];
+        if (info->swap_xy) {
+            swap(event->x, event->y);
+        }
+        if (info->x_pol) {
+            event->x = info->xmax + info->xmin - event->x;
+        }
+        if (info->y_pol) {
+            event->y = info->ymax + info->ymin - event->y;
+        }
+        if (event->x || event->y) {
+            event->z = 1;
+            event->w = 1;
+            event++;
+            event_num++;
+        }
+    }
+    return event_num;
 }
 
 

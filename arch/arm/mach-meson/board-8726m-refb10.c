@@ -701,10 +701,12 @@ static int ads7846_init_gpio(void)
 static int ts_init_irq(void);
 static int ts_get_irq_level(void);
 static struct ts_platform_data ts_pdata = {
-    .mode = TS_MODE_INT_LOW,
+    .mode = TS_MODE_INT_FALLING,
     .irq = INT_GPIO_0,
     .init_irq = ts_init_irq,
     .get_irq_level = ts_get_irq_level,
+    .poll_period = 16*1000000, //16msecs
+    .cache_enable = 1,
     .info = {
         .xmin = 0,
         .xmax = 1280,
@@ -716,7 +718,7 @@ static struct ts_platform_data ts_pdata = {
         .wmax = 1,
         .swap_xy = 0,
         .x_pol = 0,
-        .y_pol = 1
+        .y_pol = 1,
     },
     .data = (void *)(TS_RESET_GPIO+1),
 };
