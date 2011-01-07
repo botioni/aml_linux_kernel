@@ -34,7 +34,7 @@
 #define	FC_MORE_NTSCM_TO_NTSC443_MIN        130
 
 #define	FC_LESS_PAL_I_TO_PAL_N_MAX          108
-#define	FC_LESS_PAL_I_TO_PAL_N_MIN          52
+#define	FC_LESS_PAL_I_TO_PAL_N_MIN          40//52
 
 #define	FC_LESS_PAL_60_TO_PAL_M_MAX	        100
 #define	FC_LESS_PAL_60_TO_PAL_M_MIN	        35
@@ -47,7 +47,7 @@
 
 #define CORDIC_FILTER_COUNT                 10
 #define PAL_I_TO_SECAM_CNT                  205
-#define NEW_FMT_CHECK_CNT                   50  //-->pal_i / ntsc are ok
+#define NEW_FMT_CHECK_CNT                   150//50  //-->pal_i / ntsc are ok
 //#define NEW_FMT_CHECK_CNT                   40    //-->pal_i is unstable, ntsc is ok
 
 #define NEW_FMT_CHANGE_CNT                   3
@@ -77,7 +77,6 @@ static struct tvafe_cvd2_sig_status_s    cvd2_sig_status = {
     0,//unsigned char  vcrtrick              :1;
     0,//unsigned char  vcrff                 :1;
     0,//unsigned char  vcrrew                :1;
-    0,//unsigned char  cordic_data_sum;
     0,//unsigned char cordic_data_min;
     0,//unsigned char cordic_data_max;
     0,//unsigned char stable_cnt;
@@ -86,6 +85,7 @@ static struct tvafe_cvd2_sig_status_s    cvd2_sig_status = {
     0,//enum tvafe_cvd2_sd_state_e          detected_sd_state;
 
     {0,0,0},//struct tvafe_cvd2_agc_s             agc;
+    0,//unsigned   cordic_data_sum;
     0,
     0,
 };
@@ -158,9 +158,9 @@ static void tvafe_cvd2_reset_cnt(void)
 }
 void init_cvd2_reg_module(void )
 {
-	unsigned temp_data;
+	//unsigned temp_data;
 
-//    pr_info("cvd init_cvd2_reg_module \n");
+    //pr_info("cvd init_cvd2_reg_module \n");
     //disable 3D
     WRITE_APB_REG_BITS(CVD2_REG_B2, 1, COMB2D_ONLY_BIT, COMB2D_ONLY_WID);
 
@@ -181,10 +181,10 @@ void init_cvd2_reg_module(void )
     WRITE_APB_REG(CVD2_CHROMA_DTO_INCREMENT_7_0,	0x24);
 
 
-	WRITE_APB_REG(CVD2_RESET_REGISTER,	0x00);  //soft rest
-	WRITE_APB_REG(CVD2_RESET_REGISTER,	0x01);
-	temp_data = READ_APB_REG(CVD2_RESET_REGISTER);
-	WRITE_APB_REG(CVD2_RESET_REGISTER,	0x00);  //soft reset
+	//WRITE_APB_REG(CVD2_RESET_REGISTER,	0x00);  //soft rest
+	//WRITE_APB_REG(CVD2_RESET_REGISTER,	0x01);
+	//temp_data = READ_APB_REG(CVD2_RESET_REGISTER);
+	//WRITE_APB_REG(CVD2_RESET_REGISTER,	0x00);  //soft reset
 
     WRITE_APB_REG(CVD2_CONTROL0, 0x00);    //bit7--input video format is composite
     							            //bit[6:5]--input video color standard is NTSC
@@ -500,9 +500,9 @@ enum tvafe_cvbs_video_e  tvafe_cvd2_video_locked(void)
 //   Return: success/error
 //
 // *****************************************************************************
-//static int  tvafe_cvd2_non_standard_mode(void)
+//static bool  tvafe_cvd2_non_standard_mode(void)
 //{
-//    int ret = 0;
+//    bool ret = 0;
 //
 //    if (cvd2_sig_status.h_nonstd == 1 && cvd2_sig_status.v_nonstd == 1)
 //        ret = 1;
@@ -523,7 +523,7 @@ static bool tvafe_cvd2_write_mode_reg(enum tvin_sig_fmt_e fmt)
     unsigned int i = 0;
 
     if ((fmt<TVIN_SIG_FMT_CVBS_NTSC_M) || (fmt>TVIN_SIG_FMT_CVBS_SECAM)) {
-        pr_info("tvafe:  tvafe_cvd2_write_mode_reg(fmt error return)fmt:%d\n", fmt);
+        pr_info("%s: fmt = %d \n",__FUNCTION__, fmt);
         return (false);
     }
 //    else
@@ -565,6 +565,7 @@ static bool tvafe_cvd2_write_mode_reg(enum tvin_sig_fmt_e fmt)
 
 //    pr_info("tvafe:  cvd reset\n");
     tvafe_cvd2_reset_reg();
+    tvafe_cvd2_reset_cnt();
     // general functions
     //tvafe_cvd2_luma_agc_adjust();
     //load cvd2 memory address and size
@@ -573,9 +574,6 @@ static bool tvafe_cvd2_write_mode_reg(enum tvin_sig_fmt_e fmt)
     return (true);
 }
 
-#define SWITCH_CNT1         2
-#define SWITCH_CNT2         4
-#define SWITCH_CNT_SECAM    100
 // *****************************************************************************
 // Function: CVD2 search the new video mode
 //
@@ -623,9 +621,328 @@ static void tvafe_cvd2_search_video_mode(void)
 //        cvd2_sig_status.detected_sd_state = SD__VCR;  //video  VCR mode
 //        return ;
 //    }
+#if 1
+	// If no siganl is off and hv lock is on, the detected standard depends on the current standard
+	switch (cvd2_sig_status.cur_sd_state) {
+		case SD_NO_SIG:
+        case SD_UNLOCK:
+            if (tvafe_cvd2_video_locked())
+            {
+				cvd2_sig_status.detected_sd_state = SD_HV_LOCK;
+                pr_info("cvd nosig-->hvlock \n");
+            }
+            else
+            {
+                cvd2_sig_status.detected_sd_state = SD_UNLOCK;
+            }
+            tvafe_cvd2_reset_cnt();
+			break;
+		case SD_HV_LOCK:
+        case SD_NONSTD:
+			if (cvd2_sig_status.hv_lock)
+            {
+				if (cvd2_sig_status.line625)
+				{
+					cvd2_sig_status.detected_sd_state = SD_PAL_I;
+                    pr_info("cvd hvlock-->pali \n");
+				}
+				else
+				{
+					cvd2_sig_status.detected_sd_state = SD_PAL_M;
+                    pr_info("cvd hvlock-->palm \n");
+				}
+			}
+            else
+            {
+                pr_info("cvd hvlock -->SD_UNLOCK \n");
+                cvd2_sig_status.detected_sd_state = SD_UNLOCK;
+            }
+            tvafe_cvd2_reset_cnt();
+			break;
+		case SD_PAL_I:
+			if ((cvd2_sig_status.line625) && (cvd2_sig_status.chroma_lock) \
+                && (cvd2_sig_status.pal))
+            {  // check current state (PAL i)
+                cvd2_sig_status.cordic_data_sum += data;
+                cvd2_sig_status.stable_cnt++;
+
+                if( cvd2_sig_status.cordic_data_min > data)
+                    cvd2_sig_status.cordic_data_min = data;
+                if( cvd2_sig_status.cordic_data_max < data)
+                    cvd2_sig_status.cordic_data_max = data;
+
+                if(cvd2_sig_status.stable_cnt > CORDIC_FILTER_COUNT - 1) {
+                    //get rid off the min & max value
+                    cvd2_sig_status.cordic_data_sum -= cvd2_sig_status.cordic_data_min + cvd2_sig_status.cordic_data_max;
+                    cvd2_sig_status.cordic_data_sum = cvd2_sig_status.cordic_data_sum / (cvd2_sig_status.stable_cnt - 2);
+        			cvd2_sig_status.fc_Less = ((cvd2_sig_status.cordic_data_sum < FC_LESS_PAL_I_TO_PAL_N_MAX) && (cvd2_sig_status.cordic_data_sum > FC_LESS_PAL_I_TO_PAL_N_MIN)) ? 1 : 0;
+                    //pr_info("cvd cvd2_sig_status.cordic_data_sum:%d \n",cvd2_sig_status.cordic_data_sum);
+                    if(cvd2_sig_status.fc_Less)
+        			{
+        				cvd2_sig_status.detected_sd_state = SD_PAL_CN;
+                        pr_info("cvd pali-->palcn \n");
+        			}
+        			else
+        			{
+                        //pr_info("switch to pali state\n");
+        				cvd2_sig_status.detected_sd_state = SD_PAL_I;
+        			}
+                    tvafe_cvd2_reset_cnt();
+                }
+			}
+            else {
+               #if 0
+                    pr_info("CVD sts:h_lock:%d, v_lock:%d, chroma_lock:%d, h_nonstd:%d, v_nonstd:%d, no_color_burst:%d, pal:%d, secam:%d, line625:%d\n",
+                      cvd2_sig_status.h_lock,
+                      cvd2_sig_status.v_lock,
+                      cvd2_sig_status.chroma_lock,
+                      cvd2_sig_status.h_nonstd,
+                      cvd2_sig_status.v_nonstd,
+                      cvd2_sig_status.no_color_burst,
+                      cvd2_sig_status.pal,
+                      cvd2_sig_status.secam,
+                      cvd2_sig_status.line625);
+               #endif
+
+                //PAL_ i''s chroma subcarries & PAL_60's one  are  approximate
+                if ((cvd2_sig_status.chroma_lock) && (cvd2_sig_status.pal))
+                {
+                    cvd2_sig_status.detected_sd_state = SD_PAL_60;
+                    pr_info("cvd pali-->pal60 \n");
+                }
+                else
+                {
+					cvd2_sig_status.detected_sd_state = SD_SECAM;
+                    pr_info("cvd pali-->secam \n");
+                }
+            }
+			break;
+		case SD_PAL_M:  //6
+			if ((!cvd2_sig_status.line625) && (cvd2_sig_status.chroma_lock) && (cvd2_sig_status.pal) ) {
+                cvd2_sig_status.cordic_data_sum += data;
+                cvd2_sig_status.stable_cnt++;
+
+                if( cvd2_sig_status.cordic_data_min > data)
+                     cvd2_sig_status.cordic_data_min = data;
+                if( cvd2_sig_status.cordic_data_max < data)
+                    cvd2_sig_status.cordic_data_max = data;
+
+                if(cvd2_sig_status.stable_cnt > CORDIC_FILTER_COUNT -1) {
+                    cvd2_sig_status.cordic_data_sum -= (cvd2_sig_status.cordic_data_min + cvd2_sig_status.cordic_data_max);  //get rid off the min & max value
+                    cvd2_sig_status.cordic_data_sum = cvd2_sig_status.cordic_data_sum / (cvd2_sig_status.stable_cnt - 2);
+        		    cvd2_sig_status.fc_more   	= ((cvd2_sig_status.cordic_data_sum < FC_MORE_PAL_M_TO_PAL_60_MAX) && (cvd2_sig_status.cordic_data_sum > FC_MORE_PAL_M_TO_PAL_60_MIN)) ? 1 : 0;
+        		    if(cvd2_sig_status.fc_more)
+        		    {
+        		    	cvd2_sig_status.detected_sd_state = SD_PAL_60;
+                        pr_info(" cvd palm-->pal60 \n");
+        		    }
+        		    else
+        		    {
+        		    	cvd2_sig_status.detected_sd_state = SD_PAL_M;                        //pr_info("switch to pal60 state\n");
+
+        		    }
+                    tvafe_cvd2_reset_cnt();
+                }
+			}
+            else {
+                if ((cvd2_sig_status.chroma_lock) && (cvd2_sig_status.pal))
+                {
+                    cvd2_sig_status.detected_sd_state = SD_PAL_CN;    //PAL_CN''s chroma subcarries & PAL_M's one  are  approximate
+                    pr_info("cvd palm-->palcn \n");
+                }
+                else {
+					if ((!cvd2_sig_status.line625) && (!cvd2_sig_status.pal))
+					{
+						cvd2_sig_status.detected_sd_state = SD_NTSC;  //NTSC_M''s chroma subcarries & PAL_M's one  are  approximate
+                        pr_info("cvd palm-->ntsc \n");
+                    }
+                    else
+                    {
+						cvd2_sig_status.detected_sd_state = SD_HV_LOCK;
+                        pr_info("cvd palm-->hvlock \n");
+                    }
+				}
+            }
+			break;
+		case SD_PAL_CN:
+			if ((cvd2_sig_status.line625) &&( cvd2_sig_status.pal) && (cvd2_sig_status.chroma_lock)) {
+                cvd2_sig_status.cordic_data_sum += data;
+                cvd2_sig_status.stable_cnt++;
+
+                if( cvd2_sig_status.cordic_data_min > data)
+                     cvd2_sig_status.cordic_data_min = data;
+                if( cvd2_sig_status.cordic_data_max < data)
+                    cvd2_sig_status.cordic_data_max = data;
+
+                if(cvd2_sig_status.stable_cnt > CORDIC_FILTER_COUNT -1) {
+                    cvd2_sig_status.cordic_data_sum -= (cvd2_sig_status.cordic_data_min + cvd2_sig_status.cordic_data_max);  //get rid off the min & max value
+                    cvd2_sig_status.cordic_data_sum = cvd2_sig_status.cordic_data_sum / (cvd2_sig_status.stable_cnt - 2);
+        		    cvd2_sig_status.fc_more   	= ((cvd2_sig_status.cordic_data_sum < FC_MORE_PAL_N_TO_PAL_I_MAX) && (cvd2_sig_status.cordic_data_sum > FC_MORE_PAL_N_TO_PAL_I_MIN)) ? 1 : 0;
+        		    if(cvd2_sig_status.fc_more)
+        		    {
+        		    	cvd2_sig_status.detected_sd_state = SD_PAL_I;
+                        pr_info("cvd palcn-->pali \n");
+        		    }
+        		    else
+        		    	cvd2_sig_status.detected_sd_state = SD_PAL_CN;
+                    tvafe_cvd2_reset_cnt();
+                }
+			} else {
+                if ((cvd2_sig_status.chroma_lock) && (cvd2_sig_status.pal))
+                {
+                    cvd2_sig_status.detected_sd_state = SD_PAL_M;     //PAL_CN''s chroma subcarries & PAL_M's one  are  approximate
+                    pr_info("cvd palcn-->palm \n");
+                }
+                else
+                {
+				    cvd2_sig_status.detected_sd_state = SD_HV_LOCK;
+                    pr_info("cvd palcn-->hvlock \n");
+                }
+            }
+			break;
+        case SD_NTSC_443:
+            if ((!cvd2_sig_status.line625) && (!cvd2_sig_status.pal) && (cvd2_sig_status.chroma_lock)) {
+                cvd2_sig_status.cordic_data_sum += data;
+                cvd2_sig_status.stable_cnt++;
+
+                if( cvd2_sig_status.cordic_data_min > data)
+                     cvd2_sig_status.cordic_data_min = data;
+                if( cvd2_sig_status.cordic_data_max < data)
+                    cvd2_sig_status.cordic_data_max = data;
+
+                if(cvd2_sig_status.stable_cnt > CORDIC_FILTER_COUNT -1) {
+                    cvd2_sig_status.cordic_data_sum -= (cvd2_sig_status.cordic_data_min + cvd2_sig_status.cordic_data_max);  //get rid off the min & max value
+                    cvd2_sig_status.cordic_data_sum = cvd2_sig_status.cordic_data_sum / (cvd2_sig_status.stable_cnt - 2);
+        		    cvd2_sig_status.fc_Less   	= ((cvd2_sig_status.cordic_data_sum < FC_LESS_NTSC443_TO_NTSCM_MAX) && (cvd2_sig_status.cordic_data_sum > FC_LESS_NTSC443_TO_NTSCM_MIN)) ? 1 : 0;
+        		    if(cvd2_sig_status.fc_Less)
+        		    {
+        		    	cvd2_sig_status.detected_sd_state = SD_NTSC;
+                        pr_info("cvd ntsc443-->ntsc \n");
+        		    }
+        		    else
+        		    	cvd2_sig_status.detected_sd_state = SD_NTSC_443;
+                    tvafe_cvd2_reset_cnt();
+                }
+			} else {
+				if((!cvd2_sig_status.line625)&& (cvd2_sig_status.pal))
+				{
+				    cvd2_sig_status.detected_sd_state = SD_PAL_60;      //NTSC_433''s chroma subcarries & PAL_60's one  are  approximate
+                    pr_info("cvd ntsc443-->pal60 \n");
+				}
+                else
+                {
+                    pr_info("cvd ntsc443-->hvlock \n");
+				    cvd2_sig_status.detected_sd_state = SD_HV_LOCK;
+                }
+            }
+			break;
+		case SD_NTSC:  //8
+			if ((!cvd2_sig_status.line625) && (!cvd2_sig_status.pal) && (cvd2_sig_status.chroma_lock)) {
+                cvd2_sig_status.cordic_data_sum += data;
+                cvd2_sig_status.stable_cnt++;
+
+                if( cvd2_sig_status.cordic_data_min > data)
+                     cvd2_sig_status.cordic_data_min = data;
+                if( cvd2_sig_status.cordic_data_max < data)
+                    cvd2_sig_status.cordic_data_max = data;
+
+                if(cvd2_sig_status.stable_cnt > CORDIC_FILTER_COUNT -1) {
+                    cvd2_sig_status.cordic_data_sum -= (cvd2_sig_status.cordic_data_min + cvd2_sig_status.cordic_data_max);  //get rid off the min & max value
+                    cvd2_sig_status.cordic_data_sum = cvd2_sig_status.cordic_data_sum / (cvd2_sig_status.stable_cnt - 2);
+        		    cvd2_sig_status.fc_more   	= ((cvd2_sig_status.cordic_data_sum < FC_MORE_NTSCM_TO_NTSC443_MAX) && (cvd2_sig_status.cordic_data_sum > FC_MORE_NTSCM_TO_NTSC443_MIN)) ? 1 : 0;
+        		    if(cvd2_sig_status.fc_more)
+        		    {
+        		    	cvd2_sig_status.detected_sd_state = SD_NTSC_443;
+                        pr_info("cvd ntsc-->ntsc443 \n");
+        		    }
+        		    else
+        		    	cvd2_sig_status.detected_sd_state = SD_NTSC;
+                    tvafe_cvd2_reset_cnt();
+			    }
+            } else {
+				if((!cvd2_sig_status.line625)&& (cvd2_sig_status.pal))
+				{
+				    cvd2_sig_status.detected_sd_state = SD_PAL_M;      //NTSC_M''s chroma subcarries & PAL_M's one  are  approximate
+                    pr_info("cvd ntsc-->palm \n");
+				}
+                else if((!cvd2_sig_status.line625)&& (!cvd2_sig_status.pal))
+				{
+				    cvd2_sig_status.detected_sd_state = SD_NTSC_443;      //NTSC_M''s chroma subcarries & PAL_M's one  are  approximate
+                    pr_info("cvd ntsc-->SD_NTSC_443 \n");
+				}
+                else
+                {
+				    cvd2_sig_status.detected_sd_state = SD_HV_LOCK;
+                    pr_info("cvd ntsc-->hvlock \n");
+                }
+            }
+			break;
+		case SD_PAL_60:
+			if ((!cvd2_sig_status.line625) && (cvd2_sig_status.pal) && (cvd2_sig_status.chroma_lock)) {
+                cvd2_sig_status.cordic_data_sum += data;
+                cvd2_sig_status.stable_cnt++;
+
+                if( cvd2_sig_status.cordic_data_min > data)
+                     cvd2_sig_status.cordic_data_min = data;
+                if( cvd2_sig_status.cordic_data_max < data)
+                    cvd2_sig_status.cordic_data_max = data;
+
+                if(cvd2_sig_status.stable_cnt > CORDIC_FILTER_COUNT -1) {
+                    cvd2_sig_status.cordic_data_sum -= (cvd2_sig_status.cordic_data_min + cvd2_sig_status.cordic_data_max);  //get rid off the min & max value
+                    cvd2_sig_status.cordic_data_sum = cvd2_sig_status.cordic_data_sum / (CORDIC_FILTER_COUNT - 2);
+        		    cvd2_sig_status.fc_Less   	= ((cvd2_sig_status.cordic_data_sum < FC_LESS_PAL_60_TO_PAL_M_MAX) && (cvd2_sig_status.cordic_data_sum > FC_LESS_PAL_60_TO_PAL_M_MIN)) ? 1 : 0;
+        		    if(cvd2_sig_status.fc_Less)
+        		    {
+        		    	cvd2_sig_status.detected_sd_state = SD_PAL_M;
+                        pr_info("cvd pal60-->palm \n");
+         		    }
+        		    else
+        		    	cvd2_sig_status.detected_sd_state = SD_PAL_60;
+                    tvafe_cvd2_reset_cnt();
+                }
+			} else {
+                if ((cvd2_sig_status.chroma_lock)&&(cvd2_sig_status.pal))
+                    cvd2_sig_status.detected_sd_state = SD_PAL_I;	//PAL_ i''s chroma subcarries & PAL_60's one  are  approximate
+                else {
+					if((!cvd2_sig_status.line625)&& (!cvd2_sig_status.pal))
+					{
+					    cvd2_sig_status.detected_sd_state = SD_NTSC_443;      //NTSC_433''s chroma subcarries & PAL_60's one  are  approximate
+                        pr_info("cvd pal60-->ntsc443 \n");
+					}
+                    else
+                    {
+					    cvd2_sig_status.detected_sd_state = SD_HV_LOCK;
+                        pr_info("cvd pal60-->hvlock \n");
+                    }
+			    }
+            }
+			break;
+		case SD_SECAM:
+            if ((cvd2_sig_status.line625) && (cvd2_sig_status.secam) && (cvd2_sig_status.chroma_lock))
+				cvd2_sig_status.detected_sd_state = SD_SECAM;
+			else {
+                if((cvd2_sig_status.line625) && (!cvd2_sig_status.secam) && (cvd2_sig_status.pal))
+                {
+                    cvd2_sig_status.detected_sd_state = SD_PAL_I;
+                    pr_info("cvd secam-->pali \n");
+                }
+                else
+                {
+                    pr_info("cvd secam-->unlock \n");
+					cvd2_sig_status.detected_sd_state = SD_UNLOCK;
+
+                }
+            }
+			break;
+        case SD_VCR :
+            break;
+		default:
+			break;
+	}
 
 
-#if 0
+
+#else
 	// If no siganl is off and hv lock is on, the detected standard depends on the current standard
 	switch (cvd2_sig_status.cur_sd_state) {
 		case SD_NO_SIG:
@@ -984,307 +1301,6 @@ static void tvafe_cvd2_search_video_mode(void)
 		default:
 			break;
 	}
-#else
-	// If no siganl is off and hv lock is on, the detected standard depends on the current standard
-	switch (cvd2_sig_status.cur_sd_state) {
-		case SD_NO_SIG:
-        case SD_UNLOCK:
-            if (tvafe_cvd2_video_locked())
-            {
-				cvd2_sig_status.detected_sd_state = SD_HV_LOCK;
-                pr_info("cvd nosig-->hvlock \n");
-            }
-            else
-            {
-                cvd2_sig_status.detected_sd_state = SD_UNLOCK;
-            }
-            tvafe_cvd2_reset_cnt();
-			break;
-		case SD_HV_LOCK:
-        case SD_NONSTD:
-			if (cvd2_sig_status.hv_lock)
-            {
-				if (cvd2_sig_status.line625)
-				{
-					cvd2_sig_status.detected_sd_state = SD_PAL_I;
-                    pr_info("cvd hvlock-->pali \n");
-				}
-				else
-				{
-					cvd2_sig_status.detected_sd_state = SD_PAL_M;
-                    pr_info("cvd hvlock-->palm \n");
-				}
-			}
-            else
-            {
-                pr_info("cvd hvlock -->SD_UNLOCK \n");
-                cvd2_sig_status.detected_sd_state = SD_UNLOCK;
-            }
-            tvafe_cvd2_reset_cnt();
-			break;
-		case SD_PAL_I:
-			if ((cvd2_sig_status.line625) && (cvd2_sig_status.chroma_lock) \
-                && (cvd2_sig_status.pal))
-            {  // check current state (PAL i)
-                cvd2_sig_status.cordic_data_sum += data;
-                cvd2_sig_status.stable_cnt++;
-
-                if( cvd2_sig_status.cordic_data_min > data)
-                    cvd2_sig_status.cordic_data_min = data;
-                if( cvd2_sig_status.cordic_data_max < data)
-                    cvd2_sig_status.cordic_data_max = data;
-
-                if(cvd2_sig_status.stable_cnt > CORDIC_FILTER_COUNT - 1) {
-                    //get rid off the min & max value
-                    cvd2_sig_status.cordic_data_sum -= cvd2_sig_status.cordic_data_min + cvd2_sig_status.cordic_data_max;
-                    cvd2_sig_status.cordic_data_sum = cvd2_sig_status.cordic_data_sum / (CORDIC_FILTER_COUNT - 2);
-        			cvd2_sig_status.fc_Less = ((cvd2_sig_status.cordic_data_sum < FC_LESS_PAL_I_TO_PAL_N_MAX) && (cvd2_sig_status.cordic_data_sum > FC_LESS_PAL_I_TO_PAL_N_MIN)) ? 1 : 0;
-        			if(cvd2_sig_status.fc_Less)
-        			{
-        				cvd2_sig_status.detected_sd_state = SD_PAL_CN;
-                        pr_info("cvd pali-->palcn \n");
-        			}
-        			else
-        			{
-                        //pr_info("switch to pali state\n");
-        				cvd2_sig_status.detected_sd_state = SD_PAL_I;
-        			}
-                    tvafe_cvd2_reset_cnt();
-                }
-			}
-            else {
-
-                //PAL_ i''s chroma subcarries & PAL_60's one  are  approximate
-                if ((cvd2_sig_status.chroma_lock) && (cvd2_sig_status.pal))
-                {
-                    cvd2_sig_status.detected_sd_state = SD_PAL_60;
-                    pr_info("cvd pali-->pal60 \n");
-                }
-                else
-                {
-					cvd2_sig_status.detected_sd_state = SD_SECAM;
-                    pr_info("cvd pali-->secam \n");
-                }
-            }
-			break;
-		case SD_PAL_M:
-			if ((!cvd2_sig_status.line625) && (cvd2_sig_status.chroma_lock) && (cvd2_sig_status.pal) ) {
-                cvd2_sig_status.cordic_data_sum += data;
-                cvd2_sig_status.stable_cnt++;
-
-                if( cvd2_sig_status.cordic_data_min > data)
-                     cvd2_sig_status.cordic_data_min = data;
-                if( cvd2_sig_status.cordic_data_max < data)
-                    cvd2_sig_status.cordic_data_max = data;
-
-                if(cvd2_sig_status.stable_cnt > CORDIC_FILTER_COUNT -1) {
-                    cvd2_sig_status.cordic_data_sum -= (cvd2_sig_status.cordic_data_min + cvd2_sig_status.cordic_data_max);  //get rid off the min & max value
-                    cvd2_sig_status.cordic_data_sum = cvd2_sig_status.cordic_data_sum / (CORDIC_FILTER_COUNT - 2);
-        		    cvd2_sig_status.fc_more   	= ((cvd2_sig_status.cordic_data_sum < FC_MORE_PAL_M_TO_PAL_60_MAX) && (cvd2_sig_status.cordic_data_sum > FC_MORE_PAL_M_TO_PAL_60_MIN)) ? 1 : 0;
-        		    if(cvd2_sig_status.fc_more)
-        		    {
-        		    	cvd2_sig_status.detected_sd_state = SD_PAL_60;
-                        pr_info(" cvd palm-->pal60 \n");
-        		    }
-        		    else
-        		    {
-        		    	cvd2_sig_status.detected_sd_state = SD_PAL_M;                        //pr_info("switch to pal60 state\n");
-
-        		    }
-                    tvafe_cvd2_reset_cnt();
-                }
-			}
-            else {
-                if ((cvd2_sig_status.chroma_lock) && (cvd2_sig_status.pal))
-                {
-                    cvd2_sig_status.detected_sd_state = SD_PAL_CN;    //PAL_CN''s chroma subcarries & PAL_M's one  are  approximate
-                    pr_info("cvd palm-->palcn \n");
-                }
-                else {
-					if ((!cvd2_sig_status.line625) && (!cvd2_sig_status.pal))
-					{
-						cvd2_sig_status.detected_sd_state = SD_NTSC;  //NTSC_M''s chroma subcarries & PAL_M's one  are  approximate
-                        pr_info("cvd palm-->ntsc \n");
-                    }
-                    else
-                    {
-						cvd2_sig_status.detected_sd_state = SD_HV_LOCK;
-                        pr_info("cvd palm-->hvlock \n");
-                    }
-				}
-            }
-			break;
-		case SD_PAL_CN:
-			if ((cvd2_sig_status.line625) &&( cvd2_sig_status.pal) && (cvd2_sig_status.chroma_lock)) {
-                cvd2_sig_status.cordic_data_sum += data;
-                cvd2_sig_status.stable_cnt++;
-
-                if( cvd2_sig_status.cordic_data_min > data)
-                     cvd2_sig_status.cordic_data_min = data;
-                if( cvd2_sig_status.cordic_data_max < data)
-                    cvd2_sig_status.cordic_data_max = data;
-
-                if(cvd2_sig_status.stable_cnt > CORDIC_FILTER_COUNT -1) {
-                    cvd2_sig_status.cordic_data_sum -= (cvd2_sig_status.cordic_data_min + cvd2_sig_status.cordic_data_max);  //get rid off the min & max value
-                    cvd2_sig_status.cordic_data_sum = cvd2_sig_status.cordic_data_sum / (CORDIC_FILTER_COUNT - 2);
-        		    cvd2_sig_status.fc_more   	= ((cvd2_sig_status.cordic_data_sum < FC_MORE_PAL_N_TO_PAL_I_MAX) && (cvd2_sig_status.cordic_data_sum > FC_MORE_PAL_N_TO_PAL_I_MIN)) ? 1 : 0;
-        		    if(cvd2_sig_status.fc_more)
-        		    {
-        		    	cvd2_sig_status.detected_sd_state = SD_PAL_I;
-                        pr_info("cvd palcn-->pali \n");
-        		    }
-        		    else
-        		    	cvd2_sig_status.detected_sd_state = SD_PAL_CN;
-                    tvafe_cvd2_reset_cnt();
-                }
-			} else {
-                if ((cvd2_sig_status.chroma_lock) && (cvd2_sig_status.pal))
-                {
-                    cvd2_sig_status.detected_sd_state = SD_PAL_M;     //PAL_CN''s chroma subcarries & PAL_M's one  are  approximate
-                    pr_info("cvd palcn-->palm \n");
-                }
-                else
-                {
-				    cvd2_sig_status.detected_sd_state = SD_HV_LOCK;
-                    pr_info("cvd palcn-->hvlock \n");
-                }
-            }
-			break;
-        case SD_NTSC_443:
-            if ((!cvd2_sig_status.line625) && (!cvd2_sig_status.pal) && (cvd2_sig_status.chroma_lock)) {
-                cvd2_sig_status.cordic_data_sum += data;
-                cvd2_sig_status.stable_cnt++;
-
-                if( cvd2_sig_status.cordic_data_min > data)
-                     cvd2_sig_status.cordic_data_min = data;
-                if( cvd2_sig_status.cordic_data_max < data)
-                    cvd2_sig_status.cordic_data_max = data;
-
-                if(cvd2_sig_status.stable_cnt > CORDIC_FILTER_COUNT -1) {
-                    cvd2_sig_status.cordic_data_sum -= (cvd2_sig_status.cordic_data_min + cvd2_sig_status.cordic_data_max);  //get rid off the min & max value
-                    cvd2_sig_status.cordic_data_sum = cvd2_sig_status.cordic_data_sum / (CORDIC_FILTER_COUNT - 2);
-        		    cvd2_sig_status.fc_Less   	= ((cvd2_sig_status.cordic_data_sum < FC_LESS_NTSC443_TO_NTSCM_MAX) && (cvd2_sig_status.cordic_data_sum > FC_LESS_NTSC443_TO_NTSCM_MIN)) ? 1 : 0;
-        		    if(cvd2_sig_status.fc_Less)
-        		    {
-        		    	cvd2_sig_status.detected_sd_state = SD_NTSC;
-                        pr_info("cvd ntsc443-->ntsc \n");
-        		    }
-        		    else
-        		    	cvd2_sig_status.detected_sd_state = SD_NTSC_443;
-                    tvafe_cvd2_reset_cnt();
-                }
-			} else {
-				if((!cvd2_sig_status.line625)&& (cvd2_sig_status.pal))
-				{
-				    cvd2_sig_status.detected_sd_state = SD_PAL_60;      //NTSC_433''s chroma subcarries & PAL_60's one  are  approximate
-                    pr_info("cvd ntsc443-->pal60 \n");
-				}
-                else
-                {
-                    pr_info("cvd ntsc443-->hvlock \n");
-				    cvd2_sig_status.detected_sd_state = SD_HV_LOCK;
-                }
-            }
-			break;
-		case SD_NTSC:
-			if ((!cvd2_sig_status.line625) && (!cvd2_sig_status.pal) && (cvd2_sig_status.chroma_lock)) {
-                cvd2_sig_status.cordic_data_sum += data;
-                cvd2_sig_status.stable_cnt++;
-
-                if( cvd2_sig_status.cordic_data_min > data)
-                     cvd2_sig_status.cordic_data_min = data;
-                if( cvd2_sig_status.cordic_data_max < data)
-                    cvd2_sig_status.cordic_data_max = data;
-
-                if(cvd2_sig_status.stable_cnt > CORDIC_FILTER_COUNT -1) {
-                    cvd2_sig_status.cordic_data_sum -= (cvd2_sig_status.cordic_data_min + cvd2_sig_status.cordic_data_max);  //get rid off the min & max value
-                    cvd2_sig_status.cordic_data_sum = cvd2_sig_status.cordic_data_sum / (CORDIC_FILTER_COUNT - 2);
-        		    cvd2_sig_status.fc_more   	= ((cvd2_sig_status.cordic_data_sum < FC_MORE_NTSCM_TO_NTSC443_MAX) && (cvd2_sig_status.cordic_data_sum > FC_MORE_NTSCM_TO_NTSC443_MIN)) ? 1 : 0;
-        		    if(cvd2_sig_status.fc_more)
-        		    {
-        		    	cvd2_sig_status.detected_sd_state = SD_NTSC_443;
-                        pr_info("cvd ntsc-->ntsc443 \n");
-        		    }
-        		    else
-        		    	cvd2_sig_status.detected_sd_state = SD_NTSC;
-                    tvafe_cvd2_reset_cnt();
-			    }
-            } else {
-				if((!cvd2_sig_status.line625)&& (cvd2_sig_status.pal))
-				{
-				    cvd2_sig_status.detected_sd_state = SD_PAL_M;      //NTSC_M''s chroma subcarries & PAL_M's one  are  approximate
-                    pr_info("cvd ntsc-->palm \n");
-				}
-                else
-                {
-				    cvd2_sig_status.detected_sd_state = SD_HV_LOCK;
-                    pr_info("cvd ntsc-->hvlock \n");
-                }
-            }
-			break;
-		case SD_PAL_60:
-			if ((!cvd2_sig_status.line625) && (cvd2_sig_status.pal) && (cvd2_sig_status.chroma_lock)) {
-                cvd2_sig_status.cordic_data_sum += data;
-                cvd2_sig_status.stable_cnt++;
-
-                if( cvd2_sig_status.cordic_data_min > data)
-                     cvd2_sig_status.cordic_data_min = data;
-                if( cvd2_sig_status.cordic_data_max < data)
-                    cvd2_sig_status.cordic_data_max = data;
-
-                if(cvd2_sig_status.stable_cnt > CORDIC_FILTER_COUNT -1) {
-                    cvd2_sig_status.cordic_data_sum -= (cvd2_sig_status.cordic_data_min + cvd2_sig_status.cordic_data_max);  //get rid off the min & max value
-                    cvd2_sig_status.cordic_data_sum = cvd2_sig_status.cordic_data_sum / (CORDIC_FILTER_COUNT - 2);
-        		    cvd2_sig_status.fc_Less   	= ((cvd2_sig_status.cordic_data_sum < FC_LESS_PAL_60_TO_PAL_M_MAX) && (cvd2_sig_status.cordic_data_sum > FC_LESS_PAL_60_TO_PAL_M_MIN)) ? 1 : 0;
-        		    if(cvd2_sig_status.fc_Less)
-        		    {
-        		    	cvd2_sig_status.detected_sd_state = SD_PAL_M;
-                        pr_info("cvd pal60-->palm \n");
-         		    }
-        		    else
-        		    	cvd2_sig_status.detected_sd_state = SD_PAL_60;
-                    tvafe_cvd2_reset_cnt();
-                }
-			} else {
-                if ((cvd2_sig_status.chroma_lock)&&(cvd2_sig_status.pal))
-                    cvd2_sig_status.detected_sd_state = SD_PAL_I;	//PAL_ i''s chroma subcarries & PAL_60's one  are  approximate
-                else {
-					if((!cvd2_sig_status.line625)&& (!cvd2_sig_status.pal))
-					{
-					    cvd2_sig_status.detected_sd_state = SD_NTSC_443;      //NTSC_433''s chroma subcarries & PAL_60's one  are  approximate
-                        pr_info("cvd pal60-->ntsc443 \n");
-					}
-                    else
-                    {
-					    cvd2_sig_status.detected_sd_state = SD_HV_LOCK;
-                        pr_info("cvd pal60-->hvlock \n");
-                    }
-			    }
-            }
-			break;
-		case SD_SECAM:
-            if ((cvd2_sig_status.line625) && (cvd2_sig_status.secam) && (cvd2_sig_status.chroma_lock))
-				cvd2_sig_status.detected_sd_state = SD_SECAM;
-			else {
-                if((cvd2_sig_status.line625) && (!cvd2_sig_status.secam) && (cvd2_sig_status.pal))
-                {
-                    cvd2_sig_status.detected_sd_state = SD_PAL_I;
-                    pr_info("cvd secam-->pali \n");
-                }
-                else
-                {
-                    pr_info("cvd secam-->unlock \n");
-					cvd2_sig_status.detected_sd_state = SD_UNLOCK;
-
-                }
-            }
-			break;
-        case SD_VCR :
-            break;
-		default:
-			break;
-	}
-
 #endif
 
     return ;
@@ -1301,20 +1317,6 @@ void tvafe_set_cvd2_default(unsigned int mem_addr, unsigned int mem_size, enum t
     cvd2_sig_status.cvd2_mem_size = mem_size;
 
     /** write 7740 register **/
-#if  0
-    WRITE_CBUS_REG(PERIPHS_PIN_MUX_0 , READ_CBUS_REG(PERIPHS_PIN_MUX_0 )&0xcff0ffdf);
-    WRITE_CBUS_REG(PERIPHS_PIN_MUX_1 , READ_CBUS_REG(PERIPHS_PIN_MUX_1 )&0xfc017fff);
-    WRITE_CBUS_REG(PERIPHS_PIN_MUX_2 , READ_CBUS_REG(PERIPHS_PIN_MUX_2 )&0xe001ffff);
-    WRITE_CBUS_REG(PERIPHS_PIN_MUX_3 , READ_CBUS_REG(PERIPHS_PIN_MUX_3 )&0xfc000000);
-    WRITE_CBUS_REG(PERIPHS_PIN_MUX_4 , READ_CBUS_REG(PERIPHS_PIN_MUX_4 )&0xff8007ff);
-    WRITE_CBUS_REG(PERIPHS_PIN_MUX_6 , READ_CBUS_REG(PERIPHS_PIN_MUX_6 )&0xffffffbf);
-    WRITE_CBUS_REG(PERIPHS_PIN_MUX_7 , READ_CBUS_REG(PERIPHS_PIN_MUX_7 )&0xff00003f);
-    WRITE_CBUS_REG(PERIPHS_PIN_MUX_10, READ_CBUS_REG(PERIPHS_PIN_MUX_10)&0xffffffb3);
-    // enable TVFE_TEST mux on test pins 0~27 & 30
-    WRITE_CBUS_REG(PERIPHS_PIN_MUX_9 , 0x4fffffff);//
-#endif
-
-
     tvafe_adc_configure(fmt);
 
     //WRITE_APB_REG_BITS(TVFE_TOP_CTRL, 1, DCLK_ENABLE_BIT, DCLK_ENABLE_WID);
@@ -1385,7 +1387,7 @@ enum tvin_sig_fmt_e tvafe_cvd2_get_format(void)
     }
     if (fmt == TVIN_SIG_FMT_NULL)
     {
-        pr_info("cvd not find format, cur_sd_state = %d. \n", cvd2_sig_status.cur_sd_state);
+        pr_info("CVD not find format, cur_sd_state = %d. \n", cvd2_sig_status.cur_sd_state);
         //init_cvd2_reg_module();
     }
     //    tvafe_set_cvd2_default(cvd2_sig_status.cvd2_mem_addr,
@@ -1509,7 +1511,8 @@ bool tvafe_cvd_no_sig(void)
     tvafe_cvd2_search_video_mode();
 
     //if (cvd2_sig_status.detected_sd_state == SD_NO_SIG)
-    if (cvd2_sig_status.no_sig == 1)
+    //if (cvd2_sig_status.no_sig == 1)
+    if (tvafe_cvd2_video_locked() == 0)
     {
         tmp = 1;
         //pr_info("cvd no sigal detect\n");
@@ -1535,23 +1538,21 @@ bool tvafe_cvd_fmt_chg(void)
 {
     bool tmp = 0;
     enum tvin_sig_fmt_e fmt = TVIN_SIG_FMT_NULL;
-    int i;
+    //int i;
 
     //tvafe_cvd2_search_video_mode();
 
     //if (cvd2_sig_status.detected_sd_state != SD_NO_SIG)
     //    tmp = 1;
-    if (//(cvd2_sig_status.detected_sd_state >= SD_PAL_I) &&
-        //(cvd2_sig_status.detected_sd_state <= SD_SECAM) &&
-        (cvd2_sig_status.detected_sd_state != cvd2_sig_status.cur_sd_state))
+    if (cvd2_sig_status.detected_sd_state != cvd2_sig_status.cur_sd_state)
     {
         if (cvd_fmt_chg_cnt++ > NEW_FMT_CHANGE_CNT)
         {
+            cvd_fmt_chg_cnt = 0;
             cvd2_sig_status.cur_sd_state = cvd2_sig_status.detected_sd_state;
 //            pr_info("%s: cvd2_sig_status.cur_sd_state is %d . \n", __FUNCTION__, cvd2_sig_status.cur_sd_state);
-            cvd_fmt_chg_cnt = 0;
-            tmp = 1;
 
+            tmp = 1;
             if (cvd2_sig_status.detected_sd_state > SD_HV_LOCK)
             {
                 init_cvd2_reg_module();
@@ -1559,25 +1560,7 @@ bool tvafe_cvd_fmt_chg(void)
                 fmt = tvafe_cvd2_get_format();
 
                 tvafe_cvd2_write_mode_reg(fmt);
-#if 0
-                if(fmt != TVIN_SIG_FMT_NULL)
-                {
-                    // load CVD2 reg 0x00~3f (char)
-                    for (i=0; i<CVD_PART1_REG_NUM; i++)
-                    {
-                        WRITE_APB_REG((CVD_BASE_ADD+CVD_PART1_REG_MIN+i)<<2, (cvd_part1_table[fmt-TVIN_SIG_FMT_CVBS_NTSC_M][i]));
-                    }
-
-                    // load CVD2 reg 0x70~ff (char)
-                    for (i=0; i<CVD_PART2_REG_NUM; i++)
-                    {
-                        WRITE_APB_REG((CVD_BASE_ADD+CVD_PART2_REG_MIN+i)<<2, (cvd_part2_table[fmt-TVIN_SIG_FMT_CVBS_NTSC_M][i]));
-                    }
-                    WRITE_APB_REG_BITS(CVD2_RESET_REGISTER, 0, SOFT_RST_BIT, SOFT_RST_WID);
-                }
-#endif
             }
-
 
         }
     }

@@ -387,7 +387,10 @@ static void tvafe_stop_dec(void)
 
 }
 
-// interrupt handler
+/*as use the spin_lock,
+ *1--there is no sleep,
+ *2--it is better to shorter the time,
+*/
 static int tvafe_isr_run(struct vframe_s *vf_info)
 {
     unsigned int canvas_id = 0;
@@ -397,13 +400,13 @@ static int tvafe_isr_run(struct vframe_s *vf_info)
     //video frame info setting
     if ((tvafe_info.param.status != TVIN_SIG_STATUS_STABLE) ||(tvafe_info.param.fmt == TVIN_SIG_FMT_NULL))
     {
-//        pr_info("tvafe isr signal error status:%d \n", tvafe_info.param.status);
         return 0;
     }
 
     if ((tvafe_info.param.flag & TVIN_PARM_FLAG_CAP) != 0)  //frame capture function
     {
 //        pr_info("-->be captured \n");
+#if 0
         if (tvafe_info.wr_canvas_index == 0)
             last_recv_index = tvafe_info.canvas_total_count - 1;
         else
@@ -418,18 +421,18 @@ static int tvafe_isr_run(struct vframe_s *vf_info)
             else
                 canvas_id = tvafe_info.wr_canvas_index + 1;
         }
-
+#else
+        canvas_id = tvafe_info.rd_canvas_index;
+#endif
         vdin_devp_tvafe->para.cap_addr = tvafe_info.pbufAddr +
                     (tvafe_info.decbuf_size * canvas_id);
-
+         vdin_devp_tvafe->para.cap_size = tvafe_info.decbuf_size;
         return 0;
     }
 
     scan_mode = tvin_fmt_tbl[tvafe_info.param.fmt].scan_mode;
 
     if (scan_mode == TVIN_SCAN_MODE_PROGRESSIVE) {
-        //progressive mode
-//        pr_info("-->PROGRESSIVE \n");
         if ((tvafe_info.rd_canvas_index > 0xF0) && (tvafe_info.rd_canvas_index < 0xFF))
         {
             tvafe_info.rd_canvas_index++;
@@ -479,8 +482,6 @@ static int tvafe_isr_run(struct vframe_s *vf_info)
 
     }
     else {
-        //interlacing mode
-//        pr_info("-->interlacing mode \n");
         field_status = READ_CBUS_REG_BITS(VDIN_COM_STATUS0, 0, 1);
         if(tvafe_info.wr_canvas_index == 0)
             last_recv_index = tvafe_info.canvas_total_count - 1;
@@ -554,6 +555,10 @@ static int tvafe_isr_run(struct vframe_s *vf_info)
     return 0;
 }
 
+/*as use the spin_lock,
+ *1--there is no sleep,
+ *2--it is better to shorter the time,
+*/
 static int tvafe_isr_run_bh(struct vframe_s *vf_info)
 {
 
@@ -613,7 +618,6 @@ static void check_tvafe_format(void )
 
 static int tvafe_check_callback(struct notifier_block *block, unsigned long cmd , void *para)
 {
-
     int ret = 0;
     switch(cmd)
     {

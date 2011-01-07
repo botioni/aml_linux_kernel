@@ -19,7 +19,7 @@
 #include "tvafe_general.h"
 #include "tvafe_adc.h"
 /***************************Local defines**********************************/
-#define AUTO_CLK_VS_CNT       10 // get stable BD readings after n+1 frames
+#define AUTO_CLK_VS_CNT       15//10 // get stable BD readings after n+1 frames
 #define AUTO_PHASE_VS_CNT      1 // get stable AP readings after n+1 frames
 #define ADC_WINDOW_H_OFFSET   32 // auto phase window h offset
 #define ADC_WINDOW_V_OFFSET    2 // auto phase window v offset
@@ -36,25 +36,35 @@
 #define VGA_AUTO_PHASE_H_WIN   7
 #define VGA_AUTO_PHASE_V_WIN   7
 
-#define MAX_PHASE_CNT                    32     // phase total number
-#define MAX_AUTO_CLOCK_LEVEL            100     // pixel
+#define TVIN_FMT_CHG_VGA_H_CNT_WOBBLE   5
+#define TVIN_FMT_CHG_VGA_V_CNT_WOBBLE   1
+#define TVIN_FMT_CHG_VGA_HS_CNT_WOBBLE  5
+#define TVIN_FMT_CHG_VGA_VS_CNT_WOBBLE  1
+#define TVIN_FMT_CHG_COMP_H_CNT_WOBBLE  5
+#define TVIN_FMT_CHG_COMP_V_CNT_WOBBLE  1
+#define TVIN_FMT_CHG_COMP_HS_CNT_WOBBLE 0xffffffff // not to trust
+#define TVIN_FMT_CHG_COMP_VS_CNT_WOBBLE 0xffffffff // not to trust
 
+#define TVIN_FMT_CHK_VGA_VS_CNT_WOBBLE 1
+
+#define TVAFE_H_MAX 0xfff
+#define TVAFE_H_MIN 0x000
+
+#define TVAFE_V_MAX 0xfff
+#define TVAFE_V_MIN 0x000
+
+#define TVAFE_VGA_VS_CNT_MAX 200
+
+#define TVAFE_VGA_BD_EN_DELAY 4  //4//4 field delay
 
 #define TVAFE_ADC_CONFIGURE_INIT     1
 #define TVAFE_ADC_CONFIGURE_NORMAL   1|(1<<POWERDOWNZ_BIT)|(1<<RSTDIGZ_BIT) // 7
 #define TVAFE_ADC_CONFIGURE_RESET_ON 1|(1<<POWERDOWNZ_BIT)                  // 5
-#define TVIN_FMT_CHG_VGA_H_CNT_WOBBLE   5
-#define TVIN_FMT_CHG_VGA_V_CNT_WOBBLE   0
-#define TVIN_FMT_CHG_VGA_HS_CNT_WOBBLE  5
-#define TVIN_FMT_CHG_VGA_VS_CNT_WOBBLE  0
-#define TVIN_FMT_CHG_COMP_H_CNT_WOBBLE  5
-#define TVIN_FMT_CHG_COMP_V_CNT_WOBBLE  5
-#define TVIN_FMT_CHG_COMP_HS_CNT_WOBBLE 0xffffffff // not to trust
-#define TVIN_FMT_CHG_COMP_VS_CNT_WOBBLE 0xffffffff // not to trust
-#define TVIN_FMT_CHK_VGA_VS_CNT_WOBBLE 1
-#define TVAFE_V_MAX 0xfff
-#define TVAFE_V_MIN 0x000
-#define TVAFE_VGA_VS_CNT_MAX 200
+
+#define TVAFE_VGA_CLK_TUNE_RANGE_ORDER  4 // 1/16 h_total
+#define TVAFE_VGA_HPOS_TUNE_RANGE_ORDER 6 // 1/64 h_active
+#define TVAFE_VGA_VPOS_TUNE_RANGE_ORDER 6 // 1/64 v_active
+
 /***************************Local Structures**********************************/
 static struct tvin_format_s adc_timing_info =
 {
@@ -363,7 +373,12 @@ bool tvafe_adc_fmt_chg(enum tvafe_src_type_e src_type)
 //
 //    return ret;
 //}
-
+static void tvafe_adc_digital_reset(void)
+{
+    WRITE_APB_REG(((ADC_BASE_ADD+0x21)<<2), 1);
+    WRITE_APB_REG(((ADC_BASE_ADD+0x21)<<2), 5);
+    WRITE_APB_REG(((ADC_BASE_ADD+0x21)<<2), 7);
+}
 // *****************************************************************************
 // Function: search input format by the info table
 //
@@ -502,6 +517,9 @@ static void tvafe_vga_set_clock(unsigned int clock)
     tmp = clock & 0x0000000F;
 	WRITE_APB_REG_BITS(ADC_REG_02, tmp, PLLDIVRATIO_LSB_BIT, PLLDIVRATIO_LSB_WID);
 
+    //reset adc digital pll
+    tvafe_adc_digital_reset();
+
     return;
 }
 
@@ -527,6 +545,8 @@ static void tvafe_vga_set_phase(unsigned int phase)
 {
 	WRITE_APB_REG_BITS(ADC_REG_56, phase, CLKPHASEADJ_BIT, CLKPHASEADJ_WID);
 
+    //reset adc digital pll
+    tvafe_adc_digital_reset();
     return;
 }
 
@@ -571,12 +591,10 @@ static void tvafe_vga_set_v_pos(unsigned int vs, unsigned int ve, enum tvin_scan
     WRITE_APB_REG_BITS(TVFE_DEG_VODD,  ve,          DEG_VEND_ODD_BIT,    DEG_VEND_ODD_WID   );
     WRITE_APB_REG_BITS(TVFE_DEG_VEVEN, vs + offset, DEG_VSTART_EVEN_BIT, DEG_VSTART_EVEN_WID);
     WRITE_APB_REG_BITS(TVFE_DEG_VEVEN, ve + offset, DEG_VEND_EVEN_BIT,   DEG_VEND_EVEN_WID  );
-
-
-    }
+}
 
 static unsigned int tvafe_vga_get_v_pos(void)
-        {
+{
     return READ_APB_REG_BITS(TVFE_DEG_VODD, DEG_VSTART_ODD_BIT, DEG_VSTART_ODD_WID);
 }
 
@@ -612,17 +630,17 @@ static void tvafe_vga_border_detect_init(enum tvin_sig_fmt_e fmt)
     //diable border detect
     tvafe_vga_border_detect_disable();
     // pix_thr = 4 (pix-val > pix_thr => valid pixel)
-    WRITE_APB_REG_BITS(TVFE_AP_MUXCTRL3, 0x10,
+    WRITE_APB_REG_BITS(TVFE_AP_MUXCTRL3, 0x100/*0x10*/,
         BD_R_TH_BIT, BD_R_TH_WID);
-    WRITE_APB_REG_BITS(TVFE_AP_MUXCTRL5, 0x10,
+    WRITE_APB_REG_BITS(TVFE_AP_MUXCTRL5, 0x100/*0x10*/,
         BD_G_TH_BIT, BD_G_TH_WID);
-    WRITE_APB_REG_BITS(TVFE_AP_MUXCTRL5, 0x10,
+    WRITE_APB_REG_BITS(TVFE_AP_MUXCTRL5, 0x100/*0x10*/,
         BD_B_TH_BIT, BD_B_TH_WID);
     // pix_val > pix_thr => valid pixel
     WRITE_APB_REG_BITS(TVFE_AP_MUXCTRL1, 1,
         BD_DET_METHOD_BIT, BD_DET_METHOD_WID);
     // line_thr = 1/16 of h_active (valid pixels > line_thr => valid line)
-    WRITE_APB_REG_BITS(TVFE_BD_MUXCTRL3, (tvin_fmt_tbl[fmt].h_active)>>4,
+    WRITE_APB_REG_BITS(TVFE_BD_MUXCTRL3, (tvin_fmt_tbl[fmt].h_active)>>5/*(tvin_fmt_tbl[fmt].h_active)>>4*/,
         BD_VLD_LN_TH_BIT, BD_VLD_LN_TH_WID);
     // line_thr enable
     WRITE_APB_REG_BITS(TVFE_BD_MUXCTRL3, 1,
@@ -690,8 +708,6 @@ static unsigned int tvafe_vga_get_ap_diff(void)
 //   Return: success/error
 //
 // *****************************************************************************
-#define TVAFE_H_MAX 0xfff
-#define TVAFE_H_MIN 0x000
 static void tvafe_vga_get_h_border(void)
 {
     unsigned int r_left_hcnt = 0, r_right_hcnt = 0;
@@ -742,14 +758,14 @@ static void tvafe_vga_get_v_border(void)
     b_top_vcnt = READ_APB_REG_BITS(TVFE_AP_INDICATOR17, BD_B_TOP_VCNT_BIT, BD_B_TOP_VCNT_WID);
     b_bot_vcnt = READ_APB_REG_BITS(TVFE_AP_INDICATOR17, BD_B_BOT_VCNT_BIT, BD_B_BOT_VCNT_WID);
 
-    vga_auto.win.hstart     = TVAFE_V_MAX;
+    vga_auto.win.vstart     = TVAFE_V_MAX;
     if (vga_auto.win.vstart > r_top_vcnt)
         vga_auto.win.vstart = r_top_vcnt;
     if (vga_auto.win.vstart > g_top_vcnt)
         vga_auto.win.vstart = g_top_vcnt;
     if (vga_auto.win.vstart > b_top_vcnt)
         vga_auto.win.vstart = b_top_vcnt;
-    vga_auto.win.hend       = TVAFE_V_MIN;
+    vga_auto.win.vend       = TVAFE_V_MIN;
     if (vga_auto.win.vend   < r_bot_vcnt)
         vga_auto.win.vend   = r_bot_vcnt;
     if (vga_auto.win.vend   < g_bot_vcnt)
@@ -783,7 +799,7 @@ static void tvafe_vga_auto_clock_adj(unsigned int clk, signed int diff)
     // disable border detect
     tvafe_vga_border_detect_disable();
     // enable border detect
-    tvafe_vga_border_detect_enable();
+    //tvafe_vga_border_detect_enable();
 }
 
 static void tvafe_vga_auto_clock_handler(struct tvafe_info_s *info)
@@ -805,16 +821,16 @@ static void tvafe_vga_auto_clock_handler(struct tvafe_info_s *info)
         case VGA_CLK_INIT:
             tvafe_vga_set_phase(VGA_ADC_PHASE_MID);
             tvafe_vga_border_detect_init(info->param.fmt);
-            vga_auto.vs_cnt  = 0;
+            tvafe_vga_set_clock(tvin_fmt_tbl[info->param.fmt].h_total);  //set spec clock value
             vga_auto.adj_cnt = 0;
             vga_auto.adj_dir = 0;
             vga_auto.clk_state = VGA_CLK_ROUGH_ADJ;
+            vga_auto.vs_cnt  = 0;
             break;
         case VGA_CLK_ROUGH_ADJ:
             diff = 0;
             if (vga_auto.vs_cnt > AUTO_CLK_VS_CNT)
             {
-                vga_auto.vs_cnt = 0;
                 // get H border
                 tvafe_vga_get_h_border();
                 // get current clk
@@ -833,6 +849,7 @@ static void tvafe_vga_auto_clock_handler(struct tvafe_info_s *info)
                     tvafe_vga_auto_clock_adj(clk, diff);
                     vga_auto.clk_state = VGA_CLK_FINE_ADJ;
                 }
+                vga_auto.vs_cnt = 0;
             }
             break;
         case VGA_CLK_FINE_ADJ:
@@ -842,9 +859,14 @@ static void tvafe_vga_auto_clock_handler(struct tvafe_info_s *info)
             }
             else
             {
+                //delay about 4 field for border detection
+                if (vga_auto.vs_cnt == TVAFE_VGA_BD_EN_DELAY)
+                {
+                    tvafe_vga_border_detect_enable();
+                }
                 if (vga_auto.vs_cnt > AUTO_CLK_VS_CNT)
                 {
-                    vga_auto.vs_cnt = 0;
+                    //vga_auto.vs_cnt = 0;
                     // get H border
                     tvafe_vga_get_h_border();
                     // get diff
@@ -887,6 +909,7 @@ static void tvafe_vga_auto_clock_handler(struct tvafe_info_s *info)
                             vga_auto.adj_dir = 1;
                         }
                     }
+                    vga_auto.vs_cnt = 0;
                 }
             }
             break;
@@ -932,7 +955,6 @@ static void tvafe_vga_auto_phase_handler(struct tvafe_info_s *info)
         case VGA_PHASE_IDLE:
             break;
         case VGA_PHASE_INIT:
-            vga_auto.vs_cnt          = 0;
             vga_auto.adj_cnt         = 0;
             vga_auto.ap_max_diff     = 0;
             vga_auto.ap_pha_index    = VGA_ADC_PHASE_0;
@@ -942,6 +964,7 @@ static void tvafe_vga_auto_phase_handler(struct tvafe_info_s *info)
             tvafe_vga_set_phase(vga_auto.ap_pha_index);
             tvafe_vga_auto_phase_init(info->param.fmt, vga_auto.ap_win_index);
             vga_auto.phase_state = VGA_PHASE_SEARCH_WIN;
+            vga_auto.vs_cnt          = 0;
             break;
         case VGA_PHASE_SEARCH_WIN:
             if (++vga_auto.adj_cnt > VGA_AUTO_TRY_COUNTER)
@@ -953,7 +976,7 @@ static void tvafe_vga_auto_phase_handler(struct tvafe_info_s *info)
                 if (vga_auto.vs_cnt > AUTO_PHASE_VS_CNT)
                 {
 
-                    vga_auto.vs_cnt = 0;
+                    //vga_auto.vs_cnt = 0;
                     sum = tvafe_vga_get_ap_diff();
                     if (vga_auto.ap_max_diff < sum)
                     {
@@ -968,6 +991,7 @@ static void tvafe_vga_auto_phase_handler(struct tvafe_info_s *info)
                     }
                     else
                         tvafe_adc_set_ap_window(info->param.fmt, vga_auto.ap_win_index);
+                    vga_auto.vs_cnt = 0;
                 }
             }
             break;
@@ -995,7 +1019,8 @@ static void tvafe_vga_auto_phase_handler(struct tvafe_info_s *info)
                         vga_auto.phase_state = VGA_PHASE_END;
                     }
                     else
-                    tvafe_vga_set_phase(vga_auto.ap_pha_index);
+                        tvafe_vga_set_phase(vga_auto.ap_pha_index);
+                    vga_auto.vs_cnt = 0;
                 }
             }
             break;
@@ -1007,7 +1032,7 @@ static void tvafe_vga_auto_phase_handler(struct tvafe_info_s *info)
         case VGA_PHASE_END: //auto position
             if (vga_auto.vs_cnt > AUTO_CLK_VS_CNT)
             {
-                vga_auto.vs_cnt = 0;
+                //vga_auto.vs_cnt = 0;
                 tvafe_vga_get_h_border();
                 tvafe_vga_get_v_border();
                 if (((vga_auto.win.hend - vga_auto.win.hstart + 1) >= tvin_fmt_tbl[info->param.fmt].h_active) ||
@@ -1052,6 +1077,7 @@ static void tvafe_vga_auto_phase_handler(struct tvafe_info_s *info)
                 tvafe_vga_auto_phase_disable();
                 info->cmd_status = TVAFE_CMD_STATUS_SUCCESSFUL;
                 vga_auto.phase_state = VGA_PHASE_IDLE;
+                vga_auto.vs_cnt = 0;
             }
             break;
         default:
@@ -1219,9 +1245,6 @@ void tvafe_adc_configure(enum tvin_sig_fmt_e fmt)
 
 }
 
-#define TVAFE_VGA_CLK_TUNE_RANGE_ORDER  4 // 1/16 h_total
-#define TVAFE_VGA_HPOS_TUNE_RANGE_ORDER 6 // 1/64 h_active
-#define TVAFE_VGA_VPOS_TUNE_RANGE_ORDER 6 // 1/64 v_active
 void tvafe_adc_set_param(struct tvafe_vga_parm_s *adc_parm, struct tvafe_info_s *info)
 {
     signed int data = 0;
@@ -1248,7 +1271,7 @@ void tvafe_adc_set_param(struct tvafe_vga_parm_s *adc_parm, struct tvafe_info_s 
     {
         adc_parm->hpos_step = (adc_parm->hpos_step > 0) ? data : (0 - data);
     }
-    tmp = (unsigned int)((signed int)tvin_fmt_tbl[info->param.fmt].hs_width + (signed int)tvin_fmt_tbl[info->param.fmt].hs_bp - adc_parm->hpos_step);
+    tmp = (unsigned int)((signed int)tvin_fmt_tbl[info->param.fmt].hs_width + (signed int)tvin_fmt_tbl[info->param.fmt].hs_bp + adc_parm->hpos_step);
     tvafe_vga_set_h_pos(tmp, tmp + tvin_fmt_tbl[info->param.fmt].h_active - 1);
     // vpos
     data = tvin_fmt_tbl[info->param.fmt].v_active >> ((scan_mode == TVIN_SCAN_MODE_PROGRESSIVE) ? TVAFE_VGA_VPOS_TUNE_RANGE_ORDER : TVAFE_VGA_VPOS_TUNE_RANGE_ORDER - 1);
@@ -1256,7 +1279,7 @@ void tvafe_adc_set_param(struct tvafe_vga_parm_s *adc_parm, struct tvafe_info_s 
     {
         adc_parm->vpos_step = (adc_parm->vpos_step > 0) ? data : (0 - data);
     }
-    tmp = (unsigned int)((signed int)tvin_fmt_tbl[info->param.fmt].vs_width + (signed int)tvin_fmt_tbl[info->param.fmt].vs_bp - adc_parm->vpos_step);
+    tmp = (unsigned int)((signed int)tvin_fmt_tbl[info->param.fmt].vs_width + (signed int)tvin_fmt_tbl[info->param.fmt].vs_bp + adc_parm->vpos_step);
     tvafe_vga_set_v_pos(tmp, tmp + tvin_fmt_tbl[info->param.fmt].v_active - 1, scan_mode);
 }
 

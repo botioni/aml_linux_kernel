@@ -20,6 +20,7 @@
 #include <linux/irqreturn.h>
 #include <linux/timer.h>
 #include <linux/workqueue.h>
+#include <linux/mutex.h>
 
 
 #include <linux/amports/vframe.h>
@@ -57,6 +58,8 @@ typedef struct vdin_dev_s {
     struct tvin_dec_ops_s       *decop;
     struct work_struct          dec_work;
     struct workqueue_struct     *workqueue;
+
+    struct mutex                mm_lock; /* lock for mmap */
 } vdin_dev_t;
 
 

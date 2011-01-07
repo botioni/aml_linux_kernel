@@ -50,7 +50,7 @@
 #define TSC2007_12BIT			(0x0 << 1)
 #define TSC2007_8BIT			(0x1 << 1)
 
-#define	MAX_12BIT			((1 << 12) - 1)
+#define MAX_12BIT			((1 << 12) - 1)
 
 #define ADC_ON_12BIT	(TSC2007_12BIT | TSC2007_ADC_ON_IRQ_DIS0)
 
@@ -59,11 +59,6 @@
 #define READ_Z2		(ADC_ON_12BIT | TSC2007_MEASURE_Z2)
 #define READ_X		(ADC_ON_12BIT | TSC2007_MEASURE_X)
 #define PWRDOWN		(TSC2007_12BIT | TSC2007_POWER_OFF_IRQ_EN)
-
-#define XMIN 100
-#define XMAX 3900
-#define YMIN 200
-#define YMAX 3900
 
 struct ts_event {
 	u16	x;
@@ -87,9 +82,9 @@ struct tsc2007 {
 	int			(*get_pendown_state)(void);
 	void			(*clear_penirq)(void);
 	struct ts_event  tc_cache;
-	unsigned short swap_xy:1;
-	unsigned short xpol:1;
-	unsigned short ypol:1;
+	int poll_delay;
+	int poll_period;
+	int (*convert)(int x, int y);
 };
 
 #define tsc2007_cache_out(ts, tc) do { \
@@ -134,13 +129,6 @@ static void tsc2007_read_values(struct tsc2007 *tsc, struct ts_event *tc)
 
 	/* Prepare for next touch reading - power down ADC, enable PENIRQ */
 	tsc2007_xfer(tsc, PWRDOWN);
-	
-	if (tsc->swap_xy)
-	    swap(tc->x, tc->y);
-	if (tsc->xpol)
-	    tc->x = MAX_12BIT - tc->x;
-	if (tsc->ypol)
-	    tc->y = MAX_12BIT - tc->y;	    
 }
 
 static u32 tsc2007_calculate_pressure(struct tsc2007 *tsc, struct ts_event *tc)
@@ -207,7 +195,7 @@ static void tsc2007_work(struct work_struct *work)
 	tsc2007_read_values(ts, &ts->tc_cache);
 	if ((tc.x== 0) && (tc.y == 0)) {
 		schedule_delayed_work(&ts->work,
-				msecs_to_jiffies(TS_POLL_PERIOD));
+				msecs_to_jiffies(ts->poll_period));
 		return;
 	}
 	rt = tsc2007_calculate_pressure(ts, &tc);
@@ -231,7 +219,12 @@ static void tsc2007_work(struct work_struct *work)
 			input_report_key(input, BTN_TOUCH, 1);
 			ts->pendown = true;
 		}
-
+            	dev_info(&ts->client->dev, "point(%4d,%4d)\n", tc.x, tc.y);
+            	if (ts->convert) {
+            	    int xy = ts->convert(tc.x, tc.y);
+            	    tc.x = xy >> 16;
+            	    tc.y = xy & 0xffff;
+            	}
 		input_report_abs(input, ABS_X, tc.x);
 		input_report_abs(input, ABS_Y, tc.y);
 		input_report_abs(input, ABS_PRESSURE, rt);
@@ -254,7 +247,7 @@ static void tsc2007_work(struct work_struct *work)
  out:
 	if (ts->pendown)
 		schedule_delayed_work(&ts->work,
-				      msecs_to_jiffies(TS_POLL_PERIOD));
+				      msecs_to_jiffies(ts->poll_period));
 	else {
 		enable_irq(ts->irq);
 		tsc2007_clear_cache(ts);
@@ -268,7 +261,7 @@ static irqreturn_t tsc2007_irq(int irq, void *handle)
 	if (!ts->get_pendown_state || likely(ts->get_pendown_state())) {
 		disable_irq_nosync(ts->irq);
 		schedule_delayed_work(&ts->work,
-				      msecs_to_jiffies(TS_POLL_DELAY));
+				      msecs_to_jiffies(ts->poll_delay));
 	}
 
 	if (ts->clear_penirq)
@@ -323,9 +316,9 @@ static int __devinit tsc2007_probe(struct i2c_client *client,
 	ts->x_plate_ohms      = pdata->x_plate_ohms;
 	ts->get_pendown_state = pdata->get_pendown_state;
 	ts->clear_penirq      = pdata->clear_penirq;
-	ts->swap_xy = pdata->swap_xy;
-	ts->xpol = pdata->xpol;
-	ts->ypol = pdata->ypol;
+	ts->poll_delay = pdata->poll_delay ? pdata->poll_delay : TS_POLL_DELAY;
+	ts->poll_period = pdata->poll_period ? pdata->poll_period : TS_POLL_PERIOD;
+	ts->convert = pdata->convert;
 	tsc2007_clear_cache(ts);
 
 	snprintf(ts->phys, sizeof(ts->phys),
@@ -337,9 +330,11 @@ static int __devinit tsc2007_probe(struct i2c_client *client,
 
 	input_dev->evbit[0] = BIT_MASK(EV_KEY) | BIT_MASK(EV_ABS);
 	input_dev->keybit[BIT_WORD(BTN_TOUCH)] = BIT_MASK(BTN_TOUCH);
-
-	input_set_abs_params(input_dev, ABS_X, XMIN, XMAX, 0, 0);
-	input_set_abs_params(input_dev, ABS_Y, YMIN, YMAX, 0, 0);
+	
+	int max = pdata->abs_xmax ? pdata->abs_xmax : MAX_12BIT;
+	input_set_abs_params(input_dev, ABS_X, pdata->abs_xmin, max, 0, 0);
+	max = pdata->abs_ymax ? pdata->abs_ymax : MAX_12BIT;
+	input_set_abs_params(input_dev, ABS_Y, pdata->abs_ymin, max, 0, 0);
 	input_set_abs_params(input_dev, ABS_PRESSURE, 0, MAX_12BIT, 0, 0);
 
 	if (pdata->init_platform_hw)

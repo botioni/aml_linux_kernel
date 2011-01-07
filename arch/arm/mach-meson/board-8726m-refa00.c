@@ -267,7 +267,6 @@ static struct platform_device fb_device = {
 #ifdef CONFIG_USB_DWC_OTG_HCD
 static void set_usb_a_vbus_power(char is_power_on)
 {
-//Only for Ramos 8726m MID
 #define USB_A_POW_GPIO	PREG_EGPIO
 #define USB_A_POW_GPIO_BIT	3
 #define USB_A_POW_GPIO_BIT_ON	1
