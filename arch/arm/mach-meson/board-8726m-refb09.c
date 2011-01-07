@@ -710,6 +710,7 @@ static int ads7846_init_gpio(void)
 
 //GPIOD_24
 #define GPIO_TSC2007_PENIRQ ((GPIOD_bank_bit2_24(24)<<16) |GPIOD_bit_bit2_24(24)) 
+#define GPIO_TSC2007_PENIRQ_IDX     (GPIOD_IDX + 24)
 
 static int tsc2007_init_platform_hw(void)
 {
@@ -734,7 +735,7 @@ static int tsc2007_init_platform_hw(void)
     /* set input mode */
     gpio_direction_input(GPIO_TSC2007_PENIRQ);
     /* set gpio interrupt #0 source=GPIOD_24, and triggered by falling edge(=1) */
-    gpio_enable_edge_int(50+24, 1, 0);
+    gpio_enable_edge_int(GPIO_TSC2007_PENIRQ_IDX, 1, 0);
 
     return 0;
 }
@@ -743,6 +744,39 @@ static int tsc2007_get_pendown_state(void)
     return !gpio_get_value(GPIO_TSC2007_PENIRQ);
 }
 
+#define XLCD    800
+#define YLCD    600
+#define SWAP_XY 0
+#define XPOL    0
+#define YPOL    1
+#define XMIN 130
+#define XMAX 3970
+#define YMIN 250
+#define YMAX 4000
+
+int tsc2007_convert(int x, int y)
+{
+#if (SWAP_XY == 1)
+    swap(x, y);
+#endif
+    if (x < XMIN) x = XMIN;
+    if (x > XMAX) x = XMAX;
+    if (y < YMIN) y = YMIN;
+    if (y > YMAX) y = YMAX;
+#if (XPOL == 1)
+    x = XMAX + XMIN - x;
+#endif
+#if (YPOL == 1)
+    y = YMAX + YMIN - y;
+#endif
+    x = (x- XMIN) * XLCD / (XMAX - XMIN);
+    y = (y- YMIN) * YLCD / (YMAX - YMIN);
+    y = y - 32 * YLCD / (y / 2 + YLCD);
+    
+    return (x << 16) | y;
+}
+
+
 static struct tsc2007_platform_data tsc2007_pdata = {
     .model = 2007,
     .x_plate_ohms = 400,
@@ -750,13 +784,13 @@ static struct tsc2007_platform_data tsc2007_pdata = {
     .clear_penirq = NULL,
     .init_platform_hw = tsc2007_init_platform_hw,
     .exit_platform_hw = NULL,
-    .xmin = 130,//130,
-    .xmax = 3970, //3980,
-    .ymin = 250,
-    .ymax = 4000,
-    .swap_xy = 0,
-    .xpol = 0,
-    .ypol = 1,
+    .poll_delay = 40,
+    .poll_period = 10,
+    .abs_xmin = 0,
+    .abs_xmax = XLCD,
+    .abs_ymin = 0,
+    .abs_ymax = YLCD,    
+    .convert = tsc2007_convert,
 };
 #endif
 
