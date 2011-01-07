@@ -37,6 +37,11 @@
 
 static struct i2c_client *tca6424_client;
 
+unsigned char get_configIO(unsigned char port);
+int configIO(unsigned char port, unsigned char ioflag);
+unsigned char getIO_level(unsigned char port);
+int setIO_level(unsigned char port, unsigned char iobits);
+
 static int tca6424_i2c_read(unsigned char *buff, unsigned len)
 {
     int res = 0;
@@ -120,7 +125,7 @@ static struct i2c_driver tca6424_driver = {
 int tca6424_init(void)
 {
     int res;
-    
+    printk("tca6424_init \n");
     if (tca6424_client)
     {
         res = 0;
@@ -151,6 +156,7 @@ unsigned char get_configIO(unsigned char port)
     
     return ioconf;
 }
+arch_initcall(tca6424_init);
 
 int configIO(unsigned char port, unsigned char ioflag)
 {
