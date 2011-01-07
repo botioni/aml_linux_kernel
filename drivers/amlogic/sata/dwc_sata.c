@@ -50,6 +50,8 @@
 #define DRV_NAME	"dwc_ahci"
 #define DRV_VERSION	"3.0"
 
+#define dwc_wmb()	wmb()
+
 /* Enclosure Management Control */
 #define EM_CTRL_MSG_TYPE              0x000f0000
 
@@ -686,6 +688,7 @@ static int dwc_ahci_scr_read(struct ata_link *link, unsigned int sc_reg, u32 *va
 
 	if (offset) {
 		*val = readl(port_mmio + offset);
+		rmb();
 		return 0;
 	}
 	return -EINVAL;
@@ -712,6 +715,7 @@ static void dwc_ahci_start_engine(struct ata_port *ap)
 	tmp = readl(port_mmio + PORT_CMD);
 	tmp |= PORT_CMD_START;
 	writel(tmp, port_mmio + PORT_CMD);
+	dwc_wmb();
 	readl(port_mmio + PORT_CMD); /* flush */
 }
 
@@ -757,6 +761,8 @@ static void dwc_ahci_start_fis_rx(struct ata_port *ap)
 		       port_mmio + PORT_FIS_ADDR_HI);
 	writel(pp->rx_fis_dma & 0xffffffff, port_mmio + PORT_FIS_ADDR);
 
+	dwc_wmb();
+	
 	/* enable FIS reception */
 	tmp = readl(port_mmio + PORT_CMD);
 	tmp |= PORT_CMD_FIS_RX;
@@ -1301,14 +1307,17 @@ static void dwc_ahci_port_init(struct lm_device *pdev, struct ata_port *ap,
 	tmp = readl(port_mmio + PORT_SCR_ERR);
 	VPRINTK("PORT_SCR_ERR 0x%x\n", tmp);
 	writel(tmp, port_mmio + PORT_SCR_ERR);
+	dwc_wmb();
 
 	/* clear port IRQ */
 	tmp = readl(port_mmio + PORT_IRQ_STAT);
 	VPRINTK("PORT_IRQ_STAT 0x%x\n", tmp);
 	if (tmp)
 		writel(tmp, port_mmio + PORT_IRQ_STAT);
+	dwc_wmb();
 
 	writel(1 << port_no, mmio + HOST_IRQ_STAT);
+	dwc_wmb();
 }
 
 static void dwc_ahci_init_controller(struct ata_host *host)
@@ -1333,6 +1342,7 @@ static void dwc_ahci_init_controller(struct ata_host *host)
 	tmp = readl(mmio + HOST_CTL);
 	VPRINTK("HOST_CTL 0x%x\n", tmp);
 	writel(tmp | HOST_IRQ_EN, mmio + HOST_CTL);
+	dwc_wmb();
 	tmp = readl(mmio + HOST_CTL);
 	VPRINTK("HOST_CTL 0x%x\n", tmp);
 }
@@ -1407,6 +1417,7 @@ static int dwc_ahci_kick_engine(struct ata_port *ap)
 	tmp = readl(port_mmio + PORT_CMD);
 	tmp |= PORT_CMD_CLO;
 	writel(tmp, port_mmio + PORT_CMD);
+	dwc_wmb();
 
 	rc = 0;
 	tmp = ata_wait_register(port_mmio + PORT_CMD,
@@ -1436,6 +1447,7 @@ static int dwc_ahci_exec_polled_cmd(struct ata_port *ap, int pmp,
 
 	/* issue & wait */
 	writel(1, port_mmio + PORT_CMD_ISSUE);
+	dwc_wmb();
 
 	if (timeout_msec) {
 		tmp = ata_wait_register(port_mmio + PORT_CMD_ISSUE, 0x1, 0x1,
@@ -1523,6 +1535,8 @@ static int dwc_ahci_check_ready(struct ata_link *link)
 	void __iomem *port_mmio = dwc_ahci_port_base(link->ap);
 	u8 status = readl(port_mmio + PORT_TFDATA) & 0xFF;
 
+	rmb();
+
 	return ata_check_ready(status);
 }
 
@@ -1584,6 +1598,7 @@ static void dwc_ahci_postreset(struct ata_link *link, unsigned int *class)
 		new_tmp &= ~PORT_CMD_ATAPI;
 	if (new_tmp != tmp) {
 		writel(new_tmp, port_mmio + PORT_CMD);
+		dwc_wmb();
 		readl(port_mmio + PORT_CMD); /* flush */
 	}
 }
@@ -1674,6 +1689,7 @@ static void dwc_ahci_fbs_dec_intr(struct ata_port *ap)
 	 * add a retry loop for safety.
 	 */
 	writel(fbs | PORT_FBS_DEC, port_mmio + PORT_FBS);
+	dwc_wmb();
 	fbs = readl(port_mmio + PORT_FBS);
 	while ((fbs & PORT_FBS_DEC) && retries--) {
 		udelay(1);
@@ -1809,7 +1825,8 @@ static void dwc_ahci_port_intr(struct ata_port *ap)
 
 	status = readl(port_mmio + PORT_IRQ_STAT);
 	writel(status, port_mmio + PORT_IRQ_STAT);
-
+	dwc_wmb();
+	
 	/* ignore BAD_PMP while resetting */
 	if (unlikely(resetting))
 		status &= ~PORT_IRQ_BAD_PMP;
@@ -1941,7 +1958,8 @@ static irqreturn_t dwc_ahci_interrupt(int irq, void *dev_instance)
 	 * pending event on a dummy port might cause screaming IRQ.
 	 */
 	writel(irq_stat, mmio + HOST_IRQ_STAT);
-
+	dwc_wmb();
+	
 	spin_unlock(&host->lock);
 
 	VPRINTK("EXIT\n");
@@ -1963,16 +1981,20 @@ static unsigned int dwc_ahci_qc_issue(struct ata_queued_cmd *qc)
 
 	if (qc->tf.protocol == ATA_PROT_NCQ)
 		writel(1 << qc->tag, port_mmio + PORT_SCR_ACT);
+	dwc_wmb();
 
 	if (pp->fbs_enabled && pp->fbs_last_dev != qc->dev->link->pmp) {
 		u32 fbs = readl(port_mmio + PORT_FBS);
 		fbs &= ~(PORT_FBS_DEV_MASK | PORT_FBS_DEC);
 		fbs |= qc->dev->link->pmp << PORT_FBS_DEV_OFFSET;
 		writel(fbs, port_mmio + PORT_FBS);
+		dwc_wmb();
 		pp->fbs_last_dev = qc->dev->link->pmp;
 	}
 
 	writel(1 << qc->tag, port_mmio + PORT_CMD_ISSUE);
+
+	dwc_wmb();
 
 	dwc_ahci_sw_activity(qc->dev->link);
 
@@ -1997,6 +2019,7 @@ static void dwc_ahci_freeze(struct ata_port *ap)
 
 	/* turn IRQ off */
 	writel(0, port_mmio + PORT_IRQ_MASK);
+	dwc_wmb();
 }
 
 static void dwc_ahci_thaw(struct ata_port *ap)
@@ -2013,6 +2036,7 @@ static void dwc_ahci_thaw(struct ata_port *ap)
 
 	/* turn IRQ back on */
 	writel(pp->intr_mask, port_mmio + PORT_IRQ_MASK);
+	dwc_wmb();
 }
 
 static void dwc_ahci_error_handler(struct ata_port *ap)
@@ -2057,6 +2081,7 @@ static void dwc_ahci_enable_fbs(struct ata_port *ap)
 		return;
 
 	writel(fbs | PORT_FBS_EN, port_mmio + PORT_FBS);
+	dwc_wmb();
 	fbs = readl(port_mmio + PORT_FBS);
 	if (fbs & PORT_FBS_EN) {
 		dev_printk(KERN_INFO, ap->host->dev, "FBS is enabled.\n");
@@ -2089,6 +2114,7 @@ static void dwc_ahci_disable_fbs(struct ata_port *ap)
 		return;
 
 	writel(fbs & ~PORT_FBS_EN, port_mmio + PORT_FBS);
+	dwc_wmb();
 	fbs = readl(port_mmio + PORT_FBS);
 	if (fbs & PORT_FBS_EN)
 		dev_printk(KERN_ERR, ap->host->dev, "Failed to disable FBS\n");
@@ -2109,11 +2135,13 @@ static void dwc_ahci_pmp_attach(struct ata_port *ap)
 	cmd = readl(port_mmio + PORT_CMD);
 	cmd |= PORT_CMD_PMP;
 	writel(cmd, port_mmio + PORT_CMD);
+	dwc_wmb();
 
 	dwc_ahci_enable_fbs(ap);
 
 	pp->intr_mask |= PORT_IRQ_BAD_PMP;
 	writel(pp->intr_mask, port_mmio + PORT_IRQ_MASK);
+	dwc_wmb();
 }
 
 static void dwc_ahci_pmp_detach(struct ata_port *ap)
@@ -2130,6 +2158,7 @@ static void dwc_ahci_pmp_detach(struct ata_port *ap)
 
 	pp->intr_mask &= ~PORT_IRQ_BAD_PMP;
 	writel(pp->intr_mask, port_mmio + PORT_IRQ_MASK);
+	dwc_wmb();
 }
 
 static int dwc_ahci_port_resume(struct ata_port *ap)
