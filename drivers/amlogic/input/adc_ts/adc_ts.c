@@ -20,9 +20,9 @@
 #include <linux/adc_ts.h>
 
 #define TS_POLL_DELAY		1 /* ms delay between samples */
-#define TS_POLL_PERIOD		1 /* ms delay between samples */
+#define TS_POLL_PERIOD		5 /* ms delay between samples */
 
-#define	MAX_12BIT			((1 << 12) - 1)
+#define	MAX_10BIT			((1 << 10) - 1)
 
 #define READ_X	1
 #define READ_Y	2
@@ -41,20 +41,36 @@ struct adcts {
 	char phys[32];
 	struct delayed_work work;
 	struct ts_event event;
+	struct ts_event event_cache;
 	bool pendown;
 	int seq;
 	
 	u16 x_plate_ohms;
 	int irq;
 	int (*service)(int cmd);
+	int poll_delay;
+	int poll_period;
+	int (*convert)(int x, int y);
 };
+
+#define adcts_cache_out(ts, ev) do { \
+    ev = ts->event_cache; \
+} while(0)
+
+#define adcts_cache_in(ts, ev) do { \
+    ts->event_cache = ev; \
+} while(0)
+
+#define adcts_clear_cache(ts) do { \
+    memset(&ts->event_cache, 0 , sizeof(struct ts_event)); \
+} while(0)
 
 static u32 adcts_calculate_pressure(struct adcts *ts, struct ts_event *tc)
 {
 	u32 rt = 0;
 
 	/* range filtering */
-	if (tc->x == MAX_12BIT)
+	if (tc->x == MAX_10BIT)
 		tc->x = 0;
 
 	if (likely(tc->x && tc->z1)) {
@@ -115,6 +131,7 @@ static void adcts_work(struct work_struct *work)
 		else  if (ts->pendown) {
 			ts->pendown = 0;
 			adcts_send_up_event(ts);
+			adcts_clear_cache(ts);
 			printk(KERN_INFO "UP\n");
 		}
 	}
@@ -126,23 +143,35 @@ static void adcts_work(struct work_struct *work)
 
 	else if (ts->seq == 2) { 
 		ts->event.y = ts->service(CMD_GET_Y);
-		input_report_abs(input, ABS_X, ts->event.x);
-		input_report_abs(input, ABS_Y, ts->event.y);
-		rt = 500;	//debug
-		input_report_abs(input, ABS_PRESSURE, rt);
-		input_sync(input);
-		printk(KERN_INFO "x=%d, y=%d\n", ts->event.x, ts->event.y);
+		struct ts_event event;
+		adcts_cache_out(ts, event);		
+		adcts_cache_in(ts, ts->event);
+		ts->event = event;
+		if (ts->event.x || ts->event.y) {
+			if (ts->convert) {
+				int xy = ts->convert(ts->event.x, ts->event.y);
+				ts->event.x = xy >> 16;
+				ts->event.y = xy & 0xffff;
+			}
+			input_report_abs(input, ABS_X, ts->event.x);
+            		input_report_abs(input, ABS_Y, ts->event.y);
+            		rt = 500;	//debug
+            		input_report_abs(input, ABS_PRESSURE, rt);
+            		input_sync(input);
+            		printk(KERN_INFO "x=%d, y=%d\n", ts->event.x, ts->event.y);
+                  }
 		ts->seq = 0;
 		ts->service(CMD_SET_PENIRQ);
 	}
 
 	if (ts->pendown || (ts->irq < 0)) {
 		schedule_delayed_work(&ts->work,
-				      msecs_to_jiffies(TS_POLL_PERIOD));
+				      msecs_to_jiffies(ts->poll_period));
 	}
 	else {
 		ts->service(CMD_SET_PENIRQ);
 		enable_irq(ts->irq);
+		adcts_clear_cache(ts);
 		printk(KERN_INFO "exit adc irq\n");
 	}
 }
@@ -156,7 +185,7 @@ static irqreturn_t adcts_irq(int irq, void *handle)
 	if (ts->service(CMD_GET_PENDOWN)) {
 		disable_irq_nosync(ts->irq);
 		schedule_delayed_work(&ts->work,
-				      msecs_to_jiffies(TS_POLL_DELAY));
+				      msecs_to_jiffies(ts->poll_delay));
 	}
 	
 	return IRQ_HANDLED;
@@ -200,6 +229,10 @@ static int __devinit adcts_probe(struct platform_device *pdev)
 
 	ts->x_plate_ohms = pdata->x_plate_ohms;
 	ts->service = saradc_ts_service;
+	ts->poll_delay = pdata->poll_delay ? pdata->poll_delay : TS_POLL_DELAY;
+	ts->poll_period = pdata->poll_period ? pdata->poll_period : TS_POLL_PERIOD;
+	ts->convert = pdata->convert;
+	adcts_clear_cache(ts);
 
 	snprintf(ts->phys, sizeof(ts->phys),
 		 "%s/input0", dev_name(&pdev->dev));
@@ -211,9 +244,11 @@ static int __devinit adcts_probe(struct platform_device *pdev)
 	input_dev->evbit[0] = BIT_MASK(EV_KEY) | BIT_MASK(EV_ABS);
 	input_dev->keybit[BIT_WORD(BTN_TOUCH)] = BIT_MASK(BTN_TOUCH);
 
-	input_set_abs_params(input_dev, ABS_X, 0, MAX_12BIT, 0, 0);
-	input_set_abs_params(input_dev, ABS_Y, 0, MAX_12BIT, 0, 0);
-	input_set_abs_params(input_dev, ABS_PRESSURE, 0, MAX_12BIT, 0, 0);
+	int max = pdata->abs_xmax ? pdata->abs_xmax : MAX_10BIT;
+	input_set_abs_params(input_dev, ABS_X, pdata->abs_xmin, max, 0, 0);
+	max = pdata->abs_ymax ? pdata->abs_ymax : MAX_10BIT;
+	input_set_abs_params(input_dev, ABS_Y, pdata->abs_ymin, max, 0, 0);
+	input_set_abs_params(input_dev, ABS_PRESSURE, 0, MAX_10BIT, 0, 0);
 
 	ts->seq = 0;
 	ts->pendown = 0;
@@ -221,7 +256,7 @@ static int __devinit adcts_probe(struct platform_device *pdev)
 	ts->service(CMD_INIT_PENIRQ);
 	if (ts->irq < 0) {
 		schedule_delayed_work(&ts->work,
-			      msecs_to_jiffies(TS_POLL_DELAY));
+			      msecs_to_jiffies(ts->poll_delay));
 	}
 	else {
 		err = request_irq(ts->irq, adcts_irq, 0, pdev->dev.driver->name, ts);

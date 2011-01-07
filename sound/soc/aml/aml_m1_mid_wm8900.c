@@ -28,6 +28,7 @@
 
 #if HP_DET
 static struct timer_list timer;
+static int hp_detect_flag = 0;
 void mute_spk(struct snd_soc_codec* codec, int flag);
 #endif
 
@@ -71,14 +72,14 @@ printk("***Entered %s:%s: %d\n", __FILE__,__func__, level);
         timer.expires = jiffies + HZ*1;
         del_timer(&timer);
         add_timer(&timer);
-    mute_spk(codec, 0);
+        mute_spk(codec, hp_detect_flag);
 #endif
         break;
     case SND_SOC_BIAS_OFF:
     case SND_SOC_BIAS_STANDBY:
 #if HP_DET
         del_timer(&timer);
-        mute_spk(codec,1);
+        mute_spk(codec,hp_detect_flag);
 #endif
         break;
     };
@@ -120,7 +121,6 @@ static struct snd_soc_jack_pin hp_jack_pins[] = {
     { .pin = "HP", .mask = SND_JACK_HEADSET },
 };
 
-static int hp_detect_flag = 0;
 static spinlock_t lock;
 static void wm8900_hp_detect_queue(struct work_struct*);
 static struct wm8900_work_t{
