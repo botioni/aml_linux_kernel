@@ -787,6 +787,9 @@ static ssize_t amstream_sub_read(struct file *file, char __user *buf, size_t cou
     sub_wp = stbuf_sub_wp_get();
     sub_start = stbuf_sub_start_get();
 
+	if(sub_wp == sub_rp)
+		return 0;
+
     if (sub_wp > sub_rp)
     {
         data_size = sub_wp - sub_rp;
@@ -1210,7 +1213,11 @@ static int amstream_ioctl(struct inode *inode, struct file *file,
             sub_wp = stbuf_sub_wp_get();
             sub_rp = stbuf_sub_rp_get();
 
-            if (sub_wp > sub_rp)
+			if(sub_wp == sub_rp)
+			{
+				*((u32 *)arg) = 0;			
+			}
+            else if (sub_wp > sub_rp)
             {
                 *((u32 *)arg) = sub_wp - sub_rp;
             }
