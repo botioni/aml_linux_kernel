@@ -290,13 +290,34 @@ static char clks_name[CLK_COUNT][32]={
     "HHI_MPEG_CLK_CNTL"
 };
 
+#define EARLY_CLK_COUNT 6
+static char early_clk_flag[EARLY_CLK_COUNT];
+static unsigned early_clks[EARLY_CLK_COUNT]={
+    HHI_DEMOD_CLK_CNTL,
+    HHI_SATA_CLK_CNTL,
+    HHI_ETH_CLK_CNTL,
+    HHI_WIFI_CLK_CNTL,
+    HHI_VID_CLK_CNTL,
+    HHI_MPEG_CLK_CNTL
+};
+
+static char early_clks_name[EARLY_CLK_COUNT][32]={
+    "HHI_DEMOD_CLK_CNTL",
+    "HHI_SATA_CLK_CNTL",
+    "HHI_ETH_CLK_CNTL",
+    "HHI_WIFI_CLK_CNTL",
+    "HHI_VID_CLK_CNTL",
+    "HHI_MPEG_CLK_CNTL"
+};
+
+static unsigned nand_timing;
+static unsigned sys_clk_backup;
+
 static unsigned clk81_backup;
 void clk_switch(int flag)
 {
     int i;
-#ifndef SYSCLK_32K
     struct clk *sys_clk;
-#endif
 
     if (flag){
         for (i=CLK_COUNT-1;i>=0;i--){
@@ -306,8 +327,29 @@ void clk_switch(int flag)
                 }
                 else if (clks[i] == HHI_MPEG_CLK_CNTL){
 #ifdef SYSCLK_32K
-                    CLEAR_CBUS_REG_MASK(clks[i], (1<<8));
-                    WRITE_CBUS_REG(clks[i], clk81_backup);
+                    if (early_clk_flag[5]){
+                        WRITE_CBUS_REG(HHI_A9_CLK_CNTL, READ_CBUS_REG(HHI_A9_CLK_CNTL)&~(1<<7));
+                        CLEAR_CBUS_REG_MASK(HHI_SYS_PLL_CNTL, (1<<16));
+                        udelay(1000);
+                        WRITE_CBUS_REG(HHI_A9_CLK_CNTL, READ_CBUS_REG(HHI_A9_CLK_CNTL)|(1<<7));
+
+                        CLEAR_CBUS_REG_MASK(clks[i], (1<<8));
+                        WRITE_CBUS_REG(clks[i], sys_clk_backup); // clk81 back to normal
+                        udelay(1000);
+                        SET_CBUS_REG_MASK(clks[i], (1<<8));
+                    
+                        sys_clk = clk_get_sys("clk81", NULL);
+                        CLEAR_CBUS_REG_MASK(UART0_CONTROL, (1 << 19) | 0xFFF);
+                        SET_CBUS_REG_MASK(UART0_CONTROL, (((sys_clk->rate / (115200 * 4)) - 1) & 0xfff));
+                        CLEAR_CBUS_REG_MASK(UART1_CONTROL, (1 << 19) | 0xFFF);
+                        SET_CBUS_REG_MASK(UART1_CONTROL, (((sys_clk->rate / (115200 * 4)) - 1) & 0xfff));
+                        WRITE_CBUS_REG_BITS(NAND_CFG,nand_timing,0,14); 
+                        early_clk_flag[5] = 0;
+                    }
+                    else{    
+                        CLEAR_CBUS_REG_MASK(clks[i], (1<<8));
+                        WRITE_CBUS_REG(clks[i], clk81_backup);
+                    }
 #else
                     sys_clk = clk_get_sys("clk81", NULL);
                     SET_CBUS_REG_MASK(clks[i], (1<<8));
@@ -362,29 +404,6 @@ void clk_switch(int flag)
 }
 EXPORT_SYMBOL(clk_switch);
 
-//#define EARLY_CLK_COUNT 6
-#define EARLY_CLK_COUNT 5
-static char early_clk_flag[EARLY_CLK_COUNT];
-static unsigned early_clks[EARLY_CLK_COUNT]={
-    HHI_DEMOD_CLK_CNTL,
-    HHI_SATA_CLK_CNTL,
-    HHI_ETH_CLK_CNTL,
-    HHI_WIFI_CLK_CNTL,
-    HHI_VID_CLK_CNTL,
-    //HHI_MPEG_CLK_CNTL
-};
-
-static char early_clks_name[EARLY_CLK_COUNT][32]={
-    "HHI_DEMOD_CLK_CNTL",
-    "HHI_SATA_CLK_CNTL",
-    "HHI_ETH_CLK_CNTL",
-    "HHI_WIFI_CLK_CNTL",
-    "HHI_VID_CLK_CNTL",
-    //"HHI_MPEG_CLK_CNTL"
-};
-
-static unsigned nand_timing;
-static unsigned sys_clk_backup;
 void early_clk_switch(int flag)
 {
     int i;
@@ -404,6 +423,7 @@ void early_clk_switch(int flag)
 
                     CLEAR_CBUS_REG_MASK(early_clks[i], (1<<8));
                     WRITE_CBUS_REG(early_clks[i], sys_clk_backup); // clk81 back to normal
+                    udelay(1000);
                     SET_CBUS_REG_MASK(early_clks[i], (1<<8));
                     
                     sys_clk = clk_get_sys("clk81", NULL);
