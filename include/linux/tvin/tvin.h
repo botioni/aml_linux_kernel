@@ -295,6 +295,7 @@ typedef struct tvin_parm_s {
     unsigned int            cap_addr; // start address of captured frame data [8 bits] in memory
                                       // for Component input, frame data [8 bits] order is Y0Cb0Y1Cr0¡­Y2nCb2nY2n+1Cr2n¡­
                                       // for VGA       input, frame data [8 bits] order is R0G0B0¡­RnGnBn¡­
+    unsigned int            cap_size;
     unsigned int            flag;     // bit0 TVIN_PARM_FLAG_CAP
                                       //bit31: TVIN_PARM_FLAG_WORK_ON
     unsigned int            reserved; // reserved

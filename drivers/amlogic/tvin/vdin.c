@@ -31,6 +31,7 @@
 #include <linux/delay.h>
 #include <linux/workqueue.h>
 #include <linux/time.h>
+#include <linux/mm.h>
 
 /* Amlogic headers */
 #include <linux/amports/canvas.h>
@@ -145,19 +146,26 @@ static void vdin_stop_dec(struct vdin_dev_s *devp)
     tvin_dec_notifier_call(TVIN_EVENT_DEC_STOP, devp);
 }
 
-//static u32 vdin_isr_cnt = 0;
-//static u32 vdin_isr_bh_cnt = 0;
-
+//static u32 vdin_isr_hard_counter = 0;
+//static u32 vdin_isr_workueue_counter = 0;
+/*as use the spin_lock,
+ *1--there is no sleep,
+ *2--it is better to shorter the time,
+ *3--it is better to shorter the time,
+*/
 static irqreturn_t vdin_isr(int irq, void *dev_id)
 {
     struct vdin_dev_s *devp = (struct vdin_dev_s *)dev_id;
     int vdin_irq_flag = 0;
     ulong flags;
+    vframe_t *vf = NULL;
     spin_lock_irqsave(&devp->declock, flags);
-    //vdin_isr_cnt++;
-    //if(vdin_isr_cnt %1800)
-        //pr_info("%s:vdin_isr_cnt = %d \n", vdin_isr_cnt);
-    vframe_t *vf = vfq_pop_newframe();
+//    struct timeval now;
+//    do_gettimeofday(&now);
+//    vdin_isr_hard_counter++;
+//    if((vdin_isr_hard_counter % 3600) == 0)
+//        pr_info("vdin_isr: vdin_isr_hard_counter = %d \n", vdin_isr_hard_counter);
+    vf = vfq_pop_newframe();
     if(vf == NULL)
     {
 //        pr_info("vdin_isr: don't get newframe \n");
@@ -183,25 +191,34 @@ static irqreturn_t vdin_isr(int irq, void *dev_id)
     return IRQ_HANDLED;
 }
 
+/*as use the spin_lock,
+ *1--there is no sleep,
+ *2--it is better to shorter the time,
+ *3--it is better to shorter the time,
+*/
 static void vdin_isr_wq(struct work_struct *work)
 {
     struct vdin_dev_s *devp = container_of(work, struct vdin_dev_s, dec_work);
+    vframe_t *cur_vdin_vf = NULL;
+
     spin_lock_bh(&devp->declock);
-    //vdin_isr_bh_cnt++;
-    //if(vdin_isr_bh_cnt %1800)
-       // pr_info("%s:vdin_isr_bh_cnt = %d \n", vdin_isr_bh_cnt);
+
     /* pop out a new frame to be displayed */
 //    struct timeval now;
 //    unsigned long int temp_t = 0;
 //    do_gettimeofday(&now);
 
 //    vdin_irq_irq_list_time = (unsigned long int)((now.tv_sec  * 1000000)+ (now.tv_usec  ));
-    vframe_t *cur_vdin_vf = vfq_get_curframe();
+
+//    vdin_isr_workueue_counter++;
+//    if((vdin_isr_workueue_counter % 3600) == 0)
+//        pr_info("vdin_isr_wq: vdin_isr_workueue_counter = %d \n", vdin_isr_workueue_counter);
+    cur_vdin_vf = vfq_get_curframe();
     if(cur_vdin_vf == NULL)
     {
 //        pr_info("vdin_isr_wq: don't get cur_vdin_vf \n");
         spin_unlock_bh(&devp->declock);
-        return IRQ_HANDLED;
+        return;  //IRQ_HANDLED;
     }
 
     if(devp->decop && devp->decop->dec_run_bh){
@@ -210,7 +227,7 @@ static void vdin_isr_wq(struct work_struct *work)
     else{
         pr_info("vdin: decop is null\n");
         spin_unlock_bh(&devp->declock);
-        return ;
+        return;
     }
 
 
@@ -226,6 +243,7 @@ static void vdin_isr_wq(struct work_struct *work)
         vfq_push_display(cur_vdin_vf); /* push to display */
     }
     spin_unlock_bh(&devp->declock);
+
     return;
 }
 
@@ -248,7 +266,7 @@ static int vdin_release(struct inode *inode, struct file *file)
     vdin_dev_t *devp = file->private_data;
     file->private_data = NULL;
 
-    printk(KERN_INFO "vdin: device %d release ok.\n", devp->index);
+    //printk(KERN_INFO "vdin: device %d release ok.\n", devp->index);
     return 0;
 }
 
@@ -392,6 +410,72 @@ static int vdin_ioctl(struct inode *inode, struct file *file, unsigned int cmd, 
     return ret;
 }
 
+static int vdin_mmap(struct file *file, struct vm_area_struct * vma)
+{
+    vdin_dev_t *devp = file->private_data;
+	unsigned long off, pfn;
+	unsigned long start, size;
+    u32 len;
+
+    unsigned long t1, t2, t3;
+
+    if (!devp)
+        return -ENODEV;
+    if (vma->vm_pgoff > (~0UL >> PAGE_SHIFT))
+        return -EINVAL;
+        
+ //   pr_info("%s \n", __func__);
+    if(!(devp->para.flag &  TVIN_PARM_FLAG_CAP))
+	{
+    	pr_err("don't set capture flag to vdin \n");
+    	return -EINVAL;
+    }
+    	
+   // pr_info("cap_addr = 0x%x; cap_size = %d\n", devp->para.cap_addr, devp->para.cap_size);
+
+	off = vma->vm_pgoff << PAGE_SHIFT;
+
+//    pr_info("vm_pgoff = 0x%lx\n", vma->vm_pgoff);
+//    pr_info("off      = 0x%lx = (vm_pgoff << PAGE_SHIFT)\n", off);
+
+    mutex_lock(&devp->mm_lock);
+	start = devp->para.cap_addr;
+	len = PAGE_ALIGN((start & ~PAGE_MASK) + devp->para.cap_size);
+    mutex_unlock(&devp->mm_lock);
+
+//    pr_info("start    = 0x%lx\n", start);
+
+    t1 = (start & ~PAGE_MASK);
+//    pr_info("t1       = 0x%lx = (start & ~PAGE_MASK) \n", t1);
+
+    t2 = t1 + devp->para.cap_size;
+//    pr_info("t2       = 0x%lx = (t1 + cap_size)        \n", t2);
+//    pr_info("len      = 0x%x = PAGE_ALIGN(t2)\n", len);
+
+	start &= PAGE_MASK;
+//    pr_info("start    = 0x%lx = (start & PAGE_MASK)\n", start);
+
+//    pr_info("vm_start = 0x%lx; vm_end = 0x%lx\n", vma->vm_start, vma->vm_end);
+
+	if ((vma->vm_end - vma->vm_start + off) > len)
+		return -EINVAL;
+	off += start;
+//    pr_info("off      = 0x%lx = (off += start)\n", off);
+
+	vma->vm_pgoff = off >> PAGE_SHIFT;
+//    pr_info("vm_pgoff = 0x%lx = (off >> PAGE_SHIFT)\n", vma->vm_pgoff);
+
+	vma->vm_flags |= VM_IO | VM_RESERVED;
+    size = vma->vm_end - vma->vm_start;
+    pfn  = off >> PAGE_SHIFT;
+
+//    pr_info("size     = 0x%lx = (vm_end - vm_start)\n", size);
+//    pr_info("pfn      = 0x%lx = (off >> PAGE_SHIFT)\n", pfn);
+
+	if (io_remap_pfn_range(vma, vma->vm_start, pfn, size, vma->vm_page_prot))
+		return -EAGAIN;
+	return 0;
+}
 
 
 static struct file_operations vdin_fops = {
@@ -399,6 +483,7 @@ static struct file_operations vdin_fops = {
     .open    = vdin_open,
     .release = vdin_release,
     .ioctl   = vdin_ioctl,
+    .mmap    = vdin_mmap,
 };
 
 
@@ -434,7 +519,8 @@ static int vdin_probe(struct platform_device *pdev)
         }
         vdin_devp[i]->index = i;
 
-        vdin_devp[i]->declock = SPIN_LOCK_UNLOCKED;
+//        vdin_devp[i]->declock = SPIN_LOCK_UNLOCKED;    //old_style_spin_init 
+        spin_lock_init(&vdin_devp[i]->declock);
         vdin_devp[i]->decop = NULL;
 
         /* connect the file operations with cdev */
@@ -497,11 +583,8 @@ static int vdin_probe(struct platform_device *pdev)
         add_timer(&vdin_devp[i]->timer);
         vdin_devp[i]->workqueue = create_singlethread_workqueue(VDIN_DRIVER_NAME);
 //        vdin_devp[i]->workqueue = create_workqueue(VDIN_DRIVER_NAME);
-        if (vdin_devp[i]->workqueue == NULL) {
-            printk(KERN_ERR "vdin: can't create work queue.\n");
-        }
-        else
-            printk(KERN_INFO "vdin: create work queue OK.\n");
+
+        mutex_init(&vdin_devp[i]->mm_lock);
 
         INIT_WORK(&vdin_devp[i]->dec_work, vdin_isr_wq);
     }
@@ -518,6 +601,7 @@ static int vdin_remove(struct platform_device *pdev)
 
     for (i = 0; i < VDIN_COUNT; ++i)
     {
+        mutex_destroy(vdin_devp[i]->mm_lock);
         if (vdin_devp[i]->workqueue != NULL)
             destroy_workqueue(vdin_devp[i]->workqueue);
         del_timer_sync(&vdin_devp[i]->timer);

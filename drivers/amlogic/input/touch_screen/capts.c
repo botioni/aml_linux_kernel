@@ -144,6 +144,25 @@ static void capts_report_up(struct input_dev *input)
     input_sync(input);
 }
 
+static void capts_report(struct capts *ts, struct ts_event *event, int event_num)
+{
+    if (!event_num) {
+        ts->pending = 0;
+        if (ts->event_num) {
+            capts_report_up(ts->input);
+            ts->event_num = 0;
+            capts_debug_info( "UP\n");
+        }
+    }
+    else if (event_num > 0) {
+        ts->pending = 1;
+        capts_report_down(ts->input, event, event_num);
+        if (!ts->event_num) {
+            ts->event_num = event_num;
+            capts_debug_info( "DOWN\n");
+        }
+    }
+}
 
 static ssize_t capts_read(struct device *dev, struct device_attribute *attr, char *buf)
 {
@@ -224,46 +243,64 @@ static struct attribute_group capts_attr_group = {
 static void capts_work(struct work_struct *work)
 {
     int event_num;
+    struct ts_event event[EVENT_MAX];
     struct capts *ts = container_of(work, struct capts, work);
-    int fingdown = capts_get_fingdown_state(ts);
+    int period = ts->pdata->poll_period;
+    if (!period) period = TS_POLL_PERIOD;
+
+    switch (ts->pdata->mode) {
+    case TS_MODE_TIMER_READ:
+        event_num = ts->chip->get_event(ts->dev, &event[0]);
+        capts_report(ts, &event[0], event_num);
+        hrtimer_start(&ts->timer, ktime_set(0, period), HRTIMER_MODE_REL);
+        break;
     
-    event_num = ts->chip->get_event(ts->dev, &ts->event[0]);
-    event_num %= EVENT_MAX;   
-    capts_debug_info( "event_num=%d, fingdown=%d\n", event_num, fingdown);
-    if (!event_num || !fingdown) {
-        ts->pending = 0;
-        if (ts->event_num) {
-            capts_report_up(ts->input);
-            ts->event_num = 0;
-            capts_debug_info( "UP\n");
+    case TS_MODE_TIMER_LOW:
+    case TS_MODE_TIMER_HIGH:
+        event_num = 0;
+        if (capts_get_fingdown_state(ts)) {
+            event_num = ts->chip->get_event(ts->dev, &event[0]);
         }
-    }
-	else if (event_num < 0) {}
-    else {
-        ts->pending = 1;
-        capts_report_down(ts->input, ts->event, event_num);
-        if (!ts->event_num) {
-            ts->event_num = event_num;
-            capts_debug_info( "DOWN\n");
+        capts_report(ts, &event[0], event_num);
+        hrtimer_start(&ts->timer, ktime_set(0, period),
+        HRTIMER_MODE_REL);
+        break;
+
+    case TS_MODE_INT_LOW:
+    case TS_MODE_INT_HIGH:
+        event_num = 0;
+        if (capts_get_fingdown_state(ts)) {
+            event_num = ts->chip->get_event(ts->dev, &event[0]);
         }
-    }
-    
-    if ((ts->pdata->mode == TS_MODE_TIMER_LOW)
-    || (ts->pdata->mode == TS_MODE_TIMER_HIGH)
-    || (ts->pdata->mode == TS_MODE_TIMER_READ)) {
-        hrtimer_start(&ts->timer, ktime_set(0, TS_POLL_PERIOD),
-        HRTIMER_MODE_REL);
-    }
-    else if ((ts->pdata->mode == TS_MODE_INT_FALLING)
-    || (ts->pdata->mode == TS_MODE_INT_RISING)) {
-        enable_irq(ts->irq);
-    }
-    else if (ts->event_num) {
-        hrtimer_start(&ts->timer, ktime_set(0, TS_POLL_PERIOD),
-        HRTIMER_MODE_REL);
-    }
-    else {
-        enable_irq(ts->irq);
+        capts_report(ts, &event[0], event_num);
+        
+        if (event_num) {
+            hrtimer_start(&ts->timer, ktime_set(0, period), HRTIMER_MODE_REL);
+        }
+        else {
+            enable_irq(ts->irq);
+        }
+        break;
+
+    case TS_MODE_INT_FALLING:
+    case TS_MODE_INT_RISING:
+        event_num = ts->chip->get_event(ts->dev, &event[0]);
+        capts_report(ts, &event[0], event_num);
+        if (capts_get_fingdown_state(ts) && ts->pdata->cache_enable) {
+            hrtimer_start(&ts->timer, ktime_set(0, period/3), HRTIMER_MODE_REL);
+            capts_debug_info( "still down, read once more\n");
+        }
+        else {
+            enable_irq(ts->irq);
+            if (event_num < 0) {
+                hrtimer_start(&ts->timer, ktime_set(0, period*3), HRTIMER_MODE_REL);
+                capts_debug_info( "read data error, wait finger up\n");
+            }
+        }
+        break;
+        
+    default:
+        break;
     }
 }
 
@@ -290,6 +327,9 @@ static irqreturn_t capts_interrupt(int irq, void *context)
 
     spin_lock_irqsave(&ts->lock, flags);
     if (capts_get_fingdown_state(ts)) {
+       if (ts->timer.function) {
+            hrtimer_cancel(&ts->timer);
+        }
         ts->pending = 1;
         disable_irq_nosync(ts->irq);
         queue_work(ts->workqueue, &ts->work);
@@ -354,22 +394,16 @@ int capts_probe(struct device *dev, struct ts_chip *chip)
     if (pdata->init_irq) {
         pdata->init_irq();
     }
+    hrtimer_init(&ts->timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
+    ts->timer.function = capts_timer;
     if ((pdata->mode == TS_MODE_TIMER_LOW)
     || (pdata->mode == TS_MODE_TIMER_HIGH)
     || (pdata->mode == TS_MODE_TIMER_READ)) {
         /* no interrupt, use timer only */
-        hrtimer_init(&ts->timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
-        ts->timer.function = capts_timer;
         hrtimer_start(&ts->timer, ktime_set(0, TS_POLL_PERIOD),
         HRTIMER_MODE_REL);
     }
     else {
-        if ((pdata->mode == TS_MODE_INT_LOW)
-        || (pdata->mode == TS_MODE_INT_HIGH)) {
-            /*use both interrupt & timer */
-            hrtimer_init(&ts->timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
-            ts->timer.function = capts_timer;
-        }
         err = request_irq(pdata->irq, capts_interrupt,
         capts_irq_type[pdata->mode], dev->driver->name, ts);
         if (err) {
