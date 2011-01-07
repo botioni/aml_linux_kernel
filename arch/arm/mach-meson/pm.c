@@ -40,6 +40,7 @@ static int early_suspend_flag = 0;
 
 #define WAKE_UP_BY_IRQ
 #define SYSCLK_32K
+#define RESTORE_CLK81_EARLY
 
 static void (*meson_sram_suspend) (struct meson_pm_config *);
 static struct meson_pm_config *pdata;
@@ -312,7 +313,7 @@ static char early_clks_name[EARLY_CLK_COUNT][32]={
 
 //static unsigned nand_timing;
 static unsigned sys_clk_backup;
-
+static unsigned uart_rate_backup;
 static unsigned clk81_backup;
 void clk_switch(int flag)
 {
@@ -327,6 +328,7 @@ void clk_switch(int flag)
                 }
                 else if (clks[i] == HHI_MPEG_CLK_CNTL){
 #ifdef SYSCLK_32K
+#ifdef RESTORE_CLK81_EARLY
                     if (early_clk_flag[5]){
                         WRITE_CBUS_REG(HHI_A9_CLK_CNTL, READ_CBUS_REG(HHI_A9_CLK_CNTL)&~(1<<7));
                         CLEAR_CBUS_REG_MASK(HHI_SYS_PLL_CNTL, (1<<16));
@@ -338,15 +340,16 @@ void clk_switch(int flag)
                         udelay(1000);
                         SET_CBUS_REG_MASK(clks[i], (1<<8));
                     
-                        sys_clk = clk_get_sys("clk81", NULL);
                         CLEAR_CBUS_REG_MASK(UART0_CONTROL, (1 << 19) | 0xFFF);
-                        SET_CBUS_REG_MASK(UART0_CONTROL, (((sys_clk->rate / (115200 * 4)) - 1) & 0xfff));
+                        SET_CBUS_REG_MASK(UART0_CONTROL, (((uart_rate_backup / (115200 * 4)) - 1) & 0xfff));
                         CLEAR_CBUS_REG_MASK(UART1_CONTROL, (1 << 19) | 0xFFF);
-                        SET_CBUS_REG_MASK(UART1_CONTROL, (((sys_clk->rate / (115200 * 4)) - 1) & 0xfff));
+                        SET_CBUS_REG_MASK(UART1_CONTROL, (((uart_rate_backup / (115200 * 4)) - 1) & 0xfff));
                         //WRITE_CBUS_REG_BITS(NAND_CFG,nand_timing,0,14); 
                         early_clk_flag[5] = 0;
                     }
-                    else{    
+                    else
+#endif
+                    {    
                         CLEAR_CBUS_REG_MASK(clks[i], (1<<8));
                         WRITE_CBUS_REG(clks[i], clk81_backup);
                     }
@@ -426,11 +429,10 @@ void early_clk_switch(int flag)
                     udelay(1000);
                     SET_CBUS_REG_MASK(early_clks[i], (1<<8));
                     
-                    sys_clk = clk_get_sys("clk81", NULL);
                     CLEAR_CBUS_REG_MASK(UART0_CONTROL, (1 << 19) | 0xFFF);
-                    SET_CBUS_REG_MASK(UART0_CONTROL, (((sys_clk->rate / (115200 * 4)) - 1) & 0xfff));
+                    SET_CBUS_REG_MASK(UART0_CONTROL, (((uart_rate_backup / (115200 * 4)) - 1) & 0xfff));
                     CLEAR_CBUS_REG_MASK(UART1_CONTROL, (1 << 19) | 0xFFF);
-                    SET_CBUS_REG_MASK(UART1_CONTROL, (((sys_clk->rate / (115200 * 4)) - 1) & 0xfff));
+                    SET_CBUS_REG_MASK(UART1_CONTROL, (((uart_rate_backup / (115200 * 4)) - 1) & 0xfff));
                     //WRITE_CBUS_REG_BITS(NAND_CFG,nand_timing,0,14); 
                 }
                 else{
@@ -457,6 +459,8 @@ void early_clk_switch(int flag)
                     CLEAR_CBUS_REG_MASK(early_clks[i], (1<<8)); // 24M
                     sys_clk_backup = READ_CBUS_REG(early_clks[i]);
                     
+                    sys_clk = clk_get_sys("clk81", NULL);
+                    uart_rate_backup = sys_clk->rate;
                     sys_clk = clk_get_sys("clk_xtal", NULL);
                     CLEAR_CBUS_REG_MASK(UART0_CONTROL, (1 << 19) | 0xFFF);
                     SET_CBUS_REG_MASK(UART0_CONTROL, (((sys_clk->rate / (115200 * 4)) - 1) & 0xfff));
