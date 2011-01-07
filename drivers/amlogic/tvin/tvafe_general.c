@@ -1772,13 +1772,14 @@ void tvafe_reset_module(enum tvin_port_e port)
 
 void tvafe_set_fmt(struct tvafe_info_s *info)
 {
+    //check decoder signal status
     if((info->param.status != TVIN_SIG_STATUS_STABLE) || (info->param.fmt == TVIN_SIG_FMT_NULL))
     {
-//        pr_info("tvafe tvafe_set_fmt format abnormal \n");
+        //pr_info("TVAFE tvafe_set_fmt format abnormal \n");
         return;
     }
 
-    pr_info("tvafe tvafe_set_fmt:%d\n", info->param.fmt);
+    pr_info("TVAFE tvafe_set_fmt:%d\n", info->param.fmt);
 
     if ((info->param.port >= TVIN_PORT_CVBS0) &&
         (info->param.port <= TVIN_PORT_SVIDEO7)
@@ -1786,7 +1787,7 @@ void tvafe_set_fmt(struct tvafe_info_s *info)
     {
         //stop cvd2
         //tvafe_stop_cvbs();
-        tvafe_cvd2_video_mode_confiure(info->param.fmt);
+        //tvafe_cvd2_video_mode_confiure(info->param.fmt);
         //reset cvd2
         //tvafe_reset_cvbs();
     }

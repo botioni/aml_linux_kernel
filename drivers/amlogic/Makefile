@@ -72,3 +72,4 @@ obj-y += demod/
 obj-y += wifi/
 #	camera devices
 obj-y += camera/
+obj-y += debug/

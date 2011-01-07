@@ -101,7 +101,6 @@ typedef struct tvafe_cvd2_sig_status_s {
     unsigned char  vcrtrick              :1;
     unsigned char  vcrff                 :1;
     unsigned char  vcrrew                :1;
-    unsigned char  cordic_data_sum;
     unsigned char  cordic_data_min;
     unsigned char  cordic_data_max;
     unsigned char  stable_cnt;
@@ -110,6 +109,7 @@ typedef struct tvafe_cvd2_sig_status_s {
     enum tvafe_cvd2_sd_state_e          detected_sd_state;
 
     struct tvafe_cvd2_agc_s             agc;
+    unsigned                            cordic_data_sum;
     unsigned int                        cvd2_mem_addr;
     unsigned int                        cvd2_mem_size;
 } tvafe_cvd2_sig_status_t;
