@@ -38,6 +38,7 @@
 #include <linux/i2c-aml.h>
 #include <mach/power_gate.h>
 #include <linux/aml_bl.h>
+#include <linux/delay.h>
 
 #ifdef CONFIG_AM_UART_WITH_S_CORE 
 #include <linux/uart-aml.h>
@@ -74,6 +75,9 @@
 #include <linux/aml_power.h>
 #endif
 
+#ifdef CONFIG_TCA6424
+#include <linux/tca6424.h>
+#endif
 
 
 #if defined(CONFIG_JPEGLOGO)
@@ -394,11 +398,47 @@ static struct resource amlogic_card_resource[]  = {
 	}
 };
 
+void extern_wifi_power(int is_power)
+{
+	unsigned char level;
+
+	if (0 == is_power)
+	{
+#ifdef CONFIG_TCA6424
+		configIO(1, 0);
+		level = getIO_level(1);
+		level &= ~(1<<2);
+		setIO_level(1, level);
+#else
+		return;
+#endif
+	}
+	else
+	{
+#ifdef CONFIG_TCA6424
+		configIO(1, 0);
+		level = getIO_level(1);
+		/*P12 WIFI/BT EN*/
+		level |= (1<<2);
+		setIO_level(1, level);
+		/*P10 WIFI RST */
+		level = getIO_level(1);
+		level &= ~(1<<0);
+		setIO_level(1, level);
+		mdelay(2000);
+		level |= (1<<0);
+		setIO_level(1, level);
+
+#else
+		return;
+#endif
+	}
+	return;
+}
+
 void sdio_extern_init(void)
 {
-	CLEAR_CBUS_REG_MASK(CARD_PIN_MUX_5, ((3<<4)));
-	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<18));
-	SET_CBUS_REG_MASK(PREG_GGPIO_O, (1<<18));
+    extern_wifi_power(1);
 }
 
 static struct aml_card_info  amlogic_card_info[] = {
@@ -406,10 +446,10 @@ static struct aml_card_info  amlogic_card_info[] = {
 		.name = "sd_card",
 		.work_mode = CARD_HW_MODE,
 		.io_pad_type = SDIO_GPIOA_9_14,
-		.card_ins_en_reg = EGPIO_GPIOC_ENABLE,
-		.card_ins_en_mask = PREG_IO_5_MASK,
-		.card_ins_input_reg = EGPIO_GPIOC_INPUT,
-		.card_ins_input_mask = PREG_IO_5_MASK,
+		.card_ins_en_reg = EGPIO_GPIOD_ENABLE,
+		.card_ins_en_mask = PREG_IO_11_MASK,
+		.card_ins_input_reg = EGPIO_GPIOD_INPUT,
+		.card_ins_input_mask = PREG_IO_11_MASK,
 		.card_power_en_reg = 0,
 		.card_power_en_mask = 0,
 		.card_power_output_reg = 0,
@@ -870,6 +910,18 @@ static struct aml_m1_nand_platform aml_2kpage128kblocknand_platform = {
 	.nr_partitions = ARRAY_SIZE(partition_info),
 };
 
+static struct aml_m1_nand_platform aml_4kpage128kblocknand_platform = {
+	.page_size = 4096,
+	.spare_size=128,
+	.erase_size= 256*1024,
+	.bch_mode=1,			//BCH16
+	.encode_size=528,
+	.timing_mode=5,
+	.ce_num=1,
+	.onfi_mode=0,
+	.partitions = partition_info,
+	.nr_partitions = ARRAY_SIZE(partition_info),
+};
 /*
 static struct aml_m1_nand_platform aml_Micron4GBABAnand_platform = 
 {
@@ -899,7 +951,8 @@ static struct platform_device aml_nand_device = {
 	.num_resources = ARRAY_SIZE(aml_nand_resources),
 	.resource = aml_nand_resources,
 	.dev = {
-		.platform_data = &aml_2kpage128kblocknand_platform,
+//		.platform_data = &aml_2kpage128kblocknand_platform,
+		.platform_data = &aml_4kpage128kblocknand_platform,
 	},
 };
 #endif
@@ -1113,6 +1166,9 @@ static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
 	{
 		I2C_BOARD_INFO("wm8900", 0x1A),
 	},
+	{
+		I2C_BOARD_INFO("tca6424", 0x22),
+	},
 };
 
 
@@ -1156,7 +1212,7 @@ static void __init device_pinmux_init(void )
 	uart_set_pinmux(UART_PORT_B,PINMUX_UART_B);
 	/*pinmux of eth*/
 	eth_pinmux_init();
-	set_audio_pinmux(AUDIO_OUT_JTAG);
+	set_audio_pinmux(AUDIO_OUT_TEST_N);
 }
 
 static void __init  device_clk_setting(void)

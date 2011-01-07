@@ -92,7 +92,7 @@ static void aml_m1_nand_select_chip(struct mtd_info *mtd, int chipnr)
 
 	clear_mio_mux(1,CM0);
 	set_mio_mux(1,SM0);
-	set_mio_mux(6,0x7fff);
+	set_mio_mux(6,0x7ff);
 	clear_mio_mux(7,CM7);
 
 	switch (chipnr) {
@@ -100,7 +100,7 @@ static void aml_m1_nand_select_chip(struct mtd_info *mtd, int chipnr)
 			chip->cmd_ctrl(mtd, NAND_CMD_NONE, 0 | NAND_CTRL_CHANGE);
 			set_mio_mux(1,CM0);
 			clear_mio_mux(1,SM0);
-			clear_mio_mux(6,0x7fff);
+			clear_mio_mux(6,0x7ff);
 			set_mio_mux(7,CM7);	
 			break;
 		case 0:
@@ -425,7 +425,7 @@ static int aml_m1_nand_hw_init(struct aml_m1_nand_info *info)
 
 	clear_mio_mux(1,( (1<<29) | (1<<27) | (1<<25) | (1<<23)));
 	set_mio_mux(1,(1<<30) | (1<<28) | (1<<26) | (1<<24));
-	set_mio_mux(6,0x7fff);
+	set_mio_mux(6,0x7ff);
 	clear_mio_mux(7,((1<<29) | (1<<27) | (1<<28) | (1<<26))|(1<<24));
 
 	NFC_SET_CFG(0);

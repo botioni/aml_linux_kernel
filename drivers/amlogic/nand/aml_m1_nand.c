@@ -696,7 +696,7 @@ static int aml_m1_nand_read_page(struct mtd_info *mtd, struct nand_chip *chip,ui
 	}
 	else if((aml_info->planemode!=0)&&((aml_info->interlmode==0)))
 	{
-		if(!(strcmp(mtd->name,"Hynix")))
+		if(!(strcmp(mtd->name,"Hynix")) || !(strcmp(mtd->name,"Samsung")))
 		{
 
 			tmp_pag = (aml_info->curpage/aml_info->ppb) *(aml_info->ppb) + aml_info->curpage;
