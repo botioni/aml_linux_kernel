@@ -310,7 +310,7 @@ static char early_clks_name[EARLY_CLK_COUNT][32]={
     "HHI_MPEG_CLK_CNTL"
 };
 
-static unsigned nand_timing;
+//static unsigned nand_timing;
 static unsigned sys_clk_backup;
 
 static unsigned clk81_backup;
@@ -343,7 +343,7 @@ void clk_switch(int flag)
                         SET_CBUS_REG_MASK(UART0_CONTROL, (((sys_clk->rate / (115200 * 4)) - 1) & 0xfff));
                         CLEAR_CBUS_REG_MASK(UART1_CONTROL, (1 << 19) | 0xFFF);
                         SET_CBUS_REG_MASK(UART1_CONTROL, (((sys_clk->rate / (115200 * 4)) - 1) & 0xfff));
-                        WRITE_CBUS_REG_BITS(NAND_CFG,nand_timing,0,14); 
+                        //WRITE_CBUS_REG_BITS(NAND_CFG,nand_timing,0,14); 
                         early_clk_flag[5] = 0;
                     }
                     else{    
@@ -431,7 +431,7 @@ void early_clk_switch(int flag)
                     SET_CBUS_REG_MASK(UART0_CONTROL, (((sys_clk->rate / (115200 * 4)) - 1) & 0xfff));
                     CLEAR_CBUS_REG_MASK(UART1_CONTROL, (1 << 19) | 0xFFF);
                     SET_CBUS_REG_MASK(UART1_CONTROL, (((sys_clk->rate / (115200 * 4)) - 1) & 0xfff));
-                    WRITE_CBUS_REG_BITS(NAND_CFG,nand_timing,0,14); 
+                    //WRITE_CBUS_REG_BITS(NAND_CFG,nand_timing,0,14); 
                 }
                 else{
                     SET_CBUS_REG_MASK(early_clks[i], (1<<8));
@@ -462,8 +462,8 @@ void early_clk_switch(int flag)
                     SET_CBUS_REG_MASK(UART0_CONTROL, (((sys_clk->rate / (115200 * 4)) - 1) & 0xfff));
                     CLEAR_CBUS_REG_MASK(UART1_CONTROL, (1 << 19) | 0xFFF);
                     SET_CBUS_REG_MASK(UART1_CONTROL, (((sys_clk->rate / (115200 * 4)) - 1) & 0xfff)); 
-                    nand_timing = READ_CBUS_REG_BITS(NAND_CFG,0,14);
-                    WRITE_CBUS_REG_BITS(NAND_CFG,((5)|(((-6)&0xf)<<10)|((0&7)<<5)),0,14);
+                    //nand_timing = READ_CBUS_REG_BITS(NAND_CFG,0,14);
+                    //WRITE_CBUS_REG_BITS(NAND_CFG,((5)|(((-6)&0xf)<<10)|((0&7)<<5)),0,14);
 
                     WRITE_CBUS_REG(HHI_A9_CLK_CNTL, READ_CBUS_REG(HHI_A9_CLK_CNTL)&~(1<<7));
                     SET_CBUS_REG_MASK(HHI_SYS_PLL_CNTL, (1<<16));
