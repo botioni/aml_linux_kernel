@@ -51,6 +51,7 @@
 #define DRV_VERSION	"3.0"
 
 #define dwc_wmb()	wmb()
+#define dwc_rmb()	rmb()
 
 /* Enclosure Management Control */
 #define EM_CTRL_MSG_TYPE              0x000f0000
@@ -688,7 +689,7 @@ static int dwc_ahci_scr_read(struct ata_link *link, unsigned int sc_reg, u32 *va
 
 	if (offset) {
 		*val = readl(port_mmio + offset);
-		rmb();
+		dwc_rmb();
 		return 0;
 	}
 	return -EINVAL;
@@ -1535,7 +1536,7 @@ static int dwc_ahci_check_ready(struct ata_link *link)
 	void __iomem *port_mmio = dwc_ahci_port_base(link->ap);
 	u8 status = readl(port_mmio + PORT_TFDATA) & 0xFF;
 
-	rmb();
+	dwc_rmb();
 
 	return ata_check_ready(status);
 }
