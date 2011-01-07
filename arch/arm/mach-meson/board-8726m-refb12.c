@@ -303,6 +303,19 @@ static struct lm_device usb_ld_a = {
     .dma_config = USB_DMA_BURST_SINGLE,
     .set_vbus_power = set_usb_a_vbus_power,
 };
+//usb_b is HOST port
+static struct lm_device usb_ld_b = {
+    .type = LM_DEVICE_TYPE_USB,
+    .id = 0,
+    .irq = INT_USB_B,
+    .resource.start = IO_USB_B_BASE,
+    .resource.end = -1,
+    .dma_mask_room = DMA_BIT_MASK(32),
+    .port_type = USB_PORT_TYPE_HOST,
+    .port_speed = USB_PORT_SPEED_DEFAULT,
+    .dma_config = USB_DMA_BURST_SINGLE,
+    .set_vbus_power = 0,
+};
 #endif
 #ifdef CONFIG_SATA_DWC_AHCI
 static struct lm_device sata_ld = {
@@ -831,7 +844,7 @@ static void set_vccx2(int power_on)
         set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);        
         //set clk for wifi
         SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, (1<<18));
-        CLEAR_CBUS_REG_MASK(PREG_EGPIO_EN_N, (1<<4));	              
+        CLEAR_CBUS_REG_MASK(PREG_EGPIO_EN_N, (1<<4));
     }
     else{
         printk(KERN_INFO "set_vccx2 power down\n");        
@@ -839,7 +852,7 @@ static void set_vccx2(int power_on)
         set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);   
         //disable wifi clk
         CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, (1<<18));
-        SET_CBUS_REG_MASK(PREG_EGPIO_EN_N, (1<<4));	        
+        SET_CBUS_REG_MASK(PREG_EGPIO_EN_N, (1<<4));
     }
 }
 static struct meson_pm_config aml_pm_pdata = {
@@ -1824,6 +1837,7 @@ static __init void m1_init_machine(void)
 #ifdef CONFIG_USB_DWC_OTG_HCD
     set_usb_phy_clk(USB_PHY_CLOCK_SEL_XTAL_DIV2);
     lm_device_register(&usb_ld_a);
+    lm_device_register(&usb_ld_b);
 #endif
 #ifdef CONFIG_SATA_DWC_AHCI
     set_sata_phy_clk(SATA_PHY_CLOCK_SEL_DEMOD_PLL);

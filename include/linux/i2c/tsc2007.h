@@ -12,9 +12,14 @@ struct tsc2007_platform_data {
 						   interrupt source */
 	int	(*init_platform_hw)(void);
 	void	(*exit_platform_hw)(void);
-	unsigned short swap_xy:1;
-	unsigned short xpol:1;
-	unsigned short ypol:1;
+
+	int poll_delay;
+	int poll_period;
+	int abs_xmin;
+	int abs_xmax;
+	int abs_ymin;
+	int abs_ymax;
+	int (*convert)(int x, int y);
 };
 
 #endif
