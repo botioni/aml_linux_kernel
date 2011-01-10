@@ -1687,6 +1687,8 @@ static void set_video_window(const char *para)
 
         if ((w > 0) && (h > 0))
             vpp_set_video_layer_position(parsed[0], parsed[1], w, h);
+	     video_property_changed=true;	 
+	     
     }
 
     amlog_mask(LOG_MASK_SYSFS,

@@ -568,7 +568,6 @@ static  inline void  osd1_update_color_mode(void)
 static  inline void  osd2_update_color_mode(void)
 {
 	u32  data32;
-	printk("osd2 update color mode,%d\n",data32) ;
 	data32= (osd_hw.scan_mode== SCAN_MODE_INTERLACE) ? 2 : 0;
 	data32 |=READ_MPEG_REG(VIU_OSD2_BLK0_CFG_W0)&0x40;
 	data32 |= osd_hw.fb_gem[OSD2].canvas_idx << 16 ;
