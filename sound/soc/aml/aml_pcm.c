@@ -1132,7 +1132,7 @@ static void __exit aml_alsa_audio_exit(void)
 		class_destroy(aml_pcm_class);
 		
 		aml_pcm_cleanup_debugfs();
-    snd_soc_unregister_platform(&aml_soc_platform);
+        snd_soc_unregister_platform(&aml_soc_platform);
 }
 
 module_init(aml_alsa_audio_init);
