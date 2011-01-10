@@ -247,6 +247,9 @@ int init_rxtx_rings(struct net_device *dev)
 	np->start_tx = &np->tx_ring[0];
 	np->last_tx = NULL;
 	np->last_rx = &np->rx_ring[RX_RING_SIZE - 1];
+	CACHE_WSYNC(np->tx_ring,sizeof(struct _tx_desc)*TX_RING_SIZE);
+	CACHE_WSYNC(np->rx_ring,sizeof(struct _rx_desc)*RX_RING_SIZE);
+
 
 	return 0;
 }
@@ -257,9 +260,14 @@ static int alloc_ringdesc(struct net_device *dev)
 	struct am_net_private *np = netdev_priv(dev);
 
 	np->rx_buf_sz = (dev->mtu <= 1500 ? PKT_BUF_SZ : dev->mtu + 32);
+	#ifdef USE_COHERENT_MEMORY
 	np->rx_ring=dma_alloc_coherent(&dev->dev,
 				sizeof(struct _rx_desc) * RX_RING_SIZE,
 				(dma_addr_t *)&np->rx_ring_dma,GFP_KERNEL);
+	#else
+	np->rx_ring=kmalloc(sizeof(struct _rx_desc) * RX_RING_SIZE,GFP_KERNEL);
+	np->rx_ring_dma=(void*)virt_to_phys(np->rx_ring);
+	#endif
 	if (!np->rx_ring)
 		return -ENOMEM;
 
@@ -267,10 +275,14 @@ static int alloc_ringdesc(struct net_device *dev)
 		printk("Error the alloc mem is not cache aligned(%p)\n",np->rx_ring);
 	}
 	printk("NET MDA descpter start addr=%p\n", np->rx_ring);
-
+	#ifdef USE_COHERENT_MEMORY
 	np->tx_ring=dma_alloc_coherent(&dev->dev,
 				sizeof(struct _tx_desc) * TX_RING_SIZE ,
 				(dma_addr_t *)&np->tx_ring_dma,GFP_KERNEL);
+	#else
+	np->tx_ring=kmalloc(sizeof(struct _tx_desc) * TX_RING_SIZE,GFP_KERNEL);
+	np->tx_ring_dma=(void*)virt_to_phys(np->tx_ring);
+	#endif
 	if (init_rxtx_rings(dev)) {
 		printk("init rx tx ring failed!!\n");
 		return -1;
@@ -303,16 +315,25 @@ static int free_ringdesc(struct net_device *dev)
 	}
 	if (np->rx_ring)
 		{
+		#ifdef USE_COHERENT_MEMORY
 		dma_free_coherent(&dev->dev,
 			sizeof(struct _rx_desc) * RX_RING_SIZE ,
 			np->rx_ring,(dma_addr_t )np->rx_ring_dma);	// for apollo
+		#else
+		kfree(np->rx_ring);
+		#endif
 		}
+
 	np->rx_ring = NULL;
 	if (np->tx_ring)
 		{
+		#ifdef USE_COHERENT_MEMORY
 		dma_free_coherent(&dev->dev,
 			sizeof(struct _tx_desc) * TX_RING_SIZE ,
 			np->tx_ring,(dma_addr_t )np->tx_ring_dma);	// for apollo
+		#else
+		kfree(np->tx_ring);
+		#endif
 		}
 	np->tx_ring = NULL;
 	return 0;
@@ -632,6 +653,7 @@ void net_tasklet(unsigned long dev_instance)
 		c_tx =(void *)IO_READ32(np->base_addr +ETH_DMA_18_Curr_Host_Tr_Descriptor);
 		c_tx=np->tx_ring+(c_tx-np->tx_ring_dma);
 		tx = np->start_tx;
+		CACHE_RSYNC(tx,sizeof(struct _tx_desc));
 		while (tx != NULL && tx != c_tx && !(tx->status & DescOwnByDma)) {
 #ifdef DMA_USE_SKB_BUF
 			spin_lock_irqsave(&np->lock, flags);
@@ -650,17 +672,22 @@ void net_tasklet(unsigned long dev_instance)
 				tx->buf = 0;
 				tx->buf_dma= 0;
 				tx->status = 0;
-			} else
+			} else{
+				spin_unlock_irqrestore(&np->lock, flags);
 				break;
+			}
 			spin_unlock_irqrestore(&np->lock, flags);
 #else
 			tx->status = 0;
+			CACHE_WSYNC(tx,sizeof(struct _tx_desc));
 			if (np->tx_full) {
 				netif_wake_queue(dev);
 				np->tx_full = 0;
 			}
 #endif
 			tx = tx->next;
+			CACHE_RSYNC(tx,sizeof(struct _tx_desc));
+
 		}
 		np->start_tx = tx;
 		//data tx end... todo 
@@ -674,6 +701,7 @@ void net_tasklet(unsigned long dev_instance)
 		while (rx != NULL) {
 			//if(rx->status !=IO_READ32(&rx->status))
 			//      printk("error of D-chche!\n");
+			CACHE_RSYNC(rx,sizeof(struct _rx_desc));
 			if (!(rx->status & (DescOwnByDma))) {
 				int ip_summed = CHECKSUM_UNNECESSARY;
 				len = (rx->status & DescFrameLengthMask) >>DescFrameLengthShift;
@@ -697,8 +725,13 @@ void net_tasklet(unsigned long dev_instance)
 				len = len - 4;	//clear the crc       
 #ifdef DMA_USE_SKB_BUF
 				if (rx->skb==NULL) {
-					printk("NET skb pointer error\n");
+					printk("NET skb pointer error!!!\n");
 					break;
+				}
+				if (rx->skb->len>0) {
+					printk("skb have data before,skb=%p,len=%d\n",rx->skb,rx->skb->len);
+					rx->skb=NULL;
+					goto to_next;
 				}
 				skb_put(rx->skb, len);
 				rx->skb->dev = dev;
@@ -711,6 +744,9 @@ void net_tasklet(unsigned long dev_instance)
 					dma_unmap_single(&dev->dev,rx->buf_dma,np->rx_buf_sz,DMA_FROM_DEVICE);
 				rx->buf_dma=0;
 				netif_rx(rx->skb);
+				if(debug>3)
+					printk("receive skb=%p\n",rx->skb);
+				rx->skb=NULL;
 #else
 				skb = dev_alloc_skb(len + 4);
 				if (skb == NULL) {
@@ -740,25 +776,30 @@ void net_tasklet(unsigned long dev_instance)
 				//reset the rx_ring to receive 
 				///
 
-			      to_next:
+	to_next:
 #ifdef DMA_USE_SKB_BUF
+				if(rx->skb)
+					dev_kfree_skb_any(rx->skb);
 				rx->skb = dev_alloc_skb(np->rx_buf_sz + 4);
 				if (rx->skb==NULL) {
-					printk(KERN_ERR
-					       "error to alloc the skb\n");
+					printk(KERN_ERR "error to alloc the skb\n");
 					rx->buf = 0;
 					rx->buf_dma= 0;
 					rx->status = 0;
 					rx->count = 0;
 					np->last_rx = rx;
+					CACHE_WSYNC(rx,sizeof(struct _rx_desc));		
 					break;
 				}
+				if(debug>3)
+					printk("new malloc skb=%p\n",rx->skb);
 				skb_reserve(rx->skb, 2);
 				rx->buf = (unsigned long)rx->skb->data;
 #endif
 				rx->buf_dma=dma_map_single(&dev->dev,(void *)rx->buf, (unsigned long)np->rx_buf_sz,DMA_FROM_DEVICE);	//invalidate for next  dma in;
 				rx->count =(DescChain) | (np->rx_buf_sz &DescSize1Mask);
 				rx->status = DescOwnByDma;
+				CACHE_WSYNC(rx,sizeof(struct _rx_desc));			
 				np->last_rx = rx;
 				rx = rx->next;
 			} else {
@@ -988,10 +1029,12 @@ static int start_tx(struct sk_buff *skb, struct net_device *dev)
 		printk(KERN_DEBUG "%s: Transmit frame queued\n", dev->name);
 	}
 	spin_lock_irqsave(&np->lock, flags);
+	
 	if (np->last_tx != NULL)
 		tx = np->last_tx->next;
 	else
 		tx = &np->tx_ring[0];
+	CACHE_RSYNC(tx,sizeof(*tx));
 	if (tx->status & DescOwnByDma) {
 		spin_unlock_irqrestore(&np->lock, flags);
 		if(debug>2)
@@ -1011,13 +1054,14 @@ static int start_tx(struct sk_buff *skb, struct net_device *dev)
 #endif
 	tx->buf_dma=dma_map_single(&dev->dev,(void *)tx->buf,(unsigned long)(skb->len),DMA_TO_DEVICE);
 	tx->count = ((skb->len << DescSize1Shift) & DescSize1Mask) | DescTxFirst | DescTxLast | DescTxIntEnable | DescChain;	//|2<<27; (1<<25, ring end)
-	tx->status = DescOwnByDma;
 	if (skb->ip_summed == CHECKSUM_PARTIAL) {
 		tx->count |= 0x3 << 27;	//add hw check sum;
 	}
+	tx->status = DescOwnByDma;
 	np->last_tx = tx;
 	np->stats.tx_packets++;
 	np->stats.tx_bytes += skb->len;
+	CACHE_WSYNC(tx,sizeof(*tx));
 #ifndef DMA_USE_SKB_BUF
 	dev_kfree_skb_any(skb);
 #endif
