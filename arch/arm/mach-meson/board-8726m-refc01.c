@@ -951,8 +951,8 @@ static struct platform_device aml_nand_device = {
 	.num_resources = ARRAY_SIZE(aml_nand_resources),
 	.resource = aml_nand_resources,
 	.dev = {
-//		.platform_data = &aml_2kpage128kblocknand_platform,
-		.platform_data = &aml_4kpage128kblocknand_platform,
+		.platform_data = &aml_2kpage128kblocknand_platform,
+//		.platform_data = &aml_4kpage128kblocknand_platform,
 	},
 };
 #endif
