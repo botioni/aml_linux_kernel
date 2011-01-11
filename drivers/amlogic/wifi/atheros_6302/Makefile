@@ -28,13 +28,13 @@
 #    makefile which will subsequently pick up this makefile.
 #
 #######################################################################################
-EXTRA_CFLAGS += -Idrivers/amlogic/wifi/atheros_6k/include/
-EXTRA_CFLAGS += -Idrivers/amlogic/wifi/atheros_6k/include/AR6002/hw4.0
-EXTRA_CFLAGS += -Idrivers/amlogic/wifi/atheros_6k/wlan/include
-EXTRA_CFLAGS += -Idrivers/amlogic/wifi/atheros_6k/os/linux/include
-EXTRA_CFLAGS += -Idrivers/amlogic/wifi/atheros_6k/os/
-EXTRA_CFLAGS += -Idrivers/amlogic/wifi/atheros_6k/bmi/include
-EXTRA_CFLAGS += -Idrivers/amlogic/wifi/atheros_6k/hif/sdio/linux_sdio/include
+EXTRA_CFLAGS += -Idrivers/amlogic/wifi/atheros_6302/include/
+EXTRA_CFLAGS += -Idrivers/amlogic/wifi/atheros_6302/include/AR6002/hw4.0
+EXTRA_CFLAGS += -Idrivers/amlogic/wifi/atheros_6302/wlan/include
+EXTRA_CFLAGS += -Idrivers/amlogic/wifi/atheros_6302/os/linux/include
+EXTRA_CFLAGS += -Idrivers/amlogic/wifi/atheros_6302/os/
+EXTRA_CFLAGS += -Idrivers/amlogic/wifi/atheros_6302/bmi/include
+EXTRA_CFLAGS += -Idrivers/amlogic/wifi/atheros_6302/hif/sdio/linux_sdio/include
 
 EXTRA_CFLAGS += -DLINUX -D__KERNEL__ \
                 -DTCMD -DSEND_EVENT_TO_APP -DUSER_KEYS \

@@ -71,7 +71,7 @@ module_param(wowledon, int, 0644);
 MODULE_PARAM(wowledon,"i");
 #endif 
 
-//struct wake_lock ar6k_init_wake_lock;
+struct wake_lock ar6k_init_wake_lock;
 static int screen_is_off;
 static struct early_suspend ar6k_early_suspend;
 static A_STATUS (*ar6000_avail_ev_p)(void *, void *);
@@ -298,10 +298,10 @@ void android_release_firmware(const struct firmware *firmware)
 static A_STATUS ar6000_android_avail_ev(void *context, void *hif_handle)
 {
     A_STATUS ret;    
-   // wake_lock(&ar6k_init_wake_lock);
+   wake_lock(&ar6k_init_wake_lock);
     ar6000_enable_mmchost_detect_change(0);
     ret = ar6000_avail_ev_p(context, hif_handle);
-   // wake_unlock(&ar6k_init_wake_lock);
+   wake_unlock(&ar6k_init_wake_lock);
     return ret;
 }
 
@@ -345,7 +345,7 @@ void android_module_init(OSDRV_CALLBACKS *osdrvCallbacks)
         strcpy(ifname, def_ifname);
 #endif 
 
-    //wake_lock_init(&ar6k_init_wake_lock, WAKE_LOCK_SUSPEND, "ar6k_init");
+    wake_lock_init(&ar6k_init_wake_lock, WAKE_LOCK_SUSPEND, "ar6k_init");
 
 #ifdef CONFIG_HAS_EARLYSUSPEND
     ar6k_early_suspend.suspend = android_early_suspend;
@@ -365,7 +365,7 @@ void android_module_exit(void)
 #ifdef CONFIG_HAS_EARLYSUSPEND
     unregister_early_suspend(&ar6k_early_suspend);
 #endif
-    //wake_lock_destroy(&ar6k_init_wake_lock);
+    wake_lock_destroy(&ar6k_init_wake_lock);
 
     ar6000_enable_mmchost_detect_change(1);
 }
