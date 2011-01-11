@@ -70,6 +70,7 @@ obj-$(CONFIG_AM_DVB) += dvb/
 obj-y += demod/
 
 obj-y += wifi/
+obj-y += bluetooth/
 #	camera devices
 obj-y += camera/
 obj-y += debug/
