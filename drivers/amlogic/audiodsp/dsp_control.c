@@ -252,7 +252,7 @@ static inline int dsp_set_stream_buffer( struct audiodsp_priv *priv)
 		}
 	else
 		{
-		DSP_PRNT("dsp status=%x\n",DSP_RD(DSP_STATUS));
+		DSP_PRNT("dsp status=%lx\n",DSP_RD(DSP_STATUS));
 		priv->dsp_is_started=1;
 		res=0;
 		}

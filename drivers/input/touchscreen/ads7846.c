@@ -140,6 +140,7 @@ struct ads7846 {
 #ifdef CONFIG_HAS_EARLYSUSPEND
 	struct      early_suspend early_suspend;
 	int         suspend_flag;
+	int (*convert)(int x, int y);
 #endif
 };
 
@@ -610,16 +611,11 @@ static void ads7846_rx(void *ads)
 
 		if (ts->swap_xy)
 			swap(x, y);
-		int x0 = y;
-		y = x;
-		x = x0;
-		if(y < 250)
-			y = 250;
-		if(y>3800)
-			y = 3800;
-		y = 3800 -y + 250;
-//        x = x*800/3800;
-//        y = y*480/3700;
+		if (ts->convert) {
+		    int xy = ts->convert(x, y);
+		    x = xy >> 16;
+		    y = xy & 0xffff;
+		}
 		input_report_abs(input, ABS_X, x);
 		input_report_abs(input, ABS_Y, y);
 		input_report_abs(input, ABS_PRESSURE, ts->pressure_max - Rt);
@@ -981,6 +977,7 @@ static int __devinit ads7846_probe(struct spi_device *spi)
 	ts->vref_delay_usecs = pdata->vref_delay_usecs ? : 100;
 	ts->x_plate_ohms = pdata->x_plate_ohms ? : 400;
 	ts->pressure_max = pdata->pressure_max ? : ~0;
+	ts->convert = pdata->convert;
 
 	if (pdata->filter != NULL) {
 		if (pdata->filter_init != NULL) {

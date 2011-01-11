@@ -6,12 +6,24 @@
 	/*  */
 
 #define  DMA_USE_SKB_BUF
+//#define DMA_USE_MALLOC_ADDR
 #define ETH_INTERRUPT	(INT_ETHERNET)
 #define IO_WRITE32(val,addr)	 __raw_writel(val,addr)
 #define IO_READ32(addr)	 	__raw_readl(addr)
 #define ETHBASE (IO_ETH_BASE)
 #define WRITE_PERIPHS_REG(v,addr) __raw_writel(v,addr)
 #define READ_PERIPHS_REG(addr) __raw_readl(addr)
+
+
+//#define USE_COHERENT_MEMORY
+
+#ifndef USE_COHERENT_MEMORY
+#define CACHE_WSYNC(addr,size)		__dma_single_cpu_to_dev((const void *)addr,(size_t)size-1,DMA_TO_DEVICE)
+#define CACHE_RSYNC(addr,size)		__dma_single_dev_to_cpu((const void *)addr,(size_t)size-1,DMA_FROM_DEVICE)
+#else
+#define CACHE_WSYNC(addr,size)	
+#define CACHE_RSYNC(addr,size)
+#endif
 
     
 //ring buf must less than the MAX alloc length 131072

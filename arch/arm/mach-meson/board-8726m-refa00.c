@@ -572,12 +572,34 @@ static struct platform_device spi_gpio = {
 	},
 };
 
+#define XPOL 0
+#define YPOL 1
+#define XMIN 0
+#define XMAX 0xfff
+#define YMIN 250
+#define YMAX 3800
+
+int ads7846_convert(int x, int y)
+{
+    if (x < XMIN) x = XMIN;
+    if (x > XMAX) x = XMAX;
+    if (y < YMIN) y = YMIN;
+    if (y > YMAX) y = YMAX;
+#if (XPOL == 1)
+    x = XMAX + XMIN - x;
+#endif
+#if (YPOL == 1)
+    y = YMAX + YMIN - y;
+#endif
+    return (x << 16) | y;
+}
+
 static const struct ads7846_platform_data ads7846_pdata = {
 	.model = 7846,
 	.vref_delay_usecs = 100,
 	.vref_mv = 2500,
 	.keep_vref_on = false,
-	.swap_xy = 0,
+	.swap_xy = 1,
 	.settle_delay_usecs = 10,
 	.penirq_recheck_delay_usecs = 0,
 	.x_plate_ohms  =500,
@@ -602,6 +624,7 @@ static const struct ads7846_platform_data ads7846_pdata = {
 	.filter_cleanup = NULL,
 	.wait_for_sync = NULL,
 	.wakeup = false,
+	.convert = ads7846_convert,
 };
 
 static struct spi_board_info spi_board_info_list[] = {

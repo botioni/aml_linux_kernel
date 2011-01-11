@@ -152,7 +152,7 @@ static struct mtd_partition spi_partition_info[] = {
 /* Hide recovery partition
         {
                 .name = "recovery",
-                .offset = 0x4000,
+                .offset = 0x40000,
                 .size = 0x1c0000,
         },
 //*/
@@ -445,13 +445,13 @@ static struct mtd_partition partition_info[] =
         {
                 .name = "system",
                 .offset = 12*1024*1024,
-                .size = 116*1024*1024,
+                .size = 136*1024*1024,
         //      .set_flags=0,
         //      .dual_partnum=0,
         },
         {
                 .name = "cache",
-                .offset = 128*1024*1024,
+                .offset = 148*1024*1024,
                 .size = 16*1024*1024,
         //      .set_flags=0,
         //      .dual_partnum=0,

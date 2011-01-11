@@ -306,7 +306,7 @@ static struct lm_device usb_ld_a = {
 //usb_b is HOST port
 static struct lm_device usb_ld_b = {
     .type = LM_DEVICE_TYPE_USB,
-    .id = 0,
+    .id = 1,
     .irq = INT_USB_B,
     .resource.start = IO_USB_B_BASE,
     .resource.end = -1,
@@ -835,6 +835,18 @@ static  struct platform_device aml_rtc_device = {
     };
 #endif
 
+#ifdef CONFIG_CAMERA_GC0308
+
+//add power down control for camera
+
+
+static struct platform_device camera_device = {
+    .name       = "camera_gc0307r",
+    .id         = -1,
+
+};
+
+#endif
 #if defined(CONFIG_SUSPEND)
 static void set_vccx2(int power_on)
 {
@@ -1608,6 +1620,80 @@ static struct platform_device android_usb_device = {
 };
 #endif
 
+#ifdef CONFIG_BCM_BT
+static struct platform_device bcm_bt_device = {
+	.name             = "bcm-bt",
+	.id               = -1,
+};
+
+static void hci_uart_pin_init()
+{
+    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_12, (1<<29));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_12, (1<<22));
+	
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_7, (1<<19));
+	
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_5, (1<<20));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_5, (1<<17));
+	
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_5, (1<<14));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0, (1<<12));
+	
+	
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_5, (1<<4));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_7, (1<<13));
+	
+	
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_7, (1<<12));
+	
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, (1<<21));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, (1<<28));
+	
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_12, (1<<23));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_7, (1<<14));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_5, (1<<17));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0, (1<<12));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_5, (1<<5));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, (1<<27));
+	
+	
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_12, (1<<27));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_5, (1<<18));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0, (1<<12));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_5, (1<<9));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, (1<<23));
+	
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_12, (1<<26));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_7, (1<<17));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_5, (1<<17));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0, (1<<12));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_5, (1<<8));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, (1<<24));
+	
+	/* WLBT_REGON */
+	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<18));
+	SET_CBUS_REG_MASK(PREG_GGPIO_O, (1<<18));	
+	
+	/* reset */
+	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<12));
+	CLEAR_CBUS_REG_MASK(PREG_GGPIO_O, (1<<12));	
+	msleep(200);	
+	SET_CBUS_REG_MASK(PREG_GGPIO_O, (1<<12));	
+	
+	/* BG/GPS low */
+	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<19));
+	CLEAR_CBUS_REG_MASK(PREG_GGPIO_O, (1<<19));	
+	
+	/* UART RTS */
+	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<16));
+    CLEAR_CBUS_REG_MASK(PREG_GGPIO_O, (1<<16));
+		
+	/* BG wakeup high 
+	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<14));
+	SET_CBUS_REG_MASK(PREG_GGPIO_O, (1<<14));*/
+}
+#endif
+
 static struct platform_device __initdata *platform_devs[] = {
     #if defined(CONFIG_JPEGLOGO)
         &jpeglogo_device,
@@ -1662,8 +1748,11 @@ static struct platform_device __initdata *platform_devs[] = {
     #if defined(CONFIG_AML_RTC)
         &aml_rtc_device,
     #endif
-    #if defined(CONFIG_SUSPEND)
-        &aml_pm_device,
+    #ifdef CONFIG_CAMERA_GC0308
+        &camera_device,
+    #endif
+	#if defined(CONFIG_SUSPEND)
+		&aml_pm_device,
     #endif
     #if defined(CONFIG_ANDROID_PMEM)
         &android_pmem_device,
@@ -1689,6 +1778,9 @@ static struct platform_device __initdata *platform_devs[] = {
             &usb_mass_storage_device,
         #endif
     #endif
+    #ifdef CONFIG_BCM_BT  
+        &bcm_bt_device,
+    #endif    	
 };
 static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
 
@@ -1732,7 +1824,12 @@ static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
         .platform_data = (void *)&ts_pdata,
     },
 #endif
-
+#ifdef CONFIG_CAMERA_GC0308
+	{
+	    /*gc0307r i2c address if 0x60*/
+		I2C_BOARD_INFO("gc0307r_i2c",  0x78 >> 1),
+	},
+#endif
 };
 
 
@@ -1781,7 +1878,9 @@ static void __init device_pinmux_init(void )
     aml_i2c_init();
     set_audio_pinmux(AUDIO_OUT_TEST_N);
     set_audio_pinmux(AUDIO_IN_JTAG);
-	
+ #ifdef CONFIG_BCM_BT
+    hci_uart_pin_init();
+#endif
 }
 
 static void __init  device_clk_setting(void)
@@ -1829,10 +1928,10 @@ static __init void m1_init_machine(void)
 {
     meson_cache_init();
 
-    power_hold();
-    device_clk_setting();
-    device_pinmux_init();
-    platform_add_devices(platform_devs, ARRAY_SIZE(platform_devs));
+	power_hold();
+	device_clk_setting();
+	device_pinmux_init();
+	platform_add_devices(platform_devs, ARRAY_SIZE(platform_devs));
 
 #ifdef CONFIG_USB_DWC_OTG_HCD
     set_usb_phy_clk(USB_PHY_CLOCK_SEL_XTAL_DIV2);

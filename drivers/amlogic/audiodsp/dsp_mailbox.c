@@ -7,6 +7,7 @@
 #include <linux/interrupt.h>
 #include <linux/mutex.h>
 #include <linux/device.h>
+#include <linux/workqueue.h>
 
 #include <linux/timer.h>
 
@@ -17,32 +18,39 @@
 #include "dsp_mailbox.h"
 #include "dsp_codec.h"
 
+static void audiodsp_mailbox_work_queue(struct work_struct*);
+static struct audiodsp_work_t{
+char* buf;
+struct work_struct audiodsp_workqueue;
+}audiodsp_work;
+
 int dsp_mailbox_send(struct audiodsp_priv *priv,int overwrite,int num,int cmd,const char *data,int len)
 {
 	unsigned long flags;
 	int res=-1;
 	struct mail_msg *m;
-    dma_addr_t buf_map;
+    	dma_addr_t buf_map;
 
 	m=&priv->mailbox_reg2[num];
 
 	local_irq_save(flags);
 	if(overwrite || m->status==0)
+	{
+		
+		m->cmd=cmd;
+		m->data=(char *)ARM_2_ARC_ADDR_SWAP((unsigned)data);
+		m->len=len;
+		m->status=1;
+		after_change_mailbox(m);
+		if(data!=NULL && len >0)
 		{
-			
-			m->cmd=cmd;
-			m->data=(char *)ARM_2_ARC_ADDR_SWAP((unsigned)data);
-			m->len=len;
-			m->status=1;
-			after_change_mailbox(m);
-			if(data!=NULL && len >0){
-                buf_map = dma_map_single(NULL, (void *)data, len, DMA_FROM_DEVICE);
-                dma_unmap_single(NULL, buf_map, len, DMA_FROM_DEVICE);
-            }
-			MAIBOX2_IRQ_ENABLE(num);
-			DSP_TRIGGER_IRQ(num);
-			res=0;
-		}
+			buf_map = dma_map_single(NULL, (void *)data, len, DMA_FROM_DEVICE);
+			dma_unmap_single(NULL, buf_map, len, DMA_FROM_DEVICE);
+    	}
+		MAIBOX2_IRQ_ENABLE(num);
+		DSP_TRIGGER_IRQ(num);
+		res=0;
+	}
 	local_irq_restore(flags);
 	return res;
 }
@@ -70,9 +78,6 @@ int get_mailbox_data(struct audiodsp_priv *priv,int num,struct mail_msg *msg)
 	return 0;
 }
 
-
-
-
 static irqreturn_t audiodsp_mailbox_irq(int irq, void *data)
 {
 	struct audiodsp_priv *priv=(struct audiodsp_priv *)data;
@@ -87,7 +92,9 @@ static irqreturn_t audiodsp_mailbox_irq(int irq, void *data)
 		get_mailbox_data(priv,M1B_IRQ0_PRINT,&msg);
 		SYS_CLEAR_IRQ(M1B_IRQ0_PRINT);
 	//	inv_dcache_range((unsigned  long )msg.data,(unsigned long)msg.data+msg.len);
-		printk(KERN_INFO "%s",msg.data);
+	
+	    audiodsp_work.buf = msg.data;
+        schedule_work(&audiodsp_work.audiodsp_workqueue);		
 		}
 	if(status&(1<<M1B_IRQ1_BUF_OVERFLOW))
 		{
@@ -170,12 +177,16 @@ static irqreturn_t audiodsp_mailbox_irq(int irq, void *data)
             DSP_WD((0x84100000-512*1024+20*20),DSP_STATUS_HALT);
         //    DSP_PRNT("A9 mail box handle finished\n");
            // dsp_mailbox_send(priv, 1, M1B_IRQ5_STREAM_RD_WD_TEST, 0, NULL,0);
-            
-            
-    		
+
         }
 
 	return 0;
+}
+static void audiodsp_mailbox_work_queue(struct work_struct*work)
+{
+    struct audiodsp_work_t* pwork = container_of(work,struct audiodsp_work_t, audiodsp_workqueue);
+    char* message = pwork->buf;
+    printk(KERN_INFO "%s",message);
 }
 
 int audiodsp_init_mailbox(struct audiodsp_priv *priv)
@@ -185,6 +196,9 @@ int audiodsp_init_mailbox(struct audiodsp_priv *priv)
 	//WRITE_MPEG_REG(ASSIST_MBOX0_MASK, 0xffffffff);
 	priv->mailbox_reg=(struct mail_msg *)MAILBOX1_REG(0);
 	priv->mailbox_reg2=(struct mail_msg *)MAILBOX2_REG(0);
+	
+	INIT_WORK(&audiodsp_work.audiodsp_workqueue, audiodsp_mailbox_work_queue);
+	
 	return 0;
 }
 int audiodsp_release_mailbox(struct audiodsp_priv *priv)

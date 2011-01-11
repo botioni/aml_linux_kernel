@@ -146,9 +146,47 @@ static struct platform_device saradc_device = {
 #ifdef CONFIG_ADC_TOUCHSCREEN_AM
 #include <linux/adc_ts.h>
 
+#define XLCD    800
+#define YLCD    600
+#define SWAP_XY 0
+#define XPOL    0
+#define YPOL    0
+#define XMIN 30
+#define XMAX 980
+#define YMIN 70
+#define YMAX 980
+
+int adcts_convert(int x, int y)
+{
+#if (SWAP_XY == 1)
+    swap(x, y);
+#endif
+    if (x < XMIN) x = XMIN;
+    if (x > XMAX) x = XMAX;
+    if (y < YMIN) y = YMIN;
+    if (y > YMAX) y = YMAX;
+#if (XPOL == 1)
+    x = XMAX + XMIN - x;
+#endif
+#if (YPOL == 1)
+    y = YMAX + YMIN - y;
+#endif
+    x = (x- XMIN) * XLCD / (XMAX - XMIN);
+    y = (y- YMIN) * YLCD / (YMAX - YMIN);
+
+    return (x << 16) | y;
+}
+
 static struct adc_ts_platform_data adc_ts_pdata = {
     .irq = -1,  //INT_SAR_ADC
     .x_plate_ohms = 400,
+    .poll_delay = 1,
+    .poll_period = 5,
+    .abs_xmin = 0,
+    .abs_xmax = XLCD,
+    .abs_ymin = 0,
+    .abs_ymax = YLCD,    
+    .convert = adcts_convert,
 };
 
 static struct platform_device adc_ts_device = {
