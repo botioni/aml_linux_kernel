@@ -71,7 +71,7 @@ static struct tty_driver *am_uart_driver;
 char * fiq_buf=NULL;
 int fiq_read,fiq_write,fiq_cnt;
 #endif
-//#define PRINT_DEBUG
+#define PRINT_DEBUG
 
 #define MAX_NAMED_UART 4
 
@@ -284,8 +284,10 @@ void am_uart_fiq_interrupt(void)
 {
     am_uart_t *uart = uart_addr[1];
     char ch;
+    int cnt;
 
-    while (__raw_readl(&uart->status) & 0x3f){
+    cnt = __raw_readl(&uart->status) & 0x3f;
+    while (cnt--){
        	ch = __raw_readl(&uart->rdata) & 0xff;
 
         fiq_buf[fiq_write]=ch;
