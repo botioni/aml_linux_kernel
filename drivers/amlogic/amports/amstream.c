@@ -817,12 +817,15 @@ static ssize_t amstream_sub_read(struct file *file, char __user *buf, size_t cou
 		}
 		else
 		{
-	        res = copy_to_user((void *)buf, (void *)(phys_to_virt(sub_rp)), first_num);
-            if (res > 0)
-            {
-                stbuf_sub_rp_set(sub_rp + first_num - res); 
-                return data_size-res;
-            }
+			if(first_num>0)
+			{
+		        res = copy_to_user((void *)buf, (void *)(phys_to_virt(sub_rp)), first_num);
+	            if ( res>=0 )
+	            {
+	                stbuf_sub_rp_set(sub_rp + first_num - res); 
+	            }
+				return first_num-res;
+        	}
 			
 			
 
@@ -832,7 +835,7 @@ static ssize_t amstream_sub_read(struct file *file, char __user *buf, size_t cou
 	        {
 	            stbuf_sub_rp_set(sub_start + data_size - first_num - res);
 	        }
-	        return data_size-res;			
+	        return data_size - first_num - res;			
 		}
     }
     else
