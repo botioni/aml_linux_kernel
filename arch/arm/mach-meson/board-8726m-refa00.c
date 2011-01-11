@@ -37,7 +37,6 @@
 #include <linux/i2c.h>
 #include <linux/i2c-aml.h>
 #include <mach/power_gate.h>
-#include <linux/aml_bl.h>
 #include <linux/reboot.h>
 
 #ifdef CONFIG_AM_UART_WITH_S_CORE 
@@ -1249,6 +1248,8 @@ static struct platform_device aml_nand_device = {
 #endif  //CONFIG_NAND_FLASH_DRIVER_MULTIPLANE_CE
 
 #if defined(CONFIG_AMLOGIC_BACKLIGHT)
+#include <linux/aml_bl.h>
+
 #define PWM_TCNT        (600-1)
 #define PWM_MAX_VAL    (420)
 
@@ -1311,7 +1312,6 @@ static unsigned aml_8726m_get_bl_level(void)
 static void aml_8726m_set_bl_level(unsigned level)
 {
     unsigned cs_level,pwm_level,low,hi;
-    int i;
     
     bl_level = level;
         
@@ -1443,13 +1443,15 @@ static struct platform_device android_usb_device = {
 };
 #endif
 
-#ifdef CONFIG_BCM_BT
-static struct platform_device bcm_bt_device = {
-	.name             = "bcm-bt",
+#ifdef CONFIG_BT_DEVICE
+#include <linux/bt-device.h>
+
+static struct platform_device bt_device = {
+	.name             = "bt-dev",
 	.id               = -1,
 };
 
-static void hci_uart_pin_init()
+static void bt_device_init(void)
 {
     CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_12, (1<<29));
 	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_12, (1<<22));
@@ -1515,6 +1517,30 @@ static void hci_uart_pin_init()
 	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<14));
 	SET_CBUS_REG_MASK(PREG_GGPIO_O, (1<<14));*/
 }
+
+static void bt_device_on(void)
+{
+    /* reset */
+	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<12));
+	CLEAR_CBUS_REG_MASK(PREG_GGPIO_O, (1<<12));	
+	msleep(200);	
+	SET_CBUS_REG_MASK(PREG_GGPIO_O, (1<<12));	
+}
+
+static void bt_device_off(void)
+{
+    /* reset */
+	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<12));
+	CLEAR_CBUS_REG_MASK(PREG_GGPIO_O, (1<<12));	
+	msleep(200);	
+	//CLEAR_CBUS_REG_MASK(PREG_GGPIO_O, (1<<12));	
+}
+
+struct bt_dev_data bt_dev = {
+    .bt_dev_init    = bt_device_init,
+    .bt_dev_on      = bt_device_on,
+    .bt_dev_off     = bt_device_off,
+};
 #endif
 
 static struct platform_device __initdata *platform_devs[] = {
@@ -1598,8 +1624,8 @@ static struct platform_device __initdata *platform_devs[] = {
 		&usb_mass_storage_device,
       #endif
     #endif	
-    #ifdef CONFIG_BCM_BT  
-        &bcm_bt_device,
+    #ifdef CONFIG_BT_DEVICE  
+        &bt_device,
     #endif    	
 };
 static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
@@ -1677,10 +1703,7 @@ static void __init device_pinmux_init(void )
 	}
     //set clk for wifi
     SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, (1<<18));
-    CLEAR_CBUS_REG_MASK(PREG_EGPIO_EN_N, (1<<4));	
-#ifdef CONFIG_BCM_BT
-    hci_uart_pin_init();
-#endif
+    CLEAR_CBUS_REG_MASK(PREG_EGPIO_EN_N, (1<<4));
 }
 
 static void __init  device_clk_setting(void)

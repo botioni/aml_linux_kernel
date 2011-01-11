@@ -45,4 +45,3 @@ obj-$(CONFIG_MACH_MESON_8626M_SH)	+= board-8626m-sh.o
 
 # Power Management
 obj-$(CONFIG_SUSPEND)			+= pm.o
-obj-$(CONFIG_BCM_BT)	+= bcm-bt.o
