@@ -709,6 +709,11 @@ CONFIG_BCM4329_NVRAM_PATH="broadcm_4329/nvram.txt"
 # CONFIG_SDIO_ATHEROS_6K_WIFI is not set
 
 #
+#BT Device Support
+#
+CONFIG_BT_DEVICE=y
+
+#
 # Media devices
 #
 

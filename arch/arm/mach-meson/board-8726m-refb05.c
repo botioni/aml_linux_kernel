@@ -1705,13 +1705,15 @@ static struct platform_device android_usb_device = {
 };
 #endif
 
-#ifdef CONFIG_BCM_BT
-static struct platform_device bcm_bt_device = {
-	.name             = "bcm-bt",
+#ifdef CONFIG_BT_DEVICE
+#include <linux/bt-device.h>
+
+static struct platform_device bt_device = {
+	.name             = "bt-dev",
 	.id               = -1,
 };
 
-static void hci_uart_pin_init()
+static void bt_device_init(void)
 {
     CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_12, (1<<29));
 	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_12, (1<<22));
@@ -1777,6 +1779,29 @@ static void hci_uart_pin_init()
 	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<14));
 	SET_CBUS_REG_MASK(PREG_GGPIO_O, (1<<14));*/
 }
+static void bt_device_on(void)
+{
+    /* reset */
+	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<12));
+	CLEAR_CBUS_REG_MASK(PREG_GGPIO_O, (1<<12));	
+	msleep(200);	
+	SET_CBUS_REG_MASK(PREG_GGPIO_O, (1<<12));	
+}
+
+static void bt_device_off(void)
+{
+    /* reset */
+	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<12));
+	CLEAR_CBUS_REG_MASK(PREG_GGPIO_O, (1<<12));	
+	msleep(200);	
+	//CLEAR_CBUS_REG_MASK(PREG_GGPIO_O, (1<<12));	
+}
+
+struct bt_dev_data bt_dev = {
+    .bt_dev_init    = bt_device_init,
+    .bt_dev_on      = bt_device_on,
+    .bt_dev_off     = bt_device_off,
+};
 #endif
 
 static struct platform_device __initdata *platform_devs[] = {
@@ -1870,8 +1895,8 @@ static struct platform_device __initdata *platform_devs[] = {
 	#ifdef CONFIG_SMBA10XX_BATTERY
 		&smba10xx_battery_device,
 	#endif
-    #ifdef CONFIG_BCM_BT  
-        &bcm_bt_device,
+    #ifdef CONFIG_BT_DEVICE  
+        &bt_device,
     #endif    	
 };
 static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
@@ -2039,9 +2064,6 @@ static void __init device_pinmux_init(void )
     //set clk for wifi
    // SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, (1<<18));
    // CLEAR_CBUS_REG_MASK(PREG_EGPIO_EN_N, (1<<4));	
-#ifdef CONFIG_BCM_BT
-    hci_uart_pin_init();
-#endif
 }
 
 static void __init  device_clk_setting(void)
