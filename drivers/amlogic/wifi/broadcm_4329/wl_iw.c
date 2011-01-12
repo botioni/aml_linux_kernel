@@ -6396,7 +6396,7 @@ static int wl_iw_set_priv(
 				kfree(extra);
 				return -EFAULT;
 			} else {
-				//wl_iw_control_wl_on(dev, info);
+				wl_iw_control_wl_on(dev, info);
 				WL_TRACE(("%s, Received regular START command\n", __FUNCTION__));
 				printk("\n####### %s, Received regular START command #######\n", __FUNCTION__);
 			}
