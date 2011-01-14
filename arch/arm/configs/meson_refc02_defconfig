@@ -1,7 +1,7 @@
 #
 # Automatically generated make config: don't edit
 # Linux kernel version: 2.6.34
-# Wed Jan  5 19:12:58 2011
+# Fri Jan 14 12:57:17 2011
 #
 CONFIG_ARM=y
 CONFIG_HOLES_IN_ZONE=y
@@ -568,8 +568,8 @@ CONFIG_EFUSE=m
 # Amlogic USB Support
 #
 CONFIG_USB_DWC_OTG_HCD=y
-# CONFIG_USB_HOST_ELECT_TEST is not set
-CONFIG_DWC_USB_NO_SOF=y
+CONFIG_USB_HOST_ELECT_TEST=y
+# CONFIG_DWC_USB_NO_SOF is not set
 # CONFIG_DWC_USB_NAK_IN_TIMER is not set
 
 #
@@ -613,7 +613,12 @@ CONFIG_AM_ETHERNET_DEBUG_LEVEL=1
 # Amlogic WIFI Support
 #
 # CONFIG_SDIO_DHD_CDC_WIFI is not set
-# CONFIG_SDIO_ATHEROS_6K_WIFI is not set
+# CONFIG_SDIO_ATHEROS_6302_WIFI is not set
+# CONFIG_SDIO_ATHEROS_6102_WIFI is not set
+
+#
+# Amlogic BT Device Support
+#
 
 #
 # Media devices
@@ -731,6 +736,11 @@ CONFIG_MALI=m
 # CONFIG_CAMERA_OV2665 is not set
 # CONFIG_CAMERA_OV5640 is not set
 # CONFIG_CAMERA_GC0308 is not set
+
+#
+# Amlogic Linux Debug Support
+#
+CONFIG_AML_LINUX_DEBUG=y
 CONFIG_CONNECTOR=y
 CONFIG_PROC_EVENTS=y
 CONFIG_MTD=y
@@ -1290,7 +1300,7 @@ CONFIG_SND_SOC_I2C_AND_SPI=y
 # CONFIG_SOUND_PRIME is not set
 CONFIG_HID_SUPPORT=y
 CONFIG_HID=y
-# CONFIG_HIDRAW is not set
+CONFIG_HIDRAW=y
 
 #
 # USB Input Devices
