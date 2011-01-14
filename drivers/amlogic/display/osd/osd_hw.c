@@ -908,6 +908,8 @@ void  osd_suspend_hw(void)
 #ifndef FIQ_VSYNC
 	//free irq ,we can not disable it ,maybe video still use it .
 	free_irq(INT_VIU_VSYNC,(void *)osd_setup);
+#else
+    free_irq(BRIDGE_IRQ,(void *)osd_setup);
 #endif
 	//save all status
 	osd_hw.reg_status=(u32*)kmalloc(sizeof(u32)*RESTORE_MEMORY_SIZE,GFP_KERNEL);
@@ -959,6 +961,7 @@ void osd_resume_hw(void)
 	u32 i,j;
 	u32  *preg;
 
+    printk("osd_resume\n");
 	// enable osd relative clock	
 	//restore status
 	if(osd_hw.reg_status)

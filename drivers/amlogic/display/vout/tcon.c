@@ -32,6 +32,9 @@
 #include <linux/interrupt.h>
 
 #include <mach/am_regs.h>
+#include <asm/fiq.h>
+
+#define FIQ_VSYNC
 
 #define BL_MAX_LEVEL 0x100
 #define PANEL_NAME	"panel"
@@ -187,7 +190,7 @@ static inline void _enable_vsync_interrupt(void)
 {
     if (READ_MPEG_REG(ENCP_VIDEO_EN) & 1) {
         WRITE_MPEG_REG(VENC_INTCTRL, 0x200);
-
+#if 0
         while ((READ_MPEG_REG(VENC_INTFLAG) & 0x200) == 0) {
             u32 line1, line2;
 
@@ -220,6 +223,7 @@ static inline void _enable_vsync_interrupt(void)
             READ_MPEG_REG(VENC_INTFLAG);
             READ_MPEG_REG(VENC_INTFLAG);
         }
+#endif
     }
     else{
         WRITE_MPEG_REG(VENC_INTCTRL, 0x2);
@@ -288,13 +292,25 @@ static int lcd_suspend(void)
     printk("lcd_suspend \n");
     _disable_backlight();
 	pDev->conf.power_off?pDev->conf.power_off():0;
-	disable_irq(INT_VIU_VSYNC);
+
+#ifdef FIQ_VSYNC
+	disable_fiq(INT_VIU_VSYNC);
+#else
+    disable_irq(INT_VIU_VSYNC);
+#endif
+
 	return 0;
 }
 static int lcd_resume(void)
 {
 	printk("lcd_resume\n");
+
+#ifdef FIQ_VSYNC
+	enable_fiq(INT_VIU_VSYNC);
+#else
 	enable_irq(INT_VIU_VSYNC);
+#endif
+
 	_lcd_module_enable();
     _enable_backlight(BL_MAX_LEVEL);
 	return 0;
