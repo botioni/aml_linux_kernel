@@ -22,7 +22,7 @@
 #include "aml_pcm.h"
 #include "../codecs/wm8900.h"
 
-#define HP_DET	1
+#define HP_DET	0//1
 
 #if HP_DET
 static struct timer_list timer;

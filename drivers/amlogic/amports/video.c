@@ -1685,7 +1685,9 @@ static void set_video_window(const char *para)
         w = parsed[2] - parsed[0] + 1;
         h = parsed[3] - parsed[1] + 1;
 
-        if ((w > 0) && (h > 0))
+	if ((w == 1) && (h == 1))
+	    vpp_set_video_layer_position(parsed[0], parsed[1], 0, 0);
+        else if ((w > 0) && (h > 0))
             vpp_set_video_layer_position(parsed[0], parsed[1], w, h);
 	     video_property_changed=true;	 
 	     
