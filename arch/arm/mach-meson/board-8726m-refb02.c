@@ -972,7 +972,7 @@ static int is_ac_connected(void)
 static void set_charge(int flags)
 {
     //GPIOD_22 low: fast charge high: slow charge
-    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_7, (1<<18));
+   // CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_7, (1<<18));
     if(flags == 1)
         set_gpio_val(GPIOD_bank_bit2_24(22), GPIOD_bit_bit2_24(22), 0); //fast charge
     else
@@ -1527,6 +1527,108 @@ static struct platform_device android_usb_device = {
 };
 #endif
 
+#ifdef CONFIG_BT_DEVICE
+#include <linux/bt-device.h>
+
+static struct platform_device bt_device = {
+	.name             = "bt-dev",
+	.id               = -1,
+};
+
+static void bt_device_init(void)
+{
+    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_12, (1<<29));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_12, (1<<22));
+	
+	//CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_7, (1<<19));
+	
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_5, (1<<20));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_5, (1<<17));
+	
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_5, (1<<14));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0, (1<<12));
+	
+	
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_5, (1<<4));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_7, (1<<13));
+	
+	
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_7, (1<<12));
+	
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, (1<<21));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, (1<<28));
+	
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_12, (1<<23));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_7, (1<<14));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_5, (1<<17));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0, (1<<12));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_5, (1<<5));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, (1<<27));
+	
+	
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_12, (1<<27));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_5, (1<<18));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0, (1<<12));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_5, (1<<9));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, (1<<23));
+	
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_12, (1<<26));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_7, (1<<17));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_5, (1<<17));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0, (1<<12));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_5, (1<<8));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, (1<<24));
+	
+	/* WLBT_REGON */
+//	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<18));
+//	SET_CBUS_REG_MASK(PREG_GGPIO_O, (1<<18));
+	    configIO(0, 0);
+        setIO_level(0, 1, 5);	
+	
+	/* reset */
+	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<12));
+	CLEAR_CBUS_REG_MASK(PREG_GGPIO_O, (1<<12));	
+	msleep(200);	
+	SET_CBUS_REG_MASK(PREG_GGPIO_O, (1<<12));	
+	
+	/* BG/GPS low */
+	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<19));
+	CLEAR_CBUS_REG_MASK(PREG_GGPIO_O, (1<<19));	
+	
+	/* UART RTS */
+	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<16));
+    CLEAR_CBUS_REG_MASK(PREG_GGPIO_O, (1<<16));
+		
+	/* BG wakeup high 
+	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<14));
+	SET_CBUS_REG_MASK(PREG_GGPIO_O, (1<<14));*/
+}
+
+static void bt_device_on(void)
+{
+    /* reset */
+	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<12));
+	CLEAR_CBUS_REG_MASK(PREG_GGPIO_O, (1<<12));	
+	msleep(200);	
+	SET_CBUS_REG_MASK(PREG_GGPIO_O, (1<<12));	
+}
+
+static void bt_device_off(void)
+{
+    /* reset */
+	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<12));
+	CLEAR_CBUS_REG_MASK(PREG_GGPIO_O, (1<<12));	
+	msleep(200);	
+	//CLEAR_CBUS_REG_MASK(PREG_GGPIO_O, (1<<12));	
+}
+
+struct bt_dev_data bt_dev = {
+    .bt_dev_init    = bt_device_init,
+    .bt_dev_on      = bt_device_on,
+    .bt_dev_off     = bt_device_off,
+};
+#endif
+
 static struct platform_device __initdata *platform_devs[] = {
     #if defined(CONFIG_JPEGLOGO)
         &jpeglogo_device,
@@ -1608,6 +1710,9 @@ static struct platform_device __initdata *platform_devs[] = {
             &usb_mass_storage_device,
         #endif
     #endif
+    #ifdef CONFIG_BT_DEVICE  
+        &bt_device,
+    #endif    	
 };
 static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
 
