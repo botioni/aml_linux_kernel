@@ -71,7 +71,7 @@ static struct tty_driver *am_uart_driver;
 char * fiq_buf=NULL;
 int fiq_read,fiq_write,fiq_cnt;
 #endif
-#define PRINT_DEBUG
+//#define PRINT_DEBUG
 
 #define MAX_NAMED_UART 4
 
