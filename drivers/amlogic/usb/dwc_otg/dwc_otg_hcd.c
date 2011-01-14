@@ -1116,24 +1116,53 @@ int dwc_otg_hcd_urb_dequeue(struct usb_hcd *_hcd, struct urb *_urb)
 	dwc_otg_qh_t *qh;
 	struct usb_host_endpoint *_ep = dwc_urb_to_endpoint(_urb);
 
+	DWC_DEBUGPL(DBG_HCD, "DWC OTG HCD URB Dequeue\n");
+	
 	if(!_ep)
-	{/*why it NULL?*/
+	{
+		DWC_PRINT("urb(%p) ->ep is NULL!\n",_urb);
 		return 0;
 	}
-	DWC_DEBUGPL(DBG_HCD, "DWC OTG HCD URB Dequeue\n");
-
+	
 	local_irq_save(flags);
 
 	dwc_otg_hcd = hcd_to_dwc_otg_hcd(_hcd);
 	urb_qtd = (dwc_otg_qtd_t *) _urb->hcpriv;
 	qh = (dwc_otg_qh_t *) _ep->hcpriv;
 
-	if(!urb_qtd && !qh->qtd_in_process)
+	if(urb_qtd && qh)
 	{
-		DWC_PRINT("urb already finished!\n");
+		if (urb_qtd == qh->qtd_in_process) {
+		/* The QTD is in process (it has been assigned to a channel). */
+
+			if (dwc_otg_hcd->flags.b.port_connect_status) {
+			/*
+			 * If still connected (i.e. in host mode), halt the
+			 * channel so it can be used for other transfers. If
+			 * no longer connected, the host registers can't be
+			 * written to halt the channel since the core is in
+			 * device mode.
+			 */
+				dwc_otg_hc_halt(dwc_otg_hcd->core_if, qh->channel,
+					DWC_OTG_HC_XFER_URB_DEQUEUE);
+			}
+		}
+		dwc_otg_hcd_qtd_remove_and_free(urb_qtd);
+		if (urb_qtd == qh->qtd_in_process) {
+			dwc_otg_hcd_qh_deactivate(dwc_otg_hcd, qh, 0);
+			qh->channel = NULL;
+			qh->qtd_in_process = NULL;
+		}	
+		else if (list_empty(&qh->qtd_list)) {
+			dwc_otg_hcd_qh_remove(dwc_otg_hcd, qh);
+		}		
+	}
+	else if(!urb_qtd){
+		DWC_PRINT("urb(%p) not been submitted to hcd!\n",_urb);
 		local_irq_restore(flags);
 		return 0;
 	}
+
 
 #ifdef DEBUG
 	if (CHK_DEBUG_LEVEL(DBG_HCDV | DBG_HCD_URB)) {
@@ -1144,42 +1173,13 @@ int dwc_otg_hcd_urb_dequeue(struct usb_hcd *_hcd, struct urb *_urb)
 	}
 #endif
 
-	if (urb_qtd == qh->qtd_in_process) {
-		/* The QTD is in process (it has been assigned to a channel). */
-
-		if (dwc_otg_hcd->flags.b.port_connect_status) {
-			/*
-			 * If still connected (i.e. in host mode), halt the
-			 * channel so it can be used for other transfers. If
-			 * no longer connected, the host registers can't be
-			 * written to halt the channel since the core is in
-			 * device mode.
-			 */
-			dwc_otg_hc_halt(dwc_otg_hcd->core_if, qh->channel,
-					DWC_OTG_HC_XFER_URB_DEQUEUE);
-		}
-	}
-
-	/*
-	 * Free the QTD and clean up the associated QH. Leave the QH in the
-	 * schedule if it has any remaining QTDs.
-	 */
-	dwc_otg_hcd_qtd_remove_and_free(urb_qtd);
-	if (urb_qtd == qh->qtd_in_process) {
-		dwc_otg_hcd_qh_deactivate(dwc_otg_hcd, qh, 0);
-		qh->channel = NULL;
-		qh->qtd_in_process = NULL;
-	} else if (list_empty(&qh->qtd_list)) {
-		dwc_otg_hcd_qh_remove(dwc_otg_hcd, qh);
-	}
-
 	local_irq_restore(flags);
 
 	_urb->hcpriv = NULL;
 
 	/* Higher layer software sets URB status. */
 	usb_hcd_giveback_urb(_hcd, _urb, status);
-	//(_hcd, _urb);
+
 	if (CHK_DEBUG_LEVEL(DBG_HCDV | DBG_HCD_URB)) {
 		DWC_PRINT("Called usb_hcd_giveback_urb()\n");
 		DWC_PRINT("  urb->status = %d\n", _urb->status);
