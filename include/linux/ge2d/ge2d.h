@@ -452,7 +452,7 @@ typedef struct {
     unsigned char    hsc_rpt_p0_num;
     int              hsc_ini_phase;
     unsigned char    hsc_div_en; 
-    unsigned char    hsc_div_length;
+    unsigned int    hsc_div_length;
     int              hsc_adv_num;
     int              hsc_adv_phase;
 
