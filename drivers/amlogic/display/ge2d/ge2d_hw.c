@@ -582,6 +582,7 @@ void ge2d_set_cmd (ge2d_cmd_t *cfg)
     unsigned x_chr_phase = 0, y_chr_phase = 0;
     unsigned x_yc_ratio, y_yc_ratio;
     int sc_prehsc_en, sc_prevsc_en;
+    unsigned int src1_y_end=cfg->src1_y_end+1; //expand src region with one line. 	
     
     while ((READ_MPEG_REG(GE2D_STATUS0) & (1 << 1))) {}
     
@@ -618,12 +619,12 @@ void ge2d_set_cmd (ge2d_cmd_t *cfg)
                          (x_extra_bit_end << 14) |    //x end extra
                          ((cfg->src1_x_end & 0x3fff) << 0) // Limit the range in case of the sign bit extending to the top
                          ); 
- 
+
     WRITE_MPEG_REG(GE2D_SRC1_Y_START_END, 
                          (y_extra_bit_start << 30) |  //y start extra
                          ((cfg->src1_y_start & 0x3fff) << 16) | // Limit the range in case of the sign bit extending to the top
                          (y_extra_bit_end << 14) |    //y end extra
-                         ((cfg->src1_y_end & 0x3fff) << 0) // Limit the range in case of the sign bit extending to the top
+                         ((src1_y_end & 0x3fff) << 0) // Limit the range in case of the sign bit extending to the top
                          ); 
  
     WRITE_MPEG_REG_BITS (GE2D_SRC1_FMT_CTRL, x_chr_phase, 8, 8); 
