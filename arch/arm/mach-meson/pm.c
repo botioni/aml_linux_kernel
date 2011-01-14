@@ -329,6 +329,7 @@ void clk_switch(int flag)
                 }
                 else if (clks[i] == HHI_MPEG_CLK_CNTL){
                     udelay(1000);
+                    SET_CBUS_REG_MASK(HHI_A9_CLK_CNTL, (1<<7));
                     SET_CBUS_REG_MASK(clks[i], (1<<8)); // normal
 
                     CLEAR_CBUS_REG_MASK(UART0_CONTROL, (1 << 19) | 0xFFF);
@@ -358,6 +359,7 @@ void clk_switch(int flag)
                     
                     udelay(1000);
                     CLEAR_CBUS_REG_MASK(clks[i], (1<<8)); // 24M
+                    CLEAR_CBUS_REG_MASK(HHI_A9_CLK_CNTL, (1<<7));
                     
                     CLEAR_CBUS_REG_MASK(UART0_CONTROL, (1 << 19) | 0xFFF);
                     SET_CBUS_REG_MASK(UART0_CONTROL, (((xtal_uart_rate_backup / (115200 * 4)) - 1) & 0xfff));
@@ -390,6 +392,7 @@ void early_clk_switch(int flag)
                 }
                 else if (early_clks[i] == HHI_MPEG_CLK_CNTL){
                     udelay(1000);
+                    SET_CBUS_REG_MASK(HHI_A9_CLK_CNTL, (1<<7));
                     SET_CBUS_REG_MASK(early_clks[i], (1<<8)); // clk81 back to normal
                     
                     CLEAR_CBUS_REG_MASK(UART0_CONTROL, (1 << 19) | 0xFFF);
@@ -426,6 +429,7 @@ void early_clk_switch(int flag)
                     
                     udelay(1000);
                     CLEAR_CBUS_REG_MASK(early_clks[i], (1<<8)); // 24M
+                    CLEAR_CBUS_REG_MASK(HHI_A9_CLK_CNTL, (1<<7));
                     
                     CLEAR_CBUS_REG_MASK(UART0_CONTROL, (1 << 19) | 0xFFF);
                     SET_CBUS_REG_MASK(UART0_CONTROL, (((xtal_uart_rate_backup / (115200 * 4)) - 1) & 0xfff));
