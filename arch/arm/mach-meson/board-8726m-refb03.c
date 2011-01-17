@@ -895,10 +895,9 @@ static void set_vccx2(int power_on)
     }
 }
 static struct meson_pm_config aml_pm_pdata = {
-    .ddr2_reg_refresh = IO_APB_BUS_BASE+0x0004,
-    .ddr2_reg_phy = IO_APB_BUS_BASE+0x1380,
-    .ddr_pll_ctrl = CBUS_REG_ADDR(HHI_DDR_PLL_CNTL),
-    .clock_gate = CBUS_REG_ADDR(HHI_GCLK_MPEG0),
+    .pctl_reg_base = IO_APB_BUS_BASE,
+    .mmc_reg_base = APB_REG_ADDR(0x1000),
+    .hiu_reg_base = CBUS_REG_ADDR(0x1000),
     .power_key = CBUS_REG_ADDR(RTC_ADDR1),
     .ddr_clk = 0x00110820,
     .sleepcount = 128,
