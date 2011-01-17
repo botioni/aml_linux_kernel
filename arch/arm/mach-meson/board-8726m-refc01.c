@@ -896,7 +896,7 @@ static struct mtd_partition partition_info[] =
 //	//	.dual_partnum=1,
 //	}
 };
-
+#ifdef CONFIG_REFC01_2K_PAGE
 static struct aml_m1_nand_platform aml_2kpage128kblocknand_platform = {
 	.page_size = 2048,
 	.spare_size=64,
@@ -909,7 +909,8 @@ static struct aml_m1_nand_platform aml_2kpage128kblocknand_platform = {
 	.partitions = partition_info,
 	.nr_partitions = ARRAY_SIZE(partition_info),
 };
-
+#endif
+#ifdef CONFIG_REFC01_4K_PAGE
 static struct aml_m1_nand_platform aml_4kpage128kblocknand_platform = {
 	.page_size = 4096,
 	.spare_size=128,
@@ -922,6 +923,7 @@ static struct aml_m1_nand_platform aml_4kpage128kblocknand_platform = {
 	.partitions = partition_info,
 	.nr_partitions = ARRAY_SIZE(partition_info),
 };
+#endif
 /*
 static struct aml_m1_nand_platform aml_Micron4GBABAnand_platform = 
 {
@@ -951,8 +953,12 @@ static struct platform_device aml_nand_device = {
 	.num_resources = ARRAY_SIZE(aml_nand_resources),
 	.resource = aml_nand_resources,
 	.dev = {
+#ifdef CONFIG_REFC01_2K_PAGE
 		.platform_data = &aml_2kpage128kblocknand_platform,
-//		.platform_data = &aml_4kpage128kblocknand_platform,
+#endif
+#ifdef CONFIG_REFC01_4K_PAGE
+		.platform_data = &aml_4kpage128kblocknand_platform,
+#endif
 	},
 };
 #endif
