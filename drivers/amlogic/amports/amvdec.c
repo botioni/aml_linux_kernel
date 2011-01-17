@@ -42,11 +42,15 @@
 
 #define MC_SIZE (4096 * 4)
 
+#ifdef CONFIG_WAKELOCK
 static struct wake_lock amvdec_lock;
 static int amvdec_lock_init_flag = 0;
+#endif
 
 static void amvdec_pg_enable(bool enable)
 {
+    ulong timeout = jiffies + HZ;
+
     if (enable) {
         CLK_GATE_ON(MDEC_CLK_PIC_DC);
         CLK_GATE_ON(MDEC_CLK_DBLK);
@@ -57,6 +61,15 @@ static void amvdec_pg_enable(bool enable)
     }
     else {
         CLK_GATE_OFF(AMRISC);
+
+        while (READ_MPEG_REG(MDEC_PIC_DC_STATUS) != 0) {
+            if (time_after(jiffies, timeout)) {
+                WRITE_MPEG_REG_BITS(MDEC_PIC_DC_CTRL, 1, 0, 1);
+                WRITE_MPEG_REG_BITS(MDEC_PIC_DC_CTRL, 0, 0, 1);
+                break;
+            }
+        }
+
         CLK_GATE_OFF(MDEC_CLK_PIC_DC);
         CLK_GATE_OFF(MDEC_CLK_DBLK);
         CLK_GATE_OFF(MC_CLK);
@@ -138,7 +151,17 @@ void amvdec_start(void)
 
 void amvdec_stop(void)
 {
+    ulong timeout = jiffies + HZ;
+
     WRITE_MPEG_REG(MPSR, 0);
+    WRITE_MPEG_REG(CPSR, 0);
+
+    while (READ_MPEG_REG(IMEM_DMA_CTRL) & 0x8000) {
+        if (time_after(jiffies, timeout)) {
+            break;
+        }
+    }
+
     WRITE_MPEG_REG(RESET0_REGISTER, RESET_VCPU | RESET_CCPU);
 
     /* additional cbus dummy register reading for timing control */
