@@ -37,7 +37,6 @@
 #include <linux/i2c.h>
 #include <linux/i2c-aml.h>
 #include <mach/power_gate.h>
-#include <linux/aml_bl.h>
 #include <linux/reboot.h>
 
 #ifdef CONFIG_AM_UART_WITH_S_CORE 
@@ -374,8 +373,21 @@ static struct resource vdin_resources[] = {
         .end   = VDIN_ADDR_END,     //pbufAddr + size
         .flags = IORESOURCE_MEM,
     },
-
-
+    [1] = {
+        .start = VDIN_ADDR_START,
+        .end   = VDIN_ADDR_END,
+        .flags = IORESOURCE_MEM,
+    },
+    [2] = {
+        .start = INT_VDIN_VSYNC,
+        .end   = INT_VDIN_VSYNC,
+        .flags = IORESOURCE_IRQ,
+    },
+    [3] = {
+        .start = INT_VDIN_VSYNC,
+        .end   = INT_VDIN_VSYNC,
+        .flags = IORESOURCE_IRQ,
+    },
 };
 
 static struct platform_device vdin_device = {
@@ -384,8 +396,11 @@ static struct platform_device vdin_device = {
     .num_resources = ARRAY_SIZE(vdin_resources),
     .resource      = vdin_resources,
 };
+#endif
 
+#ifdef CONFIG_TVIN_BT656IN
 //add pin mux info for bt656 input
+#if 0
 static struct resource bt656in_resources[] = {
     [0] = {
         .start =  VDIN_ADDR_START,      //pbufAddr
@@ -411,12 +426,13 @@ static struct resource bt656in_resources[] = {
     },
 
 };
+#endif
 
 static struct platform_device bt656in_device = {
     .name       = "amvdec_656in",
     .id         = -1,
-    .num_resources = ARRAY_SIZE(bt656in_resources),
-    .resource      = bt656in_resources,
+//    .num_resources = ARRAY_SIZE(bt656in_resources),
+//    .resource      = bt656in_resources,
 };
 #endif
 
@@ -868,10 +884,9 @@ static void set_vccx2(int power_on)
     }
 }
 static struct meson_pm_config aml_pm_pdata = {
-    .ddr2_reg_refresh = IO_APB_BUS_BASE+0x0004,
-    .ddr2_reg_phy = IO_APB_BUS_BASE+0x1380,
-    .ddr_pll_ctrl = CBUS_REG_ADDR(HHI_DDR_PLL_CNTL),
-    .clock_gate = CBUS_REG_ADDR(HHI_GCLK_MPEG0),
+    .pctl_reg_base = IO_APB_BUS_BASE,
+    .mmc_reg_base = APB_REG_ADDR(0x1000),
+    .hiu_reg_base = CBUS_REG_ADDR(0x1000),
     .power_key = CBUS_REG_ADDR(RTC_ADDR1),
     .ddr_clk = 0x00110820,
     .sleepcount = 128,
@@ -1394,6 +1409,7 @@ static struct platform_device aml_nand_device = {
 #endif  //CONFIG_NAND_FLASH_DRIVER_MULTIPLANE_CE
 
 #if defined(CONFIG_AMLOGIC_BACKLIGHT)
+#include <linux/aml_bl.h>
 
 #define PWM_TCNT        (600-1)
 #define PWM_MAX_VAL    (420)
@@ -1449,14 +1465,8 @@ static void aml_8726m_bl_init(void)
     
 }
 static unsigned bl_level;
-static unsigned panel_state = 0;
 static unsigned aml_8726m_get_bl_level(void)
 {
-//    unsigned level = 0;
-//
-//    WRITE_CBUS_REG_BITS(VGHL_PWM_REG0, 1, 31, 1);
-//    WRITE_CBUS_REG_BITS(VGHL_PWM_REG4, 0, 30, 1);
-//    level = READ_CBUS_REG_BITS(VGHL_PWM_REG0, 0, 4);
     return bl_level;
 }
 #if 0
@@ -1487,7 +1497,6 @@ static void aml_8726m_set_bl_level(unsigned level)
 static void aml_8726m_set_bl_level(unsigned level)
 {
     unsigned cs_level,pwm_level,low,hi;
-    int i;
     
     bl_level = level;
         
@@ -1620,18 +1629,20 @@ static struct platform_device android_usb_device = {
 };
 #endif
 
-#ifdef CONFIG_BCM_BT
-static struct platform_device bcm_bt_device = {
-	.name             = "bcm-bt",
+#ifdef CONFIG_BT_DEVICE
+#include <linux/bt-device.h>
+
+static struct platform_device bt_device = {
+	.name             = "bt-dev",
 	.id               = -1,
 };
 
-static void hci_uart_pin_init()
+static void bt_device_init(void)
 {
     CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_12, (1<<29));
 	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_12, (1<<22));
 	
-	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_7, (1<<19));
+	//CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_7, (1<<19));
 	
 	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_5, (1<<20));
 	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_5, (1<<17));
@@ -1671,8 +1682,10 @@ static void hci_uart_pin_init()
 	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, (1<<24));
 	
 	/* WLBT_REGON */
-	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<18));
-	SET_CBUS_REG_MASK(PREG_GGPIO_O, (1<<18));	
+//	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<18));
+//	SET_CBUS_REG_MASK(PREG_GGPIO_O, (1<<18));
+	    configIO(0, 0);
+        setIO_level(0, 1, 5);	
 	
 	/* reset */
 	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<12));
@@ -1692,6 +1705,30 @@ static void hci_uart_pin_init()
 	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<14));
 	SET_CBUS_REG_MASK(PREG_GGPIO_O, (1<<14));*/
 }
+
+static void bt_device_on(void)
+{
+    /* reset */
+	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<12));
+	CLEAR_CBUS_REG_MASK(PREG_GGPIO_O, (1<<12));	
+	msleep(200);	
+	SET_CBUS_REG_MASK(PREG_GGPIO_O, (1<<12));	
+}
+
+static void bt_device_off(void)
+{
+    /* reset */
+	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<12));
+	CLEAR_CBUS_REG_MASK(PREG_GGPIO_O, (1<<12));	
+	msleep(200);	
+	//CLEAR_CBUS_REG_MASK(PREG_GGPIO_O, (1<<12));	
+}
+
+struct bt_dev_data bt_dev = {
+    .bt_dev_init    = bt_device_init,
+    .bt_dev_on      = bt_device_on,
+    .bt_dev_off     = bt_device_off,
+};
 #endif
 
 static struct platform_device __initdata *platform_devs[] = {
@@ -1712,6 +1749,8 @@ static struct platform_device __initdata *platform_devs[] = {
     #endif
     #if defined(CONFIG_TVIN_VDIN)
         &vdin_device,
+    #endif
+    #if defined(CONFIG_TVIN_BT656IN)
         &bt656in_device,
     #endif
     #if defined(CONFIG_AML_AUDIO_DSP)
@@ -1778,8 +1817,8 @@ static struct platform_device __initdata *platform_devs[] = {
             &usb_mass_storage_device,
         #endif
     #endif
-    #ifdef CONFIG_BCM_BT  
-        &bcm_bt_device,
+    #ifdef CONFIG_BT_DEVICE  
+        &bt_device,
     #endif    	
 };
 static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
@@ -1826,8 +1865,8 @@ static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
 #endif
 #ifdef CONFIG_CAMERA_GC0308
 	{
-	    /*gc0307r i2c address if 0x60*/
-		I2C_BOARD_INFO("gc0307r_i2c",  0x78 >> 1),
+        /*gc0309 i2c address is 0x42/0x43*/
+		I2C_BOARD_INFO("gc0307r_i2c",  0x42 >> 1),
 	},
 #endif
 };
@@ -1840,6 +1879,16 @@ static int __init aml_i2c_init(void)
         ARRAY_SIZE(aml_i2c_bus_info));
     return 0;
 }
+
+#if defined(CONFIG_TVIN_BT656IN)
+static void __init bt656in_pinmux_init(void)
+{
+    set_mio_mux(3, 0xf000);   //mask--mux gpio_c3 to bt656 clk;  mux gpioc[4:11] to be bt656 dt_in
+    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, 0x0f000000);
+    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_3, 0x01be07fc);
+    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_4, 0x0c000000);
+}
+#endif
 
 static void __init eth_pinmux_init(void)
 {
@@ -1864,6 +1913,17 @@ static void __init eth_pinmux_init(void)
     aml_i2c_init();
 }
 
+#ifdef CONFIG_CAMERA_GC0308
+static void __init camera_power_on_init(void)
+{
+    udelay(1000);
+    SET_CBUS_REG_MASK(HHI_DEMOD_PLL_CNTL,0x232);// 24M XTAL
+    SET_CBUS_REG_MASK(HHI_DEMOD_PLL_CNTL,0x232);// 24M XTAL
+
+    eth_set_pinmux(ETH_BANK0_GPIOC3_C12,ETH_CLK_OUT_GPIOC12_REG3_1, 1);		
+}
+#endif
+
 static void __init device_pinmux_init(void )
 {
     clearall_pinmux();
@@ -1876,11 +1936,11 @@ static void __init device_pinmux_init(void )
     /*pinmux of eth*/
     //eth_pinmux_init();
     aml_i2c_init();
+#if defined(CONFIG_TVIN_BT656IN)
+    bt656in_pinmux_init();
+#endif
     set_audio_pinmux(AUDIO_OUT_TEST_N);
     set_audio_pinmux(AUDIO_IN_JTAG);
- #ifdef CONFIG_BCM_BT
-    hci_uart_pin_init();
-#endif
 }
 
 static void __init  device_clk_setting(void)
@@ -1928,10 +1988,13 @@ static __init void m1_init_machine(void)
 {
     meson_cache_init();
 
-	power_hold();
-	device_clk_setting();
-	device_pinmux_init();
-	platform_add_devices(platform_devs, ARRAY_SIZE(platform_devs));
+    power_hold();
+    device_clk_setting();
+    device_pinmux_init();
+#ifdef CONFIG_CAMERA_GC0308
+    camera_power_on_init();
+#endif
+    platform_add_devices(platform_devs, ARRAY_SIZE(platform_devs));
 
 #ifdef CONFIG_USB_DWC_OTG_HCD
     set_usb_phy_clk(USB_PHY_CLOCK_SEL_XTAL_DIV2);

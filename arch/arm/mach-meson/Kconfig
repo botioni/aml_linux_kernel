@@ -37,11 +37,24 @@ config MACH_MESON_8726M_REFA00
 	help
 	  Include support for the AMLOGIC M1 8726M Emulation Baseboard platform.
 
-config MACH_MESON_8726M_REFC01
+menuconfig MACH_MESON_8726M_REFC01
 	select GENERIC_ALLOCATOR
 	bool "Support M1 8726(for arm board) platform(machid=2956)"
 	help
 	  Include support for the AMLOGIC M1 8726M Emulation Baseboard platform.
+
+choice
+	prompt "---Select Nand Flash Type---"
+	depends on MACH_MESON_8726M_REFC01
+	default REFC01_4K_PAGE
+
+config REFC01_4K_PAGE
+	bool "4K Page Size of Nand Flash"
+
+config REFC01_2K_PAGE
+	bool "2K Page Size of Nand Flash"
+
+endchoice
 
 config MACH_MESON_8726M_REFC03
 	select GENERIC_ALLOCATOR

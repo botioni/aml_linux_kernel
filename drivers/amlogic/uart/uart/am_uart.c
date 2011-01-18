@@ -69,9 +69,13 @@ static struct tty_driver *am_uart_driver;
 
 #ifdef FIQ_UART
 char * fiq_buf=NULL;
-int fiq_read,fiq_write,fiq_cnt;
+int fiq_read;
+int fiq_write;
+volatile int fiq_cnt;
+
+static DEFINE_SPINLOCK(uart_lock);
 #endif
-#define PRINT_DEBUG
+//#define PRINT_DEBUG
 
 #define MAX_NAMED_UART 4
 
@@ -307,6 +311,8 @@ static void am_uart_timer_sr(unsigned long param)
 	struct tty_struct *tty;
 	am_uart_t *uart = NULL;
   	int cnt,ch;
+	unsigned long flags;
+
 	if (!info)
            return;
 
@@ -320,9 +326,12 @@ static void am_uart_timer_sr(unsigned long param)
 	if (!uart)
 	    goto exit_timer;
 
+	spin_lock_irqsave(&uart_lock, flags);
 	cnt = fiq_cnt;
+        spin_unlock_irqrestore(&uart_lock, flags);
 	if(cnt)
         {
+	    spin_lock_irqsave(&uart_lock, flags);	
             if(fiq_read+cnt > SERIAL_XMIT_SIZE)
             {
                 tty_insert_flip_string(tty,fiq_buf+fiq_read,SERIAL_XMIT_SIZE-fiq_read);
@@ -334,6 +343,7 @@ static void am_uart_timer_sr(unsigned long param)
             }
             fiq_read = (fiq_read+cnt) & (SERIAL_XMIT_SIZE - 1);
             fiq_cnt -=cnt; 
+            spin_unlock_irqrestore(&uart_lock, flags);
             
     	    tty_flip_buffer_push(tty);
        }

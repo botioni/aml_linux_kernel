@@ -32,7 +32,6 @@ EXTRA_CFLAGS += -Idrivers/amlogic/wifi/atheros_6302/include/
 EXTRA_CFLAGS += -Idrivers/amlogic/wifi/atheros_6302/include/AR6002/hw4.0
 EXTRA_CFLAGS += -Idrivers/amlogic/wifi/atheros_6302/wlan/include
 EXTRA_CFLAGS += -Idrivers/amlogic/wifi/atheros_6302/os/linux/include
-EXTRA_CFLAGS += -Idrivers/amlogic/wifi/atheros_6302/os/
 EXTRA_CFLAGS += -Idrivers/amlogic/wifi/atheros_6302/bmi/include
 EXTRA_CFLAGS += -Idrivers/amlogic/wifi/atheros_6302/hif/sdio/linux_sdio/include
 
@@ -86,9 +85,9 @@ EXTRA_CFLAGS += -DLINUX -D__KERNEL__ \
 
 # linux 2.6 and higher kernel module build settings
 EXTRA_CFLAGS += -DKERNEL_2_6
-obj-$(CONFIG_SDIO_ATHEROS_6K_WIFI) += ar6000.o
+obj-$(CONFIG_SDIO_ATHEROS_6302_WIFI) += ar6000.o
 
-#obj-$(CONFIG_SDIO_ATHEROS_6K_WIFI) += bt_hci_sdio.o maybe need
+#obj-$(CONFIG_SDIO_ATHEROS_6302_WIFI) += bt_hci_sdio.o maybe need
 
 
 ar6000-objs += htc2/AR6000/ar6k.o        \

@@ -30,7 +30,6 @@
 #include <linux/mmc/sdio.h>
 #include <linux/mmc/sd.h>
 #include <linux/kthread.h>
-//#include <../drivers/amlogic/cardreader/sdio_ops.h>
 
 /* by default setup a bounce buffer for the data packets, if the underlying host controller driver
    does not use DMA you may be able to skip this step and save the memory allocation and transfer time */
