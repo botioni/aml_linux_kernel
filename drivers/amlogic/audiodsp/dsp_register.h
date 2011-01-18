@@ -57,6 +57,8 @@ dsp_register.h
 #define DSP_BUFFERED_LEN  		DSP_REG(19)
 #define DSP_AFIFO_RD_OFFSET1  		DSP_REG(20)
 
+#define DSP_DECODE_OPTION       DSP_REG(21)
+
 #define MAILBOX1_REG(n)	DSP_REG(40+n)
 #define MAILBOX2_REG(n)	DSP_REG(40+32+n)
 
