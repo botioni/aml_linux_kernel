@@ -49,7 +49,7 @@ static int amvdec_lock_init_flag = 0;
 
 static void amvdec_pg_enable(bool enable)
 {
-    ulong timeout = jiffies + HZ;
+    ulong timeout;
 
     if (enable) {
         CLK_GATE_ON(MDEC_CLK_PIC_DC);
@@ -62,18 +62,62 @@ static void amvdec_pg_enable(bool enable)
     else {
         CLK_GATE_OFF(AMRISC);
 
+        timeout = jiffies + HZ/10;
+
         while (READ_MPEG_REG(MDEC_PIC_DC_STATUS) != 0) {
             if (time_after(jiffies, timeout)) {
                 WRITE_MPEG_REG_BITS(MDEC_PIC_DC_CTRL, 1, 0, 1);
                 WRITE_MPEG_REG_BITS(MDEC_PIC_DC_CTRL, 0, 0, 1);
+                READ_MPEG_REG(MDEC_PIC_DC_STATUS);
+                READ_MPEG_REG(MDEC_PIC_DC_STATUS);
+                READ_MPEG_REG(MDEC_PIC_DC_STATUS);
                 break;
             }
         }
 
         CLK_GATE_OFF(MDEC_CLK_PIC_DC);
+
+        timeout = jiffies + HZ/10;
+
+        while (READ_MPEG_REG(DBLK_STATUS) & 1) {
+            if (time_after(jiffies, timeout)) {
+                WRITE_MPEG_REG(DBLK_CTRL, 3);
+                WRITE_MPEG_REG(DBLK_CTRL, 0);
+                READ_MPEG_REG(DBLK_STATUS);
+                READ_MPEG_REG(DBLK_STATUS);
+                READ_MPEG_REG(DBLK_STATUS);
+                break;
+            }
+        }
         CLK_GATE_OFF(MDEC_CLK_DBLK);
+
+        timeout = jiffies + HZ/10;
+
+        while (READ_MPEG_REG(MC_STATUS0) & 1) {
+            if (time_after(jiffies, timeout)) {
+                SET_MPEG_REG_MASK(MC_CTRL1, 0x9);
+                CLEAR_MPEG_REG_MASK(MC_CTRL1, 0x9);
+                READ_MPEG_REG(MC_STATUS0);
+                READ_MPEG_REG(MC_STATUS0);
+                READ_MPEG_REG(MC_STATUS0);
+                break;
+            }
+        }
         CLK_GATE_OFF(MC_CLK);
+
+        timeout = jiffies + HZ/10;
+        while (READ_MPEG_REG(DCAC_DMA_CTRL) & 0x8000) {
+            if (time_after(jiffies, timeout)) {
+                break;
+            }
+        }
+
+        WRITE_MPEG_REG(RESET0_REGISTER, 4);
+        READ_MPEG_REG(RESET0_REGISTER);
+        READ_MPEG_REG(RESET0_REGISTER);
+        READ_MPEG_REG(RESET0_REGISTER);
         CLK_GATE_OFF(IQIDCT_CLK);
+
         //CLK_GATE_OFF(VLD_CLK);
     }
 }
