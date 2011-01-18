@@ -798,6 +798,8 @@ typedef enum camera_mirror_flip_e {
 
 
 typedef struct camera_info_s {
+	#define AMLOGIC_CAMERA_OV5640_NAME     			"camera_ov5640"
+	const char * camera_name;
     enum camera_saturation_e saturation;
     enum camera_brightness_e brighrness;
     enum camera_contrast_e contrast;

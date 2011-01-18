@@ -37,7 +37,6 @@
 #include <linux/i2c.h>
 #include <linux/i2c-aml.h>
 #include <mach/power_gate.h>
-#include <linux/aml_bl.h>
 #include <linux/reboot.h>
 
 #ifdef CONFIG_AM_UART_WITH_S_CORE 
@@ -848,10 +847,9 @@ static void set_vccx2(int power_on)
     }
 }
 static struct meson_pm_config aml_pm_pdata = {
-    .ddr2_reg_refresh = IO_APB_BUS_BASE+0x0004,
-    .ddr2_reg_phy = IO_APB_BUS_BASE+0x1380,
-    .ddr_pll_ctrl = CBUS_REG_ADDR(HHI_DDR_PLL_CNTL),
-    .clock_gate = CBUS_REG_ADDR(HHI_GCLK_MPEG0),
+    .pctl_reg_base = IO_APB_BUS_BASE,
+    .mmc_reg_base = APB_REG_ADDR(0x1000),
+    .hiu_reg_base = CBUS_REG_ADDR(0x1000),
     .power_key = CBUS_REG_ADDR(RTC_ADDR1),
     .ddr_clk = 0x00110820,
     .sleepcount = 128,
@@ -1375,6 +1373,7 @@ static struct platform_device aml_nand_device = {
 #endif  //CONFIG_NAND_FLASH_DRIVER_MULTIPLANE_CE
 
 #if defined(CONFIG_AMLOGIC_BACKLIGHT)
+#include <linux/aml_bl.h>
 
 #define PWM_TCNT        (600-1)
 #define PWM_MAX_VAL    (420)
