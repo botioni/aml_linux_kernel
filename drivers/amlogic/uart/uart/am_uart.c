@@ -74,6 +74,7 @@ int fiq_write;
 volatile int fiq_cnt;
 
 static DEFINE_SPINLOCK(uart_lock);
+//#define UART_DATA_LOG
 #endif
 //#define PRINT_DEBUG
 
@@ -106,6 +107,7 @@ DECLARE_MUTEX(tmp_buf_sem);
 #define MIN(a,b)    ((a) < (b) ? (a) : (b))
 #endif
 
+static void raw_num(unsigned int num, int zero_ok);
 /*
  * ------------------------------------------------------------
  * am_uart_stop() and am_uart_start()
@@ -255,6 +257,11 @@ static void transmit_chars(struct am_uart *info)
     am_uart_t *uart = uart_addr[info->line];
     unsigned int ch;
 
+#ifdef UART_DATA_LOG
+    if(info->line ==1)
+	am_uart_put_char(0,'@');
+#endif
+
     mutex_lock(&info->info_mutex);
     if (info->x_char) {
         __raw_writel(info->x_char, &uart->wdata);
@@ -289,18 +296,31 @@ void am_uart_fiq_interrupt(void)
     am_uart_t *uart = uart_addr[1];
     char ch;
     int cnt;
+    register int reg_write = fiq_write;
+    register int reg_cnt = fiq_cnt;
 
+    if(spin_trylock(&uart_lock))
+    {
     cnt = __raw_readl(&uart->status) & 0x3f;
     while (cnt--){
        	ch = __raw_readl(&uart->rdata) & 0xff;
 
-        fiq_buf[fiq_write]=ch;
-        fiq_write= (fiq_write+1) & (SERIAL_XMIT_SIZE - 1);
-        fiq_cnt++;
-       	if (fiq_cnt >= SERIAL_XMIT_SIZE) {
+		fiq_buf[reg_write]=ch;
+		reg_write= (reg_write+1) & (SERIAL_XMIT_SIZE - 1);
+		reg_cnt++;
+	       	if (reg_cnt >= SERIAL_XMIT_SIZE) {
        	    	am_uart_put_char(0,'^');
         	break;
         }
+    }
+
+	#ifdef UART_DATA_LOG
+	    am_uart_put_char(0,'&');
+	    raw_num(reg_cnt,1);
+	#endif
+	    fiq_write = reg_write;
+	    fiq_cnt = reg_cnt;
+	    spin_unlock(&uart_lock);
     }
 	WRITE_MPEG_REG(IRQ_CLR_REG(uart_irqs[1]), 1 << IRQ_BIT(uart_irqs[1]));
 }
@@ -310,9 +330,9 @@ static void am_uart_timer_sr(unsigned long param)
 	struct am_uart *info=(struct am_uart *)param;
 	struct tty_struct *tty;
 	am_uart_t *uart = NULL;
-  	int cnt,ch;
+  	int cnt,ch,i;
 	unsigned long flags;
-
+	static int last_cnt=0xffff;
 	if (!info)
            return;
 
@@ -328,10 +348,8 @@ static void am_uart_timer_sr(unsigned long param)
 
 	spin_lock_irqsave(&uart_lock, flags);
 	cnt = fiq_cnt;
-        spin_unlock_irqrestore(&uart_lock, flags);
 	if(cnt)
         {
-	    spin_lock_irqsave(&uart_lock, flags);	
             if(fiq_read+cnt > SERIAL_XMIT_SIZE)
             {
                 tty_insert_flip_string(tty,fiq_buf+fiq_read,SERIAL_XMIT_SIZE-fiq_read);
@@ -345,18 +363,37 @@ static void am_uart_timer_sr(unsigned long param)
             fiq_cnt -=cnt; 
             spin_unlock_irqrestore(&uart_lock, flags);
             
+	    last_cnt = cnt;
     	    tty_flip_buffer_push(tty);
+#ifdef UART_DATA_LOG
+            am_uart_put_char(0,'*');
+	    raw_num(cnt,1);
+#endif
        }
        else
        {
+	    if(last_cnt==0)
+	    {
 	    cnt = __raw_readl(&uart->status) & 0x3f;
 	    if(cnt)
             {
-       	        while (cnt--){
+		    i = cnt;
+       	            while (i--){
 		    ch = __raw_readl(&uart->rdata) & 0xff;
 		    tty_insert_flip_char(tty,ch,TTY_NORMAL);
 		}
+	        }
+            }
+            spin_unlock_irqrestore(&uart_lock, flags);
+
+            last_cnt = 0;
+	    if(cnt)
+            {
 		tty_flip_buffer_push(tty);
+#ifdef UART_DATA_LOG             
+            	am_uart_put_char(0,'%');
+	        raw_num(cnt,1);
+#endif
 	    }
        }
 
