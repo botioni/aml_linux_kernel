@@ -175,6 +175,7 @@ void power_init_off(void)
 
 void power_gate_switch(int flag)
 {
+    GATE_SWITCH(flag, VI_CORE);
     //GATE_SWITCH(flag, AHB_BRIDGE);
     //GATE_SWITCH(flag, AHB_SRAM);
     GATE_SWITCH(flag, AIU_ADC);
@@ -255,7 +256,7 @@ void early_power_gate_switch(int flag)
     GATE_SWITCH(flag, RESERVED0);
     GATE_SWITCH(flag, VGHL_PWM);
     GATE_SWITCH(flag, LED_PWM);
-    GATE_SWITCH(flag, VI_CORE);
+//    GATE_SWITCH(flag, VI_CORE);
     GATE_SWITCH(flag, LCD);
     GATE_SWITCH(flag, ENC480P_MPEG_DOMAIN);
     GATE_SWITCH(flag, ENC480I);
@@ -277,9 +278,13 @@ void early_power_gate_switch(int flag)
 }
 EXPORT_SYMBOL(early_power_gate_switch);
 
-#define CLK_COUNT 5
+#define CLK_COUNT 9
 static char clk_flag[CLK_COUNT];
 static unsigned clks[CLK_COUNT]={
+    HHI_DEMOD_CLK_CNTL,
+    HHI_SATA_CLK_CNTL,
+    HHI_ETH_CLK_CNTL,
+    HHI_WIFI_CLK_CNTL,
     HHI_VID_CLK_CNTL,
     HHI_AUD_CLK_CNTL,
     HHI_MALI_CLK_CNTL,
@@ -288,6 +293,10 @@ static unsigned clks[CLK_COUNT]={
 };
 
 static char clks_name[CLK_COUNT][32]={
+    "HHI_DEMOD_CLK_CNTL",
+    "HHI_SATA_CLK_CNTL",
+    "HHI_ETH_CLK_CNTL",
+    "HHI_WIFI_CLK_CNTL",
     "HHI_VID_CLK_CNTL",
     "HHI_AUD_CLK_CNTL",
     "HHI_MALI_CLK_CNTL",
@@ -390,7 +399,6 @@ void early_clk_switch(int flag)
                 }
                 else if (early_clks[i] == HHI_MPEG_CLK_CNTL){
                     udelay(1000);
-                    // SET_CBUS_REG_MASK(HHI_A9_CLK_CNTL, (1<<7)); // a9 normal
                     SET_CBUS_REG_MASK(early_clks[i], (1<<8)); // clk81 back to normal
                     
                     CLEAR_CBUS_REG_MASK(UART0_CONTROL, (1 << 19) | 0xFFF);
@@ -413,6 +421,15 @@ void early_clk_switch(int flag)
         xtal_uart_rate_backup = sys_clk->rate;
 
         for (i=0;i<EARLY_CLK_COUNT;i++){
+#ifdef CONFIG_WAKELOCK
+#if 0
+            if (has_wake_lock(WAKE_LOCK_IDLE)&&((early_clks[i] == HHI_VID_CLK_CNTL)||(early_clks[i] == HHI_MPEG_CLK_CNTL))){
+                 printk(KERN_INFO "skip turn off clk %s(%x)\n", early_clks_name[i], early_clks[i]);
+                 early_clk_flag[i] = 0;       
+                 continue;
+            }
+#endif
+#endif
             if (early_clks[i] == HHI_VID_CLK_CNTL){
                 early_clk_flag[i] = READ_CBUS_REG_BITS(early_clks[i], 0, 1);
                 if (early_clk_flag[i]){
@@ -420,26 +437,15 @@ void early_clk_switch(int flag)
                 }
             }
             else if (early_clks[i] == HHI_MPEG_CLK_CNTL){
-#ifdef CONFIG_WAKELOCK
-                if (!has_wake_lock(WAKE_LOCK_IDLE)){
-#endif
-                    early_clk_flag[i] = 1;
-                    
-                    udelay(1000);
-                    CLEAR_CBUS_REG_MASK(early_clks[i], (1<<8)); // 24M
-                    //CLEAR_CBUS_REG_MASK(HHI_A9_CLK_CNTL, (1<<7)); // a9 24M
-                    
-                    CLEAR_CBUS_REG_MASK(UART0_CONTROL, (1 << 19) | 0xFFF);
-                    SET_CBUS_REG_MASK(UART0_CONTROL, (((xtal_uart_rate_backup / (115200 * 4)) - 1) & 0xfff));
-                    CLEAR_CBUS_REG_MASK(UART1_CONTROL, (1 << 19) | 0xFFF);
-                    SET_CBUS_REG_MASK(UART1_CONTROL, (((xtal_uart_rate_backup / (115200 * 4)) - 1) & 0xfff)); 
-#ifdef CONFIG_WAKELOCK
-                }
-                else{
-                    printk(KERN_INFO "Has WAKE_LOCK_IDLE wake lock!\n");
-                    early_clk_flag[i] = 0;
-                }
-#endif
+                early_clk_flag[i] = 1;
+                 
+                udelay(1000);
+                CLEAR_CBUS_REG_MASK(early_clks[i], (1<<8)); // 24M
+                   
+                CLEAR_CBUS_REG_MASK(UART0_CONTROL, (1 << 19) | 0xFFF);
+                SET_CBUS_REG_MASK(UART0_CONTROL, (((xtal_uart_rate_backup / (115200 * 4)) - 1) & 0xfff));
+                CLEAR_CBUS_REG_MASK(UART1_CONTROL, (1 << 19) | 0xFFF);
+                SET_CBUS_REG_MASK(UART1_CONTROL, (((xtal_uart_rate_backup / (115200 * 4)) - 1) & 0xfff)); 
             }
             else{
                 early_clk_flag[i] = READ_CBUS_REG_BITS(early_clks[i], 8, 1) ? 1 : 0;
@@ -454,19 +460,36 @@ void early_clk_switch(int flag)
 }
 EXPORT_SYMBOL(early_clk_switch);
 
-#define PLL_COUNT 3
-
+#define PLL_COUNT 5
 static char pll_flag[PLL_COUNT];
 static unsigned plls[PLL_COUNT]={
+    HHI_WIFI_PLL_CNTL,
+    HHI_DEMOD_PLL_CNTL,
     HHI_VID_PLL_CNTL,
     HHI_AUD_PLL_CNTL,
     HHI_OTHER_PLL_CNTL,
 };
 
 static char plls_name[PLL_COUNT][32]={
+    "HHI_WIFI_PLL_CNTL",
+    "HHI_DEMOD_PLL_CNTL",
     "HHI_VID_PLL_CNTL",
     "HHI_AUD_PLL_CNTL",
     "HHI_OTHER_PLL_CNTL",
+};
+
+#define EARLY_PLL_COUNT 3
+static char early_pll_flag[EARLY_PLL_COUNT];
+static unsigned early_plls[EARLY_PLL_COUNT]={
+    HHI_WIFI_PLL_CNTL,
+    HHI_DEMOD_PLL_CNTL,
+    HHI_VID_PLL_CNTL,
+};
+
+static char early_plls_name[EARLY_PLL_COUNT][32]={
+    "HHI_WIFI_PLL_CNTL",
+    "HHI_DEMOD_PLL_CNTL",
+    "HHI_VID_PLL_CNTL",
 };
 
 void pll_switch(int flag)
@@ -494,20 +517,6 @@ void pll_switch(int flag)
 }
 EXPORT_SYMBOL(pll_switch);
 
-#define EARLY_PLL_COUNT 3
-static char early_pll_flag[EARLY_PLL_COUNT];
-static unsigned early_plls[EARLY_PLL_COUNT]={
-    HHI_WIFI_PLL_CNTL,
-    HHI_DEMOD_PLL_CNTL,
-    HHI_VID_PLL_CNTL,
-};
-
-static char early_plls_name[EARLY_PLL_COUNT][32]={
-    "HHI_WIFI_PLL_CNTL",
-    "HHI_DEMOD_PLL_CNTL",
-    "HHI_VID_PLL_CNTL",
-};
-
 void early_pll_switch(int flag)
 {
     int i;
@@ -523,6 +532,14 @@ void early_pll_switch(int flag)
     }
     else{
         for (i=0;i<EARLY_PLL_COUNT;i++){
+#ifdef CONFIG_WAKELOCK
+#if 0
+            if (has_wake_lock(WAKE_LOCK_IDLE)&&(early_plls[i] == HHI_VID_PLL_CNTL)){
+                early_pll_flag[i] = 0;
+                continue;
+            }
+#endif
+#endif
             early_pll_flag[i] = READ_CBUS_REG_BITS(early_plls[i], 15, 1) ? 0 : 1;
             if (early_pll_flag[i]){
                 printk(KERN_INFO "early pll %s(%x) off\n", early_plls_name[i], early_plls[i]);
@@ -674,6 +691,7 @@ static void meson_pm_suspend(void)
     SET_CBUS_REG_MASK(HHI_A9_CLK_CNTL, (1<<9));
     CLEAR_CBUS_REG_MASK(HHI_A9_CLK_CNTL, (1<<7));
 #endif
+    SET_CBUS_REG_MASK(HHI_SYS_PLL_CNTL, (1<<15));
 #endif
      
 #ifdef WAKE_UP_BY_IRQ 
@@ -695,6 +713,8 @@ static void meson_pm_suspend(void)
 #endif
 
 #ifdef SYSCLK_32K
+    CLEAR_CBUS_REG_MASK(HHI_SYS_PLL_CNTL, (1<<15));
+    udelay(1000);
 #ifdef A9CLK_32K
     SET_CBUS_REG_MASK(HHI_A9_CLK_CNTL, (1<<7));
     CLEAR_CBUS_REG_MASK(HHI_A9_CLK_CNTL, (1<<9));
