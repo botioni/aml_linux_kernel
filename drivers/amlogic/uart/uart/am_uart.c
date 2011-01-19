@@ -296,33 +296,35 @@ void am_uart_fiq_interrupt(void)
     am_uart_t *uart = uart_addr[1];
     char ch;
     int cnt;
-    register int reg_write = fiq_write;
-    register int reg_cnt = fiq_cnt;
+    register int reg_write;
+    register int reg_cnt;
 
     if(spin_trylock(&uart_lock))
     {
-    cnt = __raw_readl(&uart->status) & 0x3f;
-    while (cnt--){
-       	ch = __raw_readl(&uart->rdata) & 0xff;
+        reg_write = fiq_write;
+        reg_cnt = fiq_cnt;
+        cnt = __raw_readl(&uart->status) & 0x3f;
+        while (cnt--){
+       	    ch = __raw_readl(&uart->rdata) & 0xff;
 
-		fiq_buf[reg_write]=ch;
-		reg_write= (reg_write+1) & (SERIAL_XMIT_SIZE - 1);
-		reg_cnt++;
-	       	if (reg_cnt >= SERIAL_XMIT_SIZE) {
+	    fiq_buf[reg_write]=ch;
+	    reg_write= (reg_write+1) & (SERIAL_XMIT_SIZE - 1);
+	    reg_cnt++;
+	    if (reg_cnt >= SERIAL_XMIT_SIZE) {
        	    	am_uart_put_char(0,'^');
         	break;
+            }
         }
-    }
 
-	#ifdef UART_DATA_LOG
-	    am_uart_put_char(0,'&');
-	    raw_num(reg_cnt,1);
-	#endif
-	    fiq_write = reg_write;
-	    fiq_cnt = reg_cnt;
-	    spin_unlock(&uart_lock);
+#ifdef UART_DATA_LOG
+        am_uart_put_char(0,'&');
+	raw_num(reg_cnt,1);
+#endif
+	fiq_write = reg_write;
+	fiq_cnt = reg_cnt;
+	spin_unlock(&uart_lock);
     }
-	WRITE_MPEG_REG(IRQ_CLR_REG(uart_irqs[1]), 1 << IRQ_BIT(uart_irqs[1]));
+    WRITE_MPEG_REG(IRQ_CLR_REG(uart_irqs[1]), 1 << IRQ_BIT(uart_irqs[1]));
 }
 
 static void am_uart_timer_sr(unsigned long param)
