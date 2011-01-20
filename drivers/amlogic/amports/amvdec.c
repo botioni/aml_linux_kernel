@@ -300,8 +300,11 @@ static void vdec_paused_check_timer(unsigned long arg)
 		printk("vdec paused and release wakelock now\n");
 		amvdec_wake_unlock();
 	}
-	amvdevtimer.expires = jiffies + 10;
-	add_timer(&amvdevtimer);
+	else
+	{
+		amvdevtimer.expires = jiffies + 10;
+		add_timer(&amvdevtimer);
+	}
 }
 #else
 int amvdev_pause(void)
