@@ -40,6 +40,10 @@ struct memory_card {
 	CARD_TYPE_t			card_type;	/* card type*/
 	char				name[CARD_NAME_LEN];
 
+	unsigned int		quirks; 	/* card quirks */
+#define MMC_QUIRK_LENIENT_FN0	(1<<0)		/* allow SDIO FN0 writes outside of the VS CCCR range */
+#define MMC_QUIRK_BLKSZ_FOR_BYTE_MODE (1<<1)	/* use func->cur_blksize */
+
 	unsigned int		sdio_funcs;	/* number of SDIO functions */
 	struct sdio_func	*sdio_func[SDIO_MAX_FUNCS]; /* SDIO functions (devices) */
 
