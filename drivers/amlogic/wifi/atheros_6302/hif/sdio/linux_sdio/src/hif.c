@@ -22,14 +22,16 @@
 //
 // Author(s): ="Atheros"
 //==============================================================================
-#include <linux/mmc/card.h>
-#include <linux/mmc/mmc.h>
-#include <linux/mmc/host.h>
-#include <linux/mmc/sdio_func.h>
-#include <linux/mmc/sdio_ids.h>
-#include <linux/mmc/sdio.h>
-#include <linux/mmc/sd.h>
+//#include <linux/mmc/card.h>
+//#include <linux/mmc/mmc.h>
+//#include <linux/mmc/host.h>
+//#include <linux/mmc/sdio_func.h>
+//#include <linux/mmc/sdio_ids.h>
+//#include <linux/mmc/sdio.h>
+//#include <linux/mmc/sd.h>
 #include <linux/kthread.h>
+#include <linux/cardreader/sdio.h>
+#include <linux/cardreader/card_block.h>
 
 /* by default setup a bounce buffer for the data packets, if the underlying host controller driver
    does not use DMA you may be able to skip this step and save the memory allocation and transfer time */
@@ -67,7 +69,7 @@ static HIF_DEVICE *addHifDevice(struct sdio_func *func);
 static HIF_DEVICE *getHifDevice(struct sdio_func *func);
 static void delHifDevice(HIF_DEVICE * device);
 static int Func0_CMD52WriteByte( struct sdio_func *card, unsigned int address, unsigned char byte);
-static int Func0_CMD52ReadByte(struct mmc_card *card, unsigned int address, unsigned char *byte);
+static int Func0_CMD52ReadByte(struct memory_card *card, unsigned int address, unsigned char *byte);
 
 int reset_sdio_on_unload = 0;
 module_param(reset_sdio_on_unload, int, 0644);
@@ -1202,9 +1204,7 @@ void HIFDetachHTC(HIF_DEVICE *device)
 
 static int Func0_CMD52WriteByte(struct sdio_func  *func, unsigned int address, unsigned char byte)
 {
-  
-	
-
+#if 0 
     struct mmc_command ioCmd;
     unsigned long      arg;
     
@@ -1214,31 +1214,17 @@ static int Func0_CMD52WriteByte(struct sdio_func  *func, unsigned int address, u
     ioCmd.arg = arg;
     ioCmd.flags = MMC_RSP_R5 | MMC_CMD_AC;
 
-	sdio_io_rw_direct(func->card, 1, func->num,address, ioCmd.arg, NULL);
-    
-    //return mmc_wait_for_cmd(card->host, &ioCmd, 0);
-}
-
-#if 0
-static int Func0_CMD52WriteByte(struct mmc_card *card, unsigned int address, unsigned char byte)
-{
-  
-
-    struct mmc_command ioCmd;
-    unsigned long      arg;
-    
-    memset(&ioCmd,0,sizeof(ioCmd));
-    SDIO_SET_CMD52_WRITE_ARG(arg,0,address,byte);
-    ioCmd.opcode = SD_IO_RW_DIRECT;
-    ioCmd.arg = arg;
-    ioCmd.flags = MMC_RSP_R5 | MMC_CMD_AC;
-    
     return mmc_wait_for_cmd(card->host, &ioCmd, 0);
+#else
+	unsigned long	   arg;
+	SDIO_SET_CMD52_WRITE_ARG(arg,0,address,byte);
+	return sdio_io_rw_direct(func->card, 1, func->num,address, arg, NULL);
+#endif    
 }
-#endif
 
-static int Func0_CMD52ReadByte(struct mmc_card *card, unsigned int address, unsigned char *byte)
+static int Func0_CMD52ReadByte(struct memory_card *card, unsigned int address, unsigned char *byte)
 {
+#if 0 
     struct mmc_command ioCmd;
     unsigned long      arg;
     A_INT32 err;
@@ -1256,4 +1242,6 @@ static int Func0_CMD52ReadByte(struct mmc_card *card, unsigned int address, unsi
     }
 
     return err;
+#endif
+	return 0;
 }

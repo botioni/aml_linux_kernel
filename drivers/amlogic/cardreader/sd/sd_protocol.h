@@ -679,12 +679,16 @@ typedef struct SD_MMC_Card_Info {
 #define SDIO_Read_Data				  0
 #define SDIO_Write_Data				  1
 #define SDIO_DONT_Read_After_Write	  0
+#ifdef CONFIG_SDIO_MARVELL_NH387_WIFI
+#define SDIO_Read_After_Write		  0	//MARVELL_NH387 can't support verify check
+#else
 #define SDIO_Read_After_Write		  1
+#endif
 #define SDIO_Block_MODE			  	  1
 #define SDIO_Byte_MODE		  	  	  0
     
 #define SDIO_Wide_bus_Bit			  0x02
-#define SDIO_Single_bus_Bit			  0x01
+#define SDIO_Single_bus_Bit			  0x00
 #define SDIO_Support_High_Speed		  0x01
 #define SDIO_Enable_High_Speed		  0x02
 #define SDIO_Support_Multi_Block	  0x02

@@ -6099,7 +6099,7 @@ int sdio_write_data(SD_MMC_Card_Info_t *sd_mmc_info, int function_no, int buf_or
 			if(SD_WORK_MODE == CARD_HW_MODE)
 				error = sdio_write_data_byte_hw(sd_mmc_info, function_no, buf_or_fifo, sdio_addr, byte_count, data_buf);
 #endif
-#ifdef SD_MMC_HW_CONTROL
+#ifdef SD_MMC_SW_CONTROL
 			if(SD_WORK_MODE == CARD_SW_MODE)
 				error = sdio_write_data_byte_sw(sd_mmc_info, function_no, buf_or_fifo, sdio_addr, byte_count, data_buf);
 #endif
