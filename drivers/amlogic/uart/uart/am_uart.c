@@ -46,7 +46,9 @@
 
 #include "am_uart.h"
 
+#ifdef CONFIG_UART_USE_FIQ
 #define FIQ_UART
+#endif
 
 #ifdef FIQ_UART
 #include <asm/fiq.h>
@@ -72,11 +74,10 @@ char * fiq_buf=NULL;
 int fiq_read;
 int fiq_write;
 volatile int fiq_cnt;
-
 static DEFINE_SPINLOCK(uart_lock);
 //#define UART_DATA_LOG
-#endif
 //#define PRINT_DEBUG
+#endif
 
 #define MAX_NAMED_UART 4
 
@@ -297,31 +298,35 @@ void am_uart_fiq_interrupt(void)
     char ch;
     int cnt;
     register int reg_write;
-    register int reg_cnt;
+    register int reg_cnt,add_cnt;
 
     if(spin_trylock(&uart_lock))
     {
         reg_write = fiq_write;
+	mb();
         reg_cnt = fiq_cnt;
+	add_cnt = 0;
         cnt = __raw_readl(&uart->status) & 0x3f;
         while (cnt--){
        	    ch = __raw_readl(&uart->rdata) & 0xff;
 
 	    fiq_buf[reg_write]=ch;
 	    reg_write= (reg_write+1) & (SERIAL_XMIT_SIZE - 1);
-	    reg_cnt++;
-	    if (reg_cnt >= SERIAL_XMIT_SIZE) {
+	    add_cnt++;
+	    if ((reg_cnt+add_cnt)>= SERIAL_XMIT_SIZE) {
        	    	am_uart_put_char(0,'^');
         	break;
             }
         }
 
+	fiq_write = reg_write;
+	mb();	
+	fiq_cnt = fiq_cnt+add_cnt;
+	mb();
 #ifdef UART_DATA_LOG
         am_uart_put_char(0,'&');
-	raw_num(reg_cnt,1);
-#endif
-	fiq_write = reg_write;
-	fiq_cnt = reg_cnt;
+	raw_num(fiq_cnt,1);
+#endif	
 	spin_unlock(&uart_lock);
     }
     WRITE_MPEG_REG(IRQ_CLR_REG(uart_irqs[1]), 1 << IRQ_BIT(uart_irqs[1]));
@@ -349,6 +354,7 @@ static void am_uart_timer_sr(unsigned long param)
 	    goto exit_timer;
 
 	spin_lock_irqsave(&uart_lock, flags);
+	mb();
 	cnt = fiq_cnt;
 	if(cnt)
         {
@@ -362,7 +368,9 @@ static void am_uart_timer_sr(unsigned long param)
 		tty_insert_flip_string(tty,fiq_buf+fiq_read,cnt);
             }
             fiq_read = (fiq_read+cnt) & (SERIAL_XMIT_SIZE - 1);
-            fiq_cnt -=cnt; 
+            mb();
+            fiq_cnt = fiq_cnt-cnt; 
+            mb();
             spin_unlock_irqrestore(&uart_lock, flags);
             
 	    last_cnt = cnt;

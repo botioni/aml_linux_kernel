@@ -22,7 +22,7 @@ config AM_UART_WITHOUT_S_CORE
 endchoice
 
 choice
-        prompt "---SET UART0 PORT"
+        prompt "---SET ttyS0 for CONSOLE PORT"
         default AM_UART0_SET_PORT_A
 
 config AM_UART0_SET_PORT_A
@@ -42,3 +42,17 @@ config AM_UART0_SET_PORT_B
            hardware uart
 
 endchoice
+
+menu  "---SET ttyS1 support"
+     depends on AM_UART_WITHOUT_S_CORE
+ 
+config UART_USE_FIQ
+        bool "UART1 use FIQ for high speed"     
+        depends on ARCH_MESON
+        select SERIAL_CORE
+        select SERIAL_CORE_CONSOLE
+        default n
+        help
+           hardware uart
+
+endmenu
