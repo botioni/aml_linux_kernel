@@ -168,7 +168,7 @@ void power_init_off(void)
     CLEAR_CBUS_REG_MASK(HHI_DEMOD_CLK_CNTL, (1<<8));
     CLEAR_CBUS_REG_MASK(HHI_SATA_CLK_CNTL, (1<<8));
     CLEAR_CBUS_REG_MASK(HHI_ETH_CLK_CNTL, (1<<8));
-    CLEAR_CBUS_REG_MASK(HHI_WIFI_CLK_CNTL, (1<<8));
+    CLEAR_CBUS_REG_MASK(HHI_WIFI_CLK_CNTL, (1<<0));
     SET_CBUS_REG_MASK(HHI_WIFI_PLL_CNTL, (1<<15));
     SET_CBUS_REG_MASK(HHI_DEMOD_PLL_CNTL, (1<<15));
 }
@@ -333,7 +333,7 @@ void clk_switch(int flag)
     if (flag){
         for (i=CLK_COUNT-1;i>=0;i--){
             if (clk_flag[i]){
-                if (clks[i] == HHI_VID_CLK_CNTL){
+                if ((clks[i] == HHI_VID_CLK_CNTL)||(clks[i] == HHI_WIFI_CLK_CNTL)){
                     SET_CBUS_REG_MASK(clks[i], 1);
                 }
                 else if (clks[i] == HHI_MPEG_CLK_CNTL){
@@ -355,7 +355,7 @@ void clk_switch(int flag)
     }
     else{
         for (i=0;i<CLK_COUNT;i++){
-            if (clks[i] == HHI_VID_CLK_CNTL){
+            if ((clks[i] == HHI_VID_CLK_CNTL)||(clks[i] == HHI_WIFI_CLK_CNTL)){
                 clk_flag[i] = READ_CBUS_REG_BITS(clks[i], 0, 1);
                 if (clk_flag[i]){
                     CLEAR_CBUS_REG_MASK(clks[i], 1);
@@ -394,7 +394,7 @@ void early_clk_switch(int flag)
     if (flag){
         for (i=EARLY_CLK_COUNT-1;i>=0;i--){
             if (early_clk_flag[i]){
-                if (early_clks[i] == HHI_VID_CLK_CNTL){
+                if ((early_clks[i] == HHI_VID_CLK_CNTL)||(early_clks[i] == HHI_WIFI_CLK_CNTL)){
                     SET_CBUS_REG_MASK(early_clks[i], 1);
                 }
                 else if (early_clks[i] == HHI_MPEG_CLK_CNTL){
@@ -430,7 +430,7 @@ void early_clk_switch(int flag)
             }
 #endif
 #endif
-            if (early_clks[i] == HHI_VID_CLK_CNTL){
+            if ((early_clks[i] == HHI_VID_CLK_CNTL)||(early_clks[i] == HHI_WIFI_CLK_CNTL)){
                 early_clk_flag[i] = READ_CBUS_REG_BITS(early_clks[i], 0, 1);
                 if (early_clk_flag[i]){
                     CLEAR_CBUS_REG_MASK(early_clks[i], 1);
