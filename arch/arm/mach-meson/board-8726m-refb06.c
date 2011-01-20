@@ -848,8 +848,6 @@ static	struct platform_device aml_rtc_device = {
 #if defined(CONFIG_SUSPEND)
 
 static struct meson_pm_config aml_pm_pdata = {
-    .ddr2_reg_refresh = IO_APB_BUS_BASE+4,
-    .ddr2_reg_phy = IO_APB_BUS_BASE+0x1380,
     .sleepcount = 128,
 };
 
