@@ -35,6 +35,10 @@ extern void amvdec_enable(void);
 
 extern void amvdec_disable(void);
 
+extern int amvdev_pause(void);
+extern int amvdev_resume(void);
+
+
 #ifdef CONFIG_PM
 extern int amvdec_suspend(struct platform_device *dev, pm_message_t event);
 extern int amvdec_resume(struct platform_device *dec);

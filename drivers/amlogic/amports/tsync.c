@@ -5,6 +5,8 @@
 #include <linux/amports/timestamp.h>
 #include <linux/amports/tsync.h>
 
+#include "amvdec.h"
+
 //#define CONFIG_AM_TIMESYNC_LOG
 #ifdef CONFIG_AM_TIMESYNC_LOG
 #define AMLOG
@@ -235,6 +237,21 @@ void tsync_avevent(avevent_t event, u32 param)
     default:
         break;
     }
+	switch (event) {
+		case VIDEO_START:
+		case AUDIO_START:
+		case AUDIO_RESUME:
+			amvdev_resume();
+			break;
+		case VIDEO_STOP:
+		case AUDIO_STOP:
+		case VIDEO_PAUSE:
+		case AUDIO_PAUSE:
+			amvdev_pause();
+		break;
+		default:
+			break;
+	}
 
     raw_local_irq_restore(fiq_flag);
 
