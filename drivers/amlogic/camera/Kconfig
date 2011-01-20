@@ -32,6 +32,7 @@ config CAMERA_OV5640
 config CAMERA_GC0308
 	tristate "CAMERA GC0308 Driver"
 	default n
+	depends on AMLOGIC_CAMERA_ENABLE
 	help
 		GalaxyCore GC0308
 endmenu
