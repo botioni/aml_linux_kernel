@@ -309,7 +309,7 @@ static void vmpeg4_isr(void)
 #endif           
                 }
 
-                if (I_PICTURE == picture_type)
+                if ((I_PICTURE == picture_type) || (P_PICTURE == picture_type))
                 {
                         offset = READ_MPEG_REG(MP4_OFFSET_REG);
                         if (pts_lookup_offset(PTS_TYPE_VIDEO, offset, &pts, 0) == 0) 
