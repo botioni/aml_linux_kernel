@@ -121,14 +121,19 @@ int audiodsp_start(void)
 	   (pmcode->fmt == MCODEC_FMT_WMAPRO))
 
 	{
-    		for(i = 0; i< 1000;i++){
+		DSP_PRNT("dsp send audio info\n");
+    		for(i = 0; i< 2000;i++){
                 if(DSP_RD(DSP_AUDIOINFO_STATUS) == DSP_AUDIOINFO_READY)//maybe at audiodsp side,INT not enabled yet,so wait a while
                     break;
     		     msleep(1);
             }
+		if(i == 2000)
+			DSP_PRNT("audiodsp not ready for info  \n");
             DSP_WD(DSP_AUDIOINFO_STATUS,0);
 		    audio_info = get_audio_info();
-		    dsp_mailbox_send(priv, 1, M2B_IRQ4_AUDIO_INFO, 0, (const char*)audio_info, sizeof(audio_info));
+		DSP_PRNT("kernel sent info first 4 byte[0x%x],[0x%x],[0x%x],[0x%x]\n\t",audio_info->extradata[0],\
+			audio_info->extradata[1],audio_info->extradata[2],audio_info->extradata[3]);
+		    dsp_mailbox_send(priv, 1, M2B_IRQ4_AUDIO_INFO, 0, (const char*)audio_info, sizeof(struct audio_info));
     }
 #endif
      }
