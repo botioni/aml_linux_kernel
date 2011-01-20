@@ -222,13 +222,13 @@ void set_camera_mirror_flip_gc0308(enum camera_mirror_flip_e mirror_flip)
 	    }
 }
 
-static void power_down_sw_camera_gc0308(void)
+void power_down_sw_camera_gc0308(void)
 {
 	gc0308_write_byte(0x25, 0x00);
 	gc0308_write_byte(0x1a, 0x17);
 }
 
-static void wakeup_sw_camera_gc0308(void)
+void wakeup_sw_camera_gc0308(void)
 {
 	gc0308_write_byte(0x25, 0x0f);
 	gc0308_write_byte(0x1a, 0x2a);
