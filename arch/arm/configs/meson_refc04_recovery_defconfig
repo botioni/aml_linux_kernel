@@ -1,7 +1,7 @@
 #
 # Automatically generated make config: don't edit
 # Linux kernel version: 2.6.34
-# Wed Dec 29 20:51:13 2010
+# Fri Jan 21 13:56:05 2011
 #
 CONFIG_ARM=y
 CONFIG_HOLES_IN_ZONE=y
@@ -82,6 +82,11 @@ CONFIG_RD_GZIP=y
 CONFIG_RD_BZIP2=y
 CONFIG_RD_LZMA=y
 CONFIG_RD_LZO=y
+# CONFIG_INITRAMFS_COMPRESSION_NONE is not set
+# CONFIG_INITRAMFS_COMPRESSION_GZIP is not set
+# CONFIG_INITRAMFS_COMPRESSION_BZIP2 is not set
+# CONFIG_INITRAMFS_COMPRESSION_LZMA is not set
+# CONFIG_INITRAMFS_COMPRESSION_LZO is not set
 CONFIG_CC_OPTIMIZE_FOR_SIZE=y
 CONFIG_SYSCTL=y
 CONFIG_ANON_INODES=y
@@ -267,7 +272,8 @@ CONFIG_ARCH_MESON=y
 # CONFIG_MACH_MESON_8726M_REFB04 is not set
 # CONFIG_MACH_MESON_8726M_REFC05 is not set
 CONFIG_MACH_MESON_8726M_REFC04=y
-# CONFIG_MACH_MESON_8726M_G7 is not set
+# CONFIG_MACH_MESON_8726M_REFB10 is not set
+# CONFIG_MACH_MESON_8726M_REFB12 is not set
 CONFIG_MESON_CLOCK_TICK_RATE=25000000
 # CONFIG_BCM_BT is not set
 
@@ -469,6 +475,11 @@ CONFIG_AM_UART0_SET_PORT_A=y
 # CONFIG_AM_UART0_SET_PORT_B is not set
 
 #
+# ---SET ttyS1 support
+#
+# CONFIG_UART_USE_FIQ is not set
+
+#
 # Amlogic RTC support
 #
 
@@ -481,9 +492,6 @@ CONFIG_AM_UART0_SET_PORT_A=y
 # Amlogic Input device support
 #
 CONFIG_KEYPADS_AM=y
-# CONFIG_IR_REMOTE_DEFAULT is not set
-CONFIG_IR_REMOTE_HISENSE=y
-# CONFIG_IR_REMOTE_SKYWORTH is not set
 # CONFIG_VIRTUAL_REMOTE is not set
 # CONFIG_SARADC_AM is not set
 # CONFIG_KEY_INPUT_CUSTOM_AM is not set
@@ -510,6 +518,11 @@ CONFIG_IR_REMOTE_HISENSE=y
 #
 # MINI LVDS Support
 #
+
+#
+# Amlogic EFUSE Support
+#
+CONFIG_EFUSE=m
 
 #
 # Block devices
@@ -558,6 +571,10 @@ CONFIG_NAND_FLASH_DRIVER_BASE_OPERATE=y
 
 #
 # Amlogic WIFI Support
+#
+
+#
+# Amlogic BT Device Support
 #
 
 #
@@ -626,8 +643,13 @@ CONFIG_AML_HDMI_TX=y
 # CONFIG_TVIN_HDMI is not set
 # CONFIG_TVIN_BT656IN is not set
 # CONFIG_TVIN_DVIN is not set
-# CONFIG_TVIN_AFE is not set
 # CONFIG_TVIN_VDIN is not set
+
+#
+# Amlogic TVIN Tuner Support
+#
+# CONFIG_TVIN_TUNER is not set
+# CONFIG_TVIN_TUNER_FQ1216ME is not set
 
 #
 # Amlogic audio dsp process 
@@ -657,6 +679,17 @@ CONFIG_MALI=m
 #
 # AMLOGIC DVB driver
 #
+
+#
+# Amlogic CAMERA Support
+#
+# CONFIG_AMLOGIC_CAMERA_ENABLE is not set
+# CONFIG_CAMERA_OV5640 is not set
+
+#
+# Amlogic Linux Debug Support
+#
+# CONFIG_AML_LINUX_DEBUG is not set
 CONFIG_CONNECTOR=y
 CONFIG_PROC_EVENTS=y
 CONFIG_MTD=y
@@ -1332,7 +1365,9 @@ CONFIG_MSDOS_FS=y
 CONFIG_VFAT_FS=y
 CONFIG_FAT_DEFAULT_CODEPAGE=936
 CONFIG_FAT_DEFAULT_IOCHARSET="utf8"
-# CONFIG_NTFS_FS is not set
+CONFIG_NTFS_FS=y
+# CONFIG_NTFS_DEBUG is not set
+# CONFIG_NTFS_RW is not set
 
 #
 # Pseudo filesystems

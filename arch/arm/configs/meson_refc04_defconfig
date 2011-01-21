@@ -1,7 +1,7 @@
 #
 # Automatically generated make config: don't edit
 # Linux kernel version: 2.6.34
-# Mon Jan 10 11:26:41 2011
+# Fri Jan 21 14:00:17 2011
 #
 CONFIG_ARM=y
 CONFIG_HOLES_IN_ZONE=y
@@ -77,6 +77,11 @@ CONFIG_IPC_NS=y
 CONFIG_PID_NS=y
 CONFIG_NET_NS=y
 # CONFIG_BLK_DEV_INITRD is not set
+# CONFIG_INITRAMFS_COMPRESSION_NONE is not set
+# CONFIG_INITRAMFS_COMPRESSION_GZIP is not set
+# CONFIG_INITRAMFS_COMPRESSION_BZIP2 is not set
+# CONFIG_INITRAMFS_COMPRESSION_LZMA is not set
+# CONFIG_INITRAMFS_COMPRESSION_LZO is not set
 # CONFIG_CC_OPTIMIZE_FOR_SIZE is not set
 CONFIG_SYSCTL=y
 CONFIG_ANON_INODES=y
@@ -532,8 +537,8 @@ CONFIG_EXTRA_FIRMWARE=""
 #
 # Char devices
 #
-# CONFIG_AM_UART_WITH_S_CORE is not set
-CONFIG_AM_UART_WITHOUT_S_CORE=y
+CONFIG_AM_UART_WITH_S_CORE=y
+# CONFIG_AM_UART_WITHOUT_S_CORE is not set
 CONFIG_AM_UART0_SET_PORT_A=y
 # CONFIG_AM_UART0_SET_PORT_B is not set
 
@@ -605,13 +610,7 @@ CONFIG_DWC_USB_NO_SOF=y
 #
 # Amlogic Card support
 #
-CONFIG_CARDREADER=y
-CONFIG_SD_MMC=y
-CONFIG_SDIO=y
-# CONFIG_AM_ATA is not set
-# CONFIG_MS_MSPRO is not set
-# CONFIG_XD is not set
-# CONFIG_INAND is not set
+# CONFIG_CARDREADER is not set
 
 #
 # AMLOGIC SPI NOR Flash  support
@@ -637,10 +636,12 @@ CONFIG_AM_ETHERNET_DEBUG_LEVEL=1
 #
 # Amlogic WIFI Support
 #
-# CONFIG_SDIO_DHD_CDC_WIFI is not set
 CONFIG_RTL8712_8188_8191_8192SU_USB_WIFI=m
 CONFIG_RTL8192CU_USB_WIFI=m
-# CONFIG_SDIO_ATHEROS_6K_WIFI is not set
+
+#
+# Amlogic BT Device Support
+#
 
 #
 # Media devices
@@ -730,7 +731,7 @@ CONFIG_AML_AUDIO_DSP=y
 #
 # AMLOGIC Physical memory allocator
 #
-# CONFIG_CMEM is not set
+CONFIG_CMEM=m
 
 #
 # AMLOGIC HW jpeg logo driver
@@ -754,10 +755,8 @@ CONFIG_MALI=m
 #
 # Amlogic CAMERA Support
 #
-# CONFIG_CAMERA_OV2655 is not set
-# CONFIG_CAMERA_OV2665 is not set
+# CONFIG_AMLOGIC_CAMERA_ENABLE is not set
 # CONFIG_CAMERA_OV5640 is not set
-# CONFIG_CAMERA_GC0308 is not set
 
 #
 # Amlogic Linux Debug Support
@@ -768,7 +767,7 @@ CONFIG_PROC_EVENTS=y
 CONFIG_MTD=y
 # CONFIG_MTD_DEBUG is not set
 # CONFIG_MTD_TESTS is not set
-# CONFIG_MTD_CONCAT is not set
+CONFIG_MTD_CONCAT=y
 CONFIG_MTD_PARTITIONS=y
 # CONFIG_MTD_REDBOOT_PARTS is not set
 # CONFIG_MTD_CMDLINE_PARTS is not set
@@ -810,7 +809,7 @@ CONFIG_MTD_CFI_I2=y
 #
 # Mapping drivers for chip access
 #
-# CONFIG_MTD_COMPLEX_MAPPINGS is not set
+CONFIG_MTD_COMPLEX_MAPPINGS=y
 # CONFIG_MTD_PLATRAM is not set
 
 #
@@ -1612,7 +1611,8 @@ CONFIG_EXT3_FS_XATTR=y
 # CONFIG_EXT3_FS_POSIX_ACL is not set
 # CONFIG_EXT3_FS_SECURITY is not set
 # CONFIG_EXT4_FS is not set
-# CONFIG_EXFAT_FS is not set
+CONFIG_EXFAT_FS=y
+# CONFIG_EXFAT_FS_DEBUG is not set
 CONFIG_JBD=y
 # CONFIG_JBD_DEBUG is not set
 CONFIG_FS_MBCACHE=y

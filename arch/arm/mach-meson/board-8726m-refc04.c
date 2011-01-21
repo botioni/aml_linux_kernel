@@ -413,14 +413,14 @@ static struct mtd_partition partition_info[] =
 	{
 		.name = "uboot",
 		.offset = 0,
-		.size = 2*1024*1024,
+		.size = 4*1024*1024,
 	//	.set_flags=0,
 	//	.dual_partnum=0,
 	},
 //*/
         {
                 .name = "ubootenv",
-                .offset = 2*1024*1024,
+                .offset = 4*1024*1024,
                 .size = 0x2000,
         //      .set_flags=0,
         //      .dual_partnum=0,
@@ -428,8 +428,8 @@ static struct mtd_partition partition_info[] =
 /* Hide recovery partition
         {
                 .name = "recovery",
-                .offset = 4*1024*1024,
-                .size = 4*1024*1024,
+                .offset = 6*1024*1024,
+                .size = 2*1024*1024,
         //      .set_flags=0,
         //      .dual_partnum=0,
         },
@@ -452,7 +452,21 @@ static struct mtd_partition partition_info[] =
         {
                 .name = "cache",
                 .offset = 148*1024*1024,
-                .size = 16*1024*1024,
+                .size = 64*1024*1024,
+        //      .set_flags=0,
+        //      .dual_partnum=0,
+        },
+        {
+                .name = "psmart",
+                .offset = 212*1024*1024,
+                .size = 60*1024*1024,
+        //      .set_flags=0,
+        //      .dual_partnum=0,
+        },
+        {
+                .name = "papp",
+                .offset = 272*1024*1024,
+                .size = 40*1024*1024,
         //      .set_flags=0,
         //      .dual_partnum=0,
         },
