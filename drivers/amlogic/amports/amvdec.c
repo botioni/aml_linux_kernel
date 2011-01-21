@@ -45,7 +45,7 @@
 #ifdef CONFIG_WAKELOCK
 static struct wake_lock amvdec_lock;
 struct timer_list amvdevtimer;
-
+#define WAKE_CHECK_INTERVAL	(100*HZ/100)
 #endif
 
 static void amvdec_pg_enable(bool enable)
@@ -283,8 +283,7 @@ static int vdec_is_paused(void)
 
 int amvdev_pause(void)
 {
-	amvdevtimer.expires = jiffies + HZ;
-	add_timer(&amvdevtimer);
+	mod_timer(&amvdevtimer,jiffies + WAKE_CHECK_INTERVAL);
 	return 0;
 }
 int amvdev_resume(void)
@@ -302,8 +301,7 @@ static void vdec_paused_check_timer(unsigned long arg)
 	}
 	else
 	{
-		amvdevtimer.expires = jiffies + 10;
-		add_timer(&amvdevtimer);
+		mod_timer(&amvdevtimer,jiffies + WAKE_CHECK_INTERVAL);
 	}
 }
 #else
