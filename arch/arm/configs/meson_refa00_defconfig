@@ -1,7 +1,7 @@
 #
 # Automatically generated make config: don't edit
 # Linux kernel version: 2.6.34
-# Sun Dec 26 15:18:26 2010
+# Fri Jan 21 14:15:44 2011
 #
 CONFIG_ARM=y
 CONFIG_HOLES_IN_ZONE=y
@@ -256,12 +256,14 @@ CONFIG_MACH_MESON_8726M_REFA00=y
 # CONFIG_MACH_MESON_8726M_REFB02 is not set
 # CONFIG_MACH_MESON_8726M_REFB01 is not set
 # CONFIG_MACH_MESON_8726M_REFB08 is not set
+# CONFIG_MACH_MESON_8726M_REFB09 is not set
 # CONFIG_MACH_MESON_8726M_REFB03 is not set
 # CONFIG_MACH_MESON_8726M_REFB07 is not set
 # CONFIG_MACH_MESON_8726M_REFB04 is not set
-# CONFIG_MACH_MESON_8726M_DVBC_SKYWORTH is not set
-# CONFIG_MACH_MESON_8726M_DVBC_HISENSE is not set
-# CONFIG_MACH_MESON_8726M_G7 is not set
+# CONFIG_MACH_MESON_8726M_REFC05 is not set
+# CONFIG_MACH_MESON_8726M_REFC04 is not set
+# CONFIG_MACH_MESON_8726M_REFB10 is not set
+# CONFIG_MACH_MESON_8726M_REFB12 is not set
 CONFIG_MESON_CLOCK_TICK_RATE=25000000
 
 #
@@ -515,6 +517,7 @@ CONFIG_BT_RFCOMM_TTY=y
 # Bluetooth device drivers
 #
 # CONFIG_BT_HCIBTUSB is not set
+# CONFIG_BT_HCIBTSDIO is not set
 CONFIG_BT_HCIUART=y
 CONFIG_BT_HCIUART_H4=y
 # CONFIG_BT_HCIUART_BCSP is not set
@@ -592,6 +595,11 @@ CONFIG_AM_UART_WITHOUT_S_CORE=y
 CONFIG_AM_UART0_SET_PORT_B=y
 
 #
+# ---SET ttyS1 support
+#
+# CONFIG_UART_USE_FIQ is not set
+
+#
 # Amlogic RTC support
 #
 CONFIG_AML_RTC=y
@@ -614,6 +622,8 @@ CONFIG_KEY_INPUT_CUSTOM_AM=y
 # CONFIG_EETI_CAPACITIVE_TOUCHSCREEN is not set
 # CONFIG_SIS92XX_CAPACITIVE_TOUCHSCREEN is not set
 # CONFIG_HX8520_CAPACITIVE_TOUCHSCREEN is not set
+# CONFIG_RAYDIUM_CAPACITIVE_TOUCHSCREEN is not set
+# CONFIG_GOODIX_CAPACITIVE_TOUCHSCREEN is not set
 # CONFIG_TOUCH_KEY_PAD_IT7230 is not set
 # CONFIG_TOUCH_KEY_PAD_SO340010 is not set
 
@@ -638,6 +648,11 @@ CONFIG_AM_GPIO=y
 # MINI LVDS Support
 #
 # CONFIG_TWX_TC101 is not set
+
+#
+# Amlogic EFUSE Support
+#
+CONFIG_EFUSE=y
 
 #
 # Block devices
@@ -698,10 +713,12 @@ CONFIG_BCM4329_FW_PATH="broadcm_4329/sdio-g-cdc-full11n-reclaim-roml-wme-idsup.b
 CONFIG_BCM4329_NVRAM_PATH="broadcm_4329/nvram.txt"
 # CONFIG_RTL8712_8188_8191_8192SU_USB_WIFI is not set
 # CONFIG_RTL8192CU_USB_WIFI is not set
-# CONFIG_SDIO_ATHEROS_6K_WIFI is not set
+# CONFIG_SDIO_ATHEROS_6302_WIFI is not set
+# CONFIG_SDIO_ATHEROS_6102_WIFI is not set
+# CONFIG_SDIO_MARVELL_NH387_WIFI is not set
 
 #
-#BT Device Support
+# Amlogic BT Device Support
 #
 CONFIG_BT_DEVICE=y
 
@@ -728,10 +745,12 @@ CONFIG_AML_TCON_T13=y
 # CONFIG_AML_TCON_W10 is not set
 # CONFIG_AML_TCON_W7 is not set
 # CONFIG_AML_TCON_W8 is not set
+# CONFIG_AML_TCON_P7 is not set
 # CONFIG_AML_TCON_K7 is not set
 # CONFIG_AML_TCON_C7 is not set
 # CONFIG_AML_TCON_K8 is not set
 # CONFIG_AML_TCON_G7 is not set
+# CONFIG_AML_TCON_R10 is not set
 
 #
 # Amlogic osd module
@@ -787,8 +806,13 @@ CONFIG_AML_HDMI_TX=y
 # CONFIG_TVIN_HDMI is not set
 # CONFIG_TVIN_BT656IN is not set
 # CONFIG_TVIN_DVIN is not set
-# CONFIG_TVIN_AFE is not set
 # CONFIG_TVIN_VDIN is not set
+
+#
+# Amlogic TVIN Tuner Support
+#
+# CONFIG_TVIN_TUNER is not set
+# CONFIG_TVIN_TUNER_FQ1216ME is not set
 
 #
 # Amlogic audio dsp process 
@@ -818,6 +842,17 @@ CONFIG_MALI=m
 #
 # AMLOGIC DVB driver
 #
+
+#
+# Amlogic CAMERA Support
+#
+# CONFIG_AMLOGIC_CAMERA_ENABLE is not set
+# CONFIG_CAMERA_OV5640 is not set
+
+#
+# Amlogic Linux Debug Support
+#
+CONFIG_AML_LINUX_DEBUG=y
 CONFIG_CONNECTOR=y
 CONFIG_PROC_EVENTS=y
 CONFIG_MTD=y
