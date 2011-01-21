@@ -1677,21 +1677,26 @@ static void bt_device_init(void)
 	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, (1<<24));
 	
 	/* WLBT_REGON */
-	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<18));
-	SET_CBUS_REG_MASK(PREG_GGPIO_O, (1<<18));	
+	//CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<18));//D20
+	//SET_CBUS_REG_MASK(PREG_GGPIO_O, (1<<18));
+        #ifdef CONFIG_SN7325
+        printk("power on 7325 8\n");
+        configIO(0, 0);
+        setIO_level(0, 1, 1);
+        #endif
 	
 	/* reset */
-	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<12));
+	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<12));//D14
 	CLEAR_CBUS_REG_MASK(PREG_GGPIO_O, (1<<12));	
 	msleep(200);	
 	SET_CBUS_REG_MASK(PREG_GGPIO_O, (1<<12));	
 	
 	/* BG/GPS low */
-	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<19));
+	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<19));//D21
 	CLEAR_CBUS_REG_MASK(PREG_GGPIO_O, (1<<19));	
 	
 	/* UART RTS */
-	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<16));
+	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<16));//D18
     CLEAR_CBUS_REG_MASK(PREG_GGPIO_O, (1<<16));
 		
 	/* BG wakeup high 
