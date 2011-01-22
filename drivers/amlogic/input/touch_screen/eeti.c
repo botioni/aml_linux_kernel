@@ -18,6 +18,12 @@
 #include <linux/platform_device.h>
 #include <linux/workqueue.h>
 #include <linux/i2c/eeti.h>
+#include <linux/cdev.h>
+#include <asm/uaccess.h>
+#ifdef CONFIG_HAS_EARLYSUSPEND
+#include <linux/earlysuspend.h>
+static struct early_suspend eeti_early_suspend;
+#endif
 
 
 #define DRIVER_NAME "eeti"
@@ -402,6 +408,21 @@ static irqreturn_t eeti_interrupt(int irq, void *dev_id)
  * @client:    client to initialize
  * @id:                I2C device ID
  */
+struct eeti_platform_data * eeti_data;
+#ifdef CONFIG_HAS_EARLYSUSPEND
+static void aml_eeti_early_suspend(struct early_suspend *h)
+{
+	printk("enter -----> %s \n",__FUNCTION__);
+	eeti_data->touch_on(0);
+}
+
+static void aml_eeti_late_resume(struct early_suspend *h)
+{
+	printk("enter -----> %s \n",__FUNCTION__);
+      eeti_data->touch_on(1);
+}
+#endif
+
 static int eeti_probe(struct i2c_client *client,
     const struct i2c_device_id *id)
 {
@@ -419,6 +440,7 @@ static int eeti_probe(struct i2c_client *client,
 
     /* setup platform-specific hooks */
     ts->pdata = (struct eeti_platform_data*)client->dev.platform_data;
+    eeti_data = (struct eeti_platform_data*)client->dev.platform_data;
     if (!ts->pdata || !ts->pdata->init_irq || !ts->pdata->get_irq_level) {
         dev_err(&client->dev, "no platform-specific callbacks "
             "provided\n");
@@ -475,7 +497,14 @@ static int eeti_probe(struct i2c_client *client,
         client->irq, err);
         goto fail_irq;
     }
-
+    #ifdef CONFIG_HAS_EARLYSUSPEND
+    printk("******* enter eeti early suspend register *******\n");
+    eeti_early_suspend.level = EARLY_SUSPEND_LEVEL_BLANK_SCREEN;
+    eeti_early_suspend.suspend = aml_eeti_early_suspend;
+    eeti_early_suspend.resume = aml_eeti_late_resume;
+    eeti_early_suspend.param = client;
+	register_early_suspend(&eeti_early_suspend);
+    #endif
     i2c_set_clientdata(client, ts);
     //schedule_delayed_work(&ts->cal_work, 20*HZ);
     err = 0;
@@ -510,7 +539,9 @@ static int eeti_remove(struct i2c_client *client)
     i2c_set_clientdata(client, NULL);
     input_unregister_device(priv->input);
     kfree(priv);
-
+    #ifdef CONFIG_HAS_EARLYSUSPEND
+      unregister_early_suspend(&eeti_early_suspend);
+    #endif
     return 0;
 }
 

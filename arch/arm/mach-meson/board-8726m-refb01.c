@@ -718,9 +718,21 @@ static int eeti_get_irq_level(void)
     return gpio_get_value(GPIO_EETI_PENIRQ);
 }
 
+void touch_on(int flag)
+{
+       printk("enter %s flag=%d \n",__FUNCTION__,flag);
+	if(flag)
+		set_gpio_val(GPIOD_bank_bit2_24(23), GPIOD_bit_bit2_24(23), 1);
+	else
+		set_gpio_val(GPIOD_bank_bit2_24(23), GPIOD_bit_bit2_24(23), 0);
+        set_gpio_mode(GPIOD_bank_bit2_24(23), GPIOD_bit_bit2_24(23), GPIO_OUTPUT_MODE);
+}
+
+
 static struct eeti_platform_data eeti_pdata = {
     .init_irq = &eeti_init_irq,
     .get_irq_level = &eeti_get_irq_level,
+    .touch_on =  touch_on,
     .tp_max_width = 32752,
     .tp_max_height = 32752,
     .lcd_max_width = 800,

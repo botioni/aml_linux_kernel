@@ -22,6 +22,7 @@
 struct itk_platform_data {
        int (*init_irq)(void);
        int (*get_irq_level)(void);
+	 void (*touch_on)(int flag);
        int tp_max_width;
        int tp_max_height;
        int lcd_max_width;

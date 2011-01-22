@@ -812,9 +812,20 @@ static int itk_get_irq_level(void)
     return gpio_get_value(GPIO_ITK_PENIRQ);
 }
 
+void touch_on(int flag)
+{
+       printk("enter %s flag=%d \n",__FUNCTION__,flag);
+	if(flag)
+		set_gpio_val(GPIOD_bank_bit2_24(23), GPIOD_bit_bit2_24(23), 1);
+	else
+		set_gpio_val(GPIOD_bank_bit2_24(23), GPIOD_bit_bit2_24(23), 0);
+        set_gpio_mode(GPIOD_bank_bit2_24(23), GPIOD_bit_bit2_24(23), GPIO_OUTPUT_MODE);
+}
+
 static struct itk_platform_data itk_pdata = {
     .init_irq = &itk_init_irq,
     .get_irq_level = &itk_get_irq_level,
+    .touch_on =  touch_on,
     .tp_max_width = 4352,
     .tp_max_height = 3200,
     .lcd_max_width = 1024,

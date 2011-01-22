@@ -20,6 +20,10 @@
 #include <linux/i2c/itk.h>
 #include <linux/cdev.h>
 #include <asm/uaccess.h>
+#ifdef CONFIG_HAS_EARLYSUSPEND
+#include <linux/earlysuspend.h>
+static struct early_suspend itk_early_suspend;
+#endif
 
 // definition
 #define ILITEK_I2C_DEFAULT_ADDRESS      0x41
@@ -582,6 +586,22 @@ static irqreturn_t itk_interrupt(int irq, void *dev_id)
  * @client: client to initialize
  * @id: I2C device ID
  */
+
+struct itk_platform_data * itk_data;
+#ifdef CONFIG_HAS_EARLYSUSPEND
+static void aml_itk_early_suspend(struct early_suspend *h)
+{
+	printk("enter -----> %s \n",__FUNCTION__);
+	itk_data->touch_on(0);
+}
+
+static void aml_itk_late_resume(struct early_suspend *h)
+{
+	printk("enter -----> %s \n",__FUNCTION__);
+      itk_data->touch_on(1);
+}
+#endif
+
 static int itk_probe(struct i2c_client *client,
     const struct i2c_device_id *id)
 {
@@ -599,6 +619,7 @@ static int itk_probe(struct i2c_client *client,
 
     /* setup platform-specific hooks */
     ts->pdata = (struct itk_platform_data*)client->dev.platform_data;
+    itk_data = (struct itk_platform_data*)client->dev.platform_data;
     if (!ts->pdata || !ts->pdata->init_irq || !ts->pdata->get_irq_level) {
         dev_err(&client->dev, "no platform-specific callbacks "
             "provided\n");
@@ -645,7 +666,7 @@ static int itk_probe(struct i2c_client *client,
     printk("work create: %x\n", ts->workqueue);
     #endif
 #endif
-
+      
     ts->pendown = 0;
     ts->touching_num = 0;
 
@@ -656,11 +677,18 @@ static int itk_probe(struct i2c_client *client,
         client->irq, err);
         goto fail_irq;
     }
-
+    #ifdef CONFIG_HAS_EARLYSUSPEND
+    printk("******* enter itk early suspend register *******\n");
+    itk_early_suspend.level = EARLY_SUSPEND_LEVEL_BLANK_SCREEN;
+    itk_early_suspend.suspend = aml_itk_early_suspend;
+    itk_early_suspend.resume = aml_itk_late_resume;
+    itk_early_suspend.param = client;
+	register_early_suspend(&itk_early_suspend);
+    #endif
     i2c_set_clientdata(client, ts);
     //schedule_delayed_work(&ts->cal_work, 20*HZ);
     err = 0;
-    goto out;
+    goto out;	
 
 fail_irq:
     free_irq(client->irq, client);
@@ -691,7 +719,9 @@ static int itk_remove(struct i2c_client *client)
     i2c_set_clientdata(client, NULL);
     input_unregister_device(priv->input);
     kfree(priv);
-
+    #ifdef CONFIG_HAS_EARLYSUSPEND
+      unregister_early_suspend(&itk_early_suspend);
+    #endif
     return 0;
 }
 
