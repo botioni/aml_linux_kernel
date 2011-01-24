@@ -38,6 +38,7 @@
 #include <linux/i2c-aml.h>
 #include <mach/power_gate.h>
 #include <linux/reboot.h>
+#include <linux/syscalls.h>
 
 #ifdef CONFIG_AM_UART_WITH_S_CORE 
 #include <linux/uart-aml.h>
@@ -93,6 +94,11 @@
 #ifdef CONFIG_SND_AML_M1_MID_WM8900
 #include <sound/wm8900.h>
 #endif
+
+#ifdef CONFIG_GOODIX_CAPACITIVE_TOUCHSCREEN
+#include <linux/goodix_touch.h>
+#endif
+
 
 #if defined(CONFIG_JPEGLOGO)
 static struct resource jpeglogo_resources[] = {
@@ -543,6 +549,23 @@ static struct platform_device aml_audio={
 //use LED_CS1 as hp detect pin
 #define PWM_TCNT    (600-1)
 #define PWM_MAX_VAL (420)
+int get_display_mode(void) {
+	int fd;
+	int ret = 0;
+	char mode[8];	
+	
+  fd = sys_open("/sys/class/display/mode", O_RDWR | O_NDELAY, 0);
+  if(fd >= 0) {
+  	memset(mode,0,8);
+  	sys_read(fd,mode,8);
+  	if(strncmp("panel",mode,5))
+  		ret = 1;
+  	sys_close(fd);
+  }
+
+  return ret;
+}
+
 int wm8900_is_hp_pluged(void)
 {
     int level = 0;
@@ -560,9 +583,19 @@ int wm8900_is_hp_pluged(void)
                                 (7 << 4)    |       // CS1 REF, Current FeedBack: about 0.505V
                                 (0 << 0));           // DIMCTL Analog dimmer
     cs_no = READ_CBUS_REG(LED_PWM_REG3);
-    if(cs_no &(1<<15))
+        if(cs_no &(1<<14))
+          level |= (1<<0);
+    
+    // temp patch to mute speaker when hdmi output
+    if(level == 0)
+    	if(get_display_mode() != 0)	
+    			return 1;
+    			
+    //printk("level = %d,board_ver = %d\n",level,board_ver);
+    return (level == 1)?(0):(1); //return 1: hp pluged, 0: hp unpluged.
+    /*if(cs_no &(1<<15))
       level |= (1<<0);
-    return (level == 0)?(1):(0); //return 1: hp pluged, 0: hp unpluged.
+    return (level == 0)?(1):(0); //return 1: hp pluged, 0: hp unpluged.*/
 }
 
 static struct wm8900_platform_data wm8900_pdata = {
@@ -750,6 +783,40 @@ static int ts_get_irq_level(void)
     return gpio_get_value(TS_IRQ_GPIO);
 }
 #endif
+
+
+#ifdef CONFIG_GOODIX_CAPACITIVE_TOUCHSCREEN
+#include <linux/capts.h>
+/* GPIOD_24 */
+#define TS_IRQ_GPIO  ((GPIOD_bank_bit2_24(24)<<16) |GPIOD_bit_bit2_24(24))
+#define TS_IRQ_IDX     (GPIOD_IDX + 24)
+#define TS_RESET_GPIO  ((GPIOD_bank_bit2_24(23)<<16) |GPIOD_bit_bit2_24(23))
+
+
+static int ts_init_irq(void)
+{
+    int group = INT_GPIO_0 - INT_GPIO_0;
+    int mode =  TS_MODE_INT_FALLING;
+    
+    if (mode < TS_MODE_TIMER_READ) {
+        gpio_direction_input(TS_IRQ_GPIO);
+        if (mode == TS_MODE_INT_FALLING) {
+            gpio_enable_edge_int(TS_IRQ_IDX, 1, group);
+        }
+        else if (mode == TS_MODE_INT_RISING) {
+            gpio_enable_edge_int(TS_IRQ_IDX, 0, group);
+        }
+        else if (mode == TS_MODE_INT_LOW) {
+            gpio_enable_level_int(TS_IRQ_IDX, 1, group);
+        }
+        else if (mode == TS_MODE_INT_HIGH) {
+            gpio_enable_level_int(TS_IRQ_IDX, 0, group);
+        }
+    }
+    return 0;
+}
+#endif
+
 #ifdef CONFIG_EETI_CAPACITIVE_TOUCHSCREEN
 #include <linux/i2c/eeti.h>
 
@@ -1687,6 +1754,12 @@ static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
         .platform_data = (void *)&ts_pdata,
     },
 #endif
+
+#ifdef CONFIG_GOODIX_CAPACITIVE_TOUCHSCREEN
+	{
+		I2C_BOARD_INFO(GOODIX_I2C_NAME, GOODIX_I2C_ADDR),
+	},
+#endif
 };
 
 
@@ -1799,6 +1872,9 @@ static __init void m1_init_machine(void)
 #if defined(CONFIG_TOUCHSCREEN_ADS7846)
     ads7846_init_gpio();
     spi_register_board_info(spi_board_info_list, ARRAY_SIZE(spi_board_info_list));
+#endif
+#ifdef CONFIG_GOODIX_CAPACITIVE_TOUCHSCREEN
+    ts_init_irq();
 #endif
     disable_unused_model();
 }
