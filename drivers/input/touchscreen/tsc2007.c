@@ -156,7 +156,7 @@ static void tsc2007_send_up_event(struct tsc2007 *tsc)
 {
 	struct input_dev *input = tsc->input;
 
-	dev_info(&tsc->client->dev, "UP\n");
+	//dev_info(&tsc->client->dev, "UP\n");
 
 	input_report_key(input, BTN_TOUCH, 0);
 	input_report_abs(input, ABS_PRESSURE, 0);
@@ -189,7 +189,7 @@ static void tsc2007_work(struct work_struct *work)
 			goto out;
 		}
 
-		dev_info(&ts->client->dev, "pen is still down\n");
+		//dev_info(&ts->client->dev, "pen is still down\n");
 	}
 	tsc2007_cache_out(ts, tc);
 	tsc2007_read_values(ts, &ts->tc_cache);
@@ -205,7 +205,7 @@ static void tsc2007_work(struct work_struct *work)
 		 * beyond the maximum. Don't report it to user space,
 		 * repeat at least once more the measurement.
 		 */
-		dev_info(&ts->client->dev, "ignored pressure %d\n", rt);
+		//dev_info(&ts->client->dev, "ignored pressure %d\n", rt);
 		goto out;
 
 	}
@@ -214,12 +214,12 @@ static void tsc2007_work(struct work_struct *work)
 		struct input_dev *input = ts->input;
 
 		if (!ts->pendown) {
-			dev_info(&ts->client->dev, "DOWN\n");
+			//dev_info(&ts->client->dev, "DOWN\n");
 
 			input_report_key(input, BTN_TOUCH, 1);
 			ts->pendown = true;
 		}
-            	dev_info(&ts->client->dev, "point(%4d,%4d)\n", tc.x, tc.y);
+            	//dev_info(&ts->client->dev, "point(%4d,%4d)\n", tc.x, tc.y);
             	if (ts->convert) {
             	    int xy = ts->convert(tc.x, tc.y);
             	    tc.x = xy >> 16;
@@ -231,8 +231,7 @@ static void tsc2007_work(struct work_struct *work)
 
 		input_sync(input);
 
-		dev_info(&ts->client->dev, "point(%4d,%4d), pressure (%4u)\n",
-			tc.x, tc.y, rt);
+		//dev_info(&ts->client->dev, "point(%4d,%4d), pressure (%4u)\n",tc.x, tc.y, rt);
 
 	} else if (!ts->get_pendown_state && ts->pendown) {
 		/*
