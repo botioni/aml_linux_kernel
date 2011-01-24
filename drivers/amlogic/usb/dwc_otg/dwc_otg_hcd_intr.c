@@ -806,6 +806,7 @@ update_isoc_urb_state(dwc_otg_hcd_t * _hcd,
 		frame_desc->actual_length =
 		    get_actual_xfer_length(_hc, _hc_regs, _qtd,
 					   _halt_status, NULL);
+		break;
 	default:
 		DWC_ERROR("%s: Unhandled _halt_status (%d)\n", __func__,
 			  _halt_status);
