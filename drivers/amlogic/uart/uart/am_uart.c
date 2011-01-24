@@ -494,7 +494,7 @@ static void change_speed(struct am_uart *info, unsigned long newbaud)
 
     if (!(port = info->port) || newbaud==0)
         return;
-
+    msleep(1);
     printk("Changing baud to %d\n", (int)newbaud);
 
     while (!(__raw_readl(&uart->status) & UART_TXEMPTY)) {
@@ -506,7 +506,7 @@ static void change_speed(struct am_uart *info, unsigned long newbaud)
 
 	tmp = (__raw_readl(&uart->mode) & ~0xfff) | (tmp & 0xfff);
 	__raw_writel(tmp, &uart->mode);
-
+    msleep(1);
 }
 
 static int startup(struct am_uart *info)
