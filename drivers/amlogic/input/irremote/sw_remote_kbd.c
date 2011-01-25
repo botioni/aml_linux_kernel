@@ -57,6 +57,7 @@ static int  get_pulse_width(unsigned long data)
 				kp_data->step==REMOTE_STATUS_LEADER?"leader":\
 				kp_data->step==REMOTE_STATUS_DATA?"data":\
 				kp_data->step==REMOTE_STATUS_SYNC?"sync":NULL;
+
 				
 	sprintf(buf,"%d:pulse_wdith:%d==>%s\r\n",pulse_index++,pulse_width,state);
 	if(strlen(remote_log_buf)>REMOTE_LOG_BUF_LEN)
@@ -155,10 +156,12 @@ static inline void kbd_software_mode_remote_data(unsigned long data)
     	if(kp_data->bit_num == 0)
     	{
      	 	kp_data->repeate_flag= 0;
-		kbd_software_mode_remote_send_key(data);
-            kp_data->timer.data=(unsigned long)kp_data;
-            mod_timer(&kp_data->timer,jiffies+msecs_to_jiffies(kp_data->release_delay));
-    	}
+		kp_data->send_data=1;	
+		if(kp_data->work_mode==REMOTE_WORK_MODE_FIQ)
+		fiq_bridge_pulse_trigger(&kp_data->fiq_handle_item);
+		else
+		remote_bridge_isr(0,kp_data);	
+        }
 	
 }
 static inline void kbd_software_mode_remote_sync(unsigned long data)
@@ -171,15 +174,18 @@ static inline void kbd_software_mode_remote_sync(unsigned long data)
 	if((pulse_width > kp_data->time_window[6]) && (pulse_width < kp_data->time_window[7])) {
         	kp_data->repeate_flag=1;
               if(kp_data->repeat_enable)
-    	            kbd_software_mode_remote_send_key(data);
+		 	kp_data->send_data=1;		  	
               else{
-                    kp_data->step  = REMOTE_STATUS_SYNC ;
+                    	kp_data->step  = REMOTE_STATUS_SYNC ;
                     return;
                 }
 	}
     	kp_data->step  = REMOTE_STATUS_SYNC ;
-	kp_data->timer.data=(unsigned long)kp_data;
-	mod_timer(&kp_data->timer,jiffies+msecs_to_jiffies(kp_data->release_delay));	
+	if(kp_data->work_mode==REMOTE_WORK_MODE_FIQ)
+	fiq_bridge_pulse_trigger(&kp_data->fiq_handle_item);
+	else
+	remote_bridge_isr(0,kp_data);	
+	
 }
 void kp_sw_reprot_key(unsigned long data)
 {
@@ -207,4 +213,16 @@ void kp_sw_reprot_key(unsigned long data)
             break;
     	}
 }
+irqreturn_t remote_bridge_isr(int irq, void *dev_id)
+{
+	struct kp *kp_data = (struct kp *) dev_id;
 
+	if(kp_data->send_data) //report key 
+	{
+		kbd_software_mode_remote_send_key((unsigned long)kp_data);
+		kp_data->send_data=0;
+	}
+	kp_data->timer.data=(unsigned long)kp_data;
+	mod_timer(&kp_data->timer,jiffies+msecs_to_jiffies(kp_data->release_delay));
+	return IRQ_HANDLED;
+}

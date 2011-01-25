@@ -28,6 +28,7 @@
 #include <linux/module.h>
 #include <linux/init.h>
 #include <linux/interrupt.h>
+#include <linux/irq.h>
 #include <linux/types.h>
 #include <linux/input.h>
 #include <linux/kernel.h>
@@ -44,6 +45,8 @@
 #include <linux/slab.h>
 #include <asm/uaccess.h>
 #include "amkbd_remote.h"
+
+
 
 #undef NEW_BOARD_LEARNING_MODE
 
@@ -178,12 +181,27 @@ void kp_send_key(struct input_dev *dev, unsigned int scancode, unsigned int type
             }
         }
 }
-
+static void  disable_remote_irq(void)
+{
+	 if(gp_kp->work_mode!=REMOTE_WORK_MODE_FIQ)
+	 {
+	 	disable_irq(NEC_REMOTE_IRQ_NO);
+	 }
+    	
+}
+static void  enable_remote_irq(void)
+{
+	if(gp_kp->work_mode!=REMOTE_WORK_MODE_FIQ)
+	 {
+	 	enable_irq(NEC_REMOTE_IRQ_NO);
+	 }
+	
+}
 static void kp_timer_sr(unsigned long data)
 {
     struct kp *kp_data=(struct kp *)data;
     kp_send_key(kp_data->input, (kp_data->cur_keycode>>16)&0xff ,0);
-    if(kp_data->work_mode==REMOTE_WORK_MODE_SW)
+    if(kp_data->work_mode!=REMOTE_WORK_MODE_HW)
         kp_data->step   = REMOTE_STATUS_WAIT ;
 }
 
@@ -191,11 +209,16 @@ static irqreturn_t kp_interrupt(int irq, void *dev_id)
 {
     /* disable keyboard interrupt and schedule for handling */
 //  input_dbg("===trigger one  kpads interupt \r\n");
-    tasklet_schedule(&tasklet);
+ 	tasklet_schedule(&tasklet);
 
-    return IRQ_HANDLED;
+	return IRQ_HANDLED;
 }
-
+static  irqreturn_t  kp_fiq_interrupt(void)
+{
+	kp_sw_reprot_key((unsigned long)gp_kp);
+	WRITE_MPEG_REG(IRQ_CLR_REG(NEC_REMOTE_IRQ_NO), 1 << IRQ_BIT(NEC_REMOTE_IRQ_NO));
+	return IRQ_HANDLED;
+}
 static inline int kp_hw_reprot_key(struct kp *kp_data )
 {
     int  key_index;
@@ -293,9 +316,9 @@ static ssize_t kp_enable_store(struct device *dev, struct device_attribute *attr
     mutex_lock(&kp_enable_mutex);
     if (state != kp_enable) {
         if (state)
-            enable_irq(NEC_REMOTE_IRQ_NO);
+            enable_remote_irq();
         else
-            disable_irq(NEC_REMOTE_IRQ_NO);
+            disable_remote_irq();
         kp_enable = state;
     }
     mutex_unlock(&kp_enable_mutex);
@@ -354,19 +377,52 @@ static int    hardware_init(struct platform_device *pdev)
 }
 
 static int
-work_mode_config(int work_mode)
+work_mode_config(unsigned int cur_mode)
 {
-    unsigned int  control_value;
+	unsigned int  control_value;
+    	static unsigned int 	last_mode=REMOTE_WORK_MODE_INV;
+	struct irq_desc *desc = irq_to_desc(NEC_REMOTE_IRQ_NO);	
 
-    if(work_mode==REMOTE_WORK_MODE_HW)
-    {
-        control_value=0xbe40; //ignore  custom code .
-        WRITE_MPEG_REG(IR_DEC_REG1,control_value|IR_CONTROL_HOLD_LAST_KEY);
-    }else{
-        control_value=0x8578;
-        WRITE_MPEG_REG(IR_DEC_REG1,control_value);
-    }
-    return 0;
+   	if(last_mode == cur_mode) return -1;	
+    	if(cur_mode==REMOTE_WORK_MODE_HW)
+    	{
+      	  	control_value=0xbe40; //ignore  custom code .
+      	  	WRITE_MPEG_REG(IR_DEC_REG1,control_value|IR_CONTROL_HOLD_LAST_KEY);
+    	}
+	else
+	{
+		control_value=0x8578;
+        	WRITE_MPEG_REG(IR_DEC_REG1,control_value);
+    	}
+
+    	switch(cur_mode)
+    	{
+    		case REMOTE_WORK_MODE_HW:
+		case REMOTE_WORK_MODE_SW:
+		if(last_mode==REMOTE_WORK_MODE_FIQ)
+		{
+			//disable fiq and enable common irq
+			unregister_fiq_bridge_handle(&gp_kp->fiq_handle_item);
+			free_fiq(NEC_REMOTE_IRQ_NO);
+			request_irq(NEC_REMOTE_IRQ_NO, kp_interrupt,
+        			IRQF_SHARED,"keypad", (void *)kp_interrupt);
+		}
+		break;
+		case REMOTE_WORK_MODE_FIQ:
+		//disable common irq and enable fiq.
+		free_irq(NEC_REMOTE_IRQ_NO,kp_interrupt);
+		gp_kp->fiq_handle_item.handle=remote_bridge_isr;
+		gp_kp->fiq_handle_item.key=(u32)gp_kp;
+		gp_kp->fiq_handle_item.name="remote_bridge";
+		register_fiq_bridge_handle(&gp_kp->fiq_handle_item);
+		//workaround to fix fiq mechanism bug.
+		desc->depth++;
+		request_fiq(NEC_REMOTE_IRQ_NO,(void*)kp_fiq_interrupt);
+		
+		break;	
+    	} 	
+    	last_mode=cur_mode;
+    	return 0;
 }
 
 static int
@@ -383,7 +439,6 @@ remote_config_ioctl(struct inode *inode, struct file *filp,
     void  __user* argp =(void __user*)args;
     unsigned int   val, i;
 
-    disable_irq(NEC_REMOTE_IRQ_NO);
     if(args)
     {
         copy_from_user(&val,argp,sizeof(unsigned long));
@@ -402,7 +457,6 @@ remote_config_ioctl(struct inode *inode, struct file *filp,
         case REMOTE_IOC_SET_KEY_MAPPING:
             if((val >> 16) >= ARRAY_SIZE(key_map)){
                 mutex_unlock(&kp_file_mutex);
-                enable_irq(NEC_REMOTE_IRQ_NO);
                 return  -1;
                 }
             key_map[val>>16] = val & 0xffff;
@@ -410,7 +464,6 @@ remote_config_ioctl(struct inode *inode, struct file *filp,
         case REMOTE_IOC_SET_MOUSE_MAPPING:
             if((val >> 16) >= ARRAY_SIZE(mouse_map)){
                 mutex_unlock(&kp_file_mutex);
-                enable_irq(NEC_REMOTE_IRQ_NO);
                 return  -1;
                 }
             mouse_map[val>>16] = val & 0xff;
@@ -527,7 +580,7 @@ remote_config_ioctl(struct inode *inode, struct file *filp,
         }
         break;
         case REMOTE_IOC_SET_MODE:
-        work_mode_config(kp->work_mode);
+	 work_mode_config(kp->work_mode);
         break;
         case REMOTE_IOC_GET_REG_BASE_GEN:
         case REMOTE_IOC_GET_REG_CONTROL:
@@ -545,7 +598,6 @@ remote_config_ioctl(struct inode *inode, struct file *filp,
         break;
     }
     mutex_unlock(&kp_file_mutex);
-    enable_irq(NEC_REMOTE_IRQ_NO);
     return  0;
 }
 
@@ -713,7 +765,15 @@ static int kp_remove(struct platform_device *pdev)
     free_pages((unsigned long)remote_log_buf,REMOTE_LOG_BUF_ORDER);
         device_remove_file(&pdev->dev, &dev_attr_enable);
     device_remove_file(&pdev->dev, &dev_attr_log_buffer);
-    free_irq(NEC_REMOTE_IRQ_NO,kp_interrupt);
+    if(kp->work_mode == REMOTE_WORK_MODE_FIQ )
+    {
+    	free_fiq(NEC_REMOTE_IRQ_NO);
+	free_irq(BRIDGE_IRQ,gp_kp);
+    }
+    else
+    {
+    	 free_irq(NEC_REMOTE_IRQ_NO,kp_interrupt);
+    }
     input_free_device(kp->input);
 
 

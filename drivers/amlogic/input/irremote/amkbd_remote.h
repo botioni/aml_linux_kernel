@@ -1,6 +1,8 @@
 #ifndef   _AMKBD_REMOTE_H
 #define   _AMKBD_REMOTE_H
 #include  <asm/ioctl.h>
+#include <linux/fiq_bridge.h>
+
 //remote config  ioctl  cmd
 #define   REMOTE_IOC_RESET_KEY_MAPPING	    _IOW_BAD('I',3,sizeof(short))
 #define   REMOTE_IOC_SET_KEY_MAPPING		    _IOW_BAD('I',4,sizeof(short))
@@ -45,15 +47,18 @@
 #define   REMOTE_IOC_GET_REG_FRAME_STATUS	_IOR_BAD('I',128,sizeof(short))
 
 #define   REMOTE_WORK_MODE_SW 		0
-#define   REMOTE_WORK_MODE_HW		1
+#define   REMOTE_WORK_MODE_HW			1
+#define   REMOTE_WORK_MODE_FIQ		2
+#define   REMOTE_WORK_MODE_INV		3
 
 
 #define REMOTE_STATUS_WAIT       0
-#define REMOTE_STATUS_LEADER     1
+#define REMOTE_STATUS_LEADER    1
 #define REMOTE_STATUS_DATA       2
 #define REMOTE_STATUS_SYNC       3
 #define REMOTE_LOG_BUF_LEN		8192
 #define REMOTE_LOG_BUF_ORDER		1
+
 
 
 typedef  int   (*type_printk)(const char *fmt, ...) ;
@@ -74,6 +79,9 @@ struct kp {
 //sw
 	unsigned int delay;
 	unsigned int   step;
+	unsigned int   send_data;
+	bridge_item_t 		fiq_handle_item;
+	
 	unsigned int 	bit_count;
 	unsigned int   bit_num;
 	unsigned int	last_jiffies;
@@ -90,7 +98,10 @@ struct kp {
 };
 
 extern type_printk input_dbg;
-
+extern irqreturn_t remote_bridge_isr(int irq, void *dev_id);
+extern int  register_fiq_bridge_handle(bridge_item_t *c_item) ;
+extern int  unregister_fiq_bridge_handle(bridge_item_t *c_item);
+extern int  fiq_bridge_pulse_trigger(bridge_item_t *c_item);
 
 void kp_sw_reprot_key(unsigned long data);
 void kp_send_key(struct input_dev *dev, unsigned int scancode, unsigned int type);
