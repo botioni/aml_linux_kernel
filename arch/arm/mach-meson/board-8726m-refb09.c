@@ -914,6 +914,14 @@ static struct platform_device camera_device = {
     .id         = -1,
 };
 #endif
+
+#ifdef CONFIG_CAMERA_GT2005
+static struct platform_device camera_gt2005_device = {
+    .name       = "camera_gt2005",
+    .id         = -1,
+};
+#endif
+
 #if defined(CONFIG_SUSPEND)
 static void set_vccx2(int power_on)
 {
@@ -1704,6 +1712,9 @@ static struct platform_device __initdata *platform_devs[] = {
     #ifdef CONFIG_CAMERA_GC0308
         &camera_device,
     #endif
+    #ifdef CONFIG_CAMERA_GT2005
+        &camera_gt2005_device,
+    #endif
     #if defined(CONFIG_AM_TV_OUTPUT)||defined(CONFIG_AM_TCON_OUTPUT)
         &vout_device,   
     #endif
@@ -1734,6 +1745,14 @@ static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
         I2C_BOARD_INFO("cg0308_i2c",  0x42 >> 1 ),
     },
 #endif
+
+#ifdef CONFIG_CAMERA_GT2005
+    {
+    	/*gt2005 i2c address is 0x78/0x79*/
+    	I2C_BOARD_INFO("gt2005_i2c",  0x78 >> 1 ),
+    },
+#endif
+
 #ifdef CONFIG_SND_AML_M1_MID_WM8900
     {
         I2C_BOARD_INFO("wm8900", 0x1A),
@@ -1811,8 +1830,23 @@ static void __init eth_pinmux_init(void)
 static void __init camera_power_on_init(void)
 {
     udelay(1000);
+    SET_CBUS_REG_MASK(HHI_ETH_CLK_CNTL,0x30f);// 24M XTAL
     SET_CBUS_REG_MASK(HHI_DEMOD_PLL_CNTL,0x232);// 24M XTAL
-    SET_CBUS_REG_MASK(HHI_DEMOD_PLL_CNTL,0x232);// 24M XTAL
+
+    eth_set_pinmux(ETH_BANK0_GPIOC3_C12,ETH_CLK_OUT_GPIOC12_REG3_1, 1);		
+}
+#endif
+
+#ifdef CONFIG_CAMERA_GT2005
+static void __init camera_gt2005_power_on_init(void)
+{
+    udelay(1000);
+    WRITE_CBUS_REG(HHI_ETH_CLK_CNTL,0x30f);// 24M XTAL
+    WRITE_CBUS_REG(HHI_DEMOD_PLL_CNTL,0x232);// 24M XTAL
+    
+    printk("camera_gt2005_power_on_init WRITE_CBUS_REG \n");
+    printk("HHI_ETH_CLK_CNTL = %x\n", READ_CBUS_REG(HHI_ETH_CLK_CNTL));
+    printk("HHI_DEMOD_PLL_CNTL = %x\n", READ_CBUS_REG(HHI_DEMOD_PLL_CNTL));
 
     eth_set_pinmux(ETH_BANK0_GPIOC3_C12,ETH_CLK_OUT_GPIOC12_REG3_1, 1);		
 }
@@ -1891,6 +1925,9 @@ static __init void m1_init_machine(void)
     device_pinmux_init();
 #ifdef CONFIG_CAMERA_GC0308
     camera_power_on_init();
+#endif
+#ifdef CONFIG_CAMERA_GT2005
+    camera_gt2005_power_on_init();
 #endif
     platform_add_devices(platform_devs, ARRAY_SIZE(platform_devs));
 
