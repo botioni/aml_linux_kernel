@@ -38,10 +38,6 @@
 
 #define  FIQ_VSYNC
 
-#ifdef FIQ_VSYNC
-#define BRIDGE_IRQ INT_TIMER_D
-#define BRIDGE_IRQ_SET() WRITE_CBUS_REG(ISA_TIMERD, 1)
-#endif
 
 static DECLARE_WAIT_QUEUE_HEAD(osd_vsync_wq);
 static bool vsync_hit = false;
@@ -158,7 +154,7 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
 	if (!vsync_hit)
 	{
 #ifdef FIQ_VSYNC
-		BRIDGE_IRQ_SET();
+		fiq_bridge_pulse_trigger(&osd_hw.fiq_handle_item);
 #else
 		wait_vsync_wakeup();
 #endif
@@ -825,8 +821,10 @@ void osd_init_hw(void)
 	WRITE_MPEG_REG(VIU_OSD2_CTRL_STAT , data32);
 	
 #ifdef FIQ_VSYNC
-	if ( request_irq(BRIDGE_IRQ, &vsync_isr,
-		IRQF_SHARED , "am_osd_vsync_bridge", osd_setup))
+	osd_hw.fiq_handle_item.handle=vsync_isr;
+	osd_hw.fiq_handle_item.key=(u32)vsync_isr;
+	osd_hw.fiq_handle_item.name="osd_vsync";
+	if(register_fiq_bridge_handle(&osd_hw.fiq_handle_item))	
 #else
 	if ( request_irq(INT_VIU_VSYNC, &vsync_isr,
 		IRQF_SHARED , "am_osd_vsync", osd_setup))
@@ -909,7 +907,7 @@ void  osd_suspend_hw(void)
 	//free irq ,we can not disable it ,maybe video still use it .
 	free_irq(INT_VIU_VSYNC,(void *)osd_setup);
 #else
-    free_irq(BRIDGE_IRQ,(void *)osd_setup);
+    	unregister_fiq_bridge_handle(&osd_hw.fiq_handle_item);
 #endif
 	//save all status
 	osd_hw.reg_status=(u32*)kmalloc(sizeof(u32)*RESTORE_MEMORY_SIZE,GFP_KERNEL);
@@ -999,8 +997,7 @@ void osd_resume_hw(void)
 	}
 	
 #ifdef FIQ_VSYNC
-	if ( request_irq(BRIDGE_IRQ, &vsync_isr,
-		IRQF_SHARED, "am_osd_vsync_bridge", osd_setup))
+	if(register_fiq_bridge_handle(&osd_hw.fiq_handle_item))	
 #else
 	if ( request_irq(INT_VIU_VSYNC, &vsync_isr,
 		IRQF_SHARED , "am_osd_vsync", osd_setup))

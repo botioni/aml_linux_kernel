@@ -2,6 +2,7 @@
 #define	_OSD_HW_DEF_H
 #include <linux/osd/osd_hw.h>
 #include <linux/amports/vframe_provider.h>
+#include <linux/fiq_bridge.h>
 
 /************************************************************************
 **
@@ -14,6 +15,7 @@
 #define  	OSD_RELATIVE_BITS				0x333f0
 #define	OSD1_OSD2_SOTRE_OFFSET		(RESTORE_MEMORY_SIZE>>1)
 #define    HW_OSD_COUNT					2
+
 /************************************************************************
 **
 **	typedef  define  part
@@ -55,6 +57,7 @@ typedef  struct {
 	u32				color_key_enable[HW_OSD_COUNT];
 	u32				enable[HW_OSD_COUNT];
 	u32				*reg_status;
+	bridge_item_t 		fiq_handle_item;
 	osd_scale_t		scale[HW_OSD_COUNT];
 	u32				free_scale_enable[HW_OSD_COUNT];
 	u32				free_scale_width[HW_OSD_COUNT];
@@ -65,6 +68,7 @@ typedef  struct {
 	osd_3d_mode_t	mode_3d[HW_OSD_COUNT];
 	hw_list_t	 	reg[HW_OSD_COUNT][HW_REG_INDEX_MAX];
 }hw_para_t;
+
 /************************************************************************
 **
 **	func declare  part
@@ -102,6 +106,10 @@ static unsigned long 	lock_flags;
 #ifdef FIQ_VSYNC
 static unsigned long	fiq_flag;
 #endif
+extern int  register_fiq_bridge_handle(bridge_item_t *c_item) ;
+extern int  unregister_fiq_bridge_handle(bridge_item_t *c_item);
+extern int  fiq_bridge_pulse_trigger(bridge_item_t *c_item);
+
 static vframe_t vf,vf_w;
 static update_func_t     hw_func_array[HW_OSD_COUNT][HW_REG_INDEX_MAX]={
 	{
