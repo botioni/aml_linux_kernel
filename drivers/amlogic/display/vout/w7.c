@@ -166,7 +166,7 @@ void power_off_backlight(void)
 
 static void power_on_lcd(void)
 {
-    //EIO -> OD7: 0
+    //EIO -> OD7: 0  lcd 3.3v
 #ifdef CONFIG_SN7325
     configIO(0, 0);
     setIO_level(0, 0, 7);
@@ -179,15 +179,15 @@ static void power_on_lcd(void)
 
 static void power_off_lcd(void)
 {
-    //VCCx2_EN D17 GPIOA_6 --> H
-    set_gpio_val(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), 0);
-    set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);
-    msleep(10);
+//    //VCCx2_EN D17 GPIOA_6 --> H
+//    set_gpio_val(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), 0);
+//    set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);
+ //   msleep(10);
    //EIO -> OD7: 1
-#ifdef CONFIG_SN7325
-    configIO(0, 0);
-    setIO_level(0, 1, 7);
-#endif
+//#ifdef CONFIG_SN7325
+//    configIO(0, 0);
+//    setIO_level(0, 1, 7);
+//#endif
 }
 
 static void set_tcon_pinmux(void)
