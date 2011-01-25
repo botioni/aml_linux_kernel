@@ -489,11 +489,11 @@ static struct aml_sw_i2c_platform aml_sw_i2c_plat_fe2 = {
 	.sw_pins = {
 		.scl_reg_out		= MESON_I2C_PREG_GPIOC_OUTLVL,
 		.scl_reg_in		= MESON_I2C_PREG_GPIOC_INLVL,
-		.scl_bit			= 13,	/*MESON_GPIOC_13*/
+		.scl_bit			= 21,	/*MESON_GPIOC_13*/
 		.scl_oe			= MESON_I2C_PREG_GPIOC_OE,
 		.sda_reg_out		= MESON_I2C_PREG_GPIOC_OUTLVL,
 		.sda_reg_in		= MESON_I2C_PREG_GPIOC_INLVL,
-		.sda_bit			= 14,	/*MESON_GPIOC_14*/
+		.sda_bit			= 22,	/*MESON_GPIOC_14*/
 		.sda_oe			= MESON_I2C_PREG_GPIOC_OE,
 	},	
 	.udelay			= 2,
@@ -660,14 +660,14 @@ static struct resource amlfe_resource[]  = {
 		.name  = "frontend0_tuner_addr"
 	},
 	[2] = {
-		.start = 0,                   //frontend   type 0-dct7070 1-fj2207
-		.end   = 0,
+		.start = 1,                   //frontend   mode 0-dvbc 1-dvbt
+		.end   = 1,
 		.flags = IORESOURCE_MEM,
 		.name  = "frontend0_mode"
 	},
 	[3] = {
-		.start = 1,                   //frontend  tuner 0-NULL, 1-DCT7070, 2-Maxliner, 3-FJ2207, 4-TD1316
-		.end   = 1,
+		.start = 3,                   //frontend  tuner 0-NULL, 1-DCT7070, 2-Maxliner, 3-FJ2207, 4-TD1316
+		.end   = 3,
 		.flags = IORESOURCE_MEM,
 		.name  = "frontend0_tuner"
 	},

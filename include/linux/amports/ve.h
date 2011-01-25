@@ -162,7 +162,7 @@ typedef struct vdo_meas_s {
 } vdo_meas_t;
 
 typedef struct ve_regmap_s {
-    ulong reg[43];
+    unsigned long reg[43];
 } ve_regmap_t;
 
 // ***************************************************************************

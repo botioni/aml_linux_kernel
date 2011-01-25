@@ -91,7 +91,7 @@ static void section_buffer_watchdog_func(unsigned long arg)
 {
 	struct aml_dvb *dvb = (struct aml_dvb*)arg;
 	struct aml_dmx *dmx;
-	u32 section_busy32 = 0, om_cmd_status32 = 0;
+	u32 section_busy32 = 0, om_cmd_status32 = 0, demux_channel_activity32 = 0;
 	u16 demux_int_status1 = 0;
 	u32 device_no = 0;
 	u32 filter_number = 0;
@@ -105,13 +105,26 @@ static void section_buffer_watchdog_func(unsigned long arg)
 		
 		if(dmx->init) {
 			om_cmd_status32 = DMX_READ_REG(device_no, OM_CMD_STATUS);
+			demux_channel_activity32 = DMX_READ_REG(device_no, DEMUX_CHANNEL_ACTIVITY);
+			section_busy32 = DMX_READ_REG(device_no, SEC_BUFF_BUSY);
 #if 1
-			if(om_cmd_status32 & 0x8e00) { // bit 15:12 -- om_cmd_count
-                                           // bit  11:9 -- overflow_count
+			if(om_cmd_status32 & 0x8fc2) { // bit 15:12 -- om_cmd_count
+						       // bit  11:9 -- overflow_count
+						       // bit   8:6 -- om_overwrite_count
+						       // bit     1 -- om_cmd_overflow
 				/*BUG: If the recoder is running, return*/
 				
 				/*Reset the demux*/
-				pr_error("reset the demux %x \n",om_cmd_status32);
+				pr_error("reset the demux %04x\t%03x\t%03x\t%03x\t%01x\t%01x\t%x\t%x\n",
+							(om_cmd_status32 >> 12) & 0xf,
+							(om_cmd_status32 >> 9) & 0x7,
+							(om_cmd_status32 >> 6) & 0x7,
+							(om_cmd_status32 >> 3) & 0x7,
+							(om_cmd_status32 >> 2) & 0x1,
+							(om_cmd_status32 >> 1) & 0x1,
+							demux_channel_activity32,
+							section_busy32);
+
 				dmx_reset_hw(dvb);
 				goto end;
 			}
@@ -379,6 +392,7 @@ static irqreturn_t dmx_irq_handler(int irq_number, void *para)
 	if(status & (1<<AUDIO_SPLICING_POINT)) {
 	}
 	if(status & (1<<TS_ERROR_PIN)) {
+		pr_error("TS_ERROR_PIN\n");
 	}
 	
 	if(dmx->irq_handler) {
@@ -841,7 +855,7 @@ static int dmx_enable(struct aml_dmx *dmx)
 			(1<<(SUB_PES_READY))            |
 			(1<<(SECTION_BUFFER_READY))     |
 			(0<<(OM_CMD_READ_PENDING))      |
-			(0<<(TS_ERROR_PIN))             |
+			(1<<(TS_ERROR_PIN))             |
 			(1<<(NEW_PDTS_READY))           | 
 			(0<<(DUPLICATED_PACKET))        | 
 			(0<<(DIS_CONTINUITY_PACKET)));
@@ -872,7 +886,7 @@ static int dmx_enable(struct aml_dmx *dmx)
 			(0<<FEC_INPUT_D_VALID)          |
 			(0<<FEC_INPUT_D_FAIL));
 		DMX_WRITE_REG(dmx->id, STB_OM_CTL, 
-			(0x20<<MAX_OM_DMA_COUNT)        |
+			(0x40<<MAX_OM_DMA_COUNT)        |
 			(0x7f<<LAST_OM_ADDR));
 		DMX_WRITE_REG(dmx->id, DEMUX_CONTROL,
 			(0<<BYPASS_USE_RECODER_PATH)          |
@@ -884,6 +898,8 @@ static int dmx_enable(struct aml_dmx *dmx)
 			(record<<TS_RECORDER_ENABLE)          |
 			(0<<KEEP_DUPLICATE_PACKAGE)           |
 			(1<<SECTION_END_WITH_TABLE_ID)        |
+			(1<<ENABLE_FREE_CLK_FEC_DATA_VALID)   |
+			(1<<ENABLE_FREE_CLK_STB_REG)          |
 			(1<<STB_DEMUX_ENABLE));
 	} else {
 		DMX_WRITE_REG(dmx->id, STB_INT_MASK, 0);
