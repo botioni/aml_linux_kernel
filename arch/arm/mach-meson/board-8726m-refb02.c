@@ -272,7 +272,7 @@ static int it7230_get_irq_level(void)
 }
 
 static struct cap_key it7230_keys[] = {
-    { KEY_ZOOM,         0x0001, "zoom"},
+    { KEY_COMPOSE,         0x0001, "zoom"},
     { KEY_HOME,         0x0002, "home"},
     { KEY_LEFTMETA,     0x0004, "menu"},
     { KEY_TAB,          0x0008, "exit"},
