@@ -90,6 +90,8 @@ enum {
     JTAG_TDO_IDX = 104,
 };
 
+extern int gpio_to_idx(unsigned gpio);
+
 /**
  * enable gpio edge interrupt
  *	

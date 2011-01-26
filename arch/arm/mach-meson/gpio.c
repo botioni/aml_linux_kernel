@@ -69,6 +69,26 @@ unsigned long  get_gpio_val(gpio_bank_t bank,int bit)
 	return READ_CBUS_REG_BITS(addr,bit,1);
 }
 
+int gpio_to_idx(unsigned gpio)
+{
+    gpio_bank_t bank = (gpio_bank_t)(gpio >> 16);
+    int bit = gpio & 0xFFFF;
+    int idx = -1;
+    
+    if (bank == PREG_EGPIO) {
+        if (bit < 4) idx = GPIOA_23_IDX - bit;
+        else if (bit < 19) idx = GPIOA_IDX + bit - 4;
+        else idx = GPIOB_IDX + bit - 19;
+    }
+     else if (bank == PREG_FGPIO)
+        idx = GPIOC_IDX + bit;
+     else if (bank == PREG_GGPIO)
+        idx = GPIOD_IDX + bit + 2;
+     else if (bank == PREG_HGPIO)
+        idx = GPIOE_IDX + bit;
+    return idx;
+}
+
 /**
  * enable gpio edge interrupt
  *	
@@ -82,6 +102,7 @@ void gpio_enable_edge_int(int pin , int flag, int group)
 	unsigned ireg = GPIO_INTR_GPIO_SEL0 + (group>>2);
 	SET_CBUS_REG_MASK(ireg, pin<<((group&3)<<3));
 	SET_CBUS_REG_MASK(GPIO_INTR_EDGE_POL, ((flag<<(16+group)) | (1<<group)));	
+//	WRITE_CBUS_REG_BITS(A9_0_IRQ_IN2_INTR_STAT_CLR, 0, group, 1);
 }
 /**
  * enable gpio level interrupt
@@ -96,6 +117,7 @@ void gpio_enable_level_int(int pin , int flag, int group)
 	unsigned ireg = GPIO_INTR_GPIO_SEL0 + (group>>2);
 	SET_CBUS_REG_MASK(ireg, pin<<((group&3)<<3));
 	SET_CBUS_REG_MASK(GPIO_INTR_EDGE_POL, ((flag<<(16+group)) | (0<<group)));	
+//	WRITE_CBUS_REG_BITS(A9_0_IRQ_IN2_INTR_STAT_CLR, 0, group, 1);
 }
 
 /**

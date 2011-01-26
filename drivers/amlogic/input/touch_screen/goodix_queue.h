@@ -13,7 +13,6 @@
  */ 
 #ifndef _LINUX_GOODIX_QUEUE_H
 #define	_LINUX_GOODIX_QUEUE_H
-#include <linux/goodix_touch.h>
 
 struct point_node
 {
