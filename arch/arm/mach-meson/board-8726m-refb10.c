@@ -786,35 +786,27 @@ static int ts_get_irq_level(void)
 
 
 #ifdef CONFIG_GOODIX_CAPACITIVE_TOUCHSCREEN
-#include <linux/capts.h>
-/* GPIOD_24 */
-#define TS_IRQ_GPIO  ((GPIOD_bank_bit2_24(24)<<16) |GPIOD_bit_bit2_24(24))
-#define TS_IRQ_IDX     (GPIOD_IDX + 24)
-#define TS_RESET_GPIO  ((GPIOD_bank_bit2_24(23)<<16) |GPIOD_bit_bit2_24(23))
-
-
-static int ts_init_irq(void)
-{
-    int group = INT_GPIO_0 - INT_GPIO_0;
-    int mode =  TS_MODE_INT_FALLING;
-    
-    if (mode < TS_MODE_TIMER_READ) {
-        gpio_direction_input(TS_IRQ_GPIO);
-        if (mode == TS_MODE_INT_FALLING) {
-            gpio_enable_edge_int(TS_IRQ_IDX, 1, group);
-        }
-        else if (mode == TS_MODE_INT_RISING) {
-            gpio_enable_edge_int(TS_IRQ_IDX, 0, group);
-        }
-        else if (mode == TS_MODE_INT_LOW) {
-            gpio_enable_level_int(TS_IRQ_IDX, 1, group);
-        }
-        else if (mode == TS_MODE_INT_HIGH) {
-            gpio_enable_level_int(TS_IRQ_IDX, 0, group);
-        }
-    }
-    return 0;
-}
+u8 ts_config_data[] = {
+    0x30,0x19,0x05,0x06,0x28,0x02,0x14,0x14,0x10,0x1E,
+    0x70,0x14,0x00,0x1E,0x00,0x01,0x23,0x45,0x67,0x89,
+    0xAB,0xCD,0xE0,0x00,0x00,0x00,0x00,0x4D,0xC7,0x20,
+    0x03,0x00,0x00,0x50,0x3C,0x1E,0xB4,0x00,0x00,0x00,
+    0x00,0x00,0x00,0x28,0x00,0x00,0x00,0x00,0x00,0x00,
+    0x00,0x00,0x00,0x01
+};
+   
+static struct goodix_i2c_rmi_platform_data ts_pdata = {
+    .gpio_shutdown = ((GPIOD_bank_bit2_24(23)<<16) |GPIOD_bit_bit2_24(23)),
+    .gpio_irq = ((GPIOD_bank_bit2_24(24)<<16) |GPIOD_bit_bit2_24(24)),
+    .irq_edge = 1, /* 0:rising edge, 1:falling edge */
+    .swap_xy = 1,
+    .xpol = 0,
+    .ypol = 1,
+    .xmax = 7680,
+    .ymax = 5120,
+    .config_info_len = ARRAY_SIZE(ts_config_data),
+    .config_info = ts_config_data,
+};
 #endif
 
 #ifdef CONFIG_EETI_CAPACITIVE_TOUCHSCREEN
@@ -1756,9 +1748,11 @@ static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
 #endif
 
 #ifdef CONFIG_GOODIX_CAPACITIVE_TOUCHSCREEN
-	{
-		I2C_BOARD_INFO(GOODIX_I2C_NAME, GOODIX_I2C_ADDR),
-	},
+    {
+        I2C_BOARD_INFO(GOODIX_I2C_NAME, GOODIX_I2C_ADDR),
+        .irq = INT_GPIO_0,
+        .platform_data = (void *)&ts_pdata,
+    },
 #endif
 };
 
@@ -1872,9 +1866,6 @@ static __init void m1_init_machine(void)
 #if defined(CONFIG_TOUCHSCREEN_ADS7846)
     ads7846_init_gpio();
     spi_register_board_info(spi_board_info_list, ARRAY_SIZE(spi_board_info_list));
-#endif
-#ifdef CONFIG_GOODIX_CAPACITIVE_TOUCHSCREEN
-    ts_init_irq();
 #endif
     disable_unused_model();
 }

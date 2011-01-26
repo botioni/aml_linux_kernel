@@ -19,6 +19,7 @@
 #include <linux/irq.h>
 #include <linux/slab.h>
 #include <linux/device.h>
+#include <linux/earlysuspend.h>
 #include <linux/platform_device.h>
 #include <linux/workqueue.h>
 #include <linux/goodix_touch.h>
@@ -30,15 +31,27 @@
 #error The code does not match the hardware version.
 #endif
 
+struct goodix_ts_data {
+	uint16_t addr;
+	struct i2c_client *client;
+	struct input_dev *input_dev;
+	bool use_irq;
+	bool init_finished;
+	struct hrtimer timer;
+	struct work_struct  work;
+	char phys[32];
+	int bad_data;
+	int retry;
+	int (*power)(int on);
+	struct early_suspend early_suspend;
+	int xmax;
+	int ymax;
+	bool swap_xy;
+	bool xpol;
+	bool ypol;
+}; 
+
 static struct workqueue_struct *goodix_wq;
-#ifdef TS_INT
-#undef TS_INT 
-#undef INT_PORT 
-#undef SHUTDOWN_PORT 
-#endif
-#define TS_INT			INT_GPIO_0
-#define INT_PORT  ((GPIOD_bank_bit2_24(24)<<16) |GPIOD_bit_bit2_24(24))
-#define SHUTDOWN_PORT  ((GPIOD_bank_bit2_24(23)<<16) |GPIOD_bit_bit2_24(23))
 
 /********************************************
 *	管理当前手指状态的伪队列，对当前手指根据时间顺序排序
@@ -125,27 +138,10 @@ return：
 static int goodix_init_panel(struct goodix_ts_data *ts)
 {
 	int ret=-1;
-////#define GUITAR_CONFIG_43
-//#ifdef GUITAR_CONFIG_43
-//	uint8_t config_info[54]={0x30,	0x19,0x05,0x06,0x28,0x02,0x14,0x14,0x10,0x28,0xB0,0x14,0x00,0x1E,0x00,0x01,0x23,
-//									0x45,0x67,0x89,0xAB,0xCD,0xE1,0x00,0x00,0x00,0x00,0x1D,0xCF,0x20,0x0B,0x0B,0x8B,
-//				 					0x50,0x3C,0x1E,0x28,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
-//				 					0x00,0x00,0x00,0x00,0x01};	
-//#else //TCL_5.0 inch
-//	uint8_t config_info[54]={0x30,	0x19,0x05,0x06,0x28,0x02,0x14,0x14,0x10,0x40,0xB8,0x14,0x00,0x1E,0x00,0x01,0x23,
-//									0x45,0x67,0x89,0xAB,0xCD,0xE1,0x00,0x00,0x00,0x00,0x0D,0xCF,0x20,0x03,0x05,0x83,
-//									0x50,0x3C,0x1E,0x28,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
-//									0x00,0x00,0x00,0x00,0x01};
-//#endif							 	
-uint8_t config_info[54]={0x30, 
-    0x19,0x05,0x06,0x28,0x02,0x14,0x14,0x10,0x1E,0x70,
-   0x14,0x00,0x1E,0x00,0x01,0x23,0x45,0x67,0x89,0xAB,
-   0xCD,0xE0,0x00,0x00,0x00,0x00,0x4D,0xC7,0x20,0x03,
-   0x00,0x00,0x50,0x3C,0x1E,0xB4,0x00,0x00,0x00,0x00,
-   0x00,0x00,0x28,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
-   0x00,0x00,0x01};
+	struct goodix_i2c_rmi_platform_data *pdata = ts->client->dev.platform_data;
 
-	ret=i2c_write_bytes(ts->client,config_info,54);
+	printk(KERN_ALERT"goodix init panel\n");
+	ret=i2c_write_bytes(ts->client,pdata->config_info,pdata->config_info_len);
 	if (ret < 0) 
 		goto error_i2c_transfer;
 	msleep(1);
@@ -200,10 +196,12 @@ static void goodix_ts_work_func(struct work_struct *work)
 	int check_sum = 0;
 	
 	struct goodix_ts_data *ts = container_of(work, struct goodix_ts_data, work);
+	struct goodix_i2c_rmi_platform_data *pdata = ts->client->dev.platform_data;
+	int SHUTDOWN_PORT  = pdata->gpio_shutdown;
 
 	if (gpio_get_value(SHUTDOWN_PORT))
 	{
-		//printk(KERN_ALERT  "Guitar stop working.The data is invalid. \n");
+		printk(KERN_ALERT  "Guitar stop working.The data is invalid. \n");
 		goto NO_ACTION;
 	}	
 
@@ -299,17 +297,16 @@ BIT_NO_CHANGE:
 			pressure[count] = (unsigned int) (point_data[28]);
 		}
 #ifdef GOODIX_TS_DEBUG	
-		if(count == 3)
-			dev_info(&(ts->client->dev), "Original data: Count:%d Index:%d X:%d Y:%d\n",count, finger_list.pointer[count].num,  pos[count][0], pos[count][1]);
+		dev_info(&(ts->client->dev), "Original data: Count:%d Index:%d X:%d Y:%d\n",count, finger_list.pointer[count].num,  pos[count][0], pos[count][1]);
 #endif
-		// 系统坐标的特点是：左上角为原点（LAN所在边为上方）,横向为X轴，纵向为Y轴. 
-		//pos[count][0] = pos[count][0]*SCREEN_MAX_WIDTH*9/(TOUCH_MAX_WIDTH*5);		
-		pos[count][0] = (TOUCH_MAX_WIDTH - pos[count][0])*SCREEN_MAX_WIDTH/TOUCH_MAX_WIDTH;//y, 且取中线的对称点(原点切换)
-		pos[count][1]=  pos[count][1]*SCREEN_MAX_HEIGHT/TOUCH_MAX_HEIGHT ;					 //x,
-		swap(pos[count][0] ,pos[count][1]); 
+		if (pdata->swap_xy)
+			swap(pos[count][0] ,pos[count][1]); 
+		if (pdata->xpol)
+			pos[count][0] = pdata->xmax - pos[count][0];
+		if (pdata->ypol)
+			pos[count][1] = pdata->ymax - pos[count][1];
 #ifdef GOODIX_TS_DEBUG
-		if(count == 3)
-			dev_info(&(ts->client->dev), " Coordinate: Count:%d Index:%d X:%d Y:%d\n",count, finger_list.pointer[count].num, pos[count][0], pos[count][1]);
+		dev_info(&(ts->client->dev), " Coordinate: Count:%d Index:%d X:%d Y:%d\n",count, finger_list.pointer[count].num, pos[count][0], pos[count][1]);
 #endif
 	}
 
@@ -399,10 +396,18 @@ return：
 static irqreturn_t goodix_ts_irq_handler(int irq, void *dev_id)
 {
 	struct goodix_ts_data *ts = dev_id;
-	
-	disable_irq_nosync(ts->client->irq);
-	queue_work(goodix_wq, &ts->work);
-	
+	struct goodix_i2c_rmi_platform_data *pdata = ts->client->dev.platform_data;
+	int level = gpio_get_value(pdata->gpio_irq);
+	printk(KERN_ALERT"irq level = %d\n", level);
+//	if (!level) {
+	if (ts->init_finished) {
+		disable_irq_nosync(ts->client->irq);
+		queue_work(goodix_wq, &ts->work);
+	}
+	else {
+		ts->init_finished = 1;
+		printk(KERN_ALERT"discard first irq\n");			
+	}
 	return IRQ_HANDLED;
 }
 
@@ -424,10 +429,14 @@ static int goodix_ts_probe(struct i2c_client *client, const struct i2c_device_id
 	int retry=0;
 	int count=0;
 
-	printk(KERN_INFO "goodix touchscreen probe\n");
-	msleep(400);
-	printk(KERN_INFO "goodix has delayed 400ms\n");	
-	struct goodix_i2c_rmi_platform_data *pdata;
+	struct goodix_i2c_rmi_platform_data *pdata = client->dev.platform_data;
+	int INT_PORT  = pdata ->gpio_irq;
+	int SHUTDOWN_PORT  = pdata->gpio_shutdown;
+	if (!SHUTDOWN_PORT  || !INT_PORT) {
+	    ret = -1;
+	    printk(KERN_ALERT  "goodix platform data error\n");
+	    goto err_check_functionality_failed ;
+	}
 	dev_dbg(&client->dev,"Install touchscreen driver for guitar.\n");
 	//Check I2C function
 	ret = gpio_request(SHUTDOWN_PORT, "TS_SHUTDOWN");	//Request IO
@@ -465,7 +474,7 @@ static int goodix_ts_probe(struct i2c_client *client, const struct i2c_device_id
 		goto err_i2c_failed;
 	}
 
-	gpio_set_value(SHUTDOWN_PORT, 1);		//suspend
+//	gpio_set_value(SHUTDOWN_PORT, 1);		//suspend
 	ts = kzalloc(sizeof(*ts), GFP_KERNEL);
 	if (ts == NULL) {
 		ret = -ENOMEM;
@@ -475,7 +484,6 @@ static int goodix_ts_probe(struct i2c_client *client, const struct i2c_device_id
 	INIT_WORK(&ts->work, goodix_ts_work_func);
 	ts->client = client;
 	i2c_set_clientdata(client, ts);
-	pdata = client->dev.platform_data;
 	
 	ts->input_dev = input_allocate_device();
 	if (ts->input_dev == NULL) {
@@ -493,15 +501,15 @@ static int goodix_ts_probe(struct i2c_client *client, const struct i2c_device_id
 	//ts->input_dev->keybit[BIT_WORD(BTN_2)] = BIT_MASK(BTN_2);
 	//#endif
 
-	input_set_abs_params(ts->input_dev, ABS_X, 0, SCREEN_MAX_HEIGHT, 0, 0);
-	input_set_abs_params(ts->input_dev, ABS_Y, 0, SCREEN_MAX_WIDTH, 0, 0);
+	input_set_abs_params(ts->input_dev, ABS_X, 0, pdata->xmax, 0, 0);
+	input_set_abs_params(ts->input_dev, ABS_Y, 0, pdata->ymax, 0, 0);
 	input_set_abs_params(ts->input_dev, ABS_PRESSURE, 0, 255, 0, 0);
 	
 #ifdef GOODIX_MULTI_TOUCH
 	input_set_abs_params(ts->input_dev, ABS_MT_PRESSURE, 0, 255, 0, 0);
 	input_set_abs_params(ts->input_dev, ABS_MT_TOUCH_MAJOR, 0, 255, 0, 0);
-	input_set_abs_params(ts->input_dev, ABS_MT_POSITION_X, 0, SCREEN_MAX_HEIGHT, 0, 0);
-	input_set_abs_params(ts->input_dev, ABS_MT_POSITION_Y, 0, SCREEN_MAX_WIDTH, 0, 0);	
+	input_set_abs_params(ts->input_dev, ABS_MT_POSITION_X, 0, pdata->xmax, 0, 0);
+	input_set_abs_params(ts->input_dev, ABS_MT_POSITION_Y, 0, pdata->ymax, 0, 0);	
 #endif	
 	sprintf(ts->phys, "input/ts)");
 
@@ -519,10 +527,16 @@ static int goodix_ts_probe(struct i2c_client *client, const struct i2c_device_id
 		goto err_input_register_device_failed;
 	}
 
+	gpio_set_value(SHUTDOWN_PORT, 0);
+	msleep(10);
+	goodix_init_panel(ts);
+	goodix_read_version(ts);
+	msleep(500);
+
+	ts->init_finished = 0;
 	ts->use_irq = 0;
 	ts->retry=0;
 	ts->bad_data = 0;
-	client->irq=TS_INT;
 	if (client->irq)
 	{
 		ret = gpio_request(INT_PORT, "TS_INT");	//Request IO
@@ -531,13 +545,12 @@ static int goodix_ts_probe(struct i2c_client *client, const struct i2c_device_id
 			dev_err(&client->dev, "Failed to request GPIO:%d, ERRNO:%d\n",(int)INT_PORT,ret);
 			goto err_gpio_request_failed;
 		}
-		//ret = s3c_gpio_cfgpin(INT_PORT, INT_CFG);	//Set IO port function
 		/* set input mode */
-//		gpio_direction_input(INT_PORT);
-//		/* set gpio interrupt #0 source=GPIOC_4, and triggered by rising edge(=0) */
-//		gpio_enable_edge_int(27, 0, 0);
-		
-		ret  = request_irq(TS_INT, goodix_ts_irq_handler ,  IRQ_TYPE_EDGE_FALLING,
+		gpio_direction_input(INT_PORT);
+		gpio_enable_edge_int(gpio_to_idx(INT_PORT),
+		          pdata->irq_edge, client->irq - INT_GPIO_0);
+		ret  = request_irq(client->irq, goodix_ts_irq_handler,
+			pdata->irq_edge ? IRQ_TYPE_EDGE_FALLING : IRQ_TYPE_EDGE_RISING,
 			client->name, ts);
 		if (ret != 0) {
 			dev_err(&client->dev,"Can't allocate touchscreen's interrupt!ERRNO:%d\n", ret);
@@ -546,9 +559,9 @@ static int goodix_ts_probe(struct i2c_client *client, const struct i2c_device_id
 		}
 		else 
 		{	
-			disable_irq(TS_INT);
+//			disable_irq(client->irq);
 			ts->use_irq = 1;
-			dev_dbg(&client->dev,"Reques EIRQ %d succesd on GPIO:%d\n",TS_INT,INT_PORT);
+			dev_info(&client->dev,"Reques EIRQ %d succesd on GPIO:%d\n",client->irq,INT_PORT);
 		}
 	}
 	
@@ -559,28 +572,6 @@ err_gpio_request_failed:
 		ts->timer.function = goodix_ts_timer_func;
 		hrtimer_start(&ts->timer, ktime_set(1, 0), HRTIMER_MODE_REL);
 	}
-
-	//-------------------------------------------------------------------------------
-	gpio_set_value(SHUTDOWN_PORT, 0);
-	msleep(10);
-	for(count=0; count<3; count++)
-	{
-		ret=goodix_init_panel(ts);	
-		if(ret != 0)		//Initiall failed
-			continue;
-		else
-		{
-			if(ts->use_irq)
-				enable_irq(TS_INT);
-			break;
-		}
-	}
-	if(ret != 0) {
-		ts->bad_data=1;
-		goto err_init_godix_ts;
-	}
-	goodix_read_version(ts);
-	msleep(500);
 	
 #ifdef CONFIG_HAS_EARLYSUSPEND
 	ts->early_suspend.level = EARLY_SUSPEND_LEVEL_BLANK_SCREEN + 1;
@@ -588,13 +579,13 @@ err_gpio_request_failed:
 	ts->early_suspend.resume = goodix_ts_late_resume;
 	register_early_suspend(&ts->early_suspend);
 #endif
-	dev_dbg(&client->dev,"Start  %s in %s mode\n", 
+	dev_info(&client->dev,"Start  %s in %s mode\n", 
 		ts->input_dev->name, ts->use_irq ? "Interrupt" : "Polling\n");
 	return 0;
 
 err_init_godix_ts:
 	if(ts->use_irq)
-		free_irq(TS_INT,ts);
+		free_irq(client->irq,ts);
 	gpio_request(INT_PORT,"TS_INT");	
 	gpio_free(INT_PORT);
 
@@ -632,6 +623,9 @@ static int goodix_ts_remove(struct i2c_client *client)
 	else
 		hrtimer_cancel(&ts->timer);
 	
+	struct goodix_i2c_rmi_platform_data *pdata = client->dev.platform_data;
+	int INT_PORT  = pdata->gpio_irq;
+	int SHUTDOWN_PORT  = pdata->gpio_shutdown;
 	gpio_direction_input(SHUTDOWN_PORT);
 	gpio_free(SHUTDOWN_PORT);
 
