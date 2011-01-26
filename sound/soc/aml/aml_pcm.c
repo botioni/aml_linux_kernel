@@ -19,6 +19,7 @@
 #include <sound/soc.h>
 #include <sound/pcm_params.h>
 
+#include <linux/dma-mapping.h>
 
 #include <mach/am_regs.h>
 #include <mach/pinmux.h>
@@ -31,6 +32,9 @@
 
 #define AOUT_EVENT_PREPARE  0x1
 extern int aout_notifier_call_chain(unsigned long val, void *v);
+static unsigned addr_audioin = 0;
+static unsigned addr_audioout = 0;
+
 
 /*--------------------------------------------------------------------------*\
  * Hardware definition
@@ -236,11 +240,13 @@ static int aml_pcm_prepare(struct snd_pcm_substream *substream)
 			//printk("aml_pcm_prepare SNDRV_PCM_STREAM_PLAYBACK: dma_addr=%x, dma_bytes=%x\n", runtime->dma_addr, runtime->dma_bytes);
 			audio_set_aiubuf(runtime->dma_addr, runtime->dma_bytes);
 			memset((void*)runtime->dma_area,0,runtime->dma_bytes);
+          addr_audioout = runtime->dma_area;
 	}
 	else{
 			printk("aml_pcm_prepare SNDRV_PCM_STREAM_CAPTURE: dma_addr=%x, dma_bytes=%x\n", runtime->dma_addr, runtime->dma_bytes);
 			audio_in_i2s_set_buf(runtime->dma_addr, runtime->dma_bytes*2);
 			memset((void*)runtime->dma_area,0,runtime->dma_bytes*2);
+          addr_audioin = runtime->dma_area;
 			int * ppp = (int*)(runtime->dma_area+runtime->dma_bytes*2-8);
 			ppp[0] = 0x78787878;
 			ppp[1] = 0x78787878;
@@ -400,6 +406,25 @@ static void aml_pcm_timer_callback(unsigned long data)
 		}    
 }
 
+static struct tasklet_struct audioin_tasklet;
+
+static void audioin_int_tasklet(ulong data)
+{
+ 
+    printk("ADIN FIFO0 OVERFLOW\n");
+  if(READ_MPEG_REG(AUDIN_FIFO_INT)&1){
+   // printk("ADIN FIFO0 OVERFLOW\n");
+  }
+}
+
+static irqreturn_t audioin_int_handler(int irq, void *dev_id)
+{
+    tasklet_schedule(&audioin_tasklet);
+
+    printk("ADIN FIFO0 OVERFLOW---\n");
+    
+    return IRQ_HANDLED;
+}
 
 static int aml_pcm_open(struct snd_pcm_substream *substream)
 {
@@ -415,6 +440,11 @@ static int aml_pcm_open(struct snd_pcm_substream *substream)
 		snd_soc_set_runtime_hwparams(substream, &aml_pcm_capture);
 		//printk("pinmux audio in\n");
 		//set_audio_pinmux(AUDIO_IN_JTAG);
+        ret = request_irq(INT_AUDIO_IN, audioin_int_handler, IRQF_SHARED, "audioin", "audioin-id");
+        if(ret){
+          printk("request audio in INT failed\n");
+        }
+        tasklet_init(&audioin_tasklet, audioin_int_tasklet,0);
 	}
 	
 	/* ensure that buffer size is a multiple of period size */
@@ -448,7 +478,9 @@ static int aml_pcm_open(struct snd_pcm_substream *substream)
 static int aml_pcm_close(struct snd_pcm_substream *substream)
 {
 	struct aml_runtime_data *prtd = substream->runtime->private_data;
-	
+	if(substream->stream == SNDRV_PCM_STREAM_CAPTURE){
+      free_irq(INT_AUDIO_IN, "audioin-id");
+    }
 	del_timer_sync(&prtd->timer);
 	
 	kfree(prtd);
@@ -531,19 +563,23 @@ static int aml_pcm_copy_capture(struct snd_pcm_runtime *runtime, int channel,
 		        left += 8;
 		        right += 8;
 		    }
-				
+/*            
+			if((hwbuf + n*2) >= magic && 
+		  	    (magic[0]==0x78 && magic[1]==0x78 && magic[2]==0x78 && magic[3]==0x78 &&
+			    magic[4]==0x78 && magic[5]==0x78 && magic[6]==0x78 && magic[7]==0x78)){
+                printk("error:%x-%x-%x-%x-%x-%x-%x-%x: %x-%x-%x-%x-%x-%x-%x-%x\n",magic[-8],magic[-7],magic[-6], magic[-5], magic[-4], magic[-3], magic[-2], magic[-1], magic[0],magic[1],magic[2],magic[3],magic[4],magic[5],magic[6],magic[7]);				
+		    }	
 	    	if(hwbuf + n*2 >= magic){
-//					magic[0] = 0x78; magic[1] = 0x78; magic[2] = 0x78; magic[3] = 0x78;
-//					magic[4] = 0x78; magic[5] = 0x78; magic[6] = 0x78; magic[7] = 0x78;
+					magic[0] = 0x78; magic[1] = 0x78; magic[2] = 0x78; magic[3] = 0x78;
+					magic[4] = 0x78; magic[5] = 0x78; magic[6] = 0x78; magic[7] = 0x78;
+
+					magic[-1] = 0x78; magic[-2] = 0x78; magic[-3] = 0x78; magic[-4] = 0x78;
+					magic[-5] = 0x78; magic[-6] = 0x78; magic[-7] = 0x78; magic[-8] = 0x78;
+
 	    	}
+*/            
 		}
 	
-		if((hwbuf + n*2) >= magic && 
-			(magic[0]!=0x78 && magic[1]!=0x78 && magic[2]!=0x78 && magic[3]!=0x78&&
-			magic[4]!=0x78 && magic[5]!=0x78&&magic[6]!=0x78&&magic[7]!=0x78)){
-				
-		}
-		
 		return res;
 }
 
@@ -930,20 +966,22 @@ static ssize_t amaudio_write(struct file *file, const char *buf,
 {
 	amaudio_t * amaudio = (amaudio_t *)file->private_data;
 	int len = 0;
+
+    if(count <=0 )
+      return -EINVAL;
 	if(amaudio->type == 1){
 		if(!if_audio_in_i2s_enable()){
 			printk("amaudio input can not write now\n");
 			return -EINVAL;
 		}
-		copy_from_user((void*)amaudio->in_op_ptr+amaudio->in_start, (void*)buf, count);
+		copy_from_user((void*)(amaudio->in_op_ptr+amaudio->in_start), (void*)buf, count);
 	}else{
 		if(!if_audio_out_enable()){
 			printk("amaudio output can not write now\n");
 			return -EINVAL;
 		}
-		copy_from_user((void*)amaudio->out_op_ptr+amaudio->out_start, (void*)buf, count);
+		copy_from_user((void*)(amaudio->out_op_ptr+amaudio->out_start), (void*)buf, count);
 	}
-	
 	return count;
 }
 static ssize_t amaudio_read(struct file *file, char __user *buf, 
@@ -952,22 +990,26 @@ static ssize_t amaudio_read(struct file *file, char __user *buf,
 	amaudio_t * amaudio = (amaudio_t *)file->private_data;
 	int len = 0;
 
+    if(count <= 0)
+      return -EINVAL;
 	if(amaudio->type == 1){
 		if(!if_audio_in_i2s_enable()){
 			printk("amaudio input can not read now\n");
 			return -EINVAL;
 		}
-		len = copy_to_user((void*)buf, (void*)amaudio->in_op_ptr+amaudio->in_start, count);
+        len = copy_to_user((void*)buf, (void*)(amaudio->in_op_ptr+amaudio->in_start), count);
 		if(len){
 			printk("amaudio read i2s in data failed\n");
 		}
+        memset((void*)(amaudio->in_op_ptr+amaudio->in_start), 0x78, count);
 	}
 	else{
 		if(!if_audio_out_enable()){
 			printk("amaudio output can not read now\n");
 			return -EINVAL;
 		}
-		len = copy_to_user((void*)buf, (void*)amaudio->out_op_ptr+amaudio->out_start, count);
+
+		len = copy_to_user((void*)buf, (void*)(amaudio->out_op_ptr+amaudio->out_start), count);
 		if(len){
 			printk("amaudio read i2s out data failed\n");
 		}
@@ -979,14 +1021,16 @@ static int amaudio_open(struct inode *inode, struct file *file)
 {
 		amaudio_t * amaudio = kzalloc(sizeof(amaudio_t), GFP_KERNEL);
 		if (if_audio_in_i2s_enable()){
-			amaudio->in_start = ioremap_nocache(READ_MPEG_REG(AUDIN_FIFO0_START), 65536);
-			printk("######amaudio->in_start = %x \n", amaudio->in_start);
-			printk("######(AUDIN_FIFO0_START) = %x \n", READ_MPEG_REG(AUDIN_FIFO0_START));
+			//amaudio->in_start = ioremap_nocache(READ_MPEG_REG(AUDIN_FIFO0_START), 65536);
+            amaudio->in_start = addr_audioin;
+			printk("amaudio->in_start = %x \n", amaudio->in_start);
+			printk("(AUDIN_FIFO0_START) = %x \n", READ_MPEG_REG(AUDIN_FIFO0_START));
 		}
 		if (if_audio_out_enable()){
-			amaudio->out_start = ioremap_nocache(READ_MPEG_REG(AIU_MEM_I2S_START_PTR), 32768);
-			printk("######amaudio->out_start = %x \n", amaudio->out_start);
-			printk("######(AIU_MEM_I2S_START_PTR) = %x \n", READ_MPEG_REG(AIU_MEM_I2S_START_PTR));
+			//amaudio->out_start = ioremap_nocache(READ_MPEG_REG(AIU_MEM_I2S_START_PTR), 32768);
+            amaudio->out_start = addr_audioout;
+			printk("amaudio->out_start = %x \n", amaudio->out_start);
+			printk("(AIU_MEM_I2S_START_PTR) = %x \n", READ_MPEG_REG(AIU_MEM_I2S_START_PTR));
 		}
 		if(iminor(inode) == 0){ // audio out
 				printk("open audio out\n");
@@ -1003,10 +1047,10 @@ static int amaudio_release(struct inode *inode, struct file *file)
 	amaudio_t * amaudio = (amaudio_t *)file->private_data;
 	kfree(amaudio);
 	if (if_audio_in_i2s_enable()){
-		iounmap(amaudio->in_start);
+	//	iounmap(amaudio->in_start);
 	}
 	if (if_audio_out_enable()){
-		iounmap(amaudio->out_start);
+	//	iounmap(amaudio->out_start);
 	}	
 	return 0;
 }
@@ -1015,7 +1059,7 @@ static int amaudio_ioctl(struct inode *inode, struct file *file,
 {
 	s32 r = 0;
 	amaudio_t * amaudio = (amaudio_t *)file->private_data;
-	switch(cmd){
+    switch(cmd){
 		case AMAUDIO_IOC_GET_I2S_OUT_SIZE:
 			if(if_audio_out_enable()){
 				r = READ_MPEG_REG(AIU_MEM_I2S_END_PTR) - READ_MPEG_REG(AIU_MEM_I2S_START_PTR) + 64;
