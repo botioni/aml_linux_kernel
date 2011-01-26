@@ -69,10 +69,10 @@ printk("***Entered %s:%s: %d\n", __FILE__,__func__, level);
     case SND_SOC_BIAS_PREPARE:
 #if HP_DET
         del_timer_sync(&timer);
-        timer.expires = jiffies + HZ*1;
+        timer.expires = jiffies + HZ*5;
         del_timer(&timer);
         add_timer(&timer);
-        mute_spk(codec, hp_detect_flag);
+        hp_detect_flag = 0xf0000000;
 #endif
         break;
     case SND_SOC_BIAS_OFF:
@@ -224,7 +224,7 @@ static int aml_m1_codec_init(struct snd_soc_codec *codec)
     spin_lock_init(&lock);
     timer.function = &wm8900_hp_detect_timer;
     timer.data = (unsigned long)codec;
-    timer.expires = jiffies + HZ*1;
+    timer.expires = jiffies + HZ*10;
     init_timer(&timer);
     INIT_WORK(&wm8900_work.wm8900_workqueue, wm8900_hp_detect_queue);
 #endif

@@ -113,6 +113,9 @@ void audio_in_i2s_set_buf(u32 addr, u32 size)
 																	|(4<<8)	// /*AUDIN_FIFO0_ENDIAN */
 																	|(2<<11)//2 channel./* AUDIN_FIFO0_CHAN*/
 																	|(0<<16)	//to DDR
+                                                                    |(1<<15)    // Urgent request.  DDR SDRAM urgent request enable.
+                                                                    |(1<<17)    // Overflow Interrupt mask
+                                                                    |(1<<18)    // Audio in INT
 																	|(1<<19)	//hold 0 enable
 																	|(0<<22)	// hold0 to aififo																	
 														);			
@@ -160,10 +163,8 @@ unsigned int audio_in_i2s_rd_ptr(void)
 unsigned int audio_in_i2s_wr_ptr(void)
 {
 	unsigned int val;
+    WRITE_MPEG_REG(AUDIN_FIFO0_PTR, 1);
 	val = READ_MPEG_REG(AUDIN_FIFO0_PTR);
-	if(val%8){
-		printk("un-algined val=%x\n", val);
-	}
 	return (val)&(~0x3F);
 	//return val&(~0x7);
 }

@@ -590,7 +590,7 @@ static void vsync_toggle_frame(vframe_t *vf)
 static void viu_set_dcu(vpp_frame_par_t *frame_par, vframe_t *vf)
 {
     u32 r;
-    u32 hformat, vphase, vini_phase, vrpt, hformatter_en, vformatter_en;
+    u32 vphase, vini_phase;
     u32 pat, loop;
     static const u32 vpat[] = {0, 0x8, 0x9, 0xa, 0xb, 0xc};
 
@@ -604,44 +604,34 @@ static void viu_set_dcu(vpp_frame_par_t *frame_par, vframe_t *vf)
     if ((vf->type & VIDTYPE_VIU_SINGLE_PLANE) == 0) {
         r |= VDIF_SEPARATE_EN;
     } else {
-        if (vf->type & VIDTYPE_VIU_422) {
+        if (vf->type & VIDTYPE_VIU_422)
             r |= VDIF_FORMAT_422;
-        } else {
+        else
             r |= VDIF_FORMAT_RGB888_YUV444 | VDIF_DEMUX_MODE_RGB_444;
-        }
     }
 
     WRITE_MPEG_REG(VD1_IF0_GEN_REG, r);
     WRITE_MPEG_REG(VD2_IF0_GEN_REG, r);
 
-	/* chroma formatter */
- 	if (vf->type & VIDTYPE_VIU_FIELD) {
- 	    if (vf->type & VIDTYPE_VIU_444) {
-    	    hformat = HFORMATTER_YC_RATIO_1_1;
-        	vrpt = 0;
-        	vini_phase = 0;
-        	vphase = 0;
-        	hformatter_en = 0;
-        	vformatter_en = 0;
-    	} else {
-        	hformat = HFORMATTER_YC_RATIO_2_1;
-        	vrpt = VFORMATTER_RPTLINE0_EN;
-        	vini_phase = 0xc << VFORMATTER_INIPHASE_BIT;
-        	vphase = ((vf->type & VIDTYPE_VIU_422) ? 0x10 : 0x08) << VFORMATTER_PHASE_BIT;
-        	hformatter_en = HFORMATTER_EN;
-        	vformatter_en = VFORMATTER_EN;
-        }
+    /* chroma formatter */
+    if (vf->type & VIDTYPE_VIU_444) {
+        WRITE_MPEG_REG(VIU_VD1_FMT_CTRL, HFORMATTER_YC_RATIO_1_1);
+        WRITE_MPEG_REG(VIU_VD2_FMT_CTRL, HFORMATTER_YC_RATIO_1_1);
+    }
+    else if (vf->type & VIDTYPE_VIU_FIELD) {
+        vini_phase = 0xc << VFORMATTER_INIPHASE_BIT;
+        vphase = ((vf->type & VIDTYPE_VIU_422) ? 0x10 : 0x08) << VFORMATTER_PHASE_BIT;
 
-	    WRITE_MPEG_REG(VIU_VD1_FMT_CTRL,
-    	    hformat | hformatter_en |
-        	vrpt | vini_phase | vphase | vformatter_en);
+        WRITE_MPEG_REG(VIU_VD1_FMT_CTRL,
+            HFORMATTER_YC_RATIO_2_1 | HFORMATTER_EN |
+            VFORMATTER_RPTLINE0_EN | vini_phase | vphase | VFORMATTER_EN);
 
-    	WRITE_MPEG_REG(VIU_VD2_FMT_CTRL,
-        	hformat | hformatter_en |
-        	vrpt | vini_phase | vphase | vformatter_en);
+        WRITE_MPEG_REG(VIU_VD2_FMT_CTRL,
+            HFORMATTER_YC_RATIO_2_1 | HFORMATTER_EN |
+            VFORMATTER_RPTLINE0_EN | vini_phase | vphase | VFORMATTER_EN);
     }
     else if ((vf->type & VIDTYPE_INTERLACE) &&
-        	 (((vf->type & VIDTYPE_TYPEMASK) == VIDTYPE_INTERLACE_TOP))) {
+             (((vf->type & VIDTYPE_TYPEMASK) == VIDTYPE_INTERLACE_TOP))) {
         WRITE_MPEG_REG(VIU_VD1_FMT_CTRL,
             HFORMATTER_YC_RATIO_2_1 |
             HFORMATTER_EN |
@@ -676,25 +666,25 @@ static void viu_set_dcu(vpp_frame_par_t *frame_par, vframe_t *vf)
             VFORMATTER_EN);
     }
 
-	/* LOOP/SKIP pattern */
-	pat = vpat[frame_par->vscale_skip_count];
+    /* LOOP/SKIP pattern */
+    pat = vpat[frame_par->vscale_skip_count];
 
- 	if (vf->type & VIDTYPE_VIU_FIELD) {
- 		loop = 0;
+    if (vf->type & VIDTYPE_VIU_FIELD) {
+        loop = 0;
 
         if (vf->type & VIDTYPE_INTERLACE) {
         	pat = vpat[frame_par->vscale_skip_count - 1];
         }
-	}
-	else if ((vf->type & VIDTYPE_TYPEMASK) == VIDTYPE_INTERLACE_TOP) {
-		loop = 0x11;
-		pat <<= 4;
+    }
+    else if ((vf->type & VIDTYPE_TYPEMASK) == VIDTYPE_INTERLACE_TOP) {
+        loop = 0x11;
+        pat <<= 4;
 
         WRITE_MPEG_REG(VD1_IF0_LUMA_PSEL, 0);
         WRITE_MPEG_REG(VD1_IF0_CHROMA_PSEL, 0);
-	}
-	else
-		loop = 0;
+    }
+    else
+        loop = 0;
 
     WRITE_MPEG_REG(VD1_IF0_RPT_LOOP,
         (loop << VDIF_CHROMA_LOOP1_BIT) |
@@ -718,24 +708,24 @@ static void viu_set_dcu(vpp_frame_par_t *frame_par, vframe_t *vf)
     WRITE_MPEG_REG(VD2_IF0_LUMA1_RPT_PAT,   pat);
     WRITE_MPEG_REG(VD2_IF0_CHROMA1_RPT_PAT, pat);
 
-	/* picture 0/1 control */
-	if (((vf->type & VIDTYPE_INTERLACE) == 0) &&
-		((vf->type & VIDTYPE_VIU_FIELD) == 0)) {
-		/* progressive frame in two pictures */
-		WRITE_MPEG_REG(VD1_IF0_LUMA_PSEL,
-			(2 << 26) |	/* two pic mode */
-			(2 << 24) | /* use own last line */
-			(2 << 8)  | /* toggle pic 0 and 1, use pic0 first */
-			(0x01));	/* loop pattern */
-		WRITE_MPEG_REG(VD1_IF0_CHROMA_PSEL,
-			(2 << 26) |	/* two pic mode */
-			(2 << 24) | /* use own last line */
-			(2 << 8)  | /* toggle pic 0 and 1, use pic0 first */
-			(0x01));	/* loop pattern */
-	} else {
-	    WRITE_MPEG_REG(VD1_IF0_LUMA_PSEL, 0);
+    /* picture 0/1 control */
+    if (((vf->type & VIDTYPE_INTERLACE) == 0) &&
+        ((vf->type & VIDTYPE_VIU_FIELD) == 0)) {
+        /* progressive frame in two pictures */
+	WRITE_MPEG_REG(VD1_IF0_LUMA_PSEL,
+			(2 << 26) |    /* two pic mode */
+			(2 << 24) |    /* use own last line */
+			(2 << 8)  |    /* toggle pic 0 and 1, use pic0 first */
+			(0x01));       /* loop pattern */
+        WRITE_MPEG_REG(VD1_IF0_CHROMA_PSEL,
+			(2 << 26) |    /* two pic mode */
+			(2 << 24) |    /* use own last line */
+			(2 << 8)  |    /* toggle pic 0 and 1, use pic0 first */
+			(0x01));       /* loop pattern */
+    } else {
+        WRITE_MPEG_REG(VD1_IF0_LUMA_PSEL, 0);
     	WRITE_MPEG_REG(VD1_IF0_CHROMA_PSEL, 0);
-	}
+    }
 }
 
 static int detect_vout_type(void)

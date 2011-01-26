@@ -143,12 +143,5 @@ config MACH_MESON_8726M_REFB12
 config MESON_CLOCK_TICK_RATE
     int "Clock Tick Rate"
 	default 25000000
-	
-config BCM_BT
-	tristate "Control the state of bcm bluetooth"
-	select RFKILL
-	help
-	  This is a simple driver that is able to control
-	  the state of bluetooth chip on bcm.
 
 endmenu
