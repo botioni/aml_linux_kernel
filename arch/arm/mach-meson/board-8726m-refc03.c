@@ -137,16 +137,25 @@ static struct platform_device vout_device = {
 
 #if defined(CONFIG_AMLOGIC_SPI_NOR)
 static struct mtd_partition spi_partition_info[] = {
+/* Hide uboot partition
+        {
+                .name = "uboot",
+                .offset = 0,
+                .size = 0x3e000,
+        },
+//*/
 	{
-		.name = "U boot",
-		.offset = 0,
-		.size = 0x80000,
+		.name = "ubootenv",
+		.offset = 0x3e000,
+		.size = 0x2000,
 	},
-	{
-		.name = "conf",
-		.offset = 0x80000,
-		.size = 0xf0000-0x80000,
-	},
+/* Hide recovery partition
+        {
+                .name = "recovery",
+                .offset = 0x40000,
+                .size = 0x1c0000,
+        },
+//*/
 };
 
 static struct flash_platform_data amlogic_spi_platform = {
@@ -399,22 +408,56 @@ static struct platform_device aml_sound_card={
 #ifdef CONFIG_NAND_FLASH_DRIVER_BASE_OPERATE
 static struct mtd_partition partition_info[] = 
 {
+#ifndef CONFIG_AMLOGIC_SPI_NOR
+/* Hide uboot partition
 	{
-		.name = "U-BOOT",
+		.name = "uboot",
 		.offset = 0,
-		.size=2*1024*1024,
+		.size = 4*1024*1024,
 	//	.set_flags=0,
 	//	.dual_partnum=0,
 	},
+//*/
+        {
+                .name = "ubootenv",
+                .offset = 4*1024*1024,
+                .size = 0x2000,
+        //      .set_flags=0,
+        //      .dual_partnum=0,
+        },
+/* Hide recovery partition
+        {
+                .name = "recovery",
+                .offset = 6*1024*1024,
+                .size = 2*1024*1024,
+        //      .set_flags=0,
+        //      .dual_partnum=0,
+        },
+//*/
+#endif
 	{
-		.name = "Kernel",
-		.offset = 2*1024*1024,
-		.size = 4 * 1024*1024,
+		.name = "boot",
+		.offset = 8*1024*1024,
+		.size = 4*1024*1024,
 	//	.set_flags=0,
 	//	.dual_partnum=0,
 	},
+        {
+                .name = "system",
+                .offset = 12*1024*1024,
+                .size = 116*1024*1024,
+        //      .set_flags=0,
+        //      .dual_partnum=0,
+        },
+        {
+                .name = "cache",
+                .offset = 148*1024*1024,
+                .size = 16*1024*1024,
+        //      .set_flags=0,
+        //      .dual_partnum=0,
+        },
 	{
-		.name = "YAFFS2",
+		.name = "userdata",
 		.offset=MTDPART_OFS_APPEND,
 		.size=MTDPART_SIZ_FULL,
 	//	.set_flags=0,
@@ -869,12 +912,13 @@ static void __init device_pinmux_init(void )
 	/* IR decoder pinmux */
 	set_mio_mux(5, 1<<31);
 
-#ifdef CONFIG_I2C_SW_AML   /*for multak*/
+#ifdef CONFIG_AM_DVB
 	/* SmartCard pinmux */
 	set_mio_mux(2, 0xF<<20);
 #endif
 
 	set_audio_pinmux(AUDIO_IN_JTAG); // for MIC input
+        set_audio_pinmux(AUDIO_OUT_TEST_N); //External AUDIO DAC
 }
 static void __init  device_clk_setting(void)
 {
