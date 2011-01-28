@@ -34,6 +34,7 @@
 
 #define card_list_to_card(l)	container_of(l, struct memory_card, node)
 static DEFINE_MUTEX(init_lock);
+struct completion card_devadd_comp;
 
 struct amlogic_card_host 
 {
@@ -290,14 +291,23 @@ static int card_reader_monitor(void *data)
 			card->card_io_init(card);
 			card->card_detector(card);
 
-	    	if((card->card_status == CARD_INSERTED) && (card->unit_state != CARD_UNIT_READY) 
+	    	if((card->card_status == CARD_INSERTED) && (((card->unit_state != CARD_UNIT_READY) 
 				&& ((card_type == CARD_SDIO) ||(card_type == CARD_INAND)
-				|| (card_host->slot_detector == CARD_REMOVED)||(card->card_slot_mode == CARD_SLOT_DISJUNCT))) {
+				|| (card_host->slot_detector == CARD_REMOVED)||(card->card_slot_mode == CARD_SLOT_DISJUNCT)))
+				||(card->unit_state == CARD_UNIT_RESUMED))) {
 
+				if(card->unit_state == CARD_UNIT_RESUMED){
+					__card_claim_host(card_host, card);
+					card->card_insert_process(card);
+					card_release_host(card_host);
+					card->unit_state = CARD_UNIT_READY;
+					break;
+				}
+					
 				__card_claim_host(card_host, card);
 				card->card_insert_process(card);
 				card_release_host(card_host);
-
+					
 				if(card->unit_state == CARD_UNIT_PROCESSED) {
 					if(card->card_slot_mode == CARD_SLOT_4_1) {
 						if (card_type != CARD_SDIO && card_type != CARD_INAND) {
@@ -311,10 +321,13 @@ static int card_reader_monitor(void *data)
 					card->state = CARD_STATE_INITED;
 					if (card_type == CARD_SDIO)
 						card_host->card = card;
+					mutex_unlock(&init_lock);
 					card_detect_change(card_host, 0);
+					mutex_lock(&init_lock);
 	            }
 	        }
-	        else if((card->card_status == CARD_REMOVED) && (card->unit_state != CARD_UNIT_NOT_READY)) {
+	        else if((card->card_status == CARD_REMOVED) && ((card->unit_state != CARD_UNIT_NOT_READY)
+				||(card->unit_state == CARD_UNIT_RESUMED))){
 
 				if(card->card_slot_mode == CARD_SLOT_4_1) {                       
 					if (card_type == card_4in1_init_type) 
@@ -328,7 +341,9 @@ static int card_reader_monitor(void *data)
 
 					if(card) {
 						list_del(&card->node);
+						mutex_unlock(&init_lock);
 						card_remove_card(card);
+						mutex_lock(&init_lock);
 					}
 				}
 	        }
@@ -690,7 +705,9 @@ void card_detect_change(struct card_host *host, unsigned long delay)
 	/*if (delay)
 		card_schedule_delayed_work(&host->detect, delay);
 	else */ 
+	init_completion(&card_devadd_comp);
 	card_schedule_work(&host->detect);
+	wait_for_completion(&card_devadd_comp);
 } 
 EXPORT_SYMBOL(card_detect_change);
 

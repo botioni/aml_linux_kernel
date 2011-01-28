@@ -59,6 +59,8 @@ static unsigned card_thread_sleep_flag = 0;
 static struct completion card_thread_complete;
 static wait_queue_head_t card_thread_wq;
 static struct semaphore card_thread_sem;
+/*wait device delete*/
+struct completion card_devdel_comp;
 
 struct card_queue_list {
 	int cq_num;
@@ -73,18 +75,19 @@ void card_cleanup_queue(struct card_queue *cq)
 	struct card_queue_list *cq_node_current = card_queue_head;
 	struct card_queue_list *cq_node_prev = NULL;
 
-	do {
+	while (cq_node_current != NULL){
 		if (cq_node_current->cq == cq)
 			break;
 
 		cq_node_prev = cq_node_current;
 		cq_node_current = cq_node_current->cq_next;
-	} while (cq_node_current != NULL);
+	}
 
 	if (cq_node_current == card_queue_head) {
 		if (cq_node_current->cq_next == NULL) {
 			cq->flags |= CARD_QUEUE_EXIT;
 			wake_up_interruptible(&card_thread_wq);
+			up(&card_thread_sem);
 			wait_for_completion(&card_thread_complete);
 		} else {
 			card_queue_head->cq_num = 0;
@@ -97,7 +100,7 @@ void card_cleanup_queue(struct card_queue *cq)
 	kfree(cq->sg);
 	cq->sg = NULL;
 
-	blk_cleanup_queue(cq->queue);
+	//blk_cleanup_queue(cq->queue);
 
 	cq->card = NULL;
 
@@ -128,8 +131,11 @@ static void card_blk_put(struct card_blk_data *card_data)
 	card_data->usage--;
 	if (card_data->usage == 0) {
 		put_disk(card_data->disk);
-		card_cleanup_queue(&card_data->queue);
+		//card_cleanup_queue(&card_data->queue);
+		blk_cleanup_queue(card_data->queue.queue);
+		card_data->disk->queue = NULL;
 		kfree(card_data);
+		complete(&card_devdel_comp);
 	}
 	mutex_unlock(&open_lock);
 }
@@ -187,6 +193,11 @@ static int card_prep_request(struct request_queue *q, struct request *req)
 	struct card_queue *cq = q->queuedata;
 	int ret = BLKPREP_KILL;
 
+	if (!cq) {
+		printk(KERN_ERR "[card_prep_request] %s: killing request - no device/host\n", req->rq_disk->disk_name);
+		return BLKPREP_KILL;
+	}
+	
 	if (blk_special_request(req)) {
 		/*
 		 * Special commands already have the command
@@ -219,14 +230,18 @@ static void card_request(struct request_queue *q)
 	struct card_queue *cq = q->queuedata;
 	struct card_queue_list *cq_node_current = card_queue_head;
 
-	do {
-		if (cq_node_current->cq == cq) {
+	WARN_ON(!cq);
+	WARN_ON(!cq_node_current);
+	WARN_ON(!cq_node_current->cq);
+
+	while (cq_node_current != NULL){
+		if (cq && cq_node_current->cq == cq) {
 			cq_node_current->cq_flag = 1;
 			break;
 		}
 
 		cq_node_current = cq_node_current->cq_next;
-	} while (cq_node_current != NULL);
+	}
 
 	if (card_thread_sleep_flag) {
 		card_thread_sleep_flag = 0;
@@ -289,6 +304,7 @@ static int card_queue_thread(void *d)
 
 		spin_lock_irq(q->queue_lock);
 		cq_node_current = card_queue_head;
+		WARN_ON(!card_queue_head);
 		while (cq_node_current != NULL) {
 			cq = cq_node_current->cq;
 			q = cq->queue;
@@ -306,16 +322,17 @@ static int card_queue_thread(void *d)
 		cq->req = req;
 		spin_unlock_irq(q->queue_lock);
 
+		if (cq->flags & CARD_QUEUE_EXIT)
+			break;
+		
 		if (!req) {
-			if (cq->flags & CARD_QUEUE_EXIT)
-				break;
 
 			if (cq_node_current == NULL) {
 				up(&card_thread_sem);
 				card_thread_sleep_flag = 1;
 				interruptible_sleep_on(&card_thread_wq);
 				//schedule();
-				down(&card_thread_sem);
+				down_interruptible(&card_thread_sem);
 			}
 			continue;
 		}
@@ -649,10 +666,11 @@ static int card_blk_prep_rq(struct card_queue *cq, struct request *req)
 	struct card_blk_data *card_data = cq->data;
 	int stat = BLKPREP_OK;
 
+	WARN_ON(!cq->queue->queuedata);
 	/*
 	 * If we have no device, we haven't finished initialising.
 	 */
-	if (!card_data || !cq->card) {
+	if (!card_data || !cq->card || !cq->queue->queuedata) {
 		printk(KERN_ERR "%s: killing request - no device/host\n", req->rq_disk->disk_name);
 		stat = BLKPREP_KILL;
 	}
@@ -754,11 +772,15 @@ static void card_blk_remove(struct memory_card *card)
 		/*
 		 * I think this is needed.
 		 */
-		card_data->disk->queue = NULL;
+		
+		queue_flag_set_unlocked(QUEUE_FLAG_DEAD, card_data->queue.queue);
+		queue_flag_set_unlocked(QUEUE_FLAG_STOPPED, card_data->queue.queue);
+		card_data->queue.queue->queuedata = NULL;
+		card_cleanup_queue(&card_data->queue);
+		//card_data->disk->queue = NULL;
 
 		devidx = card_data->disk->first_minor >> CARD_SHIFT;
 		__clear_bit(devidx, dev_use);
-
 		card_blk_put(card_data);
 	}
 	card_set_drvdata(card, NULL);
@@ -792,8 +814,9 @@ static int card_blk_suspend(struct memory_card *card, pm_message_t state)
 	}
 	if(card->card_type == CARD_SDIO)
 		return 0;
-	card->unit_state = CARD_UNIT_NOT_READY;
-	host->slot_detector = CARD_REMOVED;
+	//card->unit_state = CARD_UNIT_NOT_READY;
+	//host->slot_detector = CARD_REMOVED;
+	card->unit_state = CARD_UNIT_RESUMED;
 	return 0;
 }
 

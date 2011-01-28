@@ -326,6 +326,12 @@ static int sd_request(struct memory_card *card, struct card_blk_request *brq)
 	byte_cnt = brq->card_data.blk_size * brq->card_data.blk_nums;
 	data_buf = brq->crq.buf;
 
+	if(sd_mmc_info == NULL){
+		brq->card_data.error = SD_MMC_ERROR_NO_CARD_INS;
+		printk("[sd_request] sd_mmc_info == NULL, return SD_MMC_ERROR_NO_CARD_INS\n");
+		return 0;
+	}
+
 	sd_sdio_enable(sd_mmc_info->io_pad_type);
 	if(brq->crq.cmd == READ) {
 		brq->card_data.error = sd_mmc_read_data(sd_mmc_info, lba, byte_cnt, data_buf);
@@ -333,6 +339,7 @@ static int sd_request(struct memory_card *card, struct card_blk_request *brq)
 	else if(brq->crq.cmd == WRITE) {
 		brq->card_data.error = sd_mmc_write_data(sd_mmc_info, lba, byte_cnt, data_buf);
 	}
+
 	sd_gpio_enable(sd_mmc_info->io_pad_type);
 
 	return 0;

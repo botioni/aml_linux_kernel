@@ -32,6 +32,7 @@
 #define CARD_UNIT_PROCESSING    1
 #define CARD_UNIT_PROCESSED     2
 #define CARD_UNIT_READY         3
+#define CARD_UNIT_RESUMED         4
 
 #define CARD_EVENT_NOT_INSERTED     0
 #define CARD_EVENT_INSERTED     	1

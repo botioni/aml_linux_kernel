@@ -22,6 +22,8 @@
 #define to_card_driver(d)	container_of(d, struct card_driver, drv)
 #define cls_dev_to_card_host(d)	container_of(d, struct card_host, class_dev)
 
+extern struct completion card_devdel_comp;
+extern struct completion card_devadd_comp;
 void card_release_card(struct device *dev)
 {
 	struct memory_card *card = dev_to_memory_card(dev);
@@ -130,14 +132,21 @@ void card_init_card(struct memory_card *card, struct card_host *host)
 
 EXPORT_SYMBOL(card_init_card);
 
+#include <linux/delay.h>
 /*
  * Internal function.  Register a new card card with the driver model.
  */
 int card_register_card(struct memory_card *card)
 {
+	int ret;
+	
 	dev_set_name(&card->dev, "%s:%s", card_hostname(card->host), card->name);
 
-	return device_add(&card->dev);
+	/*return device_add(&card->dev);*/
+	device_add(&card->dev);
+
+	complete(&card_devadd_comp);
+	return ret;
 }
 
 EXPORT_SYMBOL(card_register_card);
@@ -147,9 +156,12 @@ EXPORT_SYMBOL(card_register_card);
  * driver model, and (eventually) free it.
  */
 void card_remove_card(struct memory_card *card)
-{
-	if (card->state & CARD_STATE_PRESENT)
+{	
+	if (card->state & CARD_STATE_PRESENT){
+		init_completion(&card_devdel_comp);
 		device_del(&card->dev);
+		wait_for_completion(&card_devdel_comp);
+	}
 
 	put_device(&card->dev);
 }
