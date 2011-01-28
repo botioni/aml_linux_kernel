@@ -348,8 +348,8 @@ static void process_om_read(struct aml_dmx *dmx)
 
 static void dmx_irq_bh_handler(unsigned long arg)
 {
-	struct aml_dmx *dmx = (struct aml_dmx*)arg;
 #if 0
+	struct aml_dmx *dmx = (struct aml_dmx*)arg;
 	u32 status;
 
 	status = DMX_READ_REG(dmx->id, STB_INT_STATUS);
@@ -407,7 +407,7 @@ static irqreturn_t dmx_irq_handler(int irq_number, void *para)
 
 static void dvr_irq_bh_handler(unsigned long arg)
 {
-	struct aml_dmx *dmx = (struct aml_dmx*)arg;
+	//struct aml_dmx *dmx = (struct aml_dmx*)arg;
 	return;
 }
 
@@ -677,7 +677,7 @@ static void dmx_set_mux(struct aml_dvb *dvb)
 #define PINMUX5_GPIOD16_FECB_D0           1<<18
 #define PINMUX5_GPIOD17_24_FECB_D1_7 1<<17
 
-#ifdef CONFIG_MACH_MESON_8726M_DVBC
+#ifndef CONFIG_MACH_MESON_8226M
 	SET_CBUS_REG_MASK(PREG_PIN_MUX_REG3,PINMUX3_GPIOC4_FECA_D0);
 	SET_CBUS_REG_MASK(PREG_PIN_MUX_REG3,PINMUX3_GPIOC5_11_FECA_D1_7);
  	SET_CBUS_REG_MASK(PREG_PIN_MUX_REG3,PINMUX3_GPIOC3_FECA_CLK);
@@ -1522,7 +1522,7 @@ static int dmx_remove_feed(struct aml_dmx *dmx, struct dvb_demux_feed *feed)
 
 int aml_dmx_hw_init(struct aml_dmx *dmx)
 {
-	struct aml_dvb *dvb = (struct aml_dvb*)dmx->demux.priv;
+	//struct aml_dvb *dvb = (struct aml_dvb*)dmx->demux.priv;
 	unsigned long flags;
 	int ret;
 	
@@ -1548,7 +1548,7 @@ int aml_dmx_hw_deinit(struct aml_dmx *dmx)
 int aml_dmx_hw_start_feed(struct dvb_demux_feed *dvbdmxfeed)
 {
 	struct aml_dmx *dmx = (struct aml_dmx*)dvbdmxfeed->demux;
-	struct aml_dvb *dvb = (struct aml_dvb*)dmx->demux.priv;
+	//struct aml_dvb *dvb = (struct aml_dvb*)dmx->demux.priv;
 	unsigned long flags;
 	int ret = 0;
 	
@@ -1562,7 +1562,7 @@ int aml_dmx_hw_start_feed(struct dvb_demux_feed *dvbdmxfeed)
 int aml_dmx_hw_stop_feed(struct dvb_demux_feed *dvbdmxfeed)
 {
 	struct aml_dmx *dmx = (struct aml_dmx*)dvbdmxfeed->demux;
-	struct aml_dvb *dvb = (struct aml_dvb*)dmx->demux.priv;
+	//struct aml_dvb *dvb = (struct aml_dvb*)dmx->demux.priv;
 	unsigned long flags;
 	
 	spin_lock_irqsave(&dmx->slock, flags);
@@ -1809,7 +1809,7 @@ static ssize_t dmx_reg_value_store_source(struct class *class,struct class_attri
 	return size;
 }
 
-int aml_regist_dmx_class()
+int aml_regist_dmx_class(void)
 {
 
 	if(class_register(&aml_dmx_class)<0) {
@@ -1820,7 +1820,7 @@ int aml_regist_dmx_class()
 }
 
 
-int aml_unregist_dmx_class()
+int aml_unregist_dmx_class(void)
 {
 
 	class_unregister(&aml_dmx_class);
