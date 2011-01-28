@@ -199,8 +199,8 @@ static void set_tcon_pinmux(void)
     //PP1 -> UPDN:0, PP2 -> SHLR:1
 #ifdef CONFIG_SN7325
     configIO(1, 0);
-    setIO_level(1, 0, 1);
-    setIO_level(1, 1, 2);
+    setIO_level(1, 1, 1);
+    setIO_level(1, 0, 2);
 #endif
 }
 static void t13_power_on(void)
@@ -244,6 +244,7 @@ static int __init t13_init(void)
 static void __exit t13_exit(void)
 {
     power_off_backlight();
+    mdelay(1000);
     power_off_lcd();
 
     platform_device_unregister(&tcon_dev);

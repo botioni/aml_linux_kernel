@@ -79,7 +79,8 @@ printk("***Entered %s:%s: %d\n", __FILE__,__func__, level);
     case SND_SOC_BIAS_STANDBY:
 #if HP_DET
         del_timer(&timer);
-        mute_spk(codec,hp_detect_flag);
+        hp_detect_flag = 0xf0000000;        
+        mute_spk(codec,1);
 #endif
         break;
     };
