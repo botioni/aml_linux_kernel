@@ -270,7 +270,7 @@ static irqreturn_t vmpeg12_isr(int irq, void *dev_id)
             pts_valid = 1;
         }
 
-        if (frame_prog == 0) {
+        /*if (frame_prog == 0)*/ {
             frame_prog = info & PICINFO_PROG;
         }
 
