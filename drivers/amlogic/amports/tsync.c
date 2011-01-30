@@ -64,6 +64,7 @@ static int vpause_flag = 0;
 static unsigned int tsync_av_thresh = AV_DISCONTINUE_THREDHOLD;
 static unsigned int tsync_syncthresh = 1;
 static int tsync_dec_reset_flag = 0;
+static int tsync_dec_reset_video_start = 0;
 
 void tsync_avevent(avevent_t event, u32 param)
 {
@@ -84,6 +85,10 @@ void tsync_avevent(avevent_t event, u32 param)
             tsync_mode = TSYNC_MODE_AMASTER;
         else
             tsync_mode = TSYNC_MODE_VMASTER;
+
+		if (tsync_dec_reset_flag){
+			tsync_dec_reset_video_start = 1;
+		}
 
     #ifndef TSYNC_SLOW_SYNC
         if (tsync_stat == TSYNC_STAT_PCRSCR_SETUP_NONE) 
@@ -186,11 +191,12 @@ void tsync_avevent(avevent_t event, u32 param)
         if (tsync_dec_reset_flag) // after reset, video should be played first
         {
             int vpts = timestamp_vpts_get();
-            if (param < vpts)
+            if ((param < vpts) || (!tsync_dec_reset_video_start))
                 timestamp_pcrscr_set(param);
             else
                 timestamp_pcrscr_set(vpts);
             tsync_dec_reset_flag = 0;
+			tsync_dec_reset_video_start = 0;
         }
         else
         {
