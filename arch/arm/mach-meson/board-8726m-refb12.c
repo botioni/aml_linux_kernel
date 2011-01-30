@@ -197,6 +197,7 @@ static inline int key_input_init_func(void)
 {
     WRITE_CBUS_REG(0x21d0/*RTC_ADDR0*/, (READ_CBUS_REG(0x21d0/*RTC_ADDR0*/) &~(1<<11)));
     WRITE_CBUS_REG(0x21d1/*RTC_ADDR0*/, (READ_CBUS_REG(0x21d1/*RTC_ADDR0*/) &~(1<<3)));
+    return 0;
 }
 static inline int key_scan(int *key_state_list)
 {
@@ -582,7 +583,7 @@ int wm8900_is_hp_pluged(void)
                                 (7 << 4)    |       // CS1 REF, Current FeedBack: about 0.505V
                                 (0 << 0));           // DIMCTL Analog dimmer
     cs_no = READ_CBUS_REG(LED_PWM_REG3);
-    if(cs_no &(1<<15))
+    if(cs_no &(1<<14))
       level |= (1<<0);
     return (level == 1)?(1):(0); //return 1: hp pluged, 0: hp unpluged.
 }
@@ -857,7 +858,7 @@ static  struct platform_device aml_rtc_device = {
 
 
 static struct platform_device camera_device = {
-    .name       = "camera_gc0307r",
+    .name       = "camera_gc0308",
     .id         = -1,
 
 };
@@ -1865,8 +1866,8 @@ static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
 #endif
 #ifdef CONFIG_CAMERA_GC0308
 	{
-        /*gc0309 i2c address is 0x42/0x43*/
-		I2C_BOARD_INFO("gc0307r_i2c",  0x42 >> 1),
+        /*gc0307 i2c address is 0x42/0x43*/
+		I2C_BOARD_INFO("gc0308_i2c",  0x42 >> 1),
 	},
 #endif
 };

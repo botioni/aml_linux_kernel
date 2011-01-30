@@ -697,6 +697,8 @@ static void check_amvdec_656_601_camera_fromat( void )
 //                            (active_pixel <= (tvin_fmt_tbl[format].h_active+ tvin_fmt_tbl[format].h_cnt_offset)))
                            break;
                     }
+			else
+				mdelay(5);
 
                 }
                 if(format >= TVIN_SIG_FMT_MAX)

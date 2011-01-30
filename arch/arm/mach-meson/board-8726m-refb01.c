@@ -37,7 +37,7 @@
 #include <linux/i2c.h>
 #include <linux/i2c-aml.h>
 #include <mach/power_gate.h>
-#include <linux/aml_bl.h>
+#include <linux/reboot.h>
 
 #ifdef CONFIG_AM_UART_WITH_S_CORE 
 #include <linux/uart-aml.h>
@@ -361,8 +361,21 @@ static struct resource vdin_resources[] = {
         .end   = VDIN_ADDR_END,     //pbufAddr + size
         .flags = IORESOURCE_MEM,
     },
-
-
+    [1] = {
+        .start = VDIN_ADDR_START,
+        .end   = VDIN_ADDR_END,
+        .flags = IORESOURCE_MEM,
+    },
+    [2] = {
+        .start = INT_VDIN_VSYNC,
+        .end   = INT_VDIN_VSYNC,
+        .flags = IORESOURCE_IRQ,
+    },
+    [3] = {
+        .start = INT_VDIN_VSYNC,
+        .end   = INT_VDIN_VSYNC,
+        .flags = IORESOURCE_IRQ,
+    },
 };
 
 static struct platform_device vdin_device = {
@@ -371,8 +384,11 @@ static struct platform_device vdin_device = {
     .num_resources = ARRAY_SIZE(vdin_resources),
     .resource      = vdin_resources,
 };
+#endif
 
+#ifdef CONFIG_TVIN_BT656IN
 //add pin mux info for bt656 input
+#if 0
 static struct resource bt656in_resources[] = {
     [0] = {
         .start =  VDIN_ADDR_START,      //pbufAddr
@@ -398,12 +414,13 @@ static struct resource bt656in_resources[] = {
     },
 
 };
+#endif
 
 static struct platform_device bt656in_device = {
     .name       = "amvdec_656in",
     .id         = -1,
-    .num_resources = ARRAY_SIZE(bt656in_resources),
-    .resource      = bt656in_resources,
+//    .num_resources = ARRAY_SIZE(bt656in_resources),
+//    .resource      = bt656in_resources,
 };
 #endif
 
@@ -767,6 +784,12 @@ static  struct platform_device aml_rtc_device = {
     };
 #endif
 
+#ifdef CONFIG_CAMERA_GC0308
+static struct platform_device camera_device = {
+    .name       = "camera_gc0308",
+    .id         = -1,
+};
+#endif
 #if defined(CONFIG_SUSPEND)
 static void set_vccx2(int power_on)
 {
@@ -891,11 +914,11 @@ static void set_charge(int flags)
     //extern io sn7325 pp7
     //low: fast charge high: slow charge
     if(flags == 1){//fast charge
-        configIO(0, 0);
+        configIO(1, 0);
         setIO_level(1, 0, 7);        
     }
     else{//slow charge
-        configIO(0, 0);
+        configIO(1, 0);
         setIO_level(1, 1, 7);        
     }
         
@@ -927,7 +950,9 @@ static void set_bat_off(void)
 
     //VCCx2 power down
     set_vccx2(0);
-
+    if(is_ac_connected()){ //AC in after power off press
+        kernel_restart("reboot");
+    }
     //Power hold down
     set_gpio_val(GPIOA_bank_bit(8), GPIOA_bit_bit0_14(8), 0);
     set_gpio_mode(GPIOA_bank_bit(8), GPIOA_bit_bit0_14(8), GPIO_OUTPUT_MODE);
@@ -1281,6 +1306,7 @@ static struct platform_device aml_nand_device = {
 #endif  //CONFIG_NAND_FLASH_DRIVER_MULTIPLANE_CE
 
 #if defined(CONFIG_AMLOGIC_BACKLIGHT)
+#include <linux/aml_bl.h>
 
 #define PWM_TCNT        (600-1)
 #define PWM_MAX_VAL    (420)
@@ -1590,12 +1616,16 @@ static struct platform_device __initdata *platform_devs[] = {
     #endif
     #if defined(CONFIG_TVIN_VDIN)
         &vdin_device,
-        &bt656in_device,
+    #endif
+    #if defined(CONFIG_TVIN_BT656IN)
+		&bt656in_device,
     #endif
     #if defined(CONFIG_AML_AUDIO_DSP)
         &audiodsp_device,
     #endif
+	#if defined(CONFIG_SND_AML_M1_MID_WM8900)
         &aml_audio,
+	#endif
     #if defined(CONFIG_CARDREADER)
         &amlogic_card_device,
     #endif
@@ -1644,6 +1674,9 @@ static struct platform_device __initdata *platform_devs[] = {
     #if defined(CONFIG_AMLOGIC_BACKLIGHT)
         &aml_bl_device,
     #endif
+    #ifdef CONFIG_CAMERA_GC0308
+        &camera_device,
+    #endif
     #if defined(CONFIG_AM_TV_OUTPUT)||defined(CONFIG_AM_TCON_OUTPUT)
         &vout_device,   
     #endif
@@ -1671,6 +1704,12 @@ static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
     },
 #endif
 
+#ifdef CONFIG_CAMERA_GC0308
+    {
+        /*gc0309 i2c address is 0x42/0x43*/
+        I2C_BOARD_INFO("gc0308_i2c",  0x42 >> 1 ),
+    },
+#endif
 #ifdef CONFIG_SND_AML_M1_MID_WM8900
     {
         I2C_BOARD_INFO("wm8900", 0x1A),
@@ -1694,7 +1733,6 @@ static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
 #endif
 };
 
-
 static int __init aml_i2c_init(void)
 {
 
@@ -1703,6 +1741,17 @@ static int __init aml_i2c_init(void)
     return 0;
 }
 
+#if defined(CONFIG_TVIN_BT656IN)
+static void __init bt656in_pinmux_init(void)
+{
+    set_mio_mux(3, 0xf000);   //mask--mux gpio_c3 to bt656 clk;  mux gpioc[4:11] to be bt656 dt_in
+    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, 0x0f000000);
+    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_3, 0x01be07fc);
+    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_4, 0x0c000000);
+}
+
+
+#endif
 static void __init eth_pinmux_init(void)
 {
     eth_set_pinmux(ETH_BANK2_GPIOD15_D23,ETH_CLK_OUT_GPIOD24_REG5_1,0);
@@ -1726,6 +1775,16 @@ static void __init eth_pinmux_init(void)
     aml_i2c_init();
 }
 
+#ifdef CONFIG_CAMERA_GC0308
+static void __init camera_power_on_init(void)
+{
+    udelay(1000);
+    SET_CBUS_REG_MASK(HHI_ETH_CLK_CNTL,0x30f);// 24M XTAL
+    SET_CBUS_REG_MASK(HHI_DEMOD_PLL_CNTL,0x232);// 24M XTAL
+
+    eth_set_pinmux(ETH_BANK0_GPIOC3_C12,ETH_CLK_OUT_GPIOC12_REG3_1, 1);		
+}
+#endif
 static void __init device_pinmux_init(void )
 {
     clearall_pinmux();
@@ -1738,6 +1797,9 @@ static void __init device_pinmux_init(void )
     /*pinmux of eth*/
     //eth_pinmux_init();
     aml_i2c_init();
+#if defined(CONFIG_TVIN_BT656IN)
+    bt656in_pinmux_init();
+#endif
     set_audio_pinmux(AUDIO_OUT_TEST_N);
     set_audio_pinmux(AUDIO_IN_JTAG);
 }
@@ -1790,6 +1852,9 @@ static __init void m1_init_machine(void)
     power_hold();
     device_clk_setting();
     device_pinmux_init();
+#ifdef CONFIG_CAMERA_GC0308
+    camera_power_on_init();
+#endif
     platform_add_devices(platform_devs, ARRAY_SIZE(platform_devs));
 
 #ifdef CONFIG_USB_DWC_OTG_HCD

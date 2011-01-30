@@ -386,7 +386,7 @@ static int vdin_ioctl(struct inode *inode, struct file *file, unsigned int cmd, 
 
         case TVIN_IOC_S_PARM:
         {
-            struct tvin_parm_s para = {TVIN_PORT_NULL, TVIN_SIG_FMT_NULL, TVIN_SIG_STATUS_NULL, 0, 0, 0};
+            struct tvin_parm_s para = {TVIN_PORT_NULL, TVIN_SIG_FMT_NULL, TVIN_SIG_STATUS_NULL, 0, 0, 0,0};
             if (copy_from_user(&para, argp, sizeof(struct tvin_parm_s)))
 		    {
                 ret = -EFAULT;

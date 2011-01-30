@@ -22,12 +22,20 @@ config AMLOGIC_CAMERA_ENABLE
 	default n
 	help
 		MICRON 5M Bayer Sensor with AutoFocus
+		
+config AMLOGIC_SECOND_CAMERA_ENABLE
+	depends on AMLOGIC_CAMERA_ENABLE
+	bool "AMLOGIC SECOND CAMERA Driver ENABLE"
+	default n
+	help
+		AMLOGIC SECOND CAMERA Driver ENABLE		
 				
 config CAMERA_OV5640
 	tristate "CAMERA OV5640 Driver"
 	default n
+	depends on AMLOGIC_CAMERA_ENABLE
 	help
-		MICRON 5M Bayer Sensor with AutoFocus
+		CAMERA_OV5640 support
 		
 config CAMERA_GC0308
 	tristate "CAMERA GC0308 Driver"

@@ -55,7 +55,7 @@
 //#define I2C_CAMERA  0x60  /* @todo to be changed according your device */
 
 #define GC0308_DEVICE_NAME      "camera_gc0308"
-#define GC0308_I2C_NAME         "cg0308_i2c"
+#define GC0308_I2C_NAME         "gc0308_i2c"
 
 
 #define CAMERA_COUNT              1

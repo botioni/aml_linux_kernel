@@ -1742,7 +1742,7 @@ static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
 #ifdef CONFIG_CAMERA_GC0308
     {
         /*gc0309 i2c address is 0x42/0x43*/
-        I2C_BOARD_INFO("cg0308_i2c",  0x42 >> 1 ),
+        I2C_BOARD_INFO("gc0308_i2c",  0x42 >> 1 ),
     },
 #endif
 

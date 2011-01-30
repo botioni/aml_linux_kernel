@@ -218,7 +218,7 @@ unsigned short camera_read_word_first(unsigned short addr)
     }
 }
 
-#if SUPPORT_SECOND_CAMERA
+#ifdef CONFIG_AMLOGIC_SECOND_CAMERA_ENABLE
 
 static dev_t camera_devno_second;
 static struct class *camera_clsp_second = NULL;
@@ -348,7 +348,7 @@ int ov5640_read(char *buf, int len)
 	{
 		return camera_read_first(buf, len);
 	}
-	#if SUPPORT_SECOND_CAMERA
+	#ifdef CONFIG_AMLOGIC_SECOND_CAMERA_ENABLE
 	else if (!strcmp(AMLOGIC_CAMERA_DEVICE_NAME_SECOND,AMLOGIC_CAMERA_OV5640_NAME))
 	{
 		return camera_read_second(buf, len);
@@ -361,7 +361,7 @@ int ov5640_write(char *buf, int len)
 	{
 		return camera_write_first(buf, len);
 	}
-	#if SUPPORT_SECOND_CAMERA
+	#ifdef CONFIG_AMLOGIC_SECOND_CAMERA_ENABLE
 	else if (!strcmp(AMLOGIC_CAMERA_DEVICE_NAME_SECOND,AMLOGIC_CAMERA_OV5640_NAME))
 	{
 		return camera_write_second(buf, len);
@@ -374,7 +374,7 @@ int ov5640_write_byte(unsigned short addr, unsigned char data)
 	{
 		return camera_write_byte_first(addr, data);
 	}
-	#if SUPPORT_SECOND_CAMERA
+	#ifdef CONFIG_AMLOGIC_SECOND_CAMERA_ENABLE
 	else if (!strcmp(AMLOGIC_CAMERA_DEVICE_NAME_SECOND,AMLOGIC_CAMERA_OV5640_NAME))
 	{
 		return camera_write_byte_second(addr, data);
@@ -388,7 +388,7 @@ int  ov5640_write_word(unsigned short addr, unsigned short data)
 	{
 		return camera_write_word_first(addr, data);
 	}
-	#if SUPPORT_SECOND_CAMERA
+	#ifdef CONFIG_AMLOGIC_SECOND_CAMERA_ENABLE
 	else if (!strcmp(AMLOGIC_CAMERA_DEVICE_NAME_SECOND,AMLOGIC_CAMERA_OV5640_NAME))
 	{
 		return camera_write_word_second(addr, data);
@@ -401,7 +401,7 @@ unsigned short ov5640_read_word(unsigned short addr)
 	{
 		return camera_read_word_first(addr);
 	}
-	#if SUPPORT_SECOND_CAMERA
+	#ifdef CONFIG_AMLOGIC_SECOND_CAMERA_ENABLE
 	else if (!strcmp(AMLOGIC_CAMERA_DEVICE_NAME_SECOND,AMLOGIC_CAMERA_OV5640_NAME))
 	{
 		return camera_read_word_second(addr);
@@ -414,7 +414,7 @@ unsigned char  ov5640_read_byte(unsigned short addr )
 	{
 		return camera_read_byte_first(addr );
 	}
-	#if SUPPORT_SECOND_CAMERA
+	#ifdef CONFIG_AMLOGIC_SECOND_CAMERA_ENABLE
 	else if (!strcmp(AMLOGIC_CAMERA_DEVICE_NAME_SECOND,AMLOGIC_CAMERA_OV5640_NAME))
 	{
 		return camera_read_byte_second(addr );
@@ -430,7 +430,7 @@ int  gc0308_write(char *buf, int len)
 	{
 		return camera_write_first(buf, len);
 	}
-	#if SUPPORT_SECOND_CAMERA
+	#ifdef CONFIG_AMLOGIC_SECOND_CAMERA_ENABLE
 	else if (!strcmp(AMLOGIC_CAMERA_DEVICE_NAME_SECOND,AMLOGIC_CAMERA_GC0308_NAME))
 	{
 		return camera_write_second(buf, len);
@@ -443,7 +443,7 @@ int  gc0308_write_byte(unsigned short addr, unsigned char data)
 	{
 		return camera_write_byte_first(addr, data);
 	}
-	#if SUPPORT_SECOND_CAMERA
+	#ifdef CONFIG_AMLOGIC_SECOND_CAMERA_ENABLE
 	else if (!strcmp(AMLOGIC_CAMERA_DEVICE_NAME_SECOND,AMLOGIC_CAMERA_GC0308_NAME))
 	{
 		return camera_write_byte_second(addr, data);
@@ -456,7 +456,7 @@ int  gc0308_read(char *buf, int len)
 	{
 		return camera_read_first(buf, len);
 	}
-	#if SUPPORT_SECOND_CAMERA
+	#ifdef CONFIG_AMLOGIC_SECOND_CAMERA_ENABLE
 	else if (!strcmp(AMLOGIC_CAMERA_DEVICE_NAME_SECOND,AMLOGIC_CAMERA_GC0308_NAME))
 	{
 		return camera_read_second(buf, len);
@@ -508,6 +508,7 @@ static int camera_ioctl(struct inode *inode, struct file *file, unsigned int cmd
                     memcpy(&amlogic_camera_info_ov5640.para, &para,sizeof(struct camera_info_s) );
                 #endif
                 #ifdef CONFIG_CAMERA_GC0308
+				printk("camera ioctl para.camera_name is %p para.camera_name is %s. \n",para.camera_name,para.camera_name);
                 if (!strcmp(para.camera_name,AMLOGIC_CAMERA_GC0308_NAME))
                     memcpy(&amlogic_camera_info_gc0308.para, &para,sizeof(struct camera_info_s) );
                 #endif
@@ -723,7 +724,7 @@ static struct platform_driver amlogic_camera_driver = {
 	},
 };
 
-#if SUPPORT_SECOND_CAMERA
+#ifdef CONFIG_AMLOGIC_SECOND_CAMERA_ENABLE
 
 static int amlogic_camera_i2c_probe_second(struct i2c_client *client, const struct i2c_device_id *id)
 {
@@ -870,7 +871,7 @@ static int __init amlogic_camera_init(void)
         printk(KERN_ERR "failed to register amlogic camera module, error %d\n", ret);
         return -ENODEV;
     }
-    #if SUPPORT_SECOND_CAMERA
+    #ifdef CONFIG_AMLOGIC_SECOND_CAMERA_ENABLE
    /* if (!strcmp(AMLOGIC_CAMERA_DEVICE_NAME_SECOND,AMLOGIC_CAMERA_GC0308_NAME))
     {
 	    eth_set_pinmux(ETH_BANK0_GPIOC3_C12,ETH_CLK_OUT_GPIOC12_REG3_1, 1);
@@ -895,7 +896,7 @@ static void __exit amlogic_camera_exit(void)
 	pr_info("amlogic camera driver: exit\n");
     platform_driver_unregister(&amlogic_camera_driver);
 
-    #if SUPPORT_SECOND_CAMERA
+    #ifdef CONFIG_AMLOGIC_SECOND_CAMERA_ENABLE
     platform_driver_unregister(&amlogic_camera_driver_second);
     #endif
 
