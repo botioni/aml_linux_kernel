@@ -5,17 +5,19 @@ EXTRA_CFLAGS += -Idrivers/amlogic/wifi/atheros_6102/wlan/include
 EXTRA_CFLAGS += -Idrivers/amlogic/wifi/atheros_6102/bmi/include
 EXTRA_CFLAGS += -Idrivers/amlogic/wifi/atheros_6102/hif/sdio/linux_sdio/include
 
-EXTRA_CFLAGS += -DLINUX -DDEBUG -D__KERNEL__ \
+EXTRA_CFLAGS += -DLINUX -D__KERNEL__ \
                 -DTCMD -DSEND_EVENT_TO_APP -DUSER_KEYS \
                 -DNO_SYNC_FLUSH -DWAPI_ENABLE #\
                 -DMULTIPLE_FRAMES_PER_INTERRUPT -DAR6000REV2 \
-                -DBLOCK_TX_PATH_FLAG
+                -DBLOCK_TX_PATH_FLAG \
                 
 EXTRA_CFLAGS +=  -DANDROID_ENV \
                  -D__linux__ -Wno-error \
                  -DEEPROM_FILE_USED \
                  -DKERNEL_2_6 \
                  -DSDIO
+                 
+#EXTRA_CFLAGS += -DDEBUG
                  
 obj-$(CONFIG_SDIO_ATHEROS_6102_WIFI) += ar6102.o
 ar6102-objs += htc2/AR6000/ar6k.o        \
