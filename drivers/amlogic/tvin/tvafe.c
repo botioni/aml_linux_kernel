@@ -30,6 +30,7 @@
 #include <mach/am_regs.h>
 #include <linux/amports/vframe.h>
 /* Local include */
+#include "tvin_global.h"
 #include "vdin_ctl.h"
 #include "tvin_notifier.h"
 #include "tvafe_regs.h"
@@ -38,8 +39,6 @@
 #include "tvafe_general.h"   /* For Kernel used only */
 #include "tvafe_adc.h"       /* For Kernel used only */
 #include "tvafe_cvd.h"       /* For Kernel used only */
-#include "tvin_format_table.h"
-
 
 #define TVAFE_NAME               "tvafe"
 #define TVAFE_DRIVER_NAME        "tvafe"
@@ -49,26 +48,15 @@
 
 #define TVAFE_COUNT              1
 
-#define TIMER_10MS               (1*HZ/100)          //10ms timer for tvafe main loop
-#define TIMER_200MS              (1*HZ/5)            //200ms timer for tvafe main loop
-
 static dev_t                     tvafe_devno;
 static struct class              *tvafe_clsp;
 
 typedef struct tvafe_dev_s {
     int                          index;
     struct cdev                  cdev;
-    unsigned int                 flags;
-    //unsigned int                 cvd2_mem_start;
-    //unsigned int                 cvd2_mem_size;
-    struct tvafe_pin_mux_s       *pin_mux;
-
-    struct mutex                 tvafe_mutex;
-
 
 } tvafe_dev_t;
 
-//const static char tvafe_irq_id[] = "tvafe_irq_id";
 static struct tvafe_dev_s *tvafe_devp[TVAFE_COUNT];
 
 static struct tvafe_info_s tvafe_info = {
@@ -198,7 +186,7 @@ static void tvafe_release_canvas(void)
 
 }
 
-static int get_current_video_buff_point(void)
+static int tvafe_get_current_video_buff_point(void)
 {
     unsigned  cur_canvas_index, ii, tvafe_buff_addr, video_buff_addr = 0;
     if(vdin_devp_tvafe->index)
@@ -222,6 +210,12 @@ static int get_current_video_buff_point(void)
 
 static void tvafe_send_interlace_buff_to_display_fifo(vframe_t * info)
 {
+    info->width = tvin_fmt_tbl[tvafe_info.param.fmt].h_active;
+    info->height = tvin_fmt_tbl[tvafe_info.param.fmt].v_active*2;
+    info->duration = tvin_fmt_tbl[tvafe_info.param.fmt].duration;
+    if((info->width == 0) || (info->height == 0) || (info->duration == 0))
+        return;
+
     tvafe_info.rd_canvas_index++;
     if(tvafe_info.rd_canvas_index  > (tvafe_info.canvas_total_count -1))
     {
@@ -241,14 +235,16 @@ static void tvafe_send_interlace_buff_to_display_fifo(vframe_t * info)
 
     info->canvas0Addr = info->canvas1Addr = tvafe_index2canvas(tvafe_info.rd_canvas_index);
 
-    info->width = tvin_fmt_tbl[tvafe_info.param.fmt].h_active;
-    info->height = tvin_fmt_tbl[tvafe_info.param.fmt].v_active*2;
-    info->duration = tvin_fmt_tbl[tvafe_info.param.fmt].duration;
-
 }
 
 static void tvafe_send_progressive_buff_to_display_fifo(vframe_t * info)
 {
+    info->width= tvin_fmt_tbl[tvafe_info.param.fmt].h_active;
+    info->height = tvin_fmt_tbl[tvafe_info.param.fmt].v_active;
+    info->duration = tvin_fmt_tbl[tvafe_info.param.fmt].duration;
+    if((info->width == 0) || (info->height == 0) || (info->duration == 0))
+        return;
+
     tvafe_info.rd_canvas_index++;
     if(tvafe_info.rd_canvas_index  > (tvafe_info.canvas_total_count -1))
     {
@@ -264,10 +260,6 @@ static void tvafe_send_progressive_buff_to_display_fifo(vframe_t * info)
             info->type |= VIDTYPE_VIU_444;
     } else
         info->type |= VIDTYPE_VIU_422;
-
-    info->width= tvin_fmt_tbl[tvafe_info.param.fmt].h_active;
-    info->height = tvin_fmt_tbl[tvafe_info.param.fmt].v_active;
-    info->duration = tvin_fmt_tbl[tvafe_info.param.fmt].duration;
 
     info->canvas0Addr = info->canvas1Addr = tvafe_index2canvas(tvafe_info.rd_canvas_index);
 
@@ -295,7 +287,7 @@ static void tvafe_wr_vdin_canvas(void)
 static void tvafe_vga_pinmux_enable(void)
 {
     // diable TCON
-    WRITE_CBUS_REG_BITS(PERIPHS_PIN_MUX_7, 0,  1, 1);
+    //WRITE_CBUS_REG_BITS(PERIPHS_PIN_MUX_7, 0,  1, 1);
     // diable DVIN
     WRITE_CBUS_REG_BITS(PERIPHS_PIN_MUX_6, 0, 27, 1);
     // HS0
@@ -303,9 +295,9 @@ static void tvafe_vga_pinmux_enable(void)
     // VS0
     WRITE_CBUS_REG_BITS(PERIPHS_PIN_MUX_6, 1, 14, 1);
     // DDC_SDA0
-    WRITE_CBUS_REG_BITS(PERIPHS_PIN_MUX_6, 1, 13, 1);
+    //WRITE_CBUS_REG_BITS(PERIPHS_PIN_MUX_6, 1, 13, 1);
     // DDC_SCL0
-    WRITE_CBUS_REG_BITS(PERIPHS_PIN_MUX_6, 1, 12, 1);
+    //WRITE_CBUS_REG_BITS(PERIPHS_PIN_MUX_6, 1, 12, 1);
 }
 
 static void tvafe_vga_pinmux_disable(void)
@@ -315,12 +307,15 @@ static void tvafe_vga_pinmux_disable(void)
     // VS0
     WRITE_CBUS_REG_BITS(PERIPHS_PIN_MUX_6, 0, 14, 1);
     // DDC_SDA0
-    WRITE_CBUS_REG_BITS(PERIPHS_PIN_MUX_6, 0, 13, 1);
+    //WRITE_CBUS_REG_BITS(PERIPHS_PIN_MUX_6, 0, 13, 1);
     // DDC_SCL0
-    WRITE_CBUS_REG_BITS(PERIPHS_PIN_MUX_6, 0, 12, 1);
+    //WRITE_CBUS_REG_BITS(PERIPHS_PIN_MUX_6, 0, 12, 1);
 }
-
+#ifdef VDIN_FIXED_FMT_TEST
+static int tvafe_start_dec(unsigned int mem_start, unsigned int mem_size, tvin_port_t port, tvin_sig_fmt_t fmt)
+#else
 static int tvafe_start_dec(unsigned int mem_start, unsigned int mem_size, tvin_port_t port)
+#endif
 {
     int ret = 0;
 
@@ -330,7 +325,6 @@ static int tvafe_start_dec(unsigned int mem_start, unsigned int mem_size, tvin_p
     //init canvas
     tvafe_canvas_init(mem_start, mem_size, port);
 
-    //pr_info("tvafe: tvafe_canvas_init.\n");
     tvafe_info.rd_canvas_index = 0xFF - (tvafe_info.canvas_total_count + 2);
     tvafe_info.wr_canvas_index = 0;
     tvafe_info.param.port = port;
@@ -340,28 +334,22 @@ static int tvafe_start_dec(unsigned int mem_start, unsigned int mem_size, tvin_p
 
     tvafe_reset_module(tvafe_info.param.port);
     tvafe_init_state_handler();
-    if ((port >= TVIN_PORT_VGA0) && (port <= TVIN_PORT_VGA7)){
-
+    if ((port >= TVIN_PORT_VGA0) && (port <= TVIN_PORT_VGA7))
         tvafe_set_vga_default(TVIN_SIG_FMT_VGA_1024X768P_60D004);
-        tvafe_info.src_type = TVAFE_SRC_TYPE_VGA;
-    }
     else if ((port >= TVIN_PORT_COMP0) && (port <= TVIN_PORT_COMP7))
-    {
         tvafe_set_comp_default(TVIN_SIG_FMT_COMP_720P_59D940);
-        tvafe_info.src_type = TVAFE_SRC_TYPE_COMP;
-    }
-    else if ((port >= TVIN_PORT_CVBS0) && (port <= TVIN_PORT_CVBS7))
+    else //if ((port >= TVIN_PORT_CVBS0) && (port <= TVIN_PORT_CVBS7))
     {
+#ifdef VDIN_FIXED_FMT_TEST
+        tvafe_set_cvd2_default(tvafe_info.cvd2_mem_addr, tvafe_info.cvd2_mem_size, fmt);
+#else
         tvafe_set_cvd2_default(tvafe_info.cvd2_mem_addr, tvafe_info.cvd2_mem_size,
-                                TVIN_SIG_FMT_CVBS_PAL_I);
-        tvafe_source_muxing(&tvafe_info);
-        tvafe_info.src_type = TVAFE_SRC_TYPE_CVBS;
+                        TVIN_SIG_FMT_CVBS_PAL_I);
+#endif
+
     }
-    else
-    {
-        tvafe_info.src_type = TVAFE_SRC_TYPE_SVIDEO;
-    }
-    //ret = tvafe_source_muxing(&tvafe_info);
+
+    ret = tvafe_source_muxing(&tvafe_info);
     pr_info("tvafe: tvafe_start_dec finished \n");
 
     return ret;
@@ -396,17 +384,37 @@ static int tvafe_isr_run(struct vframe_s *vf_info)
     unsigned int canvas_id = 0;
     unsigned char field_status = 0, last_recv_index = 0, cur_canvas_index, next_buffs_index;
     enum tvin_scan_mode_e scan_mode = 0;
-//    pr_info("%s: ", __FUNCTION__);
+	/* Fetch WSS data */
+
+	/* Monitoring CVBS amplitude */
+
     //video frame info setting
-    if ((tvafe_info.param.status != TVIN_SIG_STATUS_STABLE) ||(tvafe_info.param.fmt == TVIN_SIG_FMT_NULL))
-    {
+    if ((tvafe_info.param.status != TVIN_SIG_STATUS_STABLE) ||
+        (tvafe_info.param.fmt == TVIN_SIG_FMT_NULL)) {
         return 0;
     }
+    switch (tvafe_info.src_type) {
+        case TVAFE_SRC_TYPE_CVBS:
+		case TVAFE_SRC_TYPE_SVIDEO:
+			/* TVAFE CVD2 3D works abnormally => reset cvd2 */
+            if(tvafe_info.param.status == TVIN_SIG_STATUS_STABLE)
+			    tvafe_check_cvbs_3d_comb();
+			break;
+		case TVAFE_SRC_TYPE_VGA:
+		case TVAFE_SRC_TYPE_COMP:
+			break;
+		case TVAFE_SRC_TYPE_SCART:
+			break;
+		default:
+			break;
+    }
 
-    if ((tvafe_info.param.flag & TVIN_PARM_FLAG_CAP) != 0)  //frame capture function
+    tvafe_vga_vs_cnt();
+
+
+    if ((vdin_devp_tvafe->para.flag & TVIN_PARM_FLAG_CAP) != 0)  //frame capture function
     {
-//        pr_info("-->be captured \n");
-#if 0
+#if 1
         if (tvafe_info.wr_canvas_index == 0)
             last_recv_index = tvafe_info.canvas_total_count - 1;
         else
@@ -422,12 +430,13 @@ static int tvafe_isr_run(struct vframe_s *vf_info)
                 canvas_id = tvafe_info.wr_canvas_index + 1;
         }
 #else
-        canvas_id = tvafe_info.rd_canvas_index;
+        canvas_id = tvafe_info.rd_canvas_index; //kernel & user don't use the same memory
 #endif
         vdin_devp_tvafe->para.cap_addr = tvafe_info.pbufAddr +
                     (tvafe_info.decbuf_size * canvas_id);
          vdin_devp_tvafe->para.cap_size = tvafe_info.decbuf_size;
-        return 0;
+         vdin_devp_tvafe->para.canvas_index= canvas_id;
+        return -1;
     }
 
     scan_mode = tvin_fmt_tbl[tvafe_info.param.fmt].scan_mode;
@@ -439,18 +448,15 @@ static int tvafe_isr_run(struct vframe_s *vf_info)
             tvafe_wr_vdin_canvas();
             return 0;
         }
-
         else if (tvafe_info.rd_canvas_index == 0xFF)
         {
             tvafe_info.rd_canvas_index = 0;
             tvafe_info.wrap_flag = 0;
-
         }
-
         else
         {
-            cur_canvas_index = get_current_video_buff_point();
-            if(tvafe_info.wr_canvas_index >= (tvafe_info.canvas_total_count -1) )
+            cur_canvas_index = tvafe_get_current_video_buff_point();  //get current display index
+            if (tvafe_info.wr_canvas_index >= (tvafe_info.canvas_total_count -1) )
             {
                 next_buffs_index = 0;
             }
@@ -459,19 +465,20 @@ static int tvafe_isr_run(struct vframe_s *vf_info)
                 next_buffs_index = tvafe_info.wr_canvas_index + 1;
             }
 
-            if(((tvafe_info.wr_canvas_index == cur_canvas_index) || (next_buffs_index == cur_canvas_index))
-                && (tvafe_info.wrap_flag == 1))       //avoid the overflow
+            if(((tvafe_info.wr_canvas_index == cur_canvas_index) || (next_buffs_index == cur_canvas_index)) &&
+               (tvafe_info.wrap_flag == 1))       //avoid the overflow
             {
-                    tvafe_send_progressive_buff_to_display_fifo(vf_info);
-                    return 0;
+                tvafe_send_progressive_buff_to_display_fifo(vf_info);
+                return 0;
             }
 
-            if(tvafe_info.rd_canvas_index  > (tvafe_info.canvas_total_count -1))
+            if (tvafe_info.rd_canvas_index > (tvafe_info.canvas_total_count - 1))
                 next_buffs_index = 0;
             else
                 next_buffs_index = tvafe_info.rd_canvas_index + 1;
 
-            if((next_buffs_index == tvafe_info.wr_canvas_index) && (tvafe_info.wrap_flag == 0))   //avoid the underflow
+            if ((next_buffs_index == tvafe_info.wr_canvas_index) &&
+                (tvafe_info.wrap_flag == 0))   //avoid the underflow
             {
                 tvafe_wr_vdin_canvas();
                 return 0;
@@ -483,19 +490,21 @@ static int tvafe_isr_run(struct vframe_s *vf_info)
     }
     else {
         field_status = READ_CBUS_REG_BITS(VDIN_COM_STATUS0, 0, 1);
-        if(tvafe_info.wr_canvas_index == 0)
+        if (tvafe_info.wr_canvas_index == 0)
             last_recv_index = tvafe_info.canvas_total_count - 1;
         else
             last_recv_index = tvafe_info.wr_canvas_index - 1;
 
-        if (field_status == 1) {
+        if (field_status == 1)
+        {
             tvafe_info.buff_flag[tvafe_info.wr_canvas_index] = VIDTYPE_INTERLACE_BOTTOM;
             if((tvafe_info.buff_flag[last_recv_index] & 0x0f) == VIDTYPE_INTERLACE_BOTTOM)
             {
                 return 0;
             }
         }
-        else {
+        else
+        {
             tvafe_info.buff_flag[tvafe_info.wr_canvas_index] = VIDTYPE_INTERLACE_TOP;
             if((tvafe_info.buff_flag[last_recv_index] & 0x0f) == VIDTYPE_INTERLACE_TOP)
             {
@@ -509,17 +518,14 @@ static int tvafe_isr_run(struct vframe_s *vf_info)
             tvafe_wr_vdin_canvas();
             return 0;
         }
-
         else if (tvafe_info.rd_canvas_index == 0xFF)
         {
             tvafe_info.rd_canvas_index = 0;
             tvafe_info.wrap_flag = 0;
-
         }
-
         else
         {
-            cur_canvas_index = get_current_video_buff_point();
+            cur_canvas_index = tvafe_get_current_video_buff_point();
             if(tvafe_info.wr_canvas_index >= (tvafe_info.canvas_total_count -1) )
             {
                 next_buffs_index = 0;
@@ -552,27 +558,13 @@ static int tvafe_isr_run(struct vframe_s *vf_info)
         }
     }
 
-    return 0;
-}
-
-/*as use the spin_lock,
- *1--there is no sleep,
- *2--it is better to shorter the time,
-*/
-static int tvafe_isr_run_bh(struct vframe_s *vf_info)
-{
-
-    /* Monitoring CVBS amplitude */
-//    if (tvafe_info.src_type == TVAFE_SRC_TYPE_CVBS)
-//        tvafe_cvd2_video_agc_handler(&tvafe_info);
-
-    tvafe_vga_vs_cnt();
-
     // fetch WSS data
     tvafe_get_wss_data(&tvafe_info.comp_wss);
 
     return 0;
 }
+
+
 
 
 //static int cnt = 0;
@@ -598,44 +590,28 @@ static void check_tvafe_format(void )
             tvafe_info.vga_auto_flag = 0;
     }
 
-    switch (tvafe_info.src_type) {
-        case TVAFE_SRC_TYPE_CVBS:
-		case TVAFE_SRC_TYPE_SVIDEO:
-			/* TVAFE CVD2 3D works abnormally => reset cvd2 */
-			tvafe_check_cvbs_3d_comb();
-			break;
-		case TVAFE_SRC_TYPE_VGA:
-		case TVAFE_SRC_TYPE_COMP:
-			break;
-		case TVAFE_SRC_TYPE_SCART:
-			break;
-		default:
-			break;
-    }
+
 
     return;
 }
 
 static int tvafe_check_callback(struct notifier_block *block, unsigned long cmd , void *para)
 {
+
     int ret = 0;
     switch(cmd)
     {
         case TVIN_EVENT_INFO_CHECK:
             if(vdin_devp_tvafe != NULL)
             {
-                //printk("tvafe format update \n");
+                //cvd agc handler
+                if (tvafe_info.src_type == TVAFE_SRC_TYPE_CVBS)
+                    tvafe_cvd2_video_agc_handler(&tvafe_info);
+
                 check_tvafe_format();
-                if ((tvafe_info.param.fmt != vdin_devp_tvafe->para.fmt) &&
-                    (tvafe_info.param.status == TVIN_SIG_STATUS_STABLE))
+                if ((tvafe_info.param.fmt != vdin_devp_tvafe->para.fmt) ||
+                    (tvafe_info.param.status != vdin_devp_tvafe->para.status))
                 {
-                    if (tvafe_info.param.fmt != TVIN_SIG_FMT_NULL)
-                    {
-                        pr_info("tvafe_check_callback: set vdin,fmt:%d, status:%d,h:%d, v:%d\n",
-                            tvafe_info.param.fmt ,tvafe_info.param.status,
-                            tvin_fmt_tbl[tvafe_info.param.fmt].h_active,
-                            tvin_fmt_tbl[tvafe_info.param.fmt].v_active);
-                    }
                     tvafe_set_fmt(&tvafe_info);
                     vdin_info_update(vdin_devp_tvafe, &tvafe_info.param);
                 }
@@ -655,7 +631,6 @@ static struct notifier_block tvafe_check_notifier = {
 
 struct tvin_dec_ops_s tvafe_op = {
     .dec_run = tvafe_isr_run,
-    .dec_run_bh = tvafe_isr_run_bh,
 };
 
 static int tvafe_notifier_callback(struct notifier_block *block,
@@ -672,14 +647,19 @@ static int tvafe_notifier_callback(struct notifier_block *block,
             if(para != NULL)
             {
                 p = (vdin_dev_t*)para;
-                if ((p->para.port < TVIN_PORT_VGA0) || (p->para.port > TVIN_PORT_SVIDEO7))
+                if ((p->para.port < TVIN_PORT_VGA0) ||
+                    (p->para.port > TVIN_PORT_SVIDEO7))
                 {
                     pr_info("tvafe: ignore event TVIN_EVENT_DEC_START(port=%d)\n", p->para.port);
                     return 0;
                 }
                 pr_info("tvafe: start to response for event TVIN_EVENT_DEC_START(port=%d)\n", p->para.port);
                 vdin_devp_tvafe = p;
+#ifdef VDIN_FIXED_FMT_TEST
+                if (tvafe_start_dec(p->mem_start, p->mem_size, p->para.port, p->para.fmt) < 0) {
+#else
                 if (tvafe_start_dec(p->mem_start, p->mem_size, p->para.port) < 0) {
+#endif
                     pr_info("tvafe start error\n");
                     vdin_devp_tvafe = NULL;
                     return 0;
@@ -725,20 +705,7 @@ static int tvafe_open(struct inode *inode, struct file *file)
     devp = container_of(inode->i_cdev, tvafe_dev_t, cdev);
     file->private_data = devp;
 
-    //tvafe_start_dec(&tvafe_info, devp);
-
-    /*2.4 kernel*/
-    /* hook vsync isr */ // ??? Should be changed to Input Vsync
-    //ret = request_irq(AM_ISA_AMRISC_IRQ(IRQNUM_VSYNC), &tvafe_vsync_isr,
-    //                  IRQF_SHARED | IRQ_ISA_FAST, TVAFE_NAME,
-    //                  (void *)tvafe_id);
-    //enable_irq(7);
-    //kernel 2.6 request ir
-    //request_irq(tvafe_info.irq_index, tvafe_vsync_isr,
-    //            IRQF_SHARED, TVAFE_NAME,
-    //            tvafe_id);
-
-    //init  tasklet schedule
+    /* ... */
 
     return 0;
 }
@@ -748,13 +715,6 @@ static int tvafe_release(struct inode *inode, struct file *file)
     tvafe_dev_t *devp = file->private_data;
 
     file->private_data = NULL;
-
-    //stop tv afe polling timer
-    //del_timer(&devp->tvafe_timer);
-    //stop tasklet schedule
-    //tasklet_kill(&tvafe_tasklet);
-    //disble ir or vsync
-    //free_irq(tvafe_info.irq_index, (void *)tvafe_id);
 
     /* Release some other fields */
     /* ... */
@@ -771,7 +731,7 @@ static int tvafe_ioctl(struct inode *inode, struct file *file, unsigned int cmd,
     enum tvafe_cvbs_video_e cvbs_lock_status = TVAFE_CVBS_VIDEO_UNLOCKED;
     void __user *argp = (void __user *)arg;
 
-    struct tvafe_vga_edid_s *edid = NULL;
+    struct tvafe_vga_edid_s edid;
 
     switch (cmd)
     {
@@ -802,18 +762,18 @@ static int tvafe_ioctl(struct inode *inode, struct file *file, unsigned int cmd,
 			}
 			break;
         case TVIN_IOC_S_AFE_VGA_EDID:
-            if (copy_from_user(edid, argp, sizeof(struct tvafe_vga_edid_s)))
+            if (copy_from_user(&edid, argp, sizeof(struct tvafe_vga_edid_s)))
             {
                 ret = -EFAULT;
             }
             else
             {
-                tvafe_vga_set_edid(edid);
+                tvafe_vga_set_edid(&edid);
             }
             break;
         case TVIN_IOC_G_AFE_VGA_EDID:
-            tvafe_vga_get_edid(edid);
-            if (copy_to_user(argp, edid, sizeof(struct tvafe_vga_edid_s)))
+            tvafe_vga_get_edid(&edid);
+            if (copy_to_user(argp, &edid, sizeof(struct tvafe_vga_edid_s)))
 			{
 				ret = -EFAULT;
 			}
@@ -869,6 +829,16 @@ static int tvafe_ioctl(struct inode *inode, struct file *file, unsigned int cmd,
 			}
             break;
 
+        case TVIN_IOC_S_CVD2_CORDIC:
+            if(tvafe_cvd2_set_cordic_para(argp))
+                ret = -EFAULT;
+            break;
+
+         case TVIN_IOC_G_CVD2_CORDIC:
+             if(tvafe_cvd2_get_cordic_para(argp))
+                 ret = -EFAULT;
+            break;
+
         default:
             ret = -ENOIOCTLCMD;
             break;
@@ -882,8 +852,6 @@ static struct file_operations tvafe_fops = {
     .open    = tvafe_open,          /* Open method */
     .release = tvafe_release,       /* Release method */
     .ioctl   = tvafe_ioctl,         /* Ioctl method */
-    //.fasync  = tvafe_fasync,
-    //.poll    = tvafe_poll,                    // poll function
     /* ... */
 };
 
@@ -967,13 +935,6 @@ static int tvafe_probe(struct platform_device *pdev)
 		    ret = -ENODEV;
 	    }
 
-        //get memory for cvd2 2d comb filter/motion detection/vbi buffer
-        //total size is 0x287000 Byte.
-        //tvafe_devp[i]->mem_size  = res->end - res->start + 1;
-        //pr_dbg(" tvafe[%d] memory start addr is %x, mem_size is %x . \n",i,
-        //    tvafe_devp[i]->mem_start, tvafe_devp[i]->mem_size);
-
-        mutex_init(&tvafe_devp[i]->tvafe_mutex);  //tvafe mutex init
     }
 
     tvin_dec_notifier_register(&tvafe_notifier);
@@ -988,7 +949,7 @@ static int tvafe_remove(struct platform_device *pdev)
     int i = 0;
 
     tvin_dec_notifier_unregister(&tvafe_notifier);
-    unregister_chrdev_region(tvafe_devno, TVAFE_COUNT);
+
     for (i = 0; i < TVAFE_COUNT; ++i)
     {
         device_destroy(tvafe_clsp, MKDEV(MAJOR(tvafe_devno), i));
@@ -996,6 +957,7 @@ static int tvafe_remove(struct platform_device *pdev)
         kfree(tvafe_devp[i]);
     }
     class_destroy(tvafe_clsp);
+    unregister_chrdev_region(tvafe_devno, TVAFE_COUNT);
 
     pr_info(KERN_ERR "tvafe: driver removed ok.\n");
 

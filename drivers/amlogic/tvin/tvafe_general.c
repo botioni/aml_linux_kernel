@@ -2,7 +2,7 @@
 #include <linux/errno.h>
 #include <mach/am_regs.h>
 
-
+#include "tvin_global.h"
 #include "tvafe.h"
 #include "tvafe_regs.h"
 #include "tvafe_adc.h"
@@ -75,8 +75,6 @@ static inline enum tvafe_adc_ch_e tvafe_pin_adc_muxing(enum tvafe_adc_pin_e pin)
     {
         WRITE_APB_REG_BITS(ADC_REG_06, 1, ENPGA_BIT, ENPGA_WID);
         WRITE_APB_REG_BITS(ADC_REG_17, pin-TVAFE_ADC_PIN_A_PGA_0, INMUXA_BIT, INMUXA_WID);
-        WRITE_APB_REG_BITS(ADC_REG_24, (pin-TVAFE_ADC_PIN_A_PGA_0+4), INMUXSOG_BIT, INMUXSOG_WID);
-        pr_info("\n tvafe_pin_adc_muxing: %x\n",(pin-TVAFE_ADC_PIN_A_PGA_0));
         ret = TVAFE_ADC_CH_PGA;
     }
     else if ((pin >= TVAFE_ADC_PIN_A_0) && (pin <= TVAFE_ADC_PIN_A_3))
@@ -226,25 +224,15 @@ static inline int tvafe_adc_top_muxing(enum tvafe_adc_ch_e gy,
 int tvafe_source_muxing(struct tvafe_info_s *info)
 {
     int ret = 0;
-    //int i;
-
-    //pr_info("\n............pin mux control.................\n");
-    //for (i=0 ; i <= TVAFE_SRC_SIG_MAX_NUM; i++)
-    //{
-    //    pr_info("tvafe_source_muxing: %d\n", tvafe_pin_adc_muxing(info->pinmux->pin[i]));
-    //    if ((i%15 == 0)&&(i != 0))
-    //        pr_info("\n");
-    //};
 
     switch (info->param.port)
     {
         case TVIN_PORT_CVBS0:
             if (tvafe_pin_adc_muxing(info->pinmux->pin[CVBS0_Y]) == TVAFE_ADC_CH_PGA)
             {
-                //WRITE_APB_REG_BITS(ADC_REG_20, info->pinmux->pin[CVBS0_Y]-TVAFE_ADC_PIN_A_PGA_0, INMUXBUF_BIT, INMUXBUF_WID);
+                if (info->pinmux->pin[CVBS0_SOG] >= TVAFE_ADC_PIN_SOG_0)
+                    WRITE_APB_REG_BITS(ADC_REG_24, (info->pinmux->pin[CVBS0_SOG] - TVAFE_ADC_PIN_SOG_0), INMUXSOG_BIT, INMUXSOG_WID);
                 info->src_type = TVAFE_SRC_TYPE_CVBS;
-
-                pr_info("pin mux ............CVBS0_Y.................\n");
 			}
             else
             {
@@ -254,11 +242,9 @@ int tvafe_source_muxing(struct tvafe_info_s *info)
         case TVIN_PORT_CVBS1:
             if (tvafe_pin_adc_muxing(info->pinmux->pin[CVBS1_Y]) == TVAFE_ADC_CH_PGA)
             {
-                //WRITE_APB_REG_BITS(ADC_REG_20, info->pinmux->pin[CVBS1_Y]-TVAFE_ADC_PIN_A_PGA_0, INMUXBUF_BIT, INMUXBUF_WID);
+                if (info->pinmux->pin[CVBS1_SOG] >= TVAFE_ADC_PIN_SOG_0)
+                    WRITE_APB_REG_BITS(ADC_REG_24, (info->pinmux->pin[CVBS1_SOG] - TVAFE_ADC_PIN_SOG_0), INMUXSOG_BIT, INMUXSOG_WID);
                 info->src_type = TVAFE_SRC_TYPE_CVBS;
-                //WRITE_APB_REG_BITS(ADC_REG_17, 1, INMUXA_BIT, INMUXA_WID);
-
-                pr_info("pin mux ............CVBS1_Y.................\n");
             }
             else
             {
@@ -269,6 +255,8 @@ int tvafe_source_muxing(struct tvafe_info_s *info)
             if (tvafe_pin_adc_muxing(info->pinmux->pin[CVBS2_Y]) == TVAFE_ADC_CH_PGA)
             {
                 WRITE_APB_REG_BITS(ADC_REG_20, info->pinmux->pin[CVBS2_Y]-TVAFE_ADC_PIN_A_PGA_0, INMUXBUF_BIT, INMUXBUF_WID);
+                if (info->pinmux->pin[CVBS2_SOG] >= TVAFE_ADC_PIN_SOG_0)
+                    WRITE_APB_REG_BITS(ADC_REG_24, (info->pinmux->pin[CVBS2_SOG] - TVAFE_ADC_PIN_SOG_0), INMUXSOG_BIT, INMUXSOG_WID);
                 info->src_type = TVAFE_SRC_TYPE_CVBS;
             }
             else
@@ -280,6 +268,8 @@ int tvafe_source_muxing(struct tvafe_info_s *info)
             if (tvafe_pin_adc_muxing(info->pinmux->pin[CVBS3_Y]) == TVAFE_ADC_CH_PGA)
             {
                 WRITE_APB_REG_BITS(ADC_REG_20, info->pinmux->pin[CVBS3_Y]-TVAFE_ADC_PIN_A_PGA_0, INMUXBUF_BIT, INMUXBUF_WID);
+                if (info->pinmux->pin[CVBS3_SOG] >= TVAFE_ADC_PIN_SOG_0)
+                    WRITE_APB_REG_BITS(ADC_REG_24, (info->pinmux->pin[CVBS3_SOG] - TVAFE_ADC_PIN_SOG_0), INMUXSOG_BIT, INMUXSOG_WID);
                 info->src_type = TVAFE_SRC_TYPE_CVBS;
             }
             else
@@ -291,6 +281,8 @@ int tvafe_source_muxing(struct tvafe_info_s *info)
             if (tvafe_pin_adc_muxing(info->pinmux->pin[CVBS4_Y]) == TVAFE_ADC_CH_PGA)
             {
                 WRITE_APB_REG_BITS(ADC_REG_20, info->pinmux->pin[CVBS4_Y]-TVAFE_ADC_PIN_A_PGA_0, INMUXBUF_BIT, INMUXBUF_WID);
+                if (info->pinmux->pin[CVBS4_SOG] >= TVAFE_ADC_PIN_SOG_0)
+                    WRITE_APB_REG_BITS(ADC_REG_24, (info->pinmux->pin[CVBS5_SOG] - TVAFE_ADC_PIN_SOG_0), INMUXSOG_BIT, INMUXSOG_WID);
                 info->src_type = TVAFE_SRC_TYPE_CVBS;
             }
             else
@@ -302,6 +294,8 @@ int tvafe_source_muxing(struct tvafe_info_s *info)
             if (tvafe_pin_adc_muxing(info->pinmux->pin[CVBS5_Y]) == TVAFE_ADC_CH_PGA)
             {
                 WRITE_APB_REG_BITS(ADC_REG_20, info->pinmux->pin[CVBS5_Y]-TVAFE_ADC_PIN_A_PGA_0, INMUXBUF_BIT, INMUXBUF_WID);
+                if (info->pinmux->pin[CVBS5_SOG] >= TVAFE_ADC_PIN_SOG_0)
+                    WRITE_APB_REG_BITS(ADC_REG_24, (info->pinmux->pin[CVBS5_SOG] - TVAFE_ADC_PIN_SOG_0), INMUXSOG_BIT, INMUXSOG_WID);
                 info->src_type = TVAFE_SRC_TYPE_CVBS;
             }
             else
@@ -313,6 +307,8 @@ int tvafe_source_muxing(struct tvafe_info_s *info)
             if (tvafe_pin_adc_muxing(info->pinmux->pin[CVBS6_Y]) == TVAFE_ADC_CH_PGA)
             {
                 WRITE_APB_REG_BITS(ADC_REG_20, info->pinmux->pin[CVBS6_Y]-TVAFE_ADC_PIN_A_PGA_0, INMUXBUF_BIT, INMUXBUF_WID);
+                if (info->pinmux->pin[CVBS6_SOG] >= TVAFE_ADC_PIN_SOG_0)
+                    WRITE_APB_REG_BITS(ADC_REG_24, (info->pinmux->pin[CVBS6_SOG] - TVAFE_ADC_PIN_SOG_0), INMUXSOG_BIT, INMUXSOG_WID);
                 info->src_type = TVAFE_SRC_TYPE_CVBS;
             }
             else
@@ -324,6 +320,8 @@ int tvafe_source_muxing(struct tvafe_info_s *info)
             if (tvafe_pin_adc_muxing(info->pinmux->pin[CVBS7_Y]) == TVAFE_ADC_CH_PGA)
             {
                 WRITE_APB_REG_BITS(ADC_REG_20, info->pinmux->pin[CVBS7_Y]-TVAFE_ADC_PIN_A_PGA_0, INMUXBUF_BIT, INMUXBUF_WID);
+                if (info->pinmux->pin[CVBS7_SOG] >= TVAFE_ADC_PIN_SOG_0)
+                    WRITE_APB_REG_BITS(ADC_REG_24, (info->pinmux->pin[CVBS7_SOG] - TVAFE_ADC_PIN_SOG_0), INMUXSOG_BIT, INMUXSOG_WID);
                 info->src_type = TVAFE_SRC_TYPE_CVBS;
             }
             else
@@ -335,6 +333,8 @@ int tvafe_source_muxing(struct tvafe_info_s *info)
             if (tvafe_adc_top_muxing(tvafe_pin_adc_muxing(info->pinmux->pin[S_VIDEO0_Y]), tvafe_pin_adc_muxing(info->pinmux->pin[S_VIDEO0_C]), TVAFE_ADC_CH_NULL, 1) == 0)
             {
                 WRITE_APB_REG_BITS(ADC_REG_20, tvafe_default_cvbs_out-TVAFE_ADC_PIN_A_PGA_0, INMUXBUF_BIT, INMUXBUF_WID);
+                if (info->pinmux->pin[S_VIDEO0_SOG] >= TVAFE_ADC_PIN_SOG_0)
+                    WRITE_APB_REG_BITS(ADC_REG_24, (info->pinmux->pin[S_VIDEO0_SOG] - TVAFE_ADC_PIN_SOG_0), INMUXSOG_BIT, INMUXSOG_WID);
                 info->src_type = TVAFE_SRC_TYPE_SVIDEO;
             }
             else
@@ -346,6 +346,8 @@ int tvafe_source_muxing(struct tvafe_info_s *info)
             if (tvafe_adc_top_muxing(tvafe_pin_adc_muxing(info->pinmux->pin[S_VIDEO1_Y]), tvafe_pin_adc_muxing(info->pinmux->pin[S_VIDEO1_C]), TVAFE_ADC_CH_NULL, 1) == 0)
             {
                 WRITE_APB_REG_BITS(ADC_REG_20, tvafe_default_cvbs_out-TVAFE_ADC_PIN_A_PGA_0, INMUXBUF_BIT, INMUXBUF_WID);
+                if (info->pinmux->pin[S_VIDEO1_SOG] >= TVAFE_ADC_PIN_SOG_0)
+                    WRITE_APB_REG_BITS(ADC_REG_24, (info->pinmux->pin[S_VIDEO1_SOG] - TVAFE_ADC_PIN_SOG_0), INMUXSOG_BIT, INMUXSOG_WID);
                 info->src_type = TVAFE_SRC_TYPE_SVIDEO;
             }
             else
@@ -357,6 +359,8 @@ int tvafe_source_muxing(struct tvafe_info_s *info)
             if (tvafe_adc_top_muxing(tvafe_pin_adc_muxing(info->pinmux->pin[S_VIDEO2_Y]), tvafe_pin_adc_muxing(info->pinmux->pin[S_VIDEO2_C]), TVAFE_ADC_CH_NULL, 1) == 0)
             {
                 WRITE_APB_REG_BITS(ADC_REG_20, tvafe_default_cvbs_out-TVAFE_ADC_PIN_A_PGA_0, INMUXBUF_BIT, INMUXBUF_WID);
+                if (info->pinmux->pin[S_VIDEO2_SOG] >= TVAFE_ADC_PIN_SOG_0)
+                    WRITE_APB_REG_BITS(ADC_REG_24, (info->pinmux->pin[S_VIDEO2_SOG] - TVAFE_ADC_PIN_SOG_0), INMUXSOG_BIT, INMUXSOG_WID);
                 info->src_type = TVAFE_SRC_TYPE_SVIDEO;
             }
             else
@@ -368,6 +372,8 @@ int tvafe_source_muxing(struct tvafe_info_s *info)
             if (tvafe_adc_top_muxing(tvafe_pin_adc_muxing(info->pinmux->pin[S_VIDEO3_Y]), tvafe_pin_adc_muxing(info->pinmux->pin[S_VIDEO3_C]), TVAFE_ADC_CH_NULL, 1) == 0)
             {
                 WRITE_APB_REG_BITS(ADC_REG_20, tvafe_default_cvbs_out-TVAFE_ADC_PIN_A_PGA_0, INMUXBUF_BIT, INMUXBUF_WID);
+                if (info->pinmux->pin[S_VIDEO3_SOG] >= TVAFE_ADC_PIN_SOG_0)
+                    WRITE_APB_REG_BITS(ADC_REG_24, (info->pinmux->pin[S_VIDEO3_SOG] - TVAFE_ADC_PIN_SOG_0), INMUXSOG_BIT, INMUXSOG_WID);
                 info->src_type = TVAFE_SRC_TYPE_SVIDEO;
             }
             else
@@ -379,6 +385,8 @@ int tvafe_source_muxing(struct tvafe_info_s *info)
             if (tvafe_adc_top_muxing(tvafe_pin_adc_muxing(info->pinmux->pin[S_VIDEO4_Y]), tvafe_pin_adc_muxing(info->pinmux->pin[S_VIDEO4_C]), TVAFE_ADC_CH_NULL, 1) == 0)
             {
                 WRITE_APB_REG_BITS(ADC_REG_20, tvafe_default_cvbs_out-TVAFE_ADC_PIN_A_PGA_0, INMUXBUF_BIT, INMUXBUF_WID);
+                if (info->pinmux->pin[S_VIDEO4_SOG] >= TVAFE_ADC_PIN_SOG_0)
+                    WRITE_APB_REG_BITS(ADC_REG_24, (info->pinmux->pin[S_VIDEO4_SOG] - TVAFE_ADC_PIN_SOG_0), INMUXSOG_BIT, INMUXSOG_WID);
                 info->src_type = TVAFE_SRC_TYPE_SVIDEO;
             }
             else
@@ -390,6 +398,8 @@ int tvafe_source_muxing(struct tvafe_info_s *info)
             if (tvafe_adc_top_muxing(tvafe_pin_adc_muxing(info->pinmux->pin[S_VIDEO5_Y]), tvafe_pin_adc_muxing(info->pinmux->pin[S_VIDEO5_C]), TVAFE_ADC_CH_NULL, 1) == 0)
             {
                 WRITE_APB_REG_BITS(ADC_REG_20, tvafe_default_cvbs_out-TVAFE_ADC_PIN_A_PGA_0, INMUXBUF_BIT, INMUXBUF_WID);
+                if (info->pinmux->pin[S_VIDEO5_SOG] >= TVAFE_ADC_PIN_SOG_0)
+                    WRITE_APB_REG_BITS(ADC_REG_24, (info->pinmux->pin[S_VIDEO5_SOG] - TVAFE_ADC_PIN_SOG_0), INMUXSOG_BIT, INMUXSOG_WID);
                 info->src_type = TVAFE_SRC_TYPE_SVIDEO;
             }
             else
@@ -401,6 +411,8 @@ int tvafe_source_muxing(struct tvafe_info_s *info)
             if (tvafe_adc_top_muxing(tvafe_pin_adc_muxing(info->pinmux->pin[S_VIDEO6_Y]), tvafe_pin_adc_muxing(info->pinmux->pin[S_VIDEO6_C]), TVAFE_ADC_CH_NULL, 1) == 0)
             {
                 WRITE_APB_REG_BITS(ADC_REG_20, tvafe_default_cvbs_out-TVAFE_ADC_PIN_A_PGA_0, INMUXBUF_BIT, INMUXBUF_WID);
+                if (info->pinmux->pin[S_VIDEO6_SOG] >= TVAFE_ADC_PIN_SOG_0)
+                    WRITE_APB_REG_BITS(ADC_REG_24, (info->pinmux->pin[S_VIDEO6_SOG] - TVAFE_ADC_PIN_SOG_0), INMUXSOG_BIT, INMUXSOG_WID);
                 info->src_type = TVAFE_SRC_TYPE_SVIDEO;
             }
             else
@@ -412,6 +424,8 @@ int tvafe_source_muxing(struct tvafe_info_s *info)
             if (tvafe_adc_top_muxing(tvafe_pin_adc_muxing(info->pinmux->pin[S_VIDEO7_Y]), tvafe_pin_adc_muxing(info->pinmux->pin[S_VIDEO7_C]), TVAFE_ADC_CH_NULL, 1) == 0)
             {
                 WRITE_APB_REG_BITS(ADC_REG_20, tvafe_default_cvbs_out-TVAFE_ADC_PIN_A_PGA_0, INMUXBUF_BIT, INMUXBUF_WID);
+                if (info->pinmux->pin[S_VIDEO7_SOG] >= TVAFE_ADC_PIN_SOG_0)
+                    WRITE_APB_REG_BITS(ADC_REG_24, (info->pinmux->pin[S_VIDEO7_SOG] - TVAFE_ADC_PIN_SOG_0), INMUXSOG_BIT, INMUXSOG_WID);
                 info->src_type = TVAFE_SRC_TYPE_SVIDEO;
             }
             else
@@ -634,52 +648,10 @@ int tvafe_source_muxing(struct tvafe_info_s *info)
             ret = -EFAULT;
             break;
     }
+
 	if (!ret)
 		info->sig_status_cnt = 0;
 
-	//WRITE_APB_REG_BITS(CVD2_RESET_REGISTER, 1, SOFT_RST_BIT, SOFT_RST_WID);
-    //sleep(100);
-	//WRITE_APB_REG_BITS(CVD2_RESET_REGISTER, 0, SOFT_RST_BIT, SOFT_RST_WID);
-
-#if 0
-    pr_info("\n............below for ADC reg.................\n");
-    for (i=0 ; i < 112; i++)
-    {
-       pr_info(" %x %x ",i, READ_APB_REG((ADC_BASE_ADD+i)<<2));
-       if ((i%15 == 0)&&(i != 0))
-       pr_info("\n");
-    };
-    pr_info("\n............below for top reg.................\n");
-    for (i=0 ; i <= 0x90; i++)
-    {
-       pr_info(" %x %x ",i, READ_APB_REG((TOP_BASE_ADD+i)<<2));
-       if ((i%15 == 0)&&(i != 0))
-       pr_info("\n");
-    };
-    pr_info("\n............below for CVD reg.................\n");
-    for (i=0 ; i < 0xfe; i++)
-    {
-       pr_info(" %x %x ",i, READ_APB_REG((CVD_BASE_ADD+i)<<2));
-       if ((i%15 == 0)&&(i != 0))
-       pr_info("\n");
-    };
-
-    pr_info("\n............below for ACD reg.................\n");
-    for (i=0 ; i <= 0x32; i++)
-    {
-       pr_info(" %x %x ",i, READ_APB_REG((ACD_BASE_ADD+i)<<2));
-       if ((i%15 == 0)&&(i != 0))
-       pr_info("\n");
-    };
-
-    pr_info("\n............below for VDIN reg.................\n");
-    for (i=0x1200 ; i <= 0x126e; i++)
-    {
-       pr_info(" %x %x ",i, READ_CBUS_REG(i));
-       if ((i%15 == 0)&&(i != 0))
-       pr_info("\n");
-    };
- #endif
     return ret;
 }
 
@@ -687,26 +659,46 @@ void tvafe_vga_set_edid(struct tvafe_vga_edid_s *edid)
 {
     unsigned int i = 0;
 
+    // diable TCON
+    WRITE_CBUS_REG_BITS(PERIPHS_PIN_MUX_7, 0,  1, 1);
+    // diable DVIN
+    WRITE_CBUS_REG_BITS(PERIPHS_PIN_MUX_6, 0, 27, 1);
+    // DDC_SDA0
+    WRITE_CBUS_REG_BITS(PERIPHS_PIN_MUX_6, 1, 13, 1);
+    // DDC_SCL0
+    WRITE_CBUS_REG_BITS(PERIPHS_PIN_MUX_6, 1, 12, 1);
+
+    WRITE_APB_REG_BITS(TVFE_TOP_CTRL, 1, EDID_CLK_EN_BIT,EDID_CLK_EN_WID); // VGA_CLK_EN
     // APB Bus accessing mode
     WRITE_APB_REG(TVFE_EDID_CONFIG, 0x00000000);
     WRITE_APB_REG(TVFE_EDID_RAM_ADDR, 0x00000000);
     for (i=0; i<256; i++)
         WRITE_APB_REG(TVFE_EDID_RAM_WDATA, (unsigned int)edid->value[i]);
     // Slave IIC acessing mode, 8-bit standard IIC protocol
-    WRITE_APB_REG(TVFE_EDID_CONFIG, 0x03800050);
+    WRITE_APB_REG(TVFE_EDID_CONFIG, 0x01800050);
 }
 
 void tvafe_vga_get_edid(struct tvafe_vga_edid_s *edid)
 {
     unsigned int i = 0;
 
+    // diable TCON
+    WRITE_CBUS_REG_BITS(PERIPHS_PIN_MUX_7, 0,  1, 1);
+    // diable DVIN
+    WRITE_CBUS_REG_BITS(PERIPHS_PIN_MUX_6, 0, 27, 1);
+    // DDC_SDA0
+    WRITE_CBUS_REG_BITS(PERIPHS_PIN_MUX_6, 1, 13, 1);
+    // DDC_SCL0
+    WRITE_CBUS_REG_BITS(PERIPHS_PIN_MUX_6, 1, 12, 1);
+
+    WRITE_APB_REG_BITS(TVFE_TOP_CTRL, 1, EDID_CLK_EN_BIT,EDID_CLK_EN_WID); // VGA_CLK_EN
     // APB Bus accessing mode
     WRITE_APB_REG(TVFE_EDID_CONFIG, 0x00000000);
     WRITE_APB_REG(TVFE_EDID_RAM_ADDR, 0x00000100);
     for (i=0; i<256; i++)
         edid->value[i] = (unsigned char)(READ_APB_REG_BITS(TVFE_EDID_RAM_RDATA, EDID_RAM_RDATA_BIT, EDID_RAM_RDATA_WID));
     // Slave IIC acessing mode, 8-bit standard IIC protocol
-    WRITE_APB_REG(TVFE_EDID_CONFIG, 0x03800050);
+    WRITE_APB_REG(TVFE_EDID_CONFIG, 0x01800050);
 
     return;
 }
@@ -1636,14 +1628,22 @@ void tvafe_get_wss_data(struct tvafe_comp_wss_s *para)
 
 void tvafe_check_cvbs_3d_comb(void)
 {
+#if 0
     unsigned int interrupt_status = READ_APB_REG(TVFE_INT_INDICATOR1);
-
     if ((interrupt_status>>WARNING_3D_BIT) & 0x01) {
         WRITE_APB_REG_BITS(TVFE_INT_INDICATOR1, 0, WARNING_3D_BIT, WARNING_3D_WID);
         WRITE_APB_REG_BITS(CVD2_RESET_REGISTER, 1, SOFT_RST_BIT, SOFT_RST_WID);
         WRITE_APB_REG_BITS(CVD2_RESET_REGISTER, 0, SOFT_RST_BIT, SOFT_RST_WID);
     }
+#else
+    unsigned int cvd2_3d_status = READ_APB_REG(CVD2_REG_95);
+    if(cvd2_3d_status & 0x1ffff)  {
+        //pr_info("%s: cvd2_3d_status = %x \n",__FUNCTION__, cvd2_3d_status);
+        WRITE_APB_REG_BITS(CVD2_REG_B2, 1, COMB2D_ONLY_BIT, COMB2D_ONLY_WID);
+        WRITE_APB_REG_BITS(CVD2_REG_B2, 0, COMB2D_ONLY_BIT, COMB2D_ONLY_WID);
+    }
 
+#endif
 }
 
 void tvafe_top_set_de(enum tvin_sig_fmt_e fmt)
@@ -1668,6 +1668,29 @@ void tvafe_top_set_de(enum tvin_sig_fmt_e fmt)
                        DEG_VEND_EVEN_BIT, DEG_VEND_EVEN_WID);
 }
 
+void tvafe_top_set_field_gen(enum tvin_sig_fmt_e fmt)
+{
+    unsigned int hs = 0, he = 0, vs = 0, ve = 0;
+
+    hs = tvin_fmt_tbl[fmt].hs_width + tvin_fmt_tbl[fmt].hs_bp;
+    vs = tvin_fmt_tbl[fmt].vs_width + tvin_fmt_tbl[fmt].vs_bp;
+    he = hs + tvin_fmt_tbl[fmt].h_active - 1;
+    ve = vs + tvin_fmt_tbl[fmt].v_active - 1;
+    WRITE_APB_REG_BITS(TVFE_SYNCTOP_SFG_MUXCTRL1, hs,
+                       DEG_HSTART_BIT, DEG_HSTART_WID);
+    WRITE_APB_REG_BITS(TVFE_SYNCTOP_SFG_MUXCTRL1, he,
+                       DEG_HEND_BIT, DEG_HEND_WID);
+    WRITE_APB_REG_BITS(TVFE_SYNCTOP_SFG_MUXCTRL1, vs,
+                       DEG_VSTART_ODD_BIT, DEG_VSTART_ODD_WID);
+    WRITE_APB_REG_BITS(TVFE_SYNCTOP_SFG_MUXCTRL1, ve,
+                       DEG_VEND_ODD_BIT, DEG_VEND_ODD_WID);
+    WRITE_APB_REG_BITS(TVFE_SYNCTOP_SFG_MUXCTRL1, vs + 1,
+                       DEG_VSTART_EVEN_BIT, DEG_VSTART_EVEN_WID);
+    WRITE_APB_REG_BITS(TVFE_SYNCTOP_SFG_MUXCTRL1, ve + 1,
+                       DEG_VEND_EVEN_BIT, DEG_VEND_EVEN_WID);
+}
+
+
 static void tvafe_top_config(enum tvin_sig_fmt_e fmt)
 {
     //tvafe_top_set_aafilter_control(fmt);
@@ -1682,7 +1705,7 @@ static void tvafe_top_config(enum tvin_sig_fmt_e fmt)
 static void tvafe_stop_vga(void)
 {
     WRITE_APB_REG_BITS(TVFE_TOP_CTRL, 0, COMP_CLK_ENABLE_BIT, COMP_CLK_ENABLE_WID);
-    WRITE_APB_REG_BITS(TVFE_TOP_CTRL, 0, EDID_CLK_EN_BIT, EDID_CLK_EN_WID);
+    //WRITE_APB_REG_BITS(TVFE_TOP_CTRL, 0, EDID_CLK_EN_BIT, EDID_CLK_EN_WID);
     //WRITE_CBUS_REG_BITS(HHI_TVFE_AUTOMODE_CLK_CNTL, 0, 7, 1);  //?
     //...
 
@@ -1691,7 +1714,6 @@ static void tvafe_stop_vga(void)
 
 static void tvafe_reset_vga(void)
 {
-    //pr_info("tvafe: tvafe_reset_vga. 1\n");
     //    pr_info("tvafe: tvafe_reset_vga.CVD2_RESET_REGISTER %x 1\n", CVD2_RESET_REGISTER);
 
     //WRITE_APB_REG_BITS(CVD2_RESET_REGISTER, 0, SOFT_RST_BIT, SOFT_RST_WID);
@@ -1699,7 +1721,7 @@ static void tvafe_reset_vga(void)
     //WRITE_APB_REG_BITS(CVD2_RESET_REGISTER, 1, SOFT_RST_BIT, SOFT_RST_WID);  //SOFT RESET memory
     //WRITE_APB_REG_BITS(CVD2_RESET_REGISTER, 0, SOFT_RST_BIT, SOFT_RST_WID);
     WRITE_APB_REG_BITS(TVFE_TOP_CTRL, 1, COMP_CLK_ENABLE_BIT, COMP_CLK_ENABLE_WID);
-    WRITE_APB_REG_BITS(TVFE_TOP_CTRL, 1, EDID_CLK_EN_BIT, EDID_CLK_EN_WID);
+    //WRITE_APB_REG_BITS(TVFE_TOP_CTRL, 1, EDID_CLK_EN_BIT, EDID_CLK_EN_WID);
     //pr_info("tvafe: tvafe_reset_vga. 3\n");
     //WRITE_CBUS_REG_BITS(HHI_TVFE_AUTOMODE_CLK_CNTL, 1, 7, 1);  //enable auto mode clock
     //...
@@ -1785,17 +1807,17 @@ void tvafe_set_fmt(struct tvafe_info_s *info)
         (info->param.port <= TVIN_PORT_SVIDEO7)
        )
     {
-        //stop cvd2
-        //tvafe_stop_cvbs();
-        //tvafe_cvd2_video_mode_confiure(info->param.fmt);
-        //reset cvd2
-        //tvafe_reset_cvbs();
+#ifndef VDIN_FIXED_FMT_TEST
+        tvafe_cvd2_video_mode_confiure(info->param.fmt, info->param.port);
+#endif
     }
     else
     {
         tvafe_adc_configure(info->param.fmt);
         tvafe_top_config(info->param.fmt);
     }
+    //pin mux, must load pin mux again after load reg table
+    tvafe_source_muxing(info);
 
     //cvd2 set fmt ...
 }
@@ -1820,7 +1842,7 @@ static inline bool tvafe_fmt_chg(struct tvafe_info_s *info)
 
     if ((info->src_type == TVAFE_SRC_TYPE_VGA) ||
         (info->src_type == TVAFE_SRC_TYPE_COMP))
-        ret = tvafe_adc_fmt_chg(info->src_type);
+        ret = tvafe_adc_fmt_chg(info);//(info->src_type, &info->param);
     else  if ((info->src_type == TVAFE_SRC_TYPE_CVBS) ||
         (info->src_type == TVAFE_SRC_TYPE_SVIDEO))
         ret = tvafe_cvd_fmt_chg();
@@ -1866,9 +1888,22 @@ inline void tvafe_init_state_handler(void)
     tvafe_back_stable_counter = 0;
     tvafe_cvd2_state_init();
 }
+static unsigned int wait_fmt_set_cnt = 0;
+static bool rst_fg = 0;
 
 inline void tvafe_run_state_handler(struct tvafe_info_s *info)
 {
+    enum tvin_sig_fmt_e fmt = 0;
+
+    //wait format stable after set format table
+    if (info->src_type == TVAFE_SRC_TYPE_COMP)
+    {
+        if (wait_fmt_set_cnt++ <= 10)
+            return;
+        else
+            wait_fmt_set_cnt = 10;
+    }
+
     switch (tvafe_state)
     {
         case TVAFE_STATE_NOSIG:
@@ -1881,7 +1916,7 @@ inline void tvafe_run_state_handler(struct tvafe_info_s *info)
                     tvafe_state_counter = TVAFE_SURE_NOSIG;
                     info->param.status        = TVIN_SIG_STATUS_NOSIG;
                     info->param.fmt           = TVIN_SIG_FMT_NULL;
-//                    pr_info("tvafe state nosig\n");
+                    //pr_info("TVAFE state: nosig\n");
                 }
             }
             else
@@ -1892,7 +1927,8 @@ inline void tvafe_run_state_handler(struct tvafe_info_s *info)
                     tvafe_exit_nosig_counter = 0;
                     tvafe_state_counter      = 0;
                     tvafe_state              = TVAFE_STATE_UNSTABLE;
-                    pr_info("tvafe nosig-->unstable\n");
+                    rst_fg = 0;
+                    pr_info("TVAFE state: nosig-->unstable\n");
                 }
             }
             break;
@@ -1909,7 +1945,7 @@ inline void tvafe_run_state_handler(struct tvafe_info_s *info)
                     tvafe_state              = TVAFE_STATE_NOSIG;
                     info->param.status       = TVIN_SIG_STATUS_NOSIG;
                     info->param.fmt          = TVIN_SIG_FMT_NULL;
-                    pr_info("tvafe unstable-->nosig\n");
+                    pr_info("TVAFE state: unstable-->nosig\n");
                 }
             }
             else
@@ -1924,21 +1960,47 @@ inline void tvafe_run_state_handler(struct tvafe_info_s *info)
                         tvafe_state_counter = TVAFE_SURE_UNSTABLE;
                         info->param.status  = TVIN_SIG_STATUS_UNSTABLE;
                         info->param.fmt     = TVIN_SIG_FMT_NULL;
-//                        pr_info("tvafe unstable\n");
+                        if ((rst_fg == 0) &&
+                            (info->src_type == TVAFE_SRC_TYPE_COMP))
+                        {
+                            rst_fg = 1;
+                            tvafe_adc_digital_reset();
+                            wait_fmt_set_cnt = 0;
+                            pr_info("TVAFE: unstable, reset ADC\n");
+                        }
+                        pr_info("TVAFE state: unstable\n");
                     }
                 }
                 else
                 {
                     ++tvafe_back_stable_counter;
                     if (tvafe_back_stable_counter >= TVAFE_BACK_STABLE*9)
-                    {
+                    {   //must wait enough time for cvd signal lock
                         tvafe_back_stable_counter = 0;
                         tvafe_state_counter       = 0;
                         tvafe_state               = TVAFE_STATE_STABLE;
                         info->param.status        = TVIN_SIG_STATUS_STABLE;
+                        //info->param.fmt           = tvafe_get_fmt(info);
+                        fmt                       = tvafe_get_fmt(info);
+                    #if 1
+                        if (info->src_type == TVAFE_SRC_TYPE_COMP)
+                        {
+                            if ((info->param.fmt == TVIN_SIG_FMT_NULL) &&
+                                (rst_fg == 0))
+                            {
+                                rst_fg = 1;
+                                tvafe_adc_digital_reset();
+                                wait_fmt_set_cnt = 0;
+                                pr_info("TVAFE: NULL fmt, reset ADC\n");
+                            }
+                            else if (info->param.fmt != fmt)
+                                wait_fmt_set_cnt = 0;
+                        }
+                        info->param.fmt = fmt;
+                    #else
                         info->param.fmt           = tvafe_get_fmt(info);
-                        //tvafe_cvd2_video_mode_confiure(info->param.fmt);
-                        pr_info("tvafe unstable-->stable fmt:%d\n", info->param.fmt);
+                    #endif
+                        pr_info("TVAFE state: unstable-->stable fmt:%d\n", info->param.fmt);
                     }
                 }
             }
@@ -1952,8 +2014,8 @@ inline void tvafe_run_state_handler(struct tvafe_info_s *info)
                 {
                     tvafe_exit_stable_counter = 0;
                     tvafe_state               = TVAFE_STATE_UNSTABLE;
-                    //init_cvd2_reg_module();
-                    pr_info("tvafe stable-->unstable\n");
+                    rst_fg = 0;
+                    pr_info("TVAFE state: stable-->unstable\n");
                 }
             }
             else

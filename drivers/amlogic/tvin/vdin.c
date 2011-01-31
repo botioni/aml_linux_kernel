@@ -68,41 +68,76 @@
 static dev_t vdin_devno;
 static struct class *vdin_clsp;
 
-static vdin_dev_t *vdin_devp[VDIN_COUNT];
-//static vframe_t *cur_vdin_vf = NULL;
+#if defined(CONFIG_ARCH_MESON)
+unsigned int vdin_addr_offset[VDIN_COUNT] = {0x00};
+#elif defined(CONFIG_ARCH_MESON2)
+unsigned int vdin_addr_offset[VDIN_COUNT] = {0x00, 0x70};
+#endif
 
-void tvin_dec_register(struct vdin_dev_s *devp, struct tvin_dec_ops_s *op)
+static vdin_dev_t *vdin_devp[VDIN_COUNT];
+
+//#define VDIN_DBG_MSG_CNT
+
+#ifdef VDIN_DBG_MSG_CNT
+typedef struct  vdin_dbg_msg_s {
+    u32 vdin_isr_hard_counter;
+    u32 vdin_tasklet_counter;
+    u32 vdin_get_new_frame_cnt;
+    u32 vdin_dec_run_none_cnt;
+    u32 vdin_tasklet_invalid_type_cnt;
+    u32 vdin_tasklet_valid_type_cnt;
+    u32 vdin_from_video_recycle_cnt;
+    u32 vdin_irq_short_time_cnt;
+    u32 vdin_timer_puch_nf_cnt;
+
+}vdin_dbg_msg_t;
+
+static vdin_dbg_msg_t vdin_dbg_msg = {
+    .vdin_isr_hard_counter = 0,
+    .vdin_tasklet_counter = 0,  //u32 ;
+    .vdin_get_new_frame_cnt = 0,  //u32 ;
+    .vdin_dec_run_none_cnt = 0,  //u32 ;
+    .vdin_tasklet_invalid_type_cnt = 0,  //u32 ;
+    .vdin_tasklet_valid_type_cnt = 0,  //u32 ;
+    .vdin_from_video_recycle_cnt = 0,  //u32 ;
+    .vdin_irq_short_time_cnt = 0,
+    .vdin_timer_puch_nf_cnt = 0,
+};
+
+#endif
+
+void tvin_dec_register(struct vdin_dev_s *devp, struct tvin_dec_ops_s *ops)
 {
     ulong flags;
 
-    if (devp->decop)
+    if (devp->dec_ops)
         tvin_dec_unregister(devp);
 
-    spin_lock_irqsave(&devp->declock, flags);
+    spin_lock_irqsave(&devp->dec_lock, flags);
 
-    devp->decop = op;
+    devp->dec_ops = ops;
 
-    spin_unlock_irqrestore(&devp->declock, flags);
+    spin_unlock_irqrestore(&devp->dec_lock, flags);
 }
 
 void tvin_dec_unregister(struct vdin_dev_s *devp)
 {
     ulong flags;
-    spin_lock_irqsave(&devp->declock, flags);
+    spin_lock_irqsave(&devp->dec_lock, flags);
 
-    devp->decop = NULL;
+    devp->dec_ops = NULL;
 
-    spin_unlock_irqrestore(&devp->declock, flags);
+    spin_unlock_irqrestore(&devp->dec_lock, flags);
 }
 
 void vdin_info_update(struct vdin_dev_s *devp, struct tvin_parm_s *para)
 {
     //check decoder signal status
-    if((para->status != TVIN_SIG_STATUS_STABLE) || (para->fmt == TVIN_SIG_FMT_NULL))
-        return;
-
     devp->para.status = para->status;
     devp->para.fmt = para->fmt;
+
+    if((para->status != TVIN_SIG_STATUS_STABLE) || (para->fmt == TVIN_SIG_FMT_NULL))
+        return;
 
     //write vdin registers
     vdin_set_all_regs(devp);
@@ -118,6 +153,9 @@ static void vdin_put_timer_func(unsigned long arg)
     while (!vfq_empty_recycle()) {
         vframe_t *vf = vfq_pop_recycle();
         vfq_push_newframe(vf);
+#ifdef VDIN_DBG_MSG_CNT
+        vdin_dbg_msg.vdin_timer_puch_nf_cnt++;
+#endif
     }
 
     tvin_check_notifier_call(TVIN_EVENT_INFO_CHECK, NULL);
@@ -130,11 +168,26 @@ static void vdin_start_dec(struct vdin_dev_s *devp)
 {
     vdin_vf_init();
     vdin_reg_vf_provider();
+#ifdef VDIN_DBG_MSG_CNT
+        vdin_dbg_msg.vdin_isr_hard_counter = 0;
+        vdin_dbg_msg.vdin_tasklet_counter = 0;
+        vdin_dbg_msg.vdin_get_new_frame_cnt = 0;
+        vdin_dbg_msg.vdin_dec_run_none_cnt = 0;
+        vdin_dbg_msg.vdin_tasklet_invalid_type_cnt = 0;
+        vdin_dbg_msg.vdin_tasklet_valid_type_cnt = 0;
+        vdin_dbg_msg.vdin_from_video_recycle_cnt = 0;
+        vdin_dbg_msg.vdin_irq_short_time_cnt = 0;
+        vdin_dbg_msg.vdin_timer_puch_nf_cnt = 0;
+#endif
 
 
-    vdin_set_default_regmap(devp->index);
+    vdin_set_default_regmap(devp->addr_offset);
 
     tvin_dec_notifier_call(TVIN_EVENT_DEC_START, devp);
+
+    //write vdin registers
+//    vdin_set_all_regs(devp);
+
 	return;
 }
 
@@ -142,12 +195,11 @@ static void vdin_stop_dec(struct vdin_dev_s *devp)
 {
     vdin_unreg_vf_provider();
     //load default setting for vdin
-    vdin_set_default_regmap(devp->index);
+    vdin_set_default_regmap(devp->addr_offset);
     tvin_dec_notifier_call(TVIN_EVENT_DEC_STOP, devp);
 }
 
-//static u32 vdin_isr_hard_counter = 0;
-//static u32 vdin_isr_workueue_counter = 0;
+
 /*as use the spin_lock,
  *1--there is no sleep,
  *2--it is better to shorter the time,
@@ -155,97 +207,112 @@ static void vdin_stop_dec(struct vdin_dev_s *devp)
 */
 static irqreturn_t vdin_isr(int irq, void *dev_id)
 {
+    ulong flags, vdin_cur_irq_time;
+    struct timeval now;
     struct vdin_dev_s *devp = (struct vdin_dev_s *)dev_id;
-    int vdin_irq_flag = 0;
-    ulong flags;
-    vframe_t *vf = NULL;
-    spin_lock_irqsave(&devp->declock, flags);
-//    struct timeval now;
-//    do_gettimeofday(&now);
-//    vdin_isr_hard_counter++;
-//    if((vdin_isr_hard_counter % 3600) == 0)
-//        pr_info("vdin_isr: vdin_isr_hard_counter = %d \n", vdin_isr_hard_counter);
-    vf = vfq_pop_newframe();
-    if(vf == NULL)
+
+    spin_lock_irqsave(&devp->isr_lock, flags);
+    do_gettimeofday(&now);
+    vdin_cur_irq_time = (now.tv_sec*1000) + (now.tv_usec/1000);
+
+#ifdef VDIN_DBG_MSG_CNT
+    vdin_dbg_msg.vdin_isr_hard_counter++;
+    if((vdin_dbg_msg.vdin_isr_hard_counter % 3600) == 0)
     {
-//        pr_info("vdin_isr: don't get newframe \n");
-        spin_unlock_irqrestore(&devp->declock, flags);
-        return IRQ_HANDLED;
+        pr_info("%s--vdin_dbg_msg :\n%d \n %d \n %d \n %d \n %d \n %d \n %d \n %d \n %d \n", __FUNCTION__,
+                vdin_dbg_msg.vdin_isr_hard_counter,
+                vdin_dbg_msg.vdin_tasklet_counter,
+                vdin_dbg_msg.vdin_get_new_frame_cnt,
+                vdin_dbg_msg.vdin_dec_run_none_cnt,
+                vdin_dbg_msg.vdin_tasklet_invalid_type_cnt,
+                vdin_dbg_msg.vdin_tasklet_valid_type_cnt,
+                vdin_dbg_msg.vdin_from_video_recycle_cnt,
+                vdin_dbg_msg.vdin_irq_short_time_cnt,
+                vdin_dbg_msg.vdin_timer_puch_nf_cnt
+            );
     }
 
-    if(devp->decop && devp->decop->dec_run) {
-        vf->type = INVALID_VDIN_INPUT;
-        vf->pts = 0;
-        vdin_irq_flag = devp->decop->dec_run(vf);
-        if(vdin_irq_flag == 0)
+#endif
+
+    if(time_after(vdin_cur_irq_time, devp->pre_irq_time))
+    {
+        if((vdin_cur_irq_time - devp->pre_irq_time) < 7)   //short time
         {
-            if (devp->workqueue != NULL)
-                queue_work(devp->workqueue, &devp->dec_work);
-            else
-                schedule_work(&devp->dec_work);
+            devp->pre_irq_time = vdin_cur_irq_time;
+#ifdef VDIN_DBG_MSG_CNT
+            vdin_dbg_msg.vdin_irq_short_time_cnt++;
+#endif
+    		spin_unlock_irqrestore(&devp->isr_lock, flags);
+            return IRQ_HANDLED;
         }
     }
-    else
-       pr_err("vdin_isr:dec_run is NULL \n");
-    spin_unlock_irqrestore(&devp->declock, flags);
+    devp->pre_irq_time = vdin_cur_irq_time;
+    tasklet_schedule(&devp->isr_tasklet);
+    spin_unlock_irqrestore(&devp->isr_lock, flags);
+
     return IRQ_HANDLED;
 }
 
-/*as use the spin_lock,
- *1--there is no sleep,
- *2--it is better to shorter the time,
- *3--it is better to shorter the time,
-*/
-static void vdin_isr_wq(struct work_struct *work)
+
+static void vdin_isr_tasklet(unsigned long arg)
 {
-    struct vdin_dev_s *devp = container_of(work, struct vdin_dev_s, dec_work);
-    vframe_t *cur_vdin_vf = NULL;
+    int ret = 0;
+    vframe_t *vf = NULL;
+    struct vdin_dev_s *devp = (struct vdin_dev_s*)arg;
+#ifdef VDIN_DBG_MSG_CNT
+        vdin_dbg_msg.vdin_tasklet_counter++;
+#endif
 
-    spin_lock_bh(&devp->declock);
+    spin_lock(&devp->isr_lock);
+    vf = vfq_pop_newframe();
 
-    /* pop out a new frame to be displayed */
-//    struct timeval now;
-//    unsigned long int temp_t = 0;
-//    do_gettimeofday(&now);
-
-//    vdin_irq_irq_list_time = (unsigned long int)((now.tv_sec  * 1000000)+ (now.tv_usec  ));
-
-//    vdin_isr_workueue_counter++;
-//    if((vdin_isr_workueue_counter % 3600) == 0)
-//        pr_info("vdin_isr_wq: vdin_isr_workueue_counter = %d \n", vdin_isr_workueue_counter);
-    cur_vdin_vf = vfq_get_curframe();
-    if(cur_vdin_vf == NULL)
+    if(vf == NULL )
     {
-//        pr_info("vdin_isr_wq: don't get cur_vdin_vf \n");
-        spin_unlock_bh(&devp->declock);
-        return;  //IRQ_HANDLED;
-    }
-
-    if(devp->decop && devp->decop->dec_run_bh){
-        devp->decop->dec_run_bh(cur_vdin_vf);
-    }
-    else{
-        pr_info("vdin: decop is null\n");
-        spin_unlock_bh(&devp->declock);
+        vfq_push_recycle(vf);
+        spin_unlock(&devp->isr_lock);
         return;
     }
-
-
-    //If cur_vdin_vf->type ( --reture value )is INVALID_VDIN_INPUT, the current field is error
-    if(cur_vdin_vf->type == INVALID_VDIN_INPUT)
+#ifdef VDIN_DBG_MSG_CNT
+    vdin_dbg_msg.vdin_get_new_frame_cnt++;
+#endif
+    if (!devp->dec_ops || !devp->dec_ops->dec_run)
     {
-        /* mpeg12 used spin_lock_irqsave(), @todo... */
-        vfq_push_recycle(cur_vdin_vf);
+        pr_err("vdin%d: no registered decode\n", devp->index);
+        vfq_push_recycle(vf);
+
+#ifdef VDIN_DBG_MSG_CNT
+    vdin_dbg_msg.vdin_dec_run_none_cnt++;
+#endif
+        spin_unlock(&devp->isr_lock);
+        return;
+    }
+    vf->type = INVALID_VDIN_INPUT;
+    vf->pts = 0;
+    ret = devp->dec_ops->dec_run(vf);
+
+    if(vf->type == INVALID_VDIN_INPUT)
+    {
+
+        vfq_push_recycle(vf);
+
+#ifdef VDIN_DBG_MSG_CNT
+        vdin_dbg_msg.vdin_tasklet_invalid_type_cnt++;
+#endif
     }
     else
     {
-//        vdin_set_vframe_prop_info(cur_vdin_vf, devp->index);
-        vfq_push_display(cur_vdin_vf); /* push to display */
-    }
-    spin_unlock_bh(&devp->declock);
+        vdin_set_vframe_prop_info(vf, devp->addr_offset);
 
-    return;
+        vfq_push_display(vf);
+
+#ifdef VDIN_DBG_MSG_CNT
+        vdin_dbg_msg.vdin_tasklet_valid_type_cnt++;
+#endif
+    }
+
+    spin_unlock(&devp->isr_lock);
 }
+
 
 static int vdin_open(struct inode *inode, struct file *file)
 {
@@ -352,11 +419,13 @@ static int vdin_ioctl(struct inode *inode, struct file *file, unsigned int cmd, 
             vdin_start_dec(devp);
             pr_info("vdin%d: TVIN_IOC_START_DEC ok\n", devp->index);
 #if defined(CONFIG_ARCH_MESON2)
-            vdin_set_meas_mux(devp);
+            vdin_set_meas_mux(devp->addr_offset, devp->para.port);
 #endif
             msleep(10);
+            tasklet_enable(&devp->isr_tasklet);
+            devp->pre_irq_time = jiffies,
             enable_irq(devp->irq);
-            pr_info("vdin%d: irq is enabled.\n", devp->index);
+            pr_info("TVIN_IOC_START_DEC ok, vdin%d_irq is enabled.\n", devp->index);
 
             break;
         }
@@ -370,6 +439,7 @@ static int vdin_ioctl(struct inode *inode, struct file *file, unsigned int cmd, 
                 break;
             }
             disable_irq_nosync(devp->irq);
+            tasklet_disable_nosync(&devp->isr_tasklet);
             vdin_stop_dec(devp);
             devp->flags &= (~VDIN_FLAG_DEC_STARTED);
 
@@ -394,7 +464,12 @@ static int vdin_ioctl(struct inode *inode, struct file *file, unsigned int cmd, 
             }
             //get tvin port selection and other setting
             devp->para.flag = para.flag;
-            devp->para.cap_addr = 0;  //reset frame capture address 0 means null data
+            if(!(devp->para.flag & TVIN_PARM_FLAG_CAP))
+            {
+                devp->para.cap_addr = 0;  //reset frame capture address 0 means null data
+                devp->para.cap_size = 0;
+                devp->para.canvas_index = 0;
+            }
             if(devp->para.port != para.port)
             {
                 //to do
@@ -417,63 +492,59 @@ static int vdin_mmap(struct file *file, struct vm_area_struct * vma)
 	unsigned long start, size;
     u32 len;
 
-    unsigned long t1, t2, t3;
-
     if (!devp)
+    {
+        pr_err("%s: the device is not exist. \n", __func__);
         return -ENODEV;
-    if (vma->vm_pgoff > (~0UL >> PAGE_SHIFT))
-        return -EINVAL;
-        
- //   pr_info("%s \n", __func__);
-    if(!(devp->para.flag &  TVIN_PARM_FLAG_CAP))
-	{
-    	pr_err("don't set capture flag to vdin \n");
-    	return -EINVAL;
     }
-    	
-   // pr_info("cap_addr = 0x%x; cap_size = %d\n", devp->para.cap_addr, devp->para.cap_size);
+    if (vma->vm_pgoff > (~0UL >> PAGE_SHIFT))
+    {
+        pr_err("%s: memory address is exist. \n", __func__);
+        return -EINVAL;
+    }
+    if(!(devp->para.flag & TVIN_PARM_FLAG_CAP))
+    {
+        pr_err("%s: the capture flag is not set . \n", __func__);
+        return -EINVAL;
+    }
+ /*   if((devp->para.cap_addr == 0) || (devp->para.canvas_index == 0))
+    {
+        pr_err("%s: the capture address is invalid . \n", __func__);
+        return -EINVAL;
+    }
 
+    pr_info("cap_addr = 0x%x; cap_size = %d\n", devp->para.cap_addr, devp->para.cap_size);
+*/
 	off = vma->vm_pgoff << PAGE_SHIFT;
 
-//    pr_info("vm_pgoff = 0x%lx\n", vma->vm_pgoff);
-//    pr_info("off      = 0x%lx = (vm_pgoff << PAGE_SHIFT)\n", off);
 
     mutex_lock(&devp->mm_lock);
 	start = devp->para.cap_addr;
 	len = PAGE_ALIGN((start & ~PAGE_MASK) + devp->para.cap_size);
     mutex_unlock(&devp->mm_lock);
 
-//    pr_info("start    = 0x%lx\n", start);
-
-    t1 = (start & ~PAGE_MASK);
-//    pr_info("t1       = 0x%lx = (start & ~PAGE_MASK) \n", t1);
-
-    t2 = t1 + devp->para.cap_size;
-//    pr_info("t2       = 0x%lx = (t1 + cap_size)        \n", t2);
-//    pr_info("len      = 0x%x = PAGE_ALIGN(t2)\n", len);
 
 	start &= PAGE_MASK;
-//    pr_info("start    = 0x%lx = (start & PAGE_MASK)\n", start);
-
-//    pr_info("vm_start = 0x%lx; vm_end = 0x%lx\n", vma->vm_start, vma->vm_end);
 
 	if ((vma->vm_end - vma->vm_start + off) > len)
-		return -EINVAL;
+	{
+        pr_err("%s: memory address is overflow. \n", __func__);
+        return -EINVAL;
+	}
 	off += start;
-//    pr_info("off      = 0x%lx = (off += start)\n", off);
 
 	vma->vm_pgoff = off >> PAGE_SHIFT;
-//    pr_info("vm_pgoff = 0x%lx = (off >> PAGE_SHIFT)\n", vma->vm_pgoff);
 
 	vma->vm_flags |= VM_IO | VM_RESERVED;
     size = vma->vm_end - vma->vm_start;
     pfn  = off >> PAGE_SHIFT;
 
-//    pr_info("size     = 0x%lx = (vm_end - vm_start)\n", size);
-//    pr_info("pfn      = 0x%lx = (off >> PAGE_SHIFT)\n", pfn);
 
 	if (io_remap_pfn_range(vma, vma->vm_start, pfn, size, vma->vm_page_prot))
-		return -EAGAIN;
+	{
+        pr_err("%s: remap is failing. \n", __func__);
+        return -EAGAIN;
+	}
 	return 0;
 }
 
@@ -519,9 +590,8 @@ static int vdin_probe(struct platform_device *pdev)
         }
         vdin_devp[i]->index = i;
 
-//        vdin_devp[i]->declock = SPIN_LOCK_UNLOCKED;    //old_style_spin_init 
-        spin_lock_init(&vdin_devp[i]->declock);
-        vdin_devp[i]->decop = NULL;
+        vdin_devp[i]->dec_lock = SPIN_LOCK_UNLOCKED;
+        vdin_devp[i]->dec_ops = NULL;
 
         /* connect the file operations with cdev */
         cdev_init(&vdin_devp[i]->cdev, &vdin_fops);
@@ -565,7 +635,7 @@ static int vdin_probe(struct platform_device *pdev)
         vdin_devp[i]->flags = VDIN_FLAG_NULL;
         pr_info("vdin%d: flags:0x%x\n", vdin_devp[i]->index, vdin_devp[i]->flags);
 
-        vdin_devp[i]->addr_offset = 0;
+        vdin_devp[i]->addr_offset = vdin_addr_offset[i];
         vdin_devp[i]->para.flag = 0;
 
         sprintf(name, "vdin%d-irq", i);
@@ -580,13 +650,11 @@ static int vdin_probe(struct platform_device *pdev)
         vdin_devp[i]->timer.data = (ulong) &vdin_devp[i]->timer;
         vdin_devp[i]->timer.function = vdin_put_timer_func;
         vdin_devp[i]->timer.expires = jiffies + VDIN_PUT_INTERVAL * 50;
-        add_timer(&vdin_devp[i]->timer);
-        vdin_devp[i]->workqueue = create_singlethread_workqueue(VDIN_DRIVER_NAME);
-//        vdin_devp[i]->workqueue = create_workqueue(VDIN_DRIVER_NAME);
-
+        add_timer(&vdin_devp[i]->timer);    
         mutex_init(&vdin_devp[i]->mm_lock);
-
-        INIT_WORK(&vdin_devp[i]->dec_work, vdin_isr_wq);
+        vdin_devp[i]->isr_lock = SPIN_LOCK_UNLOCKED;
+        tasklet_init(&vdin_devp[i]->isr_tasklet, vdin_isr_tasklet, (unsigned long)vdin_devp[i]);
+        tasklet_disable(&vdin_devp[i]->isr_tasklet);
     }
 
     printk(KERN_INFO "vdin: driver initialized ok\n");
@@ -597,13 +665,10 @@ static int vdin_remove(struct platform_device *pdev)
 {
     int i = 0;
 
-
-
     for (i = 0; i < VDIN_COUNT; ++i)
     {
         mutex_destroy(vdin_devp[i]->mm_lock);
-        if (vdin_devp[i]->workqueue != NULL)
-            destroy_workqueue(vdin_devp[i]->workqueue);
+        tasklet_kill(&vdin_devp[i]->isr_tasklet);
         del_timer_sync(&vdin_devp[i]->timer);
         free_irq(vdin_devp[i]->irq,(void *)vdin_devp[i]);
         del_timer(&vdin_devp[i]->timer);

@@ -32,6 +32,16 @@ YUV709F: HDTV BT.709 Full_Range YCbCr ( 0~255,  0~255,  0~255)
 RGBS:                       StudioRGB (16~235, 16~235, 16~235)
 RGB:                              RGB ( 0~255,  0~255,  0~255)
 */
+
+typedef enum vdin_format_convert_e {
+    VDIN_FORMAT_CONVERT_YUV_YUV422 = 0,
+    VDIN_FORMAT_CONVERT_YUV_YUV444,
+    VDIN_FORMAT_CONVERT_YUV_RGB,
+    VDIN_FORMAT_CONVERT_RGB_YUV422,
+    VDIN_FORMAT_CONVERT_RGB_YUV444,
+    VDIN_FORMAT_CONVERT_RGB_RGB,
+} vdin_format_convert_t;
+
 typedef enum vdin_matrix_csc_e {
 	VDIN_MATRIX_NULL = 0,
     VDIN_MATRIX_RGB_YUV601,
@@ -104,7 +114,7 @@ extern void vdin_set_vframe_prop_info(vframe_t *vf, unsigned int offset);
 extern void vdin_set_regs(struct vdin_regs_s *p, int offset);
 extern void vdin_set_all_regs(struct vdin_dev_s *devp);
 extern void vdin_set_default_regmap(unsigned int offset);
-extern void vdin_set_meas_mux(struct vdin_dev_s *devp);
+extern void vdin_set_meas_mux(unsigned int offset, enum tvin_port_e port_);
 
 //for decoder
 

@@ -15,14 +15,16 @@
 #ifndef __TVIN_VDIN_H
 #define __TVIN_VDIN_H
 
+/* Standard Linux Headers */
 #include <linux/cdev.h>
 #include <linux/spinlock.h>
 #include <linux/irqreturn.h>
 #include <linux/timer.h>
 #include <linux/workqueue.h>
 #include <linux/mutex.h>
+#include <linux/interrupt.h>
 
-
+/* Amlogic Headers */
 #include <linux/amports/vframe.h>
 #include <linux/tvin/tvin.h>
 
@@ -35,7 +37,6 @@
 //*** vdin device structure
 typedef struct tvin_dec_ops_s {
     int (*dec_run) (struct vframe_s *vf);
-    int (*dec_run_bh) (struct vframe_s *vf);
 } tvin_dec_ops_t;
 
 typedef struct vdin_dev_s {
@@ -45,19 +46,20 @@ typedef struct vdin_dev_s {
     unsigned int                mem_size;
     unsigned int                irq;
     unsigned int                addr_offset;  //address offset(vdin0/vdin1/...)
-    unsigned int                hdmi_rgb;
     unsigned int                meas_th;
     unsigned int                meas_tv;
+    unsigned long               pre_irq_time;
+
     struct tvin_parm_s          para;
 
     struct cdev                 cdev;
     irqreturn_t (*vdin_isr) (int irq, void *dev_id);
     struct timer_list           timer;
 
-    spinlock_t                  declock;
-    struct tvin_dec_ops_s       *decop;
-    struct work_struct          dec_work;
-    struct workqueue_struct     *workqueue;
+    spinlock_t                  dec_lock;
+    struct tvin_dec_ops_s       *dec_ops;
+    spinlock_t                  isr_lock;
+    struct tasklet_struct       isr_tasklet;
 
     struct mutex                mm_lock; /* lock for mmap */
 } vdin_dev_t;

@@ -40,8 +40,8 @@
 #define TVIN_FMT_CHG_VGA_V_CNT_WOBBLE   1
 #define TVIN_FMT_CHG_VGA_HS_CNT_WOBBLE  5
 #define TVIN_FMT_CHG_VGA_VS_CNT_WOBBLE  1
-#define TVIN_FMT_CHG_COMP_H_CNT_WOBBLE  5
-#define TVIN_FMT_CHG_COMP_V_CNT_WOBBLE  1
+#define TVIN_FMT_CHG_COMP_H_CNT_WOBBLE  7//5
+#define TVIN_FMT_CHG_COMP_V_CNT_WOBBLE  3//    1
 #define TVIN_FMT_CHG_COMP_HS_CNT_WOBBLE 0xffffffff // not to trust
 #define TVIN_FMT_CHG_COMP_VS_CNT_WOBBLE 0xffffffff // not to trust
 
@@ -238,7 +238,7 @@ bool tvafe_adc_no_sig(void)
 //   Return: none
 //
 // *****************************************************************************
-bool tvafe_adc_fmt_chg(enum tvafe_src_type_e src_type)
+bool tvafe_adc_fmt_chg(struct tvafe_info_s *info) //(enum tvafe_src_type_e src_type, struct tvin_parm_s *parm)
 {
     unsigned short tmp0 = 0, tmp1 = 0;
     unsigned int   h_cnt_offset = 0, v_cnt_offset = 0;
@@ -254,7 +254,7 @@ bool tvafe_adc_fmt_chg(enum tvafe_src_type_e src_type)
         return flag;
     }
 
-    if (src_type == TVAFE_SRC_TYPE_VGA)
+    if (info->src_type == TVAFE_SRC_TYPE_VGA)
     {
         h_cnt_wobble = TVIN_FMT_CHG_VGA_H_CNT_WOBBLE;
         v_cnt_wobble = TVIN_FMT_CHG_VGA_V_CNT_WOBBLE;
@@ -291,7 +291,7 @@ bool tvafe_adc_fmt_chg(enum tvafe_src_type_e src_type)
             adc_timing_info.vs_pol = TVIN_SYNC_POL_POSITIVE;
         }
     }
-    else if (src_type == TVAFE_SRC_TYPE_COMP)
+    else if (info->src_type == TVAFE_SRC_TYPE_COMP)
     {
         h_cnt_wobble = TVIN_FMT_CHG_COMP_H_CNT_WOBBLE;
         v_cnt_wobble = TVIN_FMT_CHG_COMP_V_CNT_WOBBLE;
@@ -323,13 +323,24 @@ bool tvafe_adc_fmt_chg(enum tvafe_src_type_e src_type)
     // h_cnt
     tmp0 = READ_APB_REG_BITS(TVFE_SYNCTOP_INDICATOR4,
                             SAM_HCNT_BIT, SAM_HCNT_WID);
+    if ((info->param.status == TVIN_SIG_STATUS_STABLE) &&
+        (info->src_type == TVAFE_SRC_TYPE_COMP))
+        adc_timing_info.h_cnt = tvin_fmt_tbl[info->param.fmt].h_cnt;
+
     h_cnt_offset = ABS((signed int)adc_timing_info.h_cnt - (signed int)tmp0);
+    //h_cnt_offset = ABS((signed int)tvin_fmt_tbl[fmt].h_cnt - (signed int)tmp0);
     adc_timing_info.h_cnt = tmp0;
     // v_cnt
     tmp0 = READ_APB_REG_BITS(TVFE_SYNCTOP_INDICATOR4,
                             SAM_VCNT_BIT, SAM_VCNT_WID);
+    if ((info->param.status == TVIN_SIG_STATUS_STABLE) &&
+        (info->src_type == TVAFE_SRC_TYPE_COMP))
+        adc_timing_info.v_total = tvin_fmt_tbl[info->param.fmt].v_total;
+
     v_cnt_offset = ABS((signed int)adc_timing_info.v_total - (signed int)tmp0);
+    //v_cnt_offset = ABS((signed int)tvin_fmt_tbl[fmt].v_total- (signed int)tmp0);
     adc_timing_info.v_total = tmp0;
+
     if ((h_cnt_offset > h_cnt_wobble)   ||
         (v_cnt_offset > v_cnt_wobble)   ||
         (hs_cnt_offset > hs_cnt_wobble) ||
@@ -340,6 +351,7 @@ bool tvafe_adc_fmt_chg(enum tvafe_src_type_e src_type)
         flag = true;
     else
         flag = false;
+
 
     return flag;
 }
@@ -373,7 +385,7 @@ bool tvafe_adc_fmt_chg(enum tvafe_src_type_e src_type)
 //
 //    return ret;
 //}
-static void tvafe_adc_digital_reset(void)
+void tvafe_adc_digital_reset(void)
 {
     WRITE_APB_REG(((ADC_BASE_ADD+0x21)<<2), 1);
     WRITE_APB_REG(((ADC_BASE_ADD+0x21)<<2), 5);
@@ -435,8 +447,6 @@ enum tvin_sig_fmt_e tvafe_adc_search_mode(enum tvafe_src_type_e src_type)
         if (index >= index_max)
             index = TVIN_SIG_FMT_NULL;
     }
-
-    pr_info("tvafe fmt check: fmt=%4d\n", index);
 
 	return index;
 }
@@ -847,6 +857,7 @@ static void tvafe_vga_auto_clock_handler(struct tvafe_info_s *info)
                 else
                 {
                     tvafe_vga_auto_clock_adj(clk, diff);
+                    //tvafe_vga_border_detect_disable();
                     vga_auto.clk_state = VGA_CLK_FINE_ADJ;
                 }
                 vga_auto.vs_cnt = 0;
@@ -862,6 +873,7 @@ static void tvafe_vga_auto_clock_handler(struct tvafe_info_s *info)
                 //delay about 4 field for border detection
                 if (vga_auto.vs_cnt == TVAFE_VGA_BD_EN_DELAY)
                 {
+                    // disable border detect
                     tvafe_vga_border_detect_enable();
                 }
                 if (vga_auto.vs_cnt > AUTO_CLK_VS_CNT)
@@ -1016,6 +1028,8 @@ static void tvafe_vga_auto_phase_handler(struct tvafe_info_s *info)
                         tvafe_vga_set_phase(vga_auto.ap_phamax_index);
                         //enable border detect
                         tvafe_vga_border_detect_enable();
+                        //tvafe_vga_auto_phase_disable();
+                        //tvafe_vga_border_detect_init(info->param.fmt);
                         vga_auto.phase_state = VGA_PHASE_END;
                     }
                     else
@@ -1193,7 +1207,6 @@ void tvafe_adc_configure(enum tvin_sig_fmt_e fmt)
 
     //load vga reg hardcode
     //tvafe_adc_load_hardcode();
-    pr_info("tvafe:  tvafe_adc_configure(start)\n");
 
 #if 1
 
@@ -1220,6 +1233,21 @@ void tvafe_adc_configure(enum tvin_sig_fmt_e fmt)
     }
     tvafe_adc_clear(TVAFE_ADC_CONFIGURE_NORMAL, 0);
 
+#if 0
+    //debug setting
+    // diable other mux on test pins 0~27 & 30
+    WRITE_CBUS_REG(PERIPHS_PIN_MUX_0 , READ_CBUS_REG(PERIPHS_PIN_MUX_0 )&0xcff0ffdf);
+    WRITE_CBUS_REG(PERIPHS_PIN_MUX_1 , READ_CBUS_REG(PERIPHS_PIN_MUX_1 )&0xfc017fff);
+    WRITE_CBUS_REG(PERIPHS_PIN_MUX_2 , READ_CBUS_REG(PERIPHS_PIN_MUX_2 )&0xe001ffff);
+    WRITE_CBUS_REG(PERIPHS_PIN_MUX_3 , READ_CBUS_REG(PERIPHS_PIN_MUX_3 )&0xfc000000);
+    WRITE_CBUS_REG(PERIPHS_PIN_MUX_4 , READ_CBUS_REG(PERIPHS_PIN_MUX_4 )&0xff8007ff);
+    WRITE_CBUS_REG(PERIPHS_PIN_MUX_6 , READ_CBUS_REG(PERIPHS_PIN_MUX_6 )&0xffffffbf);
+    WRITE_CBUS_REG(PERIPHS_PIN_MUX_7 , READ_CBUS_REG(PERIPHS_PIN_MUX_7 )&0xff00003f);
+    WRITE_CBUS_REG(PERIPHS_PIN_MUX_10, READ_CBUS_REG(PERIPHS_PIN_MUX_10)&0xffffffb3);
+    // enable TVFE_TEST mux on test pins 0~27 & 30
+    WRITE_CBUS_REG(PERIPHS_PIN_MUX_9 , 0x4fffffff);//
+#endif
+
 #else
     for (i=0; i<ADC_REG_NUM; i++)
     {
@@ -1241,7 +1269,6 @@ void tvafe_adc_configure(enum tvin_sig_fmt_e fmt)
     }
 
 #endif
-    pr_info("tvafe:  tvafe_adc_configure(finish)\n");
 
 }
 
@@ -1319,12 +1346,12 @@ const static  int vga_top_reg_default[][2] = {
     {TVFE_DVSS_MVDET_CTRL5         , 0x00000000,} ,// TVFE_DVSS_MVDET_CTRL5
     {TVFE_DVSS_MVDET_CTRL6         , 0x00000000,} ,// TVFE_DVSS_MVDET_CTRL6
     {TVFE_DVSS_MVDET_CTRL7         , 0x00000000,} ,// TVFE_DVSS_MVDET_CTRL7
-    {TVFE_SYNCTOP_SPOL_MUXCTRL     , 0x00000008,} ,// TVFE_SYNCTOP_SPOL_MUXCTRL
+    {TVFE_SYNCTOP_SPOL_MUXCTRL     , 0x00000009,} ,// TVFE_SYNCTOP_SPOL_MUXCTRL
     {TVFE_SYNCTOP_INDICATOR1_HCNT  , 0x00000000,} ,// TVFE_SYNCTOP_INDICATOR1_HCNT
     {TVFE_SYNCTOP_INDICATOR2_VCNT  , 0x00000000,} ,// TVFE_SYNCTOP_INDICATOR2_VCNT
     {TVFE_SYNCTOP_INDICATOR3       , 0x00000000,} ,// TVFE_SYNCTOP_INDICATOR3
-    {TVFE_SYNCTOP_SFG_MUXCTRL1     , 0x89315107,} ,// TVFE_SYNCTOP_SFG_MUXCTRL1
-    {TVFE_SYNCTOP_SFG_MUXCTRL2     , 0x00330000,} ,// TVFE_SYNCTOP_SFG_MUXCTRL2
+    {TVFE_SYNCTOP_SFG_MUXCTRL1     , 0x81315107,} ,// TVFE_SYNCTOP_SFG_MUXCTRL1
+    {TVFE_SYNCTOP_SFG_MUXCTRL2     , 0x01330000,} ,// TVFE_SYNCTOP_SFG_MUXCTRL2
     {TVFE_SYNCTOP_INDICATOR4       , 0x00000000,} ,// TVFE_SYNCTOP_INDICATOR4
     {TVFE_SYNCTOP_SAM_MUXCTRL      , 0x00082001,} ,// TVFE_SYNCTOP_SAM_MUXCTRL
     {TVFE_MISC_WSS1_MUXCTRL1       , 0x00000000,} ,// TVFE_MISC_WSS1_MUXCTRL1
@@ -1392,8 +1419,8 @@ const static  int vga_top_reg_default[][2] = {
     {TVFE_EXT_VIDEO_AFE_CTRL_MUX1  , 0x00000000,} ,// TVFE_EXT_VIDEO_AFE_CTRL_MUX1
     {TVFE_AAFILTER_CTRL1           , 0x00082222,} ,// TVFE_AAFILTER_CTRL1
     {TVFE_AAFILTER_CTRL2           , 0x252b39c6,} ,// TVFE_AAFILTER_CTRL2
-    {TVFE_EDID_CONFIG              , 0x00000000,} ,// TVFE_EDID_CONFIG
-    {TVFE_EDID_RAM_ADDR            , 0x00000000,} ,// TVFE_EDID_RAM_ADDR
+    {TVFE_EDID_CONFIG              , 0x01800050,} ,// TVFE_EDID_CONFIG
+    {TVFE_EDID_RAM_ADDR            , 0x00000100,} ,// TVFE_EDID_RAM_ADDR
     {TVFE_EDID_RAM_WDATA           , 0x00000000,} ,// TVFE_EDID_RAM_WDATA
     {TVFE_EDID_RAM_RDATA           , 0x00000000,} ,// TVFE_EDID_RAM_RDATA
     {TVFE_APB_ERR_CTRL_MUX1        , 0x00000000,} ,// TVFE_APB_ERR_CTRL_MUX1
@@ -1425,7 +1452,6 @@ void tvafe_set_vga_default(enum tvin_sig_fmt_e fmt)
     /** write 7740 register **/
     tvafe_adc_configure(fmt);
 
-    pr_info("tvafe_set_vga_default END\n");
 }
 /* TOP */
 
@@ -1455,11 +1481,11 @@ const static  int comp_top_reg_default[][2] = {
     {TVFE_DVSS_MVDET_CTRL5         , 0x00000000,} ,// TVFE_DVSS_MVDET_CTRL5
     {TVFE_DVSS_MVDET_CTRL6         , 0x00000000,} ,// TVFE_DVSS_MVDET_CTRL6
     {TVFE_DVSS_MVDET_CTRL7         , 0x00000000,} ,// TVFE_DVSS_MVDET_CTRL7
-    {TVFE_SYNCTOP_SPOL_MUXCTRL     , 0x00000008,} ,// TVFE_SYNCTOP_SPOL_MUXCTRL
+    {TVFE_SYNCTOP_SPOL_MUXCTRL     , 0x00000009,} ,// TVFE_SYNCTOP_SPOL_MUXCTRL
     {TVFE_SYNCTOP_INDICATOR1_HCNT  , 0x00000000,} ,// TVFE_SYNCTOP_INDICATOR1_HCNT
     {TVFE_SYNCTOP_INDICATOR2_VCNT  , 0x00000000,} ,// TVFE_SYNCTOP_INDICATOR2_VCNT
     {TVFE_SYNCTOP_INDICATOR3       , 0x00000000,} ,// TVFE_SYNCTOP_INDICATOR3
-    {TVFE_SYNCTOP_SFG_MUXCTRL1     , 0x892880d8,} ,// TVFE_SYNCTOP_SFG_MUXCTRL1
+    {TVFE_SYNCTOP_SFG_MUXCTRL1     , 0x812880d8,} ,// TVFE_SYNCTOP_SFG_MUXCTRL1
     {TVFE_SYNCTOP_SFG_MUXCTRL2     , 0x00334400,} ,// TVFE_SYNCTOP_SFG_MUXCTRL2
     {TVFE_SYNCTOP_INDICATOR4       , 0x00000000,} ,// TVFE_SYNCTOP_INDICATOR4
     {TVFE_SYNCTOP_SAM_MUXCTRL      , 0x00082001,} ,// TVFE_SYNCTOP_SAM_MUXCTRL
@@ -1528,8 +1554,8 @@ const static  int comp_top_reg_default[][2] = {
     {TVFE_EXT_VIDEO_AFE_CTRL_MUX1  , 0x00000000,} ,// TVFE_EXT_VIDEO_AFE_CTRL_MUX1
     {TVFE_AAFILTER_CTRL1           , 0x00082222,} ,// TVFE_AAFILTER_CTRL1
     {TVFE_AAFILTER_CTRL2           , 0x252b39c6,} ,// TVFE_AAFILTER_CTRL2
-    {TVFE_EDID_CONFIG              , 0x00000000,} ,// TVFE_EDID_CONFIG
-    {TVFE_EDID_RAM_ADDR            , 0x00000000,} ,// TVFE_EDID_RAM_ADDR
+    {TVFE_EDID_CONFIG              , 0x01800050,} ,// TVFE_EDID_CONFIG
+    {TVFE_EDID_RAM_ADDR            , 0x00000100,} ,// TVFE_EDID_RAM_ADDR
     {TVFE_EDID_RAM_WDATA           , 0x00000000,} ,// TVFE_EDID_RAM_WDATA
     {TVFE_EDID_RAM_RDATA           , 0x00000000,} ,// TVFE_EDID_RAM_RDATA
     {TVFE_APB_ERR_CTRL_MUX1        , 0x00000000,} ,// TVFE_APB_ERR_CTRL_MUX1

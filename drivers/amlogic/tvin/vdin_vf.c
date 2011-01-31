@@ -13,23 +13,23 @@
 
 #include <linux/types.h>
 #include <linux/kernel.h>
-
+#include <linux/spinlock.h>
 #include <linux/amports/vframe.h>
 #include <linux/amports/vframe_provider.h>
-
 #include "tvin_global.h"
 #include "vdin_vf.h"
+
+
+
+DEFINE_SPINLOCK(vdin_fifo_lock);
 
 
 static vframe_t *vdin_vf_peek(void);
 static vframe_t *vdin_vf_get(void);
 static void vdin_vf_put(vframe_t *vf);
-static vframe_t *curframe_q;
 
-static vfq_t newframe_q, display_q, recycle_q;
+vfq_t newframe_q, display_q, recycle_q;
 static struct vframe_s vfpool[BT656IN_VF_POOL_SIZE];
-
-
 
 static inline void ptr_atomic_wrap_inc(u32 *ptr)
 {
@@ -72,17 +72,29 @@ inline void vfq_push(vfq_t *q, vframe_t *vf)
 #if 1
 inline void vfq_push_newframe(vframe_t *vf)
 {
+    if(vf == NULL)
+        return;
+    spin_lock(&vdin_fifo_lock);
     vfq_push(&newframe_q, vf);
+    spin_unlock(&vdin_fifo_lock);
 }
 
 inline void vfq_push_display(vframe_t *vf)
 {
+    if(vf == NULL)
+        return;
+    spin_lock(&vdin_fifo_lock);
     vfq_push(&display_q, vf);
+    spin_unlock(&vdin_fifo_lock);
 }
 
 inline void vfq_push_recycle(vframe_t *vf)
 {
+    if(vf == NULL)
+        return;
+    spin_lock(&vdin_fifo_lock);
     vfq_push(&recycle_q, vf);
+    spin_unlock(&vdin_fifo_lock);
 }
 #endif
 
@@ -104,24 +116,31 @@ inline vframe_t *vfq_pop(vfq_t *q)
 inline vframe_t *vfq_pop_newframe(void)
 {
     vframe_t *vf;
+    spin_lock(&vdin_fifo_lock);
     vf = vfq_pop(&newframe_q);
-    curframe_q = vf;
+    spin_unlock(&vdin_fifo_lock);
     return vf;
-}
-
-inline vframe_t *vfq_get_curframe(void)
-{
-    return curframe_q;
 }
 
 inline vframe_t *vfq_pop_display(void)
 {
-    return vfq_pop(&display_q);
+    vframe_t *vf;
+    spin_lock(&vdin_fifo_lock);
+    vf = vfq_pop(&display_q);
+    spin_unlock(&vdin_fifo_lock);
+    return vf;
+
+
+
 }
 
 inline vframe_t *vfq_pop_recycle(void)
 {
-    return vfq_pop(&recycle_q);
+    vframe_t *vf;
+    spin_lock(&vdin_fifo_lock);
+    vf = vfq_pop(&recycle_q);
+    spin_unlock(&vdin_fifo_lock);
+    return vf;
 }
 #endif
 
@@ -146,10 +165,11 @@ void vdin_vf_init(void)
 	vfq_init(&recycle_q);
 	vfq_init(&newframe_q);
 
-	for (i = 0; i < (BT656IN_VF_POOL_SIZE - 1); ++i)
+	for (i = 0; i < (BT656IN_VF_POOL_SIZE ); ++i)
 	{
 		vfq_push(&newframe_q, &vfpool[i]);
 	}
+    newframe_q.wr_index = BT656IN_VF_POOL_SIZE -1;
 }
 
 static vframe_t *vdin_vf_peek(void)
@@ -159,12 +179,19 @@ static vframe_t *vdin_vf_peek(void)
 
 static vframe_t *vdin_vf_get(void)
 {
-    return vfq_pop(&display_q);
+    vframe_t *vf;
+    spin_lock(&vdin_fifo_lock);
+    vf = vfq_pop(&display_q);
+    spin_unlock(&vdin_fifo_lock);
+    return vf;
+
 }
 
 static void vdin_vf_put(vframe_t *vf)
 {
+    spin_lock(&vdin_fifo_lock);
 	vfq_push(&recycle_q, vf);
+    spin_unlock(&vdin_fifo_lock);
 }
 
 

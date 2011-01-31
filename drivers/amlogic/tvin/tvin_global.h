@@ -16,6 +16,8 @@
 #ifndef __TVIN_GLOBAL_H
 #define __TVIN_GLOBAL_H
 
+//#define VDIN_FIXED_FMT_TEST
+
 // ***************************************************************************
 // *** enum definitions *********************************************
 // ***************************************************************************
@@ -148,6 +150,7 @@ typedef struct tvin_format_s {
 
 #define TVAFE_VF_POOL_SIZE              6//8
 #define VDIN_VF_POOL_MAX_SIZE           6//8
+#define TVHDMI_VF_POOL_SIZE              6//8
 
 #define BT656IN_ANCI_DATA_SIZE          0x4000 //save anci data from bt656in
 #define CAMERA_IN_ANCI_DATA_SIZE        0x4000 //save anci data from bt656in

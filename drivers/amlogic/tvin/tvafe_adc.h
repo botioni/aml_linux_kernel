@@ -109,13 +109,14 @@ void tvafe_vga_auto_adjust_handler(struct tvafe_info_s *info);
 int tvafe_vga_auto_adjust_enable(struct tvafe_info_s *info);
 void tvafe_vga_auto_adjust_disable(struct tvafe_info_s *info);
 bool tvafe_adc_no_sig(void);
-bool tvafe_adc_fmt_chg(enum tvafe_src_type_e src_type);
+bool tvafe_adc_fmt_chg(struct tvafe_info_s *info);//(enum tvafe_src_type_e src_type, struct tvin_parm_s *parm);
 bool tvafe_adc_get_pll_status(void);
 enum tvin_sig_fmt_e tvafe_adc_search_mode(enum tvafe_src_type_e src_type);
 void tvafe_set_vga_default(enum tvin_sig_fmt_e fmt);
 void tvafe_set_comp_default(enum tvin_sig_fmt_e fmt);
 void tvafe_adc_configure(enum tvin_sig_fmt_e fmt);
 void tvafe_adc_state_init(void);
+void tvafe_adc_digital_reset(void);
 
 #endif // _TVAFE_ADC_H
 

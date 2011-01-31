@@ -103,6 +103,8 @@ am656in_t am656in_dec_info = {
         .status     = TVIN_SIG_STATUS_NULL,
         .cap_addr   = 0,
         .flag       = 0,        //TVIN_PARM_FLAG_CAP
+        .cap_size   = 0,
+        .canvas_index   = 0,
      },
 
     .rd_canvas_index = 0xff - (BT656IN_VF_POOL_SIZE + 2),
@@ -772,10 +774,10 @@ static void check_amvdec_656_601_camera_fromat( void )
                         {
                             if(active_line_1 == 0)
                                 am656in_dec_info.para.status = TVIN_SIG_STATUS_NOSIG;
-                            else if(vdin_devp_bt656->meas_th >= MINIMUM_H_CNT)
-                                am656in_dec_info.para.status = TVIN_SIG_STATUS_UNSTABLE;
+                           // else if(vdin_devp_bt656->meas_th >= MINIMUM_H_CNT)
+                             //   am656in_dec_info.para.status = TVIN_SIG_STATUS_UNSTABLE;
                             else
-                                am656in_dec_info.para.status = TVIN_SIG_STATUS_NOTSUP;
+                                am656in_dec_info.para.status = TVIN_SIG_STATUS_UNSTABLE;
                         }
                         else
                         {
@@ -874,6 +876,9 @@ static void bt656in_send_buff_to_display_fifo(vframe_t * info)
 
 static void camera_send_buff_to_display_fifo(vframe_t * info)
 {
+    info->duration = tvin_fmt_tbl[am656in_dec_info.para.fmt].duration;
+    if(info->duration == 0)
+        return;
     am656in_dec_info.rd_canvas_index++;
     if(am656in_dec_info.rd_canvas_index  > (am656in_dec_info.canvas_total_count -1))
     {
@@ -1196,6 +1201,7 @@ int amvdec_656_601_camera_in_run(vframe_t *info)
         vdin_devp_bt656->para.cap_addr = am656in_dec_info.pbufAddr +
                 (am656in_dec_info.decbuf_size * canvas_id) + BT656IN_ANCI_DATA_SIZE ;
         vdin_devp_bt656->para.cap_size = am656in_dec_info.decbuf_size;
+        vdin_devp_bt656->para.canvas_index = canvas_id;
         WRITE_CBUS_REG(BT_STATUS, ccir656_status | (1 << 9));   //WRITE_CBUS_REGite 1 to clean the SOF interrupt bit
         return 0;
     }
@@ -1216,17 +1222,6 @@ int amvdec_656_601_camera_in_run(vframe_t *info)
     return 0;
 }
 
-/*as use the spin_lock,
- *1--there is no sleep,
- *2--it is better to shorter the time,
-*/
-int amvdec_656_601_camera_in_run_bh(vframe_t *info)
-{
-
-
-    return 0;
-}
-
 
 static int bt656in_check_callback(struct notifier_block *block, unsigned long cmd , void *para)
 {
@@ -1239,7 +1234,8 @@ static int bt656in_check_callback(struct notifier_block *block, unsigned long cm
                 //pr_dbg("bt656in format update: cap_flag = %d, format = %d, status = %d ",
                 //vdin_devp_bt656->para.flag, vdin_devp_bt656->para.fmt, vdin_devp_bt656->para.status);
                 check_amvdec_656_601_camera_fromat();
-                if (am656in_dec_info.para.fmt != vdin_devp_bt656->para.fmt)
+                if ((am656in_dec_info.para.fmt != vdin_devp_bt656->para.fmt) ||
+                    (am656in_dec_info.para.status!= vdin_devp_bt656->para.status))
                 {
                     vdin_info_update(vdin_devp_bt656, &am656in_dec_info.para);
                 }
@@ -1255,8 +1251,7 @@ static int bt656in_check_callback(struct notifier_block *block, unsigned long cm
 
 
 struct tvin_dec_ops_s bt656in_op = {
-        .dec_run = amvdec_656_601_camera_in_run,
-        .dec_run_bh = amvdec_656_601_camera_in_run_bh,
+        .dec_run = amvdec_656_601_camera_in_run,        
     };
 
 
