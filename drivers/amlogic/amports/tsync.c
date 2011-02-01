@@ -20,6 +20,7 @@
 MODULE_AMLOG(AMLOG_DEFAULT_LEVEL, 0, LOG_DEFAULT_LEVEL_DESC, LOG_DEFAULT_MASK_DESC);
 
 //#define DEBUG
+//#define DEBUG_DISCONTINUE
 #define AVEVENT_FLAG_PARAM  0x01
 
 //#define TSYNC_SLOW_SYNC
@@ -57,7 +58,9 @@ static spinlock_t lock = SPIN_LOCK_UNLOCKED;
 static tsync_mode_t tsync_mode = TSYNC_MODE_AMASTER;
 static tsync_stat_t tsync_stat = TSYNC_STAT_PCRSCR_SETUP_NONE;
 static int tsync_enable = 0;   //1;
+#ifdef DEBUG_DISCONTINUE
 static int pts_discontinue = 0;
+#endif
 static int tsync_abreak = 0;
 static int tsync_trickmode = 0;
 static int vpause_flag = 0;
@@ -129,26 +132,42 @@ void tsync_avevent(avevent_t event, u32 param)
         timestamp_pcrscr_enable(0);
         break;
 
+    /* Note:
+     * Video and audio PTS discontinue happens typically with a loopback playback,
+     * with same bit stream play in loop and PTS wrap back from start point.
+     * When VIDEO_TSTAMP_DISCONTINUITY happens early, PCRSCR is set immedately to
+     * make video still keep running in VMATSER mode. This mode is restored to
+     * AMASTER mode when AUDIO_TSTAMP_DISCONTINUITY reports, or apts is close to
+     * scr later.
+     * When AUDIO_TSTAMP_DISCONTINUITY happens early, VMASTER mode is set to make
+     * video still keep running w/o setting PCRSCR. This mode is restored to
+     * AMASTER mode when VIDEO_TSTAMP_DISCONTINUITY reports, and scr is restored
+     * along with new video time stamp also.
+     */
     case VIDEO_TSTAMP_DISCONTINUITY:
         t = timestamp_pcrscr_get();
     
         if (abs(param - t) > AV_DISCONTINUE_THREDHOLD) {
-            /*
-             * making system time updated by itself.
-             */
-            tsync_mode = TSYNC_MODE_VMASTER;
+            if ((tsync_mode == TSYNC_MODE_VMASTER) && (tsync_enable))
+                /* restore to AMASTER mode when both video and audio
+                 * send discontinue event
+                 */
+                tsync_mode = TSYNC_MODE_AMASTER;
+            else
+                /* make system time updated by itself. */
+                tsync_mode = TSYNC_MODE_VMASTER;
             tsync_stat = TSYNC_STAT_PCRSCR_SETUP_VIDEO;
 
             timestamp_vpts_set(param);
 
             timestamp_pcrscr_set(param);
 
-			pts_discontinue = 1;
-
+#ifdef DEBUG_DISCONTINUE
+            pts_discontinue = 1;
+#endif
             amlog_level(LOG_LEVEL_ATTENTION, "reset scr from vpts to 0x%x\n", param);
 
-        } else if (tsync_enable)
-            tsync_mode = TSYNC_MODE_AMASTER;
+        }
         break;
 
     case AUDIO_TSTAMP_DISCONTINUITY:
@@ -158,7 +177,11 @@ void tsync_avevent(avevent_t event, u32 param)
         t = timestamp_pcrscr_get();
     
         amlog_level(LOG_LEVEL_ATTENTION, "AUDIO_TSTAMP_DISCONTINUITY, 0x%x, 0x%x\n", t, param);
-		pts_discontinue = 1;
+
+#ifdef DEBUG_DISCONTINUE
+        pts_discontinue = 1;
+#endif
+
         if (abs(param - t) > AV_DISCONTINUE_THREDHOLD) {
             /* switch tsync mode to free run mode,
              * making system time updated by itself.
@@ -464,6 +487,8 @@ static ssize_t store_enable(struct class *class,
 
     return size;
 }
+
+#ifdef DEBUG_DISCONTINUE
 static ssize_t show_discontinue(struct class *class,
                            struct class_attribute *attr,
                            char *buf)
@@ -490,6 +515,8 @@ static ssize_t store_discontinue(struct class *class,
 
     return size;
 }
+#endif
+
 static struct class_attribute tsync_class_attrs[] = {
     __ATTR(pts_video,  S_IRUGO | S_IWUSR, show_vpts,    store_vpts  ),
     __ATTR(pts_audio,  S_IRUGO | S_IWUSR, show_apts,    store_apts  ),
@@ -497,7 +524,9 @@ static struct class_attribute tsync_class_attrs[] = {
     __ATTR(event,      S_IRUGO | S_IWUSR, NULL,         store_event ),
     __ATTR(mode,       S_IRUGO | S_IWUSR, show_mode,    NULL        ),
     __ATTR(enable,     S_IRUGO | S_IWUSR, show_enable,  store_enable),
+#ifdef DEBUG_DISCONTINUE
     __ATTR(discontinue, S_IRUGO | S_IWUGO, show_discontinue,  store_discontinue),
+#endif
     __ATTR_NULL
 };
 
