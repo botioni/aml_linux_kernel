@@ -169,26 +169,27 @@ void __init meson_map_io(void)
 
 static cycle_t cycle_read_timerE(struct clocksource *cs)
 {
-    return (cycles_t) READ_CBUS_REG(ISA_TIMERE);
+	return (cycles_t) READ_CBUS_REG(ISA_TIMERE);
 }
 
 static struct clocksource clocksource_timer_e = {
-    .name   = "Timer-E",
-    .rating = 300,
-    .read   = cycle_read_timerE,
-    .mask   = CLOCKSOURCE_MASK(24),
-    .mult	= 1000000,
-    .shift	= 0,
-    .flags  = CLOCK_SOURCE_IS_CONTINUOUS,
+	.name   = "Timer-E",
+	.rating = 300,
+	.read   = cycle_read_timerE,
+	.mask   = CLOCKSOURCE_MASK(24),
+	.shift  = 20,
+	.flags  = CLOCK_SOURCE_IS_CONTINUOUS,
 };
 
 static void __init meson_clocksource_init(void)
 {
 	CLEAR_CBUS_REG_MASK(ISA_TIMER_MUX, TIMER_E_INPUT_MASK);
-	SET_CBUS_REG_MASK(ISA_TIMER_MUX, TIMERE_UNIT_1ms << TIMER_E_INPUT_BIT);
+	SET_CBUS_REG_MASK(ISA_TIMER_MUX, TIMERE_UNIT_1us << TIMER_E_INPUT_BIT);
 	WRITE_CBUS_REG(ISA_TIMERE, 0);
 
-    clocksource_register(&clocksource_timer_e);
+	clocksource_timer_e.mult =
+		clocksource_khz2mult(1000, clocksource_timer_e.shift);
+	clocksource_register(&clocksource_timer_e);
 }
 
 /********** Clock Event Device, Timer-AC *********/
@@ -245,8 +246,7 @@ static struct clock_event_device clockevent_meson_1mhz = {
 	.rating         = 300, /* Reasonably fast and accurate clock event */
 
 	.features       = CLOCK_EVT_FEAT_PERIODIC | CLOCK_EVT_FEAT_ONESHOT,
-    .mult			= 10000000,
-	.shift          = 0,
+	.shift          = 20,
 	.set_next_event = meson_set_next_event,
 	.set_mode       = meson_clkevt_set_mode,
 };
@@ -273,14 +273,14 @@ static void __init meson_clockevent_init(void)
 {
 	CLEAR_CBUS_REG_MASK(ISA_TIMER_MUX, TIMER_A_INPUT_MASK | TIMER_C_INPUT_MASK);
 	SET_CBUS_REG_MASK(ISA_TIMER_MUX, 
-		(TIMER_UNIT_1ms << TIMER_A_INPUT_BIT) |
-		(TIMER_UNIT_1ms << TIMER_C_INPUT_BIT));
-	WRITE_CBUS_REG(ISA_TIMERA, 9);
+		(TIMER_UNIT_1us << TIMER_A_INPUT_BIT) |
+		(TIMER_UNIT_1us << TIMER_C_INPUT_BIT));
+	WRITE_CBUS_REG(ISA_TIMERA, 9999);
 
-	/* 24bit counter, so 24bits delta is max */
+	clockevent_meson_1mhz.mult =
+		div_sc(1000000, NSEC_PER_SEC, clockevent_meson_1mhz.shift);
 	clockevent_meson_1mhz.max_delta_ns =
-		clockevent_delta2ns(0xffffff, &clockevent_meson_1mhz);
-	/* This timer is slow enough to set for 1 cycle == 1 MHz */
+		clockevent_delta2ns(0xfffe, &clockevent_meson_1mhz);
 	clockevent_meson_1mhz.min_delta_ns =
 		clockevent_delta2ns(1, &clockevent_meson_1mhz);
 	clockevent_meson_1mhz.cpumask = cpumask_of(0);
@@ -297,7 +297,7 @@ static void __init meson_clockevent_init(void)
 static void __init meson_timer_init(void)
 {
 	meson_clocksource_init();
-    meson_clockevent_init();
+	meson_clockevent_init();
 }
 
 struct sys_timer meson_sys_timer =
