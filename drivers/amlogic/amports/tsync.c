@@ -7,7 +7,16 @@
 
 #include "amvdec.h"
 
-//#define CONFIG_AM_TIMESYNC_LOG
+#ifdef ARC_700
+#include <asm/arch/am_regs.h>
+#else
+#include <mach/am_regs.h>
+#endif
+
+#include "../sound/aml_audio_hw.h"
+
+
+#define CONFIG_AM_TIMESYNC_LOG
 #ifdef CONFIG_AM_TIMESYNC_LOG
 #define AMLOG
 #define LOG_LEVEL_ERROR		0
@@ -25,11 +34,38 @@ MODULE_AMLOG(AMLOG_DEFAULT_LEVEL, 0, LOG_DEFAULT_LEVEL_DESC, LOG_DEFAULT_MASK_DE
 
 //#define TSYNC_SLOW_SYNC
 
+#define PCR_CHECK_INTERVAL  (HZ * 5)
+#define PCR_DETECT_MARGIN_SHIFT_AUDIO_HI     7
+#define PCR_DETECT_MARGIN_SHIFT_AUDIO_LO     7
+#define PCR_DETECT_MARGIN_SHIFT_VIDEO_HI     4
+#define PCR_DETECT_MARGIN_SHIFT_VIDEO_LO     4
+#define PCR_MAINTAIN_MARGIN_SHIFT_AUDIO      4
+#define PCR_MAINTAIN_MARGIN_SHIFT_VIDEO      1
+#define PCR_RECOVER_PCR_ADJ 15
+
+enum {
+    PCR_SYNC_UNSET,
+    PCR_SYNC_HI,
+    PCR_SYNC_LO,
+};
+
+enum {
+    PCR_TRIGGER_AUDIO,
+    PCR_TRIGGER_VIDEO
+};
+
 typedef enum {
     TSYNC_STAT_PCRSCR_SETUP_NONE,
     TSYNC_STAT_PCRSCR_SETUP_VIDEO,
     TSYNC_STAT_PCRSCR_SETUP_AUDIO
 } tsync_stat_t;
+
+enum {
+    TOGGLE_MODE_FIXED = 0,    // Fixed: use the Nominal M/N values
+    TOGGLE_MODE_NORMAL_LOW,   // Toggle between the Nominal M/N values and the Low M/N values
+    TOGGLE_MODE_NORMAL_HIGH,  // Toggle between the Nominal M/N values and the High M/N values
+    TOGGLE_MODE_LOW_HIGH,     // Toggle between the Low M/N values and the High M/N Values
+};
 
 const static struct {
     const char *token;
@@ -62,12 +98,142 @@ static int tsync_enable = 0;   //1;
 static int pts_discontinue = 0;
 #endif
 static int tsync_abreak = 0;
+static bool tsync_pcr_recover_enable = false;
+static int pcr_sync_stat = PCR_SYNC_UNSET;
+static int pcr_recover_trigger = 0;
+static struct timer_list tsync_pcr_recover_timer;
 static int tsync_trickmode = 0;
 static int vpause_flag = 0;
 static unsigned int tsync_av_thresh = AV_DISCONTINUE_THREDHOLD;
 static unsigned int tsync_syncthresh = 1;
 static int tsync_dec_reset_flag = 0;
 static int tsync_dec_reset_video_start = 0;
+#define LOW_TOGGLE_TIME           499
+#define NORMAL_TOGGLE_TIME        99
+#define HIGH_TOGGLE_TIME          499
+
+static void tsync_pcr_recover_with_audio(void)
+{
+    u32 ab_level = READ_MPEG_REG(AIU_MEM_AIFIFO_LEVEL);
+    u32 ab_size = READ_MPEG_REG(AIU_MEM_AIFIFO_END_PTR) 
+        - READ_MPEG_REG(AIU_MEM_AIFIFO_START_PTR) + 8;
+    u32 vb_level = READ_MPEG_REG(VLD_MEM_VIFIFO_LEVEL);
+    u32 vb_size = READ_MPEG_REG(VLD_MEM_VIFIFO_END_PTR) 
+        - READ_MPEG_REG(VLD_MEM_VIFIFO_START_PTR) + 8;
+
+    if ((READ_MPEG_REG(AIU_MEM_I2S_CONTROL) & 
+        (MEM_CTRL_EMPTY_EN | MEM_CTRL_EMPTY_EN)) == 0)
+        return;
+
+    if ((unlikely(pcr_sync_stat != PCR_SYNC_LO)) &&
+        ((ab_level < (ab_size >> PCR_DETECT_MARGIN_SHIFT_AUDIO_LO)) ||
+         (vb_level < (vb_size >> PCR_DETECT_MARGIN_SHIFT_VIDEO_LO)))) {
+
+        WRITE_MPEG_REG( HHI_AUD_PLL_MOD_CNTL0,  READ_MPEG_REG(HHI_AUD_PLL_MOD_CNTL0) &
+                        (~((1 << 31) | (TOGGLE_MODE_LOW_HIGH << 28) )) );
+        WRITE_MPEG_REG( HHI_AUD_PLL_MOD_CNTL0,  READ_MPEG_REG(HHI_AUD_PLL_MOD_CNTL0) | (TOGGLE_MODE_NORMAL_LOW << 28) );
+        WRITE_MPEG_REG( HHI_AUD_PLL_MOD_CNTL0,  READ_MPEG_REG(HHI_AUD_PLL_MOD_CNTL0) | (1 << 31) );        
+        pcr_sync_stat = PCR_SYNC_LO;
+        printk("pcr_sync_stat = PCR_SYNC_LO ");
+        if(ab_level < (ab_size >> PCR_DETECT_MARGIN_SHIFT_AUDIO_LO))
+        {
+          pcr_recover_trigger |= (1 << PCR_TRIGGER_AUDIO);
+          printk("audio: 0x%x < 0x%x, vb_level 0x%x\n", ab_level, (ab_size >> PCR_DETECT_MARGIN_SHIFT_AUDIO_LO), vb_level);
+        }
+        if (vb_level < (vb_size >> PCR_DETECT_MARGIN_SHIFT_VIDEO_LO))
+        {
+          pcr_recover_trigger |= (1 << PCR_TRIGGER_VIDEO);
+          printk("video: 0x%x < 0x%x, ab_level 0x%x\n", vb_level, (vb_size >> PCR_DETECT_MARGIN_SHIFT_VIDEO_LO), ab_level);
+        }
+    }
+    else if ((unlikely(pcr_sync_stat != PCR_SYNC_HI)) &&
+        (((ab_level + (ab_size >> PCR_DETECT_MARGIN_SHIFT_AUDIO_HI)) > ab_size) ||
+         ((vb_level + (vb_size >> PCR_DETECT_MARGIN_SHIFT_VIDEO_HI)) > vb_size))) {
+
+        WRITE_MPEG_REG( HHI_AUD_PLL_MOD_CNTL0,  READ_MPEG_REG(HHI_AUD_PLL_MOD_CNTL0) &
+                        (~((1 << 31) | (TOGGLE_MODE_LOW_HIGH << 28) )) );
+        WRITE_MPEG_REG( HHI_AUD_PLL_MOD_CNTL0,  READ_MPEG_REG(HHI_AUD_PLL_MOD_CNTL0) | (TOGGLE_MODE_NORMAL_HIGH << 28) );
+        WRITE_MPEG_REG( HHI_AUD_PLL_MOD_CNTL0,  READ_MPEG_REG(HHI_AUD_PLL_MOD_CNTL0) | (1 << 31) );        
+        pcr_sync_stat = PCR_SYNC_HI;
+        printk("pcr_sync_stat = PCR_SYNC_HI ");
+        if((ab_level + (ab_size >> PCR_DETECT_MARGIN_SHIFT_AUDIO_HI)) > ab_size)
+        {
+          pcr_recover_trigger |= (1 << PCR_TRIGGER_AUDIO);
+          printk("audio: 0x%x+0x%x > 0x%x, vb_level 0x%x\n", ab_level, (ab_size >> PCR_DETECT_MARGIN_SHIFT_AUDIO_HI), ab_size, vb_level);
+        }
+        if((vb_level + (vb_size >> PCR_DETECT_MARGIN_SHIFT_VIDEO_HI)) > vb_size)
+        {
+          pcr_recover_trigger |= (1 << PCR_TRIGGER_VIDEO);
+          printk("video: 0x%x+0x%x > 0x%x, ab_level 0x%x\n", vb_level, (vb_size >> PCR_DETECT_MARGIN_SHIFT_VIDEO_HI), vb_size, ab_level);
+        }
+    }
+    else if(((pcr_sync_stat == PCR_SYNC_LO) &&
+             ((!(pcr_recover_trigger & (1 << PCR_TRIGGER_AUDIO))) || (ab_level > (ab_size >> PCR_MAINTAIN_MARGIN_SHIFT_AUDIO)))
+             &&
+             ((!(pcr_recover_trigger & (1 << PCR_TRIGGER_VIDEO))) || ((vb_level + (vb_size >> PCR_MAINTAIN_MARGIN_SHIFT_VIDEO)) > vb_size)))
+            ||
+            ((pcr_sync_stat == PCR_SYNC_HI) &&
+             ((!(pcr_recover_trigger & (1 << PCR_TRIGGER_AUDIO))) || ((ab_level + (ab_size >> PCR_MAINTAIN_MARGIN_SHIFT_AUDIO)) < ab_size))
+             &&
+             ((!(pcr_recover_trigger & (1 << PCR_TRIGGER_VIDEO))) || (vb_level < (vb_size >> PCR_MAINTAIN_MARGIN_SHIFT_VIDEO))))) {
+
+        WRITE_MPEG_REG( HHI_AUD_PLL_MOD_CNTL0,  READ_MPEG_REG(HHI_AUD_PLL_MOD_CNTL0) &
+                        (~((1 << 31) | (TOGGLE_MODE_LOW_HIGH << 28) )) );
+        WRITE_MPEG_REG( HHI_AUD_PLL_MOD_CNTL0,  READ_MPEG_REG(HHI_AUD_PLL_MOD_CNTL0) | (TOGGLE_MODE_FIXED << 28) );
+        WRITE_MPEG_REG( HHI_AUD_PLL_MOD_CNTL0,  READ_MPEG_REG(HHI_AUD_PLL_MOD_CNTL0) | (1 << 31) );
+
+        pcr_sync_stat = PCR_SYNC_UNSET;
+        pcr_recover_trigger = 0;
+        printk("pcr_sync_stat = PCR_SYNC_UNSET ab_level: 0x%x, vb_level: 0x%x\n", ab_level, vb_level);
+    }
+}
+
+static void tsync_pcr_recover_with_video(void)
+{
+    u32 vb_level = READ_MPEG_REG(VLD_MEM_VIFIFO_LEVEL);
+    u32 vb_size = READ_MPEG_REG(VLD_MEM_VIFIFO_END_PTR) 
+        - READ_MPEG_REG(VLD_MEM_VIFIFO_START_PTR) + 8;
+
+    if (vb_level < (vb_size >> PCR_DETECT_MARGIN_SHIFT_VIDEO_LO)) {
+        timestamp_pcrscr_set_adj(-PCR_RECOVER_PCR_ADJ);
+        printk(" timestamp_pcrscr_set_adj(-%d);\n", PCR_RECOVER_PCR_ADJ);
+    }
+    else if ((vb_level + (vb_size >> PCR_DETECT_MARGIN_SHIFT_VIDEO_HI)) > vb_size) {
+        timestamp_pcrscr_set_adj(PCR_RECOVER_PCR_ADJ);
+        printk(" timestamp_pcrscr_set_adj(%d);\n", PCR_RECOVER_PCR_ADJ);
+    }
+    else if ((vb_level > (vb_size >> PCR_MAINTAIN_MARGIN_SHIFT_VIDEO)) ||
+             (vb_level < (vb_size - (vb_size >> PCR_MAINTAIN_MARGIN_SHIFT_VIDEO)))) {
+        timestamp_pcrscr_set_adj(0);
+    }
+}
+
+static bool tsync_pcr_recover_use_video(void)
+{
+    /* This is just a hacking to use audio output enable
+     * as the flag to check if this is a video only playback.
+     * Such processing can not handle an audio output with a
+     * mixer so audio playback has no direct relationship with
+     * applications. TODO.
+     */
+    return ((READ_MPEG_REG(AIU_MEM_I2S_CONTROL) & 
+        (MEM_CTRL_EMPTY_EN | MEM_CTRL_EMPTY_EN)) == 0);
+}
+
+static void tsync_pcr_recover_timer_func(unsigned long arg)
+{
+    if (tsync_pcr_recover_enable) {
+        if (tsync_pcr_recover_use_video()) {
+            tsync_pcr_recover_with_video();
+        } else {
+            timestamp_pcrscr_set_adj(0);
+            tsync_pcr_recover_with_audio();
+        }
+    }
+        
+    tsync_pcr_recover_timer.expires = jiffies + PCR_CHECK_INTERVAL;
+    add_timer(&tsync_pcr_recover_timer);
+}
 
 void tsync_avevent(avevent_t event, u32 param)
 {
@@ -323,6 +489,62 @@ void tsync_set_dec_reset(void)
 EXPORT_SYMBOL(tsync_set_dec_reset);
 
 /*********************************************************/
+
+static ssize_t show_pcr_recover(struct class *class,
+                                struct class_attribute *attr,
+                                char *buf)
+{
+    return sprintf(buf, "%s %s\n", ((tsync_pcr_recover_enable) ? "on" : "off"), ((pcr_sync_stat == PCR_SYNC_UNSET) ? ("UNSET") : ((pcr_sync_stat == PCR_SYNC_LO) ? "LO" : "HI")));
+}
+
+static ssize_t store_pcr_recover(struct class *class,
+                                 struct class_attribute *attr,
+                                 const char *buf,
+                                 size_t size)
+{
+    unsigned val;
+    unsigned long M_nom, N_nom;
+    ssize_t r;
+
+    r = sscanf(buf, "%d", &val);
+    if (r != 1)
+        return -EINVAL;
+
+    if (tsync_pcr_recover_enable == (val != 0))
+        return size;
+
+    tsync_pcr_recover_enable = (val != 0);
+
+    if(tsync_pcr_recover_enable)
+    {
+        WRITE_MPEG_REG( HHI_AUD_PLL_MOD_LOW_TCNT,  LOW_TOGGLE_TIME );     // Set low toggle time (oscillator clock cycles)
+        WRITE_MPEG_REG( HHI_AUD_PLL_MOD_NOM_TCNT,  NORMAL_TOGGLE_TIME );  // Set nominal toggle time (oscillator clock cycles)
+        WRITE_MPEG_REG( HHI_AUD_PLL_MOD_HIGH_TCNT, HIGH_TOGGLE_TIME );    // Set high toggle time (oscillator clock cycles)
+
+        M_nom   = READ_MPEG_REG(HHI_AUD_PLL_CNTL) & 0x1ff;
+        N_nom   = (READ_MPEG_REG(HHI_AUD_PLL_CNTL) >> 9) & 0x1f;
+
+        WRITE_MPEG_REG( HHI_AUD_PLL_MOD_CNTL0,  (0 << 31)      |
+                                    (TOGGLE_MODE_FIXED << 28)  |   // Toggle mode
+                                    (N_nom << 23)              |   // N high value (not used)
+                                    ((M_nom+2) << 14)          |   // M high value
+                                    (N_nom << 9)               |   // N low value (not used)
+                                    ((M_nom-2) << 0) );            // M low value
+        pcr_sync_stat = PCR_SYNC_UNSET;
+        pcr_recover_trigger = 0;
+    }
+    else
+    {
+        WRITE_MPEG_REG( HHI_AUD_PLL_MOD_CNTL0,  READ_MPEG_REG(HHI_AUD_PLL_MOD_CNTL0) &
+                        (~((1 << 31) | (TOGGLE_MODE_LOW_HIGH << 28) )) );
+        WRITE_MPEG_REG( HHI_AUD_PLL_MOD_CNTL0,  READ_MPEG_REG(HHI_AUD_PLL_MOD_CNTL0) | (TOGGLE_MODE_FIXED << 28) );
+        pcr_sync_stat = PCR_SYNC_UNSET;
+        pcr_recover_trigger = 0;
+    }
+
+    return size;
+}
+
 static ssize_t show_vpts(struct class *class,
                          struct class_attribute *attr,
                          char *buf)
@@ -524,6 +746,7 @@ static struct class_attribute tsync_class_attrs[] = {
     __ATTR(event,      S_IRUGO | S_IWUSR, NULL,         store_event ),
     __ATTR(mode,       S_IRUGO | S_IWUSR, show_mode,    NULL        ),
     __ATTR(enable,     S_IRUGO | S_IWUSR, show_enable,  store_enable),
+    __ATTR(pcr_recover, S_IRUGO | S_IWUSR, show_pcr_recover,  store_pcr_recover),
 #ifdef DEBUG_DISCONTINUE
     __ATTR(discontinue, S_IRUGO | S_IWUGO, show_discontinue,  store_discontinue),
 #endif
@@ -551,11 +774,22 @@ static int __init tsync_init(void)
     timestamp_vpts_set(0);
     timestamp_pcrscr_set(0);
     
+    init_timer(&tsync_pcr_recover_timer);
+
+    tsync_pcr_recover_timer.function = tsync_pcr_recover_timer_func;
+    tsync_pcr_recover_timer.expires = jiffies + PCR_CHECK_INTERVAL;
+    pcr_sync_stat = PCR_SYNC_UNSET;
+    pcr_recover_trigger = 0;
+
+    add_timer(&tsync_pcr_recover_timer);
+    
     return (0);
 }
 
 static void __exit tsync_exit(void)
 {
+    del_timer_sync(&tsync_pcr_recover_timer);
+
     class_unregister(&tsync_class);
 }
 

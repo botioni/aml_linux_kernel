@@ -483,6 +483,9 @@ dvb_playing=1;
     WRITE_MPEG_REG(PARSER_INT_STATUS, 0xffff);
     WRITE_MPEG_REG(PARSER_INT_ENABLE, PARSER_INTSTAT_FETCH_CMD << PARSER_INT_HOST_EN_BIT);
 
+    WRITE_MPEG_REG(PARSER_VIDEO_HOLE, 0x400);
+    WRITE_MPEG_REG(PARSER_AUDIO_HOLE, 0x400);
+
     discontinued_counter=0;
 #ifndef ENABLE_DEMUX_DRIVER
     r = request_irq(INT_DEMUX, tsdemux_isr,
@@ -526,6 +529,8 @@ void tsdemux_release(void)
 
 
     WRITE_MPEG_REG(PARSER_INT_ENABLE, 0);
+    WRITE_MPEG_REG(PARSER_VIDEO_HOLE, 0);
+    WRITE_MPEG_REG(PARSER_AUDIO_HOLE, 0);
     free_irq(INT_PARSER, (void *)tsdemux_fetch_id);
 	
 #ifndef ENABLE_DEMUX_DRIVER

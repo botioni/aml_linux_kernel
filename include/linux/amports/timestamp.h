@@ -42,4 +42,6 @@ extern void timestamp_pcrscr_inc(s32 val);
 
 extern void timestamp_pcrscr_enable(u32 enable);
 
+extern void timestamp_pcrscr_set_adj(s32 inc);
+
 #endif /* TIMESTAMP_H */

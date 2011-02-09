@@ -2,6 +2,7 @@
 
 #include <mach/am_regs.h>
 
+static s32 system_time_inc_adj = 0;
 static u32 system_time = 0;
 static u32 system_time_up = 0;
 
@@ -64,10 +65,17 @@ EXPORT_SYMBOL(timestamp_pcrscr_set);
 void timestamp_pcrscr_inc(s32 inc)
 {
     if (system_time_up)
-        system_time += inc;
+        system_time += inc + system_time_inc_adj;
 }
 
 EXPORT_SYMBOL(timestamp_pcrscr_inc);
+
+void timestamp_pcrscr_set_adj(s32 inc)
+{
+    system_time_inc_adj = inc;
+}
+
+EXPORT_SYMBOL(timestamp_pcrscr_set_adj);
 
 void timestamp_pcrscr_enable(u32 enable)
 {
