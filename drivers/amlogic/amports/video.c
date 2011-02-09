@@ -1966,30 +1966,47 @@ static ssize_t frame_rate_show(struct class *cla, struct class_attribute* attr, 
 		rate,vinfo->sync_duration_num/vinfo->sync_duration_den, time);          	
     return ret;
 }
+
 static ssize_t vframe_states_show(struct class *cla, struct class_attribute* attr, char* buf)
 {
-	int ret=0;
-	vframe_states_t states;
-	if(vf_get_states(&states)==0)
-	{
-		int ready;
-		ret+=sprintf(buf+ret,"vframe_pool_size=%d\n",states.vf_pool_size);
-		ret+=sprintf(buf+ret,"vframe get prt=%d\n",states.get_ptr);
-		ret+=sprintf(buf+ret,"vframe fill ptr=%d\n",states.fill_ptr);
- 		ret+=sprintf(buf+ret,"vframe put ptr=%d\n",states.put_ptr);
- 		ret+=sprintf(buf+ret,"vframe puting ptr=%d\n",states.putting_ptr);
- 		if(states.fill_ptr>=states.get_ptr)
- 			ready=states.fill_ptr-states.get_ptr;
- 		else
- 			ready=states.fill_ptr-states.get_ptr+states.vf_pool_size-1;
-		ret+=sprintf(buf+ret,"vframe ready num=%d\n",ready);
-	}
-	else
-	{
-		ret+=sprintf(buf+ret,"vframe no states\n");
-	}
-	return ret;
+    int ret=0;
+    vframe_states_t states;
+
+    if(vf_get_states(&states)==0) {
+        int ready;
+
+        ret += sprintf(buf+ret, "vframe_pool_size=%d\n", states.vf_pool_size);
+	ret += sprintf(buf+ret, "vframe get prt=%d\n", states.get_ptr);
+	ret += sprintf(buf+ret, "vframe fill ptr=%d\n", states.fill_ptr);
+ 	ret += sprintf(buf+ret, "vframe put ptr=%d\n", states.put_ptr);
+ 	ret += sprintf(buf+ret, "vframe puting ptr=%d\n", states.putting_ptr);
+
+        if(states.fill_ptr>=states.get_ptr)
+            ready = states.fill_ptr-states.get_ptr;
+        else
+            ready=states.fill_ptr-states.get_ptr+states.vf_pool_size-1;
+
+        ret += sprintf(buf+ret, "vframe ready num=%d\n", ready);
+
+    } else {
+        ret += sprintf(buf+ret,"vframe no states\n");
+    }
+
+    return ret;
 }
+
+static ssize_t device_resolution_show(struct class *cla, struct class_attribute* attr, char* buf)
+{
+    const vinfo_t *info = get_current_vinfo();
+
+    if (info != NULL) {
+        return sprintf(buf, "%dx%d\n", info->width, info->height);
+    }
+    else {
+        return sprintf(buf, "0x0\n");
+    }
+}
+
 static struct class_attribute amvideo_class_attrs[] = {
     __ATTR(axis,
            S_IRUGO | S_IWUSR,
@@ -2019,6 +2036,7 @@ static struct class_attribute amvideo_class_attrs[] = {
            S_IRUGO | S_IWUSR,
            video_saturation_show,
            video_saturation_store),   
+    __ATTR_RO(device_resolution),
     __ATTR_RO(frame_addr),
     __ATTR_RO(frame_canvas_width),
     __ATTR_RO(frame_canvas_height),
