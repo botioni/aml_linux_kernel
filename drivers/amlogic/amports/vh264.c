@@ -1213,8 +1213,8 @@ static struct platform_driver amvdec_h264_driver = {
         .probe   = amvdec_h264_probe,
         .remove  = amvdec_h264_remove,
 #ifdef CONFIG_PM
-	.suspend = amvdec_suspend,
-	.resume  = amvdec_resume,
+        .suspend = amvdec_suspend,
+        .resume  = amvdec_resume,
 #endif
         .driver  = {
                 .name = DRIVER_NAME,

@@ -36,7 +36,8 @@
 #define STBUF_SIZE   (64*1024)
 #define STBUF_WAIT_INTERVAL  HZ/100
 
-ulong fetchbuf=0, *fetchbuf_remap=NULL;
+ulong fetchbuf = 0;
+ulong *fetchbuf_remap = NULL;
 
 static s32 _stbuf_alloc(stream_buf_t *buf)
 {
@@ -53,40 +54,49 @@ static s32 _stbuf_alloc(stream_buf_t *buf)
                (buf->type == BUF_TYPE_VIDEO) ? "Video" : (buf->type == BUF_TYPE_AUDIO) ? "Audio" : "Subtitle",
                buf->buf_start, buf->buf_size);
     }
-      buf->flag |= BUF_FLAG_ALLOC;
+
+    buf->flag |= BUF_FLAG_ALLOC;
+
     return 0;
 }
-int  stbuf_change_size(struct stream_buf_s *buf,int size)
+
+int stbuf_change_size(struct stream_buf_s *buf, int size)
 {
-	u32 old_buf,old_size;
-	int ret;
-	printk("buffersize=%d,%d,start=%x\n",size,buf->buf_size,buf->buf_start);
-	if(buf->buf_size==size && buf->buf_start!=0)
-		return 0;
-	old_buf=buf->buf_start;
-	old_size=buf->buf_size;
+    u32 old_buf,old_size;
+    int ret;
+
+    printk("buffersize=%d,%d,start=%x\n",size,buf->buf_size,buf->buf_start);
+
+    if (buf->buf_size==size && buf->buf_start!=0)
+        return 0;
+
+    old_buf = buf->buf_start;
+    old_size = buf->buf_size;
 	
-	buf->buf_start=0;
-	buf->buf_size=size;
-	ret=size;
-	if(size==0 ||((ret=_stbuf_alloc(buf))==0))
-		{
-		/*
-		size=0:We only free the old memory;
-		alloc ok,changed to new buffer
-		*/
-			if(old_buf!=0)
-				free_pages(old_buf, get_order(old_size));
-			printk("changed the (%d) buffer size from %d to %d\n",buf->type,old_size,size);
-		}
-	else
-		{/*alloc failed*/
-			buf->buf_start=old_buf;
-			buf->buf_size=old_size;
-			printk("changed the (%d) buffer size from %d to %d,failed\n",buf->type,old_size,size);
-		}
+    buf->buf_start = 0;
+    buf->buf_size = size;
+    ret = size;
+
+    if (size==0 ||((ret=_stbuf_alloc(buf))==0))
+    {
+        /*
+         * size=0:We only free the old memory;
+         * alloc ok,changed to new buffer
+         */
+        if (old_buf!=0)
+            free_pages(old_buf, get_order(old_size));
+
+        printk("changed the (%d) buffer size from %d to %d\n",buf->type,old_size,size);
+    }
+    else
+    {
+        /* alloc failed */
+        buf->buf_start=old_buf;
+        buf->buf_size=old_size;
+        printk("changed the (%d) buffer size from %d to %d,failed\n",buf->type,old_size,size);
+    }
 	
-	return ret;
+    return ret;
 }
 
 int stbuf_fetch_init(void)
@@ -168,12 +178,13 @@ u32 stbuf_space(struct stream_buf_s *buf)
 {
     /* reserved space for safe write, the parser fifo size is 1024byts, so reserve it */
     int size=(buf->buf_size - _READ_ST_REG(LEVEL))-1024;
-      return size>0?size:0;
+
+    return size>0?size:0;
 }
 
 u32 stbuf_size(struct stream_buf_s *buf)
 {
-	return buf->buf_size;
+    return buf->buf_size;
 }
 
 s32 stbuf_init(struct stream_buf_s *buf)
@@ -193,6 +204,7 @@ s32 stbuf_init(struct stream_buf_s *buf)
             return r;
         phy_addr = virt_to_phys((void *)buf->buf_start);
     }
+
     init_waitqueue_head(&buf->wq);
 
     _WRITE_ST_REG(CONTROL, 0);
@@ -259,17 +271,16 @@ s32 stbuf_wait_space(struct stream_buf_s *stream_buf, size_t count)
     if (wait_event_interruptible_timeout(p->wq, stbuf_space(p) >= count, time_out)== 0) {
         del_timer_sync(&p->timer);
         
-        //printk("[stbuf_wait_space]time out,eagain!\n");
         return -EAGAIN;        
     }    
     #endif
     return 0;
 }
 
-
 void stbuf_release(struct stream_buf_s *buf)
 { 
     buf->first_tstamp=INVALID_PTS;
+
     if(buf->flag & BUF_FLAG_IOMEM)
         buf->flag = BUF_FLAG_IOMEM;
     else
