@@ -188,8 +188,10 @@ s32 amvdec_loadmc(const u32 *p)
 
 void amvdec_start(void)
 {
-
+#ifdef CONFIG_WAKELOCK
 	amvdec_wake_lock();
+#endif
+
     /* additional cbus dummy register reading for timing control */
     READ_MPEG_REG(RESET0_REGISTER);
     READ_MPEG_REG(RESET0_REGISTER);
@@ -225,8 +227,10 @@ void amvdec_stop(void)
     READ_MPEG_REG(RESET0_REGISTER);
     READ_MPEG_REG(RESET0_REGISTER);
     READ_MPEG_REG(RESET0_REGISTER);
-	amvdec_wake_unlock();
 
+#ifdef CONFIG_WAKELOCK
+	amvdec_wake_unlock();
+#endif
 }
 
 void amvdec_enable(void)
