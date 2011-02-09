@@ -885,6 +885,13 @@ static  struct platform_device aml_rtc_device = {
     };
 #endif
 
+#ifdef CONFIG_TWX_TC101
+static struct platform_device twx_device = {
+    .name       = "twx",
+    .id         = -1,
+};
+#endif
+
 #if defined(CONFIG_SUSPEND)
 static void set_vccx2(int power_on)
 {
@@ -1688,6 +1695,9 @@ static struct platform_device __initdata *platform_devs[] = {
     #endif
     #if defined(CONFIG_AMLOGIC_BACKLIGHT)
         &aml_bl_device,
+    #endif
+    #ifdef CONFIG_TWX_TC101
+        &twx_device,
     #endif
     #if defined(CONFIG_AM_TV_OUTPUT)||defined(CONFIG_AM_TCON_OUTPUT)
         &vout_device,   

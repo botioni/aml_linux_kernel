@@ -18,8 +18,21 @@
 #include <mach/pinmux.h>
 #include <mach/gpio.h>
 #include <linux/twx_tc101.h>
+#include <linux/platform_device.h>
+#ifdef CONFIG_SN7325
+#include <linux/sn7325.h>
+#endif
+#ifdef CONFIG_HAS_EARLYSUSPEND
+#include <linux/earlysuspend.h>
+static struct early_suspend early_suspend;
+static int early_suspend_flag = 0;
+#endif
 
+static void twx_early_suspend(struct early_suspend *h);
+static void twx_late_resume(struct early_suspend *h);
+	
 static struct i2c_client *twx_tc101_client;
+#if 0
 static int twx_tc101_i2c_read(unsigned char *buff, unsigned len)
 {
     int res = 0;
@@ -45,6 +58,7 @@ static int twx_tc101_i2c_read(unsigned char *buff, unsigned len)
 
     return res;
 }
+#endif
 
 static int twx_tc101_i2c_write(unsigned char *buff, unsigned len)
 {
@@ -72,7 +86,7 @@ static int twx_tc101_send(unsigned short addr, u8 data)
 	return twx_tc101_i2c_write(buf, 3);
 }
 
-
+#if 0
 static u8 twx_tc101_recv(unsigned short addr)
 {
 
@@ -103,8 +117,9 @@ static u8 twx_tc101_recv(unsigned short addr)
 
     return res;
 }
+#endif
 
-static int twx_tc101_probe(struct i2c_client *client, const struct i2c_device_id *id)
+static int twx_tc101_i2c_probe(struct i2c_client *client, const struct i2c_device_id *id)
 {
     int res = 0;
     if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C)) {
@@ -142,7 +157,7 @@ out:
     return res;
 }
 
-static int twx_tc101_remove(struct i2c_client *client)
+static int twx_tc101_i2c_remove(struct i2c_client *client)
 {
     return 0;
 }
@@ -152,17 +167,17 @@ static const struct i2c_device_id twx_tc101_id[] = {
     { }
 };
 
-static struct i2c_driver twx_tc101_driver = {
-    .probe = twx_tc101_probe,
-    .remove = twx_tc101_remove,
+static struct i2c_driver twx_tc101_i2c_driver = {
+    .probe = twx_tc101_i2c_probe,
+    .remove = twx_tc101_i2c_remove,
     .id_table = twx_tc101_id,
     .driver = {
     .name = "twx_tc101",
     },
 };
 
-static int __init twx_tc101_init(void)
-{
+
+static int twx_tc101_probe(struct platform_device *pdev){
     int res;
 	
 	printk("\n\nMINI LVDS Driver Init.\n\n");
@@ -173,17 +188,138 @@ static int __init twx_tc101_init(void)
     }
     else
     {
-        res = i2c_add_driver(&twx_tc101_driver);
+        res = i2c_add_driver(&twx_tc101_i2c_driver);
         if (res < 0) {
             printk("add twx_tc101 i2c driver error\n");
         }
     }
+	
+#ifdef CONFIG_HAS_EARLYSUSPEND
+	early_suspend.level = EARLY_SUSPEND_LEVEL_STOP_DRAWING;
+	early_suspend.suspend = twx_early_suspend;
+	early_suspend.resume = twx_late_resume;
+	early_suspend.param = pdev;
+	register_early_suspend(&early_suspend);
+#endif
 
     return res;
 }
 
+static int twx_tc101_remove(struct platform_device *pdev)
+{
+  return 0;
+}
+
+static void power_on_lcd(void)
+{
+    //int setIO_level(unsigned char port, unsigned char iobits, unsigned char offset);    
+    //LCD3.3V  EIO -> OD0: 0 
+#ifdef CONFIG_SN7325
+    configIO(0, 0);
+    setIO_level(0, 0, 0);
+#endif
+    msleep(20);
+    //AVDD  EIO -> OD4: 1
+#ifdef CONFIG_SN7325
+    configIO(0, 0);
+    setIO_level(0, 1, 4);
+#endif
+    msleep(50);
+}
+
+static int twx_tc101_suspend(struct platform_device * pdev, pm_message_t mesg)
+{
+#ifdef CONFIG_HAS_EARLYSUSPEND
+	if (early_suspend_flag)
+		return 0;
+#endif
+	return 0;
+}
+
+static int twx_tc101_resume(struct platform_device * pdev)
+{
+	int res = 0;
+
+#ifdef CONFIG_HAS_EARLYSUSPEND
+	if (early_suspend_flag)
+		return 0;
+#endif
+
+	/*
+	* already in late resume, but lcd resume later than tc101, 
+	* so call power_on_lcd here, and lcd_resume would call it again
+	*/
+	power_on_lcd();
+
+  if (twx_tc101_client)
+  {
+			twx_tc101_send(0xf830, 0xb2);msleep(10);//
+			twx_tc101_send(0xf831, 0xf0);msleep(10);//
+			twx_tc101_send(0xf833, 0xc2);msleep(10);//
+			twx_tc101_send(0xf840, 0x80);msleep(10);//
+			twx_tc101_send(0xf881, 0xec);msleep(10);//
+      res = 0;
+  }
+  else
+  {
+      res = i2c_add_driver(&twx_tc101_i2c_driver);
+      if (res < 0) {
+          printk("add twx_tc101 i2c driver error\n");
+      }
+  }
+  
+	return res;
+}
+
+#ifdef CONFIG_HAS_EARLYSUSPEND
+static void twx_early_suspend(struct early_suspend *h)
+{
+	early_suspend_flag = 1;
+	twx_tc101_suspend((struct platform_device *)h->param, PMSG_SUSPEND);
+}
+
+static void twx_late_resume(struct early_suspend *h)
+{
+	if (!early_suspend_flag)
+		return;
+	early_suspend_flag = 0;
+	twx_tc101_resume((struct platform_device *)h->param);
+}
+#endif
+
+
+static struct platform_driver twx_tc101_driver = {
+	.probe = twx_tc101_probe,
+  .remove = twx_tc101_remove,
+  .suspend = twx_tc101_suspend,
+  .resume = twx_tc101_resume,
+	.driver = {
+		.name = "twx",
+	},
+};
+
+static int __init twx_tc101_init(void)
+{
+	int ret = 0;
+    printk( "twx_tc101_init. \n");
+
+    ret = platform_driver_register(&twx_tc101_driver);
+    if (ret != 0) {
+        printk(KERN_ERR "failed to register twx module, error %d\n", ret);
+        return -ENODEV;
+    }
+    return ret;
+}
+
+static void __exit twx_tc101_exit(void)
+{
+	pr_info("twx_tc101: exit\n");
+    platform_driver_unregister(&twx_tc101_driver);
+}
+	
 //arch_initcall(twx_tc101_init);
 module_init(twx_tc101_init);
+module_exit(twx_tc101_exit);
 
 MODULE_AUTHOR("AMLOGIC");
 MODULE_DESCRIPTION("MINILVDS driver for TWX_TC101");
