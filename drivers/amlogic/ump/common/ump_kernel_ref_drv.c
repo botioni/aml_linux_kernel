@@ -136,6 +136,7 @@ _mali_osk_errcode_t _ump_ukk_allocate( _ump_uk_allocate_s *user_interaction )
 		return _MALI_OSK_ERR_NOMEM;
 	}
 
+	_mali_osk_lock_wait(session_data->lock, _MALI_OSK_LOCKMODE_RW);
 	/* Create a secure ID for this allocation */
 	_mali_osk_lock_wait(device.secure_id_map_lock, _MALI_OSK_LOCKMODE_RW);
 	map_id = ump_descriptor_mapping_allocate_mapping(device.secure_id_map, (void*)new_allocation);
@@ -180,15 +181,14 @@ _mali_osk_errcode_t _ump_ukk_allocate( _ump_uk_allocate_s *user_interaction )
 
 	/* Initialize the session_memory_element, and add it to the session object */
 	session_memory_element->mem = new_allocation;
-	_mali_osk_lock_wait(session_data->lock, _MALI_OSK_LOCKMODE_RW);
 	_mali_osk_list_add(&(session_memory_element->list), &(session_data->list_head_session_memory_list));
-	_mali_osk_lock_signal(session_data->lock, _MALI_OSK_LOCKMODE_RW);
 
 	user_interaction->secure_id = new_allocation->secure_id;
 	user_interaction->size = new_allocation->size_bytes;
 	DBG_MSG(3, ("UMP memory allocated. ID: %u, size: %lu\n", new_allocation->secure_id, new_allocation->size_bytes));
 
 	_mali_osk_lock_signal(device.secure_id_map_lock, _MALI_OSK_LOCKMODE_RW);
+	_mali_osk_lock_signal(session_data->lock, _MALI_OSK_LOCKMODE_RW);
 
 	return _MALI_OSK_ERR_OK;
 }
