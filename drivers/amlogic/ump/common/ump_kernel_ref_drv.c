@@ -144,6 +144,7 @@ _mali_osk_errcode_t _ump_ukk_allocate( _ump_uk_allocate_s *user_interaction )
 	if (map_id < 0)
 	{
 		_mali_osk_lock_signal(device.secure_id_map_lock, _MALI_OSK_LOCKMODE_RW);
+		_mali_osk_lock_signal(session_data->lock, _MALI_OSK_LOCKMODE_RW);
 		_mali_osk_free(session_memory_element);
 		_mali_osk_free(new_allocation);
 		DBG_MSG(1, ("Failed to allocate secure ID in ump_ioctl_allocate()\n"));
@@ -171,6 +172,7 @@ _mali_osk_errcode_t _ump_ukk_allocate( _ump_uk_allocate_s *user_interaction )
 		DBG_MSG(3, ("OOM: No more UMP memory left. Failed to allocate memory in ump_ioctl_allocate(). Size: %lu, requested size: %lu\n", new_allocation->size_bytes, (unsigned long)user_interaction->size));
 		ump_descriptor_mapping_free(device.secure_id_map, map_id);
 		_mali_osk_lock_signal(device.secure_id_map_lock, _MALI_OSK_LOCKMODE_RW);
+		_mali_osk_lock_signal(session_data->lock, _MALI_OSK_LOCKMODE_RW);
 		_mali_osk_free(new_allocation);
 		_mali_osk_free(session_memory_element);
 		return _MALI_OSK_ERR_INVALID_FUNC;
