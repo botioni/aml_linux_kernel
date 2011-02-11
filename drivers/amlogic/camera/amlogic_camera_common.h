@@ -32,10 +32,18 @@
 #define AMLOGIC_CAMERA_GC0308_NAME     			"camera_gc0308"
 #define AMLOGIC_CAMERA_GC0308_I2C_NAME        	"gc0308_i2c"
 
+#define AMLOGIC_CAMERA_GT2005_NAME     			"camera_gt2005"
+#define AMLOGIC_CAMERA_GT2005_I2C_NAME        	        "gt2005_i2c"
 #ifdef CONFIG_CAMERA_OV5640
 #define AMLOGIC_CAMERA_DEVICE_NAME_FIRST      AMLOGIC_CAMERA_OV5640_NAME
 #define AMLOGIC_CAMERA_I2C_NAME_FIRST         AMLOGIC_CAMERA_OV5640_I2C_NAME
 #endif
+
+#ifdef CONFIG_CAMERA_GT2005
+#define AMLOGIC_CAMERA_DEVICE_NAME_FIRST      AMLOGIC_CAMERA_GT2005_NAME
+#define AMLOGIC_CAMERA_I2C_NAME_FIRST         AMLOGIC_CAMERA_GT2005_I2C_NAME
+#endif
+
 
 #ifdef CONFIG_CAMERA_GC0308
 #define AMLOGIC_CAMERA_DEVICE_NAME_FIRST      AMLOGIC_CAMERA_GC0308_NAME
@@ -121,4 +129,11 @@ FUNCRION_SCOPE int  gc0308_read(char *buf, int len);
 FUNCRION_SCOPE struct aml_camera_ctl_s amlogic_camera_info_gc0308;
 #endif
 
+#ifdef CONFIG_CAMERA_GT2005
+FUNCRION_SCOPE int  gt2005_write(char *buf, int len);
+FUNCRION_SCOPE int  gt2005_write_byte(unsigned short addr, unsigned char data);
+FUNCRION_SCOPE int  gt2005_read(char *buf, int len);
+FUNCRION_SCOPE unsigned char gt2005_read_byte(unsigned short addr);
+FUNCRION_SCOPE struct aml_camera_ctl_s amlogic_camera_info_gt2005;
+#endif
 #endif /* #define _AMLOGIC_CAMERA_H */

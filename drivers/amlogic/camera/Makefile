@@ -30,5 +30,5 @@ camera_ov5640-objs := amlogic_camera_ov5640.o
 obj-$(CONFIG_CAMERA_GC0308) += camera_gc0308.o
 camera_gc0308-objs := amlogic_camera_gc0308.o
 
-
-
+obj-$(CONFIG_CAMERA_GT2005) += camera_gt2005.o
+camera_gt2005-objs := amlogic_camera_gt2005.o

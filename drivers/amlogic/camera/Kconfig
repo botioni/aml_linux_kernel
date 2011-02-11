@@ -43,4 +43,10 @@ config CAMERA_GC0308
 	depends on AMLOGIC_CAMERA_ENABLE
 	help
 		GalaxyCore GC0308
+		
+config CAMERA_GT2005
+	tristate "CAMERA GT2005 Driver"
+	default n
+	help
+		GalaxyCore GT2005		
 endmenu

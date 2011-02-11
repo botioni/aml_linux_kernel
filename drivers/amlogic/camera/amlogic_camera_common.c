@@ -49,6 +49,7 @@
 #include "amlogic_camera_common.h"
 #include "amlogic_camera_ov5640.h"
 #include "amlogic_camera_gc0308.h"
+#include "amlogic_camera_gt2005.h"
 
 //add for gc0308
 #include <mach/am_eth_pinmux.h>
@@ -87,6 +88,24 @@ struct aml_camera_ctl_s amlogic_camera_info_ov5640 = {
 struct aml_camera_ctl_s amlogic_camera_info_gc0308 = {
     .para = {
     	.camera_name= AMLOGIC_CAMERA_GC0308_NAME,
+        .saturation = SATURATION_0_STEP,
+        .brighrness = BRIGHTNESS_0_STEP,
+        .contrast = CONTRAST_0_STEP,
+        .hue = HUE_0_DEGREE,
+//      .special_effect = SPECIAL_EFFECT_NORMAL,
+        .exposure = EXPOSURE_0_STEP,
+        .sharpness = SHARPNESS_AUTO_STEP,
+        .mirro_flip = MF_NORMAL,
+        .resolution = TVIN_SIG_FMT_CAMERA_1280X720P_30Hz,
+    },
+    .awb_mode = ADVANCED_AWB,
+    .test_mode = TEST_OFF,
+};
+#endif
+#ifdef CONFIG_CAMERA_GT2005
+struct aml_camera_ctl_s amlogic_camera_info_gt2005 = {
+    .para = {
+    	.camera_name= AMLOGIC_CAMERA_GT2005_NAME,
         .saturation = SATURATION_0_STEP,
         .brighrness = BRIGHTNESS_0_STEP,
         .contrast = CONTRAST_0_STEP,
@@ -465,6 +484,62 @@ int  gc0308_read(char *buf, int len)
 }
 
 #endif
+
+#ifdef CONFIG_CAMERA_GT2005
+int gt2005_write(char *buf, int len)
+{
+	if (!strcmp(AMLOGIC_CAMERA_DEVICE_NAME_FIRST,AMLOGIC_CAMERA_GT2005_NAME))
+	{
+		return camera_write_first(buf, len);
+	}
+	#ifdef CONFIG_AMLOGIC_SECOND_CAMERA_ENABLE
+	else if (!strcmp(AMLOGIC_CAMERA_DEVICE_NAME_SECOND,AMLOGIC_CAMERA_GT2005_NAME))
+	{
+		return camera_write_second(buf, len);
+	}
+	#endif
+}
+int gt2005_write_byte(unsigned short addr, unsigned char data)
+{
+	if (!strcmp(AMLOGIC_CAMERA_DEVICE_NAME_FIRST,AMLOGIC_CAMERA_GT2005_NAME))
+	{
+		return camera_write_byte_first(addr, data);
+	}
+	#ifdef CONFIG_AMLOGIC_SECOND_CAMERA_ENABLE
+	else if (!strcmp(AMLOGIC_CAMERA_DEVICE_NAME_SECOND,AMLOGIC_CAMERA_GT2005_NAME))
+	{
+		return camera_write_byte_second(addr, data);
+	}
+	#endif
+}
+int gt2005_read(char *buf, int len)
+{
+	if (!strcmp(AMLOGIC_CAMERA_DEVICE_NAME_FIRST,AMLOGIC_CAMERA_GT2005_NAME))
+	{
+		return camera_read_first(buf, len);
+	}
+	#ifdef CONFIG_AMLOGIC_SECOND_CAMERA_ENABLE
+	else if (!strcmp(AMLOGIC_CAMERA_DEVICE_NAME_SECOND,AMLOGIC_CAMERA_GT2005_NAME))
+	{
+		return camera_read_second(buf, len);
+	}
+	#endif
+}
+
+unsigned char gt2005_read_byte(unsigned short addr)
+{
+	if (!strcmp(AMLOGIC_CAMERA_DEVICE_NAME_FIRST,AMLOGIC_CAMERA_GT2005_NAME))
+	{
+		return camera_read_byte_first(addr);
+	}
+	#ifdef CONFIG_AMLOGIC_SECOND_CAMERA_ENABLE
+	else if (!strcmp(AMLOGIC_CAMERA_DEVICE_NAME_SECOND,AMLOGIC_CAMERA_GT2005_NAME))
+	{
+		return camera_read_byte_second(addr);
+	}
+	#endif
+}
+#endif
 //int  ov5640_write_word(unsigned short addr, unsigned short data);
 //unsigned short ov5640_read_word(unsigned short addr);
 //unsigned char  ov5640_read_byte(unsigned short addr );
@@ -512,6 +587,10 @@ static int camera_ioctl(struct inode *inode, struct file *file, unsigned int cmd
                 if (!strcmp(para.camera_name,AMLOGIC_CAMERA_GC0308_NAME))
                     memcpy(&amlogic_camera_info_gc0308.para, &para,sizeof(struct camera_info_s) );
                 #endif
+                #ifdef CONFIG_CAMERA_GT2005
+                if (!strcmp(para.camera_name,AMLOGIC_CAMERA_GT2005_NAME))
+                    memcpy(&amlogic_camera_info_gt2005.para, &para,sizeof(struct camera_info_s) );
+                #endif
             }
             printk("saturation = %d, brighrness = %d, contrast = %d, hue = %d, exposure = %d, sharpness = %d, mirro_flip = %d, resolution = %d . \n",
                 para.saturation, para.brighrness, para.contrast, para.hue, para.exposure, para.sharpness, para.mirro_flip, para.resolution);
@@ -524,7 +603,11 @@ static int camera_ioctl(struct inode *inode, struct file *file, unsigned int cmd
             if (!strcmp(para.camera_name,AMLOGIC_CAMERA_GC0308_NAME))
                 start_camera_gc0308();
             #endif
-
+            #ifdef CONFIG_CAMERA_GT2005
+            if (!strcmp(para.camera_name,AMLOGIC_CAMERA_GT2005_NAME))
+                start_camera_gt2005();
+            #endif
+            
             printk(KERN_INFO " start camera  %s. \n ",para.camera_name);
             break;
 
@@ -543,7 +626,10 @@ static int camera_ioctl(struct inode *inode, struct file *file, unsigned int cmd
             if (!strcmp(para.camera_name,AMLOGIC_CAMERA_GC0308_NAME))
                 stop_camera_gc0308();
             #endif
-
+            #ifdef CONFIG_CAMERA_GT2005
+            if (!strcmp(para.camera_name,AMLOGIC_CAMERA_GT2005_NAME))
+                stop_camera_gt2005();
+            #endif
             printk(KERN_INFO " stop camera %s. \n ",para.camera_name);
 
             break;
@@ -564,6 +650,10 @@ static int camera_ioctl(struct inode *inode, struct file *file, unsigned int cmd
              if (!strcmp(para.camera_name,AMLOGIC_CAMERA_GC0308_NAME))
                  set_camera_para_gc0308(&para);
              #endif
+             #ifdef CONFIG_CAMERA_GT2005
+             if (!strcmp(para.camera_name,AMLOGIC_CAMERA_GT2005_NAME))
+                 set_camera_para_gt2005(&para);
+             #endif
              printk(KERN_INFO " set camera para %s. \n ",para.camera_name);
             }
             break;
@@ -577,6 +667,10 @@ static int camera_ioctl(struct inode *inode, struct file *file, unsigned int cmd
              #ifdef CONFIG_CAMERA_GC0308
              if (!strcmp(para.camera_name,AMLOGIC_CAMERA_GC0308_NAME))
                  copy_to_user((void __user *)arg, &amlogic_camera_info_gc0308.para, sizeof(struct camera_info_s));
+             #endif
+             #ifdef CONFIG_CAMERA_GT2005
+             if (!strcmp(para.camera_name,AMLOGIC_CAMERA_GT2005_NAME))
+                 copy_to_user((void __user *)arg, &amlogic_camera_info_gt2005.para, sizeof(struct camera_info_s));
              #endif
              printk(KERN_INFO " get camera para %s. \n ",para.camera_name);
 
@@ -703,7 +797,11 @@ static int amlogic_camera_remove(struct platform_device *pdev)
 #endif
 #ifdef CONFIG_CAMERA_GC0308
 if (!strcmp(AMLOGIC_CAMERA_DEVICE_NAME_FIRST,AMLOGIC_CAMERA_GC0308_NAME))
-        power_down_sw_camera_gc0308();
+        stop_camera_gc0308();
+#endif
+#ifdef CONFIG_CAMERA_GT2005
+if (!strcmp(AMLOGIC_CAMERA_DEVICE_NAME_FIRST,AMLOGIC_CAMERA_GT2005_NAME))
+        stop_camera_gt2005();
 #endif
     i2c_del_driver(&amlogic_camera_i2c_driver);
     device_destroy(camera_clsp, MKDEV(MAJOR(camera_devno), 0));
@@ -833,7 +931,11 @@ static int amlogic_camera_remove_second(struct platform_device *pdev)
 #endif
 #ifdef CONFIG_CAMERA_GC0308
     if (!strcmp(AMLOGIC_CAMERA_DEVICE_NAME_SECOND,AMLOGIC_CAMERA_GC0308_NAME))
-        power_down_sw_camera_gc0308();
+        stop_camera_gc0308();
+#endif
+#ifdef CONFIG_CAMERA_GT2005
+    if (!strcmp(AMLOGIC_CAMERA_DEVICE_NAME_SECOND,AMLOGIC_CAMERA_GT2005_NAME))
+        stop_camera_gt2005();
 #endif
     i2c_del_driver(&amlogic_camera_i2c_driver_second);
     device_destroy(camera_clsp_second, MKDEV(MAJOR(camera_devno_second), 0));
@@ -858,6 +960,14 @@ static int __init amlogic_camera_init(void)
 {
     int ret = 0;
     printk( "amlogic camera driver: init. \n");
+    if (!strcmp(AMLOGIC_CAMERA_DEVICE_NAME_FIRST,AMLOGIC_CAMERA_GT2005_NAME))
+    {
+	    eth_set_pinmux(ETH_BANK0_GPIOC3_C12,ETH_CLK_OUT_GPIOC12_REG3_1, 1);
+		#ifdef CONFIG_SN7325
+	    	configIO(1, 0);
+	    	setIO_level(1, 1, 0);
+	    #endif
+    }
    /* if (!strcmp(AMLOGIC_CAMERA_DEVICE_NAME_FIRST,AMLOGIC_CAMERA_GC0308_NAME))
     {
 	    eth_set_pinmux(ETH_BANK0_GPIOC3_C12,ETH_CLK_OUT_GPIOC12_REG3_1, 1);
@@ -872,6 +982,14 @@ static int __init amlogic_camera_init(void)
         return -ENODEV;
     }
     #ifdef CONFIG_AMLOGIC_SECOND_CAMERA_ENABLE
+    if (!strcmp(AMLOGIC_CAMERA_DEVICE_NAME_SECOND,AMLOGIC_CAMERA_GT2005_NAME))
+    {
+	    eth_set_pinmux(ETH_BANK0_GPIOC3_C12,ETH_CLK_OUT_GPIOC12_REG3_1, 1);
+		#ifdef CONFIG_SN7325
+	    	configIO(1, 0);
+	    	setIO_level(1, 1, 0);
+	    #endif
+    }
    /* if (!strcmp(AMLOGIC_CAMERA_DEVICE_NAME_SECOND,AMLOGIC_CAMERA_GC0308_NAME))
     {
 	    eth_set_pinmux(ETH_BANK0_GPIOC3_C12,ETH_CLK_OUT_GPIOC12_REG3_1, 1);
