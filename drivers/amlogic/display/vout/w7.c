@@ -166,10 +166,15 @@ void power_off_backlight(void)
 
 static void power_on_lcd(void)
 {
-    //EIO -> OD7: 0  lcd 3.3v
+    //EIO -> OD0: 0  lcd 3.3v
 #ifdef CONFIG_SN7325
     configIO(0, 0);
-    setIO_level(0, 0, 7);
+    setIO_level(0, 1, 4);
+#endif
+    //EIO -> OD0: 0  lcd 3.3v
+#ifdef CONFIG_SN7325
+    configIO(0, 0);
+    setIO_level(0, 0, 0);
 #endif
     msleep(10);
     //VCCx2_EN D17 GPIOA_6 --> H
