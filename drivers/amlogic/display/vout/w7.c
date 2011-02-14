@@ -204,8 +204,8 @@ static void set_tcon_pinmux(void)
     //PP1 -> UPDN:0, PP2 -> SHLR:1
 #ifdef CONFIG_SN7325
     configIO(1, 0);
-    setIO_level(1, 1, 1);
-    setIO_level(1, 0, 2);
+    setIO_level(1, 0, 1);
+    setIO_level(1, 1, 2);
 #endif
 }
 static void t13_power_on(void)

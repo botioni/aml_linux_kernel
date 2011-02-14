@@ -370,8 +370,8 @@ static void ProcessReport(unsigned char *buf, int buflen)
 				input_report_abs(input_dev, ABS_MT_TRACKING_ID, i);			
 				input_report_abs(input_dev, ABS_MT_TOUCH_MAJOR, PointBuf[i].Status);
 				input_report_abs(input_dev, ABS_MT_WIDTH_MAJOR, 0);
-				input_report_abs(input_dev, ABS_MT_POSITION_X, 2047-PointBuf[i].X);
-				input_report_abs(input_dev, ABS_MT_POSITION_Y, 2047-PointBuf[i].Y);
+				input_report_abs(input_dev, ABS_MT_POSITION_X, PointBuf[i].X);
+				input_report_abs(input_dev, ABS_MT_POSITION_Y, PointBuf[i].Y);
 
 				input_mt_sync(input_dev);
 
