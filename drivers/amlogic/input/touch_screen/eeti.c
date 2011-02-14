@@ -42,6 +42,7 @@
 #include <linux/version.h>
 #include <linux/input.h>
 #include <linux/irq.h>
+#include <linux/i2c/eeti.h>
 
 #define irq_to_gpio(irq) ((GPIOD_bank_bit2_24(24)<<16) |GPIOD_bit_bit2_24(24)) 
 
@@ -109,6 +110,7 @@ static struct class *egalax_class;
 static struct input_dev *input_dev = NULL;
 static struct point_data PointBuf[MAX_SUPPORT_POINT];
 #endif //#ifndef _NON_INPUT_DEV
+struct eeti_platform_data * eeti_data;
 
 static int egalax_cdev_open(struct inode *inode, struct file *filp)
 {
@@ -572,7 +574,10 @@ static int __devinit egalax_i2c_probe(struct i2c_client *client)
 {
 	int ret;
 	int gpio = irq_to_gpio(client->irq);
-
+	 
+    eeti_data = (struct eeti_platform_data*)client->dev.platform_data;
+    if(eeti_data->touch_on)
+    eeti_data->touch_on(1)
 	DBG();
 	printk(KERN_DEBUG "[egalax_i2c]: start probe\n");
 
