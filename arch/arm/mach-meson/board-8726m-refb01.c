@@ -434,17 +434,16 @@ static struct resource amlogic_card_resource[] = {
 };
 
 void extern_wifi_power(int is_power)
-{
-    if (0 == is_power)
-    {
-        set_gpio_val(GPIOD_bank_bit2_24(20), GPIOD_bit_bit2_24(20), 1); //high
-        set_gpio_mode(GPIOD_bank_bit2_24(20), GPIOD_bit_bit2_24(20), GPIO_OUTPUT_MODE);
+{//extern io OD5
+    if(1 == is_power){
+        configIO(0, 0);
+        setIO_level(0,1, 5);        
     }
-    else
-    {
-        set_gpio_val(GPIOD_bank_bit2_24(20), GPIOD_bit_bit2_24(20), 0); //low
-        set_gpio_mode(GPIOD_bank_bit2_24(20), GPIOD_bit_bit2_24(20), GPIO_OUTPUT_MODE);
+    else{
+        configIO(0, 0);
+        setIO_level(0, 0, 5);        
     }
+    
     return;
 }
 
