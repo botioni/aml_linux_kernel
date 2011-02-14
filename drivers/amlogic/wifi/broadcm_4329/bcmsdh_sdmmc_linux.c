@@ -46,7 +46,9 @@
 #if !defined(SDIO_DEVICE_ID_BROADCOM_4329)
 #define SDIO_DEVICE_ID_BROADCOM_4329	0x4329
 #endif /* !defined(SDIO_DEVICE_ID_BROADCOM_4329) */
-
+#if !defined(SDIO_DEVICE_ID_BROADCOM_4319)
+#define SDIO_DEVICE_ID_BROADCOM_4319	0x4319
+#endif /* !defined(SDIO_DEVICE_ID_BROADCOM_4329) */
 #include <bcmsdh_sdmmc.h>
 
 #include <dhd_dbg.h>
@@ -125,6 +127,7 @@ static void bcmsdh_sdmmc_remove(struct sdio_func *func)
 static const struct sdio_device_id bcmsdh_sdmmc_ids[] = {
 	{ SDIO_DEVICE(SDIO_VENDOR_ID_BROADCOM, SDIO_DEVICE_ID_BROADCOM_4325) },
 	{ SDIO_DEVICE(SDIO_VENDOR_ID_BROADCOM, SDIO_DEVICE_ID_BROADCOM_4329) },
+	{ SDIO_DEVICE(SDIO_VENDOR_ID_BROADCOM, SDIO_DEVICE_ID_BROADCOM_4319) },	
 	{ /* end: all zeroes */				},
 };
 

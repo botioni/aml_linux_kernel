@@ -26,7 +26,8 @@ fw-shipped- += acenic/tg1.bin
 else
 acenic-objs := acenic/tg1.bin acenic/tg2.bin
 endif
-fw-shipped-$(CONFIG_SDIO_DHD_CDC_WIFI) += broadcm_4329/sdio-g-cdc-full11n-reclaim-roml-wme-idsup.bin broadcm_4329/nvram.txt
+fw-shipped-$(CONFIG_SDIO_DHD_CDC_WIFI_4319) += broadcm_4319/sdio-g-cdc-full11n-reclaim-roml-wme-idsup-40m.bin broadcm_4319/nvram_4319_201008.txt
+fw-shipped-$(CONFIG_SDIO_DHD_CDC_WIFI_4329) += broadcm_4329/sdio-g-cdc-full11n-reclaim-roml-wme-idsup.bin broadcm_4329/nvram.txt
 fw-shipped-$(CONFIG_SDIO_ATHEROS_6302_WIFI) += atheros_6302/otp.bin.z77 atheros_6302/athwlan.bin.z77 atheros_6302/data.patch.bin atheros_6302/bdata.SD31.bin
 fw-shipped-$(CONFIG_SDIO_ATHEROS_6102_WIFI) += atheros_6102/calData_ar6102_15dBm.bin atheros_6102/athwlan.bin.z77 atheros_6102/data.patch.hw2_0.bin
 fw-shipped-$(CONFIG_SDIO_MARVELL_NH387_WIFI) += mrvl/sd8787_uapsta.bin mrvl/sd8787_uapsta_w1.bin
