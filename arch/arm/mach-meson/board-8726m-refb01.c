@@ -232,13 +232,13 @@ static struct platform_device input_device_key = {
 static int sn7325_pwr_rst(void)
 {
     //reset
-    set_gpio_val(GPIOA_bank_bit(4), GPIOA_bit_bit0_14(4), 0); //low
-    set_gpio_mode(GPIOA_bank_bit(4), GPIOA_bit_bit0_14(4), GPIO_OUTPUT_MODE);
+    set_gpio_val(GPIOD_bank_bit2_24(20), GPIOD_bit_bit2_24(20), 0); //low
+    set_gpio_mode(GPIOD_bank_bit2_24(20), GPIOD_bit_bit2_24(20), GPIO_OUTPUT_MODE);
 
     udelay(2); //delay 2us
 
-    set_gpio_val(GPIOA_bank_bit(4), GPIOA_bit_bit0_14(4), 1); //high
-    set_gpio_mode(GPIOA_bank_bit(4), GPIOA_bit_bit0_14(4), GPIO_OUTPUT_MODE);
+    set_gpio_val(GPIOD_bank_bit2_24(20), GPIOD_bit_bit2_24(20), 1); //high
+    set_gpio_mode(GPIOD_bank_bit2_24(20), GPIOD_bit_bit2_24(20), GPIO_OUTPUT_MODE);
     //end
 
     return 0;
@@ -911,15 +911,15 @@ static int is_ac_connected(void)
 
 static void set_charge(int flags)
 {
-    //extern io sn7325 pp7
+    //extern io sn7325 pp3
     //low: fast charge high: slow charge
     if(flags == 1){//fast charge
         configIO(1, 0);
-        setIO_level(1, 0, 7);        
+        setIO_level(1, 0, 3);        
     }
     else{//slow charge
         configIO(1, 0);
-        setIO_level(1, 1, 7);        
+        setIO_level(1, 1, 3);        
     }
         
 
@@ -1719,7 +1719,7 @@ static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
 
 #ifdef CONFIG_SN7325
     {
-        I2C_BOARD_INFO("sn7325", 0x58),
+        I2C_BOARD_INFO("sn7325", 0x59),
         .platform_data = (void *)&sn7325_pdata,
     },
 #endif
