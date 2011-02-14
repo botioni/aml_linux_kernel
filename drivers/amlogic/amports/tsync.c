@@ -13,7 +13,7 @@
 #include <mach/am_regs.h>
 #endif
 
-#include "../sound/aml_audio_hw.h"
+//#include "../sound/aml_audio_hw.h"
 
 
 #define CONFIG_AM_TIMESYNC_LOG
