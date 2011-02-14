@@ -19,7 +19,6 @@
 #include <sound/soc.h>
 #include <sound/pcm_params.h>
 
-#include <linux/dma-mapping.h>
 
 #include <mach/am_regs.h>
 #include <mach/pinmux.h>
@@ -32,9 +31,6 @@
 
 #define AOUT_EVENT_PREPARE  0x1
 extern int aout_notifier_call_chain(unsigned long val, void *v);
-static unsigned addr_audioin = 0;
-static unsigned addr_audioout = 0;
-
 
 /*--------------------------------------------------------------------------*\
  * Hardware definition
@@ -240,13 +236,11 @@ static int aml_pcm_prepare(struct snd_pcm_substream *substream)
 			//printk("aml_pcm_prepare SNDRV_PCM_STREAM_PLAYBACK: dma_addr=%x, dma_bytes=%x\n", runtime->dma_addr, runtime->dma_bytes);
 			audio_set_aiubuf(runtime->dma_addr, runtime->dma_bytes);
 			memset((void*)runtime->dma_area,0,runtime->dma_bytes);
-          addr_audioout = runtime->dma_area;
 	}
 	else{
 			printk("aml_pcm_prepare SNDRV_PCM_STREAM_CAPTURE: dma_addr=%x, dma_bytes=%x\n", runtime->dma_addr, runtime->dma_bytes);
 			audio_in_i2s_set_buf(runtime->dma_addr, runtime->dma_bytes*2);
 			memset((void*)runtime->dma_area,0,runtime->dma_bytes*2);
-          addr_audioin = runtime->dma_area;
 			int * ppp = (int*)(runtime->dma_area+runtime->dma_bytes*2-8);
 			ppp[0] = 0x78787878;
 			ppp[1] = 0x78787878;
@@ -406,25 +400,6 @@ static void aml_pcm_timer_callback(unsigned long data)
 		}    
 }
 
-static struct tasklet_struct audioin_tasklet;
-
-static void audioin_int_tasklet(ulong data)
-{
- 
-    printk("ADIN FIFO0 OVERFLOW\n");
-  if(READ_MPEG_REG(AUDIN_FIFO_INT)&1){
-   // printk("ADIN FIFO0 OVERFLOW\n");
-  }
-}
-
-static irqreturn_t audioin_int_handler(int irq, void *dev_id)
-{
-    tasklet_schedule(&audioin_tasklet);
-
-    printk("ADIN FIFO0 OVERFLOW---\n");
-    
-    return IRQ_HANDLED;
-}
 
 static int aml_pcm_open(struct snd_pcm_substream *substream)
 {
@@ -440,11 +415,6 @@ static int aml_pcm_open(struct snd_pcm_substream *substream)
 		snd_soc_set_runtime_hwparams(substream, &aml_pcm_capture);
 		//printk("pinmux audio in\n");
 		//set_audio_pinmux(AUDIO_IN_JTAG);
-        ret = request_irq(INT_AUDIO_IN, audioin_int_handler, IRQF_SHARED, "audioin", "audioin-id");
-        if(ret){
-          printk("request audio in INT failed\n");
-        }
-        tasklet_init(&audioin_tasklet, audioin_int_tasklet,0);
 	}
 	
 	/* ensure that buffer size is a multiple of period size */
@@ -478,9 +448,7 @@ static int aml_pcm_open(struct snd_pcm_substream *substream)
 static int aml_pcm_close(struct snd_pcm_substream *substream)
 {
 	struct aml_runtime_data *prtd = substream->runtime->private_data;
-	if(substream->stream == SNDRV_PCM_STREAM_CAPTURE){
-      free_irq(INT_AUDIO_IN, "audioin-id");
-    }
+	
 	del_timer_sync(&prtd->timer);
 	
 	kfree(prtd);
@@ -953,180 +921,6 @@ static void aml_pcm_cleanup_debugfs()
 }
 #endif
 
-typedef struct {
-	unsigned int in_op_ptr;
-	unsigned int out_op_ptr;
-	unsigned int type;
-	unsigned int in_start;
-	unsigned int out_start;	
-}amaudio_t;
-
-static ssize_t amaudio_write(struct file *file, const char *buf,
-                                size_t count, loff_t * ppos)
-{
-	amaudio_t * amaudio = (amaudio_t *)file->private_data;
-	int len = 0;
-
-    if(count <=0 )
-      return -EINVAL;
-	if(amaudio->type == 1){
-		if(!if_audio_in_i2s_enable()){
-			printk("amaudio input can not write now\n");
-			return -EINVAL;
-		}
-		copy_from_user((void*)(amaudio->in_op_ptr+amaudio->in_start), (void*)buf, count);
-	}else{
-		if(!if_audio_out_enable()){
-			printk("amaudio output can not write now\n");
-			return -EINVAL;
-		}
-		copy_from_user((void*)(amaudio->out_op_ptr+amaudio->out_start), (void*)buf, count);
-	}
-	return count;
-}
-static ssize_t amaudio_read(struct file *file, char __user *buf, 
-															size_t count, loff_t * ppos)
-{
-	amaudio_t * amaudio = (amaudio_t *)file->private_data;
-	int len = 0;
-
-    if(count <= 0)
-      return -EINVAL;
-	if(amaudio->type == 1){
-		if(!if_audio_in_i2s_enable()){
-			printk("amaudio input can not read now\n");
-			return -EINVAL;
-		}
-        len = copy_to_user((void*)buf, (void*)(amaudio->in_op_ptr+amaudio->in_start), count);
-		if(len){
-			printk("amaudio read i2s in data failed\n");
-		}
-        memset((void*)(amaudio->in_op_ptr+amaudio->in_start), 0x78, count);
-	}
-	else{
-		if(!if_audio_out_enable()){
-			printk("amaudio output can not read now\n");
-			return -EINVAL;
-		}
-
-		len = copy_to_user((void*)buf, (void*)(amaudio->out_op_ptr+amaudio->out_start), count);
-		if(len){
-			printk("amaudio read i2s out data failed\n");
-		}
-	}
-	return count - len;
-}
-
-static int amaudio_open(struct inode *inode, struct file *file)
-{
-		amaudio_t * amaudio = kzalloc(sizeof(amaudio_t), GFP_KERNEL);
-		if (if_audio_in_i2s_enable()){
-			//amaudio->in_start = ioremap_nocache(READ_MPEG_REG(AUDIN_FIFO0_START), 65536);
-            amaudio->in_start = addr_audioin;
-			printk("amaudio->in_start = %x \n", amaudio->in_start);
-			printk("(AUDIN_FIFO0_START) = %x \n", READ_MPEG_REG(AUDIN_FIFO0_START));
-		}
-		if (if_audio_out_enable()){
-			//amaudio->out_start = ioremap_nocache(READ_MPEG_REG(AIU_MEM_I2S_START_PTR), 32768);
-            amaudio->out_start = addr_audioout;
-			printk("amaudio->out_start = %x \n", amaudio->out_start);
-			printk("(AIU_MEM_I2S_START_PTR) = %x \n", READ_MPEG_REG(AIU_MEM_I2S_START_PTR));
-		}
-		if(iminor(inode) == 0){ // audio out
-				printk("open audio out\n");
-				amaudio->type = 0;				
-		}else{									// audio in
-				printk("open audio in\n");
-				amaudio->type = 1;
-		}
-		file->private_data = amaudio;
-		return 0;
-}
-static int amaudio_release(struct inode *inode, struct file *file)
-{
-	amaudio_t * amaudio = (amaudio_t *)file->private_data;
-	kfree(amaudio);
-	if (if_audio_in_i2s_enable()){
-	//	iounmap(amaudio->in_start);
-	}
-	if (if_audio_out_enable()){
-	//	iounmap(amaudio->out_start);
-	}	
-	return 0;
-}
-static int amaudio_ioctl(struct inode *inode, struct file *file,
-                        unsigned int cmd, ulong arg)
-{
-	s32 r = 0;
-	amaudio_t * amaudio = (amaudio_t *)file->private_data;
-    switch(cmd){
-		case AMAUDIO_IOC_GET_I2S_OUT_SIZE:
-			if(if_audio_out_enable()){
-				r = READ_MPEG_REG(AIU_MEM_I2S_END_PTR) - READ_MPEG_REG(AIU_MEM_I2S_START_PTR) + 64;
-			}else{
-				r = -EINVAL;
-			}
-			break;
-		case AMAUDIO_IOC_GET_I2S_OUT_PTR:
-			if(if_audio_out_enable()){
-				r = read_i2s_rd_ptr() - READ_MPEG_REG(AIU_MEM_I2S_START_PTR);
-			}else{
-				r = -EINVAL;
-			}
-			break;
-		case AMAUDIO_IOC_SET_I2S_OUT_OP_PTR:
-			if(if_audio_out_enable()){
-				if(arg < 0 || arg > (READ_MPEG_REG(AIU_MEM_I2S_END_PTR) - READ_MPEG_REG(AIU_MEM_I2S_START_PTR)+64)){
-					r = -EINVAL;
-				}else{
-					amaudio->out_op_ptr = arg;
-				}
-			}else{
-				r = -EINVAL;
-			}
-			break;
-		case AMAUDIO_IOC_GET_I2S_IN_SIZE:
-			if(if_audio_in_i2s_enable()){
-				r = READ_MPEG_REG(AUDIN_FIFO0_END) - READ_MPEG_REG(AUDIN_FIFO0_START) + 8;
-			}else{
-				r = -EINVAL;
-			}
-			break;
-		case AMAUDIO_IOC_GET_I2S_IN_PTR:
-			if(if_audio_in_i2s_enable()){
-				r = audio_in_i2s_wr_ptr() - READ_MPEG_REG(AUDIN_FIFO0_START);
-			}else{
-				r = -EINVAL;
-			}
-			break;
-		case AMAUDIO_IOC_SET_I2S_IN_OP_PTR:
-			if(if_audio_in_i2s_enable()){
-				if(arg < 0 || arg > (READ_MPEG_REG(AUDIN_FIFO0_END)- READ_MPEG_REG(AUDIN_FIFO0_START)+8)){
-					r = -EINVAL;
-				}else{
-					amaudio->in_op_ptr = arg;
-				}
-			}else{
-				r = -EINVAL;
-			}
-			break;
-		default:
-			break;
-		
-	};
-	return r;
-}
-														
-static const struct file_operations amaudio_fops =
-{
-	.owner	= THIS_MODULE,
-	.open	= amaudio_open,
-	.release  = amaudio_release,
-	.read 		= amaudio_read,
-	.write		= amaudio_write,
-	.ioctl    = amaudio_ioctl,
-};
-
 struct snd_soc_platform aml_soc_platform = {
 	.name		= "aml-audio",
 	.pcm_ops 	= &aml_pcm_ops,
@@ -1138,31 +932,14 @@ struct snd_soc_platform aml_soc_platform = {
 
 EXPORT_SYMBOL_GPL(aml_soc_platform);
 
-static struct class *aml_pcm_class;
 static int __init aml_alsa_audio_init(void)
 {
 		int res = 0;
 		aml_pcm_init_debugfs();
 		
-		res = register_chrdev(AMAUDIO_MAJOR, "amaudio", &amaudio_fops);
-		if(res<0){
-			printk("register audio out chardev failed!!!\n");
-			goto error;
-		}
-		
-		aml_pcm_class = class_create(THIS_MODULE, "amaudio");
-		device_create(aml_pcm_class, NULL,MKDEV(AMAUDIO_MAJOR, 0), NULL, "amaudio_out");
-		device_create(aml_pcm_class, NULL,MKDEV(AMAUDIO_MAJOR, 1), NULL, "amaudio_in");
-		
 		return snd_soc_register_platform(&aml_soc_platform);
 
 error:
-		unregister_chrdev(AMAUDIO_MAJOR,"amaudio");		
-		
-		device_destroy(aml_pcm_class, MKDEV(AMAUDIO_MAJOR, 0));
-		device_destroy(aml_pcm_class, MKDEV(AMAUDIO_MAJOR, 1));
-		class_destroy(aml_pcm_class);
-		
 		snd_soc_unregister_platform(&aml_soc_platform);
 		
 		return res;
@@ -1170,11 +947,6 @@ error:
 
 static void __exit aml_alsa_audio_exit(void)
 {
-		unregister_chrdev(AMAUDIO_MAJOR,"audio_out");
-		device_destroy(aml_pcm_class, MKDEV(AMAUDIO_MAJOR, 0));
-		device_destroy(aml_pcm_class, MKDEV(AMAUDIO_MAJOR, 1));
-		class_destroy(aml_pcm_class);
-		
 		aml_pcm_cleanup_debugfs();
         snd_soc_unregister_platform(&aml_soc_platform);
 }

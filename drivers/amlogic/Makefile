@@ -61,7 +61,7 @@ obj-y += tvin/
 obj-$(CONFIG_EFUSE)+=efuse/
 
 #####Sound system is later init in kernel default..######################
-obj-$(CONFIG_SND_AML) += sound/
+obj-$(CONFIG_AMAUDIO) += amaudio/
 
 obj-y += hdmi/
 
