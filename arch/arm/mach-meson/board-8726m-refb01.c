@@ -165,8 +165,8 @@ static struct platform_device adc_ts_device = {
 
 static struct adc_key adc_kp_key[] = {
     {KEY_LEFTMETA,          "menu", CHAN_4, 0, 60},
-    {KEY_PAGEDOWN,          "vol-", CHAN_4, 282, 60},
-    {KEY_PAGEUP,            "vol+", CHAN_4, 506, 60},
+    {KEY_PAGEDOWN,          "vol-", CHAN_4, 180, 60},  //0.58v
+    {KEY_PAGEUP,            "vol+", CHAN_4, 398, 60},  //1.286v
     {KEY_TAB,               "exit", CHAN_4, 622, 60},
     {KEY_HOME,              "home", CHAN_4, 852, 60},
 };
@@ -564,9 +564,9 @@ int wm8900_is_hp_pluged(void)
                                 (7 << 4)    |       // CS1 REF, Current FeedBack: about 0.505V
                                 (0 << 0));           // DIMCTL Analog dimmer
     cs_no = READ_CBUS_REG(LED_PWM_REG3);
-    if(cs_no &(1<<15))
+    if(cs_no &(1<<14))
       level |= (1<<0);
-    return (level == 0)?(1):(0); //return 1: hp pluged, 0: hp unpluged.
+    return (level == 0)?(0):(1); //return 1: hp pluged, 0: hp unpluged.
 }
 
 static struct wm8900_platform_data wm8900_pdata = {
