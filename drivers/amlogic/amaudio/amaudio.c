@@ -21,7 +21,7 @@
 
 #include "amaudio.h"
 
-#define AMAUDIO_DEVICE_COUNT    2
+#define AMAUDIO_DEVICE_COUNT    3
 
     
 MODULE_DESCRIPTION("AMLOGIC Audio Control Interface driver");
@@ -47,6 +47,8 @@ extern int if_audio_in_i2s_enable(void);
 extern int if_audio_out_enable(void);
 extern unsigned int read_i2s_rd_ptr(void);
 extern unsigned int audio_in_i2s_wr_ptr(void);
+extern unsigned int read_i2s_mute_swap_reg(void);
+extern void audio_i2s_swap_left_right(unsigned int flag);
 
 static dev_t amaudio_devno;
 static struct class* amaudio_clsp;
@@ -82,6 +84,13 @@ const static struct file_operations amaudio_in_fops = {
   .ioctl    =   amaudio_ioctl,
 };
 
+const static struct file_operations amaudio_ctl_fops = {
+  .owner    =   THIS_MODULE,
+  .open     =   amaudio_open,
+  .release  =   amaudio_release,
+  .ioctl    =   amaudio_ioctl,
+};
+
 static amaudio_port_t amaudio_ports[]={
   {
     .name = "amaudio_out",
@@ -90,6 +99,10 @@ static amaudio_port_t amaudio_ports[]={
   {
     .name = "amaudio_in",
     .fops = &amaudio_in_fops,
+  },
+  {
+    .name = "amaudio_ctl",
+    .fops = &amaudio_ctl_fops,
   },
 };
 
@@ -165,9 +178,12 @@ static int amaudio_open(struct inode *inode, struct file *file)
   if(iminor(inode) == 0){ // audio out
     printk("open audio out\n");
 	amaudio->type = 0;		
-  }else{									// audio in
+  }else if(iminor(inode) == 1){									// audio in
 	printk("open audio in\n");
 	amaudio->type = 1;
+  }else{						// audio control
+  	printk("open audio control\n");
+	amaudio->type = 2;
   }
   file->private_data = amaudio;
   file->f_op = this->fops;
@@ -190,6 +206,7 @@ static int amaudio_ioctl(struct inode *inode, struct file *file,
                         unsigned int cmd, ulong arg)
 {
 	s32 r = 0;
+	u32 reg;
 	amaudio_t * amaudio = (amaudio_t *)file->private_data;
     switch(cmd){
 		case AMAUDIO_IOC_GET_I2S_OUT_SIZE:
@@ -241,6 +258,22 @@ static int amaudio_ioctl(struct inode *inode, struct file *file,
 			}else{
 				r = -EINVAL;
 			}
+			break;
+		case AMAUDIO_IOC_SET_LEFT_MONO:
+			audio_i2s_swap_left_right(1);
+			break;
+		case AMAUDIO_IOC_SET_RIGHT_MONO:
+			audio_i2s_swap_left_right(2);
+			break;
+		case AMAUDIO_IOC_SET_STEREO:
+			audio_i2s_swap_left_right(0);
+			break;
+		case AMAUDIO_IOC_SET_CHANNEL_SWAP:
+			reg = read_i2s_mute_swap_reg();
+			if(reg & 0x3)
+				audio_i2s_swap_left_right(0);
+			else
+				audio_i2s_swap_left_right(3);
 			break;
 		default:
 			break;
