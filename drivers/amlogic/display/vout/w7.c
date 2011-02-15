@@ -169,14 +169,20 @@ static void power_on_lcd(void)
     //EIO -> OD0: 0  lcd 3.3v
 #ifdef CONFIG_SN7325
     configIO(0, 0);
-    setIO_level(0, 1, 4);
-#endif
-    //EIO -> OD0: 0  lcd 3.3v
-#ifdef CONFIG_SN7325
-    configIO(0, 0);
     setIO_level(0, 0, 0);
 #endif
+
     msleep(10);
+    
+    //EIO -> OD4: 0  lcd 3.3v
+#ifdef CONFIG_SN7325
+    configIO(0, 0);
+    setIO_level(0, 1, 4);
+#endif
+    msleep(100);
+    
+    power_on_backlight();
+    
     //VCCx2_EN D17 GPIOA_6 --> H
     set_gpio_val(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), 1);
     set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);
@@ -184,6 +190,23 @@ static void power_on_lcd(void)
 
 static void power_off_lcd(void)
 {
+    power_off_backlight();
+    
+    //EIO -> OD4: 0  lcd 3.3v
+#ifdef CONFIG_SN7325
+    configIO(0, 0);
+    setIO_level(0, 0, 4);
+#endif
+    msleep(100);
+    
+    //EIO -> OD0: 0  lcd 3.3v
+#ifdef CONFIG_SN7325
+    configIO(0, 0);
+    setIO_level(0, 1, 0);
+#endif
+
+    msleep(10);    
+
 //    //VCCx2_EN D17 GPIOA_6 --> H
 //    set_gpio_val(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), 0);
 //    set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);
