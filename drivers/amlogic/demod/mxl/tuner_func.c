@@ -6,7 +6,7 @@
 
 int set_tuner_fj2207(struct aml_demod_sta *demod_sta, 
 		     struct aml_demod_i2c *adap);
-#if 0
+#if 1
 static int set_tuner_MxL5007(struct aml_demod_sta *demod_sta, 
 			     struct aml_demod_i2c *adap)
 {
@@ -201,11 +201,11 @@ int tuner_set_ch(struct aml_demod_sta *demod_sta, struct aml_demod_i2c *adap)
     case 1 : // DCT
 	ret = set_tuner_DCT7070X(demod_sta, adap);
 	break;
-/*
+
     case 2 : // Maxliner
 	ret = set_tuner_MxL5007(demod_sta, adap);
 	break;
-*/
+
     case 3 : // NXP
 	ret = set_tuner_fj2207(demod_sta, adap);
 	break;

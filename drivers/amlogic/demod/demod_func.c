@@ -273,6 +273,7 @@ int demod_set_sys(struct aml_demod_sta *demod_sta,
 		  struct aml_demod_sys *demod_sys)
 {
     int ret = 0;
+    struct i2c_adapter *adapter;
 
     if (demod_sys->debug) printk_sys(demod_sys);
 
@@ -288,6 +289,11 @@ int demod_set_sys(struct aml_demod_sta *demod_sta,
 
     *demod_i2c = *(struct aml_demod_i2c *)demod_sys->i2c;
     if (demod_i2c->debug) printk_i2c(demod_i2c);
+
+
+	adapter = i2c_get_adapter(1);
+	demod_i2c->i2c_id = 1;
+	demod_i2c->i2c_priv = adapter;
 
 /*    if (demod_i2c->scl_oe ==0 || 
 	demod_i2c->scl_out==0 || 
