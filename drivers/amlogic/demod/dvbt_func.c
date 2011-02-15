@@ -746,7 +746,7 @@ static void dvbt_reg_initial(struct aml_demod_sta *demod_sta)
 
     apb_write_reg(2, 0x11, 0x00100002);   // FSM [15:0] TIMER_FEC_LOST
     apb_write_reg(2, 0x12, 0x02100201);   // FSM 
-    apb_write_reg(2, 0x14, 0xf0121385);   // AGC_TARGET f012138e
+    apb_write_reg(2, 0x14, 0xf0127ff5);   // AGC_TARGET 0xf0121385
     apb_write_reg(2, 0x15, 0x02050ca6);   // AGC_CTRL  
 
     switch (sr) {

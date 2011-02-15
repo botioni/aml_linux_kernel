@@ -1,7 +1,7 @@
 #
 # Automatically generated make config: don't edit
 # Linux kernel version: 2.6.34
-# Thu Feb 10 13:37:23 2011
+# Tue Feb 15 16:49:27 2011
 #
 CONFIG_ARM=y
 CONFIG_HOLES_IN_ZONE=y
@@ -739,7 +739,8 @@ CONFIG_NAND_FLASH_DRIVER_MULTIPLANE_CE=y
 #
 # Amlogic WIFI Support
 #
-CONFIG_SDIO_DHD_CDC_WIFI=y
+# CONFIG_SDIO_DHD_CDC_WIFI_4319 is not set
+CONFIG_SDIO_DHD_CDC_WIFI_4329=y
 CONFIG_BCM4329_FW_PATH="broadcm_4329/sdio-g-cdc-full11n-reclaim-roml-wme-idsup.bin"
 CONFIG_BCM4329_NVRAM_PATH="broadcm_4329/nvram.txt"
 # CONFIG_RTL8712_8188_8191_8192SU_USB_WIFI is not set
@@ -846,6 +847,11 @@ CONFIG_AML_HDMI_TX=y
 # CONFIG_TVIN_TUNER_FQ1216ME is not set
 
 #
+# Amlogic Audio Interface
+#
+CONFIG_AMAUDIO=y
+
+#
 # Amlogic audio dsp process 
 #
 CONFIG_AML_AUDIO_DSP=y
@@ -878,6 +884,7 @@ CONFIG_MALI=m
 # Amlogic CAMERA Support
 #
 # CONFIG_AMLOGIC_CAMERA_ENABLE is not set
+# CONFIG_CAMERA_GT2005 is not set
 
 #
 # Amlogic Linux Debug Support
