@@ -122,11 +122,27 @@ config MACH_MESON_8726M_REFC05
         help
           Include support for the AMLOGIC M1 8726M Skyworth platform.
 
-config MACH_MESON_8726M_REFC04
+menuconfig MACH_MESON_8726M_REFC04
         select GENERIC_ALLOCATOR
-        bool "Support M1 8726(Hisense base on DVBC_8726M1_V1.0) platform(machid=2957)"
+        bool "Support M1 8726(Hisense) platform(machid=2957)"
         help
           Include support for the AMLOGIC M1 8726M Hisense platform.
+
+choice
+	prompt "---Select Nand Flash Chip---"
+	depends on MACH_MESON_8726M_REFC04
+	default REFC04_Nand_HY27UF084G2B
+
+config REFC04_NAND_HY27UF084G2B
+	bool "Hynix HY27UF084G2B"
+
+config REFC04_NAND_K9GAG08U0E
+	bool "Samsung K9GAG08U0E"
+
+config REFC04_NAND_H27UAG8T2B
+	bool "Hynix H27UAG8T2B"
+
+endchoice
  
 config MACH_MESON_8726M_REFB10
 	select GENERIC_ALLOCATOR

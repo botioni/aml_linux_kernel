@@ -405,7 +405,7 @@ static struct platform_device aml_sound_card={
 		.num_resources	=	ARRAY_SIZE(aml_m1_audio_resource),
 };
 
-#ifdef CONFIG_NAND_FLASH_DRIVER_BASE_OPERATE
+#if defined(CONFIG_NAND_FLASH_DRIVER_BASE_OPERATE) || defined(CONFIG_NAND_FLASH_DRIVER_MULTIPLANE_CE)
 static struct mtd_partition partition_info[] = 
 {
 #ifndef CONFIG_AMLOGIC_SPI_NOR
@@ -485,7 +485,8 @@ static struct mtd_partition partition_info[] =
 //	}
 };
 
-static struct aml_m1_nand_platform aml_2kpage128kblocknand_platform = {
+#ifdef CONFIG_REFC04_NAND_HY27UF084G2B
+static struct aml_m1_nand_platform aml_nand_platform = {
 	.page_size = 2048,
 	.spare_size=64,
 	.erase_size= 128*1024,
@@ -497,6 +498,37 @@ static struct aml_m1_nand_platform aml_2kpage128kblocknand_platform = {
 	.partitions = partition_info,
 	.nr_partitions = ARRAY_SIZE(partition_info),
 };
+#endif
+
+#ifdef CONFIG_REFC04_NAND_K9GAG08U0E
+static struct aml_m1_nand_platform aml_nand_platform = {
+	.page_size = 8192,
+	.spare_size=436,
+	.erase_size= 1024*1024,
+	.bch_mode=3,			//BCH16
+	.encode_size=540,
+	.timing_mode=5,
+	.ce_num=1,
+	.onfi_mode=0,
+	.partitions = partition_info,
+	.nr_partitions = ARRAY_SIZE(partition_info),
+};
+#endif
+
+#ifdef CONFIG_REFC04_NAND_H27UAG8T2B
+static struct aml_m1_nand_platform aml_nand_platform = {
+	.page_size = 8192,
+	.spare_size=448,
+	.erase_size= 2*1024*1024,
+	.bch_mode=3,			//BCH16
+	.encode_size=540,
+	.timing_mode=5,
+	.ce_num=1,
+	.onfi_mode=0,
+	.partitions = partition_info,
+	.nr_partitions = ARRAY_SIZE(partition_info),
+};
+#endif
 
 static struct resource aml_nand_resources[] = {
 	{
@@ -512,7 +544,7 @@ static struct platform_device aml_nand_device = {
 	.num_resources = ARRAY_SIZE(aml_nand_resources),
 	.resource = aml_nand_resources,
 	.dev = {
-		.platform_data = &aml_2kpage128kblocknand_platform,
+		.platform_data = &aml_nand_platform,
 	},
 };
 #endif
