@@ -387,43 +387,42 @@ void osd_free_scale_enable_hw(u32 index,u32 enable)
 {
 	static  pandata_t    	save_pan_data;
 	static  dispdata_t	save_disp_data;
-	if(enable != osd_hw.free_scale_enable[index])
+
+	amlog_level(LOG_LEVEL_HIGH,"osd%d free scale %s\r\n",index,enable?"ENABLE":"DISABLE");
+	osd_hw.free_scale_enable[index]=enable;
+	if (index==OSD1)
 	{
-		osd_hw.free_scale_enable[index]=enable;
-		if (index==OSD1)
+		if(enable)
 		{
-			if(enable)
-			{
-				vf.width=osd_hw.free_scale_width[OSD1];
-				vf.height=osd_hw.free_scale_height[OSD1];
-				vf.type = (osd_hw.scan_mode==SCAN_MODE_INTERLACE ?VIDTYPE_INTERLACE:VIDTYPE_PROGRESSIVE) | VIDTYPE_VIU_FIELD;
-				vf.ratio_control=DISP_RATIO_FORCECONFIG|DISP_RATIO_NO_KEEPRATIO;
-				vf_reg_provider(&osd_vf_provider);
+			vf.width=osd_hw.free_scale_width[OSD1];
+			vf.height=osd_hw.free_scale_height[OSD1];
+			vf.type = (osd_hw.scan_mode==SCAN_MODE_INTERLACE ?VIDTYPE_INTERLACE:VIDTYPE_PROGRESSIVE) | VIDTYPE_VIU_FIELD;
+			vf.ratio_control=DISP_RATIO_FORCECONFIG|DISP_RATIO_NO_KEEPRATIO;
+			vf_reg_provider(&osd_vf_provider);
 
-				memcpy(&save_pan_data,&osd_hw.pandata[OSD1],sizeof(pandata_t));
-				memcpy(&save_disp_data,&osd_hw.dispdata[OSD1],sizeof(dispdata_t));
-				osd_hw.pandata[OSD1].x_start =0;
-				osd_hw.pandata[OSD1].y_start =0;
-				osd_hw.pandata[OSD1].x_end =vf.width-1;
-				osd_hw.pandata[OSD1].y_end =vf.height-1;	
-				osd_hw.dispdata[OSD1].x_start =0;
-				osd_hw.dispdata[OSD1].y_start =0;
-				osd_hw.dispdata[OSD1].x_end =vf.width-1;
-				osd_hw.dispdata[OSD1].y_end =vf.height-1;
-				add_to_update_list(OSD1,DISP_GEOMETRY);
-			}
-			else
-			{
-				memcpy(&osd_hw.pandata[OSD1],&save_pan_data,sizeof(pandata_t));
-				memcpy(&osd_hw.dispdata[OSD1],&save_disp_data,sizeof(dispdata_t));
-				add_to_update_list(OSD1,DISP_GEOMETRY);
-				vf_unreg_provider();
-			}
+			memcpy(&save_pan_data,&osd_hw.pandata[OSD1],sizeof(pandata_t));
+			memcpy(&save_disp_data,&osd_hw.dispdata[OSD1],sizeof(dispdata_t));
+			osd_hw.pandata[OSD1].x_start =0;
+			osd_hw.pandata[OSD1].y_start =0;
+			osd_hw.pandata[OSD1].x_end =vf.width-1;
+			osd_hw.pandata[OSD1].y_end =vf.height-1;	
+			osd_hw.dispdata[OSD1].x_start =0;
+			osd_hw.dispdata[OSD1].y_start =0;
+			osd_hw.dispdata[OSD1].x_end =vf.width-1;
+			osd_hw.dispdata[OSD1].y_end =vf.height-1;
+			add_to_update_list(OSD1,DISP_GEOMETRY);
 		}
-
-		if (osd_hw.enable[index])
-			osd_enable_hw(ENABLE,index);
+		else
+		{
+			memcpy(&osd_hw.pandata[OSD1],&save_pan_data,sizeof(pandata_t));
+			memcpy(&osd_hw.dispdata[OSD1],&save_disp_data,sizeof(dispdata_t));
+			add_to_update_list(OSD1,DISP_GEOMETRY);
+			vf_unreg_provider();
+		}
 	}
+	if (osd_hw.enable[index])
+		osd_enable_hw(ENABLE,index);
+
 }
 void  osd_free_scale_width_hw(u32 index,u32 width)
 {
