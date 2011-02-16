@@ -178,12 +178,12 @@ static struct platform_device adc_ts_device = {
 #include <linux/adc_keypad.h>
 
 static struct adc_key adc_kp_key[] = {
-	{KEY_VOLUMEDOWN,	"vol-",	CHAN_4,	267, 60},		// 0v	102
-//	{KEY_VOLUMEUP,		"vol+",	CHAN_4,	140, 60},	// 0v	28
-//	{KEY_TAB,	        "exit", CHAN_4,	602, 60},	// 0v	15
-//	{KEY_LEFTMETA,		"menu",	CHAN_4,	760, 60},	// 0v	125
-	{KEY_HOME,		"home",	CHAN_4,	140, 60},	// 0v	125		
-	{KEY_MENU,		"menu",	CHAN_4,	140, 60},
+	{KEY_VOLUMEUP,		"vol+",		CHAN_4,	139, 60},
+	{KEY_VOLUMEDOWN,	"vol-",		CHAN_4,	266, 60},
+	{KEY_SEARCH,		"search",	CHAN_4,	387, 60},
+	{KEY_MENU,		"menu",		CHAN_4,	575, 60},
+	{KEY_HOME,		"home",		CHAN_4,	774, 60},
+	{KEY_BACK,		"back",		CHAN_4,	926, 60},
 };
 
 static struct adc_kp_platform_data adc_kp_pdata = {
@@ -1722,14 +1722,13 @@ static struct platform_device __initdata *platform_devs[] = {
 #ifdef CONFIG_SARADC_AM
 		&saradc_device,
 #endif
+#if defined(CONFIG_KEY_INPUT_CUSTOM_AM) || defined(CONFIG_KEY_INPUT_CUSTOM_AM_MODULE)
+	&input_device_key,  //changed by Elvis
+#endif
 #if POLE5_EVT_TEST
 #ifdef CONFIG_ADC_TOUCHSCREEN_AM
 		&adc_ts_device,
 #endif
-
-    #if defined(CONFIG_KEY_INPUT_CUSTOM_AM) || defined(CONFIG_KEY_INPUT_CUSTOM_AM_MODULE)
-		&input_device_key,  //changed by Elvis
-    #endif
 	#if defined(CONFIG_TOUCHSCREEN_ADS7846)
 		&spi_gpio,
 	#endif
