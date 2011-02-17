@@ -1373,12 +1373,11 @@ static unsigned aml_8726m_get_bl_level(void)
 static void aml_8726m_set_bl_level(unsigned level)
 {
     unsigned cs_level;
-
-    if (level < 30)
+    if (level < 10)
     {
         cs_level = 15;
     }
-    else if (level == 30)
+    else if (level <= 30)
     {
         cs_level = 12;
     }
