@@ -200,7 +200,7 @@ void power_gate_switch(int flag)
     GATE_SWITCH(flag, ETHERNET);
     GATE_SWITCH(flag, HDMI_MPEG_DOMAIN);
     //GATE_SWITCH(flag, HIU_PARSER);
-    //GATE_SWITCH(flag, HIU_PARSER_TOP);
+    GATE_SWITCH(flag, HIU_PARSER_TOP);
     //GATE_SWITCH(flag, ISA);
     GATE_SWITCH(flag, MEDIA_CPU);
     GATE_SWITCH(flag, MISC_USB0_TO_DDR);
@@ -216,7 +216,7 @@ void power_gate_switch(int flag)
     //GATE_SWITCH(flag, UART1);
     GATE_SWITCH(flag, SDIO);
     GATE_SWITCH(flag, ASYNC_FIFO);
-    //GATE_SWITCH(flag, STREAM);
+    GATE_SWITCH(flag, STREAM);
     //GATE_SWITCH(flag, RTC);
     //GATE_SWITCH(flag, UART0);
     GATE_SWITCH(flag, RANDOM_NUM_GEN);
