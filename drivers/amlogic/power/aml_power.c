@@ -606,7 +606,7 @@ static int aml_power_probe(struct platform_device *pdev)
 	//power off when low power
     get_bat_capacity();
 	if (pdata->is_ac_online) {
-        if((new_battery_capacity < =4)&&(!pdata->is_ac_online())){
+        if((new_battery_capacity <=4)&&(!pdata->is_ac_online())){
             if(pdata->set_bat_off)
                 pdata->set_bat_off();
         }	
