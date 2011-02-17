@@ -968,14 +968,14 @@ static int __init amlogic_camera_init(void)
 	    	setIO_level(1, 1, 0);
 	    #endif
     }
-   /* if (!strcmp(AMLOGIC_CAMERA_DEVICE_NAME_FIRST,AMLOGIC_CAMERA_GC0308_NAME))
+   if (!strcmp(AMLOGIC_CAMERA_DEVICE_NAME_FIRST,AMLOGIC_CAMERA_GC0308_NAME))
     {
 	    eth_set_pinmux(ETH_BANK0_GPIOC3_C12,ETH_CLK_OUT_GPIOC12_REG3_1, 1);
 		#ifdef CONFIG_SN7325
 	    	configIO(1, 0);
 	    	setIO_level(1, 0, 0);
 	    #endif
-    }*/
+    }
     ret = platform_driver_register(&amlogic_camera_driver);
     if (ret != 0) {
         printk(KERN_ERR "failed to register amlogic camera module, error %d\n", ret);
@@ -990,14 +990,14 @@ static int __init amlogic_camera_init(void)
 	    	setIO_level(1, 1, 0);
 	    #endif
     }
-   /* if (!strcmp(AMLOGIC_CAMERA_DEVICE_NAME_SECOND,AMLOGIC_CAMERA_GC0308_NAME))
+    if (!strcmp(AMLOGIC_CAMERA_DEVICE_NAME_SECOND,AMLOGIC_CAMERA_GC0308_NAME))
     {
 	    eth_set_pinmux(ETH_BANK0_GPIOC3_C12,ETH_CLK_OUT_GPIOC12_REG3_1, 1);
 		#ifdef CONFIG_SN7325
 	    	configIO(1, 0);
 	    	setIO_level(1, 0, 0);
 	    #endif
-    }*/
+    }
     ret = platform_driver_register(&amlogic_camera_driver_second);
     if (ret != 0) {
         printk(KERN_ERR "failed to register second amlogic camera module, error %d\n", ret);
