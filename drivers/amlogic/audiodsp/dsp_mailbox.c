@@ -180,6 +180,11 @@ static irqreturn_t audiodsp_mailbox_irq(int irq, void *data)
 
         }
 
+	if(status & (1<<M1B_IRQ7_DECODE_FATAL_ERR)){
+		priv->decode_fatal_err = 1;
+		printk("Set decode_fatal_err flag, Reset audiodsp!\n");
+	}
+
 	return 0;
 }
 static void audiodsp_mailbox_work_queue(struct work_struct*work)

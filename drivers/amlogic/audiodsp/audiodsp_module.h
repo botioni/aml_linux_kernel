@@ -49,6 +49,7 @@
 	int last_valid_pts;
 	int out_len_after_last_valid_pts;
 	int decode_error_count;
+	int decode_fatal_err;
 	int dsp_is_started;
 	void *stream_buffer_mem;
 	int stream_buffer_mem_size;

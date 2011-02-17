@@ -98,6 +98,7 @@ int audiodsp_start(void)
 	priv->decode_error_count=0;
 	priv->last_valid_pts=0;
 	priv->out_len_after_last_valid_pts = 0;
+	priv->decode_fatal_err = 0;
 	pmcode=audiodsp_find_supoort_mcode(priv,priv->stream_fmt);
 	if(pmcode==NULL)
 	{
@@ -439,9 +440,17 @@ static ssize_t codec_mips_show(struct class* cla, struct class_attribute* attr, 
     return ret;
 }
 
+static ssize_t codec_fatal_err_show(struct class* cla, struct class_attribute* attr, char* buf)
+{
+    struct audiodsp_priv *priv = audiodsp_privdata();
+	
+    return sprintf(buf, "%d\n", priv->decode_fatal_err);
+}
+
 static struct class_attribute audiodsp_attrs[]={
     __ATTR_RO(codec_fmt),
     __ATTR_RO(codec_mips),
+    __ATTR_RO(codec_fatal_err),
     __ATTR_NULL
 };
 
