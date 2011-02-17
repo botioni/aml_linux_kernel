@@ -385,7 +385,6 @@ void osd_setpal_hw(unsigned regno,
 }
 void osd_free_scale_enable_hw(u32 index,u32 enable)
 {
-	static  pandata_t    	save_pan_data;
 	static  dispdata_t	save_disp_data;
 
 	amlog_level(LOG_LEVEL_HIGH,"osd%d free scale %s\r\n",index,enable?"ENABLE":"DISABLE");
@@ -400,7 +399,6 @@ void osd_free_scale_enable_hw(u32 index,u32 enable)
 			vf.ratio_control=DISP_RATIO_FORCECONFIG|DISP_RATIO_NO_KEEPRATIO;
 			vf_reg_provider(&osd_vf_provider);
 
-			memcpy(&save_pan_data,&osd_hw.pandata[OSD1],sizeof(pandata_t));
 			memcpy(&save_disp_data,&osd_hw.dispdata[OSD1],sizeof(dispdata_t));
 			osd_hw.pandata[OSD1].x_end =osd_hw.pandata[OSD1].x_start + vf.width-1;
 			osd_hw.pandata[OSD1].y_end =osd_hw.pandata[OSD1].y_start + vf.height-1;	
@@ -410,7 +408,6 @@ void osd_free_scale_enable_hw(u32 index,u32 enable)
 		}
 		else
 		{
-			memcpy(&osd_hw.pandata[OSD1],&save_pan_data,sizeof(pandata_t));
 			memcpy(&osd_hw.dispdata[OSD1],&save_disp_data,sizeof(dispdata_t));
 			add_to_update_list(OSD1,DISP_GEOMETRY);
 			vf_unreg_provider();
