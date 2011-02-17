@@ -402,14 +402,10 @@ void osd_free_scale_enable_hw(u32 index,u32 enable)
 
 			memcpy(&save_pan_data,&osd_hw.pandata[OSD1],sizeof(pandata_t));
 			memcpy(&save_disp_data,&osd_hw.dispdata[OSD1],sizeof(dispdata_t));
-			osd_hw.pandata[OSD1].x_start =0;
-			osd_hw.pandata[OSD1].y_start =0;
-			osd_hw.pandata[OSD1].x_end =vf.width-1;
-			osd_hw.pandata[OSD1].y_end =vf.height-1;	
-			osd_hw.dispdata[OSD1].x_start =0;
-			osd_hw.dispdata[OSD1].y_start =0;
-			osd_hw.dispdata[OSD1].x_end =vf.width-1;
-			osd_hw.dispdata[OSD1].y_end =vf.height-1;
+			osd_hw.pandata[OSD1].x_end =osd_hw.pandata[OSD1].x_start + vf.width-1;
+			osd_hw.pandata[OSD1].y_end =osd_hw.pandata[OSD1].y_start + vf.height-1;	
+			osd_hw.dispdata[OSD1].x_end =osd_hw.dispdata[OSD1].x_start + vf.width-1;
+			osd_hw.dispdata[OSD1].y_end =osd_hw.dispdata[OSD1].y_start + vf.height-1;
 			add_to_update_list(OSD1,DISP_GEOMETRY);
 		}
 		else
