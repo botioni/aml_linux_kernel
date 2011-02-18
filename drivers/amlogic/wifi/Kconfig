@@ -17,12 +17,12 @@ config SDIO_DHD_CDC_WIFI_4319
 	  Device Drivers  ---> Generic Driver Options  ---> 
 
 	  [*]   Include in-kernel firmware blobs in kernel binary  
-          (broadcm_4319/nvram_4319_201008.txt broadcm_4319/sdio-g-cdc-full11n-reclaim-roml-wme-idsup-40m.bin) External firmware blobs to build into 
+          (broadcm_4319/nvram_4319_201008.txt broadcm_4319/sdio-g-cdc-full11n-reclaim-roml-wme.bin) External firmware blobs to build into 
 	  
 config BCM4319_FW_PATH
 	depends on SDIO_DHD_CDC_WIFI_4319
 	string "BCM4319 Firmware path"
-	default "broadcm_4319/sdio-g-cdc-full11n-reclaim-roml-wme-idsup-40m.bin"
+	default "broadcm_4319/sdio-g-cdc-full11n-reclaim-roml-wme.bin"
 	---help---
 	  Path to the firmware file.
 
