@@ -311,91 +311,85 @@
 #define GCLK_REG_LED_PWM      (HHI_GCLK_MPEG1)   
 #define GCLK_MASK_LED_PWM      (1<<17)
 
-#define GCLK_IDX_DIG_VID_IN         47
-#define GCLK_NAME_DIG_VID_IN      "DIG_VID_IN"
-#define GCLK_DEV_DIG_VID_IN      "CLKGATE_DIG_VID_IN"
-#define GCLK_REG_DIG_VID_IN      (HHI_GCLK_MPEG1)   
-#define GCLK_MASK_DIG_VID_IN      (1<<17)
-
-#define GCLK_IDX_VGHL_PWM         48
+#define GCLK_IDX_VGHL_PWM         47
 #define GCLK_NAME_VGHL_PWM      "VGHL_PWM"
 #define GCLK_DEV_VGHL_PWM      "CLKGATE_VGHL_PWM"
 #define GCLK_REG_VGHL_PWM      (HHI_GCLK_MPEG1)   
 #define GCLK_MASK_VGHL_PWM      (1<<18)
 
-#define GCLK_IDX_RESERVED0         49
+#define GCLK_IDX_RESERVED0         48
 #define GCLK_NAME_RESERVED0      "RESERVED0"
 #define GCLK_DEV_RESERVED0      "CLKGATE_RESERVED0"
 #define GCLK_REG_RESERVED0      (HHI_GCLK_MPEG1)   
 #define GCLK_MASK_RESERVED0      (1<<19)
 
-#define GCLK_IDX_GE2D         50
+#define GCLK_IDX_GE2D         49
 #define GCLK_NAME_GE2D      "GE2D"
 #define GCLK_DEV_GE2D      "CLKGATE_GE2D"
 #define GCLK_REG_GE2D      (HHI_GCLK_MPEG1)   
 #define GCLK_MASK_GE2D      (1<<20)
 
-#define GCLK_IDX_USB0         51
+#define GCLK_IDX_USB0         50
 #define GCLK_NAME_USB0      "USB0"
 #define GCLK_DEV_USB0      "CLKGATE_USB0"
 #define GCLK_REG_USB0      (HHI_GCLK_MPEG1)   
 #define GCLK_MASK_USB0      (1<<21)
 
-#define GCLK_IDX_USB1         52
+#define GCLK_IDX_USB1         51
 #define GCLK_NAME_USB1      "USB1"
 #define GCLK_DEV_USB1      "CLKGATE_USB1"
 #define GCLK_REG_USB1      (HHI_GCLK_MPEG1)   
 #define GCLK_MASK_USB1      (1<<22)
 
-#define GCLK_IDX_RESET         53
+#define GCLK_IDX_RESET         52
 #define GCLK_NAME_RESET      "RESET"
 #define GCLK_DEV_RESET      "CLKGATE_RESET"
 #define GCLK_REG_RESET      (HHI_GCLK_MPEG1)   
 #define GCLK_MASK_RESET      (1<<23)
 
-#define GCLK_IDX_NAND         54
+#define GCLK_IDX_NAND         53
 #define GCLK_NAME_NAND      "NAND"
 #define GCLK_DEV_NAND      "CLKGATE_NAND"
 #define GCLK_REG_NAND      (HHI_GCLK_MPEG1)   
 #define GCLK_MASK_NAND      (1<<24)
 
-#define GCLK_IDX_HIU_PARSER_TOP         55
+#define GCLK_IDX_HIU_PARSER_TOP         54
 #define GCLK_NAME_HIU_PARSER_TOP      "HIU_PARSER_TOP"
 #define GCLK_DEV_HIU_PARSER_TOP      "CLKGATE_HIU_PARSER_TOP"
 #define GCLK_REG_HIU_PARSER_TOP      (HHI_GCLK_MPEG1)   
 #define GCLK_MASK_HIU_PARSER_TOP      (1<<25)
 
-#define GCLK_IDX_MDEC_CLK_DBLK         56
+#define GCLK_IDX_MDEC_CLK_DBLK         55
 #define GCLK_NAME_MDEC_CLK_DBLK      "MDEC_CLK_DBLK"
 #define GCLK_DEV_MDEC_CLK_DBLK      "CLKGATE_MDEC_CLK_DBLK"
 #define GCLK_REG_MDEC_CLK_DBLK      (HHI_GCLK_MPEG1)   
 #define GCLK_MASK_MDEC_CLK_DBLK      (1<<26)
 
-#define GCLK_IDX_MDEC_CLK_PIC_DC         57
+#define GCLK_IDX_MDEC_CLK_PIC_DC         56
 #define GCLK_NAME_MDEC_CLK_PIC_DC      "MDEC_CLK_PIC_DC"
 #define GCLK_DEV_MDEC_CLK_PIC_DC      "CLKGATE_MEDC_CLK_PIC_DC"
 #define GCLK_REG_MDEC_CLK_PIC_DC      (HHI_GCLK_MPEG1)   
 #define GCLK_MASK_MDEC_CLK_PIC_DC      (1<<27)
 
-#define GCLK_IDX_VIDEO_IN         58
+#define GCLK_IDX_VIDEO_IN         57
 #define GCLK_NAME_VIDEO_IN      "VIDEO_IN"
 #define GCLK_DEV_VIDEO_IN      "CLKGATE_VIDEO_IN"
 #define GCLK_REG_VIDEO_IN      (HHI_GCLK_MPEG1)   
 #define GCLK_MASK_VIDEO_IN      (1<<28)
 
-#define GCLK_IDX_AHB_ARB0         59
+#define GCLK_IDX_AHB_ARB0         58
 #define GCLK_NAME_AHB_ARB0      "AHB_ARB0"
 #define GCLK_DEV_AHB_ARB0      "CLKGATE_AHB_ARB0"
 #define GCLK_REG_AHB_ARB0      (HHI_GCLK_MPEG1)   
 #define GCLK_MASK_AHB_ARB0      (1<<29)
 
-#define GCLK_IDX_EFUSE         60
+#define GCLK_IDX_EFUSE         59
 #define GCLK_NAME_EFUSE      "EFUSE"
 #define GCLK_DEV_EFUSE      "CLKGATE_EFUSE"
 #define GCLK_REG_EFUSE      (HHI_GCLK_MPEG1)   
 #define GCLK_MASK_EFUSE      (1<<30)
 
-#define GCLK_IDX_ROM_CLK         61
+#define GCLK_IDX_ROM_CLK         60
 #define GCLK_NAME_ROM_CLK      "ROM_CLK"
 #define GCLK_DEV_ROM_CLK      "CLKGATE_ROM_CLK"
 #define GCLK_REG_ROM_CLK      (HHI_GCLK_MPEG1)   
@@ -403,61 +397,61 @@
 
 /**************************************************************/
 
-#define GCLK_IDX_AXI_BUS         62
+#define GCLK_IDX_AXI_BUS         61
 #define GCLK_NAME_AXI_BUS      "AXI_BUS"
 #define GCLK_DEV_AXI_BUS      "CLKGATE_AXI_BUS"
 #define GCLK_REG_AXI_BUS      (HHI_GCLK_MPEG2)   
 #define GCLK_MASK_AXI_BUS      (1<<0)
 
-#define GCLK_IDX_AHB_DATA_BUS         63
+#define GCLK_IDX_AHB_DATA_BUS         62
 #define GCLK_NAME_AHB_DATA_BUS      "AHB_DATA_BUS"
 #define GCLK_DEV_AHB_DATA_BUS      "CLKGATE_AHB_DATA_BUS"
 #define GCLK_REG_AHB_DATA_BUS      (HHI_GCLK_MPEG2)   
 #define GCLK_MASK_AHB_DATA_BUS      (1<<1)
 
-#define GCLK_IDX_AHB_CONTROL_BUS         64
+#define GCLK_IDX_AHB_CONTROL_BUS         63
 #define GCLK_NAME_AHB_CONTROL_BUS      "AHB_CONTROL_BUS"
 #define GCLK_DEV_AHB_CONTROL_BUS      "CLKGATE_AHB_CONTROL_BUS"
 #define GCLK_REG_AHB_CONTROL_BUS      (HHI_GCLK_MPEG2)   
 #define GCLK_MASK_AHB_CONTROL_BUS      (1<<2)
 
-#define GCLK_IDX_HDMI_MPEG_DOMAIN         65
+#define GCLK_IDX_HDMI_MPEG_DOMAIN         64
 #define GCLK_NAME_HDMI_MPEG_DOMAIN      "HDMI_MPEG_DOMAIN"
 #define GCLK_DEV_HDMI_MPEG_DOMAIN      "CLKGATE_HDMI_MPEG_DOMAIN"
 #define GCLK_REG_HDMI_MPEG_DOMAIN      (HHI_GCLK_MPEG2)   
 #define GCLK_MASK_HDMI_MPEG_DOMAIN      (1<<3)
 
-#define GCLK_IDX_MEDIA_CPU         66
+#define GCLK_IDX_MEDIA_CPU         65
 #define GCLK_NAME_MEDIA_CPU      "MEDIA_CPU"
 #define GCLK_DEV_MEDIA_CPU      "CLKGATE_MEDIA_CPU"
 #define GCLK_REG_MEDIA_CPU      (HHI_GCLK_MPEG2)   
 #define GCLK_MASK_MEDIA_CPU      (1<<4)
 
-#define GCLK_IDX_WIFI         67
+#define GCLK_IDX_WIFI         66
 #define GCLK_NAME_WIFI      "WIFI"
 #define GCLK_DEV_WIFI      "CLKGATE_WIFI"
 #define GCLK_REG_WIFI      (HHI_GCLK_MPEG2)   
 #define GCLK_MASK_WIFI      (1<<5)
 
-#define GCLK_IDX_SATA         68
+#define GCLK_IDX_SATA         67
 #define GCLK_NAME_SATA      "SATA"
 #define GCLK_DEV_SATA      "CLKGATE_SATA"
 #define GCLK_REG_SATA      (HHI_GCLK_MPEG2)   
 #define GCLK_MASK_SATA      (1<<6)
 
-#define GCLK_IDX_MISC_SATA_TO_DDR         69
+#define GCLK_IDX_MISC_SATA_TO_DDR         68
 #define GCLK_NAME_MISC_SATA_TO_DDR      "MISC_SATA_TO_DDR"
 #define GCLK_DEV_MISC_SATA_TO_DDR      "CLKGATE_MISC_SATA_TO_DDR"
 #define GCLK_REG_MISC_SATA_TO_DDR      (HHI_GCLK_MPEG2)   
 #define GCLK_MASK_MISC_SATA_TO_DDR      (1<<7)
 
-#define GCLK_IDX_MISC_USB1_TO_DDR         70
+#define GCLK_IDX_MISC_USB1_TO_DDR         69
 #define GCLK_NAME_MISC_USB1_TO_DDR      "MISC_USB1_TO_DDR"
 #define GCLK_DEV_MISC_USB1_TO_DDR      "CLKGATE_MISC_USB1_TO_DDR"
 #define GCLK_REG_MISC_USB1_TO_DDR      (HHI_GCLK_MPEG2)   
 #define GCLK_MASK_MISC_USB1_TO_DDR      (1<<8)
 
-#define GCLK_IDX_MISC_USB0_TO_DDR         71
+#define GCLK_IDX_MISC_USB0_TO_DDR         70
 #define GCLK_NAME_MISC_USB0_TO_DDR      "MISC_USB0_TO_DDR"
 #define GCLK_DEV_MISC_USB0_TO_DDR      "CLKGATE_MISC_USB0_TO_DDR"
 #define GCLK_REG_MISC_USB0_TO_DDR      (HHI_GCLK_MPEG2)   
@@ -465,121 +459,121 @@
 
 /**************************************************************/
 
-#define GCLK_IDX_VCLK1_VENC_BIST         72
+#define GCLK_IDX_VCLK1_VENC_BIST         71
 #define GCLK_NAME_VCLK1_VENC_BIST      "VCLK1_VENC_BIST"
 #define GCLK_DEV_VCLK1_VENC_BIST      "CLKGATE_VCLK1_VENC_BIST"
 #define GCLK_REG_VCLK1_VENC_BIST      (HHI_GCLK_OTHER)   
 #define GCLK_MASK_VCLK1_VENC_BIST      (1<<1)
 
-#define GCLK_IDX_VCLK1_VENC_ENCI         73
+#define GCLK_IDX_VCLK1_VENC_ENCI         72
 #define GCLK_NAME_VCLK1_VENC_ENCI      "VCLK1_VENC_ENCI"
 #define GCLK_DEV_VCLK1_VENC_ENCI      "CLKGATE_VCLK1_VENC_ENCI"
 #define GCLK_REG_VCLK1_VENC_ENCI      (HHI_GCLK_OTHER)   
 #define GCLK_MASK_VCLK1_VENC_ENCI      (1<<2)
 
-#define GCLK_IDX_VCLK1_VENC_DVI         74
+#define GCLK_IDX_VCLK1_VENC_DVI         73
 #define GCLK_NAME_VCLK1_VENC_DVI      "VCLK1_VENC_DVI"
 #define GCLK_DEV_VCLK1_VENC_DVI      "CLKGATE_VCLK1_VENC_DVI"
 #define GCLK_REG_VCLK1_VENC_DVI      (HHI_GCLK_OTHER)   
 #define GCLK_MASK_VCLK1_VENC_DVI      (1<<3)
 
-#define GCLK_IDX_VCLK1_VENC_656         75
+#define GCLK_IDX_VCLK1_VENC_656         74
 #define GCLK_NAME_VCLK1_VENC_656      "VCLK1_VENC_656"
 #define GCLK_DEV_VCLK1_VENC_656      "CLKGATE_VCLK1_VENC_656"
 #define GCLK_REG_VCLK1_VENC_656      (HHI_GCLK_OTHER)   
 #define GCLK_MASK_VCLK1_VENC_656      (1<<4)
 
-#define GCLK_IDX_VCLK2_VENC_BIST         76
+#define GCLK_IDX_VCLK2_VENC_BIST         75
 #define GCLK_NAME_VCLK2_VENC_BIST      "VCLK2_VENC_BIST"
 #define GCLK_DEV_VCLK2_VENC_BIST      "CLKGATE_VCLK2_VENC_BIST"
 #define GCLK_REG_VCLK2_VENC_BIST      (HHI_GCLK_OTHER)   
 #define GCLK_MASK_VCLK2_VENC_BIST      (1<<6)
 
-#define GCLK_IDX_VCLK2_VENC_ENC480P         77
+#define GCLK_IDX_VCLK2_VENC_ENC480P         76
 #define GCLK_NAME_VCLK2_VENC_ENC480P      "VCLK2_VENC_ENC480P"
 #define GCLK_DEV_VCLK2_VENC_ENC480P      "CLKGATE_VCLK2_VENC_ENC480P"
 #define GCLK_REG_VCLK2_VENC_ENC480P      (HHI_GCLK_OTHER)   
 #define GCLK_MASK_VCLK2_VENC_ENC480P      (1<<7)
 
-#define GCLK_IDX_VCLK2_VENC_DVI         78
+#define GCLK_IDX_VCLK2_VENC_DVI         77
 #define GCLK_NAME_VCLK2_VENC_DVI      "VCLK2_VENC_DVI"
 #define GCLK_DEV_VCLK2_VENC_DVI      "CLKGATE_VCLK2_VENC_DVI"
 #define GCLK_REG_VCLK2_VENC_DVI      (HHI_GCLK_OTHER)   
 #define GCLK_MASK_VCLK2_VENC_DVI      (1<<8)
 
-#define GCLK_IDX_VCLK2_VIU         79
+#define GCLK_IDX_VCLK2_VIU         78
 #define GCLK_NAME_VCLK2_VIU      "VCLK2_VIU"
 #define GCLK_DEV_VCLK2_VIU      "CLKGATE_VCLK2_VIU"
 #define GCLK_REG_VCLK2_VIU      (HHI_GCLK_OTHER)   
 #define GCLK_MASK_VCLK2_VIU      (1<<9)
 
-#define GCLK_IDX_VCLK3_DVI         80
+#define GCLK_IDX_VCLK3_DVI         79
 #define GCLK_NAME_VCLK3_DVI      "VCLK3_DVI"
 #define GCLK_DEV_VCLK3_DVI      "CLKGATE_VCLK3_DVI"
 #define GCLK_REG_VCLK3_DVI      (HHI_GCLK_OTHER)   
 #define GCLK_MASK_VCLK3_DVI      (1<<10)
 
-#define GCLK_IDX_VCLK3_MISC         81
+#define GCLK_IDX_VCLK3_MISC         80
 #define GCLK_NAME_VCLK3_MISC      "VCLK3_MISC"
 #define GCLK_DEV_VCLK3_MISC      "CLKGATE_VCLK3_MISC"
 #define GCLK_REG_VCLK3_MISC      (HHI_GCLK_OTHER)   
 #define GCLK_MASK_VCLK3_MISC      (1<<11)
 
-#define GCLK_IDX_VCLK3_DAC         82
+#define GCLK_IDX_VCLK3_DAC         81
 #define GCLK_NAME_VCLK3_DAC      "VCLK3_DAC"
 #define GCLK_DEV_VCLK3_DAC      "CLKGATE_VCLK3_DAC"
 #define GCLK_REG_VCLK3_DAC      (HHI_GCLK_OTHER)   
 #define GCLK_MASK_VCLK3_DAC      (1<<12)
 
-#define GCLK_IDX_AIU_AUD_DAC_CLK         83
+#define GCLK_IDX_AIU_AUD_DAC_CLK         82
 #define GCLK_NAME_AIU_AUD_DAC_CLK      "AIU_AUD_DAC_CLK"
 #define GCLK_DEV_AIU_AUD_DAC_CLK      "CLKGATE_AIU_AUD_DAC_CLK"
 #define GCLK_REG_AIU_AUD_DAC_CLK      (HHI_GCLK_OTHER)   
 #define GCLK_MASK_AIU_AUD_DAC_CLK      (1<<13)
 
-#define GCLK_IDX_AIU_I2S_SLOW         84
+#define GCLK_IDX_AIU_I2S_SLOW         83
 #define GCLK_NAME_AIU_I2S_SLOW      "AIU_I2S_SLOW"
 #define GCLK_DEV_AIU_I2S_SLOW      "CLKGATE_AIU_I2S_SLOW"
 #define GCLK_REG_AIU_I2S_SLOW      (HHI_GCLK_OTHER)   
 #define GCLK_MASK_AIU_I2S_SLOW      (1<<14)
 
-#define GCLK_IDX_AIU_I2S_DAC_AMCLK         85
+#define GCLK_IDX_AIU_I2S_DAC_AMCLK         84
 #define GCLK_NAME_AIU_I2S_DAC_AMCLK      "AIU_I2S_DAC_AMCLK"
 #define GCLK_DEV_AIU_I2S_DAC_AMCLK      "CLKGATE_AIU_I2S_DAC_AMCLK"
 #define GCLK_REG_AIU_I2S_DAC_AMCLK      (HHI_GCLK_OTHER)   
 #define GCLK_MASK_AIU_I2S_DAC_AMCLK      (1<<15)
 
-#define GCLK_IDX_AIU_ICE958_AMCLK         86
+#define GCLK_IDX_AIU_ICE958_AMCLK         85
 #define GCLK_NAME_AIU_ICE958_AMCLK      "AIU_ICE958_AMCLK"
 #define GCLK_DEV_AIU_ICE958_AMCLK      "CLKGATE_AIU_ICE958_AMCLK"
 #define GCLK_REG_AIU_ICE958_AMCLK      (HHI_GCLK_OTHER)   
 #define GCLK_MASK_AIU_ICE958_AMCLK      (1<<16)
 
-#define GCLK_IDX_HDMI         87
+#define GCLK_IDX_HDMI         86
 #define GCLK_NAME_HDMI      "HDMI"
 #define GCLK_DEV_HDMI      "CLKGATE_HDMI"
 #define GCLK_REG_HDMI      (HHI_GCLK_OTHER)   
 #define GCLK_MASK_HDMI      (1<<17)
 
-#define GCLK_IDX_AIU_AUD_DAC         88
+#define GCLK_IDX_AIU_AUD_DAC         87
 #define GCLK_NAME_AIU_AUD_DAC      "AIU_AUD_DAC"
 #define GCLK_DEV_AIU_AUD_DAC      "CLKGATE_AIU_AUD_DAC"
 #define GCLK_REG_AIU_AUD_DAC      (HHI_GCLK_OTHER)   
 #define GCLK_MASK_AIU_AUD_DAC      (1<<19)
 
-#define GCLK_IDX_ENC480P         89
+#define GCLK_IDX_ENC480P         88
 #define GCLK_NAME_ENC480P      "ENC480P"
 #define GCLK_DEV_ENC480P      "CLKGATE_ENC480P"
 #define GCLK_REG_ENC480P      (HHI_GCLK_OTHER)   
 #define GCLK_MASK_ENC480P      (1<<20)
 
-#define GCLK_IDX_SMART_CARD                      90
+#define GCLK_IDX_SMART_CARD                      89
 #define GCLK_NAME_SMART_CARD      "SMART_CARD"
 #define GCLK_DEV_SMART_CARD      "CLKGATE_SMART_CARD"
 #define GCLK_REG_SMART_CARD                   (HHI_GCLK_OTHER)   
 #define GCLK_MASK_SMART_CARD                      (1<<21)
 
-#define GCLK_IDX_MAX 91
+#define GCLK_IDX_MAX 90
 extern unsigned char GCLK_ref[GCLK_IDX_MAX];
 
 #define REGISTER_CLK(_MOD) \

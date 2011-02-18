@@ -39,6 +39,7 @@ static int early_suspend_flag = 0;
 #define ON  1
 #define OFF 0
 
+//#define ADJUST_CORE_VOLTAGE
 //#define DDR_PLL_OFF
 #define WAKE_UP_BY_IRQ
 #define SYSCLK_32K
@@ -88,7 +89,6 @@ void power_gate_init(void)
     GATE_INIT(DEMUX);
     GATE_INIT(MMC_DDR);
     GATE_INIT(DDR);
-    GATE_INIT(DIG_VID_IN);
     GATE_INIT(ETHERNET);
     GATE_INIT(GE2D);
     GATE_INIT(HDMI_MPEG_DOMAIN);
@@ -159,7 +159,6 @@ void power_gate_init(void)
 void power_init_off(void)
 {
     GATE_OFF(BT656_IN);
-    GATE_OFF(DIG_VID_IN);
     GATE_OFF(VIDEO_IN);
     GATE_OFF(GE2D);
     GATE_OFF(DEMUX);
@@ -240,7 +239,6 @@ void early_power_gate_switch(int flag)
     GATE_SWITCH(flag, AUD_IN);
     GATE_SWITCH(flag, BLK_MOV);
     GATE_SWITCH(flag, BT656_IN);
-    GATE_SWITCH(flag, DIG_VID_IN);
     GATE_SWITCH(flag, GE2D);
     GATE_SWITCH(flag, ROM_CLK);
     GATE_SWITCH(flag, EFUSE);
@@ -255,8 +253,7 @@ void early_power_gate_switch(int flag)
 #endif
     GATE_SWITCH(flag, RESERVED0);
     GATE_SWITCH(flag, VGHL_PWM);
-    GATE_SWITCH(flag, LED_PWM);
-//    GATE_SWITCH(flag, VI_CORE);
+//    GATE_SWITCH(flag, LED_PWM);
     GATE_SWITCH(flag, LCD);
     GATE_SWITCH(flag, ENC480P_MPEG_DOMAIN);
     GATE_SWITCH(flag, ENC480I);
@@ -555,12 +552,16 @@ void analog_switch(int flag)
     if (flag){
         printk(KERN_INFO "analog on\n");
         CLEAR_CBUS_REG_MASK(SAR_ADC_REG3, 1<<28);
+#ifndef ADJUST_CORE_VOLTAGE   
         SET_CBUS_REG_MASK(AM_ANALOG_TOP_REG0, 1<<1);
+#endif
     }
     else{
         printk(KERN_INFO "analog off\n");
         SET_CBUS_REG_MASK(SAR_ADC_REG3, 1<<28);         // set 0x21a3 bit[28] 1 to power down
+#ifndef ADJUST_CORE_VOLTAGE   
         CLEAR_CBUS_REG_MASK(AM_ANALOG_TOP_REG0, 1<<1);  // set 0x206e bit[1] 0 to shutdown
+#endif
     }
 }
 
@@ -693,6 +694,10 @@ static void meson_pm_suspend(void)
 #endif
     SET_CBUS_REG_MASK(HHI_SYS_PLL_CNTL, (1<<15));
 #endif
+    
+#ifdef ADJUST_CORE_VOLTAGE   
+    WRITE_CBUS_REG_BITS(LED_PWM_REG0, 4, 0, 4);
+#endif
      
 #ifdef WAKE_UP_BY_IRQ 
     WRITE_CBUS_REG(A9_0_IRQ_IN2_INTR_MASK, (1<<8));
@@ -710,6 +715,10 @@ static void meson_pm_suspend(void)
             break;
         }
     }
+#endif
+
+#ifdef ADJUST_CORE_VOLTAGE   
+    WRITE_CBUS_REG_BITS(LED_PWM_REG0, 0, 0, 4);
 #endif
 
 #ifdef SYSCLK_32K
