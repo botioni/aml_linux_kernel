@@ -104,7 +104,7 @@ extern irqreturn_t osd_fiq_isr(void);
 
 #define DisableVideoLayer() \
     do { CLEAR_MPEG_REG_MASK(VPP_MISC, \
-         VPP_VD1_PREBLEND ); \
+         VPP_VD1_PREBLEND|VPP_VD1_POSTBLEND ); \
     } while (0)
 
 /*********************************************************/
