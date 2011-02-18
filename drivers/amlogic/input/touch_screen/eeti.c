@@ -43,6 +43,10 @@
 #include <linux/input.h>
 #include <linux/irq.h>
 #include <linux/i2c/eeti.h>
+#ifdef CONFIG_HAS_EARLYSUSPEND
+#include <linux/earlysuspend.h>
+static struct early_suspend eeti_early_suspend;
+#endif
 
 #define irq_to_gpio(irq) ((GPIOD_bank_bit2_24(24)<<16) |GPIOD_bit_bit2_24(24)) 
 
@@ -515,47 +519,47 @@ static irqreturn_t egalax_i2c_interrupt(int irq, void *dev_id)
 #ifdef CONFIG_PM
 static int egalax_i2c_suspend(struct i2c_client *client, pm_message_t mesg)
 {
-	struct _egalax_i2c *egalax_i2c = i2c_get_clientdata(client);
-	u8 cmdbuf[MAX_I2C_LEN]={0x03, 0x05, 0x0A, 0x03, 0x36, 0x3F, 0x02, 0, 0, 0};
-	
-	i2c_master_send(client, cmdbuf, MAX_I2C_LEN);
-
-	egalax_i2c->work_state = 0;
-	disable_irq(client->irq);
-	cancel_work_sync(&egalax_i2c->work);
-
-	printk(KERN_DEBUG "[egalax_i2c]: device suspend done\n");	
-
-	if(device_may_wakeup(&client->dev)) 
-	{
-		enable_irq_wake(client->irq);
-	}
-	else 
-	{
-		printk(KERN_DEBUG "[egalax_i2c]: device_may_wakeup false\n");
-	}
+//	struct _egalax_i2c *egalax_i2c = i2c_get_clientdata(client);
+//	u8 cmdbuf[MAX_I2C_LEN]={0x03, 0x05, 0x0A, 0x03, 0x36, 0x3F, 0x02, 0, 0, 0};
+//	
+//	i2c_master_send(client, cmdbuf, MAX_I2C_LEN);
+//
+//	egalax_i2c->work_state = 0;
+//	disable_irq(client->irq);
+//	cancel_work_sync(&egalax_i2c->work);
+//
+//	printk(KERN_DEBUG "[egalax_i2c]: device suspend done\n");	
+//
+//	if(device_may_wakeup(&client->dev)) 
+//	{
+//		enable_irq_wake(client->irq);
+//	}
+//	else 
+//	{
+//		printk(KERN_DEBUG "[egalax_i2c]: device_may_wakeup false\n");
+//	}
 
 	return 0;
 }
 
 static int egalax_i2c_resume(struct i2c_client *client)
 {
-	struct _egalax_i2c *egalax_i2c = i2c_get_clientdata(client);
-	
-	if(device_may_wakeup(&client->dev)) 
-	{
-		disable_irq_wake(client->irq);
-	}
-	else 
-	{
-		printk(KERN_DEBUG "[egalax_i2c]: device_may_wakeup false\n");
-	}
-
-	wakeup_controller(irq_to_gpio(client->irq));
-	egalax_i2c->work_state = 1;
-	enable_irq(client->irq);
-
-	printk(KERN_DEBUG "[egalax_i2c]: device wakeup done\n");
+//	struct _egalax_i2c *egalax_i2c = i2c_get_clientdata(client);
+//	
+//	if(device_may_wakeup(&client->dev)) 
+//	{
+//		disable_irq_wake(client->irq);
+//	}
+//	else 
+//	{
+//		printk(KERN_DEBUG "[egalax_i2c]: device_may_wakeup false\n");
+//	}
+//
+//	wakeup_controller(irq_to_gpio(client->irq));
+//	egalax_i2c->work_state = 1;
+//	enable_irq(client->irq);
+//
+//	printk(KERN_DEBUG "[egalax_i2c]: device wakeup done\n");
 
 	return 0;
 }
@@ -564,6 +568,63 @@ static int egalax_i2c_resume(struct i2c_client *client)
 #define egalax_i2c_resume        NULL
 #endif
 
+#ifdef CONFIG_HAS_EARLYSUSPEND
+static void aml_eeti_early_suspend(struct early_suspend *h)
+{
+    struct i2c_client* client;
+    struct _egalax_i2c *egalax_i2c;
+    u8 cmdbuf[MAX_I2C_LEN]={0x03, 0x05, 0x0A, 0x03, 0x36, 0x3F, 0x02, 0, 0, 0};
+    
+    client = p_egalax_i2c_dev->client;
+    egalax_i2c= i2c_get_clientdata(client);
+    
+	printk("enter -----> %s \n",__FUNCTION__);
+//	i2c_master_send(client, cmdbuf, MAX_I2C_LEN);
+
+	egalax_i2c->work_state = 0;
+//	disable_irq(client->irq);
+//	cancel_work_sync(&egalax_i2c->work);
+//
+//	printk(KERN_DEBUG "[egalax_i2c]: device suspend done\n");	
+//
+//	if(device_may_wakeup(&client->dev)) 
+//	{
+//		enable_irq_wake(client->irq);
+//	}
+//	else 
+//	{
+//		printk(KERN_DEBUG "[egalax_i2c]: device_may_wakeup false\n");
+//	}	
+	
+	eeti_data->touch_on(0);
+}
+
+static void aml_eeti_late_resume(struct early_suspend *h)
+{
+    struct i2c_client* client;
+    struct _egalax_i2c *egalax_i2c;
+    
+    client = p_egalax_i2c_dev->client;
+    egalax_i2c= i2c_get_clientdata(client);    
+	printk("enter -----> %s \n",__FUNCTION__);
+    eeti_data->touch_on(1);
+//	if(device_may_wakeup(&client->dev)) 
+//	{
+//		disable_irq_wake(client->irq);
+//	}
+//	else 
+//	{
+//		printk(KERN_DEBUG "[egalax_i2c]: device_may_wakeup false\n");
+//	}
+//
+//	wakeup_controller(irq_to_gpio(client->irq));
+	egalax_i2c->work_state = 1;
+	enable_irq(client->irq);
+
+	printk(KERN_DEBUG "[egalax_i2c]: device wakeup done\n");	
+
+}
+#endif
 static void sendLoopback(struct i2c_client *client)
 {
 	u8 cmdbuf[MAX_I2C_LEN]={0x03, 0x03, 0x0A, 0x01, 0x41, 0, 0, 0, 0, 0};
@@ -632,7 +693,14 @@ static int __devinit egalax_i2c_probe(struct i2c_client *client)
 #ifdef CONFIG_PM
 	device_init_wakeup(&client->dev, 1);
 #endif
-
+#ifdef CONFIG_HAS_EARLYSUSPEND
+    printk("******* enter eeti early suspend register *******\n");
+    eeti_early_suspend.level = EARLY_SUSPEND_LEVEL_BLANK_SCREEN;
+    eeti_early_suspend.suspend = aml_eeti_early_suspend;
+    eeti_early_suspend.resume = aml_eeti_late_resume;
+    eeti_early_suspend.param = client;
+	register_early_suspend(&eeti_early_suspend);
+#endif
 	printk(KERN_DEBUG "[egalax_i2c]: probe done\n");
 	return 0;
 
@@ -657,7 +725,9 @@ fail1:
 static int __devexit egalax_i2c_remove(struct i2c_client *client)
 {
 	struct _egalax_i2c *egalax_i2c = i2c_get_clientdata(client);
-
+#ifdef CONFIG_HAS_EARLYSUSPEND
+    unregister_early_suspend(&eeti_early_suspend);
+#endif
 	DBG();
 
 #ifndef _NON_INPUT_DEV
