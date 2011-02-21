@@ -80,9 +80,9 @@ static void vvc1_vf_put(vframe_t *);
 static const char vvc1_dec_id[] = "vvc1-dev";
 
 static const struct vframe_provider_s vvc1_vf_provider = {
-        .peek = vvc1_vf_peek,
-        .get = vvc1_vf_get,
-        .put = vvc1_vf_put,
+    .peek = vvc1_vf_peek,
+    .get = vvc1_vf_get,
+    .put = vvc1_vf_put,
 };
 
 static struct vframe_s vfpool[VF_POOL_SIZE];
@@ -111,93 +111,88 @@ static struct dec_sysinfo vvc1_amstream_dec_info;
 
 static inline u32 index2canvas(u32 index)
 {
-        const u32 canvas_tab[4] = {
-                0x020100, 0x050403, 0x080706, 0x0b0a09
-        };
+    const u32 canvas_tab[4] = {
+        0x020100, 0x050403, 0x080706, 0x0b0a09
+    };
 
-        return canvas_tab[index];
+    return canvas_tab[index];
 }
 
 static inline void ptr_atomic_wrap_inc(u32 *ptr)
 {
-        u32 i = *ptr;
+    u32 i = *ptr;
 
-        i++;
+    i++;
 
-        if (i >= VF_POOL_SIZE)
-                i = 0;
+    if (i >= VF_POOL_SIZE) {
+        i = 0;
+    }
 
-        *ptr = i;
+    *ptr = i;
 }
 
 static void set_aspect_ratio(vframe_t *vf, unsigned pixel_ratio)
 {
-        int ar = 0;
+    int ar = 0;
 
-        if (vvc1_ratio == 0) 
-        {
-                vf->ratio_control |=(0x90<<DISP_RATIO_ASPECT_RATIO_BIT); // always stretch to 16:9
+    if (vvc1_ratio == 0) {
+        vf->ratio_control |= (0x90 << DISP_RATIO_ASPECT_RATIO_BIT); // always stretch to 16:9
+    } else if (pixel_ratio > 0x0f) {
+        ar = (vvc1_amstream_dec_info.height * (pixel_ratio & 0xff) * vvc1_ratio) / (vvc1_amstream_dec_info.width * (pixel_ratio >> 8));
+    } else {
+        switch (pixel_ratio) {
+        case 0:
+            ar = (vvc1_amstream_dec_info.height * vvc1_ratio) / vvc1_amstream_dec_info.width;
+            break;
+        case 1:
+            ar = (vf->height * vvc1_ratio) / vf->width;
+            break;
+        case 2:
+            ar = (vf->height * 11 * vvc1_ratio) / (vf->width * 12);
+            break;
+        case 3:
+            ar = (vf->height * 11 * vvc1_ratio) / (vf->width * 10);
+            break;
+        case 4:
+            ar = (vf->height * 11 * vvc1_ratio) / (vf->width * 16);
+            break;
+        case 5:
+            ar = (vf->height * 33 * vvc1_ratio) / (vf->width * 40);
+            break;
+        case 6:
+            ar = (vf->height * 11 * vvc1_ratio) / (vf->width * 24);
+            break;
+        case 7:
+            ar = (vf->height * 11 * vvc1_ratio) / (vf->width * 20);
+            break;
+        case 8:
+            ar = (vf->height * 11 * vvc1_ratio) / (vf->width * 32);
+            break;
+        case 9:
+            ar = (vf->height * 33 * vvc1_ratio) / (vf->width * 80);
+            break;
+        case 10:
+            ar = (vf->height * 11 * vvc1_ratio) / (vf->width * 18);
+            break;
+        case 11:
+            ar = (vf->height * 11 * vvc1_ratio) / (vf->width * 15);
+            break;
+        case 12:
+            ar = (vf->height * 33 * vvc1_ratio) / (vf->width * 64);
+            break;
+        case 13:
+            ar = (vf->height * 99 * vvc1_ratio) / (vf->width * 160);
+            break;
+        default:
+            ar = (vf->height * vvc1_ratio) / vf->width;
+            break;
         }
-        else if (pixel_ratio > 0x0f) 
-        {
-                ar = (vvc1_amstream_dec_info.height*(pixel_ratio&0xff)*vvc1_ratio)/(vvc1_amstream_dec_info.width*(pixel_ratio>>8));
-        }
-        else 
-        {
-                switch (pixel_ratio)
-                {
-                case 0:
-                    ar = (vvc1_amstream_dec_info.height*vvc1_ratio)/vvc1_amstream_dec_info.width;
-                    break;
-   		        case 1:
-   		            ar = (vf->height*vvc1_ratio)/vf->width;
-   		            break;
-   		        case 2:
-   		            ar = (vf->height*11*vvc1_ratio)/(vf->width*12);
-   		            break;
-   		        case 3:
-   		            ar = (vf->height*11*vvc1_ratio)/(vf->width*10);
-   		            break;
-   		        case 4:
-   		            ar = (vf->height*11*vvc1_ratio)/(vf->width*16);
-   		            break;
-   		        case 5:
-   		            ar = (vf->height*33*vvc1_ratio)/(vf->width*40);
-   		            break;
-   		        case 6:
-   		            ar = (vf->height*11*vvc1_ratio)/(vf->width*24);
-   		            break;
-   		        case 7:
-   		            ar = (vf->height*11*vvc1_ratio)/(vf->width*20);
-   		            break;
-   		        case 8:
-   		            ar = (vf->height*11*vvc1_ratio)/(vf->width*32);
-   		            break;
-   		        case 9:
-   		            ar = (vf->height*33*vvc1_ratio)/(vf->width*80);
-   		            break;
-   		        case 10:
-   		            ar = (vf->height*11*vvc1_ratio)/(vf->width*18);
-   		            break;
-   		        case 11:
-   		            ar = (vf->height*11*vvc1_ratio)/(vf->width*15);
-   		            break;
-   		        case 12:
-   		            ar = (vf->height*33*vvc1_ratio)/(vf->width*64);
-   		            break;
-   		        case 13:
-   		            ar = (vf->height*99*vvc1_ratio)/(vf->width*160);
-  		            break;
-                default:
-                    ar = (vf->height*vvc1_ratio)/vf->width;
-                    break;
-                }
-        }
+    }
 
-        ar = min(ar, DISP_RATIO_ASPECT_RATIO_MAX);
+    ar = min(ar, DISP_RATIO_ASPECT_RATIO_MAX);
 
-        vf->ratio_control = (ar<<DISP_RATIO_ASPECT_RATIO_BIT);
-        //vf->ratio_control |= DISP_RATIO_FORCECONFIG | DISP_RATIO_KEEPRATIO;
+    vf->ratio_control = (ar << DISP_RATIO_ASPECT_RATIO_BIT);
+    //vf->ratio_control |= DISP_RATIO_FORCECONFIG | DISP_RATIO_KEEPRATIO;
 }
 
 #ifdef HANDLE_VC1_IRQ
@@ -206,253 +201,221 @@ static irqreturn_t vvc1_isr(int irq, void *dev_id)
 static void vvc1_isr(void)
 #endif
 {
-        u32 reg;
-        vframe_t *vf;
-        u32 repeat_count;
-        u32 picture_type;
-        u32 buffer_index;
-        unsigned int pts, pts_valid=0, offset;
+    u32 reg;
+    vframe_t *vf;
+    u32 repeat_count;
+    u32 picture_type;
+    u32 buffer_index;
+    unsigned int pts, pts_valid = 0, offset;
 
-        reg = READ_MPEG_REG(VC1_BUFFEROUT);
+    reg = READ_MPEG_REG(VC1_BUFFEROUT);
 
-        if (reg) 
-        {
-                if (pts_by_offset)
-                {
-                        offset = READ_MPEG_REG(VC1_OFFSET_REG);
-                        if (pts_lookup_offset(PTS_TYPE_VIDEO, offset, &pts, 0) == 0) 
-                        {
-                                pts_valid = 1;
-                        #ifdef DEBUG_PTS
-                                pts_hit++;
-                        #endif
-                        }
-                        else
-                        {
-                        #ifdef DEBUG_PTS
-                                pts_missed++;
-                        #endif
-                        }
-                }                
-
-                repeat_count = READ_MPEG_REG(VC1_REPEAT_COUNT);
-                buffer_index = ((reg & 0x7) - 1) & 3;
-                picture_type = (reg >> 3) & 7;
-
-                if ( (intra_output == 0) && (picture_type != 0) )
-                {
-                    WRITE_MPEG_REG(VC1_BUFFERIN, ~(1<<buffer_index));
-                	WRITE_MPEG_REG(VC1_BUFFEROUT, 0);
-        			WRITE_MPEG_REG(ASSIST_MBOX1_CLR_REG, 1);
-
-#ifdef HANDLE_VC1_IRQ
-        			return IRQ_HANDLED;
-#else
-        			return;
+    if (reg) {
+        if (pts_by_offset) {
+            offset = READ_MPEG_REG(VC1_OFFSET_REG);
+            if (pts_lookup_offset(PTS_TYPE_VIDEO, offset, &pts, 0) == 0) {
+                pts_valid = 1;
+#ifdef DEBUG_PTS
+                pts_hit++;
 #endif
-                }
-
-                intra_output = 1;
-                
-            #ifdef DEBUG_PTS
-                if (picture_type == I_PICTURE)
-                {
-                    //printk("I offset 0x%x, pts_valid %d\n", offset, pts_valid);
-                    if (!pts_valid)
-                        pts_i_missed++;
-                    else
-                        pts_i_hit++;
-                }
-            #endif
-
-                if (reg & INTERLACE_FLAG) // interlace
-                {
-                        vfpool_idx[fill_ptr] = buffer_index;
-                        vf = &vfpool[fill_ptr];
-                        vf->width = vvc1_amstream_dec_info.width;
-                        vf->height = vvc1_amstream_dec_info.height;
-                        vf->bufWidth = 1920;
-
-                        if (pts_valid)
-                        {
-                                if (!avi_flag || (avi_flag && (I_PICTURE == picture_type)))
-                                {
-                                        vf->pts = pts;
-                                        if ((repeat_count > 1) && avi_flag)
-                                        {
-                                                vf->duration = vvc1_amstream_dec_info.rate * repeat_count >> 1;
-                                                next_pts = pts + (vvc1_amstream_dec_info.rate * repeat_count >> 1)*15/16;
-                                        }
-                                        else
-                                        {
-                                                vf->duration = vvc1_amstream_dec_info.rate >> 1;
-                                                next_pts = 0;
-                                        }
-                                }
-                        }
-                        else
-                        {
-                                vf->pts = next_pts;
-                                if ((repeat_count > 1) && avi_flag)
-                                {
-                                        vf->duration = vvc1_amstream_dec_info.rate * repeat_count >> 1;
-                                        if (next_pts != 0)
-                                        {
-                                                next_pts += ((vf->duration) - ((vf->duration)>>4));
-                                        }
-                                }
-                                else
-                                {
-                                        vf->duration = vvc1_amstream_dec_info.rate >> 1;
-                                        next_pts = 0;
-                                }
-                        }
-
-                        vf->duration_pulldown = 0;
-                        vf->type = (reg & BOTTOM_FIELD_FIRST_FLAG) ? VIDTYPE_INTERLACE_BOTTOM : VIDTYPE_INTERLACE_TOP;
-                        vf->canvas0Addr = vf->canvas1Addr = index2canvas(buffer_index);
-
-                        set_aspect_ratio(vf, READ_MPEG_REG(VC1_PIC_RATIO));
-
-                        vfbuf_use[buffer_index]++;
-
-                        INCPTR(fill_ptr);
-
-                        vfpool_idx[fill_ptr] = buffer_index;
-                        vf = &vfpool[fill_ptr];
-                        vf->width = vvc1_amstream_dec_info.width;
-                        vf->height = vvc1_amstream_dec_info.height;
-                        vf->bufWidth = 1920;
-
-                        vf->pts = next_pts;
-                        if ((repeat_count > 1) && avi_flag)
-                        {
-                                vf->duration = vvc1_amstream_dec_info.rate * repeat_count >> 1;
-                                if (next_pts != 0)
-                                {
-                                        next_pts += ((vf->duration) - ((vf->duration)>>4));
-                                }
-                        }
-                        else
-                        {
-                                vf->duration = vvc1_amstream_dec_info.rate >> 1;
-                                next_pts = 0;
-                        }
-
-                        vf->duration_pulldown = 0;
-                        vf->type = (reg & BOTTOM_FIELD_FIRST_FLAG) ? VIDTYPE_INTERLACE_BOTTOM : VIDTYPE_INTERLACE_TOP;
-                        vf->canvas0Addr = vf->canvas1Addr = index2canvas(buffer_index);
-
-                        set_aspect_ratio(vf, READ_MPEG_REG(VC1_PIC_RATIO));
-
-                        vfbuf_use[buffer_index]++;
-
-                        INCPTR(fill_ptr);
-                }
-                else  // progressive
-                {
-                        vfpool_idx[fill_ptr] = buffer_index;
-                        vf = &vfpool[fill_ptr];
-                        vf->width = vvc1_amstream_dec_info.width;
-                        vf->height = vvc1_amstream_dec_info.height;
-                        vf->bufWidth = 1920;
-
-                        if (pts_valid)
-                        {
-                                if (!avi_flag || (avi_flag && (I_PICTURE == picture_type)))
-                                {
-                                        vf->pts = pts;
-                                        if ((repeat_count > 1) && avi_flag)
-                                        {
-                                                vf->duration = vvc1_amstream_dec_info.rate * repeat_count;
-                                                next_pts = pts + (vvc1_amstream_dec_info.rate * repeat_count)*15/16;
-                                        }
-                                        else
-                                        {
-                                                vf->duration = vvc1_amstream_dec_info.rate;
-                                                next_pts = 0;
-                                        }
-                                }
-                        }
-                        else
-                        {
-                                vf->pts = next_pts;
-                                if ((repeat_count > 1) && avi_flag)
-                                {
-                                        vf->duration = vvc1_amstream_dec_info.rate * repeat_count;
-                                        if (next_pts != 0)
-                                        {
-                                                next_pts += ((vf->duration) - ((vf->duration)>>4));
-                                        }
-                                }
-                                else
-                                {
-                                        vf->duration = vvc1_amstream_dec_info.rate;
-                                        next_pts = 0;
-                                }
-                        }
-
-                        vf->duration_pulldown = 0;
-                        vf->type = VIDTYPE_PROGRESSIVE | VIDTYPE_VIU_FIELD;
-                        vf->canvas0Addr = vf->canvas1Addr = index2canvas(buffer_index);
-
-                        set_aspect_ratio(vf, READ_MPEG_REG(VC1_PIC_RATIO));
-
-                        vfbuf_use[buffer_index]++;
-
-                        INCPTR(fill_ptr);
-                }
-
-                total_frame++;
-                
-                //printk("PicType = %d, PTS = 0x%x, repeat count %d\n", picture_type, vf->pts, repeat_count);
-                WRITE_MPEG_REG(VC1_BUFFEROUT, 0);
+            } else {
+#ifdef DEBUG_PTS
+                pts_missed++;
+#endif
+            }
         }
 
-        WRITE_MPEG_REG(ASSIST_MBOX1_CLR_REG, 1);
+        repeat_count = READ_MPEG_REG(VC1_REPEAT_COUNT);
+        buffer_index = ((reg & 0x7) - 1) & 3;
+        picture_type = (reg >> 3) & 7;
+
+        if ((intra_output == 0) && (picture_type != 0)) {
+            WRITE_MPEG_REG(VC1_BUFFERIN, ~(1 << buffer_index));
+            WRITE_MPEG_REG(VC1_BUFFEROUT, 0);
+            WRITE_MPEG_REG(ASSIST_MBOX1_CLR_REG, 1);
 
 #ifdef HANDLE_VC1_IRQ
-        return IRQ_HANDLED;
+            return IRQ_HANDLED;
 #else
-        return;
+            return;
+#endif
+        }
+
+        intra_output = 1;
+
+#ifdef DEBUG_PTS
+        if (picture_type == I_PICTURE) {
+            //printk("I offset 0x%x, pts_valid %d\n", offset, pts_valid);
+            if (!pts_valid) {
+                pts_i_missed++;
+            } else {
+                pts_i_hit++;
+            }
+        }
+#endif
+
+        if (reg & INTERLACE_FLAG) { // interlace
+            vfpool_idx[fill_ptr] = buffer_index;
+            vf = &vfpool[fill_ptr];
+            vf->width = vvc1_amstream_dec_info.width;
+            vf->height = vvc1_amstream_dec_info.height;
+            vf->bufWidth = 1920;
+
+            if (pts_valid) {
+                if (!avi_flag || (avi_flag && (I_PICTURE == picture_type))) {
+                    vf->pts = pts;
+                    if ((repeat_count > 1) && avi_flag) {
+                        vf->duration = vvc1_amstream_dec_info.rate * repeat_count >> 1;
+                        next_pts = pts + (vvc1_amstream_dec_info.rate * repeat_count >> 1) * 15 / 16;
+                    } else {
+                        vf->duration = vvc1_amstream_dec_info.rate >> 1;
+                        next_pts = 0;
+                    }
+                }
+            } else {
+                vf->pts = next_pts;
+                if ((repeat_count > 1) && avi_flag) {
+                    vf->duration = vvc1_amstream_dec_info.rate * repeat_count >> 1;
+                    if (next_pts != 0) {
+                        next_pts += ((vf->duration) - ((vf->duration) >> 4));
+                    }
+                } else {
+                    vf->duration = vvc1_amstream_dec_info.rate >> 1;
+                    next_pts = 0;
+                }
+            }
+
+            vf->duration_pulldown = 0;
+            vf->type = (reg & BOTTOM_FIELD_FIRST_FLAG) ? VIDTYPE_INTERLACE_BOTTOM : VIDTYPE_INTERLACE_TOP;
+            vf->canvas0Addr = vf->canvas1Addr = index2canvas(buffer_index);
+
+            set_aspect_ratio(vf, READ_MPEG_REG(VC1_PIC_RATIO));
+
+            vfbuf_use[buffer_index]++;
+
+            INCPTR(fill_ptr);
+
+            vfpool_idx[fill_ptr] = buffer_index;
+            vf = &vfpool[fill_ptr];
+            vf->width = vvc1_amstream_dec_info.width;
+            vf->height = vvc1_amstream_dec_info.height;
+            vf->bufWidth = 1920;
+
+            vf->pts = next_pts;
+            if ((repeat_count > 1) && avi_flag) {
+                vf->duration = vvc1_amstream_dec_info.rate * repeat_count >> 1;
+                if (next_pts != 0) {
+                    next_pts += ((vf->duration) - ((vf->duration) >> 4));
+                }
+            } else {
+                vf->duration = vvc1_amstream_dec_info.rate >> 1;
+                next_pts = 0;
+            }
+
+            vf->duration_pulldown = 0;
+            vf->type = (reg & BOTTOM_FIELD_FIRST_FLAG) ? VIDTYPE_INTERLACE_BOTTOM : VIDTYPE_INTERLACE_TOP;
+            vf->canvas0Addr = vf->canvas1Addr = index2canvas(buffer_index);
+
+            set_aspect_ratio(vf, READ_MPEG_REG(VC1_PIC_RATIO));
+
+            vfbuf_use[buffer_index]++;
+
+            INCPTR(fill_ptr);
+        } else { // progressive
+            vfpool_idx[fill_ptr] = buffer_index;
+            vf = &vfpool[fill_ptr];
+            vf->width = vvc1_amstream_dec_info.width;
+            vf->height = vvc1_amstream_dec_info.height;
+            vf->bufWidth = 1920;
+
+            if (pts_valid) {
+                if (!avi_flag || (avi_flag && (I_PICTURE == picture_type))) {
+                    vf->pts = pts;
+                    if ((repeat_count > 1) && avi_flag) {
+                        vf->duration = vvc1_amstream_dec_info.rate * repeat_count;
+                        next_pts = pts + (vvc1_amstream_dec_info.rate * repeat_count) * 15 / 16;
+                    } else {
+                        vf->duration = vvc1_amstream_dec_info.rate;
+                        next_pts = 0;
+                    }
+                }
+            } else {
+                vf->pts = next_pts;
+                if ((repeat_count > 1) && avi_flag) {
+                    vf->duration = vvc1_amstream_dec_info.rate * repeat_count;
+                    if (next_pts != 0) {
+                        next_pts += ((vf->duration) - ((vf->duration) >> 4));
+                    }
+                } else {
+                    vf->duration = vvc1_amstream_dec_info.rate;
+                    next_pts = 0;
+                }
+            }
+
+            vf->duration_pulldown = 0;
+            vf->type = VIDTYPE_PROGRESSIVE | VIDTYPE_VIU_FIELD;
+            vf->canvas0Addr = vf->canvas1Addr = index2canvas(buffer_index);
+
+            set_aspect_ratio(vf, READ_MPEG_REG(VC1_PIC_RATIO));
+
+            vfbuf_use[buffer_index]++;
+
+            INCPTR(fill_ptr);
+        }
+
+        total_frame++;
+
+        //printk("PicType = %d, PTS = 0x%x, repeat count %d\n", picture_type, vf->pts, repeat_count);
+        WRITE_MPEG_REG(VC1_BUFFEROUT, 0);
+    }
+
+    WRITE_MPEG_REG(ASSIST_MBOX1_CLR_REG, 1);
+
+#ifdef HANDLE_VC1_IRQ
+    return IRQ_HANDLED;
+#else
+    return;
 #endif
 }
 
 static vframe_t *vvc1_vf_peek(void)
 {
-        if (get_ptr == fill_ptr)
-                return NULL;
+    if (get_ptr == fill_ptr) {
+        return NULL;
+    }
 
-        return &vfpool[get_ptr];
+    return &vfpool[get_ptr];
 }
 
 static vframe_t *vvc1_vf_get(void)
 {
-        vframe_t *vf;
+    vframe_t *vf;
 
-        if (get_ptr == fill_ptr)
-                return NULL;
+    if (get_ptr == fill_ptr) {
+        return NULL;
+    }
 
-        vf = &vfpool[get_ptr];
+    vf = &vfpool[get_ptr];
 
-        INCPTR(get_ptr);
+    INCPTR(get_ptr);
 
-        return vf;
+    return vf;
 }
 
 static void vvc1_vf_put(vframe_t *vf)
 {
-        INCPTR(putting_ptr);
+    INCPTR(putting_ptr);
 }
 
 int vvc1_dec_status(struct vdec_status *vstatus)
 {
     vstatus->width = vvc1_amstream_dec_info.width;
     vstatus->height = vvc1_amstream_dec_info.height;
-    if(0!=vvc1_amstream_dec_info.rate)
-        vstatus->fps = 96000/vvc1_amstream_dec_info.rate;
-    else
+    if (0 != vvc1_amstream_dec_info.rate) {
+        vstatus->fps = 96000 / vvc1_amstream_dec_info.rate;
+    } else {
         vstatus->fps = 96000;
+    }
     vstatus->error_count = READ_MPEG_REG(AV_SCRATCH_4);
     vstatus->status = stat;
 
@@ -462,347 +425,323 @@ int vvc1_dec_status(struct vdec_status *vstatus)
 /****************************************/
 static void vvc1_canvas_init(void)
 {
-        int i;
-        u32 canvas_width, canvas_height;
-        u32 decbuf_size, decbuf_y_size, decbuf_uv_size;
-        u32 disp_addr = 0xffffffff;
+    int i;
+    u32 canvas_width, canvas_height;
+    u32 decbuf_size, decbuf_y_size, decbuf_uv_size;
+    u32 disp_addr = 0xffffffff;
 
-        if (buf_size <= 0x00400000) 
-        {
-                /* SD only */
-                canvas_width = 768;
-                canvas_height = 576;
-                decbuf_y_size = 0x80000;
-                decbuf_uv_size = 0x20000;
-                decbuf_size = 0x100000;
-        }
-        else 
-        {
-                /* HD & SD */
-                canvas_width = 1920;
-                canvas_height = 1088;
-                decbuf_y_size = 0x200000;
-                decbuf_uv_size = 0x80000;
-                decbuf_size = 0x300000;
-        }
+    if (buf_size <= 0x00400000) {
+        /* SD only */
+        canvas_width = 768;
+        canvas_height = 576;
+        decbuf_y_size = 0x80000;
+        decbuf_uv_size = 0x20000;
+        decbuf_size = 0x100000;
+    } else {
+        /* HD & SD */
+        canvas_width = 1920;
+        canvas_height = 1088;
+        decbuf_y_size = 0x200000;
+        decbuf_uv_size = 0x80000;
+        decbuf_size = 0x300000;
+    }
 
-        if (READ_MPEG_REG(VPP_MISC) & VPP_VD1_POSTBLEND) 
-        {
-	        canvas_t cur_canvas;
-	    
-	        canvas_read((READ_MPEG_REG(VD1_IF0_CANVAS0) & 0xff), &cur_canvas);
-            disp_addr = (cur_canvas.addr + 7) >> 3;
-        }
+    if (READ_MPEG_REG(VPP_MISC) & VPP_VD1_POSTBLEND) {
+        canvas_t cur_canvas;
 
-        for (i = 0; i < 4; i++) 
-        {
-            if (((buf_start + i * decbuf_size + 7) >> 3) == disp_addr) 
-            {
-                canvas_config(3 * i + 0,
-                        buf_start + 4 * decbuf_size,
-                        canvas_width, canvas_height,
-                        CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_32X32);
-                canvas_config(3 * i + 1,
-                        buf_start + 4 * decbuf_size + decbuf_y_size,
-                        canvas_width / 2, canvas_height / 2,
-                        CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_32X32);
-                canvas_config(3 * i + 2,
-                        buf_start + 4 * decbuf_size + decbuf_y_size + decbuf_uv_size,
-                        canvas_width/2, canvas_height/2,
-                        CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_32X32);
-            } 
-            else 
-            {
-                canvas_config(3 * i + 0,
-                              buf_start + i * decbuf_size,
-                              canvas_width, canvas_height,
-                              CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_32X32);
-                canvas_config(3 * i + 1,
-                              buf_start + i * decbuf_size + decbuf_y_size,
-                              canvas_width / 2, canvas_height / 2,
-                              CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_32X32);
-                canvas_config(3 * i + 2,
-                              buf_start + i * decbuf_size + decbuf_y_size + decbuf_uv_size, 
-                              canvas_width / 2, canvas_height / 2, 
-                              CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_32X32);
-            }
+        canvas_read((READ_MPEG_REG(VD1_IF0_CANVAS0) & 0xff), &cur_canvas);
+        disp_addr = (cur_canvas.addr + 7) >> 3;
+    }
+
+    for (i = 0; i < 4; i++) {
+        if (((buf_start + i * decbuf_size + 7) >> 3) == disp_addr) {
+            canvas_config(3 * i + 0,
+                          buf_start + 4 * decbuf_size,
+                          canvas_width, canvas_height,
+                          CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_32X32);
+            canvas_config(3 * i + 1,
+                          buf_start + 4 * decbuf_size + decbuf_y_size,
+                          canvas_width / 2, canvas_height / 2,
+                          CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_32X32);
+            canvas_config(3 * i + 2,
+                          buf_start + 4 * decbuf_size + decbuf_y_size + decbuf_uv_size,
+                          canvas_width / 2, canvas_height / 2,
+                          CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_32X32);
+        } else {
+            canvas_config(3 * i + 0,
+                          buf_start + i * decbuf_size,
+                          canvas_width, canvas_height,
+                          CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_32X32);
+            canvas_config(3 * i + 1,
+                          buf_start + i * decbuf_size + decbuf_y_size,
+                          canvas_width / 2, canvas_height / 2,
+                          CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_32X32);
+            canvas_config(3 * i + 2,
+                          buf_start + i * decbuf_size + decbuf_y_size + decbuf_uv_size,
+                          canvas_width / 2, canvas_height / 2,
+                          CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_32X32);
         }
+    }
 }
 
 static void vvc1_prot_init(void)
 {
-        WRITE_MPEG_REG(RESET0_REGISTER, RESET_IQIDCT | RESET_MC | RESET_VLD_PART);
-        READ_MPEG_REG(RESET0_REGISTER);
-        WRITE_MPEG_REG(RESET0_REGISTER, RESET_IQIDCT | RESET_MC | RESET_VLD_PART);
+    WRITE_MPEG_REG(RESET0_REGISTER, RESET_IQIDCT | RESET_MC | RESET_VLD_PART);
+    READ_MPEG_REG(RESET0_REGISTER);
+    WRITE_MPEG_REG(RESET0_REGISTER, RESET_IQIDCT | RESET_MC | RESET_VLD_PART);
 
-        WRITE_MPEG_REG(RESET2_REGISTER, RESET_PIC_DC | RESET_DBLK);
+    WRITE_MPEG_REG(RESET2_REGISTER, RESET_PIC_DC | RESET_DBLK);
 
-        WRITE_MPEG_REG(POWER_CTL_VLD, 0x10);
-    	WRITE_MPEG_REG_BITS(VLD_MEM_VIFIFO_CONTROL, 2, MEM_FIFO_CNT_BIT, 2);
-    	WRITE_MPEG_REG_BITS(VLD_MEM_VIFIFO_CONTROL, 8, MEM_LEVEL_CNT_BIT, 6);
+    WRITE_MPEG_REG(POWER_CTL_VLD, 0x10);
+    WRITE_MPEG_REG_BITS(VLD_MEM_VIFIFO_CONTROL, 2, MEM_FIFO_CNT_BIT, 2);
+    WRITE_MPEG_REG_BITS(VLD_MEM_VIFIFO_CONTROL, 8, MEM_LEVEL_CNT_BIT, 6);
 
-        vvc1_canvas_init();
+    vvc1_canvas_init();
 
-        /* index v << 16 | u << 8 | y */
-        WRITE_MPEG_REG(AV_SCRATCH_0, 0x020100);
-        WRITE_MPEG_REG(AV_SCRATCH_1, 0x050403);
-        WRITE_MPEG_REG(AV_SCRATCH_2, 0x080706);
-        WRITE_MPEG_REG(AV_SCRATCH_3, 0x0b0a09);
+    /* index v << 16 | u << 8 | y */
+    WRITE_MPEG_REG(AV_SCRATCH_0, 0x020100);
+    WRITE_MPEG_REG(AV_SCRATCH_1, 0x050403);
+    WRITE_MPEG_REG(AV_SCRATCH_2, 0x080706);
+    WRITE_MPEG_REG(AV_SCRATCH_3, 0x0b0a09);
 
-        /* notify ucode the buffer offset */
-        WRITE_MPEG_REG(AV_SCRATCH_F, buf_offset);
+    /* notify ucode the buffer offset */
+    WRITE_MPEG_REG(AV_SCRATCH_F, buf_offset);
 
-        /* disable PSCALE for hardware sharing */
-        WRITE_MPEG_REG(PSCALE_CTRL, 0);
+    /* disable PSCALE for hardware sharing */
+    WRITE_MPEG_REG(PSCALE_CTRL, 0);
 
-        WRITE_MPEG_REG(VC1_SOS_COUNT, 0);
-        WRITE_MPEG_REG(VC1_BUFFERIN, 0);
-        WRITE_MPEG_REG(VC1_BUFFEROUT, 0);
+    WRITE_MPEG_REG(VC1_SOS_COUNT, 0);
+    WRITE_MPEG_REG(VC1_BUFFERIN, 0);
+    WRITE_MPEG_REG(VC1_BUFFEROUT, 0);
 
-        /* clear mailbox interrupt */
-        WRITE_MPEG_REG(ASSIST_MBOX1_CLR_REG, 1);
+    /* clear mailbox interrupt */
+    WRITE_MPEG_REG(ASSIST_MBOX1_CLR_REG, 1);
 
-        /* enable mailbox interrupt */
-        WRITE_MPEG_REG(ASSIST_MBOX1_MASK, 1);
+    /* enable mailbox interrupt */
+    WRITE_MPEG_REG(ASSIST_MBOX1_MASK, 1);
 
 }
 
 static void vvc1_local_init(void)
 {
-        int i;
+    int i;
 
-        vvc1_ratio = vvc1_amstream_dec_info.ratio;
+    vvc1_ratio = vvc1_amstream_dec_info.ratio;
 
-        avi_flag = (u32)vvc1_amstream_dec_info.param;
-    
-        fill_ptr = get_ptr = put_ptr = putting_ptr = 0;
+    avi_flag = (u32)vvc1_amstream_dec_info.param;
 
-        frame_width = frame_height = frame_dur = frame_prog = 0;
+    fill_ptr = get_ptr = put_ptr = putting_ptr = 0;
 
-        total_frame = 0;
+    frame_width = frame_height = frame_dur = frame_prog = 0;
 
-        next_pts = 0;
+    total_frame = 0;
+
+    next_pts = 0;
 
 #ifdef DEBUG_PTS
-        pts_hit = pts_missed = pts_i_hit = pts_i_missed = 0;
+    pts_hit = pts_missed = pts_i_hit = pts_i_missed = 0;
 #endif
 
-        for (i = 0; i < 4; i++)
-                vfbuf_use[i] = 0;
+    for (i = 0; i < 4; i++) {
+        vfbuf_use[i] = 0;
+    }
 }
 
 static void vvc1_put_timer_func(unsigned long arg)
 {
-        struct timer_list *timer = (struct timer_list *)arg;
+    struct timer_list *timer = (struct timer_list *)arg;
 
 #ifndef HANDLE_VC1_IRQ
-        vvc1_isr();
+    vvc1_isr();
 #endif
 
 #if 1
-        if ( READ_MPEG_REG(VC1_SOS_COUNT) > 10 )
-        {
-                amvdec_stop();
-                vf_light_unreg_provider();
-                vvc1_local_init();
-                vvc1_prot_init();
-                vf_reg_provider(&vvc1_vf_provider);
-                amvdec_start();
-        }
+    if (READ_MPEG_REG(VC1_SOS_COUNT) > 10) {
+        amvdec_stop();
+        vf_light_unreg_provider();
+        vvc1_local_init();
+        vvc1_prot_init();
+        vf_reg_provider(&vvc1_vf_provider);
+        amvdec_start();
+    }
 #endif
-        
-        if ((putting_ptr != put_ptr) && (READ_MPEG_REG(VC1_BUFFERIN) == 0))
-        {
-                u32 index = vfpool_idx[put_ptr];
 
-                if (--vfbuf_use[index] == 0) 
-                {
-                        WRITE_MPEG_REG(VC1_BUFFERIN, ~(1<<index));
-                }
+    if ((putting_ptr != put_ptr) && (READ_MPEG_REG(VC1_BUFFERIN) == 0)) {
+        u32 index = vfpool_idx[put_ptr];
 
-                INCPTR(put_ptr);
+        if (--vfbuf_use[index] == 0) {
+            WRITE_MPEG_REG(VC1_BUFFERIN, ~(1 << index));
         }
 
-        timer->expires = jiffies + PUT_INTERVAL;
+        INCPTR(put_ptr);
+    }
 
-        add_timer(timer);
+    timer->expires = jiffies + PUT_INTERVAL;
+
+    add_timer(timer);
 }
 
 static s32 vvc1_init(void)
 {
-        printk("vvc1_init\n");
-        init_timer(&recycle_timer);
+    printk("vvc1_init\n");
+    init_timer(&recycle_timer);
 
-        stat |= STAT_TIMER_INIT;
+    stat |= STAT_TIMER_INIT;
 
-        intra_output = 0;
-        amvdec_enable();
+    intra_output = 0;
+    amvdec_enable();
 
-        vvc1_local_init();
+    vvc1_local_init();
 
-        if (vvc1_amstream_dec_info.format == VIDEO_DEC_FORMAT_WMV3)
-        {
-                printk("WMV3 dec format\n");
-                vvc1_format = VIDEO_DEC_FORMAT_WMV3;
-                WRITE_MPEG_REG(AV_SCRATCH_4, 0);
-        }
-        else if (vvc1_amstream_dec_info.format == VIDEO_DEC_FORMAT_WVC1)
-        {
-                printk("WVC1 dec format\n");
-                vvc1_format = VIDEO_DEC_FORMAT_WVC1;
-                WRITE_MPEG_REG(AV_SCRATCH_4, 1);
-        }
-        else
-        {
-                printk("not supported VC1 format\n");
-        }    
+    if (vvc1_amstream_dec_info.format == VIDEO_DEC_FORMAT_WMV3) {
+        printk("WMV3 dec format\n");
+        vvc1_format = VIDEO_DEC_FORMAT_WMV3;
+        WRITE_MPEG_REG(AV_SCRATCH_4, 0);
+    } else if (vvc1_amstream_dec_info.format == VIDEO_DEC_FORMAT_WVC1) {
+        printk("WVC1 dec format\n");
+        vvc1_format = VIDEO_DEC_FORMAT_WVC1;
+        WRITE_MPEG_REG(AV_SCRATCH_4, 1);
+    } else {
+        printk("not supported VC1 format\n");
+    }
 
-        if (amvdec_loadmc(vc1_mc) < 0) 
-        {
-                amvdec_disable();
+    if (amvdec_loadmc(vc1_mc) < 0) {
+        amvdec_disable();
 
-                printk("failed\n");
-                return -EBUSY;
-        }
+        printk("failed\n");
+        return -EBUSY;
+    }
 
-        stat |= STAT_MC_LOAD;
+    stat |= STAT_MC_LOAD;
 
-        /* enable AMRISC side protocol */
-        vvc1_prot_init();
+    /* enable AMRISC side protocol */
+    vvc1_prot_init();
 
 #ifdef HANDLE_VC1_IRQ
-        if (request_irq(INT_MAILBOX_1A, vvc1_isr,
-                        IRQF_SHARED, "vvc1-irq", (void *)vvc1_dec_id))
-        {
-                amvdec_disable();
+    if (request_irq(INT_MAILBOX_1A, vvc1_isr,
+                    IRQF_SHARED, "vvc1-irq", (void *)vvc1_dec_id)) {
+        amvdec_disable();
 
-                printk("vvc1 irq register error.\n");
-                return -ENOENT;
-        }
+        printk("vvc1 irq register error.\n");
+        return -ENOENT;
+    }
 #endif
 
-        stat |= STAT_ISR_REG;
+    stat |= STAT_ISR_REG;
 
-        vf_reg_provider(&vvc1_vf_provider);
+    vf_reg_provider(&vvc1_vf_provider);
 
-        stat |= STAT_VF_HOOK;
+    stat |= STAT_VF_HOOK;
 
-        recycle_timer.data = (ulong) & recycle_timer;
-        recycle_timer.function = vvc1_put_timer_func;
-        recycle_timer.expires = jiffies + PUT_INTERVAL;
+    recycle_timer.data = (ulong) & recycle_timer;
+    recycle_timer.function = vvc1_put_timer_func;
+    recycle_timer.expires = jiffies + PUT_INTERVAL;
 
-        add_timer(&recycle_timer);
+    add_timer(&recycle_timer);
 
-        stat |= STAT_TIMER_ARM;
+    stat |= STAT_TIMER_ARM;
 
-        amvdec_start();
+    amvdec_start();
 
-        stat |= STAT_VDEC_RUN;
+    stat |= STAT_VDEC_RUN;
 
-        set_vdec_func(&vvc1_dec_status);
-        
-        return 0;
+    set_vdec_func(&vvc1_dec_status);
+
+    return 0;
 }
 
 static int amvdec_vc1_probe(struct platform_device *pdev)
 {
-        struct resource *mem;
+    struct resource *mem;
 
-        if (!(mem = platform_get_resource(pdev, IORESOURCE_MEM, 0)))
-        {
-                printk("amvdec_vc1 memory resource undefined.\n");
-                return -EFAULT;
-        }
+    if (!(mem = platform_get_resource(pdev, IORESOURCE_MEM, 0))) {
+        printk("amvdec_vc1 memory resource undefined.\n");
+        return -EFAULT;
+    }
 
-        buf_start = mem->start;
-        buf_size = mem->end - mem->start + 1;
-        buf_offset = buf_start - ORI_BUFFER_START_ADDR;
+    buf_start = mem->start;
+    buf_size = mem->end - mem->start + 1;
+    buf_offset = buf_start - ORI_BUFFER_START_ADDR;
 
-        memcpy(&vvc1_amstream_dec_info, (void *)mem[1].start, sizeof(vvc1_amstream_dec_info));
+    memcpy(&vvc1_amstream_dec_info, (void *)mem[1].start, sizeof(vvc1_amstream_dec_info));
 
-        if (vvc1_init() < 0) 
-        {
-                printk("amvdec_vc1 init failed.\n");
+    if (vvc1_init() < 0) {
+        printk("amvdec_vc1 init failed.\n");
 
-                return -ENODEV;
-        }
+        return -ENODEV;
+    }
 
-        return 0;
+    return 0;
 }
 
 static int amvdec_vc1_remove(struct platform_device *pdev)
 {
-        if (stat & STAT_VDEC_RUN) 
-        {
-                amvdec_stop();
-                stat &= ~STAT_VDEC_RUN;
-        }
+    if (stat & STAT_VDEC_RUN) {
+        amvdec_stop();
+        stat &= ~STAT_VDEC_RUN;
+    }
 
-        if (stat & STAT_ISR_REG) 
-        {
-                free_irq(INT_MAILBOX_1A, (void *)vvc1_dec_id);
-                stat &= ~STAT_ISR_REG;
-        }
+    if (stat & STAT_ISR_REG) {
+        free_irq(INT_MAILBOX_1A, (void *)vvc1_dec_id);
+        stat &= ~STAT_ISR_REG;
+    }
 
-        if (stat & STAT_TIMER_ARM) 
-        {
-                del_timer_sync(&recycle_timer);
-                stat &= ~STAT_TIMER_ARM;
-        }
+    if (stat & STAT_TIMER_ARM) {
+        del_timer_sync(&recycle_timer);
+        stat &= ~STAT_TIMER_ARM;
+    }
 
-        if (stat & STAT_VF_HOOK) 
-        {
-                ulong flags;
-                spin_lock_irqsave(&lock, flags);
-                fill_ptr = get_ptr = put_ptr = putting_ptr = 0;
-                spin_unlock_irqrestore(&lock, flags);
-                
-                vf_unreg_provider();
-                stat &= ~STAT_VF_HOOK;
-        }
+    if (stat & STAT_VF_HOOK) {
+        ulong flags;
+        spin_lock_irqsave(&lock, flags);
+        fill_ptr = get_ptr = put_ptr = putting_ptr = 0;
+        spin_unlock_irqrestore(&lock, flags);
 
-        amvdec_disable();
+        vf_unreg_provider();
+        stat &= ~STAT_VF_HOOK;
+    }
+
+    amvdec_disable();
 
 #ifdef DEBUG_PTS
-       printk("pts hit %d, pts missed %d, i hit %d, missed %d\n", pts_hit, pts_missed, pts_i_hit, pts_i_missed);
-       printk("total frame %d, avi_flag %d, rate %d\n", total_frame, avi_flag, vvc1_amstream_dec_info.rate);
+    printk("pts hit %d, pts missed %d, i hit %d, missed %d\n", pts_hit, pts_missed, pts_i_hit, pts_i_missed);
+    printk("total frame %d, avi_flag %d, rate %d\n", total_frame, avi_flag, vvc1_amstream_dec_info.rate);
 #endif
 
-        return 0;
+    return 0;
 }
 
 /****************************************/
 
 static struct platform_driver amvdec_vc1_driver = {
-        .probe  = amvdec_vc1_probe,
-        .remove = amvdec_vc1_remove,
+    .probe  = amvdec_vc1_probe,
+    .remove = amvdec_vc1_remove,
 #ifdef CONFIG_PM
-        .suspend = amvdec_suspend,
-        .resume  = amvdec_resume,
+    .suspend = amvdec_suspend,
+    .resume  = amvdec_resume,
 #endif
-        .driver = {
-                .name = DRIVER_NAME,
-        }
+    .driver = {
+        .name = DRIVER_NAME,
+    }
 };
 
 static int __init amvdec_vc1_driver_init_module(void)
 {
-        printk("amvdec_vc1 module init\n");
+    printk("amvdec_vc1 module init\n");
 
-        if (platform_driver_register(&amvdec_vc1_driver)) 
-        {
-                printk("failed to register amvdec_vc1 driver\n");
-                return -ENODEV;
-        }
+    if (platform_driver_register(&amvdec_vc1_driver)) {
+        printk("failed to register amvdec_vc1 driver\n");
+        return -ENODEV;
+    }
 
-        return 0;
+    return 0;
 }
 
 static void __exit amvdec_vc1_driver_remove_module(void)
 {
-        printk("amvdec_vc1 module remove.\n");
+    printk("amvdec_vc1 module remove.\n");
 
-        platform_driver_unregister(&amvdec_vc1_driver);
+    platform_driver_unregister(&amvdec_vc1_driver);
 }
 
 /****************************************/
