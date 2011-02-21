@@ -34,11 +34,11 @@
 
 #ifdef CONFIG_AM_VDEC_MPEG12_LOG
 #define AMLOG
-#define LOG_LEVEL_VAR		amlog_level_vmpeg
-#define LOG_MASK_VAR		amlog_mask_vmpeg
-#define LOG_LEVEL_ERROR		0
-#define LOG_LEVEL_INFO		1
-#define LOG_LEVEL_DESC	"0:ERROR, 1:INFO"
+#define LOG_LEVEL_VAR       amlog_level_vmpeg
+#define LOG_MASK_VAR        amlog_mask_vmpeg
+#define LOG_LEVEL_ERROR     0
+#define LOG_LEVEL_INFO      1
+#define LOG_LEVEL_DESC  "0:ERROR, 1:INFO"
 #endif
 #include <linux/amlog.h>
 MODULE_AMLOG(LOG_LEVEL_ERROR, 0, LOG_LEVEL_DESC, LOG_DEFAULT_MASK_DESC);
@@ -58,15 +58,15 @@ MODULE_AMLOG(LOG_LEVEL_ERROR, 0, LOG_LEVEL_DESC, LOG_DEFAULT_MASK_DESC);
 #define MREG_BUFFEROUT      AV_SCRATCH_9
 
 #define MREG_CMD            AV_SCRATCH_A
-#define MREG_CO_MV_START	AV_SCRATCH_B
+#define MREG_CO_MV_START    AV_SCRATCH_B
 #define MREG_ERROR_COUNT    AV_SCRATCH_C
 #define MREG_FRAME_OFFSET   AV_SCRATCH_D
 
 #define PICINFO_ERROR       0x80000000
 #define PICINFO_TYPE_MASK       0x00030000
-    #define PICINFO_TYPE_I      0x00000000
-    #define PICINFO_TYPE_P      0x00010000
-    #define PICINFO_TYPE_B      0x00020000
+#define PICINFO_TYPE_I      0x00000000
+#define PICINFO_TYPE_P      0x00010000
+#define PICINFO_TYPE_B      0x00020000
 
 #define PICINFO_PROG        0x8000
 #define PICINFO_RPT_FIRST   0x4000
@@ -94,27 +94,26 @@ static int  vmpeg_vf_states(vframe_states_t *states);
 
 
 static const char vmpeg12_dec_id[] = "vmpeg12-dev";
-static const struct vframe_provider_s vmpeg_vf_provider =
-{
+static const struct vframe_provider_s vmpeg_vf_provider = {
     .peek = vmpeg_vf_peek,
     .get  = vmpeg_vf_get,
     .put  = vmpeg_vf_put,
-    .vf_states=vmpeg_vf_states,
+    .vf_states = vmpeg_vf_states,
 };
 
 static const u32 frame_rate_tab[16] = {
-    96000/30, 96000/24, 96000/24, 96000/25,
-    96000/30, 96000/30, 96000/50, 96000/60,
-    96000/60,
+    96000 / 30, 96000 / 24, 96000 / 24, 96000 / 25,
+    96000 / 30, 96000 / 30, 96000 / 50, 96000 / 60,
+    96000 / 60,
     /* > 8 reserved, use 24 */
-    96000/24, 96000/24, 96000/24, 96000/24,
-    96000/24, 96000/24, 96000/24
+    96000 / 24, 96000 / 24, 96000 / 24, 96000 / 24,
+    96000 / 24, 96000 / 24, 96000 / 24
 };
 
 typedef struct {
-	struct vframe_s *pool[VF_POOL_SIZE];
-	u32	rd_index;
-	u32 wr_index;
+    struct vframe_s *pool[VF_POOL_SIZE];
+    u32 rd_index;
+    u32 wr_index;
 } vfq_t;
 
 static struct vframe_s vfqool[VF_POOL_SIZE];
@@ -146,48 +145,51 @@ static inline void ptr_atomic_wrap_inc(u32 *ptr)
 
     i++;
 
-    if (i >= VF_POOL_SIZE)
+    if (i >= VF_POOL_SIZE) {
         i = 0;
+    }
 
     *ptr = i;
 }
 
 static inline bool vfq_empty(vfq_t *q)
 {
-	return (q->rd_index == q->wr_index);
+    return (q->rd_index == q->wr_index);
 }
 
 static inline void vfq_push(vfq_t *q, vframe_t *vf)
 {
-	q->pool[q->wr_index] = vf;
-	ptr_atomic_wrap_inc(&q->wr_index);
+    q->pool[q->wr_index] = vf;
+    ptr_atomic_wrap_inc(&q->wr_index);
 }
 
 static inline vframe_t *vfq_pop(vfq_t *q)
 {
-	vframe_t *vf;
+    vframe_t *vf;
 
-	if (vfq_empty(q))
-		return NULL;
-		
-	vf = q->pool[q->rd_index];
+    if (vfq_empty(q)) {
+        return NULL;
+    }
 
-	ptr_atomic_wrap_inc(&q->rd_index);
+    vf = q->pool[q->rd_index];
 
-	return vf;
+    ptr_atomic_wrap_inc(&q->rd_index);
+
+    return vf;
 }
 
 static inline vframe_t *vfq_peek(vfq_t *q)
 {
-	if (vfq_empty(q))
-		return NULL;
+    if (vfq_empty(q)) {
+        return NULL;
+    }
 
-	return q->pool[q->rd_index];
+    return q->pool[q->rd_index];
 }
 
 static inline void vfq_init(vfq_t *q)
 {
-	q->rd_index = q->wr_index = 0;
+    q->rd_index = q->wr_index = 0;
 }
 
 static void set_frame_info(vframe_t *vf)
@@ -195,7 +197,7 @@ static void set_frame_info(vframe_t *vf)
     unsigned ar_bits;
 
 #ifdef CONFIG_AM_VDEC_MPEG12_LOG
-    bool first =  (frame_width == 0) && (frame_height == 0);
+    bool first = (frame_width == 0) && (frame_height == 0);
 #endif
 
     vf->width  = frame_width = READ_MPEG_REG(MREG_PIC_WIDTH);
@@ -205,7 +207,7 @@ static void set_frame_info(vframe_t *vf)
         vf->duration = frame_dur;
     } else {
         vf->duration = frame_dur =
-            frame_rate_tab[(READ_MPEG_REG(MREG_SEQ_INFO) >> 4) & 0xf];
+                           frame_rate_tab[(READ_MPEG_REG(MREG_SEQ_INFO) >> 4) & 0xf];
     }
 
     ar_bits = READ_MPEG_REG(MREG_SEQ_INFO) & 0xf;
@@ -223,11 +225,11 @@ static void set_frame_info(vframe_t *vf)
         vf->ratio_control = 0;
     }
 
-	amlog_level_if(first, LOG_LEVEL_INFO, "mpeg2dec: w(%d), h(%d), dur(%d), dur-ES(%d)\n",
-            frame_width,
-            frame_height,
-            frame_dur,
-            frame_rate_tab[(READ_MPEG_REG(MREG_SEQ_INFO) >> 4) & 0xf]);
+    amlog_level_if(first, LOG_LEVEL_INFO, "mpeg2dec: w(%d), h(%d), dur(%d), dur-ES(%d)\n",
+                   frame_width,
+                   frame_height,
+                   frame_dur,
+                   frame_rate_tab[(READ_MPEG_REG(MREG_SEQ_INFO) >> 4) & 0xf]);
 }
 
 static bool error_skip(u32 info, vframe_t *vf)
@@ -235,19 +237,21 @@ static bool error_skip(u32 info, vframe_t *vf)
     if (error_frame_skip_level) {
         /* skip error frame */
         if ((info & PICINFO_ERROR) || (frame_force_skip_flag)) {
-            if ((info & PICINFO_ERROR) == 0 ){
-                if((info & PICINFO_TYPE_MASK) == PICINFO_TYPE_I)
-                    frame_force_skip_flag = 0;    
+            if ((info & PICINFO_ERROR) == 0) {
+                if ((info & PICINFO_TYPE_MASK) == PICINFO_TYPE_I) {
+                    frame_force_skip_flag = 0;
+                }
             } else {
-                if (error_frame_skip_level >= 2)
+                if (error_frame_skip_level >= 2) {
                     frame_force_skip_flag = 1;
+                }
             }
             if ((info & PICINFO_ERROR) || (frame_force_skip_flag)) {
                 return true;
             }
         }
     }
-    
+
     return false;
 }
 
@@ -277,7 +281,7 @@ static irqreturn_t vmpeg12_isr(int irq, void *dev_id)
         if (frame_prog & PICINFO_PROG) {
             u32 index = ((reg & 7) - 1) & 3;
 
-	        seqinfo = READ_MPEG_REG(MREG_SEQ_INFO);
+            seqinfo = READ_MPEG_REG(MREG_SEQ_INFO);
 
             vf = vfq_pop(&newframe_q);
 
@@ -286,18 +290,19 @@ static irqreturn_t vmpeg12_isr(int irq, void *dev_id)
             vf->index = index;
             vf->type = VIDTYPE_PROGRESSIVE | VIDTYPE_VIU_FIELD;
 
-            if ((seqinfo & SEQINFO_EXT_AVAILABLE)&& (seqinfo & SEQINFO_PROG)) {
-                if (info & PICINFO_RPT_FIRST){
-                    if (info & PICINFO_TOP_FIRST)
-                        vf->duration = vf->duration * 3; // repeat three times
-                    else
-                        vf->duration = vf->duration * 2; // repeat two times
+            if ((seqinfo & SEQINFO_EXT_AVAILABLE) && (seqinfo & SEQINFO_PROG)) {
+                if (info & PICINFO_RPT_FIRST) {
+                    if (info & PICINFO_TOP_FIRST) {
+                        vf->duration = vf->duration * 3;    // repeat three times
+                    } else {
+                        vf->duration = vf->duration * 2;    // repeat two times
+                    }
                 }
                 vf->duration_pulldown = 0; // no pull down
 
             } else {
                 vf->duration_pulldown = (info & PICINFO_RPT_FIRST) ?
-                    vf->duration >> 1 : 0;
+                                        vf->duration >> 1 : 0;
             }
 
             vf->duration += vf->duration_pulldown;
@@ -306,37 +311,38 @@ static irqreturn_t vmpeg12_isr(int irq, void *dev_id)
 
             vfbuf_use[index]++;
 
-			if (error_skip(info, vf)) {
-			    spin_lock_irqsave(&lock, flags);
-				vfq_push(&recycle_q, vf);
-			    spin_unlock_irqrestore(&lock, flags);
-			}
-			else
-				vfq_push(&display_q, vf);
+            if (error_skip(info, vf)) {
+                spin_lock_irqsave(&lock, flags);
+                vfq_push(&recycle_q, vf);
+                spin_unlock_irqrestore(&lock, flags);
+            } else {
+                vfq_push(&display_q, vf);
+            }
 
         } else {
             u32 index = ((reg & 7) - 1) & 3;
 
             vf = vfq_pop(&newframe_q);
 
-            vfbuf_use[index]+=2;
+            vfbuf_use[index] += 2;
 
             set_frame_info(vf);
 
             vf->index = index;
             vf->type = (info & PICINFO_TOP_FIRST) ?
-                VIDTYPE_INTERLACE_TOP : VIDTYPE_INTERLACE_BOTTOM;
+                       VIDTYPE_INTERLACE_TOP : VIDTYPE_INTERLACE_BOTTOM;
             vf->duration >>= 1;
             vf->duration_pulldown = (info & PICINFO_RPT_FIRST) ?
-                vf->duration >> 1 : 0;
+                                    vf->duration >> 1 : 0;
             vf->duration += vf->duration_pulldown;
             vf->canvas0Addr = vf->canvas1Addr = index2canvas(index);
             vf->pts = (pts_valid) ? pts : 0;
 
-			if (error_skip(info, vf))
-				vfq_push(&recycle_q, vf);
-			else
-				vfq_push(&display_q, vf);
+            if (error_skip(info, vf)) {
+                vfq_push(&recycle_q, vf);
+            } else {
+                vfq_push(&display_q, vf);
+            }
 
             vf = vfq_pop(&newframe_q);
 
@@ -344,18 +350,19 @@ static irqreturn_t vmpeg12_isr(int irq, void *dev_id)
 
             vf->index = index;
             vf->type = (info & PICINFO_TOP_FIRST) ?
-                VIDTYPE_INTERLACE_BOTTOM : VIDTYPE_INTERLACE_TOP;
+                       VIDTYPE_INTERLACE_BOTTOM : VIDTYPE_INTERLACE_TOP;
             vf->duration >>= 1;
             vf->duration_pulldown = (info & PICINFO_RPT_FIRST) ?
-                vf->duration >> 1 : 0;
+                                    vf->duration >> 1 : 0;
             vf->duration += vf->duration_pulldown;
             vf->canvas0Addr = vf->canvas1Addr = index2canvas(index);
             vf->pts = 0;
 
-			if (error_skip(info, vf))
-				vfq_push(&recycle_q, vf);
-			else
-				vfq_push(&display_q, vf);
+            if (error_skip(info, vf)) {
+                vfq_push(&recycle_q, vf);
+            } else {
+                vfq_push(&display_q, vf);
+            }
         }
 
         WRITE_MPEG_REG(MREG_BUFFEROUT, 0);
@@ -376,19 +383,19 @@ static vframe_t *vmpeg_vf_get(void)
 
 static void vmpeg_vf_put(vframe_t *vf)
 {
-	vfq_push(&recycle_q, vf);
+    vfq_push(&recycle_q, vf);
 }
 static int  vmpeg_vf_states(vframe_states_t *states)
 {
-	unsigned long flags;
-	spin_lock_irqsave(&lock, flags);
-	states->vf_pool_size=VF_POOL_SIZE;
-	states->fill_ptr=display_q.wr_index;
-	states->get_ptr=display_q.rd_index;
-	states->put_ptr=-1;
-	states->putting_ptr=-1;
-	spin_unlock_irqrestore(&lock, flags);
-	return 0;
+    unsigned long flags;
+    spin_lock_irqsave(&lock, flags);
+    states->vf_pool_size = VF_POOL_SIZE;
+    states->fill_ptr = display_q.wr_index;
+    states->get_ptr = display_q.rd_index;
+    states->put_ptr = -1;
+    states->putting_ptr = -1;
+    spin_unlock_irqrestore(&lock, flags);
+    return 0;
 }
 
 static void vmpeg_put_timer_func(unsigned long arg)
@@ -402,7 +409,7 @@ static void vmpeg_put_timer_func(unsigned long arg)
             WRITE_MPEG_REG(MREG_BUFFERIN, vf->index + 1);
         }
 
-		vfq_push(&newframe_q, vf);
+        vfq_push(&newframe_q, vf);
     }
 
     timer->expires = jiffies + PUT_INTERVAL;
@@ -414,10 +421,11 @@ int vmpeg12_dec_status(struct vdec_status *vstatus)
 {
     vstatus->width = frame_width;
     vstatus->height = frame_height;
-    if(frame_dur!=0)
-    	vstatus->fps = 96000/frame_dur;
-    else
-	    vstatus->fps = 96000;	
+    if (frame_dur != 0) {
+        vstatus->fps = 96000 / frame_dur;
+    } else {
+        vstatus->fps = 96000;
+    }
     vstatus->error_count = READ_MPEG_REG(AV_SCRATCH_C);
     vstatus->status = stat;
 
@@ -439,8 +447,7 @@ static void vmpeg12_canvas_init(void)
         decbuf_y_size  = 0x80000;
         decbuf_uv_size = 0x20000;
         decbuf_size    = 0x100000;
-    }
-    else {
+    } else {
         /* HD & SD */
         canvas_width   = 1920;
         canvas_height  = 1088;
@@ -451,7 +458,7 @@ static void vmpeg12_canvas_init(void)
 
     if (READ_MPEG_REG(VPP_MISC) & VPP_VD1_POSTBLEND) {
         canvas_t cur_canvas;
-    
+
         canvas_read((READ_MPEG_REG(VD1_IF0_CANVAS0) & 0xff), &cur_canvas);
         disp_addr = (cur_canvas.addr + 7) >> 3;
     }
@@ -468,7 +475,7 @@ static void vmpeg12_canvas_init(void)
                           CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_32X32);
             canvas_config(3 * i + 2,
                           buf_start + 4 * decbuf_size + decbuf_y_size + decbuf_uv_size,
-                          canvas_width/2, canvas_height/2,
+                          canvas_width / 2, canvas_height / 2,
                           CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_32X32);
         } else {
             canvas_config(3 * i + 0,
@@ -481,12 +488,12 @@ static void vmpeg12_canvas_init(void)
                           CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_32X32);
             canvas_config(3 * i + 2,
                           buf_start + i * decbuf_size + decbuf_y_size + decbuf_uv_size,
-                          canvas_width/2, canvas_height/2,
+                          canvas_width / 2, canvas_height / 2,
                           CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_32X32);
         }
     }
 
-	  WRITE_MPEG_REG(MREG_CO_MV_START, buf_start + 4 * decbuf_size);
+    WRITE_MPEG_REG(MREG_CO_MV_START, buf_start + 4 * decbuf_size);
 
 }
 
@@ -515,30 +522,33 @@ static void vmpeg12_prot_init(void)
     WRITE_MPEG_REG(MREG_BUFFERIN, 0);
     WRITE_MPEG_REG(MREG_BUFFEROUT, 0);
     /* set reference width and height */
-    if ((frame_width != 0) && (frame_height != 0))
-        WRITE_MPEG_REG(MREG_CMD, (frame_width<<16) | frame_height);
-    else
+    if ((frame_width != 0) && (frame_height != 0)) {
+        WRITE_MPEG_REG(MREG_CMD, (frame_width << 16) | frame_height);
+    } else {
         WRITE_MPEG_REG(MREG_CMD, 0);
+    }
     /* clear error count */
-    WRITE_MPEG_REG(MREG_ERROR_COUNT, 0);        
+    WRITE_MPEG_REG(MREG_ERROR_COUNT, 0);
 }
 
 static void vmpeg12_local_init(void)
 {
     int i;
 
-	vfq_init(&display_q);
-	vfq_init(&recycle_q);
-	vfq_init(&newframe_q);
-	
-	for (i=0; i<VF_POOL_SIZE-1; i++)
-		vfq_push(&newframe_q, &vfqool[i]);
+    vfq_init(&display_q);
+    vfq_init(&recycle_q);
+    vfq_init(&newframe_q);
+
+    for (i = 0; i < VF_POOL_SIZE - 1; i++) {
+        vfq_push(&newframe_q, &vfqool[i]);
+    }
 
     frame_width = frame_height = frame_dur = frame_prog = 0;
 
-    for (i = 0; i < 4; i++)
+    for (i = 0; i < 4; i++) {
         vfbuf_use[i] = 0;
-        
+    }
+
     frame_force_skip_flag = 0;
 }
 
@@ -603,7 +613,7 @@ static int amvdec_mpeg12_probe(struct platform_device *pdev)
     amlog_level(LOG_LEVEL_INFO, "amvdec_mpeg12 probe start.\n");
 
     if (!(mem = platform_get_resource(pdev, IORESOURCE_MEM, 0))) {
-		amlog_level(LOG_LEVEL_ERROR, "amvdec_mpeg12 memory resource undefined.\n");
+        amlog_level(LOG_LEVEL_ERROR, "amvdec_mpeg12 memory resource undefined.\n");
         return -EFAULT;
     }
 
