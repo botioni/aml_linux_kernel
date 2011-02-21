@@ -459,7 +459,7 @@ void extern_wifi_power(int is_power)
     if (0 == is_power)
     {
         #ifdef CONFIG_SN7325
-        printk("power on 7325 3\n");
+        printk("power off 7325 wifi\n");
         configIO(0, 0);
         setIO_level(0, 0, 1);
         #else
@@ -879,8 +879,8 @@ static void set_vccx2(int power_on)
         //set_gpio_val(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), 1);
         //set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);
         #ifdef CONFIG_SN7325
-        configIO(1, 0);
-        setIO_level(1, 1, 4);
+       // configIO(1, 0);
+       // setIO_level(1, 1, 4);
         #endif
     }
     else
@@ -888,8 +888,9 @@ static void set_vccx2(int power_on)
         //set_gpio_val(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), 0);
        // set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);
         #ifdef CONFIG_SN7325
-        configIO(1, 0);
-        setIO_level(1, 0, 4);
+         //printk("7325 set_vccx2 off\n");
+        //configIO(1, 0);
+        //setIO_level(1, 0, 4);
         #endif
     }
 }
@@ -1006,6 +1007,7 @@ static void set_charge(int flags)
         {
 	    //set_gpio_val(GPIOD_bank_bit2_24(22), GPIOD_bit_bit2_24(22), 0); //fast charge
 	    #ifdef CONFIG_SN7325
+	    printk("7325 set charge to fast charge\n");
         configIO(1, 0);
         setIO_level(1, 1, 1);
         #endif
@@ -1014,6 +1016,7 @@ static void set_charge(int flags)
         {
     	//set_gpio_val(GPIOD_bank_bit2_24(22), GPIOD_bit_bit2_24(22), 1);	//slow charge
 	    #ifdef CONFIG_SN7325
+	    printk("7325 set charge to slow charge\n");
         configIO(1, 0);
         setIO_level(1, 0, 1);
         #endif
