@@ -1432,6 +1432,15 @@ static int amvideo_ioctl(struct inode *inode, struct file *file,
             tsync_set_syncthresh(arg);
             break;
 
+        case AMSTREAM_IOC_CLEAR_VBUF:
+        {
+            unsigned long flags;
+            spin_lock_irqsave(&lock, flags);
+            cur_dispbuf = NULL;
+            spin_unlock_irqrestore(&lock, flags);
+        }
+            break;
+
         /**********************************************************************
         video enhancement ioctl
         **********************************************************************/
