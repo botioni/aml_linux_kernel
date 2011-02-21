@@ -1080,6 +1080,11 @@ int dwc_otg_hcd_urb_enqueue(struct usb_hcd *_hcd,
 		/* No longer connected. */
 		return -ENODEV;
 	}
+	if(dwc_otg_hcd->flags.b.port_connect_status_change){
+		/* Connect status change processing. */
+		return -ENODEV;
+	}
+	
 	qtd = dwc_otg_hcd_qtd_create(_urb, _mem_flags);
 	if (qtd == NULL) {
 		DWC_ERROR("DWC OTG HCD URB Enqueue failed creating QTD\n");
