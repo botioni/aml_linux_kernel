@@ -398,7 +398,7 @@ static irqreturn_t goodix_ts_irq_handler(int irq, void *dev_id)
 	struct goodix_ts_data *ts = dev_id;
 	struct goodix_i2c_rmi_platform_data *pdata = ts->client->dev.platform_data;
 	int level = gpio_get_value(pdata->gpio_irq);
-	printk(KERN_ALERT"irq level = %d\n", level);
+	//printk(KERN_ALERT"irq level = %d\n", level);
 //	if (!level) {
 	if (ts->init_finished) {
 		disable_irq_nosync(ts->client->irq);
