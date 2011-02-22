@@ -45,7 +45,7 @@
 #ifdef CONFIG_WAKELOCK
 static struct wake_lock amvdec_lock;
 struct timer_list amvdevtimer;
-#define WAKE_CHECK_INTERVAL	(100*HZ/100)
+#define WAKE_CHECK_INTERVAL (100*HZ/100)
 #endif
 
 static void amvdec_pg_enable(bool enable)
@@ -59,11 +59,10 @@ static void amvdec_pg_enable(bool enable)
         CLK_GATE_ON(IQIDCT_CLK);
         //CLK_GATE_ON(VLD_CLK);
         CLK_GATE_ON(AMRISC);
-    }
-    else {
+    } else {
         CLK_GATE_OFF(AMRISC);
 
-        timeout = jiffies + HZ/10;
+        timeout = jiffies + HZ / 10;
 
         while (READ_MPEG_REG(MDEC_PIC_DC_STATUS) != 0) {
             if (time_after(jiffies, timeout)) {
@@ -78,7 +77,7 @@ static void amvdec_pg_enable(bool enable)
 
         CLK_GATE_OFF(MDEC_CLK_PIC_DC);
 
-        timeout = jiffies + HZ/10;
+        timeout = jiffies + HZ / 10;
 
         while (READ_MPEG_REG(DBLK_STATUS) & 1) {
             if (time_after(jiffies, timeout)) {
@@ -92,7 +91,7 @@ static void amvdec_pg_enable(bool enable)
         }
         CLK_GATE_OFF(MDEC_CLK_DBLK);
 
-        timeout = jiffies + HZ/10;
+        timeout = jiffies + HZ / 10;
 
         while (READ_MPEG_REG(MC_STATUS0) & 1) {
             if (time_after(jiffies, timeout)) {
@@ -106,7 +105,7 @@ static void amvdec_pg_enable(bool enable)
         }
         CLK_GATE_OFF(MC_CLK);
 
-        timeout = jiffies + HZ/10;
+        timeout = jiffies + HZ / 10;
         while (READ_MPEG_REG(DCAC_DMA_CTRL) & 0x8000) {
             if (time_after(jiffies, timeout)) {
                 break;
@@ -124,16 +123,16 @@ static void amvdec_pg_enable(bool enable)
 }
 
 #ifdef CONFIG_WAKELOCK
-int	amvdec_wake_lock(void)
+int amvdec_wake_lock(void)
 {
-	wake_lock(&amvdec_lock);
-	return 0;
+    wake_lock(&amvdec_lock);
+    return 0;
 }
 
 int amvdec_wake_unlock(void)
 {
-	wake_unlock(&amvdec_lock);
-	return 0;
+    wake_unlock(&amvdec_lock);
+    return 0;
 }
 #else
 #define amvdec_wake_lock()
@@ -148,9 +147,10 @@ s32 amvdec_loadmc(const u32 *p)
     s32 ret = 0;
 
     mc_addr = kmalloc(MC_SIZE, GFP_KERNEL);
-    if (!mc_addr)
+    if (!mc_addr) {
         return -ENOMEM;
-		
+    }
+
     memcpy(mc_addr, p, MC_SIZE);
 
     mc_addr_map = dma_map_single(NULL, mc_addr, MC_SIZE, DMA_TO_DEVICE);
@@ -165,14 +165,13 @@ s32 amvdec_loadmc(const u32 *p)
     timeout = jiffies + HZ;
 
     WRITE_MPEG_REG(IMEM_DMA_ADR, mc_addr_map);
-    WRITE_MPEG_REG(IMEM_DMA_COUNT,0x1000);
-    WRITE_MPEG_REG(IMEM_DMA_CTRL,(0x8000 | (7 << 16)));
+    WRITE_MPEG_REG(IMEM_DMA_COUNT, 0x1000);
+    WRITE_MPEG_REG(IMEM_DMA_CTRL, (0x8000 | (7 << 16)));
 
-    while(READ_MPEG_REG(IMEM_DMA_CTRL) & 0x8000) {
+    while (READ_MPEG_REG(IMEM_DMA_CTRL) & 0x8000) {
         if (time_before(jiffies, timeout)) {
             schedule();
-        }
-        else {
+        } else {
             printk("vdec load mc error\n");
             ret = -EBUSY;
             break;
@@ -189,7 +188,7 @@ s32 amvdec_loadmc(const u32 *p)
 void amvdec_start(void)
 {
 #ifdef CONFIG_WAKELOCK
-	amvdec_wake_lock();
+    amvdec_wake_lock();
 #endif
 
     /* additional cbus dummy register reading for timing control */
@@ -229,7 +228,7 @@ void amvdec_stop(void)
     READ_MPEG_REG(RESET0_REGISTER);
 
 #ifdef CONFIG_WAKELOCK
-	amvdec_wake_unlock();
+    amvdec_wake_unlock();
 #endif
 }
 
@@ -247,7 +246,7 @@ void amvdec_disable(void)
 int amvdec_suspend(struct platform_device *dev, pm_message_t event)
 {
     amvdec_pg_enable(false);
-	
+
     return 0;
 }
 
@@ -262,60 +261,58 @@ int amvdec_resume(struct platform_device *dev)
 
 static int vdec_is_paused(void)
 {
-	static unsigned long old_wp=-1,old_rp=-1,old_level=-1;
-	unsigned long wp,rp,level;
-	static int  paused_time=0;
-		
-	wp=READ_MPEG_REG(VLD_MEM_VIFIFO_START_PTR+VLD_MEM_VIFIFO_WP);
-	rp=READ_MPEG_REG(VLD_MEM_VIFIFO_START_PTR+VLD_MEM_VIFIFO_RP);
-	level=READ_MPEG_REG(VLD_MEM_VIFIFO_START_PTR+VLD_MEM_VIFIFO_LEVEL);
-	if((rp==old_rp && level>1024) || /*have data,but output buffer is fulle*/
-	   (rp==old_rp && wp==old_wp && level==level)){/*no write && not read*/
-		paused_time++;
-	}
-	else{
-		paused_time=0;
-	}
-	old_wp=wp;
-	old_rp=rp;
-	old_level=level;
-	
-	if(paused_time>10)
-		return 1;
-	return 0;
+    static unsigned long old_wp = -1, old_rp = -1, old_level = -1;
+    unsigned long wp, rp, level;
+    static int  paused_time = 0;
+
+    wp = READ_MPEG_REG(VLD_MEM_VIFIFO_START_PTR + VLD_MEM_VIFIFO_WP);
+    rp = READ_MPEG_REG(VLD_MEM_VIFIFO_START_PTR + VLD_MEM_VIFIFO_RP);
+    level = READ_MPEG_REG(VLD_MEM_VIFIFO_START_PTR + VLD_MEM_VIFIFO_LEVEL);
+    if ((rp == old_rp && level > 1024) || /*have data,but output buffer is fulle*/
+        (rp == old_rp && wp == old_wp && level == level)) { /*no write && not read*/
+        paused_time++;
+    } else {
+        paused_time = 0;
+    }
+    old_wp = wp;
+    old_rp = rp;
+    old_level = level;
+
+    if (paused_time > 10) {
+        return 1;
+    }
+    return 0;
 }
 
 int amvdev_pause(void)
 {
-	mod_timer(&amvdevtimer,jiffies + WAKE_CHECK_INTERVAL);
-	return 0;
+    mod_timer(&amvdevtimer, jiffies + WAKE_CHECK_INTERVAL);
+    return 0;
 }
 int amvdev_resume(void)
-{	
-	amvdec_wake_lock();
-	del_timer_sync(&amvdevtimer);
-	return 0;
+{
+    amvdec_wake_lock();
+    del_timer_sync(&amvdevtimer);
+    return 0;
 }
 
 static void vdec_paused_check_timer(unsigned long arg)
 {
-	if(vdec_is_paused()){
-		printk("vdec paused and release wakelock now\n");
-		amvdec_wake_unlock();
-	}
-	else
-	{
-		mod_timer(&amvdevtimer,jiffies + WAKE_CHECK_INTERVAL);
-	}
+    if (vdec_is_paused()) {
+        printk("vdec paused and release wakelock now\n");
+        amvdec_wake_unlock();
+    } else {
+        mod_timer(&amvdevtimer, jiffies + WAKE_CHECK_INTERVAL);
+    }
 }
 #else
 int amvdev_pause(void)
 {
-	return 0;
+    return 0;
 }
 int amvdev_resume(void)
-{	
-	return 0;
+{
+    return 0;
 }
 #endif
 
@@ -324,18 +321,18 @@ int __init amvdec_init(void)
 {
 #ifdef CONFIG_WAKELOCK
     wake_lock_init(&amvdec_lock, WAKE_LOCK_IDLE, "amvdec_lock");
-	init_timer(&amvdevtimer);
-	amvdevtimer.data = (ulong) & amvdevtimer;
-	amvdevtimer.function = vdec_paused_check_timer;
+    init_timer(&amvdevtimer);
+    amvdevtimer.data = (ulong) & amvdevtimer;
+    amvdevtimer.function = vdec_paused_check_timer;
 #endif
-	return 0;
+    return 0;
 }
 static void __exit amvdec_exit(void)
 {
 #ifdef CONFIG_WAKELOCK
-	del_timer_sync(&amvdevtimer);
+    del_timer_sync(&amvdevtimer);
 #endif
-	return ;
+    return ;
 }
 
 module_init(amvdec_init);

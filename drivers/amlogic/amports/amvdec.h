@@ -22,8 +22,8 @@
 #ifndef AMVDEC_H
 #define AMVDEC_H
 
-#define UCODE_ALIGN			8
-#define UCODE_ALIGN_MASK	7UL
+#define UCODE_ALIGN         8
+#define UCODE_ALIGN_MASK    7UL
 
 extern  s32 amvdec_loadmc(const u32 *p);
 
