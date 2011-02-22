@@ -64,8 +64,9 @@ EXPORT_SYMBOL(timestamp_pcrscr_set);
 
 void timestamp_pcrscr_inc(s32 inc)
 {
-    if (system_time_up)
+    if (system_time_up) {
         system_time += inc + system_time_inc_adj;
+    }
 }
 
 EXPORT_SYMBOL(timestamp_pcrscr_inc);
