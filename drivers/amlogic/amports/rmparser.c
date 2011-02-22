@@ -65,8 +65,7 @@ s32 rmparser_init(void)
 {
     s32 r;
 
-    if (fetchbuf == 0)
-    {
+    if (fetchbuf == 0) {
         printk("%s: no fetchbuf\n", __FUNCTION__);
         return -ENOMEM;
     }
@@ -81,7 +80,7 @@ s32 rmparser_init(void)
 #endif
     CLEAR_MPEG_REG_MASK(TS_HIU_CTL, 1 << USE_HI_BSF_INTERFACE);
     CLEAR_MPEG_REG_MASK(TS_HIU_CTL_2, 1 << USE_HI_BSF_INTERFACE);
-	CLEAR_MPEG_REG_MASK(TS_HIU_CTL_3,1 << USE_HI_BSF_INTERFACE);
+    CLEAR_MPEG_REG_MASK(TS_HIU_CTL_3, 1 << USE_HI_BSF_INTERFACE);
 
     CLEAR_MPEG_REG_MASK(TS_FILE_CONFIG, (1 << TS_HIU_ENABLE));
 
@@ -111,27 +110,28 @@ s32 rmparser_init(void)
     WRITE_MPEG_REG(PARSER_CONTROL, (ES_SEARCH | ES_PARSER_START));
 
 #ifdef MANAGE_PTS
-    if (pts_start(PTS_TYPE_VIDEO) < 0)
+    if (pts_start(PTS_TYPE_VIDEO) < 0) {
         goto Err_1;
+    }
 
-    if (pts_start(PTS_TYPE_AUDIO) < 0)
+    if (pts_start(PTS_TYPE_AUDIO) < 0) {
         goto Err_2;
+    }
 #endif
 
-    /* enable interrupt */    
+    /* enable interrupt */
     r = request_irq(INT_PARSER, rm_parser_isr,
                     IRQF_SHARED, "rmparser", (void *)rmparser_id);
 
-    if (r) 
-    {
+    if (r) {
         printk("RM parser irq register failed.\n");
         goto Err_3;
     }
 
     WRITE_MPEG_REG(PARSER_INT_STATUS, 0xffff);
-    WRITE_MPEG_REG(PARSER_INT_ENABLE, 
-        ((PARSER_INT_ALL&(~PARSER_INTSTAT_FETCH_CMD)) << PARSER_INT_AMRISC_EN_BIT)
-        | (PARSER_INTSTAT_FETCH_CMD << PARSER_INT_HOST_EN_BIT));
+    WRITE_MPEG_REG(PARSER_INT_ENABLE,
+                   ((PARSER_INT_ALL & (~PARSER_INTSTAT_FETCH_CMD)) << PARSER_INT_AMRISC_EN_BIT)
+                   | (PARSER_INTSTAT_FETCH_CMD << PARSER_INT_HOST_EN_BIT));
 
     return 0;
 
@@ -163,7 +163,7 @@ static ssize_t _rmparser_write(const char __user *buf, size_t count)
     const char __user *p = buf;
     u32 len;
 
-     if (r > 0) {
+    if (r > 0) {
         len = min(r, (size_t)FETCHBUF_SIZE);
 
         copy_from_user(fetchbuf_remap, p, len);
@@ -176,14 +176,15 @@ static ssize_t _rmparser_write(const char __user *buf, size_t count)
         WRITE_MPEG_REG(PARSER_FETCH_CMD,
                        (7 << FETCH_ENDIAN) | len);
 
-        if (wait_event_interruptible(rm_wq, fetch_done != 0))
+        if (wait_event_interruptible(rm_wq, fetch_done != 0)) {
             return -ERESTARTSYS;
+        }
 
         p += len;
         r -= len;
     }
 
-    return count-r;
+    return count - r;
 }
 
 ssize_t rmparser_write(struct file *file,
@@ -196,20 +197,23 @@ ssize_t rmparser_write(struct file *file,
 
     if ((stbuf_space(vbuf) < count) ||
         (stbuf_space(abuf) < count)) {
-        if (file->f_flags & O_NONBLOCK)
+        if (file->f_flags & O_NONBLOCK) {
             return -EAGAIN;
+        }
 
         if ((port->flag & PORT_FLAG_VID)
-           && (stbuf_space(vbuf) < count)) {
+            && (stbuf_space(vbuf) < count)) {
             r = stbuf_wait_space(vbuf, count);
-            if (r < 0)
+            if (r < 0) {
                 return r;
+            }
         }
         if ((port->flag & PORT_FLAG_AID)
-           && (stbuf_space(abuf) < count)) {
+            && (stbuf_space(abuf) < count)) {
             r = stbuf_wait_space(abuf, count);
-            if (r < 0)
+            if (r < 0) {
                 return r;
+            }
         }
     }
 
@@ -235,7 +239,7 @@ void rm_audio_reset(void)
                    READ_MPEG_REG(AIU_MEM_AIFIFO_START_PTR));
     WRITE_MPEG_REG(PARSER_AUDIO_RP,
                    READ_MPEG_REG(AIU_MEM_AIFIFO_START_PTR));
-    
+
     WRITE_MPEG_REG(PARSER_AUDIO_START_PTR,
                    READ_MPEG_REG(AIU_MEM_AIFIFO_START_PTR));
     WRITE_MPEG_REG(PARSER_AUDIO_END_PTR,

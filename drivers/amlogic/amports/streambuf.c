@@ -41,14 +41,16 @@ ulong *fetchbuf_remap = NULL;
 
 static s32 _stbuf_alloc(stream_buf_t *buf)
 {
-    if (buf->buf_size == 0)
+    if (buf->buf_size == 0) {
         return -ENOBUFS;
+    }
 
     if (buf->buf_start == 0) {
         buf->buf_start = __get_free_pages(GFP_KERNEL, get_order(buf->buf_size));
 
-        if (!buf->buf_start)
+        if (!buf->buf_start) {
             return -ENOMEM;
+        }
 
         printk("%s stbuf alloced at 0x%x, size = %d\n",
                (buf->type == BUF_TYPE_VIDEO) ? "Video" : (buf->type == BUF_TYPE_AUDIO) ? "Audio" : "Subtitle",
@@ -62,66 +64,62 @@ static s32 _stbuf_alloc(stream_buf_t *buf)
 
 int stbuf_change_size(struct stream_buf_s *buf, int size)
 {
-    u32 old_buf,old_size;
+    u32 old_buf, old_size;
     int ret;
 
-    printk("buffersize=%d,%d,start=%x\n",size,buf->buf_size,buf->buf_start);
+    printk("buffersize=%d,%d,start=%x\n", size, buf->buf_size, buf->buf_start);
 
-    if (buf->buf_size==size && buf->buf_start!=0)
+    if (buf->buf_size == size && buf->buf_start != 0) {
         return 0;
+    }
 
     old_buf = buf->buf_start;
     old_size = buf->buf_size;
-	
+
     buf->buf_start = 0;
     buf->buf_size = size;
     ret = size;
 
-    if (size==0 ||((ret=_stbuf_alloc(buf))==0))
-    {
+    if (size == 0 || ((ret = _stbuf_alloc(buf)) == 0)) {
         /*
          * size=0:We only free the old memory;
          * alloc ok,changed to new buffer
          */
-        if (old_buf!=0)
+        if (old_buf != 0) {
             free_pages(old_buf, get_order(old_size));
+        }
 
-        printk("changed the (%d) buffer size from %d to %d\n",buf->type,old_size,size);
-    }
-    else
-    {
+        printk("changed the (%d) buffer size from %d to %d\n", buf->type, old_size, size);
+    } else {
         /* alloc failed */
-        buf->buf_start=old_buf;
-        buf->buf_size=old_size;
-        printk("changed the (%d) buffer size from %d to %d,failed\n",buf->type,old_size,size);
+        buf->buf_start = old_buf;
+        buf->buf_size = old_size;
+        printk("changed the (%d) buffer size from %d to %d,failed\n", buf->type, old_size, size);
     }
-	
+
     return ret;
 }
 
 int stbuf_fetch_init(void)
 {
-    if (0 != fetchbuf)
-    {
+    if (0 != fetchbuf) {
         return 0;
     }
-    
+
     fetchbuf = __get_free_pages(GFP_KERNEL, get_order(FETCHBUF_SIZE));
 
-    if (!fetchbuf) 
-    {
+    if (!fetchbuf) {
         printk("%s: Can not allocate fetch working buffer\n", __FUNCTION__);
         return -ENOMEM;
     }
 
     fetchbuf_remap = ioremap_nocache(virt_to_phys((u8 *)fetchbuf), FETCHBUF_SIZE);
-    if (!fetchbuf_remap) 
-    {
+    if (!fetchbuf_remap) {
         printk("%s: Can not remap fetch working buffer\n", __FUNCTION__);
         free_pages(fetchbuf, get_order(FETCHBUF_SIZE));
 
         fetchbuf = 0;
-        
+
         return -ENOMEM;
     }
 
@@ -130,14 +128,12 @@ int stbuf_fetch_init(void)
 
 void stbuf_fetch_release(void)
 {
-    if (fetchbuf_remap) 
-    {
+    if (fetchbuf_remap) {
         iounmap(fetchbuf_remap);
         fetchbuf_remap = 0;
     }
 
-    if (fetchbuf) 
-    {
+    if (fetchbuf) {
         free_pages(fetchbuf, get_order(FETCHBUF_SIZE));
         fetchbuf = 0;
     }
@@ -153,15 +149,15 @@ static inline u32 _stbuf_wp(stream_buf_t *buf)
 static void _stbuf_timer_func(unsigned long arg)
 {
     struct stream_buf_s *p = (struct stream_buf_s *)arg;
-         
+
     if (stbuf_space(p) < p->wcnt) {
         p->timer.expires = jiffies + STBUF_WAIT_INTERVAL;
 
-        add_timer(&p->timer);       
+        add_timer(&p->timer);
     } else {
-        wake_up_interruptible(&p->wq);        
+        wake_up_interruptible(&p->wq);
     }
-    
+
 }
 
 u32 stbuf_level(struct stream_buf_s *buf)
@@ -177,9 +173,9 @@ u32 stbuf_rp(struct stream_buf_s *buf)
 u32 stbuf_space(struct stream_buf_s *buf)
 {
     /* reserved space for safe write, the parser fifo size is 1024byts, so reserve it */
-    int size=(buf->buf_size - _READ_ST_REG(LEVEL))-1024;
+    int size = (buf->buf_size - _READ_ST_REG(LEVEL)) - 1024;
 
-    return size>0?size:0;
+    return size > 0 ? size : 0;
 }
 
 u32 stbuf_size(struct stream_buf_s *buf)
@@ -193,15 +189,13 @@ s32 stbuf_init(struct stream_buf_s *buf)
     u32 dummy;
     u32 phy_addr;
 
-    if(buf->flag & BUF_FLAG_IOMEM)
-    {
-	phy_addr = buf->buf_start;
-    }
-    else
-    {
+    if (buf->flag & BUF_FLAG_IOMEM) {
+        phy_addr = buf->buf_start;
+    } else {
         r = _stbuf_alloc(buf);
-        if (r < 0)
+        if (r < 0) {
             return r;
+        }
         phy_addr = virt_to_phys((void *)buf->buf_start);
     }
 
@@ -214,13 +208,11 @@ s32 stbuf_init(struct stream_buf_s *buf)
         WRITE_MPEG_REG(RESET0_REGISTER, RESET_VLD);
         dummy = READ_MPEG_REG(RESET0_REGISTER);
         WRITE_MPEG_REG(POWER_CTL_VLD, 1 << 4);
-    }
-    else if (buf->type == BUF_TYPE_AUDIO) {
+    } else if (buf->type == BUF_TYPE_AUDIO) {
         WRITE_MPEG_REG(AIU_AIFIFO_GBIT, 0x80);
     }
 
-    if (buf->type == BUF_TYPE_SUBTITLE)
-    {
+    if (buf->type == BUF_TYPE_SUBTITLE) {
         WRITE_MPEG_REG(PARSER_SUB_RP, phy_addr);
         WRITE_MPEG_REG(PARSER_SUB_START_PTR, phy_addr);
         WRITE_MPEG_REG(PARSER_SUB_END_PTR, phy_addr + buf->buf_size - 8);
@@ -228,7 +220,7 @@ s32 stbuf_init(struct stream_buf_s *buf)
         return 0;
     }
 
-    _WRITE_ST_REG(START_PTR,phy_addr);
+    _WRITE_ST_REG(START_PTR, phy_addr);
     _WRITE_ST_REG(CURR_PTR, phy_addr);
     _WRITE_ST_REG(END_PTR, phy_addr + buf->buf_size - 8);
 
@@ -248,43 +240,44 @@ s32 stbuf_init(struct stream_buf_s *buf)
 
 s32 stbuf_wait_space(struct stream_buf_s *stream_buf, size_t count)
 {
-    stream_buf_t *p = stream_buf;   
-    long time_out = 20;        
+    stream_buf_t *p = stream_buf;
+    long time_out = 20;
 
     init_timer(&p->timer);
 
     p->timer.data = (ulong)p;
     p->timer.function = _stbuf_timer_func;
-    p->timer.expires = jiffies + STBUF_WAIT_INTERVAL;    
+    p->timer.expires = jiffies + STBUF_WAIT_INTERVAL;
     p->wcnt = count;
 
     add_timer(&p->timer);
 
-    #if 0
+#if 0
     if (wait_event_interruptible(p->wq, stbuf_space(p) >= count)) {
         del_timer_sync(&p->timer);
 
         //printk("[stbuf_wait_space]time out,eagain!\n");
-        return -ERESTARTSYS;        
-    }    
-    #else
-    if (wait_event_interruptible_timeout(p->wq, stbuf_space(p) >= count, time_out)== 0) {
+        return -ERESTARTSYS;
+    }
+#else
+    if (wait_event_interruptible_timeout(p->wq, stbuf_space(p) >= count, time_out) == 0) {
         del_timer_sync(&p->timer);
-        
-        return -EAGAIN;        
-    }    
-    #endif
+
+        return -EAGAIN;
+    }
+#endif
     return 0;
 }
 
 void stbuf_release(struct stream_buf_s *buf)
-{ 
-    buf->first_tstamp=INVALID_PTS;
+{
+    buf->first_tstamp = INVALID_PTS;
 
-    if(buf->flag & BUF_FLAG_IOMEM)
+    if (buf->flag & BUF_FLAG_IOMEM) {
         buf->flag = BUF_FLAG_IOMEM;
-    else
+    } else {
         buf->flag = 0;
+    }
 }
 
 u32 stbuf_sub_rp_get(void)

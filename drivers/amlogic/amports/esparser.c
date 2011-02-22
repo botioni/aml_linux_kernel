@@ -44,7 +44,7 @@
 
 #define ES_START_CODE_PATTERN 0x00000100
 #define ES_START_CODE_MASK    0xffffff00
-#define SEARCH_PATTERN_LEN   512 
+#define SEARCH_PATTERN_LEN   512
 #define ES_PARSER_POP      READ_MPEG_REG(PFIFO_DATA)
 
 #define PARSER_WRITE        (ES_WRITE | ES_PARSER_START)
@@ -98,29 +98,30 @@ static ssize_t _esparser_write(const char __user *buf, size_t count, u32 type)
     u32 len = 0;
     u32 parser_type;
 
-    if (type == BUF_TYPE_VIDEO)
+    if (type == BUF_TYPE_VIDEO) {
         parser_type = PARSER_VIDEO;
-    else if (type == BUF_TYPE_AUDIO)
+    } else if (type == BUF_TYPE_AUDIO) {
         parser_type = PARSER_AUDIO;
-    else
+    } else {
         parser_type = PARSER_SUBPIC;
+    }
 
     if (r > 0) {
         len = min(r, (size_t)FETCHBUF_SIZE);
 
         copy_from_user(fetchbuf_remap, p, len);
-	// reset the Write and read pointer to zero again
-	WRITE_MPEG_REG(PFIFO_RD_PTR, 0);
-	WRITE_MPEG_REG(PFIFO_WR_PTR, 0);
-	
+        // reset the Write and read pointer to zero again
+        WRITE_MPEG_REG(PFIFO_RD_PTR, 0);
+        WRITE_MPEG_REG(PFIFO_WR_PTR, 0);
+
         WRITE_MPEG_REG_BITS(PARSER_CONTROL, len, ES_PACK_SIZE_BIT, ES_PACK_SIZE_WID);
         WRITE_MPEG_REG_BITS(PARSER_CONTROL,
-                    parser_type | PARSER_WRITE | PARSER_AUTOSEARCH,
-                    ES_CTRL_BIT, ES_CTRL_WID);
+                            parser_type | PARSER_WRITE | PARSER_AUTOSEARCH,
+                            ES_CTRL_BIT, ES_CTRL_WID);
 
         WRITE_MPEG_REG(PARSER_FETCH_ADDR, fetchbuf);
         WRITE_MPEG_REG(PARSER_FETCH_CMD,
-                   (7 << FETCH_ENDIAN) | len);
+                       (7 << FETCH_ENDIAN) | len);
 
         search_done = 0;
 
@@ -128,14 +129,16 @@ static ssize_t _esparser_write(const char __user *buf, size_t count, u32 type)
         WRITE_MPEG_REG(PARSER_FETCH_CMD,
                        (7 << FETCH_ENDIAN) | SEARCH_PATTERN_LEN);
 
-        if (wait_event_interruptible(wq, (search_done != 0)))
+        if (wait_event_interruptible(wq, (search_done != 0))) {
             return -ERESTARTSYS;
+        }
     }
 
-    if (type == BUF_TYPE_VIDEO)
+    if (type == BUF_TYPE_VIDEO) {
         video_data_parsed += len;
-    else if (type == BUF_TYPE_AUDIO)
-        audio_data_parsed += len; 
+    } else if (type == BUF_TYPE_AUDIO) {
+        audio_data_parsed += len;
+    }
 
     return len;
 }
@@ -143,7 +146,7 @@ static ssize_t _esparser_write(const char __user *buf, size_t count, u32 type)
 s32 es_vpts_checkin(struct stream_buf_s *buf, u32 pts)
 {
 #if 0
-    if (buf->first_tstamp==INVALID_PTS) {
+    if (buf->first_tstamp == INVALID_PTS) {
         buf->flag |= BUF_FLAG_FIRST_TSTAMP;
         buf->first_tstamp = pts;
 
@@ -157,7 +160,7 @@ s32 es_vpts_checkin(struct stream_buf_s *buf, u32 pts)
 s32 es_apts_checkin(struct stream_buf_s *buf, u32 pts)
 {
 #if 0
-    if (buf->first_tstamp==INVALID_PTS) {
+    if (buf->first_tstamp == INVALID_PTS) {
         buf->flag |= BUF_FLAG_FIRST_TSTAMP;
         buf->first_tstamp = pts;
 
@@ -180,14 +183,15 @@ s32 esparser_init(struct stream_buf_s *buf)
     u32 parser_sub_end_ptr;
     u32 parser_sub_rp;
 
-    if (buf->type== BUF_TYPE_VIDEO)
+    if (buf->type == BUF_TYPE_VIDEO) {
         pts_type = PTS_TYPE_VIDEO;
-    else if (buf->type & BUF_TYPE_AUDIO)
+    } else if (buf->type & BUF_TYPE_AUDIO) {
         pts_type = PTS_TYPE_AUDIO;
-    else if (buf->type & BUF_TYPE_SUBTITLE)
+    } else if (buf->type & BUF_TYPE_SUBTITLE) {
         pts_type = PTS_TYPE_MAX;
-    else
+    } else {
         return -EINVAL;
+    }
 
     parser_sub_start_ptr = READ_MPEG_REG(PARSER_SUB_START_PTR);
     parser_sub_end_ptr = READ_MPEG_REG(PARSER_SUB_END_PTR);
@@ -200,23 +204,23 @@ s32 esparser_init(struct stream_buf_s *buf)
             printk("%s: no fetchbuf\n", __FUNCTION__);
             return -ENOMEM;
         }
-        
-        if (search_pattern == NULL) {
-        	search_pattern = (unsigned char *)kcalloc(1, SEARCH_PATTERN_LEN, GFP_KERNEL);
-        	
-        	if (search_pattern == NULL) {
-	            printk("%s: no search_pattern\n", __FUNCTION__);
-        		return -ENOMEM;
-        	}
 
-			/* build a fake start code to get parser interrupt */
-	        search_pattern[0] = 0x00;
-    	    search_pattern[1] = 0x00;
-        	search_pattern[2] = 0x01;
-        	search_pattern[3] = 0xff;
-        	
-        	search_pattern_map = dma_map_single(NULL, search_pattern,
-        				SEARCH_PATTERN_LEN, DMA_TO_DEVICE);
+        if (search_pattern == NULL) {
+            search_pattern = (unsigned char *)kcalloc(1, SEARCH_PATTERN_LEN, GFP_KERNEL);
+
+            if (search_pattern == NULL) {
+                printk("%s: no search_pattern\n", __FUNCTION__);
+                return -ENOMEM;
+            }
+
+            /* build a fake start code to get parser interrupt */
+            search_pattern[0] = 0x00;
+            search_pattern[1] = 0x00;
+            search_pattern[2] = 0x01;
+            search_pattern[3] = 0xff;
+
+            search_pattern_map = dma_map_single(NULL, search_pattern,
+                                                SEARCH_PATTERN_LEN, DMA_TO_DEVICE);
         }
 
         /* reset PARSER with first esparser_init() call */
@@ -226,11 +230,11 @@ s32 esparser_init(struct stream_buf_s *buf)
 #ifndef CONFIG_AM_DVB
         WRITE_MPEG_REG(FEC_INPUT_CONTROL, 0);
 #else
-	tsdemux_set_reset_flag();
+        tsdemux_set_reset_flag();
 #endif
         CLEAR_MPEG_REG_MASK(TS_HIU_CTL, 1 << USE_HI_BSF_INTERFACE);
-		CLEAR_MPEG_REG_MASK(TS_HIU_CTL_2, 1 << USE_HI_BSF_INTERFACE);
-		CLEAR_MPEG_REG_MASK(TS_HIU_CTL_3,1 << USE_HI_BSF_INTERFACE);
+        CLEAR_MPEG_REG_MASK(TS_HIU_CTL_2, 1 << USE_HI_BSF_INTERFACE);
+        CLEAR_MPEG_REG_MASK(TS_HIU_CTL_3, 1 << USE_HI_BSF_INTERFACE);
 
         CLEAR_MPEG_REG_MASK(TS_FILE_CONFIG, (1 << TS_HIU_ENABLE));
 
@@ -244,13 +248,13 @@ s32 esparser_init(struct stream_buf_s *buf)
 
         WRITE_MPEG_REG(PARSER_SEARCH_PATTERN, ES_START_CODE_PATTERN);
         WRITE_MPEG_REG(PARSER_SEARCH_MASK, ES_START_CODE_MASK);
-        
+
         WRITE_MPEG_REG(PARSER_CONFIG,
                        (10 << PS_CFG_PFIFO_EMPTY_CNT_BIT) |
                        (1  << PS_CFG_MAX_ES_WR_CYCLE_BIT) |
                        PS_CFG_STARTCODE_WID_24   |
                        PS_CFG_PFIFO_ACCESS_WID_8 | /* single byte pop */
-                   (    16 << PS_CFG_MAX_FETCH_CYCLE_BIT));
+                       (16 << PS_CFG_MAX_FETCH_CYCLE_BIT));
 
         WRITE_MPEG_REG(PARSER_CONTROL, PARSER_AUTOSEARCH);
 
@@ -269,8 +273,7 @@ s32 esparser_init(struct stream_buf_s *buf)
         CLEAR_MPEG_REG_MASK(VLD_MEM_VIFIFO_BUF_CNTL, MEM_BUFCTRL_INIT);
 
         video_data_parsed = 0;
-    }
-    else if (pts_type == PTS_TYPE_AUDIO) {
+    } else if (pts_type == PTS_TYPE_AUDIO) {
         WRITE_MPEG_REG(PARSER_AUDIO_START_PTR,
                        READ_MPEG_REG(AIU_MEM_AIFIFO_START_PTR));
         WRITE_MPEG_REG(PARSER_AUDIO_END_PTR,
@@ -281,16 +284,14 @@ s32 esparser_init(struct stream_buf_s *buf)
         CLEAR_MPEG_REG_MASK(AIU_MEM_AIFIFO_BUF_CNTL, MEM_BUFCTRL_INIT);
 
         audio_data_parsed = 0;
-    }
-    else if (buf->type & BUF_TYPE_SUBTITLE) {
+    } else if (buf->type & BUF_TYPE_SUBTITLE) {
         WRITE_MPEG_REG(PARSER_SUB_START_PTR, parser_sub_start_ptr);
         WRITE_MPEG_REG(PARSER_SUB_END_PTR, parser_sub_end_ptr);
         WRITE_MPEG_REG(PARSER_SUB_RP, parser_sub_rp);
-        SET_MPEG_REG_MASK(PARSER_ES_CONTROL, (7<<ES_SUB_WR_ENDIAN_BIT) | ES_SUB_MAN_RD_PTR);
+        SET_MPEG_REG_MASK(PARSER_ES_CONTROL, (7 << ES_SUB_WR_ENDIAN_BIT) | ES_SUB_MAN_RD_PTR);
     }
 
-    if (pts_type < PTS_TYPE_MAX)
-    {
+    if (pts_type < PTS_TYPE_MAX) {
         r = pts_start(pts_type);
         if (r < 0) {
             printk("esparser_init: pts_start failed\n");
@@ -300,28 +301,27 @@ s32 esparser_init(struct stream_buf_s *buf)
 
 #if 0
     if (buf->flag & BUF_FLAG_FIRST_TSTAMP) {
-        if (buf->type == BUF_TYPE_VIDEO)
+        if (buf->type == BUF_TYPE_VIDEO) {
             es_vpts_checkin(buf, buf->first_tstamp);
-        else if (buf->type == BUF_TYPE_AUDIO)
+        } else if (buf->type == BUF_TYPE_AUDIO) {
             es_apts_checkin(buf, buf->first_tstamp);
+        }
 
         buf->flag &= ~BUF_FLAG_FIRST_TSTAMP;
     }
 #endif
 
-    if (atomic_read(&esparser_use_count) == 1)
-    {
+    if (atomic_read(&esparser_use_count) == 1) {
         r = request_irq(INT_PARSER, parser_isr,
-                    IRQF_SHARED, "esparser", (void *)esparser_id);
-        if (r) 
-        {
+                        IRQF_SHARED, "esparser", (void *)esparser_id);
+        if (r) {
             printk("esparser_init: irq register failed.\n");
             goto Err_2;
         }
 
         WRITE_MPEG_REG(PARSER_INT_STATUS, 0xffff);
         WRITE_MPEG_REG(PARSER_INT_ENABLE,
-                   PARSER_INTSTAT_SC_FOUND << PARSER_INT_HOST_EN_BIT);
+                       PARSER_INTSTAT_SC_FOUND << PARSER_INT_HOST_EN_BIT);
     }
 
     return 0;
@@ -345,7 +345,7 @@ void esparser_audio_reset(struct stream_buf_s *buf)
                    READ_MPEG_REG(AIU_MEM_AIFIFO_START_PTR));
     WRITE_MPEG_REG(PARSER_AUDIO_RP,
                    READ_MPEG_REG(AIU_MEM_AIFIFO_START_PTR));
-    
+
     WRITE_MPEG_REG(PARSER_AUDIO_START_PTR,
                    READ_MPEG_REG(AIU_MEM_AIFIFO_START_PTR));
     WRITE_MPEG_REG(PARSER_AUDIO_END_PTR,
@@ -368,31 +368,31 @@ void esparser_release(struct stream_buf_s *buf)
     u32 pts_type;
 
     /* check if esparser_init() is ever called */
-    if ((buf->flag & BUF_FLAG_PARSER) == 0)
+    if ((buf->flag & BUF_FLAG_PARSER) == 0) {
         return;
+    }
 
     if (atomic_dec_and_test(&esparser_use_count)) {
         WRITE_MPEG_REG(PARSER_INT_ENABLE, 0);
         free_irq(INT_PARSER, (void *)esparser_id);
 
-		if (search_pattern) {
-			dma_unmap_single(NULL, search_pattern_map, SEARCH_PATTERN_LEN, DMA_TO_DEVICE);
-			kfree(search_pattern);
-			search_pattern = NULL;
-		}
+        if (search_pattern) {
+            dma_unmap_single(NULL, search_pattern_map, SEARCH_PATTERN_LEN, DMA_TO_DEVICE);
+            kfree(search_pattern);
+            search_pattern = NULL;
+        }
     }
-    
-    if (buf->type == BUF_TYPE_VIDEO)
+
+    if (buf->type == BUF_TYPE_VIDEO) {
         pts_type = PTS_TYPE_VIDEO;
-    else if (buf->type == BUF_TYPE_AUDIO)
+    } else if (buf->type == BUF_TYPE_AUDIO) {
         pts_type = PTS_TYPE_AUDIO;
-    else if (buf->type == BUF_TYPE_SUBTITLE)
-    {
+    } else if (buf->type == BUF_TYPE_SUBTITLE) {
         buf->flag &= ~BUF_FLAG_PARSER;
         return;
-    }
-    else
+    } else {
         return;
+    }
 
     buf->flag &= ~BUF_FLAG_PARSER;
 
@@ -405,17 +405,18 @@ ssize_t esparser_write(struct file *file,
 {
     s32 r;
     u32 len = count;
-    if(buf==NULL || count ==0)
-		return -EINVAL; 
+    if (buf == NULL || count == 0) {
+        return -EINVAL;
+    }
 
     if (stbuf_space(stbuf) < count) {
-        if (file->f_flags & O_NONBLOCK) {           
+        if (file->f_flags & O_NONBLOCK) {
             return -EAGAIN;
         }
 
-        len = min(stbuf_size(stbuf)/8, len);
+        len = min(stbuf_size(stbuf) / 8, len);
 
-        if (stbuf_space(stbuf) < len) {           
+        if (stbuf_space(stbuf) < len) {
             r = stbuf_wait_space(stbuf, len);
             if (r < 0) {
                 return r;
@@ -445,7 +446,7 @@ void esparser_sub_reset(void)
     WRITE_MPEG_REG(PARSER_SUB_END_PTR, parser_sub_end_ptr);
     WRITE_MPEG_REG(PARSER_SUB_RP, parser_sub_start_ptr);
     WRITE_MPEG_REG(PARSER_SUB_WP, parser_sub_start_ptr);
-    SET_MPEG_REG_MASK(PARSER_ES_CONTROL, (7<<ES_SUB_WR_ENDIAN_BIT) | ES_SUB_MAN_RD_PTR);
+    SET_MPEG_REG_MASK(PARSER_ES_CONTROL, (7 << ES_SUB_WR_ENDIAN_BIT) | ES_SUB_MAN_RD_PTR);
 
     spin_unlock_irqrestore(&lock, flags);
 

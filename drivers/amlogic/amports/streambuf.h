@@ -82,7 +82,7 @@ extern u32 stbuf_size(struct stream_buf_s *buf);
 extern s32 stbuf_init(struct stream_buf_s *buf);
 extern s32 stbuf_wait_space(struct stream_buf_s *stream_buf, size_t count);
 extern void stbuf_release(struct stream_buf_s *buf);
-extern int  stbuf_change_size(struct stream_buf_s *buf,int size);
+extern int  stbuf_change_size(struct stream_buf_s *buf, int size);
 extern int stbuf_fetch_init(void);
 extern void stbuf_fetch_release(void);
 extern u32 stbuf_sub_rp_get(void);
