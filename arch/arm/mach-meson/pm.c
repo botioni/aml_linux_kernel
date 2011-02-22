@@ -39,7 +39,7 @@ static int early_suspend_flag = 0;
 #define ON  1
 #define OFF 0
 
-//#define ADJUST_CORE_VOLTAGE
+#define ADJUST_CORE_VOLTAGE
 //#define DDR_PLL_OFF
 #define WAKE_UP_BY_IRQ
 #define SYSCLK_32K
@@ -132,6 +132,7 @@ void power_gate_init(void)
     GATE_INIT(_1200XXX);
     GATE_INIT(SATA);
     GATE_INIT(SPI1);
+    GATE_INIT(SPI2);
     GATE_INIT(USB1);
     GATE_INIT(USB0);
     GATE_INIT(VI_CORE);
@@ -175,6 +176,13 @@ void power_init_off(void)
 void power_gate_switch(int flag)
 {
     GATE_SWITCH(flag, VI_CORE);
+    GATE_SWITCH(flag, MDEC_CLK_PIC_DC);
+    GATE_SWITCH(flag, MDEC_CLK_DBLK);
+    GATE_SWITCH(flag, MDEC_CLK_PSC);
+    GATE_SWITCH(flag, MDEC_CLK_ASSIST);
+    GATE_SWITCH(flag, MC_CLK);
+    GATE_SWITCH(flag, IQIDCT_CLK);
+    GATE_SWITCH(flag, VLD_CLK);
     //GATE_SWITCH(flag, AHB_BRIDGE);
     //GATE_SWITCH(flag, AHB_SRAM);
     GATE_SWITCH(flag, AIU_ADC);
@@ -227,6 +235,7 @@ void power_gate_switch(int flag)
     //GATE_SWITCH(flag, _1200XXX);
     GATE_SWITCH(flag, SATA);
     GATE_SWITCH(flag, SPI1);
+    GATE_SWITCH(flag, SPI2);
     GATE_SWITCH(flag, USB1);
     GATE_SWITCH(flag, USB0);
     GATE_SWITCH(flag, WIFI);
@@ -242,15 +251,6 @@ void early_power_gate_switch(int flag)
     GATE_SWITCH(flag, GE2D);
     GATE_SWITCH(flag, ROM_CLK);
     GATE_SWITCH(flag, EFUSE);
-#if 0
-    GATE_SWITCH(flag, MDEC_CLK_PIC_DC);
-    GATE_SWITCH(flag, MDEC_CLK_DBLK);
-    GATE_SWITCH(flag, MDEC_CLK_PSC);
-    GATE_SWITCH(flag, MDEC_CLK_ASSIST);
-    GATE_SWITCH(flag, MC_CLK);
-    GATE_SWITCH(flag, IQIDCT_CLK);
-    GATE_SWITCH(flag, VLD_CLK);
-#endif
     GATE_SWITCH(flag, RESERVED0);
     GATE_SWITCH(flag, VGHL_PWM);
 //    GATE_SWITCH(flag, LED_PWM);
@@ -552,16 +552,12 @@ void analog_switch(int flag)
     if (flag){
         printk(KERN_INFO "analog on\n");
         CLEAR_CBUS_REG_MASK(SAR_ADC_REG3, 1<<28);
-#ifndef ADJUST_CORE_VOLTAGE   
         SET_CBUS_REG_MASK(AM_ANALOG_TOP_REG0, 1<<1);
-#endif
     }
     else{
         printk(KERN_INFO "analog off\n");
         SET_CBUS_REG_MASK(SAR_ADC_REG3, 1<<28);         // set 0x21a3 bit[28] 1 to power down
-#ifndef ADJUST_CORE_VOLTAGE   
         CLEAR_CBUS_REG_MASK(AM_ANALOG_TOP_REG0, 1<<1);  // set 0x206e bit[1] 0 to shutdown
-#endif
     }
 }
 
