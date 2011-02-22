@@ -759,6 +759,9 @@ static struct itk_platform_data itk_pdata = {
     .tp_max_height = 2944,
     .lcd_max_width = 1024,
     .lcd_max_height = 768,
+    .swap_xy=0;
+    .xpol=1;
+    .ypol=0;
 };
 #endif
 
