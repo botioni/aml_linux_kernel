@@ -31,10 +31,10 @@ enum {
 };
 
 typedef  struct {
-	s32 x ;
-	s32 y ;
-	s32 w ;
-	s32 h ;
+    s32 x ;
+    s32 y ;
+    s32 w ;
+    s32 h ;
 } disp_rect_t;
 
 #endif /* VIDEO_H */
