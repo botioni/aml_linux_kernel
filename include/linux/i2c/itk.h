@@ -27,6 +27,9 @@ struct itk_platform_data {
        int tp_max_height;
        int lcd_max_width;
        int lcd_max_height;
+       unsigned swap_xy:1;
+       unsigned xpol:1;
+       unsigned ypol:1;
 };
 
 #endif /* !_LINUX_I2C_ITK_H_*/

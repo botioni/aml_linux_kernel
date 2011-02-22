@@ -405,6 +405,18 @@ static int itk_read_sensor(struct itk *ts)
     ts->event[0].y = data[4]<<8|data[3];
     ts->event[1].x = data[6]<<8|data[5];
     ts->event[1].y = data[8]<<8|data[7];
+		if (ts->pdata->swap_xy){
+			swap(ts->event[0].x, ts->event[0].y);
+			swap(ts->event[1].x, ts->event[1].y);
+		}
+		if (ts->pdata->xpol){
+    	ts->event[0].x = ts->pdata->tp_max_width - ts->event[0].x;
+    	ts->event[1].x = ts->pdata->tp_max_width - ts->event[1].x;
+    }
+		if (ts->pdata->ypol){
+    	ts->event[0].y = ts->pdata->tp_max_height - ts->event[0].y;
+    	ts->event[1].y = ts->pdata->tp_max_height - ts->event[1].y;
+		}
     ts->touching_num = status;
     #ifdef ITK_TS_DEBUG_READ
     printk(KERN_INFO "\nread_sensor status = %d, event[0]->x = %d, event[0]->y = %d, event[1]->x = %d, event[1]->y = %d\n", 
