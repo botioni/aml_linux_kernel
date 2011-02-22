@@ -69,7 +69,7 @@
 #include <linux/mmc31xx.h>
 #endif
 
-#ifdef SIX_AXIS_SENSOR_MPU3050
+#ifdef CONFIG_SIX_AXIS_SENSOR_MPU3050
 #include <linux/mpu.h>
 #endif
 
@@ -252,7 +252,7 @@ static struct sn7325_platform_data sn7325_pdata = {
     .pwr_rst = &sn7325_pwr_rst,
 };
 #endif
-#ifdef SIX_AXIS_SENSOR_MPU3050
+#ifdef CONFIG_SIX_AXIS_SENSOR_MPU3050
 static struct mpu3050_platform_data mpu3050_data = {
     .int_config = 0x10,
     .orientation = {0,1,0,1,0,0,0,0,-1},
@@ -1754,7 +1754,7 @@ static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
     },
 #endif
 
-#ifdef SIX_AXIS_SENSOR_MPU3050
+#ifdef CONFIG_SIX_AXIS_SENSOR_MPU3050
     {
         I2C_BOARD_INFO("mpu3050", 0x68),
         .platform_data = (void *)&mpu3050_data,
