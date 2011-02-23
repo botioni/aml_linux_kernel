@@ -737,14 +737,6 @@ static	struct platform_device aml_rtc_device = {
 
 #if defined(CONFIG_SUSPEND)
 
-typedef enum {
-	GPIOC_3 = 0, GPIOA_7, GPIOA_6, 
-	GPIOC_0, GPIOC_8, GPIOC_7, 
-	GPIOD_12, GPIOD_14, GPIOD_18, GPIOD_20, GPIOD_21, 
-	GPIOC_12,
-	GPIO_END
-} gpio_port_t;
-
 typedef struct {
 	char name[32];
 	unsigned bank;
@@ -754,15 +746,12 @@ typedef struct {
 	unsigned enable;
 } gpio_data_t;
 
-static gpio_data_t gpio_data[] = {
+#define MAX_GPIO 9
+static gpio_data_t gpio_data[MAX_GPIO] = {
 	// ----------------------------------- power ctrl ---------------------------------
 	{"GPIOC_3 -- AVDD_EN",		GPIOC_bank_bit0_26(3),		GPIOC_bit_bit0_26(3),	GPIO_OUTPUT_MODE, 1, 1},
 	{"GPIOA_7 -- BL_PWM",		GPIOA_bank_bit0_14(7),		GPIOA_bit_bit0_14(7),	GPIO_OUTPUT_MODE, 1, 1},
 	{"GPIOA_6 -- VCCx2_EN",		GPIOA_bank_bit0_14(6),		GPIOA_bit_bit0_14(6),	GPIO_OUTPUT_MODE, 1, 1},
-	// ----------------------------------- touch ---------------------------------
-	{"GPIOC_0 -- XPT_NCS",		GPIOC_bank_bit0_26(0),		GPIOC_bit_bit0_26(0),	GPIO_OUTPUT_MODE, 1, 1},
-	{"GPIOC_8 -- XPT_CLK",		GPIOC_bank_bit0_26(8),		GPIOC_bit_bit0_26(8),	GPIO_OUTPUT_MODE, 1, 1},
-	{"GPIOC_7 -- XPT_IN",		GPIOC_bank_bit0_26(7),		GPIOC_bit_bit0_26(7),	GPIO_OUTPUT_MODE, 1, 1},
 	// ----------------------------------- wifi&bt ---------------------------------
 	{"GPIOD_12 -- WL_RST_N",	GPIOD_bank_bit2_24(12), 	GPIOD_bit_bit2_24(12), 	GPIO_OUTPUT_MODE, 1, 1},
 	{"GPIOD_14 -- BT/GPS_RST_N",GPIOD_bank_bit2_24(14),		GPIOD_bit_bit2_24(14), 	GPIO_OUTPUT_MODE, 1, 1},
@@ -773,18 +762,23 @@ static gpio_data_t gpio_data[] = {
 	{"GPIOC_12 -- LCD_U/D",		GPIOC_bank_bit0_26(12), 	GPIOC_bit_bit0_26(12), 	GPIO_OUTPUT_MODE, 1, 1},
 };	
 
-static void save_gpio(gpio_port_t port) 
+static void save_gpio(int port) 
 {
 	gpio_data[port].mode = get_gpio_mode(gpio_data[port].bank, gpio_data[port].bit);
-	if ((gpio_data[port].mode==GPIO_OUTPUT_MODE)&&(gpio_data[port].enable))
+	if (gpio_data[port].mode==GPIO_OUTPUT_MODE)
 	{
-		gpio_data[port].value = get_gpio_val(gpio_data[port].bank, gpio_data[port].bit);
-		set_gpio_mode(gpio_data[port].bank, gpio_data[port].bit, GPIO_INPUT_MODE);
-		printk("%s output %d change to input\n", gpio_data[port].name, gpio_data[port].value); 
+		if (gpio_data[port].enable){
+			printk("change %s output %d to input\n", gpio_data[port].name, gpio_data[port].value); 
+			gpio_data[port].value = get_gpio_val(gpio_data[port].bank, gpio_data[port].bit);
+			set_gpio_mode(gpio_data[port].bank, gpio_data[port].bit, GPIO_INPUT_MODE);
+		}
+		else{
+			printk("no change %s output %d\n", gpio_data[port].name, gpio_data[port].value); 
+		}
 	}
 }
 
-static void restore_gpio(gpio_port_t port)
+static void restore_gpio(int port)
 {
 	if ((gpio_data[port].mode==GPIO_OUTPUT_MODE)&&(gpio_data[port].enable))
 	{
@@ -799,7 +793,7 @@ static void set_vccx2(int power_on)
 	int i;
     if (power_on){
 		printk(KERN_INFO "set gpio to output\n");
-		for (i=0;i<GPIO_END;i++)
+		for (i=0;i<MAX_GPIO;i++)
 			restore_gpio(i);
 
         printk(KERN_INFO "set_vccx2 power up\n");
@@ -820,7 +814,7 @@ static void set_vccx2(int power_on)
 
 		//change GPIO to input
 		printk(KERN_INFO "set gpio to input\n");
-		for (i=0;i<GPIO_END;i++)
+		for (i=0;i<MAX_GPIO;i++)
 			save_gpio(i);
     }
 }
