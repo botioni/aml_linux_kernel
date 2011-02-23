@@ -169,7 +169,6 @@ void power_init_off(void)
     CLEAR_CBUS_REG_MASK(HHI_SATA_CLK_CNTL, (1<<8));
     CLEAR_CBUS_REG_MASK(HHI_ETH_CLK_CNTL, (1<<8));
     CLEAR_CBUS_REG_MASK(HHI_WIFI_CLK_CNTL, (1<<0));
-    SET_CBUS_REG_MASK(HHI_WIFI_PLL_CNTL, (1<<15));
     SET_CBUS_REG_MASK(HHI_DEMOD_PLL_CNTL, (1<<15));
 }
 
@@ -457,10 +456,9 @@ void early_clk_switch(int flag)
 }
 EXPORT_SYMBOL(early_clk_switch);
 
-#define PLL_COUNT 5
+#define PLL_COUNT 4
 static char pll_flag[PLL_COUNT];
 static unsigned plls[PLL_COUNT]={
-    HHI_WIFI_PLL_CNTL,
     HHI_DEMOD_PLL_CNTL,
     HHI_VID_PLL_CNTL,
     HHI_AUD_PLL_CNTL,
@@ -468,7 +466,6 @@ static unsigned plls[PLL_COUNT]={
 };
 
 static char plls_name[PLL_COUNT][32]={
-    "HHI_WIFI_PLL_CNTL",
     "HHI_DEMOD_PLL_CNTL",
     "HHI_VID_PLL_CNTL",
     "HHI_AUD_PLL_CNTL",
@@ -478,13 +475,11 @@ static char plls_name[PLL_COUNT][32]={
 #define EARLY_PLL_COUNT 3
 static char early_pll_flag[EARLY_PLL_COUNT];
 static unsigned early_plls[EARLY_PLL_COUNT]={
-    HHI_WIFI_PLL_CNTL,
     HHI_DEMOD_PLL_CNTL,
     HHI_VID_PLL_CNTL,
 };
 
 static char early_plls_name[EARLY_PLL_COUNT][32]={
-    "HHI_WIFI_PLL_CNTL",
     "HHI_DEMOD_PLL_CNTL",
     "HHI_VID_PLL_CNTL",
 };
@@ -638,7 +633,7 @@ static void meson_pm_suspend(void)
     pdata->ddr_clk = READ_CBUS_REG(HHI_DDR_PLL_CNTL);
 
     ddr_clk_N = (pdata->ddr_clk>>9)&0x1f;
-    ddr_clk_N = ddr_clk_N*4; // N*4
+    ddr_clk_N = ddr_clk_N*6; // N*6
     if (ddr_clk_N>0x1f)
         ddr_clk_N=0x1f;
     pdata->ddr_clk &= ~(0x1f<<9);

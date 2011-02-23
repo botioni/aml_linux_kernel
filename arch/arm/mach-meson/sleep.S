@@ -146,6 +146,10 @@ ENTRY(meson_cpu_suspend)
     orr     r8, r8, #(1<<15)
     str     r8, [r2, #HIU_DDR_PLL_CTRL]
 #else
+    mov     r8, #0x1000
+0:  subs    r8, r8, #0x1
+    bne     0b
+
     /* scale down PLL */
     ldr     r6, [r2, #HIU_DDR_PLL_CTRL]
     str     r4, [r2, #HIU_DDR_PLL_CTRL]
