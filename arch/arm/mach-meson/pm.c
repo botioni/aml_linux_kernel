@@ -602,6 +602,27 @@ static void meson_system_late_resume(struct early_suspend *h)
 }
 #endif
 
+#define         MODE_DELAYED_WAKE       0
+#define         MODE_IRQ_DELAYED_WAKE   1
+#define         MODE_IRQ_ONLY_WAKE      2
+
+static void auto_clk_gating_setup(
+	unsigned long sleep_dly_tb, unsigned long mode, unsigned long clear_fiq, unsigned long clear_irq,
+	unsigned long   start_delay,unsigned long   clock_gate_dly,unsigned long   sleep_time,unsigned long   enable_delay)
+{
+	WRITE_CBUS_REG(HHI_A9_AUTO_CLK0,
+		(sleep_dly_tb << 24)    |   // sleep timebase
+		(sleep_time << 16)      |   // sleep time                                
+		(clear_irq << 5)        |   // clear IRQ
+		(clear_fiq << 4)        |   // clear FIQ
+		(mode << 2));                // mode
+	WRITE_CBUS_REG(HHI_A9_AUTO_CLK1,
+		(0 << 20)               |   // start delay timebase
+		(enable_delay << 12)    |   // enable delay
+		(clock_gate_dly << 8)   |   // clock gate delay
+		(start_delay << 0));         // start delay  
+	SET_CBUS_REG_MASK(HHI_A9_AUTO_CLK0, 1 << 0);
+}
 
 static void meson_pm_suspend(void)
 {
@@ -667,6 +688,15 @@ static void meson_pm_suspend(void)
     clk_switch(OFF);
     
     pll_switch(OFF);
+
+	auto_clk_gating_setup(	2,						// select 100uS timebase							
+							MODE_IRQ_ONLY_WAKE, 	// Set interrupt wakeup only
+							0,						// don't clear the FIQ global mask
+							0,						// don't clear the IRQ global mask
+							7,						// 7us start delay							
+							1,						// 1uS start delay							  
+							3,						// Set the delay wakeup time (2mS)
+							1); 					// 1uS enable delay 
 
     printk("meson_sram_suspend params 0x%x, 0x%x, 0x%x, 0x%x, 0x%x, 0x%x\n", 
         (unsigned)pdata->pctl_reg_base, (unsigned)pdata->mmc_reg_base, (unsigned)pdata->hiu_reg_base, 

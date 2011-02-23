@@ -28,6 +28,7 @@
 
 #define HIU_GCLK_MPEG       (0x50<<2)
 #define HIU_DDR_PLL_CTRL    (0x68<<2)
+#define A9_AUTO_CLK0        (0x78<<2)
 #define HIU_DDR_RESET       (0x102<<2)
 
     .text
@@ -158,10 +159,21 @@ ENTRY(meson_cpu_suspend)
 
     /* System goes to sleep beyond after this instruction */
 #ifdef WFI_SUSPEND
+    ldr     r8, [r2, #A9_AUTO_CLK0]
+    orr     r8, r8, #(1<<1)
+    str     r8, [r2, #A9_AUTO_CLK0]
+    nop
+    nop
+    nop
+    bic     r8, r8, #(1<<1)
+    str     r8, [r2, #A9_AUTO_CLK0]
     wfi
     nop
     nop
     nop
+    ldr     r8, [r2, #A9_AUTO_CLK0]
+    bic     r8, r8, #(1<<1)
+    str     r8, [r2, #A9_AUTO_CLK0]
 #else
 1:  ldr     r8, [r3]
     and     r8, r8, #4
