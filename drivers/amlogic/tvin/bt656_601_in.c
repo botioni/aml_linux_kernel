@@ -699,8 +699,8 @@ static void check_amvdec_656_601_camera_fromat( void )
 //                            (active_pixel <= (tvin_fmt_tbl[format].h_active+ tvin_fmt_tbl[format].h_cnt_offset)))
                            break;
                     }
-			else
-				mdelay(5);
+			//else
+				//mdelay(5);
 
                 }
                 if(format >= TVIN_SIG_FMT_MAX)
@@ -1201,7 +1201,7 @@ int amvdec_656_601_camera_in_run(vframe_t *info)
         vdin_devp_bt656->para.cap_addr = am656in_dec_info.pbufAddr +
                 (am656in_dec_info.decbuf_size * canvas_id) + BT656IN_ANCI_DATA_SIZE ;
         vdin_devp_bt656->para.cap_size = am656in_dec_info.decbuf_size;
-        vdin_devp_bt656->para.canvas_index = canvas_id;
+        vdin_devp_bt656->para.canvas_index =VDIN_START_CANVAS+ canvas_id;
         WRITE_CBUS_REG(BT_STATUS, ccir656_status | (1 << 9));   //WRITE_CBUS_REGite 1 to clean the SOF interrupt bit
         return 0;
     }

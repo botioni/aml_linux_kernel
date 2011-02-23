@@ -34,7 +34,7 @@ ge2d_open(struct inode *inode, struct file *file)
 	 	amlog_level(LOG_LEVEL_HIGH,"can't create work queue \r\n");
 		return -1;		
 	 }
-	 amlog_level(LOG_LEVEL_LOW,"open one ge2d device\n");
+	 //amlog_level(LOG_LEVEL_LOW,"open one ge2d device\n");
 	 file->private_data=context;
 	 ge2d_device.open_count++;
 	 return 0;
