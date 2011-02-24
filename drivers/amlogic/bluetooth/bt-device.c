@@ -49,7 +49,7 @@ static int __init bt_probe(struct platform_device *pdev)
 	struct rfkill *bt_rfk;
 
     /* default to bluetooth off */
-    rfkill_switch_all(RFKILL_TYPE_BLUETOOTH, 1);
+    //rfkill_switch_all(RFKILL_TYPE_BLUETOOTH, 1);
     if (NULL != bt_dev.bt_dev_off) {
         bt_dev.bt_dev_off();
     }
