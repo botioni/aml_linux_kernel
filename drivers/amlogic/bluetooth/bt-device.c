@@ -19,6 +19,7 @@
 #include <linux/bt-device.h>
 
 extern struct bt_dev_data bt_dev;
+void rfkill_switch_all(enum rfkill_type type, bool blocked);
 
 static int bt_set_block(void *data, bool blocked)
 {
@@ -45,28 +46,34 @@ static const struct rfkill_ops bt_rfkill_ops = {
 static int __init bt_probe(struct platform_device *pdev)
 {
 	int rc = 0;
-	struct rfkill *rfk;
+	struct rfkill *bt_rfk;
 
-	rfk = rfkill_alloc("bt-dev", &pdev->dev, RFKILL_TYPE_BLUETOOTH,
+    /* default to bluetooth off */
+    rfkill_switch_all(RFKILL_TYPE_BLUETOOTH, 1);
+    if (NULL != bt_dev.bt_dev_off) {
+        bt_dev.bt_dev_off();
+    }
+    
+	bt_rfk = rfkill_alloc("bt-dev", &pdev->dev, RFKILL_TYPE_BLUETOOTH,
 			&bt_rfkill_ops, NULL);
 						   
-	if (!rfk) {
+	if (!bt_rfk) {
         printk("rfk alloc fail\n");
 		rc = -ENOMEM;
 		goto err_rfk_alloc;
 	}
-	
-	rc = rfkill_register(rfk);
+    	
+	rc = rfkill_register(bt_rfk);
 	if (rc){
         printk("rfkill_register fail\n");
 		goto err_rfkill;
     }
-	platform_set_drvdata(pdev, rfk);
+	platform_set_drvdata(pdev, bt_rfk);
 
 	return 0;	
 	
 err_rfkill:
-	rfkill_destroy(rfk);
+	rfkill_destroy(bt_rfk);
 err_rfk_alloc:
 	return rc;
 	

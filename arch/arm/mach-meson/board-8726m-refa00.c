@@ -1593,9 +1593,7 @@ static void bt_device_init(void)
 	
 	/* BT/GPS_RST_N */
 	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<12));
-	CLEAR_CBUS_REG_MASK(PREG_GGPIO_O, (1<<12));	
-	msleep(200);	
-	SET_CBUS_REG_MASK(PREG_GGPIO_O, (1<<12));	
+	CLEAR_CBUS_REG_MASK(PREG_GGPIO_O, (1<<12));		
 	
 	/* BT/GPS */
 	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<19));
