@@ -834,10 +834,61 @@ static	struct platform_device aml_rtc_device = {
 #endif
 
 #if defined(CONFIG_SUSPEND)
+
+typedef struct {
+	char name[32];
+	unsigned bank;
+	unsigned bit;
+	gpio_mode_t mode;
+	unsigned value;
+	unsigned enable;
+} gpio_data_t;
+
+#define MAX_GPIO 5
+static gpio_data_t gpio_data[MAX_GPIO] = {
+	// ----------------------------------- power ctrl ---------------------------------
+	{"GPIOC_3 -- AVDD_EN",		GPIOC_bank_bit0_26(3),		GPIOC_bit_bit0_26(3),	GPIO_OUTPUT_MODE, 1, 1},
+	{"GPIOA_7 -- BL_PWM",		GPIOA_bank_bit0_14(7),		GPIOA_bit_bit0_14(7),	GPIO_OUTPUT_MODE, 1, 1},
+	{"GPIOA_6 -- VCCx2_EN",		GPIOA_bank_bit0_14(6),		GPIOA_bit_bit0_14(6),	GPIO_OUTPUT_MODE, 1, 1},
+	// ----------------------------------- lcd ---------------------------------
+	{"GPIOC_12 -- LCD_U/D",		GPIOC_bank_bit0_26(12), 	GPIOC_bit_bit0_26(12), 	GPIO_OUTPUT_MODE, 1, 1},
+	{"GPIOA_3 -- LCD_PWR_EN",	GPIOA_bank_bit0_14(3),		GPIOA_bit_bit0_14(3),	GPIO_OUTPUT_MODE, 1, 1},
+};	
+
+static void save_gpio(int port) 
+{
+	gpio_data[port].mode = get_gpio_mode(gpio_data[port].bank, gpio_data[port].bit);
+	if (gpio_data[port].mode==GPIO_OUTPUT_MODE)
+	{
+		if (gpio_data[port].enable){
+			printk("change %s output %d to input\n", gpio_data[port].name, gpio_data[port].value); 
+			gpio_data[port].value = get_gpio_val(gpio_data[port].bank, gpio_data[port].bit);
+			set_gpio_mode(gpio_data[port].bank, gpio_data[port].bit, GPIO_INPUT_MODE);
+		}
+		else{
+			printk("no change %s output %d\n", gpio_data[port].name, gpio_data[port].value); 
+		}
+	}
+}
+
+static void restore_gpio(int port)
+{
+	if ((gpio_data[port].mode==GPIO_OUTPUT_MODE)&&(gpio_data[port].enable))
+	{
+		set_gpio_val(gpio_data[port].bank, gpio_data[port].bit, gpio_data[port].value);
+		set_gpio_mode(gpio_data[port].bank, gpio_data[port].bit, GPIO_OUTPUT_MODE);
+		// printk("%s output %d\n", gpio_data[port].name, gpio_data[port].value); 
+	}
+}
+
 static void set_vccx2(int power_on)
 {
+	int i;
+
     if(power_on)
     {
+		for (i=0;i<MAX_GPIO;i++)
+			restore_gpio(i);
         set_gpio_val(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), 1);
         set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);        
     }
@@ -845,8 +896,11 @@ static void set_vccx2(int power_on)
     {
         set_gpio_val(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), 0);
         set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);   
+		for (i=0;i<MAX_GPIO;i++)
+			save_gpio(i);
     }
 }
+
 static struct meson_pm_config aml_pm_pdata = {
     .pctl_reg_base = IO_APB_BUS_BASE,
     .mmc_reg_base = APB_REG_ADDR(0x1000),
@@ -855,6 +909,7 @@ static struct meson_pm_config aml_pm_pdata = {
     .ddr_clk = 0x00110820,
     .sleepcount = 128,
     .set_vccx2 = set_vccx2,
+
 };
 
 static struct platform_device aml_pm_device = {
