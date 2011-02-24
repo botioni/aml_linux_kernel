@@ -472,7 +472,7 @@ static char plls_name[PLL_COUNT][32]={
     "HHI_OTHER_PLL_CNTL",
 };
 
-#define EARLY_PLL_COUNT 3
+#define EARLY_PLL_COUNT 2
 static char early_pll_flag[EARLY_PLL_COUNT];
 static unsigned early_plls[EARLY_PLL_COUNT]={
     HHI_DEMOD_PLL_CNTL,
@@ -633,7 +633,7 @@ static void meson_pm_suspend(void)
     pdata->ddr_clk = READ_CBUS_REG(HHI_DDR_PLL_CNTL);
 
     ddr_clk_N = (pdata->ddr_clk>>9)&0x1f;
-    ddr_clk_N = ddr_clk_N*6; // N*6
+    ddr_clk_N = ddr_clk_N*5; // N*5
     if (ddr_clk_N>0x1f)
         ddr_clk_N=0x1f;
     pdata->ddr_clk &= ~(0x1f<<9);
@@ -717,7 +717,7 @@ static void meson_pm_suspend(void)
 #endif
     
 #ifdef ADJUST_CORE_VOLTAGE   
-    WRITE_CBUS_REG_BITS(LED_PWM_REG0, 4, 0, 4);
+    WRITE_CBUS_REG_BITS(LED_PWM_REG0, 10, 0, 4);
 #endif
      
 #ifdef WAKE_UP_BY_IRQ 
