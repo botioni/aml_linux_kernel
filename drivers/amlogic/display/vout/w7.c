@@ -152,7 +152,6 @@ static void t13_setup_gama_table(tcon_conf_t *pConf)
 void power_on_backlight(void)
 {
     //BL_PWM -> GPIOA_7: 1
-    msleep(200);
     set_gpio_val(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), 1);
     set_gpio_mode(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), GPIO_OUTPUT_MODE);
 }
@@ -180,8 +179,6 @@ static void power_on_lcd(void)
     setIO_level(0, 1, 4);
 #endif
     msleep(100);
-    
-    power_on_backlight();
     
     //VCCx2_EN D17 GPIOA_6 --> H
     set_gpio_val(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), 1);
@@ -260,7 +257,6 @@ static struct platform_device tcon_dev = {
 
 static int __init t13_init(void)
 {
-    power_off_backlight();
     t13_setup_gama_table(&tcon_config);
     t13_io_init();
 
@@ -272,7 +268,6 @@ static int __init t13_init(void)
 static void __exit t13_exit(void)
 {
     power_off_backlight();
-    mdelay(1000);
     power_off_lcd();
 
     platform_device_unregister(&tcon_dev);

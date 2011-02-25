@@ -158,7 +158,7 @@ static  void  set_vout_mode(char * name)
 	if(mode==get_current_vmode())
 	{
 		amlog_mask_level(LOG_MASK_PARA,LOG_LEVEL_HIGH,"don't set the same mode as current.\r\n");	
-		//return ;
+		return ;
 	}
 	set_current_vmode(mode);
 	amlog_mask_level(LOG_MASK_PARA,LOG_LEVEL_LOW,"new mode %s set ok\r\n",name);
