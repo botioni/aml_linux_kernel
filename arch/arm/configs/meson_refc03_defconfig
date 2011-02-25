@@ -1,7 +1,7 @@
 #
 # Automatically generated make config: don't edit
 # Linux kernel version: 2.6.34
-# Thu Feb 10 14:48:03 2011
+# Fri Feb 25 11:05:27 2011
 #
 CONFIG_ARM=y
 CONFIG_HOLES_IN_ZONE=y
@@ -281,6 +281,7 @@ CONFIG_MACH_MESON_8726M_REFC03=y
 # CONFIG_MACH_MESON_8726M_REFC04 is not set
 # CONFIG_MACH_MESON_8726M_REFB10 is not set
 # CONFIG_MACH_MESON_8726M_REFB12 is not set
+# CONFIG_MACH_MESON_8726M_REFB13 is not set
 CONFIG_MESON_CLOCK_TICK_RATE=25000000
 
 #
@@ -656,7 +657,8 @@ CONFIG_AM_ETHERNET_DEBUG_LEVEL=1
 #
 # Amlogic WIFI Support
 #
-# CONFIG_SDIO_DHD_CDC_WIFI is not set
+# CONFIG_SDIO_DHD_CDC_WIFI_4319 is not set
+# CONFIG_SDIO_DHD_CDC_WIFI_4329 is not set
 # CONFIG_RTL8712_8188_8191_8192SU_USB_WIFI is not set
 # CONFIG_RTL8192CU_USB_WIFI is not set
 # CONFIG_SDIO_ATHEROS_6302_WIFI is not set
@@ -746,6 +748,11 @@ CONFIG_AML_HDMI_TX=y
 #
 # CONFIG_TVIN_TUNER is not set
 # CONFIG_TVIN_TUNER_FQ1216ME is not set
+
+#
+# Amlogic Audio Interface
+#
+CONFIG_AMAUDIO=y
 
 #
 # Amlogic audio dsp process 
@@ -1824,7 +1831,8 @@ CONFIG_PRINT_QUOTA_WARNING=y
 CONFIG_QUOTACTL=y
 # CONFIG_AUTOFS_FS is not set
 # CONFIG_AUTOFS4_FS is not set
-# CONFIG_FUSE_FS is not set
+CONFIG_FUSE_FS=y
+# CONFIG_CUSE is not set
 CONFIG_GENERIC_ACL=y
 
 #
