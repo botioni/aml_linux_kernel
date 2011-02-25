@@ -38,6 +38,7 @@
 #include <linux/i2c-aml.h>
 #include <mach/power_gate.h>
 #include <linux/aml_bl.h>
+#include <linux/syscalls.h>
 
 #ifdef CONFIG_AM_UART_WITH_S_CORE 
 #include <linux/uart-aml.h>
@@ -273,9 +274,9 @@ static int it7230_get_irq_level(void)
 
 static struct cap_key it7230_keys[] = {
     { KEY_COMPOSE,         0x0001, "zoom"},
-    { KEY_HOME,         0x0002, "home"},
+    { KEY_TAB,         0x0002, "home"},
     { KEY_LEFTMETA,     0x0004, "menu"},
-    { KEY_TAB,          0x0008, "exit"},
+    { KEY_HOME,          0x0008, "exit"},
 };
 
 static struct it7230_platform_data it7230_pdata = {
@@ -576,6 +577,23 @@ static struct platform_device aml_audio={
 //use LED_CS1 as hp detect pin
 #define PWM_TCNT    (600-1)
 #define PWM_MAX_VAL (420)
+int need_mute_spk = 0;
+int get_display_mode(void) {
+	int fd;
+	int ret = 0;
+	char mode[8];	
+	
+  fd = sys_open("/sys/class/display/mode", O_RDWR | O_NDELAY, 0);
+  if(fd >= 0) {
+  	memset(mode,0,8);
+  	sys_read(fd,mode,8);
+  	if(strncmp("panel",mode,5))
+  		ret = 1;
+  	sys_close(fd);
+  }
+
+  return ret;
+}
 int wm8900_is_hp_pluged(void)
 {
     int level = 0;
@@ -595,6 +613,12 @@ int wm8900_is_hp_pluged(void)
     cs_no = READ_CBUS_REG(LED_PWM_REG3);
     if(cs_no &(1<<15))
       level |= (1<<0);
+    if(need_mute_spk == 1)
+      level = 1;
+    // temp patch to mute speaker when hdmi output
+    if(level == 0)
+    	if(get_display_mode() != 0)	
+    			return 1;
     return (level == 0)?(1):(0); //return 1: hp pluged, 0: hp unpluged.
 }
 
