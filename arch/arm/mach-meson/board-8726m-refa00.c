@@ -795,14 +795,16 @@ static void set_vccx2(int power_on)
 		printk(KERN_INFO "set gpio to output\n");
 		for (i=0;i<MAX_GPIO;i++)
 			restore_gpio(i);
-
+		// i2s
+		set_mio_mux(0, 1<<18);
+		set_mio_mux(1, (1<<6)|(1<<11)|(1<<15)|(1<<19));
+		
         printk(KERN_INFO "set_vccx2 power up\n");
         set_gpio_val(GPIOA_bank_bit0_14(6), GPIOA_bit_bit0_14(6), 1);
         set_gpio_mode(GPIOA_bank_bit0_14(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);        
         //set clk for wifi
         SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, (1<<18));
         CLEAR_CBUS_REG_MASK(PREG_EGPIO_EN_N, (1<<4));	              
-		//change GPIO to output
     }
     else{
         printk(KERN_INFO "set_vccx2 power down\n");        
@@ -816,6 +818,9 @@ static void set_vccx2(int power_on)
 		printk(KERN_INFO "set gpio to input\n");
 		for (i=0;i<MAX_GPIO;i++)
 			save_gpio(i);
+		// i2s
+		clear_mio_mux(0, 1<<18);
+		clear_mio_mux(1, (1<<6)|(1<<11)|(1<<15)|(1<<19));
     }
 }
 
