@@ -60,6 +60,12 @@ extern int mali_max_job_runtime;
 module_param(mali_max_job_runtime, int, S_IRUSR | S_IWUSR | S_IWGRP | S_IRGRP | S_IROTH);
 MODULE_PARM_DESC(mali_max_job_runtime, "Maximum allowed job runtime in msecs.\nJobs will be killed after this no matter what");
 
+#if defined(USING_MALI400_L2_CACHE)
+extern int mali_l2_max_reads;
+module_param(mali_l2_max_reads, int, S_IRUSR | S_IRGRP | S_IROTH);
+MODULE_PARM_DESC(mali_l2_max_reads, "Maximum reads for Mali L2 cache");
+#endif
+
 struct mali_dev
 {
 	struct cdev cdev;
@@ -356,6 +362,10 @@ static int mali_ioctl(struct inode *inode, struct file *filp, unsigned int cmd, 
             err = get_api_version_wrapper(session_data, (_mali_uk_get_api_version_s __user *)arg);
             break;
 
+        case MALI_IOC_POST_NOTIFICATION:
+            err = post_notification_wrapper(session_data, (_mali_uk_post_notification_s __user *)arg);
+            break;
+
 #if MALI_TIMELINE_PROFILING_ENABLED
         case MALI_IOC_PROFILING_START:
             err = profiling_start_wrapper(session_data, (_mali_uk_profiling_start_s __user *)arg);
@@ -424,7 +434,7 @@ static int mali_ioctl(struct inode *inode, struct file *filp, unsigned int cmd, 
 
 		case MALI_IOC_MEM_ATTACH_UMP:
 		case MALI_IOC_MEM_RELEASE_UMP: /* FALL-THROUGH */
-        	MALI_DEBUG_PRINT(2, ("UMP not supported\n", cmd, arg));
+        	MALI_DEBUG_PRINT(2, ("UMP not supported\n"));
             err = -ENOTTY;
 			break;
 #endif

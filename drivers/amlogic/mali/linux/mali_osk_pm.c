@@ -118,12 +118,10 @@ void _mali_osk_pmm_power_down_done(mali_pmm_message_data data)
 #ifdef CONFIG_PM
 	is_wake_up_needed = 1;
 #if MALI_POWER_MGMT_TEST_SUITE
-#if MALI_PMM_INTERNAL_TESTING
 	if (is_mali_pmu_present == 0)
 	{
 		pwr_mgmt_status_reg = _mali_pmm_cores_list();
 	}
-#endif /* MALI_PMM_INTERNAL_TESTING */
 #endif /* MALI_POWER_MGMT_TEST_SUITE */
 	wake_up_process(pm_thread);
 	MALI_DEBUG_PRINT(4, ("OSPMM: MALI Power down Done\n" ));

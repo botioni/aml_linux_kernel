@@ -237,6 +237,7 @@ typedef enum
 	_MALI_OSK_LOCKFLAG_READERWRITER = 0x4,      /**< Optimise for readers/writers */
 	_MALI_OSK_LOCKFLAG_ORDERED = 0x8,           /**< Use the order parameter; otherwise use automatic ordering */
 	_MALI_OSK_LOCKFLAG_ONELOCK = 0x10,          /**< Each thread can only hold one lock at a time */
+	_MALI_OSK_LOCKFLAG_SPINLOCK_IRQ = 0x20,    /**<  IRQ version of spinlock */
 	/** @enum _mali_osk_lock_flags_t
 	 *
 	 * Flags from 0x10000--0x80000000 are RESERVED for User-mode */
@@ -1298,23 +1299,34 @@ void _mali_osk_notification_queue_send( _mali_osk_notification_queue_t *queue, _
  *
  * Receives a single notification from the given queue.
  *
- * If no notifciations are ready the thread will sleep until one becomes ready
- * or a timeout occurs. Therefore, notifications may not be received into an
+ * If no notifciations are ready the thread will sleep until one becomes ready.
+ * Therefore, notifications may not be received into an
  * IRQ or 'atomic' context (that is, a context where sleeping is disallowed).
  *
- * On timeout the result will be NULL.
- *
  * @param queue The queue to receive from
- * @param timeout Timeout for the sleep if no notification is pending.
- * If this is set to 0, then it will not sleep.
  * @param result Pointer to storage of a pointer of type
  * \ref _mali_osk_notification_t*. \a result will be written to such that the
  * expression \a (*result) will evaluate to a pointer to a valid
  * \ref _mali_osk_notification_t object, or NULL if none were received.
- * @return _MALI_OSK_ERR_OK on success. _MALI_OSK_ERR_TIMEOUT if a timeout
- * occurred. Otherwise, a suitable _mali_osk_errcode_t on failure.
+ * @return _MALI_OSK_ERR_OK on success. _MALI_OSK_ERR_RESTARTSYSCALL if the sleep was interrupted.
  */
-_mali_osk_errcode_t _mali_osk_notification_queue_receive( _mali_osk_notification_queue_t *queue, u32 timeout, _mali_osk_notification_t **result );
+_mali_osk_errcode_t _mali_osk_notification_queue_receive( _mali_osk_notification_queue_t *queue, _mali_osk_notification_t **result );
+
+/** @brief Dequeues a notification from a queue
+ *
+ * Receives a single notification from the given queue.
+ *
+ * If no notifciations are ready the function call will return an error code.
+ *
+ * @param queue The queue to receive from
+ * @param result Pointer to storage of a pointer of type
+ * \ref _mali_osk_notification_t*. \a result will be written to such that the
+ * expression \a (*result) will evaluate to a pointer to a valid
+ * \ref _mali_osk_notification_t object, or NULL if none were received.
+ * @return _MALI_OSK_ERR_OK on success, _MALI_OSK_ERR_ITEM_NOT_FOUND if queue was empty.
+ */
+_mali_osk_errcode_t _mali_osk_notification_queue_dequeue( _mali_osk_notification_queue_t *queue, _mali_osk_notification_t **result );
+
 /** @} */ /* end group _mali_osk_notification */
 
 

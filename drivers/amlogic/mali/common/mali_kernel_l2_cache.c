@@ -33,6 +33,7 @@ typedef enum mali_l2_cache_register {
 	/*unused                               = 0x0003 */
 	MALI400_L2_CACHE_REGISTER_COMMAND      = 0x0004, /**< Misc cache commands, e.g. clear */
 	MALI400_L2_CACHE_REGISTER_CLEAR_PAGE   = 0x0005,
+	MALI400_L2_CACHE_REGISTER_MAX_READS    = 0x0006, /**< Limit of outstanding read requests */
 	MALI400_L2_CACHE_REGISTER_ENABLE       = 0x0007, /**< Enable misc cache features */
 	MALI400_L2_CACHE_REGISTER_PERFCNT_SRC0 = 0x0008,
 	MALI400_L2_CACHE_REGISTER_PERFCNT_VAL0 = 0x0009,
@@ -86,6 +87,10 @@ typedef struct mali_kernel_l2_cache_core
 	_mali_osk_lock_t *lock; /**< Serialize all L2 cache commands */
 } mali_kernel_l2_cache_core;
 
+
+#define MALI400_L2_MAX_READS_DEFAULT 0x1C
+
+int mali_l2_max_reads = MALI400_L2_MAX_READS_DEFAULT;
 
 
 /**
@@ -193,6 +198,7 @@ static void mali_l2_cache_terminate(mali_kernel_subsystem_identifier id)
 	_MALI_OSK_LIST_FOREACHENTRY( cache, temp_cache, &caches_head, mali_kernel_l2_cache_core, list )
 	{
 		/* reset to defaults */
+		mali_l2_cache_register_write(cache, MALI400_L2_CACHE_REGISTER_MAX_READS, (u32)MALI400_L2_MAX_READS_DEFAULT);
 		mali_l2_cache_register_write(cache, MALI400_L2_CACHE_REGISTER_ENABLE, (u32)MALI400_L2_CACHE_ENABLE_DEFAULT);
 
 		/* remove from the list of cacges on the system */
@@ -327,11 +333,11 @@ void mali_kernel_l2_cache_do_enable(void)
 {
 	mali_kernel_l2_cache_core * cache, *temp_cache;
 
-
 	/* loop over all L2 cache units and enable them*/
 	_MALI_OSK_LIST_FOREACHENTRY( cache, temp_cache, &caches_head, mali_kernel_l2_cache_core, list)
 	{
 		mali_l2_cache_register_write(cache, MALI400_L2_CACHE_REGISTER_ENABLE, (u32)MALI400_L2_CACHE_ENABLE_ACCESS | (u32)MALI400_L2_CACHE_ENABLE_READ_ALLOCATE);
+		mali_l2_cache_register_write(cache, MALI400_L2_CACHE_REGISTER_MAX_READS, (u32)mali_l2_max_reads);
 	}
 }
 

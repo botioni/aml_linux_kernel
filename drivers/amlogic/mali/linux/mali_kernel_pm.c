@@ -117,10 +117,7 @@ const char* const mali_pmm_recording_events[_MALI_DEVICE_MAX_PMM_EVENTS] = {
 
 unsigned int mali_timeout_event_recording_on = 0;
 unsigned int mali_job_scheduling_events_recording_on = 0;
-
-#if MALI_PMM_INTERNAL_TESTING
 unsigned int is_mali_pmu_present = 0;
-#endif /* MALI_PMM_INTERNAL_TESTING */
 #endif /* MALI_POWER_MGMT_TEST_SUITE */
 
 /* Function prototypes */
@@ -242,7 +239,6 @@ static void _mali_release_pm(struct device *device)
 }
 
 #if MALI_POWER_MGMT_TEST_SUITE
-#if MALI_PMM_INTERNAL_TESTING
 void mali_is_pmu_present(void)
 {
 	int temp = 0;
@@ -257,7 +253,6 @@ void mali_is_pmu_present(void)
 	}
 	
 }
-#endif /* MALI_PMM_INTERNAL_TESTING */
 #endif /* MALI_POWER_MGMT_TEST_SUITE */
 #endif /* MALI_LICENSE_IS_GPL */
 
@@ -487,6 +482,7 @@ static void mali_pm_late_resume(struct early_suspend *mali_dev)
 	if (mali_device_state ==  _MALI_DEVICE_EARLYSUSPEND_DISABLE_FB)
 	{
 		mali_device_resume(MALI_PMM_EVENT_OS_POWER_UP, &pm_thread);
+		mali_dvfs_device_state = _MALI_DEVICE_RESUME;
 		mali_device_state =  _MALI_DEVICE_RESUME;
 	}
 	_mali_osk_lock_signal(lock, _MALI_OSK_LOCKMODE_RW);
@@ -533,9 +529,7 @@ static ssize_t store_file(struct device *dev, struct device_attribute *attr, con
 #if MALI_POWER_MGMT_TEST_SUITE
 	int test_flag_dvfs = 0;
         pwr_mgmt_status_reg = 0;
-#if MALI_PMM_INTERNAL_TESTING
         mali_is_pmu_present();
-#endif /* MALI_PMM_INTERNAL_TESTING */
 
 #endif
 	if (!strncmp(buf,mali_states[_MALI_DEVICE_SUSPEND],strlen(mali_states[_MALI_DEVICE_SUSPEND])))
@@ -615,14 +609,10 @@ static ssize_t store_file(struct device *dev, struct device_attribute *attr, con
 	}
 	else
 	{
-#if MALI_PMM_INTERNAL_TESTING
 		if (1 == is_mali_pmu_present)
 		{
-#endif /* MALI_PMM_INTERNAL_TESTING */
 			pwr_mgmt_status_reg = pmu_get_power_up_down_info();
-#if MALI_PMM_INTERNAL_TESTING
 		}
-#endif /* MALI_PMM_INTERNAL_TESTING */
 	}
 #endif /* MALI_POWER_MGMT_TEST_SUITE */
 	return count;
@@ -711,6 +701,7 @@ int _mali_dev_platform_register(void)
 void _mali_dev_platform_unregister(void)
 {
 	_mali_osk_lock_term(lock);
+
 #ifdef CONFIG_HAS_EARLYSUSPEND
 	unregister_early_suspend(&mali_dev_early_suspend);
 #endif /* CONFIG_HAS_EARLYSUSPEND */

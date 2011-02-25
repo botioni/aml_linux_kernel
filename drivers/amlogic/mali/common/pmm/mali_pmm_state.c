@@ -562,7 +562,7 @@ void pmm_fatal_reset( _mali_pmm_internal_state_t *pmm )
 	/* Purge the event queues */
 	do
 	{
-		if( _mali_osk_notification_queue_receive( pmm->iqueue, 0, &msg ) == _MALI_OSK_ERR_OK )
+		if( _mali_osk_notification_queue_dequeue( pmm->iqueue, &msg ) == _MALI_OSK_ERR_OK )
 		{
 			_mali_osk_notification_delete ( msg );
 			break;
@@ -571,7 +571,7 @@ void pmm_fatal_reset( _mali_pmm_internal_state_t *pmm )
 
 	do
 	{
-		if( _mali_osk_notification_queue_receive( pmm->queue, 0, &msg ) == _MALI_OSK_ERR_OK )
+		if( _mali_osk_notification_queue_dequeue( pmm->queue, &msg ) == _MALI_OSK_ERR_OK )
 		{
 			_mali_osk_notification_delete ( msg );
 			break;
