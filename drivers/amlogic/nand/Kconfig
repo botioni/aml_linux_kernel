@@ -2,46 +2,23 @@
 # Sensor device configuration
 #
 
-#menu "AMLOGIC NAND Flash  support"
+menu "AMLOGIC NAND Flash  support"
 
-#config AM_NAND
-#	bool "Amlogic NAND FLASH SUPPORT"
-#	depends on ARCH_MESON
-#	default y
-#	select MTD_NAND 
-#	select MTD_PARTITIONS
-#	select MTD_BLOCK
-#	select MTD_CHAR
-#	help
-#		This is Meson_M1 nand suport
-#endmenu
-
-choice
-        prompt "Amlogic nand flash Support"
-        default NAND_FLASH_DRIVER_BASE_OPERATE
-        
-
-
-config NAND_FLASH_DRIVER_BASE_OPERATE
-        bool "nand base operate"
+config AM_NAND
+	bool "Amlogic NAND FLASH SUPPORT"
 	    depends on ARCH_MESON
+	default y
         select MTD_NAND 
 	    select MTD_PARTITIONS
         select MTD_BLOCK
         select MTD_CHAR
         help
-		    This is Meson_M1 nand base operate suport
+		This is Meson_M1 nand suport
 
-
-config NAND_FLASH_DRIVER_MULTIPLANE_CE
-        bool "nand multiplane and multce"
-	    depends on ARCH_MESON
-        select MTD_NAND 
-	    select MTD_PARTITIONS
-        select MTD_BLOCK
-        select MTD_CHAR
+config AML_NFTL
+	bool "Amlogic NFTL SUPPORT"
+	depends on AM_NAND
+	default n
         help
-		    This is Meson_M1 nand multiplane and multifce operate suport
-
-endchoice
-
+		This is aml nftl suport
+endmenu

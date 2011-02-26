@@ -10,21 +10,8 @@
 #define MTD_PARTITIONS_H
 
 #include <linux/types.h>
-#define MTD_AVNFTL		0x4000
-#define MTD_AVFTL_PLANE		0x8000
-#define MTD_AVNFTL_INTERL	0x10000
 
 
-/* Our partition node structure */
-struct mtd_part {
-	struct mtd_info mtd;
-	struct mtd_info *master;
-	u_int64_t offset;
-	int index;
-	struct list_head list;
-	int registered;
-	int ftl_subpart_num;			//if this part for ftl , and dual lun
-};
 /*
  * Partition definition structure:
  *
@@ -49,12 +36,10 @@ struct mtd_part {
 
 struct mtd_partition {
 	char *name;			/* identifier string */
-	uint64_t size;			/* partition size */
-	uint64_t offset;		/* offset within the master MTD space */
+	u_int64_t size;			/* partition size */
+	u_int64_t offset;		/* offset within the master MTD space */
 	uint32_t mask_flags;		/* master MTD flags to mask out for this partition */
 	struct nand_ecclayout *ecclayout;	/* out of band layout for this partition (NAND only)*/
-	uint32_t set_flags;			//#define MTD_AVNFTL			0x4000	 #define MTD_NAND_DPLANE		0x8000
-	uint32_t dual_partnum;
 };
 
 #define MTDPART_OFS_NXTBLK	(-2)
