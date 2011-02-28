@@ -415,6 +415,17 @@ static int32_t dwc_otg_hcd_disconnect_cb(void *_p)
 						   channel);
 				list_add_tail(&channel->hc_list_entry,
 					      &dwc_otg_hcd->free_hc_list);
+				
+				/* Take back a non_periodic_channel */
+				switch (channel->ep_type) {
+					case DWC_OTG_EP_TYPE_CONTROL:
+					case DWC_OTG_EP_TYPE_BULK:
+							dwc_otg_hcd->non_periodic_channels--;
+						break;
+
+					default:
+						break;
+				}
 			}
 		}
 	}
