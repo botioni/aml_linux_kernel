@@ -835,114 +835,118 @@ static struct platform_device aml_uart_device = {
 };
 #endif
 
-#ifdef CONFIG_NAND_FLASH_DRIVER_BASE_OPERATE
-static struct mtd_partition partition_info[] = 
+#ifdef CONFIG_AM_NAND
+/*static struct mtd_partition partition_info[] = 
 {
 #ifndef CONFIG_AMLOGIC_SPI_NOR
-/* Hide uboot partition
-	{
-		.name = "uboot",
-		.offset = 0,
-		.size = 2*1024*1024,
-	//	.set_flags=0,
-	//	.dual_partnum=0,
-	},
-//*/
         {
                 .name = "ubootenv",
                 .offset = 2*1024*1024,
                 .size = 0x2000,
-        //      .set_flags=0,
-        //      .dual_partnum=0,
         },
-/* Hide recovery partition
-        {
-                .name = "recovery",
-                .offset = 4*1024*1024,
-                .size = 4*1024*1024,
-        //      .set_flags=0,
-        //      .dual_partnum=0,
-        },
-//*/
 #endif
 	{
 		.name = "boot",
 		.offset = 8*1024*1024,
 		.size = 4*1024*1024,
-	//	.set_flags=0,
-	//	.dual_partnum=0,
 	},
         {
                 .name = "system",
                 .offset = 12*1024*1024,
                 .size = 116*1024*1024,
-        //      .set_flags=0,
-        //      .dual_partnum=0,
         },
         {
                 .name = "cache",
                 .offset = 128*1024*1024,
                 .size = 16*1024*1024,
-        //      .set_flags=0,
-        //      .dual_partnum=0,
         },
 	{
 		.name = "userdata",
 		.offset=MTDPART_OFS_APPEND,
 		.size=MTDPART_SIZ_FULL,
-	//	.set_flags=0,
-	//	.dual_partnum=0,
 	},
-//	{	.name="FTL_Part",
-//		.offset=MTDPART_OFS_APPEND,
-//		.size=MTDPART_SIZ_FULL,
-//	//	.set_flags=MTD_AVNFTL,
-//	//	.dual_partnum=1,
-//	}
-};
-#ifdef CONFIG_REFC01_2K_PAGE
-static struct aml_m1_nand_platform aml_2kpage128kblocknand_platform = {
-	.page_size = 2048,
-	.spare_size=64,
-	.erase_size= 128*1024,
-	.bch_mode=1,			//BCH8
-	.encode_size=528,
-	.timing_mode=5,
-	.ce_num=1,
-	.onfi_mode=0,
-	.partitions = partition_info,
-	.nr_partitions = ARRAY_SIZE(partition_info),
-};
-#endif
-#ifdef CONFIG_REFC01_4K_PAGE
-static struct aml_m1_nand_platform aml_4kpage128kblocknand_platform = {
-	.page_size = 4096,
-	.spare_size=128,
-	.erase_size= 256*1024,
-	.bch_mode=1,			//BCH16
-	.encode_size=528,
-	.timing_mode=5,
-	.ce_num=1,
-	.onfi_mode=0,
-	.partitions = partition_info,
-	.nr_partitions = ARRAY_SIZE(partition_info),
-};
-#endif
-/*
-static struct aml_m1_nand_platform aml_Micron4GBABAnand_platform = 
+};*/
+
+static struct mtd_partition normal_partition_info[] = 
 {
-	.page_size = 2048*2,
-	.spare_size= 224,		//for micron ABA 4GB
-	.erase_size=1024*1024,
-	.bch_mode=	  3,		//BCH16
-	.encode_size=540,				
-	.timing_mode=5,
-	.onfi_mode=1,
-	.ce_num=1,
-	.partitions = partition_info,
-	.nr_partitions = ARRAY_SIZE(partition_info),
+#ifndef CONFIG_AMLOGIC_SPI_NOR
+	{
+		.name = "environment",
+		.offset = 4*1024*1024,
+		.size = 8*1024*1024,
+	},
+#endif
+	{
+		.name = "recovery",
+		.offset = 12*1024*1024,
+		.size = 4*1024*1024,
+	},
+	{
+		.name = "uImage",
+		.offset = 16*1024*1024,
+		.size = 4*1024*1024,
+	},
+	{
+		.name = "system",
+		.offset = 20*1024*1024,
+		.size = 116*1024*1024,
+	},
+	{
+		.name = "cache",
+		.offset = 136*1024*1024,
+		.size = 16*1024*1024,
+	},
+	{
+		.name = "userdata",
+		.offset = 152*1024*1024,
+		.size = 256*1024*1024,
+	},
+	{
+		.name = "NFTL_Part",
+		.offset = 408*1024*1024,
+		.size = 1024*1024*1024,
+	},
 };
-*/
+
+
+static struct aml_nand_platform aml_nand_mid_platform[] = {
+#ifndef CONFIG_AMLOGIC_SPI_NOR
+	{
+		.name = NAND_BOOT_NAME,
+		.chip_enable_pad = AML_NAND_CE0,
+		.ready_busy_pad = AML_NAND_CE0,
+		.platform_nand_data = {
+			.chip =  {
+				.nr_chips = 1,
+				.options = (NAND_TIMING_MODE5 | NAND_ECC_BCH16_MODE),
+			},
+    	},
+		.T_REA = 20,
+		.T_RHOH = 15,
+	},
+#endif
+{
+		.name = NAND_NORMAL_NAME,
+		.chip_enable_pad = (AML_NAND_CE0 | (AML_NAND_CE1 << 4) | (AML_NAND_CE2 << 8) | (AML_NAND_CE3 << 12)),
+		.ready_busy_pad = (AML_NAND_CE0 | (AML_NAND_CE0 << 4) | (AML_NAND_CE1 << 8) | (AML_NAND_CE1 << 12)),
+		.platform_nand_data = {
+			.chip =  {
+				.nr_chips = 4,
+				.nr_partitions = ARRAY_SIZE(normal_partition_info),
+				.partitions = normal_partition_info,
+				.options = (NAND_TIMING_MODE5 | NAND_ECC_BCH16_MODE | NAND_TWO_PLANE_MODE),
+			},
+    	},
+		.T_REA = 20,
+		.T_RHOH = 15,
+	}
+};
+
+struct aml_nand_device aml_nand_mid_device = {
+	.aml_nand_platform = aml_nand_mid_platform,
+	.dev_num = ARRAY_SIZE(aml_nand_mid_platform),
+};
+
 static struct resource aml_nand_resources[] = {
 	{
 		.start = 0xc1108600,
@@ -957,14 +961,10 @@ static struct platform_device aml_nand_device = {
 	.num_resources = ARRAY_SIZE(aml_nand_resources),
 	.resource = aml_nand_resources,
 	.dev = {
-#ifdef CONFIG_REFC01_2K_PAGE
-		.platform_data = &aml_2kpage128kblocknand_platform,
-#endif
-#ifdef CONFIG_REFC01_4K_PAGE
-		.platform_data = &aml_4kpage128kblocknand_platform,
-#endif
+		.platform_data = &aml_nand_mid_device,
 	},
 };
+
 #endif
 
 #if defined(CONFIG_AMLOGIC_BACKLIGHT)
@@ -1195,7 +1195,7 @@ static struct platform_device __initdata *platform_devs[] = {
 	#if defined(CONFIG_TOUCHSCREEN_ADS7846)
 		&spi_gpio,
 	#endif
-    #if defined(CONFIG_NAND_FLASH_DRIVER_BASE_OPERATE)
+    #ifdef CONFIG_AM_NAND
 		&aml_nand_device,
     #endif		
     #if defined(CONFIG_AML_RTC)

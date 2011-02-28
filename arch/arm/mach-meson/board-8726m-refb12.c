@@ -1216,78 +1216,45 @@ static struct platform_device aml_uart_device = {
 };
 #endif
 
-#if defined(CONFIG_NAND_FLASH_DRIVER_BASE_OPERATE) || defined(CONFIG_NAND_FLASH_DRIVER_MULTIPLANE_CE)
-static struct mtd_partition partition_info[] = 
+#ifdef CONFIG_AM_NAND
+/*static struct mtd_partition partition_info[] = 
 {
 	{
-		.name = "bootloader",
+		.name = "U-BOOT",
 		.offset = 0,
 		.size=4*1024*1024,
 	//	.set_flags=0,
 	//	.dual_partnum=0,
 	},
 	{
-		.name = "environment",
+		.name = "Boot Para",
 		.offset = 4*1024*1024,
 		.size=4*1024*1024,
 	//	.set_flags=0,
 	//	.dual_partnum=0,
 	},
 	{
-		.name = "splash",
+		.name = "Kernel",
 		.offset = 8*1024*1024,
 		.size=4*1024*1024,
 	//	.set_flags=0,
 	//	.dual_partnum=0,
 	},
 	{
-		.name = "recovery",
-		.offset = 12*1024*1024,
-		.size = 16 * 1024*1024,
+		.name = "YAFFS2",
+        .offset = MTDPART_OFS_APPEND,
+        .size = MTDPART_SIZ_FULL,
 	//	.set_flags=0,
 	//	.dual_partnum=0,
 	},
-	{
-		.name = "boot",
-		.offset = 28*1024*1024,
-		.size = 16 * 1024*1024,
-	//	.set_flags=0,
-	//	.dual_partnum=0,
-	},
-	{
-		.name = "system",
-		.offset = 44*4*1024*1024,
-		.size = 240 * 1024*1024,
-	//	.set_flags=0,
-	//	.dual_partnum=0,
-	},
-	{
-		.name = "cache",
-		.offset = 416*1024*1024,
-		.size = 36 * 1024*1024,
-	//	.set_flags=0,
-	//	.dual_partnum=0,
-	},
-	{
-		.name = "userdata",
-		.offset= 452*1024*1024,
-		.size= 512 * 1024*1024,
-	//	.set_flags=0,
-	//	.dual_partnum=0,
-	},
-	{
-		.name = "media",
-		.offset = (452+512)*1024*1024,//MTDPART_SIZ_FULL;//MTDPART_OFS_APPEND,
-		.size = MTDPART_SIZ_FULL,//(0x100000000-(432+256)*1024*1024),
-		.set_flags = MTD_AVNFTL,
-		.dual_partnum = 1|MTD_AVFTL_PLANE|MTD_AVNFTL_INTERL,
-	//	.set_flags=0,
-	//	.dual_partnum=0,
-	},
+//	{	.name="FTL_Part",
+//		.offset=MTDPART_OFS_APPEND,
+//		.size=MTDPART_SIZ_FULL,
+//	//	.set_flags=MTD_AVNFTL,
+//	//	.dual_partnum=1,
+//	}
 };
-#endif
-#ifdef CONFIG_NAND_FLASH_DRIVER_BASE_OPERATE
-/*
+
 static struct aml_m1_nand_platform aml_2kpage128kblocknand_platform = {
     .page_size = 2048,
     .spare_size=64,
@@ -1302,7 +1269,7 @@ static struct aml_m1_nand_platform aml_2kpage128kblocknand_platform = {
 };
 */
 
-static struct aml_m1_nand_platform aml_Micron4GBABAnand_platform = 
+/*static struct aml_m1_nand_platform aml_Micron4GBABAnand_platform = 
 {
     .page_size = 2048*2,
     .spare_size= 224,       //for micron ABA 4GB
@@ -1315,7 +1282,6 @@ static struct aml_m1_nand_platform aml_Micron4GBABAnand_platform =
     .partitions = partition_info,
     .nr_partitions = ARRAY_SIZE(partition_info),
 };
-
 
 static struct resource aml_nand_resources[] = {
     {
@@ -1332,62 +1298,118 @@ static struct platform_device aml_nand_device = {
     .resource = aml_nand_resources,
     .dev = {
         .platform_data = &aml_Micron4GBABAnand_platform,
-    //  .platform_data = &aml_Micron8GBABAnand_platform,
     },
-};
-#endif  //CONFIG_NAND_FLASH_DRIVER_BASE_OPERATE
+};*/
 
-#ifdef CONFIG_NAND_FLASH_DRIVER_MULTIPLANE_CE
-
-/*
-static struct aml_m1_nand_platform aml_2kpage128kblocknand_platform = {
-    .page_size = 2048,
-    .spare_size=64,
-    .erase_size= 128*1024,
-    .bch_mode=1,            //BCH8
-    .encode_size=528,
-    .timing_mode=5,
-    .ce_num=1,
-    .onfi_mode=0,
-    .partitions = partition_info,
-    .nr_partitions = ARRAY_SIZE(partition_info),
-};
-*/
-
-
-//static struct aml_m1_nand_platform aml_Micron8GBABAnand_platform =
-//{
-//	.page_size = 2048*2,
-//	.spare_size= 224,		//for micron ABA 4GB
-//	.erase_size=1024*1024,
-//	.bch_mode=	  3,		//BCH16
-//	.encode_size=540,
-//	.timing_mode=5,
-//	.onfi_mode=1,
-//	.interlmode=0,
-//	.planemode=1,
-//	.ce_num=2,
-//	.chip_num=2,
-//	.partitions = partition_info,
-//	.nr_partitions = ARRAY_SIZE(partition_info),
-//};
-static struct aml_m1_nand_platform aml_nand_platform =
+/*static struct mtd_partition normal_partition_info[] = 
 {
-//	.page_size = 8192,
-//	.spare_size= 448,		//for micron ABA 4GB
-//	.erase_size=2*1024*1024,
-	.bch_mode=	  3,		//BCH16
-	.encode_size=540,
-	.timing_mode=5,
-	.onfi_mode=1,
-	.interlmode=0,
-	.planemode=1,
-	.ce_num=2,
-	.chip_num=2,
-	.partitions = partition_info,
-	.nr_partitions = ARRAY_SIZE(partition_info),
+	{
+		.name = "environment",
+		.offset = 8*1024*1024,
+		.size = 8*1024*1024,
+	},
+	{
+		.name = "splash",
+		.offset = 16*1024*1024,
+		.size = 4*1024*1024,
+	},
+	{
+		.name = "recovery",
+		.offset = 20*1024*1024,
+		.size = 16*1024*1024,
+	},
+	{
+		.name = "boot",
+		.offset = 36*1024*1024,
+		.size = 16*1024*1024,
+	},
+	{
+		.name = "cache",
+		.offset = 52*1024*1024,
+		.size = 32*1024*1024,
+	},
+};*/
+
+static struct mtd_partition multi_partition_info[] = 
+{
+	{
+		.name = "environment",
+		.offset = 8*1024*1024,
+		.size = 40*1024*1024,
+	},
+	{
+		.name = "logo",
+		.offset = 48*1024*1024,
+		.size = 16*1024*1024,
+	},
+	{
+		.name = "recovery",
+		.offset = 64*1024*1024,
+		.size = 16*1024*1024,
+	},
+	{
+		.name = "uImage",
+		.offset = 80*1024*1024,
+		.size = 16*1024*1024,
+	},
+	{
+		.name = "system",
+		.offset = 96*1024*1024,
+		.size = 256*1024*1024,
+	},
+	{
+		.name = "cache",
+		.offset = 352*1024*1024,
+		.size = 32*1024*1024,
+	},
+	{
+		.name = "userdata",
+		.offset = 384*1024*1024,
+		.size = 256*1024*1024,
+	},
+	{
+		.name = "NFTL_Part",
+		.offset = ((384 + 256)*1024*1024),
+		.size = ((0x200000000 - (384 + 256)*1024*1024)),
+	},
 };
 
+
+static struct aml_nand_platform aml_nand_mid_platform[] = {
+{
+		.name = NAND_BOOT_NAME,
+		.chip_enable_pad = AML_NAND_CE0,
+		.ready_busy_pad = AML_NAND_CE0,
+		.platform_nand_data = {
+			.chip =  {
+				.nr_chips = 1,
+				.options = (NAND_TIMING_MODE5 | NAND_ECC_BCH16_MODE),
+			},
+    	},
+		.T_REA = 20,
+		.T_RHOH = 15,
+	},
+{
+		.name = NAND_MULTI_NAME,
+		.chip_enable_pad = (AML_NAND_CE0 | (AML_NAND_CE1 << 4) | (AML_NAND_CE2 << 8) | (AML_NAND_CE3 << 12)),
+		.ready_busy_pad = (AML_NAND_CE0 | (AML_NAND_CE0 << 4) | (AML_NAND_CE1 << 8) | (AML_NAND_CE1 << 12)),
+		.platform_nand_data = {
+			.chip =  {
+				.nr_chips = 4,
+				.nr_partitions = ARRAY_SIZE(multi_partition_info),
+				.partitions = multi_partition_info,
+				.options = (NAND_TIMING_MODE5 | NAND_ECC_BCH16_MODE | NAND_TWO_PLANE_MODE),
+			},
+    	},
+		.T_REA = 20,
+		.T_RHOH = 15,
+	}
+};
+
+struct aml_nand_device aml_nand_mid_device = {
+	.aml_nand_platform = aml_nand_mid_platform,
+	.dev_num = ARRAY_SIZE(aml_nand_mid_platform),
+};
 
 static struct resource aml_nand_resources[] = {
     {
@@ -1403,11 +1425,10 @@ static struct platform_device aml_nand_device = {
 	.num_resources = ARRAY_SIZE(aml_nand_resources),
 	.resource = aml_nand_resources,
 	.dev = {
-	//	.platform_data = &aml_Micron4GBABAnand_platform,
-		.platform_data = &aml_nand_platform,
+		.platform_data = &aml_nand_mid_device,
 	},
 };
-#endif  //CONFIG_NAND_FLASH_DRIVER_MULTIPLANE_CE
+#endif
 
 #if defined(CONFIG_AMLOGIC_BACKLIGHT)
 #include <linux/aml_bl.h>
@@ -1470,30 +1491,7 @@ static unsigned aml_8726m_get_bl_level(void)
 {
     return bl_level;
 }
-#if 0
-static void aml_8726m_set_bl_level(unsigned level)
-{
-    unsigned cs_level;
 
-    if (level < 30)
-    {
-        cs_level = 15;
-    }
-    else if (level == 30)
-    {
-        cs_level = 12;
-    }
-    else if (level >30 && level < 256)
-    {
-        cs_level = 11-((level - 31)/28);
-    }
-    else
-        cs_level = 3;
-
-
-    WRITE_CBUS_REG_BITS(VGHL_PWM_REG0, cs_level, 0, 4);
-}
-#else
 #define BL_MAX_LEVEL 60000
 static void aml_8726m_set_bl_level(unsigned level)
 {
@@ -1523,7 +1521,6 @@ static void aml_8726m_set_bl_level(unsigned level)
     WRITE_CBUS_REG_BITS(PWM_PWM_A,hi,16,16);  //hi  
 }
 
-#endif
 static void aml_8726m_power_on_bl(void)
 { 
     printk("backlight on\n");
@@ -1779,7 +1776,7 @@ static struct platform_device __initdata *platform_devs[] = {
     #if defined(CONFIG_TOUCHSCREEN_ADS7846)
         &spi_gpio,
     #endif
-    #if defined(CONFIG_NAND_FLASH_DRIVER_BASE_OPERATE)
+    #ifdef CONFIG_AM_NAND
         &aml_nand_device,
     #endif
     #if defined(CONFIG_NAND_FLASH_DRIVER_MULTIPLANE_CE)
@@ -1918,7 +1915,7 @@ static void __init eth_pinmux_init(void)
 static void __init camera_power_on_init(void)
 {
     udelay(1000);
-    SET_CBUS_REG_MASK(HHI_DEMOD_PLL_CNTL,0x232);// 24M XTAL
+    SET_CBUS_REG_MASK(HHI_ETH_CLK_CNTL,0x30f);// 24M XTAL
     SET_CBUS_REG_MASK(HHI_DEMOD_PLL_CNTL,0x232);// 24M XTAL
 
     eth_set_pinmux(ETH_BANK0_GPIOC3_C12,ETH_CLK_OUT_GPIOC12_REG3_1, 1);		

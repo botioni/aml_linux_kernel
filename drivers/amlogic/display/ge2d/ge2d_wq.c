@@ -272,12 +272,12 @@ static int ge2d_monitor_thread(void *data)
 	{
 		down_timeout(&manager->event.cmd_in_sem,6000);
 		//got new cmd arrived in signal,
-		CLK_GATE_ON(GE2D);
+		//CLK_GATE_ON(GE2D);
 		while((manager->current_wq=get_next_work_queue(manager))!=NULL)
 		{
 			ge2d_process_work_queue(manager->current_wq);
 		}
-		CLK_GATE_OFF(GE2D);
+		//CLK_GATE_OFF(GE2D);
 	}
 	amlog_level(LOG_LEVEL_HIGH,"exit ge2d_monitor_thread\r\n");
 	return 0;
@@ -435,26 +435,35 @@ setup_display_property(src_dst_para_t *src_dst,int index)
 	canvas_t   	canvas;
 	unsigned	int  	data32;
 	unsigned	int 	bpp;
-	unsigned int 	block_mode[]={2,4,8,0,16,32,0,24};
+	unsigned int 	block_mode[]={2,4,8,16,16,32,0,24};
 
 	src_dst->canvas_index=index;
 	canvas_read(index,&canvas);
 
 	index=(index==OSD1_CANVAS_INDEX?0:1);
+	amlog_mask_level(LOG_MASK_CONFIG,LOG_LEVEL_HIGH,"osd%d ",index);
 	data32=READ_MPEG_REG(VIU_OSD1_BLK0_CFG_W0+ REG_OFFSET*index);
-	bpp=block_mode[(data32>>8) & 0xf];  //OSD_BLK_MODE[8..11]
-	amlog_mask_level(LOG_MASK_CONFIG,LOG_LEVEL_HIGH,"osd%d : %d bpp\r\n",index,bpp);
+	index=(data32>>8) & 0xf;
+	bpp=block_mode[index];  //OSD_BLK_MODE[8..11]
+	amlog_mask_level(LOG_MASK_CONFIG,LOG_LEVEL_HIGH,"%d bpp \n",bpp);
 	if(bpp < 16) return -1;
 
 	src_dst->bpp=bpp;
 	src_dst->xres=canvas.width/(bpp>>3);
 	src_dst->yres=canvas.height;
-	index=bpp-16 + ((data32>>2)&0xf); //color mode [2..5]
-	index=bpp_type_lut[index];  //get color mode 
-	src_dst->ge2d_color_index=default_ge2d_color_lut[index] ; //get matched ge2d color mode.
+	if(index==3) //yuv422 32bit for two pixel.
+	{
+		src_dst->ge2d_color_index=	GE2D_FORMAT_S16_YUV422;
+	}
+	else  //for block mode=4,5,7
+	{
+		index=bpp-16 + ((data32>>2)&0xf); //color mode [2..5]
+		index=bpp_type_lut[index];  //get color mode 
+		src_dst->ge2d_color_index=default_ge2d_color_lut[index] ; //get matched ge2d color mode.
 	
-	if(src_dst->xres<=0 || src_dst->yres<=0 || src_dst->ge2d_color_index==0)
-	return -2;
+		if(src_dst->xres<=0 || src_dst->yres<=0 || src_dst->ge2d_color_index==0)
+		return -2;
+	}	
 	
 	return 0;	
 	
@@ -544,8 +553,9 @@ int   ge2d_context_config(ge2d_context_t *context, config_para_t *ge2d_config)
 	}
 	
 	//next will config regs
-	amlog_mask_level(LOG_MASK_CONFIG,LOG_LEVEL_LOW,"ge2d xres %d yres %d : dst xres %d yres %d\r\n",src.xres,src.yres,
-	dst.xres,dst.yres);
+	amlog_mask_level(LOG_MASK_CONFIG,LOG_LEVEL_LOW,"ge2d xres %d yres %d : dst xres %d yres %d\n,src_format:0x%x,dst_format:0x%x\r\n",src.xres,src.yres,
+	dst.xres,dst.yres,src.ge2d_color_index, dst.ge2d_color_index);
+	
 	ge2dgen_src(context,src.canvas_index, src.ge2d_color_index);
 	ge2dgen_src_clip(context,
                   0, 0,src.xres, src.yres);

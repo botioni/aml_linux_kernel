@@ -28,6 +28,7 @@ int get_system_info_size_wrapper(struct mali_session_data *session_data, _mali_u
 int get_system_info_wrapper(struct mali_session_data *session_data, _mali_uk_get_system_info_s __user *uargs);
 int wait_for_notification_wrapper(struct mali_session_data *session_data, _mali_uk_wait_for_notification_s __user *uargs);
 int get_api_version_wrapper(struct mali_session_data *session_data, _mali_uk_get_api_version_s __user *uargs);
+int post_notification_wrapper(struct mali_session_data *session_data, _mali_uk_post_notification_s __user *uargs);
 int mem_init_wrapper(struct mali_session_data *session_data, _mali_uk_init_mem_s __user *uargs);
 int mem_term_wrapper(struct mali_session_data *session_data, _mali_uk_term_mem_s __user *uargs);
 int mem_map_ext_wrapper(struct mali_session_data *session_data, _mali_uk_map_external_mem_s __user * argument);
