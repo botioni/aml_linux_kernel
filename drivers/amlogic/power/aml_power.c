@@ -417,7 +417,7 @@ static int otg_is_usb_online(void)
 int pc_connect(int status) 
 {
     new_usb_status = status; 
-    if(new_usb_status == status)
+    if(new_usb_status == usb_status)
         return 1;
     usb_status = AML_PSY_TO_CHANGE;
     psy_changed(); 
@@ -603,14 +603,14 @@ static int aml_power_probe(struct platform_device *pdev)
 		pdata->set_charge(0);
 	}
 	
-	//power off when low power
-    get_bat_capacity();
-	if (pdata->is_ac_online) {
-        if((new_battery_capacity <=4)&&(!pdata->is_ac_online())){
-            if(pdata->set_bat_off)
-                pdata->set_bat_off();
-        }	
-    }    
+//	//power off when low power
+//    get_bat_capacity();
+//	if (pdata->is_ac_online) {
+//        if((new_battery_capacity <=4)&&(!pdata->is_ac_online())){
+//            if(pdata->set_bat_off)
+//                pdata->set_bat_off();
+//        }	
+//    }    
 
     
 	return 0;
