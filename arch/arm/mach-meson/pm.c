@@ -174,6 +174,10 @@ void power_init_off(void)
 
 void power_gate_switch(int flag)
 {
+#ifndef ADJUST_CORE_VOLTAGE   
+	GATE_SWITCH(flag, LED_PWM);
+#endif
+    GATE_SWITCH(flag, VGHL_PWM);
     GATE_SWITCH(flag, VI_CORE);
     GATE_SWITCH(flag, MDEC_CLK_PIC_DC);
     GATE_SWITCH(flag, MDEC_CLK_DBLK);
@@ -251,8 +255,6 @@ void early_power_gate_switch(int flag)
     GATE_SWITCH(flag, ROM_CLK);
     GATE_SWITCH(flag, EFUSE);
     GATE_SWITCH(flag, RESERVED0);
-    GATE_SWITCH(flag, VGHL_PWM);
-//    GATE_SWITCH(flag, LED_PWM);
     GATE_SWITCH(flag, LCD);
     GATE_SWITCH(flag, ENC480P_MPEG_DOMAIN);
     GATE_SWITCH(flag, ENC480I);
@@ -417,15 +419,6 @@ void early_clk_switch(int flag)
         xtal_uart_rate_backup = sys_clk->rate;
 
         for (i=0;i<EARLY_CLK_COUNT;i++){
-#ifdef CONFIG_WAKELOCK
-#if 0
-            if (has_wake_lock(WAKE_LOCK_IDLE)&&((early_clks[i] == HHI_VID_CLK_CNTL)||(early_clks[i] == HHI_MPEG_CLK_CNTL))){
-                 printk(KERN_INFO "skip turn off clk %s(%x)\n", early_clks_name[i], early_clks[i]);
-                 early_clk_flag[i] = 0;       
-                 continue;
-            }
-#endif
-#endif
             if ((early_clks[i] == HHI_VID_CLK_CNTL)||(early_clks[i] == HHI_WIFI_CLK_CNTL)){
                 early_clk_flag[i] = READ_CBUS_REG_BITS(early_clks[i], 0, 1);
                 if (early_clk_flag[i]){
@@ -524,14 +517,6 @@ void early_pll_switch(int flag)
     }
     else{
         for (i=0;i<EARLY_PLL_COUNT;i++){
-#ifdef CONFIG_WAKELOCK
-#if 0
-            if (has_wake_lock(WAKE_LOCK_IDLE)&&(early_plls[i] == HHI_VID_PLL_CNTL)){
-                early_pll_flag[i] = 0;
-                continue;
-            }
-#endif
-#endif
             early_pll_flag[i] = READ_CBUS_REG_BITS(early_plls[i], 15, 1) ? 0 : 1;
             if (early_pll_flag[i]){
                 printk(KERN_INFO "early pll %s(%x) off\n", early_plls_name[i], early_plls[i]);
@@ -542,17 +527,94 @@ void early_pll_switch(int flag)
 }
 EXPORT_SYMBOL(early_pll_switch);
 
+typedef struct {
+	char name[32];
+	unsigned reg_addr;
+	unsigned set_bits;
+	unsigned clear_bits;
+	unsigned reg_value;
+	unsigned enable; // 1:cbus 2:apb 3:ahb 0:disable
+} analog_t;
+
+#define ANALOG_COUNT	8
+static analog_t analog_regs[ANALOG_COUNT] = {
+	{"SAR_ADC",				SAR_ADC_REG3, 		1<<28,			(1<<30)|(1<<21), 	0,	1},
+	{"LED_PWM_REG0",		LED_PWM_REG0, 		1<<13,			1<<12,				0,	0}, // needed for core voltage adjustment, so not off
+	{"VGHL_PWM_REG0",		VGHL_PWM_REG0, 		1<<13,			1<<12,				0,	1},
+	{"WIFI_ADC_SAMPLING",	WIFI_ADC_SAMPLING, 	0,				1<<18,				0,	1},
+	{"ADC_EN_ADC",			ADC_EN_ADC,			0,				1<<31,				0,	2},
+	{"WIFI_ADC_DAC",		WIFI_ADC_DAC,		(3<<10)|0xff,	0,					0,	3},
+	{"ADC_EN_CMLGEN_RES",	ADC_EN_CMLGEN_RES,	0,				1<<26,				0, 	3},
+	{"WIFI_SARADC",			WIFI_SARADC,		0,				1<<2,				0, 	3},
+};
+
 void analog_switch(int flag)
 {
+	int i;
+	unsigned reg_value = 0;
     if (flag){
         printk(KERN_INFO "analog on\n");
-        CLEAR_CBUS_REG_MASK(SAR_ADC_REG3, 1<<28);
-        SET_CBUS_REG_MASK(AM_ANALOG_TOP_REG0, 1<<1);
+        SET_CBUS_REG_MASK(AM_ANALOG_TOP_REG0, 1<<1);  		// set 0x206e bit[1] 1 to power on top analog
+		for (i=0;i<ANALOG_COUNT;i++){
+			if (analog_regs[i].enable && (analog_regs[i].set_bits || analog_regs[i].clear_bits)){
+				if (analog_regs[i].enable == 1)
+					WRITE_CBUS_REG(analog_regs[i].reg_addr, analog_regs[i].reg_value);
+				else if (analog_regs[i].enable == 2)
+					WRITE_APB_REG(analog_regs[i].reg_addr, analog_regs[i].reg_value);
+				else if (analog_regs[i].enable == 3)
+					WRITE_AHB_REG(analog_regs[i].reg_addr, analog_regs[i].reg_value);
+			}
+		}
     }
     else{
         printk(KERN_INFO "analog off\n");
-        SET_CBUS_REG_MASK(SAR_ADC_REG3, 1<<28);         // set 0x21a3 bit[28] 1 to power down
-        CLEAR_CBUS_REG_MASK(AM_ANALOG_TOP_REG0, 1<<1);  // set 0x206e bit[1] 0 to shutdown
+		for (i=0;i<ANALOG_COUNT;i++){
+			if (analog_regs[i].enable && (analog_regs[i].set_bits || analog_regs[i].clear_bits)){
+				if (analog_regs[i].enable == 1){
+					analog_regs[i].reg_value = READ_CBUS_REG(analog_regs[i].reg_addr);
+					printk("%s(0x%x):0x%x", analog_regs[i].name, CBUS_REG_ADDR(analog_regs[i].reg_addr), analog_regs[i].reg_value);
+					if (analog_regs[i].clear_bits){
+						CLEAR_CBUS_REG_MASK(analog_regs[i].reg_addr, analog_regs[i].clear_bits);
+						printk(" & ~0x%x", analog_regs[i].clear_bits);
+					}
+					if (analog_regs[i].set_bits){
+						SET_CBUS_REG_MASK(analog_regs[i].reg_addr, analog_regs[i].set_bits);
+						printk(" | 0x%x", analog_regs[i].set_bits);
+					}
+					reg_value = READ_CBUS_REG(analog_regs[i].reg_addr);
+					printk(" = 0x%x\n", reg_value);
+				}
+				else if (analog_regs[i].enable == 2){
+					analog_regs[i].reg_value = READ_APB_REG(analog_regs[i].reg_addr);
+					printk("%s(0x%x):0x%x", analog_regs[i].name, APB_REG_ADDR(analog_regs[i].reg_addr), analog_regs[i].reg_value);
+					if (analog_regs[i].clear_bits){
+						CLEAR_APB_REG_MASK(analog_regs[i].reg_addr, analog_regs[i].clear_bits);
+						printk(" & ~0x%x", analog_regs[i].clear_bits);
+					}
+					if (analog_regs[i].set_bits){
+						SET_APB_REG_MASK(analog_regs[i].reg_addr, analog_regs[i].set_bits);
+						printk(" | 0x%x", analog_regs[i].set_bits);
+					}
+					reg_value = READ_APB_REG(analog_regs[i].reg_addr);
+					printk(" = 0x%x\n", reg_value);
+				}
+				else if (analog_regs[i].enable == 3){
+					analog_regs[i].reg_value = READ_AHB_REG(analog_regs[i].reg_addr);
+					printk("%s(0x%x):0x%x", analog_regs[i].name, AHB_REG_ADDR(analog_regs[i].reg_addr), analog_regs[i].reg_value);
+					if (analog_regs[i].clear_bits){
+						CLEAR_AHB_REG_MASK(analog_regs[i].reg_addr, analog_regs[i].clear_bits);
+						printk(" & ~0x%x", analog_regs[i].clear_bits);
+					}
+					if (analog_regs[i].set_bits){
+						SET_AHB_REG_MASK(analog_regs[i].reg_addr, analog_regs[i].set_bits);
+						printk(" | 0x%x", analog_regs[i].set_bits);
+					}
+					reg_value = READ_AHB_REG(analog_regs[i].reg_addr);
+					printk(" = 0x%x\n", reg_value);
+				}
+			}
+		}
+		CLEAR_CBUS_REG_MASK(AM_ANALOG_TOP_REG0, 1<<1);  	// set 0x206e bit[1] 0 to shutdown top analog
     }
 }
 

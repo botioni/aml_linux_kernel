@@ -32,6 +32,7 @@ typedef enum gpio_bank
 	PREG_FGPIO,
 	PREG_GGPIO,
 	PREG_HGPIO,
+	PREG_JTAG_GPIO,
 #ifdef CONFIG_EXGPIO
 	EXGPIO_BANK0,
 	EXGPIO_BANK1,
@@ -76,6 +77,16 @@ unsigned long  get_gpio_val(gpio_bank_t bank,int bit);
 
 #define GPIOE_bank_bit16_21(bit)	(PREG_HGPIO)
 #define GPIOE_bit_bit16_21(bit)		(bit)		
+
+#define GPIOJTAG_bank_bit(bit)		(PREG_JTAG_GPIO)
+#define GPIOJTAG_bit_bit0_3(bit)	(bit)
+#define GPIOJTAG_bit_bit16(bit)		(bit)
+
+#define GPIO_JTAG_TCK_BIT			0
+#define GPIO_JTAG_TMS_BIT			1
+#define GPIO_JTAG_TDI_BIT			2
+#define GPIO_JTAG_TDO_BIT			3
+#define GPIO_TEST_N_BIT				16
 
 enum {
     GPIOA_IDX = 0,

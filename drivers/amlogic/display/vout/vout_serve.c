@@ -111,10 +111,12 @@ static  void  read_reg(char *para)
 
 	if (((*para) == 'm') || ((*para) == 'M'))
 	{
-		amlog_level(LOG_LEVEL_HIGH,"[0x%x] : 0x%x\r\n", reg.addr, READ_MPEG_REG(reg.addr));
+		amlog_level(LOG_LEVEL_HIGH,"[0x%x] : 0x%x\r\n", CBUS_REG_ADDR(reg.addr), READ_MPEG_REG(reg.addr));
 	}else if (((*para) == 'p') || ((*para) == 'P')) {
 		if (APB_REG_ADDR_VALID(reg.addr))
-		    amlog_level(LOG_LEVEL_HIGH,"[0x%x] : 0x%x\r\n", reg.addr, READ_APB_REG(reg.addr));
+		    amlog_level(LOG_LEVEL_HIGH,"[0x%x] : 0x%x\r\n", APB_REG_ADDR(reg.addr), READ_APB_REG(reg.addr));
+	}else if (((*para) == 'h') || ((*para) == 'H')) {
+	    amlog_level(LOG_LEVEL_HIGH,"[0x%x] : 0x%x\r\n", AHB_REG_ADDR(reg.addr), READ_AHB_REG(reg.addr));
 	}
 }
 
@@ -127,14 +129,18 @@ static  void  write_reg(char *para)
 
 	if (((*para) == 'm') || ((*para) == 'M')){
 		WRITE_MPEG_REG(reg.addr,reg.value);
-		amlog_level(LOG_LEVEL_HIGH,"[0x%x] = 0x%x 0x%x\r\n", reg.addr, reg.value, READ_MPEG_REG(reg.addr));
+		amlog_level(LOG_LEVEL_HIGH,"[0x%x] = 0x%x 0x%x\r\n", CBUS_REG_ADDR(reg.addr), reg.value, READ_MPEG_REG(reg.addr));
 	}
 	else if (((*para) == 'p') || ((*para) == 'P')) {
 		if (APB_REG_ADDR_VALID(reg.addr)){
 			WRITE_APB_REG(reg.addr,reg.value);
-			amlog_level(LOG_LEVEL_HIGH,"[0x%x] = 0x%x 0x%x\r\n", reg.addr, reg.value, READ_APB_REG(reg.addr));
+			amlog_level(LOG_LEVEL_HIGH,"[0x%x] = 0x%x 0x%x\r\n", APB_REG_ADDR(reg.addr), reg.value, READ_APB_REG(reg.addr));
 		}
 	}		
+	else if (((*para) == 'h') || ((*para) == 'H')) {
+		WRITE_AHB_REG(reg.addr,reg.value);
+		amlog_level(LOG_LEVEL_HIGH,"[0x%x] = 0x%x 0x%x\r\n", AHB_REG_ADDR(reg.addr), reg.value, READ_AHB_REG(reg.addr));
+	}	
 }
 
 
