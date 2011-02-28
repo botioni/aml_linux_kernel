@@ -129,18 +129,18 @@ menuconfig MACH_MESON_8726M_REFC04
           Include support for the AMLOGIC M1 8726M Hisense platform.
 
 choice
-	prompt "---Select Nand Flash Chip---"
+	prompt "---Select The Size of Nand Flash Chip---"
 	depends on MACH_MESON_8726M_REFC04
-	default REFC04_Nand_HY27UF084G2B
+	default REFC04_NAND_512MB
 
-config REFC04_NAND_HY27UF084G2B
-	bool "Hynix HY27UF084G2B"
+config REFC04_NAND_256MB
+	bool "256MB Nand (Samsung K9F2G08U0B)"
 
-config REFC04_NAND_K9GAG08U0E
-	bool "Samsung K9GAG08U0E"
+config REFC04_NAND_512MB
+	bool "512MB Nand (Hynix H27U4G8T2B)"
 
-config REFC04_NAND_H27UAG8T2B
-	bool "Hynix H27UAG8T2B"
+config REFC04_NAND_2GB
+	bool "2GB Nand (Hynix H27UAG8T2B)"
 
 endchoice
  
