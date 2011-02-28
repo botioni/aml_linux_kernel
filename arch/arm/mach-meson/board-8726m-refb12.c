@@ -1491,30 +1491,7 @@ static unsigned aml_8726m_get_bl_level(void)
 {
     return bl_level;
 }
-#if 0
-static void aml_8726m_set_bl_level(unsigned level)
-{
-    unsigned cs_level;
 
-    if (level < 30)
-    {
-        cs_level = 15;
-    }
-    else if (level == 30)
-    {
-        cs_level = 12;
-    }
-    else if (level >30 && level < 256)
-    {
-        cs_level = 11-((level - 31)/28);
-    }
-    else
-        cs_level = 3;
-
-
-    WRITE_CBUS_REG_BITS(VGHL_PWM_REG0, cs_level, 0, 4);
-}
-#else
 #define BL_MAX_LEVEL 60000
 static void aml_8726m_set_bl_level(unsigned level)
 {
@@ -1544,7 +1521,6 @@ static void aml_8726m_set_bl_level(unsigned level)
     WRITE_CBUS_REG_BITS(PWM_PWM_A,hi,16,16);  //hi  
 }
 
-#endif
 static void aml_8726m_power_on_bl(void)
 { 
     printk("backlight on\n");
@@ -1939,7 +1915,7 @@ static void __init eth_pinmux_init(void)
 static void __init camera_power_on_init(void)
 {
     udelay(1000);
-    SET_CBUS_REG_MASK(HHI_DEMOD_PLL_CNTL,0x232);// 24M XTAL
+    SET_CBUS_REG_MASK(HHI_ETH_CLK_CNTL,0x30f);// 24M XTAL
     SET_CBUS_REG_MASK(HHI_DEMOD_PLL_CNTL,0x232);// 24M XTAL
 
     eth_set_pinmux(ETH_BANK0_GPIOC3_C12,ETH_CLK_OUT_GPIOC12_REG3_1, 1);		
