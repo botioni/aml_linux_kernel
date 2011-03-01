@@ -963,18 +963,53 @@ static int __init amlogic_camera_init(void)
     if (!strcmp(AMLOGIC_CAMERA_DEVICE_NAME_FIRST,AMLOGIC_CAMERA_GT2005_NAME))
     {
 	    eth_set_pinmux(ETH_BANK0_GPIOC3_C12,ETH_CLK_OUT_GPIOC12_REG3_1, 1);
-		#ifdef CONFIG_SN7325
-	    	configIO(1, 0);
-	    	setIO_level(1, 1, 0);
-	    #endif
+       #ifdef CONFIG_SN7325
+	   printk( "amlogic camera driver: init CONFIG_SN7325. \n");
+	   configIO(1, 0);
+	   setIO_level(1, 0, 1);//30m poweer_disable
+	   
+	   setIO_level(1, 0, 2);//200m poweer_disable
+	   setIO_level(1, 1, 0);//30m pwd disable
+	   setIO_level(1, 0, 6);//200m pwd low
+	   configIO(0, 0);
+	   setIO_level(0, 0, 3);//30m reset low
+	   setIO_level(0, 0, 2);//200m reset low
+	   configIO(1, 0);
+	   msleep(300);
+	   setIO_level(1, 1, 2);//200m poweer_enable
+	   msleep(300);
+	   configIO(0, 0);
+	   setIO_level(0, 1, 2);//200m reset high
+	   
+	   msleep(300);
+	   configIO(1, 0);
+	   setIO_level(1, 1, 6);//200m pwd high
+	   //configIO(1, 0);
+	   
+	   #endif
     }
    if (!strcmp(AMLOGIC_CAMERA_DEVICE_NAME_FIRST,AMLOGIC_CAMERA_GC0308_NAME))
     {
 	    eth_set_pinmux(ETH_BANK0_GPIOC3_C12,ETH_CLK_OUT_GPIOC12_REG3_1, 1);
-		#ifdef CONFIG_SN7325
-	    	configIO(1, 0);
-	    	setIO_level(1, 0, 0);
-	    #endif
+       #ifdef CONFIG_SN7325
+		printk( "amlogic camera driver: init CONFIG_SN7325. \n");
+		configIO(1, 0);
+		setIO_level(1, 0, 1);//30m poweer_disable
+		
+		setIO_level(1, 0, 2);//200m poweer_disable
+		setIO_level(1, 0, 0);//30m pwd enable
+		setIO_level(1, 0, 6);//200m pwd low
+		configIO(0, 0);
+		setIO_level(0, 0, 3);//30m reset low
+		setIO_level(0, 0, 2);//200m reset low
+		configIO(1, 0);
+		msleep(300);
+		setIO_level(1, 1, 1);//30m poweer_enable
+		msleep(300);
+		configIO(0, 0);
+		setIO_level(0, 1, 3);//30m reset high
+		
+        #endif
     }
     ret = platform_driver_register(&amlogic_camera_driver);
     if (ret != 0) {

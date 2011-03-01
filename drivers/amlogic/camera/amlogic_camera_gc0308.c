@@ -280,20 +280,20 @@ struct aml_camera_i2c_fig1_s GC0308_script[] = {
 #else
 
 #if 1   // 50hz   8.3fps~16.6fps auto
-	{0x01 , 0xfa},                                    
-	{0x02 , 0x89},                                  
-	{0x0f , 0x01},                                  
+	{0x01 , 0x6a},                                    
+	{0x02 , 0x70},                                  
+	{0x0f , 0x00},                                  
 
 
 	{0xe2 , 0x00},   //anti-flicker step [11:8]     
-	{0xe3 , 0x68},   //anti-flicker step [7:0]      
+	{0xe3 , 0x96},   //anti-flicker step [7:0]      
 
 	{0xe4 , 0x02},       
-	{0xe5 , 0x71},                                  
+	{0xe5 , 0x58},                                  
 	{0xe6 , 0x02},           
-	{0xe7 , 0x71},                                  
-	{0xe8 , 0x04},           
-	{0xe9 , 0xe2},                                  
+	{0xe7 , 0x58},                                  
+	{0xe8 , 0x02},           
+	{0xe9 , 0x58},                                  
 	{0xea , 0x07},     
 	{0xeb , 0x53},                                  
 #else  // 60hz   8.3fps~16.6fps auto
@@ -342,7 +342,7 @@ struct aml_camera_i2c_fig1_s GC0308_script[] = {
 	{0x1c,0x49},
 	{0x1d,0x9a},
 	{0x1e,0x61},
-	{0x1f,0x16},
+	{0x1f,0x3f},//16
 	{0x20,0xff},
 	{0x21,0xfa},
 	{0x22,0x57},
