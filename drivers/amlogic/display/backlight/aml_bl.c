@@ -58,17 +58,19 @@ static int aml_bl_update_status(struct backlight_device *bd)
         
     if((brightness > 0)&&(0 == IS_CLK_GATE_ON(VGHL_PWM))){
         CLK_GATE_ON(VGHL_PWM);
+#ifdef AML_BL_DBG        
         printk("CLK_GATE_ON VGHL_PWM\n");        
+#endif        
     } 
     
     if( amlbl->pdata->set_bl_level )
         amlbl->pdata->set_bl_level(brightness);
 
-    printk("aml_8726m_set_bl_level = %d\n",brightness);
-            
     if((brightness == 0)&&(IS_CLK_GATE_ON(VGHL_PWM))){
         CLK_GATE_OFF(VGHL_PWM);
-        printk("CLK_GATE_OFF VGHL_PWM\n");        
+#ifdef AML_BL_DBG         
+        printk("CLK_GATE_OFF VGHL_PWM\n");   
+#endif                 
     }
     
   
