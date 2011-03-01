@@ -92,7 +92,7 @@ static int tcp_rcv_read_proc(char *page, char **start, off_t off,
 static struct uid_stat *create_stat(uid_t uid) {
 	unsigned long flags;
 	char uid_s[32];
-	struct uid_stat *new_uid;
+	struct uid_stat *new_uid, *search;
 	struct proc_dir_entry *entry;
 
 	/* Create the uid stat struct and append it to the list. */
@@ -105,6 +105,13 @@ static struct uid_stat *create_stat(uid_t uid) {
 	atomic_set(&new_uid->tcp_snd, INT_MIN);
 
 	spin_lock_irqsave(&uid_lock, flags);
+        list_for_each_entry(search, &uid_list, link) {
+                if (search->uid == uid) {
+                        spin_unlock_irqrestore(&uid_lock, flags);
+                        kfree(new_uid);
+                        return search;
+                }
+        }
 	list_add_tail(&new_uid->link, &uid_list);
 	spin_unlock_irqrestore(&uid_lock, flags);
 
