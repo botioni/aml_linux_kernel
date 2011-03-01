@@ -695,7 +695,7 @@ static void meson_pm_suspend(void)
     pdata->ddr_clk = READ_CBUS_REG(HHI_DDR_PLL_CNTL);
 
     ddr_clk_N = (pdata->ddr_clk>>9)&0x1f;
-    ddr_clk_N = ddr_clk_N*5; // N*5
+    ddr_clk_N = ddr_clk_N*4; // N*4
     if (ddr_clk_N>0x1f)
         ddr_clk_N=0x1f;
     pdata->ddr_clk &= ~(0x1f<<9);
