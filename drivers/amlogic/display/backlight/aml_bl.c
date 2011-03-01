@@ -29,6 +29,7 @@
 #include <linux/backlight.h>
 #include <linux/slab.h>
 #include <linux/aml_bl.h>
+#include <mach/power_gate.h>
 
 //#define AML_BL_DBG
 
@@ -54,9 +55,24 @@ static int aml_bl_update_status(struct backlight_device *bd)
         brightness = 0;
     else if( brightness > 255 )
         brightness = 255;
-
+        
+    if((brightness > 0)&&(0 == IS_CLK_GATE_ON(VGHL_PWM))){
+        CLK_GATE_ON(VGHL_PWM);
+        printk("CLK_GATE_ON VGHL_PWM\n");        
+    } 
+    
     if( amlbl->pdata->set_bl_level )
         amlbl->pdata->set_bl_level(brightness);
+
+    printk("aml_8726m_set_bl_level = %d\n",brightness);
+            
+    if((brightness == 0)&&(IS_CLK_GATE_ON(VGHL_PWM))){
+        CLK_GATE_OFF(VGHL_PWM);
+        printk("CLK_GATE_OFF VGHL_PWM\n");        
+    }
+    
+  
+     
 #ifdef AML_BL_DBG
     if( amlbl->pdata->get_bl_level )
 	    printk(KERN_INFO "%d\n", amlbl->pdata->get_bl_level());
