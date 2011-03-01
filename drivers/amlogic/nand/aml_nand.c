@@ -1549,8 +1549,10 @@ static void aml_nand_resume(struct mtd_info *mtd)
 {
 	struct aml_nand_chip *aml_chip = mtd_to_nand_chip(mtd);
 
-	aml_chip->aml_nand_hw_init(aml_chip);
-	nand_erarly_suspend_flag = 0;
+    if (((READ_CBUS_REG(HHI_MPEG_CLK_CNTL)&(1<<8))) && (nand_erarly_suspend_flag == 2)) {
+	    aml_chip->aml_nand_hw_init(aml_chip);
+	    nand_erarly_suspend_flag = 0;
+	}
 
 	printk("aml_m1_nand resume entered\n");
 	return;
