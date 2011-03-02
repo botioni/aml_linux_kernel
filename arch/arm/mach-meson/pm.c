@@ -544,14 +544,28 @@ static analog_t analog_regs[ANALOG_COUNT] = {
 	{"WIFI_ADC_SAMPLING",	WIFI_ADC_SAMPLING, 	0,				1<<18,				0,	1},
 	{"ADC_EN_ADC",			ADC_EN_ADC,			0,				1<<31,				0,	2},
 	{"WIFI_ADC_DAC",		WIFI_ADC_DAC,		(3<<10)|0xff,	0,					0,	3},
-	{"ADC_EN_CMLGEN_RES",	ADC_EN_CMLGEN_RES,	0,				1<<26,				0, 	3},
+	{"ADC_EN_CMLGEN_RES",	ADC_EN_CMLGEN_RES,	0,				(1<<26)|(1<<25),	0, 	3},
 	{"WIFI_SARADC",			WIFI_SARADC,		0,				1<<2,				0, 	3},
 };
+
 
 void analog_switch(int flag)
 {
 	int i;
 	unsigned reg_value = 0;
+	unsigned analog_reg_backup[3];
+
+	CLK_GATE_ON(WIFI);
+	analog_reg_backup[0] = READ_CBUS_REG_BITS(HHI_DEMOD_PLL_CNTL, 15, 1);
+	if (analog_reg_backup[0]){
+		CLEAR_CBUS_REG_MASK(HHI_DEMOD_PLL_CNTL, (1<<15));
+		udelay(1000);
+	}
+	analog_reg_backup[1] = READ_CBUS_REG_BITS(HHI_DEMOD_CLK_CNTL, 8, 1);
+	if (!analog_reg_backup[1]) SET_CBUS_REG_MASK(HHI_DEMOD_CLK_CNTL, (1<<8));
+	analog_reg_backup[2] = READ_CBUS_REG_BITS(HHI_WIFI_CLK_CNTL, 0, 1);
+	if (!analog_reg_backup[2]) SET_CBUS_REG_MASK(HHI_WIFI_CLK_CNTL, (1<<0));
+
     if (flag){
         printk(KERN_INFO "analog on\n");
         SET_CBUS_REG_MASK(AM_ANALOG_TOP_REG0, 1<<1);  		// set 0x206e bit[1] 1 to power on top analog
@@ -616,6 +630,10 @@ void analog_switch(int flag)
 		}
 		CLEAR_CBUS_REG_MASK(AM_ANALOG_TOP_REG0, 1<<1);  	// set 0x206e bit[1] 0 to shutdown top analog
     }
+	if (!analog_reg_backup[2]) CLEAR_CBUS_REG_MASK(HHI_WIFI_CLK_CNTL, (1<<0));
+	if (!analog_reg_backup[1]) CLEAR_CBUS_REG_MASK(HHI_DEMOD_CLK_CNTL, (1<<8));
+	if (analog_reg_backup[0]) SET_CBUS_REG_MASK(HHI_DEMOD_PLL_CNTL, (1<<15));
+	CLK_GATE_OFF(WIFI);
 }
 
 void usb_switch(int flag,int ctrl)

@@ -25,6 +25,7 @@
 #define DDR_SUSPEND
 #define WFI_SUSPEND
 //#define DDR_PLL_OFF
+//#define DDR_PLL_POWER_SAVE
 
 #define HIU_GCLK_MPEG       (0x50<<2)
 #define HIU_DDR_PLL_CTRL    (0x68<<2)
@@ -129,7 +130,8 @@ ENTRY(meson_cpu_suspend)
 
     /* DDR PHY power saving*/
     ldr     r8, [r1, #MMC_PHY_CTRL-0x1000]
-    orr     r8, r8, #0x1
+    orr     r8, r8, #(1<<0)
+    orr     r8, r8, #(1<<8)
     str     r8, [r1, #MMC_PHY_CTRL-0x1000]
 
 #ifdef DDR_PLL_OFF
@@ -146,6 +148,12 @@ ENTRY(meson_cpu_suspend)
     orr     r8, r8, #(1<<15)
     str     r8, [r2, #HIU_DDR_PLL_CTRL]
 #else
+#ifdef DDR_PLL_POWER_SAVE
+    ldr     r8, [r0, #PCTL_IOCR_ADDR]
+    orr     r8, r8, #(1<<24)
+    str     r8, [r0, #PCTL_IOCR_ADDR]
+#endif
+
     mov     r8, #0x1000
 0:  subs    r8, r8, #0x1
     bne     0b
@@ -153,6 +161,8 @@ ENTRY(meson_cpu_suspend)
     /* scale down PLL */
     ldr     r6, [r2, #HIU_DDR_PLL_CTRL]
     str     r4, [r2, #HIU_DDR_PLL_CTRL]
+
+
 #endif
 
     /* ddr power gate */
@@ -205,8 +215,14 @@ ENTRY(meson_cpu_suspend)
     str     r8, [r2, #HIU_DDR_RESET]    
     
     ldr     r8, [r1, #MMC_PHY_CTRL-0x1000]
-    bic     r8, r8, #0x1
+    bic     r8, r8, #(1<<8)
     str     r8, [r1, #MMC_PHY_CTRL-0x1000]
+
+#ifdef DDR_PLL_POWER_SAVE
+    ldr     r8, [r0, #PCTL_IOCR_ADDR]
+    bic     r8, r8, #(1<<24)
+    str     r8, [r0, #PCTL_IOCR_ADDR]
+#endif
 
     ldr     r8, [r0, #PCTL_DLLCR9_ADDR]
     bic     r8, r8, #(1<<31)
@@ -333,8 +349,14 @@ ENTRY(meson_cpu_suspend)
     bne     7b
 
     /* DDR PHY leave power saving mode*/
+#ifdef DDR_PLL_POWER_SAVE
+    ldr     r8, [r0, #PCTL_IOCR_ADDR]
+    bic     r8, r8, #(1<<24)
+    str     r8, [r0, #PCTL_IOCR_ADDR]
+#endif
+
     ldr     r8, [r1, #MMC_PHY_CTRL-0x1000]
-    bic     r8, r8, #0x1
+    bic     r8, r8, #(1<<8)
     str     r8, [r1, #MMC_PHY_CTRL-0x1000]
 
     /* ddr back to normal mode */
