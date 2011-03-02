@@ -105,8 +105,8 @@ static dwc_otg_core_params_t dwc_otg_module_params = {
 				   -1,
 				   -1,
 				   -1},	/* 15 */
-	.host_rx_fifo_size = 256,
-	.host_nperio_tx_fifo_size = 256,
+	.host_rx_fifo_size = 256 + 128,
+	.host_nperio_tx_fifo_size = 128,
 	.host_perio_tx_fifo_size = 16,
 	.max_transfer_size = 65535,
 	.max_packet_count = -1,
@@ -470,7 +470,7 @@ break; case DWC_OTG_CAP_PARAM_NO_HNP_SRP_CAPABLE:
 					     (&core_if->
 					      core_global_regs->gnptxfsiz) >>
 					     16));
-
+/*
 	retval += DWC_OTG_PARAM_CHECK_VALID(host_rx_fifo_size,
 					    "host_rx_fifo_size",
 					    (dwc_otg_module_params.host_rx_fifo_size
@@ -479,7 +479,7 @@ break; case DWC_OTG_CAP_PARAM_NO_HNP_SRP_CAPABLE:
 					     (&core_if->core_global_regs->grxfsiz)),
 					    dwc_read_reg32
 					    (&core_if->core_global_regs->grxfsiz));
-
+*/
 	retval += DWC_OTG_PARAM_CHECK_VALID(host_nperio_tx_fifo_size,
 					    "host_nperio_tx_fifo_size",
 					    (dwc_otg_module_params.host_nperio_tx_fifo_size
