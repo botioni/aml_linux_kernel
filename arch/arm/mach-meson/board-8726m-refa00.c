@@ -1333,17 +1333,17 @@ static struct mtd_partition multi_partition_info[] =
 	{
 		.name = "cache",
 		.offset = 352*1024*1024,
-		.size = 36*1024*1024,
+		.size = 40*1024*1024,
 	},
 	{
 		.name = "userdata",
-		.offset = 388*1024*1024,
+		.offset = 392*1024*1024,
 		.size = 512*1024*1024,
 	},
 	{
 		.name = "NFTL_Part",
-		.offset = ((388 + 512)*1024*1024),
-		.size = ((0x200000000 - (384 + 256)*1024*1024)),
+		.offset = ((392 + 512)*1024*1024),
+		.size = ((0x200000000 - (392 + 512)*1024*1024)),
 	},
 };
 
