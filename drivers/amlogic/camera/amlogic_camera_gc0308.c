@@ -2,7 +2,8 @@
  * Copyright (C) 2010-2011 AMLOGIC Incorporated.
  */
  
-#include "amlogic_camera_common.h"
+#include <linux/camera/amlogic_camera_common.h>
+
 
 
 void set_camera_saturation_gc0308(enum camera_saturation_e saturation)

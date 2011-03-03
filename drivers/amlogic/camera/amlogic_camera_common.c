@@ -46,7 +46,8 @@
 
 /* Amlogic headers */
 #include <mach/am_regs.h>
-#include "amlogic_camera_common.h"
+#include <linux/camera/amlogic_camera_common.h>
+
 #include "amlogic_camera_ov5640.h"
 #include "amlogic_camera_gc0308.h"
 #include "amlogic_camera_gt2005.h"
@@ -687,7 +688,21 @@ static int amlogic_camera_i2c_probe(struct i2c_client *client, const struct i2c_
 {
 	//unsigned char data[16] = {0};
 	int res = 0;
-
+	struct amlogic_camera_platform_data *pdata = pdata = client->dev.platform_data;
+	if(pdata){
+		if(pdata->back_init)
+			pdata->back_init();
+		else
+			pr_info("back camera init failed");
+		#ifdef CONFIG_AMLOGIC_SECOND_CAMERA_ENABLE
+		if(pdata->front_init)
+			pdata->front_init();
+		else
+			pr_info("front camera init failed");
+		#endif
+		
+		}
+    
 	if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C)) {
 		pr_info("%s: functionality check failed\n", __FUNCTION__);
 		res = -ENODEV;
@@ -960,79 +975,46 @@ static int __init amlogic_camera_init(void)
 {
     int ret = 0;
     printk( "amlogic camera driver: init. \n");
+	/*
     if (!strcmp(AMLOGIC_CAMERA_DEVICE_NAME_FIRST,AMLOGIC_CAMERA_GT2005_NAME))
-    {
-	    eth_set_pinmux(ETH_BANK0_GPIOC3_C12,ETH_CLK_OUT_GPIOC12_REG3_1, 1);
-       #ifdef CONFIG_SN7325
-	   printk( "amlogic camera driver: init CONFIG_SN7325. \n");
-	   configIO(1, 0);
-	   setIO_level(1, 0, 1);//30m poweer_disable
-	   
-	   setIO_level(1, 0, 2);//200m poweer_disable
-	   setIO_level(1, 1, 0);//30m pwd disable
-	   setIO_level(1, 0, 6);//200m pwd low
-	   configIO(0, 0);
-	   setIO_level(0, 0, 3);//30m reset low
-	   setIO_level(0, 0, 2);//200m reset low
-	   configIO(1, 0);
-	   msleep(300);
-	   setIO_level(1, 1, 2);//200m poweer_enable
-	   msleep(300);
-	   configIO(0, 0);
-	   setIO_level(0, 1, 2);//200m reset high
-	   
-	   msleep(300);
-	   configIO(1, 0);
-	   setIO_level(1, 1, 6);//200m pwd high
-	   //configIO(1, 0);
-	   
-	   #endif
-    }
-   if (!strcmp(AMLOGIC_CAMERA_DEVICE_NAME_FIRST,AMLOGIC_CAMERA_GC0308_NAME))
-    {
-	    eth_set_pinmux(ETH_BANK0_GPIOC3_C12,ETH_CLK_OUT_GPIOC12_REG3_1, 1);
-       #ifdef CONFIG_SN7325
-		printk( "amlogic camera driver: init CONFIG_SN7325. \n");
-		configIO(1, 0);
-		setIO_level(1, 0, 1);//30m poweer_disable
-		
-		setIO_level(1, 0, 2);//200m poweer_disable
-		setIO_level(1, 0, 0);//30m pwd enable
-		setIO_level(1, 0, 6);//200m pwd low
-		configIO(0, 0);
-		setIO_level(0, 0, 3);//30m reset low
-		setIO_level(0, 0, 2);//200m reset low
-		configIO(1, 0);
-		msleep(300);
-		setIO_level(1, 1, 1);//30m poweer_enable
-		msleep(300);
-		configIO(0, 0);
-		setIO_level(0, 1, 3);//30m reset high
-		
-        #endif
-    }
-    ret = platform_driver_register(&amlogic_camera_driver);
-    if (ret != 0) {
-        printk(KERN_ERR "failed to register amlogic camera module, error %d\n", ret);
-        return -ENODEV;
-    }
-    #ifdef CONFIG_AMLOGIC_SECOND_CAMERA_ENABLE
-    if (!strcmp(AMLOGIC_CAMERA_DEVICE_NAME_SECOND,AMLOGIC_CAMERA_GT2005_NAME))
     {
 	    eth_set_pinmux(ETH_BANK0_GPIOC3_C12,ETH_CLK_OUT_GPIOC12_REG3_1, 1);
 		#ifdef CONFIG_SN7325
 	    	configIO(1, 0);
 	    	setIO_level(1, 1, 0);
 	    #endif
-    }
-    if (!strcmp(AMLOGIC_CAMERA_DEVICE_NAME_SECOND,AMLOGIC_CAMERA_GC0308_NAME))
+    }*/
+   /* if (!strcmp(AMLOGIC_CAMERA_DEVICE_NAME_FIRST,AMLOGIC_CAMERA_GC0308_NAME))
     {
 	    eth_set_pinmux(ETH_BANK0_GPIOC3_C12,ETH_CLK_OUT_GPIOC12_REG3_1, 1);
 		#ifdef CONFIG_SN7325
 	    	configIO(1, 0);
 	    	setIO_level(1, 0, 0);
 	    #endif
+    }*/
+    ret = platform_driver_register(&amlogic_camera_driver);
+    if (ret != 0) {
+        printk(KERN_ERR "failed to register amlogic camera module, error %d\n", ret);
+        return -ENODEV;
     }
+	
+     #ifdef CONFIG_AMLOGIC_SECOND_CAMERA_ENABLE
+      /*if (!strcmp(AMLOGIC_CAMERA_DEVICE_NAME_SECOND,AMLOGIC_CAMERA_GT2005_NAME))
+      {
+	    eth_set_pinmux(ETH_BANK0_GPIOC3_C12,ETH_CLK_OUT_GPIOC12_REG3_1, 1);
+		#ifdef CONFIG_SN7325
+	    	configIO(1, 0);
+	    	setIO_level(1, 1, 0);
+	    #endif
+      }
+      if (!strcmp(AMLOGIC_CAMERA_DEVICE_NAME_SECOND,AMLOGIC_CAMERA_GC0308_NAME))
+      {
+	    eth_set_pinmux(ETH_BANK0_GPIOC3_C12,ETH_CLK_OUT_GPIOC12_REG3_1, 1);
+		#ifdef CONFIG_SN7325
+	    	configIO(1, 0);
+	    	setIO_level(1, 0, 0);
+	    #endif
+      }*/
     ret = platform_driver_register(&amlogic_camera_driver_second);
     if (ret != 0) {
         printk(KERN_ERR "failed to register second amlogic camera module, error %d\n", ret);

@@ -140,4 +140,10 @@ FUNCRION_SCOPE int  gt2005_read(char *buf, int len);
 FUNCRION_SCOPE unsigned char gt2005_read_byte(unsigned short addr);
 FUNCRION_SCOPE struct aml_camera_ctl_s amlogic_camera_info_gt2005;
 #endif
+struct amlogic_camera_platform_data {
+	const char *	name;				/* 2007. */
+	int (*back_init)(void);
+	int (*front_init)(void);
+};
+
 #endif /* #define _AMLOGIC_CAMERA_H */
