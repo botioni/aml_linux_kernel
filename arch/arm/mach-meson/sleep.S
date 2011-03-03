@@ -23,12 +23,21 @@
 #include <mach/dmc.h>
 
 #define WFI_SUSPEND
+//#define CLOCK_32K
+
+#ifdef CLOCK_32K
+#define VOLTAGE_DLY     0x40
+#else
+#define VOLTAGE_DLY     0x4000
+#endif
+#define MS_DLY          0x1000
 
 #define HIU_GCLK_MPEG       (0x50<<2)
 #define HHI_MPEG_CLK_CNTL   (0x5d<<2)
 #define HIU_DDR_PLL_CTRL    (0x68<<2)
 #define A9_AUTO_CLK0        (0x78<<2)
 #define HIU_DDR_RESET       (0x102<<2)
+#define LED_PWM_REG0        (0x11da<<2)
 
     .text
 /*
@@ -42,11 +51,25 @@ ENTRY(meson_cpu_suspend)
 
     ldmia   r0, {r0-r5}
 
+    mov     r9, #0
+    movw    r9, #LED_PWM_REG0
+    add     r9, r9, r2
+
+    /* turn on auto byte bypass and cmd iddq */
+    ldr     r8, [r0, #PCTL_IOCR_ADDR]
+    orr     r8, r8, #(0x3<<28)
+    orr     r8, r8, #(1<<25)
+    str     r8, [r0, #PCTL_IOCR_ADDR]
+
     /*
      * Switch DDR to self-refresh mode.
      */
     mov     r8, #0x3
     str     r8, [r0, #PCTL_SCTL_ADDR]
+
+    mov     r8, #MS_DLY
+0:  subs    r8, r8, #0x1
+    bne     0b
 
     /* DDR PHY power saving*/
     ldr     r8, [r1, #MMC_PHY_CTRL-0x1000]
@@ -54,15 +77,6 @@ ENTRY(meson_cpu_suspend)
     orr     r8, r8, #(1<<8)
     orr     r8, r8, #(1<<13)
     str     r8, [r1, #MMC_PHY_CTRL-0x1000]
-
-    // turn on byte dll bypass */
-    ldr     r8, [r0, #PCTL_IOCR_ADDR]
-    orr     r8, r8, #(1<<24)
-    str     r8, [r0, #PCTL_IOCR_ADDR]
-
-    mov     r8, #0x1000
-0:  subs    r8, r8, #0x1
-    bne     0b
 
     /* turn off ddr pll */
     ldr     r8, [r2, #HIU_DDR_PLL_CTRL]
@@ -74,6 +88,19 @@ ENTRY(meson_cpu_suspend)
     bic     r8, r8, #0x41
     str     r8, [r2, #HIU_GCLK_MPEG]
 
+#ifdef CLOCK_32K
+    /* system run at 32K */
+    ldr     r8, [r2, #HHI_MPEG_CLK_CNTL]
+    orr     r8, r8, #(1<<9)
+    str     r8, [r2, #HHI_MPEG_CLK_CNTL]
+#endif
+
+    /* lower core voltage */
+    ldr     r8, [r9]
+    bic     r8, r8, #0x0f
+    orr     r8, r8, #5
+    str     r8, [r9]
+
     /* System goes to sleep beyond after this instruction */
 #ifdef WFI_SUSPEND
     ldr     r8, [r2, #A9_AUTO_CLK0]
@@ -81,12 +108,7 @@ ENTRY(meson_cpu_suspend)
     str     r8, [r2, #A9_AUTO_CLK0]
     bic     r8, r8, #(1<<1)
     str     r8, [r2, #A9_AUTO_CLK0]
-    ldr     r8, [r2, #HHI_MPEG_CLK_CNTL]
-    orr     r8, r8, #(1<<9)
-    str     r8, [r2, #HHI_MPEG_CLK_CNTL]
     wfi
-    bic     r8, r8, #(1<<9)
-    str     r8, [r2, #HHI_MPEG_CLK_CNTL]
     ldr     r8, [r2, #A9_AUTO_CLK0]
     bic     r8, r8, #(1<<1)
     str     r8, [r2, #A9_AUTO_CLK0]
@@ -98,6 +120,21 @@ ENTRY(meson_cpu_suspend)
 #endif
     /* Wake up from sleep */
 
+    /* restore core voltage */
+    ldr     r8, [r9]
+    bic     r8, r8, #0x0f
+    str     r8, [r9]
+    mov     r8, #VOLTAGE_DLY
+2:  subs    r8, r8, #0x1
+    bne     2b
+    
+    /* system run at 24M */
+#ifdef CLOCK_32K
+    ldr     r8, [r2, #HHI_MPEG_CLK_CNTL]
+    bic     r8, r8, #(1<<9)
+    str     r8, [r2, #HHI_MPEG_CLK_CNTL]
+#endif
+
     /* ddr power gate */
     ldr     r8, [r2, #HIU_GCLK_MPEG]
     orr     r8, r8, #0x41
@@ -108,24 +145,10 @@ ENTRY(meson_cpu_suspend)
     bic     r8, r8, #(1<<15)
     str     r8, [r2, #HIU_DDR_PLL_CTRL] 
 
-    // turn off byte dll bypass */
-    ldr     r8, [r0, #PCTL_IOCR_ADDR]
-    bic     r8, r8, #(1<<24)
-    str     r8, [r0, #PCTL_IOCR_ADDR]
-    
-    /* reset cmd dll & byte dll */
-    ldr     r8, [r0, #PCTL_PHYCR_ADDR]
-    bic     r8, r8, #(1<<5)|(1<<6)
-    str     r8, [r0, #PCTL_PHYCR_ADDR]
-    nop
-    nop
-    orr     r8, r8, #(1<<5)|(1<<6)
-    str     r8, [r0, #PCTL_PHYCR_ADDR]
-
     /* Wait for PLL to lock */
-    mov     r8, #0x1000
-7:  subs    r8, r8, #0x1
-    bne     7b
+    mov     r8, #MS_DLY
+3:  subs    r8, r8, #0x1
+    bne     3b
 
     /* DDR PHY leave power saving mode*/
     ldr     r8, [r1, #MMC_PHY_CTRL-0x1000]
@@ -136,9 +159,9 @@ ENTRY(meson_cpu_suspend)
     mov     r8, #0x4
     str     r8, [r0, #PCTL_SCTL_ADDR]
 
-    mov     r8, #0x1000
-8:  subs    r8, r8, #0x1
-    bne     8b
+    mov     r8, #MS_DLY
+4:  subs    r8, r8, #0x1
+    bne     4b
 
     /* Restore registers and return */
     ldmfd   sp!, {r0-r12, pc}

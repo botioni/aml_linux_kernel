@@ -750,9 +750,9 @@ static void meson_pm_suspend(void)
 							MODE_IRQ_ONLY_WAKE, 	// Set interrupt wakeup only
 							0,						// don't clear the FIQ global mask
 							0,						// don't clear the IRQ global mask
-							7,						// 7us start delay
-							0xf,					// 15uS gate delay							  
-							3,						// Set the delay wakeup time (2mS)
+							1,						// 1us start delay
+							1,						// 1uS gate delay							  
+							1,						// Set the delay wakeup time (1mS)
 							1); 					// 1uS enable delay 
 
     printk("meson_sram_suspend params 0x%x, 0x%x, 0x%x, 0x%x, 0x%x, 0x%x\n", 
@@ -763,20 +763,16 @@ static void meson_pm_suspend(void)
                         meson_cpu_suspend_sz);
 
     printk(KERN_INFO "sleep ...\n");
-	udelay(1000);
 
     mpeg_clk_backup = READ_CBUS_REG(HHI_MPEG_CLK_CNTL);	// save clk81 ctrl
     if (READ_CBUS_REG(HHI_MPEG_CLK_CNTL)&(1<<8))
         CLEAR_CBUS_REG_MASK(HHI_MPEG_CLK_CNTL, (1<<8)); // clk81 = xtal
-    WRITE_CBUS_REG_BITS(HHI_MPEG_CLK_CNTL, 0, 0, 6);	// devider = 1
+    WRITE_CBUS_REG_BITS(HHI_MPEG_CLK_CNTL, 0x7f, 0, 6);	// devider = 128
     WRITE_CBUS_REG_BITS(HHI_MPEG_CLK_CNTL, 0, 12, 2);	// clk81 src -> xtal
     SET_CBUS_REG_MASK(HHI_MPEG_CLK_CNTL, (1<<8));		// clk81 = xtal / devider
     CLEAR_CBUS_REG_MASK(HHI_A9_CLK_CNTL, (1<<7));		// clka9 = xtal / devider
     SET_CBUS_REG_MASK(HHI_SYS_PLL_CNTL, (1<<15));		// turn off sys pll
     
-#ifdef ADJUST_CORE_VOLTAGE   
-    WRITE_CBUS_REG_BITS(LED_PWM_REG0, 5, 0, 4);
-#endif
      
 #ifdef WAKE_UP_BY_IRQ 
     WRITE_CBUS_REG(A9_0_IRQ_IN2_INTR_MASK, (1<<8));
@@ -794,10 +790,7 @@ static void meson_pm_suspend(void)
             break;
         }
     }
-#endif
 
-#ifdef ADJUST_CORE_VOLTAGE   
-    WRITE_CBUS_REG_BITS(LED_PWM_REG0, 0, 0, 4);
 #endif
 
     CLEAR_CBUS_REG_MASK(HHI_SYS_PLL_CNTL, (1<<15));		// turn on sys pll
