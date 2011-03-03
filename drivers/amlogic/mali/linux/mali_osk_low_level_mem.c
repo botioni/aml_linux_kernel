@@ -177,7 +177,7 @@ mali_io_address _mali_osk_mem_allocioregion( u32 *phys, u32 size )
 	/* dma_alloc_* uses a limited region of address space. On most arch/marchs
 	 * 2 to 14 MiB is available. This should be enough for the page tables, which
 	 * currently is the only user of this function. */
-	virt = dma_alloc_coherent(NULL, size, phys, GFP_KERNEL | GFP_DMA32 );
+	virt = dma_alloc_coherent(NULL, size, phys, GFP_KERNEL | GFP_DMA );
 
 	MALI_DEBUG_PRINT(3, ("Page table virt: 0x%x = dma_alloc_coherent(size:%d, phys:0x%x, )\n", virt, size, phys));
 
