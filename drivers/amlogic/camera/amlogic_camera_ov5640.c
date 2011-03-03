@@ -2,7 +2,8 @@
  * Copyright (C) 2010-2011 AMLOGIC Incorporated.
  */
  
-#include "amlogic_camera_common.h"
+#include <linux/camera/amlogic_camera_common.h>
+
 
 
 void set_camera_light_mode_ov5640(enum camera_light_mode_e mode)
