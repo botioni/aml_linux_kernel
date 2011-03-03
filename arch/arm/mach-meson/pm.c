@@ -42,8 +42,6 @@ static int early_suspend_flag = 0;
 #define ADJUST_CORE_VOLTAGE
 //#define DDR_PLL_OFF
 #define WAKE_UP_BY_IRQ
-#define SYSCLK_32K
-#define A9CLK_32K
 
 static void (*meson_sram_suspend) (struct meson_pm_config *);
 static struct meson_pm_config *pdata;
@@ -752,8 +750,8 @@ static void meson_pm_suspend(void)
 							MODE_IRQ_ONLY_WAKE, 	// Set interrupt wakeup only
 							0,						// don't clear the FIQ global mask
 							0,						// don't clear the IRQ global mask
-							7,						// 7us start delay							
-							1,						// 1uS start delay							  
+							7,						// 7us start delay
+							0xf,					// 15uS gate delay							  
 							3,						// Set the delay wakeup time (2mS)
 							1); 					// 1uS enable delay 
 
@@ -765,20 +763,16 @@ static void meson_pm_suspend(void)
                         meson_cpu_suspend_sz);
 
     printk(KERN_INFO "sleep ...\n");
+	udelay(1000);
 
-#ifdef SYSCLK_32K
-    mpeg_clk_backup = READ_CBUS_REG(HHI_MPEG_CLK_CNTL);
+    mpeg_clk_backup = READ_CBUS_REG(HHI_MPEG_CLK_CNTL);	// save clk81 ctrl
     if (READ_CBUS_REG(HHI_MPEG_CLK_CNTL)&(1<<8))
-        CLEAR_CBUS_REG_MASK(HHI_MPEG_CLK_CNTL, (1<<8));
-    WRITE_CBUS_REG_BITS(HHI_MPEG_CLK_CNTL, 0, 0, 6);
-    WRITE_CBUS_REG_BITS(HHI_MPEG_CLK_CNTL, 0, 12, 2);
-    SET_CBUS_REG_MASK(HHI_MPEG_CLK_CNTL, (1<<8));
-#ifdef A9CLK_32K
-    SET_CBUS_REG_MASK(HHI_A9_CLK_CNTL, (1<<9));
-    CLEAR_CBUS_REG_MASK(HHI_A9_CLK_CNTL, (1<<7));
-#endif
-    SET_CBUS_REG_MASK(HHI_SYS_PLL_CNTL, (1<<15));
-#endif
+        CLEAR_CBUS_REG_MASK(HHI_MPEG_CLK_CNTL, (1<<8)); // clk81 = xtal
+    WRITE_CBUS_REG_BITS(HHI_MPEG_CLK_CNTL, 0, 0, 6);	// devider = 1
+    WRITE_CBUS_REG_BITS(HHI_MPEG_CLK_CNTL, 0, 12, 2);	// clk81 src -> xtal
+    SET_CBUS_REG_MASK(HHI_MPEG_CLK_CNTL, (1<<8));		// clk81 = xtal / devider
+    CLEAR_CBUS_REG_MASK(HHI_A9_CLK_CNTL, (1<<7));		// clka9 = xtal / devider
+    SET_CBUS_REG_MASK(HHI_SYS_PLL_CNTL, (1<<15));		// turn off sys pll
     
 #ifdef ADJUST_CORE_VOLTAGE   
     WRITE_CBUS_REG_BITS(LED_PWM_REG0, 10, 0, 4);
@@ -806,16 +800,12 @@ static void meson_pm_suspend(void)
     WRITE_CBUS_REG_BITS(LED_PWM_REG0, 0, 0, 4);
 #endif
 
-#ifdef SYSCLK_32K
-    CLEAR_CBUS_REG_MASK(HHI_SYS_PLL_CNTL, (1<<15));
+    CLEAR_CBUS_REG_MASK(HHI_SYS_PLL_CNTL, (1<<15));		// turn on sys pll
     udelay(1000);
-#ifdef A9CLK_32K
-    SET_CBUS_REG_MASK(HHI_A9_CLK_CNTL, (1<<7));
-    CLEAR_CBUS_REG_MASK(HHI_A9_CLK_CNTL, (1<<9));
-#endif
-    CLEAR_CBUS_REG_MASK(HHI_MPEG_CLK_CNTL, (1<<8));
-    WRITE_CBUS_REG(HHI_MPEG_CLK_CNTL, mpeg_clk_backup);
-#endif
+    SET_CBUS_REG_MASK(HHI_A9_CLK_CNTL, (1<<7));			// clka9 = sys pll / devider
+    if (READ_CBUS_REG(HHI_MPEG_CLK_CNTL)&(1<<8))
+		CLEAR_CBUS_REG_MASK(HHI_MPEG_CLK_CNTL, (1<<8));	// clk81 = xtal
+    WRITE_CBUS_REG(HHI_MPEG_CLK_CNTL, mpeg_clk_backup);	// restore clk81 ctrl
 
     printk(KERN_INFO "... wake up\n");
 

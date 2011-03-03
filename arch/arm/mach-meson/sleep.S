@@ -25,8 +25,10 @@
 #define DDR_SUSPEND
 #define WFI_SUSPEND
 //#define DDR_PLL_OFF
+#define DDR_POWERSAVING
 
 #define HIU_GCLK_MPEG       (0x50<<2)
+#define HHI_MPEG_CLK_CNTL   (0x5d<<2)
 #define HIU_DDR_PLL_CTRL    (0x68<<2)
 #define A9_AUTO_CLK0        (0x78<<2)
 #define HIU_DDR_RESET       (0x102<<2)
@@ -131,7 +133,14 @@ ENTRY(meson_cpu_suspend)
     ldr     r8, [r1, #MMC_PHY_CTRL-0x1000]
     orr     r8, r8, #(1<<0)
     orr     r8, r8, #(1<<8)
+    orr     r8, r8, #(1<<13)
     str     r8, [r1, #MMC_PHY_CTRL-0x1000]
+
+#ifdef DDR_POWERSAVING
+    ldr     r8, [r0, #PCTL_IOCR_ADDR]
+    orr     r8, r8, #(1<<24)
+    str     r8, [r0, #PCTL_IOCR_ADDR]
+#endif
 
 #ifdef DDR_PLL_OFF
     ldr     r8, [r0, #PCTL_DLLCR9_ADDR]
@@ -152,9 +161,15 @@ ENTRY(meson_cpu_suspend)
 0:  subs    r8, r8, #0x1
     bne     0b
 
+
     /* scale down PLL */
-    ldr     r6, [r2, #HIU_DDR_PLL_CTRL]
-    str     r4, [r2, #HIU_DDR_PLL_CTRL]
+//    ldr     r6, [r2, #HIU_DDR_PLL_CTRL]
+//    str     r4, [r2, #HIU_DDR_PLL_CTRL]
+
+    ldr     r8, [r2, #HIU_DDR_PLL_CTRL]
+    orr     r8, r8, #(1<<15)
+    str     r8, [r2, #HIU_DDR_PLL_CTRL]
+
 #endif
 
     /* ddr power gate */
@@ -168,15 +183,14 @@ ENTRY(meson_cpu_suspend)
     ldr     r8, [r2, #A9_AUTO_CLK0]
     orr     r8, r8, #(1<<1)
     str     r8, [r2, #A9_AUTO_CLK0]
-    nop
-    nop
-    nop
     bic     r8, r8, #(1<<1)
     str     r8, [r2, #A9_AUTO_CLK0]
+    ldr     r8, [r2, #HHI_MPEG_CLK_CNTL]
+    orr     r8, r8, #(1<<9)
+    str     r8, [r2, #HHI_MPEG_CLK_CNTL]
     wfi
-    nop
-    nop
-    nop
+    bic     r8, r8, #(1<<9)
+    str     r8, [r2, #HHI_MPEG_CLK_CNTL]
     ldr     r8, [r2, #A9_AUTO_CLK0]
     bic     r8, r8, #(1<<1)
     str     r8, [r2, #A9_AUTO_CLK0]
@@ -327,7 +341,24 @@ ENTRY(meson_cpu_suspend)
 
 #else //!DDR_PLL_OFF
     /* scale PLL up */
-    str     r6, [r2, #HIU_DDR_PLL_CTRL]
+    //str     r6, [r2, #HIU_DDR_PLL_CTRL]
+
+    ldr     r8, [r2, #HIU_DDR_PLL_CTRL]
+    bic     r8, r8, #(1<<15)
+    str     r8, [r2, #HIU_DDR_PLL_CTRL] 
+
+#ifdef DDR_POWERSAVING
+    ldr     r8, [r0, #PCTL_IOCR_ADDR]
+    bic     r8, r8, #(1<<24)
+    str     r8, [r0, #PCTL_IOCR_ADDR]
+    ldr     r8, [r0, #PCTL_PHYCR_ADDR]
+    bic     r8, r8, #(1<<5)|(1<<6)
+    str     r8, [r0, #PCTL_PHYCR_ADDR]
+    nop
+    nop
+    orr     r8, r8, #(1<<5)|(1<<6)
+    str     r8, [r0, #PCTL_PHYCR_ADDR]
+#endif
 
     /* Wait for PLL to lock */
     mov     r8, #0x1000
