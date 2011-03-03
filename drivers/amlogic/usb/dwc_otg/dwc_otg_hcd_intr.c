@@ -819,7 +819,15 @@ update_isoc_urb_state(dwc_otg_hcd_t * _hcd,
 		 * urb->status is not used for isoc transfers. 
 		 * The individual frame_desc statuses are used instead.
 		 */
-		dwc_otg_hcd_complete_urb(_hcd, urb, 0);
+		int i;
+		for(i = 0; i <  MAX_EPS_CHANNELS; i++){
+			if(_hcd->isoc_comp_urbs[i] == NULL){
+				_hcd->isoc_comp_urbs[i] = urb;
+				break;
+			}
+		}
+		tasklet_schedule(_hcd->isoc_complete_tasklet);
+		//dwc_otg_hcd_complete_urb(_hcd, urb, 0);
 		ret_val = DWC_OTG_HC_XFER_URB_COMPLETE;
 	} else {
 		ret_val = DWC_OTG_HC_XFER_COMPLETE;

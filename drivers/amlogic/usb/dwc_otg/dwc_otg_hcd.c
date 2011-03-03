@@ -406,9 +406,11 @@ static int32_t dwc_otg_hcd_disconnect_cb(void *_p)
 				hcchar.d32 = dwc_read_reg32(&hc_regs->hcchar);
 				if (hcchar.b.chen) {
 					/* Halt the channel. */
+					/* chdis not self clear in this case.
 					hcchar.b.chdis = 1;
 					dwc_write_reg32(&hc_regs->hcchar,
 							hcchar.d32);
+					*/
 				}
 
 				dwc_otg_hc_cleanup(dwc_otg_hcd->core_if,
@@ -508,7 +510,33 @@ static void reset_tasklet_func(unsigned long data)
 
 	return;
 }
+/**
+ * Isoc complete tasklet function
+ */
+static void isoc_complete_tasklet_func(unsigned long data)
+{
+	dwc_otg_hcd_t *dwc_otg_hcd = (dwc_otg_hcd_t *) data;
+	struct urb *urb = NULL;
+	int i;
 
+	DWC_DEBUGPL(DBG_HCDV, "ISO complete tasklet called\n");
+
+	while(1){
+		for(i = 0; i <  MAX_EPS_CHANNELS; i++){
+			if(dwc_otg_hcd->isoc_comp_urbs[i])
+				break;
+		}
+		if(i >= MAX_EPS_CHANNELS)
+			break;
+
+		urb = dwc_otg_hcd->isoc_comp_urbs[i];
+		dwc_otg_hcd->isoc_comp_urbs[i] = NULL;
+		
+		dwc_otg_hcd_complete_urb(dwc_otg_hcd, urb, 0);
+	}
+
+	return;
+}
 static struct tasklet_struct reset_tasklet = {
 	.next = NULL,
 	.state = 0,
@@ -516,7 +544,13 @@ static struct tasklet_struct reset_tasklet = {
 	.func = reset_tasklet_func,
 	.data = 0,
 };
-
+static struct tasklet_struct isoc_complete_tasklet = {
+	.next = NULL,
+	.state = 0,
+	.count = ATOMIC_INIT(0),
+	.func = isoc_complete_tasklet_func,
+	.data = 0,
+};
 /**
  * Initializes the HCD. This function allocates memory for and initializes the
  * static parts of the usb_hcd and dwc_otg_hcd structures. It also registers the
@@ -604,6 +638,9 @@ int dwc_otg_hcd_init(struct lm_device *_lmdev)
 	/* Initialize reset tasklet. */
 	reset_tasklet.data = (unsigned long)dwc_otg_hcd;
 	dwc_otg_hcd->reset_tasklet = &reset_tasklet;
+
+	isoc_complete_tasklet.data = (unsigned long)dwc_otg_hcd;
+	dwc_otg_hcd->isoc_complete_tasklet = &isoc_complete_tasklet;
 
 	/* Set device flags indicating whether the HCD supports DMA. */
 	if (otg_dev->core_if->dma_enable) {
