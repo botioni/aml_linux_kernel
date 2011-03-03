@@ -775,7 +775,7 @@ static void meson_pm_suspend(void)
     SET_CBUS_REG_MASK(HHI_SYS_PLL_CNTL, (1<<15));		// turn off sys pll
     
 #ifdef ADJUST_CORE_VOLTAGE   
-    WRITE_CBUS_REG_BITS(LED_PWM_REG0, 10, 0, 4);
+    WRITE_CBUS_REG_BITS(LED_PWM_REG0, 5, 0, 4);
 #endif
      
 #ifdef WAKE_UP_BY_IRQ 
