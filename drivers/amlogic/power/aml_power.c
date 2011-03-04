@@ -26,9 +26,8 @@ static struct early_suspend power_early_suspend;
 #endif
 
 //#define AML_POWER_DBG
-#define BATTERY_ARROW_NUM  40
-//#define FAKE_BAT_LEVEL
-#define CHARGE_TIME          675//((3000/400)*3600/2)*5/100
+#define BATTERY_ARROW_NUM  20
+
 
 
 static inline unsigned int get_irq_flags(struct resource *res)
@@ -64,14 +63,10 @@ static int ac_status = -1;
 static int usb_status = 0;
 static int battery_capacity = -1;
 static int new_battery_capacity = -1;
-
+static int battery_capacity_pos = -1;
 static int charge_status = -1;
 static int new_charge_status = -1;
 
-#ifdef FAKE_BAT_LEVEL
-static int power_on_with_ac = -1;
-static int charge_count = 0;
-#endif
 
 
 static int aml_power_get_property(struct power_supply *psy,
@@ -175,18 +170,7 @@ static void get_bat_capacity(void)
     int value,i,num,sum;
     int min,max;
          
-#ifdef FAKE_BAT_LEVEL  
-    if((new_ac_status > 0)&&(charge_status!=POWER_SUPPLY_STATUS_FULL)){
-        charge_count ++;
-        if(charge_count >CHARGE_TIME){
-            charge_count = 0;
-            if(new_battery_capacity < 95)
-                new_battery_capacity = new_battery_capacity + 5;
-        }
-        return;
-    } 
-#endif
-    if(new_ac_status > 0)//dc in state   
+    if(new_ac_status > 0)//dc pluged state   
         value = pdata->get_bat_vol() - 12;
     else        
         value = pdata->get_bat_vol();
@@ -194,19 +178,17 @@ static void get_bat_capacity(void)
 		printk("get_bat_vol = %d\n",value);
 #endif    
     if(value == -1)
-        return;
-    if((new_ac_status == 0)&&(ac_status > 0)){//unplug dc,update bat level immediately
-        count = 0;
-        for(i = 0;i <= (BATTERY_ARROW_NUM-1);i++){
-            bat_matrix[i] = 0;
-        }  
-    }   
+        return; 
     
     bat_matrix[count] = value;
     count ++;
-    if(count > (BATTERY_ARROW_NUM-1))
+    
+    if(count > (BATTERY_ARROW_NUM-1)){
         count = 0;
-       
+    }
+    else if(battery_capacity_pos >=0){//battery_capacity_pos = -1,don't return for boot up read battery level
+        return ;
+   }        
     sum = 0;
     num = 0;
     min = 0x3ff;
@@ -222,11 +204,14 @@ static void get_bat_capacity(void)
         }
     }
 
-    if(num>3){
+    if(num>6){
         sum = sum - max -min;
         num = num -2;
     }
-    
+    else{
+        return;
+    }
+       
     value = sum/num;    
     if(new_ac_status > 0){
         for(i=0; i<(pdata->bat_table_len -1); i++){
@@ -239,12 +224,43 @@ static void get_bat_capacity(void)
             if(((pdata->bat_value_table)[i]<=value)&&((pdata->bat_value_table)[i+1]>value))break;
         }          
     }
+#ifdef AML_POWER_DBG
+    printk("AML_POWER_DBG i = %d,battery_capacity_pos = %d,(pdata->bat_level_table)[i] = %d\n",i,battery_capacity_pos,(pdata->bat_level_table)[i]);
+#endif
+    if(battery_capacity_pos >=0){
+        if((battery_capacity_pos - i) >1){
+            i = battery_capacity_pos - 1;
+        }
+        else if((i - battery_capacity_pos) >1){
+            i = battery_capacity_pos + 1;
+        }  
+        
+        if(new_ac_status > 0){//ac plug state,don't report a bat level small than before
+            if(battery_capacity < (pdata->bat_level_table)[i]){
+                new_battery_capacity = (pdata->bat_level_table)[i];
+                battery_capacity_pos = i;
+            }
+        }    
     
-    new_battery_capacity = (pdata->bat_level_table)[i];      
-    
+        if(new_ac_status == 0){//ac unplug state,don't report a bat level big than before
+            if(battery_capacity > (pdata->bat_level_table)[i]){
+                new_battery_capacity = (pdata->bat_level_table)[i];
+                battery_capacity_pos = i;
+            }
+        }   
+#ifdef AML_POWER_DBG
+    printk("AML_POWER_DBG i = %d,battery_capacity_pos = %d\n",i,battery_capacity_pos);
+#endif                    
+    }
+    else{
+        new_battery_capacity = (pdata->bat_level_table)[i];
+        battery_capacity_pos = i;        
+    }    
+           
 #ifdef AML_POWER_DBG
     printk("battery_capacity = %d,max = %d,min = %d,sum = %d,num = %d,value = %d\n",new_battery_capacity,max,min,sum,num,value);
 #endif    
+    
  
 }
 #ifdef CONFIG_HAS_EARLYSUSPEND
@@ -260,30 +276,28 @@ static void aml_power_early_suspend(struct early_suspend *h)
 
 static void aml_power_late_resume(struct early_suspend *h)
 {
-    int i;
-    
+
 	if (pdata->set_charge) {
 		pdata->set_charge(0);
 #ifdef AML_POWER_DBG
         printk("set slow charge\n");
 #endif
 	} 
-	
-	//late resume update bat level immediately 
-    count = 0;
-    for(i = 0;i <= (BATTERY_ARROW_NUM-1);i++){
-        bat_matrix[i] = 0;
-    }  	
-    
-    get_bat_capacity();
 }
 #endif
 
 static void update_status(void)
 {
+    int i;
 	if (pdata->is_ac_online)
 		new_ac_status = !!pdata->is_ac_online();
-
+		
+    if(new_ac_status != ac_status){//unplug&plug ac,clear matrix 
+        count = 0;
+        for(i = 0;i <= (BATTERY_ARROW_NUM-1);i++){
+            bat_matrix[i] = 0;
+        }  
+    }   
 	//if (pdata->is_usb_online)  //usb not use polling
 		//new_usb_status = !!pdata->is_usb_online();
 		
@@ -308,13 +322,7 @@ static void supply_timer_func(unsigned long unused)
 {
 	if (ac_status == AML_PSY_TO_CHANGE) {
 		ac_status = new_ac_status;
-		power_supply_changed(&aml_psy_ac);
-#ifdef	FAKE_BAT_LEVEL	
-		if(new_ac_status == 0){
-		  power_on_with_ac = 0;
-		}
-#endif		
-		  get_bat_capacity();		  
+		power_supply_changed(&aml_psy_ac);			  
 	}
 
 	if (usb_status == AML_PSY_TO_CHANGE) {
@@ -325,9 +333,6 @@ static void supply_timer_func(unsigned long unused)
 	if (charge_status == AML_PSY_TO_CHANGE) {
 		charge_status = new_charge_status;
 		power_supply_changed(&aml_psy_bat);
-		if(charge_status == POWER_SUPPLY_STATUS_FULL){
-		    get_bat_capacity(); 
-		}
 	}
 
 	if (battery_capacity == AML_PSY_TO_CHANGE) {
@@ -517,12 +522,7 @@ static int aml_power_probe(struct platform_device *pdev)
 	}
 
 	if (pdata->is_ac_online) {
-#ifdef FAKE_BAT_LEVEL
-	    power_on_with_ac = pdata->is_ac_online();
-    
-	    if(power_on_with_ac)
-            new_battery_capacity = 20;	    
-#endif	            
+	            
 		ret = power_supply_register(&pdev->dev, &aml_psy_ac);
 		if (ret) {
 			dev_err(dev, "failed to register %s power supply\n",
