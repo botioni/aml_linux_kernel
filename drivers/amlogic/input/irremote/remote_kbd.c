@@ -93,7 +93,7 @@ static  pin_config_t  pin_config[]={
 } ;
 
 static __u16 key_map[256];
-static __u16 mouse_map[4]; /*Left Right Up Down*/
+static __u16 mouse_map[6]; /*Left Right Up Down + middlewheel up &down*/
 
 int remote_printk(const char *fmt, ...)
 {
@@ -114,11 +114,13 @@ static int kp_mouse_event(struct input_dev *dev, unsigned int scancode, unsigned
     static unsigned int repeat_count = 0;
     __s32 move_accelerate[] = {0, 1, 1, 2, 2, 3, 4, 5, 6, 7, 8, 9};
     unsigned int i;
-
+		
     for(i = 0; i < ARRAY_SIZE(mouse_map); i++)
         if(mouse_map[i] == scancode)
             break;
-    if(i>=4) return -1;
+
+
+    if(i>= ARRAY_SIZE(mouse_map)) return -1;
     switch(type){
         case 1 ://press
             repeat_count = 0;
@@ -146,12 +148,31 @@ static int kp_mouse_event(struct input_dev *dev, unsigned int scancode, unsigned
             mouse_code = REL_Y;
             mouse_value = 1 + move_accelerate[repeat_count];
             break;
+	case 4://up
+	     mouse_code= REL_WHEEL;
+	     mouse_value=0x1;	 
+	     break;
+	case 5:
+	     mouse_code= REL_WHEEL;
+	     mouse_value=0xffffffff;	
+	     break;
+		
         }
     if(type){
         input_event(dev, EV_REL, mouse_code, mouse_value);
         input_sync(dev);
-        input_dbg("mouse be %s moved %d.\n", mouse_code==REL_X?"horizontal":"vertical", mouse_value);
-        }
+	 switch(mouse_code)
+	 {
+	 	case REL_X:
+		case REL_Y:
+		 input_dbg("mouse be %s moved %d.\n", mouse_code==REL_X?"horizontal":"vertical", mouse_value);	
+		break;
+		case REL_WHEEL:
+		input_dbg("mouse wheel move %s .\n",mouse_value==0x1?"up":"down");
+		break;
+	 }
+       
+    }
     return 0;
 }
 
@@ -697,13 +718,14 @@ static int __init kp_probe(struct platform_device *pdev)
 
     input_dbg("device_create_file completed \r\n");
     input_dev->evbit[0] = BIT_MASK(EV_KEY) | BIT_MASK(EV_REP) | BIT_MASK(EV_REL);
-    input_dev->keybit[BIT_WORD(BTN_MOUSE)] = BIT_MASK(BTN_LEFT) |BIT_MASK(BTN_RIGHT);
-    input_dev->relbit[0] = BIT_MASK(REL_X) | BIT_MASK(REL_Y);
+    input_dev->keybit[BIT_WORD(BTN_MOUSE)] = BIT_MASK(BTN_LEFT) |BIT_MASK(BTN_RIGHT)|BIT_MASK(BTN_MIDDLE);
+    input_dev->relbit[0] = BIT_MASK(REL_X) | BIT_MASK(REL_Y)| BIT_MASK(REL_WHEEL);
+    input_dev->keybit[BIT_WORD(BTN_MOUSE)] |=BIT_MASK(BTN_SIDE)|BIT_MASK(BTN_EXTRA);	
     for (i = 0; i<KEY_MAX; i++)
         set_bit( i, input_dev->keybit);
 
     //clear_bit(0,input_dev->keybit);
-    input_dev->name = "keypad";
+    input_dev->name = "aml_keypad";
     input_dev->phys = "keypad/input0";
     //input_dev->cdev.dev = &pdev->dev;
     //input_dev->private = kp;

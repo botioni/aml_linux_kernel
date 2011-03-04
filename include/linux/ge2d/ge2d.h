@@ -197,9 +197,9 @@
 #define GE2D_FMT_S24_YUV444B     	0x20218 /* 10_00_0_11_0_00 */
 
 /* back compatible defines */
-#define GE2D_FORMAT_S8_Y            GE2D_FMT_S8_Y            
-#define GE2D_FORMAT_S8_CB           GE2D_FMT_S8_CB           
-#define GE2D_FORMAT_S8_CR           GE2D_FMT_S8_CR           
+#define GE2D_FORMAT_S8_Y            (GE2D_FORMAT_YUV|GE2D_FMT_S8_Y)            
+#define GE2D_FORMAT_S8_CB          (GE2D_FORMAT_YUV|GE2D_FMT_S8_CB)          
+#define GE2D_FORMAT_S8_CR          (GE2D_FORMAT_YUV|GE2D_FMT_S8_CR)          
 #define GE2D_FORMAT_S8_R            GE2D_FMT_S8_R            
 #define GE2D_FORMAT_S8_G            GE2D_FMT_S8_G            
 #define GE2D_FORMAT_S8_B            GE2D_FMT_S8_B            
