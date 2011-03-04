@@ -53,6 +53,19 @@ MODULE_AMLOG(AMLOG_DEFAULT_LEVEL, 0xff, LOG_LEVEL_DESC, LOG_MASK_DESC);
 
 
 
+static  void  set_power_led_onoff(char *onoff)// 1:on; 0:off
+{
+    if(0 == strcmp(onoff,"powerkey led on")) {//led on
+        set_gpio_val(GPIOD_bank_bit2_24(14), GPIOD_bit_bit2_24(14), 1);
+        set_gpio_mode(GPIOD_bank_bit2_24(14), GPIOD_bit_bit2_24(14), GPIO_OUTPUT_MODE);
+    }
+    else{
+    	set_gpio_val(GPIOD_bank_bit2_24(14), GPIOD_bit_bit2_24(14), 0);
+    	set_gpio_mode(GPIOD_bank_bit2_24(14), GPIOD_bit_bit2_24(14), GPIO_OUTPUT_MODE);
+    }
+}
+
+
 static inline int _gpio_setup_bank_bit(cmd_t  *op)
 {
 	switch(op->bank)

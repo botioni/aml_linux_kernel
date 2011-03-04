@@ -1,7 +1,7 @@
 #
 # Automatically generated make config: don't edit
 # Linux kernel version: 2.6.34
-# Thu Feb 10 15:02:09 2011
+# Fri Mar  4 16:20:11 2011
 #
 CONFIG_ARM=y
 CONFIG_HOLES_IN_ZONE=y
@@ -276,6 +276,7 @@ CONFIG_MACH_MESON_8726M_REFB09=y
 # CONFIG_MACH_MESON_8726M_REFC04 is not set
 # CONFIG_MACH_MESON_8726M_REFB10 is not set
 # CONFIG_MACH_MESON_8726M_REFB12 is not set
+# CONFIG_MACH_MESON_8726M_REFB13 is not set
 CONFIG_MESON_CLOCK_TICK_RATE=25000000
 
 #
@@ -694,13 +695,14 @@ CONFIG_NAND_FLASH_DRIVER_MULTIPLANE_CE=y
 # Amlogic WIFI Support
 #
 # CONFIG_SDIO_DHD_CDC_WIFI_4319 is not set
-CONFIG_SDIO_DHD_CDC_WIFI_4329=y
-CONFIG_BCM4329_FW_PATH="broadcm_4329/sdio-g-cdc-full11n-reclaim-roml-wme-idsup.bin"
-CONFIG_BCM4329_NVRAM_PATH="broadcm_4329/nvram.txt"
+# CONFIG_SDIO_DHD_CDC_WIFI_4329 is not set
 # CONFIG_RTL8712_8188_8191_8192SU_USB_WIFI is not set
 # CONFIG_RTL8192CU_USB_WIFI is not set
 # CONFIG_SDIO_ATHEROS_6302_WIFI is not set
-# CONFIG_SDIO_ATHEROS_6102_WIFI is not set
+CONFIG_SDIO_ATHEROS_6102_WIFI=y
+CONFIG_AR6102_FIRMWARE_FILE="atheros_6102/athwlan.bin.z77"
+CONFIG_AR6102_PATCH_FILE="atheros_6102/data.patch.hw2_0.bin"
+CONFIG_AR6102_BOARD_DATA_FILE="atheros_6102/calData_ar6102_15dBm.bin"
 # CONFIG_SDIO_MARVELL_NH387_WIFI is not set
 
 #
@@ -736,6 +738,7 @@ CONFIG_AML_TCON_P7=y
 # CONFIG_AML_TCON_K8 is not set
 # CONFIG_AML_TCON_G7 is not set
 # CONFIG_AML_TCON_R10 is not set
+# CONFIG_AML_TCON_REFB13 is not set
 
 #
 # Amlogic osd module
@@ -800,6 +803,11 @@ CONFIG_TVIN_VDIN=y
 # CONFIG_TVIN_TUNER_FQ1216ME is not set
 
 #
+# Amlogic Audio Interface
+#
+CONFIG_AMAUDIO=y
+
+#
 # Amlogic audio dsp process 
 #
 CONFIG_AML_AUDIO_DSP=y
@@ -834,8 +842,8 @@ CONFIG_MALI=m
 CONFIG_AMLOGIC_CAMERA_ENABLE=y
 # CONFIG_AMLOGIC_SECOND_CAMERA_ENABLE is not set
 # CONFIG_CAMERA_OV5640 is not set
-CONFIG_CAMERA_GC0308=y
-# CONFIG_CAMERA_GT2005 is not set
+# CONFIG_CAMERA_GC0308 is not set
+CONFIG_CAMERA_GT2005=y
 
 #
 # Amlogic Linux Debug Support
@@ -1001,6 +1009,7 @@ CONFIG_MISC_DEVICES=y
 # CONFIG_TI_DAC7512 is not set
 # CONFIG_UID_STAT is not set
 # CONFIG_APANIC is not set
+# CONFIG_SIX_AXIS_SENSOR_MPU3050 is not set
 # CONFIG_C2PORT is not set
 
 #
@@ -1011,6 +1020,13 @@ CONFIG_MISC_DEVICES=y
 # CONFIG_EEPROM_LEGACY is not set
 # CONFIG_EEPROM_MAX6875 is not set
 # CONFIG_EEPROM_93CX6 is not set
+
+#
+# Motion Sensors Support
+#
+# CONFIG_MPU_NONE is not set
+# CONFIG_SENSORS_MPU3050 is not set
+# CONFIG_SENSORS_MPU6000 is not set
 CONFIG_HAVE_IDE=y
 # CONFIG_IDE is not set
 

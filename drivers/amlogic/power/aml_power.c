@@ -307,6 +307,15 @@ static void update_status(void)
 static void supply_timer_func(unsigned long unused)
 {
 	if (ac_status == AML_PSY_TO_CHANGE) {
+		if(new_ac_status) {
+			if(pdata->ic_control)
+				pdata->ic_control(1);
+		}
+		else {
+			if(pdata->ic_control)
+				pdata->ic_control(0);
+		}
+
 		ac_status = new_ac_status;
 		power_supply_changed(&aml_psy_ac);
 #ifdef	FAKE_BAT_LEVEL	
@@ -318,6 +327,14 @@ static void supply_timer_func(unsigned long unused)
 	}
 
 	if (usb_status == AML_PSY_TO_CHANGE) {
+		if(new_usb_status) {
+			if(pdata->ic_control)
+				pdata->ic_control(1);
+		}
+		else {
+			if(pdata->ic_control)
+				pdata->ic_control(0);
+		}
 		usb_status = new_usb_status;
 		power_supply_changed(&aml_psy_usb);
 	}
@@ -699,7 +716,9 @@ static int aml_power_resume(struct platform_device *pdev)
 		if (ac_irq && ac_wakeup_enabled)
 			disable_irq_wake(ac_irq->start);
 	}
-	
+
+	if(pdata->powerkey_led_onoff)
+		pdata->powerkey_led_onoff(1);
     return 0;
 }
 #else

@@ -61,7 +61,7 @@
 #define CODEC_ADDR_END		(CODEC_ADDR_START+CODEC_MEM_SIZE-1)
 
 /********VDIN memory configuration ***************/
-#define VDIN_ADDR_START		U_ALIGN(OSD2_ADDR_END)
+#define VDIN_ADDR_START		U_ALIGN(CODEC_ADDR_END)
 #define VDIN_ADDR_END		(VDIN_ADDR_START +CODEC_MEM_SIZE -1)
 
 
@@ -70,7 +70,7 @@
 #else
 #define DI_MEM_SIZE			(SZ_1M*15)
 #endif
-#define DI_ADDR_START		U_ALIGN(CODEC_ADDR_END)
+#define DI_ADDR_START		U_ALIGN(VDIN_ADDR_END)
 #define DI_ADDR_END			(DI_ADDR_START+DI_MEM_SIZE-1)
 
 #define STREAMBUF_MEM_SIZE   		(SZ_1M*7)

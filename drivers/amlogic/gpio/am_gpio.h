@@ -23,12 +23,44 @@ typedef   struct{
 }gpio_t;
 extern ssize_t gpio_cmd_restore(struct class *cla,struct class_attribute *attr,const char *buf,size_t count) ;
 
+static  DEFINE_MUTEX(gpio_mutex)  ;
+
+#define  SHOW_INFO(name)      \
+	{return snprintf(buf,40, "%s\n", name);}  	
+
+#define  STORE_INFO(name)\
+	{mutex_lock(&gpio_mutex);\
+	snprintf(name,40,"%s",buf) ;\
+	mutex_unlock(&gpio_mutex); }	
+
+#define    SET_GPIO_CLASS_ATTR(name,op)    \
+static  char    name[40] ;				  \
+static ssize_t aml_gpio_attr_##name##_show(struct class  * cla, struct class_attribute *attr, char *buf)   \
+{  											\
+	SHOW_INFO(name)  	\
+} 											\
+static ssize_t  aml_gpio_attr_##name##_store(struct class *cla,  struct class_attribute *attr, \
+			    const char *buf, size_t count)    \
+{\
+	STORE_INFO(name);   						\
+	op(name) ;						\
+	return strnlen(buf, count);				\
+}											
+
+static  void  set_power_led_onoff(char *onoff);
+
+SET_GPIO_CLASS_ATTR(powerkey_led_ctrl, set_power_led_onoff)
+
 static struct class_attribute gpio_class_attrs[] = {
     __ATTR(cmd,
            S_IRUGO | S_IWUSR,
            NULL,
            gpio_cmd_restore),
-    __ATTR_NULL,       
+  __ATTR(powerkey_led_ctrl,
+           S_IRUGO | S_IWUSR,
+           aml_gpio_attr_powerkey_led_ctrl_show,
+           aml_gpio_attr_powerkey_led_ctrl_store),
+    __ATTR_NULL,      
 };
 static struct class gpio_class = {
     .name = GPIO_DEVCIE_NAME,
