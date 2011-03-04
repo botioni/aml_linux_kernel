@@ -23,14 +23,9 @@
 #include <mach/dmc.h>
 
 #define WFI_SUSPEND
-//#define CLOCK_32K
 
-#ifdef CLOCK_32K
 #define VOLTAGE_DLY     0x40
-#else
-#define VOLTAGE_DLY     0x4000
-#endif
-#define MS_DLY          0x1000
+#define MS_DLY          0x10
 
 #define HIU_GCLK_MPEG       (0x50<<2)
 #define HHI_MPEG_CLK_CNTL   (0x5d<<2)
@@ -88,13 +83,6 @@ ENTRY(meson_cpu_suspend)
     bic     r8, r8, #0x41
     str     r8, [r2, #HIU_GCLK_MPEG]
 
-#ifdef CLOCK_32K
-    /* system run at 32K */
-    ldr     r8, [r2, #HHI_MPEG_CLK_CNTL]
-    orr     r8, r8, #(1<<9)
-    str     r8, [r2, #HHI_MPEG_CLK_CNTL]
-#endif
-
     /* lower core voltage */
     ldr     r8, [r9]
     bic     r8, r8, #0x0f
@@ -110,7 +98,7 @@ ENTRY(meson_cpu_suspend)
     str     r8, [r2, #A9_AUTO_CLK0]
     wfi
     ldr     r8, [r2, #A9_AUTO_CLK0]
-    bic     r8, r8, #(1<<1)
+    bic     r8, r8, #(1<<0)
     str     r8, [r2, #A9_AUTO_CLK0]
 #else
 1:  ldr     r8, [r3]
@@ -127,13 +115,6 @@ ENTRY(meson_cpu_suspend)
     mov     r8, #VOLTAGE_DLY
 2:  subs    r8, r8, #0x1
     bne     2b
-    
-    /* system run at 24M */
-#ifdef CLOCK_32K
-    ldr     r8, [r2, #HHI_MPEG_CLK_CNTL]
-    bic     r8, r8, #(1<<9)
-    str     r8, [r2, #HHI_MPEG_CLK_CNTL]
-#endif
 
     /* ddr power gate */
     ldr     r8, [r2, #HIU_GCLK_MPEG]
