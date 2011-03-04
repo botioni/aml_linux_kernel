@@ -1024,10 +1024,10 @@ HDMI_Video_Codes_t hdmitx_edid_get_VIC(hdmitx_dev_t* hdmitx_device, const char* 
     }
     if(vic!=HDMI_Unkown){
         /* normal mode has high priority */
-            for( j = 0 ; j < pRXCap->VIC_count ; j++ ){
+        for( j = 0 ; j < pRXCap->VIC_count ; j++ ){
             if(pRXCap->VIC[j]==vic){ 
                 vicret = vic;
-                    break;    
+                break;
             }
         }
         if((j>=pRXCap->VIC_count)&&(vic16x9!=HDMI_Unkown)){
@@ -1041,7 +1041,7 @@ HDMI_Video_Codes_t hdmitx_edid_get_VIC(hdmitx_dev_t* hdmitx_device, const char* 
         if(force_flag){ 
             if((vicret==HDMI_Unkown)&&(vic!=HDMI_Unkown)){
                 vicret = vic;    
-            }
+            }        
         }
     }    
     return vicret;

@@ -754,6 +754,54 @@ static void hdmi_tvenc_set(Hdmi_tx_video_para_t *param)
     }
 }    
 
+/*
+turn off digital module, monitor gpio
+*/
+static int is_hpd_on(void)
+{
+    int ret;
+#ifdef AML_A3
+    ret = Rd(PERIPHS_PIN_MUX_0)&(1<<0);
+#else    
+    ret = Rd(PERIPHS_PIN_MUX_0)&(1<<1);
+#endif
+    return ret; 
+}    
+
+static int read_hpd_gpio(void)
+{
+    int level;
+    level = Rd(PREG_GPIOA_INLVL)&0x1; //read GPIOA_0
+    return level;
+}
+
+static void digital_on_off(unsigned char on)
+{
+#ifndef AML_A3
+    if(hdmi_chip_type != HDMI_M1C)
+        return;
+#endif
+        
+    if(on){
+#ifdef AML_A3
+        Wr(PERIPHS_PIN_MUX_0, Rd(PERIPHS_PIN_MUX_0)|(1 << 0));  // pm_gpioA_0_hdmi_hpd
+#else
+        Wr(PERIPHS_PIN_MUX_0, Rd(PERIPHS_PIN_MUX_0)|(1 << 1)); // pm_hdmi_hpd_5v_en
+#endif        
+        Wr(PREG_GPIOA_OE, Rd(PREG_GPIOA_OE)|(1<<0)); //GPIOA_0 as input
+        Wr( HHI_HDMI_CLK_CNTL, Rd(HHI_HDMI_CLK_CNTL)|(1<<8)); // on clock gate
+    }
+    else{
+#ifdef AML_A3
+        Wr(PERIPHS_PIN_MUX_0, Rd(PERIPHS_PIN_MUX_0)&(~(1<<0))); //use hpd as gpio
+#else
+        Wr(PERIPHS_PIN_MUX_0, Rd(PERIPHS_PIN_MUX_0)&(~(1 << 1))); //use hpd as gpio
+#endif        
+        Wr( HHI_HDMI_CLK_CNTL, Rd(HHI_HDMI_CLK_CNTL)&(~(1<<8))); // off clock gate
+    }
+}
+/**/
+
 static void hdmi_hw_init(hdmitx_dev_t* hdmitx_device)
 {
     unsigned int tmp_add_data;
@@ -1520,6 +1568,7 @@ static int hdmitx_m1b_set_dispmode(Hdmi_tx_video_para_t *param)
         /**/
         Wr(HHI_HDMI_PLL_CNTL, Rd(HHI_HDMI_PLL_CNTL)|(1<<30)); //disable HDMI PLL
         Wr(HHI_HDMI_PLL_CNTL2, Rd(HHI_HDMI_PLL_CNTL2)&(~0x38));
+        digital_on_off(0);
         return 0;
     }
 
@@ -1981,6 +2030,14 @@ static void hdmitx_m1b_cntl(hdmitx_dev_t* hdmitx_device, int cmd, unsigned argv)
         //video_dac_disable();
         SET_CBUS_REG_MASK(VENC_VDAC_SETTING, 0x1f);
     }
+    else if(cmd == HDMITX_HWCMD_MONITOR_HPD){
+        /* turnon digital module if gpio is high */
+        if(is_hpd_on() == 0){
+            if(read_hpd_gpio()){
+                digital_on_off(1);
+            }
+        }
+    }   
 }
 #if 0
 #include <mach/gpio.h>
