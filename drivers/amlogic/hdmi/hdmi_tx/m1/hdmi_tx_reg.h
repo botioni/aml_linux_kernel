@@ -1,6 +1,9 @@
 #ifndef _HDMI_TX_REG_H
 #define _HDMI_TRX_REG_H
 
+#define PREG_GPIOA_INLVL  PREG_EGPIO_I
+#define PREG_GPIOA_OE   PREG_EGPIO_EN_N
+
 
 unsigned long hdmi_rd_reg(unsigned long addr);
 

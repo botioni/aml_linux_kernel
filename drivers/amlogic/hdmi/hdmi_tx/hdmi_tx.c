@@ -485,6 +485,10 @@ static int hdmi_task_handle(void *data)
 
     while (hdmitx_device->hpd_event != 0xff)
     {
+        if(hdmitx_device->unplug_powerdown){
+            hdmitx_device->HWOp.Cntl(hdmitx_device, HDMITX_HWCMD_MONITOR_HPD, 0);
+        }
+        
         if (hdmitx_device->hpd_event == 1)
         {
             if(hdmitx_device->HWOp.GetEDIDData(hdmitx_device)){
