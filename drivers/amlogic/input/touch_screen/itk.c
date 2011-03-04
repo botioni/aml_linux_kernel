@@ -604,12 +604,14 @@ struct itk_platform_data * itk_data;
 static void aml_itk_early_suspend(struct early_suspend *h)
 {
 	printk("enter -----> %s \n",__FUNCTION__);
+	if(itk_data->touch_on)
 	itk_data->touch_on(0);
 }
 
 static void aml_itk_late_resume(struct early_suspend *h)
 {
 	printk("enter -----> %s \n",__FUNCTION__);
+	if(itk_data->touch_on)
       itk_data->touch_on(1);
 }
 #endif
