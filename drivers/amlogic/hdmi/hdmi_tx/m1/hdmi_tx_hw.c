@@ -865,39 +865,43 @@ static void digital_clk_off(unsigned char flag)
     }
 }
 
-static void digital_clk_on(void)
+static void digital_clk_on(unsigned char flag)
 {
-    /* on hdmi sys clock */
+    if(flag&4){
+        /* on hdmi sys clock */
 #ifdef AML_A3
-    // -----------------------------------------
-    // HDMI (90Mhz)
-    // -----------------------------------------
-    //         .clk_div            ( hi_hdmi_clk_cntl[6:0] ),
-    //         .clk_en             ( hi_hdmi_clk_cntl[8]   ),
-    //         .clk_sel            ( hi_hdmi_clk_cntl[11:9]),
-    Wr( HHI_HDMI_CLK_CNTL,  ((2 << 9)  |   // select "misc" PLL
-                             (1 << 8)  |   // Enable gated clock
-                             (5 << 0)) );  // Divide the "other" PLL output by 6
-
+        // -----------------------------------------
+        // HDMI (90Mhz)
+        // -----------------------------------------
+        //         .clk_div            ( hi_hdmi_clk_cntl[6:0] ),
+        //         .clk_en             ( hi_hdmi_clk_cntl[8]   ),
+        //         .clk_sel            ( hi_hdmi_clk_cntl[11:9]),
+        Wr( HHI_HDMI_CLK_CNTL,  ((2 << 9)  |   // select "misc" PLL
+                                 (1 << 8)  |   // Enable gated clock
+                                 (5 << 0)) );  // Divide the "other" PLL output by 6
+    
 #else    
-    // -----------------------------------------
-    // HDMI (90Mhz)
-    // -----------------------------------------
-    //         .clk_div            ( hi_hdmi_clk_cntl[6:0] ),
-    //         .clk_en             ( hi_hdmi_clk_cntl[8]   ),
-    //         .clk_sel            ( hi_hdmi_clk_cntl[11:9]),
-    Wr( HHI_HDMI_CLK_CNTL,  ((1 << 9)  |   // select "other" PLL
-                             (1 << 8)  |   // Enable gated clock
-                             (5 << 0)) );  // Divide the "other" PLL output by 6
+        // -----------------------------------------
+        // HDMI (90Mhz)
+        // -----------------------------------------
+        //         .clk_div            ( hi_hdmi_clk_cntl[6:0] ),
+        //         .clk_en             ( hi_hdmi_clk_cntl[8]   ),
+        //         .clk_sel            ( hi_hdmi_clk_cntl[11:9]),
+        Wr( HHI_HDMI_CLK_CNTL,  ((1 << 9)  |   // select "other" PLL
+                                 (1 << 8)  |   // Enable gated clock
+                                 (5 << 0)) );  // Divide the "other" PLL output by 6
 #endif
-
-    /* on hdmi pixel clock */
-    Wr(HHI_GCLK_OTHER, Rd(HHI_GCLK_OTHER)|(1<<17)); //enable pixel clock, set cbus reg HHI_GCLK_OTHER bit [17] = 1
-
+    }
+    if(flag&2){
+        /* on hdmi pixel clock */
+        Wr(HHI_GCLK_OTHER, Rd(HHI_GCLK_OTHER)|(1<<17)); //enable pixel clock, set cbus reg HHI_GCLK_OTHER bit [17] = 1
+    }
+    if(flag&1){
 #ifdef AML_A3
-    /* on hdmi audio clock */
-    hdmi_wr_reg(OTHER_BASE_ADDR + HDMI_OTHER_CTRL1,  hdmi_rd_reg(OTHER_BASE_ADDR + HDMI_OTHER_CTRL1)|(1<<13)); 
-#endif    
+        /* on hdmi audio clock */
+        hdmi_wr_reg(OTHER_BASE_ADDR + HDMI_OTHER_CTRL1,  hdmi_rd_reg(OTHER_BASE_ADDR + HDMI_OTHER_CTRL1)|(1<<13)); 
+#endif  
+    }  
 }
 
 static void phy_pll_off(void)
@@ -922,7 +926,7 @@ void hdmi_hw_init(hdmitx_dev_t* hdmitx_device)
 {
     unsigned int tmp_add_data;
     
-    digital_clk_on();
+    digital_clk_on(7);
 #ifndef AML_A3
     if(hdmi_chip_type == HDMI_M1A){
         Wr(HHI_HDMI_PLL_CNTL2, 0x50e8);
@@ -1118,7 +1122,7 @@ static void hdmi_hw_reset(Hdmi_tx_video_para_t *param)
     unsigned int tmp_add_data;
     unsigned long TX_OUTPUT_COLOR_FORMAT;
 
-    digital_clk_on();
+    digital_clk_on(7);
 
     if(param->color==COLOR_SPACE_YUV444){
         TX_OUTPUT_COLOR_FORMAT=1;
@@ -2224,7 +2228,7 @@ static void hdmitx_m1b_cntl(hdmitx_dev_t* hdmitx_device, int cmd, unsigned argv)
         if(is_hpd_muxed() == 0){
             if(read_hpd_gpio()){
                 hdmi_print(1,"mux hpd\n");
-                digital_clk_on();
+                digital_clk_on(4);
                 delay_us(1000*100);
                 mux_hpd();
             }

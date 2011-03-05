@@ -67,6 +67,9 @@ typedef struct hdmi_tx_dev_s {
     unsigned char EDID_buf[EDID_MAX_BLOCK*128]; 
     rx_cap_t RXCap;
     int vic_count;
+    /*audio*/
+    Hdmi_tx_audio_para_t cur_audio_param;
+    int audio_param_update_flag;
     /*status*/
 #define DISP_SWITCH_FORCE       0
 #define DISP_SWITCH_EDID        1    
@@ -87,7 +90,7 @@ typedef struct hdmi_tx_dev_s {
 #define HDMI_AUDIO_CONTENT_PROTECTION   5
 
 
-#define HDMITX_VER "2010March04c"
+#define HDMITX_VER "2010March04d"
 /************************************
 *    hdmitx protocol level interface
 *************************************/

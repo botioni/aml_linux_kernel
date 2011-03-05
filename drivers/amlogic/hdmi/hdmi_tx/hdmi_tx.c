@@ -101,7 +101,11 @@ static unsigned char init_flag=0;
 static unsigned char init_powermode=0;
 #endif
 #undef DISABLE_AUDIO
-static int unmux_hpd_flag = 1;
+static int hpdmode = 1; /* 
+                            0, do not unmux hpd when off or unplug ; 
+                            1, unmux hpd when unplug;
+                            2, unmux hpd when unplug  or off;
+                        */
 /*****************************
 *    hdmitx attr management :
 *    enable
@@ -131,13 +135,13 @@ static  int  set_disp_mode(const char *mode)
     }
 
     if(hdmitx_device.cur_VIC == HDMI_Unkown){
-        if(unmux_hpd_flag){
+        if(hpdmode == 2){
             hdmitx_edid_clear(&hdmitx_device); /* edid will be read again when hpd is muxed and it is high */
+            hdmitx_device.force_off = 1; // to avoid hpd is mux again in state task
         }
         if(hdmitx_device.HWOp.Cntl){
-            hdmitx_device.HWOp.Cntl(&hdmitx_device, HDMITX_HWCMD_TURNOFF_HDMIHW, unmux_hpd_flag);    
+            hdmitx_device.HWOp.Cntl(&hdmitx_device, HDMITX_HWCMD_TURNOFF_HDMIHW, (hpdmode==2)?1:0);    
         }
-        hdmitx_device.force_off = 1;
     }
     
     return ret;
@@ -159,11 +163,12 @@ static int set_disp_mode_auto(void)
         hdmitx_device.cur_VIC = vic;    
     }
     if(hdmitx_device.cur_VIC == HDMI_Unkown){
-        if(unmux_hpd_flag){
+        if(hpdmode==2){
             hdmitx_edid_clear(&hdmitx_device); /* edid will be read again when hpd is muxed and it is high */
+            hdmitx_device.force_off = 1; // to avoid hpd is mux again in state task
         }
         if(hdmitx_device.HWOp.Cntl){
-            hdmitx_device.HWOp.Cntl(&hdmitx_device, HDMITX_HWCMD_TURNOFF_HDMIHW, unmux_hpd_flag);    
+            hdmitx_device.HWOp.Cntl(&hdmitx_device, HDMITX_HWCMD_TURNOFF_HDMIHW, (hpdmode==2)?1:0);    
         }
     }
     return ret;
@@ -205,23 +210,24 @@ static ssize_t show_aud_mode(struct device * dev, struct device_attribute *attr,
 static ssize_t store_aud_mode(struct device * dev, struct device_attribute *attr, const char * buf, size_t count)
 {
     //set_disp_mode(buf);
-    Hdmi_tx_audio_para_t audio_param;
+    Hdmi_tx_audio_para_t* audio_param = &(hdmitx_device.cur_audio_param);
     if(strncmp(buf, "32k", 3)==0){
-        audio_param.sample_rate = FS_32K; 
+        audio_param->sample_rate = FS_32K; 
     }
     else if(strncmp(buf, "44.1k", 5)==0){
-        audio_param.sample_rate = FS_44K1; 
+        audio_param->sample_rate = FS_44K1; 
     }
     else if(strncmp(buf, "48k", 3)==0){
-        audio_param.sample_rate = FS_48K; 
+        audio_param->sample_rate = FS_48K; 
     }
     else{
         return 0;
     }
-    audio_param.type = CT_PCM;
-    audio_param.channel_num = CC_2CH;
-    audio_param.sample_size = SS_16BITS; 
-    hdmitx_set_audio(&hdmitx_device, &audio_param);
+    audio_param->type = CT_PCM;
+    audio_param->channel_num = CC_2CH;
+    audio_param->sample_size = SS_16BITS; 
+    
+    hdmitx_device.audio_param_update_flag = 1;
     
     return 16;    
 }
@@ -467,6 +473,7 @@ static int hdmitx_notify_callback_v(struct notifier_block *block, unsigned long 
 
     if(hdmitx_device.vic_count == 0){
         if(is_dispmode_valid_for_hdmi()){
+            hdmitx_device.force_off = 0;
             if(hdmitx_device.HWOp.Cntl){
                 hdmitx_device.HWOp.Cntl(&hdmitx_device, HDMITX_HWCMD_MUX_HPD_IF_PIN_HIGH, 0);
             }
@@ -500,39 +507,40 @@ static int hdmitx_notify_callback_a(struct notifier_block *block, unsigned long 
 {
     if (cmd == AOUT_EVENT_PREPARE){
         struct snd_pcm_substream *substream =(struct snd_pcm_substream*)para;
-        Hdmi_tx_audio_para_t audio_param;
+        Hdmi_tx_audio_para_t* audio_param = &(hdmitx_device.cur_audio_param);
 
-        audio_param.type = CT_PCM;
-        audio_param.channel_num = CC_2CH;
-        audio_param.sample_size = SS_16BITS; 
+        audio_param->type = CT_PCM;
+        audio_param->channel_num = CC_2CH;
+        audio_param->sample_size = SS_16BITS; 
     
         switch (substream->runtime->rate) {
             case 192000:
-                audio_param.sample_rate = FS_192K; 
+                audio_param->sample_rate = FS_192K; 
                 break;
             case 176400:
-                audio_param.sample_rate = FS_176K4; 
+                audio_param->sample_rate = FS_176K4; 
                 break;
             case 96000:
-                audio_param.sample_rate = FS_96K; 
+                audio_param->sample_rate = FS_96K; 
                 break;
             case 88200:
-                audio_param.sample_rate = FS_88K2; 
+                audio_param->sample_rate = FS_88K2; 
                 break;
             case 48000:
-                audio_param.sample_rate = FS_48K; 
+                audio_param->sample_rate = FS_48K; 
                 break;
             case 44100:
-                audio_param.sample_rate = FS_44K1; 
+                audio_param->sample_rate = FS_44K1; 
                 break;
             case 32000:
-                audio_param.sample_rate = FS_32K; 
+                audio_param->sample_rate = FS_32K; 
                 break;
             default:
                 break;
         }
-        hdmitx_set_audio(&hdmitx_device, &audio_param);
         hdmi_print(1, "HDMI: aout notify rate %d\n", substream->runtime->rate);
+
+        hdmitx_device.audio_param_update_flag = 1;
         return 0;
     }
     return -1;
@@ -557,6 +565,7 @@ void hdmi_tv_enc_post_func(char* mode)
         
     if(hdmitx_device.vic_count == 0){
         if(is_dispmode_valid_for_hdmi()){
+            hdmitx_device.force_off = 0;
             if(hdmitx_device.HWOp.Cntl){
                 hdmitx_device.HWOp.Cntl(&hdmitx_device, HDMITX_HWCMD_MUX_HPD_IF_PIN_HIGH, 0);
             }
@@ -570,38 +579,38 @@ void hdmi_tv_enc_post_func(char* mode)
 
 int hdmi_audio_post_func(int type, int channel, int sample_size, int rate)
 {
-        Hdmi_tx_audio_para_t audio_param;
+        Hdmi_tx_audio_para_t* audio_param = &(hdmitx_device.cur_audio_param);
 
-        audio_param.type = CT_PCM;
-        audio_param.channel_num = CC_2CH;
-        audio_param.sample_size = SS_16BITS; 
+        audio_param->type = CT_PCM;
+        audio_param->channel_num = CC_2CH;
+        audio_param->sample_size = SS_16BITS; 
     
         switch (rate) {
             case 192000:
-                audio_param.sample_rate = FS_192K; 
+                audio_param->sample_rate = FS_192K; 
                 break;
             case 176400:
-                audio_param.sample_rate = FS_176K4; 
+                audio_param->sample_rate = FS_176K4; 
                 break;
             case 96000:
-                audio_param.sample_rate = FS_96K; 
+                audio_param->sample_rate = FS_96K; 
                 break;
             case 88200:
-                audio_param.sample_rate = FS_88K2; 
+                audio_param->sample_rate = FS_88K2; 
                 break;
             case 48000:
-                audio_param.sample_rate = FS_48K; 
+                audio_param->sample_rate = FS_48K; 
                 break;
             case 44100:
-                audio_param.sample_rate = FS_44K1; 
+                audio_param->sample_rate = FS_44K1; 
                 break;
             case 32000:
-                audio_param.sample_rate = FS_32K; 
+                audio_param->sample_rate = FS_32K; 
                 break;
             default:
                 break;
         }
-        hdmitx_set_audio(&hdmitx_device, &audio_param);
+        hdmitx_device.audio_param_update_flag = 1;
         hdmi_print(1, "HDMI: aout notify rate %d\n", rate);
         return 0;
 }
@@ -641,12 +650,17 @@ hdmi_task_handle(void *data)
     while (hdmitx_device->hpd_event != 0xff)
     {
         if((hdmitx_device->vic_count == 0)&&(hdmitx_device->force_off == 0)){
-            if(is_dispmode_valid_for_hdmi()){
-                if(hdmitx_device->HWOp.Cntl){
-                    hdmitx_device->HWOp.Cntl(hdmitx_device, HDMITX_HWCMD_MUX_HPD_IF_PIN_HIGH, 0);
-                }
+            if(hdmitx_device->HWOp.Cntl){
+                hdmitx_device->HWOp.Cntl(hdmitx_device, HDMITX_HWCMD_MUX_HPD_IF_PIN_HIGH, 0);
             }
         }
+        
+        if((hdmitx_device->audio_param_update_flag)&&(hdmitx_device->cur_VIC != HDMI_Unkown)){
+            hdmitx_set_audio(hdmitx_device, &(hdmitx_device->cur_audio_param));
+            hdmitx_device->audio_param_update_flag = 0;
+            hdmi_print(1, "HDMI: set audio param\n");
+        }
+
         if (hdmitx_device->hpd_event == 1)
         {
             if(hdmitx_device->HWOp.GetEDIDData(hdmitx_device)){
@@ -664,7 +678,7 @@ hdmi_task_handle(void *data)
             if(hdmitx_device->unplug_powerdown){
                 hdmitx_set_display(hdmitx_device, HDMI_Unkown);
                 if(hdmitx_device->HWOp.Cntl){
-                    hdmitx_device->HWOp.Cntl(hdmitx_device, HDMITX_HWCMD_TURNOFF_HDMIHW, unmux_hpd_flag);    
+                    hdmitx_device->HWOp.Cntl(hdmitx_device, HDMITX_HWCMD_TURNOFF_HDMIHW, (hpdmode!=0)?1:0);    
                 }
             }
             hdmitx_device->cur_VIC = HDMI_Unkown;
@@ -746,6 +760,7 @@ avfs_device_driver hdmi_init(avfs_device_major_number major, avfs_device_minor_n
     strcpy(lvideo_info.name, "");
     hdmitx_device.vic_count=0;
     hdmitx_device.force_off=0;
+    hdmitx_device.audio_param_update_flag=0;
     tv_tv_enc_post_fun = hdmi_tv_enc_post_func;
 
    	hdmitx_device.taskstack = (OS_STK*) AVMem_malloc(HDMI_OP_STK_SIZE_IN_BYTE);
@@ -851,6 +866,7 @@ static int amhdmitx_probe(struct platform_device *pdev)
     hdmitx_device.unplug_powerdown=0;
     hdmitx_device.vic_count=0;
     hdmitx_device.force_off=0;
+    hdmitx_device.audio_param_update_flag=0;
     cdev_init(&(hdmitx_device.cdev), &amhdmitx_fops);
     hdmitx_device.cdev.owner = THIS_MODULE;
     cdev_add(&(hdmitx_device.cdev), hdmitx_id, HDMI_TX_COUNT);
@@ -1044,6 +1060,9 @@ static  int __init hdmitx_boot_para_setup(char *s)
             }
             else if((token_len==16) && (strncmp(token, "unplug_powerdown", token_len)==0)){
                 init_flag|=INIT_FLAG_POWERDOWN;
+            }
+            else if((token_len==7)&& (strncmp(token, "hpdmode", token_len)==0)){
+                hpdmode = simple_strtoul(token+7,NULL,10);   
             }
             else if(strncmp(token, "bufsize", 7)==0){
                 int tmp;
