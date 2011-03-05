@@ -1,6 +1,11 @@
 typedef struct reg_s {
+#ifndef AVOS
     uint reg;
     uint val;
+#else
+    unsigned int reg;
+    unsigned int val;
+#endif    
 } reg_t;
 
 static const  reg_t hdmi_tvenc_regs_480i[] = {
