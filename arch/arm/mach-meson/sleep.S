@@ -23,6 +23,7 @@
 #include <mach/dmc.h>
 
 #define WFI_SUSPEND
+//#define TURN_OFF_DDR_PLL
 
 #define VOLTAGE_DLY     0x40
 #define MS_DLY          0x10
@@ -74,9 +75,14 @@ ENTRY(meson_cpu_suspend)
     str     r8, [r1, #MMC_PHY_CTRL-0x1000]
 
     /* turn off ddr pll */
+#ifdef TURN_OFF_DDR_PLL
     ldr     r8, [r2, #HIU_DDR_PLL_CTRL]
     orr     r8, r8, #(1<<15)
     str     r8, [r2, #HIU_DDR_PLL_CTRL]
+#else
+    ldr     r6, [r2, #HIU_DDR_PLL_CTRL]
+    str     r4, [r2, #HIU_DDR_PLL_CTRL]
+#endif
 
     /* ddr power gate */
     ldr     r8, [r2, #HIU_GCLK_MPEG]
@@ -122,9 +128,13 @@ ENTRY(meson_cpu_suspend)
     str     r8, [r2, #HIU_GCLK_MPEG]
 
     /* turn on ddr pll */
+#ifdef TURN_OFF_DDR_PLL
     ldr     r8, [r2, #HIU_DDR_PLL_CTRL]
     bic     r8, r8, #(1<<15)
     str     r8, [r2, #HIU_DDR_PLL_CTRL] 
+#else
+    str     r6, [r2, #HIU_DDR_PLL_CTRL]
+#endif
 
     /* Wait for PLL to lock */
     mov     r8, #MS_DLY
