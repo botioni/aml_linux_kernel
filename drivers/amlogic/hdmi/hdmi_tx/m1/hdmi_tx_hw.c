@@ -2224,8 +2224,9 @@ static void hdmitx_m1b_cntl(hdmitx_dev_t* hdmitx_device, int cmd, unsigned argv)
         if(is_hpd_muxed() == 0){
             if(read_hpd_gpio()){
                 hdmi_print(1,"mux hpd\n");
-                mux_hpd();
                 digital_clk_on();
+                delay_us(1000*100);
+                mux_hpd();
             }
         }
     }  
