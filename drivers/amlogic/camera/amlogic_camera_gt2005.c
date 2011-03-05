@@ -699,6 +699,51 @@ void stop_camera_gt2005(void)
 
 void set_camera_para_gt2005(struct camera_info_s *para)
 {
+	if(amlogic_camera_info_gt2005.para.resolution != para->resolution)
+	{
+		memcpy(&amlogic_camera_info_gt2005.para, para,sizeof(struct camera_info_s) );
+		return;
+	}
+
+	if(amlogic_camera_info_gt2005.para.saturation != para->saturation)
+	{
+		set_camera_saturation_gt2005(para->saturation);
+		amlogic_camera_info_gt2005.para.saturation = para->saturation;
+	}
+
+	if(amlogic_camera_info_gt2005.para.brighrness != para->brighrness)
+	{
+		set_camera_brightness_gt2005(para->brighrness);
+		amlogic_camera_info_gt2005.para.brighrness = para->brighrness;
+	}
+
+	if(amlogic_camera_info_gt2005.para.contrast != para->contrast)
+	{
+		set_camera_contrast_gt2005(para->contrast);
+		amlogic_camera_info_gt2005.para.contrast = para->contrast;
+	}
+
+	if(amlogic_camera_info_gt2005.para.hue != para->hue)
+	{
+		amlogic_camera_info_gt2005.para.hue = para->hue;
+	}
+
+	if(amlogic_camera_info_gt2005.para.exposure != para->exposure)
+	{
+		set_camera_exposure_gt2005(para->exposure);
+		amlogic_camera_info_gt2005.para.exposure = para->exposure;
+	}
+
+	if(amlogic_camera_info_gt2005.para.sharpness != para->sharpness)
+	{
+		amlogic_camera_info_gt2005.para.sharpness = para->sharpness;
+	}
+
+	//if(amlogic_camera_info_gt2005.para.mirro_flip != para->mirro_flip)
+	{
+		set_camera_mirror_flip_gt2005(para->mirro_flip);
+		amlogic_camera_info_gt2005.para.mirro_flip = para->mirro_flip;
+	}
 	return ;
 }
 

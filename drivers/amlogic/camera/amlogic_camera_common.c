@@ -642,7 +642,6 @@ static int camera_ioctl(struct inode *inode, struct file *file, unsigned int cmd
             }
             else
             {
-
              #ifdef CONFIG_CAMERA_OV5640
              if (!strcmp(para.camera_name,AMLOGIC_CAMERA_OV5640_NAME))
                  set_camera_para_ov5640(&para);
@@ -690,15 +689,15 @@ static int amlogic_camera_i2c_probe(struct i2c_client *client, const struct i2c_
 	int res = 0;
 	struct amlogic_camera_platform_data *pdata = pdata = client->dev.platform_data;
 	if(pdata){
-		if(pdata->back_init)
-			pdata->back_init();
+		if(pdata->first_init)
+			pdata->first_init();
 		else
-			pr_info("back camera init failed");
+			pr_info("first camera init failed");
 		#ifdef CONFIG_AMLOGIC_SECOND_CAMERA_ENABLE
-		if(pdata->front_init)
-			pdata->front_init();
+		if(pdata->second_init)
+			pdata->second_init();
 		else
-			pr_info("front camera init failed");
+			pr_info("second camera init failed");
 		#endif
 		
 		}

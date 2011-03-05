@@ -142,8 +142,8 @@ FUNCRION_SCOPE struct aml_camera_ctl_s amlogic_camera_info_gt2005;
 #endif
 struct amlogic_camera_platform_data {
 	const char *	name;				/* 2007. */
-	int (*back_init)(void);
-	int (*front_init)(void);
+	int (*first_init)(void);
+	int (*second_init)(void);
 };
 
 #endif /* #define _AMLOGIC_CAMERA_H */

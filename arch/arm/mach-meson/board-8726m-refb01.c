@@ -95,6 +95,11 @@
 #include <sound/wm8900.h>
 #endif
 
+#ifdef CONFIG_AMLOGIC_CAMERA_ENABLE
+#include <linux/camera/amlogic_camera_common.h>
+#endif
+
+
 #if defined(CONFIG_JPEGLOGO)
 static struct resource jpeglogo_resources[] = {
     [0] = {
@@ -831,12 +836,32 @@ static  struct platform_device aml_rtc_device = {
     };
 #endif
 
-#ifdef CONFIG_CAMERA_GC0308
-static struct platform_device camera_device = {
-    .name       = "camera_gc0308",
+#ifdef CONFIG_CAMERA_GT2005
+static struct platform_device camera_gt2005_device = {
+    .name       = "camera_gt2005",
     .id         = -1,
 };
+int gt2005_init(void)
+{
+   //pp0
+   #ifdef CONFIG_SN7325
+	printk( "amlogic camera driver: init CONFIG_SN7325. \n");
+	/*configIO(1, 0);
+	setIO_level(1, 0, 0);//200m PWR_Down
+	msleep(300);
+	configIO(1, 0);
+	setIO_level(1, 1, 0);//200m PWR_On*/
+    #endif
+}
+static struct amlogic_camera_platform_data gt2005_pdata = {
+	.name = "camera_gt2005",
+	.first_init = gt2005_init,
+	.second_init = NULL,
+};
+
+
 #endif
+
 #if defined(CONFIG_SUSPEND)
 
 typedef struct {
@@ -1870,9 +1895,9 @@ static struct platform_device __initdata *platform_devs[] = {
     #if defined(CONFIG_AMLOGIC_BACKLIGHT)
         &aml_bl_device,
     #endif
-    #ifdef CONFIG_CAMERA_GC0308
-        &camera_device,
-    #endif
+#ifdef CONFIG_CAMERA_GT2005
+        &camera_gt2005_device,
+#endif
     #if defined(CONFIG_AM_TV_OUTPUT)||defined(CONFIG_AM_TCON_OUTPUT)
         &vout_device,   
     #endif
@@ -1900,10 +1925,11 @@ static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
     },
 #endif
 
-#ifdef CONFIG_CAMERA_GC0308
+#ifdef CONFIG_CAMERA_GT2005
     {
-        /*gc0309 i2c address is 0x42/0x43*/
-        I2C_BOARD_INFO("gc0308_i2c",  0x42 >> 1 ),
+    	/*gt2005 i2c address is 0x78/0x79*/
+    	I2C_BOARD_INFO("gt2005_i2c",  0x78 >> 1 ),
+    	.platform_data = (void *)&gt2005_pdata
     },
 #endif
 #ifdef CONFIG_SND_AML_M1_MID_WM8900
@@ -1978,8 +2004,8 @@ static void __init eth_pinmux_init(void)
     aml_i2c_init();
 }
 
-#ifdef CONFIG_CAMERA_GC0308
-static void __init camera_power_on_init(void)
+#ifdef CONFIG_AMLOGIC_CAMERA_ENABLE
+static void __init set_camera_clk(void)
 {
     udelay(1000);
     SET_CBUS_REG_MASK(HHI_ETH_CLK_CNTL,0x30f);// 24M XTAL
@@ -2055,8 +2081,8 @@ static __init void m1_init_machine(void)
     power_hold();
     device_clk_setting();
     device_pinmux_init();
-#ifdef CONFIG_CAMERA_GC0308
-    camera_power_on_init();
+#ifdef CONFIG_AMLOGIC_CAMERA_ENABLE
+    set_camera_clk();
 #endif
     platform_add_devices(platform_devs, ARRAY_SIZE(platform_devs));
 
