@@ -225,7 +225,7 @@ static void get_bat_capacity(void)
         }          
     }
 #ifdef AML_POWER_DBG
-    printk("AML_POWER_DBG i = %d,battery_capacity_pos = %d,(pdata->bat_level_table)[i] = %d\n",i,battery_capacity_pos,(pdata->bat_level_table)[i]);
+    printk("AML_POWER_DBG i = %d,battery_capacity_pos = %d,(pdata->bat_level_table)[i] = %d,battery_capacity = %d\n",i,battery_capacity_pos,(pdata->bat_level_table)[i],battery_capacity);
 #endif
     if(battery_capacity_pos >=0){
         if((battery_capacity_pos - i) >1){
@@ -236,14 +236,14 @@ static void get_bat_capacity(void)
         }  
         
         if(new_ac_status > 0){//ac plug state,don't report a bat level small than before
-            if(battery_capacity < (pdata->bat_level_table)[i]){
+            if(battery_capacity <= (pdata->bat_level_table)[i]){
                 new_battery_capacity = (pdata->bat_level_table)[i];
                 battery_capacity_pos = i;
             }
         }    
     
         if(new_ac_status == 0){//ac unplug state,don't report a bat level big than before
-            if(battery_capacity > (pdata->bat_level_table)[i]){
+            if(battery_capacity >= (pdata->bat_level_table)[i]){
                 new_battery_capacity = (pdata->bat_level_table)[i];
                 battery_capacity_pos = i;
             }
