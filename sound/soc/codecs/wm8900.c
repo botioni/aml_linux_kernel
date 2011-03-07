@@ -181,6 +181,12 @@ static const DECLARE_TLV_DB_SCALE(adc_svol_tlv, -3600, 300, 0);
 
 static const DECLARE_TLV_DB_SCALE(adc_tlv, -7200, 75, 1);
 
+static const char *inmix_boost_txt[]={
+  "+0 dB", "+13 dB", "+20 dB", "+29 dB"
+};
+static const struct soc_enum inmix_boost_func = 
+SOC_ENUM_DOUBLE(WM8900_REG_ADCPATH, 0, 4, 3, inmix_boost_txt);
+
 static const char *gpio_pin_func_txt[] = {
 	"Jack detect input",
 	"Reserved",
@@ -346,6 +352,7 @@ SOC_DOUBLE_R("LINEOUT2 ZC Switch",
 SOC_SINGLE("LINEOUT2 LP -12dB", WM8900_REG_LOUTMIXCTL1,
 	   0, 1, 1),
 
+SOC_ENUM("IN MININ Boost", inmix_boost_func),
 };
 
 static const struct snd_kcontrol_new wm8900_dapm_loutput2_control =
