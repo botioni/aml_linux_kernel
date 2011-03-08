@@ -68,3 +68,19 @@ config GOODIX_CAPACITIVE_TOUCHSCREEN
 
 	  To compile this driver as a module, choose M here: the
 	  module will be called .
+config UOR7X5X_RESISTIVE_TOUCHSCREEN
+	tristate "UOR7X5X resistive touch panel"
+	default n
+	help
+	  Say Y here if you want to use the UOR7X5X resistive panel.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called .  
+config UOR6X5X_RESISTIVE_TOUCHSCREEN
+	tristate "UOR6X5X resistive touch panel"
+	default n
+	help
+	  Say Y here if you want to use the UOR6X5X resistive panel.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called .  

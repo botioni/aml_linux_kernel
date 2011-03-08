@@ -908,6 +908,170 @@ static struct itk_platform_data itk_pdata = {
 };
 #endif
 
+#ifdef CONFIG_UOR7X5X_RESISTIVE_TOUCHSCREEN
+#include <linux/i2c/uor7x5x.h>
+
+//GPIOD_24
+#define GPIO_UOR7X5X_PENIRQ ((GPIOD_bank_bit2_24(24)<<16) |GPIOD_bit_bit2_24(24)) 
+#define GPIO_UOR7X5X_RST     (GPIOD_IDX + 24)
+
+static int uor7x5x_init_irq(void)
+{
+/* memson
+    Bit(s)  Description
+    256-105 Unused
+    104     JTAG_TDO
+    103     JTAG_TDI
+    102     JTAG_TMS
+    101     JTAG_TCK
+    100     gpioA_23
+    99      gpioA_24
+    98      gpioA_25
+    97      gpioA_26
+    98-76    gpioE[21:0]
+    75-50   gpioD[24:0]
+    49-23   gpioC[26:0]
+    22-15   gpioB[22;15]
+    14-0    gpioA[14:0]
+ */
+    printk("uor7x5x_init_irq \n");
+    /* set input mode */
+    gpio_direction_input(GPIO_UOR7X5X_PENIRQ);
+    /* set gpio interrupt #0 source=GPIOD_24, and triggered by falling edge(=1) */
+    gpio_enable_edge_int(GPIO_UOR7X5X_RST, 1, 0);
+    
+    return 0;
+}
+static int uor7x5x_get_irq_level(void)
+{
+    return gpio_get_value(GPIO_UOR7X5X_PENIRQ);
+}
+
+#define UOR7X5X_XLCD    800
+#define UOR7X5X_YLCD    600
+#define UOR7X5X_SWAP_XY 0
+#define UOR7X5X_XPOL    1
+#define UOR7X5X_YPOL    1
+#define UOR7X5X_XMIN 1100
+#define UOR7X5X_XMAX 3900
+#define UOR7X5X_YMIN 200
+#define UOR7X5X_YMAX 2400
+
+int uor7x5x_convert(int x, int y)
+{
+#if (UOR7X5X_SWAP_XY == 1)
+    swap(x, y);
+#endif
+    if (x < UOR7X5X_XMIN) x = UOR7X5X_XMIN;
+    if (x > UOR7X5X_XMAX) x = UOR7X5X_XMAX;
+    if (y < UOR7X5X_YMIN) y = UOR7X5X_YMIN;
+    if (y > UOR7X5X_YMAX) y = UOR7X5X_YMAX;
+#if (UOR7X5X_XPOL == 1)
+    x = UOR7X5X_XMAX + UOR7X5X_XMIN - x;
+#endif
+#if (UOR7X5X_YPOL == 1)
+    y = UOR7X5X_YMAX + UOR7X5X_YMIN - y;
+#endif
+    x = (x- UOR7X5X_XMIN) * UOR7X5X_XLCD / (UOR7X5X_XMAX - UOR7X5X_XMIN);
+    y = (y- UOR7X5X_YMIN) * UOR7X5X_YLCD / (UOR7X5X_YMAX - UOR7X5X_YMIN);
+    //y = y - 32 * UOR7X5X_YLCD / (y / 2 + UOR7X5X_YLCD);
+    
+    return (x << 16) | y;
+}
+
+static struct uor7x5x_platform_data uor7x5x_pdata = {
+    .init_irq = &uor7x5x_init_irq,
+    .get_irq_level = &uor7x5x_get_irq_level,
+    .abs_xmin = 0,
+    .abs_xmax = UOR7X5X_XLCD,
+    .abs_ymin = 0,
+    .abs_ymax = UOR7X5X_YLCD,    
+    .convert = uor7x5x_convert,
+};
+#endif
+
+#ifdef CONFIG_UOR6X5X_RESISTIVE_TOUCHSCREEN
+#include <linux/i2c/uor6x5x.h>
+
+//GPIOD_24
+#define GPIO_UOR6X5X_PENIRQ ((GPIOD_bank_bit2_24(24)<<16) |GPIOD_bit_bit2_24(24)) 
+#define GPIO_UOR6X5X_RST     (GPIOD_IDX + 24)
+
+static int uor6x5x_init_irq(void)
+{
+/* memson
+    Bit(s)  Description
+    256-105 Unused
+    104     JTAG_TDO
+    103     JTAG_TDI
+    102     JTAG_TMS
+    101     JTAG_TCK
+    100     gpioA_23
+    99      gpioA_24
+    98      gpioA_25
+    97      gpioA_26
+    98-76    gpioE[21:0]
+    75-50   gpioD[24:0]
+    49-23   gpioC[26:0]
+    22-15   gpioB[22;15]
+    14-0    gpioA[14:0]
+ */
+    printk("uor6x5x_init_irq \n");
+    /* set input mode */
+    gpio_direction_input(GPIO_UOR6X5X_PENIRQ);
+    /* set gpio interrupt #0 source=GPIOD_24, and triggered by falling edge(=1) */
+    gpio_enable_edge_int(GPIO_UOR6X5X_RST, 1, 0);
+    
+    return 0;
+}
+static int uor6x5x_get_irq_level(void)
+{
+    return gpio_get_value(GPIO_UOR6X5X_PENIRQ);
+}
+
+#define UOR6X5X_XLCD    800
+#define UOR6X5X_YLCD    600
+#define UOR6X5X_SWAP_XY 0
+#define UOR6X5X_XPOL    0
+#define UOR6X5X_YPOL    1
+#define UOR6X5X_XMIN 200
+#define UOR6X5X_XMAX 3900
+#define UOR6X5X_YMIN 300
+#define UOR6X5X_YMAX 3700
+
+int uor6x5x_convert(int x, int y)
+{
+#if (UOR6X5X_SWAP_XY == 1)
+    swap(x, y);
+#endif
+    if (x < UOR6X5X_XMIN) x = UOR6X5X_XMIN;
+    if (x > UOR6X5X_XMAX) x = UOR6X5X_XMAX;
+    if (y < UOR6X5X_YMIN) y = UOR6X5X_YMIN;
+    if (y > UOR6X5X_YMAX) y = UOR6X5X_YMAX;
+#if (UOR6X5X_XPOL == 1)
+    x = UOR6X5X_XMAX + UOR6X5X_XMIN - x;
+#endif
+#if (UOR6X5X_YPOL == 1)
+    y = UOR6X5X_YMAX + UOR6X5X_YMIN - y;
+#endif
+    x = (x- UOR6X5X_XMIN) * UOR6X5X_XLCD / (UOR6X5X_XMAX - UOR6X5X_XMIN);
+    y = (y- UOR6X5X_YMIN) * UOR6X5X_YLCD / (UOR6X5X_YMAX - UOR6X5X_YMIN);
+    //y = y - 32 * UOR6X5X_YLCD / (y / 2 + UOR6X5X_YLCD);
+    
+    return (x << 16) | y;
+}
+
+static struct uor6x5x_platform_data uor6x5x_pdata = {
+    .init_irq = &uor6x5x_init_irq,
+    .get_irq_level = &uor6x5x_get_irq_level,
+    .abs_xmin = 0,
+    .abs_xmax = UOR6X5X_XLCD,
+    .abs_ymin = 0,
+    .abs_ymax = UOR6X5X_YLCD,    
+    .convert = uor6x5x_convert,
+};
+#endif
+
 #ifdef CONFIG_ANDROID_PMEM
 static struct android_pmem_platform_data pmem_data =
 {
@@ -1016,11 +1180,11 @@ int gt2005_init(void)
 }
 static struct amlogic_camera_platform_data gt2005_pdata = {
     .name = "camera_gt2005",
-    .back_init = gt2005_init,
+    .first_init = gt2005_init,
     #ifdef CONFIG_AMLOGIC_SECOND_CAMERA_ENABLE
-    .front_init = gc0308_init,
+    .second_init = gc0308_init,
     #else
-	.front_init = NULL,
+	.second_init = NULL,
 	#endif
 };
 
@@ -2154,6 +2318,21 @@ static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
         I2C_BOARD_INFO("itk", 0x41),
         .irq = INT_GPIO_0,
         .platform_data = (void *)&itk_pdata,
+    },
+#endif
+
+#ifdef CONFIG_UOR7X5X_RESISTIVE_TOUCHSCREEN
+    {
+        I2C_BOARD_INFO("uor7x5x", 0x48),
+        .irq = INT_GPIO_0,
+        .platform_data = (void *)&uor7x5x_pdata,
+    },
+#endif
+#ifdef CONFIG_UOR6X5X_RESISTIVE_TOUCHSCREEN
+    {
+        I2C_BOARD_INFO("uor6x5x", 0x48),
+        .irq = INT_GPIO_0,
+        .platform_data = (void *)&uor6x5x_pdata,
     },
 #endif
 };
