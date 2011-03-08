@@ -406,7 +406,6 @@ static struct platform_device aml_sound_card={
 };
 
 #ifdef CONFIG_AM_NAND
-#if defined(CONFIG_REFC04_NAND_256MB)
 static struct mtd_partition normal_partition_info[] = 
 {
 #ifndef CONFIG_AMLOGIC_SPI_NOR
@@ -451,121 +450,6 @@ static struct mtd_partition normal_partition_info[] =
 			.size = MTDPART_SIZ_FULL,
 		},
 };
-#endif
-
-#if defined(CONFIG_REFC04_NAND_512MB)
-static struct mtd_partition normal_partition_info[] = 
-{
-#ifndef CONFIG_AMLOGIC_SPI_NOR
-	/* Hide uboot partition
-		{
-			.name = "uboot",
-			.offset = 0,
-			.size = 4*1024*1024,
-		},
-	//*/
-		{
-			.name = "ubootenv",
-			.offset = 4*1024*1024,
-			.size = 0x2000,
-		},
-	/* Hide recovery partition
-		{
-			.name = "recovery",
-			.offset = 6*1024*1024,
-			.size = 2*1024*1024,
-		},
-	//*/
-#endif
-		{
-			.name = "boot",
-			.offset = 8*1024*1024,
-			.size = 8*1024*1024,
-		},
-		{
-			.name = "system",
-			.offset = 16*1024*1024,
-			.size = 140*1024*1024,
-		},
-		{
-			.name = "cache",
-			.offset = 156*1024*1024,
-			.size = 84*1024*1024,
-		},
-		{
-			.name = "psmart",
-			.offset = 240*1024*1024,
-			.size = 70*1024*1024,
-		},
-		{
-			.name = "papp",
-			.offset = 310*1024*1024,
-			.size = 50*1024*1024,
-		},
-		{
-			.name = "userdata",
-			.offset = MTDPART_OFS_APPEND,
-			.size = MTDPART_SIZ_FULL,
-		},
-};
-#endif
-
-#if defined(CONFIG_REFC04_NAND_2GB)
-static struct mtd_partition normal_partition_info[] = 
-{
-#ifndef CONFIG_AMLOGIC_SPI_NOR
-	/* Hide uboot partition
-		{
-			.name = "uboot",
-			.offset = 0,
-			.size = 4*1024*1024,
-		},
-	//*/
-		{
-			.name = "ubootenv",
-			.offset = 4*1024*1024,
-			.size = 0x2000,
-		},
-	/* Hide recovery partition
-		{
-			.name = "recovery",
-			.offset = 6*1024*1024,
-			.size = 2*1024*1024,
-		},
-	//*/
-#endif
-		{
-			.name = "boot",
-			.offset = 8*1024*1024,
-			.size = 8*1024*1024,
-		},
-		{
-			.name = "system",
-			.offset = 16*1024*1024,
-			.size = 480*1024*1024,
-		},
-		{
-			.name = "cache",
-			.offset = 496*1024*1024,
-			.size = 100*1024*1024,
-		},
-		{
-			.name = "psmart",
-			.offset = 596*1024*1024,
-			.size = 100*1024*1024,
-		},
-		{
-			.name = "papp",
-			.offset = 696*1024*1024,
-			.size = 84*1024*1024,
-		},
-		{
-			.name = "userdata",
-			.offset = MTDPART_OFS_APPEND,
-			.size = MTDPART_SIZ_FULL,
-		},
-};
-#endif
 
 static struct aml_nand_platform aml_nand_platform[] = {
 #ifndef CONFIG_AMLOGIC_SPI_NOR
@@ -592,7 +476,7 @@ static struct aml_nand_platform aml_nand_platform[] = {
 				.nr_chips = 4,
 				.nr_partitions = ARRAY_SIZE(normal_partition_info),
 				.partitions = normal_partition_info,
-				.options = (NAND_TIMING_MODE5 | NAND_ECC_BCH16_MODE | NAND_TWO_PLANE_MODE),
+				.options = (NAND_TIMING_MODE5 | NAND_ECC_BCH16_MODE),
 			},
     	},
 		.T_REA = 20,
