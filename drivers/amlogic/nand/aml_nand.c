@@ -301,9 +301,34 @@ static int aml_nand_add_partition(struct aml_nand_chip *aml_chip)
 	struct mtd_info *mtd = &aml_chip->mtd;
 	struct aml_nand_platform *plat = aml_chip->platform;
 #ifdef CONFIG_MTD_PARTITIONS
+#ifndef CONFIG_MACH_MESON_8726M_REFC04
 	struct mtd_partition *parts = plat->platform_nand_data.chip.partitions;
-	struct mtd_partition *temp_parts = NULL;
 	int nr = plat->platform_nand_data.chip.nr_partitions;
+#else
+	struct mtd_partition *parts;
+	int nr;
+	if(mtd->size/(1024*1024) == 256){
+		printk("Use the default partitions on Aml_nand.c\n");
+		parts = normal_partition_info_256M;
+		nr = ARRAY_SIZE(normal_partition_info_256M);
+		}
+	else if(mtd->size/(1024*1024) == 512){
+		printk("Use the default partitions on Aml_nand.c\n");
+		parts = normal_partition_info_512M;
+		nr = ARRAY_SIZE(normal_partition_info_512M);
+		}
+	else if(mtd->size/(1024*1024) == 2048){
+		printk("Use the default partitions on Aml_nand.c\n");
+		parts = normal_partition_info_2G;
+		nr = ARRAY_SIZE(normal_partition_info_2G);
+		}
+	else{
+		printk("Use the custom partitions on board-xxx.c, because of nand size is %d\n", (unsigned int)(mtd->size/(1024*1024)));
+		parts = plat->platform_nand_data.chip.partitions;;
+		nr = plat->platform_nand_data.chip.nr_partitions;
+		}		
+#endif
+	struct mtd_partition *temp_parts = NULL;
 	if (!strncmp((char*)plat->name, NAND_BOOT_NAME, strlen((const char*)NAND_BOOT_NAME))) {
 		if (nr == 0) {
 			parts = kzalloc(sizeof(struct mtd_partition), GFP_KERNEL);
