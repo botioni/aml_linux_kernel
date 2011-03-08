@@ -369,10 +369,10 @@ typedef struct dwc_otg_hcd {
 	struct timer_list nak_timer;
 #endif
 	/* Tasket to do a reset */
-	struct tasklet_struct *reset_tasklet;
+	struct tasklet_struct reset_tasklet;
 
 	/* Tasklet to isoc complete non-interrupt context*/
-	struct tasklet_struct *isoc_complete_tasklet;
+	struct tasklet_struct isoc_complete_tasklet;
 	void * isoc_comp_urbs[MAX_EPS_CHANNELS];
 
 #ifdef DEBUG
