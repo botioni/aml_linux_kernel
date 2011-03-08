@@ -118,31 +118,15 @@ config MACH_MESON_8726M_REFB04
 
 config MACH_MESON_8726M_REFC05
         select GENERIC_ALLOCATOR
-        bool "Support M1 8726(Skyworth base on DVBC_8726M1_V1.0) platform(machid=2957)"
+        bool "Support M1 8726(Skyworth) platform(machid=2957)"
         help
           Include support for the AMLOGIC M1 8726M Skyworth platform.
 
-menuconfig MACH_MESON_8726M_REFC04
+config MACH_MESON_8726M_REFC04
         select GENERIC_ALLOCATOR
         bool "Support M1 8726(Hisense) platform(machid=2957)"
         help
           Include support for the AMLOGIC M1 8726M Hisense platform.
-
-choice
-	prompt "---Select The Size of Nand Flash Chip---"
-	depends on MACH_MESON_8726M_REFC04
-	default REFC04_NAND_512MB
-
-config REFC04_NAND_256MB
-	bool "256MB Nand (Samsung K9F2G08U0B)"
-
-config REFC04_NAND_512MB
-	bool "512MB Nand (Hynix H27U4G8T2B)"
-
-config REFC04_NAND_2GB
-	bool "2GB Nand (Hynix H27UAG8T2B)"
-
-endchoice
  
 config MACH_MESON_8726M_REFB10
 	select GENERIC_ALLOCATOR
