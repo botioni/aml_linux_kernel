@@ -13,6 +13,7 @@ extern void set_camera_exposure_gt2005(enum camera_exposure_e exposure);
 extern void set_camera_mirror_flip_gt2005(enum camera_mirror_flip_e mirror_flip);
 extern void power_down_sw_camera_gt2005(void);
 extern void wakeup_sw_camera_gt2005(void);
+extern void GT2005_Capture(void);
 extern void Gt2005_write_regs(void);
 extern void Gt2005_read_regs(void);
 extern void start_camera_gt2005(void);
