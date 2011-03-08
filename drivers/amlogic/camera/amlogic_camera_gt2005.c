@@ -1061,7 +1061,7 @@ void set_camera_para_gt2005(struct camera_info_s *para)
 
 	if(amlogic_camera_info_gt2005.para.exposure != para->exposure)
 	{
-		set_camera_exposure_gt2005(para->exposure);
+		GT2005_set_param_exposure(para->exposure);
 		amlogic_camera_info_gt2005.para.exposure = para->exposure;
 	}
 
@@ -1074,6 +1074,21 @@ void set_camera_para_gt2005(struct camera_info_s *para)
 	{
 		set_camera_mirror_flip_gt2005(para->mirro_flip);
 		amlogic_camera_info_gt2005.para.mirro_flip = para->mirro_flip;
+	}
+	if(amlogic_camera_info_gt2005.para.white_balance != para->white_balance)
+	{
+		GT2005_set_param_wb(para->white_balance);
+		amlogic_camera_info_gt2005.para.white_balance = para->white_balance;
+	}
+	if(amlogic_camera_info_gt2005.para.night_mode != para->night_mode)
+	{
+		GT2005_NightMode(para->night_mode);
+		amlogic_camera_info_gt2005.para.night_mode = para->night_mode;
+	}
+	if(amlogic_camera_info_gt2005.para.effect != para->effect)
+	{
+		GT2005_set_param_effect(para->effect);
+		amlogic_camera_info_gt2005.para.effect = para->effect;
 	}
 	return ;
 }
