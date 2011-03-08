@@ -137,6 +137,7 @@ static irqreturn_t audiodsp_mailbox_irq(int irq, void *data)
 			}
 		else
 			{
+			DSP_PRNT("frame format changed,fmt->valid 0x%x\n",fmt->valid);
 			if(fmt->valid&SUB_FMT_VALID)
 				{
 				priv->frame_format.sub_fmt=fmt->sub_fmt;
