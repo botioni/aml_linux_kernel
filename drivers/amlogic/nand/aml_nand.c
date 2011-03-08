@@ -295,6 +295,163 @@ static void aml_platform_hw_init(struct aml_nand_chip *aml_chip)
 		time_mode, bus_cycle, plat->T_REA, plat->T_RHOH, adjust, (sys_time/10));
 }
 
+#ifdef CONFIG_MACH_MESON_8726M_REFC04
+static struct mtd_partition normal_partition_info_256M[] = 
+{
+#if 0
+	/* Hide uboot partition
+		{
+			.name = "uboot",
+			.offset = 0,
+			.size = 4*1024*1024,
+		},
+	//*/
+		{
+			.name = "ubootenv",
+			.offset = 4*1024*1024,
+			.size = 0x2000,
+		},
+	/* Hide recovery partition
+		{
+			.name = "recovery",
+			.offset = 6*1024*1024,
+			.size = 2*1024*1024,
+		},
+	//*/
+#endif
+		{
+			.name = "boot",
+			.offset = 8*1024*1024,
+			.size = 4*1024*1024,
+		},
+		{
+			.name = "system",
+			.offset = 12*1024*1024,
+			.size = 140*1024*1024,
+		},
+		{
+			.name = "cache",
+			.offset = 152*1024*1024,
+			.size = 48*1024*1024,
+		},
+		{
+			.name = "userdata",
+			.offset = MTDPART_OFS_APPEND,
+			.size = MTDPART_SIZ_FULL,
+		},
+};
+static struct mtd_partition normal_partition_info_512M[] = 
+{
+#if 0
+	/* Hide uboot partition
+		{
+			.name = "uboot",
+			.offset = 0,
+			.size = 4*1024*1024,
+		},
+	//*/
+		{
+			.name = "ubootenv",
+			.offset = 4*1024*1024,
+			.size = 0x2000,
+		},
+	/* Hide recovery partition
+		{
+			.name = "recovery",
+			.offset = 6*1024*1024,
+			.size = 2*1024*1024,
+		},
+	//*/
+#endif
+		{
+			.name = "boot",
+			.offset = 8*1024*1024,
+			.size = 8*1024*1024,
+		},
+		{
+			.name = "system",
+			.offset = 16*1024*1024,
+			.size = 140*1024*1024,
+		},
+		{
+			.name = "cache",
+			.offset = 156*1024*1024,
+			.size = 84*1024*1024,
+		},
+		{
+			.name = "psmart",
+			.offset = 240*1024*1024,
+			.size = 70*1024*1024,
+		},
+		{
+			.name = "papp",
+			.offset = 310*1024*1024,
+			.size = 50*1024*1024,
+		},
+		{
+			.name = "userdata",
+			.offset = MTDPART_OFS_APPEND,
+			.size = MTDPART_SIZ_FULL,
+		},
+};
+static struct mtd_partition normal_partition_info_2G[] = 
+{
+#if 0
+	/* Hide uboot partition
+		{
+			.name = "uboot",
+			.offset = 0,
+			.size = 8*1024*1024,
+		},
+	//*/
+#endif
+		{
+			.name = "boot",
+			.offset = 8*1024*1024,
+			.size = 8*1024*1024,
+		},
+#if 0
+		{
+			.name = "ubootenv",
+			.offset = 16*1024*1024,
+			.size = 8*1024*1024,
+		},
+	/* Hide recovery partition
+		{
+			.name = "recovery",
+			.offset = 24*1024*1024,
+			.size = 8*1024*1024,
+		},
+	//*/
+#endif
+		{
+			.name = "system",
+			.offset = 32*1024*1024,
+			.size = 480*1024*1024,
+		},
+		{
+			.name = "cache",
+			.offset = 512*1024*1024,
+			.size = 100*1024*1024,
+		},
+		{
+			.name = "psmart",
+			.offset = 612*1024*1024,
+			.size = 100*1024*1024,
+		},
+		{
+			.name = "papp",
+			.offset = 712*1024*1024,
+			.size = 240*1024*1024,
+		},
+		{
+			.name = "userdata",
+			.offset = MTDPART_OFS_APPEND,
+			.size = MTDPART_SIZ_FULL,
+		},
+};
+#endif
+
 static int aml_nand_add_partition(struct aml_nand_chip *aml_chip)
 {
 	int adjust_offset;
