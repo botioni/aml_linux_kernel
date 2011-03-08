@@ -406,6 +406,161 @@ static struct platform_device aml_sound_card={
 };
 
 #ifdef CONFIG_AM_NAND
+static struct mtd_partition normal_partition_info_256M[] = 
+{
+#if 0
+	/* Hide uboot partition
+		{
+			.name = "uboot",
+			.offset = 0,
+			.size = 4*1024*1024,
+		},
+	//*/
+		{
+			.name = "ubootenv",
+			.offset = 4*1024*1024,
+			.size = 0x2000,
+		},
+	/* Hide recovery partition
+		{
+			.name = "recovery",
+			.offset = 6*1024*1024,
+			.size = 2*1024*1024,
+		},
+	//*/
+#endif
+		{
+			.name = "boot",
+			.offset = 8*1024*1024,
+			.size = 4*1024*1024,
+		},
+		{
+			.name = "system",
+			.offset = 12*1024*1024,
+			.size = 140*1024*1024,
+		},
+		{
+			.name = "cache",
+			.offset = 152*1024*1024,
+			.size = 48*1024*1024,
+		},
+		{
+			.name = "userdata",
+			.offset = MTDPART_OFS_APPEND,
+			.size = MTDPART_SIZ_FULL,
+		},
+};
+static struct mtd_partition normal_partition_info_512M[] = 
+{
+#if 0
+	/* Hide uboot partition
+		{
+			.name = "uboot",
+			.offset = 0,
+			.size = 4*1024*1024,
+		},
+	//*/
+		{
+			.name = "ubootenv",
+			.offset = 4*1024*1024,
+			.size = 0x2000,
+		},
+	/* Hide recovery partition
+		{
+			.name = "recovery",
+			.offset = 6*1024*1024,
+			.size = 2*1024*1024,
+		},
+	//*/
+#endif
+		{
+			.name = "boot",
+			.offset = 8*1024*1024,
+			.size = 8*1024*1024,
+		},
+		{
+			.name = "system",
+			.offset = 16*1024*1024,
+			.size = 140*1024*1024,
+		},
+		{
+			.name = "cache",
+			.offset = 156*1024*1024,
+			.size = 84*1024*1024,
+		},
+		{
+			.name = "psmart",
+			.offset = 240*1024*1024,
+			.size = 70*1024*1024,
+		},
+		{
+			.name = "papp",
+			.offset = 310*1024*1024,
+			.size = 50*1024*1024,
+		},
+		{
+			.name = "userdata",
+			.offset = MTDPART_OFS_APPEND,
+			.size = MTDPART_SIZ_FULL,
+		},
+};
+static struct mtd_partition normal_partition_info_2G[] = 
+{
+#if 0
+	/* Hide uboot partition
+		{
+			.name = "uboot",
+			.offset = 0,
+			.size = 8*1024*1024,
+		},
+	//*/
+#endif
+		{
+			.name = "boot",
+			.offset = 8*1024*1024,
+			.size = 8*1024*1024,
+		},
+#if 0
+		{
+			.name = "ubootenv",
+			.offset = 16*1024*1024,
+			.size = 8*1024*1024,
+		},
+	/* Hide recovery partition
+		{
+			.name = "recovery",
+			.offset = 24*1024*1024,
+			.size = 8*1024*1024,
+		},
+	//*/
+#endif
+		{
+			.name = "system",
+			.offset = 32*1024*1024,
+			.size = 480*1024*1024,
+		},
+		{
+			.name = "cache",
+			.offset = 512*1024*1024,
+			.size = 100*1024*1024,
+		},
+		{
+			.name = "psmart",
+			.offset = 612*1024*1024,
+			.size = 100*1024*1024,
+		},
+		{
+			.name = "papp",
+			.offset = 712*1024*1024,
+			.size = 240*1024*1024,
+		},
+		{
+			.name = "userdata",
+			.offset = MTDPART_OFS_APPEND,
+			.size = MTDPART_SIZ_FULL,
+		},
+};
+
 static struct mtd_partition normal_partition_info[] = 
 {
 #ifndef CONFIG_AMLOGIC_SPI_NOR
@@ -451,6 +606,30 @@ static struct mtd_partition normal_partition_info[] =
 		},
 };
 
+static void nand_set_parts(uint64_t size, struct platform_nand_chip *chip)
+{
+	printk("set nand parts for chip %lldMB\n", (size/(1024*1024)));
+
+	if (size/(1024*1024) == 256) {
+		chip->partitions = normal_partition_info_256M;
+		chip->nr_partitions = ARRAY_SIZE(normal_partition_info_256M);
+	}
+	else if (size/(1024*1024) == 512) {
+		chip->partitions = normal_partition_info_512M;
+		chip->nr_partitions = ARRAY_SIZE(normal_partition_info_512M);
+	}
+	else if (size/(1024*1024) == 2048) {
+		chip->partitions = normal_partition_info_2G;
+		chip->nr_partitions = ARRAY_SIZE(normal_partition_info_2G);
+	}
+	else {
+		chip->partitions = normal_partition_info;
+		chip->nr_partitions = ARRAY_SIZE(normal_partition_info);
+	}
+
+	return;
+}
+
 static struct aml_nand_platform aml_nand_platform[] = {
 #ifndef CONFIG_AMLOGIC_SPI_NOR
 	{
@@ -476,6 +655,7 @@ static struct aml_nand_platform aml_nand_platform[] = {
 				.nr_chips = 4,
 				.nr_partitions = ARRAY_SIZE(normal_partition_info),
 				.partitions = normal_partition_info,
+				.set_parts = nand_set_parts,
 				.options = (NAND_TIMING_MODE5 | NAND_ECC_BCH16_MODE),
 			},
     	},
