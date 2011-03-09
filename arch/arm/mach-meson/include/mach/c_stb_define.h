@@ -39,7 +39,7 @@
 // Bit 15 -- enable_des_pl_clk
 // Bit 14:13 -- reserved
 // Bit 12:10 -- ts_out_select, 0-TS0, 1-TS1, 2-TS2, 3,4-Reserved, 5-S2P1, 6-S2P0, 7-File
-// bit 9:8 -- des_i_sel 00 -- select_fec_0, 01 -- select_fec_1, 10 -- select_fec_2, 11 - reserved
+// bit 9:8 -- des_i_sel 00 -- select demux0 as des input, 01 -- select_demux1, 10 -- select_demux2, 11 - reserved
 // bit 7 -- enable_des_pl
 // bit 6 -- invert fec_error for S2P0
 // bit 5 -- invert fec_data for S2P0
