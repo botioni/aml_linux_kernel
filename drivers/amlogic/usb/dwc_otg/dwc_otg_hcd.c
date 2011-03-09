@@ -3245,9 +3245,9 @@ void dwc_otg_hcd_dump_state(dwc_otg_hcd_t * _hcd)
 			}
 		}
 	}
-	DWC_PRINT("  non_periodic_channels: %d\n", _hcd->non_periodic_channels);
-	DWC_PRINT("  periodic_channels: %d\n", _hcd->periodic_channels);
-	DWC_PRINT("  periodic_usecs: %d\n", _hcd->periodic_usecs);
+	DWC_PRINT("  assigned non_periodic_channels: %d\n", _hcd->non_periodic_channels);
+	DWC_PRINT("  assigned periodic_channels: %d\n", _hcd->periodic_channels);
+	DWC_PRINT("  assigned periodic_usecs: %d\n", _hcd->periodic_usecs);
 	np_tx_status.d32 =
 	    dwc_read_reg32(&_hcd->core_if->core_global_regs->gnptxsts);
 	DWC_PRINT("  NP Tx Req Queue Space Avail: %d\n",
