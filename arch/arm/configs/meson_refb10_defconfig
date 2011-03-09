@@ -1,7 +1,7 @@
 #
 # Automatically generated make config: don't edit
 # Linux kernel version: 2.6.34
-# Thu Feb 10 15:02:31 2011
+# Wed Feb 23 13:07:01 2011
 #
 CONFIG_ARM=y
 CONFIG_HOLES_IN_ZONE=y
@@ -276,6 +276,7 @@ CONFIG_ARCH_MESON=y
 # CONFIG_MACH_MESON_8726M_REFC04 is not set
 CONFIG_MACH_MESON_8726M_REFB10=y
 # CONFIG_MACH_MESON_8726M_REFB12 is not set
+# CONFIG_MACH_MESON_8726M_REFB13 is not set
 CONFIG_MESON_CLOCK_TICK_RATE=25000000
 
 #
@@ -622,7 +623,7 @@ CONFIG_AMLOGIC_PM=y
 # Extern IO Support
 #
 # CONFIG_TCA6424 is not set
-CONFIG_SN7325=y
+# CONFIG_SN7325 is not set
 
 #
 # Amlogic GPIO Driver
@@ -674,8 +675,12 @@ CONFIG_SDIO=y
 # AMLOGIC SPI NOR Flash  support
 #
 # CONFIG_AMLOGIC_SPI_NOR is not set
-# CONFIG_NAND_FLASH_DRIVER_BASE_OPERATE is not set
-CONFIG_NAND_FLASH_DRIVER_MULTIPLANE_CE=y
+
+#
+# AMLOGIC NAND Flash  support
+#
+CONFIG_AM_NAND=y
+# CONFIG_AML_NFTL is not set
 
 #
 # AMLOGIC DEMOD Support
@@ -693,10 +698,10 @@ CONFIG_NAND_FLASH_DRIVER_MULTIPLANE_CE=y
 #
 # Amlogic WIFI Support
 #
-# CONFIG_SDIO_DHD_CDC_WIFI_4319 is not set
-CONFIG_SDIO_DHD_CDC_WIFI_4329=y
-CONFIG_BCM4329_FW_PATH="broadcm_4329/sdio-g-cdc-full11n-reclaim-roml-wme-idsup.bin"
-CONFIG_BCM4329_NVRAM_PATH="broadcm_4329/nvram.txt"
+CONFIG_SDIO_DHD_CDC_WIFI_4319=y
+CONFIG_BCM4319_FW_PATH="broadcm_4319/sdio-g-cdc-full11n-reclaim-roml-wme.bin"
+CONFIG_BCM4319_NVRAM_PATH="broadcm_4319/nvram_4319_201008.txt"
+# CONFIG_SDIO_DHD_CDC_WIFI_4329 is not set
 # CONFIG_RTL8712_8188_8191_8192SU_USB_WIFI is not set
 # CONFIG_RTL8192CU_USB_WIFI is not set
 # CONFIG_SDIO_ATHEROS_6302_WIFI is not set
@@ -736,6 +741,7 @@ CONFIG_AM_TCON_OUTPUT=y
 # CONFIG_AML_TCON_K8 is not set
 CONFIG_AML_TCON_G7=y
 # CONFIG_AML_TCON_R10 is not set
+# CONFIG_AML_TCON_REFB13 is not set
 
 #
 # Amlogic osd module
@@ -798,6 +804,11 @@ CONFIG_AML_HDMI_TX=y
 #
 # CONFIG_TVIN_TUNER is not set
 # CONFIG_TVIN_TUNER_FQ1216ME is not set
+
+#
+# Amlogic Audio Interface
+#
+CONFIG_AMAUDIO=y
 
 #
 # Amlogic audio dsp process 
@@ -997,6 +1008,7 @@ CONFIG_MISC_DEVICES=y
 # CONFIG_TI_DAC7512 is not set
 # CONFIG_UID_STAT is not set
 # CONFIG_APANIC is not set
+# CONFIG_SIX_AXIS_SENSOR_MPU3050 is not set
 # CONFIG_C2PORT is not set
 
 #
@@ -1007,6 +1019,13 @@ CONFIG_MISC_DEVICES=y
 # CONFIG_EEPROM_LEGACY is not set
 # CONFIG_EEPROM_MAX6875 is not set
 # CONFIG_EEPROM_93CX6 is not set
+
+#
+# Motion Sensors Support
+#
+# CONFIG_MPU_NONE is not set
+# CONFIG_SENSORS_MPU3050 is not set
+# CONFIG_SENSORS_MPU6000 is not set
 CONFIG_HAVE_IDE=y
 # CONFIG_IDE is not set
 
