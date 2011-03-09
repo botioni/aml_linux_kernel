@@ -1191,12 +1191,16 @@ static int vidiocgmbuf(struct file *file, void *priv, struct video_mbuf *mbuf)
 static int vidioc_streamon(struct file *file, void *priv, enum v4l2_buf_type i)
 {
 	struct gt2005_fh  *fh = priv;
-
+    tvin_parm_t para;
 	if (fh->type != V4L2_BUF_TYPE_VIDEO_CAPTURE)
 		return -EINVAL;
 	if (i != fh->type)
 		return -EINVAL;
 
+    para.port  = TVIN_PORT_CAMERA;
+    para.fmt = TVIN_SIG_FMT_CAMERA_1280X720P_30Hz;
+    start_tvin_service(0,&para);
+   
 	return videobuf_streamon(&fh->vb_vidq);
 }
 
@@ -1208,7 +1212,7 @@ static int vidioc_streamoff(struct file *file, void *priv, enum v4l2_buf_type i)
 		return -EINVAL;
 	if (i != fh->type)
 		return -EINVAL;
-
+    stop_tvin_service(0);
 	return videobuf_streamoff(&fh->vb_vidq);
 }
 
@@ -1316,7 +1320,6 @@ static int gt2005_open(struct file *file)
 	struct gt2005_device *dev = video_drvdata(file);
 	struct gt2005_fh *fh = NULL;
 	int retval = 0;
-	tvin_parm_t para;
 	if(dev->platform_dev_data.device_init) {
 		dev->platform_dev_data.device_init();
 		printk("+++found a init function, and run it..\n");
@@ -1366,10 +1369,6 @@ static int gt2005_open(struct file *file)
 //    TVIN_SIG_FMT_CAMERA_1920X1080P_30Hz,
 //    TVIN_SIG_FMT_CAMERA_1280X720P_30Hz,
 
-    
-    para.port  = TVIN_PORT_CAMERA;
-    para.fmt = TVIN_SIG_FMT_CAMERA_1280X720P_30Hz;
-    start_tvin_service(0,&para);
 	videobuf_queue_vmalloc_init(&fh->vb_vidq, &gt2005_video_qops,
 			NULL, &dev->slock, fh->type, V4L2_FIELD_INTERLACED,
 			sizeof(struct gt2005_buffer), fh);
@@ -1426,7 +1425,6 @@ static int gt2005_close(struct file *file)
 	dprintk(dev, 1, "close called (dev=%s, users=%d)\n",
 		video_device_node_name(vdev), dev->users);
 #if 1		
-    stop_tvin_service(0);
 	power_down_gt2005(dev);
 #endif
 	if(dev->platform_dev_data.device_uninit) {

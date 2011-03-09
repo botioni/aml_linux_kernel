@@ -542,16 +542,16 @@ int vm_sw_post_process(int canvas , int addr)
 	void __iomem * buffer_v_start;
 	canvas_t canvas_work;
 	canvas_read(canvas,&canvas_work);
-	printk("+++++start copying.....");
+//	printk("+++++start copying.....");
     buffer_v_start = ioremap_wc(canvas_work.addr,canvas_work.width*canvas_work.height);
-	printk("=======%x\n",buffer_v_start);
+//	printk("=======%x\n",buffer_v_start);
 	for(i=0;i<output_para.height;i++) {
 		memcpy(addr+poss,buffer_v_start+posd,output_para.width*2/*vb->bytesperline*/);
 		poss+=output_para.width*2;
 		posd+= canvas_work.width;		
 	}
 	iounmap(buffer_v_start);
-	printk("done\n");    
+//	printk("done\n");    
     return 0;
 }
 
@@ -626,7 +626,7 @@ static int vm_task(void *data) {
                 vm_sw_post_process(src_canvas ,output_para.vaddr);
             }
         }  
-        printk("vm task process finish\n");
+//        printk("vm task process finish\n");
         up(&vb_done_sema);       
     }
     
@@ -661,7 +661,6 @@ int vm_buffer_init(void)
     get_vm_buf_info(&buf_start,&buf_size,&vbuf_start);
     init_MUTEX_LOCKED(&vb_start_sema);
     init_MUTEX_LOCKED(&vb_done_sema);    
-//    printk("vm buffer initing....");
     if(buf_start && buf_size){
         canvas_width = 1920;
         canvas_height = 1088;
@@ -836,7 +835,7 @@ void set_vm_buf_info(char* start,unsigned int size) {
     vm_device.buffer_start=start;
     vm_device.buffer_size=size;
     vm_device.buffer_v_start = ioremap_wc(start,size);
-    printk("#############%x\n",vm_device.buffer_v_start);
+//    printk("#############%x\n",vm_device.buffer_v_start);
 }
 
 void get_vm_buf_info(char** start,unsigned int* size,unsigned char** vaddr) {
