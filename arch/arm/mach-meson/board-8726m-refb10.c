@@ -434,6 +434,8 @@ void extern_wifi_power(int is_power)
         configIO(0, 0);
         setIO_level(0, 0, 5);
         #else
+	set_gpio_val(GPIOC_bank_bit0_26(13), GPIOC_bit_bit0_26(13), 0);
+	set_gpio_mode(GPIOC_bank_bit0_26(13), GPIOC_bit_bit0_26(13), GPIO_OUTPUT_MODE);	
         return;
         #endif
     }
@@ -443,6 +445,8 @@ void extern_wifi_power(int is_power)
         configIO(0, 0);
         setIO_level(0, 1, 5);
         #else
+	set_gpio_val(GPIOC_bank_bit0_26(13), GPIOC_bit_bit0_26(13), 1);
+	set_gpio_mode(GPIOC_bank_bit0_26(13), GPIOC_bit_bit0_26(13), GPIO_OUTPUT_MODE);	
         return;
         #endif
     }
@@ -1024,6 +1028,9 @@ static void set_charge(int flags)
 #ifdef CONFIG_SN7325
 		configIO(1, 0);
 		setIO_level(1, 0, 3);
+#else
+set_gpio_val(GPIOA_bank_bit(4), GPIOA_bit_bit0_14(4), 0);
+set_gpio_mode(GPIOA_bank_bit(4), GPIOA_bit_bit0_14(4), GPIO_OUTPUT_MODE); 
 #endif
 	}
 	else//slow charge
@@ -1031,6 +1038,9 @@ static void set_charge(int flags)
 #ifdef CONFIG_SN7325
 		configIO(1, 0);
 		setIO_level(1, 1, 3);
+#else
+set_gpio_val(GPIOA_bank_bit(4), GPIOA_bit_bit0_14(4), 1);
+set_gpio_mode(GPIOA_bank_bit(4), GPIOA_bit_bit0_14(4), GPIO_OUTPUT_MODE); 
 #endif
 	}
 }
@@ -1785,6 +1795,13 @@ static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
         .platform_data = (void *)&ts_pdata,
     },
 #endif
+
+#ifdef CONFIG_PIXCIR_CAPACITIVE_TOUCHSCREEN
+    {
+        I2C_BOARD_INFO("pixcir168", 0x5c),
+        .irq = INT_GPIO_0,
+    },
+#endif
 };
 
 
@@ -1897,6 +1914,14 @@ static __init void m1_init_machine(void)
 #if defined(CONFIG_TOUCHSCREEN_ADS7846)
     ads7846_init_gpio();
     spi_register_board_info(spi_board_info_list, ARRAY_SIZE(spi_board_info_list));
+#endif
+#ifdef CONFIG_PIXCIR_CAPACITIVE_TOUCHSCREEN
+//#define gpio_shutdown ((GPIOD_bank_bit2_24(23)<<16) |GPIOD_bit_bit2_24(23))
+//#define gpio_irq ((GPIOD_bank_bit2_24(24)<<16) |GPIOD_bit_bit2_24(24))
+//	gpio_direction_output(gpio_shutdown, 1);
+//	gpio_direction_input(gpio_irq);
+//	gpio_enable_edge_int(gpio_to_idx(gpio_irq), 1, 0);
+//	msleep(50);
 #endif
     disable_unused_model();
 }
