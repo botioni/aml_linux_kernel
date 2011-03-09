@@ -40,11 +40,21 @@ typedef struct vframe_provider_s {
 	int 	   (*vf_states)(vframe_states_t *states);
 } vframe_provider_t;
 
+#define VFRAME_EVENT_PROVIDER_UNREG             1
+#define VFRAME_EVENT_PROVIDER_LIGHT_UNREG       2
+#define VFRAME_EVENT_PROVIDER_START             3
+#define VFRAME_EVENT_PROVIDER_VFRAME_READY      4
+typedef struct vframe_receiver_op_s {
+    int (*event_cb)(int type, void* data, void* private_data);
+} vframe_receiver_op_t;
+
 void vf_reg_provider(const vframe_provider_t *p);
 void vf_unreg_provider(void);
 void vf_light_unreg_provider(void);
 unsigned int get_post_canvas(void);
 unsigned int vf_keep_current(void);
+vframe_receiver_op_t* vf_vm_reg_provider(const vframe_provider_t *p);
+vframe_receiver_op_t* vf_vm_unreg_provider();
 
 #endif /* VFRAME_PROVIDER_H */
 

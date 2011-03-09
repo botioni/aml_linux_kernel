@@ -862,8 +862,10 @@ typedef struct camera_info_s {
 /*
     macro defined applied to camera driver is ending
 */
-
-
+extern int start_tvin_service(int no ,tvin_parm_t *para);
+extern int stop_tvin_service(int no);
+extern void set_tvin_canvas_info(int start , int num);
+extern void get_tvin_canvas_info(int* start , int* num);
 #endif
 
 

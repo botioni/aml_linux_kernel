@@ -37,6 +37,7 @@
 #include <linux/amports/canvas.h>
 #include <mach/am_regs.h>
 #include <linux/amports/vframe.h>
+#include <linux/amports/vframe_provider.h>
 #include <linux/tvin/tvin.h>
 
 /* TVIN headers */
@@ -200,6 +201,57 @@ static void vdin_stop_dec(struct vdin_dev_s *devp)
 }
 
 
+int start_tvin_service(int no ,tvin_parm_t *para)
+{
+    struct vdin_dev_s  *devp;
+    if((!para)||(no > 1)){
+        return -1;    
+    }
+    devp = vdin_devp[no];
+    devp->para.port = para->port;
+    devp->para.fmt = para->fmt;
+    devp->flags |= VDIN_FLAG_DEC_STARTED;  
+            printk("devp addr is %x",devp);
+            printk("addr_offset is %x",devp->addr_offset);          
+    vdin_start_dec(devp);  
+    msleep(10);
+    tasklet_enable(&devp->isr_tasklet);
+    devp->pre_irq_time = jiffies,
+    enable_irq(devp->irq);      
+    vdin_notify_receiver(VFRAME_EVENT_PROVIDER_START,NULL ,NULL);
+    
+}
+
+int stop_tvin_service(int no)
+{
+    struct vdin_dev_s *devp;
+    if(no > 1){
+        return -1;    
+    }    
+    devp = vdin_devp[no];
+    devp->flags &= (~VDIN_FLAG_DEC_STARTED);  
+            disable_irq_nosync(devp->irq);
+            tasklet_disable_nosync(&devp->isr_tasklet);     
+    vdin_notify_receiver(VFRAME_EVENT_PROVIDER_UNREG,NULL ,NULL);
+    vdin_stop_dec(devp);
+    
+}
+
+static int canvas_start_index = VDIN_START_CANVAS ;
+static int canvas_total_num = BT656IN_VF_POOL_SIZE;
+void set_tvin_canvas_info(int start , int num)
+{
+    canvas_start_index = start;
+    canvas_total_num = num;    
+}
+
+void get_tvin_canvas_info(int* start , int* num)
+{
+    *start = canvas_start_index ;
+    *num = canvas_total_num;
+}
+
+
 /*as use the spin_lock,
  *1--there is no sleep,
  *2--it is better to shorter the time,
@@ -247,13 +299,13 @@ static irqreturn_t vdin_isr(int irq, void *dev_id)
         }
     }
     devp->pre_irq_time = vdin_cur_irq_time;
-    tasklet_schedule(&devp->isr_tasklet);
+    tasklet_hi_schedule(&devp->isr_tasklet);
     spin_unlock_irqrestore(&devp->isr_lock, flags);
 
     return IRQ_HANDLED;
 }
-
-
+#include <linux/videodev2.h>
+extern int vm_fill_buffer(struct videobuf_buffer* vb , int format , int magic);
 static void vdin_isr_tasklet(unsigned long arg)
 {
     int ret = 0;
@@ -303,8 +355,9 @@ static void vdin_isr_tasklet(unsigned long arg)
     {
         vdin_set_vframe_prop_info(vf, devp->addr_offset);
 
-        vfq_push_display(vf);
-
+        vfq_push_display(vf);   
+        vdin_notify_receiver(VFRAME_EVENT_PROVIDER_VFRAME_READY,NULL ,NULL);
+            
 #ifdef VDIN_DBG_MSG_CNT
         vdin_dbg_msg.vdin_tasklet_valid_type_cnt++;
 #endif
@@ -416,6 +469,9 @@ static int vdin_ioctl(struct inode *inode, struct file *file, unsigned int cmd, 
             devp->para.status = TVIN_SIG_STATUS_NULL;
             devp->para.cap_addr = 0x85100000;
             devp->flags |= VDIN_FLAG_DEC_STARTED;
+            //printk("devp addr is %x",devp);
+            //printk("addr_offset is %x",devp->addr_offset);
+            
             vdin_start_dec(devp);
             pr_info("vdin%d: TVIN_IOC_START_DEC ok\n", devp->index);
 #if defined(CONFIG_ARCH_MESON2)
