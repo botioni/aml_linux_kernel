@@ -129,9 +129,7 @@ static vframe_t *vm_vf_get(void)
 
 static void vm_vf_put(vframe_t *vf)
 {
-    printk("vm_vf_put!!!\n");
     prepare_vframe(vf);
-//    vm_vf_put_from_provider(vf);       
 }
 
 static int  vm_vf_states(vframe_states_t *states)
@@ -173,8 +171,6 @@ static void local_vf_put(vframe_t *vf)
         canvas_addr = index2canvas(i);        
         if(vf->canvas0Addr == canvas_addr ){
             vfbuf_use[i] = 0;   
-            printk("size is %d \n",VF_POOL_SIZE );
-            printk("put index is %d\n",i);
             vm_vf_put_from_provider(vf); 
         }    
     }           
@@ -219,13 +215,11 @@ static int vm_receiver_event_fun(int type, void* data, void* private_data)
             if(vm_in == 0){
   //              vf_reg_provider(&vm_vf_provider);
                 vm_in ++;
-  //              printk("vm_reg_provider\n");
             }        
             break;
         case VFRAME_EVENT_PROVIDER_UNREG:        
             vm_in = 0;
             vm_local_init();
-//            printk("vm_unreg_provider\n");
             break;
             
         default:
@@ -256,7 +250,6 @@ static int prepare_vframe(vframe_t *vf)
     memcpy(new_vf , vf, sizeof(vframe_t));  
     vfbuf_use[index]++;
     INCPTR(fill_ptr);
-    printk("fill_ptr is %d \n" ,fill_ptr);
     return 0;
 }
 
@@ -514,7 +507,7 @@ int vm_ge2d_pre_process(vframe_t* vf, ge2d_context_t *context,config_para_ex_t* 
     ge2d_config->src_para.left = 0;
     ge2d_config->src_para.width = vf->width;
     ge2d_config->src_para.height = vf->height;
-    printk("vf_width is %d , vf_height is %d \n",vf->width ,vf->height);
+//    printk("vf_width is %d , vf_height is %d \n",vf->width ,vf->height);
     ge2d_config->src2_para.mem_type = CANVAS_TYPE_INVALID;
     ge2d_config->dst_para.canvas_index=output_para.index;
     ge2d_config->dst_para.mem_type = CANVAS_TYPE_INVALID;
@@ -530,7 +523,7 @@ int vm_ge2d_pre_process(vframe_t* vf, ge2d_context_t *context,config_para_ex_t* 
     ge2d_config->dst_para.left = 0;
     ge2d_config->dst_para.width = output_para.width;
     ge2d_config->dst_para.height = output_para.height;
-    printk("output_width is %d , output_height is %d \n",output_para.width ,output_para.height);
+//    printk("output_width is %d , output_height is %d \n",output_para.width ,output_para.height);
     if(ge2d_context_config_ex(context,ge2d_config)<0) {
         printk("++ge2d configing error.\n");
         return;
@@ -609,18 +602,16 @@ static int vm_task(void *data) {
     ge2d_context_t *context=create_ge2d_work_queue();
     config_para_ex_t ge2d_config;
     memset(&ge2d_config,0,sizeof(config_para_ex_t));
-    printk("vm task is running\n ");
+//    printk("vm task is running\n ");
     while(1) {        
-        printk("vm task wait\n");
+//        printk("vm task wait\n");
         down_interruptible(&vb_start_sema);		
         timer_count = 0;
         
-#if 1        
 /*wait for frame from 656 provider until 500ms runs out*/        
         while(((vf = local_vf_peek()) == NULL)&&(timer_count < 100)){
             timer_count ++;
             msleep(5);
-//            printk("current count is %d\n" , timer_count);
         }            		
         vf = local_vf_get();
         if(vf){
@@ -630,26 +621,13 @@ static int vm_task(void *data) {
                 src_canvas = vm_ge2d_pre_process(vf,context,&ge2d_config);
             }  
             local_vf_put(vf);
- //           vm_vf_put_from_provider(vf);          
 /*here we need copy the translated data to vmalloc cache*/  
             if(is_need_sw_post_process()){          
                 vm_sw_post_process(src_canvas ,output_para.vaddr);
             }
         }  
         printk("vm task process finish\n");
-        up(&vb_done_sema);
-#else
-        for (i = 0; i < VF_POOL_SIZE; i++) {                
-            if((vf = vm_vf_peek_from_provider()) != NULL){
-                vf = vm_vf_get_from_provider();    
-                prepare_vframe(vf);                
-            }        
-        }
-        printk("vm task process finish\n");
-#endif
-
-
-        
+        up(&vb_done_sema);       
     }
     
     destroy_ge2d_work_queue(context);
@@ -683,7 +661,7 @@ int vm_buffer_init(void)
     get_vm_buf_info(&buf_start,&buf_size,&vbuf_start);
     init_MUTEX_LOCKED(&vb_start_sema);
     init_MUTEX_LOCKED(&vb_done_sema);    
-    printk("vm buufer initing....");
+//    printk("vm buffer initing....");
     if(buf_start && buf_size){
         canvas_width = 1920;
         canvas_height = 1088;
@@ -717,7 +695,7 @@ int vm_buffer_init(void)
  /*use external DMA buffer*/   
     
     }
-    printk("done\n");
+//    printk("done\n");
     return 0;
 
 }
@@ -806,19 +784,6 @@ static ssize_t set_test(struct device *dev,
 	contrast = simple_strtoul(buf, &endp, 0);
 	size = endp - buf;
 
-/*
-	if (isspace(*endp))
-		size++;
-
-	if (size != count) {
-		printk("size error\n");
-		return ret;
-	}
-*/
-
-	//mutex_lock(&dsp->lock);
-    
-	//mutex_unlock(&dsp->lock);
 	return ret;
 }
 
