@@ -477,8 +477,8 @@ static int hdmitx_notify_callback_v(struct notifier_block *block, unsigned long 
             if(hdmitx_device.HWOp.Cntl){
                 hdmitx_device.HWOp.Cntl(&hdmitx_device, HDMITX_HWCMD_MUX_HPD_IF_PIN_HIGH, 0);
             }
+			return 0;
         }
-        return 0;
     }
 
     set_disp_mode_auto();
@@ -569,8 +569,8 @@ void hdmi_tv_enc_post_func(char* mode)
             if(hdmitx_device.HWOp.Cntl){
                 hdmitx_device.HWOp.Cntl(&hdmitx_device, HDMITX_HWCMD_MUX_HPD_IF_PIN_HIGH, 0);
             }
+			return;
         }
-        return;
     }
 
     set_disp_mode_auto();
