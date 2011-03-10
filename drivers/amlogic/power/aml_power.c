@@ -67,7 +67,7 @@ static int battery_capacity_pos = -1;
 static int charge_status = -1;
 static int new_charge_status = -1;
 
-
+static int bat_debug = 0;
 
 static int aml_power_get_property(struct power_supply *psy,
 				  enum power_supply_property psp,
@@ -174,9 +174,9 @@ static void get_bat_capacity(void)
         value = pdata->get_bat_vol() - 12;
     else        
         value = pdata->get_bat_vol();
-#ifdef AML_POWER_DBG
-		printk("get_bat_vol = %d\n",value);
-#endif    
+
+    if(bat_debug) printk("get_bat_vol = %d\n",value);
+  
     if(value == -1)
         return; 
     
@@ -204,7 +204,7 @@ static void get_bat_capacity(void)
         }
     }
 
-    if(num>6){
+    if(num>4){
         sum = sum - max -min;
         num = num -2;
     }
@@ -224,9 +224,9 @@ static void get_bat_capacity(void)
             if(((pdata->bat_value_table)[i]<=value)&&((pdata->bat_value_table)[i+1]>value))break;
         }          
     }
-#ifdef AML_POWER_DBG
-    printk("AML_POWER_DBG i = %d,battery_capacity_pos = %d,(pdata->bat_level_table)[i] = %d,battery_capacity = %d\n",i,battery_capacity_pos,(pdata->bat_level_table)[i],battery_capacity);
-#endif
+
+    if(bat_debug) printk("AML_POWER_DBG i = %d,battery_capacity_pos = %d,(pdata->bat_level_table)[i] = %d,battery_capacity = %d\n",i,battery_capacity_pos,(pdata->bat_level_table)[i],battery_capacity);
+
     if(battery_capacity_pos >=0){
         if((battery_capacity_pos - i) >1){
             i = battery_capacity_pos - 1;
@@ -248,41 +248,42 @@ static void get_bat_capacity(void)
                 battery_capacity_pos = i;
             }
         }   
-#ifdef AML_POWER_DBG
-    printk("AML_POWER_DBG i = %d,battery_capacity_pos = %d\n",i,battery_capacity_pos);
-#endif                    
+
+    if(bat_debug) printk("AML_POWER_DBG i = %d,battery_capacity_pos = %d\n",i,battery_capacity_pos);
+                   
     }
     else{
         new_battery_capacity = (pdata->bat_level_table)[i];
         battery_capacity_pos = i;        
     }    
            
-#ifdef AML_POWER_DBG
-    printk("battery_capacity = %d,max = %d,min = %d,sum = %d,num = %d,value = %d\n",new_battery_capacity,max,min,sum,num,value);
-#endif    
-    
- 
+
+    if(bat_debug) printk("battery_capacity = %d,max = %d,min = %d,sum = %d,num = %d,value = %d\n",new_battery_capacity,max,min,sum,num,value);
+
 }
 #ifdef CONFIG_HAS_EARLYSUSPEND
 static void aml_power_early_suspend(struct early_suspend *h)
 {
 	if (pdata->set_charge) {
 		pdata->set_charge(AML_POWER_CHARGE_AC);
-#ifdef AML_POWER_DBG
-        printk("fast charger on early_suspend\n\n");
-#endif
+        if(bat_debug) printk("fast charger on early_suspend\n\n");
 	}      
 }
 
 static void aml_power_late_resume(struct early_suspend *h)
 {
-
+    int i;
+    
 	if (pdata->set_charge) {
 		pdata->set_charge(0);
-#ifdef AML_POWER_DBG
-        printk("set slow charge\n");
-#endif
+    if(bat_debug) printk("set slow charge\n");
 	} 
+	//update real battery level
+	battery_capacity_pos = -1;
+    count = 0;
+    for(i = 0;i <= (BATTERY_ARROW_NUM-1);i++){
+        bat_matrix[i] = 0;
+    } 	
 }
 #endif
 
@@ -456,18 +457,35 @@ static ssize_t store_powerhold(struct class *class,
 			struct class_attribute *attr,	const char *buf, size_t count)
 {
 	if(buf[0] == 'y'){
-#ifdef AML_POWER_DBG
-		printk("system off\n");
-#endif	    
+    if(bat_debug) printk("system off\n");    
         if(pdata->set_bat_off)
         pdata->set_bat_off();
     }
 
-	return 0;
+	return count;
+}
+
+static ssize_t store_debug(struct class *class, 
+			struct class_attribute *attr,	const char *buf, size_t count)
+{
+	if(buf[0] == '1'){
+	   bat_debug = 1; 
+    }
+    else{
+	   bat_debug = 0;         
+    }        
+	return count;
+}
+
+static ssize_t show_debug(struct class *class, 
+			struct class_attribute *attr,	char *buf)
+{
+	return sprintf(buf, "bat-debug value is %d\n", bat_debug);
 }
 
 static struct class_attribute powerhold_class_attrs[] = {
     __ATTR(bat-off,  S_IRUGO | S_IWUSR, NULL,    store_powerhold),
+    __ATTR(bat-debug,  S_IRUGO | S_IWUSR, show_debug,    store_debug),    
     __ATTR_NULL
 };
 
