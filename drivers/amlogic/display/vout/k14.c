@@ -198,7 +198,6 @@ static void power_on_lcd(void)
 #endif
     //DATA: LCD_DISP_ON -> EIO_OD5: 1
     msleep(50);
-    power_on_backlight();
 }
 
 static void power_off_lcd(void)
