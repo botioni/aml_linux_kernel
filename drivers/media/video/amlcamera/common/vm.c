@@ -62,10 +62,13 @@ static int VM_CANVAS_INDEX = 24;
 static inline void vm_vf_put_from_provider(vframe_t *vf);
 #define INCPTR(p) ptr_atomic_wrap_inc(&p)
 
+#define VM_DEPTH_16_CANVAS 0x50         //for single canvas use ,RGB16, YUV422,etc
 
-//#define VM_DOUBLE_CANVAS_INDEX 0x54  //for double canvas use 
+#define VM_DEPTH_24_CANVAS 0x52
 
-#define VM_RESERVED_CANVAS_INDEX 0x5d         //for single canvas use 
+#define VM_DEPTH_8_CANVAS_Y  0x54     // for Y/CbCr 4:2:0
+#define VM_DEPTH_8_CANVAS_UV 0x56
+
 #define VM_DMA_CANVAS_INDEX 0x5e
 #define VM_CANVAS_MX 0x5f
 
@@ -213,7 +216,7 @@ static int vm_receiver_event_fun(int type, void* data, void* private_data)
             break;
         case VFRAME_EVENT_PROVIDER_START:
             if(vm_in == 0){
-  //              vf_reg_provider(&vm_vf_provider);
+  //            vf_reg_provider(&vm_vf_provider);
                 vm_in ++;
             }        
             break;
@@ -366,6 +369,9 @@ static int get_output_format(int v4l2_format)
         case V4L2_PIX_FMT_VYUY:
         format = GE2D_FORMAT_S16_YUV422;
         break;
+        case V4L2_PIX_FMT_RGB24: 
+        format = GE2D_FORMAT_S24_RGB ;
+        break;
         default:
         break;            
     }   
@@ -375,6 +381,7 @@ static int get_output_format(int v4l2_format)
 typedef struct output_para{
     int width;
     int height;
+    int bytes;
     int v4l2_format;
     int index;
     int v4l2_memory;
@@ -391,12 +398,77 @@ typedef struct vm_dma_contig_memory {
 	int is_userptr;
 }vm_contig_memory_t;
 
+#define VM_DEPTH_16_CANVAS 0x50         //for single canvas use ,RGB16, YUV422,etc
 
-int vm_fill_buffer(struct videobuf_buffer* vb , int format , int magic,void* vaddr)
+#define VM_DEPTH_24_CANVAS 0x52
+
+#define VM_DEPTH_8_CANVAS_Y  0x54     // for Y/CbCr 4:2:0
+#define VM_DEPTH_8_CANVAS_UV 0x56
+int is_need_ge2d_pre_process()
+{
+    int ret = 0;
+    switch(output_para.v4l2_format){
+        case  V4L2_PIX_FMT_RGB565X:
+        case  V4L2_PIX_FMT_YUV444:
+        case  V4L2_PIX_FMT_VYUY:
+        case  V4L2_PIX_FMT_BGR24:      
+        case  V4L2_PIX_FMT_RGB24:         
+           ret = 1;
+           break;
+           
+        default:
+        break;
+    }
+    return ret;
+}
+
+int is_need_sw_post_process()
+{
+    int ret = 0;
+    switch(output_para.v4l2_memory){
+        case MAGIC_DC_MEM:        
+            goto exit;
+            break;
+        case MAGIC_SG_MEM:
+        case MAGIC_VMAL_MEM:           
+        default:
+            ret = 1;
+            break; 
+    }  
+exit:
+    return ret;    
+}
+
+
+int get_canvas_index(int v4l2_format ,int* bytes)
+{
+    static int counter = 0;
+    int canvas = VM_DEPTH_16_CANVAS ;
+    *bytes = 2;
+    switch(v4l2_format){
+        case V4L2_PIX_FMT_RGB565X:
+        case V4L2_PIX_FMT_VYUY:
+            canvas = VM_DEPTH_16_CANVAS;
+            *bytes = 2 ;
+            break;
+        case V4L2_PIX_FMT_YUV444:                
+        case V4L2_PIX_FMT_BGR24:      
+        case V4L2_PIX_FMT_RGB24:  
+            canvas = VM_DEPTH_24_CANVAS;
+            *bytes = 3;
+            break; 
+        default:
+        break;            
+    }   
+    return canvas;        
+}
+
+int vm_fill_buffer(struct videobuf_buffer* vb , int v4l2_format , int magic,void* vaddr)
 {
     vm_contig_memory_t *mem = NULL;
     char *buf_start,*vbuf_start;
     int buf_size;
+    int bytes ;
     int ret = -1;
     get_vm_buf_info(&buf_start,&buf_size,&vbuf_start);     
     int canvas_index = -1 ;
@@ -410,7 +482,7 @@ int vm_fill_buffer(struct videobuf_buffer* vb , int format , int magic,void* vad
         buf.width = 640;
         buf.height = 480;  
         magic = MAGIC_VMAL_MEM ;
-        format =  V4L2_PIX_FMT_YUV444 ; 
+        v4l2_format =  V4L2_PIX_FMT_YUV444 ; 
         vb = &buf;
     }    
 #endif             
@@ -421,39 +493,28 @@ int vm_fill_buffer(struct videobuf_buffer* vb , int format , int magic,void* vad
                           mem->dma_handle,
                           vb->bytesperline, vb->height,
                           CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_32X32);        
-            canvas_index =  VM_DMA_CANVAS_INDEX ;             
+            canvas_index =  VM_DMA_CANVAS_INDEX ;
+            bytes = vb->bytesperline/vb->width;             
             break;
         case  MAGIC_SG_MEM:           
         case  MAGIC_VMAL_MEM:
             if(buf_start&&buf_size){
-                canvas_index = VM_RESERVED_CANVAS_INDEX ;
+                canvas_index = get_canvas_index(v4l2_format,&bytes) ;
             }            
             break;
         default:
-            canvas_index = VM_RESERVED_CANVAS_INDEX ;
+            canvas_index = VM_DEPTH_16_CANVAS ;
             break;
      }
      output_para.width = vb->width;
      output_para.height = vb->height;
+     output_para.bytes  = bytes;
      output_para.index = canvas_index ;
-     output_para.v4l2_format  = format ;
+     output_para.v4l2_format  = v4l2_format ;
      output_para.v4l2_memory   = magic ;
      output_para.vaddr = vaddr;
-//     printk("fill buffer start\n");
      up(&vb_start_sema);
-     down_interruptible(&vb_done_sema);
-//     printk("fill buffer finish\n");
-     switch(magic){
-        case   MAGIC_DC_MEM:            
-        case  MAGIC_SG_MEM:           
-            break;           
-        case  MAGIC_VMAL_MEM:  	           
-            break;
-        default:
-            canvas_index = VM_RESERVED_CANVAS_INDEX ;
-            break;
-     }     
-        
+     down_interruptible(&vb_done_sema);        
      ret = 0;  
 exit:
     return ret;     
@@ -546,8 +607,8 @@ int vm_sw_post_process(int canvas , int addr)
     buffer_v_start = ioremap_wc(canvas_work.addr,canvas_work.width*canvas_work.height);
 //	printk("=======%x\n",buffer_v_start);
 	for(i=0;i<output_para.height;i++) {
-		memcpy(addr+poss,buffer_v_start+posd,output_para.width*2/*vb->bytesperline*/);
-		poss+=output_para.width*2;
+		memcpy(addr+poss,buffer_v_start+posd,output_para.width*output_para.bytes/*vb->bytesperline*/);
+		poss+=output_para.width*output_para.bytes;
 		posd+= canvas_work.width;		
 	}
 	iounmap(buffer_v_start);
@@ -557,38 +618,7 @@ int vm_sw_post_process(int canvas , int addr)
 
 static struct task_struct *task=NULL;
 static struct task_struct *simulate_task_fd=NULL;
-int is_need_ge2d_pre_process()
-{
-    int ret = 0;
-    switch(output_para.v4l2_format){
-        case  V4L2_PIX_FMT_RGB565X:
-        case  V4L2_PIX_FMT_YUV444:
-        case  V4L2_PIX_FMT_VYUY:
-           ret = 1;
-           break;
-           
-        default:
-        break;
-    }
-    return ret;
-}
 
-int is_need_sw_post_process()
-{
-    int ret = 0;
-    switch(output_para.v4l2_memory){
-        case MAGIC_DC_MEM:        
-            goto exit;
-            break;
-        case MAGIC_SG_MEM:
-        case MAGIC_VMAL_MEM:           
-        default:
-            ret = 1;
-            break; 
-    }  
-exit:
-    return ret;    
-}
 
 
 
@@ -607,7 +637,7 @@ static int vm_task(void *data) {
 //        printk("vm task wait\n");
         down_interruptible(&vb_start_sema);		
         timer_count = 0;
-        
+       
 /*wait for frame from 656 provider until 500ms runs out*/        
         while(((vf = local_vf_peek()) == NULL)&&(timer_count < 100)){
             timer_count ++;
@@ -620,14 +650,14 @@ static int vm_task(void *data) {
             if(is_need_ge2d_pre_process()){
                 src_canvas = vm_ge2d_pre_process(vf,context,&ge2d_config);
             }  
-            local_vf_put(vf);
+            local_vf_put(vf);         
 /*here we need copy the translated data to vmalloc cache*/  
             if(is_need_sw_post_process()){          
                 vm_sw_post_process(src_canvas ,output_para.vaddr);
             }
         }  
 //        printk("vm task process finish\n");
-        up(&vb_done_sema);       
+        up(&vb_done_sema); 
     }
     
     destroy_ge2d_work_queue(context);
@@ -672,22 +702,27 @@ int vm_buffer_init(void)
         }else{
             local_pool_size = 0 ;
             printk("need at least one buffer to handle 1920*1080 data.\n") ;       
-        }
-    
+        }   
         for (i = 0; i < local_pool_size; i++) 
         {
-            canvas_config(VM_RESERVED_CANVAS_INDEX+i/**3*/+0,
+            canvas_config(VM_DEPTH_16_CANVAS+i,
                           buf_start + i * decbuf_size,
                           canvas_width*2, canvas_height,
                           CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_LINEAR);
-//            canvas_config(VM_DOUBLE_CANVAS_INDEX+ i,
-//                          buf_start + (2*i) * decbuf_size/2,
-//                          canvas_width*3, canvas_height/2,
-//                          CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_32X32);
-//            canvas_config(VM_DOUBLE_CANVAS_INDEX+ 4+ i,
-//                          buf_start + (2*i+1) * decbuf_size/2,
-//                          canvas_width*3, canvas_height/2,
-//                          CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_32X32);
+                          
+            canvas_config(VM_DEPTH_24_CANVAS+i,
+                          buf_start + i * decbuf_size,
+                          canvas_width*3, canvas_height,
+                          CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_LINEAR);                          
+                          
+            canvas_config(VM_DEPTH_8_CANVAS_Y+ i,
+                          buf_start + i*decbuf_size/2,
+                          canvas_width, canvas_height/2,
+                          CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_32X32);
+            canvas_config(VM_DEPTH_8_CANVAS_UV + i,
+                          buf_start + (i+1)*decbuf_size/2,
+                          canvas_width, canvas_height,
+                          CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_32X32);
             vfbuf_use[i] = 0;
         }
     }else{

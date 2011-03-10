@@ -813,7 +813,6 @@ static struct ts_platform_data ts_pdata = {
     },
     .data = 0,
 };
-
 static int ts_init_irq(void)
 {
     int group = ts_pdata.irq - INT_GPIO_0;
@@ -1029,7 +1028,7 @@ static int get_bat_vol(void)
 
 static int get_charge_status()
 {
-    return (READ_CBUS_REG(ASSIST_HW_REV)&(1<<8))? 1:0;
+    return (READ_CBUS_REG(ASSIST_HW_REV)&(1<<8))? 1:0;//GP_INPUT0
 }
 
 static void set_bat_off(void)
@@ -1480,8 +1479,6 @@ static void aml_8726m_bl_init(void)
           (1000 << 14) |    // Digital dimmer_duty = 0%, the most darkness
           (1000 <<  0) ;    // dimmer_freq = 1KHz
     WRITE_CBUS_REG(VGHL_PWM_REG4, val);
-    SET_CBUS_REG_MASK(PWM_MISC_REG_AB, (1 << 0)); 
-    SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<31));            
 }
 static unsigned bl_level;
 static unsigned panel_state = 0;
@@ -1910,6 +1907,9 @@ static void __init device_pinmux_init(void )
 	aml_i2c_init();
 	set_audio_pinmux(AUDIO_OUT_TEST_N);
     set_audio_pinmux(AUDIO_IN_JTAG);
+    //set clk for wifi
+    SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, (1<<18));
+    CLEAR_CBUS_REG_MASK(PREG_EGPIO_EN_N, (1<<4));	
 }
 
 static void __init  device_clk_setting(void)

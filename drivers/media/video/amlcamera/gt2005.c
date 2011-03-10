@@ -140,12 +140,23 @@ static struct gt2005_fmt formats[] = {
 		.fourcc   = V4L2_PIX_FMT_RGB565X, /* rrrrrggg gggbbbbb */
 		.depth    = 16,
 	},
-#if 0
+	
+	{
+		.name     = "RGB888 (24)",
+		.fourcc   = V4L2_PIX_FMT_RGB24, /* 24  RGB-8-8-8 */
+		.depth    = 24,
+	},	
+	{
+		.name     = "BGR888 (24)",
+		.fourcc   = V4L2_PIX_FMT_BGR24, /* 24  BGR-8-8-8 */
+		.depth    = 24,
+	},		
 	{
 		.name     = "12  Y/CbCr 4:2:0",
 		.fourcc   = V4L2_PIX_FMT_NV12,
 		.depth    = 16,	
 	},
+#if 0
 	{
 		.name     = "4:2:2, packed, YUYV",
 		.fourcc   = V4L2_PIX_FMT_VYUY,
@@ -255,6 +266,7 @@ struct gt2005_fh {
 
 	enum v4l2_buf_type         type;
 	int			   input; 	/* Input Number on bars */
+	int  stream_on;
 };
 
 /* ------------------------------------------------------------------
@@ -764,7 +776,7 @@ static void power_down_gt2005(struct gt2005_device *dev)
 	DMA and thread functions
    ------------------------------------------------------------------*/
 
-extern   int vm_fill_buffer(struct videobuf_buffer* vb , int format , int magic,void* vaddr);
+extern   int vm_fill_buffer(struct videobuf_buffer* vb , int v4l2_format , int magic,void* vaddr);
 #define TSTAMP_MIN_Y	24
 #define TSTAMP_MAX_Y	(TSTAMP_MIN_Y + 15)
 #define TSTAMP_INPUT_X	10
@@ -919,9 +931,8 @@ buffer_setup(struct videobuf_queue *vq, unsigned int *count, unsigned int *size)
 {
 	struct gt2005_fh  *fh = vq->priv_data;
 	struct gt2005_device *dev  = fh->dev;
-
-	*size = fh->width*fh->height*2;
-
+    int bytes = fh->fmt->depth >> 3 ;
+	*size = fh->width*fh->height*bytes;	
 	if (0 == *count)
 		*count = 32;
 
@@ -959,7 +970,7 @@ buffer_prepare(struct videobuf_queue *vq, struct videobuf_buffer *vb,
 	struct gt2005_device    *dev = fh->dev;
 	struct gt2005_buffer *buf = container_of(vb, struct gt2005_buffer, vb);
 	int rc;
-
+    int bytes = fh->fmt->depth >> 3 ;
 	dprintk(dev, 1, "%s, field=%d\n", __func__, field);
 
 	BUG_ON(NULL == fh->fmt);
@@ -968,7 +979,7 @@ buffer_prepare(struct videobuf_queue *vq, struct videobuf_buffer *vb,
 	    fh->height < 32 || fh->height > norm_maxh())
 		return -EINVAL;
 
-	buf->vb.size = fh->width*fh->height*2;
+	buf->vb.size = fh->width*fh->height*bytes;
 	if (0 != buf->vb.baddr  &&  buf->vb.bsize < buf->vb.size)
 		return -EINVAL;
 
@@ -1192,6 +1203,7 @@ static int vidioc_streamon(struct file *file, void *priv, enum v4l2_buf_type i)
 {
 	struct gt2005_fh  *fh = priv;
     tvin_parm_t para;
+    int ret = 0 ;
 	if (fh->type != V4L2_BUF_TYPE_VIDEO_CAPTURE)
 		return -EINVAL;
 	if (i != fh->type)
@@ -1199,21 +1211,29 @@ static int vidioc_streamon(struct file *file, void *priv, enum v4l2_buf_type i)
 
     para.port  = TVIN_PORT_CAMERA;
     para.fmt = TVIN_SIG_FMT_CAMERA_1280X720P_30Hz;
+	ret =  videobuf_streamon(&fh->vb_vidq);
+	if(ret == 0){
     start_tvin_service(0,&para);
-   
-	return videobuf_streamon(&fh->vb_vidq);
+	    fh->stream_on        = 1;
+	}
+	return ret;
 }
 
 static int vidioc_streamoff(struct file *file, void *priv, enum v4l2_buf_type i)
 {
 	struct gt2005_fh  *fh = priv;
 
+    int ret = 0 ;
 	if (fh->type != V4L2_BUF_TYPE_VIDEO_CAPTURE)
 		return -EINVAL;
 	if (i != fh->type)
 		return -EINVAL;
+	ret = videobuf_streamoff(&fh->vb_vidq);
+	if(ret == 0 ){
     stop_tvin_service(0);
-	return videobuf_streamoff(&fh->vb_vidq);
+	    fh->stream_on        = 0;
+	}
+	return ret;
 }
 
 static int vidioc_s_std(struct file *file, void *priv, v4l2_std_id *i)
@@ -1359,7 +1379,7 @@ static int gt2005_open(struct file *file)
 	fh->fmt      = &formats[0];
 	fh->width    = 640;
 	fh->height   = 480;
-	
+	fh->stream_on = 0 ;
 	/* Resets frame counters */
 	dev->jiffies = jiffies;
 			
@@ -1414,6 +1434,9 @@ static int gt2005_close(struct file *file)
 
 	gt2005_stop_thread(vidq);
 	videobuf_stop(&fh->vb_vidq);
+	if(fh->stream_on){
+	    stop_tvin_service(0);     
+	}
 	videobuf_mmap_free(&fh->vb_vidq);
 
 	kfree(fh);
