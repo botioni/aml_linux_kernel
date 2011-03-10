@@ -255,6 +255,7 @@ struct gt2005_fh {
 
 	enum v4l2_buf_type         type;
 	int			   input; 	/* Input Number on bars */
+	int  stream_on;
 };
 
 /* ------------------------------------------------------------------
@@ -1192,6 +1193,7 @@ static int vidioc_streamon(struct file *file, void *priv, enum v4l2_buf_type i)
 {
 	struct gt2005_fh  *fh = priv;
     tvin_parm_t para;
+    int ret = 0 ;
 	if (fh->type != V4L2_BUF_TYPE_VIDEO_CAPTURE)
 		return -EINVAL;
 	if (i != fh->type)
@@ -1199,21 +1201,29 @@ static int vidioc_streamon(struct file *file, void *priv, enum v4l2_buf_type i)
 
     para.port  = TVIN_PORT_CAMERA;
     para.fmt = TVIN_SIG_FMT_CAMERA_1280X720P_30Hz;
+	ret =  videobuf_streamon(&fh->vb_vidq);
+	if(ret == 0){
     start_tvin_service(0,&para);
-   
-	return videobuf_streamon(&fh->vb_vidq);
+	    fh->stream_on        = 1;
+	}
+	return ret;
 }
 
 static int vidioc_streamoff(struct file *file, void *priv, enum v4l2_buf_type i)
 {
 	struct gt2005_fh  *fh = priv;
 
+    int ret = 0 ;
 	if (fh->type != V4L2_BUF_TYPE_VIDEO_CAPTURE)
 		return -EINVAL;
 	if (i != fh->type)
 		return -EINVAL;
+	ret = videobuf_streamoff(&fh->vb_vidq);
+	if(ret == 0 ){
     stop_tvin_service(0);
-	return videobuf_streamoff(&fh->vb_vidq);
+	    fh->stream_on        = 0;
+	}
+	return ret;
 }
 
 static int vidioc_s_std(struct file *file, void *priv, v4l2_std_id *i)
@@ -1359,7 +1369,7 @@ static int gt2005_open(struct file *file)
 	fh->fmt      = &formats[0];
 	fh->width    = 640;
 	fh->height   = 480;
-	
+	fh->stream_on = 0 ;
 	/* Resets frame counters */
 	dev->jiffies = jiffies;
 			
@@ -1414,6 +1424,9 @@ static int gt2005_close(struct file *file)
 
 	gt2005_stop_thread(vidq);
 	videobuf_stop(&fh->vb_vidq);
+	if(fh->stream_on){
+	    stop_tvin_service(0);     
+	}
 	videobuf_mmap_free(&fh->vb_vidq);
 
 	kfree(fh);
