@@ -140,12 +140,23 @@ static struct gt2005_fmt formats[] = {
 		.fourcc   = V4L2_PIX_FMT_RGB565X, /* rrrrrggg gggbbbbb */
 		.depth    = 16,
 	},
-#if 0
+	
+	{
+		.name     = "RGB888 (24)",
+		.fourcc   = V4L2_PIX_FMT_RGB24, /* 24  RGB-8-8-8 */
+		.depth    = 24,
+	},	
+	{
+		.name     = "BGR888 (24)",
+		.fourcc   = V4L2_PIX_FMT_BGR24, /* 24  BGR-8-8-8 */
+		.depth    = 24,
+	},		
 	{
 		.name     = "12  Y/CbCr 4:2:0",
 		.fourcc   = V4L2_PIX_FMT_NV12,
 		.depth    = 16,	
 	},
+#if 0
 	{
 		.name     = "4:2:2, packed, YUYV",
 		.fourcc   = V4L2_PIX_FMT_VYUY,
@@ -765,7 +776,7 @@ static void power_down_gt2005(struct gt2005_device *dev)
 	DMA and thread functions
    ------------------------------------------------------------------*/
 
-extern   int vm_fill_buffer(struct videobuf_buffer* vb , int format , int magic,void* vaddr);
+extern   int vm_fill_buffer(struct videobuf_buffer* vb , int v4l2_format , int magic,void* vaddr);
 #define TSTAMP_MIN_Y	24
 #define TSTAMP_MAX_Y	(TSTAMP_MIN_Y + 15)
 #define TSTAMP_INPUT_X	10
@@ -920,9 +931,8 @@ buffer_setup(struct videobuf_queue *vq, unsigned int *count, unsigned int *size)
 {
 	struct gt2005_fh  *fh = vq->priv_data;
 	struct gt2005_device *dev  = fh->dev;
-
-	*size = fh->width*fh->height*2;
-
+    int bytes = fh->fmt->depth >> 3 ;
+	*size = fh->width*fh->height*bytes;	
 	if (0 == *count)
 		*count = 32;
 
@@ -960,7 +970,7 @@ buffer_prepare(struct videobuf_queue *vq, struct videobuf_buffer *vb,
 	struct gt2005_device    *dev = fh->dev;
 	struct gt2005_buffer *buf = container_of(vb, struct gt2005_buffer, vb);
 	int rc;
-
+    int bytes = fh->fmt->depth >> 3 ;
 	dprintk(dev, 1, "%s, field=%d\n", __func__, field);
 
 	BUG_ON(NULL == fh->fmt);
@@ -969,7 +979,7 @@ buffer_prepare(struct videobuf_queue *vq, struct videobuf_buffer *vb,
 	    fh->height < 32 || fh->height > norm_maxh())
 		return -EINVAL;
 
-	buf->vb.size = fh->width*fh->height*2;
+	buf->vb.size = fh->width*fh->height*bytes;
 	if (0 != buf->vb.baddr  &&  buf->vb.bsize < buf->vb.size)
 		return -EINVAL;
 
