@@ -5,4 +5,4 @@
 
 #define VOLTAGE_DLY     0x4000
 #define MS_DLY          0x4000
-
+#define VOLTAGE_ADJ     0x05
