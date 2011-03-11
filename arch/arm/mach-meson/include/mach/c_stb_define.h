@@ -103,7 +103,7 @@
     #define PID_MATCH_LOW                0
 
 #define COMM_DESC_KEY0          (STB_CBUS_BASE + 0xf5) // 0x16f5 // Common descrambler key (key bits[63:32])
-#define COMM_DESC_KEY1          (STB_CBUS_BASE + 0xf5) // 0x16f6 // Common descrambler key (key bits[31:0])
+#define COMM_DESC_KEY1          (STB_CBUS_BASE + 0xf6) // 0x16f6 // Common descrambler key (key bits[31:0])
 #define COMM_DESC_KEY_RW        (STB_CBUS_BASE + 0xf7) // 0x16f7 // bits[3:0] point to the address to write the key {COMM_DESC_KEY1, COMM_DESC_KEY0}
                                                                  // Writing this register writes the key to RAM
 
