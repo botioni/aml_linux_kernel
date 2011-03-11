@@ -21,12 +21,7 @@
 #include <mach/memory.h>
 #include <mach/pctl.h>
 #include <mach/dmc.h>
-
-#define WFI_SUSPEND
-//#define TURN_OFF_DDR_PLL
-
-#define VOLTAGE_DLY     0x40
-#define MS_DLY          0x10
+#include "sleep.h"
 
 #define HIU_GCLK_MPEG       (0x50<<2)
 #define HHI_MPEG_CLK_CNTL   (0x5d<<2)
@@ -151,8 +146,8 @@ ENTRY(meson_cpu_suspend)
     str     r8, [r0, #PCTL_SCTL_ADDR]
 
     mov     r8, #MS_DLY
-4:  subs    r8, r8, #0x1
-    bne     4b
+9:  subs    r8, r8, #0x1
+    bne     9b
 
     /* Restore registers and return */
     ldmfd   sp!, {r0-r12, pc}
