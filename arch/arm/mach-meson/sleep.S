@@ -87,7 +87,7 @@ ENTRY(meson_cpu_suspend)
     /* lower core voltage */
     ldr     r8, [r9]
     bic     r8, r8, #0x0f
-    orr     r8, r8, #5
+    orr     r8, r8, #VOLTAGE_ADJ
     str     r8, [r9]
 
     /* System goes to sleep beyond after this instruction */
