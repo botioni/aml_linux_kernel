@@ -369,6 +369,7 @@ static int get_output_format(int v4l2_format)
         case V4L2_PIX_FMT_VYUY:
         format = GE2D_FORMAT_S16_YUV422;
         break;
+        case V4L2_PIX_FMT_BGR24:
         case V4L2_PIX_FMT_RGB24: 
         format = GE2D_FORMAT_S24_RGB ;
         break;
@@ -599,18 +600,32 @@ int vm_sw_post_process(int canvas , int addr)
         return -1;
     }
 	int poss=0,posd=0;
-	int i=0;
+	int i=0,j = 0;
 	void __iomem * buffer_v_start;
 	canvas_t canvas_work;
 	canvas_read(canvas,&canvas_work);
 //	printk("+++++start copying.....");
     buffer_v_start = ioremap_wc(canvas_work.addr,canvas_work.width*canvas_work.height);
 //	printk("=======%x\n",buffer_v_start);
-	for(i=0;i<output_para.height;i++) {
-		memcpy(addr+poss,buffer_v_start+posd,output_para.width*output_para.bytes/*vb->bytesperline*/);
-		poss+=output_para.width*output_para.bytes;
-		posd+= canvas_work.width;		
-	}
+    if(output_para.v4l2_format == V4L2_PIX_FMT_RGB24){
+        poss = posd = 0 ;
+    	for(i=0;i<output_para.height;i++) {
+    	    for(j = 0 ;j < output_para.width*3 ;j+=3){
+    	        *(unsigned char*)(addr +poss + j ) =  *(unsigned char*)(buffer_v_start +posd + j + 2);
+    	        *(unsigned char*)(addr +poss+ j+1 ) =  *(unsigned char*)(buffer_v_start +posd+ j + 1);
+    	        *(unsigned char*)(addr +poss+ j +2 ) =  *(unsigned char*)(buffer_v_start +posd + j ) ;
+    	    }
+    		poss+=output_para.width*output_para.bytes;
+    		posd+= canvas_work.width;		
+    	}        
+    }else{
+
+    	for(i=0;i<output_para.height;i++) {
+    		memcpy(addr+poss,buffer_v_start+posd,output_para.width*output_para.bytes/*vb->bytesperline*/);
+    		poss+=output_para.width*output_para.bytes;
+    		posd+= canvas_work.width;		
+    	}
+    }
 	iounmap(buffer_v_start);
 //	printk("done\n");    
     return 0;
