@@ -69,12 +69,25 @@ ENTRY(meson_cpu_suspend)
     orr     r8, r8, #(1<<13)
     str     r8, [r1, #MMC_PHY_CTRL-0x1000]
 
-    /* turn off ddr pll */
+#if 0
+    /* enable dll bypass */
+    ldr     r8, [r0, #PCTL_DLLCR9_ADDR]
+    orr     r8, r8, #(1<<31)
+    str     r8, [r0, #PCTL_DLLCR9_ADDR]
+#else
+    /* hold dll reset */
+    ldr     r8, [r0, #PCTL_PHYCR_ADDR]
+    bic     r8, r8, #(1<<6)
+    str     r8, [r0, #PCTL_PHYCR_ADDR]
+#endif
+
 #ifdef TURN_OFF_DDR_PLL
+    /* turn off ddr pll */
     ldr     r8, [r2, #HIU_DDR_PLL_CTRL]
     orr     r8, r8, #(1<<15)
     str     r8, [r2, #HIU_DDR_PLL_CTRL]
 #else
+    /* lower ddr pll */    
     ldr     r6, [r2, #HIU_DDR_PLL_CTRL]
     str     r4, [r2, #HIU_DDR_PLL_CTRL]
 #endif
@@ -122,12 +135,13 @@ ENTRY(meson_cpu_suspend)
     orr     r8, r8, #0x41
     str     r8, [r2, #HIU_GCLK_MPEG]
 
-    /* turn on ddr pll */
 #ifdef TURN_OFF_DDR_PLL
+    /* turn on ddr pll */
     ldr     r8, [r2, #HIU_DDR_PLL_CTRL]
     bic     r8, r8, #(1<<15)
     str     r8, [r2, #HIU_DDR_PLL_CTRL] 
 #else
+    /* restore ddr pll */
     str     r6, [r2, #HIU_DDR_PLL_CTRL]
 #endif
 
@@ -135,6 +149,29 @@ ENTRY(meson_cpu_suspend)
     mov     r8, #MS_DLY
 3:  subs    r8, r8, #0x1
     bne     3b
+
+#if 0
+    /* disable dll bypass */
+    ldr     r8, [r0, #PCTL_DLLCR9_ADDR]
+    bic     r8, r8, #(1<<31)
+    str     r8, [r0, #PCTL_DLLCR9_ADDR]
+
+    /* reset cmd/byte dll */
+    ldr     r8, [r0, #PCTL_PHYCR_ADDR]
+    bic     r8, r8, #(1<<6)
+    str     r8, [r0, #PCTL_PHYCR_ADDR]
+    nop
+    nop
+    nop
+    ldr     r8, [r0, #PCTL_PHYCR_ADDR]
+    orr     r8, r8, #(1<<6)
+    str     r8, [r0, #PCTL_PHYCR_ADDR]
+#else
+    /* release reset */
+    ldr     r8, [r0, #PCTL_PHYCR_ADDR]
+    orr     r8, r8, #(1<<6)
+    str     r8, [r0, #PCTL_PHYCR_ADDR]
+#endif
 
     /* DDR PHY leave power saving mode*/
     ldr     r8, [r1, #MMC_PHY_CTRL-0x1000]
