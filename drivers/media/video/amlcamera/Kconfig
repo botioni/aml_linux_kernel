@@ -2,6 +2,8 @@ config VIDEO_AMLOGIC_CAPTURE_GT2005
 	tristate "Amlogic Platform Capture Driver for GT2005"
 	depends on VIDEO_AMLOGIC_CAPTURE
 	select VIDEOBUF_VMALLOC
+	select TVIN_BT656IN
+	select TVIN_VDIN
 	default n
 	---help---
 	  Amlogic capture driver.

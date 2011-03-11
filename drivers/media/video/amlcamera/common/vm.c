@@ -621,14 +621,57 @@ int vm_sw_post_process(int canvas , int addr)
     		poss+=output_para.bytesperline;
     		posd+= canvas_work.width;		
     	}        
-    }else{
+    }else if (output_para.v4l2_format== V4L2_PIX_FMT_RGB565X){
 
     	for(i=0;i<output_para.height;i++) {
     		memcpy(addr+poss,buffer_v_start+posd,output_para.bytesperline/*vb->bytesperline*/);
     		poss+=output_para.bytesperline;
     		posd+= canvas_work.width;		
     	}
-    }
+    } else if (output_para.v4l2_format== V4L2_PIX_FMT_NV12){
+		int y_size = output_para.height*output_para.width;
+		unsigned char* dst_y1_addr = addr;
+		unsigned char* dst_uv_addr = addr+y_size;
+		unsigned char* src_addr=buffer_v_start; 
+		int i,j,k,dst_y_cnt=0,dst_uv_cnt=0;
+		
+		for(j=0;j<output_para.height;j+=2) { 
+			/* for line 2*n. */ 
+			for(i=0,k=0;i<output_para.width;i+=4) {
+				/* for Y channel. */
+				dst_y1_addr[dst_y_cnt++]  = src_addr[k+7];
+				dst_y1_addr[dst_y_cnt++]  = src_addr[k+5];
+				dst_y1_addr[dst_y_cnt++]  = src_addr[k+3];    
+				dst_y1_addr[dst_y_cnt++]  = src_addr[k+1];
+				
+				/* for UV Channel. */
+				dst_uv_addr[dst_uv_cnt++] = src_addr[k+6]>>1;
+				dst_uv_addr[dst_uv_cnt++] = src_addr[k+4]>>1;
+				dst_uv_addr[dst_uv_cnt++] = src_addr[k+2]>>1;
+				dst_uv_addr[dst_uv_cnt++] = src_addr[k+0]>>1;
+				k += 8;
+			}			
+			dst_uv_cnt-= output_para.width-1;
+			src_addr+= canvas_work.width;
+			
+			/* for line 2*n+1. */
+			for(i=0,k=0;i<output_para.width;i+=4) {  
+				/* for Y channel. */
+				dst_y1_addr[dst_y_cnt++]  = src_addr[k+7];
+				dst_y1_addr[dst_y_cnt++]  = src_addr[k+5];
+				dst_y1_addr[dst_y_cnt++]  = src_addr[k+3];
+				dst_y1_addr[dst_y_cnt++]  = src_addr[k+1];
+				
+				/* for UV Channel. */
+				dst_uv_addr[dst_uv_cnt++] += src_addr[k+6]>>1;
+				dst_uv_addr[dst_uv_cnt++] += src_addr[k+4]>>1;
+				dst_uv_addr[dst_uv_cnt++] += src_addr[k+2]>>1;
+				dst_uv_addr[dst_uv_cnt++] += src_addr[k+0]>>1;
+				k += 8;
+			}
+			src_addr+= canvas_work.width;
+		}
+	}
 	iounmap(buffer_v_start);
 //	printk("done\n");    
     return 0;
