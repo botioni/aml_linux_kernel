@@ -382,7 +382,7 @@ static int get_output_format(int v4l2_format)
 typedef struct output_para{
     int width;
     int height;
-    int bytes;
+    int bytesperline;
     int v4l2_format;
     int index;
     int v4l2_memory;
@@ -441,22 +441,22 @@ exit:
 }
 
 
-int get_canvas_index(int v4l2_format ,int* bytes)
+int get_canvas_index(int v4l2_format ,int* depth)
 {
     static int counter = 0;
     int canvas = VM_DEPTH_16_CANVAS ;
-    *bytes = 2;
+    *depth = 16;
     switch(v4l2_format){
         case V4L2_PIX_FMT_RGB565X:
         case V4L2_PIX_FMT_VYUY:
             canvas = VM_DEPTH_16_CANVAS;
-            *bytes = 2 ;
+            *depth = 16 ;
             break;
         case V4L2_PIX_FMT_YUV444:                
         case V4L2_PIX_FMT_BGR24:      
         case V4L2_PIX_FMT_RGB24:  
             canvas = VM_DEPTH_24_CANVAS;
-            *bytes = 3;
+            *depth = 24;
             break; 
         default:
         break;            
@@ -469,7 +469,7 @@ int vm_fill_buffer(struct videobuf_buffer* vb , int v4l2_format , int magic,void
     vm_contig_memory_t *mem = NULL;
     char *buf_start,*vbuf_start;
     int buf_size;
-    int bytes ;
+    int depth ;
     int ret = -1;
     get_vm_buf_info(&buf_start,&buf_size,&vbuf_start);     
     int canvas_index = -1 ;
@@ -495,12 +495,12 @@ int vm_fill_buffer(struct videobuf_buffer* vb , int v4l2_format , int magic,void
                           vb->bytesperline, vb->height,
                           CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_32X32);        
             canvas_index =  VM_DMA_CANVAS_INDEX ;
-            bytes = vb->bytesperline/vb->width;             
+            depth =  (vb->bytesperline <<3)/vb->width;                   
             break;
         case  MAGIC_SG_MEM:           
         case  MAGIC_VMAL_MEM:
             if(buf_start&&buf_size){
-                canvas_index = get_canvas_index(v4l2_format,&bytes) ;
+                canvas_index = get_canvas_index(v4l2_format,&depth) ;
             }            
             break;
         default:
@@ -509,7 +509,7 @@ int vm_fill_buffer(struct videobuf_buffer* vb , int v4l2_format , int magic,void
      }
      output_para.width = vb->width;
      output_para.height = vb->height;
-     output_para.bytes  = bytes;
+     output_para.bytesperline  = (vb->width *depth)>>3;
      output_para.index = canvas_index ;
      output_para.v4l2_format  = v4l2_format ;
      output_para.v4l2_memory   = magic ;
@@ -615,14 +615,14 @@ int vm_sw_post_process(int canvas , int addr)
     	        *(unsigned char*)(addr +poss+ j+1 ) =  *(unsigned char*)(buffer_v_start +posd+ j + 1);
     	        *(unsigned char*)(addr +poss+ j +2 ) =  *(unsigned char*)(buffer_v_start +posd + j ) ;
     	    }
-    		poss+=output_para.width*output_para.bytes;
+    		poss+=output_para.bytesperline;
     		posd+= canvas_work.width;		
     	}        
     }else{
 
     	for(i=0;i<output_para.height;i++) {
-    		memcpy(addr+poss,buffer_v_start+posd,output_para.width*output_para.bytes/*vb->bytesperline*/);
-    		poss+=output_para.width*output_para.bytes;
+    		memcpy(addr+poss,buffer_v_start+posd,output_para.bytesperline/*vb->bytesperline*/);
+    		poss+=output_para.bytesperline;
     		posd+= canvas_work.width;		
     	}
     }
