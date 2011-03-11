@@ -35,12 +35,15 @@
 #define WATCHDOG_MSECS_MIN (2*HANG_CHECK_MSECS_MIN)
 #define WATCHDOG_MSECS_MAX 3600000 /* 1 hour */
 #define WATCHDOG_MSECS_DEFAULT 900000 /* 15 mins */
+#define WATCHDOG_MSECS_JOB_RUNTIME 3000 /* 3 secs */
 
 /* max value that will be converted from jiffies to msecs and written to job->render_time_msecs */
 #define JOB_MAX_JIFFIES 100000
 
 int mali_hang_check_interval = HANG_CHECK_MSECS_DEFAULT;
-int mali_max_job_runtime = WATCHDOG_MSECS_DEFAULT;
+//int mali_max_job_runtime = WATCHDOG_MSECS_DEFAULT;
+int mali_max_job_runtime = WATCHDOG_MSECS_JOB_RUNTIME;
+
 
 /* Subsystem entrypoints: */
 static _mali_osk_errcode_t rendercore_subsystem_startup(mali_kernel_subsystem_identifier id);
