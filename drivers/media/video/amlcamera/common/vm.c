@@ -458,6 +458,9 @@ int get_canvas_index(int v4l2_format ,int* depth)
             canvas = VM_DEPTH_24_CANVAS;
             *depth = 24;
             break; 
+        case V4L2_PIX_FMT_NV12:
+            *depth = 12;
+            break;    
         default:
         break;            
     }   
