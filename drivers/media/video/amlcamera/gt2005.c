@@ -63,12 +63,12 @@ MODULE_LICENSE("GPL v2");
 static unsigned video_nr = -1;  /* videoX start number, -1 is autodetect. */
 
 static unsigned debug;
-module_param(debug, uint, 0644);
-MODULE_PARM_DESC(debug, "activates debug info");
+//module_param(debug, uint, 0644);
+//MODULE_PARM_DESC(debug, "activates debug info");
 
 static unsigned int vid_limit = 16;
-module_param(vid_limit, uint, 0644);
-MODULE_PARM_DESC(vid_limit, "capture memory limit in megabytes");
+//module_param(vid_limit, uint, 0644);
+//MODULE_PARM_DESC(vid_limit, "capture memory limit in megabytes");
 
 
 /* supported controls */
@@ -300,7 +300,7 @@ struct aml_camera_i2c_fig_s GT2005_script[] = {
 	{0x0114 , 0x06},
 
 	//Picture Effect
-	{0x0115 , 0x00},
+	{0x0115 , 0x00},//00
 
 	//PLL&Frame Rate
 /*	{0x0116 , 0x02},
@@ -320,7 +320,7 @@ struct aml_camera_i2c_fig_s GT2005_script[] = {
 	{0x011B , 0x00},
 
 	//DCLK Polarity
-	{0x011C , 0x00},
+	{0x011C , 0x00},//00
 
 	//Do not change
 	{0x011D , 0x02},
@@ -341,12 +341,12 @@ struct aml_camera_i2c_fig_s GT2005_script[] = {
 	{0x0200 , 0x10}, // 0x30 kim 
 
 	//Brightness
-	{0x0201 , 0x10}, //0x00 kim 
+	{0x0201 , 0x30}, //0x00 kim   10 
 
 	//Saturation
-	{0x0202 , 0x40}, // 0x48 kim 
+	{0x0202 , 0x48}, // 0x48   kim   40 
 
-	//Do not change
+ 	//Do not change
 	{0x0203 , 0x00},
 	{0x0204 , 0x03},
 	{0x0205 , 0x1F},
@@ -357,8 +357,8 @@ struct aml_camera_i2c_fig_s GT2005_script[] = {
 	{0x020A , 0x01},
 
 	//Sharpness
-	{0x020B , 0x48},
-	{0x020C , 0x64},
+	{0x020B , 0x68},//48
+	{0x020C , 0x84},//64
 
 	//Do not change
 	{0x020D , 0xC8},
@@ -687,7 +687,7 @@ void GT2005_init_regs(struct gt2005_device *dev)
     {
         if (GT2005_script[i].val==0xff&&GT2005_script[i].addr==0xffff) 
         {
-        	//printk("GT2005_write_regs success in initial GT2005.\n");
+        	printk("GT2005_write_regs success in initial GT2005.\n");
         	break;
         }
         if((i2c_put_byte(client,GT2005_script[i].addr, GT2005_script[i].val)) < 0)
@@ -1450,10 +1450,13 @@ static int gt2005_close(struct file *file)
 #if 1		
 	power_down_gt2005(dev);
 #endif
+	msleep(300);
+
 	if(dev->platform_dev_data.device_uninit) {
 		dev->platform_dev_data.device_uninit();
 		printk("+++found a uninit function, and run it..\n");
 	}
+	msleep(300); 
 	return 0;
 }
 
