@@ -1161,9 +1161,63 @@ static struct platform_device vm_device =
     .resource      = vm_resources,
 };
 #endif /* AMLOGIC_VIDEOIN_MANAGER */
+#if defined(CONFIG_VIDEO_AMLOGIC_CAPTURE_GC0308)
+#include <media/amlogic/aml_camera.h>
+
+static int gc0308_v4l2_init(void)
+{
+    udelay(1000);
+    WRITE_CBUS_REG(HHI_ETH_CLK_CNTL,0x30f);// 24M XTAL
+    WRITE_CBUS_REG(HHI_DEMOD_PLL_CNTL,0x232);// 24M XTAL
+	udelay(1000);
+
+    eth_set_pinmux(ETH_BANK0_GPIOC3_C12,ETH_CLK_OUT_GPIOC12_REG3_1, 1);
+   #ifdef CONFIG_SN7325
+	printk( "amlogic camera driver: init gc0308_v4l2_init. \n");
+	configIO(1, 0);
+	setIO_level(1, 0, 1);//30m poweer_disable
+		  
+	//setIO_level(1, 0, 2);//200m poweer_disable
+	setIO_level(1, 0, 0);//30m pwd enable
+	//setIO_level(1, 0, 6);//200m pwd low
+	configIO(0, 0);
+	setIO_level(0, 0, 3);//30m reset low
+	//setIO_level(0, 0, 2);//200m reset low
+	configIO(1, 0);
+	msleep(300);
+	setIO_level(1, 1, 1);//30m poweer_enable
+	msleep(300);
+	configIO(0, 0);
+	setIO_level(0, 1, 3);//30m reset high
+	msleep(300);
+		  
+	#endif
+
+}
+static int gc0308_v4l2_uninit(void)
+{
+   #ifdef CONFIG_SN7325
+	printk( "amlogic camera driver: uninit gc0308_v4l2_uninit. \n");
+	configIO(1, 0);
+	setIO_level(1, 0, 1);//30m poweer_disable
+	setIO_level(1, 1, 0);//30m pwd enable
+	configIO(0, 0);
+	setIO_level(0, 0, 3);//30m reset low
+	msleep(300); 
+    #endif
+
+}
+
+aml_plat_cam_data_t video_gc0308_data = {
+	.name="video-gc0308",
+	.video_nr=1,
+	.device_init= gc0308_v4l2_init,
+	.device_uninit=gc0308_v4l2_uninit,
+};
+#endif /* VIDEO_AMLOGIC_CAPTURE_GT2005 */
 
 #if defined(CONFIG_VIDEO_AMLOGIC_CAPTURE_GT2005)
-#include <media/amlogic/aml_camera.h>
+//#include <media/amlogic/aml_camera.h>
 
 static int gt2005_v4l2_init(void)
 {
@@ -1176,12 +1230,12 @@ static int gt2005_v4l2_init(void)
    #ifdef CONFIG_SN7325
 	printk( "amlogic camera driver: init CONFIG_SN7325. \n");
 	configIO(1, 0);
-	setIO_level(1, 0, 1);//30m poweer_disable
+	//setIO_level(1, 0, 1);//30m poweer_disable
 	setIO_level(1, 0, 2);//200m poweer_disable
-	setIO_level(1, 1, 0);//30m pwd disable
+	//setIO_level(1, 1, 0);//30m pwd disable
 	setIO_level(1, 0, 6);//200m pwd low
 	configIO(0, 0);
-	setIO_level(0, 0, 3);//30m reset low
+	//setIO_level(0, 0, 3);//30m reset low
 	setIO_level(0, 0, 2);//200m reset low
 	configIO(1, 0);
 	msleep(300);
@@ -1194,14 +1248,30 @@ static int gt2005_v4l2_init(void)
 	configIO(1, 0);
 	setIO_level(1, 1, 6);//200m pwd high
 	//configIO(1, 0);
+	msleep(300);
     
     #endif
 
 }
+static int gt2005_v4l2_uninit(void)
+{
+   #ifdef CONFIG_SN7325
+	printk( "amlogic camera driver: uninit gt2005_v4l2_uninit. \n");
+	configIO(1, 0);
+	//setIO_level(1, 0, 2);//200m poweer_disable
+	setIO_level(1, 0, 6);//200m pwd low
+	//configIO(0, 0);
+	//setIO_level(0, 0, 2);//200m reset low
+	msleep(300); 
+    #endif
+
+}
+
 aml_plat_cam_data_t video_gt2005_data = {
 	.name="video-gt2005",
-	.video_nr=-1,
+	.video_nr=0,
 	.device_init= gt2005_v4l2_init,
+	.device_uninit=gt2005_v4l2_uninit,
 };
 #endif /* VIDEO_AMLOGIC_CAPTURE_GT2005 */
 
@@ -2360,6 +2430,14 @@ static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
     	.platform_data = (void *)&video_gt2005_data
     },
 #endif
+#if CONFIG_VIDEO_AMLOGIC_CAPTURE_GC0308
+    {
+    	/*gt2005 i2c address is 0x78/0x79*/
+    	I2C_BOARD_INFO("gc0308_i2c",  0x42 >> 1 ),
+    	.platform_data = (void *)&video_gc0308_data
+    },
+#endif
+
 #ifdef CONFIG_SND_AML_M1_MID_WM8900
     {
         I2C_BOARD_INFO("wm8900", 0x1A),
