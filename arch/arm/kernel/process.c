@@ -88,12 +88,15 @@ void arm_machine_restart(char mode, const char *cmd)
     int sram_vaddr;
     
     sram_vaddr = ioremap(0xC9001E00, 4); 
-    *(int*)sram_vaddr = (int)0x06060606;
+    *(u32*)sram_vaddr = 0x06060606;
     
     if(cmd){   
+        if(strcmp(cmd, "charging") == 0){
+            *(u32*)sram_vaddr = 0;
+        }
         if(strcmp(cmd, "recovery") == 0){
-            *(int*)sram_vaddr = (int)0x05050505;
-        }  
+            *(u32*)sram_vaddr = (int)0x05050505;
+        }
     }
     
     flush_cache_vmap(sram_vaddr,sram_vaddr + 4);    
