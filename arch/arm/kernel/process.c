@@ -85,22 +85,41 @@ __setup("hlt", hlt_setup);
 
 void arm_machine_restart(char mode, const char *cmd)
 {
-    int sram_vaddr;
+	volatile u32* sram_vaddr = (u32*)ioremap(0xC9001E00, 4); 
+	*sram_vaddr = AMLOGIC_NORMAL_BOOT;
     
-    sram_vaddr = ioremap(0xC9001E00, 4); 
-    *(u32*)sram_vaddr = 0x06060606;
+	if(cmd){   
+		if(strcmp(cmd, "normal_reboot") == 0){
+			*sram_vaddr = AMLOGIC_NORMAL_BOOT;
+		}
+		if(strcmp(cmd, "factory_reset_reboot") == 0){
+			*sram_vaddr = AMLOGIC_FACTORY_RESET_REBOOT;
+		}
+		if(strcmp(cmd, "update_reboot") == 0){
+			*sram_vaddr = AMLOGIC_UPDATE_REBOOT;
+		}
+		if(strcmp(cmd, "charging_reboot") == 0){
+			*sram_vaddr = AMLOGIC_CHARGING_REBOOT;
+		}
+		if(strcmp(cmd, "crash_reboot") == 0){
+			*sram_vaddr = AMLOGIC_CRASH_REBOOT;
+		}
+		if(strcmp(cmd, "factory_testl_reboot") == 0){
+			*sram_vaddr = AMLOGIC_FACTORY_TEST_REBOOT;
+		}
+		if(strcmp(cmd, "system_switch_reboot") == 0){
+			*sram_vaddr = AMLOGIC_SYSTEM_SWITCH_REBOOT;
+		}
+		if(strcmp(cmd, "safe_reboot") == 0){
+			*sram_vaddr = AMLOGIC_SAFE_REBOOT;
+		}
+		if(strcmp(cmd, "lock_reboot") == 0){
+			*sram_vaddr = AMLOGIC_LOCK_REBOOT;
+		}
+	}
     
-    if(cmd){   
-        if(strcmp(cmd, "charging") == 0){
-            *(u32*)sram_vaddr = 0;
-        }
-        if(strcmp(cmd, "recovery") == 0){
-            *(u32*)sram_vaddr = (int)0x05050505;
-        }
-    }
-    
-    flush_cache_vmap(sram_vaddr,sram_vaddr + 4);    
-    mdelay(1000); 
+	flush_cache_vmap(sram_vaddr,sram_vaddr + 4);    
+ 	mdelay(1000); 
          
 	/*
 	 * Clean and disable cache, and turn off interrupts
