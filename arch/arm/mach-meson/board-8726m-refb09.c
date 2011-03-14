@@ -93,7 +93,9 @@
 #ifdef CONFIG_AMLOGIC_CAMERA_ENABLE
 #include <linux/camera/amlogic_camera_common.h>
 #endif
-
+#ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE
+#include <media/amlogic/aml_camera.h>
+#endif
 
 #if defined(CONFIG_JPEGLOGO)
 static struct resource jpeglogo_resources[] = {
@@ -1162,7 +1164,6 @@ static struct platform_device vm_device =
 };
 #endif /* AMLOGIC_VIDEOIN_MANAGER */
 #if defined(CONFIG_VIDEO_AMLOGIC_CAPTURE_GC0308)
-#include <media/amlogic/aml_camera.h>
 
 static int gc0308_v4l2_init(void)
 {
