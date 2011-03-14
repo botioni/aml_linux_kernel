@@ -54,7 +54,7 @@ void vf_light_unreg_provider(void);
 unsigned int get_post_canvas(void);
 unsigned int vf_keep_current(void);
 vframe_receiver_op_t* vf_vm_reg_provider(const vframe_provider_t *p);
-vframe_receiver_op_t* vf_vm_unreg_provider();
+vframe_receiver_op_t* vf_vm_unreg_provider(void);
 
 #endif /* VFRAME_PROVIDER_H */
 
