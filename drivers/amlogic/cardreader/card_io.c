@@ -39,7 +39,7 @@ void sd_sdio_enable(SDIO_Pad_Type_t io_pad_type)
 			break;
 
 		case SDIO_GPIOA_9_14:
-			CLEAR_CBUS_REG_MASK(CARD_PIN_MUX_2, ((0xF<<16) | (1<<8) | (1<<12)));
+			//CLEAR_CBUS_REG_MASK(CARD_PIN_MUX_2, ((0xF<<16) | (1<<8) | (1<<12)));
 			SET_CBUS_REG_MASK(CARD_PIN_MUX_0, (0x3F<<23));
 			SET_CBUS_REG_MASK(SDIO_MULT_CONFIG, (0));
 			break;
@@ -220,6 +220,7 @@ unsigned sdio_check_interrupt(void)
 		status_irq_reg->cmd_int = 1;
 		status_irq_reg->arc_timing_out_int_en = 0;	
 		status_irq_reg->timing_out_int = 1;	
+		status_irq_reg->timing_out_count = 0;
 		WRITE_CBUS_REG(SDIO_STATUS_IRQ, status_irq);	
 		return SDIO_CMD_INT;	
 	}
@@ -230,6 +231,8 @@ unsigned sdio_check_interrupt(void)
 		return SDIO_TIMEOUT_INT;	
 	}
 	else if (status_irq_reg->if_int) {	
+		/*close IF INT before clear if int, avoid IF INT twice*/
+		sdio_close_host_interrupt(SDIO_IF_INT);
 		status_irq_reg->if_int = 1;		
 		WRITE_CBUS_REG(SDIO_STATUS_IRQ, status_irq);		
 		return SDIO_IF_INT;		
@@ -239,6 +242,17 @@ unsigned sdio_check_interrupt(void)
 	else	
 		return SDIO_NO_INT;
 }
+
+void sdio_if_int_handler(struct card_host *host) 
+{
+	sdio_irq_handled = 0;
+	if (host->caps & CARD_CAP_SDIO_IRQ){
+		//sdio_close_host_interrupt(SDIO_IF_INT);
+		if(host->sdio_irq_thread)
+			wake_up_process(host->sdio_irq_thread);
+	}
+	return;
+} 
 
 void sdio_cmd_int_handle(struct memory_card *card) 
 {
@@ -251,8 +265,8 @@ void sdio_timeout_int_handle(struct memory_card *card)
 {
 	card->card_io_init(card);
 	card->card_detector(card);
-	if(sdio_timeout_int_num && ((sdio_timeout_int_num%10000)==0))
-		printk("[sdio_timeout_int_handle] sdio_timeout_int_num = %d\n", sdio_timeout_int_num);
+//	if(sdio_timeout_int_num && ((sdio_timeout_int_num%10000)==0))
+//		printk("[sdio_timeout_int_handle] sdio_timeout_int_num = %d\n", sdio_timeout_int_num);
 	if ((card->card_status == CARD_REMOVED) || (++sdio_timeout_int_num >= sdio_timeout_int_times)) {
 		sdio_close_host_interrupt(SDIO_TIMEOUT_INT);
 		sdio_timeout_int_num = 0;

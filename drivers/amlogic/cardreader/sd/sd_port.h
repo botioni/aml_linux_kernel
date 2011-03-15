@@ -225,7 +225,8 @@ extern int i_GPIO_timer;
 #define sd_set_cmd_output()				{(*(volatile unsigned int *)SD_CMD_OUTPUT_EN_REG) &= (~SD_CMD_OUTPUT_EN_MASK);}
 #define sd_set_cmd_value(data)			{if(data){(*(volatile unsigned int *)SD_CMD_OUTPUT_REG) |= SD_CMD_OUTPUT_MASK;}else{(*(volatile unsigned int *)SD_CMD_OUTPUT_REG) &= (~SD_CMD_OUTPUT_MASK);}}
 #define sd_get_cmd_value()				((*(volatile unsigned int *)SD_CMD_INPUT_REG & SD_CMD_INPUT_MASK)?1:0)
-    
+
+#define sd_set_clk_input()				{(*(volatile unsigned int *)SD_CLK_OUTPUT_EN_REG) |= SD_CLK_OUTPUT_EN_MASK; for(i_GPIO_timer=0;i_GPIO_timer<15;i_GPIO_timer++);}    
 #define sd_set_clk_output()    			{(*(volatile unsigned int *)SD_CLK_OUTPUT_EN_REG) &= (~SD_CLK_OUTPUT_EN_MASK);}
 #define sd_set_clk_high()				{(*(volatile unsigned int *)SD_CLK_OUTPUT_REG) |= SD_CLK_OUTPUT_MASK;}
 #define sd_set_clk_low()				{(*(volatile unsigned int *)SD_CLK_OUTPUT_REG) &= (~SD_CLK_OUTPUT_MASK);}

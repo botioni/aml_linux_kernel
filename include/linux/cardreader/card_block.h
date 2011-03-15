@@ -22,6 +22,24 @@ typedef unsigned int card_pm_flag_t;
 struct memory_card;
 struct card_blk_request;
 
+struct sdio_cccr {
+	unsigned int		sdio_vsn;
+	unsigned int		sd_vsn;
+	unsigned int		multi_block:1,
+				low_speed:1,
+				wide_bus:1,
+				high_power:1,
+				high_speed:1,
+				disable_cd:1;
+};
+
+struct sdio_cis {
+	unsigned short		vendor;
+	unsigned short		device;
+	unsigned short		blksize;
+	unsigned int		max_dtr;
+};
+
 struct card_driver {
 	struct device_driver drv;
 	int (*probe)(struct memory_card *);
@@ -39,13 +57,17 @@ struct memory_card {
 	u32					raw_cid[4]; /*card raw cid */
 	CARD_TYPE_t			card_type;	/* card type*/
 	char				name[CARD_NAME_LEN];
-
 	unsigned int		quirks; 	/* card quirks */
 #define MMC_QUIRK_LENIENT_FN0	(1<<0)		/* allow SDIO FN0 writes outside of the VS CCCR range */
 #define MMC_QUIRK_BLKSZ_FOR_BYTE_MODE (1<<1)	/* use func->cur_blksize */
 
 	unsigned int		sdio_funcs;	/* number of SDIO functions */
 	struct sdio_func	*sdio_func[SDIO_MAX_FUNCS]; /* SDIO functions (devices) */
+	struct sdio_cccr	cccr;		/* common card info */
+	struct sdio_cis		cis;		/* common tuple info */
+	unsigned		num_info;	/* number of info strings */
+	const char		**info;		/* info strings */
+	struct sdio_func_tuple	*tuples;	/* unknown common tuples */
 
 	struct aml_card_info *card_plat_info;
 	void				 *card_info;
@@ -198,6 +220,8 @@ static inline void *card_priv(struct card_host *host)
 {
 	return (void *)host->private;
 }
+
+extern unsigned char sdio_irq_handled;
 
 extern int __card_claim_host(struct card_host *host, struct memory_card *card);
 

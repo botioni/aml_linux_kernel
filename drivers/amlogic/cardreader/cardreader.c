@@ -56,7 +56,7 @@ struct amlogic_card_host
 };
 
 //wait_queue_head_t     sdio_wait_event;
-
+extern void sdio_if_int_handler(struct card_host *host);
 extern void sdio_cmd_int_handle(struct memory_card *card);
 extern void sdio_timeout_int_handle(struct memory_card *card);
 
@@ -65,7 +65,7 @@ void card_detect_change(struct card_host *host, unsigned long delay);
 struct card_host *card_alloc_host(int extra, struct device *dev);
 static void card_setup(struct card_host *host);
 static void amlogic_card_request(struct card_host *host, struct card_blk_request *brq);
-static struct memory_card *card_find_card(struct card_host *host, u8 card_type);
+struct memory_card *card_find_card(struct card_host *host, u8 card_type);
 
 static struct memory_card *card_alloc_card(struct card_host *host) 
 {
@@ -212,7 +212,7 @@ static irqreturn_t sdio_interrupt_monitor(int irq, void *dev_id, struct pt_regs 
 	sdio_interrupt_resource = sdio_check_interrupt();
 	switch (sdio_interrupt_resource) {
 		case SDIO_IF_INT:
-		    //sdio_if_int_handler();
+		    sdio_if_int_handler(host);
 		    break;
 
 		case SDIO_CMD_INT:
@@ -257,6 +257,9 @@ static int card_reader_init(struct card_host *host)
 		return -1;
 	}
 
+#ifdef CONFIG_SDIO_HARD_IRQ
+	host->caps |= CARD_CAP_SDIO_IRQ;
+#endif
 	return 0;
 } 
 
@@ -417,13 +420,15 @@ int __card_claim_host(struct card_host *host, struct memory_card *card)
 EXPORT_SYMBOL(__card_claim_host);
 
 #ifdef CONFIG_SDIO
-
+int sdio_read_func_cis(struct sdio_func *func);
 static int card_sdio_init_func(struct memory_card *card, unsigned int fn)
 {
-	//int ret;
+	int ret = 0;
 	struct sdio_func *func;
 
 	BUG_ON(fn > SDIO_MAX_FUNCS);
+
+	card_claim_host(card->host);
 
 	func = sdio_alloc_func(card);
 	if (IS_ERR(func))
@@ -431,9 +436,20 @@ static int card_sdio_init_func(struct memory_card *card, unsigned int fn)
 
 	func->num = fn;
 
+	ret = sdio_read_func_cis(func);
+	if (ret)
+		goto fail;
+
+	card_release_host(card->host);
+
 	card->sdio_func[fn - 1] = func;
 
 	return 0;
+
+fail:
+	card_release_host(card->host);
+	sdio_remove_func(func);
+	return ret;
 }
 
 static int card_sdio_init_card(struct memory_card *card)
@@ -497,7 +513,7 @@ static void card_sdio_remove(struct card_host *host)
 /*
  * Locate a Memory card on this Memory host given a raw CID.
  */ 
-static struct memory_card *card_find_card(struct card_host *host, u8 card_type) 
+struct memory_card *card_find_card(struct card_host *host, u8 card_type) 
 {
 	struct memory_card *card;
 	

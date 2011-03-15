@@ -22,7 +22,6 @@
 static int sdio_io_rw_direct_host(struct card_host *host, int write, unsigned fn,
 	unsigned addr, u8 in, u8 *out)
 {
-	struct memory_card *card;
 	struct card_blk_request brq;
 
 	BUG_ON(!host);
@@ -32,8 +31,6 @@ static int sdio_io_rw_direct_host(struct card_host *host, int write, unsigned fn
 	if (addr & ~0x1FFFF)
 		return -EINVAL;
 
-	card = host->card;
-	host->card_busy = card;
 	if (write)
 		brq.crq.cmd = WRITE;
 	else
@@ -58,6 +55,7 @@ int sdio_io_rw_direct(struct memory_card *card, int write, unsigned fn,
 	unsigned addr, u8 in, u8 *out)
 {
 	BUG_ON(!card);
+	card->host->card_busy = card;
 	return sdio_io_rw_direct_host(card->host, write, fn, addr, in, out);
 }
 
@@ -105,7 +103,7 @@ int sdio_reset(struct card_host *host)
 	u8 abort;
 
 	/* SDIO Simplified Specification V2.0, 4.4 Reset for SDIO */
-
+	host->card_busy = host->card;
 	ret = sdio_io_rw_direct_host(host, 0, 0, SDIO_CCCR_ABORT, 0, &abort);
 	if (ret)
 		abort = 0x08;
