@@ -10,7 +10,9 @@
 #include <linux/delay.h>
 #include <linux/i2c.h>
 #include <linux/capts.h>
-
+#ifdef CONFIG_SN7325
+#include <linux/sn7325.h>
+#endif
 #define DRIVER_NAME         "sis92xx"
 #define DRIVER_VERSION   "1"
 
@@ -241,6 +243,11 @@ int sis92xx_get_event (struct device *dev, struct ts_event *event)
 
 static int sis92xx_probe(struct i2c_client *client, const struct i2c_device_id *id)
 {
+        #ifdef CONFIG_SN7325
+        printk("power on 7325 1\n");
+        configIO(1, 0);
+        setIO_level(1, 1, 1);//PP1
+        #endif
     return capts_probe(&client->dev, &sis92xx_chip);
 }
 
