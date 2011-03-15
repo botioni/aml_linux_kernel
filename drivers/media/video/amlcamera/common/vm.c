@@ -43,6 +43,7 @@
 #include <media/videobuf-vmalloc.h>
 #include <media/videobuf-dma-sg.h>
 #include <linux/tvin/tvin.h>
+#include <linux/ctype.h>
 //#define DEBUG
 #define MAGIC_SG_MEM 0x17890714
 #define MAGIC_DC_MEM 0x0733ac61
@@ -651,7 +652,7 @@ int vm_sw_post_process(int canvas , int addr)
 				dst_uv_addr[dst_uv_cnt++] = src_addr[k+0]>>1;
 				k += 8;
 			}			
-			dst_uv_cnt-= output_para.width-1;
+			dst_uv_cnt-= output_para.width;
 			src_addr+= canvas_work.width;
 			
 			/* for line 2*n+1. */
@@ -882,11 +883,98 @@ static ssize_t set_test(struct device *dev,
 	return ret;
 }
 
+static int attr_dat0;
+static ssize_t read_attr0(struct class *cla,struct class_attribute *attr,char *buf)
+{
+    return snprintf(buf,80,"%d",attr_dat0);
+}
+
+static ssize_t write_attr0(struct device *dev,
+					struct device_attribute *attr,
+					const char *buf, size_t count)
+{
+	//struct display_device *dsp = dev_get_drvdata(dev);
+	ssize_t ret = -EINVAL, size;
+	int input_data;
+	char *endp;
+	input_data = simple_strtoul(buf, &endp, 0);
+	size = endp - buf;
+	if (isspace(*endp))
+		size++;
+	if (size != count)
+		return ret;
+    attr_dat0= input_data;
+    ret=count;
+	return ret;
+}
+
+static int attr_dat1;
+static ssize_t read_attr1(struct class *cla,struct class_attribute *attr,char *buf)
+{
+    return snprintf(buf,80,"%d",attr_dat1);
+}
+
+static ssize_t write_attr1(struct device *dev,
+					struct device_attribute *attr,
+					const char *buf, size_t count)
+{
+	//struct display_device *dsp = dev_get_drvdata(dev);
+	ssize_t ret = -EINVAL, size;
+	int input_data;
+	char *endp;
+	input_data = simple_strtoul(buf, &endp, 0);
+	size = endp - buf;
+	if (isspace(*endp))
+		size++;
+	if (size != count)
+		return ret;
+    attr_dat1= input_data;
+    ret=count;
+	return ret;
+}
+
+static int attr_dat2;
+static ssize_t read_attr2(struct class *cla,struct class_attribute *attr,char *buf)
+{
+    return snprintf(buf,80,"%d",attr_dat1);
+}
+
+static ssize_t write_attr2(struct device *dev,
+					struct device_attribute *attr,
+					const char *buf, size_t count)
+{
+	//struct display_device *dsp = dev_get_drvdata(dev);
+	ssize_t ret = -EINVAL, size;
+	int input_data;
+	char *endp;
+	input_data = simple_strtoul(buf, &endp, 0);
+	size = endp - buf;
+	if (isspace(*endp))
+		size++;
+	if (size != count)
+		return ret;
+    attr_dat2= input_data;
+    ret=count;
+	return ret;
+}
+
 static struct class_attribute vm_class_attrs[] = {
     __ATTR(info,
            S_IRUGO | S_IWUSR,
            show_vm_info,
-           set_test),
+           NULL), 
+    __ATTR(attr0,
+           S_IRUGO | S_IWUSR,
+           read_attr0,
+           write_attr0),
+    __ATTR(attr1,
+           S_IRUGO | S_IWUSR,
+           read_attr1,
+           write_attr1),
+    __ATTR(attr2,
+           S_IRUGO | S_IWUSR,
+           read_attr2,
+           write_attr2),
     __ATTR_NULL
 };
 
