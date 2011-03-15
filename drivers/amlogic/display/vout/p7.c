@@ -44,10 +44,17 @@
 #define MAX_HEIGHT      660
 #define VIDEO_ON_LINE   22
 
+#define BL_ON            1
+#define BL_OFF           0
+
 static void t13_power_on(void);
 static void t13_power_off(void);
 void power_on_backlight(void);
 void power_off_backlight(void);
+
+#ifdef CONFIG_AM_LOGO
+static int bl_state = BL_ON;
+#endif
 
 static tcon_conf_t tcon_config =
 {
@@ -151,6 +158,12 @@ static void t13_setup_gama_table(tcon_conf_t *pConf)
 
 void power_on_backlight(void)
 {
+	  #ifdef CONFIG_AM_LOGO    
+    if(bl_state == BL_ON)
+        return;
+    bl_state = BL_ON;  
+		#endif  
+	
     //BL_PWM -> GPIOA_7: 1
     msleep(200);
 #if 0
@@ -169,6 +182,11 @@ void power_on_backlight(void)
 
 void power_off_backlight(void)
 {
+	  #ifdef CONFIG_AM_LOGO    
+    if(bl_state == BL_OFF)
+        return;
+    bl_state = BL_OFF;
+		#endif    
     //BL_PWM -> GPIOD_18: 0
 #if 0
     set_gpio_val(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), 0);
@@ -258,6 +276,20 @@ static void t13_io_init(void)
     set_tcon_pinmux();
     power_on_lcd();
 }
+
+#ifdef CONFIG_AM_LOGO
+void Power_on_bl(void)
+{
+    bl_state = BL_OFF; 
+    
+    //set a init bl level
+    WRITE_CBUS_REG_BITS(PWM_PWM_A,34780,0,16);  //low
+    WRITE_CBUS_REG_BITS(PWM_PWM_A,25220,16,16);  //hi  
+    
+    power_on_backlight();    
+}
+EXPORT_SYMBOL(Power_on_bl);
+#endif
 
 static struct platform_device tcon_dev = {
     .name = "tcon-dev",

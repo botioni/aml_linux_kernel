@@ -2258,6 +2258,7 @@ static void aml_8726m_set_bl_level(unsigned level)
 
 static void aml_8726m_power_on_bl(void)
 {
+#if 0
     msleep(100);
     SET_CBUS_REG_MASK(PWM_MISC_REG_AB, (1 << 0));
     msleep(100);
@@ -2271,10 +2272,14 @@ static void aml_8726m_power_on_bl(void)
 set_gpio_val(GPIOD_bank_bit2_24(18), GPIOD_bit_bit2_24(18), 1);
 set_gpio_mode(GPIOD_bank_bit2_24(18), GPIOD_bit_bit2_24(18), GPIO_OUTPUT_MODE);
 #endif
+#else
+printk("backlight on\n");
+#endif
 }
 
 static void aml_8726m_power_off_bl(void)
 {
+#if 0 
     //BL_PWM -> GPIOD_18: 0
 #if 0
 	set_gpio_val(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), 0);
@@ -2288,6 +2293,9 @@ static void aml_8726m_power_off_bl(void)
     CLEAR_CBUS_REG_MASK(PWM_MISC_REG_AB, (1 << 0));
     set_gpio_val(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), 0);
     set_gpio_mode(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), GPIO_OUTPUT_MODE);
+#else
+    printk("backlight off\n");
+#endif
 }
 
 struct aml_bl_platform_data aml_bl_platform =
