@@ -761,13 +761,25 @@ static void meson_pm_suspend(void)
     printk(KERN_INFO "sleep ...\n");
 
     mpeg_clk_backup = READ_CBUS_REG(HHI_MPEG_CLK_CNTL);	// save clk81 ctrl
+
+#ifdef SYSTEM_16K
+    if (READ_CBUS_REG(HHI_MPEG_CLK_CNTL)&(1<<8))
+        CLEAR_CBUS_REG_MASK(HHI_MPEG_CLK_CNTL, (1<<8)); // clk81 = xtal
+    SET_CBUS_REG_MASK(HHI_MPEG_CLK_CNTL, (1<<9));       // xtal_rtc = rtc
+    WRITE_CBUS_REG_BITS(HHI_MPEG_CLK_CNTL, 0x1, 0, 6);	// devider = 2
+    WRITE_CBUS_REG_BITS(HHI_MPEG_CLK_CNTL, 0, 12, 2);	// clk81 src -> xtal_rtc
+    SET_CBUS_REG_MASK(HHI_MPEG_CLK_CNTL, (1<<8));		// clk81 = xtal_rtc / devider
+#else
     if (READ_CBUS_REG(HHI_MPEG_CLK_CNTL)&(1<<8))
         CLEAR_CBUS_REG_MASK(HHI_MPEG_CLK_CNTL, (1<<8)); // clk81 = xtal
     WRITE_CBUS_REG_BITS(HHI_MPEG_CLK_CNTL, 0x7f, 0, 6);	// devider = 128
     WRITE_CBUS_REG_BITS(HHI_MPEG_CLK_CNTL, 0, 12, 2);	// clk81 src -> xtal_rtc
     SET_CBUS_REG_MASK(HHI_MPEG_CLK_CNTL, (1<<8));		// clk81 = xtal_rtc / devider
-    CLEAR_CBUS_REG_MASK(HHI_A9_CLK_CNTL, (1<<7));		// clka9 = rtc / 2
+#endif
+    CLEAR_CBUS_REG_MASK(HHI_A9_CLK_CNTL, (1<<7));		// clka9 = xtal_rtc / 2
+#ifdef SYSTEM_16K
 	SET_CBUS_REG_MASK(PREG_CTLREG0_ADDR, 1);
+#endif
 	auto_clk_gating_setup(	2,						    // select 100uS timebase							
 							MODE_IRQ_ONLY_WAKE, 	    // Set interrupt wakeup only
 							0,						    // don't clear the FIQ global mask
@@ -783,9 +795,14 @@ static void meson_pm_suspend(void)
 
     CLEAR_CBUS_REG_MASK(HHI_SYS_PLL_CNTL, (1<<15));		// turn on sys pll
     udelay(10);
+#ifdef SYSTEM_16K
 	CLEAR_CBUS_REG_MASK(PREG_CTLREG0_ADDR, 1);
+#endif
 	SET_CBUS_REG_MASK(HHI_A9_CLK_CNTL, (1<<7));			// clka9 = sys pll / devider
 	CLEAR_CBUS_REG_MASK(HHI_MPEG_CLK_CNTL, (1<<8));		// clk81 = xtal
+#ifdef SYSTEM_16K
+	CLEAR_CBUS_REG_MASK(HHI_MPEG_CLK_CNTL, (1<<9));     // xtal_rtc = xtal
+#endif
     WRITE_CBUS_REG(HHI_MPEG_CLK_CNTL, mpeg_clk_backup);	// restore clk81 ctrl
 
     printk(KERN_INFO "... wake up\n");

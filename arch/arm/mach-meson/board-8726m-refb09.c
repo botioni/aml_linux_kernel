@@ -1517,6 +1517,7 @@ static struct meson_pm_config aml_pm_pdata = {
     .sleepcount = 128,
     .set_vccx2 = set_vccx2,
     .set_exgpio_early_suspend = set_exgpio_on_early_suspend,
+    .core_voltage_adjust = 5,
 };
 
 static struct platform_device aml_pm_device = {

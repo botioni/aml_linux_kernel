@@ -118,6 +118,33 @@ static struct v4l2_queryctrl gc0308_qctrl[] = {
 		.step          = 0x1,
 		.default_value = 0,
 		.flags         = V4L2_CTRL_FLAG_SLIDER,
+	},{
+		.id            = V4L2_CID_DO_WHITE_BALANCE,
+		.type          = V4L2_CTRL_TYPE_INTEGER,
+		.name          = "white balance",
+		.minimum       = 0,
+		.maximum       = 6,
+		.step          = 0x1,
+		.default_value = 0,
+		.flags         = V4L2_CTRL_FLAG_SLIDER,
+	},{
+		.id            = V4L2_CID_EXPOSURE,
+		.type          = V4L2_CTRL_TYPE_INTEGER,
+		.name          = "exposure",
+		.minimum       = 0,
+		.maximum       = 8,
+		.step          = 0x1,
+		.default_value = 4,
+		.flags         = V4L2_CTRL_FLAG_SLIDER,
+	},{
+		.id            = V4L2_CID_COLORFX,
+		.type          = V4L2_CTRL_TYPE_INTEGER,
+		.name          = "effect",
+		.minimum       = 0,
+		.maximum       = 6,
+		.step          = 0x1,
+		.default_value = 0,
+		.flags         = V4L2_CTRL_FLAG_SLIDER,
 	}
 };
 
@@ -661,6 +688,512 @@ void GC0308_init_regs(struct gc0308_device *dev)
 */
 #endif
 
+/*************************************************************************
+* FUNCTION
+*	set_GC0308_param_wb
+*
+* DESCRIPTION
+*	GC0308 wb setting.
+*
+* PARAMETERS
+*	none
+*
+* RETURNS
+*	None
+*
+* GLOBALS AFFECTED  白平衡参数
+*
+*************************************************************************/
+void set_GC0308_param_wb(struct gc0308_device *dev,enum  camera_wb_flip_e para)
+{
+//	kal_uint16 rgain=0x80, ggain=0x80, bgain=0x80;
+	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
+
+	unsigned char buf[4];
+
+	unsigned char  temp_reg;	
+	//temp_reg=gc0308_read_byte(0x22);
+	buf[0]=0x22;
+	temp_reg=i2c_get_byte_add8(client,buf);
+
+
+	switch (para)
+	{
+		case CAM_WB_AUTO:
+			buf[0]=0x5a;
+			buf[1]=0x56;
+			i2c_put_byte_add8(client,buf,2);
+			buf[0]=0x5b;
+			buf[1]=0x40;
+			i2c_put_byte_add8(client,buf,2);
+			buf[0]=0x5c;
+			buf[1]=0x4a;
+			i2c_put_byte_add8(client,buf,2);
+			buf[0]=0x22;
+			buf[1]=temp_reg|0x02;
+			i2c_put_byte_add8(client,buf,2);
+			break;	
+	  
+		case CAM_WB_CLOUD:
+			buf[0]=0x22;
+			buf[1]=temp_reg&~0x02;
+			i2c_put_byte_add8(client,buf,2);
+			buf[0]=0x5a;
+			buf[1]=0x8c;
+			i2c_put_byte_add8(client,buf,2);
+			buf[0]=0x5b;
+			buf[1]=0x50;
+			i2c_put_byte_add8(client,buf,2);
+			buf[0]=0x5c;
+			buf[1]=0x40;
+			i2c_put_byte_add8(client,buf,2);
+			break;		
+
+		case CAM_WB_DAYLIGHT:   // tai yang guang
+		    buf[0]=0x22;
+			buf[1]=temp_reg&~0x02;
+			i2c_put_byte_add8(client,buf,2);
+			buf[0]=0x5a;
+			buf[1]=0x74;
+			i2c_put_byte_add8(client,buf,2);
+			buf[0]=0x5b;
+			buf[1]=0x52;
+			i2c_put_byte_add8(client,buf,2);
+			buf[0]=0x5c;
+			buf[1]=0x40;
+			i2c_put_byte_add8(client,buf,2);		
+			break;		
+
+		case CAM_WB_INCANDESCENCE:   // bai re guang
+		    buf[0]=0x22;
+			buf[1]=temp_reg&~0x02;
+			i2c_put_byte_add8(client,buf,2);
+			buf[0]=0x5a;
+			buf[1]=0x48;
+			i2c_put_byte_add8(client,buf,2);
+			buf[0]=0x5b;
+			buf[1]=0x40;
+			i2c_put_byte_add8(client,buf,2);
+			buf[0]=0x5c;
+			buf[1]=0x5c;
+			i2c_put_byte_add8(client,buf,2);
+			break;		
+
+		case CAM_WB_FLUORESCENT:   //ri guang deng
+		    buf[0]=0x22;
+			buf[1]=temp_reg&~0x02;
+			i2c_put_byte_add8(client,buf,2);
+			buf[0]=0x5a;
+			buf[1]=0x40;
+			i2c_put_byte_add8(client,buf,2);
+			buf[0]=0x5b;
+			buf[1]=0x42;
+			i2c_put_byte_add8(client,buf,2);
+			buf[0]=0x5c;
+			buf[1]=0x50;
+			i2c_put_byte_add8(client,buf,2);	
+			break;		
+
+		case CAM_WB_TUNGSTEN:   // wu si deng
+		    buf[0]=0x22;
+			buf[1]=temp_reg&~0x02;
+			i2c_put_byte_add8(client,buf,2);
+			buf[0]=0x5a;
+			buf[1]=0x40;
+			i2c_put_byte_add8(client,buf,2);
+			buf[0]=0x5b;
+			buf[1]=0x54;
+			i2c_put_byte_add8(client,buf,2);
+			buf[0]=0x5c;
+			buf[1]=0x70;
+			i2c_put_byte_add8(client,buf,2);	
+			break;
+
+		case CAM_WB_MANUAL: 	
+			// TODO
+			break;		
+		default:
+			break;		
+	}		
+//	kal_sleep_task(20);
+}
+
+/*************************************************************************
+* FUNCTION
+*	GC0308_night_mode
+*
+* DESCRIPTION
+*	This function night mode of GC0308.
+*
+* PARAMETERS
+*	none
+*
+* RETURNS
+*	None
+*
+* GLOBALS AFFECTED
+*
+*************************************************************************/
+void GC0308_night_mode(struct gc0308_device *dev,enum  camera_night_mode_flip_e enable)
+{
+    struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
+	unsigned char buf[4];
+
+	unsigned char  temp_reg;	
+	//temp_reg=gc0308_read_byte(0x22);
+	buf[0]=0x20;
+	temp_reg=i2c_get_byte_add8(client,buf);
+	
+    if(enable)
+    {
+		buf[0]=0xec;
+		buf[1]=0x30;
+		i2c_put_byte_add8(client,buf,2);
+		buf[0]=0x20;
+		buf[1]=temp_reg&0x5f;
+		i2c_put_byte_add8(client,buf,2);
+		buf[0]=0x3c;
+		buf[1]=0x08;
+		i2c_put_byte_add8(client,buf,2);
+		buf[0]=0x3d;
+		buf[1]=0x08;
+		i2c_put_byte_add8(client,buf,2);
+		buf[0]=0x3e;
+		buf[1]=0x08;
+		i2c_put_byte_add8(client,buf,2);
+		buf[0]=0x3f;
+		buf[1]=0x08;
+		i2c_put_byte_add8(client,buf,2);
+
+     }
+    else
+     {
+		buf[0]=0xec;
+		buf[1]=0x20;
+		i2c_put_byte_add8(client,buf,2);
+		buf[0]=0x20;
+		buf[1]=temp_reg|0x20;
+		i2c_put_byte_add8(client,buf,2);
+		buf[0]=0x3c;
+		buf[1]=0x02;
+		i2c_put_byte_add8(client,buf,2);
+		buf[0]=0x3d;
+		buf[1]=0x02;
+		i2c_put_byte_add8(client,buf,2);
+		buf[0]=0x3e;
+		buf[1]=0x02;
+		i2c_put_byte_add8(client,buf,2);
+		buf[0]=0x3f;
+		buf[1]=0x02;
+		i2c_put_byte_add8(client,buf,2);
+
+	}
+
+}
+
+/*************************************************************************
+* FUNCTION
+*	set_GC0308_param_exposure
+*
+* DESCRIPTION
+*	GC0308 exposure setting.
+*
+* PARAMETERS
+*	none
+*
+* RETURNS
+*	None
+*
+* GLOBALS AFFECTED  亮度等级 调节参数
+*
+*************************************************************************/
+void set_GC0308_param_exposure(struct gc0308_device *dev,enum camera_exposure_e para)//曝光调节
+{
+	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
+
+	unsigned char buf1[2];
+	unsigned char buf2[2];
+
+	switch (para)
+	{
+		case EXPOSURE_N4_STEP:
+			buf1[0]=0xb5;
+			buf1[1]=0xc0;
+			buf2[0]=0xd3;
+			buf2[1]=0x30;
+			break;		
+		case EXPOSURE_N3_STEP:
+			buf1[0]=0xb5;
+			buf1[1]=0xd0;
+			buf2[0]=0xd3;
+			buf2[1]=0x38;
+			break;		
+		case EXPOSURE_N2_STEP:
+			buf1[0]=0xb5;
+			buf1[1]=0xe0;
+			buf2[0]=0xd3;
+			buf2[1]=0x40;
+			break;				
+		case EXPOSURE_N1_STEP:
+			buf1[0]=0xb5;
+			buf1[1]=0xf0;
+			buf2[0]=0xd3;
+			buf2[1]=0x48;
+			break;				
+		case EXPOSURE_0_STEP:
+			buf1[0]=0xb5;
+			buf1[1]=0x10;
+			buf2[0]=0xd3;
+			buf2[1]=0x60;
+			break;				
+		case EXPOSURE_P1_STEP:
+			buf1[0]=0xb5;
+			buf1[1]=0x20;
+			buf2[0]=0xd3;
+			buf2[1]=0x58;
+			break;				
+		case EXPOSURE_P2_STEP:
+			buf1[0]=0xb5;
+			buf1[1]=0x30;
+			buf2[0]=0xd3;
+			buf2[1]=0x60;
+			break;				
+		case EXPOSURE_P3_STEP:
+			buf1[0]=0xb5;
+			buf1[1]=0x40;
+			buf2[0]=0xd3;
+			buf2[1]=0x68;
+			break;				
+		case EXPOSURE_P4_STEP:	
+			buf1[0]=0xb5;
+			buf1[1]=0x50;
+			buf2[0]=0xd3;
+			buf2[1]=0x70;
+			break;
+		default:
+			buf1[0]=0xb5;
+			buf1[1]=0x00;
+			buf2[0]=0xd3;
+			buf2[1]=0x50;
+			break;    
+	}			
+	//msleep(300);
+	i2c_put_byte_add8(client,buf1,2);
+	i2c_put_byte_add8(client,buf2,2);
+	
+}
+
+/*************************************************************************
+* FUNCTION
+*	set_GC0308_param_effect
+*
+* DESCRIPTION
+*	GC0308 effect setting.
+*
+* PARAMETERS
+*	none
+*
+* RETURNS
+*	None
+*
+* GLOBALS AFFECTED  特效参数
+*
+*************************************************************************/
+void set_GC0308_param_effect(struct gc0308_device *dev,enum camera_effect_flip_e para)//特效设置
+{
+    struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
+	unsigned char buf[4];
+	switch (para)
+	{	
+		case CAM_EFFECT_ENC_NORMAL:
+			buf[0]=0x23;
+		    buf[1]=0x00;
+		    i2c_put_byte_add8(client,buf,2);
+			buf[0]=0x2d;
+		    buf[1]=0x0a;
+		    i2c_put_byte_add8(client,buf,2);
+			buf[0]=0x20;
+		    buf[1]=0xff;
+		    i2c_put_byte_add8(client,buf,2);
+			buf[0]=0xd2;
+		    buf[1]=0x90;
+		    i2c_put_byte_add8(client,buf,2);
+			buf[0]=0x73;
+		    buf[1]=0x00;
+		    i2c_put_byte_add8(client,buf,2);
+			buf[0]=0x77;
+		    buf[1]=0x54;
+		    i2c_put_byte_add8(client,buf,2);
+			buf[0]=0xb3;
+		    buf[1]=0x40;
+		    i2c_put_byte_add8(client,buf,2);
+			buf[0]=0xb4;
+		    buf[1]=0x80;
+		    i2c_put_byte_add8(client,buf,2);
+			buf[0]=0xba;
+		    buf[1]=0x00;
+		    i2c_put_byte_add8(client,buf,2);
+			buf[0]=0xbb;
+		    buf[1]=0x00;
+		    i2c_put_byte_add8(client,buf,2);
+	
+			break;		
+		case CAM_EFFECT_ENC_GRAYSCALE:
+			buf[0]=0x23;
+		    buf[1]=0x00;
+		    i2c_put_byte_add8(client,buf,2);
+			buf[0]=0x2d;
+		    buf[1]=0x0a;
+		    i2c_put_byte_add8(client,buf,2);
+			buf[0]=0x20;
+		    buf[1]=0xff;
+		    i2c_put_byte_add8(client,buf,2);
+			buf[0]=0xd2;
+		    buf[1]=0x90;
+		    i2c_put_byte_add8(client,buf,2);
+			buf[0]=0x73;
+		    buf[1]=0x00;
+		    i2c_put_byte_add8(client,buf,2);
+			buf[0]=0x77;
+		    buf[1]=0x54;
+		    i2c_put_byte_add8(client,buf,2);
+			buf[0]=0xb3;
+		    buf[1]=0x40;
+		    i2c_put_byte_add8(client,buf,2);
+			buf[0]=0xb4;
+		    buf[1]=0x80;
+		    i2c_put_byte_add8(client,buf,2);
+			buf[0]=0xba;
+		    buf[1]=0x00;
+		    i2c_put_byte_add8(client,buf,2);
+			buf[0]=0xbb;
+		    buf[1]=0x00;
+		    i2c_put_byte_add8(client,buf,2);
+
+			break;		
+		case CAM_EFFECT_ENC_SEPIA:
+			buf[0]=0x23;
+		    buf[1]=0x02;
+		    i2c_put_byte_add8(client,buf,2);
+			buf[0]=0x2d;
+		    buf[1]=0x0a;
+		    i2c_put_byte_add8(client,buf,2);
+			buf[0]=0x20;
+		    buf[1]=0xff;
+		    i2c_put_byte_add8(client,buf,2);
+			buf[0]=0xd2;
+		    buf[1]=0x90;
+		    i2c_put_byte_add8(client,buf,2);
+			buf[0]=0x73;
+		    buf[1]=0x00;
+		    i2c_put_byte_add8(client,buf,2);
+			buf[0]=0xb3;
+		    buf[1]=0x40;
+		    i2c_put_byte_add8(client,buf,2);
+			buf[0]=0xb4;
+		    buf[1]=0x80;
+		    i2c_put_byte_add8(client,buf,2);
+			buf[0]=0xba;
+		    buf[1]=0xd0;
+		    i2c_put_byte_add8(client,buf,2);
+			buf[0]=0xbb;
+		    buf[1]=0x28;
+		    i2c_put_byte_add8(client,buf,2);
+
+			break;		
+		case CAM_EFFECT_ENC_COLORINV:	
+			buf[0]=0x23;
+		    buf[1]=0x01;
+		    i2c_put_byte_add8(client,buf,2);
+			buf[0]=0x2d;
+		    buf[1]=0x0a;
+		    i2c_put_byte_add8(client,buf,2);
+			buf[0]=0x20;
+		    buf[1]=0xff;
+		    i2c_put_byte_add8(client,buf,2);
+			buf[0]=0xd2;
+		    buf[1]=0x90;
+		    i2c_put_byte_add8(client,buf,2);
+			buf[0]=0x73;
+		    buf[1]=0x00;
+		    i2c_put_byte_add8(client,buf,2);
+			buf[0]=0xb3;
+		    buf[1]=0x40;
+		    i2c_put_byte_add8(client,buf,2);
+			buf[0]=0xb4;
+		    buf[1]=0x80;
+		    i2c_put_byte_add8(client,buf,2);
+			buf[0]=0xba;
+		    buf[1]=0x00;
+		    i2c_put_byte_add8(client,buf,2);
+			buf[0]=0xbb;
+		    buf[1]=0x00;
+		    i2c_put_byte_add8(client,buf,2);
+			break;		
+		case CAM_EFFECT_ENC_SEPIAGREEN:
+			buf[0]=0x23;
+		    buf[1]=0x02;
+		    i2c_put_byte_add8(client,buf,2);
+			buf[0]=0x2d;
+		    buf[1]=0x0a;
+		    i2c_put_byte_add8(client,buf,2);
+			buf[0]=0x20;
+		    buf[1]=0xff;
+		    i2c_put_byte_add8(client,buf,2);
+			buf[0]=0xd2;
+		    buf[1]=0x90;
+		    i2c_put_byte_add8(client,buf,2);
+			buf[0]=0x77;
+		    buf[1]=0x88;
+		    i2c_put_byte_add8(client,buf,2);
+			buf[0]=0xb3;
+		    buf[1]=0x40;
+		    i2c_put_byte_add8(client,buf,2);
+			buf[0]=0xb4;
+		    buf[1]=0x80;
+		    i2c_put_byte_add8(client,buf,2);
+			buf[0]=0xba;
+		    buf[1]=0xc0;
+		    i2c_put_byte_add8(client,buf,2);
+			buf[0]=0xbb;
+		    buf[1]=0xc0;
+		    i2c_put_byte_add8(client,buf,2);
+			break;					
+		case CAM_EFFECT_ENC_SEPIABLUE:
+			buf[0]=0x23;
+		    buf[1]=0x02;
+		    i2c_put_byte_add8(client,buf,2);
+			buf[0]=0x2d;
+		    buf[1]=0x0a;
+		    i2c_put_byte_add8(client,buf,2);
+			buf[0]=0x20;
+		    buf[1]=0xff;
+		    i2c_put_byte_add8(client,buf,2);
+			buf[0]=0xd2;
+		    buf[1]=0x90;
+		    i2c_put_byte_add8(client,buf,2);
+			buf[0]=0x73;
+		    buf[1]=0x00;
+		    i2c_put_byte_add8(client,buf,2);
+			buf[0]=0xb3;
+		    buf[1]=0x40;
+		    i2c_put_byte_add8(client,buf,2);
+			buf[0]=0xb4;
+		    buf[1]=0x80;
+		    i2c_put_byte_add8(client,buf,2);
+			buf[0]=0xba;
+		    buf[1]=0x50;
+		    i2c_put_byte_add8(client,buf,2);
+			buf[0]=0xbb;
+		    buf[1]=0xe0;
+		    i2c_put_byte_add8(client,buf,2);
+
+			break;									
+		default:
+			break;	
+	}
+	
+}
 
 unsigned char v4l_2_gc0308(int val)
 {
@@ -718,6 +1251,27 @@ static int gc0308_setting(struct gc0308_device *dev,int PROP_ID,int value )
 			dprintk(dev, 1, "vertical read error\n");
 		}
 		break;	
+	case V4L2_CID_DO_WHITE_BALANCE:
+        if(gc0308_qctrl[4].default_value!=value){
+			gc0308_qctrl[4].default_value=value;
+			set_GC0308_param_wb(dev,value);
+			printk(KERN_INFO " set camera  white_balance=%d. \n ",value);
+        	}
+		break;
+	case V4L2_CID_EXPOSURE:
+        if(gc0308_qctrl[5].default_value!=value){
+			gc0308_qctrl[5].default_value=value;
+			set_GC0308_param_exposure(dev,value);
+			printk(KERN_INFO " set camera  exposure=%d. \n ",value);
+        	}
+		break;
+	case V4L2_CID_COLORFX:
+        if(gc0308_qctrl[6].default_value!=value){
+			gc0308_qctrl[6].default_value=value;
+			set_GC0308_param_effect(dev,value);
+			printk(KERN_INFO " set camera  effect=%d. \n ",value);
+        	}
+		break;
 	default:
 		ret=-1;
 		break;

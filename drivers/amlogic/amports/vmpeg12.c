@@ -128,7 +128,7 @@ static spinlock_t lock = SPIN_LOCK_UNLOCKED;
 
 /* for error handling */
 static s32 frame_force_skip_flag = 0;
-static s32 error_frame_skip_level = 0;
+static s32 error_frame_skip_level = 2;
 
 static inline u32 index2canvas(u32 index)
 {

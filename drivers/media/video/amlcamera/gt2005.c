@@ -118,6 +118,33 @@ static struct v4l2_queryctrl gt2005_qctrl[] = {
 		.step          = 0x1,
 		.default_value = 0,
 		.flags         = V4L2_CTRL_FLAG_SLIDER,
+	},{
+		.id            = V4L2_CID_DO_WHITE_BALANCE,
+		.type          = V4L2_CTRL_TYPE_INTEGER,
+		.name          = "white balance",
+		.minimum       = 0,
+		.maximum       = 6,
+		.step          = 0x1,
+		.default_value = 0,
+		.flags         = V4L2_CTRL_FLAG_SLIDER,
+	},{
+		.id            = V4L2_CID_EXPOSURE,
+		.type          = V4L2_CTRL_TYPE_INTEGER,
+		.name          = "exposure",
+		.minimum       = 0,
+		.maximum       = 8,
+		.step          = 0x1,
+		.default_value = 4,
+		.flags         = V4L2_CTRL_FLAG_SLIDER,
+	},{
+		.id            = V4L2_CID_COLORFX,
+		.type          = V4L2_CTRL_TYPE_INTEGER,
+		.name          = "effect",
+		.minimum       = 0,
+		.maximum       = 6,
+		.step          = 0x1,
+		.default_value = 0,
+		.flags         = V4L2_CTRL_FLAG_SLIDER,
 	}
 };
 
@@ -700,6 +727,280 @@ void GT2005_init_regs(struct gt2005_device *dev)
 
     return;
 }
+/*************************************************************************
+* FUNCTION
+*    GT2005_set_param_wb
+*
+* DESCRIPTION
+*    wb setting.
+*
+* PARAMETERS
+*    none
+*
+* RETURNS
+*    None
+*
+* GLOBALS AFFECTED
+*
+*************************************************************************/
+void GT2005_set_param_wb(struct gt2005_device *dev,enum  camera_wb_flip_e para)//白平衡
+{
+	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
+
+    switch (para)
+	{
+		
+		case CAM_WB_AUTO://自动
+			i2c_put_byte(client,0x031a , 0x81);
+			i2c_put_byte(client,0x0320 , 0x24);
+			i2c_put_byte(client,0x0321 , 0x14);
+			i2c_put_byte(client,0x0322 , 0x1a);
+			i2c_put_byte(client,0x0323 , 0x24);
+			i2c_put_byte(client,0x0441 , 0x4B);
+			i2c_put_byte(client,0x0442 , 0x00);
+			i2c_put_byte(client,0x0443 , 0x00);
+			i2c_put_byte(client,0x0444 , 0x31);
+			break;
+
+		case CAM_WB_CLOUD: //阴天
+			i2c_put_byte(client,0x0320 , 0x02);
+			i2c_put_byte(client,0x0321 , 0x02);
+			i2c_put_byte(client,0x0322 , 0x02);
+			i2c_put_byte(client,0x0323 , 0x02);
+			i2c_put_byte(client,0x0441 , 0x80);
+			i2c_put_byte(client,0x0442 , 0x00);
+			i2c_put_byte(client,0x0443 , 0x00);
+			i2c_put_byte(client,0x0444 , 0x0D);
+			break;
+
+		case CAM_WB_DAYLIGHT: //
+			i2c_put_byte(client,0x0320 , 0x02);
+			i2c_put_byte(client,0x0321 , 0x02);
+			i2c_put_byte(client,0x0322 , 0x02);
+			i2c_put_byte(client,0x0323 , 0x02);
+			i2c_put_byte(client,0x0441 , 0x60);
+			i2c_put_byte(client,0x0442 , 0x00);
+			i2c_put_byte(client,0x0443 , 0x00);
+			i2c_put_byte(client,0x0444 , 0x14);
+			break;
+
+		case CAM_WB_INCANDESCENCE: 
+			i2c_put_byte(client,0x0320 , 0x02);
+			i2c_put_byte(client,0x0321 , 0x02);
+			i2c_put_byte(client,0x0322 , 0x02);
+			i2c_put_byte(client,0x0323 , 0x02);
+			i2c_put_byte(client,0x0441 , 0x50);
+			i2c_put_byte(client,0x0442 , 0x00);
+			i2c_put_byte(client,0x0443 , 0x00);
+			i2c_put_byte(client,0x0444 , 0x30);
+			break;
+			
+		case CAM_WB_TUNGSTEN: 
+			i2c_put_byte(client,0x0320 , 0x02);
+			i2c_put_byte(client,0x0321 , 0x02);
+			i2c_put_byte(client,0x0322 , 0x02);
+			i2c_put_byte(client,0x0323 , 0x02);
+			i2c_put_byte(client,0x0441 , 0x0B);
+			i2c_put_byte(client,0x0442 , 0x00);
+			i2c_put_byte(client,0x0443 , 0x00);
+			i2c_put_byte(client,0x0444 , 0x5E);
+			break;
+
+      	case CAM_WB_FLUORESCENT:
+      		i2c_put_byte(client,0x0320 , 0x02);
+			i2c_put_byte(client,0x0321 , 0x02);
+			i2c_put_byte(client,0x0322 , 0x02);
+			i2c_put_byte(client,0x0323 , 0x02);
+			i2c_put_byte(client,0x0441 , 0x43);
+			i2c_put_byte(client,0x0442 , 0x00);
+			i2c_put_byte(client,0x0443 , 0x00);
+			i2c_put_byte(client,0x0444 , 0x4B);
+			break;
+
+		case CAM_WB_MANUAL:
+		    	// TODO
+			break;
+	}
+	
+
+} /* GT2005_set_param_wb */
+/*************************************************************************
+* FUNCTION
+*    GT2005_set_param_exposure
+*
+* DESCRIPTION
+*    exposure setting.
+*
+* PARAMETERS
+*    none
+*
+* RETURNS
+*    None
+*
+* GLOBALS AFFECTED
+*
+*************************************************************************/
+void GT2005_set_param_exposure(struct gt2005_device *dev,enum camera_exposure_e para)//曝光调节
+{
+	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
+
+
+    switch (para)
+	{
+		case EXPOSURE_N4_STEP:  //负4档  
+            		i2c_put_byte(client,0x0300 , 0x81);
+			i2c_put_byte(client,0x0301 , 0x45);//40
+			i2c_put_byte(client,0x0201 , 0xd0);
+			break;
+			
+		case EXPOSURE_N3_STEP:
+            		i2c_put_byte(client,0x0300 , 0x81);
+			i2c_put_byte(client,0x0301 , 0x55);//50
+			i2c_put_byte(client,0x0201 , 0xf0);
+			break;
+			
+		case EXPOSURE_N2_STEP:
+            		i2c_put_byte(client,0x0300 , 0x81);
+			i2c_put_byte(client,0x0301 , 0x60);
+			i2c_put_byte(client,0x0201 , 0x10);//b0
+			break;
+			
+		case EXPOSURE_N1_STEP:
+            		i2c_put_byte(client,0x0300 , 0x81);
+			i2c_put_byte(client,0x0301 , 0x70);
+			i2c_put_byte(client,0x0201 , 0x20);//d0
+			break;
+			
+		case EXPOSURE_0_STEP://默认零档
+           		i2c_put_byte(client,0x0300 , 0x81);
+			i2c_put_byte(client,0x0301 , 0x80);
+			i2c_put_byte(client,0x0201 , 0x30);//0c
+			break;
+			
+		case EXPOSURE_P1_STEP://正一档
+            		i2c_put_byte(client,0x0300 , 0x81);
+			i2c_put_byte(client,0x0301 , 0x90);
+			i2c_put_byte(client,0x0201 , 0x40);//30
+			break;
+			
+		case EXPOSURE_P2_STEP:
+            		i2c_put_byte(client,0x0300 , 0x81);
+			i2c_put_byte(client,0x0301 , 0xa0);
+			i2c_put_byte(client,0x0201 , 0x50);
+			break;
+			
+		case EXPOSURE_P3_STEP:
+            		i2c_put_byte(client,0x0300 , 0x81);
+			i2c_put_byte(client,0x0301 , 0xb0);
+			i2c_put_byte(client,0x0201 , 0x60);
+			break;
+			
+		case EXPOSURE_P4_STEP:	
+            		i2c_put_byte(client,0x0300 , 0x81);
+			i2c_put_byte(client,0x0301 , 0xc0);
+			i2c_put_byte(client,0x0201 , 0x70);
+			break;
+			
+		default:
+			i2c_put_byte(client,0x0300 , 0x81);
+			i2c_put_byte(client,0x0301 , 0x80);
+			i2c_put_byte(client,0x0201 , 0x0c);
+			break;
+	}
+
+
+} /* GT2005_set_param_exposure */
+/*************************************************************************
+* FUNCTION
+*    GT2005_set_param_effect
+*
+* DESCRIPTION
+*    effect setting.
+*
+* PARAMETERS
+*    none
+*
+* RETURNS
+*    None
+*
+* GLOBALS AFFECTED
+*
+*************************************************************************/
+void GT2005_set_param_effect(struct gt2005_device *dev,enum camera_effect_flip_e para)//特效设置
+{
+	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
+
+  
+    switch (para)
+	{
+		case CAM_EFFECT_ENC_NORMAL://正常
+			i2c_put_byte(client,0x0115,0x00);
+			break;		
+
+		case CAM_EFFECT_ENC_GRAYSCALE://灰阶
+			i2c_put_byte(client,0x0115,0x06);
+			break;
+
+		case CAM_EFFECT_ENC_SEPIA://复古
+		     	i2c_put_byte(client,0x0115,0x0a);
+			i2c_put_byte(client,0x026e,0x60);
+			i2c_put_byte(client,0x026f,0xa0);
+			break;		
+				
+		case CAM_EFFECT_ENC_SEPIAGREEN://复古绿
+			i2c_put_byte(client,0x0115,0x0a);
+			i2c_put_byte(client,0x026e,0x20);
+			i2c_put_byte(client,0x026f,0x00);
+			break;					
+
+		case CAM_EFFECT_ENC_SEPIABLUE://复古蓝
+			i2c_put_byte(client,0x0115,0x0a);
+			i2c_put_byte(client,0x026e,0xfb);
+			i2c_put_byte(client,0x026f,0x00);
+			break;								
+
+		case CAM_EFFECT_ENC_COLORINV://底片
+			i2c_put_byte(client,0x0115,0x09);
+			break;		
+
+		default:
+			break;
+	}
+
+
+} /* GT2005_set_param_effect */
+
+/*************************************************************************
+* FUNCTION
+*    GT2005_NightMode
+*
+* DESCRIPTION
+*    This function night mode of GT2005.
+*
+* PARAMETERS
+*    none
+*
+* RETURNS
+*    None
+*
+* GLOBALS AFFECTED
+*
+*************************************************************************/
+void GT2005_NightMode(struct gt2005_device *dev,enum  camera_night_mode_flip_e enable)
+{
+	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
+
+	if (enable)
+	{
+		i2c_put_byte(client,0x0312 , 0xc8); //Camera Enable night mode  1/5 Frame rate
+	}
+	else
+	{
+		i2c_put_byte(client,0x0312 , 0x98); //Disable night mode  1/2 Frame rate
+	}
+
+}    /* GT2005_NightMode */
+
 
 unsigned char v4l_2_gt2005(int val)
 {
@@ -757,6 +1058,27 @@ static int gt2005_setting(struct gt2005_device *dev,int PROP_ID,int value )
 			dprintk(dev, 1, "vertical read error\n");
 		}
 		break;	
+	case V4L2_CID_DO_WHITE_BALANCE:
+        if(gt2005_qctrl[4].default_value!=value){
+			gt2005_qctrl[4].default_value=value;
+			GT2005_set_param_wb(dev,value);
+			printk(KERN_INFO " set camera  white_balance=%d. \n ",value);
+        	}
+		break;
+	case V4L2_CID_EXPOSURE:
+        if(gt2005_qctrl[5].default_value!=value){
+			gt2005_qctrl[5].default_value=value;
+			GT2005_set_param_exposure(dev,value);
+			printk(KERN_INFO " set camera  exposure=%d. \n ",value);
+        	}
+		break;
+	case V4L2_CID_COLORFX:
+        if(gt2005_qctrl[6].default_value!=value){
+			gt2005_qctrl[6].default_value=value;
+			GT2005_set_param_effect(dev,value);
+			printk(KERN_INFO " set camera  effect=%d. \n ",value);
+        	}
+		break;
 	default:
 		ret=-1;
 		break;
