@@ -883,10 +883,11 @@ static ssize_t set_test(struct device *dev,
 	return ret;
 }
 
-static int attr_dat0;
+
+static char attr_dat0[3]="-1";
 static ssize_t read_attr0(struct class *cla,struct class_attribute *attr,char *buf)
 {
-    return snprintf(buf,80,"%d",attr_dat0);
+    return snprintf(buf,3,"%s",attr_dat0);
 }
 
 static ssize_t write_attr0(struct device *dev,
@@ -894,24 +895,36 @@ static ssize_t write_attr0(struct device *dev,
 					const char *buf, size_t count)
 {
 	//struct display_device *dsp = dev_get_drvdata(dev);
-	ssize_t ret = -EINVAL, size;
-	int input_data;
-	char *endp;
-	input_data = simple_strtoul(buf, &endp, 0);
-	size = endp - buf;
-	if (isspace(*endp))
-		size++;
-	if (size != count)
-		return ret;
-    attr_dat0= input_data;
-    ret=count;
+	ssize_t ret = -EINVAL;
+	if(count <= 2)
+	{
+		int i = 0;
+		if(buf[0] == '-')
+		{
+			attr_dat0[0] = '-';
+			i = 1;
+			ret++;
+		}
+		if( (buf[i]>='0') && (buf[i]<='9'))
+		{
+				attr_dat0[i] = buf[i];
+				attr_dat0[i+1] = '\0';
+				ret++;
+		}
+		else
+		{
+			attr_dat0[0]='-';attr_dat0[1]='1';//default -1;
+			ret = -EINVAL;
+		}
+	}
+
 	return ret;
 }
 
-static int attr_dat1;
+static char attr_dat1[3]="-1";
 static ssize_t read_attr1(struct class *cla,struct class_attribute *attr,char *buf)
 {
-    return snprintf(buf,80,"%d",attr_dat1);
+    return snprintf(buf,3,"%s",attr_dat1);
 }
 
 static ssize_t write_attr1(struct device *dev,
@@ -919,42 +932,29 @@ static ssize_t write_attr1(struct device *dev,
 					const char *buf, size_t count)
 {
 	//struct display_device *dsp = dev_get_drvdata(dev);
-	ssize_t ret = -EINVAL, size;
-	int input_data;
-	char *endp;
-	input_data = simple_strtoul(buf, &endp, 0);
-	size = endp - buf;
-	if (isspace(*endp))
-		size++;
-	if (size != count)
-		return ret;
-    attr_dat1= input_data;
-    ret=count;
-	return ret;
-}
+	ssize_t ret = -EINVAL;
+	if(count <= 2)
+	{
+		int i = 0;
+		if(buf[0] == '-')
+		{
+			attr_dat1[0] = '-';
+			i = 1;
+			ret++;
+		}
+		if( (buf[i]>='0') && (buf[i]<='9'))
+		{
+				attr_dat1[i] = buf[i];
+				attr_dat1[i+1] = '\0';
+				ret++;
+		}
+		else
+		{
+			attr_dat1[0]='-';attr_dat1[1]='1';//default -1;
+			ret = -EINVAL;
+		}
+	}
 
-static int attr_dat2;
-static ssize_t read_attr2(struct class *cla,struct class_attribute *attr,char *buf)
-{
-    return snprintf(buf,80,"%d",attr_dat1);
-}
-
-static ssize_t write_attr2(struct device *dev,
-					struct device_attribute *attr,
-					const char *buf, size_t count)
-{
-	//struct display_device *dsp = dev_get_drvdata(dev);
-	ssize_t ret = -EINVAL, size;
-	int input_data;
-	char *endp;
-	input_data = simple_strtoul(buf, &endp, 0);
-	size = endp - buf;
-	if (isspace(*endp))
-		size++;
-	if (size != count)
-		return ret;
-    attr_dat2= input_data;
-    ret=count;
 	return ret;
 }
 
@@ -971,10 +971,6 @@ static struct class_attribute vm_class_attrs[] = {
            S_IRUGO | S_IWUSR,
            read_attr1,
            write_attr1),
-    __ATTR(attr2,
-           S_IRUGO | S_IWUSR,
-           read_attr2,
-           write_attr2),
     __ATTR_NULL
 };
 
