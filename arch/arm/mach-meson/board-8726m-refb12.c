@@ -892,7 +892,7 @@ static struct meson_pm_config aml_pm_pdata = {
     .ddr_clk = 0x00110820,
     .sleepcount = 128,
     .set_vccx2 = set_vccx2,
-    .core_voltage_adjust = 8,
+    .core_voltage_adjust = 5,
 };
 
 static struct platform_device aml_pm_device = {
