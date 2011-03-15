@@ -7,7 +7,21 @@ unsigned long hdmi_rd_reg(unsigned long addr);
 void hdmi_wr_only_reg(unsigned long addr, unsigned long data);
 
 void hdmi_wr_reg(unsigned long addr, unsigned long data);
+#ifdef AVOS
 
+#ifdef AML_A3
+#define APB_BASE 0xd0040000
+#endif
+
+#define PREG_EGPIO_I  PREG_GPIOA_INLVL
+#define PREG_EGPIO_EN_N PREG_GPIOA_OE
+
+//#define PERIPHS_PIN_MUX_0 PREG_PIN_MUX_REG0
+void WRITE_APB_REG(unsigned long addr, unsigned long data);
+
+unsigned long READ_APB_REG(unsigned long addr);
+
+#endif
 #define HDMI_ADDR_PORT 0x2000
 #define HDMI_DATA_PORT 0x2004
 #define HDMI_CNTL_PORT 0x2008

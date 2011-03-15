@@ -14,7 +14,7 @@
  * GNU General Public License for more details.
  *
  */
-
+#ifndef AVOS
 #include <linux/version.h>
 #include <linux/module.h>
 #include <linux/types.h>
@@ -30,8 +30,34 @@
 #include <linux/cdev.h>
 #include <asm/uaccess.h>
 #include <mach/am_regs.h>
+#else
+#include "ioapi.h"
+#include <chipsupport/chipsupport.h>
+#include <os/extend/interrupt.h>
+#include <Drivers/include/peripheral_reg.h>
+#include <Drivers/include/isa_reg.h>
+#include <Drivers/include/mpeg_reg.h>
+#include <interrupt.h>
+#include "displaydev.h"
+#include "policy.h"
+#endif
 
 #include "hdmi_tx_reg.h"
+
+#ifdef AVOS
+void WRITE_APB_REG(unsigned long addr, unsigned long data)
+{
+  *((volatile unsigned long *) (APB_BASE+addr)) = data; 
+}
+
+unsigned long READ_APB_REG(unsigned long addr)
+{
+    unsigned long data;
+    data = *((volatile unsigned long *)(APB_BASE+addr)); 
+    return data;
+}        
+
+#endif
 
 unsigned long hdmi_rd_reg(unsigned long addr)
 {
@@ -68,6 +94,5 @@ void hdmi_wr_reg(unsigned long addr, unsigned long data)
        //while(1){};      
     }
 }
-
 
 

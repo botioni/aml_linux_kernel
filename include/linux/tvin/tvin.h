@@ -797,8 +797,33 @@ typedef enum camera_mirror_flip_e {
 }camera_mirror_flip_t;
 
 
+typedef enum camera_wb_flip_e {
+    CAM_WB_AUTO = 0,
+    CAM_WB_CLOUD,
+    CAM_WB_DAYLIGHT,
+    CAM_WB_INCANDESCENCE,
+    CAM_WB_TUNGSTEN,
+    CAM_WB_FLUORESCENT,
+    CAM_WB_MANUAL,
+}camera_wb_flip_t;
+typedef enum camera_night_mode_flip_e {
+    CAM_NM_AUTO = 0,
+	CAM_NM_ENABLE,
+}camera_night_mode_flip_t;
+typedef enum camera_effect_flip_e {
+    CAM_EFFECT_ENC_NORMAL = 0,
+	CAM_EFFECT_ENC_GRAYSCALE,
+	CAM_EFFECT_ENC_SEPIA,
+	CAM_EFFECT_ENC_SEPIAGREEN,
+	CAM_EFFECT_ENC_SEPIABLUE,
+	CAM_EFFECT_ENC_COLORINV,
+}camera_effect_flip_t;
+
+
+
 typedef struct camera_info_s {
 	#define AMLOGIC_CAMERA_OV5640_NAME     			"camera_ov5640"
+	#define AMLOGIC_CAMERA_GT2005_NAME     			"camera_gt2005"
 	const char * camera_name;
     enum camera_saturation_e saturation;
     enum camera_brightness_e brighrness;
@@ -809,6 +834,11 @@ typedef struct camera_info_s {
     enum camera_sharpness_e sharpness;
     enum camera_mirror_flip_e mirro_flip;
     enum tvin_sig_fmt_e resolution;
+	enum camera_wb_flip_e white_balance;
+	enum camera_night_mode_flip_e night_mode;
+	enum camera_effect_flip_e effect;
+	int qulity;
+	;
 }camera_info_t;
 
 
@@ -824,13 +854,18 @@ typedef struct camera_info_s {
 #define CAMERA_IOC_STOP         _IO(CAMERA_IOC_MAGIC, 0x02)
 #define CAMERA_IOC_SET_PARA     _IOW(CAMERA_IOC_MAGIC, 0x03, struct camera_info_s)
 #define CAMERA_IOC_GET_PARA     _IOR(CAMERA_IOC_MAGIC, 0x04, struct camera_info_s)
+#define CAMERA_IOC_START_CAPTURE_PARA     _IOR(CAMERA_IOC_MAGIC, 0x05, struct camera_info_s)
+#define CAMERA_IOC_STOP_CAPTURE_PARA     _IOR(CAMERA_IOC_MAGIC, 0x06, struct camera_info_s)
+
 
 
 /*
     macro defined applied to camera driver is ending
 */
-
-
+extern int start_tvin_service(int no ,tvin_parm_t *para);
+extern int stop_tvin_service(int no);
+extern void set_tvin_canvas_info(int start , int num);
+extern void get_tvin_canvas_info(int* start , int* num);
 #endif
 
 

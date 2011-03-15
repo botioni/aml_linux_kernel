@@ -1,3 +1,4 @@
+#ifndef AVOS
 #include <linux/version.h>
 #include <linux/module.h>
 #include <linux/types.h>
@@ -11,6 +12,18 @@
 #include <linux/platform_device.h>
 #include <linux/mutex.h>
 #include <linux/cdev.h>
+#else
+#include "ioapi.h"
+#include <chipsupport/chipsupport.h>
+#include <os/extend/interrupt.h>
+#include <Drivers/include/peripheral_reg.h>
+#include <Drivers/include/isa_reg.h>
+#include <Drivers/include/mpeg_reg.h>
+#include <interrupt.h>
+#include "displaydev.h"
+#include "policy.h"
+#endif
+
 #include "hdmi_tx_module.h"
 #include "hdmi_info_global.h"
 
@@ -235,10 +248,18 @@ static Hdmi_tx_video_para_t hdmi_tx_video_params[] =
     },
 };
 
-static Hdmi_tx_video_para_t *hdmi_get_video_param(HDMI_Video_Codes_t VideoCode)
+#ifndef AVOS
+static 
+#endif
+Hdmi_tx_video_para_t *hdmi_get_video_param(HDMI_Video_Codes_t VideoCode)
 {
     Hdmi_tx_video_para_t * video_param=NULL;
-	  int  i,count=ARRAY_SIZE(hdmi_tx_video_params);
+	  int  i;
+#ifndef AVOS
+	  int count=ARRAY_SIZE(hdmi_tx_video_params);
+#else
+	  int count=sizeof(hdmi_tx_video_params)/sizeof(Hdmi_tx_video_para_t);
+#endif
     for(i=0;i<count;i++){
         if(hdmi_tx_video_params[i].VIC == VideoCode){
             break;    
@@ -337,7 +358,7 @@ int hdmitx_set_display(hdmitx_dev_t* hdmitx_device, HDMI_Video_Codes_t VideoCode
         }
         if(hdmitx_device->HWOp.SetDispMode(param)>=0){
     
-            hdmi_tx_construct_avi_packet(param, AVI_DB);
+            hdmi_tx_construct_avi_packet(param, (char*)AVI_DB);
     
             hdmitx_device->HWOp.SetPacket(HDMI_PACKET_AVI, AVI_DB, AVI_HB);
             ret = 0;

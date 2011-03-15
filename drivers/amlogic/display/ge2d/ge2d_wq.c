@@ -640,7 +640,7 @@ int ge2d_context_config_ex(ge2d_context_t *context, config_para_ex_t *ge2d_confi
             if(build_ge2d_config_ex(&ge2d_config->src_planes[0], ge2d_config->src_para.format, &index,ALLOC_CANVAS_INDEX+alloc_canvas_offset,&alloc_canvas_offset)<0)
                 return -1;
             ge2d_config->src_para.canvas_index = index;
-            amlog_mask_level(LOG_MASK_CONFIG,LOG_LEVEL_LOW,"ge2d: src1--> type: alloc, canvas index : 0x%x \r\n", index);
+            amlog_mask_level(LOG_MASK_CONFIG,LOG_LEVEL_LOW,"ge2d: src1--> type: alloc, canvas index : 0x%x,format :0x%x \r\n", index,ge2d_config->src_para.format);
         default:
             break;
     }
@@ -671,7 +671,7 @@ int ge2d_context_config_ex(ge2d_context_t *context, config_para_ex_t *ge2d_confi
                 return -1;
             }
             ge2d_config->src2_para.canvas_index = index;
-            amlog_mask_level(LOG_MASK_CONFIG,LOG_LEVEL_LOW,"ge2d: src2--> type: alloc, canvas index : 0x%x \r\n", index);
+            amlog_mask_level(LOG_MASK_CONFIG,LOG_LEVEL_LOW,"ge2d: src2--> type: alloc, canvas index : 0x%x ,format :0x%x \r\n", index,ge2d_config->src2_para.format);
         default:
             break;
     }
@@ -705,7 +705,7 @@ int ge2d_context_config_ex(ge2d_context_t *context, config_para_ex_t *ge2d_confi
                 return -1;
             }
             ge2d_config->dst_para.canvas_index = index;
-            amlog_mask_level(LOG_MASK_CONFIG,LOG_LEVEL_LOW,"ge2d: dst--> type: alloc, canvas index : 0x%x \r\n", index);
+            amlog_mask_level(LOG_MASK_CONFIG,LOG_LEVEL_LOW,"ge2d: dst--> type: alloc, canvas index : 0x%x  ,format :0x%x \r\n",index,ge2d_config->dst_para.format);
         default:
             break;
     }

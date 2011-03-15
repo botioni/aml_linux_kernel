@@ -23,6 +23,7 @@
 
 DEFINE_SPINLOCK(vdin_fifo_lock);
 
+static struct vframe_receiver_op_s* vf_receiver = NULL;
 
 static vframe_t *vdin_vf_peek(void);
 static vframe_t *vdin_vf_get(void);
@@ -129,9 +130,6 @@ inline vframe_t *vfq_pop_display(void)
     vf = vfq_pop(&display_q);
     spin_unlock(&vdin_fifo_lock);
     return vf;
-
-
-
 }
 
 inline vframe_t *vfq_pop_recycle(void)
@@ -204,15 +202,30 @@ static const struct vframe_provider_s vdin_vf_provider =
 
 void vdin_reg_vf_provider(void)
 {
+#ifdef CONFIG_AMLOGIC_VIDEOIN_MANAGER
+	vf_receiver = vf_vm_reg_provider(&vdin_vf_provider);
+#else 
     vf_reg_provider(&vdin_vf_provider);
+#endif /* CONFIG_AMLOGIC_VIDEOIN_MANAGER */
+    
 }
 
 void vdin_unreg_vf_provider(void)
 {
-    vf_unreg_provider();
+#ifdef CONFIG_AMLOGIC_VIDEOIN_MANAGER
+      vf_receiver  = vf_vm_unreg_provider();
+#else 
+       vf_unreg_provider();
+#endif
 }
 
-
+void vdin_notify_receiver(int type, void* data, void* private_data)
+{
+    
+    if(vf_receiver){
+        vf_receiver->event_cb(type ,data ,private_data);    
+    }
+}
 
 
 

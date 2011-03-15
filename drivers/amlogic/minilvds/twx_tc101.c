@@ -217,12 +217,18 @@ static void power_on_lcd(void)
 #ifdef CONFIG_SN7325
     configIO(0, 0);
     setIO_level(0, 0, 0);
+#else
+set_gpio_val(GPIOD_bank_bit2_24(20), GPIOD_bit_bit2_24(20), 0);
+set_gpio_mode(GPIOD_bank_bit2_24(20), GPIOD_bit_bit2_24(20), GPIO_OUTPUT_MODE);		
 #endif
     msleep(20);
     //AVDD  EIO -> OD4: 1
 #ifdef CONFIG_SN7325
     configIO(0, 0);
     setIO_level(0, 1, 4);
+#else
+set_gpio_val(GPIOA_bank_bit(3), GPIOA_bit_bit0_14(3), 1);
+set_gpio_mode(GPIOA_bank_bit(3), GPIOA_bit_bit0_14(3), GPIO_OUTPUT_MODE);
 #endif
     msleep(50);
 }

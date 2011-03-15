@@ -2833,7 +2833,7 @@ void dwc_otg_dump_dev_registers(dwc_otg_core_if_t * _core_if)
 	int i;
 	volatile uint32_t *addr;
 
-	DWC_PRINT("Device Global Registers\n");
+	DWC_PRINT("\nDevice Global Registers\n");
 	addr = &_core_if->dev_if->dev_global_regs->dcfg;
 	DWC_PRINT("DCFG		 @0x%08X : 0x%08X\n", (uint32_t) addr,
 		  dwc_read_reg32(addr));
@@ -2932,12 +2932,12 @@ void dwc_otg_dump_host_registers(dwc_otg_core_if_t * _core_if)
 	int i;
 	volatile uint32_t *addr;
 
-	DWC_PRINT("Host Global Registers\n");
+	DWC_PRINT("\nHost Global Registers\n");
 	addr = &_core_if->host_if->host_global_regs->hcfg;
-	DWC_PRINT("HCFG		 @0x%08X : 0x%08X\n", (uint32_t) addr,
+	DWC_PRINT("HCFG	 @0x%08X : 0x%08X\n", (uint32_t) addr,
 		  dwc_read_reg32(addr));
 	addr = &_core_if->host_if->host_global_regs->hfir;
-	DWC_PRINT("HFIR		 @0x%08X : 0x%08X\n", (uint32_t) addr,
+	DWC_PRINT("HFIR	 @0x%08X : 0x%08X\n", (uint32_t) addr,
 		  dwc_read_reg32(addr));
 	addr = &_core_if->host_if->host_global_regs->hfnum;
 	DWC_PRINT("HFNUM	 @0x%08X : 0x%08X\n", (uint32_t) addr,
@@ -2949,14 +2949,14 @@ void dwc_otg_dump_host_registers(dwc_otg_core_if_t * _core_if)
 	DWC_PRINT("HAINT	 @0x%08X : 0x%08X\n", (uint32_t) addr,
 		  dwc_read_reg32(addr));
 	addr = &_core_if->host_if->host_global_regs->haintmsk;
-	DWC_PRINT("HAINTMSK	 @0x%08X : 0x%08X\n", (uint32_t) addr,
+	DWC_PRINT("HAINTMSK @0x%08X : 0x%08X\n", (uint32_t) addr,
 		  dwc_read_reg32(addr));
 	addr = _core_if->host_if->hprt0;
 	DWC_PRINT("HPRT0	 @0x%08X : 0x%08X\n", (uint32_t) addr,
 		  dwc_read_reg32(addr));
 
 	for (i = 0; i < _core_if->core_params->host_channels; i++) {
-		DWC_PRINT("Host Channel %d Specific Registers\n", i);
+		DWC_PRINT("Host Channel %d Specific Registers--\n", i);
 		addr = &_core_if->host_if->hc_regs[i]->hcchar;
 		DWC_PRINT("HCCHAR	 @0x%08X : 0x%08X\n", (uint32_t) addr,
 			  dwc_read_reg32(addr));
@@ -2967,7 +2967,7 @@ void dwc_otg_dump_host_registers(dwc_otg_core_if_t * _core_if)
 		DWC_PRINT("HCINT	 @0x%08X : 0x%08X\n", (uint32_t) addr,
 			  dwc_read_reg32(addr));
 		addr = &_core_if->host_if->hc_regs[i]->hcintmsk;
-		DWC_PRINT("HCINTMSK	 @0x%08X : 0x%08X\n", (uint32_t) addr,
+		DWC_PRINT("HCINTMSK @0x%08X : 0x%08X\n", (uint32_t) addr,
 			  dwc_read_reg32(addr));
 		addr = &_core_if->host_if->hc_regs[i]->hctsiz;
 		DWC_PRINT("HCTSIZ	 @0x%08X : 0x%08X\n", (uint32_t) addr,
@@ -2990,7 +2990,7 @@ void dwc_otg_dump_global_registers(dwc_otg_core_if_t * _core_if)
 	int i;
 	volatile uint32_t *addr;
 
-	DWC_PRINT("Core Global Registers\n");
+	DWC_PRINT("\nCore Global Registers\n");
 	addr = &_core_if->core_global_regs->gotgctl;
 	DWC_PRINT("GOTGCTL	 @0x%08X : 0x%08X\n", (uint32_t) addr,
 		  dwc_read_reg32(addr));
@@ -3021,22 +3021,22 @@ void dwc_otg_dump_global_registers(dwc_otg_core_if_t * _core_if)
 	DWC_PRINT("GRXFSIZ	 @0x%08X : 0x%08X\n", (uint32_t) addr,
 		  dwc_read_reg32(addr));
 	addr = &_core_if->core_global_regs->gnptxfsiz;
-	DWC_PRINT("GNPTXFSIZ @0x%08X : 0x%08X\n", (uint32_t) addr,
+	DWC_PRINT("GNPTXFSIZ@0x%08X : 0x%08X\n", (uint32_t) addr,
 		  dwc_read_reg32(addr));
 	addr = &_core_if->core_global_regs->gnptxsts;
-	DWC_PRINT("GNPTXSTS	 @0x%08X : 0x%08X\n", (uint32_t) addr,
+	DWC_PRINT("GNPTXSTS @0x%08X : 0x%08X\n", (uint32_t) addr,
 		  dwc_read_reg32(addr));
 	addr = &_core_if->core_global_regs->gi2cctl;
 	DWC_PRINT("GI2CCTL	 @0x%08X : 0x%08X\n", (uint32_t) addr,
 		  dwc_read_reg32(addr));
 	addr = &_core_if->core_global_regs->gpvndctl;
-	DWC_PRINT("GPVNDCTL	 @0x%08X : 0x%08X\n", (uint32_t) addr,
+	DWC_PRINT("GPVNDCTL @0x%08X : 0x%08X\n", (uint32_t) addr,
 		  dwc_read_reg32(addr));
 	addr = &_core_if->core_global_regs->ggpio;
 	DWC_PRINT("GGPIO	 @0x%08X : 0x%08X\n", (uint32_t) addr,
 		  dwc_read_reg32(addr));
 	addr = &_core_if->core_global_regs->guid;
-	DWC_PRINT("GUID		 @0x%08X : 0x%08X\n", (uint32_t) addr,
+	DWC_PRINT("GUID	 @0x%08X : 0x%08X\n", (uint32_t) addr,
 		  dwc_read_reg32(addr));
 	addr = &_core_if->core_global_regs->gsnpsid;
 	DWC_PRINT("GSNPSID	 @0x%08X : 0x%08X\n", (uint32_t) addr,
@@ -3054,7 +3054,7 @@ void dwc_otg_dump_global_registers(dwc_otg_core_if_t * _core_if)
 	DWC_PRINT("GHWCFG4	 @0x%08X : 0x%08X\n", (uint32_t) addr,
 		  dwc_read_reg32(addr));
 	addr = &_core_if->core_global_regs->hptxfsiz;
-	DWC_PRINT("HPTXFSIZ	 @0x%08X : 0x%08X\n", (uint32_t) addr,
+	DWC_PRINT("HPTXFSIZ @0x%08X : 0x%08X\n", (uint32_t) addr,
 		  dwc_read_reg32(addr));
 
 	for (i = 0; i < _core_if->hwcfg4.b.num_dev_perio_in_ep; i++) {

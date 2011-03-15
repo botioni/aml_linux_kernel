@@ -256,6 +256,7 @@ static int bt656_camera_in_canvas_init(unsigned int mem_start, unsigned int mem_
         canvas_config(canvas_start_index + i, decbuf_start + i * am656in_dec_info.decbuf_size,
             canvas_width, canvas_height, CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_LINEAR);
     }
+    set_tvin_canvas_info(canvas_start_index ,am656in_dec_info.canvas_total_count );
     return 0;
 }
 

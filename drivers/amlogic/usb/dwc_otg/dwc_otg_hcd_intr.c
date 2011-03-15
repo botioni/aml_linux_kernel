@@ -424,7 +424,7 @@ int32_t dwc_otg_hcd_handle_port_intr(dwc_otg_hcd_t * _dwc_otg_hcd)
 
 				if (do_reset) {
 					tasklet_schedule
-					    (_dwc_otg_hcd->reset_tasklet);
+					    (&_dwc_otg_hcd->reset_tasklet);
 				}
 			}
 
@@ -826,7 +826,10 @@ update_isoc_urb_state(dwc_otg_hcd_t * _hcd,
 				break;
 			}
 		}
-		tasklet_schedule(_hcd->isoc_complete_tasklet);
+		//DWC_DEBUGPL(DBG_HCDV,"ISO schedule tasklet called[%d],hcd: %p,urb:%p\n",
+		//	i,_hcd,urb);
+
+		tasklet_schedule(&_hcd->isoc_complete_tasklet);
 		//dwc_otg_hcd_complete_urb(_hcd, urb, 0);
 		ret_val = DWC_OTG_HC_XFER_URB_COMPLETE;
 	} else {

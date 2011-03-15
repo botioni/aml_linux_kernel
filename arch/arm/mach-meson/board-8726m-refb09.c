@@ -93,7 +93,9 @@
 #ifdef CONFIG_AMLOGIC_CAMERA_ENABLE
 #include <linux/camera/amlogic_camera_common.h>
 #endif
-
+#ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE
+#include <media/amlogic/aml_camera.h>
+#endif
 
 #if defined(CONFIG_JPEGLOGO)
 static struct resource jpeglogo_resources[] = {
@@ -206,16 +208,36 @@ static struct platform_device adc_ts_device = {
 #include <linux/input.h>
 #include <linux/adc_keypad.h>
 
+static int adc_kp_led_control(int *param)
+{
+    if(param[0] == 0){//led off
+    	set_gpio_val(GPIOD_bank_bit2_24(23), GPIOD_bit_bit2_24(23), 0);
+    	set_gpio_mode(GPIOD_bank_bit2_24(23), GPIOD_bit_bit2_24(23), GPIO_OUTPUT_MODE);
+	return 0;
+    }else if(param[0] == 1) {//led on
+    	if ((param[1]!=KEY_PAGEUP) && (param[1]!=KEY_PAGEDOWN)){
+        		set_gpio_val(GPIOD_bank_bit2_24(23), GPIOD_bit_bit2_24(23), 1);
+        		set_gpio_mode(GPIOD_bank_bit2_24(23), GPIOD_bit_bit2_24(23), GPIO_OUTPUT_MODE);
+		return 0;
+    	}
+    }
+    else if(param[0] == 2) {//start counting
+	return 1;
+    }
+}
 static struct adc_key adc_kp_key[] = {
-    {KEY_PAGEDOWN,      "vol-",     CHAN_4, 0,  60},
-    {KEY_PAGEUP,        "vol+",     CHAN_4, 183, 60},
-    {KEY_HOME,          "home",     CHAN_4, 291, 60},
-    {KEY_LEFTMETA,      "menu",     CHAN_4, 408, 60},
-    {KEY_TAB,           "exit",     CHAN_4, 511, 60},
-    {KEY_ZOOM,          "zoom",     CHAN_4, 630, 60},
+    {KEY_PAGEUP,        "vol+",     CHAN_4, 139,  60},
+    {KEY_PAGEDOWN,      "vol-",     CHAN_4, 266, 60},
+    {KEY_SEARCH,          "search",     CHAN_4, 387, 60},
+    {KEY_TAB,           "exit",     CHAN_4, 509, 60},
+    {KEY_LEFTMETA,      "menu",      CHAN_4, 633, 60},
+    {KEY_HOME,          "home",     CHAN_4, 763, 60},
 };
 
 static struct adc_kp_platform_data adc_kp_pdata = {
+    .led_control = adc_kp_led_control,
+    .led_control_param_num =2,
+    
     .key = &adc_kp_key[0],
     .key_num = ARRAY_SIZE(adc_kp_key),
 };
@@ -489,6 +511,9 @@ void extern_wifi_power(int is_power)
     }
     else
     {
+    	set_gpio_val(GPIOD_bank_bit2_24(15), GPIOD_bit_bit2_24(15), 0);
+	set_gpio_mode(GPIOD_bank_bit2_24(15), GPIOD_bit_bit2_24(15), GPIO_OUTPUT_MODE);
+	msleep(80);
         #ifdef CONFIG_SN7325
         configIO(0, 0);
         setIO_level(0, 1, 5);
@@ -618,7 +643,7 @@ int wm8900_is_hp_pluged(void)
     cs_no = READ_CBUS_REG(LED_PWM_REG3);
     if(cs_no &(1<<14))
       level |= (1<<0);
-    return (level == 1)?(1):(0); //return 1: hp pluged, 0: hp unpluged.
+    return (level == 1)?(0):(1); //return 1: hp pluged, 0: hp unpluged.
 }
 
 static struct wm8900_platform_data wm8900_pdata = {
@@ -885,6 +910,170 @@ static struct itk_platform_data itk_pdata = {
 };
 #endif
 
+#ifdef CONFIG_UOR7X5X_RESISTIVE_TOUCHSCREEN
+#include <linux/i2c/uor7x5x.h>
+
+//GPIOD_24
+#define GPIO_UOR7X5X_PENIRQ ((GPIOD_bank_bit2_24(24)<<16) |GPIOD_bit_bit2_24(24)) 
+#define GPIO_UOR7X5X_RST     (GPIOD_IDX + 24)
+
+static int uor7x5x_init_irq(void)
+{
+/* memson
+    Bit(s)  Description
+    256-105 Unused
+    104     JTAG_TDO
+    103     JTAG_TDI
+    102     JTAG_TMS
+    101     JTAG_TCK
+    100     gpioA_23
+    99      gpioA_24
+    98      gpioA_25
+    97      gpioA_26
+    98-76    gpioE[21:0]
+    75-50   gpioD[24:0]
+    49-23   gpioC[26:0]
+    22-15   gpioB[22;15]
+    14-0    gpioA[14:0]
+ */
+    printk("uor7x5x_init_irq \n");
+    /* set input mode */
+    gpio_direction_input(GPIO_UOR7X5X_PENIRQ);
+    /* set gpio interrupt #0 source=GPIOD_24, and triggered by falling edge(=1) */
+    gpio_enable_edge_int(GPIO_UOR7X5X_RST, 1, 0);
+    
+    return 0;
+}
+static int uor7x5x_get_irq_level(void)
+{
+    return gpio_get_value(GPIO_UOR7X5X_PENIRQ);
+}
+
+#define UOR7X5X_XLCD    800
+#define UOR7X5X_YLCD    600
+#define UOR7X5X_SWAP_XY 0
+#define UOR7X5X_XPOL    1
+#define UOR7X5X_YPOL    1
+#define UOR7X5X_XMIN 1100
+#define UOR7X5X_XMAX 3900
+#define UOR7X5X_YMIN 200
+#define UOR7X5X_YMAX 2400
+
+int uor7x5x_convert(int x, int y)
+{
+#if (UOR7X5X_SWAP_XY == 1)
+    swap(x, y);
+#endif
+    if (x < UOR7X5X_XMIN) x = UOR7X5X_XMIN;
+    if (x > UOR7X5X_XMAX) x = UOR7X5X_XMAX;
+    if (y < UOR7X5X_YMIN) y = UOR7X5X_YMIN;
+    if (y > UOR7X5X_YMAX) y = UOR7X5X_YMAX;
+#if (UOR7X5X_XPOL == 1)
+    x = UOR7X5X_XMAX + UOR7X5X_XMIN - x;
+#endif
+#if (UOR7X5X_YPOL == 1)
+    y = UOR7X5X_YMAX + UOR7X5X_YMIN - y;
+#endif
+    x = (x- UOR7X5X_XMIN) * UOR7X5X_XLCD / (UOR7X5X_XMAX - UOR7X5X_XMIN);
+    y = (y- UOR7X5X_YMIN) * UOR7X5X_YLCD / (UOR7X5X_YMAX - UOR7X5X_YMIN);
+    //y = y - 32 * UOR7X5X_YLCD / (y / 2 + UOR7X5X_YLCD);
+    
+    return (x << 16) | y;
+}
+
+static struct uor7x5x_platform_data uor7x5x_pdata = {
+    .init_irq = &uor7x5x_init_irq,
+    .get_irq_level = &uor7x5x_get_irq_level,
+    .abs_xmin = 0,
+    .abs_xmax = UOR7X5X_XLCD,
+    .abs_ymin = 0,
+    .abs_ymax = UOR7X5X_YLCD,    
+    .convert = uor7x5x_convert,
+};
+#endif
+
+#ifdef CONFIG_UOR6X5X_RESISTIVE_TOUCHSCREEN
+#include <linux/i2c/uor6x5x.h>
+
+//GPIOD_24
+#define GPIO_UOR6X5X_PENIRQ ((GPIOD_bank_bit2_24(24)<<16) |GPIOD_bit_bit2_24(24)) 
+#define GPIO_UOR6X5X_RST     (GPIOD_IDX + 24)
+
+static int uor6x5x_init_irq(void)
+{
+/* memson
+    Bit(s)  Description
+    256-105 Unused
+    104     JTAG_TDO
+    103     JTAG_TDI
+    102     JTAG_TMS
+    101     JTAG_TCK
+    100     gpioA_23
+    99      gpioA_24
+    98      gpioA_25
+    97      gpioA_26
+    98-76    gpioE[21:0]
+    75-50   gpioD[24:0]
+    49-23   gpioC[26:0]
+    22-15   gpioB[22;15]
+    14-0    gpioA[14:0]
+ */
+    printk("uor6x5x_init_irq \n");
+    /* set input mode */
+    gpio_direction_input(GPIO_UOR6X5X_PENIRQ);
+    /* set gpio interrupt #0 source=GPIOD_24, and triggered by falling edge(=1) */
+    gpio_enable_edge_int(GPIO_UOR6X5X_RST, 1, 0);
+    
+    return 0;
+}
+static int uor6x5x_get_irq_level(void)
+{
+    return gpio_get_value(GPIO_UOR6X5X_PENIRQ);
+}
+
+#define UOR6X5X_XLCD    800
+#define UOR6X5X_YLCD    600
+#define UOR6X5X_SWAP_XY 0
+#define UOR6X5X_XPOL    0
+#define UOR6X5X_YPOL    1
+#define UOR6X5X_XMIN 200
+#define UOR6X5X_XMAX 3900
+#define UOR6X5X_YMIN 300
+#define UOR6X5X_YMAX 3700
+
+int uor6x5x_convert(int x, int y)
+{
+#if (UOR6X5X_SWAP_XY == 1)
+    swap(x, y);
+#endif
+    if (x < UOR6X5X_XMIN) x = UOR6X5X_XMIN;
+    if (x > UOR6X5X_XMAX) x = UOR6X5X_XMAX;
+    if (y < UOR6X5X_YMIN) y = UOR6X5X_YMIN;
+    if (y > UOR6X5X_YMAX) y = UOR6X5X_YMAX;
+#if (UOR6X5X_XPOL == 1)
+    x = UOR6X5X_XMAX + UOR6X5X_XMIN - x;
+#endif
+#if (UOR6X5X_YPOL == 1)
+    y = UOR6X5X_YMAX + UOR6X5X_YMIN - y;
+#endif
+    x = (x- UOR6X5X_XMIN) * UOR6X5X_XLCD / (UOR6X5X_XMAX - UOR6X5X_XMIN);
+    y = (y- UOR6X5X_YMIN) * UOR6X5X_YLCD / (UOR6X5X_YMAX - UOR6X5X_YMIN);
+    //y = y - 32 * UOR6X5X_YLCD / (y / 2 + UOR6X5X_YLCD);
+    
+    return (x << 16) | y;
+}
+
+static struct uor6x5x_platform_data uor6x5x_pdata = {
+    .init_irq = &uor6x5x_init_irq,
+    .get_irq_level = &uor6x5x_get_irq_level,
+    .abs_xmin = 0,
+    .abs_xmax = UOR6X5X_XLCD,
+    .abs_ymin = 0,
+    .abs_ymax = UOR6X5X_YLCD,    
+    .convert = uor6x5x_convert,
+};
+#endif
+
 #ifdef CONFIG_ANDROID_PMEM
 static struct android_pmem_platform_data pmem_data =
 {
@@ -957,6 +1146,136 @@ static void __init camera_power_on_init(void)
 #endif
 #endif
 
+#if defined (CONFIG_AMLOGIC_VIDEOIN_MANAGER)
+static struct resource vm_resources[] = {
+    [0] = {
+        .start =  VM_ADDR_START,
+        .end   = VM_ADDR_END,
+        .flags = IORESOURCE_MEM,
+    },
+};
+
+static struct platform_device vm_device =
+{
+	.name = "vm",
+	.id = 0,
+    .num_resources = ARRAY_SIZE(vm_resources),
+    .resource      = vm_resources,
+};
+#endif /* AMLOGIC_VIDEOIN_MANAGER */
+#if defined(CONFIG_VIDEO_AMLOGIC_CAPTURE_GC0308)
+
+static int gc0308_v4l2_init(void)
+{
+    udelay(1000);
+    WRITE_CBUS_REG(HHI_ETH_CLK_CNTL,0x30f);// 24M XTAL
+    WRITE_CBUS_REG(HHI_DEMOD_PLL_CNTL,0x232);// 24M XTAL
+	udelay(1000);
+
+    eth_set_pinmux(ETH_BANK0_GPIOC3_C12,ETH_CLK_OUT_GPIOC12_REG3_1, 1);
+   #ifdef CONFIG_SN7325
+	printk( "amlogic camera driver: init gc0308_v4l2_init. \n");
+	configIO(1, 0);
+	setIO_level(1, 0, 1);//30m poweer_disable
+		  
+	//setIO_level(1, 0, 2);//200m poweer_disable
+	setIO_level(1, 0, 0);//30m pwd enable
+	//setIO_level(1, 0, 6);//200m pwd low
+	configIO(0, 0);
+	setIO_level(0, 0, 3);//30m reset low
+	//setIO_level(0, 0, 2);//200m reset low
+	configIO(1, 0);
+	msleep(300);
+	setIO_level(1, 1, 1);//30m poweer_enable
+	msleep(300);
+	configIO(0, 0);
+	setIO_level(0, 1, 3);//30m reset high
+	msleep(300);
+		  
+	#endif
+
+}
+static int gc0308_v4l2_uninit(void)
+{
+   #ifdef CONFIG_SN7325
+	printk( "amlogic camera driver: uninit gc0308_v4l2_uninit. \n");
+	configIO(1, 0);
+	setIO_level(1, 0, 1);//30m poweer_disable
+	setIO_level(1, 1, 0);//30m pwd enable
+	configIO(0, 0);
+	setIO_level(0, 0, 3);//30m reset low
+	msleep(300); 
+    #endif
+
+}
+
+aml_plat_cam_data_t video_gc0308_data = {
+	.name="video-gc0308",
+	.video_nr=1,
+	.device_init= gc0308_v4l2_init,
+	.device_uninit=gc0308_v4l2_uninit,
+};
+#endif /* VIDEO_AMLOGIC_CAPTURE_GT2005 */
+
+#if defined(CONFIG_VIDEO_AMLOGIC_CAPTURE_GT2005)
+//#include <media/amlogic/aml_camera.h>
+
+static int gt2005_v4l2_init(void)
+{
+    udelay(1000);
+    WRITE_CBUS_REG(HHI_ETH_CLK_CNTL,0x30f);// 24M XTAL
+    WRITE_CBUS_REG(HHI_DEMOD_PLL_CNTL,0x232);// 24M XTAL
+	udelay(1000);
+
+    eth_set_pinmux(ETH_BANK0_GPIOC3_C12,ETH_CLK_OUT_GPIOC12_REG3_1, 1);
+   #ifdef CONFIG_SN7325
+	printk( "amlogic camera driver: init CONFIG_SN7325. \n");
+	configIO(1, 0);
+	//setIO_level(1, 0, 1);//30m poweer_disable
+	setIO_level(1, 0, 2);//200m poweer_disable
+	//setIO_level(1, 1, 0);//30m pwd disable
+	setIO_level(1, 0, 6);//200m pwd low
+	configIO(0, 0);
+	//setIO_level(0, 0, 3);//30m reset low
+	setIO_level(0, 0, 2);//200m reset low
+	configIO(1, 0);
+	msleep(300);
+	setIO_level(1, 1, 2);//200m poweer_enable
+	msleep(300);
+	configIO(0, 0);
+	setIO_level(0, 1, 2);//200m reset high
+	
+	msleep(300);
+	configIO(1, 0);
+	setIO_level(1, 1, 6);//200m pwd high
+	//configIO(1, 0);
+	msleep(300);
+    
+    #endif
+
+}
+static int gt2005_v4l2_uninit(void)
+{
+   #ifdef CONFIG_SN7325
+	printk( "amlogic camera driver: uninit gt2005_v4l2_uninit. \n");
+	configIO(1, 0);
+	//setIO_level(1, 0, 2);//200m poweer_disable
+	setIO_level(1, 0, 6);//200m pwd low
+	//configIO(0, 0);
+	//setIO_level(0, 0, 2);//200m reset low
+	msleep(300); 
+    #endif
+
+}
+
+aml_plat_cam_data_t video_gt2005_data = {
+	.name="video-gt2005",
+	.video_nr=0,
+	.device_init= gt2005_v4l2_init,
+	.device_uninit=gt2005_v4l2_uninit,
+};
+#endif /* VIDEO_AMLOGIC_CAPTURE_GT2005 */
+
 #ifdef CONFIG_CAMERA_GT2005
 static struct platform_device camera_gt2005_device = {
     .name       = "camera_gt2005",
@@ -968,8 +1287,7 @@ int gt2005_init(void)
    #ifdef CONFIG_SN7325
 	printk( "amlogic camera driver: init CONFIG_SN7325. \n");
 	configIO(1, 0);
-	setIO_level(1, 0, 1);//30m poweer_disable
-	
+	setIO_level(1, 0, 1);//30m poweer_disable	
 	setIO_level(1, 0, 2);//200m poweer_disable
 	setIO_level(1, 1, 0);//30m pwd disable
 	setIO_level(1, 0, 6);//200m pwd low
@@ -993,11 +1311,11 @@ int gt2005_init(void)
 }
 static struct amlogic_camera_platform_data gt2005_pdata = {
     .name = "camera_gt2005",
-    .back_init = gt2005_init,
+    .first_init = gt2005_init,
     #ifdef CONFIG_AMLOGIC_SECOND_CAMERA_ENABLE
-    .front_init = gc0308_init,
+    .second_init = gc0308_init,
     #else
-	.front_init = NULL,
+	.second_init = NULL,
 	#endif
 };
 
@@ -1018,10 +1336,82 @@ static void __init camera_gt2005_power_on_init(void)
 #endif
 
 #if defined(CONFIG_SUSPEND)
+
+typedef struct {
+	char name[32];
+	unsigned bank;
+	unsigned bit;
+	gpio_mode_t mode;
+	unsigned value;
+	unsigned enable;
+} gpio_data_t;
+
+#define MAX_GPIO 20
+static gpio_data_t gpio_data[MAX_GPIO] = {
+// 5
+    {"GPIOA_7 -- BL_PWM",		 GPIOA_bank_bit0_14(7),		GPIOA_bit_bit0_14(7),	GPIO_OUTPUT_MODE, 1, 1},
+    {"GPIOA_6 -- VCCx2_EN",		 GPIOA_bank_bit0_14(6),		GPIOA_bit_bit0_14(6),	GPIO_OUTPUT_MODE, 1, 1},
+	{"GPIOA_5 -- LCD_CLK",		 GPIOA_bank_bit0_14(5),		GPIOA_bit_bit0_14(5),	GPIO_OUTPUT_MODE, 1, 1},
+	{"GPIOA_2 -- OEH",		     GPIOA_bank_bit0_14(2),		GPIOA_bit_bit0_14(2),	GPIO_OUTPUT_MODE, 1, 1},
+	{"GPIOA_0 -- WIFI_32K",		 GPIOA_bank_bit0_14(0),		GPIOA_bit_bit0_14(0),	GPIO_OUTPUT_MODE, 1, 1},
+// 6
+	{"GPIOB_2 -- WIFI_SD_CMD",	 GPIOB_bank_bit0_7(2),		GPIOB_bit_bit0_7(2),	GPIO_OUTPUT_MODE, 1, 1},
+	{"GPIOB_3 -- WIFI_SD_CLK",	 GPIOB_bank_bit0_7(3),		GPIOB_bit_bit0_7(3),	GPIO_OUTPUT_MODE, 1, 1},
+	{"GPIOB_4 -- WIFI_SD_D0",	 GPIOB_bank_bit0_7(4),		GPIOB_bit_bit0_7(4),	GPIO_OUTPUT_MODE, 1, 1},
+	{"GPIOB_5 -- WIFI_SD_D1",	 GPIOB_bank_bit0_7(5),		GPIOB_bit_bit0_7(5),	GPIO_OUTPUT_MODE, 1, 1},
+	{"GPIOB_6 -- WIFI_SD_D2",	 GPIOB_bank_bit0_7(6),		GPIOB_bit_bit0_7(6),	GPIO_OUTPUT_MODE, 1, 1},
+	{"GPIOB_7 -- WIFI_SD_D3",	 GPIOB_bank_bit0_7(7),		GPIOB_bit_bit0_7(7),	GPIO_OUTPUT_MODE, 1, 1},
+// 6
+//pannel
+	{"GPIOD_12 -- LCD_PWR_EN",   GPIOD_bank_bit2_24(12), GPIOD_bit_bit2_24(12), GPIO_OUTPUT_MODE, 1, 1},
+	{"GPIOD_13 -- nLCD_VCC",     GPIOD_bank_bit2_24(13), GPIOD_bit_bit2_24(13), GPIO_OUTPUT_MODE, 1, 1},
+//	
+	{"GPIOD_21 -- EXT_PWER_EN2", GPIOD_bank_bit2_24(21), GPIOD_bit_bit2_24(21), GPIO_OUTPUT_MODE, 1, 1},
+	{"GPIOD_22 -- EXT_PWER_EN1", GPIOD_bank_bit2_24(22), GPIOD_bit_bit2_24(22), GPIO_OUTPUT_MODE, 1, 1},
+	{"GPIOD_23 -- KEYLED_CTRL",  GPIOD_bank_bit2_24(23), GPIOD_bit_bit2_24(23), GPIO_OUTPUT_MODE, 1, 1},
+//backlight
+	{"GPIOD_18 -- BACKLIGHT_EN", GPIOD_bank_bit2_24(18), GPIOD_bit_bit2_24(18), GPIO_OUTPUT_MODE, 1, 1},
+// 3	
+	{"GPIOE_17 -- nand_ncs4",	 GPIOE_bank_bit16_21(17),	GPIOE_bit_bit16_21(17),	GPIO_OUTPUT_MODE, 1, 1},
+	{"GPIOE_16 -- nand_ncs3",	 GPIOE_bank_bit16_21(16),	GPIOE_bit_bit16_21(16),	GPIO_OUTPUT_MODE, 1, 1},
+	{"GPIOE_18 -- Linux_TX",	 GPIOE_bank_bit16_21(18),	GPIOE_bit_bit16_21(18), GPIO_OUTPUT_MODE, 1, 1},
+	//{"PP0 -- CAMR2_PWDN",	 EXGPIO_BANK1,	0,	GPIO_OUTPUT_MODE, 1, 1},
+};	
+
+static void save_gpio(int port) 
+{
+	gpio_data[port].mode = get_gpio_mode(gpio_data[port].bank, gpio_data[port].bit);
+	if (gpio_data[port].mode==GPIO_OUTPUT_MODE)
+	{
+		if (gpio_data[port].enable){
+			printk("change %s output %d to input\n", gpio_data[port].name, gpio_data[port].value); 
+			gpio_data[port].value = get_gpio_val(gpio_data[port].bank, gpio_data[port].bit);
+			set_gpio_mode(gpio_data[port].bank, gpio_data[port].bit, GPIO_INPUT_MODE);
+		}
+		else{
+			printk("no change %s output %d\n", gpio_data[port].name, gpio_data[port].value); 
+		}
+	}
+}
+
+static void restore_gpio(int port)
+{
+	if ((gpio_data[port].mode==GPIO_OUTPUT_MODE)&&(gpio_data[port].enable))
+	{
+		set_gpio_val(gpio_data[port].bank, gpio_data[port].bit, gpio_data[port].value);
+		set_gpio_mode(gpio_data[port].bank, gpio_data[port].bit, GPIO_OUTPUT_MODE);
+		printk("%s output %d\n", gpio_data[port].name, gpio_data[port].value); 
+	}
+}
+
 static void set_vccx2(int power_on)
 {
+	int i;
+
     if(power_on)
     {
+		for (i=0;i<MAX_GPIO;i++)
+			restore_gpio(i);
         set_gpio_val(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), 1);
         set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);
         //set clk for wifi
@@ -1032,11 +1422,92 @@ static void set_vccx2(int power_on)
     {
         set_gpio_val(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), 0);
         set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);
-        //disable wifi clk
+		for (i=0;i<MAX_GPIO;i++)
+			save_gpio(i);
+		//disable wifi clk
         CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, (1<<18));
         SET_CBUS_REG_MASK(PREG_EGPIO_EN_N, (1<<4));
     }
 }
+#ifdef CONFIG_EXGPIO
+typedef struct {
+	char name[32];
+	unsigned bank;
+	unsigned bit;
+	gpio_mode_t mode;
+	unsigned s_value;
+	unsigned r_value;
+	unsigned enable;
+} exgpio_data_t;
+
+#define MAX_EXGPIO 2
+static exgpio_data_t exgpio_data[MAX_EXGPIO] = {
+// 11
+	{"PP0 -- CAMR2_PWDN",	 EXGPIO_BANK1,	0,	GPIO_OUTPUT_MODE, 1, 0, 1},
+	{"PP1 -- CAM_PWR_EN1",	 EXGPIO_BANK1,	1,	GPIO_OUTPUT_MODE, 0, 0, 1},
+	//{"PP2 -- CAM_PWR_EN2",	 EXGPIO_BANK1,	2,	GPIO_OUTPUT_MODE, 0, 0, 1},
+	//{"PP3 -- CHG_SW",	     EXGPIO_BANK1,	3,	GPIO_OUTPUT_MODE, 1, 0, 1},
+	//{"PP4 -- SPKVDD_ON",	 EXGPIO_BANK1,	4,	GPIO_OUTPUT_MODE, 0, 0, 1},
+	//{"PP5 -- G_RESET",	     EXGPIO_BANK1,	5,	GPIO_OUTPUT_MODE, 0, 0, 1},
+	//{"PP6 -- CAMR1_PWDN",	 EXGPIO_BANK1,	6,	GPIO_OUTPUT_MODE, 0, 0, 1},
+	
+	//{"OD0 -- SENSORPWR_EN",	 EXGPIO_BANK0,	0,	GPIO_OUTPUT_MODE, 0, 0, 1},
+	//{"OD2 -- SENSOR_RST_1",	 EXGPIO_BANK0,	2,	GPIO_OUTPUT_MODE, 1, 0, 1},
+	//{"OD3 -- SENSOR_RST_2",	 EXGPIO_BANK0,	3,	GPIO_OUTPUT_MODE, 1, 0, 1},
+	//{"OD5 -- WIFI_PWD_L",	 EXGPIO_BANK0,	5,	GPIO_OUTPUT_MODE, 0, 0, 1},
+};	
+
+static void save_exgpio(int port) 
+{
+	exgpio_data[port].mode = get_gpio_mode(exgpio_data[port].bank, exgpio_data[port].bit);
+	if((exgpio_data[port].mode==GPIO_OUTPUT_MODE) && exgpio_data[port].enable)
+	{
+	    exgpio_data[port].r_value = get_gpio_val(exgpio_data[port].bank, exgpio_data[port].bit);
+		set_gpio_val(exgpio_data[port].bank, exgpio_data[port].bit, exgpio_data[port].s_value);
+		#if 0
+		int value = get_gpio_val(exgpio_data[port].bank, exgpio_data[port].bit);
+		printk("name:%s, write:%d, read:%d\n", exgpio_data[port].name, exgpio_data[port].s_value, value);
+		#endif
+	}
+	else{
+		printk("no change %s output %d\n", exgpio_data[port].name, exgpio_data[port].s_value); 
+	}
+}
+
+static void restore_exgpio(int port)
+{
+	if ((exgpio_data[port].mode==GPIO_OUTPUT_MODE) && exgpio_data[port].enable)
+	{
+		set_gpio_val(exgpio_data[port].bank, exgpio_data[port].bit, exgpio_data[port].r_value);
+		#if 0
+		int value = get_gpio_val(exgpio_data[port].bank, exgpio_data[port].bit);
+		printk("name:%s, write:%d, read:%d\n", exgpio_data[port].name, exgpio_data[port].r_value, value);
+		#endif
+	}
+	else{
+		printk("no change %s output %d\n", exgpio_data[port].name, exgpio_data[port].r_value); 
+	}
+
+}
+
+static void set_exgpio_on_early_suspend(int power_on)
+{
+	int i;
+
+    if(power_on)
+    {
+		for (i=0;i<MAX_EXGPIO;i++)
+			restore_exgpio(i);
+    }
+    else
+    {
+		for (i=0;i<MAX_EXGPIO;i++)
+			save_exgpio(i);
+    }
+}
+#else
+#define set_exgpio_on_early_suspend NULL
+#endif
 static struct meson_pm_config aml_pm_pdata = {
     .pctl_reg_base = IO_APB_BUS_BASE,
     .mmc_reg_base = APB_REG_ADDR(0x1000),
@@ -1045,6 +1516,8 @@ static struct meson_pm_config aml_pm_pdata = {
     .ddr_clk = 0x00110820,
     .sleepcount = 128,
     .set_vccx2 = set_vccx2,
+    .set_exgpio_early_suspend = set_exgpio_on_early_suspend,
+    .core_voltage_adjust = 5,
 };
 
 static struct platform_device aml_pm_device = {
@@ -1134,7 +1607,7 @@ static struct platform_device aml_i2c_device = {
 
 static int is_ac_connected(void)
 {
-    return (READ_CBUS_REG(ASSIST_HW_REV)&(1<<9))? 1:0;
+    return (READ_CBUS_REG(ASSIST_HW_REV)&(1<<9))? 1:0;//GP_INPUT1
 }
 
 //static int is_usb_connected(void)
@@ -1142,22 +1615,48 @@ static int is_ac_connected(void)
 //  return 0;
 //}
 
+static void ic_control(int flag)
+{
+    if(flag) {//ic on
+		set_gpio_val(GPIOD_bank_bit2_24(19), GPIOD_bit_bit2_24(19), 1);
+		set_gpio_mode(GPIOD_bank_bit2_24(19), GPIOD_bit_bit2_24(19), GPIO_OUTPUT_MODE);
+    }
+	else{
+		set_gpio_val(GPIOD_bank_bit2_24(19), GPIOD_bit_bit2_24(19), 0);
+		set_gpio_mode(GPIOD_bank_bit2_24(19), GPIOD_bit_bit2_24(19), GPIO_OUTPUT_MODE);
+	}
+}
+
+static void powerkey_led_onoff(int onoff)
+{
+    if(onoff) {//led on
+        set_gpio_val(GPIOD_bank_bit2_24(14), GPIOD_bit_bit2_24(14), 1);
+        set_gpio_mode(GPIOD_bank_bit2_24(14), GPIOD_bit_bit2_24(14), GPIO_OUTPUT_MODE);
+    }
+    else{
+    	set_gpio_val(GPIOD_bank_bit2_24(14), GPIOD_bit_bit2_24(14), 0);
+    	set_gpio_mode(GPIOD_bank_bit2_24(14), GPIOD_bit_bit2_24(14), GPIO_OUTPUT_MODE);
+    }
+
+}
+
+
 static void set_charge(int flags)
 {
     //low: fast charge high: slow charge
     CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_7, (1<<18));
-    if(flags == 1)
-    {
-        #ifdef CONFIG_SN7325
-        configIO(1, 0);
-        setIO_level(1, 1, 3);
-        #endif
-    }
-    else
+    if(flags == 1)//high
     {
         #ifdef CONFIG_SN7325
         configIO(1, 0);
         setIO_level(1, 0, 3);
+        #endif
+    }
+    else//low
+    {
+        #ifdef CONFIG_SN7325
+        configIO(1, 0);
+        setIO_level(1, 1, 3);
         #endif
     }
 }
@@ -1182,8 +1681,13 @@ static int get_charge_status(void)
 static void set_bat_off(void)
 {
     //BL_PWM -> GPIOA_7: 0
+    #if 0
     set_gpio_val(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), 0);
     set_gpio_mode(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), GPIO_OUTPUT_MODE);
+	#else
+	set_gpio_val(GPIOD_bank_bit2_24(18), GPIOD_bit_bit2_24(18), 0);
+	set_gpio_mode(GPIOD_bank_bit2_24(18), GPIOD_bit_bit2_24(18), GPIO_OUTPUT_MODE);
+	#endif
     if(is_ac_connected()){ //AC in after power off press
         kernel_restart("reboot");
     }
@@ -1192,6 +1696,7 @@ static void set_bat_off(void)
 
 }
 
+#if 0
 static int bat_value_table[37]={
 0,  //0
 538,//0
@@ -1271,6 +1776,87 @@ static int bat_charge_value_table[37]={
 620,//100
 620 //100
 };
+#else
+static int bat_value_table[37]={
+0,  //0
+513,//0
+534,//4
+539,//10
+543,//15
+544,//16
+546,//18
+547,//20
+548,//23
+549,//26
+550,//29
+551,//32
+552,//35
+553,//37
+554,//40
+556,//43
+557,//46
+559,//49
+560,//51
+563,//54
+565,//57
+567,//60
+571,//63
+574,//66
+576,//68
+580,//71
+584,//74
+587,//77
+592,//80
+596,//83
+599,//85
+603,//88
+608,//91
+614,//95
+618,//97
+626,//100
+626 //100
+};
+
+static int bat_charge_value_table[37]={
+0,  //0    
+534,//0
+562,//4
+573,//10
+577,//15
+578,//16
+579,//18
+581,//20
+583,//23
+584,//26
+585,//29
+586,//32
+587,//35
+588,//37
+589,//40
+590,//43
+591,//46
+592,//49
+593,//51
+595,//54
+597,//57
+599,//60
+601,//63
+603,//66
+604,//68
+606,//71
+609,//74
+611,//77
+614,//80
+617,//83
+619,//85
+622,//88
+625,//91
+628,//95
+632,//97
+636,//100
+636 //100
+};
+#endif
 
 static int bat_level_table[37]={
 0,
@@ -1323,6 +1909,8 @@ static struct aml_power_pdata power_pdata = {
 	.bat_charge_value_table = bat_charge_value_table,
 	.bat_level_table = bat_level_table,
 	.bat_table_len = 37,		
+	.ic_control = ic_control,
+	.powerkey_led_onoff = powerkey_led_onoff,
 	//.supplied_to = supplicants,
 	//.num_supplicants = ARRAY_SIZE(supplicants),
 };
@@ -1586,6 +2174,7 @@ static struct platform_device aml_nand_device = {
 
 static void aml_8726m_bl_init(void)
 {
+#if 0
     unsigned val;
 
     WRITE_CBUS_REG_BITS(PERIPHS_PIN_MUX_0, 0, 22, 1);
@@ -1629,6 +2218,12 @@ static void aml_8726m_bl_init(void)
           (1000 << 14) |    // Digital dimmer_duty = 0%, the most darkness
           (1000 <<  0) ;    // dimmer_freq = 1KHz
     WRITE_CBUS_REG(VGHL_PWM_REG4, val);
+#else
+    SET_CBUS_REG_MASK(PWM_MISC_REG_AB, (1 << 0));
+    msleep(100);
+    SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<31));    
+    msleep(100);
+#endif
     printk("\n\nBacklight init.\n\n");
 }
 static unsigned bl_level;
@@ -1636,41 +2231,61 @@ static unsigned aml_8726m_get_bl_level(void)
 {
     return bl_level;
 }
+#define BL_MAX_LEVEL 60000
 static void aml_8726m_set_bl_level(unsigned level)
 {
-    unsigned cs_level;
+    unsigned cs_level, hi, low;
 
-    if (level < 30)
+    if (level <= 30)
     {
-        cs_level = 15;
+        cs_level = 11640;
     }
-    else if (level == 30)
+    else if (level > 30 && level < 218)
     {
-        cs_level = 12;
-    }
-    else if (level >30 && level < 256)
-    {
-        cs_level = 11-((level - 31)/28);
+        cs_level = (level - 31) * 260 + 11640;
     }
     else
-        cs_level = 3;
+        cs_level = BL_MAX_LEVEL;
+
+    low = cs_level;
+    hi = BL_MAX_LEVEL - low;
 
 
-    WRITE_CBUS_REG_BITS(VGHL_PWM_REG0, cs_level, 0, 4);
-    printk("\naml_8726m_set_bl_level = %d\n", level);
+    //WRITE_CBUS_REG_BITS(VGHL_PWM_REG0, cs_level, 0, 4);        
+    WRITE_CBUS_REG_BITS(PWM_PWM_A,low,0,16);  //low
+    WRITE_CBUS_REG_BITS(PWM_PWM_A,hi,16,16);  //hi  
 }
 
 static void aml_8726m_power_on_bl(void)
 {
+    msleep(100);
+    SET_CBUS_REG_MASK(PWM_MISC_REG_AB, (1 << 0));
+    msleep(100);
+    SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<31));
     //BL_PWM -> GPIOA_7: 1
     msleep(200);
+#if 0
     set_gpio_val(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), 1);
     set_gpio_mode(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), GPIO_OUTPUT_MODE);
+#else    
+set_gpio_val(GPIOD_bank_bit2_24(18), GPIOD_bit_bit2_24(18), 1);
+set_gpio_mode(GPIOD_bank_bit2_24(18), GPIOD_bit_bit2_24(18), GPIO_OUTPUT_MODE);
+#endif
 }
 
 static void aml_8726m_power_off_bl(void)
 {
-    //BL_PWM -> GPIOA_7: 0
+    //BL_PWM -> GPIOD_18: 0
+#if 0
+	set_gpio_val(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), 0);
+	set_gpio_mode(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), GPIO_OUTPUT_MODE);
+#else    
+	set_gpio_val(GPIOD_bank_bit2_24(18), GPIOD_bit_bit2_24(18), 0);
+	set_gpio_mode(GPIOD_bank_bit2_24(18), GPIOD_bit_bit2_24(18), GPIO_OUTPUT_MODE);
+#endif
+
+    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<31));
+    CLEAR_CBUS_REG_MASK(PWM_MISC_REG_AB, (1 << 0));
     set_gpio_val(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), 0);
     set_gpio_mode(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), GPIO_OUTPUT_MODE);
 }
@@ -1848,6 +2463,9 @@ static struct platform_device __initdata *platform_devs[] = {
     #ifdef CONFIG_CAMERA_GC0308
         &camera_device,
     #endif
+    #ifdef CONFIG_AMLOGIC_VIDEOIN_MANAGER
+		&vm_device,
+	#endif
     #ifdef CONFIG_CAMERA_GT2005
         &camera_gt2005_device,
     #endif
@@ -1889,6 +2507,20 @@ static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
     	.platform_data = (void *)&gt2005_pdata
     },
 #endif
+#if CONFIG_VIDEO_AMLOGIC_CAPTURE_GT2005
+    {
+    	/*gt2005 i2c address is 0x78/0x79*/
+    	I2C_BOARD_INFO("gt2005_i2c",  0x78 >> 1 ),
+    	.platform_data = (void *)&video_gt2005_data
+    },
+#endif
+#if CONFIG_VIDEO_AMLOGIC_CAPTURE_GC0308
+    {
+    	/*gt2005 i2c address is 0x78/0x79*/
+    	I2C_BOARD_INFO("gc0308_i2c",  0x42 >> 1 ),
+    	.platform_data = (void *)&video_gc0308_data
+    },
+#endif
 
 #ifdef CONFIG_SND_AML_M1_MID_WM8900
     {
@@ -1917,6 +2549,21 @@ static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
         I2C_BOARD_INFO("itk", 0x41),
         .irq = INT_GPIO_0,
         .platform_data = (void *)&itk_pdata,
+    },
+#endif
+
+#ifdef CONFIG_UOR7X5X_RESISTIVE_TOUCHSCREEN
+    {
+        I2C_BOARD_INFO("uor7x5x", 0x48),
+        .irq = INT_GPIO_0,
+        .platform_data = (void *)&uor7x5x_pdata,
+    },
+#endif
+#ifdef CONFIG_UOR6X5X_RESISTIVE_TOUCHSCREEN
+    {
+        I2C_BOARD_INFO("uor6x5x", 0x48),
+        .irq = INT_GPIO_0,
+        .platform_data = (void *)&uor6x5x_pdata,
     },
 #endif
 };

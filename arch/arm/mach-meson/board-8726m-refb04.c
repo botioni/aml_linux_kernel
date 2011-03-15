@@ -759,9 +759,9 @@ static struct itk_platform_data itk_pdata = {
     .tp_max_height = 2944,
     .lcd_max_width = 1024,
     .lcd_max_height = 768,
-    .swap_xy=0;
-    .xpol=1;
-    .ypol=0;
+    .swap_xy=0,
+    .xpol=1,
+    .ypol=0
 };
 #endif
 
@@ -820,6 +820,7 @@ static struct meson_pm_config aml_pm_pdata = {
     .ddr_clk = 0x00110820,
     .sleepcount = 128,
     .set_vccx2 = set_vccx2,
+    .core_voltage_adjust = 5,
 };
 
 static struct platform_device aml_pm_device = {
@@ -924,6 +925,7 @@ static void set_charge(int flags)
         {
 	    //set_gpio_val(GPIOD_bank_bit2_24(22), GPIOD_bit_bit2_24(22), 0); //fast charge
 	    #ifdef CONFIG_SN7325
+	    printk("7325 set charge to fast charge\n");
         configIO(1, 0);
         setIO_level(1, 1, 7);
         #endif
@@ -932,6 +934,7 @@ static void set_charge(int flags)
         {
     	//set_gpio_val(GPIOD_bank_bit2_24(22), GPIOD_bit_bit2_24(22), 1);	//slow charge
 	    #ifdef CONFIG_SN7325
+	    printk("7325 set charge to slow charge\n");
         configIO(1, 0);
         setIO_level(1, 0, 7);
         #endif

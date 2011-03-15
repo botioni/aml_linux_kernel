@@ -58,6 +58,7 @@ dsp_register.h
 #define DSP_AFIFO_RD_OFFSET1  		DSP_REG(20)
 
 #define DSP_DECODE_OPTION       DSP_REG(21)
+#define DSP_AUDIO_FORMAT_INFO  DSP_REG(22)
 
 #define MAILBOX1_REG(n)	DSP_REG(40+n)
 #define MAILBOX2_REG(n)	DSP_REG(40+32+n)
@@ -89,6 +90,7 @@ int len;
 #define M2B_IRQ4_AUDIO_INFO					(4)
 #define M2B_IRQ0_DSP_SLEEP					(5)
 #define M2B_IRQ0_DSP_WAKEUP					(6)
+#define M2B_IRQ0_DSP_SR_CHANGED			(7) //reserved for hdmi audio input sample rate notify
 
 #define CMD_PRINT_LOG					(1234<<8 |1)
 

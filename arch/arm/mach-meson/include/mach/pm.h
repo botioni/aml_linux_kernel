@@ -12,8 +12,10 @@ struct meson_pm_config {
     void __iomem *power_key;
     unsigned ddr_clk;
     void __iomem *ddr_reg_backup;
+	unsigned core_voltage_adjust;
 	int sleepcount;
 	void (*set_vccx2)(int power_on);
+	void (*set_exgpio_early_suspend)(int power_on);
 };
 
 extern unsigned int meson_cpu_suspend_sz;

@@ -26,6 +26,13 @@
 #define CONFIG_EXGPIO
 #endif
 
+#ifdef CONFIG_SN7325
+#include <linux/sn7325.h>
+#ifndef CONFIG_EXGPIO
+#define CONFIG_EXGPIO
+#endif
+#endif
+
 typedef enum gpio_bank
 {
 	PREG_EGPIO=0,
@@ -141,34 +148,65 @@ extern int gpio_get_value(unsigned gpio);
 
 
 #ifdef CONFIG_EXGPIO
-static inline int set_exgpio_mode(gpio_bank_t bank,int bit,gpio_mode_t mode)
+#define MAX_EXGPIO_BANK 4
+
+static inline unsigned char get_exgpio_port(gpio_bank_t bank)
 {
-    int bank_mode = get_configIO(bank);
+    unsigned char port = bank - EXGPIO_BANK0;
+    
+    return (port >= MAX_EXGPIO_BANK)? MAX_EXGPIO_BANK : port;        
+}
+
+static inline int set_exgpio_mode(unsigned char port,int bit,gpio_mode_t mode)
+{
+    if( port == MAX_EXGPIO_BANK )
+        return -1;
+    
+    int bank_mode = get_configIO(port);
     
     bank_mode &= ~(1 << bit);
     bank_mode |= mode << bit;
-    configIO(bank, bank_mode);
+    configIO(port, bank_mode);
     return 0;
 }
 
-static inline gpio_mode_t get_exgpio_mode(gpio_bank_t bank,int bit)
+static inline gpio_mode_t get_exgpio_mode(unsigned char port,int bit)
 {
-    return (get_configIO(bank) >> bit) & 1;
+    if( port == MAX_EXGPIO_BANK )
+        return -1;
+    return (get_configIO(port) >> bit) & 1;
 }
 
-static inline int set_exgpio_val(gpio_bank_t bank,int bit,unsigned long val)
+static inline int set_exgpio_val(unsigned char port,int bit,unsigned long val)
 {
-    int bank_val = getIO_level(bank);
+    if( port == MAX_EXGPIO_BANK )
+        return -1;
+    
+#ifdef CONFIG_TCA6424
+    int bank_val = getIO_level(port);
     
     bank_val &= ~(1 << bit);
     bank_val |= val << bit;
-    setIO_level(bank, bank_val);
+    setIO_level(port, bank_val);
+#endif
+
+#ifdef CONFIG_SN7325
+    setIO_level(port, val, bit);
+#endif
     return 0;
 }
 
-static inline unsigned long  get_exgpio_val(gpio_bank_t bank,int bit)
+static inline unsigned long  get_exgpio_val(unsigned char port, int bit)
 {
-    return (getIO_level(bank) >> bit) & 1;
+    if( port == MAX_EXGPIO_BANK )
+        return -1;
+#ifdef CONFIG_TCA6424    
+    return (getIO_level(port) >> bit) & 1;
+#endif
+
+#ifdef CONFIG_SN7325
+    return getIObit_level(port, bit);
+#endif
 }
 #endif
 

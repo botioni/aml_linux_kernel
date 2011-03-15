@@ -40,10 +40,14 @@ typedef struct rx_cap_
 #define EDID_MAX_BLOCK  20       //4
 #define HDMI_TMP_BUF_SIZE            1024
 typedef struct hdmi_tx_dev_s {
+#ifdef AVOS
+	  INT16U             task_id;
+	  OS_STK             * taskstack;
+#else
     struct cdev cdev;             /* The cdev structure */
-
     struct proc_dir_entry *proc_file;
     struct task_struct *task;
+#endif
     struct {
         void (*SetPacket)(int type, unsigned char* DB, unsigned char* HB);
         void (*SetAudioInfoFrame)(unsigned char* AUD_DB, unsigned char* CHAN_STAT_BUF);
@@ -63,6 +67,9 @@ typedef struct hdmi_tx_dev_s {
     unsigned char EDID_buf[EDID_MAX_BLOCK*128]; 
     rx_cap_t RXCap;
     int vic_count;
+    /*audio*/
+    Hdmi_tx_audio_para_t cur_audio_param;
+    int audio_param_update_flag;
     /*status*/
 #define DISP_SWITCH_FORCE       0
 #define DISP_SWITCH_EDID        1    
@@ -71,6 +78,7 @@ typedef struct hdmi_tx_dev_s {
     unsigned char unplug_powerdown;
     /**/
     unsigned char hpd_event; /* 1, plugin; 2, plugout */
+    unsigned char mux_hpd_if_pin_high_flag; 
     HDMI_TX_INFO_t hdmi_info;
     unsigned char tmp_buf[HDMI_TMP_BUF_SIZE];
 }hdmitx_dev_t;
@@ -82,7 +90,7 @@ typedef struct hdmi_tx_dev_s {
 #define HDMI_AUDIO_CONTENT_PROTECTION   5
 
 
-#define HDMITX_VER "2010Dec08a"
+#define HDMITX_VER "2011March11a"
 /************************************
 *    hdmitx protocol level interface
 *************************************/
@@ -119,5 +127,8 @@ extern void HDMITX_M1B_Init(hdmitx_dev_t* hdmitx_device);
 
 #define HDMITX_HWCMD_LOWPOWER_SWITCH    0x1
 #define HDMITX_HWCMD_VDAC_OFF           0x2
+#define HDMITX_HWCMD_MUX_HPD_IF_PIN_HIGH       0x3
+#define HDMITX_HWCMD_TURNOFF_HDMIHW           0x4
+#define HDMITX_HWCMD_MUX_HPD                0x5
 
 #endif

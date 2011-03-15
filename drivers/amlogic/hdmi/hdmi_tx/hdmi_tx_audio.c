@@ -1,3 +1,4 @@
+#ifndef AVOS
 #include <linux/version.h>
 #include <linux/module.h>
 #include <linux/types.h>
@@ -11,6 +12,18 @@
 #include <linux/platform_device.h>
 #include <linux/mutex.h>
 #include <linux/cdev.h>
+#else
+#include "ioapi.h"
+#include <chipsupport/chipsupport.h>
+#include <os/extend/interrupt.h>
+#include <Drivers/include/peripheral_reg.h>
+#include <Drivers/include/isa_reg.h>
+#include <Drivers/include/mpeg_reg.h>
+#include <interrupt.h>
+#include "displaydev.h"
+#include "policy.h"
+#endif
+
 #include "hdmi_tx_module.h"
 #include "hdmi_info_global.h"
 
@@ -40,7 +53,7 @@ void hdmi_tx_set_N_CTS(unsigned N_value, unsigned CTS)
 {
 }
 
-static void hdmi_tx_construct_aud_packet(Hdmi_tx_audio_para_t* audio_param, char* AUD_DB, unsigned char* CHAN_STAT_BUF)
+static void hdmi_tx_construct_aud_packet(Hdmi_tx_audio_para_t* audio_param, unsigned char* AUD_DB, unsigned char* CHAN_STAT_BUF)
 {
 #ifndef PCM_USE_INFOFRAME
     if((audio_param->type == CT_PCM)&&(audio_param->channel_num==CC_2CH)){

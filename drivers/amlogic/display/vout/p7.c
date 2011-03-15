@@ -153,29 +153,56 @@ void power_on_backlight(void)
 {
     //BL_PWM -> GPIOA_7: 1
     msleep(200);
+#if 0
     set_gpio_val(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), 1);
     set_gpio_mode(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), GPIO_OUTPUT_MODE);
+#else    
+    msleep(100);
+    SET_CBUS_REG_MASK(PWM_MISC_REG_AB, (1 << 0));
+    msleep(100);
+    SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<31));
+    //BL_PWM -> GPIOD_18: 1
+	set_gpio_val(GPIOD_bank_bit2_24(18), GPIOD_bit_bit2_24(18), 1);
+	set_gpio_mode(GPIOD_bank_bit2_24(18), GPIOD_bit_bit2_24(18), GPIO_OUTPUT_MODE);
+#endif
 }
 
 void power_off_backlight(void)
 {
-    //BL_PWM -> GPIOA_7: 0
+    //BL_PWM -> GPIOD_18: 0
+#if 0
     set_gpio_val(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), 0);
     set_gpio_mode(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), GPIO_OUTPUT_MODE);
+#else    
+	set_gpio_val(GPIOD_bank_bit2_24(18), GPIOD_bit_bit2_24(18), 0);
+	set_gpio_mode(GPIOD_bank_bit2_24(18), GPIOD_bit_bit2_24(18), GPIO_OUTPUT_MODE);
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<31));
+	CLEAR_CBUS_REG_MASK(PWM_MISC_REG_AB, (1 << 0));
+	set_gpio_val(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), 0);
+	set_gpio_mode(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), GPIO_OUTPUT_MODE);
+#endif
 }
 
 static void power_on_lcd(void)
 {
+#if 0
     //LCD3.3V  EIO -> OD0: 0 
 #ifdef CONFIG_SN7325
     configIO(0, 0);
     setIO_level(0, 0, 0);
-#endif    
+#endif
     msleep(80);
     //AVDD EIO -> OD4: 1 
 #ifdef CONFIG_SN7325
     configIO(0, 0);
     setIO_level(0, 1, 4);
+#endif
+#else
+set_gpio_val(GPIOD_bank_bit2_24(13), GPIOD_bit_bit2_24(13), 0);
+set_gpio_mode(GPIOD_bank_bit2_24(13), GPIOD_bit_bit2_24(13), GPIO_OUTPUT_MODE);
+msleep(80);
+set_gpio_val(GPIOD_bank_bit2_24(12), GPIOD_bit_bit2_24(12), 1);
+set_gpio_mode(GPIOD_bank_bit2_24(12), GPIOD_bit_bit2_24(12), GPIO_OUTPUT_MODE);
 #endif
     msleep(80);
 }
@@ -183,6 +210,7 @@ static void power_on_lcd(void)
 static void power_off_lcd(void)
 {
     msleep(50);
+#if 0
     //AVDD EIO -> OD4: 0
 #ifdef CONFIG_SN7325
     configIO(0, 0);
@@ -194,6 +222,13 @@ static void power_off_lcd(void)
 #ifdef CONFIG_SN7325
     configIO(0, 0);
     setIO_level(0, 1, 0);
+#endif
+#else
+set_gpio_val(GPIOD_bank_bit2_24(12), GPIOD_bit_bit2_24(12), 0);
+set_gpio_mode(GPIOD_bank_bit2_24(12), GPIOD_bit_bit2_24(12), GPIO_OUTPUT_MODE);
+msleep(20);
+set_gpio_val(GPIOD_bank_bit2_24(13), GPIOD_bit_bit2_24(13), 1);
+set_gpio_mode(GPIOD_bank_bit2_24(13), GPIOD_bit_bit2_24(13), GPIO_OUTPUT_MODE);
 #endif
 }
 

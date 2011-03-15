@@ -137,6 +137,7 @@ static irqreturn_t audiodsp_mailbox_irq(int irq, void *data)
 			}
 		else
 			{
+			DSP_PRNT("frame format changed,fmt->valid 0x%x\n",fmt->valid);
 			if(fmt->valid&SUB_FMT_VALID)
 				{
 				priv->frame_format.sub_fmt=fmt->sub_fmt;
@@ -211,7 +212,13 @@ int audiodsp_release_mailbox(struct audiodsp_priv *priv)
 	free_irq(INT_MAILBOX_1B,(void *)priv);
     return 0;
 }
-
+int  mailbox_send_audiodsp(int overwrite,int num,int cmd,const char *data,int len)
+{
+	int res = -1;
+	res = dsp_mailbox_send(audiodsp_privdata(),overwrite,num,cmd,data,len);
+	return res;
+}
+EXPORT_SYMBOL(mailbox_send_audiodsp);
 
 
 

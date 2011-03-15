@@ -1,3 +1,4 @@
+#ifndef AVOS
 #include <linux/version.h>
 #include <linux/module.h>
 #include <linux/types.h>
@@ -13,9 +14,21 @@
 #include <linux/cdev.h>
 #include <asm/uaccess.h>
 
+#else
+#include "ioapi.h"
+#include <chipsupport/chipsupport.h>
+#include <os/extend/interrupt.h>
+#include <Drivers/include/peripheral_reg.h>
+#include <Drivers/include/isa_reg.h>
+#include <Drivers/include/mpeg_reg.h>
+#include <interrupt.h>
+#include "displaydev.h"
+#include "policy.h"
+#endif
+
+
 #include "hdmi_tx_module.h"
 #include "hdmi_info_global.h"
-
 
 #define CEA_DATA_BLOCK_COLLECTION_ADDR_1StP 0x04
 #define VIDEO_TAG 0x40
@@ -798,7 +811,6 @@ int Edid_ParsingCEADataBlockCollection(HDMI_TX_INFO_t * info, unsigned char *buf
    return 0;
 }
 
-
 //-----------------------------------------------------------
 static int hdmitx_edid_block_parse(hdmitx_dev_t* hdmitx_device, unsigned char *BlockBuf)
 {
@@ -890,8 +902,8 @@ int hdmitx_edid_parse(hdmitx_dev_t* hdmitx_device)
     unsigned char* EDID_buf = hdmitx_device->EDID_buf;
     int i, j, ret_val ;
     hdmi_print(0, "EDID Parser:\n");
-
     ret_val = Edid_DecodeHeader(&hdmitx_device->hdmi_info, &EDID_buf[0]);
+
 //    if(ret_val == -1)
 //        return -1;
 
@@ -967,19 +979,21 @@ int hdmitx_edid_parse(hdmitx_dev_t* hdmitx_device)
         }
     }
 #if 1    
-    i=hdmitx_edid_dump(hdmitx_device, hdmitx_device->tmp_buf, HDMI_TMP_BUF_SIZE);
+    i=hdmitx_edid_dump(hdmitx_device, (char*)(hdmitx_device->tmp_buf), HDMI_TMP_BUF_SIZE);
     hdmitx_device->tmp_buf[i]=0;
-    hdmi_print_buf(hdmitx_device->tmp_buf, strlen(hdmitx_device->tmp_buf));
+    hdmi_print_buf((char*)(hdmitx_device->tmp_buf), strlen((char*)(hdmitx_device->tmp_buf)));
     hdmi_print(0,"\n");
 #endif    
     return 0;
 
 }
 
-static struct{
+typedef struct{
     const char* disp_mode;
     HDMI_Video_Codes_t VIC;
-}dispmode_VIC_tab[]=
+}dispmode_vic_t;
+
+static dispmode_vic_t dispmode_VIC_tab[]=
 {
     {"480i", HDMI_480i60}, 
     {"480i", HDMI_480i60_16x9},
@@ -1002,55 +1016,49 @@ static struct{
 HDMI_Video_Codes_t hdmitx_edid_get_VIC(hdmitx_dev_t* hdmitx_device, const char* disp_mode, char force_flag)
 {
     rx_cap_t* pRXCap = &(hdmitx_device->RXCap);
-	  int  i,j,count=ARRAY_SIZE(dispmode_VIC_tab);
+	  int  i,j;
+#ifndef AVOS
+	  int count=ARRAY_SIZE(dispmode_VIC_tab);
+#else
+    int count=sizeof(dispmode_VIC_tab)/sizeof(dispmode_vic_t);
+#endif	  
 	  HDMI_Video_Codes_t vic=HDMI_Unkown;
-	  HDMI_Video_Codes_t vic16x9=HDMI_Unkown;
-	  HDMI_Video_Codes_t vicret=HDMI_Unkown;
     int mode_name_len=0;
     //printk("disp_mode is %s\n", disp_mode);
     for(i=0;i<count;i++)
-    { /* below code assumes "16x9 mode" follows it's "normal mode" in dispmode_VIC_tab[] */
+    {
         if(strncmp(disp_mode, dispmode_VIC_tab[i].disp_mode, strlen(dispmode_VIC_tab[i].disp_mode))==0)
         {
-            if((vic!=HDMI_Unkown)||(strlen(dispmode_VIC_tab[i].disp_mode)==mode_name_len)){
-                vic16x9 = dispmode_VIC_tab[i].VIC;
-            }
-            else if((vic==HDMI_Unkown)||(strlen(dispmode_VIC_tab[i].disp_mode)>mode_name_len)){
+            if((vic==HDMI_Unkown)||(strlen(dispmode_VIC_tab[i].disp_mode)>mode_name_len)){
                 vic = dispmode_VIC_tab[i].VIC;
-                vic16x9 = HDMI_Unkown;
                 mode_name_len = strlen(dispmode_VIC_tab[i].disp_mode);
             }
         }
     }
     if(vic!=HDMI_Unkown){
-        /* normal mode has high priority */
+        if(force_flag==0){
             for( j = 0 ; j < pRXCap->VIC_count ; j++ ){
-            if(pRXCap->VIC[j]==vic){ 
-                vicret = vic;
+                if(pRXCap->VIC[j]==vic)
                     break;    
             }
-        }
-        if((j>=pRXCap->VIC_count)&&(vic16x9!=HDMI_Unkown)){
-            for( j = 0 ; j < pRXCap->VIC_count ; j++ ){
-                if(pRXCap->VIC[j]==vic16x9){
-                    vicret = vic16x9;
-                    break;
-                }
-            }
-        }
-        if(force_flag){ 
-            if((vicret==HDMI_Unkown)&&(vic!=HDMI_Unkown)){
-                vicret = vic;    
+            if(j>=pRXCap->VIC_count){
+                vic = HDMI_Unkown;
             }
         }
     }    
-    return vicret;
+    return vic;
 }    
 
 char* hdmitx_edid_get_native_VIC(hdmitx_dev_t* hdmitx_device)
 {
     rx_cap_t* pRXCap = &(hdmitx_device->RXCap);
-	  int  i,count=ARRAY_SIZE(dispmode_VIC_tab);
+	  int  i;
+#ifndef AVOS
+	  int count=ARRAY_SIZE(dispmode_VIC_tab);
+#else
+    int count=sizeof(dispmode_VIC_tab)/sizeof(dispmode_vic_t);
+#endif	  
+
 	  char* disp_mode_ret=NULL;
     for(i=0;i<count;i++){
         if(pRXCap->native_VIC==dispmode_VIC_tab[i].VIC){

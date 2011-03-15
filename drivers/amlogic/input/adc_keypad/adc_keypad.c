@@ -44,6 +44,9 @@
 #include <linux/adc_keypad.h>
 
 struct kp {
+        int (*led_control)(void *param);
+	int *led_control_param;
+
 	struct input_dev *input;
 	struct timer_list timer;
 	unsigned int cur_keycode;
@@ -58,6 +61,8 @@ struct kp {
 };
 
 static struct kp *gp_kp=NULL;
+
+static int timer_count = 0;
 
 static int kp_search_key(struct kp *kp)
 {
@@ -91,6 +96,12 @@ static void kp_work(struct kp *kp)
 			printk("key %d released.\n", kp->cur_keycode);
 			input_report_key(kp->input, kp->cur_keycode, 0);
 			kp->cur_keycode = 0;
+			
+			if (kp->led_control){
+				kp->led_control_param[0] = 2;
+				kp->led_control_param[1] = code;
+	    			timer_count = kp->led_control(kp->led_control_param);
+			}
 		}
 		else {
 			// detect another key while pressed
@@ -98,6 +109,11 @@ static void kp_work(struct kp *kp)
 	}
 	else {
 		if (code) {
+			if (kp->led_control && (code!=KEY_PAGEUP) && (code!=KEY_PAGEDOWN)){
+				kp->led_control_param[0] = 1;
+				kp->led_control_param[1] = code;
+	    			timer_count = kp->led_control(kp->led_control_param);
+			}
 			kp->cur_keycode = code;
 			printk("key %d pressed.\n", kp->cur_keycode);
 			input_report_key(kp->input, kp->cur_keycode, 1);
@@ -111,6 +127,17 @@ void kp_timer_sr(unsigned long data)
 
 #if 1
     kp_work(kp_data);
+
+    if (kp_data->led_control ){
+	if (timer_count>0)
+	{
+		timer_count++;
+	}
+	if (50 == timer_count){
+		kp_data->led_control_param[0] = 0;
+		timer_count = kp_data->led_control(kp_data->led_control_param);
+	}
+    }
 #else
     unsigned int result;
     result = get_adc_sample();
@@ -208,8 +235,10 @@ static int __init kp_probe(struct platform_device *pdev)
     }
    
     kp = kzalloc(sizeof(struct kp), GFP_KERNEL);
+    kp->led_control_param = kzalloc((sizeof(int)*pdata->led_control_param_num), GFP_KERNEL);
     input_dev = input_allocate_device();
-    if (!kp || !input_dev) {
+    if (!kp ||!kp->led_control_param || !input_dev) {
+        kfree(kp->led_control_param);
         kfree(kp);
         input_free_device(input_dev);
         return -ENOMEM;
@@ -229,6 +258,9 @@ static int __init kp_probe(struct platform_device *pdev)
         
     kp->key = pdata->key;
     kp->key_num = pdata->key_num;
+    if (pdata->led_control){
+    	kp->led_control = pdata->led_control;
+    }
 
     struct adc_key *key = pdata->key;
     int new_chan_flag;
@@ -270,6 +302,7 @@ static int __init kp_probe(struct platform_device *pdev)
     ret = input_register_device(kp->input);
     if (ret < 0) {
         printk(KERN_ERR "Unable to register keypad input device.\n");
+		    kfree(kp->led_control_param);
 		    kfree(kp);
 		    input_free_device(input_dev);
 		    return -EINVAL;
@@ -283,6 +316,14 @@ static int kp_remove(struct platform_device *pdev)
 {
     struct kp *kp = platform_get_drvdata(pdev);
 
+#if 0
+    if (kp->p_led_timer){
+    	del_timer_sync(kp->p_led_timer);
+    	kfree(kp->p_led_timer);
+	kp->p_led_timer = NULL;
+    }
+#endif
+    kp->led_control(0);
     input_unregister_device(kp->input);
     input_free_device(kp->input);
     unregister_chrdev(kp->config_major,kp->config_name);
@@ -292,6 +333,7 @@ static int kp_remove(struct platform_device *pdev)
         device_destroy(kp->config_class,MKDEV(kp->config_major,0));
         class_destroy(kp->config_class);
     }
+    kfree(kp->led_control_param);
     kfree(kp);
     gp_kp=NULL ;
     return 0;

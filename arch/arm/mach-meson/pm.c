@@ -39,9 +39,7 @@ static int early_suspend_flag = 0;
 #define ON  1
 #define OFF 0
 
-#define ADJUST_CORE_VOLTAGE
-//#define DDR_PLL_OFF
-#define WAKE_UP_BY_IRQ
+#include "sleep.h"
 
 static void (*meson_sram_suspend) (struct meson_pm_config *);
 static struct meson_pm_config *pdata;
@@ -640,6 +638,9 @@ static void meson_system_early_suspend(struct early_suspend *h)
 {
     if (!early_suspend_flag){
         printk(KERN_INFO "sys_suspend\n");
+		if(pdata->set_exgpio_early_suspend){
+			pdata->set_exgpio_early_suspend(OFF);
+		}
         early_power_gate_switch(OFF);
         early_clk_switch(OFF);
         early_pll_switch(OFF);
@@ -654,6 +655,9 @@ static void meson_system_late_resume(struct early_suspend *h)
         early_clk_switch(ON);
         early_power_gate_switch(ON);
         early_suspend_flag = 0;
+		if(pdata->set_exgpio_early_suspend){
+			pdata->set_exgpio_early_suspend(ON);
+		}
         printk(KERN_INFO "sys_resume\n");
     }
 }
@@ -683,7 +687,7 @@ static void auto_clk_gating_setup(
 
 static void meson_pm_suspend(void)
 {
-#ifdef DDR_PLL_OFF
+#ifdef SAVE_DDR_REGS
     int *p = pdata->ddr_reg_backup;
     int i;
 #endif
@@ -714,7 +718,7 @@ static void meson_pm_suspend(void)
 
     power_gate_switch(OFF);
 
-#ifdef DDR_PLL_OFF
+#ifdef SAVE_DDR_REGS
     printk("PCTL_TOGCNT1U_ADDR %x\n", READ_APB_REG(PCTL_TOGCNT1U_ADDR));
     printk("PCTL_TOGCNT100N_ADDR %x\n", READ_APB_REG(PCTL_TOGCNT100N_ADDR));
     printk("PCTL_TREFI_ADDR %x\n", READ_APB_REG(PCTL_TREFI_ADDR));
@@ -757,48 +761,48 @@ static void meson_pm_suspend(void)
     printk(KERN_INFO "sleep ...\n");
 
     mpeg_clk_backup = READ_CBUS_REG(HHI_MPEG_CLK_CNTL);	// save clk81 ctrl
-    if (!READ_CBUS_REG(HHI_MPEG_CLK_CNTL)&(1<<9))
-        SET_CBUS_REG_MASK(HHI_MPEG_CLK_CNTL, (1<<9)); 	// rtc instead of xtal
+
+#ifdef SYSTEM_16K
     if (READ_CBUS_REG(HHI_MPEG_CLK_CNTL)&(1<<8))
         CLEAR_CBUS_REG_MASK(HHI_MPEG_CLK_CNTL, (1<<8)); // clk81 = xtal
-    WRITE_CBUS_REG_BITS(HHI_MPEG_CLK_CNTL, 0x3, 0, 6);	// devider = 4
+    SET_CBUS_REG_MASK(HHI_MPEG_CLK_CNTL, (1<<9));       // xtal_rtc = rtc
+    WRITE_CBUS_REG_BITS(HHI_MPEG_CLK_CNTL, 0x1, 0, 6);	// devider = 2
     WRITE_CBUS_REG_BITS(HHI_MPEG_CLK_CNTL, 0, 12, 2);	// clk81 src -> xtal_rtc
     SET_CBUS_REG_MASK(HHI_MPEG_CLK_CNTL, (1<<8));		// clk81 = xtal_rtc / devider
-    CLEAR_CBUS_REG_MASK(HHI_A9_CLK_CNTL, (1<<7));		// clka9 = rtc / 2
+#else
+    if (READ_CBUS_REG(HHI_MPEG_CLK_CNTL)&(1<<8))
+        CLEAR_CBUS_REG_MASK(HHI_MPEG_CLK_CNTL, (1<<8)); // clk81 = xtal
+    WRITE_CBUS_REG_BITS(HHI_MPEG_CLK_CNTL, 0x7f, 0, 6);	// devider = 128
+    WRITE_CBUS_REG_BITS(HHI_MPEG_CLK_CNTL, 0, 12, 2);	// clk81 src -> xtal_rtc
+    SET_CBUS_REG_MASK(HHI_MPEG_CLK_CNTL, (1<<8));		// clk81 = xtal_rtc / devider
+#endif
+    CLEAR_CBUS_REG_MASK(HHI_A9_CLK_CNTL, (1<<7));		// clka9 = xtal_rtc / 2
+#ifdef SYSTEM_16K
 	SET_CBUS_REG_MASK(PREG_CTLREG0_ADDR, 1);
-	auto_clk_gating_setup(	2,						// select 100uS timebase							
-							MODE_IRQ_ONLY_WAKE, 	// Set interrupt wakeup only
-							0,						// don't clear the FIQ global mask
-							0,						// don't clear the IRQ global mask
-							1,						// 1us start delay
-							1,						// 1uS gate delay							  
-							1,						// Set the delay wakeup time (1mS)
-							1); 					// 1uS enable delay 
+#endif
+	auto_clk_gating_setup(	2,						    // select 100uS timebase							
+							MODE_IRQ_ONLY_WAKE, 	    // Set interrupt wakeup only
+							0,						    // don't clear the FIQ global mask
+							0,						    // don't clear the IRQ global mask
+							1,						    // 1us start delay
+							1,						    // 1uS gate delay							  
+							1,						    // Set the delay wakeup time (1mS)
+							1); 					    // 1uS enable delay 
     SET_CBUS_REG_MASK(HHI_SYS_PLL_CNTL, (1<<15));		// turn off sys pll
      
-#ifdef WAKE_UP_BY_IRQ 
-    WRITE_CBUS_REG(A9_0_IRQ_IN2_INTR_MASK, (1<<8));
+    WRITE_CBUS_REG(A9_0_IRQ_IN2_INTR_MASK, (1<<8));     // enable rtc interrupt only
     meson_sram_suspend(pdata);
-#else
-    int powerPress = 0;
-    while(1){
-        powerPress = ((READ_CBUS_REG(0x21d1/*RTC_ADDR1*/) >> 2) & 1) ? 0 : 1;
-        if(powerPress){
-            printk(KERN_INFO "intr stat %x %x %x %x\n", 
-                   READ_CBUS_REG(A9_0_IRQ_IN0_INTR_STAT), 
-                   READ_CBUS_REG(A9_0_IRQ_IN1_INTR_STAT),
-                   READ_CBUS_REG(A9_0_IRQ_IN2_INTR_STAT),
-                   READ_CBUS_REG(A9_0_IRQ_IN3_INTR_STAT));            
-            break;
-        }
-    }
-#endif
 
     CLEAR_CBUS_REG_MASK(HHI_SYS_PLL_CNTL, (1<<15));		// turn on sys pll
     udelay(10);
+#ifdef SYSTEM_16K
 	CLEAR_CBUS_REG_MASK(PREG_CTLREG0_ADDR, 1);
+#endif
 	SET_CBUS_REG_MASK(HHI_A9_CLK_CNTL, (1<<7));			// clka9 = sys pll / devider
 	CLEAR_CBUS_REG_MASK(HHI_MPEG_CLK_CNTL, (1<<8));		// clk81 = xtal
+#ifdef SYSTEM_16K
+	CLEAR_CBUS_REG_MASK(HHI_MPEG_CLK_CNTL, (1<<9));     // xtal_rtc = xtal
+#endif
     WRITE_CBUS_REG(HHI_MPEG_CLK_CNTL, mpeg_clk_backup);	// restore clk81 ctrl
 
     printk(KERN_INFO "... wake up\n");
@@ -811,7 +815,7 @@ static void meson_pm_suspend(void)
 
     clk_switch(ON);
 
-#ifdef DDR_PLL_OFF
+#ifdef SAVE_DDR_REGS
     for (i=0;i<100/4;i++)
         printk("%x\n", p[i]);
 #endif

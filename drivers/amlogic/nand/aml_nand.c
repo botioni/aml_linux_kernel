@@ -300,10 +300,16 @@ static int aml_nand_add_partition(struct aml_nand_chip *aml_chip)
 	int adjust_offset;
 	struct mtd_info *mtd = &aml_chip->mtd;
 	struct aml_nand_platform *plat = aml_chip->platform;
+	struct platform_nand_chip *chip = &plat->platform_nand_data.chip;
 #ifdef CONFIG_MTD_PARTITIONS
-	struct mtd_partition *parts = plat->platform_nand_data.chip.partitions;
 	struct mtd_partition *temp_parts = NULL;
-	int nr = plat->platform_nand_data.chip.nr_partitions;
+	struct mtd_partition *parts;
+	int nr;
+	if (chip->set_parts)
+		chip->set_parts(mtd->size, chip);
+
+	parts = plat->platform_nand_data.chip.partitions;
+	nr = plat->platform_nand_data.chip.nr_partitions;
 	if (!strncmp((char*)plat->name, NAND_BOOT_NAME, strlen((const char*)NAND_BOOT_NAME))) {
 		if (nr == 0) {
 			parts = kzalloc(sizeof(struct mtd_partition), GFP_KERNEL);
@@ -369,32 +375,41 @@ static void aml_nand_select_chip(struct mtd_info *mtd, int chipnr)
 
 static void aml_platform_select_chip(struct aml_nand_chip *aml_chip, int chipnr)
 {
+	int i;
+
 	switch (chipnr) {
 		case 0:
 		case 1:
 		case 2:
 		case 3:
-			NFC_SEND_CMD_IDLE(aml_chip->chip_enable[chipnr], 0);
 			aml_chip->chip_selected = aml_chip->chip_enable[chipnr];
 			aml_chip->rb_received = aml_chip->rb_enable[chipnr];
 
-			if (!((aml_chip->chip_selected >> 10) & 1))
-				SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_6, (1 << 4));
-			if (!((aml_chip->chip_selected >> 10) & 2))
-				SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_6, (1 << 3));
-			if (!((aml_chip->chip_selected >> 10) & 4))
-				SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_6, (1 << 14));
-			if (!((aml_chip->chip_selected >> 10) & 8))
-				SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_6, (1 << 13));
+			for (i=1; i<aml_chip->chip_num; i++) {
 
-			if (!((aml_chip->rb_received >> 10) & 1))
-				SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_6, (1 << 2));
-			if (!((aml_chip->rb_received >> 10) & 2))
-				SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_6, (1 << 1));
-			if (!((aml_chip->rb_received >> 10) & 4))
-				SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_6, (1 << 12));
-			if (!((aml_chip->rb_received >> 10) & 8))
-				SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_6, (1 << 11));
+				if (aml_chip->valid_chip[i]) {
+
+					if (!((aml_chip->chip_enable[i] >> 10) & 1))
+						SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_6, (1 << 4));
+					if (!((aml_chip->chip_enable[i] >> 10) & 2))
+						SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_6, (1 << 3));
+					if (!((aml_chip->chip_enable[i] >> 10) & 4))
+						SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_6, (1 << 14));
+					if (!((aml_chip->chip_enable[i] >> 10) & 8))
+						SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_6, (1 << 13));
+
+					if (!((aml_chip->rb_enable[i] >> 10) & 1))
+						SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_6, (1 << 2));
+					if (!((aml_chip->rb_enable[i] >> 10) & 2))
+						SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_6, (1 << 1));
+					if (!((aml_chip->rb_enable[i] >> 10) & 4))
+						SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_6, (1 << 12));
+					if (!((aml_chip->rb_enable[i] >> 10) & 8))
+						SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_6, (1 << 11));
+				}
+			}
+
+			NFC_SEND_CMD_IDLE(aml_chip->chip_selected, 0);
 
 			break;
 

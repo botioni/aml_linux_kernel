@@ -531,26 +531,16 @@ static void isoc_complete_tasklet_func(unsigned long data)
 
 		urb = dwc_otg_hcd->isoc_comp_urbs[i];
 		dwc_otg_hcd->isoc_comp_urbs[i] = NULL;
+
+		//DWC_DEBUGPL(DBG_HCDV,"--[%d],hcd: %p,urb: %p\n",
+		//	i,dwc_otg_hcd,urb);
 		
 		dwc_otg_hcd_complete_urb(dwc_otg_hcd, urb, 0);
 	}
 
 	return;
 }
-static struct tasklet_struct reset_tasklet = {
-	.next = NULL,
-	.state = 0,
-	.count = ATOMIC_INIT(0),
-	.func = reset_tasklet_func,
-	.data = 0,
-};
-static struct tasklet_struct isoc_complete_tasklet = {
-	.next = NULL,
-	.state = 0,
-	.count = ATOMIC_INIT(0),
-	.func = isoc_complete_tasklet_func,
-	.data = 0,
-};
+
 /**
  * Initializes the HCD. This function allocates memory for and initializes the
  * static parts of the usb_hcd and dwc_otg_hcd structures. It also registers the
@@ -636,11 +626,14 @@ int dwc_otg_hcd_init(struct lm_device *_lmdev)
 	init_timer(&dwc_otg_hcd->conn_timer);
 
 	/* Initialize reset tasklet. */
-	reset_tasklet.data = (unsigned long)dwc_otg_hcd;
-	dwc_otg_hcd->reset_tasklet = &reset_tasklet;
-
-	isoc_complete_tasklet.data = (unsigned long)dwc_otg_hcd;
-	dwc_otg_hcd->isoc_complete_tasklet = &isoc_complete_tasklet;
+	tasklet_init(&dwc_otg_hcd->reset_tasklet,
+				reset_tasklet_func,
+				(unsigned long)dwc_otg_hcd);
+	
+	/* Initialize ISOC complete tasklet. */
+	tasklet_init(&dwc_otg_hcd->isoc_complete_tasklet,
+				isoc_complete_tasklet_func,
+				(unsigned long)dwc_otg_hcd);
 
 	/* Set device flags indicating whether the HCD supports DMA. */
 	if (otg_dev->core_if->dma_enable) {
@@ -3252,9 +3245,9 @@ void dwc_otg_hcd_dump_state(dwc_otg_hcd_t * _hcd)
 			}
 		}
 	}
-	DWC_PRINT("  non_periodic_channels: %d\n", _hcd->non_periodic_channels);
-	DWC_PRINT("  periodic_channels: %d\n", _hcd->periodic_channels);
-	DWC_PRINT("  periodic_usecs: %d\n", _hcd->periodic_usecs);
+	DWC_PRINT("  assigned non_periodic_channels: %d\n", _hcd->non_periodic_channels);
+	DWC_PRINT("  assigned periodic_channels: %d\n", _hcd->periodic_channels);
+	DWC_PRINT("  assigned periodic_usecs: %d\n", _hcd->periodic_usecs);
 	np_tx_status.d32 =
 	    dwc_read_reg32(&_hcd->core_if->core_global_regs->gnptxsts);
 	DWC_PRINT("  NP Tx Req Queue Space Avail: %d\n",
