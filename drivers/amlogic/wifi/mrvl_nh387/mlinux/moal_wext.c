@@ -40,6 +40,28 @@ Change log:
 /** Macro for maximum size of scan response buffer */
 #define MAX_SCAN_RSP_BUF (16 * 1024)
 
+/** Region code mapping */
+typedef struct _region_code_mapping
+{
+    /** Region */
+    t_u8 region[COUNTRY_CODE_LEN];
+    /** Code */
+    t_u8 code;
+} region_code_mapping_t;
+
+/** Region code mapping table */
+static region_code_mapping_t region_code_mapping[] = {
+    {"US ", 0x10},              /* US FCC */
+    {"CA ", 0x20},              /* IC Canada */
+    {"SG ", 0x10},              /* Singapore */
+    {"EU ", 0x30},              /* ETSI */
+    {"AU ", 0x30},              /* Australia */
+    {"KR ", 0x30},              /* Republic Of Korea */
+    {"FR ", 0x32},              /* France */
+    {"CN ", 0x50},              /* China */
+    {"JP ", 0xFF},              /* Japan special */
+};
+
 /********************************************************
                 Global Variables
 ********************************************************/
@@ -69,6 +91,63 @@ woal_ssid_valid(mlan_802_11_ssid * pssid)
     }
     LEAVE();
     return MTRUE;
+}
+
+/** 
+ *  @brief This function converts region string to region code
+ *
+ *  @param region_string         Region string
+ *
+ *  @return     Region code
+ */
+static t_u8
+region_string_2_region_code(char *region_string)
+{
+    t_u8 i;
+    t_u8 size = sizeof(region_code_mapping) / sizeof(region_code_mapping_t);
+
+    for (i = 0; i < size; i++) {
+        if (!memcmp(region_string,
+                    region_code_mapping[i].region, strlen(region_string))) {
+            return (region_code_mapping[i].code);
+        }
+    }
+    /* default is US */
+    return (region_code_mapping[0].code);
+}
+
+/**
+ * @brief Set region code
+ * 
+ * @param priv     A pointer to moal_private structure
+ * @param region   A pointer to region string
+ * 
+ * @return           0 --success, otherwise fail
+ */
+static mlan_status
+woal_set_regioncode(moal_private * priv, char *region)
+{
+    mlan_status ret = MLAN_STATUS_SUCCESS;
+    mlan_ds_misc_cfg *cfg = NULL;
+    mlan_ioctl_req *req = NULL;
+
+    ENTER();
+    req = woal_alloc_mlan_ioctl_req(sizeof(mlan_ds_misc_cfg));
+    if (req == NULL) {
+        ret = MLAN_STATUS_FAILURE;
+        goto done;
+    }
+    cfg = (mlan_ds_misc_cfg *) req->pbuf;
+    cfg->sub_command = MLAN_OID_MISC_REGION;
+    req->req_id = MLAN_IOCTL_MISC_CFG;
+    req->action = MLAN_ACT_SET;
+    cfg->param.region_code = region_string_2_region_code(region);
+    ret = woal_request_ioctl(priv, req, MOAL_IOCTL_WAIT);
+  done:
+    if (req)
+        kfree(req);
+    LEAVE();
+    return ret;
 }
 
 /**
@@ -2236,6 +2315,7 @@ woal_set_priv(struct net_device *dev, struct iw_request_info *info,
     mlan_bss_info bss_info;
     mlan_ds_get_signal signal;
     mlan_ds_rate rate;
+    t_u8 country_code[COUNTRY_CODE_LEN];
     int len = 0;
     ENTER();
     if (!(buf = kmalloc(dwrq->length, GFP_KERNEL))) {
@@ -2301,6 +2381,16 @@ woal_set_priv(struct net_device *dev, struct iw_request_info *info,
     } else if (strncmp(buf, "POWERMODE", strlen("POWERMODE")) == 0) {
         powermode = buf + strlen("POWERMODE") + 1;
         if (MLAN_STATUS_SUCCESS != woal_set_powermode(priv, powermode)) {
+            ret = -EFAULT;
+            goto done;
+        }
+        len = sprintf(buf, "OK\n") + 1;
+    } else if (strncmp(buf, "COUNTRY", strlen("COUNTRY")) == 0) {
+        memset(country_code, 0, sizeof(country_code));
+        memcpy(country_code, buf + strlen("COUNTRY") + 1,
+               strlen(buf) - strlen("COUNTRY") - 1);
+        PRINTM(MIOCTL, "Set COUNTRY %s\n", country_code);
+        if (MLAN_STATUS_SUCCESS != woal_set_regioncode(priv, country_code)) {
             ret = -EFAULT;
             goto done;
         }

@@ -182,6 +182,12 @@ menuconfig SDIO_MARVELL_NH387_WIFI
 	  [*]   Include in-kernel firmware blobs in kernel binary  
           (mrvl/sd8787_uapsta.bin mrvl/sd8787_uapsta_w1.bin) External firmware blobs to build into 
 if SDIO_MARVELL_NH387_WIFI	  
+config SDIO_HARD_IRQ
+	depends on SDIO
+	bool "SDIO HARD IRQ"
+	default y
+	---help---
+	  hard irq wake up polling process
 config MRVLNH387_FW_PATH
 	depends on SDIO_MARVELL_NH387_WIFI
 	string "MRVLNH387 Firmware path"
