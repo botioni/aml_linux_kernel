@@ -73,7 +73,7 @@ static unsigned int vid_limit = 16;
 
 /* supported controls */
 static struct v4l2_queryctrl gc0308_qctrl[] = {
-	{
+	/*{
 		.id            = V4L2_CID_BRIGHTNESS,
 		.type          = V4L2_CTRL_TYPE_INTEGER,
 		.name          = "Brightness",
@@ -91,7 +91,7 @@ static struct v4l2_queryctrl gc0308_qctrl[] = {
 		.step          = 0xa,
 		.default_value = 0x30,
 		.flags         = V4L2_CTRL_FLAG_SLIDER,
-	},/* {
+	}, {
 		.id            = V4L2_CID_SATURATION,
 		.type          = V4L2_CTRL_TYPE_INTEGER,
 		.name          = "Saturation",
@@ -100,7 +100,7 @@ static struct v4l2_queryctrl gc0308_qctrl[] = {
 		.step          = 0x8,
 		.default_value = 0x48,
 		.flags         = V4L2_CTRL_FLAG_SLIDER,
-	}, */{
+	}, {
 		.id            = V4L2_CID_HFLIP,
 		.type          = V4L2_CTRL_TYPE_INTEGER,
 		.name          = "flip on horizontal",
@@ -118,7 +118,7 @@ static struct v4l2_queryctrl gc0308_qctrl[] = {
 		.step          = 0x1,
 		.default_value = 0,
 		.flags         = V4L2_CTRL_FLAG_SLIDER,
-	},{
+	},*/{
 		.id            = V4L2_CID_DO_WHITE_BALANCE,
 		.type          = V4L2_CTRL_TYPE_INTEGER,
 		.name          = "white balance",
@@ -1252,22 +1252,22 @@ static int gc0308_setting(struct gc0308_device *dev,int PROP_ID,int value )
 		}
 		break;	
 	case V4L2_CID_DO_WHITE_BALANCE:
-        if(gc0308_qctrl[4].default_value!=value){
-			gc0308_qctrl[4].default_value=value;
+        if(gc0308_qctrl[0].default_value!=value){
+			gc0308_qctrl[0].default_value=value;
 			set_GC0308_param_wb(dev,value);
 			printk(KERN_INFO " set camera  white_balance=%d. \n ",value);
         	}
 		break;
 	case V4L2_CID_EXPOSURE:
-        if(gc0308_qctrl[5].default_value!=value){
-			gc0308_qctrl[5].default_value=value;
+        if(gc0308_qctrl[1].default_value!=value){
+			gc0308_qctrl[1].default_value=value;
 			set_GC0308_param_exposure(dev,value);
 			printk(KERN_INFO " set camera  exposure=%d. \n ",value);
         	}
 		break;
 	case V4L2_CID_COLORFX:
-        if(gc0308_qctrl[6].default_value!=value){
-			gc0308_qctrl[6].default_value=value;
+        if(gc0308_qctrl[2].default_value!=value){
+			gc0308_qctrl[2].default_value=value;
 			set_GC0308_param_effect(dev,value);
 			printk(KERN_INFO " set camera  effect=%d. \n ",value);
         	}
@@ -1282,7 +1282,7 @@ static int gc0308_setting(struct gc0308_device *dev,int PROP_ID,int value )
 
 static void power_down_gc0308(struct gc0308_device *dev)
 {
-	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
+	//struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
 	return;
 }
 

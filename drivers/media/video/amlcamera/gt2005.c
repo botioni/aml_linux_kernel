@@ -73,7 +73,7 @@ static unsigned int vid_limit = 16;
 
 /* supported controls */
 static struct v4l2_queryctrl gt2005_qctrl[] = {
-	{
+	/*{
 		.id            = V4L2_CID_BRIGHTNESS,
 		.type          = V4L2_CTRL_TYPE_INTEGER,
 		.name          = "Brightness",
@@ -91,7 +91,7 @@ static struct v4l2_queryctrl gt2005_qctrl[] = {
 		.step          = 0xa,
 		.default_value = 0x30,
 		.flags         = V4L2_CTRL_FLAG_SLIDER,
-	},/* {
+	}, {
 		.id            = V4L2_CID_SATURATION,
 		.type          = V4L2_CTRL_TYPE_INTEGER,
 		.name          = "Saturation",
@@ -100,7 +100,7 @@ static struct v4l2_queryctrl gt2005_qctrl[] = {
 		.step          = 0x8,
 		.default_value = 0x48,
 		.flags         = V4L2_CTRL_FLAG_SLIDER,
-	}, */{
+	}, {
 		.id            = V4L2_CID_HFLIP,
 		.type          = V4L2_CTRL_TYPE_INTEGER,
 		.name          = "flip on horizontal",
@@ -118,7 +118,7 @@ static struct v4l2_queryctrl gt2005_qctrl[] = {
 		.step          = 0x1,
 		.default_value = 0,
 		.flags         = V4L2_CTRL_FLAG_SLIDER,
-	},{
+	},*/{
 		.id            = V4L2_CID_DO_WHITE_BALANCE,
 		.type          = V4L2_CTRL_TYPE_INTEGER,
 		.name          = "white balance",
@@ -1059,22 +1059,22 @@ static int gt2005_setting(struct gt2005_device *dev,int PROP_ID,int value )
 		}
 		break;	
 	case V4L2_CID_DO_WHITE_BALANCE:
-        if(gt2005_qctrl[4].default_value!=value){
-			gt2005_qctrl[4].default_value=value;
+        if(gt2005_qctrl[0].default_value!=value){
+			gt2005_qctrl[0].default_value=value;
 			GT2005_set_param_wb(dev,value);
 			printk(KERN_INFO " set camera  white_balance=%d. \n ",value);
         	}
 		break;
 	case V4L2_CID_EXPOSURE:
-        if(gt2005_qctrl[5].default_value!=value){
-			gt2005_qctrl[5].default_value=value;
+        if(gt2005_qctrl[1].default_value!=value){
+			gt2005_qctrl[1].default_value=value;
 			GT2005_set_param_exposure(dev,value);
 			printk(KERN_INFO " set camera  exposure=%d. \n ",value);
         	}
 		break;
 	case V4L2_CID_COLORFX:
-        if(gt2005_qctrl[6].default_value!=value){
-			gt2005_qctrl[6].default_value=value;
+        if(gt2005_qctrl[2].default_value!=value){
+			gt2005_qctrl[2].default_value=value;
 			GT2005_set_param_effect(dev,value);
 			printk(KERN_INFO " set camera  effect=%d. \n ",value);
         	}
@@ -1772,13 +1772,13 @@ static int gt2005_close(struct file *file)
 #if 1		
 	power_down_gt2005(dev);
 #endif
-	msleep(300);
+	msleep(100);
 
 	if(dev->platform_dev_data.device_uninit) {
 		dev->platform_dev_data.device_uninit();
 		printk("+++found a uninit function, and run it..\n");
 	}
-	msleep(300); 
+	msleep(400); 
 	return 0;
 }
 

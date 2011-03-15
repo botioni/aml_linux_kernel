@@ -1185,12 +1185,12 @@ static int gc0308_v4l2_init(void)
 	setIO_level(0, 0, 3);//30m reset low
 	//setIO_level(0, 0, 2);//200m reset low
 	configIO(1, 0);
-	msleep(300);
+	msleep(100);
 	setIO_level(1, 1, 1);//30m poweer_enable
-	msleep(300);
+	msleep(100);
 	configIO(0, 0);
 	setIO_level(0, 1, 3);//30m reset high
-	msleep(300);
+	msleep(400);
 		  
 	#endif
 
@@ -1239,17 +1239,17 @@ static int gt2005_v4l2_init(void)
 	//setIO_level(0, 0, 3);//30m reset low
 	setIO_level(0, 0, 2);//200m reset low
 	configIO(1, 0);
-	msleep(300);
+	msleep(100);
 	setIO_level(1, 1, 2);//200m poweer_enable
-	msleep(300);
+	msleep(100);
 	configIO(0, 0);
 	setIO_level(0, 1, 2);//200m reset high
 	
-	msleep(300);
+	msleep(100);
 	configIO(1, 0);
 	setIO_level(1, 1, 6);//200m pwd high
 	//configIO(1, 0);
-	msleep(300);
+	msleep(400);
     
     #endif
 
