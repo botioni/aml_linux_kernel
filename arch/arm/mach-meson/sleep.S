@@ -57,9 +57,8 @@ ENTRY(meson_cpu_suspend)
     add     r9, r9, r2
     ldr     r10, [r9]
 
-    /* turn on auto byte bypass and cmd iddq */
+    /* turn on auto byte bypass */
     ldr     r8, [r0, #PCTL_IOCR_ADDR]
-    orr     r8, r8, #(0x3<<28)
     orr     r8, r8, #(1<<25)
     str     r8, [r0, #PCTL_IOCR_ADDR]
 
@@ -80,17 +79,15 @@ ENTRY(meson_cpu_suspend)
     orr     r8, r8, #(1<<13)
     str     r8, [r1, #MMC_PHY_CTRL-0x1000]
 
-#if 0
-    /* enable dll bypass */
-    ldr     r8, [r0, #PCTL_DLLCR9_ADDR]
-    orr     r8, r8, #(1<<31)
-    str     r8, [r0, #PCTL_DLLCR9_ADDR]
-#else
     /* hold dll reset */
     ldr     r8, [r0, #PCTL_PHYCR_ADDR]
     bic     r8, r8, #(1<<6)
     str     r8, [r0, #PCTL_PHYCR_ADDR]
-#endif
+
+    /* enable dll bypass */
+    ldr     r8, [r0, #PCTL_DLLCR9_ADDR]
+    orr     r8, r8, #(1<<31)
+    str     r8, [r0, #PCTL_DLLCR9_ADDR]
 
 #ifdef TURN_OFF_DDR_PLL
     /* turn off ddr pll */
@@ -158,28 +155,15 @@ ENTRY(meson_cpu_suspend)
 3:  subs    r8, r8, #0x1
     bne     3b
 
-#if 0
     /* disable dll bypass */
     ldr     r8, [r0, #PCTL_DLLCR9_ADDR]
     bic     r8, r8, #(1<<31)
     str     r8, [r0, #PCTL_DLLCR9_ADDR]
 
-    /* reset cmd/byte dll */
-    ldr     r8, [r0, #PCTL_PHYCR_ADDR]
-    bic     r8, r8, #(1<<6)
-    str     r8, [r0, #PCTL_PHYCR_ADDR]
-    nop
-    nop
-    nop
-    ldr     r8, [r0, #PCTL_PHYCR_ADDR]
-    orr     r8, r8, #(1<<6)
-    str     r8, [r0, #PCTL_PHYCR_ADDR]
-#else
     /* release reset */
     ldr     r8, [r0, #PCTL_PHYCR_ADDR]
     orr     r8, r8, #(1<<6)
     str     r8, [r0, #PCTL_PHYCR_ADDR]
-#endif
 
     /* DDR PHY leave power saving mode*/
     ldr     r8, [r1, #MMC_PHY_CTRL-0x1000]
