@@ -237,6 +237,43 @@ int saradc_ts_service(int cmd)
 	return value;
 }
 
+static ssize_t saradc_ch0_show(struct class *cla, struct class_attribute *attr, char *buf)
+{
+    return sprintf(buf, "%d\n", get_adc_sample(0));
+}
+static ssize_t saradc_ch1_show(struct class *cla, struct class_attribute *attr, char *buf)
+{
+    return sprintf(buf, "%d\n", get_adc_sample(1));
+}
+static ssize_t saradc_ch2_show(struct class *cla, struct class_attribute *attr, char *buf)
+{
+    return sprintf(buf, "%d\n", get_adc_sample(2));
+}
+static ssize_t saradc_ch3_show(struct class *cla, struct class_attribute *attr, char *buf)
+{
+    return sprintf(buf, "%d\n", get_adc_sample(3));
+}
+static ssize_t saradc_ch4_show(struct class *cla, struct class_attribute *attr, char *buf)
+{
+    return sprintf(buf, "%d\n", get_adc_sample(4));
+}
+static ssize_t saradc_ch5_show(struct class *cla, struct class_attribute *attr, char *buf)
+{
+    return sprintf(buf, "%d\n", get_adc_sample(5));
+}
+static struct class_attribute saradc_class_attrs[] = {
+    __ATTR_RO(saradc_ch0),
+    __ATTR_RO(saradc_ch1),
+    __ATTR_RO(saradc_ch2),
+    __ATTR_RO(saradc_ch3),
+    __ATTR_RO(saradc_ch4),
+    __ATTR_RO(saradc_ch5),                    
+    __ATTR_NULL
+};
+static struct class saradc_class = {
+    .name = "saradc",
+    .class_attrs = saradc_class_attrs,
+};
 
 static int __init saradc_probe(struct platform_device *pdev)
 {
@@ -307,6 +344,7 @@ static struct platform_driver saradc_driver = {
 static int __devinit saradc_init(void)
 {
 	printk(KERN_INFO "SARADC Driver init.\n");
+	class_register(&saradc_class);
 	return platform_driver_register(&saradc_driver);
 }
 
@@ -314,6 +352,7 @@ static void __exit saradc_exit(void)
 {
 	printk(KERN_INFO "SARADC Driver exit.\n");
 	platform_driver_unregister(&saradc_driver);
+	class_unregister(&saradc_class);
 }
 
 module_init(saradc_init);
