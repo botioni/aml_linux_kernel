@@ -2105,9 +2105,14 @@ static struct mtd_partition multi_partition_info[] =
 		.size = 256*1024*1024,
 	},
 	{
+		.name = "PD_Novel",
+		.offset = 640*1024*1024,
+		.size = 128*1024*1024,
+	},
+	{
 		.name = "NFTL_Part",
-		.offset = ((384 + 256)*1024*1024),
-		.size = ((0x200000000 - (384 + 256)*1024*1024)),
+		.offset = ((640 + 128)*1024*1024),
+		.size = ((0x200000000 - (640 + 128)*1024*1024)),
 	},
 };
 
