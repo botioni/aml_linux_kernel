@@ -33,7 +33,6 @@
 #include <mach/card_io.h>
 
 #define card_list_to_card(l)	container_of(l, struct memory_card, node)
-static DEFINE_MUTEX(init_lock);
 struct completion card_devadd_comp;
 
 struct amlogic_card_host 
@@ -275,14 +274,11 @@ static int card_reader_monitor(void *data)
 	while(1) {
 		msleep(200);
 
-		mutex_lock(&init_lock);
 		if(card_host->card_task_state)
 		{
 			set_current_state(TASK_INTERRUPTIBLE);
-			mutex_unlock(&init_lock);
 			schedule();
 			set_current_state(TASK_RUNNING);
-			mutex_lock(&init_lock);
 		}
 		for(card_type=CARD_XD_PICTURE; card_type<CARD_MAX_UNIT; card_type++) {
 
@@ -291,8 +287,10 @@ static int card_reader_monitor(void *data)
 			if (card == NULL)
 				continue;
 
+			__card_claim_host(card_host, card);
 			card->card_io_init(card);
 			card->card_detector(card);
+			card_release_host(card_host);
 
 	    	if((card->card_status == CARD_INSERTED) && (((card->unit_state != CARD_UNIT_READY) 
 				&& ((card_type == CARD_SDIO) ||(card_type == CARD_INAND)
@@ -324,9 +322,7 @@ static int card_reader_monitor(void *data)
 					card->state = CARD_STATE_INITED;
 					if (card_type == CARD_SDIO)
 						card_host->card = card;
-					mutex_unlock(&init_lock);
 					card_detect_change(card_host, 0);
-					mutex_lock(&init_lock);
 	            }
 	        }
 	        else if((card->card_status == CARD_REMOVED) && ((card->unit_state != CARD_UNIT_NOT_READY)
@@ -344,14 +340,11 @@ static int card_reader_monitor(void *data)
 
 					if(card) {
 						list_del(&card->node);
-						mutex_unlock(&init_lock);
 						card_remove_card(card);
-						mutex_lock(&init_lock);
 					}
 				}
 	        }
 		}
-		mutex_unlock(&init_lock);
 	}
 
     return 0;
@@ -803,9 +796,7 @@ static void amlogic_card_request(struct card_host *host, struct card_blk_request
 
 	BUG_ON(card == NULL);
 
-	mutex_lock(&init_lock);
 	card->card_request_process(card, brq);
-	mutex_unlock(&init_lock);
 
 	return;
 }
