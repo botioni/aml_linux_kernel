@@ -4277,7 +4277,8 @@ int sd_check_sdio_card_type(SD_MMC_Card_Info_t *sd_mmc_info)
 	if(error)
 		return error;
 
-	write_reg_data |= 2;//((1<<sd_mmc_info->sdio_function_nums)-2);
+	//function enable would do at up layer
+	/*write_reg_data |= 2;//((1<<sd_mmc_info->sdio_function_nums)-2);
     error = sdio_write_reg(sd_mmc_info, 0, IO_ENABLE_REG, &write_reg_data, SDIO_Read_After_Write);
     if(error)
     	return error;	
@@ -4296,7 +4297,7 @@ int sd_check_sdio_card_type(SD_MMC_Card_Info_t *sd_mmc_info)
 
 #ifdef  SD_MMC_DEBUG
 	Debug_Printf("#read_reg_data %x timeout_count %d \n", read_reg_data, timeout_count);
-#endif
+#endif*/
 
 	if(timeout_count > 0)
 	{
