@@ -271,7 +271,7 @@ static struct lm_device usb_ld_a = {
 	.resource.start = IO_USB_A_BASE,
 	.resource.end = -1,
 	.dma_mask_room = DMA_BIT_MASK(32),
-	.port_type =USB_PORT_TYPE_SLAVE,//USB_PORT_TYPE_OTG,
+	.port_type = USB_PORT_TYPE_OTG,
 	.port_speed = USB_PORT_SPEED_DEFAULT,
 	.dma_config = USB_DMA_BURST_SINGLE,
 	.set_vbus_power = set_usb_a_vbus_power,
@@ -465,7 +465,7 @@ static struct aml_card_info  amlogic_card_info[] = {
 		.card_wp_input_mask = PREG_IO_11_MASK,
 		.card_extern_init = 0,
 	},
-#if 1
+#if 0
 	[1] = {
 		.name = "sdio_card",
 		.work_mode = CARD_HW_MODE,
@@ -836,76 +836,40 @@ static struct platform_device aml_uart_device = {
 #endif
 
 #ifdef CONFIG_AM_NAND
-/*static struct mtd_partition partition_info[] = 
+static struct mtd_partition normal_partition_info[] = 
 {
 #ifndef CONFIG_AMLOGIC_SPI_NOR
-        {
-                .name = "ubootenv",
-                .offset = 2*1024*1024,
-                .size = 0x2000,
-        },
+	{
+		.name = "ubootenv",
+		.offset = 4*1024*1024,
+		.size = 1*1024*1024,
+	},
+	{
+		.name = "recovery",
+		.offset = 5*1024*1024,
+		.size = 3*1024*1024,
+	},
 #endif
 	{
 		.name = "boot",
 		.offset = 8*1024*1024,
 		.size = 4*1024*1024,
 	},
-        {
-                .name = "system",
-                .offset = 12*1024*1024,
-                .size = 116*1024*1024,
-        },
-        {
-                .name = "cache",
-                .offset = 128*1024*1024,
-                .size = 16*1024*1024,
-        },
-	{
-		.name = "userdata",
-		.offset=MTDPART_OFS_APPEND,
-		.size=MTDPART_SIZ_FULL,
-	},
-};*/
-
-static struct mtd_partition normal_partition_info[] = 
-{
-#ifndef CONFIG_AMLOGIC_SPI_NOR
-	{
-		.name = "environment",
-		.offset = 4*1024*1024,
-		.size = 8*1024*1024,
-	},
-#endif
-	{
-		.name = "recovery",
-		.offset = 12*1024*1024,
-		.size = 4*1024*1024,
-	},
-	{
-		.name = "uImage",
-		.offset = 16*1024*1024,
-		.size = 4*1024*1024,
-	},
 	{
 		.name = "system",
-		.offset = 20*1024*1024,
-		.size = 316*1024*1024,
+		.offset = 12*1024*1024,
+		.size = 148*1024*1024,
 	},
 	{
 		.name = "cache",
-		.offset = 336*1024*1024,
+		.offset = 160*1024*1024,
 		.size = 16*1024*1024,
 	},
 	{
 		.name = "userdata",
-		.offset = 352*1024*1024,
-		.size = 256*1024*1024,
-	},
-	{
-		.name = "NFTL_Part",
-		.offset = 608*1024*1024,
-		.size = 1024*1024*1024,
-	},
+		.offset = MTDPART_OFS_APPEND,
+		.size = MTDPART_SIZ_FULL,
+	}
 };
 
 
