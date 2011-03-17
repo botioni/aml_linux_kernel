@@ -589,23 +589,24 @@ moal_send_packet_complete(IN t_void * pmoal_handle,
                 } else {
                     priv->stats.tx_errors++;
                 }
-                atomic_dec(&handle->tx_pending);
-                for (i = 0; i < handle->priv_num; i++) {
+                if (atomic_dec_return(&handle->tx_pending) < LOW_TX_PENDING) {
+                    for (i = 0; i < handle->priv_num; i++) {
 #ifdef STA_SUPPORT
-                    if ((GET_BSS_ROLE(handle->priv[i]) == MLAN_BSS_ROLE_STA) &&
-                        (handle->priv[i]->media_connected ||
-                         priv->is_adhoc_link_sensed)) {
-                        if (netif_queue_stopped(handle->priv[i]->netdev))
-                            netif_wake_queue(handle->priv[i]->netdev);
-                    }
+                        if ((GET_BSS_ROLE(handle->priv[i]) == MLAN_BSS_ROLE_STA)
+                            && (handle->priv[i]->media_connected ||
+                                priv->is_adhoc_link_sensed)) {
+                            if (netif_queue_stopped(handle->priv[i]->netdev))
+                                netif_wake_queue(handle->priv[i]->netdev);
+                        }
 #endif
 #ifdef UAP_SUPPORT
-                    if ((GET_BSS_ROLE(handle->priv[i]) == MLAN_BSS_ROLE_UAP) &&
-                        (handle->priv[i]->media_connected)) {
-                        if (netif_queue_stopped(handle->priv[i]->netdev))
-                            netif_wake_queue(handle->priv[i]->netdev);
-                    }
+                        if ((GET_BSS_ROLE(handle->priv[i]) == MLAN_BSS_ROLE_UAP)
+                            && (handle->priv[i]->media_connected)) {
+                            if (netif_queue_stopped(handle->priv[i]->netdev))
+                                netif_wake_queue(handle->priv[i]->netdev);
+                        }
 #endif
+                    }
                 }
             }
         }

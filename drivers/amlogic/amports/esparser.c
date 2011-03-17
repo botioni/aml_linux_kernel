@@ -97,6 +97,7 @@ static ssize_t _esparser_write(const char __user *buf, size_t count, u32 type)
     const char __user *p = buf;
     u32 len = 0;
     u32 parser_type;
+    int ret;
 
     if (type == BUF_TYPE_VIDEO) {
         parser_type = PARSER_VIDEO;
@@ -129,7 +130,11 @@ static ssize_t _esparser_write(const char __user *buf, size_t count, u32 type)
         WRITE_MPEG_REG(PARSER_FETCH_CMD,
                        (7 << FETCH_ENDIAN) | SEARCH_PATTERN_LEN);
 
-        if (wait_event_interruptible(wq, (search_done != 0))) {
+        ret = wait_event_interruptible_timeout(wq, search_done != 0, HZ/10);
+        if (ret == 0) {
+            WRITE_MPEG_REG(PARSER_FETCH_CMD, 0);
+            return -EAGAIN;
+        } else if (ret < 0) {
             return -ERESTARTSYS;
         }
     }

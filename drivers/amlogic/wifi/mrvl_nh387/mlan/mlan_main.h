@@ -195,7 +195,7 @@ do {                \
 #define wlan_cpu_to_le64(x) swap_byte_64(x)
 
 /** Convert TxPD to little endian format from CPU format */
-#define endian_convert_TxPD(x);                                         \
+#define endian_convert_TxPD(x)                                          \
     {                                                                   \
         (x)->tx_pkt_length = wlan_cpu_to_le16((x)->tx_pkt_length);      \
         (x)->tx_pkt_offset = wlan_cpu_to_le16((x)->tx_pkt_offset);      \
@@ -204,7 +204,7 @@ do {                \
     }
 
 /** Convert RxPD from little endian format to CPU format */
-#define endian_convert_RxPD(x);                                         \
+#define endian_convert_RxPD(x)                                          \
     {                                                                   \
         (x)->rx_pkt_length = wlan_le16_to_cpu((x)->rx_pkt_length);      \
         (x)->rx_pkt_offset = wlan_le16_to_cpu((x)->rx_pkt_offset);      \

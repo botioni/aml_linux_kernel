@@ -1346,7 +1346,7 @@ typedef struct {
 	unsigned enable;
 } gpio_data_t;
 
-#define MAX_GPIO 20
+#define MAX_GPIO 23
 static gpio_data_t gpio_data[MAX_GPIO] = {
 // 5
     {"GPIOA_7 -- BL_PWM",		 GPIOA_bank_bit0_14(7),		GPIOA_bit_bit0_14(7),	GPIO_OUTPUT_MODE, 1, 1},
@@ -1363,19 +1363,22 @@ static gpio_data_t gpio_data[MAX_GPIO] = {
 	{"GPIOB_7 -- WIFI_SD_D3",	 GPIOB_bank_bit0_7(7),		GPIOB_bit_bit0_7(7),	GPIO_OUTPUT_MODE, 1, 1},
 // 6
 //pannel
-	{"GPIOD_12 -- LCD_PWR_EN",   GPIOD_bank_bit2_24(12), GPIOD_bit_bit2_24(12), GPIO_OUTPUT_MODE, 1, 1},
-	{"GPIOD_13 -- nLCD_VCC",     GPIOD_bank_bit2_24(13), GPIOD_bit_bit2_24(13), GPIO_OUTPUT_MODE, 1, 1},
+	{"GPIOD_12 -- LCD_PWR_EN",   GPIOD_bank_bit2_24(12),    GPIOD_bit_bit2_24(12),  GPIO_OUTPUT_MODE, 1, 1},
+	{"GPIOD_13 -- nLCD_VCC",     GPIOD_bank_bit2_24(13),    GPIOD_bit_bit2_24(13),  GPIO_OUTPUT_MODE, 1, 1},
 //	
-	{"GPIOD_21 -- EXT_PWER_EN2", GPIOD_bank_bit2_24(21), GPIOD_bit_bit2_24(21), GPIO_OUTPUT_MODE, 1, 1},
-	{"GPIOD_22 -- EXT_PWER_EN1", GPIOD_bank_bit2_24(22), GPIOD_bit_bit2_24(22), GPIO_OUTPUT_MODE, 1, 1},
-	{"GPIOD_23 -- KEYLED_CTRL",  GPIOD_bank_bit2_24(23), GPIOD_bit_bit2_24(23), GPIO_OUTPUT_MODE, 1, 1},
+	{"GPIOD_21 -- EXT_PWER_EN2", GPIOD_bank_bit2_24(21),    GPIOD_bit_bit2_24(21),  GPIO_OUTPUT_MODE, 1, 1},
+	{"GPIOD_22 -- EXT_PWER_EN1", GPIOD_bank_bit2_24(22),    GPIOD_bit_bit2_24(22),  GPIO_OUTPUT_MODE, 1, 1},
+	{"GPIOD_23 -- KEYLED_CTRL",  GPIOD_bank_bit2_24(23),    GPIOD_bit_bit2_24(23),  GPIO_OUTPUT_MODE, 1, 1},
 //backlight
-	{"GPIOD_18 -- BACKLIGHT_EN", GPIOD_bank_bit2_24(18), GPIOD_bit_bit2_24(18), GPIO_OUTPUT_MODE, 1, 1},
-// 3	
-	{"GPIOE_17 -- nand_ncs4",	 GPIOE_bank_bit16_21(17),	GPIOE_bit_bit16_21(17),	GPIO_OUTPUT_MODE, 1, 1},
+	{"GPIOD_18 -- BACKLIGHT_EN", GPIOD_bank_bit2_24(18),    GPIOD_bit_bit2_24(18),  GPIO_OUTPUT_MODE, 1, 1},
+// 5	
+	{"GPIOE_4 -- NAND_nCS1",	 GPIOE_bank_bit0_15(4),	    GPIOE_bit_bit0_15(4),	GPIO_OUTPUT_MODE, 1, 1},
+	{"GPIOE_5 -- NAND_nCS2",	 GPIOE_bank_bit0_15(5),	    GPIOE_bit_bit0_15(5),	GPIO_OUTPUT_MODE, 1, 1},
 	{"GPIOE_16 -- nand_ncs3",	 GPIOE_bank_bit16_21(16),	GPIOE_bit_bit16_21(16),	GPIO_OUTPUT_MODE, 1, 1},
+	{"GPIOE_17 -- nand_ncs4",	 GPIOE_bank_bit16_21(17),	GPIOE_bit_bit16_21(17),	GPIO_OUTPUT_MODE, 1, 1},
 	{"GPIOE_18 -- Linux_TX",	 GPIOE_bank_bit16_21(18),	GPIOE_bit_bit16_21(18), GPIO_OUTPUT_MODE, 1, 1},
-	//{"PP0 -- CAMR2_PWDN",	 EXGPIO_BANK1,	0,	GPIO_OUTPUT_MODE, 1, 1},
+	// ----------------------------------- i2s ---------------------------------
+	{"TEST_N -- I2S_DOUT",		 GPIOJTAG_bank_bit(16),		GPIOJTAG_bit_bit16(16),	GPIO_OUTPUT_MODE, 1, 1},
 };	
 
 static void save_gpio(int port) 
@@ -1404,24 +1407,71 @@ static void restore_gpio(int port)
 	}
 }
 
+typedef struct {
+	char name[32];
+	unsigned reg;
+	unsigned bits;
+	unsigned enable;
+} pinmux_data_t;
+
+
+#define MAX_PINMUX	12
+
+pinmux_data_t pinmux_data[MAX_PINMUX] = {
+	{"HDMI", 	0, (1<<2)|(1<<1)|(1<<0), 						1},
+	{"TCON", 	0, (1<<14)|(1<<11), 							1},
+	{"I2S_OUT",	0, (1<<18),						 				1},
+	{"I2S_CLK",	1, (1<<19)|(1<<15)|(1<<11),		 				1},
+	{"SPI",		1, (1<<29)|(1<<27)|(1<<25)|(1<<23),				1},
+	{"I2C",		2, (1<<5)|(1<<2),								1},
+	{"SD",		2, (1<<15)|(1<<14)|(1<<13)|(1<<12)|(1<<8),		1},
+	{"PWM",		2, (1<<31),										1},
+	{"UART_A",	3, (1<<24)|(1<23),								0},
+	{"RGB",		4, (1<<5)|(1<<4)|(1<<3)|(1<<2)|(1<<1)|(1<<0),	1},
+	{"UART_B",	5, (1<<24)|(1<23),								0},
+	{"REMOTE",	5, (1<<31),										1},
+};
+
+static unsigned pinmux_backup[6];
+
+static void save_pinmux(void)
+{
+	int i;
+	for (i=0;i<6;i++)
+		pinmux_backup[i] = READ_CBUS_REG(PERIPHS_PIN_MUX_0+i);
+	for (i=0;i<MAX_PINMUX;i++){
+		if (pinmux_data[i].enable){
+			printk("%s %x\n", pinmux_data[i].name, pinmux_data[i].bits);
+			clear_mio_mux(pinmux_data[i].reg, pinmux_data[i].bits);
+		}
+	}
+}
+
+static void restore_pinmux(void)
+{
+	int i;
+	for (i=0;i<6;i++)
+		 WRITE_CBUS_REG(PERIPHS_PIN_MUX_0+i, pinmux_backup[i]);
+}
+
 static void set_vccx2(int power_on)
 {
 	int i;
 
-    if(power_on)
-    {
+    if(power_on) {
 		for (i=0;i<MAX_GPIO;i++)
 			restore_gpio(i);
+		restore_pinmux();
         set_gpio_val(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), 1);
         set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);
         //set clk for wifi
         SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, (1<<18));
         CLEAR_CBUS_REG_MASK(PREG_EGPIO_EN_N, (1<<4));
     }
-    else
-    {
+    else {
         set_gpio_val(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), 0);
         set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);
+		save_pinmux();
 		for (i=0;i<MAX_GPIO;i++)
 			save_gpio(i);
 		//disable wifi clk
@@ -1517,7 +1567,7 @@ static struct meson_pm_config aml_pm_pdata = {
     .sleepcount = 128,
     .set_vccx2 = set_vccx2,
     .set_exgpio_early_suspend = set_exgpio_on_early_suspend,
-    .core_voltage_adjust = 5,
+    .core_voltage_adjust = 10,
 };
 
 static struct platform_device aml_pm_device = {
@@ -2105,9 +2155,14 @@ static struct mtd_partition multi_partition_info[] =
 		.size = 256*1024*1024,
 	},
 	{
+		.name = "PD_Novel",
+		.offset = 640*1024*1024,
+		.size = 128*1024*1024,
+	},
+	{
 		.name = "NFTL_Part",
-		.offset = ((384 + 256)*1024*1024),
-		.size = ((0x200000000 - (384 + 256)*1024*1024)),
+		.offset = ((640 + 128)*1024*1024),
+		.size = ((0x200000000 - (640 + 128)*1024*1024)),
 	},
 };
 
@@ -2258,6 +2313,7 @@ static void aml_8726m_set_bl_level(unsigned level)
 
 static void aml_8726m_power_on_bl(void)
 {
+#if 0
     msleep(100);
     SET_CBUS_REG_MASK(PWM_MISC_REG_AB, (1 << 0));
     msleep(100);
@@ -2271,10 +2327,14 @@ static void aml_8726m_power_on_bl(void)
 set_gpio_val(GPIOD_bank_bit2_24(18), GPIOD_bit_bit2_24(18), 1);
 set_gpio_mode(GPIOD_bank_bit2_24(18), GPIOD_bit_bit2_24(18), GPIO_OUTPUT_MODE);
 #endif
+#else
+printk("backlight on\n");
+#endif
 }
 
 static void aml_8726m_power_off_bl(void)
 {
+#if 0 
     //BL_PWM -> GPIOD_18: 0
 #if 0
 	set_gpio_val(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), 0);
@@ -2288,6 +2348,9 @@ static void aml_8726m_power_off_bl(void)
     CLEAR_CBUS_REG_MASK(PWM_MISC_REG_AB, (1 << 0));
     set_gpio_val(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), 0);
     set_gpio_mode(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), GPIO_OUTPUT_MODE);
+#else
+    printk("backlight off\n");
+#endif
 }
 
 struct aml_bl_platform_data aml_bl_platform =

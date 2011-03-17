@@ -699,6 +699,7 @@ static ssize_t _psparser_write(const char __user *buf, size_t count)
     size_t r = count;
     const char __user *p = buf;
     u32 len;
+    int ret;
 
     if (r > 0) {
         len = min(r, (size_t)FETCHBUF_SIZE);
@@ -713,7 +714,11 @@ static ssize_t _psparser_write(const char __user *buf, size_t count)
         WRITE_MPEG_REG(PARSER_FETCH_CMD,
                        (7 << FETCH_ENDIAN) | len);
 
-        if (wait_event_interruptible(wq, fetch_done != 0)) {
+        ret = wait_event_interruptible_timeout(wq, fetch_done != 0, HZ/10);
+        if (ret == 0) {
+            WRITE_MPEG_REG(PARSER_FETCH_CMD, 0);
+            return -EAGAIN;
+        } else if (ret < 0) {
             return -ERESTARTSYS;
         }
 

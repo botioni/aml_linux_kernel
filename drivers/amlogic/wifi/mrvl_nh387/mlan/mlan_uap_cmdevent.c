@@ -144,7 +144,6 @@ wlan_uap_cmd_ap_config(pmlan_private pmpriv,
     MrvlIEtypes_auth_type_t *tlv_auth_type = MNULL;
     MrvlIEtypes_encrypt_protocol_t *tlv_encrypt_protocol = MNULL;
     MrvlIEtypes_akmp_t *tlv_akmp = MNULL;
-    MrvlIEtypes_cipher_t *tlv_cipher = MNULL;
     MrvlIEtypes_pwk_cipher_t *tlv_pwk_cipher = MNULL;
     MrvlIEtypes_gwk_cipher_t *tlv_gwk_cipher = MNULL;
     MrvlIEtypes_rsn_replay_prot_t *tlv_rsn_prot = MNULL;
@@ -517,24 +516,6 @@ wlan_uap_cmd_ap_config(pmlan_private pmpriv,
         cmd_size += sizeof(MrvlIEtypes_akmp_t);
         tlv += sizeof(MrvlIEtypes_akmp_t);
 
-        if (((bss->param.bss_config.wpa_cfg.
-              pairwise_cipher_wpa & VALID_CIPHER_BITMAP) ||
-             (bss->param.bss_config.wpa_cfg.
-              pairwise_cipher_wpa2 & VALID_CIPHER_BITMAP)) &&
-            (bss->param.bss_config.wpa_cfg.
-             group_cipher & VALID_CIPHER_BITMAP)) {
-            tlv_cipher = (MrvlIEtypes_cipher_t *) tlv;
-            tlv_cipher->header.type = wlan_cpu_to_le16(TLV_TYPE_UAP_CIPHER);
-            tlv_cipher->header.len =
-                wlan_cpu_to_le16(sizeof(t_u8) + sizeof(t_u8));
-            tlv_cipher->pairwise_cipher =
-                (bss->param.bss_config.wpa_cfg.pairwise_cipher_wpa | bss->param.
-                 bss_config.wpa_cfg.pairwise_cipher_wpa2) & VALID_CIPHER_BITMAP;
-            tlv_cipher->group_cipher =
-                bss->param.bss_config.wpa_cfg.group_cipher;
-            cmd_size += sizeof(MrvlIEtypes_cipher_t);
-            tlv += sizeof(MrvlIEtypes_cipher_t);
-        }
         if (bss->param.bss_config.wpa_cfg.
             pairwise_cipher_wpa & VALID_CIPHER_BITMAP) {
             tlv_pwk_cipher = (MrvlIEtypes_pwk_cipher_t *) tlv;
@@ -875,7 +856,6 @@ wlan_uap_ret_cmd_ap_config(IN pmlan_private pmpriv,
     MrvlIEtypes_auth_type_t *tlv_auth_type = MNULL;
     MrvlIEtypes_encrypt_protocol_t *tlv_encrypt_protocol = MNULL;
     MrvlIEtypes_akmp_t *tlv_akmp = MNULL;
-    MrvlIEtypes_cipher_t *tlv_cipher = MNULL;
     MrvlIEtypes_pwk_cipher_t *tlv_pwk_cipher = MNULL;
     MrvlIEtypes_gwk_cipher_t *tlv_gwk_cipher = MNULL;
     MrvlIEtypes_rsn_replay_prot_t *tlv_rsn_prot = MNULL;
@@ -1051,14 +1031,6 @@ wlan_uap_ret_cmd_ap_config(IN pmlan_private pmpriv,
             bss->param.bss_config.key_mgmt =
                 wlan_le16_to_cpu(tlv_akmp->key_mgmt);
             break;
-        case TLV_TYPE_UAP_CIPHER:
-            tlv_cipher = (MrvlIEtypes_cipher_t *) tlv;
-            bss->param.bss_config.wpa_cfg.pairwise_cipher_wpa =
-                tlv_cipher->pairwise_cipher;
-            bss->param.bss_config.wpa_cfg.pairwise_cipher_wpa2 =
-                tlv_cipher->pairwise_cipher;
-            bss->param.bss_config.wpa_cfg.group_cipher =
-                tlv_cipher->group_cipher;
         case TLV_TYPE_PWK_CIPHER:
             tlv_pwk_cipher = (MrvlIEtypes_pwk_cipher_t *) tlv;
             if (wlan_le16_to_cpu(tlv_pwk_cipher->protocol) & PROTOCOL_WPA)

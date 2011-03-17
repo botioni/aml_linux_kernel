@@ -583,6 +583,9 @@ int dwc_otg_hcd_init(struct lm_device *_lmdev)
 	otg_dev->hcd = dwc_otg_hcd;
 	dwc_otg_hcd->split_frm_num = 0;
 
+	dwc_otg_hcd->latest_split_schdule_fn = 0; 
+	dwc_otg_hcd->latest_split_fn_inc = -1; //init
+
 	/* Register the HCD CIL Callbacks */
 	dwc_otg_cil_register_hcd_callbacks(otg_dev->core_if,
 					   &hcd_cil_callbacks, hcd);
