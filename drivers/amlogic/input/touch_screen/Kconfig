@@ -82,5 +82,12 @@ config UOR6X5X_RESISTIVE_TOUCHSCREEN
 	help
 	  Say Y here if you want to use the UOR6X5X resistive panel.
 
+config PIXCIR_CAPACITIVE_TOUCHSCREEN
+	tristate "pixcir capacitive touch panel"
+	depends on I2C
+	default n
+	help
+	  Say Y here if you want to use the pixcir capacitive panel.
+
 	  To compile this driver as a module, choose M here: the
 	  module will be called .  

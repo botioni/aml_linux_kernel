@@ -89,6 +89,7 @@ static hdmitx_dev_t hdmitx_device;
 
 //static HDMI_TX_INFO_t hdmi_info;
 #define INIT_FLAG_VDACOFF        0x1
+    /* unplug powerdown */
 #define INIT_FLAG_POWERDOWN      0x2
 
 #define INIT_FLAG_NOT_LOAD 0x80
@@ -119,11 +120,8 @@ static  int  set_disp_mode(const char *mode)
     vic = hdmitx_edid_get_VIC(&hdmitx_device, mode, 1);
 
     if(vic != HDMI_Unkown){
-        hdmitx_device.force_off = 0;
+        hdmitx_device.mux_hpd_if_pin_high_flag = 1;
         if(hdmitx_device.vic_count == 0){
-            if(hdmitx_device.HWOp.Cntl){
-                hdmitx_device.HWOp.Cntl(&hdmitx_device, HDMITX_HWCMD_MUX_HPD_IF_PIN_HIGH, 0);
-            }
             return 0;
         }
     }
@@ -137,7 +135,7 @@ static  int  set_disp_mode(const char *mode)
     if(hdmitx_device.cur_VIC == HDMI_Unkown){
         if(hpdmode == 2){
             hdmitx_edid_clear(&hdmitx_device); /* edid will be read again when hpd is muxed and it is high */
-            hdmitx_device.force_off = 1; // to avoid hpd is mux again in state task
+            hdmitx_device.mux_hpd_if_pin_high_flag = 0; 
         }
         if(hdmitx_device.HWOp.Cntl){
             hdmitx_device.HWOp.Cntl(&hdmitx_device, HDMITX_HWCMD_TURNOFF_HDMIHW, (hpdmode==2)?1:0);    
@@ -165,7 +163,7 @@ static int set_disp_mode_auto(void)
     if(hdmitx_device.cur_VIC == HDMI_Unkown){
         if(hpdmode==2){
             hdmitx_edid_clear(&hdmitx_device); /* edid will be read again when hpd is muxed and it is high */
-            hdmitx_device.force_off = 1; // to avoid hpd is mux again in state task
+            hdmitx_device.mux_hpd_if_pin_high_flag = 0;
         }
         if(hdmitx_device.HWOp.Cntl){
             hdmitx_device.HWOp.Cntl(&hdmitx_device, HDMITX_HWCMD_TURNOFF_HDMIHW, (hpdmode==2)?1:0);    
@@ -473,12 +471,9 @@ static int hdmitx_notify_callback_v(struct notifier_block *block, unsigned long 
 
     if(hdmitx_device.vic_count == 0){
         if(is_dispmode_valid_for_hdmi()){
-            hdmitx_device.force_off = 0;
-            if(hdmitx_device.HWOp.Cntl){
-                hdmitx_device.HWOp.Cntl(&hdmitx_device, HDMITX_HWCMD_MUX_HPD_IF_PIN_HIGH, 0);
-            }
+            hdmitx_device.mux_hpd_if_pin_high_flag = 1;
+			      return 0;
         }
-        return 0;
     }
 
     set_disp_mode_auto();
@@ -565,12 +560,9 @@ void hdmi_tv_enc_post_func(char* mode)
         
     if(hdmitx_device.vic_count == 0){
         if(is_dispmode_valid_for_hdmi()){
-            hdmitx_device.force_off = 0;
-            if(hdmitx_device.HWOp.Cntl){
-                hdmitx_device.HWOp.Cntl(&hdmitx_device, HDMITX_HWCMD_MUX_HPD_IF_PIN_HIGH, 0);
-            }
+            hdmitx_device.mux_hpd_if_pin_high_flag = 1;
+			      return;
         }
-        return;
     }
 
     set_disp_mode_auto();
@@ -645,11 +637,19 @@ hdmi_task_handle(void *data)
     if(init_flag&INIT_FLAG_POWERDOWN){
         hdmitx_device->HWOp.SetDispMode(NULL); //power down
         hdmitx_device->unplug_powerdown=1;
+        if(hdmitx_device->HWOp.Cntl){
+            hdmitx_device->HWOp.Cntl(hdmitx_device, HDMITX_HWCMD_TURNOFF_HDMIHW, (hpdmode!=0)?1:0);    
+        }
+    }
+    else{
+        if(hdmitx_device->HWOp.Cntl){
+            hdmitx_device->HWOp.Cntl(hdmitx_device, HDMITX_HWCMD_MUX_HPD, 0);    
+        }
     }
 
     while (hdmitx_device->hpd_event != 0xff)
     {
-        if((hdmitx_device->vic_count == 0)&&(hdmitx_device->force_off == 0)){
+        if((hdmitx_device->vic_count == 0)&&(hdmitx_device->mux_hpd_if_pin_high_flag)){
             if(hdmitx_device->HWOp.Cntl){
                 hdmitx_device->HWOp.Cntl(hdmitx_device, HDMITX_HWCMD_MUX_HPD_IF_PIN_HIGH, 0);
             }
@@ -759,7 +759,12 @@ avfs_device_driver hdmi_init(avfs_device_major_number major, avfs_device_minor_n
     memset(&hdmitx_device, 0, sizeof(hdmitx_dev_t));
     strcpy(lvideo_info.name, "");
     hdmitx_device.vic_count=0;
-    hdmitx_device.force_off=0;
+    if((init_flag&INIT_FLAG_POWERDOWN)&&(hpdmode==2)){
+        hdmitx_device.mux_hpd_if_pin_high_flag=0;
+    }
+    else{
+        hdmitx_device.mux_hpd_if_pin_high_flag=1;
+    }
     hdmitx_device.audio_param_update_flag=0;
     tv_tv_enc_post_fun = hdmi_tv_enc_post_func;
 
@@ -865,7 +870,12 @@ static int amhdmitx_probe(struct platform_device *pdev)
     }
     hdmitx_device.unplug_powerdown=0;
     hdmitx_device.vic_count=0;
-    hdmitx_device.force_off=0;
+    if((init_flag&INIT_FLAG_POWERDOWN)&&(hpdmode==2)){
+        hdmitx_device.mux_hpd_if_pin_high_flag=0;
+    }
+    else{
+        hdmitx_device.mux_hpd_if_pin_high_flag=1;
+    }
     hdmitx_device.audio_param_update_flag=0;
     cdev_init(&(hdmitx_device.cdev), &amhdmitx_fops);
     hdmitx_device.cdev.owner = THIS_MODULE;

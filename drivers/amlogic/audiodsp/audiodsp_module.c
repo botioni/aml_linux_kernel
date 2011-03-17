@@ -193,6 +193,20 @@ static int audiodsp_ioctl(struct inode *node, struct file *file, unsigned int cm
 					waittime++;
 					if(waittime>100)
 					{
+						int audio_info = DSP_RD(DSP_AUDIO_FORMAT_INFO);
+						if(audio_info){
+							priv->frame_format.channel_num = audio_info&0xf;
+							if(priv->frame_format.channel_num)
+								priv->frame_format.valid |= CHANNEL_VALID;
+							priv->frame_format.data_width= (audio_info>>4)&0x3f;
+							if(priv->frame_format.data_width)
+								priv->frame_format.valid |= DATA_WIDTH_VALID;
+							priv->frame_format.sample_rate = (audio_info>>10);
+							if(priv->frame_format.sample_rate)
+								priv->frame_format.valid |= SAMPLE_RATE_VALID;
+							DSP_PRNT("warning::got info from mailbox failed,read from regiser\n");
+							continue;
+						}
 						DSP_PRNT("dsp have not set the codec stream's format details,valid=%x\n",
 						priv->frame_format.valid);
 						ret=-1;

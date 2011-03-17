@@ -1113,8 +1113,6 @@ void hdmi_hw_init(hdmitx_dev_t* hdmitx_device)
         delay_us(10);
 #endif        
     /**/
-    /* enable HDP signal */
-    mux_hpd();
 }    
 
 static void hdmi_hw_reset(Hdmi_tx_video_para_t *param)
@@ -2233,9 +2231,14 @@ static void hdmitx_m1b_cntl(hdmitx_dev_t* hdmitx_device, int cmd, unsigned argv)
                 mux_hpd();
             }
         }
-    }  
+    } 
+    else if(cmd == HDMITX_HWCMD_MUX_HPD){
+         mux_hpd();
+    } 
     else if(cmd == HDMITX_HWCMD_TURNOFF_HDMIHW){
         int unmux_hpd_flag = argv;
+        WRITE_MPEG_REG(VENC_DVI_SETTING, READ_MPEG_REG(VENC_DVI_SETTING)&(~(1<<13))); //bit 13 is used by HDMI only
+        digital_clk_on(4); //enable sys clk so that hdmi registers can be accessed when calling phy_pll_off/digit_clk_off
         if(unmux_hpd_flag){
             hdmi_print(1,"power off hdmi, unmux hpd\n");
             phy_pll_off();

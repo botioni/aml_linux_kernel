@@ -64,7 +64,7 @@ typedef struct _FWSyncHeader
 
 #ifdef BIG_ENDIAN_SUPPORT
 /** Convert sequence number and command fields of fwheader to correct endian format */
-#define endian_convert_syncfwheader(x); { \
+#define endian_convert_syncfwheader(x)  { \
 		(x)->cmd = wlan_le32_to_cpu((x)->cmd); \
 		(x)->seq_num = wlan_le32_to_cpu((x)->seq_num); \
 	}

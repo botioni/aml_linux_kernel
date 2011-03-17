@@ -637,17 +637,13 @@ static int am_uart_write(struct tty_struct *tty, const unsigned char *buf,
 {
     int c, total = 0;
     struct am_uart *info = (struct am_uart *)tty->driver_data;
-
+    am_uart_t *uart = uart_addr[info->line];
+    unsigned int ch;
 
     if (!tty || !info->xmit_buf || (count <= 0))
         return 0;
 
     //mutex_lock(&info->info_mutex);
-
-	//msleep(1);
-	//for (c=0; c<count; c++)
-	//	if (buf[c] == 0xff)
-	//		printk("am_uart_write 0xff, count = %d", count);
 
     total = min_t(int, count, (SERIAL_XMIT_SIZE - info->xmit_cnt - 1));
     c = min_t(int, total, (SERIAL_XMIT_SIZE - info->xmit_wr));
@@ -659,7 +655,14 @@ static int am_uart_write(struct tty_struct *tty, const unsigned char *buf,
     info->xmit_wr = (info->xmit_wr + total) & (SERIAL_XMIT_SIZE - 1);
     info->xmit_cnt += total;
 
-
+    while (info->xmit_cnt > 0) {
+        if (((__raw_readl(&uart->status) & 0xff00) < 0x3f00)) {
+            ch = info->xmit_buf[info->xmit_rd];
+            __raw_writel(ch, &uart->wdata);
+            info->xmit_rd = (info->xmit_rd+1) & (SERIAL_XMIT_SIZE - 1);
+            info->xmit_cnt--;
+        }
+    }
 
     //mutex_unlock(&info->info_mutex);
 

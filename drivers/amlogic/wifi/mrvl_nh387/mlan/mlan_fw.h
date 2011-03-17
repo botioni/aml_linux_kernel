@@ -1148,7 +1148,7 @@ typedef MLAN_PACK_START struct _UapTxPD
     t_u16 tx_pkt_length;
         /** Tx packet offset */
     t_u16 tx_pkt_offset;
-    /** Tx packet type */
+        /** Tx packet type */
     t_u16 tx_pkt_type;
         /** Tx Control */
     t_u32 tx_control;
@@ -3146,8 +3146,6 @@ typedef MLAN_PACK_START struct _MrvlIEtypes_MacAddr_t
 #define TLV_TYPE_UAP_ENCRYPT_PROTOCOL (PROPRIETARY_TLV_BASE_ID + 64)
 /** TLV type: AP AKMP */
 #define TLV_TYPE_UAP_AKMP             (PROPRIETARY_TLV_BASE_ID + 65)
-/** TLV type: AP Cipher type*/
-#define TLV_TYPE_UAP_CIPHER	        (PROPRIETARY_TLV_BASE_ID + 66)
 /** TLV type: AP Fragment threshold */
 #define TLV_TYPE_UAP_FRAG_THRESHOLD   (PROPRIETARY_TLV_BASE_ID + 70)
 /** TLV type: AP Group rekey timer */
@@ -3395,16 +3393,6 @@ typedef MLAN_PACK_START struct _MrvlIEtypes_encrypt_protocol_t
     t_u16 protocol;
 } MLAN_PACK_END MrvlIEtypes_encrypt_protocol_t;
 
-/** MrvlIEtypes_cipher_t */
-typedef MLAN_PACK_START struct _MrvlIEtypes_cipher_t
-{
-    /** Header */
-    MrvlIEtypesHeader_t header;
-    /** pairwise cipher */
-    t_u8 pairwise_cipher;
-    /** group cipher */
-    t_u8 group_cipher;
-} MLAN_PACK_END MrvlIEtypes_cipher_t;
 /** MrvlIEtypes_pwk_cipher_t */
 typedef MLAN_PACK_START struct _MrvlIEtypes_pwk_cipher_t
 {

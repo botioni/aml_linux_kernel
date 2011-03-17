@@ -70,6 +70,8 @@ unsigned SD_PWR_EN_LEVEL;
 
 unsigned SD_WORK_MODE;
 
+struct memory_card *card_find_card(struct card_host *host, u8 card_type); 
+
 void sd_insert_detector(struct memory_card *card)
 {
 	SD_MMC_Card_Info_t *sd_mmc_info = (SD_MMC_Card_Info_t *)card->card_info;
@@ -321,7 +323,9 @@ static int sd_request(struct memory_card *card, struct card_blk_request *brq)
 	SD_MMC_Card_Info_t *sd_mmc_info = (SD_MMC_Card_Info_t *)card->card_info;
 	unsigned int lba, byte_cnt;
 	unsigned char *data_buf;
-
+	struct card_host *host = card->host;
+	struct memory_card *sdio_card;
+	
 	lba = brq->card_data.lba;
 	byte_cnt = brq->card_data.blk_size * brq->card_data.blk_nums;
 	data_buf = brq->crq.buf;
@@ -332,6 +336,7 @@ static int sd_request(struct memory_card *card, struct card_blk_request *brq)
 		return 0;
 	}
 
+	sdio_close_host_interrupt(SDIO_IF_INT);
 	sd_sdio_enable(sd_mmc_info->io_pad_type);
 	if(brq->crq.cmd == READ) {
 		brq->card_data.error = sd_mmc_read_data(sd_mmc_info, lba, byte_cnt, data_buf);
@@ -342,6 +347,17 @@ static int sd_request(struct memory_card *card, struct card_blk_request *brq)
 
 	sd_gpio_enable(sd_mmc_info->io_pad_type);
 
+	sdio_card = card_find_card(host, CARD_SDIO);
+	if(sdio_card)
+	{
+		sd_mmc_info = (SD_MMC_Card_Info_t *)sdio_card->card_info;
+		sd_sdio_enable(sd_mmc_info->io_pad_type);
+		sdio_open_host_interrupt(SDIO_IF_INT);
+		if (sd_mmc_info->sd_save_hw_io_flag) {
+	    		WRITE_CBUS_REG(SDIO_CONFIG, sd_mmc_info->sd_save_hw_io_config);
+	      		WRITE_CBUS_REG(SDIO_MULT_CONFIG, sd_mmc_info->sd_save_hw_io_mult_config);
+    		}
+	}
 	return 0;
 }
 

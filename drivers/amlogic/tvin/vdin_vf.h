@@ -44,6 +44,6 @@ void vdin_vf_init(void);
 
 void vdin_reg_vf_provider(void);
 void vdin_unreg_vf_provider(void);
-
+void vdin_notify_receiver(int type, void* data, void* private_data);
 #endif
 

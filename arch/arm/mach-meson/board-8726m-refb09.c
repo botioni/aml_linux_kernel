@@ -93,7 +93,9 @@
 #ifdef CONFIG_AMLOGIC_CAMERA_ENABLE
 #include <linux/camera/amlogic_camera_common.h>
 #endif
-
+#ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE
+#include <media/amlogic/aml_camera.h>
+#endif
 
 #if defined(CONFIG_JPEGLOGO)
 static struct resource jpeglogo_resources[] = {
@@ -1144,6 +1146,136 @@ static void __init camera_power_on_init(void)
 #endif
 #endif
 
+#if defined (CONFIG_AMLOGIC_VIDEOIN_MANAGER)
+static struct resource vm_resources[] = {
+    [0] = {
+        .start =  VM_ADDR_START,
+        .end   = VM_ADDR_END,
+        .flags = IORESOURCE_MEM,
+    },
+};
+
+static struct platform_device vm_device =
+{
+	.name = "vm",
+	.id = 0,
+    .num_resources = ARRAY_SIZE(vm_resources),
+    .resource      = vm_resources,
+};
+#endif /* AMLOGIC_VIDEOIN_MANAGER */
+#if defined(CONFIG_VIDEO_AMLOGIC_CAPTURE_GC0308)
+
+static int gc0308_v4l2_init(void)
+{
+    udelay(1000);
+    WRITE_CBUS_REG(HHI_ETH_CLK_CNTL,0x30f);// 24M XTAL
+    WRITE_CBUS_REG(HHI_DEMOD_PLL_CNTL,0x232);// 24M XTAL
+	udelay(1000);
+
+    eth_set_pinmux(ETH_BANK0_GPIOC3_C12,ETH_CLK_OUT_GPIOC12_REG3_1, 1);
+   #ifdef CONFIG_SN7325
+	printk( "amlogic camera driver: init gc0308_v4l2_init. \n");
+	configIO(1, 0);
+	setIO_level(1, 0, 1);//30m poweer_disable
+		  
+	//setIO_level(1, 0, 2);//200m poweer_disable
+	setIO_level(1, 0, 0);//30m pwd enable
+	//setIO_level(1, 0, 6);//200m pwd low
+	configIO(0, 0);
+	setIO_level(0, 0, 3);//30m reset low
+	//setIO_level(0, 0, 2);//200m reset low
+	configIO(1, 0);
+	msleep(300);
+	setIO_level(1, 1, 1);//30m poweer_enable
+	msleep(300);
+	configIO(0, 0);
+	setIO_level(0, 1, 3);//30m reset high
+	msleep(300);
+		  
+	#endif
+
+}
+static int gc0308_v4l2_uninit(void)
+{
+   #ifdef CONFIG_SN7325
+	printk( "amlogic camera driver: uninit gc0308_v4l2_uninit. \n");
+	configIO(1, 0);
+	setIO_level(1, 0, 1);//30m poweer_disable
+	setIO_level(1, 1, 0);//30m pwd enable
+	configIO(0, 0);
+	setIO_level(0, 0, 3);//30m reset low
+	msleep(300); 
+    #endif
+
+}
+
+aml_plat_cam_data_t video_gc0308_data = {
+	.name="video-gc0308",
+	.video_nr=1,
+	.device_init= gc0308_v4l2_init,
+	.device_uninit=gc0308_v4l2_uninit,
+};
+#endif /* VIDEO_AMLOGIC_CAPTURE_GT2005 */
+
+#if defined(CONFIG_VIDEO_AMLOGIC_CAPTURE_GT2005)
+//#include <media/amlogic/aml_camera.h>
+
+static int gt2005_v4l2_init(void)
+{
+    udelay(1000);
+    WRITE_CBUS_REG(HHI_ETH_CLK_CNTL,0x30f);// 24M XTAL
+    WRITE_CBUS_REG(HHI_DEMOD_PLL_CNTL,0x232);// 24M XTAL
+	udelay(1000);
+
+    eth_set_pinmux(ETH_BANK0_GPIOC3_C12,ETH_CLK_OUT_GPIOC12_REG3_1, 1);
+   #ifdef CONFIG_SN7325
+	printk( "amlogic camera driver: init CONFIG_SN7325. \n");
+	configIO(1, 0);
+	//setIO_level(1, 0, 1);//30m poweer_disable
+	setIO_level(1, 0, 2);//200m poweer_disable
+	//setIO_level(1, 1, 0);//30m pwd disable
+	setIO_level(1, 0, 6);//200m pwd low
+	configIO(0, 0);
+	//setIO_level(0, 0, 3);//30m reset low
+	setIO_level(0, 0, 2);//200m reset low
+	configIO(1, 0);
+	msleep(300);
+	setIO_level(1, 1, 2);//200m poweer_enable
+	msleep(300);
+	configIO(0, 0);
+	setIO_level(0, 1, 2);//200m reset high
+	
+	msleep(300);
+	configIO(1, 0);
+	setIO_level(1, 1, 6);//200m pwd high
+	//configIO(1, 0);
+	msleep(300);
+    
+    #endif
+
+}
+static int gt2005_v4l2_uninit(void)
+{
+   #ifdef CONFIG_SN7325
+	printk( "amlogic camera driver: uninit gt2005_v4l2_uninit. \n");
+	configIO(1, 0);
+	//setIO_level(1, 0, 2);//200m poweer_disable
+	setIO_level(1, 0, 6);//200m pwd low
+	//configIO(0, 0);
+	//setIO_level(0, 0, 2);//200m reset low
+	msleep(300); 
+    #endif
+
+}
+
+aml_plat_cam_data_t video_gt2005_data = {
+	.name="video-gt2005",
+	.video_nr=0,
+	.device_init= gt2005_v4l2_init,
+	.device_uninit=gt2005_v4l2_uninit,
+};
+#endif /* VIDEO_AMLOGIC_CAPTURE_GT2005 */
+
 #ifdef CONFIG_CAMERA_GT2005
 static struct platform_device camera_gt2005_device = {
     .name       = "camera_gt2005",
@@ -1155,8 +1287,7 @@ int gt2005_init(void)
    #ifdef CONFIG_SN7325
 	printk( "amlogic camera driver: init CONFIG_SN7325. \n");
 	configIO(1, 0);
-	setIO_level(1, 0, 1);//30m poweer_disable
-	
+	setIO_level(1, 0, 1);//30m poweer_disable	
 	setIO_level(1, 0, 2);//200m poweer_disable
 	setIO_level(1, 1, 0);//30m pwd disable
 	setIO_level(1, 0, 6);//200m pwd low
@@ -1215,7 +1346,7 @@ typedef struct {
 	unsigned enable;
 } gpio_data_t;
 
-#define MAX_GPIO 20
+#define MAX_GPIO 23
 static gpio_data_t gpio_data[MAX_GPIO] = {
 // 5
     {"GPIOA_7 -- BL_PWM",		 GPIOA_bank_bit0_14(7),		GPIOA_bit_bit0_14(7),	GPIO_OUTPUT_MODE, 1, 1},
@@ -1232,19 +1363,22 @@ static gpio_data_t gpio_data[MAX_GPIO] = {
 	{"GPIOB_7 -- WIFI_SD_D3",	 GPIOB_bank_bit0_7(7),		GPIOB_bit_bit0_7(7),	GPIO_OUTPUT_MODE, 1, 1},
 // 6
 //pannel
-	{"GPIOD_12 -- LCD_PWR_EN",   GPIOD_bank_bit2_24(12), GPIOD_bit_bit2_24(12), GPIO_OUTPUT_MODE, 1, 1},
-	{"GPIOD_13 -- nLCD_VCC",     GPIOD_bank_bit2_24(13), GPIOD_bit_bit2_24(13), GPIO_OUTPUT_MODE, 1, 1},
+	{"GPIOD_12 -- LCD_PWR_EN",   GPIOD_bank_bit2_24(12),    GPIOD_bit_bit2_24(12),  GPIO_OUTPUT_MODE, 1, 1},
+	{"GPIOD_13 -- nLCD_VCC",     GPIOD_bank_bit2_24(13),    GPIOD_bit_bit2_24(13),  GPIO_OUTPUT_MODE, 1, 1},
 //	
-	{"GPIOD_21 -- EXT_PWER_EN2", GPIOD_bank_bit2_24(21), GPIOD_bit_bit2_24(21), GPIO_OUTPUT_MODE, 1, 1},
-	{"GPIOD_22 -- EXT_PWER_EN1", GPIOD_bank_bit2_24(22), GPIOD_bit_bit2_24(22), GPIO_OUTPUT_MODE, 1, 1},
-	{"GPIOD_23 -- KEYLED_CTRL",  GPIOD_bank_bit2_24(23), GPIOD_bit_bit2_24(23), GPIO_OUTPUT_MODE, 1, 1},
+	{"GPIOD_21 -- EXT_PWER_EN2", GPIOD_bank_bit2_24(21),    GPIOD_bit_bit2_24(21),  GPIO_OUTPUT_MODE, 1, 1},
+	{"GPIOD_22 -- EXT_PWER_EN1", GPIOD_bank_bit2_24(22),    GPIOD_bit_bit2_24(22),  GPIO_OUTPUT_MODE, 1, 1},
+	{"GPIOD_23 -- KEYLED_CTRL",  GPIOD_bank_bit2_24(23),    GPIOD_bit_bit2_24(23),  GPIO_OUTPUT_MODE, 1, 1},
 //backlight
-	{"GPIOD_18 -- BACKLIGHT_EN", GPIOD_bank_bit2_24(18), GPIOD_bit_bit2_24(18), GPIO_OUTPUT_MODE, 1, 1},
-// 3	
-	{"GPIOE_17 -- nand_ncs4",	 GPIOE_bank_bit16_21(17),	GPIOE_bit_bit16_21(17),	GPIO_OUTPUT_MODE, 1, 1},
+	{"GPIOD_18 -- BACKLIGHT_EN", GPIOD_bank_bit2_24(18),    GPIOD_bit_bit2_24(18),  GPIO_OUTPUT_MODE, 1, 1},
+// 5	
+	{"GPIOE_4 -- NAND_nCS1",	 GPIOE_bank_bit0_15(4),	    GPIOE_bit_bit0_15(4),	GPIO_OUTPUT_MODE, 1, 1},
+	{"GPIOE_5 -- NAND_nCS2",	 GPIOE_bank_bit0_15(5),	    GPIOE_bit_bit0_15(5),	GPIO_OUTPUT_MODE, 1, 1},
 	{"GPIOE_16 -- nand_ncs3",	 GPIOE_bank_bit16_21(16),	GPIOE_bit_bit16_21(16),	GPIO_OUTPUT_MODE, 1, 1},
+	{"GPIOE_17 -- nand_ncs4",	 GPIOE_bank_bit16_21(17),	GPIOE_bit_bit16_21(17),	GPIO_OUTPUT_MODE, 1, 1},
 	{"GPIOE_18 -- Linux_TX",	 GPIOE_bank_bit16_21(18),	GPIOE_bit_bit16_21(18), GPIO_OUTPUT_MODE, 1, 1},
-	//{"PP0 -- CAMR2_PWDN",	 EXGPIO_BANK1,	0,	GPIO_OUTPUT_MODE, 1, 1},
+	// ----------------------------------- i2s ---------------------------------
+	{"TEST_N -- I2S_DOUT",		 GPIOJTAG_bank_bit(16),		GPIOJTAG_bit_bit16(16),	GPIO_OUTPUT_MODE, 1, 1},
 };	
 
 static void save_gpio(int port) 
@@ -1273,24 +1407,71 @@ static void restore_gpio(int port)
 	}
 }
 
+typedef struct {
+	char name[32];
+	unsigned reg;
+	unsigned bits;
+	unsigned enable;
+} pinmux_data_t;
+
+
+#define MAX_PINMUX	12
+
+pinmux_data_t pinmux_data[MAX_PINMUX] = {
+	{"HDMI", 	0, (1<<2)|(1<<1)|(1<<0), 						1},
+	{"TCON", 	0, (1<<14)|(1<<11), 							1},
+	{"I2S_OUT",	0, (1<<18),						 				1},
+	{"I2S_CLK",	1, (1<<19)|(1<<15)|(1<<11),		 				1},
+	{"SPI",		1, (1<<29)|(1<<27)|(1<<25)|(1<<23),				1},
+	{"I2C",		2, (1<<5)|(1<<2),								1},
+	{"SD",		2, (1<<15)|(1<<14)|(1<<13)|(1<<12)|(1<<8),		1},
+	{"PWM",		2, (1<<31),										1},
+	{"UART_A",	3, (1<<24)|(1<23),								0},
+	{"RGB",		4, (1<<5)|(1<<4)|(1<<3)|(1<<2)|(1<<1)|(1<<0),	1},
+	{"UART_B",	5, (1<<24)|(1<23),								0},
+	{"REMOTE",	5, (1<<31),										1},
+};
+
+static unsigned pinmux_backup[6];
+
+static void save_pinmux(void)
+{
+	int i;
+	for (i=0;i<6;i++)
+		pinmux_backup[i] = READ_CBUS_REG(PERIPHS_PIN_MUX_0+i);
+	for (i=0;i<MAX_PINMUX;i++){
+		if (pinmux_data[i].enable){
+			printk("%s %x\n", pinmux_data[i].name, pinmux_data[i].bits);
+			clear_mio_mux(pinmux_data[i].reg, pinmux_data[i].bits);
+		}
+	}
+}
+
+static void restore_pinmux(void)
+{
+	int i;
+	for (i=0;i<6;i++)
+		 WRITE_CBUS_REG(PERIPHS_PIN_MUX_0+i, pinmux_backup[i]);
+}
+
 static void set_vccx2(int power_on)
 {
 	int i;
 
-    if(power_on)
-    {
+    if(power_on) {
 		for (i=0;i<MAX_GPIO;i++)
 			restore_gpio(i);
+		restore_pinmux();
         set_gpio_val(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), 1);
         set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);
         //set clk for wifi
         SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, (1<<18));
         CLEAR_CBUS_REG_MASK(PREG_EGPIO_EN_N, (1<<4));
     }
-    else
-    {
+    else {
         set_gpio_val(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), 0);
         set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);
+		save_pinmux();
 		for (i=0;i<MAX_GPIO;i++)
 			save_gpio(i);
 		//disable wifi clk
@@ -1386,6 +1567,7 @@ static struct meson_pm_config aml_pm_pdata = {
     .sleepcount = 128,
     .set_vccx2 = set_vccx2,
     .set_exgpio_early_suspend = set_exgpio_on_early_suspend,
+    .core_voltage_adjust = 10,
 };
 
 static struct platform_device aml_pm_device = {
@@ -1564,6 +1746,7 @@ static void set_bat_off(void)
 
 }
 
+#if 0
 static int bat_value_table[37]={
 0,  //0
 538,//0
@@ -1643,6 +1826,87 @@ static int bat_charge_value_table[37]={
 620,//100
 620 //100
 };
+#else
+static int bat_value_table[37]={
+0,  //0
+513,//0
+534,//4
+539,//10
+543,//15
+544,//16
+546,//18
+547,//20
+548,//23
+549,//26
+550,//29
+551,//32
+552,//35
+553,//37
+554,//40
+556,//43
+557,//46
+559,//49
+560,//51
+563,//54
+565,//57
+567,//60
+571,//63
+574,//66
+576,//68
+580,//71
+584,//74
+587,//77
+592,//80
+596,//83
+599,//85
+603,//88
+608,//91
+614,//95
+618,//97
+626,//100
+626 //100
+};
+
+static int bat_charge_value_table[37]={
+0,  //0    
+534,//0
+562,//4
+573,//10
+577,//15
+578,//16
+579,//18
+581,//20
+583,//23
+584,//26
+585,//29
+586,//32
+587,//35
+588,//37
+589,//40
+590,//43
+591,//46
+592,//49
+593,//51
+595,//54
+597,//57
+599,//60
+601,//63
+603,//66
+604,//68
+606,//71
+609,//74
+611,//77
+614,//80
+617,//83
+619,//85
+622,//88
+625,//91
+628,//95
+632,//97
+636,//100
+636 //100
+};
+#endif
 
 static int bat_level_table[37]={
 0,
@@ -1891,9 +2155,14 @@ static struct mtd_partition multi_partition_info[] =
 		.size = 256*1024*1024,
 	},
 	{
+		.name = "PD_Novel",
+		.offset = 640*1024*1024,
+		.size = 128*1024*1024,
+	},
+	{
 		.name = "NFTL_Part",
-		.offset = ((384 + 256)*1024*1024),
-		.size = ((0x200000000 - (384 + 256)*1024*1024)),
+		.offset = ((640 + 128)*1024*1024),
+		.size = ((0x200000000 - (640 + 128)*1024*1024)),
 	},
 };
 
@@ -2044,6 +2313,7 @@ static void aml_8726m_set_bl_level(unsigned level)
 
 static void aml_8726m_power_on_bl(void)
 {
+#if 0
     msleep(100);
     SET_CBUS_REG_MASK(PWM_MISC_REG_AB, (1 << 0));
     msleep(100);
@@ -2057,10 +2327,14 @@ static void aml_8726m_power_on_bl(void)
 set_gpio_val(GPIOD_bank_bit2_24(18), GPIOD_bit_bit2_24(18), 1);
 set_gpio_mode(GPIOD_bank_bit2_24(18), GPIOD_bit_bit2_24(18), GPIO_OUTPUT_MODE);
 #endif
+#else
+printk("backlight on\n");
+#endif
 }
 
 static void aml_8726m_power_off_bl(void)
 {
+#if 0 
     //BL_PWM -> GPIOD_18: 0
 #if 0
 	set_gpio_val(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), 0);
@@ -2074,6 +2348,9 @@ static void aml_8726m_power_off_bl(void)
     CLEAR_CBUS_REG_MASK(PWM_MISC_REG_AB, (1 << 0));
     set_gpio_val(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), 0);
     set_gpio_mode(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), GPIO_OUTPUT_MODE);
+#else
+    printk("backlight off\n");
+#endif
 }
 
 struct aml_bl_platform_data aml_bl_platform =
@@ -2249,6 +2526,9 @@ static struct platform_device __initdata *platform_devs[] = {
     #ifdef CONFIG_CAMERA_GC0308
         &camera_device,
     #endif
+    #ifdef CONFIG_AMLOGIC_VIDEOIN_MANAGER
+		&vm_device,
+	#endif
     #ifdef CONFIG_CAMERA_GT2005
         &camera_gt2005_device,
     #endif
@@ -2288,6 +2568,20 @@ static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
     	/*gt2005 i2c address is 0x78/0x79*/
     	I2C_BOARD_INFO("gt2005_i2c",  0x78 >> 1 ),
     	.platform_data = (void *)&gt2005_pdata
+    },
+#endif
+#if CONFIG_VIDEO_AMLOGIC_CAPTURE_GT2005
+    {
+    	/*gt2005 i2c address is 0x78/0x79*/
+    	I2C_BOARD_INFO("gt2005_i2c",  0x78 >> 1 ),
+    	.platform_data = (void *)&video_gt2005_data
+    },
+#endif
+#if CONFIG_VIDEO_AMLOGIC_CAPTURE_GC0308
+    {
+    	/*gt2005 i2c address is 0x78/0x79*/
+    	I2C_BOARD_INFO("gc0308_i2c",  0x42 >> 1 ),
+    	.platform_data = (void *)&video_gc0308_data
     },
 #endif
 

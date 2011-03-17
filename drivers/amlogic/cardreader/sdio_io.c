@@ -31,14 +31,15 @@ static int process_sdio_pending_irqs(struct memory_card *card)
 		return ret;
 	}
 
+
 	count = 0;
 	for (i = 1; i <= 7; i++) {
 		if (pending & (1 << i)) {
 			struct sdio_func *func = card->sdio_func[i - 1];
 			if (!func) {
 				printk(KERN_WARNING "%s: pending IRQ for "
-					"non-existant function\n",
-					card_card_id(card));
+					"non-existant function,pending = %x\n",
+					card_card_id(card), pending);
 				ret = -EINVAL;
 			} else if (func->irq_handler) {
 				//printk("sdio irq received and handled at func %d\n", i);
@@ -51,6 +52,7 @@ static int process_sdio_pending_irqs(struct memory_card *card)
 		}
 	}
 
+	sdio_irq_handled = 1;
 	if (count)
 		return count;
 
@@ -127,9 +129,11 @@ static int sdio_irq_thread(void *_host)
 		}
 
 		set_current_state(TASK_INTERRUPTIBLE);
-		if (host->caps & CARD_CAP_SDIO_IRQ)
+		if (host->caps & CARD_CAP_SDIO_IRQ) {
 			host->ops->enable_sdio_irq(host, 1);
-		if (!kthread_should_stop())
+			schedule();
+		}
+		else if (!kthread_should_stop())
 			schedule_timeout(period);
                 set_current_state(TASK_INTERRUPTIBLE);
 		if(host->sdio_task_state)

@@ -1512,6 +1512,8 @@ wlan_process_sleep_confirm_resp(pmlan_adapter pmadapter, t_u8 * pbuf,
     PRINTM(MEVENT, "#\n");
     if (cmd->result != MLAN_STATUS_SUCCESS) {
         PRINTM(MERROR, "Sleep confirm command failed\n");
+        pmadapter->pm_wakeup_card_req = MFALSE;
+        pmadapter->ps_state = PS_STATE_AWAKE;
         LEAVE();
         return;
     }

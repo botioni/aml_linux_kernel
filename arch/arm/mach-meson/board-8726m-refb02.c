@@ -70,6 +70,10 @@
 #include <linux/mmc31xx.h>
 #endif
 
+#ifdef CONFIG_SIX_AXIS_SENSOR_MPU3050
+#include <linux/mpu.h>
+#endif
+
 #ifdef CONFIG_SN7325
 #include <linux/sn7325.h>
 #endif
@@ -252,6 +256,23 @@ static struct sn7325_platform_data sn7325_pdata = {
     .pwr_rst = &sn7325_pwr_rst,
 };
 #endif
+
+#ifdef CONFIG_SIX_AXIS_SENSOR_MPU3050
+static struct mpu3050_platform_data mpu3050_data = {
+    .int_config = 0x10,
+    .orientation = {0,1,0,1,0,0,0,0,-1},
+    .level_shifter = 0,
+    .accel = {
+                .get_slave_descr = mma8451_get_slave_descr,
+                .adapt_num = 0, // The i2c bus to which the mpu device is
+                // connected
+                .bus = EXT_SLAVE_BUS_SECONDARY, //The secondary I2C of MPU
+                .address = 0x1c,
+                .orientation = {0,1,0,1,0,0,0,0,-1},
+            },
+    };
+#endif
+
 
 #ifdef CONFIG_TOUCH_KEY_PAD_IT7230
 #include <linux/input.h>
@@ -906,6 +927,7 @@ static struct meson_pm_config aml_pm_pdata = {
     .ddr_clk = 0x00110820,
     .sleepcount = 128,
     .set_vccx2 = set_vccx2,
+    .core_voltage_adjust = 5,
 };
 
 static struct platform_device aml_pm_device = {
@@ -1840,6 +1862,14 @@ static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
         .platform_data = (void *)&it7230_pdata,
     },
 #endif
+
+#ifdef CONFIG_SIX_AXIS_SENSOR_MPU3050
+    {
+        I2C_BOARD_INFO("mpu3050", 0x68),
+        .platform_data = (void *)&mpu3050_data,
+    },
+#endif
+
 };
 
 
