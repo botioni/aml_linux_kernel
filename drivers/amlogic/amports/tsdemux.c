@@ -51,7 +51,6 @@ static int demux_skipbyte;
 static struct tsdemux_ops *demux_ops = NULL;
 static irq_handler_t       demux_handler;
 static void               *demux_data;
-int dvb_playing = 0;
 static DEFINE_SPINLOCK(demux_ops_lock);
 
 void tsdemux_set_ops(struct tsdemux_ops *ops)
@@ -380,7 +379,7 @@ s32 tsdemux_init(u32 vid, u32 aid, u32 sid)
     u32 parser_sub_start_ptr;
     u32 parser_sub_end_ptr;
     u32 parser_sub_rp;
-    dvb_playing = 1;
+
     parser_sub_start_ptr = READ_MPEG_REG(PARSER_SUB_START_PTR);
     parser_sub_end_ptr = READ_MPEG_REG(PARSER_SUB_END_PTR);
     parser_sub_rp = READ_MPEG_REG(PARSER_SUB_RP);
@@ -565,7 +564,7 @@ void tsdemux_release(void)
 
     pts_stop(PTS_TYPE_VIDEO);
     pts_stop(PTS_TYPE_AUDIO);
-    dvb_playing = 0;
+
 }
 
 ssize_t tsdemux_write(struct file *file,
