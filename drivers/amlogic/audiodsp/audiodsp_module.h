@@ -53,9 +53,10 @@
 	int dsp_is_started;
 	void *stream_buffer_mem;
 	int stream_buffer_mem_size;
+	int decoded_nb_frames;
 	unsigned long stream_buffer_start;
 	unsigned long stream_buffer_end;
-	unsigned long stream_buffer_size;
+	unsigned long stream_buffer_size;	
 	struct mutex	stream_buffer_mutex;
 
 	struct completion	decode_completion;

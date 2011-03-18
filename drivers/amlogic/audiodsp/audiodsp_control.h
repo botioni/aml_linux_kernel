@@ -27,6 +27,7 @@ char *data;
 #define AUDIODSP_GET_SAMPLERATE						_IOR('r',2,long)
 #define AUDIODSP_GET_BITS_PER_SAMPLE					_IOR('r',3,long)
 #define AUDIODSP_GET_PTS						_IOR('r',4,long)
+#define AUDIODSP_GET_DECODED_NB_FRAMES			_IOR('r',5,long)
 
 #define MCODEC_FMT_MPEG123 (1<<0)
 #define MCODEC_FMT_AAC 	  (1<<1)
