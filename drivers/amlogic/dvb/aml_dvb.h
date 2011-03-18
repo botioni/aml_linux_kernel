@@ -35,6 +35,13 @@
 #define SEC_BUF_BUSY_SIZE 4
 #define SEC_BUF_COUNT     (SEC_BUF_GRP_COUNT*8)
 
+typedef enum{
+	AM_DMX_0=0,
+	AM_DMX_1,
+	AM_DMX_2,
+	AM_DMX_MAX,
+}aml_dmx_id_t;
+
 typedef enum {
 	AM_TS_SRC_TS0,
 	AM_TS_SRC_TS1,

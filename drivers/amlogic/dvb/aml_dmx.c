@@ -44,7 +44,7 @@
 #define ENABLE_SEC_BUFF_WATCHDOG
 #define USE_AHB_MODE
 
-#if 1
+#if 0
 //#define pr_dbg(fmt, args...) printk(KERN_DEBUG "DVB: " fmt, ## args)
 #define pr_dbg(fmt, args...) printk( "DVB: " fmt, ## args)
 #else
@@ -422,13 +422,11 @@ static irqreturn_t dvr_irq_handler(int irq_number, void *para)
 /*Enable the STB*/
 static void stb_enable(struct aml_dvb *dvb)
 {
-	int out_src, des_in, en_des, invert_clk, fec_s, fec_clk, hiu;
+	int out_src, des_in, en_des, invert_clk, fec_s, fec_clk, hiu ,dec_clk_en;
 	
 	switch(dvb->stb_source) {
 		case AM_TS_SRC_TS0:
 			out_src = 0;
-			des_in  = 0;
-			en_des  = 1;
 			invert_clk = 1;
 			fec_s   = 0;
 			fec_clk = 4;
@@ -436,8 +434,6 @@ static void stb_enable(struct aml_dvb *dvb)
 		break;
 		case AM_TS_SRC_TS1:
 			out_src = 1;
-			des_in  = 1;
-			en_des  = 1;
 			invert_clk = 1;
 			fec_s   = 1;
 			fec_clk = 4;
@@ -445,8 +441,6 @@ static void stb_enable(struct aml_dvb *dvb)
 		break;
 		case AM_TS_SRC_TS2:
 			out_src = 2;
-			des_in  = 2;
-			en_des  = 1;
 			invert_clk = 1;
 			fec_s   = 2;
 			fec_clk = 4;
@@ -454,8 +448,6 @@ static void stb_enable(struct aml_dvb *dvb)
 		break;		
 		case AM_TS_SRC_S2P0:
 			out_src = 6;
-			des_in  = 0;
-			en_des  = 1;
 			invert_clk = 1;
 			fec_s   = 0;
 			fec_clk = 4;
@@ -463,8 +455,6 @@ static void stb_enable(struct aml_dvb *dvb)
 		break;
 		case AM_TS_SRC_S2P1:
 			out_src = 6;
-			des_in  = 1;
-			en_des  = 1;
 			invert_clk = 1;
 			fec_s   = 1;
 			fec_clk = 4;
@@ -472,8 +462,6 @@ static void stb_enable(struct aml_dvb *dvb)
 		break;
 		case AM_TS_SRC_HIU:
 			out_src = 0;
-			des_in  = 0;
-			en_des  = 0;
 			invert_clk = 0;
 			fec_s   = 0;
 			fec_clk = 4;
@@ -481,8 +469,6 @@ static void stb_enable(struct aml_dvb *dvb)
 		break;
 		default:
 			out_src = 0;
-			des_in  = 0;
-			en_des  = 0;
 			invert_clk = 0;
 			fec_s   = 0;
 			fec_clk = 0;
@@ -490,10 +476,33 @@ static void stb_enable(struct aml_dvb *dvb)
 		break;
 	}
 	
+	switch(dvb->dsc_source) {
+		case AM_DMX_0:
+			des_in = 0;
+			en_des = 1;
+			dec_clk_en=1;			
+		break;
+		case AM_DMX_1:
+			des_in = 1;
+			en_des = 1;
+			dec_clk_en=1;			
+		break;
+		case AM_DMX_2:
+			des_in = 2;
+			en_des = 1;	
+			dec_clk_en=1;
+		break;
+		default:
+			des_in = 0;
+			en_des = 0;
+			dec_clk_en=0;
+		break;
+	}
 	WRITE_MPEG_REG(STB_TOP_CONFIG, 
 		(out_src<<TS_OUTPUT_SOURCE) |
 		(des_in<<DES_INPUT_SEL)     |
 		(en_des<<ENABLE_DES_PL)     |
+		(dec_clk_en<<ENABLE_DES_PL_CLK)|
 		(0<<INVERT_S2P0_FEC_ERROR)    |
 		(0<<INVERT_S2P0_FEC_DATA)     |
 		(0<<INVERT_S2P0_FEC_SYNC)     |
@@ -844,7 +853,10 @@ static int dmx_enable(struct aml_dmx *dmx)
 		hi_bsf = 1;
 	else
 		hi_bsf = 0;
-	fec_core_sel = (dmx->source==(dvb?dvb->dsc_source:0))?1:0;
+	if(dvb->dsc_source>=AM_DMX_MAX)
+		fec_core_sel = 0;//(dmx->source==(dvb?dvb->dsc_source:0))?1:0;
+	else
+		fec_core_sel = 1;
 	
 	if(dmx->chan_count) {
 		/*Initialize the registers*/
@@ -1699,6 +1711,12 @@ int aml_dsc_hw_set_source(struct aml_dvb *dvb, dmx_source_t src)
 			dvb->dsc_source = AM_TS_SRC_S2P1;
 #endif
 		break;
+		case DMX_SOURCE_FRONT2:
+			if(dvb->dsc_source!=AM_TS_SRC_TS2) {
+				dvb->dsc_source = AM_TS_SRC_TS2;
+			}
+		break;
+
 		case DMX_SOURCE_DVR0:
 			dvb->dsc_source = AM_TS_SRC_HIU;
 		break;

@@ -381,17 +381,16 @@ static ssize_t dsc_show_source(struct class *class,struct class_attribute *attr,
 	char *src;
 	
 	switch(dvb->dsc_source) {
-		case AM_TS_SRC_TS0:
-		case AM_TS_SRC_S2P0:
-			src = "ts0";
+		case AM_DMX_0:
+			src = "dmx0";
 		break;
-		case AM_TS_SRC_TS1:
-		case AM_TS_SRC_S2P1:
-			src = "ts1";
+		case AM_DMX_1:
+			src = "dmx1";
 		break;
-		case AM_TS_SRC_HIU:
-			src = "hiu";
+		case AM_DMX_2:
+			src = "dmx2";
 		break;
+
 		default:
 			src = "";
 		break;
@@ -408,12 +407,12 @@ static ssize_t dsc_store_source(struct class *class,struct class_attribute *attr
 {
 	dmx_source_t src = -1;
 
-	if(!strncmp("ts0", buf, 3)) {
-		src = DMX_SOURCE_FRONT0;
-	} else if(!strncmp("ts1", buf, 3)) {
-		src = DMX_SOURCE_FRONT1;
-	} else if(!strncmp("hiu", buf, 3)) {
-		src = DMX_SOURCE_DVR0;
+	if(!strncmp("dmx0", buf, 3)) {
+		src = AM_DMX_0;
+	} else if(!strncmp("dmx1", buf, 3)) {
+		src = AM_DMX_1;
+	}else if(!strncmp("dmx2", buf, 3)) {
+		src = AM_DMX_2;
 	}
 
 	if(src!=-1) {
@@ -536,7 +535,8 @@ static int aml_dvb_probe(struct platform_device *pdev)
 	
 	advb->dev  = &pdev->dev;
 	advb->pdev = pdev;
-
+	advb->dsc_source=AM_DMX_MAX;
+	
 	for (i=0; i<DMX_DEV_COUNT; i++) {
 		advb->dmx[i].dmx_irq = -1;
 		advb->dmx[i].dvr_irq = -1;
