@@ -1346,7 +1346,7 @@ typedef struct {
 	unsigned enable;
 } gpio_data_t;
 
-#define MAX_GPIO 23
+#define MAX_GPIO 24
 static gpio_data_t gpio_data[MAX_GPIO] = {
 // 5
     {"GPIOA_7 -- BL_PWM",		 GPIOA_bank_bit0_14(7),		GPIOA_bit_bit0_14(7),	GPIO_OUTPUT_MODE, 1, 1},
@@ -1361,6 +1361,8 @@ static gpio_data_t gpio_data[MAX_GPIO] = {
 	{"GPIOB_5 -- WIFI_SD_D1",	 GPIOB_bank_bit0_7(5),		GPIOB_bit_bit0_7(5),	GPIO_OUTPUT_MODE, 1, 1},
 	{"GPIOB_6 -- WIFI_SD_D2",	 GPIOB_bank_bit0_7(6),		GPIOB_bit_bit0_7(6),	GPIO_OUTPUT_MODE, 1, 1},
 	{"GPIOB_7 -- WIFI_SD_D3",	 GPIOB_bank_bit0_7(7),		GPIOB_bit_bit0_7(7),	GPIO_OUTPUT_MODE, 1, 1},
+//camera
+    {"GPIOC_3 -- camera PCLK",	 GPIOC_bank_bit0_26(3),		GPIOC_bit_bit0_26(3),	GPIO_OUTPUT_MODE, 1, 1},
 // 6
 //pannel
 	{"GPIOD_12 -- LCD_PWR_EN",   GPIOD_bank_bit2_24(12),    GPIOD_bit_bit2_24(12),  GPIO_OUTPUT_MODE, 1, 1},
@@ -1415,7 +1417,7 @@ typedef struct {
 } pinmux_data_t;
 
 
-#define MAX_PINMUX	12
+#define MAX_PINMUX	13
 
 pinmux_data_t pinmux_data[MAX_PINMUX] = {
 	{"HDMI", 	0, (1<<2)|(1<<1)|(1<<0), 						1},
@@ -1430,6 +1432,7 @@ pinmux_data_t pinmux_data[MAX_PINMUX] = {
 	{"RGB",		4, (1<<5)|(1<<4)|(1<<3)|(1<<2)|(1<<1)|(1<<0),	1},
 	{"UART_B",	5, (1<<24)|(1<23),								0},
 	{"REMOTE",	5, (1<<31),										1},
+	{"CAMERA",	3, (1<<13),										1},
 };
 
 static unsigned pinmux_backup[6];
