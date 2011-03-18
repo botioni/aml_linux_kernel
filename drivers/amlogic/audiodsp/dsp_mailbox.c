@@ -122,6 +122,7 @@ static irqreturn_t audiodsp_mailbox_irq(int irq, void *data)
 			priv->cur_frame_info.offset=info->offset;
 			priv->cur_frame_info.buffered_len=info->buffered_len;
 			}
+		priv->decoded_nb_frames ++;		
 		complete(&priv->decode_completion);
 		}
 	if(status& (1<<M1B_IRQ5_STREAM_FMT_CHANGED))

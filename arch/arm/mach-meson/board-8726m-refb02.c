@@ -260,7 +260,7 @@ static struct sn7325_platform_data sn7325_pdata = {
 #ifdef CONFIG_SIX_AXIS_SENSOR_MPU3050
 static struct mpu3050_platform_data mpu3050_data = {
     .int_config = 0x10,
-    .orientation = {0,1,0,1,0,0,0,0,-1},
+    .orientation = {0,-1,0,-1,0,0,0,0,-1},
     .level_shifter = 0,
     .accel = {
                 .get_slave_descr = mma8451_get_slave_descr,
@@ -268,7 +268,7 @@ static struct mpu3050_platform_data mpu3050_data = {
                 // connected
                 .bus = EXT_SLAVE_BUS_SECONDARY, //The secondary I2C of MPU
                 .address = 0x1c,
-                .orientation = {0,1,0,1,0,0,0,0,-1},
+                .orientation = {0,1,0,-1,0,0,0,0,-1},
             },
     };
 #endif
@@ -1870,6 +1870,13 @@ static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
     },
 #endif
 
+#ifdef CONFIG_BATTERY_BQ27x00 
+    { 
+        I2C_BOARD_INFO("bq27500", 0x55),
+        .platform_data = 1, 
+    }, 
+#endif
+
 };
 
 
@@ -1940,7 +1947,7 @@ static void disable_unused_model(void)
      //disable wifi
     SET_CBUS_REG_MASK(HHI_GCLK_MPEG2, (1<<5)); 
     SET_CBUS_REG_MASK(HHI_WIFI_CLK_CNTL, (1<<0));
-    __raw_writel(0x8AF,0xC9320ED8);
+    __raw_writel(0xCFF,0xC9320ED8);
     __raw_writel((__raw_readl(0xC9320EF0))&0xF9FFFFFF,0xC9320EF0);
     CLEAR_CBUS_REG_MASK(HHI_GCLK_MPEG2, (1<<5)); 
     CLEAR_CBUS_REG_MASK(HHI_WIFI_CLK_CNTL, (1<<0));
