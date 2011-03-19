@@ -1308,37 +1308,37 @@ static struct mtd_partition multi_partition_info[] =
 {
 	{
 		.name = "logo",
+		.offset = 16*SZ_1M,
+		.size = 8*SZ_1M,
+	},
+	{
+		.name = "aml_logo",
+		.offset = 24*SZ_1M,
+		.size = 8*SZ_1M,
+	},
+	{
+		.name = "recovery",
 		.offset = 32*SZ_1M,
 		.size = 16*SZ_1M,
 	},
 	{
-		.name = "aml_logo",
+		.name = "boot",
 		.offset = 48*SZ_1M,
 		.size = 16*SZ_1M,
 	},
 	{
-		.name = "recovery",
-		.offset = 64*SZ_1M,
-		.size = 32*SZ_1M,
-	},
-	{
-		.name = "boot",
-		.offset = 96*SZ_1M,
-		.size = 32*SZ_1M,
-	},
-	{
 		.name = "system",
-		.offset = 128*SZ_1M,
+		.offset = 64*SZ_1M,
 		.size = 256*SZ_1M,
 	},
 	{
 		.name = "cache",
-		.offset = 384*SZ_1M,
-		.size = 128*SZ_1M,
+		.offset = 320*SZ_1M,
+		.size = 40*SZ_1M,
 	},
 	{
 		.name = "userdata",
-		.offset = 512*SZ_1M,
+		.offset = 360*SZ_1M,
 		.size = 512*SZ_1M,
 	},
 	{
