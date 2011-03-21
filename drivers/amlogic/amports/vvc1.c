@@ -262,15 +262,13 @@ static void vvc1_isr(void)
             vf->bufWidth = 1920;
 
             if (pts_valid) {
-                if (!avi_flag || (avi_flag && (I_PICTURE == picture_type))) {
-                    vf->pts = pts;
-                    if ((repeat_count > 1) && avi_flag) {
-                        vf->duration = vvc1_amstream_dec_info.rate * repeat_count >> 1;
-                        next_pts = pts + (vvc1_amstream_dec_info.rate * repeat_count >> 1) * 15 / 16;
-                    } else {
-                        vf->duration = vvc1_amstream_dec_info.rate >> 1;
-                        next_pts = 0;
-                    }
+                vf->pts = pts;
+                if ((repeat_count > 1) && avi_flag) {
+                    vf->duration = vvc1_amstream_dec_info.rate * repeat_count >> 1;
+                    next_pts = pts + (vvc1_amstream_dec_info.rate * repeat_count >> 1) * 15 / 16;
+                } else {
+                    vf->duration = vvc1_amstream_dec_info.rate >> 1;
+                    next_pts = 0;
                 }
             } else {
                 vf->pts = next_pts;
@@ -329,18 +327,11 @@ static void vvc1_isr(void)
             vf->bufWidth = 1920;
 
             if (pts_valid) {
-                if (!avi_flag || (avi_flag && (I_PICTURE == picture_type))) {
-                    vf->pts = pts;
-                    if ((repeat_count > 1) && avi_flag) {
-                        vf->duration = vvc1_amstream_dec_info.rate * repeat_count;
-                        next_pts = pts + (vvc1_amstream_dec_info.rate * repeat_count) * 15 / 16;
-                    } else {
-                        vf->duration = vvc1_amstream_dec_info.rate;
-                        next_pts = 0;
-                    }
-                }
-                else {
-                    vf->pts = 0;
+                vf->pts = pts;
+                if ((repeat_count > 1) && avi_flag) {
+                    vf->duration = vvc1_amstream_dec_info.rate * repeat_count;
+                    next_pts = pts + (vvc1_amstream_dec_info.rate * repeat_count) * 15 / 16;
+                } else {
                     vf->duration = vvc1_amstream_dec_info.rate;
                     next_pts = 0;
                 }
