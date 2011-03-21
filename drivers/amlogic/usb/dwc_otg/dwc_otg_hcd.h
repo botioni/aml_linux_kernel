@@ -306,6 +306,9 @@ typedef struct dwc_otg_hcd {
 	 */
 	uint16_t frame_number;
 
+	uint16_t latest_split_schdule_fn;
+	uint16_t latest_split_fn_inc;
+
 	/**
 	 * Free host channels in the controller. This is a list of
 	 * dwc_hc_t items.

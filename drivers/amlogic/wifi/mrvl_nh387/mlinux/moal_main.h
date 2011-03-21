@@ -398,8 +398,11 @@ woal_sched_timeout(t_u32 millisec)
 /** Netlink multicast group number */
 #define NL_MULTICAST_GROUP  1
 
-/** MAX PENDING Tx data */
-#define MAX_TX_PENDING    	60
+/** MAX Tx Pending count */
+#define MAX_TX_PENDING    	100
+
+/** LOW Tx Pending count */
+#define LOW_TX_PENDING      80
 
 /** wait_queue structure */
 typedef struct _wait_queue

@@ -594,9 +594,9 @@ wlan_wmm_init(pmlan_adapter pmadapter)
     for (j = 0; j < MLAN_MAX_BSS_NUM; ++j) {
         if ((priv = pmadapter->priv[j])) {
             for (i = 0; i < MAX_NUM_TID; ++i) {
-                priv->aggr_prio_tbl[i].amsdu = tos_to_tid[i];
+                priv->aggr_prio_tbl[i].amsdu = tos_to_tid_inv[i];
                 priv->aggr_prio_tbl[i].ampdu_ap =
-                    priv->aggr_prio_tbl[i].ampdu_user = tos_to_tid[i];
+                    priv->aggr_prio_tbl[i].ampdu_user = tos_to_tid_inv[i];
 
                 priv->wmm.tid_tbl_ptr[i].ra_list_curr = MNULL;
             }

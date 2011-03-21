@@ -419,14 +419,20 @@ void tsync_avevent(avevent_t event, u32 param)
         break;
 
     case VIDEO_PAUSE:
-        amlog_level(LOG_LEVEL_INFO, "video pause! param=%d\n", param);
+        
         if (param == 1) {
             vpause_flag = 1;
         } else {
             vpause_flag = 0;
         }
-        timestamp_pcrscr_enable(1 - param);
-        break;
+		if(param == 1){
+        	timestamp_pcrscr_enable(0);
+			amlog_level(LOG_LEVEL_INFO, "video pause!\n");
+		}else{
+			timestamp_pcrscr_enable(1);
+			amlog_level(LOG_LEVEL_INFO, "video resume\n");
+		}
+        break;	
 
     default:
         break;

@@ -339,6 +339,11 @@ static void vvc1_isr(void)
                         next_pts = 0;
                     }
                 }
+                else {
+                    vf->pts = 0;
+                    vf->duration = vvc1_amstream_dec_info.rate;
+                    next_pts = 0;
+                }
             } else {
                 vf->pts = next_pts;
                 if ((repeat_count > 1) && avi_flag) {

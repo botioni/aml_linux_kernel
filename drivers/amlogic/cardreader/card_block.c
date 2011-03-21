@@ -62,6 +62,9 @@ static struct semaphore card_thread_sem;
 /*wait device delete*/
 struct completion card_devdel_comp;
 
+/*sdio irq flag*/
+unsigned char sdio_irq_handled=0;
+
 struct card_queue_list {
 	int cq_num;
 	unsigned cq_flag;
@@ -286,6 +289,7 @@ static int card_queue_thread(void *d)
 	struct card_queue *cq = d;
 	struct request_queue *q = cq->queue;
 	struct card_queue_list *cq_node_current;
+	unsigned char rewait;
 	DECLARE_WAITQUEUE(wait, current);
 
 	daemonize("card_queue_thread");
@@ -309,6 +313,9 @@ static int card_queue_thread(void *d)
 			cq = cq_node_current->cq;
 			q = cq->queue;
 			if (cq_node_current->cq_flag) {
+				/*wait sdio handle irq & xfer data*/
+				for(rewait=3;(!sdio_irq_handled)&&(rewait--);)
+					schedule();
 				req = blk_fetch_request(q);
 				if (req)
 					break;
@@ -338,6 +345,8 @@ static int card_queue_thread(void *d)
 		}
 
 		cq->issue_fn(cq, req);
+		/*yield*/
+		cond_resched();
 	} while (1);
 	remove_wait_queue(&card_thread_wq, &wait);
 	up(&card_thread_sem);

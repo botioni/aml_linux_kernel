@@ -552,12 +552,32 @@ void dwc_otg_hcd_qh_deactivate(dwc_otg_hcd_t * _hcd, dwc_otg_qh_t * _qh,
 				_qh->sched_frame =
 				    dwc_frame_num_inc(_qh->start_split_frame,
 						      _qh->interval);
+
+				/* To avoid many ssplit/csplit in same frame */
+				if(_hcd->latest_split_fn_inc >= 0 ){
+					if(0 == ((_hcd->latest_split_schdule_fn - (_qh->sched_frame | 0x7)) 
+						& DWC_HFNUM_MAX_FRNUM)){
+						_hcd->latest_split_fn_inc += 8;
+						_qh->sched_frame = dwc_frame_num_inc(_qh->sched_frame, 
+								_hcd->latest_split_fn_inc);
+					}else{
+						_hcd->latest_split_fn_inc = 0;
+					}
+				}
+
 				if (dwc_frame_num_le
 				    (_qh->sched_frame, frame_number)) {
 					_qh->sched_frame = frame_number;
 				}
+
 				_qh->sched_frame |= 0x7;
 				_qh->start_split_frame = _qh->sched_frame;
+
+				/* initial value */
+				if(_hcd->latest_split_fn_inc < 0){
+					_hcd->latest_split_fn_inc = 0;
+				}
+				_hcd->latest_split_schdule_fn = _qh->sched_frame;
 			}
 		} else {
 			_qh->sched_frame =

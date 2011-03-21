@@ -33,7 +33,6 @@
 #include <mach/card_io.h>
 
 #define card_list_to_card(l)	container_of(l, struct memory_card, node)
-static DEFINE_MUTEX(init_lock);
 struct completion card_devadd_comp;
 
 struct amlogic_card_host 
@@ -56,7 +55,7 @@ struct amlogic_card_host
 };
 
 //wait_queue_head_t     sdio_wait_event;
-
+extern void sdio_if_int_handler(struct card_host *host);
 extern void sdio_cmd_int_handle(struct memory_card *card);
 extern void sdio_timeout_int_handle(struct memory_card *card);
 
@@ -65,7 +64,7 @@ void card_detect_change(struct card_host *host, unsigned long delay);
 struct card_host *card_alloc_host(int extra, struct device *dev);
 static void card_setup(struct card_host *host);
 static void amlogic_card_request(struct card_host *host, struct card_blk_request *brq);
-static struct memory_card *card_find_card(struct card_host *host, u8 card_type);
+struct memory_card *card_find_card(struct card_host *host, u8 card_type);
 
 static struct memory_card *card_alloc_card(struct card_host *host) 
 {
@@ -212,7 +211,7 @@ static irqreturn_t sdio_interrupt_monitor(int irq, void *dev_id, struct pt_regs 
 	sdio_interrupt_resource = sdio_check_interrupt();
 	switch (sdio_interrupt_resource) {
 		case SDIO_IF_INT:
-		    //sdio_if_int_handler();
+		    sdio_if_int_handler(host);
 		    break;
 
 		case SDIO_CMD_INT:
@@ -257,6 +256,9 @@ static int card_reader_init(struct card_host *host)
 		return -1;
 	}
 
+#ifdef CONFIG_SDIO_HARD_IRQ
+	host->caps |= CARD_CAP_SDIO_IRQ;
+#endif
 	return 0;
 } 
 
@@ -272,14 +274,11 @@ static int card_reader_monitor(void *data)
 	while(1) {
 		msleep(200);
 
-		mutex_lock(&init_lock);
 		if(card_host->card_task_state)
 		{
 			set_current_state(TASK_INTERRUPTIBLE);
-			mutex_unlock(&init_lock);
 			schedule();
 			set_current_state(TASK_RUNNING);
-			mutex_lock(&init_lock);
 		}
 		for(card_type=CARD_XD_PICTURE; card_type<CARD_MAX_UNIT; card_type++) {
 
@@ -288,8 +287,10 @@ static int card_reader_monitor(void *data)
 			if (card == NULL)
 				continue;
 
+			__card_claim_host(card_host, card);
 			card->card_io_init(card);
 			card->card_detector(card);
+			card_release_host(card_host);
 
 	    	if((card->card_status == CARD_INSERTED) && (((card->unit_state != CARD_UNIT_READY) 
 				&& ((card_type == CARD_SDIO) ||(card_type == CARD_INAND)
@@ -321,9 +322,7 @@ static int card_reader_monitor(void *data)
 					card->state = CARD_STATE_INITED;
 					if (card_type == CARD_SDIO)
 						card_host->card = card;
-					mutex_unlock(&init_lock);
 					card_detect_change(card_host, 0);
-					mutex_lock(&init_lock);
 	            }
 	        }
 	        else if((card->card_status == CARD_REMOVED) && ((card->unit_state != CARD_UNIT_NOT_READY)
@@ -341,14 +340,11 @@ static int card_reader_monitor(void *data)
 
 					if(card) {
 						list_del(&card->node);
-						mutex_unlock(&init_lock);
 						card_remove_card(card);
-						mutex_lock(&init_lock);
 					}
 				}
 	        }
 		}
-		mutex_unlock(&init_lock);
 	}
 
     return 0;
@@ -417,13 +413,15 @@ int __card_claim_host(struct card_host *host, struct memory_card *card)
 EXPORT_SYMBOL(__card_claim_host);
 
 #ifdef CONFIG_SDIO
-
+int sdio_read_func_cis(struct sdio_func *func);
 static int card_sdio_init_func(struct memory_card *card, unsigned int fn)
 {
-	//int ret;
+	int ret = 0;
 	struct sdio_func *func;
 
 	BUG_ON(fn > SDIO_MAX_FUNCS);
+
+	card_claim_host(card->host);
 
 	func = sdio_alloc_func(card);
 	if (IS_ERR(func))
@@ -431,9 +429,20 @@ static int card_sdio_init_func(struct memory_card *card, unsigned int fn)
 
 	func->num = fn;
 
+	ret = sdio_read_func_cis(func);
+	if (ret)
+		goto fail;
+
+	card_release_host(card->host);
+
 	card->sdio_func[fn - 1] = func;
 
 	return 0;
+
+fail:
+	card_release_host(card->host);
+	sdio_remove_func(func);
+	return ret;
 }
 
 static int card_sdio_init_card(struct memory_card *card)
@@ -497,7 +506,7 @@ static void card_sdio_remove(struct card_host *host)
 /*
  * Locate a Memory card on this Memory host given a raw CID.
  */ 
-static struct memory_card *card_find_card(struct card_host *host, u8 card_type) 
+struct memory_card *card_find_card(struct card_host *host, u8 card_type) 
 {
 	struct memory_card *card;
 	
@@ -787,9 +796,7 @@ static void amlogic_card_request(struct card_host *host, struct card_blk_request
 
 	BUG_ON(card == NULL);
 
-	mutex_lock(&init_lock);
 	card->card_request_process(card, brq);
-	mutex_unlock(&init_lock);
 
 	return;
 }

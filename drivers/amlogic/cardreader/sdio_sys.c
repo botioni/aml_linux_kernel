@@ -52,15 +52,24 @@ static struct device_attribute sdio_dev_attrs[] = {
 static const struct sdio_device_id *sdio_match_one(struct sdio_func *func,
 	const struct sdio_device_id *id)
 {
+	if (func->vendor && func->device) {
+
+		if (id->class != (__u8)SDIO_ANY_ID && id->class != func->class)
+			return NULL;
+		if (id->vendor != (__u16)SDIO_ANY_ID && id->vendor != func->vendor)
+			return NULL;
+		if (id->device != (__u16)SDIO_ANY_ID && id->device != func->device)
+			return NULL;
+	}
+	else {
+
 	if (id->class != (__u8)SDIO_ANY_ID && id->class != func->class)
 		func->class = id->class;
-		//return NULL;
 	if (id->vendor != (__u16)SDIO_ANY_ID && id->vendor != func->vendor)
 		func->vendor = id->vendor;
-		//return NULL;
 	if (id->device != (__u16)SDIO_ANY_ID && id->device != func->device)
 		func->device = id->device;
-		//return NULL;
+	}
 	return id;
 }
 

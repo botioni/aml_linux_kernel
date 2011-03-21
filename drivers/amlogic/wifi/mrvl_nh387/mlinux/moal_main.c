@@ -921,7 +921,7 @@ woal_add_interface(moal_handle * handle, t_u8 bss_num, t_u8 bss_type)
     }
 #ifdef STA_SUPPORT
     /* Allocate device name */
-    if ((bss_type == MLAN_BSS_TYPE_STA) && (dev_alloc_name(dev, "eth%d") < 0)) {
+    if ((bss_type == MLAN_BSS_TYPE_STA) && (dev_alloc_name(dev, "wlan%d") < 0)) {
         PRINTM(MERROR, "Could not allocate device name!\n");
         goto error;
     }

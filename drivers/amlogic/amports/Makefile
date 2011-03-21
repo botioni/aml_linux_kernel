@@ -48,4 +48,6 @@ obj-$(CONFIG_AM_PTSSERVER) += ptsserv.o
 
 obj-$(CONFIG_AM_SUBTITLE) += subtitle.o
 
+ifneq ($(CONFIG_AM_DVB),)
 EXTRA_CFLAGS = -DENABLE_DEMUX_DRIVER
+endif
