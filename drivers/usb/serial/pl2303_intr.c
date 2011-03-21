@@ -457,7 +457,8 @@ static void pl2303_send(struct usb_serial_port *port)
 	port->write_urb->transfer_buffer_length = count;
 
 	/*modified for Hisense Remote controller*/
-#ifdef BTOI
+	/* wrtie do not need bulk-intr change */
+#if 0 //def BTOI
 	port->write_urb->interval = 0xa;
 	port->write_urb->start_frame = -1;
 	port->write_urb->pipe &= (0x7fffffff);

@@ -1308,37 +1308,37 @@ static struct mtd_partition multi_partition_info[] =
 {
 	{
 		.name = "logo",
-		.offset = 16*SZ_1M,
-		.size = 8*SZ_1M,
-	},
-	{
-		.name = "aml_logo",
-		.offset = 24*SZ_1M,
-		.size = 8*SZ_1M,
-	},
-	{
-		.name = "recovery",
 		.offset = 32*SZ_1M,
 		.size = 16*SZ_1M,
 	},
 	{
-		.name = "boot",
+		.name = "aml_logo",
 		.offset = 48*SZ_1M,
 		.size = 16*SZ_1M,
 	},
 	{
-		.name = "system",
+		.name = "recovery",
 		.offset = 64*SZ_1M,
+		.size = 32*SZ_1M,
+	},
+	{
+		.name = "boot",
+		.offset = 96*SZ_1M,
+		.size = 32*SZ_1M,
+	},
+	{
+		.name = "system",
+		.offset = 128*SZ_1M,
 		.size = 256*SZ_1M,
 	},
 	{
 		.name = "cache",
-		.offset = 320*SZ_1M,
-		.size = 40*SZ_1M,
+		.offset = 384*SZ_1M,
+		.size = 128*SZ_1M,
 	},
 	{
 		.name = "userdata",
-		.offset = 360*SZ_1M,
+		.offset = 512*SZ_1M,
 		.size = 512*SZ_1M,
 	},
 	{
@@ -1888,7 +1888,7 @@ static void disable_unused_model(void)
 	 //disable wifi
 	SET_CBUS_REG_MASK(HHI_GCLK_MPEG2, (1<<5)); 
 	SET_CBUS_REG_MASK(HHI_WIFI_CLK_CNTL, (1<<0)); 	
-	__raw_writel(0x8AF,0xC9320ED8);
+	__raw_writel(0xCFF,0xC9320ED8);
 	__raw_writel((__raw_readl(0xC9320EF0))&0xF9FFFFFF,0xC9320EF0);
 	CLEAR_CBUS_REG_MASK(HHI_GCLK_MPEG2, (1<<5)); 
 	CLEAR_CBUS_REG_MASK(HHI_WIFI_CLK_CNTL, (1<<0)); 		

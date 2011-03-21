@@ -1849,7 +1849,7 @@ static void disable_unused_model(void)
      //disable wifi
     SET_CBUS_REG_MASK(HHI_GCLK_MPEG2, (1<<5)); 
     SET_CBUS_REG_MASK(HHI_WIFI_CLK_CNTL, (1<<0));
-    __raw_writel(0x8AF,0xC9320ED8);
+    __raw_writel(0xCFF,0xC9320ED8);
     __raw_writel((__raw_readl(0xC9320EF0))&0xF9FFFFFF,0xC9320EF0);
     CLEAR_CBUS_REG_MASK(HHI_GCLK_MPEG2, (1<<5)); 
     CLEAR_CBUS_REG_MASK(HHI_WIFI_CLK_CNTL, (1<<0));

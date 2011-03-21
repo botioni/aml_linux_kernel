@@ -158,13 +158,14 @@ static int audiodsp_ioctl(struct inode *node, struct file *file, unsigned int cm
 	int len;
 	int ret=0;
 	unsigned long *val=(unsigned long *)args;
-
+	
 	switch(cmd)
 		{
 		case AUDIODSP_SET_FMT:
 			priv->stream_fmt=args;
 			break;
 		case AUDIODSP_START:
+			priv->decoded_nb_frames = 0;
 			if(priv->stream_fmt<=0)
 				{
 				DSP_PRNT("Audio dsp steam format have not set!\n");
@@ -178,9 +179,9 @@ static int audiodsp_ioctl(struct inode *node, struct file *file, unsigned int cm
 			//DSP_PRNT("audiodsp command stop\n");
 			stop_audiodsp_monitor(priv);
 			dsp_stop(priv);
-			
+			priv->decoded_nb_frames = 0;
 			break;
-		case AUDIODSP_DECODE_START:
+		case AUDIODSP_DECODE_START:			
 			if(priv->dsp_is_started)
 				{
 				int waittime=0;
@@ -208,7 +209,7 @@ static int audiodsp_ioctl(struct inode *node, struct file *file, unsigned int cm
 							continue;
 						}
 						DSP_PRNT("dsp have not set the codec stream's format details,valid=%x\n",
-						priv->frame_format.valid);
+						priv->frame_format.valid);						
 						ret=-1;
 						break;
 					}
@@ -218,7 +219,7 @@ static int audiodsp_ioctl(struct inode *node, struct file *file, unsigned int cm
 			else
 				{
 				DSP_PRNT("Audio dsp have not started\n");
-				}
+				}			
 			break;
 		case AUDIODSP_DECODE_STOP:
 			if(priv->dsp_is_started)
@@ -257,6 +258,9 @@ static int audiodsp_ioctl(struct inode *node, struct file *file, unsigned int cm
 				{
 				*val=priv->frame_format.sample_rate; 
 				} 
+			break;
+		case AUDIODSP_GET_DECODED_NB_FRAMES: 			
+				*val=priv->decoded_nb_frames;					
 			break;
 		case AUDIODSP_GET_BITS_PER_SAMPLE: 
 			*val=-1;/*mask data is not valid*/

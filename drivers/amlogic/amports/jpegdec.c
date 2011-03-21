@@ -133,6 +133,8 @@ static int _init_dec(jpegdec_t *d)
 {
     int r;
 
+    amvdec_enable();
+
     WRITE_MPEG_REG(RESET0_REGISTER, RESET_VCPU);
     WRITE_MPEG_REG(ASSIST_AMR1_INT0, 0x1);
     WRITE_MPEG_REG(ASSIST_AMR1_INT1, 0xf);
@@ -144,6 +146,8 @@ static int _init_dec(jpegdec_t *d)
     WRITE_MPEG_REG(RESET0_REGISTER, RESET_VCPU | RESET_IQIDCT | RESET_MC);
 
     if (amvdec_loadmc(jpegdec_mc) < 0) {
+        amvdec_disable();
+
         pr_error("jpegdec ucode loading failed.\n");
         return -EBUSY;
     }
@@ -162,6 +166,8 @@ static int _init_dec(jpegdec_t *d)
                     IRQF_SHARED, "jpegdec-irq", (void *)jpegdec_id);
 
     if (r) {
+        amvdec_disable();
+
         pr_error("jpegdec irq register error.\n");
         return -ENOENT;
     }
@@ -395,6 +401,8 @@ static int amjpegdec_release(struct inode *inode, struct file *file)
         kfree(dec);
         dec = NULL;
     }
+
+    amvdec_disable();
 
     return 0;
 }
