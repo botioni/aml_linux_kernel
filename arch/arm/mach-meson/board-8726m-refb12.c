@@ -90,6 +90,10 @@
 #include <sound/wm8900.h>
 #endif
 
+#ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE
+#include <media/amlogic/aml_camera.h>
+#endif
+
 #if defined(CONFIG_JPEGLOGO)
 static struct resource jpeglogo_resources[] = {
     [0] = {
@@ -852,18 +856,116 @@ static  struct platform_device aml_rtc_device = {
     };
 #endif
 
-#ifdef CONFIG_CAMERA_GC0308
+#ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE_GC0308
+int gc0308_init(void)
+{
+   //pp0
+   #ifdef CONFIG_SN7325
+	printk( "amlogic camera driver 0308: init CONFIG_SN7325. \n");
+	configIO(1, 0);
+	setIO_level(1, 1, 0);//30m PWR_Down
+	//configIO(0, 0);
+	//setIO_level(0, 1, 7);//500m PWR_Down
+	msleep(300);
+	configIO(1, 0);
+	setIO_level(1, 0, 0);//30m PWR_On
+    #endif
+}
+#endif
 
-//add power down control for camera
+#ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE_OV5642
+int ov5642_init(void)
+{
+   //od7
+   #ifdef CONFIG_SN7325
+	printk( "amlogic camera driver 5642: init CONFIG_SN7325. \n");
+	configIO(0, 0);
+	setIO_level(0, 1, 7);//500m PWR_Down
+	msleep(300);
+	configIO(0, 0);
+	setIO_level(0, 0, 7);//500m PWR_On/**/
+	
+	printk( "heming add setIO_level od7 0, 0, 7\n");
+	msleep(300);
+    #endif
+}
+#endif
 
-
-static struct platform_device camera_device = {
-    .name       = "camera_gc0308",
-    .id         = -1,
-
+#if defined (CONFIG_AMLOGIC_VIDEOIN_MANAGER)
+static struct resource vm_resources[] = {
+    [0] = {
+        .start =  VM_ADDR_START,
+        .end   = VM_ADDR_END,
+        .flags = IORESOURCE_MEM,
+    },
 };
 
+static struct platform_device vm_device =
+{
+	.name = "vm",
+	.id = 0,
+    .num_resources = ARRAY_SIZE(vm_resources),
+    .resource      = vm_resources,
+};
+#endif /* AMLOGIC_VIDEOIN_MANAGER */
+
+#ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE
+static void __init camera_power_on_init(void)
+{
+    udelay(1000);
+    SET_CBUS_REG_MASK(HHI_ETH_CLK_CNTL,0x30f);// 24M XTAL
+    SET_CBUS_REG_MASK(HHI_DEMOD_PLL_CNTL,0x232);// 24M XTAL
+
+    eth_set_pinmux(ETH_BANK0_GPIOC3_C12,ETH_CLK_OUT_GPIOC12_REG3_1, 1);		
+}
 #endif
+
+#if defined(CONFIG_VIDEO_AMLOGIC_CAPTURE_GC0308)
+static int gc0308_v4l2_init(void)
+{
+	gc0308_init();
+}
+static int gc0308_v4l2_uninit(void)
+{
+	//pp0
+#ifdef CONFIG_SN7325
+	 printk( "amlogic camera driver: gc0308_v4l2_uninit CONFIG_SN7325. \n");
+	 configIO(1, 0);
+	 setIO_level(1, 1, 0);//30m PWR_Down
+ #endif
+}
+
+aml_plat_cam_data_t video_gc0308_data = {
+	.name="video-gc0308",
+	.video_nr=1,
+	.device_init= gc0308_v4l2_init,
+	.device_uninit=gc0308_v4l2_uninit,
+};
+#endif /* CONFIG_VIDEO_AMLOGIC_CAPTURE_GC0308 */
+
+#if defined(CONFIG_VIDEO_AMLOGIC_CAPTURE_OV5642)
+
+static int ov5642_v4l2_init(void)
+{
+	ov5642_init();
+}
+static int ov5642_v4l2_uninit(void)
+{
+#ifdef CONFIG_SN7325
+	 printk( "amlogic camera driver 5642: init CONFIG_SN7325. \n");
+	 configIO(0, 0);
+	 setIO_level(0, 1, 7);//500m PWR_Down
+ #endif
+}
+
+aml_plat_cam_data_t video_ov5642_data = {
+	.name="video-ov5642",
+	.video_nr=0,
+	.device_init= ov5642_v4l2_init,
+	.device_uninit=ov5642_v4l2_uninit,
+};
+#endif /* CONFIG_VIDEO_AMLOGIC_CAPTURE_OV5642 */
+
 #if defined(CONFIG_SUSPEND)
 static void set_vccx2(int power_on)
 {
@@ -1683,8 +1785,8 @@ static void bt_device_init(void)
 	/* WLBT_REGON */
 //	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<18));
 //	SET_CBUS_REG_MASK(PREG_GGPIO_O, (1<<18));
-	    configIO(0, 0);
-        setIO_level(0, 1, 5);	
+	    //configIO(0, 0);
+        //setIO_level(0, 1, 5);	
 	
 	/* reset */
 	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<12));
@@ -1755,7 +1857,9 @@ static struct platform_device __initdata *platform_devs[] = {
     #if defined(CONFIG_AML_AUDIO_DSP)
         &audiodsp_device,
     #endif
+	#if defined(CONFIG_SND_AML_M1_MID_WM8900)
         &aml_audio,
+	#endif
     #if defined(CONFIG_CARDREADER)
         &amlogic_card_device,
     #endif
@@ -1786,8 +1890,8 @@ static struct platform_device __initdata *platform_devs[] = {
     #if defined(CONFIG_AML_RTC)
         &aml_rtc_device,
     #endif
-    #ifdef CONFIG_CAMERA_GC0308
-        &camera_device,
+    #ifdef CONFIG_AMLOGIC_VIDEOIN_MANAGER
+		&vm_device,
     #endif
 	#if defined(CONFIG_SUSPEND)
 		&aml_pm_device,
@@ -1862,10 +1966,19 @@ static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
         .platform_data = (void *)&ts_pdata,
     },
 #endif
-#ifdef CONFIG_CAMERA_GC0308
+#ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE_GC0308
+
 	{
-        /*gc0307 i2c address is 0x42/0x43*/
+        /*gc0308 i2c address is 0x42/0x43*/
 		I2C_BOARD_INFO("gc0308_i2c",  0x42 >> 1),
+		.platform_data = (void *)&video_gc0308_data,
+	},
+#endif
+#ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE_OV5642
+	{
+        /*ov5642 i2c address is 0x78*/
+		I2C_BOARD_INFO("ov5642_i2c",  0x78 >> 1),
+		.platform_data = (void *)&video_ov5642_data,
 	},
 #endif
 };
@@ -1911,17 +2024,6 @@ static void __init eth_pinmux_init(void)
 #endif
     aml_i2c_init();
 }
-
-#ifdef CONFIG_CAMERA_GC0308
-static void __init camera_power_on_init(void)
-{
-    udelay(1000);
-    SET_CBUS_REG_MASK(HHI_ETH_CLK_CNTL,0x30f);// 24M XTAL
-    SET_CBUS_REG_MASK(HHI_DEMOD_PLL_CNTL,0x232);// 24M XTAL
-
-    eth_set_pinmux(ETH_BANK0_GPIOC3_C12,ETH_CLK_OUT_GPIOC12_REG3_1, 1);		
-}
-#endif
 
 static void __init device_pinmux_init(void )
 {
@@ -1990,7 +2092,7 @@ static __init void m1_init_machine(void)
     power_hold();
     device_clk_setting();
     device_pinmux_init();
-#ifdef CONFIG_CAMERA_GC0308
+#ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE
     camera_power_on_init();
 #endif
     platform_add_devices(platform_devs, ARRAY_SIZE(platform_devs));
