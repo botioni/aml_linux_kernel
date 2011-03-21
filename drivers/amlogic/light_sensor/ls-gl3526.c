@@ -113,7 +113,7 @@ static void light_sensor_dev_poll(struct input_polled_dev *dev)
 		input_report_abs(input_dev, ABS_X, ls_info.lux_level);
 		input_sync(input_dev);
 		
-		printk(KERN_INFO "light_sensor: light_sensor_dev_poll lux_level = %d\n", ls_info.lux_level);
+		//printk(KERN_INFO "light_sensor: light_sensor_dev_poll lux_level = %d\n", ls_info.lux_level);
 	}	
 }
 

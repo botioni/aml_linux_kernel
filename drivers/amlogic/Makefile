@@ -30,6 +30,8 @@ obj-y += amports/
 
 obj-y += i2c/
 
+obj-y += light_sensor/
+
 obj-y += extern_io/
 
 obj-y += input/
