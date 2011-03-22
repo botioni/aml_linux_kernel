@@ -1035,7 +1035,7 @@ typedef struct {
 	unsigned enable;
 } gpio_data_t;
 
-#define MAX_GPIO 43
+#define MAX_GPIO 42
 static gpio_data_t gpio_data[MAX_GPIO] = {
 // 9
   {"GPIOA_0 -- TCON_STH",		 GPIOA_bank_bit0_14(0),		GPIOA_bit_bit0_14(0),	GPIO_OUTPUT_MODE, 1, 1},
@@ -1085,8 +1085,6 @@ static gpio_data_t gpio_data[MAX_GPIO] = {
 	{"GPIOE_16 -- nand_ncs3",	 GPIOE_bank_bit16_21(16),	GPIOE_bit_bit16_21(16),	GPIO_OUTPUT_MODE, 1, 1},
 	{"GPIOE_17 -- nand_ncs4",	 GPIOE_bank_bit16_21(17),	GPIOE_bit_bit16_21(17),	GPIO_OUTPUT_MODE, 1, 1},
 	{"GPIOE_18 -- Linux_TX",	 GPIOE_bank_bit16_21(18),	GPIOE_bit_bit16_21(18), GPIO_OUTPUT_MODE, 1, 1},
-	// 1----------------------------------- i2s ---------------------------------
-	{"TEST_N -- I2S_DOUT",		 GPIOJTAG_bank_bit(16),		GPIOJTAG_bit_bit16(16),	GPIO_OUTPUT_MODE, 1, 1},
 
 };	
 
