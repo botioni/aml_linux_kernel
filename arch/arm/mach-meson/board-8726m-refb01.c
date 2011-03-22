@@ -1632,17 +1632,16 @@ static void aml_8726m_set_bl_level(unsigned level)
     {
         cs_level = 15;
     }
-    else if (level <= 30)
+    else if (level < 30)
     {
-        cs_level = 12;
+        cs_level = 14;
     }
-    else if (level >30 && level < 256)
+    else if (level >=30 && level < 256)
     {
-        cs_level = 11-((level - 31)/28);
+        cs_level = 13-((level - 30)/28);
     }
     else
         cs_level = 3;
-
 
     WRITE_CBUS_REG_BITS(VGHL_PWM_REG0, cs_level, 0, 4);
 }
