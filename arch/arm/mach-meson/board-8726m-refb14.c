@@ -94,6 +94,10 @@
 #include <sound/wm8900.h>
 #endif
 
+#ifdef CONFIG_BQ27x00_BATTERY
+#include <linux/bq27x00_battery.h>
+#endif
+
 #if defined(CONFIG_JPEGLOGO)
 static struct resource jpeglogo_resources[] = {
     [0] = {
@@ -1185,6 +1189,53 @@ static struct platform_device power_dev = {
 	},
 };
 #endif
+#ifdef CONFIG_BQ27x00_BATTERY
+static int is_ac_connected(void)
+{
+	return (READ_CBUS_REG(ASSIST_HW_REV)&(1<<9))? 1:0;//GP_INPUT1
+}
+
+static void set_charge(int flags)
+{
+	//GPIOD_22 low: fast charge high: slow charge
+    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_7, (1<<18));
+    if(flags == 1)
+        {
+	    #ifdef CONFIG_SN7325
+	    printk("7325 set charge to fast charge\n");
+        configIO(0, 0);
+        setIO_level(1, 1, 7);
+        #endif
+	    }
+    else
+        {
+    	//set_gpio_val(GPIOD_bank_bit2_24(22), GPIOD_bit_bit2_24(22), 1);	//slow charge
+	    #ifdef CONFIG_SN7325
+	    printk("7325 set charge to slow charge\n");
+        configIO(0, 0);
+        setIO_level(1, 0, 7);
+        #endif
+        }
+    //set_gpio_mode(GPIOD_bank_bit2_24(22), GPIOD_bit_bit2_24(22), GPIO_OUTPUT_MODE);
+}
+
+static void set_bat_off(void)
+{
+    if(is_ac_connected()){ //AC in after power off press
+        kernel_restart("reboot");
+    }
+    set_gpio_val(GPIOA_bank_bit(8), GPIOA_bit_bit0_14(8), 0);
+    set_gpio_mode(GPIOA_bank_bit(8), GPIOA_bit_bit0_14(8), GPIO_OUTPUT_MODE);
+
+}
+
+static struct bq27x00_battery_pdata bq27x00_pdata = {
+	.is_ac_online	= is_ac_connected,
+	.set_charge = set_charge,
+	.set_bat_off = set_bat_off,
+    .chip = 0,
+};
+#endif
 
 #define PINMUX_UART_A   UART_A_GPIO_D21_D22
 #define PINMUX_UART_B	UART_B_GPIO_E18_E19
@@ -1859,7 +1910,12 @@ static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
         .platform_data = (void *)&ts_pdata,
     },
 #endif
-
+#ifdef CONFIG_BQ27x00_BATTERY
+    {
+        I2C_BOARD_INFO("bq27200", 0x55),
+        .platform_data = (void *)&bq27x00_pdata,
+    },
+#endif
 };
 
 
