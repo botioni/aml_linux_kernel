@@ -60,7 +60,7 @@ static int  get_pulse_width(unsigned long data)
 
 				
 	sprintf(buf,"%d:pulse_wdith:%d==>%s\r\n",pulse_index++,pulse_width,state);
-	if(strlen(remote_log_buf)>REMOTE_LOG_BUF_LEN)
+	if(strlen(remote_log_buf)+(strlen(buf)+64)>REMOTE_LOG_BUF_LEN)
 	{
 		remote_log_buf[0]='\0';
 	}
