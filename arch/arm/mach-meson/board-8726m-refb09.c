@@ -2123,12 +2123,12 @@ static struct platform_device aml_nand_device = {
 static struct mtd_partition multi_partition_info[] = 
 {
 	{
-		.name = "environment",
-		.offset = 8*1024*1024,
-		.size = 40*1024*1024,
+		.name = "logo",
+		.offset = 32*1024*1024,
+		.size = 16*1024*1024,
 	},
 	{
-		.name = "logo",
+		.name = "aml_logo",
 		.offset = 48*1024*1024,
 		.size = 16*1024*1024,
 	},
@@ -2138,7 +2138,7 @@ static struct mtd_partition multi_partition_info[] =
 		.size = 16*1024*1024,
 	},
 	{
-		.name = "uImage",
+		.name = "boot",
 		.offset = 80*1024*1024,
 		.size = 16*1024*1024,
 	},
@@ -2150,27 +2150,27 @@ static struct mtd_partition multi_partition_info[] =
 	{
 		.name = "cache",
 		.offset = 352*1024*1024,
-		.size = 32*1024*1024,
+		.size = 64*1024*1024,
 	},
 	{
 		.name = "userdata",
-		.offset = 384*1024*1024,
+		.offset = 416*1024*1024,
 		.size = 256*1024*1024,
 	},
 	{
-		.name = "PD_Novel",
-		.offset = 640*1024*1024,
+		.name = "NFTL_Part",
+		.offset = 672*1024*1024,
 		.size = 128*1024*1024,
 	},
 	{
 		.name = "adept",
-		.offset = 768*1024*1024,
+		.offset = 800*1024*1024,
 		.size = 32*1024*1024,
 	},
 	{
 		.name = "NFTL_Part",
-		.offset = ((768 + 32)*1024*1024),
-		.size = ((0x200000000 - (768 + 32)*1024*1024)),
+		.offset = ((800 + 32)*1024*1024),
+		.size = ((0x200000000 - (800 + 32)*1024*1024)),
 	},
 };
 
