@@ -123,7 +123,7 @@ static unsigned delay_flag = 0;
 #ifdef AML_A3
 static unsigned serial_reg_val=0x24;
 #else
-static unsigned serial_reg_val=0x22;
+static unsigned serial_reg_val=0x1; //0x22;
 #endif
 static unsigned color_depth_f=0;
 static unsigned color_space_f=0;
