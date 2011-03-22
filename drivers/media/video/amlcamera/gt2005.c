@@ -301,6 +301,8 @@ struct gt2005_fh {
    ------------------------------------------------------------------*/
 
 struct aml_camera_i2c_fig_s GT2005_script[] = { 
+	{0x0101 , 0x10},
+
 	{0x0102 , 0x01},
 	{0x0103 , 0x00},
 
@@ -920,14 +922,14 @@ void GT2005_init_regs(struct gt2005_device *dev)
 * GLOBALS AFFECTED
 *
 *************************************************************************/
-void GT2005_set_param_wb(struct gt2005_device *dev,enum  camera_wb_flip_e para)//°×Æ½ºâ
+void GT2005_set_param_wb(struct gt2005_device *dev,enum  camera_wb_flip_e para)//white balance
 {
 	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
 
     switch (para)
 	{
 		
-		case CAM_WB_AUTO://×Ô¶¯
+		case CAM_WB_AUTO://auto
 			/*i2c_put_byte(client,0x031a , 0x81);
 			i2c_put_byte(client,0x0320 , 0x24);
 			i2c_put_byte(client,0x0321 , 0x14);
@@ -949,7 +951,7 @@ void GT2005_set_param_wb(struct gt2005_device *dev,enum  camera_wb_flip_e para)/
 			i2c_put_byte(client,0x0444 , 0x51);			
 			break;
 
-		case CAM_WB_CLOUD: //ÒõÌì
+		case CAM_WB_CLOUD: //cloud
 			i2c_put_byte(client,0x0320 , 0x02);
 			i2c_put_byte(client,0x0321 , 0x02);
 			i2c_put_byte(client,0x0322 , 0x02);
@@ -1027,14 +1029,14 @@ void GT2005_set_param_wb(struct gt2005_device *dev,enum  camera_wb_flip_e para)/
 * GLOBALS AFFECTED
 *
 *************************************************************************/
-void GT2005_set_param_exposure(struct gt2005_device *dev,enum camera_exposure_e para)//ÆØ¹âµ÷½Ú
+void GT2005_set_param_exposure(struct gt2005_device *dev,enum camera_exposure_e para)
 {
 	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
 
 
     switch (para)
 	{
-		case EXPOSURE_N4_STEP:  //¸º4µµ  
+		case EXPOSURE_N4_STEP:  
             		i2c_put_byte(client,0x0300 , 0x81);
 			i2c_put_byte(client,0x0301 , 0x45);//40
 			i2c_put_byte(client,0x0201 , 0xd0);
@@ -1058,13 +1060,13 @@ void GT2005_set_param_exposure(struct gt2005_device *dev,enum camera_exposure_e 
 			i2c_put_byte(client,0x0201 , 0x20);//d0
 			break;
 			
-		case EXPOSURE_0_STEP://Ä¬ÈÏÁãµµ
+		case EXPOSURE_0_STEP:
            		i2c_put_byte(client,0x0300 , 0x81);
 			i2c_put_byte(client,0x0301 , 0x90);
 			i2c_put_byte(client,0x0201 , 0x30);//0c
 			break;
 			
-		case EXPOSURE_P1_STEP://ÕıÒ»µµ
+		case EXPOSURE_P1_STEP:
             		i2c_put_byte(client,0x0300 , 0x81);
 			i2c_put_byte(client,0x0301 , 0x90);
 			i2c_put_byte(client,0x0201 , 0x40);//30
@@ -1113,40 +1115,40 @@ void GT2005_set_param_exposure(struct gt2005_device *dev,enum camera_exposure_e 
 * GLOBALS AFFECTED
 *
 *************************************************************************/
-void GT2005_set_param_effect(struct gt2005_device *dev,enum camera_effect_flip_e para)//ÌØĞ§ÉèÖÃ
+void GT2005_set_param_effect(struct gt2005_device *dev,enum camera_effect_flip_e para)
 {
 	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
 
   
     switch (para)
 	{
-		case CAM_EFFECT_ENC_NORMAL://Õı³£
+		case CAM_EFFECT_ENC_NORMAL:
 			i2c_put_byte(client,0x0115,0x00);
 			break;		
 
-		case CAM_EFFECT_ENC_GRAYSCALE://»Ò½×
+		case CAM_EFFECT_ENC_GRAYSCALE:
 			i2c_put_byte(client,0x0115,0x06);
 			break;
 
-		case CAM_EFFECT_ENC_SEPIA://¸´¹Å
+		case CAM_EFFECT_ENC_SEPIA:
 		     	i2c_put_byte(client,0x0115,0x0a);
 			i2c_put_byte(client,0x026e,0x60);
 			i2c_put_byte(client,0x026f,0xa0);
 			break;		
 				
-		case CAM_EFFECT_ENC_SEPIAGREEN://¸´¹ÅÂÌ
+		case CAM_EFFECT_ENC_SEPIAGREEN:
 			i2c_put_byte(client,0x0115,0x0a);
 			i2c_put_byte(client,0x026e,0x20);
 			i2c_put_byte(client,0x026f,0x00);
 			break;					
 
-		case CAM_EFFECT_ENC_SEPIABLUE://¸´¹ÅÀ¶
+		case CAM_EFFECT_ENC_SEPIABLUE:
 			i2c_put_byte(client,0x0115,0x0a);
 			i2c_put_byte(client,0x026e,0xfb);
 			i2c_put_byte(client,0x026f,0x00);
 			break;								
 
-		case CAM_EFFECT_ENC_COLORINV://µ×Æ¬
+		case CAM_EFFECT_ENC_COLORINV:
 			i2c_put_byte(client,0x0115,0x09);
 			break;		
 
@@ -1173,7 +1175,7 @@ void GT2005_set_param_effect(struct gt2005_device *dev,enum camera_effect_flip_e
 * GLOBALS AFFECTED
 *
 *************************************************************************/
-void GT2005_NightMode(struct gt2005_device *dev,enum  camera_night_mode_flip_e enable)
+void GT2005_set_night_mode(struct gt2005_device *dev,enum  camera_night_mode_flip_e enable)
 {
 	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
 
