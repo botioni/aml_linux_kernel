@@ -20,6 +20,7 @@
 #include <linux/module.h>
 #include <linux/types.h>
 #include <linux/kernel.h>
+#include <linux/delay.h>
 #include <linux/interrupt.h>
 #include <linux/fs.h>
 #include <linux/init.h>
@@ -118,6 +119,7 @@ static struct timer_list hpd_timer;
 #endif
 
 //static struct tasklet_struct EDID_tasklet;
+static unsigned delay_flag = 0;
 #ifdef AML_A3
 static unsigned serial_reg_val=0x24;
 #else
@@ -154,6 +156,10 @@ static signed int to_signed(unsigned int a)
 static void delay_us (int us)
 {
 #ifndef AVOS
+    //udelay(us);
+    if(delay_flag&0x1)
+        mdelay((us+999)/1000);
+    else
     udelay(us);
 #else
 //#define ISA_TIMERE IREG_TIMER_E_COUNT
@@ -329,14 +335,17 @@ static void hdmi_tvenc1080i_set(Hdmi_tx_video_para_t* param)
     front_porch_venc  = (FRONT_PORCH   / (1+PIXEL_REPEAT_HDMI)) * (1+PIXEL_REPEAT_VENC); // 88   / 1 * 2 = 176
     hsync_pixels_venc = (HSYNC_PIXELS  / (1+PIXEL_REPEAT_HDMI)) * (1+PIXEL_REPEAT_VENC); // 44   / 1 * 2 = 88
 
+    hdmi_print(0, "[ENCP_VIDEO_MODE:%x]=%x\n",ENCP_VIDEO_MODE, Rd(ENCP_VIDEO_MODE)); 
     Wr(ENCP_VIDEO_MODE,Rd(ENCP_VIDEO_MODE)|(1<<14)); // cfg_de_v = 1
 
     // Program DE timing
+    hdmi_print(0, "[ENCP_VIDEO_HAVON_BEGIN:%x]=%x\n",ENCP_VIDEO_HAVON_BEGIN, Rd(ENCP_VIDEO_HAVON_BEGIN)); 
     de_h_begin = modulo(Rd(ENCP_VIDEO_HAVON_BEGIN) + VFIFO2VD_TO_HDMI_LATENCY,  total_pixels_venc); // (383 + 3) % 4400 = 386
     de_h_end   = modulo(de_h_begin + active_pixels_venc,                        total_pixels_venc); // (386 + 3840) % 4400 = 4226
     Wr(ENCP_DE_H_BEGIN, de_h_begin);    // 386
     Wr(ENCP_DE_H_END,   de_h_end);      // 4226
     // Program DE timing for even field
+    hdmi_print(0, "[ENCP_VIDEO_VAVON_BLINE:%x]=%x\n",ENCP_VIDEO_VAVON_BLINE, Rd(ENCP_VIDEO_VAVON_BLINE)); 
     de_v_begin_even = Rd(ENCP_VIDEO_VAVON_BLINE);       // 20
     de_v_end_even   = de_v_begin_even + ACTIVE_LINES;   // 20 + 540 = 560
     Wr(ENCP_DE_V_BEGIN_EVEN,de_v_begin_even);   // 20
@@ -345,6 +354,7 @@ static void hdmi_tvenc1080i_set(Hdmi_tx_video_para_t* param)
     if (INTERLACE_MODE) {
         // Calculate de_v_begin_odd according to enc480p_timing.v:
         //wire[10:0]	cfg_ofld_vavon_bline	= {{7{ofld_vavon_ofst1 [3]}},ofld_vavon_ofst1 [3:0]} + cfg_video_vavon_bline	+ ofld_line;
+        hdmi_print(0, "[ENCP_VIDEO_OFLD_VOAV_OFST:%x]=%x\n",ENCP_VIDEO_OFLD_VOAV_OFST, Rd(ENCP_VIDEO_OFLD_VOAV_OFST)); 
         de_v_begin_odd  = to_signed((Rd(ENCP_VIDEO_OFLD_VOAV_OFST) & 0xf0)>>4) + de_v_begin_even + (TOTAL_LINES-1)/2; // 1 + 20 + (1125-1)/2 = 583
         de_v_end_odd    = de_v_begin_odd + ACTIVE_LINES;    // 583 + 540 = 1123
         Wr(ENCP_DE_V_BEGIN_ODD, de_v_begin_odd);// 583
@@ -465,14 +475,18 @@ static void hdmi_tvenc480i_set(Hdmi_tx_video_para_t* param)
     front_porch_venc  = (FRONT_PORCH   / (1+PIXEL_REPEAT_HDMI)) * (1+PIXEL_REPEAT_VENC); // 38   / 2 * 2 = 38
     hsync_pixels_venc = (HSYNC_PIXELS  / (1+PIXEL_REPEAT_HDMI)) * (1+PIXEL_REPEAT_VENC); // 124  / 2 * 2 = 124
 
+    hdmi_print(0, "[ENCP_VIDEO_MODE:%x]=%x\n",ENCP_VIDEO_MODE, Rd(ENCP_VIDEO_MODE)); 
     Wr(ENCP_VIDEO_MODE,Rd(ENCP_VIDEO_MODE)|(1<<14)); // cfg_de_v = 1
 
     // Program DE timing
+    hdmi_print(0, "[VFIFO2VD_PIXEL_START:%x]=%x\n",VFIFO2VD_PIXEL_START, Rd(VFIFO2VD_PIXEL_START)); 
     de_h_begin = modulo(Rd(VFIFO2VD_PIXEL_START) + VFIFO2VD_TO_HDMI_LATENCY,    total_pixels_venc); // (233 + 2) % 1716 = 235
     de_h_end   = modulo(de_h_begin + active_pixels_venc,                        total_pixels_venc); // (235 + 1440) % 1716 = 1675
     Wr(ENCI_DE_H_BEGIN, de_h_begin);    // 235
     Wr(ENCI_DE_H_END,   de_h_end);      // 1675
 
+    hdmi_print(0, "[VFIFO2VD_LINE_TOP_START:%x]=%x\n",VFIFO2VD_LINE_TOP_START, Rd(VFIFO2VD_LINE_TOP_START)); 
+    hdmi_print(0, "[VFIFO2VD_LINE_BOT_START:%x]=%x\n",VFIFO2VD_LINE_BOT_START, Rd(VFIFO2VD_LINE_BOT_START)); 
     de_v_begin_even = Rd(VFIFO2VD_LINE_TOP_START);      // 17
     de_v_end_even   = de_v_begin_even + ACTIVE_LINES;   // 17 + 240 = 257
     de_v_begin_odd  = Rd(VFIFO2VD_LINE_BOT_START);      // 18
@@ -702,13 +716,16 @@ void hdmi_tvenc_set(Hdmi_tx_video_para_t *param)
     front_porch_venc  = (FRONT_PORCH   / (1+PIXEL_REPEAT_HDMI)) * (1+PIXEL_REPEAT_VENC); // 16   / 1 * 2 = 32
     hsync_pixels_venc = (HSYNC_PIXELS  / (1+PIXEL_REPEAT_HDMI)) * (1+PIXEL_REPEAT_VENC); // 62   / 1 * 2 = 124
 
+    hdmi_print(0, "[ENCP_VIDEO_MODE:%x]=%x\n",ENCP_VIDEO_MODE, Rd(ENCP_VIDEO_MODE)); 
     Wr(ENCP_VIDEO_MODE,Rd(ENCP_VIDEO_MODE)|(1<<14)); // cfg_de_v = 1
     // Program DE timing
+    hdmi_print(0, "[ENCP_VIDEO_HAVON_BEGIN:%x]=%x\n",ENCP_VIDEO_HAVON_BEGIN, Rd(ENCP_VIDEO_HAVON_BEGIN)); 
     de_h_begin = modulo(Rd(ENCP_VIDEO_HAVON_BEGIN) + VFIFO2VD_TO_HDMI_LATENCY,  total_pixels_venc); // (217 + 3) % 1716 = 220
     de_h_end   = modulo(de_h_begin + active_pixels_venc,                        total_pixels_venc); // (220 + 1440) % 1716 = 1660
     Wr(ENCP_DE_H_BEGIN, de_h_begin);    // 220
     Wr(ENCP_DE_H_END,   de_h_end);      // 1660
     // Program DE timing for even field
+    hdmi_print(0, "[ENCP_VIDEO_VAVON_BLINE:%x]=%x\n",ENCP_VIDEO_VAVON_BLINE, Rd(ENCP_VIDEO_VAVON_BLINE)); 
     de_v_begin_even = Rd(ENCP_VIDEO_VAVON_BLINE);       // 42
     de_v_end_even   = de_v_begin_even + ACTIVE_LINES;   // 42 + 480 = 522
     Wr(ENCP_DE_V_BEGIN_EVEN,de_v_begin_even);   // 42
@@ -717,6 +734,7 @@ void hdmi_tvenc_set(Hdmi_tx_video_para_t *param)
     if (INTERLACE_MODE) {
         // Calculate de_v_begin_odd according to enc480p_timing.v:
         //wire[10:0]    cfg_ofld_vavon_bline    = {{7{ofld_vavon_ofst1 [3]}},ofld_vavon_ofst1 [3:0]} + cfg_video_vavon_bline    + ofld_line;
+        hdmi_print(0, "[ENCP_VIDEO_OFLD_VOAV_OFST:%x]=%x\n",ENCP_VIDEO_OFLD_VOAV_OFST, Rd(ENCP_VIDEO_OFLD_VOAV_OFST)); 
         de_v_begin_odd  = to_signed((Rd(ENCP_VIDEO_OFLD_VOAV_OFST) & 0xf0)>>4) + de_v_begin_even + (TOTAL_LINES-1)/2;
         de_v_end_odd    = de_v_begin_odd + ACTIVE_LINES;
         Wr(ENCP_DE_V_BEGIN_ODD, de_v_begin_odd);
@@ -944,7 +962,7 @@ void hdmi_hw_init(hdmitx_dev_t* hdmitx_device)
     hdmi_wr_reg(0x011, 0x0f);   //Channels Power Up Setting ,"1" for Power-up ,"0" for Power-down,Bit[3:0]=CK,Data2,data1,data1,data0 Channels ;
   //hdmi_wr_reg(0x015, 0x03);   //slew rate
     hdmi_wr_reg(0x017, 0x1d);   //1d for power-up Band-gap and main-bias ,00 is power down 
-    if(serial_reg_val==0){
+    if(serial_reg_val<0x20){
         hdmi_wr_reg(0x018, 0x24);
     }
     else{
@@ -1147,6 +1165,10 @@ static void hdmi_hw_reset(Hdmi_tx_video_para_t *param)
         Wr(HHI_HDMI_PLL_CNTL1, 0x00040003); 
     }
 #endif
+    if(delay_flag&2)
+        delay_us(1000*100);
+    //printk("delay 100ms\n");
+
     Wr(HHI_HDMI_AFC_CNTL, Rd(HHI_HDMI_AFC_CNTL) | 0x3);
     // Configure HDMI TX serializer:
     hdmi_wr_reg(0x011, 0x0f);   //Channels Power Up Setting ,"1" for Power-up ,"0" for Power-down,Bit[3:0]=CK,Data2,data1,data1,data0 Channels ;
@@ -1160,6 +1182,17 @@ static void hdmi_hw_reset(Hdmi_tx_video_para_t *param)
             }
             else{
                 hdmi_wr_reg(0x018, 0x24);   
+            }
+        }
+        else if(serial_reg_val==1){
+            if((param->VIC==HDMI_480p60)||(param->VIC==HDMI_480p60_16x9)
+                ||(param->VIC==HDMI_576p50)||(param->VIC==HDMI_576p50_16x9)
+                ||(param->VIC==HDMI_480i60)||(param->VIC==HDMI_480i60_16x9)
+                ||(param->VIC==HDMI_576i50)||(param->VIC==HDMI_576i50_16x9)){
+                hdmi_wr_reg(0x018, 0x24);   
+            }
+            else{
+                hdmi_wr_reg(0x018, 0x22);   
             }
         }
         else{
@@ -1438,6 +1471,17 @@ static void hdmi_hw_reset(Hdmi_tx_video_para_t *param)
             }
             else{
                 hdmi_wr_reg(0x018, 0x24);   
+            }
+        }
+        else if(serial_reg_val==1){
+            if((param->VIC==HDMI_480p60)||(param->VIC==HDMI_480p60_16x9)
+                ||(param->VIC==HDMI_576p50)||(param->VIC==HDMI_576p50_16x9)
+                ||(param->VIC==HDMI_480i60)||(param->VIC==HDMI_480i60_16x9)
+                ||(param->VIC==HDMI_576i50)||(param->VIC==HDMI_576i50_16x9)){
+                hdmi_wr_reg(0x018, 0x24);   
+            }
+            else{
+                hdmi_wr_reg(0x018, 0x22);   
             }
         }
         else{
@@ -1737,12 +1781,33 @@ static void hdmitx_dump_tvenc_reg(int cur_VIC, int printk_flag)
     int i,j;
     for(i=0;hdmi_tvenc_configs[i].vic!=HDMI_Unkown;i++){
         if(cur_VIC==hdmi_tvenc_configs[i].vic){
-            const  reg_t* reg_set=hdmi_tvenc_configs[i].reg_set;
+            reg_t* reg_set=hdmi_tvenc_configs[i].reg_set;
             hdmi_print(printk_flag, "------dump tevenc reg for mode %d----\n", cur_VIC);
             for(j=0;reg_set[j].reg;j++){
                 hdmi_print(printk_flag, "[%08x]=%08x\n",reg_set[j].reg,Rd(reg_set[j].reg));
             }
             hdmi_print(printk_flag, "------------------\n");
+            break;
+        }
+    }
+}    
+
+static void hdmitx_config_tvenc_reg(int vic, unsigned reg, unsigned val)
+{
+    int i,j;
+    for(i=0;hdmi_tvenc_configs[i].vic!=HDMI_Unkown;i++){
+        if(vic==hdmi_tvenc_configs[i].vic){
+            reg_t* reg_set=hdmi_tvenc_configs[i].reg_set;
+            for(j=0;reg_set[j].reg;j++){
+                if(reg_set[j].reg==reg){
+                    reg_set[j].val = val;    
+                    hdmi_print(1, "set [%08x]=%08x\n",reg_set[j].reg, reg_set[j].val);
+                    break;
+                }
+            }
+            if(reg_set[j].reg == 0){
+                hdmi_print(1, "no [%08x] in config\n", reg);
+            }
             break;
         }
     }
@@ -1904,6 +1969,7 @@ static int hdmitx_m1b_set_dispmode(Hdmi_tx_video_para_t *param)
     else if((param->VIC!=HDMI_480p60)&&(param->VIC!=HDMI_480p60_16x9)
         &&(param->VIC!=HDMI_576p50)&&(param->VIC!=HDMI_576p50_16x9)
         &&(param->VIC!=HDMI_480i60)&&(param->VIC!=HDMI_480i60_16x9)
+        &&(param->VIC!=HDMI_576i50)&&(param->VIC!=HDMI_576i50_16x9)
         &&(param->VIC!=HDMI_1080p30)
         &&(param->VIC!=HDMI_1080p24)
         &&(param->VIC!=HDMI_1080p60)&&(param->VIC!=HDMI_1080p50)
@@ -2308,6 +2374,7 @@ static void hdmitx_print_info(hdmitx_dev_t* hdmitx_device, int printk_flag)
     hdmi_print(printk_flag, "use_tvenc_conf_flag=%d\n",use_tvenc_conf_flag); 
     hdmi_print(printk_flag, "vdac %s\n", power_off_vdac_flag?"off":"on");
     hdmi_print(printk_flag, "audio out type %s\n", i2s_to_spdif_flag?"spdif":"i2s");
+    hdmi_print(printk_flag, "delay flag %d\n", delay_flag);
     hdmi_print(printk_flag, "------------------\n");
 }
 
@@ -2327,6 +2394,16 @@ static void hdmitx_m1b_debug(hdmitx_dev_t* hdmitx_device, const char* buf)
         hdmitx_dump_tvenc_reg(hdmitx_device->cur_VIC, 1);
         return;
     }
+    else if(strncmp(tmpbuf, "cfgreg", 6)==0){
+        adr=simple_strtoul(tmpbuf+6, NULL, 16);
+        value=simple_strtoul(buf+i+1, NULL, 16);
+        hdmitx_config_tvenc_reg(hdmitx_device->cur_VIC, adr, value);
+        return;
+    }
+    else if(strncmp(tmpbuf, "tvenc_flag", 10)==0){
+        use_tvenc_conf_flag = tmpbuf[10]-'0';
+        printk("set use_tvenc_conf_flag = %d\n", use_tvenc_conf_flag);
+    }
 #ifdef CEC_SUPPORT    
     else if(tmpbuf[0]=='c'){
         cec_test_function();
@@ -2344,6 +2421,9 @@ static void hdmitx_m1b_debug(hdmitx_dev_t* hdmitx_device, const char* buf)
         else 
             new_reset_sequence_flag=1;
         return;
+    }
+    else if(strncmp(tmpbuf, "delay_flag", 10)==0){
+        delay_flag = tmpbuf[10]-'0';    
     }
     else if(tmpbuf[0]=='v'){
         hdmitx_print_info(hdmitx_device, 1);
