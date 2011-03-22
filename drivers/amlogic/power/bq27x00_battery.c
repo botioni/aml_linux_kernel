@@ -229,10 +229,14 @@ static int bq27x00_battery_status(struct bq27x00_device_info *di)
 		else
 			status = POWER_SUPPLY_STATUS_CHARGING;
 	} else {
-		if (flags & BQ27000_FLAG_CHGS)
-			status = POWER_SUPPLY_STATUS_CHARGING;
+	    if(pdata->is_ac_online()){
+    		if (flags & BQ27000_FLAG_CHGS)
+    			status = POWER_SUPPLY_STATUS_CHARGING;
+    		else
+    		    status = POWER_SUPPLY_STATUS_FULL;
+		}
 		else
-			status = POWER_SUPPLY_STATUS_DISCHARGING;
+			status = POWER_SUPPLY_STATUS_CHARGING;		    
 	}
 
 	return status;
@@ -485,6 +489,11 @@ static int bq27x00_battery_probe(struct i2c_client *client,
 		return retval;
     pdata = (struct bq27x00_battery_pdata*)client->dev.platform_data;
 
+	if (pdata->set_charge) {
+		pdata->set_charge(0);
+        printk("set slow charge\n");
+	} 
+	
 	name = kasprintf(GFP_KERNEL, "%s-%d", id->name, num);
 	if (!name) {
 		dev_err(&client->dev, "failed to allocate device name\n");

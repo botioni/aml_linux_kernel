@@ -181,7 +181,7 @@ static struct gc0308_fmt formats[] = {
 	{
 		.name     = "12  Y/CbCr 4:2:0",
 		.fourcc   = V4L2_PIX_FMT_NV12,
-		.depth    = 16,	
+		.depth    = 12,	
 	},
 #if 0
 	{
@@ -1445,8 +1445,8 @@ buffer_setup(struct videobuf_queue *vq, unsigned int *count, unsigned int *size)
 {
 	struct gc0308_fh  *fh = vq->priv_data;
 	struct gc0308_device *dev  = fh->dev;
-    int bytes = fh->fmt->depth >> 3 ;
-	*size = fh->width*fh->height*bytes;	
+    //int bytes = fh->fmt->depth >> 3 ;
+	*size = fh->width*fh->height*fh->fmt->depth >> 3;	
 	if (0 == *count)
 		*count = 32;
 
@@ -1484,7 +1484,7 @@ buffer_prepare(struct videobuf_queue *vq, struct videobuf_buffer *vb,
 	struct gc0308_device    *dev = fh->dev;
 	struct gc0308_buffer *buf = container_of(vb, struct gc0308_buffer, vb);
 	int rc;
-    int bytes = fh->fmt->depth >> 3 ;
+    //int bytes = fh->fmt->depth >> 3 ;
 	dprintk(dev, 1, "%s, field=%d\n", __func__, field);
 
 	BUG_ON(NULL == fh->fmt);
@@ -1493,7 +1493,7 @@ buffer_prepare(struct videobuf_queue *vq, struct videobuf_buffer *vb,
 	    fh->height < 32 || fh->height > norm_maxh())
 		return -EINVAL;
 
-	buf->vb.size = fh->width*fh->height*bytes;
+	buf->vb.size = fh->width*fh->height*fh->fmt->depth >> 3;
 	if (0 != buf->vb.baddr  &&  buf->vb.bsize < buf->vb.size)
 		return -EINVAL;
 
