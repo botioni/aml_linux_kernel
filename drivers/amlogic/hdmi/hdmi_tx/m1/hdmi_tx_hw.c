@@ -55,7 +55,6 @@
 #include "../hdmi_tx_module.h"
 #include "hdmi_tx_reg.h"
 #include "tvenc_conf.h"
-#define VFIFO2VD_TO_HDMI_LATENCY    3   // Latency in pixel clock from VFIFO2VD request to data ready to HDMI
 //#define XTAL_24MHZ
 #ifdef Wr
 #undef Wr
@@ -123,7 +122,7 @@ static unsigned delay_flag = 0;
 #ifdef AML_A3
 static unsigned serial_reg_val=0x24;
 #else
-static unsigned serial_reg_val=0x22;
+static unsigned serial_reg_val=0x1; //0x22;
 #endif
 static unsigned color_depth_f=0;
 static unsigned color_space_f=0;
@@ -131,7 +130,7 @@ static unsigned char new_reset_sequence_flag=1;
 static unsigned char low_power_flag=1;
 static unsigned char power_off_vdac_flag=0;
 static unsigned char i2s_to_spdif_flag=0;
-static unsigned char use_tvenc_conf_flag=0;
+static unsigned char use_tvenc_conf_flag=1;
 static unsigned char hpd_debug_mode=0;
 #define HPD_DEBUG_IGNORE_UNPLUG   1
 
@@ -277,6 +276,7 @@ static void intr_handler(void *arg)
 
 static void hdmi_tvenc1080i_set(Hdmi_tx_video_para_t* param)
 {
+    unsigned long VFIFO2VD_TO_HDMI_LATENCY = 3;
     unsigned long TOTAL_PIXELS, PIXEL_REPEAT_HDMI, PIXEL_REPEAT_VENC, ACTIVE_PIXELS;
     unsigned FRONT_PORCH, HSYNC_PIXELS, ACTIVE_LINES, INTERLACE_MODE, TOTAL_LINES, SOF_LINES, VSYNC_LINES;
     unsigned LINES_F0, LINES_F1,BACK_PORCH, EOF_LINES, TOTAL_FRAMES;
@@ -417,6 +417,7 @@ static void hdmi_tvenc1080i_set(Hdmi_tx_video_para_t* param)
 
 static void hdmi_tvenc480i_set(Hdmi_tx_video_para_t* param)
 {
+    unsigned long VFIFO2VD_TO_HDMI_LATENCY = 2;
     unsigned long TOTAL_PIXELS, PIXEL_REPEAT_HDMI, PIXEL_REPEAT_VENC, ACTIVE_PIXELS;
     unsigned FRONT_PORCH, HSYNC_PIXELS, ACTIVE_LINES, INTERLACE_MODE, TOTAL_LINES, SOF_LINES, VSYNC_LINES;
     unsigned LINES_F0, LINES_F1,BACK_PORCH, EOF_LINES, TOTAL_FRAMES;
@@ -593,6 +594,7 @@ static
 #endif
 void hdmi_tvenc_set(Hdmi_tx_video_para_t *param)
 {
+    unsigned long VFIFO2VD_TO_HDMI_LATENCY = 3;
     unsigned long TOTAL_PIXELS, PIXEL_REPEAT_HDMI, PIXEL_REPEAT_VENC, ACTIVE_PIXELS;
     unsigned FRONT_PORCH, HSYNC_PIXELS, ACTIVE_LINES, INTERLACE_MODE, TOTAL_LINES, SOF_LINES, VSYNC_LINES;
     unsigned LINES_F0, LINES_F1,BACK_PORCH, EOF_LINES, TOTAL_FRAMES;
@@ -2030,7 +2032,7 @@ static int hdmitx_m1b_set_dispmode(Hdmi_tx_video_para_t *param)
         SET_CBUS_REG_MASK(VENC_VDAC_SETTING, 0x1f);
     }
 #endif
-    //    hdmitx_dump_tvenc_reg(param->VIC, 0);
+    hdmitx_dump_tvenc_reg(param->VIC, 0);
     
     return 0;
 }    

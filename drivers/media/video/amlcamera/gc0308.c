@@ -43,6 +43,11 @@
 #include <linux/tvin/tvin.h>
 #include "common/plat_ctrl.h"
 
+#ifdef CONFIG_HAS_EARLYSUSPEND
+#include <linux/earlysuspend.h>
+static struct early_suspend gc0308_early_suspend;
+#endif
+
 #define GC0308_CAMERA_MODULE_NAME "gc0308"
 
 /* Wake up at about 30 fps */
@@ -2048,6 +2053,30 @@ static const struct v4l2_subdev_ops gc0308_ops = {
 	.core = &gc0308_core_ops,
 };
 
+#ifdef CONFIG_HAS_EARLYSUSPEND
+static void aml_gc0308_early_suspend(struct early_suspend *h)
+{
+	printk("enter -----> %s \n",__FUNCTION__);
+	if(h && h->param) {
+		aml_plat_cam_data_t* plat_dat= (aml_plat_cam_data_t*)h->param;
+		if (plat_dat && plat_dat->early_suspend) {
+			plat_dat->early_suspend();
+		}
+	}
+}
+
+static void aml_gc0308_late_resume(struct early_suspend *h)
+{
+	printk("enter -----> %s \n",__FUNCTION__);
+	if(h && h->param) {
+		aml_plat_cam_data_t* plat_dat= (aml_plat_cam_data_t*)h->param;
+		if (plat_dat && plat_dat->late_resume) {
+			plat_dat->late_resume();
+		}
+	}
+}
+#endif
+
 static int gc0308_probe(struct i2c_client *client,
 			const struct i2c_device_id *id)
 {
@@ -2092,6 +2121,16 @@ static int gc0308_probe(struct i2c_client *client,
 		kfree(t);
 		return err;
 	}
+
+#ifdef CONFIG_HAS_EARLYSUSPEND
+    printk("******* enter itk early suspend register *******\n");
+    gc0308_early_suspend.level = EARLY_SUSPEND_LEVEL_BLANK_SCREEN;
+	gc0308_early_suspend.suspend = aml_gc0308_early_suspend;
+	gc0308_early_suspend.resume = aml_gc0308_late_resume;
+	gc0308_early_suspend.param = plat_dat;
+	register_early_suspend(&gc0308_early_suspend);
+#endif
+
 	return 0;
 }
 
