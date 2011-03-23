@@ -141,6 +141,10 @@ static int goodix_init_panel(struct goodix_ts_data *ts)
 	struct goodix_i2c_rmi_platform_data *pdata = ts->client->dev.platform_data;
 
 	printk(KERN_ALERT"goodix init panel\n");
+//	int i;
+//	for (i=0; i<pdata->config_info_len; i++){
+//		printk("0x%x\n", pdata->config_info[i]);
+//	}
 	ret=i2c_write_bytes(ts->client,pdata->config_info,pdata->config_info_len);
 	if (ret < 0) 
 		goto error_i2c_transfer;
@@ -173,6 +177,67 @@ static int  goodix_read_version(struct goodix_ts_data *ts)
 error_i2c_version:
 	return ret;
 }
+
+
+static ssize_t goodix_read(struct device *dev, struct device_attribute *attr, char *buf)
+{
+		int i = 0;
+    struct goodix_ts_data *ts = (struct goodix_ts_data *)dev_get_drvdata(dev);
+    unsigned char config_data[54];
+  	
+  	memset(config_data, 0, sizeof(config_data));
+    if (!strcmp(attr->attr.name, "ctpconfig")) {
+    	config_data[0] = 0x30;
+ 			i2c_read_bytes(ts->client,&config_data[0],sizeof(config_data));
+			memcpy(buf, &config_data[0], sizeof(config_data));
+			for (i=0; i<sizeof(config_data); i++){
+				printk("%x\n", config_data[i]);
+			}
+			return sizeof(config_data);
+    }
+    return 0;
+}
+
+static ssize_t goodix_write(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+{
+    int i = 0;
+    struct goodix_ts_data *ts = (struct goodix_ts_data *)dev_get_drvdata(dev);
+    unsigned char config_data[100];
+		struct goodix_i2c_rmi_platform_data *pdata = ts->client->dev.platform_data;
+		int SHUTDOWN_PORT  = pdata->gpio_shutdown;
+    
+    if (!strcmp(attr->attr.name, "ctpconfig")) {
+			printk(KERN_ALERT"goodix set panel config\n");
+			gpio_set_value(SHUTDOWN_PORT, 1);
+			msleep(100);
+			gpio_set_value(SHUTDOWN_PORT, 0);
+			msleep(100);
+
+			for (i=0; i<100; i++){
+				if (sscanf(buf, "%x", &config_data[i])== 1) {
+					printk("%x\n", config_data[i]);
+					buf += 5;
+				}
+				else
+					break;
+			}
+			printk(KERN_ALERT"total data = %d\n", i);
+			i2c_write_bytes(ts->client,&config_data[0],i);
+    }
+    return count;
+}
+
+static DEVICE_ATTR(ctpconfig, S_IRWXUGO, goodix_read, goodix_write);
+
+static struct attribute *goodix_attr[] = {
+    &dev_attr_ctpconfig.attr,
+    NULL
+};
+
+static struct attribute_group goodix_attr_group = {
+    .name = NULL,
+    .attrs = goodix_attr,
+};
 
 /*******************************************************	
 功能：
@@ -527,11 +592,16 @@ static int goodix_ts_probe(struct i2c_client *client, const struct i2c_device_id
 		goto err_input_register_device_failed;
 	}
 
+	gpio_set_value(SHUTDOWN_PORT, 1);
+	msleep(100);
 	gpio_set_value(SHUTDOWN_PORT, 0);
-	msleep(10);
+	msleep(100);
 	goodix_init_panel(ts);
 	goodix_read_version(ts);
 	msleep(500);
+	struct device *dev = &client->dev;
+  sysfs_create_group(&dev->kobj, &goodix_attr_group);
+	dev_set_drvdata(dev, ts);
 
 	ts->init_finished = 0;
 	ts->use_irq = 0;
