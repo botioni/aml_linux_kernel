@@ -62,13 +62,14 @@ struct aml_channel {
 	int                  pid;
 	int                  used;
 	int                  filter_count;
+	struct dvb_demux_feed     *feed;
+	struct dvb_demux_feed     *dvr_feed;
 };
 
 struct aml_filter {
 	int                  chan_id;
 	int                  used;
 	struct dmx_section_filter *filter;
-	struct dvb_demux_feed     *feed;
 	u8                   value[FILTER_LEN];
 	u8                   maskandmode[FILTER_LEN];
 	u8                   maskandnotmode[FILTER_LEN];
@@ -109,6 +110,9 @@ struct aml_dmx {
 	int                  pes_buf_len;
 	unsigned long        sub_pages;
 	int                  sub_buf_len;
+	unsigned long	  async_fifo_pages;
+	int			async_fifo_buf_len;
+	int			async_fifo_buf_toggle;
 	struct aml_channel   channel[CHANNEL_COUNT];
 	struct aml_filter    filter[FILTER_COUNT];
 	irq_handler_t        irq_handler;
