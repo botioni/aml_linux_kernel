@@ -123,7 +123,7 @@ _mali_osk_errcode_t mali_allocation_engine_allocate_memory(mali_allocation_engin
 				}
 			}
 
-			MALI_DEBUG_PRINT(3, ("Non-fatal OOM, have to cleanup, stopped at offset %d for size %d\n", offset, descriptor->size));
+			MALI_DEBUG_PRINT(2, ("Non-fatal OOM, have to cleanup, stopped at offset %d for size %d\n", offset, descriptor->size));
 
 			/* allocation failure, start cleanup */
 			/* loop over any potential partial allocations */

@@ -1209,11 +1209,25 @@ static int gc0308_v4l2_uninit(void)
 
 }
 
+static void gc0308_v4l2_early_suspend(void)
+{
+	configIO(1, 0);
+	setIO_level(1, 1, 0);
+}
+
+static void gc0308_v4l2_late_resume(void)
+{
+	configIO(1, 0);
+	setIO_level(1, 0, 0);
+}
+
 aml_plat_cam_data_t video_gc0308_data = {
 	.name="video-gc0308",
 	.video_nr=1,
 	.device_init= gc0308_v4l2_init,
 	.device_uninit=gc0308_v4l2_uninit,
+	.early_suspend = gc0308_v4l2_early_suspend,
+	.late_resume = gc0308_v4l2_late_resume,
 };
 #endif /* VIDEO_AMLOGIC_CAPTURE_GT2005 */
 
@@ -1268,11 +1282,25 @@ static int gt2005_v4l2_uninit(void)
 
 }
 
+static void gt2005_v4l2_early_suspend(void)
+{
+	configIO(1, 0);
+	setIO_level(1, 0, 2);
+}
+
+static void gt2005_v4l2_late_resume(void)
+{
+	configIO(1, 0);
+	setIO_level(1, 1, 2);
+}
+
 aml_plat_cam_data_t video_gt2005_data = {
 	.name="video-gt2005",
 	.video_nr=0,
 	.device_init= gt2005_v4l2_init,
 	.device_uninit=gt2005_v4l2_uninit,
+	.early_suspend = gt2005_v4l2_early_suspend,
+	.late_resume = gt2005_v4l2_late_resume,
 };
 #endif /* VIDEO_AMLOGIC_CAPTURE_GT2005 */
 

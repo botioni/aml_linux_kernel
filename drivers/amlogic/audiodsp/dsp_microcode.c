@@ -7,6 +7,7 @@
 #include <linux/io.h>
 #include <linux/fs.h>
 #include <linux/slab.h>
+#include <linux/uaccess.h>
 
 //#include <asm/dsp/audiodsp_control.h>
 #include "audiodsp_control.h"
@@ -98,8 +99,10 @@ static struct audiodsp_microcode *  audiodsp_find_mcode_by_name(struct audiodsp_
 #else
 	 dsp_code_text_start = 0;
 #endif /* AUDIODSP_RESET */
-	memcpy((char *)((unsigned)priv->p+dsp_code_text_start), (char*)firmware->data+dsp_code_text_start,firmware->size-dsp_code_text_start);
 
+	memcpy((char *)((unsigned)priv->dsp_code_start +dsp_code_text_start), \
+        (char*)firmware->data+dsp_code_text_start,firmware->size-dsp_code_text_start);
+    mb();
 	pmcode->code_size=firmware->size;
 	DSP_PRNT("load mcode size=%d\n,load addr 0x%lx mcode name %s",firmware->size,pmcode->code_start_addr,pmcode->file_name);
 release:	

@@ -162,6 +162,7 @@ typedef unsigned  t_ecc_mode;
 #define AML_NORMAL						0
 #define AML_MULTI_CHIP					1
 #define AML_MULTI_CHIP_SHARE_RB			2
+#define AML_INTERLEAVING_MODE			4
 
 #define AML_NAND_CE0         			0xe
 #define AML_NAND_CE1         			0xd
@@ -181,6 +182,7 @@ typedef unsigned  t_ecc_mode;
 #define NAND_PLANE_OPTIONS_MASK			0x000000f0
 #define NAND_TIMING_OPTIONS_MASK		0x00000f00
 #define NAND_BUSW_OPTIONS_MASK			0x0000f000
+#define NAND_INTERLEAVING_OPTIONS_MASK	0x000f0000
 #define NAND_ECC_SOFT_MODE				0x00000000
 #define NAND_ECC_BCH9_MODE				0x00000001
 #define NAND_ECC_BCH8_MODE				0x00000002
@@ -194,6 +196,7 @@ typedef unsigned  t_ecc_mode;
 #define NAND_TIMING_MODE3				0x00000300
 #define NAND_TIMING_MODE4				0x00000400
 #define NAND_TIMING_MODE5				0x00000500
+#define NAND_INTERLEAVING_MODE			0x00010000
 
 #define NAND_DEFAULT_OPTIONS			(NAND_TIMING_MODE5 | NAND_ECC_BCH8_MODE)
 
@@ -223,6 +226,7 @@ struct aml_nand_flash_dev {
 	unsigned chipsize;
 	unsigned erasesize;
 	unsigned oobsize;
+	unsigned internal_chipnr;
 	unsigned options;
 };
 
@@ -235,9 +239,12 @@ struct aml_nand_chip {
 	unsigned oob_size;
 	unsigned virtual_page_size;
 	unsigned virtual_block_size;
-	unsigned plane_num;
-	unsigned chip_num;
+	u8 plane_num;
+	u8 chip_num;
+	u8 internal_chipnr;
+	unsigned internal_page_nums;
 
+	unsigned internal_chip_shift;
 	unsigned bch_mode;
 	u8 user_byte_mode;
 	u8 ops_mode;

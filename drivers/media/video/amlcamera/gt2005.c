@@ -42,6 +42,10 @@
 #include <mach/pinmux.h>
 #include <linux/tvin/tvin.h>
 #include "common/plat_ctrl.h"
+#ifdef CONFIG_HAS_EARLYSUSPEND
+#include <linux/earlysuspend.h>
+static struct early_suspend gt2005_early_suspend;
+#endif
 
 #define GT2005_CAMERA_MODULE_NAME "gt2005"
 
@@ -2048,6 +2052,30 @@ static const struct v4l2_subdev_ops gt2005_ops = {
 	.core = &gt2005_core_ops,
 };
 
+#ifdef CONFIG_HAS_EARLYSUSPEND
+static void aml_gt2005_early_suspend(struct early_suspend *h)
+{
+	printk("enter -----> %s \n",__FUNCTION__);
+	if(h && h->param) {
+		aml_plat_cam_data_t* plat_dat= (aml_plat_cam_data_t*)h->param;
+		if (plat_dat && plat_dat->early_suspend) {
+			plat_dat->early_suspend();
+		}
+	}
+}
+
+static void aml_gt2005_late_resume(struct early_suspend *h)
+{
+	printk("enter -----> %s \n",__FUNCTION__);
+	if(h && h->param) {
+		aml_plat_cam_data_t* plat_dat= (aml_plat_cam_data_t*)h->param;
+		if (plat_dat && plat_dat->late_resume) {
+			plat_dat->late_resume();
+		}
+	}
+}
+#endif
+
 static int gt2005_probe(struct i2c_client *client,
 			const struct i2c_device_id *id)
 {
@@ -2088,6 +2116,16 @@ static int gt2005_probe(struct i2c_client *client,
 		kfree(t);
 		return err;
 	}
+
+#ifdef CONFIG_HAS_EARLYSUSPEND
+    printk("******* enter itk early suspend register *******\n");
+    gt2005_early_suspend.level = EARLY_SUSPEND_LEVEL_BLANK_SCREEN;
+    gt2005_early_suspend.suspend = aml_gt2005_early_suspend;
+    gt2005_early_suspend.resume = aml_gt2005_late_resume;
+    gt2005_early_suspend.param = plat_dat;
+	register_early_suspend(&gt2005_early_suspend);
+#endif
+
 	return 0;
 }
 

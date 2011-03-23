@@ -523,11 +523,15 @@ int audiodsp_probe(void )
 		return -1;
 		}
     priv->dsp_is_started=0;
+/*
     priv->p = ioremap_nocache(AUDIO_DSP_START_PHY_ADDR, S_1M);
     if(priv->p)
         DSP_PRNT("DSP IOREMAP to addr 0x%x\n",(unsigned)priv->p);
-    else
+    else{
+        DSP_PRNT("DSP IOREMAP error\n");
         goto error1;
+    }
+*/    
 	audiodsp_p=priv;
 	audiodsp_init_mcode(priv);
 	res = register_chrdev(AUDIODSP_MAJOR, DSP_NAME, &audiodsp_fops);
@@ -599,7 +603,9 @@ static void __exit audiodsp_exit_module(void)
 	audiodsp_release_mailbox(priv);
 	release_audiodsp_monitor(priv);
 	audiodsp_microcode_free(priv);
+  /*
     iounmap(priv->p);
+  */
 	device_destroy(priv->class, MKDEV(AUDIODSP_MAJOR, 0));
 	class_destroy(priv->class);
 	unregister_chrdev(AUDIODSP_MAJOR, DSP_NAME);
