@@ -370,7 +370,7 @@ _mali_osk_errcode_t _mali_osk_mem_mapregion_map( mali_memory_allocation * descri
 		}
 
 		{
-			new_page = alloc_page(GFP_HIGHUSER | __GFP_ZERO | __GFP_NORETRY | __GFP_NOWARN | __GFP_COLD);
+			new_page = alloc_page(GFP_HIGHUSER | __GFP_ZERO | __GFP_REPEAT | __GFP_NOWARN | __GFP_COLD);
 
 			if ( NULL == new_page )
 			{
