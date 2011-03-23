@@ -1581,13 +1581,13 @@ static int aml_nand_block_bad(struct mtd_info *mtd, loff_t ofs, int getchip)
 
 		if (ret < 0) {
 			printk(" NAND detect Bad block at %llx \n", (uint64_t)ofs);
-			return -EFAULT;
+			return EFAULT;
 		}
 		if (aml_oob_ops.oobbuf[chip->badblockpos] == 0) {
 			memset(aml_chip->aml_nand_data_buf, 0, (mtd->writesize + mtd->oobsize));
 			if (!memcmp(aml_chip->aml_nand_data_buf + mtd->writesize, aml_oob_ops.oobbuf, aml_oob_ops.ooblen)) {
 				printk(" NAND detect Bad block at %llx \n", (uint64_t)ofs);
-				return -EFAULT;
+				return EFAULT;
 			}
 		}
 	}
@@ -1598,7 +1598,7 @@ static int aml_nand_block_bad(struct mtd_info *mtd, loff_t ofs, int getchip)
 		if (ret == -EUCLEAN)
 			ret = 0;
 		if (ret < 0)
-			return -EFAULT;
+			return EFAULT;
 		if (chip->oob_poi[chip->badblockpos] == 0xFF)
 			return 0;
 
@@ -1606,7 +1606,7 @@ static int aml_nand_block_bad(struct mtd_info *mtd, loff_t ofs, int getchip)
 			memset(aml_chip->aml_nand_data_buf, 0, (mtd->writesize + mtd->oobsize));
 			if (!memcmp(aml_chip->aml_nand_data_buf + mtd->writesize, chip->oob_poi, mtd->oobavail)) {
 				printk(" NAND detect Bad block at %llx \n", (uint64_t)ofs);
-				return -EFAULT;
+				return EFAULT;
 		}	
 	}
 	}
