@@ -171,7 +171,7 @@ static int uor7x5x_init(void)
 	memset(buf, 0, sizeof(buf));
 #if 0
 	UOR_IICRead(0x01, buf, 2);
-	printk(KERN_ERR "%s: buf[0],buf[1]= 0x%x,0x%x \n",__FUNCTION__, buf[0], buf[1]);
+	//printk(KERN_ERR "%s: buf[0],buf[1]= 0x%x,0x%x \n",__FUNCTION__, buf[0], buf[1]);
 
 
 	buf[1] = 0x10;
@@ -179,10 +179,10 @@ static int uor7x5x_init(void)
 	UOR_IICWrite(0x01 | 0x80, buf, 2);
 
 	UOR_IICRead(0x01, buf, 2);
-	printk(KERN_ERR "%s:addr = 0x01, buf[0],buf[1]= 0x%x,0x%x \n",__FUNCTION__, buf[0], buf[1]);
+	//printk(KERN_ERR "%s:addr = 0x01, buf[0],buf[1]= 0x%x,0x%x \n",__FUNCTION__, buf[0], buf[1]);
 #else
 	UOR_IICRead(0x10 | 0x80, buf, 2);
-	printk(KERN_ERR "%s: buf[0],buf[1]= 0x%x,0x%x \n",__FUNCTION__, buf[0], buf[1]);
+	//printk(KERN_ERR "%s: buf[0],buf[1]= 0x%x,0x%x \n",__FUNCTION__, buf[0], buf[1]);
 #endif	
 	return 0;
 }
@@ -301,7 +301,7 @@ static void silding_init(void)
 
 static void silding_avg(int *x1, int *y1, int *x2, int *y2)
 {
-	printk(KERN_ERR "before sliding:count %d, buf_index %d, (sum_x1,sum_y1)=(%d,%d) (sum_x2,sum_y2)=(%d,%d)\n",sliding_count, sliding_buf_index, sliding_sum_x1, sliding_sum_y1, sliding_sum_x2, sliding_sum_y2);
+	//printk(KERN_ERR "before sliding:count %d, buf_index %d, (sum_x1,sum_y1)=(%d,%d) (sum_x2,sum_y2)=(%d,%d)\n",sliding_count, sliding_buf_index, sliding_sum_x1, sliding_sum_y1, sliding_sum_x2, sliding_sum_y2);
 	if(sliding_count == 0)//first point
 	{
 		sliding_count ++;
@@ -353,17 +353,17 @@ static void silding_avg(int *x1, int *y1, int *x2, int *y2)
 		*x2 = sliding_sum_x2 / SILDING_LENGTH;
 		*y2 = sliding_sum_y2 / SILDING_LENGTH;		
 	}
-	printk(KERN_ERR "after sliding:count %d, buf_index %d, (sum_x1,sum_y1)=(%d,%d) (sum_x2,sum_y2)=(%d,%d)\n",sliding_count, sliding_buf_index, sliding_sum_x1, sliding_sum_y1, sliding_sum_x2, sliding_sum_y2);
+	//printk(KERN_ERR "after sliding:count %d, buf_index %d, (sum_x1,sum_y1)=(%d,%d) (sum_x2,sum_y2)=(%d,%d)\n",sliding_count, sliding_buf_index, sliding_sum_x1, sliding_sum_y1, sliding_sum_x2, sliding_sum_y2);
 }
 
 static irqreturn_t uor_isr(int irq,void *dev_id)
 {
 	struct i2c_client *client = (struct i2c_client *)dev_id;
 	
-	printk(KERN_ERR "uor.c: uor_isr\n");
+	//printk(KERN_ERR "uor.c: uor_isr\n");
 	disable_irq_nosync(client->irq);
 	queue_work(queue, &work);
-	printk(KERN_ERR "uor_isr ok!\n");
+	//printk(KERN_ERR "uor_isr ok!\n");
 	return IRQ_HANDLED;
 }
 
@@ -380,7 +380,7 @@ static void uor_read_loop(struct work_struct *data)
 	while(1)
 	{
 		uor7x5x_read_data(&nTouch, &x1, &y1, &x2, &y2);
-		printk(KERN_ERR "%s: (x1,y1)=(%d,%d) (x2,y2)=(%d,%d) nTouch %d \n",__FUNCTION__, x1, y1, x2, y2, nTouch);
+		//printk(KERN_ERR "%s: (x1,y1)=(%d,%d) (x2,y2)=(%d,%d) nTouch %d \n",__FUNCTION__, x1, y1, x2, y2, nTouch);
 		if(nTouch == ONE_TOUCH)
 		{
 			if(x2==0 && y2==0)
@@ -438,7 +438,7 @@ static void uor_read_loop(struct work_struct *data)
 			        silding_x2 = x2;
 			        silding_y2 = y2;
 			        silding_avg(&silding_x1, &silding_y1, &silding_x2, &silding_y2);
-			        printk(KERN_ERR "%s: after silding avg:(x1,y1)=(%d,%d) (x2,y2)=(%d,%d)\n",__FUNCTION__, silding_x1, silding_y1, silding_x2, silding_y2 );
+			        //printk(KERN_ERR "%s: after silding avg:(x1,y1)=(%d,%d) (x2,y2)=(%d,%d)\n",__FUNCTION__, silding_x1, silding_y1, silding_x2, silding_y2 );
 			        
 			        input_report_abs(ts.dev, ABS_MT_TOUCH_MAJOR, 800 + ((x1+y1)%200));
 			        //input_report_abs(ts.dev, ABS_MT_WIDTH_MAJOR, 500+press);
@@ -451,7 +451,7 @@ static void uor_read_loop(struct work_struct *data)
 			        	out_x = xy >> 16;
 			        	out_y = xy & 0xffff;
 			        }
-			        printk(KERN_ERR "%s:TWO_TOUCH (x1,y1)=(%d,%d)\n",__FUNCTION__, out_x, out_y);
+			        //printk(KERN_ERR "%s:TWO_TOUCH (x1,y1)=(%d,%d)\n",__FUNCTION__, out_x, out_y);
 			        
 			        input_report_abs(ts.dev, ABS_MT_POSITION_X, out_x);
 			        input_report_abs(ts.dev, ABS_MT_POSITION_Y, out_y);
@@ -468,7 +468,7 @@ static void uor_read_loop(struct work_struct *data)
 			        	out_x = xy >> 16;
 			        	out_y = xy & 0xffff;
 			        }
-			        printk(KERN_ERR "%s:TWO_TOUCH (x2,y2)=(%d,%d)\n",__FUNCTION__, out_x, out_y);
+			        //printk(KERN_ERR "%s:TWO_TOUCH (x2,y2)=(%d,%d)\n",__FUNCTION__, out_x, out_y);
 			        
 			        input_report_abs(ts.dev, ABS_MT_POSITION_X, out_x );
 			        input_report_abs(ts.dev, ABS_MT_POSITION_Y, out_y );
@@ -532,7 +532,7 @@ static void uor_read_loop(struct work_struct *data)
 			        	out_x = xy >> 16;
 			        	out_y = xy & 0xffff;
 			        }
-			        printk(KERN_ERR "%s:ONE_TOUCH (x1,y1)=(%d,%d)\n",__FUNCTION__, out_x, out_y);
+			        //printk(KERN_ERR "%s:ONE_TOUCH (x1,y1)=(%d,%d)\n",__FUNCTION__, out_x, out_y);
 			        
 			        input_report_abs(ts.dev, ABS_MT_POSITION_X, out_x);
 			        input_report_abs(ts.dev, ABS_MT_POSITION_Y, out_y);
