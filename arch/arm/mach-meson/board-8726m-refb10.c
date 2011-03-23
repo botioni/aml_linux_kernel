@@ -655,18 +655,20 @@ static int gt2005_v4l2_init(void)
 
     eth_set_pinmux(ETH_BANK0_GPIOC3_C12,ETH_CLK_OUT_GPIOC12_REG3_1, 1);
     
-    set_gpio_val(GPIOD_bank_bit2_24(4), GPIOD_bit_bit2_24(5), 1); //low
-    set_gpio_mode(GPIOD_bank_bit2_24(4), GPIOD_bit_bit2_24(5), GPIO_OUTPUT_MODE);
+    set_gpio_val(GPIOD_bank_bit2_24(4), GPIOD_bit_bit2_24(4), 1); //low
+    set_gpio_mode(GPIOD_bank_bit2_24(4), GPIOD_bit_bit2_24(4), GPIO_OUTPUT_MODE);
     set_gpio_val(GPIOD_bank_bit2_24(5), GPIOD_bit_bit2_24(5), 1); //low
     set_gpio_mode(GPIOD_bank_bit2_24(5), GPIOD_bit_bit2_24(5), GPIO_OUTPUT_MODE);
+    msleep(300);
 
 }
 static int gt2005_v4l2_uninit(void)
 {
-    set_gpio_val(GPIOD_bank_bit2_24(4), GPIOD_bit_bit2_24(5), 0); //low
-    set_gpio_mode(GPIOD_bank_bit2_24(4), GPIOD_bit_bit2_24(5), GPIO_OUTPUT_MODE);
+    set_gpio_val(GPIOD_bank_bit2_24(4), GPIOD_bit_bit2_24(4), 0); //low
+    set_gpio_mode(GPIOD_bank_bit2_24(4), GPIOD_bit_bit2_24(4), GPIO_OUTPUT_MODE);
     set_gpio_val(GPIOD_bank_bit2_24(5), GPIOD_bit_bit2_24(5), 0); //low
     set_gpio_mode(GPIOD_bank_bit2_24(5), GPIOD_bit_bit2_24(5), GPIO_OUTPUT_MODE);
+    msleep(300);
 }
 
 aml_plat_cam_data_t video_gt2005_data = {
