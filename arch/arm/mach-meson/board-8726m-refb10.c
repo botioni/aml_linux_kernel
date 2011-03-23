@@ -354,6 +354,23 @@ static struct platform_device codec_device = {
 #if defined(CONFIG_AM_VIDEO)
 static struct resource deinterlace_resources[] = {
     [0] = {
+        .start =  DI_ADDR_START,
+        .end   = DI_ADDR_END,
+        .flags = IORESOURCE_MEM,
+    },
+};
+
+static struct platform_device deinterlace_device = {
+    .name       = "deinterlace",
+    .id         = 0,
+    .num_resources = ARRAY_SIZE(deinterlace_resources),
+    .resource      = deinterlace_resources,
+};
+#endif
+
+#if defined(CONFIG_TVIN_VDIN)
+static struct resource vdin_resources[] = {
+    [0] = {
         .start =  VDIN_ADDR_START,  //pbufAddr
         .end   = VDIN_ADDR_END,     //pbufAddr + size
         .flags = IORESOURCE_MEM,
@@ -373,25 +390,6 @@ static struct resource deinterlace_resources[] = {
         .end   = INT_VDIN_VSYNC,
         .flags = IORESOURCE_IRQ,
     },
-};
-
-static struct platform_device deinterlace_device = {
-    .name       = "deinterlace",
-    .id         = 0,
-    .num_resources = ARRAY_SIZE(deinterlace_resources),
-    .resource      = deinterlace_resources,
-};
-#endif
-
-#if defined(CONFIG_TVIN_VDIN)
-static struct resource vdin_resources[] = {
-    [0] = {
-        .start =  VDIN_ADDR_START,  //pbufAddr
-        .end   = VDIN_ADDR_END,     //pbufAddr + size
-        .flags = IORESOURCE_MEM,
-    },
-
-
 };
 
 static struct platform_device vdin_device = {
@@ -1042,7 +1040,7 @@ typedef struct {
 
 #define MAX_GPIO 42
 static gpio_data_t gpio_data[MAX_GPIO] = {
-// 9
+// 8
   {"GPIOA_0 -- TCON_STH",		 GPIOA_bank_bit0_14(0),		GPIOA_bit_bit0_14(0),	GPIO_OUTPUT_MODE, 1, 1},
   {"GPIOA_1 -- TCON_STV",		 GPIOA_bank_bit0_14(1),		GPIOA_bit_bit0_14(1),	GPIO_OUTPUT_MODE, 1, 1},
 	{"GPIOA_2 -- OEH",		     GPIOA_bank_bit0_14(2),		GPIOA_bit_bit0_14(2),	GPIO_OUTPUT_MODE, 1, 1},
@@ -1051,7 +1049,6 @@ static gpio_data_t gpio_data[MAX_GPIO] = {
   {"GPIOA_5 -- LCD_CLK",		 GPIOA_bank_bit0_14(5),		GPIOA_bit_bit0_14(5),	GPIO_OUTPUT_MODE, 1, 1},
   {"GPIOA_6 -- VCCx2_EN",		 GPIOA_bank_bit0_14(6),		GPIOA_bit_bit0_14(6),	GPIO_OUTPUT_MODE, 1, 1},
 	{"GPIOA_7 -- BL_PWM",		   GPIOA_bank_bit0_14(7),		GPIOA_bit_bit0_14(7),	GPIO_OUTPUT_MODE, 1, 1},
-	{"GPIOA_8 -- PWR_HOLD",		 GPIOA_bank_bit0_14(8),		GPIOA_bit_bit0_14(8),	GPIO_OUTPUT_MODE, 1, 1},
 	// WIFI  8
 	{"GPIOB_0 -- I2C_SDA",     GPIOB_bank_bit0_7(2),		GPIOB_bit_bit0_7(2),	GPIO_OUTPUT_MODE, 1, 1},
 	{"GPIOB_1 -- I2C_SCL",     GPIOB_bank_bit0_7(3),		GPIOB_bit_bit0_7(3),	GPIO_OUTPUT_MODE, 1, 1},
@@ -1090,6 +1087,8 @@ static gpio_data_t gpio_data[MAX_GPIO] = {
 	{"GPIOE_16 -- nand_ncs3",	 GPIOE_bank_bit16_21(16),	GPIOE_bit_bit16_21(16),	GPIO_OUTPUT_MODE, 1, 1},
 	{"GPIOE_17 -- nand_ncs4",	 GPIOE_bank_bit16_21(17),	GPIOE_bit_bit16_21(17),	GPIO_OUTPUT_MODE, 1, 1},
 	{"GPIOE_18 -- Linux_TX",	 GPIOE_bank_bit16_21(18),	GPIOE_bit_bit16_21(18), GPIO_OUTPUT_MODE, 1, 1},
+	//1
+	{"TEST_N -- I2S_DOUT",		 GPIOJTAG_bank_bit(16),		GPIOJTAG_bit_bit16(16),	GPIO_OUTPUT_MODE, 1, 1},
 
 };	
 
@@ -1203,7 +1202,7 @@ static struct meson_pm_config aml_pm_pdata = {
     .ddr_clk = 0x00110820,
     .sleepcount = 128,
     .set_vccx2 = set_vccx2,
-    .core_voltage_adjust = 5,
+    .core_voltage_adjust = 10,
 };
 
 static struct platform_device aml_pm_device = {
