@@ -133,6 +133,7 @@ static ssize_t _esparser_write(const char __user *buf, size_t count, u32 type)
         ret = wait_event_interruptible_timeout(wq, search_done != 0, HZ/10);
         if (ret == 0) {
             WRITE_MPEG_REG(PARSER_FETCH_CMD, 0);
+			printk("write timeout, retry\n");
             return -EAGAIN;
         } else if (ret < 0) {
             return -ERESTARTSYS;
