@@ -39,6 +39,7 @@
 #include <mach/power_gate.h>
 #include <linux/aml_bl.h>
 #include <linux/syscalls.h>
+#include <linux/reboot.h>
 
 #ifdef CONFIG_AM_UART_WITH_S_CORE 
 #include <linux/uart-aml.h>
@@ -996,7 +997,6 @@ aml_plat_cam_data_t video_gc0308_data = {
 
 
 #endif
-
 #if defined(CONFIG_SUSPEND)
 static void set_vccx2(int power_on)
 {
@@ -2017,7 +2017,6 @@ static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
 		.platform_data = (void *)&video_ov5640_data,
 	},
 #endif
-
 #ifdef CONFIG_BQ27x00_BATTERY
     {
         I2C_BOARD_INFO("bq27200", 0x55),
