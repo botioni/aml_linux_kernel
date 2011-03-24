@@ -332,6 +332,10 @@ void tsync_avevent(avevent_t event, u32 param)
         break;
 
     case AUDIO_TSTAMP_DISCONTINUITY:
+		timestamp_apts_set(param);
+        amlog_level(LOG_LEVEL_ATTENTION, "audio discontinue, reset apts, 0x%x\n", param);
+
+		
         if (!tsync_enable) {
             break;
         }
@@ -359,7 +363,13 @@ void tsync_avevent(avevent_t event, u32 param)
         }
         break;
 
-    case AUDIO_START:
+    case AUDIO_START:		
+		timestamp_apts_set(param);
+
+		amlog_level(LOG_LEVEL_INFO, "audio start, reset apts = 0x%x\n", param);
+
+        timestamp_apts_enable(1);
+		 
         if (!tsync_enable) {
             break;
         }
@@ -386,7 +396,7 @@ void tsync_avevent(avevent_t event, u32 param)
         } else {
             timestamp_pcrscr_set(param);
         }
-        timestamp_apts_set(param);
+       
         tsync_stat = TSYNC_STAT_PCRSCR_SETUP_AUDIO;
 
         amlog_level(LOG_LEVEL_INFO, "apts reset scr = 0x%x\n", param);
@@ -395,6 +405,8 @@ void tsync_avevent(avevent_t event, u32 param)
         break;
 
     case AUDIO_RESUME:
+		timestamp_apts_enable(1);
+		
         if (!tsync_enable) {
             break;
         }
@@ -402,6 +414,7 @@ void tsync_avevent(avevent_t event, u32 param)
         break;
 
     case AUDIO_STOP:
+		timestamp_apts_set(-1);
         tsync_abreak = 0;
         if (tsync_trickmode) {
             tsync_stat = TSYNC_STAT_PCRSCR_SETUP_VIDEO;
@@ -411,6 +424,8 @@ void tsync_avevent(avevent_t event, u32 param)
         break;
 
     case AUDIO_PAUSE:
+		timestamp_apts_enable(0);
+		
         if (!tsync_enable) {
             break;
         }

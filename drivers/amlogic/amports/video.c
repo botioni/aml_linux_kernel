@@ -827,7 +827,7 @@ static inline bool vpts_expire(vframe_t *cur_vf, vframe_t *next_vf)
 
         if ((systime - pts) >= 0) {
             tsync_avevent(VIDEO_TSTAMP_DISCONTINUITY, next_vf->pts);
-
+			printk("video discontinue, system=0x%x vpts=0x%x\n", systime, pts);
             return true;
         }
     }
@@ -871,6 +871,7 @@ static irqreturn_t vsync_isr0(int irq, void *dev_id)
     hold_line = calc_hold_line();
 
     timestamp_pcrscr_inc(vsync_pts_inc);
+	timestamp_apts_inc(vsync_pts_inc);
 
 #ifdef SLOW_SYNC_REPEAT
     frame_repeat_count++;
