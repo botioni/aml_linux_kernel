@@ -358,8 +358,8 @@ advanced setting -- bit 7:0 force compare result
 // section buffer write status for buff 31:0 -- Read
 // clear buffer status ( buff READY and BUSY ) -- write
 #define SEC_BUFF_READY          (STB_CBUS_BASE + DEMUX_1_OFFSET + 0x12)  // 0x1612
-#define SEC_BUFF_READY_2        (STB_CBUS_BASE + DEMUX_2_OFFSET + 0x13)  // 0x1662
-#define SEC_BUFF_READY_3        (STB_CBUS_BASE + DEMUX_3_OFFSET + 0x13)  // 0x16b2
+#define SEC_BUFF_READY_2        (STB_CBUS_BASE + DEMUX_2_OFFSET + 0x12)  // 0x1662
+#define SEC_BUFF_READY_3        (STB_CBUS_BASE + DEMUX_3_OFFSET + 0x12)  // 0x16b2
 
 // bit 15 -- section_reset_busy (Read Only)
 // bit 14 -- output_section_buffer_valid
