@@ -56,21 +56,26 @@ static int aml_bl_update_status(struct backlight_device *bd)
     else if( brightness > 255 )
         brightness = 255;
         
-    if((brightness > 0)&&(0 == IS_CLK_GATE_ON(VGHL_PWM))){
+    if((brightness > 0)&&(0 == IS_CLK_GATE_ON(VGHL_PWM))){      
         CLK_GATE_ON(VGHL_PWM);
-#ifdef AML_BL_DBG        
-        printk("CLK_GATE_ON VGHL_PWM\n");        
-#endif        
+        CLEAR_CBUS_REG_MASK(VGHL_PWM_REG0,1<<13); 
+        SET_CBUS_REG_MASK(VGHL_PWM_REG0,1<<12);             
+     
+        if(amlbl->pdata->power_on_bl)  
+            amlbl->pdata->power_on_bl();   
     } 
     
     if( amlbl->pdata->set_bl_level )
         amlbl->pdata->set_bl_level(brightness);
 
     if((brightness == 0)&&(IS_CLK_GATE_ON(VGHL_PWM))){
+        if(amlbl->pdata->power_off_bl)  
+            amlbl->pdata->power_off_bl();           
+
+        SET_CBUS_REG_MASK(VGHL_PWM_REG0,1<<13);
+        CLEAR_CBUS_REG_MASK(VGHL_PWM_REG0,1<<12);           
         CLK_GATE_OFF(VGHL_PWM);
-#ifdef AML_BL_DBG         
-        printk("CLK_GATE_OFF VGHL_PWM\n");   
-#endif                 
+                
     }
     
   
