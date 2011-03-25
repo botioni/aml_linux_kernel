@@ -192,6 +192,17 @@ static void __init meson_clocksource_init(void)
 	clocksource_register(&clocksource_timer_e);
 }
 
+/*
+ * sched_clock()
+ */
+unsigned long long sched_clock(void)
+{
+	cycle_t cyc = cycle_read_timerE(NULL);
+	struct clocksource *cs = &clocksource_timer_e;
+
+	return clocksource_cyc2ns(cyc, cs->mult, cs->shift);
+}
+
 /********** Clock Event Device, Timer-AC *********/
 
 static void meson_clkevt_set_mode(enum clock_event_mode mode,
