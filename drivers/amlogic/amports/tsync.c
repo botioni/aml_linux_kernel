@@ -75,7 +75,7 @@ const static struct {
 } avevent_token[] = {
     {"VIDEO_START", 11, VIDEO_START, AVEVENT_FLAG_PARAM},
     {"VIDEO_STOP",  10, VIDEO_STOP,  0},
-    {"VIDEO_PAUSE", 11, VIDEO_PAUSE, 0},
+    {"VIDEO_PAUSE", 11, VIDEO_PAUSE, AVEVENT_FLAG_PARAM},
     {"VIDEO_TSTAMP_DISCONTINUITY", 26, VIDEO_TSTAMP_DISCONTINUITY, AVEVENT_FLAG_PARAM},
     {"AUDIO_START", 11, AUDIO_START, AVEVENT_FLAG_PARAM},
     {"AUDIO_RESUME", 12, AUDIO_RESUME, 0},
@@ -434,7 +434,6 @@ void tsync_avevent(avevent_t event, u32 param)
         break;
 
     case VIDEO_PAUSE:
-        
         if (param == 1) {
             vpause_flag = 1;
         } else {
@@ -460,9 +459,14 @@ void tsync_avevent(avevent_t event, u32 param)
         break;
     case VIDEO_STOP:
     case AUDIO_STOP:
-    case VIDEO_PAUSE:
     case AUDIO_PAUSE:
         amvdev_pause();
+        break;
+    case VIDEO_PAUSE:
+        if (vpause_flag)
+            amvdev_pause();
+        else
+            amvdev_resume();
         break;
     default:
         break;
