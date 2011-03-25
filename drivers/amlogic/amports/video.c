@@ -113,6 +113,10 @@ extern irqreturn_t osd_fiq_isr(void);
 #define VOUT_TYPE_BOT_FIELD 1
 #define VOUT_TYPE_PROG      2
 
+#define VIDEO_DISABLE_NONE    0
+#define VIDEO_DISABLE_NORMAL  1
+#define VIDEO_DISABLE_FORNEXT 2
+
 #define DUR2PTS(x) ((x) - ((x) >> 4))
 #define DUR2PTS_RM(x) ((x) & 0xf)
 
@@ -167,7 +171,7 @@ static u32 blackout = 1;
 #endif
 
 /* disable video */
-static u32 disable_video = 0;
+static u32 disable_video = VIDEO_DISABLE_NONE;
 
 #ifdef SLOW_SYNC_REPEAT
 /* video frame repeat count */
@@ -558,7 +562,7 @@ static void vsync_toggle_frame(vframe_t *vf)
 
     cur_dispbuf = vf;
 
-    if (first_picture && (disable_video == 0)) {
+    if (first_picture && (disable_video != VIDEO_DISABLE_NORMAL)) {
         EnableVideoLayer();
     }
     if (first_picture) {
@@ -1802,14 +1806,25 @@ static ssize_t video_disable_store(struct class *cla, struct class_attribute *at
                                    size_t count)
 {
     size_t r;
+    int val;
 
-    r = sscanf(buf, "%d", &disable_video);
+    r = sscanf(buf, "%d", &val);
     if (r != 1) {
         return -EINVAL;
     }
+    
+    if ((val < VIDEO_DISABLE_NONE) || (val > VIDEO_DISABLE_FORNEXT)) {
+        return -EINVAL;
+    }
+    
+    disable_video = val;
 
-    if (disable_video) {
+    if (disable_video != VIDEO_DISABLE_NONE) {
         DisableVideoLayer();
+        
+        if ((disable_video == VIDEO_DISABLE_FORNEXT) && cur_dispbuf && (cur_dispbuf != &vf_local))
+            video_property_changed = true;
+            
     } else {
         if (cur_dispbuf && (cur_dispbuf != &vf_local)) {
             EnableVideoLayer();
