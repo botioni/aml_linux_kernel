@@ -1,7 +1,7 @@
 #include <linux/module.h>
 #include <linux/spinlock.h>
 #include <linux/kernel.h>
-#include <linux/device.h>
+#include <linux/platform_device.h>
 #include <linux/amports/timestamp.h>
 #include <linux/amports/tsync.h>
 
