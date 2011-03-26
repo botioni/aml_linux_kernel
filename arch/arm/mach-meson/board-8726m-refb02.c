@@ -270,7 +270,7 @@ static struct sn7325_platform_data sn7325_pdata = {
 #ifdef CONFIG_SIX_AXIS_SENSOR_MPU3050
 static struct mpu3050_platform_data mpu3050_data = {
     .int_config = 0x10,
-    .orientation = {1,0,0,0,-1,0,0,0,1},
+    .orientation = {-1,0,0,0,1,0,0,0,1},
     .level_shifter = 0,
     .accel = {
                 .get_slave_descr = mma8451_get_slave_descr,
