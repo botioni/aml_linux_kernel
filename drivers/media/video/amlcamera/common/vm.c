@@ -302,6 +302,7 @@ vframe_receiver_op_t* vf_vm_unreg_provider()
     spin_lock_irqsave(&lock, flags); 
     vfp = NULL;
     spin_unlock_irqrestore(&lock, flags);
+    vf_unreg_provider();
     return NULL;
 }
 
