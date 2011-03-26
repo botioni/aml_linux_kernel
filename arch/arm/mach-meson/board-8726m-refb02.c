@@ -270,7 +270,7 @@ static struct sn7325_platform_data sn7325_pdata = {
 #ifdef CONFIG_SIX_AXIS_SENSOR_MPU3050
 static struct mpu3050_platform_data mpu3050_data = {
     .int_config = 0x10,
-    .orientation = {0,-1,0,-1,0,0,0,0,-1},
+    .orientation = {1,0,0,0,-1,0,0,0,1},
     .level_shifter = 0,
     .accel = {
                 .get_slave_descr = mma8451_get_slave_descr,
@@ -278,7 +278,7 @@ static struct mpu3050_platform_data mpu3050_data = {
                 // connected
                 .bus = EXT_SLAVE_BUS_SECONDARY, //The secondary I2C of MPU
                 .address = 0x1c,
-                .orientation = {0,1,0,-1,0,0,0,0,-1},
+                .orientation = {0,1,0,-1,0,0,0,0,1},
             },
     };
 #endif
@@ -304,10 +304,10 @@ static int it7230_get_irq_level(void)
 }
 
 static struct cap_key it7230_keys[] = {
-    { KEY_COMPOSE,         0x0001, "zoom"},
-    { KEY_TAB,         0x0002, "home"},
-    { KEY_LEFTMETA,     0x0004, "menu"},
-    { KEY_HOME,          0x0008, "exit"},
+    { KEY_COMPOSE,         0x0008, "zoom"},
+    { KEY_HOME,         0x0001, "home"},
+    { KEY_LEFTMETA,     0x0002, "menu"},
+    { KEY_TAB,          0x0004, "exit"},
 };
 
 static struct it7230_platform_data it7230_pdata = {
@@ -625,7 +625,6 @@ static struct platform_device aml_audio={
 //use LED_CS1 as hp detect pin
 #define PWM_TCNT    (600-1)
 #define PWM_MAX_VAL (420)
-int need_mute_spk = 0;
 int get_display_mode(void) {
 	int fd;
 	int ret = 0;
@@ -657,17 +656,15 @@ int wm8900_is_hp_pluged(void)
                                 (0 << 10)   |       // test
                                 (7 << 7)    |       // CS0 REF, Voltage FeedBack: about 0.505V
                                 (7 << 4)    |       // CS1 REF, Current FeedBack: about 0.505V
-                                (0 << 0));           // DIMCTL Analog dimmer
+                                READ_CBUS_REG(LED_PWM_REG0)&0x0f);           // DIMCTL Analog dimmer
     cs_no = READ_CBUS_REG(LED_PWM_REG3);
-    if(cs_no &(1<<15))
+    if(cs_no &(1<<14))
       level |= (1<<0);
-    if(need_mute_spk == 1)
-      level = 1;
     // temp patch to mute speaker when hdmi output
     if(level == 0)
     	if(get_display_mode() != 0)	
     			return 1;
-    return (level == 0)?(1):(0); //return 1: hp pluged, 0: hp unpluged.
+    return (level == 1)?(1):(0); //return 1: hp pluged, 0: hp unpluged.
 }
 
 static struct wm8900_platform_data wm8900_pdata = {
@@ -1134,7 +1131,7 @@ extern int get_adc_sample(int chan);
 static int get_bat_vol(void)
 {
 #ifdef CONFIG_SARADC_AM
-    return get_adc_sample(5);
+    return 1000;//get_adc_sample(5);
 #else
         return 0;
 #endif
