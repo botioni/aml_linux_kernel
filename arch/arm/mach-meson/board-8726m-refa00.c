@@ -1483,7 +1483,7 @@ static void aml_8726m_set_bl_level(unsigned level)
     }
     else{  //  <20
         cs_level = 13;
-        pwm_level = 0;           
+        pwm_level = 70;           
     }
         
     hi = (BL_MAX_LEVEL/100)*pwm_level;
