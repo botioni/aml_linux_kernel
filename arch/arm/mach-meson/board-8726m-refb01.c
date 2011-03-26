@@ -847,6 +847,7 @@ int gc0308_init(void)
 	msleep(300);
 	configIO(1, 0);
 	setIO_level(1, 0, 0);//30m PWR_On
+	msleep(300);
     #endif
 }
 #endif
@@ -1035,7 +1036,7 @@ static struct meson_pm_config aml_pm_pdata = {
     .ddr_clk = 0x00110820,
     .sleepcount = 128,
     .set_vccx2 = set_vccx2,
-    .core_voltage_adjust = 5,
+    .core_voltage_adjust = 8,  //5,8
 };
 
 static struct platform_device aml_pm_device = {
@@ -1082,7 +1083,7 @@ static struct aml_i2c_platform aml_i2c_plat = {
     .wait_xfer_interval = 5,
     .master_no      = AML_I2C_MASTER_B,
     .use_pio            = 0,
-    .master_i2c_speed   = AML_I2C_SPPED_400K,
+    .master_i2c_speed   = AML_I2C_SPPED_300K, //100k
 
     .master_b_pinmux = {
         .scl_reg    = MESON_I2C_MASTER_B_GPIOB_0_REG,
@@ -2110,6 +2111,10 @@ static void __init power_hold(void)
     
     //VCCx2 power up
     set_vccx2(1);
+    
+    // set cpu power  to 1.26V   
+    wm8900_is_hp_pluged(); 
+    WRITE_CBUS_REG_BITS(LED_PWM_REG0,1,0,4); 
 }
 
 static __init void m1_init_machine(void)
