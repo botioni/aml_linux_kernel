@@ -210,39 +210,39 @@ static int bq27x00_battery_rsoc(struct bq27x00_device_info *di)
 
 	return rsoc;
 }
-
-static int bq27x00_battery_status(struct bq27x00_device_info *di)
-{
-	int flags = 0;
-	int status;
-	int ret;
-
-	ret = bq27x00_read(BQ27x00_REG_FLAGS, &flags, 0, di);
-	if (ret < 0) {
-		dev_err(di->dev, "error reading flags\n");
-		return ret;
-	}
-
-	if (di->chip == BQ27500) {
-		if (flags & BQ27500_FLAG_FC)
-			status = POWER_SUPPLY_STATUS_FULL;
-		else if (flags & BQ27500_FLAG_DSC)
-			status = POWER_SUPPLY_STATUS_DISCHARGING;
-		else
-			status = POWER_SUPPLY_STATUS_CHARGING;
-	} else {
-	    if(pdata->is_ac_online()){
-    		if (flags & BQ27000_FLAG_CHGS)
-    			status = POWER_SUPPLY_STATUS_CHARGING;
-    		else
-    		    status = POWER_SUPPLY_STATUS_FULL;
-		}
-		else
-			status = POWER_SUPPLY_STATUS_DISCHARGING;		    
-	}
-
-	return status;
-}
+//
+//static int bq27x00_battery_status(struct bq27x00_device_info *di)
+//{
+//	int flags = 0;
+//	int status;
+//	int ret;
+//
+//	ret = bq27x00_read(BQ27x00_REG_FLAGS, &flags, 0, di);
+//	if (ret < 0) {
+//		dev_err(di->dev, "error reading flags\n");
+//		return ret;
+//	}
+//
+//	if (di->chip == BQ27500) {
+//		if (flags & BQ27500_FLAG_FC)
+//			status = POWER_SUPPLY_STATUS_FULL;
+//		else if (flags & BQ27500_FLAG_DSC)
+//			status = POWER_SUPPLY_STATUS_DISCHARGING;
+//		else
+//			status = POWER_SUPPLY_STATUS_CHARGING;
+//	} else {
+//	    if(pdata->is_ac_online()){
+//    		if (flags & BQ27000_FLAG_CHGS)
+//    			status = POWER_SUPPLY_STATUS_CHARGING;
+//    		else
+//    		    status = POWER_SUPPLY_STATUS_FULL;
+//		}
+//		else
+//			status = POWER_SUPPLY_STATUS_DISCHARGING;		    
+//	}
+//
+//	return status;
+//}
 
 /*
  * Read a time register.
@@ -309,7 +309,7 @@ static int bq27x00_battery_get_property(struct power_supply *psy,
 
 	switch (psp) {
 	case POWER_SUPPLY_PROP_STATUS:
-		val->intval = bq27x00_battery_status(di);
+		val->intval = charge_status;
 		break;
 	case POWER_SUPPLY_PROP_VOLTAGE_NOW:
 	case POWER_SUPPLY_PROP_PRESENT:
@@ -442,6 +442,8 @@ static void battery_work_func(struct work_struct *work)
     }
         
     if(new_charge_status != charge_status||battery_capacity != new_battery_capacity){
+        charge_status = new_charge_status;
+        battery_capacity = new_battery_capacity;
         bat_changed = true;
     }
     
