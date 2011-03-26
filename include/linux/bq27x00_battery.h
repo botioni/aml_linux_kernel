@@ -20,7 +20,7 @@ struct bq27x00_battery_pdata {
 	int (*is_usb_online)(void);
 	void (*set_charge)(int flags);
 	void (*set_bat_off)(void);
-
+	int (*get_charge_status)(void);
 
 	unsigned int wait_for_status; /* msecs, default is 500 */
 	unsigned int polling_interval; /* msecs, default is 12000 */
