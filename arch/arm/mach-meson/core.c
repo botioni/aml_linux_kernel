@@ -192,6 +192,7 @@ static void __init meson_clocksource_init(void)
 	clocksource_register(&clocksource_timer_e);
 }
 
+#if 0
 /*
  * sched_clock()
  */
@@ -202,6 +203,7 @@ unsigned long long sched_clock(void)
 
 	return clocksource_cyc2ns(cyc, cs->mult, cs->shift);
 }
+#endif /* 0 */
 
 /********** Clock Event Device, Timer-AC *********/
 
