@@ -1080,9 +1080,11 @@ EXPORT_SYMBOL_GPL(wlanDrvIf_remove);
  * \return Init: 0 - OK, else - failure.   Exit: void
  * \sa     wlanDrvIf_Create, wlanDrvIf_Destroy
  */ 
+extern int amlogic_wifi_init(void);
 static int __init wlanDrvIf_ModuleInit (void)
 {
 	printk(KERN_INFO "TIWLAN: driver init\n");
+	amlogic_wifi_init();
 	sdioDrv_init();
 	return wlanDrvIf_Create ();
 }

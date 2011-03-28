@@ -263,7 +263,8 @@ config MRVLNH387_SDIO_SUSPEND_RESUME
 endif
 
 config SDIO_TI_WIFI_WGT7310
-	bool "Ti wgt7310 wireless cards support"
+	tristate "Ti wgt7310 wireless cards support"
+	default m
 	depends on SD_MMC
 	select WIRELESS_EXT
 	select WEXT_PRIV

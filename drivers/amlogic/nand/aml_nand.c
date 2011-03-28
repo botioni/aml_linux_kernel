@@ -245,7 +245,7 @@ static void aml_platform_hw_init(struct aml_nand_chip *aml_chip)
 	struct nand_chip *chip = &aml_chip->chip;
 	struct aml_nand_platform *plat = aml_chip->platform;
 	struct clk *sys_clk;
-	unsigned sys_clk_rate, sys_time, start_cycle, end_cycle, bus_cycle, time_mode, adjust;
+	unsigned sys_clk_rate, sys_time, start_cycle, end_cycle, bus_cycle, time_mode, adjust, Tcycle;
 
 	if ((aml_chip->chip_num > 1) && !nand_erarly_suspend_flag) {
 		chip->select_chip(mtd, -1);
@@ -272,18 +272,20 @@ static void aml_platform_hw_init(struct aml_nand_chip *aml_chip)
 		time_mode = 5;
 
 	if (READ_CBUS_REG(HHI_MPEG_CLK_CNTL)&(1<<8)) {
-	sys_clk = clk_get_sys(NAND_SYS_CLK_NAME, NULL);
-	sys_clk_rate = clk_get_rate(sys_clk);
+		sys_clk = clk_get_sys(NAND_SYS_CLK_NAME, NULL);
+		sys_clk_rate = clk_get_rate(sys_clk);
 	}
 	else {
 		time_mode = 0;
 		sys_clk_rate = 27000000;
 	}
-	sys_time = (10000 / (sys_clk_rate / 1000000));
-	start_cycle = ((NAND_CYCLE_DELAY + plat->T_REA * 10) / sys_time);
-	end_cycle = ((NAND_CYCLE_DELAY + sys_time / 2 + plat->T_RHOH * 10) / sys_time);
-
 	bus_cycle = nand_mode_time[time_mode];
+
+	sys_time = (10000 / (sys_clk_rate / 1000000));
+	Tcycle = (bus_cycle + 1) * sys_time;
+	start_cycle = ((NAND_CYCLE_DELAY + plat->T_REA * 10) / sys_time);
+	end_cycle = ((NAND_CYCLE_DELAY + Tcycle / 2 + plat->T_RHOH * 10) / sys_time);
+
 	if (bus_cycle < start_cycle)
 		adjust = start_cycle - bus_cycle;
 	else if(bus_cycle > end_cycle) {
@@ -513,13 +515,15 @@ static void aml_nand_cmd_ctrl(struct mtd_info *mtd, int cmd,  unsigned int ctrl)
 static int aml_nand_wait(struct mtd_info *mtd, struct nand_chip *chip)
 {
 	struct aml_nand_chip *aml_chip = mtd_to_nand_chip(mtd);
-	int status[MAX_CHIP_NUM], state = chip->state, i = 0, time_cnt = 0;
+	int status[MAX_CHIP_NUM], state = chip->state, i = 0, time_cnt = 0, chip_nr = 1;
 
 	/* Apply this short delay always to ensure that we do wait tWB in
 	 * any case on any machine. */
 	ndelay(100);
 
-	//for (i=0; i<aml_chip->chip_num; i++) {
+	if (state == FL_ERASING)
+		chip_nr = aml_chip->chip_num;
+	for (i=0; i<chip_nr; i++) {
 		if (aml_chip->valid_chip[i]) {
 			//active ce for operation chip and send cmd
 			aml_chip->aml_nand_select_chip(aml_chip, i);
@@ -560,7 +564,7 @@ static int aml_nand_wait(struct mtd_info *mtd, struct nand_chip *chip)
 
 			status[0] |= status[i];
 		}
-	//}
+	}
 
 	return status[0];
 }
@@ -1581,13 +1585,13 @@ static int aml_nand_block_bad(struct mtd_info *mtd, loff_t ofs, int getchip)
 
 		if (ret < 0) {
 			printk(" NAND detect Bad block at %llx \n", (uint64_t)ofs);
-			return -EFAULT;
+			return EFAULT;
 		}
 		if (aml_oob_ops.oobbuf[chip->badblockpos] == 0) {
 			memset(aml_chip->aml_nand_data_buf, 0, (mtd->writesize + mtd->oobsize));
 			if (!memcmp(aml_chip->aml_nand_data_buf + mtd->writesize, aml_oob_ops.oobbuf, aml_oob_ops.ooblen)) {
 				printk(" NAND detect Bad block at %llx \n", (uint64_t)ofs);
-				return -EFAULT;
+				return EFAULT;
 			}
 		}
 	}
@@ -1598,7 +1602,7 @@ static int aml_nand_block_bad(struct mtd_info *mtd, loff_t ofs, int getchip)
 		if (ret == -EUCLEAN)
 			ret = 0;
 		if (ret < 0)
-			return -EFAULT;
+			return EFAULT;
 		if (chip->oob_poi[chip->badblockpos] == 0xFF)
 			return 0;
 
@@ -1606,7 +1610,7 @@ static int aml_nand_block_bad(struct mtd_info *mtd, loff_t ofs, int getchip)
 			memset(aml_chip->aml_nand_data_buf, 0, (mtd->writesize + mtd->oobsize));
 			if (!memcmp(aml_chip->aml_nand_data_buf + mtd->writesize, chip->oob_poi, mtd->oobavail)) {
 				printk(" NAND detect Bad block at %llx \n", (uint64_t)ofs);
-				return -EFAULT;
+				return EFAULT;
 		}	
 	}
 	}
