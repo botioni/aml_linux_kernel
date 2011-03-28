@@ -498,6 +498,10 @@ static void reinit_bt601in_dec(void)
 static void reinit_camera_dec(void)
 {
     reset_bt656in_module();
+	
+    WRITE_CBUS_REG(BT_VIDEOSTART, 1 | (1 << 16));   //Line number of the first video start line in field 0/1.there is a blank
+    WRITE_CBUS_REG(BT_VIDEOEND , (am656in_dec_info.active_line )|          //  Line number of the last video line in field 1. added video end for avoid overflow.
+                                    ((am656in_dec_info.active_line ) << 16));                   // Line number of the last video line in field 0
     WRITE_CBUS_REG(BT_PORT_CTRL,    (0 << BT_IDQ_EN )   |     // use external idq pin.
                                         (0 << BT_IDQ_PHASE )   |
                                         ( 0 << BT_FID_HSVS ) |         // FID came from HS VS.
@@ -539,9 +543,10 @@ static void reinit_camera_dec(void)
 
     WRITE_CBUS_REG(BT_FIELDSADR, (1 << 16) | 1);    // field 0/1 start lcnt
     WRITE_CBUS_REG(BT_VBIEND, 1 | (1 << 16));       //field 0/1 VBI last line number
-    WRITE_CBUS_REG(BT_VIDEOSTART, 1 | (1 << 16));   //Line number of the first video start line in field 0/1.
-    WRITE_CBUS_REG(BT_VIDEOEND , am656in_dec_info.active_line|          //  Line number of the last video line in field 1. added video end for avoid overflow.
-                                    (am656in_dec_info.active_line <<16));                   // Line number of the last video line in field 0
+    
+    WRITE_CBUS_REG(BT_VIDEOSTART, 2 | (2 << 16));   //Line number of the first video start line in field 0/1.there is a blank
+    WRITE_CBUS_REG(BT_VIDEOEND , (am656in_dec_info.active_line +1)|          //  Line number of the last video line in field 1. added video end for avoid overflow.
+                                    ((am656in_dec_info.active_line +1) << 16));                   // Line number of the last video line in field 0
     WRITE_CBUS_REG(BT_CTRL ,    (1 << BT_EN_BIT       ) |    // enable BT moduale.
                                 (0 << BT_REF_MODE_BIT ) |    // timing reference is from bit stream.
                                 (0 << BT_FMT_MODE_BIT ) |     //PAL

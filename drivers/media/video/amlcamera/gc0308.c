@@ -396,9 +396,9 @@ struct aml_camera_i2c_fig1_s GC0308_script[] = {
 	{0x05,0x00},
 	{0x06,0x00},
 	{0x07,0x00},
-	{0x08,0x00},
+	{0x08,0x02},
 	{0x09,0x01},
-	{0x0a,0xe8},
+	{0x0a,0xea},
 	{0x0b,0x02},
 	{0x0c,0x88},
 	{0x0d,0x02},
@@ -1869,6 +1869,7 @@ static int gc0308_open(struct file *file)
 		printk("+++found a init function, and run it..\n");
 	}
 	GC0308_init_regs(dev);
+	msleep(40);
 	mutex_lock(&dev->mutex);
 	dev->users++;
 	if (dev->users > 1) {

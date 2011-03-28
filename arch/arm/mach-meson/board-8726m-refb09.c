@@ -90,9 +90,6 @@
 #ifdef CONFIG_SND_AML_M1_MID_WM8900
 #include <sound/wm8900.h>
 #endif
-#ifdef CONFIG_AMLOGIC_CAMERA_ENABLE
-#include <linux/camera/amlogic_camera_common.h>
-#endif
 #ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE
 #include <media/amlogic/aml_camera.h>
 #endif
@@ -1100,51 +1097,6 @@ static  struct platform_device aml_rtc_device = {
             .id               = -1,
     };
 #endif
-#ifdef CONFIG_AMLOGIC_SECOND_CAMERA_ENABLE
-
-#ifdef CONFIG_CAMERA_GC0308
-static struct platform_device camera_device = {
-    .name       = "camera_gc0308",
-    .id         = -1,
-};
-int gc0308_init(void)
-{
-   
-   eth_set_pinmux(ETH_BANK0_GPIOC3_C12,ETH_CLK_OUT_GPIOC12_REG3_1, 1);
-   #ifdef CONFIG_SN7325
-	printk( "amlogic camera driver: init CONFIG_SN7325. \n");
-	configIO(1, 0);
-	setIO_level(1, 0, 1);//30m poweer_disable
-		  
-	setIO_level(1, 0, 2);//200m poweer_disable
-	setIO_level(1, 0, 0);//30m pwd enable
-	setIO_level(1, 0, 6);//200m pwd low
-	configIO(0, 0);
-	setIO_level(0, 0, 3);//30m reset low
-	setIO_level(0, 0, 2);//200m reset low
-	configIO(1, 0);
-	msleep(300);
-	setIO_level(1, 1, 1);//30m poweer_enable
-	msleep(300);
-	configIO(0, 0);
-	setIO_level(0, 1, 3);//30m reset high
-		  
-	#endif
-   
-
-}
-
-static void __init camera_power_on_init(void)
-{
-    udelay(1000);
-    SET_CBUS_REG_MASK(HHI_ETH_CLK_CNTL,0x30f);// 24M XTAL
-    SET_CBUS_REG_MASK(HHI_DEMOD_PLL_CNTL,0x232);// 24M XTAL
-
-    eth_set_pinmux(ETH_BANK0_GPIOC3_C12,ETH_CLK_OUT_GPIOC12_REG3_1, 1);		
-}
-
-#endif
-#endif
 
 #if defined (CONFIG_AMLOGIC_VIDEOIN_MANAGER)
 static struct resource vm_resources[] = {
@@ -1185,12 +1137,12 @@ static int gc0308_v4l2_init(void)
 	setIO_level(0, 0, 3);//30m reset low
 	//setIO_level(0, 0, 2);//200m reset low
 	configIO(1, 0);
-	msleep(100);
+	msleep(10);
 	setIO_level(1, 1, 1);//30m poweer_enable
-	msleep(100);
+	msleep(10);
 	configIO(0, 0);
 	setIO_level(0, 1, 3);//30m reset high
-	msleep(400);
+	msleep(20);
 		  
 	#endif
 
@@ -1204,7 +1156,7 @@ static int gc0308_v4l2_uninit(void)
 	setIO_level(1, 1, 0);//30m pwd enable
 	configIO(0, 0);
 	setIO_level(0, 0, 3);//30m reset low
-	msleep(300); 
+	msleep(20); 
     #endif
 
 }
@@ -1253,17 +1205,17 @@ static int gt2005_v4l2_init(void)
 	//setIO_level(0, 0, 3);//30m reset low
 	setIO_level(0, 0, 2);//200m reset low
 	configIO(1, 0);
-	msleep(100);
+	msleep(10);
 	setIO_level(1, 1, 2);//200m poweer_enable
-	msleep(100);
+	msleep(10);
 	configIO(0, 0);
 	setIO_level(0, 1, 2);//200m reset high
 	
-	msleep(100);
+	msleep(10);
 	configIO(1, 0);
 	setIO_level(1, 1, 6);//200m pwd high
 	//configIO(1, 0);
-	msleep(400);
+	msleep(20);
     
     #endif
 
@@ -1277,7 +1229,7 @@ static int gt2005_v4l2_uninit(void)
 	setIO_level(1, 0, 6);//200m pwd low
 	//configIO(0, 0);
 	//setIO_level(0, 0, 2);//200m reset low
-	msleep(300); 
+	msleep(20); 
     #endif
 
 }
@@ -1304,64 +1256,6 @@ aml_plat_cam_data_t video_gt2005_data = {
 };
 #endif /* VIDEO_AMLOGIC_CAPTURE_GT2005 */
 
-#ifdef CONFIG_CAMERA_GT2005
-static struct platform_device camera_gt2005_device = {
-    .name       = "camera_gt2005",
-    .id         = -1,
-};
-int gt2005_init(void)
-{
-   eth_set_pinmux(ETH_BANK0_GPIOC3_C12,ETH_CLK_OUT_GPIOC12_REG3_1, 1);
-   #ifdef CONFIG_SN7325
-	printk( "amlogic camera driver: init CONFIG_SN7325. \n");
-	configIO(1, 0);
-	setIO_level(1, 0, 1);//30m poweer_disable	
-	setIO_level(1, 0, 2);//200m poweer_disable
-	setIO_level(1, 1, 0);//30m pwd disable
-	setIO_level(1, 0, 6);//200m pwd low
-	configIO(0, 0);
-	setIO_level(0, 0, 3);//30m reset low
-	setIO_level(0, 0, 2);//200m reset low
-	configIO(1, 0);
-	msleep(300);
-	setIO_level(1, 1, 2);//200m poweer_enable
-	msleep(300);
-	configIO(0, 0);
-	setIO_level(0, 1, 2);//200m reset high
-	
-	msleep(300);
-	configIO(1, 0);
-	setIO_level(1, 1, 6);//200m pwd high
-	//configIO(1, 0);
-	
-    #endif
-
-}
-static struct amlogic_camera_platform_data gt2005_pdata = {
-    .name = "camera_gt2005",
-    .first_init = gt2005_init,
-    #ifdef CONFIG_AMLOGIC_SECOND_CAMERA_ENABLE
-    .second_init = gc0308_init,
-    #else
-	.second_init = NULL,
-	#endif
-};
-
-static void __init camera_gt2005_power_on_init(void)
-{
-    udelay(1000);
-    WRITE_CBUS_REG(HHI_ETH_CLK_CNTL,0x30f);// 24M XTAL
-    WRITE_CBUS_REG(HHI_DEMOD_PLL_CNTL,0x232);// 24M XTAL
-    
-    
-    printk("camera_gt2005_power_on_init WRITE_CBUS_REG \n");
-    printk("HHI_ETH_CLK_CNTL = %x\n", READ_CBUS_REG(HHI_ETH_CLK_CNTL));
-    printk("HHI_DEMOD_PLL_CNTL = %x\n", READ_CBUS_REG(HHI_DEMOD_PLL_CNTL));
-
-    eth_set_pinmux(ETH_BANK0_GPIOC3_C12,ETH_CLK_OUT_GPIOC12_REG3_1, 1);		
-}
-
-#endif
 
 #if defined(CONFIG_SUSPEND)
 
@@ -2549,15 +2443,9 @@ static struct platform_device __initdata *platform_devs[] = {
     #if defined(CONFIG_AMLOGIC_BACKLIGHT)
         &aml_bl_device,
     #endif
-    #ifdef CONFIG_CAMERA_GC0308
-        &camera_device,
-    #endif
     #ifdef CONFIG_AMLOGIC_VIDEOIN_MANAGER
 		&vm_device,
 	#endif
-    #ifdef CONFIG_CAMERA_GT2005
-        &camera_gt2005_device,
-    #endif
     #if defined(CONFIG_AM_TV_OUTPUT)||defined(CONFIG_AM_TCON_OUTPUT)
         &vout_device,   
     #endif
@@ -2579,21 +2467,6 @@ static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
 #ifdef CONFIG_SENSORS_MXC622X
     {
         I2C_BOARD_INFO(MXC622X_I2C_NAME,  MXC622X_I2C_ADDR),
-    },
-#endif
-
-#ifdef CONFIG_CAMERA_GC0308
-    {
-        /*gc0309 i2c address is 0x42/0x43*/
-        I2C_BOARD_INFO("gc0308_i2c",  0x42 >> 1 ),
-    },
-#endif
-
-#ifdef CONFIG_CAMERA_GT2005
-    {
-    	/*gt2005 i2c address is 0x78/0x79*/
-    	I2C_BOARD_INFO("gt2005_i2c",  0x78 >> 1 ),
-    	.platform_data = (void *)&gt2005_pdata
     },
 #endif
 #if CONFIG_VIDEO_AMLOGIC_CAPTURE_GT2005

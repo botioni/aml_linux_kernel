@@ -328,11 +328,11 @@ struct aml_camera_i2c_fig_s GT2005_script[] = {
 	{0x010C , 0x00},
 	{0x010D , 0x08},
 	{0x010E , 0x00},
-	{0x010F , 0x08},
+	{0x010F , 0x0A},
 	{0x0110 , 0x03},					
 	{0x0111 , 0x20},					
 	{0x0112 , 0x02},					
-	{0x0113 , 0x58},
+	{0x0113 , 0x5A},
 
 	//YUV Mode
 	{0x0114 , 0x06},
@@ -1865,6 +1865,7 @@ static int gt2005_open(struct file *file)
 		printk("+++found a init function, and run it..\n");
 	}
 	GT2005_init_regs(dev);
+	msleep(40);
 	mutex_lock(&dev->mutex);
 	dev->users++;
 	if (dev->users > 1) {
@@ -1970,13 +1971,13 @@ static int gt2005_close(struct file *file)
 #if 1		
 	power_down_gt2005(dev);
 #endif
-	msleep(100);
+	msleep(10);
 
 	if(dev->platform_dev_data.device_uninit) {
 		dev->platform_dev_data.device_uninit();
 		printk("+++found a uninit function, and run it..\n");
 	}
-	msleep(400); 
+	msleep(10); 
 	return 0;
 }
 
