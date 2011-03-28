@@ -188,6 +188,11 @@ static struct gc0308_fmt formats[] = {
 		.fourcc   = V4L2_PIX_FMT_NV12,
 		.depth    = 12,	
 	},
+	{
+		.name     = "YUV420P",
+		.fourcc   = V4L2_PIX_FMT_YUV420,
+		.depth    = 12,
+	}
 #if 0
 	{
 		.name     = "4:2:2, packed, YUYV",
