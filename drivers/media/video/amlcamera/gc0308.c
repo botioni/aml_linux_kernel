@@ -496,7 +496,7 @@ struct aml_camera_i2c_fig1_s GC0308_script[] = {
 	{0xd0,0xCb},//c9
 	{0xd1,0x10},
 	{0xd2,0x90},
-	{0xd3,0x50},//88
+	{0xd3,0x68},//88
 	{0xd5,0xF2},
 	{0xd6,0x10},
 	{0xdb,0x92},
@@ -930,61 +930,61 @@ void set_GC0308_param_exposure(struct gc0308_device *dev,enum camera_exposure_e 
 			buf1[0]=0xb5;
 			buf1[1]=0xc0;
 			buf2[0]=0xd3;
-			buf2[1]=0x30;
+			buf2[1]=0x32;
 			break;		
 		case EXPOSURE_N3_STEP:
 			buf1[0]=0xb5;
 			buf1[1]=0xd0;
 			buf2[0]=0xd3;
-			buf2[1]=0x38;
+			buf2[1]=0x40;
 			break;		
 		case EXPOSURE_N2_STEP:
 			buf1[0]=0xb5;
 			buf1[1]=0xe0;
 			buf2[0]=0xd3;
-			buf2[1]=0x40;
+			buf2[1]=0x42;
 			break;				
 		case EXPOSURE_N1_STEP:
 			buf1[0]=0xb5;
 			buf1[1]=0xf0;
 			buf2[0]=0xd3;
-			buf2[1]=0x48;
+			buf2[1]=0x50;
 			break;				
 		case EXPOSURE_0_STEP:
 			buf1[0]=0xb5;
 			buf1[1]=0x10;
 			buf2[0]=0xd3;
-			buf2[1]=0x60;
+			buf2[1]=0x62;
 			break;				
 		case EXPOSURE_P1_STEP:
 			buf1[0]=0xb5;
 			buf1[1]=0x20;
 			buf2[0]=0xd3;
-			buf2[1]=0x58;
+			buf2[1]=0x60;
 			break;				
 		case EXPOSURE_P2_STEP:
 			buf1[0]=0xb5;
 			buf1[1]=0x30;
 			buf2[0]=0xd3;
-			buf2[1]=0x60;
+			buf2[1]=0x62;
 			break;				
 		case EXPOSURE_P3_STEP:
 			buf1[0]=0xb5;
 			buf1[1]=0x40;
 			buf2[0]=0xd3;
-			buf2[1]=0x68;
+			buf2[1]=0x70;
 			break;				
 		case EXPOSURE_P4_STEP:	
 			buf1[0]=0xb5;
 			buf1[1]=0x50;
 			buf2[0]=0xd3;
-			buf2[1]=0x70;
+			buf2[1]=0x72;
 			break;
 		default:
 			buf1[0]=0xb5;
 			buf1[1]=0x00;
 			buf2[0]=0xd3;
-			buf2[1]=0x50;
+			buf2[1]=0x60;
 			break;    
 	}			
 	//msleep(300);

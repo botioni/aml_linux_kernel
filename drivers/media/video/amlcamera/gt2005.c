@@ -502,7 +502,7 @@ struct aml_camera_i2c_fig_s GT2005_script[] = {
 	{0x026F , 0xA0},
 	{0x0270 , 0x40},
 	{0x0300 , 0x81},
-	{0x0301 , 0x90}, // 0x80  kim
+	{0x0301 , 0xA0}, // 0x80  kim
 	{0x0302 , 0x22},
 	{0x0303 , 0x06},
 	{0x0304 , 0x03},
@@ -1047,56 +1047,56 @@ void GT2005_set_param_exposure(struct gt2005_device *dev,enum camera_exposure_e 
 	{
 		case EXPOSURE_N4_STEP:  
             		i2c_put_byte(client,0x0300 , 0x81);
-			i2c_put_byte(client,0x0301 , 0x45);//40
+			i2c_put_byte(client,0x0301 , 0x55);//40
 			i2c_put_byte(client,0x0201 , 0xd0);
 			break;
 			
 		case EXPOSURE_N3_STEP:
             		i2c_put_byte(client,0x0300 , 0x81);
-			i2c_put_byte(client,0x0301 , 0x55);//50
+			i2c_put_byte(client,0x0301 , 0x65);//50
 			i2c_put_byte(client,0x0201 , 0xf0);
 			break;
 			
 		case EXPOSURE_N2_STEP:
             		i2c_put_byte(client,0x0300 , 0x81);
-			i2c_put_byte(client,0x0301 , 0x60);
+			i2c_put_byte(client,0x0301 , 0x70);
 			i2c_put_byte(client,0x0201 , 0x10);//b0
 			break;
 			
 		case EXPOSURE_N1_STEP:
             		i2c_put_byte(client,0x0300 , 0x81);
-			i2c_put_byte(client,0x0301 , 0x70);
+			i2c_put_byte(client,0x0301 , 0x80);
 			i2c_put_byte(client,0x0201 , 0x20);//d0
 			break;
 			
 		case EXPOSURE_0_STEP:
            		i2c_put_byte(client,0x0300 , 0x81);
-			i2c_put_byte(client,0x0301 , 0x90);
+			i2c_put_byte(client,0x0301 , 0xa0);
 			i2c_put_byte(client,0x0201 , 0x30);//0c
 			break;
 			
 		case EXPOSURE_P1_STEP:
             		i2c_put_byte(client,0x0300 , 0x81);
-			i2c_put_byte(client,0x0301 , 0x90);
-			i2c_put_byte(client,0x0201 , 0x40);//30
+			i2c_put_byte(client,0x0301 , 0xa0);
+			i2c_put_byte(client,0x0201 , 0x50);//30
 			break;
 			
 		case EXPOSURE_P2_STEP:
             		i2c_put_byte(client,0x0300 , 0x81);
-			i2c_put_byte(client,0x0301 , 0xa0);
-			i2c_put_byte(client,0x0201 , 0x50);
+			i2c_put_byte(client,0x0301 , 0xb0);//a0
+			i2c_put_byte(client,0x0201 , 0x55);
 			break;
 			
 		case EXPOSURE_P3_STEP:
             		i2c_put_byte(client,0x0300 , 0x81);
 			i2c_put_byte(client,0x0301 , 0xb0);
-			i2c_put_byte(client,0x0201 , 0x60);
+			i2c_put_byte(client,0x0201 , 0x70);//60
 			break;
 			
 		case EXPOSURE_P4_STEP:	
             		i2c_put_byte(client,0x0300 , 0x81);
-			i2c_put_byte(client,0x0301 , 0xc0);
-			i2c_put_byte(client,0x0201 , 0x70);
+			i2c_put_byte(client,0x0301 , 0xc5);
+			i2c_put_byte(client,0x0201 , 0x75);
 			break;
 			
 		default:
