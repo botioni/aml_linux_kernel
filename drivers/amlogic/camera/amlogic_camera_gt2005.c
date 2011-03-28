@@ -544,6 +544,9 @@ static void wakeup_sw_camera_gt2005(void)
 
 #if 1
 struct aml_camera_i2c_fig_s GT2005_script[] = { 
+#ifdef CONFIG_MACH_MESON_8726M_REFB10
+	{0x0101 , 0x02},
+#endif
 	{0x0102 , 0x01},
 	{0x0103 , 0x00},
 
