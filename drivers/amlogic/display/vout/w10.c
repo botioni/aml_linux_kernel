@@ -156,20 +156,20 @@ void power_on_backlight(void)
     msleep(100);
     SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<31));
     msleep(100);
-    //EIO -> OD4: 0
-    #ifdef CONFIG_SN7325
-    configIO(0, 0);
-    setIO_level(0, 0, 4);
-    #endif
+    //EIO -> PP1: 0   //EIO -> OD4: 0
+#ifdef CONFIG_SN7325
+    configIO(1, 0);  //configIO(0, 0);
+    setIO_level(1, 0, 1);  //setIO_level(0, 0, 4);
+#endif
     printk("\n\npower_on_backlight.\n\n");
 }
 
 void power_off_backlight(void)
 {
-    //EIO -> OD4: 1
+    //EIO -> PP1: 0  //EIO -> OD4: 1
 #ifdef CONFIG_SN7325
-    configIO(0, 0);
-    setIO_level(0, 1, 4);
+    configIO(1, 0);  //configIO(0, 0);
+    setIO_level(1, 1, 1);  //setIO_level(0, 1, 4);
 #endif
     CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<31));
     CLEAR_CBUS_REG_MASK(PWM_MISC_REG_AB, (1 << 0));
@@ -184,6 +184,10 @@ static void power_on_lcd(void)
     configIO(0, 0);
     setIO_level(0, 0, 0);
 #endif
+    msleep(10);
+    //VCCx2_EN D17 GPIOA_6 --> H
+    set_gpio_val(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), 1);
+    set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);
 }
 
 static void power_off_lcd(void)
