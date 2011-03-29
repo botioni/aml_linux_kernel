@@ -89,6 +89,7 @@
 
 #ifdef CONFIG_SND_AML_M1_MID_WM8900
 #include <sound/wm8900.h>
+#endif
 #ifdef CONFIG_SND_SOC_RT5621
 #include <sound/rt5621.h>
 #endif
@@ -555,7 +556,7 @@ static struct resource aml_m1_audio_resource[]={
                 .flags  =   IORESOURCE_MEM,
         },
 };
-
+#ifdef CONFIG_SND_AML_M1_MID_WM8900
 static struct platform_device aml_audio={
         .name               = "aml_m1_audio_wm8900",
         .id                     = -1,
@@ -563,7 +564,6 @@ static struct platform_device aml_audio={
         .num_resources  =   ARRAY_SIZE(aml_m1_audio_resource),
 };
 
-#ifdef CONFIG_SND_AML_M1_MID_WM8900
 
 //use LED_CS1 as hp detect pin
 #define PWM_TCNT    (600-1)
@@ -831,6 +831,7 @@ static  struct platform_device aml_rtc_device = {
             .id               = -1,
     };
 #endif
+#if defined(CONFIG_VIDEO_AMLOGIC_CAPTURE_GT2005)
 
 //#include <media/amlogic/aml_camera.h>
 
