@@ -902,7 +902,7 @@ int gt2005_init(void)
 	configIO(1, 0);
 	setIO_level(1, 1, 4);//PP4 -->1
 	msleep(300);
-	setIO_level(1, 0, 0);//PP0-->0
+	setIO_level(1, 1, 0);//PP0-->0
 	msleep(300);
     #endif
 
@@ -916,7 +916,7 @@ int gt2005_init(void)
 int gc0308_init(void)
 {
    #ifdef CONFIG_SN7325
-	printk( "amlogic camera driver: init CONFIG_SN7325. \n");
+	printk( "amlogic camera driver 0308: init CONFIG_SN7325. \n");
 	configIO(1, 0);
 	setIO_level(1, 1, 4);//PP4 -->1
 	msleep(300);
@@ -964,7 +964,7 @@ static int gt2005_v4l2_uninit(void)
 	configIO(1, 0);
 	setIO_level(1, 1, 4);
 	msleep(300);
-	setIO_level(1, 0, 0);
+	setIO_level(1, 1, 0);
     #endif
 
 }
