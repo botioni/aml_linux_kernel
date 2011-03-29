@@ -38,6 +38,7 @@
 #include <linux/i2c-aml.h>
 #include <mach/power_gate.h>
 #include <linux/reboot.h>
+#include <linux/syscalls.h>
 
 #ifdef CONFIG_AM_UART_WITH_S_CORE 
 #include <linux/uart-aml.h>
@@ -90,6 +91,9 @@
 #include <sound/wm8900.h>
 #ifdef CONFIG_SND_SOC_RT5621
 #include <sound/rt5621.h>
+#endif
+#ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE
+#include <media/amlogic/aml_camera.h>
 #endif
 
 #if defined(CONFIG_JPEGLOGO)
@@ -828,6 +832,114 @@ static  struct platform_device aml_rtc_device = {
     };
 #endif
 
+//#include <media/amlogic/aml_camera.h>
+
+int gt2005_init(void)
+{
+   #ifdef CONFIG_SN7325
+	printk( "amlogic camera driver: init CONFIG_SN7325. \n");
+	configIO(1, 0);
+	setIO_level(1, 1, 4);//PP4 -->1
+	msleep(300);
+	setIO_level(1, 1, 0);//PP0-->0
+	msleep(300);
+    #endif
+
+}
+#endif /* VIDEO_AMLOGIC_CAPTURE_GT2005 */
+
+#ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE_GC0308
+
+//#include <media/amlogic/aml_camera.h>
+
+int gc0308_init(void)
+{
+   #ifdef CONFIG_SN7325
+	printk( "amlogic camera driver 0308: init CONFIG_SN7325. \n");
+	configIO(1, 0);
+	setIO_level(1, 1, 4);//PP4 -->1
+	msleep(300);
+	setIO_level(1, 0, 0);//PP0-->0
+	msleep(300);
+    #endif
+
+}
+#endif /* VIDEO_AMLOGIC_CAPTURE_GT2005 */
+#if defined (CONFIG_AMLOGIC_VIDEOIN_MANAGER)
+static struct resource vm_resources[] = {
+    [0] = {
+        .start =  VM_ADDR_START,
+        .end   = VM_ADDR_END,
+        .flags = IORESOURCE_MEM,
+    },
+};
+static struct platform_device vm_device =
+{
+	.name = "vm",
+	.id = 0,
+    .num_resources = ARRAY_SIZE(vm_resources),
+    .resource      = vm_resources,
+};
+#endif /* AMLOGIC_VIDEOIN_MANAGER */
+#ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE
+static void __init camera_power_on_init(void)
+{
+    udelay(1000);
+    SET_CBUS_REG_MASK(HHI_ETH_CLK_CNTL,0x30f);// 24M XTAL
+    SET_CBUS_REG_MASK(HHI_DEMOD_PLL_CNTL,0x232);// 24M XTAL
+
+    eth_set_pinmux(ETH_BANK0_GPIOC3_C12,ETH_CLK_OUT_GPIOC12_REG3_1, 1);		
+}
+#endif
+#if defined(CONFIG_VIDEO_AMLOGIC_CAPTURE_GT2005)
+static int gt2005_v4l2_init(void)
+{
+	gt2005_init();
+}
+static int gt2005_v4l2_uninit(void)
+{
+   #ifdef CONFIG_SN7325
+	printk( "amlogic camera driver: uninit gt2005_v4l2_uninit. \n");
+	configIO(1, 0);
+	setIO_level(1, 1, 4);
+	msleep(300);
+	setIO_level(1, 1, 0);
+    #endif
+
+}
+
+aml_plat_cam_data_t video_gt2005_data = {
+	.name="video-gt2005",
+	.video_nr=0,
+	.device_init= gt2005_v4l2_init,
+	.device_uninit=gt2005_v4l2_uninit,
+};
+#endif
+
+#if defined(CONFIG_VIDEO_AMLOGIC_CAPTURE_GC0308)
+static int gc0308_v4l2_init(void)
+{
+	gc0308_init();
+}
+static int gc0308_v4l2_uninit(void)
+{
+   #ifdef CONFIG_SN7325
+	 printk( "amlogic camera driver: gc0308_v4l2_uninit CONFIG_SN7325. \n");
+	configIO(1, 0);
+	setIO_level(1, 1, 4);
+	msleep(300);
+	setIO_level(1, 0, 0);
+    #endif
+
+}
+
+aml_plat_cam_data_t video_gc0308_data = {
+	.name="video-gc0308",
+	.video_nr=0,//1,
+	.device_init= gc0308_v4l2_init,
+	.device_uninit=gc0308_v4l2_uninit,
+};
+#endif
 #if defined(CONFIG_SUSPEND)
 static void set_vccx2(int power_on)
 {
