@@ -269,7 +269,7 @@ static struct mpu3050_platform_data mpu3050_data = {
                 // connected
                 .bus = EXT_SLAVE_BUS_SECONDARY, //The secondary I2C of MPU
                 .address = 0x1c,
-                .orientation = {0,1,0,1,0,0,0,0,-1},
+                .orientation = {-1,0,0,0,1,0,0,0,-1},
             },
     };
 #endif
@@ -839,6 +839,12 @@ static  struct platform_device aml_rtc_device = {
 #ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE_GC0308
 int gc0308_init(void)
 {
+
+        // set camera power enable   ibit[21]
+                clear_mio_mux(5, (1<<31));
+    set_gpio_val(GPIOE_bank_bit16_21(21), GPIOE_bit_bit16_21(21), 1);
+    set_gpio_mode(GPIOE_bank_bit16_21(21), GPIOE_bit_bit16_21(21), GPIO_OUTPUT_MODE);
+    msleep(300);
    //pp0
    #ifdef CONFIG_SN7325
 	printk( "amlogic camera driver 0308: init CONFIG_SN7325. \n");
@@ -892,6 +898,10 @@ static int gc0308_v4l2_uninit(void)
 	 configIO(1, 0);
 	 setIO_level(1, 1, 0);//30m PWR_Down
  #endif
+
+    msleep(300);
+    set_gpio_val(GPIOE_bank_bit16_21(21), GPIOE_bit_bit16_21(21), 0);
+    set_gpio_mode(GPIOE_bank_bit16_21(21), GPIOE_bit_bit16_21(21), GPIO_OUTPUT_MODE);
 }
 aml_plat_cam_data_t video_gc0308_data = {
 	.name="video-gc0308",
