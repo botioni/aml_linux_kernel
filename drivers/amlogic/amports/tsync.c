@@ -29,7 +29,6 @@
 MODULE_AMLOG(AMLOG_DEFAULT_LEVEL, 0, LOG_DEFAULT_LEVEL_DESC, LOG_DEFAULT_MASK_DESC);
 
 //#define DEBUG
-//#define DEBUG_DISCONTINUE
 #define AVEVENT_FLAG_PARAM  0x01
 
 //#define TSYNC_SLOW_SYNC
@@ -92,9 +91,7 @@ static spinlock_t lock = SPIN_LOCK_UNLOCKED;
 static tsync_mode_t tsync_mode = TSYNC_MODE_AMASTER;
 static tsync_stat_t tsync_stat = TSYNC_STAT_PCRSCR_SETUP_NONE;
 static int tsync_enable = 0;   //1;
-#ifdef DEBUG_DISCONTINUE
 static int pts_discontinue = 0;
-#endif
 static int tsync_abreak = 0;
 static bool tsync_pcr_recover_enable = false;
 static int pcr_sync_stat = PCR_SYNC_UNSET;
@@ -323,9 +320,6 @@ void tsync_avevent(avevent_t event, u32 param)
 
             timestamp_pcrscr_set(param);
 
-#ifdef DEBUG_DISCONTINUE
-            pts_discontinue = 1;
-#endif
             amlog_level(LOG_LEVEL_ATTENTION, "reset scr from vpts to 0x%x\n", param);
 
         }
@@ -344,9 +338,7 @@ void tsync_avevent(avevent_t event, u32 param)
 
         amlog_level(LOG_LEVEL_ATTENTION, "AUDIO_TSTAMP_DISCONTINUITY, 0x%x, 0x%x\n", t, param);
 
-#ifdef DEBUG_DISCONTINUE
         pts_discontinue = 1;
-#endif
 
         if (abs(param - t) > AV_DISCONTINUE_THREDHOLD) {
             /* switch tsync mode to free run mode,
@@ -738,7 +730,6 @@ static ssize_t store_enable(struct class *class,
     return size;
 }
 
-#ifdef DEBUG_DISCONTINUE
 static ssize_t show_discontinue(struct class *class,
                                 struct class_attribute *attr,
                                 char *buf)
@@ -767,7 +758,6 @@ static ssize_t store_discontinue(struct class *class,
 
     return size;
 }
-#endif
 
 static struct class_attribute tsync_class_attrs[] = {
     __ATTR(pts_video,  S_IRUGO | S_IWUSR, show_vpts,    store_vpts),
@@ -777,9 +767,7 @@ static struct class_attribute tsync_class_attrs[] = {
     __ATTR(mode,       S_IRUGO | S_IWUSR, show_mode,    NULL),
     __ATTR(enable,     S_IRUGO | S_IWUSR, show_enable,  store_enable),
     __ATTR(pcr_recover, S_IRUGO | S_IWUSR, show_pcr_recover,  store_pcr_recover),
-#ifdef DEBUG_DISCONTINUE
     __ATTR(discontinue, S_IRUGO | S_IWUGO, show_discontinue,  store_discontinue),
-#endif
     __ATTR_NULL
 };
 
