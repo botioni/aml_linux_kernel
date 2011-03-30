@@ -994,6 +994,7 @@ static struct aml_power_pdata power_pdata = {
 	//.set_charge = set_charge,
 	.get_bat_vol = get_bat_vol,
 	.get_charge_status = get_charge_status,
+	.is_support_usb_charging = 0;
 	//.supplied_to = supplicants,
 	//.num_supplicants = ARRAY_SIZE(supplicants),
 };
