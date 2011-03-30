@@ -753,6 +753,94 @@ static int ads7846_init_gpio(void)
 }
 #endif
 
+#ifdef CONFIG_TOUCHSCREEN_TSC2007
+#include <linux/i2c/tsc2007.h>
+
+//GPIOD_24
+#define GPIO_TSC2007_PENIRQ ((GPIOD_bank_bit2_24(24)<<16) |GPIOD_bit_bit2_24(24)) 
+#define GPIO_TSC2007_PENIRQ_IDX     (GPIOD_IDX + 24)
+
+static int tsc2007_init_platform_hw(void)
+{
+/* memson
+    Bit(s)  Description
+    256-105 Unused
+    104     JTAG_TDO
+    103     JTAG_TDI
+    102     JTAG_TMS
+    101     JTAG_TCK
+    100     gpioA_23
+    99      gpioA_24
+    98      gpioA_25
+    97      gpioA_26
+    98-76    gpioE[21:0]
+    75-50   gpioD[24:0]
+    49-23   gpioC[26:0]
+    22-15   gpioB[22;15]
+    14-0    gpioA[14:0]
+ */
+
+    /* set input mode */
+    gpio_direction_input(GPIO_TSC2007_PENIRQ);
+    /* set gpio interrupt #0 source=GPIOD_24, and triggered by falling edge(=1) */
+    gpio_enable_edge_int(GPIO_TSC2007_PENIRQ_IDX, 1, 0);
+
+    return 0;
+}
+static int tsc2007_get_pendown_state(void)
+{
+    return !gpio_get_value(GPIO_TSC2007_PENIRQ);
+}
+
+#define XLCD    800
+#define YLCD    600
+#define SWAP_XY 0
+#define XPOL    0
+#define YPOL    0
+#define XMIN 0
+#define XMAX 0
+#define YMIN 4095
+#define YMAX 4095
+
+int tsc2007_convert(int x, int y)
+{
+#if (SWAP_XY == 1)
+    swap(x, y);
+#endif
+    if (x < XMIN) x = XMIN;
+    if (x > XMAX) x = XMAX;
+    if (y < YMIN) y = YMIN;
+    if (y > YMAX) y = YMAX;
+#if (XPOL == 1)
+    x = XMAX + XMIN - x;
+#endif
+#if (YPOL == 1)
+    y = YMAX + YMIN - y;
+#endif
+    x = (x- XMIN) * XLCD / (XMAX - XMIN);
+    y = (y- YMIN) * YLCD / (YMAX - YMIN);
+    
+    return (x << 16) | y;
+}
+
+
+static struct tsc2007_platform_data tsc2007_pdata = {
+    .model = 2007,
+    .x_plate_ohms = 400,
+    .get_pendown_state = tsc2007_get_pendown_state,
+    .clear_penirq = NULL,
+    .init_platform_hw = tsc2007_init_platform_hw,
+    .exit_platform_hw = NULL,
+    .poll_delay = 40,
+    .poll_period = 10,
+    .abs_xmin = 0,
+    .abs_xmax = XLCD,
+    .abs_ymin = 0,
+    .abs_ymax = YLCD,    
+    .convert = tsc2007_convert,
+};
+#endif
+
 #ifdef CONFIG_ITK_CAPACITIVE_TOUCHSCREEN
 #include <linux/i2c/itk.h>
 
@@ -1911,6 +1999,13 @@ static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
     {
         I2C_BOARD_INFO("sn7325", 0x59),
         .platform_data = (void *)&sn7325_pdata,
+    },
+#endif
+#ifdef CONFIG_TOUCHSCREEN_TSC2007
+    {
+        I2C_BOARD_INFO("tsc2007", 0x48),
+        .irq = INT_GPIO_0,
+        .platform_data = (void *)&tsc2007_pdata,
     },
 #endif
 
