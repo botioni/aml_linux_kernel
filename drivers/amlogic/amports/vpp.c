@@ -120,6 +120,7 @@ static const u32 *filter_table[] = {
 };
 
 static u32 vpp_wide_mode;
+static u32 vpp_zoom_ratio = 100;
 static s32 vpp_zoom_center_x, vpp_zoom_center_y;
 static u32 video_layer_top, video_layer_left, video_layer_width, video_layer_height;
 
@@ -305,8 +306,8 @@ RESTART:
         video_height = video_layer_height;
     }
 
-    screen_width = video_width;
-    screen_height = video_height;
+    screen_width = video_width * vpp_zoom_ratio / 100;
+    screen_height = video_height * vpp_zoom_ratio / 100;
 
     ratio_x = (width_in << 18) / screen_width;
     if (ratio_x * screen_width < (width_in << 18)) {
@@ -569,4 +570,14 @@ void vpp_get_video_layer_position(s32 *x, s32 *y, s32 *w, s32 *h)
     *y = video_layer_top;
     *w = video_layer_width;
     *h = video_layer_height;
+}
+
+void vpp_set_zoom_ratio(u32 r)
+{
+    vpp_zoom_ratio = r;
+}
+
+u32 vpp_get_zoom_ratio(void)
+{
+   return vpp_zoom_ratio;
 }
