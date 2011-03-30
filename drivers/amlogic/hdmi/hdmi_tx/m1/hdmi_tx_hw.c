@@ -130,7 +130,8 @@ static unsigned char new_reset_sequence_flag=1;
 static unsigned char low_power_flag=1;
 static unsigned char power_off_vdac_flag=0;
 static unsigned char i2s_to_spdif_flag=0;
-static unsigned char use_tvenc_conf_flag=1;
+    /* 0, do not use fixed tvenc val for all mode; 1, use fixed tvenc val mode for 480i; 2, use fixed tvenc val mode for all modes */
+static unsigned char use_tvenc_conf_flag=1; 
 static unsigned char hpd_debug_mode=0;
 #define HPD_DEBUG_IGNORE_UNPLUG   1
 
@@ -292,8 +293,6 @@ static void hdmi_tvenc1080i_set(Hdmi_tx_video_para_t* param)
     unsigned long vs_adjust;
     unsigned long vs_bline_evn, vs_eline_evn, vs_bline_odd, vs_eline_odd;
     unsigned long vso_begin_evn, vso_begin_odd;
-    if(use_tvenc_conf_flag)
-        return;
     
     if(param->VIC==HDMI_1080i60){
          INTERLACE_MODE     = 1;                   
@@ -433,8 +432,6 @@ static void hdmi_tvenc480i_set(Hdmi_tx_video_para_t* param)
     unsigned long vs_adjust;
     unsigned long vs_bline_evn, vs_eline_evn, vs_bline_odd, vs_eline_odd;
     unsigned long vso_begin_evn, vso_begin_odd;
-    if(use_tvenc_conf_flag)
-        return;
 
     if((param->VIC==HDMI_480i60)||(param->VIC==HDMI_480i60_16x9)){
          INTERLACE_MODE     = 1;                   
@@ -610,8 +607,6 @@ void hdmi_tvenc_set(Hdmi_tx_video_para_t *param)
     unsigned long vs_adjust;
     unsigned long vs_bline_evn, vs_eline_evn, vs_bline_odd, vs_eline_odd;
     unsigned long vso_begin_evn, vso_begin_odd;
-    if(use_tvenc_conf_flag)
-        return;
 
     if((param->VIC==HDMI_480p60)||(param->VIC==HDMI_480p60_16x9)){
          INTERLACE_MODE     = 0;                   
@@ -1657,9 +1652,20 @@ static void hdmi_audio_init(unsigned char spdif_flag)
 static void enable_audio_spdif(void)
 {
 #ifdef AVOS
-#ifndef __ROM_
-        printf("AVOS HDMI Audio Spdif, not implemented\n");
-#endif
+        Wr( MREG_AIU_958_misc, 0x204a ); // // Program the IEC958 Module in the AIU
+        Wr( MREG_AIU_958_force_left, 0x0000 );
+        Wr( MREG_AIU_958_ctrl, 0x0240 );
+
+    /* enable audio*/        
+        hdmi_wr_reg(TX_AUDIO_I2S,   0x0 );  // Address  0x5A=0x0    TX_AUDIO_I2S
+
+        hdmi_wr_reg(TX_AUDIO_SPDIF, 1); // TX AUDIO SPDIF Enable
+
+        Wr(MREG_AIU_clk_ctrl,        Rd(MREG_AIU_clk_ctrl) | 2); // enable iec958 clock which is audio_master_clk
+        Wr( MREG_AIU_958_bpf, 0x0100 ); // Set the PCM frame size to 256 bytes
+        Wr( MREG_AIU_958_dcu_ff_ctrl, 0x0001 );
+        
+        Wr(MREG_AIU_i2s_misc, Rd(MREG_AIU_i2s_misc)|0x8); //i2s_to_958 directly
 #else
 
         Wr( AIU_958_MISC, 0x204a ); // // Program the IEC958 Module in the AIU
@@ -2007,10 +2013,19 @@ static int hdmitx_m1b_set_dispmode(Hdmi_tx_video_para_t *param)
         Wr(ENCP_VIDEO_HAVON_END,  Rd(ENCP_VIDEO_HAVON_END)-1);     
     }
 
-        if(use_tvenc_conf_flag){
+    if(use_tvenc_conf_flag==1){
+        if((param->VIC==HDMI_480i60)||(param->VIC==HDMI_480i60_16x9)){
             hdmitx_set_tvenc_reg(param->VIC);    
-        }        
+        }
+        else{
+            goto set_tvenc;
+        }
+    }
+    else if(use_tvenc_conf_flag==2){
+        hdmitx_set_tvenc_reg(param->VIC);    
+    }
     else{
+set_tvenc:        
         if((param->VIC==HDMI_480i60)||(param->VIC==HDMI_480i60_16x9)
             ||(param->VIC==HDMI_576i50)||(param->VIC==HDMI_576i50_16x9)){
             hdmi_tvenc480i_set(param);
