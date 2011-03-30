@@ -49,4 +49,8 @@ extern int pts_start(u8 type);
 
 extern int pts_stop(u8 type);
 
+extern int first_lookup_pts_failed(u8 type);
+
+extern int first_pts_checkin_complete(u8 type);
+
 #endif /* PTSSERV_H */

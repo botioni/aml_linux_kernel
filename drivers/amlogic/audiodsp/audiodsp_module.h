@@ -54,6 +54,7 @@
 	void *stream_buffer_mem;
 	int stream_buffer_mem_size;
 	int decoded_nb_frames;
+	int first_lookup_over;
 	unsigned long stream_buffer_start;
 	unsigned long stream_buffer_end;
 	unsigned long stream_buffer_size;	

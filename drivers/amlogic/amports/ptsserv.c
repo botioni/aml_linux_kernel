@@ -46,6 +46,7 @@ typedef struct pts_table_s {
     u32 buf_size;
     int first_checkin_pts;
     int first_lookup_ok;
+    int first_lookup_is_fail;    /* 1: first lookup fail;  0: first lookup success */
     pts_rec_t *pts_recs;
     struct list_head *pts_search;
     struct list_head valid_list;
@@ -429,6 +430,7 @@ int pts_lookup_offset(u8 type, u32 offset, u32 *val, u32 pts_margin)
             if (!pTable->first_lookup_ok) {
                 *val = pTable->first_checkin_pts;
                 pTable->first_lookup_ok = 1;
+		  pTable->first_lookup_is_fail = 1;
 
 #ifdef DEBUG_CHECKOUT
 #ifdef DEBUG_VIDEO
@@ -555,6 +557,7 @@ int pts_start(u8 type)
             WRITE_MPEG_REG(VIDEO_PTS, 0);
             pTable->first_checkin_pts = -1;
             pTable->first_lookup_ok = 0;
+	     pTable->first_lookup_is_fail = 0;
         } else if (type == PTS_TYPE_AUDIO) {
             pTable->buf_start = READ_MPEG_REG(AIU_MEM_AIFIFO_START_PTR);
             pTable->buf_size = READ_MPEG_REG(AIU_MEM_AIFIFO_END_PTR)
@@ -565,6 +568,7 @@ int pts_start(u8 type)
             WRITE_MPEG_REG(AUDIO_PTS, 0);
             pTable->first_checkin_pts = -1;
             pTable->first_lookup_ok = 0;
+	     pTable->first_lookup_is_fail = 0;
         }
 
         INIT_LIST_HEAD(&pTable->valid_list);
@@ -627,3 +631,34 @@ int pts_stop(u8 type)
 }
 
 EXPORT_SYMBOL(pts_stop);
+
+int first_lookup_pts_failed(u8 type)
+{
+    pts_table_t *pTable;
+
+    if (type >= PTS_TYPE_MAX) {
+        return -EINVAL;
+    }
+
+    pTable = &pts_table[type];
+
+    return pTable->first_lookup_is_fail;
+}
+EXPORT_SYMBOL(first_lookup_pts_failed);
+
+int first_pts_checkin_complete(u8 type)
+{
+    pts_table_t *pTable;
+
+    if (type >= PTS_TYPE_MAX) {
+        return -EINVAL;
+    }
+
+    pTable = &pts_table[type];
+
+    if (pTable->first_checkin_pts < 0)
+        return 0;
+    else
+        return 1;
+}
+EXPORT_SYMBOL(first_pts_checkin_complete);
