@@ -305,6 +305,12 @@ struct gt2005_fh {
 	int  stream_on;
 };
 
+static inline struct gt2005_fh *to_fh(struct gt2005_device *dev)
+{
+	return container_of(dev, struct gt2005_fh, dev);
+}
+
+
 /* ------------------------------------------------------------------
 	reg spec of GT2005
    ------------------------------------------------------------------*/
@@ -2159,6 +2165,34 @@ static int gt2005_remove(struct i2c_client *client)
 	return 0;
 }
 
+static int gt2005_suspend(struct i2c_client *client)
+{
+	struct v4l2_subdev *sd = i2c_get_clientdata(client);
+	struct gt2005_device *t = to_dev(sd);	
+	struct gt2005_fh  *fh = to_fh(t);
+	if(fh->stream_on == 1){
+		stop_tvin_service(0);
+	}
+	power_down_gt2005(t);
+	return 0;
+}
+
+static int gt2005_resume(struct i2c_client *client)
+{
+	struct v4l2_subdev *sd = i2c_get_clientdata(client);
+	struct gt2005_device *t = to_dev(sd);
+    struct gt2005_fh  *fh = to_fh(t);
+    tvin_parm_t para;
+    para.port  = TVIN_PORT_CAMERA;
+    para.fmt = TVIN_SIG_FMT_CAMERA_1280X720P_30Hz;
+    GT2005_init_regs(t); 
+	if(fh->stream_on == 1){
+        start_tvin_service(0,&para);
+	}       	
+	return 0;
+}
+
+
 static const struct i2c_device_id gt2005_id[] = {
 	{ "gt2005_i2c", 0 },
 	{ }
@@ -2169,5 +2203,7 @@ static struct v4l2_i2c_driver_data v4l2_i2c_data = {
 	.name = "gt2005",
 	.probe = gt2005_probe,
 	.remove = gt2005_remove,
+	.suspend = gt2005_suspend,
+	.resume = gt2005_resume,		
 	.id_table = gt2005_id,
 };

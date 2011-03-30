@@ -306,6 +306,12 @@ struct gc0308_fh {
 	int  stream_on;
 };
 
+static inline struct gc0308_fh *to_fh(struct gc0308_device *dev)
+{
+	return container_of(dev, struct gc0308_fh, dev);
+}
+
+
 /* ------------------------------------------------------------------
 	reg spec of GC0308
    ------------------------------------------------------------------*/
@@ -2151,6 +2157,33 @@ static int gc0308_remove(struct i2c_client *client)
 	kfree(t);
 	return 0;
 }
+static int gc0308_suspend(struct i2c_client *client)
+{
+	struct v4l2_subdev *sd = i2c_get_clientdata(client);
+	struct gc0308_device *t = to_dev(sd);	
+	struct gc0308_fh  *fh = to_fh(t);
+	if(fh->stream_on == 1){
+		stop_tvin_service(0);
+	}
+	power_down_gc0308(t);
+	return 0;
+}
+
+static int gc0308_resume(struct i2c_client *client)
+{
+	struct v4l2_subdev *sd = i2c_get_clientdata(client);
+	struct gc0308_device *t = to_dev(sd);
+    struct gc0308_fh  *fh = to_fh(t);
+    tvin_parm_t para;
+    para.port  = TVIN_PORT_CAMERA;
+    para.fmt = TVIN_SIG_FMT_CAMERA_1280X720P_30Hz;
+    GC0308_init_regs(t); 
+	if(fh->stream_on == 1){
+        start_tvin_service(0,&para);
+	}       	
+	return 0;
+}
+
 
 static const struct i2c_device_id gc0308_id[] = {
 	{ "gc0308_i2c", 0 },
@@ -2162,5 +2195,7 @@ static struct v4l2_i2c_driver_data v4l2_i2c_data = {
 	.name = "gc0308",
 	.probe = gc0308_probe,
 	.remove = gc0308_remove,
+	.suspend = gc0308_suspend,
+	.resume = gc0308_resume,		
 	.id_table = gc0308_id,
 };
