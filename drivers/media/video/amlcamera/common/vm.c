@@ -232,7 +232,7 @@ static int vm_receiver_event_fun(int type, void* data, void* private_data)
             //up(&vb_start_sema);
             break;
         case VFRAME_EVENT_PROVIDER_START:
-			vm_skip_count = 5; 
+			vm_skip_count = 0; 
             break;
         case VFRAME_EVENT_PROVIDER_UNREG:        
             vm_local_init();
