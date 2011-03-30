@@ -1,7 +1,7 @@
 #include <linux/module.h>
 #include <linux/spinlock.h>
 #include <linux/kernel.h>
-#include <linux/device.h>
+#include <linux/platform_device.h>
 #include <linux/amports/timestamp.h>
 #include <linux/amports/tsync.h>
 
@@ -75,7 +75,7 @@ const static struct {
 } avevent_token[] = {
     {"VIDEO_START", 11, VIDEO_START, AVEVENT_FLAG_PARAM},
     {"VIDEO_STOP",  10, VIDEO_STOP,  0},
-    {"VIDEO_PAUSE", 11, VIDEO_PAUSE, 0},
+    {"VIDEO_PAUSE", 11, VIDEO_PAUSE, AVEVENT_FLAG_PARAM},
     {"VIDEO_TSTAMP_DISCONTINUITY", 26, VIDEO_TSTAMP_DISCONTINUITY, AVEVENT_FLAG_PARAM},
     {"AUDIO_START", 11, AUDIO_START, AVEVENT_FLAG_PARAM},
     {"AUDIO_RESUME", 12, AUDIO_RESUME, 0},
@@ -332,6 +332,10 @@ void tsync_avevent(avevent_t event, u32 param)
         break;
 
     case AUDIO_TSTAMP_DISCONTINUITY:
+		timestamp_apts_set(param);
+        amlog_level(LOG_LEVEL_ATTENTION, "audio discontinue, reset apts, 0x%x\n", param);
+
+		
         if (!tsync_enable) {
             break;
         }
@@ -359,7 +363,13 @@ void tsync_avevent(avevent_t event, u32 param)
         }
         break;
 
-    case AUDIO_START:
+    case AUDIO_START:		
+		timestamp_apts_set(param);
+
+		amlog_level(LOG_LEVEL_INFO, "audio start, reset apts = 0x%x\n", param);
+
+        timestamp_apts_enable(1);
+		 
         if (!tsync_enable) {
             break;
         }
@@ -386,7 +396,7 @@ void tsync_avevent(avevent_t event, u32 param)
         } else {
             timestamp_pcrscr_set(param);
         }
-        timestamp_apts_set(param);
+       
         tsync_stat = TSYNC_STAT_PCRSCR_SETUP_AUDIO;
 
         amlog_level(LOG_LEVEL_INFO, "apts reset scr = 0x%x\n", param);
@@ -395,6 +405,8 @@ void tsync_avevent(avevent_t event, u32 param)
         break;
 
     case AUDIO_RESUME:
+		timestamp_apts_enable(1);
+		
         if (!tsync_enable) {
             break;
         }
@@ -402,6 +414,7 @@ void tsync_avevent(avevent_t event, u32 param)
         break;
 
     case AUDIO_STOP:
+		timestamp_apts_set(-1);
         tsync_abreak = 0;
         if (tsync_trickmode) {
             tsync_stat = TSYNC_STAT_PCRSCR_SETUP_VIDEO;
@@ -411,6 +424,8 @@ void tsync_avevent(avevent_t event, u32 param)
         break;
 
     case AUDIO_PAUSE:
+		timestamp_apts_enable(0);
+		
         if (!tsync_enable) {
             break;
         }
@@ -419,7 +434,6 @@ void tsync_avevent(avevent_t event, u32 param)
         break;
 
     case VIDEO_PAUSE:
-        
         if (param == 1) {
             vpause_flag = 1;
         } else {
@@ -445,9 +459,14 @@ void tsync_avevent(avevent_t event, u32 param)
         break;
     case VIDEO_STOP:
     case AUDIO_STOP:
-    case VIDEO_PAUSE:
     case AUDIO_PAUSE:
         amvdev_pause();
+        break;
+    case VIDEO_PAUSE:
+        if (vpause_flag)
+            amvdev_pause();
+        else
+            amvdev_resume();
         break;
     default:
         break;

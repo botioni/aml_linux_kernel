@@ -44,4 +44,7 @@ extern void timestamp_pcrscr_enable(u32 enable);
 
 extern void timestamp_pcrscr_set_adj(s32 inc);
 
+extern void timestamp_apts_enable(u32 enable);
+
+
 #endif /* TIMESTAMP_H */

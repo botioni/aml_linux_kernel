@@ -839,11 +839,11 @@ static void uor_read_loop(struct work_struct *data)
 			else {
 				nTouch = ONE_TOUCH;
 			}
-			printk(KERN_ERR "%s:after filter (x,y)=(%d,%d) (dx,dy)=(%d,%d) n_touch %d, R_touch %d, (z1,z2)=(%d,%d) !!!\n",__FUNCTION__, x, y, Dx, Dy, nTouch, R_touch, z1, z2);
+			//printk(KERN_ERR "%s:after filter (x,y)=(%d,%d) (dx,dy)=(%d,%d) n_touch %d, R_touch %d, (z1,z2)=(%d,%d) !!!\n",__FUNCTION__, x, y, Dx, Dy, nTouch, R_touch, z1, z2);
 		}
 		else {//ting 
 		    nTouch =  ZERO_TOUCH;	
-			printk("there is no touch!\n");
+			//printk("there is no touch!\n");
 		}
 
 		if(nTouch == ONE_TOUCH || nTouch == TWO_TOUCH){	// pen down
@@ -1101,7 +1101,7 @@ static int __devinit uor_probe(struct i2c_client *client,
         int err = 0;
         struct uor6x5x_platform_data *pdata = pdata = client->dev.platform_data;
         
-        //printk(KERN_ERR "uor.c: uor_probe() !\n");
+        printk(KERN_ERR "uor.c: uor_probe() !\n");
 	
 	if (!pdata) {
 		dev_err(&client->dev, "platform data is required!\n");
@@ -1133,7 +1133,7 @@ static int __devinit uor_probe(struct i2c_client *client,
 		err = -ENOMEM;
 		return err;	
 	}
-	//printk(KERN_ERR "uor_probe ok!\n");
+	printk(KERN_ERR "uor_probe ok!\n");
 	return err;
 }
 

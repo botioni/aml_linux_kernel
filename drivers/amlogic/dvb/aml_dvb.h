@@ -34,6 +34,7 @@
 #define SEC_BUF_GRP_COUNT 4
 #define SEC_BUF_BUSY_SIZE 4
 #define SEC_BUF_COUNT     (SEC_BUF_GRP_COUNT*8)
+#define ASYNCFIFO_COUNT 2
 
 typedef enum{
 	AM_DMX_0=0,
@@ -62,13 +63,14 @@ struct aml_channel {
 	int                  pid;
 	int                  used;
 	int                  filter_count;
+	struct dvb_demux_feed     *feed;
+	struct dvb_demux_feed     *dvr_feed;
 };
 
 struct aml_filter {
 	int                  chan_id;
 	int                  used;
 	struct dmx_section_filter *filter;
-	struct dvb_demux_feed     *feed;
 	u8                   value[FILTER_LEN];
 	u8                   maskandmode[FILTER_LEN];
 	u8                   maskandnotmode[FILTER_LEN];
@@ -128,10 +130,24 @@ struct aml_fe {
 	struct class class;
 };
 
+struct aml_asyncfifo {
+	int	id;
+	int	init;
+	int	asyncfifo_irq;
+	aml_dmx_id_t	source;
+	unsigned long	pages;
+	int	buf_len;
+	int	buf_toggle;
+	struct tasklet_struct     asyncfifo_tasklet;
+	spinlock_t           slock;
+	struct aml_dvb *dvb;
+};
+
 struct aml_dvb {
 	struct dvb_device    dvb_dev;
 	struct aml_dmx       dmx[DMX_DEV_COUNT];
 	struct aml_dsc       dsc[DSC_COUNT];
+	struct aml_asyncfifo asyncfifo[ASYNCFIFO_COUNT];
 	struct dvb_device   *dsc_dev;
 	struct dvb_adapter   dvb_adapter;
 	struct device       *dev;
@@ -161,6 +177,11 @@ extern void dmx_free_chan(struct aml_dmx *dmx, int cid);
 extern int dsc_set_pid(struct aml_dsc *dsc, int pid);
 extern int dsc_set_key(struct aml_dsc *dsc, int type, u8 *key);
 extern int dsc_release(struct aml_dsc *dsc);
+
+/*AMLogic ASYNC FIFO interface*/
+extern int aml_asyncfifo_hw_init(struct aml_asyncfifo *afifo);
+extern int aml_asyncfifo_hw_deinit(struct aml_asyncfifo *afifo);
+extern int aml_asyncfifo_hw_set_source(struct aml_asyncfifo *afifo, aml_dmx_id_t src);
 
 /*Get the DVB device*/
 extern struct aml_dvb* aml_get_dvb_device(void);

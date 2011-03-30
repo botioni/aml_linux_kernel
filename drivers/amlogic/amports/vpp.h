@@ -114,4 +114,10 @@ vpp_set_video_layer_position(s32 x, s32 y, s32 w, s32 h);
 extern void
 vpp_get_video_layer_position(s32 *x, s32 *y, s32 *w, s32 *h);
 
+extern void
+vpp_set_zoom_ratio(u32 r);
+
+extern u32
+vpp_get_zoom_ratio(void);
+
 #endif /* VPP_H */

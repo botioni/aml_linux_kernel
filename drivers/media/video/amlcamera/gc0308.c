@@ -188,6 +188,11 @@ static struct gc0308_fmt formats[] = {
 		.fourcc   = V4L2_PIX_FMT_NV12,
 		.depth    = 12,	
 	},
+	{
+		.name     = "YUV420P",
+		.fourcc   = V4L2_PIX_FMT_YUV420,
+		.depth    = 12,
+	}
 #if 0
 	{
 		.name     = "4:2:2, packed, YUYV",
@@ -308,6 +313,7 @@ struct gc0308_fh {
 #if 1
 
 struct aml_camera_i2c_fig1_s GC0308_script[] = {  
+        {0xfe,0x80},  
 	{0xfe,0x00},
 	{0x0f,0x00},
 #if 0
@@ -391,9 +397,9 @@ struct aml_camera_i2c_fig1_s GC0308_script[] = {
 	{0x05,0x00},
 	{0x06,0x00},
 	{0x07,0x00},
-	{0x08,0x00},
+	{0x08,0x02},
 	{0x09,0x01},
-	{0x0a,0xe8},
+	{0x0a,0xea},
 	{0x0b,0x02},
 	{0x0c,0x88},
 	{0x0d,0x02},
@@ -491,7 +497,7 @@ struct aml_camera_i2c_fig1_s GC0308_script[] = {
 	{0xd0,0xCb},//c9
 	{0xd1,0x10},
 	{0xd2,0x90},
-	{0xd3,0x50},//88
+	{0xd3,0x68},//88
 	{0xd5,0xF2},
 	{0xd6,0x10},
 	{0xdb,0x92},
@@ -925,61 +931,61 @@ void set_GC0308_param_exposure(struct gc0308_device *dev,enum camera_exposure_e 
 			buf1[0]=0xb5;
 			buf1[1]=0xc0;
 			buf2[0]=0xd3;
-			buf2[1]=0x30;
+			buf2[1]=0x32;
 			break;		
 		case EXPOSURE_N3_STEP:
 			buf1[0]=0xb5;
 			buf1[1]=0xd0;
 			buf2[0]=0xd3;
-			buf2[1]=0x38;
+			buf2[1]=0x40;
 			break;		
 		case EXPOSURE_N2_STEP:
 			buf1[0]=0xb5;
 			buf1[1]=0xe0;
 			buf2[0]=0xd3;
-			buf2[1]=0x40;
+			buf2[1]=0x42;
 			break;				
 		case EXPOSURE_N1_STEP:
 			buf1[0]=0xb5;
 			buf1[1]=0xf0;
 			buf2[0]=0xd3;
-			buf2[1]=0x48;
+			buf2[1]=0x50;
 			break;				
 		case EXPOSURE_0_STEP:
 			buf1[0]=0xb5;
 			buf1[1]=0x10;
 			buf2[0]=0xd3;
-			buf2[1]=0x60;
+			buf2[1]=0x62;
 			break;				
 		case EXPOSURE_P1_STEP:
 			buf1[0]=0xb5;
 			buf1[1]=0x20;
 			buf2[0]=0xd3;
-			buf2[1]=0x58;
+			buf2[1]=0x60;
 			break;				
 		case EXPOSURE_P2_STEP:
 			buf1[0]=0xb5;
 			buf1[1]=0x30;
 			buf2[0]=0xd3;
-			buf2[1]=0x60;
+			buf2[1]=0x62;
 			break;				
 		case EXPOSURE_P3_STEP:
 			buf1[0]=0xb5;
 			buf1[1]=0x40;
 			buf2[0]=0xd3;
-			buf2[1]=0x68;
+			buf2[1]=0x70;
 			break;				
 		case EXPOSURE_P4_STEP:	
 			buf1[0]=0xb5;
 			buf1[1]=0x50;
 			buf2[0]=0xd3;
-			buf2[1]=0x70;
+			buf2[1]=0x72;
 			break;
 		default:
 			buf1[0]=0xb5;
 			buf1[1]=0x00;
 			buf2[0]=0xd3;
-			buf2[1]=0x50;
+			buf2[1]=0x60;
 			break;    
 	}			
 	//msleep(300);
@@ -1864,6 +1870,7 @@ static int gc0308_open(struct file *file)
 		printk("+++found a init function, and run it..\n");
 	}
 	GC0308_init_regs(dev);
+	msleep(40);
 	mutex_lock(&dev->mutex);
 	dev->users++;
 	if (dev->users > 1) {

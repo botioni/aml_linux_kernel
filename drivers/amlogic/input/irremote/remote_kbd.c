@@ -204,7 +204,7 @@ void kp_send_key(struct input_dev *dev, unsigned int scancode, unsigned int type
 }
 static void  disable_remote_irq(void)
 {
-	 if(gp_kp->work_mode!=REMOTE_WORK_MODE_FIQ)
+	 if(!(gp_kp->work_mode&REMOTE_WORK_MODE_FIQ))
 	 {
 	 	disable_irq(NEC_REMOTE_IRQ_NO);
 	 }
@@ -212,17 +212,51 @@ static void  disable_remote_irq(void)
 }
 static void  enable_remote_irq(void)
 {
-	if(gp_kp->work_mode!=REMOTE_WORK_MODE_FIQ)
+	if(!(gp_kp->work_mode&&REMOTE_WORK_MODE_FIQ))
 	 {
 	 	enable_irq(NEC_REMOTE_IRQ_NO);
 	 }
+	
+}
+static void kp_repeat_sr(unsigned long data)
+{
+	struct kp *kp_data=(struct kp *)data;
+	u32 	status;
+	u32  timer_period;
+	
+	status = READ_MPEG_REG(IR_DEC_STATUS);
+	switch(status&REMOTE_HW_DECODER_STATUS_MASK) 
+	{
+		case REMOTE_HW_DECODER_STATUS_OK:
+		kp_send_key(kp_data->input, (kp_data->cur_keycode>>16)&0xff, 0);	
+		break ;
+		default:
+		SET_MPEG_REG_MASK(IR_DEC_REG1,1);//reset ir deocoder
+		CLEAR_MPEG_REG_MASK(IR_DEC_REG1,1);
+		
+		if(kp_data->repeat_tick !=0)//new key coming in.
+		{
+			timer_period= jiffies + 10 ;  //timer peroid waiting for a stable state.
+		}
+		else //repeat key check
+		{
+			if(kp_data->repeat_enable)
+			{
+				kp_send_key(kp_data->input, (kp_data->cur_keycode>>16)&0xff, 2);
+			}
+			timer_period=jiffies+msecs_to_jiffies(kp_data->repeat_peroid);
+		}
+		mod_timer(&kp_data->repeat_timer,timer_period);
+		kp_data->repeat_tick =0;
+		break;
+	}
 	
 }
 static void kp_timer_sr(unsigned long data)
 {
     struct kp *kp_data=(struct kp *)data;
     kp_send_key(kp_data->input, (kp_data->cur_keycode>>16)&0xff ,0);
-    if(kp_data->work_mode!=REMOTE_WORK_MODE_HW)
+    if(!(kp_data->work_mode&REMOTE_WORK_MODE_HW))
         kp_data->step   = REMOTE_STATUS_WAIT ;
 }
 
@@ -261,12 +295,30 @@ static inline int kp_hw_reprot_key(struct kp *kp_data )
                input_dbg("Wrong custom code is 0x%08x\n", scan_code);
             return -1;
         }
-        if(kp_data->timer.expires > jiffies){
-            kp_send_key(kp_data->input, (kp_data->cur_keycode>>16)&0xff, 0);
-            }
-        kp_send_key(kp_data->input, (scan_code>>16)&0xff, 1);
-        if(kp_data->repeat_enable)
-          kp_data->repeat_timer = jiffies + msecs_to_jiffies(kp_data->input->rep[REP_DELAY]);
+       	 //add for skyworth remote.
+	 if(kp_data->work_mode == REMOTE_TOSHIBA_HW)//we start  repeat timer for check repeat.
+	 {	
+	 	if(kp_data->repeat_timer.expires > jiffies){//release last key.
+            		kp_send_key(kp_data->input, (kp_data->cur_keycode>>16)&0xff, 0);
+            	}
+		kp_send_key(kp_data->input, (scan_code>>16)&0xff, 1);
+	 	last_scan_code=scan_code;
+    		kp_data->cur_keycode=last_scan_code;
+    		kp_data->repeat_timer.data=(unsigned long)kp_data;
+		//here repeat  delay is time interval from the first frame end to first repeat end.	
+		kp_data->repeat_tick = jiffies;
+	 	mod_timer(&kp_data->repeat_timer,jiffies+msecs_to_jiffies(kp_data->repeat_delay));
+		return 0;
+	 }
+	 else
+	 {
+	 	if(kp_data->timer.expires > jiffies)
+            	kp_send_key(kp_data->input, (kp_data->cur_keycode>>16)&0xff, 0);
+            	kp_send_key(kp_data->input, (scan_code>>16)&0xff, 1);
+        	if(kp_data->repeat_enable)
+          	kp_data->repeat_tick = jiffies + msecs_to_jiffies(kp_data->input->rep[REP_DELAY]);
+	 }
+	
     }
     else if(scan_code==0 && status&0x1) //repeate key
     {
@@ -275,15 +327,15 @@ static inline int kp_hw_reprot_key(struct kp *kp_data )
             return -1;
             }
         if(kp_data->repeat_enable){
-            if(kp_data->repeat_timer < jiffies){
+            if(kp_data->repeat_tick < jiffies){
                 kp_send_key(kp_data->input, (scan_code>>16)&0xff, 2);
-                kp_data->repeat_timer += msecs_to_jiffies(kp_data->input->rep[REP_PERIOD]);
+                kp_data->repeat_tick += msecs_to_jiffies(kp_data->input->rep[REP_PERIOD]);
                 }
             }
         else{
             if(kp_data->timer.expires > jiffies)
                 mod_timer(&kp_data->timer,jiffies+msecs_to_jiffies(kp_data->release_delay));
-            return -1;
+           	 return -1;
             }
     }
     last_scan_code=scan_code;
@@ -298,7 +350,7 @@ static void kp_tasklet(unsigned long data)
 {
     struct kp *kp_data = (struct kp *) data;
 
-    if(kp_data->work_mode==REMOTE_WORK_MODE_HW)
+    if(kp_data->work_mode&REMOTE_WORK_MODE_HW)
     {
         kp_hw_reprot_key(kp_data);
     }else{
@@ -405,7 +457,7 @@ work_mode_config(unsigned int cur_mode)
 	struct irq_desc *desc = irq_to_desc(NEC_REMOTE_IRQ_NO);	
 
    	if(last_mode == cur_mode) return -1;	
-    	if(cur_mode==REMOTE_WORK_MODE_HW)
+    	if(cur_mode&REMOTE_WORK_MODE_HW)
     	{
       	  	control_value=0xbe40; //ignore  custom code .
       	  	WRITE_MPEG_REG(IR_DEC_REG1,control_value|IR_CONTROL_HOLD_LAST_KEY);
@@ -416,7 +468,7 @@ work_mode_config(unsigned int cur_mode)
         	WRITE_MPEG_REG(IR_DEC_REG1,control_value);
     	}
 
-    	switch(cur_mode)
+    	switch(cur_mode&REMOTE_WORK_MODE_MASK)
     	{
     		case REMOTE_WORK_MODE_HW:
 		case REMOTE_WORK_MODE_SW:
@@ -443,7 +495,12 @@ work_mode_config(unsigned int cur_mode)
 		break;	
     	} 	
     	last_mode=cur_mode;
-    	return 0;
+	//add for skyworth remote 	
+	if(cur_mode==REMOTE_TOSHIBA_HW)
+		setup_timer(&gp_kp->repeat_timer,kp_repeat_sr,0);
+	else	
+		del_timer(&gp_kp->repeat_timer) ;
+	return 0;
 }
 
 static int
@@ -673,7 +730,7 @@ static int __init kp_probe(struct platform_device *pdev)
 
     input_dbg=remote_printk;
     platform_set_drvdata(pdev, kp);
-    kp->work_mode=REMOTE_WORK_MODE_HW;
+    kp->work_mode=REMOTE_NEC_HW;
     kp->input = input_dev;
     kp->release_delay=KEY_RELEASE_DELAY;
     kp->custom_code=0xff00;
@@ -705,6 +762,7 @@ static int __init kp_probe(struct platform_device *pdev)
     tasklet_enable(&tasklet);
     tasklet.data = (unsigned long) kp;
     setup_timer(&kp->timer, kp_timer_sr, 0) ;
+    	
 
     ret = device_create_file(&pdev->dev, &dev_attr_enable);
     if (ret < 0)
@@ -717,7 +775,7 @@ static int __init kp_probe(struct platform_device *pdev)
     }
 
     input_dbg("device_create_file completed \r\n");
-    input_dev->evbit[0] = BIT_MASK(EV_KEY) | BIT_MASK(EV_REP) | BIT_MASK(EV_REL);
+    input_dev->evbit[0] = BIT_MASK(EV_KEY)  | BIT_MASK(EV_REL);
     input_dev->keybit[BIT_WORD(BTN_MOUSE)] = BIT_MASK(BTN_LEFT) |BIT_MASK(BTN_RIGHT)|BIT_MASK(BTN_MIDDLE);
     input_dev->relbit[0] = BIT_MASK(REL_X) | BIT_MASK(REL_Y)| BIT_MASK(REL_WHEEL);
     input_dev->keybit[BIT_WORD(BTN_MOUSE)] |=BIT_MASK(BTN_SIDE)|BIT_MASK(BTN_EXTRA);	
@@ -787,7 +845,7 @@ static int kp_remove(struct platform_device *pdev)
     free_pages((unsigned long)remote_log_buf,REMOTE_LOG_BUF_ORDER);
         device_remove_file(&pdev->dev, &dev_attr_enable);
     device_remove_file(&pdev->dev, &dev_attr_log_buffer);
-    if(kp->work_mode == REMOTE_WORK_MODE_FIQ )
+    if(kp->work_mode & REMOTE_WORK_MODE_FIQ )
     {
     	free_fiq(NEC_REMOTE_IRQ_NO);
 	free_irq(BRIDGE_IRQ,gp_kp);

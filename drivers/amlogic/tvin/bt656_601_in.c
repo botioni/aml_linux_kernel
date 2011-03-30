@@ -497,7 +497,21 @@ static void reinit_bt601in_dec(void)
 //CAMERA input(progressive mode): CLOCK + D0~D7 + HREF + VSYNC
 static void reinit_camera_dec(void)
 {
-    reset_bt656in_module();
+    //reset_bt656in_module();
+	int temp_data;
+
+    temp_data = READ_CBUS_REG(BT_CTRL);
+    temp_data &= ~( 1 << BT_EN_BIT );
+    WRITE_CBUS_REG(BT_CTRL, temp_data); //disable BT656 input
+
+    // reset BT656in module.
+    temp_data = READ_CBUS_REG(BT_CTRL);
+    temp_data |= ( 1 << BT_SOFT_RESET );
+    WRITE_CBUS_REG(BT_CTRL, temp_data);
+	
+    /*WRITE_CBUS_REG(BT_VIDEOSTART, 1 | (1 << 16));   //Line number of the first video start line in field 0/1.there is a blank
+    WRITE_CBUS_REG(BT_VIDEOEND , (am656in_dec_info.active_line )|          //  Line number of the last video line in field 1. added video end for avoid overflow.
+                                    ((am656in_dec_info.active_line ) << 16));      */             // Line number of the last video line in field 0
     WRITE_CBUS_REG(BT_PORT_CTRL,    (0 << BT_IDQ_EN )   |     // use external idq pin.
                                         (0 << BT_IDQ_PHASE )   |
                                         ( 0 << BT_FID_HSVS ) |         // FID came from HS VS.
@@ -509,10 +523,11 @@ static void reinit_camera_dec(void)
 
     WRITE_CBUS_REG(BT_601_CTRL2 , ( 10 << 16));     // FID field check done point.
 
-    WRITE_CBUS_REG(BT_SWAP_CTRL,    ( 7 << 0 ) | // suppose the input bitstream format is Cb0 Y0 Cr0 Y1.
-                            ( 6 << 4 ) |
-                            ( 5 << 8 ) |
-                            ( 4 << 12 ) );
+    WRITE_CBUS_REG(BT_SWAP_CTRL,
+                        ( 7 << 0 ) |        //POS_Cb0_IN
+                        ( 4 << 4 ) |        //POS_Y0_IN
+                        ( 5 << 8 ) |        //POS_Cr0_IN
+                        ( 6 << 12 ));       //POS_Y1_IN
 
     WRITE_CBUS_REG(BT_LINECTRL , ( 1 << 31 ) |   //software line ctrl enable.
                                     ((am656in_dec_info.active_pixel << 1)<< 16 ) |    //the number of active data per line
@@ -538,9 +553,10 @@ static void reinit_camera_dec(void)
 
     WRITE_CBUS_REG(BT_FIELDSADR, (1 << 16) | 1);    // field 0/1 start lcnt
     WRITE_CBUS_REG(BT_VBIEND, 1 | (1 << 16));       //field 0/1 VBI last line number
-    WRITE_CBUS_REG(BT_VIDEOSTART, 1 | (1 << 16));   //Line number of the first video start line in field 0/1.
-    WRITE_CBUS_REG(BT_VIDEOEND , am656in_dec_info.active_line|          //  Line number of the last video line in field 1. added video end for avoid overflow.
-                                    (am656in_dec_info.active_line <<16));                   // Line number of the last video line in field 0
+    
+    WRITE_CBUS_REG(BT_VIDEOSTART, 2 | (2 << 16));   //Line number of the first video start line in field 0/1.there is a blank
+    WRITE_CBUS_REG(BT_VIDEOEND , (am656in_dec_info.active_line +1)|          //  Line number of the last video line in field 1. added video end for avoid overflow.
+                                    ((am656in_dec_info.active_line +1) << 16));                   // Line number of the last video line in field 0
     WRITE_CBUS_REG(BT_CTRL ,    (1 << BT_EN_BIT       ) |    // enable BT moduale.
                                 (0 << BT_REF_MODE_BIT ) |    // timing reference is from bit stream.
                                 (0 << BT_FMT_MODE_BIT ) |     //PAL
@@ -551,6 +567,10 @@ static void reinit_camera_dec(void)
                                 (1 << BT_XCLK27_EN_BIT) |   // xclk27 is input.
                                 (1 << BT_PROG_MODE  )   |
                                 (0 << BT_AUTO_FMT    ) );
+	
+	temp_data = READ_CBUS_REG(BT_CTRL);
+	temp_data &= ~( 1 << BT_SOFT_RESET );
+	WRITE_CBUS_REG(BT_CTRL, temp_data);
 
     return;
 }

@@ -69,9 +69,15 @@ static inline void vm_vf_put_from_provider(vframe_t *vf);
 
 #define VM_DEPTH_8_CANVAS_Y  0x54     // for Y/CbCr 4:2:0
 #define VM_DEPTH_8_CANVAS_UV 0x56
-
+#define VM_DEPTH_8_CANVAS_U 0x57
+#define VM_DEPTH_8_CANVAS_V 0x58
 #define VM_DMA_CANVAS_INDEX 0x5e
 #define VM_CANVAS_MX 0x5f
+
+#define GE2D_ENDIAN_SHIFT        24
+#define GE2D_ENDIAN_MASK            (0x1 << GE2D_ENDIAN_SHIFT)
+#define GE2D_BIG_ENDIAN             (0 << GE2D_ENDIAN_SHIFT)
+#define GE2D_LITTLE_ENDIAN          (1 << GE2D_ENDIAN_SHIFT)
 
 static spinlock_t lock = SPIN_LOCK_UNLOCKED;
 
@@ -302,6 +308,7 @@ vframe_receiver_op_t* vf_vm_unreg_provider()
     spin_lock_irqsave(&lock, flags); 
     vfp = NULL;
     spin_unlock_irqrestore(&lock, flags);
+    vf_unreg_provider();
     return NULL;
 }
 
@@ -374,6 +381,8 @@ static int get_output_format(int v4l2_format)
         case V4L2_PIX_FMT_RGB24: 
         format = GE2D_FORMAT_S24_RGB ;
         break;
+        case V4L2_PIX_FMT_YUV420:
+        format = GE2D_FORMAT_S8_Y;
         default:
         break;            
     }   
@@ -400,12 +409,6 @@ typedef struct vm_dma_contig_memory {
 	int is_userptr;
 }vm_contig_memory_t;
 
-#define VM_DEPTH_16_CANVAS 0x50         //for single canvas use ,RGB16, YUV422,etc
-
-#define VM_DEPTH_24_CANVAS 0x52
-
-#define VM_DEPTH_8_CANVAS_Y  0x54     // for Y/CbCr 4:2:0
-#define VM_DEPTH_8_CANVAS_UV 0x56
 int is_need_ge2d_pre_process()
 {
     int ret = 0;
@@ -414,7 +417,8 @@ int is_need_ge2d_pre_process()
         case  V4L2_PIX_FMT_YUV444:
         case  V4L2_PIX_FMT_VYUY:
         case  V4L2_PIX_FMT_BGR24:      
-        case  V4L2_PIX_FMT_RGB24:         
+        case  V4L2_PIX_FMT_RGB24: 
+        case  V4L2_PIX_FMT_YUV420:        
            ret = 1;
            break;
            
@@ -461,7 +465,11 @@ int get_canvas_index(int v4l2_format ,int* depth)
             break; 
         case V4L2_PIX_FMT_NV12:
             *depth = 12;
-            break;    
+            break;  
+        case V4L2_PIX_FMT_YUV420:
+			canvas = VM_DEPTH_8_CANVAS_Y|(VM_DEPTH_8_CANVAS_U<<8)|(VM_DEPTH_8_CANVAS_V<<16);
+			*depth = 12;
+			break;
         default:
         break;            
     }   
@@ -575,9 +583,9 @@ int vm_ge2d_pre_process(vframe_t* vf, ge2d_context_t *context,config_para_ex_t* 
     ge2d_config->src_para.height = vf->height;
 //    printk("vf_width is %d , vf_height is %d \n",vf->width ,vf->height);
     ge2d_config->src2_para.mem_type = CANVAS_TYPE_INVALID;
-    ge2d_config->dst_para.canvas_index=output_para.index;
+    ge2d_config->dst_para.canvas_index=output_para.index&0xff;
     ge2d_config->dst_para.mem_type = CANVAS_TYPE_INVALID;
-    ge2d_config->dst_para.format = get_output_format(output_para.v4l2_format);     
+    ge2d_config->dst_para.format = get_output_format(output_para.v4l2_format)|GE2D_LITTLE_ENDIAN;     
     
   
     ge2d_config->dst_para.fill_color_en = 0;
@@ -595,6 +603,38 @@ int vm_ge2d_pre_process(vframe_t* vf, ge2d_context_t *context,config_para_ex_t* 
         return;
     }
     stretchblt_noalpha(context,0,0,vf->width,vf->height,0,0,output_para.width,output_para.height);
+    
+    if(output_para.v4l2_format==V4L2_PIX_FMT_YUV420) {  /* yuv420p. */
+		/* for cb. */
+		canvas_read((output_para.index>>8)&0xff,&cd);
+		ge2d_config->dst_planes[0].addr = cd.addr;
+		ge2d_config->dst_planes[0].w = cd.width;
+		ge2d_config->dst_planes[0].h = cd.height;
+		ge2d_config->dst_para.canvas_index=(output_para.index>>8)&0xff;
+		ge2d_config->dst_para.format=GE2D_FORMAT_S8_CB|GE2D_LITTLE_ENDIAN;
+		ge2d_config->dst_para.width = output_para.width/2;
+		ge2d_config->dst_para.height = output_para.height/2;
+		if(ge2d_context_config_ex(context,ge2d_config)<0) {
+			printk("++ge2d configing error.\n");
+			return;
+		}
+		stretchblt_noalpha(context,0,0,vf->width,vf->height,0,0,ge2d_config->dst_para.width,ge2d_config->dst_para.height);
+
+		/* for cb. */
+		canvas_read((output_para.index>>16)&0xff,&cd);
+		ge2d_config->dst_planes[0].addr = cd.addr;
+		ge2d_config->dst_planes[0].w = cd.width;
+		ge2d_config->dst_planes[0].h = cd.height;
+		ge2d_config->dst_para.canvas_index=(output_para.index>>16)&0xff;
+		ge2d_config->dst_para.format=GE2D_FORMAT_S8_CR|GE2D_LITTLE_ENDIAN;
+		ge2d_config->dst_para.width = output_para.width/2;
+		ge2d_config->dst_para.height = output_para.height/2;
+		if(ge2d_context_config_ex(context,ge2d_config)<0) {
+			printk("++ge2d configing error.\n");
+			return;
+		}
+		stretchblt_noalpha(context,0,0,vf->width,vf->height,0,0,ge2d_config->dst_para.width,ge2d_config->dst_para.height);
+	}
     return output_para.index;
 }
 
@@ -607,7 +647,7 @@ int vm_sw_post_process(int canvas , int addr)
 	int i=0,j = 0;
 	void __iomem * buffer_v_start;
 	canvas_t canvas_work;
-	canvas_read(canvas,&canvas_work);
+	canvas_read(canvas&0xff,&canvas_work);
 //	printk("+++++start copying.....");
     buffer_v_start = ioremap_wc(canvas_work.addr,canvas_work.width*canvas_work.height);
 //	printk("=======%x\n",buffer_v_start);
@@ -672,6 +712,40 @@ int vm_sw_post_process(int canvas , int addr)
 			}
 			src_addr+= canvas_work.width;
 		}
+	} else if (output_para.v4l2_format = V4L2_PIX_FMT_YUV420) {
+		canvas_t canvas_work2;
+		void __iomem * buffer_v_start2;
+    	int uv_width = output_para.width>>1;
+    	int uv_height = output_para.height>>1;
+    	char* cur_dst;
+    	char* cur_src;
+		
+		for(i=0;i<output_para.height;i++) { /* copy y */
+    		memcpy(addr+poss,buffer_v_start+posd,output_para.width);
+    		poss+=output_para.width;
+    		posd+= canvas_work.width;		
+    	}
+    	
+    	posd=0;
+    	canvas_read((canvas>>8)&0xff,&canvas_work2);
+    	buffer_v_start2 = ioremap_wc(canvas_work2.addr,canvas_work2.width*canvas_work2.height);
+   		for(i=0;i<uv_height;i++) { /* copy y */
+    		memcpy(addr+poss,buffer_v_start2+posd,uv_width);
+    		poss+=uv_width;
+    		posd+= canvas_work2.width;		
+    	}
+    	iounmap(buffer_v_start2);
+    	
+    	posd=0;
+    	canvas_read((canvas>>16)&0xff,&canvas_work2);
+    	buffer_v_start2 = ioremap_wc(canvas_work2.addr,canvas_work2.width*canvas_work2.height);
+   		for(i=0;i<uv_height;i++) { /* copy y */
+    		memcpy(addr+poss,buffer_v_start2+posd,uv_width);
+    		poss+=uv_width;
+    		posd+= canvas_work2.width;		
+    	}
+    	iounmap(buffer_v_start2);
+    	
 	}
 	iounmap(buffer_v_start);
 //	printk("done\n");    
@@ -680,9 +754,6 @@ int vm_sw_post_process(int canvas , int addr)
 
 static struct task_struct *task=NULL;
 static struct task_struct *simulate_task_fd=NULL;
-
-
-
 
 static int reset_frame = 1;
 static int vm_task(void *data) {
@@ -771,20 +842,26 @@ int vm_buffer_init(void)
                           buf_start + i * decbuf_size,
                           canvas_width*2, canvas_height,
                           CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_LINEAR);
-                          
             canvas_config(VM_DEPTH_24_CANVAS+i,
                           buf_start + i * decbuf_size,
                           canvas_width*3, canvas_height,
-                          CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_LINEAR);                          
-                          
+                          CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_LINEAR);
             canvas_config(VM_DEPTH_8_CANVAS_Y+ i,
                           buf_start + i*decbuf_size/2,
                           canvas_width, canvas_height/2,
-                          CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_32X32);
+                          CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_LINEAR); //CANVAS_BLKMODE_32X32
             canvas_config(VM_DEPTH_8_CANVAS_UV + i,
                           buf_start + (i+1)*decbuf_size/2,
                           canvas_width, canvas_height,
-                          CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_32X32);
+                          CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_LINEAR);
+            canvas_config(VM_DEPTH_8_CANVAS_U + i,
+                          buf_start + (i+1)*decbuf_size/2,
+                          canvas_width/2, canvas_height/2,
+                          CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_LINEAR);
+            canvas_config(VM_DEPTH_8_CANVAS_V + i,
+                          buf_start + (i+3)*decbuf_size/4,
+                          canvas_width/2, canvas_height/2,
+                          CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_LINEAR);
             vfbuf_use[i] = 0;
         }
     }else{

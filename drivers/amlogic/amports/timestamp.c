@@ -5,6 +5,7 @@
 static s32 system_time_inc_adj = 0;
 static u32 system_time = 0;
 static u32 system_time_up = 0;
+static u32 audio_pts_up = 0;
 
 u32 timestamp_vpts_get(void)
 {
@@ -43,10 +44,19 @@ EXPORT_SYMBOL(timestamp_apts_set);
 
 void timestamp_apts_inc(s32 inc)
 {
-    WRITE_MPEG_REG(AUDIO_PTS, READ_MPEG_REG(AUDIO_PTS) + inc);
+	if(audio_pts_up){
+    	WRITE_MPEG_REG(AUDIO_PTS, READ_MPEG_REG(AUDIO_PTS) + inc);
+	}
 }
 
 EXPORT_SYMBOL(timestamp_apts_inc);
+
+void timestamp_apts_enable(u32 enable)
+{
+    audio_pts_up = enable;
+}
+
+EXPORT_SYMBOL(timestamp_apts_enable);
 
 u32 timestamp_pcrscr_get(void)
 {

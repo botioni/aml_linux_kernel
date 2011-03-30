@@ -2108,6 +2108,7 @@ static const struct sdio_device_id ti_sdio_ids[] = {
 static int sdioDrv_probe(struct sdio_func *func,
 			 const struct sdio_device_id *id)
 {
+	int card_unit;
 	if (func->num != 2)
 		return 0;
 
@@ -2122,6 +2123,9 @@ static int sdioDrv_probe(struct sdio_func *func,
 
 	//printk(KERN_INFO "ti_sdio_probe: Add glue driver\n");
 	sdio_claim_host(func);
+	card_unit = func->card->unit_state;
+	func->card->card_insert_process(func->card);
+	func->card->unit_state = card_unit;
 	sdioDrv_SetBlockSize(SDIO_WLAN_FUNC, 512);
 	sdio_set_drvdata(func, &ti_drv);
 	sdio_enable_func(func);

@@ -113,6 +113,12 @@ extern irqreturn_t osd_fiq_isr(void);
 #define VOUT_TYPE_BOT_FIELD 1
 #define VOUT_TYPE_PROG      2
 
+#define VIDEO_DISABLE_NONE    0
+#define VIDEO_DISABLE_NORMAL  1
+#define VIDEO_DISABLE_FORNEXT 2
+
+#define MAX_ZOOM_RATIO 300
+
 #define DUR2PTS(x) ((x) - ((x) >> 4))
 #define DUR2PTS_RM(x) ((x) & 0xf)
 
@@ -167,7 +173,7 @@ static u32 blackout = 1;
 #endif
 
 /* disable video */
-static u32 disable_video = 0;
+static u32 disable_video = VIDEO_DISABLE_NONE;
 
 #ifdef SLOW_SYNC_REPEAT
 /* video frame repeat count */
@@ -558,7 +564,7 @@ static void vsync_toggle_frame(vframe_t *vf)
 
     cur_dispbuf = vf;
 
-    if (first_picture && (disable_video == 0)) {
+    if (first_picture && (disable_video != VIDEO_DISABLE_NORMAL)) {
         EnableVideoLayer();
     }
     if (first_picture) {
@@ -827,7 +833,7 @@ static inline bool vpts_expire(vframe_t *cur_vf, vframe_t *next_vf)
 
         if ((systime - pts) >= 0) {
             tsync_avevent(VIDEO_TSTAMP_DISCONTINUITY, next_vf->pts);
-
+			printk("video discontinue, system=0x%x vpts=0x%x\n", systime, pts);
             return true;
         }
     }
@@ -871,6 +877,7 @@ static irqreturn_t vsync_isr0(int irq, void *dev_id)
     hold_line = calc_hold_line();
 
     timestamp_pcrscr_inc(vsync_pts_inc);
+	timestamp_apts_inc(vsync_pts_inc);
 
 #ifdef SLOW_SYNC_REPEAT
     frame_repeat_count++;
@@ -1675,6 +1682,29 @@ static ssize_t video_axis_store(struct class *cla, struct class_attribute *attr,
     return strnlen(buf, count);
 }
 
+static ssize_t video_zoom_show(struct class *cla, struct class_attribute *attr, char *buf)
+{
+    u32 r = vpp_get_zoom_ratio();
+
+    return snprintf(buf, 40, "%d\n", r);
+}
+
+static ssize_t video_zoom_store(struct class *cla, struct class_attribute *attr, const char *buf,
+                                size_t count)
+{
+    u32 r;
+    char *endp;
+    
+    r = simple_strtoul(buf, &endp, 0);
+    
+    if ((r <= MAX_ZOOM_RATIO) && (r != vpp_get_zoom_ratio())) {
+        vpp_set_zoom_ratio(r);
+        video_property_changed = true;
+    }
+
+    return count;
+}
+
 static ssize_t video_screen_mode_show(struct class *cla, struct class_attribute *attr, char *buf)
 {
     const char *wide_str[] = {"normal", "full stretch", "4-3", "16-9"};
@@ -1801,14 +1831,25 @@ static ssize_t video_disable_store(struct class *cla, struct class_attribute *at
                                    size_t count)
 {
     size_t r;
+    int val;
 
-    r = sscanf(buf, "%d", &disable_video);
+    r = sscanf(buf, "%d", &val);
     if (r != 1) {
         return -EINVAL;
     }
+    
+    if ((val < VIDEO_DISABLE_NONE) || (val > VIDEO_DISABLE_FORNEXT)) {
+        return -EINVAL;
+    }
+    
+    disable_video = val;
 
-    if (disable_video) {
+    if (disable_video != VIDEO_DISABLE_NONE) {
         DisableVideoLayer();
+        
+        if ((disable_video == VIDEO_DISABLE_FORNEXT) && cur_dispbuf && (cur_dispbuf != &vf_local))
+            video_property_changed = true;
+            
     } else {
         if (cur_dispbuf && (cur_dispbuf != &vf_local)) {
             EnableVideoLayer();
@@ -1997,6 +2038,10 @@ static struct class_attribute amvideo_class_attrs[] = {
     S_IRUGO | S_IWUSR,
     video_disable_show,
     video_disable_store),
+    __ATTR(zoom,
+    S_IRUGO | S_IWUSR,
+    video_zoom_show,
+    video_zoom_store),
     __ATTR(brightness,
     S_IRUGO | S_IWUSR,
     video_brightness_show,

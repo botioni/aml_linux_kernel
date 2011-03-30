@@ -74,6 +74,9 @@ static unsigned int vid_limit = 16;
 //module_param(vid_limit, uint, 0644);
 //MODULE_PARM_DESC(vid_limit, "capture memory limit in megabytes");
 
+static int vidio_set_fmt_ticks=0;
+
+
 
 /* supported controls */
 static struct v4l2_queryctrl gt2005_qctrl[] = {
@@ -187,6 +190,11 @@ static struct gt2005_fmt formats[] = {
 		.fourcc   = V4L2_PIX_FMT_NV12,
 		.depth    = 12,	
 	},
+	{
+		.name     = "YUV420P",
+		.fourcc   = V4L2_PIX_FMT_YUV420,
+		.depth    = 12,
+	}
 #if 0
 	{
 		.name     = "4:2:2, packed, YUYV",
@@ -323,11 +331,11 @@ struct aml_camera_i2c_fig_s GT2005_script[] = {
 	{0x010C , 0x00},
 	{0x010D , 0x08},
 	{0x010E , 0x00},
-	{0x010F , 0x08},
+	{0x010F , 0x0A},
 	{0x0110 , 0x03},					
 	{0x0111 , 0x20},					
 	{0x0112 , 0x02},					
-	{0x0113 , 0x58},
+	{0x0113 , 0x5A},
 
 	//YUV Mode
 	{0x0114 , 0x06},
@@ -497,7 +505,7 @@ struct aml_camera_i2c_fig_s GT2005_script[] = {
 	{0x026F , 0xA0},
 	{0x0270 , 0x40},
 	{0x0300 , 0x81},
-	{0x0301 , 0x90}, // 0x80  kim
+	{0x0301 , 0xA0}, // 0x80  kim
 	{0x0302 , 0x22},
 	{0x0303 , 0x06},
 	{0x0304 , 0x03},
@@ -1042,56 +1050,56 @@ void GT2005_set_param_exposure(struct gt2005_device *dev,enum camera_exposure_e 
 	{
 		case EXPOSURE_N4_STEP:  
             		i2c_put_byte(client,0x0300 , 0x81);
-			i2c_put_byte(client,0x0301 , 0x45);//40
+			i2c_put_byte(client,0x0301 , 0x55);//40
 			i2c_put_byte(client,0x0201 , 0xd0);
 			break;
 			
 		case EXPOSURE_N3_STEP:
             		i2c_put_byte(client,0x0300 , 0x81);
-			i2c_put_byte(client,0x0301 , 0x55);//50
+			i2c_put_byte(client,0x0301 , 0x65);//50
 			i2c_put_byte(client,0x0201 , 0xf0);
 			break;
 			
 		case EXPOSURE_N2_STEP:
             		i2c_put_byte(client,0x0300 , 0x81);
-			i2c_put_byte(client,0x0301 , 0x60);
+			i2c_put_byte(client,0x0301 , 0x70);
 			i2c_put_byte(client,0x0201 , 0x10);//b0
 			break;
 			
 		case EXPOSURE_N1_STEP:
             		i2c_put_byte(client,0x0300 , 0x81);
-			i2c_put_byte(client,0x0301 , 0x70);
+			i2c_put_byte(client,0x0301 , 0x80);
 			i2c_put_byte(client,0x0201 , 0x20);//d0
 			break;
 			
 		case EXPOSURE_0_STEP:
            		i2c_put_byte(client,0x0300 , 0x81);
-			i2c_put_byte(client,0x0301 , 0x90);
+			i2c_put_byte(client,0x0301 , 0xa0);
 			i2c_put_byte(client,0x0201 , 0x30);//0c
 			break;
 			
 		case EXPOSURE_P1_STEP:
             		i2c_put_byte(client,0x0300 , 0x81);
-			i2c_put_byte(client,0x0301 , 0x90);
-			i2c_put_byte(client,0x0201 , 0x40);//30
+			i2c_put_byte(client,0x0301 , 0xa0);
+			i2c_put_byte(client,0x0201 , 0x50);//30
 			break;
 			
 		case EXPOSURE_P2_STEP:
             		i2c_put_byte(client,0x0300 , 0x81);
-			i2c_put_byte(client,0x0301 , 0xa0);
-			i2c_put_byte(client,0x0201 , 0x50);
+			i2c_put_byte(client,0x0301 , 0xb0);//a0
+			i2c_put_byte(client,0x0201 , 0x55);
 			break;
 			
 		case EXPOSURE_P3_STEP:
             		i2c_put_byte(client,0x0300 , 0x81);
 			i2c_put_byte(client,0x0301 , 0xb0);
-			i2c_put_byte(client,0x0201 , 0x60);
+			i2c_put_byte(client,0x0201 , 0x70);//60
 			break;
 			
 		case EXPOSURE_P4_STEP:	
             		i2c_put_byte(client,0x0300 , 0x81);
-			i2c_put_byte(client,0x0301 , 0xc0);
-			i2c_put_byte(client,0x0201 , 0x70);
+			i2c_put_byte(client,0x0301 , 0xc5);
+			i2c_put_byte(client,0x0201 , 0x75);
 			break;
 			
 		default:
@@ -1194,6 +1202,29 @@ void GT2005_set_night_mode(struct gt2005_device *dev,enum  camera_night_mode_fli
 
 }    /* GT2005_NightMode */
 
+void GT2005_set_resolution(struct gt2005_device *dev,int height,int width)
+{	
+	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);	
+	
+	if(height&&width&&(height<=1200)&&(width<=1600))
+	{		
+	    if((height<=600)&&(width<=800))
+	    {
+	        
+	    	i2c_put_byte(client,0x0110, 0x03);
+			i2c_put_byte(client,0x0111, 0x20);
+			i2c_put_byte(client,0x0112, 0x02);
+			i2c_put_byte(client,0x0113, 0x5A);
+	    }
+		else
+		{
+			i2c_put_byte(client,0x0110 , (width>>8)&0xff);
+			i2c_put_byte(client,0x0111 ,  width&0xff);
+			i2c_put_byte(client,0x0112 , (height>>8)&0xff);
+			i2c_put_byte(client,0x0113 ,  height&0xff);
+		}
+	}
+}    /* GT2005_set_resolution */
 
 unsigned char v4l_2_gt2005(int val)
 {
@@ -1649,6 +1680,7 @@ static int vidioc_s_fmt_vid_cap(struct file *file, void *priv,
 {
 	struct gt2005_fh *fh = priv;
 	struct videobuf_queue *q = &fh->vb_vidq;
+	struct gt2005_device *dev = fh->dev;
 
 	int ret = vidioc_try_fmt_vid_cap(file, fh, f);
 	if (ret < 0)
@@ -1667,7 +1699,15 @@ static int vidioc_s_fmt_vid_cap(struct file *file, void *priv,
 	fh->height        = f->fmt.pix.height;
 	fh->vb_vidq.field = f->fmt.pix.field;
 	fh->type          = f->type;
-
+	#if 1
+	if(f->fmt.pix.pixelformat==V4L2_PIX_FMT_RGB24){
+		vidio_set_fmt_ticks=1;
+		GT2005_set_resolution(dev,fh->height,fh->width);
+		}
+	else if(vidio_set_fmt_ticks==1){
+		GT2005_set_resolution(dev,fh->height,fh->width);
+		}
+	#endif
 	ret = 0;
 out:
 	mutex_unlock(&q->vb_lock);
@@ -1860,6 +1900,7 @@ static int gt2005_open(struct file *file)
 		printk("+++found a init function, and run it..\n");
 	}
 	GT2005_init_regs(dev);
+	msleep(40);
 	mutex_lock(&dev->mutex);
 	dev->users++;
 	if (dev->users > 1) {
@@ -1965,13 +2006,13 @@ static int gt2005_close(struct file *file)
 #if 1		
 	power_down_gt2005(dev);
 #endif
-	msleep(100);
+	msleep(10);
 
 	if(dev->platform_dev_data.device_uninit) {
 		dev->platform_dev_data.device_uninit();
 		printk("+++found a uninit function, and run it..\n");
 	}
-	msleep(400); 
+	msleep(10); 
 	return 0;
 }
 

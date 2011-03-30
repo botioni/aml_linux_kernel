@@ -119,9 +119,9 @@ static inline void kbd_software_mode_remote_send_key(unsigned long data)
             return;
         if(((reort_key_code&0xff)^(reort_key_code>>8&0xff))!=0xff)
             return;
-        if(kp_data->repeat_timer < jiffies){
+        if(kp_data->repeat_tick < jiffies){
             kp_send_key(kp_data->input, (kp_data->cur_keycode>>16)&0xff, 2);
-            kp_data->repeat_timer += msecs_to_jiffies(kp_data->input->rep[REP_PERIOD]);
+            kp_data->repeat_tick += msecs_to_jiffies(kp_data->input->rep[REP_PERIOD]);
             }   
         }
     else{
@@ -132,7 +132,7 @@ static inline void kbd_software_mode_remote_send_key(unsigned long data)
         if(((reort_key_code&0xff)^(reort_key_code>>8&0xff))==0xff)
             kp_send_key(kp_data->input, (kp_data->cur_keycode>>16)&0xff, 1);
         if(kp_data->repeat_enable)
-            kp_data->repeat_timer = jiffies + msecs_to_jiffies(kp_data->input->rep[REP_DELAY]);
+            kp_data->repeat_tick = jiffies + msecs_to_jiffies(kp_data->input->rep[REP_DELAY]);
         }
 }
 static inline void kbd_software_mode_remote_data(unsigned long data)

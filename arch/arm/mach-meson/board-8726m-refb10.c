@@ -354,6 +354,23 @@ static struct platform_device codec_device = {
 #if defined(CONFIG_AM_VIDEO)
 static struct resource deinterlace_resources[] = {
     [0] = {
+        .start =  DI_ADDR_START,
+        .end   = DI_ADDR_END,
+        .flags = IORESOURCE_MEM,
+    },
+};
+
+static struct platform_device deinterlace_device = {
+    .name       = "deinterlace",
+    .id         = 0,
+    .num_resources = ARRAY_SIZE(deinterlace_resources),
+    .resource      = deinterlace_resources,
+};
+#endif
+
+#if defined(CONFIG_TVIN_VDIN)
+static struct resource vdin_resources[] = {
+    [0] = {
         .start =  VDIN_ADDR_START,  //pbufAddr
         .end   = VDIN_ADDR_END,     //pbufAddr + size
         .flags = IORESOURCE_MEM,
@@ -373,25 +390,6 @@ static struct resource deinterlace_resources[] = {
         .end   = INT_VDIN_VSYNC,
         .flags = IORESOURCE_IRQ,
     },
-};
-
-static struct platform_device deinterlace_device = {
-    .name       = "deinterlace",
-    .id         = 0,
-    .num_resources = ARRAY_SIZE(deinterlace_resources),
-    .resource      = deinterlace_resources,
-};
-#endif
-
-#if defined(CONFIG_TVIN_VDIN)
-static struct resource vdin_resources[] = {
-    [0] = {
-        .start =  VDIN_ADDR_START,  //pbufAddr
-        .end   = VDIN_ADDR_END,     //pbufAddr + size
-        .flags = IORESOURCE_MEM,
-    },
-
-
 };
 
 static struct platform_device vdin_device = {
@@ -539,38 +537,6 @@ static struct platform_device amlogic_card_device = {
 
 #endif
 
-#if defined(CONFIG_AML_AUDIO_DSP)
-static struct resource audiodsp_resources[] = {
-    [0] = {
-        .start = AUDIODSP_ADDR_START,
-        .end   = AUDIODSP_ADDR_END,
-        .flags = IORESOURCE_MEM,
-    },
-};
-
-static struct platform_device audiodsp_device = {
-    .name       = "audiodsp",
-    .id         = 0,
-    .num_resources = ARRAY_SIZE(audiodsp_resources),
-    .resource      = audiodsp_resources,
-};
-#endif
-
-static struct resource aml_m1_audio_resource[]={
-        [0] =   {
-                .start  =   0,
-                .end        =   0,
-                .flags  =   IORESOURCE_MEM,
-        },
-};
-
-static struct platform_device aml_audio={
-        .name               = "aml_m1_audio_wm8900",
-        .id                     = -1,
-        .resource       =   aml_m1_audio_resource,
-        .num_resources  =   ARRAY_SIZE(aml_m1_audio_resource),
-};
-
 #if defined (CONFIG_AMLOGIC_VIDEOIN_MANAGER)
 static struct resource vm_resources[] = {
     [0] = {
@@ -655,18 +621,20 @@ static int gt2005_v4l2_init(void)
 
     eth_set_pinmux(ETH_BANK0_GPIOC3_C12,ETH_CLK_OUT_GPIOC12_REG3_1, 1);
     
-    set_gpio_val(GPIOD_bank_bit2_24(4), GPIOD_bit_bit2_24(5), 1); //low
-    set_gpio_mode(GPIOD_bank_bit2_24(4), GPIOD_bit_bit2_24(5), GPIO_OUTPUT_MODE);
+    //set_gpio_val(GPIOD_bank_bit2_24(4), GPIOD_bit_bit2_24(4), 1); //low
+    //set_gpio_mode(GPIOD_bank_bit2_24(4), GPIOD_bit_bit2_24(4), GPIO_OUTPUT_MODE);
     set_gpio_val(GPIOD_bank_bit2_24(5), GPIOD_bit_bit2_24(5), 1); //low
     set_gpio_mode(GPIOD_bank_bit2_24(5), GPIOD_bit_bit2_24(5), GPIO_OUTPUT_MODE);
+    msleep(300);
 
 }
 static int gt2005_v4l2_uninit(void)
 {
-    set_gpio_val(GPIOD_bank_bit2_24(4), GPIOD_bit_bit2_24(5), 0); //low
-    set_gpio_mode(GPIOD_bank_bit2_24(4), GPIOD_bit_bit2_24(5), GPIO_OUTPUT_MODE);
+    //set_gpio_val(GPIOD_bank_bit2_24(4), GPIOD_bit_bit2_24(4), 0); //low
+    //set_gpio_mode(GPIOD_bank_bit2_24(4), GPIOD_bit_bit2_24(4), GPIO_OUTPUT_MODE);
     set_gpio_val(GPIOD_bank_bit2_24(5), GPIOD_bit_bit2_24(5), 0); //low
     set_gpio_mode(GPIOD_bank_bit2_24(5), GPIOD_bit_bit2_24(5), GPIO_OUTPUT_MODE);
+    msleep(300);
 }
 
 aml_plat_cam_data_t video_gt2005_data = {
@@ -676,6 +644,38 @@ aml_plat_cam_data_t video_gt2005_data = {
 	.device_uninit=gt2005_v4l2_uninit,
 };
 #endif /* VIDEO_AMLOGIC_CAPTURE_GT2005 */
+
+#if defined(CONFIG_AML_AUDIO_DSP)
+static struct resource audiodsp_resources[] = {
+    [0] = {
+        .start = AUDIODSP_ADDR_START,
+        .end   = AUDIODSP_ADDR_END,
+        .flags = IORESOURCE_MEM,
+    },
+};
+
+static struct platform_device audiodsp_device = {
+    .name       = "audiodsp",
+    .id         = 0,
+    .num_resources = ARRAY_SIZE(audiodsp_resources),
+    .resource      = audiodsp_resources,
+};
+#endif
+
+static struct resource aml_m1_audio_resource[]={
+        [0] =   {
+                .start  =   0,
+                .end        =   0,
+                .flags  =   IORESOURCE_MEM,
+        },
+};
+
+static struct platform_device aml_audio={
+        .name               = "aml_m1_audio_wm8900",
+        .id                     = -1,
+        .resource       =   aml_m1_audio_resource,
+        .num_resources  =   ARRAY_SIZE(aml_m1_audio_resource),
+};
 
 #ifdef CONFIG_SND_AML_M1_MID_WM8900
 
@@ -1038,9 +1038,9 @@ typedef struct {
 	unsigned enable;
 } gpio_data_t;
 
-#define MAX_GPIO 43
+#define MAX_GPIO 41
 static gpio_data_t gpio_data[MAX_GPIO] = {
-// 9
+// 8
   {"GPIOA_0 -- TCON_STH",		 GPIOA_bank_bit0_14(0),		GPIOA_bit_bit0_14(0),	GPIO_OUTPUT_MODE, 1, 1},
   {"GPIOA_1 -- TCON_STV",		 GPIOA_bank_bit0_14(1),		GPIOA_bit_bit0_14(1),	GPIO_OUTPUT_MODE, 1, 1},
 	{"GPIOA_2 -- OEH",		     GPIOA_bank_bit0_14(2),		GPIOA_bit_bit0_14(2),	GPIO_OUTPUT_MODE, 1, 1},
@@ -1049,7 +1049,6 @@ static gpio_data_t gpio_data[MAX_GPIO] = {
   {"GPIOA_5 -- LCD_CLK",		 GPIOA_bank_bit0_14(5),		GPIOA_bit_bit0_14(5),	GPIO_OUTPUT_MODE, 1, 1},
   {"GPIOA_6 -- VCCx2_EN",		 GPIOA_bank_bit0_14(6),		GPIOA_bit_bit0_14(6),	GPIO_OUTPUT_MODE, 1, 1},
 	{"GPIOA_7 -- BL_PWM",		   GPIOA_bank_bit0_14(7),		GPIOA_bit_bit0_14(7),	GPIO_OUTPUT_MODE, 1, 1},
-	{"GPIOA_8 -- PWR_HOLD",		 GPIOA_bank_bit0_14(8),		GPIOA_bit_bit0_14(8),	GPIO_OUTPUT_MODE, 1, 1},
 	// WIFI  8
 	{"GPIOB_0 -- I2C_SDA",     GPIOB_bank_bit0_7(2),		GPIOB_bit_bit0_7(2),	GPIO_OUTPUT_MODE, 1, 1},
 	{"GPIOB_1 -- I2C_SCL",     GPIOB_bank_bit0_7(3),		GPIOB_bit_bit0_7(3),	GPIO_OUTPUT_MODE, 1, 1},
@@ -1088,8 +1087,8 @@ static gpio_data_t gpio_data[MAX_GPIO] = {
 	{"GPIOE_16 -- nand_ncs3",	 GPIOE_bank_bit16_21(16),	GPIOE_bit_bit16_21(16),	GPIO_OUTPUT_MODE, 1, 1},
 	{"GPIOE_17 -- nand_ncs4",	 GPIOE_bank_bit16_21(17),	GPIOE_bit_bit16_21(17),	GPIO_OUTPUT_MODE, 1, 1},
 	{"GPIOE_18 -- Linux_TX",	 GPIOE_bank_bit16_21(18),	GPIOE_bit_bit16_21(18), GPIO_OUTPUT_MODE, 1, 1},
-	// 1----------------------------------- i2s ---------------------------------
-	{"TEST_N -- I2S_DOUT",		 GPIOJTAG_bank_bit(16),		GPIOJTAG_bit_bit16(16),	GPIO_OUTPUT_MODE, 1, 1},
+	//1
+	//{"TEST_N -- I2S_DOUT",		 GPIOJTAG_bank_bit(16),		GPIOJTAG_bit_bit16(16),	GPIO_OUTPUT_MODE, 1, 1},
 
 };	
 
@@ -1184,12 +1183,17 @@ static void set_vccx2(int power_on)
     }
     else{
         printk(KERN_INFO "set_vccx2 power down\n");   
+        
+        set_gpio_val(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), 0);
+        set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);   
+        
         for (i=0;i<MAX_GPIO;i++){
         	save_gpio(i);
         }   
         save_pinmux();  
-        set_gpio_val(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), 0);
-        set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);   
+        set_gpio_val(GPIOD_bank_bit2_24(5), GPIOD_bit_bit2_24(5), 1); //camera power down
+        set_gpio_mode(GPIOD_bank_bit2_24(5), GPIOD_bit_bit2_24(5), GPIO_OUTPUT_MODE);
+        
         //disable wifi clk
         CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, (1<<18));
         SET_CBUS_REG_MASK(PREG_EGPIO_EN_N, (1<<4));	        
@@ -1203,7 +1207,7 @@ static struct meson_pm_config aml_pm_pdata = {
     .ddr_clk = 0x00110820,
     .sleepcount = 128,
     .set_vccx2 = set_vccx2,
-    .core_voltage_adjust = 5,
+    .core_voltage_adjust = 10,
 };
 
 static struct platform_device aml_pm_device = {
@@ -1351,8 +1355,8 @@ static void set_bat_off(void)
     set_gpio_mode(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), GPIO_OUTPUT_MODE);
 
     //VCCx2 power down
-    set_vccx2(0);
-if(is_ac_connected()){ //AC in after power off press
+    //set_vccx2(0);
+    if(is_ac_connected()){ //AC in after power off press
         kernel_restart("reboot");
     }
 
@@ -1652,44 +1656,44 @@ static struct platform_device aml_nand_device = {
 static struct mtd_partition multi_partition_info[] = 
 {
 	{
-		.name = "environment",
-		.offset = 8*1024*1024,
-		.size = 40*1024*1024,
+		.name = "logo",
+		.offset = 32*1024*1024,
+		.size = 16*1024*1024,
 	},
 	{
-		.name = "logo",
+		.name = "aml_logo",
 		.offset = 48*1024*1024,
 		.size = 16*1024*1024,
 	},
 	{
 		.name = "recovery",
 		.offset = 64*1024*1024,
-		.size = 16*1024*1024,
+		.size = 32*1024*1024,
 	},
 	{
-		.name = "uImage",
-		.offset = 80*1024*1024,
-		.size = 16*1024*1024,
+		.name = "boot",
+		.offset = 96*1024*1024,
+		.size = 32*1024*1024,
 	},
 	{
 		.name = "system",
-		.offset = 96*1024*1024,
+		.offset = 128*1024*1024,
 		.size = 256*1024*1024,
 	},
 	{
 		.name = "cache",
-		.offset = 352*1024*1024,
-		.size = 32*1024*1024,
+		.offset = 384*1024*1024,
+		.size = 128*1024*1024,
 	},
 	{
 		.name = "userdata",
-		.offset = 384*1024*1024,
-		.size = 256*1024*1024,
+		.offset = 512*1024*1024,
+		.size = 512*1024*1024,
 	},
 	{
 		.name = "NFTL_Part",
-		.offset = ((384 + 256)*1024*1024),
-		.size = ((0x200000000 - (384 + 256)*1024*1024)),
+		.offset = ((512 + 512)*1024*1024),
+		.size = ((0x200000000 - (512 + 512)*1024*1024)),
 	},
 };
 
@@ -1954,9 +1958,6 @@ static struct platform_device __initdata *platform_devs[] = {
     #if defined(CONFIG_TVIN_VDIN)
         &vdin_device,
     #endif
-    #if defined(CONFIG_TVIN_BT656IN)
-        &bt656in_device,
-    #endif
     #if defined(CONFIG_AML_AUDIO_DSP)
         &audiodsp_device,
     #endif
@@ -2015,14 +2016,17 @@ static struct platform_device __initdata *platform_devs[] = {
     #if defined(CONFIG_AM_TV_OUTPUT)||defined(CONFIG_AM_TCON_OUTPUT)
         &vout_device,   
     #endif
-    #ifdef CONFIG_AMLOGIC_VIDEOIN_MANAGER
-		&vm_device,
-	#endif
     #ifdef CONFIG_USB_ANDROID
         &android_usb_device,
         #ifdef CONFIG_USB_ANDROID_MASS_STORAGE
             &usb_mass_storage_device,
         #endif
+    #endif
+    #ifdef CONFIG_AMLOGIC_VIDEOIN_MANAGER
+		&vm_device,
+	  #endif    
+    #if defined(CONFIG_TVIN_BT656IN)
+        &bt656in_device,
     #endif
 };
 static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
@@ -2179,7 +2183,7 @@ static void disable_unused_model(void)
      //disable wifi
     SET_CBUS_REG_MASK(HHI_GCLK_MPEG2, (1<<5)); 
     SET_CBUS_REG_MASK(HHI_WIFI_CLK_CNTL, (1<<0));
-    __raw_writel(0x8AF,0xC9320ED8);
+    __raw_writel(0xCFF,0xC9320ED8);
     __raw_writel((__raw_readl(0xC9320EF0))&0xF9FFFFFF,0xC9320EF0);
     CLEAR_CBUS_REG_MASK(HHI_GCLK_MPEG2, (1<<5)); 
     CLEAR_CBUS_REG_MASK(HHI_WIFI_CLK_CNTL, (1<<0));
@@ -2197,7 +2201,7 @@ static void __init power_hold(void)
     set_gpio_mode(GPIOA_bank_bit(8), GPIOA_bit_bit0_14(8), GPIO_OUTPUT_MODE);
     
     //VCCx2 power up
-    set_vccx2(1);
+    //set_vccx2(1);
 }
 
 static __init void m1_init_machine(void)
