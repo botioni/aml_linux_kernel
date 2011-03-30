@@ -1199,6 +1199,18 @@ void GT2005_set_night_mode(struct gt2005_device *dev,enum  camera_night_mode_fli
 
 }    /* GT2005_NightMode */
 
+void GT2005_set_resolution(struct gt2005_device *dev,int height,int width)
+{	
+	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);	
+	
+	if(height&&width&&(height<1200)&&(width<1600))
+	{		
+		i2c_put_byte(client,0x0110 , (width>>8)&0xff);
+		i2c_put_byte(client,0x0111 , width&0xff);
+		i2c_put_byte(client,0x0112  , (height>>8)&0xff);
+		i2c_put_byte(client,0x0113 , height&0xff);
+	}
+}    /* GT2005_set_resolution */
 
 unsigned char v4l_2_gt2005(int val)
 {
@@ -1654,6 +1666,7 @@ static int vidioc_s_fmt_vid_cap(struct file *file, void *priv,
 {
 	struct gt2005_fh *fh = priv;
 	struct videobuf_queue *q = &fh->vb_vidq;
+	struct gt2005_device *dev = fh->dev;
 
 	int ret = vidioc_try_fmt_vid_cap(file, fh, f);
 	if (ret < 0)
@@ -1672,7 +1685,7 @@ static int vidioc_s_fmt_vid_cap(struct file *file, void *priv,
 	fh->height        = f->fmt.pix.height;
 	fh->vb_vidq.field = f->fmt.pix.field;
 	fh->type          = f->type;
-
+    GT2005_set_resolution(dev,fh->height,fh->width);
 	ret = 0;
 out:
 	mutex_unlock(&q->vb_lock);
