@@ -497,11 +497,21 @@ static void reinit_bt601in_dec(void)
 //CAMERA input(progressive mode): CLOCK + D0~D7 + HREF + VSYNC
 static void reinit_camera_dec(void)
 {
-    reset_bt656in_module();
+    //reset_bt656in_module();
+	int temp_data;
+
+    temp_data = READ_CBUS_REG(BT_CTRL);
+    temp_data &= ~( 1 << BT_EN_BIT );
+    WRITE_CBUS_REG(BT_CTRL, temp_data); //disable BT656 input
+
+    // reset BT656in module.
+    temp_data = READ_CBUS_REG(BT_CTRL);
+    temp_data |= ( 1 << BT_SOFT_RESET );
+    WRITE_CBUS_REG(BT_CTRL, temp_data);
 	
-    WRITE_CBUS_REG(BT_VIDEOSTART, 1 | (1 << 16));   //Line number of the first video start line in field 0/1.there is a blank
+    /*WRITE_CBUS_REG(BT_VIDEOSTART, 1 | (1 << 16));   //Line number of the first video start line in field 0/1.there is a blank
     WRITE_CBUS_REG(BT_VIDEOEND , (am656in_dec_info.active_line )|          //  Line number of the last video line in field 1. added video end for avoid overflow.
-                                    ((am656in_dec_info.active_line ) << 16));                   // Line number of the last video line in field 0
+                                    ((am656in_dec_info.active_line ) << 16));      */             // Line number of the last video line in field 0
     WRITE_CBUS_REG(BT_PORT_CTRL,    (0 << BT_IDQ_EN )   |     // use external idq pin.
                                         (0 << BT_IDQ_PHASE )   |
                                         ( 0 << BT_FID_HSVS ) |         // FID came from HS VS.
@@ -557,6 +567,10 @@ static void reinit_camera_dec(void)
                                 (1 << BT_XCLK27_EN_BIT) |   // xclk27 is input.
                                 (1 << BT_PROG_MODE  )   |
                                 (0 << BT_AUTO_FMT    ) );
+	
+	temp_data = READ_CBUS_REG(BT_CTRL);
+	temp_data &= ~( 1 << BT_SOFT_RESET );
+	WRITE_CBUS_REG(BT_CTRL, temp_data);
 
     return;
 }

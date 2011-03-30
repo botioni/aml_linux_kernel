@@ -74,6 +74,9 @@ static unsigned int vid_limit = 16;
 //module_param(vid_limit, uint, 0644);
 //MODULE_PARM_DESC(vid_limit, "capture memory limit in megabytes");
 
+static int vidio_set_fmt_ticks=0;
+
+
 
 /* supported controls */
 static struct v4l2_queryctrl gt2005_qctrl[] = {
@@ -1203,12 +1206,23 @@ void GT2005_set_resolution(struct gt2005_device *dev,int height,int width)
 {	
 	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);	
 	
-	if(height&&width&&(height<1200)&&(width<1600))
+	if(height&&width&&(height<=1200)&&(width<=1600))
 	{		
-		i2c_put_byte(client,0x0110 , (width>>8)&0xff);
-		i2c_put_byte(client,0x0111 , width&0xff);
-		i2c_put_byte(client,0x0112  , (height>>8)&0xff);
-		i2c_put_byte(client,0x0113 , height&0xff);
+	    if((height<=600)&&(width<=800))
+	    {
+	        
+	    	i2c_put_byte(client,0x0110, 0x03);
+			i2c_put_byte(client,0x0111, 0x20);
+			i2c_put_byte(client,0x0112, 0x02);
+			i2c_put_byte(client,0x0113, 0x5A);
+	    }
+		else
+		{
+			i2c_put_byte(client,0x0110 , (width>>8)&0xff);
+			i2c_put_byte(client,0x0111 ,  width&0xff);
+			i2c_put_byte(client,0x0112 , (height>>8)&0xff);
+			i2c_put_byte(client,0x0113 ,  height&0xff);
+		}
 	}
 }    /* GT2005_set_resolution */
 
@@ -1685,7 +1699,15 @@ static int vidioc_s_fmt_vid_cap(struct file *file, void *priv,
 	fh->height        = f->fmt.pix.height;
 	fh->vb_vidq.field = f->fmt.pix.field;
 	fh->type          = f->type;
-    GT2005_set_resolution(dev,fh->height,fh->width);
+	#if 1
+	if(f->fmt.pix.pixelformat==V4L2_PIX_FMT_RGB24){
+		vidio_set_fmt_ticks=1;
+		GT2005_set_resolution(dev,fh->height,fh->width);
+		}
+	else if(vidio_set_fmt_ticks==1){
+		GT2005_set_resolution(dev,fh->height,fh->width);
+		}
+	#endif
 	ret = 0;
 out:
 	mutex_unlock(&q->vb_lock);
