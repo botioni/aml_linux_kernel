@@ -313,6 +313,7 @@ struct gc0308_fh {
 #if 1
 
 struct aml_camera_i2c_fig1_s GC0308_script[] = {  
+        {0xfe,0x80},  
 	{0xfe,0x00},
 	{0x0f,0x00},
 #if 0
