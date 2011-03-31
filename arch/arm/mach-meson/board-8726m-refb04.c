@@ -793,13 +793,13 @@ static int tsc2007_get_pendown_state(void)
 }
 
 #define XLCD    800
-#define YLCD    600
+#define YLCD    480
 #define SWAP_XY 0
 #define XPOL    0
 #define YPOL    0
 #define XMIN 0
-#define XMAX 0
-#define YMIN 4095
+#define XMAX 4095
+#define YMIN 0
 #define YMAX 4095
 
 int tsc2007_convert(int x, int y)
