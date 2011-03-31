@@ -1909,6 +1909,7 @@ static struct aml_power_pdata power_pdata = {
 	.bat_table_len = 37,		
 	.ic_control = ic_control,
 	.powerkey_led_onoff = powerkey_led_onoff,
+	.is_support_usb_charging = 1,
 	//.supplied_to = supplicants,
 	//.num_supplicants = ARRAY_SIZE(supplicants),
 };

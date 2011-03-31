@@ -60,6 +60,8 @@ static int VF_POOL_SIZE = 6;
 static int VM_CANVAS_INDEX = 24;
 /*same as tvin pool*/
 
+static int vm_skip_count = 5 ; //skip 5 frames from vdin
+
 static inline void vm_vf_put_from_provider(vframe_t *vf);
 #define INCPTR(p) ptr_atomic_wrap_inc(&p)
 
@@ -129,7 +131,16 @@ static inline u32 index2canvas(u32 index)
 
 static vframe_t *vm_vf_peek(void)
 {
-    return vm_vf_peek_from_provider();
+	vframe_t *vf = NULL;
+	vf = vm_vf_peek_from_provider();
+	if(vf){
+		if(vm_skip_count > 0){
+			vm_skip_count--;		
+			vm_vf_put_from_provider(vf); 
+			vf = NULL;						
+		}	
+	}
+    return vf;
 }
 
 static vframe_t *vm_vf_get(void)
@@ -214,7 +225,6 @@ static const struct vframe_receiver_op_s vm_vf_receiver =
 {
     .event_cb = vm_receiver_event_fun
 };
-static int vm_in = 0 ;
 static int vm_receiver_event_fun(int type, void* data, void* private_data)
 {
     switch(type){
@@ -222,13 +232,9 @@ static int vm_receiver_event_fun(int type, void* data, void* private_data)
             //up(&vb_start_sema);
             break;
         case VFRAME_EVENT_PROVIDER_START:
-            if(vm_in == 0){
-  //            vf_reg_provider(&vm_vf_provider);
-                vm_in ++;
-            }        
+			vm_skip_count = 0; 
             break;
         case VFRAME_EVENT_PROVIDER_UNREG:        
-            vm_in = 0;
             vm_local_init();
             break;
             
