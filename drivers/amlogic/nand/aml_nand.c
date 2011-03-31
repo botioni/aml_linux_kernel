@@ -193,6 +193,9 @@ struct aml_nand_flash_dev aml_nand_flash_ids[] = {
 	{"C revision NAND 8GiB MT29F64G-C", {NAND_MFR_MICRON, 0x88, 0x04, 0x4b, 0xa9}, 8192, 8192, 0x200000, 448, 1, (NAND_TIMING_MODE5 | NAND_ECC_BCH16_MODE | NAND_TWO_PLANE_MODE)},
 	{"C revision NAND 32GiB MT29F256G-C", {NAND_MFR_MICRON, 0xa8, 0x05, 0xcb, 0xa9}, 8192, 32768, 0x200000, 448, 2, (NAND_TIMING_MODE5 | NAND_ECC_BCH16_MODE | NAND_TWO_PLANE_MODE | NAND_INTERLEAVING_MODE)},
 
+	{"1 Generation NAND 4GiB JS29F32G08AA-1", {NAND_MFR_INTEL, 0x68, 0x04, 0x46, 0xA9}, 4096, 4096, 0x100000, 218, 1, (NAND_TIMING_MODE5 | NAND_ECC_BCH12_MODE | NAND_TWO_PLANE_MODE)},
+	{"1 Generation NAND 8GiB JS29F64G08AA-1", {NAND_MFR_INTEL, 0x88, 0x24, 0x4b, 0xA9}, 8192, 8192, 0x200000, 448, 1, (NAND_TIMING_MODE5 | NAND_ECC_BCH16_MODE | NAND_TWO_PLANE_MODE)},
+
 	{"E serials NAND 2GiB TC58NVG4D2ETA00", {NAND_MFR_TOSHIBA, 0xD5, 0x94, 0x32, 0x76, 0x54}, 8192, 2048, 0x100000, 376, 1, (NAND_TIMING_MODE5 | NAND_ECC_BCH12_MODE | NAND_TWO_PLANE_MODE)},
 	{"E serials NAND 4GiB TC58NVG5D2ETA00", {NAND_MFR_TOSHIBA, 0xD7, 0x94, 0x32, 0x76, 0x54}, 8192, 4096, 0x100000, 376, 1, (NAND_TIMING_MODE5 | NAND_ECC_BCH12_MODE | NAND_TWO_PLANE_MODE)},
 	{"F serials NAND 4GiB TC58NVG5D2FTA00", {NAND_MFR_TOSHIBA, 0xD7, 0x94, 0x32, 0x76, 0x55}, 8192, 4096, 0x100000, 448, 1, (NAND_TIMING_MODE5 | NAND_ECC_BCH16_MODE | NAND_TWO_PLANE_MODE)},
@@ -588,7 +591,7 @@ static void aml_nand_base_command(struct aml_nand_chip *aml_chip, unsigned comma
 		switch (command) {
 
 			case NAND_CMD_READ0:
-				if (aml_chip->mfr_type == NAND_MFR_MICRON) {
+				if ((aml_chip->mfr_type == NAND_MFR_MICRON) || (aml_chip->mfr_type == NAND_MFR_INTEL)) {
 					command_temp = command;
 				}
 				else {
@@ -600,7 +603,7 @@ static void aml_nand_base_command(struct aml_nand_chip *aml_chip, unsigned comma
 
 			case NAND_CMD_TWOPLANE_READ1:
 				command_temp = NAND_CMD_READ0;
-				if (aml_chip->mfr_type == NAND_MFR_MICRON)
+				if ((aml_chip->mfr_type == NAND_MFR_MICRON) || (aml_chip->mfr_type == NAND_MFR_INTEL))
 					//plane_page_addr |= ((plane_blk_addr + 1) << 8);
 					return;
 				else
@@ -608,7 +611,7 @@ static void aml_nand_base_command(struct aml_nand_chip *aml_chip, unsigned comma
 				break;
 
 			case NAND_CMD_TWOPLANE_READ2:
-				if (aml_chip->mfr_type == NAND_MFR_MICRON) {
+				if ((aml_chip->mfr_type == NAND_MFR_MICRON) || (aml_chip->mfr_type == NAND_MFR_INTEL)) {
 					command_temp = NAND_CMD_PLANE2_READ_START;
 				}
 				else {
@@ -676,7 +679,7 @@ static void aml_nand_base_command(struct aml_nand_chip *aml_chip, unsigned comma
 			case NAND_CMD_READ0:
 				plane_page_addr = page_addr % (1 << pages_per_blk_shift);
 				
-				if (aml_chip->mfr_type == NAND_MFR_MICRON) {
+				if ((aml_chip->mfr_type == NAND_MFR_MICRON) || (aml_chip->mfr_type == NAND_MFR_INTEL)) {
 					plane_page_addr |= ((plane_blk_addr + 1) << pages_per_blk_shift);
 					command_temp = command;
 					chip->cmd_ctrl(mtd, command_temp & 0xff, NAND_NCE | NAND_CLE | NAND_CTRL_CHANGE);
@@ -691,7 +694,7 @@ static void aml_nand_base_command(struct aml_nand_chip *aml_chip, unsigned comma
 				break;
 
 			case NAND_CMD_TWOPLANE_READ1:
-				if (aml_chip->mfr_type == NAND_MFR_MICRON) {
+				if ((aml_chip->mfr_type == NAND_MFR_MICRON) || (aml_chip->mfr_type == NAND_MFR_INTEL)) {
 					page_addr = -1;
 					column = -1;
 				}
@@ -703,7 +706,7 @@ static void aml_nand_base_command(struct aml_nand_chip *aml_chip, unsigned comma
 				break;
 
 			case NAND_CMD_TWOPLANE_READ2:
-				if (aml_chip->mfr_type == NAND_MFR_MICRON) {
+				if ((aml_chip->mfr_type == NAND_MFR_MICRON) || (aml_chip->mfr_type == NAND_MFR_INTEL)) {
 					page_addr = -1;
 					column = -1;
 				}
@@ -715,7 +718,7 @@ static void aml_nand_base_command(struct aml_nand_chip *aml_chip, unsigned comma
 				break;
 
 			case NAND_CMD_ERASE1:
-				if (aml_chip->mfr_type == NAND_MFR_MICRON) {
+				if ((aml_chip->mfr_type == NAND_MFR_MICRON) || (aml_chip->mfr_type == NAND_MFR_INTEL)) {
 					command_temp = NAND_CMD_ERASE1_END;
 					chip->cmd_ctrl(mtd, command_temp & 0xff, NAND_NCE | NAND_CLE | NAND_CTRL_CHANGE);
 					aml_chip->aml_nand_wait_devready(aml_chip, chipnr);
