@@ -135,7 +135,8 @@ static vframe_t *vm_vf_peek(void)
 	vf = vm_vf_peek_from_provider();
 	if(vf){
 		if(vm_skip_count > 0){
-			vm_skip_count--;		
+			vm_skip_count--;	
+			vm_vf_get_from_provider();	
 			vm_vf_put_from_provider(vf); 
 			vf = NULL;						
 		}	
@@ -232,7 +233,7 @@ static int vm_receiver_event_fun(int type, void* data, void* private_data)
             //up(&vb_start_sema);
             break;
         case VFRAME_EVENT_PROVIDER_START:
-			vm_skip_count = 0; 
+			vm_skip_count = 5; 
             break;
         case VFRAME_EVENT_PROVIDER_UNREG:        
             vm_local_init();
