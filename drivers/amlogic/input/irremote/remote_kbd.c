@@ -222,6 +222,7 @@ static void kp_repeat_sr(unsigned long data)
 {
 	struct kp *kp_data=(struct kp *)data;
 	u32 	status;
+	u32  timer_period;
 	
 	status = READ_MPEG_REG(IR_DEC_STATUS);
 	switch(status&REMOTE_HW_DECODER_STATUS_MASK) 
@@ -230,13 +231,23 @@ static void kp_repeat_sr(unsigned long data)
 		kp_send_key(kp_data->input, (kp_data->cur_keycode>>16)&0xff, 0);	
 		break ;
 		default:
-		if(jiffies - kp_data->repeat_tick >= msecs_to_jiffies(kp_data->repeat_peroid)) 
-		{
-			kp_send_key(kp_data->input, (kp_data->cur_keycode>>16)&0xff, 2);
-		}	
 		SET_MPEG_REG_MASK(IR_DEC_REG1,1);//reset ir deocoder
 		CLEAR_MPEG_REG_MASK(IR_DEC_REG1,1);
-		mod_timer(&kp_data->repeat_timer,jiffies+msecs_to_jiffies(kp_data->repeat_peroid));	
+		
+		if(kp_data->repeat_tick !=0)//new key coming in.
+		{
+			timer_period= jiffies + 10 ;  //timer peroid waiting for a stable state.
+		}
+		else //repeat key check
+		{
+			if(kp_data->repeat_enable)
+			{
+				kp_send_key(kp_data->input, (kp_data->cur_keycode>>16)&0xff, 2);
+			}
+			timer_period=jiffies+msecs_to_jiffies(kp_data->repeat_peroid);
+		}
+		mod_timer(&kp_data->repeat_timer,timer_period);
+		kp_data->repeat_tick =0;
 		break;
 	}
 	

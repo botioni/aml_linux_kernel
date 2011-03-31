@@ -800,12 +800,18 @@ static struct resource amlogic_dvb_resource[]  = {
 		.flags = IORESOURCE_IRQ,
 		.name  = "demux2_irq"
 	},	
-	[7] = {
-		.start = INT_ASYNC_FIFO_FILL,                   //dvr 0 irq
-		.end   = INT_ASYNC_FIFO_FLUSH,
-		.flags = IORESOURCE_IRQ,
-		.name  = "dvr0_irq"
-	},
+  [7] = {
+    .start = INT_ASYNC_FIFO_FLUSH,           //dvr 0 irq
+    .end   = INT_ASYNC_FIFO_FLUSH,
+    .flags = IORESOURCE_IRQ,
+    .name  = "dvr0_irq"
+  },
+  [8] = {
+    .start = INT_ASYNC_FIFO2_FLUSH,          //dvr 1 irq
+    .end   = INT_ASYNC_FIFO2_FLUSH,
+    .flags = IORESOURCE_IRQ,
+    .name  = "dvr1_irq"
+  },
 };
 
 static  struct platform_device amlogic_dvb_device = {

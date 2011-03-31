@@ -38,10 +38,10 @@
 #include <mach/pinmux.h>
 #include <mach/power_gate.h>
 
-#define LCD_WIDTH       1024 
-#define LCD_HEIGHT      768
-#define MAX_WIDTH       1344
-#define MAX_HEIGHT      806
+#define LCD_WIDTH       800 
+#define LCD_HEIGHT      480
+#define MAX_WIDTH       1056
+#define MAX_HEIGHT      525
 #define VIDEO_ON_LINE   22
 
 static void t13_power_on(void);
@@ -111,7 +111,7 @@ static tcon_conf_t tcon_config =
     .tcon_misc_sel_addr = (1<<LCD_STV1_SEL) | (1<<LCD_STV2_SEL),
     .dual_port_cntl_addr = (1<<LCD_TTL_SEL) | (1<<LCD_ANALOG_SEL_CPH3) | (1<<LCD_ANALOG_3PHI_CLK_SEL) |(0<<1),
     .flags = 0,
-    .screen_width = 4,
+    .screen_width = 5,
     .screen_height = 3,
     .sync_duration_num = 101,
     .sync_duration_den = 2,
@@ -178,14 +178,14 @@ static void power_on_lcd(void)
 #endif    
     msleep(80);
 	
-	//AVDD EIO -> PP5: 1 
-#ifdef CONFIG_SN7325
-    configIO(1, 0);
-    setIO_level(1, 1, 5);
-#endif
-	msleep(50);
+//	//AVDD EIO -> PP5: 1 
+//#ifdef CONFIG_SN7325
+//    configIO(1, 0);
+//    setIO_level(1, 1, 5);
+//#endif
+//	msleep(50);
 
-    //Signal  EIO -> OD4: 1
+    //AVDD & BL VCC  EIO -> OD4: 1
 #ifdef CONFIG_SN7325
     configIO(0, 0);
     setIO_level(0, 1, 4);
@@ -196,18 +196,18 @@ static void power_on_lcd(void)
 static void power_off_lcd(void)
 {
     msleep(50);
-    //Signal  EIO -> OD4: 0
+    //AVDD & BL VCC  EIO -> OD4: 0
 #ifdef CONFIG_SN7325
     configIO(0, 0);
     setIO_level(0, 0, 4);
 #endif
 	
-	msleep(20);
-	//AVDD EIO -> PP5: 0 
-#ifdef CONFIG_SN7325
-    configIO(1, 0);
-    setIO_level(1, 0, 5);
-#endif
+//	msleep(20);
+//	//AVDD EIO -> PP5: 0 
+//#ifdef CONFIG_SN7325
+//    configIO(1, 0);
+//    setIO_level(1, 0, 5);
+//#endif
 
     msleep(50);
     //LCD3.3V  EIO -> OD0: 1     

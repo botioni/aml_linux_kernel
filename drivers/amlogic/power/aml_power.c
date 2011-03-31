@@ -96,7 +96,8 @@ static int aml_power_get_property(struct power_supply *psy,
 #ifdef AML_POWER_DBG
 		printk(KERN_INFO "get POWER_SUPPLY_PROP_STATUS\n");
 #endif
-		if(pdata->is_ac_online())
+		if((pdata->is_ac_online()) 
+			|| ((usb_status == AML_PSY_ONLINE)&&(pdata->is_support_usb_charging == 1)))
 		{
 			if(pdata->get_charge_status())
 				val->intval = POWER_SUPPLY_STATUS_FULL;

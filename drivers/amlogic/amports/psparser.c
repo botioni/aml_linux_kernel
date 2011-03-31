@@ -88,6 +88,7 @@ static u32 audio_first_access;
 static u32 packet_remaining;
 static u32 video_data_parsed;
 static u32 audio_data_parsed;
+static u32 pts_equ_dts_flag;
 
 static unsigned first_apts, first_vpts;
 static unsigned audio_got_first_pts, video_got_first_dts, sub_got_first_pts;
@@ -304,7 +305,17 @@ static u32 parser_process(s32 type, s32 packet_len)
                     ptsmgr_vpts_checkin(dts);
                 }
             } else if ((pts_dts_flag & 3) == 3) {
-                ptsmgr_vpts_checkin(pts);
+                if (pts_equ_dts_flag) {
+                    if (dts == pts) {
+                        ptsmgr_vpts_checkin(pts);
+                    }
+                }
+                else {
+                    if (dts == pts) {
+                        pts_equ_dts_flag = 1;
+                    }
+                    ptsmgr_vpts_checkin(pts);
+                }
             }
 #else
             if (!ptsmgr_first_vpts_ready()) {
@@ -354,6 +365,9 @@ static u32 parser_process(s32 type, s32 packet_len)
             /* DVD_VIDEO Audio LPCM data */
             PARSER_POP;
             temp = (PARSER_POP << 8) | PARSER_POP;
+            if(temp == 0) {
+                temp = 4;
+            }
             temp--;
             packet_len -= 3;
 
@@ -622,9 +636,15 @@ static void on_start_code_found(int start_code)
                 next_action = parser_process(1, packet_len);
             }
 
+        } else if (start_code == 0xbb) {
+            SET_DISCARD_SIZE(packet_len);
+            next_action = DISCARD_SEARCH;
         } else if (start_code == 0xbd) {
             next_action = parser_process(2, packet_len);
 
+        } else if (start_code == 0xbf) {
+            SET_DISCARD_SIZE(packet_len);
+            next_action = DISCARD_SEARCH;
         } else if ((start_code < 0xc0) || (start_code > 0xc8)) {
             next_action = SEARCH_START_CODE;
 
@@ -753,6 +773,7 @@ s32 psparser_init(u32 vid, u32 aid, u32 sid)
     sub_got_first_pts = 0;
     first_apts = 0;
     first_vpts = 0;
+    pts_equ_dts_flag = 0;
 
     printk("video 0x%x, audio 0x%x, sub 0x%x\n", video_id, audio_id, sub_id);
     if (fetchbuf == 0) {

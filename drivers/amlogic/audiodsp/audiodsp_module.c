@@ -32,6 +32,7 @@
 
 #include "dsp_codec.h"
 #include <linux/dma-mapping.h>
+#include <linux/amports/ptsserv.h>
 
 
 
@@ -99,6 +100,7 @@ int audiodsp_start(void)
 	priv->last_valid_pts=0;
 	priv->out_len_after_last_valid_pts = 0;
 	priv->decode_fatal_err = 0;
+	priv->first_lookup_over = 0;
 	pmcode=audiodsp_find_supoort_mcode(priv,priv->stream_fmt);
 	if(pmcode==NULL)
 	{
@@ -272,6 +274,9 @@ static int audiodsp_ioctl(struct inode *node, struct file *file, unsigned int cm
 		case AUDIODSP_GET_PTS:
 			/*val=-1 is not valid*/
 			*val=dsp_codec_get_current_pts(priv);
+			break;
+		case AUDIODSP_GET_FIRST_PTS_FLAG:
+			*val = first_pts_checkin_complete(PTS_TYPE_AUDIO);
 			break;
 		default:
 			DSP_PRNT("unsupport cmd number%d\n",cmd);

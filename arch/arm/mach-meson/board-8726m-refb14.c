@@ -1305,6 +1305,7 @@ static struct aml_power_pdata power_pdata = {
 	.bat_charge_value_table = bat_charge_value_table,
 	.bat_level_table = bat_level_table,
 	.bat_table_len = 37,		
+	.is_support_usb_charging = 0;
 	//.supplied_to = supplicants,
 	//.num_supplicants = ARRAY_SIZE(supplicants),
 };
@@ -1321,6 +1322,11 @@ static struct platform_device power_dev = {
 static int is_ac_connected(void)
 {
 	return (READ_CBUS_REG(ASSIST_HW_REV)&(1<<9))? 1:0;//GP_INPUT1
+}
+
+static int get_charge_status()
+{
+    return (READ_CBUS_REG(ASSIST_HW_REV)&(1<<8))? 1:0;//GP_INPUT0
 }
 
 static void set_charge(int flags)
@@ -1359,6 +1365,7 @@ static void set_bat_off(void)
 
 static struct bq27x00_battery_pdata bq27x00_pdata = {
 	.is_ac_online	= is_ac_connected,
+	.get_charge_status = get_charge_status,	
 	.set_charge = set_charge,
 	.set_bat_off = set_bat_off,
     .chip = 0,
