@@ -494,17 +494,8 @@ void extern_wifi_power(int is_power)
         #ifdef CONFIG_SN7325
         printk("power on 7325 4\n");
         configIO(0, 0);
-        setIO_level(0, 0, 0);//OD0
-        setIO_level(0, 1, 1);//OD1
-        setIO_level(0, 1, 4);//OD4
         setIO_level(0, 1, 5);//OD5
-        setIO_level(0, 1, 6);//OD6
-        setIO_level(0, 0, 7);//OD7
-        configIO(1, 0);
-        setIO_level(1, 1, 1);//PP1
-        setIO_level(1, 1, 5);//PP5
-        setIO_level(1, 1, 6);//PP6
-        setIO_level(1, 1, 7);//PP7
+
         #else
         return;
         #endif
@@ -1126,7 +1117,7 @@ static int is_ac_connected(void)
 static void set_charge(int flags)
 {
 	//GPIOD_22 low: fast charge high: slow charge
-    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_7, (1<<18));
+    //CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_7, (1<<18));
     if(flags == 1)
         {
 	    #ifdef CONFIG_SN7325
@@ -1166,6 +1157,9 @@ static int get_charge_status()
 
 static void set_bat_off(void)
 {
+    //BL_PWM power off
+    set_gpio_val(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), 0);
+    set_gpio_mode(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), GPIO_OUTPUT_MODE);
     if(is_ac_connected()){ //AC in after power off press
         kernel_restart("reboot");
     }
@@ -1332,7 +1326,7 @@ static int get_charge_status()
 static void set_charge(int flags)
 {
 	//GPIOD_22 low: fast charge high: slow charge
-    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_7, (1<<18));
+    //CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_7, (1<<18));
     if(flags == 1)
         {
 	    #ifdef CONFIG_SN7325
@@ -1831,7 +1825,7 @@ static void bt_device_init(void)
     CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_12, (1<<29));
 	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_12, (1<<22));
 	
-	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_7, (1<<19));
+	//CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_7, (1<<19));
 	
 	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_5, (1<<20));
 	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_5, (1<<17));
@@ -1870,38 +1864,40 @@ static void bt_device_init(void)
 	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_5, (1<<8));
 	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, (1<<24));
 	
-	/* WLBT_REGON */
-	//CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<18));//D20
-	//SET_CBUS_REG_MASK(PREG_GGPIO_O, (1<<18));
-        #ifdef CONFIG_SN7325
-        printk("power on 7325 8\n");
-	    configIO(0, 0);
-        setIO_level(0, 1, 5);	
-        #endif
+	/* WIFI/BT_EN */
+	//CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<18)); //       configIO(0, 0);
+	//SET_CBUS_REG_MASK(PREG_GGPIO_O, (1<<18));      //       setIO_level(0, 1, 5);	
+	//CLEAR_CBUS_REG_MASK(PREG_GGPIO_O, (1<<18));  //WA 7W WIFI/BT_EN  low level.
+
 	
-	/* reset */
-	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<12));//D14
+	/* BT_RST_N */
+	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<12));
 	CLEAR_CBUS_REG_MASK(PREG_GGPIO_O, (1<<12));	
 	msleep(200);	
 	SET_CBUS_REG_MASK(PREG_GGPIO_O, (1<<12));	
 	
-	/* BG/GPS low */
-	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<19));//D21
+	/* BT/GPS */
+	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<19));
 	CLEAR_CBUS_REG_MASK(PREG_GGPIO_O, (1<<19));	
 	
-	/* UART RTS */
-	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<16));//D18
+	/* UART_CTS_N */
+	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<16));
     CLEAR_CBUS_REG_MASK(PREG_GGPIO_O, (1<<16));
 		
-	/* BG wakeup high 
-	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<14));
-	SET_CBUS_REG_MASK(PREG_GGPIO_O, (1<<14));*/
+	/* BT_WAKE */ 
+	//CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<14));
+	//SET_CBUS_REG_MASK(PREG_GGPIO_O, (1<<14));
+	    configIO(0, 0);
+        setIO_level(0, 1, 5);
+        setIO_level(0, 1, 6);
+        configIO(1, 0);
+        setIO_level(1, 0, 7);//PP7	-->selecet BT
 }
 
 static void bt_device_on(void)
 {
     /* reset */
-	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<12));
+	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<12));//D14
 	CLEAR_CBUS_REG_MASK(PREG_GGPIO_O, (1<<12));	
 	msleep(200);	
 	SET_CBUS_REG_MASK(PREG_GGPIO_O, (1<<12));	
