@@ -7,7 +7,7 @@
 //include <asm/arch/am_regs.h>
 #include <mach/am_regs.h>
 //#include <asm/bsp.h>
-//
+#include <linux/dma-mapping.h>
 
 #include "dsp_microcode.h"
 #include "audiodsp_module.h"
@@ -127,6 +127,7 @@ void reset_dsp( struct audiodsp_priv *priv)
 }
 static inline int dsp_set_stack( struct audiodsp_priv *priv)
 {
+      dma_addr_t buf_map;
 	if(priv->dsp_stack_start==0)
 		priv->dsp_stack_start=(unsigned long)kmalloc(priv->dsp_stack_size,GFP_KERNEL);
 	if(priv->dsp_stack_start==0)
@@ -135,6 +136,9 @@ static inline int dsp_set_stack( struct audiodsp_priv *priv)
 		return -ENOMEM;
 		}
 	memset((void*)priv->dsp_stack_start,0,priv->dsp_stack_size);
+        buf_map = dma_map_single(NULL, (void *)priv->dsp_stack_start, priv->dsp_stack_size, DMA_FROM_DEVICE);
+	 dma_unmap_single(NULL, buf_map,  priv->dsp_stack_size, DMA_FROM_DEVICE);
+
 	DSP_WD(DSP_STACK_START,MAX_CACHE_ALIGN(ARM_2_ARC_ADDR_SWAP(priv->dsp_stack_start)));
 	DSP_WD(DSP_STACK_END,MIN_CACHE_ALIGN(ARM_2_ARC_ADDR_SWAP(priv->dsp_stack_start)+priv->dsp_stack_size));
 	DSP_PRNT("DSP statck start =%#lx,size=%#lx\n",ARM_2_ARC_ADDR_SWAP(priv->dsp_stack_start),priv->dsp_stack_size);
@@ -147,6 +151,8 @@ static inline int dsp_set_stack( struct audiodsp_priv *priv)
 		return -ENOMEM;
 		}
 	memset((void*)priv->dsp_gstack_start,0,priv->dsp_gstack_size);
+        buf_map = dma_map_single(NULL, (void *)priv->dsp_gstack_start, priv->dsp_gstack_size, DMA_FROM_DEVICE);
+	 dma_unmap_single(NULL, buf_map,  priv->dsp_gstack_size, DMA_FROM_DEVICE);
 	DSP_WD(DSP_GP_STACK_START,MAX_CACHE_ALIGN(ARM_2_ARC_ADDR_SWAP(priv->dsp_gstack_start)));
 	DSP_WD(DSP_GP_STACK_END,MIN_CACHE_ALIGN(ARM_2_ARC_ADDR_SWAP(priv->dsp_gstack_start)+priv->dsp_gstack_size));
 	DSP_PRNT("DSP gp statck start =%#lx,size=%#lx\n",ARM_2_ARC_ADDR_SWAP(priv->dsp_gstack_start),priv->dsp_gstack_size);
@@ -155,6 +161,7 @@ static inline int dsp_set_stack( struct audiodsp_priv *priv)
 }
 static inline int dsp_set_heap( struct audiodsp_priv *priv)
 {
+      dma_addr_t buf_map;
 	if(priv->dsp_heap_size==0)
 		return 0;
 	if(priv->dsp_heap_start==0)
@@ -164,7 +171,9 @@ static inline int dsp_set_heap( struct audiodsp_priv *priv)
 		DSP_PRNT("kmalloc error,no memory for audio dsp dsp_set_heap\n");
 		return -ENOMEM;
 		}
-	memset((void *)priv->dsp_heap_start,0,priv->dsp_heap_start);
+	memset((void *)priv->dsp_heap_start,0,priv->dsp_heap_size);
+       buf_map = dma_map_single(NULL, (void *)priv->dsp_heap_start, priv->dsp_heap_size, DMA_FROM_DEVICE);
+	dma_unmap_single(NULL, buf_map,  priv->dsp_heap_size, DMA_FROM_DEVICE);
 	DSP_WD(DSP_MEM_START,MAX_CACHE_ALIGN(ARM_2_ARC_ADDR_SWAP(priv->dsp_heap_start)));
 	DSP_WD(DSP_MEM_END,MIN_CACHE_ALIGN(ARM_2_ARC_ADDR_SWAP(priv->dsp_heap_start)+priv->dsp_heap_size));
 	DSP_PRNT("DSP heap start =%#lx,size=%#lx\n",ARM_2_ARC_ADDR_SWAP(priv->dsp_heap_start),priv->dsp_heap_size);
@@ -173,6 +182,7 @@ static inline int dsp_set_heap( struct audiodsp_priv *priv)
 
 static inline int dsp_set_stream_buffer( struct audiodsp_priv *priv)
 {
+      dma_addr_t buf_map;
 	if(priv->stream_buffer_mem_size==0)
 		{
 		DSP_WD(DSP_DECODE_OUT_START_ADDR,0);
@@ -189,6 +199,9 @@ static inline int dsp_set_stream_buffer( struct audiodsp_priv *priv)
 		return -ENOMEM;
 		}
 	memset((void *)priv->stream_buffer_mem,0,priv->stream_buffer_mem_size);
+    	buf_map = dma_map_single(NULL, (void *)priv->stream_buffer_mem, priv->stream_buffer_mem_size, DMA_FROM_DEVICE);
+	dma_unmap_single(NULL, buf_map,  priv->stream_buffer_mem_size, DMA_FROM_DEVICE);
+
 	priv->stream_buffer_start=MAX_CACHE_ALIGN((unsigned long)priv->stream_buffer_mem);
 	priv->stream_buffer_end=MIN_CACHE_ALIGN((unsigned long)priv->stream_buffer_mem+priv->stream_buffer_mem_size);
 	priv->stream_buffer_size=priv->stream_buffer_end-priv->stream_buffer_start;
