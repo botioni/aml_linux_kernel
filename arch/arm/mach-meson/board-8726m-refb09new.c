@@ -209,13 +209,13 @@ static struct platform_device adc_ts_device = {
 static int adc_kp_led_control(int *param)
 {
     if(param[0] == 0){//led off
-    	set_gpio_val(GPIOD_bank_bit2_24(23), GPIOD_bit_bit2_24(23), 0);
-    	set_gpio_mode(GPIOD_bank_bit2_24(23), GPIOD_bit_bit2_24(23), GPIO_OUTPUT_MODE);
-	return 0;
+    	set_gpio_val(GPIOA_bank_bit(4), GPIOA_bit_bit0_14(4), 0);
+    	set_gpio_mode(GPIOA_bank_bit(4), GPIOA_bit_bit0_14(4), GPIO_OUTPUT_MODE);
+		return 0;
     }else if(param[0] == 1) {//led on
     	if ((param[1]!=KEY_PAGEUP) && (param[1]!=KEY_PAGEDOWN)){
-        		set_gpio_val(GPIOD_bank_bit2_24(23), GPIOD_bit_bit2_24(23), 1);
-        		set_gpio_mode(GPIOD_bank_bit2_24(23), GPIOD_bit_bit2_24(23), GPIO_OUTPUT_MODE);
+    	set_gpio_val(GPIOA_bank_bit(4), GPIOA_bit_bit0_14(4), 1);
+    	set_gpio_mode(GPIOA_bank_bit(4), GPIOA_bit_bit0_14(4), GPIO_OUTPUT_MODE);
 		return 0;
     	}
     }
@@ -1629,15 +1629,13 @@ static void ic_control(int flag)
 
 static void powerkey_led_onoff(int onoff)
 {
-    if(onoff) {//led on
-        set_gpio_val(GPIOD_bank_bit2_24(14), GPIOD_bit_bit2_24(14), 1);
-        set_gpio_mode(GPIOD_bank_bit2_24(14), GPIOD_bit_bit2_24(14), GPIO_OUTPUT_MODE);
+	if(onoff == 0){//powerkey led off
+    	set_gpio_val(GPIOD_bank_bit2_24(23), GPIOD_bit_bit2_24(23), 0);
+    	set_gpio_mode(GPIOD_bank_bit2_24(23), GPIOD_bit_bit2_24(23), GPIO_OUTPUT_MODE);
+    }else if(onoff) {//powerkey led on
+		set_gpio_val(GPIOD_bank_bit2_24(23), GPIOD_bit_bit2_24(23), 1);
+		set_gpio_mode(GPIOD_bank_bit2_24(23), GPIOD_bit_bit2_24(23), GPIO_OUTPUT_MODE);
     }
-    else{
-    	set_gpio_val(GPIOD_bank_bit2_24(14), GPIOD_bit_bit2_24(14), 0);
-    	set_gpio_mode(GPIOD_bank_bit2_24(14), GPIOD_bit_bit2_24(14), GPIO_OUTPUT_MODE);
-    }
-
 }
 
 
