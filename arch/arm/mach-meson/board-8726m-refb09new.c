@@ -556,9 +556,9 @@ static struct aml_card_info  amlogic_card_info[] = {
         .card_ins_input_reg = 0,
         .card_ins_input_mask = 0,
         .card_power_en_reg = EGPIO_GPIOD_ENABLE,
-        .card_power_en_mask = PREG_IO_10_MASK,
+        .card_power_en_mask = PREG_IO_13_MASK,
         .card_power_output_reg = EGPIO_GPIOD_OUTPUT,
-        .card_power_output_mask = PREG_IO_10_MASK,
+        .card_power_output_mask = PREG_IO_13_MASK,
         .card_power_en_lev = 1,
         .card_wp_en_reg = 0,
         .card_wp_en_mask = 0,
@@ -2664,6 +2664,7 @@ static void __init power_hold(void)
     set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);
 }
 
+#define GPIO_WLAN_IRQ		((GPIOD_bank_bit2_24(14)<<16) |GPIOD_bit_bit2_24(14))
 static __init void m1_init_machine(void)
 {
     meson_cache_init();
@@ -2692,6 +2693,19 @@ static __init void m1_init_machine(void)
     spi_register_board_info(spi_board_info_list, ARRAY_SIZE(spi_board_info_list));
 #endif
     disable_unused_model();
+    
+    /* Set Ti WiFi interrupt pin */
+	gpio_direction_input(GPIO_WLAN_IRQ);
+	/* set gpio interrupt #2 source=GPIOD_14, and triggered by falling edge(=1) */
+	gpio_enable_edge_int(64, 1, 2);
+	
+	printk(KERN_INFO "WLANPWR_EN set high!\n");
+	set_gpio_val(GPIOD_bank_bit2_24(15), GPIOD_bit_bit2_24(15), 1);
+	set_gpio_mode(GPIOD_bank_bit2_24(15), GPIOD_bit_bit2_24(15), GPIO_OUTPUT_MODE);
+	
+
+    printk(KERN_INFO "WIFI ENABLE : OK\n");
+
 }
 
 /*VIDEO MEMORY MAPING*/
