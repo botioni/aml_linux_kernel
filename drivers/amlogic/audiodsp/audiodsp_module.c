@@ -472,11 +472,22 @@ static ssize_t codec_fatal_err_show(struct class* cla, struct class_attribute* a
 	
     return sprintf(buf, "%d\n", priv->decode_fatal_err);
 }
+static ssize_t swap_buf_ptr_show(struct class *cla, struct class_attribute* attr, char* buf)
+{
+    char *pbuf = buf;
+    struct audiodsp_priv *priv = audiodsp_privdata();
+
+    pbuf += sprintf(pbuf, "swap buffer wp: %x\n", DSP_RD(DSP_DECODE_OUT_WD_PTR));
+    pbuf += sprintf(pbuf, "swap buffer rp: %x\n", DSP_RD(DSP_DECODE_OUT_RD_ADDR));
+
+    return (pbuf - buf);
+}
 
 static struct class_attribute audiodsp_attrs[]={
     __ATTR_RO(codec_fmt),
     __ATTR_RO(codec_mips),
     __ATTR_RO(codec_fatal_err),
+    __ATTR_RO(swap_buf_ptr),
     __ATTR_NULL
 };
 
