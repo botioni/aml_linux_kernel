@@ -1152,7 +1152,7 @@ static int gc0308_v4l2_init(void)
    #ifdef CONFIG_SN7325
 	printk( "amlogic camera driver: init gc0308_v4l2_init. \n");
 	configIO(1, 0);
-	setIO_level(1, 0, 1);//30m poweer_disable
+	setIO_level(1, 0, 2);//30m poweer_disable
 		  
 	//setIO_level(1, 0, 2);//200m poweer_disable
 	setIO_level(1, 0, 0);//30m pwd enable
@@ -1162,7 +1162,7 @@ static int gc0308_v4l2_init(void)
 	//setIO_level(0, 0, 2);//200m reset low
 	configIO(1, 0);
 	msleep(10);
-	setIO_level(1, 1, 1);//30m poweer_enable
+	setIO_level(1, 1, 2);//30m poweer_enable
 	msleep(10);
 	configIO(0, 0);
 	setIO_level(0, 1, 3);//30m reset high
@@ -1176,7 +1176,7 @@ static int gc0308_v4l2_uninit(void)
    #ifdef CONFIG_SN7325
 	printk( "amlogic camera driver: uninit gc0308_v4l2_uninit. \n");
 	configIO(1, 0);
-	setIO_level(1, 0, 1);//30m poweer_disable
+	setIO_level(1, 0, 2);//30m poweer_disable
 	setIO_level(1, 1, 0);//30m pwd enable
 	configIO(0, 0);
 	setIO_level(0, 0, 3);//30m reset low
@@ -1222,15 +1222,16 @@ static int gt2005_v4l2_init(void)
 	printk( "amlogic camera driver: init CONFIG_SN7325. \n");
 	configIO(1, 0);
 	//setIO_level(1, 0, 1);//30m poweer_disable
-	setIO_level(1, 0, 2);//200m poweer_disable
+	//1:PP, 0:Level, 2:ppnum
+	setIO_level(1, 0, 1);//200m poweer_disable
 	//setIO_level(1, 1, 0);//30m pwd disable
 	setIO_level(1, 0, 6);//200m pwd low
-	configIO(0, 0);
+	configIO(0, 0);//OD
 	//setIO_level(0, 0, 3);//30m reset low
 	setIO_level(0, 0, 2);//200m reset low
-	configIO(1, 0);
+	configIO(1, 0);//PP
 	msleep(10);
-	setIO_level(1, 1, 2);//200m poweer_enable
+	setIO_level(1, 1, 1);//200m poweer_enable
 	msleep(10);
 	configIO(0, 0);
 	setIO_level(0, 1, 2);//200m reset high
@@ -1261,13 +1262,13 @@ static int gt2005_v4l2_uninit(void)
 static void gt2005_v4l2_early_suspend(void)
 {
 	configIO(1, 0);
-	setIO_level(1, 0, 2);
+	setIO_level(1, 0, 1);
 }
 
 static void gt2005_v4l2_late_resume(void)
 {
 	configIO(1, 0);
-	setIO_level(1, 1, 2);
+	setIO_level(1, 1, 1);
 }
 
 aml_plat_cam_data_t video_gt2005_data = {
