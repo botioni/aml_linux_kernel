@@ -61,6 +61,7 @@ static int VM_CANVAS_INDEX = 24;
 /*same as tvin pool*/
 
 static int vm_skip_count = 5 ; //skip 5 frames from vdin
+static int test_zoom = 0;
 
 static inline void vm_vf_put_from_provider(vframe_t *vf);
 #define INCPTR(p) ptr_atomic_wrap_inc(&p)
@@ -135,7 +136,8 @@ static vframe_t *vm_vf_peek(void)
 	vf = vm_vf_peek_from_provider();
 	if(vf){
 		if(vm_skip_count > 0){
-			vm_skip_count--;		
+			vm_skip_count--;	
+			vm_vf_get_from_provider();	
 			vm_vf_put_from_provider(vf); 
 			vf = NULL;						
 		}	
@@ -233,6 +235,7 @@ static int vm_receiver_event_fun(int type, void* data, void* private_data)
             break;
         case VFRAME_EVENT_PROVIDER_START:
 			vm_skip_count = 0; 
+			test_zoom = 0;
             break;
         case VFRAME_EVENT_PROVIDER_UNREG:        
             vm_local_init();
@@ -368,6 +371,32 @@ static int get_input_format(vframe_t* vf)
         format =  GE2D_FORMAT_M24_YUV420;
     } 
     return format;
+}
+
+static int  get_input_frame(display_frame_t* frame ,vframe_t* vf)
+{
+	int ret = 0 ;	
+	if(!vf){
+		return -1;	
+	}
+	frame->frame_top  =     0;   
+	frame->frame_left  =     0 ;   
+	frame->frame_width   =  vf->width;
+	frame->frame_height   = vf->height;
+	int top, left,  bottom ,right;
+	ret = get_curren_frame_para(&top ,&left , &bottom, &right);	
+	if(ret >= 0 ){
+  		frame->content_top     =  top&(~1);
+		frame->content_left    =  left&(~1);
+		frame->content_width   =  vf->width - 2*frame->content_left ;
+		frame->content_height  =  vf->height - 2*frame->content_top;
+	}else{
+		frame->content_top     = 0;             
+		frame->content_left    =  0 ;           
+		frame->content_width   = vf->width;     
+		frame->content_height  = vf->height   	;
+	}
+	return 0;
 }
 
 static int get_output_format(int v4l2_format)
@@ -549,7 +578,17 @@ exit:
 int vm_ge2d_pre_process(vframe_t* vf, ge2d_context_t *context,config_para_ex_t* ge2d_config)
 {
     canvas_t cs0,cs1,cs2,cd,cd2,cd3;
-
+    display_frame_t input_frame;
+    int src_top ,src_left ,src_width, src_height;
+    int ret = get_input_frame(&input_frame , vf);
+	src_top =     input_frame.content_top   ;
+	src_left =    input_frame.content_left  ;
+	src_width =   input_frame.content_width ;
+	src_height =  input_frame.content_height;
+	if(test_zoom){
+		test_zoom = 0;
+		printk("top is %d , left is %d , width is %d , height is %d\n",input_frame.content_top ,input_frame.content_left,input_frame.content_width,input_frame.content_height);
+	}
     /* data operating. */ 
     ge2d_config->alu_const_color= 0;//0x000000ff;
     ge2d_config->bitmask_en  = 0;
@@ -607,8 +646,8 @@ int vm_ge2d_pre_process(vframe_t* vf, ge2d_context_t *context,config_para_ex_t* 
     if(ge2d_context_config_ex(context,ge2d_config)<0) {
         printk("++ge2d configing error.\n");
         return;
-    }
-    stretchblt_noalpha(context,0,0,vf->width,vf->height,0,0,output_para.width,output_para.height);
+    }              
+    stretchblt_noalpha(context,src_left ,src_top ,src_width, src_height,0,0,output_para.width,output_para.height);
     
     if(output_para.v4l2_format==V4L2_PIX_FMT_YUV420) {  /* yuv420p. */
 		/* for cb. */
@@ -624,7 +663,7 @@ int vm_ge2d_pre_process(vframe_t* vf, ge2d_context_t *context,config_para_ex_t* 
 			printk("++ge2d configing error.\n");
 			return;
 		}
-		stretchblt_noalpha(context,0,0,vf->width,vf->height,0,0,ge2d_config->dst_para.width,ge2d_config->dst_para.height);
+		stretchblt_noalpha(context,src_left ,src_top ,src_width, src_height,0,0,ge2d_config->dst_para.width,ge2d_config->dst_para.height);
 
 		/* for cb. */
 		canvas_read((output_para.index>>16)&0xff,&cd);
@@ -639,7 +678,7 @@ int vm_ge2d_pre_process(vframe_t* vf, ge2d_context_t *context,config_para_ex_t* 
 			printk("++ge2d configing error.\n");
 			return;
 		}
-		stretchblt_noalpha(context,0,0,vf->width,vf->height,0,0,ge2d_config->dst_para.width,ge2d_config->dst_para.height);
+		stretchblt_noalpha(context,src_left ,src_top ,src_width, src_height,0,0,ge2d_config->dst_para.width,ge2d_config->dst_para.height);
 	}
     return output_para.index;
 }

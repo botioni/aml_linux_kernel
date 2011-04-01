@@ -23,6 +23,18 @@
 #define VM_IOC_ENABLE_PP _IOW(VM_IOC_MAGIC,0X01,unsigned int)
 #define VM_IOC_CONFIG_FRAME  _IOW(VM_IOC_MAGIC,0X02,unsigned int)
 
+
+typedef struct display_frame_s{
+	int frame_top;
+	int frame_left;
+	int frame_width;
+	int frame_height;	
+	int content_top;
+	int content_left;
+	int content_width;
+	int content_height;
+}display_frame_t;
+
 extern int get_vm_status();
 extern void set_vm_status(int flag);
 

@@ -46,6 +46,8 @@ typedef struct myfb_dev {
     	struct osd_ctl_s osd_ctl;
 	u32  scale;	
 	u32  enable_3d;
+	u32  enable_key;
+	u32  color_key;
 		
 } myfb_dev_t;
 typedef  struct list_head   list_head_t ;
