@@ -276,7 +276,10 @@ static int audiodsp_ioctl(struct inode *node, struct file *file, unsigned int cm
 			*val=dsp_codec_get_current_pts(priv);
 			break;
 		case AUDIODSP_GET_FIRST_PTS_FLAG:
-			*val = first_pts_checkin_complete(PTS_TYPE_AUDIO);
+			if(priv->stream_fmt == MCODEC_FMT_COOK || priv->stream_fmt == MCODEC_FMT_RAAC)
+				*val = 1;
+			else
+				*val = first_pts_checkin_complete(PTS_TYPE_AUDIO);
 			break;
 		default:
 			DSP_PRNT("unsupport cmd number%d\n",cmd);

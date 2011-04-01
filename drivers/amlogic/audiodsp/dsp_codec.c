@@ -118,9 +118,9 @@ u32 dsp_codec_get_current_pts(struct audiodsp_priv *priv)
 		pts = DSP_RD(DSP_AFIFO_RD_OFFSET1);
 		res = 0;
 		}
-	else
+	else{
 		res=pts_lookup_offset(PTS_TYPE_AUDIO,offset,&pts,300);
-		printk("pts_lookup_offset = %d, buffer_len = %d, res = %d\n", offset, buffered_len, res);
+		//printk("pts_lookup_offset = %d, buffer_len = %d, res = %d\n", offset, buffered_len, res);
 
 		if (!priv->first_lookup_over) {
 			    priv->first_lookup_over = 1;
@@ -133,6 +133,7 @@ u32 dsp_codec_get_current_pts(struct audiodsp_priv *priv)
 			        return pts;
 			    }
 		}
+	}
 		
 	if(res==0)
 		{
