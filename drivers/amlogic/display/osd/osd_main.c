@@ -313,6 +313,7 @@ osd_ioctl(struct fb_info *info, unsigned int cmd,
 			case COLOR_INDEX_24_RGB:
 			case COLOR_INDEX_YUV_422:
 	  	   	amlog_mask_level(LOG_MASK_IOCTL,LOG_LEVEL_LOW,"set osd color key 0x%x\r\n",src_colorkey);
+            fbdev->color_key = src_colorkey;
 	  	 	osddev_set_colorkey(info->node,fbdev->color->color_index,src_colorkey);
 			break;
 			default: break;
@@ -328,7 +329,8 @@ osd_ioctl(struct fb_info *info, unsigned int cmd,
 			case COLOR_INDEX_24_RGB:
 			case COLOR_INDEX_YUV_422:	
 			amlog_mask_level(LOG_MASK_IOCTL,LOG_LEVEL_LOW,"set osd color key %s\r\n",srckey_enable?"enable":"disable");
-		   	osddev_srckey_enable(info->node,srckey_enable!=0?1:0);	
+			fbdev->enable_key = (srckey_enable!=0)?1:0;
+			osddev_srckey_enable(info->node,fbdev->enable_key);	
 			break;
 			default:break;
 	 	}
@@ -533,6 +535,56 @@ static ssize_t show_enable_3d(struct device *device, struct device_attribute *at
 	struct myfb_dev *fbdev = (struct myfb_dev *)fb_info->par;
 	return snprintf(buf, PAGE_SIZE, "3d_enable:[0x%x]\n",fbdev->enable_3d);
 }
+
+static ssize_t store_color_key(struct device *device, struct device_attribute *attr,
+			 const char *buf, size_t count)
+{
+	struct fb_info *fb_info = dev_get_drvdata(device);
+	struct myfb_dev *fbdev = (struct myfb_dev *)fb_info->par;
+	int r = simple_strtoul(buf, NULL, 16);
+	switch(fbdev->color->color_index)
+	  	{
+	 		case COLOR_INDEX_16_655:
+			case COLOR_INDEX_16_844:
+			case COLOR_INDEX_16_565:
+			case COLOR_INDEX_24_888_B:
+			case COLOR_INDEX_24_RGB:
+			case COLOR_INDEX_YUV_422:
+            fbdev->color_key = r;
+	  	 	osddev_set_colorkey(fb_info->node, fbdev->color->color_index, fbdev->color_key);
+			break;
+			default: break;
+	  	}
+	return count;
+}
+
+static ssize_t show_color_key(struct device *device, struct device_attribute *attr,
+			char *buf)
+{
+	struct fb_info *fb_info = dev_get_drvdata(device);
+	struct myfb_dev *fbdev = (struct myfb_dev *)fb_info->par;
+	return snprintf(buf, PAGE_SIZE, "0x%x\n", fbdev->color_key);
+}
+
+static ssize_t store_enable_key(struct device *device, struct device_attribute *attr,
+			 const char *buf, size_t count)
+{
+	struct fb_info *fb_info = dev_get_drvdata(device);
+	struct myfb_dev *fbdev = (struct myfb_dev *)fb_info->par;
+	int r = simple_strtoul(buf, NULL, 0);
+    fbdev->enable_key = (r!=0)?1:0;
+    osddev_srckey_enable(fb_info->node, fbdev->enable_key);
+	return count;
+}
+
+static ssize_t show_enable_key(struct device *device, struct device_attribute *attr,
+			char *buf)
+{
+	struct fb_info *fb_info = dev_get_drvdata(device);
+	struct myfb_dev *fbdev = (struct myfb_dev *)fb_info->par;
+	return snprintf(buf, PAGE_SIZE, "%d\n", fbdev->enable_key);
+}
+
 static ssize_t store_scale_width(struct device *device, struct device_attribute *attr,
 			 const char *buf, size_t count)
 {
@@ -591,6 +643,8 @@ static struct device_attribute osd_attrs[] = {
 	__ATTR(free_scale, S_IRUGO|S_IWUSR, NULL, store_free_scale),
 	__ATTR(scale_width, S_IRUGO|S_IWUSR, NULL, store_scale_width),
 	__ATTR(scale_height, S_IRUGO|S_IWUSR, NULL, store_scale_height),
+    __ATTR(color_key, S_IRUGO|S_IWUSR, show_color_key, store_color_key),
+    __ATTR(enable_key, S_IRUGO|S_IWUSR, show_enable_key, store_enable_key),
 };		
 
 #ifdef  CONFIG_PM
@@ -619,7 +673,7 @@ static int osd_resume(struct platform_device *pdev)
 static void osd_early_suspend(struct early_suspend *h)
 {
     if (early_suspend_flag)
-        return 0;
+        return;
     osd_suspend((struct platform_device *)h->param, PMSG_SUSPEND);
     early_suspend_flag = 1;
 }
@@ -627,7 +681,7 @@ static void osd_early_suspend(struct early_suspend *h)
 static void osd_late_resume(struct early_suspend *h)
 {
     if (!early_suspend_flag)
-        return 0;
+        return;
     early_suspend_flag = 0;
     osd_resume((struct platform_device *)h->param);
 }
