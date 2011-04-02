@@ -647,7 +647,7 @@ static ssize_t show_enable_key_onhold(struct device *device, struct device_attri
 {
 	struct fb_info *fb_info = dev_get_drvdata(device);
 	struct myfb_dev *fbdev = (struct myfb_dev *)fb_info->par;
-	return snprintf(buf, PAGE_SIZE, (fbdev->enable_key_flag & KEYCOLOR_FLAG_TARGET) ? "1\n" : "0\n");
+	return snprintf(buf, PAGE_SIZE, (fbdev->enable_key_flag & KEYCOLOR_FLAG_ONHOLD) ? "1\n" : "0\n");
 }
 
 static ssize_t store_scale_width(struct device *device, struct device_attribute *attr,
