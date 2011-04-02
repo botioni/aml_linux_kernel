@@ -1277,7 +1277,7 @@ static struct aml_power_pdata power_pdata = {
 	.bat_charge_value_table = bat_charge_value_table,
 	.bat_level_table = bat_level_table,
 	.bat_table_len = 37,		
-	.is_support_usb_charging = 0;
+	.is_support_usb_charging = 0,
 	//.supplied_to = supplicants,
 	//.num_supplicants = ARRAY_SIZE(supplicants),
 };
@@ -1741,6 +1741,10 @@ static struct platform_device bt_device = {
 
 static void bt_device_init(void)
 {
+    //set clk for wifi, only for refb12
+    SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, (1<<18));
+    CLEAR_CBUS_REG_MASK(PREG_EGPIO_EN_N, (1<<4));
+        
     CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_12, (1<<29));
 	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_12, (1<<22));
 	
