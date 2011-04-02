@@ -659,9 +659,10 @@ int wm8900_is_hp_pluged(void)
       level |= (1<<0);
       
      // temp patch to mute speaker when hdmi output
-    if(level == 0)
-     if(get_display_mode() != 0) 
-    return 1;
+    if(level == 1)
+     if(get_display_mode() != 0) {
+    	return 1;
+     	}
 
     return (level == 1)?(0):(1); //return 1: hp pluged, 0: hp unpluged.
 }
@@ -1778,9 +1779,9 @@ static int bat_charge_value_table[37]={
 static int bat_value_table[37]={
 0,  //0
 513,//0
-534,//4
-539,//10
-543,//15
+534,// 5
+538,//10
+541,//15
 544,//16
 546,//18
 547,//20
@@ -1791,34 +1792,34 @@ static int bat_value_table[37]={
 552,//35
 553,//37
 554,//40
-556,//43
-557,//46
-559,//49
-560,//51
-563,//54
-565,//57
+555,//43
+556,//46
+558,//49
+559,//51
+562,//54
+566,//57
 567,//60
-571,//63
-574,//66
-576,//68
-580,//71
-584,//74
-587,//77
-592,//80
-596,//83
-599,//85
-603,//88
-608,//91
-614,//95
-618,//97
-626,//100
-626 //100
+569,//63
+572,//66
+575,//68
+578,//71
+581,//74
+586,//77
+590,//80
+594,//83
+598,//85
+600,//88
+603,//91
+609,//95
+613,//97
+621,//100
+621 //100
 };
 
 static int bat_charge_value_table[37]={
 0,  //0    
 534,//0
-562,//4
+562,//5
 573,//10
 577,//15
 578,//16
@@ -1859,7 +1860,7 @@ static int bat_charge_value_table[37]={
 static int bat_level_table[37]={
 0,
 0,
-4,
+5,
 10,
 15,
 16,
@@ -1909,6 +1910,7 @@ static struct aml_power_pdata power_pdata = {
 	.bat_table_len = 37,		
 	.ic_control = ic_control,
 	.powerkey_led_onoff = powerkey_led_onoff,
+	.is_support_usb_charging = 1,
 	//.supplied_to = supplicants,
 	//.num_supplicants = ARRAY_SIZE(supplicants),
 };

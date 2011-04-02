@@ -793,13 +793,13 @@ static int tsc2007_get_pendown_state(void)
 }
 
 #define XLCD    800
-#define YLCD    600
+#define YLCD    480
 #define SWAP_XY 0
 #define XPOL    0
 #define YPOL    0
 #define XMIN 0
-#define XMAX 0
-#define YMIN 4095
+#define XMAX 4095
+#define YMIN 0
 #define YMAX 4095
 
 int tsc2007_convert(int x, int y)
@@ -1332,6 +1332,7 @@ static struct aml_power_pdata power_pdata = {
 	.bat_charge_value_table = bat_charge_value_table,
 	.bat_level_table = bat_level_table,
 	.bat_table_len = 37,		
+	.is_support_usb_charging = 0;
 	//.supplied_to = supplicants,
 	//.num_supplicants = ARRAY_SIZE(supplicants),
 };

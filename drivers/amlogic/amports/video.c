@@ -1250,6 +1250,18 @@ void vf_reg_provider(const vframe_provider_t *p)
     spin_unlock_irqrestore(&lock, flags);
 }
 
+int get_curren_frame_para(int* top ,int* left , int* bottom, int* right)
+{
+	if(!cur_frame_par){
+		return -1;	
+	}
+	*top    =  cur_frame_par->VPP_vd_start_lines_ ;
+	*left   =  cur_frame_par->VPP_hd_start_lines_ ;
+	*bottom =  cur_frame_par->VPP_vd_end_lines_ ;
+	*right  =  cur_frame_par->VPP_hd_end_lines_;
+	return 	0;
+}
+
 void vf_unreg_provider(void)
 {
     ulong flags;

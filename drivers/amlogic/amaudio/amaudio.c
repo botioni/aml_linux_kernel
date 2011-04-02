@@ -167,13 +167,13 @@ static int amaudio_open(struct inode *inode, struct file *file)
   amaudio_t * amaudio = kzalloc(sizeof(amaudio_t), GFP_KERNEL);
   if (if_audio_in_i2s_enable()){
     amaudio->in_start = ioremap_nocache(READ_MPEG_REG(AUDIN_FIFO0_START), 65536);
-    printk("amaudio->in_start = %x \n", amaudio->in_start);
-    printk("(AUDIN_FIFO0_START) = %x \n", READ_MPEG_REG(AUDIN_FIFO0_START));
+    //printk("amaudio->in_start = %x \n", amaudio->in_start);
+    //printk("(AUDIN_FIFO0_START) = %x \n", READ_MPEG_REG(AUDIN_FIFO0_START));
   }
   if (if_audio_out_enable()){
     amaudio->out_start = ioremap_nocache(READ_MPEG_REG(AIU_MEM_I2S_START_PTR), 32768);
-    printk("amaudio->out_start = %x \n", amaudio->out_start);
-	printk("(AIU_MEM_I2S_START_PTR) = %x \n", READ_MPEG_REG(AIU_MEM_I2S_START_PTR));
+    //printk("amaudio->out_start = %x \n", amaudio->out_start);
+	//printk("(AIU_MEM_I2S_START_PTR) = %x \n", READ_MPEG_REG(AIU_MEM_I2S_START_PTR));
   }
   if(iminor(inode) == 0){ // audio out
     printk("open audio out\n");

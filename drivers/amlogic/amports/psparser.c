@@ -365,6 +365,9 @@ static u32 parser_process(s32 type, s32 packet_len)
             /* DVD_VIDEO Audio LPCM data */
             PARSER_POP;
             temp = (PARSER_POP << 8) | PARSER_POP;
+            if(temp == 0) {
+                temp = 4;
+            }
             temp--;
             packet_len -= 3;
 
@@ -633,9 +636,15 @@ static void on_start_code_found(int start_code)
                 next_action = parser_process(1, packet_len);
             }
 
+        } else if (start_code == 0xbb) {
+            SET_DISCARD_SIZE(packet_len);
+            next_action = DISCARD_SEARCH;
         } else if (start_code == 0xbd) {
             next_action = parser_process(2, packet_len);
 
+        } else if (start_code == 0xbf) {
+            SET_DISCARD_SIZE(packet_len);
+            next_action = DISCARD_SEARCH;
         } else if ((start_code < 0xc0) || (start_code > 0xc8)) {
             next_action = SEARCH_START_CODE;
 
