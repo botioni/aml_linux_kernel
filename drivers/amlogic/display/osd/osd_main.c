@@ -329,8 +329,16 @@ osd_ioctl(struct fb_info *info, unsigned int cmd,
 			case COLOR_INDEX_24_RGB:
 			case COLOR_INDEX_YUV_422:	
 			amlog_mask_level(LOG_MASK_IOCTL,LOG_LEVEL_LOW,"set osd color key %s\r\n",srckey_enable?"enable":"disable");
-			fbdev->enable_key = (srckey_enable!=0)?1:0;
-			osddev_srckey_enable(info->node,fbdev->enable_key);	
+			if (srckey_enable != 0) {
+				fbdev->enable_key_flag |= KEYCOLOR_FLAG_TARGET;
+				if (!(fbdev->enable_key_flag & KEYCOLOR_FLAG_ONHOLD)) {
+					osddev_srckey_enable(info->node, 1);
+					fbdev->enable_key_flag |= KEYCOLOR_FLAG_CURRENT;
+				}
+			} else {
+				fbdev->enable_key_flag &= ~(KEYCOLOR_FLAG_TARGET | KEYCOLOR_FLAG_CURRENT);
+				osddev_srckey_enable(info->node, 0);
+			}
 			break;
 			default:break;
 	 	}
@@ -572,8 +580,22 @@ static ssize_t store_enable_key(struct device *device, struct device_attribute *
 	struct fb_info *fb_info = dev_get_drvdata(device);
 	struct myfb_dev *fbdev = (struct myfb_dev *)fb_info->par;
 	int r = simple_strtoul(buf, NULL, 0);
-    fbdev->enable_key = (r!=0)?1:0;
-    osddev_srckey_enable(fb_info->node, fbdev->enable_key);
+
+	mutex_lock(&fbdev->lock);
+
+	if (r != 0) {
+		fbdev->enable_key_flag |= KEYCOLOR_FLAG_TARGET;
+		if (!(fbdev->enable_key_flag & KEYCOLOR_FLAG_ONHOLD)) {
+			osddev_srckey_enable(fb_info->node, 1);
+			fbdev->enable_key_flag |= KEYCOLOR_FLAG_CURRENT;
+		}
+	} else {
+		fbdev->enable_key_flag &= ~(KEYCOLOR_FLAG_TARGET | KEYCOLOR_FLAG_CURRENT);
+		osddev_srckey_enable(fb_info->node, 0);
+	}
+
+	mutex_unlock(&fbdev->lock);
+
 	return count;
 }
 
@@ -582,7 +604,50 @@ static ssize_t show_enable_key(struct device *device, struct device_attribute *a
 {
 	struct fb_info *fb_info = dev_get_drvdata(device);
 	struct myfb_dev *fbdev = (struct myfb_dev *)fb_info->par;
-	return snprintf(buf, PAGE_SIZE, "%d\n", fbdev->enable_key);
+	return snprintf(buf, PAGE_SIZE, (fbdev->enable_key_flag & KEYCOLOR_FLAG_TARGET) ? "1\n" : "0\n");
+}
+
+static ssize_t store_enable_key_onhold(struct device *device, struct device_attribute *attr,
+			 const char *buf, size_t count)
+{
+	struct fb_info *fb_info = dev_get_drvdata(device);
+	struct myfb_dev *fbdev = (struct myfb_dev *)fb_info->par;
+	int r = simple_strtoul(buf, NULL, 0);
+
+	mutex_lock(&fbdev->lock);
+
+	if (r != 0) {
+		/* hold all the calls to enable color key */
+		fbdev->enable_key_flag |= KEYCOLOR_FLAG_ONHOLD;
+		osddev_srckey_enable(fb_info->node, 0);
+	} else {
+		fbdev->enable_key_flag &= ~KEYCOLOR_FLAG_ONHOLD;
+
+		/* if target and current mistach then recover the pending key settings */
+		if (fbdev->enable_key_flag & KEYCOLOR_FLAG_TARGET) {
+			if ((fbdev->enable_key_flag & KEYCOLOR_FLAG_CURRENT) == 0) {
+				fbdev->enable_key_flag |= KEYCOLOR_FLAG_CURRENT;
+				osddev_srckey_enable(fb_info->node, 1);
+			}
+		} else {
+			if (fbdev->enable_key_flag & KEYCOLOR_FLAG_CURRENT) {
+				fbdev->enable_key_flag &= ~KEYCOLOR_FLAG_CURRENT;
+				osddev_srckey_enable(fb_info->node, 0);
+			}
+		}
+	}
+
+	mutex_unlock(&fbdev->lock);
+
+	return count;
+}
+
+static ssize_t show_enable_key_onhold(struct device *device, struct device_attribute *attr,
+			char *buf)
+{
+	struct fb_info *fb_info = dev_get_drvdata(device);
+	struct myfb_dev *fbdev = (struct myfb_dev *)fb_info->par;
+	return snprintf(buf, PAGE_SIZE, (fbdev->enable_key_flag & KEYCOLOR_FLAG_TARGET) ? "1\n" : "0\n");
 }
 
 static ssize_t store_scale_width(struct device *device, struct device_attribute *attr,
@@ -645,6 +710,7 @@ static struct device_attribute osd_attrs[] = {
 	__ATTR(scale_height, S_IRUGO|S_IWUSR, NULL, store_scale_height),
     __ATTR(color_key, S_IRUGO|S_IWUSR, show_color_key, store_color_key),
     __ATTR(enable_key, S_IRUGO|S_IWUSR, show_enable_key, store_enable_key),
+    __ATTR(enable_key_onhold, S_IRUGO|S_IWUSR, show_enable_key_onhold, store_enable_key_onhold),
 };		
 
 #ifdef  CONFIG_PM

@@ -31,6 +31,10 @@
 
 #define  OSD_COUNT 	2 /* we have two osd layer on hardware*/
 
+#define KEYCOLOR_FLAG_TARGET  1
+#define KEYCOLOR_FLAG_ONHOLD  2
+#define KEYCOLOR_FLAG_CURRENT 4
+
 typedef struct myfb_dev {
     struct mutex lock;
 
@@ -46,9 +50,8 @@ typedef struct myfb_dev {
     	struct osd_ctl_s osd_ctl;
 	u32  scale;	
 	u32  enable_3d;
-	u32  enable_key;
-	u32  color_key;
-		
+	u32  enable_key_flag;
+	u32  color_key;	
 } myfb_dev_t;
 typedef  struct list_head   list_head_t ;
 
