@@ -1812,11 +1812,11 @@ static void gps_uart_pin_init(){
         #ifdef CONFIG_SN7325
         printk("power on 7325 8\n");
 	    configIO(1, 0);
-        setIO_level(1, 1, 7);
-        msleep(200);	
+        setIO_level(1, 1, 7);//PP7
+        msleep(400);	
         configIO(0, 0);
         setIO_level(0, 0, 1);//OD1
-	    msleep(400);
+	    msleep(200);
         setIO_level(0, 1, 1);//OD1
         #endif	
   }
@@ -1887,11 +1887,12 @@ static void bt_device_init(void)
 	/* BT_WAKE */ 
 	//CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<14));
 	//SET_CBUS_REG_MASK(PREG_GGPIO_O, (1<<14));
+	    gps_uart_pin_init();
 	    configIO(0, 0);
-        setIO_level(0, 1, 5);
+        //setIO_level(0, 1, 5);
         setIO_level(0, 1, 6);
-        configIO(1, 0);
-        setIO_level(1, 0, 7);//PP7	-->selecet BT
+        //configIO(1, 0);
+        //setIO_level(1, 0, 7);//PP7	-->selecet BT
 }
 
 static void bt_device_on(void)
