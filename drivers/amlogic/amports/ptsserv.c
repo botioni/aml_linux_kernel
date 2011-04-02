@@ -656,7 +656,7 @@ int first_pts_checkin_complete(u8 type)
 
     pTable = &pts_table[type];
 
-    if (pTable->first_checkin_pts < 0)
+    if (pTable->first_checkin_pts == -1)
         return 0;
     else
         return 1;
