@@ -790,7 +790,7 @@ static void meson_pm_suspend(void)
 							1); 					    // 1uS enable delay 
     SET_CBUS_REG_MASK(HHI_SYS_PLL_CNTL, (1<<15));		// turn off sys pll
      
-    WRITE_CBUS_REG(A9_0_IRQ_IN2_INTR_MASK, (1<<8));     // enable rtc interrupt only
+    WRITE_CBUS_REG(A9_0_IRQ_IN2_INTR_MASK, pdata->power_key);     // enable rtc interrupt only
     meson_sram_suspend(pdata);
 
     CLEAR_CBUS_REG_MASK(HHI_SYS_PLL_CNTL, (1<<15));		// turn on sys pll
