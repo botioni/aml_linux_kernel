@@ -111,7 +111,6 @@ ENTRY(meson_cpu_suspend)
     str     r8, [r9]
 
     /* System goes to sleep beyond after this instruction */
-#ifdef WFI_SUSPEND
     ldr     r8, [r2, #A9_AUTO_CLK0]
     orr     r8, r8, #(1<<1)
     str     r8, [r2, #A9_AUTO_CLK0]
@@ -121,12 +120,6 @@ ENTRY(meson_cpu_suspend)
     ldr     r8, [r2, #A9_AUTO_CLK0]
     bic     r8, r8, #(1<<0)
     str     r8, [r2, #A9_AUTO_CLK0]
-#else
-1:  ldr     r8, [r3]
-    and     r8, r8, #4
-    cmp     r8, #4
-    beq     1b
-#endif
     /* Wake up from sleep */
 
     /* restore core voltage */
