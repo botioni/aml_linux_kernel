@@ -9,7 +9,7 @@ struct meson_pm_config {
 	void __iomem *pctl_reg_base;
 	void __iomem *mmc_reg_base;
 	void __iomem *hiu_reg_base;
-    void __iomem *power_key;
+    unsigned power_key;
     unsigned ddr_clk;
     void __iomem *ddr_reg_backup;
 	unsigned core_voltage_adjust;
