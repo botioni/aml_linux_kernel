@@ -504,6 +504,24 @@ void tsync_set_dec_reset(void)
 }
 EXPORT_SYMBOL(tsync_set_dec_reset);
 
+void tsync_set_enable(int enable)
+{
+    tsync_enable = enable;
+}
+EXPORT_SYMBOL(tsync_set_enable);
+
+int tsync_get_syncdiscont(void)
+{
+    return pts_discontinue;
+}
+EXPORT_SYMBOL(tsync_get_syncdiscont);
+
+void tsync_set_syncdiscont(int syncdiscont)
+{
+    pts_discontinue = syncdiscont;
+}
+EXPORT_SYMBOL(tsync_set_syncdiscont);
+
 /*********************************************************/
 
 static ssize_t show_pcr_recover(struct class *class,

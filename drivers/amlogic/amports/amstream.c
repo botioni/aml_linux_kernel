@@ -1240,6 +1240,18 @@ static int amstream_ioctl(struct inode *inode, struct file *file,
         sub_type = (int)arg;
         break;
 
+    case AMSTREAM_IOC_APTS:
+        *((u32 *)arg) = timestamp_apts_get();
+        break;
+
+    case AMSTREAM_IOC_VPTS:
+        *((u32 *)arg) = timestamp_vpts_get();
+        break;
+
+    case AMSTREAM_IOC_PCRSCR:
+        *((u32 *)arg) = timestamp_pcrscr_get();
+        break;
+
     default:
         r = -ENOIOCTLCMD;
     }
