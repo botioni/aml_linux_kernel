@@ -498,7 +498,7 @@ static struct resource amlogic_card_resource[] = {
 
 void extern_wifi_power(int is_power)
 {
-    if (0 == is_power)
+    /*if (0 == is_power)
     {
     	//printk("##########extern_wifi_power_off!###########\n");
         #ifdef CONFIG_SN7325
@@ -537,7 +537,24 @@ void extern_wifi_power(int is_power)
         #else
         return;
         #endif
-    }
+    }*/
+	if(is_power)
+	{
+        configIO(0, 0);
+        setIO_level(0, 1, 5);
+        setIO_level(0, 1, 7);
+        *(volatile unsigned *)EGPIO_GPIOD_ENABLE &= ~PREG_IO_13_MASK;
+        *(volatile unsigned *)EGPIO_GPIOD_OUTPUT |= PREG_IO_13_MASK;
+	}
+	else
+	{
+        configIO(0, 0);
+        setIO_level(0, 0, 5);
+        setIO_level(0, 0, 7);
+        *(volatile unsigned *)EGPIO_GPIOD_ENABLE &= ~PREG_IO_13_MASK;
+        *(volatile unsigned *)EGPIO_GPIOD_OUTPUT &= ~PREG_IO_13_MASK;	
+	}
+
     return;
 }
 
@@ -578,11 +595,7 @@ static struct aml_card_info  amlogic_card_info[] = {
         .card_power_en_mask = 0,
         .card_power_output_reg = 0,
         .card_power_output_mask = 0,
-        //.card_power_en_reg = EGPIO_GPIOD_ENABLE,
-        //.card_power_en_mask = PREG_IO_13_MASK,
-        //.card_power_output_reg = EGPIO_GPIOD_OUTPUT,
-        //.card_power_output_mask = PREG_IO_13_MASK,
-        .card_power_en_lev = 1,
+        .card_power_en_lev = 0,
         .card_wp_en_reg = 0,
         .card_wp_en_mask = 0,
         .card_wp_input_reg = 0,

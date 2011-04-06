@@ -291,8 +291,6 @@ static int card_reader_monitor(void *data)
 			card->card_io_init(card);
 			card->card_detector(card);
 			card_release_host(card_host);
-			if (card_type == CARD_SECURE_DIGITAL)
-				msleep(400);
 
 	    	if((card->card_status == CARD_INSERTED) && (((card->unit_state != CARD_UNIT_READY) 
 				&& ((card_type == CARD_SDIO) ||(card_type == CARD_INAND)

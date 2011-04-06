@@ -88,8 +88,11 @@ void sd_insert_detector(struct memory_card *card)
 void sd_open(struct memory_card *card)
 {
 	int ret;
+	struct aml_card_info *aml_card_info = card->card_plat_info;
 	SD_MMC_Card_Info_t *sd_mmc_info = (SD_MMC_Card_Info_t *)card->card_info;
 
+	if (aml_card_info->card_extern_init)
+		aml_card_info->card_extern_init();
 	ret = sd_mmc_init(sd_mmc_info);
 
 	card->capacity = sd_mmc_info->blk_nums;

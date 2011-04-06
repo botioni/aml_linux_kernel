@@ -668,7 +668,7 @@ CONFIG_AM_GPIO=y
 #
 # Amlogic EFUSE Support
 #
-CONFIG_EFUSE=m
+CONFIG_EFUSE=y
 
 #
 # Block devices
