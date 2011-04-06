@@ -322,7 +322,7 @@ struct aml_camera_i2c_fig1_s GC0308_script[] = {
         {0xfe,0x80},  
 	{0xfe,0x00},
 	{0x0f,0x00},
-#if 1
+#if 0
 //25M mclk
 #if 1   // 50hz  20fps
 	{0x01 , 0x32},                                    
