@@ -244,3 +244,9 @@ int setIO_level(unsigned char port, unsigned char iobits, unsigned char offset)
 
     return res;
 }
+
+
+EXPORT_SYMBOL_GPL(configIO);
+EXPORT_SYMBOL_GPL(setIO_level);
+EXPORT_SYMBOL_GPL(get_configIO);
+EXPORT_SYMBOL_GPL(getIObit_level);

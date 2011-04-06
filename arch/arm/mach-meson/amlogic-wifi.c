@@ -107,9 +107,11 @@ static struct platform_device amlogic_wifi_device = {
 	},
 };
 
-void amlogic_wifi_exit(void)
+int amlogic_wifi_init(void)
 {
-	platform_device_unregister(&amlogic_wifi_device);
+	int ret;
+	ret = platform_device_register(&amlogic_wifi_device);
+	return ret;
 }
 
 device_initcall(amlogic_wifi_init);

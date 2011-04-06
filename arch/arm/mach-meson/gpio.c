@@ -121,8 +121,15 @@ void gpio_enable_edge_int(int pin , int flag, int group)
 {
 	group &= 7;
 	unsigned ireg = GPIO_INTR_GPIO_SEL0 + (group>>2);
-	SET_CBUS_REG_MASK(ireg, pin<<((group&3)<<3));
-	SET_CBUS_REG_MASK(GPIO_INTR_EDGE_POL, ((flag<<(16+group)) | (1<<group)));	
+	int value = 0;
+
+	value = READ_CBUS_REG(ireg);
+	value |= (pin<<((group&3)<<3));
+	SET_CBUS_REG_MASK(ireg, value);
+	
+	value = READ_CBUS_REG(GPIO_INTR_EDGE_POL);
+	value |= ((flag<<(16+group)) | (1<<group));
+	SET_CBUS_REG_MASK(GPIO_INTR_EDGE_POL, value);	
 //	WRITE_CBUS_REG_BITS(A9_0_IRQ_IN2_INTR_STAT_CLR, 0, group, 1);
 }
 /**

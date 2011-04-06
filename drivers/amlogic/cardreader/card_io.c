@@ -45,7 +45,7 @@ void sd_sdio_enable(SDIO_Pad_Type_t io_pad_type)
 			break;
 
 		case SDIO_GPIOB_2_7:
-			//CLEAR_CBUS_REG_MASK(CARD_PIN_MUX_0, (0x3F<<23));
+			CLEAR_CBUS_REG_MASK(CARD_PIN_MUX_0, (0x3F<<23));
 			//CLEAR_CBUS_REG_MASK(CARD_PIN_MUX_5, ((1<<5)));
 			SET_CBUS_REG_MASK(CARD_PIN_MUX_2, ((0xF<<16) | (1<<8) | (1<<12)));
 			SET_CBUS_REG_MASK(SDIO_MULT_CONFIG, (2));

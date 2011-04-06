@@ -500,21 +500,40 @@ void extern_wifi_power(int is_power)
 {
     if (0 == is_power)
     {
+    	//printk("##########extern_wifi_power_off!###########\n");
         #ifdef CONFIG_SN7325
-        configIO(0, 0);
-        setIO_level(0, 0, 5);
+        //configIO(0, 0);
+        //setIO_level(0, 0, 5);
+        //setIO_level(0, 0, 7);
         #else
         return;
         #endif
     }
     else
     {
-    	set_gpio_val(GPIOD_bank_bit2_24(15), GPIOD_bit_bit2_24(15), 0);
-	set_gpio_mode(GPIOD_bank_bit2_24(15), GPIOD_bit_bit2_24(15), GPIO_OUTPUT_MODE);
-	msleep(80);
+    	//printk("##########extern_wifi_power_on!###########\n");
+    	//set_gpio_val(GPIOD_bank_bit2_24(15), GPIOD_bit_bit2_24(15), 0);
+		//set_gpio_mode(GPIOD_bank_bit2_24(15), GPIOD_bit_bit2_24(15), GPIO_OUTPUT_MODE);
+		//msleep(80);
         #ifdef CONFIG_SN7325
         configIO(0, 0);
+        
+        #if 0
+        printk("##########Power On Low!###########\n");
+        setIO_level(0, 0, 5);
+        msleep(5);
+        printk("##########Power On High!###########\n");
         setIO_level(0, 1, 5);
+        msleep(5);
+        printk("##########Power On Low!###########\n");
+        setIO_level(0, 0, 5);
+        #else
+        printk("##########Power On High!###########\n");
+        setIO_level(0, 1, 5);
+        #endif
+        
+        
+        setIO_level(0, 1, 7);
         #else
         return;
         #endif
@@ -555,10 +574,14 @@ static struct aml_card_info  amlogic_card_info[] = {
         .card_ins_en_mask = 0,
         .card_ins_input_reg = 0,
         .card_ins_input_mask = 0,
-        .card_power_en_reg = EGPIO_GPIOD_ENABLE,
-        .card_power_en_mask = PREG_IO_13_MASK,
-        .card_power_output_reg = EGPIO_GPIOD_OUTPUT,
-        .card_power_output_mask = PREG_IO_13_MASK,
+        .card_power_en_reg = 0,
+        .card_power_en_mask = 0,
+        .card_power_output_reg = 0,
+        .card_power_output_mask = 0,
+        //.card_power_en_reg = EGPIO_GPIOD_ENABLE,
+        //.card_power_en_mask = PREG_IO_13_MASK,
+        //.card_power_output_reg = EGPIO_GPIOD_OUTPUT,
+        //.card_power_output_mask = PREG_IO_13_MASK,
         .card_power_en_lev = 1,
         .card_wp_en_reg = 0,
         .card_wp_en_mask = 0,
@@ -769,6 +792,7 @@ static int ads7846_init_gpio(void)
  */
 
     /* set input mode */
+    
     gpio_direction_input(GPIO_TSC2046_PENDOWN);
     /* set gpio interrupt #0 source=GPIOC_4, and triggered by falling edge(=1) */
     gpio_enable_edge_int(27, 1, 0);
@@ -1013,6 +1037,7 @@ static struct uor7x5x_platform_data uor7x5x_pdata = {
 };
 #endif
 
+
 #ifdef CONFIG_UOR6X5X_RESISTIVE_TOUCHSCREEN
 #include <linux/i2c/uor6x5x.h>
 
@@ -1040,6 +1065,7 @@ static int uor6x5x_init_irq(void)
     14-0    gpioA[14:0]
  */
     printk("uor6x5x_init_irq \n");
+    
     /* set input mode */
     gpio_direction_input(GPIO_UOR6X5X_PENIRQ);
     /* set gpio interrupt #0 source=GPIOD_24, and triggered by falling edge(=1) */

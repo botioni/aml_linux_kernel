@@ -2176,13 +2176,18 @@ static struct sdio_driver sdio_ti_driver = {
 };
 
 
-
+//#include <linux/sn7325.h>
 /* Module init and exit, register and unregister to the SDIO/MMC driver */
 //static int __init sdioDrv_init(void);
 //static int __init sdioDrv_init(void)
 int sdioDrv_init(void)
 {
 	int err;
+	
+	
+	//configIO(0, 0);
+	//printk("%s high\n", __FUNCTION__);
+    //setIO_level(0, 1, 5);
 
 	printk(KERN_INFO "***SDIO***:Texas Instruments: Register to MMC/SDIO driver v%s\n",SW_VERSION_STR);
 	/* Sleep a bit - otherwise if the mmc subsystem has just started, it

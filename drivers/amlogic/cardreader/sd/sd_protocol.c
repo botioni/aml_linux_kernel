@@ -3273,7 +3273,8 @@ int sd_identify_process(SD_MMC_Card_Info_t *sd_mmc_info)
 int sd_mmc_init(SD_MMC_Card_Info_t *sd_mmc_info)
 {
 	int error;
-
+	
+	
 	/*close IF INT before change to sd to avoid error IF INT*/
 	sdio_close_host_interrupt(SDIO_IF_INT);
 	WRITE_CBUS_REG(SDIO_CONFIG, 0);
@@ -3303,6 +3304,7 @@ int sd_mmc_init(SD_MMC_Card_Info_t *sd_mmc_info)
 #endif
 	
 	error = sd_mmc_staff_init(sd_mmc_info);
+	
 	if(error)
 	{
 #ifdef  SD_MMC_DEBUG
@@ -3321,6 +3323,7 @@ int sd_mmc_init(SD_MMC_Card_Info_t *sd_mmc_info)
 	}
 
 	error = sd_voltage_validation(sd_mmc_info);
+	
 	if(error)
 	{
 #ifdef  SD_MMC_DEBUG
@@ -3462,8 +3465,8 @@ int sd_mmc_staff_init(SD_MMC_Card_Info_t *sd_mmc_info)
 	SDIO_Config_Reg_t *config_reg;
 
     sd_mmc_prepare_power(sd_mmc_info);
+   
 	sd_mmc_power_on(sd_mmc_info);
-
 #ifdef SD_MMC_HW_CONTROL
 	if(SD_WORK_MODE == CARD_HW_MODE)
 	{
