@@ -383,6 +383,19 @@ void osd_setpal_hw(unsigned regno,
         WRITE_MPEG_REG(VIU_OSD1_COLOR+REG_OFFSET*index, pal);
     }
 }
+u32 osd_get_osd_order_hw(u32 index)
+{
+	return  osd_hw.osd_order&0x3;
+}
+void osd_change_osd_order_hw(u32 index,u32 order)
+{
+	if((order != OSD_ORDER_01)&&(order != OSD_ORDER_10)) 
+	return ;
+	osd_hw.osd_order=order;
+	add_to_update_list(index,OSD_CHANGE_ORDER);
+	osd_wait_vsync_hw();
+}
+	
 void osd_free_scale_enable_hw(u32 index,u32 enable)
 {
 	static  dispdata_t	save_disp_data;
@@ -689,7 +702,37 @@ static inline  void  osd2_update_gbl_alpha(void)
 	data32|=osd_hw.gbl_alpha[OSD2] <<12;
 	WRITE_MPEG_REG(VIU_OSD2_CTRL_STAT,data32);
 	remove_from_update_list(OSD2,OSD_GBL_ALPHA);
-}	
+}
+static inline  void  osd2_update_order(void)
+{
+	switch(osd_hw.osd_order)
+	{
+		case  OSD_ORDER_01:
+		CLEAR_MPEG_REG_MASK(VPP_MISC,VPP_POST_FG_OSD2|VPP_PRE_FG_OSD2);
+		break;
+		case  OSD_ORDER_10:
+		SET_MPEG_REG_MASK(VPP_MISC,VPP_POST_FG_OSD2|VPP_PRE_FG_OSD2);	
+		break;
+		default:
+		break;
+	}
+	remove_from_update_list(OSD2,OSD_CHANGE_ORDER);
+}
+static inline  void  osd1_update_order(void)
+{
+	switch(osd_hw.osd_order)
+	{
+		case  OSD_ORDER_01:
+		CLEAR_MPEG_REG_MASK(VPP_MISC,VPP_POST_FG_OSD2|VPP_PRE_FG_OSD2);
+		break;
+		case  OSD_ORDER_10:
+		SET_MPEG_REG_MASK(VPP_MISC,VPP_POST_FG_OSD2|VPP_PRE_FG_OSD2);	
+		break;
+		default:
+		break;
+	}
+	remove_from_update_list(OSD1,OSD_CHANGE_ORDER);
+}
 static inline  void  osd1_update_disp_geometry(void)
 {
 	u32 data32;
@@ -788,8 +831,10 @@ void osd_init_hw(void)
 	CLEAR_MPEG_REG_MASK(VPP_MISC, VPP_PREBLEND_EN);  
 #if defined(CONFIG_FB_OSD2_CURSOR)    
 	SET_MPEG_REG_MASK(VPP_MISC, VPP_POST_FG_OSD2|VPP_PRE_FG_OSD2);
+	osd_hw.osd_order=OSD_ORDER_10;
 #else   
 	CLEAR_MPEG_REG_MASK(VPP_MISC,VPP_POST_FG_OSD2|VPP_PRE_FG_OSD2);
+	osd_hw.osd_order=OSD_ORDER_01;
 #endif	
 	CLEAR_MPEG_REG_MASK(VPP_MISC,VPP_OSD1_POSTBLEND|VPP_OSD2_POSTBLEND );
 
