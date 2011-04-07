@@ -2225,6 +2225,7 @@ int aml_nand_init(struct aml_nand_chip *aml_chip)
 		chip->IO_ADDR_W = (void __iomem *) CBUS_REG_ADDR(NAND_BUF);
 
 	chip->options |=  NAND_SKIP_BBTSCAN;
+	chip->options |= NAND_NO_SUBPAGE_WRITE;
 	if (chip->ecc.mode != NAND_ECC_SOFT) {
 		if (aml_chip->user_byte_mode == 2)
 			chip->ecc.layout = &aml_nand_oob_64_2info;
@@ -2259,6 +2260,7 @@ int aml_nand_init(struct aml_nand_chip *aml_chip)
 	if (nand_scan(mtd, aml_chip->chip_num) == -ENODEV) {
 		chip->options = 0;
 		chip->options |=  NAND_SKIP_BBTSCAN;
+		chip->options |= NAND_NO_SUBPAGE_WRITE;
 		if (aml_nand_scan(mtd, aml_chip->chip_num)) {
 			err = -ENXIO;
 			goto exit_error;
