@@ -1215,7 +1215,7 @@ void GT2005_set_night_mode(struct gt2005_device *dev,enum  camera_night_mode_fli
 void GT2005_set_resolution(struct gt2005_device *dev,int height,int width)
 {	
 	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);	
-	
+#if 0	 
 	if(height&&width&&(height<=1200)&&(width<=1600))
 	{		
 	    if((height<=600)&&(width<=800))
@@ -1234,6 +1234,12 @@ void GT2005_set_resolution(struct gt2005_device *dev,int height,int width)
 			i2c_put_byte(client,0x0113 ,  height&0xff);
 		}
 	}
+#else
+		i2c_put_byte(client,0x0110, 0x03);
+		i2c_put_byte(client,0x0111, 0x20);
+		i2c_put_byte(client,0x0112, 0x02);
+		i2c_put_byte(client,0x0113, 0x5A);
+#endif	
 }    /* GT2005_set_resolution */
 
 unsigned char v4l_2_gt2005(int val)
