@@ -728,6 +728,8 @@ static struct work_struct work;
 
 static int FirstTC = 0,OneTCountAfter2 = 0,TWOTouchFlag = 0;
 static int two_touch_count = 0, pre_dx = 0, pre_dy = 0;
+static int pre_outx1 = 0, pre_outy1 = 0, pre_outx2 = 0, pre_outy2 = 0;
+
 
 static void uor_read_data(unsigned short *X, unsigned short *Y, 
 	unsigned short *DX, unsigned short *DY)
@@ -763,7 +765,11 @@ static void uor_read_data(unsigned short *X, unsigned short *Y,
 
 static void uor_read_loop(struct work_struct *data)
 {
-	VUINT8 EpBuf[16];
+	VUINT8 EpBuf[4];
+	unsigned short SBufx_0 = 0;
+	unsigned short SBufx_1 = 0;
+	unsigned short SBufy_0 = 0;
+	unsigned short SBufy_1 = 0;
 	unsigned short x, y;
 	unsigned short out_x, out_y;
 	unsigned short Dx, Dy, z1, z2;
@@ -771,6 +777,7 @@ static void uor_read_loop(struct work_struct *data)
 	unsigned int Rt;
 	unsigned int nTouch = 0;
 	int xy = 0;
+	unsigned int slid_index=0;
 	//printk(KERN_ERR "uor.c: uor_read_loop() !\n");
 	
 	while(1){
@@ -863,37 +870,59 @@ static void uor_read_loop(struct work_struct *data)
                 else{
 					//printk(KERN_ERR "%s:report dual touch-- (x,y)=(%d,%d) (dx,dy)=(%d,%d)  !!!\n",__FUNCTION__, x, y, Dx, Dy);
 					//report x,y,pressure,dx,dy to Linux/Android
-                	if((pre_dx!=0) && (pre_dy!=0) && ((Dx - pre_dx) <8 && (pre_dx-Dx) <8 && (Dy - pre_dy )<8&& (pre_dy-Dy )<8)){
+                	if((pre_dx!=0) && (pre_dy!=0) && ((Dx - pre_dx) <8 && (pre_dx-Dx) <8 && (Dy - pre_dy )<8 && (pre_dy-Dy )<8)){
                         Dx = pre_dx;
                 		Dy = pre_dy;
                 	}
 					
-					 if ( (ts.pX!=0) && (ts.pY!=0) && ((ts.xp - ts.pX) <1000 && (ts.pX-ts.xp) <1000 && (ts.yp - ts.pY )<1000 && (ts.pY-ts.yp )<1000)){
+					 if ( (ts.pX!=0) && (ts.pY!=0) && ((ts.xp - ts.pX) <200 && (ts.pX-ts.xp) <200 && (ts.yp - ts.pY )<200 && (ts.pY-ts.yp )<200)){
 					     ts.xp = ts.pX;
 						 ts.yp = ts.pY;
 					 }
 					 
-					 int dx_coord =(Dx - DX_T< 0) ? 0 :  ((Dx - 40) & 0x00fc) * 4;
-					 int dy_coord=(Dy - DY_T< 0) ? 0 :  ((Dy - 40) & 0x00fc) * 4;
+					 int dx_coord =(Dx - DX_T< 0) ? 0 :  ((Dx - 40) & 0x00f8) * 4;
+					 int dy_coord=(Dy - DY_T< 0) ? 0 :  ((Dy - 40) & 0x00f8) * 4;
 
                 	input_report_abs(ts.dev, ABS_MT_TOUCH_MAJOR, 600 + (Rt%400));
                 	//input_report_abs(ts.dev, ABS_MT_WIDTH_MAJOR, 500+press);
+
+					if(slid_index == 1){
+						SBufx_0 = SBufx_1;
+						SBufx_1 = dx_coord;
+						dx_coord = (SBufx_0+ SBufx_1)/2;
+						SBufy_0 = SBufy_1;
+						SBufy_1 = dy_coord;
+						dy_coord = (SBufy_0+ SBufy_1)/2;
+					}
+					else{
+						SBufx_1 = dx_coord;
+						SBufy_1 = dy_coord;
+					}
                 		        
                 	xy = 0;
 					out_x = ts.xp - dx_coord;
 					out_y = ts.yp - dy_coord;
+					
                 	if(ts.pdata->convert){
                 		 xy = ts.pdata->convert(out_x, out_y);
                 		 out_x = xy >> 16;
                 		 out_y = xy & 0xffff;
                 	}
-                	//printk(KERN_ERR "%s:TWO_TOUCH (x1,y1)=(%d,%d)\n",__FUNCTION__, out_x, out_y);
-                		        
+                	
+                	if((pre_outx1!=0) && (pre_outy1!=0) && ((out_x - pre_outx1) <4 && (pre_outx1-out_x) <4 && (out_y - pre_outy1 )<4 && (pre_outy1 - out_y )<4)){
+                        out_x = pre_outx1;
+                		out_y = pre_outy1;
+                	}
+ 					//printk(KERN_ERR "%s:TWO_TOUCH (x1,y1)=(%d,%d)\n",__FUNCTION__, out_x, out_y);
+								
                 	input_report_abs(ts.dev, ABS_MT_POSITION_X, out_x);
                 	input_report_abs(ts.dev, ABS_MT_POSITION_Y, out_y);
                 	input_mt_sync(ts.dev);
                 		        
                 	input_report_abs(ts.dev, ABS_MT_TOUCH_MAJOR, 600 + (Rt%400));
+
+					pre_outx1 = out_x;
+                	pre_outy1 = out_y;
                 	//input_report_abs(ts.dev, ABS_MT_WIDTH_MAJOR, 600+press);
                 		        
                 	xy = 0;
@@ -904,9 +933,14 @@ static void uor_read_loop(struct work_struct *data)
                 		 out_x = xy >> 16;
                 		 out_y = xy & 0xffff;
                 	}
-                	//printk(KERN_ERR "%s:TWO_TOUCH (x2,y2)=(%d,%d)\n",__FUNCTION__, out_x, out_y);
-                		        
-                	input_report_abs(ts.dev, ABS_MT_POSITION_X, out_x);
+
+					if((pre_outx2!=0) && (pre_outy2!=0) && ((out_x - pre_outx2) <4 && (pre_outx2-out_x) <4 && (out_y - pre_outy2 )<4 && (pre_outy2 - out_y )<4)){
+                        out_x = pre_outx2;
+                		out_y = pre_outy2;
+                	}   	        
+                    //printk(KERN_ERR "%s:TWO_TOUCH (x2,y2)=(%d,%d)\n",__FUNCTION__, out_x, out_y);
+					
+					input_report_abs(ts.dev, ABS_MT_POSITION_X, out_x);
                 	input_report_abs(ts.dev, ABS_MT_POSITION_Y, out_y);
                 	input_mt_sync(ts.dev);
                 		        
@@ -916,6 +950,9 @@ static void uor_read_loop(struct work_struct *data)
                 	OneTCountAfter2 = 0;
                 	pre_dx = Dx;
                 	pre_dy = Dy;
+					pre_outx2 = out_x;
+                	pre_outy2 = out_y;
+					slid_index = 1;
                 	msleep(MAX_READ_PERIOD);
                 }
             }
@@ -1000,6 +1037,11 @@ static void uor_read_loop(struct work_struct *data)
 	        ts.pY = 0;
 	        pre_dx = 0;
 	        pre_dy = 0;
+			pre_outx1 = 0;
+			pre_outy1 = 0;
+			pre_outx2 = 0;
+			pre_outy2 = 0;
+			slid_index = 0;
 			#ifdef  GESTURE_IN_DRIVER
 	        VUINT8 gesture = 0;
 	        gesture =  gesture_decision((VUINT8)nTouch, (VUINT16)(ts.xp),  (VUINT16)ts.yp,  (VUINT16)Dx, (VUINT16)Dy);	
