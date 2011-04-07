@@ -2202,13 +2202,13 @@ static int ov5642_close(struct file *file)
 #if 1		
 	power_down_ov5642(dev);
 #endif
-	msleep(300);
+	msleep(2);
 
 	if(dev->platform_dev_data.device_uninit) {
 		dev->platform_dev_data.device_uninit();
 		printk("+++found a uninit function, and run it..\n");
 	}
-	msleep(300); 
+	msleep(2); 
 	return 0;
 }
 

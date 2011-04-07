@@ -930,7 +930,7 @@ int vm_buffer_init(void)
                           CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_LINEAR);
             canvas_config(VM_DEPTH_8_CANVAS_Y+ i,
                           buf_start + i*decbuf_size/2,
-                          canvas_width, canvas_height/2,
+                          canvas_width, canvas_height,
                           CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_LINEAR); //CANVAS_BLKMODE_32X32
             //canvas_config(VM_DEPTH_8_CANVAS_UV + i,
                           //buf_start + (i+1)*decbuf_size/2,
