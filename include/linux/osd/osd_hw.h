@@ -22,6 +22,7 @@ typedef  enum{
 	OSD_COLOR_KEY,
 	OSD_COLOR_KEY_ENABLE,
 	OSD_GBL_ALPHA,
+	OSD_CHANGE_ORDER,
 	DISP_GEOMETRY,
 	DISP_SCALE_ENABLE,
 	HW_REG_INDEX_MAX
@@ -35,7 +36,8 @@ typedef struct {
 	s32 y_end;
 } pandata_t;
 
-
+#define  OSD_ORDER_01		1	 /*forground osd1*/
+#define  OSD_ORDER_10		2	 /*forground osd2*/
 #define OSD_GLOBAL_ALPHA_DEF  0xff
 #define OSD_DATA_BIG_ENDIAN 	0
 #define OSD_DATA_LITTLE_ENDIAN 1
@@ -69,6 +71,8 @@ extern void  osddev_update_disp_axis_hw(
                   	u32 yoffset,
                   	u32 mode_change,
                   	u32 index) ;
+extern void osd_change_osd_order_hw(u32 index,u32 order);
+extern u32 osd_get_osd_order_hw(u32 index);
 extern void osd_free_scale_enable_hw(u32 index,u32 enable);
 extern void  osd_free_scale_width_hw(u32 index,u32 width) ;
 extern void  osd_free_scale_height_hw(u32 index,u32 height);

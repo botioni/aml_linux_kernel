@@ -1435,6 +1435,18 @@ static int amvideo_ioctl(struct inode *inode, struct file *file,
         tsync_set_syncthresh(arg);
         break;
 
+    case AMSTREAM_IOC_SYNCENABLE:
+        tsync_set_enable(arg);
+        break;
+
+    case AMSTREAM_IOC_SET_SYNCDISCON:
+        tsync_set_syncdiscont(arg);
+        break;
+
+    case AMSTREAM_IOC_GET_SYNCDISCON:
+        *((u32 *)arg) = tsync_get_syncdiscont();
+        break;
+
     case AMSTREAM_IOC_CLEAR_VBUF: {
         unsigned long flags;
         spin_lock_irqsave(&lock, flags);

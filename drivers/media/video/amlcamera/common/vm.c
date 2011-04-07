@@ -413,8 +413,10 @@ static int get_output_format(int v4l2_format)
         format = GE2D_FORMAT_S16_YUV422;
         break;
         case V4L2_PIX_FMT_BGR24:
-        case V4L2_PIX_FMT_RGB24: 
         format = GE2D_FORMAT_S24_RGB ;
+        break;
+        case V4L2_PIX_FMT_RGB24:
+        format = GE2D_FORMAT_S24_BGR; 
         break;
         case V4L2_PIX_FMT_NV12:
         case V4L2_PIX_FMT_YUV420:
@@ -693,24 +695,21 @@ int vm_sw_post_process(int canvas , int addr)
 	int poss=0,posd=0;
 	int i=0,j = 0;
 	void __iomem * buffer_v_start;
-	canvas_t canvas_work;
+	canvas_t canvas_work;   
+	canvas_t canvas_work2;
+	canvas_t canvas_work3;
+	
 	canvas_read(canvas&0xff,&canvas_work);
-//	printk("+++++start copying.....");
     buffer_v_start = ioremap_wc(canvas_work.addr,canvas_work.width*canvas_work.height);
-//	printk("=======%x\n",buffer_v_start);
-    if(output_para.v4l2_format == V4L2_PIX_FMT_RGB24){
-        poss = posd = 0 ;
+    if (output_para.v4l2_format == V4L2_PIX_FMT_BGR24||
+			output_para.v4l2_format == V4L2_PIX_FMT_RGB24) {
+			
     	for(i=0;i<output_para.height;i++) {
-    	    for(j = 0 ;j < output_para.width*3 ;j+=3){
-    	        *(unsigned char*)(addr +poss + j ) =  *(unsigned char*)(buffer_v_start +posd + j + 2);
-    	        *(unsigned char*)(addr +poss+ j+1 ) =  *(unsigned char*)(buffer_v_start +posd+ j + 1);
-    	        *(unsigned char*)(addr +poss+ j +2 ) =  *(unsigned char*)(buffer_v_start +posd + j ) ;
-    	    }
+    		memcpy(addr+poss,buffer_v_start+posd,output_para.bytesperline/*vb->bytesperline*/);
     		poss+=output_para.bytesperline;
     		posd+= canvas_work.width;		
-    	}        
-    }else if (output_para.v4l2_format== V4L2_PIX_FMT_RGB565X){
-
+    	}
+	}else if (output_para.v4l2_format== V4L2_PIX_FMT_RGB565X){
     	for(i=0;i<output_para.height;i++) {
     		memcpy(addr+poss,buffer_v_start+posd,output_para.bytesperline/*vb->bytesperline*/);
     		poss+=output_para.bytesperline;
@@ -769,7 +768,6 @@ int vm_sw_post_process(int canvas , int addr)
     		posd+= canvas_work.width;		
     	}
     	
-		canvas_t canvas_work2;
 		void __iomem * buffer_v_start2;
 		void __iomem * buffer_u_start2;
     	int uv_width = output_para.width>>1;
@@ -778,8 +776,8 @@ int vm_sw_post_process(int canvas , int addr)
     	posd=0;
     	canvas_read((canvas>>8)&0xff,&canvas_work2);
     	buffer_u_start2 = ioremap_wc(canvas_work2.addr,canvas_work2.width*canvas_work2.height);
-    	canvas_read((canvas>>16)&0xff,&canvas_work2);
-    	buffer_v_start2 = ioremap_wc(canvas_work2.addr,canvas_work2.width*canvas_work2.height);
+    	canvas_read((canvas>>16)&0xff,&canvas_work3);
+    	buffer_v_start2 = ioremap_wc(canvas_work3.addr,canvas_work3.width*canvas_work3.height);
         
         int uv_cnt;
         char* dst_buff=(unsigned char*)(addr+poss);
@@ -797,7 +795,6 @@ int vm_sw_post_process(int canvas , int addr)
     	iounmap(buffer_u_start2);
 #endif
 	} else if (output_para.v4l2_format = V4L2_PIX_FMT_YUV420) {
-		canvas_t canvas_work2;
 		void __iomem * buffer_v_start2;
     	int uv_width = output_para.width>>1;
     	int uv_height = output_para.height>>1;
@@ -935,10 +932,10 @@ int vm_buffer_init(void)
                           buf_start + i*decbuf_size/2,
                           canvas_width, canvas_height/2,
                           CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_LINEAR); //CANVAS_BLKMODE_32X32
-            canvas_config(VM_DEPTH_8_CANVAS_UV + i,
-                          buf_start + (i+1)*decbuf_size/2,
-                          canvas_width, canvas_height,
-                          CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_LINEAR);
+            //canvas_config(VM_DEPTH_8_CANVAS_UV + i,
+                          //buf_start + (i+1)*decbuf_size/2,
+                          //canvas_width, canvas_height,
+                          //CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_LINEAR);
             canvas_config(VM_DEPTH_8_CANVAS_U + i,
                           buf_start + (i+1)*decbuf_size/2,
                           canvas_width/2, canvas_height/2,

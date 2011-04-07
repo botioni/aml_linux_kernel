@@ -141,43 +141,6 @@ int wifi_set_power( int on, unsigned long msec )
 #if DEBUG_WIFI //wait to debug
 	printk("%s = %d\n", __FUNCTION__, on);
 	
-	if(on)
-	{
-		//printk("##########Power on WiFi!###########\n");
-    	//set_gpio_val(GPIOD_bank_bit2_24(15), GPIOD_bit_bit2_24(15), 0);
-		//set_gpio_mode(GPIOD_bank_bit2_24(15), GPIOD_bit_bit2_24(15), GPIO_OUTPUT_MODE);
-		//msleep(80);
-        configIO(0, 0);
-        #if 0
-        printk("%s low\n", __FUNCTION__);
-        setIO_level(0, 0, 5);
-        mdelay(1);
-         printk("%s high\n", __FUNCTION__);
-        setIO_level(0, 1, 5);
-        mdelay(1);
-         printk("%s low\n", __FUNCTION__);
-        setIO_level(0, 0, 5);
-        mdelay(1);
-         printk("%s high\n", __FUNCTION__);
-        setIO_level(0, 1, 5);
-        #else
-        printk("%s high\n", __FUNCTION__);
-        setIO_level(0, 1, 5);
-        #endif
-        //setIO_level(0, 1, 7);
-		
-	}
-	else
-	{
-		#if 0
-		printk("%s cut off power, low\n", __FUNCTION__);
-        configIO(0, 0);
-        setIO_level(0, 0, 5);
-        #endif
-        //setIO_level(0, 0, 7);
-		
-	}
-	
 	if( wifi_control_data && wifi_control_data->set_power ) {
 		wifi_control_data->set_power(on);
 	}
