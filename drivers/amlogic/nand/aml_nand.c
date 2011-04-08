@@ -1802,7 +1802,7 @@ static struct aml_nand_flash_dev *aml_nand_get_flash_type(struct mtd_info *mtd,
 	chip->badblockpos = AML_BADBLK_POS;
 
 	/* Get chip options, preserve non chip based options */
-	chip->options &= ~NAND_CHIPOPTIONS_MSK;
+	//chip->options &= ~NAND_CHIPOPTIONS_MSK;
 	//chip->options |= type->options & NAND_CHIPOPTIONS_MSK;
 
 	/*
@@ -1813,8 +1813,8 @@ static struct aml_nand_flash_dev *aml_nand_get_flash_type(struct mtd_info *mtd,
 	/* Check if chip is a not a samsung device. Do not clear the
 	 * options for chips which are not having an extended id.
 	 */
-	if (*maf_id != NAND_MFR_SAMSUNG && !type->pagesize)
-		chip->options &= ~NAND_SAMSUNG_LP_OPTIONS;
+	//if (*maf_id != NAND_MFR_SAMSUNG && !type->pagesize)
+		//chip->options &= ~NAND_SAMSUNG_LP_OPTIONS;
 
 	printk(KERN_INFO "NAND device: Manufacturer ID:"
 	       " 0x%02x, Chip ID: 0x%02x (%s %s)\n", *maf_id, dev_id[0],
@@ -2387,7 +2387,7 @@ int aml_nand_init(struct aml_nand_chip *aml_chip)
 	if (chip->buffers)
 		kfree(chip->buffers);
 	if (mtd->oobsize >= NAND_MAX_OOBSIZE)
-	chip->buffers = kzalloc((mtd->writesize + 3*mtd->oobsize), GFP_KERNEL);
+		chip->buffers = kzalloc((mtd->writesize + 3*mtd->oobsize), GFP_KERNEL);
 	else
 		chip->buffers = kzalloc((mtd->writesize + 3*NAND_MAX_OOBSIZE), GFP_KERNEL);
 	if (chip->buffers == NULL) {
