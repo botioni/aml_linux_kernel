@@ -236,7 +236,16 @@ static struct kobj_type canvas_attr_type = {
 static int __init amcanvas_init(void)
 {
 	int r, i;
-
+	//added by Elvis Yu. Must call register_chrdev while register a char device,otherwise device major will be used again.
+	r = register_chrdev(AMCANVAS_MAJOR, DEVICE_NAME, &canvas_sysfs_ops);
+	if (r < 0) {
+		pr_dbg("Can't register  char devie for " DEVICE_NAME "\n");
+		return r;
+	} else {
+		pr_dbg("register " DEVICE_NAME " to char divece(%d)\n",
+			  AMCANVAS_MAJOR);
+	}
+	
 	canvas_class = class_create(THIS_MODULE, CLASS_NAME);
 	if ((r = IS_ERR(canvas_class)) != 0) {
 		pr_error("canvas class create failed\n");
