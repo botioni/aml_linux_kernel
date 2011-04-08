@@ -1803,7 +1803,7 @@ static struct aml_nand_flash_dev *aml_nand_get_flash_type(struct mtd_info *mtd,
 
 	/* Get chip options, preserve non chip based options */
 	chip->options &= ~NAND_CHIPOPTIONS_MSK;
-	chip->options |= type->options & NAND_CHIPOPTIONS_MSK;
+	//chip->options |= type->options & NAND_CHIPOPTIONS_MSK;
 
 	/*
 	 * Set chip as a default. Board drivers can override it, if necessary
