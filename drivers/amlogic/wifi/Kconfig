@@ -264,7 +264,7 @@ endif
 
 config SDIO_TI_WIFI_WGT7310
 	tristate "Ti wgt7310 wireless cards support"
-	default m
+	default n
 	depends on SD_MMC
 	select WIRELESS_EXT
 	select WEXT_PRIV
