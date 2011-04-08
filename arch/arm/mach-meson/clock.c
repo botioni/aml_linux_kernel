@@ -318,24 +318,24 @@ REGISTER_CLK(WIFI);
 
 static struct clk_lookup lookups[] = {
     {
-        .dev_id	= "clk_xtal",
-	.clk	= &xtal_clk,
+        .dev_id = "clk_xtal",
+        .clk    = &xtal_clk,
     },
     {
-        .dev_id	= "clk_sys_pll",
-        .clk	= &clk_sys_pll,
+        .dev_id = "clk_sys_pll",
+        .clk    = &clk_sys_pll,
     },	
     {
-        .dev_id	= "clk_other_pll",
-        .clk	= &clk_other_pll,
+        .dev_id = "clk_other_pll",
+        .clk    = &clk_other_pll,
     },
     {
-        .dev_id	= "clk_ddr_pll",
-        .clk	= &clk_ddr_pll,
+        .dev_id = "clk_ddr_pll",
+        .clk    = &clk_ddr_pll,
     },
     {
-	.dev_id	= "clk81",
-	.clk	= &clk81,
+        .dev_id = "clk81",
+        .clk    = &clk81,
     },
     {
         .dev_id = "a9_clk",

@@ -83,10 +83,6 @@ MODULE_AMLOG(LOG_LEVEL_ERROR, 0, LOG_DEFAULT_LEVEL_DESC, LOG_MASK_DESC);
 
 #define FIQ_VSYNC
 
-#if defined(FIQ_VSYNC) && defined(CONFIG_FB_AM)
-extern irqreturn_t osd_fiq_isr(void);
-#endif
-
 //#define SLOW_SYNC_REPEAT
 //#define INTERLACE_FIELD_MATCH_PROCESS
 
@@ -1136,11 +1132,7 @@ static irqreturn_t vsync_isr0(int irq, void *dev_id)
 
 exit:
 #ifdef FIQ_VSYNC
-    WRITE_MPEG_REG(IRQ_CLR_REG(INT_VIU_VSYNC), 1 << IRQ_BIT(INT_VIU_VSYNC));
-
-#ifdef CONFIG_FB_AM
-    osd_fiq_isr();
-#endif
+    return;
 #else
     return IRQ_HANDLED;
 #endif
@@ -1226,7 +1218,7 @@ static void vsync_fiq_up(void)
 static void vsync_fiq_down(void)
 {
 #ifdef FIQ_VSYNC
-    free_fiq(INT_VIU_VSYNC);
+    free_fiq(INT_VIU_VSYNC, &vsync_isr0);
 #else
     free_irq(INT_VIU_VSYNC, (void *)video_dev_id);
 #endif

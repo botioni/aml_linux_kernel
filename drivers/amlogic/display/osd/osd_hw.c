@@ -98,7 +98,7 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
 #endif
 
 #ifdef FIQ_VSYNC
-irqreturn_t osd_fiq_isr(void)
+static void osd_fiq_isr(void)
 #else
 static irqreturn_t vsync_isr(int irq, void *dev_id)
 #endif
@@ -138,6 +138,7 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
 		WRITE_MPEG_REG(VIU_OSD1_BLK0_CFG_W0, fb0_cfg_w0);
 		WRITE_MPEG_REG(VIU_OSD1_BLK0_CFG_W0+ REG_OFFSET, fb1_cfg_w0);
 	}
+
 	//go through update list
 	if(!list_empty(&update_list))
 	{
@@ -148,9 +149,6 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
 	}
 	osd_update_3d_mode(osd_hw.mode_3d[OSD1].enable,osd_hw.mode_3d[OSD2].enable);
 	
-	if (READ_MPEG_REG(VENC_ENCI_LINE) >= 12)
-		READ_MPEG_REG(VENC_ENCI_LINE);
-
 	if (!vsync_hit)
 	{
 #ifdef FIQ_VSYNC
@@ -160,12 +158,10 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
 #endif
 	}
 
+#ifndef FIQ_VSYNC
 	return  IRQ_HANDLED ;
-}
-
-#ifdef FIQ_VSYNC
-EXPORT_SYMBOL(osd_fiq_isr);
 #endif
+}
 
 void osd_wait_vsync_hw(void)
 {
@@ -870,6 +866,10 @@ void osd_init_hw(void)
 		amlog_level(LOG_LEVEL_HIGH,"can't request irq for vsync\r\n");
 	}
 
+#ifdef FIQ_VSYNC
+    request_fiq(INT_VIU_VSYNC, &osd_fiq_isr);
+#endif
+
 	return ;
 }
 
@@ -940,12 +940,6 @@ void  osd_suspend_hw(void)
 	u32 data;
 	u32  *preg;
 	
-#ifndef FIQ_VSYNC
-	//free irq ,we can not disable it ,maybe video still use it .
-	free_irq(INT_VIU_VSYNC,(void *)osd_setup);
-#else
-    	unregister_fiq_bridge_handle(&osd_hw.fiq_handle_item);
-#endif
 	//save all status
 	osd_hw.reg_status=(u32*)kmalloc(sizeof(u32)*RESTORE_MEMORY_SIZE,GFP_KERNEL);
 	if(IS_ERR (osd_hw.reg_status))
@@ -1033,16 +1027,6 @@ void osd_resume_hw(void)
 		// osd relative clock	
 	}
 	
-#ifdef FIQ_VSYNC
-	if(register_fiq_bridge_handle(&osd_hw.fiq_handle_item))	
-#else
-	if ( request_irq(INT_VIU_VSYNC, &vsync_isr,
-		IRQF_SHARED , "am_osd_vsync", osd_setup))
-#endif
-	{
-		amlog_level(LOG_LEVEL_HIGH,"can't request irq when osd resume\r\n");
-	}
-
 	return ;
 }
 
