@@ -1714,6 +1714,8 @@ static int get_charge_status(void)
 {
 		int count=0;
 		
+		 return (READ_CBUS_REG(ASSIST_HW_REV)&(1<<8))? 1:0;
+		 /*
 		while ((READ_CBUS_REG(ASSIST_HW_REV)&(1<<8))? 1:0)
 		{
 			if ((count<10)&&(count>=0))
@@ -1725,7 +1727,7 @@ static int get_charge_status(void)
 				return 1;
 			}
 		}
-    return 0;
+    return 0;*/
 }
 
 static void set_bat_off(void)
