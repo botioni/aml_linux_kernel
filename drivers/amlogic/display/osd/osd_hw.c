@@ -936,96 +936,20 @@ void osd_cursor_hw(s16 x, s16 y, s16 xstart, s16 ystart, u32 osd_w, u32 osd_h, i
 
 void  osd_suspend_hw(void)
 {
-	u32 i,j;
-	u32 data;
-	u32  *preg;
-	
-	//save all status
-	osd_hw.reg_status=(u32*)kmalloc(sizeof(u32)*RESTORE_MEMORY_SIZE,GFP_KERNEL);
-	if(IS_ERR (osd_hw.reg_status))
-	{
-		amlog_level(LOG_LEVEL_HIGH,"can't alloc restore memory\r\n");
-		return ;
-	}
-	preg=osd_hw.reg_status;
-	for(i=0;i<ARRAY_SIZE(reg_index);i++)
-	{
-		switch(reg_index[i])
-		{
-			case VPP_MISC:
-			data=READ_MPEG_REG(VPP_MISC);
-			*preg=data&OSD_RELATIVE_BITS; //0x333f0 is osd0&osd1 relative bits
-			WRITE_MPEG_REG(VPP_MISC,data&(~OSD_RELATIVE_BITS));
-			break;
-			case VIU_OSD1_BLK0_CFG_W4:
-			data=READ_MPEG_REG(VIU_OSD1_BLK0_CFG_W4);
-			*preg=data;
-			data=READ_MPEG_REG(VIU_OSD2_BLK0_CFG_W4);
-			*(preg+OSD1_OSD2_SOTRE_OFFSET)=data;
-			break;
-			case VIU_OSD1_COLOR_ADDR: //resotre palette value
-			for(j=0;j<256;j++)
-			{
-				WRITE_MPEG_REG(VIU_OSD1_COLOR_ADDR, 1<<8|j);
-				*preg=READ_MPEG_REG(VIU_OSD1_COLOR);
-				WRITE_MPEG_REG(VIU_OSD1_COLOR_ADDR+REG_OFFSET, 1<<8|j);
-				*(preg+OSD1_OSD2_SOTRE_OFFSET)=READ_MPEG_REG(VIU_OSD1_COLOR+REG_OFFSET);
-				preg++;
-			}
-			break;
-			default :
-			data=READ_MPEG_REG(reg_index[i]);
-			*preg=data;
-			break;
-		}
-		preg++;
-	}
-    printk("osd_suspend\n");
-	//disable osd relative clock
+	osd_hw.reg_status_save = READ_MPEG_REG(VPP_MISC) & OSD_RELATIVE_BITS;
+
+	CLEAR_MPEG_REG_MASK(VPP_MISC, OSD_RELATIVE_BITS);
+
+    printk("osd_suspended\n");
+
 	return ;
 	
 }
 void osd_resume_hw(void)
 {
-	u32 i,j;
-	u32  *preg;
+    SET_MPEG_REG_MASK(VPP_MISC, osd_hw.reg_status_save);
 
-    printk("osd_resume\n");
-	// enable osd relative clock	
-	//restore status
-	if(osd_hw.reg_status)
-	{
-		preg=osd_hw.reg_status;
-		for(i=0;i<ARRAY_SIZE(reg_index);i++)
-		{
-			switch(reg_index[i])
-			{
-	       			case VPP_MISC:
-	       			SET_MPEG_REG_MASK(VPP_MISC,*preg);
-				break;
-				case VIU_OSD1_BLK0_CFG_W4:
-				WRITE_MPEG_REG(VIU_OSD1_BLK0_CFG_W4,*preg);
-				WRITE_MPEG_REG(VIU_OSD2_BLK0_CFG_W4,*(preg+OSD1_OSD2_SOTRE_OFFSET));
-				break;
-				case VIU_OSD1_COLOR_ADDR: //resotre palette value
-				for(j=0;j<256;j++)
-				{
-					WRITE_MPEG_REG(VIU_OSD1_COLOR_ADDR, j);
-					WRITE_MPEG_REG(VIU_OSD1_COLOR,*preg);
-					WRITE_MPEG_REG(VIU_OSD1_COLOR_ADDR+REG_OFFSET, j);
-					WRITE_MPEG_REG(VIU_OSD1_COLOR+REG_OFFSET,*(preg+OSD1_OSD2_SOTRE_OFFSET));
-					preg++;
-				}
-				break;
-				default :
-				WRITE_MPEG_REG(reg_index[i],*preg);
-				break;
-			}
-			preg++;
-		}
-		kfree(osd_hw.reg_status);
-		// osd relative clock	
-	}
+    printk("osd_resumed\n");
 	
 	return ;
 }
