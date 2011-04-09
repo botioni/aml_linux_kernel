@@ -1290,7 +1290,7 @@ static struct aml_power_pdata power_pdata = {
 	.bat_charge_value_table = bat_charge_value_table,
 	.bat_level_table = bat_level_table,
 	.bat_table_len = 37,		
-	.is_support_usb_charging = 0;
+	.is_support_usb_charging = 0,
 	//.supplied_to = supplicants,
 	//.num_supplicants = ARRAY_SIZE(supplicants),
 };
@@ -1307,6 +1307,11 @@ static struct platform_device power_dev = {
 static int is_ac_connected(void)
 {
 	return (READ_CBUS_REG(ASSIST_HW_REV)&(1<<9))? 1:0;//GP_INPUT1
+}
+
+static int get_charge_status()
+{
+    return (READ_CBUS_REG(ASSIST_HW_REV)&(1<<8))? 1:0;//GP_INPUT0
 }
 
 static void set_charge(int flags)
@@ -1332,9 +1337,10 @@ static void set_bat_off(void)
 
 static struct bq27x00_battery_pdata bq27x00_pdata = {
 	.is_ac_online	= is_ac_connected,
+	.get_charge_status = get_charge_status,	
 	.set_charge = set_charge,
 	.set_bat_off = set_bat_off,
-    .chip = 0,
+    .chip = 1,
 };
 #endif
 
@@ -1604,13 +1610,9 @@ static void aml_8726m_set_bl_level(unsigned level)
 
     if (level < 30)
     {
-        cs_level = 0;
+        cs_level = 1750;
     }
-    else if (level == 30)
-    {
-        cs_level = 1760;
-    }
-    else if (level > 30 && level < 256)
+    else if (level >= 30 && level < 256)
     {
         cs_level = (level - 31) * 260 + 1760;
     }
@@ -1632,19 +1634,19 @@ static void aml_8726m_power_on_bl(void)
     msleep(100);
     SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<31));
     msleep(100);
-    //EIO -> OD4: 0
-    #ifdef CONFIG_SN7325
-    configIO(0, 0);
-    setIO_level(0, 0, 4);
-    #endif
+    //EIO -> PP1: 0   //EIO -> OD4: 0
+#ifdef CONFIG_SN7325
+    configIO(1, 0);  //configIO(0, 0);
+    setIO_level(1, 0, 1);  //setIO_level(0, 0, 4);
+#endif
 }
 
 static void aml_8726m_power_off_bl(void)
 {
-    //EIO -> OD4: 1
+    //EIO -> PP1: 0  //EIO -> OD4: 1
 #ifdef CONFIG_SN7325
-    configIO(0, 0);
-    setIO_level(0, 1, 4);
+    configIO(1, 0);  //configIO(0, 0);
+    setIO_level(1, 1, 1);  //setIO_level(0, 1, 4);
 #endif
     CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<31));
     CLEAR_CBUS_REG_MASK(PWM_MISC_REG_AB, (1 << 0));
