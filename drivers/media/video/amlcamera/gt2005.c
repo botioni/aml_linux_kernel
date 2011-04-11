@@ -1420,11 +1420,11 @@ static void gt2005_sleep(struct gt2005_fh *fh)
 		goto stop_task;
 
 	/* Calculate time to wake up */
-	timeout = msecs_to_jiffies(frames_to_ms(1));
+	//timeout = msecs_to_jiffies(frames_to_ms(1));
 
 	gt2005_thread_tick(fh);
 
-	schedule_timeout_interruptible(timeout);
+	schedule_timeout_interruptible(2);
 
 stop_task:
 	remove_wait_queue(&dma_q->wq, &wait);
