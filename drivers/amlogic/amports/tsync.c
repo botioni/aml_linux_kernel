@@ -522,6 +522,44 @@ void tsync_set_syncdiscont(int syncdiscont)
 }
 EXPORT_SYMBOL(tsync_set_syncdiscont);
 
+int tsync_set_apts(unsigned pts)
+{
+    unsigned  t;
+    ssize_t r;
+
+    timestamp_apts_set(pts);
+
+    if (tsync_abreak) {
+        tsync_abreak = 0;
+    }
+
+    if (!tsync_enable) {
+        return 0;
+    }
+
+    t = timestamp_pcrscr_get();
+    if (tsync_mode == TSYNC_MODE_AMASTER) {
+        if (abs(pts - t) > tsync_av_thresh) {
+            tsync_mode = TSYNC_MODE_VMASTER;
+            amlog_level(LOG_LEVEL_INFO, "apts 0x%x shift scr 0x%x too much, switch to TSYNC_MODE_VMASTER\n",
+                        pts, t);
+        } else {
+            timestamp_pcrscr_set(pts);
+            amlog_level(LOG_LEVEL_INFO, "apts set to scr 0x%x->0x%x\n", t, pts);
+        }
+    } else {
+        if (abs(pts - t) <= tsync_av_thresh) {
+            tsync_mode = TSYNC_MODE_AMASTER;
+            amlog_level(LOG_LEVEL_INFO, "switch to TSYNC_MODE_AMASTER\n");
+
+            timestamp_pcrscr_set(pts);
+        }
+    }
+
+    return 0;
+}
+EXPORT_SYMBOL(tsync_set_apts);
+
 /*********************************************************/
 
 static ssize_t show_pcr_recover(struct class *class,

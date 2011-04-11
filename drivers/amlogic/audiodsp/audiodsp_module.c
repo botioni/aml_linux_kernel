@@ -33,6 +33,8 @@
 #include "dsp_codec.h"
 #include <linux/dma-mapping.h>
 #include <linux/amports/ptsserv.h>
+#include <linux/amports/timestamp.h>
+#include <linux/amports/tsync.h>
 
 
 
@@ -160,6 +162,7 @@ static int audiodsp_ioctl(struct inode *node, struct file *file, unsigned int cm
 	struct audiodsp_cmd *a_cmd;
 	char name[64];
 	int len;
+	unsigned long pts;
 	int ret=0;
 	unsigned long *val=(unsigned long *)args;
 	
@@ -283,6 +286,69 @@ static int audiodsp_ioctl(struct inode *node, struct file *file, unsigned int cm
 			else
 				*val = first_pts_checkin_complete(PTS_TYPE_AUDIO);
 			break;
+			
+		case AUDIODSP_SYNC_AUDIO_START:
+
+			if(get_user(pts, (unsigned long __user *)args)) {
+				printk("Get start pts from user space fault! \n");
+				return -EFAULT;
+			}
+			tsync_avevent(AUDIO_START, pts);
+			
+			break;
+			
+		case AUDIODSP_SYNC_AUDIO_PAUSE:
+
+			tsync_avevent(AUDIO_PAUSE, 0);
+			break;
+
+		case AUDIODSP_SYNC_AUDIO_RESUME:
+
+			tsync_avevent(AUDIO_RESUME, 0);
+			break;
+
+		case AUDIODSP_SYNC_AUDIO_TSTAMP_DISCONTINUITY:
+
+			if(get_user(pts, (unsigned long __user *)args)){
+				printk("Get audio discontinuity pts fault! \n");
+				return -EFAULT;
+			}
+			tsync_avevent(AUDIO_TSTAMP_DISCONTINUITY, pts);
+			
+			break;
+
+		case AUDIODSP_SYNC_GET_APTS:
+
+			pts = timestamp_apts_get();
+			
+			if(put_user(pts, (unsigned long __user *)args)){
+				printk("Put audio pts to user space fault! \n");
+				return -EFAULT;
+			}
+			
+			break;
+
+		case AUDIODSP_SYNC_GET_PCRSCR:
+
+			pts = timestamp_pcrscr_get();
+
+			if(put_user(pts, (unsigned long __user *)args)){
+				printk("Put pcrscr to user space fault! \n");
+				return -EFAULT;
+			}
+			
+			break;
+
+		case AUDIODSP_SYNC_SET_APTS:
+
+			if(get_user(pts, (unsigned long __user *)args)){
+				printk("Get audio pts from user space fault! \n");
+				return -EFAULT;
+			}
+			tsync_set_apts(pts);
+			
+			break;
+			
 		default:
 			DSP_PRNT("unsupport cmd number%d\n",cmd);
 			ret=-1;
