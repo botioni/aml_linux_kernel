@@ -2338,8 +2338,8 @@ static struct platform_device vout_device = {
 #ifdef CONFIG_USB_ANDROID_MASS_STORAGE
 static struct usb_mass_storage_platform_data mass_storage_pdata = {
        .nluns = 2,
-       .vendor = "AMLOGIC",
-       .product = "Android MID",
+       .vendor = "Pandigital",
+       .product = "Pandigital",
        .release = 0x0100,
 };
 static struct platform_device usb_mass_storage_device = {
@@ -2377,8 +2377,8 @@ static struct android_usb_platform_data android_usb_pdata = {
        .vendor_id      = 0x0bb4,
        .product_id     = 0x0c01,
        .version        = 0x0100,
-       .product_name   = "Android MID",
-       .manufacturer_name = "AMLOGIC",
+       .product_name   = "Pandigital",
+       .manufacturer_name = "Pandigital",
        .num_products = ARRAY_SIZE(usb_products),
        .products = usb_products,
        .num_functions = ARRAY_SIZE(usb_functions_adb),
