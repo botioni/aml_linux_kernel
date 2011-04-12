@@ -759,7 +759,7 @@ int vm_sw_post_process(int canvas , int addr)
         
         int uv_cnt;
     	int v_width = output_para.width>>1;
-        char* dst_buff=(unsigned char*)(addr+poss);
+        char* dst_buff=(unsigned char*)(addr+poss+1);
         char* src_buff= buffer_v_start;
    		for(i=0;i<uv_height;i++) { /* copy uv */
             uv_cnt= posd;
