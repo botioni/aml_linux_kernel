@@ -2104,6 +2104,15 @@ static const struct sdio_device_id ti_sdio_ids[] = {
 };
 
 
+static struct sdio_func *ti_sdio_func = NULL;
+
+int sdio_check_func(void)
+{
+	if (ti_sdio_func)
+		return 0;
+	else
+		return 1;
+}
 
 static int sdioDrv_probe(struct sdio_func *func,
 			 const struct sdio_device_id *id)
@@ -2118,6 +2127,7 @@ static int sdioDrv_probe(struct sdio_func *func,
 	ti_drv.max_blocksize = func->max_blksize;
 	ti_drv.int_enabled = 1;
 	tiwlan_func[SDIO_WLAN_FUNC] = func;
+	ti_sdio_func = func;
 	
 	/* Store our context in the MMC driver */
 
@@ -2153,6 +2163,7 @@ static void sdioDrv_remove(struct sdio_func *func)
 	printk(KERN_INFO "ti_sdio_remove: Free IRQ and remove device "
 		       "driver\n");
 
+	ti_sdio_func = NULL;
 	wlanDrvIf_remove();
 	/* Unregister the IRQ handler first. */
 //	sdio_claim_host(fdev->func);

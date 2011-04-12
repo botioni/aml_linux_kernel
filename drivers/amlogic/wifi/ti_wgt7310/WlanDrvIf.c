@@ -1069,6 +1069,7 @@ void wlanDrvIf_remove (void)
 }
 EXPORT_SYMBOL_GPL(wlanDrvIf_remove);
 
+extern int sdio_check_func(void);
 /** 
  * \fn     wlanDrvIf_ModuleInit  &  wlanDrvIf_ModuleExit
  * \brief  Linux Init/Exit functions
@@ -1084,7 +1085,8 @@ static int __init wlanDrvIf_ModuleInit (void)
 {
 	printk(KERN_INFO "TIWLAN: driver init\n");
 	sdioDrv_init();
-	return wlanDrvIf_Create ();
+	if (!sdio_check_func())
+		return wlanDrvIf_Create ();
 }
 
 static void __exit wlanDrvIf_ModuleExit (void)
