@@ -160,7 +160,7 @@ static int aml_pcm_hw_params(struct snd_pcm_substream *substream,
 {
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	struct aml_runtime_data *prtd = runtime->private_data;
-	struct snd_soc_pcm_runtime *rtd = snd_pcm_substream_chip(substream);
+//	struct snd_soc_pcm_runtime *rtd = snd_pcm_substream_chip(substream);
 	audio_stream_t *s = &prtd->s;
 	
 	/* this may get called several times by oss emulation
@@ -244,9 +244,6 @@ static int aml_pcm_prepare(struct snd_pcm_substream *substream)
 	};
 	audio_set_clk(s->sample_rate, AUDIO_CLK_256FS);
 	audio_util_set_dac_format(AUDIO_ALGOUT_DAC_FORMAT_DSP);
-#ifdef CONFIG_SND_AML_M1	
-	audio_dac_set(s->sample_rate);
-#endif	
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK){
 			//printk("aml_pcm_prepare SNDRV_PCM_STREAM_PLAYBACK: dma_addr=%x, dma_bytes=%x\n", runtime->dma_addr, runtime->dma_bytes);
 	        _aiu_958_channel_status_t set;
@@ -272,9 +269,11 @@ static int aml_pcm_prepare(struct snd_pcm_substream *substream)
 			printk("aml_pcm_prepare SNDRV_PCM_STREAM_CAPTURE: dma_addr=%x, dma_bytes=%x\n", runtime->dma_addr, runtime->dma_bytes);
 			audio_in_i2s_set_buf(runtime->dma_addr, runtime->dma_bytes*2);
 			memset((void*)runtime->dma_area,0,runtime->dma_bytes*2);
-			int * ppp = (int*)(runtime->dma_area+runtime->dma_bytes*2-8);
-			ppp[0] = 0x78787878;
-			ppp[1] = 0x78787878;
+            {
+			  int * ppp = (int*)(runtime->dma_area+runtime->dma_bytes*2-8);
+			  ppp[0] = 0x78787878;
+			  ppp[1] = 0x78787878;
+            }
 	}
 
     aout_notifier_call_chain(AOUT_EVENT_PREPARE, substream);
@@ -283,7 +282,7 @@ static int aml_pcm_prepare(struct snd_pcm_substream *substream)
 	printk("\tsample rate: %d\n", runtime->rate);
 	printk("\tchannel: %d\n", runtime->channels);
 	printk("\tsample bits: %d\n", runtime->sample_bits);
-	printk("\tperiod size: %d\n", runtime->period_size);
+	printk("\tperiod size: %ld\n", runtime->period_size);
 	printk("\tperiods: %d\n", runtime->periods);
 	
 	
@@ -310,10 +309,10 @@ static int aml_pcm_trigger(struct snd_pcm_substream *substream,
         
 		// TODO
 		if(substream->stream == SNDRV_PCM_STREAM_PLAYBACK){
-			printk("aml_pcm_trigger: SNDRV_PCM_TRIGGER_START\n");
+		    printk("aml_pcm_trigger: playback start\n");
 			audio_enable_ouput(1);
 		}else{
-			printk("aml_pcm_trigger: SNDRV_PCM_TRIGGER_CAPTURE\n");
+			printk("aml_pcm_trigger: capture start\n");
 			audio_in_i2s_enable(1);
 		}
 		
@@ -324,11 +323,12 @@ static int aml_pcm_trigger(struct snd_pcm_substream *substream,
 	case SNDRV_PCM_TRIGGER_PAUSE_PUSH:
 	case SNDRV_PCM_TRIGGER_STOP:
 		// TODO
-		printk("aml_pcm_trigger: SNDRV_PCM_TRIGGER_STOP\n");
 		s->active = 0;
 		if(substream->stream == SNDRV_PCM_STREAM_PLAYBACK){
+            printk("aml_pcm_trigger: playback stop\n");
 				audio_enable_ouput(0);
 		}else{
+            printk("aml_pcm_trigger: capture stop\n");
 				audio_in_i2s_enable(0);
 		}
 		break;
@@ -336,11 +336,12 @@ static int aml_pcm_trigger(struct snd_pcm_substream *substream,
 	case SNDRV_PCM_TRIGGER_RESUME:
 	case SNDRV_PCM_TRIGGER_PAUSE_RELEASE:
 		// TODO
-		printk("aml_pcm_trigger: SNDRV_PCM_TRIGGER_RESUME\n");
 		s->active = 1;
 		if(substream->stream == SNDRV_PCM_STREAM_PLAYBACK){
+            printk("aml_pcm_trigger: playback resume\n");
 				audio_enable_ouput(1);
 		}else{
+            printk("aml_pcm_trigger: capture resume\n");
 				audio_in_i2s_enable(1);
 		}
 		
@@ -528,15 +529,15 @@ static int aml_pcm_copy_capture(struct snd_pcm_runtime *runtime, int channel,
 		int res = 0;
 		int n;
     int i = 0, j = 0;
+    unsigned int t1, t2;
     char *hwbuf = runtime->dma_area + frames_to_bytes(runtime, pos)*2;
-    char *magic = runtime->dma_area + runtime->dma_bytes*2 - 8;
+    //char *magic = runtime->dma_area + runtime->dma_bytes*2 - 8;
     
     to = (unsigned short *)buf;
     tfrom = (unsigned int *)hwbuf;	// 32bit buffer
     n = frames_to_bytes(runtime, count);
 //printk("hwbuf = %x, count=%x, n = %x, pos=%x\n", hwbuf, count, n, pos);
-    unsigned int t1, t2;
-
+    
 		if(access_ok(VERIFY_WRITE, buf, frames_to_bytes(runtime, count))){
 				left = tfrom;
 		    right = tfrom + 8;
@@ -582,20 +583,16 @@ static int aml_pcm_copy(struct snd_pcm_substream *substream, int channel,
 		    snd_pcm_uframes_t pos,
 		    void __user *buf, snd_pcm_uframes_t count)
 {
-		unsigned short *tfrom, *to, *left, *right;
-    int res = 0;
-    int n;
-    int i = 0, j = 0;
-    
    // register unsigned  int vol =(audio_mixer_control.output_volume*(1<<VOLUME_SHIFT))/VOLUME_SCALE;
     struct snd_pcm_runtime *runtime = substream->runtime;
-    char *hwbuf = runtime->dma_area + frames_to_bytes(runtime, pos);
- 		
- 		if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK){
- 			return aml_pcm_copy_playback(runtime, channel,pos, buf, count);
- 		}else{
- 			return aml_pcm_copy_capture(runtime, channel,pos, buf, count);
- 		}
+    int ret = 0;	
+
+ 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK){
+ 		ret = aml_pcm_copy_playback(runtime, channel,pos, buf, count);
+ 	}else{
+ 		ret = aml_pcm_copy_capture(runtime, channel,pos, buf, count);
+ 	}
+    return ret;
 } 		
 
 int aml_pcm_silence(struct snd_pcm_substream *substream, int channel, 
@@ -806,7 +803,6 @@ static ssize_t regs_write_file(struct file *file,
 	int buf_size = 0;
 	char *start = buf;
 	unsigned long reg, value;
-	int step = 1;
 	char base;
 	
 	buf_size = min(count, (sizeof(buf)-1));
@@ -919,7 +915,7 @@ static const struct file_operations mems_fops={
 	.write = mems_write_file,
 };
 
-static void aml_pcm_init_debugfs()
+static void aml_pcm_init_debugfs(void)
 {
 		debugfs_root = debugfs_create_dir("aml",NULL);
 		if (IS_ERR(debugfs_root) || !debugfs_root) {
@@ -937,7 +933,7 @@ static void aml_pcm_init_debugfs()
 			printk("aml: Failed to create debugfs file\n");
 		}
 }
-static void aml_pcm_cleanup_debugfs()
+static void aml_pcm_cleanup_debugfs(void)
 {
 	debugfs_remove_recursive(debugfs_root);
 }
@@ -963,15 +959,10 @@ EXPORT_SYMBOL_GPL(aml_soc_platform);
 
 static int __init aml_alsa_audio_init(void)
 {
-		int res = 0;
 		aml_pcm_init_debugfs();
 		
 		return snd_soc_register_platform(&aml_soc_platform);
 
-error:
-		snd_soc_unregister_platform(&aml_soc_platform);
-		
-		return res;
 }
 
 static void __exit aml_alsa_audio_exit(void)

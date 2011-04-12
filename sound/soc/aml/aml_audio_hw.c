@@ -109,6 +109,9 @@ void audio_in_i2s_set_buf(u32 addr, u32 size)
 	WRITE_MPEG_REG(AUDIN_FIFO0_START, addr & 0xffffffc0);
 	//WRITE_MPEG_REG(AUDIN_FIFO0_END, (addr&0xffffffc0) + (size&0xffffffc0) -64);
 	WRITE_MPEG_REG(AUDIN_FIFO0_END, (addr&0xffffffc0) + (size&0xffffffc0)-8);
+#ifdef CONFIG_SND_AML_M2
+	WRITE_MPEG_REG(AUDIN_SOURCE_SEL, (1<<0)); // select audio codec output as I2S source
+#endif
 	WRITE_MPEG_REG(AUDIN_FIFO0_CTRL, (1<<0)	// FIFO0_EN
 																	|(1<<2)	// load start address./* AUDIN_FIFO0_LOAD */
 																	|(1<<3)	// DIN from i2sin./* AUDIN_FIFO0_DIN_SEL */ 
@@ -235,166 +238,6 @@ void audio_util_set_dac_format(unsigned format)
     WRITE_MPEG_REG(AIU_I2S_DAC_CFG, 	0x000f);	// Payload 24-bit, Msb first, alrclk = aoclk/64
 	WRITE_MPEG_REG(AIU_I2S_SOURCE_DESC, 0x0001);	// four 2-channel
 }
-#ifdef CONFIG_SND_AML_M1
-void latch (void)
-{
-    int latch;
-    latch = 1;
-    WRITE_APB_REG(APB_ADAC_LATCH, latch);
-    latch = 0;
-    WRITE_APB_REG(APB_ADAC_LATCH, latch);
-}
-
-void wr_adac_regbank (unsigned long rstdpz,
-                  unsigned long mclksel,
-                  unsigned long i2sfsdac,
-                  unsigned long i2ssplit,
-                  unsigned long i2smode,
-                  unsigned long pdauxdrvrz,
-                  unsigned long pdauxdrvlz,
-                  unsigned long pdhsdrvrz,
-                  unsigned long pdhsdrvlz,
-                  unsigned long pddacrz,
-                  unsigned long pddaclz,
-                  unsigned long pdz,
-                  unsigned long hsmute,
-                  unsigned long lmmute,
-                  unsigned long lmmix,
-                  unsigned long ctr,
-                  unsigned long lmvol,
-                  unsigned long hsvol)
-{
-	if(!dac_reset_flag){
-	   	WRITE_APB_REG(APB_ADAC_RESET, (rstdpz<<1));
-	    WRITE_APB_REG(APB_ADAC_RESET, (rstdpz<<1));
-	    WRITE_APB_REG(APB_ADAC_RESET, (rstdpz<<1));
-	    WRITE_APB_REG(APB_ADAC_RESET, (rstdpz<<1));
-	    WRITE_APB_REG(APB_ADAC_RESET, (rstdpz<<1));
-	    WRITE_APB_REG(APB_ADAC_RESET, (rstdpz<<1));
-			
-	}	
-
-    WRITE_APB_REG(APB_ADAC_CLOCK, (mclksel<<0));
-  
-    WRITE_APB_REG(APB_ADAC_I2S_CONFIG_REG1, (i2sfsdac<<0));
-
-    WRITE_APB_REG(APB_ADAC_I2S_CONFIG_REG1, (i2sfsdac<<0));	// BUG
-    
-    WRITE_APB_REG(APB_ADAC_I2S_CONFIG_REG2, (i2ssplit<<3) | (i2smode<<0));
-    
-    WRITE_APB_REG(APB_ADAC_POWER_CTRL_REG1, (pdauxdrvrz<<7) | (pdauxdrvlz<<6) | (pdhsdrvrz<<5) | (pdhsdrvlz<<4) | (pddacrz<<1) | (pddaclz<<0));
-    WRITE_APB_REG(APB_ADAC_POWER_CTRL_REG1, (pdauxdrvrz<<7) | (pdauxdrvlz<<6) | (pdhsdrvrz<<5) | (pdhsdrvlz<<4) | (pddacrz<<1) | (pddaclz<<0));	// BUG
-    
-    WRITE_APB_REG(APB_ADAC_POWER_CTRL_REG2, (pdz<<7));
-    WRITE_APB_REG(APB_ADAC_MUTE_CTRL_REG1, (hsmute<<6) | (lmmute<<0));
-    WRITE_APB_REG(APB_ADAC_DAC_ADC_MIXER, (lmmix<<5) | (ctr<<1));
-    WRITE_APB_REG(APB_ADAC_PLAYBACK_VOL_CTRL_LSB, (lmvol&0xff));
-    WRITE_APB_REG(APB_ADAC_PLAYBACK_VOL_CTRL_MSB, (lmvol>>8));
-    WRITE_APB_REG(APB_ADAC_STEREO_HS_VOL_CTRL_LSB, (hsvol&0xff));
-    WRITE_APB_REG(APB_ADAC_STEREO_HS_VOL_CTRL_MSB, (hsvol>>8));    
-} /* wr_regbank */
-
-int audio_dac_set(unsigned freq)
-{
-
-	unsigned long   data32;             
-   	int i=0;
-      // Configure audio DAC control interface
-    data32  = 0;
-    data32 |= 0 << 15;  // [15]     audac_soft_reset_n
-    data32 |= 0 << 14;  // [14]     audac_reset_ctrl: 0=use audac_reset_n pulse from reset module; 1=use audac_soft_reset_n.
-    data32 |= 0 << 9;   // [9]      delay_rd_en
-    data32 |= 0 << 8;   // [8]      audac_reg_clk_inv
-    data32 |= 0 << 1;   // [7:1]    audac_i2caddr
-    data32 |= 0 << 0;   // [0]      audac_intfsel: 0=use host bus; 1=use I2C.
-    WRITE_MPEG_REG(AIU_AUDAC_CTRL0, data32);
-    
-     // Enable APB3 fail on error
-    data32  = 0;
-    data32 |= 1     << 15;  // [15]     err_en
-    data32 |= 255   << 0;   // [11:0]   max_err
-    WRITE_MPEG_REG(AIU_AUDAC_CTRL1, data32);
-	switch(freq)
-	{
-		case AUDIO_CLK_FREQ_192:
-			data32=11;
-			break;
-		case AUDIO_CLK_FREQ_96:
-			data32=10;
-			break;
-		case AUDIO_CLK_FREQ_48:
-			data32=8;
-			break;
-		case AUDIO_CLK_FREQ_441:
-			data32=7;
-			break;
-		case AUDIO_CLK_FREQ_32:
-			data32=6;
-			break;
-		case AUDIO_CLK_FREQ_8:
-			data32 = 0;
-			break;
-		case AUDIO_CLK_FREQ_11:
-			data32 = 1;
-			break;
-		case AUDIO_CLK_FREQ_22:
-			data32 = 4;
-			break;
-		case AUDIO_CLK_FREQ_24:
-			data32 = 5;
-			break;
-		case AUDIO_CLK_FREQ_16:
-			data32 = 3;
-			break;
-		case AUDIO_CLK_FREQ_12:
-			data32 = 2;
-			break;
-			
-		default:
-			data32=6;
-			break;
-	};
-    wr_adac_regbank(0,          // rstdpz: active low.
-	                0,          // mclksel[3:0]: master clock freq sel. 0=256Fs, 1=384Fs, ... 
-	                data32,         // i2sfsdac[3:0]: sample freq sel. 0=8kHz, 1=11.025k, 2=12k, 3=16k, 4=22.05k, 5=24k, 6=32k, 7=44.1k, 8=48k, 9=88.2k, 10=96k, 11=192k, >11=Rsrv.
-	                0,          // i2ssplit
-	                1,          // i2smode[2:0]: Data format sel. 0=Right justify, 1=I2S, 2=Left justify, 3=Burst1, 4=Burst2, 5=Mono burst1, 6=Mono burst2, 7=Rsrv.
-	                1,          // pdauxdrvrz: active low.
-	                1,          // pdauxdrvlz: active low.
-	                1,          // pdhsdrvrz: active low.
-	                1,          // pdhsdrvlz: active low.
-	                1,          // pddacrz: active low.
-	                1,          // pddaclz: active low.
-	                0,          // pdz: active low.
-	                0,          // hsmute[1:0]: bit[1] Analog playback right channel mute, bit[0] Analog playback left channel mute.
-	                0,          // lmmute[1:0]: bit[1] Digital playback right channel mute, bit[0] Digital playback left channel mute.
-	                0,          // lmmix: Digital mixer sel.
-	                0,          // ctr[1:0]: test mode sel. 0=normal mode, 2=Digital filter bypass, 1 or 3=Rsrv.
-	                0x5454,     // lmvol[15:0]: Digital volumn control, [15:8] control right channel, [7:0] control left channel.
-	                            // 0=-126dB, 1=-124.5dB, ..., 0x53=-1.5dB, 0x54=0dB, >=0x55 Rsrv.
-	                0x2828);    // hsvol[15:0]: Analog headset volumn control, [15:8] control right channel, [7:0] control left channel.
-	                            // 0=-40dB, 1=-39dB, ..., 0x28=0dB, ..., 0x2e=6dB, >=0x2f Rsrv.
-
-    latch();
-	WRITE_APB_REG(APB_ADAC_POWER_CTRL_REG2, (0<<7));
-    latch();
-	WRITE_APB_REG(APB_ADAC_POWER_CTRL_REG2, (1<<7));
-    latch();
-    if(!dac_reset_flag){
-		WRITE_APB_REG(APB_ADAC_RESET, (0<<1));
-	    latch();
-		WRITE_APB_REG(APB_ADAC_RESET, (1<<1));
-	    latch();
-		for (i = 0; i < 1500000; i++) ;
-		for (i = 0; i < 1500000; i++) ;
-		for (i = 0; i < 1500000; i++) ;
-		for (i = 0; i < 1500000; i++) ;
-		dac_reset_flag = 1;
-    }
-  return 0;
-}
-
-#endif
 
 void audio_set_clk(unsigned freq, unsigned fs_config)
 {
@@ -473,9 +316,18 @@ void audio_set_clk(unsigned freq, unsigned fs_config)
     // gate the clock off
     WRITE_MPEG_REG( HHI_AUD_CLK_CNTL, READ_MPEG_REG(HHI_AUD_CLK_CNTL) & ~(1 << 8));
 
+#ifdef CONFIG_SND_AML_M2
+    WRITE_MPEG_REG(HHI_AUD_PLL_CNTL2, 0x065e31ff);
+    WRITE_MPEG_REG(HHI_AUD_PLL_CNTL3, 0x9649a941);
+		// select Audio PLL as MCLK source
+		WRITE_MPEG_REG( HHI_AUD_CLK_CNTL, READ_MPEG_REG(HHI_AUD_CLK_CNTL) & ~(1 << 9));
+#endif		
     // Put the PLL to sleep
     WRITE_MPEG_REG( HHI_AUD_PLL_CNTL, READ_MPEG_REG(HHI_AUD_PLL_CNTL) | (1 << 15));
-
+#ifdef CONFIG_SND_AML_M2	
+		WRITE_MPEG_REG_BITS(AIU_CODEC_ADC_LRCLK_CTRL, 64-1, 0, 12);
+		WRITE_MPEG_REG_BITS(AIU_CODEC_DAC_LRCLK_CTRL, 64-1, 0, 12);
+#endif		
     // Bring out of reset but keep bypassed to allow to stablize
     //Wr( HHI_AUD_PLL_CNTL, (1 << 15) | (0 << 14) | (hiu_reg & 0x3FFF) );
     WRITE_MPEG_REG( HHI_AUD_PLL_CNTL, (1 << 15) | (audio_clock_config[index][0] & 0x7FFF) );
@@ -489,7 +341,7 @@ void audio_set_clk(unsigned freq, unsigned fs_config)
 
     // gate the clock on
     WRITE_MPEG_REG( HHI_AUD_CLK_CNTL, READ_MPEG_REG(HHI_AUD_CLK_CNTL) | (1 << 8));
-#ifdef CONFIG_SND_AML_M1
+#if ((defined CONFIG_SND_AML_M1) || (defined CONFIG_SND_AML_M2))
 		WRITE_MPEG_REG(HHI_AUD_CLK_CNTL, READ_MPEG_REG(HHI_AUD_CLK_CNTL) |(1<<23));
 #endif    
     // delay 2uS

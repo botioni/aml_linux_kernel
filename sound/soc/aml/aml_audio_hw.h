@@ -1,7 +1,7 @@
 #ifndef __AML_AUDIO_HW_H__
 #define __AML_AUDIO_HW_H__
 
-#ifdef CONFIG_ARCH_MESON
+#if defined (CONFIG_ARCH_MESON) || defined (CONFIG_ARCH_MESON2)
 
 /* assumming PLL source is 24M */
 
@@ -166,8 +166,8 @@ void audio_set_958_mode(unsigned mode, _aiu_958_raw_setting_t * set);
 unsigned int read_i2s_mute_swap_reg(void);
 void audio_i2s_swap_left_right(unsigned int flag);
 int audio_dac_set(unsigned freq);
-int if_audio_out_enable();
-int if_audio_in_i2s_enable();
+int if_audio_out_enable(void);
+int if_audio_in_i2s_enable(void);
 
 
 #define APB_ADAC_RESET                		(0x5000+0x00*4)
