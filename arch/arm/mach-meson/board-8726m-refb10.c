@@ -714,7 +714,7 @@ int wm8900_is_hp_pluged(void)
                                 (0 << 10)   |       // test
                                 (7 << 7)    |       // CS0 REF, Voltage FeedBack: about 0.505V
                                 (7 << 4)    |       // CS1 REF, Current FeedBack: about 0.505V
-                                (0 << 0));           // DIMCTL Analog dimmer
+                                READ_CBUS_REG(LED_PWM_REG0)&0x0f);           // DIMCTL Analog dimmer
     cs_no = READ_CBUS_REG(LED_PWM_REG3);
         if(cs_no &(1<<14))
           level |= (1<<0);
@@ -1168,35 +1168,36 @@ static void restore_pinmux(void)
 
 static void set_vccx2(int power_on)
 {
+
 	  int i=0;
     if(power_on){
         printk(KERN_INFO "set_vccx2 power up\n");
-        for (i=0;i<MAX_GPIO;i++){
-        	restore_gpio(i);
-        }
-        restore_pinmux();
+//        for (i=0;i<MAX_GPIO;i++){
+//        	restore_gpio(i);
+//        }
+//        restore_pinmux();
         set_gpio_val(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), 1);
         set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);        
         //set clk for wifi
-        SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, (1<<18));
-        CLEAR_CBUS_REG_MASK(PREG_EGPIO_EN_N, (1<<4));	              
+//        SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, (1<<18));
+//        CLEAR_CBUS_REG_MASK(PREG_EGPIO_EN_N, (1<<4));	              
     }
     else{
         printk(KERN_INFO "set_vccx2 power down\n");   
         
         set_gpio_val(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), 0);
         set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);   
-        
-        for (i=0;i<MAX_GPIO;i++){
-        	save_gpio(i);
-        }   
-        save_pinmux();  
-        set_gpio_val(GPIOD_bank_bit2_24(5), GPIOD_bit_bit2_24(5), 1); //camera power down
-        set_gpio_mode(GPIOD_bank_bit2_24(5), GPIOD_bit_bit2_24(5), GPIO_OUTPUT_MODE);
-        
-        //disable wifi clk
-        CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, (1<<18));
-        SET_CBUS_REG_MASK(PREG_EGPIO_EN_N, (1<<4));	        
+//        
+//        for (i=0;i<MAX_GPIO;i++){
+//        	save_gpio(i);
+//        }   
+//        save_pinmux();  
+//        set_gpio_val(GPIOD_bank_bit2_24(5), GPIOD_bit_bit2_24(5), 1); //camera power down
+//        set_gpio_mode(GPIOD_bank_bit2_24(5), GPIOD_bit_bit2_24(5), GPIO_OUTPUT_MODE);
+//        
+//        //disable wifi clk
+//        CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, (1<<18));
+//        SET_CBUS_REG_MASK(PREG_EGPIO_EN_N, (1<<4));	        
     }
 }
 static struct meson_pm_config aml_pm_pdata = {
@@ -1207,7 +1208,7 @@ static struct meson_pm_config aml_pm_pdata = {
     .ddr_clk = 0x00110820,
     .sleepcount = 128,
     .set_vccx2 = set_vccx2,
-    .core_voltage_adjust = 10,
+    .core_voltage_adjust = 6,
 };
 
 static struct platform_device aml_pm_device = {
@@ -1254,7 +1255,7 @@ static struct aml_i2c_platform aml_i2c_plat = {
     .wait_xfer_interval = 5,
     .master_no      = AML_I2C_MASTER_B,
     .use_pio            = 0,
-    .master_i2c_speed   = AML_I2C_SPPED_100K,
+    .master_i2c_speed   = AML_I2C_SPPED_300K,
 
     .master_b_pinmux = {
         .scl_reg    = MESON_I2C_MASTER_B_GPIOB_0_REG,
@@ -1355,7 +1356,7 @@ static void set_bat_off(void)
     set_gpio_mode(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), GPIO_OUTPUT_MODE);
 
     //VCCx2 power down
-    //set_vccx2(0);
+    set_vccx2(0);
     if(is_ac_connected()){ //AC in after power off press
         kernel_restart("reboot");
     }
@@ -2200,7 +2201,7 @@ static void __init power_hold(void)
     set_gpio_mode(GPIOA_bank_bit(8), GPIOA_bit_bit0_14(8), GPIO_OUTPUT_MODE);
     
     //VCCx2 power up
-    //set_vccx2(1);
+    set_vccx2(1);
 }
 
 static __init void m1_init_machine(void)
