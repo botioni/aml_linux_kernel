@@ -143,6 +143,10 @@ typedef struct {
 #define AUDIO_ALGOUT_DAC_FORMAT_DSP             0
 #define AUDIO_ALGOUT_DAC_FORMAT_LEFT_JUSTIFY    1
 
+extern unsigned ENABLE_IEC958;
+extern unsigned IEC958_MODE;
+extern unsigned I2S_MODE;
+
 void audio_set_aiubuf(u32 addr, u32 size);
 void audio_set_958outbuf(u32 addr, u32 size);
 void audio_in_i2s_set_buf(u32 addr, u32 size);
@@ -158,7 +162,7 @@ unsigned int read_i2s_rd_ptr(void);
 void audio_i2s_unmute(void);
 void audio_i2s_mute(void);
 void audio_util_set_dac_format(unsigned format);
-void audio_hw_set_958_mode(unsigned mode, _aiu_958_raw_setting_t * set);
+void audio_set_958_mode(unsigned mode, _aiu_958_raw_setting_t * set);
 unsigned int read_i2s_mute_swap_reg(void);
 void audio_i2s_swap_left_right(unsigned int flag);
 int audio_dac_set(unsigned freq);

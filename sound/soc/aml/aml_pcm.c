@@ -109,7 +109,8 @@ static int aml_pcm_preallocate_dma_buffer(struct snd_pcm *pcm,
 		buf->dev.type = SNDRV_DMA_TYPE_DEV;
 		buf->dev.dev = pcm->card->dev;
 		buf->private_data = NULL;
-		buf->area = dma_alloc_coherent(pcm->card->dev, size,
+        /* one size for i2s output, another for 958, and 128 for alignment */
+		buf->area = dma_alloc_coherent(pcm->card->dev, size*2+128,
 					  &buf->addr, GFP_KERNEL);
 		printk("aml-pcm %d:"
 		"preallocate_dma_buffer: area=%p, addr=%p, size=%d\n", stream,
@@ -179,6 +180,7 @@ static int aml_pcm_prepare(struct snd_pcm_substream *substream)
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	struct aml_runtime_data *prtd = runtime->private_data;
 	audio_stream_t *s = &prtd->s;
+    int iec958 = 0;
 	
 	if(prtd == 0)
 		return 0;
@@ -198,12 +200,15 @@ static int aml_pcm_prepare(struct snd_pcm_substream *substream)
 			break;
 		case 48000:	
 			s->sample_rate	=	AUDIO_CLK_FREQ_48;
+            iec958 = 2;
 			break;
 		case 44100:	
 			s->sample_rate	=	AUDIO_CLK_FREQ_441;
+            iec958 = 0;
 			break;
 		case 32000:	
 			s->sample_rate	=	AUDIO_CLK_FREQ_32;
+            iec958 = 3;
 			break;
 		case 8000:
 			s->sample_rate	=	AUDIO_CLK_FREQ_8;
@@ -234,8 +239,24 @@ static int aml_pcm_prepare(struct snd_pcm_substream *substream)
 #endif	
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK){
 			//printk("aml_pcm_prepare SNDRV_PCM_STREAM_PLAYBACK: dma_addr=%x, dma_bytes=%x\n", runtime->dma_addr, runtime->dma_bytes);
-			audio_set_aiubuf(runtime->dma_addr, runtime->dma_bytes);
-			memset((void*)runtime->dma_area,0,runtime->dma_bytes);
+	        _aiu_958_channel_status_t set;
+		    memset((void*)(&set), 0, sizeof(set));
+
+            audio_set_aiubuf(runtime->dma_addr, runtime->dma_bytes);
+            audio_set_i2s_mode(I2S_MODE);
+
+            if(IEC958_MODE == AIU_958_MODE_PCM16){
+              set.chstat0_l = 0x0100;
+              set.chstat0_r = 0x0100;
+              audio_set_958outbuf(runtime->dma_addr, runtime->dma_bytes);
+            }else{
+              set.chstat0_l = 0x1902;
+              set.chstat0_r = 0x1902;
+              audio_set_958outbuf((runtime->dma_addr+runtime->dma_bytes+127)&(~127), runtime->dma_bytes);
+            }
+            audio_set_958_mode(IEC958_MODE, &set);
+
+			memset((void*)runtime->dma_area,0,runtime->dma_bytes * 2 + 128);
 	}
 	else{
 			printk("aml_pcm_prepare SNDRV_PCM_STREAM_CAPTURE: dma_addr=%x, dma_bytes=%x\n", runtime->dma_addr, runtime->dma_bytes);
@@ -279,7 +300,7 @@ static int aml_pcm_trigger(struct snd_pcm_substream *substream,
         
 		// TODO
 		if(substream->stream == SNDRV_PCM_STREAM_PLAYBACK){
-			//printk("aml_pcm_trigger: SNDRV_PCM_TRIGGER_START\n");
+			printk("aml_pcm_trigger: SNDRV_PCM_TRIGGER_START\n");
 			audio_enable_ouput(1);
 		}else{
 			printk("aml_pcm_trigger: SNDRV_PCM_TRIGGER_CAPTURE\n");
@@ -293,7 +314,7 @@ static int aml_pcm_trigger(struct snd_pcm_substream *substream,
 	case SNDRV_PCM_TRIGGER_PAUSE_PUSH:
 	case SNDRV_PCM_TRIGGER_STOP:
 		// TODO
-		//printk("aml_pcm_trigger: SNDRV_PCM_TRIGGER_STOP\n");
+		printk("aml_pcm_trigger: SNDRV_PCM_TRIGGER_STOP\n");
 		s->active = 0;
 		if(substream->stream == SNDRV_PCM_STREAM_PLAYBACK){
 				audio_enable_ouput(0);
@@ -409,12 +430,8 @@ static int aml_pcm_open(struct snd_pcm_substream *substream)
 
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK){
 		snd_soc_set_runtime_hwparams(substream, &aml_pcm_hardware);
-		//printk("pinmux audio out\n");
-		//set_audio_pinmux(AUDIO_OUT_JTAG);
 	}else{
 		snd_soc_set_runtime_hwparams(substream, &aml_pcm_capture);
-		//printk("pinmux audio in\n");
-		//set_audio_pinmux(AUDIO_IN_JTAG);
 	}
 	
 	/* ensure that buffer size is a multiple of period size */
