@@ -1937,6 +1937,7 @@ static void __init device_pinmux_init(void )
 	aml_i2c_init();
 	set_audio_pinmux(AUDIO_OUT_TEST_N);
     set_audio_pinmux(AUDIO_IN_JTAG);
+    set_audio_pinmux(SPDIF_OUT_GPIOA);
 }
 
 static void __init  device_clk_setting(void)

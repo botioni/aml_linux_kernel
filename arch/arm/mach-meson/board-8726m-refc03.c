@@ -958,7 +958,8 @@ static void __init device_pinmux_init(void )
 #endif
 
 	set_audio_pinmux(AUDIO_IN_JTAG); // for MIC input
-        set_audio_pinmux(AUDIO_OUT_TEST_N); //External AUDIO DAC
+    set_audio_pinmux(AUDIO_OUT_TEST_N); //External AUDIO DAC
+    set_audio_pinmux(SPDIF_OUT_GPIOA);
 }
 static void __init  device_clk_setting(void)
 {
