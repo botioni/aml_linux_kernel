@@ -21,6 +21,11 @@ unsigned I2S_MODE      = AIU_I2S_MODE_2x16;
 
 static unsigned dac_reset_flag = 0;
 
+int  audio_in_buf_ready = 0;
+int audio_out_buf_ready = 0;
+
+extern int in_error_flag;
+extern int in_error;
 
 /*
                                 fIn * (M)          
@@ -72,7 +77,7 @@ void audio_set_aiubuf(u32 addr, u32 size)
 	// As the default amclk is 24.576MHz, set i2s and iec958 divisor appropriately so as not to exceed the maximum sample rate.
 	WRITE_MPEG_REG(AIU_I2S_MISC,		0x0010 );	// Release hold and force audio data to left or right
 	
-	WRITE_MPEG_REG(AIU_MEM_I2S_MASKS,		(24 << 16) |	// [31:16] IRQ block.
+	WRITE_MPEG_REG(AIU_MEM_I2S_MASKS,		(0 << 16) |	// [31:16] IRQ block.
 								(0x3 << 8) |	// [15: 8] chan_mem_mask. Each bit indicates which channels exist in memory
 								(0x3 << 0));	// [ 7: 0] chan_rd_mask.  Each bit indicates which channels are READ from memory
 
@@ -82,6 +87,7 @@ void audio_set_aiubuf(u32 addr, u32 size)
 	WRITE_MPEG_REG_BITS(AIU_MEM_I2S_CONTROL, 1, 0, 1 );
 	WRITE_MPEG_REG_BITS(AIU_MEM_I2S_CONTROL, 0, 0, 1 );
 
+    audio_out_buf_ready = 1;
 }
 
 void audio_set_958outbuf(u32 addr, u32 size)
@@ -112,8 +118,8 @@ void audio_in_i2s_set_buf(u32 addr, u32 size)
 																	|(2<<11)//2 channel./* AUDIN_FIFO0_CHAN*/
 																	|(0<<16)	//to DDR
                                                                     |(1<<15)    // Urgent request.  DDR SDRAM urgent request enable.
-                                                                    |(1<<17)    // Overflow Interrupt mask
-                                                                    |(1<<18)    // Audio in INT
+                                                                    |(0<<17)    // Overflow Interrupt mask
+                                                                    |(0<<18)    // Audio in INT
 																	|(1<<19)	//hold 0 enable
 																	|(0<<22)	// hold0 to aififo																	
 														);			
@@ -125,6 +131,10 @@ void audio_in_i2s_set_buf(u32 addr, u32 size)
 																	|(1<<I2SIN_LRCLK_SEL)
 																	|(1<<I2SIN_DIR)
 														);															
+    audio_in_buf_ready = 1;
+
+    in_error_flag = 0;
+    in_error = 0;
 }
 void audio_in_spdif_set_buf(u32 addr, u32 size)
 {
@@ -137,6 +147,8 @@ void audio_in_i2s_enable(int flag)
 		}else{
 				WRITE_MPEG_REG_BITS(AUDIN_I2SIN_CTRL, 0, I2SIN_EN, 1);
 		}
+        in_error_flag = 0;
+        in_error = 0;
 }
 
 int if_audio_in_i2s_enable()

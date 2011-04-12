@@ -32,6 +32,12 @@
 #define AOUT_EVENT_PREPARE  0x1
 extern int aout_notifier_call_chain(unsigned long val, void *v);
 
+unsigned int aml_pcm_playback_start_addr = 0;
+unsigned int aml_pcm_capture_start_addr  = 0;
+EXPORT_SYMBOL(aml_pcm_playback_start_addr);
+EXPORT_SYMBOL(aml_pcm_capture_start_addr);
+
+
 /*--------------------------------------------------------------------------*\
  * Hardware definition
 \*--------------------------------------------------------------------------*/
@@ -117,6 +123,8 @@ static int aml_pcm_preallocate_dma_buffer(struct snd_pcm *pcm,
 		(void *) buf->area,
 		(void *) buf->addr,
 		size);
+
+        aml_pcm_playback_start_addr = buf->area;
 	}else{
 		size = aml_pcm_capture.buffer_bytes_max;
 		buf->dev.type = SNDRV_DMA_TYPE_DEV;
@@ -129,6 +137,8 @@ static int aml_pcm_preallocate_dma_buffer(struct snd_pcm *pcm,
 		(void *) buf->area,
 		(void *) buf->addr,
 		size);
+
+        aml_pcm_capture_start_addr = buf->area;
 	}
 
 	if (!buf->area)
@@ -667,6 +677,8 @@ static void aml_pcm_free_dma_buffers(struct snd_pcm *pcm)
 				  buf->area, buf->addr);
 		buf->area = NULL;
 	}
+    aml_pcm_playback_start_addr = 0;
+    aml_pcm_capture_start_addr  = 0;
 }
 
 #ifdef CONFIG_PM
