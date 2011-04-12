@@ -239,7 +239,7 @@ static irqreturn_t amaudio_in_callback(int irq, void*data)
         }
         ret = get_audin_buf(amaudio, (void*)amaudio_tmpbuf, (void*)(amaudio->in_start + amaudio->in_rd_ptr), tmp);
         if(ret != 0){
-          printk("read audio in error 2: %d, return %d, rd %d\n", tmp, ret,, amaudio->in_rd_ptr);
+          printk("read audio in error 2: %d, return %d, rd %d\n", tmp, ret, amaudio->in_rd_ptr);
           break;
         }
         
