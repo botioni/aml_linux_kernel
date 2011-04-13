@@ -42,6 +42,8 @@
 #endif
 #include "aml_dvb.h"
 
+#include "../amports/streambuf.h"
+
 #define ENABLE_SEC_BUFF_WATCHDOG
 #define USE_AHB_MODE
 
@@ -338,6 +340,57 @@ static void process_section(struct aml_dmx *dmx)
 #ifdef NO_SUB
 static void process_sub(struct aml_dmx *dmx)
 {
+
+	int rd_ptr=0;
+
+	int wr_ptr=READ_MPEG_REG(PARSER_SUB_WP);
+	int start_ptr=READ_MPEG_REG(PARSER_SUB_START_PTR);
+	int end_ptr=READ_MPEG_REG(PARSER_SUB_END_PTR);
+
+	unsigned char *buffer1=0,*buffer2=0;
+	int len1=0,len2=0;
+
+	
+	rd_ptr=READ_MPEG_REG(PARSER_SUB_RP);
+	if(!rd_ptr)
+		return;
+	if(rd_ptr>wr_ptr)
+	{
+		len1=end_ptr-rd_ptr;
+		buffer1=(unsigned char*)rd_ptr;
+
+		len2=wr_ptr-start_ptr;
+		buffer2=(unsigned char*)start_ptr;
+
+		rd_ptr=start_ptr+len2;
+	}
+	else if(rd_ptr<wr_ptr)
+	{
+		len1=wr_ptr-rd_ptr;
+		buffer1=(unsigned char *)rd_ptr;
+		rd_ptr+=len1;
+		len2=0;
+	}
+	else if(rd_ptr==wr_ptr)
+	{
+		pr_dbg("no data\n");
+	}
+
+
+	if(buffer1)
+		buffer1=phys_to_virt((long unsigned int)buffer1);
+	if(buffer2)
+		buffer2=phys_to_virt((long unsigned int)buffer2);
+
+	
+	if(dmx->channel[2].used)
+	{
+		if(dmx->channel[2].feed && dmx->channel[2].feed->cb.ts)
+		{
+			dmx->channel[2].feed->cb.ts((buffer1),len1,(buffer2),len2,&dmx->channel[2].feed->feed.ts,DMX_OK);
+		}
+	}
+	WRITE_MPEG_REG(PARSER_SUB_RP,rd_ptr);
 }
 #endif
 
@@ -1621,6 +1674,38 @@ void dmx_reset_hw(struct aml_dvb *dvb)
 #endif
 }
 
+/*Allocate subtitle pes buffer*/
+static int alloc_subtitle_pes_buffer(struct aml_dmx * dmx)
+{
+	int start_ptr=0;
+	stream_buf_t *sbuff=0;
+	 u32 phy_addr;
+	start_ptr=READ_MPEG_REG(PARSER_SUB_START_PTR);
+	if(start_ptr)
+	{
+		WRITE_MPEG_REG(PARSER_SUB_RP, start_ptr);
+		goto exit;
+	}
+	sbuff=get_stream_buffer(BUF_TYPE_SUBTITLE);
+	if(sbuff)
+	{
+		 phy_addr = sbuff->buf_start;
+
+        	WRITE_MPEG_REG(PARSER_SUB_RP, phy_addr);
+        	WRITE_MPEG_REG(PARSER_SUB_START_PTR, phy_addr);
+        	WRITE_MPEG_REG(PARSER_SUB_END_PTR, phy_addr + sbuff->buf_size - 8);
+	
+		pr_dbg("pes buff=:%x %x\n",phy_addr,sbuff->buf_size);
+	}
+	else
+	{
+		pr_dbg("Error stream buffer\n");	
+	}
+exit:
+	return 0;
+}
+
+
 /*Allocate a new channel*/
 int dmx_alloc_chan(struct aml_dmx *dmx, int type, int pes_type, int pid)
 {
@@ -1640,6 +1725,7 @@ int dmx_alloc_chan(struct aml_dmx *dmx, int type, int pes_type, int pid)
 			case DMX_TS_PES_TELETEXT:
 				if(!dmx->channel[2].used)
 					id = 2;
+				alloc_subtitle_pes_buffer(dmx);
 			break;
 			case DMX_TS_PES_PCR:
 				if(!dmx->channel[3].used)

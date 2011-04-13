@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 ARM Limited. All rights reserved.
+ * Copyright (C) 2010-2011 ARM Limited. All rights reserved.
  * 
  * This program is free software and is provided to you under the terms of the GNU General Public License version 2
  * as published by the Free Software Foundation, and any use by you of this program is subject to the terms of such GNU licence.
@@ -127,6 +127,18 @@ _mali_osk_errcode_t mali_utilization_init(void)
 	_mali_osk_timer_setcallback(utilization_timer, calculate_gpu_utilization, NULL);
 
 	return _MALI_OSK_ERR_OK;
+}
+
+
+
+
+void mali_utilization_suspend(void)
+{
+        if (NULL != utilization_timer)
+        {
+                _mali_osk_timer_del(utilization_timer);
+                timer_running = MALI_FALSE;
+        }
 }
 
 

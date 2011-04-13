@@ -69,6 +69,8 @@ obj-y += hdmi/
 
 obj-$(CONFIG_AM_DVB) += dvb/
 
+obj-$(CONFIG_AM_SMARTCARD) += smartcard/
+
 obj-y += demod/
 
 obj-y += wifi/

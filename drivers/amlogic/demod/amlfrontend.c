@@ -309,7 +309,10 @@ static int aml_fe_dvbt_read_snr(struct dvb_frontend *fe, u16 * snr)
 
 static int aml_fe_dvb_read_ucblocks(struct dvb_frontend *fe, u32 * ucblocks)
 {
-	ucblocks=NULL;
+	struct amlfe_state *state = fe->demodulator_priv;
+	struct aml_demod_sts demod_sts;
+	dvbc_status(state->sta, state->i2c, &demod_sts);
+	*ucblocks = demod_sts.ch_per;
 	return 0;
 }
 
@@ -334,7 +337,7 @@ static int aml_fe_dvbc_set_frontend(struct dvb_frontend *fe, struct dvb_frontend
 	int wait = 1000/20;//1s
 	
 	memset(&param, 0, sizeof(param));
-	param.ch_freq = p->frequency;
+	param.ch_freq = p->frequency/1000;
 	param.mode = to_qam_mode(p->u.qam.modulation);
 	param.symb_rate = p->u.qam.symbol_rate/1000;
 	
@@ -372,7 +375,7 @@ static int aml_fe_dvbt_set_frontend(struct dvb_frontend *fe, struct dvb_frontend
     //             1: dual AGC
     //////////////////////////////////////
     	memset(&param, 0, sizeof(param));
-	param.ch_freq = p->frequency;
+	param.ch_freq = p->frequency/1000;
 	param.bw = p->u.ofdm.bandwidth;
 	param.agc_mode = 1;
 	
@@ -425,11 +428,29 @@ static void aml_fe_dvb_release(struct dvb_frontend *fe)
 
 static struct dvb_frontend_ops aml_fe_dvbc_ops;
 static struct dvb_frontend_ops aml_fe_dvbt_ops;
+static struct dvb_tuner_ops aml_fe_tuner_ops;
+struct dvb_tuner_info * tuner_get_info( int type)
+{
+	static struct dvb_tuner_info tinfo = {
+		.name = "tuner_type1", 
 
+		.frequency_min = 0,
+		.frequency_max = 0,
+		.frequency_step = 0,
+		
+		.bandwidth_min = 0,
+		.bandwidth_max = 0,
+		.bandwidth_step = 0,
+		};
+	
+	return &tinfo;
+}
+	
 struct dvb_frontend *aml_fe_dvbc_attach(const struct amlfe_config *config)
 {
 	struct amlfe_state *state = NULL;
-
+	struct dvb_tuner_info *tinfo;
+	
 	/* allocate memory for the internal state */
 	
 	state = kmalloc(sizeof(struct amlfe_state), GFP_KERNEL);
@@ -438,6 +459,13 @@ struct dvb_frontend *aml_fe_dvbc_attach(const struct amlfe_config *config)
 
 	/* setup the state */
 	state->config = *config;
+
+	/*set tuner parameters*/
+	tinfo = tuner_get_info(state->config.tuner_type);
+	memcpy(&state->fe.ops.tuner_ops, &aml_fe_tuner_ops,
+	       sizeof(struct dvb_tuner_ops));
+	memcpy(&state->fe.ops.tuner_ops.info, tinfo,
+		sizeof(state->fe.ops.tuner_ops.info));
 	
 	/* create dvb_frontend */
 	memcpy(&state->fe.ops, &aml_fe_dvbc_ops, sizeof(struct dvb_frontend_ops));
@@ -455,6 +483,7 @@ EXPORT_SYMBOL(aml_fe_dvbc_attach);
 struct dvb_frontend *aml_fe_dvbt_attach(const struct amlfe_config *config)
 {
 	struct amlfe_state *state = NULL;
+	struct dvb_tuner_info *tinfo;
 
 	/* allocate memory for the internal state */
 	
@@ -464,7 +493,15 @@ struct dvb_frontend *aml_fe_dvbt_attach(const struct amlfe_config *config)
 
 	/* setup the state */
 	state->config = *config;
-	
+
+	/*set tuner parameters*/
+	tinfo = tuner_get_info(state->config.tuner_type);
+	memcpy(&state->fe.ops.tuner_ops, &aml_fe_tuner_ops,
+	       sizeof(struct dvb_tuner_ops));
+	memcpy(&state->fe.ops.tuner_ops.info, tinfo,
+		sizeof(state->fe.ops.tuner_ops.info));
+
+
 	/* create dvb_frontend */
 	memcpy(&state->fe.ops, &aml_fe_dvbt_ops, sizeof(struct dvb_frontend_ops));
 
@@ -484,11 +521,11 @@ static struct dvb_frontend_ops aml_fe_dvbc_ops = {
 	.info = {
 		 .name = "AMLOGIC DVB-C",
 		 .type = FE_QAM,
-		 .frequency_min = 1000,
-		 .frequency_max = 1000000,
+		 .frequency_min = 47400000,
+		.frequency_max = 862000000,
 		 .frequency_stepsize = 62500,
-		 .symbol_rate_min = 870000,
-		 .symbol_rate_max = 11700000,
+		 .symbol_rate_min = 3600000,
+		 .symbol_rate_max = 71400000,
 		 .caps = FE_CAN_QAM_16 | FE_CAN_QAM_32 | FE_CAN_QAM_64 |
 		 FE_CAN_QAM_128 | FE_CAN_QAM_256 | FE_CAN_FEC_AUTO
 	},
