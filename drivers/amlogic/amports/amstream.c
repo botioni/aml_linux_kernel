@@ -1567,6 +1567,16 @@ int get_sub_type(void)
 {
     return sub_type;
 }
+/*get pes buffers */
+
+stream_buf_t* get_stream_buffer(int id)
+{
+	if(id>=BUF_MAX_NUM)
+	{
+		return 0;
+	}
+	return &bufs[id];
+}
 
 EXPORT_SYMBOL(set_vdec_func);
 EXPORT_SYMBOL(set_adec_func);
