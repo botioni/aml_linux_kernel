@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 ARM Limited. All rights reserved.
+ * Copyright (C) 2010-2011 ARM Limited. All rights reserved.
  * 
  * This program is free software and is provided to you under the terms of the GNU General Public License version 2
  * as published by the Free Software Foundation, and any use by you of this program is subject to the terms of such GNU licence.
@@ -124,7 +124,7 @@ _mali_osk_lock_t *_mali_osk_lock_init( _mali_osk_lock_flags_t flags, u32 initial
 		}
 
 		/* Initially unlocked */
-		sema_init( &lock->obj.sema, 1 );
+		init_MUTEX( &lock->obj.sema );
 	}
 
 	MALI_DEBUG_CODE(
