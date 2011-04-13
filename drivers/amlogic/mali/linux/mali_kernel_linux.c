@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2010 ARM Limited. All rights reserved.
+ * Copyright (C) 2010-2011 ARM Limited. All rights reserved.
  * 
  * This program is free software and is provided to you under the terms of the GNU General Public License version 2
  * as published by the Free Software Foundation, and any use by you of this program is subject to the terms of such GNU licence.
@@ -60,12 +60,6 @@ extern int mali_max_job_runtime;
 module_param(mali_max_job_runtime, int, S_IRUSR | S_IWUSR | S_IWGRP | S_IRGRP | S_IROTH);
 MODULE_PARM_DESC(mali_max_job_runtime, "Maximum allowed job runtime in msecs.\nJobs will be killed after this no matter what");
 
-#if defined(USING_MALI400_L2_CACHE)
-extern int mali_l2_max_reads;
-module_param(mali_l2_max_reads, int, S_IRUSR | S_IRGRP | S_IROTH);
-MODULE_PARM_DESC(mali_l2_max_reads, "Maximum reads for Mali L2 cache");
-#endif
-
 struct mali_dev
 {
 	struct cdev cdev;
@@ -107,6 +101,17 @@ struct file_operations mali_fops =
 int mali_driver_init(void)
 {
 	int err;
+#if USING_MALI_PMM
+#if MALI_LICENSE_IS_GPL
+#ifdef CONFIG_PM
+        err = _mali_dev_platform_register();
+        if (err)
+        {
+                return err;
+        }
+#endif
+#endif
+#endif
     err = mali_kernel_constructor();
     if (_MALI_OSK_ERR_OK != err)
     {
@@ -156,18 +161,6 @@ int initialize_kernel_device(void)
 {
 	int err;
 	dev_t dev = 0;
-
-#if USING_MALI_PMM
-#if MALI_LICENSE_IS_GPL
-#ifdef CONFIG_PM
-	err = _mali_dev_platform_register();
-	if (err)
-	{
-		return err;
-	}
-#endif
-#endif
-#endif
 	if (0 == mali_major)
 	{
 		/* auto select a major */
@@ -434,7 +427,7 @@ static int mali_ioctl(struct inode *inode, struct file *filp, unsigned int cmd, 
 
 		case MALI_IOC_MEM_ATTACH_UMP:
 		case MALI_IOC_MEM_RELEASE_UMP: /* FALL-THROUGH */
-        	MALI_DEBUG_PRINT(2, ("UMP not supported\n"));
+        	MALI_DEBUG_PRINT(2, ("UMP not supported\n", cmd, arg));
             err = -ENOTTY;
 			break;
 #endif

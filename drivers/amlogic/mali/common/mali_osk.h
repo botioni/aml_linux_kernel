@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 ARM Limited. All rights reserved.
+ * Copyright (C) 2010-2011 ARM Limited. All rights reserved.
  * 
  * This program is free software and is provided to you under the terms of the GNU General Public License version 2
  * as published by the Free Software Foundation, and any use by you of this program is subject to the terms of such GNU licence.
@@ -578,6 +578,14 @@ typedef struct _mali_osk_resource
 /** @brief Fake IRQ number for testing purposes
  */
 #define _MALI_OSK_IRQ_NUMBER_FAKE ((u32)0xFFFFFFF1)
+
+/** @addtogroup _mali_osk_irq
+ * @{ */
+
+/** @brief PMM Virtual IRQ number
+ */
+#define _MALI_OSK_IRQ_NUMBER_PMM ((u32)0xFFFFFFF2)
+
 
 /** @brief Initialize IRQ handling for a resource
  *

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 ARM Limited. All rights reserved.
+ * Copyright (C) 2010-2011 ARM Limited. All rights reserved.
  * 
  * This program is free software and is provided to you under the terms of the GNU General Public License version 2
  * as published by the Free Software Foundation, and any use by you of this program is subject to the terms of such GNU licence.
@@ -219,7 +219,6 @@ static int block_allocator_allocate(void* ctx, ump_dd_mem * mem)
 	mem->backend_info = last_allocated;
 
 	up(&allocator->mutex);
-	mem->is_cached=0;
 
 	return 1;
 }

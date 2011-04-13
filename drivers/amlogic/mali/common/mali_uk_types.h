@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 ARM Limited. All rights reserved.
+ * Copyright (C) 2010-2011 ARM Limited. All rights reserved.
  * 
  * This program is free software and is provided to you under the terms of the GNU General Public License version 2
  * as published by the Free Software Foundation, and any use by you of this program is subject to the terms of such GNU licence.
@@ -613,6 +613,7 @@ typedef enum
 {
 	/** core notifications */
 
+	_MALI_NOTIFICATION_CORE_TIMEOUT =               (_MALI_UK_CORE_SUBSYSTEM << 16) | 0x10,
 	_MALI_NOTIFICATION_CORE_SHUTDOWN_IN_PROGRESS =  (_MALI_UK_CORE_SUBSYSTEM << 16) | 0x20,
 	_MALI_NOTIFICATION_APPLICATION_QUIT =           (_MALI_UK_CORE_SUBSYSTEM << 16) | 0x40,
 
@@ -646,6 +647,13 @@ typedef enum
  *
  * Interpreting the data union member depends on the notification type:
  *
+ * - type == _MALI_NOTIFICATION_CORE_TIMEOUT
+ *     - A notification timeout has occurred, since the code.timeout member was
+ * exceeded.
+ *     - In this case, the value of the data union member is undefined.
+ *     - This is used so that the client can check other user-space state.
+ * The client may repeat the call to _mali_ukk_wait_for_notification() to
+ * continue reception of notifications.
  * - type == _MALI_NOTIFICATION_CORE_SHUTDOWN_IN_PROGRESS
  *     - The kernel side is shutting down. No further
  * _mali_uk_wait_for_notification() calls should be made.
