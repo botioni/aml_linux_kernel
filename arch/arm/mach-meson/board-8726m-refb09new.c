@@ -1289,10 +1289,10 @@ static int gt2005_v4l2_uninit(void)
    #ifdef CONFIG_SN7325
 	printk( "amlogic camera driver: uninit gt2005_v4l2_uninit. \n");
 	configIO(1, 0);
-	//setIO_level(1, 0, 2);//200m poweer_disable
+	setIO_level(1, 0, 1);//200m poweer_disable
 	setIO_level(1, 0, 6);//200m pwd low
-	//configIO(0, 0);
-	//setIO_level(0, 0, 2);//200m reset low
+	configIO(0, 0);
+	setIO_level(0, 0, 2);//200m reset low
 	msleep(20); 
     #endif
 
