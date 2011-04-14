@@ -96,8 +96,7 @@ void aml_m1_reset(struct snd_soc_codec* codec, bool first_time)
 	  msleep(100);
 	  snd_soc_write(codec,ADAC_CLOCK, 0);
 	  snd_soc_write(codec,ADAC_I2S_CONFIG_REG1, 6);	
-	  snd_soc_write(codec, ADAC_I2S_CONFIG_REG2, 1); 		// I2S
-	  snd_soc_write(codec, ADAC_I2S_CONFIG_REG2, 0<<3); // split
+	  snd_soc_write(codec, ADAC_I2S_CONFIG_REG2, 1|(0<<3)); 		// I2S, split
 	
 	  snd_soc_write(codec, ADAC_POWER_CTRL_REG1, 0xc3);
 	  snd_soc_write(codec, ADAC_POWER_CTRL_REG2, 0);
@@ -114,6 +113,7 @@ void aml_m1_reset(struct snd_soc_codec* codec, bool first_time)
 	  snd_soc_write(codec, ADAC_POWER_CTRL_REG2, (1<<7));
       latch(codec);
     }else{
+ 
       latch(codec);
 	  snd_soc_write(codec, ADAC_POWER_CTRL_REG2, (0<<7));
       latch(codec);
@@ -127,6 +127,7 @@ void aml_m1_reset(struct snd_soc_codec* codec, bool first_time)
     latch(codec);
     msleep(100);
 }
+
 
 static const DECLARE_TLV_DB_SCALE(dac_volume, -12600, 150, 0);
 static const DECLARE_TLV_DB_SCALE(hs_volume, -4000, 100, 0);
@@ -188,7 +189,6 @@ static int aml_m1_write(struct snd_soc_codec *codec, unsigned int reg,
 		return -EINVAL;
 	WRITE_APB_REG((APB_BASE+(reg<<2)), value);
 	reg_cache[reg] = value;
-
 	return 0;
 }
 
@@ -228,6 +228,11 @@ static int aml_m1_codec_hw_params(struct snd_pcm_substream *substream,
     reg |= val;
     snd_soc_write(codec, ADAC_I2S_CONFIG_REG1, reg);
 
+    snd_soc_write(codec, ADAC_RESET, (0<<1));
+    latch(codec);
+	snd_soc_write(codec, ADAC_RESET, (1<<1));
+    latch(codec);
+
 	return 0;
 }
 
@@ -244,6 +249,12 @@ static int aml_m1_codec_mute(struct snd_soc_dai *dai, int mute)
 		reg &= ~(3|(3<<6));
 	}
 	snd_soc_write(codec, ADAC_MUTE_CTRL_REG1, reg);
+
+	snd_soc_write(codec, ADAC_RESET, (0<<1));
+    latch(codec);
+	snd_soc_write(codec, ADAC_RESET, (1<<1));
+    latch(codec);
+
 	return 0;
 }
 
@@ -251,7 +262,7 @@ static int aml_m1_codec_mute(struct snd_soc_dai *dai, int mute)
 #define AML_RATES SNDRV_PCM_RATE_8000_96000
 
 #define AML_FORMATS (SNDRV_PCM_FMTBIT_S16_LE | \
-	SNDRV_PCM_FMTBIT_S24_LE)
+	SNDRV_PCM_FMTBIT_S24_LE | SNDRV_PCM_FMTBIT_S32_LE)
 
 
 static struct snd_soc_dai_ops aml_m1_codec_dai_ops = {
@@ -283,15 +294,14 @@ static int aml_m1_set_bias_level(struct snd_soc_codec *codec,
 {
 	switch (level) {
 	case SND_SOC_BIAS_ON:
-        snd_soc_write(codec, ADAC_POWER_CTRL_REG2, 0<<7);
-        snd_soc_write(codec, ADAC_POWER_CTRL_REG2, 1<<7);
+        aml_m1_reset(codec, false);
 		break;
-	case SND_SOC_BIAS_PREPARE:
-		break;
+    case SND_SOC_BIAS_PREPARE:
+        break;
 	case SND_SOC_BIAS_STANDBY:
    	case SND_SOC_BIAS_OFF:
         snd_soc_write(codec, ADAC_POWER_CTRL_REG2, 0<<7);
-        snd_soc_write(codec, ADAC_POWER_CTRL_REG1, 0);
+        snd_soc_write(codec, ADAC_POWER_CTRL_REG2, 0<<7);
 	    break;
 	default:
 	    break;
@@ -392,7 +402,6 @@ static int aml_m1_register(struct aml_m1_codec_priv* aml_m1)
 	codec->bias_level = SND_SOC_BIAS_OFF;
 	codec->set_bias_level = aml_m1_set_bias_level;
 	aml_m1_codec_dai.dev = codec->dev;
-	
 	aml_m1_reset(codec, true);
 
 	aml_m1_set_bias_level(codec, SND_SOC_BIAS_STANDBY);
