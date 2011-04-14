@@ -42,6 +42,8 @@
 #endif
 #include "aml_dvb.h"
 
+#include "../amports/streambuf.h"
+
 #define ENABLE_SEC_BUFF_WATCHDOG
 #define USE_AHB_MODE
 
@@ -71,7 +73,20 @@
 
 #define READ_PERI_REG				READ_CBUS_REG
 #define WRITE_PERI_REG			WRITE_CBUS_REG
-#define CLEAR_PERI_REG_MASK(reg, mask) WRITE_PERI_REG(reg, (READ_PERI_REG(reg)&(~(mask))))
+
+#define READ_ASYNC_FIFO_REG(i,r)\
+	((i) ? READ_PERI_REG(ASYNC_FIFO2_##r) : READ_PERI_REG(ASYNC_FIFO_##r))
+	
+#define WRITE_ASYNC_FIFO_REG(i,r,d)\
+	do {\
+		if (i==1) {\
+			WRITE_PERI_REG(ASYNC_FIFO2_##r, d);\
+		} else {\
+			WRITE_PERI_REG(ASYNC_FIFO_##r, d);\
+		}\
+	}while(0)
+
+#define CLEAR_ASYNC_FIFO_REG_MASK(i,reg,mask) WRITE_ASYNC_FIFO_REG(i, reg, (READ_ASYNC_FIFO_REG(i, reg)&(~(mask))))
 
 #define DVR_FEED(f)							\
 	((f) && ((f)->type == DMX_TYPE_TS) &&					\
@@ -90,8 +105,8 @@
 
 /*Reset the demux device*/
 void dmx_reset_hw(struct aml_dvb *dvb);
-static void dmx_set_async_fifo2_regs(u32 start_addr, u32 size);
 static int dmx_remove_feed(struct aml_dmx *dmx, struct dvb_demux_feed *feed);
+static void reset_async_fifos(struct aml_dvb *dvb);
 
 /*Section buffer watchdog*/
 static void section_buffer_watchdog_func(unsigned long arg)
@@ -325,6 +340,57 @@ static void process_section(struct aml_dmx *dmx)
 #ifdef NO_SUB
 static void process_sub(struct aml_dmx *dmx)
 {
+
+	int rd_ptr=0;
+
+	int wr_ptr=READ_MPEG_REG(PARSER_SUB_WP);
+	int start_ptr=READ_MPEG_REG(PARSER_SUB_START_PTR);
+	int end_ptr=READ_MPEG_REG(PARSER_SUB_END_PTR);
+
+	unsigned char *buffer1=0,*buffer2=0;
+	int len1=0,len2=0;
+
+	
+	rd_ptr=READ_MPEG_REG(PARSER_SUB_RP);
+	if(!rd_ptr)
+		return;
+	if(rd_ptr>wr_ptr)
+	{
+		len1=end_ptr-rd_ptr;
+		buffer1=(unsigned char*)rd_ptr;
+
+		len2=wr_ptr-start_ptr;
+		buffer2=(unsigned char*)start_ptr;
+
+		rd_ptr=start_ptr+len2;
+	}
+	else if(rd_ptr<wr_ptr)
+	{
+		len1=wr_ptr-rd_ptr;
+		buffer1=(unsigned char *)rd_ptr;
+		rd_ptr+=len1;
+		len2=0;
+	}
+	else if(rd_ptr==wr_ptr)
+	{
+		pr_dbg("no data\n");
+	}
+
+
+	if(buffer1)
+		buffer1=phys_to_virt((long unsigned int)buffer1);
+	if(buffer2)
+		buffer2=phys_to_virt((long unsigned int)buffer2);
+
+	
+	if(dmx->channel[2].used)
+	{
+		if(dmx->channel[2].feed && dmx->channel[2].feed->cb.ts)
+		{
+			dmx->channel[2].feed->cb.ts((buffer1),len1,(buffer2),len2,&dmx->channel[2].feed->feed.ts,DMX_OK);
+		}
+	}
+	WRITE_MPEG_REG(PARSER_SUB_RP,rd_ptr);
 }
 #endif
 
@@ -420,31 +486,37 @@ static void dvr_irq_bh_handler(unsigned long arg)
 	//struct aml_dmx *dmx = (struct aml_dmx*)arg;
 	return;
 }
-
+	
 static irqreturn_t dvr_irq_handler(int irq_number, void *para)
 {
-	struct aml_dmx *dmx = (struct aml_dmx*)para;
-	int i;
+	struct aml_asyncfifo *afifo = (struct aml_asyncfifo *)para;
+	struct aml_dvb *dvb = afifo->dvb;
+	struct aml_dmx *dmx;
 	u32 size;
 	u8 *p;
+	int i;
 
-	size = dmx->async_fifo_buf_len >> 1;
-	p = (u8*)dmx->async_fifo_pages + dmx->async_fifo_buf_toggle * size;
+	//pr_dbg("dvr irq: fifo %d, dmx %d\n", afifo->id, afifo->source);
+	if (dvb && afifo->source >= AM_DMX_0 && afifo->source < AM_DMX_MAX) {
+		dmx = &dvb->dmx[afifo->source];
+		if (dmx->init && dmx->record) {
+			for(i=0; i<CHANNEL_COUNT; i++) {
+				if(dmx->channel[i].used && dmx->channel[i].dvr_feed) {
+					size = afifo->buf_len >> 1;
+					p = (u8*)afifo->pages + afifo->buf_toggle * size;
 			
-	dmx->async_fifo_buf_toggle ^= 1;
-
-	if (dmx->record) {
-		for(i=0; i<CHANNEL_COUNT; i++) {
-			if(dmx->channel[i].used && dmx->channel[i].dvr_feed) {
-				//pr_dbg("write data to dvr: buf %p, size %u\n", p, size);
-				dmx->channel[i].dvr_feed->cb.ts(p, size, NULL, 0, &dmx->channel[i].dvr_feed->feed.ts, DMX_OK);
-				break;
+					afifo->buf_toggle ^= 1;
+					//pr_dbg("write data to dvr: buf %p, size %u\n", p, size);
+					dmx->channel[i].dvr_feed->cb.ts(p, size, NULL, 0, &dmx->channel[i].dvr_feed->feed.ts, DMX_OK);
+					break;
+				}
 			}
+			
 		}
 	}
 	
 	flush_cache_all();
-	tasklet_schedule(&dmx->dvr_tasklet);
+	tasklet_schedule(&afifo->asyncfifo_tasklet);
 	return  IRQ_HANDLED;
 }
 
@@ -697,22 +769,67 @@ static int dmx_alloc_pes_buffer(struct aml_dmx *dmx)
 	return 0;	
 }
 
-/*Allocate DVR Buffer*/
-static int dmx_alloc_asyncfifo_buffer(struct aml_dmx *dmx)
+/*Allocate ASYNC FIFO Buffer*/
+static int asyncfifo_alloc_buffer(struct aml_asyncfifo *afifo)
 {	
-	if(dmx->async_fifo_pages)
+	if(afifo->pages)
 		return 0;
 
-	dmx->async_fifo_buf_toggle = 0;
-	dmx->async_fifo_buf_len = 512*1024;
-	dmx->async_fifo_pages = __get_free_pages(GFP_KERNEL, get_order(dmx->async_fifo_buf_len));
-	if(!dmx->async_fifo_pages) {
+	afifo->buf_toggle = 0;
+	afifo->buf_len = 512*1024;
+	afifo->pages = __get_free_pages(GFP_KERNEL, get_order(afifo->buf_len));
+	if(!afifo->pages) {
 		pr_error("cannot allocate async fifo buffer\n");
 		return -1;
 	}
 
 	return 0;
 }
+
+int async_fifo_init(struct aml_asyncfifo *afifo)
+{
+	afifo->source  = AM_DMX_MAX;
+	afifo->pages = 0;
+	afifo->buf_len = 0;
+	afifo->buf_toggle = 0;
+
+	if (afifo->asyncfifo_irq == -1) {
+		pr_error("no irq for ASYNC_FIFO%d\n", afifo->id);
+		/*Do not return error*/
+		return 0;
+	}
+	tasklet_init(&afifo->asyncfifo_tasklet, dvr_irq_bh_handler, (unsigned long)afifo);
+	request_irq(afifo->asyncfifo_irq, dvr_irq_handler, IRQF_SHARED, "dvr irq", afifo);
+
+	/*alloc buffer*/
+	asyncfifo_alloc_buffer(afifo);
+
+	afifo->init = 1;
+
+	return 0;
+}
+
+int async_fifo_deinit(struct aml_asyncfifo *afifo)
+{
+	CLEAR_ASYNC_FIFO_REG_MASK(afifo->id, REG1, 1 << ASYNC_FIFO_FLUSH_EN);
+	CLEAR_ASYNC_FIFO_REG_MASK(afifo->id, REG2, 1 << ASYNC_FIFO_FILL_EN);
+	if (afifo->pages) {
+		free_pages(afifo->pages, get_order(afifo->buf_len));
+		afifo->pages = 0;
+	}
+	afifo->source  = AM_DMX_MAX;
+	afifo->buf_len = 0;
+	afifo->buf_toggle = 0;
+	
+	if (afifo->asyncfifo_irq != -1) {
+		free_irq(afifo->asyncfifo_irq, afifo);
+		tasklet_kill(&afifo->asyncfifo_tasklet);
+		afifo->asyncfifo_irq = -1;
+	}
+
+	return 0;
+}
+
 static void dmx_set_mux(struct aml_dvb *dvb)
 {
 #define PREG_PIN_MUX_REG3 PERIPHS_PIN_MUX_3
@@ -766,14 +883,15 @@ static int dmx_init(struct aml_dmx *dmx)
 		irq = request_irq(dmx->dmx_irq, dmx_irq_handler, IRQF_SHARED, "dmx irq", dmx);
 	}
 	
-	if(dmx->dvr_irq!=-1) {
+/*	if(dmx->dvr_irq!=-1) {
 		tasklet_init(&dmx->dvr_tasklet, dvr_irq_bh_handler, (unsigned long)dmx);
 		irq = request_irq(dmx->dvr_irq, dvr_irq_handler, IRQF_SHARED, "dvr irq", dmx);
 
-		if (dmx_alloc_asyncfifo_buffer(dmx) < 0)
-			return -1;
+		
 	}
-	
+	if (dmx_alloc_asyncfifo_buffer(dmx) < 0)
+			return -1;
+*/	
 	/*Allocate buffer*/
 	if(dmx_alloc_sec_buffer(dmx)<0)
 		return -1;
@@ -840,46 +958,70 @@ static int dmx_deinit(struct aml_dmx *dmx)
 		dmx->pes_pages = 0;
 	}
 
-	if (dmx->async_fifo_pages) {
+/*	if (dmx->async_fifo_pages) {
 		free_pages(dmx->async_fifo_pages, get_order(dmx->async_fifo_buf_len));
 		dmx->async_fifo_pages = 0;
 	}
-	
+*/	
 	if(dmx->dmx_irq!=-1) {
 		free_irq(dmx->dmx_irq, dmx);
 		tasklet_kill(&dmx->dmx_tasklet);
 	}
-	if(dmx->dvr_irq!=-1) {
+/*	if(dmx->dvr_irq!=-1) {
 		free_irq(dmx->dvr_irq, dmx);
 		tasklet_kill(&dmx->dvr_tasklet);
 	}
-	
+*/	
 	dmx->init = 0;
 
 	return 0;
 }
 
 /*Check the record flag*/
-static void dmx_check_record(struct aml_dmx *dmx)
+static int dmx_get_record_flag(struct aml_dmx *dmx)
 {
-	int i;
+	int i, linked = 0, record_flag = 0;
+	struct aml_dvb *dvb = (struct aml_dvb*)dmx->demux.priv;
+	
+	/*Check whether a async fifo connected to this dmx*/
+	for (i=0; i<ASYNCFIFO_COUNT; i++) {
+		if (! dvb->asyncfifo[i].init) 
+			continue;
+		if (dvb->asyncfifo[i].source == dmx->id) {
+			linked = 1;
+			break;
+		}
+	}
+
 	
 	for(i=0; i<CHANNEL_COUNT; i++) {
 		if(dmx->channel[i].used && dmx->channel[i].dvr_feed) {
 			if (! dmx->record) {
-				dmx->async_fifo_buf_toggle = 0;
 				dmx->record = 1;
-				dmx_set_async_fifo2_regs(virt_to_phys((void*)dmx->async_fifo_pages), dmx->async_fifo_buf_len);
+
+				if (linked) {
+					/*A new record will start, must reset the async fifos for linking the right demux*/
+					reset_async_fifos(dvb);
+				}
 			}
-			return ;
+			if (linked) {
+				record_flag = 1;
+			}
+			goto find_done;
 		}
 	}
 
 	if (dmx->record) {
 		dmx->record = 0;
-		CLEAR_PERI_REG_MASK(ASYNC_FIFO2_REG1, 1 << ASYNC_FIFO_FLUSH_EN);
-		CLEAR_PERI_REG_MASK(ASYNC_FIFO2_REG2, 1 << ASYNC_FIFO_FILL_EN);
+		if (linked) {
+			/*A record will stop, reset the async fifos for linking the right demux*/
+			reset_async_fifos(dvb);
+		}
 	}
+	
+
+find_done:
+	return record_flag;	
 }
 
 
@@ -890,29 +1032,29 @@ static int dmx_enable(struct aml_dmx *dmx)
 	int fec_sel, hi_bsf, fec_clk, record;
 	int fec_core_sel;
 	
-	dmx_check_record(dmx);
-	pr_dbg("dmx %d enable: src %d, record %d\n", dmx->id, dmx->source, dmx->record);
+	record = dmx_get_record_flag(dmx);
+	
 	switch(dmx->source) {
 		case AM_TS_SRC_TS0:
 			fec_sel = 0;
 			fec_clk = 1;
-			record  = dmx->record?1:0;
+			record  = record?1:0;
 			break;
 		case AM_TS_SRC_TS1:
 			fec_sel = 1;
 			fec_clk = 1;
-			record  = dmx->record?1:0;
+			record  = record?1:0;
 		break;
 		case AM_TS_SRC_TS2:
 			fec_sel = 2;
 			fec_clk = 0;
-			record  = dmx->record?1:0;
+			record  = record?1:0;
 		break;		
 		case AM_TS_SRC_S2P0:
 		case AM_TS_SRC_S2P1:
 			fec_sel = 6;
 			fec_clk = 1;
-			record  = dmx->record?1:0;
+			record  = record?1:0;
 		break;
 		case AM_TS_SRC_HIU:
 			fec_sel = 7;
@@ -925,6 +1067,7 @@ static int dmx_enable(struct aml_dmx *dmx)
 			record  = 0;
 		break;
 	}
+	pr_dbg("dmx %d enable: src %d, record %d\n", dmx->id, dmx->source, record);
 	
 	if(dmx->channel[0].used || dmx->channel[1].used)
 		hi_bsf = 1;
@@ -1275,40 +1418,109 @@ static void dmx_clear_filter_buffer(struct aml_dmx *dmx, int fid)
 	}
 }
 
-/*Set the Async FIFO2 registers*/
-static void dmx_set_async_fifo2_regs(u32 start_addr, u32 size)
+static void async_fifo_set_regs(struct aml_asyncfifo *afifo, int source_val)
 {
-    // Destination address
-    WRITE_PERI_REG(ASYNC_FIFO2_REG0, start_addr);
-    // -----------------------------
-    // Setup flush parameters
-    // -----------------------------
-    WRITE_PERI_REG(ASYNC_FIFO2_REG1, (0 << ASYNC_FIFO_TO_HIU)   |
-                                     (0 << ASYNC_FIFO_FLUSH)    |   // don't flush the path
-                                     (1 << ASYNC_FIFO_RESET)    |   // reset the path
-                                     (1 << ASYNC_FIFO_WRAP_EN)  |   // wrap enable
-                                     (0 << ASYNC_FIFO_FLUSH_EN) |   // disable the flush path
-                                     //(0x3 << ASYNC_FIFO_FLUSH_CNT_LSB);     // flush 3 x 32  32-bit words
-                                     //(0x7fff << ASYNC_FIFO_FLUSH_CNT_LSB);     // flush 4MBytes of data
-                                     (((size >> 7) & 0x7fff) << ASYNC_FIFO_FLUSH_CNT_LSB));     // number of 128-byte blocks to flush
+	u32 start_addr = virt_to_phys((void*)afifo->pages);
+	u32 size = afifo->buf_len;
 
-    WRITE_PERI_REG(ASYNC_FIFO2_REG1, READ_PERI_REG(ASYNC_FIFO2_REG1) & ~(1 << ASYNC_FIFO_RESET));     // clear the reset signal
-    WRITE_PERI_REG(ASYNC_FIFO2_REG1, READ_PERI_REG(ASYNC_FIFO2_REG1) | (1 << ASYNC_FIFO_FLUSH_EN));   // Enable flush
+	pr_dbg("ASYNC FIFO id=%d, link to DMX%d, start_addr %x, buf_size %d, source value 0x%x\n",
+			afifo->id, afifo->source, start_addr, size, source_val);
+	/* Destination address*/
+	WRITE_ASYNC_FIFO_REG(afifo->id, REG0, start_addr);
 
-    // -----------------------------
-    // Setup Fill parameters
-    // -----------------------------
-    WRITE_PERI_REG(ASYNC_FIFO2_REG2, (1 <<  ASYNC_FIFO_ENDIAN_LSB)  |
-                                     (0 <<  ASYNC_FIFO_FILL_EN)     |   // disable fill path to reset fill path
-                                    //(96 << ASYNC_FIFO_FILL_CNT_LSB);   // 3 x 32  32-bit words
-                                    (0 << ASYNC_FIFO_FILL_CNT_LSB));   // forever FILL;
-    WRITE_PERI_REG(ASYNC_FIFO2_REG2, READ_PERI_REG(ASYNC_FIFO2_REG2) | (1 <<  ASYNC_FIFO_FILL_EN));       // Enable fill path
+	/* Setup flush parameters*/
+	WRITE_ASYNC_FIFO_REG(afifo->id, REG1, 
+						(0 << ASYNC_FIFO_TO_HIU)   |
+						(0 << ASYNC_FIFO_FLUSH)    |   // don't flush the path
+						(1 << ASYNC_FIFO_RESET)    |   // reset the path
+						(1 << ASYNC_FIFO_WRAP_EN)  |   // wrap enable
+						(0 << ASYNC_FIFO_FLUSH_EN) |   // disable the flush path
+						//(0x3 << ASYNC_FIFO_FLUSH_CNT_LSB);     // flush 3 x 32  32-bit words
+						//(0x7fff << ASYNC_FIFO_FLUSH_CNT_LSB);     // flush 4MBytes of data
+						(((size >> 7) & 0x7fff) << ASYNC_FIFO_FLUSH_CNT_LSB));     // number of 128-byte blocks to flush
 
-    WRITE_PERI_REG(ASYNC_FIFO2_REG3, ((((size >> 8) - 1) & 0x7fff) << ASYNC_FLUSH_SIZE_IRQ_LSB)); // generate flush interrupt
+	WRITE_ASYNC_FIFO_REG(afifo->id, REG1, READ_ASYNC_FIFO_REG(afifo->id, REG1) & ~(1 << ASYNC_FIFO_RESET));     // clear the reset signal
+	WRITE_ASYNC_FIFO_REG(afifo->id, REG1, READ_ASYNC_FIFO_REG(afifo->id, REG1) | (1 << ASYNC_FIFO_FLUSH_EN));   // Enable flush
 
-    // Connect the STB DEMUX to ASYNC_FIFO
-    WRITE_PERI_REG(ASYNC_FIFO2_REG2, READ_PERI_REG(ASYNC_FIFO2_REG2) | (0x3 << ASYNC_FIFO_SOURCE_LSB));
+	/*Setup Fill parameters*/
+	WRITE_ASYNC_FIFO_REG(afifo->id, REG2, 
+					(1 <<  ASYNC_FIFO_ENDIAN_LSB)  |
+					(0 <<  ASYNC_FIFO_FILL_EN)     |   // disable fill path to reset fill path
+					//(96 << ASYNC_FIFO_FILL_CNT_LSB);   // 3 x 32  32-bit words
+					(0 << ASYNC_FIFO_FILL_CNT_LSB));   // forever FILL;
+	WRITE_ASYNC_FIFO_REG(afifo->id, REG2, READ_ASYNC_FIFO_REG(afifo->id, REG2) | (1 <<  ASYNC_FIFO_FILL_EN));       // Enable fill path
 
+	WRITE_ASYNC_FIFO_REG(afifo->id, REG3, ((((size >> 8) - 1) & 0x7fff) << ASYNC_FLUSH_SIZE_IRQ_LSB)); // generate flush interrupt
+
+	/* Connect the STB DEMUX to ASYNC_FIFO*/
+	WRITE_ASYNC_FIFO_REG(afifo->id, REG2, READ_ASYNC_FIFO_REG(afifo->id, REG2) | (source_val << ASYNC_FIFO_SOURCE_LSB));
+}
+
+/*Reset the ASYNC FIFOS when a ASYNC FIFO connect to a different DMX*/
+static void reset_async_fifos(struct aml_dvb *dvb)
+{
+	struct aml_asyncfifo *low_dmx_fifo = NULL;
+	struct aml_asyncfifo *high_dmx_fifo = NULL;
+	int i, j;
+	int record_enable;
+
+	pr_dbg("reset ASYNC FIFOs\n");
+	for (i=0; i<ASYNCFIFO_COUNT; i++) {
+		if (! dvb->asyncfifo[i].init)
+			continue;
+		pr_dbg("Disable ASYNC FIFO id=%d\n", dvb->asyncfifo[i].id);
+		CLEAR_ASYNC_FIFO_REG_MASK(dvb->asyncfifo[i].id, REG1, 1 << ASYNC_FIFO_FLUSH_EN);
+		CLEAR_ASYNC_FIFO_REG_MASK(dvb->asyncfifo[i].id, REG2, 1 << ASYNC_FIFO_FILL_EN);
+		if (READ_ASYNC_FIFO_REG(dvb->asyncfifo[i].id,REG2)&(1 << ASYNC_FIFO_FILL_EN) || 
+			READ_ASYNC_FIFO_REG(dvb->asyncfifo[i].id,REG1)&(1 << ASYNC_FIFO_FLUSH_EN)) {
+			pr_dbg("Set reg failed\n");
+		} else {
+			pr_dbg("Set reg ok\n");
+		}
+		dvb->asyncfifo[i].buf_toggle = 0;
+	}
+
+	for (j=0; j<DMX_DEV_COUNT; j++) {
+		if (! dvb->dmx[j].init)
+			continue;
+		record_enable = 0;
+		for (i=0; i<ASYNCFIFO_COUNT; i++) {
+			if (! dvb->asyncfifo[i].init)
+				continue;
+			
+			if (dvb->dmx[j].record && dvb->dmx[j].id == dvb->asyncfifo[i].source) {
+				/*This dmx is linked to the async fifo, Enable the TS_RECORDER_ENABLE*/
+				record_enable = 1;
+				if (! low_dmx_fifo) {
+					low_dmx_fifo = &dvb->asyncfifo[i];
+				} else if (low_dmx_fifo->source > dvb->asyncfifo[i].source) {
+					high_dmx_fifo = low_dmx_fifo;
+					low_dmx_fifo = &dvb->asyncfifo[i];
+				} else if (low_dmx_fifo->source < dvb->asyncfifo[i].source) {
+					high_dmx_fifo = &dvb->asyncfifo[i];
+				}
+			
+				break;
+			}
+		}
+		pr_dbg("Set DMX%d TS_RECORDER_ENABLE to %d\n", dvb->dmx[j].id, record_enable ? 1 : 0);
+		if (record_enable) {
+			//DMX_SET_REG_MASK(dvb->dmx[j].id, DEMUX_CONTROL, 1<<TS_RECORDER_ENABLE);
+			DMX_WRITE_REG(dvb->dmx[j].id, DEMUX_CONTROL, DMX_READ_REG(dvb->dmx[j].id, DEMUX_CONTROL)|(1<<TS_RECORDER_ENABLE));
+		} else {
+			//DMX_CLEAR_REG_MASK(dvb->dmx[j].id, DEMUX_CONTROL, 1<<TS_RECORDER_ENABLE);
+			DMX_WRITE_REG(dvb->dmx[j].id, DEMUX_CONTROL, DMX_READ_REG(dvb->dmx[j].id, DEMUX_CONTROL)&(~(1<<TS_RECORDER_ENABLE)));
+		}
+	}
+
+	/*Set the async fifo regs*/
+	if (low_dmx_fifo) {
+		async_fifo_set_regs(low_dmx_fifo, 0x3);
+
+		if (high_dmx_fifo) {
+			async_fifo_set_regs(high_dmx_fifo, 0x2);
+		}
+	}
 }
 
 /*Reset the demux device*/
@@ -1462,6 +1674,38 @@ void dmx_reset_hw(struct aml_dvb *dvb)
 #endif
 }
 
+/*Allocate subtitle pes buffer*/
+static int alloc_subtitle_pes_buffer(struct aml_dmx * dmx)
+{
+	int start_ptr=0;
+	stream_buf_t *sbuff=0;
+	 u32 phy_addr;
+	start_ptr=READ_MPEG_REG(PARSER_SUB_START_PTR);
+	if(start_ptr)
+	{
+		WRITE_MPEG_REG(PARSER_SUB_RP, start_ptr);
+		goto exit;
+	}
+	sbuff=get_stream_buffer(BUF_TYPE_SUBTITLE);
+	if(sbuff)
+	{
+		 phy_addr = sbuff->buf_start;
+
+        	WRITE_MPEG_REG(PARSER_SUB_RP, phy_addr);
+        	WRITE_MPEG_REG(PARSER_SUB_START_PTR, phy_addr);
+        	WRITE_MPEG_REG(PARSER_SUB_END_PTR, phy_addr + sbuff->buf_size - 8);
+	
+		pr_dbg("pes buff=:%x %x\n",phy_addr,sbuff->buf_size);
+	}
+	else
+	{
+		pr_dbg("Error stream buffer\n");	
+	}
+exit:
+	return 0;
+}
+
+
 /*Allocate a new channel*/
 int dmx_alloc_chan(struct aml_dmx *dmx, int type, int pes_type, int pid)
 {
@@ -1481,6 +1725,7 @@ int dmx_alloc_chan(struct aml_dmx *dmx, int type, int pes_type, int pid)
 			case DMX_TS_PES_TELETEXT:
 				if(!dmx->channel[2].used)
 					id = 2;
+				alloc_subtitle_pes_buffer(dmx);
 			break;
 			case DMX_TS_PES_PCR:
 				if(!dmx->channel[3].used)
@@ -1763,6 +2008,30 @@ int aml_dmx_hw_deinit(struct aml_dmx *dmx)
 	return ret;
 }
 
+int aml_asyncfifo_hw_init(struct aml_asyncfifo *afifo)
+{
+	unsigned long flags;
+	int ret;
+	
+	/*Async FIFO initialize*/
+	spin_lock_irqsave(&afifo->slock, flags);
+	ret = async_fifo_init(afifo);
+	spin_unlock_irqrestore(&afifo->slock, flags);
+	
+	return ret;
+}
+
+int aml_asyncfifo_hw_deinit(struct aml_asyncfifo *afifo)
+{
+	unsigned long flags;
+	int ret;
+	spin_lock_irqsave(&afifo->slock, flags);
+	ret = async_fifo_deinit(afifo);
+	spin_unlock_irqrestore(&afifo->slock, flags);
+	
+	return ret;
+}
+
 int aml_dmx_hw_start_feed(struct dvb_demux_feed *dvbdmxfeed)
 {
 	struct aml_dmx *dmx = (struct aml_dmx*)dvbdmxfeed->demux;
@@ -1936,6 +2205,37 @@ int aml_dsc_hw_set_source(struct aml_dvb *dvb, dmx_source_t src)
 		dmx_reset_hw(dvb);
 	
 	spin_unlock_irqrestore(&dvb->slock, flags);
+	
+	return ret;
+}
+
+int aml_asyncfifo_hw_set_source(struct aml_asyncfifo *afifo, aml_dmx_id_t src)
+{
+	int ret = -1;
+	unsigned long flags;
+	
+	spin_lock_irqsave(&afifo->slock, flags);
+
+	pr_dbg("asyncfifo %d set source %d->%d", afifo->id, afifo->source, src);
+	switch(src) {
+		case AM_DMX_0:
+		case AM_DMX_1:
+		case AM_DMX_2:
+			if (afifo->source != src) {
+				afifo->source = src;
+				ret = 0;
+			}
+		break;
+		default:
+			pr_error("illegal async fifo source %d\n", src);
+			ret = -EINVAL;
+		break;
+	}
+	
+	if(ret==0 && afifo->dvb)
+		reset_async_fifos(afifo->dvb);
+	
+	spin_unlock_irqrestore(&afifo->slock, flags);
 	
 	return ret;
 }

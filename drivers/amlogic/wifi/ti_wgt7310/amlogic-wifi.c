@@ -45,8 +45,30 @@ int amlogic_wifi_set_carddetect(int val)
 
 static int amlogic_wifi_power_state;
 
+//extern extern_wifi_power(on);
+//#include <linux/sn7325.h>
 int amlogic_wifi_power(int on)
 {
+	#if 0
+	if(on)
+	{
+		printk("##########Power on WiFi!###########\n");
+    	//set_gpio_val(GPIOD_bank_bit2_24(15), GPIOD_bit_bit2_24(15), 0);
+		//set_gpio_mode(GPIOD_bank_bit2_24(15), GPIOD_bit_bit2_24(15), GPIO_OUTPUT_MODE);
+		msleep(80);
+        configIO(0, 0);
+        setIO_level(0, 1, 5);
+        setIO_level(0, 1, 7);
+	}
+	else
+	{
+		printk("##########Cut off wifi power!###########\n");
+        configIO(0, 0);
+        setIO_level(0, 0, 5);
+        setIO_level(0, 0, 7);
+	}
+	#endif
+	//extern_wifi_power(on);
 	//gpio_set_value(PMENA_GPIO, on);
 
 	amlogic_wifi_power_state = on;
@@ -85,12 +107,9 @@ static struct platform_device amlogic_wifi_device = {
 	},
 };
 
-
-static int __init amlogic_wifi_init(void)
+void amlogic_wifi_exit(void)
 {
-	int ret;
-	ret = platform_device_register(&amlogic_wifi_device);
-	return ret;
+	platform_device_unregister(&amlogic_wifi_device);
 }
 
 device_initcall(amlogic_wifi_init);

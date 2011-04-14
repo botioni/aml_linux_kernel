@@ -95,10 +95,12 @@ int raydium_reset(struct device *dev)
 
 int raydium_calibration(struct device *dev)
 {
-    int ret = -1;
-    struct i2c_client *client = container_of(dev, struct i2c_client, dev);
-    
-    return ret;
+	int ret = -1;
+	char buf=0x03;
+	struct i2c_client *client = container_of(dev, struct i2c_client, dev);
+	ret = raydium_write_block(client,0x78,&buf,1);
+	mdelay(500);
+	return ret;
 }
 
 
@@ -148,7 +150,11 @@ int raydium_get_event (struct device *dev, struct ts_event *event)
 
 static int raydium_probe(struct i2c_client *client, const struct i2c_device_id *id)
 {
-    return capts_probe(&client->dev, &raydium_chip);
+	int ret;
+	ret = capts_probe(&client->dev, &raydium_chip);
+	if(ret == 0)
+		raydium_calibration(&client->dev);
+	return ret;
 }
 
 

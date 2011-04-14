@@ -272,7 +272,7 @@ s32 stbuf_wait_space(struct stream_buf_s *stream_buf, size_t count)
 void stbuf_release(struct stream_buf_s *buf)
 {
     buf->first_tstamp = INVALID_PTS;
-
+	stbuf_init(buf);	//reinit buffer 
     if (buf->flag & BUF_FLAG_IOMEM) {
         buf->flag = BUF_FLAG_IOMEM;
     } else {

@@ -38,6 +38,7 @@
 #include <linux/i2c-aml.h>
 #include <mach/power_gate.h>
 #include <linux/reboot.h>
+#include <linux/syscalls.h>
 
 #ifdef CONFIG_AM_UART_WITH_S_CORE 
 #include <linux/uart-aml.h>
@@ -92,6 +93,9 @@
 
 #ifdef CONFIG_SND_AML_M1_MID_WM8900
 #include <sound/wm8900.h>
+#endif
+#ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE
+#include <media/amlogic/aml_camera.h>
 #endif
 
 #ifdef CONFIG_BQ27x00_BATTERY
@@ -403,8 +407,21 @@ static struct resource vdin_resources[] = {
         .end   = VDIN_ADDR_END,				//pbufAddr + size
         .flags = IORESOURCE_MEM,
     },
-
-
+    [1] = {
+        .start = VDIN_ADDR_START,
+        .end   = VDIN_ADDR_END,
+        .flags = IORESOURCE_MEM,
+    },
+    [2] = {
+        .start = INT_VDIN_VSYNC,
+        .end   = INT_VDIN_VSYNC,
+        .flags = IORESOURCE_IRQ,
+    },
+    [3] = {
+        .start = INT_VDIN_VSYNC,
+        .end   = INT_VDIN_VSYNC,
+        .flags = IORESOURCE_IRQ,
+    },
 };
 
 static struct platform_device vdin_device = {
@@ -413,8 +430,11 @@ static struct platform_device vdin_device = {
     .num_resources = ARRAY_SIZE(vdin_resources),
     .resource      = vdin_resources,
 };
+#endif
 
+#ifdef CONFIG_TVIN_BT656IN
 //add pin mux info for bt656 input
+#if 0
 static struct resource bt656in_resources[] = {
     [0] = {
         .start =  VDIN_ADDR_START,		//pbufAddr
@@ -440,12 +460,13 @@ static struct resource bt656in_resources[] = {
     },
 
 };
+#endif
 
 static struct platform_device bt656in_device = {
     .name       = "amvdec_656in",
     .id         = -1,
-    .num_resources = ARRAY_SIZE(bt656in_resources),
-    .resource      = bt656in_resources,
+//    .num_resources = ARRAY_SIZE(bt656in_resources),
+//    .resource      = bt656in_resources,
 };
 #endif
 
@@ -473,19 +494,8 @@ void extern_wifi_power(int is_power)
         #ifdef CONFIG_SN7325
         printk("power on 7325 4\n");
         configIO(0, 0);
-        setIO_level(0, 0, 0);//OD0
-        setIO_level(0, 1, 1);//OD1
-        setIO_level(0, 1, 4);//OD4
         setIO_level(0, 1, 5);//OD5
-        setIO_level(0, 1, 6);//OD6
-        setIO_level(0, 0, 7);//OD7
-        configIO(1, 0);
-        setIO_level(1, 1, 0);//PP0
-        setIO_level(1, 1, 1);//PP1
-        setIO_level(1, 1, 4);//PP4
-        setIO_level(1, 1, 5);//PP5
-        setIO_level(1, 1, 6);//PP6
-        setIO_level(1, 1, 7);//PP7
+
         #else
         return;
         #endif
@@ -872,7 +882,116 @@ static	struct platform_device aml_rtc_device = {
       		.id               = -1,
 	};
 #endif
+#if defined(CONFIG_VIDEO_AMLOGIC_CAPTURE_GT2005)
 
+//#include <media/amlogic/aml_camera.h>
+
+int gt2005_init(void)
+{
+   #ifdef CONFIG_SN7325
+	printk( "amlogic camera driver: init CONFIG_SN7325. \n");
+	configIO(1, 0);
+	setIO_level(1, 1, 4);//PP4 -->1
+	msleep(300);
+	setIO_level(1, 1, 0);//PP0-->0
+	msleep(300);
+    #endif
+
+}
+#endif /* VIDEO_AMLOGIC_CAPTURE_GT2005 */
+
+#ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE_GC0308
+
+//#include <media/amlogic/aml_camera.h>
+
+int gc0308_init(void)
+{
+   #ifdef CONFIG_SN7325
+	printk( "amlogic camera driver 0308: init CONFIG_SN7325. \n");
+	configIO(1, 0);
+	setIO_level(1, 1, 4);//PP4 -->1
+	msleep(300);
+	setIO_level(1, 0, 0);//PP0-->0
+	msleep(300);
+    #endif
+
+}
+#endif /* VIDEO_AMLOGIC_CAPTURE_GT2005 */
+#if defined (CONFIG_AMLOGIC_VIDEOIN_MANAGER)
+static struct resource vm_resources[] = {
+    [0] = {
+        .start =  VM_ADDR_START,
+        .end   = VM_ADDR_END,
+        .flags = IORESOURCE_MEM,
+    },
+};
+static struct platform_device vm_device =
+{
+	.name = "vm",
+	.id = 0,
+    .num_resources = ARRAY_SIZE(vm_resources),
+    .resource      = vm_resources,
+};
+#endif /* AMLOGIC_VIDEOIN_MANAGER */
+#ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE
+static void __init camera_power_on_init(void)
+{
+    udelay(1000);
+    SET_CBUS_REG_MASK(HHI_ETH_CLK_CNTL,0x30f);// 24M XTAL
+    SET_CBUS_REG_MASK(HHI_DEMOD_PLL_CNTL,0x232);// 24M XTAL
+
+    eth_set_pinmux(ETH_BANK0_GPIOC3_C12,ETH_CLK_OUT_GPIOC12_REG3_1, 1);		
+}
+#endif
+#if defined(CONFIG_VIDEO_AMLOGIC_CAPTURE_GT2005)
+static int gt2005_v4l2_init(void)
+{
+	gt2005_init();
+}
+static int gt2005_v4l2_uninit(void)
+{
+   #ifdef CONFIG_SN7325
+	printk( "amlogic camera driver: uninit gt2005_v4l2_uninit. \n");
+	configIO(1, 0);
+	setIO_level(1, 1, 4);
+	msleep(300);
+	setIO_level(1, 1, 0);
+    #endif
+
+}
+
+aml_plat_cam_data_t video_gt2005_data = {
+	.name="video-gt2005",
+	.video_nr=0,
+	.device_init= gt2005_v4l2_init,
+	.device_uninit=gt2005_v4l2_uninit,
+};
+#endif
+
+#if defined(CONFIG_VIDEO_AMLOGIC_CAPTURE_GC0308)
+static int gc0308_v4l2_init(void)
+{
+	gc0308_init();
+}
+static int gc0308_v4l2_uninit(void)
+{
+   #ifdef CONFIG_SN7325
+	 printk( "amlogic camera driver: gc0308_v4l2_uninit CONFIG_SN7325. \n");
+	configIO(1, 0);
+	setIO_level(1, 1, 4);
+	msleep(300);
+	setIO_level(1, 0, 0);
+    #endif
+
+}
+
+aml_plat_cam_data_t video_gc0308_data = {
+	.name="video-gc0308",
+	.video_nr=0,//1,
+	.device_init= gc0308_v4l2_init,
+	.device_uninit=gc0308_v4l2_uninit,
+};
+#endif
 #if defined(CONFIG_SUSPEND)
 static void set_vccx2(int power_on)
 {
@@ -893,7 +1012,7 @@ static struct meson_pm_config aml_pm_pdata = {
     .pctl_reg_base = IO_APB_BUS_BASE,
     .mmc_reg_base = APB_REG_ADDR(0x1000),
     .hiu_reg_base = CBUS_REG_ADDR(0x1000),
-    .power_key = CBUS_REG_ADDR(RTC_ADDR1),
+    .power_key = (1<<8),
     .ddr_clk = 0x00110820,
     .sleepcount = 128,
     .set_vccx2 = set_vccx2,
@@ -998,7 +1117,7 @@ static int is_ac_connected(void)
 static void set_charge(int flags)
 {
 	//GPIOD_22 low: fast charge high: slow charge
-    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_7, (1<<18));
+    //CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_7, (1<<18));
     if(flags == 1)
         {
 	    #ifdef CONFIG_SN7325
@@ -1038,6 +1157,9 @@ static int get_charge_status()
 
 static void set_bat_off(void)
 {
+    //BL_PWM power off
+    set_gpio_val(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), 0);
+    set_gpio_mode(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), GPIO_OUTPUT_MODE);
     if(is_ac_connected()){ //AC in after power off press
         kernel_restart("reboot");
     }
@@ -1177,6 +1299,7 @@ static struct aml_power_pdata power_pdata = {
 	.bat_charge_value_table = bat_charge_value_table,
 	.bat_level_table = bat_level_table,
 	.bat_table_len = 37,		
+	.is_support_usb_charging = 0,
 	//.supplied_to = supplicants,
 	//.num_supplicants = ARRAY_SIZE(supplicants),
 };
@@ -1195,10 +1318,15 @@ static int is_ac_connected(void)
 	return (READ_CBUS_REG(ASSIST_HW_REV)&(1<<9))? 1:0;//GP_INPUT1
 }
 
+static int get_charge_status()
+{
+    return (READ_CBUS_REG(ASSIST_HW_REV)&(1<<8))? 1:0;//GP_INPUT0
+}
+
 static void set_charge(int flags)
 {
 	//GPIOD_22 low: fast charge high: slow charge
-    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_7, (1<<18));
+    //CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_7, (1<<18));
     if(flags == 1)
         {
 	    #ifdef CONFIG_SN7325
@@ -1231,6 +1359,7 @@ static void set_bat_off(void)
 
 static struct bq27x00_battery_pdata bq27x00_pdata = {
 	.is_ac_online	= is_ac_connected,
+	.get_charge_status = get_charge_status,	
 	.set_charge = set_charge,
 	.set_bat_off = set_bat_off,
     .chip = 0,
@@ -1679,13 +1808,24 @@ static struct platform_device bt_device = {
 	.name             = "bt-dev",
 	.id               = -1,
 };
-
+static void gps_uart_pin_init(){
+        #ifdef CONFIG_SN7325
+        printk("power on 7325 8\n");
+	    configIO(1, 0);
+        setIO_level(1, 1, 7);//PP7
+        msleep(400);	
+        configIO(0, 0);
+        setIO_level(0, 0, 1);//OD1
+	    msleep(200);
+        setIO_level(0, 1, 1);//OD1
+        #endif	
+  }
 static void bt_device_init(void)
 {
     CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_12, (1<<29));
 	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_12, (1<<22));
 	
-	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_7, (1<<19));
+	//CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_7, (1<<19));
 	
 	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_5, (1<<20));
 	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_5, (1<<17));
@@ -1724,38 +1864,41 @@ static void bt_device_init(void)
 	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_5, (1<<8));
 	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, (1<<24));
 	
-	/* WLBT_REGON */
-	//CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<18));//D20
-	//SET_CBUS_REG_MASK(PREG_GGPIO_O, (1<<18));
-        #ifdef CONFIG_SN7325
-        printk("power on 7325 8\n");
-	    configIO(0, 0);
-        setIO_level(0, 1, 5);	
-        #endif
+	/* WIFI/BT_EN */
+	//CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<18)); //       configIO(0, 0);
+	//SET_CBUS_REG_MASK(PREG_GGPIO_O, (1<<18));      //       setIO_level(0, 1, 5);	
+	//CLEAR_CBUS_REG_MASK(PREG_GGPIO_O, (1<<18));  //WA 7W WIFI/BT_EN  low level.
+
 	
-	/* reset */
-	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<12));//D14
+	/* BT_RST_N */
+	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<12));
 	CLEAR_CBUS_REG_MASK(PREG_GGPIO_O, (1<<12));	
 	msleep(200);	
 	SET_CBUS_REG_MASK(PREG_GGPIO_O, (1<<12));	
 	
-	/* BG/GPS low */
-	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<19));//D21
+	/* BT/GPS */
+	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<19));
 	CLEAR_CBUS_REG_MASK(PREG_GGPIO_O, (1<<19));	
 	
-	/* UART RTS */
-	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<16));//D18
+	/* UART_CTS_N */
+	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<16));
     CLEAR_CBUS_REG_MASK(PREG_GGPIO_O, (1<<16));
 		
-	/* BG wakeup high 
-	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<14));
-	SET_CBUS_REG_MASK(PREG_GGPIO_O, (1<<14));*/
+	/* BT_WAKE */ 
+	//CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<14));
+	//SET_CBUS_REG_MASK(PREG_GGPIO_O, (1<<14));
+	    gps_uart_pin_init();
+	    configIO(0, 0);
+        //setIO_level(0, 1, 5);
+        setIO_level(0, 1, 6);
+        //configIO(1, 0);
+        //setIO_level(1, 0, 7);//PP7	-->selecet BT
 }
 
 static void bt_device_on(void)
 {
     /* reset */
-	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<12));
+	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<12));//D14
 	CLEAR_CBUS_REG_MASK(PREG_GGPIO_O, (1<<12));	
 	msleep(200);	
 	SET_CBUS_REG_MASK(PREG_GGPIO_O, (1<<12));	
@@ -1795,7 +1938,9 @@ static struct platform_device __initdata *platform_devs[] = {
     #endif
     #if defined(CONFIG_TVIN_VDIN)
         &vdin_device,
-        &bt656in_device,
+    #endif
+    #if defined(CONFIG_TVIN_BT656IN)
+		&bt656in_device,
     #endif
     #if defined(CONFIG_AML_AUDIO_DSP)
         &audiodsp_device,
@@ -1830,6 +1975,9 @@ static struct platform_device __initdata *platform_devs[] = {
     #endif
     #if defined(CONFIG_AML_RTC)
         &aml_rtc_device,
+    #endif
+    #ifdef CONFIG_AMLOGIC_VIDEOIN_MANAGER
+		&vm_device,
     #endif
     #if defined(CONFIG_SUSPEND)
         &aml_pm_device,
@@ -1916,6 +2064,21 @@ static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
         .platform_data = (void *)&bq27x00_pdata,
     },
 #endif
+#ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE_GC0308
+
+	{
+        /*gc0308 i2c address is 0x42/0x43*/
+		I2C_BOARD_INFO("gc0308_i2c",  0x42 >> 1),
+		.platform_data = (void *)&video_gc0308_data,
+	},
+#endif
+#if CONFIG_VIDEO_AMLOGIC_CAPTURE_GT2005
+    {
+    	/*gt2005 i2c address is 0x78/0x79*/
+    	I2C_BOARD_INFO("gt2005_i2c",  0x78 >> 1 ),
+    	.platform_data = (void *)&video_gt2005_data
+    },
+#endif
 };
 
 
@@ -1927,6 +2090,17 @@ static int __init aml_i2c_init(void)
     return 0;
 }
 
+#if defined(CONFIG_TVIN_BT656IN)
+static void __init bt656in_pinmux_init(void)
+{
+    set_mio_mux(3, 0xf000);   //mask--mux gpio_c3 to bt656 clk;  mux gpioc[4:11] to be bt656 dt_in
+    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, 0x0f000000);
+    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_3, 0x01be07fc);
+    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_4, 0x0c000000);
+}
+
+
+#endif
 static void __init eth_pinmux_init(void)
 {
 	eth_set_pinmux(ETH_BANK2_GPIOD15_D23,ETH_CLK_OUT_GPIOD24_REG5_1,0);		
@@ -1962,6 +2136,9 @@ static void __init device_pinmux_init(void )
 	/*pinmux of eth*/
 	//eth_pinmux_init();
 	aml_i2c_init();
+#if defined(CONFIG_TVIN_BT656IN)
+    bt656in_pinmux_init();
+#endif
 	set_audio_pinmux(AUDIO_OUT_TEST_N);
     set_audio_pinmux(AUDIO_IN_JTAG);
     //set clk for wifi
@@ -2015,10 +2192,13 @@ static __init void m1_init_machine(void)
 {
 	meson_cache_init();
 
-	power_hold();
-	device_clk_setting();
-	device_pinmux_init();
-	platform_add_devices(platform_devs, ARRAY_SIZE(platform_devs));
+    power_hold();
+    device_clk_setting();
+    device_pinmux_init();
+#ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE
+    camera_power_on_init();
+#endif
+    platform_add_devices(platform_devs, ARRAY_SIZE(platform_devs));
 
 #ifdef CONFIG_USB_DWC_OTG_HCD
 	set_usb_phy_clk(USB_PHY_CLOCK_SEL_XTAL_DIV2);

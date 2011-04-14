@@ -269,7 +269,7 @@ static struct mpu3050_platform_data mpu3050_data = {
                 // connected
                 .bus = EXT_SLAVE_BUS_SECONDARY, //The secondary I2C of MPU
                 .address = 0x1c,
-                .orientation = {0,1,0,1,0,0,0,0,-1},
+                .orientation = {-1,0,0,0,1,0,0,0,-1},
             },
     };
 #endif
@@ -839,6 +839,12 @@ static  struct platform_device aml_rtc_device = {
 #ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE_GC0308
 int gc0308_init(void)
 {
+
+        // set camera power enable   ibit[21]
+                clear_mio_mux(5, (1<<31));
+    set_gpio_val(GPIOE_bank_bit16_21(21), GPIOE_bit_bit16_21(21), 1);
+    set_gpio_mode(GPIOE_bank_bit16_21(21), GPIOE_bit_bit16_21(21), GPIO_OUTPUT_MODE);
+    msleep(300);
    //pp0
    #ifdef CONFIG_SN7325
 	printk( "amlogic camera driver 0308: init CONFIG_SN7325. \n");
@@ -847,6 +853,7 @@ int gc0308_init(void)
 	msleep(300);
 	configIO(1, 0);
 	setIO_level(1, 0, 0);//30m PWR_On
+	msleep(300);
     #endif
 }
 #endif
@@ -891,6 +898,10 @@ static int gc0308_v4l2_uninit(void)
 	 configIO(1, 0);
 	 setIO_level(1, 1, 0);//30m PWR_Down
  #endif
+
+    msleep(300);
+    set_gpio_val(GPIOE_bank_bit16_21(21), GPIOE_bit_bit16_21(21), 0);
+    set_gpio_mode(GPIOE_bank_bit16_21(21), GPIOE_bit_bit16_21(21), GPIO_OUTPUT_MODE);
 }
 aml_plat_cam_data_t video_gc0308_data = {
 	.name="video-gc0308",
@@ -1031,11 +1042,11 @@ static struct meson_pm_config aml_pm_pdata = {
     .pctl_reg_base = IO_APB_BUS_BASE,
     .mmc_reg_base = APB_REG_ADDR(0x1000),
     .hiu_reg_base = CBUS_REG_ADDR(0x1000),
-    .power_key = CBUS_REG_ADDR(RTC_ADDR1),
+    .power_key = (1<<8),
     .ddr_clk = 0x00110820,
     .sleepcount = 128,
     .set_vccx2 = set_vccx2,
-    .core_voltage_adjust = 5,
+    .core_voltage_adjust = 8,  //5,8
 };
 
 static struct platform_device aml_pm_device = {
@@ -1082,7 +1093,7 @@ static struct aml_i2c_platform aml_i2c_plat = {
     .wait_xfer_interval = 5,
     .master_no      = AML_I2C_MASTER_B,
     .use_pio            = 0,
-    .master_i2c_speed   = AML_I2C_SPPED_400K,
+    .master_i2c_speed   = AML_I2C_SPPED_300K, //100k
 
     .master_b_pinmux = {
         .scl_reg    = MESON_I2C_MASTER_B_GPIOB_0_REG,
@@ -1311,6 +1322,7 @@ static struct aml_power_pdata power_pdata = {
 	.bat_charge_value_table = bat_charge_value_table,
 	.bat_level_table = bat_level_table,
 	.bat_table_len = 36,		
+	.is_support_usb_charging = 0,
 	//.supplied_to = supplicants,
 	//.num_supplicants = ARRAY_SIZE(supplicants),
 };
@@ -2110,6 +2122,10 @@ static void __init power_hold(void)
     
     //VCCx2 power up
     set_vccx2(1);
+    
+    // set cpu power  to 1.26V   
+    wm8900_is_hp_pluged(); 
+    WRITE_CBUS_REG_BITS(LED_PWM_REG0,1,0,4); 
 }
 
 static __init void m1_init_machine(void)

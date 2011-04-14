@@ -82,6 +82,12 @@
 #define AMSTREAM_IOC_TS_SKIPBYTE _IOW(AMSTREAM_IOC_MAGIC, 0x1d, int)
 #define AMSTREAM_IOC_SUB_TYPE    _IOW(AMSTREAM_IOC_MAGIC, 0x1e, int)
 
+#define AMSTREAM_IOC_APTS             _IOR(AMSTREAM_IOC_MAGIC, 0x40, unsigned long)
+#define AMSTREAM_IOC_VPTS             _IOR(AMSTREAM_IOC_MAGIC, 0x41, unsigned long)
+#define AMSTREAM_IOC_PCRSCR           _IOR(AMSTREAM_IOC_MAGIC, 0x42, unsigned long)
+#define AMSTREAM_IOC_SYNCENABLE      _IOW(AMSTREAM_IOC_MAGIC, 0x43, unsigned long)
+#define AMSTREAM_IOC_GET_SYNCDISCON  _IOR(AMSTREAM_IOC_MAGIC, 0x44, unsigned long)
+#define AMSTREAM_IOC_SET_SYNCDISCON  _IOW(AMSTREAM_IOC_MAGIC, 0x45, unsigned long)
 
 // VPP.VE IOCTL command list
 #define AMSTREAM_IOC_VE_BEXT   _IOW(AMSTREAM_IOC_MAGIC, 0x20, struct ve_bext_s  )

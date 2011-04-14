@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 ARM Limited. All rights reserved.
+ * Copyright (C) 2010-2011 ARM Limited. All rights reserved.
  * 
  * This program is free software and is provided to you under the terms of the GNU General Public License version 2
  * as published by the Free Software Foundation, and any use by you of this program is subject to the terms of such GNU licence.
@@ -50,9 +50,9 @@ typedef struct mali_vma_usage_tracker
  */
 struct AllocationList
 {
-	struct AllocationList *next;
-	u32 offset;
-	u32 physaddr;
+    struct AllocationList *next;
+    u32 offset;
+    u32 physaddr;
 };
 
 typedef struct AllocationList AllocationList;
@@ -63,7 +63,7 @@ typedef struct AllocationList AllocationList;
 struct MappingInfo
 {
 	struct vm_area_struct *vma;
-	struct AllocationList *list;
+    struct AllocationList *list;
 };
 
 typedef struct MappingInfo MappingInfo;
@@ -108,7 +108,7 @@ static unsigned long mali_kernel_memory_cpu_page_fault_handler(struct vm_area_st
 static void mali_kernel_memory_vma_open(struct vm_area_struct * vma)
 {
 	mali_vma_usage_tracker * vma_usage_tracker;
-	MALI_DEBUG_PRINT(4, ("Open called on vma %p\n", vma));
+	MALI_DEBUG_PRINT(2, ("Open called on vma %p\n", vma));
 
 	vma_usage_tracker = (mali_vma_usage_tracker*)vma->vm_private_data;
 	vma_usage_tracker->references++;
@@ -154,17 +154,17 @@ static void mali_kernel_memory_vma_close(struct vm_area_struct * vma)
 
 void _mali_osk_mem_barrier( void )
 {
-	mb();
+    mb();
 }
 
 mali_io_address _mali_osk_mem_mapioregion( u32 phys, u32 size, const char *description )
 {
-	return (mali_io_address)ioremap_nocache(phys, size);
+    return (mali_io_address)ioremap_nocache(phys, size);
 }
 
 void _mali_osk_mem_unmapioregion( u32 phys, u32 size, mali_io_address virt )
 {
-	iounmap((void*)virt);
+    iounmap((void*)virt);
 }
 
 mali_io_address _mali_osk_mem_allocioregion( u32 *phys, u32 size )
@@ -204,27 +204,27 @@ void _mali_osk_mem_freeioregion( u32 phys, u32 size, mali_io_address virt )
 
 _mali_osk_errcode_t inline _mali_osk_mem_reqregion( u32 phys, u32 size, const char *description )
 {
-	return ((NULL == request_mem_region(phys, size, description)) ? _MALI_OSK_ERR_NOMEM : _MALI_OSK_ERR_OK);
+    return ((NULL == request_mem_region(phys, size, description)) ? _MALI_OSK_ERR_NOMEM : _MALI_OSK_ERR_OK);
 }
 
 void inline _mali_osk_mem_unreqregion( u32 phys, u32 size )
 {
-	release_mem_region(phys, size);
+    release_mem_region(phys, size);
 }
 
 u32 inline _mali_osk_mem_ioread32( volatile mali_io_address addr, u32 offset )
 {
-	return ioread32(((u8*)addr) + offset);
+    return ioread32(((u8*)addr) + offset);
 }
 
 void inline _mali_osk_mem_iowrite32( volatile mali_io_address addr, u32 offset, u32 val )
 {
-	iowrite32(val, ((u8*)addr) + offset);
+    iowrite32(val, ((u8*)addr) + offset);
 }
 
 void _mali_osk_cache_flushall( void )
 {
-	/** @note Cached memory is not currently supported in this implementation */
+    /** @note Cached memory is not currently supported in this implementation */
 }
 
 void _mali_osk_cache_ensure_uncached_range_flushed( void *uncached_mapping, u32 offset, u32 size )
@@ -274,7 +274,6 @@ _mali_osk_errcode_t _mali_osk_mem_mapregion_init( mali_memory_allocation * descr
 	*/
 	vma->vm_flags |= VM_IO;
 	vma->vm_flags |= VM_RESERVED;
-	vma->vm_flags |= VM_DONTCOPY;
 
 	vma->vm_page_prot = pgprot_writecombine(vma->vm_page_prot);
 	vma->vm_ops = &mali_kernel_vm_ops; /* Operations used on any memory system */
@@ -335,14 +334,14 @@ _mali_osk_errcode_t _mali_osk_mem_mapregion_map( mali_memory_allocation * descri
 
 	MALI_DEBUG_ASSERT( 0 == (offset & ~_MALI_OSK_CPU_PAGE_MASK));
 
-	if (NULL == descriptor->mapping) return _MALI_OSK_ERR_INVALID_ARGS;
+    if (NULL == descriptor->mapping) return _MALI_OSK_ERR_INVALID_ARGS;
 
-	if (size > (descriptor->size - offset))
-	{
-		MALI_DEBUG_PRINT(1,("_mali_osk_mem_mapregion_map: virtual memory area not large enough to map physical 0x%x size %x into area 0x%x at offset 0x%xr\n",
-		                    *phys_addr, size, descriptor->mapping, offset));
-		return _MALI_OSK_ERR_FAULT;
-	}
+    if (size > (descriptor->size - offset))
+    {
+        MALI_DEBUG_PRINT(1,("_mali_osk_mem_mapregion_map: virtual memory area not large enough to map physical 0x%x size %x into area 0x%x at offset 0x%xr\n",
+                *phys_addr, size, descriptor->mapping, offset));
+        return _MALI_OSK_ERR_FAULT;
+    }
 
 	mappingInfo = (MappingInfo *)descriptor->process_addr_mapping_info;
 
@@ -352,14 +351,14 @@ _mali_osk_errcode_t _mali_osk_mem_mapregion_map( mali_memory_allocation * descri
 
 	if (NULL == vma ) return _MALI_OSK_ERR_FAULT;
 
-	MALI_DEBUG_PRINT(7, ("Process map: mapping 0x%08X to process address 0x%08lX length 0x%08X\n", *phys_addr, (long unsigned int)(descriptor->mapping + offset), size));
+	MALI_DEBUG_PRINT(7, ("Process map: mapping 0x%08X to process address 0x%08lX length 0x%08X\n", phys_addr, (long unsigned int)(descriptor->mapping + offset), size));
 
 	if ( MALI_MEMORY_ALLOCATION_OS_ALLOCATED_PHYSADDR_MAGIC == *phys_addr )
 	{
 		_mali_osk_errcode_t ret;
 		u32 linux_phys_frame_num;
 		u32 linux_phys_addr;
-		AllocationList *allocItem;
+        AllocationList *allocItem;
 		struct page *new_page;
 
 		allocItem = _mali_osk_malloc( sizeof(AllocationList) );
@@ -395,11 +394,11 @@ _mali_osk_errcode_t _mali_osk_mem_mapregion_map( mali_memory_allocation * descri
 			return ret;
 		}
 
-		/* Put our allocItem into the list of allocations on success */
-		allocItem->next = mappingInfo->list;
-		allocItem->offset = offset;
-		allocItem->physaddr = linux_phys_addr;
-		mappingInfo->list = allocItem;
+        /* Put our allocItem into the list of allocations on success */
+        allocItem->next = mappingInfo->list;
+        allocItem->offset = offset;
+        allocItem->physaddr = linux_phys_addr;
+        mappingInfo->list = allocItem;
 
 		/* Write out new physical address on success */
 		*phys_addr = linux_phys_addr;
@@ -428,39 +427,39 @@ void _mali_osk_mem_mapregion_unmap( mali_memory_allocation * descriptor, u32 off
 
 	MALI_DEBUG_ASSERT( 0 == (offset & ~_MALI_OSK_CPU_PAGE_MASK) );
 
-	if (NULL == descriptor->mapping) return;
+    if (NULL == descriptor->mapping) return;
 
-	if (size > (descriptor->size - offset))
-	{
-		MALI_DEBUG_PRINT(1,("_mali_osk_mem_mapregion_unmap: virtual memory area not large enough to unmap size %x from area 0x%x at offset 0x%x\n",
+    if (size > (descriptor->size - offset))
+    {
+        MALI_DEBUG_PRINT(1,("_mali_osk_mem_mapregion_unmap: virtual memory area not large enough to unmap size %x from area 0x%x at offset 0x%x\n",
 							size, descriptor->mapping, offset));
-		return;
-	}
+        return;
+    }
 	mappingInfo = (MappingInfo *)descriptor->process_addr_mapping_info;
 
 	MALI_DEBUG_ASSERT_POINTER( mappingInfo );
 
 	if ( 0 != (flags & _MALI_OSK_MEM_MAPREGION_FLAG_OS_ALLOCATED_PHYSADDR) )
 	{
-		/* This physical RAM was allocated in _mali_osk_mem_mapregion_map and
-		 * so needs to be unmapped
-		 */
-		while (size)
+        /* This physical RAM was allocated in _mali_osk_mem_mapregion_map and
+         * so needs to be unmapped
+         */
+        while (size)
 		{
-			/* First find the allocation in the list of allocations */
-			AllocationList *alloc = mappingInfo->list;
-			AllocationList **prev = &(mappingInfo->list);
-			while (NULL != alloc && alloc->offset != offset)
-			{
-				prev = &(alloc->next);
-				alloc = alloc->next;
-			}
-			if (alloc == NULL) {
-				MALI_DEBUG_PRINT(1, ("Unmapping memory that isn't mapped\n"));
-				size -= _MALI_OSK_CPU_PAGE_SIZE;
-				offset += _MALI_OSK_CPU_PAGE_SIZE;
-				continue;
-			}
+            /* First find the allocation in the list of allocations */
+            AllocationList *alloc = mappingInfo->list;
+            AllocationList **prev = &(mappingInfo->list);
+            while (NULL != alloc && alloc->offset != offset)
+            {
+                prev = &(alloc->next);
+                alloc = alloc->next;
+            }
+            if (alloc == NULL) {
+                MALI_DEBUG_PRINT(1, ("Unmapping memory that isn't mapped\n"));
+                size -= _MALI_OSK_CPU_PAGE_SIZE;
+                offset += _MALI_OSK_CPU_PAGE_SIZE;
+                continue;
+            }
 
 			{
 				struct page *unmap_page;
@@ -470,14 +469,14 @@ void _mali_osk_mem_mapregion_unmap( mali_memory_allocation * descriptor, u32 off
 				__free_page( unmap_page );
 			}
 
-			/* Remove the allocation from the list */
-			*prev = alloc->next;
-			_mali_osk_free( alloc );
+            /* Remove the allocation from the list */
+            *prev = alloc->next;
+            _mali_osk_free( alloc );
 
-			/* Move onto the next allocation */
-			size -= _MALI_OSK_CPU_PAGE_SIZE;
-			offset += _MALI_OSK_CPU_PAGE_SIZE;
-		}
+            /* Move onto the next allocation */
+            size -= _MALI_OSK_CPU_PAGE_SIZE;
+            offset += _MALI_OSK_CPU_PAGE_SIZE;
+        }
 	}
 
 	/* Linux does the right thing as part of munmap to remove the mapping */

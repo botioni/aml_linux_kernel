@@ -39,6 +39,7 @@
 #include <mach/power_gate.h>
 #include <linux/aml_bl.h>
 #include <linux/reboot.h>
+#include <linux/syscalls.h>
 
 #ifdef CONFIG_AM_UART_WITH_S_CORE 
 #include <linux/uart-aml.h>
@@ -89,9 +90,6 @@
 
 #ifdef CONFIG_SND_AML_M1_MID_WM8900
 #include <sound/wm8900.h>
-#endif
-#ifdef CONFIG_AMLOGIC_CAMERA_ENABLE
-#include <linux/camera/amlogic_camera_common.h>
 #endif
 #ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE
 #include <media/amlogic/aml_camera.h>
@@ -624,6 +622,22 @@ static struct platform_device aml_audio={
 //use LED_CS1 as hp detect pin
 #define PWM_TCNT    (600-1)
 #define PWM_MAX_VAL (420)
+int get_display_mode(void) {
+	int fd;
+	int ret = 0;
+	char mode[8];	
+	
+  fd = sys_open("/sys/class/display/mode", O_RDWR | O_NDELAY, 0);
+  if(fd >= 0) {
+  	memset(mode,0,8);
+  	sys_read(fd,mode,8);
+  	if(strncmp("panel",mode,5))
+  		ret = 1;
+  	sys_close(fd);
+  }
+
+  return ret;
+}
 int wm8900_is_hp_pluged(void)
 {
     int level = 0;
@@ -643,6 +657,13 @@ int wm8900_is_hp_pluged(void)
     cs_no = READ_CBUS_REG(LED_PWM_REG3);
     if(cs_no &(1<<14))
       level |= (1<<0);
+      
+     // temp patch to mute speaker when hdmi output
+    if(level == 1)
+     if(get_display_mode() != 0) {
+    	return 1;
+     	}
+
     return (level == 1)?(0):(1); //return 1: hp pluged, 0: hp unpluged.
 }
 
@@ -1100,51 +1121,6 @@ static  struct platform_device aml_rtc_device = {
             .id               = -1,
     };
 #endif
-#ifdef CONFIG_AMLOGIC_SECOND_CAMERA_ENABLE
-
-#ifdef CONFIG_CAMERA_GC0308
-static struct platform_device camera_device = {
-    .name       = "camera_gc0308",
-    .id         = -1,
-};
-int gc0308_init(void)
-{
-   
-   eth_set_pinmux(ETH_BANK0_GPIOC3_C12,ETH_CLK_OUT_GPIOC12_REG3_1, 1);
-   #ifdef CONFIG_SN7325
-	printk( "amlogic camera driver: init CONFIG_SN7325. \n");
-	configIO(1, 0);
-	setIO_level(1, 0, 1);//30m poweer_disable
-		  
-	setIO_level(1, 0, 2);//200m poweer_disable
-	setIO_level(1, 0, 0);//30m pwd enable
-	setIO_level(1, 0, 6);//200m pwd low
-	configIO(0, 0);
-	setIO_level(0, 0, 3);//30m reset low
-	setIO_level(0, 0, 2);//200m reset low
-	configIO(1, 0);
-	msleep(300);
-	setIO_level(1, 1, 1);//30m poweer_enable
-	msleep(300);
-	configIO(0, 0);
-	setIO_level(0, 1, 3);//30m reset high
-		  
-	#endif
-   
-
-}
-
-static void __init camera_power_on_init(void)
-{
-    udelay(1000);
-    SET_CBUS_REG_MASK(HHI_ETH_CLK_CNTL,0x30f);// 24M XTAL
-    SET_CBUS_REG_MASK(HHI_DEMOD_PLL_CNTL,0x232);// 24M XTAL
-
-    eth_set_pinmux(ETH_BANK0_GPIOC3_C12,ETH_CLK_OUT_GPIOC12_REG3_1, 1);		
-}
-
-#endif
-#endif
 
 #if defined (CONFIG_AMLOGIC_VIDEOIN_MANAGER)
 static struct resource vm_resources[] = {
@@ -1185,12 +1161,12 @@ static int gc0308_v4l2_init(void)
 	setIO_level(0, 0, 3);//30m reset low
 	//setIO_level(0, 0, 2);//200m reset low
 	configIO(1, 0);
-	msleep(100);
+	msleep(10);
 	setIO_level(1, 1, 1);//30m poweer_enable
-	msleep(100);
+	msleep(10);
 	configIO(0, 0);
 	setIO_level(0, 1, 3);//30m reset high
-	msleep(400);
+	msleep(20);
 		  
 	#endif
 
@@ -1204,7 +1180,7 @@ static int gc0308_v4l2_uninit(void)
 	setIO_level(1, 1, 0);//30m pwd enable
 	configIO(0, 0);
 	setIO_level(0, 0, 3);//30m reset low
-	msleep(300); 
+	msleep(20); 
     #endif
 
 }
@@ -1253,17 +1229,17 @@ static int gt2005_v4l2_init(void)
 	//setIO_level(0, 0, 3);//30m reset low
 	setIO_level(0, 0, 2);//200m reset low
 	configIO(1, 0);
-	msleep(100);
+	msleep(10);
 	setIO_level(1, 1, 2);//200m poweer_enable
-	msleep(100);
+	msleep(10);
 	configIO(0, 0);
 	setIO_level(0, 1, 2);//200m reset high
 	
-	msleep(100);
+	msleep(10);
 	configIO(1, 0);
 	setIO_level(1, 1, 6);//200m pwd high
 	//configIO(1, 0);
-	msleep(400);
+	msleep(20);
     
     #endif
 
@@ -1277,7 +1253,7 @@ static int gt2005_v4l2_uninit(void)
 	setIO_level(1, 0, 6);//200m pwd low
 	//configIO(0, 0);
 	//setIO_level(0, 0, 2);//200m reset low
-	msleep(300); 
+	msleep(20); 
     #endif
 
 }
@@ -1304,64 +1280,6 @@ aml_plat_cam_data_t video_gt2005_data = {
 };
 #endif /* VIDEO_AMLOGIC_CAPTURE_GT2005 */
 
-#ifdef CONFIG_CAMERA_GT2005
-static struct platform_device camera_gt2005_device = {
-    .name       = "camera_gt2005",
-    .id         = -1,
-};
-int gt2005_init(void)
-{
-   eth_set_pinmux(ETH_BANK0_GPIOC3_C12,ETH_CLK_OUT_GPIOC12_REG3_1, 1);
-   #ifdef CONFIG_SN7325
-	printk( "amlogic camera driver: init CONFIG_SN7325. \n");
-	configIO(1, 0);
-	setIO_level(1, 0, 1);//30m poweer_disable	
-	setIO_level(1, 0, 2);//200m poweer_disable
-	setIO_level(1, 1, 0);//30m pwd disable
-	setIO_level(1, 0, 6);//200m pwd low
-	configIO(0, 0);
-	setIO_level(0, 0, 3);//30m reset low
-	setIO_level(0, 0, 2);//200m reset low
-	configIO(1, 0);
-	msleep(300);
-	setIO_level(1, 1, 2);//200m poweer_enable
-	msleep(300);
-	configIO(0, 0);
-	setIO_level(0, 1, 2);//200m reset high
-	
-	msleep(300);
-	configIO(1, 0);
-	setIO_level(1, 1, 6);//200m pwd high
-	//configIO(1, 0);
-	
-    #endif
-
-}
-static struct amlogic_camera_platform_data gt2005_pdata = {
-    .name = "camera_gt2005",
-    .first_init = gt2005_init,
-    #ifdef CONFIG_AMLOGIC_SECOND_CAMERA_ENABLE
-    .second_init = gc0308_init,
-    #else
-	.second_init = NULL,
-	#endif
-};
-
-static void __init camera_gt2005_power_on_init(void)
-{
-    udelay(1000);
-    WRITE_CBUS_REG(HHI_ETH_CLK_CNTL,0x30f);// 24M XTAL
-    WRITE_CBUS_REG(HHI_DEMOD_PLL_CNTL,0x232);// 24M XTAL
-    
-    
-    printk("camera_gt2005_power_on_init WRITE_CBUS_REG \n");
-    printk("HHI_ETH_CLK_CNTL = %x\n", READ_CBUS_REG(HHI_ETH_CLK_CNTL));
-    printk("HHI_DEMOD_PLL_CNTL = %x\n", READ_CBUS_REG(HHI_DEMOD_PLL_CNTL));
-
-    eth_set_pinmux(ETH_BANK0_GPIOC3_C12,ETH_CLK_OUT_GPIOC12_REG3_1, 1);		
-}
-
-#endif
 
 #if defined(CONFIG_SUSPEND)
 
@@ -1593,7 +1511,7 @@ static struct meson_pm_config aml_pm_pdata = {
     .pctl_reg_base = IO_APB_BUS_BASE,
     .mmc_reg_base = APB_REG_ADDR(0x1000),
     .hiu_reg_base = CBUS_REG_ADDR(0x1000),
-    .power_key = CBUS_REG_ADDR(RTC_ADDR1),
+    .power_key = (1<<8),
     .ddr_clk = 0x00110820,
     .sleepcount = 128,
     .set_vccx2 = set_vccx2,
@@ -1860,89 +1778,89 @@ static int bat_charge_value_table[37]={
 #else
 static int bat_value_table[37]={
 0,  //0
-513,//0
-534,//4
-539,//10
-543,//15
-544,//16
-546,//18
-547,//20
-548,//23
-549,//26
-550,//29
-551,//32
-552,//35
-553,//37
-554,//40
-556,//43
-557,//46
-559,//49
-560,//51
-563,//54
-565,//57
-567,//60
-571,//63
-574,//66
-576,//68
-580,//71
-584,//74
-587,//77
-592,//80
-596,//83
-599,//85
-603,//88
-608,//91
-614,//95
+520,//0
+541,// 5
+546,//10
+547,//15
+548,//16
+549,//18
+550,//20
+551,//23
+552,//26
+553,//29
+554,//32
+555,//35
+556,//37
+557,//40
+558,//43
+560,//46
+562,//49
+564,//51
+566,//54
+569,//57
+572,//60
+575,//63
+578,//66
+580,//68
+583,//71
+587,//74
+591,//77
+595,//80
+597,//83
+601,//85
+605,//88
+610,//91
+615,//95
 618,//97
-626,//100
-626 //100
+621,//100
+621 //100
 };
 
 static int bat_charge_value_table[37]={
 0,  //0    
-534,//0
-562,//4
-573,//10
-577,//15
-578,//16
-579,//18
-581,//20
-583,//23
-584,//26
-585,//29
-586,//32
-587,//35
-588,//37
-589,//40
-590,//43
-591,//46
-592,//49
-593,//51
-595,//54
-597,//57
-599,//60
-601,//63
-603,//66
-604,//68
-606,//71
-609,//74
-611,//77
-614,//80
-617,//83
-619,//85
-622,//88
-625,//91
-628,//95
-632,//97
-636,//100
-636 //100
+538,//0
+577,//5
+580,//10
+584,//15
+585,//16
+587,//18
+589,//20
+591,//23
+592,//26
+593,//29
+594,//32
+595,//35
+596,//37
+597,//40
+598,//43
+600,//46
+601,//49
+602,//51
+604,//54
+606,//57
+608,//60
+610,//63
+612,//66
+614,//68
+616,//71
+618,//74
+620,//77
+623,//80
+626,//83
+628,//85
+631,//88
+634,//91
+640,//95
+642,//97
+643,//100
+643 //100
 };
 #endif
 
 static int bat_level_table[37]={
 0,
 0,
-4,
+5,
 10,
 15,
 16,
@@ -1992,6 +1910,7 @@ static struct aml_power_pdata power_pdata = {
 	.bat_table_len = 37,		
 	.ic_control = ic_control,
 	.powerkey_led_onoff = powerkey_led_onoff,
+	.is_support_usb_charging = 1,
 	//.supplied_to = supplicants,
 	//.num_supplicants = ARRAY_SIZE(supplicants),
 };
@@ -2187,18 +2106,8 @@ static struct mtd_partition multi_partition_info[] =
 	},
 	{
 		.name = "NFTL_Part",
-		.offset = 672*1024*1024,
-		.size = 128*1024*1024,
-	},
-	{
-		.name = "adept",
-		.offset = 800*1024*1024,
-		.size = 32*1024*1024,
-	},
-	{
-		.name = "NFTL_Part",
-		.offset = ((800 + 32)*1024*1024),
-		.size = ((0x200000000 - (800 + 32)*1024*1024)),
+		.offset = ((416 + 256)*1024*1024),
+		.size = ((0x200000000 - (416 + 256)*1024*1024)),
 	},
 };
 
@@ -2429,8 +2338,8 @@ static struct platform_device vout_device = {
 #ifdef CONFIG_USB_ANDROID_MASS_STORAGE
 static struct usb_mass_storage_platform_data mass_storage_pdata = {
        .nluns = 2,
-       .vendor = "AMLOGIC",
-       .product = "Android MID",
+       .vendor = "Pandigital",
+       .product = "Pandigital",
        .release = 0x0100,
 };
 static struct platform_device usb_mass_storage_device = {
@@ -2468,8 +2377,8 @@ static struct android_usb_platform_data android_usb_pdata = {
        .vendor_id      = 0x0bb4,
        .product_id     = 0x0c01,
        .version        = 0x0100,
-       .product_name   = "Android MID",
-       .manufacturer_name = "AMLOGIC",
+       .product_name   = "Pandigital",
+       .manufacturer_name = "Pandigital",
        .num_products = ARRAY_SIZE(usb_products),
        .products = usb_products,
        .num_functions = ARRAY_SIZE(usb_functions_adb),
@@ -2559,15 +2468,9 @@ static struct platform_device __initdata *platform_devs[] = {
     #if defined(CONFIG_AMLOGIC_BACKLIGHT)
         &aml_bl_device,
     #endif
-    #ifdef CONFIG_CAMERA_GC0308
-        &camera_device,
-    #endif
     #ifdef CONFIG_AMLOGIC_VIDEOIN_MANAGER
 		&vm_device,
 	#endif
-    #ifdef CONFIG_CAMERA_GT2005
-        &camera_gt2005_device,
-    #endif
     #if defined(CONFIG_AM_TV_OUTPUT)||defined(CONFIG_AM_TCON_OUTPUT)
         &vout_device,   
     #endif
@@ -2589,21 +2492,6 @@ static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
 #ifdef CONFIG_SENSORS_MXC622X
     {
         I2C_BOARD_INFO(MXC622X_I2C_NAME,  MXC622X_I2C_ADDR),
-    },
-#endif
-
-#ifdef CONFIG_CAMERA_GC0308
-    {
-        /*gc0309 i2c address is 0x42/0x43*/
-        I2C_BOARD_INFO("gc0308_i2c",  0x42 >> 1 ),
-    },
-#endif
-
-#ifdef CONFIG_CAMERA_GT2005
-    {
-    	/*gt2005 i2c address is 0x78/0x79*/
-    	I2C_BOARD_INFO("gt2005_i2c",  0x78 >> 1 ),
-    	.platform_data = (void *)&gt2005_pdata
     },
 #endif
 #if CONFIG_VIDEO_AMLOGIC_CAPTURE_GT2005

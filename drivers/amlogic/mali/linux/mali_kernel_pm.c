@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2010 ARM Limited. All rights reserved.
+ * Copyright (C) 2010-2011 ARM Limited. All rights reserved.
  * 
  * This program is free software and is provided to you under the terms of the GNU General Public License version 2
  * as published by the Free Software Foundation, and any use by you of this program is subject to the terms of such GNU licence.
@@ -40,6 +40,10 @@
 #include "mali_device_pause_resume.h"
 #include "mali_linux_pm.h"
 
+#if MALI_GPU_UTILIZATION
+#include "mali_kernel_utilization.h"
+#endif /* MALI_GPU_UTILIZATION */
+
 #if MALI_POWER_MGMT_TEST_SUITE
 #ifdef CONFIG_PM
 #include "mali_linux_pm_testsuite.h"
@@ -73,6 +77,7 @@ static const char* const mali_states[_MALI_MAX_DEBUG_OPERATIONS] = {
 	[_MALI_DVFS_PAUSE_EVENT] = "dvfs_pause",
 	[_MALI_DVFS_RESUME_EVENT] = "dvfs_resume",
 };
+
 #endif /* CONFIG_PM_DEBUG */
 
 #if MALI_PMM_RUNTIME_JOB_CONTROL_ON
@@ -109,8 +114,8 @@ _mali_osk_lock_t *lock;
 #if MALI_POWER_MGMT_TEST_SUITE
 
 const char* const mali_pmm_recording_events[_MALI_DEVICE_MAX_PMM_EVENTS] = {
-        [_MALI_DEVICE_PMM_TIMEOUT_EVENT] = "timeout",
-        [_MALI_DEVICE_PMM_JOB_SCHEDULING_EVENTS] = "job_scheduling",
+	[_MALI_DEVICE_PMM_TIMEOUT_EVENT] = "timeout",
+	[_MALI_DEVICE_PMM_JOB_SCHEDULING_EVENTS] = "job_scheduling",
 	[_MALI_DEVICE_PMM_REGISTERED_CORES] = "cores",
 
 };
@@ -145,6 +150,8 @@ static void mali_pm_late_resume(struct early_suspend *mali_dev);
 #endif /* CONFIG_HAS_EARLYSUSPEND */
 
 /* OS suspend and resume callbacks */
+#if !MALI_PMM_RUNTIME_JOB_CONTROL_ON
+#ifndef CONFIG_PM_RUNTIME
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(LINUX_KERNEL_MAJOR_VERSION,LINUX_KERNEL_MINOR_VERSION,LINUX_KERNEL_DEVELOPMENT_VERSION))
 static int mali_pm_os_suspend(struct platform_device *pdev, pm_message_t state);
 #else
@@ -156,6 +163,8 @@ static int mali_pm_os_resume(struct platform_device *pdev);
 #else
 static int mali_pm_os_resume(struct device *dev);
 #endif
+#endif /* CONFIG_PM_RUNTIME */
+#endif /* MALI_PMM_RUNTIME_JOB_CONTROL_ON */
 
 /* OS Hibernation suspend callback */
 static int mali_pm_os_suspend_on_hibernation(struct device *dev);
@@ -175,8 +184,12 @@ static const struct dev_pm_ops mali_dev_pm_ops = {
 #endif  /* MALI_PMM_RUNTIME_JOB_CONTROL_ON */
 #endif  /* CONFIG_PM_RUNTIME */
 
+#ifndef CONFIG_PM_RUNTIME
+#if !MALI_PMM_RUNTIME_JOB_CONTROL_ON
 	.suspend = mali_pm_os_suspend,
 	.resume = mali_pm_os_resume,
+#endif /* MALI_PMM_RUNTIME_JOB_CONTROL_ON */
+#endif /* CONFIG_PM_RUNTIME */
 	.freeze = mali_pm_os_suspend_on_hibernation,
 	.poweroff = mali_pm_os_suspend_on_hibernation,
 	.thaw = mali_pm_os_resume_on_hibernation,
@@ -187,10 +200,10 @@ static const struct dev_pm_ops mali_dev_pm_ops = {
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(LINUX_KERNEL_MAJOR_VERSION,LINUX_KERNEL_MINOR_VERSION,LINUX_KERNEL_DEVELOPMENT_VERSION))
 struct pm_ext_ops mali_pm_operations = {
 	.base = {
-                .freeze = mali_pm_os_suspend_on_hibernation,
-                .thaw =   mali_pm_os_resume_on_hibernation,
-                .poweroff = mali_pm_os_resume_on_hibernation,
-                .restore = mali_pm_os_resume_on_hibernation,
+		.freeze = mali_pm_os_suspend_on_hibernation,
+		.thaw =   mali_pm_os_resume_on_hibernation,
+		.poweroff = mali_pm_os_resume_on_hibernation,
+		.restore = mali_pm_os_resume_on_hibernation,
 	},
 };
 #endif
@@ -199,8 +212,12 @@ static struct platform_driver mali_plat_driver = {
 	.probe  = mali_pm_probe,
 	.remove = mali_pm_remove,
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(LINUX_KERNEL_MAJOR_VERSION,LINUX_KERNEL_MINOR_VERSION,LINUX_KERNEL_DEVELOPMENT_VERSION))
+#ifndef CONFIG_PM_RUNTIME
+#if !MALI_PMM_RUNTIME_JOB_CONTROL_ON
 	.suspend = mali_pm_os_suspend,
 	.resume  = mali_pm_os_resume,
+#endif /* CONFIG_PM_RUNTIME */
+#endif /* MALI_PMM_RUNTIME_JOB_CONTROL_ON */
 	.pm = &mali_pm_operations,
 #endif
 
@@ -251,7 +268,6 @@ void mali_is_pmu_present(void)
 	{
 		is_mali_pmu_present = 1;
 	}
-	
 }
 #endif /* MALI_POWER_MGMT_TEST_SUITE */
 #endif /* MALI_LICENSE_IS_GPL */
@@ -303,6 +319,9 @@ static int mali_pm_suspend(struct device *dev)
 {
 	int err = 0;
 	_mali_osk_lock_wait(lock, _MALI_OSK_LOCKMODE_RW);
+#if MALI_GPU_UTILIZATION
+	mali_utilization_suspend();
+#endif /* MALI_GPU_UTILIZATION */
 	if ((mali_device_state == _MALI_DEVICE_SUSPEND) 
 #ifdef CONFIG_HAS_EARLYSUSPEND
 	    || mali_device_state ==  (_MALI_DEVICE_EARLYSUSPEND_DISABLE_FB))
@@ -320,6 +339,8 @@ static int mali_pm_suspend(struct device *dev)
 	return err;
 }
 
+#ifndef CONFIG_PM_RUNTIME
+#if !MALI_PMM_RUNTIME_JOB_CONTROL_ON
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(LINUX_KERNEL_MAJOR_VERSION,LINUX_KERNEL_MINOR_VERSION,LINUX_KERNEL_DEVELOPMENT_VERSION))
 static int mali_pm_os_suspend(struct platform_device *pdev, pm_message_t state)
 #else
@@ -330,6 +351,9 @@ static int mali_pm_os_suspend(struct device *dev)
 	err = mali_pm_suspend(NULL);
 	return err;
 }
+#endif /* MALI_PMM_RUNTIME_JOB_CONTROL_ON */
+#endif /* CONFIG_PM_RUNTIME */
+
 #ifdef CONFIG_PM_RUNTIME
 #if MALI_PMM_RUNTIME_JOB_CONTROL_ON
 #ifndef CONFIG_HAS_EARLYSUSPEND
@@ -340,6 +364,10 @@ static int mali_pwr_suspend_notifier(struct notifier_block *nb,unsigned long eve
 	{
 		case PM_SUSPEND_PREPARE:
 			err = mali_pm_suspend(NULL);
+		break;
+
+		case PM_POST_SUSPEND:
+			err = mali_pm_resume(NULL);
 		break;
 		default:
 		break;
@@ -386,6 +414,8 @@ static int mali_pm_resume(struct device *dev)
 	return err;
 }
 
+#ifndef CONFIG_PM_RUNTIME
+#if !MALI_PMM_RUNTIME_JOB_CONTROL_ON
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(LINUX_KERNEL_MAJOR_VERSION,LINUX_KERNEL_MINOR_VERSION,LINUX_KERNEL_DEVELOPMENT_VERSION))
 static int mali_pm_os_resume(struct platform_device *pdev)
 #else
@@ -396,6 +426,8 @@ static int mali_pm_os_resume(struct device *dev)
 	err = mali_pm_resume(NULL);
 	return err;
 }
+#endif /* MALI_PMM_RUNTIME_JOB_CONTROL_ON */
+#endif /* CONFIG_PM_RUNTIME */
 
 static int mali_pm_os_suspend_on_hibernation(struct device *dev)
 {
@@ -452,6 +484,9 @@ static void mali_pm_early_suspend(struct early_suspend *mali_dev)
 		case EARLY_SUSPEND_LEVEL_DISABLE_FB:
 			MALI_DEBUG_PRINT(4, ("PMMDEBUG: Suspend level Disable framebuffer\n" ));
 			_mali_osk_lock_wait(lock, _MALI_OSK_LOCKMODE_RW);
+#if MALI_GPU_UTILIZATION
+			mali_utilization_suspend();
+#endif /* MALI_GPU_UTILIZATION */
 			if ((mali_device_state == _MALI_DEVICE_SUSPEND) || (mali_device_state == _MALI_DEVICE_EARLYSUSPEND_DISABLE_FB))
 			{
 				_mali_osk_lock_signal(lock, _MALI_OSK_LOCKMODE_RW);
@@ -540,21 +575,21 @@ static ssize_t store_file(struct device *dev, struct device_attribute *attr, con
 
 #if MALI_POWER_MGMT_TEST_SUITE
 	else if (!strncmp(buf,mali_pmm_recording_events[_MALI_DEVICE_PMM_REGISTERED_CORES],strlen(mali_pmm_recording_events[_MALI_DEVICE_PMM_REGISTERED_CORES])))
-        {
-                MALI_DEBUG_PRINT(4, ("PMMDEBUG: MALI Device get number of registerd cores\n" ));
+	{
+		MALI_DEBUG_PRINT(4, ("PMMDEBUG: MALI Device get number of registerd cores\n" ));
 		pwr_mgmt_status_reg = _mali_pmm_cores_list();
 		return count;
-        }
+	}
 	else if (!strncmp(buf,mali_pmm_recording_events[_MALI_DEVICE_PMM_TIMEOUT_EVENT],strlen(mali_pmm_recording_events[_MALI_DEVICE_PMM_TIMEOUT_EVENT])))
-        {
-                MALI_DEBUG_PRINT(4, ("PMMDEBUG: MALI timeout event recording is enabled\n" ));
+	{
+		MALI_DEBUG_PRINT(4, ("PMMDEBUG: MALI timeout event recording is enabled\n" ));
 		mali_timeout_event_recording_on = 1;
-        }
+	}
 	else if (!strncmp(buf,mali_pmm_recording_events[_MALI_DEVICE_PMM_JOB_SCHEDULING_EVENTS],strlen(mali_pmm_recording_events[_MALI_DEVICE_PMM_JOB_SCHEDULING_EVENTS])))
-        {
-                MALI_DEBUG_PRINT(4, ("PMMDEBUG: MALI Job scheduling  events recording is enabled\n" ));
-                mali_job_scheduling_events_recording_on = 1;
-        }
+	{
+		MALI_DEBUG_PRINT(4, ("PMMDEBUG: MALI Job scheduling  events recording is enabled\n" ));
+		mali_job_scheduling_events_recording_on = 1;
+	}
 #endif /* MALI_POWER_MGMT_TEST_SUITE */
 
 	else if (!strncmp(buf,mali_states[_MALI_DEVICE_RESUME],strlen(mali_states[_MALI_DEVICE_RESUME]))) 

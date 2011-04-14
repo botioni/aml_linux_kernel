@@ -46,10 +46,24 @@
 #define   REMOTE_IOC_GET_REG_FRAME_DATA		_IOR_BAD('I',127,sizeof(short))
 #define   REMOTE_IOC_GET_REG_FRAME_STATUS	_IOR_BAD('I',128,sizeof(short))
 
-#define   REMOTE_WORK_MODE_SW 		0
-#define   REMOTE_WORK_MODE_HW			1
-#define   REMOTE_WORK_MODE_FIQ		2
-#define   REMOTE_WORK_MODE_INV		3
+#define   	REMOTE_HW_DECODER_STATUS_MASK			(0xf<<4)
+#define   	REMOTE_HW_DECODER_STATUS_OK			(0<<4)
+#define	REMOTE_HW_DECODER_STATUS_TIMEOUT		(1<<4)
+#define	REMOTE_HW_DECODER_STATUS_LEADERERR	(2<<4)
+#define	REMOTE_HW_DECODER_STATUS_REPEATERR	(3<<4)
+
+#define	REMOTE_HW_PATTERN_MASK					(0xf<<4)
+#define	REMOTE_HW_NEC_PATTERN					(0x0<<4)
+#define	REMOTE_HW_TOSHIBA_PATTERN				(0x1<<4)
+
+#define   REMOTE_WORK_MODE_SW 				(0)
+#define   REMOTE_WORK_MODE_HW					(1)
+#define   REMOTE_WORK_MODE_FIQ				(2)
+#define   REMOTE_WORK_MODE_INV				(3)
+#define   REMOTE_WORK_MODE_MASK 				(3)
+
+#define   REMOTE_TOSHIBA_HW		(REMOTE_HW_TOSHIBA_PATTERN|REMOTE_WORK_MODE_HW)
+#define   REMOTE_NEC_HW				(REMOTE_HW_NEC_PATTERN|REMOTE_WORK_MODE_HW)
 
 
 #define REMOTE_STATUS_WAIT       0
@@ -66,7 +80,8 @@ typedef  int   (*type_printk)(const char *fmt, ...) ;
 struct kp {
 	struct input_dev *input;
 	struct timer_list timer;
-       unsigned long repeat_timer;
+	struct timer_list repeat_timer;
+       unsigned long repeat_tick;
 	int irq;
 	int work_mode ;
 	unsigned int cur_keycode;

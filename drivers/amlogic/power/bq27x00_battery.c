@@ -52,6 +52,7 @@ static struct early_suspend bq27x00_early_suspend;
 static int polling_count = 0;
 static int ac_status = 0;
 static int usb_status = 0;
+static int new_usb_status = 0;
 static int battery_capacity = 100;
 static int new_battery_capacity = 100;
 static int charge_status = -1;
@@ -80,6 +81,7 @@ struct bq27x00_device_info {
 	struct bq27x00_access_methods	*bus;
 	struct power_supply	bat;
 	struct power_supply	ac;	
+	struct power_supply	usb;	
 	enum bq27x00_chip	chip;
 
 	struct i2c_client	*client;
@@ -208,39 +210,39 @@ static int bq27x00_battery_rsoc(struct bq27x00_device_info *di)
 
 	return rsoc;
 }
-
-static int bq27x00_battery_status(struct bq27x00_device_info *di)
-{
-	int flags = 0;
-	int status;
-	int ret;
-
-	ret = bq27x00_read(BQ27x00_REG_FLAGS, &flags, 0, di);
-	if (ret < 0) {
-		dev_err(di->dev, "error reading flags\n");
-		return ret;
-	}
-
-	if (di->chip == BQ27500) {
-		if (flags & BQ27500_FLAG_FC)
-			status = POWER_SUPPLY_STATUS_FULL;
-		else if (flags & BQ27500_FLAG_DSC)
-			status = POWER_SUPPLY_STATUS_DISCHARGING;
-		else
-			status = POWER_SUPPLY_STATUS_CHARGING;
-	} else {
-	    if(pdata->is_ac_online()){
-    		if (flags & BQ27000_FLAG_CHGS)
-    			status = POWER_SUPPLY_STATUS_CHARGING;
-    		else
-    		    status = POWER_SUPPLY_STATUS_FULL;
-		}
-		else
-			status = POWER_SUPPLY_STATUS_CHARGING;		    
-	}
-
-	return status;
-}
+//
+//static int bq27x00_battery_status(struct bq27x00_device_info *di)
+//{
+//	int flags = 0;
+//	int status;
+//	int ret;
+//
+//	ret = bq27x00_read(BQ27x00_REG_FLAGS, &flags, 0, di);
+//	if (ret < 0) {
+//		dev_err(di->dev, "error reading flags\n");
+//		return ret;
+//	}
+//
+//	if (di->chip == BQ27500) {
+//		if (flags & BQ27500_FLAG_FC)
+//			status = POWER_SUPPLY_STATUS_FULL;
+//		else if (flags & BQ27500_FLAG_DSC)
+//			status = POWER_SUPPLY_STATUS_DISCHARGING;
+//		else
+//			status = POWER_SUPPLY_STATUS_CHARGING;
+//	} else {
+//	    if(pdata->is_ac_online()){
+//    		if (flags & BQ27000_FLAG_CHGS)
+//    			status = POWER_SUPPLY_STATUS_CHARGING;
+//    		else
+//    		    status = POWER_SUPPLY_STATUS_FULL;
+//		}
+//		else
+//			status = POWER_SUPPLY_STATUS_DISCHARGING;		    
+//	}
+//
+//	return status;
+//}
 
 /*
  * Read a time register.
@@ -265,18 +267,37 @@ static int bq27x00_battery_time(struct bq27x00_device_info *di, int reg,
 	return 0;
 }
 
+#ifdef CONFIG_USB_ANDROID
+int pc_connect(int status) 
+{
+    new_usb_status = status; 
+    if(new_usb_status == usb_status)
+        return 1;
+    usb_status = new_usb_status;
+    power_supply_changed(&device_info->usb);
+    
+    return 0;
+} 
+static int gadget_is_usb_online(void)
+{
+	return usb_status;
+}
+EXPORT_SYMBOL(pc_connect);
+
+#endif
+
 #define to_bq27x00_device_info(x) container_of((x), \
 				struct bq27x00_device_info, bat);
 static int ac_power_get_property(struct power_supply *psy,
 		enum power_supply_property psp, union power_supply_propval *val)
 {
 	int retval = 0;
+	
+    if (psy->type == POWER_SUPPLY_TYPE_MAINS)
+        val->intval = pdata->is_ac_online ? pdata->is_ac_online() : 0;
+    else
+        val->intval = pdata->is_usb_online ? pdata->is_usb_online() : 0;
 
-	if (psp == POWER_SUPPLY_PROP_ONLINE&&pdata->is_ac_online) {
-		val->intval = pdata->is_ac_online();
-	} else {
-		retval = -EINVAL;
-	}
 	return retval;
 }
 static int bq27x00_battery_get_property(struct power_supply *psy,
@@ -288,7 +309,15 @@ static int bq27x00_battery_get_property(struct power_supply *psy,
 
 	switch (psp) {
 	case POWER_SUPPLY_PROP_STATUS:
-		val->intval = bq27x00_battery_status(di);
+		if(pdata->is_ac_online())
+		{
+			if(pdata->get_charge_status())
+				val->intval = POWER_SUPPLY_STATUS_FULL;
+			else
+				val->intval = POWER_SUPPLY_STATUS_CHARGING;
+		}
+		else
+			val->intval = POWER_SUPPLY_STATUS_DISCHARGING;
 		break;
 	case POWER_SUPPLY_PROP_VOLTAGE_NOW:
 	case POWER_SUPPLY_PROP_PRESENT:
@@ -337,6 +366,14 @@ static void bq27x00_powersupply_init(struct bq27x00_device_info *di)
 	di->ac.properties = ac_power_props;
 	di->ac.num_properties = ARRAY_SIZE(ac_power_props);
 	di->ac.get_property = ac_power_get_property;
+
+    di->usb.name = "usb";
+	di->usb.type = POWER_SUPPLY_TYPE_USB;
+	di->usb.supplied_to = ac_supply_list,
+	di->usb.num_supplicants = ARRAY_SIZE(ac_supply_list),
+	di->usb.properties = ac_power_props;
+	di->usb.num_properties = ARRAY_SIZE(ac_power_props);
+	di->usb.get_property = ac_power_get_property;
 	
 }
 
@@ -385,7 +422,7 @@ static int bq27x00_read_i2c(u8 reg, int *rt_value, int b_single,
 
 static void battery_work_func(struct work_struct *work)
 {
-    bool status_changed;
+    bool ac_changed,bat_changed;
     
     polling_count ++;
     if(polling_count >= 6){
@@ -395,22 +432,34 @@ static void battery_work_func(struct work_struct *work)
     
     if(pdata->is_ac_online){
         if(ac_status != pdata->is_ac_online()){
-            status_changed = true;
+            ac_status = pdata->is_ac_online();
+            ac_changed = true;
         }
     }
     
-    if(pdata->is_ac_online()){
-        new_charge_status = bq27x00_battery_status(device_info);
-        if(new_charge_status != charge_status){
-            status_changed = true;
-        }
-    }  
-      
-    if(battery_capacity != new_battery_capacity){
+	if (pdata->get_charge_status&&pdata->is_ac_online){
+		if(pdata->is_ac_online())
+		{
+			if(pdata->get_charge_status())
+				new_charge_status = POWER_SUPPLY_STATUS_FULL;
+			else
+				new_charge_status = POWER_SUPPLY_STATUS_CHARGING;
+		}
+		else
+			new_charge_status = POWER_SUPPLY_STATUS_DISCHARGING;	   
+    }
+        
+    if(new_charge_status != charge_status||battery_capacity != new_battery_capacity){
+        charge_status = new_charge_status;
+        battery_capacity = new_battery_capacity;
+        bat_changed = true;
+    }
+    
+    if(bat_changed){
         power_supply_changed(&device_info->bat); 
     }    
-    
-    if(status_changed)
+        
+    if(ac_changed)
         power_supply_changed(&device_info->ac);      
       
 }
@@ -488,7 +537,9 @@ static int bq27x00_battery_probe(struct i2c_client *client,
 	if (retval < 0)
 		return retval;
     pdata = (struct bq27x00_battery_pdata*)client->dev.platform_data;
-
+#ifdef CONFIG_USB_ANDROID
+    pdata->is_usb_online = gadget_is_usb_online;
+#endif
 	if (pdata->set_charge) {
 		pdata->set_charge(0);
         printk("set slow charge\n");
@@ -538,7 +589,13 @@ static int bq27x00_battery_probe(struct i2c_client *client,
 		dev_err(&client->dev, "failed to register ac\n");
 		goto batt_failed_4;
 	}
-
+	
+	retval = power_supply_register(&client->dev, &di->usb);
+	if (retval) {
+		dev_err(&client->dev, "failed to register usb\n");
+		goto batt_failed_4;
+	}
+	
    	retval = class_register(&powerhold_class);
 	if(retval){
 		printk(" class register powerhold_class fail!\n");
@@ -585,6 +642,7 @@ static int bq27x00_battery_remove(struct i2c_client *client)
 
 	power_supply_unregister(&di->bat);
 	power_supply_unregister(&di->ac);
+	power_supply_unregister(&di->usb);	
 	kfree(di->bat.name);
 
 	mutex_lock(&battery_mutex);

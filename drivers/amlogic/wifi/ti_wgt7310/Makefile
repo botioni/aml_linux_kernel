@@ -23,73 +23,67 @@ EXTRA_CFLAGS += -DLINUX -DHOST_COMPILE -DFW_RUNNING_AS_STA -DSTATIC_LIB -DDEBUG 
 			-Idrivers/amlogic/wifi/ti_wgt7310/Txn/ \
 			-Idrivers/amlogic/wifi/ti_wgt7310/utils/
 
-OFILES = amlogic-wifi.o SdioDrv.o WlanDrvIf.o osapi.o osmemapi.o osRgstry_parser.o ipc_k.o \
-	WlanDrvWext.o CmdInterpretWext.o RxBuf.o host_platform.o \
-	SdioAdapter.o osRgstry.o
+#SRC = amlogic-wifi.c 
+SRC = SdioDrv.c WlanDrvIf.c osapi.c osmemapi.c osRgstry_parser.c ipc_k.c \
+	WlanDrvWext.c CmdInterpretWext.c RxBuf.c host_platform.c \
+	SdioAdapter.c osRgstry.c
 
-AirLinkOFILES = AirLink_Managment/measurementMgr.o AirLink_Managment/measurementMgrSM.o AirLink_Managment/regulatoryDomain.o \
-			AirLink_Managment/requestHandler.o AirLink_Managment/SoftGemini.o AirLink_Managment/spectrumMngmntMgr.o AirLink_Managment/SwitchChannel.o
+SRC += AirLink_Managment/measurementMgr.c AirLink_Managment/measurementMgrSM.c AirLink_Managment/regulatoryDomain.c \
+			AirLink_Managment/requestHandler.c AirLink_Managment/SoftGemini.c AirLink_Managment/spectrumMngmntMgr.c AirLink_Managment/SwitchChannel.c
 
-ApplicationOFILES = Application/roamingMngr.o Application/roamingMngr_autoSM.o  Application/roamingMngr_manualSM.o Application/scanMngr.o
+SRC += Application/roamingMngr.c Application/roamingMngr_autoSM.c  Application/roamingMngr_manualSM.c Application/scanMngr.c
 
-ConnectionOFILES = Connection_Managment/mainSecKeysOnly.o Connection_Managment/mainSecNull.o Connection_Managment/mainSecSm.o \
-		Connection_Managment/rsn.o Connection_Managment/sme.o Connection_Managment/smeSelect.o Connection_Managment/smeSm.o \
-		 Connection_Managment/unicastKey802_1x.o Connection_Managment/unicastKeyNone.o Connection_Managment/unicastKeySM.o \
-		 Connection_Managment/admCtrl.o Connection_Managment/admCtrlNone.o Connection_Managment/admCtrlWep.o \
-		 Connection_Managment/admCtrlWpa2.o Connection_Managment/admCtrlWpa.o Connection_Managment/apConn.o \
-		 Connection_Managment/broadcastKey802_1x.o Connection_Managment/broadcastKeyNone.o Connection_Managment/broadcastKeySM.o \
-		 Connection_Managment/conn.o Connection_Managment/connIbss.o Connection_Managment/connInfra.o \
-		 Connection_Managment/externalSec.o Connection_Managment/keyDerive.o Connection_Managment/keyDeriveAes.o \
-		 Connection_Managment/keyDeriveCkip.o Connection_Managment/keyDeriveTkip.o Connection_Managment/keyDeriveWep.o \
-		 Connection_Managment/keyParser.o Connection_Managment/keyParserExternal.o Connection_Managment/keyParserWep.o \
-		 Connection_Managment/mainKeysSm.o
+SRC += Connection_Managment/mainSecKeysOnly.c Connection_Managment/mainSecNull.c Connection_Managment/mainSecSm.c \
+		Connection_Managment/rsn.c Connection_Managment/sme.c Connection_Managment/smeSelect.c Connection_Managment/smeSm.c \
+		 Connection_Managment/unicastKey802_1x.c Connection_Managment/unicastKeyNone.c Connection_Managment/unicastKeySM.c \
+		 Connection_Managment/admCtrl.c Connection_Managment/admCtrlNone.c Connection_Managment/admCtrlWep.c \
+		 Connection_Managment/admCtrlWpa2.c Connection_Managment/admCtrlWpa.c Connection_Managment/apConn.c \
+		 Connection_Managment/broadcastKey802_1x.c Connection_Managment/broadcastKeyNone.c Connection_Managment/broadcastKeySM.c \
+		 Connection_Managment/conn.c Connection_Managment/connIbss.c Connection_Managment/connInfra.c \
+		 Connection_Managment/externalSec.c Connection_Managment/keyDerive.c Connection_Managment/keyDeriveAes.c \
+		 Connection_Managment/keyDeriveCkip.c Connection_Managment/keyDeriveTkip.c Connection_Managment/keyDeriveWep.c \
+		 Connection_Managment/keyParser.c Connection_Managment/keyParserExternal.c Connection_Managment/keyParserWep.c \
+		 Connection_Managment/mainKeysSm.c
 
-Ctrl_InterfaceOFILES = Ctrl_Interface/CmdDispatcher.o Ctrl_Interface/CmdHndlr.o Ctrl_Interface/DrvMain.o Ctrl_Interface/EvHandler.o
+SRC += Ctrl_Interface/CmdDispatcher.c Ctrl_Interface/CmdHndlr.c Ctrl_Interface/DrvMain.c Ctrl_Interface/EvHandler.c
 
-Data_linkOFILES = Data_link/Ctrl.o Data_link/GeneralUtil.o  Data_link/rx.o Data_link/TrafficMonitor.o Data_link/txCtrl.o \
-		 Data_link/txCtrlParams.o Data_link/txCtrlServ.o Data_link/TxDataClsfr.o Data_link/txDataQueue.o \
-		 Data_link/txMgmtQueue.o Data_link/txPort.o
+SRC += Data_link/Ctrl.c Data_link/GeneralUtil.c  Data_link/rx.c Data_link/TrafficMonitor.c Data_link/txCtrl.c \
+		 Data_link/txCtrlParams.c Data_link/txCtrlServ.c Data_link/TxDataClsfr.c Data_link/txDataQueue.c \
+		 Data_link/txMgmtQueue.c Data_link/txPort.c
 
-Sta_ManagementOFILES = Sta_Management/openAuthSm.o Sta_Management/PowerMgr.o  Sta_Management/PowerMgrDbgPrint.o Sta_Management/PowerMgrKeepAlive.o \
-		 Sta_Management/qosMngr.o Sta_Management/roamingInt.o Sta_Management/ScanCncn.o Sta_Management/ScanCncnApp.o \
-		 Sta_Management/ScanCncnOsSm.o Sta_Management/ScanCncnSm.o Sta_Management/ScanCncnSmSpecific.o Sta_Management/scanResultTable.o \
-		 Sta_Management/scr.o Sta_Management/sharedKeyAuthSm.o Sta_Management/siteHash.o Sta_Management/siteMgr.o \
-		 Sta_Management/StaCap.o Sta_Management/systemConfig.o Sta_Management/templates.o Sta_Management/trafficAdmControl.o \
-		 Sta_Management/assocSM.o Sta_Management/authSm.o Sta_Management/currBss.o Sta_Management/healthMonitor.o \
-		 Sta_Management/mlmeBuilder.o Sta_Management/mlmeParser.o Sta_Management/mlmeSm.o
+SRC += Sta_Management/openAuthSm.c Sta_Management/PowerMgr.c  Sta_Management/PowerMgrDbgPrint.c Sta_Management/PowerMgrKeepAlive.c \
+		 Sta_Management/qosMngr.c Sta_Management/roamingInt.c Sta_Management/ScanCncn.c Sta_Management/ScanCncnApp.c \
+		 Sta_Management/ScanCncnOsSm.c Sta_Management/ScanCncnSm.c Sta_Management/ScanCncnSmSpecific.c Sta_Management/scanResultTable.c \
+		 Sta_Management/scr.c Sta_Management/sharedKeyAuthSm.c Sta_Management/siteHash.c Sta_Management/siteMgr.c \
+		 Sta_Management/StaCap.c Sta_Management/systemConfig.c Sta_Management/templates.c Sta_Management/trafficAdmControl.c \
+		 Sta_Management/assocSM.c Sta_Management/authSm.c Sta_Management/currBss.c Sta_Management/healthMonitor.c \
+		 Sta_Management/mlmeBuilder.c Sta_Management/mlmeParser.c Sta_Management/mlmeSm.c
 
-TestOFILES = Test/connDebug.o Test/ctrlDbg.o  Test/debug.o Test/fwdriverdebug.o Test/HealthMonitorDbg.o Test/measurementDbg.o \
-			 Test/MibDbg.o Test/PowerMgrDebug.o Test/qosMngrDbg.o Test/roamingMgrDebug.o Test/rsnDbg.o Test/RxDbg.o \
-			 Test/scanCncnDbg.o Test/ScanMngrDbg.o Test/scrDbg.o Test/siteMgrDebug.o Test/smeDebug.o \
-			 Test/SoftGeminiDbg.o Test/TWD_Debug.o Test/TwIfDebug.o Test/TxDbg.o
+SRC += Test/connDebug.c Test/ctrlDbg.c  Test/debug.c Test/fwdriverdebug.c Test/HealthMonitorDbg.c Test/measurementDbg.c \
+			 Test/MibDbg.c Test/PowerMgrDebug.c Test/qosMngrDbg.c Test/roamingMgrDebug.c Test/rsnDbg.c Test/RxDbg.c \
+			 Test/scanCncnDbg.c Test/ScanMngrDbg.c Test/scrDbg.c Test/siteMgrDebug.c Test/smeDebug.c \
+			 Test/SoftGeminiDbg.c Test/TWD_Debug.c Test/TwIfDebug.c Test/TxDbg.c
 
-TWDOFILES = TWD/Ctrl/CmdBld.o TWD/Ctrl/CmdBldCfg.o TWD/Ctrl/CmdBldCfgIE.o TWD/Ctrl/CmdBldCmd.o TWD/Ctrl/CmdBldCmdIE.o \
-		 	TWD/Ctrl/CmdBldItr.o TWD/Ctrl/CmdBldItrIE.o TWD/Ctrl/CmdQueue.o \
-		 	TWD/Data_Service/RxQueue.o TWD/Data_Service/txCtrlBlk.o TWD/Data_Service/txHwQueue.o \
-		 	TWD/FW_Transfer/CmdMBox.o TWD/FW_Transfer/eventMbox.o TWD/FW_Transfer/fwDebug.o \
-		 	TWD/FW_Transfer/FwEvent.o TWD/FW_Transfer/HwInit.o TWD/FW_Transfer/RxXfer.o \
-		 	TWD/FW_Transfer/txResult.o TWD/FW_Transfer/txXfer.o \
-		 	TWD/MacServices/MacServices.o TWD/MacServices/MeasurementSrv.o TWD/MacServices/measurementSrvDbgPrint.o \
-		 	TWD/MacServices/MeasurementSrvSM.o TWD/MacServices/PowerSrv.o TWD/MacServices/PowerSrvSM.o \
-		 	TWD/MacServices/ScanSrv.o TWD/MacServices/ScanSrvSM.o \
-		 	TWD/TWDriver/TWDriver.o TWD/TWDriver/TWDriverCtrl.o TWD/TWDriver/TWDriverRadio.o TWD/TWDriver/TWDriverTx.o \
-		 	TWD/TwIf/TwIf.o \
+SRC += TWD/Ctrl/CmdBld.c TWD/Ctrl/CmdBldCfg.c TWD/Ctrl/CmdBldCfgIE.c TWD/Ctrl/CmdBldCmd.c TWD/Ctrl/CmdBldCmdIE.c \
+		 	TWD/Ctrl/CmdBldItr.c TWD/Ctrl/CmdBldItrIE.c TWD/Ctrl/CmdQueue.c \
+		 	TWD/Data_Service/RxQueue.c TWD/Data_Service/txCtrlBlk.c TWD/Data_Service/txHwQueue.c \
+		 	TWD/FW_Transfer/CmdMBox.c TWD/FW_Transfer/eventMbox.c TWD/FW_Transfer/fwDebug.c \
+		 	TWD/FW_Transfer/FwEvent.c TWD/FW_Transfer/HwInit.c TWD/FW_Transfer/RxXfer.c \
+		 	TWD/FW_Transfer/txResult.c TWD/FW_Transfer/txXfer.c \
+		 	TWD/MacServices/MacServices.c TWD/MacServices/MeasurementSrv.c TWD/MacServices/measurementSrvDbgPrint.c \
+		 	TWD/MacServices/MeasurementSrvSM.c TWD/MacServices/PowerSrv.c TWD/MacServices/PowerSrvSM.c \
+		 	TWD/MacServices/ScanSrv.c TWD/MacServices/ScanSrvSM.c \
+		 	TWD/TWDriver/TWDriver.c TWD/TWDriver/TWDriverCtrl.c TWD/TWDriver/TWDriverRadio.c TWD/TWDriver/TWDriverTx.c \
+		 	TWD/TwIf/TwIf.c \
 
-TxnOFILES = Txn/SdioBusDrv.o Txn/TxnQueue.o
+SRC += Txn/SdioBusDrv.c Txn/TxnQueue.c
 
-utilsOFILES = utils/context.o utils/freq.o utils/fsm.o utils/GenSM.o utils/queue.o \
-			utils/rate.o utils/report.o utils/timer.o
+SRC += utils/context.c utils/freq.c utils/fsm.c utils/GenSM.c utils/queue.c \
+			utils/rate.c utils/report.c utils/timer.c
 
-obj-$(CONFIG_SDIO_TI_WIFI_WGT7310) += $(OFILES)
-obj-$(CONFIG_SDIO_TI_WIFI_WGT7310) += $(AirLinkOFILES)
-obj-$(CONFIG_SDIO_TI_WIFI_WGT7310) += $(ApplicationOFILES)
-obj-$(CONFIG_SDIO_TI_WIFI_WGT7310) += $(ConnectionOFILES)
-obj-$(CONFIG_SDIO_TI_WIFI_WGT7310) += $(Ctrl_InterfaceOFILES)
-obj-$(CONFIG_SDIO_TI_WIFI_WGT7310) += $(Data_linkOFILES)
-obj-$(CONFIG_SDIO_TI_WIFI_WGT7310) += $(Sta_ManagementOFILES)
-obj-$(CONFIG_SDIO_TI_WIFI_WGT7310) += $(TestOFILES)
-obj-$(CONFIG_SDIO_TI_WIFI_WGT7310) += $(TWDOFILES)
-obj-$(CONFIG_SDIO_TI_WIFI_WGT7310) += $(TxnOFILES)
-obj-$(CONFIG_SDIO_TI_WIFI_WGT7310) += $(utilsOFILES)
+MODULE:=tiwlan_drv.ko
+
+obj-$(CONFIG_SDIO_TI_WIFI_WGT7310) := $(MODULE:.ko=.o)
+$(MODULE:.ko=-y) := $(SRC:.c=.o)
 
 EXTRA_LDFLAGS += --strip-debug

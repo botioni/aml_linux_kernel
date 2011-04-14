@@ -14,9 +14,18 @@
 #ifndef MREG_AIU_958_chstat1
 #define AIU_958_chstat1	AIU_958_CHSTAT_L1
 #endif
-unsigned ENABLE_IEC958 = 0;
+
+unsigned ENABLE_IEC958 = 1;
+unsigned IEC958_MODE   = AIU_958_MODE_PCM16;
+unsigned I2S_MODE      = AIU_I2S_MODE_2x16;
+
 static unsigned dac_reset_flag = 0;
 
+int  audio_in_buf_ready = 0;
+int audio_out_buf_ready = 0;
+
+extern int in_error_flag;
+extern int in_error;
 
 /*
                                 fIn * (M)          
@@ -62,28 +71,23 @@ void audio_set_aiubuf(u32 addr, u32 size)
     WRITE_MPEG_REG(AIU_MEM_I2S_START_PTR, addr & 0xffffffc0);
     WRITE_MPEG_REG(AIU_MEM_I2S_RD_PTR, addr & 0xffffffc0);
     WRITE_MPEG_REG(AIU_MEM_I2S_END_PTR, (addr & 0xffffffc0) + (size & 0xffffffc0) - 64);   //this is for 16bit 2 channel
-#if 0
-    WRITE_MPEG_REG_BITS(AIU_MEM_I2S_CONTROL, 1, 0, 1);
-    WRITE_MPEG_REG_BITS(AIU_MEM_I2S_CONTROL, 0, 0, 1);
-
-    WRITE_MPEG_REG(AIU_MEM_I2S_BUF_CNTL, 1 | (0 << 1));
-    WRITE_MPEG_REG(AIU_MEM_I2S_BUF_CNTL, 0 | (0 << 1));
-#else
-	WRITE_MPEG_REG(AIU_I2S_MISC,		0x0004);	// Hold I2S
+	
+    WRITE_MPEG_REG(AIU_I2S_MISC,		0x0004);	// Hold I2S
 	WRITE_MPEG_REG(AIU_I2S_MUTE_SWAP,	0x0000);	// No mute, no swap
 	// As the default amclk is 24.576MHz, set i2s and iec958 divisor appropriately so as not to exceed the maximum sample rate.
 	WRITE_MPEG_REG(AIU_I2S_MISC,		0x0010 );	// Release hold and force audio data to left or right
 	
-	WRITE_MPEG_REG(AIU_MEM_I2S_MASKS,		(24 << 16) |	// [31:16] IRQ block.
+	WRITE_MPEG_REG(AIU_MEM_I2S_MASKS,		(0 << 16) |	// [31:16] IRQ block.
 								(0x3 << 8) |	// [15: 8] chan_mem_mask. Each bit indicates which channels exist in memory
 								(0x3 << 0));	// [ 7: 0] chan_rd_mask.  Each bit indicates which channels are READ from memory
-	// Set init high then low to initilize the I2S memory logic
-	WRITE_MPEG_REG(AIU_MEM_I2S_CONTROL, 	1 );
-	WRITE_MPEG_REG(AIU_MEM_I2S_CONTROL, 	0 );
-	// Enable the I2S FIFO (enable both the empty and fill modules)
-	WRITE_MPEG_REG(AIU_MEM_I2S_CONTROL, 	6|(1<<6) );
 
-#endif
+    // 16 bit PCM mode
+    WRITE_MPEG_REG_BITS(AIU_MEM_I2S_CONTROL, 1, 6, 1);
+	// Set init high then low to initilize the I2S memory logic
+	WRITE_MPEG_REG_BITS(AIU_MEM_I2S_CONTROL, 1, 0, 1 );
+	WRITE_MPEG_REG_BITS(AIU_MEM_I2S_CONTROL, 0, 0, 1 );
+
+    audio_out_buf_ready = 1;
 }
 
 void audio_set_958outbuf(u32 addr, u32 size)
@@ -96,8 +100,8 @@ void audio_set_958outbuf(u32 addr, u32 size)
         WRITE_MPEG_REG_BITS(AIU_MEM_IEC958_CONTROL, 1, 0, 1);
         WRITE_MPEG_REG_BITS(AIU_MEM_IEC958_CONTROL, 0, 0, 1);
 
-        WRITE_MPEG_REG(AIU_MEM_IEC958_BUF_CNTL, 1 | (0 << 1));
-        WRITE_MPEG_REG(AIU_MEM_IEC958_BUF_CNTL, 0 | (0 << 1));
+//        WRITE_MPEG_REG(AIU_MEM_IEC958_BUF_CNTL, 1 | (0 << 1));
+//        WRITE_MPEG_REG(AIU_MEM_IEC958_BUF_CNTL, 0 | (0 << 1));
     }
 }
 void audio_in_i2s_set_buf(u32 addr, u32 size)
@@ -105,6 +109,9 @@ void audio_in_i2s_set_buf(u32 addr, u32 size)
 	WRITE_MPEG_REG(AUDIN_FIFO0_START, addr & 0xffffffc0);
 	//WRITE_MPEG_REG(AUDIN_FIFO0_END, (addr&0xffffffc0) + (size&0xffffffc0) -64);
 	WRITE_MPEG_REG(AUDIN_FIFO0_END, (addr&0xffffffc0) + (size&0xffffffc0)-8);
+#ifdef CONFIG_SND_AML_M2
+	WRITE_MPEG_REG(AUDIN_SOURCE_SEL, (1<<0)); // select audio codec output as I2S source
+#endif
 	WRITE_MPEG_REG(AUDIN_FIFO0_CTRL, (1<<0)	// FIFO0_EN
 																	|(1<<2)	// load start address./* AUDIN_FIFO0_LOAD */
 																	|(1<<3)	// DIN from i2sin./* AUDIN_FIFO0_DIN_SEL */ 
@@ -114,8 +121,8 @@ void audio_in_i2s_set_buf(u32 addr, u32 size)
 																	|(2<<11)//2 channel./* AUDIN_FIFO0_CHAN*/
 																	|(0<<16)	//to DDR
                                                                     |(1<<15)    // Urgent request.  DDR SDRAM urgent request enable.
-                                                                    |(1<<17)    // Overflow Interrupt mask
-                                                                    |(1<<18)    // Audio in INT
+                                                                    |(0<<17)    // Overflow Interrupt mask
+                                                                    |(0<<18)    // Audio in INT
 																	|(1<<19)	//hold 0 enable
 																	|(0<<22)	// hold0 to aififo																	
 														);			
@@ -127,6 +134,10 @@ void audio_in_i2s_set_buf(u32 addr, u32 size)
 																	|(1<<I2SIN_LRCLK_SEL)
 																	|(1<<I2SIN_DIR)
 														);															
+    audio_in_buf_ready = 1;
+
+    in_error_flag = 0;
+    in_error = 0;
 }
 void audio_in_spdif_set_buf(u32 addr, u32 size)
 {
@@ -139,6 +150,8 @@ void audio_in_i2s_enable(int flag)
 		}else{
 				WRITE_MPEG_REG_BITS(AUDIN_I2SIN_CTRL, 0, I2SIN_EN, 1);
 		}
+        in_error_flag = 0;
+        in_error = 0;
 }
 
 int if_audio_in_i2s_enable()
@@ -175,22 +188,18 @@ void audio_in_i2s_set_wrptr(unsigned int val)
 
 void audio_set_i2s_mode(u32 mode)
 {
-    const unsigned short control[4] = {
-        0x14,                   /* AIU_I2S_MODE_2x16 */
-        0x30,                   /* AIU_I2S_MODE_2x24 */
-        0x11                    /* AIU_I2S_MODE_8x24 */
-    };
-
     const unsigned short mask[4] = {
-        0x303,                  /*2 ch in, 2ch out */
-        0x303,                  /*2ch in, 2ch out */
-        0xffff                  /*8ch in, 8ch out */
+        0x303,                  /* 2x16 */
+        0x303,                  /* 2x24 */
+        0xffff,                 /* 8x24 */
+        0x303,                  /* 2x32 */
     };
 
-    if (mode < sizeof(control) / sizeof(unsigned short)) {
+    if (mode < sizeof(mask)/ sizeof(unsigned short)) {
+       /* four two channels stream */
         WRITE_MPEG_REG(AIU_I2S_SOURCE_DESC, 1);
 
-        if (mode == 0) {
+        if (mode == AIU_I2S_MODE_2x16) {
             WRITE_MPEG_REG_BITS(AIU_MEM_I2S_CONTROL, 1, 6, 1);
         } else {
             WRITE_MPEG_REG_BITS(AIU_MEM_I2S_CONTROL, 0, 6, 1);
@@ -210,26 +219,6 @@ void audio_set_i2s_mode(u32 mode)
 
 }
 
-const _aiu_clk_setting_t freq_tab_384fs[7] = {
-    {AUDIO_384FS_PLL_192K, AUDIO_384FS_PLL_192K_MUX, AUDIO_384FS_CLK_192K},
-    {AUDIO_384FS_PLL_176K, AUDIO_384FS_PLL_176K_MUX, AUDIO_384FS_CLK_176K},
-    {AUDIO_384FS_PLL_96K, AUDIO_384FS_PLL_96K_MUX, AUDIO_384FS_CLK_96K},
-    {AUDIO_384FS_PLL_88K, AUDIO_384FS_PLL_88K_MUX, AUDIO_384FS_CLK_88K},
-    {AUDIO_384FS_PLL_48K, AUDIO_384FS_PLL_48K_MUX, AUDIO_384FS_CLK_48K},
-    {AUDIO_384FS_PLL_44K, AUDIO_384FS_PLL_44K_MUX, AUDIO_384FS_CLK_44K},
-    {AUDIO_384FS_PLL_32K, AUDIO_384FS_PLL_32K_MUX, AUDIO_384FS_CLK_32K}
-};
-
-const _aiu_clk_setting_t freq_tab_256fs[7] = {
-    {AUDIO_256FS_PLL_192K, AUDIO_256FS_PLL_192K_MUX, AUDIO_256FS_CLK_192K},
-    {AUDIO_256FS_PLL_176K, AUDIO_256FS_PLL_176K_MUX, AUDIO_256FS_CLK_176K},
-    {AUDIO_256FS_PLL_96K, AUDIO_256FS_PLL_96K_MUX, AUDIO_256FS_CLK_96K},
-    {AUDIO_256FS_PLL_88K, AUDIO_256FS_PLL_88K_MUX, AUDIO_256FS_CLK_88K},
-    {AUDIO_256FS_PLL_48K, AUDIO_256FS_PLL_48K_MUX, AUDIO_256FS_CLK_48K},
-    {AUDIO_256FS_PLL_44K, AUDIO_256FS_PLL_44K_MUX, AUDIO_256FS_CLK_44K},
-    {AUDIO_256FS_PLL_32K, AUDIO_256FS_PLL_32K_MUX, AUDIO_256FS_CLK_32K}
-};
-
 void audio_util_set_dac_format(unsigned format)
 {
     WRITE_MPEG_REG(AIU_CLK_CTRL_MORE,	 0x0000);	 // i2s_divisor_more does not take effect    
@@ -237,6 +226,7 @@ void audio_util_set_dac_format(unsigned format)
 	WRITE_MPEG_REG(AIU_CLK_CTRL,		 (0 << 12) | // 958 divisor more, if true, divided by 2, 4, 6, 8.
 							(1 <<  8) | // alrclk skew: 1=alrclk transitions on the cycle before msb is sent
 							(1 <<  6) | // invert aoclk
+                            (1 <<  7) | // invert lrclk
 							(1 <<  4) | // 958 divisor: 0=no div; 1=div by 2; 2=div by 3; 3=div by 4.
 							(2 <<  2) | // i2s divisor: 0=no div; 1=div by 2; 2=div by 4; 3=div by 8.
 							(1 <<  0)); // enable I2S clock
@@ -249,166 +239,6 @@ void audio_util_set_dac_format(unsigned format)
     WRITE_MPEG_REG(AIU_I2S_DAC_CFG, 	0x000f);	// Payload 24-bit, Msb first, alrclk = aoclk/64
 	WRITE_MPEG_REG(AIU_I2S_SOURCE_DESC, 0x0001);	// four 2-channel
 }
-#ifdef CONFIG_SND_AML_M1
-void latch (void)
-{
-    int latch;
-    latch = 1;
-    WRITE_APB_REG(APB_ADAC_LATCH, latch);
-    latch = 0;
-    WRITE_APB_REG(APB_ADAC_LATCH, latch);
-}
-
-void wr_adac_regbank (unsigned long rstdpz,
-                  unsigned long mclksel,
-                  unsigned long i2sfsdac,
-                  unsigned long i2ssplit,
-                  unsigned long i2smode,
-                  unsigned long pdauxdrvrz,
-                  unsigned long pdauxdrvlz,
-                  unsigned long pdhsdrvrz,
-                  unsigned long pdhsdrvlz,
-                  unsigned long pddacrz,
-                  unsigned long pddaclz,
-                  unsigned long pdz,
-                  unsigned long hsmute,
-                  unsigned long lmmute,
-                  unsigned long lmmix,
-                  unsigned long ctr,
-                  unsigned long lmvol,
-                  unsigned long hsvol)
-{
-	if(!dac_reset_flag){
-	   	WRITE_APB_REG(APB_ADAC_RESET, (rstdpz<<1));
-	    WRITE_APB_REG(APB_ADAC_RESET, (rstdpz<<1));
-	    WRITE_APB_REG(APB_ADAC_RESET, (rstdpz<<1));
-	    WRITE_APB_REG(APB_ADAC_RESET, (rstdpz<<1));
-	    WRITE_APB_REG(APB_ADAC_RESET, (rstdpz<<1));
-	    WRITE_APB_REG(APB_ADAC_RESET, (rstdpz<<1));
-			
-	}	
-
-    WRITE_APB_REG(APB_ADAC_CLOCK, (mclksel<<0));
-  
-    WRITE_APB_REG(APB_ADAC_I2S_CONFIG_REG1, (i2sfsdac<<0));
-
-    WRITE_APB_REG(APB_ADAC_I2S_CONFIG_REG1, (i2sfsdac<<0));	// BUG
-    
-    WRITE_APB_REG(APB_ADAC_I2S_CONFIG_REG2, (i2ssplit<<3) | (i2smode<<0));
-    
-    WRITE_APB_REG(APB_ADAC_POWER_CTRL_REG1, (pdauxdrvrz<<7) | (pdauxdrvlz<<6) | (pdhsdrvrz<<5) | (pdhsdrvlz<<4) | (pddacrz<<1) | (pddaclz<<0));
-    WRITE_APB_REG(APB_ADAC_POWER_CTRL_REG1, (pdauxdrvrz<<7) | (pdauxdrvlz<<6) | (pdhsdrvrz<<5) | (pdhsdrvlz<<4) | (pddacrz<<1) | (pddaclz<<0));	// BUG
-    
-    WRITE_APB_REG(APB_ADAC_POWER_CTRL_REG2, (pdz<<7));
-    WRITE_APB_REG(APB_ADAC_MUTE_CTRL_REG1, (hsmute<<6) | (lmmute<<0));
-    WRITE_APB_REG(APB_ADAC_DAC_ADC_MIXER, (lmmix<<5) | (ctr<<1));
-    WRITE_APB_REG(APB_ADAC_PLAYBACK_VOL_CTRL_LSB, (lmvol&0xff));
-    WRITE_APB_REG(APB_ADAC_PLAYBACK_VOL_CTRL_MSB, (lmvol>>8));
-    WRITE_APB_REG(APB_ADAC_STEREO_HS_VOL_CTRL_LSB, (hsvol&0xff));
-    WRITE_APB_REG(APB_ADAC_STEREO_HS_VOL_CTRL_MSB, (hsvol>>8));    
-} /* wr_regbank */
-
-int audio_dac_set(unsigned freq)
-{
-
-	unsigned long   data32;             
-   	int i=0;
-      // Configure audio DAC control interface
-    data32  = 0;
-    data32 |= 0 << 15;  // [15]     audac_soft_reset_n
-    data32 |= 0 << 14;  // [14]     audac_reset_ctrl: 0=use audac_reset_n pulse from reset module; 1=use audac_soft_reset_n.
-    data32 |= 0 << 9;   // [9]      delay_rd_en
-    data32 |= 0 << 8;   // [8]      audac_reg_clk_inv
-    data32 |= 0 << 1;   // [7:1]    audac_i2caddr
-    data32 |= 0 << 0;   // [0]      audac_intfsel: 0=use host bus; 1=use I2C.
-    WRITE_MPEG_REG(AIU_AUDAC_CTRL0, data32);
-    
-     // Enable APB3 fail on error
-    data32  = 0;
-    data32 |= 1     << 15;  // [15]     err_en
-    data32 |= 255   << 0;   // [11:0]   max_err
-    WRITE_MPEG_REG(AIU_AUDAC_CTRL1, data32);
-	switch(freq)
-	{
-		case AUDIO_CLK_FREQ_192:
-			data32=11;
-			break;
-		case AUDIO_CLK_FREQ_96:
-			data32=10;
-			break;
-		case AUDIO_CLK_FREQ_48:
-			data32=8;
-			break;
-		case AUDIO_CLK_FREQ_441:
-			data32=7;
-			break;
-		case AUDIO_CLK_FREQ_32:
-			data32=6;
-			break;
-		case AUDIO_CLK_FREQ_8:
-			data32 = 0;
-			break;
-		case AUDIO_CLK_FREQ_11:
-			data32 = 1;
-			break;
-		case AUDIO_CLK_FREQ_22:
-			data32 = 4;
-			break;
-		case AUDIO_CLK_FREQ_24:
-			data32 = 5;
-			break;
-		case AUDIO_CLK_FREQ_16:
-			data32 = 3;
-			break;
-		case AUDIO_CLK_FREQ_12:
-			data32 = 2;
-			break;
-			
-		default:
-			data32=6;
-			break;
-	};
-    wr_adac_regbank(0,          // rstdpz: active low.
-	                0,          // mclksel[3:0]: master clock freq sel. 0=256Fs, 1=384Fs, ... 
-	                data32,         // i2sfsdac[3:0]: sample freq sel. 0=8kHz, 1=11.025k, 2=12k, 3=16k, 4=22.05k, 5=24k, 6=32k, 7=44.1k, 8=48k, 9=88.2k, 10=96k, 11=192k, >11=Rsrv.
-	                0,          // i2ssplit
-	                1,          // i2smode[2:0]: Data format sel. 0=Right justify, 1=I2S, 2=Left justify, 3=Burst1, 4=Burst2, 5=Mono burst1, 6=Mono burst2, 7=Rsrv.
-	                1,          // pdauxdrvrz: active low.
-	                1,          // pdauxdrvlz: active low.
-	                1,          // pdhsdrvrz: active low.
-	                1,          // pdhsdrvlz: active low.
-	                1,          // pddacrz: active low.
-	                1,          // pddaclz: active low.
-	                0,          // pdz: active low.
-	                0,          // hsmute[1:0]: bit[1] Analog playback right channel mute, bit[0] Analog playback left channel mute.
-	                0,          // lmmute[1:0]: bit[1] Digital playback right channel mute, bit[0] Digital playback left channel mute.
-	                0,          // lmmix: Digital mixer sel.
-	                0,          // ctr[1:0]: test mode sel. 0=normal mode, 2=Digital filter bypass, 1 or 3=Rsrv.
-	                0x5454,     // lmvol[15:0]: Digital volumn control, [15:8] control right channel, [7:0] control left channel.
-	                            // 0=-126dB, 1=-124.5dB, ..., 0x53=-1.5dB, 0x54=0dB, >=0x55 Rsrv.
-	                0x2828);    // hsvol[15:0]: Analog headset volumn control, [15:8] control right channel, [7:0] control left channel.
-	                            // 0=-40dB, 1=-39dB, ..., 0x28=0dB, ..., 0x2e=6dB, >=0x2f Rsrv.
-
-    latch();
-	WRITE_APB_REG(APB_ADAC_POWER_CTRL_REG2, (0<<7));
-    latch();
-	WRITE_APB_REG(APB_ADAC_POWER_CTRL_REG2, (1<<7));
-    latch();
-    if(!dac_reset_flag){
-		WRITE_APB_REG(APB_ADAC_RESET, (0<<1));
-	    latch();
-		WRITE_APB_REG(APB_ADAC_RESET, (1<<1));
-	    latch();
-		for (i = 0; i < 1500000; i++) ;
-		for (i = 0; i < 1500000; i++) ;
-		for (i = 0; i < 1500000; i++) ;
-		for (i = 0; i < 1500000; i++) ;
-		dac_reset_flag = 1;
-    }
-  return 0;
-}
-
-#endif
 
 void audio_set_clk(unsigned freq, unsigned fs_config)
 {
@@ -487,9 +317,18 @@ void audio_set_clk(unsigned freq, unsigned fs_config)
     // gate the clock off
     WRITE_MPEG_REG( HHI_AUD_CLK_CNTL, READ_MPEG_REG(HHI_AUD_CLK_CNTL) & ~(1 << 8));
 
+#ifdef CONFIG_SND_AML_M2
+    WRITE_MPEG_REG(HHI_AUD_PLL_CNTL2, 0x065e31ff);
+    WRITE_MPEG_REG(HHI_AUD_PLL_CNTL3, 0x9649a941);
+		// select Audio PLL as MCLK source
+		WRITE_MPEG_REG( HHI_AUD_CLK_CNTL, READ_MPEG_REG(HHI_AUD_CLK_CNTL) & ~(1 << 9));
+#endif		
     // Put the PLL to sleep
     WRITE_MPEG_REG( HHI_AUD_PLL_CNTL, READ_MPEG_REG(HHI_AUD_PLL_CNTL) | (1 << 15));
-
+#ifdef CONFIG_SND_AML_M2	
+		WRITE_MPEG_REG_BITS(AIU_CODEC_ADC_LRCLK_CTRL, 64-1, 0, 12);
+		WRITE_MPEG_REG_BITS(AIU_CODEC_DAC_LRCLK_CTRL, 64-1, 0, 12);
+#endif		
     // Bring out of reset but keep bypassed to allow to stablize
     //Wr( HHI_AUD_PLL_CNTL, (1 << 15) | (0 << 14) | (hiu_reg & 0x3FFF) );
     WRITE_MPEG_REG( HHI_AUD_PLL_CNTL, (1 << 15) | (audio_clock_config[index][0] & 0x7FFF) );
@@ -503,7 +342,7 @@ void audio_set_clk(unsigned freq, unsigned fs_config)
 
     // gate the clock on
     WRITE_MPEG_REG( HHI_AUD_CLK_CNTL, READ_MPEG_REG(HHI_AUD_CLK_CNTL) | (1 << 8));
-#ifdef CONFIG_SND_AML_M1
+#if ((defined CONFIG_SND_AML_M1) || (defined CONFIG_SND_AML_M2))
 		WRITE_MPEG_REG(HHI_AUD_CLK_CNTL, READ_MPEG_REG(HHI_AUD_CLK_CNTL) |(1<<23));
 #endif    
     // delay 2uS
@@ -511,29 +350,17 @@ void audio_set_clk(unsigned freq, unsigned fs_config)
 	for (i = 0; i < 200000; i++) ;
 
     } else if (fs_config == AUDIO_CLK_384FS) {
-        //WRITE_MPEG_REG_BITS(MREG_AUDIO_CLK_CTRL, 0, 8, 1);
-        WRITE_MPEG_REG(HHI_AUD_PLL_CNTL, freq_tab_384fs[freq].pll);
-        for (i = 0; i < 100000; i++) ;
-        WRITE_MPEG_REG(HHI_AUD_CLK_CNTL, freq_tab_384fs[freq].mux);
-        WRITE_MPEG_REG_BITS(HHI_AUD_CLK_CNTL, 1, 8, 1);
-        WRITE_MPEG_REG_BITS(AIU_CLK_CTRL,
-                            freq_tab_384fs[freq].devisor, 0, 8);
-        WRITE_MPEG_REG(AIU_I2S_DAC_CFG, AUDIO_384FS_DAC_CFG);
     }
 }
 
 void audio_enable_ouput(int flag)
 {
     if (flag) {
-
         WRITE_MPEG_REG(AIU_RST_SOFT, 0x05);
         READ_MPEG_REG(AIU_I2S_SYNC);
-		//what about this reg mean?
-       // WRITE_MPEG_REG_BITS(DDR_TOP_CTL2, 3, 3, 2);
         WRITE_MPEG_REG_BITS(AIU_MEM_I2S_CONTROL, 3, 1, 2);
 
         if (ENABLE_IEC958) {
-            READ_MPEG_REG(AIU_I2S_SYNC);
             WRITE_MPEG_REG(AIU_958_FORCE_LEFT, 0);
             WRITE_MPEG_REG(AIU_958_DCU_FF_CTRL, 1);
 
@@ -541,12 +368,10 @@ void audio_enable_ouput(int flag)
         }
     } else {
         WRITE_MPEG_REG_BITS(AIU_MEM_I2S_CONTROL, 0, 1, 2);
-//              WRITE_MPEG_REG_BITS(MREG_AIU_MEM_I2S_CONTROL, 1, 0, 1);
 
         if (ENABLE_IEC958) {
             WRITE_MPEG_REG(AIU_958_DCU_FF_CTRL, 0);
             WRITE_MPEG_REG_BITS(AIU_MEM_IEC958_CONTROL, 0, 1, 2);
-//              WRITE_MPEG_REG_BITS(MREG_AIU_MEM_IEC958_CONTROL, 1, 0, 1);
         }
     }
 }
@@ -591,16 +416,16 @@ void set_958_channel_status(_aiu_958_channel_status_t * set)
     }
 }
 
-void audio_hw_set_958_pcm24(_aiu_958_raw_setting_t * set)
+static void audio_hw_set_958_pcm24(_aiu_958_raw_setting_t * set)
 {
     WRITE_MPEG_REG(AIU_958_BPF, 0x80); /* in pcm mode, set bpf to 128 */
     set_958_channel_status(set->chan_stat);
 }
 
-void audio_hw_set_958_mode(unsigned mode, _aiu_958_raw_setting_t * set)
+void audio_set_958_mode(unsigned mode, _aiu_958_raw_setting_t * set)
 {
     if (mode == AIU_958_MODE_RAW) {
-        // audio_hw_set_958_raw(set);
+        set_958_channel_status(set);
         if (ENABLE_IEC958) {
             WRITE_MPEG_REG(AIU_958_MISC, 1);
             WRITE_MPEG_REG_BITS(AIU_MEM_IEC958_CONTROL, 1, 8, 1);  // raw

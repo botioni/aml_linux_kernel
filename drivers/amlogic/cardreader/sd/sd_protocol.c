@@ -2939,7 +2939,9 @@ int sd_identify_process(SD_MMC_Card_Info_t *sd_mmc_info)
 	
 	unsigned short c_size;
 	unsigned char c_size_multi;
-	unsigned char read_reg_data;
+	unsigned char read_reg_data, write_reg_data;
+	unsigned sdio_config;
+	SDIO_Config_Reg_t *config_reg = NULL;
 
 	//Request all devices to send their CIDs
 	if(sd_mmc_info->card_type != CARD_TYPE_SDIO)
@@ -3025,35 +3027,35 @@ int sd_identify_process(SD_MMC_Card_Info_t *sd_mmc_info)
 		ret = sdio_read_reg(sd_mmc_info, 0, BUS_Interface_Control_REG, &read_reg_data);
 		if(ret)
 			return ret;
-		return SD_MMC_NO_ERROR;
-//		sd_mmc_info->operation_mode = DATA_TRANSFER_MODE;
-//		write_reg_data = ((read_reg_data & 0xfc) | SDIO_Wide_bus_Bit);
-//		ret = sdio_write_reg(sd_mmc_info, 0, BUS_Interface_Control_REG, &write_reg_data, SDIO_Read_After_Write);
-//		if(ret)
-//		{
-//			write_reg_data = SDIO_Single_bus_Bit;
-//    		ret = sdio_write_reg(sd_mmc_info, 0, BUS_Interface_Control_REG, &write_reg_data, SDIO_Read_After_Write);
-//    		if(ret)
-//				return ret;
-//
-//			sd_mmc_info->bus_width = SD_BUS_SINGLE;
-//	        return SD_MMC_NO_ERROR;
-//	    }  
-//		else
-//		{
-//			sd_mmc_info->bus_width = SD_BUS_WIDE;
-//#ifdef SD_MMC_HW_CONTROL
-//			if(SD_WORK_MODE == CARD_HW_MODE)
-//			{
-//				sdio_config = 0;
-//				config_reg = (void *)&sdio_config;
-//				sdio_config = READ_CBUS_REG(SDIO_CONFIG);
-//				config_reg->bus_width = 1;
-//				WRITE_CBUS_REG(SDIO_CONFIG, sdio_config);
-//			}
-//#endif
-//			return SD_MMC_NO_ERROR;
-//		}    
+
+		sd_mmc_info->operation_mode = DATA_TRANSFER_MODE;
+		write_reg_data = ((read_reg_data & 0xfc) | SDIO_Wide_bus_Bit);
+		ret = sdio_write_reg(sd_mmc_info, 0, BUS_Interface_Control_REG, &write_reg_data, SDIO_Read_After_Write);
+		if(ret)
+		{
+			write_reg_data = SDIO_Single_bus_Bit;
+    		ret = sdio_write_reg(sd_mmc_info, 0, BUS_Interface_Control_REG, &write_reg_data, SDIO_Read_After_Write);
+    		if(ret)
+				return ret;
+
+			sd_mmc_info->bus_width = SD_BUS_SINGLE;
+	        return SD_MMC_NO_ERROR;
+	    }  
+		else
+		{
+			sd_mmc_info->bus_width = SD_BUS_WIDE;
+#ifdef SD_MMC_HW_CONTROL
+			if(SD_WORK_MODE == CARD_HW_MODE)
+			{
+				sdio_config = 0;
+				config_reg = (void *)&sdio_config;
+				sdio_config = READ_CBUS_REG(SDIO_CONFIG);
+				config_reg->bus_width = 1;
+				WRITE_CBUS_REG(SDIO_CONFIG, sdio_config);
+			}
+#endif
+			return SD_MMC_NO_ERROR;
+		}    
     }
 
 	ret = sd_read_reg_cid(sd_mmc_info, &sd_mmc_info->raw_cid);
@@ -3273,7 +3275,8 @@ int sd_identify_process(SD_MMC_Card_Info_t *sd_mmc_info)
 int sd_mmc_init(SD_MMC_Card_Info_t *sd_mmc_info)
 {
 	int error;
-
+	
+	
 	/*close IF INT before change to sd to avoid error IF INT*/
 	sdio_close_host_interrupt(SDIO_IF_INT);
 	WRITE_CBUS_REG(SDIO_CONFIG, 0);
@@ -3303,6 +3306,7 @@ int sd_mmc_init(SD_MMC_Card_Info_t *sd_mmc_info)
 #endif
 	
 	error = sd_mmc_staff_init(sd_mmc_info);
+	
 	if(error)
 	{
 #ifdef  SD_MMC_DEBUG
@@ -3321,6 +3325,7 @@ int sd_mmc_init(SD_MMC_Card_Info_t *sd_mmc_info)
 	}
 
 	error = sd_voltage_validation(sd_mmc_info);
+	
 	if(error)
 	{
 #ifdef  SD_MMC_DEBUG
@@ -3462,8 +3467,8 @@ int sd_mmc_staff_init(SD_MMC_Card_Info_t *sd_mmc_info)
 	SDIO_Config_Reg_t *config_reg;
 
     sd_mmc_prepare_power(sd_mmc_info);
+   
 	sd_mmc_power_on(sd_mmc_info);
-
 #ifdef SD_MMC_HW_CONTROL
 	if(SD_WORK_MODE == CARD_HW_MODE)
 	{

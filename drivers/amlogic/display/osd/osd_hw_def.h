@@ -11,9 +11,7 @@
 **************************************************************************/
 #define	LEFT		0
 #define	RIGHT		1
-#define  	RESTORE_MEMORY_SIZE    		600
 #define  	OSD_RELATIVE_BITS				0x333f0
-#define	OSD1_OSD2_SOTRE_OFFSET		(RESTORE_MEMORY_SIZE>>1)
 #define    HW_OSD_COUNT					2
 
 /************************************************************************
@@ -56,7 +54,7 @@ typedef  struct {
 	u32  			color_key[HW_OSD_COUNT];
 	u32				color_key_enable[HW_OSD_COUNT];
 	u32				enable[HW_OSD_COUNT];
-	u32				*reg_status;
+	u32				reg_status_save;
 	bridge_item_t 		fiq_handle_item;
 	osd_scale_t		scale[HW_OSD_COUNT];
 	u32				free_scale_enable[HW_OSD_COUNT];
@@ -65,6 +63,7 @@ typedef  struct {
 	fb_geometry_t		fb_gem[HW_OSD_COUNT];
 	const color_bit_define_t *color_info[HW_OSD_COUNT];
 	u32				scan_mode;
+	u32				osd_order;
 	osd_3d_mode_t	mode_3d[HW_OSD_COUNT];
 	hw_list_t	 	reg[HW_OSD_COUNT][HW_REG_INDEX_MAX];
 }hw_para_t;
@@ -80,6 +79,7 @@ static  void  osd2_update_enable(void);
 static  void  osd2_update_color_key_enable(void);
 static  void  osd2_update_color_key(void);
 static  void  osd2_update_gbl_alpha(void);
+static  void  osd2_update_order(void);
 static  void  osd2_update_disp_geometry(void);
 static  void  osd2_update_disp_scale_enable(void);
 static  void  osd2_update_disp_3d_mode(void);
@@ -89,6 +89,7 @@ static  void  osd1_update_enable(void);
 static  void  osd1_update_color_key(void);
 static  void  osd1_update_color_key_enable(void);
 static  void  osd1_update_gbl_alpha(void);
+static  void  osd1_update_order(void);
 static  void  osd1_update_disp_geometry(void);
 static  void  osd1_update_disp_scale_enable(void);
 static  void  osd1_update_disp_3d_mode(void);
@@ -118,6 +119,7 @@ static update_func_t     hw_func_array[HW_OSD_COUNT][HW_REG_INDEX_MAX]={
 		osd1_update_color_key,
 		osd1_update_color_key_enable,
 		osd1_update_gbl_alpha,
+		osd1_update_order,
 		osd1_update_disp_geometry,
 		osd1_update_disp_scale_enable,
 	},
@@ -127,22 +129,10 @@ static update_func_t     hw_func_array[HW_OSD_COUNT][HW_REG_INDEX_MAX]={
 		osd2_update_color_key,
 		osd2_update_color_key_enable,
 		osd2_update_gbl_alpha,
+		osd2_update_order,
 		osd2_update_disp_geometry,
 		osd2_update_disp_scale_enable,
 	},
-};
-
-static  int reg_index[]={
-	VIU_OSD1_TCOLOR_AG0,
-	VIU_OSD1_BLK0_CFG_W0,
-	VIU_OSD1_BLK0_CFG_W1,
-	VIU_OSD1_BLK0_CFG_W2,
-	VIU_OSD1_BLK0_CFG_W3,
-	VIU_OSD1_BLK0_CFG_W4,
-	VIU_OSD1_FIFO_CTRL_STAT,
-	VIU_OSD1_CTRL_STAT,
-	VPP_MISC,
-	VIU_OSD1_COLOR_ADDR,
 };
 
 #ifdef FIQ_VSYNC

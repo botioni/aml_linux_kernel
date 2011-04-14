@@ -35,7 +35,8 @@ static int major;
 #define CARD_QUEUE_BOUNCESZ	(512*256)
 
 #define CARD_NUM_MINORS	(256 >> CARD_SHIFT)
-static unsigned long dev_use[CARD_NUM_MINORS / (8 * sizeof(unsigned long))];
+//static unsigned long dev_use[CARD_NUM_MINORS / (8 * sizeof(unsigned long))];
+static unsigned long dev_use[1];
 
 #define CARD_INAND_START_MINOR		40
 

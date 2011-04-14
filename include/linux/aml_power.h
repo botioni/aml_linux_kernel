@@ -42,6 +42,7 @@ struct aml_power_pdata {
 	int *bat_charge_value_table;
 	int *bat_level_table;	
 	int bat_table_len;	
+  int is_support_usb_charging;
 };
 
 #endif /* __AML_POWER_H__ */

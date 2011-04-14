@@ -217,7 +217,8 @@ static void set_tcon_pinmux(void)
 {
     /* TCON control pins pinmux */
     /* GPIOA_5 -> LCD_Clk, GPIOA_0 -> TCON_STH1, GPIOA_1 -> TCON_STV1, GPIOA_2 -> TCON_OEH, */
-    set_mio_mux(0, ((1<<11)|(1<<14)|(1<<15)|(1<<16)));
+    //set_mio_mux(0, ((1<<11)|(1<<14)|(1<<15)|(1<<16)));
+    set_mio_mux(0, ((1<<11)|(1<<14)|(1<<15)));  // GPIOA_0 for wifi clock
     set_mio_mux(4,(3<<0)|(3<<2)|(3<<4));   //For 8bits
     
 }
@@ -232,7 +233,7 @@ static void t13_power_on(void)
 static void t13_power_off(void)
 {
 	power_off_backlight();
-    	power_off_lcd();
+    power_off_lcd();
 }
 
 static void t13_io_init(void)

@@ -193,6 +193,9 @@ struct aml_nand_flash_dev aml_nand_flash_ids[] = {
 	{"C revision NAND 8GiB MT29F64G-C", {NAND_MFR_MICRON, 0x88, 0x04, 0x4b, 0xa9}, 8192, 8192, 0x200000, 448, 1, (NAND_TIMING_MODE5 | NAND_ECC_BCH16_MODE | NAND_TWO_PLANE_MODE)},
 	{"C revision NAND 32GiB MT29F256G-C", {NAND_MFR_MICRON, 0xa8, 0x05, 0xcb, 0xa9}, 8192, 32768, 0x200000, 448, 2, (NAND_TIMING_MODE5 | NAND_ECC_BCH16_MODE | NAND_TWO_PLANE_MODE | NAND_INTERLEAVING_MODE)},
 
+	{"1 Generation NAND 4GiB JS29F32G08AA-1", {NAND_MFR_INTEL, 0x68, 0x04, 0x46, 0xA9}, 4096, 4096, 0x100000, 218, 1, (NAND_TIMING_MODE5 | NAND_ECC_BCH12_MODE | NAND_TWO_PLANE_MODE)},
+	{"1 Generation NAND 8GiB JS29F64G08AA-1", {NAND_MFR_INTEL, 0x88, 0x24, 0x4b, 0xA9}, 8192, 8192, 0x200000, 448, 1, (NAND_TIMING_MODE5 | NAND_ECC_BCH16_MODE | NAND_TWO_PLANE_MODE)},
+
 	{"E serials NAND 2GiB TC58NVG4D2ETA00", {NAND_MFR_TOSHIBA, 0xD5, 0x94, 0x32, 0x76, 0x54}, 8192, 2048, 0x100000, 376, 1, (NAND_TIMING_MODE5 | NAND_ECC_BCH12_MODE | NAND_TWO_PLANE_MODE)},
 	{"E serials NAND 4GiB TC58NVG5D2ETA00", {NAND_MFR_TOSHIBA, 0xD7, 0x94, 0x32, 0x76, 0x54}, 8192, 4096, 0x100000, 376, 1, (NAND_TIMING_MODE5 | NAND_ECC_BCH12_MODE | NAND_TWO_PLANE_MODE)},
 	{"F serials NAND 4GiB TC58NVG5D2FTA00", {NAND_MFR_TOSHIBA, 0xD7, 0x94, 0x32, 0x76, 0x55}, 8192, 4096, 0x100000, 448, 1, (NAND_TIMING_MODE5 | NAND_ECC_BCH16_MODE | NAND_TWO_PLANE_MODE)},
@@ -245,7 +248,7 @@ static void aml_platform_hw_init(struct aml_nand_chip *aml_chip)
 	struct nand_chip *chip = &aml_chip->chip;
 	struct aml_nand_platform *plat = aml_chip->platform;
 	struct clk *sys_clk;
-	unsigned sys_clk_rate, sys_time, start_cycle, end_cycle, bus_cycle, time_mode, adjust;
+	unsigned sys_clk_rate, sys_time, start_cycle, end_cycle, bus_cycle, time_mode, adjust, Tcycle;
 
 	if ((aml_chip->chip_num > 1) && !nand_erarly_suspend_flag) {
 		chip->select_chip(mtd, -1);
@@ -272,18 +275,20 @@ static void aml_platform_hw_init(struct aml_nand_chip *aml_chip)
 		time_mode = 5;
 
 	if (READ_CBUS_REG(HHI_MPEG_CLK_CNTL)&(1<<8)) {
-	sys_clk = clk_get_sys(NAND_SYS_CLK_NAME, NULL);
-	sys_clk_rate = clk_get_rate(sys_clk);
+		sys_clk = clk_get_sys(NAND_SYS_CLK_NAME, NULL);
+		sys_clk_rate = clk_get_rate(sys_clk);
 	}
 	else {
 		time_mode = 0;
 		sys_clk_rate = 27000000;
 	}
-	sys_time = (10000 / (sys_clk_rate / 1000000));
-	start_cycle = ((NAND_CYCLE_DELAY + plat->T_REA * 10) / sys_time);
-	end_cycle = ((NAND_CYCLE_DELAY + sys_time / 2 + plat->T_RHOH * 10) / sys_time);
-
 	bus_cycle = nand_mode_time[time_mode];
+
+	sys_time = (10000 / (sys_clk_rate / 1000000));
+	Tcycle = (bus_cycle + 1) * sys_time;
+	start_cycle = ((NAND_CYCLE_DELAY + plat->T_REA * 10) / sys_time);
+	end_cycle = ((NAND_CYCLE_DELAY + Tcycle / 2 + plat->T_RHOH * 10) / sys_time);
+
 	if (bus_cycle < start_cycle)
 		adjust = start_cycle - bus_cycle;
 	else if(bus_cycle > end_cycle) {
@@ -513,13 +518,15 @@ static void aml_nand_cmd_ctrl(struct mtd_info *mtd, int cmd,  unsigned int ctrl)
 static int aml_nand_wait(struct mtd_info *mtd, struct nand_chip *chip)
 {
 	struct aml_nand_chip *aml_chip = mtd_to_nand_chip(mtd);
-	int status[MAX_CHIP_NUM], state = chip->state, i = 0, time_cnt = 0;
+	int status[MAX_CHIP_NUM], state = chip->state, i = 0, time_cnt = 0, chip_nr = 1;
 
 	/* Apply this short delay always to ensure that we do wait tWB in
 	 * any case on any machine. */
 	ndelay(100);
 
-	//for (i=0; i<aml_chip->chip_num; i++) {
+	if (state == FL_ERASING)
+		chip_nr = aml_chip->chip_num;
+	for (i=0; i<chip_nr; i++) {
 		if (aml_chip->valid_chip[i]) {
 			//active ce for operation chip and send cmd
 			aml_chip->aml_nand_select_chip(aml_chip, i);
@@ -560,7 +567,7 @@ static int aml_nand_wait(struct mtd_info *mtd, struct nand_chip *chip)
 
 			status[0] |= status[i];
 		}
-	//}
+	}
 
 	return status[0];
 }
@@ -584,7 +591,7 @@ static void aml_nand_base_command(struct aml_nand_chip *aml_chip, unsigned comma
 		switch (command) {
 
 			case NAND_CMD_READ0:
-				if (aml_chip->mfr_type == NAND_MFR_MICRON) {
+				if ((aml_chip->mfr_type == NAND_MFR_MICRON) || (aml_chip->mfr_type == NAND_MFR_INTEL)) {
 					command_temp = command;
 				}
 				else {
@@ -596,7 +603,7 @@ static void aml_nand_base_command(struct aml_nand_chip *aml_chip, unsigned comma
 
 			case NAND_CMD_TWOPLANE_READ1:
 				command_temp = NAND_CMD_READ0;
-				if (aml_chip->mfr_type == NAND_MFR_MICRON)
+				if ((aml_chip->mfr_type == NAND_MFR_MICRON) || (aml_chip->mfr_type == NAND_MFR_INTEL))
 					//plane_page_addr |= ((plane_blk_addr + 1) << 8);
 					return;
 				else
@@ -604,7 +611,7 @@ static void aml_nand_base_command(struct aml_nand_chip *aml_chip, unsigned comma
 				break;
 
 			case NAND_CMD_TWOPLANE_READ2:
-				if (aml_chip->mfr_type == NAND_MFR_MICRON) {
+				if ((aml_chip->mfr_type == NAND_MFR_MICRON) || (aml_chip->mfr_type == NAND_MFR_INTEL)) {
 					command_temp = NAND_CMD_PLANE2_READ_START;
 				}
 				else {
@@ -672,7 +679,7 @@ static void aml_nand_base_command(struct aml_nand_chip *aml_chip, unsigned comma
 			case NAND_CMD_READ0:
 				plane_page_addr = page_addr % (1 << pages_per_blk_shift);
 				
-				if (aml_chip->mfr_type == NAND_MFR_MICRON) {
+				if ((aml_chip->mfr_type == NAND_MFR_MICRON) || (aml_chip->mfr_type == NAND_MFR_INTEL)) {
 					plane_page_addr |= ((plane_blk_addr + 1) << pages_per_blk_shift);
 					command_temp = command;
 					chip->cmd_ctrl(mtd, command_temp & 0xff, NAND_NCE | NAND_CLE | NAND_CTRL_CHANGE);
@@ -687,7 +694,7 @@ static void aml_nand_base_command(struct aml_nand_chip *aml_chip, unsigned comma
 				break;
 
 			case NAND_CMD_TWOPLANE_READ1:
-				if (aml_chip->mfr_type == NAND_MFR_MICRON) {
+				if ((aml_chip->mfr_type == NAND_MFR_MICRON) || (aml_chip->mfr_type == NAND_MFR_INTEL)) {
 					page_addr = -1;
 					column = -1;
 				}
@@ -699,7 +706,7 @@ static void aml_nand_base_command(struct aml_nand_chip *aml_chip, unsigned comma
 				break;
 
 			case NAND_CMD_TWOPLANE_READ2:
-				if (aml_chip->mfr_type == NAND_MFR_MICRON) {
+				if ((aml_chip->mfr_type == NAND_MFR_MICRON) || (aml_chip->mfr_type == NAND_MFR_INTEL)) {
 					page_addr = -1;
 					column = -1;
 				}
@@ -711,7 +718,7 @@ static void aml_nand_base_command(struct aml_nand_chip *aml_chip, unsigned comma
 				break;
 
 			case NAND_CMD_ERASE1:
-				if (aml_chip->mfr_type == NAND_MFR_MICRON) {
+				if ((aml_chip->mfr_type == NAND_MFR_MICRON) || (aml_chip->mfr_type == NAND_MFR_INTEL)) {
 					command_temp = NAND_CMD_ERASE1_END;
 					chip->cmd_ctrl(mtd, command_temp & 0xff, NAND_NCE | NAND_CLE | NAND_CTRL_CHANGE);
 					aml_chip->aml_nand_wait_devready(aml_chip, chipnr);
@@ -1581,13 +1588,13 @@ static int aml_nand_block_bad(struct mtd_info *mtd, loff_t ofs, int getchip)
 
 		if (ret < 0) {
 			printk(" NAND detect Bad block at %llx \n", (uint64_t)ofs);
-			return -EFAULT;
+			return EFAULT;
 		}
 		if (aml_oob_ops.oobbuf[chip->badblockpos] == 0) {
 			memset(aml_chip->aml_nand_data_buf, 0, (mtd->writesize + mtd->oobsize));
 			if (!memcmp(aml_chip->aml_nand_data_buf + mtd->writesize, aml_oob_ops.oobbuf, aml_oob_ops.ooblen)) {
 				printk(" NAND detect Bad block at %llx \n", (uint64_t)ofs);
-				return -EFAULT;
+				return EFAULT;
 			}
 		}
 	}
@@ -1598,7 +1605,7 @@ static int aml_nand_block_bad(struct mtd_info *mtd, loff_t ofs, int getchip)
 		if (ret == -EUCLEAN)
 			ret = 0;
 		if (ret < 0)
-			return -EFAULT;
+			return EFAULT;
 		if (chip->oob_poi[chip->badblockpos] == 0xFF)
 			return 0;
 
@@ -1606,7 +1613,7 @@ static int aml_nand_block_bad(struct mtd_info *mtd, loff_t ofs, int getchip)
 			memset(aml_chip->aml_nand_data_buf, 0, (mtd->writesize + mtd->oobsize));
 			if (!memcmp(aml_chip->aml_nand_data_buf + mtd->writesize, chip->oob_poi, mtd->oobavail)) {
 				printk(" NAND detect Bad block at %llx \n", (uint64_t)ofs);
-				return -EFAULT;
+				return EFAULT;
 		}	
 	}
 	}
@@ -1795,8 +1802,8 @@ static struct aml_nand_flash_dev *aml_nand_get_flash_type(struct mtd_info *mtd,
 	chip->badblockpos = AML_BADBLK_POS;
 
 	/* Get chip options, preserve non chip based options */
-	chip->options &= ~NAND_CHIPOPTIONS_MSK;
-	chip->options |= type->options & NAND_CHIPOPTIONS_MSK;
+	//chip->options &= ~NAND_CHIPOPTIONS_MSK;
+	//chip->options |= type->options & NAND_CHIPOPTIONS_MSK;
 
 	/*
 	 * Set chip as a default. Board drivers can override it, if necessary
@@ -1806,8 +1813,8 @@ static struct aml_nand_flash_dev *aml_nand_get_flash_type(struct mtd_info *mtd,
 	/* Check if chip is a not a samsung device. Do not clear the
 	 * options for chips which are not having an extended id.
 	 */
-	if (*maf_id != NAND_MFR_SAMSUNG && !type->pagesize)
-		chip->options &= ~NAND_SAMSUNG_LP_OPTIONS;
+	//if (*maf_id != NAND_MFR_SAMSUNG && !type->pagesize)
+		//chip->options &= ~NAND_SAMSUNG_LP_OPTIONS;
 
 	printk(KERN_INFO "NAND device: Manufacturer ID:"
 	       " 0x%02x, Chip ID: 0x%02x (%s %s)\n", *maf_id, dev_id[0],
@@ -2218,6 +2225,7 @@ int aml_nand_init(struct aml_nand_chip *aml_chip)
 		chip->IO_ADDR_W = (void __iomem *) CBUS_REG_ADDR(NAND_BUF);
 
 	chip->options |=  NAND_SKIP_BBTSCAN;
+	chip->options |= NAND_NO_SUBPAGE_WRITE;
 	if (chip->ecc.mode != NAND_ECC_SOFT) {
 		if (aml_chip->user_byte_mode == 2)
 			chip->ecc.layout = &aml_nand_oob_64_2info;
@@ -2252,6 +2260,7 @@ int aml_nand_init(struct aml_nand_chip *aml_chip)
 	if (nand_scan(mtd, aml_chip->chip_num) == -ENODEV) {
 		chip->options = 0;
 		chip->options |=  NAND_SKIP_BBTSCAN;
+		chip->options |= NAND_NO_SUBPAGE_WRITE;
 		if (aml_nand_scan(mtd, aml_chip->chip_num)) {
 			err = -ENXIO;
 			goto exit_error;
@@ -2378,7 +2387,7 @@ int aml_nand_init(struct aml_nand_chip *aml_chip)
 	if (chip->buffers)
 		kfree(chip->buffers);
 	if (mtd->oobsize >= NAND_MAX_OOBSIZE)
-	chip->buffers = kzalloc((mtd->writesize + 3*mtd->oobsize), GFP_KERNEL);
+		chip->buffers = kzalloc((mtd->writesize + 3*mtd->oobsize), GFP_KERNEL);
 	else
 		chip->buffers = kzalloc((mtd->writesize + 3*NAND_MAX_OOBSIZE), GFP_KERNEL);
 	if (chip->buffers == NULL) {

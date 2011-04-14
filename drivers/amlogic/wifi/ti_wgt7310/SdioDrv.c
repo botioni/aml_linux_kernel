@@ -2104,10 +2104,20 @@ static const struct sdio_device_id ti_sdio_ids[] = {
 };
 
 
+static struct sdio_func *ti_sdio_func = NULL;
+
+int sdio_check_func(void)
+{
+	if (ti_sdio_func)
+		return 0;
+	else
+		return 1;
+}
 
 static int sdioDrv_probe(struct sdio_func *func,
 			 const struct sdio_device_id *id)
 {
+	int card_unit;
 	if (func->num != 2)
 		return 0;
 
@@ -2117,11 +2127,15 @@ static int sdioDrv_probe(struct sdio_func *func,
 	ti_drv.max_blocksize = func->max_blksize;
 	ti_drv.int_enabled = 1;
 	tiwlan_func[SDIO_WLAN_FUNC] = func;
+	ti_sdio_func = func;
 	
 	/* Store our context in the MMC driver */
 
 	//printk(KERN_INFO "ti_sdio_probe: Add glue driver\n");
 	sdio_claim_host(func);
+	card_unit = func->card->unit_state;
+	func->card->card_insert_process(func->card);
+	func->card->unit_state = card_unit;
 	sdioDrv_SetBlockSize(SDIO_WLAN_FUNC, 512);
 	sdio_set_drvdata(func, &ti_drv);
 	sdio_enable_func(func);
@@ -2149,6 +2163,7 @@ static void sdioDrv_remove(struct sdio_func *func)
 	printk(KERN_INFO "ti_sdio_remove: Free IRQ and remove device "
 		       "driver\n");
 
+	ti_sdio_func = NULL;
 	wlanDrvIf_remove();
 	/* Unregister the IRQ handler first. */
 //	sdio_claim_host(fdev->func);
@@ -2172,13 +2187,18 @@ static struct sdio_driver sdio_ti_driver = {
 };
 
 
-
+//#include <linux/sn7325.h>
 /* Module init and exit, register and unregister to the SDIO/MMC driver */
 //static int __init sdioDrv_init(void);
 //static int __init sdioDrv_init(void)
 int sdioDrv_init(void)
 {
 	int err;
+	
+	
+	//configIO(0, 0);
+	//printk("%s high\n", __FUNCTION__);
+    //setIO_level(0, 1, 5);
 
 	printk(KERN_INFO "***SDIO***:Texas Instruments: Register to MMC/SDIO driver v%s\n",SW_VERSION_STR);
 	/* Sleep a bit - otherwise if the mmc subsystem has just started, it

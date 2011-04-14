@@ -1,7 +1,7 @@
 #include <linux/module.h>
 #include <linux/spinlock.h>
 #include <linux/kernel.h>
-#include <linux/device.h>
+#include <linux/platform_device.h>
 #include <linux/amports/timestamp.h>
 #include <linux/amports/tsync.h>
 
@@ -29,7 +29,6 @@
 MODULE_AMLOG(AMLOG_DEFAULT_LEVEL, 0, LOG_DEFAULT_LEVEL_DESC, LOG_DEFAULT_MASK_DESC);
 
 //#define DEBUG
-//#define DEBUG_DISCONTINUE
 #define AVEVENT_FLAG_PARAM  0x01
 
 //#define TSYNC_SLOW_SYNC
@@ -75,7 +74,7 @@ const static struct {
 } avevent_token[] = {
     {"VIDEO_START", 11, VIDEO_START, AVEVENT_FLAG_PARAM},
     {"VIDEO_STOP",  10, VIDEO_STOP,  0},
-    {"VIDEO_PAUSE", 11, VIDEO_PAUSE, 0},
+    {"VIDEO_PAUSE", 11, VIDEO_PAUSE, AVEVENT_FLAG_PARAM},
     {"VIDEO_TSTAMP_DISCONTINUITY", 26, VIDEO_TSTAMP_DISCONTINUITY, AVEVENT_FLAG_PARAM},
     {"AUDIO_START", 11, AUDIO_START, AVEVENT_FLAG_PARAM},
     {"AUDIO_RESUME", 12, AUDIO_RESUME, 0},
@@ -92,9 +91,7 @@ static spinlock_t lock = SPIN_LOCK_UNLOCKED;
 static tsync_mode_t tsync_mode = TSYNC_MODE_AMASTER;
 static tsync_stat_t tsync_stat = TSYNC_STAT_PCRSCR_SETUP_NONE;
 static int tsync_enable = 0;   //1;
-#ifdef DEBUG_DISCONTINUE
 static int pts_discontinue = 0;
-#endif
 static int tsync_abreak = 0;
 static bool tsync_pcr_recover_enable = false;
 static int pcr_sync_stat = PCR_SYNC_UNSET;
@@ -323,15 +320,16 @@ void tsync_avevent(avevent_t event, u32 param)
 
             timestamp_pcrscr_set(param);
 
-#ifdef DEBUG_DISCONTINUE
-            pts_discontinue = 1;
-#endif
             amlog_level(LOG_LEVEL_ATTENTION, "reset scr from vpts to 0x%x\n", param);
 
         }
         break;
 
     case AUDIO_TSTAMP_DISCONTINUITY:
+		timestamp_apts_set(param);
+        amlog_level(LOG_LEVEL_ATTENTION, "audio discontinue, reset apts, 0x%x\n", param);
+
+		
         if (!tsync_enable) {
             break;
         }
@@ -340,9 +338,7 @@ void tsync_avevent(avevent_t event, u32 param)
 
         amlog_level(LOG_LEVEL_ATTENTION, "AUDIO_TSTAMP_DISCONTINUITY, 0x%x, 0x%x\n", t, param);
 
-#ifdef DEBUG_DISCONTINUE
         pts_discontinue = 1;
-#endif
 
         if (abs(param - t) > AV_DISCONTINUE_THREDHOLD) {
             /* switch tsync mode to free run mode,
@@ -359,7 +355,13 @@ void tsync_avevent(avevent_t event, u32 param)
         }
         break;
 
-    case AUDIO_START:
+    case AUDIO_START:		
+		timestamp_apts_set(param);
+
+		amlog_level(LOG_LEVEL_INFO, "audio start, reset apts = 0x%x\n", param);
+
+        timestamp_apts_enable(1);
+		 
         if (!tsync_enable) {
             break;
         }
@@ -386,7 +388,7 @@ void tsync_avevent(avevent_t event, u32 param)
         } else {
             timestamp_pcrscr_set(param);
         }
-        timestamp_apts_set(param);
+       
         tsync_stat = TSYNC_STAT_PCRSCR_SETUP_AUDIO;
 
         amlog_level(LOG_LEVEL_INFO, "apts reset scr = 0x%x\n", param);
@@ -395,6 +397,8 @@ void tsync_avevent(avevent_t event, u32 param)
         break;
 
     case AUDIO_RESUME:
+		timestamp_apts_enable(1);
+		
         if (!tsync_enable) {
             break;
         }
@@ -402,6 +406,7 @@ void tsync_avevent(avevent_t event, u32 param)
         break;
 
     case AUDIO_STOP:
+		timestamp_apts_set(-1);
         tsync_abreak = 0;
         if (tsync_trickmode) {
             tsync_stat = TSYNC_STAT_PCRSCR_SETUP_VIDEO;
@@ -411,6 +416,8 @@ void tsync_avevent(avevent_t event, u32 param)
         break;
 
     case AUDIO_PAUSE:
+		timestamp_apts_enable(0);
+		
         if (!tsync_enable) {
             break;
         }
@@ -419,7 +426,6 @@ void tsync_avevent(avevent_t event, u32 param)
         break;
 
     case VIDEO_PAUSE:
-        
         if (param == 1) {
             vpause_flag = 1;
         } else {
@@ -445,9 +451,14 @@ void tsync_avevent(avevent_t event, u32 param)
         break;
     case VIDEO_STOP:
     case AUDIO_STOP:
-    case VIDEO_PAUSE:
     case AUDIO_PAUSE:
         amvdev_pause();
+        break;
+    case VIDEO_PAUSE:
+        if (vpause_flag)
+            amvdev_pause();
+        else
+            amvdev_resume();
         break;
     default:
         break;
@@ -492,6 +503,62 @@ void tsync_set_dec_reset(void)
     tsync_dec_reset_flag = 1;
 }
 EXPORT_SYMBOL(tsync_set_dec_reset);
+
+void tsync_set_enable(int enable)
+{
+    tsync_enable = enable;
+}
+EXPORT_SYMBOL(tsync_set_enable);
+
+int tsync_get_syncdiscont(void)
+{
+    return pts_discontinue;
+}
+EXPORT_SYMBOL(tsync_get_syncdiscont);
+
+void tsync_set_syncdiscont(int syncdiscont)
+{
+    pts_discontinue = syncdiscont;
+}
+EXPORT_SYMBOL(tsync_set_syncdiscont);
+
+int tsync_set_apts(unsigned pts)
+{
+    unsigned  t;
+    ssize_t r;
+
+    timestamp_apts_set(pts);
+
+    if (tsync_abreak) {
+        tsync_abreak = 0;
+    }
+
+    if (!tsync_enable) {
+        return 0;
+    }
+
+    t = timestamp_pcrscr_get();
+    if (tsync_mode == TSYNC_MODE_AMASTER) {
+        if (abs(pts - t) > tsync_av_thresh) {
+            tsync_mode = TSYNC_MODE_VMASTER;
+            amlog_level(LOG_LEVEL_INFO, "apts 0x%x shift scr 0x%x too much, switch to TSYNC_MODE_VMASTER\n",
+                        pts, t);
+        } else {
+            timestamp_pcrscr_set(pts);
+            amlog_level(LOG_LEVEL_INFO, "apts set to scr 0x%x->0x%x\n", t, pts);
+        }
+    } else {
+        if (abs(pts - t) <= tsync_av_thresh) {
+            tsync_mode = TSYNC_MODE_AMASTER;
+            amlog_level(LOG_LEVEL_INFO, "switch to TSYNC_MODE_AMASTER\n");
+
+            timestamp_pcrscr_set(pts);
+        }
+    }
+
+    return 0;
+}
+EXPORT_SYMBOL(tsync_set_apts);
 
 /*********************************************************/
 
@@ -719,7 +786,6 @@ static ssize_t store_enable(struct class *class,
     return size;
 }
 
-#ifdef DEBUG_DISCONTINUE
 static ssize_t show_discontinue(struct class *class,
                                 struct class_attribute *attr,
                                 char *buf)
@@ -748,7 +814,6 @@ static ssize_t store_discontinue(struct class *class,
 
     return size;
 }
-#endif
 
 static struct class_attribute tsync_class_attrs[] = {
     __ATTR(pts_video,  S_IRUGO | S_IWUSR, show_vpts,    store_vpts),
@@ -758,9 +823,7 @@ static struct class_attribute tsync_class_attrs[] = {
     __ATTR(mode,       S_IRUGO | S_IWUSR, show_mode,    NULL),
     __ATTR(enable,     S_IRUGO | S_IWUSR, show_enable,  store_enable),
     __ATTR(pcr_recover, S_IRUGO | S_IWUSR, show_pcr_recover,  store_pcr_recover),
-#ifdef DEBUG_DISCONTINUE
     __ATTR(discontinue, S_IRUGO | S_IWUGO, show_discontinue,  store_discontinue),
-#endif
     __ATTR_NULL
 };
 

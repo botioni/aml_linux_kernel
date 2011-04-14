@@ -60,6 +60,9 @@ static int VF_POOL_SIZE = 6;
 static int VM_CANVAS_INDEX = 24;
 /*same as tvin pool*/
 
+static int vm_skip_count = 5 ; //skip 5 frames from vdin
+static int test_zoom = 0;
+
 static inline void vm_vf_put_from_provider(vframe_t *vf);
 #define INCPTR(p) ptr_atomic_wrap_inc(&p)
 
@@ -69,9 +72,15 @@ static inline void vm_vf_put_from_provider(vframe_t *vf);
 
 #define VM_DEPTH_8_CANVAS_Y  0x54     // for Y/CbCr 4:2:0
 #define VM_DEPTH_8_CANVAS_UV 0x56
-
+#define VM_DEPTH_8_CANVAS_U 0x57
+#define VM_DEPTH_8_CANVAS_V 0x58
 #define VM_DMA_CANVAS_INDEX 0x5e
 #define VM_CANVAS_MX 0x5f
+
+#define GE2D_ENDIAN_SHIFT        24
+#define GE2D_ENDIAN_MASK            (0x1 << GE2D_ENDIAN_SHIFT)
+#define GE2D_BIG_ENDIAN             (0 << GE2D_ENDIAN_SHIFT)
+#define GE2D_LITTLE_ENDIAN          (1 << GE2D_ENDIAN_SHIFT)
 
 static spinlock_t lock = SPIN_LOCK_UNLOCKED;
 
@@ -123,7 +132,17 @@ static inline u32 index2canvas(u32 index)
 
 static vframe_t *vm_vf_peek(void)
 {
-    return vm_vf_peek_from_provider();
+	vframe_t *vf = NULL;
+	vf = vm_vf_peek_from_provider();
+	if(vf){
+		if(vm_skip_count > 0){
+			vm_skip_count--;	
+			vm_vf_get_from_provider();	
+			vm_vf_put_from_provider(vf); 
+			vf = NULL;						
+		}	
+	}
+    return vf;
 }
 
 static vframe_t *vm_vf_get(void)
@@ -208,7 +227,6 @@ static const struct vframe_receiver_op_s vm_vf_receiver =
 {
     .event_cb = vm_receiver_event_fun
 };
-static int vm_in = 0 ;
 static int vm_receiver_event_fun(int type, void* data, void* private_data)
 {
     switch(type){
@@ -216,13 +234,10 @@ static int vm_receiver_event_fun(int type, void* data, void* private_data)
             //up(&vb_start_sema);
             break;
         case VFRAME_EVENT_PROVIDER_START:
-            if(vm_in == 0){
-  //            vf_reg_provider(&vm_vf_provider);
-                vm_in ++;
-            }        
+			vm_skip_count = 0; 
+			test_zoom = 0;
             break;
         case VFRAME_EVENT_PROVIDER_UNREG:        
-            vm_in = 0;
             vm_local_init();
             break;
             
@@ -232,7 +247,7 @@ static int vm_receiver_event_fun(int type, void* data, void* private_data)
     return 0;
 }
 
-int get_unused_vm_index()
+int get_unused_vm_index(void)
 {
     int i ;
     for (i = 0; i < VF_POOL_SIZE; i++){
@@ -264,7 +279,7 @@ static int prepare_vframe(vframe_t *vf)
 *************************************************/
 static const struct vframe_provider_s *vfp = NULL;
 
-void vm_local_init() 
+void vm_local_init(void) 
 {
     int i;
     for(i=0;i<MAX_VF_POOL_SIZE;i++) 
@@ -296,12 +311,13 @@ vframe_receiver_op_t* vf_vm_reg_provider(const vframe_provider_t *p )
     
     return &vm_vf_receiver;
 }
-vframe_receiver_op_t* vf_vm_unreg_provider()
+vframe_receiver_op_t* vf_vm_unreg_provider(void)
 {
     ulong flags;    
     spin_lock_irqsave(&lock, flags); 
     vfp = NULL;
     spin_unlock_irqrestore(&lock, flags);
+    vf_unreg_provider();
     return NULL;
 }
 
@@ -357,6 +373,32 @@ static int get_input_format(vframe_t* vf)
     return format;
 }
 
+static int  get_input_frame(display_frame_t* frame ,vframe_t* vf)
+{
+	int ret = 0 ;	
+	if(!vf){
+		return -1;	
+	}
+	frame->frame_top  =     0;   
+	frame->frame_left  =     0 ;   
+	frame->frame_width   =  vf->width;
+	frame->frame_height   = vf->height;
+	int top, left,  bottom ,right;
+	ret = get_curren_frame_para(&top ,&left , &bottom, &right);	
+	if(ret >= 0 ){
+  		frame->content_top     =  top&(~1);
+		frame->content_left    =  left&(~1);
+		frame->content_width   =  vf->width - 2*frame->content_left ;
+		frame->content_height  =  vf->height - 2*frame->content_top;
+	}else{
+		frame->content_top     = 0;             
+		frame->content_left    =  0 ;           
+		frame->content_width   = vf->width;     
+		frame->content_height  = vf->height   	;
+	}
+	return 0;
+}
+
 static int get_output_format(int v4l2_format)
 {
     int format = GE2D_FORMAT_S24_YUV444;
@@ -371,8 +413,14 @@ static int get_output_format(int v4l2_format)
         format = GE2D_FORMAT_S16_YUV422;
         break;
         case V4L2_PIX_FMT_BGR24:
-        case V4L2_PIX_FMT_RGB24: 
         format = GE2D_FORMAT_S24_RGB ;
+        break;
+        case V4L2_PIX_FMT_RGB24:
+        format = GE2D_FORMAT_S24_BGR; 
+        break;
+        case V4L2_PIX_FMT_NV12:
+        case V4L2_PIX_FMT_YUV420:
+        format = GE2D_FORMAT_S8_Y;
         break;
         default:
         break;            
@@ -400,12 +448,6 @@ typedef struct vm_dma_contig_memory {
 	int is_userptr;
 }vm_contig_memory_t;
 
-#define VM_DEPTH_16_CANVAS 0x50         //for single canvas use ,RGB16, YUV422,etc
-
-#define VM_DEPTH_24_CANVAS 0x52
-
-#define VM_DEPTH_8_CANVAS_Y  0x54     // for Y/CbCr 4:2:0
-#define VM_DEPTH_8_CANVAS_UV 0x56
 int is_need_ge2d_pre_process()
 {
     int ret = 0;
@@ -414,7 +456,9 @@ int is_need_ge2d_pre_process()
         case  V4L2_PIX_FMT_YUV444:
         case  V4L2_PIX_FMT_VYUY:
         case  V4L2_PIX_FMT_BGR24:      
-        case  V4L2_PIX_FMT_RGB24:         
+        case  V4L2_PIX_FMT_RGB24: 
+        case  V4L2_PIX_FMT_YUV420:  
+        case  V4L2_PIX_FMT_NV12:      
            ret = 1;
            break;
            
@@ -459,9 +503,14 @@ int get_canvas_index(int v4l2_format ,int* depth)
             canvas = VM_DEPTH_24_CANVAS;
             *depth = 24;
             break; 
-        case V4L2_PIX_FMT_NV12:
-            *depth = 12;
-            break;    
+        case V4L2_PIX_FMT_NV12: 
+			canvas = VM_DEPTH_8_CANVAS_Y|(VM_DEPTH_8_CANVAS_UV<<8)|(VM_DEPTH_8_CANVAS_V<<16);
+			*depth = 12;   
+			break;
+        case V4L2_PIX_FMT_YUV420:
+			canvas = VM_DEPTH_8_CANVAS_Y|(VM_DEPTH_8_CANVAS_U<<8)|(VM_DEPTH_8_CANVAS_V<<16);
+			*depth = 12;
+			break;
         default:
         break;            
     }   
@@ -535,7 +584,17 @@ exit:
 int vm_ge2d_pre_process(vframe_t* vf, ge2d_context_t *context,config_para_ex_t* ge2d_config)
 {
     canvas_t cs0,cs1,cs2,cd,cd2,cd3;
-
+    display_frame_t input_frame;
+    int src_top ,src_left ,src_width, src_height;
+    int ret = get_input_frame(&input_frame , vf);
+	src_top =     input_frame.content_top   ;
+	src_left =    input_frame.content_left  ;
+	src_width =   input_frame.content_width ;
+	src_height =  input_frame.content_height;
+	if(test_zoom){
+		test_zoom = 0;
+		printk("top is %d , left is %d , width is %d , height is %d\n",input_frame.content_top ,input_frame.content_left,input_frame.content_width,input_frame.content_height);
+	}
     /* data operating. */ 
     ge2d_config->alu_const_color= 0;//0x000000ff;
     ge2d_config->bitmask_en  = 0;
@@ -575,9 +634,9 @@ int vm_ge2d_pre_process(vframe_t* vf, ge2d_context_t *context,config_para_ex_t* 
     ge2d_config->src_para.height = vf->height;
 //    printk("vf_width is %d , vf_height is %d \n",vf->width ,vf->height);
     ge2d_config->src2_para.mem_type = CANVAS_TYPE_INVALID;
-    ge2d_config->dst_para.canvas_index=output_para.index;
+    ge2d_config->dst_para.canvas_index=output_para.index&0xff;
     ge2d_config->dst_para.mem_type = CANVAS_TYPE_INVALID;
-    ge2d_config->dst_para.format = get_output_format(output_para.v4l2_format);     
+    ge2d_config->dst_para.format = get_output_format(output_para.v4l2_format)|GE2D_LITTLE_ENDIAN;     
     
   
     ge2d_config->dst_para.fill_color_en = 0;
@@ -593,8 +652,58 @@ int vm_ge2d_pre_process(vframe_t* vf, ge2d_context_t *context,config_para_ex_t* 
     if(ge2d_context_config_ex(context,ge2d_config)<0) {
         printk("++ge2d configing error.\n");
         return;
-    }
-    stretchblt_noalpha(context,0,0,vf->width,vf->height,0,0,output_para.width,output_para.height);
+    }              
+    stretchblt_noalpha(context,src_left ,src_top ,src_width, src_height,0,0,output_para.width,output_para.height);
+    
+    /* for cr of  yuv420p or yuv420sp. */
+    if(output_para.v4l2_format==V4L2_PIX_FMT_YUV420) {
+		/* for cb. */
+		canvas_read((output_para.index>>8)&0xff,&cd);
+		ge2d_config->dst_planes[0].addr = cd.addr;
+		ge2d_config->dst_planes[0].w = cd.width;
+		ge2d_config->dst_planes[0].h = cd.height;
+		ge2d_config->dst_para.canvas_index=(output_para.index>>8)&0xff;
+		ge2d_config->dst_para.format=GE2D_FORMAT_S8_CB|GE2D_LITTLE_ENDIAN;
+		ge2d_config->dst_para.width = output_para.width/2;
+		ge2d_config->dst_para.height = output_para.height/2;
+		if(ge2d_context_config_ex(context,ge2d_config)<0) {
+			printk("++ge2d configing error.\n");
+			return;
+		}
+		stretchblt_noalpha(context,src_left ,src_top ,src_width, src_height,0,0,ge2d_config->dst_para.width,ge2d_config->dst_para.height);
+	} else if (output_para.v4l2_format==V4L2_PIX_FMT_NV12) { 
+		canvas_read((output_para.index>>8)&0xff,&cd);
+		ge2d_config->dst_planes[0].addr = cd.addr;
+		ge2d_config->dst_planes[0].w = cd.width;
+		ge2d_config->dst_planes[0].h = cd.height;
+		ge2d_config->dst_para.canvas_index=(output_para.index>>8)&0xff;
+		ge2d_config->dst_para.format=GE2D_FORMAT_S8_CB|GE2D_LITTLE_ENDIAN;
+		ge2d_config->dst_para.width = output_para.width;
+		ge2d_config->dst_para.height = output_para.height/2;
+		if(ge2d_context_config_ex(context,ge2d_config)<0) {
+			printk("++ge2d configing error.\n");
+			return;
+		}
+		stretchblt_noalpha(context,src_left ,src_top ,src_width, src_height,0,0,ge2d_config->dst_para.width,ge2d_config->dst_para.height);
+	}
+
+	/* for cb of yuv420p or yuv420sp. */
+	if(output_para.v4l2_format==V4L2_PIX_FMT_YUV420||
+		output_para.v4l2_format==V4L2_PIX_FMT_NV12) {
+		canvas_read((output_para.index>>16)&0xff,&cd);
+		ge2d_config->dst_planes[0].addr = cd.addr;
+		ge2d_config->dst_planes[0].w = cd.width;
+		ge2d_config->dst_planes[0].h = cd.height;
+		ge2d_config->dst_para.canvas_index=(output_para.index>>16)&0xff;
+		ge2d_config->dst_para.format=GE2D_FORMAT_S8_CR|GE2D_LITTLE_ENDIAN;
+		ge2d_config->dst_para.width = output_para.width/2;
+		ge2d_config->dst_para.height = output_para.height/2;
+		if(ge2d_context_config_ex(context,ge2d_config)<0) {
+			printk("++ge2d configing error.\n");
+			return;
+		}
+		stretchblt_noalpha(context,src_left ,src_top ,src_width, src_height,0,0,ge2d_config->dst_para.width,ge2d_config->dst_para.height);
+	}
     return output_para.index;
 }
 
@@ -605,84 +714,101 @@ int vm_sw_post_process(int canvas , int addr)
     }
 	int poss=0,posd=0;
 	int i=0,j = 0;
+	void __iomem * buffer_y_start;
+	void __iomem * buffer_u_start;
 	void __iomem * buffer_v_start;
-	canvas_t canvas_work;
-	canvas_read(canvas,&canvas_work);
-//	printk("+++++start copying.....");
-    buffer_v_start = ioremap_wc(canvas_work.addr,canvas_work.width*canvas_work.height);
-//	printk("=======%x\n",buffer_v_start);
-    if(output_para.v4l2_format == V4L2_PIX_FMT_RGB24){
-        poss = posd = 0 ;
-    	for(i=0;i<output_para.height;i++) {
-    	    for(j = 0 ;j < output_para.width*3 ;j+=3){
-    	        *(unsigned char*)(addr +poss + j ) =  *(unsigned char*)(buffer_v_start +posd + j + 2);
-    	        *(unsigned char*)(addr +poss+ j+1 ) =  *(unsigned char*)(buffer_v_start +posd+ j + 1);
-    	        *(unsigned char*)(addr +poss+ j +2 ) =  *(unsigned char*)(buffer_v_start +posd + j ) ;
-    	    }
-    		poss+=output_para.bytesperline;
-    		posd+= canvas_work.width;		
-    	}        
-    }else if (output_para.v4l2_format== V4L2_PIX_FMT_RGB565X){
-
-    	for(i=0;i<output_para.height;i++) {
-    		memcpy(addr+poss,buffer_v_start+posd,output_para.bytesperline/*vb->bytesperline*/);
-    		poss+=output_para.bytesperline;
-    		posd+= canvas_work.width;		
-    	}
-    } else if (output_para.v4l2_format== V4L2_PIX_FMT_NV12){
-		int y_size = output_para.height*output_para.width;
-		unsigned char* dst_y1_addr = addr;
-		unsigned char* dst_uv_addr = addr+y_size;
-		unsigned char* src_addr=buffer_v_start; 
-		int i,j,k,dst_y_cnt=0,dst_uv_cnt=0;
+	canvas_t canvas_work_y;   
+	canvas_t canvas_work_u;
+	canvas_t canvas_work_v;
+	
+	canvas_read(canvas&0xff,&canvas_work_y);
+    buffer_y_start = ioremap_wc(canvas_work_y.addr,canvas_work_y.width*canvas_work_y.height);
+    if (output_para.v4l2_format == V4L2_PIX_FMT_BGR24||
+			output_para.v4l2_format == V4L2_PIX_FMT_RGB24||
+			output_para.v4l2_format== V4L2_PIX_FMT_RGB565X) {
 		
-		for(j=0;j<output_para.height;j+=2) { 
-			/* for line 2*n. */ 
-			for(i=0,k=0;i<output_para.width;i+=4) {
-				/* for Y channel. */
-				dst_y1_addr[dst_y_cnt++]  = src_addr[k+7];
-				dst_y1_addr[dst_y_cnt++]  = src_addr[k+5];
-				dst_y1_addr[dst_y_cnt++]  = src_addr[k+3];    
-				dst_y1_addr[dst_y_cnt++]  = src_addr[k+1];
-				
-				/* for UV Channel. */
-				dst_uv_addr[dst_uv_cnt++] = src_addr[k+6]>>1;
-				dst_uv_addr[dst_uv_cnt++] = src_addr[k+4]>>1;
-				dst_uv_addr[dst_uv_cnt++] = src_addr[k+2]>>1;
-				dst_uv_addr[dst_uv_cnt++] = src_addr[k+0]>>1;
-				k += 8;
-			}			
-			dst_uv_cnt-= output_para.width;
-			src_addr+= canvas_work.width;
-			
-			/* for line 2*n+1. */
-			for(i=0,k=0;i<output_para.width;i+=4) {  
-				/* for Y channel. */
-				dst_y1_addr[dst_y_cnt++]  = src_addr[k+7];
-				dst_y1_addr[dst_y_cnt++]  = src_addr[k+5];
-				dst_y1_addr[dst_y_cnt++]  = src_addr[k+3];
-				dst_y1_addr[dst_y_cnt++]  = src_addr[k+1];
-				
-				/* for UV Channel. */
-				dst_uv_addr[dst_uv_cnt++] += src_addr[k+6]>>1;
-				dst_uv_addr[dst_uv_cnt++] += src_addr[k+4]>>1;
-				dst_uv_addr[dst_uv_cnt++] += src_addr[k+2]>>1;
-				dst_uv_addr[dst_uv_cnt++] += src_addr[k+0]>>1;
-				k += 8;
+    	for(i=0;i<output_para.height;i++) {
+    		memcpy(addr+poss,buffer_y_start+posd,output_para.bytesperline);
+    		poss+=output_para.bytesperline;
+    		posd+= canvas_work_y.width;		
+    	}
+    } else if (output_para.v4l2_format== V4L2_PIX_FMT_NV12) {
+    	int uv_height = output_para.height>>1;
+    	canvas_read((canvas>>8)&0xff,&canvas_work_u);
+    	buffer_u_start = ioremap_wc(canvas_work_u.addr,canvas_work_u.width*canvas_work_u.height);
+    	int pos_u_s=0,pos_u_d=0;
+		char* u_addr_d = addr+output_para.width* output_para.height;
+		
+		poss = posd = 0 ;
+		for(i=0;i<output_para.height;i+=2) { /* copy y */
+    		memcpy(addr+poss,buffer_y_start+posd,output_para.width);
+    		poss+=output_para.width;
+    		posd+= canvas_work_y.width;	
+    		memcpy(addr+poss,buffer_y_start+posd,output_para.width);
+    		poss+=output_para.width;
+    		posd+= canvas_work_y.width;
+    		
+    		memcpy(u_addr_d+pos_u_d,buffer_u_start+pos_u_s,output_para.width);
+    		pos_u_s += canvas_work_y.width;
+    		pos_u_d += output_para.width;
+    	}
+
+    	posd=0;
+    	canvas_read((canvas>>16)&0xff,&canvas_work_v);
+    	buffer_v_start = ioremap_wc(canvas_work_v.addr,canvas_work_v.width*canvas_work_v.height);
+        
+        int uv_cnt;
+    	int v_width = output_para.width>>1;
+        char* dst_buff=(unsigned char*)(addr+poss+1);
+        char* src_buff= buffer_v_start;
+   		for(i=0;i<uv_height;i++) { /* copy uv */
+            uv_cnt= posd;
+			for(j=0;j<v_width;j++) { 
+				*dst_buff = src_buff[uv_cnt++];
+				dst_buff+=2;
 			}
-			src_addr+= canvas_work.width;
-		}
+    		posd+= canvas_work_v.width;		
+    	}
+    	iounmap(buffer_u_start);
+    	iounmap(buffer_v_start);
+	} else if (output_para.v4l2_format = V4L2_PIX_FMT_YUV420) {
+    	int uv_width = output_para.width>>1;
+    	int uv_height = output_para.height>>1;
+    	char* cur_dst;
+    	char* cur_src;
+    	
+		posd=0;
+		for(i=output_para.height;i>0;i--) { /* copy y */
+    		memcpy(addr+poss,buffer_v_start+posd,output_para.width);
+    		poss+=output_para.width;
+    		posd+= canvas_work_y.width;		
+    	}
+    	
+    	posd=0;
+    	canvas_read((canvas>>8)&0xff,&canvas_work_u);
+    	buffer_u_start = ioremap_wc(canvas_work_u.addr,canvas_work_u.width*canvas_work_u.height);
+    	canvas_read((canvas>>16)&0xff,&canvas_work_v);
+    	buffer_v_start = ioremap_wc(canvas_work_v.addr,canvas_work_v.width*canvas_work_v.height);
+   		for(i=uv_height;i>0;i--) { /* copy y */
+    		memcpy(addr+poss,buffer_u_start+posd,uv_width);
+    		poss+=uv_width;
+    		posd+= canvas_work_u.width;		
+    	}
+    	posd=0;
+   		for(i=uv_height;i>0;i--) { /* copy y */
+    		memcpy(addr+poss,buffer_v_start+posd,uv_width);
+    		poss+=uv_width;
+    		posd+= canvas_work_v.width;		
+    	}
+    	iounmap(buffer_u_start);
+    	iounmap(buffer_v_start);
 	}
-	iounmap(buffer_v_start);
-//	printk("done\n");    
+	iounmap(buffer_y_start);   
     return 0;
 }
 
 static struct task_struct *task=NULL;
 static struct task_struct *simulate_task_fd=NULL;
-
-
-
 
 static int reset_frame = 1;
 static int vm_task(void *data) {
@@ -700,7 +826,7 @@ static int vm_task(void *data) {
         down_interruptible(&vb_start_sema);		
         timer_count = 0;
        
-/*wait for frame from 656 provider until 500ms runs out*/        
+		/*wait for frame from 656 provider until 500ms runs out*/        
         while(((vf = local_vf_peek()) == NULL)&&(timer_count < 100)){
             timer_count ++;
             msleep(5);
@@ -708,17 +834,18 @@ static int vm_task(void *data) {
         vf = local_vf_get();
         if(vf){
             src_canvas = vf->canvas0Addr ;
-/*here we need translate 422 format to rgb format ,etc*/            
+            
+			/*here we need translate 422 format to rgb format ,etc*/            
             if(is_need_ge2d_pre_process()){
                 src_canvas = vm_ge2d_pre_process(vf,context,&ge2d_config);
             }  
             local_vf_put(vf);         
-/*here we need copy the translated data to vmalloc cache*/  
+			
+			/*here we need copy the translated data to vmalloc cache*/  
             if(is_need_sw_post_process()){          
                 vm_sw_post_process(src_canvas ,output_para.vaddr);
             }
-        }  
-//        printk("vm task process finish\n");
+        }
         up(&vb_done_sema); 
     }
     
@@ -771,20 +898,26 @@ int vm_buffer_init(void)
                           buf_start + i * decbuf_size,
                           canvas_width*2, canvas_height,
                           CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_LINEAR);
-                          
             canvas_config(VM_DEPTH_24_CANVAS+i,
                           buf_start + i * decbuf_size,
                           canvas_width*3, canvas_height,
-                          CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_LINEAR);                          
-                          
+                          CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_LINEAR);
             canvas_config(VM_DEPTH_8_CANVAS_Y+ i,
                           buf_start + i*decbuf_size/2,
-                          canvas_width, canvas_height/2,
-                          CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_32X32);
+                          canvas_width, canvas_height,
+                          CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_LINEAR); //CANVAS_BLKMODE_32X32
             canvas_config(VM_DEPTH_8_CANVAS_UV + i,
                           buf_start + (i+1)*decbuf_size/2,
-                          canvas_width, canvas_height,
-                          CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_32X32);
+                          canvas_width, canvas_height/2,
+                          CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_LINEAR);
+            canvas_config(VM_DEPTH_8_CANVAS_U + i,
+                          buf_start + (i+1)*decbuf_size/2,
+                          canvas_width/2, canvas_height/2,
+                          CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_LINEAR);
+            canvas_config(VM_DEPTH_8_CANVAS_V + i,
+                          buf_start + (i+3)*decbuf_size/4,
+                          canvas_width/2, canvas_height/2,
+                          CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_LINEAR);
             vfbuf_use[i] = 0;
         }
     }else{
@@ -852,143 +985,8 @@ void set_vm_status(int flag) {
     }
 }
 
-/***********************************************************************
-*
-* class property info.
-*
-************************************************************************/
-
-#define    	VM_CLASS_NAME   				"vm"
-
-static ssize_t show_vm_info(struct class *cla,struct class_attribute *attr,char *buf)
-{
-    char *bstart,*vstart;
-    unsigned int bsize;
-    get_vm_buf_info(&bstart,&bsize,&vstart);
-    return snprintf(buf,80,"buffer:\n start:%x.\tsize:%d\n",(unsigned int)bstart,bsize/(1024*1024));
-}
-
-static ssize_t set_test(struct device *dev,
-					struct device_attribute *attr,
-					const char *buf, size_t count)
-{
-	//struct display_device *dsp = dev_get_drvdata(dev);
-	ssize_t ret = -EINVAL, size;
-	int contrast;
-	char *endp;
-
-	contrast = simple_strtoul(buf, &endp, 0);
-	size = endp - buf;
-
-	return ret;
-}
-
-
-static char attr_dat0[3]="-1";
-static ssize_t read_attr0(struct class *cla,struct class_attribute *attr,char *buf)
-{
-    return snprintf(buf,3,"%s",attr_dat0);
-}
-
-static ssize_t write_attr0(struct device *dev,
-					struct device_attribute *attr,
-					const char *buf, size_t count)
-{
-	//struct display_device *dsp = dev_get_drvdata(dev);
-	ssize_t ret = -EINVAL;
-	if(count <= 2)
-	{
-		int i = 0;
-		if(buf[0] == '-')
-		{
-			attr_dat0[0] = '-';
-			i = 1;
-			ret++;
-		}
-		if( (buf[i]>='0') && (buf[i]<='9'))
-		{
-				attr_dat0[i] = buf[i];
-				attr_dat0[i+1] = '\0';
-				ret++;
-		}
-		else
-		{
-			attr_dat0[0]='-';attr_dat0[1]='1';//default -1;
-			ret = -EINVAL;
-		}
-	}
-
-	return ret;
-}
-
-static char attr_dat1[3]="-1";
-static ssize_t read_attr1(struct class *cla,struct class_attribute *attr,char *buf)
-{
-    return snprintf(buf,3,"%s",attr_dat1);
-}
-
-static ssize_t write_attr1(struct device *dev,
-					struct device_attribute *attr,
-					const char *buf, size_t count)
-{
-	//struct display_device *dsp = dev_get_drvdata(dev);
-	ssize_t ret = -EINVAL;
-	if(count <= 2)
-	{
-		int i = 0;
-		if(buf[0] == '-')
-		{
-			attr_dat1[0] = '-';
-			i = 1;
-			ret++;
-		}
-		if( (buf[i]>='0') && (buf[i]<='9'))
-		{
-				attr_dat1[i] = buf[i];
-				attr_dat1[i+1] = '\0';
-				ret++;
-		}
-		else
-		{
-			attr_dat1[0]='-';attr_dat1[1]='1';//default -1;
-			ret = -EINVAL;
-		}
-	}
-
-	return ret;
-}
-
-static struct class_attribute vm_class_attrs[] = {
-    __ATTR(info,
-           S_IRUGO | S_IWUSR,
-           show_vm_info,
-           NULL), 
-    __ATTR(attr0,
-           S_IRUGO | S_IWUSR,
-           read_attr0,
-           write_attr0),
-    __ATTR(attr1,
-           S_IRUGO | S_IWUSR,
-           read_attr1,
-           write_attr1),
-    __ATTR_NULL
-};
-
-static struct class vm_class = {
-    .name = VM_CLASS_NAME,
-    .class_attrs = vm_class_attrs,
-};
-
-struct class* init_vm_cls() {
-    int  ret=0;
-    ret = class_register(&vm_class);
-	if(ret<0 )
-	{
-		amlog_level(LOG_LEVEL_HIGH,"error create vm class\r\n");
-		return NULL;
-	}
-    return &vm_class;
-}
+/*class property info.*/
+#include "vmcls.h"
 
 /***********************************************************************
 *

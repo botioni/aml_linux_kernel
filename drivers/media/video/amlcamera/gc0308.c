@@ -188,6 +188,11 @@ static struct gc0308_fmt formats[] = {
 		.fourcc   = V4L2_PIX_FMT_NV12,
 		.depth    = 12,	
 	},
+	{
+		.name     = "YUV420P",
+		.fourcc   = V4L2_PIX_FMT_YUV420,
+		.depth    = 12,
+	}
 #if 0
 	{
 		.name     = "4:2:2, packed, YUYV",
@@ -301,6 +306,12 @@ struct gc0308_fh {
 	int  stream_on;
 };
 
+static inline struct gc0308_fh *to_fh(struct gc0308_device *dev)
+{
+	return container_of(dev, struct gc0308_fh, dev);
+}
+
+
 /* ------------------------------------------------------------------
 	reg spec of GC0308
    ------------------------------------------------------------------*/
@@ -308,10 +319,18 @@ struct gc0308_fh {
 #if 1
 
 struct aml_camera_i2c_fig1_s GC0308_script[] = {  
+        {0xfe,0x80},  
 	{0xfe,0x00},
+    {0x22,0x55},
+    {0x03,0x01},
+    {0x04,0x2c},
+    {0x5a,0x56},
+    {0x5b,0x40},
+    {0x5c,0x4a},
+    {0x22,0x57},
 	{0x0f,0x00},
 #if 0
-
+//25M mclk
 #if 1   // 50hz  20fps
 	{0x01 , 0x32},                                    
 	{0x02 , 0x89},                                  
@@ -351,7 +370,23 @@ struct aml_camera_i2c_fig1_s GC0308_script[] = {
 #else
 
 #if 1   // 50hz   8.3fps~16.6fps auto
-	{0x01 , 0x6a},                                    
+	/*{0x01 , 0x32},  //6a                                  
+	{0x02 , 0x70},                                  
+	{0x0f , 0x01},                                  
+
+
+	{0xe2 , 0x00},   //anti-flicker step [11:8]     
+	{0xe3 , 0x78},   //anti-flicker step [7:0]      
+
+	{0xe4 , 0x02},       
+	{0xe5 , 0x58},                                  
+	{0xe6 , 0x02},           
+	{0xe7 , 0x58},                                  
+	{0xe8 , 0x02},           
+	{0xe9 , 0x58},                                  
+	{0xea , 0x07},     
+	{0xeb , 0x53},    */
+	{0x01 , 0x6a},  //6a                                  
 	{0x02 , 0x70},                                  
 	{0x0f , 0x00},                                  
 
@@ -366,7 +401,7 @@ struct aml_camera_i2c_fig1_s GC0308_script[] = {
 	{0xe8 , 0x02},           
 	{0xe9 , 0x58},                                  
 	{0xea , 0x07},     
-	{0xeb , 0x53},                                  
+	{0xeb , 0x53},         
 #else  // 60hz   8.3fps~16.6fps auto
 	{0x01 , 0x32},                                    
 	{0x02 , 0x89},                                  
@@ -391,9 +426,9 @@ struct aml_camera_i2c_fig1_s GC0308_script[] = {
 	{0x05,0x00},
 	{0x06,0x00},
 	{0x07,0x00},
-	{0x08,0x00},
+	{0x08,0x02},
 	{0x09,0x01},
-	{0x0a,0xe8},
+	{0x0a,0xea},// ea
 	{0x0b,0x02},
 	{0x0c,0x88},
 	{0x0d,0x02},
@@ -413,13 +448,13 @@ struct aml_camera_i2c_fig1_s GC0308_script[] = {
 	{0x1c,0x49},
 	{0x1d,0x9a},
 	{0x1e,0x61},
-	{0x1f,0x2a},//3f
+	{0x1f,0x27},//3f  2a 
 	{0x20,0xef},//ff
 	{0x21,0xfb},//fa
 	{0x22,0x57},
 	{0x24,0xa3},
 	{0x25,0x0f},
-	{0x26,0x03}, 
+	{0x26,0x03}, //03
 	{0x2f,0x01},
 	{0x30,0xf7},
 	{0x31,0x50},
@@ -468,7 +503,7 @@ struct aml_camera_i2c_fig1_s GC0308_script[] = {
 	{0x74,0x02},
 	{0x75,0x3f},
 	{0x76,0x02},
-	{0x77,0x36}, // 0x47
+	{0x77,0x54}, // 0x47
 	{0x78,0x88},
 	{0x79,0x81},
 	{0x7a,0x81},
@@ -485,13 +520,14 @@ struct aml_camera_i2c_fig1_s GC0308_script[] = {
 	{0xb1,0x44},//3c
 	{0xb2,0x44},
 	{0xb3,0x44}, //0x40
+	{0xb5,0x48}, //0x40
 	{0xb6,0xe0},
 	{0xbd,0x3C},
 	{0xbe,0x36},
 	{0xd0,0xCb},//c9
 	{0xd1,0x10},
 	{0xd2,0x90},
-	{0xd3,0x50},//88
+	{0xd3,0x6a},//88
 	{0xd5,0xF2},
 	{0xd6,0x10},
 	{0xdb,0x92},
@@ -923,63 +959,63 @@ void set_GC0308_param_exposure(struct gc0308_device *dev,enum camera_exposure_e 
 	{
 		case EXPOSURE_N4_STEP:
 			buf1[0]=0xb5;
-			buf1[1]=0xc0;
+			buf1[1]=0x10;
 			buf2[0]=0xd3;
 			buf2[1]=0x30;
 			break;		
 		case EXPOSURE_N3_STEP:
 			buf1[0]=0xb5;
-			buf1[1]=0xd0;
+			buf1[1]=0x20;
 			buf2[0]=0xd3;
-			buf2[1]=0x38;
+			buf2[1]=0x40;
 			break;		
 		case EXPOSURE_N2_STEP:
 			buf1[0]=0xb5;
-			buf1[1]=0xe0;
+			buf1[1]=0x30;
 			buf2[0]=0xd3;
-			buf2[1]=0x40;
+			buf2[1]=0x50;
 			break;				
 		case EXPOSURE_N1_STEP:
 			buf1[0]=0xb5;
-			buf1[1]=0xf0;
+			buf1[1]=0x40;
 			buf2[0]=0xd3;
-			buf2[1]=0x48;
+			buf2[1]=0x60;
 			break;				
 		case EXPOSURE_0_STEP:
 			buf1[0]=0xb5;
-			buf1[1]=0x10;
+			buf1[1]=0x48;
 			buf2[0]=0xd3;
-			buf2[1]=0x60;
+			buf2[1]=0x6a;
 			break;				
 		case EXPOSURE_P1_STEP:
 			buf1[0]=0xb5;
-			buf1[1]=0x20;
+			buf1[1]=0x58;
 			buf2[0]=0xd3;
-			buf2[1]=0x58;
+			buf2[1]=0x7a;
 			break;				
 		case EXPOSURE_P2_STEP:
 			buf1[0]=0xb5;
-			buf1[1]=0x30;
+			buf1[1]=0x64;
 			buf2[0]=0xd3;
-			buf2[1]=0x60;
+			buf2[1]=0x84;
 			break;				
 		case EXPOSURE_P3_STEP:
 			buf1[0]=0xb5;
-			buf1[1]=0x40;
+			buf1[1]=0x74;
 			buf2[0]=0xd3;
-			buf2[1]=0x68;
+			buf2[1]=0x98;
 			break;				
 		case EXPOSURE_P4_STEP:	
 			buf1[0]=0xb5;
-			buf1[1]=0x50;
+			buf1[1]=0x7f;
 			buf2[0]=0xd3;
-			buf2[1]=0x70;
+			buf2[1]=0xb0;
 			break;
 		default:
 			buf1[0]=0xb5;
 			buf1[1]=0x00;
 			buf2[0]=0xd3;
-			buf2[1]=0x50;
+			buf2[1]=0x60;
 			break;    
 	}			
 	//msleep(300);
@@ -1377,11 +1413,11 @@ static void gc0308_sleep(struct gc0308_fh *fh)
 		goto stop_task;
 
 	/* Calculate time to wake up */
-	timeout = msecs_to_jiffies(frames_to_ms(1));
+	//timeout = msecs_to_jiffies(frames_to_ms(1));
 
 	gc0308_thread_tick(fh);
 
-	schedule_timeout_interruptible(timeout);
+	schedule_timeout_interruptible(2);
 
 stop_task:
 	remove_wait_queue(&dma_q->wq, &wait);
@@ -1864,6 +1900,7 @@ static int gc0308_open(struct file *file)
 		printk("+++found a init function, and run it..\n");
 	}
 	GC0308_init_regs(dev);
+	msleep(40);
 	mutex_lock(&dev->mutex);
 	dev->users++;
 	if (dev->users > 1) {
@@ -2144,6 +2181,33 @@ static int gc0308_remove(struct i2c_client *client)
 	kfree(t);
 	return 0;
 }
+static int gc0308_suspend(struct i2c_client *client)
+{
+	struct v4l2_subdev *sd = i2c_get_clientdata(client);
+	struct gc0308_device *t = to_dev(sd);	
+	struct gc0308_fh  *fh = to_fh(t);
+	if(fh->stream_on == 1){
+		stop_tvin_service(0);
+	}
+	power_down_gc0308(t);
+	return 0;
+}
+
+static int gc0308_resume(struct i2c_client *client)
+{
+	struct v4l2_subdev *sd = i2c_get_clientdata(client);
+	struct gc0308_device *t = to_dev(sd);
+    struct gc0308_fh  *fh = to_fh(t);
+    tvin_parm_t para;
+    para.port  = TVIN_PORT_CAMERA;
+    para.fmt = TVIN_SIG_FMT_CAMERA_1280X720P_30Hz;
+    GC0308_init_regs(t); 
+	if(fh->stream_on == 1){
+        start_tvin_service(0,&para);
+	}       	
+	return 0;
+}
+
 
 static const struct i2c_device_id gc0308_id[] = {
 	{ "gc0308_i2c", 0 },
@@ -2155,5 +2219,7 @@ static struct v4l2_i2c_driver_data v4l2_i2c_data = {
 	.name = "gc0308",
 	.probe = gc0308_probe,
 	.remove = gc0308_remove,
+	.suspend = gc0308_suspend,
+	.resume = gc0308_resume,		
 	.id_table = gc0308_id,
 };

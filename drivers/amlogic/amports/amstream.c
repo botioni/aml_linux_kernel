@@ -1240,6 +1240,18 @@ static int amstream_ioctl(struct inode *inode, struct file *file,
         sub_type = (int)arg;
         break;
 
+    case AMSTREAM_IOC_APTS:
+        *((u32 *)arg) = timestamp_apts_get();
+        break;
+
+    case AMSTREAM_IOC_VPTS:
+        *((u32 *)arg) = timestamp_vpts_get();
+        break;
+
+    case AMSTREAM_IOC_PCRSCR:
+        *((u32 *)arg) = timestamp_pcrscr_get();
+        break;
+
     default:
         r = -ENOIOCTLCMD;
     }
@@ -1554,6 +1566,16 @@ void wakeup_sub_poll(void)
 int get_sub_type(void)
 {
     return sub_type;
+}
+/*get pes buffers */
+
+stream_buf_t* get_stream_buffer(int id)
+{
+	if(id>=BUF_MAX_NUM)
+	{
+		return 0;
+	}
+	return &bufs[id];
 }
 
 EXPORT_SYMBOL(set_vdec_func);

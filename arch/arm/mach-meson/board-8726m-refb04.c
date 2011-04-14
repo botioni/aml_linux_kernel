@@ -38,6 +38,7 @@
 #include <linux/i2c-aml.h>
 #include <mach/power_gate.h>
 #include <linux/reboot.h>
+#include <linux/syscalls.h>
 
 #ifdef CONFIG_AM_UART_WITH_S_CORE 
 #include <linux/uart-aml.h>
@@ -88,6 +89,12 @@
 
 #ifdef CONFIG_SND_AML_M1_MID_WM8900
 #include <sound/wm8900.h>
+#endif
+#ifdef CONFIG_SND_SOC_RT5621
+#include <sound/rt5621.h>
+#endif
+#ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE
+#include <media/amlogic/aml_camera.h>
 #endif
 
 #if defined(CONFIG_JPEGLOGO)
@@ -376,8 +383,21 @@ static struct resource vdin_resources[] = {
         .end   = VDIN_ADDR_END,     //pbufAddr + size
         .flags = IORESOURCE_MEM,
     },
-
-
+    [1] = {
+        .start = VDIN_ADDR_START,
+        .end   = VDIN_ADDR_END,
+        .flags = IORESOURCE_MEM,
+    },
+    [2] = {
+        .start = INT_VDIN_VSYNC,
+        .end   = INT_VDIN_VSYNC,
+        .flags = IORESOURCE_IRQ,
+    },
+    [3] = {
+        .start = INT_VDIN_VSYNC,
+        .end   = INT_VDIN_VSYNC,
+        .flags = IORESOURCE_IRQ,
+    },
 };
 
 static struct platform_device vdin_device = {
@@ -386,8 +406,11 @@ static struct platform_device vdin_device = {
     .num_resources = ARRAY_SIZE(vdin_resources),
     .resource      = vdin_resources,
 };
+#endif
 
+#ifdef CONFIG_TVIN_BT656IN
 //add pin mux info for bt656 input
+#if 0
 static struct resource bt656in_resources[] = {
     [0] = {
         .start =  VDIN_ADDR_START,      //pbufAddr
@@ -413,12 +436,13 @@ static struct resource bt656in_resources[] = {
     },
 
 };
+#endif
 
 static struct platform_device bt656in_device = {
     .name       = "amvdec_656in",
     .id         = -1,
-    .num_resources = ARRAY_SIZE(bt656in_resources),
-    .resource      = bt656in_resources,
+//    .num_resources = ARRAY_SIZE(bt656in_resources),
+//    .resource      = bt656in_resources,
 };
 #endif
 
@@ -432,36 +456,16 @@ static struct resource amlogic_card_resource[] = {
 };
 
 void extern_wifi_power(int is_power)
-{
-    if (0 == is_power)
-    {
-        #ifdef CONFIG_SN7325
-        printk("power on 7325 3\n");
+{//extern io OD5
+    if(1 == is_power){
         configIO(0, 0);
-        setIO_level(0, 0, 5);
-        #else
-        return;
-        #endif
+        setIO_level(0,1, 5);        
     }
-    else
-    {
-        #ifdef CONFIG_SN7325
-        printk("power on 7325 4\n");
+    else{
         configIO(0, 0);
-        setIO_level(0, 0, 0);//OD0
-        setIO_level(0, 1, 4);//OD4
-        setIO_level(0, 1, 5);//OD5
-        setIO_level(0, 0, 6);//OD6
-        configIO(1, 0);
-        setIO_level(1, 1, 0);//PP0
-        setIO_level(1, 0, 1);//PP1
-        setIO_level(1, 1, 5);//PP5
-        setIO_level(1, 0, 6);//PP6
-        setIO_level(1, 0, 7);//PP7
-        #else
-        return;
-        #endif
+        setIO_level(0, 0, 5);        
     }
+    
     return;
 }
 
@@ -552,7 +556,7 @@ static struct resource aml_m1_audio_resource[]={
                 .flags  =   IORESOURCE_MEM,
         },
 };
-
+#ifdef CONFIG_SND_AML_M1_MID_WM8900
 static struct platform_device aml_audio={
         .name               = "aml_m1_audio_wm8900",
         .id                     = -1,
@@ -560,7 +564,6 @@ static struct platform_device aml_audio={
         .num_resources  =   ARRAY_SIZE(aml_m1_audio_resource),
 };
 
-#ifdef CONFIG_SND_AML_M1_MID_WM8900
 
 //use LED_CS1 as hp detect pin
 #define PWM_TCNT    (600-1)
@@ -591,7 +594,44 @@ static struct wm8900_platform_data wm8900_pdata = {
     .is_hp_pluged = &wm8900_is_hp_pluged,
 };
 #endif
+#ifdef CONFIG_SND_SOC_RT5621
+static struct platform_device aml_audio={
+		.name 				= "aml_m1_audio_rt5621",
+		.id 					= -1,
+		.resource 		=	aml_m1_audio_resource,
+		.num_resources	=	ARRAY_SIZE(aml_m1_audio_resource),
+};
 
+// use LED_CS1 as detect pin
+#define PWM_TCNT        (600-1)
+#define PWM_MAX_VAL		(420)
+static unsigned int rt5621_is_hp_pluged()
+{
+	int level = 0;
+    int cs_no = 0;
+    // Enable VBG_EN
+    WRITE_CBUS_REG_BITS(PREG_AM_ANALOG_ADDR, 1, 0, 1);
+    // wire pm_gpioA_7_led_pwm = pin_mux_reg0[22];
+    WRITE_CBUS_REG(LED_PWM_REG0,(0 << 31)   |       // disable the overall circuit
+                                (0 << 30)   |       // 1:Closed Loop  0:Open Loop
+                                (0 << 16)   |       // PWM total count
+                                (0 << 13)   |       // Enable
+                                (1 << 12)   |       // enable
+                                (0 << 10)   |       // test
+                                (7 << 7)    |       // CS0 REF, Voltage FeedBack: about 0.505V
+                                (7 << 4)    |       // CS1 REF, Current FeedBack: about 0.505V
+                                (0 << 0));           // DIMCTL Analog dimmer
+    cs_no = READ_CBUS_REG(LED_PWM_REG3);
+	
+	if( cs_no & ( 1 << 15 ) )
+		level = 1;
+
+    return level;	//return 1: hp pluged, 0: hp unpluged.
+}
+static struct rt5621_platform_data rt5621_pdata = {
+    .is_hp_pluged = &rt5621_is_hp_pluged,
+};
+#endif
 #if defined(CONFIG_TOUCHSCREEN_ADS7846)
 #define SPI_0       0
 #define SPI_1       1
@@ -713,6 +753,94 @@ static int ads7846_init_gpio(void)
 }
 #endif
 
+#ifdef CONFIG_TOUCHSCREEN_TSC2007
+#include <linux/i2c/tsc2007.h>
+
+//GPIOD_24
+#define GPIO_TSC2007_PENIRQ ((GPIOD_bank_bit2_24(24)<<16) |GPIOD_bit_bit2_24(24)) 
+#define GPIO_TSC2007_PENIRQ_IDX     (GPIOD_IDX + 24)
+
+static int tsc2007_init_platform_hw(void)
+{
+/* memson
+    Bit(s)  Description
+    256-105 Unused
+    104     JTAG_TDO
+    103     JTAG_TDI
+    102     JTAG_TMS
+    101     JTAG_TCK
+    100     gpioA_23
+    99      gpioA_24
+    98      gpioA_25
+    97      gpioA_26
+    98-76    gpioE[21:0]
+    75-50   gpioD[24:0]
+    49-23   gpioC[26:0]
+    22-15   gpioB[22;15]
+    14-0    gpioA[14:0]
+ */
+
+    /* set input mode */
+    gpio_direction_input(GPIO_TSC2007_PENIRQ);
+    /* set gpio interrupt #0 source=GPIOD_24, and triggered by falling edge(=1) */
+    gpio_enable_edge_int(GPIO_TSC2007_PENIRQ_IDX, 1, 0);
+
+    return 0;
+}
+static int tsc2007_get_pendown_state(void)
+{
+    return !gpio_get_value(GPIO_TSC2007_PENIRQ);
+}
+
+#define XLCD    800
+#define YLCD    480
+#define SWAP_XY 0
+#define XPOL    0
+#define YPOL    0
+#define XMIN 0
+#define XMAX 4095
+#define YMIN 0
+#define YMAX 4095
+
+int tsc2007_convert(int x, int y)
+{
+#if (SWAP_XY == 1)
+    swap(x, y);
+#endif
+    if (x < XMIN) x = XMIN;
+    if (x > XMAX) x = XMAX;
+    if (y < YMIN) y = YMIN;
+    if (y > YMAX) y = YMAX;
+#if (XPOL == 1)
+    x = XMAX + XMIN - x;
+#endif
+#if (YPOL == 1)
+    y = YMAX + YMIN - y;
+#endif
+    x = (x- XMIN) * XLCD / (XMAX - XMIN);
+    y = (y- YMIN) * YLCD / (YMAX - YMIN);
+    
+    return (x << 16) | y;
+}
+
+
+static struct tsc2007_platform_data tsc2007_pdata = {
+    .model = 2007,
+    .x_plate_ohms = 400,
+    .get_pendown_state = tsc2007_get_pendown_state,
+    .clear_penirq = NULL,
+    .init_platform_hw = tsc2007_init_platform_hw,
+    .exit_platform_hw = NULL,
+    .poll_delay = 40,
+    .poll_period = 10,
+    .abs_xmin = 0,
+    .abs_xmax = XLCD,
+    .abs_ymin = 0,
+    .abs_ymax = YLCD,    
+    .convert = tsc2007_convert,
+};
+#endif
+
 #ifdef CONFIG_ITK_CAPACITIVE_TOUCHSCREEN
 #include <linux/i2c/itk.h>
 
@@ -791,7 +919,116 @@ static  struct platform_device aml_rtc_device = {
             .id               = -1,
     };
 #endif
+#if defined(CONFIG_VIDEO_AMLOGIC_CAPTURE_GT2005)
 
+//#include <media/amlogic/aml_camera.h>
+
+int gt2005_init(void)
+{
+   #ifdef CONFIG_SN7325
+	printk( "amlogic camera driver: init CONFIG_SN7325. \n");
+	configIO(1, 0);
+	setIO_level(1, 1, 4);//PP4 -->1
+	msleep(300);
+	setIO_level(1, 1, 0);//PP0-->0
+	msleep(300);
+    #endif
+
+}
+#endif /* VIDEO_AMLOGIC_CAPTURE_GT2005 */
+
+#ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE_GC0308
+
+//#include <media/amlogic/aml_camera.h>
+
+int gc0308_init(void)
+{
+   #ifdef CONFIG_SN7325
+	printk( "amlogic camera driver 0308: init CONFIG_SN7325. \n");
+	configIO(1, 0);
+	setIO_level(1, 1, 4);//PP4 -->1
+	msleep(300);
+	setIO_level(1, 0, 0);//PP0-->0
+	msleep(300);
+    #endif
+
+}
+#endif /* VIDEO_AMLOGIC_CAPTURE_GT2005 */
+#if defined (CONFIG_AMLOGIC_VIDEOIN_MANAGER)
+static struct resource vm_resources[] = {
+    [0] = {
+        .start =  VM_ADDR_START,
+        .end   = VM_ADDR_END,
+        .flags = IORESOURCE_MEM,
+    },
+};
+static struct platform_device vm_device =
+{
+	.name = "vm",
+	.id = 0,
+    .num_resources = ARRAY_SIZE(vm_resources),
+    .resource      = vm_resources,
+};
+#endif /* AMLOGIC_VIDEOIN_MANAGER */
+#ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE
+static void __init camera_power_on_init(void)
+{
+    udelay(1000);
+    SET_CBUS_REG_MASK(HHI_ETH_CLK_CNTL,0x30f);// 24M XTAL
+    SET_CBUS_REG_MASK(HHI_DEMOD_PLL_CNTL,0x232);// 24M XTAL
+
+    eth_set_pinmux(ETH_BANK0_GPIOC3_C12,ETH_CLK_OUT_GPIOC12_REG3_1, 1);		
+}
+#endif
+#if defined(CONFIG_VIDEO_AMLOGIC_CAPTURE_GT2005)
+static int gt2005_v4l2_init(void)
+{
+	gt2005_init();
+}
+static int gt2005_v4l2_uninit(void)
+{
+   #ifdef CONFIG_SN7325
+	printk( "amlogic camera driver: uninit gt2005_v4l2_uninit. \n");
+	configIO(1, 0);
+	setIO_level(1, 1, 4);
+	msleep(300);
+	setIO_level(1, 1, 0);
+    #endif
+
+}
+
+aml_plat_cam_data_t video_gt2005_data = {
+	.name="video-gt2005",
+	.video_nr=0,
+	.device_init= gt2005_v4l2_init,
+	.device_uninit=gt2005_v4l2_uninit,
+};
+#endif
+
+#if defined(CONFIG_VIDEO_AMLOGIC_CAPTURE_GC0308)
+static int gc0308_v4l2_init(void)
+{
+	gc0308_init();
+}
+static int gc0308_v4l2_uninit(void)
+{
+   #ifdef CONFIG_SN7325
+	 printk( "amlogic camera driver: gc0308_v4l2_uninit CONFIG_SN7325. \n");
+	configIO(1, 0);
+	setIO_level(1, 1, 4);
+	msleep(300);
+	setIO_level(1, 0, 0);
+    #endif
+
+}
+
+aml_plat_cam_data_t video_gc0308_data = {
+	.name="video-gc0308",
+	.video_nr=0,//1,
+	.device_init= gc0308_v4l2_init,
+	.device_uninit=gc0308_v4l2_uninit,
+};
+#endif
 #if defined(CONFIG_SUSPEND)
 static void set_vccx2(int power_on)
 {
@@ -816,7 +1053,7 @@ static struct meson_pm_config aml_pm_pdata = {
     .pctl_reg_base = IO_APB_BUS_BASE,
     .mmc_reg_base = APB_REG_ADDR(0x1000),
     .hiu_reg_base = CBUS_REG_ADDR(0x1000),
-    .power_key = CBUS_REG_ADDR(RTC_ADDR1),
+    .power_key = (1<<8),
     .ddr_clk = 0x00110820,
     .sleepcount = 128,
     .set_vccx2 = set_vccx2,
@@ -920,26 +1157,18 @@ static int is_ac_connected(void)
 
 static void set_charge(int flags)
 {
-    //GPIOD_22 low: fast charge high: slow charge
-    if(flags == 1)
-        {
-	    //set_gpio_val(GPIOD_bank_bit2_24(22), GPIOD_bit_bit2_24(22), 0); //fast charge
-	    #ifdef CONFIG_SN7325
-	    printk("7325 set charge to fast charge\n");
+    //extern io sn7325 pp3
+    //low: fast charge high: slow charge
+    if(flags == 1){//fast charge
         configIO(1, 0);
-        setIO_level(1, 1, 7);
-        #endif
-	    }
-    else
-        {
-    	//set_gpio_val(GPIOD_bank_bit2_24(22), GPIOD_bit_bit2_24(22), 1);	//slow charge
-	    #ifdef CONFIG_SN7325
-	    printk("7325 set charge to slow charge\n");
+        setIO_level(1, 0, 3);        
+    }
+    else{//slow charge
         configIO(1, 0);
-        setIO_level(1, 0, 7);
-        #endif
-        }
-    //set_gpio_mode(GPIOD_bank_bit2_24(22), GPIOD_bit_bit2_24(22), GPIO_OUTPUT_MODE);
+        setIO_level(1, 1, 3);        
+    }
+        
+
 }
 
 #ifdef CONFIG_SARADC_AM
@@ -954,16 +1183,16 @@ static int get_bat_vol(void)
 #endif
 }
 
-static int get_charge_status()
+static int get_charge_status(void)
 {
     return (READ_CBUS_REG(ASSIST_HW_REV)&(1<<8))? 1:0;//GP_INPUT0
 }
 
 static void set_bat_off(void)
 {
-    //set_vccx2 power down    
-    set_gpio_val(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), 0);
-    set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);  
+    //BL_PWM power off
+    set_gpio_val(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), 0);
+    set_gpio_mode(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), GPIO_OUTPUT_MODE);
     if(is_ac_connected()){ //AC in after power off press
         kernel_restart("reboot");
     }
@@ -1103,6 +1332,7 @@ static struct aml_power_pdata power_pdata = {
 	.bat_charge_value_table = bat_charge_value_table,
 	.bat_level_table = bat_level_table,
 	.bat_table_len = 37,		
+	.is_support_usb_charging = 0;
 	//.supplied_to = supplicants,
 	//.num_supplicants = ARRAY_SIZE(supplicants),
 };
@@ -1603,27 +1833,24 @@ static void bt_device_init(void)
 	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_5, (1<<8));
 	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, (1<<24));
 	
-	/* WLBT_REGON */
-	//CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<18));//D20
-	//SET_CBUS_REG_MASK(PREG_GGPIO_O, (1<<18));
-        #ifdef CONFIG_SN7325
-        printk("power on 7325 5\n");
-        configIO(0, 0);
-        setIO_level(0, 1, 5);//OD5
-        #endif
+	/* WIFI/BT_EN */
+	//CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<18)); //       configIO(0, 0);
+	//SET_CBUS_REG_MASK(PREG_GGPIO_O, (1<<18));      //       setIO_level(0, 1, 5);	
+	//CLEAR_CBUS_REG_MASK(PREG_GGPIO_O, (1<<18));  //WA 7W WIFI/BT_EN  low level.
+
 	
-	/* reset */
-	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<12));//D14
+	/* BT_RST_N */
+	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<12));
 	CLEAR_CBUS_REG_MASK(PREG_GGPIO_O, (1<<12));	
 	msleep(200);	
 	SET_CBUS_REG_MASK(PREG_GGPIO_O, (1<<12));	
 	
-	/* BG/GPS low */
-	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<19));//D21
+	/* UART_TX */
+	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<19));
 	CLEAR_CBUS_REG_MASK(PREG_GGPIO_O, (1<<19));	
 	
-	/* UART RTS */
-	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<16));//D18
+	/* UART_CTS_N */
+	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<16));
     CLEAR_CBUS_REG_MASK(PREG_GGPIO_O, (1<<16));
 		
 	/* BG wakeup high 
@@ -1633,7 +1860,7 @@ static void bt_device_init(void)
 
 static void bt_device_on(void)
 {
-    /* reset */
+    /* BT_RST_N */
 	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<12));
 	CLEAR_CBUS_REG_MASK(PREG_GGPIO_O, (1<<12));	
 	msleep(200);	
@@ -1642,7 +1869,7 @@ static void bt_device_on(void)
 
 static void bt_device_off(void)
 {
-    /* reset */
+    /* BT_RST_N */
 	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<12));
 	CLEAR_CBUS_REG_MASK(PREG_GGPIO_O, (1<<12));	
 	msleep(200);	
@@ -1674,12 +1901,16 @@ static struct platform_device __initdata *platform_devs[] = {
     #endif
     #if defined(CONFIG_TVIN_VDIN)
         &vdin_device,
-        &bt656in_device,
     #endif
-    #if defined(CONFIG_AML_AUDIO_DSP)
-        &audiodsp_device,
+    #if defined(CONFIG_TVIN_BT656IN)
+		&bt656in_device,
     #endif
-        &aml_audio,
+	#if defined(CONFIG_AML_AUDIO_DSP)
+		&audiodsp_device,
+	#endif
+	#if defined(CONFIG_SND_AML_M1_MID_WM8900) || defined(CONFIG_SND_SOC_RT5621)
+		&aml_audio,
+	#endif
     #if defined(CONFIG_CARDREADER)
         &amlogic_card_device,
     #endif
@@ -1709,6 +1940,9 @@ static struct platform_device __initdata *platform_devs[] = {
     #endif
     #if defined(CONFIG_AML_RTC)
         &aml_rtc_device,
+    #endif
+    #ifdef CONFIG_AMLOGIC_VIDEOIN_MANAGER
+		&vm_device,
     #endif
     #if defined(CONFIG_SUSPEND)
         &aml_pm_device,
@@ -1768,6 +2002,13 @@ static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
         .platform_data = (void *)&sn7325_pdata,
     },
 #endif
+#ifdef CONFIG_TOUCHSCREEN_TSC2007
+    {
+        I2C_BOARD_INFO("tsc2007", 0x48),
+        .irq = INT_GPIO_0,
+        .platform_data = (void *)&tsc2007_pdata,
+    },
+#endif
 
 #ifdef CONFIG_ITK_CAPACITIVE_TOUCHSCREEN
     {
@@ -1775,6 +2016,20 @@ static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
         .irq = INT_GPIO_0,
         .platform_data = (void *)&itk_pdata,
     },
+#endif
+#ifdef CONFIG_SND_SOC_RT5621
+	{
+		I2C_BOARD_INFO(RT5621_I2C_NAME, RT5621_I2C_ADDR),
+		.platform_data = (void *)&rt5621_pdata,
+	},
+#endif
+#ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE_GC0308
+
+	{
+        /*gc0308 i2c address is 0x42/0x43*/
+		I2C_BOARD_INFO("gc0308_i2c",  0x42 >> 1),
+		.platform_data = (void *)&video_gc0308_data,
+	},
 #endif
 };
 
@@ -1787,6 +2042,17 @@ static int __init aml_i2c_init(void)
     return 0;
 }
 
+#if defined(CONFIG_TVIN_BT656IN)
+static void __init bt656in_pinmux_init(void)
+{
+    set_mio_mux(3, 0xf000);   //mask--mux gpio_c3 to bt656 clk;  mux gpioc[4:11] to be bt656 dt_in
+    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, 0x0f000000);
+    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_3, 0x01be07fc);
+    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_4, 0x0c000000);
+}
+
+
+#endif
 static void __init eth_pinmux_init(void)
 {
     eth_set_pinmux(ETH_BANK2_GPIOD15_D23,ETH_CLK_OUT_GPIOD24_REG5_1,0);
@@ -1822,11 +2088,11 @@ static void __init device_pinmux_init(void )
     /*pinmux of eth*/
     //eth_pinmux_init();
     aml_i2c_init();
+#if defined(CONFIG_TVIN_BT656IN)
+    bt656in_pinmux_init();
+#endif
     set_audio_pinmux(AUDIO_OUT_TEST_N);
     set_audio_pinmux(AUDIO_IN_JTAG);
-    //set clk for wifi
-    SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, (1<<18));
-    CLEAR_CBUS_REG_MASK(PREG_EGPIO_EN_N, (1<<4));	
 }
 
 static void __init  device_clk_setting(void)
@@ -1878,6 +2144,9 @@ static __init void m1_init_machine(void)
     power_hold();
     device_clk_setting();
     device_pinmux_init();
+#ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE
+    camera_power_on_init();
+#endif
     platform_add_devices(platform_devs, ARRAY_SIZE(platform_devs));
 
 #ifdef CONFIG_USB_DWC_OTG_HCD

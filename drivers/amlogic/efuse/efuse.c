@@ -34,6 +34,20 @@
  #define EFUSE_DWORDS            96  //(EFUSE_BITS/32)                                
                                                                                       
  #define DOUBLE_WORD_BYTES        4                                                   
+                                           
+ /* efuse layout
+ http://wiki-sh.amlogic.com/index.php/How_To_burn_the_info_into_E-Fuse
+ 0~3			licence				1 check byte			4 bytes(in total)
+ 4~10			mac						1 check byte			7 bytes(in total)
+ 12~322		hdcp				 10 check byte		310 bytes(in total)
+ 322~328 	mac_bt				1 check byte			7 bytes(in total)
+ 330~336  mac_wifi			1 check byte			7 bytes(in total)
+ 337~384  usid					2 check byte		 48 bytes(in total)
+ */    
+ #define MAC_POS			4
+ #define MAC_BT_POS		322
+ #define MAC_WIFI_POS	330
+ 
                                                                                       
  static unsigned long efuse_status;                                                   
  #define EFUSE_IS_OPEN           (0x01)                                               
@@ -44,7 +58,7 @@
  } efuse_dev_t;                                                                       
                                                                                       
  static efuse_dev_t *efuse_devp;                                                      
- static struct class *efuse_clsp;                                                     
+ //static struct class *efuse_clsp;             
  static dev_t efuse_devno;                                                            
                                                                                       
                                                                                       
@@ -201,6 +215,33 @@
      *ppos += count;                                                                 
      return count;                                                                   
  }                                                                                   
+     
+ static ssize_t __efuse_read( char *buf,                     
+     size_t count, loff_t *ppos )                                                    
+ {                                                                                   
+     unsigned long contents[EFUSE_DWORDS];                                           
+         unsigned pos = *ppos;                                                       
+     unsigned long *pdw;                                                             
+     unsigned int dwsize = (count + 3)/4;
+                                                                                    
+         if (pos >= EFUSE_BYTES)                                                     
+                 return 0;                                                           
+                                                                                     
+         if (count > EFUSE_BYTES - pos)                                              
+                 count = EFUSE_BYTES - pos;                                          
+         if (count > EFUSE_BYTES)                                                    
+                 return -EFAULT;   
+                                                                                     
+     memset(contents, 0, sizeof(contents));                                          
+                                                                                     
+         for (pdw = contents; dwsize-- > 0 && pos < EFUSE_BYTES; pos += 4, ++pdw)    
+                 __efuse_read_dword(pos, pdw);                                       
+                                                                                     
+     memcpy(buf, contents, count);                                 
+                                                                                     
+     *ppos += count;                                                                 
+     return count;                                                                   
+ }      
                                                                                      
  static ssize_t efuse_write( struct file *file, const char __user *buf,              
      size_t count, loff_t *ppos )                                                    
@@ -292,11 +333,47 @@
      .write      = efuse_write,                                                      
      .ioctl      = efuse_ioctl,                                                      
  };                                                                                  
+ 
+/* Sysfs Files */
+static ssize_t mac_show(struct class *cla, struct class_attribute *attr, char *buf)
+{     
+    char buf_mac[6] = {0};     
+    loff_t ppos = MAC_POS;
+		__efuse_read(buf_mac, sizeof(buf_mac), &ppos);
+    return sprintf(buf, "%02x:%02x:%02x:%02x:%02x:%02x\n", 
+    										buf_mac[0],buf_mac[1],buf_mac[2],buf_mac[3],buf_mac[4],buf_mac[5]);
+}        
+static ssize_t mac_wifi_show(struct class *cla, struct class_attribute *attr, char *buf)
+{
+    char buf_mac[6] = {0};     
+    loff_t ppos = MAC_WIFI_POS;
+		__efuse_read(buf_mac, sizeof(buf_mac), &ppos);
+    return sprintf(buf, "%02x:%02x:%02x:%02x:%02x:%02x\n", 
+    										buf_mac[0],buf_mac[1],buf_mac[2],buf_mac[3],buf_mac[4],buf_mac[5]);
+}  
+static ssize_t mac_bt_show(struct class *cla, struct class_attribute *attr, char *buf)
+{
+    char buf_mac[6] = {0};     
+    loff_t ppos = MAC_BT_POS;
+		__efuse_read(buf_mac, sizeof(buf_mac), &ppos);
+    return sprintf(buf, "%02x:%02x:%02x:%02x:%02x:%02x\n", 
+    										buf_mac[0],buf_mac[1],buf_mac[2],buf_mac[3],buf_mac[4],buf_mac[5]);
+}      
+static struct class_attribute efuse_class_attrs[] = {
+	  __ATTR_RO(mac), 
+    __ATTR_RO(mac_wifi),   
+    __ATTR_RO(mac_bt),              
+    __ATTR_NULL
+};
+static struct class efuse_class = {
+    .name = EFUSE_CLASS_NAME,
+    .class_attrs = efuse_class_attrs,
+};              
                                                                                      
  static int __init efuse_init(void)                                                  
  {                                                                                   
      int ret;                                                                        
-     struct device *devp;                                                            
+     struct device *devp; 
                                                                                      
      ret = alloc_chrdev_region(&efuse_devno, 0, 1, EFUSE_DEVICE_NAME);               
          if (ret < 0) {                                                              
@@ -305,11 +382,14 @@
          goto out;                                                                   
          }                                                                           
                                                                                      
-     efuse_clsp = class_create(THIS_MODULE, EFUSE_CLASS_NAME);                       
-     if (IS_ERR(efuse_clsp)) {                                                       
-         ret = PTR_ERR(efuse_clsp);                                                  
-         goto error1;                                                                
-     }                                                                               
+//     efuse_clsp = class_create(THIS_MODULE, EFUSE_CLASS_NAME);                       
+//     if (IS_ERR(efuse_clsp)) {                                                       
+//         ret = PTR_ERR(efuse_clsp);                                                  
+//         goto error1;                                                                
+//     }  
+     ret = class_register(&efuse_class);
+     if (ret)
+     		 goto error1; 
                                                                                      
      efuse_devp = kmalloc(sizeof(efuse_dev_t), GFP_KERNEL);                          
      if ( !efuse_devp ) {                                                            
@@ -328,7 +408,8 @@
          goto error3;                                                                
      }                                                                               
                                                                                      
-     devp = device_create(efuse_clsp, NULL, efuse_devno, NULL, "efuse");             
+     //devp = device_create(efuse_clsp, NULL, efuse_devno, NULL, "efuse");   
+     devp = device_create(&efuse_class, NULL, efuse_devno, NULL, "efuse");          
      if (IS_ERR(devp)) {                                                             
          printk(KERN_ERR "efuse: failed to create device node\n");                   
          ret = PTR_ERR(devp);                                                        
@@ -348,7 +429,8 @@
  error3:                                                                             
      kfree(efuse_devp);                                                              
  error2:                                                                             
-     class_destroy(efuse_clsp);                                                      
+     //class_destroy(efuse_clsp); 
+     class_unregister(&efuse_class);            
  error1:                                                                             
      unregister_chrdev_region(efuse_devno, 1);                                       
  out:                                                                                
@@ -358,10 +440,12 @@
  static void __exit efuse_exit(void)                                                 
  {                                                                                   
      unregister_chrdev_region(efuse_devno, 1);                                       
-     device_destroy(efuse_clsp, efuse_devno);                                        
+     //device_destroy(efuse_clsp, efuse_devno);     
+     device_destroy(&efuse_class, efuse_devno);                                       
      cdev_del(&efuse_devp->cdev);                                                    
      kfree(efuse_devp);                                                              
-     class_destroy(efuse_clsp);                                                      
+     //class_destroy(efuse_clsp);    
+		 class_unregister(&efuse_class);                                                  
      return;                                                                         
  }                                                                                   
                                                                                      

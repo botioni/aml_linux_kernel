@@ -130,11 +130,17 @@ int wifi_set_carddetect( int on )
 #endif
 }
 
+#include <linux/sn7325.h>
+
+
+//extern int configIO(unsigned char port, unsigned char ioflag);
+//extern int setIO_level(unsigned char port, unsigned char iobits, unsigned char offset);
 
 int wifi_set_power( int on, unsigned long msec )
 {
 #if DEBUG_WIFI //wait to debug
 	printk("%s = %d\n", __FUNCTION__, on);
+	
 	if( wifi_control_data && wifi_control_data->set_power ) {
 		wifi_control_data->set_power(on);
 	}
@@ -341,8 +347,10 @@ int hPlatform_initInterrupt(void *tnet_drv, void* handle_add )
 		print_err("TIWLAN: Failed to register interrupt handler\n");
 		return rc;
 	}
+	else
+		printk("hPlatform_initInterrupt() drv->irq=%d handle_add=0x%x !!!\n",drv->irq,(int)handle_add);
 
-	set_irq_wake(drv->irq, 1);
+	//set_irq_wake(drv->irq, 1);
 
 	return rc;
 } /* hPlatform_initInterrupt() */
@@ -353,7 +361,7 @@ void hPlatform_freeInterrupt(void *tnet_drv)
 {
 	TWlanDrvIfObj *drv = tnet_drv;
 	printk("%s\n", __func__);
-	set_irq_wake(drv->irq, 0);
+	//set_irq_wake(drv->irq, 0);
 	free_irq(drv->irq, drv);
 }
 

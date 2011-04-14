@@ -15,6 +15,10 @@ struct frame_fmt
     int sample_rate;
     int data_width;
     int reversed[3];/*for cache aligned 32 bytes*/
+    int format;
+    unsigned int total_byte_parsed;
+    unsigned int total_sample_decoded;
+    unsigned int bps;
 };
 
 

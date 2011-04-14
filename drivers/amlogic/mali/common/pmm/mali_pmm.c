@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 ARM Limited. All rights reserved.
+ * Copyright (C) 2010-2011 ARM Limited. All rights reserved.
  * 
  * This program is free software and is provided to you under the terms of the GNU General Public License version 2
  * as published by the Free Software Foundation, and any use by you of this program is subject to the terms of such GNU licence.
@@ -490,7 +490,7 @@ _mali_osk_errcode_t malipmm_create(_mali_osk_resource_t *resource)
 	if( !pmm_state->iqueue ) goto pmm_fail_cleanup;
 
 	/* We are creating an IRQ handler just for the worker thread it gives us */
-	pmm_state->irq = _mali_osk_irq_init( _MALI_OSK_IRQ_NUMBER_FAKE,
+	pmm_state->irq = _mali_osk_irq_init( _MALI_OSK_IRQ_NUMBER_PMM,
 		malipmm_irq_uhandler,
 		malipmm_irq_bhandler,
 		NULL,
@@ -565,18 +565,17 @@ void malipmm_kernel_subsystem_terminate( mali_kernel_subsystem_identifier id )
 		MALI_PMM_LOCK(pmm_state);
 		pmm_state->status = MALI_PMM_STATUS_OFF;
 		MALI_PMM_UNLOCK(pmm_state);
-#ifdef CONFIG_SMP
-		/* Just wait to finish processing */
-		_mali_osk_lock_wait( mali_pmm_lock, _MALI_OSK_LOCKMODE_RW );
-		_mali_osk_lock_signal( mali_pmm_lock, _MALI_OSK_LOCKMODE_RW );
-		_mali_osk_lock_term(mali_pmm_lock);
-#endif /* CONFIG_SMP */
 		pmm_policy_term(pmm_state);
 		_mali_osk_irq_term( pmm_state->irq );
+#ifdef CONFIG_SMP
+                _mali_osk_lock_term(mali_pmm_lock);
+#endif /* CONFIG_SMP */
+
 		_mali_osk_notification_queue_term( pmm_state->queue );
 		_mali_osk_notification_queue_term( pmm_state->iqueue );
 		if( pmm_state->pmu_initialized ) mali_platform_deinit(&t);
 		_mali_osk_atomic_term( &(pmm_state->messages_queued) );
+		MALI_PMM_LOCK_TERM(pmm_state);
 		_mali_osk_free(pmm_state);
 		pmm_state = NULL; 
 	}
@@ -768,8 +767,6 @@ void malipmm_irq_bhandler(void *data)
 #endif /* CONFIG_SMP */
 }
 
-#define MAX_PROCESS_EVENTS 20
-
 static void pmm_event_process( void )
 {
 	_mali_osk_errcode_t err = _MALI_OSK_ERR_OK;
@@ -785,7 +782,6 @@ static void pmm_event_process( void )
 	 * processing the messages for a long time
 	 */
 	process_messages = _mali_osk_atomic_read( &(pmm->messages_queued) );
-	if( process_messages > MAX_PROCESS_EVENTS ) process_messages = MAX_PROCESS_EVENTS;
 
 	while( process_messages > 0 )
 	{

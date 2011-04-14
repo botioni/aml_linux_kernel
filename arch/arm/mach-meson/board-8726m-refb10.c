@@ -537,38 +537,6 @@ static struct platform_device amlogic_card_device = {
 
 #endif
 
-#if defined(CONFIG_AML_AUDIO_DSP)
-static struct resource audiodsp_resources[] = {
-    [0] = {
-        .start = AUDIODSP_ADDR_START,
-        .end   = AUDIODSP_ADDR_END,
-        .flags = IORESOURCE_MEM,
-    },
-};
-
-static struct platform_device audiodsp_device = {
-    .name       = "audiodsp",
-    .id         = 0,
-    .num_resources = ARRAY_SIZE(audiodsp_resources),
-    .resource      = audiodsp_resources,
-};
-#endif
-
-static struct resource aml_m1_audio_resource[]={
-        [0] =   {
-                .start  =   0,
-                .end        =   0,
-                .flags  =   IORESOURCE_MEM,
-        },
-};
-
-static struct platform_device aml_audio={
-        .name               = "aml_m1_audio_wm8900",
-        .id                     = -1,
-        .resource       =   aml_m1_audio_resource,
-        .num_resources  =   ARRAY_SIZE(aml_m1_audio_resource),
-};
-
 #if defined (CONFIG_AMLOGIC_VIDEOIN_MANAGER)
 static struct resource vm_resources[] = {
     [0] = {
@@ -653,8 +621,8 @@ static int gt2005_v4l2_init(void)
 
     eth_set_pinmux(ETH_BANK0_GPIOC3_C12,ETH_CLK_OUT_GPIOC12_REG3_1, 1);
     
-    set_gpio_val(GPIOD_bank_bit2_24(4), GPIOD_bit_bit2_24(4), 1); //low
-    set_gpio_mode(GPIOD_bank_bit2_24(4), GPIOD_bit_bit2_24(4), GPIO_OUTPUT_MODE);
+    //set_gpio_val(GPIOD_bank_bit2_24(4), GPIOD_bit_bit2_24(4), 1); //low
+    //set_gpio_mode(GPIOD_bank_bit2_24(4), GPIOD_bit_bit2_24(4), GPIO_OUTPUT_MODE);
     set_gpio_val(GPIOD_bank_bit2_24(5), GPIOD_bit_bit2_24(5), 1); //low
     set_gpio_mode(GPIOD_bank_bit2_24(5), GPIOD_bit_bit2_24(5), GPIO_OUTPUT_MODE);
     msleep(300);
@@ -662,8 +630,8 @@ static int gt2005_v4l2_init(void)
 }
 static int gt2005_v4l2_uninit(void)
 {
-    set_gpio_val(GPIOD_bank_bit2_24(4), GPIOD_bit_bit2_24(4), 0); //low
-    set_gpio_mode(GPIOD_bank_bit2_24(4), GPIOD_bit_bit2_24(4), GPIO_OUTPUT_MODE);
+    //set_gpio_val(GPIOD_bank_bit2_24(4), GPIOD_bit_bit2_24(4), 0); //low
+    //set_gpio_mode(GPIOD_bank_bit2_24(4), GPIOD_bit_bit2_24(4), GPIO_OUTPUT_MODE);
     set_gpio_val(GPIOD_bank_bit2_24(5), GPIOD_bit_bit2_24(5), 0); //low
     set_gpio_mode(GPIOD_bank_bit2_24(5), GPIOD_bit_bit2_24(5), GPIO_OUTPUT_MODE);
     msleep(300);
@@ -676,6 +644,38 @@ aml_plat_cam_data_t video_gt2005_data = {
 	.device_uninit=gt2005_v4l2_uninit,
 };
 #endif /* VIDEO_AMLOGIC_CAPTURE_GT2005 */
+
+#if defined(CONFIG_AML_AUDIO_DSP)
+static struct resource audiodsp_resources[] = {
+    [0] = {
+        .start = AUDIODSP_ADDR_START,
+        .end   = AUDIODSP_ADDR_END,
+        .flags = IORESOURCE_MEM,
+    },
+};
+
+static struct platform_device audiodsp_device = {
+    .name       = "audiodsp",
+    .id         = 0,
+    .num_resources = ARRAY_SIZE(audiodsp_resources),
+    .resource      = audiodsp_resources,
+};
+#endif
+
+static struct resource aml_m1_audio_resource[]={
+        [0] =   {
+                .start  =   0,
+                .end        =   0,
+                .flags  =   IORESOURCE_MEM,
+        },
+};
+
+static struct platform_device aml_audio={
+        .name               = "aml_m1_audio_wm8900",
+        .id                     = -1,
+        .resource       =   aml_m1_audio_resource,
+        .num_resources  =   ARRAY_SIZE(aml_m1_audio_resource),
+};
 
 #ifdef CONFIG_SND_AML_M1_MID_WM8900
 
@@ -714,21 +714,18 @@ int wm8900_is_hp_pluged(void)
                                 (0 << 10)   |       // test
                                 (7 << 7)    |       // CS0 REF, Voltage FeedBack: about 0.505V
                                 (7 << 4)    |       // CS1 REF, Current FeedBack: about 0.505V
-                                (0 << 0));           // DIMCTL Analog dimmer
+                                READ_CBUS_REG(LED_PWM_REG0)&0x0f);           // DIMCTL Analog dimmer
     cs_no = READ_CBUS_REG(LED_PWM_REG3);
         if(cs_no &(1<<14))
           level |= (1<<0);
     
-    // temp patch to mute speaker when hdmi output
-    if(level == 0)
-    	if(get_display_mode() != 0)	
-    			return 1;
-    			
-    //printk("level = %d,board_ver = %d\n",level,board_ver);
+     // temp patch to mute speaker when hdmi output
+    if(level == 1)
+     if(get_display_mode() != 0) {
+    	return 1;
+     	}
+
     return (level == 1)?(0):(1); //return 1: hp pluged, 0: hp unpluged.
-    /*if(cs_no &(1<<15))
-      level |= (1<<0);
-    return (level == 0)?(1):(0); //return 1: hp pluged, 0: hp unpluged.*/
 }
 
 static struct wm8900_platform_data wm8900_pdata = {
@@ -1176,33 +1173,48 @@ static void set_vccx2(int power_on)
         }
         restore_pinmux();
         set_gpio_val(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), 1);
-        set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);        
+        set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE); 
+        //camera power on
+        set_gpio_val(GPIOD_bank_bit2_24(5), GPIOD_bit_bit2_24(5), 0); 
+        set_gpio_mode(GPIOD_bank_bit2_24(5), GPIOD_bit_bit2_24(5), GPIO_OUTPUT_MODE); 
+        //touch enable
+        set_gpio_val(GPIOD_bank_bit2_24(23), GPIOD_bit_bit2_24(23), 0); 
+        set_gpio_mode(GPIOD_bank_bit2_24(23), GPIOD_bit_bit2_24(23), GPIO_OUTPUT_MODE);      
         //set clk for wifi
         SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, (1<<18));
         CLEAR_CBUS_REG_MASK(PREG_EGPIO_EN_N, (1<<4));	              
     }
     else{
         printk(KERN_INFO "set_vccx2 power down\n");   
-        for (i=0;i<MAX_GPIO;i++){
-        	save_gpio(i);
-        }   
-        save_pinmux();  
+        
         set_gpio_val(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), 0);
         set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);   
+        //camera power down
+        set_gpio_val(GPIOD_bank_bit2_24(5), GPIOD_bit_bit2_24(5), 1); 
+        set_gpio_mode(GPIOD_bank_bit2_24(5), GPIOD_bit_bit2_24(5), GPIO_OUTPUT_MODE);
+        //touch disable
+	      set_gpio_val(GPIOD_bank_bit2_24(23), GPIOD_bit_bit2_24(23), 1); 
+        set_gpio_mode(GPIOD_bank_bit2_24(23), GPIOD_bit_bit2_24(23), GPIO_OUTPUT_MODE);
         //disable wifi clk
         CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, (1<<18));
-        SET_CBUS_REG_MASK(PREG_EGPIO_EN_N, (1<<4));	        
+        SET_CBUS_REG_MASK(PREG_EGPIO_EN_N, (1<<4));
+        
+        
+        save_pinmux();  
+        for (i=0;i<MAX_GPIO;i++){
+        	save_gpio(i);
+        }   	        
     }
 }
 static struct meson_pm_config aml_pm_pdata = {
     .pctl_reg_base = IO_APB_BUS_BASE,
     .mmc_reg_base = APB_REG_ADDR(0x1000),
     .hiu_reg_base = CBUS_REG_ADDR(0x1000),
-    .power_key = CBUS_REG_ADDR(RTC_ADDR1),
+    .power_key = (1<<8),
     .ddr_clk = 0x00110820,
     .sleepcount = 128,
     .set_vccx2 = set_vccx2,
-    .core_voltage_adjust = 10,
+    .core_voltage_adjust = 6,
 };
 
 static struct platform_device aml_pm_device = {
@@ -1249,7 +1261,7 @@ static struct aml_i2c_platform aml_i2c_plat = {
     .wait_xfer_interval = 5,
     .master_no      = AML_I2C_MASTER_B,
     .use_pio            = 0,
-    .master_i2c_speed   = AML_I2C_SPPED_100K,
+    .master_i2c_speed   = AML_I2C_SPPED_300K,
 
     .master_b_pinmux = {
         .scl_reg    = MESON_I2C_MASTER_B_GPIOB_0_REG,
@@ -1350,8 +1362,11 @@ static void set_bat_off(void)
     set_gpio_mode(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), GPIO_OUTPUT_MODE);
 
     //VCCx2 power down
-    set_vccx2(0);
-if(is_ac_connected()){ //AC in after power off press
+    //set_vccx2(0);
+    set_gpio_val(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), 0);
+    set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);        
+
+    if(is_ac_connected()){ //AC in after power off press
         kernel_restart("reboot");
     }
 
@@ -1364,81 +1379,80 @@ if(is_ac_connected()){ //AC in after power off press
 static int bat_value_table[37]={
 0,  //0    
 540,//0
-544,//4
-547,//10
-550,//15
-553,//16
-556,//18
-559,//20
-561,//23
-563,//26
-565,//29
-567,//32
-568,//35
-569,//37
-570,//40
-571,//43
-573,//46
-574,//49
-576,//51
-578,//54
-580,//57
-582,//60
-585,//63
-587,//66
-590,//68
-593,//71
-596,//74
-599,//77
-602,//80
-605,//83
-608,//85
-612,//88
+539,//4
+549,//10
+553,//15
+554,//16
+555,//18
+556,//20
+558,//23
+559,//26
+560,//29
+562,//32
+563,//35
+564,//37
+565,//40
+566,//43
+568,//46
+570,//49
+571,//51
+573,//54
+575,//57
+577,//60
+580,//63
+583,//66
+585,//68
+588,//71
+591,//74
+594,//77
+599,//80
+604,//83
+607,//85
+611,//88
 615,//91
-619,//95
-622,//97
-626,//100
-626 //100
+621,//95
+624,//97
+630,//100
+630 //100
 };
 
 static int bat_charge_value_table[37]={
 0,  //0    
-547,//0
+566,//0
 551,//4
-553,//10
-556,//15
-558,//16
-560,//18
-562,//20
-564,//23
-566,//26
-567,//29
-568,//32
-569,//35
-570,//37
-571,//40
-572,//43
-573,//46
-574,//49
-576,//51
-578,//54
-580,//57
-582,//60
-585,//63
-587,//66
-590,//68
-593,//71
-596,//74
-599,//77
-602,//80
-605,//83
-608,//85
-612,//88
-615,//91
-617,//95
-618,//97
-620,//100
-620 //100
+585,//10
+589,//15
+590,//16
+592,//18
+594,//20
+596,//23
+598,//26599,//29
+600,//32
+601,//35
+601,//37
+602,//40
+603,//43
+605,//46
+606,//49
+608,//51
+610,//54
+612,//57
+615,//60
+617,//63
+620,//66
+622,//68
+625,//71
+627,//74
+630,//77
+634,//80
+638,//83
+640,//85
+642,//88
+645,//91
+647,//95
+649,//97
+650,//100
+650 //100
 };
 
 static int bat_level_table[37]={
@@ -1651,44 +1665,44 @@ static struct platform_device aml_nand_device = {
 static struct mtd_partition multi_partition_info[] = 
 {
 	{
-		.name = "environment",
-		.offset = 8*1024*1024,
-		.size = 40*1024*1024,
+		.name = "logo",
+		.offset = 32*1024*1024,
+		.size = 16*1024*1024,
 	},
 	{
-		.name = "logo",
+		.name = "aml_logo",
 		.offset = 48*1024*1024,
 		.size = 16*1024*1024,
 	},
 	{
 		.name = "recovery",
 		.offset = 64*1024*1024,
-		.size = 16*1024*1024,
+		.size = 32*1024*1024,
 	},
 	{
-		.name = "uImage",
-		.offset = 80*1024*1024,
-		.size = 16*1024*1024,
+		.name = "boot",
+		.offset = 96*1024*1024,
+		.size = 32*1024*1024,
 	},
 	{
 		.name = "system",
-		.offset = 96*1024*1024,
+		.offset = 128*1024*1024,
 		.size = 256*1024*1024,
 	},
 	{
 		.name = "cache",
-		.offset = 352*1024*1024,
-		.size = 32*1024*1024,
+		.offset = 384*1024*1024,
+		.size = 128*1024*1024,
 	},
 	{
 		.name = "userdata",
-		.offset = 384*1024*1024,
-		.size = 256*1024*1024,
+		.offset = 512*1024*1024,
+		.size = 512*1024*1024,
 	},
 	{
 		.name = "NFTL_Part",
-		.offset = ((384 + 256)*1024*1024),
-		.size = ((0x200000000 - (384 + 256)*1024*1024)),
+		.offset = ((512 + 512)*1024*1024),
+		.size = ((0x200000000 - (512 + 512)*1024*1024)),
 	},
 };
 
@@ -1953,9 +1967,6 @@ static struct platform_device __initdata *platform_devs[] = {
     #if defined(CONFIG_TVIN_VDIN)
         &vdin_device,
     #endif
-    #if defined(CONFIG_TVIN_BT656IN)
-        &bt656in_device,
-    #endif
     #if defined(CONFIG_AML_AUDIO_DSP)
         &audiodsp_device,
     #endif
@@ -2014,14 +2025,17 @@ static struct platform_device __initdata *platform_devs[] = {
     #if defined(CONFIG_AM_TV_OUTPUT)||defined(CONFIG_AM_TCON_OUTPUT)
         &vout_device,   
     #endif
-    #ifdef CONFIG_AMLOGIC_VIDEOIN_MANAGER
-		&vm_device,
-	#endif
     #ifdef CONFIG_USB_ANDROID
         &android_usb_device,
         #ifdef CONFIG_USB_ANDROID_MASS_STORAGE
             &usb_mass_storage_device,
         #endif
+    #endif
+    #ifdef CONFIG_AMLOGIC_VIDEOIN_MANAGER
+		&vm_device,
+	  #endif    
+    #if defined(CONFIG_TVIN_BT656IN)
+        &bt656in_device,
     #endif
 };
 static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
@@ -2178,7 +2192,7 @@ static void disable_unused_model(void)
      //disable wifi
     SET_CBUS_REG_MASK(HHI_GCLK_MPEG2, (1<<5)); 
     SET_CBUS_REG_MASK(HHI_WIFI_CLK_CNTL, (1<<0));
-    __raw_writel(0x8AF,0xC9320ED8);
+    __raw_writel(0xCFF,0xC9320ED8);
     __raw_writel((__raw_readl(0xC9320EF0))&0xF9FFFFFF,0xC9320EF0);
     CLEAR_CBUS_REG_MASK(HHI_GCLK_MPEG2, (1<<5)); 
     CLEAR_CBUS_REG_MASK(HHI_WIFI_CLK_CNTL, (1<<0));
@@ -2196,7 +2210,10 @@ static void __init power_hold(void)
     set_gpio_mode(GPIOA_bank_bit(8), GPIOA_bit_bit0_14(8), GPIO_OUTPUT_MODE);
     
     //VCCx2 power up
-    set_vccx2(1);
+    //set_vccx2(1);
+    set_gpio_val(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), 1);
+    set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);        
+
 }
 
 static __init void m1_init_machine(void)

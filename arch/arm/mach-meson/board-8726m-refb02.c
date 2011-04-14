@@ -39,6 +39,7 @@
 #include <mach/power_gate.h>
 #include <linux/aml_bl.h>
 #include <linux/syscalls.h>
+#include <linux/reboot.h>
 
 #ifdef CONFIG_AM_UART_WITH_S_CORE 
 #include <linux/uart-aml.h>
@@ -269,7 +270,7 @@ static struct sn7325_platform_data sn7325_pdata = {
 #ifdef CONFIG_SIX_AXIS_SENSOR_MPU3050
 static struct mpu3050_platform_data mpu3050_data = {
     .int_config = 0x10,
-    .orientation = {0,-1,0,-1,0,0,0,0,-1},
+    .orientation = {-1,0,0,0,1,0,0,0,1},
     .level_shifter = 0,
     .accel = {
                 .get_slave_descr = mma8451_get_slave_descr,
@@ -277,7 +278,7 @@ static struct mpu3050_platform_data mpu3050_data = {
                 // connected
                 .bus = EXT_SLAVE_BUS_SECONDARY, //The secondary I2C of MPU
                 .address = 0x1c,
-                .orientation = {0,1,0,-1,0,0,0,0,-1},
+                .orientation = {0,1,0,-1,0,0,0,0,1},
             },
     };
 #endif
@@ -303,10 +304,10 @@ static int it7230_get_irq_level(void)
 }
 
 static struct cap_key it7230_keys[] = {
-    { KEY_COMPOSE,         0x0001, "zoom"},
-    { KEY_TAB,         0x0002, "home"},
-    { KEY_LEFTMETA,     0x0004, "menu"},
-    { KEY_HOME,          0x0008, "exit"},
+    { KEY_COMPOSE,         0x0008, "zoom"},
+    { KEY_HOME,         0x0001, "home"},
+    { KEY_LEFTMETA,     0x0002, "menu"},
+    { KEY_TAB,          0x0004, "exit"},
 };
 
 static struct it7230_platform_data it7230_pdata = {
@@ -624,7 +625,6 @@ static struct platform_device aml_audio={
 //use LED_CS1 as hp detect pin
 #define PWM_TCNT    (600-1)
 #define PWM_MAX_VAL (420)
-int need_mute_spk = 0;
 int get_display_mode(void) {
 	int fd;
 	int ret = 0;
@@ -656,17 +656,15 @@ int wm8900_is_hp_pluged(void)
                                 (0 << 10)   |       // test
                                 (7 << 7)    |       // CS0 REF, Voltage FeedBack: about 0.505V
                                 (7 << 4)    |       // CS1 REF, Current FeedBack: about 0.505V
-                                (0 << 0));           // DIMCTL Analog dimmer
+                                READ_CBUS_REG(LED_PWM_REG0)&0x0f);           // DIMCTL Analog dimmer
     cs_no = READ_CBUS_REG(LED_PWM_REG3);
-    if(cs_no &(1<<15))
+    if(cs_no &(1<<14))
       level |= (1<<0);
-    if(need_mute_spk == 1)
-      level = 1;
     // temp patch to mute speaker when hdmi output
     if(level == 0)
     	if(get_display_mode() != 0)	
     			return 1;
-    return (level == 0)?(1):(0); //return 1: hp pluged, 0: hp unpluged.
+    return (level == 1)?(1):(0); //return 1: hp pluged, 0: hp unpluged.
 }
 
 static struct wm8900_platform_data wm8900_pdata = {
@@ -996,7 +994,6 @@ aml_plat_cam_data_t video_gc0308_data = {
 
 
 #endif
-
 #if defined(CONFIG_SUSPEND)
 static void set_vccx2(int power_on)
 {
@@ -1015,7 +1012,7 @@ static struct meson_pm_config aml_pm_pdata = {
     .pctl_reg_base = IO_APB_BUS_BASE,
     .mmc_reg_base = APB_REG_ADDR(0x1000),
     .hiu_reg_base = CBUS_REG_ADDR(0x1000),
-    .power_key = CBUS_REG_ADDR(RTC_ADDR1),
+    .power_key = (1<<8),
     .ddr_clk = 0x00110820,
     .sleepcount = 128,
     .set_vccx2 = set_vccx2,
@@ -1134,7 +1131,7 @@ extern int get_adc_sample(int chan);
 static int get_bat_vol(void)
 {
 #ifdef CONFIG_SARADC_AM
-    return get_adc_sample(5);
+    return 1000;//get_adc_sample(5);
 #else
         return 0;
 #endif
@@ -1293,6 +1290,7 @@ static struct aml_power_pdata power_pdata = {
 	.bat_charge_value_table = bat_charge_value_table,
 	.bat_level_table = bat_level_table,
 	.bat_table_len = 37,		
+	.is_support_usb_charging = 0,
 	//.supplied_to = supplicants,
 	//.num_supplicants = ARRAY_SIZE(supplicants),
 };
@@ -1309,6 +1307,11 @@ static struct platform_device power_dev = {
 static int is_ac_connected(void)
 {
 	return (READ_CBUS_REG(ASSIST_HW_REV)&(1<<9))? 1:0;//GP_INPUT1
+}
+
+static int get_charge_status()
+{
+    return (READ_CBUS_REG(ASSIST_HW_REV)&(1<<8))? 1:0;//GP_INPUT0
 }
 
 static void set_charge(int flags)
@@ -1334,9 +1337,10 @@ static void set_bat_off(void)
 
 static struct bq27x00_battery_pdata bq27x00_pdata = {
 	.is_ac_online	= is_ac_connected,
+	.get_charge_status = get_charge_status,	
 	.set_charge = set_charge,
 	.set_bat_off = set_bat_off,
-    .chip = 0,
+    .chip = 1,
 };
 #endif
 
@@ -1606,13 +1610,9 @@ static void aml_8726m_set_bl_level(unsigned level)
 
     if (level < 30)
     {
-        cs_level = 0;
+        cs_level = 1750;
     }
-    else if (level == 30)
-    {
-        cs_level = 1760;
-    }
-    else if (level > 30 && level < 256)
+    else if (level >= 30 && level < 256)
     {
         cs_level = (level - 31) * 260 + 1760;
     }
@@ -1634,19 +1634,19 @@ static void aml_8726m_power_on_bl(void)
     msleep(100);
     SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<31));
     msleep(100);
-    //EIO -> OD4: 0
-    #ifdef CONFIG_SN7325
-    configIO(0, 0);
-    setIO_level(0, 0, 4);
-    #endif
+    //EIO -> PP1: 0   //EIO -> OD4: 0
+#ifdef CONFIG_SN7325
+    configIO(1, 0);  //configIO(0, 0);
+    setIO_level(1, 0, 1);  //setIO_level(0, 0, 4);
+#endif
 }
 
 static void aml_8726m_power_off_bl(void)
 {
-    //EIO -> OD4: 1
+    //EIO -> PP1: 0  //EIO -> OD4: 1
 #ifdef CONFIG_SN7325
-    configIO(0, 0);
-    setIO_level(0, 1, 4);
+    configIO(1, 0);  //configIO(0, 0);
+    setIO_level(1, 1, 1);  //setIO_level(0, 1, 4);
 #endif
     CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<31));
     CLEAR_CBUS_REG_MASK(PWM_MISC_REG_AB, (1 << 0));
@@ -2017,7 +2017,6 @@ static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
 		.platform_data = (void *)&video_ov5640_data,
 	},
 #endif
-
 #ifdef CONFIG_BQ27x00_BATTERY
     {
         I2C_BOARD_INFO("bq27200", 0x55),
