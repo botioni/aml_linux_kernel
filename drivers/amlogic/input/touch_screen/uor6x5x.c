@@ -53,7 +53,7 @@
 #define PinchIn			16	//Pinch in
 #define PinchOut			17	//Pinch out
 
-#define R_Threshold 	       5000       //ting
+#define R_Threshold 	       10000       //ting
 #define R_Threshold2 	700	//ting //	600
 
 #define ZERO_TOUCH	0	
@@ -64,18 +64,21 @@
 #define DY_T			60	//	72
 #define DXY_SKIP		0x80
 
-#define NumberFilter		6
-#define NumberDrop			4	//This value must not bigger than (NumberFilter-1)
+#define NumberFilter		8
+#define NumberDrop			6	//This value must not bigger than (NumberFilter-1)
 
-#define FIRSTTOUCHCOUNT		3    //ting
+#define FIRSTTOUCHCOUNT		0    //ting
 #define ONETOUCHCountAfter2 	20
 #define JITTER_THRESHOLD   	       600 //ting
 #define MAX_READ_PERIOD		6  //ting
-#define FIRST_TWO_TOUCH_FILTER	2
-#define JITTER_THRESHOLD_DXDY	32
+#define FIRST_TWO_TOUCH_FILTER	1
+#define JITTER_THRESHOLD_DXDY	28
 #define PERIOD_PER_FILTER	1
 
-#define FILTER_FUNC
+#define	DROP_POINT_DELAY_J	  1		
+#define	READ_DATA_DELAY_J	  1  
+
+//#define FILTER_FUNC
 #define NFilt NumberFilter
 #define NDrop NumberDrop
 
@@ -724,8 +727,7 @@ VUINT8 gesture_decision(VUINT8 n_touch,VUINT16 x,VUINT16 y, VUINT16 Dx, VUINT16 
 #endif
 
 static struct workqueue_struct *queue = NULL;
-static struct work_struct work;
-
+static struct delayed_work work;
 static int FirstTC = 0,OneTCountAfter2 = 0,TWOTouchFlag = 0;
 static int two_touch_count = 0, pre_dx = 0, pre_dy = 0;
 static int pre_outx1 = 0, pre_outy1 = 0, pre_outx2 = 0, pre_outy2 = 0;
@@ -774,9 +776,9 @@ static void uor_read_loop(struct work_struct *data)
 	unsigned short SBufxs_1 = 0;
 	unsigned short SBufys_0 = 0;
 	unsigned short SBufys_1 = 0;
-	unsigned short x, y;
+	unsigned short x, y , y1, x2, y2;
 	unsigned short out_x, out_y;
-	unsigned short Dx, Dy, z1, z2;
+	unsigned short Dx, Dy, z1, z2, Dx1, Dx2, Dy1, Dy2;
 	unsigned int R_touch;
 	unsigned int Rt;
 	unsigned int nTouch = 0;
@@ -787,9 +789,9 @@ static void uor_read_loop(struct work_struct *data)
 	
 	while(1){
         if(!uor_get_pendown_state()) {
-			uor_read_data(&x, &y, &Dx, &Dy);
 			#ifdef FILTER_FUNC
 			//first point
+			uor_read_data(&x, &y, &Dx, &Dy);
 			xFilter[ts.count] = x;
 			yFilter[ts.count] = y;	
 			DxFilter[ts.count] = Dx;
@@ -823,8 +825,59 @@ static void uor_read_loop(struct work_struct *data)
 			Dy = DyFilter[0];
 			ts.count = 0;
 			#else // no filter
-			ts.xp = x;
-			ts.yp = y;	
+			memset(EpBuf, 0, sizeof(EpBuf));
+			
+			UOR_IICRead(MSRX_1T, EpBuf, 2);
+			x= EpBuf[0]; 
+			x<<=4;
+			x|= (EpBuf[1]>>4);
+			
+			UOR_IICRead(MSRX_1T, EpBuf, 2);
+			x2= EpBuf[0]; 
+			x2<<=4;
+			x2|= (EpBuf[1]>>4);
+			
+			UOR_IICRead(MSRY_1T,  EpBuf, 2);
+			y1= EpBuf[0]; 
+			y1<<=4;
+			y1 |= (EpBuf[1]>>4);
+			
+			UOR_IICRead(MSRY_1T,  EpBuf, 2);
+			y2= EpBuf[0]; 
+			y2<<=4;
+			y2 |= (EpBuf[1]>>4);
+			
+			if ((x-x2)>80 ||(x2-x)>80)
+			    ts.xp = 4095;
+			else
+			    ts.xp = x;
+				
+			if ((y1-y2)>80 ||(y2-y1)>80)
+			    ts.yp = 4095;
+			else
+			    ts.yp = y1;
+				
+			UOR_IICRead(MSRX_2T,  (EpBuf), 3);
+			Dx1 = EpBuf[2];
+			
+			UOR_IICRead(MSRX_2T,  (EpBuf), 3);
+			Dx2 = EpBuf[2];
+			
+			UOR_IICRead(MSRY_2T,  (EpBuf), 3);
+			Dy1 = EpBuf[2];	
+			
+			UOR_IICRead(MSRY_2T,  (EpBuf), 3);
+			Dy2 = EpBuf[2];	
+			
+			if ((Dx1-Dx2)>16 ||(Dx2-Dx1)>16)
+			    Dx = 256;
+			else
+			    Dx = (Dx1+Dx2)>>1;
+				
+			if ((Dy1-Dy2)>16 ||(Dy2-Dy1)>16)
+			    Dy = 256;
+			else
+			    Dy = (Dy1+Dy2)>>1;
 			#endif
 
 			memset(EpBuf, 0, sizeof(EpBuf));
@@ -844,15 +897,14 @@ static void uor_read_loop(struct work_struct *data)
 			R_touch =(abs(((z2*x)/z1-x)))/4; //(float)((((float) z2)/((float) z1) -1)*(float)x)/4096;
 			Rt =R_touch;
 
-			Dx = Dx - 40;
-			Dy = Dy - 8;
+			
 			if( ((Dx > DX_T) || (Dy > DY_T)) && (Rt < R_Threshold2) ) {
 				nTouch =  TWO_TOUCH;
 			}
 			else {
 				nTouch = ONE_TOUCH;
 			}
-			//printk(KERN_ERR "%s:after filter (x,y)=(%d,%d) (dx,dy)=(%d,%d) n_touch %d, R_touch %d, (z1,z2)=(%d,%d) !!!\n",__FUNCTION__, x, y, Dx, Dy, nTouch, R_touch, z1, z2);
+			//printk(KERN_ERR "%s:after filter (x,y)=(%d,%d) (dx,dy)=(%d,%d) n_touch %d, R_touch %d, (z1,z2)=(%d,%d) !!!\n",__FUNCTION__, ts.xp , ts.yp , Dx, Dy, nTouch, R_touch, z1, z2);
 		}
 		else {//ting 
 		    nTouch =  ZERO_TOUCH;	
@@ -861,16 +913,19 @@ static void uor_read_loop(struct work_struct *data)
 
 		if(nTouch == ONE_TOUCH || nTouch == TWO_TOUCH){	// pen down
 		    if(nTouch == TWO_TOUCH){
-				if(two_touch_count < FIRST_TWO_TOUCH_FILTER){
+				if((Dx>252||Dy>252) || two_touch_count < FIRST_TWO_TOUCH_FILTER){
 					//printk(KERN_ERR "%s:filter for first two touch -(x,y)=(%d,%d) (dx,dy)=(%d,%d),count = %d, FIRST_TWO_TOUCH_FILTER = %d  !!!\n",__FUNCTION__, x, y, Dx, Dy,two_touch_count, FIRST_TWO_TOUCH_FILTER);
 					two_touch_count++;
-					msleep(4);    //ting
-					continue;//re-start the loop
+					queue_delayed_work(queue, &work, DROP_POINT_DELAY_J);
+					goto READ_LOOP_OUT;
                 }
 				else if( (pre_dx!=0) && (pre_dy!=0) && (Dx - pre_dx > JITTER_THRESHOLD_DXDY || pre_dx - Dx > JITTER_THRESHOLD_DXDY || pre_dy - Dy > JITTER_THRESHOLD_DXDY || Dy - pre_dy > JITTER_THRESHOLD_DXDY)){//single touch point 前後差距JITTER_THRESHOLD 則濾點 
 				    //printk(KERN_ERR "%s:filter for jitter(dual) --(pre_dx,pre_dy)=(%d,%d) ,(dx,dy)=(%d,%d) , JITTER_THRESHOLD_DXDY = %d !!!\n",__FUNCTION__, pre_dx, pre_dy , Dx, Dy, JITTER_THRESHOLD_DXDY);
-				    msleep(MAX_READ_PERIOD);
-					continue;//re-start the loop
+
+					pre_dx = Dx;
+					pre_dy = Dy;
+					queue_delayed_work(queue, &work, DROP_POINT_DELAY_J);
+					goto READ_LOOP_OUT;
                 }
                 else{
 					//printk(KERN_ERR "%s:report dual touch-- (x,y)=(%d,%d) (dx,dy)=(%d,%d)  !!!\n",__FUNCTION__, x, y, Dx, Dy);
@@ -885,8 +940,8 @@ static void uor_read_loop(struct work_struct *data)
 						 ts.yp = ts.pY;
 					 }
 					 
-					 int dx_coord =(Dx - DX_T< 0) ? 0 :  ((Dx - 40) & 0x00f8) * 4;
-					 int dy_coord=(Dy - DY_T< 0) ? 0 :  ((Dy - 40) & 0x00f8) * 4;
+					 int dx_coord =(Dx - DX_T< 0) ? 0 :  ((Dx - 40) & 0x00f8) * 6;
+					 int dy_coord=(Dy - DY_T< 0) ? 0 :  ((Dy - 40) & 0x00f8) * 6;
 
                 	input_report_abs(ts.dev, ABS_MT_TOUCH_MAJOR, 600 + (Rt%400));
                 	//input_report_abs(ts.dev, ABS_MT_WIDTH_MAJOR, 500+press);
@@ -914,7 +969,7 @@ static void uor_read_loop(struct work_struct *data)
                 		 out_y = xy & 0xffff;
                 	}
                 	
-                	if((pre_outx1!=0) && (pre_outy1!=0) && ((out_x - pre_outx1) <4 && (pre_outx1-out_x) <4 && (out_y - pre_outy1 )<4 && (pre_outy1 - out_y )<4)){
+                	if((pre_outx1!=0) && (pre_outy1!=0) && ((out_x - pre_outx1) <8 && (pre_outx1-out_x) <8 && (out_y - pre_outy1 )<8 && (pre_outy1 - out_y )<8)){
                         out_x = pre_outx1;
                 		out_y = pre_outy1;
                 	}
@@ -939,7 +994,7 @@ static void uor_read_loop(struct work_struct *data)
                 		 out_y = xy & 0xffff;
                 	}
 
-					if((pre_outx2!=0) && (pre_outy2!=0) && ((out_x - pre_outx2) <4 && (pre_outx2-out_x) <4 && (out_y - pre_outy2 )<4 && (pre_outy2 - out_y )<4)){
+					if((pre_outx2!=0) && (pre_outy2!=0) && ((out_x - pre_outx2) <8 && (pre_outx2-out_x) <8 && (out_y - pre_outy2 )<8 && (pre_outy2 - out_y )<8)){
                         out_x = pre_outx2;
                 		out_y = pre_outy2;
                 	}   	        
@@ -958,33 +1013,34 @@ static void uor_read_loop(struct work_struct *data)
 					pre_outx2 = out_x;
                 	pre_outy2 = out_y;
 					slid_index = 1;
-                	msleep(MAX_READ_PERIOD);
+					queue_delayed_work(queue, &work, READ_DATA_DELAY_J);
+					goto READ_LOOP_OUT;
                 }
             }
             else if(nTouch == ONE_TOUCH){
                 if((TWOTouchFlag == 1) && (OneTCountAfter2 < ONETOUCHCountAfter2)){
                 	//printk(KERN_ERR "%s:filter after two touch -- (x,y)=(%d,%d) ,OneTCountAfter2 = %d, ONETOUCHCountAfter2 = %d !!!\n",__FUNCTION__, x, y, OneTCountAfter2, ONETOUCHCountAfter2);
                 	OneTCountAfter2++;
-                	msleep(MAX_READ_PERIOD);
-                	continue;//re-start the loop
+					queue_delayed_work(queue, &work, DROP_POINT_DELAY_J);
+					goto READ_LOOP_OUT;
                 }		
-				else if(((TWOTouchFlag == 0) && (FirstTC < FIRSTTOUCHCOUNT)) || (Rt > R_Threshold)){  //ting
+				else if((ts.xp>4000||ts.yp>4000)||((TWOTouchFlag == 0) && (FirstTC < FIRSTTOUCHCOUNT)) || (Rt > R_Threshold)){  //ting
                 	//printk(KERN_ERR "%s:filter before single touch -- (x,y)=(%d,%d) ,FirstTC = %d, FIRSTTOUCHCOUNT = %d !!!\n",__FUNCTION__, x, y, FirstTC, FIRSTTOUCHCOUNT);
                 	FirstTC++;
-                	msleep(2);
-                	continue;//re-start the loop
+					queue_delayed_work(queue, &work, DROP_POINT_DELAY_J);
+					goto READ_LOOP_OUT;
                 }
                 else if( (ts.pX!=0) && (ts.pY!=0) && (ts.xp - ts.pX > JITTER_THRESHOLD || ts.pX - ts.xp > JITTER_THRESHOLD || ts.pY - ts.yp > JITTER_THRESHOLD || ts.yp - ts.pY > JITTER_THRESHOLD)){
                 	//printk(KERN_ERR "%s:filter for jitter -- (px,py)=(%d,%d) ,(x,y)=(%d,%d) , JITTER_THRESHOLD = %d !!!\n",__FUNCTION__, ts.pX, ts.pY ,x, y, JITTER_THRESHOLD);
                 	ts.pX = ts.xp; 
                 	ts.pY = ts.yp;
-                	msleep(MAX_READ_PERIOD);
-                	continue;//re-start the loop
+					queue_delayed_work(queue, &work, DROP_POINT_DELAY_J);
+					goto READ_LOOP_OUT;
                 }
                 else{
                 	//printk(KERN_ERR "%s: (Pen down)report single touch-- (x,y)=(%d,%d) !!!\n",__FUNCTION__, x, y);
                 	//report x,y,pressure,size to Linux/Android
-                	if((ts.pX!=0) && (ts.pY!=0) && ((ts.xp - ts.pX) <80 && (ts.pX-ts.xp) <80 && (ts.yp - ts.pY )<80 && (ts.pY-ts.yp )<80)){
+                	if((ts.pX!=0) && (ts.pY!=0) && ((ts.xp - ts.pX) <50 && (ts.pX-ts.xp) <50 && (ts.yp - ts.pY )<50 && (ts.pY-ts.yp )<50)){
                 	    ts.xp = ts.pX;
                 	    ts.yp = ts.pY;
                 	}
@@ -1022,7 +1078,8 @@ static void uor_read_loop(struct work_struct *data)
                 	//save previous single touch point
                 	ts.pX = ts.xp; 
                 	ts.pY = ts.yp;
-                	msleep(MAX_READ_PERIOD);
+					queue_delayed_work(queue, &work, READ_DATA_DELAY_J);
+					goto READ_LOOP_OUT;
                 }
             }
 
@@ -1030,8 +1087,8 @@ static void uor_read_loop(struct work_struct *data)
 	    else if(nTouch == ZERO_TOUCH){	// pen release
 	       udelay(250);
 	        if(!uor_get_pendown_state()){
-	        	msleep(MAX_READ_PERIOD);
-	        	continue;
+			    queue_delayed_work(queue, &work, READ_DATA_DELAY_J);
+			    goto READ_LOOP_OUT;
 	        }
 	        //printk(KERN_ERR "%s: (Pen release)!!!\n",__FUNCTION__);
 	        input_report_abs(ts.dev, ABS_MT_TOUCH_MAJOR, 0);
@@ -1065,7 +1122,9 @@ static void uor_read_loop(struct work_struct *data)
 	    else{
 	        printk(KERN_ERR "uor_read_loop(): n_touch state error !!!\n");
 	    }
-	}				
+	}		
+READ_LOOP_OUT:	                 
+    return;
 }
 
 static irqreturn_t uor_isr(int irq,void *dev_id)
@@ -1080,7 +1139,8 @@ static irqreturn_t uor_isr(int irq,void *dev_id)
         }
         
 	disable_irq_nosync(client->irq);
-	queue_work(queue, &work);
+	//queue_work(queue, &work);
+	queue_delayed_work(queue, &work, 0);
 	//printk(KERN_ERR "uor_isr ok!\n");
 	return IRQ_HANDLED;
 }
@@ -1160,7 +1220,8 @@ static int __devinit uor_probe(struct i2c_client *client,
 	        return -EIO;
 	        
 	queue = create_singlethread_workqueue("uor-touch-screen-read-loop");
-	INIT_WORK(&work, uor_read_loop);
+	//INIT_WORK(&work, uor_read_loop);
+	INIT_DELAYED_WORK(&work, uor_read_loop);
 	
 	if (pdata->init_irq)
 		pdata->init_irq();
