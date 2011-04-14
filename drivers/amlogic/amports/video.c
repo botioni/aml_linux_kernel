@@ -980,8 +980,14 @@ static irqreturn_t vsync_isr0(int irq, void *dev_id)
             } else
 #endif
                 /* setting video display property in pause mode */
-                if (video_property_changed && cur_dispbuf && (cur_dispbuf != &vf_local)) {
-                    vsync_toggle_frame(cur_dispbuf);
+                if (video_property_changed && cur_dispbuf) {
+                    if (blackout) {
+                        if (cur_dispbuf != &vf_local) {
+                            vsync_toggle_frame(cur_dispbuf);
+                        }
+                    } else {
+                        vsync_toggle_frame(cur_dispbuf);
+                    }
                 }
 
             break;
