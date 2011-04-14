@@ -13,6 +13,7 @@
 #include <linux/mutex.h>
 #include <linux/kthread.h>
 #include <linux/spinlock.h>
+#include <linux/notifier.h>
 #include <linux/mtd/blktrans.h>
 
 #pragma pack(1)
@@ -34,17 +35,19 @@ typedef int16_t     	addr_linearblk_t;
 */
 //addr_sect_t nftl_get_sector(addr_sect_t addr,sect_map_t logic_map);
 
+//#define NFTL_DONT_CACHE_DATA
+
 #define AML_NFTL_MAJOR			 250
 #define TIMESTAMP_LENGTH         15
 #define MAX_TIMESTAMP_NUM        ((1<<(TIMESTAMP_LENGTH-1))-1)
 #define MAX_PAGES_IN_BLOCK       256
 #define MAX_BLKS_PER_SECTOR		 128
 #define MAX_BLK_NUM_PER_NODE	 4
-#define DEFAULT_SPLIT_UNIT		 10
+#define DEFAULT_SPLIT_UNIT		 2
 
 #define NFTL_BOUNCE_FREE		 		0
 #define NFTL_BOUNCE_USED		 		1
-#define NFTL_MAX_SCHEDULE_TIMEOUT		400
+#define NFTL_MAX_SCHEDULE_TIMEOUT		800
 #define NFTL_CACHE_STATUS_IDLE			0
 #define NFTL_CACHE_STATUS_READY			1
 #define NFTL_CACHE_STATUS_READY_DONE	2
@@ -52,7 +55,7 @@ typedef int16_t     	addr_linearblk_t;
 #define NFTL_CACHE_FORCE_WRITE_LEN		8
 #define CACHE_CLEAR_ALL					1
 #define AML_NFTL_BOUNCE_SIZE	 		0x40000
-#define AML_DEFAULT_FACTOR		 48
+#define AML_LIMIT_FACTOR		 4
 #define DO_COPY_PAGE			 1
 #define READ_OPERATION			 0
 #define WRITE_OPERATION			 1
@@ -224,6 +227,7 @@ struct aml_nftl_blk_t{
 	struct request *req;
 	struct request_queue *queue;
 	struct scatterlist	*sg;
+	struct notifier_block nb;
 
 	char			*bounce_buf;
 	int8_t			bounce_buf_free[NFTL_CACHE_FORCE_WRITE_LEN];

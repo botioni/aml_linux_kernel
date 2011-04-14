@@ -34,6 +34,7 @@
 
 #include <linux/hdreg.h>
 #include <linux/blkdev.h>
+#include <linux/reboot.h>
 
 #include <linux/kmod.h>
 #include <linux/mtd/mtd.h>
@@ -44,6 +45,7 @@
 
 static struct mutex aml_nftl_lock;
 
+#define nftl_notifier_to_blk(l)	container_of(l, struct aml_nftl_blk_t, nb)
 #define cache_list_to_node(l)	container_of(l, struct write_cache_node, list)
 
 static int aml_nftl_write_cache_data(struct aml_nftl_blk_t *aml_nftl_blk, uint8_t cache_flag)
@@ -67,13 +69,15 @@ static int aml_nftl_write_cache_data(struct aml_nftl_blk_t *aml_nftl_blk, uint8_
 			err = aml_nftl_info->read_sect(aml_nftl_info, cache_node->vt_sect_addr, aml_nftl_blk->cache_buf);
 			if (err)
 				return err;
-			aml_nftl_blk->cache_sect_addr = -1;
+
 			//printk("nftl write cache data blk: %d page: %d \n", (cache_node->vt_sect_addr / aml_nftl_info->pages_per_blk), (cache_node->vt_sect_addr % aml_nftl_info->pages_per_blk));
 			for (j=0; j<blks_per_sect; j++) {
 				if (!cache_node->cache_fill_status[j])
 					memcpy(cache_node->buf + j*512, aml_nftl_blk->cache_buf + j*512, 512);
 			}
 		}
+		if (cache_node->vt_sect_addr == aml_nftl_blk->cache_sect_addr)
+			memcpy(aml_nftl_blk->cache_buf, cache_node->buf, 512 * blks_per_sect);
 
 		err = aml_nftl_info->write_sects(aml_nftl_info, cache_node->vt_sect_addr, 1, cache_node->buf);
 		if (err)
@@ -222,6 +226,16 @@ static int aml_nftl_add_cache_list(struct aml_nftl_blk_t *aml_nftl_blk, uint32_t
 		wake_up_process(aml_nftl_blk->nftl_thread);
 	}
 
+#ifdef NFTL_DONT_CACHE_DATA
+	if (aml_nftl_blk->cache_buf_cnt >= 1) {
+		err = aml_nftl_blk->write_cache_data(aml_nftl_blk, 0);
+		if (err) {
+			printk("nftl cache data full write faile %d err: %d\n", aml_nftl_blk->cache_buf_cnt, err);
+			return err;
+		}
+	}
+#endif
+
 	return 0;
 }
 
@@ -346,13 +360,15 @@ static int aml_nftl_flush(struct mtd_blktrans_dev *dev)
 	struct mtd_info *mtd = dev->mtd;
 	struct aml_nftl_blk_t *aml_nftl_blk = (void *)dev;
 
-	printk("nftl flush write data start \n");
-	mutex_lock(&aml_nftl_blk->cache_mutex);
-	error = aml_nftl_blk->write_cache_data(aml_nftl_blk, CACHE_CLEAR_ALL);
-	mutex_unlock(&aml_nftl_blk->cache_mutex);
+	mutex_lock(&aml_nftl_lock);
+	//printk("nftl flush all cache data: %d\n", aml_nftl_blk->cache_buf_cnt);
+	if (aml_nftl_blk->cache_buf_cnt > 0)
+		error = aml_nftl_blk->write_cache_data(aml_nftl_blk, CACHE_CLEAR_ALL);
 
 	if (mtd->sync)
 		mtd->sync(mtd);
+	mutex_unlock(&aml_nftl_lock);
+
 	return error;
 }
 
@@ -566,7 +582,7 @@ static int aml_nftl_writesect(struct mtd_blktrans_dev *dev, unsigned long block,
 static int aml_nftl_thread(void *arg)
 {
 	struct aml_nftl_blk_t *aml_nftl_blk = arg;
-	unsigned long period = NFTL_MAX_SCHEDULE_TIMEOUT;
+	unsigned long period = NFTL_MAX_SCHEDULE_TIMEOUT / 10;
 
 	while (!kthread_should_stop()) {
 		struct aml_nftl_info_t *aml_nftl_info;
@@ -603,7 +619,7 @@ static int aml_nftl_thread(void *arg)
 
 			mutex_unlock(&aml_nftl_lock);
 			set_current_state(TASK_INTERRUPTIBLE);
-			schedule_timeout(200);
+			schedule_timeout(period);
 
 			mutex_lock(&aml_nftl_lock);
 			aml_nftl_info->creat_structure(aml_nftl_info);
@@ -623,6 +639,20 @@ static int aml_nftl_thread(void *arg)
 	}
 
 	return 0;
+}
+
+static int aml_nftl_reboot_notifier(struct notifier_block *nb, unsigned long priority, void * arg)
+{
+	int error = 0;
+	struct aml_nftl_blk_t *aml_nftl_blk = nftl_notifier_to_blk(nb);
+
+	mutex_lock(&aml_nftl_lock);
+	//printk("nftl reboot flush cache data: %d\n", aml_nftl_blk->cache_buf_cnt);
+	if (aml_nftl_blk->cache_buf_cnt > 0)
+		error = aml_nftl_blk->write_cache_data(aml_nftl_blk, CACHE_CLEAR_ALL);
+	mutex_unlock(&aml_nftl_lock);
+
+	return error;
 }
 
 static void aml_nftl_add_mtd(struct mtd_blktrans_ops *tr, struct mtd_info *mtd)
@@ -645,7 +675,9 @@ static void aml_nftl_add_mtd(struct mtd_blktrans_ops *tr, struct mtd_info *mtd)
 	aml_nftl_blk->mbd.mtd = mtd;
 	aml_nftl_blk->mbd.devnum = mtd->index;
 	aml_nftl_blk->mbd.tr = tr;
+	aml_nftl_blk->nb.notifier_call = aml_nftl_reboot_notifier;
 
+	register_reboot_notifier(&aml_nftl_blk->nb);
 	INIT_LIST_HEAD(&aml_nftl_blk->cache_list);
 	//spin_lock_init(&aml_nftl_blk->thread_lock);
 	aml_nftl_blk->read_data = aml_nftl_read_data;
