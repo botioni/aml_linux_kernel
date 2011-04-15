@@ -60,7 +60,10 @@
                                                                                       
  static efuse_dev_t *efuse_devp;                                                      
  //static struct class *efuse_clsp;             
- static dev_t efuse_devno;                                                            
+ static dev_t efuse_devno;     
+ 
+
+unsigned char re_usid[EFUSE_USERIDF_BYTES+2] = {0};		//64
                                                                                       
                                                                                       
  static void __efuse_write_byte( unsigned long addr, unsigned long data );            
@@ -360,17 +363,300 @@ static ssize_t mac_bt_show(struct class *cla, struct class_attribute *attr, char
     return sprintf(buf, "%02x:%02x:%02x:%02x:%02x:%02x\n", 
     										buf_mac[0],buf_mac[1],buf_mac[2],buf_mac[3],buf_mac[4],buf_mac[5]);
 }      
+static inline int cm(int p, int x)
+{
+    int i, tmp;
 
+    tmp = x;
+    for (i=0; i<p; i++) {
+        tmp <<= 1;
+        if (tmp&(1<<8)) tmp ^= 0x11d;
+    }
+
+    return tmp;
+}
+
+static inline int gm(int x, int y)
+{
+    int i, tmp;
+
+    tmp = 0;
+    for (i=0; i<8; i++) {
+        if (y&(1<<i)) tmp ^= cm(i, x);
+    }
+
+    return tmp;
+}
+
+static void bch_enc(int c[255], int n, int t)
+{
+    int i, j, r, gate;
+    int b[20], g[20];
+    char gs1[] = "101110001";
+    char gs2[] = "11000110111101101";
+
+    memset(g, 0, 20*sizeof(int));
+    memset(b, 0, 20*sizeof(int));
+    r = t*8;
+
+    for (i=0; i<r+1; i++) {
+        g[i] = (t==1 ? gs1[i] : gs2[i]) - '0';
+    }
+
+    for (i=0; i<n; i++) {
+        c[i] = i<n-r ? c[i] : b[r-1];
+        gate = i<n-r ? c[i]^b[r-1] : 0;
+        for (j=r-1; j>=0; j--)
+            b[j] = gate*g[j] ^ (j==0?0:b[j-1]);
+    }
+}
+
+static int bch_dec(int c[255], int n, int t)
+{
+    int i, j, tmp;
+    int s[4], a[6], b[6], temp[6], deg_a, deg_b;
+    int sig[5], deg_sig;
+    int errloc[4], errcnt;
+
+    memset(s, 0, 4*sizeof(int));
+    for (j=0; j<n; j++)
+        for (i=0; i<t*2; i++)
+            s[i] = cm(i+1, s[i]) ^ (c[j]&1);
+
+    memset(a, 0, 6*sizeof(int));
+    memset(b, 0, 6*sizeof(int));
+    a[0] = 1;
+    deg_a = t*2;
+    for (i=0; i<t*2; i++) b[i] = s[t*2-1-i];
+        deg_b = t*2-1;
+
+    a[t*2+1] = 1;
+    b[t*2+1] = 0;
+    while (deg_b >= t) {
+        if (b[0] == 0) {
+            memmove(b, b+1, 5*sizeof(int));
+            b[5] = 0;
+            deg_b--;
+        }
+        else {
+            for (i=t*2+1; i>deg_a; i--)
+                b[i] = gm(b[i], b[0]) ^ gm(a[i], a[0]);
+            for (i=deg_a; i>deg_b; i--) {
+                b[i] = gm(b[i], b[0]);
+                a[i] = gm(a[i], b[0]);
+            }
+            for (; i>0; i--)
+                a[i] = gm(a[i], b[0]) ^ gm(b[i], a[0]);
+            memmove(a, a+1, 5*sizeof(int));
+            a[5] = 0;
+            deg_a--;
+
+            if (deg_a < deg_b) {
+                memcpy(temp, a, 6*sizeof(int));
+                memcpy(a, b, 6*sizeof(int));
+                memcpy(b, temp, 6*sizeof(int));
+
+                tmp = deg_a;
+                deg_a = deg_b;
+                deg_b = tmp;
+            }
+        }
+    }
+
+    deg_sig = t*2 - deg_a;
+    memcpy(sig, a+deg_a+1, (deg_sig+1)*sizeof(int));
+
+    errcnt = 0;
+    for (j=0; j<255; j++) {
+        tmp = 0;
+        for (i=0; i<=deg_sig; i++) {
+            sig[i] = cm(i, sig[i]);
+            tmp ^= sig[i];
+        }
+
+        if (tmp == 0) {
+            errloc[errcnt] = j - (255-n);
+            if (errloc[errcnt] >= 0)
+                errcnt++;
+        }
+    }
+
+    if (errcnt<deg_sig) {
+        return -1;
+    }
+
+    for (i=0; i<errcnt; i++) {
+        c[errloc[i]] ^= 1;
+        __D("fix error at %4d\n", errloc[i]);
+    }
+
+    return errcnt;
+}
+
+
+void efuse_bch_enc(const char *ibuf, int isize, char *obuf)
+{
+    int i, j;
+    int cnt, tmp;
+    int errnum, errbit;
+    char info;
+    int c[255];
+
+    int t = BCH_T;
+    int n = isize*8 + t*8;
+
+
+    for (i = 0; i < isize; ++i)
+    {
+        info = ibuf[i];
+        info = ~info;
+        for (j = 0; j < 8; ++j)
+        {
+            c[i*8 + j] = info >> (7 - j)&1;
+        }
+    }
+
+    bch_enc(c, n, t);
+
+#ifdef __ADDERR
+    /* add error */
+    errnum = t;
+    for ( i = 0; i < errnum; ++i)
+    {
+        errbit = rand()%n;
+        c[errbit] ^= 1;
+        __D("add error #%d at %d\n", i, errbit );
+    }
+#endif
+
+    for (i = 0; i < n/8; ++i)
+    {
+        tmp = 0;
+        for (j = 0; j < 8; ++j)
+        {
+            tmp += c[i*8 + j]<<(7-j);
+        }
+
+        obuf[i] = ~tmp;
+    }
+}
+
+void efuse_bch_dec(const char *ibuf, int isize, char *obuf)
+{
+    int i, j;
+    int cnt, tmp;
+    char info;
+    int c[255];
+
+    int t = BCH_T;
+    int n = isize*8;
+
+
+    for (i = 0; i < isize; ++i)
+    {
+        info = ibuf[i];
+        info = ~info;
+        for (j = 0; j < 8; ++j)
+        {
+            c[i*8 + j] = info >> (7 - j)&1;
+        }
+    }
+
+    bch_dec(c, n, t);
+
+    for (i = 0; i < (n/8 - t); ++i)
+    {
+        tmp = 0;
+        for (j = 0; j < 8; ++j)
+        {
+            tmp += c[i*8 + j]<<(7-j);
+        }
+
+        obuf[i] = ~tmp;
+    }
+}
+unsigned char *efuse_read_usr(int usr_type)
+{
+	unsigned char buf[EFUSE_BYTES];
+	unsigned char buf_dec[EFUSE_BYTES];
+	loff_t ppos;
+	size_t count;
+	int dec_len,i;
+	char *op;
+	 ppos =320; count=64;dec_len=62;op=re_usid;
+	
+	memset(op,0,count);
+	memset(buf,0,sizeof(buf));
+	memset(buf_dec,0,sizeof(buf_dec));
+	__efuse_read(buf, count, &ppos);
+	
+
+	memcpy(buf_dec,buf+2,dec_len);
+
+	
+	if(dec_len>30)
+		for(i=0;i*31<dec_len;i++)
+			efuse_bch_dec(buf_dec+i*31, 31, op+i*30);
+	else 
+		efuse_bch_dec(buf_dec, dec_len, op);
+	
+	return op;
+	
+}
+unsigned char *efuse_read_usr_workaround(int usr_type)
+{
+	
+	unsigned char buf[EFUSE_BYTES];
+	unsigned char buf_dec[EFUSE_BYTES];
+	loff_t ppos;
+	size_t count;
+	int dec_len,i;
+	char *op;
+    ppos =324; count=24;dec_len=21;op=re_usid;
+
+	memset(op,0,count);
+	memset(buf,0,sizeof(buf));
+	memset(buf_dec,0,sizeof(buf_dec));
+	__efuse_read(buf, count, &ppos);
+	
+	/*
+	if(usr_type==USR_USERIDF)
+		memcpy(buf_dec,buf+2,dec_len);
+	else*/
+		memcpy(buf_dec,buf,dec_len);
+	
+	if(dec_len>30)
+		for(i=0;i*31<dec_len;i++)
+			efuse_bch_dec(buf_dec+i*31, 31, op+i*30);
+	else 
+		efuse_bch_dec(buf_dec, dec_len, op);
+	
+	return op;
+	
+	
+}
 static ssize_t userdata_show(struct class *cla, struct class_attribute *attr, char *buf)
 {
-    char buf_userdata[62] = {0};     
-    loff_t ppos = USERDATA_POS;
-	__efuse_read(buf_userdata, sizeof(buf_userdata), &ppos);
+	char *op;
+	op=efuse_read_usr(4);
+	if((op[0]==7)&&(op[1]==0)&&(op[2]==1)&&(op[3]==3)&&(op[4]==0)&&(op[5]==2)){
+				printk( KERN_INFO"read usid ok\n");
+				}
+			else{
+				op=efuse_read_usr_workaround(4);
+				if((op[0]==7)&&(op[1]==0)&&(op[2]==1)&&(op[3]==3)&&(op[4]==0)&&(op[5]==2)){
+					printk( KERN_INFO"read usid ok\n");
+				}
+				else{
+					printk( KERN_INFO"read usid error\n");
+					return -1;
+				}
+				}
     return sprintf(buf, "%01d%01d%01d%01d%01d%01d%01d%01d%01d%01d%01d%01d%01d%01d%01d%01d%01d%01d%01d%01d\n", 
-    			   buf_userdata[0],buf_userdata[1],buf_userdata[2],buf_userdata[3],buf_userdata[4],buf_userdata[5],
-    			   buf_userdata[6],buf_userdata[7],buf_userdata[8],buf_userdata[9],buf_userdata[10],buf_userdata[11],
-    			   buf_userdata[12],buf_userdata[13],buf_userdata[14],buf_userdata[15],buf_userdata[16],buf_userdata[17],
-    			   buf_userdata[18],buf_userdata[19]
+    			   op[0],op[1],op[2],op[3],op[4],op[5],
+    			   op[6],op[7],op[8],op[9],op[10],op[11],
+    			   op[12],op[13],op[14],op[15],op[16],op[17],
+    			   op[18],op[19]
     			   );
 }  
 
