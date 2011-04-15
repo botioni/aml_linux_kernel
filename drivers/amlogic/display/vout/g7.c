@@ -34,6 +34,8 @@
 #include <mach/power_gate.h>
 #include <linux/delay.h>
 
+#include <linux/twx_tc101.h>
+
 #ifdef CONFIG_SN7325
     #include <linux/sn7325.h>
 #endif
@@ -269,7 +271,8 @@ static void t13_power_on(void)
     video_dac_disable();
 	set_tcon_pinmux();
 	power_on_lcd();
-	power_on_backlight();
+	twx_tc101_reinit();
+	//power_on_backlight();
       
 }
 static void t13_power_off(void)
