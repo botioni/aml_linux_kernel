@@ -17,7 +17,7 @@
 
 unsigned ENABLE_IEC958 = 1;
 unsigned IEC958_MODE   = AIU_958_MODE_PCM16;
-unsigned I2S_MODE      = AIU_I2S_MODE_2x16;
+unsigned I2S_MODE      = AIU_I2S_MODE_PCM16;
 
 static unsigned dac_reset_flag = 0;
 
@@ -191,7 +191,7 @@ void audio_set_i2s_mode(u32 mode)
     const unsigned short mask[4] = {
         0x303,                  /* 2x16 */
         0x303,                  /* 2x24 */
-        0xffff,                 /* 8x24 */
+        0x303,                 /* 8x24 */
         0x303,                  /* 2x32 */
     };
 
@@ -199,11 +199,17 @@ void audio_set_i2s_mode(u32 mode)
        /* four two channels stream */
         WRITE_MPEG_REG(AIU_I2S_SOURCE_DESC, 1);
 
-        if (mode == AIU_I2S_MODE_2x16) {
+        if (mode == AIU_I2S_MODE_PCM16) {
             WRITE_MPEG_REG_BITS(AIU_MEM_I2S_CONTROL, 1, 6, 1);
-        } else {
+            WRITE_MPEG_REG_BITS(AIU_I2S_SOURCE_DESC, 0, 5, 1);
+        } else if(mode == AIU_I2S_MODE_PCM32){
             WRITE_MPEG_REG_BITS(AIU_MEM_I2S_CONTROL, 0, 6, 1);
+            WRITE_MPEG_REG_BITS(AIU_I2S_SOURCE_DESC, 1, 5, 1);
+        }else if(mode == AIU_I2S_MODE_PCM24){
+            WRITE_MPEG_REG_BITS(AIU_MEM_I2S_CONTROL, 0, 6, 1);
+            WRITE_MPEG_REG_BITS(AIU_I2S_SOURCE_DESC, 1, 5, 1);
         }
+
         WRITE_MPEG_REG_BITS(AIU_MEM_I2S_MASKS, mask[mode], 0, 16);
 
         WRITE_MPEG_REG_BITS(AIU_MEM_I2S_CONTROL, 1, 0, 1);
@@ -430,7 +436,14 @@ void audio_set_958_mode(unsigned mode, _aiu_958_raw_setting_t * set)
             WRITE_MPEG_REG(AIU_958_MISC, 1);
             WRITE_MPEG_REG_BITS(AIU_MEM_IEC958_CONTROL, 1, 8, 1);  // raw
         }
-    } else if (mode == AIU_958_MODE_PCM24) {
+    }else if(mode == AIU_958_MODE_PCM32){
+        audio_hw_set_958_pcm24(set);
+        if(ENABLE_IEC958){
+            WRITE_MPEG_REG(AIU_958_MISC, 0x2020 | (1 << 7));
+            WRITE_MPEG_REG_BITS(AIU_MEM_IEC958_CONTROL, 0, 8, 1);  // pcm
+            WRITE_MPEG_REG_BITS(AIU_MEM_IEC958_CONTROL, 0, 7, 1);  // 16bit
+        }
+    }else if (mode == AIU_958_MODE_PCM24) {
         audio_hw_set_958_pcm24(set);
         if (ENABLE_IEC958) {
             WRITE_MPEG_REG(AIU_958_MISC, 0x2020 | (1 << 7));

@@ -47,6 +47,7 @@
  #define MAC_POS			4
  #define MAC_BT_POS		322
  #define MAC_WIFI_POS	330
+ #define USERDATA_POS	MAC_BT_POS
  
                                                                                       
  static unsigned long efuse_status;                                                   
@@ -347,7 +348,7 @@ static ssize_t mac_wifi_show(struct class *cla, struct class_attribute *attr, ch
 {
     char buf_mac[6] = {0};     
     loff_t ppos = MAC_WIFI_POS;
-		__efuse_read(buf_mac, sizeof(buf_mac), &ppos);
+	__efuse_read(buf_mac, sizeof(buf_mac), &ppos);
     return sprintf(buf, "%02x:%02x:%02x:%02x:%02x:%02x\n", 
     										buf_mac[0],buf_mac[1],buf_mac[2],buf_mac[3],buf_mac[4],buf_mac[5]);
 }  
@@ -355,14 +356,29 @@ static ssize_t mac_bt_show(struct class *cla, struct class_attribute *attr, char
 {
     char buf_mac[6] = {0};     
     loff_t ppos = MAC_BT_POS;
-		__efuse_read(buf_mac, sizeof(buf_mac), &ppos);
+	__efuse_read(buf_mac, sizeof(buf_mac), &ppos);
     return sprintf(buf, "%02x:%02x:%02x:%02x:%02x:%02x\n", 
     										buf_mac[0],buf_mac[1],buf_mac[2],buf_mac[3],buf_mac[4],buf_mac[5]);
 }      
+
+static ssize_t userdata_show(struct class *cla, struct class_attribute *attr, char *buf)
+{
+    char buf_userdata[62] = {0};     
+    loff_t ppos = USERDATA_POS;
+	__efuse_read(buf_userdata, sizeof(buf_userdata), &ppos);
+    return sprintf(buf, "%01d%01d%01d%01d%01d%01d%01d%01d%01d%01d%01d%01d%01d%01d%01d%01d%01d%01d%01d%01d\n", 
+    			   buf_userdata[0],buf_userdata[1],buf_userdata[2],buf_userdata[3],buf_userdata[4],buf_userdata[5],
+    			   buf_userdata[6],buf_userdata[7],buf_userdata[8],buf_userdata[9],buf_userdata[10],buf_userdata[11],
+    			   buf_userdata[12],buf_userdata[13],buf_userdata[14],buf_userdata[15],buf_userdata[16],buf_userdata[17],
+    			   buf_userdata[18],buf_userdata[19]
+    			   );
+}  
+
 static struct class_attribute efuse_class_attrs[] = {
 	  __ATTR_RO(mac), 
     __ATTR_RO(mac_wifi),   
-    __ATTR_RO(mac_bt),              
+    __ATTR_RO(mac_bt),
+    __ATTR_RO(userdata),               
     __ATTR_NULL
 };
 static struct class efuse_class = {

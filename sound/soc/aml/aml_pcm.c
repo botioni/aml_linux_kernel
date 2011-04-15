@@ -47,11 +47,10 @@ EXPORT_SYMBOL(aml_pcm_capture_start_addr);
 static const struct snd_pcm_hardware aml_pcm_hardware = {
 	.info			= SNDRV_PCM_INFO_INTERLEAVED|
 							SNDRV_PCM_INFO_BLOCK_TRANSFER|
-							SNDRV_PCM_INFO_MMAP |
-				  		SNDRV_PCM_INFO_MMAP_VALID |
-				  		SNDRV_PCM_INFO_PAUSE,
+				  		    SNDRV_PCM_INFO_PAUSE,
 				  		
-	.formats		= SNDRV_PCM_FMTBIT_S16_LE,
+	.formats		= SNDRV_PCM_FMTBIT_S16_LE|SNDRV_PCM_FMTBIT_S24_LE|SNDRV_PCM_FMTBIT_S32_LE,
+
 	.period_bytes_min	= 64,
 	.period_bytes_max	= 8*1024,
 	.periods_min		= 2,
@@ -250,9 +249,25 @@ static int aml_pcm_prepare(struct snd_pcm_substream *substream)
 		    memset((void*)(&set), 0, sizeof(set));
 
             audio_set_aiubuf(runtime->dma_addr, runtime->dma_bytes);
+            
+            switch(runtime->format){
+              case SNDRV_PCM_FORMAT_S32_LE:
+                I2S_MODE = AIU_I2S_MODE_PCM32;
+                IEC958_MODE = AIU_958_MODE_PCM32;
+                break;
+              case SNDRV_PCM_FORMAT_S24_LE:
+                I2S_MODE = AIU_I2S_MODE_PCM24;
+                IEC958_MODE = AIU_958_MODE_PCM24;
+                break;
+              case SNDRV_PCM_FORMAT_S16_LE:
+                I2S_MODE = AIU_I2S_MODE_PCM16;
+                IEC958_MODE = AIU_958_MODE_PCM16;
+                break;
+            }
             audio_set_i2s_mode(I2S_MODE);
 
-            if(IEC958_MODE == AIU_958_MODE_PCM16){
+            if(IEC958_MODE == AIU_958_MODE_PCM16 || IEC958_MODE == AIU_958_MODE_PCM24 || 
+                IEC958_MODE == AIU_958_MODE_PCM32){
               set.chstat0_l = 0x0100;
               set.chstat0_r = 0x0100;
               audio_set_958outbuf(runtime->dma_addr, runtime->dma_bytes);
@@ -282,8 +297,10 @@ static int aml_pcm_prepare(struct snd_pcm_substream *substream)
 	printk("\tsample rate: %d\n", runtime->rate);
 	printk("\tchannel: %d\n", runtime->channels);
 	printk("\tsample bits: %d\n", runtime->sample_bits);
+    printk("\tformat: %s\n", snd_pcm_format_name(runtime->format));
 	printk("\tperiod size: %ld\n", runtime->period_size);
 	printk("\tperiods: %d\n", runtime->periods);
+
 	
 	
 	return 0;
@@ -484,39 +501,82 @@ static int aml_pcm_close(struct snd_pcm_substream *substream)
 	return 0;
 }
 
+
 static int aml_pcm_copy_playback(struct snd_pcm_runtime *runtime, int channel,
 		    snd_pcm_uframes_t pos,
 		    void __user *buf, snd_pcm_uframes_t count)
 {
-		unsigned short *tfrom, *to, *left, *right;
     int res = 0;
     int n;
     int i = 0, j = 0;
+    int  align = runtime->channels * 32 / runtime->byte_align;
     char *hwbuf = runtime->dma_area + frames_to_bytes(runtime, pos);
-    
-    tfrom = (unsigned short *)buf;
-    to = (unsigned short *)hwbuf;
     n = frames_to_bytes(runtime, count);
-//    printk("count=%d, n=%d\n", count, n);
     if(access_ok(VERIFY_READ, buf, frames_to_bytes(runtime, count))){
-		    left = to;
-		    right = to + 16;
-		    if (pos % 16) {
-		        printk("audio data unligned\n");
-		    }
-		    for (j = 0; j < n; j += 64) {
-		        for (i = 0; i < 16; i++) {
-	              *left++ = (*tfrom++) ;
-	              *right++ = (*tfrom++);
-		         }
-		        left += 16;
-		        right += 16;
-		    }
-		}else{
-			res = -EFAULT;
+	  if(runtime->format == SNDRV_PCM_FORMAT_S16_LE && I2S_MODE == AIU_I2S_MODE_PCM16){
+        int16_t * tfrom, *to, *left, *right;
+        tfrom = (int16_t*)buf;
+        to = (int16_t*)hwbuf;
+
+        left = to;
+		right = to + 16;
+		if (pos % align) {
+		    printk("audio data unligned: pos=%d, n=%d, align=%d\n", pos, n, align);
 		}
+		for (j = 0; j < n; j += 64) {
+		    for (i = 0; i < 16; i++) {
+	          *left++ = (*tfrom++) ;
+	          *right++ = (*tfrom++);
+		    }
+		    left += 16;
+		    right += 16;
+		 }
+      }else if(runtime->format == SNDRV_PCM_FORMAT_S24_LE && I2S_MODE == AIU_I2S_MODE_PCM24){
+        int32_t *tfrom, *to, *left, *right;
+        tfrom = (int32_t*)buf;
+        to = (int32_t*) hwbuf;
+
+        left = to;
+        right = to + 8;
+
+        if(pos % align){
+          printk("audio data unaligned: pos=%d, n=%d, align=%d\n", pos, n, align);
+        }
+        for(j=0; j< n; j+= 64){
+          for(i=0; i<8; i++){
+            *left++  =  (*tfrom ++);
+            *right++  = (*tfrom ++);
+          }
+          left += 8;
+          right += 8;
+        }
+
+      }else if(runtime->format == SNDRV_PCM_FORMAT_S32_LE && I2S_MODE == AIU_I2S_MODE_PCM32){
+        int32_t *tfrom, *to, *left, *right;
+        tfrom = (int32_t*)buf;
+        to = (int32_t*) hwbuf;
+        
+        left = to;
+        right = to + 8;
+        
+        if(pos % align){
+          printk("audio data unaligned: pos=%d, n=%d, align=%d\n", pos, n, align);
+        }
+        for(j=0; j< n; j+= 64){
+          for(i=0; i<8; i++){
+            *left++  =  (*tfrom ++)>>8;
+            *right++  = (*tfrom ++)>>8;
+          }
+          left += 8;
+          right += 8;
+        }
+      }
+
+	}else{
+	  res = -EFAULT;
+	}
 		
-		return res;
+	return res;
 }
 		    
 
@@ -531,12 +591,10 @@ static int aml_pcm_copy_capture(struct snd_pcm_runtime *runtime, int channel,
     int i = 0, j = 0;
     unsigned int t1, t2;
     char *hwbuf = runtime->dma_area + frames_to_bytes(runtime, pos)*2;
-    //char *magic = runtime->dma_area + runtime->dma_bytes*2 - 8;
     
     to = (unsigned short *)buf;
     tfrom = (unsigned int *)hwbuf;	// 32bit buffer
     n = frames_to_bytes(runtime, count);
-//printk("hwbuf = %x, count=%x, n = %x, pos=%x\n", hwbuf, count, n, pos);
     
 		if(access_ok(VERIFY_WRITE, buf, frames_to_bytes(runtime, count))){
 				left = tfrom;
@@ -559,21 +617,6 @@ static int aml_pcm_copy_capture(struct snd_pcm_runtime *runtime, int channel,
 		        left += 8;
 		        right += 8;
 		    }
-/*            
-			if((hwbuf + n*2) >= magic && 
-		  	    (magic[0]==0x78 && magic[1]==0x78 && magic[2]==0x78 && magic[3]==0x78 &&
-			    magic[4]==0x78 && magic[5]==0x78 && magic[6]==0x78 && magic[7]==0x78)){
-                printk("error:%x-%x-%x-%x-%x-%x-%x-%x: %x-%x-%x-%x-%x-%x-%x-%x\n",magic[-8],magic[-7],magic[-6], magic[-5], magic[-4], magic[-3], magic[-2], magic[-1], magic[0],magic[1],magic[2],magic[3],magic[4],magic[5],magic[6],magic[7]);				
-		    }	
-	    	if(hwbuf + n*2 >= magic){
-					magic[0] = 0x78; magic[1] = 0x78; magic[2] = 0x78; magic[3] = 0x78;
-					magic[4] = 0x78; magic[5] = 0x78; magic[6] = 0x78; magic[7] = 0x78;
-
-					magic[-1] = 0x78; magic[-2] = 0x78; magic[-3] = 0x78; magic[-4] = 0x78;
-					magic[-5] = 0x78; magic[-6] = 0x78; magic[-7] = 0x78; magic[-8] = 0x78;
-
-	    	}
-*/            
 		}
 	
 		return res;
@@ -583,7 +626,6 @@ static int aml_pcm_copy(struct snd_pcm_substream *substream, int channel,
 		    snd_pcm_uframes_t pos,
 		    void __user *buf, snd_pcm_uframes_t count)
 {
-   // register unsigned  int vol =(audio_mixer_control.output_volume*(1<<VOLUME_SHIFT))/VOLUME_SCALE;
     struct snd_pcm_runtime *runtime = substream->runtime;
     int ret = 0;	
 
@@ -605,7 +647,6 @@ int aml_pcm_silence(struct snd_pcm_substream *substream, int channel,
 		n = frames_to_bytes(runtime, count);
 		ppos = runtime->dma_area + frames_to_bytes(runtime, pos);
 		memset(ppos, 0, n);
-		
 		return 0;
 }
 		       		    
