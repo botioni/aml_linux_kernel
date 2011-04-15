@@ -146,7 +146,7 @@ static irqreturn_t audiodsp_mailbox_irq(int irq, void *data)
 				}
 			if(fmt->valid&CHANNEL_VALID)
 				{
-				priv->frame_format.channel_num=fmt->channel_num;
+				priv->frame_format.channel_num=((fmt->channel_num > 2) ? 2 : (fmt->channel_num));
 				priv->frame_format.valid|=CHANNEL_VALID;
 				}
 			if(fmt->valid&SAMPLE_RATE_VALID)
