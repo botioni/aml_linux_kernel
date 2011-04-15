@@ -1639,7 +1639,7 @@ static int parse_para(const char *para, int para_num, int *result)
 
     do {
         //filter space out
-        while (startp && (isspace(*startp) || !isalnum(*startp)) && len) {
+        while (startp && (isspace(*startp) || !isgraph(*startp)) && len) {
             startp++;
             len--;
         }

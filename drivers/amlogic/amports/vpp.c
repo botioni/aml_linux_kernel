@@ -122,7 +122,7 @@ static const u32 *filter_table[] = {
 static u32 vpp_wide_mode;
 static u32 vpp_zoom_ratio = 100;
 static s32 vpp_zoom_center_x, vpp_zoom_center_y;
-static u32 video_layer_top, video_layer_left, video_layer_width, video_layer_height;
+static s32 video_layer_top, video_layer_left, video_layer_width, video_layer_height;
 
 #define ZOOM_BITS       18
 #define PHASE_BITS      8
