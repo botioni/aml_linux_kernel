@@ -70,6 +70,7 @@ static int aml_nftl_write_cache_data(struct aml_nftl_blk_t *aml_nftl_blk, uint8_
 			if (err)
 				return err;
 
+			aml_nftl_blk->cache_sect_addr = -1;
 			//printk("nftl write cache data blk: %d page: %d \n", (cache_node->vt_sect_addr / aml_nftl_info->pages_per_blk), (cache_node->vt_sect_addr % aml_nftl_info->pages_per_blk));
 			for (j=0; j<blks_per_sect; j++) {
 				if (!cache_node->cache_fill_status[j])
