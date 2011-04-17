@@ -54,14 +54,14 @@
 #define PinchOut			17	//Pinch out
 
 #define R_Threshold 	       11000       //ting
-#define R_Threshold2 	480	//ting //	600
+#define R_Threshold2 	450	//ting //	600
 
 #define ZERO_TOUCH	0	
 #define ONE_TOUCH	1
 #define TWO_TOUCH	2
 
-#define DX_T			44	//	72
-#define DY_T			44	//	72
+#define DX_T			48	//	72
+#define DY_T			48	//	72
 #define DXY_SKIP		0x80
 
 #define NumberFilter		6
