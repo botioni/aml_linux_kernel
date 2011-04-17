@@ -53,32 +53,34 @@
 #define PinchIn			16	//Pinch in
 #define PinchOut			17	//Pinch out
 
-#define R_Threshold 	       10000       //ting
-#define R_Threshold2 	700	//ting //	600
+#define R_Threshold 	       11000       //ting
+#define R_Threshold2 	480	//ting //	600
 
 #define ZERO_TOUCH	0	
 #define ONE_TOUCH	1
 #define TWO_TOUCH	2
 
-#define DX_T			60	//	72
-#define DY_T			60	//	72
+#define DX_T			44	//	72
+#define DY_T			44	//	72
 #define DXY_SKIP		0x80
 
-#define NumberFilter		8
-#define NumberDrop			6	//This value must not bigger than (NumberFilter-1)
+#define NumberFilter		6
+#define NumberDrop		4	 //This value must not bigger than (NumberFilter-1)
 
-#define FIRSTTOUCHCOUNT		0    //ting
-#define ONETOUCHCountAfter2 	20
-#define JITTER_THRESHOLD   	       600 //ting
+#define WMT_FILTER_NUM 4
+
+#define FIRSTTOUCHCOUNT		1    //ting
+#define ONETOUCHCountAfter2 	500
+#define JITTER_THRESHOLD   	       800 //ting
 #define MAX_READ_PERIOD		6  //ting
 #define FIRST_TWO_TOUCH_FILTER	1
-#define JITTER_THRESHOLD_DXDY	28
+#define JITTER_THRESHOLD_DXDY	24
 #define PERIOD_PER_FILTER	1
 
-#define	DROP_POINT_DELAY_J	  1		
-#define	READ_DATA_DELAY_J	  1  
+#define	DROP_POINT_DELAY_J	  msecs_to_jiffies(1)
+#define	READ_DATA_DELAY_J	  msecs_to_jiffies(6)  
 
-//#define FILTER_FUNC
+#define FILTER_FUNC
 #define NFilt NumberFilter
 #define NDrop NumberDrop
 
@@ -171,6 +173,7 @@ static int uor_get_pendown_state(void)
 
 int xFilter[NFilt], yFilter[NFilt],DxFilter[NFilt], DyFilter[NFilt];
 unsigned int XYIndex = 0;
+static int RX=1024;
 
 int  XYFilter(int *xFilter, int *yFilter, int Num,int Drop){
 	unsigned int i,SumTempX=0,SumTempY=0;
@@ -726,18 +729,116 @@ VUINT8 gesture_decision(VUINT8 n_touch,VUINT16 x,VUINT16 y, VUINT16 Dx, VUINT16 
 }
 #endif
 
+
+struct ST_UOR_BUF {
+		unsigned short pXbuf[WMT_FILTER_NUM];
+		unsigned short pYbuf[WMT_FILTER_NUM];
+		unsigned short pDXbuf[WMT_FILTER_NUM];
+		unsigned short pDYbuf[WMT_FILTER_NUM];
+};
+
+
+static unsigned short uor_avg_XY(unsigned short *pData )
+{
+	int i,j,k=1;
+	unsigned int avg;
+	
+	for(i=WMT_FILTER_NUM-1; i>0;i--){
+		for(j=i-1;j>=0;j--){
+			if(pData[j] > pData[i]){
+				k =pData[j];
+				pData[j] = pData[i];
+				pData[i] = k;
+			}			
+		}
+	}
+	i = WMT_FILTER_NUM/2;
+	avg = pData[i]+pData[i-1];
+
+        if(abs(pData[i]-pData[i-1])>350)
+           avg=4096;
+        else
+           avg/=2;
+	return avg;
+}
+
+static unsigned short uor_avg_DXY(unsigned short *pData )
+{
+	int i,j,k,swap = 1;
+	unsigned int avg;
+	
+	for(i=WMT_FILTER_NUM-1; i>0;i--){
+		for(j=i-1;j>=0;j--){
+			if(pData[j] > pData[i]){
+				k =pData[j];
+				pData[j] = pData[i];
+				pData[i] = k;
+			}			
+		}
+	}
+	i = WMT_FILTER_NUM/2;
+	avg =pData[i]+pData[i-1];
+        if(abs(pData[i]-pData[i-1])>12)
+           avg=256;
+        else
+           avg /=2;
+
+	return avg;
+}
+
+static void uor_read_XY(unsigned short *X, unsigned short *Y)
+{
+	int i = 0;
+	VUINT8 EpBuf[2];
+	struct ST_UOR_BUF uor_point;
+	
+	for(i=0; i<WMT_FILTER_NUM;i++){
+		memset(EpBuf, 0, sizeof(EpBuf));
+		UOR_IICRead(MSRX_1T, EpBuf, 2);
+		uor_point.pXbuf[i] = (EpBuf[0]<<4)|(EpBuf[1]>>4);
+	
+		UOR_IICRead(MSRY_1T,  EpBuf, 2);
+		uor_point.pYbuf[i] = (EpBuf[0]<<4)|(EpBuf[1]>>4);
+	}	
+
+	*X = uor_avg_XY(uor_point.pXbuf);// 坐标x 值
+	*Y = uor_avg_XY(uor_point.pYbuf);//坐标y 值
+
+	return;
+}
+
+static void uor_read_DXY(unsigned short *DX, unsigned short *DY)
+{
+	int i = 0;
+	VUINT8 EpBuf[4];
+	struct ST_UOR_BUF uor_point;
+	
+	for(i=0; i<WMT_FILTER_NUM;i++){
+		memset(EpBuf, 0, sizeof(EpBuf));
+		UOR_IICRead(MSRX_2T,  (EpBuf), 3);
+		uor_point.pDXbuf[i] = EpBuf[2];
+	
+		UOR_IICRead(MSRY_2T,  (EpBuf), 3);
+		uor_point.pDYbuf[i] = EpBuf[2];
+	}	
+
+	*DX = uor_avg_DXY(uor_point.pDXbuf);// 2 点之间X 轴距离
+	*DY = uor_avg_DXY(uor_point.pDYbuf);// 2 点之间Y 轴距离
+
+	return;
+}
+
 static struct workqueue_struct *queue = NULL;
 static struct delayed_work work;
 static int FirstTC = 0,OneTCountAfter2 = 0,TWOTouchFlag = 0;
 static int two_touch_count = 0, pre_dx = 0, pre_dy = 0;
 static int pre_outx1 = 0, pre_outy1 = 0, pre_outx2 = 0, pre_outy2 = 0;
 
-
 static void uor_read_data(unsigned short *X, unsigned short *Y, 
 	unsigned short *DX, unsigned short *DY)
 {
 
-	VUINT8 EpBuf[16];
+	VUINT8 EpBuf[4];
 	unsigned short	x, y;
 	unsigned short	Dx, Dy;
 
@@ -770,12 +871,16 @@ static void uor_read_loop(struct work_struct *data)
 	VUINT8 EpBuf[4];
 	unsigned short SBufx_0 = 0;
 	unsigned short SBufx_1 = 0;
+	unsigned short SBufx_2 = 0;
 	unsigned short SBufy_0 = 0;
 	unsigned short SBufy_1 = 0;
+	unsigned short SBufy_2 = 0;
 	unsigned short SBufxs_0 = 0;
 	unsigned short SBufxs_1 = 0;
+	unsigned short SBufxs_2 = 0;
 	unsigned short SBufys_0 = 0;
 	unsigned short SBufys_1 = 0;
+	unsigned short SBufys_2 = 0;
 	unsigned short x, y , y1, x2, y2;
 	unsigned short out_x, out_y;
 	unsigned short Dx, Dy, z1, z2, Dx1, Dx2, Dy1, Dy2;
@@ -790,6 +895,11 @@ static void uor_read_loop(struct work_struct *data)
 	while(1){
         if(!uor_get_pendown_state()) {
 			#ifdef FILTER_FUNC
+			uor_read_XY(&x, &y);
+			uor_read_DXY(&Dx, &Dy);
+			ts.xp = x-22;
+			ts.yp = y-22;
+			/*
 			//first point
 			uor_read_data(&x, &y, &Dx, &Dy);
 			xFilter[ts.count] = x;
@@ -824,6 +934,7 @@ static void uor_read_loop(struct work_struct *data)
 			Dx = DxFilter[0];
 			Dy = DyFilter[0];
 			ts.count = 0;
+			*/
 			#else // no filter
 			memset(EpBuf, 0, sizeof(EpBuf));
 			
@@ -847,16 +958,16 @@ static void uor_read_loop(struct work_struct *data)
 			y2<<=4;
 			y2 |= (EpBuf[1]>>4);
 			
-			if ((x-x2)>80 ||(x2-x)>80)
+			if (abs(x-x2)>500)
 			    ts.xp = 4095;
 			else
-			    ts.xp = x;
+			    ts.xp = (x+x2)/2;
 				
-			if ((y1-y2)>80 ||(y2-y1)>80)
+			if (abs(y1-y2)>500)
 			    ts.yp = 4095;
 			else
-			    ts.yp = y1;
-				
+			    ts.yp = (y1+y2)/2;
+			    
 			UOR_IICRead(MSRX_2T,  (EpBuf), 3);
 			Dx1 = EpBuf[2];
 			
@@ -869,16 +980,24 @@ static void uor_read_loop(struct work_struct *data)
 			UOR_IICRead(MSRY_2T,  (EpBuf), 3);
 			Dy2 = EpBuf[2];	
 			
-			if ((Dx1-Dx2)>16 ||(Dx2-Dx1)>16)
+			if ((Dx1-Dx2)>16||(Dx2-Dx1)>16)
 			    Dx = 256;
 			else
-			    Dx = (Dx1+Dx2)>>1;
+			    Dx =( (Dx1+Dx2)>>1)-20;
 				
 			if ((Dy1-Dy2)>16 ||(Dy2-Dy1)>16)
 			    Dy = 256;
 			else
-			    Dy = (Dy1+Dy2)>>1;
+			    Dy = ((Dy1+Dy2)>>1)-20;
 			#endif
+			
+
+			if(Dx>252 || Dx<16)
+				Dx=36;
+			
+			if(Dy>252 || Dy<16)
+				Dy=36;
+			
 
 			memset(EpBuf, 0, sizeof(EpBuf));
 			UOR_IICRead(MSRZ1_1T,  EpBuf, 2);
@@ -898,7 +1017,7 @@ static void uor_read_loop(struct work_struct *data)
 			Rt =R_touch;
 
 			
-			if( ((Dx > DX_T) || (Dy > DY_T)) && (Rt < R_Threshold2) ) {
+			if( ((256>Dx) && (256>Dy)) && ((Dx> DX_T) ||(Dy > DY_T)) && (Rt < R_Threshold2) ) {
 				nTouch =  TWO_TOUCH;
 			}
 			else {
@@ -913,15 +1032,18 @@ static void uor_read_loop(struct work_struct *data)
 
 		if(nTouch == ONE_TOUCH || nTouch == TWO_TOUCH){	// pen down
 		    if(nTouch == TWO_TOUCH){
-				if((Dx>252||Dy>252) || two_touch_count < FIRST_TWO_TOUCH_FILTER){
+				if(two_touch_count < FIRST_TWO_TOUCH_FILTER){
 					//printk(KERN_ERR "%s:filter for first two touch -(x,y)=(%d,%d) (dx,dy)=(%d,%d),count = %d, FIRST_TWO_TOUCH_FILTER = %d  !!!\n",__FUNCTION__, x, y, Dx, Dy,two_touch_count, FIRST_TWO_TOUCH_FILTER);
 					two_touch_count++;
 					queue_delayed_work(queue, &work, DROP_POINT_DELAY_J);
 					goto READ_LOOP_OUT;
                 }
-				else if( (pre_dx!=0) && (pre_dy!=0) && (Dx - pre_dx > JITTER_THRESHOLD_DXDY || pre_dx - Dx > JITTER_THRESHOLD_DXDY || pre_dy - Dy > JITTER_THRESHOLD_DXDY || Dy - pre_dy > JITTER_THRESHOLD_DXDY)){//single touch point 玡畉禯JITTER_THRESHOLD 玥耾翴 
+				else if(ts.xp>4000 || ts.yp>4000){
+				    queue_delayed_work(queue, &work, DROP_POINT_DELAY_J);
+					goto READ_LOOP_OUT;
+				}                                                        	
+				else if( (pre_dx!=0) && (pre_dy!=0) && (abs(Dx - pre_dx) > JITTER_THRESHOLD_DXDY) ||(abs( Dy - pre_dy) > JITTER_THRESHOLD_DXDY)){//single touch point 玡畉禯JITTER_THRESHOLD 玥耾翴 
 				    //printk(KERN_ERR "%s:filter for jitter(dual) --(pre_dx,pre_dy)=(%d,%d) ,(dx,dy)=(%d,%d) , JITTER_THRESHOLD_DXDY = %d !!!\n",__FUNCTION__, pre_dx, pre_dy , Dx, Dy, JITTER_THRESHOLD_DXDY);
-
 					pre_dx = Dx;
 					pre_dy = Dy;
 					queue_delayed_work(queue, &work, DROP_POINT_DELAY_J);
@@ -930,33 +1052,65 @@ static void uor_read_loop(struct work_struct *data)
                 else{
 					//printk(KERN_ERR "%s:report dual touch-- (x,y)=(%d,%d) (dx,dy)=(%d,%d)  !!!\n",__FUNCTION__, x, y, Dx, Dy);
 					//report x,y,pressure,dx,dy to Linux/Android
-                	if((pre_dx!=0) && (pre_dy!=0) && ((Dx - pre_dx) <8 && (pre_dx-Dx) <8 && (Dy - pre_dy )<8 && (pre_dy-Dy )<8)){
-                        Dx = pre_dx;
-                		Dy = pre_dy;
+
+
+		     	if(((two_touch_count<3) ||(Dx>80) || (Dy>80))&&(abs(Dx - pre_dx) <20 && abs(Dy - pre_dy )<20)){
+                        Dx=pre_dx;
+                        Dy=pre_dy;
+                        pre_dx =((7* pre_dx)+Dx)>>3;
+                	    pre_dy =((7*pre_dy)+Dy)>>3;
+                	}
+                	 if((pre_dx!=0) && (pre_dy!=0) && (abs(Dx - pre_dx) <8) && (abs(Dy - pre_dy )<8)){
+                        Dx=pre_dx;
+                        Dy=pre_dy;
+                        pre_dx =((7* pre_dx)+Dx)>>3;
+                	    pre_dy =((7*pre_dy)+Dy)>>3;
                 	}
 					
-					 if ( (ts.pX!=0) && (ts.pY!=0) && ((ts.xp - ts.pX) <200 && (ts.pX-ts.xp) <200 && (ts.yp - ts.pY )<200 && (ts.pY-ts.yp )<200)){
+					// if ( (ts.pX!=0) && (ts.pY!=0) && ((ts.xp - ts.pX) <100 && (ts.pX-ts.xp) <100 && (ts.yp - ts.pY )<100 && (ts.pY-ts.yp )<100)){
+					if ( (ts.pX!=0) && (ts.pY!=0) && (abs(ts.xp - ts.pX) <1500)  && (abs(ts.yp - ts.pY )<1500)){
 					     ts.xp = ts.pX;
 						 ts.yp = ts.pY;
 					 }
 					 
-					 int dx_coord =(Dx - DX_T< 0) ? 0 :  ((Dx - 40) & 0x00f8) * 6;
-					 int dy_coord=(Dy - DY_T< 0) ? 0 :  ((Dy - 40) & 0x00f8) * 6;
+					 //printk(KERN_ERR "%s:TWO_TOUCH (cx,cy)=(%d,%d)\n",__FUNCTION__, ts.xp, ts.yp);
+					 //printk(KERN_ERR "%s:TWO_TOUCH (pcx,pcy)=(%d,%d)\n",__FUNCTION__,  ts.pX,  ts.pY);
+					 //printk(KERN_ERR "%s:TWO_TOUCH (dx,dy)=(%d,%d)\n",__FUNCTION__, Dx, Dy);
+					 //printk(KERN_ERR "%s:TWO_TOUCH (pdx,pdy)=(%d,%d)\n",__FUNCTION__, pre_dx,pre_dy);
+					 
+					 int dx_coord =(Dx - DX_T< 0) ? 5 :  (((Dx - 18-22) & 0x00fc)/2)+5;
+					 int dy_coord =(Dy - DY_T< 0) ? 5 :  (((Dy - 18-22) & 0x00fc)/2)+5;
+
+					 //printk(KERN_ERR "%s:TWO_TOUCH (dx_coord,dy_coord)=(%d,%d)\n",__FUNCTION__, dx_coord, dy_coord);
+
 
                 	input_report_abs(ts.dev, ABS_MT_TOUCH_MAJOR, 600 + (Rt%400));
                 	//input_report_abs(ts.dev, ABS_MT_WIDTH_MAJOR, 500+press);
 
-					if(slid_index == 1){
+                                   
+					if(slid_index == 2){
 						SBufx_0 = SBufx_1;
-						SBufx_1 = dx_coord;
-						dx_coord = (SBufx_0+ SBufx_1)/2;
+						SBufx_1 = SBufx_2;
+						SBufx_2 = dx_coord;
+						dx_coord = (SBufx_0+ SBufx_1+ SBufx_2)/3;
 						SBufy_0 = SBufy_1;
-						SBufy_1 = dy_coord;
-						dy_coord = (SBufy_0+ SBufy_1)/2;
+						SBufy_1 = SBufy_2;
+						SBufy_2 = dy_coord;
+						dy_coord = (SBufy_0+ SBufy_1+ SBufy_2)/3;
+					}
+					else if(slid_index == 1){
+						SBufx_1 = SBufx_2;
+						SBufx_2 = dx_coord;
+						dx_coord = (SBufx_1+ SBufx_2)/2;
+						SBufy_1 = SBufy_2;
+						SBufy_2 = dy_coord;
+						dy_coord = (SBufy_1+ SBufy_2)/2;
+						slid_index ++;
 					}
 					else{
-						SBufx_1 = dx_coord;
-						SBufy_1 = dy_coord;
+						SBufx_2 = dx_coord;
+						SBufy_2 = dy_coord;
+						slid_index ++;
 					}
                 		        
                 	xy = 0;
@@ -969,7 +1123,7 @@ static void uor_read_loop(struct work_struct *data)
                 		 out_y = xy & 0xffff;
                 	}
                 	
-                	if((pre_outx1!=0) && (pre_outy1!=0) && ((out_x - pre_outx1) <8 && (pre_outx1-out_x) <8 && (out_y - pre_outy1 )<8 && (pre_outy1 - out_y )<8)){
+                	if((pre_outx1!=0) && (pre_outy1!=0) && (abs(out_x - pre_outx1) <2) && (abs(out_y - pre_outy1 )<2)){
                         out_x = pre_outx1;
                 		out_y = pre_outy1;
                 	}
@@ -993,8 +1147,8 @@ static void uor_read_loop(struct work_struct *data)
                 		 out_x = xy >> 16;
                 		 out_y = xy & 0xffff;
                 	}
-
-					if((pre_outx2!=0) && (pre_outy2!=0) && ((out_x - pre_outx2) <8 && (pre_outx2-out_x) <8 && (out_y - pre_outy2 )<8 && (pre_outy2 - out_y )<8)){
+					
+					if((pre_outx2!=0) && (pre_outy2!=0) && (abs(out_x - pre_outx2) <2) && (abs(out_y - pre_outy2 )<2) ){
                         out_x = pre_outx2;
                 		out_y = pre_outy2;
                 	}   	        
@@ -1010,9 +1164,14 @@ static void uor_read_loop(struct work_struct *data)
                 	OneTCountAfter2 = 0;
                 	pre_dx = Dx;
                 	pre_dy = Dy;
+                	ts.pX = ts.xp;
+					ts.pY = ts.yp;
 					pre_outx2 = out_x;
                 	pre_outy2 = out_y;
-					slid_index = 1;
+ 
+			if(two_touch_count<5)
+				two_touch_count++;
+					
 					queue_delayed_work(queue, &work, READ_DATA_DELAY_J);
 					goto READ_LOOP_OUT;
                 }
@@ -1030,7 +1189,7 @@ static void uor_read_loop(struct work_struct *data)
 					queue_delayed_work(queue, &work, DROP_POINT_DELAY_J);
 					goto READ_LOOP_OUT;
                 }
-                else if( (ts.pX!=0) && (ts.pY!=0) && (ts.xp - ts.pX > JITTER_THRESHOLD || ts.pX - ts.xp > JITTER_THRESHOLD || ts.pY - ts.yp > JITTER_THRESHOLD || ts.yp - ts.pY > JITTER_THRESHOLD)){
+                else if( (ts.pX!=0) && (ts.pY!=0) && (abs(ts.xp - ts.pX) > JITTER_THRESHOLD) || (abs(ts.yp - ts.pY) > JITTER_THRESHOLD)){
                 	//printk(KERN_ERR "%s:filter for jitter -- (px,py)=(%d,%d) ,(x,y)=(%d,%d) , JITTER_THRESHOLD = %d !!!\n",__FUNCTION__, ts.pX, ts.pY ,x, y, JITTER_THRESHOLD);
                 	ts.pX = ts.xp; 
                 	ts.pY = ts.yp;
@@ -1040,22 +1199,34 @@ static void uor_read_loop(struct work_struct *data)
                 else{
                 	//printk(KERN_ERR "%s: (Pen down)report single touch-- (x,y)=(%d,%d) !!!\n",__FUNCTION__, x, y);
                 	//report x,y,pressure,size to Linux/Android
-                	if((ts.pX!=0) && (ts.pY!=0) && ((ts.xp - ts.pX) <50 && (ts.pX-ts.xp) <50 && (ts.yp - ts.pY )<50 && (ts.pY-ts.yp )<50)){
+                	if((ts.pX!=0) && (ts.pY!=0) && (abs(ts.xp - ts.pX) <40) && (abs(ts.yp - ts.pY )<40)){
                 	    ts.xp = ts.pX;
                 	    ts.yp = ts.pY;
                 	}
 
-					if(slid_indexs == 1){
+					if(slid_indexs == 2){
 						SBufxs_0 = SBufxs_1;
-						SBufxs_1 = ts.xp;
-						ts.xp = (SBufxs_0+ SBufxs_1)/2;
+						SBufxs_1 = SBufxs_2;
+						SBufxs_2 = ts.xp;
+						ts.xp= (SBufxs_0+ SBufxs_1)/4+ (SBufxs_2)/2;
 						SBufys_0 = SBufys_1;
-						SBufys_1 = ts.yp;
-						ts.yp = (SBufys_0+ SBufys_1)/2;
+						SBufys_1 = SBufys_2;
+						SBufys_2 = ts.yp;
+						 ts.yp = (SBufys_0+ SBufys_1)/4+( SBufys_2)/2;
+					}
+					else if(slid_index == 1){
+						SBufxs_1 = SBufxs_2;
+						SBufxs_2 = ts.xp;
+						ts.xp= (SBufxs_1+ SBufxs_2)/2;
+						SBufys_1 = SBufys_2;
+						SBufys_2 = ts.yp;
+						ts.yp= (SBufys_1+ SBufys_2)/2;
+						slid_indexs ++;
 					}
 					else{
-						SBufxs_1 = ts.xp;
-						SBufys_1 = ts.yp;
+						SBufxs_2 = ts.xp;
+						SBufys_2 = ts.yp;
+						slid_indexs ++;
 					}
                 	input_report_abs(ts.dev, ABS_MT_TOUCH_MAJOR, 600 + (Rt%400) );
                 	//input_report_abs(ts.dev, ABS_MT_WIDTH_MAJOR, 300);
@@ -1085,7 +1256,7 @@ static void uor_read_loop(struct work_struct *data)
 
 	    }
 	    else if(nTouch == ZERO_TOUCH){	// pen release
-	       udelay(250);
+		    udelay(250);
 	        if(!uor_get_pendown_state()){
 			    queue_delayed_work(queue, &work, READ_DATA_DELAY_J);
 			    goto READ_LOOP_OUT;
@@ -1140,7 +1311,7 @@ static irqreturn_t uor_isr(int irq,void *dev_id)
         
 	disable_irq_nosync(client->irq);
 	//queue_work(queue, &work);
-	queue_delayed_work(queue, &work, 0);
+	queue_delayed_work(queue, &work, DROP_POINT_DELAY_J);
 	//printk(KERN_ERR "uor_isr ok!\n");
 	return IRQ_HANDLED;
 }
