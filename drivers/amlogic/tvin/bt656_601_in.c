@@ -628,6 +628,7 @@ static void start_amvdec_656_601_camera_in(unsigned int mem_start, unsigned int 
         init_656in_dec_parameter(input_mode);
         reset_656in_dec_parameter();
         am656in_dec_info.para.port = TVIN_PORT_CAMERA;
+		am656in_dec_info.wr_canvas_index = 0xff;
         reinit_camera_dec();
         am656in_dec_info.dec_status = 1;
     }
@@ -897,6 +898,7 @@ static void bt656in_send_buff_to_display_fifo(vframe_t * info)
 
 static void camera_send_buff_to_display_fifo(vframe_t * info)
 {
+#if 0
     info->duration = tvin_fmt_tbl[am656in_dec_info.para.fmt].duration;
     if(info->duration == 0)
         return;
@@ -912,6 +914,14 @@ static void camera_send_buff_to_display_fifo(vframe_t * info)
     info->duration = tvin_fmt_tbl[am656in_dec_info.para.fmt].duration;
 //            info->duration = 9600000/1716;   //17.16 frame per second
     info->canvas0Addr = info->canvas1Addr = bt656_index2canvas(am656in_dec_info.rd_canvas_index);
+#endif
+
+    info->duration = tvin_fmt_tbl[am656in_dec_info.para.fmt].duration;
+    info->type = VIDTYPE_VIU_SINGLE_PLANE | VIDTYPE_VIU_422 | VIDTYPE_VIU_FIELD | VIDTYPE_PROGRESSIVE ;
+    info->width= am656in_dec_info.active_pixel;
+    info->height = am656in_dec_info.active_line;
+    info->duration = tvin_fmt_tbl[am656in_dec_info.para.fmt].duration;
+    info->canvas0Addr = info->canvas1Addr = bt656_index2canvas(am656in_dec_info.wr_canvas_index);
 }
 
 
@@ -928,6 +938,12 @@ static void bt656in_wr_vdin_canvas(void)
 
     vdin_set_canvas_id(vdin_devp_bt656->index, canvas_id);
     set_next_field_656_601_camera_in_anci_address(am656in_dec_info.wr_canvas_index);
+}
+
+static void camera_wr_vdin_canvas(int index)
+{
+	vdin_set_canvas_id(vdin_devp_bt656->index, bt656_index2canvas(index));
+    set_next_field_656_601_camera_in_anci_address(index);
 }
 
 //bt656 flag error = (pixel counter error) | (line counter error) | (input FIFO over flow)
@@ -1109,6 +1125,7 @@ static void bt601_in_dec_run(vframe_t * info)
 
 static void camera_in_dec_run(vframe_t * info)
 {
+#if 0
     unsigned char cur_canvas_index, next_buffs_index;
 
 
@@ -1159,7 +1176,21 @@ static void camera_in_dec_run(vframe_t * info)
 
     camera_send_buff_to_display_fifo(info);
     bt656in_wr_vdin_canvas();
+#endif
 
+	if (am656in_dec_info.wr_canvas_index == 0xff) {
+		camera_wr_vdin_canvas(0);
+		am656in_dec_info.wr_canvas_index = 0;
+		return;
+	}
+	
+	camera_send_buff_to_display_fifo(info);
+
+	am656in_dec_info.wr_canvas_index++;
+	if (am656in_dec_info.wr_canvas_index >= am656in_dec_info.canvas_total_count)
+		am656in_dec_info.wr_canvas_index = 0;
+		
+	camera_wr_vdin_canvas(am656in_dec_info.wr_canvas_index);
 
     return;
 }
