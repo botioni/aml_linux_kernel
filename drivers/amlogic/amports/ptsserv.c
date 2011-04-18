@@ -48,6 +48,7 @@ typedef struct pts_table_s {
     int first_lookup_ok;
     int first_lookup_is_fail;    /* 1: first lookup fail;  0: first lookup success */
     pts_rec_t *pts_recs;
+	unsigned long *pages_list;
     struct list_head *pts_search;
     struct list_head valid_list;
     struct list_head free_list;
@@ -512,6 +513,73 @@ int pts_set_rec_size(u8 type, u32 val)
 }
 
 EXPORT_SYMBOL(pts_set_rec_size);
+//#define SIMPLE_ALLOC_LIST
+static void free_pts_list(pts_table_t *pTable)
+{
+#ifdef SIMPLE_ALLOC_LIST
+	if(0){/*don't free,used a static memory*/
+		kfree(pTable->pts_recs);
+		pTable->pts_recs = NULL;
+	}
+#else
+	unsigned long *p=pTable->pages_list;
+	void *onepage=(void  *)p[0];
+	while(onepage!=NULL){
+		__free_page(onepage);
+		p++;
+		onepage=(void  *)p[0];
+	}
+	if(pTable->pages_list)
+		kfree(pTable->pages_list);
+	pTable->pages_list=NULL;
+#endif
+	INIT_LIST_HEAD(&pTable->valid_list);
+	INIT_LIST_HEAD(&pTable->free_list);
+}
+
+static int alloc_pts_list(pts_table_t *pTable)
+{
+	int i;
+	int page_nums;
+	INIT_LIST_HEAD(&pTable->valid_list);
+	INIT_LIST_HEAD(&pTable->free_list);
+#ifdef SIMPLE_ALLOC_LIST
+	if (!pTable->pts_recs){
+		pTable->pts_recs = kcalloc(pTable->rec_num,
+							sizeof(pts_rec_t), GFP_KERNEL);
+	}
+	if (!pTable->pts_recs) {
+            pTable->status = 0;
+            return -ENOMEM;
+        }
+	for (i = 0; i < pTable->rec_num; i++)
+		list_add_tail(&pTable->pts_recs[i].list, &pTable->free_list);
+	return 0;
+#else
+	page_nums=pTable->rec_num*sizeof(pts_rec_t)/PAGE_SIZE;
+	if(PAGE_SIZE/sizeof(pts_rec_t)!=0){
+		page_nums=(pTable->rec_num+page_nums+1)*sizeof(pts_rec_t)/PAGE_SIZE;
+	}
+	pTable->pages_list=kzalloc(page_nums*4+4,GFP_KERNEL);
+	if(pTable->pages_list==NULL)
+		return -ENOMEM;
+	for(i=0;i<page_nums;i++)
+	{
+		int j;
+		void  *one_page=(void *)__get_free_page(GFP_KERNEL);
+		pts_rec_t *recs=one_page;
+		if(one_page==NULL)
+			goto error_alloc_pages;
+		for(j=0;j<PAGE_SIZE/sizeof(pts_rec_t);j++)
+			list_add_tail(&recs[j].list, &pTable->free_list);
+		pTable->pages_list[i]=(unsigned long)one_page;
+	}
+	return 0;
+error_alloc_pages:
+	free_pts_list(pTable);
+#endif
+	return -ENOMEM;
+}
 
 int pts_start(u8 type)
 {
@@ -532,14 +600,8 @@ int pts_start(u8 type)
 
         spin_unlock_irqrestore(&lock, flags);
 
-        if (!pTable->pts_recs) {
-            pTable->pts_recs = kcalloc(pTable->rec_num,
-                                       sizeof(pts_rec_t), GFP_KERNEL);
-        }
-
-        if (!pTable->pts_recs) {
-            pTable->status = 0;
-            return -ENOMEM;
+        if(alloc_pts_list(pTable)!=0){
+			return -ENOMEM;
         }
 
         if (type == PTS_TYPE_VIDEO) {
@@ -568,15 +630,10 @@ int pts_start(u8 type)
             WRITE_MPEG_REG(AUDIO_PTS, 0);
             pTable->first_checkin_pts = -1;
             pTable->first_lookup_ok = 0;
-	     pTable->first_lookup_is_fail = 0;
+	     	pTable->first_lookup_is_fail = 0;
         }
 
-        INIT_LIST_HEAD(&pTable->valid_list);
-        INIT_LIST_HEAD(&pTable->free_list);
 
-        for (i = 0; i < pTable->rec_num; i++) {
-            list_add_tail(&pTable->pts_recs[i].list, &pTable->free_list);
-        }
 
         pTable->pts_search = &pTable->valid_list;
         pTable->status = PTS_LOADING;
@@ -612,9 +669,8 @@ int pts_stop(u8 type)
 
         spin_unlock_irqrestore(&lock, flags);
 
-        INIT_LIST_HEAD(&pTable->valid_list);
-        INIT_LIST_HEAD(&pTable->free_list);
-
+        free_pts_list(pTable);
+		
         pTable->status = PTS_IDLE;
 
         if (type == PTS_TYPE_AUDIO) {
