@@ -279,7 +279,7 @@ void wlanDrvIf_UpdateDriverState (TI_HANDLE hOs, EDriverSteadyState eDriverState
  */ 
 irqreturn_t wlanDrvIf_HandleInterrupt (int irq, void *hDrv, struct pt_regs *cpu_regs)
 {
-	//printk("aml ent wlanDrvIf_HandleInterrupt \n");
+//	printk("aml ent wlanDrvIf_HandleInterrupt \n");
 	TWlanDrvIfObj *drv = (TWlanDrvIfObj *)hDrv;
 	TWD_InterruptRequest (drv->tCommon.hTWD);
 
@@ -887,7 +887,7 @@ static int wlanDrvIf_Create (void)
 	if (rc)	{
 		goto drv_create_end_2;
 	}
-
+#if 0
 	/* Create the events socket interface */
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,23)
 	drv->wl_sock = netlink_kernel_create( NETLINK_USERSOCK, 0, NULL, THIS_MODULE );
@@ -899,7 +899,7 @@ static int wlanDrvIf_Create (void)
 		rc = -EINVAL;
 		goto drv_create_end_3;
 	}
-
+#endif
 	/* Create all driver modules and link their handles */
 	rc = drvMain_Create (drv,
 			&drv->tCommon.hDrvMain,
@@ -987,16 +987,15 @@ static void wlanDrvIf_Destroy (TWlanDrvIfObj *drv)
 {
 	if (!drv)
 		return;
-
 	if (drv->tiwlan_wq) {
 		cancel_work_sync(&drv->tWork);
 		flush_workqueue(drv->tiwlan_wq);
 	}
-
 	/* Release the driver network interface */
+
 	if (drv->netdev) {
 		netif_stop_queue  (drv->netdev);
-		wlanDrvIf_Stop    (drv->netdev);
+		wlanDrvIf_Stop(drv->netdev);
 		unregister_netdev (drv->netdev);
 		free_netdev (drv->netdev);
 	}
@@ -1009,7 +1008,7 @@ static void wlanDrvIf_Destroy (TWlanDrvIfObj *drv)
 	/* close the ipc_kernel socket*/
 	if (drv && drv->wl_sock) 
 	{
-		sock_release (drv->wl_sock->sk_socket);
+//		sock_release (drv->wl_sock->sk_socket);
 	}
 	/* Release the driver interrupt (or polling timer) */
 #ifdef PRIODIC_INTERRUPT
@@ -1022,8 +1021,7 @@ static void wlanDrvIf_Destroy (TWlanDrvIfObj *drv)
 #endif
 
 	if (drv->tiwlan_wq)
-		destroy_workqueue(drv->tiwlan_wq);
-		
+	destroy_workqueue(drv->tiwlan_wq);
 #ifdef CONFIG_HAS_WAKELOCK
 	wake_lock_destroy(&drv->wl_wifi);
 	wake_lock_destroy(&drv->wl_rxwake);
@@ -1069,7 +1067,6 @@ void wlanDrvIf_remove (void)
 }
 EXPORT_SYMBOL_GPL(wlanDrvIf_remove);
 
-extern int sdio_check_func(void);
 /** 
  * \fn     wlanDrvIf_ModuleInit  &  wlanDrvIf_ModuleExit
  * \brief  Linux Init/Exit functions
@@ -1085,13 +1082,12 @@ static int __init wlanDrvIf_ModuleInit (void)
 {
 	printk(KERN_INFO "TIWLAN: driver init\n");
 	sdioDrv_init();
-	if (!sdio_check_func())
-		return wlanDrvIf_Create ();
+	return wlanDrvIf_Create ();
 }
 
 static void __exit wlanDrvIf_ModuleExit (void)
 {
-//	wlanDrvIf_Destroy (pDrvStaticHandle);
+	wlanDrvIf_Destroy (pDrvStaticHandle);//nathan
 	sdioDrv_exit();
 	printk (KERN_INFO "TI WLAN: driver unloaded\n");
 }
