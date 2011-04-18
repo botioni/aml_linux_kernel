@@ -555,7 +555,8 @@ static inline void vdin_set_wr_ctrl(unsigned int offset, enum tvin_sig_fmt_e fmt
         (h -1), WR_HEND_BIT, WR_HEND_WID);
     // win_ve
     WRITE_CBUS_REG_BITS((VDIN_WR_V_START_END + offset),
-        (v -1), WR_VEND_BIT, WR_VEND_WID);
+    //    (v -1), WR_VEND_BIT, WR_VEND_WID);
+        (v), WR_VEND_BIT, WR_VEND_WID);
     // format444
     WRITE_CBUS_REG_BITS((VDIN_WR_CTRL + offset),
         write_format444, WR_FMT_BIT, WR_FMT_WID);
