@@ -755,7 +755,6 @@ int vm_sw_post_process(int canvas , int addr)
         extern void interleave_uv(unsigned char* pU, unsigned char* pV, unsigned char *pUV, unsigned int size_u_or_v);
         int uv_cnt;
     	int v_width = output_para.width>>1;
-    	int v_width = output_para.width>>1;
         char* dst_buff= (char*)addr+output_para.width* output_para.height;
         char* src_buff = (char*)buffer_u_start;
         char* src2_buff= (char*)buffer_v_start;
