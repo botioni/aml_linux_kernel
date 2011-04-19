@@ -540,11 +540,18 @@ void extern_wifi_power(int is_power)
     }*/
 	if(is_power)
 	{
-        configIO(0, 0);
-        setIO_level(0, 1, 5);
-        setIO_level(0, 1, 7);
-        *(volatile unsigned *)EGPIO_GPIOD_ENABLE &= ~PREG_IO_13_MASK;
+        *(volatile unsigned *)EGPIO_GPIOD_ENABLE &= ~PREG_IO_13_MASK;	
         *(volatile unsigned *)EGPIO_GPIOD_OUTPUT |= PREG_IO_13_MASK;
+        msleep(50);		
+        configIO(0, 0);
+        setIO_level(0, 1, 7);
+        	
+        setIO_level(0, 1, 5);
+        msleep(50);
+        setIO_level(0, 0, 5);
+        msleep(50);
+        setIO_level(0, 1, 5);	  
+
 	}
 	else
 	{
