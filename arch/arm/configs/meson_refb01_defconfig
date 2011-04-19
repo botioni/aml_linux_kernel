@@ -1,7 +1,7 @@
 #
 # Automatically generated make config: don't edit
 # Linux kernel version: 2.6.34
-# Thu Apr 14 14:55:41 2011
+# Tue Apr 19 13:02:41 2011
 #
 CONFIG_ARM=y
 CONFIG_HOLES_IN_ZONE=y
@@ -740,10 +740,10 @@ CONFIG_SDIO=y
 # CONFIG_AMLOGIC_SPI_NOR is not set
 
 #
-# AMLOGIC NAND Flash  support
+# AMLOGIC NAND Flash support
 #
 CONFIG_AM_NAND=y
-# CONFIG_AML_NFTL is not set
+CONFIG_AML_NFTL=y
 
 #
 # AMLOGIC DEMOD Support
