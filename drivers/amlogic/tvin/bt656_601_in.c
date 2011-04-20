@@ -198,8 +198,10 @@ static void init_656in_dec_parameter(tvin_sig_fmt_t input_mode)
             break;
 
         case TVIN_SIG_FMT_NULL:
-        default:
-            pr_dbg("bt656_601 input format is not supported, do nothing \n");
+        default:     
+            am656in_dec_info.active_pixel = 0;
+            am656in_dec_info.active_line = 0;               
+            //pr_dbg("bt656_601 input format is not supported, do nothing \n");
             break;
     }
 
@@ -1208,6 +1210,10 @@ int amvdec_656_601_camera_in_run(vframe_t *info)
     if(am656in_dec_info.dec_status == 0){
 //        pr_error("bt656in decoder is not started\n");
         return -1;
+    }
+    
+    if(am656in_dec_info.active_pixel == 0){
+    	return -1;	
     }
     am656in_dec_info.watch_dog = 0;
     ccir656_status = READ_CBUS_REG(BT_STATUS);
