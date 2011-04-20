@@ -1,7 +1,7 @@
 #
 # Automatically generated make config: don't edit
 # Linux kernel version: 2.6.34
-# Tue Apr 19 13:02:41 2011
+# Wed Apr 20 17:17:24 2011
 #
 CONFIG_ARM=y
 CONFIG_HOLES_IN_ZONE=y
@@ -1241,20 +1241,8 @@ CONFIG_PCMCIA_RAYCS=m
 # CONFIG_NET_PCMCIA is not set
 # CONFIG_WAN is not set
 # CONFIG_PLIP is not set
-CONFIG_PPP=y
-CONFIG_PPP_MULTILINK=y
-CONFIG_PPP_FILTER=y
-CONFIG_PPP_ASYNC=y
-CONFIG_PPP_SYNC_TTY=y
-# CONFIG_PPP_DEFLATE is not set
-# CONFIG_PPP_BSDCOMP is not set
-# CONFIG_PPP_MPPE is not set
-# CONFIG_PPPOE is not set
-# CONFIG_PPPOL2TP is not set
-# CONFIG_PPPOLAC is not set
-# CONFIG_PPPOPNS is not set
+# CONFIG_PPP is not set
 # CONFIG_SLIP is not set
-CONFIG_SLHC=y
 # CONFIG_NETCONSOLE is not set
 # CONFIG_NETPOLL is not set
 # CONFIG_NET_POLL_CONTROLLER is not set
@@ -1867,7 +1855,7 @@ CONFIG_USB_SERIAL=y
 # CONFIG_USB_SERIAL_TI is not set
 # CONFIG_USB_SERIAL_CYBERJACK is not set
 # CONFIG_USB_SERIAL_XIRCOM is not set
-CONFIG_USB_SERIAL_OPTION=y
+# CONFIG_USB_SERIAL_OPTION is not set
 # CONFIG_USB_SERIAL_OMNINET is not set
 # CONFIG_USB_SERIAL_OPTICON is not set
 # CONFIG_USB_SERIAL_VIVOPAY_SERIAL is not set
