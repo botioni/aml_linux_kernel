@@ -102,6 +102,10 @@
 #include <linux/bq27x00_battery.h>
 #endif
 
+#ifdef CONFIG_AR1520_GPS
+#include <linux/ar1520.h>
+#endif
+
 #if defined(CONFIG_JPEGLOGO)
 static struct resource jpeglogo_resources[] = {
     [0] = {
@@ -1000,12 +1004,24 @@ static void set_vccx2(int power_on)
         //set clk for wifi
         SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, (1<<18));
         CLEAR_CBUS_REG_MASK(PREG_EGPIO_EN_N, (1<<4));
+	//set VCC5V_EN
+	clear_mio_mux(0,(1<<10)||(1<<19)||(1<<20));
+	clear_mio_mux(9,1<<21);
+	clear_mio_mux(12,1<<8);
+	set_gpio_val(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(10), 1);
+	set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(10), GPIO_OUTPUT_MODE);
     }
     else{
         printk(KERN_INFO "set_vccx2 power down\n");        
         //disable wifi clk
         CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, (1<<18));
         SET_CBUS_REG_MASK(PREG_EGPIO_EN_N, (1<<4));
+	//set VCC5V_EN
+	clear_mio_mux(0,(1<<10)||(1<<19)||(1<<20));
+	clear_mio_mux(9,1<<21);
+	clear_mio_mux(12,1<<8);
+	set_gpio_val(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(10), 0);
+	set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(10), GPIO_OUTPUT_MODE);
     }
 }
 static struct meson_pm_config aml_pm_pdata = {
@@ -1391,6 +1407,59 @@ static struct platform_device aml_uart_device = {
     .resource     = NULL,   
     .dev = {        
                 .platform_data = &aml_uart_plat,  
+           },
+};
+#endif
+
+#ifdef CONFIG_AR1520_GPS
+static void ar1520_power_on(void)
+{
+#ifdef CONFIG_SN7325
+	printk("power on gps\n");
+	configIO(1, 0);
+	setIO_level(1, 1, 7);//PP7
+#endif	
+}
+
+static void ar1520_power_off(void)
+{
+#ifdef CONFIG_SN7325
+	printk("power off gps\n");
+	configIO(1, 0);
+	setIO_level(1, 0, 7);//PP7
+#endif	
+}
+
+static void ar1520_reset(void)
+{
+#ifdef CONFIG_SN7325
+	printk("reset gps\n");
+	msleep(200);
+	configIO(0, 0);
+	setIO_level(0, 0, 1);//OD1
+	msleep(200);
+	configIO(0, 0);
+	setIO_level(0, 1, 1);//OD1
+	msleep(200);
+	configIO(0, 0);
+	setIO_level(0, 0, 1);//OD1
+	msleep(200);
+	configIO(0, 0);
+	setIO_level(0, 1, 1);//OD1
+#endif	
+}
+
+static struct ar1520_platform_data aml_ar1520_plat = {
+	.power_on = ar1520_power_on,
+	.power_off = ar1520_power_off,
+	.reset = ar1520_reset,
+};
+
+static struct platform_device aml_ar1520_device = {	
+    .name         = "ar1520_gps",  
+    .id       = -1, 
+    .dev = {        
+                .platform_data = &aml_ar1520_plat,  
            },
 };
 #endif
@@ -1808,18 +1877,7 @@ static struct platform_device bt_device = {
 	.name             = "bt-dev",
 	.id               = -1,
 };
-static void gps_uart_pin_init(){
-        #ifdef CONFIG_SN7325
-        printk("power on 7325 8\n");
-	    configIO(1, 0);
-        setIO_level(1, 1, 7);//PP7
-        msleep(400);	
-        configIO(0, 0);
-        setIO_level(0, 0, 1);//OD1
-	    msleep(200);
-        setIO_level(0, 1, 1);//OD1
-        #endif	
-  }
+
 static void bt_device_init(void)
 {
     CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_12, (1<<29));
@@ -1887,7 +1945,6 @@ static void bt_device_init(void)
 	/* BT_WAKE */ 
 	//CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<14));
 	//SET_CBUS_REG_MASK(PREG_GGPIO_O, (1<<14));
-	    gps_uart_pin_init();
 	    configIO(0, 0);
         //setIO_level(0, 1, 5);
         setIO_level(0, 1, 6);
@@ -2008,7 +2065,10 @@ static struct platform_device __initdata *platform_devs[] = {
     #endif
     #ifdef CONFIG_BT_DEVICE  
         &bt_device,
-    #endif    	
+    #endif
+    #ifdef CONFIG_AR1520_GPS
+	&aml_ar1520_device,
+    #endif
 };
 static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
 

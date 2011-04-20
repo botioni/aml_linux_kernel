@@ -54,6 +54,8 @@ obj-$(CONFIG_AML_AUDIO_DSP) += audiodsp/
 
 obj-$(CONFIG_AML_RTC)+= rtc/
 
+obj-$(CONFIG_AR1520_GPS) += gps/
+
 obj-y += power/
 
 obj-$(CONFIG_AM_GPIO) +=gpio/

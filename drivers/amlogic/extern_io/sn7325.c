@@ -272,11 +272,18 @@ static ssize_t write_sn7325(struct device *dev, struct device_attribute *attr, c
 		port = 1;
 	else
 	{
-		printk("%s write error!\n",__FUNCTION__);
+		printk("%s write error!pin=%s\n",__FUNCTION__,pin);
+		return 0;
+	}
+	iobits = (unsigned char)simple_strtoul(val,NULL,0);
+	offset = (unsigned char)simple_strtoul(addr,NULL,0);
+	if((iobits != 0 && iobits!=1)||(offset < 0) ||(offset > 7))
+	{
+		printk("%s write error!iobits=%d,offset=%d\n",__FUNCTION__,iobits,offset);
 		return 0;
 	}
 	configIO(port,0);
-	setIO_level(port,(unsigned char)simple_strtoul(val,NULL,0),(unsigned char)simple_strtoul(addr,NULL,0));
+	setIO_level(port,iobits,offset);
 	return count;
 }
 
