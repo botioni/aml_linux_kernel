@@ -980,8 +980,14 @@ static irqreturn_t vsync_isr0(int irq, void *dev_id)
             } else
 #endif
                 /* setting video display property in pause mode */
-                if (video_property_changed && cur_dispbuf && (cur_dispbuf != &vf_local)) {
-                    vsync_toggle_frame(cur_dispbuf);
+                if (video_property_changed && cur_dispbuf) {
+                    if (blackout) {
+                        if (cur_dispbuf != &vf_local) {
+                            vsync_toggle_frame(cur_dispbuf);
+                        }
+                    } else {
+                        vsync_toggle_frame(cur_dispbuf);
+                    }
                 }
 
             break;
@@ -1633,7 +1639,7 @@ static int parse_para(const char *para, int para_num, int *result)
 
     do {
         //filter space out
-        while (startp && (isspace(*startp) || !isalnum(*startp)) && len) {
+        while (startp && (isspace(*startp) || !isgraph(*startp)) && len) {
             startp++;
             len--;
         }

@@ -835,7 +835,21 @@ static  struct platform_device aml_rtc_device = {
             .id               = -1,
     };
 #endif
+#if defined(CONFIG_VIDEO_AMLOGIC_CAPTURE_GT2005)
 
+int gt2005_init(void)
+{
+   #ifdef CONFIG_SN7325
+	printk( "amlogic camera driver: init CONFIG_SN7325. \n");
+	configIO(1, 0);
+	setIO_level(1, 1, 4);//PP4 -->1
+	msleep(300);
+	setIO_level(1, 1, 0);//PP0-->0
+	msleep(300);
+    #endif
+
+}
+#endif /* VIDEO_AMLOGIC_CAPTURE_GT2005 */
 #ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE_GC0308
 int gc0308_init(void)
 {
@@ -884,6 +898,30 @@ static void __init camera_power_on_init(void)
 
     eth_set_pinmux(ETH_BANK0_GPIOC3_C12,ETH_CLK_OUT_GPIOC12_REG3_1, 1);		
 }
+#endif
+#if defined(CONFIG_VIDEO_AMLOGIC_CAPTURE_GT2005)
+static int gt2005_v4l2_init(void)
+{
+	gt2005_init();
+}
+static int gt2005_v4l2_uninit(void)
+{
+   #ifdef CONFIG_SN7325
+	printk( "amlogic camera driver: uninit gt2005_v4l2_uninit. \n");
+	configIO(1, 0);
+	setIO_level(1, 1, 4);
+	msleep(300);
+	setIO_level(1, 1, 0);
+    #endif
+
+}
+
+aml_plat_cam_data_t video_gt2005_data = {
+	.name="video-gt2005",
+	.video_nr=0,
+	.device_init= gt2005_v4l2_init,
+	.device_uninit=gt2005_v4l2_uninit,
+};
 #endif
 #if defined(CONFIG_VIDEO_AMLOGIC_CAPTURE_GC0308)
 static int gc0308_v4l2_init(void)
@@ -1482,44 +1520,44 @@ static struct platform_device aml_nand_device = {
 static struct mtd_partition multi_partition_info[] = 
 {
 	{
-		.name = "environment",
-		.offset = 8*1024*1024,
-		.size = 40*1024*1024,
+		.name = "logo",
+		.offset = 32*SZ_1M,
+		.size = 16*SZ_1M,
 	},
 	{
-		.name = "logo",
-		.offset = 48*1024*1024,
-		.size = 16*1024*1024,
+		.name = "aml_logo",
+		.offset = 48*SZ_1M,
+		.size = 16*SZ_1M,
 	},
 	{
 		.name = "recovery",
-		.offset = 64*1024*1024,
-		.size = 16*1024*1024,
+		.offset = 64*SZ_1M,
+		.size = 32*SZ_1M,
 	},
 	{
-		.name = "uImage",
-		.offset = 80*1024*1024,
-		.size = 16*1024*1024,
+		.name = "boot",
+		.offset = 96*SZ_1M,
+		.size = 32*SZ_1M,
 	},
 	{
 		.name = "system",
-		.offset = 96*1024*1024,
-		.size = 256*1024*1024,
+		.offset = 128*SZ_1M,
+		.size = 256*SZ_1M,
 	},
 	{
 		.name = "cache",
-		.offset = 352*1024*1024,
-		.size = 40*1024*1024,
+		.offset = 384*SZ_1M,
+		.size = 128*SZ_1M,
 	},
 	{
 		.name = "userdata",
-		.offset = 392*1024*1024,
-		.size = 512*1024*1024,
+		.offset = 512*SZ_1M,
+		.size = 512*SZ_1M,
 	},
 	{
 		.name = "NFTL_Part",
-		.offset = ((392 + 512)*1024*1024),
-		.size = ((0x200000000 - (392 + 512)*1024*1024)),
+		.offset = MTDPART_OFS_APPEND,
+		.size = MTDPART_SIZ_FULL,
 	},
 };
 
@@ -2011,6 +2049,13 @@ static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
         /*gc0308 i2c address is 0x42/0x43*/
 		I2C_BOARD_INFO("gc0308_i2c",  0x42 >> 1),
 		.platform_data = (void *)&video_gc0308_data,
+	},
+#endif
+#if CONFIG_VIDEO_AMLOGIC_CAPTURE_GT2005
+	{
+        /*ov5640 i2c address is 0x78*/
+    	I2C_BOARD_INFO("gt2005_i2c",  0x78 >> 1 ),
+    	.platform_data = (void *)&video_gt2005_data
 	},
 #endif
 #ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE_OV5640

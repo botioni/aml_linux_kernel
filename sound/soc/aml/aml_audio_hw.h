@@ -132,13 +132,13 @@ typedef struct {
 
 
 #define AIU_958_MODE_RAW    0
-#define AIU_958_MODE_PCM24  1
-#define AIU_958_MODE_PCM16  2
+#define AIU_958_MODE_PCM16  1
+#define AIU_958_MODE_PCM24  2
+#define AIU_958_MODE_PCM32  3
 
-#define AIU_I2S_MODE_2x16   0
-#define AIU_I2S_MODE_2x24   1
-#define AIU_I2S_MODE_8x24   2
-#define AIU_I2S_MODE_2x32   3
+#define AIU_I2S_MODE_PCM16   0
+#define AIU_I2S_MODE_PCM24   2
+#define AIU_I2S_MODE_PCM32   3
 
 #define AUDIO_ALGOUT_DAC_FORMAT_DSP             0
 #define AUDIO_ALGOUT_DAC_FORMAT_LEFT_JUSTIFY    1

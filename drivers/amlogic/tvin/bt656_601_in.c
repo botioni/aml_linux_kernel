@@ -198,8 +198,10 @@ static void init_656in_dec_parameter(tvin_sig_fmt_t input_mode)
             break;
 
         case TVIN_SIG_FMT_NULL:
-        default:
-            pr_dbg("bt656_601 input format is not supported, do nothing \n");
+        default:     
+            am656in_dec_info.active_pixel = 0;
+            am656in_dec_info.active_line = 0;               
+            //pr_dbg("bt656_601 input format is not supported, do nothing \n");
             break;
     }
 
@@ -555,8 +557,8 @@ static void reinit_camera_dec(void)
     WRITE_CBUS_REG(BT_VBIEND, 1 | (1 << 16));       //field 0/1 VBI last line number
     
     WRITE_CBUS_REG(BT_VIDEOSTART, 2 | (2 << 16));   //Line number of the first video start line in field 0/1.there is a blank
-    WRITE_CBUS_REG(BT_VIDEOEND , (am656in_dec_info.active_line +1)|          //  Line number of the last video line in field 1. added video end for avoid overflow.
-                                    ((am656in_dec_info.active_line +1) << 16));                   // Line number of the last video line in field 0
+    WRITE_CBUS_REG(BT_VIDEOEND , (am656in_dec_info.active_line +2)|          //  Line number of the last video line in field 1. added video end for avoid overflow.
+                                    ((am656in_dec_info.active_line +2) << 16));                   // Line number of the last video line in field 0
     WRITE_CBUS_REG(BT_CTRL ,    (1 << BT_EN_BIT       ) |    // enable BT moduale.
                                 (0 << BT_REF_MODE_BIT ) |    // timing reference is from bit stream.
                                 (0 << BT_FMT_MODE_BIT ) |     //PAL
@@ -628,6 +630,7 @@ static void start_amvdec_656_601_camera_in(unsigned int mem_start, unsigned int 
         init_656in_dec_parameter(input_mode);
         reset_656in_dec_parameter();
         am656in_dec_info.para.port = TVIN_PORT_CAMERA;
+		am656in_dec_info.wr_canvas_index = 0xff;
         reinit_camera_dec();
         am656in_dec_info.dec_status = 1;
     }
@@ -897,6 +900,7 @@ static void bt656in_send_buff_to_display_fifo(vframe_t * info)
 
 static void camera_send_buff_to_display_fifo(vframe_t * info)
 {
+#if 0
     info->duration = tvin_fmt_tbl[am656in_dec_info.para.fmt].duration;
     if(info->duration == 0)
         return;
@@ -912,6 +916,14 @@ static void camera_send_buff_to_display_fifo(vframe_t * info)
     info->duration = tvin_fmt_tbl[am656in_dec_info.para.fmt].duration;
 //            info->duration = 9600000/1716;   //17.16 frame per second
     info->canvas0Addr = info->canvas1Addr = bt656_index2canvas(am656in_dec_info.rd_canvas_index);
+#endif
+
+    info->duration = tvin_fmt_tbl[am656in_dec_info.para.fmt].duration;
+    info->type = VIDTYPE_VIU_SINGLE_PLANE | VIDTYPE_VIU_422 | VIDTYPE_VIU_FIELD | VIDTYPE_PROGRESSIVE ;
+    info->width= am656in_dec_info.active_pixel;
+    info->height = am656in_dec_info.active_line;
+    info->duration = tvin_fmt_tbl[am656in_dec_info.para.fmt].duration;
+    info->canvas0Addr = info->canvas1Addr = bt656_index2canvas(am656in_dec_info.wr_canvas_index);
 }
 
 
@@ -928,6 +940,12 @@ static void bt656in_wr_vdin_canvas(void)
 
     vdin_set_canvas_id(vdin_devp_bt656->index, canvas_id);
     set_next_field_656_601_camera_in_anci_address(am656in_dec_info.wr_canvas_index);
+}
+
+static void camera_wr_vdin_canvas(int index)
+{
+	vdin_set_canvas_id(vdin_devp_bt656->index, bt656_index2canvas(index));
+    set_next_field_656_601_camera_in_anci_address(index);
 }
 
 //bt656 flag error = (pixel counter error) | (line counter error) | (input FIFO over flow)
@@ -1109,6 +1127,7 @@ static void bt601_in_dec_run(vframe_t * info)
 
 static void camera_in_dec_run(vframe_t * info)
 {
+#if 0
     unsigned char cur_canvas_index, next_buffs_index;
 
 
@@ -1159,7 +1178,21 @@ static void camera_in_dec_run(vframe_t * info)
 
     camera_send_buff_to_display_fifo(info);
     bt656in_wr_vdin_canvas();
+#endif
 
+	if (am656in_dec_info.wr_canvas_index == 0xff) {
+		camera_wr_vdin_canvas(0);
+		am656in_dec_info.wr_canvas_index = 0;
+		return;
+	}
+	
+	camera_send_buff_to_display_fifo(info);
+
+	am656in_dec_info.wr_canvas_index++;
+	if (am656in_dec_info.wr_canvas_index >= am656in_dec_info.canvas_total_count)
+		am656in_dec_info.wr_canvas_index = 0;
+		
+	camera_wr_vdin_canvas(am656in_dec_info.wr_canvas_index);
 
     return;
 }
@@ -1177,6 +1210,10 @@ int amvdec_656_601_camera_in_run(vframe_t *info)
     if(am656in_dec_info.dec_status == 0){
 //        pr_error("bt656in decoder is not started\n");
         return -1;
+    }
+    
+    if(am656in_dec_info.active_pixel == 0){
+    	return -1;	
     }
     am656in_dec_info.watch_dog = 0;
     ccir656_status = READ_CBUS_REG(BT_STATUS);

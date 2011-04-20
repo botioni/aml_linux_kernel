@@ -86,6 +86,8 @@
  */
 static dwc_otg_pcd_t *s_pcd = 0;
 
+extern void dwc_otg_pcd_stop(dwc_otg_pcd_t * _pcd);
+ 
 /* Display the contents of the buffer */
 extern void dump_msg(const u8 * buf, unsigned int length);
 
@@ -301,6 +303,9 @@ static int dwc_otg_pcd_ep_enable(struct usb_ep *_ep,
 
 	dwc_otg_ep_activate(GET_CORE_IF(pcd), &ep->dwc_ep);
 	SPIN_UNLOCK_IRQRESTORE(&pcd->lock, flags);
+	
+	dwc_otg_device_soft_connect(GET_CORE_IF(s_pcd));//mcli
+	
 	return 0;
 }
 
@@ -903,6 +908,9 @@ static int dwc_otg_pcd_wakeup(struct usb_gadget *_gadget)
 	}
 
 	SPIN_UNLOCK_IRQRESTORE(&pcd->lock, flags);
+
+	dwc_otg_device_soft_connect(GET_CORE_IF(s_pcd)); //mcli
+	
 	return 0;
 }
 
@@ -920,7 +928,10 @@ static int dwc_otg_pcd_pullup(struct usb_gadget *_gadget, int is_on)
 	if(is_on)
 		dwc_otg_device_soft_connect(GET_CORE_IF(pcd));
 	else
+	{
 		dwc_otg_device_soft_disconnect(GET_CORE_IF(pcd));
+		dwc_otg_pcd_stop(pcd);
+	}
 
 	return 0;
 }
@@ -950,6 +961,8 @@ void dwc_otg_pcd_update_otg(dwc_otg_pcd_t * _pcd, const unsigned _reset)
 	_pcd->gadget.b_hnp_enable = _pcd->b_hnp_enable;
 	_pcd->gadget.a_hnp_support = _pcd->a_hnp_support;
 	_pcd->gadget.a_alt_hnp_support = _pcd->a_alt_hnp_support;
+	
+	dwc_otg_device_soft_connect(GET_CORE_IF(s_pcd)); //mcli
 }
 
 /** 
@@ -981,6 +994,8 @@ static int32_t dwc_otg_pcd_start_cb(void *_p)
 		dwc_otg_core_dev_init(GET_CORE_IF(pcd));
 	}
 
+    dwc_otg_device_soft_connect(GET_CORE_IF(s_pcd));//mcli
+    
 	return 1;
 }
 
@@ -993,7 +1008,7 @@ static int32_t dwc_otg_pcd_start_cb(void *_p)
 static int32_t dwc_otg_pcd_stop_cb(void *_p)
 {
 	dwc_otg_pcd_t *pcd = (dwc_otg_pcd_t *) _p;
-	extern void dwc_otg_pcd_stop(dwc_otg_pcd_t * _pcd);
+	//extern void dwc_otg_pcd_stop(dwc_otg_pcd_t * _pcd);
 
 	dwc_otg_pcd_stop(pcd);
 	return 1;
@@ -1042,6 +1057,9 @@ static int32_t dwc_otg_pcd_resume_cb(void *_p)
 			del_timer(&pcd->srp_timer);
 		}
 	}
+    
+	dwc_otg_device_soft_connect(GET_CORE_IF(s_pcd));//mcli
+	
 	return 0;
 }
 
@@ -1518,6 +1536,8 @@ int __init dwc_otg_pcd_init(struct lm_device *_lmdev)
 	start_xfer_tasklet.data = (unsigned long)pcd;
 	pcd->start_xfer_tasklet = &start_xfer_tasklet;
 
+	dwc_otg_device_soft_connect(GET_CORE_IF(s_pcd)); //mcli	
+
 	return 0;
 }
 
@@ -1604,6 +1624,7 @@ int usb_gadget_register_driver(struct usb_gadget_driver *_driver)
 		s_pcd->gadget.dev.driver = 0;
 		return retval;
 	}
+	dwc_otg_device_soft_connect(GET_CORE_IF(s_pcd)); //mcli
 	DWC_DEBUGPL(DBG_ANY, "registered gadget driver '%s'\n",
 		    _driver->driver.name);
 	return 0;

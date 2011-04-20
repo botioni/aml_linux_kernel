@@ -540,11 +540,18 @@ void extern_wifi_power(int is_power)
     }*/
 	if(is_power)
 	{
-        configIO(0, 0);
-        setIO_level(0, 1, 5);
-        setIO_level(0, 1, 7);
-        *(volatile unsigned *)EGPIO_GPIOD_ENABLE &= ~PREG_IO_13_MASK;
+        *(volatile unsigned *)EGPIO_GPIOD_ENABLE &= ~PREG_IO_13_MASK;	
         *(volatile unsigned *)EGPIO_GPIOD_OUTPUT |= PREG_IO_13_MASK;
+        msleep(50);		
+        configIO(0, 0);
+        setIO_level(0, 1, 7);
+        	
+        setIO_level(0, 1, 5);
+        msleep(50);
+        setIO_level(0, 0, 5);
+        msleep(50);
+        setIO_level(0, 1, 5);	  
+
 	}
 	else
 	{
@@ -1603,7 +1610,7 @@ static struct aml_i2c_platform aml_i2c_plat = {
     .wait_xfer_interval = 5,
     .master_no      = AML_I2C_MASTER_B,
     .use_pio            = 0,
-    .master_i2c_speed   = AML_I2C_SPPED_400K,
+    .master_i2c_speed   = AML_I2C_SPPED_200K,
 
     .master_b_pinmux = {
         .scl_reg    = MESON_I2C_MASTER_B_GPIOB_0_REG,
@@ -1830,14 +1837,14 @@ static int bat_charge_value_table[37]={
 static int bat_value_table[37]={
 0,  //0
 539*4/3,//0
-545*4/3,// 5
-548*4/3,//10
-553*4/3,//15
-554*4/3,//16
-557*4/3,//18
-558*4/3,//20
-560*4/3,//23
-561*4/3,//26
+542*4/3,// 5
+546*4/3,//10
+550*4/3,//15
+551*4/3,//16
+552*4/3,//18
+553*4/3,//20
+555*4/3,//23
+558*4/3,//26
 560*4/3,//29
 562*4/3,//32
 563*4/3,//35
@@ -1869,7 +1876,7 @@ static int bat_value_table[37]={
 
 static int bat_charge_value_table[37]={
 0,  //0    
-563*4/3,//0
+564*4/3,//0
 570*4/3,//5
 573*4/3,//10
 578*4/3,//15
@@ -1878,7 +1885,7 @@ static int bat_charge_value_table[37]={
 582*4/3,//20
 584*4/3,//23
 585*4/3,//26
-586*4/3,//29
+587*4/3,//29
 588*4/3,//32
 589*4/3,//35
 590*4/3,//37

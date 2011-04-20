@@ -1985,7 +1985,7 @@ static int nand_do_write_ops(struct mtd_info *mtd, loff_t to,
 
 	/* If we're not given explicit OOB data, let it be 0xFF */
 	if (likely(!oob))
-		memset(chip->oob_poi, 0xff, mtd->oobsize);
+		memset(chip->oob_poi, 0xa5, mtd->oobsize);			//a5 not ff for all ff data very dangerous
 
 	while(1) {
 		int bytes = mtd->writesize;

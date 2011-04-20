@@ -37,7 +37,7 @@
 #include <mach/am_regs.h>
 #include <mach/pinmux.h>
 #include <mach/power_gate.h>
-
+//cpt CLAA080XA02BT2 
 #define LCD_WIDTH       1024
 #define LCD_HEIGHT      768
 #define MAX_WIDTH       1344

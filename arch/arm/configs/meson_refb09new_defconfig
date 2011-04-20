@@ -1,7 +1,7 @@
 #
 # Automatically generated make config: don't edit
 # Linux kernel version: 2.6.34
-# Fri Apr  8 15:46:13 2011
+# Fri Apr 15 14:23:08 2011
 #
 CONFIG_ARM=y
 CONFIG_HOLES_IN_ZONE=y
@@ -277,6 +277,7 @@ CONFIG_MACH_MESON_8726M_REFB09NEW=y
 # CONFIG_MACH_MESON_8726M_REFC05 is not set
 # CONFIG_MACH_MESON_8726M_REFC04 is not set
 # CONFIG_MACH_MESON_8726M_REFB10 is not set
+# CONFIG_MACH_MESON_8726M_REFB11 is not set
 # CONFIG_MACH_MESON_8726M_REFB12 is not set
 # CONFIG_MACH_MESON_8726M_REFB13 is not set
 CONFIG_MESON_CLOCK_TICK_RATE=25000000
@@ -663,6 +664,11 @@ CONFIG_AM_GPIO=y
 CONFIG_EFUSE=y
 
 #
+# AMLOGIC Smart card driver
+#
+# CONFIG_AM_SMARTCARD is not set
+
+#
 # Block devices
 #
 
@@ -702,7 +708,7 @@ CONFIG_SDIO=y
 # AMLOGIC NAND Flash support
 #
 CONFIG_AM_NAND=y
-CONFIG_AML_NFTL=m
+CONFIG_AML_NFTL=y
 
 #
 # AMLOGIC DEMOD Support
@@ -755,6 +761,7 @@ CONFIG_AM_TCON_OUTPUT=y
 # CONFIG_AML_TCON_ML10 is not set
 # CONFIG_AML_TCON_W10 is not set
 # CONFIG_AML_TCON_W7 is not set
+# CONFIG_AML_TCON_W7NEW is not set
 # CONFIG_AML_TCON_W8 is not set
 CONFIG_AML_TCON_P7=y
 # CONFIG_AML_TCON_K7 is not set
@@ -981,7 +988,7 @@ CONFIG_MISC_DEVICES=y
 # CONFIG_SENSORS_TSL2550 is not set
 # CONFIG_DS1682 is not set
 # CONFIG_TI_DAC7512 is not set
-# CONFIG_UID_STAT is not set
+CONFIG_UID_STAT=y
 # CONFIG_APANIC is not set
 # CONFIG_SIX_AXIS_SENSOR_MPU3050 is not set
 # CONFIG_C2PORT is not set
