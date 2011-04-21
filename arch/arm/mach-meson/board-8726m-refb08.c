@@ -702,7 +702,7 @@ static unsigned int rt5621_is_hp_pluged()
                                 (0 << 0));           // DIMCTL Analog dimmer
     cs_no = READ_CBUS_REG(LED_PWM_REG3);
 	
-	if( cs_no & ( 1 << 15 ) )
+	if( cs_no & ( 1 << 14 ) )
 		level = 1;
 
     return level;	//return 1: hp pluged, 0: hp unpluged.
