@@ -790,7 +790,11 @@ static void meson_pm_suspend(void)
 							1); 					    // 1uS enable delay 
     SET_CBUS_REG_MASK(HHI_SYS_PLL_CNTL, (1<<15));		// turn off sys pll
      
+#ifdef CONFIG_MACH_MESON_8726M_REFC01
+    WRITE_CBUS_REG(A9_0_IRQ_IN0_INTR_MASK, pdata->power_key);     // enable remote interrupt only
+#else
     WRITE_CBUS_REG(A9_0_IRQ_IN2_INTR_MASK, pdata->power_key);     // enable rtc interrupt only
+#endif
     meson_sram_suspend(pdata);
 
     CLEAR_CBUS_REG_MASK(HHI_SYS_PLL_CNTL, (1<<15));		// turn on sys pll
