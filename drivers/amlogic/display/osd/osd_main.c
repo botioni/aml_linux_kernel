@@ -346,8 +346,8 @@ osd_ioctl(struct fb_info *info, unsigned int cmd,
 					fbdev->enable_key_flag |= KEYCOLOR_FLAG_CURRENT;
 				}
 			} else {
-				fbdev->enable_key_flag &= ~(KEYCOLOR_FLAG_TARGET | KEYCOLOR_FLAG_CURRENT);
 				osddev_srckey_enable(info->node, 0);
+				fbdev->enable_key_flag &= ~(KEYCOLOR_FLAG_TARGET | KEYCOLOR_FLAG_CURRENT);
 			}
 			break;
 			default:break;
@@ -634,7 +634,9 @@ static ssize_t store_enable_key_onhold(struct device *device, struct device_attr
 	if (r != 0) {
 		/* hold all the calls to enable color key */
 		fbdev->enable_key_flag |= KEYCOLOR_FLAG_ONHOLD;
+		fbdev->enable_key_flag &= ~KEYCOLOR_FLAG_CURRENT;
 		osddev_srckey_enable(fb_info->node, 0);
+
 	} else {
 		fbdev->enable_key_flag &= ~KEYCOLOR_FLAG_ONHOLD;
 
