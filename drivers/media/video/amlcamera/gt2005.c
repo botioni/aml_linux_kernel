@@ -320,7 +320,7 @@ static inline struct gt2005_fh *to_fh(struct gt2005_device *dev)
 
 struct aml_camera_i2c_fig_s GT2005_script[] = { 
 #ifdef CONFIG_MACH_MESON_8726M_REFB10
-	{0x0101 , 0x02},
+	{0x0101 , 0x01},
 #else
 	{0x0101 , 0x10},
 #endif
