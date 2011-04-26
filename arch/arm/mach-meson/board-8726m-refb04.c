@@ -70,6 +70,9 @@
 #include <linux/mmc31xx.h>
 #endif
 
+#ifdef CONFIG_SIX_AXIS_SENSOR_MPU3050
+#include <linux/mpu.h>
+#endif
 #ifdef CONFIG_SN7325
 #include <linux/sn7325.h>
 #endif
@@ -171,10 +174,11 @@ static struct platform_device adc_ts_device = {
 #include <linux/adc_keypad.h>
 
 static struct adc_key adc_kp_key[] = {// android\rootfs\device\amlogic\m1ref\aml-usbkbd.kl
-    {KEY_PAGEDOWN,            "vol-", CHAN_4, 0, 60},
-    {KEY_TAB,               "exit", CHAN_4, 623, 60},
-    {KEY_PAGEUP,          "vol+", CHAN_4, 849, 60},
-
+    {KEY_TAB,          "return",CHAN_4, 0, 	 60},
+    {KEY_HOME,         "home", 	CHAN_4, 180, 60},
+    {KEY_LEFTMETA,     "menu", 	CHAN_4, 398, 60},
+    {KEY_PAGEDOWN,     "vol-", 	CHAN_4, 623, 60},
+    {KEY_PAGEUP,       "vol+", 	CHAN_4, 849, 60},
 };
 
 static struct adc_kp_platform_data adc_kp_pdata = {
@@ -254,6 +258,21 @@ static struct sn7325_platform_data sn7325_pdata = {
 };
 #endif
 
+#ifdef CONFIG_SIX_AXIS_SENSOR_MPU3050
+static struct mpu3050_platform_data mpu3050_data = {
+    .int_config = 0x10,
+    .orientation = {-1,0,0,0,1,0,0,0,-1},
+    .level_shifter = 0,
+    .accel = {
+                .get_slave_descr = mma8451_get_slave_descr,
+                .adapt_num = 0, // The i2c bus to which the mpu device is
+                // connected
+                .bus = EXT_SLAVE_BUS_SECONDARY, //The secondary I2C of MPU
+                .address = 0x1c,
+                .orientation = {0,-1,0,1,0,0,0,0,1},
+            },
+    };
+#endif
 #if defined(CONFIG_FB_AM)
 static struct resource fb_device_resources[] = {
     [0] = {
@@ -296,7 +315,7 @@ static void set_usb_a_vbus_power(char is_power_on)
         //set_gpio_mode(USB_A_POW_GPIO,USB_A_POW_GPIO_BIT,GPIO_OUTPUT_MODE);
         //set_gpio_val(USB_A_POW_GPIO,USB_A_POW_GPIO_BIT,USB_A_POW_GPIO_BIT_OFF);
         set_gpio_mode(GPIOA_bank_bit(26), GPIOA_bit_bit23_26(26), GPIO_OUTPUT_MODE); 
-        set_gpio_val(GPIOA_bank_bit(26), GPIOA_bit_bit23_26(26), 1);//USB A power s
+        set_gpio_val(GPIOA_bank_bit(26), GPIOA_bit_bit23_26(26), 0);//USB A power s
     }
 }
 //usb_a is OTG port
@@ -456,16 +475,22 @@ static struct resource amlogic_card_resource[] = {
 };
 
 void extern_wifi_power(int is_power)
-{//extern io OD5
-    if(1 == is_power){
+{
+    if (0 == is_power)
+    {
         configIO(0, 0);
-        setIO_level(0,1, 5);        
+        setIO_level(0, 0, 5);//OD5
     }
-    else{
+    else
+    {
         configIO(0, 0);
-        setIO_level(0, 0, 5);        
+        /*TCH_PWR_EN*/
+        setIO_level(0, 0, 1);//OD1
+        /*CAME_EN*/
+        setIO_level(0, 1, 7);//OD7
+        /*power up wifi by 7325 OD5*/
+        setIO_level(0, 1, 5);//OD5
     }
-    
     return;
 }
 
@@ -623,7 +648,7 @@ static unsigned int rt5621_is_hp_pluged()
                                 (0 << 0));           // DIMCTL Analog dimmer
     cs_no = READ_CBUS_REG(LED_PWM_REG3);
 	
-	if( cs_no & ( 1 << 15 ) )
+	if( cs_no & ( 1 << 14 ) )
 		level = 1;
 
     return level;	//return 1: hp pluged, 0: hp unpluged.
@@ -795,8 +820,8 @@ static int tsc2007_get_pendown_state(void)
 #define XLCD    800
 #define YLCD    480
 #define SWAP_XY 0
-#define XPOL    0
-#define YPOL    0
+#define XPOL    1
+#define YPOL    1
 #define XMIN 0
 #define XMAX 4095
 #define YMIN 0
@@ -945,9 +970,10 @@ int gc0308_init(void)
 {
    #ifdef CONFIG_SN7325
 	printk( "amlogic camera driver 0308: init CONFIG_SN7325. \n");
-	configIO(1, 0);
-	setIO_level(1, 1, 4);//PP4 -->1
+	configIO(0, 0);
+	setIO_level(0, 1, 7);//camer en OD7 -->1
 	msleep(300);
+	configIO(1, 0);
 	setIO_level(1, 0, 0);//PP0-->0
 	msleep(300);
     #endif
@@ -1014,10 +1040,12 @@ static int gc0308_v4l2_uninit(void)
 {
    #ifdef CONFIG_SN7325
 	 printk( "amlogic camera driver: gc0308_v4l2_uninit CONFIG_SN7325. \n");
-	configIO(1, 0);
-	setIO_level(1, 1, 4);
+	configIO(0, 0);
+	setIO_level(0, 0, 7);//OD7 -->0
 	msleep(300);
-	setIO_level(1, 0, 0);
+	configIO(1, 0);
+	setIO_level(1, 1, 0);//PP0-->1
+	msleep(300);
     #endif
 
 }
@@ -1190,7 +1218,7 @@ static int get_charge_status(void)
 
 static void set_bat_off(void)
 {
-    //BL_PWM power off
+    //power off backlight
     set_gpio_val(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), 0);
     set_gpio_mode(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), GPIO_OUTPUT_MODE);
     if(is_ac_connected()){ //AC in after power off press
@@ -1203,82 +1231,82 @@ static void set_bat_off(void)
 
 static int bat_value_table[37]={
 0,  //0    
-540,//0
-544,//4
-547,//10
-550,//15
-553,//16
-556,//18
-559,//20
-561,//23
-563,//26
-565,//29
-567,//32
-568,//35
-569,//37
-570,//40
-571,//43
-573,//46
-574,//49
-576,//51
-578,//54
-580,//57
-582,//60
-585,//63
-587,//66
-590,//68
-593,//71
-596,//74
-599,//77
-602,//80
-605,//83
-608,//85
-612,//88
-615,//91
-619,//95
-622,//97
-626,//100
-626 //100
+690,//0
+694,//4
+705,//10
+709,//14
+710,//16
+712,//18
+714,//20
+716,//23
+718,//26
+719,//29
+721,//32
+722,//35
+723,//37
+725,//40
+727,//43
+729,//46
+731,//49
+733,//51
+735,//54
+738,//57
+741,//60
+745,//63
+749,//66
+751,//68
+756,//71
+760,//74
+764,//77
+769,//80
+776,//83
+779,//85
+784,//88
+790,//91
+797,//95
+802,//97
+809,//100
+813 //100
 };
 
 static int bat_charge_value_table[37]={
 0,  //0    
-547,//0
-551,//4
-553,//10
-556,//15
-558,//16
-560,//18
-562,//20
-564,//23
-566,//26
-567,//29
-568,//32
-569,//35
-570,//37
-571,//40
-572,//43
-573,//46
-574,//49
-576,//51
-578,//54
-580,//57
-582,//60
-585,//63
-587,//66
-590,//68
-593,//71
-596,//74
-599,//77
-602,//80
-605,//83
-608,//85
-612,//88
-615,//91
-617,//95
-618,//97
-620,//100
-620 //100
+668,//0
+735,//4
+755,//10
+760,//14
+763,//16
+765,//18
+767,//20
+770,//23
+772,//26
+773,//29
+774,//32
+775,//35
+776,//37
+777,//40
+779,//43
+781,//46
+783,//49
+785,//51
+787,//54
+790,//57
+794,//60
+797,//63
+800,//66
+803,//68
+807,//71
+810,//74
+814,//77
+819,//80
+826,//83
+828,//85
+831,//88
+834,//91
+838,//95
+840,//97
+843,//100
+843 //100
 };
 
 static int bat_level_table[37]={
@@ -1286,7 +1314,7 @@ static int bat_level_table[37]={
 0,
 4,
 10,
-15,
+14,
 16,
 18,
 20,
@@ -1332,7 +1360,7 @@ static struct aml_power_pdata power_pdata = {
 	.bat_charge_value_table = bat_charge_value_table,
 	.bat_level_table = bat_level_table,
 	.bat_table_len = 37,		
-	.is_support_usb_charging = 0;
+	.is_support_usb_charging = 0,
 	//.supplied_to = supplicants,
 	//.num_supplicants = ARRAY_SIZE(supplicants),
 };
@@ -2022,6 +2050,12 @@ static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
 		I2C_BOARD_INFO(RT5621_I2C_NAME, RT5621_I2C_ADDR),
 		.platform_data = (void *)&rt5621_pdata,
 	},
+#endif
+#ifdef CONFIG_SIX_AXIS_SENSOR_MPU3050
+    {
+        I2C_BOARD_INFO("mpu3050", 0x68),
+        .platform_data = (void *)&mpu3050_data,
+    },
 #endif
 #ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE_GC0308
 
