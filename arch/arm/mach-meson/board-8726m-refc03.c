@@ -737,14 +737,14 @@ static struct resource amlfe_resource[]  = {
 		.name  = "frontend0_tuner_addr"
 	},
 	[2] = {
-		.start = 1,                   //frontend   mode 0-dvbc 1-dvbt
-		.end   = 1,
+		.start = 0,                   //frontend   mode 0-dvbc 1-dvbt
+		.end   = 0,
 		.flags = IORESOURCE_MEM,
 		.name  = "frontend0_mode"
 	},
 	[3] = {
-		.start = 3,                   //frontend  tuner 0-NULL, 1-DCT7070, 2-Maxliner, 3-FJ2207, 4-TD1316
-		.end   = 3,
+		.start = 1,                   //frontend  tuner 0-NULL, 1-DCT7070, 2-Maxliner, 3-FJ2207, 4-TD1316
+		.end   = 1,
 		.flags = IORESOURCE_MEM,
 		.name  = "frontend0_tuner"
 	},
@@ -800,18 +800,18 @@ static struct resource amlogic_dvb_resource[]  = {
 		.flags = IORESOURCE_IRQ,
 		.name  = "demux2_irq"
 	},	
-  [7] = {
-    .start = INT_ASYNC_FIFO_FLUSH,           //dvr 0 irq
-    .end   = INT_ASYNC_FIFO_FLUSH,
-    .flags = IORESOURCE_IRQ,
-    .name  = "dvr0_irq"
-  },
-  [8] = {
-    .start = INT_ASYNC_FIFO2_FLUSH,          //dvr 1 irq
-    .end   = INT_ASYNC_FIFO2_FLUSH,
-    .flags = IORESOURCE_IRQ,
-    .name  = "dvr1_irq"
-  },
+	[7] = {
+		.start = INT_ASYNC_FIFO_FLUSH,                   //dvr 0 irq
+		.end   = INT_ASYNC_FIFO_FLUSH,
+		.flags = IORESOURCE_IRQ,
+		.name  = "dvr0_irq"
+	},
+	[8] = {
+		.start = INT_ASYNC_FIFO2_FLUSH,          //dvr 1 irq
+		.end   = INT_ASYNC_FIFO2_FLUSH,
+		.flags = IORESOURCE_IRQ,
+		.name  = "dvr1_irq"
+	},	
 };
 
 static  struct platform_device amlogic_dvb_device = {
@@ -822,18 +822,19 @@ static  struct platform_device amlogic_dvb_device = {
 };
 #endif
 
+#if defined(CONFIG_AM_SMARTCARD)
 static struct resource amlogic_smc_resource[]  = {
 	[0] = {
 		.start = ((GPIOD_bank_bit2_24(11)<<16) | GPIOD_bit_bit2_24(11)),                          //smc POWER gpio
 		.end   = ((GPIOD_bank_bit2_24(11)<<16) | GPIOD_bit_bit2_24(11)),
 		.flags = IORESOURCE_MEM,
-		.name  = "smc_power"
+		.name  = "smc0_power"
 	},
 	[1] = {
 		.start = INT_SMART_CARD,                   //smc irq number
 		.end   = INT_SMART_CARD,
 		.flags = IORESOURCE_IRQ,
-		.name  = "smc_irq"
+		.name  = "smc0_irq"
 	},
 
 };
@@ -844,6 +845,7 @@ static  struct platform_device amlogic_smc_device = {
 	.num_resources    = ARRAY_SIZE(amlogic_smc_resource),
 	.resource         = amlogic_smc_resource,
 };
+#endif
 
 static struct platform_device __initdata *platform_devs[] = {
     #if defined(CONFIG_AM_UART_WITH_S_CORE)
@@ -903,7 +905,9 @@ static struct platform_device __initdata *platform_devs[] = {
 		&gx1001_device,
 		&amlfe_device,
     #endif
+    #if defined(CONFIG_AM_SMARTCARD)	
 		&amlogic_smc_device
+    #endif
 	
 };
 
@@ -952,13 +956,14 @@ static void __init device_pinmux_init(void )
 	/* IR decoder pinmux */
 	set_mio_mux(5, 1<<31);
 
-#ifdef CONFIG_AM_DVB
+#ifdef CONFIG_AM_SMARTCARD
 	/* SmartCard pinmux */
 	set_mio_mux(2, 0xF<<20);
 #endif
 
 	set_audio_pinmux(AUDIO_IN_JTAG); // for MIC input
-        set_audio_pinmux(AUDIO_OUT_TEST_N); //External AUDIO DAC
+    set_audio_pinmux(AUDIO_OUT_TEST_N); //External AUDIO DAC
+    set_audio_pinmux(SPDIF_OUT_GPIOA);
 }
 static void __init  device_clk_setting(void)
 {

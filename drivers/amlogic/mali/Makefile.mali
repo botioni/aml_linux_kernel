@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2010 ARM Limited. All rights reserved.
+# Copyright (C) 2010-2011 ARM Limited. All rights reserved.
 # 
 # This program is free software and is provided to you under the terms of the GNU General Public License version 2
 # as published by the Free Software Foundation, and any use by you of this program is subject to the terms of such GNU licence.
@@ -34,7 +34,7 @@ endif
 ONLY_ZBT ?= 0
 USING_ZBT ?= 0
 USING_OS_MEMORY ?= 1
-USING_PMM ?= 1
+USING_PMM ?= 0
 USING_GPU_UTILIZATION ?= 0
 USING_MALI_RUN_TIME_PM ?= 0
 USING_MALI_PMM_TESTSUITE ?= 0
@@ -42,7 +42,7 @@ USING_PROFILING ?= 0
 TIMESTAMP ?= default
 BUILD ?= debug
 CONFIG ?= aml-meson-m400-1
-TARGET_PLATFORM ?= meson_platform
+TARGET_PLATFORM ?= default
 
 ifeq ($(USING_UMP),1)
 	UMP_SYMVERS_FILE = ../ump/Module.symvers
@@ -74,7 +74,7 @@ DEFINES += -DMALI_PMM_RUNTIME_JOB_CONTROL_ON=$(USING_MALI_RUN_TIME_PM)
 ifneq ($(call submodule_enabled, $M, PMU),0)
         MALI_PLATFORM_FILE = platform/mali400-pmu/mali_platform.c
 else
-	MALI_PLATFORM_FILE = platform/$(TARGET_PLATFORM)/mali_platform.c
+        MALI_PLATFORM_FILE = platform/$(TARGET_PLATFORM)/mali_platform.c
 endif
 
 DEFINES += -DUSING_MALI_PMM=$(USING_PMM)

@@ -1284,6 +1284,7 @@ static void aml_nand_write_page_hwecc(struct mtd_info *mtd, struct nand_chip *ch
 	if (aml_chip->ops_mode & AML_INTERLEAVING_MODE)
 		internal_chipnr = aml_chip->internal_chipnr;
 
+	memset(oob_buf + mtd->oobavail, 0xa5, user_byte_num * (mtd->writesize / nand_page_size));
 	for (i=0; i<aml_chip->chip_num; i++) {
 
 		if (aml_chip->valid_chip[i]) {
@@ -1313,7 +1314,7 @@ static void aml_nand_write_page_hwecc(struct mtd_info *mtd, struct nand_chip *ch
 					if (error)
 						goto exit;
 					aml_chip->aml_nand_command(aml_chip, NAND_CMD_DUMMY_PROGRAM, -1, -1, i);
-	
+
 					oob_buf += user_byte_num;
 					buf += nand_page_size;
 	
@@ -1322,7 +1323,7 @@ static void aml_nand_write_page_hwecc(struct mtd_info *mtd, struct nand_chip *ch
 						error = -EBUSY;
 						goto exit;
 					}
-	
+
 					aml_chip->aml_nand_command(aml_chip, NAND_CMD_TWOPLANE_WRITE2, 0x00, page_addr, i);
 					aml_chip->aml_nand_set_user_byte(aml_chip, oob_buf, user_byte_num);
 					error = aml_chip->aml_nand_dma_write(aml_chip, (unsigned char *)buf, nand_page_size, aml_chip->bch_mode);
@@ -1332,12 +1333,12 @@ static void aml_nand_write_page_hwecc(struct mtd_info *mtd, struct nand_chip *ch
 						aml_chip->aml_nand_command(aml_chip, NAND_CMD_CACHEDPROG, -1, -1, i);
 					else
 						aml_chip->aml_nand_command(aml_chip, NAND_CMD_PAGEPROG, -1, -1, i);
-	
+
 					oob_buf += user_byte_num;
 					buf += nand_page_size;
 				}
 				else if (aml_chip->plane_num == 1) {
-	
+
 					aml_chip->aml_nand_set_user_byte(aml_chip, oob_buf, user_byte_num);
 					error = aml_chip->aml_nand_dma_write(aml_chip, (unsigned char *)buf, nand_page_size, aml_chip->bch_mode);
 					if (error)
@@ -1802,8 +1803,8 @@ static struct aml_nand_flash_dev *aml_nand_get_flash_type(struct mtd_info *mtd,
 	chip->badblockpos = AML_BADBLK_POS;
 
 	/* Get chip options, preserve non chip based options */
-	chip->options &= ~NAND_CHIPOPTIONS_MSK;
-	chip->options |= type->options & NAND_CHIPOPTIONS_MSK;
+	//chip->options &= ~NAND_CHIPOPTIONS_MSK;
+	//chip->options |= type->options & NAND_CHIPOPTIONS_MSK;
 
 	/*
 	 * Set chip as a default. Board drivers can override it, if necessary
@@ -1813,8 +1814,8 @@ static struct aml_nand_flash_dev *aml_nand_get_flash_type(struct mtd_info *mtd,
 	/* Check if chip is a not a samsung device. Do not clear the
 	 * options for chips which are not having an extended id.
 	 */
-	if (*maf_id != NAND_MFR_SAMSUNG && !type->pagesize)
-		chip->options &= ~NAND_SAMSUNG_LP_OPTIONS;
+	//if (*maf_id != NAND_MFR_SAMSUNG && !type->pagesize)
+		//chip->options &= ~NAND_SAMSUNG_LP_OPTIONS;
 
 	printk(KERN_INFO "NAND device: Manufacturer ID:"
 	       " 0x%02x, Chip ID: 0x%02x (%s %s)\n", *maf_id, dev_id[0],
@@ -2225,6 +2226,7 @@ int aml_nand_init(struct aml_nand_chip *aml_chip)
 		chip->IO_ADDR_W = (void __iomem *) CBUS_REG_ADDR(NAND_BUF);
 
 	chip->options |=  NAND_SKIP_BBTSCAN;
+	chip->options |= NAND_NO_SUBPAGE_WRITE;
 	if (chip->ecc.mode != NAND_ECC_SOFT) {
 		if (aml_chip->user_byte_mode == 2)
 			chip->ecc.layout = &aml_nand_oob_64_2info;
@@ -2259,6 +2261,7 @@ int aml_nand_init(struct aml_nand_chip *aml_chip)
 	if (nand_scan(mtd, aml_chip->chip_num) == -ENODEV) {
 		chip->options = 0;
 		chip->options |=  NAND_SKIP_BBTSCAN;
+		chip->options |= NAND_NO_SUBPAGE_WRITE;
 		if (aml_nand_scan(mtd, aml_chip->chip_num)) {
 			err = -ENXIO;
 			goto exit_error;
@@ -2385,7 +2388,7 @@ int aml_nand_init(struct aml_nand_chip *aml_chip)
 	if (chip->buffers)
 		kfree(chip->buffers);
 	if (mtd->oobsize >= NAND_MAX_OOBSIZE)
-	chip->buffers = kzalloc((mtd->writesize + 3*mtd->oobsize), GFP_KERNEL);
+		chip->buffers = kzalloc((mtd->writesize + 3*mtd->oobsize), GFP_KERNEL);
 	else
 		chip->buffers = kzalloc((mtd->writesize + 3*NAND_MAX_OOBSIZE), GFP_KERNEL);
 	if (chip->buffers == NULL) {

@@ -48,6 +48,7 @@ typedef struct myfb_dev {
    	 vmode_t vmode;
     	
     	struct osd_ctl_s osd_ctl;
+	u32  order;	
 	u32  scale;	
 	u32  enable_3d;
 	u32  enable_key_flag;
@@ -70,6 +71,8 @@ typedef  struct {
 
 #define fbdev_lock(dev) mutex_lock(&dev->lock);
 #define fbdev_unlock(dev) mutex_unlock(&dev->lock);
+extern u32 osddev_get_osd_order(u32 index);
+extern void osddev_change_osd_order(u32 index,u32 order);
 extern void osddev_free_scale_enable(u32 index ,u32 enable);
 extern void osddev_free_scale_width(u32 index ,u32 width);
 extern void osddev_free_scale_height(u32 index ,u32 height);

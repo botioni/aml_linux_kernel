@@ -62,6 +62,8 @@ extern int tsync_get_syncdiscont(void);
 
 extern void tsync_set_syncdiscont(int syncdiscont);
 
+extern int tsync_set_apts(unsigned pts);
+
 static inline u32 tsync_vpts_discontinuity_margin(void)
 {
     return AV_DISCONTINUE_THREDHOLD;

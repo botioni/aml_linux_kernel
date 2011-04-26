@@ -35,7 +35,7 @@ typedef struct display_frame_s{
 	int content_height;
 }display_frame_t;
 
-extern int get_vm_status();
+extern int get_vm_status(void);
 extern void set_vm_status(int flag);
 
 
@@ -57,7 +57,7 @@ extern void get_vm_buf_info(char** start,unsigned int* size,unsigned char** vadd
 
 /*  vm buffer op. */
 extern int vm_buffer_init(void);
-extern void vm_local_init() ;
+extern void vm_local_init(void) ;
 static DEFINE_MUTEX(vm_mutex);
 
 #endif /* _VM_INCLUDE__ */

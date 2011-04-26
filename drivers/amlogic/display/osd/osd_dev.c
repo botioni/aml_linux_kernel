@@ -116,6 +116,14 @@ void osddev_init(void)
 {
 	osd_init_hw();
 }
+u32	osddev_get_osd_order(u32 index)
+{
+	return osd_get_osd_order_hw(index);
+}
+void osddev_change_osd_order(u32 index,u32 order)
+{
+	osd_change_osd_order_hw(index,order);
+}
 void osddev_free_scale_enable(u32 index ,u32 enable)
 {
 	//at present we only support osd1 & osd2 have the same random scale mode.

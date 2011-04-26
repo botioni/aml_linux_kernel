@@ -108,6 +108,9 @@
 #include <linux/bq27x00_battery.h>
 #endif
 
+#ifdef CONFIG_AR1520_GPS
+#include <linux/ar1520.h>
+#endif
 
 #if defined(CONFIG_JPEGLOGO)
 static struct resource jpeglogo_resources[] = {
@@ -1290,7 +1293,7 @@ static struct aml_power_pdata power_pdata = {
 	.bat_charge_value_table = bat_charge_value_table,
 	.bat_level_table = bat_level_table,
 	.bat_table_len = 37,		
-	.is_support_usb_charging = 0;
+	.is_support_usb_charging = 0,
 	//.supplied_to = supplicants,
 	//.num_supplicants = ARRAY_SIZE(supplicants),
 };
@@ -1307,6 +1310,11 @@ static struct platform_device power_dev = {
 static int is_ac_connected(void)
 {
 	return (READ_CBUS_REG(ASSIST_HW_REV)&(1<<9))? 1:0;//GP_INPUT1
+}
+
+static int get_charge_status()
+{
+    return (READ_CBUS_REG(ASSIST_HW_REV)&(1<<8))? 1:0;//GP_INPUT0
 }
 
 static void set_charge(int flags)
@@ -1332,9 +1340,10 @@ static void set_bat_off(void)
 
 static struct bq27x00_battery_pdata bq27x00_pdata = {
 	.is_ac_online	= is_ac_connected,
+	.get_charge_status = get_charge_status,	
 	.set_charge = set_charge,
 	.set_bat_off = set_bat_off,
-    .chip = 0,
+    .chip = 1,
 };
 #endif
 
@@ -1363,6 +1372,59 @@ static struct platform_device aml_uart_device = {
     .resource     = NULL,   
     .dev = {        
                 .platform_data = &aml_uart_plat,
+           },
+};
+#endif
+
+#ifdef CONFIG_AR1520_GPS
+static void ar1520_power_on(void)
+{
+#ifdef CONFIG_SN7325
+	printk("power on gps\n");
+	configIO(0, 0);
+	setIO_level(0, 1, 7);//OD7
+#endif	
+}
+
+static void ar1520_power_off(void)
+{
+#ifdef CONFIG_SN7325
+	printk("power off gps\n");
+	configIO(0, 0);
+	setIO_level(0, 0, 7);//OD7
+#endif	
+}
+
+static void ar1520_reset(void)
+{
+#ifdef CONFIG_SN7325
+	printk("reset gps\n");
+	msleep(200);
+	configIO(0, 0);
+	setIO_level(0, 0, 4);//OD4
+	msleep(200);
+	configIO(0, 0);
+	setIO_level(0, 1, 4);//OD4
+	msleep(200);
+	configIO(0, 0);
+	setIO_level(0, 0, 4);//OD4
+	msleep(200);
+	configIO(0, 0);
+	setIO_level(0, 1, 4);//OD4
+#endif	
+}
+
+static struct ar1520_platform_data aml_ar1520_plat = {
+	.power_on = ar1520_power_on,
+	.power_off = ar1520_power_off,
+	.reset = ar1520_reset,
+};
+
+static struct platform_device aml_ar1520_device = {	
+    .name         = "ar1520_gps",  
+    .id       = -1, 
+    .dev = {        
+                .platform_data = &aml_ar1520_plat,  
            },
 };
 #endif
@@ -1604,13 +1666,9 @@ static void aml_8726m_set_bl_level(unsigned level)
 
     if (level < 30)
     {
-        cs_level = 0;
+        cs_level = 1750;
     }
-    else if (level == 30)
-    {
-        cs_level = 1760;
-    }
-    else if (level > 30 && level < 256)
+    else if (level >= 30 && level < 256)
     {
         cs_level = (level - 31) * 260 + 1760;
     }
@@ -1632,19 +1690,19 @@ static void aml_8726m_power_on_bl(void)
     msleep(100);
     SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<31));
     msleep(100);
-    //EIO -> OD4: 0
-    #ifdef CONFIG_SN7325
-    configIO(0, 0);
-    setIO_level(0, 0, 4);
-    #endif
+    //EIO -> PP1: 0   //EIO -> OD4: 0
+#ifdef CONFIG_SN7325
+    configIO(1, 0);  //configIO(0, 0);
+    setIO_level(1, 0, 1);  //setIO_level(0, 0, 4);
+#endif
 }
 
 static void aml_8726m_power_off_bl(void)
 {
-    //EIO -> OD4: 1
+    //EIO -> PP1: 0  //EIO -> OD4: 1
 #ifdef CONFIG_SN7325
-    configIO(0, 0);
-    setIO_level(0, 1, 4);
+    configIO(1, 0);  //configIO(0, 0);
+    setIO_level(1, 1, 1);  //setIO_level(0, 1, 4);
 #endif
     CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<31));
     CLEAR_CBUS_REG_MASK(PWM_MISC_REG_AB, (1 << 0));
@@ -1804,7 +1862,7 @@ static void bt_device_init(void)
 //	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<18));
 //	SET_CBUS_REG_MASK(PREG_GGPIO_O, (1<<18));
 	    configIO(0, 0);
-        setIO_level(0, 1, 5);	
+        setIO_level(0, 1, 7);	//OD7
 	
 	/* reset */
 	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<12));
@@ -1940,7 +1998,10 @@ static struct platform_device __initdata *platform_devs[] = {
     #endif
     #ifdef CONFIG_BT_DEVICE  
         &bt_device,
-    #endif    	
+    #endif
+    #ifdef CONFIG_AR1520_GPS
+	&aml_ar1520_device,
+    #endif
 };
 static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
 
@@ -2152,6 +2213,7 @@ static __init void m1_init_machine(void)
     spi_register_board_info(spi_board_info_list, ARRAY_SIZE(spi_board_info_list));
 #endif
     disable_unused_model();
+
 }
 
 /*VIDEO MEMORY MAPING*/

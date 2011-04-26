@@ -268,7 +268,7 @@ static irqreturn_t kp_interrupt(int irq, void *dev_id)
 
 	return IRQ_HANDLED;
 }
-static  irqreturn_t  kp_fiq_interrupt(void)
+static  void  kp_fiq_interrupt(void)
 {
 	kp_sw_reprot_key((unsigned long)gp_kp);
 	WRITE_MPEG_REG(IRQ_CLR_REG(NEC_REMOTE_IRQ_NO), 1 << IRQ_BIT(NEC_REMOTE_IRQ_NO));
@@ -476,7 +476,7 @@ work_mode_config(unsigned int cur_mode)
 		{
 			//disable fiq and enable common irq
 			unregister_fiq_bridge_handle(&gp_kp->fiq_handle_item);
-			free_fiq(NEC_REMOTE_IRQ_NO);
+			free_fiq(NEC_REMOTE_IRQ_NO, &kp_fiq_interrupt);
 			request_irq(NEC_REMOTE_IRQ_NO, kp_interrupt,
         			IRQF_SHARED,"keypad", (void *)kp_interrupt);
 		}
@@ -490,7 +490,7 @@ work_mode_config(unsigned int cur_mode)
 		register_fiq_bridge_handle(&gp_kp->fiq_handle_item);
 		//workaround to fix fiq mechanism bug.
 		desc->depth++;
-		request_fiq(NEC_REMOTE_IRQ_NO,(void*)kp_fiq_interrupt);
+		request_fiq(NEC_REMOTE_IRQ_NO, &kp_fiq_interrupt);
 		
 		break;	
     	} 	
@@ -843,12 +843,12 @@ static int kp_remove(struct platform_device *pdev)
     /* unregister everything */
     input_unregister_device(kp->input);
     free_pages((unsigned long)remote_log_buf,REMOTE_LOG_BUF_ORDER);
-        device_remove_file(&pdev->dev, &dev_attr_enable);
+    device_remove_file(&pdev->dev, &dev_attr_enable);
     device_remove_file(&pdev->dev, &dev_attr_log_buffer);
     if(kp->work_mode & REMOTE_WORK_MODE_FIQ )
     {
-    	free_fiq(NEC_REMOTE_IRQ_NO);
-	free_irq(BRIDGE_IRQ,gp_kp);
+        free_fiq(NEC_REMOTE_IRQ_NO, &kp_fiq_interrupt);
+        free_irq(BRIDGE_IRQ,gp_kp);
     }
     else
     {

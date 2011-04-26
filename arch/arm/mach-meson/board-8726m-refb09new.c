@@ -540,11 +540,18 @@ void extern_wifi_power(int is_power)
     }*/
 	if(is_power)
 	{
-        configIO(0, 0);
-        setIO_level(0, 1, 5);
-        setIO_level(0, 1, 7);
-        *(volatile unsigned *)EGPIO_GPIOD_ENABLE &= ~PREG_IO_13_MASK;
+        *(volatile unsigned *)EGPIO_GPIOD_ENABLE &= ~PREG_IO_13_MASK;	
         *(volatile unsigned *)EGPIO_GPIOD_OUTPUT |= PREG_IO_13_MASK;
+        msleep(50);		
+        configIO(0, 0);
+        setIO_level(0, 1, 7);
+        	
+        setIO_level(0, 1, 5);
+        msleep(50);
+        setIO_level(0, 0, 5);
+        msleep(50);
+        setIO_level(0, 1, 5);	  
+
 	}
 	else
 	{
@@ -1289,10 +1296,10 @@ static int gt2005_v4l2_uninit(void)
    #ifdef CONFIG_SN7325
 	printk( "amlogic camera driver: uninit gt2005_v4l2_uninit. \n");
 	configIO(1, 0);
-	//setIO_level(1, 0, 2);//200m poweer_disable
+	setIO_level(1, 0, 1);//200m poweer_disable
 	setIO_level(1, 0, 6);//200m pwd low
-	//configIO(0, 0);
-	//setIO_level(0, 0, 2);//200m reset low
+	configIO(0, 0);
+	setIO_level(0, 0, 2);//200m reset low
 	msleep(20); 
     #endif
 
@@ -1603,7 +1610,7 @@ static struct aml_i2c_platform aml_i2c_plat = {
     .wait_xfer_interval = 5,
     .master_no      = AML_I2C_MASTER_B,
     .use_pio            = 0,
-    .master_i2c_speed   = AML_I2C_SPPED_400K,
+    .master_i2c_speed   = AML_I2C_SPPED_200K,
 
     .master_b_pinmux = {
         .scl_reg    = MESON_I2C_MASTER_B_GPIOB_0_REG,
@@ -1712,7 +1719,19 @@ static int get_bat_vol(void)
 
 static int get_charge_status(void)
 {
-    return (READ_CBUS_REG(ASSIST_HW_REV)&(1<<8))? 1:0;
+	static char count =0;
+
+	if ((READ_CBUS_REG(ASSIST_HW_REV)&(1<<8))? 1:0){
+		if ((count<10) && (count>=0)){
+			count++;
+		}else{
+			return 1;
+		}	
+	}else{
+		count = 0;
+	}
+	
+	return 0;
 }
 
 static void set_bat_off(void)
@@ -1814,84 +1833,85 @@ static int bat_charge_value_table[37]={
 620 //100
 };
 #else
+
 static int bat_value_table[37]={
 0,  //0
-513,//0
-534,// 5
-538,//10
-541,//15
-544,//16
-546,//18
-547,//20
-548,//23
-549,//26
-550,//29
-551,//32
-552,//35
-553,//37
-554,//40
-555,//43
-556,//46
-558,//49
-559,//51
-562,//54
-566,//57
-567,//60
-569,//63
-572,//66
-575,//68
-578,//71
-581,//74
-586,//77
-590,//80
-594,//83
-598,//85
-600,//88
-603,//91
-609,//95
-613,//97
-621,//100
-621 //100
+539*4/3,//0
+542*4/3,// 5
+546*4/3,//10
+550*4/3,//15
+551*4/3,//16
+552*4/3,//18
+553*4/3,//20
+555*4/3,//23
+558*4/3,//26
+560*4/3,//29
+562*4/3,//32
+563*4/3,//35
+564*4/3,//37
+566*4/3,//40
+568*4/3,//43
+570*4/3,//46
+572*4/3,//49
+573*4/3,//51
+575*4/3,//54
+578*4/3,//57
+580*4/3,//60
+582*4/3,//63
+585*4/3,//66
+587*4/3,//68
+590*4/3,//71
+593*4/3,//74
+596*4/3,//77
+599*4/3,//80
+602*4/3,//83
+604*4/3,//85
+607*4/3,//88
+610*4/3,//91
+614*4/3,//95
+618*4/3,//97
+623*4/3,//100
+623*4/3 //100
 };
 
 static int bat_charge_value_table[37]={
 0,  //0    
-534,//0
-562,//5
-573,//10
-577,//15
-578,//16
-579,//18
-581,//20
-583,//23
-584,//26
-585,//29
-586,//32
-587,//35
-588,//37
-589,//40
-590,//43
-591,//46
-592,//49
-593,//51
-595,//54
-597,//57
-599,//60
-601,//63
-603,//66
-604,//68
-606,//71
-609,//74
-611,//77
-614,//80
-617,//83
-619,//85
-622,//88
-625,//91
-628,//95
-632,//97
-636,//100
-636 //100
+564*4/3,//0
+570*4/3,//5
+573*4/3,//10
+578*4/3,//15
+579*4/3,//16
+581*4/3,//18
+582*4/3,//20
+584*4/3,//23
+585*4/3,//26
+587*4/3,//29
+588*4/3,//32
+589*4/3,//35
+590*4/3,//37
+592*4/3,//40
+593*4/3,//43
+595*4/3,//46
+597*4/3,//49
+598*4/3,//51
+601*4/3,//54
+604*4/3,//57
+605*4/3,//60
+607*4/3,//63
+608*4/3,//66
+609*4/3,//68
+610*4/3,//71
+611*4/3,//74
+612*4/3,//77
+614*4/3,//80
+616*4/3,//83
+618*4/3,//85
+620*4/3,//88
+623*4/3,//91
+625*4/3,//95
+629*4/3,//97
+632*4/3,//100
+632*4/3 //100
 };
 #endif
 
@@ -2290,8 +2310,8 @@ static void aml_8726m_set_bl_level(unsigned level)
 
 
     //WRITE_CBUS_REG_BITS(VGHL_PWM_REG0, cs_level, 0, 4);        
-    WRITE_CBUS_REG_BITS(PWM_PWM_A,low,0,16);  //low
-    WRITE_CBUS_REG_BITS(PWM_PWM_A,hi,16,16);  //hi  
+    WRITE_CBUS_REG_BITS(PWM_PWM_A,(low/50),0,16);  //low
+    WRITE_CBUS_REG_BITS(PWM_PWM_A,(hi/50),16,16);  //hi  
 }
 
 static void aml_8726m_power_on_bl(void)
@@ -2376,8 +2396,8 @@ static struct platform_device vout_device = {
 #ifdef CONFIG_USB_ANDROID_MASS_STORAGE
 static struct usb_mass_storage_platform_data mass_storage_pdata = {
        .nluns = 2,
-       .vendor = "AMLOGIC",
-       .product = "Android MID",
+       .vendor = "Pandigital",
+       .product = "Pandigital",
        .release = 0x0100,
 };
 static struct platform_device usb_mass_storage_device = {
@@ -2415,8 +2435,8 @@ static struct android_usb_platform_data android_usb_pdata = {
        .vendor_id      = 0x0bb4,
        .product_id     = 0x0c01,
        .version        = 0x0100,
-       .product_name   = "Android MID",
-       .manufacturer_name = "AMLOGIC",
+       .product_name   = "Pandigital",
+       .manufacturer_name = "Pandigital",
        .num_products = ARRAY_SIZE(usb_products),
        .products = usb_products,
        .num_functions = ARRAY_SIZE(usb_functions_adb),
@@ -2782,7 +2802,7 @@ static __init void m1_fixup(struct machine_desc *mach, struct tag *tag, char **c
     m->nr_banks++;
 }
 
-MACHINE_START(MESON_8726M, "AMLOGIC MESON-M1 8726M SZ")
+MACHINE_START(MESON_8726M, "Cortex-A9")
     .phys_io        = MESON_PERIPHS1_PHYS_BASE,
     .io_pg_offst    = (MESON_PERIPHS1_PHYS_BASE >> 18) & 0xfffc,
     .boot_params    = BOOT_PARAMS_OFFSET,

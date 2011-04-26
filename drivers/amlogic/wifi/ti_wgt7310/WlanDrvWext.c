@@ -160,7 +160,6 @@ static struct iw_statistics *wlanDrvWext_GetWirelessStats(struct net_device *dev
 }
 
 /* Generic callback for WEXT commands */
-struct net_device *g_dev;
 int wlanDrvWext_Handler (struct net_device *dev,
                      struct iw_request_info *info, 
                      void *iw_req, 
@@ -173,11 +172,10 @@ int wlanDrvWext_Handler (struct net_device *dev,
     struct iw_scan_req scanreq;
     void             *copy_to_buf=NULL, *param3=NULL; 
 
-    g_dev = dev;
     os_memoryZero(drv, &my_command, sizeof(ti_private_cmd_t));
     os_memoryZero(drv, &mlme,       sizeof(struct iw_mlme));
 	os_memoryZero(drv, &scanreq, sizeof(struct iw_scan_req));
-
+ 
     switch (info->cmd)
     {
         case SIOCIWFIRSTPRIV:

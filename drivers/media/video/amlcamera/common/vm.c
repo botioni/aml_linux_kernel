@@ -234,7 +234,7 @@ static int vm_receiver_event_fun(int type, void* data, void* private_data)
             //up(&vb_start_sema);
             break;
         case VFRAME_EVENT_PROVIDER_START:
-			vm_skip_count = 0; 
+			vm_skip_count = 5; 
 			test_zoom = 0;
             break;
         case VFRAME_EVENT_PROVIDER_UNREG:        
@@ -247,7 +247,7 @@ static int vm_receiver_event_fun(int type, void* data, void* private_data)
     return 0;
 }
 
-int get_unused_vm_index()
+int get_unused_vm_index(void)
 {
     int i ;
     for (i = 0; i < VF_POOL_SIZE; i++){
@@ -279,7 +279,7 @@ static int prepare_vframe(vframe_t *vf)
 *************************************************/
 static const struct vframe_provider_s *vfp = NULL;
 
-void vm_local_init() 
+void vm_local_init(void) 
 {
     int i;
     for(i=0;i<MAX_VF_POOL_SIZE;i++) 
@@ -311,7 +311,7 @@ vframe_receiver_op_t* vf_vm_reg_provider(const vframe_provider_t *p )
     
     return &vm_vf_receiver;
 }
-vframe_receiver_op_t* vf_vm_unreg_provider()
+vframe_receiver_op_t* vf_vm_unreg_provider(void)
 {
     ulong flags;    
     spin_lock_irqsave(&lock, flags); 
@@ -504,6 +504,9 @@ int get_canvas_index(int v4l2_format ,int* depth)
             *depth = 24;
             break; 
         case V4L2_PIX_FMT_NV12: 
+			canvas = VM_DEPTH_8_CANVAS_Y|(VM_DEPTH_8_CANVAS_U<<8)|(VM_DEPTH_8_CANVAS_V<<16);
+			*depth = 12;   
+			break;
         case V4L2_PIX_FMT_YUV420:
 			canvas = VM_DEPTH_8_CANVAS_Y|(VM_DEPTH_8_CANVAS_U<<8)|(VM_DEPTH_8_CANVAS_V<<16);
 			*depth = 12;
@@ -652,8 +655,8 @@ int vm_ge2d_pre_process(vframe_t* vf, ge2d_context_t *context,config_para_ex_t* 
     }              
     stretchblt_noalpha(context,src_left ,src_top ,src_width, src_height,0,0,output_para.width,output_para.height);
     
-    if(output_para.v4l2_format==V4L2_PIX_FMT_YUV420||
-			output_para.v4l2_format==V4L2_PIX_FMT_NV12) {  /* yuv420p. */
+    /* for cr of  yuv420p or yuv420sp. */
+    if(output_para.v4l2_format==V4L2_PIX_FMT_YUV420) {
 		/* for cb. */
 		canvas_read((output_para.index>>8)&0xff,&cd);
 		ge2d_config->dst_planes[0].addr = cd.addr;
@@ -668,8 +671,25 @@ int vm_ge2d_pre_process(vframe_t* vf, ge2d_context_t *context,config_para_ex_t* 
 			return;
 		}
 		stretchblt_noalpha(context,src_left ,src_top ,src_width, src_height,0,0,ge2d_config->dst_para.width,ge2d_config->dst_para.height);
+	} else if (output_para.v4l2_format==V4L2_PIX_FMT_NV12) { 
+		canvas_read((output_para.index>>8)&0xff,&cd);
+		ge2d_config->dst_planes[0].addr = cd.addr;
+		ge2d_config->dst_planes[0].w = cd.width;
+		ge2d_config->dst_planes[0].h = cd.height;
+		ge2d_config->dst_para.canvas_index=(output_para.index>>8)&0xff;
+		ge2d_config->dst_para.format=GE2D_FORMAT_S8_CB|GE2D_LITTLE_ENDIAN;
+		ge2d_config->dst_para.width = output_para.width/2;
+		ge2d_config->dst_para.height = output_para.height/2;
+		if(ge2d_context_config_ex(context,ge2d_config)<0) {
+			printk("++ge2d configing error.\n");
+			return;
+		}
+		stretchblt_noalpha(context,src_left ,src_top ,src_width, src_height,0,0,ge2d_config->dst_para.width,ge2d_config->dst_para.height);
+	}
 
-		/* for cb. */
+	/* for cb of yuv420p or yuv420sp. */
+	if(output_para.v4l2_format==V4L2_PIX_FMT_YUV420||
+		output_para.v4l2_format==V4L2_PIX_FMT_NV12) {
 		canvas_read((output_para.index>>16)&0xff,&cd);
 		ge2d_config->dst_planes[0].addr = cd.addr;
 		ge2d_config->dst_planes[0].w = cd.width;
@@ -694,143 +714,92 @@ int vm_sw_post_process(int canvas , int addr)
     }
 	int poss=0,posd=0;
 	int i=0,j = 0;
+	void __iomem * buffer_y_start;
+	void __iomem * buffer_u_start;
 	void __iomem * buffer_v_start;
-	canvas_t canvas_work;   
-	canvas_t canvas_work2;
-	canvas_t canvas_work3;
+	canvas_t canvas_work_y;   
+	canvas_t canvas_work_u;
+	canvas_t canvas_work_v;
 	
-	canvas_read(canvas&0xff,&canvas_work);
-    buffer_v_start = ioremap_wc(canvas_work.addr,canvas_work.width*canvas_work.height);
+	canvas_read(canvas&0xff,&canvas_work_y);
+    buffer_y_start = ioremap_wc(canvas_work_y.addr,canvas_work_y.width*canvas_work_y.height);
     if (output_para.v4l2_format == V4L2_PIX_FMT_BGR24||
-			output_para.v4l2_format == V4L2_PIX_FMT_RGB24) {
-			
-    	for(i=0;i<output_para.height;i++) {
-    		memcpy(addr+poss,buffer_v_start+posd,output_para.bytesperline/*vb->bytesperline*/);
-    		poss+=output_para.bytesperline;
-    		posd+= canvas_work.width;		
-    	}
-	}else if (output_para.v4l2_format== V4L2_PIX_FMT_RGB565X){
-    	for(i=0;i<output_para.height;i++) {
-    		memcpy(addr+poss,buffer_v_start+posd,output_para.bytesperline/*vb->bytesperline*/);
-    		poss+=output_para.bytesperline;
-    		posd+= canvas_work.width;		
-    	}
-    } else if (output_para.v4l2_format== V4L2_PIX_FMT_NV12){
-#if 0
-		int y_size = output_para.height*output_para.width;
-		unsigned char* dst_y1_addr = addr;
-		unsigned char* dst_uv_addr = addr+y_size;
-		unsigned char* src_addr=buffer_v_start; 
-		int i,j,k,dst_y_cnt=0,dst_uv_cnt=0;
+			output_para.v4l2_format == V4L2_PIX_FMT_RGB24||
+			output_para.v4l2_format== V4L2_PIX_FMT_RGB565X) {
 		
-		for(j=0;j<output_para.height;j+=2) { 
-			/* for line 2*n. */ 
-			for(i=0,k=0;i<output_para.width;i+=4) {
-				/* for Y channel. */
-				dst_y1_addr[dst_y_cnt++]  = src_addr[k+7];
-				dst_y1_addr[dst_y_cnt++]  = src_addr[k+5];
-				dst_y1_addr[dst_y_cnt++]  = src_addr[k+3];    
-				dst_y1_addr[dst_y_cnt++]  = src_addr[k+1];
-				
-				/* for UV Channel. */
-				dst_uv_addr[dst_uv_cnt++] = src_addr[k+6]>>1;
-				dst_uv_addr[dst_uv_cnt++] = src_addr[k+4]>>1;
-				dst_uv_addr[dst_uv_cnt++] = src_addr[k+2]>>1;
-				dst_uv_addr[dst_uv_cnt++] = src_addr[k+0]>>1;
-				k += 8;
-			}			
-			dst_uv_cnt-= output_para.width;
-			src_addr+= canvas_work.width;
-			
-			/* for line 2*n+1. */
-			for(i=0,k=0;i<output_para.width;i+=4) {  
-				/* for Y channel. */
-				dst_y1_addr[dst_y_cnt++]  = src_addr[k+7];
-				dst_y1_addr[dst_y_cnt++]  = src_addr[k+5];
-				dst_y1_addr[dst_y_cnt++]  = src_addr[k+3];
-				dst_y1_addr[dst_y_cnt++]  = src_addr[k+1];
-				
-				/* for UV Channel. */
-				dst_uv_addr[dst_uv_cnt++] += src_addr[k+6]>>1;
-				dst_uv_addr[dst_uv_cnt++] += src_addr[k+4]>>1;
-				dst_uv_addr[dst_uv_cnt++] += src_addr[k+2]>>1;
-				dst_uv_addr[dst_uv_cnt++] += src_addr[k+0]>>1;
-				k += 8;
-			}
-			src_addr+= canvas_work.width;
-		}
-#else
-		poss = posd = 0 ;
-		//printk("==%d==%d==\n",output_para.width,canvas_work.width);
-		for(i=0;i<output_para.height;i++) { /* copy y */
-    		memcpy(addr+poss,buffer_v_start+posd,output_para.width);
-    		poss+=output_para.width;
-    		posd+= canvas_work.width;		
+    	for(i=0;i<output_para.height;i++) {
+    		memcpy(addr+poss,buffer_y_start+posd,output_para.bytesperline);
+    		poss+=output_para.bytesperline;
+    		posd+= canvas_work_y.width;		
     	}
-    	
-		void __iomem * buffer_v_start2;
-		void __iomem * buffer_u_start2;
-    	int uv_width = output_para.width>>1;
+    } else if (output_para.v4l2_format== V4L2_PIX_FMT_NV12) {
     	int uv_height = output_para.height>>1;
+    	canvas_read((canvas>>8)&0xff,&canvas_work_u);
+    	buffer_u_start = ioremap_wc(canvas_work_u.addr,canvas_work_u.width*canvas_work_u.height);
+    	int pos_u_s=0,pos_u_d=0;
+		char* u_addr_d = addr+output_para.width* output_para.height;
+		
+		poss = posd = 0 ;
+		for(i=0;i<output_para.height;i+=2) { /* copy y */
+    		memcpy(addr+poss,buffer_y_start+posd,output_para.width);
+    		poss+=output_para.width;
+    		posd+= canvas_work_y.width;	
+    		memcpy(addr+poss,buffer_y_start+posd,output_para.width);
+    		poss+=output_para.width;
+    		posd+= canvas_work_y.width;
+    	}	
 
     	posd=0;
-    	canvas_read((canvas>>8)&0xff,&canvas_work2);
-    	buffer_u_start2 = ioremap_wc(canvas_work2.addr,canvas_work2.width*canvas_work2.height);
-    	canvas_read((canvas>>16)&0xff,&canvas_work3);
-    	buffer_v_start2 = ioremap_wc(canvas_work3.addr,canvas_work3.width*canvas_work3.height);
-        
+    	canvas_read((canvas>>16)&0xff,&canvas_work_v);
+    	buffer_v_start = ioremap_wc(canvas_work_v.addr,canvas_work_v.width*canvas_work_v.height);
+        extern void interleave_uv(unsigned char* pU, unsigned char* pV, unsigned char *pUV, unsigned int size_u_or_v);
         int uv_cnt;
-        char* dst_buff=(unsigned char*)(addr+poss);
-        char* src_u_buff= buffer_u_start2;
-        char* src_v_buff= buffer_v_start2;
-   		for(i=0;i<uv_height;i++) { /* copy uv */
-            uv_cnt= posd;
-			for(j=0;j<uv_width;j++) { 
-				*(dst_buff++) = src_u_buff[uv_cnt];
-				*(dst_buff++) = src_v_buff[uv_cnt++];
-			}
-    		posd+= canvas_work2.width;		
-    	}
-    	iounmap(buffer_v_start2);
-    	iounmap(buffer_u_start2);
-#endif
+    	int v_width = output_para.width>>1;
+        char* dst_buff= (char*)addr+output_para.width* output_para.height;
+        char* src_buff = (char*)buffer_u_start;
+        char* src2_buff= (char*)buffer_v_start;
+	for(i = 0 ;i < output_para.height/2; i++){
+		interleave_uv(src_buff, src2_buff, dst_buff, output_para.width/2);
+		src_buff +=  canvas_work_u.width;
+		src2_buff += 	canvas_work_v.width;	
+		dst_buff += output_para.width;
+	}
+	
+    	iounmap(buffer_u_start);
+    	iounmap(buffer_v_start);
 	} else if (output_para.v4l2_format = V4L2_PIX_FMT_YUV420) {
-		void __iomem * buffer_v_start2;
     	int uv_width = output_para.width>>1;
     	int uv_height = output_para.height>>1;
     	char* cur_dst;
     	char* cur_src;
     	
 		posd=0;
-		for(i=0;i<output_para.height;i++) { /* copy y */
+		for(i=output_para.height;i>0;i--) { /* copy y */
     		memcpy(addr+poss,buffer_v_start+posd,output_para.width);
     		poss+=output_para.width;
-    		posd+= canvas_work.width;		
+    		posd+= canvas_work_y.width;		
     	}
     	
     	posd=0;
-    	canvas_read((canvas>>8)&0xff,&canvas_work2);
-    	buffer_v_start2 = ioremap_wc(canvas_work2.addr,canvas_work2.width*canvas_work2.height);
-   		for(i=0;i<uv_height;i++) { /* copy y */
-    		memcpy(addr+poss,buffer_v_start2+posd,uv_width);
+    	canvas_read((canvas>>8)&0xff,&canvas_work_u);
+    	buffer_u_start = ioremap_wc(canvas_work_u.addr,canvas_work_u.width*canvas_work_u.height);
+    	canvas_read((canvas>>16)&0xff,&canvas_work_v);
+    	buffer_v_start = ioremap_wc(canvas_work_v.addr,canvas_work_v.width*canvas_work_v.height);
+   		for(i=uv_height;i>0;i--) { /* copy y */
+    		memcpy(addr+poss,buffer_u_start+posd,uv_width);
     		poss+=uv_width;
-    		posd+= canvas_work2.width;		
+    		posd+= canvas_work_u.width;		
     	}
-    	iounmap(buffer_v_start2);
-    	
     	posd=0;
-    	canvas_read((canvas>>16)&0xff,&canvas_work2);
-    	buffer_v_start2 = ioremap_wc(canvas_work2.addr,canvas_work2.width*canvas_work2.height);
-   		for(i=0;i<uv_height;i++) { /* copy y */
-    		memcpy(addr+poss,buffer_v_start2+posd,uv_width);
+   		for(i=uv_height;i>0;i--) { /* copy y */
+    		memcpy(addr+poss,buffer_v_start+posd,uv_width);
     		poss+=uv_width;
-    		posd+= canvas_work2.width;		
+    		posd+= canvas_work_v.width;		
     	}
-    	iounmap(buffer_v_start2);
-    	
+    	iounmap(buffer_u_start);
+    	iounmap(buffer_v_start);
 	}
-	iounmap(buffer_v_start);
-//	printk("done\n");    
+	iounmap(buffer_y_start);   
     return 0;
 }
 
@@ -853,7 +822,7 @@ static int vm_task(void *data) {
         down_interruptible(&vb_start_sema);		
         timer_count = 0;
        
-/*wait for frame from 656 provider until 500ms runs out*/        
+		/*wait for frame from 656 provider until 500ms runs out*/        
         while(((vf = local_vf_peek()) == NULL)&&(timer_count < 100)){
             timer_count ++;
             msleep(5);
@@ -861,17 +830,18 @@ static int vm_task(void *data) {
         vf = local_vf_get();
         if(vf){
             src_canvas = vf->canvas0Addr ;
-/*here we need translate 422 format to rgb format ,etc*/            
+            
+			/*here we need translate 422 format to rgb format ,etc*/            
             if(is_need_ge2d_pre_process()){
                 src_canvas = vm_ge2d_pre_process(vf,context,&ge2d_config);
             }  
             local_vf_put(vf);         
-/*here we need copy the translated data to vmalloc cache*/  
+			
+			/*here we need copy the translated data to vmalloc cache*/  
             if(is_need_sw_post_process()){          
                 vm_sw_post_process(src_canvas ,output_para.vaddr);
             }
-        }  
-//        printk("vm task process finish\n");
+        }
         up(&vb_done_sema); 
     }
     
@@ -930,12 +900,16 @@ int vm_buffer_init(void)
                           CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_LINEAR);
             canvas_config(VM_DEPTH_8_CANVAS_Y+ i,
                           buf_start + i*decbuf_size/2,
+                          canvas_width, canvas_height,
+                           CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_LINEAR);
+/*
+                         
+            canvas_config(VM_DEPTH_8_CANVAS_UV + i,
+                          buf_start + (i+1)*decbuf_size/2,
+                          canvas_width, canvas_height,
                           canvas_width, canvas_height/2,
-                          CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_LINEAR); //CANVAS_BLKMODE_32X32
-            //canvas_config(VM_DEPTH_8_CANVAS_UV + i,
-                          //buf_start + (i+1)*decbuf_size/2,
-                          //canvas_width, canvas_height,
-                          //CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_LINEAR);
+                          CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_LINEAR);
+*/                          
             canvas_config(VM_DEPTH_8_CANVAS_U + i,
                           buf_start + (i+1)*decbuf_size/2,
                           canvas_width/2, canvas_height/2,
@@ -1011,143 +985,8 @@ void set_vm_status(int flag) {
     }
 }
 
-/***********************************************************************
-*
-* class property info.
-*
-************************************************************************/
-
-#define    	VM_CLASS_NAME   				"vm"
-
-static ssize_t show_vm_info(struct class *cla,struct class_attribute *attr,char *buf)
-{
-    char *bstart,*vstart;
-    unsigned int bsize;
-    get_vm_buf_info(&bstart,&bsize,&vstart);
-    return snprintf(buf,80,"buffer:\n start:%x.\tsize:%d\n",(unsigned int)bstart,bsize/(1024*1024));
-}
-
-static ssize_t set_test(struct device *dev,
-					struct device_attribute *attr,
-					const char *buf, size_t count)
-{
-	//struct display_device *dsp = dev_get_drvdata(dev);
-	ssize_t ret = -EINVAL, size;
-	int contrast;
-	char *endp;
-
-	contrast = simple_strtoul(buf, &endp, 0);
-	size = endp - buf;
-
-	return ret;
-}
-
-
-static char attr_dat0[3]="-1";
-static ssize_t read_attr0(struct class *cla,struct class_attribute *attr,char *buf)
-{
-    return snprintf(buf,3,"%s",attr_dat0);
-}
-
-static ssize_t write_attr0(struct device *dev,
-					struct device_attribute *attr,
-					const char *buf, size_t count)
-{
-	//struct display_device *dsp = dev_get_drvdata(dev);
-	ssize_t ret = -EINVAL;
-	if(count <= 2)
-	{
-		int i = 0;
-		if(buf[0] == '-')
-		{
-			attr_dat0[0] = '-';
-			i = 1;
-			ret++;
-		}
-		if( (buf[i]>='0') && (buf[i]<='9'))
-		{
-				attr_dat0[i] = buf[i];
-				attr_dat0[i+1] = '\0';
-				ret++;
-		}
-		else
-		{
-			attr_dat0[0]='-';attr_dat0[1]='1';//default -1;
-			ret = -EINVAL;
-		}
-	}
-
-	return ret;
-}
-
-static char attr_dat1[3]="-1";
-static ssize_t read_attr1(struct class *cla,struct class_attribute *attr,char *buf)
-{
-    return snprintf(buf,3,"%s",attr_dat1);
-}
-
-static ssize_t write_attr1(struct device *dev,
-					struct device_attribute *attr,
-					const char *buf, size_t count)
-{
-	//struct display_device *dsp = dev_get_drvdata(dev);
-	ssize_t ret = -EINVAL;
-	if(count <= 2)
-	{
-		int i = 0;
-		if(buf[0] == '-')
-		{
-			attr_dat1[0] = '-';
-			i = 1;
-			ret++;
-		}
-		if( (buf[i]>='0') && (buf[i]<='9'))
-		{
-				attr_dat1[i] = buf[i];
-				attr_dat1[i+1] = '\0';
-				ret++;
-		}
-		else
-		{
-			attr_dat1[0]='-';attr_dat1[1]='1';//default -1;
-			ret = -EINVAL;
-		}
-	}
-
-	return ret;
-}
-
-static struct class_attribute vm_class_attrs[] = {
-    __ATTR(info,
-           S_IRUGO | S_IWUSR,
-           show_vm_info,
-           NULL), 
-    __ATTR(attr0,
-           S_IRUGO | S_IWUSR,
-           read_attr0,
-           write_attr0),
-    __ATTR(attr1,
-           S_IRUGO | S_IWUSR,
-           read_attr1,
-           write_attr1),
-    __ATTR_NULL
-};
-
-static struct class vm_class = {
-    .name = VM_CLASS_NAME,
-    .class_attrs = vm_class_attrs,
-};
-
-struct class* init_vm_cls() {
-    int  ret=0;
-    ret = class_register(&vm_class);
-	if(ret<0 )
-	{
-		amlog_level(LOG_LEVEL_HIGH,"error create vm class\r\n");
-		return NULL;
-	}
-    return &vm_class;
-}
+/*class property info.*/
+#include "vmcls.h"
 
 /***********************************************************************
 *

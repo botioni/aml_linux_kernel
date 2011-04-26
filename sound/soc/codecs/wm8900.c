@@ -1162,8 +1162,14 @@ static __devinit int wm8900_i2c_probe(struct i2c_client *i2c,
 	reg = snd_soc_read(codec, WM8900_REG_ID);
 	if (reg != 0x8900) {
 		dev_err(&i2c->dev, "Device is not a WM8900 - ID %x\n", reg);
+		//if fail, try to set addr to 0x1b and retry
+		i2c->addr = 0x1b;
+	    reg = snd_soc_read(codec, WM8900_REG_ID);
+    	if (reg != 0x8900) {
+    		dev_err(&i2c->dev, "Device is not a WM8900 - ID %x\n", reg);   	    	
 		ret = -ENODEV;
 		goto err;
+    	}
 	}
 
 	/* Read back from the chip */

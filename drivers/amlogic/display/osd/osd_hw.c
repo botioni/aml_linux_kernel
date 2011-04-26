@@ -98,7 +98,7 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
 #endif
 
 #ifdef FIQ_VSYNC
-irqreturn_t osd_fiq_isr(void)
+static void osd_fiq_isr(void)
 #else
 static irqreturn_t vsync_isr(int irq, void *dev_id)
 #endif
@@ -138,6 +138,7 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
 		WRITE_MPEG_REG(VIU_OSD1_BLK0_CFG_W0, fb0_cfg_w0);
 		WRITE_MPEG_REG(VIU_OSD1_BLK0_CFG_W0+ REG_OFFSET, fb1_cfg_w0);
 	}
+
 	//go through update list
 	if(!list_empty(&update_list))
 	{
@@ -148,9 +149,6 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
 	}
 	osd_update_3d_mode(osd_hw.mode_3d[OSD1].enable,osd_hw.mode_3d[OSD2].enable);
 	
-	if (READ_MPEG_REG(VENC_ENCI_LINE) >= 12)
-		READ_MPEG_REG(VENC_ENCI_LINE);
-
 	if (!vsync_hit)
 	{
 #ifdef FIQ_VSYNC
@@ -160,12 +158,10 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
 #endif
 	}
 
+#ifndef FIQ_VSYNC
 	return  IRQ_HANDLED ;
-}
-
-#ifdef FIQ_VSYNC
-EXPORT_SYMBOL(osd_fiq_isr);
 #endif
+}
 
 void osd_wait_vsync_hw(void)
 {
@@ -383,9 +379,22 @@ void osd_setpal_hw(unsigned regno,
         WRITE_MPEG_REG(VIU_OSD1_COLOR+REG_OFFSET*index, pal);
     }
 }
+u32 osd_get_osd_order_hw(u32 index)
+{
+	return  osd_hw.osd_order&0x3;
+}
+void osd_change_osd_order_hw(u32 index,u32 order)
+{
+	if((order != OSD_ORDER_01)&&(order != OSD_ORDER_10)) 
+	return ;
+	osd_hw.osd_order=order;
+	add_to_update_list(index,OSD_CHANGE_ORDER);
+	osd_wait_vsync_hw();
+}
+	
 void osd_free_scale_enable_hw(u32 index,u32 enable)
 {
-	static  dispdata_t	save_disp_data;
+	static  dispdata_t	save_disp_data={0,0,0,0};
 
 	amlog_level(LOG_LEVEL_HIGH,"osd%d free scale %s\r\n",index,enable?"ENABLE":"DISABLE");
 	osd_hw.free_scale_enable[index]=enable;
@@ -400,7 +409,7 @@ void osd_free_scale_enable_hw(u32 index,u32 enable)
 			vf_reg_provider(&osd_vf_provider);
 
 			memcpy(&save_disp_data,&osd_hw.dispdata[OSD1],sizeof(dispdata_t));
-			osd_hw.pandata[OSD1].x_end =osd_hw.pandata[OSD1].x_start + vf.width-1;
+			osd_hw.pandata[OSD1].x_end =osd_hw.pandata[OSD1].x_start + vf.width-1-osd_hw.dispdata[OSD1].x_start;
 			osd_hw.pandata[OSD1].y_end =osd_hw.pandata[OSD1].y_start + vf.height-1;	
 			osd_hw.dispdata[OSD1].x_end =osd_hw.dispdata[OSD1].x_start + vf.width-1;
 			osd_hw.dispdata[OSD1].y_end =osd_hw.dispdata[OSD1].y_start + vf.height-1;
@@ -408,13 +417,18 @@ void osd_free_scale_enable_hw(u32 index,u32 enable)
 		}
 		else
 		{
+			if(save_disp_data.x_end <= save_disp_data.x_start ||  
+				save_disp_data.y_end <= save_disp_data.y_start)
+			{
+				return ;
+			}
 			memcpy(&osd_hw.dispdata[OSD1],&save_disp_data,sizeof(dispdata_t));
 			add_to_update_list(OSD1,DISP_GEOMETRY);
 			vf_unreg_provider();
+				
 		}
 	}
-	if (osd_hw.enable[index])
-		osd_enable_hw(ENABLE,index);
+	osd_enable_hw(osd_hw.enable[index],index);
 
 }
 void  osd_free_scale_width_hw(u32 index,u32 width)
@@ -580,6 +594,7 @@ static inline  void  osd1_update_enable(void)
 			CLEAR_MPEG_REG_MASK(VPP_MISC,VPP_OSD1_POSTBLEND);
 			SET_MPEG_REG_MASK(VPP_MISC,VPP_OSD1_PREBLEND);
 			SET_MPEG_REG_MASK(VPP_MISC,VPP_VD1_POSTBLEND);
+			SET_MPEG_REG_MASK(VPP_MISC,VPP_PREBLEND_EN);
 		}
 		else
 		{
@@ -689,7 +704,37 @@ static inline  void  osd2_update_gbl_alpha(void)
 	data32|=osd_hw.gbl_alpha[OSD2] <<12;
 	WRITE_MPEG_REG(VIU_OSD2_CTRL_STAT,data32);
 	remove_from_update_list(OSD2,OSD_GBL_ALPHA);
-}	
+}
+static inline  void  osd2_update_order(void)
+{
+	switch(osd_hw.osd_order)
+	{
+		case  OSD_ORDER_01:
+		CLEAR_MPEG_REG_MASK(VPP_MISC,VPP_POST_FG_OSD2|VPP_PRE_FG_OSD2);
+		break;
+		case  OSD_ORDER_10:
+		SET_MPEG_REG_MASK(VPP_MISC,VPP_POST_FG_OSD2|VPP_PRE_FG_OSD2);	
+		break;
+		default:
+		break;
+	}
+	remove_from_update_list(OSD2,OSD_CHANGE_ORDER);
+}
+static inline  void  osd1_update_order(void)
+{
+	switch(osd_hw.osd_order)
+	{
+		case  OSD_ORDER_01:
+		CLEAR_MPEG_REG_MASK(VPP_MISC,VPP_POST_FG_OSD2|VPP_PRE_FG_OSD2);
+		break;
+		case  OSD_ORDER_10:
+		SET_MPEG_REG_MASK(VPP_MISC,VPP_POST_FG_OSD2|VPP_PRE_FG_OSD2);	
+		break;
+		default:
+		break;
+	}
+	remove_from_update_list(OSD1,OSD_CHANGE_ORDER);
+}
 static inline  void  osd1_update_disp_geometry(void)
 {
 	u32 data32;
@@ -788,8 +833,10 @@ void osd_init_hw(void)
 	CLEAR_MPEG_REG_MASK(VPP_MISC, VPP_PREBLEND_EN);  
 #if defined(CONFIG_FB_OSD2_CURSOR)    
 	SET_MPEG_REG_MASK(VPP_MISC, VPP_POST_FG_OSD2|VPP_PRE_FG_OSD2);
+	osd_hw.osd_order=OSD_ORDER_10;
 #else   
 	CLEAR_MPEG_REG_MASK(VPP_MISC,VPP_POST_FG_OSD2|VPP_PRE_FG_OSD2);
+	osd_hw.osd_order=OSD_ORDER_01;
 #endif	
 	CLEAR_MPEG_REG_MASK(VPP_MISC,VPP_OSD1_POSTBLEND|VPP_OSD2_POSTBLEND );
 
@@ -824,6 +871,10 @@ void osd_init_hw(void)
 	{
 		amlog_level(LOG_LEVEL_HIGH,"can't request irq for vsync\r\n");
 	}
+
+#ifdef FIQ_VSYNC
+    request_fiq(INT_VIU_VSYNC, &osd_fiq_isr);
+#endif
 
 	return ;
 }
@@ -891,113 +942,21 @@ void osd_cursor_hw(s16 x, s16 y, s16 xstart, s16 ystart, u32 osd_w, u32 osd_h, i
 
 void  osd_suspend_hw(void)
 {
-	u32 i,j;
-	u32 data;
-	u32  *preg;
-	
-#ifndef FIQ_VSYNC
-	//free irq ,we can not disable it ,maybe video still use it .
-	free_irq(INT_VIU_VSYNC,(void *)osd_setup);
-#else
-    	unregister_fiq_bridge_handle(&osd_hw.fiq_handle_item);
-#endif
-	//save all status
-	osd_hw.reg_status=(u32*)kmalloc(sizeof(u32)*RESTORE_MEMORY_SIZE,GFP_KERNEL);
-	if(IS_ERR (osd_hw.reg_status))
-	{
-		amlog_level(LOG_LEVEL_HIGH,"can't alloc restore memory\r\n");
-		return ;
-	}
-	preg=osd_hw.reg_status;
-	for(i=0;i<ARRAY_SIZE(reg_index);i++)
-	{
-		switch(reg_index[i])
-		{
-			case VPP_MISC:
-			data=READ_MPEG_REG(VPP_MISC);
-			*preg=data&OSD_RELATIVE_BITS; //0x333f0 is osd0&osd1 relative bits
-			WRITE_MPEG_REG(VPP_MISC,data&(~OSD_RELATIVE_BITS));
-			break;
-			case VIU_OSD1_BLK0_CFG_W4:
-			data=READ_MPEG_REG(VIU_OSD1_BLK0_CFG_W4);
-			*preg=data;
-			data=READ_MPEG_REG(VIU_OSD2_BLK0_CFG_W4);
-			*(preg+OSD1_OSD2_SOTRE_OFFSET)=data;
-			break;
-			case VIU_OSD1_COLOR_ADDR: //resotre palette value
-			for(j=0;j<256;j++)
-			{
-				WRITE_MPEG_REG(VIU_OSD1_COLOR_ADDR, 1<<8|j);
-				*preg=READ_MPEG_REG(VIU_OSD1_COLOR);
-				WRITE_MPEG_REG(VIU_OSD1_COLOR_ADDR+REG_OFFSET, 1<<8|j);
-				*(preg+OSD1_OSD2_SOTRE_OFFSET)=READ_MPEG_REG(VIU_OSD1_COLOR+REG_OFFSET);
-				preg++;
-			}
-			break;
-			default :
-			data=READ_MPEG_REG(reg_index[i]);
-			*preg=data;
-			break;
-		}
-		preg++;
-	}
-    printk("osd_suspend\n");
-	//disable osd relative clock
+	osd_hw.reg_status_save = READ_MPEG_REG(VPP_MISC) & OSD_RELATIVE_BITS;
+
+	CLEAR_MPEG_REG_MASK(VPP_MISC, OSD_RELATIVE_BITS);
+
+    printk("osd_suspended\n");
+
 	return ;
 	
 }
 void osd_resume_hw(void)
 {
-	u32 i,j;
-	u32  *preg;
+    SET_MPEG_REG_MASK(VPP_MISC, osd_hw.reg_status_save);
 
-    printk("osd_resume\n");
-	// enable osd relative clock	
-	//restore status
-	if(osd_hw.reg_status)
-	{
-		preg=osd_hw.reg_status;
-		for(i=0;i<ARRAY_SIZE(reg_index);i++)
-		{
-			switch(reg_index[i])
-			{
-	       			case VPP_MISC:
-	       			SET_MPEG_REG_MASK(VPP_MISC,*preg);
-				break;
-				case VIU_OSD1_BLK0_CFG_W4:
-				WRITE_MPEG_REG(VIU_OSD1_BLK0_CFG_W4,*preg);
-				WRITE_MPEG_REG(VIU_OSD2_BLK0_CFG_W4,*(preg+OSD1_OSD2_SOTRE_OFFSET));
-				break;
-				case VIU_OSD1_COLOR_ADDR: //resotre palette value
-				for(j=0;j<256;j++)
-				{
-					WRITE_MPEG_REG(VIU_OSD1_COLOR_ADDR, j);
-					WRITE_MPEG_REG(VIU_OSD1_COLOR,*preg);
-					WRITE_MPEG_REG(VIU_OSD1_COLOR_ADDR+REG_OFFSET, j);
-					WRITE_MPEG_REG(VIU_OSD1_COLOR+REG_OFFSET,*(preg+OSD1_OSD2_SOTRE_OFFSET));
-					preg++;
-				}
-				break;
-				default :
-				WRITE_MPEG_REG(reg_index[i],*preg);
-				break;
-			}
-			preg++;
-		}
-		kfree(osd_hw.reg_status);
-		// osd relative clock	
-	}
+    printk("osd_resumed\n");
 	
-#ifdef FIQ_VSYNC
-	if(register_fiq_bridge_handle(&osd_hw.fiq_handle_item))	
-#else
-	if ( request_irq(INT_VIU_VSYNC, &vsync_isr,
-		IRQF_SHARED , "am_osd_vsync", osd_setup))
-#endif
-	{
-		amlog_level(LOG_LEVEL_HIGH,"can't request irq when osd resume\r\n");
-	}
-
 	return ;
 }
 

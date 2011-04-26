@@ -170,10 +170,6 @@ static void power_on_lcd(void)
     //LCD_3.3V: LCD_VCC_EN -> EIO_OD0: 0   
 #ifdef CONFIG_SN7325
         printk("power on 7325 power_on_lcd\n");
-        configIO(1, 0);
-        setIO_level(1, 1, 1);//PP1 for touch
-#endif
-#ifdef CONFIG_SN7325
         configIO(0, 0);
         setIO_level(0, 0, 0);//OD0
 #endif
@@ -207,7 +203,7 @@ static void power_off_lcd(void)
     msleep(20);
     //DATA: LCD_DISP_ON -> EIO_OD5: 0
 #ifdef CONFIG_SN7325
-printk("power on 7325 power_off_lcd\n");
+printk("power off 7325 power_off_lcd\n");
         configIO(1, 0);
         setIO_level(1, 0, 6);//OD5-->PP6
 #endif
@@ -229,7 +225,6 @@ printk("power on 7325 power_off_lcd\n");
         configIO(0, 0);
         setIO_level(0, 1, 0);//OD0
 #endif
-    
 }
 
 static void set_tcon_pinmux(void)

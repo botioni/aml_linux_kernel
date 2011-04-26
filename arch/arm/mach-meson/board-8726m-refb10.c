@@ -714,21 +714,18 @@ int wm8900_is_hp_pluged(void)
                                 (0 << 10)   |       // test
                                 (7 << 7)    |       // CS0 REF, Voltage FeedBack: about 0.505V
                                 (7 << 4)    |       // CS1 REF, Current FeedBack: about 0.505V
-                                (0 << 0));           // DIMCTL Analog dimmer
+                                READ_CBUS_REG(LED_PWM_REG0)&0x0f);           // DIMCTL Analog dimmer
     cs_no = READ_CBUS_REG(LED_PWM_REG3);
         if(cs_no &(1<<14))
           level |= (1<<0);
     
-    // temp patch to mute speaker when hdmi output
-    if(level == 0)
-    	if(get_display_mode() != 0)	
-    			return 1;
-    			
-    //printk("level = %d,board_ver = %d\n",level,board_ver);
+     // temp patch to mute speaker when hdmi output
+    if(level == 1)
+     if(get_display_mode() != 0) {
+    	return 1;
+     	}
+
     return (level == 1)?(0):(1); //return 1: hp pluged, 0: hp unpluged.
-    /*if(cs_no &(1<<15))
-      level |= (1<<0);
-    return (level == 0)?(1):(0); //return 1: hp pluged, 0: hp unpluged.*/
 }
 
 static struct wm8900_platform_data wm8900_pdata = {
@@ -1080,7 +1077,7 @@ static gpio_data_t gpio_data[MAX_GPIO] = {
 	{"GPIOD_18 -- UART_CTS_N",   GPIOD_bank_bit2_24(18),    GPIOD_bit_bit2_24(18),  GPIO_OUTPUT_MODE, 1, 1},
 	{"GPIOD_20 -- LCD_POWER_EN", GPIOD_bank_bit2_24(20),    GPIOD_bit_bit2_24(20),  GPIO_OUTPUT_MODE, 1, 1},
 	{"GPIOD_21 -- UART_TX",      GPIOD_bank_bit2_24(21),    GPIOD_bit_bit2_24(21),  GPIO_OUTPUT_MODE, 1, 1},
-	{"GPIOD_23 -- CAP_TAP_EN",   GPIOD_bank_bit2_24(23),    GPIOD_bit_bit2_24(23),  GPIO_OUTPUT_MODE, 1, 1},
+	//{"GPIOD_23 -- CAP_TAP_EN",   GPIOD_bank_bit2_24(23),    GPIOD_bit_bit2_24(23),  GPIO_OUTPUT_MODE, 1, 1},
   // 5
 	{"GPIOE_4 -- NAND_nCS1",	 GPIOE_bank_bit0_15(4),	    GPIOE_bit_bit0_15(4),	GPIO_OUTPUT_MODE, 1, 1},
 	{"GPIOE_5 -- NAND_nCS2",	 GPIOE_bank_bit0_15(5),	    GPIOE_bit_bit0_15(5),	GPIO_OUTPUT_MODE, 1, 1},
@@ -1088,7 +1085,7 @@ static gpio_data_t gpio_data[MAX_GPIO] = {
 	{"GPIOE_17 -- nand_ncs4",	 GPIOE_bank_bit16_21(17),	GPIOE_bit_bit16_21(17),	GPIO_OUTPUT_MODE, 1, 1},
 	{"GPIOE_18 -- Linux_TX",	 GPIOE_bank_bit16_21(18),	GPIOE_bit_bit16_21(18), GPIO_OUTPUT_MODE, 1, 1},
 	//1
-	//{"TEST_N -- I2S_DOUT",		 GPIOJTAG_bank_bit(16),		GPIOJTAG_bit_bit16(16),	GPIO_OUTPUT_MODE, 1, 1},
+	{"TEST_N -- I2S_DOUT",		 GPIOJTAG_bank_bit(16),		GPIOJTAG_bit_bit16(16),	GPIO_OUTPUT_MODE, 1, 1},
 
 };	
 
@@ -1176,7 +1173,13 @@ static void set_vccx2(int power_on)
         }
         restore_pinmux();
         set_gpio_val(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), 1);
-        set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);        
+        set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE); 
+        //camera power on
+        set_gpio_val(GPIOD_bank_bit2_24(5), GPIOD_bit_bit2_24(5), 0); 
+        set_gpio_mode(GPIOD_bank_bit2_24(5), GPIOD_bit_bit2_24(5), GPIO_OUTPUT_MODE); 
+        //touch enable
+        set_gpio_val(GPIOD_bank_bit2_24(23), GPIOD_bit_bit2_24(23), 0); 
+        set_gpio_mode(GPIOD_bank_bit2_24(23), GPIOD_bit_bit2_24(23), GPIO_OUTPUT_MODE);      
         //set clk for wifi
         SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, (1<<18));
         CLEAR_CBUS_REG_MASK(PREG_EGPIO_EN_N, (1<<4));	              
@@ -1186,17 +1189,21 @@ static void set_vccx2(int power_on)
         
         set_gpio_val(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), 0);
         set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);   
-        
-        for (i=0;i<MAX_GPIO;i++){
-        	save_gpio(i);
-        }   
-        save_pinmux();  
-        set_gpio_val(GPIOD_bank_bit2_24(5), GPIOD_bit_bit2_24(5), 1); //camera power down
+        //camera power down
+        set_gpio_val(GPIOD_bank_bit2_24(5), GPIOD_bit_bit2_24(5), 1); 
         set_gpio_mode(GPIOD_bank_bit2_24(5), GPIOD_bit_bit2_24(5), GPIO_OUTPUT_MODE);
-        
+        //touch disable
+	      set_gpio_val(GPIOD_bank_bit2_24(23), GPIOD_bit_bit2_24(23), 1); 
+        set_gpio_mode(GPIOD_bank_bit2_24(23), GPIOD_bit_bit2_24(23), GPIO_OUTPUT_MODE);
         //disable wifi clk
         CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, (1<<18));
-        SET_CBUS_REG_MASK(PREG_EGPIO_EN_N, (1<<4));	        
+        SET_CBUS_REG_MASK(PREG_EGPIO_EN_N, (1<<4));
+        
+        
+        save_pinmux();  
+        for (i=0;i<MAX_GPIO;i++){
+        	save_gpio(i);
+        }   	        
     }
 }
 static struct meson_pm_config aml_pm_pdata = {
@@ -1207,7 +1214,7 @@ static struct meson_pm_config aml_pm_pdata = {
     .ddr_clk = 0x00110820,
     .sleepcount = 128,
     .set_vccx2 = set_vccx2,
-    .core_voltage_adjust = 10,
+    .core_voltage_adjust = 6,
 };
 
 static struct platform_device aml_pm_device = {
@@ -1254,7 +1261,7 @@ static struct aml_i2c_platform aml_i2c_plat = {
     .wait_xfer_interval = 5,
     .master_no      = AML_I2C_MASTER_B,
     .use_pio            = 0,
-    .master_i2c_speed   = AML_I2C_SPPED_100K,
+    .master_i2c_speed   = AML_I2C_SPPED_300K,
 
     .master_b_pinmux = {
         .scl_reg    = MESON_I2C_MASTER_B_GPIOB_0_REG,
@@ -1356,6 +1363,9 @@ static void set_bat_off(void)
 
     //VCCx2 power down
     //set_vccx2(0);
+    set_gpio_val(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), 0);
+    set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);        
+
     if(is_ac_connected()){ //AC in after power off press
         kernel_restart("reboot");
     }
@@ -2201,6 +2211,9 @@ static void __init power_hold(void)
     
     //VCCx2 power up
     //set_vccx2(1);
+    set_gpio_val(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), 1);
+    set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);        
+
 }
 
 static __init void m1_init_machine(void)

@@ -329,7 +329,8 @@ void tsync_avevent(avevent_t event, u32 param)
 		timestamp_apts_set(param);
         amlog_level(LOG_LEVEL_ATTENTION, "audio discontinue, reset apts, 0x%x\n", param);
 
-		
+		pts_discontinue = 1;
+		 
         if (!tsync_enable) {
             break;
         }
@@ -337,8 +338,6 @@ void tsync_avevent(avevent_t event, u32 param)
         t = timestamp_pcrscr_get();
 
         amlog_level(LOG_LEVEL_ATTENTION, "AUDIO_TSTAMP_DISCONTINUITY, 0x%x, 0x%x\n", t, param);
-
-        pts_discontinue = 1;
 
         if (abs(param - t) > AV_DISCONTINUE_THREDHOLD) {
             /* switch tsync mode to free run mode,
@@ -511,7 +510,7 @@ void tsync_set_enable(int enable)
 EXPORT_SYMBOL(tsync_set_enable);
 
 int tsync_get_syncdiscont(void)
-{
+{	
     return pts_discontinue;
 }
 EXPORT_SYMBOL(tsync_get_syncdiscont);
@@ -521,6 +520,44 @@ void tsync_set_syncdiscont(int syncdiscont)
     pts_discontinue = syncdiscont;
 }
 EXPORT_SYMBOL(tsync_set_syncdiscont);
+
+int tsync_set_apts(unsigned pts)
+{
+    unsigned  t;
+    //ssize_t r;
+
+    timestamp_apts_set(pts);
+
+    if (tsync_abreak) {
+        tsync_abreak = 0;
+    }
+
+    if (!tsync_enable) {
+        return 0;
+    }
+
+    t = timestamp_pcrscr_get();
+    if (tsync_mode == TSYNC_MODE_AMASTER) {
+        if (abs(pts - t) > tsync_av_thresh) {
+            tsync_mode = TSYNC_MODE_VMASTER;
+            amlog_level(LOG_LEVEL_INFO, "apts 0x%x shift scr 0x%x too much, switch to TSYNC_MODE_VMASTER\n",
+                        pts, t);
+        } else {
+            timestamp_pcrscr_set(pts);
+            amlog_level(LOG_LEVEL_INFO, "apts set to scr 0x%x->0x%x\n", t, pts);
+        }
+    } else {
+        if (abs(pts - t) <= tsync_av_thresh) {
+            tsync_mode = TSYNC_MODE_AMASTER;
+            amlog_level(LOG_LEVEL_INFO, "switch to TSYNC_MODE_AMASTER\n");
+
+            timestamp_pcrscr_set(pts);
+        }
+    }
+
+    return 0;
+}
+EXPORT_SYMBOL(tsync_set_apts);
 
 /*********************************************************/
 

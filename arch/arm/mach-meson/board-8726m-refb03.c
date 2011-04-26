@@ -1201,7 +1201,7 @@ static struct aml_power_pdata power_pdata = {
 	.bat_charge_value_table = bat_charge_value_table,
 	.bat_level_table = bat_level_table,
 	.bat_table_len = 37,		
-	.is_support_usb_charging = 0;
+	.is_support_usb_charging = 0,
 	//.supplied_to = supplicants,
 	//.num_supplicants = ARRAY_SIZE(supplicants),
 };
@@ -1937,6 +1937,7 @@ static void __init device_pinmux_init(void )
 	aml_i2c_init();
 	set_audio_pinmux(AUDIO_OUT_TEST_N);
     set_audio_pinmux(AUDIO_IN_JTAG);
+    set_audio_pinmux(SPDIF_OUT_GPIOA);
 }
 
 static void __init  device_clk_setting(void)
