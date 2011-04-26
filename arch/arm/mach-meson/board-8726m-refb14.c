@@ -811,6 +811,22 @@ static struct itk_platform_data itk_pdata = {
 
 static int ts_init_irq(void);
 static int ts_get_irq_level(void);
+static void ts_power_on (void)
+{
+#ifdef CONFIG_SN7325
+	configIO(1, 0);
+	setIO_level(1, 1, 1);//PP1
+#endif
+}
+
+static void ts_power_off (void)
+{
+#ifdef CONFIG_SN7325
+	configIO(1, 0);
+	setIO_level(1, 0, 1);//PP1
+#endif
+}
+
 static struct ts_platform_data ts_pdata = {
     .mode = TS_MODE_INT_LOW,
     .irq = INT_GPIO_0,
@@ -830,6 +846,8 @@ static struct ts_platform_data ts_pdata = {
         .y_pol = 1
     },
     .data = 0,
+    .power_on = ts_power_on,
+    .power_off = ts_power_off,
 };
 static int ts_init_irq(void)
 {
