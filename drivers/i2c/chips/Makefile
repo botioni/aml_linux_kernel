@@ -25,7 +25,6 @@ obj-$(CONFIG_SENSORS_MEMSIC)	+= mxc.o
 obj-$(CONFIG_SENSORS_MXC6202X)	+= mxc6202x.o
 obj-$(CONFIG_SENSORS_MXC622X)	+= mxc622x.o
 obj-$(CONFIG_SENSORS_MMC31XX)	+= mmc31xx.o
-obj-$(CONFIG_SENSORS_MMC328X)	+= mmc328x.o
 obj-$(CONFIG_ECOMPASS)		+= mecs.o
 
 ifeq ($(CONFIG_I2C_DEBUG_CHIP),y)
