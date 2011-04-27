@@ -315,7 +315,10 @@ void set_sample_rate_info(int arg)
     audio_dec_info.sample_rate = arg;
     audio_dec_info.valid = 1;
 }
-
+void set_ch_num_info(int arg)
+{
+    audio_dec_info.channels= arg;
+}
 struct audio_info *get_audio_info(void) {
     return &audio_dec_info;
 }
@@ -1080,6 +1083,7 @@ static int amstream_ioctl(struct inode *inode, struct file *file,
     case AMSTREAM_IOC_ACHANNEL:
         if (this->type & PORT_TYPE_AUDIO) {
             this->achanl = (u32)arg;
+	      set_ch_num_info(	(u32)arg);	
         } else {
             r = -EINVAL;
         }
