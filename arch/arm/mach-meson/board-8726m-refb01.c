@@ -99,6 +99,10 @@
 #include <media/amlogic/aml_camera.h>
 #endif
 
+#ifdef CONFIG_BQ27x00_BATTERY
+#include <linux/bq27x00_battery.h>
+#endif
+
 
 #if defined(CONFIG_JPEGLOGO)
 static struct resource jpeglogo_resources[] = {
@@ -854,20 +858,26 @@ int gt2005_init(void)
 int gc0308_init(void)
 {
 
-        // set camera power enable   ibit[21]
-                clear_mio_mux(5, (1<<31));
-    set_gpio_val(GPIOE_bank_bit16_21(21), GPIOE_bit_bit16_21(21), 1);
+    // set camera power disable
+    clear_mio_mux(5, (1<<31));
+    set_gpio_val(GPIOE_bank_bit16_21(21), GPIOE_bit_bit16_21(21), 0);
     set_gpio_mode(GPIOE_bank_bit16_21(21), GPIOE_bit_bit16_21(21), GPIO_OUTPUT_MODE);
-    msleep(300);
+    msleep(20);
    //pp0
-   #ifdef CONFIG_SN7325
+    #ifdef CONFIG_SN7325
 	printk( "amlogic camera driver 0308: init CONFIG_SN7325. \n");
 	configIO(1, 0);
 	setIO_level(1, 1, 0);//30m PWR_Down
-	msleep(300);
+	msleep(20);
+    #endif	
+    
+    set_gpio_val(GPIOE_bank_bit16_21(21), GPIOE_bit_bit16_21(21), 1);    // set camera power enable
+    msleep(20);
+    
+    #ifdef CONFIG_SN7325    	
 	configIO(1, 0);
 	setIO_level(1, 0, 0);//30m PWR_On
-	msleep(300);
+	msleep(20);
     #endif
 }
 #endif
@@ -1371,6 +1381,46 @@ static struct platform_device power_dev = {
     .dev = {
         .platform_data  = &power_pdata,
     },
+};
+#endif
+#ifdef CONFIG_BQ27x00_BATTERY
+static int is_ac_connected(void)
+{
+	return (READ_CBUS_REG(ASSIST_HW_REV)&(1<<9))? 1:0;//GP_INPUT1
+}
+
+static int get_charge_status()
+{
+    return (READ_CBUS_REG(ASSIST_HW_REV)&(1<<8))? 1:0;//GP_INPUT0
+}
+
+static void set_charge(int flags)
+{
+	//GPIOD_22 low: fast charge high: slow charge
+   // CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_7, (1<<18));
+    if(flags == 1)
+        set_gpio_val(GPIOD_bank_bit2_24(22), GPIOD_bit_bit2_24(22), 0); //fast charge
+    else
+        set_gpio_val(GPIOD_bank_bit2_24(22), GPIOD_bit_bit2_24(22), 1); //slow charge
+    set_gpio_mode(GPIOD_bank_bit2_24(22), GPIOD_bit_bit2_24(22), GPIO_OUTPUT_MODE);
+}
+
+static void set_bat_off(void)
+{
+    if(is_ac_connected()){ //AC in after power off press
+        kernel_restart("reboot");
+    }
+    set_gpio_val(GPIOA_bank_bit(8), GPIOA_bit_bit0_14(8), 0);
+    set_gpio_mode(GPIOA_bank_bit(8), GPIOA_bit_bit0_14(8), GPIO_OUTPUT_MODE);
+
+}
+
+static struct bq27x00_battery_pdata bq27x00_pdata = {
+	.is_ac_online	= is_ac_connected,
+	.get_charge_status = get_charge_status,	
+	.set_charge = set_charge,
+	.set_bat_off = set_bat_off,
+    .chip = 1,
 };
 #endif
 
@@ -2065,6 +2115,13 @@ static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
 		.platform_data = (void *)&video_ov5640_data,
 	},
 #endif
+#ifdef CONFIG_BQ27x00_BATTERY
+    {
+        I2C_BOARD_INFO("bq27200", 0x55),
+        .platform_data = (void *)&bq27x00_pdata,
+    },
+#endif
+
 };
 
 static int __init aml_i2c_init(void)

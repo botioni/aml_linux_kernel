@@ -631,7 +631,7 @@ static ssize_t bq27x00_file_write( struct file *file, const char __user *buf,
 //    printk("%x ",buffer[i]);   
 //    printk(",count = %d, reg = %x\n",count,reg);   
 
-    ret = _bq27x00_write_i2c(device_info,addr,reg,count,buffer);    
+    _bq27x00_write_i2c(device_info,addr,reg,count,buffer);    
 
     return -1;
 }
