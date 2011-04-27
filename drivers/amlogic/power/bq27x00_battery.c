@@ -102,6 +102,7 @@ static char *ac_supply_list[] = {
 };
 static enum power_supply_property bq27x00_battery_props[] = {
 	POWER_SUPPLY_PROP_STATUS,
+	POWER_SUPPLY_PROP_HEALTH,
 	POWER_SUPPLY_PROP_PRESENT,
 	POWER_SUPPLY_PROP_TECHNOLOGY,
 	POWER_SUPPLY_PROP_VOLTAGE_NOW,
@@ -139,9 +140,9 @@ static int bq27x00_battery_temperature(struct bq27x00_device_info *di)
 	}
 
 	if (di->chip == BQ27500)
-		return temp - 2731;
+		return (temp - 2731)/10;  //k
 	else
-		return ((temp >> 2) - 273) * 10;
+		return ((temp >> 2) - 273);
 }
 
 /*
@@ -174,7 +175,7 @@ static int bq27x00_battery_current(struct bq27x00_device_info *di)
 	int flags = 0;
 
 	ret = bq27x00_read(BQ27x00_REG_AI, &curr, 0, di);
-	printk("bq27x00_battery_current = %d\n",curr);		
+
 	if (ret) {
 		dev_err(di->dev, "error reading current\n");
 		return 0;
@@ -263,7 +264,6 @@ static int bq27x00_battery_time(struct bq27x00_device_info *di, int reg,
 	int ret;
 
 	ret = bq27x00_read(reg, &tval, 0, di);
-	printk("bq27x00_battery_time = %d\n",tval);	
 	if (ret) {
 		dev_err(di->dev, "error reading register %02x\n", reg);
 		return ret;
@@ -283,7 +283,6 @@ int pc_connect(int status)
     if(new_usb_status == usb_status)
         return 1;
     usb_status = new_usb_status;
-    printk("pc_connect power_supply_changed\n");
     power_supply_changed(&device_info->usb);
     
     return 0;
@@ -355,7 +354,10 @@ static int bq27x00_battery_get_property(struct power_supply *psy,
 		break;
     case POWER_SUPPLY_PROP_TECHNOLOGY:
         val->intval = POWER_SUPPLY_TECHNOLOGY_LION;
-        break;			
+        break;
+	case POWER_SUPPLY_PROP_HEALTH:	
+		val->intval = POWER_SUPPLY_HEALTH_GOOD;
+		break;
 	default:
 		return -EINVAL;
 	}
@@ -448,8 +450,7 @@ static void battery_work_func(struct work_struct *work)
     if(pdata->is_ac_online){
         if(ac_status != pdata->is_ac_online()){
             ac_status = pdata->is_ac_online();
-            ac_changed = true;
-        printk("ac_changed power_supply_changed\n");            
+            ac_changed = true;      
         }
     }
     
@@ -469,7 +470,6 @@ static void battery_work_func(struct work_struct *work)
         charge_status = new_charge_status;
         battery_capacity = new_battery_capacity;
         bat_changed = true;
-                printk("bat_changed power_supply_changed\n");
     }
     
     if(bat_changed){
@@ -799,7 +799,7 @@ static int bq27x00_battery_probe(struct i2c_client *client,
 	dev_info(&client->dev, "support ver. %s enabled\n", DRIVER_VERSION);
 	
 	di->config_major = register_chrdev(0,di->bat.name,&bq27x00_fops);
-    printk("bq27x00_fops majo = %d\n",retval);
+    printk("bq27x00_fops majo = %d\n",di->config_major);
 	if(di->config_major<=0){
 		printk("register char device error\n");
 	}	
