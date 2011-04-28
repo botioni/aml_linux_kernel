@@ -991,6 +991,7 @@ static int amstream_ioctl(struct inode *inode, struct file *file,
     case AMSTREAM_IOC_AFORMAT:
         if ((this->type & PORT_TYPE_AUDIO) &&
             (arg < AFORMAT_MAX)) {
+    	      memset(&audio_dec_info,0,sizeof(struct audio_info));//for new format,reset the audio info.
             this->aformat = (aformat_t)arg;
             this->flag |= PORT_FLAG_AFORMAT;
         } else {
