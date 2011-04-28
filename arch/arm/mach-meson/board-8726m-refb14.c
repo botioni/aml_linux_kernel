@@ -642,10 +642,10 @@ int wm8900_is_hp_pluged(void)
     if(cs_no &(1<<14))
       level |= (1<<0);
     // temp patch to mute speaker when hdmi output
-    if(level == 0)
+    if(level == 1)
     	if(get_display_mode() != 0)	
     			return 1;
-    return (level == 0)?(1):(0); //return 1: hp pluged, 0: hp unpluged.
+    return (level == 1)?(0):(1); //return 1: hp pluged, 0: hp unpluged.
 }
 
 static struct wm8900_platform_data wm8900_pdata = {
