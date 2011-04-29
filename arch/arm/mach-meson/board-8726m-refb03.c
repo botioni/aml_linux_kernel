@@ -831,6 +831,7 @@ static int ts_get_irq_level(void);
 static void ts_power_on (void)
 {
 #ifdef CONFIG_SN7325
+    printk("power on 7325 ts_power_on\n");
 	configIO(1, 0);
 	setIO_level(1, 1, 1);//PP1
 #endif
@@ -839,6 +840,7 @@ static void ts_power_on (void)
 static void ts_power_off (void)
 {
 #ifdef CONFIG_SN7325
+    printk("power on 7325 ts_power_off\n");
 	configIO(1, 0);
 	setIO_level(1, 0, 1);//PP1
 #endif
@@ -1211,7 +1213,7 @@ static struct aml_i2c_platform aml_i2c_plat = {
 	.wait_xfer_interval	= 5,
 	.master_no		= AML_I2C_MASTER_B,
 	.use_pio			= 0,
-	.master_i2c_speed	= AML_I2C_SPPED_100K,
+	.master_i2c_speed	= AML_I2C_SPPED_400K,
 
 	.master_b_pinmux = {
 		.scl_reg	= MESON_I2C_MASTER_B_GPIOB_0_REG,
