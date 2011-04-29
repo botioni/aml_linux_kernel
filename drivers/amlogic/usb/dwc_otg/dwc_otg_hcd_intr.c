@@ -814,6 +814,8 @@ update_isoc_urb_state(dwc_otg_hcd_t * _hcd,
 		break;
 	}
 
+	urb->actual_length += frame_desc->actual_length;
+
 	if (++_qtd->isoc_frame_index == urb->number_of_packets) {
 		/*
 		 * urb->status is not used for isoc transfers. 
@@ -832,8 +834,6 @@ update_isoc_urb_state(dwc_otg_hcd_t * _hcd,
 		tasklet_schedule(&_hcd->isoc_complete_tasklet);
 		//dwc_otg_hcd_complete_urb(_hcd, urb, 0);
 		ret_val = DWC_OTG_HC_XFER_URB_COMPLETE;
-	} else {
-		ret_val = DWC_OTG_HC_XFER_COMPLETE;
 	}
 
 	return ret_val;
@@ -1650,6 +1650,7 @@ static int32_t handle_hc_xacterr_intr(dwc_otg_hcd_t * _hcd,
 			halt_status =
 			    update_isoc_urb_state(_hcd, _hc, _hc_regs, _qtd,
 						  DWC_OTG_HC_XFER_XACT_ERR);
+			_qtd->error_count++;
 
 			halt_channel(_hcd, _hc, _qtd, halt_status);
 		}
