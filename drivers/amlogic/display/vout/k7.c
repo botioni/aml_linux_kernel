@@ -151,7 +151,6 @@ static void t13_setup_gama_table(tcon_conf_t *pConf)
 
 void power_on_backlight(void)
 {
-    msleep(200);
     set_gpio_val(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), 1);
     set_gpio_mode(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), GPIO_OUTPUT_MODE);
 }
@@ -239,12 +238,11 @@ static void t13_power_on(void)
     video_dac_disable();
 	set_tcon_pinmux();
 	power_on_lcd();
-	power_on_backlight();
+    printk("\n\nt13_power_on...\n\n");
       
 }
 static void t13_power_off(void)
 {
-	power_off_backlight();
     	power_off_lcd();
 }
 
@@ -255,7 +253,6 @@ static void t13_io_init(void)
     set_tcon_pinmux();
 
     power_on_lcd();
-    power_on_backlight();
 }
 
 static struct platform_device tcon_dev = {

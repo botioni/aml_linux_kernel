@@ -499,9 +499,6 @@ void extern_wifi_power(int is_power)
         printk("power on 7325 wifi\n");
         configIO(0, 0);
         setIO_level(0, 1, 5);//OD5
-
-        #else
-        return;
         #endif
     }
     return;
@@ -990,9 +987,9 @@ static int gt2005_v4l2_uninit(void)
    #ifdef CONFIG_SN7325
 	printk( "amlogic camera driver: uninit gt2005_v4l2_uninit. \n");
 	configIO(1, 0);
-	setIO_level(1, 1, 4);
+	setIO_level(1, 0, 0);//PP0
 	msleep(300);
-	setIO_level(1, 1, 0);
+	setIO_level(1, 0, 4);//PP4
     #endif
 
 }
@@ -1014,10 +1011,10 @@ static int gc0308_v4l2_uninit(void)
 {
    #ifdef CONFIG_SN7325
 	 printk( "amlogic camera driver: gc0308_v4l2_uninit CONFIG_SN7325. \n");
-	configIO(1, 0);
-	setIO_level(1, 1, 4);
+	 configIO(1, 0);
+	 setIO_level(1, 1, 0);//PP0 30m PWR_Down
 	msleep(300);
-	setIO_level(1, 0, 0);
+	setIO_level(1, 0, 4);//pp4
     #endif
 
 }
@@ -1140,19 +1137,20 @@ static void set_vccx2(int power_on)
 			restore_gpio(i);
 		
         printk(KERN_INFO "set_vccx2 power up\n");
+        set_gpio_val(GPIOA_bank_bit0_14(6), GPIOA_bit_bit0_14(6), 1);
+        set_gpio_mode(GPIOA_bank_bit0_14(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);        
         //set clk for wifi
         SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, (1<<18));
         CLEAR_CBUS_REG_MASK(PREG_EGPIO_EN_N, (1<<4));
-	set_gpio_val(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(10), 1);
-	set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(10), GPIO_OUTPUT_MODE);
+
     }
     else{
         printk(KERN_INFO "set_vccx2 power down\n");        
+        set_gpio_val(GPIOA_bank_bit0_14(6), GPIOA_bit_bit0_14(6), 0);
+        set_gpio_mode(GPIOA_bank_bit0_14(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);   
         //disable wifi clk
         CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, (1<<18));
         SET_CBUS_REG_MASK(PREG_EGPIO_EN_N, (1<<4));
-	set_gpio_val(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(10), 0);
-	set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(10), GPIO_OUTPUT_MODE);
 		save_pinmux();
 		for (i=0;i<MAX_GPIO;i++)
 			save_gpio(i);
@@ -1272,7 +1270,7 @@ static void set_charge(int flags)
 	    #ifdef CONFIG_SN7325
 	    printk("7325 set charge to fast charge\n");
         configIO(0, 0);
-        setIO_level(1, 1, 7);
+        setIO_level(0, 1, 7);
         #endif
 	    }
     else
@@ -1281,7 +1279,7 @@ static void set_charge(int flags)
 	    #ifdef CONFIG_SN7325
 	    printk("7325 set charge to slow charge\n");
         configIO(0, 0);
-        setIO_level(1, 0, 7);
+        setIO_level(0, 0, 7);
         #endif
         }
     //set_gpio_mode(GPIOD_bank_bit2_24(22), GPIOD_bit_bit2_24(22), GPIO_OUTPUT_MODE);
@@ -1481,7 +1479,7 @@ static void set_charge(int flags)
 	    #ifdef CONFIG_SN7325
 	    printk("7325 set charge to fast charge\n");
         configIO(0, 0);
-        setIO_level(1, 1, 7);
+        setIO_level(0, 1, 7);
         #endif
 	    }
     else
@@ -1490,7 +1488,7 @@ static void set_charge(int flags)
 	    #ifdef CONFIG_SN7325
 	    printk("7325 set charge to slow charge\n");
         configIO(0, 0);
-        setIO_level(1, 0, 7);
+        setIO_level(0, 0, 7);
         #endif
         }
     //set_gpio_mode(GPIOD_bank_bit2_24(22), GPIOD_bit_bit2_24(22), GPIO_OUTPUT_MODE);
@@ -1862,33 +1860,27 @@ static void aml_8726m_bl_init(void)
           (1000 << 14) |    // Digital dimmer_duty = 0%, the most darkness
           (1000 <<  0) ;    // dimmer_freq = 1KHz
     WRITE_CBUS_REG(VGHL_PWM_REG4, val);
+    printk("\n\nBacklight init.\n\n");
 }
 static unsigned bl_level;
-static unsigned panel_state = 0;
 static unsigned aml_8726m_get_bl_level(void)
 {
-//    unsigned level = 0;
-//
-//    WRITE_CBUS_REG_BITS(VGHL_PWM_REG0, 1, 31, 1);
-//    WRITE_CBUS_REG_BITS(VGHL_PWM_REG4, 0, 30, 1);
-//    level = READ_CBUS_REG_BITS(VGHL_PWM_REG0, 0, 4);
     return bl_level;
 }
 static void aml_8726m_set_bl_level(unsigned level)
 {
     unsigned cs_level;
-
-    if (level < 30)
+    if (level < 10)
     {
         cs_level = 15;
     }
-    else if (level == 30)
+    else if (level < 30)
     {
-        cs_level = 12;
+        cs_level = 14;
     }
-    else if (level >30 && level < 256)
+    else if (level >=30 && level < 256)
     {
-        cs_level = 11-((level - 31)/28);
+        cs_level = 13-((level - 30)/28);
     }
     else
         cs_level = 3;
@@ -1900,11 +1892,17 @@ static void aml_8726m_set_bl_level(unsigned level)
 static void aml_8726m_power_on_bl(void)
 { 
     printk("backlight on\n");
+        //BL_PWM -> GPIOA_7: 1 Pull high, For En_5V  E1
+    set_gpio_val(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), 1);
+    set_gpio_mode(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), GPIO_OUTPUT_MODE);
 }
 
 static void aml_8726m_power_off_bl(void)
 {
     printk("backlight off\n");
+    //BL_PWM -> GPIOA_7: 0 E1
+    set_gpio_val(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), 0);
+    set_gpio_mode(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), GPIO_OUTPUT_MODE);
 }
 
 struct aml_bl_platform_data aml_bl_platform =
