@@ -402,6 +402,34 @@ struct setdatarate_parm {
 #endif
 };
 
+typedef enum _RT_CHANNEL_DOMAIN
+{
+ 	RT_CHANNEL_DOMAIN_FCC = 0,
+ 	RT_CHANNEL_DOMAIN_IC = 1,
+	RT_CHANNEL_DOMAIN_ETSI = 2,
+ 	RT_CHANNEL_DOMAIN_SPAIN = 3,
+ 	RT_CHANNEL_DOMAIN_FRANCE = 4,
+ 	RT_CHANNEL_DOMAIN_MKK = 5,
+ 	RT_CHANNEL_DOMAIN_MKK1 = 6,
+ 	RT_CHANNEL_DOMAIN_ISRAEL = 7,
+	RT_CHANNEL_DOMAIN_TELEC = 8,
+ 	RT_CHANNEL_DOMAIN_MIC = 9,    // Be compatible with old channel plan. No good!
+ 	RT_CHANNEL_DOMAIN_GLOBAL_DOAMIN = 10,  // Be compatible with old channel plan. No good!
+ 	RT_CHANNEL_DOMAIN_WORLD_WIDE_13 = 11,  // Be compatible with old channel plan. No good!
+ 	RT_CHANNEL_DOMAIN_TELEC_NETGEAR = 12,  // Be compatible with old channel plan. No good!
+ 	RT_CHANNEL_DOMAIN_NCC = 13,
+ 	RT_CHANNEL_DOMAIN_5G = 14,
+ 	RT_CHANNEL_DOMAIN_5G_40M = 15,
+ //===== Add new channel plan above this line===============//
+ 	RT_CHANNEL_DOMAIN_MAX,
+}RT_CHANNEL_DOMAIN, *PRT_CHANNEL_DOMAIN;
+
+
+struct SetChannelPlan_param
+{
+ RT_CHANNEL_DOMAIN ChannelPlan;
+};
+
 /*
 Caller Mode: Any
 
@@ -873,6 +901,17 @@ struct SwitchBandwidth_parm
 
 #endif	/* MP_FIRMWARE_OFFLOAD */
 
+/*H2C Handler index: 61 */
+struct DisconnectCtrlEx_param
+{
+	//MAXTIME = (2 * FirstStageTO) + (TryPktCnt * TryPktInterval)
+	unsigned char 	EnableDrvCtrl;
+	unsigned char		TryPktCnt;
+	unsigned char		TryPktInterval;	//Unit: ms
+	unsigned char		rsvd;
+	unsigned int		FirstStageTO;	//Unit: ms
+};
+
 #ifndef CONFIG_RTL8711FW
 #else
 struct cmdobj {
@@ -942,6 +981,7 @@ extern u8 joinbss_cmd(_adapter  *padapter, struct wlan_network* pnetwork);
 extern u8 disassoc_cmd(_adapter  *padapter);
 extern u8 setopmode_cmd(_adapter  *padapter, NDIS_802_11_NETWORK_INFRASTRUCTURE networktype);
 extern u8 setdatarate_cmd(_adapter  *padapter, u8 *rateset);
+extern u8 set_chplan_cmd(_adapter  *padapter, int chplan);
 extern u8 setbasicrate_cmd(_adapter  *padapter, u8 *rateset);
 extern u8 setbbreg_cmd(_adapter * padapter, u8 offset, u8 val);
 extern u8 setrfreg_cmd(_adapter * padapter, u8 offset, u32 val);
@@ -975,6 +1015,8 @@ extern void getrttbl_cmdrsp_callback(_adapter  *padapter,  struct cmd_obj *pcmd)
 extern u8 setpwrmode_cmd(_adapter* adapter, u32 ps_mode, u32 smart_ps);
 extern u8  setatim_cmd(_adapter* adapter, u8 add, u8 txid);
 #endif	/* CONFIG_PWRCTRL */
+
+extern u8 disconnectCtrlEx_cmd(_adapter* adapter, u32 enableDrvCtrl, u32 tryPktCnt, u32 tryPktInterval, u32 firstStageTO);
 
 struct _cmd_callback {
 	u32	cmd_code;

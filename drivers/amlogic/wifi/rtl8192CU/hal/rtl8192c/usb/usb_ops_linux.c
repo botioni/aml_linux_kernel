@@ -875,7 +875,7 @@ static void usb_read_port_complete(struct urb *purb, struct pt_regs *regs)
 	{
 		RT_TRACE(_module_hci_ops_os_c_,_drv_err_,("usb_read_port_complete : purb->status(%d) != 0 \n", purb->status));
 	
-		printk("###=> usb_read_port_complete => urb status(%d)\n", purb->status);
+		//printk("###=> usb_read_port_complete => urb status(%d)\n", purb->status);
 
 		switch(purb->status) {
 			case -EINVAL:
