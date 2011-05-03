@@ -451,7 +451,7 @@ void sd_recv_rxfifo(PADAPTER padapter)
 //	ppending_recv_queue = &(precvpriv->recv_pending_queue);
 
 	rx_blknum = padapter->dvobjpriv.rxblknum;
-//	_enter_hwio_critical(&padapter->dvobjpriv.rx_protect, &rx_proc_irq);
+//	_enter_critical_mutex(&padapter->dvobjpriv.rx_protect, &rx_proc_irq);
 //	padapter->dvobjpriv.rxblknum=rtw_read16(padapter, SDIO_RX0_RDYBLK_NUM);
 	sdio_read_int(padapter, SDIO_RX0_RDYBLK_NUM, 2, &padapter->dvobjpriv.rxblknum);
 	if (rx_blknum>padapter->dvobjpriv.rxblknum) {

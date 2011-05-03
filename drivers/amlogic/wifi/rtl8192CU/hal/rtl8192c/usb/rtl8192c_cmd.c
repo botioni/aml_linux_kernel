@@ -154,9 +154,12 @@ u8 rtl8192c_setopmode_hdl(_adapter *padapter, u8 *pbuf)
 	}
 	else if(psetop->mode == Ndis802_11IBSS)
 	{
-		rtw_write8(padapter, REG_BCN_CTRL, 0x1a);
-		Set_NETYPE0_MSR(padapter, _HW_STATE_ADHOC_);	
+		//rtw_write8(padapter, REG_BCN_CTRL, 0x1a);//0x550[4:3:1] = 111'b
+		rtw_write8(padapter, REG_BCN_CTRL, 0x1E);//Test for Adhoc issue 2011-02-18
+		rtw_write8(padapter,REG_RD_CTRL+1,0x6F);		
 		ResumeTxBeacon(padapter);
+		rtw_write8(padapter, REG_BCN_CTRL, rtw_read8(padapter, REG_BCN_CTRL)|BIT(1));	//disable bcn sub function
+		Set_NETYPE0_MSR(padapter, _HW_STATE_ADHOC_);	
 	}
 	else
 	{
@@ -310,6 +313,7 @@ u8 rtl8192c_join_cmd_hdl(_adapter *padapter, u8 *pbuf)
 	pmlmeinfo->HT_info_enable = 0;
 	pmlmeinfo->agg_enable_bitmap = 0;
 	pmlmeinfo->candidate_tid_bitmap = 0;
+	pmlmeinfo->bwmode_updated = _FALSE;
 	
 	//pmlmeinfo->assoc_AP_vendor = maxAP;
 	
@@ -347,7 +351,7 @@ u8 rtl8192c_join_cmd_hdl(_adapter *padapter, u8 *pbuf)
 		u32 v = rtw_read32(padapter, REG_RCR);
 		v &= ~(RCR_CBSSID_DATA | RCR_CBSSID_BCN );//| RCR_ADF
 		rtw_write32(padapter, REG_RCR, v);
-		rtw_write16(padapter, REG_RXFLTMAP2,0x00);
+		rtw_write16(padapter, REG_RXFLTMAP2,0x00);//reject all data frame
 	}	
 	else
 	{
@@ -367,7 +371,7 @@ u8 rtl8192c_join_cmd_hdl(_adapter *padapter, u8 *pbuf)
 		return H2C_PARAMETERS_ERROR;	
 		
 	_rtw_memcpy(pnetwork->IEs, ((WLAN_BSSID_EX *)pbuf)->IEs, pnetwork->IELength); 
-	
+
 	start_clnt_join(padapter);
 	
 	//only for cisco's AP
@@ -418,12 +422,11 @@ u8 rtl8192c_join_cmd_hdl(_adapter *padapter, u8 *pbuf)
 u8 rtl8192c_disconnect_hdl(_adapter *padapter, unsigned char *pbuf)
 {
 	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(padapter);
-	struct setauth_parm		*pparm = (struct setauth_parm *)pbuf;
 	struct mlme_ext_priv	*pmlmeext = &padapter->mlmeextpriv;
 	struct mlme_ext_info	*pmlmeinfo = &(pmlmeext->mlmext_info);
 	WLAN_BSSID_EX		*pnetwork = (WLAN_BSSID_EX*)(&(pmlmeinfo->network));
 	struct	mlme_priv 	*pmlmepriv = &padapter->mlmepriv;	
-	
+
 	if (is_client_associated_to_ap(padapter))
 	{
 		issue_deauth(padapter, pnetwork->MacAddress, WLAN_REASON_DEAUTH_LEAVING);
@@ -502,7 +505,7 @@ u8 rtl8192c_sitesurvey_cmd_hdl(_adapter *padapter, u8 *pbuf)
 		
 		pmlmeext->sitesurvey_res.ss_ssidlen = le32_to_cpu(pparm->ss_ssidlen);
 	
-		pmlmeext->sitesurvey_res.active_mode = le32_to_cpu(pparm->passive_mode);		
+		pmlmeext->sitesurvey_res.scan_mode = le32_to_cpu(pparm->scan_mode);		
 
 		//disable dynamic functions, such as high power, DIG
 		Save_DM_Func_Flag(padapter);
@@ -682,13 +685,13 @@ u8 set_tx_beacon_cmd(_adapter* padapter)
 	
 _func_enter_;	
 	
-	if ((ph2c = (struct cmd_obj*)_rtw_malloc(sizeof(struct cmd_obj))) == NULL)
+	if ((ph2c = (struct cmd_obj*)_rtw_zmalloc(sizeof(struct cmd_obj))) == NULL)
 	{
 		res= _FAIL;
 		goto exit;
 	}
 	
-	if ((ptxBeacon_parm = (struct Tx_Beacon_param *)_rtw_malloc(sizeof(struct Tx_Beacon_param))) == NULL)
+	if ((ptxBeacon_parm = (struct Tx_Beacon_param *)_rtw_zmalloc(sizeof(struct Tx_Beacon_param))) == NULL)
 	{
 		_rtw_mfree((unsigned char *)ph2c, sizeof(struct	cmd_obj));
 		res= _FAIL;
@@ -740,7 +743,7 @@ _func_enter_;
 		
 _next:
 
-                if ((padapter->bDriverStopped == _TRUE)||(padapter->bSurpriseRemoved== _TRUE))
+             if ((padapter->bDriverStopped == _TRUE)||(padapter->bSurpriseRemoved== _TRUE))
 		{			
 			printk("###> rtw_cmd_thread break.................\n");
 			RT_TRACE(_module_rtl871x_cmd_c_, _drv_info_, ("rtw_cmd_thread:bDriverStopped(%d) OR bSurpriseRemoved(%d)", padapter->bDriverStopped, padapter->bSurpriseRemoved));		
@@ -876,6 +879,84 @@ _abort_event_:
 	return H2C_SUCCESS;
 		
 }
+#ifdef SILENT_RESET_FOR_SPECIFIC_PLATFOM
+u8 usb_io_chk_cmd(_adapter*padapter)
+{
+	struct cmd_obj*		ph2c;
+	struct drvextra_cmd_parm  *pdrvextra_cmd_parm;	
+	struct cmd_priv	*pcmdpriv=&padapter->cmdpriv;
+	u8	res=_SUCCESS;
+	
+_func_enter_;	
+
+	ph2c = (struct cmd_obj*)_rtw_zmalloc(sizeof(struct cmd_obj));	
+	if(ph2c==NULL){
+		res= _FAIL;
+		goto exit;
+	}
+	
+	pdrvextra_cmd_parm = (struct drvextra_cmd_parm*)_rtw_zmalloc(sizeof(struct drvextra_cmd_parm)); 
+	if(pdrvextra_cmd_parm==NULL){
+		_rtw_mfree((unsigned char *)ph2c, sizeof(struct cmd_obj));
+		res= _FAIL;
+		goto exit;
+	}
+
+	pdrvextra_cmd_parm->ec_id = USB_IO_CHECK_WK_CID;
+	pdrvextra_cmd_parm->sz = 0;
+	pdrvextra_cmd_parm->pbuf = NULL;
+
+	init_h2fwcmd_w_parm_no_rsp(ph2c, pdrvextra_cmd_parm, GEN_CMD_CODE(_Set_Drv_Extra));
+
+	
+	//rtw_enqueue_cmd(pcmdpriv, ph2c);	
+	rtw_enqueue_cmd_ex(pcmdpriv, ph2c);
+	
+exit:
+	
+_func_exit_;
+
+	return res;
+}
+
+void xmit_status_check_hdl(_adapter *padapter)
+{
+	unsigned long current_time;
+	struct xmit_priv	*pxmitpriv = &padapter->xmitpriv;
+	unsigned int diff_time;
+	
+	if(rtw_read32(padapter, REG_TXDMA_STATUS) !=0x00){
+		silentreset_for_specific_platform(padapter);						
+	}
+	
+	//total xmit irp = 4
+	//printk("==>%s free_xmitbuf_cnt(%d),txirp_cnt(%d)\n",__FUNCTION__,pxmitpriv->free_xmitbuf_cnt,pxmitpriv->txirp_cnt);
+	//if(pxmitpriv->txirp_cnt == NR_XMITBUFF+1)
+	current_time = rtw_get_current_time();
+	if(0==pxmitpriv->free_xmitbuf_cnt)
+	{
+		diff_time = jiffies_to_msecs(current_time - padapter->last_tx_time);
+			
+		if(diff_time > 2000){
+			if(padapter->last_tx_complete_time==0){
+				padapter->last_tx_complete_time = current_time;
+			}
+			else{
+				diff_time = jiffies_to_msecs(current_time - padapter->last_tx_complete_time);
+				if(diff_time > 4000){
+					//padapter->Wifi_Error_Status = WIFI_TX_HANG;
+					printk("tx hang...start reset\n");
+					silentreset_for_specific_platform(padapter);	
+				}
+			}
+		}	
+	}	
+}
+void usb_io_chk_wk_hdl(_adapter *padapter, u8 *pbuf, int sz)
+{
+	silentreset_for_specific_platform(padapter);		
+}
+#endif
 
 void dynamic_chk_wk_hdl(_adapter *padapter, u8 *pbuf, int sz)
 {
@@ -883,6 +964,9 @@ void dynamic_chk_wk_hdl(_adapter *padapter, u8 *pbuf, int sz)
 	struct mlme_ext_priv *pmlmeext = &padapter->mlmeextpriv;
 	struct mlme_priv *pmlmepriv = &(padapter->mlmepriv);
 
+	#ifdef SILENT_RESET_FOR_SPECIFIC_PLATFOM	
+	xmit_status_check_hdl(padapter);	
+	#endif	
 
 	/*
 	 * Commented by Jeff 2010/12/25
@@ -927,8 +1011,8 @@ u8 rtl8192c_drvextra_cmd_hdl(_adapter *padapter, unsigned char *pbuf)
 		case PBC_POLLING_WK_CID:
 			//check_hw_pbc(padapter, pdrvextra_cmd->pbuf, pdrvextra_cmd->sz);			
 			break;
-		case BEFORE_ASSOC_PS_CTRL_WK_CID:
-			before_assoc_ps_ctrl_wk_hdl(padapter, pdrvextra_cmd->pbuf, pdrvextra_cmd->sz);	
+		case POWER_SAVING_CTRL_WK_CID:
+			power_saving_ctrl_wk_hdl(padapter, pdrvextra_cmd->pbuf, pdrvextra_cmd->sz);	
 			break;
 #ifdef CONFIG_LPS
 		case LPS_CTRL_WK_CID:
@@ -940,6 +1024,12 @@ u8 rtl8192c_drvextra_cmd_hdl(_adapter *padapter, unsigned char *pbuf)
 			antenna_select_wk_hdl(padapter, pdrvextra_cmd->pbuf, pdrvextra_cmd->sz);
 			break;
 #endif
+#ifdef SILENT_RESET_FOR_SPECIFIC_PLATFOM
+		case USB_IO_CHECK_WK_CID:
+			usb_io_chk_wk_hdl(padapter, pdrvextra_cmd->pbuf, pdrvextra_cmd->sz);
+		break;
+#endif
+
 		default:
 			break;
 
@@ -1381,13 +1471,13 @@ _func_enter_;
 
 	if(enqueue)
 	{
-		ph2c = (struct cmd_obj*)_rtw_malloc(sizeof(struct cmd_obj));	
+		ph2c = (struct cmd_obj*)_rtw_zmalloc(sizeof(struct cmd_obj));	
 		if(ph2c==NULL){
 			res= _FAIL;
 			goto exit;
 		}
 		
-		pdrvextra_cmd_parm = (struct drvextra_cmd_parm*)_rtw_malloc(sizeof(struct drvextra_cmd_parm)); 
+		pdrvextra_cmd_parm = (struct drvextra_cmd_parm*)_rtw_zmalloc(sizeof(struct drvextra_cmd_parm)); 
 		if(pdrvextra_cmd_parm==NULL){
 			_rtw_mfree((unsigned char *)ph2c, sizeof(struct cmd_obj));
 			res= _FAIL;
@@ -1484,13 +1574,13 @@ _func_enter_;
 
 	if(enqueue)
 	{
-		ph2c = (struct cmd_obj*)_rtw_malloc(sizeof(struct cmd_obj));	
+		ph2c = (struct cmd_obj*)_rtw_zmalloc(sizeof(struct cmd_obj));	
 		if(ph2c==NULL){
 			res= _FAIL;
 			goto exit;
 		}
 		
-		pdrvextra_cmd_parm = (struct drvextra_cmd_parm*)_rtw_malloc(sizeof(struct drvextra_cmd_parm)); 
+		pdrvextra_cmd_parm = (struct drvextra_cmd_parm*)_rtw_zmalloc(sizeof(struct drvextra_cmd_parm)); 
 		if(pdrvextra_cmd_parm==NULL){
 			_rtw_mfree((unsigned char *)ph2c, sizeof(struct cmd_obj));
 			res= _FAIL;
@@ -1836,13 +1926,13 @@ void SetFwRsvdPagePkt(PADAPTER Adapter, BOOLEAN bDLFinished)
 
 	DBG_871X("%s\n", __FUNCTION__);
 
-	ReservedPagePacket = (u8*)_rtw_malloc(1000);
+	ReservedPagePacket = (u8*)_rtw_zmalloc(1000);
 	if(ReservedPagePacket == NULL){
 		DBG_871X("%s(): alloc ReservedPagePacket fail !!!\n", __FUNCTION__);
 		return;
 	}
 
-	_rtw_memset(ReservedPagePacket, 0, 1000);
+//	_rtw_memset(ReservedPagePacket, 0, 1000);
 
 	if(DEV_BUS_TYPE == DEV_BUS_USB_INTERFACE)
 	{

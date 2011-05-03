@@ -586,6 +586,44 @@ _func_exit_;
 	return res;
 }
 
+u8 set_chplan_cmd(_adapter *padapter, int chplan)
+{
+	struct cmd_obj		*ph2c;
+	struct SetChannelPlan_param *psetchplanpara;
+	struct cmd_priv		*pcmdpriv = &padapter->cmdpriv;
+	u8 res = _SUCCESS;
+
+_func_enter_;
+
+	ph2c = (struct cmd_obj*)_malloc(sizeof(struct cmd_obj));
+	if (ph2c == NULL) {
+		res = _FAIL;
+		goto exit;
+	}
+
+	psetchplanpara= (struct SetChannelPlan_param*)_malloc(sizeof(struct SetChannelPlan_param));
+	if (psetchplanpara== NULL) {
+		_mfree((u8 *) ph2c, sizeof(struct cmd_obj));
+		res = _FAIL;
+		goto exit;
+	}
+
+	init_h2fwcmd_w_parm_no_rsp(ph2c, psetchplanpara, GEN_CMD_CODE(_SetChannelPlan));
+	
+#ifdef MP_FIRMWARE_OFFLOAD
+
+#else
+	psetchplanpara->ChannelPlan= chplan;
+#endif
+	enqueue_cmd(pcmdpriv, ph2c);
+
+exit:
+
+_func_exit_;
+
+	return res;
+}
+
 u8 setbasicrate_cmd(_adapter *padapter, u8 *rateset)
 {
 	struct cmd_obj*			ph2c;
@@ -1958,4 +1996,47 @@ _func_exit_;
 	return res;
 }
 #endif
+
+u8 disconnectCtrlEx_cmd(_adapter* adapter, u32 enableDrvCtrl, u32 tryPktCnt, u32 tryPktInterval, u32 firstStageTO){
+	struct	cmd_obj*	ph2c;
+	struct	DisconnectCtrlEx_param * param;
+	struct	cmd_priv   *pcmdpriv= &( adapter->cmdpriv);
+	u8 res=_SUCCESS;
+
+
+_func_enter_;
+
+	RT_TRACE(_module_rtl871x_cmd_c_,_drv_info_,
+		("%s  = %x, TryPktCnt = %x, TryPktInterval = %x, FirstStageTO = %x"
+		, __function__ , enableDrvCtrl, tryPktCnt, tryPktInterval, firstStageTO)
+	);
+
+	ph2c = (struct cmd_obj*)_malloc(sizeof(struct cmd_obj));
+	if(ph2c==NULL){
+		res= _FAIL;
+		goto exit;
+	}
+
+	param = (struct DisconnectCtrlEx_param *)_malloc(sizeof(struct DisconnectCtrlEx_param));
+	if(param == NULL){
+		_mfree((unsigned char *) ph2c, sizeof(struct	cmd_obj));
+		res= _FAIL;
+		goto exit;
+	}
+
+	_memset(param, 0, sizeof(struct DisconnectCtrlEx_param));
+
+	param->EnableDrvCtrl = (unsigned char)enableDrvCtrl;
+	param->TryPktCnt = (unsigned char)tryPktCnt;
+	param->TryPktInterval = (unsigned char)tryPktInterval;
+	param->FirstStageTO = (unsigned int)firstStageTO;
+
+	init_h2fwcmd_w_parm_no_rsp(ph2c, param, GEN_CMD_CODE(_DisconnectCtrlEx));
+
+	enqueue_cmd(pcmdpriv, ph2c);
+exit:
+_func_exit_;
+	return res;
+
+}
 
