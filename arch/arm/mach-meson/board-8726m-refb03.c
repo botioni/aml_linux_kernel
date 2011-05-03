@@ -591,6 +591,8 @@ static struct resource aml_m1_audio_resource[]={
 				.flags	=	IORESOURCE_MEM,
 		},
 };
+
+#ifdef CONFIG_SND_AML_M1_MID_WM8900
 static struct platform_device aml_audio={
 		.name 				= "aml_m1_audio_wm8900",
 		.id 					= -1,
@@ -598,7 +600,6 @@ static struct platform_device aml_audio={
 		.num_resources	=	ARRAY_SIZE(aml_m1_audio_resource),
 };
 
-#ifdef CONFIG_SND_AML_M1_MID_WM8900
 
 //use LED_CS1 as hp detect pin
 #define PWM_TCNT    (600-1)
@@ -831,6 +832,7 @@ static int ts_get_irq_level(void);
 static void ts_power_on (void)
 {
 #ifdef CONFIG_SN7325
+    printk("power on 7325 ts_power_on\n");
 	configIO(1, 0);
 	setIO_level(1, 1, 1);//PP1
 #endif
@@ -839,6 +841,7 @@ static void ts_power_on (void)
 static void ts_power_off (void)
 {
 #ifdef CONFIG_SN7325
+    printk("power on 7325 ts_power_off\n");
 	configIO(1, 0);
 	setIO_level(1, 0, 1);//PP1
 #endif
@@ -1211,7 +1214,7 @@ static struct aml_i2c_platform aml_i2c_plat = {
 	.wait_xfer_interval	= 5,
 	.master_no		= AML_I2C_MASTER_B,
 	.use_pio			= 0,
-	.master_i2c_speed	= AML_I2C_SPPED_100K,
+	.master_i2c_speed	= AML_I2C_SPPED_400K,
 
 	.master_b_pinmux = {
 		.scl_reg	= MESON_I2C_MASTER_B_GPIOB_0_REG,
@@ -2379,8 +2382,10 @@ static void __init power_hold(void)
     //VCCx2 power up
     set_vccx2(1);
     
-    // set cpu power  to 1.26V   
+    // set cpu power  to 1.26V  
+#ifdef CONFIG_SND_AML_M1_MID_WM8900
     wm8900_is_hp_pluged(); 
+#endif
     WRITE_CBUS_REG_BITS(LED_PWM_REG0,1,0,4); 
 }
 
