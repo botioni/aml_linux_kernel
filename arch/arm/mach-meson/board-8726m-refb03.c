@@ -591,6 +591,8 @@ static struct resource aml_m1_audio_resource[]={
 				.flags	=	IORESOURCE_MEM,
 		},
 };
+
+#ifdef CONFIG_SND_AML_M1_MID_WM8900
 static struct platform_device aml_audio={
 		.name 				= "aml_m1_audio_wm8900",
 		.id 					= -1,
@@ -598,7 +600,6 @@ static struct platform_device aml_audio={
 		.num_resources	=	ARRAY_SIZE(aml_m1_audio_resource),
 };
 
-#ifdef CONFIG_SND_AML_M1_MID_WM8900
 
 //use LED_CS1 as hp detect pin
 #define PWM_TCNT    (600-1)
@@ -2381,8 +2382,10 @@ static void __init power_hold(void)
     //VCCx2 power up
     set_vccx2(1);
     
-    // set cpu power  to 1.26V   
+    // set cpu power  to 1.26V  
+#ifdef CONFIG_SND_AML_M1_MID_WM8900
     wm8900_is_hp_pluged(); 
+#endif
     WRITE_CBUS_REG_BITS(LED_PWM_REG0,1,0,4); 
 }
 
