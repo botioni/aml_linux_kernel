@@ -76,6 +76,8 @@ _func_enter_;
 
 	_rtw_init_queue(&precvpriv->free_recv_queue);
 	_rtw_init_queue(&precvpriv->recv_pending_queue);
+	_rtw_init_queue(&precvpriv->pending_rx_transfer_buffer_queue);	
+	precvpriv->pending_rx_transfer_buffer_cnt = 0;
 
 	precvpriv->adapter = padapter;
 
@@ -83,15 +85,15 @@ _func_enter_;
 
 	rtw_os_recv_resource_init(precvpriv, padapter);
 
-	precvpriv->pallocated_frame_buf = _rtw_malloc(NR_RECVFRAME * sizeof(union recv_frame) + RXFRAME_ALIGN_SZ);
+	precvpriv->pallocated_frame_buf = _rtw_zmalloc(NR_RECVFRAME * sizeof(union recv_frame) + RXFRAME_ALIGN_SZ);
 	if(precvpriv->pallocated_frame_buf==NULL){
 		res= _FAIL;
 		goto exit;
 	}
-	_rtw_memset(precvpriv->pallocated_frame_buf, 0, NR_RECVFRAME * sizeof(union recv_frame) + RXFRAME_ALIGN_SZ);
+	//_rtw_memset(precvpriv->pallocated_frame_buf, 0, NR_RECVFRAME * sizeof(union recv_frame) + RXFRAME_ALIGN_SZ);
 
 	precvpriv->precv_frame_buf = precvpriv->pallocated_frame_buf + RXFRAME_ALIGN_SZ -
-							((uint) (precvpriv->pallocated_frame_buf) &(RXFRAME_ALIGN_SZ-1));
+							((SIZE_PTR) (precvpriv->pallocated_frame_buf) &(RXFRAME_ALIGN_SZ-1));
 
 	precvframe = (union recv_frame*) precvpriv->precv_frame_buf;
 
@@ -140,11 +142,15 @@ static void mfree_recv_priv_lock(struct recv_priv *precvpriv)
 
 	_rtw_spinlock_free(&precvpriv->free_recv_buf_queue.lock);
 
+	_rtw_spinlock_free(&precvpriv->pending_rx_transfer_buffer_queue.lock);
+	
 }
 
 void _rtw_free_recv_priv (struct recv_priv *precvpriv)
 {
 _func_enter_;
+
+	rtw_free_pending_transfer_buffers(precvpriv);
 
 	mfree_recv_priv_lock(precvpriv);
 
@@ -199,7 +205,6 @@ _func_exit_;
 
 }
 
-
 void rtw_init_recvframe(union recv_frame *precvframe, struct recv_priv *precvpriv)
 {
 	struct recv_buf *precvbuf = precvframe->u.hdr.precvbuf;
@@ -211,7 +216,6 @@ void rtw_init_recvframe(union recv_frame *precvframe, struct recv_priv *precvpri
 
 
 }
-
 
 int rtw_free_recvframe(union recv_frame *precvframe, _queue *pfree_recv_queue)
 {
@@ -239,19 +243,19 @@ _func_enter_;
 	_irqL irql;
 	struct recv_buf *precvbuf=precvframe->u.hdr.precvbuf;
 	if(precvbuf !=NULL){
-		_enter_critical_ex(&precvbuf->recvbuf_lock, &irql);
+		_enter_critical_bh(&precvbuf->recvbuf_lock, &irql);
 
 		precvbuf->ref_cnt--;
 		if(precvbuf->ref_cnt == 0 ){
-			_enter_critical(&precvpriv->free_recv_buf_queue.lock, &irqL);
+			_enter_critical_bh(&precvpriv->free_recv_buf_queue.lock, &irqL);
 			list_delete(&(precvbuf->list));
 			rtw_list_insert_tail(&(precvbuf->list), get_list_head(&precvpriv->free_recv_buf_queue));
 			precvpriv->free_recv_buf_queue_cnt++;
-			_exit_critical(&precvpriv->free_recv_buf_queue.lock, &irqL);
+			_exit_critical_bh(&precvpriv->free_recv_buf_queue.lock, &irqL);
 			RT_TRACE(_module_rtl871x_recv_c_,_drv_notice_,("rtw_os_read_port: precvbuf=0x%p enqueue:precvpriv->free_recv_buf_queue_cnt=%d\n",precvbuf,precvpriv->free_recv_buf_queue_cnt));
 		}
 		RT_TRACE(_module_rtl871x_recv_c_,_drv_notice_,("rtw_os_read_port: precvbuf=0x%p enqueue:precvpriv->free_recv_buf_queue_cnt=%d\n",precvbuf,precvpriv->free_recv_buf_queue_cnt));
-		_exit_critical_ex(&precvbuf->recvbuf_lock, &irql);
+		_exit_critical_bh(&precvbuf->recvbuf_lock, &irql);
 	}
 }
 #endif
@@ -293,7 +297,7 @@ _func_enter_;
 
 
 	//_rtw_spinlock(&pfree_recv_queue->lock);
-	_enter_critical(&queue->lock, &irqL);
+	_enter_critical_bh(&queue->lock, &irqL);
 
 	//_rtw_init_listhead(&(precvframe->u.hdr.list));
 	list_delete(&(precvframe->u.hdr.list));
@@ -307,7 +311,7 @@ _func_enter_;
 	}
 
 	//_rtw_spinunlock(&pfree_recv_queue->lock);
-	_exit_critical(&queue->lock, &irqL);
+	_exit_critical_bh(&queue->lock, &irqL);
 
 
 _func_exit_;
@@ -361,6 +365,117 @@ _func_exit_;
 
 }
 
+void rtw_enqueue_rx_transfer_buffer(struct recv_priv *precvpriv, struct rtw_transfer_buffer *transfer_buffer)
+{
+	_irqL irqL;	
+	_queue *ppending_queue = &precvpriv->pending_rx_transfer_buffer_queue;
+	
+	_enter_critical(&ppending_queue->lock, &irqL);
+
+	list_delete(&transfer_buffer->list);	
+
+	rtw_list_insert_tail(&transfer_buffer->list, get_list_head(ppending_queue));
+
+	precvpriv->pending_rx_transfer_buffer_cnt++;
+
+	_exit_critical(&ppending_queue->lock, &irqL);
+
+}
+
+struct rtw_transfer_buffer *rtw_dequeue_rx_transfer_buffer(struct recv_priv *precvpriv)
+{
+	_irqL irqL;	
+	_list	*plist, *phead;
+	struct rtw_transfer_buffer *rx_transfer_buffer=NULL;
+	_queue *ppending_queue = &precvpriv->pending_rx_transfer_buffer_queue;
+
+	_enter_critical(&ppending_queue->lock, &irqL);
+
+	if(_rtw_queue_empty(ppending_queue) == _TRUE)
+	{
+		rx_transfer_buffer = NULL;
+	}
+	else
+	{
+		phead = get_list_head(ppending_queue);
+
+		plist = get_next(phead);
+
+		rx_transfer_buffer = LIST_CONTAINOR(plist, struct rtw_transfer_buffer, list);
+
+		list_delete(&rx_transfer_buffer->list);	
+	
+		precvpriv->pending_rx_transfer_buffer_cnt--;
+		
+	}
+
+	_exit_critical(&ppending_queue->lock, &irqL);
+
+	return rx_transfer_buffer;
+
+}
+
+struct rtw_transfer_buffer *rtw_alloc_transfer_buffer(u32 sz)
+{	
+	SIZE_PTR alignment=0;
+	struct rtw_transfer_buffer *transfer_buffer = NULL;
+
+	transfer_buffer = (struct rtw_transfer_buffer *)_rtw_zmalloc(sizeof(struct rtw_transfer_buffer));
+	if(transfer_buffer==NULL)
+		return NULL;
+
+	_rtw_init_listhead(&transfer_buffer->list);
+
+	transfer_buffer->pallocated_transfer_buf = _rtw_zmalloc(sz);
+	if(transfer_buffer->pallocated_transfer_buf==NULL)
+	{
+		_rtw_mfree((u8*)transfer_buffer, sizeof(struct rtw_transfer_buffer));
+
+		return NULL;
+	}
+
+	alignment = (SIZE_PTR)transfer_buffer->pallocated_transfer_buf & (RECVBUFF_ALIGN_SZ-1);
+	
+	transfer_buffer->transfer_buf = transfer_buffer->pallocated_transfer_buf + (RECVBUFF_ALIGN_SZ - alignment);
+		
+    	
+	transfer_buffer->buffer_len = sz;
+
+	transfer_buffer->transfer_len = 0;	
+	
+	return transfer_buffer;
+	
+}
+
+void rtw_free_transfer_buffer(struct rtw_transfer_buffer *transfer_buffer)
+{
+	if(transfer_buffer)
+	{
+		if(transfer_buffer->pallocated_transfer_buf)
+		{
+			_rtw_mfree(transfer_buffer->pallocated_transfer_buf, transfer_buffer->buffer_len);
+		}
+
+		_rtw_mfree((u8*)transfer_buffer, sizeof(struct rtw_transfer_buffer));
+
+	}
+}
+
+void rtw_free_pending_transfer_buffers(struct recv_priv *precvpriv)
+{
+	struct rtw_transfer_buffer *rx_transfer_buffer=NULL;	
+
+	while (NULL != (rx_transfer_buffer = rtw_dequeue_rx_transfer_buffer(precvpriv)))
+	{
+		rtw_free_transfer_buffer(rx_transfer_buffer);
+	}	
+
+	//check only
+	if(precvpriv->pending_rx_transfer_buffer_cnt!=0)
+	{
+		DBG_871X("%s, !!! pending_rx_transfer_buffer_cnt=%d\n", __FUNCTION__, precvpriv->pending_rx_transfer_buffer_cnt);
+	}	
+}
 
 static sint recvframe_chkmic(_adapter *adapter,  union recv_frame *precvframe){
 
@@ -1225,7 +1340,7 @@ static sint validate_recv_frame(_adapter *adapter, union recv_frame *precv_frame
 	u8 type;
 	u8 subtype;
 	sint retval = _SUCCESS;
-	
+
 	HAL_DATA_TYPE		*pHalData = GET_HAL_DATA(adapter);	
 
 	struct rx_pkt_attrib *pattrib = & precv_frame->u.hdr.attrib;
@@ -1273,7 +1388,7 @@ else if(pHalData->bDumpRxPkt ==2){
 	if(type== WIFI_MGT_TYPE){
 		int i;
 		DBG_871X("############################# \n");
-		
+
 		for(i=0; i<64;i=i+8)
 			DBG_871X("%02X:%02X:%02X:%02X:%02X:%02X:%02X:%02X:\n", *(ptr+i),
 			*(ptr+i+1), *(ptr+i+2) ,*(ptr+i+3) ,*(ptr+i+4),*(ptr+i+5), *(ptr+i+6), *(ptr+i+7));
@@ -2157,9 +2272,9 @@ exit:
 
 #ifdef PLATFORM_WINDOWS
 				pnrframe_new->u.hdr.precvbuf=precvbuf;
-				_enter_critical(&precvbuf->recvbuf_lock, &irql);
+				_enter_critical_bh(&precvbuf->recvbuf_lock, &irql);
 				precvbuf->ref_cnt++;
-				_exit_critical(&precvbuf->recvbuf_lock, &irql);
+				_exit_critical_bh(&precvbuf->recvbuf_lock, &irql);
 #endif
 
 			}
@@ -2616,7 +2731,10 @@ void rtw_reordering_ctrl_timeout_handler(void *pcontext)
 
 	_enter_critical_bh(&ppending_recvframe_queue->lock, &irql);
 
-	recv_indicatepkts_in_order(padapter, preorder_ctrl, _TRUE);
+	if(recv_indicatepkts_in_order(padapter, preorder_ctrl, _TRUE)==_TRUE)
+	{
+		_set_timer(&preorder_ctrl->reordering_ctrl_timer, REORDER_WAIT_TIME);		
+	}
 
 	_exit_critical_bh(&ppending_recvframe_queue->lock, &irql);
 
@@ -2734,18 +2852,18 @@ static int recv_func(_adapter *padapter, void *pcontext)
 		goto _exit_recv_func;
 	}
 
-	prframe=portctrl(padapter, prframe);
-	if(prframe==NULL)	{
-		RT_TRACE(_module_rtl871x_recv_c_,_drv_err_,("portctrl: drop pkt \n"));
-		retval = _FAIL;
-		goto _exit_recv_func;		
-	}
-
 	prframe = recvframe_chk_defrag(padapter, prframe);
 	if (prframe == NULL) {
 		RT_TRACE(_module_rtl871x_recv_c_,_drv_err_,("recvframe_chk_defrag: drop pkt\n"));
 		goto _exit_recv_func;
 	}
+
+	prframe=portctrl(padapter, prframe);
+	if(prframe==NULL)	{
+		RT_TRACE(_module_rtl871x_recv_c_,_drv_err_,("portctrl: drop pkt \n"));
+		retval = _FAIL;
+		goto _exit_recv_func;		
+	}	
 
 	count_rx_stats(padapter, prframe);
 

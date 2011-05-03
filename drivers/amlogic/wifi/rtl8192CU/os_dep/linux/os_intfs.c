@@ -104,12 +104,21 @@ int rtw_uapsd_acvo_en = 0;
 #ifdef CONFIG_80211N_HT
 int rtw_ht_enable = 1;
 int rtw_cbw40_enable = 1;
-int rtw_ampdu_enable = 1;//for enable tx_ampdu
+int rtw_ampdu_enable = 1;//for enable tx_ampdu,
+                                        // 0:disable
+                                        // 1:enable when wifi_spec=0, disable when wifi_spec=1
+                                        // 2:force enable whatever wifi_spec=1 or wifi_spec=0
 #endif
 //int rtw_rf_config = RF_1T2R;  // 1T2R	
 int rtw_rf_config = RF_819X_MAX_TYPE;  //auto
 int rtw_low_power = 0;
+
+#ifdef CONFIG_WIFI_TEST
+int wifi_spec = 1;//for wifi test
+#else
 int wifi_spec = 0;//for wifi test
+#endif
+
 int channel_plan = RT_CHANNEL_DOMAIN_MAX;
 
 #ifdef CONFIG_BT_COEXIST
@@ -129,8 +138,12 @@ int enusbss = 0;//0:disable,1:enable
 #endif
 
 int hwpdn_mode=2;//0:disable,1:enable,2: by EFUSE config
-int hwpwrp_detect = 1; //HW power  ping detect 0:disable , 1:enable
 
+#ifdef CONFIG_HW_PWRP_DETECTION
+int hwpwrp_detect = 1; 
+#else
+int hwpwrp_detect = 0; //HW power  ping detect 0:disable , 1:enable
+#endif
 char* rtw_initmac = 0;  // temp mac address if users want to use instead of the mac address in Efuse
 
 module_param(rtw_initmac, charp, 0644);
@@ -176,7 +189,6 @@ void rtw_stop_drv_threads (_adapter *padapter);
 u8 rtw_init_drv_sw(_adapter *padapter);
 u8 rtw_free_drv_sw(_adapter *padapter);
 
-struct net_device *rtw_init_netdev(void);
 
 static uint loadparam( _adapter *padapter,  _nic_hdl	pnetdev);
 static int netdev_open (struct net_device *pnetdev);
@@ -188,36 +200,41 @@ static int netdev_close (struct net_device *pnetdev);
 #define RTL8192D_PROC_NAME "rtl819xD"
 static char rtw_proc_name[IFNAMSIZ];
 static struct proc_dir_entry *rtw_proc = NULL;
-static struct proc_dir_entry *dir_dev = NULL;
+static int	rtw_proc_cnt = 0;
 
 void rtw_proc_init_one(struct net_device *dev)
 {
+	struct proc_dir_entry *dir_dev = NULL;
 	struct proc_dir_entry *entry=NULL;
 	_adapter	*padapter = netdev_priv(dev);
 
-	if(padapter->chip_type & RTL8188C_8192C)
+	if(rtw_proc == NULL)
 	{
-		_rtw_memcpy(rtw_proc_name, RTL8192C_PROC_NAME, sizeof(RTL8192C_PROC_NAME));
-	}
-	else if(padapter->chip_type & RTL8192D)
-	{
-		_rtw_memcpy(rtw_proc_name, RTL8192D_PROC_NAME, sizeof(RTL8192D_PROC_NAME));
-	}
-
+		if(padapter->chip_type == RTL8188C_8192C)
+		{
+			_rtw_memcpy(rtw_proc_name, RTL8192C_PROC_NAME, sizeof(RTL8192C_PROC_NAME));
+		}
+		else if(padapter->chip_type == RTL8192D)
+		{
+			_rtw_memcpy(rtw_proc_name, RTL8192D_PROC_NAME, sizeof(RTL8192D_PROC_NAME));
+		}
 
 #if(LINUX_VERSION_CODE < KERNEL_VERSION(2,6,24))
-	rtw_proc=create_proc_entry(rtw_proc_name, S_IFDIR, proc_net);
+		rtw_proc=create_proc_entry(rtw_proc_name, S_IFDIR, proc_net);
 #else
-	rtw_proc=create_proc_entry(rtw_proc_name, S_IFDIR, init_net.proc_net);
+		rtw_proc=create_proc_entry(rtw_proc_name, S_IFDIR, init_net.proc_net);
 #endif
-	if (rtw_proc == NULL) {
-		printk(KERN_ERR "Unable to create rtw_proc directory\n");
-		return;
+		if (rtw_proc == NULL) {
+			printk(KERN_ERR "Unable to create rtw_proc directory\n");
+			return;
+		}
 	}
 
-	dir_dev = create_proc_entry(dev->name, 
+	padapter->dir_dev = create_proc_entry(dev->name, 
 					  S_IFDIR | S_IRUGO | S_IXUGO, 
 					  rtw_proc);
+
+	dir_dev = padapter->dir_dev;
 
 	if(dir_dev==NULL)
 	{
@@ -227,7 +244,12 @@ void rtw_proc_init_one(struct net_device *dev)
 		remove_proc_entry(rtw_proc_name, init_net.proc_net);
 #endif		
 		rtw_proc = NULL;
+
+		printk(KERN_ERR "Unable to create dir_dev directory\n");
+		return;
 	}
+
+	rtw_proc_cnt++;
 
 	entry = create_proc_read_entry("write_reg", S_IFREG | S_IRUGO,
 				   dir_dev, proc_get_write_reg, dev);				   
@@ -327,7 +349,11 @@ void rtw_proc_init_one(struct net_device *dev)
 
 void rtw_proc_remove_one(struct net_device *dev)
 {
+	struct proc_dir_entry *dir_dev = NULL;
 	_adapter	*padapter = netdev_priv(dev);
+
+	dir_dev = padapter->dir_dev;
+	padapter->dir_dev = NULL;
 
 	if (dir_dev) {
 
@@ -351,14 +377,23 @@ void rtw_proc_remove_one(struct net_device *dev)
 		dir_dev = NULL;
 		
 	}
+	else
+	{
+		return;
+	}
 
-	if(rtw_proc){
+	rtw_proc_cnt--;
+
+	if(rtw_proc_cnt == 0)
+	{
+		if(rtw_proc){
 #if(LINUX_VERSION_CODE < KERNEL_VERSION(2,6,24))
-		remove_proc_entry(rtw_proc_name, proc_net);
+			remove_proc_entry(rtw_proc_name, proc_net);
 #else
-		remove_proc_entry(rtw_proc_name, init_net.proc_net);
+			remove_proc_entry(rtw_proc_name, init_net.proc_net);
 #endif		
-		rtw_proc = NULL;
+			rtw_proc = NULL;
+		}
 	}
 }
 #endif
@@ -384,6 +419,7 @@ _func_enter_;
 	registry_par->wireless_mode = (u8)rtw_wireless_mode;
 	registry_par->vrtl_carrier_sense = (u8)rtw_vrtl_carrier_sense ;
 	registry_par->vcs_type = (u8)rtw_vcs_type;
+	registry_par->rts_thresh = (u16)rtw_rts_thresh;
 	registry_par->frag_thresh=(u16)rtw_frag_thresh;
 	registry_par->preamble = (u8)rtw_preamble;
 	registry_par->scan_mode = (u8)rtw_scan_mode;
@@ -495,6 +531,55 @@ static const struct net_device_ops rtw_netdev_ops = {
 };
 #endif
 
+int rtw_init_netdev_name(struct net_device *pnetdev)
+{
+	_adapter *padapter = netdev_priv(pnetdev);
+
+#ifdef CONFIG_EASY_REPLACEMENT
+	struct net_device	*TargetNetdev = NULL;
+	_adapter			*TargetAdapter = NULL;
+	struct net 		*devnet = NULL;
+
+	if(padapter->bDongle == 1)
+	{
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(2,6,24))
+		TargetNetdev = dev_get_by_name("wlan0");
+#else
+	#if (LINUX_VERSION_CODE < KERNEL_VERSION(2,6,26))
+		devnet = pnetdev->nd_net;
+	#else
+		devnet = dev_net(pnetdev);
+	#endif
+		TargetNetdev = dev_get_by_name(devnet, "wlan0");
+#endif
+		if(TargetNetdev) {
+			printk("Force onboard module driver disappear !!!\n");
+			TargetAdapter = netdev_priv(TargetNetdev);
+			TargetAdapter->DriverState = DRIVER_DISAPPEAR;
+			if(TargetAdapter->pid != 0)
+				padapter->pid = TargetAdapter->pid;
+			dev_put(TargetNetdev);
+			unregister_netdev(TargetNetdev);
+#ifdef CONFIG_PROC_DEBUG
+			if(TargetAdapter->chip_type == padapter->chip_type)
+				rtw_proc_remove_one(TargetNetdev);
+#endif
+			padapter->DriverState = DRIVER_REPLACE_DONGLE;
+		}
+	}
+#endif
+
+	if(dev_alloc_name(pnetdev,"wlan%d") < 0)
+	{
+		RT_TRACE(_module_os_intfs_c_,_drv_err_,("dev_alloc_name, fail! \n"));
+	}
+
+	netif_carrier_off(pnetdev);
+	//netif_stop_queue(pnetdev);
+
+	return 0;
+}
+
 struct net_device *rtw_init_netdev(void)	
 {
 	_adapter *padapter;
@@ -507,10 +592,12 @@ struct net_device *rtw_init_netdev(void)
 	if (!pnetdev)
 	   return NULL;
 
-	//SET_MODULE_OWNER(pnetdev);
-       ether_setup(pnetdev);
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,24)
+	SET_MODULE_OWNER(pnetdev);
+#endif
 	
 	padapter = netdev_priv(pnetdev);
+	_rtw_memset(padapter, 0,sizeof(_adapter));
 	padapter->pnetdev = pnetdev;	
 	
 	//pnetdev->init = NULL;
@@ -545,23 +632,10 @@ struct net_device *rtw_init_netdev(void)
 	//priv->wireless_data.spy_data = &priv->spy_data;
 	//pnetdev->wireless_data = &priv->wireless_data;
 #endif
-	
-	
-#ifdef CONFIG_PLATFORM_MT53XX		
-	if(dev_alloc_name(pnetdev,"rea%d") < 0)
-#else
-	if(dev_alloc_name(pnetdev,"wlan%d") < 0)
-#endif		
-	{
-		RT_TRACE(_module_os_intfs_c_,_drv_err_,("dev_alloc_name, fail! \n"));
-	}
 
 	//step 2.
-   	loadparam(padapter, pnetdev);	   
+   	loadparam(padapter, pnetdev);
 
-	netif_carrier_off(pnetdev);
-	//netif_stop_queue(pnetdev);
-	
 	return pnetdev;
 
 }
@@ -656,8 +730,8 @@ u8 rtw_init_default_value(_adapter *padapter)
 	
 
 	//mlme_priv
-	pmlmepriv->scan_interval = 0;
-	pmlmepriv->passive_mode = 1;
+	pmlmepriv->scan_interval = SCAN_INTERVAL;// 30*2 sec = 60sec
+	pmlmepriv->scan_mode = SCAN_ACTIVE;
 	
 	//qos_priv
 	//pmlmepriv->qospriv.qos_option = pregistrypriv->wmm_enable;
@@ -696,7 +770,7 @@ u8 rtw_init_default_value(_adapter *padapter)
 	//hal_priv
 	padapter->halpriv.fw_ractrl = _FALSE;
 	padapter->halpriv.LastHMEBoxNum = 0;
-
+	padapter->halpriv.bRxRSSIDisplay = 0;
 	//misc.
 	
 	padapter->bReadPortCancel = _FALSE;	
@@ -713,14 +787,15 @@ u8 reset_drv_sw(_adapter *padapter)
 	HAL_DATA_TYPE *pHalData = GET_HAL_DATA(padapter);
 	//hal_priv	
 	padapter->halpriv.fw_ractrl = _FALSE;	
+	padapter->halpriv.bRxRSSIDisplay = 0;
 	if(!pwrctrlpriv->bkeepfwalive)
 	{
 	   padapter->halpriv.LastHMEBoxNum = 0;	//misc.		
 	}
 	padapter->bReadPortCancel = _FALSE;		
 	padapter->bWritePortCancel = _FALSE;	
-	pmlmepriv->scan_interval = 0;
-	pmlmepriv->passive_mode = 1;
+	pmlmepriv->scan_interval = SCAN_INTERVAL;// 30*2 sec = 60sec
+	pmlmepriv->scan_mode = SCAN_ACTIVE; // 1: active scan ,0 passive scan
 
 	//pwrctrlpriv->current_rfpwrstate = rf_on;
 	pwrctrlpriv->bips_processing = _FALSE;		
@@ -729,11 +804,19 @@ u8 reset_drv_sw(_adapter *padapter)
 	padapter->recvpriv.rx_pkts = psitesurveyctrl->last_rx_pkts = 0;
 	psitesurveyctrl->traffic_busy = _FALSE;	
 	pHalData->IQKInitialized = _FALSE;
+
 #ifdef CONFIG_AUTOSUSPEND	
 	#if (LINUX_VERSION_CODE>=KERNEL_VERSION(2,6,22) && LINUX_VERSION_CODE<=KERNEL_VERSION(2,6,34))
-	padapter->dvobjpriv.pusbdev->autosuspend_disabled = 1;//autosuspend disabled by the user
+		padapter->dvobjpriv.pusbdev->autosuspend_disabled = 1;//autosuspend disabled by the user
 	#endif
 #endif
+
+#ifdef SILENT_RESET_FOR_SPECIFIC_PLATFOM
+	padapter->silent_reset_inprogress = _FALSE;
+	padapter->Wifi_Error_Status = WIFI_STATUS_SUCCESS;
+	padapter->last_tx_time =0;
+	padapter->last_tx_complete_time =0;	
+#endif	
 	pwrctrlpriv->pwr_state_check_cnts = 0;
 	return ret8;
 }
@@ -816,6 +899,14 @@ _func_enter_;
 	init_dm_priv(padapter);
 
 	rtw_InitSwLeds(padapter);
+	_rtw_mutex_init(&padapter->silentreset_mutex );
+#ifdef SILENT_RESET_FOR_SPECIFIC_PLATFOM
+	padapter->silent_reset_inprogress = _FALSE;
+	padapter->Wifi_Error_Status = WIFI_STATUS_SUCCESS;
+	padapter->last_tx_time =0;
+	padapter->last_tx_complete_time =0;	
+#endif	
+
 
 exit:
 	
@@ -958,15 +1049,15 @@ static int netdev_open(struct net_device *pnetdev)
     	{    
 		padapter->bDriverStopped = _FALSE;
 	 	padapter->bSurpriseRemoved = _FALSE;	 
-		padapter->bCardDisableWOHSM = _FALSE;        	
-	
+		padapter->bCardDisableWOHSM = _FALSE;        			
+
 		status = rtw_hal_init(padapter);		
 		if (status ==_FAIL)
 		{			
 			RT_TRACE(_module_os_intfs_c_,_drv_err_,("rtl871x_hal_init(): Can't init h/w!\n"));
 			goto netdev_open_error;
-		}
-
+		}		
+		
 		if ( rtw_initmac == NULL )	//	Use the mac address stored in the Efuse
 		{
 			_rtw_memcpy(pnetdev->dev_addr, padapter->eeprompriv.mac_addr, ETH_ALEN);
@@ -1029,7 +1120,7 @@ static int netdev_open(struct net_device *pnetdev)
 	padapter->net_closed = _FALSE;	
 		
 
-	if( pwrctrlpriv->power_mgnt != PS_MODE_ACTIVE )
+	if(( pwrctrlpriv->power_mgnt != PS_MODE_ACTIVE ) ||(padapter->pwrctrlpriv.bHWPwrPindetect))
 	{	
 		padapter->pwrctrlpriv.bips_processing = _FALSE;		
 		_set_timer(&padapter->pwrctrlpriv.pwr_state_check_timer, padapter->pwrctrlpriv.pwr_state_check_inverval);	
@@ -1061,20 +1152,13 @@ netdev_open_error:
 	
 }
 
-
-int pm_netdev_open(struct net_device *pnetdev)
-{
-	return netdev_open(pnetdev);
-}
-
-
 #ifdef CONFIG_IPS
 int  ips_netdrv_open(_adapter *padapter)
 {
-	int status;
+	int status = _SUCCESS;
 	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(padapter);
 	padapter->net_closed = _FALSE;
-	//printk("%s\n",__FUNCTION__);
+	printk("%s\n",__FUNCTION__);
 	//if(padapter->bup == _FALSE)
     	{    
 		padapter->bDriverStopped = _FALSE;
@@ -1085,7 +1169,7 @@ int  ips_netdrv_open(_adapter *padapter)
 		status = rtw_hal_init(padapter);		
 		if (status ==_FAIL)
 		{			
-			RT_TRACE(_module_os_intfs_c_,_drv_err_,("_r871xu_netdrv_open(): Can't init h/w!\n"));
+			RT_TRACE(_module_os_intfs_c_,_drv_err_,("_r8192cu_netdrv_open(): Can't init h/w!\n"));
 			goto netdev_open_error;
 		}
   		
@@ -1105,7 +1189,7 @@ int  ips_netdrv_open(_adapter *padapter)
 		_set_timer(&padapter->pwrctrlpriv.pwr_state_check_timer, padapter->pwrctrlpriv.pwr_state_check_inverval);
 	}		
 		
-        RT_TRACE(_module_os_intfs_c_,_drv_info_,("-871x_drv - dev_open\n"));
+        RT_TRACE(_module_os_intfs_c_,_drv_info_,("-r8192cu_drv - dev_open\n"));
 	//printk("-ips_netdrv_open - drv_open, bup=%d\n", padapter->bup);
 		
 	 return _SUCCESS;
@@ -1114,12 +1198,24 @@ netdev_open_error:
 
 	//padapter->bup = _FALSE;
 	
-	RT_TRACE(_module_os_intfs_c_,_drv_err_,("-871x_drv - dev_open, fail!\n"));
+	RT_TRACE(_module_os_intfs_c_,_drv_err_,("-r8192cu_drv - dev_open, fail!\n"));
 	//printk("-ips_netdrv_open - drv_open fail, bup=%d\n", padapter->bup);
 	
 	return _FAIL;
 }
 #endif
+
+int pm_netdev_open(struct net_device *pnetdev,u8 bnormal)
+{
+	int status;
+	if(bnormal)
+		status = netdev_open(pnetdev);	
+	else
+		status =  (_SUCCESS == ips_netdrv_open((_adapter *)netdev_priv(pnetdev)))?(0):(-1);
+
+	return status;
+}
+
 extern int rfpwrstate_check(_adapter *padapter);
 static int netdev_close(struct net_device *pnetdev)
 {
@@ -1143,18 +1239,9 @@ static int netdev_close(struct net_device *pnetdev)
 	}
 	else*/
 	{
-		printk("(2)8192cu_drv - drv_close, bup=%d, hw_init_completed=%d"
-			#ifdef CONFIG_PLATFORM_ANDROID
-			" bdisassoc_by_assoc=%d"
-			#endif
-			"\n"
+		printk("(2)8192cu_drv - drv_close, bup=%d, hw_init_completed=%d\n"
 			, padapter->bup
-			, padapter->hw_init_completed
-			#ifdef CONFIG_PLATFORM_ANDROID
-			, padapter->bdisassoc_by_assoc
-			#endif
-			
-			);
+			, padapter->hw_init_completed);
 
 		//s1.
 		if(pnetdev)   
@@ -1163,23 +1250,18 @@ static int netdev_close(struct net_device *pnetdev)
 				netif_stop_queue(pnetdev);
      		}
 		
-		#ifndef CONFIG_PLATFORM_ANDROID	
-		//if(!padapter->bdisassoc_by_assoc){
-		//#endif
+#ifndef CONFIG_PLATFORM_ANDROID	
 		
 		//s2.	
 		//s2-1.  issue rtw_disassoc_cmd to fw
 		rtw_disassoc_cmd(padapter);	
 		//s2-2.  indicate disconnect to os
+		printk("%s...call rtw_indicate_disconnect\n ",__FUNCTION__);
 		rtw_indicate_disconnect(padapter);
 		//s2-3. 
 	       rtw_free_assoc_resources(padapter);	
 		//s2-4.
-		rtw_free_network_queue(padapter,_TRUE);
-
-		//#ifdef CONFIG_PLATFORM_ANDROID
-		//} 
-		//padapter->bdisassoc_by_assoc=0;//FON
+		rtw_free_network_queue(padapter,_TRUE);	
 #endif
 
 	}

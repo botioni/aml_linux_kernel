@@ -137,11 +137,12 @@
 	// The file name "_2T" is for 92CU, "_1T"  is for 88CU. Modified by tynli. 2009.11.24.
 	#define Rtl819XFwImageArray					Rtl8192CUFwTSMCImgArray
 	#define Rtl819XFwTSMCImageArray			Rtl8192CUFwTSMCImgArray
-	#define Rtl819XFwUMCImageArray				Rtl8192CUFwUMCImgArray
-			
+	#define Rtl819XFwUMCACutImageArray			Rtl8192CUFwUMCACutImgArray
+	#define Rtl819XFwUMCBCutImageArray			Rtl8192CUFwUMCBCutImgArray
+	
 	#define Rtl819XMAC_Array					Rtl8192CUMAC_2T_Array
-	#define Rtl819XAGCTAB_2TArray					Rtl8192CUAGCTAB_2TArray
-	#define Rtl819XAGCTAB_1TArray					Rtl8192CUAGCTAB_1TArray
+	#define Rtl819XAGCTAB_2TArray				Rtl8192CUAGCTAB_2TArray
+	#define Rtl819XAGCTAB_1TArray				Rtl8192CUAGCTAB_1TArray
 	#define Rtl819XAGCTAB_1T_HPArray			Rtl8192CUAGCTAB_1T_HPArray
 	#define Rtl819XPHY_REG_2TArray				Rtl8192CUPHY_REG_2TArray
 	#define Rtl819XPHY_REG_1TArray				Rtl8192CUPHY_REG_1TArray
@@ -171,7 +172,7 @@ enum RTL871X_HCI_TYPE {
 
 #define PageNum_128(_Len)		(u32)(((_Len)>>7) + ((_Len)&0x7F ? 1:0))
 
-#define FW_8192C_SIZE					16384//16k
+#define FW_8192C_SIZE					16384+32//16k
 #define FW_8192C_START_ADDRESS		0x1000
 #define FW_8192C_END_ADDRESS		0x3FFF
 
@@ -293,7 +294,7 @@ typedef enum _USB_RX_AGG_MODE{
 #define CHIP_8723_DRV_REV			BIT(3) // RTL8723 Driver Revised
 #define NORMAL_CHIP  				BIT(4)
 #define CHIP_VENDOR_UMC			BIT(5)
-#define CHIP_VENDOR_UMC_B_CUT		BIT(6) // Chip version for ECO
+#define CHIP_VENDOR_UMC_B_CUT	BIT(6) // Chip version for ECO
 
 #define IS_NORMAL_CHIP(version)  	(((version) & NORMAL_CHIP) ? _TRUE : _FALSE) 
 #define IS_92C_SERIAL(version)   		(((version) & CHIP_92C) ? _TRUE : _FALSE)
@@ -476,6 +477,7 @@ struct hal_priv
 
 	//for host message to fw
 	u8 LastHMEBoxNum;
+	u8 PowerIndex_backup[6];
 
 #ifdef CONFIG_USB_HCI
 
@@ -530,7 +532,7 @@ struct hal_priv
 #ifdef CONFIG_BT_COEXIST
 	struct btcoexist_priv		bt_coexist;	
 #endif
-
+	u8			bRxRSSIDisplay;
 
 };
 
