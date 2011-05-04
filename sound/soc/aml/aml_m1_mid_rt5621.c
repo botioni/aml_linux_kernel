@@ -119,7 +119,7 @@ static struct snd_soc_jack_pin hp_jack_pins[] = {
 	{ .pin = "HP", .mask = SND_JACK_HEADSET },
 };
 
-static int hp_detect_flag = 0;
+static int hp_detect_flag = 0x0;
 static spinlock_t lock;
 static void rt5621_hp_detect_queue(struct work_struct*);
 static struct rt5621_work_t{
@@ -137,7 +137,7 @@ static void rt5621_hp_detect_queue(struct work_struct* work)
         level = ((struct rt5621_platform_data *) (rt5621_dai.ac97_pdata))->is_hp_pluged();
 
     //printk("level = %x, hp_detect_flag = %x\n", level, hp_detect_flag);
-    if(level == 0x1 && hp_detect_flag!= 0x1){ // HP
+    if(level == 0x1 && hp_detect_flag!= 0x1){ // HP OUT
         printk("Headphone pluged in\n");
 	    snd_soc_dapm_disable_pin(codec, "Ext Spk");
         snd_soc_dapm_enable_pin(codec, "MIC IN");
@@ -146,7 +146,7 @@ static void rt5621_hp_detect_queue(struct work_struct* work)
 	    switch_audio(1);
         snd_soc_jack_report(&hp_jack, SND_JACK_HEADSET, SND_JACK_HEADSET);
         hp_detect_flag = level;
-    }else if(level != hp_detect_flag){ // HDMI
+    }else if(level != hp_detect_flag){ // AUX OUT
         printk("Headphone unpluged\n");
 	    snd_soc_dapm_enable_pin(codec, "Ext Spk");
         snd_soc_dapm_enable_pin(codec, "MIC IN");
@@ -166,7 +166,25 @@ static void rt5621_hp_detect_timer(unsigned long data)
 }
 
 #endif
-
+static int Init_Aux_Hp(struct snd_soc_codec *codec)
+{
+    if (hp_detect_flag==1){
+    	printk("Init: Headphone has been pluged\n");
+	    snd_soc_dapm_disable_pin(codec, "Ext Spk");
+        snd_soc_dapm_enable_pin(codec, "MIC IN");
+	    snd_soc_dapm_sync(codec);
+	    // pull down the gpio to mute spk
+	    switch_audio(1);
+        snd_soc_jack_report(&hp_jack, SND_JACK_HEADSET, SND_JACK_HEADSET);
+    }else if(hp_detect_flag==0){
+    	printk("Init: Headphone has been unpluged\n");
+	    snd_soc_dapm_enable_pin(codec, "Ext Spk");
+        snd_soc_dapm_enable_pin(codec, "MIC IN");
+	    snd_soc_dapm_sync(codec);
+        snd_soc_jack_report(&hp_jack, 0, SND_JACK_HEADSET);
+	    switch_audio(0);
+    }
+}
 static int aml_m1_codec_init(struct snd_soc_codec *codec)
 {
     struct snd_soc_card *card = codec->socdev->card;
@@ -223,8 +241,8 @@ static int aml_m1_codec_init(struct snd_soc_codec *codec)
     snd_soc_dapm_disable_pin(codec, "HP MIC");
     snd_soc_dapm_disable_pin(codec, "FM IN");
 
-    snd_soc_dapm_sync(codec);
-    
+//    snd_soc_dapm_sync(codec);
+	Init_Aux_Hp(codec);    
     return 0;
 }
 

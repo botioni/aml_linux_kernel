@@ -15,6 +15,8 @@
 //#include <asm/arch/am_regs.h>
 #include <mach/am_regs.h>
 
+#include <linux/amports/tsync.h>
+#include <linux/amports/timestamp.h>
 #include "dsp_mailbox.h"
 #include "dsp_codec.h"
 
@@ -183,8 +185,21 @@ static irqreturn_t audiodsp_mailbox_irq(int irq, void *data)
         }
 
 	if(status & (1<<M1B_IRQ7_DECODE_FATAL_ERR)){
-		priv->decode_fatal_err = 1;
+		int err_code;
+		
+		SYS_CLEAR_IRQ(M1B_IRQ7_DECODE_FATAL_ERR);
+		get_mailbox_data(priv,M1B_IRQ7_DECODE_FATAL_ERR,&msg);
+
+		err_code = msg.cmd;
+		priv->decode_fatal_err = err_code;
+
+		if(err_code & 0x01){
+			timestamp_pcrscr_set(timestamp_vpts_get());
+			timestamp_pcrscr_enable(1);
+		}
+		else if(err_code & 0x02){
 		printk("Set decode_fatal_err flag, Reset audiodsp!\n");
+		}
 	}
 
 	return 0;

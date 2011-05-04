@@ -34,7 +34,5 @@ obj-$(CONFIG_AML_TCON_R10)  += r10.o
 
 obj-$(CONFIG_AML_TCON_REFB13)  += refb13.o
 
-obj-$(CONFIG_AML_TCON_K7New)  += k14.o
-
 #EXTRA_CFLAGS += -DCONFIG_PM
 

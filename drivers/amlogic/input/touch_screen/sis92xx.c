@@ -10,9 +10,6 @@
 #include <linux/delay.h>
 #include <linux/i2c.h>
 #include <linux/capts.h>
-#ifdef CONFIG_SN7325
-#include <linux/sn7325.h>
-#endif
 #ifdef CONFIG_HAS_EARLYSUSPEND
 	#include <linux/earlysuspend.h>
 	static struct early_suspend sis_early_suspend;
@@ -253,11 +250,13 @@ int sis92xx_get_event (struct device *dev, struct ts_event *event)
 static int sis92xx_probe(struct i2c_client *client, const struct i2c_device_id *id)
 {
 	int ret;
-        #ifdef CONFIG_SN7325
-        printk("power on 7325 1\n");
-        configIO(1, 0);
-        setIO_level(1, 1, 1);//PP1
-        #endif
+	struct ts_platform_data *pdata = client->dev.platform_data;
+
+	if(pdata&&pdata->power_off&&pdata->power_on){
+		pdata->power_off();
+		mdelay(50);
+		pdata->power_on();
+	}
 	ret = capts_probe(&client->dev, &sis92xx_chip);
 #ifdef CONFIG_HAS_EARLYSUSPEND
 		sis_early_suspend.level = EARLY_SUSPEND_LEVEL_BLANK_SCREEN;
@@ -286,10 +285,6 @@ static int sis92xx_suspend(struct early_suspend *handler)
 	if(handler && handler->param) {
 		struct i2c_client *client = (struct i2c_client *)handler->param;
 		ret = capts_suspend(&client->dev, msg);
-#ifdef CONFIG_SN7325
-		configIO(1, 0);
-		setIO_level(1, 0, 1);//PP1 for touch
-#endif
 	}
 	return ret;
 }
@@ -298,10 +293,6 @@ static int sis92xx_resume(struct early_suspend *handler)
 {
  	int ret = -1;
 	if(handler && handler->param) {
-#ifdef CONFIG_SN7325
-		configIO(1, 0);
-		setIO_level(1, 1, 1);//PP1 for touch
-#endif
 		struct i2c_client *client = (struct i2c_client *)handler->param;
 		ret = capts_resume(&client->dev);
 	}

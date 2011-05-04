@@ -48,21 +48,28 @@
 	#include <linux/etherdevice.h>
 	#include <net/iw_handler.h>
 	#include <linux/proc_fs.h>	// Necessary because we use the proc fs
+	
 
+
+
+#ifdef CONFIG_USB_HCI
+	typedef struct urb *  PURB;
 #if (LINUX_VERSION_CODE>=KERNEL_VERSION(2,6,22))
 #ifdef CONFIG_USB_SUSPEND
 #define CONFIG_AUTOSUSPEND	1
 #endif
 #endif
-
-
-#ifdef CONFIG_USB_HCI
-	typedef struct urb *  PURB;
 #endif
 
 	typedef struct 	semaphore _sema;
 	typedef	spinlock_t	_lock;
-        typedef struct semaphore	_rwlock;
+	
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,37))
+	typedef struct mutex 		_mutex;
+#else
+	typedef struct semaphore	_mutex;
+#endif
+
 	typedef struct timer_list _timer;
 
 	struct	__queue	{
@@ -136,15 +143,23 @@ __inline static void _exit_critical_bh(_lock *plock, _irqL *pirqL)
 	spin_unlock_bh(plock);
 }
 
-__inline static void _enter_hwio_critical(_rwlock *prwlock, _irqL *pirqL)
+__inline static void _enter_critical_mutex(_mutex *pmutex, _irqL *pirqL)
 {
-		down(prwlock);
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,37))
+		mutex_lock(pmutex);
+#else
+		down(pmutex);
+#endif
 }
 
 
-__inline static void _exit_hwio_critical(_rwlock *prwlock, _irqL *pirqL)
+__inline static void _exit_critical_mutex(_mutex *pmutex, _irqL *pirqL)
 {
-		up(prwlock);
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,37))
+		mutex_unlock(pmutex);
+#else
+		up(pmutex);
+#endif
 }
 
 __inline static void list_delete(_list *plist)
@@ -162,7 +177,7 @@ __inline static void _init_timer(_timer *ptimer,_nic_hdl padapter,void *pfunc,vo
 {
 	//setup_timer(ptimer, pfunc,(u32)cntx);	
 	ptimer->function = pfunc;
-	ptimer->data = (u32)cntx;
+	ptimer->data = (unsigned long)cntx;
 	init_timer(ptimer);
 }
 
@@ -212,7 +227,7 @@ __inline static void _set_workitem(_workitem *pwork)
 
 	typedef NDIS_SPIN_LOCK	_lock;
 
-	typedef KMUTEX 			_rwlock;
+	typedef KMUTEX 			_mutex;
 
 	typedef KIRQL	_irqL;
 
@@ -287,15 +302,15 @@ __inline static void _exit_critical_bh(_lock *plock, _irqL *pirqL)
 	NdisDprReleaseSpinLock(plock);
 }
 
-__inline static _enter_hwio_critical(_rwlock *prwlock, _irqL *pirqL)
+__inline static _enter_critical_mutex(_mutex *pmutex, _irqL *pirqL)
 {
-	KeWaitForSingleObject(prwlock, Executive, KernelMode, FALSE, NULL);
+	KeWaitForSingleObject(pmutex, Executive, KernelMode, FALSE, NULL);
 }
 
 
-__inline static _exit_hwio_critical(_rwlock *prwlock, _irqL *pirqL)
+__inline static _exit_critical_mutex(_mutex *pmutex, _irqL *pirqL)
 {
-	KeReleaseMutex(prwlock, FALSE);
+	KeReleaseMutex(pmutex, FALSE);
 }
 
 
@@ -343,7 +358,7 @@ __inline static void _set_workitem(_workitem *pwork)
 #ifndef BIT
 	#define BIT(x)	( 1 << (x))
 #endif
-
+extern u8*	_rtw_zmalloc(u32 sz);
 extern u8*	_rtw_malloc(u32 sz);
 extern void	_rtw_mfree(u8 *pbuf, u32 sz);
 extern void	_rtw_memcpy(void* dec, void* sour, u32 sz);
@@ -358,7 +373,7 @@ extern void	_rtw_init_sema(_sema *sema, int init_val);
 extern void	_rtw_free_sema(_sema	*sema);
 extern void	_rtw_up_sema(_sema	*sema);
 extern u32	_rtw_down_sema(_sema *sema);
-extern void	_rtw_rwlock_init(_rwlock *prwlock);
+extern void	_rtw_mutex_init(_mutex *pmutex);
 extern void	_rtw_spinlock_init(_lock *plock);
 extern void	_rtw_spinlock_free(_lock *plock);
 extern void	_rtw_spinlock(_lock	*plock);

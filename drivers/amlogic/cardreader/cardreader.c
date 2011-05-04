@@ -445,6 +445,9 @@ fail:
 	return ret;
 }
 
+#ifdef CONFIG_MACH_MESON_8726M_REFB09NEW
+extern int amlogic_wifi_power(int on);
+#endif
 static int card_sdio_init_card(struct memory_card *card)
 {
 	int err, i;
@@ -459,6 +462,9 @@ static int card_sdio_init_card(struct memory_card *card)
 			return err;
 	}
 
+#ifdef CONFIG_MACH_MESON_8726M_REFB09NEW
+	amlogic_wifi_power(0);
+#endif
 	return 0;
 }
 

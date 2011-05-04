@@ -282,7 +282,7 @@ PHY_RF6052SetCckTxPower(
 // 20100427 Joseph: Driver dynamic Tx power shall not affect Tx power. It shall be determined by power training mechanism.
 // Currently, we cannot fully disable driver dynamic tx power mechanism because it is referenced by BT coexist mechanism.
 // In the future, two mechanism shall be separated from each other and maintained independantly. Thanks for Lanhsin's reminder.
-#if 0
+
 		if(pdmpriv->DynamicTxHighPowerLvl == TxHighPwrLevel_Level1)
 		{	
 			TxAGC[RF90_PATH_A] = 0x10101010;
@@ -294,7 +294,6 @@ PHY_RF6052SetCckTxPower(
 			TxAGC[RF90_PATH_B] = 0x00000000;
 		}
 		else
-#endif
 		{
 			for(idx1=RF90_PATH_A; idx1<=RF90_PATH_B; idx1++)
 			{

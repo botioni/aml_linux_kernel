@@ -62,6 +62,7 @@ dsp_register.h
 
 #define MAILBOX1_REG(n)	DSP_REG(40+n)
 #define MAILBOX2_REG(n)	DSP_REG(40+32+n)
+#define DSP_WORK_INFO (AUDIO_DSP_END_ADDR - 128)
 
 
 #ifndef __ASSEMBLY__
