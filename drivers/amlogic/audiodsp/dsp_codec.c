@@ -99,7 +99,8 @@ u32 dsp_codec_get_current_pts(struct audiodsp_priv *priv)
     mutex_lock(&priv->stream_buffer_mutex);
 
     if (priv->frame_format.channel_num == 0 || priv->frame_format.sample_rate == 0 || priv->frame_format.data_width == 0) {
-        printk("unvalib audio format!\n");
+        printk("unvalid audio format!\n");
+	 mutex_unlock(&priv->stream_buffer_mutex);
         return -1;
     }
 #if 0

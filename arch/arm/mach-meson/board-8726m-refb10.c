@@ -1035,7 +1035,7 @@ typedef struct {
 	unsigned enable;
 } gpio_data_t;
 
-#define MAX_GPIO 42
+#define MAX_GPIO 41
 static gpio_data_t gpio_data[MAX_GPIO] = {
 // 8
   {"GPIOA_0 -- TCON_STH",		 GPIOA_bank_bit0_14(0),		GPIOA_bit_bit0_14(0),	GPIO_OUTPUT_MODE, 1, 1},
@@ -1077,7 +1077,7 @@ static gpio_data_t gpio_data[MAX_GPIO] = {
 	{"GPIOD_18 -- UART_CTS_N",   GPIOD_bank_bit2_24(18),    GPIOD_bit_bit2_24(18),  GPIO_OUTPUT_MODE, 1, 1},
 	{"GPIOD_20 -- LCD_POWER_EN", GPIOD_bank_bit2_24(20),    GPIOD_bit_bit2_24(20),  GPIO_OUTPUT_MODE, 1, 1},
 	{"GPIOD_21 -- UART_TX",      GPIOD_bank_bit2_24(21),    GPIOD_bit_bit2_24(21),  GPIO_OUTPUT_MODE, 1, 1},
-	{"GPIOD_23 -- CAP_TAP_EN",   GPIOD_bank_bit2_24(23),    GPIOD_bit_bit2_24(23),  GPIO_OUTPUT_MODE, 1, 1},
+	//{"GPIOD_23 -- CAP_TAP_EN",   GPIOD_bank_bit2_24(23),    GPIOD_bit_bit2_24(23),  GPIO_OUTPUT_MODE, 1, 1},
   // 5
 	{"GPIOE_4 -- NAND_nCS1",	 GPIOE_bank_bit0_15(4),	    GPIOE_bit_bit0_15(4),	GPIO_OUTPUT_MODE, 1, 1},
 	{"GPIOE_5 -- NAND_nCS2",	 GPIOE_bank_bit0_15(5),	    GPIOE_bit_bit0_15(5),	GPIO_OUTPUT_MODE, 1, 1},

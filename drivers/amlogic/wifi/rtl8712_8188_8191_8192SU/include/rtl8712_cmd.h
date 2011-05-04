@@ -101,6 +101,10 @@ enum rtl8712_h2c_cmd
 	GEN_CMD_CODE(_SetPowerTracking),
 	GEN_CMD_CODE(_AMSDU_TO_AMPDU), /*57*/ 
 	GEN_CMD_CODE(_SetMacAddress), /*58*/
+
+	GEN_CMD_CODE(_DisconnectCtrl), /*59*/
+	GEN_CMD_CODE(_SetChannelPlan), /*60*/
+	GEN_CMD_CODE(_DisconnectCtrlEx), /*61*/
 	
 #if 1//To do, modify these h2c cmd, add or delete
 	GEN_CMD_CODE(_GetH2cLbk) ,
@@ -209,6 +213,10 @@ struct _cmd_callback 	cmd_callback[] =
 	{GEN_CMD_CODE(_AMSDU_TO_AMPDU), NULL}, /*57*/ 
 	{GEN_CMD_CODE(_SetMacAddress), NULL}, /*58*/	
 
+	{GEN_CMD_CODE(_DisconnectCtrl),NULL}, /*59*/ 
+	{GEN_CMD_CODE(_SetChannelPlan),NULL}, /*60*/
+	{GEN_CMD_CODE(_DisconnectCtrlEx),NULL}, /*61*/
+	
 #if 1//To do, modify these h2c cmd, add or delete
 	{GEN_CMD_CODE(_GetH2cLbk), NULL},
 

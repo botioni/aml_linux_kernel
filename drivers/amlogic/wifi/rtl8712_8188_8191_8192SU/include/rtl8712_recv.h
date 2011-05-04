@@ -69,7 +69,11 @@
 //#define MAX_RECVBUF_SZ (32768) // 32k
 //#define MAX_RECVBUF_SZ (16384) //16K
 //#define MAX_RECVBUF_SZ 0x3800
+#ifdef CONFIG_PLATFORM_MSTAR389
+#define MAX_RECVBUF_SZ (15360) // 15K
+#else
 #define MAX_RECVBUF_SZ (30720) // 30K
+#endif
 #endif
 
 #endif

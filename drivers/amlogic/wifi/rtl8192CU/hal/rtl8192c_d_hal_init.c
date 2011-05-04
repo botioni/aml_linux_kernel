@@ -350,7 +350,7 @@ int FirmwareDownload92C(
 	u8		*pFirmwareBuf;
 	u32		FirmwareLen;
 
-	pFirmware = (PRT_FIRMWARE_92C)_rtw_malloc(sizeof(RT_FIRMWARE_92C));
+	pFirmware = (PRT_FIRMWARE_92C)_rtw_zmalloc(sizeof(RT_FIRMWARE_92C));
 	if(!pFirmware)
 	{
 		rtStatus = _FAIL;
@@ -371,10 +371,12 @@ int FirmwareDownload92C(
 		if(IS_VENDOR_UMC_A_CUT(pHalData->VersionID) && !IS_92C_SERIAL(pHalData->VersionID))// UMC , 8188
 		{						
 			pFwImageFileName = R92CFwImageFileName_UMC;
-			FwImage = Rtl819XFwUMCImageArray;
-			FwImageLen = UMCImgArrayLength;
+			FwImage = Rtl819XFwUMCACutImageArray;
+			FwImageLen = UMCACutImgArrayLength;
 			DBG_871X(" ===> FirmwareDownload91C() fw:Rtl819XFwImageArray_UMC\n");
-				
+
+			//FwImage = Rtl819XFwUMCBCutImageArray;
+			//FwImageLen = UMCBCutImgArrayLength;
 		}
 		else
 		{
@@ -741,35 +743,11 @@ ReadChipVersion(
 	u8				ChipVersion=0;	
 	
 	value32 = rtw_read32(Adapter, REG_SYS_CFG);
-#if 0
-	if(value32 & TRP_VAUX_EN){		
-		//Test chip
-		switch(((value32 & CHIP_VER_RTL_MASK) >> CHIP_VER_RTL_SHIFT))
-		{
-			case 0: //8191C
-				version = VERSION_TEST_CHIP_91C;
-				break;
-			case 1: //8188C
-				version = VERSION_TEST_CHIP_88C;
-				break;
-			default:
-				// TODO: set default to 1T1R?
-				RT_ASSERT(FALSE,("Chip Version can't be recognized.\n"));
-				break;
-		}
-		
-	}
-	else{		
-		//Normal chip
-		version = VERSION_8192C_NORMAL_CHIP;
 
-	}
-#else
 	if (value32 & TRP_VAUX_EN){		
 		version = (value32 & TYPE_ID) ?VERSION_TEST_CHIP_92C :VERSION_TEST_CHIP_88C;		
 	}
-	else{
-		// Normal mass production chip.
+	else{		
 		ChipVersion = NORMAL_CHIP;
 		ChipVersion |= ((value32 & TYPE_ID) ? CHIP_92C : 0);
 		ChipVersion |= ((value32 & VENDOR_ID) ? CHIP_VENDOR_UMC : 0);
@@ -789,7 +767,7 @@ ReadChipVersion(
 		}
 		version = (VERSION_8192C)ChipVersion;
 	}
-#endif
+
 
 	switch(version)
 	{
@@ -1288,10 +1266,10 @@ static void _ReadHWPDSelection(IN PADAPTER Adapter,IN u8*PROMContent,IN	u8	Autol
 		Adapter->pwrctrlpriv.bSupportRemoteWakeup = _FALSE;
 	}
 	else	{
-		if(SUPPORT_HW_RADIO_DETECT(Adapter))
+		//if(SUPPORT_HW_RADIO_DETECT(Adapter))
 			Adapter->pwrctrlpriv.bHWPwrPindetect = Adapter->registrypriv.hwpwrp_detect;
-		else
-			Adapter->pwrctrlpriv.bHWPwrPindetect = _FALSE;//dongle not support new
+		//else
+			//Adapter->pwrctrlpriv.bHWPwrPindetect = _FALSE;//dongle not support new
 			
 			
 		//hw power down mode selection , 0:rf-off / 1:power down
@@ -1302,13 +1280,17 @@ static void _ReadHWPDSelection(IN PADAPTER Adapter,IN u8*PROMContent,IN	u8	Autol
 			Adapter->pwrctrlpriv.bHWPowerdown = Adapter->registrypriv.hwpdn_mode;
 				
 		// decide hw if support remote wakeup function
-		// if hw supported, 8051 (SIE) will generate WeakUP frame when autoresume
+		// if hw supported, 8051 (SIE) will generate WeakUP signal( D+/D- toggle) when autoresume
 		Adapter->pwrctrlpriv.bSupportRemoteWakeup = (PROMContent[EEPROM_TEST_USB_OPT] & BIT1)?_TRUE :_FALSE;
 
 		//if(SUPPORT_HW_RADIO_DETECT(Adapter))	
 			//Adapter->registrypriv.usbss_enable = Adapter->pwrctrlpriv.bSupportRemoteWakeup ;
 		
-		DBG_8192C("%s...bHWPwrPindetect(%d) bSupportRemoteWakeup(%x)\n",__FUNCTION__,Adapter->pwrctrlpriv.bHWPwrPindetect,Adapter->pwrctrlpriv.bSupportRemoteWakeup);
+		DBG_8192C("%s...bHWPwrPindetect(%x)-bHWPowerdown(%x) ,bSupportRemoteWakeup(%x)\n",__FUNCTION__,
+		Adapter->pwrctrlpriv.bHWPwrPindetect,Adapter->pwrctrlpriv.bHWPowerdown ,Adapter->pwrctrlpriv.bSupportRemoteWakeup);
+
+		DBG_8192C("### PS params=>  power_mgnt(%x),usbss_enable(%x) ###\n",Adapter->registrypriv.power_mgnt,Adapter->registrypriv.usbss_enable);
+		
 	}
 	
 }
@@ -1336,7 +1318,8 @@ static void _InitAdapterVariablesByPROM(IN	PADAPTER Adapter)
 	_ReadRFSetting(Adapter, PROMContent, !bAutoload);
 	_ReadHWPDSelection(Adapter, PROMContent, !bAutoload);
 
-	
+	Adapter->bDongle = !(PROMContent[EEPROM_EASY_REPLACEMENT]);
+	DBG_8192C("%s(): REPLACEMENT = %x\n",__FUNCTION__,Adapter->bDongle);	
 }
 
 static void efuse_ReadAllMap(
@@ -1373,6 +1356,166 @@ static void EFUSE_ShadowMapUpdate(
 	
 }// EFUSE_ShadowMapUpdate
 
+
+#define EEPROM_ADDRESS_LEN	6
+
+
+
+static void _EnableEepromPG( PADAPTER Adapter,u8 enable)
+{
+	u8 eeValue,value;
+	eeValue = rtw_read8(Adapter, REG_9346CR);	
+	value = enable ? (eeValue | EEM1) : (eeValue & ~EEM1);	
+	 rtw_write8(Adapter, REG_9346CR,value);		
+}
+//-----------------------------------------------------------------------------
+// Procedure:   RaiseClock
+//
+// Description: This routine raises the EEPOM's clock input (EESK)
+//
+// Arguments:
+//      pValue - Ptr to the EEPROM control register's current value
+//
+// Returns: (none)
+//-----------------------------------------------------------------------------
+static void _RaiseClock(PADAPTER Adapter,u16* pValue)
+{
+	*pValue = *pValue | EESK;
+	rtw_write16(Adapter,REG_9346CR, *pValue);
+}
+
+//-----------------------------------------------------------------------------
+// Procedure:   LowerClock
+//
+// Description: This routine lower's the EEPOM's clock input (EESK)
+//
+// Arguments:
+//      pValue - Ptr to the EEPROM control register's current value
+//
+// Returns: (none)
+//-----------------------------------------------------------------------------
+static void _LowerClock(PADAPTER Adapter,u16* pValue)
+{
+	*pValue = (*pValue & ~EESK);
+	rtw_write16(Adapter,REG_9346CR, *pValue);
+}
+
+static void _ShiftOutBits(PADAPTER Adapter,u16 data, u16 count)
+{
+	unsigned short mask;
+	unsigned short value = rtw_read16(Adapter,REG_9346CR);
+
+	mask = 0x01 << (count - 1);
+
+	value &= ~(EEDO | EEDI);
+
+	do
+	{
+		value &= ~EEDI;
+		if(data & mask){
+		    value |= EEDI;
+		}
+		
+		rtw_write16(Adapter,REG_9346CR, value);
+		_RaiseClock(Adapter,&value);
+		_LowerClock(Adapter,&value);
+		mask = mask >> 1;
+	} while(mask);
+
+	value&= ~EEDI;
+
+	rtw_write16(Adapter,REG_9346CR, value);
+	
+}
+static void _EEpromCleanup(PADAPTER Adapter)
+{
+	unsigned short value = rtw_read16(Adapter,REG_9346CR);
+
+	value &= ~(EECS | EEDI);
+	rtw_write16(Adapter,REG_9346CR, value);
+
+	_RaiseClock(Adapter,&value);
+	_LowerClock(Adapter,&value);
+}
+//-----------------------------------------------------------------------------
+// Procedure:   ShiftInBits
+//
+// Description: This routine shifts data bits in from the EEPROM.
+//
+// Arguments:
+//
+// Returns:
+//      The contents of that particular EEPROM word
+//-----------------------------------------------------------------------------
+
+static u16 _ShiftInBits(PADAPTER Adapter)
+{
+	u16 d = 0;
+	int i;
+	u16 value = rtw_read16(Adapter,REG_9346CR);
+	value &= ~( EEDO | EEDI);
+
+	for(i = 0 ; i < 16 ; i++){
+		d = d << 1;
+		_RaiseClock(Adapter,&value);
+
+		value = rtw_read16(Adapter,REG_9346CR);
+
+		value &= ~(EEDI);
+		if(value & EEDO){
+			d |= 1;
+		}
+		
+		_LowerClock(Adapter,&value);
+	}
+
+	return d;
+}
+
+static u16 _EERead2Byte(PADAPTER Adapter,u32 address)
+{
+	u16 data;
+	u16 value =rtw_read16(Adapter, REG_9346CR);
+
+	value &= ~(EEDI | EEDO | EESK | EEM0);
+	value|= (EEM1 | EECS);
+	rtw_write16(Adapter,REG_9346CR, value);
+	
+	// write the read opcode and register number in that order
+	// The opcode is 3bits in length, reg is 6 bits long
+	_ShiftOutBits(Adapter,EEPROM_READ_OPCODE, 3);
+	_ShiftOutBits(Adapter,address, EEPROM_ADDRESS_LEN);
+
+	// Now read the data (16 bits) in from the selected EEPROM word
+	data = _ShiftInBits(Adapter);
+
+	_EEpromCleanup(Adapter);
+	return data;
+	
+}
+
+static void EEPROM_ShadowMapUpdate( PADAPTER Adapter)
+{
+	
+	u8 *PROMContent = Adapter->eeprompriv.efuse_eeprom_data;
+
+	u32			i;
+	u16 value16;
+	_EnableEepromPG(Adapter,_TRUE);	
+	// Read all Content from EEPROM
+	for(i = 0; i < HWSET_MAX_SIZE; i += 2)
+	{
+		//todo:
+		//value16 = EF2Byte(ReadEEprom(Adapter, (u16) (i>>1)));
+		//*((u16*)(&PROMContent[i])) = value16; 				
+		value16 =  _EERead2Byte(Adapter, (u16) (i>>1));
+		value16  = le16_to_cpu(value16 );
+		*((u16*)(&PROMContent[i])) = value16; 
+		
+	}
+	_EnableEepromPG(Adapter,_FALSE);
+	
+}
 static void _ReadPROMContent(
 	IN PADAPTER 		Adapter
 	)
@@ -1381,7 +1524,7 @@ static void _ReadPROMContent(
 	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(Adapter);
 	
 	u8			eeValue;
-	u32			i;
+	
 
 	_rtw_memset(pEEPROM->efuse_eeprom_data, 0xff, HWSET_MAX_SIZE);	
 	
@@ -1398,15 +1541,10 @@ static void _ReadPROMContent(
 
 	if(_SUCCESS == pEEPROM->bAutoload)
 	{
+		
 		if (_TRUE == pEEPROM->bBootFromEEPROM)
 		{
-			// Read all Content from EEPROM or EFUSE.
-			for(i = 0; i < HWSET_MAX_SIZE; i += 2)
-			{
-				//todo:
-				//value16 = EF2Byte(ReadEEprom(Adapter, (u16) (i>>1)));
-				//*((u16*)(&PROMContent[i])) = value16; 				
-			}
+			EEPROM_ShadowMapUpdate(Adapter);			
 		}
 		else
 		{

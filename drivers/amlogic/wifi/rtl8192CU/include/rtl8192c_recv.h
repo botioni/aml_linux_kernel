@@ -197,6 +197,8 @@ struct recv_buf{
 	u8 reuse;
 #endif
 
+	struct rtw_transfer_buffer *rx_transfer_buf;
+
 	uint  len;
 	u8 *phead;
 	u8 *pdata;

@@ -108,6 +108,9 @@
 #include <linux/bq27x00_battery.h>
 #endif
 
+#ifdef CONFIG_AR1520_GPS
+#include <linux/ar1520.h>
+#endif
 
 #if defined(CONFIG_JPEGLOGO)
 static struct resource jpeglogo_resources[] = {
@@ -1373,6 +1376,59 @@ static struct platform_device aml_uart_device = {
 };
 #endif
 
+#ifdef CONFIG_AR1520_GPS
+static void ar1520_power_on(void)
+{
+#ifdef CONFIG_SN7325
+	printk("power on gps\n");
+	configIO(0, 0);
+	setIO_level(0, 1, 7);//OD7
+#endif	
+}
+
+static void ar1520_power_off(void)
+{
+#ifdef CONFIG_SN7325
+	printk("power off gps\n");
+	configIO(0, 0);
+	setIO_level(0, 0, 7);//OD7
+#endif	
+}
+
+static void ar1520_reset(void)
+{
+#ifdef CONFIG_SN7325
+	printk("reset gps\n");
+	msleep(200);
+	configIO(0, 0);
+	setIO_level(0, 0, 4);//OD4
+	msleep(200);
+	configIO(0, 0);
+	setIO_level(0, 1, 4);//OD4
+	msleep(200);
+	configIO(0, 0);
+	setIO_level(0, 0, 4);//OD4
+	msleep(200);
+	configIO(0, 0);
+	setIO_level(0, 1, 4);//OD4
+#endif	
+}
+
+static struct ar1520_platform_data aml_ar1520_plat = {
+	.power_on = ar1520_power_on,
+	.power_off = ar1520_power_off,
+	.reset = ar1520_reset,
+};
+
+static struct platform_device aml_ar1520_device = {	
+    .name         = "ar1520_gps",  
+    .id       = -1, 
+    .dev = {        
+                .platform_data = &aml_ar1520_plat,  
+           },
+};
+#endif
+
 #ifdef CONFIG_AM_NAND
 /*static struct mtd_partition partition_info[] = 
 {
@@ -1806,7 +1862,7 @@ static void bt_device_init(void)
 //	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<18));
 //	SET_CBUS_REG_MASK(PREG_GGPIO_O, (1<<18));
 	    configIO(0, 0);
-        setIO_level(0, 1, 5);	
+        setIO_level(0, 1, 7);	//OD7
 	
 	/* reset */
 	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<12));
@@ -1942,7 +1998,10 @@ static struct platform_device __initdata *platform_devs[] = {
     #endif
     #ifdef CONFIG_BT_DEVICE  
         &bt_device,
-    #endif    	
+    #endif
+    #ifdef CONFIG_AR1520_GPS
+	&aml_ar1520_device,
+    #endif
 };
 static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
 
@@ -2154,6 +2213,7 @@ static __init void m1_init_machine(void)
     spi_register_board_info(spi_board_info_list, ARRAY_SIZE(spi_board_info_list));
 #endif
     disable_unused_model();
+
 }
 
 /*VIDEO MEMORY MAPING*/
