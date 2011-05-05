@@ -42,7 +42,7 @@ int c_dbg_lvl = 0;
 
 #define s_ready                  1 << RTC_REG1_BIT_s_ready  
 #define s_do                       1 << RTC_REG1_BIT_sdo
-#define RESET_RETRY_TIMES           5
+#define RESET_RETRY_TIMES           15
 
 #define WR_RTC(addr, data)         WRITE_CBUS_REG(addr, data)
 #define RD_RTC(addr)                   READ_CBUS_REG(addr)
@@ -159,6 +159,25 @@ static int  check_osc_clk(void)
 
 }
 
+void rtc_ser_static_write_auto (unsigned long static_reg_data_in)
+{
+    unsigned long data32;
+    
+    // Program MSB 15-8
+    data32  = (static_reg_data_in >> 8) & 0xff;
+    WRITE_CBUS_REG(RTC_ADDR4,data32);
+
+    // Program LSB 7-0, and start serializing
+    data32  = READ_CBUS_REG(RTC_ADDR0);
+    data32 |= 1                           << 17; // auto_serialize_start 
+    data32 &= ~(0xff << 24);
+    data32 |= (static_reg_data_in & 0xff) << 24; // auto_static_reg
+    WRITE_CBUS_REG(RTC_ADDR0,data32);
+    // Poll auto_serializer_busy bit until it's low (IDLE)
+    while ((READ_CBUS_REG(RTC_ADDR0)) & 1<<22) {}
+}
+
+
 static void rtc_reset_s_ready(void)
 {
 	//RTC_RESET_BIT_HIGH(1);
@@ -168,7 +187,7 @@ static void rtc_reset_s_ready(void)
 
 static int rtc_wait_s_ready(void)
 {
-	int i = 20000;
+	int i = 40000;
 	int try_cnt = 0;
 	/*
 	while (i--){
@@ -185,7 +204,7 @@ static int rtc_wait_s_ready(void)
 					}
 			  rtc_reset_s_ready();
 			  try_cnt++;
-			  i = 20000;
+			  i = 40000;
 			}
 	}
 	
@@ -279,7 +298,7 @@ static unsigned int ser_access_read(unsigned long addr)
 static int ser_access_write(unsigned long addr, unsigned long data)
 {
 	int s_nrdy_cnt = 0;
-
+	
 	while(rtc_comm_init()<0){
 		
 		if(s_nrdy_cnt>RESET_RETRY_TIMES)
@@ -290,7 +309,7 @@ static int ser_access_write(unsigned long addr, unsigned long data)
 	rtc_send_addr_data(0,data);
 	rtc_send_addr_data(1,addr);
 	rtc_set_mode(1); //Write
-	
+
 	rtc_wait_s_ready();
 
 	return 0;
@@ -302,60 +321,60 @@ static int ser_access_write(unsigned long addr, unsigned long data)
 // Use part of the serial bus: sclk_static, sdi and sen to shift
 // in a 16-bit static data. Manual mode.
 // -----------------------------------------------------------------------------
-static void rtc_ser_static_write_manual (unsigned int static_reg_data_in)
-{    
-	int i;        
-       RTC_DBG(RTC_DBG_VAL, "rtc_ser_static_write_manual: data=0x%04x\n", static_reg_data_in);   
-
-	// Initialize: sen low for 1 clock cycle   
-	RTC_sen_LOW(0);    
-	RTC_sclk_static_LOW(0);    
-	RTC_sclk_static_HIGH(1);    
-	RTC_sen_HIGH(1);    
-	RTC_sclk_static_LOW(0);   
-	  
-        // Shift in 16-bit known sequence    
-	 for (i = 15; i >= 0; i --) {    
-	 	
-	     if ((RTC_SER_REG_DATA_NOTIFIER >> i) & 0x1) {            
-		   RTC_sdi_HIGH(1);        
-	     }
-		 else {            
-		   RTC_sdi_LOW(0);        
-	     }     
-			
-	    RTC_sclk_static_HIGH(1);        
-	    RTC_sclk_static_LOW(0);   
-	 }    
-	 
-	  // 1 clock cycle turn around    
-	  RTC_sdi_LOW(0);    
-	  RTC_sclk_static_HIGH(1);    
-	  RTC_sclk_static_LOW(0);  
-	  
-	  // Shift in 16-bit static register data    
-	  for (i = 15; i >= 0; i --) {       
-	  	if ((static_reg_data_in >> i) & 0x1) {            
-		    RTC_sdi_HIGH(1);        
-		} 
-		else {            
-		    RTC_sdi_LOW(0);        
-		}        
-		RTC_sclk_static_HIGH(1);        
-		RTC_sclk_static_LOW(0);    
-	   }    
-	  
-	  // One more clock cycle to complete write    
-	  RTC_sen_LOW(0);    
-	  RTC_sdi_LOW(0);    
-	  RTC_sclk_static_HIGH(1);    
-	  RTC_sclk_static_LOW(0);
-} 
+//static void rtc_ser_static_write_manual (unsigned int static_reg_data_in)
+//{    
+//	int i;        
+//       RTC_DBG(RTC_DBG_VAL, "rtc_ser_static_write_manual: data=0x%04x\n", static_reg_data_in);   
+//
+//	// Initialize: sen low for 1 clock cycle   
+//	RTC_sen_LOW(0);    
+//	RTC_sclk_static_LOW(0);    
+//	RTC_sclk_static_HIGH(1);    
+//	RTC_sen_HIGH(1);    
+//	RTC_sclk_static_LOW(0);   
+//	  
+//        // Shift in 16-bit known sequence    
+//	 for (i = 15; i >= 0; i --) {    
+//	 	
+//	     if ((RTC_SER_REG_DATA_NOTIFIER >> i) & 0x1) {            
+//		   RTC_sdi_HIGH(1);        
+//	     }
+//		 else {            
+//		   RTC_sdi_LOW(0);        
+//	     }     
+//			
+//	    RTC_sclk_static_HIGH(1);        
+//	    RTC_sclk_static_LOW(0);   
+//	 }    
+//	 
+//	  // 1 clock cycle turn around    
+//	  RTC_sdi_LOW(0);    
+//	  RTC_sclk_static_HIGH(1);    
+//	  RTC_sclk_static_LOW(0);  
+//	  
+//	  // Shift in 16-bit static register data    
+//	  for (i = 15; i >= 0; i --) {       
+//	  	if ((static_reg_data_in >> i) & 0x1) {            
+//		    RTC_sdi_HIGH(1);        
+//		} 
+//		else {            
+//		    RTC_sdi_LOW(0);        
+//		}        
+//		RTC_sclk_static_HIGH(1);        
+//		RTC_sclk_static_LOW(0);    
+//	   }    
+//	  
+//	  // One more clock cycle to complete write    
+//	  RTC_sen_LOW(0);    
+//	  RTC_sdi_LOW(0);    
+//	  RTC_sclk_static_HIGH(1);    
+//	  RTC_sclk_static_LOW(0);
+//} 
 
 
 static void static_register_write(unsigned data)
 {
-     rtc_ser_static_write_manual(data);	
+     rtc_ser_static_write_auto(data);	
 }
 
 static int aml_rtc_read_time(struct device *dev, struct rtc_time *tm)
@@ -389,12 +408,38 @@ static int aml_rtc_write_time(struct device *dev, struct rtc_time *tm)
       rtc_tm_to_time(tm, &time_t);
      
       //spin_lock(&priv->lock);  
-      RTC_DBG(RTC_DBG_VAL, "aml_rtc : write the rtc time, time is %d\n", time_t);
+      RTC_DBG(RTC_DBG_VAL, "aml_rtc : write the rtc time, time is %ld\n", time_t);
       ser_access_write(RTC_COUNTER_ADDR, time_t);
       RTC_DBG(RTC_DBG_VAL, "aml_rtc : the time has been written\n");
       //spin_unlock(&priv->lock);  
 
       return 0;
+}
+
+static char *rtc_reg[8]={
+							"RTC_COUNTER    ",
+							"RTC_GPO_COUNTER",
+							"RTC_SEC_ADJUST ",
+							"UNUSED         ",
+							"RTC_REGMEM_0   ",
+							"RTC_REGMEM_1   ",
+							"RTC_REGMEM_2   ",
+							"RTC_REGMEM_3   "
+						};
+						
+static ssize_t show_rtc_reg(struct class *class, struct class_attribute *attr,	char *buf)
+{
+	int i;
+	
+	printk("enter function: %s \n",__FUNCTION__);
+	
+	
+	for(i=0;i<8;i++)
+	{
+		printk(" %20s : 0x%x \n",rtc_reg[i],ser_access_read(i));
+	}
+	
+	return 0;
 }
 
 static const struct rtc_class_ops aml_rtc_ops ={
@@ -403,6 +448,17 @@ static const struct rtc_class_ops aml_rtc_ops ={
    .set_time = aml_rtc_write_time,
 
 };
+
+static struct class_attribute rtc_class_attrs[] = {
+    __ATTR(rtc_reg_log,       S_IRUGO | S_IWUSR, show_rtc_reg,    NULL),
+    __ATTR_NULL
+};
+
+static struct class aml_rtc_class = {
+    .name = "aml_rtc",
+    .class_attrs = rtc_class_attrs,
+};
+
 
 static int aml_rtc_probe(struct platform_device *pdev)
 {
@@ -425,13 +481,18 @@ static int aml_rtc_probe(struct platform_device *pdev)
 	}
 
 	spin_lock_init(&priv->lock);
+
 	//ser_access_write(RTC_GPO_COUNTER_ADDR,0x100000);
-	static_register_write(0x0004);
+	//static_register_write(0x0004);
 	ser_access_write(RTC_GPO_COUNTER_ADDR,0x100000);
 
 	//check_osc_clk();
 	//ser_access_write(RTC_COUNTER_ADDR, 0);
-
+	ret = class_register(&aml_rtc_class);
+	if(ret){
+		printk(" class register nand_class fail!\n");
+	}	
+	
 	return 0;
 
 out:
@@ -466,6 +527,7 @@ struct platform_driver aml_rtc_driver = {
 
 static int  __init aml_rtc_init(void)
 {
+		static_register_write(0x0004);
        return platform_driver_register(&aml_rtc_driver);
 }
 
