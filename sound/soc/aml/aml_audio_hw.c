@@ -107,33 +107,33 @@ void audio_set_958outbuf(u32 addr, u32 size)
 void audio_in_i2s_set_buf(u32 addr, u32 size)
 {
 	WRITE_MPEG_REG(AUDIN_FIFO0_START, addr & 0xffffffc0);
-	//WRITE_MPEG_REG(AUDIN_FIFO0_END, (addr&0xffffffc0) + (size&0xffffffc0) -64);
+	WRITE_MPEG_REG(AUDIN_FIFO0_PTR, (addr&0xffffffc0));
 	WRITE_MPEG_REG(AUDIN_FIFO0_END, (addr&0xffffffc0) + (size&0xffffffc0)-8);
 #ifdef CONFIG_SND_AML_M2
 	WRITE_MPEG_REG(AUDIN_SOURCE_SEL, (1<<0)); // select audio codec output as I2S source
 #endif
 	WRITE_MPEG_REG(AUDIN_FIFO0_CTRL, (1<<0)	// FIFO0_EN
-																	|(1<<2)	// load start address./* AUDIN_FIFO0_LOAD */
-																	|(1<<3)	// DIN from i2sin./* AUDIN_FIFO0_DIN_SEL */ 
-																	|(1<<6)	// 32 bits data in./*AUDIN_FIFO0_D32b */ 
-																	|(0<<7)	// put the 24bits data to  low 24 bits./* AUDIN_FIFO0_h24b */16bit 
-																	|(4<<8)	// /*AUDIN_FIFO0_ENDIAN */
-																	|(2<<11)//2 channel./* AUDIN_FIFO0_CHAN*/
-																	|(0<<16)	//to DDR
-                                                                    |(1<<15)    // Urgent request.  DDR SDRAM urgent request enable.
-                                                                    |(0<<17)    // Overflow Interrupt mask
-                                                                    |(0<<18)    // Audio in INT
-																	|(1<<19)	//hold 0 enable
-																	|(0<<22)	// hold0 to aififo																	
-														);			
+    								|(1<<2)	// load start address./* AUDIN_FIFO0_LOAD */
+									|(1<<3)	// DIN from i2sin./* AUDIN_FIFO0_DIN_SEL */ 
+	    							|(1<<6)	// 32 bits data in./*AUDIN_FIFO0_D32b */ 
+									|(0<<7)	// put the 24bits data to  low 24 bits./* AUDIN_FIFO0_h24b */16bit 
+									|(4<<8)	// /*AUDIN_FIFO0_ENDIAN */
+									|(2<<11)//2 channel./* AUDIN_FIFO0_CHAN*/
+		    						|(0<<16)	//to DDR
+                                    |(1<<15)    // Urgent request.  DDR SDRAM urgent request enable.
+                                    |(0<<17)    // Overflow Interrupt mask
+                                    |(0<<18)    // Audio in INT
+			                    	|(1<<19)	//hold 0 enable
+								    |(0<<22)	// hold0 to aififo																	
+				  );			
 	WRITE_MPEG_REG(AUDIN_I2SIN_CTRL, (0<<I2SIN_SIZE)			///*bit8*/  16bit
-																	|(1<<I2SIN_CHAN_EN)		/*bit10~13*/ //2 channel 
-																	|(1<<I2SIN_POS_SYNC)	
-																	|(1<<I2SIN_LRCLK_SKEW)
-																	|(1<<I2SIN_CLK_SEL)
-																	|(1<<I2SIN_LRCLK_SEL)
-																	|(1<<I2SIN_DIR)
-														);															
+									|(1<<I2SIN_CHAN_EN)		/*bit10~13*/ //2 channel 
+									|(1<<I2SIN_POS_SYNC)	
+									|(1<<I2SIN_LRCLK_SKEW)
+									|(1<<I2SIN_CLK_SEL)
+									|(1<<I2SIN_LRCLK_SEL)
+				    				|(1<<I2SIN_DIR)
+				  );															
     audio_in_buf_ready = 1;
 
     in_error_flag = 0;
@@ -142,9 +142,20 @@ void audio_in_i2s_set_buf(u32 addr, u32 size)
 void audio_in_spdif_set_buf(u32 addr, u32 size)
 {
 }
+extern void audio_in_enabled(int flag);
+
 void audio_in_i2s_enable(int flag)
 {
+  int rd = 0, start=0;
+reset_again:
 		WRITE_MPEG_REG_BITS(AUDIN_FIFO0_CTRL, 1, 1, 1); // reset FIFO 0
+        WRITE_MPEG_REG(AUDIN_FIFO0_PTR, 0);
+        rd = READ_MPEG_REG(AUDIN_FIFO0_PTR);
+        start = READ_MPEG_REG(AUDIN_FIFO0_START);
+        if(rd != start){
+          printk("error %08x, %08x !!!!!!!!!!!!!!!!!!!!!!!!\n", rd, start);
+          goto reset_again;
+        }
 		if(flag){
 				WRITE_MPEG_REG_BITS(AUDIN_I2SIN_CTRL, 1, I2SIN_EN, 1);
 		}else{
@@ -152,6 +163,7 @@ void audio_in_i2s_enable(int flag)
 		}
         in_error_flag = 0;
         in_error = 0;
+        audio_in_enabled(flag);
 }
 
 int if_audio_in_i2s_enable()
@@ -359,6 +371,8 @@ void audio_set_clk(unsigned freq, unsigned fs_config)
     }
 }
 
+extern void audio_out_enabled(int flag);
+
 void audio_enable_ouput(int flag)
 {
     if (flag) {
@@ -380,6 +394,7 @@ void audio_enable_ouput(int flag)
             WRITE_MPEG_REG_BITS(AIU_MEM_IEC958_CONTROL, 0, 1, 2);
         }
     }
+    audio_out_enabled(flag);
 }
 
 int if_audio_out_enable()

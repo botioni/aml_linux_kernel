@@ -34,8 +34,13 @@ extern int aout_notifier_call_chain(unsigned long val, void *v);
 
 unsigned int aml_pcm_playback_start_addr = 0;
 unsigned int aml_pcm_capture_start_addr  = 0;
+unsigned int aml_pcm_playback_off = 0;
+unsigned int aml_pcm_playback_enable = 1;
+
 EXPORT_SYMBOL(aml_pcm_playback_start_addr);
 EXPORT_SYMBOL(aml_pcm_capture_start_addr);
+EXPORT_SYMBOL(aml_pcm_playback_off);
+EXPORT_SYMBOL(aml_pcm_playback_enable);
 
 
 /*--------------------------------------------------------------------------*\
@@ -281,7 +286,7 @@ static int aml_pcm_prepare(struct snd_pcm_substream *substream)
 			memset((void*)runtime->dma_area,0,runtime->dma_bytes * 2 + 128);
 	}
 	else{
-			printk("aml_pcm_prepare SNDRV_PCM_STREAM_CAPTURE: dma_addr=%x, dma_bytes=%x\n", runtime->dma_addr, runtime->dma_bytes);
+			//printk("aml_pcm_prepare SNDRV_PCM_STREAM_CAPTURE: dma_addr=%x, dma_bytes=%x\n", runtime->dma_addr, runtime->dma_bytes);
 			audio_in_i2s_set_buf(runtime->dma_addr, runtime->dma_bytes*2);
 			memset((void*)runtime->dma_area,0,runtime->dma_bytes*2);
             {
@@ -292,7 +297,7 @@ static int aml_pcm_prepare(struct snd_pcm_substream *substream)
 	}
 
     aout_notifier_call_chain(AOUT_EVENT_PREPARE, substream);
-
+#if 0
 	printk("Audio Parameters:\n");
 	printk("\tsample rate: %d\n", runtime->rate);
 	printk("\tchannel: %d\n", runtime->channels);
@@ -300,8 +305,7 @@ static int aml_pcm_prepare(struct snd_pcm_substream *substream)
     printk("\tformat: %s\n", snd_pcm_format_name(runtime->format));
 	printk("\tperiod size: %ld\n", runtime->period_size);
 	printk("\tperiods: %d\n", runtime->periods);
-
-	
+#endif	
 	
 	return 0;
 }
@@ -326,11 +330,17 @@ static int aml_pcm_trigger(struct snd_pcm_substream *substream,
         
 		// TODO
 		if(substream->stream == SNDRV_PCM_STREAM_PLAYBACK){
-		    printk("aml_pcm_trigger: playback start\n");
+		//    printk("aml_pcm_trigger: playback start\n");
 			audio_enable_ouput(1);
 		}else{
-			printk("aml_pcm_trigger: capture start\n");
+		//	printk("aml_pcm_trigger: capture start\n");
 			audio_in_i2s_enable(1);
+            {
+              int * ppp = (int*)(rtd->dma_area+rtd->dma_bytes*2-8);
+			  ppp[0] = 0x78787878;
+			  ppp[1] = 0x78787878;
+            }
+
 		}
 		
 		s->active = 1;
@@ -342,10 +352,10 @@ static int aml_pcm_trigger(struct snd_pcm_substream *substream,
 		// TODO
 		s->active = 0;
 		if(substream->stream == SNDRV_PCM_STREAM_PLAYBACK){
-            printk("aml_pcm_trigger: playback stop\n");
+        //    printk("aml_pcm_trigger: playback stop\n");
 				audio_enable_ouput(0);
 		}else{
-            printk("aml_pcm_trigger: capture stop\n");
+        //    printk("aml_pcm_trigger: capture stop\n");
 				audio_in_i2s_enable(0);
 		}
 		break;
@@ -355,11 +365,16 @@ static int aml_pcm_trigger(struct snd_pcm_substream *substream,
 		// TODO
 		s->active = 1;
 		if(substream->stream == SNDRV_PCM_STREAM_PLAYBACK){
-            printk("aml_pcm_trigger: playback resume\n");
+        //    printk("aml_pcm_trigger: playback resume\n");
 				audio_enable_ouput(1);
 		}else{
-            printk("aml_pcm_trigger: capture resume\n");
-				audio_in_i2s_enable(1);
+        //    printk("aml_pcm_trigger: capture resume\n");
+			  audio_in_i2s_enable(1);
+              {
+                int * ppp = (int*)(rtd->dma_area+rtd->dma_bytes*2-8);
+			    ppp[0] = 0x78787878;
+			    ppp[1] = 0x78787878;
+              }
 		}
 		
 		break;
@@ -512,6 +527,8 @@ static int aml_pcm_copy_playback(struct snd_pcm_runtime *runtime, int channel,
     int  align = runtime->channels * 32 / runtime->byte_align;
     char *hwbuf = runtime->dma_area + frames_to_bytes(runtime, pos);
     n = frames_to_bytes(runtime, count);
+    if(aml_pcm_playback_enable == 0)
+      return res;
     if(access_ok(VERIFY_READ, buf, frames_to_bytes(runtime, count))){
 	  if(runtime->format == SNDRV_PCM_FORMAT_S16_LE && I2S_MODE == AIU_I2S_MODE_PCM16){
         int16_t * tfrom, *to, *left, *right;

@@ -29,6 +29,8 @@ MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Kevin W");
 MODULE_VERSION("1.0.0");
 
+
+
 typedef struct {
 	unsigned int in_rd_ptr; /*i2s in read pointer */
 	unsigned int in_wr_ptr; /*i2s in write pointer */
@@ -74,13 +76,33 @@ static amaudio_t amaudio_inbuf;
 static spinlock_t amaudio_lock;
 static spinlock_t amaudio_clk_lock;
 
-static char* amaudio_tmpbuf = 0;
+static char* amaudio_tmpbuf_in  = 0;
+static char* amaudio_tmpbuf_out = 0;
 
 static unsigned int music_wr_ptr = 0;
 static unsigned int music_mix_flag = 1;
+static unsigned int mic_mix_flag = 1;
+static unsigned int enable_debug = 0;
+static unsigned int enable_debug_dump = 0;
+
+#define DEBUG_DUMP 1
+
+static unsigned short* dump_buf = 0;
+static unsigned int dump_size = 512*1024;
+static unsigned int dump_off = 0;
+
+
+extern int aml_pcm_playback_enable;
 
 static unsigned int audio_in_int_cnt = 0;
 static unsigned int level2 = 0;
+static int last_out_status = 0;
+static int last_in_status = 0;
+static int amaudio_in_started = 0;
+static int amaudio_out_started = 0;
+
+static int int_in_enable = 0;
+static int int_out_enable = 0;
 
 /* indicate if some error for i2s in */
 unsigned char in_error_flag = 0;
@@ -89,12 +111,27 @@ EXPORT_SYMBOL(in_error_flag);
 unsigned int in_error = 0;
 EXPORT_SYMBOL(in_error);
 
+/**********************************/
+static int int_out = 0;
+static int int_in = 0;
 
+/**********************************/
 static ssize_t put_audin_buf(amaudio_t* amaudio, void* dbuf, void* sbuf, size_t count);
 static ssize_t put_audout_buf(amaudio_t* amaudio, void* dbuf, void* sbuf, size_t count);
 static ssize_t put_audout_buf_direct(amaudio_t* amaudio, void* dbuf, void* sbuf, size_t count);
 static ssize_t get_audin_buf(amaudio_t* amaudio, void* dbuf, void* sbuf, size_t count);
 static ssize_t get_audout_buf(amaudio_t* amaudio, void* dbuf, void* sbuf, size_t count);
+
+static int aprint(const char *fmt, ...)
+{
+  va_list args;
+  int r=0;
+  if(enable_debug){
+    r = printk(fmt, args);
+  }
+  va_end(args);
+  return r;
+}
 
 static int get_audin_ptr(void)
 {
@@ -147,6 +184,89 @@ static void direct_audio_right_gain(int arg)
 
   direct_right_gain = arg;
 }
+void audio_out_enabled(int flag)
+{
+  unsigned long irqflags;
+  unsigned hwptr, tmp;
+  if(amaudio_out_started == 0)
+    return;
+
+  local_irq_save(irqflags);
+ 
+  if(flag){
+    hwptr = get_audout_ptr();
+    if(hwptr & 0x3f){
+      printk("rd not aligned \n");
+      hwptr &= ~0x3f;
+    }
+    amaudio_out.out_wr_ptr = (hwptr + 2880 + 1920) % amaudio_out.out_size;
+    
+    tmp = (hwptr / (30*64)) * 30;
+    tmp = (tmp + 30 + (amaudio_out.out_size>>6)) % (amaudio_out.out_size>>6);
+    WRITE_MPEG_REG_BITS(AIU_MEM_I2S_MASKS, tmp, 16, 16);
+
+    amaudio_inbuf.level = 0;
+    amaudio_inbuf.out_rd_ptr = amaudio_inbuf.out_wr_ptr;
+    amaudio_inbuf.in_rd_ptr = amaudio_inbuf.out_rd_ptr;
+
+    if(!int_out_enable){
+      enable_irq(INT_AMRISC_DC_PCMLAST);
+    }
+    int_out_enable = 1;
+    printk("audio out opened: hwptr=%d\n", hwptr);
+  }else{    
+    if(int_out_enable){
+      disable_irq(INT_AMRISC_DC_PCMLAST);
+    }
+    int_out_enable = 0;
+    printk("audio out closed\n");
+  }  
+  local_irq_restore(irqflags);
+}
+EXPORT_SYMBOL(audio_out_enabled);
+
+void audio_in_enabled(int flag)
+{
+  unsigned hwptr, tmp;
+  unsigned long irqflags;
+  if(amaudio_in_started == 0)
+    return;
+
+  local_irq_save(irqflags);
+  if(flag){
+    hwptr = get_audin_ptr();
+    tmp = (hwptr/3840) * 3840 + READ_MPEG_REG(AUDIN_FIFO0_START) + 3840;
+    if(tmp > READ_MPEG_REG(AUDIN_FIFO0_END)-8){
+      tmp -= amaudio_in.in_size;
+    }
+    amaudio_in.in_rd_ptr = (hwptr/3840) * 3840;
+    WRITE_MPEG_REG(AUDIN_FIFO0_INTR, tmp);
+    if(!int_in_enable){
+      enable_irq(INT_AUDIO_IN);
+    }
+    int_in_enable = 1;
+    printk("audio in opened: hwptr=%d\n", hwptr);
+  }else{    
+    if(int_in_enable){
+      disable_irq(INT_AUDIO_IN);
+    }
+    int_in_enable = 0;
+    in_error_flag = 0;
+    in_error = 0;
+    
+    amaudio_in.in_rd_ptr = 0;
+    
+    amaudio_inbuf.level = 0;
+    amaudio_inbuf.out_wr_ptr = 0;
+    amaudio_inbuf.out_rd_ptr = 0;
+    amaudio_inbuf.in_rd_ptr = 0;
+    level2 = 0;
+    printk("audio in closed\n");
+  }
+  local_irq_restore(irqflags);
+}
+EXPORT_SYMBOL(audio_in_enabled);
+
 
 #if 0
 static void amaudio_in_callback(unsigned long data)
@@ -154,6 +274,7 @@ static void amaudio_in_callback(unsigned long data)
 static irqreturn_t amaudio_in_callback(int irq, void*data)  
 #endif
 {
+  
     amaudio_t* amaudio = (amaudio_t*)data;
     unsigned int hwptr = 0;
     unsigned int count = 0;
@@ -163,73 +284,96 @@ static irqreturn_t amaudio_in_callback(int irq, void*data)
     audio_in_int_cnt ++;
 
     if(READ_MPEG_REG_BITS(AUDIN_FIFO_INT, 0, 1) == 1){
-      printk("audin overflow\n");
+     aprint("audin overflow\n");
     }
-#if 0    
-    printk("hwptr=%x, audin intr=%x,level=%x\n", get_audin_ptr(), READ_MPEG_REG(AUDIN_FIFO0_INTR), amaudio_inbuf.level);
-#endif
 
     spin_lock(&amaudio_clk_lock);
+  
+  int_in = 1;
+  if(int_out){
+    aprint("audio out INT breaked\n");
+  }
     do{
+#if 0
       if(direct_audio_flag == DIRECT_AUDIO_OFF){
           amaudio->in_rd_ptr = -1;
       }
-
-      if(if_audio_out_enable() == 0){
-        printk("audio out be closed !!!\n");
-        amaudio->in_rd_ptr = -1;
-      }
-
-      /* get the raw data  and put to temp buffer */
+#endif
+     /* get the raw data  and put to temp buffer */
       hwptr = get_audin_ptr(); /* get audin hw ptr */
       hwptr = (hwptr - 64 + amaudio->in_size) % (amaudio->in_size); /* keep 64 bytes latency */
       hwptr &= (~0x3f);
-      if(amaudio->in_rd_ptr == -1){ /* the initial state */
-          amaudio->in_rd_ptr = hwptr;              
-          amaudio_inbuf.out_wr_ptr = 0;
-          amaudio_inbuf.out_rd_ptr = 0;
-          amaudio_inbuf.level = 0;
-       
-          level2 = 0;
-          amaudio_inbuf.in_rd_ptr = 0;
-
-          tmp1 = READ_MPEG_REG(AUDIN_FIFO0_END);
-          tmp =  READ_MPEG_REG(AUDIN_FIFO0_START)+ hwptr + 3840 + 64;
-          if(tmp > tmp1)tmp -= amaudio->in_size;
-          WRITE_MPEG_REG(AUDIN_FIFO0_INTR, tmp);
-          WRITE_MPEG_REG(AUDIN_FIFO_INT, 0);
-          goto err;
-      }
       count = (hwptr - amaudio->in_rd_ptr + amaudio->in_size) % amaudio->in_size;
       count &= (~0x3f);/* 64 bytes align */
       /* if no data or the input hw not work*/
       if(count == 0){
-          printk("no data to read\n");
+          aprint("no data to read\n");
           break;
       }
       /* if 30ms buffer ready*/
       if(count > 3840*3){
-        printk("%d buffer ready, hwptr=%d, rdptr=%d\n",count,  hwptr, amaudio->in_rd_ptr);
-        
+#if 0        
+        amaudio->in_rd_ptr = (hwptr - 3840 + amaudio->in_size) % amaudio->in_size;
+        if(amaudio->in_rd_ptr & 0x3f){
+          aprint("in rd not align\n");
+        }
+        count = 3840;
+#else
+        if(amaudio->in_rd_ptr + 3840*2 < amaudio->in_size){
+          ret = get_audin_buf(amaudio, (void*)amaudio_tmpbuf_in, 
+              (void*)(amaudio->in_start+amaudio->in_rd_ptr),3840*2);
+          if(ret !=0){
+            aprint("skip 3840*2 error\n");
+          }
+        }else{
+          tmp = amaudio->in_size - amaudio->in_rd_ptr;
+          if(tmp & 0x3f){
+            tmp = (tmp + 64) & (~0x3f);
+          }
+          ret = get_audin_buf(amaudio,(void*)amaudio_tmpbuf_in,
+              (void*)(amaudio->in_start+amaudio->in_rd_ptr), tmp);
+          if(ret !=0){
+            aprint("skip %d error\n", tmp);
+          }
+
+          ret = get_audin_buf(amaudio, (void*)amaudio_tmpbuf_in,
+              (void*)(amaudio->in_start+amaudio->in_rd_ptr), 3840*2-tmp);
+          if(ret != 0){
+            aprint("skip %d error\n", 3840*2-tmp);
+          }
+
+        }
+        count -= 3840*2;
+#endif        
+      }
+      if(count > 3840){
+        aprint("read count : %d, hwptr=%d, rd=%d\n", count, hwptr, amaudio->in_rd_ptr);
       }
       if(count/2 + amaudio_inbuf.level > amaudio_inbuf.in_size){
-          printk("no space to store count=%d, level=%d, size=%d\n", count/2, amaudio_inbuf.level, amaudio_inbuf.in_size);
+          aprint("no space to store count=%d, level=%d, size=%d\n", count/2, amaudio_inbuf.level, amaudio_inbuf.in_size);
+          amaudio_inbuf.out_rd_ptr += count/2;
+          amaudio_inbuf.out_rd_ptr %= amaudio_inbuf.in_size;
+          amaudio_inbuf.level -= count/2;
       }
       /* check if user buffer over writen by us*/
-      if(amaudio_inbuf.out_wr_ptr + count/2 > amaudio_inbuf.in_rd_ptr && 
-          amaudio_inbuf.out_wr_ptr < amaudio_inbuf.in_rd_ptr){
-        printk("music buf conflict, hwptr %d, count %d, music %d\n", 
+      if((amaudio_inbuf.out_wr_ptr + count/2 > amaudio_inbuf.in_rd_ptr && 
+          amaudio_inbuf.out_wr_ptr < amaudio_inbuf.in_rd_ptr) || 
+          (amaudio_inbuf.out_wr_ptr > amaudio_inbuf.in_rd_ptr && 
+           amaudio_inbuf.out_wr_ptr+count/2 > amaudio_inbuf.in_rd_ptr + amaudio_inbuf.in_size )){
+        aprint("music buf conflict, hwptr %d, count %d, music %d\n", 
             amaudio_inbuf.out_wr_ptr, count/2, amaudio_inbuf.in_rd_ptr);
       }
       /* check if the temp buf ready */
-      if(amaudio_tmpbuf == 0){
-        printk("fatal error !!!\n");
+      if(amaudio_tmpbuf_in == 0){
+        aprint("fatal error !!!\n");
       }
+
+//aprint("hwptr=%d, rd=%d, count=%d\n", hwptr, amaudio->in_rd_ptr, count);      
       /* copy the data to temp buf first */
       if(amaudio->in_rd_ptr + count < amaudio->in_size){
-        ret = get_audin_buf(amaudio, (void*)amaudio_tmpbuf, (void*)(amaudio->in_start + amaudio->in_rd_ptr), count);
+        ret = get_audin_buf(amaudio, (void*)amaudio_tmpbuf_in, (void*)(amaudio->in_start + amaudio->in_rd_ptr), count);
         if(ret != 0){
-          printk("read audio in error 1: %d, return %d\n", count, ret);
+          aprint("read audio in error 1: %d, return %d\n", count, ret);
           break;
         }
       }else{
@@ -237,47 +381,76 @@ static irqreturn_t amaudio_in_callback(int irq, void*data)
         if(tmp & 0x3f){
           tmp = (tmp + 64) & (~0x3f);
         }
-        ret = get_audin_buf(amaudio, (void*)amaudio_tmpbuf, (void*)(amaudio->in_start + amaudio->in_rd_ptr), tmp);
+        ret = get_audin_buf(amaudio, (void*)amaudio_tmpbuf_in, (void*)(amaudio->in_start + amaudio->in_rd_ptr), tmp);
         if(ret != 0){
-          printk("read audio in error 2: %d, return %d, rd %d\n", tmp, ret, amaudio->in_rd_ptr);
+          aprint("read audio in error 2: %d, return %d, rd %d\n", tmp, ret, amaudio->in_rd_ptr);
           break;
         }
         
         tmp1 = count - tmp;
-        ret = get_audin_buf(amaudio, (void*)(amaudio_tmpbuf + tmp/2), (void*)(amaudio->in_start + amaudio->in_rd_ptr), tmp1);
-        if(ret != 0){
-          printk("read audio in error 3: %d, return %d\n", tmp1, ret);
-          break;
+        if(tmp1 < 0){
+          aprint("tmp1=%d\n", tmp1);
+        }else if(tmp1 != 0){
+          if(tmp1 & 0x3f){
+            aprint("tmp1 not align: %d\n", tmp1);
+          }
+          ret = get_audin_buf(amaudio, (void*)(amaudio_tmpbuf_in + tmp/2), (void*)(amaudio->in_start + amaudio->in_rd_ptr), tmp1);
+          if(ret != 0){
+            aprint("read audio in error 3: %d, return %d\n", tmp1, ret);
+            break;
+          }
         }
       }
       /* send the data to middle buf*/
       if(amaudio_inbuf.out_wr_ptr + count/2 < amaudio_inbuf.out_size){
-        memcpy((void*)(amaudio_inbuf.out_start + amaudio_inbuf.out_wr_ptr), amaudio_tmpbuf, count/2);
+        memcpy((void*)(amaudio_inbuf.out_start + amaudio_inbuf.out_wr_ptr), amaudio_tmpbuf_in, count/2);
       }else{
         tmp = amaudio_inbuf.out_size - amaudio_inbuf.out_wr_ptr;
-        memcpy((void*)(amaudio_inbuf.out_start + amaudio_inbuf.out_wr_ptr), amaudio_tmpbuf, tmp);
+        memcpy((void*)(amaudio_inbuf.out_start + amaudio_inbuf.out_wr_ptr), amaudio_tmpbuf_in, tmp);
         tmp1 = count/2 - tmp;
-        memcpy((void*)(amaudio_inbuf.out_start), amaudio_tmpbuf + tmp, tmp1);
+        memcpy((void*)(amaudio_inbuf.out_start), amaudio_tmpbuf_in + tmp, tmp1);
       }
       
       amaudio_inbuf.out_wr_ptr += count/2;
       amaudio_inbuf.out_wr_ptr %= amaudio_inbuf.out_size;
-    }
-    while(0);
+      if(enable_debug_dump && dump_buf){
+        int ii=0;        
+        for(ii=0; ii< count/4; ii++){
+          dump_buf[dump_off++] =((unsigned short*)amaudio_tmpbuf_in)[ii];
+          if(dump_off == dump_size){
+            enable_debug_dump = 0;
+            dump_off = 0;
+            printk("dump finished\n");
+          }
+        }
+      }
+    }while(0);
+
+    /***************************************/
+    
+
+    /***************************************/
 #if 0    
     spin_unlock(&amaudio_clk_lock);
     mod_timer(&amaudio->timer, jiffies + 1);
 #else
     tmp = READ_MPEG_REG(AUDIN_FIFO0_INTR);
-    tmp1 = READ_MPEG_REG(AUDIN_FIFO0_END);
+    tmp1 = READ_MPEG_REG(AUDIN_FIFO0_END) - 8;
     tmp = tmp + 3840;
     if(tmp >= tmp1){
       tmp -= amaudio->in_size;
     }
 
+   
     WRITE_MPEG_REG(AUDIN_FIFO0_INTR, tmp);
     WRITE_MPEG_REG(AUDIN_FIFO_INT, 0);
-    
+    {
+      int tmp2 = audio_in_i2s_wr_ptr();
+      /* the next int should come 10-15ms after*/
+      if(!(tmp2 < tmp && tmp2 + 5760 >= tmp) && !(tmp2 > tmp && tmp2 + 5760 - amaudio->in_size >= tmp)){
+        aprint("this is a invalid interrupt: INTR 0x%x, ptr 0x%x\n", tmp, tmp2);
+      }
+    }
     amaudio_inbuf.level += count/2;
     if(amaudio_inbuf.level > amaudio_inbuf.out_size)
       amaudio_inbuf.level = amaudio_inbuf.out_size;
@@ -286,9 +459,11 @@ static irqreturn_t amaudio_in_callback(int irq, void*data)
     if(level2 > amaudio_inbuf.out_size)
       level2 = amaudio_inbuf.out_size;
 
- //   printk("+ level = %d, count=%d\n", amaudio_inbuf.level, count/2);
+ //   aprint("+ level = %d, count=%d\n", amaudio_inbuf.level, count/2);
     
 err: 
+ int_in = 0;    
+
     spin_unlock(&amaudio_clk_lock);
     return IRQ_HANDLED;
 #endif    
@@ -299,6 +474,7 @@ static void amaudio_out_callback(unsigned long data)
 static irqreturn_t amaudio_out_callback(int irq, void* data)  
 #endif  
 {
+  
     amaudio_t* amaudio = (amaudio_t*)data;
     unsigned int hwptr = 0;
     unsigned int count = 0;
@@ -307,21 +483,19 @@ static irqreturn_t amaudio_out_callback(int irq, void* data)
     int ret = 0;
 
     spin_lock(&amaudio_clk_lock);
-    do{ 
+
+    int_out = 1;
+    if(int_in){
+      aprint("audio in INT breaked\n");
+    }  
+  do{ 
       hwptr = get_audout_ptr();
       if(direct_audio_flag == DIRECT_AUDIO_OFF){
-        amaudio->out_wr_ptr = -1;
+       // amaudio->out_wr_ptr = -1;
 //        break;
       }
-      
-      if(if_audio_in_i2s_enable() == 0){
-        printk("audio in be closed!!!\n");
-        amaudio->out_wr_ptr = -1;
-        amaudio->in_rd_ptr = -1;
-      }
-
       hwptr = (hwptr + 2880) % amaudio->out_size;
-      if(amaudio->out_wr_ptr == -1){
+      if(0){//amaudio->out_wr_ptr == -1){
         amaudio->out_wr_ptr = (hwptr + 1920) % amaudio->out_size;
         amaudio_inbuf.out_rd_ptr = amaudio_inbuf.out_wr_ptr;
         amaudio_inbuf.out_rd_ptr &= ~0x3f;
@@ -334,36 +508,36 @@ static irqreturn_t amaudio_out_callback(int irq, void* data)
         tmp = READ_MPEG_REG_BITS(AIU_MEM_I2S_MASKS, 16, 16);
         tmp = (tmp + 30 + (amaudio->out_size>>6)) % (amaudio->out_size>>6);
         WRITE_MPEG_REG_BITS(AIU_MEM_I2S_MASKS, tmp, 16, 16);
-        printk("The first time INT for audio out\n");
+        aprint("The first time INT for audio out\n");
         goto err;
       }
 
       /* how much space */
       count = (amaudio->out_wr_ptr -hwptr + amaudio->out_size) % amaudio->out_size;
-      count &= (~0x40);
+      count &= (~0x3f);
       if(count > 5760 && count < (amaudio->out_size-2880+64)){ /* 30ms delay*/
         tmp = amaudio->out_wr_ptr;
         amaudio->out_wr_ptr = (hwptr+64)&(~0x3f);
-        printk("wr set from %d to %d, hwptr=%d, count=%d\n", tmp, amaudio->out_wr_ptr, hwptr, count);
+        aprint("wr set from %d to %d, hwptr=%d, count=%d\n", tmp, amaudio->out_wr_ptr, hwptr, count);
       }
 
- //     printk("out: count %8d, wr %8d, hw %8d\n", count, amaudio->out_wr_ptr, hwptr);
+ //     aprint("out: count %8d, wr %8d, hw %8d\n", count, amaudio->out_wr_ptr, hwptr);
       /* how many datas */
       scount = amaudio_inbuf.level & (~0x3f);
      
       if(amaudio_inbuf.level <= 0){  /* no fresh data to read */
-        printk("no fresh data to read: %d, hwptr=%x, INTR=%x, AUDIN=%x, INTCNT %d\n", \
-            amaudio_inbuf.level, get_audout_ptr(), READ_MPEG_REG(AUDIN_FIFO0_INTR), get_audin_ptr(), audio_in_int_cnt);
+        aprint("no fresh data to read: %d, hwptr=%x, INTR=%x, AUDIN=%x, INTCNT %d, INT:%d\n", \
+            amaudio_inbuf.level, get_audout_ptr(), READ_MPEG_REG(AUDIN_FIFO0_INTR), get_audin_ptr(), audio_in_int_cnt, READ_MPEG_REG(AUDIN_FIFO_INT));
         /* check if audio in error*/
         if(if_audio_in_i2s_enable() == 0){
-          printk("audio in closed\n");
+          aprint("audio in closed++\n");
         }
         count = 0;
         break;
       }
 
       if(scount > 2*2880){ /* too slow to write? */
-        printk("amaudio_inbuf.level=%d, wr=%d,rd=%d\n", amaudio_inbuf.level, amaudio_inbuf.out_wr_ptr, amaudio_inbuf.out_rd_ptr);
+        aprint("amaudio_inbuf.level=%d, wr=%d,rd=%d\n", amaudio_inbuf.level, amaudio_inbuf.out_wr_ptr, amaudio_inbuf.out_rd_ptr);
         tmp = amaudio_inbuf.out_rd_ptr;
         amaudio_inbuf.out_rd_ptr = (amaudio_inbuf.out_wr_ptr - 3840 + amaudio_inbuf.out_size) % amaudio_inbuf.out_size;
         amaudio_inbuf.out_rd_ptr &= ~0x3f;
@@ -372,18 +546,18 @@ static irqreturn_t amaudio_out_callback(int irq, void* data)
         scount = (amaudio_inbuf.out_wr_ptr - amaudio_inbuf.out_rd_ptr + amaudio_inbuf.out_size) % amaudio_inbuf.out_size;
         scount &= ~0x3f;
         
-        printk("rd set from %d to %d, count=%d, wr=%d, rd=%d\n", tmp, amaudio_inbuf.out_rd_ptr, scount, amaudio_inbuf.out_wr_ptr, amaudio_inbuf.out_rd_ptr);
+        aprint("rd set from %d to %d, count=%d, wr=%d, rd=%d\n", tmp, amaudio_inbuf.out_rd_ptr, scount, amaudio_inbuf.out_wr_ptr, amaudio_inbuf.out_rd_ptr);
 //        break;
       }
       
       count = scount;
       /* copy the data to temp buf */
       if(amaudio_inbuf.out_rd_ptr + count <= amaudio_inbuf.out_size){
-        memcpy((void*)amaudio_tmpbuf, (void*)(amaudio_inbuf.out_start + amaudio_inbuf.out_rd_ptr), count);
+        memcpy((void*)amaudio_tmpbuf_out, (void*)(amaudio_inbuf.out_start + amaudio_inbuf.out_rd_ptr), count);
       }else{
         tmp = amaudio_inbuf.out_size - amaudio_inbuf.out_rd_ptr;
-        memcpy((void*)amaudio_tmpbuf, (void*)(amaudio_inbuf.out_start + amaudio_inbuf.out_rd_ptr), tmp);
-        memcpy((void*)(amaudio_tmpbuf + tmp), (void*)amaudio_inbuf.out_start, count - tmp);
+        memcpy((void*)amaudio_tmpbuf_out, (void*)(amaudio_inbuf.out_start + amaudio_inbuf.out_rd_ptr), tmp);
+        memcpy((void*)(amaudio_tmpbuf_out + tmp), (void*)amaudio_inbuf.out_start, count - tmp);
       }
       /* update the middle buf pointer */
       amaudio_inbuf.out_rd_ptr += count;
@@ -391,23 +565,23 @@ static irqreturn_t amaudio_out_callback(int irq, void* data)
       /* send the data to hw buf */
       if(amaudio->out_wr_ptr + count <= amaudio->out_size){
         ret = put_audout_buf_direct(amaudio, (void*)(amaudio->out_start + amaudio->out_wr_ptr), \
-            amaudio_tmpbuf, count);
+            amaudio_tmpbuf_out, count);
         if(ret != 0){
-          printk("write error 1: write %d, return %d \n", count, ret);
+          aprint("write error 1: write %d, return %d \n", count, ret);
           break;
         }
       }else{
         tmp = amaudio->out_size - amaudio->out_wr_ptr;
         ret = put_audout_buf_direct(amaudio, (void*)(amaudio->out_start + amaudio->out_wr_ptr), \
-            amaudio_tmpbuf, tmp);
+            amaudio_tmpbuf_out, tmp);
         if(ret != 0){
-          printk("write error 2: write %d, return %d\n", tmp, ret);
+          aprint("write error 2: write %d, return %d\n", tmp, ret);
           break;
         }
         ret = put_audout_buf_direct(amaudio, (void*)(amaudio->out_start + amaudio->out_wr_ptr), \
-            amaudio_tmpbuf + tmp, count -tmp);
+            amaudio_tmpbuf_out + tmp, count -tmp);
         if(ret != 0){
-          printk("write error 3: write %d, return %d\n", count-tmp, ret);
+          aprint("write error 3: write %d, return %d\n", count-tmp, ret);
           break;
         }
       }
@@ -421,13 +595,15 @@ static irqreturn_t amaudio_out_callback(int irq, void* data)
     WRITE_MPEG_REG_BITS(AIU_MEM_I2S_MASKS, tmp, 16, 16);
    
     if(amaudio_inbuf.level < count){
-      printk("buf error : level = %d, count = %d\n", amaudio_inbuf.level, count);
+      aprint("buf error : level = %d, count = %d\n", amaudio_inbuf.level, count);
     }
     amaudio_inbuf.level -= count;
 
- //   printk("- level = %d\n", amaudio_inbuf.level);
+ //   aprint("- level = %d\n", amaudio_inbuf.level);
 
 err:
+    int_out = 0;    
+
     spin_unlock(&amaudio_clk_lock);
     return IRQ_HANDLED;
 #endif
@@ -493,16 +669,16 @@ static ssize_t put_audin_buf(amaudio_t* amaudio, void* dbuf, void* sbuf, size_t 
     unsigned short *src;
 
     size_t tmp_count = count;
-    spin_lock(&amaudio_lock);
+    spin_lock_irq(&amaudio_lock);
     if(amaudio->in_wr_ptr + count > amaudio->in_size){
       count = amaudio->in_size - amaudio->in_wr_ptr;
-//      printk("i2s in buffer write block too big: %x\n", tmp_count);
+//      aprint("i2s in buffer write block too big: %x\n", tmp_count);
     }
     
     count >>= 6;
     count <<= 6;
     if(count < 64){
-      spin_unlock(&amaudio_lock);
+      spin_unlock_irq(&amaudio_lock);
       return tmp_count;
     }
     left = (unsigned int *) dbuf;
@@ -518,7 +694,7 @@ static ssize_t put_audin_buf(amaudio_t* amaudio, void* dbuf, void* sbuf, size_t 
       right += 8;
     }
     amaudio->in_wr_ptr = (amaudio->in_wr_ptr + count) % amaudio->in_size;
-    spin_unlock(&amaudio_lock);
+    spin_unlock_irq(&amaudio_lock);
     return tmp_count - count;
 }
 static ssize_t put_audout_buf_direct(amaudio_t* amaudio, void* dbuf, void* sbuf, size_t count)
@@ -530,23 +706,23 @@ static ssize_t put_audout_buf_direct(amaudio_t* amaudio, void* dbuf, void* sbuf,
     signed int samp = 0, sampL, sampR, sampLR;
     unsigned int tmp_count= count;
     
-    spin_lock(&amaudio_lock);
+//    spin_lock(&amaudio_lock);
     if(amaudio->out_wr_ptr + count > amaudio->out_size){
       count = amaudio->out_size - amaudio->out_wr_ptr;
-      printk("i2s outbuf write block too big: %d, -> count %d, wr %d, size %d\n", tmp_count, count, amaudio->out_wr_ptr, amaudio->out_size);
+      aprint("i2s outbuf write block too big: %d, -> count %d, wr %d, size %d\n", tmp_count, count, amaudio->out_wr_ptr, amaudio->out_size);
     }
 
     count >>= 6;
     count <<= 6;
     if(count < 64){
-      spin_unlock(&amaudio_lock);
+//      spin_unlock(&amaudio_lock);
       return tmp_count;
     }
     
     if(0)
     {
      unsigned ppp = get_audout_ptr();
-     printk("+hwptr=%d,wr=%d,count=%d\n",ppp,amaudio->out_wr_ptr, count);
+     aprint("+hwptr=%d,wr=%d,count=%d\n",ppp,amaudio->out_wr_ptr, count);
     }
 
     left = (signed short*) dbuf;
@@ -554,30 +730,30 @@ static ssize_t put_audout_buf_direct(amaudio_t* amaudio, void* dbuf, void* sbuf,
     src = (signed short*)sbuf;
     for(i = 0; i < count; i += 64){
       for(j = 0; j < 16; j ++){
-#if 1    
-        sampL = *src ++;
-        sampR = *src ++;
-        sampLR = ((sampL * direct_left_gain) >> 8) + ((sampR * direct_right_gain) >> 8);
-        samp = *left + sampLR;
-        if(samp > 0x7fff) samp = 0x7fff;
-        if(samp < -0x8000) samp = -0x8000;
-        *left ++ = samp&0xffff;
+        if(mic_mix_flag == 1){    
+          sampL = *src ++;
+          sampR = *src ++;
+          sampLR = ((sampL * direct_left_gain) >> 8) + ((sampR * direct_right_gain) >> 8);
+          samp = *left + sampLR;
+          if(samp > 0x7fff) samp = 0x7fff;
+          if(samp < -0x8000) samp = -0x8000;
+          *left ++ = samp&0xffff;
 
-        samp = *right + sampLR;
+          samp = *right + sampLR;
 
-        if(samp > 0x7fff) samp = 0x7fff;
-        if(samp < -0x8000) samp = -0x8000;
-        *right ++ = samp&0xffff;
-#else        
-        *left ++ = *src ++;
-        *right ++ = *src ++;
-#endif
+          if(samp > 0x7fff) samp = 0x7fff;
+          if(samp < -0x8000) samp = -0x8000;
+          *right ++ = samp&0xffff;
+        }else{   
+        //  *left ++ = *src ++;
+        //  *right ++ = *src ++;
+        }
       }
       left += 16;
       right += 16;
     }
     amaudio->out_wr_ptr = (amaudio->out_wr_ptr + count) % amaudio->out_size;
-    spin_unlock(&amaudio_lock);
+//    spin_unlock(&amaudio_lock);
     return tmp_count - count;
 }
 
@@ -594,7 +770,7 @@ static ssize_t put_audout_buf(amaudio_t* amaudio, void* dbuf, void* sbuf, size_t
 
     if(amaudio->out_wr_ptr + count > amaudio->out_size){
       count = amaudio->out_size - amaudio->out_wr_ptr;
-//      printk("i2s outbuf write block too big: %x\n", tmp_count);
+//      aprint("i2s outbuf write block too big: %x\n", tmp_count);
     }
 
     count >>= 6;
@@ -607,7 +783,7 @@ static ssize_t put_audout_buf(amaudio_t* amaudio, void* dbuf, void* sbuf, size_t
     {
      unsigned hwptr = get_audout_ptr();
      if(hwptr >amaudio->out_wr_ptr && hwptr < amaudio->out_wr_ptr+count){
-       printk("audio out buffer conflict\n");
+       aprint("audio out buffer conflict\n");
      }
     }
     if(music_mix_flag){
@@ -652,13 +828,13 @@ static ssize_t amaudio_write(struct file *file, const char *buf,
 	return -EINVAL;
   tmpBuf = (char*)kmalloc(count, GFP_KERNEL);
   if(tmpBuf == 0){
-    printk("amaudio_write alloc failed\n");
+    aprint("amaudio_write alloc failed\n");
     return -ENOMEM;
   }
 
   if(amaudio->type == 1){
 	if(audio_in_buf_ready == 0){
-	  printk("amaudio input can not write now\n");
+	  aprint("amaudio input can not write now\n");
       kfree(tmpBuf);
 	  return -EINVAL;
 	}
@@ -666,13 +842,13 @@ static ssize_t amaudio_write(struct file *file, const char *buf,
 	  len = copy_from_user((void*)(amaudio->in_wr_ptr+amaudio->in_start), (void*)buf, count);
 	}else if(amaudio->in_op_mode == 1){ /* 16bit interleave mode */
       if(copy_from_user((void*)tmpBuf, (void*)buf, count) != 0){
-        printk("amaudio in: copy from user failed\n");
+        aprint("amaudio in: copy from user failed\n");
       }
 	  len = put_audin_buf(amaudio, (void*)(amaudio->in_wr_ptr + amaudio->in_start), (void*)buf, count * 2);
 	}
   }else if(amaudio->type == 0){
 	if(audio_out_buf_ready == 0){
-	  printk("amaudio output can not write now\n");
+	  aprint("amaudio output can not write now\n");
       kfree(tmpBuf);
 	  return -EINVAL;
 	}
@@ -680,7 +856,7 @@ static ssize_t amaudio_write(struct file *file, const char *buf,
 	  len = copy_from_user((void*)(amaudio->out_wr_ptr+amaudio->out_start), (void*)buf, count);
 	}else if(amaudio->out_op_mode == 1){/* 16bit interleave mode */
       if(copy_from_user((void*)tmpBuf, (void*)buf, count) != 0){
-        printk("amaudio out: copy from user failed\n");
+        aprint("amaudio out: copy from user failed\n");
       }
 	  len = put_audout_buf(amaudio, (void*)(amaudio->out_wr_ptr + amaudio->out_start), (void*)buf, count);
 	}
@@ -722,27 +898,27 @@ static ssize_t get_audin_buf(amaudio_t* amaudio, void* dbuf, void* sbuf, size_t 
     size_t tmp_count = count;
     unsigned int in_error_last;
     
-    spin_lock(&amaudio_lock);
+ //   spin_lock(&amaudio_lock);
 
     if(amaudio->in_rd_ptr + count > amaudio->in_size){
       count = amaudio->in_size - amaudio->in_rd_ptr;
       if((count%64) && in_error_flag){
- //         printk("in_rd_ptr = %x, count= %x\n", amaudio->in_rd_ptr, tmp_count);
+ //         aprint("in_rd_ptr = %x, count= %x\n", amaudio->in_rd_ptr, tmp_count);
           count = ((count + 64) >> 6) << 6;
           if(count > tmp_count){
-            printk("please read a 32 bytes block\n");
-            spin_unlock(&amaudio_lock);
+            aprint("please read a 32 bytes block\n");
+   //         spin_unlock(&amaudio_lock);
             return tmp_count;
           }
       }
-//      printk("the i2s in buffer read block too big%x\n", tmp_count);
+//      aprint("the i2s in buffer read block too big%x\n", tmp_count);
     }
 
 	count >>= 6;
 	count <<= 6;
 	/* too few data request */
 	if(count < 64){
-      spin_unlock(&amaudio_lock);
+//      spin_unlock(&amaudio_lock);
 	  return tmp_count;
 	}
 	left = (unsigned int*)sbuf;
@@ -760,23 +936,23 @@ static ssize_t get_audin_buf(amaudio_t* amaudio, void* dbuf, void* sbuf, size_t 
 	  /* extract the last 8 bytes */
 	  magic = (unsigned int*)(amaudio->in_start + amaudio->in_size - 8);
 	  start = (unsigned int*)(amaudio->in_start);
-	  //     printk("in_rd_ptr=%x, count= %x\n", amaudio->in_rd_ptr, count);
+	  //     aprint("in_rd_ptr=%x, count= %x\n", amaudio->in_rd_ptr, count);
 	  /* if the datas not valid this time */
 	  in_error_last = in_error;
 	  if(magic[0] == 0x78787878 && magic[1] == 0x78787878){
 		in_error ++;
 		in_error_flag = 1;
-		printk("audin in error: %d\n", in_error);
+		aprint("audin in error: %d\n", in_error);
 		in_error &= 7;
 	  }
-	  //printk("this is end: %x\n", in_error);
+	  //aprint("this is end: %x\n", in_error);
 	  if(in_error_flag && in_error){
 		right -= 8;
-//		printk("start=%x, size=%x, right = %x\n", amaudio->in_start, amaudio->in_size, right);
+//		aprint("start=%x, size=%x, right = %x\n", amaudio->in_start, amaudio->in_size, right);
 		for(i=0; i< 16 - 2*in_error; i++){
 		  temp[i] = *right++;
 		}
-//		printk("=============\n");
+//		aprint("=============\n");
 
 		for(i=0; i< 2*in_error; i++){
 		  temp[i+16-2*in_error] = start[i];
@@ -821,8 +997,8 @@ static ssize_t get_audin_buf(amaudio_t* amaudio, void* dbuf, void* sbuf, size_t 
 	  }
 	  amaudio->in_rd_ptr = (amaudio->in_rd_ptr + count) % amaudio->in_size;
 	}
-   // printk("tmp_count=%x, count=%x, res=%x\n", tmp_count, count, res);
-    spin_unlock(&amaudio_lock);
+   // aprint("tmp_count=%x, count=%x, res=%x\n", tmp_count, count, res);
+//    spin_unlock(&amaudio_lock);
     return tmp_count - count + res;
 #endif
 }
@@ -844,8 +1020,8 @@ static ssize_t get_audin_buf16(amaudio_t* amaudio, void* dbuf, void* sbuf, size_
     if(1)
     {
       unsigned hwptr = amaudio->out_wr_ptr;
-      if(hwptr > amaudio->in_rd_ptr && hwptr < amaudio->in_rd_ptr+count){
-        printk("audio in buffer conflict\n");
+      if((hwptr > amaudio->in_rd_ptr && hwptr < amaudio->in_rd_ptr+count)){
+        aprint("audio in buffer conflict\n");
       }
     }
     src = (unsigned short*)sbuf;
@@ -865,24 +1041,24 @@ static ssize_t get_audout_buf(amaudio_t* amaudio, void* dbuf, void* sbuf, size_t
     unsigned short *out;
     size_t tmp_count = count;
     
-    spin_lock(&amaudio_lock);
+    spin_lock_irq(&amaudio_lock);
 
     if(amaudio->out_rd_ptr + count > amaudio->out_size){
       count = amaudio->out_size - amaudio->out_rd_ptr;
-//      printk("the count too big: %x\n", tmp_count);
+//      aprint("the count too big: %x\n", tmp_count);
     }
     count >>= 6;
     count <<= 6;
     
     if(count < 64){
-      spin_unlock(&amaudio_lock);
+      spin_unlock_irq(&amaudio_lock);
       return tmp_count;
     }
     
     if(1){
       unsigned hwptr = get_audout_ptr();
       if(amaudio->out_rd_ptr < hwptr && amaudio->out_rd_ptr + count > hwptr){
-        printk("audio out read conflict\n");
+        aprint("audio out read conflict\n");
       }
     }
 
@@ -900,11 +1076,11 @@ static ssize_t get_audout_buf(amaudio_t* amaudio, void* dbuf, void* sbuf, size_t
     amaudio->out_rd_ptr = (amaudio->out_rd_ptr + count) % amaudio->out_size;
     
     if(level2 < count){
-      printk("audio buffer error: level2 = %d, count= %d\n", level2, count);
+      aprint("audio buffer error: level2 = %d, count= %d\n", level2, count);
     }
     level2 -= count;
 
-    spin_unlock(&amaudio_lock);
+    spin_unlock_irq(&amaudio_lock);
 
     return  tmp_count - count;
 }
@@ -916,23 +1092,23 @@ static ssize_t amaudio_read(struct file *file, char __user *buf,
 	int len = 0;
     char* tmpBuf;
     if(count <= 0) {
-      printk("amaudio can not read less than 0\n");
+      aprint("amaudio can not read less than 0\n");
       return -EINVAL;
     }
     tmpBuf = (char*)kmalloc(count, GFP_KERNEL);
     if(tmpBuf == 0){
-      printk("amaudio_read alloc memory failed\n");
+      aprint("amaudio_read alloc memory failed\n");
       return -ENOMEM;
     }
 	if(amaudio->type == 1){
 		if(audio_in_buf_ready == 0){
-			printk("amaudio input can not read now\n");
+			aprint("amaudio input can not read now\n");
             kfree(tmpBuf);
 			return -EINVAL;
 		}
         
         if(if_audio_in_i2s_enable() == 0){
-          printk("amaudio read: audio in be closed!!!\n");
+          aprint("amaudio read: audio in be closed!!!\n");
         }
 
         if(amaudio->in_op_mode == 0){   /* 32bit block mode */
@@ -948,20 +1124,20 @@ static ssize_t amaudio_read(struct file *file, char __user *buf,
 #else
           len = get_audin_buf16(&amaudio_inbuf, (void*)tmpBuf, (void*)(amaudio_inbuf.in_rd_ptr + amaudio_inbuf.in_start), count);
           if(copy_to_user((void*)buf, (void*)tmpBuf, count) != 0){
-            printk("amaudio in: should not be here, please check if read out the whole size\n");
+            aprint("amaudio in: should not be here, please check if read out the whole size\n");
           }
 #endif          
         }
 	}
 	else if(amaudio->type == 0){
 		if(audio_out_buf_ready == 0){
-			printk("amaudio output can not read now\n");
+			aprint("amaudio output can not read now\n");
             kfree(tmpBuf);
 			return -EINVAL;
 		}
 
         if(if_audio_out_enable() == 0){
-          printk("amaudio read: audio out be closed !!!\n");
+          aprint("amaudio read: audio out be closed !!!\n");
         }
 
         if(amaudio->out_op_mode == 0){  /* 32 bit block mode */
@@ -970,13 +1146,15 @@ static ssize_t amaudio_read(struct file *file, char __user *buf,
         }else if(amaudio->out_op_mode == 1){/* 16bit, two samples, also 32bit*/
           len = get_audout_buf(amaudio, (void*)tmpBuf, (void*)(amaudio->out_rd_ptr + amaudio->out_start), count);
           if(copy_to_user((void*)buf, (void*)tmpBuf, count-len) != 0){
-            printk("amaudio out: should not be here, please check if read out the whole size\n");
+            aprint("amaudio out: should not be here, please check if read out the whole size\n");
           }
         }
 	}
     kfree(tmpBuf);
 	return count - len;
 }
+
+static int audout_irq_alloced = 0;
 
 static int amaudio_open(struct inode *inode, struct file *file)
 {
@@ -986,16 +1164,16 @@ static int amaudio_open(struct inode *inode, struct file *file)
   if (audio_in_buf_ready && iminor(inode)== 1){
     amaudio->in_size  = READ_MPEG_REG(AUDIN_FIFO0_END) - READ_MPEG_REG(AUDIN_FIFO0_START) + 8;
     amaudio->in_start = aml_pcm_capture_start_addr;
-    amaudio->in_rd_ptr = -1;
-    amaudio->in_wr_ptr = -1;
+    amaudio->in_rd_ptr = 0;
+    amaudio->in_wr_ptr = 0;
     memcpy(&amaudio_in, amaudio, sizeof(amaudio_t));
   }
   
   if (audio_out_buf_ready && iminor(inode) == 0){
     amaudio->out_size = READ_MPEG_REG(AIU_MEM_I2S_END_PTR) - READ_MPEG_REG(AIU_MEM_I2S_START_PTR) + 64;
     amaudio->out_start = aml_pcm_playback_start_addr;
-    amaudio->out_wr_ptr = -1;
-    amaudio->out_rd_ptr = -1;
+    amaudio->out_wr_ptr = 0;
+    amaudio->out_rd_ptr = 0;
     
     memcpy(&amaudio_out, amaudio, sizeof(amaudio_t));
   }
@@ -1012,14 +1190,28 @@ static int amaudio_open(struct inode *inode, struct file *file)
     init_timer(&amaudio_out.timer);
     mod_timer(&amaudio_out.timer, jiffies + 1);
 #else
-    WRITE_MPEG_REG_BITS(AIU_MEM_I2S_MASKS,0, 16, 16);
-    if(request_irq(INT_AMRISC_DC_PCMLAST, amaudio_out_callback, IRQF_SHARED, "audio_out",&amaudio_out)){
-      printk("audio_out irq request failed\n");
+    amaudio_tmpbuf_out = (char*)kzalloc((amaudio->out_size), GFP_KERNEL);
+    if(amaudio_tmpbuf_out == 0){
+      printk("amaudio temp out buf alloc failed\n");
       goto error;
     }
+
+    audout_irq_alloced = 0;
+    if(amaudio_in_started){
+      WRITE_MPEG_REG_BITS(AIU_MEM_I2S_MASKS,0, 16, 16);
+      if(request_irq(INT_AMRISC_DC_PCMLAST, amaudio_out_callback, IRQF_SHARED, "audio_out",&amaudio_out)){
+        kfree(amaudio_tmpbuf_out);
+        amaudio_tmpbuf_out = 0;
+        printk("audio_out irq request failed\n");
+        goto error;
+      }
+      int_out_enable = 1;
+      audout_irq_alloced = 1;
+    }  
+    amaudio_out_started = 1;
 #endif    
   }else if(iminor(inode) == 1){// audio in
-	printk("open audio in: start=%x\n", amaudio->in_start);
+	printk("open audio in: start=%x,hwptr=%x\n", amaudio->in_start, get_audin_ptr());
 	amaudio->type = 1;
     in_error = 0;
     in_error_flag = 0;
@@ -1042,11 +1234,18 @@ static int amaudio_open(struct inode *inode, struct file *file)
     amaudio_inbuf.in_wr_ptr = 0;
     amaudio_inbuf.level = 0;
 
-    amaudio_tmpbuf = (char*)kzalloc((amaudio->in_size/2), GFP_KERNEL);
-    if(amaudio_tmpbuf == 0){
+    amaudio_tmpbuf_in = (char*)kzalloc((amaudio->in_size/2), GFP_KERNEL);
+    if(amaudio_tmpbuf_in == 0){
       printk("amaudio temp buf alloc failed\n");
       goto error;
     }
+#if DEBUG_DUMP
+    dump_buf = (unsigned short*)kzalloc(dump_size*sizeof(short), GFP_KERNEL);
+    if(dump_buf == 0){
+      printk("malloc dump buf error\n");
+    }
+#endif
+
 #if 0    
 	amaudio_in.timer.function = &amaudio_in_callback;
     amaudio_in.timer.data = (unsigned long)(&amaudio_in);
@@ -1063,13 +1262,15 @@ static int amaudio_open(struct inode *inode, struct file *file)
 
     if(request_irq(INT_AUDIO_IN, amaudio_in_callback, IRQF_SHARED, "audio_in", &amaudio_in)){
       printk("audio_in irq request failed\n");
-      kfree(amaudio_tmpbuf);
-      amaudio_tmpbuf = 0;
+      kfree(amaudio_tmpbuf_in);
+      amaudio_tmpbuf_in = 0;
       goto error;
     }
+    int_in_enable = 1;
+    amaudio_in_started = 1;
 #endif    
   }else{						// audio control
-  	printk("open audio control\n");
+  	aprint("open audio control\n");
 	amaudio->type = 2;
   }
   file->private_data = amaudio;
@@ -1087,10 +1288,17 @@ static int amaudio_release(struct inode *inode, struct file *file)
 #if 0
       del_timer_sync(&amaudio_out.timer);
 #else
-      free_irq(INT_AMRISC_DC_PCMLAST, &amaudio_out);
+      if(audout_irq_alloced){
+        free_irq(INT_AMRISC_DC_PCMLAST, &amaudio_out);
+        audout_irq_alloced = 0;
+      }
 #endif      
       kfree(amaudio);
+      kfree(amaudio_tmpbuf_out);
+      amaudio_tmpbuf_out = 0;
       direct_audio_flag = DIRECT_AUDIO_OFF;
+      amaudio_out_started = 0;
+      int_out_enable = 0;
     }else if(iminor(inode) == 1){
 #if 0
       del_timer_sync(&amaudio_in.timer);
@@ -1100,8 +1308,14 @@ static int amaudio_release(struct inode *inode, struct file *file)
       kfree(amaudio);
       direct_audio_flag = DIRECT_AUDIO_OFF;
       kfree((void*)amaudio_inbuf.out_start);
-      kfree(amaudio_tmpbuf);
-      amaudio_tmpbuf = 0;
+      kfree(amaudio_tmpbuf_in);
+      amaudio_tmpbuf_in = 0;
+      amaudio_in_started = 0;
+      int_in_enable = 0;
+#if DEBUG_DUMP
+      kfree(dump_buf);
+      dump_buf = 0;
+#endif      
     }
 
 	return 0;
@@ -1284,6 +1498,109 @@ static ssize_t store_music_mix(struct class* class, struct class_attribute* attr
   return count;
 }
 
+static ssize_t show_mic_mix(struct class* class, struct class_attribute* attr,
+    char* buf)
+{
+  return sprintf(buf, "MIC MIX %s\n", mic_mix_flag? "ON": "OFF");
+}
+
+static ssize_t store_mic_mix(struct class* class, struct class_attribute* attr,
+   const char* buf, size_t count )
+{
+  if(buf[0] == '0'){
+    mic_mix_flag = 0;
+  }else if(buf[0] == '1'){
+    mic_mix_flag = 1;
+  }
+  return count;
+}
+
+static ssize_t show_alsa_out(struct class* class, struct class_attribute* attr,
+    char* buf)
+{
+  return sprintf(buf, "ALSA OUT %s\n", aml_pcm_playback_enable? "ON": "OFF");
+}
+
+static ssize_t store_alsa_out(struct class* class, struct class_attribute* attr,
+   const char* buf, size_t count )
+{
+  if(buf[0] == '0'){
+    aml_pcm_playback_enable = 0;
+  }else if(buf[0] == '1'){
+    aml_pcm_playback_enable = 1;
+  }
+  return count;
+}
+static ssize_t show_enable_debug(struct class* class, struct class_attribute* attr,
+    char* buf)
+{
+  return sprintf(buf, "AMAUDIo DEBUG %s\n", enable_debug? "ON": "OFF");
+}
+
+static ssize_t store_enable_debug(struct class* class, struct class_attribute* attr,
+   const char* buf, size_t count )
+{
+  if(buf[0] == '0'){
+    enable_debug = 0;
+  }else if(buf[0] == '1'){
+    enable_debug = 1;
+  }
+  return count;
+}
+extern void audio_in_i2s_enable(int);
+static ssize_t show_enable_dump(struct class* class, struct class_attribute* attr,
+    char* buf)
+{
+  ssize_t ret = sprintf(buf, "AMAUDIO DUMP:\n");
+#if DEBUG_DUMP
+  int i, j;
+  printk("AMAUDIO DUMP HardWBuf Start: in hwptr=%d, in rd=%d, out hwptr=%d, out wr=%d\n", get_audin_ptr(), amaudio_in.in_rd_ptr, get_audout_ptr(), amaudio_out.out_wr_ptr);
+  audio_in_i2s_enable(0);
+  for(i=0; i< dump_size; i+=8){
+    for(j=0; j<8; j++){
+      printk("%04x,",dump_buf[i+j]);
+    }
+    printk("\n");
+  }
+  
+  printk("AMAUDIo DUMp FINISHED\n\n\n");
+  for(i=0; i< amaudio_in.in_size/4; i+=8){
+    for(j=0; j<8; j++){
+      printk("%08x,", *((unsigned *)(amaudio_in.in_start) + i + j));
+    }
+    printk("\n");
+  }
+
+  printk("OUTPUT\n");
+  for(i=0; i<amaudio_out.out_size/4; i+= 8){
+    for(j=0; j< 8; j++){
+      printk("%08x,", *((unsigned*)(amaudio_out.out_start) + i + j));
+    }
+    printk("\n");
+  }
+  printk("Hardware Buf finished: audio in error: %d, error flag = %d\n", in_error, in_error_flag);
+  audio_in_i2s_enable(1);
+#endif  
+  return ret;
+}
+
+static ssize_t store_enable_dump(struct class* class, struct class_attribute* attr,
+   const char* buf, size_t count )
+{
+  unsigned long flags;
+  
+  unsigned int tmp = 0;
+
+  if(buf[0] == '0'){
+    tmp = 0;
+  }else if(buf[0] == '1'){
+    tmp = 1;
+  }
+  
+  enable_debug_dump = tmp;
+  
+  return count;
+}
 static ssize_t amaudio_runtime_show(struct class* class, struct class_attribute* attr,
     char* buf)
 {
@@ -1310,6 +1627,10 @@ static ssize_t amaudio_runtime_show(struct class* class, struct class_attribute*
 static struct class_attribute amaudio_attrs[]={
   __ATTR(enable_direct_audio,  S_IRUGO | S_IWUSR, show_direct_flag, store_direct_flag),
   __ATTR(enable_music_mix, S_IRUGO | S_IWUSR, show_music_mix, store_music_mix),
+  __ATTR(enable_mic_mix, S_IRUGO | S_IWUSR, show_mic_mix, store_mic_mix),
+  __ATTR(enable_alsa_out, S_IRUGO | S_IWUSR, show_alsa_out, store_alsa_out),
+  __ATTR(enable_debug_print, S_IRUGO | S_IWUSR, show_enable_debug, store_enable_debug),
+  __ATTR(enable_debug_dump, S_IRUGO | S_IWUSR, show_enable_dump, store_enable_dump),
   __ATTR_RO(amaudio_runtime),
   __ATTR_NULL
 };
@@ -1337,7 +1658,7 @@ static int __init amaudio_init(void)
 
   ret = alloc_chrdev_region(&amaudio_devno, 0, AMAUDIO_DEVICE_COUNT, AMAUDIO_DEVICE_NAME);
   if(ret < 0){
-    printk(KERN_ERR"amaudio: faild to alloc major number\n");
+    aprint(KERN_ERR"amaudio: faild to alloc major number\n");
     ret = - ENODEV;
     goto err;
   }
@@ -1351,7 +1672,7 @@ static int __init amaudio_init(void)
   
   amaudio_cdevp = kmalloc(sizeof(struct cdev), GFP_KERNEL);
   if(!amaudio_cdevp){
-    printk(KERN_ERR"amaudio: failed to allocate memory\n");
+    aprint(KERN_ERR"amaudio: failed to allocate memory\n");
     ret = -ENOMEM;
     goto err2;
   }
@@ -1361,19 +1682,19 @@ static int __init amaudio_init(void)
   // connect the major/minor number to cdev
   ret = cdev_add(amaudio_cdevp, amaudio_devno, AMAUDIO_DEVICE_COUNT);
   if(ret){
-    printk(KERN_ERR "amaudio:failed to add cdev\n");
+    aprint(KERN_ERR "amaudio:failed to add cdev\n");
     goto err3;
   } 
   for(ap = &amaudio_ports[0], i=0; i< AMAUDIO_DEVICE_COUNT; ap++,  i++){    
     ap->dev = device_create(amaudio_clsp, NULL, MKDEV(MAJOR(amaudio_devno),i), NULL,amaudio_ports[i].name);
     if(IS_ERR(ap->dev)){
-      printk(KERN_ERR"amaudio: failed to create amaudio device node\n");
+      aprint(KERN_ERR"amaudio: failed to create amaudio device node\n");
       goto err4;
     }
   }
   spin_lock_init(&amaudio_lock);
   spin_lock_init(&amaudio_clk_lock);
-  printk(KERN_INFO"amaudio: device %s created\n", AMAUDIO_DEVICE_NAME);
+  aprint(KERN_INFO"amaudio: device %s created\n", AMAUDIO_DEVICE_NAME);
   return 0;
 
 err4:
