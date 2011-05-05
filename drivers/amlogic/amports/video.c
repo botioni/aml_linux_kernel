@@ -1393,7 +1393,7 @@ static int amvideo_open(struct inode *inode, struct file *file)
 static int amvideo_release(struct inode *inode, struct file *file)
 {
     if (blackout) {
-        DisableVideoLayer();
+        ///DisableVideoLayer();/*don't need it ,it have problem on  pure music playing*/
     }
     return 0;
 }
