@@ -616,21 +616,9 @@ void analog_switch(int flag)
     }
 }
 
-void usb_switch(int flag,int ctrl)
+void usb_switch(int is_on,int ctrl)
 {
-    int msk = PREI_USB_PHY_A_POR;
-	
-    if(ctrl == 1)
-        msk = PREI_USB_PHY_B_POR;
-
-    if (flag){
-        printk(KERN_INFO "usb %d on\n",ctrl);
-        CLEAR_CBUS_REG_MASK(PREI_USB_PHY_REG, msk);
-    }
-    else{
-        printk(KERN_INFO "usb %d off\n",ctrl);
-        SET_CBUS_REG_MASK(PREI_USB_PHY_REG, msk);
-    }
+	set_usb_ctl_por(ctrl,is_on);
 }
 
 #ifdef CONFIG_HAS_EARLYSUSPEND

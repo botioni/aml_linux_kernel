@@ -878,12 +878,12 @@ int vm_buffer_init(void)
     init_MUTEX_LOCKED(&vb_done_sema);    
     if(buf_start && buf_size){
         canvas_width = 1920;
-        canvas_height = 1088;
-        decbuf_size = 0x600000;
+        canvas_height = 1200;
+        decbuf_size = 0x700000;
         
         buf_num  = buf_size/decbuf_size;
         if(buf_num > 0){
-            local_pool_size   = buf_num;  
+            local_pool_size   = 1;  
         }else{
             local_pool_size = 0 ;
             printk("need at least one buffer to handle 1920*1080 data.\n") ;       

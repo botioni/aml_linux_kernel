@@ -157,3 +157,29 @@ int set_usb_phy_clk(int rate)
 }
 
 EXPORT_SYMBOL(set_usb_phy_clk);
+
+
+/*
+ * Don't call this function when usb device is operating.
+ */
+void set_usb_ctl_por(int index,int is_power_on)
+{
+
+    int msk = PREI_USB_PHY_A_POR;
+    char * msg;
+	
+    if(index == 1)
+        msk = PREI_USB_PHY_B_POR;
+
+    if (is_power_on){
+        msg = "on";
+        CLEAR_CBUS_REG_MASK(PREI_USB_PHY_REG, msk);
+    }
+    else{
+        msg = "off";
+        SET_CBUS_REG_MASK(PREI_USB_PHY_REG, msk);
+    }
+    printk(KERN_INFO "usb %c %s\n",(index?'B':'A'),msg);
+
+}
+EXPORT_SYMBOL(set_usb_ctl_por);

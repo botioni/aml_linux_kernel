@@ -27,6 +27,9 @@ obj-$(CONFIG_SENSORS_MXC622X)	+= mxc622x.o
 obj-$(CONFIG_SENSORS_MMC31XX)	+= mmc31xx.o
 obj-$(CONFIG_SENSORS_MMC328X)	+= mmc328x.o
 obj-$(CONFIG_ECOMPASS)		+= mecs.o
+obj-$(CONFIG_INPUT_LSM303_ACCEL)	+= lsm303dlh_acc.o
+obj-$(CONFIG_INPUT_LSM303_MAGNE)	+= lsm303dlh_mag.o
+obj-$(CONFIG_INPUT_L3G4200D)		+= l3g4200d.o
 
 ifeq ($(CONFIG_I2C_DEBUG_CHIP),y)
 EXTRA_CFLAGS += -DDEBUG

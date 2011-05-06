@@ -1664,8 +1664,8 @@ static void free_buffer(struct videobuf_queue *vq, struct gt2005_buffer *buf)
 	buf->vb.state = VIDEOBUF_NEEDS_INIT;
 }
 
-#define norm_maxw() 1024
-#define norm_maxh() 768
+#define norm_maxw() 1920
+#define norm_maxh() 1200
 static int
 buffer_prepare(struct videobuf_queue *vq, struct videobuf_buffer *vb,
 						enum v4l2_field field)

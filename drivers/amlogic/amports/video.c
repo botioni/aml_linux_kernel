@@ -1393,7 +1393,7 @@ static int amvideo_open(struct inode *inode, struct file *file)
 static int amvideo_release(struct inode *inode, struct file *file)
 {
     if (blackout) {
-        DisableVideoLayer();
+        ///DisableVideoLayer();/*don't need it ,it have problem on  pure music playing*/
     }
     return 0;
 }
@@ -1729,7 +1729,7 @@ static ssize_t video_zoom_store(struct class *cla, struct class_attribute *attr,
 
 static ssize_t video_screen_mode_show(struct class *cla, struct class_attribute *attr, char *buf)
 {
-    const char *wide_str[] = {"normal", "full stretch", "4-3", "16-9"};
+    const char *wide_str[] = {"normal", "full stretch", "4-3", "16-9", "normal-noscaleup"};
 
     if (wide_setting < ARRAY_SIZE(wide_str)) {
         return sprintf(buf, "%d:%s\n", wide_setting, wide_str[wide_setting]);
