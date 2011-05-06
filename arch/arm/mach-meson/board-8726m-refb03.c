@@ -105,6 +105,13 @@
 #ifdef CONFIG_AR1520_GPS
 #include <linux/ar1520.h>
 #endif
+#if defined(CONFIG_INPUT_LSM303_ACCEL)||defined(CONFIG_INPUT_LSM303_MAGNE)
+#include <linux/i2c/lsm303dlh.h>
+#endif
+
+#ifdef CONFIG_INPUT_L3G4200D
+#include <linux/i2c/l3g4200d.h>
+#endif
 
 #if defined(CONFIG_JPEGLOGO)
 static struct resource jpeglogo_resources[] = {
@@ -298,6 +305,62 @@ static struct it7230_platform_data it7230_pdata = {
     .key_num = ARRAY_SIZE(it7230_keys),
 };
 #endif
+
+#ifdef  CONFIG_INPUT_LSM303_ACCEL
+struct lsm303dlh_acc_platform_data lsm303dlc_acc_plt_dat = { 
+	.poll_interval = 50,          //Driver polling interval as 50ms 
+	.min_interval = 10,    //Driver polling interval minimum 10ms 
+	.g_range = LSM303DLH_G_2G,    //Full Scale of LSM303DLH Accelerometer  
+	.axis_map_x = 0,      //x = x 
+	.axis_map_y = 1,      //y = y 
+	.axis_map_z = 2,      //z = z 
+	.negate_x = 0,      //x = +x 
+	.negate_y = 0,      //y = +y 
+	.negate_z = 0,      //z = +z 
+}; 
+#endif
+
+#ifdef CONFIG_INPUT_LSM303_MAGNE
+struct lsm303dlh_mag_platform_data lsm303dlc_mag_plt_dat = { 
+	.poll_interval = 50,    //Driver polling interval as 50ms 
+	.min_interval = 10,    //Driver polling interval minimum 10ms 
+	.h_range = LSM303DLH_H_4_0G,  //Full Scale of LSM303DLH Magnetometer  
+	.axis_map_x = 0,      //x = x 
+	.axis_map_y = 1,      //y = y 
+	.axis_map_z = 2,      //z = z 
+	.negate_x = 0,      //x = +x 
+	.negate_y = 0,      //y = +y 
+	.negate_z = 0,      //z = +z 
+}; 
+#endif
+
+#ifdef CONFIG_INPUT_L3G4200D
+struct l3g4200d_platform_data l3g4200d_gyro_plt_dat = {
+	.fs_range = L3G4200D_FS_2000DPS,
+	.axis_map_x = 0,	  //x = x
+	.axis_map_y = 1,      //y = y
+	.axis_map_z = 2,      //z = z
+	.negate_x = 0,      //x = +x 
+	.negate_y = 0,      //y = +y 
+	.negate_z = 0,      //z = +z 
+};
+#endif
+#if defined (CONFIG_AMLOGIC_VIDEOIN_MANAGER)
+   static struct resource vm_resources[] = {
+   [0] = {
+       .start =  VM_ADDR_START,
+       .end   = VM_ADDR_END,
+       .flags = IORESOURCE_MEM,
+   		},
+ 	};
+	static struct platform_device vm_device =
+	{
+  		.name = "vm",
+  		.id = 0,
+  		.num_resources = ARRAY_SIZE(vm_resources),
+  		.resource      = vm_resources,
+	};
+#endif /* AMLOGIC_VIDEOIN_MANAGER */
 
 #if defined(CONFIG_FB_AM)
 static struct resource fb_device_resources[] = {
@@ -2259,6 +2322,26 @@ static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
         I2C_BOARD_INFO("bq27200", 0x55),
         .platform_data = (void *)&bq27x00_pdata,
     },
+#endif
+#ifdef CONFIG_INPUT_LSM303_ACCEL
+  { 
+  	I2C_BOARD_INFO("lsm303dlh_acc", 0x18),      //acc IIC address 0x18  
+    .platform_data = (void *)&lsm303dlc_acc_plt_dat, 
+  },
+#endif
+
+#ifdef CONFIG_INPUT_LSM303_MAGNE    
+  { 
+  	I2C_BOARD_INFO("lsm303dlh_mag", 0x1E), 	//mag IIC address 0x1E
+    .platform_data = (void *)&lsm303dlc_mag_plt_dat,
+  },
+#endif
+
+#ifdef CONFIG_INPUT_L3G4200D
+  { 
+  	I2C_BOARD_INFO("l3g4200d_gyroscope", 0x68), 
+    .platform_data = (void *)&l3g4200d_gyro_plt_dat, 
+  },
 #endif
 #ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE_GC0308
 
