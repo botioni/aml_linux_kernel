@@ -292,7 +292,7 @@ static ssize_t phy_txvref_store(struct device *_dev,
 			      const char *buf, size_t count);
 
 DEVICE_ATTR(index, S_IRUGO | S_IWUSR, phy_index_show, phy_index_store);
-DEVICE_ATTR(power, S_IRUGO | S_IWUSR, phy_power_show, phy_power_store);
+DEVICE_ATTR(por, S_IRUGO | S_IWUSR, phy_power_show, phy_power_store);
 DEVICE_ATTR(txvref, S_IRUGO | S_IWUSR, phy_txvref_show, phy_txvref_store);
 /**
  * Show the value of phy index
@@ -525,13 +525,13 @@ static ssize_t xxx_store(struct device *_dev,
 static void create_device_attribs(struct device *dev)
 {
 	device_create_file(dev, &dev_attr_index);
-	device_create_file(dev, &dev_attr_power);
+	device_create_file(dev, &dev_attr_por);
 	device_create_file(dev, &dev_attr_txvref);
 }
 static void remove_device_attribs(struct device *dev)
 {
 	device_remove_file(dev, &dev_attr_index);
-	device_remove_file(dev, &dev_attr_power);
+	device_remove_file(dev, &dev_attr_por);
 	device_remove_file(dev, &dev_attr_txvref);
 }
 

@@ -40,5 +40,6 @@ struct clk {
 
 extern int set_usb_phy_clk(int rate);
 extern int set_sata_phy_clk(int sel);
+extern void set_usb_ctl_por(int index,int is_power_on);
 
 #endif
