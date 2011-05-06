@@ -868,6 +868,82 @@ static struct itk_platform_data itk_pdata = {
 };
 #endif
 
+#ifdef CONFIG_FOCALTECH_CAPACITIVE_TOUCHSCREEN
+#include <linux/capts.h>
+/* GPIOD_24 */
+#define TS_IRQ_GPIO  ((GPIOD_bank_bit2_24(24)<<16) |GPIOD_bit_bit2_24(24))
+#define TS_IRQ_IDX     (GPIOD_IDX + 24)
+
+static int ts_init_irq(void);
+static int ts_get_irq_level(void);
+static void ts_power_on (void)
+{
+#ifdef CONFIG_SN7325
+    printk("power on 7325 ts_power_on\n");
+	configIO(1, 0);
+	setIO_level(1, 1, 1);//PP1
+#endif
+}
+
+static void ts_power_off (void)
+{
+#ifdef CONFIG_SN7325
+    printk("power on 7325 ts_power_off\n");
+	configIO(1, 0);
+	setIO_level(1, 0, 1);//PP1
+#endif
+}
+
+static struct ts_platform_data ts_pdata = {
+    .mode = TS_MODE_INT_LOW,
+    .irq = INT_GPIO_0,
+    .init_irq = ts_init_irq,
+    .get_irq_level = ts_get_irq_level,
+    .info = {
+        .xmin = 0,
+        .xmax = 4095,
+        .ymin = 0,
+        .ymax = 4095,
+        .zmin = 0,
+        .zmax = 1,
+        .wmin = 0,
+        .wmax = 1,
+        .swap_xy = 0,
+        .x_pol = 1,
+        .y_pol = 1
+    },
+    .data = 0,
+    .power_on = ts_power_on,
+    .power_off = ts_power_off,
+};
+static int ts_init_irq(void)
+{
+    int group = ts_pdata.irq - INT_GPIO_0;
+    int mode =  ts_pdata.mode;
+
+    if (mode < TS_MODE_TIMER_READ) {
+        gpio_direction_input(TS_IRQ_GPIO);
+        if (mode == TS_MODE_INT_FALLING) {
+            gpio_enable_edge_int(TS_IRQ_IDX, 1, group);
+        }
+        else if (mode == TS_MODE_INT_RISING) {
+            gpio_enable_edge_int(TS_IRQ_IDX, 0, group);
+        }
+        else if (mode == TS_MODE_INT_LOW) {
+            gpio_enable_level_int(TS_IRQ_IDX, 1, group);
+        }
+        else if (mode == TS_MODE_INT_HIGH) {
+            gpio_enable_level_int(TS_IRQ_IDX, 0, group);
+        }
+    }
+    return 0;
+}
+
+static int ts_get_irq_level(void)
+{
+    return gpio_get_value(TS_IRQ_GPIO);
+}
+#endif
 #ifdef CONFIG_SIS92XX_CAPACITIVE_TOUCHSCREEN
 #include <linux/capts.h>
 /* GPIOD_24 */
@@ -2298,6 +2374,12 @@ static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
 #ifdef CONFIG_SIS92XX_CAPACITIVE_TOUCHSCREEN
     {
         I2C_BOARD_INFO("sis92xx", 0x05),
+        .platform_data = (void *)&ts_pdata,
+    },
+#endif
+#ifdef CONFIG_FOCALTECH_CAPACITIVE_TOUCHSCREEN
+    {
+        I2C_BOARD_INFO("ft5x06", 0x70),
         .platform_data = (void *)&ts_pdata,
     },
 #endif
