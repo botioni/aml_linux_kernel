@@ -269,18 +269,18 @@ RESTART:
     aspect_factor = (vpp_flags & VPP_FLAG_AR_MASK) >> VPP_FLAG_AR_BITS;
 
     /* keep 8 bits resolution for aspect conversion */
+	if (wide_mode == VIDEO_WIDEOPTION_4_3) {
+        aspect_factor = 0xc0;
+        wide_mode = VIDEO_WIDEOPTION_NORMAL;
+    }
+    else if (wide_mode == VIDEO_WIDEOPTION_16_9) {
+        aspect_factor = 0x90;
+        wide_mode = VIDEO_WIDEOPTION_NORMAL;
+	}
+
     if ((aspect_factor == 0) || (wide_mode == VIDEO_WIDEOPTION_FULL_STRETCH)) {
         aspect_factor = 0x100;
-
     } else {
-        if (wide_mode == VIDEO_WIDEOPTION_4_3) {
-            aspect_factor = 0xc0;
-            wide_mode = VIDEO_WIDEOPTION_NORMAL;
-        } else if (wide_mode == VIDEO_WIDEOPTION_16_9) {
-            aspect_factor = 0x90;
-            wide_mode = VIDEO_WIDEOPTION_NORMAL;
-        }
-
         aspect_factor = (width_in * height_out * aspect_factor << 3) /
                         ((width_out * height_in * aspect_ratio_out) >> 5);
     }
@@ -319,6 +319,24 @@ RESTART:
     if (wide_mode == VIDEO_WIDEOPTION_NORMAL) {
         ratio_x = ratio_y = max(ratio_x, ratio_y);
         ratio_y = (ratio_y << 8) / aspect_factor;
+    }
+    else if (wide_mode == VIDEO_WIDEOPTION_NORMAL_NOSCALEUP) {
+        u32 r1, r2;
+        r1 = max(ratio_x, ratio_y);
+        r2 = (r1 << 8) / aspect_factor;
+
+		if ((r1 < (1<<18)) || (r2 < (1<<18))) {
+			if (r1 < r2) {
+				ratio_x = 1 << 18;
+				ratio_y = (ratio_x << 8) / aspect_factor;
+			} else {
+				ratio_y = 1 << 18;
+				ratio_x = aspect_factor << 10;
+			}
+		} else {
+			ratio_x = r1;
+			ratio_y = r2;
+		}
     }
 
     /* vertical */
