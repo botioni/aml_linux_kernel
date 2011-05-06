@@ -345,22 +345,6 @@ struct l3g4200d_platform_data l3g4200d_gyro_plt_dat = {
 	.negate_z = 0,      //z = +z 
 };
 #endif
-#if defined (CONFIG_AMLOGIC_VIDEOIN_MANAGER)
-   static struct resource vm_resources[] = {
-   [0] = {
-       .start =  VM_ADDR_START,
-       .end   = VM_ADDR_END,
-       .flags = IORESOURCE_MEM,
-   		},
- 	};
-	static struct platform_device vm_device =
-	{
-  		.name = "vm",
-  		.id = 0,
-  		.num_resources = ARRAY_SIZE(vm_resources),
-  		.resource      = vm_resources,
-	};
-#endif /* AMLOGIC_VIDEOIN_MANAGER */
 
 #if defined(CONFIG_FB_AM)
 static struct resource fb_device_resources[] = {
