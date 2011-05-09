@@ -113,6 +113,9 @@
 #include <linux/i2c/l3g4200d.h>
 #endif
 
+#ifdef CONFIG_EFUSE
+#include <linux/efuse.h>
+#endif
 #if defined(CONFIG_JPEGLOGO)
 static struct resource jpeglogo_resources[] = {
     [0] = {
@@ -1721,6 +1724,27 @@ static struct platform_device aml_ar1520_device = {
 };
 #endif
 
+#ifdef CONFIG_EFUSE
+static bool efuse_data_verify(unsigned char *usid)
+{
+	return true;
+}
+
+static struct efuse_platform_data aml_efuse_plat = {
+    .pos = 337,
+    .count = 20,
+    .data_verify = efuse_data_verify,
+};
+
+static struct platform_device aml_efuse_device = {
+    .name	= "efuse",
+    .id	= -1,
+    .dev = {
+                .platform_data = &aml_efuse_plat,
+           },
+};
+#endif
+
 #ifdef CONFIG_AM_NAND
 /*static struct mtd_partition partition_info[] = 
 {
@@ -2327,6 +2351,9 @@ static struct platform_device __initdata *platform_devs[] = {
     #endif
     #ifdef CONFIG_AR1520_GPS
 	&aml_ar1520_device,
+    #endif
+    #ifdef CONFIG_EFUSE
+	&aml_efuse_device,
     #endif
 };
 static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
