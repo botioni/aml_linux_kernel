@@ -872,7 +872,7 @@ static struct itk_platform_data itk_pdata = {
 #endif
 
 #ifdef CONFIG_FOCALTECH_CAPACITIVE_TOUCHSCREEN
-#include <linux/capts.h>
+#include <linux/ft5x06_ts.h>
 /* GPIOD_24 */
 #define TS_IRQ_GPIO  ((GPIOD_bank_bit2_24(24)<<16) |GPIOD_bit_bit2_24(24))
 #define TS_IRQ_IDX     (GPIOD_IDX + 24)
@@ -898,7 +898,7 @@ static void ts_power_off (void)
 }
 
 static struct ts_platform_data ts_pdata = {
-    .mode = TS_MODE_INT_LOW,
+    .mode = TS_MODE_INT_FALLING,
     .irq = INT_GPIO_0,
     .init_irq = ts_init_irq,
     .get_irq_level = ts_get_irq_level,
@@ -2406,7 +2406,7 @@ static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
 #endif
 #ifdef CONFIG_FOCALTECH_CAPACITIVE_TOUCHSCREEN
     {
-        I2C_BOARD_INFO("ft5x06", 0x70),
+        I2C_BOARD_INFO("ft5x06", 0x38),
         .platform_data = (void *)&ts_pdata,
     },
 #endif
