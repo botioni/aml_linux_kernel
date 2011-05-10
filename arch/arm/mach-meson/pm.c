@@ -15,9 +15,11 @@
 #include <linux/clk.h>
 #include <linux/spinlock.h>
 #include <linux/clk.h>
+#include <linux/fs.h>
 
 #include <asm/cacheflush.h>
 #include <asm/delay.h>
+#include <asm/uaccess.h>
 
 #include <mach/pm.h>
 #include <mach/am_regs.h>
@@ -25,6 +27,7 @@
 #include <mach/power_gate.h>
 #include <mach/gpio.h>
 #include <mach/pctl.h>
+#include <mach/clock.h>
 
 #ifdef CONFIG_WAKELOCK
 #include <linux/wakelock.h>
@@ -618,7 +621,19 @@ void analog_switch(int flag)
 
 void usb_switch(int is_on,int ctrl)
 {
-	set_usb_ctl_por(ctrl,is_on);
+	int index,por;
+
+	if(ctrl == 0)
+		index = USB_CTL_INDEX_A;
+	else
+		index = USB_CTL_INDEX_B;
+
+	if(is_on)
+		por = USB_CTL_POR_ON;
+	else 
+		por = USB_CTL_POR_OFF;
+
+	set_usb_ctl_por(index,por);
 }
 
 #ifdef CONFIG_HAS_EARLYSUSPEND
