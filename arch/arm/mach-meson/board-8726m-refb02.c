@@ -2303,6 +2303,7 @@ static __init void m1_init_machine(void)
     meson_cache_init();
 
     power_hold();
+    pm_power_off = set_bat_off;
     device_clk_setting();
     device_pinmux_init();
 #ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE
