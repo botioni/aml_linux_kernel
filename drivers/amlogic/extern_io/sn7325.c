@@ -1,4 +1,4 @@
-/* 
+/*
  * sn7325 i2c interface
  * Copyright (C) 2010 Amlogic, Inc.
  *
@@ -17,7 +17,7 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307, USA
  *
  * Author:  wang han<han.wang@amlogic.com>
- */  
+ */
 
 #include <linux/kernel.h>
 #include <linux/init.h>
@@ -99,7 +99,7 @@ static int sn7325_probe(struct i2c_client *client, const struct i2c_device_id *i
     }
     sn7325_client = client;
     pdata = client->dev.platform_data;
-    
+
     if (pdata->pwr_rst)
     {
         pdata->pwr_rst();
@@ -273,14 +273,14 @@ static ssize_t write_sn7325(struct device *dev, struct device_attribute *attr, c
 	else
 	{
 		printk("%s write error!pin=%s\n",__FUNCTION__,pin);
-		return 0;
+		return -1;
 	}
 	iobits = (unsigned char)simple_strtoul(val,NULL,0);
 	offset = (unsigned char)simple_strtoul(addr,NULL,0);
 	if((iobits != 0 && iobits!=1)||(offset < 0) ||(offset > 7))
 	{
 		printk("%s write error!iobits=%d,offset=%d\n",__FUNCTION__,iobits,offset);
-		return 0;
+		return -1;
 	}
 	configIO(port,0);
 	setIO_level(port,iobits,offset);
