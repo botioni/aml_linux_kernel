@@ -330,7 +330,7 @@ static void ft5x0x_report_value(void)
 	struct ts_event *event = &data->event;
 	u8 uVersion;
 
-//		printk("==ft5x0x_report_value =\n");
+		printk("==ft5x0x_report_value =\n");
 #ifdef CONFIG_FT5X0X_MULTITOUCH
 	switch(event->touch_point) {
 		case 5:
@@ -339,28 +339,28 @@ static void ft5x0x_report_value(void)
 			input_report_abs(data->input_dev, ABS_MT_POSITION_Y, event->y5);
 			input_report_abs(data->input_dev, ABS_MT_WIDTH_MAJOR, 1);
 			input_mt_sync(data->input_dev);
-//			printk("===x2 = %d,y2 = %d ====\n",event->x2,event->y2);
+			printk("===x2 = %d,y2 = %d ====\n",event->x2,event->y2);
 		case 4:
 			input_report_abs(data->input_dev, ABS_MT_TOUCH_MAJOR, event->pressure);
 			input_report_abs(data->input_dev, ABS_MT_POSITION_X, event->x4);
 			input_report_abs(data->input_dev, ABS_MT_POSITION_Y, event->y4);
 			input_report_abs(data->input_dev, ABS_MT_WIDTH_MAJOR, 1);
 			input_mt_sync(data->input_dev);
-//			printk("===x2 = %d,y2 = %d ====\n",event->x2,event->y2);
+			printk("===x2 = %d,y2 = %d ====\n",event->x2,event->y2);
 		case 3:
 			input_report_abs(data->input_dev, ABS_MT_TOUCH_MAJOR, event->pressure);
 			input_report_abs(data->input_dev, ABS_MT_POSITION_X, event->x3);
 			input_report_abs(data->input_dev, ABS_MT_POSITION_Y, event->y3);
 			input_report_abs(data->input_dev, ABS_MT_WIDTH_MAJOR, 1);
 			input_mt_sync(data->input_dev);
-//			printk("===x2 = %d,y2 = %d ====\n",event->x2,event->y2);
+			printk("===x2 = %d,y2 = %d ====\n",event->x2,event->y2);
 		case 2:
 			input_report_abs(data->input_dev, ABS_MT_TOUCH_MAJOR, event->pressure);
 			input_report_abs(data->input_dev, ABS_MT_POSITION_X, event->x2);
 			input_report_abs(data->input_dev, ABS_MT_POSITION_Y, event->y2);
 			input_report_abs(data->input_dev, ABS_MT_WIDTH_MAJOR, 1);
 			input_mt_sync(data->input_dev);
-//			printk("===x2 = %d,y2 = %d ====\n",event->x2,event->y2);
+			printk("===x2 = %d,y2 = %d ====\n",event->x2,event->y2);
 		case 1:
 			input_report_abs(data->input_dev, ABS_MT_TOUCH_MAJOR, event->pressure);
 			input_report_abs(data->input_dev, ABS_MT_POSITION_X, event->x1);
@@ -429,7 +429,8 @@ static irqreturn_t ft5x0x_ts_interrupt(int irq, void *dev_id)
 	struct ft5x0x_ts_data *ft5x0x_ts = dev_id;
     	disable_irq_nosync(this_client->irq);	
 //	disable_irq(IRQ_EINT(6));
-//	printk("==int=\n");
+	//printk("==int=\n");
+	printk("ret=%d\n",irq);
 	if (!work_pending(&ft5x0x_ts->pen_event_work)) {
 		queue_work(ft5x0x_ts->ts_workqueue, &ft5x0x_ts->pen_event_work);
 	}
@@ -508,6 +509,7 @@ ft5x0x_ts_probe(struct i2c_client *client, const struct i2c_device_id *id)
 		pdata->power_off();
 		mdelay(50);
 		pdata->power_on();
+		mdelay(200);
 	}
 	printk("==ft5x0x_ts_probe=\n");
 	
@@ -524,18 +526,20 @@ ft5x0x_ts_probe(struct i2c_client *client, const struct i2c_device_id *id)
 		goto exit_alloc_data_failed;
 	}
 
-
+    printk("==kzalloc success=\n");
 	this_client = client;
 	i2c_set_clientdata(client, ft5x0x_ts);
-
+  printk("==i2c_set_clientdata success=\n");
 
 	INIT_WORK(&ft5x0x_ts->pen_event_work, ft5x0x_ts_pen_irq_work);
-
+printk("==INIT_WORK success=\n");
 	ft5x0x_ts->ts_workqueue = create_singlethread_workqueue(dev_name(&client->dev));
+printk("==create_singlethread_workqueue success=\n");	
 	if (!ft5x0x_ts->ts_workqueue) {
 		err = -ESRCH;
 		goto exit_create_singlethread;
 	}
+printk("==exit_create_singlethread =\n");	
 
 //	pdata = client->dev.platform_data;
 //	if (pdata == NULL) {
@@ -543,22 +547,18 @@ ft5x0x_ts_probe(struct i2c_client *client, const struct i2c_device_id *id)
 //		goto exit_platform_data_null;
 //	}
 	
-//	printk("==request_irq=\n");
-	err = request_irq(client->irq, ft5x0x_ts_interrupt, IRQF_DISABLED, "ft5x0x_ts", ft5x0x_ts);
-//	err = request_irq(IRQ_EINT(6), ft5x0x_ts_interrupt, IRQF_TRIGGER_FALLING, "ft5x0x_ts", ft5x0x_ts);
-	if (err < 0) {
-		dev_err(&client->dev, "ft5x0x_probe: request irq failed\n");
-		goto exit_irq_request_failed;
-	}
 
 //	__gpio_as_irq_fall_edge(pdata->intr);		//
+printk("==enable Irq=\n");
     if (pdata->init_irq) {
         pdata->init_irq();
     }
+printk("==enable Irq success=\n");
+
 	disable_irq_nosync(this_client->irq);
 //	disable_irq(IRQ_EINT(6));
 
-//	printk("==input_allocate_device=\n");
+	printk("==input_allocate_device=\n");
 	input_dev = input_allocate_device();
 	if (!input_dev) {
 		err = -ENOMEM;
@@ -613,6 +613,14 @@ ft5x0x_ts_probe(struct i2c_client *client, const struct i2c_device_id *id)
 	ft5x0x_ts->early_suspend.resume	= ft5x0x_ts_resume;
 	register_early_suspend(&ft5x0x_ts->early_suspend);
 #endif
+
+//	printk("==request_irq=\n");
+	err = request_irq(client->irq, ft5x0x_ts_interrupt, IRQF_DISABLED, "ft5x0x_ts", ft5x0x_ts);
+//	err = request_irq(IRQ_EINT(6), ft5x0x_ts_interrupt, IRQF_TRIGGER_FALLING, "ft5x0x_ts", ft5x0x_ts);
+	if (err < 0) {
+		dev_err(&client->dev, "ft5x0x_probe: request irq failed\n");
+		goto exit_irq_request_failed;
+	}
 
     msleep(50);
     //get some register information
