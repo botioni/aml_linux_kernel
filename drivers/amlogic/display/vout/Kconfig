@@ -90,6 +90,12 @@ config AML_TCON_REFB13
 	tristate "REFB13 panel driver"
 	depends on  AM_TCON_OUTPUT
 	help  
-		REFB13 LCD panel module	
+		REFB13 LCD panel module
+
+config AML_TCON_REFB14
+	tristate "REFB14 panel driver"
+	depends on  AM_TCON_OUTPUT
+	help  
+		REFB14 LCD panel module	
 endmenu
 	

@@ -38,4 +38,8 @@ typedef  struct {
     s32 h ;
 } disp_rect_t;
 
+#define VIDEO_NOTIFY_TRICK_WAIT   0x01
+#define VIDEO_NOTIFY_PROVIDER_GET 0x02
+#define VIDEO_NOTIFY_PROVIDER_PUT 0x04
+
 #endif /* VIDEO_H */
