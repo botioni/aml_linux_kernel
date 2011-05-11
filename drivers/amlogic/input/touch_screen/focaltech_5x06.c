@@ -427,7 +427,7 @@ function	:
 static irqreturn_t ft5x0x_ts_interrupt(int irq, void *dev_id)
 {
 	struct ft5x0x_ts_data *ft5x0x_ts = dev_id;
-    	disable_irq(this_client->irq);		
+    	disable_irq_nosync(this_client->irq);	
 //	disable_irq(IRQ_EINT(6));
 //	printk("==int=\n");
 	if (!work_pending(&ft5x0x_ts->pen_event_work)) {
@@ -555,7 +555,7 @@ ft5x0x_ts_probe(struct i2c_client *client, const struct i2c_device_id *id)
     if (pdata->init_irq) {
         pdata->init_irq();
     }
-	disable_irq(this_client->irq);
+	disable_irq_nosync(this_client->irq);
 //	disable_irq(IRQ_EINT(6));
 
 //	printk("==input_allocate_device=\n");
