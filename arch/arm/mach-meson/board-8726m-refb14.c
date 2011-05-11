@@ -1466,31 +1466,27 @@ static unsigned aml_8726m_get_bl_level(void)
 {
     return bl_level;
 }
-#define BL_MAX_LEVEL 60000
+#define BL_MAX_LEVEL 960000
 static void aml_8726m_set_bl_level(unsigned level)
 {
-    unsigned cs_level,pwm_level,low,hi;
+    unsigned pwm_level,low,hi;
     
-    bl_level = level;
+    bl_level = level; //store backlight level
         
     level = level*179/255;
     if(level>=120){ //120 - 179
-        cs_level = 9 -(level - 120)/15;
         pwm_level = 85 + (level - 120)%15;   
     }
     else if(level>=20){ //20 - 119
-        cs_level = 13 - (level -20)/25;
         pwm_level = 75 + (level - 20)%25;   
     }
     else{  //  <20
-        cs_level = 13;
         pwm_level = 70;           
     }
         
     hi = (BL_MAX_LEVEL/100)*pwm_level;
     low = BL_MAX_LEVEL - hi;
     
-    WRITE_CBUS_REG_BITS(VGHL_PWM_REG0, cs_level, 0, 4);        
     WRITE_CBUS_REG_BITS(PWM_PWM_A,low,0,16);  //low
     WRITE_CBUS_REG_BITS(PWM_PWM_A,hi,16,16);  //hi  
 }
@@ -1916,6 +1912,7 @@ static __init void m1_init_machine(void)
 	meson_cache_init();
 
 	power_hold();
+	pm_power_off = set_bat_off;
 	device_clk_setting();
 	device_pinmux_init();
 	platform_add_devices(platform_devs, ARRAY_SIZE(platform_devs));
