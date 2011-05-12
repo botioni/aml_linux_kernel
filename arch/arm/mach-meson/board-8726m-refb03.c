@@ -113,6 +113,9 @@
 #include <linux/i2c/l3g4200d.h>
 #endif
 
+#ifdef CONFIG_EFUSE
+#include <linux/efuse.h>
+#endif
 #if defined(CONFIG_JPEGLOGO)
 static struct resource jpeglogo_resources[] = {
     [0] = {
@@ -869,7 +872,7 @@ static struct itk_platform_data itk_pdata = {
 #endif
 
 #ifdef CONFIG_FOCALTECH_CAPACITIVE_TOUCHSCREEN
-#include <linux/capts.h>
+#include <linux/ft5x06_ts.h>
 /* GPIOD_24 */
 #define TS_IRQ_GPIO  ((GPIOD_bank_bit2_24(24)<<16) |GPIOD_bit_bit2_24(24))
 #define TS_IRQ_IDX     (GPIOD_IDX + 24)
@@ -895,7 +898,7 @@ static void ts_power_off (void)
 }
 
 static struct ts_platform_data ts_pdata = {
-    .mode = TS_MODE_INT_LOW,
+    .mode = TS_MODE_INT_FALLING,
     .irq = INT_GPIO_0,
     .init_irq = ts_init_irq,
     .get_irq_level = ts_get_irq_level,
@@ -1337,7 +1340,7 @@ static struct aml_i2c_platform aml_i2c_plat = {
 	.wait_xfer_interval	= 5,
 	.master_no		= AML_I2C_MASTER_B,
 	.use_pio			= 0,
-	.master_i2c_speed	= AML_I2C_SPPED_400K,
+	.master_i2c_speed	= AML_I2C_SPPED_100K,
 
 	.master_b_pinmux = {
 		.scl_reg	= MESON_I2C_MASTER_B_GPIOB_0_REG,
@@ -1717,6 +1720,27 @@ static struct platform_device aml_ar1520_device = {
     .id       = -1, 
     .dev = {        
                 .platform_data = &aml_ar1520_plat,  
+           },
+};
+#endif
+
+#ifdef CONFIG_EFUSE
+static bool efuse_data_verify(unsigned char *usid)
+{
+	return true;
+}
+
+static struct efuse_platform_data aml_efuse_plat = {
+    .pos = 337,
+    .count = 20,
+    .data_verify = efuse_data_verify,
+};
+
+static struct platform_device aml_efuse_device = {
+    .name	= "efuse",
+    .id	= -1,
+    .dev = {
+                .platform_data = &aml_efuse_plat,
            },
 };
 #endif
@@ -2328,6 +2352,9 @@ static struct platform_device __initdata *platform_devs[] = {
     #ifdef CONFIG_AR1520_GPS
 	&aml_ar1520_device,
     #endif
+    #ifdef CONFIG_EFUSE
+	&aml_efuse_device,
+    #endif
 };
 static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
 
@@ -2379,7 +2406,7 @@ static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
 #endif
 #ifdef CONFIG_FOCALTECH_CAPACITIVE_TOUCHSCREEN
     {
-        I2C_BOARD_INFO("ft5x06", 0x70),
+        I2C_BOARD_INFO("ft5x06", 0x38),
         .platform_data = (void *)&ts_pdata,
     },
 #endif
@@ -2405,7 +2432,7 @@ static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
 
 #ifdef CONFIG_INPUT_L3G4200D
   { 
-  	I2C_BOARD_INFO("l3g4200d_gyroscope", 0x68), 
+  	I2C_BOARD_INFO("l3g4200d", 0x68), 
     .platform_data = (void *)&l3g4200d_gyro_plt_dat, 
   },
 #endif
@@ -2543,6 +2570,7 @@ static __init void m1_init_machine(void)
 	meson_cache_init();
 
     power_hold();
+    pm_power_off = set_bat_off;
     device_clk_setting();
     device_pinmux_init();
 #ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE

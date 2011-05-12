@@ -272,7 +272,6 @@ static  void  kp_fiq_interrupt(void)
 {
 	kp_sw_reprot_key((unsigned long)gp_kp);
 	WRITE_MPEG_REG(IRQ_CLR_REG(NEC_REMOTE_IRQ_NO), 1 << IRQ_BIT(NEC_REMOTE_IRQ_NO));
-	return IRQ_HANDLED;
 }
 static inline int kp_hw_reprot_key(struct kp *kp_data )
 {

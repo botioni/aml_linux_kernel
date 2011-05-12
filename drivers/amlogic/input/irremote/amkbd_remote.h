@@ -114,9 +114,6 @@ struct kp {
 
 extern type_printk input_dbg;
 extern irqreturn_t remote_bridge_isr(int irq, void *dev_id);
-extern int  register_fiq_bridge_handle(bridge_item_t *c_item) ;
-extern int  unregister_fiq_bridge_handle(bridge_item_t *c_item);
-extern int  fiq_bridge_pulse_trigger(bridge_item_t *c_item);
 
 void kp_sw_reprot_key(unsigned long data);
 void kp_send_key(struct input_dev *dev, unsigned int scancode, unsigned int type);

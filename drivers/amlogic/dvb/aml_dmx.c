@@ -177,7 +177,7 @@ static void section_buffer_watchdog_func(unsigned long arg)
 					if(section_busy32 & (1 << i)) {
 						DMX_WRITE_REG(device_no, SEC_BUFF_NUMBER, i);
 						filter_number = (DMX_READ_REG(device_no, SEC_BUFF_NUMBER) >> 8);
-						if(dmx->filter[i].used) {
+						if((filter_number<32) && dmx->filter[filter_number].used) {
 							section_busy32 &= ~(1 << i);
 						}
 					}

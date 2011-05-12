@@ -24,6 +24,7 @@
 #include <linux/module.h>
 #include <linux/spinlock.h>
 #include <linux/interrupt.h>
+#include <linux/fiq_bridge.h>
 #include <linux/fs.h>
 #include <mach/am_regs.h>
 
@@ -133,6 +134,7 @@ static spinlock_t lock = SPIN_LOCK_UNLOCKED;
 static u32 frame_par_ready_to_set, frame_par_force_to_set;
 static u32 vpts_remainder;
 static bool video_property_changed = false;
+static u32 video_notify_flag = 0;
 
 /* display canvas */
 static u32 disp_canvas_index[6] = {
@@ -195,6 +197,10 @@ static vpp_frame_par_t frame_parms[2];
 /* vsync pass flag */
 static u32 wait_sync;
 static const vframe_provider_t *vfp = NULL;
+
+#ifdef FIQ_VSYNC
+static bridge_item_t vsync_fiq_bridge;
+#endif
 
 /* trickmode i frame*/
 u32 trickmode_i = 0;
@@ -837,19 +843,27 @@ static inline bool vpts_expire(vframe_t *cur_vf, vframe_t *next_vf)
     return ((int)(timestamp_pcrscr_get() - pts) >= 0);
 }
 
-#ifdef FIQ_VSYNC
-static irqreturn_t vsync_isr(int irq, void *dev_id)
+static void vsync_notify(void)
 {
-    wake_up_interruptible(&amvideo_trick_wait);
+    if (video_notify_flag & VIDEO_NOTIFY_TRICK_WAIT) {
+        wake_up_interruptible(&amvideo_trick_wait);
+        video_notify_flag &= ~VIDEO_NOTIFY_TRICK_WAIT;
+    }
+}
+
+#ifdef FIQ_VSYNC
+static irqreturn_t vsync_bridge_isr(int irq, void *dev_id)
+{
+    vsync_notify();
 
     return IRQ_HANDLED;
 }
 #endif
 
 #ifdef FIQ_VSYNC
-void vsync_isr0(void)
+void vsync_fisr(void)
 #else
-static irqreturn_t vsync_isr0(int irq, void *dev_id)
+static irqreturn_t vsync_isr(int irq, void *dev_id)
 #endif
 {
     int hold_line;
@@ -943,12 +957,7 @@ static irqreturn_t vsync_isr0(int irq, void *dev_id)
 
             if (trickmode_fffb == 1) {
                 atomic_set(&trickmode_framedone, 1);
-#ifdef FIQ_VSYNC
-                /* bridge to dummy IRQ */
-                //BRIDGE_IRQ_SET();
-#else
-                wake_up_interruptible(&amvideo_trick_wait);
-#endif
+                video_notify_flag |= VIDEO_NOTIFY_TRICK_WAIT;
                 break;
             }
 
@@ -1138,8 +1147,12 @@ static irqreturn_t vsync_isr0(int irq, void *dev_id)
 
 exit:
 #ifdef FIQ_VSYNC
-    return;
+    if (video_notify_flag)
+        fiq_bridge_pulse_trigger(&vsync_fiq_bridge);
 #else
+    if (video_notify_flag)
+        vsync_notify();
+
     return IRQ_HANDLED;
 #endif
 
@@ -1212,11 +1225,11 @@ err1:
 static void vsync_fiq_up(void)
 {
 #ifdef  FIQ_VSYNC
-    request_fiq(INT_VIU_VSYNC, &vsync_isr0);
+    request_fiq(INT_VIU_VSYNC, &vsync_fisr);
 #else
     int r;
-    r = request_irq(INT_VIU_VSYNC, &vsync_isr0,
-                    IRQF_SHARED, "am_sync0",
+    r = request_irq(INT_VIU_VSYNC, &vsync_isr,
+                    IRQF_SHARED, "vsync",
                     (void *)video_dev_id);
 #endif
 }
@@ -1224,7 +1237,7 @@ static void vsync_fiq_up(void)
 static void vsync_fiq_down(void)
 {
 #ifdef FIQ_VSYNC
-    free_fiq(INT_VIU_VSYNC, &vsync_isr0);
+    free_fiq(INT_VIU_VSYNC, &vsync_fisr);
 #else
     free_irq(INT_VIU_VSYNC, (void *)video_dev_id);
 #endif
@@ -2217,19 +2230,20 @@ static int __init video_init(void)
     DisableVideoLayer();
     cur_dispbuf = NULL;
 
-    /* hook vsync isr */
 #ifdef FIQ_VSYNC
-    r = request_irq(BRIDGE_IRQ, &vsync_isr,
-                    IRQF_SHARED, "amvideo",
-                    (void *)video_dev_id);
+    /* enable fiq bridge */
+	vsync_fiq_bridge.handle = vsync_bridge_isr;
+	vsync_fiq_bridge.key=(u32)vsync_bridge_isr;
+	vsync_fiq_bridge.name="vsync_bridge_isr";
+
+    r = register_fiq_bridge_handle(&vsync_fiq_bridge);
 
     if (r) {
-        amlog_level(LOG_LEVEL_ERROR, "video irq register error.\n");
+        amlog_level(LOG_LEVEL_ERROR, "video fiq bridge register error.\n");
         r = -ENOENT;
         goto err0;
     }
 #endif
-
 
     /* sysfs node creation */
     r = class_register(&amvideo_class);
@@ -2275,7 +2289,7 @@ err3:
 
 err2:
 #ifdef FIQ_VSYNC
-    free_irq(BRIDGE_IRQ, (void *)video_dev_id);
+    unregister_fiq_bridge_handle(&vsync_fiq_bridge);
 #endif
 
 err1:
@@ -2298,7 +2312,7 @@ static void __exit video_exit(void)
     unregister_chrdev(AMVIDEO_MAJOR, DEVICE_NAME);
 
 #ifdef FIQ_VSYNC
-    free_irq(BRIDGE_IRQ, (void *)video_dev_id);
+    unregister_fiq_bridge_handle(&vsync_fiq_bridge);
 #endif
 
     class_unregister(&amvideo_class);

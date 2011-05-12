@@ -91,6 +91,8 @@ static hdmitx_dev_t hdmitx_device;
 #define INIT_FLAG_VDACOFF        0x1
     /* unplug powerdown */
 #define INIT_FLAG_POWERDOWN      0x2
+    /* use external xtal as source of hdmi pll */
+#define INIT_FLAG_PLLMODE1        0x4    
 
 #define INIT_FLAG_NOT_LOAD 0x80
 
@@ -122,9 +124,11 @@ static  int  set_disp_mode(const char *mode)
     if(vic != HDMI_Unkown){
         hdmitx_device.mux_hpd_if_pin_high_flag = 1;
         if(hdmitx_device.vic_count == 0){
-            return 0;
+               if(hdmitx_device.unplug_powerdown){
+                   return 0;
+                }
+            }
         }
-    }
 
     hdmitx_device.cur_VIC = HDMI_Unkown;
     ret = hdmitx_set_display(&hdmitx_device, vic);
@@ -283,6 +287,14 @@ static ssize_t store_config(struct device * dev, struct device_attribute *attr, 
         if(hdmitx_device.HWOp.Cntl){
             hdmitx_device.HWOp.Cntl(&hdmitx_device, HDMITX_HWCMD_LOWPOWER_SWITCH, tmp); 
             printk("hdmi: set powermode %d\n", tmp);
+        }
+    }
+    else if(strncmp(buf, "unplug_powerdown", 16) == 0){
+        if(buf[16] == '0'){
+            hdmitx_device.unplug_powerdown = 0;
+        }
+        else{
+            hdmitx_device.unplug_powerdown = 1;
         }
     }
     else if(strncmp(buf, "3d", 2)==0){
@@ -472,8 +484,10 @@ static int hdmitx_notify_callback_v(struct notifier_block *block, unsigned long 
     if(hdmitx_device.vic_count == 0){
         if(is_dispmode_valid_for_hdmi()){
             hdmitx_device.mux_hpd_if_pin_high_flag = 1;
-			      return 0;
-        }
+            if(hdmitx_device.unplug_powerdown){
+    			      return 0;
+    			  }
+		    }
     }
 
     set_disp_mode_auto();
@@ -561,7 +575,9 @@ void hdmi_tv_enc_post_func(char* mode)
     if(hdmitx_device.vic_count == 0){
         if(is_dispmode_valid_for_hdmi()){
             hdmitx_device.mux_hpd_if_pin_high_flag = 1;
-			      return;
+            if(hdmitx_device.unplug_powerdown){
+    			      return;
+    			  }
         }
     }
 
@@ -620,6 +636,10 @@ hdmi_task_handle(void *data)
 {
     hdmitx_dev_t* hdmitx_device = (hdmitx_dev_t*)data;
 
+    if(init_flag&INIT_FLAG_PLLMODE1){
+        hdmitx_device->HWOp.Cntl(hdmitx_device, HDMITX_HWCMD_PLL_MODE, 1);    
+    }
+    
     hdmitx_init_parameters(&hdmitx_device->hdmi_info);
 
     HDMITX_M1B_Init(hdmitx_device);
@@ -1070,6 +1090,9 @@ static  int __init hdmitx_boot_para_setup(char *s)
             }
             else if((token_len==16) && (strncmp(token, "unplug_powerdown", token_len)==0)){
                 init_flag|=INIT_FLAG_POWERDOWN;
+            }
+            else if(strncmp(token, "pllmode1",  8)==0){
+                init_flag|=INIT_FLAG_PLLMODE1;        
             }
             else if((token_len==7)&& (strncmp(token, "hpdmode", token_len)==0)){
                 hpdmode = simple_strtoul(token+7,NULL,10);   
