@@ -421,8 +421,8 @@ static int l3g4200d_probe(struct i2c_client *client,
 		goto exit;
 	}
 
-	if (!i2c_check_functionality(client->adapter, I2C_FUNC_SMBUS_I2C_BLOCK))
-		goto exit;
+	//if (!i2c_check_functionality(client->adapter, I2C_FUNC_SMBUS_I2C_BLOCK))
+	//	goto exit;
 
 	/*
 	 * OK. For now, we presume we have a valid client. We now create the
