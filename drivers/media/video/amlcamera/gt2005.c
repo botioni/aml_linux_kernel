@@ -320,7 +320,7 @@ static inline struct gt2005_fh *to_fh(struct gt2005_device *dev)
 
 struct aml_camera_i2c_fig_s GT2005_script[] = { 
 #ifdef CONFIG_MACH_MESON_8726M_REFB10
-	{0x0101 , 0x02},
+	{0x0101 , 0x01},
 #else
 	{0x0101 , 0x10},
 #endif
@@ -345,7 +345,7 @@ struct aml_camera_i2c_fig_s GT2005_script[] = {
 	{0x0110 , 0x03},					
 	{0x0111 , 0x20},					
 	{0x0112 , 0x02},					
-	{0x0113 , 0x5A},
+	{0x0113 , 0x5a},// 5a
 
 	//YUV Mode
 	{0x0114 , 0x06},
@@ -392,7 +392,7 @@ struct aml_camera_i2c_fig_s GT2005_script[] = {
 	{0x0200 , 0x30},
 
 	//Brightness
-	{0x0201 , 0x30}, //0x00 kim   10 
+	{0x0201 , 0x3a}, //0x00 kim   10 
 
 	//Saturation
 	{0x0202 , 0x40}, // 0x48   kim   40 
@@ -515,7 +515,7 @@ struct aml_camera_i2c_fig_s GT2005_script[] = {
 	{0x026F , 0xA0},
 	{0x0270 , 0x40},
 	{0x0300 , 0x81},
-	{0x0301 , 0xA0}, // 0x80  kim
+	{0x0301 , 0xa0}, // 0x80  kim
 	{0x0302 , 0x22},
 	{0x0303 , 0x06},
 	{0x0304 , 0x03},
@@ -725,7 +725,7 @@ struct aml_camera_i2c_fig_s GT2005_script[] = {
 		{0x0408,0x44},
 		{0x0409,0x1F},
 		{0x040A,0x40},
-		{0x040B,0x42},
+		{0x040B,0x42},// 42 
 
 	// huaxin lens
 		{0x040C,0xA0},
@@ -1058,65 +1058,129 @@ void GT2005_set_param_exposure(struct gt2005_device *dev,enum camera_exposure_e 
 
     switch (para)
 	{
-		case EXPOSURE_N4_STEP:  
+		/*case EXPOSURE_N4_STEP:  
             		i2c_put_byte(client,0x0300 , 0x81);
-			i2c_put_byte(client,0x0301 , 0x55);//40
+			i2c_put_byte(client,0x0301 , 0x85);//40
 			i2c_put_byte(client,0x0201 , 0xd0);
 			break;
 			
 		case EXPOSURE_N3_STEP:
             		i2c_put_byte(client,0x0300 , 0x81);
-			i2c_put_byte(client,0x0301 , 0x65);//50
+			i2c_put_byte(client,0x0301 , 0x90);//50
 			i2c_put_byte(client,0x0201 , 0xf0);
 			break;
 			
 		case EXPOSURE_N2_STEP:
             		i2c_put_byte(client,0x0300 , 0x81);
-			i2c_put_byte(client,0x0301 , 0x70);
-			i2c_put_byte(client,0x0201 , 0x10);//b0
+			i2c_put_byte(client,0x0301 , 0x98);
+			i2c_put_byte(client,0x0201 , 0x20);//b0
 			break;
 			
 		case EXPOSURE_N1_STEP:
             		i2c_put_byte(client,0x0300 , 0x81);
-			i2c_put_byte(client,0x0301 , 0x80);
-			i2c_put_byte(client,0x0201 , 0x20);//d0
+			i2c_put_byte(client,0x0301 , 0xa0);
+			i2c_put_byte(client,0x0201 , 0x55);//d0
 			break;
 			
 		case EXPOSURE_0_STEP:
            		i2c_put_byte(client,0x0300 , 0x81);
-			i2c_put_byte(client,0x0301 , 0xa0);
-			i2c_put_byte(client,0x0201 , 0x30);//0c
+			i2c_put_byte(client,0x0301 , 0xc5);
+			i2c_put_byte(client,0x0201 , 0x62);//0c
 			break;
 			
 		case EXPOSURE_P1_STEP:
             		i2c_put_byte(client,0x0300 , 0x81);
-			i2c_put_byte(client,0x0301 , 0xa0);
-			i2c_put_byte(client,0x0201 , 0x50);//30
+			i2c_put_byte(client,0x0301 , 0xe0);
+			i2c_put_byte(client,0x0201 , 0x68);//30
 			break;
 			
 		case EXPOSURE_P2_STEP:
             		i2c_put_byte(client,0x0300 , 0x81);
-			i2c_put_byte(client,0x0301 , 0xb0);//a0
-			i2c_put_byte(client,0x0201 , 0x55);
+			i2c_put_byte(client,0x0301 , 0xf8);//a0
+			i2c_put_byte(client,0x0201 , 0x70);
 			break;
 			
 		case EXPOSURE_P3_STEP:
-            		i2c_put_byte(client,0x0300 , 0x81);
-			i2c_put_byte(client,0x0301 , 0xb0);
-			i2c_put_byte(client,0x0201 , 0x70);//60
+            		i2c_put_byte(client,0x0300 , 0x82);
+			i2c_put_byte(client,0x0301 , 0x30);
+			i2c_put_byte(client,0x0201 , 0x78);//60
 			break;
 			
 		case EXPOSURE_P4_STEP:	
-            		i2c_put_byte(client,0x0300 , 0x81);
-			i2c_put_byte(client,0x0301 , 0xc5);
-			i2c_put_byte(client,0x0201 , 0x75);
+            		i2c_put_byte(client,0x0300 , 0x83);
+			i2c_put_byte(client,0x0301 , 0xf0);
+			i2c_put_byte(client,0x0201 , 0x7f);
 			break;
 			
 		default:
 			i2c_put_byte(client,0x0300 , 0x81);
-			i2c_put_byte(client,0x0301 , 0x80);
-			i2c_put_byte(client,0x0201 , 0x0c);
+			i2c_put_byte(client,0x0301 , 0xa0);
+			i2c_put_byte(client,0x0201 , 0x30);//0c
+			break;*/
+
+		case EXPOSURE_N4_STEP:	
+					i2c_put_byte(client,0x0300 , 0x81);
+			i2c_put_byte(client,0x0301 , 0x90);//40
+			i2c_put_byte(client,0x0201 , 0xf0);
 			break;
+			
+		case EXPOSURE_N3_STEP:
+					i2c_put_byte(client,0x0300 , 0x81);
+			i2c_put_byte(client,0x0301 , 0x90);//50
+			i2c_put_byte(client,0x0201 , 0x10);
+			break;
+			
+		case EXPOSURE_N2_STEP:
+					i2c_put_byte(client,0x0300 , 0x81);
+			i2c_put_byte(client,0x0301 , 0x90);
+			i2c_put_byte(client,0x0201 , 0x20);//b0
+			break;
+			
+		case EXPOSURE_N1_STEP:
+					i2c_put_byte(client,0x0300 , 0x81);
+			i2c_put_byte(client,0x0301 , 0x98);
+			i2c_put_byte(client,0x0201 , 0x30);//d0
+			break;
+			
+		case EXPOSURE_0_STEP:
+				i2c_put_byte(client,0x0300 , 0x81);
+			i2c_put_byte(client,0x0301 , 0xa0);
+			i2c_put_byte(client,0x0201 , 0x3a);//0c
+			break;
+			
+		case EXPOSURE_P1_STEP:
+					i2c_put_byte(client,0x0300 , 0x81);
+			i2c_put_byte(client,0x0301 , 0xa0);
+			i2c_put_byte(client,0x0201 , 0x45);//30
+			break;
+			
+		case EXPOSURE_P2_STEP:
+					i2c_put_byte(client,0x0300 , 0x81);
+			i2c_put_byte(client,0x0301 , 0xb0);//a0
+			i2c_put_byte(client,0x0201 , 0x50);
+			break;
+			
+		case EXPOSURE_P3_STEP:
+					i2c_put_byte(client,0x0300 , 0x82);
+			i2c_put_byte(client,0x0301 , 0xc0);
+			i2c_put_byte(client,0x0201 , 0x58);//60
+			break;
+			
+		case EXPOSURE_P4_STEP:	
+					i2c_put_byte(client,0x0300 , 0x83);
+			i2c_put_byte(client,0x0301 , 0xe0);
+			i2c_put_byte(client,0x0201 , 0x68);
+			break;
+			
+		default:
+				i2c_put_byte(client,0x0300 , 0x81);
+			i2c_put_byte(client,0x0301 , 0xa0);
+			i2c_put_byte(client,0x0201 , 0x3a);//0c
+			break;
+			break;
+
+
+		
 	}
 
 
@@ -1172,10 +1236,17 @@ void GT2005_set_param_effect(struct gt2005_device *dev,enum camera_effect_flip_e
 
 		case CAM_EFFECT_ENC_COLORINV:
 			i2c_put_byte(client,0x0115,0x09);
+			i2c_put_byte(client,0x0301,0x81);
+			i2c_put_byte(client,0x0201,0xc0);
+			i2c_put_byte(client,0x0300,0x85);
 			break;		
 
 		default:
 			break;
+	}
+	if(para!=CAM_EFFECT_ENC_COLORINV){
+		GT2005_set_param_exposure(dev,gt2005_qctrl[1].default_value);
+
 	}
 
 
@@ -1220,25 +1291,96 @@ void GT2005_set_resolution(struct gt2005_device *dev,int height,int width)
 	{		
 	    if((height<=600)&&(width<=800))
 	    {
+	    #if 0
 	        
 	    	i2c_put_byte(client,0x0110, 0x03);
 			i2c_put_byte(client,0x0111, 0x20);
 			i2c_put_byte(client,0x0112, 0x02);
 			i2c_put_byte(client,0x0113, 0x5A);
+
+			i2c_put_byte(client,0x0102 ,  0x01);
+			i2c_put_byte(client,0x010a ,  0x04);
+			i2c_put_byte(client,0x010b ,  0x0F);
+			i2c_put_byte(client,0x0105 ,  0x00);
+			i2c_put_byte(client,0x0106 ,  0xf0);
+			i2c_put_byte(client,0x0107 ,  0x00);
+			i2c_put_byte(client,0x0108 ,  0x1c);
+			i2c_put_byte(client,0x0109 ,  0x00);
+			i2c_put_byte(client,0x010c ,  0x00);
+			i2c_put_byte(client,0x010d ,  0x08);
+			i2c_put_byte(client,0x010e ,  0x00);
+			i2c_put_byte(client,0x010f ,  0x0a);
+			i2c_put_byte(client,0x0110, 0x03);
+			i2c_put_byte(client,0x0111, 0x20);
+			i2c_put_byte(client,0x0112, 0x02);
+			i2c_put_byte(client,0x0113, 0x5A);
+			#endif
+			
 	    }
 		else
 		{
-			i2c_put_byte(client,0x0110 , (width>>8)&0xff);
-			i2c_put_byte(client,0x0111 ,  width&0xff);
-			i2c_put_byte(client,0x0112 , (height>>8)&0xff);
-			i2c_put_byte(client,0x0113 ,  height&0xff);
+			//1600x1200
+			i2c_put_byte(client,0x0102 ,  0x01);
+			i2c_put_byte(client,0x010a ,  0x00);
+			i2c_put_byte(client,0x010b ,  0x03);
+			i2c_put_byte(client,0x0105 ,  0x00);
+			i2c_put_byte(client,0x0106 ,  0xf0);
+			i2c_put_byte(client,0x0107 ,  0x00);
+			i2c_put_byte(client,0x0108 ,  0x0e);
+			i2c_put_byte(client,0x0109 ,  0x01);
+			i2c_put_byte(client,0x010c ,  0x00);
+			i2c_put_byte(client,0x010d ,  0x08);
+			i2c_put_byte(client,0x010e ,  0x08);
+			i2c_put_byte(client,0x010f ,  0x10);
+			i2c_put_byte(client,0x0110 , 0x06);
+			i2c_put_byte(client,0x0111 ,  0x40);
+			i2c_put_byte(client,0x0112 , 0x04);
+			i2c_put_byte(client,0x0113 ,  0xb0);
+			/*1024x768
+			i2c_put_byte(client,0x0102 ,  0x01);
+			i2c_put_byte(client,0x010a ,  0x00);
+			i2c_put_byte(client,0x010b ,  0x03);
+			i2c_put_byte(client,0x0105 ,  0x00);
+			i2c_put_byte(client,0x0106 ,  0xf0);
+			i2c_put_byte(client,0x0107 ,  0x00);
+			i2c_put_byte(client,0x0108 ,  0x0e);
+			i2c_put_byte(client,0x0109 ,  0x01);
+			i2c_put_byte(client,0x010c ,  0x01);
+			i2c_put_byte(client,0x010d ,  0x28);
+			i2c_put_byte(client,0x010e ,  0x00);
+			i2c_put_byte(client,0x010f ,  0xe0);
+			i2c_put_byte(client,0x0110 , 0x04);
+			i2c_put_byte(client,0x0111 ,  0x00);
+			i2c_put_byte(client,0x0112 , 0x03);
+			i2c_put_byte(client,0x0113 ,  0x00);
+			*/
+			/*1280x720
+			i2c_put_byte(client,0x0102 ,  0x01);
+			i2c_put_byte(client,0x010a ,  0x00);
+			i2c_put_byte(client,0x010b ,  0x03);
+			i2c_put_byte(client,0x0105 ,  0x00);
+			i2c_put_byte(client,0x0106 ,  0xf0);
+			i2c_put_byte(client,0x0107 ,  0x00);
+			i2c_put_byte(client,0x0108 ,  0x0e);
+			i2c_put_byte(client,0x0109 ,  0x01);
+			i2c_put_byte(client,0x010c ,  0x00);
+			i2c_put_byte(client,0x010d ,  0xa8);
+			i2c_put_byte(client,0x010e ,  0x00);
+			i2c_put_byte(client,0x010f ,  0xf8);
+			i2c_put_byte(client,0x0110 , 0x05);
+			i2c_put_byte(client,0x0111 ,  0x00);
+			i2c_put_byte(client,0x0112 , 0x02);
+			i2c_put_byte(client,0x0113 ,  0xd0);
+			*/
+			printk(KERN_INFO " set camera  GT2005_set_resolution=w=%d,h=%d. \n ",width,height);
+
 		}
 	}
 #else
 		i2c_put_byte(client,0x0110, 0x03);
 		i2c_put_byte(client,0x0111, 0x20);
 		i2c_put_byte(client,0x0112, 0x02);
-		i2c_put_byte(client,0x0113, 0x5A);
+		i2c_put_byte(client,0x0113, 0x5a);// 5a
 #endif	
 }    /* GT2005_set_resolution */
 
@@ -1522,8 +1664,8 @@ static void free_buffer(struct videobuf_queue *vq, struct gt2005_buffer *buf)
 	buf->vb.state = VIDEOBUF_NEEDS_INIT;
 }
 
-#define norm_maxw() 1024
-#define norm_maxh() 768
+#define norm_maxw() 1920
+#define norm_maxh() 1200
 static int
 buffer_prepare(struct videobuf_queue *vq, struct videobuf_buffer *vb,
 						enum v4l2_field field)

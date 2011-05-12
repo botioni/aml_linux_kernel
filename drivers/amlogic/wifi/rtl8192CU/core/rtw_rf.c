@@ -500,13 +500,13 @@ static u8 writephyinfo_fw(_adapter *padapter, u32 addr)
 	u32 *tmpWrite;
 	struct setphyinfo_parm*	psetphyinfopara;
 
-	psetphyinfopara = (struct setphyinfo_parm*)_rtw_malloc(sizeof(struct setphyinfo_parm)); 
+	psetphyinfopara = (struct setphyinfo_parm*)_rtw_zmalloc(sizeof(struct setphyinfo_parm)); 
 
 	if(psetphyinfopara==NULL){
 		return _FAIL;
 	}
 
-	_rtw_memset((unsigned char *)psetphyinfopara, 0, sizeof (struct setphyinfo_parm));
+	//_rtw_memset((unsigned char *)psetphyinfopara, 0, sizeof (struct setphyinfo_parm));
 	
 	init_phyinfo(padapter, psetphyinfopara);
 

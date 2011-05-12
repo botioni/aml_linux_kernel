@@ -50,7 +50,7 @@
 #define CONFIG_LPS	1
 #define CONFIG_BT_COEXIST  	1
 #define CONFIG_ANTENNA_DIVERSITY	1
-
+//#define CONFIG_WOWLAN 1
 
 #define SUPPORT_HW_RFOFF_DETECTED	1
 
@@ -62,12 +62,13 @@
 
 	#define DBG 0
 
-	#define CONFIG_DEBUG_RTL8192C		1
+	#define CONFIG_DEBUG_RTL8192C				1
 
 	#define DEV_BUS_PCI_INTERFACE				1
 	#define DEV_BUS_USB_INTERFACE				2	
 
-	#define RTL8192C_WEP_ISSUE					1
+	#define RTL8192C_WEP_ISSUE					0
+	
 	#define RTL8192C_RX_PACKET_NO_INCLUDE_CRC	1
 
 	#define SUPPORTED_BLOCK_IO
@@ -77,8 +78,13 @@
 		#define DEV_BUS_TYPE	DEV_BUS_USB_INTERFACE
 
 		#define USB_TX_AGGREGATION_92C	1
-		#define USB_RX_AGGREGATION_92C	1
+		#define USB_RX_AGGREGATION_92C	1		
+		#define CONFIG_PS_CMD				1
 
+		#ifdef CONFIG_WISTRON_PLATFORM	
+			#define SILENT_RESET_FOR_SPECIFIC_PLATFOM	1				
+		#endif
+		
 		#define RTL8192CU_FW_DOWNLOAD_ENABLE	1
 
 		#define CONFIG_ONLY_ONE_OUT_EP_TO_LOW	0
@@ -91,11 +97,17 @@
 
 		#define RTL8192CU_ADHOC_WORKAROUND_SETTING 1
 
-
-		#ifdef PLATFORM_LINUX			
-			#define CONFIG_PREALLOC_RECV_SKB 1			
-			#define CONFIG_REDUCE_USB_TX_INT 1	
-		#endif
+		#ifdef PLATFORM_LINUX
+			#define CONFIG_SKB_COPY 			1//for amsdu
+			#define CONFIG_PREALLOC_RECV_SKB	1			
+			#define CONFIG_REDUCE_USB_TX_INT	1
+			#define CONFIG_EASY_REPLACEMENT	1
+			#ifdef CONFIG_WISTRON_PLATFORM
+			#define DYNAMIC_ALLOCIATE_VENDOR_CMD	0
+			#else
+			#define DYNAMIC_ALLOCIATE_VENDOR_CMD	1
+			#endif
+		#endif		
 
 		#ifdef CONFIG_R871X_TEST
 
@@ -134,5 +146,12 @@
 		#define MP_DRIVER 0
 	#endif
 
+#endif
+
+
+//#define CONFIG_NON_SKB_TRANSFER_BUFFER 1
+
+#ifdef CONFIG_NON_SKB_TRANSFER_BUFFER
+#undef CONFIG_PREALLOC_RECV_SKB
 #endif
 

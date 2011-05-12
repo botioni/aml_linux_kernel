@@ -62,6 +62,7 @@ dsp_register.h
 
 #define MAILBOX1_REG(n)	DSP_REG(40+n)
 #define MAILBOX2_REG(n)	DSP_REG(40+32+n)
+#define DSP_WORK_INFO (AUDIO_DSP_END_ADDR - 128)
 
 
 #ifndef __ASSEMBLY__
@@ -90,7 +91,7 @@ int len;
 #define M2B_IRQ4_AUDIO_INFO					(4)
 #define M2B_IRQ0_DSP_SLEEP					(5)
 #define M2B_IRQ0_DSP_WAKEUP					(6)
-#define M2B_IRQ0_DSP_SR_CHANGED			(7) //reserved for hdmi audio input sample rate notify
+#define M2B_IRQ0_DSP_AUDIO_EFFECT			(7) //audio post process cmd 
 
 #define CMD_PRINT_LOG					(1234<<8 |1)
 

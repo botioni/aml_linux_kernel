@@ -2104,14 +2104,14 @@ static const struct sdio_device_id ti_sdio_ids[] = {
 };
 
 
-static struct sdio_func *ti_sdio_func = NULL;
+static struct sdio_func *wifi_sdio_fuc = NULL;
 
-int sdio_check_func(void)
+int wifi_sdio_check_func(void)
 {
-	if (ti_sdio_func)
-		return 0;
-	else
+	if (wifi_sdio_fuc == NULL)
 		return 1;
+
+	return 0;
 }
 
 static int sdioDrv_probe(struct sdio_func *func,
@@ -2127,7 +2127,7 @@ static int sdioDrv_probe(struct sdio_func *func,
 	ti_drv.max_blocksize = func->max_blksize;
 	ti_drv.int_enabled = 1;
 	tiwlan_func[SDIO_WLAN_FUNC] = func;
-	ti_sdio_func = func;
+	wifi_sdio_fuc = func;
 	
 	/* Store our context in the MMC driver */
 
@@ -2156,15 +2156,14 @@ static void sdioDrv_remove(struct sdio_func *func)
 
 	tiwlan_func[SDIO_WLAN_FUNC] = NULL;
 	tiwlan_func[SDIO_CTRL_FUNC] = NULL;
+	wifi_sdio_fuc = NULL;
 
 	if (func->num != 2)
 		return;
 	/* If there is a registered device driver, pass on the remove */
 	printk(KERN_INFO "ti_sdio_remove: Free IRQ and remove device "
 		       "driver\n");
-
-	ti_sdio_func = NULL;
-	wlanDrvIf_remove();
+//	wlanDrvIf_remove(); // nathan
 	/* Unregister the IRQ handler first. */
 //	sdio_claim_host(fdev->func);
 //	sdio_release_irq(func);
@@ -2174,7 +2173,7 @@ static void sdioDrv_remove(struct sdio_func *func)
 		host->ops->enable_sdio_irq(host, 1);
 	}
 	/* Unregister the card context from the MMC driver. */
-	sdio_set_drvdata(func, NULL);
+//	sdio_set_drvdata(func, NULL);
 }
 
 

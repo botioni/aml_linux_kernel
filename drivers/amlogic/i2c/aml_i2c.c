@@ -575,7 +575,7 @@ static ssize_t store_register(struct class *class,
 			struct class_attribute *attr,	const char *buf, size_t count)
 {
 	unsigned int reg, val, ret;
-
+	int n=1,i;
 	if(buf[0] == 'w'){
 		ret = sscanf(buf, "w %x %x", &reg, &val);
 		//printk("sscanf w reg = %x, val = %x\n",reg, val);
@@ -583,10 +583,13 @@ static ssize_t store_register(struct class *class,
 		WRITE_CBUS_REG(reg, val);
 	}
 	else{
-		ret =  sscanf(buf, "%x", &reg);
-		//printk("sscanf r reg = %x\n", reg);
-		val = READ_CBUS_REG(reg);
-		printk("read cbus reg 0x%x value %x\n", reg, val);
+		ret =  sscanf(buf, "%x %d", &reg,&n);
+		printk("read %d cbus register from reg: %x \n",n,reg);
+		for(i=0;i<n;i++)
+		{
+			val = READ_CBUS_REG(reg+i);
+			printk("reg 0x%x : 0x%x\n", reg+i, val);
+		}
 	}
 	
 	if (ret != 1 || ret !=2)

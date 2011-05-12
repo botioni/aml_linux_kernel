@@ -15,6 +15,10 @@ struct frame_fmt
     int sample_rate;
     int data_width;
     int reversed[3];/*for cache aligned 32 bytes*/
+    int format;
+    unsigned int total_byte_parsed;
+    unsigned int total_sample_decoded;
+    unsigned int bps;
 };
 
 
@@ -27,5 +31,20 @@ struct frame_info
     int reversed[1];/*for cache aligned 32 bytes*/
 };
 
+struct dsp_working_info
+{
+	int status;
+	int sp;
+	int pc;
+	int ilink1;
+	int ilink2;
+	int blink;
+	int jeffies;
+	int out_wp;
+	int out_rp;
+	int buffered_len;//pcm buffered at the dsp side
+	int es_offset;//stream read offset since start decoder
+	int reserved[5];
+};
 #endif
 

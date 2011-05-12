@@ -64,6 +64,8 @@ static char *astream_format[] = {
     "amadec_wmapro",
     "amadec_pcm_bluray",
     "amadec_alac",
+    "amadec_vorbis",
+
 
 };
 

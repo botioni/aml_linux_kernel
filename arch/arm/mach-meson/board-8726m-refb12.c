@@ -861,20 +861,18 @@ int gc0308_init(void)
 {
    //pp0
    #ifdef CONFIG_SN7325
-   //power on
-   configIO(1, 0);
-	setIO_level(1, 1, 4);//30m Power_On
-	msleep(300);
 	printk( "amlogic camera driver 0308: init CONFIG_SN7325. \n");
+	configIO(1, 0);
+	setIO_level(1, 1, 4);//500m PWR_Down
+	msleep(10);
 	configIO(1, 0);
 	setIO_level(1, 1, 0);//30m PWR_Down
 	//configIO(0, 0);
 	//setIO_level(0, 1, 7);//500m PWR_Down
-	msleep(300);
+	msleep(10);
 	configIO(1, 0);
 	setIO_level(1, 0, 0);//30m PWR_On
-	
-	
+	msleep(20);
     #endif
 }
 #endif
@@ -886,13 +884,11 @@ int ov5642_init(void)
    #ifdef CONFIG_SN7325
 	printk( "amlogic camera driver 5642: init CONFIG_SN7325. \n");
 	configIO(0, 0);
-	setIO_level(0, 1, 7);//500m PWR_Down
-	msleep(300);
-	configIO(0, 0);
 	setIO_level(0, 0, 7);//500m PWR_On/**/
-	
-	printk( "heming add setIO_level od7 0, 0, 7\n");
-	msleep(300);
+	msleep(10);
+	configIO(1, 0);
+	setIO_level(1, 1, 4);//500m PWR_Down
+	msleep(10);
     #endif
 }
 #endif
@@ -938,17 +934,12 @@ static int gc0308_v4l2_uninit(void)
 	 printk( "amlogic camera driver: gc0308_v4l2_uninit CONFIG_SN7325. \n");
 	 configIO(1, 0);
 	 setIO_level(1, 1, 0);//30m PWR_Down
-	 //power off
-	 msleep(300);
-   configIO(1, 0);
-	setIO_level(1, 0, 4);//30m Power_Off
-	 
  #endif
 }
 
 aml_plat_cam_data_t video_gc0308_data = {
 	.name="video-gc0308",
-	.video_nr=0,
+	.video_nr=1,
 	.device_init= gc0308_v4l2_init,
 	.device_uninit=gc0308_v4l2_uninit,
 };
@@ -978,7 +969,6 @@ aml_plat_cam_data_t video_ov5642_data = {
 #endif /* CONFIG_VIDEO_AMLOGIC_CAPTURE_OV5642 */
 
 #if defined(CONFIG_SUSPEND)
-
 static void set_vccx2(int power_on)
 {
     if(power_on){
@@ -1121,6 +1111,11 @@ static void set_charge(int flags)
         setIO_level(1, 1, 3);
         #endif
         }
+        printk( "#########amlogic camera driver 5642##########. \n");
+        configIO(1, 0);
+	setIO_level(1, 0, 4);//500m PWR_Down
+	configIO(0, 0);
+	setIO_level(0, 1, 7);//500m PWR_Down
 }
 
 #ifdef CONFIG_SARADC_AM
@@ -2109,6 +2104,7 @@ static __init void m1_init_machine(void)
     meson_cache_init();
 
     power_hold();
+    pm_power_off = set_bat_off;
     device_clk_setting();
     device_pinmux_init();
 #ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE

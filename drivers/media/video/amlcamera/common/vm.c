@@ -234,7 +234,7 @@ static int vm_receiver_event_fun(int type, void* data, void* private_data)
             //up(&vb_start_sema);
             break;
         case VFRAME_EVENT_PROVIDER_START:
-			vm_skip_count = 0; 
+			vm_skip_count = 5; 
 			test_zoom = 0;
             break;
         case VFRAME_EVENT_PROVIDER_UNREG:        
@@ -504,7 +504,7 @@ int get_canvas_index(int v4l2_format ,int* depth)
             *depth = 24;
             break; 
         case V4L2_PIX_FMT_NV12: 
-			canvas = VM_DEPTH_8_CANVAS_Y|(VM_DEPTH_8_CANVAS_UV<<8)|(VM_DEPTH_8_CANVAS_V<<16);
+			canvas = VM_DEPTH_8_CANVAS_Y|(VM_DEPTH_8_CANVAS_U<<8)|(VM_DEPTH_8_CANVAS_V<<16);
 			*depth = 12;   
 			break;
         case V4L2_PIX_FMT_YUV420:
@@ -678,7 +678,7 @@ int vm_ge2d_pre_process(vframe_t* vf, ge2d_context_t *context,config_para_ex_t* 
 		ge2d_config->dst_planes[0].h = cd.height;
 		ge2d_config->dst_para.canvas_index=(output_para.index>>8)&0xff;
 		ge2d_config->dst_para.format=GE2D_FORMAT_S8_CB|GE2D_LITTLE_ENDIAN;
-		ge2d_config->dst_para.width = output_para.width;
+		ge2d_config->dst_para.width = output_para.width/2;
 		ge2d_config->dst_para.height = output_para.height/2;
 		if(ge2d_context_config_ex(context,ge2d_config)<0) {
 			printk("++ge2d configing error.\n");
@@ -747,28 +747,24 @@ int vm_sw_post_process(int canvas , int addr)
     		memcpy(addr+poss,buffer_y_start+posd,output_para.width);
     		poss+=output_para.width;
     		posd+= canvas_work_y.width;
-    		
-    		memcpy(u_addr_d+pos_u_d,buffer_u_start+pos_u_s,output_para.width);
-    		pos_u_s += canvas_work_y.width;
-    		pos_u_d += output_para.width;
-    	}
+    	}	
 
     	posd=0;
     	canvas_read((canvas>>16)&0xff,&canvas_work_v);
     	buffer_v_start = ioremap_wc(canvas_work_v.addr,canvas_work_v.width*canvas_work_v.height);
-        
+        extern void interleave_uv(unsigned char* pU, unsigned char* pV, unsigned char *pUV, unsigned int size_u_or_v);
         int uv_cnt;
     	int v_width = output_para.width>>1;
-        char* dst_buff=(unsigned char*)(addr+poss+1);
-        char* src_buff= buffer_v_start;
-   		for(i=0;i<uv_height;i++) { /* copy uv */
-            uv_cnt= posd;
-			for(j=0;j<v_width;j++) { 
-				*dst_buff = src_buff[uv_cnt++];
-				dst_buff+=2;
-			}
-    		posd+= canvas_work_v.width;		
-    	}
+        char* dst_buff= (char*)addr+output_para.width* output_para.height;
+        char* src_buff = (char*)buffer_u_start;
+        char* src2_buff= (char*)buffer_v_start;
+	for(i = 0 ;i < output_para.height/2; i++){
+		interleave_uv(src_buff, src2_buff, dst_buff, output_para.width/2);
+		src_buff +=  canvas_work_u.width;
+		src2_buff += 	canvas_work_v.width;	
+		dst_buff += output_para.width;
+	}
+	
     	iounmap(buffer_u_start);
     	iounmap(buffer_v_start);
 	} else if (output_para.v4l2_format = V4L2_PIX_FMT_YUV420) {
@@ -882,12 +878,12 @@ int vm_buffer_init(void)
     init_MUTEX_LOCKED(&vb_done_sema);    
     if(buf_start && buf_size){
         canvas_width = 1920;
-        canvas_height = 1088;
-        decbuf_size = 0x600000;
+        canvas_height = 1200;
+        decbuf_size = 0x700000;
         
         buf_num  = buf_size/decbuf_size;
         if(buf_num > 0){
-            local_pool_size   = buf_num;  
+            local_pool_size   = 1;  
         }else{
             local_pool_size = 0 ;
             printk("need at least one buffer to handle 1920*1080 data.\n") ;       
@@ -905,11 +901,15 @@ int vm_buffer_init(void)
             canvas_config(VM_DEPTH_8_CANVAS_Y+ i,
                           buf_start + i*decbuf_size/2,
                           canvas_width, canvas_height,
-                          CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_LINEAR); //CANVAS_BLKMODE_32X32
+                           CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_LINEAR);
+/*
+                         
             canvas_config(VM_DEPTH_8_CANVAS_UV + i,
                           buf_start + (i+1)*decbuf_size/2,
+                          canvas_width, canvas_height,
                           canvas_width, canvas_height/2,
                           CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_LINEAR);
+*/                          
             canvas_config(VM_DEPTH_8_CANVAS_U + i,
                           buf_start + (i+1)*decbuf_size/2,
                           canvas_width/2, canvas_height/2,

@@ -33,7 +33,7 @@
 #include <mach/am_regs.h>
 #include <mach/pinmux.h>
 #include <mach/power_gate.h>
-
+//INNOLUX AT070TN93 V.2
 #define LCD_WIDTH       800 
 #define LCD_HEIGHT      480
 #define MAX_WIDTH       1056

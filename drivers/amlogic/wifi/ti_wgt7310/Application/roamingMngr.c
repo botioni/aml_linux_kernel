@@ -737,6 +737,29 @@ TI_STATUS roamingMngr_setDefaults (TI_HANDLE hRoamingMngr, TRoamScanMngrInitPara
     pRoamingMngr->RoamingOperationalMode =  pInitParam->RoamingOperationalMode;
     pRoamingMngr->bSendTspecInReassPkt = pInitParam->bSendTspecInReassPkt;
 
+
+#if 1
+	if (pInitParam->RoamingScanning_2_4G_enable)
+    {
+        param.content.roamingConfigBuffer.roamingMngrConfig.enableDisable =  ROAMING_ENABLED ;
+        param.content.roamingConfigBuffer.roamingMngrConfig.lowPassFilterRoamingAttempt = 30;
+        param.content.roamingConfigBuffer.roamingMngrConfig.apQualityThreshold = -70;
+
+        param.content.roamingConfigBuffer.roamingMngrThresholdsConfig.dataRetryThreshold = 20;
+        param.content.roamingConfigBuffer.roamingMngrThresholdsConfig.numExpectedTbttForBSSLoss = 10;
+        param.content.roamingConfigBuffer.roamingMngrThresholdsConfig.txRateThreshold = 2;
+        param.content.roamingConfigBuffer.roamingMngrThresholdsConfig.lowRssiThreshold = -80;
+        param.content.roamingConfigBuffer.roamingMngrThresholdsConfig.lowSnrThreshold = 0;
+        param.content.roamingConfigBuffer.roamingMngrThresholdsConfig.lowQualityForBackgroungScanCondition = -80;
+        param.content.roamingConfigBuffer.roamingMngrThresholdsConfig.normalQualityForBackgroungScanCondition = -80;
+
+        param.paramType = ROAMING_MNGR_APPLICATION_CONFIGURATION;
+        param.paramLength = sizeof(roamingMngrConfigParams_t);
+
+        roamingMngr_setParam(hRoamingMngr, &param);
+
+    }
+#else
 	if (pInitParam->RoamingScanning_2_4G_enable)
     {
         param.content.roamingConfigBuffer.roamingMngrConfig.enableDisable =  ROAMING_ENABLED ;
@@ -757,7 +780,7 @@ TI_STATUS roamingMngr_setDefaults (TI_HANDLE hRoamingMngr, TRoamScanMngrInitPara
         roamingMngr_setParam(hRoamingMngr, &param);
 
     }
-
+#endif
 
 
     /* config the FSM according to the operational mode*/

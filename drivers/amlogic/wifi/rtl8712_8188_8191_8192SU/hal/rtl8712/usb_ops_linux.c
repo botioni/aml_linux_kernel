@@ -1046,8 +1046,7 @@ int usbctrl_vendorreq(struct intf_priv *pintfpriv, u8 request, u16 value, u16 in
 	unsigned int pipe;
 	int status;
 	u8 reqtype;
-	
-	struct dvobj_priv  *pdvobjpriv = (struct dvobj_priv  *)pintfpriv->intf_dev;   
+	struct dvobj_priv *pdvobjpriv = ( struct dvobj_priv *) pintfpriv->intf_dev;
 	struct usb_device *udev=pdvobjpriv->pusbdev;
 		
 	// Added by Albert 2010/02/09
@@ -1066,7 +1065,6 @@ int usbctrl_vendorreq(struct intf_priv *pintfpriv, u8 request, u16 value, u16 in
 	
 	pIo_buf = palloc_buf + 16 -((uint)(palloc_buf) & 0x0f );
 	
-		
 	if (requesttype == 0x01)
 	{
 		pipe = usb_rcvctrlpipe(udev, 0);//read_in
@@ -1083,6 +1081,7 @@ int usbctrl_vendorreq(struct intf_priv *pintfpriv, u8 request, u16 value, u16 in
 	
 	if (status < 0)
        {
+		printk("reg 0x%x, usb read/write TimeOut! status:%d value=0x%x\n", value, status, *(u32*)pdata);
 		RT_TRACE(_module_hci_ops_os_c_,_drv_err_,("reg 0x%x, usb_read8 TimeOut! status:0x%x value=0x%x\n", value, status, *(u32*)pdata));
        }
 	else if ( status > 0 )   // Success this control transfer.
@@ -1098,4 +1097,5 @@ int usbctrl_vendorreq(struct intf_priv *pintfpriv, u8 request, u16 value, u16 in
 	return status;
 
 }
+
 

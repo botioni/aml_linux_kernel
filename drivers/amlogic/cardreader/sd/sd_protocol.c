@@ -554,6 +554,7 @@ int sd_send_cmd_hw(SD_MMC_Card_Info_t *sd_mmc_info, unsigned char cmd, unsigned 
 				cmd_ext_reg->data_rw_number = sd_mmc_info->blk_len * 8 + 16 - 1;
 			
 			buffer = sd_mmc_info->sd_mmc_phy_buf;
+                        wmb();
 			break;
 
 		case IO_RW_EXTENDED:

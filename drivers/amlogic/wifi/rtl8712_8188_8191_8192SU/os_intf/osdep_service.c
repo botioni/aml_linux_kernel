@@ -302,9 +302,11 @@ u32 _down_sema(_sema *sema)
 void	_rtl_rwlock_init(_rwlock *prwlock)
 {
 #ifdef PLATFORM_LINUX
-
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(2,6,37))
 	init_MUTEX(prwlock);
-
+#else
+	sema_init(prwlock, 1);
+#endif
 #endif
 #ifdef PLATFORM_OS_XP
 

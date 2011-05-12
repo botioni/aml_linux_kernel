@@ -177,7 +177,7 @@ struct	pwrctrl_priv {
 	s32		pnp_current_pwr_state;
 	u8		pnp_bstop_trx;
 	u8		bInternalAutoSuspend;
-	u8		bSupportRemoteWakeup;
+	u8		bSupportRemoteWakeup;	
 //===========================================
 	_timer 	pwr_state_check_timer;
 	int		pwr_state_check_inverval;
@@ -185,6 +185,7 @@ struct	pwrctrl_priv {
 	uint 		bips_processing;
 
 	_workitem InactivePSWorkItem;
+
 	rt_rf_power_state current_rfpwrstate;
 	rt_rf_power_state	change_rfpwrstate;
 	
@@ -198,6 +199,9 @@ struct	pwrctrl_priv {
 	u8		brfoffbyhw;
 	unsigned long PS_BBRegBackup[PSBBREG_TOTALCNT];
 	//=========================================
+	#ifdef CONFIG_WOWLAN
+	u8		bSupportWakeOnWlan;
+	#endif
 	
 };
 
@@ -235,5 +239,5 @@ void LPS_Enter(PADAPTER padapter);
 void LPS_Leave(PADAPTER padapter);
 u8 FWLPS_RF_ON(PADAPTER padapter);
 #endif
-void before_assoc_ps_ctrl_wk_hdl(_adapter *padapter, u8 *pbuf, int sz);
+void power_saving_ctrl_wk_hdl(_adapter *padapter, u8 *pbuf, int sz);
 #endif  //__RTL871X_PWRCTRL_H_

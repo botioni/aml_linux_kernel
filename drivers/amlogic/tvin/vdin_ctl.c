@@ -555,7 +555,8 @@ static inline void vdin_set_wr_ctrl(unsigned int offset, enum tvin_sig_fmt_e fmt
         (h -1), WR_HEND_BIT, WR_HEND_WID);
     // win_ve
     WRITE_CBUS_REG_BITS((VDIN_WR_V_START_END + offset),
-        (v -1), WR_VEND_BIT, WR_VEND_WID);
+    //    (v -1), WR_VEND_BIT, WR_VEND_WID);
+        (v), WR_VEND_BIT, WR_VEND_WID);
     // format444
     WRITE_CBUS_REG_BITS((VDIN_WR_CTRL + offset),
         write_format444, WR_FMT_BIT, WR_FMT_WID);
@@ -943,10 +944,10 @@ inline void vdin_set_default_regmap(unsigned int offset)
     // [    5]  asfifo_656.hs_en            = 1
     // [    4]  asfifo_656.vs_inv           = 0/(positive-active, negative-active)
     // [    3]  asfifo_656.hs_inv           = 0/(positive-active, negative-active)
-    // [    2]  asfifo_656.rst_on_vs        = 1
+    // [    2]  asfifo_656.rst_on_vs        = 0
     // [    1]  asfifo_656.clr_ov_flag      = 0
     // [    0]  asfifo_656.rst              = 0
-    WRITE_CBUS_REG((VDIN_ASFIFO_CTRL0         + offset), 0x00e400e4);
+    WRITE_CBUS_REG((VDIN_ASFIFO_CTRL0         + offset), 0x00e400e0);
     // [   23] asfifo_hdmi.de_en            = 1
     // [   22] asfifo_hdmi.vs_en            = 1
     // [   21] asfifo_hdmi.hs_en            = 1

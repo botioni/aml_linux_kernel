@@ -41,4 +41,13 @@ struct clk {
 extern int set_usb_phy_clk(int rate);
 extern int set_sata_phy_clk(int sel);
 
+#define USB_CTL_POR_ON			10
+#define USB_CTL_POR_OFF		11
+#define USB_CTL_POR_ENABLE	12
+#define USB_CTL_POR_DISABLE	13
+
+#define USB_CTL_INDEX_A	0
+#define USB_CTL_INDEX_B	1
+extern void set_usb_ctl_por(int index,int por_flag);
+
 #endif

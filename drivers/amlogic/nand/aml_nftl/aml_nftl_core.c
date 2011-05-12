@@ -627,7 +627,11 @@ static void aml_nftl_creat_structure(struct aml_nftl_info_t *aml_nftl_info)
 			for (m=0; m<i; m++)
 				total_valid += valid_page[m];
 
-			if ((aml_nftl_info->vtpmt_special->vtblk_node == NULL) && (total_valid < aml_nftl_info->pages_per_blk)) {
+			ext_phy_blk = vt_blk_node->phy_blk_addr[(MAX_BLK_NUM_PER_NODE - 1)];
+			phy_blk_node = &aml_nftl_info->phypmt[ext_phy_blk];
+			if ((aml_nftl_info->vtpmt_special->vtblk_node == NULL)
+				 	&& (total_valid < aml_nftl_info->pages_per_blk)
+					&& (valid_page[MAX_BLK_NUM_PER_NODE-1] >= (phy_blk_node->last_write + 1))) {
 
 				error = aml_nftl_wl->get_full(aml_nftl_wl, vt_blk_num, &phy_blk_num);
 				if (error)
@@ -638,8 +642,6 @@ static void aml_nftl_creat_structure(struct aml_nftl_info_t *aml_nftl_info)
 				if (error)
 					continue;
 
-				ext_phy_blk = vt_blk_node->phy_blk_addr[(MAX_BLK_NUM_PER_NODE - 1)];
-				phy_blk_node = &aml_nftl_info->phypmt[ext_phy_blk];
 				aml_nftl_info->vtpmt_special->vtblk_node = vt_blk_node;
 				aml_nftl_info->vtpmt_special->ext_phy_blk_addr = ext_phy_blk;
 				for (j=(MAX_BLK_NUM_PER_NODE - 1); j>=1; j--) {
@@ -696,8 +698,11 @@ int aml_nftl_initialize(struct aml_nftl_blk_t *aml_nftl_blk)
 	aml_nftl_info->oobsize = mtd->oobsize;
 	phys_erase_shift = ffs(mtd->erasesize) - 1;
 	size_in_blk =  (mtd->size >> phys_erase_shift);
+	BUG_ON(size_in_blk <= AML_LIMIT_FACTOR);
 	aml_nftl_info->pages_per_blk = mtd->erasesize / mtd->writesize;
 	aml_nftl_info->fillfactor = (size_in_blk / 32);
+	if (aml_nftl_info->fillfactor < AML_LIMIT_FACTOR)
+		aml_nftl_info->fillfactor = AML_LIMIT_FACTOR;
 	aml_nftl_info->accessibleblocks = size_in_blk - aml_nftl_info->fillfactor;
 	aml_nftl_blk->mbd.size = (aml_nftl_info->accessibleblocks * (mtd->erasesize  >> 9));
 	aml_nftl_info->copy_page_buf = aml_nftl_malloc(aml_nftl_info->writesize);

@@ -34,7 +34,7 @@ endif
 ONLY_ZBT ?= 0
 USING_ZBT ?= 0
 USING_OS_MEMORY ?= 1
-USING_PMM ?= 1
+USING_PMM ?= 0
 USING_GPU_UTILIZATION ?= 0
 USING_MALI_RUN_TIME_PM ?= 0
 USING_MALI_PMM_TESTSUITE ?= 0
@@ -42,7 +42,7 @@ USING_PROFILING ?= 0
 TIMESTAMP ?= default
 BUILD ?= debug
 CONFIG ?= aml-meson-m400-1
-TARGET_PLATFORM ?= meson_platform
+TARGET_PLATFORM ?= default
 
 ifeq ($(USING_UMP),1)
 	UMP_SYMVERS_FILE = ../ump/Module.symvers

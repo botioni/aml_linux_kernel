@@ -394,7 +394,7 @@ void osd_change_osd_order_hw(u32 index,u32 order)
 	
 void osd_free_scale_enable_hw(u32 index,u32 enable)
 {
-	static  dispdata_t	save_disp_data;
+	static  dispdata_t	save_disp_data={0,0,0,0};
 
 	amlog_level(LOG_LEVEL_HIGH,"osd%d free scale %s\r\n",index,enable?"ENABLE":"DISABLE");
 	osd_hw.free_scale_enable[index]=enable;
@@ -409,7 +409,7 @@ void osd_free_scale_enable_hw(u32 index,u32 enable)
 			vf_reg_provider(&osd_vf_provider);
 
 			memcpy(&save_disp_data,&osd_hw.dispdata[OSD1],sizeof(dispdata_t));
-			osd_hw.pandata[OSD1].x_end =osd_hw.pandata[OSD1].x_start + vf.width-1;
+			osd_hw.pandata[OSD1].x_end =osd_hw.pandata[OSD1].x_start + vf.width-1-osd_hw.dispdata[OSD1].x_start;
 			osd_hw.pandata[OSD1].y_end =osd_hw.pandata[OSD1].y_start + vf.height-1;	
 			osd_hw.dispdata[OSD1].x_end =osd_hw.dispdata[OSD1].x_start + vf.width-1;
 			osd_hw.dispdata[OSD1].y_end =osd_hw.dispdata[OSD1].y_start + vf.height-1;
@@ -417,13 +417,18 @@ void osd_free_scale_enable_hw(u32 index,u32 enable)
 		}
 		else
 		{
+			if(save_disp_data.x_end <= save_disp_data.x_start ||  
+				save_disp_data.y_end <= save_disp_data.y_start)
+			{
+				return ;
+			}
 			memcpy(&osd_hw.dispdata[OSD1],&save_disp_data,sizeof(dispdata_t));
 			add_to_update_list(OSD1,DISP_GEOMETRY);
 			vf_unreg_provider();
+				
 		}
 	}
-	if (osd_hw.enable[index])
-		osd_enable_hw(ENABLE,index);
+	osd_enable_hw(osd_hw.enable[index],index);
 
 }
 void  osd_free_scale_width_hw(u32 index,u32 width)
@@ -589,6 +594,7 @@ static inline  void  osd1_update_enable(void)
 			CLEAR_MPEG_REG_MASK(VPP_MISC,VPP_OSD1_POSTBLEND);
 			SET_MPEG_REG_MASK(VPP_MISC,VPP_OSD1_PREBLEND);
 			SET_MPEG_REG_MASK(VPP_MISC,VPP_VD1_POSTBLEND);
+			SET_MPEG_REG_MASK(VPP_MISC,VPP_PREBLEND_EN);
 		}
 		else
 		{
@@ -625,14 +631,14 @@ static inline  void  osd2_update_enable(void)
 		{
 			CLEAR_MPEG_REG_MASK(VPP_MISC,VPP_OSD2_POSTBLEND);
 			SET_MPEG_REG_MASK(VPP_MISC,VPP_OSD2_PREBLEND);
-			SET_MPEG_REG_MASK(VPP_MISC,VPP_VD2_POSTBLEND);
+			SET_MPEG_REG_MASK(VPP_MISC,VPP_VD1_POSTBLEND);
 		}
 		else
 		{
 			CLEAR_MPEG_REG_MASK(VPP_MISC,VPP_OSD2_PREBLEND);
 			if(!video_enable)
 			{
-				CLEAR_MPEG_REG_MASK(VPP_MISC,VPP_VD2_POSTBLEND);
+				CLEAR_MPEG_REG_MASK(VPP_MISC,VPP_VD1_POSTBLEND);
 			}
 			SET_MPEG_REG_MASK(VPP_MISC,VPP_OSD2_POSTBLEND);
 		}

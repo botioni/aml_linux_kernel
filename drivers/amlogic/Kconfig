@@ -18,6 +18,7 @@ source "drivers/amlogic/gpio/Kconfig"
 source "drivers/amlogic/minilvds/Kconfig"
 source "drivers/amlogic/efuse/Kconfig"
 source "drivers/amlogic/smartcard/Kconfig"
+source "drivers/amlogic/gps/Kconfig"
 
 #	Block devices
 #

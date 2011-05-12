@@ -49,6 +49,12 @@ config MACH_MESON_8726M_REFC03
 	help
 	  Include support for the AMLOGIC M1 8726M DVBC Emulation Baseboard platform.
 
+config MACH_MESON_8726M_REFC06
+	select GENERIC_ALLOCATOR
+	bool "Support M1 8726(Giec) platform(machid=2957)"
+	help
+	  Include support for the AMLOGIC M1 8726M Giec Baseboard platform.
+	  
 config MACH_MESON_8726M_REFB05
 	select GENERIC_ALLOCATOR
 	bool "Support M1 8726(ML) platform(machid=2956)"
@@ -108,12 +114,6 @@ config MACH_MESON_8726M_REFB04
 	bool "Support M1 8726(K8) platform(machid=2956)"
 	help
 	  Include support for the AMLOGIC M1 8726M Emulation Baseboard platform.  
-	  
-config MACH_MESON_8726M_REFB14
-	select GENERIC_ALLOCATOR
-	bool "Support M1 8726(K7New) platform(machid=2956)"
-	help
-	  Include support for the AMLOGIC M1 8726M Emulation Baseboard platform. 
 
 config MACH_MESON_8726M_REFC05
         select GENERIC_ALLOCATOR
@@ -151,6 +151,11 @@ config MACH_MESON_8726M_REFB13
 	help
 	  Include support for the AMLOGIC M1 8726M Emulation Baseboard platform.
 	  	  
+config MACH_MESON_8726M_REFB14
+	select GENERIC_ALLOCATOR
+	bool "Support M1 8726(refb14) platform(machid=2956)"
+	help
+	  Include support for the AMLOGIC M1 8726M Emulation Baseboard platform.
 	  	  
 config MESON_CLOCK_TICK_RATE
     int "Clock Tick Rate"

@@ -28,21 +28,35 @@
 
 #define RT_TAG	'1178'
 
-u8* _rtw_malloc(u32 sz)
+u8* _rtw_zmalloc(u32 sz)
 {
-
 	u8 	*pbuf;
-
 #ifdef PLATFORM_LINUX
-
+	// kzalloc(sz, GFP_KERNEL);
 	pbuf = 	kmalloc(sz, /*GFP_KERNEL*/GFP_ATOMIC);
-
+	if (pbuf != NULL)
+		memset(pbuf, 0, sz);
 #endif	
 	
 #ifdef PLATFORM_WINDOWS
-
 	NdisAllocateMemoryWithTag(&pbuf,sz, RT_TAG);
+	if (pbuf != NULL)
+		NdisFillMemory(pbuf, sz, 0);
+#endif
 
+	return pbuf;	
+	
+}
+
+u8* _rtw_malloc(u32 sz)
+{
+	u8 	*pbuf;
+#ifdef PLATFORM_LINUX	
+	pbuf = 	kmalloc(sz, /*GFP_KERNEL*/GFP_ATOMIC);	
+#endif	
+	
+#ifdef PLATFORM_WINDOWS
+	NdisAllocateMemoryWithTag(&pbuf,sz, RT_TAG);	
 #endif
 
 	return pbuf;	
@@ -285,21 +299,26 @@ u32 _rtw_down_sema(_sema *sema)
 
 
 
-void	_rtw_rwlock_init(_rwlock *prwlock)
+void	_rtw_mutex_init(_mutex *pmutex)
 {
 #ifdef PLATFORM_LINUX
 
-	init_MUTEX(prwlock);
-
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,37))
+	mutex_init(pmutex);
+#else
+	init_MUTEX(pmutex);
 #endif
+	
+#endif
+
 #ifdef PLATFORM_OS_XP
 
-	KeInitializeMutex(prwlock, 0);
+	KeInitializeMutex(pmutex, 0);
 
 #endif
 
 #ifdef PLATFORM_OS_CE
-	*prwlock =  CreateMutex( NULL, _FALSE, NULL);
+	*pmutex =  CreateMutex( NULL, _FALSE, NULL);
 #endif
 }
 

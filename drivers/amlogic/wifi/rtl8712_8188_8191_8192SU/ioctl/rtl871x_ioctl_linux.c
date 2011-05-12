@@ -1448,7 +1448,7 @@ static int r871x_wx_set_priv(struct net_device *dev,
 			sprintf(ext, "%s rssi %d",
 				pcur_network->network.Ssid.Ssid,
 				//(xxxx=xxxx+10)
-				((padapter->recvpriv.fw_rssi)>>1)-100
+				((padapter->recvpriv.fw_rssi)>>1)-95
 				//pcur_network->network.Rssi
 				);
 		} else {
@@ -1493,21 +1493,45 @@ static int r871x_wx_set_priv(struct net_device *dev,
 		pmlmepriv->passive_mode=0;
 		sprintf(ext, "OK");
 		
+	}else if(0 == strncmp(ext,"DCE-E",5)){
+		//Set scan type to passive
+		//OK if successfu
+		
+		disconnectCtrlEx_cmd(padapter
+			, 1 //u32 enableDrvCtrl
+			, 5 //u32 tryPktCnt
+			, 100 //u32 tryPktInterval
+			, 5000 //u32 firstStageTO
+		);
+		sprintf(ext, "OK");
+
+	}else if(0 == strncmp(ext,"DCE-D",5)){
+		//Set scan type to passive
+		//OK if successfu
+		
+		disconnectCtrlEx_cmd(padapter
+			, 0 //u32 enableDrvCtrl
+			, 5 //u32 tryPktCnt
+			, 100 //u32 tryPktInterval
+			, 5000 //u32 firstStageTO
+		);
+		sprintf(ext, "OK");
+		
 	}else{
 		#ifdef DEBUG_RTW_WX_SET_PRIV
-		printk("rtw_wx_set_priv: %s unknowned req=%s\n", 
-		dev->name, ext_dbg);
+		printk("%s: %s unknowned req=%s\n", 
+		__FUNCTION__,dev->name, ext_dbg);
 		#endif
 		goto FREE_EXT;
 
 	}
 
-	if (copy_to_user(dwrq->pointer, ext, min(dwrq->length,strlen(ext)+1) ) )
+	if (copy_to_user(dwrq->pointer, ext, min(dwrq->length,(__u16)(strlen(ext)+1)) ) )
 		ret = -EFAULT;
 
 	#ifdef DEBUG_RTW_WX_SET_PRIV
-	printk("rtw_wx_set_priv: %s req=%s rep=%s\n", 
-	dev->name, ext_dbg ,ext);
+	printk("%s: %s req=%s rep=%s\n", 
+	__FUNCTION__,dev->name, ext_dbg ,ext);
 	#endif
 
 FREE_EXT:
@@ -3235,6 +3259,38 @@ exit:
 	return ret;
 }
 
+static int r871x_set_chplan(struct net_device *dev,
+				struct iw_request_info *info,
+				union iwreq_data *wrqu, char *extra)
+{
+	int ret = 0;
+	_adapter *padapter = netdev_priv(dev);
+	struct iw_point *pdata = &wrqu->data;
+	int ch_plan = -1;
+
+	printk("+r871x_set_chplan\n");
+
+	if((padapter->bDriverStopped) || (pdata==NULL))
+	{
+		ret= -EINVAL;
+		goto exit;
+	}
+
+	//pdata->length = 0;
+	//pdata->flags = 0;
+
+	//_memcpy(&padapter->pid, pdata->pointer, sizeof(int));
+	//if(copy_from_user(&ch_plan, pdata->pointer, sizeof(int)))
+
+	ch_plan=(int)*extra;
+	set_chplan_cmd(padapter, ch_plan);
+
+
+exit:
+
+	return ret;
+}
+
 static int r871x_wps_start(struct net_device *dev,
                                struct iw_request_info *info,
                                union iwreq_data *wrqu, char *extra)
@@ -3781,7 +3837,11 @@ static const struct iw_priv_args r8711_private_args[] =
 		IW_PRIV_TYPE_INT | IW_PRIV_SIZE_FIXED | 1, 0, "wps_assoc_req_ie"
 	},
 #endif
-
+	,
+	{
+		SIOCIWFIRSTPRIV + 0x7,
+		IW_PRIV_TYPE_INT | IW_PRIV_SIZE_FIXED | 1, 0, "chplan"
+	}
 };
 
 static iw_handler r8711_private_handler[] =
@@ -3805,7 +3865,7 @@ static iw_handler r8711_private_handler[] =
 	r871x_wx_set_mtk_wps_probe_ie,
 	r871x_wx_set_mtk_wps_ie,
 #endif
-
+	r871x_set_chplan,
 };
 
 #if WIRELESS_EXT >= 17
