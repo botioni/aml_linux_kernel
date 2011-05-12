@@ -144,12 +144,16 @@ static  inline int _gpio_bank_write(cmd_t  *op)
 }
 static inline int _gpio_bank_read(cmd_t  *op)
 {
+	u32 write_bit = op->bit;
+	char bank = op->bank;
+
 	if (0 > _gpio_setup_bank_bit(op) ) return -1;
 
 	spin_lock(&gpio_lock);
 	set_gpio_mode(op->bank,op->bit,GPIO_INPUT_MODE);
 	op->val = get_gpio_val(op->bank,op->bit);
 	spin_unlock(&gpio_lock);
+	printk("GPIO_%s_bit_%d(input bit:%d) = %d \n", &bank, op->bit, write_bit, op->val);
 	
 	return op->val ;
 }
