@@ -2432,7 +2432,7 @@ static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
 
 #ifdef CONFIG_INPUT_L3G4200D
   { 
-  	I2C_BOARD_INFO("l3g4200d_gyroscope", 0x68), 
+  	I2C_BOARD_INFO("l3g4200d", 0x68), 
     .platform_data = (void *)&l3g4200d_gyro_plt_dat, 
   },
 #endif
