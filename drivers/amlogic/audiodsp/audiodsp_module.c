@@ -125,7 +125,9 @@ int audiodsp_start(void)
 	   (pmcode->fmt == MCODEC_FMT_PCM)  ||
 	   (pmcode->fmt == MCODEC_FMT_WMAPRO)||
 	   (pmcode->fmt == MCODEC_FMT_ALAC)||
-	  (pmcode->fmt == MCODEC_FMT_AC3))
+	  (pmcode->fmt == MCODEC_FMT_AC3) ||
+	  (pmcode->fmt == MCODEC_FMT_FLAC))
+
 	{
 		DSP_PRNT("dsp send audio info\n");
     		for(i = 0; i< 2000;i++){
