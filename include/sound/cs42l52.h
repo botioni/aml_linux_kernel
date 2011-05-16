@@ -7,7 +7,7 @@
 #define __CS42L52_PDATA_H__
 
 struct cs42l52_platform_data {
-    int (*is_hp_pluged)(void);
+    int (*cs42l52_pwr_rst)(void);
 };
 
 #endif
