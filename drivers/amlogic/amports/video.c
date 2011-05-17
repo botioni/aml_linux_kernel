@@ -2022,21 +2022,10 @@ static ssize_t vframe_states_show(struct class *cla, struct class_attribute* att
     vframe_states_t states;
 
     if (vf_get_states(&states) == 0) {
-        int ready;
-
         ret += sprintf(buf + ret, "vframe_pool_size=%d\n", states.vf_pool_size);
-        ret += sprintf(buf + ret, "vframe get prt=%d\n", states.get_ptr);
-        ret += sprintf(buf + ret, "vframe fill ptr=%d\n", states.fill_ptr);
-        ret += sprintf(buf + ret, "vframe put ptr=%d\n", states.put_ptr);
-        ret += sprintf(buf + ret, "vframe puting ptr=%d\n", states.putting_ptr);
-
-        if (states.fill_ptr >= states.get_ptr) {
-            ready = states.fill_ptr - states.get_ptr;
-        } else {
-            ready = states.fill_ptr - states.get_ptr + states.vf_pool_size - 1;
-        }
-
-        ret += sprintf(buf + ret, "vframe ready num=%d\n", ready);
+        ret += sprintf(buf + ret, "vframe buf_free_num=%d\n", states.buf_free_num);
+        ret += sprintf(buf + ret, "vframe buf_recycle_num=%d\n", states.buf_recycle_num);
+        ret += sprintf(buf + ret, "vframe buf_avail_num=%d\n", states.buf_avail_num);
 
     } else {
         ret += sprintf(buf + ret, "vframe no states\n");
