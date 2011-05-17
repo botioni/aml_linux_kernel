@@ -1540,7 +1540,7 @@ static void hdmi_audio_init(unsigned char spdif_flag)
     tmp_add_data |= tx_i2s_8_channel<< 6; // [6]    8 or 2ch
     tmp_add_data |= 2               << 4; // [5:4]  Serial Format: I2S format
     tmp_add_data |= 3               << 2; // [3:2]  Bit Width: 24-bit
-    tmp_add_data |= 1               << 1; // [1]    WS Polarity: 1=WS high is left
+    tmp_add_data |= 0               << 1; // [1]    WS Polarity: 0=WS high is right
     tmp_add_data |= 1               << 0; // [0]    For I2S: 0=one-bit audio; 1=I2S;
                                           //        For SPDIF: 0= channel status from input data; 1=from register
     hdmi_wr_reg(TX_AUDIO_FORMAT, tmp_add_data); // 0x2f
