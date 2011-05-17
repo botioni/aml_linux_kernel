@@ -29,6 +29,7 @@
 #include <linux/amports/amstream.h>
 #include <linux/amports/canvas.h>
 #include <linux/amports/vframe.h>
+#include <linux/amports/vfp.h>
 #include <linux/amports/vframe_provider.h>
 #include <mach/am_regs.h>
 
@@ -63,7 +64,7 @@ MODULE_AMLOG(LOG_LEVEL_ERROR, 0, LOG_LEVEL_DESC, LOG_DEFAULT_MASK_DESC);
 #define MREG_FRAME_OFFSET   AV_SCRATCH_D
 
 #define PICINFO_ERROR       0x80000000
-#define PICINFO_TYPE_MASK       0x00030000
+#define PICINFO_TYPE_MASK   0x00030000
 #define PICINFO_TYPE_I      0x00000000
 #define PICINFO_TYPE_P      0x00010000
 #define PICINFO_TYPE_B      0x00020000
@@ -110,14 +111,11 @@ static const u32 frame_rate_tab[16] = {
     96000 / 24, 96000 / 24, 96000 / 24
 };
 
-typedef struct {
-    struct vframe_s *pool[VF_POOL_SIZE];
-    u32 rd_index;
-    u32 wr_index;
-} vfq_t;
-
 static struct vframe_s vfqool[VF_POOL_SIZE];
 static s32 vfbuf_use[VF_POOL_SIZE];
+static struct vframe_s *vfp_pool_newframe[VF_POOL_SIZE+1];
+static struct vframe_s *vfp_pool_display[VF_POOL_SIZE+1];
+static struct vframe_s *vfp_pool_recycle[VF_POOL_SIZE+1];
 static vfq_t newframe_q, display_q, recycle_q;
 
 static u32 frame_width, frame_height, frame_dur, frame_prog;
@@ -137,59 +135,6 @@ static inline u32 index2canvas(u32 index)
     };
 
     return canvas_tab[index];
-}
-
-static inline void ptr_atomic_wrap_inc(u32 *ptr)
-{
-    u32 i = *ptr;
-
-    i++;
-
-    if (i >= VF_POOL_SIZE) {
-        i = 0;
-    }
-
-    *ptr = i;
-}
-
-static inline bool vfq_empty(vfq_t *q)
-{
-    return (q->rd_index == q->wr_index);
-}
-
-static inline void vfq_push(vfq_t *q, vframe_t *vf)
-{
-    q->pool[q->wr_index] = vf;
-    ptr_atomic_wrap_inc(&q->wr_index);
-}
-
-static inline vframe_t *vfq_pop(vfq_t *q)
-{
-    vframe_t *vf;
-
-    if (vfq_empty(q)) {
-        return NULL;
-    }
-
-    vf = q->pool[q->rd_index];
-
-    ptr_atomic_wrap_inc(&q->rd_index);
-
-    return vf;
-}
-
-static inline vframe_t *vfq_peek(vfq_t *q)
-{
-    if (vfq_empty(q)) {
-        return NULL;
-    }
-
-    return q->pool[q->rd_index];
-}
-
-static inline void vfq_init(vfq_t *q)
-{
-    q->rd_index = q->wr_index = 0;
 }
 
 static void set_frame_info(vframe_t *vf)
@@ -385,15 +330,15 @@ static void vmpeg_vf_put(vframe_t *vf)
 {
     vfq_push(&recycle_q, vf);
 }
+
 static int  vmpeg_vf_states(vframe_states_t *states)
 {
     unsigned long flags;
     spin_lock_irqsave(&lock, flags);
     states->vf_pool_size = VF_POOL_SIZE;
-    states->fill_ptr = display_q.wr_index;
-    states->get_ptr = display_q.rd_index;
-    states->put_ptr = -1;
-    states->putting_ptr = -1;
+    states->buf_recycle_num = vfq_level(&recycle_q);
+    states->buf_free_num = vfq_level(&newframe_q);
+    states->buf_avail_num = vfq_level(&display_q);
     spin_unlock_irqrestore(&lock, flags);
     return 0;
 }
@@ -535,11 +480,11 @@ static void vmpeg12_local_init(void)
 {
     int i;
 
-    vfq_init(&display_q);
-    vfq_init(&recycle_q);
-    vfq_init(&newframe_q);
+    vfq_init(&display_q, VF_POOL_SIZE+1, &vfp_pool_display[0]);
+    vfq_init(&recycle_q, VF_POOL_SIZE+1, &vfp_pool_recycle[0]);
+    vfq_init(&newframe_q, VF_POOL_SIZE+1, &vfp_pool_newframe[0]);
 
-    for (i = 0; i < VF_POOL_SIZE - 1; i++) {
+    for (i = 0; i < VF_POOL_SIZE; i++) {
         vfq_push(&newframe_q, &vfqool[i]);
     }
 
@@ -651,9 +596,9 @@ static int amvdec_mpeg12_remove(struct platform_device *pdev)
     if (stat & STAT_VF_HOOK) {
         ulong flags;
         spin_lock_irqsave(&lock, flags);
-        vfq_init(&display_q);
-        vfq_init(&recycle_q);
-        vfq_init(&newframe_q);
+        vfq_init(&display_q, VF_POOL_SIZE+1, &vfp_pool_display[0]);
+        vfq_init(&recycle_q, VF_POOL_SIZE+1, &vfp_pool_recycle[0]);
+        vfq_init(&newframe_q, VF_POOL_SIZE+1, &vfp_pool_newframe[0]);
         spin_unlock_irqrestore(&lock, flags);
 
         vf_unreg_provider();

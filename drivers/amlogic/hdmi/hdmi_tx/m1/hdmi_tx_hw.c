@@ -93,6 +93,7 @@ extern void task_tx_key_setting(unsigned force_wrong);
 #define HDMI_M1B 'b'
 #define HDMI_M1C 'c'
 static unsigned char hdmi_chip_type = 0;
+static unsigned char hdmi_pll_mode = 0; /* 1, use external clk as hdmi pll source */
 
 #define HSYNC_POLARITY      1                       // HSYNC polarity: active high 
 #define VSYNC_POLARITY      1                       // VSYNC polarity: active high
@@ -240,7 +241,7 @@ static void intr_handler(void *arg)
                     if((ii&0xf)==0)
                         edid_log_pos+=snprintf((char*)hdmitx_device->tmp_buf+edid_log_pos, HDMI_TMP_BUF_SIZE-edid_log_pos, "\n");
                     edid_log_pos+=snprintf((char*)hdmitx_device->tmp_buf+edid_log_pos, HDMI_TMP_BUF_SIZE-edid_log_pos, "%02x ",hdmitx_device->EDID_buf[hdmitx_device->cur_edid_block*128+ii]);
-#endif                        
+#endif                    
                 }
 #ifdef LOG_EDID
                 hdmitx_device->tmp_buf[edid_log_pos]=0;
@@ -944,7 +945,7 @@ void hdmi_hw_init(hdmitx_dev_t* hdmitx_device)
     
     digital_clk_on(7);
 #ifndef AML_A3
-    if(hdmi_chip_type == HDMI_M1A){
+    if((hdmi_chip_type == HDMI_M1A)||(hdmi_pll_mode == 1)){
         Wr(HHI_HDMI_PLL_CNTL2, 0x50e8);
     }
     else{
@@ -957,7 +958,7 @@ void hdmi_hw_init(hdmitx_dev_t* hdmitx_device)
 #endif
     Wr(HHI_HDMI_AFC_CNTL, Rd(HHI_HDMI_AFC_CNTL) | 0x3);
     // Configure HDMI TX serializer:
-    hdmi_wr_reg(0x011, 0x0f);   //Channels Power Up Setting ,"1" for Power-up ,"0" for Power-down,Bit[3:0]=CK,Data2,data1,data1,data0 Channels ;
+    //hdmi_wr_reg(0x011, 0x0f);   //Channels Power Up Setting ,"1" for Power-up ,"0" for Power-down,Bit[3:0]=CK,Data2,data1,data1,data0 Channels ;
   //hdmi_wr_reg(0x015, 0x03);   //slew rate
     hdmi_wr_reg(0x017, 0x1d);   //1d for power-up Band-gap and main-bias ,00 is power down 
     if(serial_reg_val<0x20){
@@ -1149,7 +1150,7 @@ static void hdmi_hw_reset(Hdmi_tx_video_para_t *param)
     }
 #ifndef AML_A3
     // Configure HDMI PLL
-    if(hdmi_chip_type == HDMI_M1A){
+    if((hdmi_chip_type == HDMI_M1A)||(hdmi_pll_mode == 1)){
         Wr(HHI_HDMI_PLL_CNTL2, 0x50e8);
     }
     else{
@@ -1169,7 +1170,7 @@ static void hdmi_hw_reset(Hdmi_tx_video_para_t *param)
 
     Wr(HHI_HDMI_AFC_CNTL, Rd(HHI_HDMI_AFC_CNTL) | 0x3);
     // Configure HDMI TX serializer:
-    hdmi_wr_reg(0x011, 0x0f);   //Channels Power Up Setting ,"1" for Power-up ,"0" for Power-down,Bit[3:0]=CK,Data2,data1,data1,data0 Channels ;
+    //hdmi_wr_reg(0x011, 0x0f);   //Channels Power Up Setting ,"1" for Power-up ,"0" for Power-down,Bit[3:0]=CK,Data2,data1,data1,data0 Channels ;
   //hdmi_wr_reg(0x015, 0x03);   //slew rate
     hdmi_wr_reg(0x017, 0x1d);   //1d for power-up Band-gap and main-bias ,00 is power down 
     if(new_reset_sequence_flag==0){
@@ -1539,7 +1540,7 @@ static void hdmi_audio_init(unsigned char spdif_flag)
     tmp_add_data |= tx_i2s_8_channel<< 6; // [6]    8 or 2ch
     tmp_add_data |= 2               << 4; // [5:4]  Serial Format: I2S format
     tmp_add_data |= 3               << 2; // [3:2]  Bit Width: 24-bit
-    tmp_add_data |= 1               << 1; // [1]    WS Polarity: 1=WS high is left
+    tmp_add_data |= 0               << 1; // [1]    WS Polarity: 0=WS high is right
     tmp_add_data |= 1               << 0; // [0]    For I2S: 0=one-bit audio; 1=I2S;
                                           //        For SPDIF: 0= channel status from input data; 1=from register
     hdmi_wr_reg(TX_AUDIO_FORMAT, tmp_add_data); // 0x2f
@@ -1716,7 +1717,7 @@ static unsigned char hdmitx_m1b_getediddata(hdmitx_dev_t* hdmitx_device)
                     if((ii&0xf)==0)
                         edid_log_pos+=snprintf((char*)hdmitx_device->tmp_buf+edid_log_pos, HDMI_TMP_BUF_SIZE-edid_log_pos, "\n");
                     edid_log_pos+=snprintf((char*)hdmitx_device->tmp_buf+edid_log_pos, HDMI_TMP_BUF_SIZE-edid_log_pos, "%02x ",hdmitx_device->EDID_buf[hdmitx_device->cur_edid_block*128+ii]);
-#endif                        
+#endif                    
                 }
 #ifdef LOG_EDID
                 hdmitx_device->tmp_buf[edid_log_pos]=0;
@@ -1826,7 +1827,7 @@ static void hdmitx_set_pll(Hdmi_tx_video_para_t *param)
 #ifndef AML_A3    
     if((param->VIC==HDMI_480p60)||(param->VIC==HDMI_480p60_16x9)
         ||(param->VIC==HDMI_576p50)||(param->VIC==HDMI_576p50_16x9)){
-        if(hdmi_chip_type == HDMI_M1A){
+        if((hdmi_chip_type == HDMI_M1A)||(hdmi_pll_mode == 1)){
             Wr(HHI_HDMI_PLL_CNTL, 0x03040905); // For xtal=24MHz: PREDIV=5, POSTDIV=9, N=4, 0D=3, to get phy_clk=270MHz, tmds_clk=27MHz.
         }
         else{
@@ -1843,7 +1844,7 @@ static void hdmitx_set_pll(Hdmi_tx_video_para_t *param)
     }
     else if((param->VIC==HDMI_480i60)||(param->VIC==HDMI_480i60_16x9)
         ||(param->VIC==HDMI_576i50)||(param->VIC==HDMI_576i50_16x9)){
-        if(hdmi_chip_type == HDMI_M1A){
+        if((hdmi_chip_type == HDMI_M1A)||(hdmi_pll_mode == 1)){
             Wr(HHI_HDMI_PLL_CNTL, 0x03040905); // For xtal=24MHz: PREDIV=5, POSTDIV=9, N=4, 0D=3, to get phy_clk=270MHz, tmds_clk=27MHz.
         }
         else{
@@ -1859,7 +1860,7 @@ static void hdmitx_set_pll(Hdmi_tx_video_para_t *param)
         }
     }            
     else if(param->VIC==HDMI_1080p30){
-        if(hdmi_chip_type == HDMI_M1A){
+        if((hdmi_chip_type == HDMI_M1A)||(hdmi_pll_mode == 1)){
             Wr(HHI_HDMI_PLL_CNTL, 0x0110210f);
             Wr(HHI_VID_CLK_DIV,3);
             //Wr(HHI_AUD_PLL_CNTL, 0x4863);
@@ -1879,7 +1880,7 @@ static void hdmitx_set_pll(Hdmi_tx_video_para_t *param)
         }
     }
     else if(param->VIC==HDMI_1080p24){
-        if(hdmi_chip_type == HDMI_M1A){
+        if((hdmi_chip_type == HDMI_M1A)||(hdmi_pll_mode == 1)){
             Wr(HHI_HDMI_PLL_CNTL, 0x0102030f);
             Wr(HHI_VID_CLK_DIV,4);
         }
@@ -1897,7 +1898,7 @@ static void hdmitx_set_pll(Hdmi_tx_video_para_t *param)
         }
     }
     else if((param->VIC==HDMI_1080p60)||(param->VIC==HDMI_1080p50)){
-        if(hdmi_chip_type == HDMI_M1A){
+        if((hdmi_chip_type == HDMI_M1A)||(hdmi_pll_mode == 1)){
             Wr(HHI_HDMI_PLL_CNTL, 0x0008210f); // For 24MHz xtal: PREDIV=15, POSTDIV=33, N=8, 0D=0, to get phy_clk=1485MHz, tmds_clk=148.5MHz.
         }
         else{
@@ -1913,7 +1914,7 @@ static void hdmitx_set_pll(Hdmi_tx_video_para_t *param)
         }
     }
     else if((param->VIC==HDMI_720p60)||(param->VIC==HDMI_720p50)){
-        if(hdmi_chip_type == HDMI_M1A){
+        if((hdmi_chip_type == HDMI_M1A)||(hdmi_pll_mode == 1)){
 #ifdef DOUBLE_CLK_720P_1080I
             Wr(HHI_HDMI_PLL_CNTL, 0x0008210f); // For 24MHz xtal: PREDIV=15, POSTDIV=33, N=8, 0D=0, to get phy_clk=1485MHz, tmds_clk=148.5MHz.
 #else
@@ -1942,7 +1943,7 @@ static void hdmitx_set_pll(Hdmi_tx_video_para_t *param)
         // set am_analog_top.u_video_pll.OD and XD to make HDMI PLL CKIN the same as vclk2/2
         //Wr_reg_bits (HHI_VID_PLL_CNTL, 1, 16, 1);  // OD: 0=no div, 1=div by 2
         //Wr_reg_bits (HHI_VID_PLL_CNTL, 4, 20, 9);  // XD: div by n
-        if(hdmi_chip_type == HDMI_M1A){
+        if((hdmi_chip_type == HDMI_M1A)||(hdmi_pll_mode == 1)){
 #ifdef DOUBLE_CLK_720P_1080I
             Wr(HHI_HDMI_PLL_CNTL, 0x0008210f); // For 24MHz xtal: PREDIV=15, POSTDIV=33, N=8, 0D=0, to get phy_clk=1485MHz, tmds_clk=148.5MHz.
 #else
@@ -2048,6 +2049,8 @@ set_tvenc:
     }
 #endif
     hdmitx_dump_tvenc_reg(param->VIC, 0);
+
+    hdmi_wr_reg(0x011, 0x0f);   //Channels Power Up Setting ,"1" for Power-up ,"0" for Power-down,Bit[3:0]=CK,Data2,data1,data1,data0 Channels ;
     
     return 0;
 }    
@@ -2333,6 +2336,9 @@ static void hdmitx_m1b_cntl(hdmitx_dev_t* hdmitx_device, int cmd, unsigned argv)
             phy_pll_off();
             digital_clk_off(3); //do not off sys clk
         }
+    }
+    else if( cmd == HDMITX_HWCMD_PLL_MODE){
+        hdmi_pll_mode = argv;
     }
                 
 }

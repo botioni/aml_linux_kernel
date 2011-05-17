@@ -90,7 +90,7 @@ typedef struct hdmi_tx_dev_s {
 #define HDMI_AUDIO_CONTENT_PROTECTION   5
 
 
-#define HDMITX_VER "2011March31c"
+#define HDMITX_VER "2011May12a"
 /************************************
 *    hdmitx protocol level interface
 *************************************/
@@ -130,5 +130,6 @@ extern void HDMITX_M1B_Init(hdmitx_dev_t* hdmitx_device);
 #define HDMITX_HWCMD_MUX_HPD_IF_PIN_HIGH       0x3
 #define HDMITX_HWCMD_TURNOFF_HDMIHW           0x4
 #define HDMITX_HWCMD_MUX_HPD                0x5
+#define HDMITX_HWCMD_PLL_MODE                0x6
 
 #endif

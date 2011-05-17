@@ -107,10 +107,6 @@ static unsigned long 	lock_flags;
 #ifdef FIQ_VSYNC
 static unsigned long	fiq_flag;
 #endif
-extern int  register_fiq_bridge_handle(bridge_item_t *c_item) ;
-extern int  unregister_fiq_bridge_handle(bridge_item_t *c_item);
-extern int  fiq_bridge_pulse_trigger(bridge_item_t *c_item);
-
 static vframe_t vf,vf_w;
 static update_func_t     hw_func_array[HW_OSD_COUNT][HW_REG_INDEX_MAX]={
 	{

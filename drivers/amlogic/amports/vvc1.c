@@ -76,6 +76,7 @@
 static vframe_t *vvc1_vf_peek(void);
 static vframe_t *vvc1_vf_get(void);
 static void vvc1_vf_put(vframe_t *);
+static int  vvc1_vf_states(vframe_states_t *states);
 
 static const char vvc1_dec_id[] = "vvc1-dev";
 
@@ -83,6 +84,7 @@ static const struct vframe_provider_s vvc1_vf_provider = {
     .peek = vvc1_vf_peek,
     .get = vvc1_vf_get,
     .put = vvc1_vf_put,
+    .vf_states = vvc1_vf_states,
 };
 
 static struct vframe_s vfpool[VF_POOL_SIZE];
@@ -401,6 +403,29 @@ static vframe_t *vvc1_vf_get(void)
 static void vvc1_vf_put(vframe_t *vf)
 {
     INCPTR(putting_ptr);
+}
+
+static int vvc1_vf_states(vframe_states_t *states)
+{
+    unsigned long flags;
+    int i;
+    spin_lock_irqsave(&lock, flags);
+    states->vf_pool_size = VF_POOL_SIZE;
+
+    i = put_ptr - fill_ptr;
+    if (i < 0) i += VF_POOL_SIZE;
+    states->buf_free_num = i;
+    
+    i = putting_ptr - put_ptr;
+    if (i < 0) i += VF_POOL_SIZE;
+    states->buf_recycle_num = i;
+    
+    i = fill_ptr - get_ptr;
+    if (i < 0) i += VF_POOL_SIZE;
+    states->buf_avail_num = i;
+    
+    spin_unlock_irqrestore(&lock, flags);
+    return 0;
 }
 
 int vvc1_dec_status(struct vdec_status *vstatus)

@@ -293,24 +293,11 @@ static int lcd_suspend(void)
     _disable_backlight();
 	pDev->conf.power_off?pDev->conf.power_off():0;
 
-#ifdef FIQ_VSYNC
-	disable_fiq(INT_VIU_VSYNC);
-#else
-    disable_irq(INT_VIU_VSYNC);
-#endif
-
 	return 0;
 }
 static int lcd_resume(void)
 {
 	printk("lcd_resume\n");
-
-#ifdef FIQ_VSYNC
-	enable_fiq(INT_VIU_VSYNC);
-#else
-	enable_irq(INT_VIU_VSYNC);
-#endif
-
 	_lcd_module_enable();
     _enable_backlight(BL_MAX_LEVEL);
 	return 0;

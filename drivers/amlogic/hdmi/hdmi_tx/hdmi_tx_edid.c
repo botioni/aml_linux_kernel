@@ -866,6 +866,11 @@ static int hdmitx_edid_block_parse(hdmitx_dev_t* hdmitx_device, unsigned char *B
                 pRXCap->IEEEOUI <<= 8 ;
                 pRXCap->IEEEOUI += (unsigned long)BlockBuf[offset] ;
                 /**/
+                hdmi_print(0, "HDMI_EDID_BLOCK_TYPE_VENDER: IEEEOUI %x:", pRXCap->IEEEOUI);
+                for(i = 0; i<count ;i++){
+                    hdmi_print(0, "%d: %02x\n",i+1, BlockBuf[offset+i]);
+                }
+                /**/
                 pRXCap->ColorDeepSupport = (unsigned long)BlockBuf[offset+5];
                 pRXCap->Max_TMDS_Clock = (unsigned long)BlockBuf[offset+6]; 
                 offset += count ; // ignore the remaind.

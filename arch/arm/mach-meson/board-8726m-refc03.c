@@ -406,7 +406,7 @@ static struct platform_device aml_sound_card={
 };
 
 #ifdef CONFIG_AM_NAND
-/*static struct mtd_partition partition_info[] = 
+static struct mtd_partition partition_info[] = 
 {
 #ifndef CONFIG_AMLOGIC_SPI_NOR
         {
@@ -423,58 +423,17 @@ static struct platform_device aml_sound_card={
         {
                 .name = "system",
                 .offset = 12*1024*1024,
-                .size = 116*1024*1024,
+                .size = 148*1024*1024,
         },
         {
                 .name = "cache",
-                .offset = 128*1024*1024,
+                .offset = 160*1024*1024,
                 .size = 16*1024*1024,
         },
 	{
 		.name = "userdata",
 		.offset=MTDPART_OFS_APPEND,
 		.size=MTDPART_SIZ_FULL,
-	},
-};*/
-
-static struct mtd_partition normal_partition_info[] = 
-{
-#ifndef CONFIG_AMLOGIC_SPI_NOR
-	{
-		.name = "environment",
-		.offset = 4*1024*1024,
-		.size = 8*1024*1024,
-	},
-#endif
-	{
-		.name = "recovery",
-		.offset = 12*1024*1024,
-		.size = 4*1024*1024,
-	},
-	{
-		.name = "uImage",
-		.offset = 16*1024*1024,
-		.size = 4*1024*1024,
-	},
-	{
-		.name = "system",
-		.offset = 20*1024*1024,
-		.size = 116*1024*1024,
-	},
-	{
-		.name = "cache",
-		.offset = 136*1024*1024,
-		.size = 16*1024*1024,
-	},
-	{
-		.name = "userdata",
-		.offset = 152*1024*1024,
-		.size = 256*1024*1024,
-	},
-	{
-		.name = "NFTL_Part",
-		.offset = 408*1024*1024,
-		.size = 1024*1024*1024,
 	},
 };
 
@@ -502,8 +461,8 @@ static struct aml_nand_platform aml_nand_mid_platform[] = {
 		.platform_nand_data = {
 			.chip =  {
 				.nr_chips = 4,
-				.nr_partitions = ARRAY_SIZE(normal_partition_info),
-				.partitions = normal_partition_info,
+				.nr_partitions = ARRAY_SIZE(partition_info),
+				.partitions = partition_info,
 				.options = (NAND_TIMING_MODE5 | NAND_ECC_BCH16_MODE | NAND_TWO_PLANE_MODE),
 			},
     	},
