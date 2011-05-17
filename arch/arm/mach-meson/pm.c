@@ -43,6 +43,7 @@ static int early_suspend_flag = 0;
 #define OFF 0
 
 #include "sleep.h"
+#define EARLY_SUSPEND_USE_XTAL
 
 static void (*meson_sram_suspend) (struct meson_pm_config *);
 static struct meson_pm_config *pdata;
@@ -301,7 +302,11 @@ static char clks_name[CLK_COUNT][32]={
     "HHI_MPEG_CLK_CNTL",
 };
 
+#ifdef EARLY_SUSPEND_USE_XTAL
 #define EARLY_CLK_COUNT 6
+#else
+#define EARLY_CLK_COUNT 5
+#endif
 static char early_clk_flag[EARLY_CLK_COUNT];
 static unsigned early_clks[EARLY_CLK_COUNT]={
     HHI_DEMOD_CLK_CNTL,
@@ -309,7 +314,9 @@ static unsigned early_clks[EARLY_CLK_COUNT]={
     HHI_ETH_CLK_CNTL,
     HHI_WIFI_CLK_CNTL,
     HHI_VID_CLK_CNTL,
+#ifdef EARLY_SUSPEND_USE_XTAL
     HHI_MPEG_CLK_CNTL,
+#endif
 };
 
 static char early_clks_name[EARLY_CLK_COUNT][32]={
@@ -318,7 +325,9 @@ static char early_clks_name[EARLY_CLK_COUNT][32]={
     "HHI_ETH_CLK_CNTL",
     "HHI_WIFI_CLK_CNTL",
     "HHI_VID_CLK_CNTL",
+#ifdef EARLY_SUSPEND_USE_XTAL
     "HHI_MPEG_CLK_CNTL",
+#endif
 };
 
 static unsigned uart_rate_backup;
@@ -359,7 +368,7 @@ void clk_switch(int flag)
                 }
             }
             else if (clks[i] == HHI_MPEG_CLK_CNTL){
-                if (READ_CBUS_REG(clks[i]&(1<<8))){
+                if (READ_CBUS_REG(clks[i])&(1<<8)){
                     clk_flag[i] = 1;
                     
                     udelay(1000);
