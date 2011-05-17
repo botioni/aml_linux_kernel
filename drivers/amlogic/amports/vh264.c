@@ -243,12 +243,22 @@ static void vh264_vf_put(vframe_t *vf)
 static int  vh264_vf_states(vframe_states_t *states)
 {
     unsigned long flags;
+    int i;
     spin_lock_irqsave(&lock, flags);
     states->vf_pool_size = VF_POOL_SIZE;
-    states->fill_ptr = fill_ptr;
-    states->get_ptr = get_ptr;
-    states->putting_ptr = putting_ptr;
-    states->put_ptr = put_ptr;
+
+    i = put_ptr - fill_ptr;
+    if (i < 0) i += VF_POOL_SIZE;
+    states->buf_free_num = i;
+    
+    i = putting_ptr - put_ptr;
+    if (i < 0) i += VF_POOL_SIZE;
+    states->buf_recycle_num = i;
+    
+    i = fill_ptr - get_ptr;
+    if (i < 0) i += VF_POOL_SIZE;
+    states->buf_avail_num = i;
+    
     spin_unlock_irqrestore(&lock, flags);
     return 0;
 }

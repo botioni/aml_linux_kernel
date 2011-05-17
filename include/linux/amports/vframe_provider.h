@@ -26,12 +26,15 @@
 
 typedef struct vframe_states {
 	int vf_pool_size;
-	int fill_ptr;
-	int get_ptr;
-	int put_ptr;
-	int putting_ptr;
-	/*more*/
-}vframe_states_t;
+	int buf_free_num;
+	int buf_recycle_num;
+    int buf_avail_num;
+} vframe_states_t;
+
+#define VFRAME_EVENT_PROVIDER_UNREG             1
+#define VFRAME_EVENT_PROVIDER_LIGHT_UNREG       2
+#define VFRAME_EVENT_PROVIDER_START             3
+#define VFRAME_EVENT_PROVIDER_VFRAME_READY      4
 
 typedef struct vframe_provider_s {
     vframe_t * (*peek)(void);
@@ -40,10 +43,6 @@ typedef struct vframe_provider_s {
 	int 	   (*vf_states)(vframe_states_t *states);
 } vframe_provider_t;
 
-#define VFRAME_EVENT_PROVIDER_UNREG             1
-#define VFRAME_EVENT_PROVIDER_LIGHT_UNREG       2
-#define VFRAME_EVENT_PROVIDER_START             3
-#define VFRAME_EVENT_PROVIDER_VFRAME_READY      4
 typedef struct vframe_receiver_op_s {
     int (*event_cb)(int type, void* data, void* private_data);
 } vframe_receiver_op_t;
