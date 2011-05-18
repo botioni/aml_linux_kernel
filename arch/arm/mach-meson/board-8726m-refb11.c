@@ -86,6 +86,11 @@
 #include <linux/aml_power.h>
 #endif
 
+#ifdef CONFIG_AMLOGIC_MODEM
+#include <linux/power_supply.h>
+#include <linux/aml_modem.h>
+#endif
+
 #ifdef CONFIG_USB_ANDROID
 #include <linux/usb/android_composite.h>
 #endif
@@ -382,6 +387,19 @@ static struct lm_device usb_ld_a = {
     .dma_config = USB_DMA_BURST_SINGLE,
     .set_vbus_power = set_usb_a_vbus_power,
 };
+static struct lm_device usb_ld_b = {
+    .type = LM_DEVICE_TYPE_USB,
+    .id = 1,
+    .irq = INT_USB_B,
+    .resource.start = IO_USB_B_BASE,
+    .resource.end = -1,
+    .dma_mask_room = DMA_BIT_MASK(32),
+    .port_type = USB_PORT_TYPE_HOST,
+    .port_speed = USB_PORT_SPEED_DEFAULT,
+    .dma_config = USB_DMA_BURST_SINGLE , //   USB_DMA_DISABLE,
+    //.set_vbus_power = set_usb_a_vbus_power,
+};
+
 #endif
 #ifdef CONFIG_SATA_DWC_AHCI
 static struct lm_device sata_ld = {
@@ -1344,6 +1362,97 @@ static struct platform_device aml_i2c_device = {
 };
 #endif
 
+#ifdef CONFIG_AMLOGIC_MODEM
+static int modem_enable(void)
+{
+#ifdef CONFIG_SN7325
+    printk(" dgt added modem_enable for Mf210 !!!!!!!!!!!!$$$$$$$$$$$ \n ");
+    //enable
+    configIO(1, 0);
+    setIO_level(1, 1, 4);//PP4
+
+    return 0 ;
+#endif
+}
+
+static int modem_disable(void)
+{
+#ifdef CONFIG_SN7325
+    printk(" dgt added modem_enable for Mf210 !!!!!!!!!!!!$$$$$$$$$$$ \n ");
+    //enable
+    configIO(1, 0);
+    setIO_level(1, 0, 4);//PP4
+
+    return 0 ;
+#endif
+}
+
+static int modem_reset(void)
+{
+    /*alex.deng added for 3G power up 2011-4-25*/
+
+#ifdef CONFIG_SN7325
+    //reset
+    printk(" start modem Mf210 reset !!!!!!!!!!!!$$$$$$$$$$$ \n ");
+    configIO(1, 0);
+    setIO_level(1, 0, 5);//PP5
+
+    mdelay(200);
+
+     configIO(1, 0);
+    setIO_level(1, 1, 5);//PP5
+
+    printk(" complete modem Mf210 reset !!!!!!!!!!!!$$$$$$$$$$$ \n ");
+
+    return 0 ;
+#endif
+}
+
+static int modem_power_on(void)
+{
+    /*alex.deng added for 3G power up 2011-4-25*/
+
+#ifdef CONFIG_SN7325
+    printk(" dgt added modem_power_on for Mf210 !!!!!!!!!!!!$$$$$$$$$$$ \n ");
+    //power on
+    configIO(1, 0);
+    setIO_level(1, 1, 7);//PP7
+
+    return 0 ;
+#endif
+}
+
+static int modem_power_off(void)
+{
+    /*alex.deng added for 3G power up 2011-4-25*/
+
+#ifdef CONFIG_SN7325
+    printk(" dgt added modem_power_off for Mf210 !!!!!!!!!!!!$$$$$$$$$$$ \n ");
+    configIO(1, 0);
+    setIO_level(1, 0, 7);//PP7
+
+    return 0 ;
+#endif
+}
+
+static struct aml_modem_pdata modem_pdata = {
+    .power_on = modem_power_on ,
+    .power_off = modem_power_off ,
+    .enable = modem_enable,
+    .disable = modem_disable,
+    .reset = modem_reset,
+};
+
+static struct platform_device modem_dev = {
+    .name       = "aml-modem",
+    .id     = -1,
+    .dev = {
+        .platform_data  = &modem_pdata,
+    },
+};
+
+#endif
+
 #ifdef CONFIG_AMLOGIC_PM
 
 static int is_ac_connected(void)
@@ -2139,6 +2248,11 @@ static struct platform_device __initdata *platform_devs[] = {
     #if defined (CONFIG_AMLOGIC_PM)
         &power_dev,
     #endif  
+
+    #if defined (CONFIG_AMLOGIC_MODEM)
+        &modem_dev,
+    #endif  
+	
     #if defined(CONFIG_FB_AM)
         &fb_device,
     #endif
@@ -2431,6 +2545,7 @@ static __init void m1_init_machine(void)
 #ifdef CONFIG_USB_DWC_OTG_HCD
     set_usb_phy_clk(USB_PHY_CLOCK_SEL_XTAL_DIV2);
     lm_device_register(&usb_ld_a);
+    lm_device_register(&usb_ld_b);
 #endif
 #ifdef CONFIG_SATA_DWC_AHCI
     set_sata_phy_clk(SATA_PHY_CLOCK_SEL_DEMOD_PLL);
