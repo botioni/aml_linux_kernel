@@ -274,5 +274,26 @@ config SDIO_TI_WIFI_WGT7310
 
           & assure to set these config in 
 	  Device Drivers  ---> Generic Driver Options  ---> 
-   
+
+config RALINK_3070_USB_WIFI
+	tristate "RALINK 3070 wireless USB Dongle support"
+	depends on USB
+	---help---
+	This module adds support for wireless USB dongle based on ralink 3070 chipset.
+	
+	This driver uses the kernel's wireless extensions subsystem.
+	You should add RALINK 3070 configuration file in directory firmware/ralink/3070/
+	
+	    & assure to set these config in 
+	Device Drivers  ---> Generic Driver Options  ---> 
+	
+	[*]   Include in-kernel firmware blobs in kernel binary  
+	    (ralink/3070/RT2870STA.dat) External firmware blobs to build into 	  
+	  	  	  
+config RALINK_3070_PROFILE_FILE
+	depends on RALINK_3070_USB_WIFI
+	string "RALINK_3070 PROFILE_FILE path"
+	default "ralink/3070/RT2870STA.dat"
+	---help---
+	  Path to the configuration file.
 endmenu
