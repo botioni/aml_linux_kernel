@@ -467,7 +467,7 @@ static void vh264_isr(void)
         aspect_ratio_idc = (seq_info >> 16) & 0xff;
 
         if (timing_info_present_flag) {
-            if (num_units_in_tick * 120 >= time_scale) {
+            if ((num_units_in_tick * 120) >= time_scale && (!sync_outside)) {
                 frame_dur = div_u64(96000ULL * 2 * num_units_in_tick, time_scale);
             }
         }
