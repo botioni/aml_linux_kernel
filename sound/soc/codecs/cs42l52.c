@@ -1281,6 +1281,15 @@ static int cs42l52_i2c_probe(struct i2c_client *client, const struct i2c_device_
 
 	struct cs42l52_priv *cs42l52;
 	struct snd_soc_codec *codec;
+	struct cs42l52_platform_data *pdata = client->dev.platform_data;
+
+	if(pdata&&pdata->cs42l52_pwr_rst){
+		printk("***cs42l52 reset***\n");
+		pdata->cs42l52_pwr_rst();
+	}
+	else{
+		printk("***cs42l52 no reset***\n");
+		}
 	printk("%s	\n",__FUNCTION__);
 	cs42l52 = kzalloc(sizeof(struct cs42l52_priv), GFP_KERNEL);
 	if (cs42l52 == NULL)

@@ -94,6 +94,9 @@
 #ifdef CONFIG_SND_AML_M1_MID_WM8900
 #include <sound/wm8900.h>
 #endif
+#ifdef CONFIG_SND_AML_M1_MID_CS42L52
+#include <sound/cs42l52.h>
+#endif
 
 #ifdef CONFIG_GOODIX_CAPACITIVE_TOUCHSCREEN
 #include <linux/goodix_touch.h>
@@ -671,12 +674,34 @@ static struct resource aml_m1_audio_resource[]={
 };
 
 static struct platform_device aml_audio={
-        .name               = "aml_m1_audio_wm8900",
-        .id                     = -1,
-        .resource       =   aml_m1_audio_resource,
-        .num_resources  =   ARRAY_SIZE(aml_m1_audio_resource),
+#ifdef CONFIG_SND_AML_M1_MID_WM8900
+		.name 				= "aml_m1_audio_wm8900",
+#elif defined CONFIG_SND_AML_M1_MID_CS42L52
+        .name 				= "aml_m1_audio_cs42l52",
+#endif
+		.id 					= -1,
+		.resource 		=	aml_m1_audio_resource,
+		.num_resources	=	ARRAY_SIZE(aml_m1_audio_resource),
 };
+#ifdef CONFIG_SND_AML_M1_MID_CS42L52
+static int cs42l52_pwr_rst(void)
+{
+    //reset
+    set_gpio_val(GPIOE_bank_bit16_21(21), GPIOE_bank_bit16_21(21), 0); //low
+    set_gpio_mode(GPIOE_bank_bit16_21(21), GPIOE_bank_bit16_21(21), GPIO_OUTPUT_MODE);
 
+    udelay(20); //delay 2us
+
+    set_gpio_val(GPIOE_bank_bit16_21(21), GPIOE_bank_bit16_21(21), 1); //high
+    set_gpio_mode(GPIOE_bank_bit16_21(21), GPIOE_bank_bit16_21(21), GPIO_OUTPUT_MODE);
+    //end
+
+    return 0;
+}
+static struct cs42l52_platform_data cs42l52_pdata = {
+    .cs42l52_pwr_rst = &cs42l52_pwr_rst,
+};
+#endif
 #ifdef CONFIG_SND_AML_M1_MID_WM8900
 
 //use LED_CS1 as hp detect pin
@@ -2062,6 +2087,11 @@ static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
     {
         I2C_BOARD_INFO("wm8900", 0x1A),
         .platform_data = (void *)&wm8900_pdata,
+    },
+#elif defined CONFIG_SND_AML_M1_MID_CS42L52
+    {
+        I2C_BOARD_INFO("cs42l52", 0x4A),
+	 .platform_data = (void *)&cs42l52_pdata,
     },
 #endif
 

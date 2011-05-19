@@ -52,9 +52,10 @@ static int aml_nftl_write_cache_data(struct aml_nftl_blk_t *aml_nftl_blk, uint8_
 {
 	struct aml_nftl_info_t *aml_nftl_info;
 	int err = 0, i, j;
-	uint32_t blks_per_sect;
+	uint32_t blks_per_sect, current_cache_cnt;
 	struct list_head *l, *n;
 
+	current_cache_cnt = aml_nftl_blk->cache_buf_cnt;
 	aml_nftl_info = aml_nftl_blk->aml_nftl_info;
 	blks_per_sect = aml_nftl_info->writesize / 512;
 	list_for_each_safe(l, n, &aml_nftl_blk->cache_list) {
@@ -71,7 +72,7 @@ static int aml_nftl_write_cache_data(struct aml_nftl_blk_t *aml_nftl_blk, uint8_
 				return err;
 
 			aml_nftl_blk->cache_sect_addr = -1;
-			//printk("nftl write cache data blk: %d page: %d \n", (cache_node->vt_sect_addr / aml_nftl_info->pages_per_blk), (cache_node->vt_sect_addr % aml_nftl_info->pages_per_blk));
+			//aml_nftl_dbg("nftl write cache data blk: %d page: %d \n", (cache_node->vt_sect_addr / aml_nftl_info->pages_per_blk), (cache_node->vt_sect_addr % aml_nftl_info->pages_per_blk));
 			for (j=0; j<blks_per_sect; j++) {
 				if (!cache_node->cache_fill_status[j])
 					memcpy(cache_node->buf + j*512, aml_nftl_blk->cache_buf + j*512, 512);
@@ -91,7 +92,7 @@ static int aml_nftl_write_cache_data(struct aml_nftl_blk_t *aml_nftl_blk, uint8_
 		list_del(&cache_node->list);
 		aml_nftl_free(cache_node);
 		aml_nftl_blk->cache_buf_cnt--;
-		if ((cache_flag != CACHE_CLEAR_ALL) && (aml_nftl_blk->cache_buf_cnt <= (NFTL_CACHE_FORCE_WRITE_LEN - 2)))
+		if ((cache_flag != CACHE_CLEAR_ALL) && (aml_nftl_blk->cache_buf_cnt <= (current_cache_cnt - 2)))
 			return 0;
 	}
 	BUG_ON(aml_nftl_blk->cache_buf_cnt != 0);
@@ -190,7 +191,7 @@ static int aml_nftl_add_cache_list(struct aml_nftl_blk_t *aml_nftl_blk, uint32_t
 	if (aml_nftl_blk->cache_buf_cnt >= NFTL_CACHE_FORCE_WRITE_LEN) {
 		err = aml_nftl_blk->write_cache_data(aml_nftl_blk, 0);
 		if (err) {
-			printk("nftl cache data full write faile %d err: %d\n", aml_nftl_blk->cache_buf_cnt, err);
+			aml_nftl_dbg("nftl cache data full write faile %d err: %d\n", aml_nftl_blk->cache_buf_cnt, err);
 			return err;
 		}
 	}
@@ -209,7 +210,7 @@ static int aml_nftl_add_cache_list(struct aml_nftl_blk_t *aml_nftl_blk, uint32_t
 	}
 
 	if (!cache_node->buf) {
-		printk("cache buf need malloc %d\n", aml_nftl_blk->cache_buf_cnt);
+		aml_nftl_dbg("cache buf need malloc %d\n", aml_nftl_blk->cache_buf_cnt);
 		cache_node->buf = aml_nftl_malloc(aml_nftl_info->writesize);
 		if (!cache_node->buf) 
 			return -ENOMEM;
@@ -231,7 +232,7 @@ static int aml_nftl_add_cache_list(struct aml_nftl_blk_t *aml_nftl_blk, uint32_t
 	if (aml_nftl_blk->cache_buf_cnt >= 1) {
 		err = aml_nftl_blk->write_cache_data(aml_nftl_blk, 0);
 		if (err) {
-			printk("nftl cache data full write faile %d err: %d\n", aml_nftl_blk->cache_buf_cnt, err);
+			aml_nftl_dbg("nftl cache data full write faile %d err: %d\n", aml_nftl_blk->cache_buf_cnt, err);
 			return err;
 		}
 	}
@@ -304,13 +305,14 @@ static int aml_nftl_write_data(struct aml_nftl_blk_t *aml_nftl_blk, unsigned lon
 	unsigned blks_per_sect, write_sect_addr, write_misalign_num, buf_offset = 0;
 	int error = 0, status = 0, total_blk_count = 0, write_sect_num, i;
 
+	ktime_get_ts(&aml_nftl_blk->ts_write_start);
 	if (aml_nftl_blk->cache_buf_status == NFTL_CACHE_STATUS_READY_DONE)
 		aml_nftl_blk->cache_buf_status = NFTL_CACHE_STATUS_DONE;
 	blks_per_sect = aml_nftl_info->writesize / 512;
 	write_sect_addr = block / blks_per_sect;
 	total_blk_count = nblk;
 	write_misalign_num = ((blks_per_sect - block % blks_per_sect) > nblk ? nblk : (blks_per_sect - block % blks_per_sect));
-	//printk("nftl write data blk: %d page: %d block: %d count %d\n", (write_sect_addr / aml_nftl_info->pages_per_blk), (write_sect_addr % aml_nftl_info->pages_per_blk), block, nblk);
+	//aml_nftl_dbg("nftl write data blk: %d page: %d block: %d count %d\n", (write_sect_addr / aml_nftl_info->pages_per_blk), (write_sect_addr % aml_nftl_info->pages_per_blk), block, nblk);
 
 	if (block % blks_per_sect) {
 		status = aml_nftl_blk->add_cache_list(aml_nftl_blk, write_sect_addr, block % blks_per_sect, write_misalign_num, buf);
@@ -362,7 +364,7 @@ static int aml_nftl_flush(struct mtd_blktrans_dev *dev)
 	struct aml_nftl_blk_t *aml_nftl_blk = (void *)dev;
 
 	mutex_lock(&aml_nftl_lock);
-	//printk("nftl flush all cache data: %d\n", aml_nftl_blk->cache_buf_cnt);
+	//aml_nftl_dbg("nftl flush all cache data: %d\n", aml_nftl_blk->cache_buf_cnt);
 	if (aml_nftl_blk->cache_buf_cnt > 0)
 		error = aml_nftl_blk->write_cache_data(aml_nftl_blk, CACHE_CLEAR_ALL);
 
@@ -467,7 +469,7 @@ int aml_nftl_init_bounce_buf(struct mtd_blktrans_dev *dev, struct request_queue 
 	if (bouncesz >= PAGE_CACHE_SIZE) {
 		aml_nftl_blk->bounce_buf = aml_nftl_malloc(bouncesz);
 		if (!aml_nftl_blk->bounce_buf) {
-			printk("not enough memory for bounce buf\n");
+			aml_nftl_dbg("not enough memory for bounce buf\n");
 			return -1;
 		}
 	}
@@ -540,38 +542,39 @@ int do_nftltrans_request(struct mtd_blktrans_ops *tr,
 
 	mutex_lock(&aml_nftl_lock);
 	switch(rq_data_dir(req)) {
-	case READ:
-		for(i=0; i<(segments+1); i++) {
-			blk_addr = (block + (offset_addr[i] >> tr->blkshift));
-			blk_cnt = ((offset_addr[i+1] - offset_addr[i]) >> tr->blkshift);
-			buf = (char *)buf_addr[i];
-			if (aml_nftl_blk->read_data(aml_nftl_blk, blk_addr, blk_cnt, buf)) {
-				ret = -EIO;
-				break;
+		case READ:
+			for(i=0; i<(segments+1); i++) {
+				blk_addr = (block + (offset_addr[i] >> tr->blkshift));
+				blk_cnt = ((offset_addr[i+1] - offset_addr[i]) >> tr->blkshift);
+				buf = (char *)buf_addr[i];
+				if (aml_nftl_blk->read_data(aml_nftl_blk, blk_addr, blk_cnt, buf)) {
+					ret = -EIO;
+					break;
+				}
 			}
-		}
-		bio_flush_dcache_pages(aml_nftl_blk->req->bio);
-		break;
+			bio_flush_dcache_pages(aml_nftl_blk->req->bio);
+			break;
 
-	case WRITE:
-		bio_flush_dcache_pages(aml_nftl_blk->req->bio);
-		for(i=0; i<(segments+1); i++) {
-			blk_addr = (block + (offset_addr[i] >> tr->blkshift));
-			blk_cnt = ((offset_addr[i+1] - offset_addr[i]) >> tr->blkshift);
-			buf = (char *)buf_addr[i];
-			if (aml_nftl_blk->write_data(aml_nftl_blk, blk_addr, blk_cnt, buf)) {
-				ret = -EIO;
-				break;
+		case WRITE:
+			bio_flush_dcache_pages(aml_nftl_blk->req->bio);
+			for(i=0; i<(segments+1); i++) {
+				blk_addr = (block + (offset_addr[i] >> tr->blkshift));
+				blk_cnt = ((offset_addr[i+1] - offset_addr[i]) >> tr->blkshift);
+				buf = (char *)buf_addr[i];
+				if (aml_nftl_blk->write_data(aml_nftl_blk, blk_addr, blk_cnt, buf)) {
+					ret = -EIO;
+					break;
+				}
 			}
-		}
-		break;
+			break;
 
-	default:
-		printk(KERN_NOTICE "Unknown request %u\n", rq_data_dir(req));
-		break;
+		default:
+			aml_nftl_dbg(KERN_NOTICE "Unknown request %u\n", rq_data_dir(req));
+			break;
 	}
 
 	mutex_unlock(&aml_nftl_lock);
+
 	return ret;
 }
 
@@ -584,6 +587,7 @@ static int aml_nftl_thread(void *arg)
 {
 	struct aml_nftl_blk_t *aml_nftl_blk = arg;
 	unsigned long period = NFTL_MAX_SCHEDULE_TIMEOUT / 10;
+	struct timespec ts_nftl_current;
 
 	while (!kthread_should_stop()) {
 		struct aml_nftl_info_t *aml_nftl_info;
@@ -605,9 +609,21 @@ static int aml_nftl_thread(void *arg)
 			mutex_lock(&aml_nftl_lock);
 			if ((aml_nftl_blk->cache_buf_status == NFTL_CACHE_STATUS_READY_DONE)
 				&& (aml_nftl_blk->cache_buf_cnt > 0)) {
-				printk("nftl write cache data: %d\n", aml_nftl_blk->cache_buf_cnt);
-				aml_nftl_blk->write_cache_data(aml_nftl_blk, CACHE_CLEAR_ALL);
-				aml_nftl_blk->cache_buf_status = NFTL_CACHE_STATUS_IDLE;
+
+				ktime_get_ts(&ts_nftl_current);
+				if ((ts_nftl_current.tv_sec - aml_nftl_blk->ts_write_start.tv_sec) >= NFTL_FLUSH_DATA_TIME) {
+					aml_nftl_dbg("nftl writed cache data: %d \n", aml_nftl_blk->cache_buf_cnt);
+					aml_nftl_blk->write_cache_data(aml_nftl_blk, CACHE_CLEAR_ALL);
+				}
+
+				if (aml_nftl_blk->cache_buf_cnt > 0) {
+					mutex_unlock(&aml_nftl_lock);
+					continue;
+				}
+				else {
+					//aml_nftl_blk->write_cache_data(aml_nftl_blk, CACHE_CLEAR_ALL);
+					aml_nftl_blk->cache_buf_status = NFTL_CACHE_STATUS_IDLE;
+				}
 			}
 			else {
 				aml_nftl_blk->cache_buf_status = NFTL_CACHE_STATUS_READY_DONE;
@@ -648,7 +664,7 @@ static int aml_nftl_reboot_notifier(struct notifier_block *nb, unsigned long pri
 	struct aml_nftl_blk_t *aml_nftl_blk = nftl_notifier_to_blk(nb);
 
 	mutex_lock(&aml_nftl_lock);
-	//printk("nftl reboot flush cache data: %d\n", aml_nftl_blk->cache_buf_cnt);
+	//aml_nftl_dbg("nftl reboot flush cache data: %d\n", aml_nftl_blk->cache_buf_cnt);
 	if (aml_nftl_blk->cache_buf_cnt > 0)
 		error = aml_nftl_blk->write_cache_data(aml_nftl_blk, CACHE_CLEAR_ALL);
 	mutex_unlock(&aml_nftl_lock);
@@ -703,7 +719,7 @@ static void aml_nftl_add_mtd(struct mtd_blktrans_ops *tr, struct mtd_info *mtd)
 	if (aml_nftl_init_bounce_buf(&aml_nftl_blk->mbd, tr->blkcore_priv->rq))
 		return;
 	if (add_mtd_blktrans_dev(&aml_nftl_blk->mbd))
-		printk("nftl add blk disk dev failed\n");
+		aml_nftl_dbg("nftl add blk disk dev failed\n");
 
 	return;
 }
@@ -711,6 +727,20 @@ static void aml_nftl_add_mtd(struct mtd_blktrans_ops *tr, struct mtd_info *mtd)
 static int aml_nftl_open(struct mtd_blktrans_dev *mbd)
 {
 	return 0;
+}
+
+static int aml_nftl_release(struct mtd_blktrans_dev *mbd)
+{
+	int error = 0;
+	struct aml_nftl_blk_t *aml_nftl_blk = (void *)mbd;
+
+	mutex_lock(&aml_nftl_lock);
+	aml_nftl_dbg("nftl release flush cache data: %d\n", aml_nftl_blk->cache_buf_cnt);
+	if (aml_nftl_blk->cache_buf_cnt > 0)
+		error = aml_nftl_blk->write_cache_data(aml_nftl_blk, CACHE_CLEAR_ALL);
+	mutex_unlock(&aml_nftl_lock);
+
+	return error;
 }
 
 static void aml_nftl_blk_release(struct aml_nftl_blk_t *aml_nftl_blk)
@@ -728,6 +758,7 @@ static void aml_nftl_remove_dev(struct mtd_blktrans_dev *dev)
 {
 	struct aml_nftl_blk_t *aml_nftl_blk = (void *)dev;
 
+	unregister_reboot_notifier(&aml_nftl_blk->nb);
 	del_mtd_blktrans_dev(dev);
 	aml_nftl_free(dev);
 	aml_nftl_blk_release(aml_nftl_blk);
@@ -740,7 +771,7 @@ static struct mtd_blktrans_ops aml_nftl_tr = {
 	.part_bits	= 0,
 	.blksize 	= 512,
 	.open		= aml_nftl_open,
-	//.release	= aml_nftl_release,
+	.release	= aml_nftl_release,
 	.do_blktrans_request = do_nftltrans_request,
 	.writesect	= aml_nftl_writesect,
 	.flush		= aml_nftl_flush,

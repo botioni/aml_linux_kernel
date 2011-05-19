@@ -112,6 +112,9 @@
 #ifdef CONFIG_INPUT_L3G4200D
 #include <linux/i2c/l3g4200d.h>
 #endif
+#ifdef CONFIG_EFUSE
+#include <linux/efuse.h>
+#endif
 
 #ifdef CONFIG_EFUSE
 #include <linux/efuse.h>
@@ -1054,6 +1057,11 @@ static	struct platform_device aml_rtc_device = {
 
 int gt2005_init(void)
 {
+    udelay(1000);
+    WRITE_CBUS_REG(HHI_ETH_CLK_CNTL,0x30f);// 24M XTAL
+    WRITE_CBUS_REG(HHI_DEMOD_PLL_CNTL,0x232);// 24M XTAL
+	udelay(1000);
+	    
    #ifdef CONFIG_SN7325
 	printk( "amlogic camera driver: init CONFIG_SN7325. \n");
 	configIO(1, 0);
@@ -1069,13 +1077,20 @@ int gt2005_init(void)
 #ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE_GC0308
 int gc0308_init(void)
 {
+    udelay(1000);
+    WRITE_CBUS_REG(HHI_ETH_CLK_CNTL,0x31e);// 24M XTAL
+    WRITE_CBUS_REG(HHI_DEMOD_PLL_CNTL,0x232);// 24M XTAL
+	udelay(1000);
+    set_gpio_val(GPIOE_bank_bit16_21(21), GPIOE_bit_bit16_21(21), 0);
+    set_gpio_mode(GPIOE_bank_bit16_21(21), GPIOE_bit_bit16_21(21), GPIO_OUTPUT_MODE);
+    msleep(20);
    #ifdef CONFIG_SN7325
 	printk( "amlogic camera driver 0308: init CONFIG_SN7325. \n");
 	configIO(1, 0);
 	setIO_level(1, 1, 4);//PP4 -->1
-	msleep(300);
+	msleep(20);
 	setIO_level(1, 0, 0);//PP0-->0
-	msleep(300);
+	msleep(20);
     #endif
 
 }
@@ -1667,6 +1682,26 @@ static struct platform_device aml_uart_device = {
     .resource     = NULL,   
     .dev = {        
                 .platform_data = &aml_uart_plat,  
+           },
+};
+#endif
+#ifdef CONFIG_EFUSE
+static bool efuse_data_verify(unsigned char *usid)
+{
+	return true;
+}
+
+static struct efuse_platform_data aml_efuse_plat = {
+    .pos = 337,
+    .count = 20,
+    .data_verify = efuse_data_verify,
+};
+
+static struct platform_device aml_efuse_device = {
+    .name	= "efuse",
+    .id	= -1,
+    .dev = {
+                .platform_data = &aml_efuse_plat,
            },
 };
 #endif
@@ -2348,6 +2383,9 @@ static struct platform_device __initdata *platform_devs[] = {
     #endif
     #ifdef CONFIG_BT_DEVICE  
         &bt_device,
+    #endif
+    #ifdef CONFIG_EFUSE
+	&aml_efuse_device,
     #endif
     #ifdef CONFIG_AR1520_GPS
 	&aml_ar1520_device,

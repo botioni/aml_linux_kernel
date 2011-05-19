@@ -15,6 +15,7 @@
 #include <linux/spinlock.h>
 #include <linux/notifier.h>
 #include <linux/mtd/blktrans.h>
+#include <linux/time.h>
 
 #pragma pack(1)
 
@@ -48,6 +49,7 @@ typedef int16_t     	addr_linearblk_t;
 #define NFTL_BOUNCE_FREE		 		0
 #define NFTL_BOUNCE_USED		 		1
 #define NFTL_MAX_SCHEDULE_TIMEOUT		800
+#define NFTL_FLUSH_DATA_TIME			3
 #define NFTL_CACHE_STATUS_IDLE			0
 #define NFTL_CACHE_STATUS_READY			1
 #define NFTL_CACHE_STATUS_READY_DONE	2
@@ -228,6 +230,7 @@ struct aml_nftl_blk_t{
 	struct request_queue *queue;
 	struct scatterlist	*sg;
 	struct notifier_block nb;
+	struct timespec ts_write_start;
 
 	char			*bounce_buf;
 	int8_t			bounce_buf_free[NFTL_CACHE_FORCE_WRITE_LEN];

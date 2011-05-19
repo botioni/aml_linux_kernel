@@ -79,4 +79,5 @@ obj-y += wifi/
 obj-y += bluetooth/
 #	camera devices
 obj-y += camera/
+obj-y += modem/
 obj-y += debug/

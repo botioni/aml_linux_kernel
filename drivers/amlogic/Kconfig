@@ -59,6 +59,7 @@ source "drivers/amlogic/dvb/Kconfig"
 #	camera devices
 #
 source "drivers/amlogic/camera/Kconfig"
+source "drivers/amlogic/modem/Kconfig"
 
 source "drivers/amlogic/debug/Kconfig"
 endmenu	
