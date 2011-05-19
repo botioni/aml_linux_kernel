@@ -219,7 +219,9 @@ static void add_free(struct aml_nftl_wl_t * wl, addr_blk_t blk)
 	struct wl_rb_t* tnode_cold;	
 	struct wl_rb_t* tnode;
 
-	BUG_ON(blk < 0);
+	if (blk < 0)
+		return;
+
 	phy_blk_node = &aml_nftl_info->phypmt[blk];
 	tnode = search_tree(wl, &wl->used_root, blk, phy_blk_node->ec);
 	if (tnode)
@@ -318,32 +320,15 @@ static int32_t staticwl_linear_blk(struct aml_nftl_wl_t* aml_nftl_wl, addr_blk_t
 
 static int gc_get_dirty_block(struct aml_nftl_wl_t* aml_nftl_wl, uint8_t gc_flag)
 {
-	int status = 0;
 	struct aml_nftl_info_t *aml_nftl_info = aml_nftl_wl->aml_nftl_info;
 	struct phyblk_node_t *phy_blk_node_src, *phy_blk_node_dest;
 	struct vtblk_node_t  *vt_blk_node;
-	int16_t i, j, k, free_num, free_num2, valid_page[MAX_BLK_NUM_PER_NODE], total_gc_num = 0;
+	int16_t i, j, k, free_num, free_num2, valid_page[MAX_BLK_NUM_PER_NODE], erase_gc_num = 0, copy_gc_num = 0;
 	addr_blk_t dest_blk, src_blk;
 	addr_page_t dest_page, src_page;
-	unsigned valid_page_save, single_page_copy_flag = 1, buf_offset = 0, oob_offset = 0, read_page_nums = 0;
-	unsigned char *nftl_copy_buf = NULL;
-	unsigned char nftl_oob_buf[sizeof(struct nftl_oobinfo_t)*aml_nftl_wl->pages_per_blk];
-	struct nftl_oobinfo_t *nftl_oob_info = (struct nftl_oobinfo_t *)nftl_oob_buf;
-
-	/*if (gc_flag == DO_COPY_PAGE) {
-		nftl_copy_buf = kzalloc(aml_nftl_info->writesize * aml_nftl_wl->pages_per_blk, (__GFP_NOWARN | GFP_KERNEL));
-		if (nftl_copy_buf == NULL) {
-			printk("nftl malloc failed for nftl_copy_buf\n");
-			single_page_copy_flag = 1;
-		}
-		else
-			single_page_copy_flag = 0;
-	}*/
+	unsigned valid_page_save;
 
 	for (i=aml_nftl_wl->gc_start_block; i>=0; i--) {
-
-		if (total_gc_num >= 4)
-			break;
 
 		vt_blk_node = &aml_nftl_info->vtpmt[i];
 		if (vt_blk_node->phy_blk_addr[0] < 0)
@@ -377,7 +362,7 @@ static int gc_get_dirty_block(struct aml_nftl_wl_t* aml_nftl_wl, uint8_t gc_flag
 			if (valid_page[j] == 0) {
 				aml_nftl_wl->add_free(aml_nftl_wl, vt_blk_node->phy_blk_addr[j]);
 				vt_blk_node->phy_blk_addr[j] = BLOCK_INIT_VALUE;
-				total_gc_num++;
+				erase_gc_num++;
 			}
 			else 
 				break;
@@ -394,13 +379,12 @@ static int gc_get_dirty_block(struct aml_nftl_wl_t* aml_nftl_wl, uint8_t gc_flag
 			vt_blk_node->phy_blk_addr[k] = BLOCK_INIT_VALUE;
 			valid_page[k] = 0;
 		}
+		if (erase_gc_num >= 4)
+			break;
 
 		//if space is small do copy page garbage collect
 		if (gc_flag == DO_COPY_PAGE) {
-			buf_offset = 0;
-			oob_offset = 0;
-			read_page_nums = 0;
-			
+
 			if ((vt_blk_node->phy_blk_addr[1] < 0) || (vt_blk_node->phy_blk_addr[0] < 0))
 				continue;
 
@@ -409,7 +393,7 @@ static int gc_get_dirty_block(struct aml_nftl_wl_t* aml_nftl_wl, uint8_t gc_flag
 				if (vt_blk_node->phy_blk_addr[k] < 0)
 					break;
 				phy_blk_node_dest = &aml_nftl_info->phypmt[vt_blk_node->phy_blk_addr[k]];
-				//printk("nftl vt node phy blk: %d valid page: %d last write: %d vt blk: %d\n", vt_blk_node->phy_blk_addr[k], valid_page[k], phy_blk_node_dest->last_write, i);
+				//aml_nftl_dbg("nftl vt node phy blk: %d valid page: %d last write: %d vt blk: %d\n", vt_blk_node->phy_blk_addr[k], valid_page[k], phy_blk_node_dest->last_write, i);
 			}
 
 			dest_blk = vt_blk_node->phy_blk_addr[k-1];
@@ -421,9 +405,6 @@ static int gc_get_dirty_block(struct aml_nftl_wl_t* aml_nftl_wl, uint8_t gc_flag
 				//needn`t get free block just copy in node
 
 				valid_page_save = valid_page[k-1];
-				//if (valid_page[k-1] <= (aml_nftl_info->pages_per_blk/2))
-					//printk("latest node valid page: %d pre latest: %d vt blk: %d gc: %d\n", valid_page[k-1], valid_page[k-2], i, aml_nftl_wl->gc_start_block);
-					//continue;
 
 				for(k=0; k<aml_nftl_wl->pages_per_blk; k++) {
 
@@ -441,53 +422,19 @@ static int gc_get_dirty_block(struct aml_nftl_wl_t* aml_nftl_wl, uint8_t gc_flag
 						free_num--;
 
 					}while (free_num >= 0);
-					if (free_num < 0) {
-						//printk("gc bug at logic: %d free: %d\n", i, free_num2);
-						/*for (j=0; j<free_num2; j++) {
-							phy_blk_node_src = &aml_nftl_info->phypmt[vt_blk_node->phy_blk_addr[j]];
-							for (test_num=0; test_num<aml_nftl_info->pages_per_blk; test_num+=8) {
-								printk("%d %d %d %d %d %d %d %d \n", phy_blk_node_src->phy_page_map[test_num], phy_blk_node_src->phy_page_map[test_num+1],
-									phy_blk_node_src->phy_page_map[test_num+2], phy_blk_node_src->phy_page_map[test_num+3],
-									phy_blk_node_src->phy_page_map[test_num+4], phy_blk_node_src->phy_page_map[test_num+5],
-									phy_blk_node_src->phy_page_map[test_num+6], phy_blk_node_src->phy_page_map[test_num+7]);
-							}
-						}*/
+					if (free_num < 0) 
 						continue;
-					}
-					//BUG_ON(free_num < 0);
 
-					if (single_page_copy_flag) {
 					dest_page = phy_blk_node_dest->last_write + 1;
 					aml_nftl_info->copy_page(aml_nftl_info, dest_blk, dest_page, src_blk, src_page);
 				}
-					else {
-						status = aml_nftl_info->read_page(aml_nftl_info, src_blk, src_page, nftl_copy_buf + buf_offset, nftl_oob_buf + oob_offset);
-						if (status)
-							continue;
-						nftl_oob_info = (struct nftl_oobinfo_t *)(nftl_oob_buf + oob_offset);
-						nftl_oob_info->ec = phy_blk_node_dest->ec;
-						nftl_oob_info->timestamp = phy_blk_node_dest->timestamp;
-						nftl_oob_info->status_page = 1;
-						read_page_nums++;
-						buf_offset += aml_nftl_info->writesize;
-						oob_offset += sizeof(struct nftl_oobinfo_t);
-					}
-				}
-				if (!single_page_copy_flag) {
-					dest_page = phy_blk_node_dest->last_write + 1;
-					status = aml_nftl_info->write_pages(aml_nftl_info, dest_blk, dest_page, read_page_nums, nftl_copy_buf, nftl_oob_buf);
-					if (status) {
-						printk("nftl copy page write multi page failed: %d blk: %d page: %d \n", status, dest_blk, dest_page);
-						aml_nftl_info->blk_mark_bad(aml_nftl_info, dest_blk);
-						continue;
-					}
-				}
-	
+
 				for (j=0; j<=free_num2; j++) {
-					//printk("nftl garbage copy in node block addr: %d vt blk: %d valid: %d gc: %d\n", vt_blk_node->phy_blk_addr[j], i, valid_page_save, aml_nftl_wl->gc_start_block);
+					if (vt_blk_node->phy_blk_addr[j] < 0)
+						aml_nftl_dbg("nftl garbage copy in node block addr: %d  %d  %d  %d %d\n", vt_blk_node->phy_blk_addr[0], vt_blk_node->phy_blk_addr[1], vt_blk_node->phy_blk_addr[2], vt_blk_node->phy_blk_addr[3], j);
 					aml_nftl_wl->add_free(aml_nftl_wl, vt_blk_node->phy_blk_addr[j]);
 					vt_blk_node->phy_blk_addr[j] = BLOCK_INIT_VALUE;
-					total_gc_num++;
+					copy_gc_num++;
 				}	
 				vt_blk_node->phy_blk_addr[0] = dest_blk;
 				vt_blk_node->phy_blk_addr[free_num2+1] = BLOCK_INIT_VALUE;		
@@ -520,60 +467,35 @@ static int gc_get_dirty_block(struct aml_nftl_wl_t* aml_nftl_wl, uint8_t gc_flag
 						free_num--;
 
 					}while (free_num >= 0);
-					if (free_num < 0) {
-						//printk("gc bug at logic: %d free: %d\n", i, free_num2);
+					if (free_num < 0)
 						continue;
-					}
-					//BUG_ON(free_num < 0);
 
-					if (single_page_copy_flag) {
 					dest_page = phy_blk_node_dest->last_write + 1;
 					aml_nftl_info->copy_page(aml_nftl_info, dest_blk, dest_page, src_blk, src_page);
 				}
-					else {
-						status = aml_nftl_info->read_page(aml_nftl_info, src_blk, src_page, nftl_copy_buf + buf_offset, nftl_oob_buf + oob_offset);
-						if (status)
-							continue;
-						nftl_oob_info = (struct nftl_oobinfo_t *)(nftl_oob_buf + oob_offset);
-						nftl_oob_info->ec = phy_blk_node_dest->ec;
-						nftl_oob_info->timestamp = phy_blk_node_dest->timestamp;
-						nftl_oob_info->status_page = 1;
-						read_page_nums++;
-						buf_offset += aml_nftl_info->writesize;
-						oob_offset += sizeof(struct nftl_oobinfo_t);
-					}
-				}
-				if (!single_page_copy_flag) {
-					dest_page = phy_blk_node_dest->last_write + 1;
-					status = aml_nftl_info->write_pages(aml_nftl_info, dest_blk, dest_page, read_page_nums, nftl_copy_buf, nftl_oob_buf);
-					if (status) {
-						printk("nftl copy page write multi page failed: %d blk: %d page: %d \n", status, dest_blk, dest_page);
-						aml_nftl_info->blk_mark_bad(aml_nftl_info, dest_blk);
-						continue;
-					}
-				}
 
 				for (j=0; j<=free_num2; j++) {
-					//printk("nftl garbage get free copy block addr: %d gc: %d\n", vt_blk_node->phy_blk_addr[j], aml_nftl_wl->gc_start_block);
+					if (vt_blk_node->phy_blk_addr[j] < 0)
+						aml_nftl_dbg("nftl garbage get free copy  block addr: %d  %d  %d  %d %d\n", vt_blk_node->phy_blk_addr[0], vt_blk_node->phy_blk_addr[1], vt_blk_node->phy_blk_addr[2], vt_blk_node->phy_blk_addr[3], j);
 					aml_nftl_wl->add_free(aml_nftl_wl, vt_blk_node->phy_blk_addr[j]);
 					vt_blk_node->phy_blk_addr[j] = BLOCK_INIT_VALUE;
-					total_gc_num++;
+					copy_gc_num++;
 				}	
 				vt_blk_node->phy_blk_addr[0] = dest_blk;
 
 			}
+			if (copy_gc_num >= 1)
+				break;
 		}
 	}
 
-	if (nftl_copy_buf)
-		aml_nftl_free(nftl_copy_buf);
-	//printk("nftl garbage block num: %d free num: %d flag: %d\n", total_gc_num, aml_nftl_wl->free_root.count, gc_flag);
+	//aml_nftl_dbg("nftl garbage block num: %d free num: %d flag: %d\n", (copy_gc_num + erase_gc_num), aml_nftl_wl->free_root.count, gc_flag);
 	if (i <= 2)
 		aml_nftl_wl->gc_start_block = aml_nftl_info->accessibleblocks - 1;
 	else
 		aml_nftl_wl->gc_start_block = i;
 	aml_nftl_wl->gc_need_flag = 0;
-	return total_gc_num;
+	return (copy_gc_num + erase_gc_num);
 }
 
 /**
@@ -600,18 +522,6 @@ static int32_t gc_copy_special(struct aml_nftl_wl_t* aml_nftl_wl)
 	int16_t i, j;
 	addr_blk_t dest_blk, src_blk, phy_blk_tmp;
 	addr_page_t dest_page, src_page;
-	unsigned single_page_copy_flag = 1, buf_offset = 0, oob_offset = 0, read_page_nums = 0;
-	unsigned char *nftl_copy_buf = NULL;
-	unsigned char nftl_oob_buf[sizeof(struct nftl_oobinfo_t)*aml_nftl_wl->pages_per_blk];
-	struct nftl_oobinfo_t *nftl_oob_info = (struct nftl_oobinfo_t *)nftl_oob_buf;
-
-	/*nftl_copy_buf = kzalloc(aml_nftl_info->writesize * aml_nftl_wl->pages_per_blk, (__GFP_NOWARN | GFP_KERNEL));
-	if (nftl_copy_buf == NULL) {
-		printk("nftl malloc failed for nftl_copy_buf\n");
-		single_page_copy_flag = 1;
-	}
-	else
-		single_page_copy_flag = 0;*/
 
 	BUG_ON(aml_nftl_info->vtpmt_special->vtblk_node == NULL);
 	vt_special_node = aml_nftl_info->vtpmt_special->vtblk_node;
@@ -633,61 +543,49 @@ static int32_t gc_copy_special(struct aml_nftl_wl_t* aml_nftl_wl)
 				break;
 			}
 		}
-		if (phy_blk_tmp_node->phy_page_map[i] < 0)
+		if ((phy_blk_tmp_node->phy_page_map[i] < 0) || (j > 0))
 			continue;
 
-		if (single_page_copy_flag) {
-			dest_page = phy_blk_node_dest->last_write + 1;
-			aml_nftl_info->copy_page(aml_nftl_info, dest_blk, dest_page, src_blk, src_page);
-		}
-		else {
-			status = aml_nftl_info->read_page(aml_nftl_info, src_blk, src_page, nftl_copy_buf + buf_offset, nftl_oob_buf + oob_offset);
-			if (status)
-				continue;
-			nftl_oob_info = (struct nftl_oobinfo_t *)(nftl_oob_buf + oob_offset);
-			nftl_oob_info->ec = phy_blk_node_dest->ec;
-			nftl_oob_info->timestamp = phy_blk_node_dest->timestamp;
-			nftl_oob_info->status_page = 1;
-			read_page_nums++;
-			buf_offset += aml_nftl_info->writesize;
-			oob_offset += sizeof(struct nftl_oobinfo_t);
-		}
-	}
-
-	if (!single_page_copy_flag) {
 		dest_page = phy_blk_node_dest->last_write + 1;
-		status = aml_nftl_info->write_pages(aml_nftl_info, dest_blk, dest_page, read_page_nums, nftl_copy_buf, nftl_oob_buf);
-		if (status) {
-			printk("nftl copy page write multi page failed: %d blk: %d page: %d \n", status, dest_blk, dest_page);
-			aml_nftl_info->blk_mark_bad(aml_nftl_info, dest_blk);
-			goto exit;
-		}
+		aml_nftl_info->copy_page(aml_nftl_info, dest_blk, dest_page, src_blk, src_page);
 	}
 
-	for (j=0; j<MAX_BLK_NUM_PER_NODE; j++) {
-		aml_nftl_wl->add_free(aml_nftl_wl, vt_special_node->phy_blk_addr[j]);
-		vt_special_node->phy_blk_addr[j] = BLOCK_INIT_VALUE;
+	aml_nftl_wl->add_free(aml_nftl_wl, vt_special_node->phy_blk_addr[0]);
+	for (j=0; j<(MAX_BLK_NUM_PER_NODE - 1); j++) {
+		//aml_nftl_wl->add_free(aml_nftl_wl, vt_special_node->phy_blk_addr[j]);
+		vt_special_node->phy_blk_addr[j] = vt_special_node->phy_blk_addr[j+1];
 	}
-	vt_special_node->phy_blk_addr[0] = dest_blk;
+	vt_special_node->phy_blk_addr[MAX_BLK_NUM_PER_NODE-1] = dest_blk;
 	aml_nftl_info->vtpmt_special->vtblk_node = NULL;
 	aml_nftl_info->vtpmt_special->ext_phy_blk_addr = BLOCK_INIT_VALUE;
 
-exit:
-	if (nftl_copy_buf)
-		aml_nftl_free(nftl_copy_buf);
 	return status;
 }
 
 static int aml_nftl_garbage_collect(struct aml_nftl_wl_t *aml_nftl_wl, uint8_t gc_flag)
 {
+	int gc_num = 0, copy_page_bounce_num;
 	struct aml_nftl_info_t *aml_nftl_info = aml_nftl_wl->aml_nftl_info;
-	if ((aml_nftl_wl->free_root.count <= (aml_nftl_info->fillfactor / 4)) || (gc_flag == DO_COPY_PAGE)) {
-		return gc_get_dirty_block(aml_nftl_wl, DO_COPY_PAGE);
+
+	if (aml_nftl_info->isinitialised == 0) {
+		gc_num = gc_get_dirty_block(aml_nftl_wl, 0);
+		if (gc_num >= 4) 
+			return gc_num;
+
+		aml_nftl_info->isinitialised = 1;
+		aml_nftl_wl->gc_start_block = aml_nftl_info->accessibleblocks - 1;
+		aml_nftl_dbg("nftl creat stucture completely in garbage free blk: %d erased blk: %d\n", aml_nftl_wl->free_root.count, aml_nftl_wl->erased_root.count);
 	}
+	if ((aml_nftl_info->fillfactor/8) >= AML_LIMIT_FACTOR)
+		copy_page_bounce_num = aml_nftl_info->fillfactor / 8;
+	else
+		copy_page_bounce_num = AML_LIMIT_FACTOR;
+
+	if ((aml_nftl_wl->free_root.count <= copy_page_bounce_num) || (gc_flag == DO_COPY_PAGE))
+		return gc_get_dirty_block(aml_nftl_wl, DO_COPY_PAGE);
 	else
 		return gc_get_dirty_block(aml_nftl_wl, 0);
 }
-
 
 /**
  * get_best_free - get best free block
