@@ -295,6 +295,8 @@ static inline vframe_t *vf_peek(void)
 
 static inline vframe_t *vf_get(void)
 {
+    vframe_t *vf = NULL;
+
     int deinterlace_mode = get_deinterlace_mode();
 
     if (deinterlace_mode == 2) {
@@ -311,12 +313,16 @@ static inline vframe_t *vf_get(void)
             return disp_buf;
         } else if (di_pre_recycle_buf == 0) {
             if (vfp) {
-                return vfp->get();
+                vf = vfp->get();
+                if (vf) video_notify_flag |= VIDEO_NOTIFY_PROVIDER_GET;
+                return vf;
             }
         }
     } else {
         if (vfp) {
-            return vfp->get();
+            vf = vfp->get();
+            if (vf) video_notify_flag |= VIDEO_NOTIFY_PROVIDER_GET;
+            return vf;
         }
     }
 
@@ -344,11 +350,13 @@ static inline void vf_put(vframe_t *vf)
         if (di_pre_recycle_buf == 0) {
             if (vfp) {
                 vfp->put(vf);
+                video_notify_flag |= VIDEO_NOTIFY_PROVIDER_PUT;
             }
         }
     } else {
         if (vfp) {
             vfp->put(vf);
+            video_notify_flag |= VIDEO_NOTIFY_PROVIDER_PUT;
         }
     }
 }
@@ -811,7 +819,9 @@ static inline bool vpts_expire(vframe_t *cur_vf, vframe_t *next_vf)
 {
     u32 pts = next_vf->pts;
     u32 systime;
-
+     if ((cur_vf == NULL) || (cur_dispbuf == &vf_local)) {
+        return true;
+    }
     if ((trickmode_i == 1) || ((trickmode_fffb == 1))) {
         if (0 == atomic_read(&trickmode_framedone)) {
             return true;
@@ -845,9 +855,26 @@ static inline bool vpts_expire(vframe_t *cur_vf, vframe_t *next_vf)
 
 static void vsync_notify(void)
 {
-    if (video_notify_flag & VIDEO_NOTIFY_TRICK_WAIT) {
-        wake_up_interruptible(&amvideo_trick_wait);
-        video_notify_flag &= ~VIDEO_NOTIFY_TRICK_WAIT;
+	if (video_notify_flag & VIDEO_NOTIFY_TRICK_WAIT) {
+	    wake_up_interruptible(&amvideo_trick_wait);
+	    video_notify_flag &= ~VIDEO_NOTIFY_TRICK_WAIT;
+	}
+	
+	if (video_notify_flag & (VIDEO_NOTIFY_PROVIDER_GET | VIDEO_NOTIFY_PROVIDER_PUT)) {
+		const vframe_provider_t *vfp = get_vfp();
+
+        if ((vfp) && (vfp->event_cb)) {
+            int event = 0;
+
+            if (video_notify_flag & VIDEO_NOTIFY_PROVIDER_GET)
+			    event |= VFRAME_EVENT_RECEIVER_GET;
+            if (video_notify_flag & VIDEO_NOTIFY_PROVIDER_PUT)
+                event |= VFRAME_EVENT_RECEIVER_PUT;
+
+            vfp->event_cb(event, NULL, NULL);
+        }
+
+        video_notify_flag &= ~(VIDEO_NOTIFY_PROVIDER_GET | VIDEO_NOTIFY_PROVIDER_PUT);
     }
 }
 

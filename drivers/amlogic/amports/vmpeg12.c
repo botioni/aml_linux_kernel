@@ -110,7 +110,7 @@ static const u32 frame_rate_tab[16] = {
     96000 / 24, 96000 / 24, 96000 / 24, 96000 / 24,
     96000 / 24, 96000 / 24, 96000 / 24
 };
-
+static const struct vframe_receiver_op_s *vf_receiver;
 static struct vframe_s vfqool[VF_POOL_SIZE];
 static s32 vfbuf_use[VF_POOL_SIZE];
 static struct vframe_s *vfp_pool_newframe[VF_POOL_SIZE+1];
@@ -263,6 +263,8 @@ static irqreturn_t vmpeg12_isr(int irq, void *dev_id)
             } else {
                 vfq_push(&display_q, vf);
             }
+            if (vf_receiver)
+    	        vf_receiver->event_cb(VFRAME_EVENT_PROVIDER_VFRAME_READY, NULL, NULL);	            
 
         } else {
             u32 index = ((reg & 7) - 1) & 3;
@@ -308,6 +310,8 @@ static irqreturn_t vmpeg12_isr(int irq, void *dev_id)
             } else {
                 vfq_push(&display_q, vf);
             }
+            if (vf_receiver)
+    	        vf_receiver->event_cb(VFRAME_EVENT_PROVIDER_VFRAME_READY, NULL, NULL);	            
         }
 
         WRITE_MPEG_REG(MREG_BUFFEROUT, 0);
@@ -479,7 +483,7 @@ static void vmpeg12_prot_init(void)
 static void vmpeg12_local_init(void)
 {
     int i;
-
+	vf_receiver = NULL;
     vfq_init(&display_q, VF_POOL_SIZE+1, &vfp_pool_display[0]);
     vfq_init(&recycle_q, VF_POOL_SIZE+1, &vfp_pool_recycle[0]);
     vfq_init(&newframe_q, VF_POOL_SIZE+1, &vfp_pool_newframe[0]);
@@ -529,8 +533,13 @@ static s32 vmpeg12_init(void)
     }
 
     stat |= STAT_ISR_REG;
-
-    vf_reg_provider(&vmpeg_vf_provider);
+ #ifdef CONFIG_POST_PROCESS_MANAGER
+	vf_receiver = vf_ppmgr_reg_provider(&vmpeg_vf_provider);
+	if ((vf_receiver) && (vf_receiver->event_cb))
+	vf_receiver->event_cb(VFRAME_EVENT_PROVIDER_START, NULL, NULL); 	
+ #else 
+ 	vf_reg_provider(&vmpeg_vf_provider);
+ #endif 
 
     stat |= STAT_VF_HOOK;
 
@@ -601,7 +610,13 @@ static int amvdec_mpeg12_remove(struct platform_device *pdev)
         vfq_init(&newframe_q, VF_POOL_SIZE+1, &vfp_pool_newframe[0]);
         spin_unlock_irqrestore(&lock, flags);
 
-        vf_unreg_provider();
+ #ifdef CONFIG_POST_PROCESS_MANAGER
+	vf_ppmgr_unreg_provider();
+	if ((vf_receiver) && (vf_receiver->event_cb))
+	vf_receiver->event_cb(VFRAME_EVENT_PROVIDER_UNREG, NULL, NULL); 	
+ #else 
+ 	vf_unreg_provider();
+ #endif         
         stat &= ~STAT_VF_HOOK;
     }
 

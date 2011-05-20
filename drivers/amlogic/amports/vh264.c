@@ -98,7 +98,7 @@ typedef struct {
     (((x)->v_canvas_index << 16) | \
      ((x)->u_canvas_index << 8)  | \
      ((x)->y_canvas_index << 0))
-
+static const struct vframe_receiver_op_s *vf_receiver;
 static vframe_t *vh264_vf_peek(void);
 static vframe_t *vh264_vf_get(void);
 static void vh264_vf_put(vframe_t *);
@@ -315,9 +315,18 @@ static void vh264_isr(void)
         unsigned int post_canvas;
 
         if (vh264_running) {
-            vf_light_unreg_provider();
-            vh264_local_init();
-            vf_reg_provider(&vh264_vf_provider);
+ #ifdef CONFIG_POST_PROCESS_MANAGER
+	vf_ppmgr_light_unreg_provider();
+	vh264_local_init();
+	vf_receiver = vf_ppmgr_reg_provider(&vh264_vf_provider);
+	printk("error case 1!!!!!!!!!!!!!!!!!!!!!!!!!\n");
+	if ((vf_receiver) && (vf_receiver->event_cb))
+	vf_receiver->event_cb(VFRAME_EVENT_PROVIDER_START, NULL, NULL); 	
+ #else 
+ 	vf_light_unreg_provider();
+ 	vh264_local_init();
+ 	vf_reg_provider(&vh264_vf_provider);
+ #endif       	
             WRITE_MPEG_REG(AV_SCRATCH_7, 0);
             WRITE_MPEG_REG(AV_SCRATCH_8, 0);
             WRITE_MPEG_REG(AV_SCRATCH_9, 0);
@@ -691,6 +700,8 @@ static void vh264_isr(void)
                 last_ptr = fill_ptr;
 
                 INCPTR(fill_ptr);
+            if (vf_receiver)
+    	        vf_receiver->event_cb(VFRAME_EVENT_PROVIDER_VFRAME_READY, NULL, NULL);	                
             } else {
                 if (pic_struct_present && pic_struct == PIC_TOP_BOT) {
                     vf->type = VIDTYPE_INTERLACE_TOP;
@@ -738,6 +749,9 @@ static void vh264_isr(void)
                 last_ptr = fill_ptr;
 
                 INCPTR(fill_ptr);
+
+            if (vf_receiver)
+    	        vf_receiver->event_cb(VFRAME_EVENT_PROVIDER_VFRAME_READY, NULL, NULL);	                
             }
         }
 
@@ -789,20 +803,41 @@ static void vh264_put_timer_func(unsigned long arg)
             printk("$$$$$$decoder is waiting for buffer\n");
             if (++wait_buffer_counter > 2) {
                 amvdec_stop();
-                vf_light_unreg_provider();
+                
+ #ifdef CONFIG_POST_PROCESS_MANAGER
+	vf_ppmgr_light_unreg_provider();
                 vh264_local_init();
                 vh264_prot_init();
-                vf_reg_provider(&vh264_vf_provider);
+	vf_receiver = vf_ppmgr_reg_provider(&vh264_vf_provider);
+	printk("error case 2!!!!!!!!!!!!!!!!!!!!!!!!!\n");
+	if ((vf_receiver) && (vf_receiver->event_cb))
+	vf_receiver->event_cb(VFRAME_EVENT_PROVIDER_START, NULL, NULL); 	
+ #else 
+ 	vf_light_unreg_provider();
+                vh264_local_init();
+                vh264_prot_init();
+ 	vf_reg_provider(&vh264_vf_provider);
+ #endif                            
                 amvdec_start();
             }
         }
     } else if (wait_i_pass_frames > 10) {
         printk("i passed frames > 10\n");
         amvdec_stop();
-        vf_light_unreg_provider();
-        vh264_local_init();
-        vh264_prot_init();
-        vf_reg_provider(&vh264_vf_provider);
+ #ifdef CONFIG_POST_PROCESS_MANAGER
+	vf_ppmgr_light_unreg_provider();
+                vh264_local_init();
+                vh264_prot_init();
+	vf_receiver = vf_ppmgr_reg_provider(&vh264_vf_provider);
+	 printk("error case 3!!!!!!!!!!!!!!!!!!!!!!!!!\n");
+	if ((vf_receiver) && (vf_receiver->event_cb))
+	vf_receiver->event_cb(VFRAME_EVENT_PROVIDER_START, NULL, NULL); 	
+ #else 
+ 	vf_light_unreg_provider();
+                vh264_local_init();
+                vh264_prot_init();
+ 	vf_reg_provider(&vh264_vf_provider);
+ #endif        
         amvdec_start();
     }
 
@@ -932,7 +967,7 @@ static void vh264_local_init(void)
     fill_ptr = get_ptr = put_ptr = putting_ptr = 0;
 
     frame_buffer_size = AVIL_DPB_BUFF_SIZE;
-
+    vf_receiver = NULL;
     frame_prog = 0;
     frame_width = vh264_amstream_dec_info.width;
     frame_height = vh264_amstream_dec_info.height;
@@ -1028,8 +1063,14 @@ static s32 vh264_init(void)
 
     stat |= STAT_ISR_REG;
 
-    vf_reg_provider(&vh264_vf_provider);
 
+ #ifdef CONFIG_POST_PROCESS_MANAGER
+	vf_receiver = vf_ppmgr_reg_provider(&vh264_vf_provider);
+	if ((vf_receiver) && (vf_receiver->event_cb))
+	vf_receiver->event_cb(VFRAME_EVENT_PROVIDER_START, NULL, NULL); 	
+ #else 
+ 	vf_reg_provider(&vh264_vf_provider);
+ #endif 
     stat |= STAT_VF_HOOK;
 
     recycle_timer.data = (ulong) & recycle_timer;
@@ -1074,7 +1115,14 @@ static int vh264_stop(void)
         spin_lock_irqsave(&lock, flags);
         fill_ptr = get_ptr = put_ptr = putting_ptr = 0;
         spin_unlock_irqrestore(&lock, flags);
-        vf_unreg_provider();
+        
+ #ifdef CONFIG_POST_PROCESS_MANAGER
+	vf_ppmgr_unreg_provider();
+	if ((vf_receiver) && (vf_receiver->event_cb))
+	vf_receiver->event_cb(VFRAME_EVENT_PROVIDER_UNREG, NULL, NULL); 	
+ #else 
+ 	vf_unreg_provider();
+ #endif         
         stat &= ~STAT_VF_HOOK;
     }
 

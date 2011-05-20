@@ -10,6 +10,7 @@ obj-y += display/
 
 #obj-y  += hdmi/
 
+obj-$(CONFIG_POST_PROCESS_MANAGER) += ppmgr/
 
 #####for Basic drivers#####
 
