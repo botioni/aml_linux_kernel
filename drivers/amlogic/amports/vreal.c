@@ -542,7 +542,7 @@ static void vreal_local_init(void)
 
     //vreal_ratio = vreal_amstream_dec_info.ratio;
     vreal_ratio = 0x100;
-	svf_receiver = NULL;
+	vf_receiver = NULL;
     fill_ptr = get_ptr = put_ptr = putting_ptr = 0;
 
     frame_prog = 0;
