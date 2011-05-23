@@ -93,7 +93,7 @@ extern void task_tx_key_setting(unsigned force_wrong);
 #define HDMI_M1B 'b'
 #define HDMI_M1C 'c'
 static unsigned char hdmi_chip_type = 0;
-static unsigned char hdmi_pll_mode = 0; /* 1, use external clk as hdmi pll source */
+unsigned char hdmi_pll_mode = 0; /* 1, use external clk as hdmi pll source */
 
 #define HSYNC_POLARITY      1                       // HSYNC polarity: active high 
 #define VSYNC_POLARITY      1                       // VSYNC polarity: active high
@@ -2336,9 +2336,6 @@ static void hdmitx_m1b_cntl(hdmitx_dev_t* hdmitx_device, int cmd, unsigned argv)
             phy_pll_off();
             digital_clk_off(3); //do not off sys clk
         }
-    }
-    else if( cmd == HDMITX_HWCMD_PLL_MODE){
-        hdmi_pll_mode = argv;
     }
                 
 }
