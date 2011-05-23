@@ -109,6 +109,17 @@ static struct platform_device jpeglogo_device = {
 };
 #endif
 
+#ifdef CONFIG_SARADC_AM
+#include <linux/saradc.h>
+static struct platform_device saradc_device = {
+	.name = "saradc",
+	.id = 0,
+	.dev = {
+		.platform_data = NULL,
+	},
+};
+#endif
+
 #if defined(CONFIG_KEYPADS_AM)||defined(CONFIG_KEYPADS_AM_MODULE)
 static struct resource intput_resources[] = {
 	{
@@ -129,12 +140,32 @@ static struct platform_device input_device = {
 #endif
 
 #if defined(CONFIG_ADC_KEYPADS_AM)||defined(CONFIG_ADC_KEYPADS_AM_MODULE)
+#include <linux/input.h>
+#include <linux/adc_keypad.h>
+
+static struct adc_key adc_kp_key[] = {// android\rootfs\device\amlogic\m1ref\aml-usbkbd.kl
+    {KEY_MENU,  "menu", CHAN_4, 0, 60},//KEY_PAGEUP=15=BACK in aml-usbkbd.kl
+    {KEY_UP,  "up", CHAN_4, 179, 60},//KEY_PAGEUP=104=VOLUME_UP in aml-usbkbd.kl
+    {KEY_DOWN, "down", CHAN_4, 285, 60},//KEY_PAGEUP=217=VOLUME_DOWN in aml-usbkbd.kl
+    {KEY_LEFT ,"left", CHAN_4, 400, 60},
+    {KEY_RIGHT, "right", CHAN_4, 507, 60},//KEY_PAGEUP=102=HOME in aml-usbkbd.kl
+    {KEY_ESC, "exit", CHAN_4, 623, 60},//KEY_LEFTMETA=125=SEARCH in aml-usbkbd.kl
+    {KEY_ENTER, "ok", CHAN_4, 851, 60},//KEY_LEFTMETA=125=SEARCH in aml-usbkbd.kl
+};
+
+static struct adc_kp_platform_data adc_kp_pdata = {
+    .key = &adc_kp_key[0],
+    .key_num = ARRAY_SIZE(adc_kp_key),
+};
+
 static struct platform_device input_device_adc = {
-	.name = "m1-adckp",
-	.id = 0,
-	.num_resources = 0,
-	.resource = NULL,
-	
+    .name = "m1-adckp",
+    .id = 0,
+    .num_resources = 0,
+    .resource = NULL,
+    .dev = {
+    .platform_data = &adc_kp_pdata,
+    }
 };
 #endif
 
@@ -468,7 +499,7 @@ static struct aml_card_info  amlogic_card_info[] = {
 		.card_wp_input_mask = PREG_IO_11_MASK,
 		.card_extern_init = 0,
 	},
-#if 0
+#if 1
 	[1] = {
 		.name = "sdio_card",
 		.work_mode = CARD_HW_MODE,
@@ -1298,6 +1329,9 @@ static struct platform_device __initdata *platform_devs[] = {
     #endif	
     #if defined(CONFIG_AMLOGIC_SPI_NOR)
     		&amlogic_spi_nor_device,
+    #endif
+    #ifdef CONFIG_SARADC_AM
+    &saradc_device,
     #endif
     #if defined(CONFIG_ADC_KEYPADS_AM)||defined(CONFIG_ADC_KEYPADS_AM_MODULE)
 		&input_device_adc,
