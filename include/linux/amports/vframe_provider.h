@@ -60,7 +60,7 @@ vframe_receiver_op_t* vf_vm_reg_provider(const vframe_provider_t *p);
 vframe_receiver_op_t* vf_vm_unreg_provider(void);
  #ifdef CONFIG_POST_PROCESS_MANAGER
 const vframe_receiver_op_t* vf_ppmgr_reg_provider(const struct vframe_provider_s *p);
-void vf_ppmgr_light_unreg_provider(void);
+void vf_ppmgr_reset(void);
 void vf_ppmgr_unreg_provider(void);
 #endif
 #endif /* VFRAME_PROVIDER_H */

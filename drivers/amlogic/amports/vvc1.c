@@ -572,6 +572,23 @@ static void vvc1_local_init(void)
     }
 }
 
+#ifdef CONFIG_POST_PROCESS_MANAGER
+static void vvc1_ppmgr_reset(void)
+{
+    const struct vframe_receiver_op_s *vf_receiver_bak = vf_receiver;
+
+    vf_ppmgr_reset();
+    vvc1_local_init();
+
+    vf_receiver = vf_receiver_bak;
+
+    if ((vf_receiver) && (vf_receiver->event_cb))
+        vf_receiver->event_cb(VFRAME_EVENT_PROVIDER_START, NULL, NULL); 	
+    
+    printk("vvc1dec: vf_ppmgr_reset\n");
+}
+#endif
+
 static void vvc1_put_timer_func(unsigned long arg)
 {
     struct timer_list *timer = (struct timer_list *)arg;
@@ -583,20 +600,14 @@ static void vvc1_put_timer_func(unsigned long arg)
 #if 1
     if (READ_MPEG_REG(VC1_SOS_COUNT) > 10) {
         amvdec_stop();
- #ifdef CONFIG_POST_PROCESS_MANAGER
-	vf_ppmgr_light_unreg_provider();
+#ifdef CONFIG_POST_PROCESS_MANAGER
+        vvc1_ppmgr_reset();
+#else 
+        vf_light_unreg_provider();
         vvc1_local_init();
+        vf_reg_provider(&vvc1_vf_provider);
+#endif         
         vvc1_prot_init();
-	vf_receiver = vf_ppmgr_reg_provider(&vvc1_vf_provider);
-	if ((vf_receiver) && (vf_receiver->event_cb))
-	vf_receiver->event_cb(VFRAME_EVENT_PROVIDER_START, NULL, NULL); 	
- #else 
- 	vf_light_unreg_provider();
-        vvc1_local_init();
-        vvc1_prot_init();
- 	vf_reg_provider(&vvc1_vf_provider);
- #endif         
-
         amvdec_start();
     }
 #endif

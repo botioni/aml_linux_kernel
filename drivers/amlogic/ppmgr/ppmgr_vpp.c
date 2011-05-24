@@ -41,6 +41,7 @@ typedef struct ppframe_s {
 } ppframe_t;
 
 static spinlock_t lock = SPIN_LOCK_UNLOCKED;
+static bool ppmgr_blocking = false;
 
 static struct ppframe_s vfp_pool[VF_POOL_SIZE];
 static struct vframe_s *vfp_pool_free[VF_POOL_SIZE+1];
@@ -216,9 +217,11 @@ void vf_ppmgr_unreg_provider(void)
     mutex_unlock(&ppmgr_mutex);
 }
 
-void vf_ppmgr_light_unreg_provider(void)
+void vf_ppmgr_reset(void)
 {
-	vf_light_unreg_provider();	
+	ppmgr_blocking = true;
+	
+	up(&thread_sem);
 }
 
 static inline vframe_t *ppmgr_vf_peek_dec(void)
@@ -231,7 +234,7 @@ static inline vframe_t *ppmgr_vf_peek_dec(void)
 
 static inline vframe_t *ppmgr_vf_get_dec(void)
 {
-    if (dec_vfp)
+    if ((dec_vfp) && (!ppmgr_blocking))
     	return dec_vfp->get();
 
     return NULL;
@@ -239,7 +242,7 @@ static inline vframe_t *ppmgr_vf_get_dec(void)
 
 static inline void ppmgr_vf_put_dec(vframe_t *vf)
 {
-    if (dec_vfp)
+    if ((dec_vfp) && (!ppmgr_blocking))
         dec_vfp->put(vf);
 }
 
@@ -418,8 +421,18 @@ static int ppmgr_task(void *data)
             break;
 
         /* process when we have both input and output space */
-        while (ppmgr_vf_peek_dec() && (!vfq_empty(&q_free)))
+        while (ppmgr_vf_peek_dec() && (!vfq_empty(&q_free)) && (!ppmgr_blocking)) {
             process_vf_rotate(ppmgr_vf_get_dec(), context, &ge2d_config);
+        }
+        
+        if (ppmgr_blocking) {
+            vf_light_unreg_provider();
+            vf_local_init();
+            vf_reg_provider(&ppmgr_vf_provider);
+            ppmgr_blocking = false;
+            up(&thread_sem);
+            printk("ppmgr rebuild from light-unregister\n");
+        }
 
 #if DDD
         printk("process paused, dec %p, free %d, avail %d\n",
