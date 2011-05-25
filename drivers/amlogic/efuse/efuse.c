@@ -163,7 +163,7 @@
              CNTL1_AUTO_RD_ENABLE_BIT, CNTL1_AUTO_RD_ENABLE_SIZE );
      }
 
-     printk(KERN_INFO "__efuse_read_dword: addr=%ld, data=0x%lx\n", addr, *data);
+     //printk(KERN_INFO "__efuse_read_dword: addr=%ld, data=0x%lx\n", addr, *data);
  }
 
 
@@ -274,12 +274,13 @@
          return pc - contents;
  }
 
- static ssize_t __efuse_write(const char __user *buf,
+ static ssize_t __efuse_write(const char *buf,
      size_t count, loff_t *ppos )
  {
-         unsigned char contents[EFUSE_BYTES];
          unsigned pos = *ppos;
+         loff_t *readppos = ppos;
          unsigned char *pc;
+	  char efuse_data[EFUSE_USERIDF_BYTES],null_data[EFUSE_USERIDF_BYTES];
 
          if (pos >= EFUSE_BYTES)
                  return 0;       /* Past EOF */
@@ -288,15 +289,19 @@
                  count = EFUSE_BYTES - pos;
          if (count > EFUSE_BYTES)
                  return -EFAULT;
-         if (copy_from_user(contents, buf, count))
-                 return -EFAULT;
 
-         for (pc = contents; count--; ++pos, ++pc)
+         __efuse_read(efuse_data, count, readppos);
+         memset(null_data,0,count);
+         if(strncmp(efuse_data,null_data,count) != 0){
+		 printk(" Data had written ,the block is not clean!!!\n");
+		 return -EFAULT;
+         	}
+         for (pc = buf; count--; ++pos, ++pc)
                  __efuse_write_byte(pos, *pc);
 
          *ppos = pos;
 
-         return pc - contents;
+         return (const char *)pc - buf;
  }
 
 
