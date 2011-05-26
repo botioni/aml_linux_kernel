@@ -372,14 +372,17 @@ static void process_vf_rotate(vframe_t *vf, ge2d_context_t *context, config_para
     ge2d_config->dst_para.y_rev = 0;
     ge2d_config->dst_xy_swap=0;
 
-    if(ppmgr_device.angle==1)
+    if(ppmgr_device.angle==1){
         ge2d_config->dst_xy_swap=1;
-    else if(ppmgr_device.angle==2)
-        ge2d_config->dst_para.y_rev=1;
+        ge2d_config->dst_para.x_rev = 1;
+    }
+    else if(ppmgr_device.angle==2){
+    ge2d_config->dst_para.x_rev = 1;
+        ge2d_config->dst_para.y_rev=1;        
+    }
     else if(ppmgr_device.angle==3)  {
 		ge2d_config->dst_xy_swap=1;
 		ge2d_config->dst_para.y_rev=1;
-		ge2d_config->dst_para.x_rev = 1;
     }
     ge2d_config->dst_para.color = 0;
     ge2d_config->dst_para.top = 0;
