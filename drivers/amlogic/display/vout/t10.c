@@ -55,26 +55,25 @@ static tcon_conf_t tcon_config =
     .height     = LCD_HEIGHT,
     .max_width  = MAX_WIDTH,
     .max_height = MAX_HEIGHT,
-    .video_on_line = VIDEO_ON_LINE,
-    //.pll_ctrl = 0x0660,		//64MHz, 60Hz
-    .pll_ctrl = 0x064b,		//100MHz, 60Hz
-    .clk_ctrl = 0x1fc1,
+    .video_on_line = VIDEO_ON_LINE,    
+    .pll_ctrl = 0x619, //clk=100M, frame_rate=60Hz
+    .clk_ctrl = 0x401, 
     .gamma_cntl_port = (1 << LCD_GAMMA_EN) | (0 << LCD_GAMMA_RVS_OUT) | (1 << LCD_GAMMA_VCOM_POL),
     .gamma_vcom_hswitch_addr = 0,
     .rgb_base_addr = 0xf0,
     .rgb_coeff_addr = 0x74a,
     .pol_cntl_addr = (0x0 << LCD_CPH1_POL) |(0x1 << LCD_HS_POL) | (0x1 << LCD_VS_POL),
     .dith_cntl_addr = 0x600,
-    .sth1_hs_addr = 2048+60-480,
-    .sth1_he_addr = 2048+60-480-320,
+    .sth1_hs_addr = 0,
+    .sth1_he_addr = 0,
     .sth1_vs_addr = 0,
-    .sth1_ve_addr = MAX_HEIGHT - 1,
+    .sth1_ve_addr = 0,
     .sth2_hs_addr = 0,
     .sth2_he_addr = 0,
     .sth2_vs_addr = 0,
     .sth2_ve_addr = 0,
-    .oeh_hs_addr = 60,
-    .oeh_he_addr = 60+LCD_WIDTH-1,
+    .oeh_hs_addr = 67,
+    .oeh_he_addr = 67+LCD_WIDTH,
     .oeh_vs_addr = VIDEO_ON_LINE,
     .oeh_ve_addr = VIDEO_ON_LINE+LCD_HEIGHT-1,
     .vcom_hswitch_addr = 0,
@@ -89,9 +88,9 @@ static tcon_conf_t tcon_config =
     .cpv2_vs_addr = 0,
     .cpv2_ve_addr = 0,
     .stv1_hs_addr = 0,
-    .stv1_he_addr = MAX_WIDTH - 1,
-    .stv1_vs_addr = 22-16,
-    .stv1_ve_addr = 800+22-16-10,
+    .stv1_he_addr = 0,
+    .stv1_vs_addr = 0,
+    .stv1_ve_addr = 0,
     .stv2_hs_addr = 0,
     .stv2_he_addr = 0,
     .stv2_vs_addr = 0,
@@ -110,12 +109,12 @@ static tcon_conf_t tcon_config =
     .oev3_ve_addr = 0,
     .inv_cnt_addr = (0<<LCD_INV_EN) | (0<<LCD_INV_CNT),
     .tcon_misc_sel_addr = (1<<LCD_STV1_SEL) | (1<<LCD_STV2_SEL),
-    .dual_port_cntl_addr = (1<<LCD_TTL_SEL) | (1<<LCD_ANALOG_SEL_CPH3) | (1<<LCD_ANALOG_3PHI_CLK_SEL) | (1<<1) | (1<<0),
+    .dual_port_cntl_addr = (1<<LCD_TTL_SEL) | (1<<LCD_ANALOG_SEL_CPH3) | (1<<LCD_ANALOG_3PHI_CLK_SEL),
     .flags = 0,
     .screen_width = 4,
     .screen_height = 3,
-    .sync_duration_num = 60,
-    .sync_duration_den = 1,
+    .sync_duration_num = 601,
+    .sync_duration_den = 10,
     .power_on=t13_power_on,
     .power_off=t13_power_off,
     .backlight_on = power_on_backlight,
@@ -252,9 +251,9 @@ static void set_tcon_pinmux(void)
 {
     /* TCON control pins pinmux */
     /* GPIOA_5 -> LCD_Clk, GPIOA_0 -> TCON_STH1, GPIOA_1 -> TCON_STV1, GPIOA_2 -> TCON_OEH, */
-    set_mio_mux(0, ((1<<11)|(1<<14)|(1<<15)|(1<<16)));
+    set_mio_mux(0, ((1<<11)|(1<<14)));
     //set_mio_mux(4,(3<<0)|(3<<2)|(3<<4));   //For 8bits
-    set_mio_mux(4,(1<<0)|(1<<2)|(31<<4));   //For 6bits
+    set_mio_mux(4,(1<<0)|(1<<2)|(1<<4));   //For 6bits
 //    //PP1 -> UPDN:0, PP2 -> SHLR:1
 //#ifdef CONFIG_SN7325
 //    configIO(1, 0);
