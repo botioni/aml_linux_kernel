@@ -263,13 +263,7 @@ static int sn7325_pwr_rst(void)
     //end
     set_gpio_val(GPIOA_bank_bit0_14(7), GPIOA_bit_bit0_14(7), 1); //high  //PWM H:
     set_gpio_mode(GPIOA_bank_bit0_14(7), GPIOA_bit_bit0_14(7), GPIO_OUTPUT_MODE);
-    configIO(0, 0);
-    setIO_level(0, 1, 7);   //BL_EN H:
-        configIO(0, 0);
-    setIO_level(0, 0, 0);  //LCD_PWR_EN   L
-    
-    
-
+		
     return 0;
 }
 
@@ -663,7 +657,11 @@ static struct platform_device aml_audio={
 #define PWM_MAX_VAL		(420)
 static unsigned int rt5621_is_hp_pluged()
 {
-	int level = 0;
+		//EIO-->OD5 : 0
+		configIO(0, 0);
+		setIO_level(0, 0, 5);
+		
+		int level = 1;
     int cs_no = 0;
     // Enable VBG_EN
     WRITE_CBUS_REG_BITS(PREG_AM_ANALOG_ADDR, 1, 0, 1);
@@ -678,11 +676,11 @@ static unsigned int rt5621_is_hp_pluged()
                                 (7 << 4)    |       // CS1 REF, Current FeedBack: about 0.505V
                                 (0 << 0));           // DIMCTL Analog dimmer
     cs_no = READ_CBUS_REG(LED_PWM_REG3);
-	
-	if( cs_no & ( 1 << 15 ) )
-		level = 1;
 
-    return level;	//return 1: hp pluged, 0: hp unpluged.
+		if( cs_no & ( 1 << 14 ) )
+		level = 0;
+		
+    return level;	//return 0: hp pluged, 1: hp unpluged.
 }
 static struct rt5621_platform_data rt5621_pdata = {
     .is_hp_pluged = &rt5621_is_hp_pluged,
@@ -1847,6 +1845,16 @@ static void aml_8726m_power_on_bl(void)
         //BL_PWM -> GPIOA_7: 1 Pull high, For En_5V
 //    set_gpio_val(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), 1);
 //    set_gpio_mode(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), GPIO_OUTPUT_MODE);
+//#ifdef CONFIG_SN7325
+//    configIO(0, 0);  //configIO(0, 0);
+//    setIO_level(0, 1, 7);  //setIO_level(0, 0, 4);
+//#endif
+#ifdef CONFIG_SN7325
+    configIO(0, 0);
+    setIO_level(0, 1, 7);
+    configIO(0, 0);
+    setIO_level(0, 0, 0);
+#endif
 }
 
 static void aml_8726m_power_off_bl(void)
