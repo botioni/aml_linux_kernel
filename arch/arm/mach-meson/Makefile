@@ -49,7 +49,7 @@ obj-$(CONFIG_MACH_MESON_8726M_G7)	+= board-8726m-g7.o
 obj-$(CONFIG_MACH_MESON_6236M_SH)	+= board-6236m-sh.o
 obj-$(CONFIG_MACH_MESON_8626M_SH)	+= board-8626m-sh.o
 
-obj-$(CONFIG_MACH_MESON_8726M_SONY)	+= board-8726m-sony.o
+obj-$(CONFIG_MACH_MESON_8726M_REFB17)	+= board-8726m-refb17.o
 
 
 # Power Management

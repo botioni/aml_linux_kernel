@@ -151,11 +151,11 @@ config MACH_MESON_8726M_REFB13
 	help
 	  Include support for the AMLOGIC M1 8726M Emulation Baseboard platform.
 	  
-config MACH_MESON_8726M_SONY
+config MACH_MESON_8726M_REFB17
 	select GENERIC_ALLOCATOR
-	bool "Support M1 8726(sony dpf) platform(machid=2956)"
+	bool "Support M1 8726(REFB17) platform(machid=2956)"
 	help
-	  Include support for the AMLOGIC M1 8726M sony super dpf platform.
+	  Include support for the AMLOGIC M1 8726M Emulation Baseboard platform.
 	  	  
 config MACH_MESON_8726M_REFB14
 	select GENERIC_ALLOCATOR
