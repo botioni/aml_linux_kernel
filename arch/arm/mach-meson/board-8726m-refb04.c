@@ -66,6 +66,10 @@
 #include <linux/mxc622x.h>
 #endif
 
+#ifdef CONFIG_SENSORS_MMA8452	//add by Rojam
+#include <linux/mma8452.h>
+#endif
+
 #ifdef CONFIG_SENSORS_MMC31XX
 #include <linux/mmc31xx.h>
 #endif
@@ -2143,6 +2147,12 @@ static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
 #ifdef CONFIG_SENSORS_MXC622X
     {
         I2C_BOARD_INFO(MXC622X_I2C_NAME,  MXC622X_I2C_ADDR),
+    },
+#endif
+
+#ifdef CONFIG_SENSORS_MMA8452
+    {
+        I2C_BOARD_INFO(MMA8452_I2C_NAME,  MMA8452_I2C_ADDR),
     },
 #endif
 
