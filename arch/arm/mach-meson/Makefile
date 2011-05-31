@@ -36,6 +36,7 @@ obj-$(CONFIG_MACH_MESON_8726M_REFB14)	+= board-8726m-refb14.o
 obj-$(CONFIG_MACH_MESON_8726M_REFB16)	+= board-8726m-refb16.o
 obj-$(CONFIG_MACH_MESON_8726M_REFB17)	+= board-8726m-refb17.o
 obj-$(CONFIG_MACH_MESON_8726M_REFB18)	+= board-8726m-refb18.o
+obj-$(CONFIG_MACH_MESON_8726M_REFB19)	+= board-8726m-refb19.o
 
 obj-$(CONFIG_MACH_MESON_8726M_REFC01)	+= board-8726m-refc01.o
 obj-$(CONFIG_MACH_MESON_8626M_REFC02)	+= board-8626m-refc02.o
