@@ -32,6 +32,8 @@ obj-$(CONFIG_AML_TCON_G7)  += g7.o
 
 obj-$(CONFIG_AML_TCON_A18)  += a18.o
 
+obj-$(CONFIG_AML_TCON_A19)  += a19.o
+
 obj-$(CONFIG_AML_TCON_R10)  += r10.o
 
 obj-$(CONFIG_AML_TCON_REFB13)  += refb13.o
