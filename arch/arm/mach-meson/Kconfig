@@ -156,6 +156,12 @@ config MACH_MESON_8726M_REFB17
 	bool "Support M1 8726(REFB17) platform(machid=2956)"
 	help
 	  Include support for the AMLOGIC M1 8726M Emulation Baseboard platform.
+
+config MACH_MESON_8726M_REFB18
+	select GENERIC_ALLOCATOR
+	bool "Support M1 8726(REFB18) platform(machid=2956)"
+	help
+	  Include support for the AMLOGIC M1 8726M Emulation Baseboard platform.
 	  	  
 config MACH_MESON_8726M_REFB14
 	select GENERIC_ALLOCATOR

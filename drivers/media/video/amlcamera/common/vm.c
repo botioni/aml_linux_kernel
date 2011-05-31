@@ -768,12 +768,12 @@ int vm_sw_post_process(int canvas , int addr)
         char* dst_buff= (char*)addr+output_para.width* output_para.height;
         char* src_buff = (char*)buffer_u_start;
         char* src2_buff= (char*)buffer_v_start;
-	for(i = 0 ;i < output_para.height/2; i++){
-		interleave_uv(src_buff, src2_buff, dst_buff, output_para.width/2);
-		src_buff +=  canvas_work_u.width;
-		src2_buff += 	canvas_work_v.width;	
-		dst_buff += output_para.width;
-	}
+		for(i = 0 ;i < output_para.height/2; i++){
+			interleave_uv(src_buff, src2_buff, dst_buff, output_para.width/2);
+			src_buff +=  canvas_work_u.width;
+			src2_buff += 	canvas_work_v.width;	
+			dst_buff += output_para.width;
+		}
 	
     	iounmap(buffer_u_start);
     	iounmap(buffer_v_start);

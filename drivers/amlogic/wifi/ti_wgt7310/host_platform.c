@@ -35,7 +35,6 @@
 #include <linux/kernel.h>
 #include <asm/io.h>
 #include <linux/delay.h>
-#include <linux/gpio.h>
 
 #include "host_platform.h"
 #include "ioctl_init.h"
@@ -50,15 +49,15 @@
 static void dump_omap_registers(void);
 #endif
 
+extern void extern_wifi_power_wl_en(int is_power);
+
 #define SDIO_ATTEMPT_LONGER_DELAY_LINUX  150
 static struct resource *wifi_irqres = NULL;
 
 int hPlatform_hardResetTnetw(void)
 {
-    /* Turn power OFF*/
-  configIO(0, 0);
-        setIO_level(0, 0, 5);
-
+	extern_wifi_power_wl_en(0);
+	return 0;
 } /* hPlatform_hardResetTnetw() */
 
 
@@ -66,12 +65,8 @@ int hPlatform_hardResetTnetw(void)
 /* Turn device power off */
 int hPlatform_DevicePowerOff (void)
 {
- 
-     configIO(0, 0);
-        setIO_level(0, 0, 5);
-    
+	extern_wifi_power_wl_en(0);
     mdelay(10);
-    
     return 0;
 
 }
@@ -81,21 +76,15 @@ int hPlatform_DevicePowerOff (void)
 /* Turn device power off according to a given delay */
 int hPlatform_DevicePowerOffSetLongerDelay(void)
 {
-    
-    configIO(0, 0);
-        setIO_level(0, 0, 5);
-    
-    mdelay(SDIO_ATTEMPT_LONGER_DELAY_LINUX);
-    
+	extern_wifi_power_wl_en(0);
+	mdelay(SDIO_ATTEMPT_LONGER_DELAY_LINUX);
     return 0;
 }
 
 /* Turn device power on */
 int hPlatform_DevicePowerOn (void)
 {
-		return 0;
-    
-
+		return 0; 
 }
 
 /*--------------------------------------------------------------------------------------*/

@@ -34,6 +34,8 @@ obj-$(CONFIG_MACH_MESON_8726M_REFB12)	+= board-8726m-refb12.o
 obj-$(CONFIG_MACH_MESON_8726M_REFB13)	+= board-8726m-refb13.o
 obj-$(CONFIG_MACH_MESON_8726M_REFB14)	+= board-8726m-refb14.o
 obj-$(CONFIG_MACH_MESON_8726M_REFB16)	+= board-8726m-refb16.o
+obj-$(CONFIG_MACH_MESON_8726M_REFB17)	+= board-8726m-refb17.o
+obj-$(CONFIG_MACH_MESON_8726M_REFB18)	+= board-8726m-refb18.o
 
 obj-$(CONFIG_MACH_MESON_8726M_REFC01)	+= board-8726m-refc01.o
 obj-$(CONFIG_MACH_MESON_8626M_REFC02)	+= board-8626m-refc02.o
@@ -48,9 +50,6 @@ obj-$(CONFIG_MACH_MESON_8226M)	+= board-8226m.o
 obj-$(CONFIG_MACH_MESON_8726M_G7)	+= board-8726m-g7.o
 obj-$(CONFIG_MACH_MESON_6236M_SH)	+= board-6236m-sh.o
 obj-$(CONFIG_MACH_MESON_8626M_SH)	+= board-8626m-sh.o
-
-obj-$(CONFIG_MACH_MESON_8726M_REFB17)	+= board-8726m-refb17.o
-
 
 # Power Management
 obj-$(CONFIG_SUSPEND)			+= pm.o

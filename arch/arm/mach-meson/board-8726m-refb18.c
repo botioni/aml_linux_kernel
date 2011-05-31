@@ -48,7 +48,7 @@
 #include <mach/gpio.h>
 #include <linux/delay.h>
 #include <mach/clk_set.h>
-#include "board-8726m-refa00.h"
+#include "board-8726m-refb18.h"
 
 #if defined(CONFIG_TOUCHSCREEN_ADS7846)
 #include <linux/spi/spi.h>
@@ -70,6 +70,10 @@
 #include <linux/mmc31xx.h>
 #endif
 
+#ifdef CONFIG_TWX_TC101
+#include <linux/twx_tc101.h>
+#endif
+
 #ifdef CONFIG_AMLOGIC_PM
 #include <linux/power_supply.h>
 #include <linux/aml_power.h>
@@ -86,6 +90,15 @@
 #ifdef CONFIG_SND_AML_M1_MID_WM8900
 #include <sound/wm8900.h>
 #endif
+
+#ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE
+#include <media/amlogic/aml_camera.h>
+#endif
+
+#ifdef CONFIG_GOODIX_CAPACITIVE_TOUCHSCREEN
+#include <linux/goodix_touch.h>
+#endif
+
 
 #if defined(CONFIG_JPEGLOGO)
 static struct resource jpeglogo_resources[] = {
@@ -124,7 +137,7 @@ static struct platform_device input_device = {
 	.id = 0,
 	.num_resources = ARRAY_SIZE(intput_resources),
 	.resource = intput_resources,
-	
+    
 };
 #endif
 
@@ -142,9 +155,59 @@ static struct platform_device saradc_device = {
 #ifdef CONFIG_ADC_TOUCHSCREEN_AM
 #include <linux/adc_ts.h>
 
+#define XLCD    1280
+#define YLCD    768
+#define SWAP_XY 1
+#define XPOL    1
+#define YPOL    1
+#define YMIN 125
+#define YMAX 860
+#define XMIN 69
+#define XMAX 960
+/*#define YMIN 130
+#define YMAX 870
+#define XMIN 64
+#define XMAX 950
+#define XMIN 130
+#define XMAX 870
+#define YMIN 64
+#define YMAX 950
+#define XMIN 30
+#define XMAX 980
+#define YMIN 70
+#define YMAX 980
+*/
+int adcts_convert(int x, int y)
+{
+#if (SWAP_XY == 1)
+    swap(x, y);
+#endif
+    if (x < XMIN) x = XMIN;
+    if (x > XMAX) x = XMAX;
+    if (y < YMIN) y = YMIN;
+    if (y > YMAX) y = YMAX;
+#if (XPOL == 1)
+    x = XMAX + XMIN - x;
+#endif
+#if (YPOL == 1)
+    y = YMAX + YMIN - y;
+#endif
+    x = (x- XMIN) * XLCD / (XMAX - XMIN);
+    y = (y- YMIN) * YLCD / (YMAX - YMIN);
+
+    return (x << 16) | y;
+}
+
 static struct adc_ts_platform_data adc_ts_pdata = {
-	.irq = -1,	//INT_SAR_ADC
-	.x_plate_ohms = 400,
+    .irq = -1,  //INT_SAR_ADC
+    .x_plate_ohms = 400,
+    .poll_delay = 1,
+    .poll_period = 5,
+    .abs_xmin = 0,
+    .abs_xmax = XLCD,
+    .abs_ymin = 0,
+    .abs_ymax = YLCD,    
+    .convert = adcts_convert,
 };
 
 static struct platform_device adc_ts_device = {
@@ -161,20 +224,33 @@ static struct platform_device adc_ts_device = {
 #include <linux/adc_keypad.h>
 
 static struct adc_key adc_kp_key[] = {
-#if 1	// w10
-	{KEY_PAGEDOWN,		"vol-",	CHAN_4,	0, 60},	// 0v	102
-	{KEY_PAGEUP,		"vol+",	CHAN_4,	306, 60},	// 0v	28
-	{KEY_TAB,	             "exit",     CHAN_4,	602, 60},	// 0v	15
-	{KEY_LEFTMETA,		"menu",	CHAN_4,	760, 60},	// 0v	125
-	{KEY_HOME,		"home",	CHAN_4,	854, 60},	// 0v	125		
+#if 1	// tm809
+	{KEY_TAB,		"exit",	CHAN_4,   0, 60},	// 1.80v
+	{KEY_HOME,		"home",	CHAN_4, 306, 30},	// 1.80v
+	{KEY_LEFTMETA,	"menu",	CHAN_4,	385, 30},	// 2.11v
+	{KEY_SEARCH,	"search",CHAN_4, 472, 60},	// 1.52v
+	{KEY_PAGEDOWN,	"vol-",	CHAN_4,	558, 60},	// 0v
+	{KEY_PAGEUP,	"vol+",	CHAN_4,	654, 60},	// 0.99v
+/*	
+	{KEY_PAGEDOWN,	"vol-",	CHAN_4,	0, 	60},	// 0v
+	//{KEY_DOWN,	"vol-",	CHAN_4,	0, 	60},	// 0v
+	{KEY_PAGEUP,	"vol+",	CHAN_4,	306, 30},	// 0.99v
+	//{KEY_ENTER,		"enter",	CHAN_4,	306, 30},	// 0.99v
+	{KEY_LEFT,		"left",	CHAN_4, 385, 30},	// 1.24v
+	{KEY_RIGHT,		"right",CHAN_4, 472, 60},	// 1.52v
+	//{KEY_EXIT,		"exit",	CHAN_4, 558, 60},	// 1.80v
+	{KEY_TAB,		"exit",	CHAN_4, 558, 60},	// 1.80v
+	{KEY_LEFTMETA,	"menu",	CHAN_4,	654, 60},	// 2.11v
+	//{KEY_HOME,		"menu",	CHAN_4,	654, 60},	// 2.11v
+	*/
 #else // arm
 	{KEY_MENU,		"menu",	CHAN_4,	0, 60},	// 0v
-	{KEY_UP,			"up",		CHAN_4, 180, 60},	// 0.58v
+	{KEY_UP,		"up",	CHAN_4, 180, 60},	// 0.58v
 	{KEY_DOWN,		"down",	CHAN_4, 285, 60},	// 0.92v
 	{KEY_LEFT,		"left",	CHAN_4, 400, 60},	// 1.29v
-	{KEY_RIGHT,		"right",	CHAN_4, 505, 60},	// 1.63v
+	{KEY_RIGHT,		"right",CHAN_4, 505, 60},	// 1.63v
 	{KEY_EXIT,		"exit",	CHAN_4, 624, 60},	// 2.01v
-	{KEY_OK,		"ok",		CHAN_4, 850, 60},	// 2.74v
+	{KEY_OK,		"ok",	CHAN_4, 850, 60},	// 2.74v
 #endif
 };
 
@@ -239,6 +315,8 @@ static struct platform_device input_device_key = {
         .platform_data = &key_input_pdata,
     }
 };
+#else
+static int board_ver = 0;
 #endif
 
 #if defined(CONFIG_FB_AM)
@@ -273,13 +351,17 @@ static void set_usb_a_vbus_power(char is_power_on)
 #define USB_A_POW_GPIO_BIT_OFF	0
 	if(is_power_on){
 		printk(KERN_INFO "set usb port power on (board gpio %d)!\n",USB_A_POW_GPIO_BIT);
-		set_gpio_mode(USB_A_POW_GPIO,USB_A_POW_GPIO_BIT,GPIO_OUTPUT_MODE);
-		set_gpio_val(USB_A_POW_GPIO,USB_A_POW_GPIO_BIT,USB_A_POW_GPIO_BIT_ON);
+       // set_gpio_mode(USB_A_POW_GPIO,USB_A_POW_GPIO_BIT,GPIO_OUTPUT_MODE);
+       // set_gpio_val(USB_A_POW_GPIO,USB_A_POW_GPIO_BIT,USB_A_POW_GPIO_BIT_ON);
+        set_gpio_mode(GPIOA_bank_bit(26), GPIOA_bit_bit23_26(26), GPIO_OUTPUT_MODE); 
+        set_gpio_val(GPIOA_bank_bit(26), GPIOA_bit_bit23_26(26), 1);//USB A power 
 	}
 	else	{
 		printk(KERN_INFO "set usb port power off (board gpio %d)!\n",USB_A_POW_GPIO_BIT);		
-		set_gpio_mode(USB_A_POW_GPIO,USB_A_POW_GPIO_BIT,GPIO_OUTPUT_MODE);
-		set_gpio_val(USB_A_POW_GPIO,USB_A_POW_GPIO_BIT,USB_A_POW_GPIO_BIT_OFF);		
+        //set_gpio_mode(USB_A_POW_GPIO,USB_A_POW_GPIO_BIT,GPIO_OUTPUT_MODE);
+        //set_gpio_val(USB_A_POW_GPIO,USB_A_POW_GPIO_BIT,USB_A_POW_GPIO_BIT_OFF);
+        set_gpio_mode(GPIOA_bank_bit(26), GPIOA_bit_bit23_26(26), GPIO_OUTPUT_MODE); 
+        set_gpio_val(GPIOA_bank_bit(26), GPIOA_bit_bit23_26(26), 1);//USB A power s
 	}
 }
 //usb_a is OTG port
@@ -293,6 +375,20 @@ static struct lm_device usb_ld_a = {
 	.port_type = USB_PORT_TYPE_OTG,
 	.port_speed = USB_PORT_SPEED_DEFAULT,
 	.dma_config = USB_DMA_BURST_SINGLE,
+	.set_vbus_power = set_usb_a_vbus_power,
+};
+//usb_b is HOST port
+static struct lm_device usb_ld_b = {
+    .type = LM_DEVICE_TYPE_USB,
+    .id = 1,
+    .irq = INT_USB_B,
+    .resource.start = IO_USB_B_BASE,
+    .resource.end = -1,
+    .dma_mask_room = DMA_BIT_MASK(32),
+    .port_type = USB_PORT_TYPE_HOST,
+	//.port_type = USB_PORT_TYPE_OTG,
+    .port_speed = USB_PORT_SPEED_DEFAULT,
+    .dma_config = USB_DMA_BURST_SINGLE,
 	.set_vbus_power = set_usb_a_vbus_power,
 };
 #endif
@@ -317,7 +413,7 @@ static struct resource codec_resources[] = {
     [1] = {
         .start = STREAMBUF_ADDR_START,
 	 .end = STREAMBUF_ADDR_END,
-	 .flags = IORESOURCE_MEM,
+        .flags = IORESOURCE_MEM,
     },
 };
 
@@ -353,6 +449,21 @@ static struct resource vdin_resources[] = {
         .end   = VDIN_ADDR_END,				//pbufAddr + size
         .flags = IORESOURCE_MEM,
     },
+    [1] = {
+        .start = VDIN_ADDR_START,
+        .end   = VDIN_ADDR_END,
+        .flags = IORESOURCE_MEM,
+    },
+    [2] = {
+        .start = INT_VDIN_VSYNC,
+        .end   = INT_VDIN_VSYNC,
+        .flags = IORESOURCE_IRQ,
+    },
+    [3] = {
+        .start = INT_VDIN_VSYNC,
+        .end   = INT_VDIN_VSYNC,
+        .flags = IORESOURCE_IRQ,
+    },
 
 
 };
@@ -363,8 +474,12 @@ static struct platform_device vdin_device = {
     .num_resources = ARRAY_SIZE(vdin_resources),
     .resource      = vdin_resources,
 };
+#endif
 
+#ifdef CONFIG_TVIN_BT656IN
 //add pin mux info for bt656 input
+#if 0
+
 static struct resource bt656in_resources[] = {
     [0] = {
         .start =  VDIN_ADDR_START,		//pbufAddr
@@ -390,12 +505,13 @@ static struct resource bt656in_resources[] = {
     },
 
 };
+#endif
 
 static struct platform_device bt656in_device = {
     .name       = "amvdec_656in",
     .id         = -1,
-    .num_resources = ARRAY_SIZE(bt656in_resources),
-    .resource      = bt656in_resources,
+//    .num_resources = ARRAY_SIZE(bt656in_resources),
+//    .resource      = bt656in_resources,
 };
 #endif
 
@@ -410,9 +526,9 @@ static struct resource amlogic_card_resource[]  = {
 
 void sdio_extern_init(void)
 {
-	CLEAR_CBUS_REG_MASK(CARD_PIN_MUX_5, ((3<<4)));
-	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<18));
-	SET_CBUS_REG_MASK(PREG_GGPIO_O, (1<<18));
+	CLEAR_CBUS_REG_MASK(CARD_PIN_MUX_5, ((1<<10)));
+	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<13));
+	SET_CBUS_REG_MASK(PREG_GGPIO_O, (1<<13));
 }
 
 static struct aml_card_info  amlogic_card_info[] = {
@@ -420,10 +536,14 @@ static struct aml_card_info  amlogic_card_info[] = {
 		.name = "sd_card",
 		.work_mode = CARD_HW_MODE,
 		.io_pad_type = SDIO_GPIOA_9_14,
-		.card_ins_en_reg = EGPIO_GPIOC_ENABLE,
-		.card_ins_en_mask = PREG_IO_5_MASK,
-		.card_ins_input_reg = EGPIO_GPIOC_INPUT,
-		.card_ins_input_mask = PREG_IO_5_MASK,
+		.card_ins_en_reg = EGPIO_GPIOD_ENABLE,
+		.card_ins_en_mask = PREG_IO_16_MASK,	//GPIOD_18, bit16
+		.card_ins_input_reg = EGPIO_GPIOD_INPUT,
+		.card_ins_input_mask = PREG_IO_16_MASK,
+		//.card_ins_en_reg = EGPIO_GPIOC_ENABLE,
+		//.card_ins_en_mask = PREG_IO_5_MASK,
+		//.card_ins_input_reg = EGPIO_GPIOC_INPUT,
+		//.card_ins_input_mask = PREG_IO_5_MASK,
 		.card_power_en_reg = 0,
 		.card_power_en_mask = 0,
 		.card_power_output_reg = 0,
@@ -556,7 +676,7 @@ int wm8900_is_hp_pluged(void)
     			return 1;
     			
     //printk("level = %d,board_ver = %d\n",level,board_ver);
-    return (level == 1)?(1):(0); //return 1: hp pluged, 0: hp unpluged.
+    return (level == 1)?(0):(1); //return 1: hp pluged, 0: hp unpluged.
 }
 
 static struct wm8900_platform_data wm8900_pdata = {
@@ -595,34 +715,12 @@ static struct platform_device spi_gpio = {
 	},
 };
 
-#define XPOL 0
-#define YPOL 1
-#define XMIN 0
-#define XMAX 0xfff
-#define YMIN 250
-#define YMAX 3800
-
-int ads7846_convert(int x, int y)
-{
-    if (x < XMIN) x = XMIN;
-    if (x > XMAX) x = XMAX;
-    if (y < YMIN) y = YMIN;
-    if (y > YMAX) y = YMAX;
-#if (XPOL == 1)
-    x = XMAX + XMIN - x;
-#endif
-#if (YPOL == 1)
-    y = YMAX + YMIN - y;
-#endif
-    return (x << 16) | y;
-}
-
 static const struct ads7846_platform_data ads7846_pdata = {
 	.model = 7846,
 	.vref_delay_usecs = 100,
 	.vref_mv = 2500,
 	.keep_vref_on = false,
-	.swap_xy = 1,
+	.swap_xy = 0,
 	.settle_delay_usecs = 10,
 	.penirq_recheck_delay_usecs = 0,
 	.x_plate_ohms  =500,
@@ -647,7 +745,6 @@ static const struct ads7846_platform_data ads7846_pdata = {
 	.filter_cleanup = NULL,
 	.wait_for_sync = NULL,
 	.wakeup = false,
-	.convert = ads7846_convert,
 };
 
 static struct spi_board_info spi_board_info_list[] = {
@@ -708,6 +805,81 @@ static int ads7846_init_gpio(void)
 }
 #endif
 
+#ifdef CONFIG_GOODIX_CAPACITIVE_TOUCHSCREEN
+u8 ts_config_data[] = {
+/*
+    0x30,0x19,0x05,0x06,0x28,0x02,0x14,0x14,0x10,0x1E,
+    0x70,0x14,0x00,0x1E,0x00,0x01,0x23,0x45,0x67,0x89,
+    0xAB,0xCD,0xE0,0x00,0x00,0x00,0x00,0x4D,0xC7,0x20,
+    0x03,0x00,0x00,0x50,0x3C,0x1E,0xB4,0x00,0x00,0x00,
+    0x00,0x00,0x00,0x28,0x00,0x00,0x00,0x00,0x00,0x00,
+    0x00,0x00,0x00,0x01
+*/
+/*  
+  0x30,0x06,0x05,0x04,0x28,0x02,0x14,0x60,0x10,0x3C,0xB0,
+    0x14,0x00,0x1E,0x00,0x01,0x23,0x45,0x67,0x89,0xAB,
+    0xCD,0xE0,0x00,0x00,0x32,0x28,0x4D,0xC4,0x20,0x01,
+    0x01,0x03,0x50,0x3C,0x1E,0xB4,0x00,0x2B,0x27,0xFF,
+    0xB4,0x00,0x50,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+    0x00,0x00,0x01
+*/    
+ 
+	0x30,0x19,0x05,0x06,0x28,0x02,0x14,0x20,0x10,0x3C,0xB0,
+	0x14,0x00,0x1E,0x00,0x01,0x23,0x45,0x67,0x89,0xAB,
+	0xCD,0xE1,0x00,0x00,0x00,0x00,0x4D,0xCF,0x20,0x01,
+	0x01,0x83,0x50,0x3C,0x1E,0xB4,0x00,0x0A,0x50,0x78,
+	0x1E,0x00,0x50,0x32,0x71,0x00,0x00,0x00,0x00,0x00,
+	0x00,0x00,0x01
+};
+   
+static struct goodix_i2c_rmi_platform_data ts_pdata = {
+    .gpio_shutdown = ((GPIOA_bank_bit(3)<<16) |GPIOA_bit_bit0_14(3)),
+    .gpio_irq = ((GPIOD_bank_bit2_24(17)<<16) |GPIOD_bit_bit2_24(17)),
+    .irq_edge = 1, /* 0:rising edge, 1:falling edge */
+    .swap_xy = 1,
+    .xpol = 0,
+    .ypol = 1,
+    .xmax = 7680,
+    .ymax = 5120,
+    .config_info_len = ARRAY_SIZE(ts_config_data),
+    .config_info = ts_config_data,
+};
+#endif
+
+
+#ifdef CONFIG_TOUCH_KEY_PAD_SO340010
+#include <linux/input.h>
+//GPIOC_1
+#define GPIO_SO340010_ATTN	((GPIOC_bank_bit0_26(1)<<16) |GPIOC_bit_bit0_26(1)) 
+static int so340010_init_irq(void)
+{
+	/* set input mode */
+	gpio_direction_input(GPIO_SO340010_ATTN);
+	/* set gpio interrupt #1 source=GPIOC_1, and triggered by falling edge(=1) */
+	gpio_enable_edge_int(23+1, 1, 1);
+	return 0;
+}
+
+static int so340010_get_irq_level(void)
+{
+	return gpio_get_value(GPIO_SO340010_ATTN);
+}
+
+static struct cap_key so340010_keys[] = {
+	{ KEY_SEARCH,	0x0001,	"search"},
+	{ KEY_HOME,		0x0002,	"home"},
+	{ KEY_MENU,		0x0004,	"menu"},
+	{ KEY_BACK,		0x0008,	"back"},
+};
+
+static struct so340010_platform_data so340010_pdata = {
+	.init_irq = so340010_init_irq,
+	.get_irq_level = so340010_get_irq_level,
+	.key = so340010_keys,
+	.key_num = ARRAY_SIZE(so340010_keys),
+};
+#endif
+
 #ifdef CONFIG_ANDROID_PMEM
 static struct android_pmem_platform_data pmem_data =
 {
@@ -715,7 +887,7 @@ static struct android_pmem_platform_data pmem_data =
 	.start = PMEM_START,
 	.size = PMEM_SIZE,
 	.no_allocator = 1,
-	.cached = 0,
+    .cached = 0,
 };
 
 static struct platform_device android_pmem_device =
@@ -735,6 +907,120 @@ static	struct platform_device aml_rtc_device = {
 	};
 #endif
 
+#ifdef CONFIG_TWX_TC101
+static struct platform_device twx_device = {
+    .name       = "twx",
+    .id         = -1,
+};
+#endif
+
+
+#if defined (CONFIG_AMLOGIC_VIDEOIN_MANAGER)
+static struct resource vm_resources[] = {
+    [0] = {
+        .start =  VM_ADDR_START,
+        .end   = VM_ADDR_END,
+        .flags = IORESOURCE_MEM,
+    },
+};
+
+static struct platform_device vm_device =
+{
+	.name = "vm",
+	.id = 0,
+    .num_resources = ARRAY_SIZE(vm_resources),
+    .resource      = vm_resources,
+};
+#endif /* AMLOGIC_VIDEOIN_MANAGER */
+
+#ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE
+static void __init camera_power_on_init(void)
+{
+    udelay(1000);
+    SET_CBUS_REG_MASK(HHI_ETH_CLK_CNTL,0x30f);// 24M XTAL
+    SET_CBUS_REG_MASK(HHI_DEMOD_PLL_CNTL,0x232);// 24M XTAL
+
+    eth_set_pinmux(ETH_BANK0_GPIOC3_C12,ETH_CLK_OUT_GPIOC12_REG3_1, 1);		
+}
+#endif
+#if defined(CONFIG_VIDEO_AMLOGIC_CAPTURE_GC0308)
+
+static int gc0308_v4l2_init(void)
+{
+    udelay(1000);
+    WRITE_CBUS_REG(HHI_ETH_CLK_CNTL,0x31e);// 24M XTAL
+    WRITE_CBUS_REG(HHI_DEMOD_PLL_CNTL,0x232);// 24M XTAL
+	udelay(1000);
+	
+	gpio_direction_output(((GPIOC_bank_bit0_26(0)<<16) |GPIOC_bit_bit0_26(0)), 0);
+	gpio_direction_output(((GPIOC_bank_bit0_26(13)<<16) |GPIOC_bit_bit0_26(13)), 0);
+	mdelay(30);
+	gpio_set_value(((GPIOC_bank_bit0_26(13)<<16) |GPIOC_bit_bit0_26(13)), 1);
+   #ifdef CONFIG_SN7325
+	printk( "amlogic camera driver: init gc0308_v4l2_init. \n");
+	configIO(1, 0);
+	setIO_level(1, 0, 2);//30m poweer_disable
+		  
+	//setIO_level(1, 0, 2);//200m poweer_disable
+	setIO_level(1, 0, 0);//30m pwd enable
+	//setIO_level(1, 0, 6);//200m pwd low
+	configIO(0, 0);
+	setIO_level(0, 0, 3);//30m reset low
+	//setIO_level(0, 0, 2);//200m reset low
+	configIO(1, 0);
+	msleep(10);
+	setIO_level(1, 1, 2);//30m poweer_enable
+	msleep(10);
+	configIO(0, 0);
+	setIO_level(0, 1, 3);//30m reset high
+	msleep(20);
+		  
+	#endif
+
+}
+static int gc0308_v4l2_uninit(void)
+{
+	gpio_direction_output(((GPIOC_bank_bit0_26(0)<<16) |GPIOC_bit_bit0_26(0)), 1);
+	gpio_direction_output(((GPIOC_bank_bit0_26(13)<<16) |GPIOC_bit_bit0_26(13)), 0);
+	msleep(20); 
+   #ifdef CONFIG_SN7325
+	printk( "amlogic camera driver: uninit gc0308_v4l2_uninit. \n");
+	configIO(1, 0);
+	setIO_level(1, 0, 2);//30m poweer_disable
+	setIO_level(1, 1, 0);//30m pwd enable
+	configIO(0, 0);
+	setIO_level(0, 0, 3);//30m reset low
+	msleep(20); 
+    #endif
+
+}
+
+static void gc0308_v4l2_early_suspend(void)
+{
+	gpio_direction_output(((GPIOC_bank_bit0_26(0)<<16) |GPIOC_bit_bit0_26(0)), 1);
+	//configIO(1, 0);
+	//setIO_level(1, 1, 0);
+}
+
+static void gc0308_v4l2_late_resume(void)
+{
+	gpio_direction_output(((GPIOC_bank_bit0_26(0)<<16) |GPIOC_bit_bit0_26(0)), 1);
+	//configIO(1, 0);
+	//setIO_level(1, 0, 0);
+}
+
+aml_plat_cam_data_t video_gc0308_data = {
+	.name="video-gc0308",
+	.video_nr=1,//1,
+	.device_init= gc0308_v4l2_init,
+	.device_uninit=gc0308_v4l2_uninit,
+	.early_suspend = gc0308_v4l2_early_suspend,
+	.late_resume = gc0308_v4l2_late_resume,
+};
+
+
+#endif
+
 #if defined(CONFIG_SUSPEND)
 
 typedef struct {
@@ -746,15 +1032,26 @@ typedef struct {
 	unsigned enable;
 } gpio_data_t;
 
-#define MAX_GPIO 9
+#define MAX_GPIO 4
 static gpio_data_t gpio_data[MAX_GPIO] = {
 	// ----------------------------------- power ctrl ---------------------------------
+	{"GPIOA_8 -- AVDD_EN",		GPIOA_bank_bit0_14(8),		GPIOA_bit_bit0_14(8),	GPIO_OUTPUT_MODE, 1, 1},
+	{"GPIOA_7 -- BL_PWM",		GPIOA_bank_bit0_14(7),		GPIOA_bit_bit0_14(7),	GPIO_OUTPUT_MODE, 1, 1},
+	//{"GPIOA_3 -- TP_PWR_EN",	GPIOA_bank_bit0_14(3),		GPIOA_bit_bit0_14(3),	GPIO_OUTPUT_MODE, 0, 1},
+	//{"GPIOD_20 -- AT18_RST",	GPIOD_bank_bit2_24(20),		GPIOD_bit_bit2_24(20),	GPIO_OUTPUT_MODE, 0, 1},
+	// ----------------------------------- i2s ---------------------------------
+	{"TEST_N -- I2S_DOUT",		GPIOJTAG_bank_bit(16),		GPIOJTAG_bit_bit16(16),	GPIO_OUTPUT_MODE, 1, 1},
+//camera
+    {"GPIOC_3 -- camera PCLK",	 GPIOC_bank_bit0_26(3),		GPIOC_bit_bit0_26(3),	GPIO_OUTPUT_MODE, 1, 1},
+	
+/*	// ----------------------------------- power ctrl ---------------------------------
 	{"GPIOC_3 -- AVDD_EN",		GPIOC_bank_bit0_26(3),		GPIOC_bit_bit0_26(3),	GPIO_OUTPUT_MODE, 1, 1},
 	{"GPIOA_7 -- BL_PWM",		GPIOA_bank_bit0_14(7),		GPIOA_bit_bit0_14(7),	GPIO_OUTPUT_MODE, 1, 1},
 	{"GPIOA_6 -- VCCx2_EN",		GPIOA_bank_bit0_14(6),		GPIOA_bit_bit0_14(6),	GPIO_OUTPUT_MODE, 1, 1},
 	// ----------------------------------- i2s ---------------------------------
 	{"TEST_N -- I2S_DOUT",		GPIOJTAG_bank_bit(16),		GPIOJTAG_bit_bit16(16),	GPIO_OUTPUT_MODE, 1, 1},
-	// ----------------------------------- wifi&bt ---------------------------------
+//camera
+    {"GPIOC_3 -- camera PCLK",	 GPIOC_bank_bit0_26(3),		GPIOC_bit_bit0_26(3),	GPIO_OUTPUT_MODE, 1, 1},
 	{"GPIOD_12 -- WL_RST_N",	GPIOD_bank_bit2_24(12), 	GPIOD_bit_bit2_24(12), 	GPIO_OUTPUT_MODE, 1, 1},
 	{"GPIOD_14 -- BT/GPS_RST_N",GPIOD_bank_bit2_24(14),		GPIOD_bit_bit2_24(14), 	GPIO_OUTPUT_MODE, 1, 1},
 	{"GPIOD_18 -- UART_CTS_N",	GPIOD_bank_bit2_24(18), 	GPIOD_bit_bit2_24(18), 	GPIO_OUTPUT_MODE, 1, 1},
@@ -762,6 +1059,7 @@ static gpio_data_t gpio_data[MAX_GPIO] = {
 	// ----------------------------------- lcd ---------------------------------
 	{"GPIOC_12 -- LCD_U/D",		GPIOC_bank_bit0_26(12), 	GPIOC_bit_bit0_26(12), 	GPIO_OUTPUT_MODE, 1, 1},
 	{"GPIOA_3 -- LCD_PWR_EN",	GPIOA_bank_bit0_14(3),		GPIOA_bit_bit0_14(3),	GPIO_OUTPUT_MODE, 1, 1},
+	*/
 };	
 
 static void save_gpio(int port) 
@@ -786,7 +1084,7 @@ static void restore_gpio(int port)
 	{
 		set_gpio_val(gpio_data[port].bank, gpio_data[port].bit, gpio_data[port].value);
 		set_gpio_mode(gpio_data[port].bank, gpio_data[port].bit, GPIO_OUTPUT_MODE);
-		// printk("%s output %d\n", gpio_data[port].name, gpio_data[port].value); 
+		printk("%s output %d\n", gpio_data[port].name, gpio_data[port].value); 
 	}
 }
 
@@ -813,6 +1111,7 @@ pinmux_data_t pinmux_data[MAX_PINMUX] = {
 	{"RGB",		4, (1<<5)|(1<<4)|(1<<3)|(1<<2)|(1<<1)|(1<<0),	1},
 	{"UART_B",	5, (1<<24)|(1<23),								0},
 	{"REMOTE",	5, (1<<31),										1},
+	{"CAMERA",	3, (1<<13),										1},
 };
 
 static unsigned pinmux_backup[6];
@@ -844,32 +1143,34 @@ static void set_vccx2(int power_on)
 		restore_pinmux();
 		for (i=0;i<MAX_GPIO;i++)
 			restore_gpio(i);
-		
+		#if 0
         printk(KERN_INFO "set_vccx2 power up\n");
-        set_gpio_val(GPIOA_bank_bit0_14(6), GPIOA_bit_bit0_14(6), 1);
-        set_gpio_mode(GPIOA_bank_bit0_14(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);        
+        set_gpio_val(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), 1);
+        set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);        
         //set clk for wifi
         SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, (1<<18));
         CLEAR_CBUS_REG_MASK(PREG_EGPIO_EN_N, (1<<4));	              
+		#endif
     }
     else{
+		#if 0
         printk(KERN_INFO "set_vccx2 power down\n");        
-        set_gpio_val(GPIOA_bank_bit0_14(6), GPIOA_bit_bit0_14(6), 0);
-        set_gpio_mode(GPIOA_bank_bit0_14(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);   
+        set_gpio_val(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), 0);
+        set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);   
         //disable wifi clk
         CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, (1<<18));
         SET_CBUS_REG_MASK(PREG_EGPIO_EN_N, (1<<4));	        
-
+		#endif
 		save_pinmux();
 		for (i=0;i<MAX_GPIO;i++)
 			save_gpio(i);
     }
 }
-
 static struct meson_pm_config aml_pm_pdata = {
     .pctl_reg_base = IO_APB_BUS_BASE,
     .mmc_reg_base = APB_REG_ADDR(0x1000),
     .hiu_reg_base = CBUS_REG_ADDR(0x1000),
+    //.power_key = CBUS_REG_ADDR(RTC_ADDR1),
     .power_key = (1<<8),
     .ddr_clk = 0x00110820,
     .sleepcount = 128,
@@ -890,22 +1191,22 @@ static struct platform_device aml_pm_device = {
 
 static struct aml_sw_i2c_platform aml_sw_i2c_plat = {
 	.sw_pins = {
-		.scl_reg_out		= MESON_I2C_PREG_GPIOB_OUTLVL,
+		.scl_reg_out	= MESON_I2C_PREG_GPIOB_OUTLVL,
 		.scl_reg_in		= MESON_I2C_PREG_GPIOB_INLVL,
-		.scl_bit			= 2,	/*MESON_I2C_MASTER_A_GPIOB_2_REG*/
+		.scl_bit		= 2,	/*MESON_I2C_MASTER_A_GPIOB_2_REG*/
 		.scl_oe			= MESON_I2C_PREG_GPIOB_OE,
-		.sda_reg_out		= MESON_I2C_PREG_GPIOB_OUTLVL,
+		.sda_reg_out	= MESON_I2C_PREG_GPIOB_OUTLVL,
 		.sda_reg_in		= MESON_I2C_PREG_GPIOB_INLVL,
-		.sda_bit			= 3,	/*MESON_I2C_MASTER_A_GPIOB_3_BIT*/
+		.sda_bit		= 3,	/*MESON_I2C_MASTER_A_GPIOB_3_BIT*/
 		.sda_oe			= MESON_I2C_PREG_GPIOB_OE,
 	},	
 	.udelay			= 2,
-	.timeout			= 100,
+	.timeout		= 100,
 };
 
 static struct platform_device aml_sw_i2c_device = {
-	.name		  = "aml-sw-i2c",
-	.id		  = -1,
+	.name	= "aml-sw-i2c",
+	.id		= -1,
 	.dev = {
 		.platform_data = &aml_sw_i2c_plat,
 	},
@@ -921,7 +1222,8 @@ static struct aml_i2c_platform aml_i2c_plat = {
 	.wait_xfer_interval	= 5,
 	.master_no		= AML_I2C_MASTER_B,
 	.use_pio			= 0,
-	.master_i2c_speed	= AML_I2C_SPPED_400K,
+	//.master_i2c_speed	= AML_I2C_SPPED_400K,
+	.master_i2c_speed	= AML_I2C_SPPED_300K,
 
 	.master_b_pinmux = {
 		.scl_reg	= MESON_I2C_MASTER_B_GPIOB_0_REG,
@@ -974,6 +1276,7 @@ static int is_ac_connected(void)
 
 static void set_charge(int flags)
 {
+#if 0
 	//GPIOD_22 low: fast charge high: slow charge
     CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_7, (1<<18));
     if(flags == 1)
@@ -981,6 +1284,7 @@ static void set_charge(int flags)
     else
     	set_gpio_val(GPIOD_bank_bit2_24(22), GPIOD_bit_bit2_24(22), 1);	//slow charge
     set_gpio_mode(GPIOD_bank_bit2_24(22), GPIOD_bit_bit2_24(22), GPIO_OUTPUT_MODE);
+#endif
 }
 
 #ifdef CONFIG_SARADC_AM
@@ -991,35 +1295,76 @@ static int get_bat_vol(void)
 #ifdef CONFIG_SARADC_AM
 	return get_adc_sample(5);
 #else
-        return 0;
+    return 0;
 #endif
 }
 
-static int get_charge_status()
+static int get_charge_status(void)
 {
-	return (READ_CBUS_REG(ASSIST_HW_REV)&(1<<8))? 1:0;
+	//return (READ_CBUS_REG(ASSIST_HW_REV)&(1<<8))? 1:0;
+	return (READ_CBUS_REG(ASSIST_HW_REV)&(1<<8))? 0:1;
 }
 
 static void set_bat_off(void)
 {
-    /* PIN31, GPIOA_7, Pull low, BL_PWM disable*/
-    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<31)); 
+    //BL_PWM power off
+    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<31));
     set_gpio_val(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), 0);
     set_gpio_mode(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), GPIO_OUTPUT_MODE);
-    //set_vccx2 power down    
-    set_gpio_val(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), 0);
-    set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);  
+	//set_gpio_val(GPIOD_bank_bit2_24(19), GPIOD_bit_bit2_24(19), 0);
+    //set_gpio_mode(GPIOD_bank_bit2_24(19), GPIOD_bit_bit2_24(19), GPIO_OUTPUT_MODE);
     if(is_ac_connected()){ //AC in after power off press
         kernel_restart("charging");
     }
-	set_gpio_val(GPIOA_bank_bit(8), GPIOA_bit_bit0_14(8), 0);
-    set_gpio_mode(GPIOA_bank_bit(8), GPIOA_bit_bit0_14(8), GPIO_OUTPUT_MODE);
+	set_gpio_val(GPIOD_bank_bit2_24(19), GPIOD_bit_bit2_24(19), 0);
+    set_gpio_mode(GPIOD_bank_bit2_24(19), GPIOD_bit_bit2_24(19), GPIO_OUTPUT_MODE);
+	//set_gpio_val(GPIOA_bank_bit(8), GPIOA_bit_bit0_14(8), 0);
+    //set_gpio_mode(GPIOA_bank_bit(8), GPIOA_bit_bit0_14(8), GPIO_OUTPUT_MODE);
 
 }
 
 static int bat_value_table[37]={
 0,  //0    
-540,//0
+528,//0
+//510,//0
+530,//4
+532,//10
+534,//15
+536,//16
+538,//18
+541,//20
+544,//23
+547,//26
+550,//29
+553,//32
+556,//35
+559,//37
+562,//40
+565,//43
+568,//46
+571,//49
+574,//51
+577,//54
+580,//57
+583,//60
+586,//63
+589,//66
+592,//68
+595,//71
+598,//74
+601,//77
+604,//80
+607,//83
+610,//85
+613,//88
+616,//91
+619,//95
+622,//97
+625,//100
+625 //100
+/*0,  //0    
+530,//0
+//510,//0
 544,//4
 547,//10
 550,//15
@@ -1055,44 +1400,45 @@ static int bat_value_table[37]={
 622,//97
 626,//100
 626 //100
+*/
 };
 
 static int bat_charge_value_table[37]={
 0,  //0    
-547,//0
-551,//4
-553,//10
-556,//15
-558,//16
-560,//18
-562,//20
-564,//23
-566,//26
-567,//29
-568,//32
-569,//35
-570,//37
-571,//40
-572,//43
-573,//46
-574,//49
-576,//51
-578,//54
-580,//57
-582,//60
-585,//63
-587,//66
-590,//68
-593,//71
-596,//74
-599,//77
-602,//80
-605,//83
-608,//85
-612,//88
-615,//91
-617,//95
-618,//97
+555,//0
+557,//4
+559,//10
+561,//15
+563,//16
+565,//18
+567,//20
+569,//23
+571,//26
+573,//29
+575,//32
+577,//35
+579,//37
+582,//40
+583,//43
+586,//46
+587,//49
+588,//51
+590,//54
+592,//57
+594,//60
+596,//63
+598,//66
+600,//68
+602,//71
+604,//74
+606,//77
+608,//80 
+610,//83
+612,//85
+614,//88
+616,//91
+618,//95
+619,//97
 620,//100
 620 //100
 };
@@ -1327,6 +1673,27 @@ static struct mtd_partition multi_partition_info[] =
 		.offset = 96*SZ_1M,
 		.size = 32*SZ_1M,
 	},
+/*	{
+		.name = "system",
+		.offset = 128*SZ_1M,
+		.size = 256*SZ_1M,
+	},
+	{
+		.name = "cache",
+		.offset = 384*SZ_1M,
+		.size = 128*SZ_1M,
+	},
+	{
+		.name = "userdata",
+		.offset = 512*SZ_1M,
+		.size = 512*SZ_1M,
+	},
+	{
+		.name = "NFTL_Part",
+		.offset = MTDPART_OFS_APPEND,
+		.size = MTDPART_SIZ_FULL,
+	},
+	*/
 	{
 		.name = "system",
 		.offset = 128*SZ_1M,
@@ -1337,15 +1704,10 @@ static struct mtd_partition multi_partition_info[] =
 		.offset = 384*SZ_1M,
 		.size = 128*SZ_1M,
 	},
-    {
-        .name = "license",
-        .offset = 512*SZ_1M,
-        .size  = 16*SZ_1M,
-    },
 	{
 		.name = "userdata",
-		.offset = 528*SZ_1M,
-		.size = 496*SZ_1M,
+		.offset = 512*SZ_1M,
+		.size = 512*SZ_1M,
 	},
 	{
 		.name = "NFTL_Part",
@@ -1412,7 +1774,6 @@ static struct platform_device aml_nand_device = {
 
 #if defined(CONFIG_AMLOGIC_BACKLIGHT)
 #include <linux/aml_bl.h>
-
 #define PWM_TCNT        (600-1)
 #define PWM_MAX_VAL    (420)
 
@@ -1461,43 +1822,34 @@ static void aml_8726m_bl_init(void)
           (1000 << 14) |    // Digital dimmer_duty = 0%, the most darkness
           (1000 <<  0) ;    // dimmer_freq = 1KHz
     WRITE_CBUS_REG(VGHL_PWM_REG4, val);
-    
-    SET_CBUS_REG_MASK(PWM_MISC_REG_AB, (1 << 0)); 
-    SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<31));            
-    
 }
 static unsigned bl_level;
 static unsigned aml_8726m_get_bl_level(void)
 {
     return bl_level;
 }
-#define BL_MAX_LEVEL 60000
 static void aml_8726m_set_bl_level(unsigned level)
 {
-    unsigned cs_level,pwm_level,low,hi;
-    
-    bl_level = level;
-        
-    level = level*179/255;
-    if(level>=120){ //120 - 179
-        cs_level = 9 -(level - 120)/15;
-        pwm_level = 85 + (level - 120)%15;   
+    unsigned cs_level;
+
+    if (level < 30)
+    {
+        //cs_level = 15;
+        cs_level = 15;
     }
-    else if(level>=20){ //20 - 119
-        cs_level = 13 - (level -20)/25;
-        pwm_level = 75 + (level - 20)%25;   
+    else if (level == 30)
+    {
+        cs_level = 14;
     }
-    else{  //  <20
-        cs_level = 13;
-        pwm_level = 70;           
+    else if (level >30 && level < 256)
+    {
+        cs_level = 14-((level - 31)/24);
     }
-        
-    hi = (BL_MAX_LEVEL/100)*pwm_level;
-    low = BL_MAX_LEVEL - hi;
-    
-    WRITE_CBUS_REG_BITS(VGHL_PWM_REG0, cs_level, 0, 4);        
-    WRITE_CBUS_REG_BITS(PWM_PWM_A,low,0,16);  //low
-    WRITE_CBUS_REG_BITS(PWM_PWM_A,hi,16,16);  //hi  
+    else
+        cs_level = 5;
+
+
+    WRITE_CBUS_REG_BITS(VGHL_PWM_REG0, cs_level, 0, 4);
 }
 
 static void aml_8726m_power_on_bl(void)
@@ -1529,6 +1881,7 @@ static struct platform_device aml_bl_device = {
     },
 };
 #endif
+
 #if  defined(CONFIG_AM_TV_OUTPUT)||defined(CONFIG_AM_TCON_OUTPUT)
 static struct resource vout_device_resources[] = {
     [0] = {
@@ -1550,7 +1903,8 @@ static struct platform_device vout_device = {
 #ifdef CONFIG_USB_ANDROID_MASS_STORAGE
 static struct usb_mass_storage_platform_data mass_storage_pdata = {
        .nluns = 2,
-       .vendor = "AMLOGIC",
+       //.vendor = "AMLOGIC",
+       .vendor = "ainol",
        .product = "Android MID",
        .release = 0x0100,
 };
@@ -1606,111 +1960,6 @@ static struct platform_device android_usb_device = {
 };
 #endif
 
-#ifdef CONFIG_BT_DEVICE
-#include <linux/bt-device.h>
-
-static struct platform_device bt_device = {
-	.name             = "bt-dev",
-	.id               = -1,
-};
-
-static void bt_device_init(void)
-{
-    /* BT/GPS_RST_N */
-    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_12, (1<<29));
-    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_5, (1<<20));
-    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_5, (1<<14));
-    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_7, (1<<13));
-    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_7, (1<<12));
-    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, (1<<21));
-
-    /* BT/GPS */
-	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_12, (1<<22));
-	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_7, (1<<19));
-    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_5, (1<<17));
-    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0, (1<<12));
-    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_5, (1<<4));    
-    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, (1<<28));    
-
-    /* WLBT_REGON */
-	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_12, (1<<23));
-	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_7, (1<<14));
-	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_5, (1<<17));
-	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0, (1<<12));
-	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_5, (1<<5));
-    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, (1<<27));	
-
-    /* BT_WAKE */
-	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_12, (1<<27));
-	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_5, (1<<18));
-	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0, (1<<12));
-	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_5, (1<<9));
-	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, (1<<23));
-	
-	/* UART_RTS_N(BT) */
-	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_12, (1<<26));
-    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_7, (1<<17));
-	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_5, (1<<17));
-	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0, (1<<12));
-	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_5, (1<<8));
-	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, (1<<24));
-
-    /* UART_CTS_N(BT) */    
-    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_12, (1<<25));
-    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_7, (1<<16));
-    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_5, (1<<17));
-    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0, (1<<12));
-    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_5, (1<<7));
-    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, (1<<25));
-    
-	/* WLBT_REGON */
-	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<18));
-	SET_CBUS_REG_MASK(PREG_GGPIO_O, (1<<18));	
-	
-	/* BT/GPS_RST_N */
-	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<12));
-	CLEAR_CBUS_REG_MASK(PREG_GGPIO_O, (1<<12));		
-	
-	/* BT/GPS */
-	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<19));
-	CLEAR_CBUS_REG_MASK(PREG_GGPIO_O, (1<<19));
-
-    /* UART_RTS_N(BT) */
-	SET_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<15));
-    
-	/* UART_CTS_N(BT) */
-	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<16));
-    CLEAR_CBUS_REG_MASK(PREG_GGPIO_O, (1<<16));
-		
-	/* BT_WAKE */ 
-	//CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<14));
-	//SET_CBUS_REG_MASK(PREG_GGPIO_O, (1<<14));
-}
-
-static void bt_device_on(void)
-{
-    /* BT/GPS_RST_N */
-	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<12));
-	CLEAR_CBUS_REG_MASK(PREG_GGPIO_O, (1<<12));	
-	msleep(200);	
-	SET_CBUS_REG_MASK(PREG_GGPIO_O, (1<<12));	
-}
-
-static void bt_device_off(void)
-{
-    /* BT/GPS_RST_N */
-	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<12));
-	CLEAR_CBUS_REG_MASK(PREG_GGPIO_O, (1<<12));	
-	msleep(200);
-}
-
-struct bt_dev_data bt_dev = {
-    .bt_dev_init    = bt_device_init,
-    .bt_dev_on      = bt_device_on,
-    .bt_dev_off     = bt_device_off,
-};
-#endif
-
 static struct platform_device __initdata *platform_devs[] = {
     #if defined(CONFIG_JPEGLOGO)
 		&jpeglogo_device,
@@ -1729,6 +1978,8 @@ static struct platform_device __initdata *platform_devs[] = {
     #endif
     #if defined(CONFIG_TVIN_VDIN)
         &vdin_device,
+    #endif
+    #if defined(CONFIG_TVIN_BT656IN)
 		&bt656in_device,
     #endif
 	#if defined(CONFIG_AML_AUDIO_DSP)
@@ -1746,7 +1997,7 @@ static struct platform_device __initdata *platform_devs[] = {
 #endif
 #ifdef CONFIG_ADC_TOUCHSCREEN_AM
 		&adc_ts_device,
-#endif
+    #endif
     #if defined(CONFIG_ADC_KEYPADS_AM)||defined(CONFIG_ADC_KEYPADS_AM_MODULE)
 		&adc_kp_device,
     #endif
@@ -1764,6 +2015,9 @@ static struct platform_device __initdata *platform_devs[] = {
     #endif		
     #if defined(CONFIG_AML_RTC)
 		&aml_rtc_device,
+    #endif
+    #ifdef CONFIG_AMLOGIC_VIDEOIN_MANAGER
+		&vm_device,
     #endif
 	#if defined(CONFIG_SUSPEND)
 		&aml_pm_device,
@@ -1783,6 +2037,9 @@ static struct platform_device __initdata *platform_devs[] = {
     #if defined(CONFIG_AMLOGIC_BACKLIGHT)
         &aml_bl_device,
     #endif
+    #ifdef CONFIG_TWX_TC101
+        &twx_device,
+    #endif
     #if  defined(CONFIG_AM_TV_OUTPUT)||defined(CONFIG_AM_TCON_OUTPUT)
        &vout_device,	
     #endif
@@ -1792,11 +2049,14 @@ static struct platform_device __initdata *platform_devs[] = {
 		&usb_mass_storage_device,
       #endif
     #endif	
-    #ifdef CONFIG_BT_DEVICE  
-        &bt_device,
-    #endif    	
 };
 static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
+
+#ifdef CONFIG_TWX_TC101
+    {
+        I2C_BOARD_INFO(TWX_TC101_I2C_NAME,  TWX_TC101_I2C_ADDR),
+    },
+#endif
 
 #ifdef CONFIG_SENSORS_MMC31XX
 	{
@@ -1812,20 +2072,67 @@ static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
 
 #ifdef CONFIG_SND_AML_M1_MID_WM8900
     {
-        I2C_BOARD_INFO("wm8900", 0x1A),
+        I2C_BOARD_INFO("wm8900", 0x1A),// >>1 ),
         .platform_data = (void *)&wm8900_pdata,
     },
 #endif
+
+#ifdef CONFIG_MXC_MMA7660
+	{
+		I2C_BOARD_INFO("mma7660", 0x4C),
+		.irq = INT_GPIO_2,
+	},
+#endif
+#ifdef CONFIG_HX8520_CAPACITIVE_TOUCHSCREEN
+    {
+        I2C_BOARD_INFO("hx8520", 0x4b),
+        .platform_data = (void *)&ts_pdata,
+    },
+#endif
+
+#ifdef CONFIG_GOODIX_CAPACITIVE_TOUCHSCREEN
+    {
+        I2C_BOARD_INFO(GOODIX_I2C_NAME, GOODIX_I2C_ADDR),
+        .irq = INT_GPIO_0,
+        .platform_data = (void *)&ts_pdata,
+    },
+#endif
+
+#ifdef CONFIG_TOUCH_KEY_PAD_SO340010
+	{
+		I2C_BOARD_INFO("so340010", 0x2c),
+		.irq = INT_GPIO_1,
+		.platform_data = (void *)&so340010_pdata,
+	},
+#endif
+#ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE_GC0308
+
+	{
+        /*gc0308 i2c address is 0x42/0x43*/
+		I2C_BOARD_INFO("gc0308_i2c",  0x42 >> 1),
+		.platform_data = (void *)&video_gc0308_data,
+	},
+#endif
+
 };
 
 
 static int __init aml_i2c_init(void)
 {
-
 	i2c_register_board_info(0, aml_i2c_bus_info,
 			ARRAY_SIZE(aml_i2c_bus_info));
 	return 0;
 }
+
+#if defined(CONFIG_TVIN_BT656IN)
+static void __init bt656in_pinmux_init(void)
+{
+    set_mio_mux(3, 0xf000);   //mask--mux gpio_c3 to bt656 clk;  mux gpioc[4:11] to be bt656 dt_in
+    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, 0x0f000000);
+    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_3, 0x01be07fc);
+    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_4, 0x0c000000);
+}
+#endif
 
 static void __init eth_pinmux_init(void)
 {
@@ -1862,16 +2169,17 @@ static void __init device_pinmux_init(void )
 	/*pinmux of eth*/
 	//eth_pinmux_init();
 	aml_i2c_init();
+#if defined(CONFIG_TVIN_BT656IN)
+    bt656in_pinmux_init();
+#endif
+
 	if(board_ver == 0){
-	    set_audio_pinmux(AUDIO_OUT_JTAG);
+			set_audio_pinmux(AUDIO_OUT_JTAG);
     }
 	else{
         set_audio_pinmux(AUDIO_OUT_TEST_N);
         set_audio_pinmux(AUDIO_IN_JTAG);
 	}
-    //set clk for wifi
-    SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, (1<<18));
-    CLEAR_CBUS_REG_MASK(PREG_EGPIO_EN_N, (1<<4));
 }
 
 static void __init  device_clk_setting(void)
@@ -1891,6 +2199,7 @@ static void disable_unused_model(void)
 	CLK_GATE_OFF(WIFI);
 	video_dac_disable();
 	//audio_internal_dac_disable();
+#if 0	//外部时钟
 	 //disable wifi
 	SET_CBUS_REG_MASK(HHI_GCLK_MPEG2, (1<<5)); 
 	SET_CBUS_REG_MASK(HHI_WIFI_CLK_CNTL, (1<<0)); 	
@@ -1898,6 +2207,7 @@ static void disable_unused_model(void)
 	__raw_writel((__raw_readl(0xC9320EF0))&0xF9FFFFFF,0xC9320EF0);
 	CLEAR_CBUS_REG_MASK(HHI_GCLK_MPEG2, (1<<5)); 
 	CLEAR_CBUS_REG_MASK(HHI_WIFI_CLK_CNTL, (1<<0)); 		
+#endif
 	///disable demod
 	SET_CBUS_REG_MASK(HHI_DEMOD_CLK_CNTL, (1<<8));//enable demod core digital clock
 	SET_CBUS_REG_MASK(HHI_DEMOD_PLL_CNTL, (1<<15));//enable demod adc clock
@@ -1907,28 +2217,73 @@ static void disable_unused_model(void)
 }
 static void __init power_hold(void)
 {
+	// GPIOD_19, PWR_HOLD
     printk(KERN_INFO "power hold set high!\n");
-	set_gpio_val(GPIOA_bank_bit(8), GPIOA_bit_bit0_14(8), 1);
-    set_gpio_mode(GPIOA_bank_bit(8), GPIOA_bit_bit0_14(8), GPIO_OUTPUT_MODE);
+	set_gpio_val(GPIOD_bank_bit2_24(19), GPIOD_bit_bit2_24(19), 1);
+    set_gpio_mode(GPIOD_bank_bit2_24(19), GPIOD_bit_bit2_24(19), GPIO_OUTPUT_MODE);
     
         /* PIN28, GPIOA_6, Pull high, For En_5V */
-    set_gpio_val(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), 1);
-    set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);
+    //set_gpio_val(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), 1);
+    //set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);
 }
+
+static void __init device_gpio_init(void)
+{
+	gpio_direction_output( (GPIOD_bank_bit2_24(20)<<16) | GPIOD_bit_bit2_24(20), 0 ); 
+	//set vdac detect pin input.
+	gpio_direction_input((GPIOC_bank_bit0_26(14)<<16) |GPIOC_bit_bit0_26(14));	// gQues.GPIOSetPinDirection
+	//set GT801 PWR_CTL
+	gpio_direction_output(((GPIOA_bank_bit(3)<<16) |GPIOA_bit_bit0_14(3)), 0);	// gQues.GPIOSetPinDirection
+	gpio_direction_output(((GPIOD_bank_bit2_24(4)<<16) |GPIOD_bit_bit2_24(4)), 1);	// gQues.GPIOSetPinDirection
+	//LCD_AVDD_EN pin ctrl, TC101 init need
+	gpio_direction_output(((GPIOA_bank_bit(8)<<16) |GPIOA_bit_bit0_14(8)), 1);	// gQues.GPIOSetPinDirection
+	//printk(KERN_INFO "new software---5~~~~~~~~~~~^^^^^^^^^^ \n");
+	//set backlight ctrl pin low
+    //set_gpio_val(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), 0);
+    //set_gpio_mode(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), GPIO_OUTPUT_MODE);
+}
+#ifdef CONFIG_MXC_MMA7660
+static void __init set_mma7660_regs(void)
+{
+#if	0
+	//GSEN_INT-->H22 (7422y v1.pdf)
+	//GPIOC_2(M1-Apps v25- 2010-07-19-BGA372_297-6.xls serach H22)
+
+	//pull up reg
+	WRITE_CBUS_REG( PAD_PULL_UP_REG0, READ_CBUS_REG(PAD_PULL_UP_REG0) & ~(1<<31) );	// Meson-pull-up-down_table.xlsx ( gpioC_2 is PULL_UP_REG0---0x203b 31bits)
+	
+	/* set input mode */
+	gpio_direction_input( (GPIOC_bank_bit0_26(2)<<16) | GPIOC_bit_bit0_26(2) ); //OEN=1 (input)  Input Level=1(pull high)
+	
+	/* set gpio interrupt #0 source=GPIOC_2, and triggered by falling edge(=1)  设定中断脚为input，下降沿中断*/
+	gpio_enable_edge_int(25, 1, 2);  //M1-ISA-Registers.docx page 6   ( 49-23	gpioC[26:0])
+#endif
+	/* set input mode */
+	gpio_direction_input( (GPIOD_bank_bit2_24(16)<<16) | GPIOD_bit_bit2_24(16) ); //OEN=1 (input)  Input Level=1(pull high)
+	
+	/* set gpio interrupt #0 source=GPIOC_2, and triggered by falling edge(=1)  设定中断脚为input，下降沿中断*/
+	gpio_enable_edge_int(66, 1, 2);  //M1-ISA-Registers.docx page 6   ( 49-23	gpioC[26:0])
+}
+#endif
+
 
 static __init void m1_init_machine(void)
 {
-	meson_cache_init();
+    meson_cache_init();
 
 	power_hold();
-	pm_power_off = set_bat_off;
 	device_clk_setting();
 	device_pinmux_init();
+	device_gpio_init();
+#ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE
+    camera_power_on_init();
+#endif
 	platform_add_devices(platform_devs, ARRAY_SIZE(platform_devs));
 
 #ifdef CONFIG_USB_DWC_OTG_HCD
 	set_usb_phy_clk(USB_PHY_CLOCK_SEL_XTAL_DIV2);
 	lm_device_register(&usb_ld_a);
+    lm_device_register(&usb_ld_b);
 #endif
 #ifdef CONFIG_SATA_DWC_AHCI
 	set_sata_phy_clk(SATA_PHY_CLOCK_SEL_DEMOD_PLL);
@@ -1937,6 +2292,9 @@ static __init void m1_init_machine(void)
 #if defined(CONFIG_TOUCHSCREEN_ADS7846)
 	ads7846_init_gpio();
 	spi_register_board_info(spi_board_info_list, ARRAY_SIZE(spi_board_info_list));
+#endif
+#ifdef CONFIG_MXC_MMA7660
+	set_mma7660_regs();
 #endif
 	disable_unused_model();
 }
