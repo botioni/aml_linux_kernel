@@ -48,7 +48,7 @@
 #include <mach/gpio.h>
 #include <linux/delay.h>
 #include <mach/clk_set.h>
-#include "board-8726m-sony.h"
+#include "board-8726m-refb17.h"
 
 #if defined(CONFIG_TOUCHSCREEN_ADS7846)
 #include <linux/spi/spi.h>
@@ -162,8 +162,8 @@ static struct platform_device saradc_device = {
 #define XLCD    800
 #define YLCD    480
 #define SWAP_XY 0
-#define XPOL    0
-#define YPOL    1
+#define XPOL    1
+#define YPOL    0
 #define XMIN 30
 #define XMAX 980
 #define YMIN 70
