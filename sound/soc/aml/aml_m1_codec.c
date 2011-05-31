@@ -491,6 +491,7 @@ static struct platform_driver aml_m1_codec_platform_driver = {
 
 static int __init aml_m1_codec_modinit(void)
 {
+        printk("****%s %d*****", __func__, __LINE__);
 		return platform_driver_register(&aml_m1_codec_platform_driver);
 }
 
