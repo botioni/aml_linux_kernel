@@ -191,6 +191,11 @@ static struct gt2005_fmt formats[] = {
 		.depth    = 12,	
 	},
 	{
+		.name     = "12  Y/CbCr 4:2:0",
+		.fourcc   = V4L2_PIX_FMT_NV21,
+		.depth    = 12,	
+	},
+	{
 		.name     = "YUV420P",
 		.fourcc   = V4L2_PIX_FMT_YUV420,
 		.depth    = 12,

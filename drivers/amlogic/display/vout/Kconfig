@@ -85,7 +85,13 @@ config AML_TCON_A18
 	depends on  AM_TCON_OUTPUT
 	help  
 		A18 LCD panel module
-	
+
+config AML_TCON_A19
+	tristate "A19 panel driver"
+	depends on  AM_TCON_OUTPUT
+	help  
+		A19 LCD panel module
+
 config AML_TCON_R10
 	tristate "R10 panel driver"
 	depends on  AM_TCON_OUTPUT

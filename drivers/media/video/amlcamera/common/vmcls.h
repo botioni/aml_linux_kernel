@@ -103,7 +103,26 @@ static ssize_t write_attr1(struct device *dev,
 
 	return ret;
 }
+int disable_gt2005=0;
 
+static ssize_t read_attr2(struct class *cla,struct class_attribute *attr,char *buf)
+{
+    return disable_gt2005;
+}
+
+static ssize_t write_attr2(struct device *dev,
+					struct device_attribute *attr,
+					const char *buf, size_t count)
+{
+	//struct display_device *dsp = dev_get_drvdata(dev);
+	ssize_t ret = -EINVAL;
+	if(count <= 2)
+	{
+		disable_gt2005=buf[0];
+	}
+
+	return ret;
+}
 static struct class_attribute vm_class_attrs[] = {
     __ATTR(info,
            S_IRUGO | S_IWUSR,
@@ -117,6 +136,10 @@ static struct class_attribute vm_class_attrs[] = {
            S_IRUGO | S_IWUSR,
            read_attr1,
            write_attr1),
+    __ATTR(attr2,
+           S_IRUGO | S_IWUSR,
+           read_attr2,
+           write_attr2),
     __ATTR_NULL
 };
 
