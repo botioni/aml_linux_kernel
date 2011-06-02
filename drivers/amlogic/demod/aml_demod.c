@@ -35,6 +35,8 @@ const char aml_demod_dev_id[] = "aml_demod";
 static struct aml_demod_i2c demod_i2c;
 static struct aml_demod_sta demod_sta;
 
+static DECLARE_WAIT_QUEUE_HEAD(lock_wq);
+
 static ssize_t aml_demod_info(struct class *cla, 
 			      struct class_attribute *attr, 
 			      char *buf)
@@ -58,7 +60,12 @@ static struct class aml_demod_class = {
 static irqreturn_t aml_demod_isr(int irq, void *dev_id)
 {
     if (demod_sta.dvb_mode == 0) {
-	dvbc_isr(&demod_sta);
+	//dvbc_isr(&demod_sta);
+	if(dvbc_isr_islock()){
+		printk("sync4\n");
+		if(waitqueue_active(&lock_wq))
+			wake_up_interruptible(&lock_wq);
+	}
     }
     else {
 	dvbt_isr(&demod_sta);
@@ -78,6 +85,19 @@ static int aml_demod_release(struct inode *inode, struct file *file)
 {
     printk("Amlogic Demod DVB-T/C Release\n");    
     return 0;
+}
+
+static int amdemod_islock(void)
+{
+	struct aml_demod_sts demod_sts;
+	if(demod_sta.dvb_mode == 0) {
+		dvbc_status(&demod_sta, &demod_i2c, &demod_sts);
+		return demod_sts.ch_sts&0x1;
+	} else if(demod_sta.dvb_mode == 1) {
+		dvbt_status(&demod_sta, &demod_i2c, &demod_sts);
+		return demod_sts.ch_sts>>12&0x1;
+	}
+	return 0;
 }
 
 static int aml_demod_ioctl(struct inode *inode, struct file *file,
@@ -124,6 +144,11 @@ static int aml_demod_ioctl(struct inode *inode, struct file *file,
     case AML_DEMOD_DVBC_SET_CH :
 	// printk("Ioctl DVB-C Set Channel\n");    	
 	dvbc_set_ch(&demod_sta, &demod_i2c, (struct aml_demod_dvbc *)arg);
+	{
+		int ret;
+		ret = wait_event_interruptible_timeout(lock_wq, amdemod_islock(), 2*HZ);
+		if(!ret)	printk(">>> wait lock timeout.\n");
+	}
 	break;
 
     case AML_DEMOD_DVBC_GET_CH :
@@ -182,6 +207,8 @@ static int __init aml_demod_init(void)
     int r = 0;
 
     printk("Amlogic Demod DVB-T/C Init\n");    
+
+    init_waitqueue_head(&lock_wq);
 
     /* hook demod isr */
     r = request_irq(INT_DEMOD, &aml_demod_isr,

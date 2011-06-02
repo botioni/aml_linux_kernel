@@ -78,10 +78,12 @@ void dvbt_get_test_out(u8 sel, u32 len, u32 *buf);
 void dvbc_enable_irq (int dvbc_irq);
 void dvbc_disable_irq(int dvbc_irq);
 void dvbc_isr(struct aml_demod_sta *demod_sta);
+int dvbc_isr_islock(void);
 
 void dvbt_enable_irq (int dvbt_irq);
 void dvbt_disable_irq(int dvbt_irq);
 void dvbt_isr(struct aml_demod_sta *demod_sta);
+int dvbt_isr_islock(void);
 
 int init_tuner_fj2207(struct aml_demod_sta *demod_sta, 
 		      struct aml_demod_i2c *adap);
@@ -94,6 +96,8 @@ int tuner_get_ch_power(struct aml_demod_i2c *adap);
 // i2c functions
 //int aml_i2c_sw_test_bus(struct aml_demod_i2c *adap, char *name);
 int am_demod_i2c_xfer(struct aml_demod_i2c *adap, struct i2c_msg *msgs, int num);
+
+struct dvb_tuner_info * tuner_get_info( int type, int mode);
 
 #endif
 
