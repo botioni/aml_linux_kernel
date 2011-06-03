@@ -440,11 +440,11 @@ static ssize_t dsc_store_source(struct class *class,struct class_attribute *attr
 {
 	dmx_source_t src = -1;
 
-	if(!strncmp("dmx0", buf, 3)) {
+	if(!strncmp("dmx0", buf, 4)) {
 		src = AM_DMX_0;
-	} else if(!strncmp("dmx1", buf, 3)) {
+	} else if(!strncmp("dmx1", buf, 4)) {
 		src = AM_DMX_1;
-	}else if(!strncmp("dmx2", buf, 3)) {
+	}else if(!strncmp("dmx2", buf, 4)) {
 		src = AM_DMX_2;
 	}
 
@@ -565,6 +565,27 @@ static ssize_t asyncfifo##i##_store_source(struct class *class,  struct class_at
 #endif
 
 
+extern int dmx_reset_hw(struct aml_dvb *dvb);
+
+/*Reset the Demux*/
+static ssize_t demux_do_reset(struct class *class,struct class_attribute *attr,
+                          const char *buf,
+                          size_t size)
+{
+	if(!strncmp("1", buf, 1)) {
+		struct aml_dvb *dvb = &aml_dvb_device;
+		unsigned long flags;
+		
+		spin_lock_irqsave(&dvb->slock, flags);
+		pr_info("Reset demux, call dmx_reset_hw\n");
+		dmx_reset_hw(dvb);
+		spin_unlock_irqrestore(&dvb->slock, flags);
+	}
+	
+	return size;
+}
+
+
 static struct file_operations dvb_dsc_fops = {
         .owner          = THIS_MODULE,
         .read           = NULL,
@@ -604,7 +625,8 @@ static struct class_attribute aml_stb_class_attrs[] = {
 #if ASYNCFIFO_COUNT>1
 	ASYNCFIFO_SOURCE_ATTR_DECL(1),
 #endif
-
+	__ATTR(demux_reset,  S_IRUGO | S_IWUSR, NULL, demux_do_reset),
+	
 	__ATTR_NULL
 };
 
@@ -759,8 +781,6 @@ static struct aml_dmx* get_stb_dmx(void)
 	
 	return NULL;
 }
-
-extern int dmx_reset_hw(struct aml_dvb *dvb);
 
 static int aml_tsdemux_reset(void)
 {
