@@ -338,8 +338,10 @@ static void rx_submit (struct usbnet *dev, struct urb *urb, gfp_t flags)
 		usb_free_urb (urb);
 		return;
 	}
+	/*
+	 * Removed for ASIX dongle in M1
 	skb_reserve (skb, NET_IP_ALIGN);
-
+	*/
 	entry = (struct skb_data *) skb->cb;
 	entry->urb = urb;
 	entry->dev = dev;

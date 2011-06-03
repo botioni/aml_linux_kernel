@@ -2451,7 +2451,21 @@ static struct platform_device android_usb_device = {
        },
 };
 #endif
-
+ #ifdef CONFIG_POST_PROCESS_MANAGER
+static struct resource ppmgr_resources[] = {
+    [0] = {
+        .start =  PPMGR_ADDR_START,
+        .end   = PPMGR_ADDR_END,
+        .flags = IORESOURCE_MEM,
+    },
+};
+static struct platform_device ppmgr_device = {
+    .name       = "ppmgr",
+    .id         = 0,
+    .num_resources = ARRAY_SIZE(ppmgr_resources),
+    .resource      = ppmgr_resources,
+};
+#endif
 static struct platform_device __initdata *platform_devs[] = {
     #if defined(CONFIG_JPEGLOGO)
         &jpeglogo_device,
@@ -2537,6 +2551,9 @@ static struct platform_device __initdata *platform_devs[] = {
         #ifdef CONFIG_USB_ANDROID_MASS_STORAGE
             &usb_mass_storage_device,
         #endif
+    #endif
+     #ifdef CONFIG_POST_PROCESS_MANAGER
+    &ppmgr_device,
     #endif
 };
 static struct i2c_board_info __initdata aml_i2c_bus_info[] = {

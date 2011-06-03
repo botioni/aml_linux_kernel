@@ -91,8 +91,6 @@ static hdmitx_dev_t hdmitx_device;
 #define INIT_FLAG_VDACOFF        0x1
     /* unplug powerdown */
 #define INIT_FLAG_POWERDOWN      0x2
-    /* use external xtal as source of hdmi pll */
-#define INIT_FLAG_PLLMODE1        0x4    
 
 #define INIT_FLAG_NOT_LOAD 0x80
 
@@ -634,15 +632,15 @@ static void
 #endif
 hdmi_task_handle(void *data) 
 {
+    extern void hdmitx_edid_ram_buffer_clear(hdmitx_dev_t*);
     hdmitx_dev_t* hdmitx_device = (hdmitx_dev_t*)data;
 
-    if(init_flag&INIT_FLAG_PLLMODE1){
-        hdmitx_device->HWOp.Cntl(hdmitx_device, HDMITX_HWCMD_PLL_MODE, 1);    
-    }
-    
     hdmitx_init_parameters(&hdmitx_device->hdmi_info);
 
     HDMITX_M1B_Init(hdmitx_device);
+
+    //When init hdmi, clear the hdmitx module edid ram and edid buffer.
+    hdmitx_edid_ram_buffer_clear(hdmitx_device);
 
     hdmitx_device->HWOp.SetupIRQ(hdmitx_device);
 
@@ -693,6 +691,8 @@ hdmi_task_handle(void *data)
         }
         else if(hdmitx_device->hpd_event == 2)
         {
+            //When unplug hdmi, clear the hdmitx module edid ram and edid buffer.
+            hdmitx_edid_ram_buffer_clear(hdmitx_device);
             hdmitx_edid_clear(hdmitx_device);
 
             if(hdmitx_device->unplug_powerdown){
@@ -1092,7 +1092,8 @@ static  int __init hdmitx_boot_para_setup(char *s)
                 init_flag|=INIT_FLAG_POWERDOWN;
             }
             else if(strncmp(token, "pllmode1",  8)==0){
-                init_flag|=INIT_FLAG_PLLMODE1;        
+                    /* use external xtal as source of hdmi pll */
+                hdmi_pll_mode = 1;
             }
             else if((token_len==7)&& (strncmp(token, "hpdmode", token_len)==0)){
                 hpdmode = simple_strtoul(token+7,NULL,10);   

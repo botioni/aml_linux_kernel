@@ -10,6 +10,7 @@ obj-y += display/
 
 #obj-y  += hdmi/
 
+obj-$(CONFIG_POST_PROCESS_MANAGER) += ppmgr/
 
 #####for Basic drivers#####
 
@@ -79,4 +80,5 @@ obj-y += wifi/
 obj-y += bluetooth/
 #	camera devices
 obj-y += camera/
+obj-y += modem/
 obj-y += debug/

@@ -352,12 +352,24 @@ static int aml_m1_codec_remove(struct platform_device *pdev)
 #ifdef CONFIG_PM
 static int aml_m1_codec_suspend(struct platform_device* pdev)
 {
+	if (!aml_m1_codec) {
+		dev_err(&pdev->dev, "AML_M1_CODEC not yet discovered\n");
+		return -ENODEV;
+	}
+	struct snd_soc_codec *codec;
+    codec = aml_m1_codec;
     snd_soc_write(codec, ADAC_POWER_CTRL_REG2, 0<<7);
     return 0;
 }
 
 static int aml_m1_codec_resume(struct platform_device* pdev)
 {
+	if (!aml_m1_codec) {
+		dev_err(&pdev->dev, "AML_M1_CODEC not yet discovered\n");
+		return -ENODEV;
+	}
+	struct snd_soc_codec *codec;
+    codec = aml_m1_codec;
     snd_soc_write(codec, ADAC_POWER_CTRL_REG2, 0<<7);
     snd_soc_write(codec, ADAC_POWER_CTRL_REG2, 1<<7);
     return 0;
@@ -479,6 +491,7 @@ static struct platform_driver aml_m1_codec_platform_driver = {
 
 static int __init aml_m1_codec_modinit(void)
 {
+        printk("****%s %d*****", __func__, __LINE__);
 		return platform_driver_register(&aml_m1_codec_platform_driver);
 }
 

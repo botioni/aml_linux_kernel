@@ -1984,8 +1984,10 @@ static int nand_do_write_ops(struct mtd_info *mtd, loff_t to,
 		chip->pagebuf = -1;
 
 	/* If we're not given explicit OOB data, let it be 0xFF */
-	if (likely(!oob))
+	if (likely(!oob)) {
 		memset(chip->oob_poi, 0xa5, mtd->oobsize);			//a5 not ff for all ff data very dangerous
+		chip->oob_poi[chip->badblockpos] = 0xFF;
+	}
 
 	while(1) {
 		int bytes = mtd->writesize;

@@ -116,6 +116,8 @@
 #define TRICK_STAT_DONE     0x01
 #define TRICK_STAT_WAIT     0x00
 
+#define AUDIO_EXTRA_DATA_SIZE   (2048)
+
 enum VIDEO_DEC_TYPE
 {
         VIDEO_DEC_FORMAT_UNKNOW,
@@ -182,7 +184,7 @@ struct audio_info {
     int codec_id;
     int block_align;
     int extradata_size;
-    char extradata[2048];
+    char extradata[AUDIO_EXTRA_DATA_SIZE];
 };
 
 struct dec_sysinfo {

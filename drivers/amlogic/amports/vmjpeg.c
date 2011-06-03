@@ -96,7 +96,7 @@ static const struct vframe_provider_s vmjpeg_vf_provider = {
     .put  = vmjpeg_vf_put,
     .vf_states = vmjpeg_vf_states,
 };
-
+static const struct vframe_receiver_op_s *vf_receiver;
 static struct vframe_s vfpool[VF_POOL_SIZE];
 static u32 vfpool_idx[VF_POOL_SIZE];
 static s32 vfbuf_use[4];
@@ -178,7 +178,8 @@ static irqreturn_t vmjpeg_isr(int irq, void *dev_id)
             vfbuf_use[index]++;
 
             INCPTR(fill_ptr);
-
+            if (vf_receiver)
+    	        vf_receiver->event_cb(VFRAME_EVENT_PROVIDER_VFRAME_READY, NULL, NULL);	
         } else {
             u32 index = ((reg & PICINFO_BUF_IDX_MASK) - 1) & 3;
 
@@ -231,6 +232,8 @@ static irqreturn_t vmjpeg_isr(int irq, void *dev_id)
             vfbuf_use[index]++;
 
             INCPTR(fill_ptr);
+            if (vf_receiver)
+    	        vf_receiver->event_cb(VFRAME_EVENT_PROVIDER_VFRAME_READY, NULL, NULL);	            
 #endif
         }
 
@@ -270,13 +273,23 @@ static void vmjpeg_vf_put(vframe_t *vf)
 }
 static int  vmjpeg_vf_states(vframe_states_t *states)
 {
+    int i;
     unsigned long flags;
     spin_lock_irqsave(&lock, flags);
+
     states->vf_pool_size = VF_POOL_SIZE;
-    states->fill_ptr = fill_ptr;
-    states->get_ptr = get_ptr;
-    states->putting_ptr = putting_ptr;
-    states->put_ptr = put_ptr;
+    i = put_ptr - fill_ptr;
+    if (i < 0) i += VF_POOL_SIZE;
+    states->buf_free_num = i;
+    
+    i = putting_ptr - put_ptr;
+    if (i < 0) i += VF_POOL_SIZE;
+    states->buf_recycle_num = i;
+    
+    i = fill_ptr - get_ptr;
+    if (i < 0) i += VF_POOL_SIZE;
+    states->buf_avail_num = i;
+
     spin_unlock_irqrestore(&lock, flags);
     return 0;
 }
@@ -476,7 +489,7 @@ static void vmjpeg_prot_init(void)
 static void vmjpeg_local_init(void)
 {
     int i;
-
+    vf_receiver = NULL;
     fill_ptr = get_ptr = put_ptr = putting_ptr = 0;
 
     frame_width = vmjpeg_amstream_dec_info.width;
@@ -525,7 +538,13 @@ static s32 vmjpeg_init(void)
 
     stat |= STAT_ISR_REG;
 
-    vf_reg_provider(&vmjpeg_vf_provider);
+ #ifdef CONFIG_POST_PROCESS_MANAGER
+	vf_receiver = vf_ppmgr_reg_provider(&vmjpeg_vf_provider);
+	if ((vf_receiver) && (vf_receiver->event_cb))
+	vf_receiver->event_cb(VFRAME_EVENT_PROVIDER_START, NULL, NULL); 	
+ #else 
+ 	vf_reg_provider(&vmjpeg_vf_provider);
+ #endif 
 
     stat |= STAT_VF_HOOK;
 
@@ -591,7 +610,13 @@ static int amvdec_mjpeg_remove(struct platform_device *pdev)
     }
 
     if (stat & STAT_VF_HOOK) {
-        vf_unreg_provider();
+ #ifdef CONFIG_POST_PROCESS_MANAGER
+	vf_ppmgr_unreg_provider();
+	if ((vf_receiver) && (vf_receiver->event_cb))
+	vf_receiver->event_cb(VFRAME_EVENT_PROVIDER_UNREG, NULL, NULL); 	
+ #else 
+ 	vf_unreg_provider();
+ #endif         
         stat &= ~STAT_VF_HOOK;
     }
 

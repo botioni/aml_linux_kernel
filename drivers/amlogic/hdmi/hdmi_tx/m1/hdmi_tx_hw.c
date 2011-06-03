@@ -93,7 +93,7 @@ extern void task_tx_key_setting(unsigned force_wrong);
 #define HDMI_M1B 'b'
 #define HDMI_M1C 'c'
 static unsigned char hdmi_chip_type = 0;
-static unsigned char hdmi_pll_mode = 0; /* 1, use external clk as hdmi pll source */
+unsigned char hdmi_pll_mode = 0; /* 1, use external clk as hdmi pll source */
 
 #define HSYNC_POLARITY      1                       // HSYNC polarity: active high 
 #define VSYNC_POLARITY      1                       // VSYNC polarity: active high
@@ -1540,7 +1540,7 @@ static void hdmi_audio_init(unsigned char spdif_flag)
     tmp_add_data |= tx_i2s_8_channel<< 6; // [6]    8 or 2ch
     tmp_add_data |= 2               << 4; // [5:4]  Serial Format: I2S format
     tmp_add_data |= 3               << 2; // [3:2]  Bit Width: 24-bit
-    tmp_add_data |= 1               << 1; // [1]    WS Polarity: 1=WS high is left
+    tmp_add_data |= 0               << 1; // [1]    WS Polarity: 0=WS high is right
     tmp_add_data |= 1               << 0; // [0]    For I2S: 0=one-bit audio; 1=I2S;
                                           //        For SPDIF: 0= channel status from input data; 1=from register
     hdmi_wr_reg(TX_AUDIO_FORMAT, tmp_add_data); // 0x2f
@@ -2336,9 +2336,6 @@ static void hdmitx_m1b_cntl(hdmitx_dev_t* hdmitx_device, int cmd, unsigned argv)
             phy_pll_off();
             digital_clk_off(3); //do not off sys clk
         }
-    }
-    else if( cmd == HDMITX_HWCMD_PLL_MODE){
-        hdmi_pll_mode = argv;
     }
                 
 }

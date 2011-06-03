@@ -90,7 +90,7 @@ typedef struct hdmi_tx_dev_s {
 #define HDMI_AUDIO_CONTENT_PROTECTION   5
 
 
-#define HDMITX_VER "2011May12a"
+#define HDMITX_VER "2011May23a"
 /************************************
 *    hdmitx protocol level interface
 *************************************/
@@ -120,6 +120,7 @@ extern  int hdmi_print_buf(char* buf, int len);
 *    hdmitx hardware level interface
 *************************************/
 //#define DOUBLE_CLK_720P_1080I
+extern unsigned char hdmi_pll_mode; /* 1, use external clk as hdmi pll source */
 
 extern void HDMITX_M1A_Init(hdmitx_dev_t* hdmitx_device);
 

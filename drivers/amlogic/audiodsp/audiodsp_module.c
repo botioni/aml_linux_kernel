@@ -125,7 +125,9 @@ int audiodsp_start(void)
 	   (pmcode->fmt == MCODEC_FMT_PCM)  ||
 	   (pmcode->fmt == MCODEC_FMT_WMAPRO)||
 	   (pmcode->fmt == MCODEC_FMT_ALAC)||
-	  (pmcode->fmt == MCODEC_FMT_AC3))
+	  (pmcode->fmt == MCODEC_FMT_AC3) ||
+	  (pmcode->fmt == MCODEC_FMT_FLAC))
+
 	{
 		DSP_PRNT("dsp send audio info\n");
     		for(i = 0; i< 2000;i++){
@@ -139,7 +141,14 @@ int audiodsp_start(void)
 		    audio_info = get_audio_info();
 		DSP_PRNT("kernel sent info first 4 byte[0x%x],[0x%x],[0x%x],[0x%x]\n\t",audio_info->extradata[0],\
 			audio_info->extradata[1],audio_info->extradata[2],audio_info->extradata[3]);
+		DSP_WD(DSP_GET_EXTRA_INFO_FINISH, 0);
+		while(1){
 		    dsp_mailbox_send(priv, 1, M2B_IRQ4_AUDIO_INFO, 0, (const char*)audio_info, sizeof(struct audio_info));
+		    msleep(100);
+
+		    if(DSP_RD(DSP_GET_EXTRA_INFO_FINISH) == 0x12345678)
+		        break;
+		}
     }
 #endif
      }

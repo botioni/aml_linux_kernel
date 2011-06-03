@@ -212,7 +212,7 @@ static int
 vpp_process_speed_check(u32 width_in,
                         u32 height_in,
                         u32 height_out,
-                        u32 height_screen)
+                        u32 height_screen,vpp_frame_par_t *next_frame_par)
 {
 
 #if 0
@@ -221,7 +221,11 @@ vpp_process_speed_check(u32 width_in,
     height_out / height_screen / 0.90 *
     1920 * 1080 / width_in * height_in
 #endif
-
+   
+   if((height_in > 1080)&&(next_frame_par->vscale_skip_count== 0 )){
+   		return 1;
+   }
+   
     if (1800 * 1400 * height_out > height_screen * width_in * height_in) {
         return 0;
     }
@@ -491,7 +495,7 @@ RESTART:
         vpp_process_speed_check(next_frame_par->VPP_hd_end_lines_ - next_frame_par->VPP_hd_start_lines_ + 1,
                                 (next_frame_par->VPP_vd_end_lines_ - next_frame_par->VPP_vd_start_lines_ + 1) / (next_frame_par->vscale_skip_count + 1) ,
                                 next_frame_par->VPP_vsc_endp - next_frame_par->VPP_vsc_startp,
-                                height_out >> ((vpp_flags & VPP_FLAG_INTERLACE_OUT) ? 1 : 0))) {
+                                height_out >> ((vpp_flags & VPP_FLAG_INTERLACE_OUT) ? 1 : 0),next_frame_par)) {
         if (vpp_flags & VPP_FLAG_INTERLACE_IN) {
             next_frame_par->vscale_skip_count += 2;
         } else {

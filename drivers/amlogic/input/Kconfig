@@ -18,5 +18,7 @@ source "drivers/amlogic/input/touch_screen/Kconfig"
 
 source "drivers/amlogic/input/touch_keypad/Kconfig"
 
+source "drivers/amlogic/input/vfd/Kconfig"
+
 endmenu
 

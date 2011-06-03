@@ -1601,6 +1601,53 @@ static ssize_t store_enable_dump(struct class* class, struct class_attribute* at
   
   return count;
 }
+
+static ssize_t show_audio_channels_mask(struct class* class, struct class_attribute* attr, char* buf)
+{
+    ssize_t ret = 0;
+
+    ret = sprintf(buf, "echo l/r/s/c to /sys/class/amaudio/audio_channels_mask file to mask audio output. \n"
+                         " l : left channel mono output. \n"
+                         " r : right channel mono output. \n"
+                         " s : stereo output. \n"
+                         " c : swap left and right channels.\n");
+
+    return ret;
+}
+
+static ssize_t store_audio_channels_mask(struct class* class, struct class_attribute* attr, const char* buf, size_t count)
+{
+    u32 reg;
+
+    switch(buf[0]) {
+        case 'l':
+            audio_i2s_swap_left_right(1);
+            break;
+
+        case 'r':
+            audio_i2s_swap_left_right(2);
+            break;
+
+        case 's':
+            audio_i2s_swap_left_right(0);
+            break;
+
+        case 'c':
+            reg = read_i2s_mute_swap_reg();
+            if(reg & 0x3)
+                audio_i2s_swap_left_right(0);
+            else
+                audio_i2s_swap_left_right(3);
+            break;
+
+        default:
+            printk("unknow command!\n");
+    }
+
+    return count;
+}
+
+
 static ssize_t amaudio_runtime_show(struct class* class, struct class_attribute* attr,
     char* buf)
 {
@@ -1632,6 +1679,7 @@ static struct class_attribute amaudio_attrs[]={
   __ATTR(enable_debug_print, S_IRUGO | S_IWUSR, show_enable_debug, store_enable_debug),
   __ATTR(enable_debug_dump, S_IRUGO | S_IWUSR, show_enable_dump, store_enable_dump),
   __ATTR_RO(amaudio_runtime),
+  __ATTR(audio_channels_mask, S_IRUGO | S_IWUSR, show_audio_channels_mask, store_audio_channels_mask),
   __ATTR_NULL
 };
 

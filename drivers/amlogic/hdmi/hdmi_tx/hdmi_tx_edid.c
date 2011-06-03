@@ -13,6 +13,7 @@
 #include <linux/mutex.h>
 #include <linux/cdev.h>
 #include <asm/uaccess.h>
+#include "m1/hdmi_tx_reg.h"
 
 #else
 #include "ioapi.h"
@@ -1074,6 +1075,25 @@ char* hdmitx_edid_get_native_VIC(hdmitx_dev_t* hdmitx_device)
     return disp_mode_ret;
 }    
 
+#define EDID_RAM_ADDR_SIZE      (4*128)
+//Clear HDMI Hardware Module EDID RAM and EDID Buffer
+void hdmitx_edid_ram_buffer_clear(hdmitx_dev_t* hdmitx_device)
+{
+    unsigned int i = 0;
+    
+    //Clear HDMI Hardware Module EDID RAM
+    for(i = 0; i < EDID_RAM_ADDR_SIZE; i++)
+    {
+        hdmi_wr_reg(TX_RX_EDID_OFFSET + i, 0);
+    }
+    //Clear EDID Buffer
+    for(i = 0; i < EDID_MAX_BLOCK*128; i++)
+    {
+        hdmitx_device->EDID_buf[i] = 0;
+    }
+}
+
+//Clear the Parse result of HDMI Sink's EDID.
 void hdmitx_edid_clear(hdmitx_dev_t* hdmitx_device)
 {
     rx_cap_t* pRXCap = &(hdmitx_device->RXCap);

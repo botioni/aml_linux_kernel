@@ -94,6 +94,9 @@
 #ifdef CONFIG_SND_AML_M1_MID_WM8900
 #include <sound/wm8900.h>
 #endif
+#ifdef CONFIG_SND_AML_M1_MID_CS42L52
+#include <sound/cs42l52.h>
+#endif
 
 #ifdef CONFIG_GOODIX_CAPACITIVE_TOUCHSCREEN
 #include <linux/goodix_touch.h>
@@ -671,12 +674,34 @@ static struct resource aml_m1_audio_resource[]={
 };
 
 static struct platform_device aml_audio={
-        .name               = "aml_m1_audio_wm8900",
-        .id                     = -1,
-        .resource       =   aml_m1_audio_resource,
-        .num_resources  =   ARRAY_SIZE(aml_m1_audio_resource),
+#ifdef CONFIG_SND_AML_M1_MID_WM8900
+		.name 				= "aml_m1_audio_wm8900",
+#elif defined CONFIG_SND_AML_M1_MID_CS42L52
+        .name 				= "aml_m1_audio_cs42l52",
+#endif
+		.id 					= -1,
+		.resource 		=	aml_m1_audio_resource,
+		.num_resources	=	ARRAY_SIZE(aml_m1_audio_resource),
 };
+#ifdef CONFIG_SND_AML_M1_MID_CS42L52
+static int cs42l52_pwr_rst(void)
+{
+    //reset
+    set_gpio_val(GPIOE_bank_bit16_21(21), GPIOE_bank_bit16_21(21), 0); //low
+    set_gpio_mode(GPIOE_bank_bit16_21(21), GPIOE_bank_bit16_21(21), GPIO_OUTPUT_MODE);
 
+    udelay(20); //delay 2us
+
+    set_gpio_val(GPIOE_bank_bit16_21(21), GPIOE_bank_bit16_21(21), 1); //high
+    set_gpio_mode(GPIOE_bank_bit16_21(21), GPIOE_bank_bit16_21(21), GPIO_OUTPUT_MODE);
+    //end
+
+    return 0;
+}
+static struct cs42l52_platform_data cs42l52_pdata = {
+    .cs42l52_pwr_rst = &cs42l52_pwr_rst,
+};
+#endif
 #ifdef CONFIG_SND_AML_M1_MID_WM8900
 
 //use LED_CS1 as hp detect pin
@@ -990,6 +1015,25 @@ static struct eeti_platform_data eeti_pdata = {
     .lcd_max_height = 600,
 };
 #endif
+
+
+#ifdef CONFIG_PIXCIR_CAPACITIVE_TOUCHSCREEN
+#include <linux/i2c/pixcir_i2c_ts.h>
+static struct pixcir_i2c_ts_platform_data pixcir_pdata = {
+	.gpio_shutdown = (GPIOD_bank_bit2_24(23)<<16) | GPIOD_bit_bit2_24(23),
+	.gpio_irq = (GPIOD_bank_bit2_24(24)<<16) | GPIOD_bit_bit2_24(24),
+	.xmin = 0,
+	.xmax = 1280,
+	.ymin = 0,
+	.ymax = 768,
+  .swap_xy = 0,
+  .xpol = 0,
+  .ypol = 0,
+  .point_id_available = 0,	
+};
+#endif
+
+
 
 #ifdef CONFIG_ANDROID_PMEM
 static struct android_pmem_platform_data pmem_data =
@@ -1666,43 +1710,43 @@ static struct mtd_partition multi_partition_info[] =
 {
 	{
 		.name = "logo",
-		.offset = 32*1024*1024,
-		.size = 16*1024*1024,
+		.offset = 32*SZ_1M,
+		.size = 16*SZ_1M,
 	},
 	{
 		.name = "aml_logo",
-		.offset = 48*1024*1024,
-		.size = 16*1024*1024,
+		.offset = 48*SZ_1M,
+		.size = 16*SZ_1M,
 	},
 	{
 		.name = "recovery",
-		.offset = 64*1024*1024,
-		.size = 32*1024*1024,
+		.offset = 64*SZ_1M,
+		.size = 32*SZ_1M,
 	},
 	{
 		.name = "boot",
-		.offset = 96*1024*1024,
-		.size = 32*1024*1024,
+		.offset = 96*SZ_1M,
+		.size = 32*SZ_1M,
 	},
 	{
 		.name = "system",
-		.offset = 128*1024*1024,
-		.size = 256*1024*1024,
+		.offset = 128*SZ_1M,
+		.size = 256*SZ_1M,
 	},
 	{
 		.name = "cache",
-		.offset = 384*1024*1024,
-		.size = 128*1024*1024,
+		.offset = 384*SZ_1M,
+		.size = 128*SZ_1M,
 	},
 	{
 		.name = "userdata",
-		.offset = 512*1024*1024,
-		.size = 512*1024*1024,
+		.offset = 512*SZ_1M,
+		.size = 512*SZ_1M,
 	},
 	{
 		.name = "NFTL_Part",
-		.offset = ((512 + 512)*1024*1024),
-		.size = ((0x200000000 - (512 + 512)*1024*1024)),
+		.offset = MTDPART_OFS_APPEND,
+		.size = MTDPART_SIZ_FULL,
 	},
 };
 
@@ -2063,6 +2107,11 @@ static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
         I2C_BOARD_INFO("wm8900", 0x1A),
         .platform_data = (void *)&wm8900_pdata,
     },
+#elif defined CONFIG_SND_AML_M1_MID_CS42L52
+    {
+        I2C_BOARD_INFO("cs42l52", 0x4A),
+	 .platform_data = (void *)&cs42l52_pdata,
+    },
 #endif
 
 #ifdef CONFIG_SN7325
@@ -2098,6 +2147,7 @@ static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
     {
         I2C_BOARD_INFO("pixcir168", 0x5c),
         .irq = INT_GPIO_0,
+        .platform_data = (void *)&pixcir_pdata,
     },
 #endif
 
@@ -2237,14 +2287,6 @@ static __init void m1_init_machine(void)
 #if defined(CONFIG_TOUCHSCREEN_ADS7846)
     ads7846_init_gpio();
     spi_register_board_info(spi_board_info_list, ARRAY_SIZE(spi_board_info_list));
-#endif
-#ifdef CONFIG_PIXCIR_CAPACITIVE_TOUCHSCREEN
-//#define gpio_shutdown ((GPIOD_bank_bit2_24(23)<<16) |GPIOD_bit_bit2_24(23))
-//#define gpio_irq ((GPIOD_bank_bit2_24(24)<<16) |GPIOD_bit_bit2_24(24))
-//	gpio_direction_output(gpio_shutdown, 1);
-//	gpio_direction_input(gpio_irq);
-//	gpio_enable_edge_int(gpio_to_idx(gpio_irq), 1, 0);
-//	msleep(50);
 #endif
     disable_unused_model();
 }

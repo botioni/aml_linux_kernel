@@ -179,10 +179,20 @@ static struct ov5642_fmt formats[] = {
 		.depth    = 24,
 	},		
 	{
-		.name     = "12  Y/CbCr 4:2:0",
+		.name     = "12  Y/CbCr 4:2:0SP",
 		.fourcc   = V4L2_PIX_FMT_NV12,
 		.depth    = 12,	
 	},
+	{
+		.name     = "12  Y/CbCr 4:2:0SP",
+		.fourcc   = V4L2_PIX_FMT_NV21,
+		.depth    = 12,	
+	},
+	{
+		.name     = "YUV420P",
+		.fourcc   = V4L2_PIX_FMT_YUV420,
+		.depth    = 12,
+	}
 #if 0
 	{
 		.name     = "4:2:2, packed, YUYV",

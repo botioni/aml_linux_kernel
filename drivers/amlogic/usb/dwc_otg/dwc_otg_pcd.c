@@ -1002,8 +1002,6 @@ static int32_t dwc_otg_pcd_stop_cb(void *_p)
 	dwc_otg_pcd_t *pcd = (dwc_otg_pcd_t *) _p;
 	extern void dwc_otg_pcd_stop(dwc_otg_pcd_t * _pcd);
 
-	dwc_otg_device_soft_disconnect(GET_CORE_IF(pcd));
-
 	dwc_otg_pcd_stop(pcd);
 	return 1;
 }
