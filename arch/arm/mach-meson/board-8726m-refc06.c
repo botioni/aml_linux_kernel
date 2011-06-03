@@ -97,6 +97,65 @@ static struct platform_device input_device = {
 };
 #endif
 
+#if defined(CONFIG_VFD_ENABLE) || defined(CONFIG_VFD_ENABLE_MODULE)
+#include <linux/input.h>
+#include <linux/input/vfd.h>
+
+static struct vfd_key vfd_key[] = {
+	{KEY_UP,				"up",			17},
+	{KEY_DOWN,			"down",		20},
+	{KEY_RIGHT,			"right",	21},
+	{KEY_TAB,				"back",		25},
+	{KEY_LEFT,			"left",		26},
+	{KEY_RIGHTCTRL,	"ok",			18},
+};
+static int vfd_stb_pin_set_value(int value)
+{		
+		set_gpio_mode(GPIOD_bank_bit2_24(5), GPIOD_bit_bit2_24(5), GPIO_OUTPUT_MODE);
+		set_gpio_val(GPIOD_bank_bit2_24(5), GPIOD_bit_bit2_24(5), value); 
+		return 0;
+}
+
+static int vfd_clock_pin_set_value(int value)
+{
+		set_gpio_mode(GPIOD_bank_bit2_24(6), GPIOD_bit_bit2_24(6), GPIO_OUTPUT_MODE);
+		set_gpio_val(GPIOD_bank_bit2_24(6), GPIOD_bit_bit2_24(6), value); 
+		return 0;
+}
+
+static int vfd_do_pin_set_value(int value)
+{
+		set_gpio_mode(GPIOD_bank_bit2_24(7), GPIOD_bit_bit2_24(7), GPIO_OUTPUT_MODE);
+		set_gpio_val(GPIOD_bank_bit2_24(7), GPIOD_bit_bit2_24(7), value); 
+		return 0;	
+}
+
+static int vfd_di_pin_get_value(void)
+{		
+		set_gpio_mode(GPIOD_bank_bit2_24(7), GPIOD_bit_bit2_24(7), GPIO_INPUT_MODE);
+		return get_gpio_val(GPIOD_bank_bit2_24(7),GPIOD_bit_bit2_24(7));	 		
+}
+
+static struct vfd_platform_data vfd_pdata = {
+		.key = &vfd_key[0],
+		.key_num = ARRAY_SIZE(vfd_key),
+		.set_stb_pin_value = vfd_stb_pin_set_value,
+		.set_clock_pin_value = vfd_clock_pin_set_value,
+		.set_do_pin_value = vfd_do_pin_set_value,
+		.get_di_pin_value = vfd_di_pin_get_value,
+};
+
+static struct platform_device vfd_device = {
+		.name = "m1-vfd",
+		.id = 0,
+		.num_resources = 0,
+		.resource = NULL,
+		.dev = {
+			.platform_data = &vfd_pdata,
+		}
+};
+#endif
+
 #if defined(CONFIG_FB_AM)
 static struct resource fb_device_resources[] = {
     [0] = {
@@ -211,7 +270,7 @@ static struct mtd_partition spi_partition_info[] = {
 //*/
 	{
 		.name = "ubootenv",
-		.offset = 0,
+		.offset = 0x0000,
 		.size = 0x200000,
 	},
 /* Hide recovery partition
@@ -988,6 +1047,9 @@ static struct platform_device __initdata *platform_devs[] = {
                &android_usb_device,
    	#ifdef CONFIG_USB_ANDROID_MASS_STORAGE
                &usb_mass_storage_device,
+   	#endif
+   	#ifdef CONFIG_VFD_ENABLE
+   	&vfd_device,
    	#endif
     #endif
 	
