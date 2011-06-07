@@ -115,5 +115,11 @@ config AML_TCON_T10
 	depends on  AM_TCON_OUTPUT
 	help  
 		T10 LCD panel module		
+		
+config AML_TCON_REFB17
+	tristate "REFB17 panel driver"
+	depends on  AM_TCON_OUTPUT
+	help  
+		T13 LCD panel module	
 endmenu
 	

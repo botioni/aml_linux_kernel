@@ -216,11 +216,11 @@ static struct platform_device adc_ts_device = {
 #include <linux/adc_keypad.h>
 
 static struct adc_key adc_kp_key[] = {
-    {KEY_LEFTMETA,          "menu", CHAN_4, 0, 60},
+    {KEY_HOME,              "home", CHAN_4, 0, 60},
     {KEY_PAGEDOWN,          "vol-", CHAN_4, 180, 60},  //0.58v
     {KEY_PAGEUP,            "vol+", CHAN_4, 398, 60},  //1.286v
-    {KEY_TAB,               "exit", CHAN_4, 622, 60},
-    {KEY_HOME,              "home", CHAN_4, 852, 60},
+    //{KEY_TAB,               "exit", CHAN_4, 622, 60},
+    //{KEY_HOME,              "home", CHAN_4, 852, 60},
 };
 
 static struct adc_kp_platform_data adc_kp_pdata = {
@@ -242,19 +242,28 @@ static struct platform_device adc_kp_device = {
 #if defined(CONFIG_KEY_INPUT_CUSTOM_AM) || defined(CONFIG_KEY_INPUT_CUSTOM_AM_MODULE)
 #include <linux/input.h>
 #include <linux/input/key_input.h>
-
+static int board_ver = 1;
 int _key_code_list[] = {KEY_POWER};
 
-static inline int key_input_init_func(void)
+static int key_input_init_func(void)
 {
-    WRITE_CBUS_REG(0x21d0/*RTC_ADDR0*/, (READ_CBUS_REG(0x21d0/*RTC_ADDR0*/) &~(1<<11)));
-    WRITE_CBUS_REG(0x21d1/*RTC_ADDR0*/, (READ_CBUS_REG(0x21d1/*RTC_ADDR0*/) &~(1<<3)));
-    return 0;
+    if(board_ver == 0){
+        WRITE_CBUS_REG(0x21d0/*RTC_ADDR0*/, (READ_CBUS_REG(0x21d0/*RTC_ADDR0*/) &~(1<<11)));
+        WRITE_CBUS_REG(0x21d1/*RTC_ADDR0*/, (READ_CBUS_REG(0x21d1/*RTC_ADDR0*/) &~(1<<3)));
+    }  
+    return 1;
 }
-static inline int key_scan(int *key_state_list)
+static int key_scan(int *key_state_list)
 {
     int ret = 0;
-    key_state_list[0] = ((READ_CBUS_REG(0x21d1/*RTC_ADDR1*/) >> 2) & 1) ? 0 : 1;
+    if(board_ver == 0)
+        key_state_list[0] = ((READ_CBUS_REG(0x21d1/*RTC_ADDR1*/) >> 2) & 1) ? 0 : 1;
+    else
+    {
+        key_state_list[0] = (READ_CBUS_REG(ASSIST_HW_REV)&(1<<10))? 0:1;  //GP_INPUT2  bit 10
+        printk("Read power key state : %d \n", key_state_list[0]);
+    }
+                        
     return ret;
 }
 
@@ -370,6 +379,22 @@ static struct lm_device usb_ld_a = {
     .dma_config = USB_DMA_BURST_SINGLE,
     .set_vbus_power = set_usb_a_vbus_power,
 };
+
+//usb_b is host port
+////port b 可选择不用
+static struct lm_device usb_ld_b = {
+ .type = LM_DEVICE_TYPE_USB,
+ .id = 1,
+ .irq = INT_USB_B,
+ .resource.start = IO_USB_B_BASE,
+ .resource.end = -1,
+ .dma_mask_room = DMA_BIT_MASK(32),
+ .port_type = USB_PORT_TYPE_HOST,
+ .port_speed = USB_PORT_SPEED_DEFAULT,
+ .dma_config = USB_DMA_BURST_SINGLE,
+ .set_vbus_power = 0,
+};
+
 #endif
 #ifdef CONFIG_SATA_DWC_AHCI
 static struct lm_device sata_ld = {
@@ -569,7 +594,7 @@ static struct mtd_partition multi_partition_info[] =
 		.size = 512*SZ_1M,
 	},
 	{
-		.name = "NFTL_Part",
+		.name = "media",
 		.offset = MTDPART_OFS_APPEND,
 		.size = MTDPART_SIZ_FULL,
 	},
@@ -689,6 +714,20 @@ static struct platform_device aml_audio={
 
 #endif
 
+#ifdef CONFIG_SND_AML_M1
+static void set_audio_en(int onoff)
+{
+    if(onoff)
+    {//set audio enable
+		set_gpio_val(GPIOD_bank_bit2_24(18), GPIOD_bit_bit2_24(18), 1);
+        set_gpio_mode(GPIOD_bank_bit2_24(18), GPIOD_bit_bit2_24(18), GPIO_OUTPUT_MODE);	
+	}
+    else
+    {
+		set_gpio_val(GPIOD_bank_bit2_24(18), GPIOD_bit_bit2_24(18), 0);
+        set_gpio_mode(GPIOD_bank_bit2_24(18), GPIOD_bit_bit2_24(18), GPIO_OUTPUT_MODE);	
+    }
+}
 static struct resource aml_m1_audio_resource[]={
 		[0]	=	{
 				.start 	=	0,
@@ -697,11 +736,12 @@ static struct resource aml_m1_audio_resource[]={
 		},
 };
 static struct platform_device aml_sound_card={
-		.name 				= "aml_m1_audio",//"aml_m1_audio_wm8900",
+		.name 				= "aml_m1_audio",
 		.id 					= -1,
 		.resource 		=	aml_m1_audio_resource,
 		.num_resources	=	ARRAY_SIZE(aml_m1_audio_resource),
 };
+#endif
 
 #ifdef CONFIG_SND_AML_M1_MID_WM8900
 
@@ -975,6 +1015,7 @@ static  struct platform_device aml_rtc_device = {
             .id               = -1,
     };
 #endif
+
 #if defined(CONFIG_VIDEO_AMLOGIC_CAPTURE_GT2005)
 
 int gt2005_init(void)
@@ -1198,7 +1239,22 @@ static void restore_pinmux(void)
 	for (i=0;i<6;i++)
 		 WRITE_CBUS_REG(PERIPHS_PIN_MUX_0+i, pinmux_backup[i]);
 }
-	
+#if defined CONFIG_USB_ANDROID
+static void set_USB_power(int power_on) 
+{//GPIOA_26
+    if(power_on)
+    {
+        printk("Power on USB!!!!!!  \n");
+        set_gpio_val(GPIOA_bank_bit23_26(26), GPIOA_bit_bit23_26(26), 0);
+        set_gpio_mode(GPIOA_bank_bit23_26(26), GPIOA_bit_bit23_26(26), GPIO_OUTPUT_MODE);
+    }
+    else
+    {
+        set_gpio_val(GPIOA_bank_bit23_26(26), GPIOA_bit_bit23_26(26), 1);
+        set_gpio_mode(GPIOA_bank_bit23_26(26), GPIOA_bit_bit23_26(26), GPIO_OUTPUT_MODE);
+    }
+}
+#endif
 static void set_vccx2(int power_on)
 {
 	int i;
@@ -1206,7 +1262,9 @@ static void set_vccx2(int power_on)
 		restore_pinmux();
 		for (i=0;i<MAX_GPIO;i++)
 			restore_gpio(i);
-		
+#if defined CONFIG_USB_ANDROID
+		set_USB_power(1);
+#endif
         printk(KERN_INFO "set_vccx2 power up\n");
         set_gpio_val(GPIOA_bank_bit0_14(6), GPIOA_bit_bit0_14(6), 1);
         set_gpio_mode(GPIOA_bank_bit0_14(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);        
@@ -1216,7 +1274,9 @@ static void set_vccx2(int power_on)
         printk(KERN_INFO "set_vccx2 power down\n");        
         set_gpio_val(GPIOA_bank_bit0_14(6), GPIOA_bit_bit0_14(6), 0);
         set_gpio_mode(GPIOA_bank_bit0_14(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);   
-
+#if defined CONFIG_USB_ANDROID
+        set_USB_power(0);
+#endif
 		save_pinmux();
 		for (i=0;i<MAX_GPIO;i++)
 			save_gpio(i);
@@ -1819,6 +1879,7 @@ static unsigned aml_8726m_get_bl_level(void)
 }
 static void aml_8726m_set_bl_level(unsigned level)
 {
+    //printk("aml_8726m_set_bl_level:%d \n",level);
     unsigned cs_level;
     if (level < 10)
     {
@@ -2136,9 +2197,9 @@ static struct platform_device __initdata *platform_devs[] = {
     #endif
     #ifdef CONFIG_USB_ANDROID
         &android_usb_device,
-        #ifdef CONFIG_USB_ANDROID_MASS_STORAGE
-            &usb_mass_storage_device,
-        #endif
+    #ifdef CONFIG_USB_ANDROID_MASS_STORAGE
+        &usb_mass_storage_device,
+    #endif
     #endif
     #ifdef CONFIG_BT_DEVICE  
         &bt_device,
@@ -2213,6 +2274,13 @@ static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
         I2C_BOARD_INFO("bq27200", 0x55),
         .platform_data = (void *)&bq27x00_pdata,
     },
+#endif
+
+#if defined(CONFIG_RTC_DRV_S35390A)
+	{
+		I2C_BOARD_INFO("s35390a", 0x30),
+		.type		= "s35390a",
+	},
 #endif
 
 };
@@ -2311,7 +2379,7 @@ static void disable_unused_model(void)
 }
 static void __init power_hold(void)
 {
-    printk(KERN_INFO "power hold set high!\n");
+    printk("power hold set high!\n");
     set_gpio_val(GPIOA_bank_bit(8), GPIOA_bit_bit0_14(8), 1);
     set_gpio_mode(GPIOA_bank_bit(8), GPIOA_bit_bit0_14(8), GPIO_OUTPUT_MODE);
     
@@ -2330,6 +2398,7 @@ static __init void m1_init_machine(void)
     meson_cache_init();
 
     power_hold();
+    printk("m1_init_machine: power_hold \n");
     device_clk_setting();
     device_pinmux_init();
 #ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE
@@ -2338,8 +2407,10 @@ static __init void m1_init_machine(void)
     platform_add_devices(platform_devs, ARRAY_SIZE(platform_devs));
 
 #ifdef CONFIG_USB_DWC_OTG_HCD
+    set_USB_power(1);
     set_usb_phy_clk(USB_PHY_CLOCK_SEL_XTAL_DIV2);
     lm_device_register(&usb_ld_a);
+    lm_device_register(&usb_ld_b);//port b 可选择不用
 #endif
 #ifdef CONFIG_SATA_DWC_AHCI
     set_sata_phy_clk(SATA_PHY_CLOCK_SEL_DEMOD_PLL);
@@ -2350,6 +2421,7 @@ static __init void m1_init_machine(void)
     spi_register_board_info(spi_board_info_list, ARRAY_SIZE(spi_board_info_list));
 #endif
     disable_unused_model();
+    set_audio_en(1);
 }
 
 /*VIDEO MEMORY MAPING*/
