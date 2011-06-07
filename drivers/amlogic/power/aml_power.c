@@ -379,6 +379,19 @@ static void psy_changed(void)
 	 * Okay, charger set. Now wait a bit before notifying supplicants,
 	 * charge power should stabilize.
 	 */
+	 
+	//mcli
+	if(supply_timer.function==NULL)
+	    return;
+		    
+	if(pdata==NULL) 
+    {  
+        mod_timer(&supply_timer,jiffies + msecs_to_jiffies(500));
+		
+		return;
+    }
+    //mcli end
+    
 	mod_timer(&supply_timer,
 		  jiffies + msecs_to_jiffies(pdata->wait_for_charger));
 }
