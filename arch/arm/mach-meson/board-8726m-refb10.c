@@ -1016,6 +1016,25 @@ static struct eeti_platform_data eeti_pdata = {
 };
 #endif
 
+
+#ifdef CONFIG_PIXCIR_CAPACITIVE_TOUCHSCREEN
+#include <linux/i2c/pixcir_i2c_ts.h>
+static struct pixcir_i2c_ts_platform_data pixcir_pdata = {
+	.gpio_shutdown = (GPIOD_bank_bit2_24(23)<<16) | GPIOD_bit_bit2_24(23),
+	.gpio_irq = (GPIOD_bank_bit2_24(24)<<16) | GPIOD_bit_bit2_24(24),
+	.xmin = 0,
+	.xmax = 1280,
+	.ymin = 0,
+	.ymax = 768,
+  .swap_xy = 0,
+  .xpol = 0,
+  .ypol = 0,
+  .point_id_available = 0,	
+};
+#endif
+
+
+
 #ifdef CONFIG_ANDROID_PMEM
 static struct android_pmem_platform_data pmem_data =
 {
@@ -2128,6 +2147,7 @@ static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
     {
         I2C_BOARD_INFO("pixcir168", 0x5c),
         .irq = INT_GPIO_0,
+        .platform_data = (void *)&pixcir_pdata,
     },
 #endif
 
@@ -2267,14 +2287,6 @@ static __init void m1_init_machine(void)
 #if defined(CONFIG_TOUCHSCREEN_ADS7846)
     ads7846_init_gpio();
     spi_register_board_info(spi_board_info_list, ARRAY_SIZE(spi_board_info_list));
-#endif
-#ifdef CONFIG_PIXCIR_CAPACITIVE_TOUCHSCREEN
-//#define gpio_shutdown ((GPIOD_bank_bit2_24(23)<<16) |GPIOD_bit_bit2_24(23))
-//#define gpio_irq ((GPIOD_bank_bit2_24(24)<<16) |GPIOD_bit_bit2_24(24))
-//	gpio_direction_output(gpio_shutdown, 1);
-//	gpio_direction_input(gpio_irq);
-//	gpio_enable_edge_int(gpio_to_idx(gpio_irq), 1, 0);
-//	msleep(50);
 #endif
     disable_unused_model();
 }

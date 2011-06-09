@@ -80,7 +80,7 @@
 
 /* save driver handle just for module cleanup */
 static TWlanDrvIfObj *pDrvStaticHandle;  
-
+extern int SDIO_LOCKED_FLAG ;
 #define OS_SPECIFIC_RAM_ALLOC_LIMIT			(0xFFFFFFFF)	/* assume OS never reach that limit */
 
 
@@ -648,12 +648,14 @@ int wlanDrvIf_Start (struct net_device *dev)
 	 *  Insert Start command in DrvMain action queue, request driver scheduling 
 	 *      and wait for action completion (all init process).
 	 */
+		//printk("SDIO_LOCKED_FLAG = %d , ---%s--- !!\n",SDIO_LOCKED_FLAG,__func__);
+	  if(!SDIO_LOCKED_FLAG){
 	os_wake_lock_timeout_enable(drv);
     if (TI_OK != drvMain_InsertAction (drv->tCommon.hDrvMain, ACTION_TYPE_START)) 
     {
         return -ENODEV;
     }
-
+	}
     return 0;
 }
 
@@ -716,6 +718,7 @@ int wlanDrvIf_Stop (struct net_device *dev)
 	 *  Insert Stop command in DrvMain action queue, request driver scheduling 
 	 *      and wait for Stop process completion.
 	 */
+	if(!SDIO_LOCKED_FLAG){ 
 	os_printf("%s LINE %d\n", __func__, __LINE__);
 	os_wake_lock_timeout_enable(drv);
 	os_printf("%s LINE %d\n", __func__, __LINE__);
@@ -723,6 +726,7 @@ int wlanDrvIf_Stop (struct net_device *dev)
     {
         return -ENODEV;
     }
+	}
 	os_printf("%s\n", __func__);
 	return 0;
 }

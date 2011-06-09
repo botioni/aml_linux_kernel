@@ -50,6 +50,7 @@ void power_off_backlight(void);
 static int bl_state = BL_ON;
 #endif
 
+
 static tcon_conf_t tcon_config =
 {
     .width      = LCD_WIDTH,

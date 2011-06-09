@@ -90,7 +90,7 @@ typedef struct hdmi_tx_dev_s {
 #define HDMI_AUDIO_CONTENT_PROTECTION   5
 
 
-#define HDMITX_VER "2011May23a"
+#define HDMITX_VER "2011Jun08a"
 /************************************
 *    hdmitx protocol level interface
 *************************************/
@@ -116,6 +116,11 @@ extern int hdmi_print(int printk_flag, const char *fmt, ...);
 
 extern  int hdmi_print_buf(char* buf, int len);
 
+extern void hdmi_set_audio_para(int para);
+
+extern void hdmitx_output_rgb(void);
+
+
 /************************************
 *    hdmitx hardware level interface
 *************************************/
@@ -126,7 +131,7 @@ extern void HDMITX_M1A_Init(hdmitx_dev_t* hdmitx_device);
 
 extern void HDMITX_M1B_Init(hdmitx_dev_t* hdmitx_device);
 
-#define HDMITX_HWCMD_LOWPOWER_SWITCH    0x1
+#define HDMITX_HWCMD_POWERMODE_SWITCH    0x1
 #define HDMITX_HWCMD_VDAC_OFF           0x2
 #define HDMITX_HWCMD_MUX_HPD_IF_PIN_HIGH       0x3
 #define HDMITX_HWCMD_TURNOFF_HDMIHW           0x4
