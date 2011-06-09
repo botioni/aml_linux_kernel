@@ -298,6 +298,13 @@ int Edid_Parse_check_HDMI_VSDB(HDMI_TX_INFO_t * info, unsigned char *buff)
 		BlockAddr = BlockAddr + len + 1;
 	}
 
+	//For test only.
+	hdmi_print(0,"HDMI DEBUG [%s]\n", __FUNCTION__);
+    hdmi_print(0,"max_tmds_clk_7:%d\n",buff[BlockAddr + 7]);
+    hdmi_print(0,"Field 8:%d\n",buff[BlockAddr + 8]);
+    hdmi_print(0,"video_latency_9:%d\n",buff[BlockAddr + 9]);
+    hdmi_print(0,"audio_latency_10:%d\n",buff[BlockAddr + 10]);
+
 	if(temp_addr >= VSpecificBoundary)
 	{
 		info->output_state = CABLE_PLUGIN_DVI_OUT;
