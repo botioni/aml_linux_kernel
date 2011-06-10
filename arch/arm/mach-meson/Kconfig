@@ -126,6 +126,12 @@ config MACH_MESON_8726M_REFC04
         bool "Support M1 8726(Hisense) platform(machid=2957)"
         help
           Include support for the AMLOGIC M1 8726M Hisense platform.
+
+config MACH_MESON_8726M_REFC08
+        select GENERIC_ALLOCATOR
+        bool "Support M1 8726(refc08) platform(machid=2957)"
+        help
+          Include support for the AMLOGIC M1 8726M refc08 platform.
  
 config MACH_MESON_8726M_REFB10
 	select GENERIC_ALLOCATOR
