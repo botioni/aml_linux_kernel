@@ -483,14 +483,14 @@ static struct resource amlogic_card_resource[] = {
 };
 
 void extern_wifi_power(int is_power)
-{//extern io OD5
+{//GPIOD_20
     if(1 == is_power){
-        configIO(0, 0);
-        setIO_level(0,1, 5);        
+		set_gpio_val(GPIOD_bank_bit2_24(20), GPIOD_bit_bit2_24(20), 1);
+    set_gpio_mode(GPIOD_bank_bit2_24(20), GPIOD_bit_bit2_24(20), GPIO_OUTPUT_MODE);		 
     }
     else{
-        configIO(0, 0);
-        setIO_level(0, 0, 5);        
+		set_gpio_val(GPIOD_bank_bit2_24(20), GPIOD_bit_bit2_24(20), 0);
+    set_gpio_mode(GPIOD_bank_bit2_24(20), GPIOD_bit_bit2_24(20), GPIO_OUTPUT_MODE);      
     }
     
     return;
@@ -522,7 +522,7 @@ static struct aml_card_info  amlogic_card_info[] = {
         .card_extern_init = 0,
     },
     [1] = {
-        .name = "sdio_card",
+        .name = "sdio_card",                   //WIFI modules
         .work_mode = CARD_HW_MODE,
         .io_pad_type = SDIO_GPIOB_2_7,
         .card_ins_en_reg = 0,
@@ -876,6 +876,23 @@ static struct eeti_platform_data eeti_pdata = {
     .lcd_max_height = 600,
 };
 #endif
+
+#ifdef CONFIG_PIXCIR_CAPACITIVE_TOUCHSCREEN
+#include <linux/i2c/pixcir_i2c_ts.h>
+static struct pixcir_i2c_ts_platform_data pixcir_pdata = {
+	.gpio_shutdown = (GPIOD_bank_bit2_24(23)<<16) | GPIOD_bit_bit2_24(23),
+	.gpio_irq = (GPIOD_bank_bit2_24(24)<<16) | GPIOD_bit_bit2_24(24),
+	.xmin = 0,
+	.xmax = 1024,
+	.ymin = 0,
+	.ymax = 768,
+  .swap_xy = 1,
+  .xpol = 0,
+  .ypol = 0,
+  .point_id_available = 0,	
+};
+#endif
+
 
 #ifdef CONFIG_ANDROID_PMEM
 static struct android_pmem_platform_data pmem_data =
@@ -2090,9 +2107,8 @@ static void bt_device_init(void)
 	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, (1<<24));
 	
 	/* WIFI/BT_EN */
-	//CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<18)); //       configIO(0, 0);
-	//SET_CBUS_REG_MASK(PREG_GGPIO_O, (1<<18));      //       setIO_level(0, 1, 5);	
-	//CLEAR_CBUS_REG_MASK(PREG_GGPIO_O, (1<<18));  //WA 7W WIFI/BT_EN  low level.
+		set_gpio_val(GPIOD_bank_bit2_24(20), GPIOD_bit_bit2_24(20), 1);
+    set_gpio_mode(GPIOD_bank_bit2_24(20), GPIOD_bit_bit2_24(20), GPIO_OUTPUT_MODE);		
 
 	
 	/* BT_RST_N */
@@ -2102,6 +2118,10 @@ static void bt_device_init(void)
 	SET_CBUS_REG_MASK(PREG_GGPIO_O, (1<<12));	
 	
 	/* UART_TX */
+
+	configIO(1, 0);
+	setIO_level(1, 0, 4);//PP4 -->0   for BT UART
+	
 	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<19));
 	CLEAR_CBUS_REG_MASK(PREG_GGPIO_O, (1<<19));	
 	
@@ -2179,7 +2199,7 @@ static struct platform_device __initdata *platform_devs[] = {
         &adc_ts_device,
     #endif
     #if defined(CONFIG_ADC_KEYPADS_AM)||defined(CONFIG_ADC_KEYPADS_AM_MODULE)
- //       &adc_kp_device,
+        &adc_kp_device,
     #endif
     #if defined(CONFIG_KEY_INPUT_CUSTOM_AM) || defined(CONFIG_KEY_INPUT_CUSTOM_AM_MODULE)
         &input_device_key,  //changed by Elvis
@@ -2273,6 +2293,14 @@ static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
         I2C_BOARD_INFO("eeti", 0x04),
         .irq = INT_GPIO_0,
         .platform_data = (void *)&eeti_pdata,
+    },
+#endif
+
+#ifdef CONFIG_PIXCIR_CAPACITIVE_TOUCHSCREEN
+    {
+        I2C_BOARD_INFO("pixcir168", 0x5c),
+        .irq = INT_GPIO_0,
+        .platform_data = (void *)&pixcir_pdata,
     },
 #endif
 
