@@ -48,7 +48,7 @@
 #include <mach/gpio.h>
 #include <linux/delay.h>
 #include <mach/clk_set.h>
-#include "board-8726m-refb01.h"
+#include "board-8726m-refb16.h"
 
 #if defined(CONFIG_TOUCHSCREEN_ADS7846)
 #include <linux/spi/spi.h>
@@ -261,8 +261,8 @@ static int sn7325_pwr_rst(void)
     set_gpio_val(GPIOA_bank_bit0_14(3), GPIOA_bit_bit0_14(3), 1); //high
     set_gpio_mode(GPIOA_bank_bit0_14(3), GPIOA_bit_bit0_14(3), GPIO_OUTPUT_MODE);
     //end
-    set_gpio_val(GPIOA_bank_bit0_14(7), GPIOA_bit_bit0_14(7), 1); //high  //PWM H:
-    set_gpio_mode(GPIOA_bank_bit0_14(7), GPIOA_bit_bit0_14(7), GPIO_OUTPUT_MODE);
+    //set_gpio_val(GPIOA_bank_bit0_14(7), GPIOA_bit_bit0_14(7), 1); //high  //PWM H:
+    //set_gpio_mode(GPIOA_bank_bit0_14(7), GPIOA_bit_bit0_14(7), GPIO_OUTPUT_MODE);
 		
     return 0;
 }
@@ -483,14 +483,14 @@ static struct resource amlogic_card_resource[] = {
 };
 
 void extern_wifi_power(int is_power)
-{//extern io OD5
+{//GPIOD_20
     if(1 == is_power){
-        configIO(0, 0);
-        setIO_level(0,1, 5);        
+		set_gpio_val(GPIOD_bank_bit2_24(20), GPIOD_bit_bit2_24(20), 1);
+    set_gpio_mode(GPIOD_bank_bit2_24(20), GPIOD_bit_bit2_24(20), GPIO_OUTPUT_MODE);		 
     }
     else{
-        configIO(0, 0);
-        setIO_level(0, 0, 5);        
+		set_gpio_val(GPIOD_bank_bit2_24(20), GPIOD_bit_bit2_24(20), 0);
+    set_gpio_mode(GPIOD_bank_bit2_24(20), GPIOD_bit_bit2_24(20), GPIO_OUTPUT_MODE);      
     }
     
     return;
@@ -522,7 +522,7 @@ static struct aml_card_info  amlogic_card_info[] = {
         .card_extern_init = 0,
     },
     [1] = {
-        .name = "sdio_card",
+        .name = "sdio_card",                   //WIFI modules
         .work_mode = CARD_HW_MODE,
         .io_pad_type = SDIO_GPIOB_2_7,
         .card_ins_en_reg = 0,
@@ -877,6 +877,23 @@ static struct eeti_platform_data eeti_pdata = {
 };
 #endif
 
+#ifdef CONFIG_PIXCIR_CAPACITIVE_TOUCHSCREEN
+#include <linux/i2c/pixcir_i2c_ts.h>
+static struct pixcir_i2c_ts_platform_data pixcir_pdata = {
+	.gpio_shutdown = (GPIOD_bank_bit2_24(23)<<16) | GPIOD_bit_bit2_24(23),
+	.gpio_irq = (GPIOD_bank_bit2_24(24)<<16) | GPIOD_bit_bit2_24(24),
+	.xmin = 0,
+	.xmax = 1024,
+	.ymin = 0,
+	.ymax = 768,
+  .swap_xy = 1,
+  .xpol = 0,
+  .ypol = 0,
+  .point_id_available = 0,	
+};
+#endif
+
+
 #ifdef CONFIG_ANDROID_PMEM
 static struct android_pmem_platform_data pmem_data =
 {
@@ -944,7 +961,7 @@ int gc0308_init(void)
 	msleep(20);
     #endif	
     
-    set_gpio_val(GPIOE_bank_bit16_21(21), GPIOE_bit_bit16_21(21), 1);    // set camera power enable
+    set_gpio_val(GPIOE_bank_bit16_21(21), GPIOE_bit_biT16_21(21), 1);    // set camera power enable
     msleep(20);
     
     #ifdef CONFIG_SN7325    	
@@ -952,6 +969,49 @@ int gc0308_init(void)
 	setIO_level(1, 0, 0);//30m PWR_On
 	msleep(20);
     #endif
+}
+#endif
+#ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE_SP0838
+int sp0838_init(void)
+{
+    udelay(1000);
+ //   WRITE_CBUS_REG(HHI_ETH_CLK_CNTL,0x31e);// 12M XTAL
+    WRITE_CBUS_REG(HHI_ETH_CLK_CNTL,0x30f);// 24M XTAL
+    WRITE_CBUS_REG(HHI_DEMOD_PLL_CNTL,0x232);// 24M XTAL
+	udelay(1000);
+	
+	
+    // set camera power disable
+	configIO(1, 0);
+	setIO_level(1, 1, 2);//PP2 -->1  SENSORPWR_EN
+	msleep(300); 
+	configIO(1, 0);
+	setIO_level(1, 0, 2);//PP2 -->0  SENSORPWR_EN
+	msleep(300);    
+
+
+	configIO(0, 0);
+	setIO_level(0, 0, 2);//RST 0  --//OD2	
+  msleep(20);
+  configIO(0, 0);
+	setIO_level(0, 1, 2);//RST 1 --       //OD2   
+	   
+    #ifdef CONFIG_SN7325
+   #ifdef CONFIG_SN7325
+	printk( "amlogic camera driver sp0803: init CONFIG_SN7325. \n");
+	configIO(1, 0);       
+	setIO_level(1, 0, 0);//PP0-->0    ITU601_PWDN_B    //pin14
+	msleep(300);
+    #endif
+    #endif	
+    
+
+    
+    #ifdef CONFIG_SN7325    	
+	configIO(1, 0);
+	setIO_level(1, 1, 6);//PP6 -->0  ITU601_PWDN_F //H--power down  //pin 15
+	msleep(300); 
+    #endif  
 }
 #endif
 
@@ -1029,6 +1089,34 @@ aml_plat_cam_data_t video_gc0308_data = {
 	.video_nr=0,//1,
 	.device_init= gc0308_v4l2_init,
 	.device_uninit=gc0308_v4l2_uninit,
+};
+
+
+#endif
+
+#if defined(CONFIG_VIDEO_AMLOGIC_CAPTURE_SP0838)
+static int sp0838_v4l2_init(void)
+{
+	sp0838_init();
+}
+static int sp0838_v4l2_uninit(void)
+{
+	//pp0
+#ifdef CONFIG_SN7325
+	 printk( "amlogic camera driver: sp0838_v4l2_uninit CONFIG_SN7325. \n");
+	 configIO(1, 0);
+	 setIO_level(1, 1, 0);//30m PWR_Down
+ #endif
+
+    msleep(300);
+    set_gpio_val(GPIOE_bank_bit16_21(21), GPIOE_bit_bit16_21(21), 0);
+    set_gpio_mode(GPIOE_bank_bit16_21(21), GPIOE_bit_bit16_21(21), GPIO_OUTPUT_MODE);
+}
+aml_plat_cam_data_t video_sp0838_data = {
+	.name="video-sp0838",
+	.video_nr=0,//1,
+	.device_init= sp0838_v4l2_init,
+	.device_uninit=sp0838_v4l2_uninit,
 };
 
 
@@ -1843,17 +1931,22 @@ static void aml_8726m_power_on_bl(void)
 {
     printk("backlight on\n");
         //BL_PWM -> GPIOA_7: 1 Pull high, For En_5V
-//    set_gpio_val(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), 1);
-//    set_gpio_mode(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), GPIO_OUTPUT_MODE);
-//#ifdef CONFIG_SN7325
-//    configIO(0, 0);  //configIO(0, 0);
-//    setIO_level(0, 1, 7);  //setIO_level(0, 0, 4);
-//#endif
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<31));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_12, (1<<7));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0, (1<<9));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<29));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0, (1<<22));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_9, (1<<22));    
+      
+   set_gpio_val(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), 1);
+   set_gpio_mode(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), GPIO_OUTPUT_MODE);
+
+
 #ifdef CONFIG_SN7325
     configIO(0, 0);
-    setIO_level(0, 1, 7);
+    setIO_level(0, 1, 7);   //OD7 bl_en  
     configIO(0, 0);
-    setIO_level(0, 0, 0);
+    setIO_level(0, 0, 0);   //OD0 LCD_PWR_EN 
 #endif
 }
 
@@ -1861,8 +1954,8 @@ static void aml_8726m_power_off_bl(void)
 {
     printk("backlight off\n");
     //BL_PWM -> GPIOA_7: 0
-//    set_gpio_val(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), 0);
-//    set_gpio_mode(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), GPIO_OUTPUT_MODE);
+    set_gpio_val(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), 0);
+    set_gpio_mode(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), GPIO_OUTPUT_MODE);
 }
 
 struct aml_bl_platform_data aml_bl_platform =
@@ -2014,9 +2107,8 @@ static void bt_device_init(void)
 	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, (1<<24));
 	
 	/* WIFI/BT_EN */
-	//CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<18)); //       configIO(0, 0);
-	//SET_CBUS_REG_MASK(PREG_GGPIO_O, (1<<18));      //       setIO_level(0, 1, 5);	
-	//CLEAR_CBUS_REG_MASK(PREG_GGPIO_O, (1<<18));  //WA 7W WIFI/BT_EN  low level.
+		set_gpio_val(GPIOD_bank_bit2_24(20), GPIOD_bit_bit2_24(20), 1);
+    set_gpio_mode(GPIOD_bank_bit2_24(20), GPIOD_bit_bit2_24(20), GPIO_OUTPUT_MODE);		
 
 	
 	/* BT_RST_N */
@@ -2026,6 +2118,10 @@ static void bt_device_init(void)
 	SET_CBUS_REG_MASK(PREG_GGPIO_O, (1<<12));	
 	
 	/* UART_TX */
+
+	configIO(1, 0);
+	setIO_level(1, 0, 4);//PP4 -->0   for BT UART
+	
 	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<19));
 	CLEAR_CBUS_REG_MASK(PREG_GGPIO_O, (1<<19));	
 	
@@ -2103,7 +2199,7 @@ static struct platform_device __initdata *platform_devs[] = {
         &adc_ts_device,
     #endif
     #if defined(CONFIG_ADC_KEYPADS_AM)||defined(CONFIG_ADC_KEYPADS_AM_MODULE)
- //       &adc_kp_device,
+        &adc_kp_device,
     #endif
     #if defined(CONFIG_KEY_INPUT_CUSTOM_AM) || defined(CONFIG_KEY_INPUT_CUSTOM_AM_MODULE)
         &input_device_key,  //changed by Elvis
@@ -2200,6 +2296,14 @@ static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
     },
 #endif
 
+#ifdef CONFIG_PIXCIR_CAPACITIVE_TOUCHSCREEN
+    {
+        I2C_BOARD_INFO("pixcir168", 0x5c),
+        .irq = INT_GPIO_0,
+        .platform_data = (void *)&pixcir_pdata,
+    },
+#endif
+
 #ifdef CONFIG_SIX_AXIS_SENSOR_MPU3050
     {
         I2C_BOARD_INFO("mpu3050", 0x68),
@@ -2226,6 +2330,14 @@ static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
         /*ov5640 i2c address is 0x78*/
 		I2C_BOARD_INFO("ov5640_i2c",  0x78 >> 1),
 		.platform_data = (void *)&video_ov5640_data,
+	},
+#endif
+#ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE_SP0838
+
+	{
+        /*sp0838 i2c address is 0x30/0x31*/
+		I2C_BOARD_INFO("sp0838_i2c",  0x30 >> 1),
+		.platform_data = (void *)&video_sp0838_data,
 	},
 #endif
 #ifdef CONFIG_BQ27x00_BATTERY

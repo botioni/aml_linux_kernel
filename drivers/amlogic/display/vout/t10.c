@@ -154,32 +154,36 @@ void power_on_backlight(void)
 //EIO -> OD7: 1  lcd 3.3v
 #ifdef CONFIG_SN7325
 
-    //set_gpio_val(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), 1);
-    //set_gpio_mode(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), GPIO_OUTPUT_MODE);
-    
-	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, (1<<5));
-	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_12, (1<<11));
-	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0, (1<<13));
-	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_1, (1<<2));
-	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_9, (1<<18));
-	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_11, (1<<4));    
-    
-    *(volatile unsigned *)(0xC1108034) |= (1<<7); //GPIOA_3       //
-  	*(volatile unsigned *)(0xC1108030) &= ~(1<<7); //enable       //SD7325 RST pin H:	
-  	
-//	printk( "init CONFIG_SN7325 pwr_tst. %d \n",*(volatile unsigned *)((0xC1108030)>>7)&0x1);
-//	printk( "init CONFIG_SN7325 pwr_tst. %d \n",*(volatile unsigned *)((0xC1108034)>>7)&0x1);
-    printk("\n\BL_EN stop here \n\n");  
-    
-    msleep(1000);
-    
-    //while(1);
-    
+    set_gpio_val(GPIOA_bank_bit0_14(3), GPIOA_bit_bit0_14(3), 0); //low
+    set_gpio_mode(GPIOA_bank_bit0_14(3), GPIOA_bit_bit0_14(3), GPIO_OUTPUT_MODE);
+
+    udelay(2); //delay 2us
+
+    //end
+    set_gpio_val(GPIOA_bank_bit0_14(3), GPIOA_bit_bit0_14(3), 1); //high
+    set_gpio_mode(GPIOA_bank_bit0_14(3), GPIOA_bit_bit0_14(3), GPIO_OUTPUT_MODE);
+		
+
+
+    printk("backlight on\n");
+        //BL_PWM -> GPIOA_7: 1 Pull high, For En_5V
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<31));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_12, (1<<7));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0, (1<<9));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<29));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0, (1<<22));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_9, (1<<22));    
+      
+   set_gpio_val(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), 1);
+   set_gpio_mode(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), GPIO_OUTPUT_MODE);
+
+
+
     configIO(0, 0);
-    setIO_level(0, 1, 7);
-           
-    configIO(1, 0);
-	  setIO_level(1, 1, 5);//PP5 -->1
+    setIO_level(0, 1, 7);   //OD7 bl_en  
+    configIO(0, 0);
+    setIO_level(0, 0, 0);   //OD0 LCD_PWR_EN 
+
 	  
     
   

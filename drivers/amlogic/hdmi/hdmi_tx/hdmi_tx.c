@@ -131,7 +131,8 @@ static  int  set_disp_mode(const char *mode)
     hdmitx_device.cur_VIC = HDMI_Unkown;
     ret = hdmitx_set_display(&hdmitx_device, vic);
     if(ret>=0){
-        hdmitx_device.cur_VIC = vic;  
+        hdmitx_device.cur_VIC = vic;
+        hdmitx_device.audio_param_update_flag = 1;
     }
 
     if(hdmitx_device.cur_VIC == HDMI_Unkown){
@@ -160,7 +161,8 @@ static int set_disp_mode_auto(void)
     hdmitx_device.cur_VIC = HDMI_Unkown;
     ret = hdmitx_set_display(&hdmitx_device, vic); //if vic is HDMI_Unkown, hdmitx_set_display will disable HDMI
     if(ret>=0){
-        hdmitx_device.cur_VIC = vic;    
+        hdmitx_device.cur_VIC = vic;
+        hdmitx_device.audio_param_update_flag = 1;
     }
     if(hdmitx_device.cur_VIC == HDMI_Unkown){
         if(hpdmode==2){
@@ -283,7 +285,7 @@ static ssize_t store_config(struct device * dev, struct device_attribute *attr, 
         int tmp;
         tmp = simple_strtoul(buf+9,NULL,10);
         if(hdmitx_device.HWOp.Cntl){
-            hdmitx_device.HWOp.Cntl(&hdmitx_device, HDMITX_HWCMD_LOWPOWER_SWITCH, tmp); 
+            hdmitx_device.HWOp.Cntl(&hdmitx_device, HDMITX_HWCMD_POWERMODE_SWITCH, tmp); 
             printk("hdmi: set powermode %d\n", tmp);
         }
     }
@@ -649,7 +651,7 @@ hdmi_task_handle(void *data)
             hdmitx_device->HWOp.Cntl(hdmitx_device, HDMITX_HWCMD_VDAC_OFF, 0);    
         }
         if(init_powermode&0x80){
-            hdmitx_device->HWOp.Cntl(hdmitx_device, HDMITX_HWCMD_LOWPOWER_SWITCH, init_powermode&0x1f);    
+            hdmitx_device->HWOp.Cntl(hdmitx_device, HDMITX_HWCMD_POWERMODE_SWITCH, init_powermode&0x1f);    
         }
     }
     if(init_flag&INIT_FLAG_POWERDOWN){
@@ -1097,6 +1099,15 @@ static  int __init hdmitx_boot_para_setup(char *s)
             }
             else if((token_len==7)&& (strncmp(token, "hpdmode", token_len)==0)){
                 hpdmode = simple_strtoul(token+7,NULL,10);   
+            }
+            else if((token_len==3)&&(strncmp(token, "rgb", 3)==0)){
+                hdmitx_output_rgb();    
+            }
+            else if(strncmp(token, "audpara", 7)==0){
+                int tmp;
+                tmp = simple_strtoul(token+7,NULL,10);
+                hdmi_set_audio_para(tmp);
+                printk("hdmi: set hdmi aud_para %d\n", tmp);
             }
             else if(strncmp(token, "bufsize", 7)==0){
                 int tmp;
