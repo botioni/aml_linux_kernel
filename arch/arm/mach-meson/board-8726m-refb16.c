@@ -1398,8 +1398,8 @@ static void set_bat_off(void)
         kernel_restart("reboot");
     }
     //Power hold down
-    set_gpio_val(GPIOA_bank_bit(8), GPIOA_bit_bit0_14(8), 0);
-    set_gpio_mode(GPIOA_bank_bit(8), GPIOA_bit_bit0_14(8), GPIO_OUTPUT_MODE);
+//    set_gpio_val(GPIOA_bank_bit(8), GPIOA_bit_bit0_14(8), 0);
+//    set_gpio_mode(GPIOA_bank_bit(8), GPIOA_bit_bit0_14(8), GPIO_OUTPUT_MODE);
 
 }
 
@@ -1571,8 +1571,8 @@ static void set_bat_off(void)
     if(is_ac_connected()){ //AC in after power off press
         kernel_restart("reboot");
     }
-    set_gpio_val(GPIOA_bank_bit(8), GPIOA_bit_bit0_14(8), 0);
-    set_gpio_mode(GPIOA_bank_bit(8), GPIOA_bit_bit0_14(8), GPIO_OUTPUT_MODE);
+//    set_gpio_val(GPIOA_bank_bit(8), GPIOA_bit_bit0_14(8), 0);
+//    set_gpio_mode(GPIOA_bank_bit(8), GPIOA_bit_bit0_14(8), GPIO_OUTPUT_MODE);
 
 }
 
@@ -1931,15 +1931,15 @@ static void aml_8726m_power_on_bl(void)
 {
     printk("backlight on\n");
         //BL_PWM -> GPIOA_7: 1 Pull high, For En_5V
-	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<31));
-	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_12, (1<<7));
-	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0, (1<<9));
-	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<29));
-	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0, (1<<22));
-	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_9, (1<<22));    
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<30));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_12, (1<<6));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0, (1<<8));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<28));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0, (1<<21));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_9, (1<<23));    
       
-   set_gpio_val(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), 1);
-   set_gpio_mode(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), GPIO_OUTPUT_MODE);
+   set_gpio_val(GPIOA_bank_bit0_14(8), GPIOA_bit_bit0_14(8), 1);
+   set_gpio_mode(GPIOA_bank_bit0_14(8), GPIOA_bit_bit0_14(8), GPIO_OUTPUT_MODE);
 
 
 #ifdef CONFIG_SN7325
@@ -1954,8 +1954,8 @@ static void aml_8726m_power_off_bl(void)
 {
     printk("backlight off\n");
     //BL_PWM -> GPIOA_7: 0
-    set_gpio_val(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), 0);
-    set_gpio_mode(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), GPIO_OUTPUT_MODE);
+    set_gpio_val(GPIOA_bank_bit0_14(8), GPIOA_bit_bit0_14(8), 0);
+    set_gpio_mode(GPIOA_bank_bit0_14(8), GPIOA_bit_bit0_14(8), GPIO_OUTPUT_MODE);
 }
 
 struct aml_bl_platform_data aml_bl_platform =
@@ -2455,8 +2455,8 @@ static void disable_unused_model(void)
 static void __init power_hold(void)
 {
     printk(KERN_INFO "power hold set high!\n");
-    set_gpio_val(GPIOA_bank_bit(8), GPIOA_bit_bit0_14(8), 1);
-    set_gpio_mode(GPIOA_bank_bit(8), GPIOA_bit_bit0_14(8), GPIO_OUTPUT_MODE);
+//    set_gpio_val(GPIOA_bank_bit(8), GPIOA_bit_bit0_14(8), 1);
+//    set_gpio_mode(GPIOA_bank_bit(8), GPIOA_bit_bit0_14(8), GPIO_OUTPUT_MODE);
     
     //VCCx2 power up
     set_vccx2(1);
