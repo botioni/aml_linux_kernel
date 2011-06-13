@@ -404,6 +404,16 @@ static ssize_t board_version_show(struct class *cla, struct class_attribute *att
 	return sprintf(buf, "%01d\n", board_version);
 }
 
+extern int get_uboot_version(void);
+static ssize_t uboot_version_show(struct class *cla, struct class_attribute *attr, char *buf)
+{
+	int uboot_version=0;
+
+	uboot_version = get_uboot_version();
+
+	return sprintf(buf, "%01d\n", uboot_version);;
+}
+
 static inline int cm(int p, int x)
 {
     int i, tmp;
@@ -790,6 +800,7 @@ static ssize_t userdata_write(struct class *cla, struct class_attribute *attr, c
 	efuse_write_usr(data,buf);
 	return count;
 }
+<<<<<<< HEAD
 
 #endif
 
@@ -802,6 +813,17 @@ static struct class_attribute efuse_class_attrs[] = {
     __ATTR_NULL
 };
 
+=======
+static struct class_attribute efuse_class_attrs[] = {
+	  __ATTR_RO(mac), 
+    __ATTR_RO(mac_wifi),   
+    __ATTR_RO(mac_bt),
+    __ATTR(userdata,  S_IRUGO | S_IWUSR, userdata_read, userdata_write),
+    __ATTR_RO(board_version),  
+    __ATTR_RO(uboot_version),      
+    __ATTR_NULL
+};
+>>>>>>> b70050a... add uboot version
 static struct class efuse_class = {
     .name = EFUSE_CLASS_NAME,
     .class_attrs = efuse_class_attrs,
