@@ -393,6 +393,17 @@ static ssize_t mac_bt_show(struct class *cla, struct class_attribute *attr, char
     return sprintf(buf, "%02x:%02x:%02x:%02x:%02x:%02x\n",
     										buf_mac[0],buf_mac[1],buf_mac[2],buf_mac[3],buf_mac[4],buf_mac[5]);
 }
+
+extern int get_board_version(void);
+static ssize_t board_version_show(struct class *cla, struct class_attribute *attr, char *buf)
+{
+	int board_version=0;
+
+	board_version = get_board_version();
+
+	return sprintf(buf, "%01d\n", board_version);
+}
+
 static inline int cm(int p, int x)
 {
     int i, tmp;
@@ -783,12 +794,14 @@ static ssize_t userdata_write(struct class *cla, struct class_attribute *attr, c
 #endif
 
 static struct class_attribute efuse_class_attrs[] = {
-	  __ATTR_RO(mac),
+    __ATTR_RO(board_version),
+    __ATTR_RO(mac),
     __ATTR_RO(mac_wifi),
     __ATTR_RO(mac_bt),
-    __ATTR(userdata,S_IRWXU,userdata_show,userdata_write),
+    __ATTR(userdata, S_IRWXU, userdata_show, userdata_write),
     __ATTR_NULL
 };
+
 static struct class efuse_class = {
     .name = EFUSE_CLASS_NAME,
     .class_attrs = efuse_class_attrs,
