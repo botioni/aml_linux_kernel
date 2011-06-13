@@ -2366,7 +2366,7 @@ static void aml_8726m_set_bl_level(unsigned level)
 		//WRITE_CBUS_REG_BITS(VGHL_PWM_REG0, cs_level, 0, 4);        
 		WRITE_CBUS_REG_BITS(PWM_PWM_A,(low/50),0,16);  //low
 		WRITE_CBUS_REG_BITS(PWM_PWM_A,(hi/50),16,16);  //hi  
-  }
+    }
 }
 
 static void aml_8726m_power_on_bl(void)
@@ -2857,7 +2857,6 @@ static __init void m1_init_machine(void)
 	
 	//power key led off!!!
     powerkey_led_onoff(0);
-	
     printk(KERN_INFO "WIFI ENABLE : OK\n");
 
 }

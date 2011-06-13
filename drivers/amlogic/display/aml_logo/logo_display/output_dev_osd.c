@@ -58,7 +58,7 @@ static int osd_hw_setup(logo_object_t *plogo)
 	osd_ctl.disp_end_x=osd_ctl.xres -1;
 	osd_ctl.disp_start_y=0;
 	osd_ctl.disp_end_y=osd_ctl.yres-1;
-	osd_init_hw();
+	osd_init_hw(0);
 	DisableVideoLayer();
 	setup_color_mode(color,osd_ctl.index==0?VIU_OSD1_BLK0_CFG_W0:VIU_OSD2_BLK0_CFG_W0);
 	
@@ -87,6 +87,11 @@ static int osd0_init(logo_object_t *plogo)
 		{
 			return OUTPUT_DEV_UNFOUND;
 		}
+		if(plogo->para.loaded)
+		{
+			osd_init_hw(plogo->para.loaded);
+			plogo->para.vout_mode|=VMODE_LOGO_BIT_MASK;
+		}
 		set_current_vmode(plogo->para.vout_mode);
 		output_osd0.vinfo=get_current_vinfo();
 		plogo->dev=&output_osd0;
@@ -96,6 +101,7 @@ static int osd0_init(logo_object_t *plogo)
 		plogo->dev->window.h=plogo->dev->vinfo->height;
 		plogo->dev->output_dev.osd.mem_start=plogo->platform_res[LOGO_DEV_OSD0].mem_start;
 		plogo->dev->output_dev.osd.mem_end=plogo->platform_res[LOGO_DEV_OSD0].mem_end;
+		
 		return OUTPUT_DEV_FOUND;
 	}
 	return OUTPUT_DEV_UNFOUND;
@@ -108,6 +114,11 @@ static int osd1_init(logo_object_t *plogo)
 		{
 			return OUTPUT_DEV_UNFOUND;
 		}
+		if(plogo->para.loaded)
+		{
+			osd_init_hw(plogo->para.loaded);
+			plogo->para.vout_mode|=VMODE_LOGO_BIT_MASK;
+		}
 		set_current_vmode(plogo->para.vout_mode);
 		output_osd1.vinfo=get_current_vinfo();
 		plogo->dev=&output_osd1;
@@ -117,6 +128,7 @@ static int osd1_init(logo_object_t *plogo)
 		plogo->dev->window.h=plogo->dev->vinfo->height;
 		plogo->dev->output_dev.osd.mem_start=plogo->platform_res[LOGO_DEV_OSD1].mem_start;
 		plogo->dev->output_dev.osd.mem_end=plogo->platform_res[LOGO_DEV_OSD1].mem_end;
+		
 		return OUTPUT_DEV_FOUND;
 	}
 	return OUTPUT_DEV_UNFOUND;

@@ -406,8 +406,9 @@ void osd_free_scale_enable_hw(u32 index,u32 enable)
 			vf.height=osd_hw.free_scale_height[OSD1];
 			vf.type = (osd_hw.scan_mode==SCAN_MODE_INTERLACE ?VIDTYPE_INTERLACE:VIDTYPE_PROGRESSIVE) | VIDTYPE_VIU_FIELD;
 			vf.ratio_control=DISP_RATIO_FORCECONFIG|DISP_RATIO_NO_KEEPRATIO;
+#ifdef CONFIG_AM_VIDEO 			
 			vf_reg_provider(&osd_vf_provider);
-
+#endif
 			memcpy(&save_disp_data,&osd_hw.dispdata[OSD1],sizeof(dispdata_t));
 			osd_hw.pandata[OSD1].x_end =osd_hw.pandata[OSD1].x_start + vf.width-1-osd_hw.dispdata[OSD1].x_start;
 			osd_hw.pandata[OSD1].y_end =osd_hw.pandata[OSD1].y_start + vf.height-1;	
@@ -424,7 +425,9 @@ void osd_free_scale_enable_hw(u32 index,u32 enable)
 			}
 			memcpy(&osd_hw.dispdata[OSD1],&save_disp_data,sizeof(dispdata_t));
 			add_to_update_list(OSD1,DISP_GEOMETRY);
+#ifdef CONFIG_AM_VIDEO  			
 			vf_unreg_provider();
+#endif
 				
 		}
 	}
@@ -811,7 +814,7 @@ static  void  osd2_update_disp_3d_mode(void)
 	}
 	osd_hw.mode_3d[OSD2].left_right^=1;
 }
-void osd_init_hw(void)
+void osd_init_hw(u32  logo_loaded)
 {
 	u32 group,idx,data32;
 	
@@ -822,23 +825,31 @@ void osd_init_hw(void)
 		osd_hw.reg[group][idx].list.next=NULL;
 	}
 	//here we will init default value ,these value only set once .
-    	data32  = 4   << 5;  // hold_fifo_lines
-    	data32 |= 3   << 10; // burst_len_sel: 3=64
-    	data32 |= 32  << 12; // fifo_depth_val: 32*8=256
-    	
-    	WRITE_MPEG_REG(VIU_OSD1_FIFO_CTRL_STAT, data32);
-	WRITE_MPEG_REG(VIU_OSD2_FIFO_CTRL_STAT, data32);
+	if(!logo_loaded)
+	{
+	    	data32  = 4   << 5;  // hold_fifo_lines
+	    	data32 |= 3   << 10; // burst_len_sel: 3=64
+	    	data32 |= 32  << 12; // fifo_depth_val: 32*8=256
+	    	
+	    	WRITE_MPEG_REG(VIU_OSD1_FIFO_CTRL_STAT, data32);
+		WRITE_MPEG_REG(VIU_OSD2_FIFO_CTRL_STAT, data32);
 
-	SET_MPEG_REG_MASK(VPP_MISC,VPP_POSTBLEND_EN);
-	CLEAR_MPEG_REG_MASK(VPP_MISC, VPP_PREBLEND_EN);  
+		SET_MPEG_REG_MASK(VPP_MISC,VPP_POSTBLEND_EN);
+		CLEAR_MPEG_REG_MASK(VPP_MISC, VPP_PREBLEND_EN);  
 #if defined(CONFIG_FB_OSD2_CURSOR)    
-	SET_MPEG_REG_MASK(VPP_MISC, VPP_POST_FG_OSD2|VPP_PRE_FG_OSD2);
-	osd_hw.osd_order=OSD_ORDER_10;
+		SET_MPEG_REG_MASK(VPP_MISC, VPP_POST_FG_OSD2|VPP_PRE_FG_OSD2);
+		osd_hw.osd_order=OSD_ORDER_10;
 #else   
-	CLEAR_MPEG_REG_MASK(VPP_MISC,VPP_POST_FG_OSD2|VPP_PRE_FG_OSD2);
-	osd_hw.osd_order=OSD_ORDER_01;
+		CLEAR_MPEG_REG_MASK(VPP_MISC,VPP_POST_FG_OSD2|VPP_PRE_FG_OSD2);
+		osd_hw.osd_order=OSD_ORDER_01;
 #endif	
-	CLEAR_MPEG_REG_MASK(VPP_MISC,VPP_OSD1_POSTBLEND|VPP_OSD2_POSTBLEND );
+		CLEAR_MPEG_REG_MASK(VPP_MISC,VPP_OSD1_POSTBLEND|VPP_OSD2_POSTBLEND );
+		data32  = 0x1          << 0; // osd_blk_enable
+	    	data32 |= OSD_GLOBAL_ALPHA_DEF<< 12;
+		data32 |= (1<<21)	;
+	    	WRITE_MPEG_REG(VIU_OSD1_CTRL_STAT , data32);
+		WRITE_MPEG_REG(VIU_OSD2_CTRL_STAT , data32);
+	}
 
 	osd_hw.enable[OSD2]=osd_hw.enable[OSD1]=DISABLE;
 	osd_hw.fb_gem[OSD1].canvas_idx=OSD1_CANVAS_INDEX;
@@ -853,11 +864,7 @@ void osd_init_hw(void)
 	osd_hw.scale[OSD1].h_enable=osd_hw.scale[OSD1].v_enable=0;
 	osd_hw.scale[OSD2].h_enable=osd_hw.scale[OSD2].v_enable=0;
 	osd_hw.mode_3d[OSD2].enable=osd_hw.mode_3d[OSD1].enable=0;
-	data32  = 0x1          << 0; // osd_blk_enable
-    	data32 |= OSD_GLOBAL_ALPHA_DEF<< 12;
-	data32 |= (1<<21)	;
-    	WRITE_MPEG_REG(VIU_OSD1_CTRL_STAT , data32);
-	WRITE_MPEG_REG(VIU_OSD2_CTRL_STAT , data32);
+	
 	
 #ifdef FIQ_VSYNC
 	osd_hw.fiq_handle_item.handle=vsync_isr;
