@@ -394,6 +394,7 @@ static ssize_t mac_bt_show(struct class *cla, struct class_attribute *attr, char
     										buf_mac[0],buf_mac[1],buf_mac[2],buf_mac[3],buf_mac[4],buf_mac[5]);
 }
 
+#ifdef CONFIG_MACH_MESON_8726M_REFB09
 extern int get_board_version(void);
 static ssize_t board_version_show(struct class *cla, struct class_attribute *attr, char *buf)
 {
@@ -413,6 +414,7 @@ static ssize_t uboot_version_show(struct class *cla, struct class_attribute *att
 
 	return sprintf(buf, "%01d\n", uboot_version);;
 }
+#endif /* CONFIG_MACH_MESON_8726M_REFB09 */
 
 static inline int cm(int p, int x)
 {
@@ -800,12 +802,13 @@ static ssize_t userdata_write(struct class *cla, struct class_attribute *attr, c
 	efuse_write_usr(data,buf);
 	return count;
 }
-<<<<<<< HEAD
-
 #endif
 
 static struct class_attribute efuse_class_attrs[] = {
+#ifdef CONFIG_MACH_MESON_8726M_REFB09
     __ATTR_RO(board_version),
+    __ATTR_RO(uboot_version),
+#endif /* CONFIG_MACH_MESON_8726M_REFB09 */
     __ATTR_RO(mac),
     __ATTR_RO(mac_wifi),
     __ATTR_RO(mac_bt),
@@ -813,17 +816,6 @@ static struct class_attribute efuse_class_attrs[] = {
     __ATTR_NULL
 };
 
-=======
-static struct class_attribute efuse_class_attrs[] = {
-	  __ATTR_RO(mac), 
-    __ATTR_RO(mac_wifi),   
-    __ATTR_RO(mac_bt),
-    __ATTR(userdata,  S_IRUGO | S_IWUSR, userdata_read, userdata_write),
-    __ATTR_RO(board_version),  
-    __ATTR_RO(uboot_version),      
-    __ATTR_NULL
-};
->>>>>>> b70050a... add uboot version
 static struct class efuse_class = {
     .name = EFUSE_CLASS_NAME,
     .class_attrs = efuse_class_attrs,
