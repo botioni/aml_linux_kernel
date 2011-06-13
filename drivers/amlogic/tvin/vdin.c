@@ -135,9 +135,12 @@ void vdin_info_update(struct vdin_dev_s *devp, struct tvin_parm_s *para)
 {
     //check decoder signal status
     devp->para.status = para->status;
-    devp->para.fmt = para->fmt;
+    devp->para.fmt_info.fmt= para->fmt_info.fmt;
+	devp->para.fmt_info.v_active= para->fmt_info.v_active;
+	devp->para.fmt_info.h_active= para->fmt_info.h_active;
+	devp->para.fmt_info.frame_rate=para->fmt_info.frame_rate;
 
-    if((para->status != TVIN_SIG_STATUS_STABLE) || (para->fmt == TVIN_SIG_FMT_NULL))
+    if((para->status != TVIN_SIG_STATUS_STABLE) || (para->fmt_info.fmt== TVIN_SIG_FMT_NULL))
         return;
 
     //write vdin registers
@@ -209,7 +212,10 @@ int start_tvin_service(int no ,tvin_parm_t *para)
     }
     devp = vdin_devp[no];
     devp->para.port = para->port;
-    devp->para.fmt = para->fmt;
+    devp->para.fmt_info.fmt= para->fmt_info.fmt;
+	devp->para.fmt_info.h_active= para->fmt_info.h_active;
+	devp->para.fmt_info.v_active= para->fmt_info.v_active;
+	devp->para.fmt_info.frame_rate= para->fmt_info.frame_rate;
     devp->flags |= VDIN_FLAG_DEC_STARTED;  
             printk("devp addr is %x",devp);
             printk("addr_offset is %x",devp->addr_offset);          
@@ -465,7 +471,11 @@ static int vdin_ioctl(struct inode *inode, struct file *file, unsigned int cmd, 
 
             //init vdin signal info
             devp->para.port = para.port;
-            devp->para.fmt = para.fmt;
+            devp->para.fmt_info.fmt= para.fmt_info.fmt;
+			devp->para.fmt_info.frame_rate= para.fmt_info.frame_rate;
+			devp->para.fmt_info.h_active=para.fmt_info.h_active;
+			devp->para.fmt_info.v_active=para.fmt_info.v_active;
+			devp->para.fmt_info.reserved=para.fmt_info.reserved;
             devp->para.status = TVIN_SIG_STATUS_NULL;
             devp->para.cap_addr = 0x85100000;
             devp->flags |= VDIN_FLAG_DEC_STARTED;
@@ -512,7 +522,7 @@ static int vdin_ioctl(struct inode *inode, struct file *file, unsigned int cmd, 
 
         case TVIN_IOC_S_PARM:
         {
-            struct tvin_parm_s para = {TVIN_PORT_NULL, TVIN_SIG_FMT_NULL, TVIN_SIG_STATUS_NULL, 0, 0, 0,0};
+            struct tvin_parm_s para = {TVIN_PORT_NULL, {TVIN_SIG_FMT_NULL,0,0,0,0}, TVIN_SIG_STATUS_NULL, 0, 0, 0,0};
             if (copy_from_user(&para, argp, sizeof(struct tvin_parm_s)))
 		    {
                 ret = -EFAULT;

@@ -335,22 +335,6 @@ static struct platform_device fb_device = {
     .resource      = fb_device_resources,
 };
 #endif
-
-#ifdef CONFIG_USB_PHY_CONTROL
-static struct resource usb_phy_control_device_resources[] = {
-{
-	.start = CBUS_REG_ADDR(PREI_USB_PHY_REG),
-	.end = -1,
-	.flags = IORESOURCE_MEM,
-},
-};
-static struct platform_device usb_phy_control_device = {
-	.name = "usb_phy_control",
-	.id = -1,
-	.resource = usb_phy_control_device_resources,
-};
-#endif
-
 #ifdef CONFIG_USB_DWC_OTG_HCD
 static void set_usb_a_vbus_power(char is_power_on)
 {
@@ -511,9 +495,22 @@ static struct resource amlogic_card_resource[] = {
         .flags = 0x200,
     }
 };
-
+int init_camera_io=0;
 void extern_wifi_power(int is_power)
 {
+    if(init_camera_io==0){
+    configIO(1, 0);
+	setIO_level(1, 0, 1);//200m poweer_disable
+	setIO_level(1, 0, 6);//200m pwd low
+	configIO(0, 0);
+	setIO_level(0, 0, 2);//200m reset low
+	configIO(1, 0);
+	setIO_level(1, 0, 2);//30m poweer_disable
+	setIO_level(1, 1, 0);//30m pwd enable
+	configIO(0, 0);
+	setIO_level(0, 0, 3);//30m reset low
+	init_camera_io=1;
+    	}
 	if(is_power)
 	{
         *(volatile unsigned *)EGPIO_GPIOD_ENABLE &= ~PREG_IO_13_MASK;	
@@ -1101,10 +1098,10 @@ static int uor6x5x_get_irq_level(void)
 #define UOR6X5X_SWAP_XY 0
 #define UOR6X5X_XPOL    0
 #define UOR6X5X_YPOL    1
-#define UOR6X5X_XMIN 200
-#define UOR6X5X_XMAX 3900
-#define UOR6X5X_YMIN 300
-#define UOR6X5X_YMAX 3700
+#define UOR6X5X_XMIN 230
+#define UOR6X5X_XMAX 3800
+#define UOR6X5X_YMIN 330
+#define UOR6X5X_YMAX 3620
 
 int uor6x5x_convert(int x, int y)
 {
@@ -1188,7 +1185,7 @@ static struct platform_device vm_device =
 static int gc0308_v4l2_init(void)
 {
     udelay(1000);
-    WRITE_CBUS_REG(HHI_ETH_CLK_CNTL,0x30f);// 24M XTAL
+    WRITE_CBUS_REG(HHI_ETH_CLK_CNTL,0x31e);// 24M XTAL
     WRITE_CBUS_REG(HHI_DEMOD_PLL_CNTL,0x232);// 24M XTAL
 	udelay(1000);
 
@@ -1219,6 +1216,11 @@ static int gc0308_v4l2_uninit(void)
 {
    #ifdef CONFIG_SN7325
 	printk( "amlogic camera driver: uninit gc0308_v4l2_uninit. \n");
+    configIO(1, 0);
+	setIO_level(1, 0, 1);//200m poweer_disable
+	setIO_level(1, 0, 6);//200m pwd low
+	configIO(0, 0);
+	setIO_level(0, 0, 2);//200m reset low
 	configIO(1, 0);
 	setIO_level(1, 0, 2);//30m poweer_disable
 	setIO_level(1, 1, 0);//30m pwd enable
@@ -1228,17 +1230,25 @@ static int gc0308_v4l2_uninit(void)
     #endif
 
 }
+static int gc0308_v4l2_disable(void)
+{
+   return;
+}
 
 static void gc0308_v4l2_early_suspend(void)
 {
+#if  defined(CONFIG_TCA6424)||defined(CONFIG_SN7325)
 	configIO(1, 0);
 	setIO_level(1, 1, 0);
+#endif	
 }
 
 static void gc0308_v4l2_late_resume(void)
 {
+#if  defined(CONFIG_TCA6424)||defined(CONFIG_SN7325)
 	configIO(1, 0);
 	setIO_level(1, 0, 0);
+#endif		
 }
 
 aml_plat_cam_data_t video_gc0308_data = {
@@ -1248,6 +1258,7 @@ aml_plat_cam_data_t video_gc0308_data = {
 	.device_uninit=gc0308_v4l2_uninit,
 	.early_suspend = gc0308_v4l2_early_suspend,
 	.late_resume = gc0308_v4l2_late_resume,
+	.device_disable=gc0308_v4l2_disable,
 };
 #endif /* VIDEO_AMLOGIC_CAPTURE_GT2005 */
 
@@ -1302,17 +1313,31 @@ static int gt2005_v4l2_uninit(void)
     #endif
 
 }
+static int gt2005_v4l2_disable(void)
+{
+   #if 0
+	printk( "amlogic camera driver: gt2005_v4l2_disable. \n");
+	configIO(1, 0);
+	setIO_level(1, 0, 6);//200m pwd low
+	msleep(20); 
+    #endif
+
+}
 
 static void gt2005_v4l2_early_suspend(void)
 {
+#if  defined(CONFIG_TCA6424)||defined(CONFIG_SN7325)
 	configIO(1, 0);
 	setIO_level(1, 0, 1);
+#endif	
 }
 
 static void gt2005_v4l2_late_resume(void)
 {
+#if  defined(CONFIG_TCA6424)||defined(CONFIG_SN7325)
 	configIO(1, 0);
 	setIO_level(1, 1, 1);
+#endif	
 }
 
 aml_plat_cam_data_t video_gt2005_data = {
@@ -1322,6 +1347,7 @@ aml_plat_cam_data_t video_gt2005_data = {
 	.device_uninit=gt2005_v4l2_uninit,
 	.early_suspend = gt2005_v4l2_early_suspend,
 	.late_resume = gt2005_v4l2_late_resume,
+	.device_disable=gt2005_v4l2_disable,
 };
 #endif /* VIDEO_AMLOGIC_CAPTURE_GT2005 */
 
@@ -1833,14 +1859,13 @@ static int bat_charge_value_table[37]={
 };
 #else
 
-static int bat_value_table[37]={
+static int bat_value_table[36]={
 0,  //0
 539*4/3,//0
-542*4/3,// 5
-546*4/3,//10
-550*4/3,//15
-551*4/3,//16
-552*4/3,//18
+545*4/3,//5
+548*4/3,//15
+549*4/3,//16
+551*4/3,//18
 553*4/3,//20
 555*4/3,//23
 558*4/3,//26
@@ -1867,17 +1892,16 @@ static int bat_value_table[37]={
 604*4/3,//85
 607*4/3,//88
 610*4/3,//91
-614*4/3,//95
-618*4/3,//97
-623*4/3,//100
-623*4/3 //100
+611*4/3,//95
+612*4/3,//97
+613*4/3,//100
+613*4/3 //100
 };
 
-static int bat_charge_value_table[37]={
+static int bat_charge_value_table[36]={
 0,  //0    
 564*4/3,//0
-570*4/3,//5
-573*4/3,//10
+573*4/3,//5
 578*4/3,//15
 579*4/3,//16
 581*4/3,//18
@@ -1905,20 +1929,19 @@ static int bat_charge_value_table[37]={
 614*4/3,//80
 616*4/3,//83
 618*4/3,//85
-620*4/3,//88
-623*4/3,//91
-625*4/3,//95
-629*4/3,//97
-632*4/3,//100
-632*4/3 //100
+619*4/3,//88
+620*4/3,//91
+621*4/3,//95
+622*4/3,//97
+623*4/3,//100
+623*4/3 //100
 };
 #endif
 
-static int bat_level_table[37]={
+static int bat_level_table[36]={
 0,
 0,
 5,
-10,
 15,
 16,
 18,
@@ -1964,10 +1987,10 @@ static struct aml_power_pdata power_pdata = {
 	.bat_value_table = bat_value_table,
 	.bat_charge_value_table = bat_charge_value_table,
 	.bat_level_table = bat_level_table,
-	.bat_table_len = 37,		
+	.bat_table_len = 36,		
 	.ic_control = ic_control,
 	.powerkey_led_onoff = powerkey_led_onoff,
-	.is_support_usb_charging = 1,
+	.is_support_usb_charging = 0,
 	//.supplied_to = supplicants,
 	//.num_supplicants = ARRAY_SIZE(supplicants),
 };
@@ -2289,28 +2312,61 @@ static unsigned aml_8726m_get_bl_level(void)
     return bl_level;
 }
 #define BL_MAX_LEVEL 60000
+static int board_ver = 1;
+static int pre_level = 0;
+static int first_time = 0;
+
 static void aml_8726m_set_bl_level(unsigned level)
 {
     unsigned cs_level, hi, low;
 
-    if (level <= 30)
-    {
-        cs_level = 11640;
-    }
-    else if (level > 30 && level < 218)
-    {
-        cs_level = (level - 31) * 260 + 11640;
-    }
-    else
-        cs_level = BL_MAX_LEVEL;
-
-    low = cs_level;
-    hi = BL_MAX_LEVEL - low;
-
-
-    //WRITE_CBUS_REG_BITS(VGHL_PWM_REG0, cs_level, 0, 4);        
-    WRITE_CBUS_REG_BITS(PWM_PWM_A,(low/50),0,16);  //low
-    WRITE_CBUS_REG_BITS(PWM_PWM_A,(hi/50),16,16);  //hi  
+	if ((first_time == 0)||(first_time == 1))
+	{
+		first_time++;
+		return;
+	}
+	if (level != pre_level)
+	{
+		pre_level = level;
+		//#if 0
+		if (board_ver == 1)
+		{
+		if (level <= 40)
+		{
+		    cs_level = 28740;
+		}
+		else if (level > 40 && level < 152)
+		{
+		    cs_level = (level - 31) * 260 + 28740;
+		}
+		else
+		    cs_level = BL_MAX_LEVEL;
+		
+		}
+		//#else
+		else if (board_ver == 2)
+		{
+		if (level <= 0)
+		{
+		    cs_level = 0;
+		}
+		else if (level > 0 && level < 255)
+		{
+		    cs_level = level * 235;
+		}
+		else
+		    cs_level = BL_MAX_LEVEL; 
+		
+		}
+		
+		low = cs_level;
+		hi = BL_MAX_LEVEL - low;
+		printk("\n\n@@@@@@@@@@@@@@@@@@@@@@@@@@@@level=<%d>@@@@@@@@@@@@@@@@@@@@@@@.\n\n",level);
+		
+		//WRITE_CBUS_REG_BITS(VGHL_PWM_REG0, cs_level, 0, 4);        
+		WRITE_CBUS_REG_BITS(PWM_PWM_A,(low/50),0,16);  //low
+		WRITE_CBUS_REG_BITS(PWM_PWM_A,(hi/50),16,16);  //hi  
+  }
 }
 
 static void aml_8726m_power_on_bl(void)
@@ -2554,9 +2610,6 @@ static struct platform_device __initdata *platform_devs[] = {
      #ifdef CONFIG_POST_PROCESS_MANAGER
     &ppmgr_device,
     #endif
-	#ifdef CONFIG_USB_PHY_CONTROL
-		&usb_phy_control_device,
-	#endif     
 };
 static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
 
@@ -2678,7 +2731,25 @@ static void __init eth_pinmux_init(void)
 
 static void __init device_pinmux_init(void )
 {
-    clearall_pinmux();
+    u32  i,mask_data;
+     
+    for(i=0;i<13;i++)
+    {
+    	 switch(i) //reserve lcd pinmux for logo display.
+    	 {
+    	 	case 0:
+		mask_data=~(1<<11|1<<14);		
+		break;
+		case 4:
+		mask_data=~(1<<0|1<<2|1<<4);
+		break;
+		default:
+		mask_data=0x7fffffff;
+		break;
+    	 }
+	 clear_mio_mux(i,mask_data);	 
+    }
+    
     /*other deivce power on*/
     /*GPIOA_200e_bit4..usb/eth/YUV power on*/
     set_gpio_mode(PREG_EGPIO,1<<4,GPIO_OUTPUT_MODE);
@@ -2746,7 +2817,7 @@ static __init void m1_init_machine(void)
     meson_cache_init();
 
     power_hold();
-    pm_power_off = set_bat_off;
+
     device_clk_setting();
     device_pinmux_init();
 #ifdef CONFIG_CAMERA_GC0308
@@ -2759,8 +2830,11 @@ static __init void m1_init_machine(void)
 
 #ifdef CONFIG_USB_DWC_OTG_HCD
     set_usb_phy_clk(USB_PHY_CLOCK_SEL_XTAL_DIV2);
-    set_usb_ctl_por(USB_CTL_INDEX_B,USB_CTL_POR_DISABLE);	//disable usb_b
+    SET_CBUS_REG_MASK(PREI_USB_PHY_REG, PREI_USB_PHY_B_POR);
     lm_device_register(&usb_ld_a);
+     //disable the b interface of usb
+    
+    //SET_CBUS_REG_MASK(PREI_USB_PHY_REG, PREI_USB_PHY_B_POR);
 #endif
 #ifdef CONFIG_SATA_DWC_AHCI
     set_sata_phy_clk(SATA_PHY_CLOCK_SEL_DEMOD_PLL);
@@ -2781,7 +2855,9 @@ static __init void m1_init_machine(void)
 	set_gpio_val(GPIOD_bank_bit2_24(15), GPIOD_bit_bit2_24(15), 1);
 	set_gpio_mode(GPIOD_bank_bit2_24(15), GPIOD_bit_bit2_24(15), GPIO_OUTPUT_MODE);
 	
-
+	//power key led off!!!
+    powerkey_led_onoff(0);
+	
     printk(KERN_INFO "WIFI ENABLE : OK\n");
 
 }
@@ -2835,3 +2911,46 @@ MACHINE_START(MESON_8726M, "AMLOGIC MESON-M1 8726M SZ")
     .video_start    = RESERVED_MEM_START,
     .video_end      = RESERVED_MEM_END,
 MACHINE_END
+
+
+int get_board_version(void)
+{
+	return board_ver;
+}
+EXPORT_SYMBOL(get_board_version);
+
+static int uboot_ver = 1;
+
+int get_uboot_version(void)
+{
+	return uboot_ver;
+}
+EXPORT_SYMBOL(get_uboot_version);
+
+static  int __init board_ver_setup(char *s)
+{
+    if(strncmp(s, "v2", 2)==0){
+        board_ver = 2;
+//#if defined(CONFIG_KEY_INPUT_CUSTOM_AM) || defined(CONFIG_KEY_INPUT_CUSTOM_AM_MODULE)
+//        key_input_pdata.config = 2;
+//#endif
+    } else
+    	board_ver = 1;
+    printk("board_ver = %s",s);      
+    return 0;
+}
+__setup("board_ver=",board_ver_setup) ;
+
+static  int __init uboot_ver_setup(char *s)
+{
+    if(strncmp(s, "v2", 2)==0)
+        uboot_ver = 2;
+    else
+    	uboot_ver = 1;
+    printk("uboot_ver = %s",s);      
+    return 0;
+}
+__setup("uboot_ver=",uboot_ver_setup) ;
+
+
+

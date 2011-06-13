@@ -818,6 +818,11 @@ typedef enum camera_effect_flip_e {
 	CAM_EFFECT_ENC_SEPIABLUE,
 	CAM_EFFECT_ENC_COLORINV,
 }camera_effect_flip_t;
+typedef enum camera_banding_flip_e {
+    CAM_BANDING_50HZ = 0,
+	CAM_BANDING_60HZ,
+}camera_banding_flip_t;
+
 
 
 
