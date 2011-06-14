@@ -22,6 +22,7 @@
 
 #include <linux/i2c.h>
 #include <linux/gpio.h>
+#include <linux/jiffies.h>
 
 #include "aml_demod.h"
 #include "demod_func.h"
@@ -46,10 +47,12 @@ struct amlfe_state {
 	struct aml_demod_sta *sta;
 	struct aml_demod_i2c *i2c;
 	
-	u32                 freq;
-        fe_modulation_t     mode;
-        u32                 symbol_rate;
-        struct dvb_frontend fe;
+	u32                       freq;
+	fe_modulation_t     mode;
+	u32                       symbol_rate;
+	struct dvb_frontend fe;
+
+	wait_queue_head_t  lock_wq;
 };
 
 MODULE_PARM_DESC(frontend_mode, "\n\t\t Frontend mode 0-DVBC, 1-DVBT");
@@ -73,6 +76,40 @@ static struct aml_fe amdemod_fe[1];/*[AMDEMOD_FE_DEV_COUNT] =
 
 static struct aml_demod_i2c demod_i2c;
 static struct aml_demod_sta demod_sta;
+
+static irqreturn_t amdemod_isr(int irq, void *data)
+{
+	struct amlfe_state *state = data;
+	
+	if(((frontend_mode==0)&&dvbc_isr_islock())
+		||((frontend_mode==1)&&dvbt_isr_islock())) {
+		if(waitqueue_active(&state->lock_wq))
+			wake_up_interruptible(&state->lock_wq);
+	}
+	return IRQ_HANDLED;
+}
+
+static int install_isr(struct amlfe_state *state)
+{
+	int r = 0;
+
+	/* hook demod isr */
+	printk("amdemod irq register[IRQ(%d)].\n", INT_DEMOD);
+	r = request_irq(INT_DEMOD, &amdemod_isr,
+				IRQF_SHARED, "amldemod",
+				(void *)state);
+	if (r) {
+		printk("amdemod irq register error.\n");
+	}
+	return r;
+}
+
+static void uninstall_isr(struct amlfe_state *state)
+{
+	printk("amdemod irq unregister[IRQ(%d)].\n", INT_DEMOD);
+
+	free_irq(INT_DEMOD, (void*)state);
+}
 
 
 static int aml_fe_dvb_i2c_gate_ctrl(struct dvb_frontend *fe, int enable)
@@ -143,6 +180,9 @@ static int aml_fe_dvbc_init(struct dvb_frontend *fe)
 	_prepare_i2c(fe, &i2c);
 	
 	demod_set_sys(state->sta, state->i2c, &sys);
+
+	state->sys = sys;
+	
 	return 0;
 }
 
@@ -186,6 +226,9 @@ static int aml_fe_dvbt_init(struct dvb_frontend *fe)
 	_prepare_i2c(fe, &i2c);
 
 	demod_set_sys(state->sta, state->i2c, &sys);
+
+	state->sys = sys;
+	
 	return 0;
 }
 
@@ -209,7 +252,7 @@ static int aml_fe_dvbc_read_status(struct dvb_frontend *fe, fe_status_t * status
 	}
 
 	if(iii != ilock){
-		printk("%s.\n", ilock? "!!  >> LOCK << !!\n" : "!! >> UNLOCK << !!\n");
+		printk("%s.\n", ilock? "!!  >> LOCK << !!" : "!! >> UNLOCK << !!");
 		iii = ilock;
 	}
 	
@@ -236,7 +279,7 @@ static int aml_fe_dvbt_read_status(struct dvb_frontend *fe, fe_status_t * status
 	}
 
 	if(iii != ilock){
-		printk("%s.\n", ilock? "!!  >> LOCK << !!\n" : "!! >> UNLOCK << !!\n");
+		printk("%s.\n", ilock? "!!  >> LOCK << !!" : "!! >> UNLOCK << !!");
 		iii = ilock;
 	}
 	
@@ -330,11 +373,25 @@ static int to_qam_mode(fe_modulation_t qam)
 	return 2;
 }
 
+static int amdemod_stat_islock(struct amlfe_state *state)
+{
+	struct aml_demod_sts demod_sts;
+	if(frontend_mode==0){
+		/*DVBC*/
+		dvbc_status(state->sta, state->i2c, &demod_sts);
+		return (demod_sts.ch_sts&0x1);
+	} else if (frontend_mode==1){
+		/*DVBT*/
+		dvbt_status(state->sta, state->i2c, &demod_sts);
+		return (demod_sts.ch_sts>>12&1);
+	}
+	return 0;
+}
+
 static int aml_fe_dvbc_set_frontend(struct dvb_frontend *fe, struct dvb_frontend_parameters *p)
 {
 	struct amlfe_state *state = fe->demodulator_priv;
 	struct aml_demod_dvbc param;//mode 0:16, 1:32, 2:64, 3:128, 4:256
-	int wait = 1000/20;//1s
 	
 	memset(&param, 0, sizeof(param));
 	param.ch_freq = p->frequency/1000;
@@ -342,16 +399,13 @@ static int aml_fe_dvbc_set_frontend(struct dvb_frontend *fe, struct dvb_frontend
 	param.symb_rate = p->u.qam.symbol_rate/1000;
 	
 	dvbc_set_ch(state->sta, state->i2c, &param);
-	
-	while (wait)
+
 	{
-		struct aml_demod_sts demod_sts;
-		dvbt_status(state->sta, state->i2c, &demod_sts);
-		if(demod_sts.ch_sts&0x1)	break;
-		wait--;
-		msleep(2);		//Delay 20 ms	
+		int ret;
+		ret = wait_event_interruptible_timeout(state->lock_wq, amdemod_stat_islock(state), 2*HZ);
+		if(!ret)	printk("amlfe wait lock timeout.\n");
 	}
-	
+
 	state->freq=p->frequency;
 	state->mode=p->u.qam.modulation ;
 	state->symbol_rate=p->u.qam.symbol_rate;
@@ -364,7 +418,6 @@ static int aml_fe_dvbt_set_frontend(struct dvb_frontend *fe, struct dvb_frontend
 {
 	struct amlfe_state *state = fe->demodulator_priv;
 	struct aml_demod_dvbt param;
-	int wait = 1000/20;//1s
 	
     //////////////////////////////////////
     // bw == 0 : 8M 
@@ -381,13 +434,10 @@ static int aml_fe_dvbt_set_frontend(struct dvb_frontend *fe, struct dvb_frontend
 	
 	dvbt_set_ch(state->sta, state->i2c, &param);
 
-	while (wait)
 	{
-		struct aml_demod_sts demod_sts;
-		dvbt_status(state->sta, state->i2c, &demod_sts);
-		if(demod_sts.ch_sts>>12&1)	break;
-		wait--;
-		msleep(2);		//Delay 20 ms	
+		int ret;
+		ret = wait_event_interruptible_timeout(state->lock_wq, amdemod_stat_islock(state), 2*HZ);
+		if(!ret)	printk("amlfe wait lock timeout.\n");
 	}
 	
 	state->freq=p->frequency;
@@ -422,6 +472,8 @@ static int aml_fe_dvbt_get_frontend(struct dvb_frontend *fe, struct dvb_frontend
 static void aml_fe_dvb_release(struct dvb_frontend *fe)
 {
 	struct amlfe_state *state = fe->demodulator_priv;
+
+	uninstall_isr(state);
 	
 	kfree(state);
 }
@@ -429,23 +481,7 @@ static void aml_fe_dvb_release(struct dvb_frontend *fe)
 static struct dvb_frontend_ops aml_fe_dvbc_ops;
 static struct dvb_frontend_ops aml_fe_dvbt_ops;
 static struct dvb_tuner_ops aml_fe_tuner_ops;
-struct dvb_tuner_info * tuner_get_info( int type)
-{
-	static struct dvb_tuner_info tinfo = {
-		.name = "tuner_type1", 
 
-		.frequency_min = 0,
-		.frequency_max = 0,
-		.frequency_step = 0,
-		
-		.bandwidth_min = 0,
-		.bandwidth_max = 0,
-		.bandwidth_step = 0,
-		};
-	
-	return &tinfo;
-}
-	
 struct dvb_frontend *aml_fe_dvbc_attach(const struct amlfe_config *config)
 {
 	struct amlfe_state *state = NULL;
@@ -460,19 +496,23 @@ struct dvb_frontend *aml_fe_dvbc_attach(const struct amlfe_config *config)
 	/* setup the state */
 	state->config = *config;
 
+	/* create dvb_frontend */
+	memcpy(&state->fe.ops, &aml_fe_dvbc_ops, sizeof(struct dvb_frontend_ops));
+
 	/*set tuner parameters*/
-	tinfo = tuner_get_info(state->config.tuner_type);
+	tinfo = tuner_get_info(state->config.tuner_type, 0);
 	memcpy(&state->fe.ops.tuner_ops, &aml_fe_tuner_ops,
 	       sizeof(struct dvb_tuner_ops));
 	memcpy(&state->fe.ops.tuner_ops.info, tinfo,
 		sizeof(state->fe.ops.tuner_ops.info));
 	
-	/* create dvb_frontend */
-	memcpy(&state->fe.ops, &aml_fe_dvbc_ops, sizeof(struct dvb_frontend_ops));
-
 	state->sta = &demod_sta;
 	state->i2c = &demod_i2c;
 
+	init_waitqueue_head(&state->lock_wq);
+
+	install_isr(state);
+	
 	state->fe.demodulator_priv = state;
 	
 	return &state->fe;
@@ -494,20 +534,24 @@ struct dvb_frontend *aml_fe_dvbt_attach(const struct amlfe_config *config)
 	/* setup the state */
 	state->config = *config;
 
+
+	/* create dvb_frontend */
+	memcpy(&state->fe.ops, &aml_fe_dvbt_ops, sizeof(struct dvb_frontend_ops));
+
 	/*set tuner parameters*/
-	tinfo = tuner_get_info(state->config.tuner_type);
+	tinfo = tuner_get_info(state->config.tuner_type, 1);
 	memcpy(&state->fe.ops.tuner_ops, &aml_fe_tuner_ops,
 	       sizeof(struct dvb_tuner_ops));
 	memcpy(&state->fe.ops.tuner_ops.info, tinfo,
 		sizeof(state->fe.ops.tuner_ops.info));
 
-
-	/* create dvb_frontend */
-	memcpy(&state->fe.ops, &aml_fe_dvbt_ops, sizeof(struct dvb_frontend_ops));
-
 	state->sta = &demod_sta;
 	state->i2c = &demod_i2c;
 
+	init_waitqueue_head(&state->lock_wq);
+
+	install_isr(state);
+	
 	state->fe.demodulator_priv = state;
 	
 	return &state->fe;
@@ -551,8 +595,8 @@ static struct dvb_frontend_ops aml_fe_dvbt_ops = {
 	.info = {
 		 .name = "AMLOGIC DVB-T",
 		.type = FE_OFDM,
-		.frequency_min = 51000,
-		.frequency_max = 858000,
+		.frequency_min = 51000000,
+		.frequency_max = 858000000,
 		.frequency_stepsize = 166667,
 		.frequency_tolerance = 0,
 		.caps =
@@ -604,7 +648,8 @@ static int amdemod_fe_cfg_get(struct aml_dvb *advb, struct platform_device *pdev
 			ret = -EINVAL;
 			goto err_resource;
 		}
-		cfg->fe_mode = res->start;		
+		cfg->fe_mode = res->start;
+		frontend_mode = cfg->fe_mode;
 	}
 	
 	cfg->i2c_id = frontend_i2c;
@@ -617,6 +662,7 @@ static int amdemod_fe_cfg_get(struct aml_dvb *advb, struct platform_device *pdev
 			goto err_resource;
 		}
 		cfg->i2c_id = res->start;
+		frontend_i2c = cfg->i2c_id;
 	}
 	
 	cfg->tuner_type = frontend_tuner;
@@ -628,7 +674,8 @@ static int amdemod_fe_cfg_get(struct aml_dvb *advb, struct platform_device *pdev
 			ret = -EINVAL;
 			goto err_resource;
 		}
-		cfg->tuner_type = res->start;		
+		cfg->tuner_type = res->start;
+		frontend_tuner = cfg->tuner_type;
 	}
 	
 	cfg->tuner_addr = frontend_tuner_addr;
@@ -641,6 +688,7 @@ static int amdemod_fe_cfg_get(struct aml_dvb *advb, struct platform_device *pdev
 			goto err_resource;
 		}
 		cfg->tuner_addr = res->start>>1;
+		frontend_tuner_addr = cfg->tuner_addr;
 	}
 
 	*pcfg = cfg;
