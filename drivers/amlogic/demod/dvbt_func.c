@@ -1182,6 +1182,18 @@ void dvbt_isr(struct aml_demod_sta *demod_sta)
 }
 
 
+int dvbt_isr_islock(void)
+{
+#define IN_SYNC_MASK (0x100)
+
+    u32 stat, mask;
+
+    stat = (*OFDM_INT_STS);
+    mask = (*OFDM_INT_EN);
+    stat &= mask;
+
+    return ((stat&IN_SYNC_MASK)==IN_SYNC_MASK);
+}
 
 
 
