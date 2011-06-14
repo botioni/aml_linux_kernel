@@ -1931,20 +1931,33 @@ static void aml_8726m_power_on_bl(void)
 {
     printk("backlight on\n");
         //BL_PWM -> GPIOA_7: 1 Pull high, For En_5V
-	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<30));
-	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_12, (1<<6));
-	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0, (1<<8));
-	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<28));
-	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0, (1<<21));
-	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_9, (1<<23));    
+//	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<30));
+//	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_12, (1<<6));
+//	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0, (1<<8));
+//	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<28));
+//	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0, (1<<21));
+//	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_9, (1<<23));    
+
+    set_gpio_val(GPIOA_bank_bit0_14(3), GPIOA_bit_bit0_14(3), 0); //low
+    set_gpio_mode(GPIOA_bank_bit0_14(3), GPIOA_bit_bit0_14(3), GPIO_OUTPUT_MODE);
+
+    udelay(2); //delay 2us
+
+    //end
+    set_gpio_val(GPIOA_bank_bit0_14(3), GPIOA_bit_bit0_14(3), 1); //high
+    set_gpio_mode(GPIOA_bank_bit0_14(3), GPIOA_bit_bit0_14(3), GPIO_OUTPUT_MODE);
       
-   set_gpio_val(GPIOA_bank_bit0_14(8), GPIOA_bit_bit0_14(8), 1);
-   set_gpio_mode(GPIOA_bank_bit0_14(8), GPIOA_bit_bit0_14(8), GPIO_OUTPUT_MODE);
+   set_gpio_val(GPIOA_bank_bit0_14(7), GPIOA_bit_bit0_14(7), 1);
+   set_gpio_mode(GPIOA_bank_bit0_14(7), GPIOA_bit_bit0_14(7), GPIO_OUTPUT_MODE);
 
 
 #ifdef CONFIG_SN7325
     configIO(0, 0);
+    setIO_level(0, 0, 7);   //OD7 bl_en 
+    udelay(2000); //delay 2us
+    configIO(0, 0);
     setIO_level(0, 1, 7);   //OD7 bl_en  
+    
     configIO(0, 0);
     setIO_level(0, 0, 0);   //OD0 LCD_PWR_EN 
 #endif
@@ -1954,8 +1967,8 @@ static void aml_8726m_power_off_bl(void)
 {
     printk("backlight off\n");
     //BL_PWM -> GPIOA_7: 0
-    set_gpio_val(GPIOA_bank_bit0_14(8), GPIOA_bit_bit0_14(8), 0);
-    set_gpio_mode(GPIOA_bank_bit0_14(8), GPIOA_bit_bit0_14(8), GPIO_OUTPUT_MODE);
+    set_gpio_val(GPIOA_bank_bit0_14(7), GPIOA_bit_bit0_14(7), 0);
+    set_gpio_mode(GPIOA_bank_bit0_14(7), GPIOA_bit_bit0_14(7), GPIO_OUTPUT_MODE);
 }
 
 struct aml_bl_platform_data aml_bl_platform =
