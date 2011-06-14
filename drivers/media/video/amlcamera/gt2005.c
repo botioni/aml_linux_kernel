@@ -76,7 +76,7 @@ static unsigned int vid_limit = 16;
 
 static int vidio_set_fmt_ticks=0;
 
-
+extern int disable_gt2005;
 
 /* supported controls */
 static struct v4l2_queryctrl gt2005_qctrl[] = {
@@ -149,6 +149,15 @@ static struct v4l2_queryctrl gt2005_qctrl[] = {
 		.name          = "effect",
 		.minimum       = 0,
 		.maximum       = 6,
+		.step          = 0x1,
+		.default_value = 0,
+		.flags         = V4L2_CTRL_FLAG_SLIDER,
+	},{
+		.id            = V4L2_CID_WHITENESS,
+		.type          = V4L2_CTRL_TYPE_INTEGER,
+		.name          = "banding",
+		.minimum       = 0,
+		.maximum       = 1,
 		.step          = 0x1,
 		.default_value = 0,
 		.flags         = V4L2_CTRL_FLAG_SLIDER,
@@ -325,7 +334,7 @@ static inline struct gt2005_fh *to_fh(struct gt2005_device *dev)
 
 struct aml_camera_i2c_fig_s GT2005_script[] = { 
 #ifdef CONFIG_MACH_MESON_8726M_REFB10
-	{0x0101 , 0x01},
+	{0x0101 , 0x02},
 #else
 	{0x0101 , 0x10},
 #endif
@@ -371,9 +380,9 @@ struct aml_camera_i2c_fig_s GT2005_script[] = {
 	{0x0116 , 0x01},
 	{0x0117 , 0x00},
 	{0x0118 , 0x34},
-	{0x0119 , 0x01},
+	{0x0119 , 0x02},
 	{0x011A , 0x04},
-	{0x011B , 0x00},
+	{0x011B , 0x01},
 
 	//DCLK Polarity
 	{0x011C , 0x00},//00
@@ -540,8 +549,8 @@ struct aml_camera_i2c_fig_s GT2005_script[] = {
 	{0x0312 , 0x08},
 
 	//Banding Setting{50Hz}
-		{0x0313 , 0x38},
-	{0x0314 , 0xd0},  
+		{0x0313 , 0x34},
+	{0x0314 , 0x69},  // 468
 	//{0x0313 , 0x34},
 	//{0x0314 , 0x3b},
 	{0x0315 , 0x16},
@@ -1287,6 +1296,23 @@ void GT2005_set_night_mode(struct gt2005_device *dev,enum  camera_night_mode_fli
 	}
 
 }    /* GT2005_NightMode */
+void GT2005_set_param_banding(struct gt2005_device *dev,enum  camera_night_mode_flip_e banding)
+{
+    struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
+	unsigned char buf[4];
+
+	switch(banding)
+		{
+		case CAM_BANDING_50HZ:
+			i2c_put_byte(client,0x0315,0x16);
+			break;  
+		case CAM_BANDING_60HZ:
+			i2c_put_byte(client,0x0315,0x56);
+			break;
+			
+		}
+
+}
 
 void GT2005_set_resolution(struct gt2005_device *dev,int height,int width)
 {	
@@ -1464,6 +1490,13 @@ static int gt2005_setting(struct gt2005_device *dev,int PROP_ID,int value )
 			gt2005_qctrl[2].default_value=value;
 			GT2005_set_param_effect(dev,value);
 			printk(KERN_INFO " set camera  effect=%d. \n ",value);
+        	}
+		break;
+	case V4L2_CID_WHITENESS:
+		 if(gt2005_qctrl[3].default_value!=value){
+			gt2005_qctrl[3].default_value=value;
+			GT2005_set_param_banding(dev,value);
+			printk(KERN_INFO " set camera  banding=%d. \n ",value);
         	}
 		break;
 	default:
@@ -1928,7 +1961,10 @@ static int vidioc_streamon(struct file *file, void *priv, enum v4l2_buf_type i)
 		return -EINVAL;
 
     para.port  = TVIN_PORT_CAMERA;
-    para.fmt = TVIN_SIG_FMT_CAMERA_1280X720P_30Hz;
+    para.fmt_info.fmt = TVIN_SIG_FMT_MAX+1;//TVIN_SIG_FMT_MAX+1;;TVIN_SIG_FMT_CAMERA_1280X720P_30Hz
+	para.fmt_info.frame_rate = 236;
+	para.fmt_info.h_active = 800;
+	para.fmt_info.v_active = 600;
 	ret =  videobuf_streamon(&fh->vb_vidq);
 	if(ret == 0){
     start_tvin_service(0,&para);
@@ -2170,11 +2206,21 @@ static int gt2005_close(struct file *file)
 	power_down_gt2005(dev);
 #endif
 	msleep(10);
-
-	if(dev->platform_dev_data.device_uninit) {
-		dev->platform_dev_data.device_uninit();
-		printk("+++found a uninit function, and run it..\n");
-	}
+    if(disable_gt2005>0){
+		disable_gt2005=0;
+		//printk("+++device_disable, and run it..\n");
+		if(dev->platform_dev_data.device_disable) {
+			dev->platform_dev_data.device_disable();
+			printk("+++found a disable function, and run it..\n");
+			}
+		}
+	else{
+		disable_gt2005=0;
+		if(dev->platform_dev_data.device_uninit) {
+			dev->platform_dev_data.device_uninit();
+			printk("+++found a uninit function, and run it..\n");
+			}
+		}
 	msleep(10); 
 	return 0;
 }
@@ -2312,6 +2358,7 @@ static int gt2005_probe(struct i2c_client *client,
 	if (plat_dat) {
 		t->platform_dev_data.device_init=plat_dat->device_init;
 		t->platform_dev_data.device_uninit=plat_dat->device_uninit;
+		t->platform_dev_data.device_disable=plat_dat->device_disable;
 		if(plat_dat->video_nr>=0)  video_nr=plat_dat->video_nr;
 	}
 	err = video_register_device(t->vdev, VFL_TYPE_GRABBER, video_nr);
@@ -2363,7 +2410,7 @@ static int gt2005_resume(struct i2c_client *client)
     struct gt2005_fh  *fh = to_fh(t);
     tvin_parm_t para;
     para.port  = TVIN_PORT_CAMERA;
-    para.fmt = TVIN_SIG_FMT_CAMERA_1280X720P_30Hz;
+    para.fmt_info.fmt = TVIN_SIG_FMT_CAMERA_1280X720P_30Hz;
     GT2005_init_regs(t); 
 	if(fh->stream_on == 1){
         start_tvin_service(0,&para);
