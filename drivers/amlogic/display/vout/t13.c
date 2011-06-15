@@ -298,7 +298,6 @@ static struct platform_device tcon_dev = {
 
 static int __init t13_init(void)
 {
-    while(1){};	
     t13_setup_gama_table(&tcon_config);
     t13_io_init();
 
