@@ -71,7 +71,11 @@
 #endif
 
 #ifdef CONFIG_SIX_AXIS_SENSOR_MPU3050
+#ifdef CONFIG_MPU_PRE_V340
 #include <linux/mpu.h>
+#else
+#include <linux/mpu_new/mpu.h>
+#endif
 #endif
 
 #ifdef CONFIG_SN7325
@@ -103,6 +107,9 @@
 #include <linux/bq27x00_battery.h>
 #endif
 
+#ifdef CONFIG_EFUSE
+#include <linux/efuse.h>
+#endif
 
 #if defined(CONFIG_JPEGLOGO)
 static struct resource jpeglogo_resources[] = {
@@ -268,7 +275,7 @@ static struct mpu3050_platform_data mpu3050_data = {
     .orientation = {0,1,0,1,0,0,0,0,-1},
     .level_shifter = 0,
     .accel = {
-                .get_slave_descr = mma8451_get_slave_descr,
+                .get_slave_descr = get_accel_slave_descr,
                 .adapt_num = 0, // The i2c bus to which the mpu device is
                 // connected
                 .bus = EXT_SLAVE_BUS_SECONDARY, //The secondary I2C of MPU
@@ -1453,6 +1460,26 @@ static struct platform_device aml_uart_device = {
 };
 #endif
 
+#ifdef CONFIG_EFUSE
+static bool efuse_data_verify(unsigned char *usid)
+{
+	return true;
+}
+
+static struct efuse_platform_data aml_efuse_plat = {
+    .pos = 337,
+    .count = 20,
+    .data_verify = efuse_data_verify,
+};
+
+static struct platform_device aml_efuse_device = {
+    .name	= "efuse",
+    .id	= -1,
+    .dev = {
+                .platform_data = &aml_efuse_plat,
+           },
+};
+#endif
 #ifdef CONFIG_AM_NAND
 /*static struct mtd_partition partition_info[] = 
 {
@@ -1571,37 +1598,37 @@ static struct mtd_partition multi_partition_info[] =
 {
 	{
 		.name = "logo",
-		.offset = 32*SZ_1M,
+		.offset = 32*SZ_1M+40*SZ_1M,
 		.size = 16*SZ_1M,
 	},
 	{
 		.name = "aml_logo",
-		.offset = 48*SZ_1M,
+		.offset = 48*SZ_1M+40*SZ_1M,
 		.size = 16*SZ_1M,
 	},
 	{
 		.name = "recovery",
-		.offset = 64*SZ_1M,
+		.offset = 64*SZ_1M+40*SZ_1M,
 		.size = 32*SZ_1M,
 	},
 	{
 		.name = "boot",
-		.offset = 96*SZ_1M,
+		.offset = 96*SZ_1M+40*SZ_1M,
 		.size = 32*SZ_1M,
 	},
 	{
 		.name = "system",
-		.offset = 128*SZ_1M,
+		.offset = 128*SZ_1M+40*SZ_1M,
 		.size = 256*SZ_1M,
 	},
 	{
 		.name = "cache",
-		.offset = 384*SZ_1M,
+		.offset = 384*SZ_1M+40*SZ_1M,
 		.size = 128*SZ_1M,
 	},
 	{
 		.name = "userdata",
-		.offset = 512*SZ_1M,
+		.offset = 512*SZ_1M+40*SZ_1M,
 		.size = 512*SZ_1M,
 	},
 	{
@@ -2050,6 +2077,9 @@ static struct platform_device __initdata *platform_devs[] = {
     #ifdef CONFIG_BT_DEVICE  
         &bt_device,
     #endif    	
+    #ifdef CONFIG_EFUSE
+	&aml_efuse_device,
+    #endif
 };
 static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
 

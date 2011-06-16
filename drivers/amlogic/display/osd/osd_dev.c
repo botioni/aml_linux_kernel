@@ -114,7 +114,7 @@ int osddev_setcolreg(unsigned regno, u16 red, u16 green, u16 blue,
 }
 void osddev_init(void)
 {
-	osd_init_hw();
+	osd_init_hw(0);
 }
 u32	osddev_get_osd_order(u32 index)
 {

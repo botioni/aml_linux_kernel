@@ -1,7 +1,7 @@
 #
 # Automatically generated make config: don't edit
 # Linux kernel version: 2.6.34
-# Fri Jun 10 14:06:23 2011
+# Wed Jun 15 14:40:35 2011
 #
 CONFIG_ARM=y
 CONFIG_HOLES_IN_ZONE=y
@@ -1113,11 +1113,13 @@ CONFIG_SIX_AXIS_SENSOR_MPU3050=y
 # CONFIG_EEPROM_LEGACY is not set
 # CONFIG_EEPROM_MAX6875 is not set
 # CONFIG_EEPROM_93CX6 is not set
+CONFIG_MPU_PRE_V340=y
+# CONFIG_MPU_NEW is not set
 
 #
 # Motion Sensors Support
 #
-# CONFIG_MPU_NONE is not set
+# CONFIG_MPU_PRE_V340_NONE is not set
 CONFIG_SENSORS_MPU3050=y
 # CONFIG_SENSORS_MPU6000 is not set
 # CONFIG_SENSORS_ACCELEROMETER_NONE is not set
@@ -1139,6 +1141,9 @@ CONFIG_SENSORS_COMPASS_NONE=y
 # CONFIG_SENSORS_YAS529 is not set
 # CONFIG_SENSORS_HSCDTD002B is not set
 # CONFIG_SENSORS_MPU_DEBUG is not set
+# CONFIG_MPU_NONE is not set
+# CONFIG_MPU_SENSORS_MPU3050 is not set
+# CONFIG_MPU_SENSORS_MPU6000 is not set
 CONFIG_HAVE_IDE=y
 # CONFIG_IDE is not set
 

@@ -31,7 +31,7 @@
 #include <linux/aml_bl.h>
 #include <mach/power_gate.h>
 
-//#define AML_BL_DBG
+#define AML_BL_DBG
 
 struct aml_bl {
 	const struct aml_bl_platform_data	*pdata;
@@ -144,14 +144,14 @@ static int aml_bl_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, amlbl);
 	
 	bldev->props.power = FB_BLANK_UNBLANK;
-	bldev->props.brightness = 120;
+	bldev->props.brightness = 250;
 
     if( pdata->bl_init )
         pdata->bl_init();
     if( pdata->power_on_bl )
         pdata->power_on_bl();
 	if( pdata->set_bl_level )
-        pdata->set_bl_level(120);
+        pdata->set_bl_level(250);
 
 	return 0;
 

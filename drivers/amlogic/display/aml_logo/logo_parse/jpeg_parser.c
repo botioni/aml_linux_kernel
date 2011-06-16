@@ -351,10 +351,12 @@ static int hardware_init(logo_object_t *plogo,int logo_size)
 		return -EINVAL;
 	}
 	WRITE_MPEG_REG(RESET0_REGISTER, RESET_VCPU | RESET_CCPU);
+#ifdef CONFIG_AM_STREAMING	
 	if (amvdec_loadmc(mc_addr_aligned) < 0) {
 		amlog_mask_level(LOG_MASK_PARSER,LOG_LEVEL_LOW,"[jpeglogo]: Can not loading HW decoding ucode.\n");
         	return -EBUSY;
     	}
+#endif	
 	amlog_mask_level(LOG_MASK_PARSER,LOG_LEVEL_LOW,"load micro code completed\n");
 	jpeglogo_prot_init(plogo);
 	
@@ -424,7 +426,9 @@ static  int  thread_progress(void *para)
     	while (time_before(jiffies, timeout)) {
 		if (priv->state== PIC_FETCHED)
 		{
+#ifdef CONFIG_AM_VIDEO 	
 			vf_unreg_provider();
+#endif
 			kfree(priv);
 			amlog_mask_level(LOG_MASK_PARSER,LOG_LEVEL_LOW,"logo fetched\n");
 			return SUCCESS;
@@ -437,8 +441,9 @@ static  int  jpeg_decode(logo_object_t *plogo)
 {
 	ulong timeout;
 	jpeg_private_t *priv=(jpeg_private_t*)plogo->parser->priv;
-	
+#ifdef CONFIG_AM_STREAMING	
 	amvdec_start();
+#endif
        	feed_vb(plogo->parser->logo_pic_info.size);
 	timeout = jiffies + HZ * 2;//wait 2s
     
@@ -449,13 +454,17 @@ static  int  jpeg_decode(logo_object_t *plogo)
 			break;
 		}
     	}
+#ifdef CONFIG_AM_STREAMING		
     	amvdec_stop();
+#endif
 	free_irq(INT_MAILBOX_1A, (void *)hardware_init);
 	if (priv->state > PIC_NA) 
 	{
 		if(plogo->para.output_dev_type == LOGO_DEV_VID)
 		{
+#ifdef CONFIG_AM_VIDEO 		
 			vf_reg_provider(&jpeglogo_vf_provider);
+#endif
 			kernel_thread(thread_progress, plogo, 0);
 		}else
 		{

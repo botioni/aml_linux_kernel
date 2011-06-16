@@ -284,7 +284,7 @@ int wlanDrvWext_Handler (struct net_device *dev,
                                    NULL);
     }
     /* Here we are after the command was completed */
-    if (my_command.in_buffer)
+    if (my_command.in_buffer && my_command.in_buffer_len > 0)
     {
         os_memoryFree(drv, my_command.in_buffer, my_command.in_buffer_len);
     }
