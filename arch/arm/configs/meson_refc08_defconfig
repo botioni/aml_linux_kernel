@@ -680,8 +680,8 @@ CONFIG_AMLOGIC_SPI_NOR=y
 #
 # AMLOGIC NAND Flash support
 #
-CONFIG_AM_NAND=y
-CONFIG_AML_NFTL=m
+# CONFIG_AM_NAND is not set
+# CONFIG_AML_NFTL is not set
 
 #
 # AMLOGIC DEMOD Support
