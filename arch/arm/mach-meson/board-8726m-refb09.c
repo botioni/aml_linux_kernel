@@ -339,6 +339,22 @@ static struct platform_device fb_device = {
     .resource      = fb_device_resources,
 };
 #endif
+
+#ifdef CONFIG_USB_PHY_CONTROL
+static struct resource usb_phy_control_device_resources[] = {
+{
+	.start = CBUS_REG_ADDR(PREI_USB_PHY_REG),
+	.end = -1,
+	.flags = IORESOURCE_MEM,
+},
+};
+static struct platform_device usb_phy_control_device = {
+	.name = "usb_phy_control",
+	.id = -1,
+	.resource = usb_phy_control_device_resources,
+};
+#endif
+
 #ifdef CONFIG_USB_DWC_OTG_HCD
 static void set_usb_a_vbus_power(char is_power_on)
 {
@@ -2638,6 +2654,10 @@ static struct platform_device __initdata *platform_devs[] = {
 #ifdef CONFIG_EFUSE
     &aml_efuse_device,
 #endif
+#ifdef CONFIG_USB_PHY_CONTROL
+    &usb_phy_control_device,
+#endif     
+
 };
 static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
 
@@ -2858,11 +2878,8 @@ static __init void m1_init_machine(void)
 
 #ifdef CONFIG_USB_DWC_OTG_HCD
     set_usb_phy_clk(USB_PHY_CLOCK_SEL_XTAL_DIV2);
-    SET_CBUS_REG_MASK(PREI_USB_PHY_REG, PREI_USB_PHY_B_POR);
+    set_usb_ctl_por(USB_CTL_INDEX_B,USB_CTL_POR_DISABLE);	//disable usb_b
     lm_device_register(&usb_ld_a);
-     //disable the b interface of usb
-    
-    //SET_CBUS_REG_MASK(PREI_USB_PHY_REG, PREI_USB_PHY_B_POR);
 #endif
 #ifdef CONFIG_SATA_DWC_AHCI
     set_sata_phy_clk(SATA_PHY_CLOCK_SEL_DEMOD_PLL);
