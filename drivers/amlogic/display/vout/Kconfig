@@ -78,8 +78,20 @@ config AML_TCON_G7
 	tristate "G7 panel driver"
 	depends on  AM_TCON_OUTPUT
 	help  
-		G7 LCD panel module		
+		G7 LCD panel module
 		
+config AML_TCON_A18
+	tristate "A18 panel driver"
+	depends on  AM_TCON_OUTPUT
+	help  
+		A18 LCD panel module
+
+config AML_TCON_A19
+	tristate "A19 panel driver"
+	depends on  AM_TCON_OUTPUT
+	help  
+		A19 LCD panel module
+
 config AML_TCON_R10
 	tristate "R10 panel driver"
 	depends on  AM_TCON_OUTPUT
@@ -103,5 +115,11 @@ config AML_TCON_T10
 	depends on  AM_TCON_OUTPUT
 	help  
 		T10 LCD panel module		
+		
+config AML_TCON_REFB17
+	tristate "REFB17 panel driver"
+	depends on  AM_TCON_OUTPUT
+	help  
+		T13 LCD panel module	
 endmenu
 	

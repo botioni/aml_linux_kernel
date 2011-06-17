@@ -24,6 +24,7 @@ obj-$(CONFIG_RTC_X1205_I2C)	+= x1205.o
 obj-$(CONFIG_SENSORS_MEMSIC)	+= mxc.o
 obj-$(CONFIG_SENSORS_MXC6202X)	+= mxc6202x.o
 obj-$(CONFIG_SENSORS_MXC622X)	+= mxc622x.o
+obj-$(CONFIG_SENSORS_MMA8452)	+= mma8452.o	
 obj-$(CONFIG_SENSORS_MMC31XX)	+= mmc31xx.o
 obj-$(CONFIG_SENSORS_MMC328X)	+= mmc328x.o
 obj-$(CONFIG_ECOMPASS)		+= mecs.o

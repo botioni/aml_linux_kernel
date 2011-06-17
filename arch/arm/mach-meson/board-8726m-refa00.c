@@ -87,6 +87,10 @@
 #include <sound/wm8900.h>
 #endif
 
+#ifdef CONFIG_EFUSE
+#include <linux/efuse.h>
+#endif
+
 #if defined(CONFIG_JPEGLOGO)
 static struct resource jpeglogo_resources[] = {
     [0] = {
@@ -1191,6 +1195,27 @@ static struct platform_device aml_uart_device = {
 };
 #endif
 
+#ifdef CONFIG_EFUSE
+static bool efuse_data_verify(unsigned char *usid)
+{
+    return true;
+}
+
+static struct efuse_platform_data aml_efuse_plat = {
+    .pos = 337,
+    .count = 20,
+    .data_verify = efuse_data_verify,
+};
+
+static struct platform_device aml_efuse_device = {
+    .name      = "efuse",
+    .id        = -1,
+    .dev = {
+               .platform_data = &aml_efuse_plat,
+           },
+};
+#endif
+
 #ifdef CONFIG_AM_NAND
 /*static struct mtd_partition partition_info[] = 
 {
@@ -1601,6 +1626,22 @@ static struct platform_device android_usb_device = {
 };
 #endif
 
+#ifdef CONFIG_POST_PROCESS_MANAGER
+static struct resource ppmgr_resources[] = {
+    [0] = {
+        .start =  PPMGR_ADDR_START,
+        .end   = PPMGR_ADDR_END,
+        .flags = IORESOURCE_MEM,
+    },
+};
+static struct platform_device ppmgr_device = {
+    .name       = "ppmgr",
+    .id         = 0,
+    .num_resources = ARRAY_SIZE(ppmgr_resources),
+    .resource      = ppmgr_resources,
+};
+#endif
+
 #ifdef CONFIG_BT_DEVICE
 #include <linux/bt-device.h>
 
@@ -1781,15 +1822,21 @@ static struct platform_device __initdata *platform_devs[] = {
     #if  defined(CONFIG_AM_TV_OUTPUT)||defined(CONFIG_AM_TCON_OUTPUT)
        &vout_device,	
     #endif
-     #ifdef CONFIG_USB_ANDROID
-		&android_usb_device,
-      #ifdef CONFIG_USB_ANDROID_MASS_STORAGE
-		&usb_mass_storage_device,
-      #endif
-    #endif	
-    #ifdef CONFIG_BT_DEVICE  
-        &bt_device,
-    #endif    	
+#ifdef CONFIG_USB_ANDROID
+    &android_usb_device,
+#ifdef CONFIG_USB_ANDROID_MASS_STORAGE
+    &usb_mass_storage_device,
+#endif
+#endif
+#ifdef CONFIG_BT_DEVICE
+    &bt_device,
+#endif
+#ifdef CONFIG_POST_PROCESS_MANAGER
+    &ppmgr_device,
+#endif
+#ifdef CONFIG_EFUSE
+    &aml_efuse_device,
+#endif
 };
 static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
 

@@ -1,11 +1,13 @@
 #include <linux/kernel.h>
 #include <linux/i2c.h>
-#include "../aml_demod.h"
-#include "../demod_func.h"
-#include "MxL5007_API.h"
 
-int set_tuner_fj2207(struct aml_demod_sta *demod_sta, 
-		     struct aml_demod_i2c *adap);
+#include <dvb_frontend.h>
+
+#include "aml_demod.h"
+#include "demod_func.h"
+
+#include "mxl/MxL5007_API.h"
+
 #if 1
 static int set_tuner_MxL5007(struct aml_demod_sta *demod_sta, 
 			     struct aml_demod_i2c *adap)
@@ -252,4 +254,59 @@ int tuner_get_ch_power(struct aml_demod_i2c *adap)
 
     return ret;
 }
+
+struct dvb_tuner_info * tuner_get_info( int type, int mode)
+{
+	/*type :  0-NULL, 1-DCT7070, 2-Maxliner, 3-FJ2207, 4-TD1316*/
+	/*mode: 0-DVBC 1-DVBT */
+	static struct dvb_tuner_info tinfo_null = {};
+
+	static struct dvb_tuner_info tinfo_MXL5003S[2] = {
+		[1] = {/*DVBT*/
+			.name = "Maxliner", 
+			.frequency_min = 44000000,
+			.frequency_max = 885000000,
+		}
+	};
+	static struct dvb_tuner_info tinfo_FJ2207[2] = {
+		[0] = {/*DVBC*/
+			.name = "FJ2207", 
+			.frequency_min = 54000000,
+			.frequency_max = 870000000,
+		},
+		[1] = {/*DVBT*/
+			.name = "FJ2207", 
+			.frequency_min = 174000000,
+			.frequency_max = 864000000,
+		},
+	};
+	static struct dvb_tuner_info tinfo_DCT7070[2] = {
+		[0] = {/*DVBC*/
+			.name = "DCT7070", 
+			.frequency_min = 51000000,
+			.frequency_max = 860000000,
+		}
+	};
+	static struct dvb_tuner_info tinfo_TD1316[2] = {
+		[1] = {/*DVBT*/
+			.name = "TD1316", 
+			.frequency_min = 51000000,
+			.frequency_max = 858000000,
+		}
+	};
+	
+	struct dvb_tuner_info *tinfo[5] = {
+		&tinfo_null, 
+		tinfo_DCT7070,
+		tinfo_MXL5003S,
+		tinfo_FJ2207,
+		tinfo_TD1316
+	};
+
+	if((type<0)||(type>4)||(mode<0)||(mode>1))
+		return tinfo[0];
+	
+	return &tinfo[type][mode];
+}
+
 

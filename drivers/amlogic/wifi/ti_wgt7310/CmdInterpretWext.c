@@ -835,10 +835,16 @@ int cmdInterpret_convertAndExecute(TI_HANDLE hCmdInterpret, TConfigCommand *cmdO
                 os_memorySet (pCmdInterpret->hOs, &iwe, 0, sizeof(iwe));
                 iwe.cmd = IWEVGENIE;
                 offset = sizeof(OS_802_11_FIXED_IEs);
-                while(offset < my_current->IELength)
+                
+                //while(offset < my_current->IELength)
+                while((offset + sizeof(OS_802_11_VARIABLE_IEs)) <= my_current->IELength)
                 {
                         OS_802_11_VARIABLE_IEs *pIE;
                         pIE = (OS_802_11_VARIABLE_IEs*)&(my_current->IEs[offset]);
+                        
+                        if ((offset+pIE->Length+2) > my_current->IELength)
+                        	break;
+                        	
                         iwe.u.data.flags = 1;
                         iwe.u.data.length = pIE->Length + 2;
 
@@ -1457,7 +1463,7 @@ int cmdInterpret_convertAndExecute(TI_HANDLE hCmdInterpret, TConfigCommand *cmdO
             }
 
             /* need to free the allocated memory */
-            if(IS_ALLOC_NEEDED_PARAM(my_command->cmd))
+            if(IS_ALLOC_NEEDED_PARAM(my_command->cmd) && my_command->in_buffer_len > 0)
             {
                 os_memoryFree(pCmdInterpret->hOs, *(void **)&pParam->content, my_command->in_buffer_len);
             }

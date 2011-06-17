@@ -150,6 +150,15 @@ static struct v4l2_queryctrl gc0308_qctrl[] = {
 		.step          = 0x1,
 		.default_value = 0,
 		.flags         = V4L2_CTRL_FLAG_SLIDER,
+	},{
+		.id            = V4L2_CID_WHITENESS,
+		.type          = V4L2_CTRL_TYPE_INTEGER,
+		.name          = "banding",
+		.minimum       = 0,
+		.maximum       = 1,
+		.step          = 0x1,
+		.default_value = 0,
+		.flags         = V4L2_CTRL_FLAG_SLIDER,
 	}
 };
 
@@ -186,6 +195,11 @@ static struct gc0308_fmt formats[] = {
 	{
 		.name     = "12  Y/CbCr 4:2:0",
 		.fourcc   = V4L2_PIX_FMT_NV12,
+		.depth    = 12,	
+	},
+	{
+		.name     = "12  Y/CbCr 4:2:0",
+		.fourcc   = V4L2_PIX_FMT_NV21,
 		.depth    = 12,	
 	},
 	{
@@ -387,21 +401,21 @@ struct aml_camera_i2c_fig1_s GC0308_script[] = {
 	{0xea , 0x07},     
 	{0xeb , 0x53},    */
 	{0x01 , 0x6a},  //6a                                  
-	{0x02 , 0x70},                                  
+	{0x02 , 0x48},                                  
 	{0x0f , 0x00},                                  
 
 
 	{0xe2 , 0x00},   //anti-flicker step [11:8]     
-	{0xe3 , 0x96},   //anti-flicker step [7:0]      
+	{0xe3 , 0x50},   //anti-flicker step [7:0]      
 
 	{0xe4 , 0x02},       
-	{0xe5 , 0x58},                                  
+	{0xe5 , 0x30},                                  
 	{0xe6 , 0x02},           
-	{0xe7 , 0x58},                                  
+	{0xe7 , 0x30},                                  
 	{0xe8 , 0x02},           
-	{0xe9 , 0x58},                                  
-	{0xea , 0x07},     
-	{0xeb , 0x53},         
+	{0xe9 , 0x30},                                  
+	{0xea , 0x04},     
+	{0xeb , 0xb0},         
 #else  // 60hz   8.3fps~16.6fps auto
 	{0x01 , 0x32},                                    
 	{0x02 , 0x89},                                  
@@ -448,7 +462,7 @@ struct aml_camera_i2c_fig1_s GC0308_script[] = {
 	{0x1c,0x49},
 	{0x1d,0x9a},
 	{0x1e,0x61},
-	{0x1f,0x27},//3f  2a 
+	{0x1f,0x1a},//3f  2a 
 	{0x20,0xef},//ff
 	{0x21,0xfb},//fa
 	{0x22,0x57},
@@ -931,6 +945,111 @@ void GC0308_night_mode(struct gc0308_device *dev,enum  camera_night_mode_flip_e 
 	}
 
 }
+/*************************************************************************
+* FUNCTION
+*	GC0308_night_mode
+*
+* DESCRIPTION
+*	This function night mode of GC0308.
+*
+* PARAMETERS
+*	none
+*
+* RETURNS
+*	None
+*
+* GLOBALS AFFECTED
+*
+*************************************************************************/
+
+void GC0308_set_param_banding(struct gc0308_device *dev,enum  camera_night_mode_flip_e banding)
+{
+    struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
+	unsigned char buf[4];
+
+	switch(banding)
+		{
+		case CAM_BANDING_60HZ:
+			buf[0]=0x01;
+			buf[1]=0x66;
+			i2c_put_byte_add8(client,buf,2);
+			buf[0]=0x02;
+			buf[1]=0x30;
+			i2c_put_byte_add8(client,buf,2);
+			buf[0]=0x0f;
+			buf[1]=0x00;
+			i2c_put_byte_add8(client,buf,2);
+			buf[0]=0xe3;
+			buf[1]=0x43;
+			i2c_put_byte_add8(client,buf,2);
+			buf[0]=0xe4;
+			buf[1]=0x02;
+			i2c_put_byte_add8(client,buf,2);
+			buf[0]=0xe5;
+			buf[1]=0x18;
+			i2c_put_byte_add8(client,buf,2);
+			buf[0]=0xe6;
+			buf[1]=0x02;
+			i2c_put_byte_add8(client,buf,2);
+			buf[0]=0xe7;
+			buf[1]=0x18;
+			i2c_put_byte_add8(client,buf,2);
+			buf[0]=0xe8;
+			buf[1]=0x02;
+			i2c_put_byte_add8(client,buf,2);
+			buf[0]=0xe9;
+			buf[1]=0x18;
+			i2c_put_byte_add8(client,buf,2);
+			buf[0]=0xea;
+			buf[1]=0x04;
+			i2c_put_byte_add8(client,buf,2);
+			buf[0]=0xeb;
+			buf[1]=0xb6;
+			i2c_put_byte_add8(client,buf,2);
+			break;  
+		case CAM_BANDING_50HZ:
+			buf[0]=0x01;
+			buf[1]=0x6a;
+			i2c_put_byte_add8(client,buf,2);
+			buf[0]=0x02;
+			buf[1]=0x48;
+			i2c_put_byte_add8(client,buf,2);
+			buf[0]=0x0f;
+			buf[1]=0x00;
+			i2c_put_byte_add8(client,buf,2);
+			buf[0]=0xe3;
+			buf[1]=0x50;
+			i2c_put_byte_add8(client,buf,2);
+			buf[0]=0xe4;
+			buf[1]=0x02;
+			i2c_put_byte_add8(client,buf,2);
+			buf[0]=0xe5;
+			buf[1]=0x30;
+			i2c_put_byte_add8(client,buf,2);
+			buf[0]=0xe6;
+			buf[1]=0x02;
+			i2c_put_byte_add8(client,buf,2);
+			buf[0]=0xe7;
+			buf[1]=0x30;
+			i2c_put_byte_add8(client,buf,2);
+			buf[0]=0xe8;
+			buf[1]=0x02;
+			i2c_put_byte_add8(client,buf,2);
+			buf[0]=0xe9;
+			buf[1]=0x30;
+			i2c_put_byte_add8(client,buf,2);
+			buf[0]=0xea;
+			buf[1]=0x04;
+			i2c_put_byte_add8(client,buf,2);
+			buf[0]=0xeb;
+			buf[1]=0xb0;
+			i2c_put_byte_add8(client,buf,2);
+			break;
+			
+		}
+
+}
+
 
 /*************************************************************************
 * FUNCTION
@@ -1311,6 +1430,13 @@ static int gc0308_setting(struct gc0308_device *dev,int PROP_ID,int value )
 			gc0308_qctrl[2].default_value=value;
 			set_GC0308_param_effect(dev,value);
 			printk(KERN_INFO " set camera  effect=%d. \n ",value);
+        	}
+		break;
+	case V4L2_CID_WHITENESS:
+		 if(gc0308_qctrl[3].default_value!=value){
+			gc0308_qctrl[3].default_value=value;
+			GC0308_set_param_banding(dev,value);
+			printk(KERN_INFO " set camera  banding=%d. \n ",value);
         	}
 		break;
 	default:
@@ -1765,7 +1891,10 @@ static int vidioc_streamon(struct file *file, void *priv, enum v4l2_buf_type i)
 		return -EINVAL;
 
     para.port  = TVIN_PORT_CAMERA;
-    para.fmt = TVIN_SIG_FMT_CAMERA_1280X720P_30Hz;
+    para.fmt_info.fmt = TVIN_SIG_FMT_MAX+1;//TVIN_SIG_FMT_MAX+1;TVIN_SIG_FMT_CAMERA_1280X720P_30Hz
+	para.fmt_info.frame_rate = 150;
+	para.fmt_info.h_active = 640;
+	para.fmt_info.v_active = 480;
 	ret =  videobuf_streamon(&fh->vb_vidq);
 	if(ret == 0){
     start_tvin_service(0,&para);
@@ -2200,7 +2329,7 @@ static int gc0308_resume(struct i2c_client *client)
     struct gc0308_fh  *fh = to_fh(t);
     tvin_parm_t para;
     para.port  = TVIN_PORT_CAMERA;
-    para.fmt = TVIN_SIG_FMT_CAMERA_1280X720P_30Hz;
+    para.fmt_info.fmt = TVIN_SIG_FMT_CAMERA_1280X720P_30Hz;
     GC0308_init_regs(t); 
 	if(fh->stream_on == 1){
         start_tvin_service(0,&para);

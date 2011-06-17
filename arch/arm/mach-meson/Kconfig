@@ -87,13 +87,7 @@ config MACH_MESON_8726M_REFB08
 
 config MACH_MESON_8726M_REFB09
 	select GENERIC_ALLOCATOR
-	bool "Support M1 8726(P7) platform(machid=2956)"
-	help
-	  Include support for the AMLOGIC M1 8726M Emulation Baseboard platform.
-
-config MACH_MESON_8726M_REFB09NEW
-	select GENERIC_ALLOCATOR
-	bool "Support M1 8726(P7New) platform(machid=2956)"
+	bool "Support M1 8726(P7new) platform(machid=2956)"
 	help
 	  Include support for the AMLOGIC M1 8726M Emulation Baseboard platform.
 
@@ -126,6 +120,12 @@ config MACH_MESON_8726M_REFC04
         bool "Support M1 8726(Hisense) platform(machid=2957)"
         help
           Include support for the AMLOGIC M1 8726M Hisense platform.
+
+config MACH_MESON_8726M_REFC08
+        select GENERIC_ALLOCATOR
+        bool "Support M1 8726(refc08) platform(machid=2957)"
+        help
+          Include support for the AMLOGIC M1 8726M refc08 platform.
  
 config MACH_MESON_8726M_REFB10
 	select GENERIC_ALLOCATOR
@@ -148,6 +148,24 @@ config MACH_MESON_8726M_REFB12
 config MACH_MESON_8726M_REFB13
 	select GENERIC_ALLOCATOR
 	bool "Support M1 8726(refb13) platform(machid=2956)"
+	help
+	  Include support for the AMLOGIC M1 8726M Emulation Baseboard platform.
+	  
+config MACH_MESON_8726M_REFB17
+	select GENERIC_ALLOCATOR
+	bool "Support M1 8726(REFB17) platform(machid=2956)"
+	help
+	  Include support for the AMLOGIC M1 8726M Emulation Baseboard platform.
+
+config MACH_MESON_8726M_REFB18
+	select GENERIC_ALLOCATOR
+	bool "Support M1 8726(REFB18) platform(machid=2956)"
+	help
+	  Include support for the AMLOGIC M1 8726M Emulation Baseboard platform.
+
+config MACH_MESON_8726M_REFB19
+	select GENERIC_ALLOCATOR
+	bool "Support M1 8726(REFB19) platform(machid=2956)"
 	help
 	  Include support for the AMLOGIC M1 8726M Emulation Baseboard platform.
 	  	  

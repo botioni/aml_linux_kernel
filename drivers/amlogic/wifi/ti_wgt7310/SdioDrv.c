@@ -48,7 +48,7 @@ SDIO_DEBUGLEVEL_DEBUG=8
 int g_sdio_debug_level = SDIO_DEBUGLEVEL_DEBUG;
 extern int sdio_io_rw_extended(struct memory_card *card, int write, unsigned fn, unsigned addr, int incr_addr, u8 *buf, unsigned blocks, unsigned blksz);
 extern int sdio_io_rw_direct(struct memory_card *card, int write, unsigned fn, unsigned addr, u8 in, u8 *out);
-
+int SDIO_LOCKED_FLAG = 0;
 
 #ifdef SDIO_DEBUG
 
@@ -385,6 +385,7 @@ int sdioDrv_WriteSyncBytes (unsigned int  uFunc,
 
 	int	iStatus;
 
+        if(!SDIO_LOCKED_FLAG){
 
 
 	sdio_claim_host(ti_drv.func);
@@ -424,7 +425,7 @@ int sdioDrv_WriteSyncBytes (unsigned int  uFunc,
 	sdio_release_host(ti_drv.func);
 
 
-
+}
     return 0;
 
 }
@@ -451,6 +452,7 @@ int sdioDrv_ReadSyncBytes (unsigned int  uFunc,
 	int	iStatus;
 
 
+        if(!SDIO_LOCKED_FLAG){
 
 	sdio_claim_host(ti_drv.func);
 
@@ -491,7 +493,7 @@ int sdioDrv_ReadSyncBytes (unsigned int  uFunc,
 	sdio_release_host(ti_drv.func);
 
 
-
+}
     return 0;
 
 }
@@ -782,6 +784,8 @@ int sdioDrv_ReadSync (unsigned int uFunc,
 	unsigned 	remainder = uLen;
 #endif
 
+        if(!SDIO_LOCKED_FLAG){
+
 	sdio_claim_host(ti_drv.func);
 
 	pData1 = (u8 *)pData;
@@ -875,7 +879,8 @@ int sdioDrv_ReadSync (unsigned int uFunc,
 	sdio_release_host(ti_drv.func);
 
 	return iStatus;
-
+}
+return 0;
 }
 
 
@@ -900,7 +905,7 @@ int sdioDrv_WriteSync (unsigned int uFunc,
 	int         nsize;
 	unsigned 	remainder = uLen;
 #endif
-
+        if(!SDIO_LOCKED_FLAG){
 	sdio_claim_host(ti_drv.func);
 
 	pData1 = (u8 *)pData;
@@ -992,7 +997,8 @@ int sdioDrv_WriteSync (unsigned int uFunc,
 	sdio_release_host(ti_drv.func);
 
 	return iStatus;
-
+}
+return 0;
 }
 
 
@@ -2194,7 +2200,8 @@ int sdioDrv_init(void)
 {
 	int err;
 	
-	
+	SDIO_LOCKED_FLAG = 0;	
+	//printk("SDIO_LOCKED_FLAG = %d , ---%s--- !!\n",SDIO_LOCKED_FLAG,__func__);
 	//configIO(0, 0);
 	//printk("%s high\n", __FUNCTION__);
     //setIO_level(0, 1, 5);

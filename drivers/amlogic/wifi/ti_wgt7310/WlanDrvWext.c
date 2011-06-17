@@ -61,7 +61,7 @@ static struct iw_statistics *wlanDrvWext_GetWirelessStats (struct net_device *de
 extern int wlanDrvIf_LoadFiles (TWlanDrvIfObj *drv, TLoaderFilesData *pInitInfo);
 extern int wlanDrvIf_Start (struct net_device *dev);
 extern int wlanDrvIf_Stop (struct net_device *dev);
-
+extern int SDIO_LOCKED_FLAG ;
 
 /* callbacks for WEXT commands */
 static const iw_handler aWextHandlers[] = {
@@ -270,7 +270,8 @@ int wlanDrvWext_Handler (struct net_device *dev,
             os_memoryFree(drv,my_command.out_buffer,my_command.out_buffer_len);
         return TI_NOK;
     }
-
+    //printk("SDIO_LOCKED_FLAG = %d , ---%s--- !!\n",SDIO_LOCKED_FLAG,__func__);
+		if(!SDIO_LOCKED_FLAG){ 	
     /* Call the Cmd module with the given user paramters */
     rc = cmdHndlr_InsertCommand(drv->tCommon.hCmdHndlr,
                                    info->cmd, 
@@ -281,8 +282,9 @@ int wlanDrvWext_Handler (struct net_device *dev,
                                    0, 
                                    param3, 
                                    NULL);
+    }
     /* Here we are after the command was completed */
-    if (my_command.in_buffer)
+    if (my_command.in_buffer && my_command.in_buffer_len > 0)
     {
         os_memoryFree(drv, my_command.in_buffer, my_command.in_buffer_len);
     }

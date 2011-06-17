@@ -21,6 +21,7 @@
 
 #define TS_POLL_DELAY		1 /* ms delay between samples */
 #define TS_POLL_PERIOD		5 /* ms delay between samples */
+//#define DEBUG
 
 #define	MAX_10BIT			((1 << 10) - 1)
 
@@ -88,9 +89,9 @@ static u32 adcts_calculate_pressure(struct adcts *ts, struct ts_event *tc)
 static void adcts_send_up_event(struct adcts *ts)
 {
 	struct input_dev *input = ts->input;
-
+#ifdef DEBUG
 	dev_dbg(&ts->input->dev, "UP\n");
-
+#endif
 	input_report_key(input, BTN_TOUCH, 0);
 	input_report_abs(input, ABS_PRESSURE, 0);
 	input_sync(input);
@@ -123,7 +124,9 @@ static void adcts_work(struct work_struct *work)
 			if (!ts->pendown) {
 				ts->pendown = 1;
 				input_report_key(input, BTN_TOUCH, 1);
+				#ifdef DEBUG
 				printk(KERN_INFO "DOWN\n");
+				#endif
 			}
 			ts->seq ++;
 			ts->service(CMD_CLEAR_PENIRQ);
@@ -132,7 +135,9 @@ static void adcts_work(struct work_struct *work)
 			ts->pendown = 0;
 			adcts_send_up_event(ts);
 			adcts_clear_cache(ts);
+			#ifdef DEBUG
 			printk(KERN_INFO "UP\n");
+			#endif
 		}
 	}
 	
@@ -158,7 +163,9 @@ static void adcts_work(struct work_struct *work)
             		rt = 500;	//debug
             		input_report_abs(input, ABS_PRESSURE, rt);
             		input_sync(input);
+            		#ifdef DEBUG
             		printk(KERN_INFO "x=%d, y=%d\n", ts->event.x, ts->event.y);
+            		#endif
                   }
 		ts->seq = 0;
 		ts->service(CMD_SET_PENIRQ);
