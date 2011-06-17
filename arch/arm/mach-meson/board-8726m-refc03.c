@@ -156,6 +156,12 @@ static struct mtd_partition spi_partition_info[] = {
                 .size = 0x1c0000,
         },
 //*/
+// Add a partition for uboot update 
+        {
+                .name = "ubootwhole",
+                .offset = 0,
+                .size = 0x200000,
+        },
 };
 
 static struct flash_platform_data amlogic_spi_platform = {

@@ -439,7 +439,7 @@ static  void  set_default_display_axis(struct fb_var_screeninfo *var,osd_ctl_t *
 {
 	u32  virt_end_x=osd_ctrl->disp_start_x + var->xres;
 	u32  virt_end_y=osd_ctrl->disp_start_y+var->yres;
-	
+
 	if(virt_end_x > vinfo->width)
 	{
 		osd_ctrl->disp_end_x=vinfo->width- 1 ;//screen axis 
@@ -809,9 +809,6 @@ osd_probe(struct platform_device *pdev)
 	int  logo_osd_index=0,i;
 	myfb_dev_t 	*fbdev = NULL;
 	
-	
-
-	
 	vout_register_client(&osd_notifier_nb);
 
 #ifdef CONFIG_AM_LOGO
@@ -905,6 +902,7 @@ osd_probe(struct platform_device *pdev)
 				mydef_var[index].bits_per_pixel=32;
 			}
 		} else {
+			amlog_level(LOG_LEVEL_HIGH,"---------------clear framebuffer%d memory  \r\n",index);
 			memset((char*)fbdev->fb_mem_vaddr, 0, fbdev->fb_len);	
 		}
 	
@@ -918,7 +916,6 @@ osd_probe(struct platform_device *pdev)
 		fix->line_length=var->xres_virtual*Bpp;
 		fix->smem_start = fbdev->fb_mem_paddr;
 		fix->smem_len = fbdev->fb_len;
-
 		if (fb_alloc_cmap(&fbi->cmap, 16, 0) != 0) {
 			amlog_level(LOG_LEVEL_HIGH,"unable to allocate color map memory\n");
       		r = -ENOMEM;
@@ -930,7 +927,6 @@ osd_probe(struct platform_device *pdev)
         	r = -ENOMEM;
         	goto failed2;
 		}
-
 		memset(fbi->pseudo_palette, 0, sizeof(u32) * 16);
 
 	   	fbi->fbops = &osd_ops;

@@ -47,6 +47,7 @@
 #include <linux/sched.h>
 #include <linux/poll.h>
 #include <linux/clk.h>
+#include <linux/logo/logo.h>
 
 #ifdef CONFIG_PM
 #include <linux/delay.h>
@@ -2211,13 +2212,19 @@ static void vout_hook(void)
 /*********************************************************/
 static int __init video_early_init(void)
 {
-    WRITE_MPEG_REG_BITS(VPP_OFIFO_SIZE, 0x300,
+    logo_object_t  *init_logo_obj=NULL;
+    init_logo_obj = get_current_logo_obj();	
+
+    if(NULL==init_logo_obj || !init_logo_obj->para.loaded)
+    {
+    	WRITE_MPEG_REG_BITS(VPP_OFIFO_SIZE, 0x300,
                         VPP_OFIFO_SIZE_BIT, VPP_OFIFO_SIZE_WID);
-    CLEAR_MPEG_REG_MASK(VPP_VSC_PHASE_CTRL, VPP_PHASECTL_TYPE_INTERLACE);
+   	 CLEAR_MPEG_REG_MASK(VPP_VSC_PHASE_CTRL, VPP_PHASECTL_TYPE_INTERLACE);
 #ifndef CONFIG_FB_AML_TCON
-    SET_MPEG_REG_MASK(VPP_MISC, VPP_OUT_SATURATE);
+    	SET_MPEG_REG_MASK(VPP_MISC, VPP_OUT_SATURATE);
 #endif
-    WRITE_MPEG_REG(VPP_HOLD_LINES, 0x08080808);
+    	WRITE_MPEG_REG(VPP_HOLD_LINES, 0x08080808);
+    }
     return 0;
 }
 static int __init video_init(void)

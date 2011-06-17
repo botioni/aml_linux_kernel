@@ -56,11 +56,14 @@ static int  all_parser_setup(void)
 	if(0!=strcmp(plogo->name,LOGO_NAME)){   
 	    ret = -LOGO_PARA_UNPARSED;
         goto start_logo_fail;
-	}    
+	} 
 	if ((ret=setup_output_device(plogo))!=SUCCESS)//we will use this device to get display info
 	{						//for examble: width height 
         goto start_logo_fail;
 	}
+	if(plogo->para.loaded) //if logo be loaded by uboot or other loader.then return
+	return SUCCESS;
+
 	all_parser_setup();	
 	amlog_mask_level(LOG_MASK_PARSER,LOG_LEVEL_LOW,"start decode logo\n");	
 	list_for_each_entry(pitem,&parser_line,list){

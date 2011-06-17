@@ -45,25 +45,11 @@ int amlogic_wifi_set_carddetect(int val)
 }
 
 static int amlogic_wifi_power_state;
+extern void extern_wifi_power(int is_power);
 
-//extern extern_wifi_power(on);
-//#include <linux/sn7325.h>
 int amlogic_wifi_power(int on)
-{
-	#if 1
-	if(!on)
-	{
-		printk("##########Cut off wifi power!###########\n");
-        configIO(0, 0);
-        setIO_level(0, 0, 5);
-        setIO_level(0, 0, 7);
-        *(volatile unsigned *)EGPIO_GPIOD_ENABLE &= ~PREG_IO_13_MASK;
-        *(volatile unsigned *)EGPIO_GPIOD_OUTPUT &= ~PREG_IO_13_MASK;
-	}
-	#endif
-	//extern_wifi_power(on);
-	//gpio_set_value(PMENA_GPIO, on);
-
+{	
+	extern_wifi_power(on);
 	amlogic_wifi_power_state = on;
 	return 0;
 }

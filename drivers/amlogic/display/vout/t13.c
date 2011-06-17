@@ -28,7 +28,7 @@
 #include <linux/platform_device.h>
 #include <linux/vout/tcon.h>
 #include <linux/delay.h>
-
+#include <linux/logo/logo.h>
 #include <mach/gpio.h>
 #include <mach/am_regs.h>
 #include <mach/pinmux.h>
@@ -261,14 +261,20 @@ static void t13_power_off(void)
 
 static void t13_io_init(void)
 {
+    logo_object_t  *init_logo_obj=NULL;
+	
     printk("\n\nT13 LCD Init.\n\n");
+    init_logo_obj = get_current_logo_obj();	
+    if(NULL==init_logo_obj ||!init_logo_obj->para.loaded)
+    {
+	
+    	set_tcon_pinmux();
 
-    set_tcon_pinmux();
-
-    power_on_lcd();
+    	power_on_lcd();
 #ifndef CONFIG_AM_LOGO    
-    power_on_backlight();
-#endif    
+    	power_on_backlight();
+#endif
+    }
 }
 #ifdef CONFIG_AM_LOGO
 void Power_on_bl(void)

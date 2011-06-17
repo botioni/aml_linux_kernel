@@ -271,21 +271,5 @@ config SDIO_TI_WIFI_WGT7310
 	---help---
 	  This module adds support for wireless adapters based on
 	  Ti wgt7310 chipset.
-
-          & assure to set these config in 
-	  Device Drivers  ---> Generic Driver Options  ---> 
-	  
-config SDIO_TI_WIFI_WGT7310_M603
-	tristate "Ti wgt7310 wireless cards support - M603"
-	default n
-	depends on SD_MMC
-	select WIRELESS_EXT
-	select WEXT_PRIV
-	---help---
-	  This module adds support for wireless adapters based on
-	  Ti wgt7310 chipset.
-
-          & assure to set these config in 
-	  Device Drivers  ---> Generic Driver Options  ---> 	  
-   
+	     
 endmenu

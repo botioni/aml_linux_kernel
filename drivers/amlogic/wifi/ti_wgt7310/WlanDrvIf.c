@@ -353,8 +353,11 @@ static void wlanDrvIf_DriverTask(struct work_struct *work)
 	context_DriverTask (drv->tCommon.hContext);
 
 	os_profile (drv, 1, 0);
-	os_wake_lock_timeout(drv);
-	os_wake_unlock(drv);
+
+    /* First prevent suspend for 1 sec if requested, and then remove the current prevention */
+    os_WakeLockTimeout (drv);
+    os_WakeUnlock (drv);
+
 #ifdef STACK_PROFILE
 	curr2 = check_stack_stop(&base2, 0);
 	if (base2 == base1) {
@@ -650,11 +653,11 @@ int wlanDrvIf_Start (struct net_device *dev)
 	 */
 		//printk("SDIO_LOCKED_FLAG = %d , ---%s--- !!\n",SDIO_LOCKED_FLAG,__func__);
 	  if(!SDIO_LOCKED_FLAG){
-	os_wake_lock_timeout_enable(drv);
-    if (TI_OK != drvMain_InsertAction (drv->tCommon.hDrvMain, ACTION_TYPE_START)) 
-    {
-        return -ENODEV;
-    }
+		os_WakeLockTimeoutEnable (drv);
+	    if (TI_OK != drvMain_InsertAction (drv->tCommon.hDrvMain, ACTION_TYPE_START)) 
+	    {
+	        return -ENODEV;
+	    }
 	}
     return 0;
 }
@@ -718,19 +721,18 @@ int wlanDrvIf_Stop (struct net_device *dev)
 	 *  Insert Stop command in DrvMain action queue, request driver scheduling 
 	 *      and wait for Stop process completion.
 	 */
-	if(!SDIO_LOCKED_FLAG){ 
-	os_printf("%s LINE %d\n", __func__, __LINE__);
-	os_wake_lock_timeout_enable(drv);
-	os_printf("%s LINE %d\n", __func__, __LINE__);
-    if (TI_OK != drvMain_InsertAction (drv->tCommon.hDrvMain, ACTION_TYPE_STOP)) 
-    {
-        return -ENODEV;
-    }
-	}
-	os_printf("%s\n", __func__);
-	return 0;
+  if(!SDIO_LOCKED_FLAG){
+	 os_printf("%s LINE %d\n", __func__, __LINE__);
+	 os_WakeLockTimeoutEnable (drv);
+	 os_printf("%s LINE %d\n", __func__, __LINE__);
+	    if (TI_OK != drvMain_InsertAction (drv->tCommon.hDrvMain, ACTION_TYPE_STOP)) 
+	    {
+	        return -ENODEV;
+	    }
+  }
+ os_printf("%s\n", __func__);
+ return 0;
 }
-
 int wlanDrvIf_Release (struct net_device *dev)
 {
 	/* TWlanDrvIfObj *drv = (TWlanDrvIfObj *)NETDEV_GET_PRIVATE(dev); */

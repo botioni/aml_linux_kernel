@@ -29,7 +29,7 @@ static struct early_suspend uor6x5x_early_suspend;
 
 #define TRUE	1
 #define FALSE 	0
-#define UOR6X5X_DEBUG  TRUE
+#define UOR6X5X_DEBUG  FALSE
 
 #define InitX		0x00
 #define InitY		0x10

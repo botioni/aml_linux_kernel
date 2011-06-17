@@ -204,11 +204,13 @@ static const vinfo_t *tv_get_current_info(void)
 
 static int tv_set_current_vmode(vmode_t mod)
 {
-	if (mod > VMODE_1080P)
+	if ((mod&VMODE_MODE_BIT_MASK)> VMODE_1080P )
 		return -EINVAL;
 
-	tvoutc_setmode(vmode_tvmode_tab[mod]);
 	info->vinfo = &tv_info[mod];
+	if(mod&VMODE_LOGO_BIT_MASK)  return 0;
+
+	tvoutc_setmode(vmode_tvmode_tab[mod]);
 	change_vdac_setting(get_current_vdac_setting(),mod);
 	return 0;
 }
@@ -225,7 +227,7 @@ static vmode_t tv_validate_vmode(char *mode)
 static int tv_vmode_is_supported(vmode_t mode)
 {
 	int  i,count=ARRAY_SIZE(tv_info);
-	
+	mode&=VMODE_MODE_BIT_MASK;
 	for(i=0;i<count;i++)
 	{
 		if(tv_info[i].mode==mode)
