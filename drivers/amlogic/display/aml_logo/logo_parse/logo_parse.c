@@ -25,6 +25,9 @@ extern void Power_on_bl(void);
 #ifdef CONFIG_AML_TCON_P7
 extern void Power_on_bl(void);
 #endif
+#ifdef CONFIG_AML_TCON_P10
+extern void Power_on_bl(void);
+#endif
 int  register_logo_parser(logo_parser_t* new_parser)
 {
 
@@ -94,6 +97,9 @@ static int  all_parser_setup(void)
 #ifdef CONFIG_AML_TCON_P7
     Power_on_bl();
 #endif 	
+#ifdef CONFIG_AML_TCON_P10
+    Power_on_bl();
+#endif 	
 	return SUCCESS;	
 	
 start_logo_fail:
@@ -101,6 +107,9 @@ start_logo_fail:
     Power_on_bl();
 #endif 
 #ifdef CONFIG_AML_TCON_P7
+    Power_on_bl();
+#endif 
+#ifdef CONFIG_AML_TCON_P10
     Power_on_bl();
 #endif 
 	return ret;	
