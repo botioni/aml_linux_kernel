@@ -31,7 +31,7 @@
 #include <linux/aml_bl.h>
 #include <mach/power_gate.h>
 
-#define AML_BL_DBG
+//#define AML_BL_DBG
 
 struct aml_bl {
 	const struct aml_bl_platform_data	*pdata;

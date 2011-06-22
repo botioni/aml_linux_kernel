@@ -2402,7 +2402,7 @@ static void aml_8726m_set_bl_level(unsigned level)
 		
 		low = cs_level;
 		hi = BL_MAX_LEVEL - low;
-		printk("\n\n@@@@@@@@@@@@@@@@@@@@@@@@@@@@level=<%d>@@@@@@@@@@@@@@@@@@@@@@@.\n\n",level);
+		//printk("\n\n@@@@@@@@@@@@@@@@@@@@@@@@@@@@level=<%d>@@@@@@@@@@@@@@@@@@@@@@@.\n\n",level);
 		
 		//WRITE_CBUS_REG_BITS(VGHL_PWM_REG0, cs_level, 0, 4);        
 		WRITE_CBUS_REG_BITS(PWM_PWM_A,(low/50),0,16);  //low
