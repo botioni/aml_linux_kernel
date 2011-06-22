@@ -41,5 +41,6 @@ typedef  struct {
 #define VIDEO_NOTIFY_TRICK_WAIT   0x01
 #define VIDEO_NOTIFY_PROVIDER_GET 0x02
 #define VIDEO_NOTIFY_PROVIDER_PUT 0x04
+#define VIDEO_NOTIFY_FRAME_WAIT  0x08
 
 #endif /* VIDEO_H */

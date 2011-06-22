@@ -27,7 +27,22 @@
 *
 ************************************************************************/
 static int ppmgr_enable_flag=0;
+static int property_change = 0;
 ppmgr_device_t  ppmgr_device;
+
+int get_bypass_mode()
+{
+	return ppmgr_device.bypass;
+}
+
+int get_property_change()
+{
+	return property_change;	
+}
+void set_property_change(int flag)
+{
+	property_change = flag;	
+}
 
 int get_ppmgr_status() {
     return ppmgr_enable_flag;
@@ -101,8 +116,11 @@ static ssize_t angle_write(struct class *cla,
 {
 	ssize_t ret = -EINVAL, size;
 	char *endp;
-
-	ppmgr_device.angle = simple_strtoul(buf, &endp, 0);
+	int angle  =  simple_strtoul(buf, &endp, 0);
+	if(angle != ppmgr_device.angle ){		
+		property_change = 1;
+	}
+	ppmgr_device.angle = angle;
 	size = endp - buf;
 	return count;
 }
