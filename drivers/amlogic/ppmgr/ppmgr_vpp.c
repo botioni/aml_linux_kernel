@@ -650,11 +650,8 @@ static int ppmgr_task(void *data)
 			vf= 	vfq_peek(&q_ready);
                    
             		while(vf){
-            			printk("release ppmgrbuffer %x\n",vf);
             			vf = vfq_pop(&q_ready);
-            			printk("Before next_buf addr is %x ,  w is %d  , h is%d\n" ,vf , vf->width ,vf->height);
             			process_vf_change(vf, context, &ge2d_config);
-            			printk("Before next_buf addr is %x ,  w is %d  , h is%d\n" ,vf , vf->width ,vf->height);
             			vf= 	vfq_peek(&q_ready);		            		
             		}                  		
             		 vfq_lookup_end(&q_ready)    ;	
