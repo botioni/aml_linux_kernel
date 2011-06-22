@@ -14,6 +14,8 @@ typedef void(*video_cam_init_fun_t)(void);
 typedef void(*video_cam_uninit_fun_t)(void);
 typedef void(*video_cam_early_suspend_fun_t)(void);
 typedef void(*video_cam_late_resume_fun_t)(void);
+typedef void(*video_cam_disable_fun_t)(void);
+
 typedef struct {
 	char* name;
 	int video_nr;    /* videoX start number, -1 is autodetect */
@@ -21,6 +23,7 @@ typedef struct {
 	video_cam_uninit_fun_t device_uninit;
 	video_cam_early_suspend_fun_t early_suspend;
 	video_cam_late_resume_fun_t late_resume;
+	video_cam_disable_fun_t device_disable;
 	unsigned pri_dat;
 	
 }aml_plat_cam_data_t;

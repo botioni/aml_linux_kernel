@@ -904,8 +904,6 @@ static int dwc_otg_pcd_wakeup(struct usb_gadget *_gadget)
 
 	SPIN_UNLOCK_IRQRESTORE(&pcd->lock, flags);
 	
-	dwc_otg_device_soft_connect(GET_CORE_IF(pcd));
-
 	return 0;
 }
 
@@ -953,8 +951,6 @@ void dwc_otg_pcd_update_otg(dwc_otg_pcd_t * _pcd, const unsigned _reset)
 	_pcd->gadget.b_hnp_enable = _pcd->b_hnp_enable;
 	_pcd->gadget.a_hnp_support = _pcd->a_hnp_support;
 	_pcd->gadget.a_alt_hnp_support = _pcd->a_alt_hnp_support;
-	
-	dwc_otg_device_soft_connect(GET_CORE_IF(s_pcd));
 }
 
 /** 
@@ -986,8 +982,6 @@ static int32_t dwc_otg_pcd_start_cb(void *_p)
 		dwc_otg_core_dev_init(GET_CORE_IF(pcd));
 	}
 
-	dwc_otg_device_soft_connect(GET_CORE_IF(s_pcd));
-    
 	return 1;
 }
 
@@ -1394,7 +1388,9 @@ void dwc_otg_pcd_reinit(dwc_otg_pcd_t * _pcd)
  */
 static void dwc_otg_pcd_gadget_release(struct device *_dev)
 {
+	printk(KERN_ERR "%s %s %d\n",__FILE__,__FUNCTION__,__LINE__);
 	DWC_DEBUGPL(DBG_PCDV, "%s(%p)\n", __func__, _dev);
+	dwc_otg_device_soft_disconnect(GET_CORE_IF(s_pcd));
 }
 
 /** 
@@ -1524,8 +1520,6 @@ int __init dwc_otg_pcd_init(struct lm_device *_lmdev)
 	/* Initialize tasklet */
 	start_xfer_tasklet.data = (unsigned long)pcd;
 	pcd->start_xfer_tasklet = &start_xfer_tasklet;
-
-	dwc_otg_device_soft_connect(GET_CORE_IF(s_pcd));
 
 	return 0;
 }

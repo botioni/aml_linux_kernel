@@ -47,6 +47,7 @@
 #include <linux/sched.h>
 #include <linux/poll.h>
 #include <linux/clk.h>
+#include <linux/logo/logo.h>
 
 #ifdef CONFIG_PM
 #include <linux/delay.h>
@@ -136,6 +137,11 @@ static u32 vpts_remainder;
 static bool video_property_changed = false;
 static u32 video_notify_flag = 0;
 
+int video_property_notify(int flag)
+{
+	video_property_changed  = flag;	
+}
+
 /* display canvas */
 static u32 disp_canvas_index[6] = {
     DISPLAY_CANVAS_BASE_INDEX,
@@ -190,7 +196,7 @@ static u32 vsync_pts_inc;
 static u32 last_frame_count = 0;
 static u32 frame_count = 0;
 static u32 last_frame_time = 0;
-
+static u32 timer_count  =0 ;
 static vpp_frame_par_t *cur_frame_par, *next_frame_par;
 static vpp_frame_par_t frame_parms[2];
 
@@ -456,15 +462,15 @@ static void zoom_display_vert(void)
 static void vsync_toggle_frame(vframe_t *vf)
 {
     u32 first_picture = 0;
-
+    timer_count = 0 ;
     int deinterlace_mode = get_deinterlace_mode();
 
     if ((vf->width == 0) && (vf->height == 0)) {
         amlog_level(LOG_LEVEL_ERROR, "Video: invalid frame dimension\n");
         return;
     }
-
-    if ((cur_dispbuf) && (cur_dispbuf != &vf_local) && (cur_dispbuf != vf)) {
+    if ((cur_dispbuf) && (cur_dispbuf != &vf_local) && (cur_dispbuf != vf)
+    &&(video_property_changed != 2)) {
         vf_put(cur_dispbuf);
 
     } else {
@@ -859,7 +865,12 @@ static void vsync_notify(void)
 	    wake_up_interruptible(&amvideo_trick_wait);
 	    video_notify_flag &= ~VIDEO_NOTIFY_TRICK_WAIT;
 	}
-	
+	if (video_notify_flag & VIDEO_NOTIFY_FRAME_WAIT) {
+		video_notify_flag &= ~VIDEO_NOTIFY_FRAME_WAIT;
+		 if ((vfp) && (vfp->event_cb)) {
+		 vfp->event_cb(VFRAME_EVENT_RECEIVER_FRAME_WAIT, NULL, NULL);
+		}	
+	}
 	if (video_notify_flag & (VIDEO_NOTIFY_PROVIDER_GET | VIDEO_NOTIFY_PROVIDER_PUT)) {
 		const vframe_provider_t *vfp = get_vfp();
 
@@ -909,7 +920,7 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
 #endif
 
     frame_count ++;
-
+    timer_count ++;	
     vout_type = detect_vout_type();
     hold_line = calc_hold_line();
 
@@ -1173,6 +1184,10 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
     }
 
 exit:
+	if(timer_count > 20){
+		timer_count	 =0 ;
+		video_notify_flag |= VIDEO_NOTIFY_FRAME_WAIT;		
+	}
 #ifdef FIQ_VSYNC
     if (video_notify_flag)
         fiq_bridge_pulse_trigger(&vsync_fiq_bridge);
@@ -2181,6 +2196,11 @@ static struct notifier_block vout_notifier = {
     .notifier_call  = vout_notify_callback,
 };
 
+vframe_t* get_cur_dispbuf()
+{
+	return  cur_dispbuf;	
+}
+
 static void vout_hook(void)
 {
     vout_register_client(&vout_notifier);
@@ -2211,13 +2231,19 @@ static void vout_hook(void)
 /*********************************************************/
 static int __init video_early_init(void)
 {
-    WRITE_MPEG_REG_BITS(VPP_OFIFO_SIZE, 0x300,
+    logo_object_t  *init_logo_obj=NULL;
+    init_logo_obj = get_current_logo_obj();	
+
+    if(NULL==init_logo_obj || !init_logo_obj->para.loaded)
+    {
+    	WRITE_MPEG_REG_BITS(VPP_OFIFO_SIZE, 0x300,
                         VPP_OFIFO_SIZE_BIT, VPP_OFIFO_SIZE_WID);
-    CLEAR_MPEG_REG_MASK(VPP_VSC_PHASE_CTRL, VPP_PHASECTL_TYPE_INTERLACE);
+   	 CLEAR_MPEG_REG_MASK(VPP_VSC_PHASE_CTRL, VPP_PHASECTL_TYPE_INTERLACE);
 #ifndef CONFIG_FB_AML_TCON
-    SET_MPEG_REG_MASK(VPP_MISC, VPP_OUT_SATURATE);
+    	SET_MPEG_REG_MASK(VPP_MISC, VPP_OUT_SATURATE);
 #endif
-    WRITE_MPEG_REG(VPP_HOLD_LINES, 0x08080808);
+    	WRITE_MPEG_REG(VPP_HOLD_LINES, 0x08080808);
+    }
     return 0;
 }
 static int __init video_init(void)

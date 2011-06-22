@@ -802,7 +802,13 @@ static void vh264_put_timer_func(unsigned long arg)
     unsigned int wait_buffer_status;
     unsigned int wait_i_pass_frames;
     unsigned int reg_val;
-
+    receviver_start_e state = RECEIVER_INACTIVE ;
+    if ((vf_receiver) && (vf_receiver->event_cb)){
+        state  =  vf_receiver->event_cb(VFRAME_EVENT_PROVIDER_QUREY_STATE, NULL, NULL); 	
+    }else{
+         state  = RECEIVER_INACTIVE ;
+    }
+	
 #ifndef HANDLE_H264_IRQ
     vh264_isr();
 #endif
@@ -813,7 +819,8 @@ static void vh264_put_timer_func(unsigned long arg)
     if (wait_buffer_status) {
         if ((get_ptr == fill_ptr)
             && (putting_ptr == put_ptr)
-            && (buffer_for_recycle_rd == buffer_for_recycle_wr)) {
+            && (buffer_for_recycle_rd == buffer_for_recycle_wr)
+            &&(state == RECEIVER_INACTIVE)) {
             printk("$$$$$$decoder is waiting for buffer\n");
             if (++wait_buffer_counter > 2) {
                 amvdec_stop();

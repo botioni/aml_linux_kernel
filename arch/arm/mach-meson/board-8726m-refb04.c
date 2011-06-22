@@ -75,8 +75,13 @@
 #endif
 
 #ifdef CONFIG_SIX_AXIS_SENSOR_MPU3050
+#ifdef CONFIG_MPU_PRE_V340
 #include <linux/mpu.h>
+#else
+#include <linux/mpu_new/mpu.h>
 #endif
+#endif
+
 #ifdef CONFIG_SN7325
 #include <linux/sn7325.h>
 #endif

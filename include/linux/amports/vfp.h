@@ -24,8 +24,21 @@ typedef struct {
     int rp;
     int wp;
     int size;
+    int pre_rp;
+    int pre_wp;
     struct vframe_s **pool;
 } vfq_t;
+
+static inline void vfq_lookup_start(vfq_t *q)
+{
+	 q->pre_rp =  q->rp ;
+	 q->pre_wp = q->wp;
+}
+static inline void vfq_lookup_end(vfq_t *q)
+{
+	  q->rp = q->pre_rp ;
+	  q->wp = q->pre_wp ;	
+}
 
 static inline void vfq_init(vfq_t *q, u32 size, struct vframe_s **pool)
 {

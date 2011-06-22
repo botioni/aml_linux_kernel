@@ -71,7 +71,11 @@
 #endif
 
 #ifdef CONFIG_SIX_AXIS_SENSOR_MPU3050
+#ifdef CONFIG_MPU_PRE_V340
 #include <linux/mpu.h>
+#else
+#include <linux/mpu_new/mpu.h>
+#endif
 #endif
 
 #ifdef CONFIG_SN7325
@@ -483,14 +487,14 @@ static struct resource amlogic_card_resource[] = {
 };
 
 void extern_wifi_power(int is_power)
-{//extern io OD5
+{//GPIOD_20
     if(1 == is_power){
-        configIO(0, 0);
-        setIO_level(0,1, 5);        
+		set_gpio_val(GPIOD_bank_bit2_24(20), GPIOD_bit_bit2_24(20), 1);
+    set_gpio_mode(GPIOD_bank_bit2_24(20), GPIOD_bit_bit2_24(20), GPIO_OUTPUT_MODE);		 
     }
     else{
-        configIO(0, 0);
-        setIO_level(0, 0, 5);        
+		set_gpio_val(GPIOD_bank_bit2_24(20), GPIOD_bit_bit2_24(20), 0);
+    set_gpio_mode(GPIOD_bank_bit2_24(20), GPIOD_bit_bit2_24(20), GPIO_OUTPUT_MODE);      
     }
     
     return;
@@ -522,7 +526,7 @@ static struct aml_card_info  amlogic_card_info[] = {
         .card_extern_init = 0,
     },
     [1] = {
-        .name = "sdio_card",
+        .name = "sdio_card",                   //WIFI modules
         .work_mode = CARD_HW_MODE,
         .io_pad_type = SDIO_GPIOB_2_7,
         .card_ins_en_reg = 0,
@@ -876,6 +880,23 @@ static struct eeti_platform_data eeti_pdata = {
     .lcd_max_height = 600,
 };
 #endif
+
+#ifdef CONFIG_PIXCIR_CAPACITIVE_TOUCHSCREEN
+#include <linux/i2c/pixcir_i2c_ts.h>
+static struct pixcir_i2c_ts_platform_data pixcir_pdata = {
+	.gpio_shutdown = (GPIOD_bank_bit2_24(23)<<16) | GPIOD_bit_bit2_24(23),
+	.gpio_irq = (GPIOD_bank_bit2_24(24)<<16) | GPIOD_bit_bit2_24(24),
+	.xmin = 0,
+	.xmax = 1024,
+	.ymin = 0,
+	.ymax = 768,
+  .swap_xy = 1,
+  .xpol = 0,
+  .ypol = 0,
+  .point_id_available = 0,	
+};
+#endif
+
 
 #ifdef CONFIG_ANDROID_PMEM
 static struct android_pmem_platform_data pmem_data =
@@ -1381,8 +1402,8 @@ static void set_bat_off(void)
         kernel_restart("reboot");
     }
     //Power hold down
-    set_gpio_val(GPIOA_bank_bit(8), GPIOA_bit_bit0_14(8), 0);
-    set_gpio_mode(GPIOA_bank_bit(8), GPIOA_bit_bit0_14(8), GPIO_OUTPUT_MODE);
+//    set_gpio_val(GPIOA_bank_bit(8), GPIOA_bit_bit0_14(8), 0);
+//    set_gpio_mode(GPIOA_bank_bit(8), GPIOA_bit_bit0_14(8), GPIO_OUTPUT_MODE);
 
 }
 
@@ -1554,8 +1575,8 @@ static void set_bat_off(void)
     if(is_ac_connected()){ //AC in after power off press
         kernel_restart("reboot");
     }
-    set_gpio_val(GPIOA_bank_bit(8), GPIOA_bit_bit0_14(8), 0);
-    set_gpio_mode(GPIOA_bank_bit(8), GPIOA_bit_bit0_14(8), GPIO_OUTPUT_MODE);
+//    set_gpio_val(GPIOA_bank_bit(8), GPIOA_bit_bit0_14(8), 0);
+//    set_gpio_mode(GPIOA_bank_bit(8), GPIOA_bit_bit0_14(8), GPIO_OUTPUT_MODE);
 
 }
 
@@ -1735,37 +1756,37 @@ static struct mtd_partition multi_partition_info[] =
 {
 	{
 		.name = "logo",
-		.offset = 32*SZ_1M,
+		.offset = 72*SZ_1M,
 		.size = 16*SZ_1M,
 	},
 	{
 		.name = "aml_logo",
-		.offset = 48*SZ_1M,
+		.offset = 88*SZ_1M,
 		.size = 16*SZ_1M,
 	},
 	{
 		.name = "recovery",
-		.offset = 64*SZ_1M,
+		.offset = 104*SZ_1M,
 		.size = 32*SZ_1M,
 	},
 	{
-		.name = "boot",
-		.offset = 96*SZ_1M,
+		.name = "boot",       //kernel
+		.offset = 136*SZ_1M,
 		.size = 32*SZ_1M,
 	},
 	{
-		.name = "system",
-		.offset = 128*SZ_1M,
+		.name = "system",     //rootfs
+		.offset = 168*SZ_1M,
 		.size = 256*SZ_1M,
 	},
 	{
 		.name = "cache",
-		.offset = 384*SZ_1M,
+		.offset = 424*SZ_1M,
 		.size = 128*SZ_1M,
 	},
 	{
 		.name = "userdata",
-		.offset = 512*SZ_1M,
+		.offset = 552*SZ_1M,
 		.size = 128*SZ_1M,
 	},
 	{
@@ -1914,20 +1935,33 @@ static void aml_8726m_power_on_bl(void)
 {
     printk("backlight on\n");
         //BL_PWM -> GPIOA_7: 1 Pull high, For En_5V
-	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<31));
-	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_12, (1<<7));
-	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0, (1<<9));
-	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<29));
-	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0, (1<<22));
-	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_9, (1<<22));    
+//	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<30));
+//	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_12, (1<<6));
+//	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0, (1<<8));
+//	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<28));
+//	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0, (1<<21));
+//	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_9, (1<<23));    
+
+    set_gpio_val(GPIOA_bank_bit0_14(3), GPIOA_bit_bit0_14(3), 0); //low
+    set_gpio_mode(GPIOA_bank_bit0_14(3), GPIOA_bit_bit0_14(3), GPIO_OUTPUT_MODE);
+
+    udelay(2); //delay 2us
+
+    //end
+    set_gpio_val(GPIOA_bank_bit0_14(3), GPIOA_bit_bit0_14(3), 1); //high
+    set_gpio_mode(GPIOA_bank_bit0_14(3), GPIOA_bit_bit0_14(3), GPIO_OUTPUT_MODE);
       
-   set_gpio_val(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), 1);
-   set_gpio_mode(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), GPIO_OUTPUT_MODE);
+   set_gpio_val(GPIOA_bank_bit0_14(7), GPIOA_bit_bit0_14(7), 1);
+   set_gpio_mode(GPIOA_bank_bit0_14(7), GPIOA_bit_bit0_14(7), GPIO_OUTPUT_MODE);
 
 
 #ifdef CONFIG_SN7325
     configIO(0, 0);
+    setIO_level(0, 0, 7);   //OD7 bl_en 
+    udelay(2000); //delay 2us
+    configIO(0, 0);
     setIO_level(0, 1, 7);   //OD7 bl_en  
+    
     configIO(0, 0);
     setIO_level(0, 0, 0);   //OD0 LCD_PWR_EN 
 #endif
@@ -1937,8 +1971,8 @@ static void aml_8726m_power_off_bl(void)
 {
     printk("backlight off\n");
     //BL_PWM -> GPIOA_7: 0
-    set_gpio_val(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), 0);
-    set_gpio_mode(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), GPIO_OUTPUT_MODE);
+    set_gpio_val(GPIOA_bank_bit0_14(7), GPIOA_bit_bit0_14(7), 0);
+    set_gpio_mode(GPIOA_bank_bit0_14(7), GPIOA_bit_bit0_14(7), GPIO_OUTPUT_MODE);
 }
 
 struct aml_bl_platform_data aml_bl_platform =
@@ -2090,9 +2124,8 @@ static void bt_device_init(void)
 	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, (1<<24));
 	
 	/* WIFI/BT_EN */
-	//CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<18)); //       configIO(0, 0);
-	//SET_CBUS_REG_MASK(PREG_GGPIO_O, (1<<18));      //       setIO_level(0, 1, 5);	
-	//CLEAR_CBUS_REG_MASK(PREG_GGPIO_O, (1<<18));  //WA 7W WIFI/BT_EN  low level.
+		set_gpio_val(GPIOD_bank_bit2_24(20), GPIOD_bit_bit2_24(20), 1);
+    set_gpio_mode(GPIOD_bank_bit2_24(20), GPIOD_bit_bit2_24(20), GPIO_OUTPUT_MODE);		
 
 	
 	/* BT_RST_N */
@@ -2102,6 +2135,10 @@ static void bt_device_init(void)
 	SET_CBUS_REG_MASK(PREG_GGPIO_O, (1<<12));	
 	
 	/* UART_TX */
+
+	configIO(1, 0);
+	setIO_level(1, 0, 4);//PP4 -->0   for BT UART
+	
 	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<19));
 	CLEAR_CBUS_REG_MASK(PREG_GGPIO_O, (1<<19));	
 	
@@ -2179,7 +2216,7 @@ static struct platform_device __initdata *platform_devs[] = {
         &adc_ts_device,
     #endif
     #if defined(CONFIG_ADC_KEYPADS_AM)||defined(CONFIG_ADC_KEYPADS_AM_MODULE)
- //       &adc_kp_device,
+        &adc_kp_device,
     #endif
     #if defined(CONFIG_KEY_INPUT_CUSTOM_AM) || defined(CONFIG_KEY_INPUT_CUSTOM_AM_MODULE)
         &input_device_key,  //changed by Elvis
@@ -2273,6 +2310,14 @@ static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
         I2C_BOARD_INFO("eeti", 0x04),
         .irq = INT_GPIO_0,
         .platform_data = (void *)&eeti_pdata,
+    },
+#endif
+
+#ifdef CONFIG_PIXCIR_CAPACITIVE_TOUCHSCREEN
+    {
+        I2C_BOARD_INFO("pixcir168", 0x5c),
+        .irq = INT_GPIO_0,
+        .platform_data = (void *)&pixcir_pdata,
     },
 #endif
 
@@ -2427,8 +2472,8 @@ static void disable_unused_model(void)
 static void __init power_hold(void)
 {
     printk(KERN_INFO "power hold set high!\n");
-    set_gpio_val(GPIOA_bank_bit(8), GPIOA_bit_bit0_14(8), 1);
-    set_gpio_mode(GPIOA_bank_bit(8), GPIOA_bit_bit0_14(8), GPIO_OUTPUT_MODE);
+//    set_gpio_val(GPIOA_bank_bit(8), GPIOA_bit_bit0_14(8), 1);
+//    set_gpio_mode(GPIOA_bank_bit(8), GPIOA_bit_bit0_14(8), GPIO_OUTPUT_MODE);
     
     //VCCx2 power up
     set_vccx2(1);

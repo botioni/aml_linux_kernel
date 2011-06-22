@@ -26,8 +26,7 @@ obj-$(CONFIG_MACH_MESON_8726M_REFB06)	+= board-8726m-refb06.o
 obj-$(CONFIG_MACH_MESON_8726M_REFB07)	+= board-8726m-refb07.o
 obj-$(CONFIG_MACH_MESON_8726M_REFB08)	+= board-8726m-refb08.o
 obj-$(CONFIG_MACH_MESON_8726M_REFB09)	+= board-8726m-refb09.o
-obj-$(CONFIG_MACH_MESON_8726M_REFB09NEW)	+= board-8726m-refb09new.o
-obj-$(CONFIG_MACH_MESON_8726M_REFB09NEW)	+= amlogic-wifi.o
+obj-$(CONFIG_MACH_MESON_8726M_REFB09)	+= amlogic-wifi.o
 obj-$(CONFIG_MACH_MESON_8726M_REFB10)	+= board-8726m-refb10.o
 obj-$(CONFIG_MACH_MESON_8726M_REFB11)	+= board-8726m-refb11.o
 obj-$(CONFIG_MACH_MESON_8726M_REFB12)	+= board-8726m-refb12.o
@@ -44,6 +43,7 @@ obj-$(CONFIG_MACH_MESON_8726M_REFC03)	+= board-8726m-refc03.o
 obj-$(CONFIG_MACH_MESON_8726M_REFC04)	+= board-8726m-refc04.o
 obj-$(CONFIG_MACH_MESON_8726M_REFC05)	+= board-8726m-refc05.o
 obj-$(CONFIG_MACH_MESON_8726M_REFC06)	+= board-8726m-refc06.o
+obj-$(CONFIG_MACH_MESON_8726M_REFC08)	+= board-8726m-refc08.o
 
 obj-$(CONFIG_MACH_MESON_6236M)	+= board-6236m.o
 obj-$(CONFIG_MACH_MESON_8226M)	+= board-8226m.o

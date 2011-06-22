@@ -35,9 +35,16 @@ typedef struct vframe_states {
 #define VFRAME_EVENT_PROVIDER_LIGHT_UNREG       2
 #define VFRAME_EVENT_PROVIDER_START             3
 #define VFRAME_EVENT_PROVIDER_VFRAME_READY      4
+#define VFRAME_EVENT_PROVIDER_QUREY_STATE        5 
+
+typedef enum {
+	RECEIVER_INACTIVE = 0 ,
+	RECEIVER_ACTIVE
+}receviver_start_e;
 
 #define VFRAME_EVENT_RECEIVER_GET               0x01
 #define VFRAME_EVENT_RECEIVER_PUT               0x02
+#define VFRAME_EVENT_RECEIVER_FRAME_WAIT               0x04
 
 typedef struct vframe_provider_s {
     vframe_t * (*peek)(void);

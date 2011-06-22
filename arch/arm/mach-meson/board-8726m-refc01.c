@@ -438,22 +438,24 @@ static struct resource amlogic_card_resource[]  = {
 
 void extern_wifi_power(int is_power)
 {
-	unsigned char level;
-
 	if (0 == is_power)
 	{
 #ifdef CONFIG_TCA6424
+		unsigned char level;
 		configIO(1, 0);
 		level = getIO_level(1);
 		level &= ~(1<<2);
 		setIO_level(1, level);
 #else
-		return;
+		CLEAR_CBUS_REG_MASK(CARD_PIN_MUX_4, (1<<4));
+		CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<4));
+		SET_CBUS_REG_MASK(PREG_GGPIO_O, (1<<4));
 #endif
 	}
 	else
 	{
 #ifdef CONFIG_TCA6424
+		unsigned char level;
 		configIO(1, 0);
 		level = getIO_level(1);
 		/*P12 WIFI/BT EN*/
@@ -468,7 +470,14 @@ void extern_wifi_power(int is_power)
 		setIO_level(1, level);
 
 #else
-		return;
+		/*GPIOD_6 WIFI/BT EN*/
+		CLEAR_CBUS_REG_MASK(CARD_PIN_MUX_4, (1<<4));
+		CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<4));
+		SET_CBUS_REG_MASK(PREG_GGPIO_O, (1<<4));
+		/*GPIOD_5 WIFI/BT SEL*/
+		CLEAR_CBUS_REG_MASK(CARD_PIN_MUX_4, (1<<5));
+		CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<3));
+		CLEAR_CBUS_REG_MASK(PREG_GGPIO_O, (1<<3));
 #endif
 	}
 	return;
@@ -508,11 +517,20 @@ static struct aml_card_info  amlogic_card_info[] = {
 		.card_ins_en_mask = 0,
 		.card_ins_input_reg = 0,
 		.card_ins_input_mask = 0,
+#ifdef CONFIG_TCA6424
 		.card_power_en_reg = 0,//EGPIO_GPIOD_ENABLE,
 		.card_power_en_mask = 0,//PREG_IO_10_MASK,
 		.card_power_output_reg = 0,//EGPIO_GPIOD_OUTPUT,
 		.card_power_output_mask = 0,//PREG_IO_10_MASK,
 		.card_power_en_lev = 0,//1,
+#else
+		/*GPIOD_8 WIFI RST*/
+		.card_power_en_reg = EGPIO_GPIOD_ENABLE,
+		.card_power_en_mask = PREG_IO_6_MASK,
+		.card_power_output_reg = EGPIO_GPIOD_OUTPUT,
+		.card_power_output_mask = PREG_IO_6_MASK,
+		.card_power_en_lev = 1,
+#endif
 		.card_wp_en_reg = 0,
 		.card_wp_en_mask = 0,
 		.card_wp_input_reg = 0,
@@ -816,7 +834,7 @@ static int get_bat_vol(void)
 	return 1000;//get_adc_sample(5);
 }
 
-static int get_charge_status()
+static int get_charge_status(void)
 {
 	return (READ_CBUS_REG(ASSIST_HW_REV)&(1<<8))? 1:0;
 }
@@ -827,7 +845,7 @@ static struct aml_power_pdata power_pdata = {
 	.set_charge = set_charge,
 	.get_bat_vol = get_bat_vol,
 	.get_charge_status = get_charge_status,
-	.is_support_usb_charging = 0;
+	.is_support_usb_charging = 0,
 	//.supplied_to = supplicants,
 	//.num_supplicants = ARRAY_SIZE(supplicants),
 };
@@ -1297,6 +1315,111 @@ static struct platform_device aml_pm_device = {
 };
 #endif
 
+#ifdef CONFIG_BT_DEVICE
+#include <linux/bt-device.h>
+
+static struct platform_device bt_device = {
+	.name             = "bt-dev",
+	.id               = -1,
+};
+
+static void bt_device_init(void)
+{
+    /* BT/GPS_RST_N */
+    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_12, (1<<29));
+    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_5, (1<<20));
+    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_5, (1<<14));
+    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_7, (1<<13));
+    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_7, (1<<12));
+    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, (1<<21));
+
+    /* BT/GPS */
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_12, (1<<22));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_7, (1<<19));
+    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_5, (1<<17));
+    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0, (1<<12));
+    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_5, (1<<4));    
+    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, (1<<28));    
+
+    /* WLBT_REGON */
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_12, (1<<23));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_7, (1<<14));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_5, (1<<17));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0, (1<<12));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_5, (1<<5));
+    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, (1<<27));	
+
+    /* BT_WAKE */
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_12, (1<<27));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_5, (1<<18));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0, (1<<12));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_5, (1<<9));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, (1<<23));
+	
+	/* UART_RTS_N(BT) */
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_12, (1<<26));
+    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_7, (1<<17));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_5, (1<<17));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0, (1<<12));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_5, (1<<8));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, (1<<24));
+
+    /* UART_CTS_N(BT) */    
+    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_12, (1<<25));
+    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_7, (1<<16));
+    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_5, (1<<17));
+    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0, (1<<12));
+    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_5, (1<<7));
+    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, (1<<25));
+    
+	/* WLBT_REGON */
+	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<18));
+	SET_CBUS_REG_MASK(PREG_GGPIO_O, (1<<18));	
+	
+	/* BT/GPS_RST_N */
+	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<12));
+	CLEAR_CBUS_REG_MASK(PREG_GGPIO_O, (1<<12));		
+	
+	/* BT/GPS */
+	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<19));
+	CLEAR_CBUS_REG_MASK(PREG_GGPIO_O, (1<<19));
+
+    /* UART_RTS_N(BT) */
+	SET_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<15));
+    
+	/* UART_CTS_N(BT) */
+	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<16));
+    CLEAR_CBUS_REG_MASK(PREG_GGPIO_O, (1<<16));
+		
+	/* BT_WAKE */ 
+	//CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<14));
+	//SET_CBUS_REG_MASK(PREG_GGPIO_O, (1<<14));
+}
+
+static void bt_device_on(void)
+{
+    /* BT/GPS_RST_N */
+	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<12));
+	CLEAR_CBUS_REG_MASK(PREG_GGPIO_O, (1<<12));	
+	msleep(200);	
+	SET_CBUS_REG_MASK(PREG_GGPIO_O, (1<<12));	
+}
+
+static void bt_device_off(void)
+{
+    /* BT/GPS_RST_N */
+	CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1<<12));
+	CLEAR_CBUS_REG_MASK(PREG_GGPIO_O, (1<<12));	
+	msleep(200);
+}
+
+struct bt_dev_data bt_dev = {
+    .bt_dev_init    = bt_device_init,
+    .bt_dev_on      = bt_device_on,
+    .bt_dev_off     = bt_device_off,
+};
+#endif
+
 static struct platform_device __initdata *platform_devs[] = {
     #if defined(CONFIG_JPEGLOGO)
 		&jpeglogo_device,
@@ -1375,7 +1498,9 @@ static struct platform_device __initdata *platform_devs[] = {
     #if defined(CONFIG_SUSPEND)
             &aml_pm_device,
     #endif
-	
+    #ifdef CONFIG_BT_DEVICE  
+        &bt_device,
+    #endif	
 };
 static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
 
@@ -1439,7 +1564,9 @@ static void __init device_pinmux_init(void )
 	uart_set_pinmux(UART_PORT_B,PINMUX_UART_B);
 	/*pinmux of eth*/
 	eth_pinmux_init();
-	set_audio_pinmux(AUDIO_OUT_TEST_N);
+	set_audio_pinmux(AUDIO_IN_JTAG); // for MIC input
+    set_audio_pinmux(AUDIO_OUT_TEST_N); //External AUDIO DAC
+    set_audio_pinmux(SPDIF_OUT_GPIOA); //SPDIF GPIOA_6
 }
 
 static void __init  device_clk_setting(void)
@@ -1447,36 +1574,24 @@ static void __init  device_clk_setting(void)
 	/*Demod CLK for eth and sata*/
 	demod_apll_setting(0,1200*CLK_1M);
 	/*eth clk*/
-    	eth_clk_set(ETH_CLKSRC_APLL_CLK,400*CLK_1M,50*CLK_1M);
+    eth_clk_set(ETH_CLKSRC_APLL_CLK,400*CLK_1M,50*CLK_1M);
 }
 
 static void disable_unused_model(void)
 {
 	CLK_GATE_OFF(VIDEO_IN);
 	CLK_GATE_OFF(BT656_IN);
-	CLK_GATE_OFF(ETHERNET);
-	CLK_GATE_OFF(SATA);
+	//CLK_GATE_OFF(ETHERNET);
+	//CLK_GATE_OFF(SATA);
 	CLK_GATE_OFF(WIFI);
-	video_dac_disable();
+	//video_dac_disable();
 	//audio_internal_dac_disable();
-}
-static void __init power_hold(void)
-{
-    
-    printk(KERN_INFO "power hold set high!\n");
-	set_gpio_val(GPIOA_bank_bit(8), GPIOA_bit_bit0_14(8), 1);
-    set_gpio_mode(GPIOA_bank_bit(8), GPIOA_bit_bit0_14(8), GPIO_OUTPUT_MODE);
-    
-        /* PIN28, GPIOA_6, Pull high, For En_5V */
-    set_gpio_val(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), 1);
-    set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);   
 }
 
 static __init void m1_init_machine(void)
 {
 	meson_cache_init();
 
-	//power_hold();
 	device_clk_setting();
 	device_pinmux_init();
 	platform_add_devices(platform_devs, ARRAY_SIZE(platform_devs));
