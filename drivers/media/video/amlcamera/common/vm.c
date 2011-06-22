@@ -97,7 +97,7 @@ int start_vm_task(void) ;
 int start_simulate_task(void);
 
 static struct vframe_s vfpool[MAX_VF_POOL_SIZE];
-static u32 vfpool_idx[MAX_VF_POOL_SIZE];
+/*static u32 vfpool_idx[MAX_VF_POOL_SIZE];*/
 static s32 vfbuf_use[MAX_VF_POOL_SIZE];
 static s32 fill_ptr, get_ptr, putting_ptr, put_ptr;
 struct semaphore  vb_start_sema;
@@ -119,11 +119,11 @@ static inline u32 index2canvas(u32 index)
 {
     int i;
     int start_canvas , count;
+    u32 canvas_tab[6] ;
     get_tvin_canvas_info(&start_canvas,&count);
     VM_POOL_SIZE  = count ;
     VF_POOL_SIZE  = count ;
-    VM_CANVAS_INDEX = start_canvas;
-    u32 canvas_tab[6] ;    
+    VM_CANVAS_INDEX = start_canvas;    
     for(i =0 ; i< count;i++){
         canvas_tab[i] =  VM_CANVAS_INDEX +i;       
     }
@@ -200,7 +200,7 @@ static void local_vf_put(vframe_t *vf)
 }
 
 
-static int  local_vf_states(vframe_states_t *states)
+/*static int  local_vf_states(vframe_states_t *states)
 {
     unsigned long flags;
     int i;
@@ -221,7 +221,7 @@ static int  local_vf_states(vframe_states_t *states)
     
     spin_unlock_irqrestore(&lock, flags);
     return 0;
-}
+}*/
 
 static const struct vframe_provider_s vm_vf_provider =
 {
@@ -233,7 +233,7 @@ static const struct vframe_provider_s vm_vf_provider =
 
 static int vm_receiver_event_fun(int type, void* data, void*);
 
-static const struct vframe_receiver_op_s vm_vf_receiver =
+static vframe_receiver_op_t vm_vf_receiver =
 {
     .event_cb = vm_receiver_event_fun
 };
@@ -287,7 +287,7 @@ static int prepare_vframe(vframe_t *vf)
 *   buffer op for decoder, camera, etc. 
 *
 *************************************************/
-static const struct vframe_provider_s *vfp = NULL;
+static const vframe_provider_t *vfp = NULL;
 
 void vm_local_init(void) 
 {
@@ -328,7 +328,7 @@ vframe_receiver_op_t* vf_vm_unreg_provider(void)
     vfp = NULL;
     spin_unlock_irqrestore(&lock, flags);
     vf_unreg_provider();
-    return NULL;
+    return (vframe_receiver_op_t*)NULL;
 }
 
 
@@ -336,10 +336,10 @@ EXPORT_SYMBOL(vf_vm_reg_provider);
 EXPORT_SYMBOL(vf_vm_unreg_provider);
 
 
-static const struct vframe_provider_s * vm_vf_get_vfp_from_provider(void)
+/*static const struct vframe_provider_s * vm_vf_get_vfp_from_provider(void)
 {
 	return vfp;
-}
+} */
 
 static inline vframe_t *vm_vf_peek_from_provider(void)
 {
@@ -386,6 +386,7 @@ static int get_input_format(vframe_t* vf)
 static int  get_input_frame(display_frame_t* frame ,vframe_t* vf)
 {
 	int ret = 0 ;	
+	int top, left,  bottom ,right;
 	if(!vf){
 		return -1;	
 	}
@@ -393,7 +394,6 @@ static int  get_input_frame(display_frame_t* frame ,vframe_t* vf)
 	frame->frame_left  =     0 ;   
 	frame->frame_width   =  vf->width;
 	frame->frame_height   = vf->height;
-	int top, left,  bottom ,right;
 	ret = get_curren_frame_para(&top ,&left , &bottom, &right);	
 	if(ret >= 0 ){
   		frame->content_top     =  top&(~1);
@@ -459,7 +459,7 @@ typedef struct vm_dma_contig_memory {
 	int is_userptr;
 }vm_contig_memory_t;
 
-int is_need_ge2d_pre_process()
+int is_need_ge2d_pre_process(void)
 {
     int ret = 0;
     switch(output_para.v4l2_format){
@@ -480,7 +480,7 @@ int is_need_ge2d_pre_process()
     return ret;
 }
 
-int is_need_sw_post_process()
+int is_need_sw_post_process(void)
 {
     int ret = 0;
     switch(output_para.v4l2_memory){
@@ -500,7 +500,6 @@ exit:
 
 int get_canvas_index(int v4l2_format ,int* depth)
 {
-    static int counter = 0;
     int canvas = VM_DEPTH_16_CANVAS ;
     *depth = 16;
     switch(v4l2_format){
@@ -535,11 +534,11 @@ int vm_fill_buffer(struct videobuf_buffer* vb , int v4l2_format , int magic,void
     vm_contig_memory_t *mem = NULL;
     char *buf_start,*vbuf_start;
     int buf_size;
-    int depth ;
-    int ret = -1;
-    get_vm_buf_info(&buf_start,&buf_size,&vbuf_start);     
+    int depth=0;
+    int ret = -1;    
     int canvas_index = -1 ;
-    struct videobuf_buffer buf;
+    struct videobuf_buffer buf={0};
+    get_vm_buf_info((const char **)&buf_start,&buf_size,&vbuf_start); 
 #if 0    
     if(!vb){
         goto exit;
@@ -579,11 +578,10 @@ int vm_fill_buffer(struct videobuf_buffer* vb , int v4l2_format , int magic,void
      output_para.index = canvas_index ;
      output_para.v4l2_format  = v4l2_format ;
      output_para.v4l2_memory   = magic ;
-     output_para.vaddr = vaddr;
+     output_para.vaddr = (unsigned)vaddr;
      up(&vb_start_sema);
      down_interruptible(&vb_done_sema);        
      ret = 0;  
-exit:
     return ret;     
 }
 
@@ -596,10 +594,11 @@ exit:
 */
 int vm_ge2d_pre_process(vframe_t* vf, ge2d_context_t *context,config_para_ex_t* ge2d_config)
 {
-    canvas_t cs0,cs1,cs2,cd,cd2,cd3;
-    display_frame_t input_frame;
-    int src_top ,src_left ,src_width, src_height;
-    int ret = get_input_frame(&input_frame , vf);
+	int ret;
+	int src_top ,src_left ,src_width, src_height;
+    canvas_t cs0,cs1,cs2,cd;
+    display_frame_t input_frame={0};
+    ret = get_input_frame(&input_frame , vf);
 	src_top =     input_frame.content_top   ;
 	src_left =    input_frame.content_left  ;
 	src_width =   input_frame.content_width ;
@@ -664,7 +663,7 @@ int vm_ge2d_pre_process(vframe_t* vf, ge2d_context_t *context,config_para_ex_t* 
 //    printk("output_width is %d , output_height is %d \n",output_para.width ,output_para.height);
     if(ge2d_context_config_ex(context,ge2d_config)<0) {
         printk("++ge2d configing error.\n");
-        return;
+        return -1;
     }              
     stretchblt_noalpha(context,src_left ,src_top ,src_width, src_height,0,0,output_para.width,output_para.height);
     
@@ -681,7 +680,7 @@ int vm_ge2d_pre_process(vframe_t* vf, ge2d_context_t *context,config_para_ex_t* 
 		ge2d_config->dst_para.height = output_para.height/2;
 		if(ge2d_context_config_ex(context,ge2d_config)<0) {
 			printk("++ge2d configing error.\n");
-			return;
+			return -1;
 		}
 		stretchblt_noalpha(context,src_left ,src_top ,src_width, src_height,0,0,ge2d_config->dst_para.width,ge2d_config->dst_para.height);
 	} else if (output_para.v4l2_format==V4L2_PIX_FMT_NV12||
@@ -696,7 +695,7 @@ int vm_ge2d_pre_process(vframe_t* vf, ge2d_context_t *context,config_para_ex_t* 
 		ge2d_config->dst_para.height = output_para.height/2;
 		if(ge2d_context_config_ex(context,ge2d_config)<0) {
 			printk("++ge2d configing error.\n");
-			return;
+			return -1;
 		}
 		stretchblt_noalpha(context,src_left ,src_top ,src_width, src_height,0,0,ge2d_config->dst_para.width,ge2d_config->dst_para.height);
 	}
@@ -715,26 +714,29 @@ int vm_ge2d_pre_process(vframe_t* vf, ge2d_context_t *context,config_para_ex_t* 
 		ge2d_config->dst_para.height = output_para.height/2;
 		if(ge2d_context_config_ex(context,ge2d_config)<0) {
 			printk("++ge2d configing error.\n");
-			return;
+			return -1;
 		}
 		stretchblt_noalpha(context,src_left ,src_top ,src_width, src_height,0,0,ge2d_config->dst_para.width,ge2d_config->dst_para.height);
 	}
     return output_para.index;
 }
 
+extern void interleave_uv(unsigned char* pU, unsigned char* pV, unsigned char *pUV, unsigned int size_u_or_v);
+
 int vm_sw_post_process(int canvas , int addr)
 {
-    if(!addr){
-        return -1;
-    }
 	int poss=0,posd=0;
-	int i=0,j = 0;
+	int i=0;
 	void __iomem * buffer_y_start;
 	void __iomem * buffer_u_start;
-	void __iomem * buffer_v_start;
+	void __iomem * buffer_v_start=0;
 	canvas_t canvas_work_y;   
 	canvas_t canvas_work_u;
 	canvas_t canvas_work_v;
+    
+    if(!addr){
+        return -1;
+    }
 	
 	canvas_read(canvas&0xff,&canvas_work_y);
     buffer_y_start = ioremap_wc(canvas_work_y.addr,canvas_work_y.width*canvas_work_y.height);
@@ -743,24 +745,24 @@ int vm_sw_post_process(int canvas , int addr)
 			output_para.v4l2_format== V4L2_PIX_FMT_RGB565X) {
 		
     	for(i=0;i<output_para.height;i++) {
-    		memcpy(addr+poss,buffer_y_start+posd,output_para.bytesperline);
+    		memcpy((void *)(addr+poss),(void *)(buffer_y_start+posd),output_para.bytesperline);
     		poss+=output_para.bytesperline;
     		posd+= canvas_work_y.width;		
     	}
     } else if (output_para.v4l2_format== V4L2_PIX_FMT_NV12||
 			output_para.v4l2_format== V4L2_PIX_FMT_NV21) {
-    	int uv_height = output_para.height>>1;
+		char* dst_buff=NULL;
+		char* src_buff=NULL;
+		char* src2_buff=NULL;
     	canvas_read((canvas>>8)&0xff,&canvas_work_u);
     	buffer_u_start = ioremap_wc(canvas_work_u.addr,canvas_work_u.width*canvas_work_u.height);
-    	int pos_u_s=0,pos_u_d=0;
-		char* u_addr_d = addr+output_para.width* output_para.height;
 		
 		poss = posd = 0 ;
 		for(i=0;i<output_para.height;i+=2) { /* copy y */
-    		memcpy(addr+poss,buffer_y_start+posd,output_para.width);
+    		memcpy((void *)(addr+poss),(void *)(buffer_y_start+posd),output_para.width);
     		poss+=output_para.width;
     		posd+= canvas_work_y.width;	
-    		memcpy(addr+poss,buffer_y_start+posd,output_para.width);
+    		memcpy((void *)(addr+poss),(void *)(buffer_y_start+posd),output_para.width);
     		poss+=output_para.width;
     		posd+= canvas_work_y.width;
     	}	
@@ -768,12 +770,9 @@ int vm_sw_post_process(int canvas , int addr)
     	posd=0;
     	canvas_read((canvas>>16)&0xff,&canvas_work_v);
     	buffer_v_start = ioremap_wc(canvas_work_v.addr,canvas_work_v.width*canvas_work_v.height);
-        extern void interleave_uv(unsigned char* pU, unsigned char* pV, unsigned char *pUV, unsigned int size_u_or_v);
-        int uv_cnt;
-    	int v_width = output_para.width>>1;
-        char* dst_buff= (char*)addr+output_para.width* output_para.height;
-        char* src_buff = (char*)buffer_u_start;
-        char* src2_buff= (char*)buffer_v_start;
+        dst_buff= (char*)addr+output_para.width* output_para.height;
+        src_buff = (char*)buffer_u_start;
+        src2_buff= (char*)buffer_v_start;
         if(output_para.v4l2_format== V4L2_PIX_FMT_NV12) {
 			for(i = 0 ;i < output_para.height/2; i++){
 				interleave_uv(src_buff, src2_buff, dst_buff, output_para.width/2);
@@ -792,15 +791,13 @@ int vm_sw_post_process(int canvas , int addr)
 	
     	iounmap(buffer_u_start);
     	iounmap(buffer_v_start);
-	} else if (output_para.v4l2_format = V4L2_PIX_FMT_YUV420) {
+	} else if (output_para.v4l2_format == V4L2_PIX_FMT_YUV420) {
     	int uv_width = output_para.width>>1;
     	int uv_height = output_para.height>>1;
-    	char* cur_dst;
-    	char* cur_src;
     	
 		posd=0;
 		for(i=output_para.height;i>0;i--) { /* copy y */
-    		memcpy(addr+poss,buffer_v_start+posd,output_para.width);
+    		memcpy((void *)(addr+poss),(void *)(buffer_v_start+posd),output_para.width);
     		poss+=output_para.width;
     		posd+= canvas_work_y.width;		
     	}
@@ -811,13 +808,13 @@ int vm_sw_post_process(int canvas , int addr)
     	canvas_read((canvas>>16)&0xff,&canvas_work_v);
     	buffer_v_start = ioremap_wc(canvas_work_v.addr,canvas_work_v.width*canvas_work_v.height);
    		for(i=uv_height;i>0;i--) { /* copy y */
-    		memcpy(addr+poss,buffer_u_start+posd,uv_width);
+    		memcpy((void *)(addr+poss),(void *)(buffer_u_start+posd),uv_width);
     		poss+=uv_width;
     		posd+= canvas_work_u.width;		
     	}
     	posd=0;
    		for(i=uv_height;i>0;i--) { /* copy y */
-    		memcpy(addr+poss,buffer_v_start+posd,uv_width);
+    		memcpy((void *)(addr+poss),(void *)(buffer_v_start+posd),uv_width);
     		poss+=uv_width;
     		posd+= canvas_work_v.width;		
     	}
@@ -831,11 +828,9 @@ int vm_sw_post_process(int canvas , int addr)
 static struct task_struct *task=NULL;
 static struct task_struct *simulate_task_fd=NULL;
 
-static int reset_frame = 1;
+/* static int reset_frame = 1; */
 static int vm_task(void *data) {
     vframe_t *vf;
-    canvas_t cy;
-    int i;
     int src_canvas;
     int timer_count = 0 ;
     ge2d_context_t *context=create_ge2d_work_queue();
@@ -881,7 +876,8 @@ static int simulate_task(void *data)
         msleep(50);    
         vm_fill_buffer(NULL,0,0,NULL);
         printk("simulate succeed\n");        
-    }   
+    }
+    return 0;   
 }
 
 /************************************************
@@ -893,12 +889,12 @@ int vm_buffer_init(void)
 {
     int i;
     u32 canvas_width, canvas_height;
-    u32 decbuf_size, decbuf_y_size, decbuf_uv_size;
+    u32 decbuf_size;
     char *buf_start,*vbuf_start;
     int buf_size;
     int buf_num = 0;
     int local_pool_size = 0 ;
-    get_vm_buf_info(&buf_start,&buf_size,&vbuf_start);
+    get_vm_buf_info((const char **)&buf_start,&buf_size,&vbuf_start);
     init_MUTEX_LOCKED(&vb_start_sema);
     init_MUTEX_LOCKED(&vb_done_sema);    
     if(buf_start && buf_size){
@@ -915,16 +911,16 @@ int vm_buffer_init(void)
         }   
         for (i = 0; i < local_pool_size; i++) 
         {
-            canvas_config(VM_DEPTH_16_CANVAS+i,
-                          buf_start + i * decbuf_size,
+            canvas_config((VM_DEPTH_16_CANVAS+i),
+                          (unsigned long)(buf_start + i * decbuf_size),
                           canvas_width*2, canvas_height,
                           CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_LINEAR);
-            canvas_config(VM_DEPTH_24_CANVAS+i,
-                          buf_start + i * decbuf_size,
+            canvas_config((VM_DEPTH_24_CANVAS+i),
+                          (unsigned long)(buf_start + i * decbuf_size),
                           canvas_width*3, canvas_height,
                           CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_LINEAR);
-            canvas_config(VM_DEPTH_8_CANVAS_Y+ i,
-                          buf_start + i*decbuf_size/2,
+            canvas_config((VM_DEPTH_8_CANVAS_Y+ i),
+                          (unsigned long)(buf_start + i*decbuf_size/2),
                           canvas_width, canvas_height,
                            CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_LINEAR);
 /*
@@ -935,12 +931,12 @@ int vm_buffer_init(void)
                           canvas_width, canvas_height/2,
                           CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_LINEAR);
 */                          
-            canvas_config(VM_DEPTH_8_CANVAS_U + i,
-                          buf_start + (i+1)*decbuf_size/2,
+            canvas_config((VM_DEPTH_8_CANVAS_U + i),
+                          (unsigned long)(buf_start + (i+1)*decbuf_size/2),
                           canvas_width/2, canvas_height/2,
                           CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_LINEAR);
-            canvas_config(VM_DEPTH_8_CANVAS_V + i,
-                          buf_start + (i+3)*decbuf_size/4,
+            canvas_config((VM_DEPTH_8_CANVAS_V + i),
+                          (unsigned long)(buf_start + (i+3)*decbuf_size/4),
                           canvas_width/2, canvas_height/2,
                           CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_LINEAR);
             vfbuf_use[i] = 0;
@@ -1037,24 +1033,19 @@ static vm_device_t  vm_device;
 void set_vm_buf_info(char* start,unsigned int size) {
     vm_device.buffer_start=start;
     vm_device.buffer_size=size;
-    vm_device.buffer_v_start = ioremap_wc(start,size);
+    vm_device.buffer_v_start = ioremap_wc((unsigned long)start,size);
 //    printk("#############%x\n",vm_device.buffer_v_start);
 }
 
-void get_vm_buf_info(char** start,unsigned int* size,unsigned char** vaddr) {
+void get_vm_buf_info(const char** start,unsigned int* size,char** vaddr) {
     *start=vm_device.buffer_start;
     *size=vm_device.buffer_size;
     *vaddr=vm_device.buffer_v_start;
 }
 
-static  bool   command_valid(unsigned int cmd)
-{
-    return true;
-}
-
 static int vm_open(struct inode *inode, struct file *file) 
 {
-	 ge2d_context_t *context;
+	 ge2d_context_t *context=NULL;
 	 amlog_level(LOG_LEVEL_LOW,"open one vm device\n");
 	 file->private_data=context;
 	 vm_device.open_count++;
@@ -1065,11 +1056,13 @@ static int vm_ioctl(struct inode *inode, struct file *filp,
                  unsigned int cmd, unsigned long args)
 {
 
-	ge2d_context_t *context=(ge2d_context_t *)filp->private_data;
-	void  __user* argp =(void __user*)args;
-	config_para_t     ge2d_config;	
-	ge2d_para_t  para ;
-	int  ret=0 ;   	
+	int  ret=0 ;
+	ge2d_context_t *context;
+	void  __user* argp;
+	context=(ge2d_context_t *)filp->private_data;
+	argp =(void __user*)args;
+	/*config_para_t  ge2d_config={0};*/
+	/*ge2d_para_t  para = {0};*/   	
 
 	switch (cmd)
    	{
@@ -1179,10 +1172,10 @@ static int vm_driver_probe(struct platform_device *pdev)
         buf_start = 0 ;
         buf_size = 0;
     }else{
-        buf_start = mem->start;
+        buf_start = (char *)mem->start;
         buf_size = mem->end - mem->start + 1;
     }
-    set_vm_buf_info(mem->start,buf_size);
+    set_vm_buf_info((char *)mem->start,buf_size);
     init_vm_device();
     return 0;
 }
@@ -1215,13 +1208,17 @@ vm_init_module(void)
 	    printk("vm register fail\n");
 		return err;
 	}
-	if(vm_dev0=platform_device_alloc("vm",0)==NULL) {
+	vm_dev0=platform_device_alloc("vm",0);
+	if(vm_dev0==NULL) {
 		err =-ENOMEM;
 		printk("vm alloc fail\n");
 		goto exit_driver_unregister;
 	}
-    if((err=platform_device_add(vm_dev0))==NULL)
+    if(platform_device_add(vm_dev0)<0) {
+		printk("vm device add fail\n");
         goto exit_free_dev;
+        err=-1;
+	}
     return err;
 
 exit_free_dev:

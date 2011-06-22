@@ -10,25 +10,9 @@ static ssize_t show_vm_info(struct class *cla,struct class_attribute *attr,char 
 {
     char *bstart,*vstart;
     unsigned int bsize;
-    get_vm_buf_info(&bstart,&bsize,&vstart);
+    get_vm_buf_info((const char **)&bstart,&bsize,&vstart);
     return snprintf(buf,80,"buffer:\n start:%x.\tsize:%d\n",(unsigned int)bstart,bsize/(1024*1024));
 }
-
-static ssize_t set_test(struct device *dev,
-					struct device_attribute *attr,
-					const char *buf, size_t count)
-{
-	//struct display_device *dsp = dev_get_drvdata(dev);
-	ssize_t ret = -EINVAL, size;
-	int contrast;
-	char *endp;
-
-	contrast = simple_strtoul(buf, &endp, 0);
-	size = endp - buf;
-
-	return ret;
-}
-
 
 static char attr_dat0[3]="-1";
 static ssize_t read_attr0(struct class *cla,struct class_attribute *attr,char *buf)
@@ -36,8 +20,8 @@ static ssize_t read_attr0(struct class *cla,struct class_attribute *attr,char *b
     return snprintf(buf,3,"%s",attr_dat0);
 }
 
-static ssize_t write_attr0(struct device *dev,
-					struct device_attribute *attr,
+static ssize_t write_attr0(struct class *cla,
+					struct class_attribute *attr,
 					const char *buf, size_t count)
 {
 	//struct display_device *dsp = dev_get_drvdata(dev);
@@ -73,8 +57,8 @@ static ssize_t read_attr1(struct class *cla,struct class_attribute *attr,char *b
     return snprintf(buf,3,"%s",attr_dat1);
 }
 
-static ssize_t write_attr1(struct device *dev,
-					struct device_attribute *attr,
+static ssize_t write_attr1(struct class *cla,
+					struct class_attribute *attr,
 					const char *buf, size_t count)
 {
 	//struct display_device *dsp = dev_get_drvdata(dev);
@@ -110,8 +94,8 @@ static ssize_t read_attr2(struct class *cla,struct class_attribute *attr,char *b
     return disable_gt2005;
 }
 
-static ssize_t write_attr2(struct device *dev,
-					struct device_attribute *attr,
+static ssize_t write_attr2(struct class *cla,
+					struct class_attribute *attr,
 					const char *buf, size_t count)
 {
 	//struct display_device *dsp = dev_get_drvdata(dev);

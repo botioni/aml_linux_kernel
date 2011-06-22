@@ -1494,11 +1494,6 @@ extern   int vm_fill_buffer(struct videobuf_buffer* vb , int v4l2_format , int m
 static void gt2005_fillbuff(struct gt2005_fh *fh, struct gt2005_buffer *buf)
 {
 	struct gt2005_device *dev = fh->dev;
-	int h , pos = 0;
-	int hmax  = buf->vb.height;
-	int wmax  = buf->vb.width;
-	struct timeval ts;
-	char *tmpbuf;
 	void *vbuf = videobuf_to_vmalloc(&buf->vb);
 	dprintk(dev,1,"%s\n", __func__);	
 	if (!vbuf)
@@ -1527,7 +1522,7 @@ static void gt2005_thread_tick(struct gt2005_fh *fh)
 	buf = list_entry(dma_q->active.next,
 			 struct gt2005_buffer, vb.queue);
     dprintk(dev, 1, "%s\n", __func__);
-    dprintk(dev, 1, "list entry get buf is %x\n",buf);
+    dprintk(dev, 1, "list entry get buf is %x\n",(unsigned)buf);
 
 	/* Nobody is waiting on this buffer, return */
 	if (!waitqueue_active(&buf->vb.done))
@@ -1556,7 +1551,6 @@ static void gt2005_sleep(struct gt2005_fh *fh)
 	struct gt2005_device *dev = fh->dev;
 	struct gt2005_dmaqueue *dma_q = &dev->vidq;
 
-	int timeout;
 	DECLARE_WAITQUEUE(wait, current);
 
 	dprintk(dev, 1, "%s dma_q=0x%08lx\n", __func__,
@@ -2283,10 +2277,10 @@ static void aml_gt2005_late_resume(struct early_suspend *h)
 static int gt2005_probe(struct i2c_client *client,
 			const struct i2c_device_id *id)
 {
-	int pgbuf;
 	int err;
 	struct gt2005_device *t;
 	struct v4l2_subdev *sd;
+	aml_plat_cam_data_t* plat_dat;
 	v4l_info(client, "chip found @ 0x%x (%s)\n",
 			client->addr << 1, client->adapter->name);
 	t = kzalloc(sizeof(*t), GFP_KERNEL);
@@ -2308,7 +2302,7 @@ static int gt2005_probe(struct i2c_client *client,
 	video_set_drvdata(t->vdev, t);
 
 	/* Register it */
-	aml_plat_cam_data_t* plat_dat= (aml_plat_cam_data_t*)client->dev.platform_data;
+	plat_dat= (aml_plat_cam_data_t*)client->dev.platform_data;
 	if (plat_dat) {
 		t->platform_dev_data.device_init=plat_dat->device_init;
 		t->platform_dev_data.device_uninit=plat_dat->device_uninit;
@@ -2344,7 +2338,7 @@ static int gt2005_remove(struct i2c_client *client)
 	return 0;
 }
 
-static int gt2005_suspend(struct i2c_client *client)
+static int gt2005_suspend(struct i2c_client *client, pm_message_t state)
 {
 	struct v4l2_subdev *sd = i2c_get_clientdata(client);
 	struct gt2005_device *t = to_dev(sd);	

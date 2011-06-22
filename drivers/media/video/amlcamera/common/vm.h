@@ -52,7 +52,7 @@ extern void stop_vpp_task(void);
 
 /* for vm private member. */
 extern void set_vm_buf_info(char* start,unsigned int size);
-extern void get_vm_buf_info(char** start,unsigned int* size,unsigned char** vaddr) ;
+extern void get_vm_buf_info(const char** start,unsigned int* size,char** vaddr) ;
 
 
 /*  vm buffer op. */

@@ -1345,11 +1345,6 @@ extern   int vm_fill_buffer(struct videobuf_buffer* vb , int v4l2_format , int m
 static void gc0308_fillbuff(struct gc0308_fh *fh, struct gc0308_buffer *buf)
 {
 	struct gc0308_device *dev = fh->dev;
-	int h , pos = 0;
-	int hmax  = buf->vb.height;
-	int wmax  = buf->vb.width;
-	struct timeval ts;
-	char *tmpbuf;
 	void *vbuf = videobuf_to_vmalloc(&buf->vb);
 	dprintk(dev,1,"%s\n", __func__);	
 	if (!vbuf)
@@ -1378,7 +1373,7 @@ static void gc0308_thread_tick(struct gc0308_fh *fh)
 	buf = list_entry(dma_q->active.next,
 			 struct gc0308_buffer, vb.queue);
     dprintk(dev, 1, "%s\n", __func__);
-    dprintk(dev, 1, "list entry get buf is %x\n",buf);
+    dprintk(dev, 1, "list entry get buf is %x\n",(unsigned)buf);
 
 	/* Nobody is waiting on this buffer, return */
 	if (!waitqueue_active(&buf->vb.done))
@@ -1407,7 +1402,6 @@ static void gc0308_sleep(struct gc0308_fh *fh)
 	struct gc0308_device *dev = fh->dev;
 	struct gc0308_dmaqueue *dma_q = &dev->vidq;
 
-	int timeout;
 	DECLARE_WAITQUEUE(wait, current);
 
 	dprintk(dev, 1, "%s dma_q=0x%08lx\n", __func__,
@@ -2122,7 +2116,7 @@ static void aml_gc0308_late_resume(struct early_suspend *h)
 static int gc0308_probe(struct i2c_client *client,
 			const struct i2c_device_id *id)
 {
-	int pgbuf;
+	aml_plat_cam_data_t* plat_dat;
 	int err;
 	struct gc0308_device *t;
 	struct v4l2_subdev *sd;
@@ -2147,7 +2141,7 @@ static int gc0308_probe(struct i2c_client *client,
 	video_set_drvdata(t->vdev, t);
 
 	/* Register it */
-	aml_plat_cam_data_t* plat_dat= (aml_plat_cam_data_t*)client->dev.platform_data;
+	plat_dat= (aml_plat_cam_data_t*)client->dev.platform_data;
 	if (plat_dat) {
 		t->platform_dev_data.device_init=plat_dat->device_init;
 		t->platform_dev_data.device_uninit=plat_dat->device_uninit;
@@ -2186,7 +2180,7 @@ static int gc0308_remove(struct i2c_client *client)
 	kfree(t);
 	return 0;
 }
-static int gc0308_suspend(struct i2c_client *client)
+static int gc0308_suspend(struct i2c_client *client, pm_message_t state)
 {
 	struct v4l2_subdev *sd = i2c_get_clientdata(client);
 	struct gc0308_device *t = to_dev(sd);	
