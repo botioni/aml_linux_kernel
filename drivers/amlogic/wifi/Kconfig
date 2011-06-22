@@ -221,7 +221,7 @@ config MRVLNH387_STA_SUPPORT
 config MRVLNH387_UAP_SUPPORT
 	depends on SDIO_MARVELL_NH387_WIFI
 	bool "Enable AP mode support"
-	default y
+	default n
 		---help---
 	  Enable AP mode support.
 config MRVLNH387_REASSOCIATION
