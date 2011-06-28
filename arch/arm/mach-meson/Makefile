@@ -12,7 +12,7 @@ obj-$(CONFIG_CPU_FREQ) 		+= cpu.o
 obj-$(CONFIG_ARCH_MESON)	+= pinmux.o
 obj-$(CONFIG_ARCH_MESON)	+= gpio.o
 obj-$(CONFIG_ARCH_MESON)	+= power_gate.o
-
+obj-$(CONFIG_ARCH_MESON)	+= sd_pad.o
 obj-$(CONFIG_ARCH_MESON)	+= lm.o usbclock.o sataclock.o clk_set.o sram.o sleep.o
 
 obj-$(CONFIG_MACH_MESON_8726M_REFA00)	+= board-8726m-refa00.o

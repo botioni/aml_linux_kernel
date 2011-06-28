@@ -184,13 +184,13 @@
 #define PREG_HGPIO_O                               0x2016
 #define PREG_HGPIO_I                               0x2017
 // ----------------------------
-// unused `define PREG_IGPIO_EN_N                     8'h18
-// unused `define PREG_IGPIO_O                        8'h19
-// unused `define PREG_IGPIO_I                        8'h1a
+#define PREG_IGPIO_EN_N                            0x2018
+#define PREG_IGPIO_O                               0x2019
+#define PREG_IGPIO_I                               0x201a
 // ----------------------------
-// unused `define PREG_JGPIO_EN_N                     8'h1b
-// unused `define PREG_JGPIO_O                        8'h1c
-// unused `define PREG_JGPIO_I                        8'h1d
+#define PREG_JGPIO_EN_N                            0x201b
+#define PREG_JGPIO_O                               0x201c
+#define PREG_JGPIO_I                               0x201d
 // ----------------------------
 // A9 and L2 chche
 // ----------------------------

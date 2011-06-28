@@ -253,4 +253,5 @@ extern int card_schedule_work(struct work_struct *work);
 extern int card_schedule_delayed_work(struct delayed_work *work, unsigned long delay);
 extern void card_release_host(struct card_host *host);
 
+extern void sd_io_init(struct memory_card *card);
 #endif
