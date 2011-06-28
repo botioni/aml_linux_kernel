@@ -23,9 +23,6 @@
 #include "sd_misc.h"
 #include "sd_protocol.h"
 
-
-unsigned SD_WORK_MODE;
-
 struct memory_card *card_find_card(struct card_host *host, u8 card_type); 
 
 void sd_insert_detector(struct memory_card *card)
