@@ -1,0 +1,14 @@
+menu "Meson3 platform type"
+	depends on ARCH_MESON3
+
+config MACH_MESON_M3_REFE00
+	select GENERIC_ALLOCATOR
+	bool "Support M3 (M3_SKT_V1) platform"
+	help
+	  Include support for the AMLOGIC M3 Socket Emulation Baseboard platform.
+
+config MESON_CLOCK_TICK_RATE
+    int "Clock Tick Rate"
+	default 25000000
+
+endmenu

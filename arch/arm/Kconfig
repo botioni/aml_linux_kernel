@@ -251,6 +251,20 @@ config ARCH_MESON
 	help
 	  Amlogic Meson series based systems
 
+config ARCH_MESON3
+	bool "Amlogic Meson3 series"
+	depends on MMU
+	select HOLES_IN_ZONE
+	select CPU_V7
+	select FIQ
+	select HAVE_CLK
+	select COMMON_CLKDEV
+	select ARCH_HAS_CPUFREQ
+	select GENERIC_TIME
+	select GENERIC_CLOCKEVENTS
+	help
+	  Amlogic Meson series based systems
+
 config ARCH_INTEGRATOR
 	bool "ARM Ltd. Integrator family"
 	select ARM_AMBA
@@ -869,6 +883,8 @@ source "arch/arm/mach-lh7a40x/Kconfig"
 source "arch/arm/mach-loki/Kconfig"
 
 source "arch/arm/mach-meson/Kconfig"
+
+source "arch/arm/mach-meson3/Kconfig"
 
 source "arch/arm/mach-msm/Kconfig"
 
