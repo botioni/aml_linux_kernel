@@ -567,3 +567,132 @@ void clk_disable(struct clk *clk)
 }
 EXPORT_SYMBOL(clk_disable);
 
+
+// -----------------------------------------
+// clk_util_clk_msr
+// -----------------------------------------
+// from twister_core.v
+//        .clk_to_msr_in          ( { 18'h0,                      // [63:46]
+//                                    cts_pwm_A_clk,              // [45]
+//                                    cts_pwm_B_clk,              // [44]
+//                                    cts_pwm_C_clk,              // [43]
+//                                    cts_pwm_D_clk,              // [42]
+//                                    cts_eth_rx_tx,              // [41]
+//                                    cts_pcm_mclk,               // [40]
+//                                    cts_pcm_sclk,               // [39]
+//                                    cts_vdin_meas_clk,          // [38]
+//                                    cts_vdac_clk[1],            // [37]
+//                                    cts_hdmi_tx_pixel_clk,      // [36]
+//                                    cts_mali_clk,               // [35]
+//                                    cts_sdhc_clk1,              // [34]
+//                                    cts_sdhc_clk0,              // [33]
+//                                    cts_audac_clkpi,            // [32]
+//                                    cts_a9_clk,                 // [31]
+//                                    cts_ddr_clk,                // [30]
+//                                    cts_vdac_clk[0],            // [29]
+//                                    cts_sar_adc_clk,            // [28]
+//                                    cts_enci_clk,               // [27]
+//                                    sc_clk_int,                 // [26]
+//                                    usb_clk_12mhz,              // [25]
+//                                    lvds_fifo_clk,              // [24]
+//                                    HDMI_CH3_TMDSCLK,           // [23]
+//                                    mod_eth_clk50_i,            // [22]
+//                                    mod_audin_amclk_i,          // [21]
+//                                    cts_btclk27,                // [20]
+//                                    cts_hdmi_sys_clk,           // [19]
+//                                    cts_led_pll_clk,            // [18]
+//                                    cts_vghl_pll_clk,           // [17]
+//                                    cts_FEC_CLK_2,              // [16]
+//                                    cts_FEC_CLK_1,              // [15]
+//                                    cts_FEC_CLK_0,              // [14]
+//                                    cts_amclk,                  // [13]
+//                                    vid2_pll_clk,               // [12]
+//                                    cts_eth_rmii,               // [11]
+//                                    cts_enct_clk,               // [10]
+//                                    cts_encl_clk,               // [9]
+//                                    cts_encp_clk,               // [8]
+//                                    clk81,                      // [7]
+//                                    vid_pll_clk,                // [6]
+//                                    aud_pll_clk,                // [5]
+//                                    misc_pll_clk,               // [4]
+//                                    ddr_pll_clk,                // [3]
+//                                    sys_pll_clk,                // [2]
+//                                    am_ring_osc_clk_out[1],     // [1]
+//                                    am_ring_osc_clk_out[0]} ),  // [0]
+//
+// For Example
+//
+// unsigend long    clk81_clk   = clk_util_clk_msr( 2,      // mux select 2
+//                                                  50 );   // measure for 50uS
+//
+// returns a value in "clk81_clk" in Hz
+//
+// The "uS_gate_time" can be anything between 1uS and 65535 uS, but the limitation is
+// the circuit will only count 65536 clocks.  Therefore the uS_gate_time is limited by
+//
+//   uS_gate_time <= 65535/(expect clock frequency in MHz)
+//
+// For example, if the expected frequency is 400Mhz, then the uS_gate_time should
+// be less than 163.
+//
+// Your measurement resolution is:
+//
+//    100% / (uS_gate_time * measure_val )
+//
+//
+unsigned int clk_util_clk_msr(unsigned int clk_mux)
+{
+    unsigned int regval = 0;
+    WRITE_CBUS_REG(MSR_CLK_REG0, 0);
+    // Set the measurement gate to 64uS
+    CLEAR_CBUS_REG_MASK(MSR_CLK_REG0, 0xffff);
+    SET_CBUS_REG_MASK(MSR_CLK_REG0, (64 - 1)); //64uS is enough for measure the frequence?
+    // Disable continuous measurement
+    // disable interrupts
+    CLEAR_CBUS_REG_MASK(MSR_CLK_REG0, ((1 << 18) | (1 << 17)));
+    CLEAR_CBUS_REG_MASK(MSR_CLK_REG0, (0x1f << 20));
+    SET_CBUS_REG_MASK(MSR_CLK_REG0, (clk_mux << 20) | // Select MUX
+                                    (1 << 19) |       // enable the clock
+									(1 << 16));       //enable measuring
+    // Wait for the measurement to be done
+    regval = READ_CBUS_REG(MSR_CLK_REG0);
+    do {
+        regval = READ_CBUS_REG(MSR_CLK_REG0);
+    } while (regval & (1 << 31));
+
+    // disable measuring
+    CLEAR_CBUS_REG_MASK(MSR_CLK_REG0, (1 << 16));
+    regval = (READ_CBUS_REG(MSR_CLK_REG2) + 31) & 0x000FFFFF;
+    // Return value in MHz*measured_val
+    return (regval >> 6);
+}
+
+unsigned  int get_system_clk(void)
+{
+    static unsigned int sys_freq = 0;
+    if (sys_freq == 0) {
+        sys_freq = (clk_util_clk_msr(SYS_PLL_CLK) * 1000000);
+    }
+    return sys_freq;
+}
+EXPORT_SYMBOL(get_system_clk);
+
+unsigned int get_mpeg_clk(void)
+{
+    static unsigned int clk81_freq = 0;
+    if (clk81_freq == 0) {
+        clk81_freq = (clk_util_clk_msr(CLK81) * 1000000);
+    }
+    return clk81_freq;
+}
+EXPORT_SYMBOL(get_mpeg_clk);
+
+unsigned int get_misc_pll_clk(void)
+{
+    static unsigned int freq = 0;
+    if (freq == 0) {
+        freq = (clk_util_clk_msr(MISC_PLL_CLK) * 1000000);
+    }
+    return freq;
+}
+EXPORT_SYMBOL(get_misc_pll_clk);

@@ -1584,7 +1584,7 @@ static void __init device_pinmux_init(void)
 static void __init  device_clk_setting(void)
 {
     /*eth clk*/
-    eth_clk_set(ETH_CLKSRC_MISC_CLK, 400 * CLK_1M, 50 * CLK_1M);
+    eth_clk_set(ETH_CLKSRC_MISC_CLK, get_misc_pll_clk(), (50 * CLK_1M));
 }
 
 static void disable_unused_model(void)
