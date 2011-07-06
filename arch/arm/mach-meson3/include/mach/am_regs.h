@@ -97,11 +97,6 @@
 #define IO_WIFI_BASE            0xC9300000
 #define IO_SATA_BASE            0xC9400000
 
-
-#define IO_CBUS_BASE			0xc1100000
-#define IO_AXI_BUS_BASE			0xc1300000
-#define IO_AHB_BUS_BASE			0xc9000000
-
 #define IO_CBUS_PHY_BASE        0xc1100000
 #define IO_AXI_BUS_PHY_BASE     0xc1300000
 #define IO_PL310_PHY_BASE       0xc4200000
@@ -136,6 +131,7 @@
 #define APB_REG_ADDR_VALID(reg) (((unsigned long)(reg) & 3) == 0)
 
 #include "regs.h"
+#include "ao_reg.h"
 #include "pctl.h"
 #include "dmc.h"
 #include "am_eth_reg.h"

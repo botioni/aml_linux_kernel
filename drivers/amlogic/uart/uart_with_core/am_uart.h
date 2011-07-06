@@ -29,15 +29,21 @@
 #define UART_RXINT_EN   (0x01<<27)
 #define UART_TXINT_EN   (0x01<<28)
 
-#define UART_BASEADDR0    ((void *)CBUS_REG_ADDR(UART0_WFIFO))
-#define UART_BASEADDR1    ((void *)CBUS_REG_ADDR(UART1_WFIFO))
+#if defined(CONFIG_ARCH_MESON3)
+#define UART_BASEADDR0  ((void *)P_AO_UART_WFIFO)      //AO UART
+#define UART_BASEADDR1  ((void *)CBUS_REG_ADDR(UART0_WFIFO))
+#define UART_BASEADDR2  ((void *)CBUS_REG_ADDR(UART1_WFIFO))
+#define UART_BASEADDR3  ((void *)CBUS_REG_ADDR(UART2_WFIFO))
+#else
+#define UART_BASEADDR0  ((void *)CBUS_REG_ADDR(UART0_WFIFO))
+#define UART_BASEADDR1  ((void *)CBUS_REG_ADDR(UART1_WFIFO))
+#endif
 
 #define UART_WFIFO      0
 #define UART_RFIFO      1
 #define UART_CONTROL    2
 #define UART_STATUS     3
 #define UART_MISC       4
-
 
 #define P_UART(uart_base,reg)    	CBUS_REG_ADDR(uart_base+reg)
 #define P_UART_WFIFO(uart_base)   	P_UART(uart_base,UART_WFIFO)

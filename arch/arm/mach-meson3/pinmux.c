@@ -90,57 +90,55 @@ EXPORT_SYMBOL(eth_set_pinmux);
 
 void uart_set_pinmux(int port, int uart_bank)
 {
-    if (port == UART_PORT_A) { /*PORT A ALWAYS_ON GPIOAO_0-> GPIOAO-3*/
+    if (port == UART_PORT_AO) { /*PORT AO ALWAYS_ON GPIOAO_0-> GPIOAO-3*/
         switch (uart_bank) {
-        case UART_A_GPIO_A00_A01_STD:/*UART_A_GPIO_A00_AO1_STD*/
-			/* FIXME, need re-implement*/
-            //SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_4, (0x3 << 12));
+        case UART_AO_GPIO_AO0_AO1_STD:/*UART_A_GPIO_A00_AO1_STD*/
+            SET_CBUS_REG_MASK(P_AO_RTI_PIN_MUX_REG, (3<<11));
             break;
-        case UART_A_GPIO_A00_A03_FULL:/*UART_A_GPIO_A00_AO3_FULL*/
-			/* FIXME, need re-implement*/
-            //SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_4, (0xf << 10));
+        case UART_AO_GPIO_AO0_AO3_FULL:/*UART_A_GPIO_A00_AO3_FULL*/
+            SET_CBUS_REG_MASK(P_AO_RTI_PIN_MUX_REG, (0xf<<9));
+            break;
+        default:
+            printk("UartAO pinmux set error\n");
+			break;
+        }
+	} else if (port == UART_PORT_A) { /*PORT A*/
+        switch (uart_bank) {
+        case UART_A_GPIO_X13_X14_STD:/*UART_A_GPIO_X13_X14_STD*/
+            SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_4, (0x3 << 12));
+            break;
+        case UART_A_GPIO_X13_X16_FULL:/*UART_A_GPIO_X13_X16_FULL*/
+            SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_4, (0xf << 10));
             break;
         default:
             printk("UartA pinmux set error\n");
 			break;
         }
-	} else if (port == UART_PORT_B) { /*PORT B*/
+    } else if (port == UART_PORT_B) { /*UART_B*/
         switch (uart_bank) {
-        case UART_B_GPIO_X13_X14_STD:/*UART_B_GPIO_X13_X14_STD*/
-            SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_4, (0x3 << 12));
+        case UART_B_GPIO_X17_X18_STD://GPIO+X17.X18
+            SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_4, (0x3 << 8));
             break;
-        case UART_B_GPIO_X13_X16_FULL:/*UART_B_GPIO_X13_X16_FULL*/
-            SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_4, (0xf << 10));
-            break;
+        case UART_B_GPIO_X17_X20_FULL://GPIO+X17.X20
+            SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_4, (0xf << 6));
+			break;
+        case UART_B_GPIO_X23_X24_STD://GPIO+X23.X24
+            SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_4, (0x3 << 4));
+			break;
         default:
             printk("UartB pinmux set error\n");
 			break;
         }
     } else if (port == UART_PORT_C) { /*UART_C*/
         switch (uart_bank) {
-        case UART_C_GPIO_X17_X18_STD://GPIO+X17.X18
-            SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_4, (0x3 << 8));
-            break;
-        case UART_C_GPIO_X17_X20_FULL://GPIO+X17.X20
-            SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_4, (0xf << 6));
-			break;
-        case UART_C_GPIO_X23_X24_STD://GPIO+X23.X24
-            SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_4, (0x3 << 4));
-			break;
-        default:
-            printk("UartC pinmux set error\n");
-			break;
-        }
-    } else if (port == UART_PORT_D) { /*UART_D*/
-        switch (uart_bank) {
-        case UART_D_GPIO_X21_X22_STD://GPIO+X21.X22
+        case UART_C_GPIO_X21_X22_STD://GPIO+X21.X22
             SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_4, (0x3 << 2));
             break;
-        case UART_D_GPIO_X21_X24_FULL://GPIO+X21.X24
+        case UART_C_GPIO_X21_X24_FULL://GPIO+X21.X24
             SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_4, (0xf << 0));
 			break;
         default:
-            printk("UartD pinmux set error\n");
+            printk("UartC pinmux set error\n");
 			break;
         }
     } else {

@@ -32,20 +32,20 @@ Bank0_GPIOY1-Y9
 int eth_set_pinmux(int bank_id, int clk_in_out_id, unsigned long ext_msk);
 
 /*UART*/
-#define UART_PORT_A                 (0)   /* ALWAYS_ON GPIOAO_0-> GPIOAO-3*/
-#define UART_PORT_B                 (1)
-#define UART_PORT_C                 (2)
-#define UART_PORT_D                 (3)
+#define UART_PORT_AO                (0)   /* ALWAYS_ON GPIOAO_0-> GPIOAO-3*/
+#define UART_PORT_A                 (1)
+#define UART_PORT_B                 (2)
+#define UART_PORT_C                 (3)
 
-#define UART_A_GPIO_A00_A01_STD     (0)
-#define UART_A_GPIO_A00_A03_FULL    (1)
-#define UART_B_GPIO_X13_X14_STD     (2)
-#define UART_B_GPIO_X13_X16_FULL    (3)
-#define UART_C_GPIO_X17_X18_STD     (4)
-#define UART_C_GPIO_X17_X20_FULL    (5)
-#define UART_C_GPIO_X23_X24_STD     (6)
-#define UART_D_GPIO_X21_X22_STD     (7)
-#define UART_D_GPIO_X21_X24_FULL    (8)
+#define UART_AO_GPIO_AO0_AO1_STD    (0)
+#define UART_AO_GPIO_AO0_AO3_FULL   (1)
+#define UART_A_GPIO_X13_X14_STD     (2)
+#define UART_A_GPIO_X13_X16_FULL    (3)
+#define UART_B_GPIO_X17_X18_STD     (4)
+#define UART_B_GPIO_X17_X20_FULL    (5)
+#define UART_B_GPIO_X23_X24_STD     (6)
+#define UART_C_GPIO_X21_X22_STD     (7)
+#define UART_C_GPIO_X21_X24_FULL    (8)
 
 void uart_set_pinmux(int port, int uart_bank);
 

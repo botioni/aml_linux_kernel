@@ -50,11 +50,17 @@
 
 #include <asm/serial.h>
 
-
-#define UART_NR	2
-
+#if defined(CONFIG_ARCH_MESON3)
+#define UART_NR     4
+/* --FIXME-- Because the ISA documents. Don't know the AO UART interrupt and UART2 interrupt*/
 static unsigned int uart_irqs[UART_NR] = { INT_UART,INT_UART_1 };
 static am_uart_t *uart_addr[UART_NR] = { UART_BASEADDR0,UART_BASEADDR1 };
+#else
+#define UART_NR     2
+static unsigned int uart_irqs[UART_NR] = { INT_UART,INT_UART_1 };
+static am_uart_t *uart_addr[UART_NR] = { UART_BASEADDR0,UART_BASEADDR1 };
+#endif
+
 
 #ifdef CONFIG_AM_UART0_SET_PORT_A
 static int default_index = 0;

@@ -855,24 +855,43 @@ static struct platform_device power_dev = {
 
 #if defined(CONFIG_AM_UART_WITH_S_CORE)
 
-#if defined(CONFIG_AM_UART0_SET_PORT_A)
-#define UART_0_PORT     UART_A
-#define UART_1_PORT     UART_B
-#define UART_2_PORT     UART_C
-#elif defined(CONFIG_AM_UART0_SET_PORT_B)
-#define UART_0_PORT     UART_B
-#define UART_1_PORT     UART_C
-#define UART_2_PORT     UART_A
-#elif defined(CONFIG_AM_UART0_SET_PORT_C)
-#define UART_0_PORT     UART_C
+#if defined(CONFIG_ARCH_MESON3)
+#if defined(CONFIG_AM_UART0_SET_PORT_AO)
+#define UART_0_PORT     UART_AO
 #define UART_1_PORT     UART_A
 #define UART_2_PORT     UART_B
+#define UART_3_PORT     UART_C
+#elif defined(CONFIG_AM_UART0_SET_PORT_A)
+#define UART_0_PORT     UART_A
+#define UART_1_PORT     UART_AO
+#define UART_2_PORT     UART_B
+#define UART_3_PORT     UART_C
+#elif defined(CONFIG_AM_UART0_SET_PORT_B)
+#define UART_0_PORT     UART_B
+#define UART_1_PORT     UART_AO
+#define UART_2_PORT     UART_A
+#define UART_3_PORT     UART_C
+#elif defined(CONFIG_AM_UART0_SET_PORT_C)
+#define UART_0_PORT     UART_C
+#define UART_1_PORT     UART_AO
+#define UART_2_PORT     UART_A
+#define UART_3_PORT     UART_B
 #endif
+#else  //CONFIG_ARCH_MESON3
+#if defined(CONFIG_AM_UART0_SET_PORT_A)
+#define UART_0_PORT     UART_A
+#define UART_2_PORT     UART_B
+#elif defined(CONFIG_AM_UART0_SET_PORT_B)
+#define UART_0_PORT     UART_B
+#define UART_2_PORT     UART_A
+#endif
+#endif //CONFIG_ARCH_MESON3
 
 static struct aml_uart_platform aml_uart_plat = {
     .uart_line[0]       =   UART_0_PORT,
     .uart_line[1]       =   UART_1_PORT,
-    .uart_line[2]       =   UART_2_PORT
+    .uart_line[2]       =   UART_2_PORT,
+    .uart_line[3]       =   UART_3_PORT
 };
 
 static struct platform_device aml_uart_device = {
@@ -1554,7 +1573,7 @@ static void __init device_pinmux_init(void)
 {
     clearall_pinmux();
     /*other deivce power on*/
-    uart_set_pinmux(UART_PORT_A, UART_A_GPIO_A00_A01_STD);
+    uart_set_pinmux(UART_PORT_AO, UART_AO_GPIO_AO0_AO1_STD);
     /*pinmux of eth*/
     eth_pinmux_init();
     set_audio_pinmux(AUDIO_IN_JTAG); // for MIC input
