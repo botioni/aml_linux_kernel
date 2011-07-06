@@ -1,7 +1,7 @@
 #
 # Automatically generated make config: don't edit
 # Linux kernel version: 2.6.34
-# Tue Jul  5 13:00:24 2011
+# Wed Jul  6 15:58:35 2011
 #
 CONFIG_ARM=y
 CONFIG_HOLES_IN_ZONE=y
@@ -529,10 +529,12 @@ CONFIG_EXTRA_FIRMWARE=""
 #
 # Char devices
 #
-# CONFIG_AM_UART_WITH_S_CORE is not set
+CONFIG_AM_UART_WITH_S_CORE=y
 # CONFIG_AM_UART_WITHOUT_S_CORE is not set
+CONFIG_AM_UART0_SET_PORT_AO=y
 # CONFIG_AM_UART0_SET_PORT_A is not set
 # CONFIG_AM_UART0_SET_PORT_B is not set
+# CONFIG_AM_UART0_SET_PORT_C is not set
 
 #
 # Amlogic RTC support
@@ -597,6 +599,7 @@ CONFIG_EFUSE=m
 #
 # Amlogic GPS Support
 #
+# CONFIG_AR1520_GPS is not set
 
 #
 # Block devices
@@ -1124,6 +1127,8 @@ CONFIG_SERIAL_NONSTANDARD=y
 # Non-8250 serial port support
 #
 # CONFIG_SERIAL_MAX3100 is not set
+CONFIG_SERIAL_CORE=y
+CONFIG_SERIAL_CORE_CONSOLE=y
 # CONFIG_SERIAL_TIMBERDALE is not set
 CONFIG_UNIX98_PTYS=y
 CONFIG_DEVPTS_MULTIPLE_INSTANCES=y
