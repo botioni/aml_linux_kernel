@@ -104,7 +104,7 @@ static int clk_set_rate_sys_pll(struct clk *clk, unsigned long rate)
     return ret;
 }
 
-static int clk_set_rate_other_pll(struct clk *clk, unsigned long rate)
+static int clk_set_rate_misc_pll(struct clk *clk, unsigned long rate)
 {
     unsigned long r = rate;
     int ret;
@@ -113,7 +113,7 @@ static int clk_set_rate_other_pll(struct clk *clk, unsigned long rate)
         r = r * 1000000;
     }
 
-    ret = other_pll_setting(0, r);
+    ret = misc_pll_setting(0, r);
 
     if (ret == 0) {
         clk->rate = r;
@@ -133,7 +133,7 @@ static int clk_set_rate_clk81(struct clk *clk, unsigned long rate)
         r = r * 1000000;
     }
 
-    father_clk = clk_get_sys("clk_other_pll", NULL);
+    father_clk = clk_get_sys("clk_misc_pll", NULL);
 
     r1 = clk_get_rate(father_clk);
 
@@ -210,12 +210,12 @@ static struct clk clk_sys_pll = {
     .set_rate   = clk_set_rate_sys_pll,
 };
 
-static struct clk clk_other_pll = {
-    .name       = "clk_other_pll",
+static struct clk clk_misc_pll = {
+    .name       = "clk_misc_pll",
     .rate       = 540000000,
     .min        = 200000000,
     .max        = 800000000,
-    .set_rate   = clk_set_rate_other_pll,
+    .set_rate   = clk_set_rate_misc_pll,
 };
 
 static struct clk clk_ddr_pll = {
@@ -340,8 +340,8 @@ static struct clk_lookup lookups[] = {
         .clk    = &clk_sys_pll,
     },
     {
-        .dev_id = "clk_other_pll",
-        .clk    = &clk_other_pll,
+        .dev_id = "clk_misc_pll",
+        .clk    = &clk_misc_pll,
     },
     {
         .dev_id = "clk_ddr_pll",
@@ -509,11 +509,11 @@ static int __init clk81_clock_setup(char *ptr)
 {
     int clock = clkparse(ptr, 0);
 
-    if (other_pll_setting(0, clock * 4) == 0) {
+    if (misc_pll_setting(0, clock * 4) == 0) {
         /* todo: uart baudrate depends on clk81, assume 115200 baudrate */
         int baudrate = (clock / (115200 * 4)) - 1;
 
-        clk_other_pll.rate = clock * 4;
+        clk_misc_pll.rate = clock * 4;
         clk81.rate = clock;
 
         WRITE_MPEG_REG(HHI_MPEG_CLK_CNTL,   // MPEG clk81 set to other/4

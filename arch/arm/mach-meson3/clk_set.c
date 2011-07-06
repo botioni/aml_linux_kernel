@@ -75,48 +75,6 @@ int auto_select_eth_clk(void)
     return -1;
 }
 
-/*
-out_freq=crystal_req*m/n
-out_freq=crystal_req*m/n-->
-n=crystal_req*m/out_freq
-m=out_freq*n/crystal_req
-*/
-int demod_apll_setting(unsigned crystal_req, unsigned out_freq)
-{
-    int n, m;
-    unsigned long crys_M, out_M, middle_freq;
-    if (!crystal_req) {
-        crystal_req = get_xtal_clock();
-    }
-    crys_M = crystal_req / 1000000;
-    out_M = out_freq / 1000000;
-    middle_freq = get_max_common_divisor(crys_M, out_M);
-    n = crys_M / middle_freq;
-    m = out_M / (middle_freq);
-
-    if (n > (1 << 5) - 1) {
-        printk(KERN_ERR "demod_apll_setting setting error, n is too bigger n=%d,crys_M=%ldM,out_M=%ldM\n",
-               n, crys_M, out_M);
-        return -1;
-    }
-    if (m > (1 << 9) - 1) {
-        printk(KERN_ERR "demod_apll_setting setting error, m is too bigger m=%d,crys_M=%ldM,out_M=%ldM\n",
-               m, crys_M, out_M);
-        return -2;
-    }
-    printk("demod_apll_setting crystal_req=%ld,out_freq=%ld,n=%d,m=%dM\n", crys_M, out_M, n, m);
-    /*==========Set Demod PLL, should be in system setting===========*/
-    //Set 1.2G PLL
-    CLEAR_CBUS_REG_MASK(HHI_DEMOD_PLL_CNTL, 0xFFFFFFFF);
-    SET_CBUS_REG_MASK(HHI_DEMOD_PLL_CNTL, n << 9 | m << 0); //
-
-    //Set 400M PLL
-    CLEAR_CBUS_REG_MASK(HHI_DEMOD_PLL_CNTL3, 0xFFFF0000);
-    SET_CBUS_REG_MASK(HHI_DEMOD_PLL_CNTL3, 0x0C850000); //400M 300M 240M enable
-    return 0;
-
-}
-
 int sys_clkpll_setting(unsigned crystal_freq, unsigned  out_freq)
 {
     int n, m;
@@ -155,7 +113,7 @@ int sys_clkpll_setting(unsigned crystal_freq, unsigned  out_freq)
     return 0;
 }
 
-int other_pll_setting(unsigned crystal_freq, unsigned  out_freq)
+int misc_pll_setting(unsigned crystal_freq, unsigned  out_freq)
 {
     int n, m, od;
     unsigned long crys_M, out_M, middle_freq;
