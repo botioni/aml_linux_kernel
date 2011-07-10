@@ -53,8 +53,8 @@
 #if defined(CONFIG_ARCH_MESON3)
 #define UART_NR     4
 /* --FIXME-- Because the ISA documents. Don't know the AO UART interrupt and UART2 interrupt*/
-static unsigned int uart_irqs[UART_NR] = { INT_UART,INT_UART_1 };
-static am_uart_t *uart_addr[UART_NR] = { UART_BASEADDR0,UART_BASEADDR1 };
+static unsigned int uart_irqs[UART_NR] = {INT_UART_AO, INT_UART_0, INT_UART_1, INT_UART_2};
+static am_uart_t *uart_addr[UART_NR] = {UART_BASEADDRAO, UART_BASEADDR0, UART_BASEADDR1, UART_BASEADDR2};
 #else
 #define UART_NR     2
 static unsigned int uart_irqs[UART_NR] = { INT_UART,INT_UART_1 };
@@ -62,7 +62,7 @@ static am_uart_t *uart_addr[UART_NR] = { UART_BASEADDR0,UART_BASEADDR1 };
 #endif
 
 
-#ifdef CONFIG_AM_UART0_SET_PORT_A
+#if defined(CONFIG_AM_UART0_SET_PORT_A) || defined(CONFIG_AM_UART0_SET_PORT_AO)
 static int default_index = 0;
 #else
 static int default_index = 1;
@@ -979,7 +979,7 @@ struct uart_driver am_uart_reg = {
 	.dev_name		= "ttyS",
 	.major			= 4,
 	.minor			= 64,
-	.nr                        = 2,
+	.nr                        = UART_NR,
 	.cons			= AM_UART_CONSOLE,
 };
 
