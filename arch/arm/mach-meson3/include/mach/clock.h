@@ -147,6 +147,7 @@ extern int set_sata_phy_clk(int sel);
 #define USB_CTL_INDEX_B 1
 extern void set_usb_ctl_por(int index, int por_flag);
 
+unsigned int clk_util_clk_msr(unsigned int clk_mux);
 unsigned int get_mpeg_clk(void );
 unsigned int get_system_clk(void );
 unsigned int get_misc_pll_clk(void );

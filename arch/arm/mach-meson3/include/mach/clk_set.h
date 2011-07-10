@@ -27,7 +27,7 @@
 #define CLK_1M                          (1000000)
 #define ETH_VALIDE_CLKSRC(clk,out_clk)  ((clk%out_clk)==0)
 
-int eth_clk_set(int selectclk, unsigned long clk_freq, unsigned long out_clk);
+int eth_clk_set(int selectclk, unsigned long clk_freq, unsigned long out_clk, unsigned int clk_invert);
 int sys_clkpll_setting(unsigned crystal_freq, unsigned out_freq);
 unsigned long get_xtal_clock(void);
 int misc_pll_setting(unsigned crystal_freq, unsigned  out_freq);

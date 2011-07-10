@@ -34,21 +34,22 @@ static int get_max_common_divisor(int a, int b)
 
 /*
     select clk:
-    5,6,7 sata
-    4-extern pad
-    3-other_pll_clk
-    2-ddr_pll_clk
-    1-APLL_CLK_OUT_400M
-    0----sys_pll_div3 (333~400Mhz)
+    7-SYS_PLL_DIV2_CLK
+    6-VID2_PLL_CLK
+    5-VID_PLL_CLK
+    4-AUDIO_PLL_CLK
+    3-DDR_PLL_CLK
+    2-MISC_PLL_CLK
+    1-SYS_PLL_CLK
+    0-XTAL (25Mhz)
 
     clk_freq:50M=50000000
     output_clk:50000000;
     aways,maybe changed for others?
-
 */
 
 
-int  eth_clk_set(int selectclk, unsigned long clk_freq, unsigned long out_clk)
+int eth_clk_set(int selectclk, unsigned long clk_freq, unsigned long out_clk, unsigned int clk_invert)
 {
     int n;
     printk("select eth clk-%d,source=%ld,out=%ld\n", selectclk, clk_freq, out_clk);
@@ -65,8 +66,6 @@ int  eth_clk_set(int selectclk, unsigned long clk_freq, unsigned long out_clk)
                    1 << 8 //enable clk
                   );
 
-    //writel(0x70b,(0xc1100000+0x1076*4));  // enable Ethernet clocks   for other clock 600/12
-    //writel(0x107,(0xc1100000+0x1076*4));  // enable Ethernet clocks   for sys clock 1200/3/8
     udelay(100);
     return 0;
 }
@@ -135,12 +134,12 @@ int misc_pll_setting(unsigned crystal_freq, unsigned  out_freq)
     n = crys_M / middle_freq;
     m = out_M / (middle_freq);
     if (n > (1 << 5) - 1) {
-        printk(KERN_ERR "other_pll_setting  error, n is too bigger n=%d,crys_M=%ldM,out=%ldM\n",
+        printk(KERN_ERR "misc_pll_setting  error, n is too bigger n=%d,crys_M=%ldM,out=%ldM\n",
                n, crys_M, out_M);
         return -1;
     }
     if (m > (1 << 9) - 1) {
-        printk(KERN_ERR "other_pll_setting  error, m is too bigger m=%d,crys_M=%ldM,out=%ldM\n",
+        printk(KERN_ERR "misc_pll_setting  error, m is too bigger m=%d,crys_M=%ldM,out=%ldM\n",
                m, crys_M, out_M);
         return -2;
     }
@@ -148,8 +147,8 @@ int misc_pll_setting(unsigned crystal_freq, unsigned  out_freq)
                    m |
                    n << 9 |
                    (od & 1) << 16
-                  ); // other PLL
-    printk(KERN_INFO "other pll setting to crystal_req=%ld,out_freq=%ld,n=%d,m=%d,od=%d\n", crys_M, out_M / (od + 1), n, m, od);
+                  ); // misc PLL
+    printk(KERN_INFO "misc pll setting to crystal_req=%ld,out_freq=%ld,n=%d,m=%d,od=%d\n", crys_M, out_M / (od + 1), n, m, od);
     return 0;
 }
 
@@ -191,7 +190,7 @@ int audio_pll_setting(unsigned crystal_freq, unsigned  out_freq)
                    m |
                    n << 9 |
                    (od & 1) << 14
-                  ); // other PLL
+                  ); // audio PLL
     printk(KERN_INFO "audio_pll_setting to crystal_req=%ld,out_freq=%ld,n=%d,m=%d,od=%d\n", crys_M, out_M / (od + 1), n, m, od);
     return 0;
 }
@@ -203,7 +202,7 @@ int video_pll_setting(unsigned crystal_freq, unsigned  out_freq, int powerdown, 
     int ret = 0;
     /*
     flags can used for od1/xd settings
-    FIXME:If we need can't exact setting this clock,Can used a pll table?
+    FIXME:If we needn't exact setting this clock,Can used a pll table?
     */
     if (!crystal_freq) {
         crystal_freq = get_xtal_clock();
@@ -211,10 +210,9 @@ int video_pll_setting(unsigned crystal_freq, unsigned  out_freq, int powerdown, 
     crys_M = crystal_freq / 1000000;
     out_M = out_freq / 1000000;
 
-    if (out_M < 400) {
-        /*if <400M, Od=1*/
-        od = 1;/*out=pll_out/(1<<od)
-                 */
+    if (out_M < 750) {
+        /* if <750M, Od=1 */
+        od = 1;/* out=pll_out/(1<<od) */
         out_M = out_M << 1;
     } else {
         od = 0;
@@ -235,12 +233,13 @@ int video_pll_setting(unsigned crystal_freq, unsigned  out_freq, int powerdown, 
     if (ret) {
         return ret;
     }
+	/* There are some differents between M1 and M3*/
     WRITE_MPEG_REG(HHI_VID_PLL_CNTL,
                    m |
-                   n << 9 |
-                   (od & 1) << 16 |
-                   (!!powerdown) << 15 /*is power down mode?*/
-                  ); // other PLL
+                   n << 10 |
+                   (od & 0x3) << 20 |
+                   (!!powerdown) << 30 /*is power down mode?*/
+                  ); // video PLL
     printk(KERN_INFO "video_pll_setting to crystal_req=%ld,out_freq=%ld,n=%d,m=%d,od=%d\n", crys_M, out_M / (od + 1), n, m, od);
     return 0;
 }

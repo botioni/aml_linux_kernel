@@ -204,7 +204,7 @@ static struct clk xtal_clk = {
 
 static struct clk clk_sys_pll = {
     .name       = "clk_sys_pll",
-    .rate       = 1200000000,
+    .rate       = 800000000,
     .min        = 200000000,
     .max        = 2000000000,
     .set_rate   = clk_set_rate_sys_pll,
@@ -212,7 +212,7 @@ static struct clk clk_sys_pll = {
 
 static struct clk clk_misc_pll = {
     .name       = "clk_misc_pll",
-    .rate       = 540000000,
+    .rate       = 800000000,
     .min        = 200000000,
     .max        = 800000000,
     .set_rate   = clk_set_rate_misc_pll,
@@ -226,7 +226,7 @@ static struct clk clk_ddr_pll = {
 
 static struct clk clk81 = {
     .name       = "clk81",
-    .rate       = 180000000,
+    .rate       = 200000000,
     .min        = 100000000,
     .max        = 400000000,
     .set_rate   = clk_set_rate_clk81,
@@ -234,7 +234,7 @@ static struct clk clk81 = {
 
 static struct clk a9_clk = {
     .name       = "a9_clk",
-    .rate       = 600000000,
+    .rate       = 800000000,
     .min        = 200000000,
     .max        = 800000000,
     .set_rate   = clk_set_rate_a9_clk,
@@ -496,10 +496,17 @@ static int __init a9_clock_setup(char *ptr)
 {
     init_clock = clkparse(ptr, 0);
 
-    if (sys_clkpll_setting(0, init_clock << 1) == 0) {
-        a9_clk.rate = init_clock;
-        clk_sys_pll.rate = init_clock << 1;
-    }
+	if(init_clock <=650000000) {
+        if (sys_clkpll_setting(0, init_clock << 1) == 0) {
+            a9_clk.rate = init_clock;
+            clk_sys_pll.rate = init_clock << 1;
+        }
+	} else {
+        if (sys_clkpll_setting(0, init_clock) == 0) {
+            a9_clk.rate = init_clock;
+            clk_sys_pll.rate = init_clock;
+        }
+	}
 
     return 0;
 }
@@ -515,18 +522,23 @@ static int __init clk81_clock_setup(char *ptr)
 
         clk_misc_pll.rate = clock * 4;
         clk81.rate = clock;
-
-        WRITE_MPEG_REG(HHI_MPEG_CLK_CNTL,   // MPEG clk81 set to other/4
-                       (1 << 12) |               // select other PLL
+        WRITE_MPEG_REG(HHI_MPEG_CLK_CNTL,   // MPEG clk81 set to misc/4
+                       (2 << 12) |               // select misc PLL
                        ((4 - 1) << 0) |          // div1
                        (1 << 7) |                // cntl_hi_mpeg_div_en, enable gating
-                       (1 << 8));                // Connect clk81 to the PLL divider output
+                       (1 << 8) |                // Connect clk81 to the PLL divider output
+					   (1 <<15));                // Production clock enable
 
         CLEAR_CBUS_REG_MASK(UART0_CONTROL, (1 << 19) | 0xFFF);
         SET_CBUS_REG_MASK(UART0_CONTROL, (baudrate & 0xfff));
 
         CLEAR_CBUS_REG_MASK(UART1_CONTROL, (1 << 19) | 0xFFF);
         SET_CBUS_REG_MASK(UART1_CONTROL, (baudrate & 0xfff));
+
+#if 0	/* FIXME need implement */
+        __raw_writel(((1 << 19) | 0xFFF), P_AO_UART_CONTROL);
+        __raw_writel((baudrate & 0xfff), P_AO_UART_CONTROL);
+#endif
     }
 
     return 0;
