@@ -18,75 +18,69 @@ static struct gpio_addr gpio_addrs[] = {
     [PREG_PAD_GPIO3] = {PREG_PAD_GPIO3_EN_N, PREG_PAD_GPIO3_O, PREG_PAD_GPIO3_I},
     [PREG_PAD_GPIO4] = {PREG_PAD_GPIO4_EN_N, PREG_PAD_GPIO4_O, PREG_PAD_GPIO4_I},
     [PREG_PAD_GPIO5] = {PREG_PAD_GPIO5_EN_N, PREG_PAD_GPIO5_O, PREG_PAD_GPIO5_I},
-    [PREG_PAD_GPIOAO] = {PREG_PAD_GPIO5_EN_N, PREG_PAD_GPIO5_O, PREG_PAD_GPIO5_I},
-    [PREG_JTAG_GPIO]={PREG_JTAG_GPIO_ADDR,PREG_JTAG_GPIO_ADDR,PREG_JTAG_GPIO_ADDR},
+	/*                  0xc8100024,          0xc8100024,        0xc8100028  */
+	/*  #define CBUS_REG_OFFSET(reg) ((reg) << 2)                           */
+	/*  #define CBUS_REG_ADDR(reg)   (IO_CBUS_BASE + CBUS_REG_OFFSET(reg))  */
+	/*  (0xc8100024 - IO_CBUS_BASE) >> 2                                     */
+#define TO_CBUS_OFFSET(reg)	(((reg) - IO_CBUS_BASE) >> 2) 
+    [PREG_PAD_GPIOAO] = {TO_CBUS_OFFSET(0xc8100024), TO_CBUS_OFFSET(0xc8100024), TO_CBUS_OFFSET(0xc8100028)},
 };
-
-char jtag_bits_map[][3] = {
-    [0] = {0, 4, 8},
-    [1] = {1, 5, 9},
-    [2] = {2, 6, 10},
-    [3] = {3, 7, 11},
-    [16] = {16, 19, 24},
-};
-
-static inline int gpio_bits(int type, gpio_bank_t bank, int bit)
-{
-    if ((bank == PREG_JTAG_GPIO) && (type < 3)) {
-        return jtag_bits_map[bit][type];
-    } else {
-        return bit;
-    }
-}
 
 int set_gpio_mode(gpio_bank_t bank, int bit, gpio_mode_t mode)
 {
+    unsigned long addr = gpio_addrs[bank].mode_addr;
 #ifdef CONFIG_EXGPIO
     if (bank >= EXGPIO_BANK0) {
         set_exgpio_mode(bank - EXGPIO_BANK0, bit, mode);
         return 0;
     }
 #endif
-    unsigned long addr = gpio_addrs[bank].mode_addr;
-    WRITE_CBUS_REG_BITS(addr, mode, gpio_bits(0, bank, bit), 1);
+    WRITE_CBUS_REG_BITS(addr, mode, bit, 1);
     return 0;
 }
 
 gpio_mode_t get_gpio_mode(gpio_bank_t bank, int bit)
 {
+    unsigned long addr = gpio_addrs[bank].mode_addr;
 #ifdef CONFIG_EXGPIO
     if (bank >= EXGPIO_BANK0) {
         return get_exgpio_mode(bank - EXGPIO_BANK0, bit);
     }
 #endif
-    unsigned long addr = gpio_addrs[bank].mode_addr;
-    return (READ_CBUS_REG_BITS(addr, gpio_bits(0, bank, bit), 1) > 0) ? (GPIO_INPUT_MODE) : (GPIO_OUTPUT_MODE);
+    return (READ_CBUS_REG_BITS(addr, bit, 1) > 0) ? (GPIO_INPUT_MODE) : (GPIO_OUTPUT_MODE);
 }
 
 
 int set_gpio_val(gpio_bank_t bank, int bit, unsigned long val)
 {
+    unsigned long addr = gpio_addrs[bank].out_addr;
+    unsigned int gpio_bit = 0;
 #ifdef CONFIG_EXGPIO
     if (bank >= EXGPIO_BANK0) {
         set_exgpio_val(bank - EXGPIO_BANK0, bit, val);
         return 0;
     }
 #endif
-    unsigned long addr = gpio_addrs[bank].out_addr;
-    WRITE_CBUS_REG_BITS(addr, val ? 1 : 0, gpio_bits(1, bank, bit), 1);
+	 /* AO output: Because GPIO enable and output use the same register, we need shift 16 bit*/
+	if(addr == TO_CBUS_OFFSET(0xc8100024)) { /* AO output need shift 16 bit*/
+		gpio_bit = bit + 16;
+	} else {
+		gpio_bit = bit;
+	}
+    WRITE_CBUS_REG_BITS(addr, val ? 1 : 0, gpio_bit, 1);
 
     return 0;
 }
 
 unsigned long  get_gpio_val(gpio_bank_t bank, int bit)
 {
+    unsigned long addr = gpio_addrs[bank].in_addr;
 #ifdef CONFIG_EXGPIO
     if (bank >= EXGPIO_BANK0) {
         return get_exgpio_val(bank - EXGPIO_BANK0, bit);
     }
 #endif
-    unsigned long addr = gpio_addrs[bank].in_addr;
-    return READ_CBUS_REG_BITS(addr, gpio_bits(2, bank, bit), 1);
+    return READ_CBUS_REG_BITS(addr, bit, 1);
 }
 
 int gpio_to_idx(unsigned gpio)
@@ -95,21 +89,38 @@ int gpio_to_idx(unsigned gpio)
     int bit = gpio & 0xFFFF;
     int idx = -1;
 
-    if (bank == PREG_PAD_GPIO0) {
-        if (bit < 4) {
-            idx = GPIOA_23_IDX - bit;
-        } else if (bit < 19) {
-            idx = GPIOA_IDX + bit - 4;
-        } else {
-            idx = GPIOB_IDX + bit - 19;
-        }
-    } else if (bank == PREG_PAD_GPIO1) {
+    switch(bank) {
+    case PREG_PAD_GPIO0:
+        idx = GPIOA_IDX + bit;
+		break;
+    case PREG_PAD_GPIO1:
+        idx = GPIOB_IDX + bit;
+		break;
+    case PREG_PAD_GPIO2:
         idx = GPIOC_IDX + bit;
-    } else if (bank == PREG_PAD_GPIO2) {
-        idx = GPIOD_IDX + bit + 2;
-    } else if (bank == PREG_PAD_GPIO3) {
-        idx = GPIOE_IDX + bit;
-    }
+		break;
+    case PREG_PAD_GPIO3:
+		if( bit < 20 ) {
+            idx = GPIO_BOOT_IDX + bit;
+		} else {
+            idx = GPIOX_IDX + (bit + 12);
+		}
+		break;
+    case PREG_PAD_GPIO4:
+        idx = GPIOX_IDX + bit;
+		break;
+    case PREG_PAD_GPIO5:
+		if( bit < 23 ) {
+            idx = GPIOY_IDX + bit;
+		} else {
+            idx = GPIO_CARD_IDX + (bit - 23) ;
+		}
+		break;
+    case PREG_PAD_GPIOAO:
+        idx = GPIOAO_IDX + bit;
+		break;
+	}
+
     return idx;
 }
 

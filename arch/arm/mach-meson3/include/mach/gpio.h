@@ -21,7 +21,6 @@ typedef enum gpio_bank {
     PREG_PAD_GPIO4,
     PREG_PAD_GPIO5,
 	PREG_PAD_GPIOAO,
-	PREG_JTAG_GPIO,
 #ifdef CONFIG_EXGPIO
     EXGPIO_BANK0,
     EXGPIO_BANK1,
@@ -67,25 +66,21 @@ unsigned long  get_gpio_val(gpio_bank_t bank, int bit);
 #define GPIOX_bit_bit0_31(bit)      (bit)
 
 #define GPIOX_bank_bit32_35(bit)    (PREG_PAD_GPIO3)
-#define GPIOX_bit_bit32_35(bit)     (bit+20)
+#define GPIOX_bit_bit32_35(bit)     (bit- 32 + 20)
 
 #define GPIOY_bank_bit0_22(bit)     (PREG_PAD_GPIO5)
 #define GPIOY_bit_bit0_22(bit)      (bit)
 
 enum {
-    GPIOA_IDX = 0,
-    GPIOB_IDX = 15,
-    GPIOC_IDX = 23,
-    GPIOD_IDX = 50,
-    GPIOE_IDX = 75,
-    GPIOA_26_IDX = 97,
-    GPIOA_25_IDX = 98,
-    GPIOA_24_IDX = 99,
-    GPIOA_23_IDX = 100,
-    JTAG_TCK_IDX = 101,
-    JTAG_TMS_IDX = 102,
-    JTAG_TDI_IDX = 103,
-    JTAG_TDO_IDX = 104,
+    GPIOY_IDX = 0,
+    GPIOX_IDX = 23,
+    GPIO_BOOT_IDX = 59,
+    GPIOD_IDX = 77,
+    GPIOC_IDX = 87,
+    GPIO_CARD_IDX = 103,
+    GPIOB_IDX = 112,
+    GPIOA_IDX = 136,
+    GPIOAO_IDX = 164,
 };
 
 extern int gpio_to_idx(unsigned gpio);

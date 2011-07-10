@@ -93,10 +93,10 @@ void uart_set_pinmux(int port, int uart_bank)
     if (port == UART_PORT_AO) { /*PORT AO ALWAYS_ON GPIOAO_0-> GPIOAO-3*/
         switch (uart_bank) {
         case UART_AO_GPIO_AO0_AO1_STD:/*UART_A_GPIO_A00_AO1_STD*/
-            SET_CBUS_REG_MASK(P_AO_RTI_PIN_MUX_REG, (3<<11));
+            __raw_writel((3<<11), P_AO_RTI_PIN_MUX_REG);
             break;
         case UART_AO_GPIO_AO0_AO3_FULL:/*UART_A_GPIO_A00_AO3_FULL*/
-            SET_CBUS_REG_MASK(P_AO_RTI_PIN_MUX_REG, (0xf<<9));
+            __raw_writel((0xf<<9), P_AO_RTI_PIN_MUX_REG);
             break;
         default:
             printk("UartAO pinmux set error\n");
