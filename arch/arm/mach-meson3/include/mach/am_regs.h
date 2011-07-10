@@ -68,7 +68,7 @@
 #endif
 
 #ifdef CONFIG_VMSPLIT_3G
-#define IO_ETH_BASE             0xf9010000
+#define IO_ETH_BASE             0xf9410000
 #define IO_USB_A_BASE           0xf9040000
 #define IO_USB_B_BASE           0xf90C0000
 #define IO_WIFI_BASE            0xf9300000
@@ -91,7 +91,7 @@
 #endif
 
 #ifdef CONFIG_VMSPLIT_2G
-#define IO_ETH_BASE             0xc9010000
+#define IO_ETH_BASE             0xc9410000
 #define IO_USB_A_BASE           0xC9040000
 #define IO_USB_B_BASE           0xC90C0000
 #define IO_WIFI_BASE            0xC9300000

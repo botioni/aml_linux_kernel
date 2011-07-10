@@ -854,44 +854,11 @@ static struct platform_device power_dev = {
 #endif
 
 #if defined(CONFIG_AM_UART_WITH_S_CORE)
-
-#if defined(CONFIG_ARCH_MESON3)
-#if defined(CONFIG_AM_UART0_SET_PORT_AO)
-#define UART_0_PORT     UART_AO
-#define UART_1_PORT     UART_A
-#define UART_2_PORT     UART_B
-#define UART_3_PORT     UART_C
-#elif defined(CONFIG_AM_UART0_SET_PORT_A)
-#define UART_0_PORT     UART_A
-#define UART_1_PORT     UART_AO
-#define UART_2_PORT     UART_B
-#define UART_3_PORT     UART_C
-#elif defined(CONFIG_AM_UART0_SET_PORT_B)
-#define UART_0_PORT     UART_B
-#define UART_1_PORT     UART_AO
-#define UART_2_PORT     UART_A
-#define UART_3_PORT     UART_C
-#elif defined(CONFIG_AM_UART0_SET_PORT_C)
-#define UART_0_PORT     UART_C
-#define UART_1_PORT     UART_AO
-#define UART_2_PORT     UART_A
-#define UART_3_PORT     UART_B
-#endif
-#else  //CONFIG_ARCH_MESON3
-#if defined(CONFIG_AM_UART0_SET_PORT_A)
-#define UART_0_PORT     UART_A
-#define UART_2_PORT     UART_B
-#elif defined(CONFIG_AM_UART0_SET_PORT_B)
-#define UART_0_PORT     UART_B
-#define UART_2_PORT     UART_A
-#endif
-#endif //CONFIG_ARCH_MESON3
-
 static struct aml_uart_platform aml_uart_plat = {
-    .uart_line[0]       =   UART_0_PORT,
-    .uart_line[1]       =   UART_1_PORT,
-    .uart_line[2]       =   UART_2_PORT,
-    .uart_line[3]       =   UART_3_PORT
+    .uart_line[0]       =   UART_AO,
+    .uart_line[1]       =   UART_A,
+    .uart_line[2]       =   UART_B,
+    .uart_line[3]       =   UART_C
 };
 
 static struct platform_device aml_uart_device = {
@@ -1557,15 +1524,22 @@ static void __init eth_pinmux_init(void)
     //set_gpio_mode(GPIOA_bank_bit(4),GPIOA_bit_bit0_14(4),GPIO_OUTPUT_MODE);
     //set_gpio_val(GPIOA_bank_bit(4),GPIOA_bit_bit0_14(4),1);
 
-    CLEAR_CBUS_REG_MASK(PREG_ETHERNET_ADDR0, 1);
-    SET_CBUS_REG_MASK(PREG_ETHERNET_ADDR0, (1 << 1));
-    SET_CBUS_REG_MASK(PREG_ETHERNET_ADDR0, 1);
+    CLEAR_CBUS_REG_MASK(PREG_ETHERNET_ADDR0, 1);           // Disable the Ethernet clocks
+	// ---------------------------------------------
+	// Test 50Mhz Input Divide by 2
+	// ---------------------------------------------
+	// Select divide by 2
+    CLEAR_CBUS_REG_MASK(PREG_ETHERNET_ADDR0, (1<<3));     // desc endianess "same order" 
+    CLEAR_CBUS_REG_MASK(PREG_ETHERNET_ADDR0, (1<<2));     // ata endianess "little"
+    SET_CBUS_REG_MASK(PREG_ETHERNET_ADDR0, (1 << 1));     // divide by 2 for 100M
+    SET_CBUS_REG_MASK(PREG_ETHERNET_ADDR0, 1);            // enable Ethernet clocks
     udelay(100);
     /* reset phy with GPIOA_23*/
     set_gpio_mode(GPIOA_bank_bit0_27(23), GPIOA_bit_bit0_27(23), GPIO_OUTPUT_MODE);
-    set_gpio_val(GPIOA_bank_bit0_27(16), GPIOA_bit_bit0_27(23), 0);
-    udelay(100);    //GPIOE_bank_bit16_21(16) reset end;
-    set_gpio_val(GPIOA_bank_bit0_27(16), GPIOA_bit_bit0_27(23), 1);
+    set_gpio_val(GPIOA_bank_bit0_27(23), GPIOA_bit_bit0_27(23), 0);
+    udelay(100);    //GPIOA_bank_bit0_27(23) reset end;
+    set_gpio_val(GPIOA_bank_bit0_27(23), GPIOA_bit_bit0_27(23), 1);
+    udelay(100);    //waiting reset end;
     aml_i2c_init();
 }
 
@@ -1583,8 +1557,8 @@ static void __init device_pinmux_init(void)
 
 static void __init  device_clk_setting(void)
 {
-    /*eth clk*/
-    eth_clk_set(ETH_CLKSRC_MISC_CLK, get_misc_pll_clk(), (50 * CLK_1M));
+    /*Configurate the ethernet clock*/
+    eth_clk_set(ETH_CLKSRC_MISC_CLK, get_misc_pll_clk(), (50 * CLK_1M), 0);
 }
 
 static void disable_unused_model(void)
@@ -1659,15 +1633,15 @@ static __init void m1_fixup(struct machine_desc *mach, struct tag *tag, char **c
     m->nr_banks++;
 }
 
-MACHINE_START(MESON_8726M, "AMLOGIC MESON-M1 8726M SZ")
-.phys_io        = MESON_PERIPHS1_PHYS_BASE,
- .io_pg_offst    = (MESON_PERIPHS1_PHYS_BASE >> 18) & 0xfffc,
-  .boot_params    = BOOT_PARAMS_OFFSET,
-   .map_io         = m1_map_io,
+MACHINE_START(MESON3_8726M_SKT, "AMLOGIC MESON3 8726M SKT SH")
+    .phys_io        = MESON_PERIPHS1_PHYS_BASE,
+    .io_pg_offst    = (MESON_PERIPHS1_PHYS_BASE >> 18) & 0xfffc,
+    .boot_params    = BOOT_PARAMS_OFFSET,
+    .map_io         = m1_map_io,
     .init_irq       = m1_irq_init,
-     .timer          = &meson_sys_timer,
-      .init_machine   = m1_init_machine,
-       .fixup          = m1_fixup,
-        .video_start    = RESERVED_MEM_START,
-         .video_end      = RESERVED_MEM_END,
-          MACHINE_END
+    .timer          = &meson_sys_timer,
+    .init_machine   = m1_init_machine,
+    .fixup          = m1_fixup,
+    .video_start    = RESERVED_MEM_START,
+    .video_end      = RESERVED_MEM_END,
+MACHINE_END
