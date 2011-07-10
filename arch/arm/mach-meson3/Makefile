@@ -15,7 +15,7 @@ obj-$(CONFIG_ARCH_MESON3)	+= power_gate.o
 
 obj-$(CONFIG_ARCH_MESON3)	+= lm.o usbclock.o clk_set.o sram.o sleep.o
 
-obj-$(CONFIG_MACH_MESON_M3_REFE00)	+= board-m3-refe00.o
+obj-$(CONFIG_MACH_MESON3_REFE00)	+= board-m3-refe00.o
 
 # Power Management
 obj-$(CONFIG_SUSPEND)			+= pm.o

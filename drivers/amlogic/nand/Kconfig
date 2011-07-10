@@ -6,7 +6,7 @@ menu "AMLOGIC NAND Flash support"
 
 config AM_NAND
 	bool "Amlogic NAND FLASH SUPPORT"
-	    depends on ARCH_MESON
+	    depends on AMLOGIC_SERIES
 	default y
         select MTD_NAND 
 	    select MTD_PARTITIONS

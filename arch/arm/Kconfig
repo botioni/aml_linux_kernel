@@ -208,6 +208,9 @@ config VECTORS_BASE
 	help
 	  The base address of exception vectors.
 
+config AMLOGIC_SERIES
+        bool
+
 source "init/Kconfig"
 
 source "kernel/Kconfig.freezer"
@@ -240,6 +243,7 @@ config ARCH_AAEC2000
 config ARCH_MESON
 	bool "Amlogic Meson series"
 	depends on MMU
+	select AMLOGIC_SERIES
 	select HOLES_IN_ZONE
 	select CPU_V7
 	select FIQ
@@ -254,6 +258,7 @@ config ARCH_MESON
 config ARCH_MESON3
 	bool "Amlogic Meson3 series"
 	depends on MMU
+	select AMLOGIC_SERIES
 	select HOLES_IN_ZONE
 	select CPU_V7
 	select FIQ

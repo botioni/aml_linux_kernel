@@ -2,7 +2,7 @@
 # Amlogic driver configuration
 #
 menu "Amlogic Device Drivers"
-	depends on ARCH_MESON || ARCH_MESON3
+	depends on AMLOGIC_SERIES
 #
 #	Char devices
 #

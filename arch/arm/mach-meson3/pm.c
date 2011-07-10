@@ -796,10 +796,10 @@ static void meson_pm_suspend(void)
                           1);                         // 1uS enable delay
     SET_CBUS_REG_MASK(HHI_SYS_PLL_CNTL, (1 << 15));     // turn off sys pll
 
-#if (defined CONFIG_MACH_MESON_8726M_REFC01) || (defined CONFIG_MACH_MESON_8726M_REFC03) || (defined CONFIG_MACH_MESON_8726M_REFC06)
-    WRITE_CBUS_REG(A9_0_IRQ_IN0_INTR_MASK, pdata->power_key);     // enable remote interrupt only
+#if defined(CONFIG_MACH_MESON3_REFE00) 
+    WRITE_CBUS_REG(SYS_CPU_0_IRQ_IN0_INTR_MASK, pdata->power_key);     // enable remote interrupt only
 #else
-    WRITE_CBUS_REG(A9_0_IRQ_IN2_INTR_MASK, pdata->power_key);     // enable rtc interrupt only
+    WRITE_CBUS_REG(SYS_CPU_0_IRQ_IN2_INTR_MASK, pdata->power_key);     // enable rtc interrupt only
 #endif
     meson_sram_suspend(pdata);
 
@@ -842,14 +842,14 @@ static void meson_pm_suspend(void)
 static int meson_pm_prepare(void)
 {
     printk(KERN_INFO "enter meson_pm_prepare!\n");
-    mask_save[0] = READ_CBUS_REG(A9_0_IRQ_IN0_INTR_MASK);
-    mask_save[1] = READ_CBUS_REG(A9_0_IRQ_IN1_INTR_MASK);
-    mask_save[2] = READ_CBUS_REG(A9_0_IRQ_IN2_INTR_MASK);
-    mask_save[3] = READ_CBUS_REG(A9_0_IRQ_IN3_INTR_MASK);
-    WRITE_CBUS_REG(A9_0_IRQ_IN0_INTR_MASK, 0x0);
-    WRITE_CBUS_REG(A9_0_IRQ_IN1_INTR_MASK, 0x0);
-    WRITE_CBUS_REG(A9_0_IRQ_IN2_INTR_MASK, 0x0);
-    WRITE_CBUS_REG(A9_0_IRQ_IN3_INTR_MASK, 0x0);
+    mask_save[0] = READ_CBUS_REG(SYS_CPU_0_IRQ_IN0_INTR_MASK);
+    mask_save[1] = READ_CBUS_REG(SYS_CPU_0_IRQ_IN1_INTR_MASK);
+    mask_save[2] = READ_CBUS_REG(SYS_CPU_0_IRQ_IN2_INTR_MASK);
+    mask_save[3] = READ_CBUS_REG(SYS_CPU_0_IRQ_IN3_INTR_MASK);
+    WRITE_CBUS_REG(SYS_CPU_0_IRQ_IN0_INTR_MASK, 0x0);
+    WRITE_CBUS_REG(SYS_CPU_0_IRQ_IN1_INTR_MASK, 0x0);
+    WRITE_CBUS_REG(SYS_CPU_0_IRQ_IN2_INTR_MASK, 0x0);
+    WRITE_CBUS_REG(SYS_CPU_0_IRQ_IN3_INTR_MASK, 0x0);
     meson_sram_push(meson_sram_suspend, meson_cpu_suspend,
                     meson_cpu_suspend_sz);
     return 0;
@@ -874,10 +874,10 @@ static int meson_pm_enter(suspend_state_t state)
 static void meson_pm_finish(void)
 {
     printk(KERN_INFO "enter meson_pm_finish!\n");
-    WRITE_CBUS_REG(A9_0_IRQ_IN0_INTR_MASK, mask_save[0]);
-    WRITE_CBUS_REG(A9_0_IRQ_IN1_INTR_MASK, mask_save[1]);
-    WRITE_CBUS_REG(A9_0_IRQ_IN2_INTR_MASK, mask_save[2]);
-    WRITE_CBUS_REG(A9_0_IRQ_IN3_INTR_MASK, mask_save[3]);
+    WRITE_CBUS_REG(SYS_CPU_0_IRQ_IN0_INTR_MASK, mask_save[0]);
+    WRITE_CBUS_REG(SYS_CPU_0_IRQ_IN1_INTR_MASK, mask_save[1]);
+    WRITE_CBUS_REG(SYS_CPU_0_IRQ_IN2_INTR_MASK, mask_save[2]);
+    WRITE_CBUS_REG(SYS_CPU_0_IRQ_IN3_INTR_MASK, mask_save[3]);
 }
 
 static struct platform_suspend_ops meson_pm_ops = {

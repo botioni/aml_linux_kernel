@@ -1,6 +1,6 @@
 config SND_AML_SOC
 	tristate "soc audio for AMLogic Ssystem-on-system"
-	depends on ARCH_MESON || ARCH_A1H || ARM
+	depends on AMLOGIC_SERIES || ARCH_A1H || ARM
 	help
 	  Say Y or M if you want to add support for codecs attached to
 	  the AMLogic I2S interface. You will also need

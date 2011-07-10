@@ -113,5 +113,5 @@ obj-$(CONFIG_VLYNQ)		+= vlynq/
 obj-$(CONFIG_STAGING)		+= staging/
 obj-y				+= platform/
 obj-y				+= ieee802154/
-obj-$(CONFIG_ARCH_MESON)	+= amlogic/
+obj-$(CONFIG_AMLOGIC_SERIES)	+= amlogic/
 obj-$(CONFIG_BT)		+= bluetooth/

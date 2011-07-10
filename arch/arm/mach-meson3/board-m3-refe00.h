@@ -31,7 +31,7 @@
 #define B32BpP  (4)
 #define DOUBLE_BUFFER   (2)
 
-#define OSD1_MAX_MEM        U_ALIGN(OSD_720_PIX*(CONFIG_FB_OSD1_DEFAULT_BITS_PER_PIXEL>>3)*DOUBLE_BUFFER)
+#define OSD1_MAX_MEM        U_ALIGN(OSD_1080_PIX*B32BpP*DOUBLE_BUFFER)
 #define OSD2_MAX_MEM        U_ALIGN(32*32*B32BpP)
 
 /******** Reserved memory configuration ***************/

@@ -118,7 +118,7 @@ void arm_machine_restart(char mode, const char *cmd)
 		}
 	}
     
-	flush_cache_vmap(sram_vaddr,sram_vaddr + 4);    
+	flush_cache_vmap((long unsigned int)sram_vaddr,(long unsigned int)(sram_vaddr + 4));    
  	mdelay(1000); 
          
 	/*
