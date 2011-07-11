@@ -434,7 +434,7 @@ static struct resource amlogic_card_resource[]  = {
         .flags = 0x200,
     }
 };
-
+//need check later
 void extern_wifi_power(int is_power)
 {
     if (0 == is_power) {
@@ -445,9 +445,9 @@ void extern_wifi_power(int is_power)
         level &= ~(1 << 2);
         setIO_level(1, level);
 #else
-        CLEAR_CBUS_REG_MASK(CARD_PIN_MUX_4, (1 << 4));
-        CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1 << 4));
-        SET_CBUS_REG_MASK(PREG_GGPIO_O, (1 << 4));
+        //CLEAR_CBUS_REG_MASK(CARD_PIN_MUX_4, (1 << 4));
+        //CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1 << 4));
+        //SET_CBUS_REG_MASK(PREG_GGPIO_O, (1 << 4));
 #endif
     } else {
 #ifdef CONFIG_TCA6424
@@ -467,13 +467,13 @@ void extern_wifi_power(int is_power)
 
 #else
         /*GPIOD_6 WIFI/BT EN*/
-        CLEAR_CBUS_REG_MASK(CARD_PIN_MUX_4, (1 << 4));
-        CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1 << 4));
-        SET_CBUS_REG_MASK(PREG_GGPIO_O, (1 << 4));
+        //CLEAR_CBUS_REG_MASK(CARD_PIN_MUX_4, (1 << 4));
+        //CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1 << 4));
+        //SET_CBUS_REG_MASK(PREG_GGPIO_O, (1 << 4));
         /*GPIOD_5 WIFI/BT SEL*/
-        CLEAR_CBUS_REG_MASK(CARD_PIN_MUX_4, (1 << 5));
-        CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1 << 3));
-        CLEAR_CBUS_REG_MASK(PREG_GGPIO_O, (1 << 3));
+        //CLEAR_CBUS_REG_MASK(CARD_PIN_MUX_4, (1 << 5));
+        //CLEAR_CBUS_REG_MASK(PREG_GGPIO_EN_N, (1 << 3));
+        //CLEAR_CBUS_REG_MASK(PREG_GGPIO_O, (1 << 3));
 #endif
     }
     return;
@@ -488,27 +488,27 @@ static struct aml_card_info  amlogic_card_info[] = {
     [0] = {
         .name = "sd_card",
         .work_mode = CARD_HW_MODE,
-        .io_pad_type = SDIO_GPIOA_9_14,
-        .card_ins_en_reg = EGPIO_GPIOD_ENABLE,
-        .card_ins_en_mask = PREG_IO_11_MASK,
-        .card_ins_input_reg = EGPIO_GPIOD_INPUT,
-        .card_ins_input_mask = PREG_IO_11_MASK,
-        .card_power_en_reg = 0,
-        .card_power_en_mask = 0,
-        .card_power_output_reg = 0,
-        .card_power_output_mask = 0,
+        .io_pad_type = SDIO_B_CARD_0_5,
+        .card_ins_en_reg = EGPIO_GPIOC_ENABLE,
+        .card_ins_en_mask = PREG_IO_29_MASK,
+        .card_ins_input_reg = EGPIO_GPIOC_INPUT,
+        .card_ins_input_mask = PREG_IO_29_MASK,
+        .card_power_en_reg = EGPIO_GPIOC_ENABLE,
+        .card_power_en_mask = PREG_IO_31_MASK,
+        .card_power_output_reg = EGPIO_GPIOC_INPUT,
+        .card_power_output_mask = PREG_IO_31_MASK,
         .card_power_en_lev = 0,
-        .card_wp_en_reg = EGPIO_GPIOA_ENABLE,
-        .card_wp_en_mask = PREG_IO_11_MASK,
-        .card_wp_input_reg = EGPIO_GPIOA_INPUT,
-        .card_wp_input_mask = PREG_IO_11_MASK,
+        .card_wp_en_reg = 0,
+        .card_wp_en_mask = 0,
+        .card_wp_input_reg = 0,
+        .card_wp_input_mask = 0,
         .card_extern_init = 0,
     },
 #if 1
     [1] = {
         .name = "sdio_card",
         .work_mode = CARD_HW_MODE,
-        .io_pad_type = SDIO_GPIOB_2_7,
+        .io_pad_type = SDIO_A_GPIOX_0_3,
         .card_ins_en_reg = 0,
         .card_ins_en_mask = 0,
         .card_ins_input_reg = 0,
@@ -521,10 +521,10 @@ static struct aml_card_info  amlogic_card_info[] = {
         .card_power_en_lev = 0,//1,
 #else
         /*GPIOD_8 WIFI RST*/
-        .card_power_en_reg = EGPIO_GPIOD_ENABLE,
-        .card_power_en_mask = PREG_IO_6_MASK,
-        .card_power_output_reg = EGPIO_GPIOD_OUTPUT,
-        .card_power_output_mask = PREG_IO_6_MASK,
+        .card_power_en_reg = EGPIO_GPIOB_ENABLE,
+        .card_power_en_mask = PREG_IO_11_MASK,
+        .card_power_output_reg = EGPIO_GPIOB_OUTPUT,
+        .card_power_output_mask = PREG_IO_11_MASK,
         .card_power_en_lev = 1,
 #endif
         .card_wp_en_reg = 0,
