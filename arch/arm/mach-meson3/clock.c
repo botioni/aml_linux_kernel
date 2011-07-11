@@ -523,7 +523,7 @@ static int __init clk81_clock_setup(char *ptr)
         clk_misc_pll.rate = clock * 4;
         clk81.rate = clock;
         WRITE_MPEG_REG(HHI_MPEG_CLK_CNTL,   // MPEG clk81 set to misc/4
-                       (2 << 12) |               // select misc PLL
+                       (1 << 12) |               // select SYS PLL
                        ((4 - 1) << 0) |          // div1
                        (1 << 7) |                // cntl_hi_mpeg_div_en, enable gating
                        (1 << 8) |                // Connect clk81 to the PLL divider output
