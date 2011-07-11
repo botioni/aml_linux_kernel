@@ -1,7 +1,7 @@
 #
 # Automatically generated make config: don't edit
 # Linux kernel version: 2.6.34
-# Sun Jul 10 18:48:20 2011
+# Mon Jul 11 17:35:53 2011
 #
 CONFIG_ARM=y
 CONFIG_HOLES_IN_ZONE=y
@@ -1873,9 +1873,7 @@ CONFIG_HAVE_ARCH_KGDB=y
 # CONFIG_DEBUG_USER is not set
 # CONFIG_DEBUG_ERRORS is not set
 # CONFIG_DEBUG_STACK_USAGE is not set
-CONFIG_DEBUG_LL=y
-# CONFIG_EARLY_PRINTK is not set
-# CONFIG_DEBUG_ICEDCC is not set
+# CONFIG_DEBUG_LL is not set
 # CONFIG_OC_ETM is not set
 
 #

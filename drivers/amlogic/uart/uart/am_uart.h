@@ -113,7 +113,7 @@ typedef volatile struct {
 
 #if defined(CONFIG_ARCH_MESON3)
 #define NR_PORTS         4
-#define UART_BASEADDRAO ((void *)P_AO_UART_WFIFO)      //AO UART
+#define UART_BASEADDRAO ((void *)AOBUS_REG_ADDR(AO_UART_WFIFO)) //AO UART
 #define UART_BASEADDR0  ((void *)CBUS_REG_ADDR(UART0_WFIFO))
 #define UART_BASEADDR1  ((void *)CBUS_REG_ADDR(UART1_WFIFO))
 #define UART_BASEADDR2  ((void *)CBUS_REG_ADDR(UART2_WFIFO))
