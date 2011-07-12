@@ -23,7 +23,7 @@
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>
 #include <mach/lm.h>
-
+#include <mach/usbclock.h>
 
 static const char * clock_src_name[] = {
     "XTAL input",

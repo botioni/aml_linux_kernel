@@ -471,6 +471,8 @@
 #define PREI_USB_PHY_REG                           0x2100 //0xC1108400
 #define PREI_USB_PHY_A_REG1                        0x2101
 #define PREI_USB_PHY_B_REG1                        0x2102
+#define PREI_USB_PHY_A_REG3           0x2103
+#define PREI_USB_PHY_B_REG4           0x2104
 
 #define PREI_USB_PHY_A_POR                         (1 << 0)
 #define PREI_USB_PHY_B_POR                         (1 << 1)
@@ -487,6 +489,12 @@
 #define PREI_USB_PHY_B_CLK_DETECT                  (1 << 22)
 #define PREI_USB_PHY_CLK_DIV                       (0x7f << 24)
 #define PREI_USB_PHY_A_CLK_DETECT                  (1 << 31)
+
+#define PREI_USB_PHY_MODE_MASK   (3 << 22)
+
+#define PREI_USB_PHY_MODE_HW        (0<<22)
+#define PREI_USB_PHY_MODE_SW_HOST      (2<<22)
+#define PREI_USB_PHY_MODE_SW_SLAVE        (3 << 22)
 
 #define USB_PHY_TUNE_MASK_REFCLKDIV                (3 << 29)
 #define USB_PHY_TUNE_MASK_REFCLKSEL                (3 << 27 )
