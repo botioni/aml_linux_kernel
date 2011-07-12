@@ -809,8 +809,11 @@ static void am_uart_start_port(struct am_uart_port *am_port)
   clear_mask(&uart->mode, UART_RXRST);
 
   set_mask(&uart->mode, UART_RXINT_EN | UART_TXINT_EN);
-  __raw_writel(1 << 7 | 1, &uart->intctl);
-
+#if defined(CONFIG_ARCH_MESON3)
+        __raw_writel(1 << 8 | 1, &uart->intctl);
+#else
+        __raw_writel(1 << 7 | 1, &uart->intctl);
+#endif
   clear_mask(&uart->mode, (1 << 19)) ;
        
 	sprintf(am_port->name,"UART_ttyS%d:",am_port->line);

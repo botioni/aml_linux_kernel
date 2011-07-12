@@ -1151,7 +1151,11 @@ static int __init am_uart_init(void)
 		__raw_writel(/*1 << 7 | */0x1, &uart->intctl);
 #else
         set_mask(&uart->mode, UART_RXINT_EN | UART_TXINT_EN);
+#if defined(CONFIG_ARCH_MESON3)
+        __raw_writel(1 << 8 | 1, &uart->intctl);
+#else
         __raw_writel(1 << 7 | 1, &uart->intctl);
+#endif
 #endif
 
         clear_mask(&uart->mode, (1 << 19)) ;
