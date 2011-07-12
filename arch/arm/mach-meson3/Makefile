@@ -12,6 +12,7 @@ obj-$(CONFIG_CPU_FREQ) 		+= cpu.o
 obj-$(CONFIG_ARCH_MESON3)	+= pinmux.o
 obj-$(CONFIG_ARCH_MESON3)	+= gpio.o
 obj-$(CONFIG_ARCH_MESON3)	+= power_gate.o
+obj-$(CONFIG_ARCH_MESON3)	+= sd_pad.o
 
 obj-$(CONFIG_ARCH_MESON3)	+= lm.o usbclock.o clk_set.o sram.o sleep.o
 

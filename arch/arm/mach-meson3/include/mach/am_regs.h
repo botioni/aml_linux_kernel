@@ -147,7 +147,7 @@
 #define AOBUS_REG_ADDR(reg)	 (IO_AOBUS_BASE + AOBUS_REG_OFFSET(reg))
 
 #include "regs.h"
-#include "ao_reg.h"
+#include "ao_regs.h"
 #include "pctl.h"
 #include "dmc.h"
 #include "am_eth_reg.h"

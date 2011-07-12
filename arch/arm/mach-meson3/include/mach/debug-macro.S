@@ -12,24 +12,23 @@
 */
 
 #include "hardware.h"
-#include <mach/ao_reg.h>
 
 
-#define UART_WFIFO      (0<<2)
-#define UART_RFIFO      (1<<2)
-#define UART_CONTROL    (2<<2)
-#define UART_STATUS     (3<<2)
-#define UART_MISC       (4<<2)
+#define UART_WFIFO                              (0<<2)
+#define UART_RFIFO                              (1<<2)
+#define UART_CONTROL                            (2<<2)
+#define UART_STATUS                             (3<<2)
+#define UART_MISC                               (4<<2)
 
-    #define UART_STAT_MASK_RFIFO_CNT                (0x7f<<0)
-    #define UART_STAT_MASK_TFIFO_CNT                (0x7f<<8)
-    #define UART_STAT_MASK_PRTY_ERR                 (1<<16)
-    #define UART_STAT_MASK_FRAM_ERR                 (1<<17)
-    #define UART_STAT_MASK_WFULL_ERR                (1<<18)
-    #define UART_STAT_MASK_RFIFO_FULL               (1<<19)
-    #define UART_STAT_MASK_RFIFO_EMPTY              (1<<20)
-    #define UART_STAT_MASK_TFIFO_FULL               (1<<21)
-    #define UART_STAT_MASK_TFIFO_EMPTY              (1<<22)
+#define UART_STAT_MASK_RFIFO_CNT                (0x7f<<0)
+#define UART_STAT_MASK_TFIFO_CNT                (0x7f<<8)
+#define UART_STAT_MASK_PRTY_ERR                 (1<<16)
+#define UART_STAT_MASK_FRAM_ERR                 (1<<17)
+#define UART_STAT_MASK_WFULL_ERR                (1<<18)
+#define UART_STAT_MASK_RFIFO_FULL               (1<<19)
+#define UART_STAT_MASK_RFIFO_EMPTY              (1<<20)
+#define UART_STAT_MASK_TFIFO_FULL               (1<<21)
+#define UART_STAT_MASK_TFIFO_EMPTY              (1<<22)
 
 		.macro	addruart, rx, tmp
 @		ldr	\rx, =AOBUS_REG_ADDR(AO_UART_WFIFO)		@ physical
