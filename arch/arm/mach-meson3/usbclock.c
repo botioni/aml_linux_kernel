@@ -158,6 +158,52 @@ int set_usb_phy_clk(int rate)
 
 EXPORT_SYMBOL(set_usb_phy_clk);
 
+int set_usb_phy_id_mode(unsigned int port,unsigned int mode)
+{
+    int i;
+    int time_dly = 50000;
+    unsigned int reg;
+
+    if(port == USB_PHY_PORT_A)
+    {
+        reg = PREI_USB_PHY_A_REG3;
+    }
+    else if(port == USB_PHY_PORT_B)
+    {
+        reg = PREI_USB_PHY_B_REG4;
+    }
+    else
+    {
+        printk("this usb port is not exit!\n");
+        return -1;
+    }
+
+    CLEAR_CBUS_REG_MASK(reg, PREI_USB_PHY_MODE_MASK);
+    i=0;
+    while(i++<time_dly){};
+    
+    switch(mode)
+    {
+        case USB_PHY_MODE_SW_HOST:
+            SET_CBUS_REG_MASK(reg, PREI_USB_PHY_MODE_SW_HOST);
+            break;
+			
+        case USB_PHY_MODE_SW_SLAVE:
+            SET_CBUS_REG_MASK(reg, PREI_USB_PHY_MODE_SW_SLAVE);
+            break;
+			
+        case USB_PHY_MODE_HW:
+        default:
+            SET_CBUS_REG_MASK(reg, PREI_USB_PHY_MODE_HW);
+            break;
+    }
+    
+    i=0;
+    while(i++<time_dly){};
+
+    return 0;
+}
+EXPORT_SYMBOL(set_usb_phy_id_mode);
 
 /*
  * Don't call this function when usb device is operating.
