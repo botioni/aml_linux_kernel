@@ -197,12 +197,12 @@ void sd_sdio_enable(SDIO_Pad_Type_t io_pad_type)
 			break;
 
 		case SDIO_B_CARD_0_5:
-			SET_CBUS_REG_MASK(CARD_PIN_MUX_2, (0x3F<<0));
+			SET_CBUS_REG_MASK(CARD_PIN_MUX_2, (0x3F<<10));
 			SET_CBUS_REG_MASK(SDIO_MULT_CONFIG, (1));
 			break;
 
 		case SDIO_C_BOOT_0_3:
-			SET_CBUS_REG_MASK(CARD_PIN_MUX_6, (0x3F<<22));
+			SET_CBUS_REG_MASK(CARD_PIN_MUX_6, (0x3F<<24));
 			SET_CBUS_REG_MASK(SDIO_MULT_CONFIG, (2));
 			break;
 
@@ -224,12 +224,12 @@ void sd_gpio_enable(SDIO_Pad_Type_t io_pad_type)
 			break;
 
 		case SDIO_B_CARD_0_5:
-			CLEAR_CBUS_REG_MASK(CARD_PIN_MUX_2, (0x3F<<0));
+			CLEAR_CBUS_REG_MASK(CARD_PIN_MUX_2, (0x3F<<10));
 			CLEAR_CBUS_REG_MASK(SDIO_MULT_CONFIG, (1));
 			break;
 
 		case SDIO_C_BOOT_0_3:
-			CLEAR_CBUS_REG_MASK(CARD_PIN_MUX_6, (0x3F<<22));
+			CLEAR_CBUS_REG_MASK(CARD_PIN_MUX_6, (0x3F<<24));
 			CLEAR_CBUS_REG_MASK(SDIO_MULT_CONFIG, (2));
 			break;
 
