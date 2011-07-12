@@ -13,6 +13,7 @@
 #include <linux/clk.h>
 #include <linux/init.h>
 #include <linux/spinlock.h>
+#include <linux/delay.h>
 
 #include <asm/clkdev.h>
 #include <mach/clock.h>
@@ -494,19 +495,42 @@ unsigned long long clkparse(const char *ptr, char **retptr)
 
 static int __init a9_clock_setup(char *ptr)
 {
-    init_clock = clkparse(ptr, 0);
+    unsigned long flags;
+	unsigned int ration = 0;
+	init_clock = clkparse(ptr, 0);
 
-	if(init_clock <=650000000) {
-        if (sys_clkpll_setting(0, init_clock << 1) == 0) {
-            a9_clk.rate = init_clock;
-            clk_sys_pll.rate = init_clock << 1;
+    if ((800 * CLK_1M) % init_clock) {
+        printk("Can not support this cpu clock!\n");
+        return -1;
+    } else {
+
+        ration = (800 * CLK_1M) / init_clock;
+        if ((ration < 4) || (ration % 2)) {
+            printk("Get valid ration(%d) for a9 clock\n", ration);
+
+        } else if (((ration % 2) == 0) && (ration <= 128)) {
+            printk("Get valid ration(%d) for a9 clock\n", ration);
+        } else {
+            printk("Can not support this cpu clock!\n");
+            return -1;
         }
-	} else {
-        if (sys_clkpll_setting(0, init_clock) == 0) {
-            a9_clk.rate = init_clock;
-            clk_sys_pll.rate = init_clock;
-        }
-	}
+    }
+    if (sys_clkpll_setting(0, 800 * CLK_1M) == 0) {
+        a9_clk.rate = init_clock;
+        clk_sys_pll.rate = 800 * CLK_1M;
+        local_irq_save(flags);
+        WRITE_MPEG_REG(HHI_SYS_CPU_CLK_CNTL, // A9 clk set to system clock/2
+                       (1 << 0) |  // 1 - sys pll clk
+                       ((ration<3? (ration-1):3) << 2) |  // sys pll div 2
+                       (1 << 4) |  // APB_CLK_ENABLE
+                       (1 << 5) |  // AT_CLK_ENABLE
+                       (1 << 7) |  // Connect A9 to the PLL divider output
+                       ((ration<3? 0:(ration/2)-1) << 8));  // Connect A9 to the PLL divider output
+		printk("********%s: READ_MPEG_REG(HHI_SYS_CPU_CLK_CNTL) = 0x%x\n", __FUNCTION__, READ_MPEG_REG(HHI_SYS_CPU_CLK_CNTL));
+        udelay(100);
+		printk("********%s: clk_util_clk_msr(31) = %dMHz\n", __FUNCTION__, clk_util_clk_msr(31));
+        local_irq_restore(flags);
+    }
 
     return 0;
 }
