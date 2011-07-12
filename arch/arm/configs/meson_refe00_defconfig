@@ -630,7 +630,13 @@ CONFIG_AM_GPIO=y
 #
 # Amlogic Card support
 #
-# CONFIG_CARDREADER is not set
+CONFIG_CARDREADER=y
+CONFIG_SD_MMC=y
+# CONFIG_SDIO is not set
+# CONFIG_AM_ATA is not set
+# CONFIG_MS_MSPRO is not set
+# CONFIG_XD is not set
+# CONFIG_INAND is not set
 
 #
 # AMLOGIC SPI NOR Flash  support
