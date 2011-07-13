@@ -38,6 +38,7 @@
 #include <mach/power_gate.h>
 #include <linux/aml_bl.h>
 #include <linux/delay.h>
+#include <mach/usbclock.h>
 
 #ifdef CONFIG_AM_UART_WITH_S_CORE
 #include <linux/uart-aml.h>
@@ -282,7 +283,7 @@ static struct platform_device amlogic_spi_nor_device = {
 static void set_usb_a_vbus_power(char is_power_on)
 {
 	/* USB a power is controled by GPIOD_09*/
-#define USB_A_POW_GPIO			PREG_PAD_GPIO2
+#define USB_A_POW_GPIO			       GPIOD_bank_bit0_9(9)
 #define USB_A_POW_GPIO_BIT		GPIOD_bit_bit0_9(9)
 #define USB_A_POW_GPIO_BIT_ON   1
 #define USB_A_POW_GPIO_BIT_OFF  0
@@ -1582,6 +1583,7 @@ static __init void m1_init_machine(void)
 
 #ifdef CONFIG_USB_DWC_OTG_HCD
     set_usb_phy_clk(USB_PHY_CLOCK_SEL_XTAL_DIV2);
+    set_usb_phy_id_mode(USB_PHY_PORT_B,USB_PHY_MODE_SW_HOST);
     lm_device_register(&usb_ld_a);
     lm_device_register(&usb_ld_b);
 #endif
