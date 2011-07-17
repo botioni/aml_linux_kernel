@@ -12,7 +12,7 @@
 #include <linux/init.h>
 #include <linux/genalloc.h>
 #include <linux/io.h>
-
+#include <mach/am_regs.h>
 #include <mach/sram.h>
 
 static struct gen_pool *sram_pool;
@@ -43,7 +43,7 @@ EXPORT_SYMBOL(sram_free);
 static int __init sram_init(void)
 {
     int status = 0;
-    sram_vaddr = (int)ioremap(0xc9000000, SRAM_SIZE);
+    sram_vaddr = (int)ioremap(IO_AHB_BUS_PHY_BASE, SRAM_SIZE);
     printk("sram vaddr = %x", sram_vaddr);
 
     sram_pool = gen_pool_create(ilog2(SRAM_GRANULARITY), -1);
@@ -51,7 +51,7 @@ static int __init sram_init(void)
         status = -ENOMEM;
     }
     if (sram_pool) {
-        status = gen_pool_add(sram_pool, sram_vaddr /*SRAM_VIRT*/, SRAM_SIZE, -1);
+        status = gen_pool_add(sram_pool, sram_vaddr, SRAM_SIZE, -1);
     }
     WARN_ON(status < 0);
     return status;
