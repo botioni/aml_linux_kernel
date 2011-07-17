@@ -86,16 +86,20 @@
 #define IO_CBUS_PHY_BASE        0xc1100000
 #define IO_AXI_BUS_PHY_BASE     0xc1300000
 #define IO_PL310_PHY_BASE       0xc4200000
+#define IO_PERIPH_PHY_BASE      0xc4300000
 #define IO_APB_BUS_PHY_BASE     0xc8000000
 #define IO_AOBUS_PHY_BASE       0xc8100000
 #define IO_AHB_BUS_PHY_BASE     0xc9000000
+#define IO_APB2_BUS_PHY_BASE    0xd0000000
 
 #define IO_CBUS_BASE            0xf1100000
 #define IO_AXI_BUS_BASE         0xf1300000
 #define IO_PL310_BASE           0xf4200000
+#define IO_PERIPH_BASE          0xf4300000
 #define IO_APB_BUS_BASE         0xf8000000
 #define IO_AOBUS_BASE           0xf8100000
 #define IO_AHB_BUS_BASE         0xf9000000
+#define IO_APB2_BUS_BASE        0xfa000000
 
 #define MESON_PERIPHS1_VIRT_BASE    0xf1108400
 #define MESON_PERIPHS1_PHYS_BASE    0xc1108400

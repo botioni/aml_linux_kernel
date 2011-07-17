@@ -147,19 +147,29 @@ static __initdata struct map_desc meson_io_desc[] = {
         .length     = SZ_4K,
         .type       = MT_DEVICE,
     } , {
+        .virtual    = IO_PERIPH_BASE,
+        .pfn        = __phys_to_pfn(IO_PERIPH_PHY_BASE),
+        .length     = SZ_4K,
+        .type       = MT_DEVICE,
+    } , {
         .virtual    = IO_APB_BUS_BASE,
         .pfn        = __phys_to_pfn(IO_APB_BUS_PHY_BASE),
-        .length     = SZ_512K,
+        .length     = SZ_16K,
         .type       = MT_DEVICE,
     } , {
         .virtual    = IO_AOBUS_BASE,
         .pfn        = __phys_to_pfn(IO_AOBUS_PHY_BASE),
-        .length     = SZ_2K,
+        .length     = SZ_1M,
         .type       = MT_DEVICE,
     } , {
         .virtual    = IO_AHB_BUS_BASE,
         .pfn        = __phys_to_pfn(IO_AHB_BUS_PHY_BASE),
         .length     = SZ_16M,
+        .type       = MT_DEVICE,
+    } , {
+        .virtual    = IO_APB2_BUS_BASE,
+        .pfn        = __phys_to_pfn(IO_APB2_BUS_PHY_BASE),
+        .length     = SZ_512K,
         .type       = MT_DEVICE,
     }
 };

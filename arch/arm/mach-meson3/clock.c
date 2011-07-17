@@ -498,6 +498,8 @@ static int __init a9_clock_setup(char *ptr)
 {
     unsigned long flags;
 	int od;
+    int i, ret=0;
+
 	init_clock = clkparse(ptr, 0);
 
     od = sys_clkpll_setting(0, init_clock);
@@ -507,7 +509,10 @@ static int __init a9_clock_setup(char *ptr)
         clk_sys_pll.rate = init_clock*od;
         printk("********%s: READ_MPEG_REG(HHI_SYS_PLL_CNTL) = 0x%x\n", __FUNCTION__, READ_MPEG_REG(HHI_SYS_PLL_CNTL));
 		printk("********%s: READ_MPEG_REG(HHI_SYS_CPU_CLK_CNTL) = 0x%x\n", __FUNCTION__, READ_MPEG_REG(HHI_SYS_CPU_CLK_CNTL));
-		printk("********%s: clk_util_clk_msr(31) = %dMHz\n", __FUNCTION__, clk_util_clk_msr(31));
+        while(ret * CLK_1M < init_clock){
+            ret = clk_util_clk_msr(CTS_A9_CLK);
+    		printk("********%s: clk_util_clk_msr(%d) = %dMHz\n", __FUNCTION__, CTS_A9_CLK, ret);
+    	}
         local_irq_restore(flags);
     }
 
@@ -658,15 +663,13 @@ EXPORT_SYMBOL(clk_disable);
 unsigned int clk_util_clk_msr(unsigned int clk_mux)
 {
     unsigned int regval = 0;
-    int i;
     WRITE_CBUS_REG(MSR_CLK_REG0, (clk_mux<<20)|0x80063);
     WRITE_CBUS_REG(MSR_CLK_REG0, (clk_mux<<20)|0x90063);
-    for (i=0;i<CLK_1M;i++)
-       udelay(100);
+    udelay(100);
     while (!(READ_CBUS_REG(MSR_CLK_REG0)&0x20000000)){;}
     regval = READ_CBUS_REG(MSR_CLK_REG2) & 0x000FFFFF;
     // Return value in MHz*measured_val
-    return (regval / 100);
+    return ((regval+99) / 100);
 }
 
 unsigned  int get_system_clk(void)
