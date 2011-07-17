@@ -97,8 +97,7 @@ static int clk_set_rate_sys_pll(struct clk *clk, unsigned long rate)
     }
 
     ret = sys_clkpll_setting(0, r);
-
-    if (ret == 0) {
+    if (ret >= 0) {
         clk->rate = r;
     }
 
@@ -449,10 +448,12 @@ static struct clk_lookup lookups[] = {
 
 static int __init meson_clock_init(void)
 {
+    int od;
     if (init_clock && init_clock != a9_clk.rate) {
-        if (sys_clkpll_setting(0, init_clock << 1) == 0) {
+        od = sys_clkpll_setting(0, init_clock);
+        if (od >= 0) {
             a9_clk.rate = init_clock;
-            clk_sys_pll.rate = init_clock << 1;
+            clk_sys_pll.rate = init_clock << od;
         }
     }
 
@@ -496,38 +497,16 @@ unsigned long long clkparse(const char *ptr, char **retptr)
 static int __init a9_clock_setup(char *ptr)
 {
     unsigned long flags;
-	unsigned int ration = 0;
+	int od;
 	init_clock = clkparse(ptr, 0);
 
-    if ((800 * CLK_1M) % init_clock) {
-        printk("Can not support this cpu clock!\n");
-        return -1;
-    } else {
-
-        ration = (800 * CLK_1M) / init_clock;
-        if ((ration < 4) || (ration % 2)) {
-            printk("Get valid ration(%d) for a9 clock\n", ration);
-
-        } else if (((ration % 2) == 0) && (ration <= 128)) {
-            printk("Get valid ration(%d) for a9 clock\n", ration);
-        } else {
-            printk("Can not support this cpu clock!\n");
-            return -1;
-        }
-    }
-    if (sys_clkpll_setting(0, 800 * CLK_1M) == 0) {
-        a9_clk.rate = init_clock;
-        clk_sys_pll.rate = 800 * CLK_1M;
+    od = sys_clkpll_setting(0, init_clock);
+    if (od >= 0) {
         local_irq_save(flags);
-        WRITE_MPEG_REG(HHI_SYS_CPU_CLK_CNTL, // A9 clk set to system clock/2
-                       (1 << 0) |  // 1 - sys pll clk
-                       ((ration<3? (ration-1):3) << 2) |  // sys pll div 2
-                       (1 << 4) |  // APB_CLK_ENABLE
-                       (1 << 5) |  // AT_CLK_ENABLE
-                       (1 << 7) |  // Connect A9 to the PLL divider output
-                       ((ration<3? 0:(ration/2)-1) << 8));  // Connect A9 to the PLL divider output
+        a9_clk.rate = init_clock;
+        clk_sys_pll.rate = init_clock*od;
+        printk("********%s: READ_MPEG_REG(HHI_SYS_PLL_CNTL) = 0x%x\n", __FUNCTION__, READ_MPEG_REG(HHI_SYS_PLL_CNTL));
 		printk("********%s: READ_MPEG_REG(HHI_SYS_CPU_CLK_CNTL) = 0x%x\n", __FUNCTION__, READ_MPEG_REG(HHI_SYS_CPU_CLK_CNTL));
-        udelay(100);
 		printk("********%s: clk_util_clk_msr(31) = %dMHz\n", __FUNCTION__, clk_util_clk_msr(31));
         local_irq_restore(flags);
     }
@@ -679,28 +658,15 @@ EXPORT_SYMBOL(clk_disable);
 unsigned int clk_util_clk_msr(unsigned int clk_mux)
 {
     unsigned int regval = 0;
-    WRITE_CBUS_REG(MSR_CLK_REG0, 0);
-    // Set the measurement gate to 64uS
-    CLEAR_CBUS_REG_MASK(MSR_CLK_REG0, 0xffff);
-    SET_CBUS_REG_MASK(MSR_CLK_REG0, (64 - 1)); //64uS is enough for measure the frequence?
-    // Disable continuous measurement
-    // disable interrupts
-    CLEAR_CBUS_REG_MASK(MSR_CLK_REG0, ((1 << 18) | (1 << 17)));
-    CLEAR_CBUS_REG_MASK(MSR_CLK_REG0, (0x1f << 20));
-    SET_CBUS_REG_MASK(MSR_CLK_REG0, (clk_mux << 20) | // Select MUX
-                                    (1 << 19) |       // enable the clock
-									(1 << 16));       //enable measuring
-    // Wait for the measurement to be done
-    regval = READ_CBUS_REG(MSR_CLK_REG0);
-    do {
-        regval = READ_CBUS_REG(MSR_CLK_REG0);
-    } while (regval & (1 << 31));
-
-    // disable measuring
-    CLEAR_CBUS_REG_MASK(MSR_CLK_REG0, (1 << 16));
-    regval = (READ_CBUS_REG(MSR_CLK_REG2) + 31) & 0x000FFFFF;
+    int i;
+    WRITE_CBUS_REG(MSR_CLK_REG0, (clk_mux<<20)|0x80063);
+    WRITE_CBUS_REG(MSR_CLK_REG0, (clk_mux<<20)|0x90063);
+    for (i=0;i<CLK_1M;i++)
+       udelay(100);
+    while (!(READ_CBUS_REG(MSR_CLK_REG0)&0x20000000)){;}
+    regval = READ_CBUS_REG(MSR_CLK_REG2) & 0x000FFFFF;
     // Return value in MHz*measured_val
-    return (regval >> 6);
+    return (regval / 100);
 }
 
 unsigned  int get_system_clk(void)
