@@ -509,7 +509,7 @@ static int __init a9_clock_setup(char *ptr)
         clk_sys_pll.rate = init_clock*od;
         printk("********%s: READ_MPEG_REG(HHI_SYS_PLL_CNTL) = 0x%x\n", __FUNCTION__, READ_MPEG_REG(HHI_SYS_PLL_CNTL));
 		printk("********%s: READ_MPEG_REG(HHI_SYS_CPU_CLK_CNTL) = 0x%x\n", __FUNCTION__, READ_MPEG_REG(HHI_SYS_CPU_CLK_CNTL));
-        while(ret * CLK_1M < init_clock){
+        while(ret * CLK_1M != init_clock){
             ret = clk_util_clk_msr(CTS_A9_CLK);
     		printk("********%s: clk_util_clk_msr(%d) = %dMHz\n", __FUNCTION__, CTS_A9_CLK, ret);
     	}
@@ -665,10 +665,9 @@ unsigned int clk_util_clk_msr(unsigned int clk_mux)
     unsigned int regval = 0;
     WRITE_CBUS_REG(MSR_CLK_REG0, (clk_mux<<20)|0x80063);
     WRITE_CBUS_REG(MSR_CLK_REG0, (clk_mux<<20)|0x90063);
-    udelay(100);
     while (!(READ_CBUS_REG(MSR_CLK_REG0)&0x20000000)){;}
     regval = READ_CBUS_REG(MSR_CLK_REG2) & 0x000FFFFF;
-    // Return value in MHz*measured_val
+    // Return value in Mhz
     return ((regval+99) / 100);
 }
 
