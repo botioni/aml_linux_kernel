@@ -913,6 +913,9 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
     int toggle_cnt;
 #endif
 
+while(1)
+printk("vsync\n");
+
     deinterlace_mode = get_deinterlace_mode();
 
 #ifdef CONFIG_AM_VIDEO_LOG
@@ -2255,12 +2258,12 @@ static int __init video_init(void)
     if ((clk <= 750000000) &&
         (clk >= 600000000)) {
         WRITE_CBUS_REG(HHI_MALI_CLK_CNTL,
-                       (1 << 9)    |   // select other pll as clock source
+                       (2 << 9)    |   // select misc pll as clock source
                        (1 << 8)    |   // enable clock gating
-                       (2 << 0));      // Other clk / 3
+                       (2 << 0));      // Misc clk / 3
     } else {
         WRITE_CBUS_REG(HHI_MALI_CLK_CNTL,
-                       (2 << 9)    |   // select DDR clock as clock source
+                       (3 << 9)    |   // select DDR clock as clock source
                        (1 << 8)    |   // enable clock gating
                        (1 << 0));      // DDR clk / 2
     }

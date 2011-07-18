@@ -211,7 +211,7 @@ static int tv_set_current_vmode(vmode_t mod)
 	if(mod&VMODE_LOGO_BIT_MASK)  return 0;
 
 	tvoutc_setmode(vmode_tvmode_tab[mod]);
-	change_vdac_setting(get_current_vdac_setting(),mod);
+	//change_vdac_setting(get_current_vdac_setting(),mod);
 	return 0;
 }
 

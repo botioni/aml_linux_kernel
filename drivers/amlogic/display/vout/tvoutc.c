@@ -24,6 +24,7 @@
 #include <linux/module.h>
 #include <linux/errno.h>
 #include <linux/kernel.h>
+#include <linux/delay.h>
 
 #include <mach/am_regs.h>
 
@@ -33,7 +34,6 @@
 
 
 
-static int used_audio_pll=-1;
 static u32 curr_vdac_setting=DEFAULT_VDAC_SEQUENCE;
 #include "tvregs.h"
 
@@ -76,6 +76,9 @@ int 	 get_current_vdac_setting(void)
 {
 	return curr_vdac_setting;
 }
+
+extern unsigned int clk_util_clk_msr(unsigned int clk_mux);
+
 //120120
 void  change_vdac_setting(unsigned int  vdec_setting,vmode_t  mode)
 {
@@ -106,25 +109,17 @@ void  change_vdac_setting(unsigned int  vdec_setting,vmode_t  mode)
 		bit--;
 	}
 	curr_vdac_setting=vdec_setting;
-	
 }
 static void enable_vsync_interrupt(void)
 {
-	
-	if(used_audio_pll)
-	{
-		/* M1 chip test only, use audio PLL as video clock source */
-		SET_CBUS_REG_MASK(HHI_MPEG_CLK_CNTL, 1<<11);
-	}
-	else
-	{
-	      /* M1 REVB , Video PLL bug fixed */
-	        CLEAR_CBUS_REG_MASK(HHI_MPEG_CLK_CNTL, 1<<11);
-	}
+    printk("enable_vsync_interrupt\n");
+
+    CLEAR_CBUS_REG_MASK(HHI_MPEG_CLK_CNTL, 1<<11);
 	
     if (READ_MPEG_REG(ENCP_VIDEO_EN) & 1) {
         WRITE_MPEG_REG(VENC_INTCTRL, 0x200);
 
+#if 0
         while ((READ_MPEG_REG(VENC_INTFLAG) & 0x200) == 0) {
             u32 line1, line2;
 
@@ -157,33 +152,32 @@ static void enable_vsync_interrupt(void)
             READ_MPEG_REG(VENC_INTFLAG);
             READ_MPEG_REG(VENC_INTFLAG);
         }
+#else
+        while ((READ_MPEG_REG(VENC_INTFLAG) & 0x200) == 0) {
+            mdelay(50);
+            WRITE_MPEG_REG(ENCP_VIDEO_EN, 0);
+            READ_MPEG_REG(VENC_INTFLAG);
+            WRITE_MPEG_REG(ENCP_VIDEO_EN, 1);
+            printk("recycle TV encoder\n");
+        }
+#endif
     }
     else{
         WRITE_MPEG_REG(VENC_INTCTRL, 0x2);
     }
+
+    printk("Enable vsync done\n");
 }
+
 int tvoutc_setclk(tvmode_t mode)
 {
 	struct clk *clk;
 	const  reg_t *sd,*hd;
 	int xtal;
 
-	if(used_audio_pll==-1)
-		{
-		used_audio_pll=(system_serial_low==0xA)?1:0;
-		}
-	if(used_audio_pll)
-	{
-		printk("TEST:used audio pll for video out for test!!\n");
-		sd=tvreg_aclk_sd;
-		hd=tvreg_aclk_hd;
-	}
-	else
-	{
-		printk("used Video pll for video out!!\n");
-		sd=tvreg_vclk_sd;
-		hd=tvreg_vclk_hd;
-	}
+	sd=tvreg_vclk_sd;
+	hd=tvreg_vclk_hd;
+
 	clk=clk_get_sys("clk_xtal", NULL);
 	if(!clk)
 	{
@@ -210,7 +204,6 @@ int tvoutc_setclk(tvmode_t mode)
 		case TVMODE_576CVBS:
 		case TVMODE_576P:
 			  setreg(&sd[xtal]);
-			  //clk_set_rate(clk,540);
 			  break;
 		case TVMODE_720P:
 		case TVMODE_1080I:
@@ -220,7 +213,6 @@ int tvoutc_setclk(tvmode_t mode)
 			  {
 				WRITE_MPEG_REG(HHI_VID_CLK_DIV, 4);
 			  }
-			 // clk_set_rate(clk,297);
 			  break;
 		default:
 			printk(KERN_ERR "unsupport tv mode,video clk is not set!!\n");	
@@ -244,31 +236,22 @@ int tvoutc_setmode(tvmode_t mode)
 			
     while (MREG_END_MARKER != s->reg)
         setreg(s++);
-	tvoutc_setclk(mode);
-    enable_vsync_interrupt();
+	//tvoutc_setclk(mode);
+    //enable_vsync_interrupt();
     
     WRITE_MPEG_REG(VPP_POSTBLEND_H_SIZE, tvinfoTab[mode].xres);
 
+printk(" clk_util_clk_msr 6 = %d\n", clk_util_clk_msr(6));
+printk(" clk_util_clk_msr 7 = %d\n", clk_util_clk_msr(7));
+printk(" clk_util_clk_msr 8 = %d\n", clk_util_clk_msr(8));
+printk(" clk_util_clk_msr 9 = %d\n", clk_util_clk_msr(9));
+printk(" clk_util_clk_msr 10 = %d\n", clk_util_clk_msr(10));
+printk(" clk_util_clk_msr 27 = %d\n", clk_util_clk_msr(27));
+printk(" clk_util_clk_msr 29 = %d\n", clk_util_clk_msr(29));
+
+//while(1);
+
+
     return 0;
 }
-
-static  int __init video_pll_testsetting(char *s)
-{
-	printk("chip set vpll [%s]\n",s);
-	switch(s[0])
-	{
-		case 'a':
-		case 'A':
-			used_audio_pll=1;
-			break;
-		case 'b':
-		case 'B':
-		default:
-			used_audio_pll=0;	
-	}
-	return 0;
-}
-
-__setup("chip=",video_pll_testsetting);
-
 

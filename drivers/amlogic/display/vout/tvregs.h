@@ -28,11 +28,6 @@
 #define MREG_END_MARKER 0xffff
 
 
-	#define AUDIO_CLOCK_HD_25	0x485f
-	#define AUDIO_CLOCK_SD_25	0x0a6c
-	#define AUDIO_CLOCK_HD_24	0x4863
-	#define AUDIO_CLOCK_SD_24	0x042d
-
 	#define VIDEO_CLOCK_HD_25	0x00101529
 	#define VIDEO_CLOCK_SD_25	0x00500a6c
 	#define VIDEO_CLOCK_HD_24	0x00140863
@@ -52,43 +47,34 @@ typedef struct tvinfo_s {
 /*
 24M
 25M
-26M
-27M
 */
 static const  reg_t tvreg_vclk_sd[]={
 	{HHI_VID_PLL_CNTL,VIDEO_CLOCK_SD_24},//SD.24
     {HHI_VID_PLL_CNTL,VIDEO_CLOCK_SD_25},//SD,25  
-	{HHI_VID_PLL_CNTL,0},//SD,26
-    {HHI_VID_PLL_CNTL,0},//SD,27
 };
+
 static const  reg_t tvreg_vclk_hd[]={
     {HHI_VID_PLL_CNTL,VIDEO_CLOCK_HD_24},//HD,24
     {HHI_VID_PLL_CNTL,VIDEO_CLOCK_HD_25},//HD,25    
-	{HHI_VID_PLL_CNTL,0},//SD,26
-    {HHI_VID_PLL_CNTL,0}//SD,27
 };
-
-
-static const  reg_t tvreg_aclk_sd[]={
-    {HHI_AUD_PLL_CNTL,AUDIO_CLOCK_SD_24},//SD
-    {HHI_AUD_PLL_CNTL,AUDIO_CLOCK_SD_25},//HD,
-    {HHI_AUD_PLL_CNTL,0},//SD
-    {HHI_AUD_PLL_CNTL,0}//HD,    
-};
-static const  reg_t tvreg_aclk_hd[]={
-    {HHI_AUD_PLL_CNTL,AUDIO_CLOCK_HD_24},//SD
-    {HHI_AUD_PLL_CNTL,AUDIO_CLOCK_HD_25},//HD,
-    {HHI_AUD_PLL_CNTL,0},//SD
-    {HHI_AUD_PLL_CNTL,0}//HD,    
-};
-
-
-
 
 static const  reg_t tvregs_720p[] = {
     {VENC_VDAC_SETTING,          0xff,  },
-	{HHI_VID_CLK_DIV,			 1		},
-    {HHI_VID_CLK_CNTL,        	 0x0421,},
+    {HHI_VID_CLK_CNTL,           0x0,},
+
+    {HHI_VID_PLL_CNTL2,          0x00040003},
+    {HHI_VID_PLL_CNTL3,          0x40e8},
+    {HHI_HDMI_AFC_CNTL,          0x8c0000c3},
+    {HHI_VID_PLL_CNTL,           0x0001043e,},
+    {HHI_VID_DIVIDER_CNTL,       0x00010843,},
+    {HHI_VID_CLK_DIV,            0x100},
+
+    {HHI_VID_CLK_CNTL,           0x80000,},
+    {HHI_VID_CLK_CNTL,           0x88001,},
+    {HHI_VID_CLK_CNTL,           0x80003,},
+
+    {HHI_VIID_CLK_DIV,           0x00000101,},
+
     {ENCP_VIDEO_FILT_CTRL,       0x0052,},
     {VENC_DVI_SETTING,           0x2029,},
     {ENCP_VIDEO_MODE,            0x0040,},
@@ -121,6 +107,19 @@ static const  reg_t tvregs_720p[] = {
     {VENC_INTCTRL,               0x200, },
     {VFIFO2VD_CTL,               0,     },
     {VENC_VDAC_SETTING,          0,     },
+    {VENC_UPSAMPLE_CTRL0,        0x9061,},
+    {VENC_UPSAMPLE_CTRL1,        0xa061,},
+    {VENC_UPSAMPLE_CTRL2,        0xb061,},
+    {VENC_VDAC_DACSEL0,          0x0003,},
+    {VENC_VDAC_DACSEL1,          0x0003,},
+    {VENC_VDAC_DACSEL2,          0x0003,},
+    {VENC_VDAC_DACSEL3,          0x0003,},
+    {VENC_VDAC_DACSEL4,          0x0003,},
+    {VENC_VDAC_DACSEL5,          0x0003,},
+    {VPU_VIU_VENC_MUX_CTRL,      0x000a,},
+    {VENC_VDAC_FIFO_CTRL,        0x1000,},
+    {ENCP_DACSEL_0,              0x3210,},
+    {ENCP_DACSEL_1,              0x0054,},
     {ENCP_VIDEO_EN,              1,     },
     {ENCI_VIDEO_EN,              0,     },
     {MREG_END_MARKER,            0      }
@@ -128,8 +127,7 @@ static const  reg_t tvregs_720p[] = {
 
 static const reg_t tvregs_480i[] = {
     {VENC_VDAC_SETTING,          0xff,  },
-//	{VCLK_SD},
-	{HHI_VID_CLK_DIV,			 4,		},
+    {HHI_VID_CLK_DIV,            4,     },
     {HHI_VID_CLK_CNTL,        	 0x05a1,},
     {ENCI_CFILT_CTRL,            0x0810,},
     {VENC_DVI_SETTING,           0,     },
@@ -161,8 +159,7 @@ static const reg_t tvregs_480i[] = {
 
 static const reg_t tvregs_480cvbs[] = {
     {VENC_VDAC_SETTING,          0xff,  },
-//	{VCLK_SD},
-	{HHI_VID_CLK_DIV,			 4,		},
+    {HHI_VID_CLK_DIV,            4,     },
     {HHI_VID_CLK_CNTL,        	 0x05a1,},
     {ENCI_CFILT_CTRL,            0x0810,},
     {VENC_DVI_SETTING,           0,     },
@@ -191,11 +188,22 @@ static const reg_t tvregs_480cvbs[] = {
     {ENCI_VIDEO_EN,              1,     },
     {MREG_END_MARKER,            0      }
 };
+
 static const reg_t tvregs_480p[] = {
     {VENC_VDAC_SETTING,          0xff,  },
-//	{VCLK_SD},
-	{HHI_VID_CLK_DIV,			 4,		},
-    {HHI_VID_CLK_CNTL,        	 0x0561,},
+    {HHI_VID_CLK_CNTL,           0x0,},
+
+    {HHI_VID_PLL_CNTL2,          0x00040003},
+    {HHI_VID_PLL_CNTL3,          0x40e8},
+    {HHI_HDMI_AFC_CNTL,          0x8c0000c3},
+    {HHI_VID_PLL_CNTL,           0x0001042d,},
+    {HHI_VID_DIVIDER_CNTL,       0x00010843,},
+    {HHI_VID_CLK_DIV,            0x100},
+
+    {HHI_VID_CLK_CNTL,           0x88001,},
+    {HHI_VID_CLK_CNTL,           0x80001,},
+
+    {HHI_VID_CLK_DIV,            0x01000100,},
     {ENCP_VIDEO_FILT_CTRL,       0x2052,},
     {VENC_DVI_SETTING,           0x21,  },
     {ENCP_VIDEO_MODE,            0,     },
@@ -227,6 +235,19 @@ static const reg_t tvregs_480p[] = {
     {VENC_INTCTRL,               0x200, },
     {VFIFO2VD_CTL,               0,     },
     {VENC_VDAC_SETTING,          0,     },
+    {VENC_UPSAMPLE_CTRL0,        0x9061,},
+    {VENC_UPSAMPLE_CTRL1,        0xa061,},
+    {VENC_UPSAMPLE_CTRL2,        0xb061,},
+    {VENC_VDAC_DACSEL0,          0xf003,},
+    {VENC_VDAC_DACSEL1,          0xf003,},
+    {VENC_VDAC_DACSEL2,          0xf003,},
+    {VENC_VDAC_DACSEL3,          0xf003,},
+    {VENC_VDAC_DACSEL4,          0xf003,},
+    {VENC_VDAC_DACSEL5,          0xf003,},
+    {VPU_VIU_VENC_MUX_CTRL,      0x000a,},
+    {VENC_VDAC_FIFO_CTRL,        0x1fc0,},
+    {ENCP_DACSEL_0,              0x3210,},
+    {ENCP_DACSEL_1,              0x0054,},
     {ENCI_VIDEO_EN,              0      },
     {ENCP_VIDEO_EN,              1      },
     {MREG_END_MARKER,            0      }
@@ -452,6 +473,7 @@ static const tvinfo_t tvinfoTab[] = {
 static inline void setreg(const reg_t *r)
 {
     WRITE_MPEG_REG(r->reg, r->val);
+    printk("[0x%x] = 0x%x\n", r->reg, r->val);
 }
 
 #endif /* TVREGS_H */
