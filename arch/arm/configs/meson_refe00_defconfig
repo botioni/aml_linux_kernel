@@ -1,7 +1,7 @@
 #
 # Automatically generated make config: don't edit
 # Linux kernel version: 2.6.34
-# Mon Jul 18 11:49:42 2011
+# Mon Jul 18 13:17:56 2011
 #
 CONFIG_ARM=y
 CONFIG_HOLES_IN_ZONE=y
@@ -577,7 +577,7 @@ CONFIG_AML_RTC=y
 #
 # Amlogic Power Management Support
 #
-# CONFIG_AMLOGIC_PM is not set
+CONFIG_AMLOGIC_PM=y
 
 #
 # Amlogic Light Sensor Support
@@ -723,10 +723,8 @@ CONFIG_FB_OSD2_DEFAULT_HEIGHT_VIRTUAL=480
 #
 # AMLOGIC AV Streaming devices
 #
-CONFIG_AM_DEINTERLACE=y
-# CONFIG_AM_DEINTERLACE_SD_ONLY is not set
-CONFIG_AM_VIDEO=y
-CONFIG_AM_PTSSERVER=y
+# CONFIG_AM_DEINTERLACE is not set
+# CONFIG_AM_VIDEO is not set
 # CONFIG_AM_VDEC_MPEG12 is not set
 # CONFIG_AM_VDEC_MPEG4 is not set
 # CONFIG_AM_VDEC_VC1 is not set
@@ -734,8 +732,8 @@ CONFIG_AM_PTSSERVER=y
 # CONFIG_AM_VDEC_MJPEG is not set
 # CONFIG_AM_VDEC_REAL is not set
 # CONFIG_AM_JPEGDEC is not set
-CONFIG_AM_TIMESYNC=y
-CONFIG_AM_STREAMING=y
+# CONFIG_AM_TIMESYNC is not set
+# CONFIG_AM_STREAMING is not set
 # CONFIG_AM_SUBTITLE is not set
 
 #
@@ -781,12 +779,12 @@ CONFIG_AM_STREAMING=y
 #
 # Mali 400 UMP device driver
 #
-# CONFIG_UMP is not set
+CONFIG_UMP=m
 
 #
 # Mali 400 GPU OpenGL device driver
 #
-# CONFIG_MALI is not set
+CONFIG_MALI=m
 
 #
 # AMLOGIC DVB driver
@@ -1231,7 +1229,13 @@ CONFIG_SPI_SPIDEV=y
 #
 # CONFIG_PPS is not set
 # CONFIG_W1 is not set
-# CONFIG_POWER_SUPPLY is not set
+CONFIG_POWER_SUPPLY=y
+# CONFIG_POWER_SUPPLY_DEBUG is not set
+# CONFIG_PDA_POWER is not set
+# CONFIG_BATTERY_DS2760 is not set
+# CONFIG_BATTERY_DS2782 is not set
+# CONFIG_BATTERY_BQ27x00 is not set
+# CONFIG_BATTERY_MAX17040 is not set
 # CONFIG_HWMON is not set
 # CONFIG_THERMAL is not set
 # CONFIG_WATCHDOG is not set
