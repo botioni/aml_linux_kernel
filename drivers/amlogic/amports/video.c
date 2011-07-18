@@ -2235,7 +2235,7 @@ static void vout_hook(void)
 static int __init video_early_init(void)
 {
     logo_object_t  *init_logo_obj=NULL;
-    init_logo_obj = get_current_logo_obj();	
+    init_logo_obj = NULL; //get_current_logo_obj();
 
     if(NULL==init_logo_obj || !init_logo_obj->para.loaded)
     {
@@ -2252,8 +2252,18 @@ static int __init video_early_init(void)
 static int __init video_init(void)
 {
     int r = 0;
-    ulong clk = clk_get_rate(clk_get_sys("clk_other_pll", NULL));
+    ulong clk = clk_get_rate(clk_get_sys("clk_misc_pll", NULL));
 
+
+#ifdef CONFIG_ARCH_MESON3
+    if ((clk == 800000000)) {
+        WRITE_CBUS_REG(HHI_MALI_CLK_CNTL,
+                       (2 << 9)    |   // select misc pll as clock source
+                       (1 << 8)    |   // enable clock gating
+                       (3 << 0));      // Misc clk / 4
+    }
+
+#else
     /* MALI clock settings */
     if ((clk <= 750000000) &&
         (clk >= 600000000)) {
@@ -2267,6 +2277,7 @@ static int __init video_init(void)
                        (1 << 8)    |   // enable clock gating
                        (1 << 0));      // DDR clk / 2
     }
+#endif
 
 #ifdef RESERVE_CLR_FRAME
     alloc_keep_buffer();

@@ -150,6 +150,7 @@
 #define AOBUS_REG_OFFSET(reg) ((reg) << 2)
 #define AOBUS_REG_ADDR(reg)	 (IO_AOBUS_BASE + AOBUS_REG_OFFSET(reg))
 
+#include "c_stb_define.h"
 #include "regs.h"
 #include "ao_regs.h"
 #include "pctl.h"

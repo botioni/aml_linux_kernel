@@ -4496,6 +4496,7 @@
 //Bit 0 bluestretch enable
 #define VPP_VE_ENABLE_CTRL                         0x1da1
 //Bit 11:0, demo left or top screen width
+#define VPP_VE_DEMO_LEFT_SCREEN_WIDTH              0x1da2
 #define VPP_VE_DEMO_LEFT_TOP_SCREEN_WIDTH          0x1da2
 #define VPP_VE_DEMO_CENTER_BAR                     0x1da3
 //Bit 10   reset bit, high active
@@ -6248,6 +6249,7 @@
 // VD1 path
 //------------------------------------------------------------------------------
 #define VD1_IF0_GEN_REG                            0x1a50
+    #define VDIF_RESET_ON_GO_FIELD       (1<<29)
     #define VDIF_URGENT_BIT              27
     #define VDIF_CHROMA_END_AT_LAST_LINE (1<<26)
     #define VDIF_LUMA_END_AT_LAST_LINE   (1<<25)
