@@ -1,7 +1,7 @@
 #
 # Automatically generated make config: don't edit
 # Linux kernel version: 2.6.34
-# Mon Jul 18 11:49:42 2011
+# Mon Jul 18 13:17:56 2011
 #
 CONFIG_ARM=y
 CONFIG_HOLES_IN_ZONE=y
@@ -723,10 +723,8 @@ CONFIG_FB_OSD2_DEFAULT_HEIGHT_VIRTUAL=480
 #
 # AMLOGIC AV Streaming devices
 #
-CONFIG_AM_DEINTERLACE=y
-# CONFIG_AM_DEINTERLACE_SD_ONLY is not set
-CONFIG_AM_VIDEO=y
-CONFIG_AM_PTSSERVER=y
+# CONFIG_AM_DEINTERLACE is not set
+# CONFIG_AM_VIDEO is not set
 # CONFIG_AM_VDEC_MPEG12 is not set
 # CONFIG_AM_VDEC_MPEG4 is not set
 # CONFIG_AM_VDEC_VC1 is not set
@@ -734,8 +732,8 @@ CONFIG_AM_PTSSERVER=y
 # CONFIG_AM_VDEC_MJPEG is not set
 # CONFIG_AM_VDEC_REAL is not set
 # CONFIG_AM_JPEGDEC is not set
-CONFIG_AM_TIMESYNC=y
-CONFIG_AM_STREAMING=y
+# CONFIG_AM_TIMESYNC is not set
+# CONFIG_AM_STREAMING is not set
 # CONFIG_AM_SUBTITLE is not set
 
 #
