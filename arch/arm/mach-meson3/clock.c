@@ -192,6 +192,7 @@ static int clk_set_rate_a9_clk(struct clk *clk, unsigned long rate)
                    (1 << 5) |           // AT_CLK_ENABLE
                    (0 << 2) |           // div1
                    (1 << 7));           // Connect A9 to the PLL divider output
+
     return 0;
 }
 
@@ -531,11 +532,11 @@ static int __init clk81_clock_setup(char *ptr)
         clk_misc_pll.rate = clock * 4;
         clk81.rate = clock;
         WRITE_MPEG_REG(HHI_MPEG_CLK_CNTL,   // MPEG clk81 set to misc/4
-                       (1 << 12) |               // select SYS PLL
+                       (2 << 12) |               // select misc PLL
                        ((4 - 1) << 0) |          // div1
                        (1 << 7) |                // cntl_hi_mpeg_div_en, enable gating
                        (1 << 8) |                // Connect clk81 to the PLL divider output
-					   (1 <<15));                // Production clock enable
+					   (1 << 15));                // Production clock enable
 
         CLEAR_CBUS_REG_MASK(UART0_CONTROL, (1 << 19) | 0xFFF);
         SET_CBUS_REG_MASK(UART0_CONTROL, (baudrate & 0xfff));
@@ -543,10 +544,7 @@ static int __init clk81_clock_setup(char *ptr)
         CLEAR_CBUS_REG_MASK(UART1_CONTROL, (1 << 19) | 0xFFF);
         SET_CBUS_REG_MASK(UART1_CONTROL, (baudrate & 0xfff));
 
-#if 0	/* FIXME need implement */
-        __raw_writel(((1 << 19) | 0xFFF), P_AO_UART_CONTROL);
-        __raw_writel((baudrate & 0xfff), P_AO_UART_CONTROL);
-#endif
+        WRITE_AOBUS_REG_BITS(AO_UART_CONTROL, baudrate & 0xfff, 0, 12);
     }
 
     return 0;

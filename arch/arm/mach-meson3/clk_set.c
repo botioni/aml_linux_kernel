@@ -77,12 +77,14 @@ int auto_select_eth_clk(void)
 
 int sys_clkpll_setting(unsigned crystal_freq, unsigned  out_freq)
 {
-    int n, m, lock_flag;
+    int i, n, m, lock_flag;
     int od=0;
     int divider=0;
     unsigned lock_time=0;
     unsigned long result_freq, target_freq;
     unsigned long crys_M, out_M, middle_freq, flags;
+    unsigned long freq_log[32];
+    int log_index;
     
         if (!crystal_freq) {
         crystal_freq = get_xtal_clock();
@@ -120,6 +122,7 @@ int sys_clkpll_setting(unsigned crystal_freq, unsigned  out_freq)
     CLEAR_CBUS_REG_MASK(HHI_SYS_CPU_CLK_CNTL, 1<<7); // a9 use xtal
     WRITE_MPEG_REG(HHI_SYS_PLL_CNTL, m << 0 | n << 9 | od << 16); // disable and set sys PLL
     lock_flag = 0;
+    log_index = 0;
     while(1){
         WRITE_CBUS_REG(MSR_CLK_REG0, (SYS_PLL_CLK<<20)|0x80063); // measure 100uS
         WRITE_CBUS_REG(MSR_CLK_REG0, (SYS_PLL_CLK<<20)|0x90063);
@@ -130,6 +133,7 @@ int sys_clkpll_setting(unsigned crystal_freq, unsigned  out_freq)
             if (lock_flag>=3)
                 break;
         }
+        if (log_index<32) freq_log[log_index++]=result_freq;
         lock_time+=100;
     }
     WRITE_MPEG_REG(HHI_SYS_CPU_CLK_CNTL, // A9 clk set to system clock
@@ -139,6 +143,8 @@ int sys_clkpll_setting(unsigned crystal_freq, unsigned  out_freq)
                        (1 << 5) |  // AT_CLK_ENABLE
                        (1 << 7));  // Connect A9 to the PLL divider output
     local_irq_restore(flags);
+    for (i=0;i<log_index;i++)
+        printk(KERN_INFO "clk_util_clk_msr(%d) = %dMHz\n", SYS_PLL_CLK, freq_log[i]/100);
     printk(KERN_INFO "a9_clk_setting crystal_req=%ld,out_freq=%ld,n=%d,m=%d,od=%d,divider=%d,locktime=%dus\n",crys_M,out_M,n,m,od,divider,lock_time);
     return od+divider;
 }
