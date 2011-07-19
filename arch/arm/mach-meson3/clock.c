@@ -545,7 +545,13 @@ static int __init clk81_clock_setup(char *ptr)
         SET_CBUS_REG_MASK(UART1_CONTROL, (baudrate & 0xfff));
 
         WRITE_AOBUS_REG_BITS(AO_UART_CONTROL, baudrate & 0xfff, 0, 12);
+
+        WRITE_CBUS_REG(HHI_MALI_CLK_CNTL,
+                       (2 << 9)    |   // select misc pll as clock source
+                       (1 << 8)    |   // enable clock gating
+                       (3 << 0));      // Misc clk / 4
     }
+
 
     return 0;
 }
