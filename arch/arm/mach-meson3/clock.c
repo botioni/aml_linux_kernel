@@ -285,12 +285,75 @@ static int clk_set_rate_clk81(struct clk *clk, unsigned long rate)
     return 0;
 }
 
+static int get_best_ratio_sys_pll(uint min_ratio, uint max_ratio, uint min_freq,
+                                  uint max_freq, uint out_freq)
+{
+    uint delta_freq = max_freq - min_freq;
+    uint best_freq = min_freq + (max_freq - min_freq) / 2;
+    uint ratio = 0;
+    uint pll_freq = 0;
+    uint found_ratio = 0;
+    uint i = 0;
+
+    for (ratio = min_ratio; ratio < 4; ratio++) { /* Deal with 1-3 ratio */
+        pll_freq = out_freq * ratio;
+        printk("********%s: line %d ratio =%d, pll_freq =%d\n", __func__, __LINE__, ratio, pll_freq);
+        if (pll_freq > 700 * CLK_1M && pll_freq < best_freq) {
+            if (delta_freq > (best_freq - pll_freq)) {
+                delta_freq = best_freq - pll_freq;
+                found_ratio = ratio;
+				printk("********%s: line %d delta_freq =%d found_ratio = %d\n", __func__, __LINE__, delta_freq, found_ratio);
+            }
+        } else if (pll_freq >= best_freq && pll_freq < 1300 * CLK_1M) {
+            if (delta_freq > (pll_freq - best_freq)) {
+                delta_freq = pll_freq - best_freq;
+                found_ratio = ratio;
+				printk("********%s: line %d delta_freq =%d found_ratio = %d\n", __func__, __LINE__, delta_freq, found_ratio);
+            }
+        } else if (pll_freq > 1300 * CLK_1M) {
+            break;
+        }
+    }
+    if (!found_ratio) {
+        for (i=2; i< (max_ratio/2); i++) {
+			ratio = i * 2;
+            pll_freq = out_freq * ratio;
+            printk("********%s: line %d ratio =%d, pll_freq =%d\n", __func__, __LINE__, ratio, pll_freq);
+            if (pll_freq > 700 * CLK_1M && pll_freq < best_freq) {
+                if (delta_freq > (best_freq - pll_freq)) {
+                    delta_freq = best_freq - pll_freq;
+                    found_ratio = ratio;
+				printk("********%s: line %d delta_freq =%d found_ratio = %d\n", __func__, __LINE__, delta_freq, found_ratio);
+                }
+            } else if (pll_freq >= best_freq && pll_freq < 1300 * CLK_1M) {
+                if (delta_freq > (pll_freq - best_freq)) {
+                    delta_freq = pll_freq - best_freq;
+                    found_ratio = ratio;
+				printk("********%s: line %d delta_freq =%d found_ratio = %d\n", __func__, __LINE__, delta_freq, found_ratio);
+                }
+            } else if (pll_freq > 1300 * CLK_1M) {
+                break;
+            }
+        }
+    }
+
+    /* Check if the ratio is avaliable */
+    if (found_ratio){
+			printk("********%s: line %d found_ratio = %d\n", __func__, __LINE__, found_ratio);
+            return found_ratio;
+    }
+
+	return -1;
+}
+
 static int clk_set_rate_a9_clk(struct clk *clk, unsigned long rate)
 {
     unsigned long r = rate;
     struct clk *father_clk;
     unsigned long r1;
     int ret;
+    uint ratio = 0;
+    unsigned long flags;
 
     if (r < 1000) {
         r = r * 1000000;
@@ -304,23 +367,32 @@ static int clk_set_rate_a9_clk(struct clk *clk, unsigned long rate)
         return -1;
     }
 
-    if (r1 != r * 2 && r != 0) {
-        ret = father_clk->set_rate(father_clk, r * 2);
-
-        if (ret != 0) {
-            return ret;
+    if (r1 % r) { /* If the PLL freq is not the multuply of requiments, we need re-configurate sys pll */
+        ratio = get_best_ratio_sys_pll(1, (0x3f + 1) * 2, 700 * CLK_1M, 1300 * CLK_1M,  r);
+        if (ratio > 0) {
+            ret = father_clk->set_rate(father_clk, r * ratio);
+            if (ret != 0) {
+                return ret;
+            }
         }
-    }
+    } else { /* sys pll is multuply of requiments freq, we need not change sys pll setting*/
+        ratio = r1 / r;
+	}
 
     clk->rate = r;
 
-    WRITE_MPEG_REG(HHI_A9_CLK_CNTL,
-                   (0 << 10) |          // 0 - sys_pll_clk, 1 - audio_pll_clk
-                   (1 << 0) |           // 1 - sys/audio pll clk, 0 - XTAL
-                   (1 << 4) |           // APB_CLK_ENABLE
-                   (1 << 5) |           // AT_CLK_ENABLE
-                   (0 << 2) |           // div1
-                   (1 << 7));           // Connect A9 to the PLL divider output
+    local_irq_save(flags);
+    WRITE_MPEG_REG(HHI_SYS_CPU_CLK_CNTL, // A9 clk set to system clock/2
+                   (1 << 0) |  // 1 - sys pll clk
+                   ((ratio < 3 ? (ratio - 1) : 3) << 2) | // sys pll div 2
+                   (1 << 4) |  // APB_CLK_ENABLE
+                   (1 << 5) |  // AT_CLK_ENABLE
+                   (1 << 7) |  // Connect A9 to the PLL divider output
+                   ((ratio < 3 ? 0 : (ratio / 2) - 1) << 8)); // Connect A9 to the PLL divider output
+    printk("********%s: READ_MPEG_REG(HHI_SYS_CPU_CLK_CNTL) = 0x%x\n", __FUNCTION__, READ_MPEG_REG(HHI_SYS_CPU_CLK_CNTL));
+    udelay(100);
+    printk("********%s: clk_util_clk_msr(CTS_A9_CLK) = %dMHz\n", __FUNCTION__, clk_util_clk_msr(CTS_A9_CLK));
+    local_irq_restore(flags);
 
     return 0;
 }
@@ -664,7 +736,7 @@ static int __init a9_clock_setup(char *ptr)
 {
     unsigned long flags;
 	int od;
-    int i, ret=0;
+    int ret = 0;
 
 	init_clock = clkparse(ptr, 0);
 
