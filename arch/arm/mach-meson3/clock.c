@@ -30,6 +30,135 @@ static unsigned long __initdata init_clock = CONFIG_INIT_A9_CLOCK;
 static unsigned long __initdata init_clock = 0;
 #endif
 
+// -----------------------------------------
+// clk_util_clk_msr
+// -----------------------------------------
+// from twister_core.v
+//        .clk_to_msr_in          ( { 18'h0,                      // [63:46]
+//                                    cts_pwm_A_clk,              // [45]
+//                                    cts_pwm_B_clk,              // [44]
+//                                    cts_pwm_C_clk,              // [43]
+//                                    cts_pwm_D_clk,              // [42]
+//                                    cts_eth_rx_tx,              // [41]
+//                                    cts_pcm_mclk,               // [40]
+//                                    cts_pcm_sclk,               // [39]
+//                                    cts_vdin_meas_clk,          // [38]
+//                                    cts_vdac_clk[1],            // [37]
+//                                    cts_hdmi_tx_pixel_clk,      // [36]
+//                                    cts_mali_clk,               // [35]
+//                                    cts_sdhc_clk1,              // [34]
+//                                    cts_sdhc_clk0,              // [33]
+//                                    cts_audac_clkpi,            // [32]
+//                                    cts_a9_clk,                 // [31]
+//                                    cts_ddr_clk,                // [30]
+//                                    cts_vdac_clk[0],            // [29]
+//                                    cts_sar_adc_clk,            // [28]
+//                                    cts_enci_clk,               // [27]
+//                                    sc_clk_int,                 // [26]
+//                                    usb_clk_12mhz,              // [25]
+//                                    lvds_fifo_clk,              // [24]
+//                                    HDMI_CH3_TMDSCLK,           // [23]
+//                                    mod_eth_clk50_i,            // [22]
+//                                    mod_audin_amclk_i,          // [21]
+//                                    cts_btclk27,                // [20]
+//                                    cts_hdmi_sys_clk,           // [19]
+//                                    cts_led_pll_clk,            // [18]
+//                                    cts_vghl_pll_clk,           // [17]
+//                                    cts_FEC_CLK_2,              // [16]
+//                                    cts_FEC_CLK_1,              // [15]
+//                                    cts_FEC_CLK_0,              // [14]
+//                                    cts_amclk,                  // [13]
+//                                    vid2_pll_clk,               // [12]
+//                                    cts_eth_rmii,               // [11]
+//                                    cts_enct_clk,               // [10]
+//                                    cts_encl_clk,               // [9]
+//                                    cts_encp_clk,               // [8]
+//                                    clk81,                      // [7]
+//                                    vid_pll_clk,                // [6]
+//                                    aud_pll_clk,                // [5]
+//                                    misc_pll_clk,               // [4]
+//                                    ddr_pll_clk,                // [3]
+//                                    sys_pll_clk,                // [2]
+//                                    am_ring_osc_clk_out[1],     // [1]
+//                                    am_ring_osc_clk_out[0]} ),  // [0]
+//
+// For Example
+//
+// unsigend long    clk81_clk   = clk_util_clk_msr( 2,      // mux select 2
+//                                                  50 );   // measure for 50uS
+//
+// returns a value in "clk81_clk" in Hz
+//
+// The "uS_gate_time" can be anything between 1uS and 65535 uS, but the limitation is
+// the circuit will only count 65536 clocks.  Therefore the uS_gate_time is limited by
+//
+//   uS_gate_time <= 65535/(expect clock frequency in MHz)
+//
+// For example, if the expected frequency is 400Mhz, then the uS_gate_time should
+// be less than 163.
+//
+// Your measurement resolution is:
+//
+//    100% / (uS_gate_time * measure_val )
+//
+//
+unsigned int clk_util_clk_msr(unsigned int clk_mux)
+{
+    unsigned int regval = 0;
+    WRITE_CBUS_REG(MSR_CLK_REG0, 0);
+    // Set the measurement gate to 64uS
+    CLEAR_CBUS_REG_MASK(MSR_CLK_REG0, 0xffff);
+    SET_CBUS_REG_MASK(MSR_CLK_REG0, (64 - 1)); //64uS is enough for measure the frequence?
+    // Disable continuous measurement
+    // disable interrupts
+    CLEAR_CBUS_REG_MASK(MSR_CLK_REG0, ((1 << 18) | (1 << 17)));
+    CLEAR_CBUS_REG_MASK(MSR_CLK_REG0, (0x1f << 20));
+    SET_CBUS_REG_MASK(MSR_CLK_REG0, (clk_mux << 20) | // Select MUX
+                                    (1 << 19) |       // enable the clock
+									(1 << 16));       //enable measuring
+    // Wait for the measurement to be done
+    regval = READ_CBUS_REG(MSR_CLK_REG0);
+    do {
+        regval = READ_CBUS_REG(MSR_CLK_REG0);
+    } while (regval & (1 << 31));
+
+    // disable measuring
+    CLEAR_CBUS_REG_MASK(MSR_CLK_REG0, (1 << 16));
+    regval = (READ_CBUS_REG(MSR_CLK_REG2) + 31) & 0x000FFFFF;
+    // Return value in MHz*measured_val
+    return (regval >> 6);
+}
+
+unsigned  int get_system_clk(void)
+{
+    static unsigned int sys_freq = 0;
+    if (sys_freq == 0) {
+        sys_freq = (clk_util_clk_msr(SYS_PLL_CLK) * 1000000);
+    }
+    return sys_freq;
+}
+EXPORT_SYMBOL(get_system_clk);
+
+unsigned int get_mpeg_clk(void)
+{
+    static unsigned int clk81_freq = 0;
+    if (clk81_freq == 0) {
+        clk81_freq = (clk_util_clk_msr(CLK81) * 1000000);
+    }
+    return clk81_freq;
+}
+EXPORT_SYMBOL(get_mpeg_clk);
+
+unsigned int get_misc_pll_clk(void)
+{
+    static unsigned int freq = 0;
+    if (freq == 0) {
+        freq = (clk_util_clk_msr(MISC_PLL_CLK) * 1000000);
+    }
+    return freq;
+}
+EXPORT_SYMBOL(get_misc_pll_clk);
+
 long clk_round_rate(struct clk *clk, unsigned long rate)
 {
     if (rate < clk->min) {
@@ -148,7 +277,7 @@ static int clk_set_rate_clk81(struct clk *clk, unsigned long rate)
     clk->rate = r;
 
     WRITE_MPEG_REG(HHI_MPEG_CLK_CNTL,
-                   (1 << 12) |          // select other PLL
+                   (1 << 12) |          // select SYS PLL
                    ((4 - 1) << 0) |     // div1
                    (1 << 7) |           // cntl_hi_mpeg_div_en, enable gating
                    (1 << 8));           // Connect clk81 to the PLL divider output
@@ -241,95 +370,113 @@ static struct clk a9_clk = {
     .set_rate   = clk_set_rate_a9_clk,
 };
 
-REGISTER_CLK(AHB_BRIDGE);
-REGISTER_CLK(AHB_SRAM);
-REGISTER_CLK(AIU_ADC);
-REGISTER_CLK(AIU_MIXER_REG);
-REGISTER_CLK(AIU_AUD_MIXER);
-REGISTER_CLK(AIU_AIFIFO2);
-REGISTER_CLK(AIU_AMCLK_MEASURE);
-REGISTER_CLK(AIU_I2S_OUT);
-REGISTER_CLK(AIU_IEC958);
-REGISTER_CLK(AIU_AI_TOP_GLUE);
-REGISTER_CLK(AIU_AUD_DAC);
-REGISTER_CLK(AIU_ICE958_AMCLK);
-REGISTER_CLK(AIU_I2S_DAC_AMCLK);
-REGISTER_CLK(AIU_I2S_SLOW);
-REGISTER_CLK(AIU_AUD_DAC_CLK);
-REGISTER_CLK(ASSIST_MISC);
-REGISTER_CLK(AMRISC);
-REGISTER_CLK(AUD_BUF);
-REGISTER_CLK(AUD_IN);
-REGISTER_CLK(BLK_MOV);
-REGISTER_CLK(BT656_IN);
-REGISTER_CLK(DEMUX);
-REGISTER_CLK(MMC_DDR);
 REGISTER_CLK(DDR);
-REGISTER_CLK(ETHERNET);
-REGISTER_CLK(GE2D);
-REGISTER_CLK(HDMI_MPEG_DOMAIN);
-REGISTER_CLK(HIU_PARSER_TOP);
-REGISTER_CLK(HIU_PARSER);
-REGISTER_CLK(ISA);
-REGISTER_CLK(MEDIA_CPU);
-REGISTER_CLK(MISC_USB0_TO_DDR);
-REGISTER_CLK(MISC_USB1_TO_DDR);
-REGISTER_CLK(MISC_SATA_TO_DDR);
-REGISTER_CLK(AHB_CONTROL_BUS);
-REGISTER_CLK(AHB_DATA_BUS);
-REGISTER_CLK(AXI_BUS);
-REGISTER_CLK(ROM_CLK);
-REGISTER_CLK(EFUSE);
-REGISTER_CLK(AHB_ARB0);
-REGISTER_CLK(RESET);
-REGISTER_CLK(MDEC_CLK_PIC_DC);
-REGISTER_CLK(MDEC_CLK_DBLK);
-REGISTER_CLK(MDEC_CLK_PSC);
-REGISTER_CLK(MDEC_CLK_ASSIST);
-REGISTER_CLK(MC_CLK);
-REGISTER_CLK(IQIDCT_CLK);
 REGISTER_CLK(VLD_CLK);
-REGISTER_CLK(NAND);
-REGISTER_CLK(RESERVED0);
-REGISTER_CLK(VGHL_PWM);
-REGISTER_CLK(LED_PWM);
-REGISTER_CLK(UART1);
-REGISTER_CLK(SDIO);
-REGISTER_CLK(ASYNC_FIFO);
-REGISTER_CLK(STREAM);
-REGISTER_CLK(RTC);
-REGISTER_CLK(UART0);
-REGISTER_CLK(RANDOM_NUM_GEN);
-REGISTER_CLK(SMART_CARD_MPEG_DOMAIN);
-REGISTER_CLK(SMART_CARD);
-REGISTER_CLK(SAR_ADC);
-REGISTER_CLK(I2C);
-REGISTER_CLK(IR_REMOTE);
+REGISTER_CLK(IQIDCT_CLK);
+REGISTER_CLK(MC_CLK);
+REGISTER_CLK(AHB_BRIDGE);
+REGISTER_CLK(ISA);
+REGISTER_CLK(APB_CBUS);
 REGISTER_CLK(_1200XXX);
-REGISTER_CLK(SATA);
-REGISTER_CLK(SPI1);
-REGISTER_CLK(USB1);
-REGISTER_CLK(USB0);
+REGISTER_CLK(SPICC);
+REGISTER_CLK(I2C);
+REGISTER_CLK(SAR_ADC);
+REGISTER_CLK(SMART_CARD_MPEG_DOMAIN);
+REGISTER_CLK(RANDOM_NUM_GEN);
+REGISTER_CLK(UART0);
+REGISTER_CLK(SDHC);
+REGISTER_CLK(STREAM);
+REGISTER_CLK(ASYNC_FIFO);
+REGISTER_CLK(SDIO);
+REGISTER_CLK(AUD_BUF);
+REGISTER_CLK(HIU_PARSER);
+REGISTER_CLK(RESERVED0);
+REGISTER_CLK(AMRISC);
+REGISTER_CLK(BT656_IN);
+REGISTER_CLK(ASSIST_MISC);
+REGISTER_CLK(VENC_I_TOP);
+REGISTER_CLK(VENC_P_TOP);
+REGISTER_CLK(VENC_T_TOP);
+REGISTER_CLK(VENC_DAC);
 REGISTER_CLK(VI_CORE);
-REGISTER_CLK(LCD);
-REGISTER_CLK(ENC480P_MPEG_DOMAIN);
-REGISTER_CLK(ENC480I);
-REGISTER_CLK(VENC_MISC);
-REGISTER_CLK(ENC480P);
-REGISTER_CLK(HDMI);
-REGISTER_CLK(VCLK3_DAC);
-REGISTER_CLK(VCLK3_MISC);
-REGISTER_CLK(VCLK3_DVI);
-REGISTER_CLK(VCLK2_VIU);
-REGISTER_CLK(VCLK2_VENC_DVI);
-REGISTER_CLK(VCLK2_VENC_ENC480P);
-REGISTER_CLK(VCLK2_VENC_BIST);
-REGISTER_CLK(VCLK1_VENC_656);
-REGISTER_CLK(VCLK1_VENC_DVI);
-REGISTER_CLK(VCLK1_VENC_ENCI);
-REGISTER_CLK(VCLK1_VENC_BIST);
+REGISTER_CLK(RESERVED1);
+REGISTER_CLK(SPI2);
+REGISTER_CLK(MDEC_CLK_ASSIST);
+REGISTER_CLK(MDEC_CLK_PSC);
+REGISTER_CLK(SPI1);
+REGISTER_CLK(AUD_IN);
+REGISTER_CLK(ETHERNET);
+REGISTER_CLK(DEMUX);
+REGISTER_CLK(RESERVED2);
+REGISTER_CLK(AIU_AI_TOP_GLUE);
+REGISTER_CLK(AIU_IEC958);
+REGISTER_CLK(AIU_I2S_OUT);
+REGISTER_CLK(AIU_AMCLK_MEASURE);
+REGISTER_CLK(AIU_AIFIFO2);
+REGISTER_CLK(AIU_AUD_MIXER);
+REGISTER_CLK(AIU_MIXER_REG);
+REGISTER_CLK(AIU_ADC);
+REGISTER_CLK(BLK_MOV);
+REGISTER_CLK(RESERVED3);
+REGISTER_CLK(UART1);
+REGISTER_CLK(LED_PWM);
+REGISTER_CLK(VGHL_PWM);
+REGISTER_CLK(RESERVED4);
+REGISTER_CLK(GE2D);
+REGISTER_CLK(USB0);
+REGISTER_CLK(USB1);
+REGISTER_CLK(RESET);
+REGISTER_CLK(NAND);
+REGISTER_CLK(HIU_PARSER_TOP);
+REGISTER_CLK(MDEC_CLK_DBLK);
+REGISTER_CLK(MDEC_CLK_PIC_DC);
 REGISTER_CLK(VIDEO_IN);
-REGISTER_CLK(WIFI);
+REGISTER_CLK(AHB_ARB0);
+REGISTER_CLK(EFUSE);
+REGISTER_CLK(ROM_CLK);
+REGISTER_CLK(RESERVED5);
+REGISTER_CLK(AHB_DATA_BUS);
+REGISTER_CLK(AHB_CONTROL_BUS);
+REGISTER_CLK(HDMI_INTR_SYNC);
+REGISTER_CLK(HDMI_PCLK);
+REGISTER_CLK(RESERVED6);
+REGISTER_CLK(RESERVED7);
+REGISTER_CLK(RESERVED8);
+REGISTER_CLK(MISC_USB1_TO_DDR);
+REGISTER_CLK(MISC_USB0_TO_DDR);
+REGISTER_CLK(AIU_PCLK);
+REGISTER_CLK(MMC_PCLK);
+REGISTER_CLK(MISC_DVIN);
+REGISTER_CLK(MISC_RDMA);
+REGISTER_CLK(RESERVED9);
+REGISTER_CLK(UART2);
+REGISTER_CLK(VENCI_INT);
+REGISTER_CLK(VIU2);
+REGISTER_CLK(VENCP_INT);
+REGISTER_CLK(VENCT_INT);
+REGISTER_CLK(VENCL_INT);
+REGISTER_CLK(VENC_L_TOP);
+REGISTER_CLK(VCLK2_VENCI);
+REGISTER_CLK(VCLK2_VENCI1);
+REGISTER_CLK(VCLK2_VENCP);
+REGISTER_CLK(VCLK2_VENCP1);
+REGISTER_CLK(VCLK2_VENCT);
+REGISTER_CLK(VCLK2_VENCT1);
+REGISTER_CLK(VCLK2_OTHER);
+REGISTER_CLK(VCLK2_ENCI);
+REGISTER_CLK(VCLK2_ENCP);
+REGISTER_CLK(DAC_CLK);
+REGISTER_CLK(AIU_AOCLK);
+REGISTER_CLK(AIU_AMCLK);
+REGISTER_CLK(AIU_ICE958_AMCLK);
+REGISTER_CLK(VCLK1_HDMI);
+REGISTER_CLK(AIU_AUDIN_SCLK);
+REGISTER_CLK(ENC480P);
+REGISTER_CLK(VCLK2_ENCT);
+REGISTER_CLK(VCLK2_ENCL);
+REGISTER_CLK(VCLK2_VENCL);
+REGISTER_CLK(VCLK2_VENCL1);
+REGISTER_CLK(VCLK2_OTHER1);
 
 static struct clk_lookup lookups[] = {
     {
@@ -356,95 +503,113 @@ static struct clk_lookup lookups[] = {
         .dev_id = "a9_clk",
         .clk    = &a9_clk,
     },
-    CLK_LOOKUP_ITEM(AHB_BRIDGE),
-    CLK_LOOKUP_ITEM(AHB_SRAM),
-    CLK_LOOKUP_ITEM(AIU_ADC),
-    CLK_LOOKUP_ITEM(AIU_MIXER_REG),
-    CLK_LOOKUP_ITEM(AIU_AUD_MIXER),
-    CLK_LOOKUP_ITEM(AIU_AIFIFO2),
-    CLK_LOOKUP_ITEM(AIU_AMCLK_MEASURE),
-    CLK_LOOKUP_ITEM(AIU_I2S_OUT),
-    CLK_LOOKUP_ITEM(AIU_IEC958),
-    CLK_LOOKUP_ITEM(AIU_AI_TOP_GLUE),
-    CLK_LOOKUP_ITEM(AIU_AUD_DAC),
-    CLK_LOOKUP_ITEM(AIU_ICE958_AMCLK),
-    CLK_LOOKUP_ITEM(AIU_I2S_DAC_AMCLK),
-    CLK_LOOKUP_ITEM(AIU_I2S_SLOW),
-    CLK_LOOKUP_ITEM(AIU_AUD_DAC_CLK),
-    CLK_LOOKUP_ITEM(ASSIST_MISC),
-    CLK_LOOKUP_ITEM(AMRISC),
-    CLK_LOOKUP_ITEM(AUD_BUF),
-    CLK_LOOKUP_ITEM(AUD_IN),
-    CLK_LOOKUP_ITEM(BLK_MOV),
-    CLK_LOOKUP_ITEM(BT656_IN),
-    CLK_LOOKUP_ITEM(DEMUX),
-    CLK_LOOKUP_ITEM(MMC_DDR),
     CLK_LOOKUP_ITEM(DDR),
-    CLK_LOOKUP_ITEM(ETHERNET),
-    CLK_LOOKUP_ITEM(GE2D),
-    CLK_LOOKUP_ITEM(HDMI_MPEG_DOMAIN),
-    CLK_LOOKUP_ITEM(HIU_PARSER_TOP),
-    CLK_LOOKUP_ITEM(HIU_PARSER),
-    CLK_LOOKUP_ITEM(ISA),
-    CLK_LOOKUP_ITEM(MEDIA_CPU),
-    CLK_LOOKUP_ITEM(MISC_USB0_TO_DDR),
-    CLK_LOOKUP_ITEM(MISC_USB1_TO_DDR),
-    CLK_LOOKUP_ITEM(MISC_SATA_TO_DDR),
-    CLK_LOOKUP_ITEM(AHB_CONTROL_BUS),
-    CLK_LOOKUP_ITEM(AHB_DATA_BUS),
-    CLK_LOOKUP_ITEM(AXI_BUS),
-    CLK_LOOKUP_ITEM(ROM_CLK),
-    CLK_LOOKUP_ITEM(EFUSE),
-    CLK_LOOKUP_ITEM(AHB_ARB0),
-    CLK_LOOKUP_ITEM(RESET),
-    CLK_LOOKUP_ITEM(MDEC_CLK_PIC_DC),
-    CLK_LOOKUP_ITEM(MDEC_CLK_DBLK),
-    CLK_LOOKUP_ITEM(MDEC_CLK_PSC),
-    CLK_LOOKUP_ITEM(MDEC_CLK_ASSIST),
-    CLK_LOOKUP_ITEM(MC_CLK),
-    CLK_LOOKUP_ITEM(IQIDCT_CLK),
     CLK_LOOKUP_ITEM(VLD_CLK),
-    CLK_LOOKUP_ITEM(NAND),
-    CLK_LOOKUP_ITEM(RESERVED0),
-    CLK_LOOKUP_ITEM(VGHL_PWM),
-    CLK_LOOKUP_ITEM(LED_PWM),
-    CLK_LOOKUP_ITEM(UART1),
-    CLK_LOOKUP_ITEM(SDIO),
-    CLK_LOOKUP_ITEM(ASYNC_FIFO),
-    CLK_LOOKUP_ITEM(STREAM),
-    CLK_LOOKUP_ITEM(RTC),
-    CLK_LOOKUP_ITEM(UART0),
-    CLK_LOOKUP_ITEM(RANDOM_NUM_GEN),
-    CLK_LOOKUP_ITEM(SMART_CARD_MPEG_DOMAIN),
-    CLK_LOOKUP_ITEM(SMART_CARD),
-    CLK_LOOKUP_ITEM(SAR_ADC),
-    CLK_LOOKUP_ITEM(I2C),
-    CLK_LOOKUP_ITEM(IR_REMOTE),
+    CLK_LOOKUP_ITEM(IQIDCT_CLK),
+    CLK_LOOKUP_ITEM(MC_CLK),
+    CLK_LOOKUP_ITEM(AHB_BRIDGE),
+    CLK_LOOKUP_ITEM(ISA),
+    CLK_LOOKUP_ITEM(APB_CBUS),
     CLK_LOOKUP_ITEM(_1200XXX),
-    CLK_LOOKUP_ITEM(SATA),
-    CLK_LOOKUP_ITEM(SPI1),
-    CLK_LOOKUP_ITEM(USB1),
-    CLK_LOOKUP_ITEM(USB0),
+    CLK_LOOKUP_ITEM(SPICC),
+    CLK_LOOKUP_ITEM(I2C),
+    CLK_LOOKUP_ITEM(SAR_ADC),
+    CLK_LOOKUP_ITEM(SMART_CARD_MPEG_DOMAIN),
+    CLK_LOOKUP_ITEM(RANDOM_NUM_GEN),
+    CLK_LOOKUP_ITEM(UART0),
+    CLK_LOOKUP_ITEM(SDHC),
+    CLK_LOOKUP_ITEM(STREAM),
+    CLK_LOOKUP_ITEM(ASYNC_FIFO),
+    CLK_LOOKUP_ITEM(SDIO),
+    CLK_LOOKUP_ITEM(AUD_BUF),
+    CLK_LOOKUP_ITEM(HIU_PARSER),
+    CLK_LOOKUP_ITEM(RESERVED0),
+    CLK_LOOKUP_ITEM(AMRISC),
+    CLK_LOOKUP_ITEM(BT656_IN),
+    CLK_LOOKUP_ITEM(ASSIST_MISC),
+    CLK_LOOKUP_ITEM(VENC_I_TOP),
+    CLK_LOOKUP_ITEM(VENC_P_TOP),
+    CLK_LOOKUP_ITEM(VENC_T_TOP),
+    CLK_LOOKUP_ITEM(VENC_DAC),
     CLK_LOOKUP_ITEM(VI_CORE),
-    CLK_LOOKUP_ITEM(LCD),
-    CLK_LOOKUP_ITEM(ENC480P_MPEG_DOMAIN),
-    CLK_LOOKUP_ITEM(ENC480I),
-    CLK_LOOKUP_ITEM(VENC_MISC),
-    CLK_LOOKUP_ITEM(ENC480P),
-    CLK_LOOKUP_ITEM(HDMI),
-    CLK_LOOKUP_ITEM(VCLK3_DAC),
-    CLK_LOOKUP_ITEM(VCLK3_MISC),
-    CLK_LOOKUP_ITEM(VCLK3_DVI),
-    CLK_LOOKUP_ITEM(VCLK2_VIU),
-    CLK_LOOKUP_ITEM(VCLK2_VENC_DVI),
-    CLK_LOOKUP_ITEM(VCLK2_VENC_ENC480P),
-    CLK_LOOKUP_ITEM(VCLK2_VENC_BIST),
-    CLK_LOOKUP_ITEM(VCLK1_VENC_656),
-    CLK_LOOKUP_ITEM(VCLK1_VENC_DVI),
-    CLK_LOOKUP_ITEM(VCLK1_VENC_ENCI),
-    CLK_LOOKUP_ITEM(VCLK1_VENC_BIST),
+    CLK_LOOKUP_ITEM(RESERVED1),
+    CLK_LOOKUP_ITEM(SPI2),
+    CLK_LOOKUP_ITEM(MDEC_CLK_ASSIST),
+    CLK_LOOKUP_ITEM(MDEC_CLK_PSC),
+    CLK_LOOKUP_ITEM(SPI1),
+    CLK_LOOKUP_ITEM(AUD_IN),
+    CLK_LOOKUP_ITEM(ETHERNET),
+    CLK_LOOKUP_ITEM(DEMUX),
+    CLK_LOOKUP_ITEM(RESERVED2),
+    CLK_LOOKUP_ITEM(AIU_AI_TOP_GLUE),
+    CLK_LOOKUP_ITEM(AIU_IEC958),
+    CLK_LOOKUP_ITEM(AIU_I2S_OUT),
+    CLK_LOOKUP_ITEM(AIU_AMCLK_MEASURE),
+    CLK_LOOKUP_ITEM(AIU_AIFIFO2),
+    CLK_LOOKUP_ITEM(AIU_AUD_MIXER),
+    CLK_LOOKUP_ITEM(AIU_MIXER_REG),
+    CLK_LOOKUP_ITEM(AIU_ADC),
+    CLK_LOOKUP_ITEM(BLK_MOV),
+    CLK_LOOKUP_ITEM(RESERVED3),
+    CLK_LOOKUP_ITEM(UART1),
+    CLK_LOOKUP_ITEM(LED_PWM),
+    CLK_LOOKUP_ITEM(VGHL_PWM),
+    CLK_LOOKUP_ITEM(RESERVED4),
+    CLK_LOOKUP_ITEM(GE2D),
+    CLK_LOOKUP_ITEM(USB0),
+    CLK_LOOKUP_ITEM(USB1),
+    CLK_LOOKUP_ITEM(RESET),
+    CLK_LOOKUP_ITEM(NAND),
+    CLK_LOOKUP_ITEM(HIU_PARSER_TOP),
+    CLK_LOOKUP_ITEM(MDEC_CLK_DBLK),
+    CLK_LOOKUP_ITEM(MDEC_CLK_PIC_DC),
     CLK_LOOKUP_ITEM(VIDEO_IN),
-    CLK_LOOKUP_ITEM(WIFI)
+    CLK_LOOKUP_ITEM(AHB_ARB0),
+    CLK_LOOKUP_ITEM(EFUSE),
+    CLK_LOOKUP_ITEM(ROM_CLK),
+    CLK_LOOKUP_ITEM(RESERVED5),
+    CLK_LOOKUP_ITEM(AHB_DATA_BUS),
+    CLK_LOOKUP_ITEM(AHB_CONTROL_BUS),
+    CLK_LOOKUP_ITEM(HDMI_INTR_SYNC),
+    CLK_LOOKUP_ITEM(HDMI_PCLK),
+    CLK_LOOKUP_ITEM(RESERVED6),
+    CLK_LOOKUP_ITEM(RESERVED7),
+    CLK_LOOKUP_ITEM(RESERVED8),
+    CLK_LOOKUP_ITEM(MISC_USB1_TO_DDR),
+    CLK_LOOKUP_ITEM(MISC_USB0_TO_DDR),
+    CLK_LOOKUP_ITEM(AIU_PCLK),
+    CLK_LOOKUP_ITEM(MMC_PCLK),
+    CLK_LOOKUP_ITEM(MISC_DVIN),
+    CLK_LOOKUP_ITEM(MISC_RDMA),
+    CLK_LOOKUP_ITEM(RESERVED9),
+    CLK_LOOKUP_ITEM(UART2),
+    CLK_LOOKUP_ITEM(VENCI_INT),
+    CLK_LOOKUP_ITEM(VIU2),
+    CLK_LOOKUP_ITEM(VENCP_INT),
+    CLK_LOOKUP_ITEM(VENCT_INT),
+    CLK_LOOKUP_ITEM(VENCL_INT),
+    CLK_LOOKUP_ITEM(VENC_L_TOP),
+    CLK_LOOKUP_ITEM(VCLK2_VENCI),
+    CLK_LOOKUP_ITEM(VCLK2_VENCI1),
+    CLK_LOOKUP_ITEM(VCLK2_VENCP),
+    CLK_LOOKUP_ITEM(VCLK2_VENCP1),
+    CLK_LOOKUP_ITEM(VCLK2_VENCT),
+    CLK_LOOKUP_ITEM(VCLK2_VENCT1),
+    CLK_LOOKUP_ITEM(VCLK2_OTHER),
+    CLK_LOOKUP_ITEM(VCLK2_ENCI),
+    CLK_LOOKUP_ITEM(VCLK2_ENCP),
+    CLK_LOOKUP_ITEM(DAC_CLK),
+    CLK_LOOKUP_ITEM(AIU_AOCLK),
+    CLK_LOOKUP_ITEM(AIU_AMCLK),
+    CLK_LOOKUP_ITEM(AIU_ICE958_AMCLK),
+    CLK_LOOKUP_ITEM(VCLK1_HDMI),
+    CLK_LOOKUP_ITEM(AIU_AUDIN_SCLK),
+    CLK_LOOKUP_ITEM(ENC480P),
+    CLK_LOOKUP_ITEM(VCLK2_ENCT),
+    CLK_LOOKUP_ITEM(VCLK2_ENCL),
+    CLK_LOOKUP_ITEM(VCLK2_VENCL),
+    CLK_LOOKUP_ITEM(VCLK2_VENCL1),
+    CLK_LOOKUP_ITEM(VCLK2_OTHER1),
 };
 
 static int __init meson_clock_init(void)
@@ -590,117 +755,3 @@ void clk_disable(struct clk *clk)
     spin_unlock_irqrestore(&clockfw_lock, flags);
 }
 EXPORT_SYMBOL(clk_disable);
-
-
-// -----------------------------------------
-// clk_util_clk_msr
-// -----------------------------------------
-// from twister_core.v
-//        .clk_to_msr_in          ( { 18'h0,                      // [63:46]
-//                                    cts_pwm_A_clk,              // [45]
-//                                    cts_pwm_B_clk,              // [44]
-//                                    cts_pwm_C_clk,              // [43]
-//                                    cts_pwm_D_clk,              // [42]
-//                                    cts_eth_rx_tx,              // [41]
-//                                    cts_pcm_mclk,               // [40]
-//                                    cts_pcm_sclk,               // [39]
-//                                    cts_vdin_meas_clk,          // [38]
-//                                    cts_vdac_clk[1],            // [37]
-//                                    cts_hdmi_tx_pixel_clk,      // [36]
-//                                    cts_mali_clk,               // [35]
-//                                    cts_sdhc_clk1,              // [34]
-//                                    cts_sdhc_clk0,              // [33]
-//                                    cts_audac_clkpi,            // [32]
-//                                    cts_a9_clk,                 // [31]
-//                                    cts_ddr_clk,                // [30]
-//                                    cts_vdac_clk[0],            // [29]
-//                                    cts_sar_adc_clk,            // [28]
-//                                    cts_enci_clk,               // [27]
-//                                    sc_clk_int,                 // [26]
-//                                    usb_clk_12mhz,              // [25]
-//                                    lvds_fifo_clk,              // [24]
-//                                    HDMI_CH3_TMDSCLK,           // [23]
-//                                    mod_eth_clk50_i,            // [22]
-//                                    mod_audin_amclk_i,          // [21]
-//                                    cts_btclk27,                // [20]
-//                                    cts_hdmi_sys_clk,           // [19]
-//                                    cts_led_pll_clk,            // [18]
-//                                    cts_vghl_pll_clk,           // [17]
-//                                    cts_FEC_CLK_2,              // [16]
-//                                    cts_FEC_CLK_1,              // [15]
-//                                    cts_FEC_CLK_0,              // [14]
-//                                    cts_amclk,                  // [13]
-//                                    vid2_pll_clk,               // [12]
-//                                    cts_eth_rmii,               // [11]
-//                                    cts_enct_clk,               // [10]
-//                                    cts_encl_clk,               // [9]
-//                                    cts_encp_clk,               // [8]
-//                                    clk81,                      // [7]
-//                                    vid_pll_clk,                // [6]
-//                                    aud_pll_clk,                // [5]
-//                                    misc_pll_clk,               // [4]
-//                                    ddr_pll_clk,                // [3]
-//                                    sys_pll_clk,                // [2]
-//                                    am_ring_osc_clk_out[1],     // [1]
-//                                    am_ring_osc_clk_out[0]} ),  // [0]
-//
-// For Example
-//
-// unsigend long    clk81_clk   = clk_util_clk_msr( 2,      // mux select 2
-//                                                  50 );   // measure for 50uS
-//
-// returns a value in "clk81_clk" in Hz
-//
-// The "uS_gate_time" can be anything between 1uS and 65535 uS, but the limitation is
-// the circuit will only count 65536 clocks.  Therefore the uS_gate_time is limited by
-//
-//   uS_gate_time <= 65535/(expect clock frequency in MHz)
-//
-// For example, if the expected frequency is 400Mhz, then the uS_gate_time should
-// be less than 163.
-//
-// Your measurement resolution is:
-//
-//    100% / (uS_gate_time * measure_val )
-//
-//
-unsigned int clk_util_clk_msr(unsigned int clk_mux)
-{
-    unsigned int regval = 0;
-    WRITE_CBUS_REG(MSR_CLK_REG0, (clk_mux<<20)|0x80063);
-    WRITE_CBUS_REG(MSR_CLK_REG0, (clk_mux<<20)|0x90063);
-    while (!(READ_CBUS_REG(MSR_CLK_REG0)&0x20000000)){;}
-    regval = READ_CBUS_REG(MSR_CLK_REG2) & 0x000FFFFF;
-    // Return value in Mhz
-    return ((regval+99) / 100);
-}
-
-unsigned  int get_system_clk(void)
-{
-    static unsigned int sys_freq = 0;
-    if (sys_freq == 0) {
-        sys_freq = (clk_util_clk_msr(SYS_PLL_CLK) * 1000000);
-    }
-    return sys_freq;
-}
-EXPORT_SYMBOL(get_system_clk);
-
-unsigned int get_mpeg_clk(void)
-{
-    static unsigned int clk81_freq = 0;
-    if (clk81_freq == 0) {
-        clk81_freq = (clk_util_clk_msr(CLK81) * 1000000);
-    }
-    return clk81_freq;
-}
-EXPORT_SYMBOL(get_mpeg_clk);
-
-unsigned int get_misc_pll_clk(void)
-{
-    static unsigned int freq = 0;
-    if (freq == 0) {
-        freq = (clk_util_clk_msr(MISC_PLL_CLK) * 1000000);
-    }
-    return freq;
-}
-EXPORT_SYMBOL(get_misc_pll_clk);

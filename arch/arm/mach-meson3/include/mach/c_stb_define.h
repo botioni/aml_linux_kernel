@@ -47,7 +47,7 @@
 // bit 3 -- invert fec_valid for S2P0
 // bit 2 -- invert fec_clk for S2P0
 // bit 1:0 -- fec_s_sel for S2P0  00 - select TS0, 01 -- select TS1, 10 -- select TS2, 11 - reserved
-#define STB_TOP_CONFIG          (STB_CBUS_BASE + 0xf0) // 0x16f0
+//#define STB_TOP_CONFIG          (STB_CBUS_BASE + 0xf0) // 0x16f0
 /*----------- bit define -----------*/
 #define INVERT_S2P1_FEC_ERROR       22
 #define INVERT_S2P1_FEC_DATA        21
@@ -68,7 +68,7 @@
 
 // 15:8 -- TS_package_length_sub_1 (default : 187)
 //  7:0 -- fec_sync_byte (default : 0x47)
-#define TS_TOP_CONFIG           (STB_CBUS_BASE + 0xf1) // 0x16f1
+//#define TS_TOP_CONFIG           (STB_CBUS_BASE + 0xf1) // 0x16f1
 /*----------- bit define -----------*/
 #define TS_PACKAGE_LENGTH_SUB_1     8
 #define FEC_DEFAULT_SYNC_BYTE       0
@@ -78,7 +78,7 @@
 // Bit 7:6 -- transport_scrambling_control_odd // should be 3
 // Bit 5 -- ts_hiu_enable
 // Bit 4:0 -- fec_clk_div
-#define TS_FILE_CONFIG          (STB_CBUS_BASE + 0xf2) // 0x16f2
+//#define TS_FILE_CONFIG          (STB_CBUS_BASE + 0xf2) // 0x16f2
 /*----------- bit define -----------*/
 #define FILE_M2TS_SKIP_BYTES        16
 #define DES_OUT_DLY                 8
@@ -89,22 +89,22 @@
 // Bit 13:8 -- des ts pl state   -- Read Only
 // Bit 3:0 PID index to 8 PID to get key-set
 // auto increse after TS_PL_PID_DATA read/write
-#define TS_PL_PID_INDEX         (STB_CBUS_BASE + 0xf3) // 0x16f3
+//#define TS_PL_PID_INDEX         (STB_CBUS_BASE + 0xf3) // 0x16f3
 /*----------- bit define -----------*/
 #define DES_TS_PL_STATE             8
 
 // Bit 13 -- PID match disble
 // Bit 12:0 -- PID
-#define TS_PL_PID_DATA          (STB_CBUS_BASE + 0xf4) // 0x16f4
+//#define TS_PL_PID_DATA          (STB_CBUS_BASE + 0xf4) // 0x16f4
 /*----------- bit define -----------*/
 #define PID_MATCH_DISABLE_HIGH       29
 #define PID_MATCH_HIGH               16
 #define PID_MATCH_DISABLE_LOW        13
 #define PID_MATCH_LOW                0
 
-#define COMM_DESC_KEY0          (STB_CBUS_BASE + 0xf5) // 0x16f5 // Common descrambler key (key bits[63:32])
-#define COMM_DESC_KEY1          (STB_CBUS_BASE + 0xf6) // 0x16f6 // Common descrambler key (key bits[31:0])
-#define COMM_DESC_KEY_RW        (STB_CBUS_BASE + 0xf7) // 0x16f7 // bits[3:0] point to the address to write the key {COMM_DESC_KEY1, COMM_DESC_KEY0}
+//#define COMM_DESC_KEY0          (STB_CBUS_BASE + 0xf5) // 0x16f5 // Common descrambler key (key bits[63:32])
+//#define COMM_DESC_KEY1          (STB_CBUS_BASE + 0xf6) // 0x16f6 // Common descrambler key (key bits[31:0])
+//#define COMM_DESC_KEY_RW        (STB_CBUS_BASE + 0xf7) // 0x16f7 // bits[3:0] point to the address to write the key {COMM_DESC_KEY1, COMM_DESC_KEY0}
 // Writing this register writes the key to RAM
 
 //========================================================================

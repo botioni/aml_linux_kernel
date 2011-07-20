@@ -283,8 +283,8 @@ static struct platform_device amlogic_spi_nor_device = {
 static void set_usb_a_vbus_power(char is_power_on)
 {
 	/* USB a power is controled by GPIOD_09*/
-#define USB_A_POW_GPIO			       GPIOD_bank_bit0_9(9)
-#define USB_A_POW_GPIO_BIT		GPIOD_bit_bit0_9(9)
+#define USB_A_POW_GPIO          GPIOD_bank_bit0_9(9)
+#define USB_A_POW_GPIO_BIT      GPIOD_bit_bit0_9(9)
 #define USB_A_POW_GPIO_BIT_ON   1
 #define USB_A_POW_GPIO_BIT_OFF  0
     if (is_power_on) {
@@ -1165,22 +1165,11 @@ typedef struct {
     unsigned enable;
 } gpio_data_t;
 
-#define MAX_GPIO 0
+#define MAX_GPIO 2
 static gpio_data_t gpio_data[MAX_GPIO] = {
     // ----------------------------------- power ctrl ---------------------------------
-    {"GPIOC_3 -- AVDD_EN",      GPIOC_bank_bit0_26(3),      GPIOC_bit_bit0_26(3),   GPIO_OUTPUT_MODE, 1, 1},
-    {"GPIOA_7 -- BL_PWM",       GPIOA_bank_bit0_14(7),      GPIOA_bit_bit0_14(7),   GPIO_OUTPUT_MODE, 1, 1},
-    {"GPIOA_6 -- VCCx2_EN",     GPIOA_bank_bit0_14(6),      GPIOA_bit_bit0_14(6),   GPIO_OUTPUT_MODE, 1, 1},
-    // ----------------------------------- i2s ---------------------------------
-    {"TEST_N -- I2S_DOUT",      GPIOJTAG_bank_bit(16),      GPIOJTAG_bit_bit16(16), GPIO_OUTPUT_MODE, 1, 1},
-    // ----------------------------------- wifi&bt ---------------------------------
-    {"GPIOD_12 -- WL_RST_N",    GPIOD_bank_bit2_24(12),     GPIOD_bit_bit2_24(12),  GPIO_OUTPUT_MODE, 1, 1},
-    {"GPIOD_14 -- BT/GPS_RST_N", GPIOD_bank_bit2_24(14),     GPIOD_bit_bit2_24(14),  GPIO_OUTPUT_MODE, 1, 1},
-    {"GPIOD_18 -- UART_CTS_N",  GPIOD_bank_bit2_24(18),     GPIOD_bit_bit2_24(18),  GPIO_OUTPUT_MODE, 1, 1},
-    {"GPIOD_21 -- BT/GPS",      GPIOD_bank_bit2_24(21),     GPIOD_bit_bit2_24(21),  GPIO_OUTPUT_MODE, 1, 1},
-    // ----------------------------------- lcd ---------------------------------
-    {"GPIOC_12 -- LCD_U/D",     GPIOC_bank_bit0_26(12),     GPIOC_bit_bit0_26(12),  GPIO_OUTPUT_MODE, 1, 1},
-    {"GPIOA_3 -- LCD_PWR_EN",   GPIOA_bank_bit0_14(3),      GPIOA_bit_bit0_14(3),   GPIO_OUTPUT_MODE, 1, 1},
+    {"GPIOA_26 -- VCCx2_EN",     GPIOA_bank_bit0_27(26),      GPIOA_bit_bit0_27(26),   GPIO_OUTPUT_MODE, 0, 1},
+    {"GPIOA_27 -- LCD_PWR_EN",   GPIOA_bank_bit0_27(27),      GPIOA_bit_bit0_27(17),   GPIO_OUTPUT_MODE, 0, 1},
 };
 
 static void save_gpio(int port)
@@ -1257,6 +1246,7 @@ static void restore_pinmux(void)
 
 static void set_vccx2(int power_on)
 {
+	/* Controled by GPIOA_26*/
     int i;
     if (power_on) {
         restore_pinmux();
@@ -1265,13 +1255,13 @@ static void set_vccx2(int power_on)
         }
 
         printk(KERN_INFO "set_vccx2 power up\n");
-        set_gpio_val(GPIOA_bank_bit0_14(6), GPIOA_bit_bit0_14(6), 1);
-        set_gpio_mode(GPIOA_bank_bit0_14(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);
+        set_gpio_val(GPIOA_bank_bit0_27(26), GPIOA_bit_bit0_27(26), 1);
+        set_gpio_mode(GPIOA_bank_bit0_27(26), GPIOA_bit_bit0_27(26), GPIO_OUTPUT_MODE);
         //set clk for wifi
     } else {
         printk(KERN_INFO "set_vccx2 power down\n");
-        set_gpio_val(GPIOA_bank_bit0_14(6), GPIOA_bit_bit0_14(6), 0);
-        set_gpio_mode(GPIOA_bank_bit0_14(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);
+        set_gpio_val(GPIOA_bank_bit0_27(26), GPIOA_bit_bit0_27(26), 0);
+        set_gpio_mode(GPIOA_bank_bit0_27(26), GPIOA_bit_bit0_27(26), GPIO_OUTPUT_MODE);
 
         save_pinmux();
         for (i = 0; i < MAX_GPIO; i++) {
@@ -1568,7 +1558,7 @@ static void disable_unused_model(void)
     CLK_GATE_OFF(BT656_IN);
     //CLK_GATE_OFF(ETHERNET);
     //CLK_GATE_OFF(SATA);
-    CLK_GATE_OFF(WIFI);
+    //CLK_GATE_OFF(WIFI);
     //video_dac_disable();
     //audio_internal_dac_disable();
 }
