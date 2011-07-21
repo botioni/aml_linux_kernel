@@ -438,7 +438,11 @@ static struct clk a9_clk = {
     .name       = "a9_clk",
     .rate       = 800000000,
     .min        = 200000000,
+#if defined(CONFIG_ARCH_MESON3) && defined(CONFIG_CPU_FREQ)
+    .max        = 600000000,
+#else
     .max        = 800000000,
+#endif
     .set_rate   = clk_set_rate_a9_clk,
 };
 
