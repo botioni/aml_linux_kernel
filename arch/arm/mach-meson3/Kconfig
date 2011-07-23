@@ -1,13 +1,13 @@
 menu "Meson3 platform type"
 	depends on ARCH_MESON3
 
-config MACH_MESON3_REFE00
+config MACH_MESON3_REFF01
 	select GENERIC_ALLOCATOR
 	bool "Support M3 (M3_SKT_V1) platform"
 	help
 	  Include support for the AMLOGIC M3 Socket Emulation Baseboard platform.
 
-config MACH_MESON3_REFF01
+config MACH_MESON3_REFF02
 	select GENERIC_ALLOCATOR
 	bool "Support M3 (WA) platform"
 	help
