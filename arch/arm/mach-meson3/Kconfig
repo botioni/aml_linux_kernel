@@ -7,7 +7,7 @@ config MACH_MESON3_REFE00
 	help
 	  Include support for the AMLOGIC M3 Socket Emulation Baseboard platform.
 
-config MACH_MESON3_REFD01
+config MACH_MESON3_REFF01
 	select GENERIC_ALLOCATOR
 	bool "Support M3 (WA) platform"
 	help
