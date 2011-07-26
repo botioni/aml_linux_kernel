@@ -252,6 +252,7 @@ static void aml_platform_hw_init(struct aml_nand_chip *aml_chip)
 
 	if ((aml_chip->chip_num > 1) && !nand_erarly_suspend_flag) {
 		chip->select_chip(mtd, -1);
+/*
 		CLEAR_CBUS_REG_MASK(PREG_HGPIO_EN_N, (1 << 5));
 		CLEAR_CBUS_REG_MASK(PREG_HGPIO_O, (1 << 5));
 		SET_CBUS_REG_MASK(PREG_HGPIO_EN_N, (1 << 16));
@@ -264,6 +265,7 @@ static void aml_platform_hw_init(struct aml_nand_chip *aml_chip)
 				printk("ce1 and ce2 connected\n");
 			}
 		}
+*/
 	}
 
 	if (!plat->T_REA)

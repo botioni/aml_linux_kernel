@@ -2445,8 +2445,8 @@ static void disable_unused_model(void)
     CLK_GATE_OFF(VIDEO_IN);
     CLK_GATE_OFF(BT656_IN);
     CLK_GATE_OFF(ETHERNET);
-    CLK_GATE_OFF(SATA);
-    CLK_GATE_OFF(WIFI);
+//    CLK_GATE_OFF(SATA);
+//    CLK_GATE_OFF(WIFI);
     video_dac_disable();
  }
 static void __init power_hold(void)

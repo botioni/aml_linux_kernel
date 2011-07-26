@@ -173,8 +173,8 @@ void power_off_backlight(void)
 #endif
     CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<31));
     CLEAR_CBUS_REG_MASK(PWM_MISC_REG_AB, (1 << 0));
-    set_gpio_val(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), 0);
-    set_gpio_mode(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), GPIO_OUTPUT_MODE);
+    //set_gpio_val(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), 0);
+    //set_gpio_mode(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), GPIO_OUTPUT_MODE);
 }
 
 static void power_on_lcd(void)
@@ -186,8 +186,8 @@ static void power_on_lcd(void)
 #endif
     msleep(10);
     //VCCx2_EN D17 GPIOA_6 --> H
-    set_gpio_val(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), 1);
-    set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);
+    //set_gpio_val(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), 1);
+    //set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);
 }
 
 static void power_off_lcd(void)

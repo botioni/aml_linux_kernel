@@ -56,11 +56,7 @@
 #define VDIN_DEVICE_NAME        "vdin"
 #define VDIN_CLASS_NAME         "vdin"
 
-#if defined(CONFIG_ARCH_MESON)
 #define VDIN_COUNT              1
-#elif defined(CONFIG_ARCH_MESON2)
-#define VDIN_COUNT              2
-#endif
 
 #define VDIN_PUT_INTERVAL       1    //(HZ/100)   //10ms, #define HZ 100
 
@@ -69,11 +65,7 @@
 static dev_t vdin_devno;
 static struct class *vdin_clsp;
 
-#if defined(CONFIG_ARCH_MESON)
 unsigned int vdin_addr_offset[VDIN_COUNT] = {0x00};
-#elif defined(CONFIG_ARCH_MESON2)
-unsigned int vdin_addr_offset[VDIN_COUNT] = {0x00, 0x70};
-#endif
 
 static vdin_dev_t *vdin_devp[VDIN_COUNT];
 

@@ -47,7 +47,7 @@
 	static struct early_suspend egalax_early_suspend;
 #endif
 
-#define irq_to_gpio(irq) ((GPIOD_bank_bit2_24(24)<<16) |GPIOD_bit_bit2_24(24)) 
+#define irq_to_gpio(irq) ((GPIOA_bank_bit0_27(16)<<16) |GPIOA_bit_bit0_27(16)) 
 
 // Global define to enable function
 #define _ENABLE_DBG_LEVEL

@@ -857,13 +857,13 @@ static void unmux_hpd(void)
 #else
     Wr(PERIPHS_PIN_MUX_0, Rd(PERIPHS_PIN_MUX_0)&(~(1 << 1))); //use hpd as gpio
 #endif        
-    Wr(PREG_EGPIO_EN_N, Rd(PREG_EGPIO_EN_N)|(1<<0)); //GPIOA_0 as input
+//    Wr(PREG_EGPIO_EN_N, Rd(PREG_EGPIO_EN_N)|(1<<0)); //GPIOA_0 as input
 }    
 
 static int read_hpd_gpio(void)
 {
-    int level;
-    level = Rd(PREG_EGPIO_I)&0x1; //read GPIOA_0
+    int level=0;
+    //level = Rd(PREG_EGPIO_I)&0x1; //read GPIOA_0
     return level;
 }
 
