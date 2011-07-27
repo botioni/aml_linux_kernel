@@ -388,19 +388,18 @@ static struct platform_device fb_device = {
 #ifdef CONFIG_USB_DWC_OTG_HCD
 static void set_usb_a_vbus_power(char is_power_on)
 {
-#define USB_A_POW_GPIO          PREG_EGPIO
-#define USB_A_POW_GPIO_BIT      3
+#define USB_A_POW_GPIO          GPIOD_bank_bit0_9(9)
+#define USB_A_POW_GPIO_BIT      GPIOD_bit_bit0_9(9)
 #define USB_A_POW_GPIO_BIT_ON   1
 #define USB_A_POW_GPIO_BIT_OFF  0
     if(is_power_on) {
         printk(KERN_INFO "set usb port power on (board gpio %d)!\n",USB_A_POW_GPIO_BIT);
-        //set_gpio_mode(USB_A_POW_GPIO,USB_A_POW_GPIO_BIT,GPIO_OUTPUT_MODE);
-        //set_gpio_val(USB_A_POW_GPIO,USB_A_POW_GPIO_BIT,USB_A_POW_GPIO_BIT_ON);
-    }
-    else {
+        set_gpio_mode(USB_A_POW_GPIO, USB_A_POW_GPIO_BIT, GPIO_OUTPUT_MODE);
+        set_gpio_val(USB_A_POW_GPIO, USB_A_POW_GPIO_BIT, USB_A_POW_GPIO_BIT_ON);
+    } else    {
         printk(KERN_INFO "set usb port power off (board gpio %d)!\n",USB_A_POW_GPIO_BIT);
-        //set_gpio_mode(USB_A_POW_GPIO,USB_A_POW_GPIO_BIT,GPIO_OUTPUT_MODE);
-        //set_gpio_val(USB_A_POW_GPIO,USB_A_POW_GPIO_BIT,USB_A_POW_GPIO_BIT_OFF);
+        set_gpio_mode(USB_A_POW_GPIO, USB_A_POW_GPIO_BIT, GPIO_OUTPUT_MODE);
+        set_gpio_val(USB_A_POW_GPIO, USB_A_POW_GPIO_BIT, USB_A_POW_GPIO_BIT_OFF);
     }
 }
 //usb_a is OTG port
@@ -426,7 +425,7 @@ static struct lm_device usb_ld_b = {
     .port_type = USB_PORT_TYPE_HOST,
     .port_speed = USB_PORT_SPEED_DEFAULT,
     .dma_config = USB_DMA_BURST_SINGLE , //   USB_DMA_DISABLE,
-    //.set_vbus_power = set_usb_a_vbus_power,
+    .set_vbus_power = 0,
 };
 
 #endif
@@ -1658,22 +1657,12 @@ static struct bq27x00_battery_pdata bq27x00_pdata = {
 };
 #endif
 
-#define PINMUX_UART_A   UART_A_GPIO_D21_D22
-#define PINMUX_UART_B   UART_B_GPIO_E18_E19
-
 #if defined(CONFIG_AM_UART_WITH_S_CORE)
-
-#if defined(CONFIG_AM_UART0_SET_PORT_A)
-#define UART_0_PORT     UART_A
-#define UART_1_PORT     UART_B
-#elif defined(CONFIG_AM_UART0_SET_PORT_B)
-#define UART_0_PORT     UART_B
-#define UART_1_PORT     UART_A
-#endif
-
 static struct aml_uart_platform aml_uart_plat = {
-    .uart_line[0]       =   UART_0_PORT,
-    .uart_line[1]       =   UART_1_PORT
+    .uart_line[0]       =   UART_AO,
+    .uart_line[1]       =   UART_A,
+    .uart_line[2]       =   UART_B,
+    .uart_line[3]       =   UART_C
 };
 
 static struct platform_device aml_uart_device = {
