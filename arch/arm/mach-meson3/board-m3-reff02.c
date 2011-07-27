@@ -590,15 +590,15 @@ static struct aml_card_info  amlogic_card_info[] = {
     [0] = {
         .name = "sd_card",
         .work_mode = CARD_HW_MODE,
-        .io_pad_type = 0,
-        .card_ins_en_reg = 0,
-        .card_ins_en_mask = 0,
-        .card_ins_input_reg = 0,
-        .card_ins_input_mask = 0,
-        .card_power_en_reg = 0,
-        .card_power_en_mask = 0,
-        .card_power_output_reg = 0,
-        .card_power_output_mask = 0,
+        .io_pad_type = SDIO_B_CARD_0_5,
+        .card_ins_en_reg = CARD_GPIO_ENABLE,
+        .card_ins_en_mask = PREG_IO_29_MASK,
+        .card_ins_input_reg = CARD_GPIO_INPUT,
+        .card_ins_input_mask = PREG_IO_29_MASK,
+        .card_power_en_reg = CARD_GPIO_ENABLE,
+        .card_power_en_mask = PREG_IO_31_MASK,
+        .card_power_output_reg = CARD_GPIO_OUTPUT,
+        .card_power_output_mask = PREG_IO_31_MASK,
         .card_power_en_lev = 0,
         .card_wp_en_reg = 0,
         .card_wp_en_mask = 0,
@@ -606,25 +606,36 @@ static struct aml_card_info  amlogic_card_info[] = {
         .card_wp_input_mask = 0,
         .card_extern_init = 0,
     },
+#if 1
     [1] = {
         .name = "sdio_card",
         .work_mode = CARD_HW_MODE,
-        .io_pad_type = 0,
+        .io_pad_type = SDIO_A_GPIOX_0_3,
         .card_ins_en_reg = 0,
         .card_ins_en_mask = 0,
         .card_ins_input_reg = 0,
         .card_ins_input_mask = 0,
-        .card_power_en_reg = 0,
-        .card_power_en_mask = 0,
-        .card_power_output_reg = 0,
-        .card_power_output_mask = 0,
-        .card_power_en_lev = 1,
+#ifdef CONFIG_TCA6424
+        .card_power_en_reg = 0,//EGPIO_GPIOD_ENABLE,
+        .card_power_en_mask = 0,//PREG_IO_10_MASK,
+        .card_power_output_reg = 0,//EGPIO_GPIOD_OUTPUT,
+        .card_power_output_mask = 0,//PREG_IO_10_MASK,
+        .card_power_en_lev = 0,//1,
+#else
+        /*GPIOD_8 WIFI RST*/
+        .card_power_en_reg = 0,//EGPIO_GPIOD_ENABLE,
+        .card_power_en_mask = 0,//PREG_IO_10_MASK,
+        .card_power_output_reg = 0,//EGPIO_GPIOD_OUTPUT,
+        .card_power_output_mask = 0,//PREG_IO_10_MASK,
+        .card_power_en_lev = 0,//1,
+#endif
         .card_wp_en_reg = 0,
         .card_wp_en_mask = 0,
         .card_wp_input_reg = 0,
         .card_wp_input_mask = 0,
         .card_extern_init = sdio_extern_init,
     },
+#endif
 };
 
 static struct aml_card_platform amlogic_card_platform = {
