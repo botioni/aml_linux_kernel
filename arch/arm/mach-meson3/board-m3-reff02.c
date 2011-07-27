@@ -1442,9 +1442,9 @@ static void set_charge(int flags)
 {
     //GPIOD_22 low: fast charge high: slow charge
    // CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_7, (1<<18));
-    if(flags == 1)
+   // if(flags == 1)
         //set_gpio_val(GPIOD_bank_bit2_24(22), GPIOD_bit_bit2_24(22), 0); //fast charge
-    else
+    //else
         //set_gpio_val(GPIOD_bank_bit2_24(22), GPIOD_bit_bit2_24(22), 1); //slow charge
     //set_gpio_mode(GPIOD_bank_bit2_24(22), GPIOD_bit_bit2_24(22), GPIO_OUTPUT_MODE);
 }
@@ -2539,7 +2539,7 @@ static __init void m1_fixup(struct machine_desc *mach, struct tag *tag, char **c
     m->nr_banks++;
 }
 
-MACHINE_START(MESON_8726M, "AMLOGIC MESON-M1 8726M SZ")
+MACHINE_START(MESON3_8726M_SKT, "AMLOGIC MESON3 8726M SKT SH")
     .phys_io        = MESON_PERIPHS1_PHYS_BASE,
     .io_pg_offst    = (MESON_PERIPHS1_PHYS_BASE >> 18) & 0xfffc,
     .boot_params    = BOOT_PARAMS_OFFSET,
