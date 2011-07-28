@@ -913,8 +913,8 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
     int toggle_cnt;
 #endif
 
-while(1)
-printk("vsync\n");
+//while(1)
+//printk("vsync\n");
 
     deinterlace_mode = get_deinterlace_mode();
 
