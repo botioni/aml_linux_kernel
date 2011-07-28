@@ -297,12 +297,12 @@ $(MODULE_NAME)-$(CONFIG_MP_INCLUDED) += mp/rtl871x_mp.o \
 					mp/rtl871x_mp_ioctl.o \
 					ioctl/rtl871x_ioctl_rtl.o
 
-obj-$(CONFIG_RTL8192CU_USB_WIFI)	:= $(MODULE_NAME).o
+obj-$(CONFIG_RTL8XXX_CU_USB_WIFI)	:= $(MODULE_NAME).o
 
 
 else
 
-export CONFIG_RTL8192CU_USB_WIFI = m
+export CONFIG_RTL8XXX_CU_USB_WIFI = m
 
 all: modules
 

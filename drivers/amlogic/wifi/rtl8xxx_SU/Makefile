@@ -190,11 +190,11 @@ $(MODULE_NAME)-y += sta_mgt/rtl871x_sta_mgt.o
 $(MODULE_NAME)-y += xmit/rtl871x_xmit.o xmit/$(RTL871X)_xmit.o
 
 
-obj-$(CONFIG_RTL8712_8188_8191_8192SU_USB_WIFI)	:= $(MODULE_NAME).o
+obj-$(CONFIG_RTL8XXX_SU_USB_WIFI)	:= $(MODULE_NAME).o
 
 else
 
-export CONFIG_RTL8712_8188_8191_8192SU_USB_WIFI = m
+export CONFIG_RTL8XXX_SU_USB_WIFI = m
 
 all: modules
 
