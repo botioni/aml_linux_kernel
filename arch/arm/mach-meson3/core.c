@@ -154,7 +154,7 @@ static __initdata struct map_desc meson_io_desc[] = {
     } , {
         .virtual    = IO_APB_BUS_BASE,
         .pfn        = __phys_to_pfn(IO_APB_BUS_PHY_BASE),
-        .length     = SZ_16K,
+        .length     = SZ_512K,
         .type       = MT_DEVICE,
     } , {
         .virtual    = IO_AOBUS_BASE,
