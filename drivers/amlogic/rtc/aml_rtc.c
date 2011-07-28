@@ -44,8 +44,8 @@ int c_dbg_lvl = 0;
 #define s_do                       1 << RTC_REG1_BIT_sdo
 #define RESET_RETRY_TIMES           15
 
-#define WR_RTC(addr, data)         WRITE_CBUS_REG(addr, data)
-#define RD_RTC(addr)                   READ_CBUS_REG(addr)
+#define WR_RTC(addr, data)         WRITE_AOBUS_REG(addr, data)
+#define RD_RTC(addr)                   READ_AOBUS_REG(addr)
 
 #define RTC_sbus_LOW(x)             WR_RTC(RTC_ADDR0, \
                                                                       (RD_RTC(RTC_ADDR0) & \
@@ -165,16 +165,16 @@ void rtc_ser_static_write_auto (unsigned long static_reg_data_in)
     
     // Program MSB 15-8
     data32  = (static_reg_data_in >> 8) & 0xff;
-    WRITE_CBUS_REG(RTC_ADDR4,data32);
+    WRITE_AOBUS_REG(RTC_ADDR4,data32);
 
     // Program LSB 7-0, and start serializing
-    data32  = READ_CBUS_REG(RTC_ADDR0);
+    data32  = READ_AOBUS_REG(RTC_ADDR0);
     data32 |= 1                           << 17; // auto_serialize_start 
     data32 &= ~(0xff << 24);
     data32 |= (static_reg_data_in & 0xff) << 24; // auto_static_reg
-    WRITE_CBUS_REG(RTC_ADDR0,data32);
+    WRITE_AOBUS_REG(RTC_ADDR0,data32);
     // Poll auto_serializer_busy bit until it's low (IDLE)
-    while ((READ_CBUS_REG(RTC_ADDR0)) & 1<<22) {}
+    while ((READ_AOBUS_REG(RTC_ADDR0)) & 1<<22) {}
 }
 
 
