@@ -6,24 +6,21 @@
 #include <linux/i2c.h>
 #include <linux/i2c-aml.h>
 
+#define ADAPTER_NAME    "aml_i2c_adap"
+#define NAME_LEN 8
 #define AML_I2C_MAX_TOKENS		8
-
-#define AML_I2C_ASSERT(X)							\
-do {									\
-	if (unlikely(!(X))) {						\
-		printk(KERN_ERR "\n");					\
-		printk(KERN_ERR "CacheFiles: Assertion failed\n");	\
-		BUG();							\
-	}								\
-} while (0)
-
-#define AML_I2C_DBG(fmt,args... ) do { \
-	if(aml_i2c_ddata.i2c_debug)	\
-		printk(fmt,##args); \
-}while(0)
 
 #define AML_I2C_CTRL_CLK_DELAY_MASK			0x3ff
 #define AML_I2C_SLAVE_ADDR_MASK				0xff
+
+#define AML_I2C_PRINT_DATA(name) do{  \
+     if(i2c->i2c_debug) {\
+            printk("[%s]:%s", name, p->flags & I2C_M_RD? "read" : "write");\
+        	for(i=0;i<p->len;i++)   \
+        		printk("%x-",*(p->buf)++);  \
+        	printk("\n");\
+     }\
+}while(0)
 
 /*I2C_CONTROL_REG	0x2140*/
 struct aml_i2c_reg_ctrl {
@@ -188,7 +185,6 @@ struct aml_i2c_reg_slave{
 };
 
 struct aml_i2c {
-	spinlock_t		lock;
 	unsigned int 		i2c_debug;
 	unsigned int		cur_slave_addr;
 	unsigned int 		wait_count;
@@ -201,34 +197,33 @@ struct aml_i2c {
 	unsigned char		token_tag[AML_I2C_MAX_TOKENS];
 	unsigned int 		msg_flags;
 
-	struct i2c_adapter*	adap;
+	struct i2c_adapter  	adap;
+	struct i2c_adapter  	adap2;/*the same adapter, different speed*/
 	struct aml_i2c_ops* ops;
 
 	struct aml_i2c_reg_master __iomem* master_regs;
-	
-//#ifdef CONFIG_I2C_AML_SLAVE
-	struct aml_i2c_reg_slave __iomem* slave_regs;
-	struct i2c_slave_client *slave;
-	
-	struct aml_pinmux_reg_bit	slave_pinmux;
-	unsigned int		slave_dev_addr;
-//#endif
-
-	void __iomem		*reg_base;
 
 	struct aml_pinmux_reg_bit	master_pinmux;
-		
-	int			irq;
-	unsigned int		use_pio;/*0: hardware i2c, 1: pio i2c*/
+
 	unsigned int		master_i2c_speed;
+	unsigned int		master_i2c_speed2;/*the same adapter, different speed*/
+	struct mutex     lock;
+      struct class      cls;
+	unsigned int 		cur_token;
+
+	/*reserved original member, used in bsp*/
+	unsigned int		use_pio;/*0: hardware i2c, 1: pio i2c*/
+	struct aml_pinmux_reg_bit	master_a_pinmux;
+	struct aml_pinmux_reg_bit	master_b_pinmux;
 };
 
 struct aml_i2c_ops {
-        void (*xfer_prepare)(struct aml_i2c *i2c);
+        void (*xfer_prepare)(struct aml_i2c *i2c, unsigned int speed);
 	 int (*read)(struct aml_i2c *i2c, unsigned char *buf, unsigned int len);
 	 int (*write)(struct aml_i2c *i2c, unsigned char *buf, unsigned int len);
-	 int (*do_address)(struct aml_i2c *i2c, unsigned int addr, unsigned char *buf, int rd, unsigned int len);
+	 int (*do_address)(struct aml_i2c *i2c, unsigned int addr);
 	 void (*stop)(struct aml_i2c *i2c);
 };
 
 #endif
+

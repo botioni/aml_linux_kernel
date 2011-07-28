@@ -50,11 +50,6 @@
 #include <mach/clk_set.h>
 #include "board-m3-reff02.h"
 
-#if defined(CONFIG_TOUCHSCREEN_ADS7846)
-#include <linux/spi/spi.h>
-#include <linux/spi/spi_gpio.h>
-#include <linux/spi/ads7846.h>
-#endif
 
 #ifdef CONFIG_ANDROID_PMEM
 #include <linux/slab.h>
@@ -62,12 +57,9 @@
 #include <linux/android_pmem.h>
 #endif
 
-#ifdef CONFIG_SENSORS_MXC622X
-#include <linux/mxc622x.h>
-#endif
 
-#ifdef CONFIG_SENSORS_MMC31XX
-#include <linux/mmc31xx.h>
+#ifdef CONFIG_SENSORS_MMC328X
+#include <linux/mmc328x.h>
 #endif
 
 #ifdef CONFIG_SIX_AXIS_SENSOR_MPU3050
@@ -287,16 +279,14 @@ static struct sn7325_platform_data sn7325_pdata = {
 #endif
 
 #ifdef CONFIG_SIX_AXIS_SENSOR_MPU3050
-//GPIOA_4
-//#define GPIO_mpu3050_PENIRQ ((GPIOA_bank_bit0_14(4)<<16) |GPIOA_bit_bit0_14(4))
-
-#define MPU3050_IRQ  INT_GPIO_1
+#define GPIO_mpu3050_PENIRQ ((GPIOA_bank_bit0_27(15)<<16) | GPIOA_bit_bit0_27(15))
+#define MPU3050_IRQ  INT_GPIO_2
 static int mpu3050_init_irq(void)
 {
     /* set input mode */
-    //gpio_direction_input(GPIO_mpu3050_PENIRQ);
-    /* set gpio interrupt #0 source=GPIOD_24, and triggered by rising edge(=0) */
-   // gpio_enable_edge_int(gpio_to_idx(GPIO_mpu3050_PENIRQ), 0, MPU3050_IRQ-INT_GPIO_0);
+    gpio_direction_input(GPIO_mpu3050_PENIRQ);
+    /* map GPIO_mpu3050_PENIRQ map to gpio interrupt, and triggered by rising edge(=0) */
+    gpio_enable_edge_int(gpio_to_idx(GPIO_mpu3050_PENIRQ), 0, MPU3050_IRQ-INT_GPIO_0);
     return 0;
 }
 
@@ -330,21 +320,21 @@ static struct mpu3050_platform_data mpu3050_data = {
 
 #ifdef CONFIG_TOUCH_KEY_PAD_IT7230
 #include <linux/input.h>
-//GPIOA_3
-//#define GPIO_IT7230_ATTN //((GPIOA_bank_bit(3)<<16) | GPIOA_bit_bit0_14(3))
+#define GPIO_IT7230_ATTN ((GPIOA_bank_bit0_27(17)<<16) | GPIOA_bit_bit0_27(17))
+#define IT7230_INT INT_GPIO_1
 
 static int it7230_init_irq(void)
 {
     /* set input mode */
-    //gpio_direction_input(GPIO_IT7230_ATTN);
-    /* set gpio interrupt #1 source=GPIOA_3, and triggered by falling edge(=1) */
-    //gpio_enable_edge_int(0+3, 1, 1);
+    gpio_direction_input(GPIO_IT7230_ATTN);
+    /* GPIO_IT7230_ATTN connect to gpio interrupt 1,  and triggered by falling edge(=1) */
+    gpio_enable_edge_int(gpio_to_idx(GPIO_IT7230_ATTN), 1, IT7230_INT-INT_GPIO_0);
     return 0;
 }
 
 static int it7230_get_irq_level(void)
 {
-    //return gpio_get_value(GPIO_IT7230_ATTN);
+    return gpio_get_value(GPIO_IT7230_ATTN);
 }
 
 static struct cap_key it7230_keys[] = {
@@ -583,7 +573,7 @@ void extern_wifi_power(int is_power)
 
 void sdio_extern_init(void)
 {
-    extern_wifi_power(1);
+    //extern_wifi_power(1);
 }
 
 static struct aml_card_info  amlogic_card_info[] = {
@@ -787,207 +777,18 @@ static struct rt5621_platform_data rt5621_pdata = {
 };
 #endif
 
-#if defined(CONFIG_TOUCHSCREEN_ADS7846)
-#define SPI_0       0
-#define SPI_1       1
-#define SPI_2       2
-
-// GPIOC_8(G20, XPT_CLK)
-#define GPIO_SPI_SCK        //((GPIOC_bank_bit0_26(8)<<16) |GPIOC_bit_bit0_26(8)) 
-// GPIOC_7(G21, XPT_IN)
-#define GPIO_SPI_MOSI       //((GPIOC_bank_bit0_26(7)<<16) |GPIOC_bit_bit0_26(7)) 
-// GPIOC_6(G22, XPT_OUT)
-#define GPIO_SPI_MISO       //((GPIOC_bank_bit0_26(6)<<16) |GPIOC_bit_bit0_26(6))
-// GPIOC_0(J20, XPT_NCS)
-#define GPIO_TSC2046_CS //((GPIOC_bank_bit0_26(0)<<16) |GPIOC_bit_bit0_26(0)) 
-// GPIOC_4(H20, NPEN_IRQ)
-#define GPIO_TSC2046_PENDOWN    //((GPIOC_bank_bit0_26(4)<<16) |GPIOC_bit_bit0_26(4)) 
-
-static const struct spi_gpio_platform_data spi_gpio_pdata = {
-    .sck = GPIO_SPI_SCK,
-    .mosi = GPIO_SPI_MOSI,
-    .miso = GPIO_SPI_MISO,
-    .num_chipselect = 1,
-};
-
-static struct platform_device spi_gpio = {
-    .name       = "spi_gpio",
-    .id         = SPI_2,
-    .dev = {
-        .platform_data = (void *)&spi_gpio_pdata,
-    },
-};
-
-static const struct ads7846_platform_data ads7846_pdata = {
-    .model = 7846,
-    .vref_delay_usecs = 100,
-    .vref_mv = 2500,
-    .keep_vref_on = false,
-    .swap_xy = 0,
-    .settle_delay_usecs = 10,
-    .penirq_recheck_delay_usecs = 0,
-    .x_plate_ohms  =500,
-    .y_plate_ohms = 500,
-
-    .x_min = 0,
-    .x_max = 0xfff,
-    .y_min = 0,
-    .y_max = 0xfff,
-    .pressure_min = 0,
-    .pressure_max = 0xfff,
-
-    .debounce_max = 0,
-    .debounce_tol = 0,
-    .debounce_rep = 0,
-    
-    .gpio_pendown = GPIO_TSC2046_PENDOWN,
-    .get_pendown_state =NULL,
-    
-    .filter_init = NULL,
-    .filter = NULL,
-    .filter_cleanup = NULL,
-    .wait_for_sync = NULL,
-    .wakeup = false,
-};
-
-static struct spi_board_info spi_board_info_list[] = {
-    [0] = {
-        .modalias = "ads7846",
-        .platform_data = (void *)&ads7846_pdata,
-        .controller_data = (void *)GPIO_TSC2046_CS,
-        .irq = INT_GPIO_0,
-        .max_speed_hz = 500000,
-        .bus_num = SPI_2,
-        .chip_select = 0,
-        .mode = SPI_MODE_0,
-    },
-};
-
-static int ads7846_init_gpio(void)
-{
-/* memson
-    Bit(s)  Description
-    256-105 Unused
-    104     JTAG_TDO
-    103     JTAG_TDI
-    102     JTAG_TMS
-    101     JTAG_TCK
-    100     gpioA_23
-    99      gpioA_24
-    98      gpioA_25
-    97      gpioA_26
-    98-75   gpioE[21:0]
-    75-50   gpioD[24:0]
-    49-23   gpioC[26:0]
-    22-15   gpioB[22;15]
-    14-0        gpioA[14:0]
- */
-
-    /* set input mode */
-    gpio_direction_input(GPIO_TSC2046_PENDOWN);
-    /* set gpio interrupt #0 source=GPIOC_4, and triggered by falling edge(=1) */
-    gpio_enable_edge_int(27, 1, 0);
-
-//  // reg2 bit24~26
-//  CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_2,
-//  (1<<24) | (1<<25) | (1<<26));
-//  // reg3 bit5~7,12,16~18,22
-//  CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_3,
-//  (1<<5) | (1<<6) | (1<<7) | (1<<9) | (1<<12) | (1<<16) | (1<<17) | (1<<18) | (1<<22));
-//  // reg4 bit26~27
-//  CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_4,
-//  (1<<26) | (1<<27));
-//  // reg9 bit0,4,6~8
-//  CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_9,
-//  (1<<0) | (1<<4) | (1<<6) | (1<<7) | (1<<8));
-//  // reg10 bit0,4,6~8
-//  CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_10,
-//  (1<<0) | (1<<4) | (1<<6) | (1<<7) | (1<<8));
-
-    return 0;
-}
-#endif
-
-#ifdef CONFIG_EETI_CAPACITIVE_TOUCHSCREEN
-#include <linux/i2c/eeti.h>
-
-//GPIOD_24
-//#define GPIO_EETI_PENIRQ ((GPIOD_bank_bit2_24(24)<<16) |GPIOD_bit_bit2_24(24)) 
-#define GPIO_EETI_RST
-
-static int eeti_init_irq(void)
-{
-/* memson
-    Bit(s)  Description
-    256-105 Unused
-    104     JTAG_TDO
-    103     JTAG_TDI
-    102     JTAG_TMS
-    101     JTAG_TCK
-    100     gpioA_23
-    99      gpioA_24
-    98      gpioA_25
-    97      gpioA_26
-    98-76    gpioE[21:0]
-    75-50   gpioD[24:0]
-    49-23   gpioC[26:0]
-    22-15   gpioB[22;15]
-    14-0    gpioA[14:0]
- */
-
-    /* set input mode */
-    //gpio_direction_input(GPIO_EETI_PENIRQ);
-    /* set gpio interrupt #0 source=GPIOD_24, and triggered by falling edge(=1) */
-    //gpio_enable_edge_int(50+24, 1, 0);
-
-    return 0;
-}
-static int eeti_get_irq_level(void)
-{
-    //return gpio_get_value(GPIO_EETI_PENIRQ);
-}
-
-static struct eeti_platform_data eeti_pdata = {
-    .init_irq = &eeti_init_irq,
-    .get_irq_level = &eeti_get_irq_level,
-    .tp_max_width = 17407,
-    .tp_max_height = 12799,
-    .lcd_max_width = 1024,
-    .lcd_max_height = 768,
-};
-#endif
 
 #ifdef CONFIG_ITK_CAPACITIVE_TOUCHSCREEN
 #include <linux/i2c/itk.h>
-
-//GPIOD_24
-//#define GPIO_ITK_PENIRQ ((GPIOD_bank_bit2_24(24)<<16) |GPIOD_bit_bit2_24(24)) 
-#define GPIO_ITK_RST
-
+#define GPIO_ITK_PENIRQ ((GPIOA_bank_bit0_27(16)<<16) | GPIOA_bit_bit0_27(16))
+#define GPIO_ITK_RST ((GPIOC_bank_bit0_15(3)<<16) | GPIOC_bit_bit0_15(3))
+#define ITK_INT INT_GPIO_0
 static int itk_init_irq(void)
 {
-/* memson
-    Bit(s)  Description
-    256-105 Unused
-    104     JTAG_TDO
-    103     JTAG_TDI
-    102     JTAG_TMS
-    101     JTAG_TCK
-    100     gpioA_23
-    99      gpioA_24
-    98      gpioA_25
-    97      gpioA_26
-    98-76    gpioE[21:0]
-    75-50   gpioD[24:0]
-    49-23   gpioC[26:0]
-    22-15   gpioB[22;15]
-    14-0    gpioA[14:0]
- */
-
     /* set input mode */
-    //gpio_direction_input(GPIO_ITK_PENIRQ);
+    gpio_direction_input(GPIO_ITK_PENIRQ);
     /* set gpio interrupt #0 source=GPIOD_24, and triggered by falling edge(=1) */
-    //gpio_enable_edge_int(50+24, 1, 0);
+    gpio_enable_edge_int(gpio_to_idx(GPIO_ITK_PENIRQ), 1, ITK_INT-INT_GPIO_0);
 
     return 0;
 }
@@ -998,12 +799,11 @@ static int itk_get_irq_level(void)
 
 void touch_on(int flag)
 {
-       printk("enter %s flag=%d \n",__FUNCTION__,flag);
+	printk("enter %s flag=%d \n",__FUNCTION__,flag);
 	if(flag)
-		//set_gpio_val(GPIOD_bank_bit2_24(23), GPIOD_bit_bit2_24(23), 1);
+		gpio_direction_output(GPIO_ITK_RST, 1);
 	else
-		//set_gpio_val(GPIOD_bank_bit2_24(23), GPIOD_bit_bit2_24(23), 0);
-        //set_gpio_mode(GPIOD_bank_bit2_24(23), GPIOD_bit_bit2_24(23), GPIO_OUTPUT_MODE);
+		gpio_direction_output(GPIO_ITK_RST, 0);
 }
 
 static struct itk_platform_data itk_pdata = {
@@ -1310,45 +1110,128 @@ static struct aml_i2c_platform aml_i2c_plat = {
     .wait_ack_interval  = 5,
     .wait_read_interval = 5,
     .wait_xfer_interval = 5,
-    .master_no      = AML_I2C_MASTER_B,
+    .master_no      = 0,
+    .use_pio            = 0,
+    .master_i2c_speed   = AML_I2C_SPPED_300K,
+
+    .master_pinmux = {
+        .scl_reg    = MESON_I2C_MASTER_GPIOX_26_REG,
+        .scl_bit    = MESON_I2C_MASTER_GPIOX_26_BIT,
+        .sda_reg    = MESON_I2C_MASTER_GPIOX_25_REG,
+        .sda_bit    = MESON_I2C_MASTER_GPIOX_25_BIT,
+    }
+};
+
+static struct aml_i2c_platform aml_i2c_plat1 = {
+    .wait_count     = 50000,
+    .wait_ack_interval  = 5,
+    .wait_read_interval = 5,
+    .wait_xfer_interval = 5,
+    .master_no      = 1,
+    .use_pio            = 0,
+    .master_i2c_speed   = AML_I2C_SPPED_300K,
+
+    .master_pinmux = {
+        .scl_reg    = MESON_I2C_MASTER_GPIOX_28_REG,
+        .scl_bit    = MESON_I2C_MASTER_GPIOX_28_BIT,
+        .sda_reg    = MESON_I2C_MASTER_GPIOX_27_REG,
+        .sda_bit    = MESON_I2C_MASTER_GPIOX_27_BIT,
+    }
+};
+
+static struct aml_i2c_platform aml_i2c_plat2 = {
+    .wait_count     = 50000,
+    .wait_ack_interval  = 5,
+    .wait_read_interval = 5,
+    .wait_xfer_interval = 5,
+    .master_no      = 2,
     .use_pio            = 0,
     .master_i2c_speed   = AML_I2C_SPPED_300K,
 
     .master_b_pinmux = {
-        .scl_reg    = MESON_I2C_MASTER_B_GPIOB_0_REG,
-        .scl_bit    = MESON_I2C_MASTER_B_GPIOB_0_BIT,
-        .sda_reg    = MESON_I2C_MASTER_B_GPIOB_1_REG,
-        .sda_bit    = MESON_I2C_MASTER_B_GPIOB_1_BIT,
+        .scl_reg    = MESON_I2C_MASTER_GPIOAO_4_REG,
+        .scl_bit    = MESON_I2C_MASTER_GPIOAO_4_BIT,
+        .sda_reg    = MESON_I2C_MASTER_GPIOAO_5_REG,
+        .sda_bit    = MESON_I2C_MASTER_GPIOAO_5_BIT,
     }
 };
 
+//static struct resource aml_i2c_resource[] = {
+//    [0] = {/*master a*/
+//        .start =    MESON_I2C_MASTER_A_START,
+//        .end   =    MESON_I2C_MASTER_A_END,
+//        .flags =    IORESOURCE_MEM,
+//    },
+//    [1] = {/*master b*/
+//        .start =    MESON_I2C_MASTER_B_START,
+//        .end   =    MESON_I2C_MASTER_B_END,
+//        .flags =    IORESOURCE_MEM,
+//    },
+//    [2] = {/*master ao*/
+//        .start =    MESON_I2C_MASTER_AO_START,
+//        .end   =    MESON_I2C_MASTER_AO_END,
+//        .flags =    IORESOURCE_MEM,
+//    },
+//    [2] = {/*slave*/
+//        .start =    MESON_I2C_SLAVE_START,
+//        .end   =    MESON_I2C_SLAVE_END,
+//        .flags =    IORESOURCE_MEM,
+//    },
+//};
+
 static struct resource aml_i2c_resource[] = {
-    [0] = {/*master a*/
-        .start =    MESON_I2C_MASTER_A_START,
-        .end   =    MESON_I2C_MASTER_A_END,
+	[0]= {
+	.start =    MESON_I2C_MASTER_A_START,
+	.end   =    MESON_I2C_MASTER_A_END,
+	.flags =    IORESOURCE_MEM,
+	}
+};
+static struct resource aml_i2c_resource1[] = {
+	[0]= {
+	.start =    MESON_I2C_MASTER_B_START,
+	.end   =    MESON_I2C_MASTER_B_END,
+	.flags =    IORESOURCE_MEM,
+  }
+};
+
+static struct resource aml_i2c_resource2[] = {
+	[0]= {
+        .start =    MESON_I2C_MASTER_AO_START,
+        .end   =    MESON_I2C_MASTER_AO_END,
         .flags =    IORESOURCE_MEM,
-    },
-    [1] = {/*master b*/
-        .start =    MESON_I2C_MASTER_B_START,
-        .end   =    MESON_I2C_MASTER_B_END,
-        .flags =    IORESOURCE_MEM,
-    },
-    [2] = {/*slave*/
-        .start =    MESON_I2C_SLAVE_START,
-        .end   =    MESON_I2C_SLAVE_END,
-        .flags =    IORESOURCE_MEM,
-    },
+   }
 };
 
 static struct platform_device aml_i2c_device = {
     .name         = "aml-i2c",
-    .id       = -1,
+    .id       = 0,
     .num_resources    = ARRAY_SIZE(aml_i2c_resource),
     .resource     = aml_i2c_resource,
     .dev = {
         .platform_data = &aml_i2c_plat,
     },
 };
+
+static struct platform_device aml_i2c_device1 = {
+    .name         = "aml-i2c",
+    .id       = 2,
+    .num_resources    = ARRAY_SIZE(aml_i2c_resource1),
+    .resource     = aml_i2c_resource1,
+    .dev = {
+        .platform_data = &aml_i2c_plat1,
+    },
+};
+
+static struct platform_device aml_i2c_device2 = {
+    .name         = "aml-i2c",
+    .id       = 4,
+    .num_resources    = ARRAY_SIZE(aml_i2c_resource2),
+    .resource     = aml_i2c_resource2,
+    .dev = {
+        .platform_data = &aml_i2c_plat2,
+    },
+};
+
 #endif
 
 #ifdef CONFIG_AMLOGIC_MODEM
@@ -2228,9 +2111,6 @@ static struct platform_device __initdata *platform_devs[] = {
     #if defined(CONFIG_KEY_INPUT_CUSTOM_AM) || defined(CONFIG_KEY_INPUT_CUSTOM_AM_MODULE)
         &input_device_key,  //changed by Elvis
     #endif
-    #if defined(CONFIG_TOUCHSCREEN_ADS7846)
-        &spi_gpio,
-    #endif
     #ifdef CONFIG_AM_NAND
         &aml_nand_device,
     #endif
@@ -2254,6 +2134,8 @@ static struct platform_device __initdata *platform_devs[] = {
     #endif
     #if defined(CONFIG_I2C_AML)|| defined(CONFIG_I2C_HW_AML)
         &aml_i2c_device,
+        &aml_i2c_device1,
+        &aml_i2c_device2,
     #endif
     #if defined(CONFIG_AM_UART_WITH_S_CORE)
         &aml_uart_device,
@@ -2281,106 +2163,60 @@ static struct platform_device __initdata *platform_devs[] = {
     #endif
 
 };
+
 static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
-
-#ifdef CONFIG_SENSORS_MMC31XX
+#ifdef CONFIG_TOUCH_KEY_PAD_IT7230
     {
-        I2C_BOARD_INFO(MMC31XX_I2C_NAME,  MMC31XX_I2C_ADDR),
+        I2C_BOARD_INFO("it7230", 0x46),
+        .irq = IT7230_INT,
+        .platform_data = (void *)&it7230_pdata,
     },
 #endif
-
-#ifdef CONFIG_SENSORS_MXC622X
-    {
-        I2C_BOARD_INFO(MXC622X_I2C_NAME,  MXC622X_I2C_ADDR),
-    },
-#endif
-
-#ifdef CONFIG_SND_AML_M1_MID_WM8900
-    {
-        I2C_BOARD_INFO("wm8900", 0x1A),
-        .platform_data = (void *)&wm8900_pdata,
-    },
-#endif
-
-#ifdef CONFIG_SND_SOC_RT5621
-	{
-		I2C_BOARD_INFO(RT5621_I2C_NAME, RT5621_I2C_ADDR),
-		.platform_data = (void *)&rt5621_pdata,
-	},
-#endif
-
-#ifdef CONFIG_SN7325
-    {
-        I2C_BOARD_INFO("sn7325", 0x59),
-        .platform_data = (void *)&sn7325_pdata,
-    },
-#endif
-
-#ifdef CONFIG_EETI_CAPACITIVE_TOUCHSCREEN
-    {
-        I2C_BOARD_INFO("eeti", 0x04),
-        .irq = INT_GPIO_0,
-        .platform_data = (void *)&eeti_pdata,
-    },
-#endif
-
 #ifdef CONFIG_ITK_CAPACITIVE_TOUCHSCREEN
     {
         I2C_BOARD_INFO("itk", 0x41),
-        .irq = INT_GPIO_0,
+        .irq = ITK_INT,
         .platform_data = (void *)&itk_pdata,
     },
 #endif
 
+//#ifdef CONFIG_CAMERA_OV9650FSL
+//#endif
+};
+
+static struct i2c_board_info __initdata aml_i2c_bus_info_1[] = {
+#ifdef CONFIG_SENSORS_MMC328X
+	{
+		I2C_BOARD_INFO(MMC328X_I2C_NAME,  MMC328X_I2C_ADDR),
+	},
+#endif
 #ifdef CONFIG_SIX_AXIS_SENSOR_MPU3050
     {
         I2C_BOARD_INFO("mpu3050", 0x68),
         .platform_data = (void *)&mpu3050_data,
     },
 #endif
-
-#ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE_GC0308
-
-	{
-        /*gc0308 i2c address is 0x42/0x43*/
-		I2C_BOARD_INFO("gc0308_i2c",  0x42 >> 1),
-		.platform_data = (void *)&video_gc0308_data,
-	},
-#endif
-
-#ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE_OV5640
-	{
-        /*ov5640 i2c address is 0x78*/
-		I2C_BOARD_INFO("ov5640_i2c",  0x78 >> 1),
-		.platform_data = (void *)&video_ov5640_data,
-	},
-#endif
 };
 
-static struct i2c_board_info __initdata aml_i2c_sbus_info[] = {
-#ifdef CONFIG_TOUCH_KEY_PAD_IT7230
-    {
-        I2C_BOARD_INFO("it7230", 0x46),
-        .irq = INT_GPIO_1,
-        .platform_data = (void *)&it7230_pdata,
-    },
-#endif
-
+static struct i2c_board_info __initdata aml_i2c_bus_info_2[] = {
 #ifdef CONFIG_BQ27x00_BATTERY
     {
         I2C_BOARD_INFO("bq27200", 0x55),
         .platform_data = (void *)&bq27x00_pdata,
     },
 #endif
+//#ifdef CONFIG_PMU_ACT8442
+//#endif
 };
 
 static int __init aml_i2c_init(void)
 {
-
     i2c_register_board_info(0, aml_i2c_bus_info,
         ARRAY_SIZE(aml_i2c_bus_info));
-    i2c_register_board_info(1, aml_i2c_sbus_info,
-        ARRAY_SIZE(aml_i2c_sbus_info));   
+    i2c_register_board_info(2, aml_i2c_bus_info_1,
+        ARRAY_SIZE(aml_i2c_bus_info_1)); 
+//    i2c_register_board_info(4, aml_i2c_bus_info_2,
+//        ARRAY_SIZE(aml_i2c_bus_info_2)); 
     return 0;
 }
 
@@ -2504,10 +2340,6 @@ static __init void m1_init_machine(void)
 #ifdef CONFIG_SATA_DWC_AHCI
     set_sata_phy_clk(SATA_PHY_CLOCK_SEL_DEMOD_PLL);
     lm_device_register(&sata_ld);
-#endif
-#if defined(CONFIG_TOUCHSCREEN_ADS7846)
-    ads7846_init_gpio();
-    spi_register_board_info(spi_board_info_list, ARRAY_SIZE(spi_board_info_list));
 #endif
     disable_unused_model();
 
