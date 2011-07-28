@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- * Copyright(c) 2007 - 2010 Realtek Corporation. All rights reserved.
+ * Copyright(c) 2007 - 2011 Realtek Corporation. All rights reserved.
  *                                        
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of version 2 of the GNU General Public License as
@@ -16,7 +16,8 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110, USA
  *
  *
- ******************************************************************************/
+ 
+******************************************************************************/
 #ifndef __USB_OSINTF_H
 #define __USB_OSINTF_H
 
@@ -33,7 +34,6 @@
 
 u8 usbvendorrequest(struct dvobj_priv *pdvobjpriv, RT_USB_BREQUEST brequest, RT_USB_WVALUE wvalue, u8 windex, void* data, u8 datalen, u8 isdirectionin);
 
-//void rtw_intf_stop(_adapter *padapter);
 
 #endif
 

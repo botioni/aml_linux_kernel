@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- * Copyright(c) 2007 - 2010 Realtek Corporation. All rights reserved.
+ * Copyright(c) 2007 - 2011 Realtek Corporation. All rights reserved.
  *                                        
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of version 2 of the GNU General Public License as
@@ -16,9 +16,10 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110, USA
  *
  *
- ******************************************************************************/
-#ifndef _RTL871X_HT_H_
-#define _RTL871X_HT_H_
+ 
+******************************************************************************/
+#ifndef _RTW_HT_H_
+#define _RTW_HT_H_
 
 #include <drv_conf.h>
 #include <osdep_service.h>
@@ -26,22 +27,22 @@
 
 struct ht_priv
 {
-	unsigned int	ht_option;	
-	unsigned int	ampdu_enable;//for enable Tx A-MPDU
-	//unsigned char	baddbareq_issued[16];	
-	unsigned int	tx_amsdu_enable;//for enable Tx A-MSDU
-	unsigned int	tx_amdsu_maxlen; // 1: 8k, 0:4k ; default:8k, for tx
-	unsigned int	rx_ampdu_maxlen; //for rx reordering ctrl win_sz, updated when join_callback.
+	u32	ht_option;	
+	u32	ampdu_enable;//for enable Tx A-MPDU
+	//u8	baddbareq_issued[16];
+	u32	tx_amsdu_enable;//for enable Tx A-MSDU
+	u32	tx_amdsu_maxlen; // 1: 8k, 0:4k ; default:8k, for tx
+	u32	rx_ampdu_maxlen; //for rx reordering ctrl win_sz, updated when join_callback.
 	
-	unsigned char	bwmode;//
-	unsigned char ch_offset;//PRIME_CHNL_OFFSET
-	unsigned char sgi;//short GI
-	
+	u8	bwmode;//
+	u8	ch_offset;//PRIME_CHNL_OFFSET
+	u8	sgi;//short GI
+
 	//for processing Tx A-MPDU
-	unsigned char		agg_enable_bitmap;
-	//unsigned char		ADDBA_retry_count;
-	unsigned char		candidate_tid_bitmap;
-	
+	u8	agg_enable_bitmap;
+	//u8	ADDBA_retry_count;
+	u8	candidate_tid_bitmap;
+
 	struct ieee80211_ht_cap ht_cap;
 	
 };

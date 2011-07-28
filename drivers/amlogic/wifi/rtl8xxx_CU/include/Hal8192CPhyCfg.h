@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- * Copyright(c) 2007 - 2010 Realtek Corporation. All rights reserved.
+ * Copyright(c) 2007 - 2011 Realtek Corporation. All rights reserved.
  *                                        
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of version 2 of the GNU General Public License as
@@ -17,11 +17,8 @@
  *
  *
  ******************************************************************************/
-
 /*****************************************************************************
- *	Copyright(c) 2008,  RealTEK Technology Inc. All Right Reserved.
- *
- * Module:	__INC_HAL8192SPHYCFG_H
+ * Module:	__INC_HAL8192CPHYCFG_H
  *
  *
  * Note:	
@@ -38,8 +35,8 @@
  * 
  *****************************************************************************/
  /* Check to see if the file has been included already.  */
-#ifndef __INC_HAL8192SPHYCFG_H
-#define __INC_HAL8192SPHYCFG_H
+#ifndef __INC_HAL8192CPHYCFG_H
+#define __INC_HAL8192CPHYCFG_H
 
 
 /*--------------------------Define Parameters-------------------------------*/
@@ -49,11 +46,18 @@
 #define MAX_TXPWR_IDX_NMODE_92S	63
 #define Reset_Cnt_Limit			3
 
+#define IQK_MAC_REG_NUM		4
+#define IQK_ADDA_REG_NUM		16
+#define IQK_BB_REG_NUM			9
+#define HP_THERMAL_NUM		8
 
-#define PHY_SetMacReg			PHY_SetBBReg
+#ifdef CONFIG_PCI_HCI
+#define MAX_AGGR_NUM	0x0A0A
+#else
+#define MAX_AGGR_NUM	0x0909
+#endif
 
-
-#if (DEV_BUS_TYPE == DEV_BUS_PCI_INTERFACE)
+#ifdef CONFIG_PCI_HCI
 #define	SET_RTL8192SE_RF_SLEEP(_pAdapter)							\
 {																	\
 	u1Byte		u1bTmp;												\
@@ -117,6 +121,9 @@ typedef enum _RF90_RADIO_PATH{
 
 #define	RF90_PATH_MAX			2
 
+#define CHANNEL_MAX_NUMBER		14	// 14 is the max channel number
+#define CHANNEL_GROUP_MAX		3	// ch1~3, ch4~9, ch10~14 total three groups
+
 typedef enum _WIRELESS_MODE {
 	WIRELESS_MODE_UNKNOWN = 0x00,
 	WIRELESS_MODE_A = 0x01,
@@ -126,11 +133,6 @@ typedef enum _WIRELESS_MODE {
 	WIRELESS_MODE_N_24G = 0x10,
 	WIRELESS_MODE_N_5G = 0x20
 } WIRELESS_MODE;
-
-
-#define CHANNEL_MAX_NUMBER		14	// 14 is the max channel number
-#define CHANNEL_GROUP_MAX		3	// ch1~3, ch4~9, ch10~14 total three groups
-
 
 typedef enum _BaseBand_Config_Type{
 	BaseBand_Config_PHY_REG = 0,			//Radio Path A
@@ -230,6 +232,7 @@ typedef struct _BB_REGISTER_DEFINITION{
 
 }BB_REGISTER_DEFINITION_T, *PBB_REGISTER_DEFINITION_T;
 
+#ifdef CONFIG_MP_INCLUDED
 typedef enum _ANTENNA_PATH{
         ANTENNA_NONE 	= 0x00,
 		ANTENNA_D		,
@@ -248,6 +251,7 @@ typedef enum _ANTENNA_PATH{
 		ANTENNA_ABC		,
 		ANTENNA_ABCD	
 } ANTENNA_PATH;
+#endif
 
 typedef struct _R_ANTENNA_SELECT_OFDM{	
 	u32			r_tx_antenna:4;	
@@ -282,18 +286,18 @@ typedef struct _R_ANTENNA_SELECT_CCK{
 //
 // BB and RF register read/write
 //
-extern	u32	PHY_QueryBBReg(	IN	PADAPTER	Adapter,
+u32	rtl8192c_PHY_QueryBBReg(	IN	PADAPTER	Adapter,
 								IN	u32		RegAddr,
 								IN	u32		BitMask	);
-extern	void	PHY_SetBBReg(	IN	PADAPTER	Adapter,
+void	rtl8192c_PHY_SetBBReg(	IN	PADAPTER	Adapter,
 								IN	u32		RegAddr,
 								IN	u32		BitMask,
 								IN	u32		Data	);
-extern	u32	PHY_QueryRFReg(	IN	PADAPTER			Adapter,
+u32	rtl8192c_PHY_QueryRFReg(	IN	PADAPTER			Adapter,
 								IN	RF90_RADIO_PATH_E	eRFPath,
 								IN	u32				RegAddr,
 								IN	u32				BitMask	);
-extern	void	PHY_SetRFReg(	IN	PADAPTER			Adapter,
+void	rtl8192c_PHY_SetRFReg(	IN	PADAPTER			Adapter,
 								IN	RF90_RADIO_PATH_E	eRFPath,
 								IN	u32				RegAddr,
 								IN	u32				BitMask,
@@ -303,47 +307,41 @@ extern	void	PHY_SetRFReg(	IN	PADAPTER			Adapter,
 // Initialization related function
 //
 /* MAC/BB/RF HAL config */
-extern	int	PHY_MACConfig8192C(	IN	PADAPTER	Adapter	);
-extern	int	PHY_BBConfig8192C(	IN	PADAPTER	Adapter	);
-extern	int	PHY_RFConfig8192C(	IN	PADAPTER	Adapter	);
-
-#ifdef RTL8192C_RECONFIG_TO_1T1R
-extern void	PHY_Reconfig_To_1T1R(_adapter *padapter);
-#endif
+int	PHY_MACConfig8192C(	IN	PADAPTER	Adapter	);
+int	PHY_BBConfig8192C(	IN	PADAPTER	Adapter	);
+int	PHY_RFConfig8192C(	IN	PADAPTER	Adapter	);
 /* RF config */
-extern	int	PHY_ConfigRFWithParaFile(	IN	PADAPTER	Adapter,
+int	rtl8192c_PHY_ConfigRFWithParaFile(	IN	PADAPTER	Adapter,
 												IN	u8* 	pFileName,
 												IN	RF90_RADIO_PATH_E	eRFPath);
-extern	int	PHY_ConfigRFWithHeaderFile(	IN	PADAPTER			Adapter,
+int	rtl8192c_PHY_ConfigRFWithHeaderFile(	IN	PADAPTER			Adapter,
 												IN	RF90_RADIO_PATH_E	eRFPath);
 
 /* BB/RF readback check for making sure init OK */
-extern	int	PHY_CheckBBAndRFOK(	IN	PADAPTER			Adapter,
+int	rtl8192c_PHY_CheckBBAndRFOK(	IN	PADAPTER			Adapter,
 										IN	HW90_BLOCK_E		CheckBlock,
 										IN	RF90_RADIO_PATH_E	eRFPath	  );
 /* Read initi reg value for tx power setting. */
-extern	void	PHY_GetHWRegOriginalValue(	IN	PADAPTER		Adapter	);
+void	rtl8192c_PHY_GetHWRegOriginalValue(	IN	PADAPTER		Adapter	);
 
 //
 // RF Power setting
 //
 //extern	BOOLEAN	PHY_SetRFPowerState(IN	PADAPTER			Adapter, 
 //									IN	RT_RF_POWER_STATE	eRFPowerState);
-extern	void	
-PHY_SetRtl8192seRfHalt(		IN	PADAPTER	pAdapter);
 
 //
 // BB TX Power R/W
 //
-extern	void	PHY_GetTxPowerLevel8192C(	IN	PADAPTER		Adapter,
+void	PHY_GetTxPowerLevel8192C(	IN	PADAPTER		Adapter,
 											OUT u32*    		powerlevel	);
-extern	void	PHY_SetTxPowerLevel8192C(	IN	PADAPTER		Adapter,
+void	PHY_SetTxPowerLevel8192C(	IN	PADAPTER		Adapter,
 											IN	u8			channel	);
-extern	BOOLEAN	PHY_UpdateTxPowerDbm8192C(	IN	PADAPTER	Adapter,
+BOOLEAN	PHY_UpdateTxPowerDbm8192C(	IN	PADAPTER	Adapter,
 											IN	int		powerInDbm	);
 
 //
-extern	VOID 
+VOID 
 PHY_ScanOperationBackup8192C(IN	PADAPTER	Adapter,
 										IN	u8		Operation	);
 
@@ -351,7 +349,7 @@ PHY_ScanOperationBackup8192C(IN	PADAPTER	Adapter,
 // Switch bandwidth for 8192S
 //
 //extern	void	PHY_SetBWModeCallback8192C(	IN	PRT_TIMER		pTimer	);
-extern	void	PHY_SetBWMode8192C(	IN	PADAPTER			pAdapter,
+void	PHY_SetBWMode8192C(	IN	PADAPTER			pAdapter,
 									IN	HT_CHANNEL_WIDTH	ChnlWidth,
 									IN	unsigned char	Offset	);
 
@@ -373,13 +371,13 @@ extern	void FillA2Entry8192C(		IN	PADAPTER			Adapter,
 // channel switch related funciton
 //
 //extern	void	PHY_SwChnlCallback8192C(	IN	PRT_TIMER		pTimer	);
-extern	void	PHY_SwChnl8192C(	IN	PADAPTER		pAdapter,
+void	PHY_SwChnl8192C(	IN	PADAPTER		pAdapter,
 									IN	u8			channel	);
 				// Call after initialization
-extern	void	PHY_SwChnlPhy8192C(	IN	PADAPTER		pAdapter,
+void	PHY_SwChnlPhy8192C(	IN	PADAPTER		pAdapter,
 									IN	u8			channel	);
 
-extern void ChkFwCmdIoDone(	IN	PADAPTER	Adapter);
+void ChkFwCmdIoDone(	IN	PADAPTER	Adapter);
 
 #ifdef USE_WORKITEM	
 //extern 	void SetIOWorkItemCallback( IN PVOID            pContext );
@@ -390,36 +388,36 @@ extern void ChkFwCmdIoDone(	IN	PADAPTER	Adapter);
 //
 // BB/MAC/RF other monitor API
 //
-extern	void	PHY_FalseAlarmCounterStatistics8192S(IN	PADAPTER	Adapter	);
-
-extern	void	PHY_SetMonitorMode8192C(IN	PADAPTER	pAdapter,
+void	PHY_SetMonitorMode8192C(IN	PADAPTER	pAdapter,
 										IN	BOOLEAN		bEnableMonitorMode	);
 
-extern	BOOLEAN	PHY_CheckIsLegalRfPath8192C(IN	PADAPTER	pAdapter,
+BOOLEAN	PHY_CheckIsLegalRfPath8192C(IN	PADAPTER	pAdapter,
 											IN	u32		eRFPath	);
 
 //
 // IQ calibrate
 //
-void	PHY_IQCalibrate(	IN	PADAPTER	pAdapter, IN BOOLEAN bReCovery);
-
+VOID rtl8192c_PHY_IQCalibrate( IN PADAPTER pAdapter , IN BOOLEAN bReCovery);
 
 //
 // LC calibrate
 //
-void	PHY_LCCalibrate(IN	PADAPTER	pAdapter);
+VOID rtl8192c_PHY_LCCalibrate(IN	PADAPTER	pAdapter);
 
 //
 // AP calibrate
 //
-void	PHY_APCalibrate(IN	PADAPTER	pAdapter, IN 	char		delta);
+VOID rtl8192c_PHY_APCalibrate(IN	PADAPTER	pAdapter, IN 	char		delta);
 
+VOID rtl8192c_PHY_DigitalPredistortion(IN	PADAPTER	pAdapter);
+
+VOID rtl8192c_PHY_SetRFPathSwitch(IN	PADAPTER	pAdapter, IN	BOOLEAN		bMain);
 
 //
 // Modify the value of the hw register when beacon interval be changed.
 //
-extern void	
-PHY_SetBeaconHwReg(	IN	PADAPTER		Adapter,
+void	
+rtl8192c_PHY_SetBeaconHwReg(	IN	PADAPTER		Adapter,
 					IN	u16			BeaconInterval	);
 
 
@@ -433,13 +431,6 @@ PHY_EnableHostClkReq(
 	IN	PADAPTER			Adapter
 	);
 
-int
-phy_TxPwrIdxToDbm(
-	IN	PADAPTER		Adapter,
-	IN	WIRELESS_MODE	WirelessMode,
-	IN	u8			TxPwrIdx	
-	);
-
 BOOLEAN
 SetAntennaConfig92C(
 	IN	PADAPTER	Adapter,
@@ -447,11 +438,14 @@ SetAntennaConfig92C(
 	);
 
 
-u8 PHY_QueryRFPath(IN PADAPTER	pAdapter);
-void PHY_SetRFPath(IN	PADAPTER	pAdapter,u8 antenna);
-
 /*--------------------------Exported Function prototype---------------------*/
 
+#define PHY_QueryBBReg(Adapter, RegAddr, BitMask) rtl8192c_PHY_QueryBBReg((Adapter), (RegAddr), (BitMask))
+#define PHY_SetBBReg(Adapter, RegAddr, BitMask, Data) rtl8192c_PHY_SetBBReg((Adapter), (RegAddr), (BitMask), (Data))
+#define PHY_QueryRFReg(Adapter, eRFPath, RegAddr, BitMask) rtl8192c_PHY_QueryRFReg((Adapter), (eRFPath), (RegAddr), (BitMask))
+#define PHY_SetRFReg(Adapter, eRFPath, RegAddr, BitMask, Data) rtl8192c_PHY_SetRFReg((Adapter), (eRFPath), (RegAddr), (BitMask), (Data))
 
-#endif	// __INC_HAL8192SPHYCFG_H
+#define PHY_SetMacReg	PHY_SetBBReg
+
+#endif	// __INC_HAL8192CPHYCFG_H
 

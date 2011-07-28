@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- * Copyright(c) 2007 - 2010 Realtek Corporation. All rights reserved.
+ * Copyright(c) 2007 - 2011 Realtek Corporation. All rights reserved.
  *                                        
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of version 2 of the GNU General Public License as
@@ -16,13 +16,12 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110, USA
  *
  *
- ******************************************************************************/
  
+******************************************************************************/
 /******************************************************************************
  * 
- *     (c) Copyright  2008, RealTEK Technologies Inc. All Rights Reserved.
  * 
- * Module:	HalRf6052.c	( Source C File)
+ * Module:	rtl8192c_rf6052.c	( Source C File)
  * 
  * Note:	Provide RF 6052 series relative API.	 
  *
@@ -41,20 +40,14 @@
  * 	
 ******************************************************************************/
 
-#define _HAL_RF6052_C_
+#define _RTL8192C_RF6052_C_
 
 #include <drv_conf.h>
 #include <osdep_service.h>
 #include <drv_types.h>
 #include <rtw_byteorder.h>
 
-#include <hal_init.h>
-
-#include "Hal8192CPhyReg.h"
-#include "Hal8192CPhyCfg.h"
-#include "HalRf.h"
-
-
+#include <rtl8192c_hal.h>
 
 /*---------------------------Define Local Constant---------------------------*/
 // Define local structure for debug!!!!!
@@ -84,26 +77,6 @@ static	RF_SHADOW_T	RF_Shadow[RF6052_MAX_PATH][RF6052_MAX_REG];
 /*------------------------Define local variable------------------------------*/
 
 
-/*---------------------Define local function prototype-----------------------*/
-VOID
-phy_RF6052_Config_HardCode(
-	IN	PADAPTER		Adapter
-	);
-
-int
-phy_RF6052_Config_ParaFile(
-	IN	PADAPTER		Adapter
-	);
-/*---------------------Define local function prototype-----------------------*/
-
-/*------------------------Define function prototype--------------------------*/
-extern	void		RF_ChangeTxPath(	IN	PADAPTER	Adapter, 
-										IN	u16		DataRate);
-
-/*------------------------Define function prototype--------------------------*/
-
-
-/*------------------------Define function prototype--------------------------*/
 /*-----------------------------------------------------------------------------
  * Function:	RF_ChangeTxPath
  *
@@ -121,7 +94,7 @@ extern	void		RF_ChangeTxPath(	IN	PADAPTER	Adapter,
  *						Firmwaer support the utility later.
  *
  *---------------------------------------------------------------------------*/
-extern	void		RF_ChangeTxPath(	IN	PADAPTER	Adapter, 
+void rtl8192c_RF_ChangeTxPath(	IN	PADAPTER	Adapter, 
 										IN	u16		DataRate)
 {
 // We do not support gain table change inACUT now !!!! Delete later !!!
@@ -187,10 +160,10 @@ extern	void		RF_ChangeTxPath(	IN	PADAPTER	Adapter,
  * Note:		For RF type 0222D
  *---------------------------------------------------------------------------*/
 VOID
-PHY_RF6052SetBandwidth(
+rtl8192c_PHY_RF6052SetBandwidth(
 	IN	PADAPTER				Adapter,
 	IN	HT_CHANNEL_WIDTH		Bandwidth)	//20M or 40M
-{		
+{	
 	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(Adapter);
 	
 	switch(Bandwidth)
@@ -229,37 +202,40 @@ PHY_RF6052SetBandwidth(
  * 11/05/2008 	MHC		Simulate 8192series..
  *
  *---------------------------------------------------------------------------*/
-#define		TxHighPwrLevel_Normal		0	
-#define		TxHighPwrLevel_Level1		1
-#define		TxHighPwrLevel_Level2		2
 
-extern	VOID
-PHY_RF6052SetCckTxPower(
+VOID
+rtl8192c_PHY_RF6052SetCckTxPower(
 	IN	PADAPTER		Adapter,
 	IN	u8*			pPowerlevel)
 {
-	EEPROM_EFUSE_PRIV *pEEPROM = GET_EEPROM_EFUSE_PRIV(Adapter);
-	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(Adapter);
-	struct mlme_ext_priv *pmlmeext = &Adapter->mlmeextpriv;
-	struct dm_priv *pdmpriv = &Adapter->dmpriv;
+	HAL_DATA_TYPE		*pHalData = GET_HAL_DATA(Adapter);
+	struct mlme_priv	*pmlmepriv = &Adapter->mlmepriv;
+	struct dm_priv		*pdmpriv = &pHalData->dmpriv;
+	struct mlme_ext_priv 		*pmlmeext = &Adapter->mlmeextpriv;
 	//PMGNT_INFO		pMgntInfo=&Adapter->MgntInfo;	
 	u32			TxAGC[2]={0, 0}, tmpval=0;
-	BOOLEAN			TurboScanOff = _FALSE;
+	BOOLEAN		TurboScanOff = _FALSE;
 	u8			idx1, idx2;
 	u8*			ptr;
 
 	// 2010/10/18 MH Accorsing to SD3 eechou's suggestion, we need to disable turbo scan for RU.	
 	// Otherwise, external PA will be broken if power index > 0x20.
-	if((pEEPROM->EEPROMRegulatory != 0)||( pHalData->ExternalPA))
+#ifdef CONFIG_USB_HCI
+	if (pHalData->EEPROMRegulatory != 0 || pHalData->ExternalPA)
+#else
+	if (pHalData->EEPROMRegulatory != 0)
+#endif
+	{
+		//DbgPrint("TurboScanOff=1 EEPROMRegulatory=%d ExternalPA=%d\n", pHalData->EEPROMRegulatory, pHalData->ExternalPA);
 		TurboScanOff = _TRUE;
+	}
 
-		
-	if( pmlmeext->sitesurvey_res.state == _TRUE)
+	if(pmlmeext->sitesurvey_res.state == SCAN_PROCESS)
 	{
 		TxAGC[RF90_PATH_A] = 0x3f3f3f3f;
 		TxAGC[RF90_PATH_B] = 0x3f3f3f3f;
 
-		TurboScanOff = _TRUE;
+		TurboScanOff = _TRUE;//disable turbo scan
 		
 		if(TurboScanOff)
 		{
@@ -268,8 +244,7 @@ PHY_RF6052SetCckTxPower(
 				TxAGC[idx1] = 
 					pPowerlevel[idx1] | (pPowerlevel[idx1]<<8) |
 					(pPowerlevel[idx1]<<16) | (pPowerlevel[idx1]<<24);
-
-#if (DEV_BUS_TYPE == DEV_BUS_USB_INTERFACE)
+#ifdef CONFIG_USB_HCI
 				// 2010/10/18 MH For external PA module. We need to limit power index to be less than 0x20.
 				if (TxAGC[idx1] > 0x20 && pHalData->ExternalPA)
 					TxAGC[idx1] = 0x20;
@@ -282,7 +257,6 @@ PHY_RF6052SetCckTxPower(
 // 20100427 Joseph: Driver dynamic Tx power shall not affect Tx power. It shall be determined by power training mechanism.
 // Currently, we cannot fully disable driver dynamic tx power mechanism because it is referenced by BT coexist mechanism.
 // In the future, two mechanism shall be separated from each other and maintained independantly. Thanks for Lanhsin's reminder.
-
 		if(pdmpriv->DynamicTxHighPowerLvl == TxHighPwrLevel_Level1)
 		{	
 			TxAGC[RF90_PATH_A] = 0x10101010;
@@ -302,7 +276,7 @@ PHY_RF6052SetCckTxPower(
 					(pPowerlevel[idx1]<<16) | (pPowerlevel[idx1]<<24);
 			}
 
-			if(pEEPROM->EEPROMRegulatory==0)
+			if(pHalData->EEPROMRegulatory==0)
 			{
 				tmpval = (pHalData->MCSTxPowerLevelOriginalOffset[0][6]) + 
 						(pHalData->MCSTxPowerLevelOriginalOffset[0][7]<<8);
@@ -349,7 +323,7 @@ PHY_RF6052SetCckTxPower(
 // powerbase0 for OFDM rates
 // powerbase1 for HT MCS rates
 //
-void getPowerBase(
+static void getPowerBase(
 	IN	PADAPTER	Adapter,
 	IN	u8*		pPowerLevel,
 	IN	u8		Channel,
@@ -357,7 +331,6 @@ void getPowerBase(
 	IN OUT u32*	MCSBase
 	)
 {
-	EEPROM_EFUSE_PRIV *pEEPROM = GET_EEPROM_EFUSE_PRIV(Adapter);
 	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(Adapter);
 	u32			powerBase0, powerBase1;
 	u8			Legacy_pwrdiff=0, HT20_pwrdiff=0;
@@ -366,7 +339,7 @@ void getPowerBase(
 	for(i=0; i<2; i++)
 	{
 		powerlevel[i] = pPowerLevel[i];
-		Legacy_pwrdiff = pEEPROM->TxPwrLegacyHtDiff[i][Channel-1];			
+		Legacy_pwrdiff = pHalData->TxPwrLegacyHtDiff[i][Channel-1];			
 		powerBase0 = powerlevel[i] + Legacy_pwrdiff; 
 
 		powerBase0 = (powerBase0<<24) | (powerBase0<<16) |(powerBase0<<8) |powerBase0;
@@ -379,7 +352,7 @@ void getPowerBase(
 		//Check HT20 to HT40 diff
 		if(pHalData->CurrentChannelBW == HT_CHANNEL_WIDTH_20)
 		{
-			HT20_pwrdiff = pEEPROM->TxPwrHt20Diff[i][Channel-1];
+			HT20_pwrdiff = pHalData->TxPwrHt20Diff[i][Channel-1];
 			powerlevel[i] += HT20_pwrdiff;
 		}
 		powerBase1 = powerlevel[i];
@@ -389,7 +362,7 @@ void getPowerBase(
 	}
 }
 
-void getTxPowerWriteValByRegulatory(
+static void getTxPowerWriteValByRegulatory(
 	IN		PADAPTER	Adapter,
 	IN		u8		Channel,
 	IN		u8		index,
@@ -398,9 +371,8 @@ void getTxPowerWriteValByRegulatory(
 	OUT		u32*		pOutWriteVal
 	)
 {
-	EEPROM_EFUSE_PRIV *pEEPROM = GET_EEPROM_EFUSE_PRIV(Adapter);
 	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(Adapter);
-	struct dm_priv *pdmpriv = &Adapter->dmpriv;
+	struct dm_priv	*pdmpriv = &pHalData->dmpriv;
 	u8	i, chnlGroup, pwr_diff_limit[4];
 	u32 	writeVal, customer_limit, rf;
 	
@@ -409,7 +381,7 @@ void getTxPowerWriteValByRegulatory(
 	//
 	for(rf=0; rf<2; rf++)
 	{
-		switch(pEEPROM->EEPROMRegulatory)
+		switch(pHalData->EEPROMRegulatory)
 		{
 			case 0:	// Realtek better performance
 					// increase power diff defined by Realtek for large power
@@ -422,12 +394,6 @@ void getTxPowerWriteValByRegulatory(
 				break;
 			case 1:	// Realtek regulatory
 					// increase power diff defined by Realtek for regulatory
-				if (pHalData->CurrentChannelBW == HT_CHANNEL_WIDTH_40)
-				{
-					writeVal = ((index<2)?powerBase0[rf]:powerBase1[rf]);
-					//RTPRINT(FPHY, PHY_TXPWR, ("Realtek regulatory, 40MHz, writeVal(%c) = 0x%x\n", ((rf==0)?'A':'B'), writeVal));
-				}
-				else
 				{
 					if(pHalData->pwrGroupCnt == 1)
 						chnlGroup = 0;
@@ -439,8 +405,11 @@ void getTxPowerWriteValByRegulatory(
 							chnlGroup = 1;
 						else if(Channel > 9)
 							chnlGroup = 2;
-						if(pHalData->pwrGroupCnt == 4)
+
+						if(pHalData->CurrentChannelBW == HT_CHANNEL_WIDTH_20)
 							chnlGroup++;
+						else
+							chnlGroup+=4;
 					}
 					//RTPRINT(FPHY, PHY_TXPWR, ("MCSTxPowerLevelOriginalOffset[%d][%d] = 0x%x\n", 
 					//chnlGroup, index, pHalData->MCSTxPowerLevelOriginalOffset[chnlGroup][index+(rf?8:0)]));
@@ -475,13 +444,13 @@ void getTxPowerWriteValByRegulatory(
 					pwr_diff_limit[i] = (u8)((pHalData->MCSTxPowerLevelOriginalOffset[chnlGroup][index+(rf?8:0)]&(0x7f<<(i*8)))>>(i*8));
 					if (pHalData->CurrentChannelBW == HT_CHANNEL_WIDTH_40)
 					{
-						if(pwr_diff_limit[i] > pEEPROM->PwrGroupHT40[rf][Channel-1])
-							pwr_diff_limit[i] = pEEPROM->PwrGroupHT40[rf][Channel-1];
+						if(pwr_diff_limit[i] > pHalData->PwrGroupHT40[rf][Channel-1])
+							pwr_diff_limit[i] = pHalData->PwrGroupHT40[rf][Channel-1];
 					}
 					else
 					{
-						if(pwr_diff_limit[i] > pEEPROM->PwrGroupHT20[rf][Channel-1])
-							pwr_diff_limit[i] = pEEPROM->PwrGroupHT20[rf][Channel-1];
+						if(pwr_diff_limit[i] > pHalData->PwrGroupHT20[rf][Channel-1])
+							pwr_diff_limit[i] = pHalData->PwrGroupHT20[rf][Channel-1];
 					}
 				}
 				customer_limit = (pwr_diff_limit[3]<<24) | (pwr_diff_limit[2]<<16) |
@@ -499,22 +468,39 @@ void getTxPowerWriteValByRegulatory(
 				break;
 		}
 
+// 20100427 Joseph: Driver dynamic Tx power shall not affect Tx power. It shall be determined by power training mechanism.
+// Currently, we cannot fully disable driver dynamic tx power mechanism because it is referenced by BT coexist mechanism.
+// In the future, two mechanism shall be separated from each other and maintained independantly. Thanks for Lanhsin's reminder.
+
 		if(pdmpriv->DynamicTxHighPowerLvl == TxHighPwrLevel_Level1)
 			writeVal = 0x14141414;
 		else if(pdmpriv->DynamicTxHighPowerLvl == TxHighPwrLevel_Level2)
 			writeVal = 0x00000000;
 
+
+		// 20100628 Joseph: High power mode for BT-Coexist mechanism.
+		// This mechanism is only applied when Driver-Highpower-Mechanism is OFF.
+		if(pdmpriv->DynamicTxHighPowerLvl == TxHighPwrLevel_BT1)
+		{
+			//RTPRINT(FBT, BT_TRACE, ("Tx Power (-6)\n"));
+			writeVal = writeVal - 0x06060606;
+		}
+		else if(pdmpriv->DynamicTxHighPowerLvl == TxHighPwrLevel_BT2)
+		{
+			//RTPRINT(FBT, BT_TRACE, ("Tx Power (-0)\n"));
+			writeVal = writeVal;
+		}
 		*(pOutWriteVal+rf) = writeVal;
 	}
 }
 
-void writeOFDMPowerReg(
+static void writeOFDMPowerReg(
 	IN		PADAPTER	Adapter,
 	IN		u8		index,
 	IN 		u32*		pValue
 	)
 {
-	//HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(Adapter);
+	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(Adapter);
 	u16 RegOffset_A[6] = {	rTxAGC_A_Rate18_06, rTxAGC_A_Rate54_24, 
 							rTxAGC_A_Mcs03_Mcs00, rTxAGC_A_Mcs07_Mcs04, 
 							rTxAGC_A_Mcs11_Mcs08, rTxAGC_A_Mcs15_Mcs12};
@@ -542,7 +528,28 @@ void writeOFDMPowerReg(
 			RegOffset = RegOffset_B[index];
 		
 		PHY_SetBBReg(Adapter, RegOffset, bMaskDWord, writeVal);
-		//RTPRINT(FPHY, PHY_TXPWR, ("Set 0x%x = %08x\n", RegOffset, writeVal));	
+		//RTPRINT(FPHY, PHY_TXPWR, ("Set 0x%x = %08x\n", RegOffset, writeVal));
+
+		// 201005115 Joseph: Set Tx Power diff for Tx power training mechanism.
+		if(((pHalData->rf_type == RF_2T2R) && 
+				(RegOffset == rTxAGC_A_Mcs15_Mcs12 || RegOffset == rTxAGC_B_Mcs15_Mcs12))||
+		     ((pHalData->rf_type != RF_2T2R) && 
+				(RegOffset == rTxAGC_A_Mcs07_Mcs04 || RegOffset == rTxAGC_B_Mcs07_Mcs04))	)
+		{
+			writeVal = pwr_val[3];
+			if(RegOffset == rTxAGC_A_Mcs15_Mcs12 || RegOffset == rTxAGC_A_Mcs07_Mcs04)
+				RegOffset = 0xc90;
+			if(RegOffset == rTxAGC_B_Mcs15_Mcs12 || RegOffset == rTxAGC_B_Mcs07_Mcs04)
+				RegOffset = 0xc98;
+			for(i=0; i<3; i++)
+			{
+				if(i!=2)
+					writeVal = (writeVal>8)?(writeVal-8):0;
+				else
+					writeVal = (writeVal>6)?(writeVal-6):0;
+				rtw_write8(Adapter, (u32)(RegOffset+i), (u8)writeVal);
+			}
+		}
 	}
 }
 /*-----------------------------------------------------------------------------
@@ -567,15 +574,15 @@ void writeOFDMPowerReg(
  * 01/22/2009	MHC		Support new EPRO format from SD3.
  *
  *---------------------------------------------------------------------------*/
-extern	VOID 
-PHY_RF6052SetOFDMTxPower(
+VOID 
+rtl8192c_PHY_RF6052SetOFDMTxPower(
 	IN	PADAPTER	Adapter,
 	IN	u8*		pPowerLevel,
 	IN	u8		Channel)
 {
 	//HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(Adapter);
 	u32 writeVal[2], powerBase0[2], powerBase1[2];
-	u8 index = 0;	
+	u8 index = 0;
 
 	getPowerBase(Adapter, pPowerLevel, Channel, &powerBase0[0], &powerBase1[0]);
 
@@ -590,53 +597,7 @@ PHY_RF6052SetOFDMTxPower(
 }
 
 
-int
-PHY_RF6052_Config(
-	IN	PADAPTER		Adapter)
-{
-	HAL_DATA_TYPE		*pHalData = GET_HAL_DATA(Adapter);
-	int					rtStatus = _SUCCESS;	
-	
-	//
-	// Initialize general global value
-	//
-	// TODO: Extend RF_PATH_C and RF_PATH_D in the future
-	if(pHalData->rf_type == RF_1T1R)
-		pHalData->NumTotalRFPath = 1;
-	else
-		pHalData->NumTotalRFPath = 2;
-
-	//
-	// Config BB and RF
-	//
-	rtStatus = phy_RF6052_Config_ParaFile(Adapter);
-#if 0	
-	switch( Adapter->MgntInfo.bRegHwParaFile )
-	{
-		case 0:
-			phy_RF6052_Config_HardCode(Adapter);
-			break;
-
-		case 1:
-			rtStatus = phy_RF6052_Config_ParaFile(Adapter);
-			break;
-
-		case 2:
-			// Partial Modify. 
-			phy_RF6052_Config_HardCode(Adapter);
-			phy_RF6052_Config_ParaFile(Adapter);
-			break;
-
-		default:
-			phy_RF6052_Config_HardCode(Adapter);
-			break;
-	}
-#endif	
-	return rtStatus;
-		
-}
-
-VOID
+static VOID
 phy_RF6052_Config_HardCode(
 	IN	PADAPTER		Adapter
 	)
@@ -649,7 +610,7 @@ phy_RF6052_Config_HardCode(
 	
 }
 
-int
+static int
 phy_RF6052_Config_ParaFile(
 	IN	PADAPTER		Adapter
 	)
@@ -658,41 +619,66 @@ phy_RF6052_Config_ParaFile(
 	u8					eRFPath;		
 	BB_REGISTER_DEFINITION_T	*pPhyReg;	
 
-	int				rtStatus = _SUCCESS;
-	HAL_DATA_TYPE			*pHalData = GET_HAL_DATA(Adapter);
-	static u8				sz88CRadioAFile[] = RTL8188C_PHY_RADIO_A;	
-	static u8				sz88CRadioBFile[] = RTL8188C_PHY_RADIO_B;
-#if DEV_BUS_TYPE==DEV_BUS_USB_INTERFACE	
-	static u8				sz88CRadioAFile_mCard[] = RTL8188C_PHY_RADIO_A_mCard;	
-	static u8				sz88CRadioBFile_mCard[] = RTL8188C_PHY_RADIO_B_mCard;
-	static u8				sz88CRadioAFile_HP[] = RTL8188C_PHY_RADIO_A_HP;	
+	int					rtStatus = _SUCCESS;
+	HAL_DATA_TYPE		*pHalData = GET_HAL_DATA(Adapter);
+	static char			sz88CRadioAFile[] = RTL8188C_PHY_RADIO_A;	
+	static char			sz88CRadioBFile[] = RTL8188C_PHY_RADIO_B;
+#ifdef CONFIG_USB_HCI
+	static char			sz88CRadioAFile_mCard[] = RTL8188C_PHY_RADIO_A_mCard;	
+	static char			sz88CRadioBFile_mCard[] = RTL8188C_PHY_RADIO_B_mCard;
+	static char			sz88CRadioAFile_HP[] = RTL8188C_PHY_RADIO_A_HP;	
 #endif
-	static u8				sz92CCRadioAFile[] = RTL8192C_PHY_RADIO_A;	
-	static u8				sz92CRadioBFile[] = RTL8192C_PHY_RADIO_B;
-	u8					*pszRadioAFile, *pszRadioBFile;	
+	static char			sz92CRadioAFile[] = RTL8192C_PHY_RADIO_A;	
+	static char			sz92CRadioBFile[] = RTL8192C_PHY_RADIO_B;
+	static char			sz8723RadioAFile[] = RTL8723_PHY_RADIO_A;	
+	static char			sz8723RadioBFile[] = RTL8723_PHY_RADIO_B;
+	char					*pszRadioAFile, *pszRadioBFile;	
 
-	if(IS_92C_SERIAL( pHalData->VersionID))// 88c's IPA  is different from 92c's
+
+	if(IS_HARDWARE_TYPE_8192C(Adapter))
 	{
-		pszRadioAFile = (u8*)&sz92CCRadioAFile;
-		pszRadioBFile = (u8*)&sz92CRadioBFile;
-	}
-	else{
-#if DEV_BUS_TYPE==DEV_BUS_USB_INTERFACE
-		if( BOARD_MINICARD == pHalData->BoardType)
+		if(IS_92C_SERIAL( pHalData->VersionID))// 88c's IPA  is different from 92c's
 		{
-			pszRadioAFile = sz88CRadioAFile_mCard;
-			pszRadioBFile = sz88CRadioBFile_mCard;
-		}
-		else if( BOARD_USB_High_PA == pHalData->BoardType)
-		{
-			pszRadioAFile = sz88CRadioAFile_HP;
+			if(IS_NORMAL_CHIP(pHalData->VersionID))
+			{
+				pszRadioAFile = sz92CRadioAFile;
+				pszRadioBFile = sz92CRadioBFile;
+			}
+			else
+			{
+				rtStatus = _FAIL;
+				return rtStatus;
+			}
 		}
 		else
-#endif	
 		{
-			pszRadioAFile = (u8*)&sz88CRadioAFile;
-			pszRadioBFile = (u8*)&sz88CRadioBFile;
+			if(IS_NORMAL_CHIP(pHalData->VersionID))
+			{
+				pszRadioAFile = sz88CRadioAFile;
+				pszRadioBFile = sz88CRadioBFile;
+#ifdef CONFIG_USB_HCI
+				if( BOARD_MINICARD == pHalData->BoardType)
+				{
+					pszRadioAFile = sz88CRadioAFile_mCard;
+					pszRadioBFile = sz88CRadioBFile_mCard;
+				}
+				else if( BOARD_USB_High_PA == pHalData->BoardType)
+				{
+					pszRadioAFile = sz88CRadioAFile_HP;
+				}
+#endif	
+			}
+			else
+			{
+				rtStatus = _FAIL;
+				return rtStatus;
+			}
 		}
+	}
+	else if(IS_HARDWARE_TYPE_8723(Adapter))
+	{
+		pszRadioAFile = sz8723RadioAFile;
+		pszRadioBFile = sz8723RadioBFile;	
 	}
 
 	//3//-----------------------------------------------------------------
@@ -737,16 +723,16 @@ phy_RF6052_Config_ParaFile(
 		{
 		case RF90_PATH_A:
 #ifdef CONFIG_EMBEDDED_FWIMG
-			rtStatus= PHY_ConfigRFWithHeaderFile(Adapter,(RF90_RADIO_PATH_E)eRFPath);
+			rtStatus= rtl8192c_PHY_ConfigRFWithHeaderFile(Adapter,(RF90_RADIO_PATH_E)eRFPath);
 #else
-			rtStatus = PHY_ConfigRFWithParaFile(Adapter, pszRadioAFile, (RF90_RADIO_PATH_E)eRFPath);
+			rtStatus = rtl8192c_PHY_ConfigRFWithParaFile(Adapter, pszRadioAFile, (RF90_RADIO_PATH_E)eRFPath);
 #endif
 			break;
 		case RF90_PATH_B:
 #ifdef CONFIG_EMBEDDED_FWIMG
-			rtStatus= PHY_ConfigRFWithHeaderFile(Adapter,(RF90_RADIO_PATH_E)eRFPath);
+			rtStatus = rtl8192c_PHY_ConfigRFWithHeaderFile(Adapter,(RF90_RADIO_PATH_E)eRFPath);
 #else			
-			rtStatus = PHY_ConfigRFWithParaFile(Adapter, pszRadioBFile, (RF90_RADIO_PATH_E)eRFPath);
+			rtStatus = rtl8192c_PHY_ConfigRFWithParaFile(Adapter, pszRadioBFile, (RF90_RADIO_PATH_E)eRFPath);
 #endif
 			break;
 		case RF90_PATH_C:
@@ -783,6 +769,53 @@ phy_RF6052_Config_ParaFile_Fail:
 }
 
 
+int
+PHY_RF6052_Config8192C(
+	IN	PADAPTER		Adapter)
+{
+	HAL_DATA_TYPE				*pHalData = GET_HAL_DATA(Adapter);
+	int					rtStatus = _SUCCESS;	
+	
+	//
+	// Initialize general global value
+	//
+	// TODO: Extend RF_PATH_C and RF_PATH_D in the future
+	if(pHalData->rf_type == RF_1T1R)
+		pHalData->NumTotalRFPath = 1;
+	else
+		pHalData->NumTotalRFPath = 2;
+
+	//
+	// Config BB and RF
+	//
+	rtStatus = phy_RF6052_Config_ParaFile(Adapter);
+#if 0	
+	switch( Adapter->MgntInfo.bRegHwParaFile )
+	{
+		case 0:
+			phy_RF6052_Config_HardCode(Adapter);
+			break;
+
+		case 1:
+			rtStatus = phy_RF6052_Config_ParaFile(Adapter);
+			break;
+
+		case 2:
+			// Partial Modify. 
+			phy_RF6052_Config_HardCode(Adapter);
+			phy_RF6052_Config_ParaFile(Adapter);
+			break;
+
+		default:
+			phy_RF6052_Config_HardCode(Adapter);
+			break;
+	}
+#endif	
+	return rtStatus;
+		
+}
+
+
 //
 // ==> RF shadow Operation API Code Section!!!
 //
@@ -811,7 +844,7 @@ phy_RF6052_Config_ParaFile_Fail:
  * 11/20/2008 	MHC		Create Version 0.
  *
  *---------------------------------------------------------------------------*/
-extern	u32
+u32
 PHY_RFShadowRead(
 	IN	PADAPTER			Adapter,
 	IN	RF90_RADIO_PATH_E	eRFPath,
@@ -822,7 +855,7 @@ PHY_RFShadowRead(
 }	/* PHY_RFShadowRead */
 
 
-extern	VOID
+VOID
 PHY_RFShadowWrite(
 	IN	PADAPTER			Adapter,
 	IN	RF90_RADIO_PATH_E	eRFPath,
@@ -835,7 +868,7 @@ PHY_RFShadowWrite(
 }	/* PHY_RFShadowWrite */
 
 
-extern	BOOLEAN
+BOOLEAN
 PHY_RFShadowCompare(
 	IN	PADAPTER			Adapter,
 	IN	RF90_RADIO_PATH_E	eRFPath,
@@ -861,7 +894,7 @@ PHY_RFShadowCompare(
 }	/* PHY_RFShadowCompare */
 
 
-extern	VOID
+VOID
 PHY_RFShadowRecorver(
 	IN	PADAPTER			Adapter,
 	IN	RF90_RADIO_PATH_E	eRFPath,
@@ -884,7 +917,7 @@ PHY_RFShadowRecorver(
 }	/* PHY_RFShadowRecorver */
 
 
-extern	VOID
+VOID
 PHY_RFShadowCompareAll(
 	IN	PADAPTER			Adapter)
 {
@@ -902,7 +935,7 @@ PHY_RFShadowCompareAll(
 }	/* PHY_RFShadowCompareAll */
 
 
-extern	VOID
+VOID
 PHY_RFShadowRecorverAll(
 	IN	PADAPTER			Adapter)
 {
@@ -920,7 +953,7 @@ PHY_RFShadowRecorverAll(
 }	/* PHY_RFShadowRecorverAll */
 
 
-extern	VOID
+VOID
 PHY_RFShadowCompareFlagSet(
 	IN	PADAPTER			Adapter,
 	IN	RF90_RADIO_PATH_E	eRFPath,
@@ -933,7 +966,7 @@ PHY_RFShadowCompareFlagSet(
 }	/* PHY_RFShadowCompareFlagSet */
 
 
-extern	VOID
+VOID
 PHY_RFShadowRecorverFlagSet(
 	IN	PADAPTER			Adapter,
 	IN	RF90_RADIO_PATH_E	eRFPath,
@@ -946,7 +979,7 @@ PHY_RFShadowRecorverFlagSet(
 }	/* PHY_RFShadowRecorverFlagSet */
 
 
-extern	VOID
+VOID
 PHY_RFShadowCompareFlagSetAll(
 	IN	PADAPTER			Adapter)
 {
@@ -968,7 +1001,7 @@ PHY_RFShadowCompareFlagSetAll(
 }	/* PHY_RFShadowCompareFlagSetAll */
 
 
-extern	VOID
+VOID
 PHY_RFShadowRecorverFlagSetAll(
 	IN	PADAPTER			Adapter)
 {
@@ -989,7 +1022,7 @@ PHY_RFShadowRecorverFlagSetAll(
 		
 }	/* PHY_RFShadowCompareFlagSetAll */
 
-extern	VOID
+VOID
 PHY_RFShadowRefresh(
 	IN	PADAPTER			Adapter)
 {

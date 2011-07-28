@@ -1,20 +1,23 @@
 /******************************************************************************
-* usb_ops_ce.c                                                                                                                                 *
-*                                                                                                                                          *
-* Description :                                                                                                                       *
-*                                                                                                                                           *
-* Author :                                                                                                                       *
-*                                                                                                                                         *
-* History :
-*
-*
-*                                                                                                                                       *
-* Copyright 2007, Realtek Corp.                                                                                                  *
-*                                                                                                                                        *
-* The contents of this file is the sole property of Realtek Corp.  It can not be                                     *
-* be used, copied or modified without written permission from Realtek Corp.                                         *
-*                                                                                                                                          *
-*******************************************************************************/
+ *
+ * Copyright(c) 2007 - 2011 Realtek Corporation. All rights reserved.
+ *                                        
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of version 2 of the GNU General Public License as
+ * published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along with
+ * this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA 02110, USA
+ *
+ *
+ 
+******************************************************************************/
 #define _HCI_OPS_OS_C_
 
 #include <drv_conf.h>
@@ -30,7 +33,6 @@
 	#error "CONFIG_USB_HCI shall be on!\n"
 #endif
 
-#include <rtl8712_spec.h>
 #include <usb_ops.h>
 #include <recv_osdep.h>
 
@@ -166,7 +168,7 @@ _func_enter_;
 	{
 
 		// get a recv buffer
-		rtw_init_recvbuf(adapter, precvbuf);
+		rtl8192cu_init_recvbuf(adapter, precvbuf);
 	
 
 
@@ -363,7 +365,7 @@ _func_enter_;
 	while(rtw_is_list_empty(head) != _TRUE)
 	{
 		plist = get_next(head);	
-		list_delete(plist);
+		rtw_list_delete(plist);
 		pio_req = LIST_CONTAINOR(plist, struct io_req, list);
 		_rtw_up_sema(&pio_req->sema);
 	}
@@ -639,10 +641,10 @@ _func_enter_;
 	{
 		if(pcontext->pbuf)
 		{			
-			_rtw_mfree(pcontext->pbuf, sizeof(int));	
+			rtw_mfree(pcontext->pbuf, sizeof(int));	
 		}	
 
-		_rtw_mfree((u8*)pcontext, sizeof(struct zero_bulkout_context));	
+		rtw_mfree((u8*)pcontext, sizeof(struct zero_bulkout_context));	
 	}	
 
 _func_exit_;
@@ -674,9 +676,9 @@ _func_enter_;
 	}
 
 
-	pcontext = (struct zero_bulkout_context *)_rtw_zmalloc(sizeof(struct zero_bulkout_context));
+	pcontext = (struct zero_bulkout_context *)rtw_zmalloc(sizeof(struct zero_bulkout_context));
 
-	pbuf = (unsigned char *)_rtw_zmalloc(sizeof(int));	
+	pbuf = (unsigned char *)rtw_zmalloc(sizeof(int));	
 
 	len = 0;
 	
@@ -894,7 +896,7 @@ _func_enter_;
 		("%s(%u): pxmitpriv %X pxmitpriv->free_xmitframe_cnt %X pxmitframe->padapter %X pxmitframe->padapter %X\n", 
 		__LINE__, pxmitpriv, pxmitpriv->free_xmitframe_cnt, pxmitframe->padapter));
 
-    rtw_xmitframe_complete(padapter, pxmitpriv, pxmitbuf);
+    rtl8192cu_xmitframe_complete(padapter, pxmitpriv, pxmitbuf);
 
 _func_exit_;
 
@@ -995,61 +997,61 @@ _func_exit_;
  */
 uint usb_init_intf_priv(struct intf_priv *pintfpriv)
 {
-    // get the dvobj_priv object
+	// get the dvobj_priv object
 	struct dvobj_priv * pNdisCEDvice = (struct dvobj_priv *) pintfpriv->intf_dev;
 
 	RT_TRACE( _module_hci_ops_os_c_, _drv_info_, ("%s(%u)\n",__FUNCTION__, __LINE__));
-    // set init intf_priv init status as _IOREADY
+	// set init intf_priv init status as _IOREADY
 	pintfpriv->intf_status = _IOREADY;
 
-    //  determine the max io size by dvobj_priv.ishighspeed
-    if(pNdisCEDvice->ishighspeed)
-        pintfpriv->max_iosz =  128;
+	//  determine the max io size by dvobj_priv.ishighspeed
+	if(pNdisCEDvice->ishighspeed)
+		pintfpriv->max_iosz =  128;
 	else
-        pintfpriv->max_iosz =  64;
+		pintfpriv->max_iosz =  64;
 
-    //  read/write size set as 0
+	//  read/write size set as 0
 	pintfpriv->io_wsz = 0;
 	pintfpriv->io_rsz = 0;
 
-    //  init io_rwmem buffer
-	pintfpriv->allocated_io_rwmem = _rtw_zmalloc(pintfpriv->max_iosz +4);
-    if (pintfpriv->allocated_io_rwmem == NULL)
-    {
-	    _rtw_mfree((u8 *)(pintfpriv->allocated_io_rwmem), pintfpriv->max_iosz +4);
-	    return _FAIL;
-    }
-    else
-    {
-        // word align the io_rwmem
-	    pintfpriv->io_rwmem = pintfpriv->allocated_io_rwmem + 4 - ( (u32)(pintfpriv->allocated_io_rwmem) & 3);
-    }
+	//  init io_rwmem buffer
+	pintfpriv->allocated_io_rwmem = rtw_zmalloc(pintfpriv->max_iosz +4);
+	if (pintfpriv->allocated_io_rwmem == NULL)
+	{
+		rtw_mfree((u8 *)(pintfpriv->allocated_io_rwmem), pintfpriv->max_iosz +4);
+		return _FAIL;
+	}
+	else
+	{
+		// word align the io_rwmem
+		pintfpriv->io_rwmem = pintfpriv->allocated_io_rwmem + 4 - ( (u32)(pintfpriv->allocated_io_rwmem) & 3);
+	}
 
 #ifndef PLATFORM_OS_CE
 
-    //  init io_r_mem buffer
-	pintfpriv->allocated_io_r_mem = _rtw_zmalloc(pintfpriv->max_iosz +4);
-    if (pintfpriv->allocated_io_r_mem == NULL)
-    {
-	    _rtw_mfree((u8 *)(pintfpriv->allocated_io_r_mem), pintfpriv->max_iosz +4);
-	    return _FAIL;
-    }
-    else
-    {
-        // word align the io_rwmem
-	    pintfpriv->io_r_mem = pintfpriv->allocated_io_r_mem + 4 - ( (u32)(pintfpriv->allocated_io_r_mem) & 3);
-    }
+	//  init io_r_mem buffer
+	pintfpriv->allocated_io_r_mem = rtw_zmalloc(pintfpriv->max_iosz +4);
+	if (pintfpriv->allocated_io_r_mem == NULL)
+	{
+		rtw_mfree((u8 *)(pintfpriv->allocated_io_r_mem), pintfpriv->max_iosz +4);
+		return _FAIL;
+	}
+	else
+	{
+		// word align the io_rwmem
+		pintfpriv->io_r_mem = pintfpriv->allocated_io_r_mem + 4 - ( (u32)(pintfpriv->allocated_io_r_mem) & 3);
+	}
 #endif
 
-    return _SUCCESS;
+	return _SUCCESS;
 }
 
 void usb_unload_intf_priv(struct intf_priv *pintfpriv)
 {
 #ifndef PLATFORM_OS_CE
 
-	_rtw_mfree((u8 *)(pintfpriv->allocated_io_rwmem), pintfpriv->max_iosz+4);
-    _rtw_mfree((u8 *)(pintfpriv->allocated_io_r_mem), pintfpriv->max_iosz+4);
+	rtw_mfree((u8 *)(pintfpriv->allocated_io_rwmem), pintfpriv->max_iosz+4);
+	rtw_mfree((u8 *)(pintfpriv->allocated_io_r_mem), pintfpriv->max_iosz+4);
 #endif
 
 	RT_TRACE( _module_hci_ops_os_c_, _drv_info_, ("%s(%u)\n",__FUNCTION__, __LINE__));

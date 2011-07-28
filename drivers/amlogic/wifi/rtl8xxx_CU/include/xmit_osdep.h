@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- * Copyright(c) 2007 - 2010 Realtek Corporation. All rights reserved.
+ * Copyright(c) 2007 - 2011 Realtek Corporation. All rights reserved.
  *                                        
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of version 2 of the GNU General Public License as
@@ -16,7 +16,8 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110, USA
  *
  *
- ******************************************************************************/
+ 
+******************************************************************************/
 #ifndef __XMIT_OSDEP_H_
 #define __XMIT_OSDEP_H_
 
@@ -68,24 +69,21 @@ struct xmit_buf;
 
 extern int rtw_xmit_entry(_pkt *pkt, _nic_hdl pnetdev);
 
-#ifdef CONFIG_USB_HCI
-extern void xmit_tasklet(void *priv);
 #endif
 
-#endif
+void rtw_os_xmit_schedule(_adapter *padapter);
 
+int rtw_os_xmit_resource_alloc(_adapter *padapter, struct xmit_buf *pxmitbuf,u32 alloc_sz);
+void rtw_os_xmit_resource_free(_adapter *padapter, struct xmit_buf *pxmitbuf,u32 free_sz);
 
-int rtw_os_xmit_resource_alloc(_adapter *padapter, struct xmit_buf *pxmitbuf);
-void rtw_os_xmit_resource_free(_adapter *padapter, struct xmit_buf *pxmitbuf);
-
-extern void set_tx_chksum_offload(_pkt *pkt, struct pkt_attrib *pattrib);
+extern void rtw_set_tx_chksum_offload(_pkt *pkt, struct pkt_attrib *pattrib);
 
 extern uint rtw_remainder_len(struct pkt_file *pfile);
 extern void _rtw_open_pktfile(_pkt *pkt, struct pkt_file *pfile);
 extern uint _rtw_pktfile_read (struct pkt_file *pfile, u8 *rmem, uint rlen);
 extern sint rtw_endofpktfile (struct pkt_file *pfile);
 
-extern void os_pkt_complete(_adapter *padapter, _pkt *pkt);
+extern void rtw_os_pkt_complete(_adapter *padapter, _pkt *pkt);
 extern void rtw_os_xmit_complete(_adapter *padapter, struct xmit_frame *pxframe);
 
 #endif //

@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- * Copyright(c) 2007 - 2010 Realtek Corporation. All rights reserved.
+ * Copyright(c) 2007 - 2011 Realtek Corporation. All rights reserved.
  *                                        
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of version 2 of the GNU General Public License as
@@ -16,7 +16,8 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110, USA
  *
  *
- ******************************************************************************/
+ 
+******************************************************************************/
 #ifndef __USB_OPS_H_
 #define __USB_OPS_H_
 
@@ -34,12 +35,24 @@ enum{
 	VENDOR_WRITE = 0x00,
 	VENDOR_READ = 0x01,
 };
+#define ALIGNMENT_UNIT				16
+#define MAX_VENDOR_REQ_CMD_SIZE	254		//8188cu SIE Support
+#define MAX_USB_IO_CTL_SIZE		(MAX_VENDOR_REQ_CMD_SIZE +ALIGNMENT_UNIT)
 
-
+#ifdef CONFIG_RTL8192C
 void rtl8192cu_set_intf_ops(struct _io_ops *pops);
 
-void rtl8192cu_trigger_gpio_0(_adapter *padapter);
-
 void rtl8192cu_recv_tasklet(void *priv);
+
+void rtl8192cu_xmit_tasklet(void *priv);
+#endif
+
+#ifdef CONFIG_RTL8192D
+void rtl8192du_set_intf_ops(struct _io_ops *pops);
+
+void rtl8192du_recv_tasklet(void *priv);
+
+void rtl8192du_xmit_tasklet(void *priv);
+#endif
 
 #endif

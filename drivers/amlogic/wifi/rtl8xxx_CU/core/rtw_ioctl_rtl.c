@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- * Copyright(c) 2007 - 2010 Realtek Corporation. All rights reserved.
+ * Copyright(c) 2007 - 2011 Realtek Corporation. All rights reserved.
  *                                        
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of version 2 of the GNU General Public License as
@@ -16,8 +16,9 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110, USA
  *
  *
- ******************************************************************************/
-#define  _RTL871X_IOCTL_RTL_C_
+ 
+******************************************************************************/
+#define  _RTW_IOCTL_RTL_C_
 
 #include <drv_conf.h>
 #include <osdep_service.h>
@@ -162,8 +163,8 @@ struct oid_obj_priv oid_rtl_seg_03_00[] =
 
 NDIS_STATUS oid_rt_pro_set_fw_dig_state_hdl(struct oid_par_priv* poid_par_priv)
 {
-
 	NDIS_STATUS		status = NDIS_STATUS_SUCCESS;
+#if 0
 	PADAPTER		Adapter = (PADAPTER)(poid_par_priv->adapter_context);
 	_irqL			oldirql;
 	
@@ -190,7 +191,7 @@ NDIS_STATUS oid_rt_pro_set_fw_dig_state_hdl(struct oid_par_priv* poid_par_priv)
 	}  
 	_irqlevel_changed_(&oldirql,RAISE);
 	_func_exit_;
-
+#endif
 	return status;
 }
 //-----------------------------------------------------------------------------
@@ -198,6 +199,7 @@ NDIS_STATUS oid_rt_pro_set_fw_ra_state_hdl(struct oid_par_priv* poid_par_priv)
 {
 
 	NDIS_STATUS		status = NDIS_STATUS_SUCCESS;
+#if 0
 	PADAPTER		Adapter = (PADAPTER)(poid_par_priv->adapter_context);
 	_irqL			oldirql;
 	
@@ -225,7 +227,7 @@ NDIS_STATUS oid_rt_pro_set_fw_ra_state_hdl(struct oid_par_priv* poid_par_priv)
 	}  
 	_irqlevel_changed_(&oldirql,RAISE);
 	_func_exit_;
-
+#endif
 	return status;
 }
 //-----------------------------------------------------------------------------
@@ -900,6 +902,7 @@ NDIS_STATUS oid_rt_pro_rf_write_registry_hdl(struct oid_par_priv* poid_par_priv)
 NDIS_STATUS oid_rt_pro_rf_read_registry_hdl(struct oid_par_priv* poid_par_priv)
 {
 	NDIS_STATUS		status = NDIS_STATUS_SUCCESS;
+#if 0
 	PADAPTER		Adapter = (PADAPTER)(poid_par_priv->adapter_context);
 	_irqL	oldirql;
 	_func_enter_;
@@ -948,7 +951,7 @@ NDIS_STATUS oid_rt_pro_rf_read_registry_hdl(struct oid_par_priv* poid_par_priv)
 	}
 	_irqlevel_changed_(&oldirql,RAISE);
 	_func_exit_;
-
+#endif
 	return status;
 }
 

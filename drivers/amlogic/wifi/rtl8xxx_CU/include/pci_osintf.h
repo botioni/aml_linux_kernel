@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- * Copyright(c) 2007 - 2010 Realtek Corporation. All rights reserved.
+ * Copyright(c) 2007 - 2011 Realtek Corporation. All rights reserved.
  *                                        
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of version 2 of the GNU General Public License as
@@ -17,4 +17,17 @@
  *
  *
  ******************************************************************************/
-#define DRIVERVERSION	v1.0.725.20100525
+#ifndef __PCI_OSINTF_H
+#define __PCI_OSINTF_H
+
+#include <drv_conf.h>
+#include <osdep_service.h>
+#include <drv_types.h>
+
+
+void rtw_pci_disable_aspm(_adapter *padapter);
+void rtw_pci_enable_aspm(_adapter *padapter);
+
+
+#endif
+

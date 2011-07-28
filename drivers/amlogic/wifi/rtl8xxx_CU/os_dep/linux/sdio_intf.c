@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- * Copyright(c) 2007 - 2010 Realtek Corporation. All rights reserved.
+ * Copyright(c) 2007 - 2011 Realtek Corporation. All rights reserved.
  *                                        
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of version 2 of the GNU General Public License as
@@ -16,7 +16,8 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110, USA
  *
  *
- ******************************************************************************/
+ 
+******************************************************************************/
 #define _HCI_INTF_C_
 
 #include <drv_conf.h>
@@ -34,8 +35,8 @@ extern u32 rtw_start_drv_threads(_adapter *padapter);
 extern void rtw_stop_drv_threads (_adapter *padapter);
 extern u8 rtw_init_drv_sw(_adapter *padapter);
 extern u8 rtw_free_drv_sw(_adapter *padapter);
-extern void cancel_all_timer(_adapter *padapter);
-extern struct net_device *rtw_init_netdev(void);
+extern void rtw_cancel_all_timer(_adapter *padapter);
+extern struct net_device *rtw_init_netdev(_adapter *old_padapter);
 extern void update_recvframe_attrib_from_recvstat(struct rx_pkt_attrib
 *pattrib, struct recv_stat *prxstat);
 static const struct sdio_device_id sdio_ids[] = {
@@ -125,7 +126,7 @@ _func_enter_;
 		cnt = ((cnt + 4) >> 2) << 2;
 #endif
 
-	mem = _rtw_malloc(cnt);
+	mem = rtw_malloc(cnt);
 	if (mem == NULL) {
 		RT_TRACE(_module_hci_ops_os_c_, _drv_emerg_,
 			 ("SDIO_STATUS_NO_RESOURCES - memory alloc fail\n"));
@@ -150,7 +151,7 @@ _func_enter_;
 		status = _SUCCESS;
 	}
 
-	_rtw_mfree(mem, cnt);
+	rtw_mfree(mem, cnt);
 
 _func_exit_;
 
@@ -202,10 +203,10 @@ _func_enter_;
 	if (cnt % 4)
 		cnt = ((cnt + 4) >> 2) << 2;
 	if (cnt != cnt_org) {
-		pdata = _rtw_malloc(cnt);
+		pdata = rtw_malloc(cnt);
 		if (pdata == NULL) {
 			RT_TRACE(_module_hci_ops_os_c_, _drv_emerg_,
-				 ("SDIO_STATUS_NO_RESOURCES - _rtw_malloc fail\n"));
+				 ("SDIO_STATUS_NO_RESOURCES - rtw_malloc fail\n"));
 			return _FAIL;
 		}
 		status = sdio_memcpy_fromio(func, pdata, addr&0x1FFFF, cnt);
@@ -214,7 +215,7 @@ _func_enter_;
 				 ("sdbus_write_reg_int read failed 0x%x\n "
 				  "***** Addr = %x *****\n"
 				  "***** Length = %d *****\n", status, addr, cnt));
-			_rtw_mfree(pdata, cnt);
+			rtw_mfree(pdata, cnt);
 			return _FAIL;
 		}
 		_rtw_memcpy(pdata + addr_offset, pdata_org, cnt_org);
@@ -235,7 +236,7 @@ _func_enter_;
 
 #ifdef CONFIG_IO_4B
 	if (cnt != cnt_org)
-		_rtw_mfree(pdata, cnt);
+		rtw_mfree(pdata, cnt);
 #endif
 
 _func_exit_;
@@ -292,11 +293,11 @@ int recvbuf2recvframe_s(_adapter *padapter, struct recv_buf *precvbuf)
 	prxstat = (struct recv_stat *)pbuf;
 /*	{
 		u8 i;
-		printk("\n-----recvbuf-----\n");
+		DBG_8192C("\n-----recvbuf-----\n");
 		for (i=0;i<64;i=i+8) {
-			printk("0x%.2x:0x%.2x:0x%.2x:0x%.2x:0x%.2x:0x%.2x:0x%.2x:0x%.2x\n",pbuf[i],pbuf[i+1],pbuf[i+2],pbuf[i+3],pbuf[i+4],pbuf[i+5],pbuf[i+6],pbuf[i+7]);
+			DBG_8192C("0x%.2x:0x%.2x:0x%.2x:0x%.2x:0x%.2x:0x%.2x:0x%.2x:0x%.2x\n",pbuf[i],pbuf[i+1],pbuf[i+2],pbuf[i+3],pbuf[i+4],pbuf[i+5],pbuf[i+6],pbuf[i+7]);
 		}
-		printk("\n-----recvbuf end-----\n");
+		DBG_8192C("\n-----recvbuf end-----\n");
 	}*/
 	transfer_len = precvbuf->len;
 	precvbuf->ref_cnt = 1;
@@ -333,11 +334,11 @@ int recvbuf2recvframe_s(_adapter *padapter, struct recv_buf *precvbuf)
 		recvframe_pull(precvframe, drvinfo_sz + RXDESC_SIZE);
 /*		{
 			u8 i;
-			printk("\n-----packet-----\n");
+			DBG_8192C("\n-----packet-----\n");
 			for(i=0;i<32;i++){
-			printk("0x%.2x:0x%.2x:0x%.2x:0x%.2x:0x%.2x:0x%.2x:0x%.2x:0x%.2x\n",precvframe->u.hdr.rx_data[i],precvframe->u.hdr.rx_data[i+1],precvframe->u.hdr.rx_data[i+2],precvframe->u.hdr.rx_data[i+3],precvframe->u.hdr.rx_data[i+4],precvframe->u.hdr.rx_data[i+5],precvframe->u.hdr.rx_data[i+6],precvframe->u.hdr.rx_data[i+7]);
+			DBG_8192C("0x%.2x:0x%.2x:0x%.2x:0x%.2x:0x%.2x:0x%.2x:0x%.2x:0x%.2x\n",precvframe->u.hdr.rx_data[i],precvframe->u.hdr.rx_data[i+1],precvframe->u.hdr.rx_data[i+2],precvframe->u.hdr.rx_data[i+3],precvframe->u.hdr.rx_data[i+4],precvframe->u.hdr.rx_data[i+5],precvframe->u.hdr.rx_data[i+6],precvframe->u.hdr.rx_data[i+7]);
 			}
-			printk("\n-----packet end-----\n");
+			DBG_8192C("\n-----packet end-----\n");
 		}*/
 		RT_TRACE(_module_rtl871x_recv_c_,_drv_info_,("\n precvframe->u.hdr.rx_head=%p precvframe->u.hdr.rx_data=%p precvframe->u.hdr.rx_tail=%p precvframe->u.hdr.rx_end=%p\n",precvframe->u.hdr.rx_head,precvframe->u.hdr.rx_data,precvframe->u.hdr.rx_tail,precvframe->u.hdr.rx_end));
 
@@ -385,7 +386,7 @@ u32 read_pkt2recvbuf(PADAPTER padapter, u32 rd_cnt, struct recv_buf *precvbuf)
 		precvbuf->pskb = netdev_alloc_skb(padapter->pnetdev, skb_buf_sz);
 #endif
 		if (precvbuf->pskb == NULL) {
-			RT_TRACE(_module_hci_ops_os_c_,_drv_err_,("==================rtw_init_recvbuf(): alloc_skb fail!\n"));
+			RT_TRACE(_module_hci_ops_os_c_,_drv_err_,("==================init_recvbuf(): alloc_skb fail!\n"));
 			return _FAIL;
 		}
 
@@ -396,7 +397,7 @@ u32 read_pkt2recvbuf(PADAPTER padapter, u32 rd_cnt, struct recv_buf *precvbuf)
 		precvbuf->pbuf = precvbuf->pskb->data;
 	}
 //	else {
-//               RT_TRACE(_module_hci_ops_os_c_,_drv_err_,("after rtw_init_recvbuf(): skb !=NULL!\n"));
+//               RT_TRACE(_module_hci_ops_os_c_,_drv_err_,("after init_recvbuf(): skb !=NULL!\n"));
 //	}
 
 	rtw_read_port(padapter, RTL8712_DMA_RX0FF, rd_cnt, (u8*)precvbuf);
@@ -404,12 +405,12 @@ u32 read_pkt2recvbuf(PADAPTER padapter, u32 rd_cnt, struct recv_buf *precvbuf)
 	precvbuf->len = rd_cnt;
 	/*{
 		u32 i;
-		printk("-----After read port[%d]-----\n",skb_buf_sz);
+		DBG_8192C("-----After read port[%d]-----\n",skb_buf_sz);
 		for (i = 0; i < skb_buf_sz; i = i + 8) {
-			printk("0x%x:0x%x:0x%x:0x%x:0x%x:0x%x:0x%x:0x%x\n",precvbuf->pbuf[i],precvbuf->pbuf[i+1],precvbuf->pbuf[i+2],precvbuf->pbuf[i+3],precvbuf->pbuf[i+4],precvbuf->pbuf[i+5],precvbuf->pbuf[i+6],precvbuf->pbuf[i+7]);
+			DBG_8192C("0x%x:0x%x:0x%x:0x%x:0x%x:0x%x:0x%x:0x%x\n",precvbuf->pbuf[i],precvbuf->pbuf[i+1],precvbuf->pbuf[i+2],precvbuf->pbuf[i+3],precvbuf->pbuf[i+4],precvbuf->pbuf[i+5],precvbuf->pbuf[i+6],precvbuf->pbuf[i+7]);
 		}
 
-		printk("-----------\n");
+		DBG_8192C("-----------\n");
 	}*/
 #if 1
 	recvbuf2recvframe_s(padapter, precvbuf);
@@ -417,7 +418,7 @@ u32 read_pkt2recvbuf(PADAPTER padapter, u32 rd_cnt, struct recv_buf *precvbuf)
 {
 	dev_kfree_skb_any(precvbuf->pskb);
 	precvbuf->pskb = NULL;
-	list_delete(&(precvbuf->list));
+	rtw_list_delete(&(precvbuf->list));
 	rtw_list_insert_tail(&precvbuf->list, get_list_head(&precvpriv->free_recv_buf_queue));
 	precvpriv->free_recv_buf_queue_cnt++;
 }
@@ -451,7 +452,7 @@ void sd_recv_rxfifo(PADAPTER padapter)
 //	ppending_recv_queue = &(precvpriv->recv_pending_queue);
 
 	rx_blknum = padapter->dvobjpriv.rxblknum;
-//	_enter_critical_mutex(&padapter->dvobjpriv.rx_protect, &rx_proc_irq);
+//	_enter_hwio_critical(&padapter->dvobjpriv.rx_protect, &rx_proc_irq);
 //	padapter->dvobjpriv.rxblknum=rtw_read16(padapter, SDIO_RX0_RDYBLK_NUM);
 	sdio_read_int(padapter, SDIO_RX0_RDYBLK_NUM, 2, &padapter->dvobjpriv.rxblknum);
 	if (rx_blknum>padapter->dvobjpriv.rxblknum) {
@@ -480,7 +481,7 @@ void sd_recv_rxfifo(PADAPTER padapter)
 		precvbuf_head = get_list_head(&precvpriv->free_recv_buf_queue);
 		precvbuf_list = get_next(precvbuf_head);
 		precvbuf = LIST_CONTAINOR(precvbuf_list, struct recv_buf, list);
-		list_delete(&precvbuf->list);
+		rtw_list_delete(&precvbuf->list);
 		precvpriv->free_recv_buf_queue_cnt--;
 
 		RT_TRACE(_module_hci_intfs_c_,_drv_notice_,("\n sd_recv_rxfifo : precvbuf= 0x%p  dequeue: free_recv_buf_queue_cnt=%d\n",precvbuf,precvpriv->free_recv_buf_queue_cnt));
@@ -688,11 +689,11 @@ static int r871xs_drv_init(struct sdio_func *func, const struct sdio_device_id *
 	RT_TRACE(_module_hci_intfs_c_,_drv_alert_,("+871x - drv_init:id=0x%p func->vendor=0x%x func->device=0x%x\n",id,func->vendor,func->device));
 
 	//step 1.
-	pnetdev = rtw_init_netdev();
+	pnetdev = rtw_init_netdev(NULL);
 	if (!pnetdev)
 		goto error;	
 
-	padapter = netdev_priv(pnetdev);
+	padapter = rtw_netdev_priv(pnetdev);
 	pdvobjpriv = &padapter->dvobjpriv;
 	pdvobjpriv->padapter = padapter;
 	pdvobjpriv->func = func;
@@ -776,7 +777,7 @@ error:
 
 	if (pnetdev) {
 		unregister_netdev(pnetdev);
-		free_netdev(pnetdev);
+		rtw_free_netdev(pnetdev);
 	}
 
 	RT_TRACE(_module_hci_intfs_c_, _drv_emerg_, ("-871x_sdio - drv_init, fail!\n"));
@@ -810,7 +811,7 @@ void r871x_dev_unload(_adapter *padapter)
 		// indicate-disconnect if necssary (free all assoc-resources)
 		// dis-assoc from assoc_sta (optional)
 		rtw_indicate_disconnect(padapter);
-		rtw_free_network_queue(padapter,_TRUE);
+		rtw_free_network_queue(padapter, _TRUE);
 #endif
 
 		padapter->bDriverStopped = _TRUE;
@@ -831,12 +832,7 @@ void r871x_dev_unload(_adapter *padapter)
 		}
 		RT_TRACE(_module_hci_intfs_c_,_drv_err_,("@ r871x_dev_unload:complelt s5!\n"));
 
-		//s6.
-		if (padapter->dvobj_deinit) {
-			padapter->dvobj_deinit(padapter); // call sd_dvobj_deinit()
-		} else {
-			RT_TRACE(_module_hci_intfs_c_,_drv_err_,("Initialize hcipriv.hci_priv_init error!!!\n"));
-		}
+
 		RT_TRACE(_module_hci_intfs_c_,_drv_err_,("@ r871x_dev_unload:complete s6!\n"));
 
 		padapter->bup = _FALSE;
@@ -864,12 +860,19 @@ _func_exit_;
 		if (pnetdev)
 			unregister_netdev(pnetdev); //will call netdev_close()
 
-		cancel_all_timer(padapter);
+		rtw_cancel_all_timer(padapter);
 		
 		r871x_dev_unload(padapter);
+		//s6.
+		if (padapter->dvobj_deinit) {
+			padapter->dvobj_deinit(padapter); // call sd_dvobj_deinit()
+		} else {
+			RT_TRACE(_module_hci_intfs_c_,_drv_err_,("Initialize hcipriv.hci_priv_init error!!!\n"));
+		}
 
 		rtw_free_drv_sw(padapter);
-
+		//after rtw_free_drv_sw(), padapter has beed freed, don't refer to it.
+		
 		sdio_claim_host(func);
 		RT_TRACE(_module_hci_intfs_c_,_drv_err_,(" in dev_remove():sdio_claim_host !\n"));
 		sdio_release_irq(func);

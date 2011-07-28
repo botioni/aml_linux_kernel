@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- * Copyright(c) 2007 - 2010 Realtek Corporation. All rights reserved.
+ * Copyright(c) 2007 - 2011 Realtek Corporation. All rights reserved.
  *                                        
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of version 2 of the GNU General Public License as
@@ -16,9 +16,10 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110, USA
  *
  *
- ******************************************************************************/
-#ifndef _IO_H_
-#define _IO_H_
+ 
+******************************************************************************/
+#ifndef _RTW_IO_H_
+#define _RTW_IO_H_
 
 #include <drv_conf.h>
 #include <osdep_service.h>
@@ -168,8 +169,8 @@ struct	_io_ops {
 		
 		void (*_sync_irp_protocol_rw)(struct io_queue *pio_q);
 
-		
 
+		u32 (*_read_interrupt)(struct intf_hdl *pintfhdl, u32 addr);
 
 		u32 (*_read_port)(struct intf_hdl *pintfhdl, u32 addr, u32 cnt, u8 *pmem);
 		
@@ -212,7 +213,7 @@ struct io_req {
 
 #ifdef PLATFORM_OS_CE
 #ifdef CONFIG_USB_HCI
-	// URB handler for write_mem
+	// URB handler for rtw_write_mem
 	USB_TRANSFER usb_transfer_write_mem;
 #endif
 #endif
@@ -254,7 +255,7 @@ struct	intf_hdl {
 */
 	_adapter *padapter;
 	struct dvobj_priv *pintf_dev;//	pointer to &(padapter->dvobjpriv);
-	_mutex io_mutex;
+
 	struct _io_ops	io_ops;
 
 };
@@ -415,18 +416,52 @@ extern u16 rtw_read16(_adapter *adapter, u32 addr);
 extern u32 rtw_read32(_adapter *adapter, u32 addr);
 extern void rtw_read_mem(_adapter *adapter, u32 addr, u32 cnt, u8 *pmem);
 extern void rtw_read_port(_adapter *adapter, u32 addr, u32 cnt, u8 *pmem);
-extern void rtw_write8(_adapter *adapter, u32 addr, u8 val);
-extern void rtw_write16(_adapter *adapter, u32 addr, u16 val);
-extern void rtw_write32(_adapter *adapter, u32 addr, u32 val);
-extern void writeN(_adapter *adapter, u32 addr, u32 length, u8 *pdata);
 
-extern void write8_async(_adapter *adapter, u32 addr, u8 val);
-extern void write16_async(_adapter *adapter, u32 addr, u16 val);
-extern void write32_async(_adapter *adapter, u32 addr, u32 val);
+#ifdef DBG_IO
+#define DBG_IO_SNIFF_ADDR_START 0x4c // the starting address to sniff
+#define DBG_IO_SNIFF_ADDR_END 0x4c+ 1 // the ending address to sniff
+extern void _rtw_write8(_adapter *adapter, u32 addr, u8 val);
+extern void _rtw_write16(_adapter *adapter, u32 addr, u16 val);
+extern void _rtw_write32(_adapter *adapter, u32 addr, u32 val);
+#define  rtw_write8(adapter, addr, val) \
+	do { \
+		if((u32)(addr) >= DBG_IO_SNIFF_ADDR_START && (u32)(addr) <= DBG_IO_SNIFF_ADDR_END) { \
+			DBG_871X("DBG_IO %s:%d rtw_write8(0x%04x, 0x%08x)\n", __FUNCTION__, __LINE__ ,(u32)(addr) ,(u8)(val)); \
+		} \
+		_rtw_write8((adapter), (addr), (val)); \
+	} while(0)
+#define  rtw_write16(adapter, addr, val) \
+	do { \
+		if((u32)(addr) >= DBG_IO_SNIFF_ADDR_START && (u32)(addr) <= DBG_IO_SNIFF_ADDR_END) { \
+			DBG_871X("DBG_IO %s:%d rtw_write16(0x%04x, 0x%08x)\n", __FUNCTION__, __LINE__ ,(u32)(addr) ,(u16)(val)); \
+		} \
+		_rtw_write16((adapter), (addr), (val)); \
+	} while(0)
+#define  rtw_write32(adapter, addr, val)  \
+	do { \
+		if((u32)(addr) >= DBG_IO_SNIFF_ADDR_START && (u32)(addr) <= DBG_IO_SNIFF_ADDR_END) { \
+			DBG_871X("DBG_IO %s:%d rtw_write32(0x%04x, 0x%08x)\n", __FUNCTION__, __LINE__ ,(u32)(addr) ,(u32)(val)); \
+		} \
+		_rtw_write32((adapter), (addr), (val)); \
+	} while(0)
+#else //DBG_IO
+extern void _rtw_write8(_adapter *adapter, u32 addr, u8 val);
+extern void _rtw_write16(_adapter *adapter, u32 addr, u16 val);
+extern void _rtw_write32(_adapter *adapter, u32 addr, u32 val);
+#define  rtw_write8(adapter, addr, val) _rtw_write8((adapter), (addr), (val))
+#define  rtw_write16(adapter, addr, val) _rtw_write16((adapter), (addr), (val))
+#define  rtw_write32(adapter, addr, val) _rtw_write32((adapter), (addr), (val))
+#endif //DBG_IO
+
+extern void rtw_writeN(_adapter *adapter, u32 addr, u32 length, u8 *pdata);
+
+extern void rtw_write8_async(_adapter *adapter, u32 addr, u8 val);
+extern void rtw_write16_async(_adapter *adapter, u32 addr, u16 val);
+extern void rtw_write32_async(_adapter *adapter, u32 addr, u32 val);
 
 extern void rtw_write_mem(_adapter *adapter, u32 addr, u32 cnt, u8 *pmem);
 extern void rtw_write_port(_adapter *adapter, u32 addr, u32 cnt, u8 *pmem);
-extern void write_scsi(_adapter *adapter, u32 cnt, u8 *pmem);
+extern void rtw_write_scsi(_adapter *adapter, u32 cnt, u8 *pmem);
 
 void write_port_cancel(_adapter *adapter);
 void read_port_cancel(_adapter *adapter);
@@ -479,9 +514,9 @@ extern void dev_power_down(_adapter * Adapter, u8 bpwrup);
 #define RTL_W32(reg, val32)     rtw_write32(padapter, reg, val32)
 
 /*
-#define RTL_W8_ASYNC(reg, val8) write32_async(padapter, reg, val8)
-#define RTL_W16_ASYNC(reg, val16) write32_async(padapter, reg, val16)
-#define RTL_W32_ASYNC(reg, val32) write32_async(padapter, reg, val32)
+#define RTL_W8_ASYNC(reg, val8) rtw_write32_async(padapter, reg, val8)
+#define RTL_W16_ASYNC(reg, val16) rtw_write32_async(padapter, reg, val16)
+#define RTL_W32_ASYNC(reg, val32) rtw_write32_async(padapter, reg, val32)
 
 #define RTL_WRITE_BB(reg, val32)	phy_SetUsbBBReg(padapter, reg, val32)
 #define RTL_READ_BB(reg)	phy_QueryUsbBBReg(padapter, reg)

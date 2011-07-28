@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- * Copyright(c) 2007 - 2010 Realtek Corporation. All rights reserved.
+ * Copyright(c) 2007 - 2011 Realtek Corporation. All rights reserved.
  *                                        
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of version 2 of the GNU General Public License as
@@ -26,6 +26,27 @@
 #error "Shall be Linux or Windows, but not both!\n"
 
 #endif
+
+//Rockchips' android kernel doesn't has CONFIG_ANDROID defined,
+//add this to force CONFIG_ANDROID defined
+#ifdef CONFIG_PLATFORM_ANDROID
+#ifndef CONFIG_ANDROID
+#define CONFIG_ANDROID
+#endif
+#endif
+
+#if defined(CONFIG_HAS_EARLYSUSPEND) && defined (CONFIG_RESUME_IN_WORKQUEUE)
+	#warning "You have CONFIG_HAS_EARLYSUSPEND enabled in your system, we disable CONFIG_RESUME_IN_WORKQUEUE automatically.\n"
+	#undef CONFIG_RESUME_IN_WORKQUEUE
+#endif
+
+#ifdef CONFIG_RESUME_IN_WORKQUEUE
+	#if !defined( CONFIG_WAKELOCK) && !defined(CONFIG_ANDROID_POWER)
+	#error "enable CONFIG_RESUME_IN_WORKQUEUE without CONFIG_WAKELOCK or CONFIG_ANDROID_POWER will suffer from the danger of wifi's unfunctionality...\n"
+	#error "If you still want to enable CONFIG_RESUME_IN_WORKQUEUE in this case, mask this preprossor checking and GOOD LUCK...\n"
+	#endif
+#endif
+
 
 //#include <rtl871x_byteorder.h>
 

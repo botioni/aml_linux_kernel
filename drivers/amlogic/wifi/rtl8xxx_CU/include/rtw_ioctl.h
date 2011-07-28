@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- * Copyright(c) 2007 - 2010 Realtek Corporation. All rights reserved.
+ * Copyright(c) 2007 - 2011 Realtek Corporation. All rights reserved.
  *                                        
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of version 2 of the GNU General Public License as
@@ -16,9 +16,10 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110, USA
  *
  *
- ******************************************************************************/
-#ifndef __IOCTL_H
-#define __IOCTL_H
+ 
+******************************************************************************/
+#ifndef _RTW_IOCTL_H_
+#define _RTW_IOCTL_H_
 
 #include <drv_conf.h>
 #include <osdep_service.h>
@@ -102,8 +103,14 @@ struct oid_obj_priv {
 	NDIS_STATUS (*oidfuns)(struct oid_par_priv *poid_par_priv);	
 };
 
-
-NDIS_STATUS oid_null_function(struct oid_par_priv* poid_par_priv);
+#ifdef CONFIG_MP_INCLUDED
+static NDIS_STATUS oid_null_function(struct oid_par_priv* poid_par_priv)
+{
+	_func_enter_;
+	_func_exit_;
+	return NDIS_STATUS_SUCCESS;
+}
+#endif
 
 #ifdef PLATFORM_WINDOWS
 
@@ -259,12 +266,6 @@ extern	NDIS_STATUS 	drv_set_info(
 	OUT	u32*			BytesRead,
 	OUT	u32*			BytesNeeded
 	);
-
-struct wowlan_ioctl_param{
-	unsigned int subcode;
-	unsigned int len;
-	unsigned char data[0];
-};
 
 #endif // #ifndef __INC_CEINFO_
 

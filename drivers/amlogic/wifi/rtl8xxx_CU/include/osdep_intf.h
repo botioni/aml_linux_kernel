@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- * Copyright(c) 2007 - 2010 Realtek Corporation. All rights reserved.
+ * Copyright(c) 2007 - 2011 Realtek Corporation. All rights reserved.
  *                                        
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of version 2 of the GNU General Public License as
@@ -24,33 +24,6 @@
 #include <drv_conf.h>
 #include <osdep_service.h>
 #include <drv_types.h>
-
-#ifdef PLATFORM_LINUX
-
-#ifdef CONFIG_USB_HCI
-#include <linux/usb.h>
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(2,6,21))
-#include <linux/usb_ch9.h>
-#else
-#include <linux/usb/ch9.h>
-#endif
-#endif
-
-#endif
-
-#ifdef PLATFORM_OS_XP
-
-#ifdef CONFIG_SDIO_HCI
-#include <ntddsd.h>
-#endif
-
-#ifdef CONFIG_USB_HCI
-#include <usb.h>
-#include <usbioctl.h>
-#include <usbdlib.h>
-#endif
-
-#endif
 
 #define RND4(x)	(((x >> 2) + (((x & 3) == 0) ?  0: 1)) << 2)
 
@@ -118,20 +91,24 @@ The protection mechanism is through the pending queue.
 };	
 
 
-struct intf_hdl;
+#ifdef CONFIG_R871X_TEST
+int rtw_start_pseudo_adhoc(_adapter *padapter);
+int rtw_stop_pseudo_adhoc(_adapter *padapter);
+#endif
 
-extern uint _init_intf_hdl(_adapter *padapter, struct intf_hdl *pintf_hdl);
-extern void _unload_intf_hdl(struct intf_priv *pintfpriv);
+u8 rtw_init_drv_sw(_adapter *padapter);
+u8 rtw_free_drv_sw(_adapter *padapter);
+u8 rtw_reset_drv_sw(_adapter *padapter);
 
-u32 rtw_open_fw(_adapter * padapter, void **pphfwfile_hdl, u8 **ppmappedfw);
-void rtw_close_fw(_adapter *padapter, void *phfwfile_hdl);
-
+u32 rtw_start_drv_threads(_adapter *padapter);
+void rtw_stop_drv_threads (_adapter *padapter);
+void rtw_cancel_all_timer(_adapter *padapter);
 
 #ifdef PLATFORM_LINUX
 int rtw_ioctl(struct net_device *dev, struct ifreq *rq, int cmd);
 
-int rtw_init_netdev_name(struct net_device *pnetdev);
-struct net_device *rtw_init_netdev(void);
+int rtw_init_netdev_name(struct net_device *pnetdev, const char *ifname);
+struct net_device *rtw_init_netdev(_adapter *padapter);
 
 #ifdef CONFIG_PROC_DEBUG
 void rtw_proc_init_one(struct net_device *dev);
@@ -139,6 +116,11 @@ void rtw_proc_remove_one(struct net_device *dev);
 #endif
 #endif
 
+#ifdef CONFIG_IPS
+void rtw_ips_dev_unload(_adapter *padapter);
+int rtw_ips_pwr_up(_adapter *padapter);
+void rtw_ips_pwr_down(_adapter *padapter);
+#endif
 
 #endif	//_OSDEP_INTF_H_
 

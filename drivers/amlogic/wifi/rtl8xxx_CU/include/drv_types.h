@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- * Copyright(c) 2007 - 2010 Realtek Corporation. All rights reserved.
+ * Copyright(c) 2007 - 2011 Realtek Corporation. All rights reserved.
  *                                        
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of version 2 of the GNU General Public License as
@@ -17,7 +17,6 @@
  *
  *
  ******************************************************************************/
-
 /*-------------------------------------------------------------------------------
 	
 	For type defines and data structure defines
@@ -31,17 +30,6 @@
 #include <drv_conf.h>
 #include <osdep_service.h>
 #include <wlan_bssdef.h>
-
-
-#ifdef CONFIG_RTL8711
-#include <rtl8711_spec.h>
-#endif
-#ifdef CONFIG_RTL8712
-#include <rtl8712_spec.h>
-#endif
-#ifdef CONFIG_RTL8192C
-#include <rtl8192c_spec.h>
-#endif
 
 
 #ifdef PLATFORM_OS_XP
@@ -87,24 +75,27 @@ typedef struct _ADAPTER _adapter, ADAPTER,*PADAPTER;
 #include <rtw_eeprom.h>
 #include <sta_info.h>
 #include <rtw_mlme.h>
-#include <rtw_mp.h>
 #include <rtw_debug.h>
 #include <rtw_rf.h>
 #include <rtw_event.h>
 #include <rtw_led.h>
 #include <rtw_mlme_ext.h>
+#include <rtw_p2p.h>
 
 #ifdef CONFIG_DRVEXT_MODULE
-#include <rtl871x_drvext.h>
-#include <wsc_api.h>
+#include <drvext_api.h>
 #endif
 
+#ifdef CONFIG_MP_INCLUDED
+#include <rtw_mp.h>
+#endif
 
 #define SPEC_DEV_ID_NONE BIT(0)
 #define SPEC_DEV_ID_DISABLE_HT BIT(1)
 #define SPEC_DEV_ID_ENABLE_PS BIT(2)
 #define SPEC_DEV_ID_RF_CONFIG_1T1R BIT(3)
 #define SPEC_DEV_ID_RF_CONFIG_2T2R BIT(4)
+#define SPEC_DEV_ID_ASSIGN_IFNAME BIT(5)
 
 struct specific_device_id{
 	
@@ -121,70 +112,74 @@ struct registry_priv
 	u8	rfintfs;
 	u8	lbkmode;
 	u8	hci;
-	u8	network_mode;	//infra, ad-hoc, auto	  
 	NDIS_802_11_SSID	ssid;
+	u8	network_mode;	//infra, ad-hoc, auto	  
 	u8	channel;//ad-hoc support requirement 
 	u8	wireless_mode;//A, B, G, auto
+	u8 	scan_mode;//active, passive
+	u8	radio_enable;
+	u8	preamble;//long, short, auto
 	u8	vrtl_carrier_sense;//Enable, Disable, Auto
 	u8	vcs_type;//RTS/CTS, CTS-to-self
 	u16	rts_thresh;
 	u16  frag_thresh;	
-	u8	preamble;//long, short, auto
-	u8  scan_mode;//active, passive
-	u8  adhoc_tx_pwr;
-	u8      	     soft_ap;
-	u8      	     smart_ps;  
-	 u8                  power_mgnt;
-	 u8                  radio_enable;
-	 u8                  long_retry_lmt;
-	 u8                  short_retry_lmt;
-  	 u16                 busy_thresh;
-
-    	 u8                  ack_policy;
-	 u8		     mp_mode;	
-	 u8 		     software_encrypt;
-	 u8 		     software_decrypt;	  
+	u8	adhoc_tx_pwr;
+	u8	soft_ap;
+	u8	power_mgnt;
+	 u8	ips_mode;
+	u8	smart_ps;
+	u8	long_retry_lmt;
+	u8	short_retry_lmt;
+	u16	busy_thresh;
+	u8	ack_policy;
+	u8	mp_mode;
+	u8	software_encrypt;
+	u8	software_decrypt;
 
 	  //UAPSD
-	  u8		     wmm_enable;
-	  u8		     uapsd_enable;	  
-	  u8		     uapsd_max_sp;
-	  u8		     uapsd_acbk_en;
-	  u8		     uapsd_acbe_en;
-	  u8		     uapsd_acvi_en;
-	  u8		     uapsd_acvo_en;	  
+	u8	wmm_enable;
+	u8	uapsd_enable;	  
+	u8	uapsd_max_sp;
+	u8	uapsd_acbk_en;
+	u8	uapsd_acbe_en;
+	u8	uapsd_acvi_en;
+	u8	uapsd_acvo_en;	  
 
-	  WLAN_BSSID_EX    dev_network;
+	WLAN_BSSID_EX    dev_network;
 
 #ifdef CONFIG_80211N_HT
-
-	u8		ht_enable;
-	u8		cbw40_enable;
-	u8		ampdu_enable;//for tx
-	
-
+	u8	ht_enable;
+	u8	cbw40_enable;
+	u8	ampdu_enable;//for tx
 #endif
-	u8		rf_config ;
-	u8		low_power ;
+	u8	rf_config ;
+	u8	low_power ;
 
-	u8 		wifi_spec;// !turbo_mode	  
+	u8	wifi_spec;// !turbo_mode	  
 	  
-	u8 		channel_plan;
+	u8	channel_plan;
 #ifdef CONFIG_BT_COEXIST
-	u8		bt_iso;
-	u8		bt_sco;
-	u8		bt_ampdu;
+	u8	bt_iso;
+	u8	bt_sco;
+	u8	bt_ampdu;
 #endif
 	BOOLEAN	bAcceptAddbaReq;	
 
-#ifdef CONFIG_ANTENNA_DIVERSITY
-	u8		antdiv_cfg;
+	u8	antdiv_cfg;
+
+	u8	usbss_enable;//0:disable,1:enable
+	u8	hwpdn_mode;//0:disable,1:enable,2:deside by EFUSE config
+	u8	hwpwrp_detect;//0:disable,1:enable
+
+	u8	hw_wps_pbc;//0:disable,1:enable
+
+#ifdef CONFIG_ADAPTOR_INFO_CACHING_FILE
+	char	adaptor_info_caching_file_path[PATH_LENGTH_MAX];
 #endif
-	  
-	u8		usbss_enable;//0:disable,1:enable
-	u8		hwpdn_mode;//0:disable,1:enable,2:deside by EFUSE config
-	u8		hwpwrp_detect;//0:disable,1:enable
-	  
+
+#ifdef CONFIG_LAYER2_ROAMING
+	u8	max_roaming_times; // the max number driver will try to roaming
+#endif
 };
 
 
@@ -194,10 +189,15 @@ struct registry_priv
 #define BSSID_OFT(field) ((ULONG)FIELD_OFFSET(WLAN_BSSID_EX,field))
 #define BSSID_SZ(field)   sizeof(((PWLAN_BSSID_EX) 0)->field)
 
+#define MAX_CONTINUAL_URB_ERR 4
 
 struct dvobj_priv {
 
 	_adapter * padapter;
+
+	//For 92D, DMDP have 2 interface.
+	u8	InterfaceNumber;
+	u8	NumInterfaces;
 
 /*-------- below is for SDIO INTERFACE --------*/
 
@@ -236,18 +236,27 @@ struct dvobj_priv {
 	u8 cmdfifo_cnt;
 	u8 rxfifo_cnt;
 	u16	sdio_hisr;
-	u16	sdio_himr;
+	u16	sdio_himr;	
 #endif//	CONFIG_SDIO_HCI
 
 /*-------- below is for USB INTERFACE --------*/
  
 #ifdef CONFIG_USB_HCI
 
-	u32 nr_endpoint;
-	u8   ishighspeed;	
+	u8	nr_endpoint;
+	u8	ishighspeed;
+	u8	RtNumInPipes;
+	u8	RtNumOutPipes;
+	int	ep_num[5]; //endpoint number
+
+	int	RegUsbSS;
 	
 	_sema	usb_suspend_sema;
-	
+#ifdef CONFIG_USB_VENDOR_REQ_PREALLOC
+	_mutex  usb_vendor_req_mutex;
+	u8 * usb_alloc_vendor_req_buf;
+	u8 * usb_vendor_req_buf;
+#endif	
 #ifdef PLATFORM_WINDOWS
 	//related device objects
 	PDEVICE_OBJECT	pphysdevobj;//pPhysDevObj;
@@ -278,20 +287,47 @@ struct dvobj_priv {
 	struct usb_device *pusbdev;
 #endif//PLATFORM_LINUX
 
+	ATOMIC_T continual_urb_error;
 #endif//CONFIG_USB_HCI
-	
-};
 
-#ifdef SILENT_RESET_FOR_SPECIFIC_PLATFOM
-#define	WIFI_STATUS_SUCCESS 		0
-#define	USB_VEN_REQ_CMD_FAIL 	BIT0
-#define	USB_READ_PORT_FAIL 		BIT1
-#define	USB_WRITE_PORT_FAIL		BIT2
-#define	WIFI_MAC_TXDMA_ERROR 	BIT3			
-#define   WIFI_TX_HANG				BIT4
-#define	WIFI_RX_HANG				BIT5
-#define 	WIFI_IF_NOT_EXIST			BIT6
-#endif	
+/*-------- below is for PCIE INTERFACE --------*/
+ 
+#ifdef CONFIG_PCI_HCI
+
+#ifdef PLATFORM_LINUX
+	struct pci_dev *ppcidev;
+
+	//PCI MEM map
+	unsigned long	pci_mem_end;	/* shared mem end	*/
+	unsigned long	pci_mem_start;	/* shared mem start	*/
+	
+	//PCI IO map
+	unsigned long	pci_base_addr;	/* device I/O address	*/
+
+	//PciBridge
+	struct pci_priv	pcipriv;
+
+	u16	irqline;
+	u8	irq_enabled;
+	u8	irq_alloc;
+	RT_ISR_CONTENT	isr_content;
+	_lock	irq_th_lock;
+
+	//ASPM
+	u8	const_pci_aspm;
+	u8	const_amdpci_aspm;
+	u8	const_hwsw_rfoff_d3;
+	u8	const_support_pciaspm;
+	// pci-e bridge */
+	u8 	const_hostpci_aspm_setting;
+	// pci-e device */
+	u8 	const_devicepci_aspm_setting;
+	u8 	b_support_aspm; // If it supports ASPM, Offset[560h] = 0x40, otherwise Offset[560h] = 0x00. 
+	u8	b_support_backdoor;
+#endif//PLATFORM_LINUX
+
+#endif//CONFIG_PCI_HCI
+};
 
 typedef enum _DRIVER_STATE{
 	DRIVER_NORMAL = 0,
@@ -299,12 +335,14 @@ typedef enum _DRIVER_STATE{
 	DRIVER_REPLACE_DONGLE = 2,
 }DRIVER_STATE;
 
-struct _ADAPTER{
+struct _ADAPTER{	
 	int	DriverState;// for disable driver using module, use dongle to replace module.
-	int 	chip_type;
-	int	pid;//process id from UI
+	int	pid[3];//process id from UI, 0:wpa_supplicant, 1:hostapd, 2:dhcpcd
 	int	bDongle;//build-in module or external dongle
- 	
+	u16 	chip_type;
+	u16	HardwareType;
+	u16	interface_type;//USB,SDIO,PCI
+ 
 	struct 	dvobj_priv dvobjpriv;
 	struct	mlme_priv mlmepriv;
 	struct	mlme_ext_priv mlmeextpriv;
@@ -320,12 +358,10 @@ struct _ADAPTER{
 	struct	wlan_acl_pool	acl_list;
 	struct	pwrctrl_priv	pwrctrlpriv;
 	struct 	eeprom_priv eeprompriv;
-	struct	hal_priv	halpriv;			
 	struct	led_priv	ledpriv;
-	struct 	dm_priv	dmpriv;
 	
 #ifdef CONFIG_MP_INCLUDED
-       struct mp_priv  mppriv;
+       struct	mp_priv	mppriv;
 #endif
 
 #ifdef CONFIG_DRVEXT_MODULE
@@ -336,22 +372,27 @@ struct _ADAPTER{
 	struct	hostapd_priv	*phostapdpriv;		
 #endif
 
+#ifdef CONFIG_P2P
+	struct wifidirect_info	wdinfo;
+#endif
+
+	PVOID			HalData;
+	struct hal_ops	HalFunc;
+
+#ifdef CONFIG_BT_COEXIST
+	//struct	btcoexist_priv	bt_coexist;
+#endif
 	s32	bDriverStopped; 
 	s32	bSurpriseRemoved;
 	s32  bCardDisableWOHSM;
-	_mutex 	silentreset_mutex;
-#ifdef SILENT_RESET_FOR_SPECIFIC_PLATFOM
-	u8 	silent_reset_inprogress;
-	u8	Wifi_Error_Status;
-	unsigned long last_tx_time;
-	unsigned long last_tx_complete_time;
-#endif		
 
 	u32	IsrContent;
 	u32	ImrContent;	
-	
-	u8	EepromAddressSize;		
-	u8	hw_init_completed;	
+
+	u8	EepromAddressSize;
+	u8	hw_init_completed;
+	u8	init_adpt_in_progress;
+	u8	bfirst_init;
 	
 	_thread_hdl_	cmdThread;
 	_thread_hdl_	evtThread;
@@ -360,8 +401,10 @@ struct _ADAPTER{
 
 
 	NDIS_STATUS (*dvobj_init)(_adapter * adapter);
-	void  (*dvobj_deinit)(_adapter * adapter);
-	
+	void (*dvobj_deinit)(_adapter * adapter);
+
+	void (*intf_start)(_adapter * adapter);
+	void (*intf_stop)(_adapter * adapter);
 
 #ifdef PLATFORM_WINDOWS
 	_nic_hdl		hndis_adapter;//hNdisAdapter(NDISMiniportAdapterHandle);
@@ -386,8 +429,8 @@ struct _ADAPTER{
 
 	u8 bFWReady;
 	u8 bReadPortCancel;
-	u8 bWritePortCancel;	
-
+	u8 bWritePortCancel;
+	u8 bRxRSSIDisplay;
 #ifdef CONFIG_AUTOSUSPEND
 	u8	bDisableAutosuspend;
 #endif

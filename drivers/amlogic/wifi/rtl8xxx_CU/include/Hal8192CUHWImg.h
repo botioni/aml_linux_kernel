@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- * Copyright(c) 2007 - 2010 Realtek Corporation. All rights reserved.
+ * Copyright(c) 2007 - 2011 Realtek Corporation. All rights reserved.
  *                                        
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of version 2 of the GNU General Public License as
@@ -20,21 +20,21 @@
 #ifndef __INC_HAL8192CU_FW_IMG_H
 #define __INC_HAL8192CU_FW_IMG_H
 
-/*Created on  2010/ 5/25,  2:21*/
+/*Created on  2011/ 6/15,  5:45*/
 
-//#define TSMCImgArrayLength 16226 //v66 2011-02-10
-#define TSMCImgArrayLength 16352 //v68.1 2011-02-24
+#ifdef CONFIG_BT_COEXISTENCE
+#define TSMCImgArrayLength 14964 //Normal v75 2011-06-15
+#else //#ifdef CONFIG_P2P
+#define TSMCImgArrayLength 15290 //P2P_PS v75 2011-06-15
+#endif
+
 extern u8 Rtl8192CUFwTSMCImgArray[TSMCImgArrayLength];
 
-//#define UMCImgArrayLength 16226 //V66 2011-02-10
-#define UMCACutImgArrayLength 16352 //v68.1 2011-02-24
+#define UMCACutImgArrayLength 14964 //v75 2011-06-15
 extern u8 Rtl8192CUFwUMCACutImgArray[UMCACutImgArrayLength];
 
-#define UMCBCutImgArrayLength 16334 //v68.1 2011-02-24
+#define UMCBCutImgArrayLength 14946 //v75 2011-06-15
 extern u8 Rtl8192CUFwUMCBCutImgArray[UMCBCutImgArrayLength] ; 
-	
-//#define UMCBCutImgArrayLength 16206
-//extern u1Byte Rtl8192CUFwUMCBCutImgArray[UMCBCutImgArrayLength];
 
 #define UMC8723ImgArrayLength 16288
 extern u8 Rtl8192CUFwUMC8723ImgArray[UMC8723ImgArrayLength];

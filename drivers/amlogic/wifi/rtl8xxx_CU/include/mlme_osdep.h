@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- * Copyright(c) 2007 - 2010 Realtek Corporation. All rights reserved.
+ * Copyright(c) 2007 - 2011 Realtek Corporation. All rights reserved.
  *                                        
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of version 2 of the GNU General Public License as
@@ -32,7 +32,12 @@ extern void rtw_init_mlme_timer(_adapter *padapter);
 extern void rtw_os_indicate_disconnect( _adapter *adapter );
 extern void rtw_os_indicate_connect( _adapter *adapter );
 extern void rtw_report_sec_ie(_adapter *adapter,u8 authmode,u8 *sec_ie);
-extern void rtw_reset_securitypriv( _adapter *adapter );
+
+#ifdef CONFIG_AP_MODE
+void rtw_indicate_sta_assoc_event(_adapter *padapter, struct sta_info *psta);
+void rtw_indicate_sta_disassoc_event(_adapter *padapter, struct sta_info *psta);
+#endif
+void rtw_reset_securitypriv( _adapter *adapter );
 
 #endif	//_MLME_OSDEP_H_
 

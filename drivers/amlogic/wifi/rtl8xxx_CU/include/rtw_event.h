@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- * Copyright(c) 2007 - 2010 Realtek Corporation. All rights reserved.
+ * Copyright(c) 2007 - 2011 Realtek Corporation. All rights reserved.
  *                                        
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of version 2 of the GNU General Public License as
@@ -16,9 +16,10 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110, USA
  *
  *
- ******************************************************************************/
-#ifndef _RTL871x_EVENT_H_
-#define _RTL871x_EVENT_H_
+ 
+******************************************************************************/
+#ifndef _RTW_EVENT_H_
+#define _RTW_EVENT_H_
 #include <drv_conf.h>
 #include <osdep_service.h>
 
@@ -47,7 +48,7 @@ Used to report a bss has been scanned
 
 */
 struct survey_event	{
-	WLAN_BSSID_EX bss;	
+	WLAN_BSSID_EX bss;
 };
 
 /*
@@ -148,14 +149,6 @@ struct network_queue {
 	WLAN_BSSID_EX networks[NETWORK_QUEUE_SZ];	
 };
 
-
-#ifdef CONFIG_RTL8712
-#include "rtl8712_event.h"
-#endif
-
-#ifdef CONFIG_RTL8192C
-#include "rtl8192c_event.h"
-#endif
 
 #endif // _WLANEVENT_H_
 

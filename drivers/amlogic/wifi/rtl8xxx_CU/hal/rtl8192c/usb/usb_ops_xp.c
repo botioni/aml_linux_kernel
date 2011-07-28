@@ -1,20 +1,23 @@
 /******************************************************************************
-* usb_ops_xp.c                                                                                                                                 *
-*                                                                                                                                          *
-* Description :                                                                                                                       *
-*                                                                                                                                           *
-* Author :                                                                                                                       *
-*                                                                                                                                         *
-* History :                                                          
-*
-*                                        
-*                                                                                                                                       *
-* Copyright 2007, Realtek Corp.                                                                                                  *
-*                                                                                                                                        *
-* The contents of this file is the sole property of Realtek Corp.  It can not be                                     *
-* be used, copied or modified without written permission from Realtek Corp.                                         *
-*                                                                                                                                          *
-*******************************************************************************/
+ *
+ * Copyright(c) 2007 - 2011 Realtek Corporation. All rights reserved.
+ *                                        
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of version 2 of the GNU General Public License as
+ * published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along with
+ * this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA 02110, USA
+ *
+ *
+ 
+******************************************************************************/
 #define _HCI_OPS_OS_C_
 
 #include <drv_conf.h>
@@ -83,7 +86,7 @@ _func_enter_;
 	pintfpriv->io_wsz = 0;
 	pintfpriv->io_rsz = 0;	
 	
- 	pintfpriv->allocated_io_rwmem = _rtw_zmalloc(pintfpriv->max_iosz +4); 
+ 	pintfpriv->allocated_io_rwmem = rtw_zmalloc(pintfpriv->max_iosz +4); 
 	
    	if (pintfpriv->allocated_io_rwmem == NULL){
 		RT_TRACE(_module_hci_ops_os_c_,_drv_err_,("\n usb_init_intf_priv:pintfpriv->allocated_io_rwmem == NULL\n"));
@@ -117,7 +120,7 @@ _func_exit_;
 usb_init_intf_priv_fail:
 
 	if (pintfpriv->allocated_io_rwmem)
-		_rtw_mfree((u8 *)(pintfpriv->allocated_io_rwmem), pintfpriv->max_iosz +4);
+		rtw_mfree((u8 *)(pintfpriv->allocated_io_rwmem), pintfpriv->max_iosz +4);
 	
 	if(piorw_urb)
 		ExFreePool(piorw_urb);	
@@ -136,7 +139,7 @@ _func_enter_;
 	
 	RT_TRACE(_module_hci_ops_os_c_,_drv_err_,("\n+usb_unload_intf_priv\n"));
 	
-	_rtw_mfree((u8 *)(pintfpriv->allocated_io_rwmem), pintfpriv->max_iosz+4);
+	rtw_mfree((u8 *)(pintfpriv->allocated_io_rwmem), pintfpriv->max_iosz+4);
 	
 #ifdef PLATFORM_WINDOWS
 	if(pintfpriv->piorw_urb)
@@ -453,7 +456,7 @@ NTSTATUS usb_write_mem_complete(PDEVICE_OBJECT	pUsbDevObj, PIRP piowrite_irp, PV
 	while(rtw_is_list_empty(head) != _TRUE)
 	{
 		plist = get_next(head);	
-		list_delete(plist);
+		rtw_list_delete(plist);
 		pio_req = LIST_CONTAINOR(plist, struct io_req, list);
 		_rtw_up_sema(&pio_req->sema);
 	}	
@@ -718,7 +721,7 @@ _func_enter_;
 	if(precvbuf !=NULL)
 	{
 
-		rtw_init_recvbuf(adapter, precvbuf);
+		rtl8192cu_init_recvbuf(adapter, precvbuf);
 	
 		_rtw_spinlock(&precvpriv->lock);
 		precvpriv->rx_pending_cnt++;
@@ -931,7 +934,7 @@ _func_enter_;
 
 #endif	
 
-	rtw_xmitframe_complete(padapter, pxmitpriv, pxmitbuf);
+	rtl8192cu_xmitframe_complete(padapter, pxmitpriv, pxmitbuf);
 
 _func_exit_;
 

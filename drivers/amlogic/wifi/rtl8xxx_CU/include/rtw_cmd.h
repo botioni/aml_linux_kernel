@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- * Copyright(c) 2007 - 2010 Realtek Corporation. All rights reserved.
+ * Copyright(c) 2007 - 2011 Realtek Corporation. All rights reserved.
  *                                        
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of version 2 of the GNU General Public License as
@@ -16,9 +16,10 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110, USA
  *
  *
- ******************************************************************************/
-#ifndef __RTL871X_CMD_H_
-#define __RTL871X_CMD_H_
+ 
+******************************************************************************/
+#ifndef __RTW_CMD_H_
+#define __RTW_CMD_H_
 
 #include <drv_conf.h>
 #include <wlan_bssdef.h>
@@ -68,6 +69,7 @@
 		u32	cmd_issued_cnt;
 		u32	cmd_done_cnt;
 		u32	rsp_cnt;
+		u8 cmdthd_running;
 		_adapter *padapter;
 	};
 
@@ -93,8 +95,8 @@
 		u8	lbkevt_limit;
 		u8	lbkevt_num;
 		u8	*cmdevt_parm;		
-#endif		
-		u8	event_seq;
+#endif
+		ATOMIC_T event_seq;
 		u8	*evt_buf;	//shall be non-paged, and 4 bytes aligned		
 		u8	*evt_allocated_buf;
 		u32	evt_done_cnt;
@@ -119,19 +121,16 @@ do {\
 } while(0)
 
 extern u32 rtw_enqueue_cmd(struct cmd_priv *pcmdpriv, struct cmd_obj *obj);
-extern u32 rtw_enqueue_cmd_ex(struct cmd_priv *pcmdpriv, struct cmd_obj *obj);
-extern struct cmd_obj *rtw_dequeue_cmd(_queue *queue);
+extern struct cmd_obj *rtw_dequeue_cmd(struct cmd_priv *pcmdpriv);
 extern void rtw_free_cmd_obj(struct cmd_obj *pcmd);
 
 #ifdef CONFIG_EVENT_THREAD_MODE
-extern u32 enqueue_evt(struct evt_priv *pevtpriv, struct evt_obj *obj);
-extern struct evt_obj *dequeue_evt(_queue *queue);
-extern void free_evt_obj(struct evt_obj *pcmd);
+extern u32 rtw_enqueue_evt(struct evt_priv *pevtpriv, struct evt_obj *obj);
+extern struct evt_obj *rtw_dequeue_evt(_queue *queue);
+extern void rtw_free_evt_obj(struct evt_obj *pcmd);
 #endif
 
 thread_return rtw_cmd_thread(thread_context context);
-
-extern u32 cmd_enqueue(_queue *cmdq,struct cmd_obj	*pcmd);
 
 extern u32 rtw_init_cmd_priv (struct cmd_priv *pcmdpriv);
 extern void rtw_free_cmd_priv (struct cmd_priv *pcmdpriv);
@@ -139,7 +138,7 @@ extern void rtw_free_cmd_priv (struct cmd_priv *pcmdpriv);
 extern u32 rtw_init_evt_priv (struct evt_priv *pevtpriv);
 extern void rtw_free_evt_priv (struct evt_priv *pevtpriv);
 extern void rtw_cmd_clr_isr(struct cmd_priv *pcmdpriv);
-extern void evt_notify_isr(struct evt_priv *pevtpriv);
+extern void rtw_evt_notify_isr(struct evt_priv *pevtpriv);
 
 #else
 	#include <ieee80211.h>
@@ -155,10 +154,17 @@ enum rtw_drvextra_cmd_id
 	POWER_SAVING_CTRL_WK_CID,//IPS,AUTOSuspend
 	LPS_CTRL_WK_CID,
 	ANT_SELECT_WK_CID,
-#ifdef SILENT_RESET_FOR_SPECIFIC_PLATFOM
-	USB_IO_CHECK_WK_CID,
-#endif
+	P2P_PS_WK_CID,
 	MAX_WK_CID
+};
+
+enum LPS_CTRL_TYPE
+{
+	LPS_CTRL_SCAN=0,
+	LPS_CTRL_JOINBSS=1,
+	LPS_CTRL_CONNECT=2,
+	LPS_CTRL_DISCONNECT=3,
+	LPS_CTRL_SPECIAL_PACKET=4,
 };
 
 enum RFINTFS {
@@ -291,6 +297,7 @@ struct setkey_parm {
 	u8	algorithm;	// encryption algorithm, could be none, wep40, TKIP, CCMP, wep104
 	u8	keyid;		
 	u8 	grpkey;		// 1: this is the grpkey for 802.1x. 0: this is the unicast key for 802.1x
+	u8 	set_tx;		// 1: main tx key for wep. 0: other key.
 	u8	key[16];	// this could be 40 or 104
 };
 
@@ -502,10 +509,6 @@ struct writeBB_parm {
 	u8	value;
 };
 
-struct writePTM_parm {
-	u8	type;
-};
-
 struct readRF_parm {
 	u8	offset;
 };
@@ -516,10 +519,6 @@ struct readRF_rsp {
 struct writeRF_parm {
 	u32	offset;
 	u32	value;
-};
-
-struct setrfintfs_parm {
-	u8	rfintfs;
 };
 
 struct getrfintfs_parm {
@@ -755,16 +754,6 @@ struct getcurtxpwrlevel_rsp{
 	unsigned short tx_power;
 };
 
-//dynamic on/off DIG
-struct setdig_parm{
-	unsigned char dig_on;		// 1:on , 0:off
-};
-
-//dynamic on/off RA
-struct setra_parm{
-	unsigned char ra_on;		// 1:on , 0:off
-};
-
 struct setprobereqextraie_parm {
 	unsigned char e_id;
 	unsigned char ie_len;
@@ -860,37 +849,18 @@ struct SwitchBandwidth_parm
 
 #endif	/* MP_FIRMWARE_OFFLOAD */
 
-#ifndef CONFIG_RTL8711FW
-#else
-struct cmdobj {
-	uint	parmsize;
-	u8 (*h2cfuns)(u8 *pbuf);	
+/*H2C Handler index: 59 */ 
+struct SetChannelPlan_param
+{
+	u8 channel_plan;
 };
-extern u8 joinbss_hdl(u8 *pbuf);	
-extern u8 disconnect_hdl(u8 *pbuf);
-extern u8 createbss_hdl(u8 *pbuf);
-extern u8 setopmode_hdl(u8 *pbuf);
-extern u8 sitesurvey_hdl(u8 *pbuf);	
-extern u8 setauth_hdl(u8 *pbuf);
-extern u8 setkey_hdl(u8 *pbuf);
-extern u8 set_stakey_hdl(u8 *pbuf);
-extern u8 set_assocsta_hdl(u8 *pbuf);
-extern u8 del_assocsta_hdl(u8 *pbuf);
-extern u8 setstapwrstate_hdl(u8 *pbuf);
-extern u8 setbasicrate_hdl(u8 *pbuf);	
-extern u8 getbasicrate_hdl(un8 *pbuf);
-extern u8 setdatarate_hdl(u8 *pbuf);
-extern u8 getdatarate_hdl(u8 *pbuf);
-extern u8 setphyinfo_hdl(u8 *pbuf);	
-extern u8 getphyinfo_hdl(u8 *pbuf);
-extern u8 setphy_hdl(u8 *pbuf);
-extern u8 getphy_hdl(u8 *pbuf);
-#ifdef CONFIG_H2CLBK
-extern u8 seth2clbk_hdl(u8 *pbuf);
-extern u8 geth2clbk_hdl(u8 *pbuf);
-#endif	/* CONFIG_H2CLBK */
-#endif  /* CONFIG_RTL8711FW */
 
+/*H2C Handler index: 60 */ 
+struct rereg_nd_name_param
+{
+	void *pnetdev;
+	//char ifname[IFNAMSIZ];
+};
 
 #define GEN_CMD_CODE(cmd)	cmd ## _CMD_
 
@@ -938,13 +908,25 @@ extern u8 rtw_setrttbl_cmd(_adapter  *padapter, struct setratable_parm *prate_ta
 extern u8 rtw_getrttbl_cmd(_adapter  *padapter, struct getratable_rsp *pval);
 
 extern u8 rtw_gettssi_cmd(_adapter  *padapter, u8 offset,u8 *pval);
-extern u8 rtw_setptm_cmd(_adapter*padapter, u8 type);
 extern u8 rtw_setfwdig_cmd(_adapter*padapter, u8 type);
 extern u8 rtw_setfwra_cmd(_adapter*padapter, u8 type);
 
 extern u8 rtw_addbareq_cmd(_adapter*padapter, u8 tid, u8 *addr);
 
-extern u8 dynamic_chk_wk_cmd(_adapter *adapter);
+extern u8 rtw_dynamic_chk_wk_cmd(_adapter *adapter);
+#ifdef CONFIG_LPS
+u8 rtw_lps_ctrl_wk_cmd(_adapter*padapter, u8 lps_ctrl_type, u8 enqueue);
+#endif
+#ifdef CONFIG_ANTENNA_DIVERSITY
+extern  u8 rtw_antenna_select_cmd(_adapter*padapter, u8 antenna,u8 enqueue);
+#endif
+
+extern u8 rtw_ps_cmd(_adapter*padapter);
+
+extern u8 rtw_set_chplan_cmd(_adapter*padapter, u8 chplan);
+extern u8 rtw_rereg_nd_name_cmd(_adapter*padapter, void *old_pnetdev);
+
+u8 rtw_drvextra_cmd_hdl(_adapter *padapter, unsigned char *pbuf);
 
 extern void rtw_survey_cmd_callback(_adapter  *padapter, struct cmd_obj *pcmd);
 extern void rtw_disassoc_cmd_callback(_adapter  *padapter, struct cmd_obj *pcmd);
@@ -955,7 +937,7 @@ extern void rtw_readtssi_cmdrsp_callback(_adapter*	padapter,  struct cmd_obj *pc
 
 extern void rtw_setstaKey_cmdrsp_callback(_adapter  *padapter,  struct cmd_obj *pcmd);
 extern void rtw_setassocsta_cmdrsp_callback(_adapter  *padapter,  struct cmd_obj *pcmd);
-extern void getrttbl_cmdrsp_callback(_adapter  *padapter,  struct cmd_obj *pcmd);
+extern void rtw_getrttbl_cmdrsp_callback(_adapter  *padapter,  struct cmd_obj *pcmd);
 
 
 struct _cmd_callback {
@@ -963,12 +945,156 @@ struct _cmd_callback {
 	void (*callback)(_adapter  *padapter, struct cmd_obj *cmd);
 };
 
-#ifdef CONFIG_RTL8712
-#include "rtl8712_cmd.h"
-#endif
+enum rtw_h2c_cmd
+{
+	GEN_CMD_CODE(_Read_MACREG) ,	/*0*/
+ 	GEN_CMD_CODE(_Write_MACREG) ,    
+ 	GEN_CMD_CODE(_Read_BBREG) ,  
+ 	GEN_CMD_CODE(_Write_BBREG) ,  
+ 	GEN_CMD_CODE(_Read_RFREG) ,  
+ 	GEN_CMD_CODE(_Write_RFREG) , /*5*/
+ 	GEN_CMD_CODE(_Read_EEPROM) ,  
+ 	GEN_CMD_CODE(_Write_EEPROM) ,  
+ 	GEN_CMD_CODE(_Read_EFUSE) ,  
+ 	GEN_CMD_CODE(_Write_EFUSE) , 
+ 	
+ 	GEN_CMD_CODE(_Read_CAM) ,	/*10*/
+ 	GEN_CMD_CODE(_Write_CAM) ,   
+ 	GEN_CMD_CODE(_setBCNITV),
+ 	GEN_CMD_CODE(_setMBIDCFG),
+ 	GEN_CMD_CODE(_JoinBss),   /*14*/
+ 	GEN_CMD_CODE(_DisConnect) , /*15*/
+ 	GEN_CMD_CODE(_CreateBss) ,
+	GEN_CMD_CODE(_SetOpMode) , 
+	GEN_CMD_CODE(_SiteSurvey),  /*18*/
+ 	GEN_CMD_CODE(_SetAuth) ,
+ 	
+ 	GEN_CMD_CODE(_SetKey) ,	/*20*/
+ 	GEN_CMD_CODE(_SetStaKey) ,
+ 	GEN_CMD_CODE(_SetAssocSta) ,
+ 	GEN_CMD_CODE(_DelAssocSta) ,
+ 	GEN_CMD_CODE(_SetStaPwrState) , 
+ 	GEN_CMD_CODE(_SetBasicRate) , /*25*/
+ 	GEN_CMD_CODE(_GetBasicRate) ,
+ 	GEN_CMD_CODE(_SetDataRate) ,
+ 	GEN_CMD_CODE(_GetDataRate) ,
+	GEN_CMD_CODE(_SetPhyInfo) ,
+	
+ 	GEN_CMD_CODE(_GetPhyInfo) ,	/*30*/
+	GEN_CMD_CODE(_SetPhy) ,
+ 	GEN_CMD_CODE(_GetPhy) ,
+ 	GEN_CMD_CODE(_readRssi) ,
+ 	GEN_CMD_CODE(_readGain) ,
+ 	GEN_CMD_CODE(_SetAtim) , /*35*/
+ 	GEN_CMD_CODE(_SetPwrMode) , 
+ 	GEN_CMD_CODE(_JoinbssRpt),
+ 	GEN_CMD_CODE(_SetRaTable) ,
+ 	GEN_CMD_CODE(_GetRaTable) ,  	
+ 	
+ 	GEN_CMD_CODE(_GetCCXReport), /*40*/
+ 	GEN_CMD_CODE(_GetDTMReport),
+ 	GEN_CMD_CODE(_GetTXRateStatistics),
+ 	GEN_CMD_CODE(_SetUsbSuspend),
+ 	GEN_CMD_CODE(_SetH2cLbk),
+ 	GEN_CMD_CODE(_AddBAReq) , /*45*/
+	GEN_CMD_CODE(_SetChannel), /*46*/
+	GEN_CMD_CODE(_SetTxPower), 
+	GEN_CMD_CODE(_SwitchAntenna),
+	GEN_CMD_CODE(_SetCrystalCap),
+	GEN_CMD_CODE(_SetSingleCarrierTx), /*50*/
+	
+	GEN_CMD_CODE(_SetSingleToneTx),/*51*/
+	GEN_CMD_CODE(_SetCarrierSuppressionTx),
+	GEN_CMD_CODE(_SetContinuousTx),
+	GEN_CMD_CODE(_SwitchBandwidth), /*54*/
+	GEN_CMD_CODE(_TX_Beacon), /*55*/
+	
+	GEN_CMD_CODE(_Set_MLME_EVT), /*56*/
+	GEN_CMD_CODE(_Set_Drv_Extra), /*57*/
+	GEN_CMD_CODE(_Set_H2C_MSG), /*58*/
+	
+	GEN_CMD_CODE(_SetChannelPlan), /*59*/
+	GEN_CMD_CODE(_ReRegNdName), /*60*/
+	
+	MAX_H2CCMD
+};
 
-#ifdef CONFIG_RTL8192C
-#include "rtl8192c_cmd.h"
+#define _GetBBReg_CMD_		_Read_BBREG_CMD_
+#define _SetBBReg_CMD_ 		_Write_BBREG_CMD_
+#define _GetRFReg_CMD_ 		_Read_RFREG_CMD_
+#define _SetRFReg_CMD_ 		_Write_RFREG_CMD_
+
+#ifdef _RTW_CMD_C_
+struct _cmd_callback 	rtw_cmd_callback[] = 
+{
+	{GEN_CMD_CODE(_Read_MACREG), NULL}, /*0*/
+	{GEN_CMD_CODE(_Write_MACREG), NULL}, 
+	{GEN_CMD_CODE(_Read_BBREG), &rtw_getbbrfreg_cmdrsp_callback},
+	{GEN_CMD_CODE(_Write_BBREG), NULL},
+	{GEN_CMD_CODE(_Read_RFREG), &rtw_getbbrfreg_cmdrsp_callback},
+	{GEN_CMD_CODE(_Write_RFREG), NULL}, /*5*/
+	{GEN_CMD_CODE(_Read_EEPROM), NULL},
+	{GEN_CMD_CODE(_Write_EEPROM), NULL},
+	{GEN_CMD_CODE(_Read_EFUSE), NULL},
+	{GEN_CMD_CODE(_Write_EFUSE), NULL},
+	
+	{GEN_CMD_CODE(_Read_CAM),	NULL},	/*10*/
+	{GEN_CMD_CODE(_Write_CAM),	 NULL},	
+	{GEN_CMD_CODE(_setBCNITV), NULL},
+ 	{GEN_CMD_CODE(_setMBIDCFG), NULL},
+	{GEN_CMD_CODE(_JoinBss), &rtw_joinbss_cmd_callback},  /*14*/
+	{GEN_CMD_CODE(_DisConnect), &rtw_disassoc_cmd_callback}, /*15*/
+	{GEN_CMD_CODE(_CreateBss), &rtw_createbss_cmd_callback},
+	{GEN_CMD_CODE(_SetOpMode), NULL},
+	{GEN_CMD_CODE(_SiteSurvey), &rtw_survey_cmd_callback}, /*18*/
+	{GEN_CMD_CODE(_SetAuth), NULL},
+	
+	{GEN_CMD_CODE(_SetKey), NULL},	/*20*/
+	{GEN_CMD_CODE(_SetStaKey), &rtw_setstaKey_cmdrsp_callback},
+	{GEN_CMD_CODE(_SetAssocSta), &rtw_setassocsta_cmdrsp_callback},
+	{GEN_CMD_CODE(_DelAssocSta), NULL},	
+	{GEN_CMD_CODE(_SetStaPwrState), NULL},	
+	{GEN_CMD_CODE(_SetBasicRate), NULL}, /*25*/
+	{GEN_CMD_CODE(_GetBasicRate), NULL},
+	{GEN_CMD_CODE(_SetDataRate), NULL},
+	{GEN_CMD_CODE(_GetDataRate), NULL},
+	{GEN_CMD_CODE(_SetPhyInfo), NULL},
+	
+	{GEN_CMD_CODE(_GetPhyInfo), NULL}, /*30*/
+	{GEN_CMD_CODE(_SetPhy), NULL},
+	{GEN_CMD_CODE(_GetPhy), NULL},	
+	{GEN_CMD_CODE(_readRssi), NULL},
+	{GEN_CMD_CODE(_readGain), NULL},
+	{GEN_CMD_CODE(_SetAtim), NULL}, /*35*/
+	{GEN_CMD_CODE(_SetPwrMode), NULL},
+	{GEN_CMD_CODE(_JoinbssRpt), NULL},
+	{GEN_CMD_CODE(_SetRaTable), NULL},
+	{GEN_CMD_CODE(_GetRaTable) , NULL},
+ 	
+	{GEN_CMD_CODE(_GetCCXReport), NULL}, /*40*/
+ 	{GEN_CMD_CODE(_GetDTMReport),	NULL},
+ 	{GEN_CMD_CODE(_GetTXRateStatistics), NULL}, 
+ 	{GEN_CMD_CODE(_SetUsbSuspend), NULL}, 
+ 	{GEN_CMD_CODE(_SetH2cLbk), NULL},
+ 	{GEN_CMD_CODE(_AddBAReq), NULL}, /*45*/
+	{GEN_CMD_CODE(_SetChannel), NULL},		/*46*/
+	{GEN_CMD_CODE(_SetTxPower), NULL},
+	{GEN_CMD_CODE(_SwitchAntenna), NULL},
+	{GEN_CMD_CODE(_SetCrystalCap), NULL},
+	{GEN_CMD_CODE(_SetSingleCarrierTx), NULL},	/*50*/
+	
+	{GEN_CMD_CODE(_SetSingleToneTx), NULL}, /*51*/
+	{GEN_CMD_CODE(_SetCarrierSuppressionTx), NULL},
+	{GEN_CMD_CODE(_SetContinuousTx), NULL},
+	{GEN_CMD_CODE(_SwitchBandwidth), NULL},		/*54*/
+	{GEN_CMD_CODE(_TX_Beacon), NULL},/*55*/
+
+	{GEN_CMD_CODE(_Set_MLME_EVT), NULL},/*56*/
+	{GEN_CMD_CODE(_Set_Drv_Extra), NULL},/*57*/
+	{GEN_CMD_CODE(_Set_H2C_MSG), NULL},/*58*/
+	{GEN_CMD_CODE(_SetChannelPlan), NULL},/*59*/
+	{GEN_CMD_CODE(_ReRegNdName), NULL},/*60*/
+};
 #endif
 
 #endif // _CMD_H_

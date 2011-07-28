@@ -1,4 +1,22 @@
-
+/******************************************************************************
+ *
+ * Copyright(c) 2007 - 2011 Realtek Corporation. All rights reserved.
+ *                                        
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of version 2 of the GNU General Public License as
+ * published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along with
+ * this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA 02110, USA
+ *
+ *
+ ******************************************************************************/
 
 #ifndef __OSDEP_CE_SERVICE_H_
 #define __OSDEP_CE_SERVICE_H_
@@ -21,7 +39,7 @@ typedef NDIS_STATUS _OS_STATUS;
 
 typedef NDIS_SPIN_LOCK	_lock;
 
-typedef HANDLE 		_mutex; //Mutex
+typedef HANDLE 		_rwlock; //Mutex
 
 typedef u32	_irqL;
 
@@ -87,26 +105,26 @@ __inline static _exit_critical_ex(_lock *plock, _irqL *pirqL)
 }
 
 
-__inline static void _enter_critical_mutex(_mutex *pmutex, _irqL *pirqL)
+__inline static void _enter_hwio_critical(_rwlock *prwlock, _irqL *pirqL)
 {
-	WaitForSingleObject(*pmutex, INFINITE );
+	WaitForSingleObject(*prwlock, INFINITE );
 
 }
 
-__inline static void _exit_critical_mutex(_mutex *pmutex, _irqL *pirqL)
+__inline static void _exit_hwio_critical(_rwlock *prwlock, _irqL *pirqL)
 {
-	ReleaseMutex(*pmutex);
+	ReleaseMutex(*prwlock);
 }
 
-__inline static void list_delete(_list *plist)
+__inline static void rtw_list_delete(_list *plist)
 {
 	RemoveEntryList(plist);
 	InitializeListHead(plist);
 }
 
-__inline static void _init_timer(_timer *ptimer,_nic_hdl padapter,void *pfunc,PVOID cntx)
+__inline static void _init_timer(_timer *ptimer,_nic_hdl nic_hdl,void *pfunc,PVOID cntx)
 {
-	NdisMInitializeTimer(ptimer, padapter, pfunc, cntx);
+	NdisMInitializeTimer(ptimer, nic_hdl, pfunc, cntx);
 }
 
 __inline static void _set_timer(_timer *ptimer,u32 delay_time)
@@ -128,6 +146,26 @@ __inline static void _init_workitem(_workitem *pwork, void *pfunc, PVOID cntx)
 __inline static void _set_workitem(_workitem *pwork)
 {
 	NdisScheduleWorkItem(pwork);
+}
+
+#define ATOMIC_INIT(i)  { (i) }
+
+//
+// Global Mutex: can only be used at PASSIVE level.
+//
+
+#define ACQUIRE_GLOBAL_MUTEX(_MutexCounter)                              \
+{                                                               \
+    while (NdisInterlockedIncrement((PULONG)&(_MutexCounter)) != 1)\
+    {                                                           \
+        NdisInterlockedDecrement((PULONG)&(_MutexCounter));        \
+        NdisMSleep(10000);                          \
+    }                                                           \
+}
+
+#define RELEASE_GLOBAL_MUTEX(_MutexCounter)                              \
+{                                                               \
+    NdisInterlockedDecrement((PULONG)&(_MutexCounter));              \
 }
 #endif
 

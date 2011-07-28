@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- * Copyright(c) 2007 - 2010 Realtek Corporation. All rights reserved.
+ * Copyright(c) 2007 - 2011 Realtek Corporation. All rights reserved.
  *                                        
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of version 2 of the GNU General Public License as
@@ -16,9 +16,10 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110, USA
  *
  *
- ******************************************************************************/
-#ifndef	__RTL871X_RF_H_ 
-#define __RTL871X_RF_H_
+ 
+******************************************************************************/
+#ifndef	__RTW_RF_H_ 
+#define __RTW_RF_H_
 
 #include <drv_conf.h>
 #include <rtw_cmd.h>
@@ -29,12 +30,15 @@
 
 #define NumRates	(13)
 
+// slot time for 11g
+#define SHORT_SLOT_TIME					9
+#define NON_SHORT_SLOT_TIME				20
 
 #define RTL8711_RF_MAX_SENS 6
 #define RTL8711_RF_DEF_SENS 4
 
 
-#define NUM_CHANNELS	15
+#define NUM_CHANNELS	32
 //#define NUM_REGULATORYS	21
 #define NUM_REGULATORYS	1
 
@@ -53,6 +57,24 @@ struct	regulatory_class {
 	u8	modem;
 };
 
+typedef enum _CAPABILITY{
+	cESS			= 0x0001,
+	cIBSS			= 0x0002,
+	cPollable		= 0x0004,
+	cPollReq			= 0x0008,
+	cPrivacy		= 0x0010,
+	cShortPreamble	= 0x0020,
+	cPBCC			= 0x0040,
+	cChannelAgility	= 0x0080,
+	cSpectrumMgnt	= 0x0100,
+	cQos			= 0x0200,	// For HCCA, use with CF-Pollable and CF-PollReq
+	cShortSlotTime	= 0x0400,
+	cAPSD			= 0x0800,
+	cRM				= 0x1000,	// RRM (Radio Request Measurement)
+	cDSSS_OFDM	= 0x2000,
+	cDelayedBA		= 0x4000,
+	cImmediateBA	= 0x8000,
+}CAPABILITY, *PCAPABILITY;
 
 enum	_REG_PREAMBLE_MODE{
 	PREAMBLE_LONG	= 1,
@@ -107,16 +129,9 @@ typedef	enum _RT_RF_TYPE_DEFINITION
 	RF_819X_MAX_TYPE = 5,
 }RT_RF_TYPE_DEF_E;
 
-struct setphyinfo_parm;
-static void init_phyinfo(_adapter  *adapter, struct setphyinfo_parm* psetphyinfopara);
-static u8 writephyinfo_fw(_adapter *padapter, u32 addr);
+
 u32 rtw_ch2freq(u32 ch);
 u32 rtw_freq2ch(u32 freq);
-
-
-#ifdef CONFIG_RTL8712
-#include "rtl8712_rf.h"
-#endif
 
 
 #endif //_RTL8711_RF_H_
