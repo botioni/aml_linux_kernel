@@ -1269,10 +1269,11 @@ static void set_vccx2(int power_on)
         }
     }
 }
+
 static struct meson_pm_config aml_pm_pdata = {
-    .pctl_reg_base = IO_APB_BUS_BASE,
-    .mmc_reg_base = APB_REG_ADDR(0x1000),
-    .hiu_reg_base = CBUS_REG_ADDR(0x1000),
+    .pctl_reg_base = (void __iomem *)IO_APB_BUS_BASE,
+    .mmc_reg_base = (void __iomem *)APB_REG_ADDR(0x1000),
+    .hiu_reg_base = (void __iomem *)CBUS_REG_ADDR(0x1000),
     .power_key = 1 << 15,
     .ddr_clk = 0x00110820,
     .sleepcount = 128,
