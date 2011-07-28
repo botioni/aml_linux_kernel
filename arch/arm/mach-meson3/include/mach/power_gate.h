@@ -674,7 +674,7 @@
 #define GCLK_REG_VCLK2_OTHER1      (HHI_GCLK_OTHER)
 #define GCLK_MASK_VCLK2_OTHER1      (1<<26)
 
-#define GCLK_IDX_MAX 105
+#define GCLK_IDX_MAX 106
 extern unsigned char GCLK_ref[GCLK_IDX_MAX];
 
 #define REGISTER_CLK(_MOD) \
