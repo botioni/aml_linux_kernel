@@ -1126,7 +1126,7 @@ static struct aml_i2c_platform aml_i2c_plat2 = {
     .use_pio            = 0,
     .master_i2c_speed   = AML_I2C_SPPED_300K,
 
-    .master_b_pinmux = {
+    .master_pinmux = {
         .scl_reg    = MESON_I2C_MASTER_GPIOAO_4_REG,
         .scl_bit    = MESON_I2C_MASTER_GPIOAO_4_BIT,
         .sda_reg    = MESON_I2C_MASTER_GPIOAO_5_REG,
@@ -1159,25 +1159,25 @@ static struct aml_i2c_platform aml_i2c_plat2 = {
 
 static struct resource aml_i2c_resource[] = {
 	[0]= {
-	.start =    MESON_I2C_MASTER_A_START,
-	.end   =    MESON_I2C_MASTER_A_END,
-	.flags =    IORESOURCE_MEM,
+		.start =    MESON_I2C_MASTER_A_START,
+		.end   =    MESON_I2C_MASTER_A_END,
+		.flags =    IORESOURCE_MEM,
 	}
 };
 static struct resource aml_i2c_resource1[] = {
 	[0]= {
-	.start =    MESON_I2C_MASTER_B_START,
-	.end   =    MESON_I2C_MASTER_B_END,
-	.flags =    IORESOURCE_MEM,
+		.start =    MESON_I2C_MASTER_B_START,
+		.end   =    MESON_I2C_MASTER_B_END,
+		.flags =    IORESOURCE_MEM,
   }
 };
 
 static struct resource aml_i2c_resource2[] = {
 	[0]= {
-        .start =    MESON_I2C_MASTER_AO_START,
-        .end   =    MESON_I2C_MASTER_AO_END,
-        .flags =    IORESOURCE_MEM,
-   }
+		.start =    MESON_I2C_MASTER_AO_START,
+		.end   =    MESON_I2C_MASTER_AO_END,
+		.flags =    IORESOURCE_MEM,
+	}
 };
 
 static struct platform_device aml_i2c_device = {
@@ -1192,7 +1192,7 @@ static struct platform_device aml_i2c_device = {
 
 static struct platform_device aml_i2c_device1 = {
     .name         = "aml-i2c",
-    .id       = 2,
+    .id       = 1,
     .num_resources    = ARRAY_SIZE(aml_i2c_resource1),
     .resource     = aml_i2c_resource1,
     .dev = {
@@ -1202,7 +1202,7 @@ static struct platform_device aml_i2c_device1 = {
 
 static struct platform_device aml_i2c_device2 = {
     .name         = "aml-i2c",
-    .id       = 4,
+    .id       = 2,
     .num_resources    = ARRAY_SIZE(aml_i2c_resource2),
     .resource     = aml_i2c_resource2,
     .dev = {
@@ -2191,10 +2191,10 @@ static int __init aml_i2c_init(void)
 {
     i2c_register_board_info(0, aml_i2c_bus_info,
         ARRAY_SIZE(aml_i2c_bus_info));
-    i2c_register_board_info(2, aml_i2c_bus_info_1,
+    i2c_register_board_info(1, aml_i2c_bus_info_1,
         ARRAY_SIZE(aml_i2c_bus_info_1)); 
-//    i2c_register_board_info(4, aml_i2c_bus_info_2,
-//        ARRAY_SIZE(aml_i2c_bus_info_2)); 
+    i2c_register_board_info(2, aml_i2c_bus_info_2,
+        ARRAY_SIZE(aml_i2c_bus_info_2)); 
     return 0;
 }
 

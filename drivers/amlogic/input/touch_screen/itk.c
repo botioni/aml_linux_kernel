@@ -25,6 +25,12 @@
 static struct early_suspend itk_early_suspend;
 #endif
 
+
+static int int_count = 0;
+static int int_valid_count = 0;
+static int timer_count = 0;
+static int work_count = 0;
+
 // definition
 #define ILITEK_I2C_DEFAULT_ADDRESS      0x41
 #define ILITEK_FILE_DRIVER_NAME         "ilitek_file"
@@ -217,9 +223,9 @@ ilitek_i2c_read(
 #define DRIVER_NAME "itk"
 #define DRIVER_VERSION "1"
 
-//#define ITK_TS_DEBUG_REPORT
-//#define ITK_TS_DEBUG_READ
-//#define ITK_TS_DEBUG_INFO
+#define ITK_TS_DEBUG_REPORT
+#define ITK_TS_DEBUG_READ
+#define ITK_TS_DEBUG_INFO
 //#define TS_DELAY_WORK
 
 /* periodic polling delay and period */
@@ -439,6 +445,7 @@ static void itk_work(struct work_struct *work)
     struct ts_event *event;
     int i = 0, j = 1;
 
+		printk("work_count=%d\n", work_count++);
     if (itk_get_pendown_state(ts)) {
         if (itk_read_sensor(ts) < 0) {
             printk(KERN_INFO "work read i2c failed\n");
@@ -556,7 +563,8 @@ static enum hrtimer_restart itk_timer(struct hrtimer *timer)
 {
     struct itk *ts = container_of(timer, struct itk, timer);
     unsigned long flags = 0;
-    
+		
+		printk("timer_count=%d\n", timer_count++);
     spin_lock_irqsave(&ts->lock, flags);
 //  printk(KERN_INFO "enter timer\n");
     queue_work(ts->workqueue, &ts->work);
@@ -575,14 +583,16 @@ static irqreturn_t itk_interrupt(int irq, void *dev_id)
     struct i2c_client *client = (struct i2c_client *)dev_id;
     struct itk *ts = i2c_get_clientdata(client);
     unsigned long flags;
-    
+
+		printk("int_count=%d\n", int_count++);    
     spin_lock_irqsave(&ts->lock, flags);
     #ifdef ITK_TS_DEBUG_REPORT
     printk(KERN_INFO "enter penirq\n");
     #endif
     /* if the pen is down, disable IRQ and start timer chain */
     if (itk_get_pendown_state(ts)) {
-        disable_irq_nosync(client->irq);
+			 printk("int_valid_count=%d\n", int_valid_count++);    
+       disable_irq_nosync(client->irq);
 #ifdef TS_DELAY_WORK
         schedule_delayed_work(&ts->work, msecs_to_jiffies(TS_POLL_DELAY));
 #else
@@ -622,6 +632,8 @@ static int itk_probe(struct i2c_client *client,
     struct itk *ts;
     int err = 0;
 
+		printk("%s: %s\n", __FILE__, __FUNCTION__);
+		printk("client=%x, adapter=%x\n", client, client->adapter);
     ts = kzalloc(sizeof(struct itk), GFP_KERNEL);
     if (!ts) {
         err = -ENOMEM;
@@ -633,7 +645,11 @@ static int itk_probe(struct i2c_client *client,
 
     /* setup platform-specific hooks */
     ts->pdata = (struct itk_platform_data*)client->dev.platform_data;
-    itk_data = (struct itk_platform_data*)client->dev.platform_data;
+    itk_data =  ts->pdata;
+    if (ts->pdata->touch_on) {
+        ts->pdata->touch_on(1);
+        msleep(100);
+    }
     if (!ts->pdata || !ts->pdata->init_irq || !ts->pdata->get_irq_level) {
         dev_err(&client->dev, "no platform-specific callbacks "
             "provided\n");
@@ -684,6 +700,7 @@ static int itk_probe(struct i2c_client *client,
     ts->pendown = 0;
     ts->touching_num = 0;
 
+    printk("ready to reqeust irq(%d\n", client->irq);
     err = request_irq(client->irq, itk_interrupt, IRQF_TRIGGER_FALLING,
         client->dev.driver->name, client);
     if (err) {

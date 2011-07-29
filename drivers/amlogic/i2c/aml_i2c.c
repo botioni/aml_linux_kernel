@@ -387,9 +387,9 @@ static int aml_i2c_xfer(struct i2c_adapter *i2c_adap, struct i2c_msg *msgs,
        }
 	else {
 		dev_err(&i2c_adap->dev, "[aml_i2c_xfer] error ret = %d (%s) token %d, "
-                   "master %s %dK addr 0x%x\n", 
+                   "master_no(%d) %dK addr 0x%x\n", 
                    ret, ret == -EIO ? "-EIO" : "-ETIMEOUT", i2c->cur_token,
-			i2c->master_no?"a":"b", i2c->master_i2c_speed/1000, 
+			i2c->master_no, i2c->master_i2c_speed/1000, 
 			i2c->cur_slave_addr);
 	      mutex_unlock(&i2c->lock);
 		return -EAGAIN;
@@ -434,9 +434,9 @@ static int aml_i2c_xfer_s2(struct i2c_adapter *i2c_adap, struct i2c_msg *msgs,
       }
 	else {
 		dev_err(&i2c_adap->dev, "[aml_i2c_xfer_s2] error ret = %d (%s) token %d\t"
-                   "master %s %dK addr 0x%x\n", 
+                   "master_no(%d) %s %dK addr 0x%x\n", 
                    ret, ret == -EIO ? "-EIO" : "-ETIMEOUT", i2c->cur_token,
-			i2c->master_no?"a":"b", i2c->master_i2c_speed2/1000, 
+			i2c->master_no, i2c->master_i2c_speed2/1000, 
 			i2c->cur_slave_addr);
              mutex_unlock(&i2c->lock);
 		return -EAGAIN;
@@ -488,8 +488,8 @@ static ssize_t show_i2c_info(struct class *class,
 	struct aml_i2c_reg_ctrl* ctrl;
 	struct aml_i2c_reg_master __iomem* regs = i2c->master_regs;
 
-	printk( "i2c master %s current slave addr is 0x%x\n", 
-						i2c->master_no?"a":"b", i2c->cur_slave_addr);
+	printk( "i2c master_no(%d) current slave addr is 0x%x\n", 
+						i2c->master_no, i2c->cur_slave_addr);
 	printk( "wait ack timeout is 0x%x\n", 
 							i2c->wait_count * i2c->wait_ack_interval);
 	printk( "master regs base is 0x%x \n", (unsigned int)regs);
@@ -640,10 +640,9 @@ static int aml_i2c_probe(struct platform_device *pdev)
 
 	/*master a or master b*/
 	i2c->master_no = plat->master_no;
-	printk("master_no = %d\n", i2c->master_no);
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	i2c->master_regs = (struct aml_i2c_reg_master __iomem*)(res->start);
-	printk("resource = %x\n", res);
+	printk("master_no = %d, resource = %x\n", i2c->master_no, res);
 
 	BUG_ON(!i2c->master_regs);
 	BUG_ON(!plat);
@@ -670,7 +669,7 @@ static int aml_i2c_probe(struct platform_device *pdev)
             kzfree(i2c);
             return -1;
 	}
-	dev_info(&pdev->dev, "add adapter %s\n", i2c->adap.name);
+	dev_info(&pdev->dev, "add adapter %s(%x)\n", i2c->adap.name, &i2c->adap);
 
       /*need 2 different speed in 1 adapter, add a virtual one*/
       if(plat->master_i2c_speed2){
