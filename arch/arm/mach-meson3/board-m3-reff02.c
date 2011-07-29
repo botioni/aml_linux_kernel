@@ -551,30 +551,18 @@ static struct resource amlogic_card_resource[] = {
 
 void extern_wifi_power(int is_power)
 {
-    if (0 == is_power)
-    {
-        #ifdef CONFIG_SN7325
-        configIO(0, 0);
-        setIO_level(0, 0, 5);
-        #else
-        return;
-        #endif
-    }
-    else
-    {
-        #ifdef CONFIG_SN7325
-        configIO(0, 0);
-        setIO_level(0, 1, 5);
-        #else
-        return;
-        #endif
-    }
-    return;
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_1,(1<<11));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0,(1<<18));
+	CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO2_EN_N, (1<<8));
+	if(is_power)
+		SET_CBUS_REG_MASK(PREG_PAD_GPIO2_O, (1<<8));
+	else
+		CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO2_O, (1<<8));
 }
 
 void sdio_extern_init(void)
 {
-    //extern_wifi_power(1);
+    extern_wifi_power(1);
 }
 
 static struct aml_card_info  amlogic_card_info[] = {
@@ -597,7 +585,6 @@ static struct aml_card_info  amlogic_card_info[] = {
         .card_wp_input_mask = 0,
         .card_extern_init = 0,
     },
-#if 1
     [1] = {
         .name = "sdio_card",
         .work_mode = CARD_HW_MODE,
@@ -606,27 +593,17 @@ static struct aml_card_info  amlogic_card_info[] = {
         .card_ins_en_mask = 0,
         .card_ins_input_reg = 0,
         .card_ins_input_mask = 0,
-#ifdef CONFIG_TCA6424
-        .card_power_en_reg = 0,//EGPIO_GPIOD_ENABLE,
-        .card_power_en_mask = 0,//PREG_IO_10_MASK,
-        .card_power_output_reg = 0,//EGPIO_GPIOD_OUTPUT,
-        .card_power_output_mask = 0,//PREG_IO_10_MASK,
-        .card_power_en_lev = 0,//1,
-#else
-        /*GPIOD_8 WIFI RST*/
-        .card_power_en_reg = 0,//EGPIO_GPIOD_ENABLE,
-        .card_power_en_mask = 0,//PREG_IO_10_MASK,
-        .card_power_output_reg = 0,//EGPIO_GPIOD_OUTPUT,
-        .card_power_output_mask = 0,//PREG_IO_10_MASK,
-        .card_power_en_lev = 0,//1,
-#endif
+        .card_power_en_reg = EGPIO_GPIOC_ENABLE,
+        .card_power_en_mask = PREG_IO_7_MASK,
+        .card_power_output_reg = EGPIO_GPIOC_OUTPUT,
+        .card_power_output_mask = PREG_IO_7_MASK,
+        .card_power_en_lev = 1,
         .card_wp_en_reg = 0,
         .card_wp_en_mask = 0,
         .card_wp_input_reg = 0,
         .card_wp_input_mask = 0,
         .card_extern_init = sdio_extern_init,
     },
-#endif
 };
 
 static struct aml_card_platform amlogic_card_platform = {
@@ -2266,6 +2243,10 @@ static void __init device_pinmux_init(void )
 #endif
     set_audio_pinmux(AUDIO_OUT_TEST_N);
     set_audio_pinmux(AUDIO_IN_JTAG);
+    
+    //set clk for wifi
+	CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO2_EN_N, (1<<15));    
+    SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_3, (1<<22));
 
 }
 
