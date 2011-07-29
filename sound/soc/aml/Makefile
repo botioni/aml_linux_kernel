@@ -30,7 +30,17 @@ obj-$(CONFIG_SND_AML_M1_ARMDEV_WM8900) += snd-soc-aml-m1-armdev-wm8900.o
 snd-soc-aml-m1-mid-rt5621-objs := aml_m1_mid_rt5621.o
 obj-$(CONFIG_SND_AML_M1_MID_RT5621) += snd-soc-aml-m1-mid-rt5621.o
 
-#AML M1 MID with CS42L52 support
 
-snd-soc-aml-m1-mid-cs42l52-objs := aml_m1_mid_cs42l52.o
-obj-$(CONFIG_SND_AML_M1_MID_CS42L52) += snd-soc-aml-m1-mid-cs42l52.o
+# AML M2 Machine support
+
+snd-soc-aml-m2-objs := aml_m2.o
+snd-soc-aml-codec-objs := aml_m2_codec.o
+obj-$(CONFIG_SND_AML_M2) += snd-soc-aml-m2.o
+obj-$(CONFIG_SND_AML_M2) += snd-soc-aml-codec.o
+
+# AML M3 Machine support
+
+snd-soc-aml-m3-objs := aml_m3.o
+snd-soc-aml-codec-objs := aml_m3_codec.o
+obj-$(CONFIG_SND_AML_M3) += snd-soc-aml-m3.o
+obj-$(CONFIG_SND_AML_M3) += snd-soc-aml-codec.o

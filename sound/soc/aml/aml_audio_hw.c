@@ -239,14 +239,16 @@ void audio_set_i2s_mode(u32 mode)
 
 void audio_util_set_dac_format(unsigned format)
 {
-    WRITE_MPEG_REG(AIU_CLK_CTRL_MORE,	 0x0000);	 // i2s_divisor_more does not take effect    
-    
+    //WRITE_MPEG_REG(AIU_CLK_CTRL_MORE,	 0x0000);	 // i2s_divisor_more does not take effect    
+	WRITE_MPEG_REG(AIU_CLK_CTRL_MORE,	 0x0003);	 // i2s_divisor_more divided by 4
+	
 	WRITE_MPEG_REG(AIU_CLK_CTRL,		 (0 << 12) | // 958 divisor more, if true, divided by 2, 4, 6, 8.
 							(1 <<  8) | // alrclk skew: 1=alrclk transitions on the cycle before msb is sent
 							(1 <<  6) | // invert aoclk
                             (1 <<  7) | // invert lrclk
 							(1 <<  4) | // 958 divisor: 0=no div; 1=div by 2; 2=div by 3; 3=div by 4.
-							(2 <<  2) | // i2s divisor: 0=no div; 1=div by 2; 2=div by 4; 3=div by 8.
+							//(2 <<  2) | // i2s divisor: 0=no div; 1=div by 2; 2=div by 4; 3=div by 8.
+							(0 <<  2) | // i2s divisor: 0=no div; 1=div by 2; 2=div by 4; 3=div by 8.
 							(1 <<  1) |  
 							(1 <<  0)); // enable I2S clock
     if (format == AUDIO_ALGOUT_DAC_FORMAT_DSP) {
@@ -336,33 +338,36 @@ void audio_set_clk(unsigned freq, unsigned fs_config)
     // gate the clock off
     WRITE_MPEG_REG( HHI_AUD_CLK_CNTL, READ_MPEG_REG(HHI_AUD_CLK_CNTL) & ~(1 << 8));
 
-#ifdef CONFIG_SND_AML_M2
+#ifdef CONFIG_SND_AML_M3
     WRITE_MPEG_REG(HHI_AUD_PLL_CNTL2, 0x065e31ff);
     WRITE_MPEG_REG(HHI_AUD_PLL_CNTL3, 0x9649a941);
 		// select Audio PLL as MCLK source
-		WRITE_MPEG_REG( HHI_AUD_CLK_CNTL, READ_MPEG_REG(HHI_AUD_CLK_CNTL) & ~(1 << 9));
+		//WRITE_MPEG_REG( HHI_AUD_CLK_CNTL, READ_MPEG_REG(HHI_AUD_CLK_CNTL) & ~(1 << 9));
+		WRITE_MPEG_REG_BITS(HHI_AUD_CLK_CNTL, 0, 9, 3);    //changed lishuai
+		WRITE_MPEG_REG_BITS(HHI_AUD_CLK_CNTL, 25-1, 0, 8); //New added
 #endif		
     // Put the PLL to sleep
-    WRITE_MPEG_REG( HHI_AUD_PLL_CNTL, READ_MPEG_REG(HHI_AUD_PLL_CNTL) | (1 << 15));
-#ifdef CONFIG_SND_AML_M2	
-		WRITE_MPEG_REG_BITS(AIU_CODEC_ADC_LRCLK_CTRL, 64-1, 0, 12);
-		WRITE_MPEG_REG_BITS(AIU_CODEC_DAC_LRCLK_CTRL, 64-1, 0, 12);
+    WRITE_MPEG_REG( HHI_AUD_PLL_CNTL, READ_MPEG_REG(HHI_AUD_PLL_CNTL) | (1 << 15));//found
+
+#ifdef CONFIG_SND_AML_M3
+		WRITE_MPEG_REG_BITS(AIU_CODEC_ADC_LRCLK_CTRL, 64-1, 0, 12);//set codec adc ratio---lrclk
+		WRITE_MPEG_REG_BITS(AIU_CODEC_DAC_LRCLK_CTRL, 64-1, 0, 12);//set codec dac ratio---lrclk
 #endif		
     // Bring out of reset but keep bypassed to allow to stablize
     //Wr( HHI_AUD_PLL_CNTL, (1 << 15) | (0 << 14) | (hiu_reg & 0x3FFF) );
-    WRITE_MPEG_REG( HHI_AUD_PLL_CNTL, (1 << 15) | (audio_clock_config[index][0] & 0x7FFF) );
+    WRITE_MPEG_REG( HHI_AUD_PLL_CNTL, (1 << 15) | (audio_clock_config[index][0] & 0x7FFF) );//found
     // Set the XD value
-    WRITE_MPEG_REG( HHI_AUD_CLK_CNTL, (READ_MPEG_REG(HHI_AUD_CLK_CNTL) & ~(0xff << 0)) | audio_clock_config[index][1]);
+    WRITE_MPEG_REG( HHI_AUD_CLK_CNTL, (READ_MPEG_REG(HHI_AUD_CLK_CNTL) & ~(0xff << 0)) | audio_clock_config[index][1]);//found
     // delay 5uS
 	//udelay(5);
 	for (i = 0; i < 500000; i++) ;
     // Bring the PLL out of sleep
-    WRITE_MPEG_REG( HHI_AUD_PLL_CNTL, READ_MPEG_REG(HHI_AUD_PLL_CNTL) & ~(1 << 15));
-
+    WRITE_MPEG_REG( HHI_AUD_PLL_CNTL, READ_MPEG_REG(HHI_AUD_PLL_CNTL) & ~(1 << 15));//found
+    
     // gate the clock on
-    WRITE_MPEG_REG( HHI_AUD_CLK_CNTL, READ_MPEG_REG(HHI_AUD_CLK_CNTL) | (1 << 8));
-#if ((defined CONFIG_SND_AML_M1) || (defined CONFIG_SND_AML_M2))
-		WRITE_MPEG_REG(HHI_AUD_CLK_CNTL, READ_MPEG_REG(HHI_AUD_CLK_CNTL) |(1<<23));
+    WRITE_MPEG_REG( HHI_AUD_CLK_CNTL, READ_MPEG_REG(HHI_AUD_CLK_CNTL) | (1 << 8));//found
+#if ((defined CONFIG_SND_AML_M1) || (defined CONFIG_SND_AML_M2)||(defined CONFIG_SND_AML_M3))
+		WRITE_MPEG_REG(HHI_AUD_CLK_CNTL, READ_MPEG_REG(HHI_AUD_CLK_CNTL) |(1<<23));// gate audac_clkpi
 #endif    
     // delay 2uS
 	//udelay(2);
