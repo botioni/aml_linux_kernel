@@ -1,7 +1,7 @@
 #
 # Automatically generated make config: don't edit
 # Linux kernel version: 2.6.34
-# Thu Jul 28 06:44:22 2011
+# Fri Jul 29 04:47:46 2011
 #
 CONFIG_ARM=y
 CONFIG_HOLES_IN_ZONE=y
@@ -712,7 +712,26 @@ CONFIG_AM_CANVAS=y
 # Amlogic video output module
 #
 CONFIG_AM_TV_OUTPUT=y
-# CONFIG_AM_TCON_OUTPUT is not set
+CONFIG_AM_TCON_OUTPUT=y
+# CONFIG_AML_TCON_T13 is not set
+# CONFIG_AML_TCON_ML10 is not set
+# CONFIG_AML_TCON_W10 is not set
+# CONFIG_AML_TCON_W7 is not set
+CONFIG_AML_TCON_W7NEW=y
+# CONFIG_AML_TCON_W8 is not set
+# CONFIG_AML_TCON_P7 is not set
+# CONFIG_AML_TCON_K7 is not set
+# CONFIG_AML_TCON_C7 is not set
+# CONFIG_AML_TCON_K8 is not set
+# CONFIG_AML_TCON_G7 is not set
+# CONFIG_AML_TCON_A18 is not set
+# CONFIG_AML_TCON_A19 is not set
+# CONFIG_AML_TCON_R10 is not set
+# CONFIG_AML_TCON_REFB13 is not set
+# CONFIG_AML_TCON_REFB14 is not set
+# CONFIG_AML_TCON_T10 is not set
+# CONFIG_AML_TCON_REFB17 is not set
+# CONFIG_AML_TCON_P10 is not set
 
 #
 # Amlogic osd module
@@ -1471,11 +1490,12 @@ CONFIG_SND_VERBOSE_PROCFS=y
 # CONFIG_SND_USB is not set
 CONFIG_SND_SOC=y
 CONFIG_SND_AML_SOC=y
-CONFIG_SND_AML_M1=y
+# CONFIG_SND_AML_M1 is not set
 # CONFIG_SND_AML_M1_MID_WM8900 is not set
 # CONFIG_SND_AML_M1_ARMDEV_WM8900 is not set
 # CONFIG_SND_AML_M1_MID_RT5621 is not set
-# CONFIG_SND_AML_M1_MID_CS42L52 is not set
+# CONFIG_SND_AML_M2 is not set
+CONFIG_SND_AML_M3=y
 CONFIG_SND_SOC_I2C_AND_SPI=y
 # CONFIG_SND_SOC_ALL_CODECS is not set
 # CONFIG_SOUND_PRIME is not set
