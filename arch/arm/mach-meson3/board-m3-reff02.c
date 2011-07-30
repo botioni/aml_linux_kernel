@@ -923,6 +923,7 @@ aml_plat_cam_data_t video_gc0308_data = {
 
 
 #endif
+
 #if defined(CONFIG_SUSPEND)
 
 typedef struct {
@@ -1010,7 +1011,7 @@ static void restore_pinmux(void)
 	for (i=0;i<6;i++)
 		 WRITE_CBUS_REG(PERIPHS_PIN_MUX_0+i, pinmux_backup[i]);
 }
-	
+
 static void set_vccx2(int power_on)
 {
 	int i;
@@ -1347,8 +1348,9 @@ static void set_bat_off(void)
     //set_gpio_mode(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), GPIO_OUTPUT_MODE);
 
     //VCCx2 power down
+#if defined(CONFIG_SUSPEND)
     set_vccx2(0);
-
+#endif
     //Power hold down
     //set_gpio_val(GPIOA_bank_bit(8), GPIOA_bit_bit0_14(8), 0);
     //set_gpio_mode(GPIOA_bank_bit(8), GPIOA_bit_bit0_14(8), GPIO_OUTPUT_MODE);
