@@ -1,7 +1,7 @@
 #
 # Automatically generated make config: don't edit
 # Linux kernel version: 2.6.34
-# Fri Jul 29 04:47:46 2011
+# Fri Jul 29 19:45:16 2011
 #
 CONFIG_ARM=y
 CONFIG_HOLES_IN_ZONE=y
@@ -589,7 +589,7 @@ CONFIG_BQ27x00_BATTERY=y
 #
 # Amlogic Light Sensor Support
 #
-# CONFIG_LS_GL3526 is not set
+CONFIG_LS_GL3526=y
 
 #
 # Extern IO Support
@@ -1407,7 +1407,7 @@ CONFIG_USB_PWC_INPUT_EVDEV=y
 # CONFIG_USB_STKWEBCAM is not set
 # CONFIG_USB_S2255 is not set
 CONFIG_VIDEO_AMLOGIC_CAPTURE=y
-# CONFIG_VIDEO_AMLOGIC_CAPTURE_GT2005 is not set
+CONFIG_VIDEO_AMLOGIC_CAPTURE_GT2005=y
 # CONFIG_VIDEO_AMLOGIC_CAPTURE_GC0308 is not set
 # CONFIG_VIDEO_AMLOGIC_CAPTURE_OV5642 is not set
 # CONFIG_VIDEO_AMLOGIC_CAPTURE_SP0838 is not set
