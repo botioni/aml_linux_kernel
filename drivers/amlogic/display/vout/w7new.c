@@ -200,9 +200,10 @@ static void power_off_lcd(void)
 static void set_tcon_pinmux(void)
 {
     /* TCON control pins pinmux */
-    /* GPIOD_7 -> LCD_Clk(CPH1_B), , GPIOD_4 -> TCON_OEH_B, */
-    set_mio_mux(1, ((1<<14)|(1<<17)));
-    set_mio_mux(0,(0x3f<<0));   //For 8bits
+    clear_mio_mux(1, 0x0f<<11); // disable cph50(11),cph1(12),cph2(13),cph3(14)
+    set_mio_mux(1, 1<<21); // enable clko
+    set_mio_mux(1, (1<<17)|(1<<18)|(1<<19)); // enable sth1, stv1, oeh
+    set_mio_mux(0, 0x3f<<0);   //For 8bits RGB
 
 }
 static void t13_power_on(void)
