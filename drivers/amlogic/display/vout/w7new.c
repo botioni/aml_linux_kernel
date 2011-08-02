@@ -41,7 +41,7 @@
 //cpt CLAA070MA22BW panel
 #define LCD_WIDTH       800 
 #define LCD_HEIGHT      600
-#define MAX_WIDTH       1000
+#define MAX_WIDTH       1010
 #define MAX_HEIGHT      660
 #define VIDEO_ON_LINE   22
 
@@ -57,24 +57,24 @@ static tcon_conf_t tcon_config =
     .max_width  = MAX_WIDTH,
     .max_height = MAX_HEIGHT,
     .video_on_line = VIDEO_ON_LINE,
-    .pll_ctrl = 0x063c,   //40MHz
+    .pll_ctrl = 0x063c,
     .clk_ctrl = 0x1fc1,
-    .gamma_cntl_port = (0 << LCD_GAMMA_EN) | (0 << LCD_GAMMA_RVS_OUT) | (1 << LCD_GAMMA_VCOM_POL),
+    .gamma_cntl_port = (1 << LCD_GAMMA_EN) | (0 << LCD_GAMMA_RVS_OUT) | (1 << LCD_GAMMA_VCOM_POL),
     .gamma_vcom_hswitch_addr = 0,
     .rgb_base_addr = 0xf0,
     .rgb_coeff_addr = 0x74a,
     .pol_cntl_addr = (0x0 << LCD_CPH1_POL) |(0x1 << LCD_HS_POL) | (0x1 << LCD_VS_POL),
     .dith_cntl_addr = 0x400,
-    .sth1_hs_addr = 0,
-    .sth1_he_addr = 0,
+    .sth1_hs_addr = 1000,
+    .sth1_he_addr = 987,
     .sth1_vs_addr = 0,
-    .sth1_ve_addr = 0,
+    .sth1_ve_addr = MAX_HEIGHT - 1,
     .sth2_hs_addr = 0,
     .sth2_he_addr = 0,
     .sth2_vs_addr = 0,
     .sth2_ve_addr = 0,
-    .oeh_hs_addr = 65,
-    .oeh_he_addr = 65+LCD_WIDTH,
+    .oeh_hs_addr = 60,
+    .oeh_he_addr = 60+LCD_WIDTH-1,
     .oeh_vs_addr = VIDEO_ON_LINE,
     .oeh_ve_addr = VIDEO_ON_LINE+LCD_HEIGHT-1,
     .vcom_hswitch_addr = 0,
@@ -89,9 +89,9 @@ static tcon_conf_t tcon_config =
     .cpv2_vs_addr = 0,
     .cpv2_ve_addr = 0,
     .stv1_hs_addr = 0,
-    .stv1_he_addr = 0,
-    .stv1_vs_addr = 0,
-    .stv1_ve_addr = 0,
+    .stv1_he_addr = MAX_WIDTH - 1,
+    .stv1_vs_addr = 656,
+    .stv1_ve_addr = 642,
     .stv2_hs_addr = 0,
     .stv2_he_addr = 0,
     .stv2_vs_addr = 0,
@@ -114,13 +114,14 @@ static tcon_conf_t tcon_config =
     .flags = 0,
     .screen_width = 4,
     .screen_height = 3,
-    .sync_duration_num = 606,
-    .sync_duration_den = 10,
+    .sync_duration_num = 60,
+    .sync_duration_den = 1,
     .power_on=t13_power_on,
     .power_off=t13_power_off,
     .backlight_on = power_on_backlight,
     .backlight_off = power_off_backlight,
 };
+
 static struct resource tcon_resources[] = {
     [0] = {
         .start = (ulong)&tcon_config,
