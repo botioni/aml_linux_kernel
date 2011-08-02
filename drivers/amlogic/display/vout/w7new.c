@@ -202,11 +202,15 @@ static void set_tcon_pinmux(void)
 {
     /* TCON control pins pinmux */
     clear_mio_mux(1, 0x0f<<11); // disable cph50(11),cph1(12),cph2(13),cph3(14)
+#ifdef USE_CLKO
     set_mio_mux(1, 1<<21); // enable clko
+#else
+    set_mio_mux(1, 1<<14); // enable cph3
+#endif
     set_mio_mux(1, (1<<17)|(1<<18)|(1<<19)); // enable sth1, stv1, oeh
     set_mio_mux(0, 0x3f<<0);   //For 8bits RGB
-
 }
+
 static void t13_power_on(void)
 {
     video_dac_disable();
@@ -215,6 +219,7 @@ static void t13_power_on(void)
     printk("\n\nt13_power_on...\n\n");
     power_on_backlight();
 }
+
 static void t13_power_off(void)
 {
     	power_off_lcd();
