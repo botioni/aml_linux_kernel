@@ -349,7 +349,7 @@ static void venc_set_lcd(tcon_conf_t *pConf, int havon_begin)
 
 static inline void _init_tvenc(tcon_conf_t *pConf)
 {
-    vclk_set_lcd(1, 0, 0, 0x0001022d, 0x00000803, 5); // TODO change to use pConf
+    vclk_set_lcd(1, 0, 0, 0x1021e, 0x0018803, 9); // TODO change to use pConf
     venc_set_lcd(pConf, 48);
 }
 
