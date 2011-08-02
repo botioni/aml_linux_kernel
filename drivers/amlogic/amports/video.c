@@ -1187,7 +1187,7 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
     }
 
 exit:
-	if(timer_count > 20){
+	if(timer_count > 50){
 		timer_count	 =0 ;
 		video_notify_flag |= VIDEO_NOTIFY_FRAME_WAIT;		
 	}
