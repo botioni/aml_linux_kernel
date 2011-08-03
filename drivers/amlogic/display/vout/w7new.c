@@ -65,16 +65,16 @@ static tcon_conf_t tcon_config =
     .rgb_coeff_addr = 0x74a,
     .pol_cntl_addr = (0x0 << LCD_CPH1_POL) |(0x1 << LCD_HS_POL) | (0x1 << LCD_VS_POL),
     .dith_cntl_addr = 0x400,
-    .sth1_hs_addr = 1000,
-    .sth1_he_addr = 987,
+    .sth1_hs_addr = 0,
+    .sth1_he_addr = 0,
     .sth1_vs_addr = 0,
-    .sth1_ve_addr = MAX_HEIGHT - 1,
+    .sth1_ve_addr = 0,
     .sth2_hs_addr = 0,
     .sth2_he_addr = 0,
     .sth2_vs_addr = 0,
     .sth2_ve_addr = 0,
-    .oeh_hs_addr = 60,
-    .oeh_he_addr = 60+LCD_WIDTH-1,
+    .oeh_hs_addr = 67,
+    .oeh_he_addr = 67+LCD_WIDTH,
     .oeh_vs_addr = VIDEO_ON_LINE,
     .oeh_ve_addr = VIDEO_ON_LINE+LCD_HEIGHT-1,
     .vcom_hswitch_addr = 0,
@@ -89,9 +89,9 @@ static tcon_conf_t tcon_config =
     .cpv2_vs_addr = 0,
     .cpv2_ve_addr = 0,
     .stv1_hs_addr = 0,
-    .stv1_he_addr = MAX_WIDTH - 1,
-    .stv1_vs_addr = 656,
-    .stv1_ve_addr = 642,
+    .stv1_he_addr = 0,
+    .stv1_vs_addr = 0,
+    .stv1_ve_addr = 0,
     .stv2_hs_addr = 0,
     .stv2_he_addr = 0,
     .stv2_vs_addr = 0,
@@ -205,9 +205,9 @@ static void set_tcon_pinmux(void)
 #ifdef USE_CLKO
     set_mio_mux(1, 1<<21); // enable clko
 #else
-    set_mio_mux(1, 1<<14); // enable cph3
+    set_mio_mux(1, 1<<14); // enable cph1
 #endif
-    set_mio_mux(1, (1<<17)|(1<<18)|(1<<19)); // enable sth1, stv1, oeh
+    set_mio_mux(1, 1<<17); // enable oeh
     set_mio_mux(0, 0x3f<<0);   //For 8bits RGB
 }
 
