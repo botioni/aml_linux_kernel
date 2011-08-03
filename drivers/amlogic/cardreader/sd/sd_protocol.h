@@ -10,13 +10,190 @@
 #include <mach/irqs.h>
 #include <mach/card_io.h>
 
+typedef enum _SDIO_CMD_ERR {
+	SDIO_NONE_ERR,
+	SDIO_PACK_CRC_ERR,
+	SDIO_PACK_TIMEOUT_ERR,
+	SDIO_RES_CRC_ERR,
+	SDIO_RES_TIMEOUT_ERR
+} SDIO_CMD_ERR;
+
 //Never change any sequence of following data variables
 #pragma pack(1)
+
+
+/**********************
+	SDXC regs (9)
+***********************/
+
+#define SDHC_BASE 0xC1108E00
+
+#define SDHC_ARGU 0x2380
+#define SDHC_SEND 0x2381
+#define SDHC_CTRL 0x2382
+#define SDHC_STAT 0x2383
+#define SDHC_CLKC 0x2384
+#define SDHC_ADDR 0x2385
+#define SDHC_PDMA 0x2386
+#define SDHC_MISC 0x2387
+#define SDHC_DATA 0x2388
+
+extern int using_sdxc_controller;
+
+//SDHC_ARGU
+typedef struct SDXC_Arg_Reg {
+	unsigned long command;
+} SDXC_Arg_Reg_t;
+
+//SDHC_SEND
+typedef struct SDXC_Send_Reg {
+	unsigned command_index : 6;
+	unsigned command_has_resp : 1;
+	unsigned command_has_data : 1;
+	unsigned response_length : 1;
+	unsigned response_no_crc : 1;
+	unsigned data_direction : 1;
+	unsigned data_stop : 1;
+	unsigned total_pack : 20;
+} SDXC_Send_Reg_t;
+
+//SDHC_CTRL
+typedef struct SDXC_Ctrl_Reg {
+	unsigned dat_width : 2;	//dat_type
+	unsigned ddr_mode : 1;
+	unsigned sdxc_soft_reset : 1;
+	unsigned pack_len : 9;		//0:512, 1:1, ..., 511:511
+	unsigned rx_timeout : 7;
+	
+	////unsigned sdxc_irq_en : 12;		//detail
+	unsigned dma_done_int_en 	: 1;
+	unsigned sdio_dat1_int_en 	: 1;		//@@
+	unsigned rx_fifo_int_en 	: 1;
+	unsigned tx_fifo_int_en 	: 1;
+	
+	unsigned data_complete_int_en 	: 1;	//@@
+	unsigned pack_crc_err_int_en 	: 1;
+	unsigned pack_timeout_int_en 	: 1;
+	unsigned pack_complete_int_en 	: 1;
+	
+	unsigned dat0_ready_int_en 		: 1;
+	
+	unsigned res_crc_err_int_en 	: 1;
+	unsigned res_timeout_int_en 	: 1;
+	unsigned res_ok_int_en 			: 1;	//@@
+} SDXC_Ctrl_Reg_t;
+
+//SDHC_STAT
+typedef struct SDXC_Status_Reg {
+	unsigned busy : 1;
+	unsigned dat_state : 4;
+	unsigned cmd_state : 1;
+	unsigned request_rx : 1;	//???	set when rx_count >= rx_threshold
+	unsigned request_tx : 1;	//???	set when tx_count <= tx_threshold
+	unsigned tx_count : 6;
+	unsigned rx_count : 6;
+	
+	////unsigned sdxc_irq_state : 12;	//detail
+	unsigned dma_done_int 		: 1;
+	unsigned sdio_dat1_int 		: 1;		//@@
+	unsigned rx_fifo_int 		: 1;
+	unsigned tx_fifo_int 		: 1;
+	
+	unsigned data_complete_int 	: 1;		//@@
+	unsigned pack_crc_err_int 	: 1;
+	unsigned pack_timeout_int 	: 1;
+	unsigned pack_complete_int 	: 1;
+	
+	unsigned dat0_ready_int 	: 1;
+	
+	unsigned res_crc_err_int 	: 1;
+	unsigned res_timeout_int 	: 1;
+	unsigned res_ok_int 		: 1;		//@@
+} SDXC_Status_Reg_t;
+
+//SDHC_CLKC
+typedef struct SDXC_Clk_Reg {
+	unsigned clk_div : 16;
+	unsigned clk_in_sel : 3;
+	unsigned clk_en : 1;
+	unsigned phase_sel : 2;
+	unsigned reserved1 : 1;
+	unsigned clk_ctl_en : 1;	//???  write 0,  change, write 1
+	unsigned sdio_dat1_irq2_en : 1;
+	unsigned sdio_dat1_irq2_delay : 2;
+	unsigned reserved2 : 5;
+} SDXC_Clk_Reg_t;
+
+//SDHC_ADDR
+typedef struct SDXC_Addr_Reg {
+	unsigned long dma_addr;
+} SDXC_Addr_Reg_t;
+
+//SDHC_PDMA
+typedef struct SDXC_PDMA_Reg {
+	unsigned dma_mode : 1;
+	unsigned pio_rd_resp : 3;		//0:[39:8],  1:1st long,  2:2nd long, ...,  6 or 7:cmd arg
+	unsigned dma_urgent : 1;
+	unsigned wr_burst : 5;
+	unsigned rd_burst : 5;
+	unsigned rx_threshold : 6;
+	unsigned tx_threshold : 6;
+	unsigned reserved1 : 5;
+} SDXC_PDMA_Reg_t;
+
+//SDHC_MISC
+typedef struct SDXC_Misc_Reg {
+	unsigned cmd_line_delay : 2;	//for tuning
+	unsigned dat_line_delay : 2;	//for tuning
+	unsigned manual_stop : 1;
+	unsigned ext_ctrl : 1;
+	unsigned burst_num : 6;
+	unsigned thread_id : 6;
+	unsigned pio_rd_flag : 1;
+	unsigned pio_rd_mode : 1;		//0:one time mode,  1:burst mode
+	unsigned rx_limit : 6;
+	unsigned tx_limit : 6;
+} SDXC_Misc_Reg_t;
+
+//SDHC_DATA
+typedef struct SDXC_Data_Reg {
+	unsigned long value;
+} SDXC_Data_Reg_t;
+
+
+
+typedef struct _SD_REG_SSR {
+	unsigned Reserved1_1 : 5;
+	unsigned SECURE_MODE : 1;
+	unsigned DAT_BUS_WIDTH : 2;
+	
+	unsigned Reserved2 : 6;
+	unsigned Reserved1_2 : 2;
+	
+	unsigned short SD_CARD_TYPE;			// 16
+	
+	unsigned int SIZE_OF_PROTECTED_AREA;	// 32
+	unsigned char SPEED_CLASS;				//8
+	unsigned char PERPORMANCE_MOVE;			//8
+	
+	unsigned Reserved3 : 4;
+	unsigned AU_SIZE : 4;
+	
+	unsigned short ERASE_SIZE;				// 16
+
+	unsigned ERASE_OFFSET : 2;
+	unsigned ERASE_TIMEOUT : 6;
+	
+	unsigned char Reserved4[11];			// 88
+	unsigned char Reserved5[39];			// 312
+} SD_REG_SSR_t;
     
 //MSB->LSB, structure for Operation Conditions Register
 typedef struct _SD_REG_OCR {
 
-	unsigned Reserved0:6;
+	//unsigned Reserved0:6;	
+	unsigned S18A : 1;
+	unsigned Reserved0 : 5;
 	unsigned Card_Capacity_Status:1;	//Card_High_capacity
 	unsigned Card_Busy:1;	//Card power up status bit (busy)
 
@@ -236,7 +413,11 @@ typedef struct _SD_REG_SCR {
 	unsigned SD_SECURITY:3;	//SD Security Support
 	unsigned DATA_STAT_AFTER_ERASE:1;	//data_status_after erases
 	
-	unsigned Reserved1:16;	//for alignment
+	//unsigned Reserved1:16;	//for alignment
+	unsigned CMD_SUPPORT : 2;
+	unsigned Reserved1 : 13;
+	unsigned SD_SPEC3 : 1;
+	
 	unsigned long Reserved2;
 } SD_REG_SCR_t;
 
@@ -327,16 +508,19 @@ typedef struct _SD_Switch_Function__Status {
 	
 	unsigned short Max_Current_Consumption;
 	unsigned short Function_Group[6];
-	unsigned Function_Group_Status6:4;
+	
 	unsigned Function_Group_Status5:4;
-	unsigned Function_Group_Status4:4;	
+	unsigned Function_Group_Status6:4;
 	unsigned Function_Group_Status3:4;	
-	unsigned Function_Group_Status2:4;	
+	unsigned Function_Group_Status4:4;	
 	unsigned Function_Group_Status1:4;	
+	unsigned Function_Group_Status2:4;	
+	
 	unsigned char Data_Struction_Verion;
 	unsigned short Function_Status_In_Group[6];
 	unsigned char Reserved[34];
 } SD_Switch_Function_Status_t;
+
 
 //structure for response
 typedef struct _SD_Response_R1 {
@@ -584,7 +768,8 @@ typedef enum SD_SPEC_VERSION {
 
 	SPEC_VERSION_10_101, 
 	SPEC_VERSION_110, 
-	SPEC_VERSION_20 
+	SPEC_VERSION_20,
+	SPEC_VERSION_30 
 } SD_SPEC_VERSION_t;
 
 
@@ -604,6 +789,30 @@ typedef enum SD_SPEED_CLASS {
 	HIGH_SPEED 
 } SD_SPEED_CLASS_t;
 
+//function group 4
+typedef enum SD_CURRENT_LIMIT {
+	CURRENT_200mA = 0x01,
+	CURRENT_400mA = 0x02,
+	CURRENT_600mA = 0x04,
+	CURRENT_800mA = 0x08
+} SD_CURRENT_LIMIT_t;
+
+//function group 3
+typedef enum SD_DRIVER_STRENGTH {
+	TYPE_B = 0x01,
+	TYPE_A = 0x02,
+	TYPE_C = 0x04,
+	TYPE_D = 0x08
+} SD_DRIVER_STRENGTH_t;
+
+//function group 1
+typedef enum SD_UHS_I_MODE {
+	SDR12 = 0x01,
+	SDR25 = 0x02,
+	SDR50 = 0x04,
+	SDR104 = 0x08,
+	DDR50 = 0x10
+} SD_UHS_I_MODE_t;
 
 typedef struct SD_MMC_Card_Info {
 	
@@ -614,6 +823,7 @@ typedef struct SD_MMC_Card_Info {
 	SD_SPEC_VERSION_t spec_version;	
 	MMC_SPEC_VERSION_t mmc_spec_version;	
 	SD_SPEED_CLASS_t speed_class;	
+	SD_UHS_I_MODE_t uhs_mode;
 	SD_REG_CID_t raw_cid;	
 	SDIO_Pad_Type_t  io_pad_type;	/* hw io pin pad */
 
@@ -642,6 +852,8 @@ typedef struct SD_MMC_Card_Info {
 	unsigned disable_high_speed;
 	unsigned disable_wide_bus;
 	unsigned max_blk_count;
+
+	unsigned support_uhs_mode;
 
 	unsigned char *sd_mmc_buf;
 	unsigned char *sd_mmc_phy_buf;
@@ -705,6 +917,8 @@ typedef struct SD_MMC_Card_Info {
 //Addressed (point-to-point) Commands (ac)¡ªno data transfer on DAT
 //Addressed (point-to-point) Data Transfer Commands (adtc)¡ªdata transfer on DAT.
     
+#define APP_SPECIFIC	0x0
+
     /* Class 0 and 1, Basic Commands */ 
 #define SD_MMC_GO_IDLE_STATE            0	//---   [31:0] don¡¯t care       --------
 #define MMC_SEND_OP_COND                1	//bcr   [31:0] OCR w/out busy   R3
@@ -712,17 +926,18 @@ typedef struct SD_MMC_Card_Info {
 #define SD_MMC_SEND_RELATIVE_ADDR       3	//bcr   [31:0] don¡¯t care       R6 for SD and R1 for MMC
     //  Reserved                4       -----   ----------              --------
 #define IO_SEND_OP_COND                 5	//bcr   [23:0] OCR w/out busy  R4
-#define SD_SET_BUS_WIDTHS               6	//ac    [31:2]stuff,[1:0]B/W    R1  ,Application Specific Commands Used
+#define SD_SET_BUS_WIDTHS               (6 | APP_SPECIFIC)	//ac    [31:2]stuff,[1:0]B/W    R1  ,Application Specific Commands Used
 #define MMC_SWITCH_FUNTION              6	//MMC_c mmc switch power clock bus_width cmd
-#define SD_SWITCH_FUNCTION				46	//bcr   [31:23]mode,[22:8]default bit,[7:0]function
+#define SD_SWITCH_FUNCTION				46 //46	//bcr   [31:23]mode,[22:8]default bit,[7:0]function
 #define SD_MMC_SELECT_DESELECT_CARD     7	//ac    [31:16] RCA             R1
 #define SD_SEND_IF_COND                 8	//      [11:8]supply voltage    R7
 #define MMC_SEND_EXT_CSD                8	//ac    [31:0]stuff             R1
 #define SD_MMC_SEND_CSD                 9	//ac    [31:16] RCA             R2
 #define SD_MMC_SEND_CID                 10	//ac    [31:16] RCA             R2
-#define SD_READ_DAT_UNTIL_STOP          11	//adtc  [31:0] data address     R1
+////#define SD_READ_DAT_UNTIL_STOP          11	//adtc  [31:0] data address     R1
+#define VOLTAGE_SWITCH					11
 #define SD_MMC_STOP_TRANSMISSION        12	//ac    [31:0] don¡¯t care       R1b
-#define SD_MMC_SEND_STATUS              13	//ac    [31:16] RCA             R1
+#define SD_MMC_SEND_STATUS              (13 | APP_SPECIFIC)	//ac    [31:16] RCA             R1, Application Specific Commands Used
     //  Reserved                14      -----   ----------              --------
 #define SD_MMC_GO_INACTIVE_STATE        15	//ac    [31:16] RCA             --------
     
@@ -730,11 +945,11 @@ typedef struct SD_MMC_Card_Info {
 #define SD_MMC_SET_BLOCKLEN             16	//ac    [31:0] block length     R1
 #define SD_MMC_READ_SINGLE_BLOCK        17	//adtc  [31:0] data address     R1
 #define SD_MMC_READ_MULTIPLE_BLOCK      18	//adtc  [31:0] data address     R1
-    //  Reserved                19      -----   ----------              --------
+#define SD_SEND_TUNNING_PATTERN			19	//adtc	[31:0] data address		R1
     //  Reserved                20      -----   ----------              --------
     //  Reserved                21      -----   ----------              --------
-#define SD_SEND_NUM_WR_BLOCKS           22	//adtc  [31:0] stuff bits       R1  ,Application Specific Commands Used
-#define SD_SET_WR_BLK_ERASE_COUNT       23	//ac    [31:23]stuff,[22:0]B/N  R1  ,Application Specific Commands Used
+#define SD_SEND_NUM_WR_BLOCKS           (22	| APP_SPECIFIC)//adtc  [31:0] stuff bits       R1  ,Application Specific Commands Used
+#define SD_SET_WR_BLK_ERASE_COUNT       (23	| APP_SPECIFIC)//ac    [31:23]stuff,[22:0]B/N  R1  ,Application Specific Commands Used
     
     /* Class 4, Block Write Commands */ 
 #define SD_MMC_WRITE_BLOCK              24	//adtc  [31:0] data address     R1
@@ -760,10 +975,10 @@ typedef struct SD_MMC_Card_Info {
 #define SD_MMC_ERASE                    38	//ac    [31:0] don¡¯t care       R1b
     //  Reserved                39      -----   ----------              --------
     //  Reserved                40      -----   ----------              --------
-#define SD_APP_OP_COND                  41	//bcr   [31:0]OCR without busy  R3  ,Application Specific Commands Used
+#define SD_APP_OP_COND                  (41	| APP_SPECIFIC) //bcr   [31:0]OCR without busy  R3  ,Application Specific Commands Used
     
     /* Class 7, Lock Card Commands */ 
-#define SD_SET_CLR_CARD_DETECT          42	//ac    [31:1]stuff,[0]set_cd   R1
+#define SD_SET_CLR_CARD_DETECT          (42 | APP_SPECIFIC)	//ac    [31:1]stuff,[0]set_cd   R1, Application Specific Commands Used
 #define MMC_LOCK_UNLOCK                 42	//adtc  [31:0] stuff bits       R1b
     //  SDA Optional Commands           43      -----   ----------              --------
     //  SDA Optional Commands           44      -----   ----------              --------
@@ -773,7 +988,7 @@ typedef struct SD_MMC_Card_Info {
     //  SDA Optional Commands           48      -----   ----------              --------
     //  SDA Optional Commands           49      -----   ----------              --------
     //  SDA Optional Commands           50      -----   ----------              --------
-#define SD_SEND_SCR                     51	//adtc  [31:0] staff bits       R1  ,Application Specific Commands Used
+#define SD_SEND_SCR                     (51 | APP_SPECIFIC)	//adtc  [31:0] staff bits       R1  ,Application Specific Commands Used
 #define IO_RW_DIRECT                    52	//R5
 #define IO_RW_EXTENDED                  53	//R5-----   ----------              --------
     //  SDA Optional Commands           54      -----   ----------              --------

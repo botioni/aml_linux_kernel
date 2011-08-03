@@ -302,6 +302,7 @@ static int card_reader_monitor(void *data)
 					card->card_insert_process(card);
 					card_release_host(card_host);
 					card->unit_state = CARD_UNIT_READY;
+					printk("monitor : resume\n");
 					break;
 				}
 					
@@ -323,6 +324,7 @@ static int card_reader_monitor(void *data)
 					if (card_type == CARD_SDIO)
 						card_host->card = card;
 					card_detect_change(card_host, 0);
+					printk("monitor : INSERT\n");
 	            }
 	        }
 	        else if((card->card_status == CARD_REMOVED) && ((card->unit_state != CARD_UNIT_NOT_READY)
@@ -337,6 +339,8 @@ static int card_reader_monitor(void *data)
 
 				if(card->unit_state == CARD_UNIT_PROCESSED) {
 					card->unit_state = CARD_UNIT_NOT_READY;
+
+					printk("monitor : REMOVED\n");
 
 					if(card) {
 						list_del(&card->node);
