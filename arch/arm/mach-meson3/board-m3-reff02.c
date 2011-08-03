@@ -1089,7 +1089,7 @@ static struct aml_i2c_platform aml_i2c_plat = {
     .wait_ack_interval  = 5,
     .wait_read_interval = 5,
     .wait_xfer_interval = 5,
-    .master_no      = 0,
+//    .master_no      = 0,
     .use_pio            = 0,
     .master_i2c_speed   = AML_I2C_SPPED_300K,
 
@@ -1106,7 +1106,7 @@ static struct aml_i2c_platform aml_i2c_plat1 = {
     .wait_ack_interval  = 5,
     .wait_read_interval = 5,
     .wait_xfer_interval = 5,
-    .master_no      = 1,
+//    .master_no      = 1,
     .use_pio            = 0,
     .master_i2c_speed   = AML_I2C_SPPED_300K,
 
@@ -1123,7 +1123,7 @@ static struct aml_i2c_platform aml_i2c_plat2 = {
     .wait_ack_interval  = 5,
     .wait_read_interval = 5,
     .wait_xfer_interval = 5,
-    .master_no      = 2,
+//    .master_no      = 2,
     .use_pio            = 0,
     .master_i2c_speed   = AML_I2C_SPPED_300K,
 
@@ -1135,29 +1135,6 @@ static struct aml_i2c_platform aml_i2c_plat2 = {
     }
 };
 
-//static struct resource aml_i2c_resource[] = {
-//    [0] = {/*master a*/
-//        .start =    MESON_I2C_MASTER_A_START,
-//        .end   =    MESON_I2C_MASTER_A_END,
-//        .flags =    IORESOURCE_MEM,
-//    },
-//    [1] = {/*master b*/
-//        .start =    MESON_I2C_MASTER_B_START,
-//        .end   =    MESON_I2C_MASTER_B_END,
-//        .flags =    IORESOURCE_MEM,
-//    },
-//    [2] = {/*master ao*/
-//        .start =    MESON_I2C_MASTER_AO_START,
-//        .end   =    MESON_I2C_MASTER_AO_END,
-//        .flags =    IORESOURCE_MEM,
-//    },
-//    [2] = {/*slave*/
-//        .start =    MESON_I2C_SLAVE_START,
-//        .end   =    MESON_I2C_SLAVE_END,
-//        .flags =    IORESOURCE_MEM,
-//    },
-//};
-
 static struct resource aml_i2c_resource[] = {
 	[0]= {
 		.start =    MESON_I2C_MASTER_A_START,
@@ -1165,10 +1142,11 @@ static struct resource aml_i2c_resource[] = {
 		.flags =    IORESOURCE_MEM,
 	}
 };
+
 static struct resource aml_i2c_resource1[] = {
 	[0]= {
-		.start =    MESON_I2C_MASTER_B_START,
-		.end   =    MESON_I2C_MASTER_B_END,
+		.start =    MESON_I2C_MASTER_A_START,
+		.end   =    MESON_I2C_MASTER_A_END,
 		.flags =    IORESOURCE_MEM,
   }
 };

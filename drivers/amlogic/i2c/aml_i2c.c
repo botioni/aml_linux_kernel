@@ -237,6 +237,7 @@ static void aml_i2c_stop(struct aml_i2c *i2c)
 	i2c->token_tag[0]=TOKEN_STOP;
 	aml_i2c_set_token_list(i2c);
 	aml_i2c_start_token_xfer(i2c);
+	aml_i2c_clr_pinmux(i2c);
 }
 
 static int aml_i2c_read(struct aml_i2c *i2c, unsigned char *buf, 
@@ -522,6 +523,7 @@ static ssize_t show_i2c_info(struct class *class,
 	printk( "scl_bit:  0x%x\n", i2c->master_pinmux.scl_bit);
 	printk( "sda_reg:  0x%x\n", i2c->master_pinmux.sda_reg);
 	printk( "sda_bit:  0x%x\n", i2c->master_pinmux.sda_bit);
+	printk("scl_pinmux=%x, sda_pinmux=%x\n", readl(i2c->master_pinmux.scl_reg), readl(i2c->master_pinmux.sda_reg));
 
 	return 0;
 }
@@ -642,7 +644,7 @@ static int aml_i2c_probe(struct platform_device *pdev)
 	i2c->master_no = plat->master_no;
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	i2c->master_regs = (struct aml_i2c_reg_master __iomem*)(res->start);
-	printk("master_no = %d, resource = %x\n", i2c->master_no, res);
+	printk("master_no = %d, resource = %x, maseter_regs=\n", i2c->master_no, res, i2c->master_regs);
 
 	BUG_ON(!i2c->master_regs);
 	BUG_ON(!plat);
