@@ -200,6 +200,8 @@ void vf_local_init(void)
 {
     int i;
 
+	set_property_change(0); 
+	still_picture_notify=0;
     vfq_init(&q_free, VF_POOL_SIZE+1, &vfp_pool_free[0]);
     vfq_init(&q_ready, VF_POOL_SIZE+1, &vfp_pool_ready[0]);
 
@@ -726,7 +728,7 @@ int ppmgr_buffer_init(void)
 //    canvas_width = (ppmgr_device.disp_width +0xff) & ~0xff;
 //    canvas_height = (ppmgr_device.disp_height+0xff) & ~0xff;
     canvas_width = (ppmgr_device.disp_width + 0x1f) & ~0x1f;
-    canvas_height = ppmgr_device.disp_height  ; 
+    canvas_height =( ppmgr_device.disp_height + 0x1f) & ~0x1f;
     decbuf_size = canvas_width * canvas_height * 3;
 
     if(decbuf_size*(VF_POOL_SIZE + ASS_POOL_SIZE )>buf_size) {

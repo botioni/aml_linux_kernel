@@ -41,7 +41,7 @@
 //cpt CLAA070MA22BW panel
 #define LCD_WIDTH       800 
 #define LCD_HEIGHT      600
-#define MAX_WIDTH       1000
+#define MAX_WIDTH       1010
 #define MAX_HEIGHT      660
 #define VIDEO_ON_LINE   22
 
@@ -57,9 +57,9 @@ static tcon_conf_t tcon_config =
     .max_width  = MAX_WIDTH,
     .max_height = MAX_HEIGHT,
     .video_on_line = VIDEO_ON_LINE,
-    .pll_ctrl = 0x063c,   //40MHz
+    .pll_ctrl = 0x063c,
     .clk_ctrl = 0x1fc1,
-    .gamma_cntl_port = (0 << LCD_GAMMA_EN) | (0 << LCD_GAMMA_RVS_OUT) | (1 << LCD_GAMMA_VCOM_POL),
+    .gamma_cntl_port = (1 << LCD_GAMMA_EN) | (0 << LCD_GAMMA_RVS_OUT) | (1 << LCD_GAMMA_VCOM_POL),
     .gamma_vcom_hswitch_addr = 0,
     .rgb_base_addr = 0xf0,
     .rgb_coeff_addr = 0x74a,
@@ -73,8 +73,8 @@ static tcon_conf_t tcon_config =
     .sth2_he_addr = 0,
     .sth2_vs_addr = 0,
     .sth2_ve_addr = 0,
-    .oeh_hs_addr = 65,
-    .oeh_he_addr = 65+LCD_WIDTH,
+    .oeh_hs_addr = 67,
+    .oeh_he_addr = 67+LCD_WIDTH,
     .oeh_vs_addr = VIDEO_ON_LINE,
     .oeh_ve_addr = VIDEO_ON_LINE+LCD_HEIGHT-1,
     .vcom_hswitch_addr = 0,
@@ -114,13 +114,14 @@ static tcon_conf_t tcon_config =
     .flags = 0,
     .screen_width = 4,
     .screen_height = 3,
-    .sync_duration_num = 606,
-    .sync_duration_den = 10,
+    .sync_duration_num = 60,
+    .sync_duration_den = 1,
     .power_on=t13_power_on,
     .power_off=t13_power_off,
     .backlight_on = power_on_backlight,
     .backlight_off = power_off_backlight,
 };
+
 static struct resource tcon_resources[] = {
     [0] = {
         .start = (ulong)&tcon_config,
@@ -200,11 +201,16 @@ static void power_off_lcd(void)
 static void set_tcon_pinmux(void)
 {
     /* TCON control pins pinmux */
-    /* GPIOD_7 -> LCD_Clk(CPH1_B), , GPIOD_4 -> TCON_OEH_B, */
-    set_mio_mux(1, ((1<<14)|(1<<17)));
-    set_mio_mux(0,(0x3f<<0));   //For 8bits
-
+    clear_mio_mux(1, 0x0f<<11); // disable cph50(11),cph1(12),cph2(13),cph3(14)
+#ifdef USE_CLKO
+    set_mio_mux(1, 1<<21); // enable clko
+#else
+    set_mio_mux(1, 1<<14); // enable cph1
+#endif
+    set_mio_mux(1, 1<<17); // enable oeh
+    set_mio_mux(0, 0x3f<<0);   //For 8bits RGB
 }
+
 static void t13_power_on(void)
 {
     video_dac_disable();
@@ -213,6 +219,7 @@ static void t13_power_on(void)
     printk("\n\nt13_power_on...\n\n");
     power_on_backlight();
 }
+
 static void t13_power_off(void)
 {
     	power_off_lcd();

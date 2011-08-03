@@ -32,7 +32,10 @@
 #include <linux/interrupt.h>
 #include <linux/logo/logo.h>
 #include <mach/am_regs.h>
+#include <mach/clock.h>
 #include <asm/fiq.h>
+
+extern unsigned int clk_util_clk_msr(unsigned int clk_mux);
 
 #define FIQ_VSYNC
 
@@ -85,6 +88,7 @@ static void set_lcd_gamma_tableB(u16 *data, u32 rgb_mask)
 
 static inline void _init_tcon(tcon_conf_t *pConf)
 {
+    printk("setup tcon\n");
     set_lcd_gamma_table(pConf->GammaTableR, H_SEL_R);
     set_lcd_gamma_table(pConf->GammaTableG, H_SEL_G);
     set_lcd_gamma_table(pConf->GammaTableB, H_SEL_B);
@@ -156,13 +160,76 @@ static inline void _init_tcon(tcon_conf_t *pConf)
     WRITE_MPEG_REG(DUAL_PORT_CNTL_ADDR, pConf->dual_port_cntl_addr);
 
     CLEAR_MPEG_REG_MASK(VPP_MISC, VPP_OUT_SATURATE);
+
+    printk("RGB_BASE = %x %x\n", READ_MPEG_REG(RGB_BASE_ADDR),    pConf->rgb_base_addr);
+    printk("RGB_COEFF = %x %x\n", READ_MPEG_REG(RGB_COEFF_ADDR),  pConf->rgb_coeff_addr);
+    printk("POL_CNTL = %x %x\n", READ_MPEG_REG(POL_CNTL_ADDR),    pConf->pol_cntl_addr);
+    printk("DITH_CNTL = %x %x\n", READ_MPEG_REG(DITH_CNTL_ADDR),  pConf->dith_cntl_addr);
+
+    printk("STH1_HS = %x %x\n", READ_MPEG_REG(STH1_HS_ADDR),    pConf->sth1_hs_addr);
+    printk("STH1_HE = %x %x\n", READ_MPEG_REG(STH1_HE_ADDR),    pConf->sth1_he_addr);
+    printk("STH1_VS = %x %x\n", READ_MPEG_REG(STH1_VS_ADDR),    pConf->sth1_vs_addr);
+    printk("STH1_VE = %x %x\n", READ_MPEG_REG(STH1_VE_ADDR),     pConf->sth1_ve_addr);
+
+    printk("STH2_HS = %x %x\n", READ_MPEG_REG(STH2_HS_ADDR),    pConf->sth2_hs_addr);
+    printk("STH2_HE = %x %x\n", READ_MPEG_REG(STH2_HE_ADDR),    pConf->sth2_he_addr);
+    printk("STH2_VS = %x %x\n", READ_MPEG_REG(STH2_VS_ADDR),    pConf->sth2_vs_addr);
+    printk("STH2_VE = %x %x\n", READ_MPEG_REG(STH2_VE_ADDR),    pConf->sth2_ve_addr);
+
+    printk("OEH_HS = %x %x\n", READ_MPEG_REG(OEH_HS_ADDR),     pConf->oeh_hs_addr);
+    printk("OEH_HS = %x %x\n", READ_MPEG_REG(OEH_HE_ADDR),     pConf->oeh_he_addr);
+    printk("OEH_HS = %x %x\n", READ_MPEG_REG(OEH_VS_ADDR),     pConf->oeh_vs_addr);
+    printk("OEH_HS = %x %x\n", READ_MPEG_REG(OEH_VE_ADDR),     pConf->oeh_ve_addr);
+
+    printk("COM_HSWITCH = %x %x\n", READ_MPEG_REG(VCOM_HSWITCH_ADDR), pConf->vcom_hswitch_addr);
+    printk("VCOM_VS = %x %x\n", READ_MPEG_REG(VCOM_VS_ADDR),    pConf->vcom_vs_addr);
+    printk("VCOM_VE = %x %x\n", READ_MPEG_REG(VCOM_VE_ADDR),    pConf->vcom_ve_addr);
+
+    printk("CPV1_HS = %x %x\n", READ_MPEG_REG(CPV1_HS_ADDR),    pConf->cpv1_hs_addr);
+    printk("CPV1_HE = %x %x\n", READ_MPEG_REG(CPV1_HE_ADDR),    pConf->cpv1_he_addr);
+    printk("CPV1_VS = %x %x\n", READ_MPEG_REG(CPV1_VS_ADDR),    pConf->cpv1_vs_addr);
+    printk("CPV1_VE = %x %x\n", READ_MPEG_REG(CPV1_VE_ADDR),    pConf->cpv1_ve_addr);
+
+    printk("CPV2_HS = %x %x\n", READ_MPEG_REG(CPV2_HS_ADDR),    pConf->cpv2_hs_addr);
+    printk("CPV2_HE = %x %x\n", READ_MPEG_REG(CPV2_HE_ADDR),    pConf->cpv2_he_addr);
+    printk("CPV2_VS = %x %x\n", READ_MPEG_REG(CPV2_VS_ADDR),    pConf->cpv2_vs_addr);
+    printk("CPV2_VE = %x %x\n", READ_MPEG_REG(CPV2_VE_ADDR),    pConf->cpv2_ve_addr);
+
+    printk("STV1_HS = %x %x\n", READ_MPEG_REG(STV1_HS_ADDR),    pConf->stv1_hs_addr);
+    printk("STV1_HS = %x %x\n", READ_MPEG_REG(STV1_HE_ADDR),    pConf->stv1_he_addr);
+    printk("STV1_HS = %x %x\n", READ_MPEG_REG(STV1_VS_ADDR),    pConf->stv1_vs_addr);
+    printk("STV1_HS = %x %x\n", READ_MPEG_REG(STV1_VE_ADDR),    pConf->stv1_ve_addr);
+
+    printk("STV1_HS = %x %x\n", READ_MPEG_REG(STV2_HS_ADDR),    pConf->stv2_hs_addr);
+    printk("STV1_HE = %x %x\n", READ_MPEG_REG(STV2_HE_ADDR),    pConf->stv2_he_addr);
+    printk("STV1_VS = %x %x\n", READ_MPEG_REG(STV2_VS_ADDR),    pConf->stv2_vs_addr);
+    printk("STV1_VE = %x %x\n", READ_MPEG_REG(STV2_VE_ADDR),    pConf->stv2_ve_addr);
+
+    printk("OEV1_HS = %x %x\n", READ_MPEG_REG(OEV1_HS_ADDR),    pConf->oev1_hs_addr);
+    printk("OEV1_HE = %x %x\n", READ_MPEG_REG(OEV1_HE_ADDR),    pConf->oev1_he_addr);
+    printk("OEV1_VS = %x %x\n", READ_MPEG_REG(OEV1_VS_ADDR),    pConf->oev1_vs_addr);
+    printk("OEV1_VE = %x %x\n", READ_MPEG_REG(OEV1_VE_ADDR),    pConf->oev1_ve_addr);
+
+    printk("OEV2_HS = %x %x\n", READ_MPEG_REG(OEV2_HS_ADDR),    pConf->oev2_hs_addr);
+    printk("OEV2_HE = %x %x\n", READ_MPEG_REG(OEV2_HE_ADDR),    pConf->oev2_he_addr);
+    printk("OEV2_VS = %x %x\n", READ_MPEG_REG(OEV2_VS_ADDR),    pConf->oev2_vs_addr);
+    printk("OEV2_VE = %x %x\n", READ_MPEG_REG(OEV2_VE_ADDR),    pConf->oev2_ve_addr);
+
+    printk("OEV3_HS = %x %x\n", READ_MPEG_REG(OEV3_HS_ADDR),    pConf->oev3_hs_addr);
+    printk("OEV3_HE = %x %x\n", READ_MPEG_REG(OEV3_HE_ADDR),    pConf->oev3_he_addr);
+    printk("OEV3_VS = %x %x\n", READ_MPEG_REG(OEV3_VS_ADDR),    pConf->oev3_vs_addr);
+    printk("OEV3_VE = %x %x\n", READ_MPEG_REG(OEV3_VE_ADDR),    pConf->oev3_ve_addr);
+
+    printk("INV_CNT = %x %x\n", READ_MPEG_REG(INV_CNT_ADDR),    pConf->inv_cnt_addr);
+    printk("TCON_MISC_SEL_ADDR = %x %x\n", READ_MPEG_REG(TCON_MISC_SEL_ADDR), 	pConf->tcon_misc_sel_addr);
+    printk("DUAL_PORT_CNTL = %x %x\n", READ_MPEG_REG(DUAL_PORT_CNTL_ADDR), pConf->dual_port_cntl_addr);
 }
 
 static inline void _init_tcon_b(tcon_conf_t *pConf)
 {
-    //set_lcd_gamma_tableB(pConf->GammaTableR, H_SEL_R);
-    //set_lcd_gamma_tableB(pConf->GammaTableG, H_SEL_G);
-    //set_lcd_gamma_tableB(pConf->GammaTableB, H_SEL_B);
+    set_lcd_gamma_tableB(pConf->GammaTableR, H_SEL_R);
+    set_lcd_gamma_tableB(pConf->GammaTableG, H_SEL_G);
+    set_lcd_gamma_tableB(pConf->GammaTableB, H_SEL_B);
 
     WRITE_MPEG_REG(L_GAMMA_CNTL_PORT, pConf->gamma_cntl_port);
     WRITE_MPEG_REG(L_GAMMA_VCOM_HSWITCH_ADDR, pConf->gamma_vcom_hswitch_addr);
@@ -233,58 +300,133 @@ static inline void _init_tcon_b(tcon_conf_t *pConf)
     CLEAR_MPEG_REG_MASK(VPP_MISC, VPP_OUT_SATURATE);
 }
 
+static void vclk_set_lcd( int pll_sel, int pll_div_sel, int vclk_sel, 
+                   unsigned long pll_reg, unsigned long vid_div_reg, unsigned int xd)
+{
+    printk("setup lcd clk\n");
+    vid_div_reg |= (1 << 16) ; // turn clock gate on
+    vid_div_reg |= (pll_sel << 15); // vid_div_clk_sel
+    
+   
+    if(vclk_sel) {
+      WRITE_MPEG_REG( HHI_VIID_CLK_CNTL, READ_MPEG_REG(HHI_VIID_CLK_CNTL) & ~(1 << 19) );     //disable clk_div0 
+    }
+    else {
+      WRITE_MPEG_REG( HHI_VID_CLK_CNTL, READ_MPEG_REG(HHI_VID_CLK_CNTL) & ~(1 << 19) );     //disable clk_div0 
+      WRITE_MPEG_REG( HHI_VID_CLK_CNTL, READ_MPEG_REG(HHI_VID_CLK_CNTL) & ~(1 << 20) );     //disable clk_div1 
+    } 
+
+    // delay 2uS to allow the sync mux to switch over
+    WRITE_MPEG_REG( ISA_TIMERE, 0); while( READ_MPEG_REG(ISA_TIMERE) < 2 ) {}    
+
+
+    if(pll_sel){
+        WRITE_MPEG_REG( HHI_VIID_PLL_CNTL, pll_reg|(1<<30) );
+        WRITE_MPEG_REG( HHI_VIID_PLL_CNTL2, 0x65e31ff );
+        WRITE_MPEG_REG( HHI_VIID_PLL_CNTL3, 0x9649a941 );
+        WRITE_MPEG_REG( HHI_VIID_PLL_CNTL, pll_reg );
+    }    
+    else{
+        WRITE_MPEG_REG( HHI_VID_PLL_CNTL, pll_reg|(1<<30) );
+        WRITE_MPEG_REG( HHI_VID_PLL_CNTL2, 0x65e31ff );
+        WRITE_MPEG_REG( HHI_VID_PLL_CNTL3, 0x9649a941 );
+        WRITE_MPEG_REG( HHI_VID_PLL_CNTL, pll_reg );
+    }
+    if(pll_div_sel ) WRITE_MPEG_REG( HHI_VIID_DIVIDER_CNTL,   vid_div_reg);
+    else WRITE_MPEG_REG( HHI_VID_DIVIDER_CNTL,   vid_div_reg);
+
+    if(vclk_sel) WRITE_MPEG_REG( HHI_VIID_CLK_DIV, (READ_MPEG_REG(HHI_VIID_CLK_DIV) & ~(0xFF << 0)) | (xd-1) );   // setup the XD divider value
+    else WRITE_MPEG_REG( HHI_VID_CLK_DIV, (READ_MPEG_REG(HHI_VID_CLK_DIV) & ~(0xFF << 0)) | (xd-1) );   // setup the XD divider value
+
+    // delay 5uS
+    WRITE_MPEG_REG( ISA_TIMERE, 0); while( READ_MPEG_REG(ISA_TIMERE) < 5 ) {}    
+
+    if(vclk_sel) {
+      if(pll_div_sel) WRITE_MPEG_REG_BITS (HHI_VIID_CLK_CNTL, 4, 16, 3);  // Bit[18:16] - v2_cntl_clk_in_sel
+      else WRITE_MPEG_REG_BITS (HHI_VIID_CLK_CNTL, 0, 16, 3);  // Bit[18:16] - cntl_clk_in_sel
+      WRITE_MPEG_REG( HHI_VIID_CLK_CNTL, READ_MPEG_REG(HHI_VIID_CLK_CNTL) |  (1 << 19) );     //enable clk_div0 
+    }
+    else {
+      if(pll_div_sel) WRITE_MPEG_REG_BITS (HHI_VID_CLK_CNTL, 4, 16, 3);  // Bit[18:16] - v2_cntl_clk_in_sel
+      else WRITE_MPEG_REG_BITS (HHI_VID_CLK_CNTL, 0, 16, 3);  // Bit[18:16] - cntl_clk_in_sel
+      WRITE_MPEG_REG( HHI_VID_CLK_CNTL, READ_MPEG_REG(HHI_VID_CLK_CNTL) |  (1 << 19) );     //enable clk_div0 
+      WRITE_MPEG_REG( HHI_VID_CLK_CNTL, READ_MPEG_REG(HHI_VID_CLK_CNTL) |  (1 << 20) );     //enable clk_div1 
+    }
+    // delay 2uS
+
+    WRITE_MPEG_REG( ISA_TIMERE, 0); while( READ_MPEG_REG(ISA_TIMERE) < 2 ) {}    
+
+    // set tcon_clko setting
+    WRITE_MPEG_REG_BITS (HHI_VID_CLK_CNTL, 
+                    (
+                    (0 << 11) |     //clk_div1_sel
+                    (1 << 10) |     //clk_inv
+                    (0 << 9)  |     //neg_edge_sel
+                    (0 << 5)  |     //tcon high_thresh
+                    (0 << 1)  |     //tcon low_thresh
+                    (1 << 0)        //cntl_clk_en1
+                    ), 
+                    20, 12);
+
+    if(vclk_sel) {
+      WRITE_MPEG_REG_BITS (HHI_VIID_CLK_CNTL, 
+                   (1<<0),  // Enable cntl_div1_en
+                   0, 1    // cntl_div1_en
+                   );
+      WRITE_MPEG_REG_BITS (HHI_VIID_CLK_CNTL, 1, 15, 1);  //soft reset
+      WRITE_MPEG_REG_BITS (HHI_VIID_CLK_CNTL, 0, 15, 1);  //release soft reset
+    }
+    else {
+      WRITE_MPEG_REG_BITS (HHI_VID_CLK_CNTL, 
+                   (1<<0),  // Enable cntl_div1_en
+                   0, 1    // cntl_div1_en
+                   );
+      WRITE_MPEG_REG_BITS (HHI_VID_CLK_CNTL, 1, 15, 1);  //soft reset
+      WRITE_MPEG_REG_BITS (HHI_VID_CLK_CNTL, 0, 15, 1);  //release soft reset
+    }
+    
+    printk("video pl1 clk = %d\n", clk_util_clk_msr(VID_PLL_CLK));
+    printk("video pll2 clk = %d\n", clk_util_clk_msr(VID2_PLL_CLK));
+    printk("cts_enct clk = %d\n", clk_util_clk_msr(CTS_ENCT_CLK));
+}
+
+static void venc_set_lcd(tcon_conf_t *pConf, int havon_begin)
+{
+    printk("setup lcd tvencoder\n");
+    WRITE_MPEG_REG(VPU_VIU_VENC_MUX_CTRL,
+       (3<<0) |    // viu1 select enct
+       (3<<2)      // viu2 select enct
+    );
+    WRITE_MPEG_REG(ENCT_VIDEO_MODE,        0);
+    WRITE_MPEG_REG(ENCT_VIDEO_MODE_ADV,    0x0418);	
+
+    WRITE_MPEG_REG(ENCT_VIDEO_MAX_PXCNT,    pConf->max_width - 1);
+    WRITE_MPEG_REG(ENCT_VIDEO_MAX_LNCNT,    pConf->max_height - 1);
+
+    WRITE_MPEG_REG(ENCT_VIDEO_HAVON_BEGIN,  havon_begin);
+    WRITE_MPEG_REG(ENCT_VIDEO_HAVON_END,    pConf->width - 1 + havon_begin );
+    WRITE_MPEG_REG(ENCT_VIDEO_VAVON_BLINE,  pConf->video_on_line);
+    WRITE_MPEG_REG(ENCT_VIDEO_VAVON_ELINE,  pConf->height + 3  + pConf->video_on_line);
+
+    WRITE_MPEG_REG(ENCT_VIDEO_HSO_BEGIN,    15);
+    WRITE_MPEG_REG(ENCT_VIDEO_HSO_END,      31);
+    WRITE_MPEG_REG(ENCT_VIDEO_VSO_BEGIN,    15);
+    WRITE_MPEG_REG(ENCT_VIDEO_VSO_END,      31);
+    WRITE_MPEG_REG(ENCT_VIDEO_VSO_BLINE,    0);
+    WRITE_MPEG_REG(ENCT_VIDEO_VSO_ELINE,    2);
+
+    // bypass filter
+    WRITE_MPEG_REG(ENCT_VIDEO_FILT_CTRL,    0x1000);
+    
+    // enable enct
+    WRITE_MPEG_REG(ENCT_VIDEO_EN,           1);
+
+}
+
 static inline void _init_tvenc(tcon_conf_t *pConf)
 {
-    WRITE_MPEG_REG(ENCP_VIDEO_FILT_CTRL,    0x1000);
-    WRITE_MPEG_REG(VENC_DVI_SETTING,        0x11);
-    /*
-    WRITE_MPEG_REG(HHI_VID_PLL_CNTL, pConf->pll_ctrl);
-    WRITE_MPEG_REG(HHI_VID_CLK_CNTL, pConf->clk_ctrl);
-    WRITE_MPEG_REG(HHI_VID_CLK_DIV, (pConf->clk_ctrl)&0xf);
-    WRITE_MPEG_REG(HHI_MPEG_CLK_CNTL, READ_MPEG_REG(HHI_MPEG_CLK_CNTL)|(0<<11));  //[11]=1:aud clk mux to cph 
-    */
-    
-    WRITE_MPEG_REG(HHI_VID_PLL_CNTL, 0x002a0428);
-	WRITE_MPEG_REG(HHI_VID_DIVIDER_CNTL, 0x10853);
-	WRITE_MPEG_REG(HHI_VIID_DIVIDER_CNTL, 0x10853);
-    WRITE_MPEG_REG(HHI_VID_CLK_DIV, 0x0);
-	WRITE_MPEG_REG(HHI_VID_CLK_CNTL, (3<<19)|(0<<16)|(0x1f<<0));
-	//WRITE_MPEG_REG(HHI_MPEG_CLK_CNTL, READ_MPEG_REG(HHI_MPEG_CLK_CNTL)|(0<<11));  //[11]=1:aud clk mux to cph
-    
-    WRITE_MPEG_REG(ENCP_VIDEO_MODE,         0x0040);
-    WRITE_MPEG_REG(ENCP_VIDEO_MODE_ADV,     0x418);
-
-    WRITE_MPEG_REG(ENCP_VIDEO_YFP1_HTIME,   64);
-    WRITE_MPEG_REG(ENCP_VIDEO_YFP2_HTIME,   1056);
-    WRITE_MPEG_REG(ENCP_VIDEO_MAX_PXCNT,    pConf->max_width - 1);
-    WRITE_MPEG_REG(ENCP_VIDEO_MAX_LNCNT,    pConf->max_height - 1);
-
-    WRITE_MPEG_REG(ENCP_VIDEO_HSPULS_BEGIN, 3245);
-    WRITE_MPEG_REG(ENCP_VIDEO_HSPULS_END,   79);
-    WRITE_MPEG_REG(ENCP_VIDEO_HSPULS_SWITCH, 80);
-    WRITE_MPEG_REG(ENCP_VIDEO_VSPULS_BEGIN, 0);
-    WRITE_MPEG_REG(ENCP_VIDEO_VSPULS_END,   3079);
-    WRITE_MPEG_REG(ENCP_VIDEO_VSPULS_BLINE, 0);
-    WRITE_MPEG_REG(ENCP_VIDEO_VSPULS_ELINE, 4);
-
-    WRITE_MPEG_REG(ENCP_VIDEO_HAVON_BEGIN,  48);
-    WRITE_MPEG_REG(ENCP_VIDEO_HAVON_END,    pConf->width - 1 + 48 );
-    WRITE_MPEG_REG(ENCP_VIDEO_VAVON_BLINE,  pConf->video_on_line);
-    WRITE_MPEG_REG(ENCP_VIDEO_VAVON_ELINE,  pConf->height + 3  + pConf->video_on_line);
-
-    WRITE_MPEG_REG(ENCP_VIDEO_HSO_BEGIN,    15);
-    WRITE_MPEG_REG(ENCP_VIDEO_HSO_END,      31);
-    WRITE_MPEG_REG(ENCP_VIDEO_VSO_BEGIN,    15);
-    WRITE_MPEG_REG(ENCP_VIDEO_VSO_END,      31);
-
-    WRITE_MPEG_REG(ENCP_VIDEO_VSO_BLINE,    0);
-    WRITE_MPEG_REG(ENCP_VIDEO_VSO_ELINE,    2);
-    WRITE_MPEG_REG(ENCP_VIDEO_EN,         1);
-
-    WRITE_MPEG_REG(VENC_VIDEO_PROG_MODE,    0x100);
-    WRITE_MPEG_REG(ENCP_VIDEO_EN, 1);
-
-//    WRITE_MPEG_REG(VPP_POSTBLEND_VD1_H_START_END,		pConf->width);
+    vclk_set_lcd(1, 0, 0, 0x1021e, 0x0018803, 9); // TODO change to use pConf
+    venc_set_lcd(pConf, 48);
 }
 
 static inline void _enable_vsync_interrupt(void)
@@ -343,8 +485,8 @@ static void _lcd_module_enable(void)
     BUG_ON(pDev==NULL);
     pDev->conf.power_on?pDev->conf.power_on():0;
     _init_tvenc(&pDev->conf);
-    	//_init_tcon(&pDev->conf);
-    	_init_tcon_b(&pDev->conf);
+    	_init_tcon(&pDev->conf);
+    	//_init_tcon_b(&pDev->conf);
     	_enable_vsync_interrupt();
 }
 
