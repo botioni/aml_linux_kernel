@@ -183,8 +183,8 @@ static void keyinput_tasklet(unsigned long data)
 
 static irqreturn_t am_key_interrupt(int irq, void *dev)
 {
-    KeyInput->status = (READ_AOBUS_REG(RTC_ADDR1)>>2)&1;
-    WRITE_AOBUS_REG(RTC_ADDR1, (READ_AOBUS_REG(RTC_ADDR1) | (0x0000c000)));
+    KeyInput->status = (READ_AOBUS_REG(AO_RTC_ADDR1)>>2)&1;
+    WRITE_AOBUS_REG(AO_RTC_ADDR1, (READ_AOBUS_REG(AO_RTC_ADDR1) | (0x0000c000)));
 //    if (!KeyInput->suspend)
         tasklet_schedule(&ki_tasklet);
 //    else
@@ -280,7 +280,7 @@ static int __init key_input_probe(struct platform_device *pdev)
         tasklet_enable(&ki_tasklet);
         ki_tasklet.data = (unsigned long)KeyInput;
         request_irq(INT_RTC, (irq_handler_t) am_key_interrupt, IRQF_SHARED, "power key", (void*)am_key_interrupt);
-        WRITE_AOBUS_REG(RTC_ADDR0, (READ_AOBUS_REG(RTC_ADDR0) | (0x0000c000)));
+        WRITE_AOBUS_REG(AO_RTC_ADDR0, (READ_AOBUS_REG(AO_RTC_ADDR0) | (0x0000c000)));
     //    enable_irq(INT_RTC);
      }
 //#endif

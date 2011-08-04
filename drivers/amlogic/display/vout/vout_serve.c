@@ -117,6 +117,8 @@ static  void  read_reg(char *para)
 		    amlog_level(LOG_LEVEL_HIGH,"[0x%x] : 0x%x\r\n", APB_REG_ADDR(reg.addr), READ_APB_REG(reg.addr));
 	}else if (((*para) == 'h') || ((*para) == 'H')) {
 	    amlog_level(LOG_LEVEL_HIGH,"[0x%x] : 0x%x\r\n", AHB_REG_ADDR(reg.addr), READ_AHB_REG(reg.addr));
+	}else if (((*para) == 'a') || ((*para) == 'A')) {
+	    amlog_level(LOG_LEVEL_HIGH,"[0x%x] : 0x%x\r\n", AOBUS_REG_ADDR(reg.addr), READ_AOBUS_REG(reg.addr));
 	}
 }
 
@@ -140,6 +142,10 @@ static  void  write_reg(char *para)
 	else if (((*para) == 'h') || ((*para) == 'H')) {
 		WRITE_AHB_REG(reg.addr,reg.value);
 		amlog_level(LOG_LEVEL_HIGH,"[0x%x] = 0x%x 0x%x\r\n", AHB_REG_ADDR(reg.addr), reg.value, READ_AHB_REG(reg.addr));
+	}	
+	else if (((*para) == 'a') || ((*para) == 'A')) {
+		WRITE_AOBUS_REG(reg.addr,reg.value);
+		amlog_level(LOG_LEVEL_HIGH,"[0x%x] = 0x%x 0x%x\r\n", AOBUS_REG_ADDR(reg.addr), reg.value, READ_AOBUS_REG(reg.addr));
 	}	
 }
 

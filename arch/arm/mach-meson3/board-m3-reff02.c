@@ -225,14 +225,14 @@ int _key_code_list[] = {KEY_POWER};
 
 static inline int key_input_init_func(void)
 {
-    WRITE_CBUS_REG(0x21d0/*RTC_ADDR0*/, (READ_CBUS_REG(0x21d0/*RTC_ADDR0*/) &~(1<<11)));
-    WRITE_CBUS_REG(0x21d1/*RTC_ADDR0*/, (READ_CBUS_REG(0x21d1/*RTC_ADDR0*/) &~(1<<3)));
+    WRITE_AOBUS_REG(RTC_ADDR0, (READ_AOBUS_REG(RTC_ADDR0) &~(1<<11)));
+    WRITE_AOBUS_REG(RTC_ADDR1, (READ_AOBUS_REG(RTC_ADDR1) &~(1<<3)));
     return 0;
 }
 static inline int key_scan(int *key_state_list)
 {
     int ret = 0;
-    key_state_list[0] = ((READ_CBUS_REG(0x21d1/*RTC_ADDR1*/) >> 2) & 1) ? 0 : 1;
+    key_state_list[0] = ((READ_AOBUS_REG(RTC_ADDR1) >> 2) & 1) ? 0 : 1;
     return ret;
 }
 
