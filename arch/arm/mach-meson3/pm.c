@@ -43,7 +43,7 @@ static int early_suspend_flag = 0;
 #define OFF 0
 
 #include "sleep.h"
-#define EARLY_SUSPEND_USE_XTAL
+//#define EARLY_SUSPEND_USE_XTAL
 
 static void (*meson_sram_suspend)(struct meson_pm_config *);
 static struct meson_pm_config *pdata;
@@ -468,16 +468,13 @@ static char clks_name[CLK_COUNT][32] = {
 };
 
 #ifdef EARLY_SUSPEND_USE_XTAL
-#define EARLY_CLK_COUNT 6
+#define EARLY_CLK_COUNT 3
 #else
-#define EARLY_CLK_COUNT 5
+#define EARLY_CLK_COUNT 2
 #endif
 static char early_clk_flag[EARLY_CLK_COUNT];
 static unsigned early_clks[EARLY_CLK_COUNT] = {
-    HHI_DEMOD_CLK_CNTL,
-    HHI_SATA_CLK_CNTL,
     HHI_ETH_CLK_CNTL,
-    HHI_WIFI_CLK_CNTL,
     HHI_VID_CLK_CNTL,
 #ifdef EARLY_SUSPEND_USE_XTAL
     HHI_MPEG_CLK_CNTL,
@@ -485,10 +482,7 @@ static unsigned early_clks[EARLY_CLK_COUNT] = {
 };
 
 static char early_clks_name[EARLY_CLK_COUNT][32] = {
-    "HHI_DEMOD_CLK_CNTL",
-    "HHI_SATA_CLK_CNTL",
     "HHI_ETH_CLK_CNTL",
-    "HHI_WIFI_CLK_CNTL",
     "HHI_VID_CLK_CNTL",
 #ifdef EARLY_SUSPEND_USE_XTAL
     "HHI_MPEG_CLK_CNTL",
@@ -504,8 +498,8 @@ void clk_switch(int flag)
     if (flag) {
         for (i = CLK_COUNT - 1; i >= 0; i--) {
             if (clk_flag[i]) {
-                if ((clks[i] == HHI_VID_CLK_CNTL) || (clks[i] == HHI_WIFI_CLK_CNTL)) {
-                    SET_CBUS_REG_MASK(clks[i], 1);
+                if (clks[i] == HHI_VID_CLK_CNTL) {
+                    SET_CBUS_REG_MASK(clks[i], (1<<19)|(1<<20));
                 } else if (clks[i] == HHI_MPEG_CLK_CNTL) {
                     udelay(1000);
                     SET_CBUS_REG_MASK(clks[i], (1 << 8)); // normal
@@ -523,10 +517,10 @@ void clk_switch(int flag)
         }
     } else {
         for (i = 0; i < CLK_COUNT; i++) {
-            if ((clks[i] == HHI_VID_CLK_CNTL) || (clks[i] == HHI_WIFI_CLK_CNTL)) {
-                clk_flag[i] = READ_CBUS_REG_BITS(clks[i], 0, 1);
+            if (clks[i] == HHI_VID_CLK_CNTL) {
+                clk_flag[i] = READ_CBUS_REG_BITS(clks[i], 19, 2);
                 if (clk_flag[i]) {
-                    CLEAR_CBUS_REG_MASK(clks[i], 1);
+                    CLEAR_CBUS_REG_MASK(clks[i], (1<<19)|(1<<20));
                 }
             } else if (clks[i] == HHI_MPEG_CLK_CNTL) {
                 if (READ_CBUS_REG(clks[i]) & (1 << 8)) {
@@ -562,8 +556,8 @@ void early_clk_switch(int flag)
     if (flag) {
         for (i = EARLY_CLK_COUNT - 1; i >= 0; i--) {
             if (early_clk_flag[i]) {
-                if ((early_clks[i] == HHI_VID_CLK_CNTL) || (early_clks[i] == HHI_WIFI_CLK_CNTL)) {
-                    SET_CBUS_REG_MASK(early_clks[i], 1);
+                if (early_clks[i] == HHI_VID_CLK_CNTL) {
+                    SET_CBUS_REG_MASK(early_clks[i], (1<<19)|(1<<20));
                 } else if (early_clks[i] == HHI_MPEG_CLK_CNTL) {
                     udelay(1000);
                     SET_CBUS_REG_MASK(early_clks[i], (1 << 8)); // clk81 back to normal
@@ -586,10 +580,10 @@ void early_clk_switch(int flag)
         xtal_uart_rate_backup = sys_clk->rate;
 
         for (i = 0; i < EARLY_CLK_COUNT; i++) {
-            if ((early_clks[i] == HHI_VID_CLK_CNTL) || (early_clks[i] == HHI_WIFI_CLK_CNTL)) {
-                early_clk_flag[i] = READ_CBUS_REG_BITS(early_clks[i], 0, 1);
+            if (early_clks[i] == HHI_VID_CLK_CNTL) {
+                early_clk_flag[i] = READ_CBUS_REG_BITS(early_clks[i], 19, 2);
                 if (early_clk_flag[i]) {
-                    CLEAR_CBUS_REG_MASK(early_clks[i], 1);
+                    CLEAR_CBUS_REG_MASK(early_clks[i], (1<<19)|(1<<20));
                 }
             } else if (early_clks[i] == HHI_MPEG_CLK_CNTL) {
                 early_clk_flag[i] = 1;
