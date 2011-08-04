@@ -788,10 +788,10 @@ static struct itk_platform_data itk_pdata = {
     .init_irq = &itk_init_irq,
     .get_irq_level = &itk_get_irq_level,
     .touch_on =  touch_on,
-    .tp_max_width = 4352,
-    .tp_max_height = 3200,
-    .lcd_max_width = 1024,
-    .lcd_max_height = 768,
+    .tp_max_width = 3328,
+    .tp_max_height = 2432,
+    .lcd_max_width = 800,
+    .lcd_max_height = 600,
 };
 #endif
 
