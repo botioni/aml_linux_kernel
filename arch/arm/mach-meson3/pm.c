@@ -441,13 +441,11 @@ void early_power_gate_switch(int flag)
 }
 EXPORT_SYMBOL(early_power_gate_switch);
 
-#define CLK_COUNT 9
+#define CLK_COUNT 7
 static char clk_flag[CLK_COUNT];
 static unsigned clks[CLK_COUNT] = {
-    HHI_DEMOD_CLK_CNTL,
     HHI_SATA_CLK_CNTL,
     HHI_ETH_CLK_CNTL,
-    HHI_WIFI_CLK_CNTL,
     HHI_VID_CLK_CNTL,
     HHI_AUD_CLK_CNTL,
     HHI_MALI_CLK_CNTL,
@@ -456,10 +454,8 @@ static unsigned clks[CLK_COUNT] = {
 };
 
 static char clks_name[CLK_COUNT][32] = {
-    "HHI_DEMOD_CLK_CNTL",
     "HHI_SATA_CLK_CNTL",
     "HHI_ETH_CLK_CNTL",
-    "HHI_WIFI_CLK_CNTL",
     "HHI_VID_CLK_CNTL",
     "HHI_AUD_CLK_CNTL",
     "HHI_MALI_CLK_CNTL",
@@ -558,7 +554,9 @@ void early_clk_switch(int flag)
             if (early_clk_flag[i]) {
                 if (early_clks[i] == HHI_VID_CLK_CNTL) {
                     SET_CBUS_REG_MASK(early_clks[i], (1<<19)|(1<<20));
-                } else if (early_clks[i] == HHI_MPEG_CLK_CNTL) {
+                } 
+#ifdef EARLY_SUSPEND_USE_XTAL
+                else if (early_clks[i] == HHI_MPEG_CLK_CNTL) {
                     udelay(1000);
                     SET_CBUS_REG_MASK(early_clks[i], (1 << 8)); // clk81 back to normal
 
@@ -566,7 +564,9 @@ void early_clk_switch(int flag)
                     SET_CBUS_REG_MASK(UART0_CONTROL, (((uart_rate_backup / (115200 * 4)) - 1) & 0xfff));
                     CLEAR_CBUS_REG_MASK(UART1_CONTROL, (1 << 19) | 0xFFF);
                     SET_CBUS_REG_MASK(UART1_CONTROL, (((uart_rate_backup / (115200 * 4)) - 1) & 0xfff));
-                } else {
+                } 
+#endif
+                else {
                     SET_CBUS_REG_MASK(early_clks[i], (1 << 8));
                 }
                 printk(KERN_INFO "late clk %s(%x) on\n", early_clks_name[i], early_clks[i]);
@@ -585,7 +585,9 @@ void early_clk_switch(int flag)
                 if (early_clk_flag[i]) {
                     CLEAR_CBUS_REG_MASK(early_clks[i], (1<<19)|(1<<20));
                 }
-            } else if (early_clks[i] == HHI_MPEG_CLK_CNTL) {
+            } 
+#ifdef EARLY_SUSPEND_USE_XTAL
+            else if (early_clks[i] == HHI_MPEG_CLK_CNTL) {
                 early_clk_flag[i] = 1;
 
                 udelay(1000);
@@ -595,7 +597,9 @@ void early_clk_switch(int flag)
                 SET_CBUS_REG_MASK(UART0_CONTROL, (((xtal_uart_rate_backup / (115200 * 4)) - 1) & 0xfff));
                 CLEAR_CBUS_REG_MASK(UART1_CONTROL, (1 << 19) | 0xFFF);
                 SET_CBUS_REG_MASK(UART1_CONTROL, (((xtal_uart_rate_backup / (115200 * 4)) - 1) & 0xfff));
-            } else {
+            }
+#endif
+            else {
                 early_clk_flag[i] = READ_CBUS_REG_BITS(early_clks[i], 8, 1) ? 1 : 0;
                 if (early_clk_flag[i]) {
                     CLEAR_CBUS_REG_MASK(early_clks[i], (1 << 8));
@@ -798,7 +802,7 @@ static void meson_system_early_suspend(struct early_suspend *h)
         if (pdata->set_exgpio_early_suspend) {
             pdata->set_exgpio_early_suspend(OFF);
         }
-        early_power_gate_switch(OFF);
+//        early_power_gate_switch(OFF);
         early_clk_switch(OFF);
         early_pll_switch(OFF);
         early_suspend_flag = 1;
@@ -810,7 +814,7 @@ static void meson_system_late_resume(struct early_suspend *h)
     if (early_suspend_flag) {
         early_pll_switch(ON);
         early_clk_switch(ON);
-        early_power_gate_switch(ON);
+//        early_power_gate_switch(ON);
         early_suspend_flag = 0;
         if (pdata->set_exgpio_early_suspend) {
             pdata->set_exgpio_early_suspend(ON);
