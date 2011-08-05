@@ -1021,14 +1021,14 @@ static void set_vccx2(int power_on)
 			restore_gpio(i);
 		
         printk(KERN_INFO "set_vccx2 power up\n");
-        //set_gpio_val(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), 1);
-        //set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);
+        set_gpio_mode(GPIOA_bank_bit0_27(26), GPIOA_bit_bit0_27(26), GPIO_OUTPUT_MODE);
+        set_gpio_val(GPIOA_bank_bit0_27(26), GPIOA_bit_bit0_27(26), 0);
               
     }
     else{
         printk(KERN_INFO "set_vccx2 power down\n");        
-        //set_gpio_val(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), 0);
-        //set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);
+        set_gpio_mode(GPIOA_bank_bit0_27(26), GPIOA_bit_bit0_27(26), GPIO_OUTPUT_MODE);
+        set_gpio_val(GPIOA_bank_bit0_27(26), GPIOA_bit_bit0_27(26),     );
      
 		save_pinmux();
 		for (i=0;i<MAX_GPIO;i++)
@@ -2255,11 +2255,9 @@ static void __init power_hold(void)
     //set_gpio_mode(GPIOA_bank_bit(8), GPIOA_bit_bit0_14(8), GPIO_OUTPUT_MODE);
     
     //VCCx2 power up
-    //set_vccx2(1);   //do not call set_vccx2 here,just need to enable vccx2
     printk(KERN_INFO "set_vccx2 power up\n");
-    ///set_gpio_val(GPIOA_bank_bit0_14(6), GPIOA_bit_bit0_14(6), 1);
-   // set_gpio_mode(GPIOA_bank_bit0_14(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE); 
-            
+    set_gpio_mode(GPIOA_bank_bit0_27(26), GPIOA_bit_bit0_27(26), GPIO_OUTPUT_MODE);
+    set_gpio_val(GPIOA_bank_bit0_27(26), GPIOA_bit_bit0_27(26), 0);
 }
 
 static void __init LED_PWM_REG0_init(void)
