@@ -223,10 +223,9 @@ ilitek_i2c_read(
 #define DRIVER_NAME "itk"
 #define DRIVER_VERSION "1"
 
-#define ITK_TS_DEBUG_REPORT
-#define ITK_TS_DEBUG_READ
-#define ITK_TS_DEBUG_INFO
-//#define TS_DELAY_WORK
+//#define ITK_TS_DEBUG_REPORT
+//#define ITK_TS_DEBUG_READ
+//#define ITK_TS_DEBUG_INFO
 
 /* periodic polling delay and period */
 #define TS_POLL_DELAY   (1 * 1000000)
