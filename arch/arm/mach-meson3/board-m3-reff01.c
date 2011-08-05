@@ -570,7 +570,8 @@ static struct platform_device audiodsp_device = {
 };
 #endif
 
-static struct resource aml_m1_audio_resource[] = {
+//chang m1 to m3
+static struct resource aml_m3_audio_resource[] = {
     [0] =   {
         .start  =   0,
         .end        =   0,
@@ -578,10 +579,10 @@ static struct resource aml_m1_audio_resource[] = {
     },
 };
 static struct platform_device aml_audio = {
-    .name               = "aml_m1_audio_wm8900",
+    .name               = "aml_m3_audio",
     .id                     = -1,
-    .resource       =   aml_m1_audio_resource,
-    .num_resources  =   ARRAY_SIZE(aml_m1_audio_resource),
+    .resource       =   aml_m3_audio_resource,
+    .num_resources  =   ARRAY_SIZE(aml_m3_audio_resource),
 };
 #if defined(CONFIG_TOUCHSCREEN_ADS7846)
 #define SPI_0       0
