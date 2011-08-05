@@ -640,121 +640,22 @@ static struct platform_device audiodsp_device = {
 };
 #endif
 
-static struct resource aml_m1_audio_resource[]={
-        [0] =   {
-                .start  =   0,
-                .end        =   0,
-                .flags  =   IORESOURCE_MEM,
-        },
+static struct resource aml_m3_audio_resource[] = {
+    [0] =   {
+        .start  =   0,
+        .end        =   0,
+        .flags  =   IORESOURCE_MEM,
+    },
 };
 
-#ifdef CONFIG_SND_AML_M1_MID_WM8900
-static struct platform_device aml_audio={
-        .name               = "aml_m1_audio_wm8900",
-        .id                     = -1,
-        .resource       =   aml_m1_audio_resource,
-        .num_resources  =   ARRAY_SIZE(aml_m1_audio_resource),
-};
-
-
-
-//use LED_CS1 as hp detect pin
-#define PWM_TCNT    (600-1)
-#define PWM_MAX_VAL (420)
-int get_display_mode(void) {
-	int fd;
-	int ret = 0;
-	char mode[8];	
-	
-  fd = sys_open("/sys/class/display/mode", O_RDWR | O_NDELAY, 0);
-  if(fd >= 0) {
-  	memset(mode,0,8);
-  	sys_read(fd,mode,8);
-  	if(strncmp("panel",mode,5))
-  		ret = 1;
-  	sys_close(fd);
-  }
-
-  return ret;
-}
-int wm8900_is_hp_pluged(void)
-{
-    int level = 0;
-    int cs_no = 0;
-
-    cs_no = READ_CBUS_REG(LED_PWM_REG3);
-    if(cs_no &(1<<14))
-      level |= (1<<0);
-    // temp patch to mute speaker when hdmi output
-    if(level == 0)
-    	if(get_display_mode() != 0)	
-    			return 1;
-    return (level == 1)?(1):(0); //return 1: hp pluged, 0: hp unpluged.
-}
-
-static struct wm8900_platform_data wm8900_pdata = {
-    .is_hp_pluged = &wm8900_is_hp_pluged,
+#if defined(CONFIG_SND_AML_M3)
+static struct platform_device aml_audio = {
+    .name               = "aml_m3_audio",
+    .id                     = -1,
+    .resource       =   aml_m3_audio_resource,
+    .num_resources  =   ARRAY_SIZE(aml_m3_audio_resource),
 };
 #endif
-
-#ifdef CONFIG_SND_SOC_RT5621
-static int Rt5621_Mute_Hp(void)
-{
-    return 0;
-}
-static int Rt5621_Unmute_Hp(void)
-{
-    return 0;
-}
-static struct platform_device aml_audio={
-		.name 				= "aml_m1_audio_rt5621",
-		.id 					= -1,
-		.resource 		=	aml_m1_audio_resource,
-		.num_resources	=	ARRAY_SIZE(aml_m1_audio_resource),
-};
-
-// use LED_CS1 as detect pin
-#define PWM_TCNT        (600-1)
-#define PWM_MAX_VAL		(420)
-int get_display_mode(void) {
-	int fd;
-	int ret = 0;
-	char mode[8];	
-	
-  fd = sys_open("/sys/class/display/mode", O_RDWR | O_NDELAY, 0);
-  if(fd >= 0) {
-  	memset(mode,0,8);
-  	sys_read(fd,mode,8);
-  	if(strncmp("panel",mode,5))
-  		ret = 1;
-  	sys_close(fd);
-  }
-
-  return ret;
-}
-static unsigned int rt5621_is_hp_pluged()
-{
-	int level = 0;
-    int cs_no = 0;
-
-    cs_no = READ_CBUS_REG(LED_PWM_REG3);
-	
-	if( cs_no & ( 1 << 14 ) )
-		level |= (1<<0);
-	// temp patch to mute speaker when hdmi output
-	if(level == 1)
-    	if(get_display_mode() != 0)	
-    			return 1;
-
-    return (level == 0)?(1):(0); //return 0: hp pluged, 1: hp unpluged.
-}
-static struct rt5621_platform_data rt5621_pdata = {
-	//.rt5621_mute_hp=&Rt5621_Mute_Hp,
-	//.rt5621_unmute_hp=&Rt5621_Unmute_Hp,
-    .is_hp_pluged = &rt5621_is_hp_pluged,
-};
-#endif
-
 
 #ifdef CONFIG_ITK_CAPACITIVE_TOUCHSCREEN
 #include <linux/i2c/itk.h>
@@ -1028,7 +929,7 @@ static void set_vccx2(int power_on)
     else{
         printk(KERN_INFO "set_vccx2 power down\n");        
         set_gpio_mode(GPIOA_bank_bit0_27(26), GPIOA_bit_bit0_27(26), GPIO_OUTPUT_MODE);
-        set_gpio_val(GPIOA_bank_bit0_27(26), GPIOA_bit_bit0_27(26),     );
+        set_gpio_val(GPIOA_bank_bit0_27(26), GPIOA_bit_bit0_27(26), 1);
      
 		save_pinmux();
 		for (i=0;i<MAX_GPIO;i++)
@@ -2048,7 +1949,7 @@ static struct platform_device __initdata *platform_devs[] = {
     #if defined(CONFIG_AML_AUDIO_DSP)
         &audiodsp_device,
     #endif
-	#if defined(CONFIG_SND_AML_M1_MID_WM8900) || defined(CONFIG_SND_SOC_RT5621)
+	#if defined(CONFIG_SND_AML_M3)
         &aml_audio,
 	#endif
     #if defined(CONFIG_CARDREADER)
