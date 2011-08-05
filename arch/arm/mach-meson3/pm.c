@@ -85,7 +85,6 @@ void power_gate_init(void)
     GATE_INIT(SDIO);
     GATE_INIT(AUD_BUF);
     GATE_INIT(HIU_PARSER);
-    GATE_INIT(RESERVED0);
     GATE_INIT(AMRISC);
     GATE_INIT(BT656_IN);
     GATE_INIT(ASSIST_MISC);
@@ -94,7 +93,6 @@ void power_gate_init(void)
     GATE_INIT(VENC_T_TOP);
     GATE_INIT(VENC_DAC);
     GATE_INIT(VI_CORE);
-    GATE_INIT(RESERVED1);
     GATE_INIT(SPI2);
     GATE_INIT(MDEC_CLK_ASSIST);
     GATE_INIT(MDEC_CLK_PSC);
@@ -102,7 +100,6 @@ void power_gate_init(void)
     GATE_INIT(AUD_IN);
     GATE_INIT(ETHERNET);
     GATE_INIT(DEMUX);
-    GATE_INIT(RESERVED2);
     GATE_INIT(AIU_AI_TOP_GLUE);
     GATE_INIT(AIU_IEC958);
     GATE_INIT(AIU_I2S_OUT);
@@ -112,11 +109,9 @@ void power_gate_init(void)
     GATE_INIT(AIU_MIXER_REG);
     GATE_INIT(AIU_ADC);
     GATE_INIT(BLK_MOV);
-    GATE_INIT(RESERVED3);
     GATE_INIT(UART1);
     GATE_INIT(LED_PWM);
     GATE_INIT(VGHL_PWM);
-    GATE_INIT(RESERVED4);
     GATE_INIT(GE2D);
     GATE_INIT(USB0);
     GATE_INIT(USB1);
@@ -129,14 +124,10 @@ void power_gate_init(void)
     GATE_INIT(AHB_ARB0);
     GATE_INIT(EFUSE);
     GATE_INIT(ROM_CLK);
-    GATE_INIT(RESERVED5);
     GATE_INIT(AHB_DATA_BUS);
     GATE_INIT(AHB_CONTROL_BUS);
     GATE_INIT(HDMI_INTR_SYNC);
     GATE_INIT(HDMI_PCLK);
-    GATE_INIT(RESERVED6);
-    GATE_INIT(RESERVED7);
-    GATE_INIT(RESERVED8);
     GATE_INIT(MISC_USB1_TO_DDR);
     GATE_INIT(MISC_USB0_TO_DDR);
     GATE_INIT(AIU_PCLK);
@@ -170,7 +161,6 @@ void power_gate_init(void)
     GATE_INIT(VCLK2_ENCT);
     GATE_INIT(VCLK2_ENCL);
     GATE_INIT(VCLK2_VENCL);
-    GATE_INIT(VCLK2_VENCL1);
     GATE_INIT(VCLK2_OTHER1);
 }
 
@@ -210,7 +200,6 @@ void power_gate_switch(int flag)
     GATE_SWITCH(flag, SDIO);
     GATE_SWITCH(flag, AUD_BUF);
     //GATE_SWITCH(flag, HIU_PARSER);
-    GATE_SWITCH(flag, RESERVED0);
     GATE_SWITCH(flag, AMRISC);
     GATE_SWITCH(flag, BT656_IN);
     //GATE_SWITCH(flag, ASSIST_MISC);
@@ -219,7 +208,6 @@ void power_gate_switch(int flag)
     GATE_SWITCH(flag, VENC_T_TOP);
     GATE_SWITCH(flag, VENC_DAC);
     GATE_SWITCH(flag, VI_CORE);
-    GATE_SWITCH(flag, RESERVED1);
     GATE_SWITCH(flag, SPI2);
     GATE_SWITCH(flag, MDEC_CLK_ASSIST);
     GATE_SWITCH(flag, MDEC_CLK_PSC);
@@ -227,7 +215,6 @@ void power_gate_switch(int flag)
     GATE_SWITCH(flag, AUD_IN);
     GATE_SWITCH(flag, ETHERNET);
     GATE_SWITCH(flag, DEMUX);
-    GATE_SWITCH(flag, RESERVED2);
     GATE_SWITCH(flag, AIU_AI_TOP_GLUE);
     GATE_SWITCH(flag, AIU_IEC958);
     GATE_SWITCH(flag, AIU_I2S_OUT);
@@ -237,10 +224,8 @@ void power_gate_switch(int flag)
     GATE_SWITCH(flag, AIU_MIXER_REG);
     GATE_SWITCH(flag, AIU_ADC);
     GATE_SWITCH(flag, BLK_MOV);
-    GATE_SWITCH(flag, RESERVED3);
     //GATE_SWITCH(flag, UART1);
     GATE_SWITCH(flag, VGHL_PWM);
-    GATE_SWITCH(flag, RESERVED4);
     GATE_SWITCH(flag, GE2D);
     GATE_SWITCH(flag, USB0);
     GATE_SWITCH(flag, USB1);
@@ -253,21 +238,16 @@ void power_gate_switch(int flag)
     //GATE_SWITCH(flag, AHB_ARB0);
     GATE_SWITCH(flag, EFUSE);
     GATE_SWITCH(flag, ROM_CLK);
-    GATE_SWITCH(flag, RESERVED5);
     //GATE_SWITCH(flag, AHB_DATA_BUS);
     //GATE_SWITCH(flag, AHB_CONTROL_BUS);
     GATE_SWITCH(flag, HDMI_INTR_SYNC);
     GATE_SWITCH(flag, HDMI_PCLK);
-    GATE_SWITCH(flag, RESERVED6);
-    GATE_SWITCH(flag, RESERVED7);
-    GATE_SWITCH(flag, RESERVED8);
     GATE_SWITCH(flag, MISC_USB1_TO_DDR);
     GATE_SWITCH(flag, MISC_USB0_TO_DDR);
     GATE_SWITCH(flag, AIU_PCLK);
     GATE_SWITCH(flag, MMC_PCLK);
     GATE_SWITCH(flag, MISC_DVIN);
     GATE_SWITCH(flag, MISC_RDMA);
-    GATE_SWITCH(flag, RESERVED9);
     GATE_SWITCH(flag, UART2);
     GATE_SWITCH(flag, VENCI_INT);
     GATE_SWITCH(flag, VIU2);
@@ -294,121 +274,26 @@ void power_gate_switch(int flag)
     GATE_SWITCH(flag, VCLK2_ENCT);
     GATE_SWITCH(flag, VCLK2_ENCL);
     GATE_SWITCH(flag, VCLK2_VENCL);
-    GATE_SWITCH(flag, VCLK2_VENCL1);
     GATE_SWITCH(flag, VCLK2_OTHER1);
 }
 EXPORT_SYMBOL(power_gate_switch);
 
 void early_power_gate_switch(int flag)
 {
-#if 0
     GATE_SWITCH(flag, AMRISC);
     GATE_SWITCH(flag, AUD_IN);
     GATE_SWITCH(flag, BLK_MOV);
     GATE_SWITCH(flag, BT656_IN);
-    GATE_SWITCH(flag, GE2D);
-    GATE_SWITCH(flag, ROM_CLK);
-    GATE_SWITCH(flag, EFUSE);
-    GATE_SWITCH(flag, RESERVED0);
-    GATE_SWITCH(flag, LCD);
-    GATE_SWITCH(flag, ENC480P_MPEG_DOMAIN);
-    GATE_SWITCH(flag, ENC480I);
-    GATE_SWITCH(flag, VENC_MISC);
-    GATE_SWITCH(flag, ENC480P);
-    GATE_SWITCH(flag, HDMI);
-    GATE_SWITCH(flag, VCLK3_DAC);
-    GATE_SWITCH(flag, VCLK3_MISC);
-    GATE_SWITCH(flag, VCLK3_DVI);
-    GATE_SWITCH(flag, VCLK2_VIU);
-    GATE_SWITCH(flag, VCLK2_VENC_DVI);
-    GATE_SWITCH(flag, VCLK2_VENC_ENC480P);
-    GATE_SWITCH(flag, VCLK2_VENC_BIST);
-    GATE_SWITCH(flag, VCLK1_VENC_656);
-    GATE_SWITCH(flag, VCLK1_VENC_DVI);
-    GATE_SWITCH(flag, VCLK1_VENC_ENCI);
-    GATE_SWITCH(flag, VCLK1_VENC_BIST);
-    GATE_SWITCH(flag, VIDEO_IN);
-#else
-    GATE_SWITCH(flag, DDR);
-    GATE_SWITCH(flag, VLD_CLK);
-    GATE_SWITCH(flag, IQIDCT_CLK);
-    GATE_SWITCH(flag, MC_CLK);
-    GATE_SWITCH(flag, AHB_BRIDGE);
-    GATE_SWITCH(flag, ISA);
-    GATE_SWITCH(flag, APB_CBUS);
-    GATE_SWITCH(flag, _1200XXX);
-    GATE_SWITCH(flag, SPICC);
-    GATE_SWITCH(flag, I2C);
-    GATE_SWITCH(flag, SAR_ADC);
-    GATE_SWITCH(flag, SMART_CARD_MPEG_DOMAIN);
-    GATE_SWITCH(flag, RANDOM_NUM_GEN);
-    GATE_SWITCH(flag, UART0);
-    GATE_SWITCH(flag, SDHC);
-    GATE_SWITCH(flag, STREAM);
-    GATE_SWITCH(flag, ASYNC_FIFO);
-    GATE_SWITCH(flag, SDIO);
-    GATE_SWITCH(flag, AUD_BUF);
-    GATE_SWITCH(flag, HIU_PARSER);
-    GATE_SWITCH(flag, RESERVED0);
-    GATE_SWITCH(flag, AMRISC);
-    GATE_SWITCH(flag, BT656_IN);
-    GATE_SWITCH(flag, ASSIST_MISC);
     GATE_SWITCH(flag, VENC_I_TOP);
     GATE_SWITCH(flag, VENC_P_TOP);
     GATE_SWITCH(flag, VENC_T_TOP);
     GATE_SWITCH(flag, VENC_DAC);
-    GATE_SWITCH(flag, VI_CORE);
-    GATE_SWITCH(flag, RESERVED1);
-    GATE_SWITCH(flag, SPI2);
-    GATE_SWITCH(flag, MDEC_CLK_ASSIST);
-    GATE_SWITCH(flag, MDEC_CLK_PSC);
-    GATE_SWITCH(flag, SPI1);
-    GATE_SWITCH(flag, AUD_IN);
-    GATE_SWITCH(flag, ETHERNET);
-    GATE_SWITCH(flag, DEMUX);
-    GATE_SWITCH(flag, RESERVED2);
-    GATE_SWITCH(flag, AIU_AI_TOP_GLUE);
-    GATE_SWITCH(flag, AIU_IEC958);
-    GATE_SWITCH(flag, AIU_I2S_OUT);
-    GATE_SWITCH(flag, AIU_AMCLK_MEASURE);
-    GATE_SWITCH(flag, AIU_AIFIFO2);
-    GATE_SWITCH(flag, AIU_AUD_MIXER);
-    GATE_SWITCH(flag, AIU_MIXER_REG);
-    GATE_SWITCH(flag, AIU_ADC);
-    GATE_SWITCH(flag, BLK_MOV);
-    GATE_SWITCH(flag, RESERVED3);
-    GATE_SWITCH(flag, UART1);
-    GATE_SWITCH(flag, LED_PWM);
-    GATE_SWITCH(flag, VGHL_PWM);
-    GATE_SWITCH(flag, RESERVED4);
     GATE_SWITCH(flag, GE2D);
-    GATE_SWITCH(flag, USB0);
-    GATE_SWITCH(flag, USB1);
-    GATE_SWITCH(flag, RESET);
-    GATE_SWITCH(flag, NAND);
-    GATE_SWITCH(flag, HIU_PARSER_TOP);
-    GATE_SWITCH(flag, MDEC_CLK_DBLK);
-    GATE_SWITCH(flag, MDEC_CLK_PIC_DC);
     GATE_SWITCH(flag, VIDEO_IN);
-    GATE_SWITCH(flag, AHB_ARB0);
-    GATE_SWITCH(flag, EFUSE);
-    GATE_SWITCH(flag, ROM_CLK);
-    GATE_SWITCH(flag, RESERVED5);
-    GATE_SWITCH(flag, AHB_DATA_BUS);
-    GATE_SWITCH(flag, AHB_CONTROL_BUS);
     GATE_SWITCH(flag, HDMI_INTR_SYNC);
     GATE_SWITCH(flag, HDMI_PCLK);
-    GATE_SWITCH(flag, RESERVED6);
-    GATE_SWITCH(flag, RESERVED7);
-    GATE_SWITCH(flag, RESERVED8);
-    GATE_SWITCH(flag, MISC_USB1_TO_DDR);
-    GATE_SWITCH(flag, MISC_USB0_TO_DDR);
-    GATE_SWITCH(flag, AIU_PCLK);
-    GATE_SWITCH(flag, MMC_PCLK);
     GATE_SWITCH(flag, MISC_DVIN);
     GATE_SWITCH(flag, MISC_RDMA);
-    GATE_SWITCH(flag, RESERVED9);
-    GATE_SWITCH(flag, UART2);
     GATE_SWITCH(flag, VENCI_INT);
     GATE_SWITCH(flag, VIU2);
     GATE_SWITCH(flag, VENCP_INT);
@@ -424,27 +309,18 @@ void early_power_gate_switch(int flag)
     GATE_SWITCH(flag, VCLK2_OTHER);
     GATE_SWITCH(flag, VCLK2_ENCI);
     GATE_SWITCH(flag, VCLK2_ENCP);
-    GATE_SWITCH(flag, DAC_CLK);
-    GATE_SWITCH(flag, AIU_AOCLK);
-    GATE_SWITCH(flag, AIU_AMCLK);
-    GATE_SWITCH(flag, AIU_ICE958_AMCLK);
     GATE_SWITCH(flag, VCLK1_HDMI);
-    GATE_SWITCH(flag, AIU_AUDIN_SCLK);
     GATE_SWITCH(flag, ENC480P);
     GATE_SWITCH(flag, VCLK2_ENCT);
     GATE_SWITCH(flag, VCLK2_ENCL);
     GATE_SWITCH(flag, VCLK2_VENCL);
-    GATE_SWITCH(flag, VCLK2_VENCL1);
     GATE_SWITCH(flag, VCLK2_OTHER1);
-
-#endif
 }
 EXPORT_SYMBOL(early_power_gate_switch);
 
-#define CLK_COUNT 7
+#define CLK_COUNT 6
 static char clk_flag[CLK_COUNT];
 static unsigned clks[CLK_COUNT] = {
-    HHI_SATA_CLK_CNTL,
     HHI_ETH_CLK_CNTL,
     HHI_VID_CLK_CNTL,
     HHI_AUD_CLK_CNTL,
@@ -454,7 +330,6 @@ static unsigned clks[CLK_COUNT] = {
 };
 
 static char clks_name[CLK_COUNT][32] = {
-    "HHI_SATA_CLK_CNTL",
     "HHI_ETH_CLK_CNTL",
     "HHI_VID_CLK_CNTL",
     "HHI_AUD_CLK_CNTL",
@@ -504,6 +379,8 @@ void clk_switch(int flag)
                     SET_CBUS_REG_MASK(UART0_CONTROL, (((uart_rate_backup / (115200 * 4)) - 1) & 0xfff));
                     CLEAR_CBUS_REG_MASK(UART1_CONTROL, (1 << 19) | 0xFFF);
                     SET_CBUS_REG_MASK(UART1_CONTROL, (((uart_rate_backup / (115200 * 4)) - 1) & 0xfff));
+                    CLEAR_AOBUS_REG_MASK(AO_UART_CONTROL, (1 << 19) | 0xFFF);
+                    WRITE_AOBUS_REG_BITS(AO_UART_CONTROL, ((xtal_uart_rate_backup / (115200 * 4)) - 1) & 0xfff, 0, 12);
                 } else {
                     SET_CBUS_REG_MASK(clks[i], (1 << 8));
                 }
@@ -529,6 +406,8 @@ void clk_switch(int flag)
                     SET_CBUS_REG_MASK(UART0_CONTROL, (((xtal_uart_rate_backup / (115200 * 4)) - 1) & 0xfff));
                     CLEAR_CBUS_REG_MASK(UART1_CONTROL, (1 << 19) | 0xFFF);
                     SET_CBUS_REG_MASK(UART1_CONTROL, (((xtal_uart_rate_backup / (115200 * 4)) - 1) & 0xfff));
+                    CLEAR_AOBUS_REG_MASK(AO_UART_CONTROL, (1 << 19) | 0xFFF);
+                    WRITE_AOBUS_REG_BITS(AO_UART_CONTROL, ((xtal_uart_rate_backup / (115200 * 4)) - 1) & 0xfff, 0, 12);
                 }
             } else {
                 clk_flag[i] = READ_CBUS_REG_BITS(clks[i], 8, 1) ? 1 : 0;
@@ -564,6 +443,8 @@ void early_clk_switch(int flag)
                     SET_CBUS_REG_MASK(UART0_CONTROL, (((uart_rate_backup / (115200 * 4)) - 1) & 0xfff));
                     CLEAR_CBUS_REG_MASK(UART1_CONTROL, (1 << 19) | 0xFFF);
                     SET_CBUS_REG_MASK(UART1_CONTROL, (((uart_rate_backup / (115200 * 4)) - 1) & 0xfff));
+                    CLEAR_AOBUS_REG_MASK(AO_UART_CONTROL, (1 << 19) | 0xFFF);
+                    WRITE_AOBUS_REG_BITS(AO_UART_CONTROL, ((xtal_uart_rate_backup / (115200 * 4)) - 1) & 0xfff, 0, 12);
                 } 
 #endif
                 else {
@@ -597,6 +478,8 @@ void early_clk_switch(int flag)
                 SET_CBUS_REG_MASK(UART0_CONTROL, (((xtal_uart_rate_backup / (115200 * 4)) - 1) & 0xfff));
                 CLEAR_CBUS_REG_MASK(UART1_CONTROL, (1 << 19) | 0xFFF);
                 SET_CBUS_REG_MASK(UART1_CONTROL, (((xtal_uart_rate_backup / (115200 * 4)) - 1) & 0xfff));
+                CLEAR_AOBUS_REG_MASK(AO_UART_CONTROL, (1 << 19) | 0xFFF);
+                WRITE_AOBUS_REG_BITS(AO_UART_CONTROL, ((xtal_uart_rate_backup / (115200 * 4)) - 1) & 0xfff, 0, 12);
             }
 #endif
             else {
@@ -613,31 +496,27 @@ void early_clk_switch(int flag)
 }
 EXPORT_SYMBOL(early_clk_switch);
 
-#define PLL_COUNT 4
+#define PLL_COUNT 3
 static char pll_flag[PLL_COUNT];
 static unsigned plls[PLL_COUNT] = {
-    HHI_DEMOD_PLL_CNTL,
     HHI_VID_PLL_CNTL,
     HHI_AUD_PLL_CNTL,
     HHI_OTHER_PLL_CNTL,
 };
 
 static char plls_name[PLL_COUNT][32] = {
-    "HHI_DEMOD_PLL_CNTL",
     "HHI_VID_PLL_CNTL",
     "HHI_AUD_PLL_CNTL",
     "HHI_OTHER_PLL_CNTL",
 };
 
-#define EARLY_PLL_COUNT 2
+#define EARLY_PLL_COUNT 1
 static char early_pll_flag[EARLY_PLL_COUNT];
 static unsigned early_plls[EARLY_PLL_COUNT] = {
-    HHI_DEMOD_PLL_CNTL,
     HHI_VID_PLL_CNTL,
 };
 
 static char early_plls_name[EARLY_PLL_COUNT][32] = {
-    "HHI_DEMOD_PLL_CNTL",
     "HHI_VID_PLL_CNTL",
 };
 
@@ -802,7 +681,7 @@ static void meson_system_early_suspend(struct early_suspend *h)
         if (pdata->set_exgpio_early_suspend) {
             pdata->set_exgpio_early_suspend(OFF);
         }
-//        early_power_gate_switch(OFF);
+        early_power_gate_switch(OFF);
         early_clk_switch(OFF);
         early_pll_switch(OFF);
         early_suspend_flag = 1;
@@ -814,7 +693,7 @@ static void meson_system_late_resume(struct early_suspend *h)
     if (early_suspend_flag) {
         early_pll_switch(ON);
         early_clk_switch(ON);
-//        early_power_gate_switch(ON);
+        early_power_gate_switch(ON);
         early_suspend_flag = 0;
         if (pdata->set_exgpio_early_suspend) {
             pdata->set_exgpio_early_suspend(ON);

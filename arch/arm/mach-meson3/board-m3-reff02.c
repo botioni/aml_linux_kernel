@@ -280,7 +280,7 @@ static struct sn7325_platform_data sn7325_pdata = {
 #endif
 
 #ifdef CONFIG_SIX_AXIS_SENSOR_MPU3050
-#define GPIO_mpu3050_PENIRQ ((GPIOA_bank_bit0_27(15)<<16) | GPIOA_bit_bit0_27(15))
+#define GPIO_mpu3050_PENIRQ ((GPIOA_bank_bit0_27(14)<<16) | GPIOA_bit_bit0_27(14))
 #define MPU3050_IRQ  INT_GPIO_2
 static int mpu3050_init_irq(void)
 {
