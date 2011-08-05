@@ -168,6 +168,8 @@ void audio_i2s_swap_left_right(unsigned int flag);
 int audio_dac_set(unsigned freq);
 int if_audio_out_enable(void);
 int if_audio_in_i2s_enable(void);
+void audio_util_set_dac_format(unsigned format);
+void set_acodec_source (unsigned int src);
 
 
 #define APB_ADAC_RESET                		(0x5000+0x00*4)

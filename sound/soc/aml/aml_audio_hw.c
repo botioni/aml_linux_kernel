@@ -77,7 +77,7 @@ void audio_set_aiubuf(u32 addr, u32 size)
 	// As the default amclk is 24.576MHz, set i2s and iec958 divisor appropriately so as not to exceed the maximum sample rate.
 	WRITE_MPEG_REG(AIU_I2S_MISC,		0x0010 );	// Release hold and force audio data to left or right
 	
-	WRITE_MPEG_REG(AIU_MEM_I2S_MASKS,		(0 << 16) |	// [31:16] IRQ block.
+	WRITE_MPEG_REG(AIU_MEM_I2S_MASKS,		(24 << 16) |	// [31:16] IRQ block.
 								(0x3 << 8) |	// [15: 8] chan_mem_mask. Each bit indicates which channels exist in memory
 								(0x3 << 0));	// [ 7: 0] chan_rd_mask.  Each bit indicates which channels are READ from memory
 
@@ -376,6 +376,42 @@ void audio_set_clk(unsigned freq, unsigned fs_config)
     } else if (fs_config == AUDIO_CLK_384FS) {
     }
 }
+
+
+
+//------------------------------------------------------------------------------
+// set_acodec_source(unsigned int src)
+//
+// Description:
+// Select audio CODEC clock source, DAC's data source.
+//
+// Parameters:
+//  src -- 0=no clock to CODEC; 1=pcmout to DAC; 2=Aiu I2S out to DAC.
+//------------------------------------------------------------------------------
+void set_acodec_source (unsigned int src)
+{
+    unsigned long data32;
+	
+    // Disable acodec clock input and its DAC input
+    data32  = 0;
+    data32 |= 0     << 4;   // [5:4]    acodec_data_sel: 00=disable acodec_sdin; 01=Select pcm data; 10=Select AIU I2S data; 11=Not allowed.
+    data32 |= 0     << 0;   // [1:0]    acodec_clk_sel: 00=Disable acodec_sclk; 01=Select pcm clock; 10=Select AIU aoclk; 11=Not allowed.
+    WRITE_MPEG_REG(AIU_CODEC_CLK_DATA_CTRL, data32);
+
+    // Enable acodec clock from the selected source
+    data32  = 0;
+    data32 |= 0      << 4;  // [5:4]    acodec_data_sel: 00=disable acodec_sdin; 01=Select pcm data; 10=Select AIU I2S data; 11=Not allowed.
+    data32 |= src   << 0;   // [1:0]    acodec_clk_sel: 00=Disable acodec_sclk; 01=Select pcm clock; 10=Select AIU aoclk; 11=Not allowed.
+    WRITE_MPEG_REG(AIU_CODEC_CLK_DATA_CTRL, data32);
+    
+    // Enable acodec DAC input from the selected source
+    data32  = 0;
+    data32 |= src   << 4;   // [5:4]    acodec_data_sel: 00=disable acodec_sdin; 01=Select pcm data; 10=Select AIU I2S data; 11=Not allowed.
+    data32 |= src   << 0;   // [1:0]    acodec_clk_sel: 00=Disable acodec_sclk; 01=Select pcm clock; 10=Select AIU aoclk; 11=Not allowed.
+    WRITE_MPEG_REG(AIU_CODEC_CLK_DATA_CTRL, data32);
+
+} /* set_acodec_source */
+
 
 extern void audio_out_enabled(int flag);
 
