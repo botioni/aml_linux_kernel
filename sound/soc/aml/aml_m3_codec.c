@@ -66,6 +66,10 @@
 
 #define ADAC_MAXREG	0xe4
 
+#define NO_CLOCK_TO_CODEC   0
+#define PCMOUT_TO_DAC       1
+#define AIU_I2SOUT_TO_DAC   2
+
 struct snd_soc_codec_device soc_codec_dev_aml_m3;
 static struct snd_soc_codec *aml_m3_codec;
 
@@ -125,7 +129,7 @@ void aml_m3_reset(struct snd_soc_codec* codec, bool first_time)
 
 	if (first_time)
 	{
-        audio_set_clk(AUDIO_CLK_FREQ_48,0);//lishuai   okay
+        audio_set_clk(AUDIO_CLK_FREQ_48,0);
 		
     	WRITE_MPEG_REG( HHI_AUD_PLL_CNTL, READ_MPEG_REG(HHI_AUD_PLL_CNTL) & ~(1 << 15));
     	WRITE_MPEG_REG_BITS(HHI_AUD_CLK_CNTL, 1, 23, 1);
@@ -837,6 +841,8 @@ static int aml_m3_register(struct aml_m3_codec_priv* aml_m3)
 	INIT_LIST_HEAD(&codec->dapm_widgets);
 	INIT_LIST_HEAD(&codec->dapm_paths);
 
+
+    printk("****Entred aml_m3_register\n");
 	codec->name = "AML_M3_CODEC";
 	codec->owner = THIS_MODULE;
 	codec->private_data = aml_m3;
@@ -856,6 +862,7 @@ static int aml_m3_register(struct aml_m3_codec_priv* aml_m3)
 	aml_m3_codec_dai.dev = codec->dev;
 	
 	aml_m3_reset(codec, true);
+	set_acodec_source(AIU_I2SOUT_TO_DAC);//lishuai added for m3
 	aml_m3_set_bias_level(codec, SND_SOC_BIAS_STANDBY);
 
 	aml_m3_codec = codec;

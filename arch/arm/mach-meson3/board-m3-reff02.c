@@ -297,7 +297,7 @@ static struct mpu3050_platform_data mpu3050_data = {
     .level_shifter = 0,
     .accel = {
                 .get_slave_descr = get_accel_slave_descr,
-                .adapt_num = 0, // The i2c bus to which the mpu device is
+                .adapt_num = 1, // The i2c bus to which the mpu device is
                 // connected
                 .bus = EXT_SLAVE_BUS_SECONDARY, //The secondary I2C of MPU
                 .address = 0x1c,
