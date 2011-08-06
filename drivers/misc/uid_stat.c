@@ -81,7 +81,7 @@ static struct uid_stat *get_uid_stat(uid_t uid) {
 	if ((new_uid = kmalloc(sizeof(struct uid_stat), GFP_KERNEL)) == NULL) {
 		spin_unlock_irqrestore(&uid_lock, flags);
 		return NULL;
-    }
+	}
 
 	new_uid->uid = uid;
 	/* Counters start at INT_MIN, so we can track 4GB of network traffic. */
