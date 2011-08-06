@@ -444,7 +444,7 @@ static void itk_work(struct work_struct *work)
     struct ts_event *event;
     int i = 0, j = 1;
 
-		printk("work_count=%d\n", work_count++);
+	//	printk("work_count=%d\n", work_count++);
     if (itk_get_pendown_state(ts)) {
         if (itk_read_sensor(ts) < 0) {
             printk(KERN_INFO "work read i2c failed\n");
@@ -563,7 +563,7 @@ static enum hrtimer_restart itk_timer(struct hrtimer *timer)
     struct itk *ts = container_of(timer, struct itk, timer);
     unsigned long flags = 0;
 		
-		printk("timer_count=%d\n", timer_count++);
+		//printk("timer_count=%d\n", timer_count++);
     spin_lock_irqsave(&ts->lock, flags);
 //  printk(KERN_INFO "enter timer\n");
     queue_work(ts->workqueue, &ts->work);
@@ -583,14 +583,14 @@ static irqreturn_t itk_interrupt(int irq, void *dev_id)
     struct itk *ts = i2c_get_clientdata(client);
     unsigned long flags;
 
-		printk("int_count=%d\n", int_count++);    
+		//printk("int_count=%d\n", int_count++);    
     spin_lock_irqsave(&ts->lock, flags);
     #ifdef ITK_TS_DEBUG_REPORT
     printk(KERN_INFO "enter penirq\n");
     #endif
     /* if the pen is down, disable IRQ and start timer chain */
     if (itk_get_pendown_state(ts)) {
-			 printk("int_valid_count=%d\n", int_valid_count++);    
+			 //printk("int_valid_count=%d\n", int_valid_count++);    
        disable_irq_nosync(client->irq);
 #ifdef TS_DELAY_WORK
         schedule_delayed_work(&ts->work, msecs_to_jiffies(TS_POLL_DELAY));
