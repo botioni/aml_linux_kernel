@@ -380,7 +380,7 @@ void clk_switch(int flag)
                     CLEAR_CBUS_REG_MASK(UART1_CONTROL, (1 << 19) | 0xFFF);
                     SET_CBUS_REG_MASK(UART1_CONTROL, (((uart_rate_backup / (115200 * 4)) - 1) & 0xfff));
                     CLEAR_AOBUS_REG_MASK(AO_UART_CONTROL, (1 << 19) | 0xFFF);
-                    WRITE_AOBUS_REG_BITS(AO_UART_CONTROL, ((xtal_uart_rate_backup / (115200 * 4)) - 1) & 0xfff, 0, 12);
+                    WRITE_AOBUS_REG_BITS(AO_UART_CONTROL, ((uart_rate_backup / (115200 * 4)) - 1) & 0xfff, 0, 12);
                 } else {
                     SET_CBUS_REG_MASK(clks[i], (1 << 8));
                 }
@@ -444,7 +444,7 @@ void early_clk_switch(int flag)
                     CLEAR_CBUS_REG_MASK(UART1_CONTROL, (1 << 19) | 0xFFF);
                     SET_CBUS_REG_MASK(UART1_CONTROL, (((uart_rate_backup / (115200 * 4)) - 1) & 0xfff));
                     CLEAR_AOBUS_REG_MASK(AO_UART_CONTROL, (1 << 19) | 0xFFF);
-                    WRITE_AOBUS_REG_BITS(AO_UART_CONTROL, ((xtal_uart_rate_backup / (115200 * 4)) - 1) & 0xfff, 0, 12);
+                    WRITE_AOBUS_REG_BITS(AO_UART_CONTROL, ((uart_rate_backup / (115200 * 4)) - 1) & 0xfff, 0, 12);
                 } 
 #endif
                 else {
@@ -526,9 +526,15 @@ void pll_switch(int flag)
     if (flag) {
         for (i = PLL_COUNT - 1; i >= 0; i--) {
             if (pll_flag[i]) {
-                CLEAR_CBUS_REG_MASK(plls[i], (1 << 15));
-                pll_flag[i] = 0;
                 printk(KERN_INFO "pll %s(%x) on\n", plls_name[i], plls[i]);
+                if (plls[i]==HHI_VID_PLL_CNTL){
+                    CLEAR_CBUS_REG_MASK(plls[i], (1 << 30));
+                    pll_flag[i] = 0;
+                }
+                else{                
+                    CLEAR_CBUS_REG_MASK(plls[i], (1 << 15));
+                    pll_flag[i] = 0;
+                }
             }
         }
         udelay(1000);
@@ -537,7 +543,12 @@ void pll_switch(int flag)
             pll_flag[i] = READ_CBUS_REG_BITS(plls[i], 15, 1) ? 0 : 1;
             if (pll_flag[i]) {
                 printk(KERN_INFO "pll %s(%x) off\n", plls_name[i], plls[i]);
-                SET_CBUS_REG_MASK(plls[i], (1 << 15));
+                if (plls[i]==HHI_VID_PLL_CNTL){
+                    SET_CBUS_REG_MASK(plls[i], (1 << 30));
+                }
+                else{            
+                    SET_CBUS_REG_MASK(plls[i], (1 << 15));
+                }
             }
         }
     }
@@ -550,8 +561,14 @@ void early_pll_switch(int flag)
     if (flag) {
         for (i = EARLY_PLL_COUNT - 1; i >= 0; i--) {
             if (early_pll_flag[i]) {
-                CLEAR_CBUS_REG_MASK(early_plls[i], (1 << 15));
-                early_pll_flag[i] = 0;
+                if (early_plls[i]==HHI_VID_PLL_CNTL){
+                    CLEAR_CBUS_REG_MASK(early_plls[i], (1 << 30));
+                    early_pll_flag[i] = 0;
+                }
+                else{
+                    CLEAR_CBUS_REG_MASK(early_plls[i], (1 << 15));
+                    early_pll_flag[i] = 0;
+                }
                 printk(KERN_INFO "late pll %s(%x) on\n", early_plls_name[i], early_plls[i]);
             }
         }
@@ -561,7 +578,10 @@ void early_pll_switch(int flag)
             early_pll_flag[i] = READ_CBUS_REG_BITS(early_plls[i], 15, 1) ? 0 : 1;
             if (early_pll_flag[i]) {
                 printk(KERN_INFO "early pll %s(%x) off\n", early_plls_name[i], early_plls[i]);
-                SET_CBUS_REG_MASK(early_plls[i], (1 << 15));
+                if (early_plls[i]==HHI_VID_PLL_CNTL)
+                    SET_CBUS_REG_MASK(early_plls[i], (1 << 30));
+                else
+                    SET_CBUS_REG_MASK(early_plls[i], (1 << 15));
             }
         }
     }
@@ -736,7 +756,7 @@ static void meson_pm_suspend(void)
 
     printk(KERN_INFO "target ddr clock 0x%x!\n", pdata->ddr_clk);
 
-    analog_switch(OFF);
+//    analog_switch(OFF);
 
     usb_switch(OFF, 0);
     usb_switch(OFF, 1);
@@ -745,7 +765,7 @@ static void meson_pm_suspend(void)
         pdata->set_vccx2(OFF);
     }
 
-    power_gate_switch(OFF);
+//    power_gate_switch(OFF);
 
 #ifdef SAVE_DDR_REGS
     printk("PCTL_TOGCNT1U_ADDR %x\n", READ_APB_REG(PCTL_TOGCNT1U_ADDR));
@@ -789,28 +809,7 @@ static void meson_pm_suspend(void)
 
     printk(KERN_INFO "sleep ...\n");
 
-    mpeg_clk_backup = READ_CBUS_REG(HHI_MPEG_CLK_CNTL); // save clk81 ctrl
-
-#ifdef SYSTEM_16K
-    if (READ_CBUS_REG(HHI_MPEG_CLK_CNTL) & (1 << 8)) {
-        CLEAR_CBUS_REG_MASK(HHI_MPEG_CLK_CNTL, (1 << 8));    // clk81 = xtal
-    }
-    SET_CBUS_REG_MASK(HHI_MPEG_CLK_CNTL, (1 << 9));     // xtal_rtc = rtc
-    WRITE_CBUS_REG_BITS(HHI_MPEG_CLK_CNTL, 0x1, 0, 6);  // devider = 2
-    WRITE_CBUS_REG_BITS(HHI_MPEG_CLK_CNTL, 0, 12, 2);   // clk81 src -> xtal_rtc
-    SET_CBUS_REG_MASK(HHI_MPEG_CLK_CNTL, (1 << 8));     // clk81 = xtal_rtc / devider
-#else
-    if (READ_CBUS_REG(HHI_MPEG_CLK_CNTL) & (1 << 8)) {
-        CLEAR_CBUS_REG_MASK(HHI_MPEG_CLK_CNTL, (1 << 8));    // clk81 = xtal
-    }
-    WRITE_CBUS_REG_BITS(HHI_MPEG_CLK_CNTL, 0x7f, 0, 6); // devider = 128
-    WRITE_CBUS_REG_BITS(HHI_MPEG_CLK_CNTL, 0, 12, 2);   // clk81 src -> xtal_rtc
-    SET_CBUS_REG_MASK(HHI_MPEG_CLK_CNTL, (1 << 8));     // clk81 = xtal_rtc / devider
-#endif
-    CLEAR_CBUS_REG_MASK(HHI_A9_CLK_CNTL, (1 << 7));     // clka9 = xtal_rtc / 2
-#ifdef SYSTEM_16K
-    SET_CBUS_REG_MASK(PREG_CTLREG0_ADDR, 1);
-#endif
+    
     auto_clk_gating_setup(2,                             // select 100uS timebase
                           MODE_IRQ_ONLY_WAKE,         // Set interrupt wakeup only
                           0,                          // don't clear the FIQ global mask
@@ -819,26 +818,22 @@ static void meson_pm_suspend(void)
                           1,                          // 1uS gate delay
                           1,                          // Set the delay wakeup time (1mS)
                           1);                         // 1uS enable delay
-    SET_CBUS_REG_MASK(HHI_SYS_PLL_CNTL, (1 << 15));     // turn off sys pll
 
-#if defined(CONFIG_MACH_MESON3_REFE00) 
-    WRITE_CBUS_REG(SYS_CPU_0_IRQ_IN0_INTR_MASK, pdata->power_key);     // enable remote interrupt only
+    CLEAR_CBUS_REG_MASK(HHI_SYS_CPU_CLK_CNTL, 1<<7);  // a9 use xtal
+    SET_CBUS_REG_MASK(HHI_SYS_PLL_CNTL, (1 << 15));   // turn off sys pll
+
+#if 1
+    while ((READ_AOBUS_REG(AO_RTC_ADDR1) >> 2) & 1){
+        udelay(10);
+    }
 #else
     WRITE_CBUS_REG(SYS_CPU_0_IRQ_IN2_INTR_MASK, pdata->power_key);     // enable rtc interrupt only
-#endif
     meson_sram_suspend(pdata);
+#endif
 
     CLEAR_CBUS_REG_MASK(HHI_SYS_PLL_CNTL, (1 << 15));   // turn on sys pll
     udelay(10);
-#ifdef SYSTEM_16K
-    CLEAR_CBUS_REG_MASK(PREG_CTLREG0_ADDR, 1);
-#endif
-    SET_CBUS_REG_MASK(HHI_A9_CLK_CNTL, (1 << 7));       // clka9 = sys pll / devider
-    CLEAR_CBUS_REG_MASK(HHI_MPEG_CLK_CNTL, (1 << 8));   // clk81 = xtal
-#ifdef SYSTEM_16K
-    CLEAR_CBUS_REG_MASK(HHI_MPEG_CLK_CNTL, (1 << 9));   // xtal_rtc = xtal
-#endif
-    WRITE_CBUS_REG(HHI_MPEG_CLK_CNTL, mpeg_clk_backup); // restore clk81 ctrl
+    SET_CBUS_REG_MASK(HHI_SYS_CPU_CLK_CNTL, (1 << 7));  // a9 use pll
 
     printk(KERN_INFO "... wake up\n");
 
@@ -856,12 +851,12 @@ static void meson_pm_suspend(void)
     }
 #endif
 
-    power_gate_switch(ON);
+//    power_gate_switch(ON);
 
     usb_switch(ON, 0);
     usb_switch(ON, 1);
 
-    analog_switch(ON);
+//    analog_switch(ON);
 }
 
 static int meson_pm_prepare(void)

@@ -225,14 +225,14 @@ int _key_code_list[] = {KEY_POWER};
 
 static inline int key_input_init_func(void)
 {
-    WRITE_AOBUS_REG(RTC_ADDR0, (READ_AOBUS_REG(RTC_ADDR0) &~(1<<11)));
-    WRITE_AOBUS_REG(RTC_ADDR1, (READ_AOBUS_REG(RTC_ADDR1) &~(1<<3)));
+    WRITE_AOBUS_REG(AO_RTC_ADDR0, (READ_AOBUS_REG(AO_RTC_ADDR0) &~(1<<11)));
+    WRITE_AOBUS_REG(AO_RTC_ADDR1, (READ_AOBUS_REG(AO_RTC_ADDR1) &~(1<<3)));
     return 0;
 }
 static inline int key_scan(int *key_state_list)
 {
     int ret = 0;
-    key_state_list[0] = ((READ_AOBUS_REG(RTC_ADDR1) >> 2) & 1) ? 0 : 1;
+    key_state_list[0] = ((READ_AOBUS_REG(AO_RTC_ADDR1) >> 2) & 1) ? 0 : 1;
     return ret;
 }
 
@@ -917,10 +917,12 @@ static void set_vccx2(int power_on)
 {
 	int i;
     if (power_on){
+
+#if 0
 		restore_pinmux();
 		for (i=0;i<MAX_GPIO;i++)
 			restore_gpio(i);
-		
+#endif		
         printk(KERN_INFO "set_vccx2 power up\n");
         set_gpio_mode(GPIOA_bank_bit0_27(26), GPIOA_bit_bit0_27(26), GPIO_OUTPUT_MODE);
         set_gpio_val(GPIOA_bank_bit0_27(26), GPIOA_bit_bit0_27(26), 0);
@@ -930,10 +932,11 @@ static void set_vccx2(int power_on)
         printk(KERN_INFO "set_vccx2 power down\n");        
         set_gpio_mode(GPIOA_bank_bit0_27(26), GPIOA_bit_bit0_27(26), GPIO_OUTPUT_MODE);
         set_gpio_val(GPIOA_bank_bit0_27(26), GPIOA_bit_bit0_27(26), 1);
-     
+#if 0     
 		save_pinmux();
 		for (i=0;i<MAX_GPIO;i++)
 			save_gpio(i);
+#endif
     }
 }
 
