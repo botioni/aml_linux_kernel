@@ -281,7 +281,7 @@ static struct sn7325_platform_data sn7325_pdata = {
 
 #ifdef CONFIG_SIX_AXIS_SENSOR_MPU3050
 #define GPIO_mpu3050_PENIRQ ((GPIOA_bank_bit0_27(14)<<16) | GPIOA_bit_bit0_27(14))
-#define MPU3050_IRQ  INT_GPIO_2
+#define MPU3050_IRQ  INT_GPIO_1
 static int mpu3050_init_irq(void)
 {
     /* set input mode */
@@ -2055,6 +2055,7 @@ static struct i2c_board_info __initdata aml_i2c_bus_info_1[] = {
 #ifdef CONFIG_SIX_AXIS_SENSOR_MPU3050
     {
         I2C_BOARD_INFO("mpu3050", 0x68),
+        .irq = MPU3050_IRQ,
         .platform_data = (void *)&mpu3050_data,
     },
 #endif
@@ -2127,7 +2128,9 @@ static void __init device_pinmux_init(void )
 #endif
     set_audio_pinmux(AUDIO_OUT_TEST_N);
     set_audio_pinmux(AUDIO_IN_JTAG);
-    
+#ifdef CONFIG_SIX_AXIS_SENSOR_MPU3050
+    mpu3050_init_irq();
+#endif    
     //set clk for wifi
     WRITE_CBUS_REG(HHI_GEN_CLK_CNTL,(READ_CBUS_REG(HHI_GEN_CLK_CNTL)&(~(0x7f<<0)))|(1<<0)|(1<<8)|(7<<9));
 	CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO2_EN_N, (1<<15));    
