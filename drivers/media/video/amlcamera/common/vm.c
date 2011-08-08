@@ -1158,8 +1158,6 @@ int uninit_vm_device(void)
 
 MODULE_AMLOG(AMLOG_DEFAULT_LEVEL, 0xff, LOG_LEVEL_DESC, LOG_MASK_DESC);
 
-static struct platform_device *vm_dev0 = NULL;
-
 /* for driver. */
 static int vm_driver_probe(struct platform_device *pdev)
 {
@@ -1205,34 +1203,16 @@ vm_init_module(void)
 
    	amlog_level(LOG_LEVEL_HIGH,"vm_init\n");
 	if ((err = platform_driver_register(&vm_drv))) {
-	    printk("vm register fail\n");
+        printk(KERN_ERR "Failed to register vm driver (error=%d\n", err);
 		return err;
 	}
-	vm_dev0=platform_device_alloc("vm",0);
-	if(vm_dev0==NULL) {
-		err =-ENOMEM;
-		printk("vm alloc fail\n");
-		goto exit_driver_unregister;
-	}
-    if(platform_device_add(vm_dev0)<0) {
-		printk("vm device add fail\n");
-        goto exit_free_dev;
-        err=-1;
-	}
+
     return err;
-
-exit_free_dev:
-	platform_device_put(vm_dev0);
-
-exit_driver_unregister:
-	platform_driver_unregister(&vm_drv);
-	return err;
 }
 
 static void __exit
 vm_remove_module(void)
 {
-    platform_device_put(vm_dev0);
     platform_driver_unregister(&vm_drv);
     amlog_level(LOG_LEVEL_HIGH,"vm module removed.\n");
 }
@@ -1240,8 +1220,6 @@ vm_remove_module(void)
 module_init(vm_init_module);
 module_exit(vm_remove_module);
 
-MODULE_DESCRIPTION("AMLOGIC  VM DRIVER");
+MODULE_DESCRIPTION("Amlogic Video Input Manager");
 MODULE_LICENSE("GPL");
-MODULE_AUTHOR("aml-sh <simon.zheng@amlogic.com>");
-
-
+MODULE_AUTHOR("Simon Zheng <simon.zheng@amlogic.com>");
