@@ -2075,10 +2075,8 @@ static int __init aml_i2c_init(void)
 #if defined(CONFIG_TVIN_BT656IN)
 static void __init bt656in_pinmux_init(void)
 {
-    set_mio_mux(3, 0xf000);   //mask--mux gpio_c3 to bt656 clk;  mux gpioc[4:11] to be bt656 dt_in
-    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, 0x0f000000);
-    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_3, 0x01be07fc);
-    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_4, 0x0c000000);
+    SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, 0x3f<<6);
+    SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_3, 1<<21);
 }
 
 
