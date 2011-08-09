@@ -732,27 +732,15 @@ int gc0308_init(void)
 	udelay(1000);
 	
     // set camera power disable
-    //clear_mio_mux(5, (1<<31));
-    //set_gpio_val(GPIOE_bank_bit16_21(21), GPIOE_bit_bit16_21(21), 0);
-    //set_gpio_mode(GPIOE_bank_bit16_21(21), GPIOE_bit_bit16_21(21), GPIO_OUTPUT_MODE);
-    //msleep(20);
-   //pp0
-   #ifdef CONFIG_SN7325
-	printk( "amlogic camera driver 0308: init CONFIG_SN7325. \n");
-	configIO(1, 0);
-	setIO_level(1, 1, 0);//30m PWR_Down
-	msleep(20);
-    #endif	
-    
-    //set_gpio_val(GPIOE_bank_bit16_21(21), GPIOE_bit_bit16_21(21), 1);    // set camera power enable
-    //set_gpio_mode(GPIOE_bank_bit16_21(21), GPIOE_bit_bit16_21(21), GPIO_OUTPUT_MODE);
+    set_gpio_val(GPIOA_bank_bit0_27(25), GPIOA_bit_bit0_27(25), 1);    // set camera power disable
+    set_gpio_mode(GPIOA_bank_bit0_27(25), GPIOA_bit_bit0_27(25), GPIO_OUTPUT_MODE);
     msleep(20);
     
-    #ifdef CONFIG_SN7325    	
-	configIO(1, 0);
-	setIO_level(1, 0, 0);//30m PWR_On
-	msleep(20);
-    #endif
+    // set camera power enable
+    set_gpio_val(GPIOA_bank_bit0_27(25), GPIOA_bit_bit0_27(25), 0);    // set camera power enable
+    set_gpio_mode(GPIOA_bank_bit0_27(25), GPIOA_bit_bit0_27(25), GPIO_OUTPUT_MODE);
+    msleep(20);
+
 }
 #endif
 
@@ -790,27 +778,21 @@ static int gc0308_v4l2_init(void)
 }
 static int gc0308_v4l2_uninit(void)
 {
-	//pp0
-#ifdef CONFIG_SN7325
-	 printk( "amlogic camera driver: gc0308_v4l2_uninit CONFIG_SN7325. \n");
-	 configIO(1, 0);
-	 setIO_level(1, 1, 0);//30m PWR_Down
- #endif
 
-    //msleep(300);
-    //set_gpio_val(GPIOE_bank_bit16_21(21), GPIOE_bit_bit16_21(21), 0);
-    //set_gpio_mode(GPIOE_bank_bit16_21(21), GPIOE_bit_bit16_21(21), GPIO_OUTPUT_MODE);
+	printk( "amlogic camera driver: gc0308_v4l2_uninit CONFIG_SN7325. \n");
+    set_gpio_val(GPIOA_bank_bit0_27(25), GPIOA_bit_bit0_27(25), 1);    // set camera power disable
+    set_gpio_mode(GPIOA_bank_bit0_27(25), GPIOA_bit_bit0_27(25), GPIO_OUTPUT_MODE);
 }
 static void gc0308_v4l2_early_suspend(void)
 {
-	configIO(1, 0);
-	setIO_level(1, 1, 0);
+    set_gpio_val(GPIOA_bank_bit0_27(25), GPIOA_bit_bit0_27(25), 1);    // set camera power disable
+    set_gpio_mode(GPIOA_bank_bit0_27(25), GPIOA_bit_bit0_27(25), GPIO_OUTPUT_MODE);
 }
 
 static void gc0308_v4l2_late_resume(void)
 {
-	configIO(1, 0);
-	setIO_level(1, 0, 0);
+    set_gpio_val(GPIOA_bank_bit0_27(25), GPIOA_bit_bit0_27(25), 0);    // set camera power enable
+    set_gpio_mode(GPIOA_bank_bit0_27(25), GPIOA_bit_bit0_27(25), GPIO_OUTPUT_MODE);
 }
 
 aml_plat_cam_data_t video_gc0308_data = {
@@ -2041,7 +2023,14 @@ static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
         .platform_data = (void *)&itk_pdata,
     },
 #endif
+#ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE_GC0308
 
+	{
+        /*gc0308 i2c address is 0x42/0x43*/
+		I2C_BOARD_INFO("gc0308_i2c",  0x42 >> 1),
+		.platform_data = (void *)&video_gc0308_data,
+	},
+#endif
 //#ifdef CONFIG_CAMERA_OV9650FSL
 //#endif
 };

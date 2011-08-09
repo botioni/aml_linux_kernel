@@ -53,7 +53,6 @@
 #include "amlogic_camera_gt2005.h"
 
 //add for gc0308
-#include <mach/am_eth_pinmux.h>
 #include <mach/pinmux.h>
 #ifdef CONFIG_SN7325
 #include <linux/sn7325.h>

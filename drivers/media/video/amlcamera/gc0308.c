@@ -38,7 +38,6 @@
 #include <media/amlogic/aml_camera.h>
 
 #include <mach/am_regs.h>
-#include <mach/am_eth_pinmux.h>
 #include <mach/pinmux.h>
 #include <linux/tvin/tvin.h>
 #include "common/plat_ctrl.h"
