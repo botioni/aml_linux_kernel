@@ -32,7 +32,7 @@
 #include <mach/lm.h>
 #include <asm/memory.h>
 #include <asm/mach/map.h>
-#include <mach/nand.h>
+#include <mach/nand_m3.h>
 #include <linux/i2c.h>
 #include <linux/i2c-aml.h>
 #include <mach/power_gate.h>
@@ -1661,26 +1661,34 @@ static struct aml_nand_platform aml_nand_mid_platform[] = {
 		.platform_nand_data = {
 			.chip =  {
 				.nr_chips = 1,
-				.options = (NAND_TIMING_MODE5 | NAND_ECC_BCH16_MODE),
+				.options = (NAND_TIMING_MODE0 | NAND_ECC_BCH16_MODE),
 			},
     	},
-		.T_REA = 20,
-		.T_RHOH = 15,
+			.rbpin_mode=1,
+			.short_pgsz=384,
+			.ran_mode=0,
+			.T_REA = 20,
+			.T_RHOH = 15,
 	},
 {
 		.name = NAND_MULTI_NAME,
-		.chip_enable_pad = (AML_NAND_CE0 | (AML_NAND_CE1 << 4) | (AML_NAND_CE2 << 8) | (AML_NAND_CE3 << 12)),
-		.ready_busy_pad = (AML_NAND_CE0 | (AML_NAND_CE0 << 4) | (AML_NAND_CE1 << 8) | (AML_NAND_CE1 << 12)),
+		.chip_enable_pad = (AML_NAND_CE0),
+		.ready_busy_pad = (AML_NAND_CE0),
+
 		.platform_nand_data = {
 			.chip =  {
-				.nr_chips = 4,
+				.nr_chips = 1,
+				.options = (NAND_TIMING_MODE0| NAND_ECC_BCH30_MODE),
+
 				.nr_partitions = ARRAY_SIZE(multi_partition_info),
 				.partitions = multi_partition_info,
-				.options = (NAND_TIMING_MODE5 | NAND_ECC_BCH16_MODE | NAND_TWO_PLANE_MODE),
 			},
     	},
-		.T_REA = 20,
-		.T_RHOH = 15,
+			.rbpin_mode = 1,
+			.short_pgsz = 0,
+			.ran_mode = 0,
+			.T_REA = 20,
+			.T_RHOH = 15,
 	}
 };
 
@@ -1698,7 +1706,7 @@ static struct resource aml_nand_resources[] = {
 };
 
 static struct platform_device aml_nand_device = {
-    .name = "aml_m1_nand",
+    .name = "aml_m3_nand",
     .id = 0,
     .num_resources = ARRAY_SIZE(aml_nand_resources),
     .resource = aml_nand_resources,

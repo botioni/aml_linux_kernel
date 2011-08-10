@@ -697,18 +697,21 @@
 //#define PNAND_USER_B_7_4                           0x2190
 //#define PNAND_USER_B_11_8                          0x2192
 //#define PNAND_USER_B_15_12                         0x2193
-#define NAND_CMD  ((0xc1108600-IO_CBUS_BASE)>>2)
-#define NAND_CFG  ((0xc1108604-IO_CBUS_BASE)>>2)
-#define NAND_DADR ((0xc1108608-IO_CBUS_BASE)>>2)
-#define NAND_IADR ((0xc110860c-IO_CBUS_BASE)>>2)
-#define NAND_BUF  ((0xc1108610-IO_CBUS_BASE)>>2)
-#define NAND_INFO ((0xc1108614-IO_CBUS_BASE)>>2)
-#define NAND_DC   ((0xc1108618-IO_CBUS_BASE)>>2)
-#define NAND_ADR  ((0xc110861c-IO_CBUS_BASE)>>2)
-#define NAND_DL   ((0xc1108620-IO_CBUS_BASE)>>2)
-#define NAND_DH   ((0xc1108624-IO_CBUS_BASE)>>2)
-#define NAND_CADR ((0xc1108628-IO_CBUS_BASE)>>2)
-#define NAND_SADR ((0xc110862c-IO_CBUS_BASE)>>2)
+
+#define IO_CBUS_BASE2  0xc1100000
+
+#define NAND_CMD  ((0xc1108600-IO_CBUS_BASE2)>>2)
+#define NAND_CFG  ((0xc1108604-IO_CBUS_BASE2)>>2)
+#define NAND_DADR ((0xc1108608-IO_CBUS_BASE2)>>2)
+#define NAND_IADR ((0xc110860c-IO_CBUS_BASE2)>>2)
+#define NAND_BUF  ((0xc1108610-IO_CBUS_BASE2)>>2)
+#define NAND_INFO ((0xc1108614-IO_CBUS_BASE2)>>2)
+#define NAND_DC   ((0xc1108618-IO_CBUS_BASE2)>>2)
+#define NAND_ADR  ((0xc110861c-IO_CBUS_BASE2)>>2)
+#define NAND_DL   ((0xc1108620-IO_CBUS_BASE2)>>2)
+#define NAND_DH   ((0xc1108624-IO_CBUS_BASE2)>>2)
+#define NAND_CADR ((0xc1108628-IO_CBUS_BASE2)>>2)
+#define NAND_SADR ((0xc110862c-IO_CBUS_BASE2)>>2)
 
 // ----------------------------
 // PWM / DS C/D
