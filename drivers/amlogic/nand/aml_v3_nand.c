@@ -613,6 +613,7 @@ static int aml_nand_wait(struct mtd_info *mtd, struct nand_chip *chip)
 				}
 			}
 			else {
+				udelay(4);
 				if ((state == FL_ERASING) && (chip->options & NAND_IS_AND))
 					aml_chip->aml_nand_command(aml_chip, NAND_CMD_STATUS_MULTI, -1, -1, i);
 				else
@@ -1059,17 +1060,17 @@ static int aml_platform_dma_write(struct aml_nand_chip *aml_chip, unsigned char 
 		count = 1;
 	}	
 
-	data_dma_addr=dma_map_single(aml_chip->device,(void *)buf,len,DMA_TO_DEVICE);	
+//	data_dma_addr=dma_map_single(aml_chip->device,(void *)buf,len,DMA_TO_DEVICE);	
 //	user_data_dma_addr=dma_map_single(aml_chip->device,(void *)aml_chip->user_info_buf,count*PER_INFO_BYTE,DMA_TO_DEVICE);
 	
 
-//	flush_icache_range((unsigned long )buf, ((unsigned long )buf) + len - 1);
-//	flush_icache_range((unsigned long )aml_chip->user_info_buf, ((unsigned long )aml_chip->user_info_buf) + count*PER_INFO_BYTE - 1);
+//	dcache_flush_range((unsigned long )buf, ((unsigned long )buf) + len - 1);
+//	dcache_flush_range((unsigned long )aml_chip->user_info_buf, ((unsigned long )aml_chip->user_info_buf) + count*PER_INFO_BYTE - 1);
 
     wmb();
     
-	NFC_SEND_CMD_ADL((int)data_dma_addr);
-	NFC_SEND_CMD_ADH((int)data_dma_addr);
+	NFC_SEND_CMD_ADL(aml_chip->aml_nand_dma_buf_dma_addr);
+	NFC_SEND_CMD_ADH(aml_chip->aml_nand_dma_buf_dma_addr);
 	NFC_SEND_CMD_AIL(aml_chip->aml_nand_info_dma_addr);
 	NFC_SEND_CMD_AIH(aml_chip->aml_nand_info_dma_addr);	
 	
@@ -1081,7 +1082,7 @@ static int aml_platform_dma_write(struct aml_nand_chip *aml_chip, unsigned char 
 	ret = aml_platform_dma_waiting(aml_chip);
 
 	rmb();
-	dma_unmap_single(aml_chip->device,data_dma_addr,len,DMA_TO_DEVICE);
+//	dma_unmap_single(aml_chip->device,data_dma_addr,len,DMA_TO_DEVICE);
 //	dma_unmap_single(aml_chip->device,data_dma_addr,count*PER_INFO_BYTE,DMA_FROM_DEVICE);
 
 	return ret;		 
@@ -1111,15 +1112,15 @@ static int aml_platform_dma_read(struct aml_nand_chip *aml_chip, unsigned char *
 	{
 		count = 1;
 	}
-//    data_dma_addr=dma_map_single(aml_chip->device,(void *)buf,len,DMA_FROM_DEVICE);
+//    data_dma_addr=dma_map_single(aml_chip->device,(void *)buf,len,DMA_BIDIRECTIONAL);
 	 
 	memset((unsigned char *)aml_chip->user_info_buf, 0, count*PER_INFO_BYTE);	
-//	flush_icache_range((unsigned long )aml_chip->user_info_buf, (unsigned long )aml_chip->user_info_buf+count*PER_INFO_BYTE+64);
-//	flush_icache_range((unsigned long )buf, ((unsigned long )buf) + len - 1);
+//	dcache_flush_range((unsigned)aml_chip->user_info_buf,count*PER_INFO_BYTE);
+//	dcache_invalid_range((unsigned)buf,len);
 	 wmb();
 	    
-	NFC_SEND_CMD_ADL((int)buf);
-	NFC_SEND_CMD_ADH((int)buf);
+	NFC_SEND_CMD_ADL(aml_chip->aml_nand_dma_buf_dma_addr);
+	NFC_SEND_CMD_ADH(aml_chip->aml_nand_dma_buf_dma_addr);
 	NFC_SEND_CMD_AIL(aml_chip->aml_nand_info_dma_addr);
 	NFC_SEND_CMD_AIH(aml_chip->aml_nand_info_dma_addr);
 
@@ -1138,17 +1139,17 @@ static int aml_platform_dma_read(struct aml_nand_chip *aml_chip, unsigned char *
 	if (ret)
 		return ret;
 
-#if 0
-	aml_nand_debug("aml_platform_dma_read   read data\n");
+#if 1
 	do{
 //		flush_icache_range((unsigned long )aml_chip->user_info_buf, (unsigned long )aml_chip->user_info_buf+count*PER_INFO_BYTE+64);
 		info_buf=(volatile unsigned *)&(aml_chip->user_info_buf[(count-1)*slen]);	
 		cmp = *info_buf;	
 	}while((cmp)==0);
-	aml_nand_debug("aml_platform_dma_read read data over !\n");
 #endif	
-//	dma_unmap_single(aml_chip->device,data_dma_addr,len,DMA_FROM_DEVICE);
 	rmb();	
+//	dma_sync_single_for_cpu(aml_chip->device,data_dma_addr,len,DMA_BIDIRECTIONAL);
+//	dma_unmap_single(aml_chip->device,data_dma_addr,len,DMA_BIDIRECTIONAL);
+	
 /*
  * //	while(NAND_INFO_DONE(*info_buf) == 0);
 //	rmb();
@@ -1407,7 +1408,7 @@ static int aml_nand_read_page_hwecc(struct mtd_info *mtd, struct nand_chip *chip
 				}
 				else if (aml_chip->plane_num == 1) {
 	
-                                if(buf > PAGE_OFFSET)
+                                if(0/*buf > PAGE_OFFSET*/)
 					    error = aml_chip->aml_nand_dma_read(aml_chip, buf, nand_page_size, aml_chip->bch_mode);
                                 else{
 					    error = aml_chip->aml_nand_dma_read(aml_chip, aml_chip->aml_nand_data_buf, nand_page_size, aml_chip->bch_mode);
@@ -1527,7 +1528,7 @@ static void aml_nand_write_page_hwecc(struct mtd_info *mtd, struct nand_chip *ch
 				else if (aml_chip->plane_num == 1) {
 	
 					aml_chip->aml_nand_set_user_byte(aml_chip, oob_buf, user_byte_num);
-                                if(buf > PAGE_OFFSET)
+							if(0/*buf > PAGE_OFFSET*/)
 					    error = aml_chip->aml_nand_dma_write(aml_chip, (unsigned char *)buf, nand_page_size, aml_chip->bch_mode);
                                 else{
         					memcpy(aml_chip->aml_nand_data_buf, buf, nand_page_size);
@@ -1725,6 +1726,12 @@ static int aml_nand_read_oob(struct mtd_info *mtd, struct nand_chip *chip, int p
 						dma_once_size = nand_read_size;
 					else
 						dma_once_size = nand_page_size;
+
+					if (!aml_chip->aml_nand_wait_devready(aml_chip, 0)) {
+						aml_nand_debug ("read oob couldn`t found selected chip: %d ready\n", i);
+						error = -EBUSY;
+						goto exit;
+					}
 
 					error = aml_chip->aml_nand_dma_read(aml_chip, nand_buffer, dma_once_size, aml_chip->bch_mode);
 					if (error) {

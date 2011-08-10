@@ -2075,6 +2075,16 @@ int aml_nand_init(struct aml_nand_chip *aml_chip)
 	struct mtd_info *mtd = &aml_chip->mtd;
 	int err = 0, i = 0;
 
+#ifdef CONFIG_HAS_EARLYSUSPEND
+    aml_chip->nand_early_suspend.level = EARLY_SUSPEND_LEVEL_BLANK_SCREEN;
+    if (!aml_chip->nand_early_suspend.suspend)
+    	aml_chip->nand_early_suspend.suspend = aml_platform_nand_suspend;
+    if (!aml_chip->nand_early_suspend.resume)
+    	aml_chip->nand_early_suspend.resume = aml_platform_nand_resume;
+    aml_chip->nand_early_suspend.param = aml_chip;
+    register_early_suspend(&aml_chip->nand_early_suspend);
+#endif
+
 	switch (plat->platform_nand_data.chip.options & NAND_ECC_OPTIONS_MASK) {
 
 		case NAND_ECC_SOFT_MODE:
@@ -2396,15 +2406,6 @@ int aml_nand_init(struct aml_nand_chip *aml_chip)
 		goto exit_error;
 	}
 
-#ifdef CONFIG_HAS_EARLYSUSPEND
-        aml_chip->nand_early_suspend.level = EARLY_SUSPEND_LEVEL_BLANK_SCREEN;
-        if (!aml_chip->nand_early_suspend.suspend)
-    	    aml_chip->nand_early_suspend.suspend = aml_platform_nand_suspend;
-        if (!aml_chip->nand_early_suspend.resume)
-    	    aml_chip->nand_early_suspend.resume = aml_platform_nand_resume;
-        aml_chip->nand_early_suspend.param = aml_chip;
-        register_early_suspend(&aml_chip->nand_early_suspend);
-#endif
 	dev_dbg(aml_chip->device, "initialized ok\n");
 	return 0;
 
