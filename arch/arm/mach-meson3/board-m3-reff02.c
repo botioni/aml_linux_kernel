@@ -1493,6 +1493,12 @@ static struct platform_device aml_efuse_device = {
 };
 #endif
 
+#ifdef CONFIG_PMU_ACT8942
+static struct platform_device aml_pmu_device = {
+    .name	= "pmu act8942",
+    .id	= -1,
+};
+#endif
 
 #ifdef CONFIG_AM_NAND
 /*static struct mtd_partition partition_info[] = 
@@ -1913,107 +1919,109 @@ struct bt_dev_data bt_dev = {
 #endif
 
 static struct platform_device __initdata *platform_devs[] = {
-    #if defined(CONFIG_JPEGLOGO)
-        &jpeglogo_device,
-    #endif
-    #if defined (CONFIG_AMLOGIC_PM)
-        &power_dev,
-    #endif  
+#if defined(CONFIG_JPEGLOGO)
+    &jpeglogo_device,
+#endif
+#if defined (CONFIG_AMLOGIC_PM)
+    &power_dev,
+#endif  
 
-    #if defined (CONFIG_AMLOGIC_MODEM)
-        &modem_dev,
-    #endif  
-	
-    #if defined(CONFIG_FB_AM)
-        &fb_device,
+#if defined (CONFIG_AMLOGIC_MODEM)
+    &modem_dev,
+#endif  
+
+#if defined(CONFIG_FB_AM)
+    &fb_device,
+#endif
+#if defined(CONFIG_AM_STREAMING)
+    &codec_device,
+#endif
+#if defined(CONFIG_AM_VIDEO)
+    &deinterlace_device,
+#endif
+#if defined(CONFIG_TVIN_VDIN)
+    &vdin_device,
+#endif
+#if defined(CONFIG_TVIN_BT656IN)
+	&bt656in_device,
+#endif
+#if defined(CONFIG_AML_AUDIO_DSP)
+    &audiodsp_device,
+#endif
+#if defined(CONFIG_SND_AML_M3)
+    &aml_audio,
+#endif
+#if defined(CONFIG_CARDREADER)
+    &amlogic_card_device,
+#endif
+#if defined(CONFIG_KEYPADS_AM)||defined(CONFIG_VIRTUAL_REMOTE)||defined(CONFIG_KEYPADS_AM_MODULE)
+    &input_device,
+#endif
+#ifdef CONFIG_SARADC_AM
+&saradc_device,
+#endif
+#ifdef CONFIG_ADC_TOUCHSCREEN_AM
+    &adc_ts_device,
+#endif
+#if defined(CONFIG_ADC_KEYPADS_AM)||defined(CONFIG_ADC_KEYPADS_AM_MODULE)
+    &adc_kp_device,
+#endif
+#if defined(CONFIG_KEY_INPUT_CUSTOM_AM) || defined(CONFIG_KEY_INPUT_CUSTOM_AM_MODULE)
+    &input_device_key,  //changed by Elvis
+#endif
+#ifdef CONFIG_AM_NAND
+    &aml_nand_device,
+#endif
+#if defined(CONFIG_NAND_FLASH_DRIVER_MULTIPLANE_CE)
+    &aml_nand_device,
+#endif
+#if defined(CONFIG_AML_RTC)
+    &aml_rtc_device,
+#endif
+#ifdef CONFIG_AMLOGIC_VIDEOIN_MANAGER
+	&vm_device,
+#endif
+#if defined(CONFIG_SUSPEND)
+    &aml_pm_device,
+#endif
+#if defined(CONFIG_ANDROID_PMEM)
+    &android_pmem_device,
+#endif
+#if defined(CONFIG_I2C_SW_AML)
+    &aml_sw_i2c_device,
+#endif
+#if defined(CONFIG_I2C_AML)|| defined(CONFIG_I2C_HW_AML)
+    &aml_i2c_device,
+    &aml_i2c_device1,
+    &aml_i2c_device2,
+#endif
+#if defined(CONFIG_AM_UART_WITH_S_CORE)
+    &aml_uart_device,
+#endif
+#if defined(CONFIG_AMLOGIC_BACKLIGHT)
+    &aml_bl_device,
+#endif
+#if defined(CONFIG_AM_TV_OUTPUT)||defined(CONFIG_AM_TCON_OUTPUT)
+    &vout_device,   
+#endif
+#ifdef CONFIG_USB_ANDROID
+    &android_usb_device,
+    #ifdef CONFIG_USB_ANDROID_MASS_STORAGE
+        &usb_mass_storage_device,
     #endif
-    #if defined(CONFIG_AM_STREAMING)
-        &codec_device,
-    #endif
-    #if defined(CONFIG_AM_VIDEO)
-        &deinterlace_device,
-    #endif
-    #if defined(CONFIG_TVIN_VDIN)
-        &vdin_device,
-    #endif
-    #if defined(CONFIG_TVIN_BT656IN)
-		&bt656in_device,
-    #endif
-    #if defined(CONFIG_AML_AUDIO_DSP)
-        &audiodsp_device,
-    #endif
-	#if defined(CONFIG_SND_AML_M3)
-        &aml_audio,
-	#endif
-    #if defined(CONFIG_CARDREADER)
-        &amlogic_card_device,
-    #endif
-    #if defined(CONFIG_KEYPADS_AM)||defined(CONFIG_VIRTUAL_REMOTE)||defined(CONFIG_KEYPADS_AM_MODULE)
-        &input_device,
-    #endif
-    #ifdef CONFIG_SARADC_AM
-    &saradc_device,
-    #endif
-    #ifdef CONFIG_ADC_TOUCHSCREEN_AM
-        &adc_ts_device,
-    #endif
-    #if defined(CONFIG_ADC_KEYPADS_AM)||defined(CONFIG_ADC_KEYPADS_AM_MODULE)
-        &adc_kp_device,
-    #endif
-    #if defined(CONFIG_KEY_INPUT_CUSTOM_AM) || defined(CONFIG_KEY_INPUT_CUSTOM_AM_MODULE)
-        &input_device_key,  //changed by Elvis
-    #endif
-    #ifdef CONFIG_AM_NAND
-        &aml_nand_device,
-    #endif
-    #if defined(CONFIG_NAND_FLASH_DRIVER_MULTIPLANE_CE)
-        &aml_nand_device,
-    #endif
-    #if defined(CONFIG_AML_RTC)
-        &aml_rtc_device,
-    #endif
-    #ifdef CONFIG_AMLOGIC_VIDEOIN_MANAGER
-		&vm_device,
-    #endif
-    #if defined(CONFIG_SUSPEND)
-        &aml_pm_device,
-    #endif
-    #if defined(CONFIG_ANDROID_PMEM)
-        &android_pmem_device,
-    #endif
-    #if defined(CONFIG_I2C_SW_AML)
-        &aml_sw_i2c_device,
-    #endif
-    #if defined(CONFIG_I2C_AML)|| defined(CONFIG_I2C_HW_AML)
-        &aml_i2c_device,
-        &aml_i2c_device1,
-        &aml_i2c_device2,
-    #endif
-    #if defined(CONFIG_AM_UART_WITH_S_CORE)
-        &aml_uart_device,
-    #endif
-    #if defined(CONFIG_AMLOGIC_BACKLIGHT)
-        &aml_bl_device,
-    #endif
-    #if defined(CONFIG_AM_TV_OUTPUT)||defined(CONFIG_AM_TCON_OUTPUT)
-        &vout_device,   
-    #endif
-    #ifdef CONFIG_USB_ANDROID
-        &android_usb_device,
-        #ifdef CONFIG_USB_ANDROID_MASS_STORAGE
-            &usb_mass_storage_device,
-        #endif
-    #endif
-    #ifdef CONFIG_BT_DEVICE  
-        &bt_device,
-    #endif
-    #ifdef CONFIG_AR1520_GPS
+#endif
+#ifdef CONFIG_BT_DEVICE  
+    &bt_device,
+#endif
+#ifdef CONFIG_AR1520_GPS
 	&aml_ar1520_device,
-    #endif
-    #ifdef CONFIG_EFUSE
+#endif
+#ifdef CONFIG_EFUSE
 	&aml_efuse_device,
-    #endif
-
+#endif
+#ifdef CONFIG_PMU_ACT8942
+	&aml_pmu_device,
+#endif
 };
 
 static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
@@ -2065,8 +2073,11 @@ static struct i2c_board_info __initdata aml_i2c_bus_info_2[] = {
         .platform_data = (void *)&bq27x00_pdata,
     },
 #endif
-//#ifdef CONFIG_PMU_ACT8442
-//#endif
+#ifdef CONFIG_PMU_ACT8942
+	{
+        I2C_BOARD_INFO("act8942-i2c", 0x5b),
+    },
+#endif
 };
 
 static int __init aml_i2c_init(void)

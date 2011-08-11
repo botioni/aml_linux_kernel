@@ -80,5 +80,7 @@ obj-y += wifi/
 obj-y += bluetooth/
 #	camera devices
 obj-y += camera/
+#	pmu devices
+obj-y += pmu/
 obj-y += modem/
 obj-y += debug/
