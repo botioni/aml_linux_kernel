@@ -36,7 +36,7 @@
 #include <linux/amports/timestamp.h>
 #include <linux/amports/tsync.h>
 
-
+extern void tsync_pcr_recover(void);extern void tsync_pcr_recover(void);
 
 MODULE_DESCRIPTION("AMLOGIC APOLLO Audio dsp driver");
 MODULE_LICENSE("GPL");
@@ -173,7 +173,9 @@ static int audiodsp_ioctl(struct inode *node, struct file *file, unsigned int cm
 	unsigned long pts;
 	int ret=0;
 	unsigned long *val=(unsigned long *)args;
-	
+#ifdef ENABLE_WAIT_FORMAT
+	static wait_format_times=0;
+#endif	
 	switch(cmd)
 		{
 		case AUDIODSP_SET_FMT:
@@ -198,6 +200,94 @@ static int audiodsp_ioctl(struct inode *node, struct file *file, unsigned int cm
 			priv->decoded_nb_frames = 0;
 			priv->format_wait_count = 0;
 			break;
+#ifdef ENABLE_WAIT_FORMAT
+		case AUDIODSP_DECODE_START:			
+			if(priv->dsp_is_started)
+				{
+				dsp_codec_start(priv);
+				wait_format_times=0;
+				}
+			else
+				{
+				DSP_PRNT("Audio dsp have not started\n");
+				}			
+			break;
+		case AUDIODSP_WAIT_FORMAT:
+			if(priv->dsp_is_started)
+				{
+				struct audio_info *audio_format;
+				int ch = 0;
+				audio_format = get_audio_info();
+				
+				wait_format_times++;
+				
+				if(wait_format_times>100){
+					int audio_info = DSP_RD(DSP_AUDIO_FORMAT_INFO);
+					if(audio_info){
+						priv->frame_format.channel_num = audio_info&0xf;
+						if(priv->frame_format.channel_num)
+							priv->frame_format.valid |= CHANNEL_VALID;
+						priv->frame_format.data_width= (audio_info>>4)&0x3f;
+						if(priv->frame_format.data_width)
+							priv->frame_format.valid |= DATA_WIDTH_VALID;
+						priv->frame_format.sample_rate = (audio_info>>10);
+						if(priv->frame_format.sample_rate)
+							priv->frame_format.valid |= SAMPLE_RATE_VALID;
+						DSP_PRNT("warning::got info from mailbox failed,read from regiser\n");
+						ret = 0;
+					}else{
+						DSP_PRNT("dsp have not set the codec stream's format details,valid=%x\n",
+						priv->frame_format.valid);		
+						priv->format_wait_count++;
+						if(priv->format_wait_count > 5){						
+							if(audio_format->channels&&audio_format->sample_rate){
+								priv->frame_format.channel_num = audio_format->channels>2?2:audio_format->channels;
+								priv->frame_format.sample_rate = audio_format->sample_rate;
+								priv->frame_format.data_width = 16;
+								priv->frame_format.valid = CHANNEL_VALID|DATA_WIDTH_VALID|SAMPLE_RATE_VALID;
+								DSP_PRNT("we have not got format details from dsp,so use the info got from the header parsed instead\n");
+								ret = 0;
+							}else{
+								ret = -1;
+							}
+						}else{
+							ret=-1;
+						}
+					}
+				}else if(priv->frame_format.valid == (CHANNEL_VALID|DATA_WIDTH_VALID|SAMPLE_RATE_VALID)){
+					       DSP_PRNT("audio info from header: sr %d,ch %d\n",audio_format->sample_rate,audio_format->channels);
+						if(audio_format->channels > 0 ){
+							if(audio_format->channels > 2)
+								ch = 2;
+							else
+								ch = audio_format->channels;
+							if(ch != priv->frame_format.channel_num){
+								DSP_PRNT(" ch num info from dsp and header not match,[dsp %d ch],[header %d ch]", \
+									priv->frame_format.channel_num,ch);
+								priv->frame_format.channel_num = ch;
+							}	
+							
+						}
+						if(audio_format->sample_rate&&audio_format->sample_rate != priv->frame_format.sample_rate){
+								DSP_PRNT(" sr num info from dsp and header not match,[dsp %d ],[header %d ]", \
+									priv->frame_format.sample_rate,audio_format->sample_rate);
+							priv->frame_format.sample_rate  = audio_format->sample_rate;
+						}
+						DSP_PRNT("applied audio sr %d,ch num %d\n",priv->frame_format.sample_rate,priv->frame_format.channel_num);
+						
+						/*Reset the PLL. Added by GK*/
+						tsync_pcr_recover();
+				}
+				else{
+					ret = -EAGAIN;
+				}
+				}
+			else
+				{
+				DSP_PRNT("Audio dsp have not started\n");
+				}			
+			break;
+#else /*!defined(ENABLE_WAIT_FORMAT)*/
 		case AUDIODSP_DECODE_START:			
 			if(priv->dsp_is_started)
 				{
@@ -270,13 +360,15 @@ static int audiodsp_ioctl(struct inode *node, struct file *file, unsigned int cm
 						}
 						DSP_PRNT("applied audio sr %d,ch num %d\n",priv->frame_format.sample_rate,priv->frame_format.channel_num);
 				}
-				
+				/*Reset the PLL. Added by GK*/
+				tsync_pcr_recover();
 				}
 			else
 				{
 				DSP_PRNT("Audio dsp have not started\n");
 				}			
 			break;
+#endif /*ENABLE_WAIT_FORMAT*/
 		case AUDIODSP_DECODE_STOP:
 			if(priv->dsp_is_started)
 				{

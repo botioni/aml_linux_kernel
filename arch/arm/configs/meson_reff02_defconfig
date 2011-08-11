@@ -819,7 +819,7 @@ CONFIG_AMAUDIO=y
 #
 # Amlogic audio dsp process 
 #
-# CONFIG_AML_AUDIO_DSP is not set
+CONFIG_AML_AUDIO_DSP=y
 
 #
 # AMLOGIC Physical memory allocator

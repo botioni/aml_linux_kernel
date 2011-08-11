@@ -36,7 +36,7 @@ static void	enable_dsp(int flag)
 	/* RESET DSP */
 
 	 if(!flag)
-	  	 CLEAR_MPEG_REG_MASK(AUD_ARC_CTL, 1);
+	  	 CLEAR_MPEG_REG_MASK(MEDIA_CPU_CTL, 1);
 	/*write more for make the dsp is realy reset!*/
 	 SET_MPEG_REG_MASK(RESET2_REGISTER, RESET_AUD_ARC);
 	// M1 has this bug also????
@@ -49,8 +49,8 @@ static void	enable_dsp(int flag)
     	/* polling highest bit of IREG_DDR_CTRL until the mapping is done */
 	
         if (flag) {
-		    SET_MPEG_REG_MASK(AUD_ARC_CTL, 1);
-		    CLEAR_MPEG_REG_MASK(AUD_ARC_CTL, 1);
+		    SET_MPEG_REG_MASK(MEDIA_CPU_CTL, 1);
+		    CLEAR_MPEG_REG_MASK(MEDIA_CPU_CTL, 1);
 		    clk=clk_get_sys("a9_clk", NULL);
 		    if(!clk)
 			{
@@ -106,9 +106,9 @@ void reset_dsp( struct audiodsp_priv *priv)
     halt_dsp(priv);
     //flush_and_inv_dcache_all();
     /* map DSP 0 address so that reset vector points to same vector table as ARC1 */
-    CLEAR_MPEG_REG_MASK(AUD_ARC_CTL, (0xfff << 4));
+    CLEAR_MPEG_REG_MASK(MEDIA_CPU_CTL, (0xfff << 4));
  //   SET_MPEG_REG_MASK(SDRAM_CTL0,1);//arc mapping to ddr memory
-    SET_MPEG_REG_MASK(AUD_ARC_CTL, ((AUDIO_DSP_START_PHY_ADDR)>> 20) << 4);
+    SET_MPEG_REG_MASK(MEDIA_CPU_CTL, ((AUDIO_DSP_START_PHY_ADDR)>> 20) << 4);
 // decode option    
     DSP_WD(DSP_DECODE_OPTION, decopt);
 

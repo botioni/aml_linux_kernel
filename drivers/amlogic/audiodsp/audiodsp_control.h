@@ -1,4 +1,6 @@
-
+#ifndef ENABLE_WAIT_FORMAT
+#define ENABLE_WAIT_FORMAT
+#endif
 
 #ifndef AUDIODSP_CONTROL_H
 #define AUDIODSP_CONTROL_H
@@ -26,6 +28,10 @@ char *data;
 #define AUDIODSP_SYNC_AUDIO_START					_IOW('a',8,unsigned long)
 #define AUDIODSP_SYNC_AUDIO_TSTAMP_DISCONTINUITY	_IOW('a',9,unsigned long)
 #define AUDIODSP_SYNC_SET_APTS						_IOW('a',10,unsigned long)
+
+#ifdef ENABLE_WAIT_FORMAT
+#define AUDIODSP_WAIT_FORMAT						_IOW('a',11,long)
+#endif
 
 
 #define AUDIODSP_GET_CHANNELS_NUM					_IOR('r',1,long)
