@@ -2164,8 +2164,8 @@ static void disable_unused_model(void)
 static void __init power_hold(void)
 {
     printk(KERN_INFO "power hold set high!\n");
-    //set_gpio_val(GPIOA_bank_bit(8), GPIOA_bit_bit0_14(8), 1);
-    //set_gpio_mode(GPIOA_bank_bit(8), GPIOA_bit_bit0_14(8), GPIO_OUTPUT_MODE);
+    set_gpio_val(GPIOAO_bank_bit0_11(6), GPIOAO_bit_bit0_11(6), 1);
+    set_gpio_mode(GPIOAO_bank_bit0_11(6), GPIOAO_bit_bit0_11(6), GPIO_OUTPUT_MODE);
     
     //VCCx2 power up
     printk(KERN_INFO "set_vccx2 power up\n");
@@ -2216,7 +2216,6 @@ static __init void m1_init_machine(void)
     lm_device_register(&sata_ld);
 #endif
     disable_unused_model();
-
 }
 
 /*VIDEO MEMORY MAPING*/
