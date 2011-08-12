@@ -1203,6 +1203,13 @@ static int get_charge_status(void)
     return (READ_CBUS_REG(ASSIST_HW_REV)&(1<<8))? 1:0;
 }
 
+static void power_off(void)
+{
+    //Power hold down
+    set_gpio_val(GPIOAO_bank_bit0_11(6), GPIOAO_bit_bit0_11(6), 0);
+    set_gpio_mode(GPIOAO_bank_bit0_11(6), GPIOAO_bit_bit0_11(6), GPIO_OUTPUT_MODE);
+}
+
 static void set_bat_off(void)
 {
     //BL_PWM power off
@@ -1215,10 +1222,6 @@ static void set_bat_off(void)
 #if defined(CONFIG_SUSPEND)
     set_vccx2(0);
 #endif
-    //Power hold down
-    set_gpio_val(GPIOAO_bank_bit0_11(6), GPIOAO_bit_bit0_11(6), 0);
-    set_gpio_mode(GPIOAO_bank_bit0_11(6), GPIOAO_bit_bit0_11(6), GPIO_OUTPUT_MODE);
-
 }
 
 static int bat_value_table[37]={
@@ -2198,7 +2201,7 @@ static __init void m1_init_machine(void)
     
     LED_PWM_REG0_init();
     power_hold();
-    pm_power_off = set_bat_off;
+    pm_power_off = power_off;
     device_clk_setting();
     device_pinmux_init();
 #ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE
