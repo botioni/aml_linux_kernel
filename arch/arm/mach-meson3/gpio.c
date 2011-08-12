@@ -18,12 +18,7 @@ static struct gpio_addr gpio_addrs[] = {
     [PREG_PAD_GPIO3] = {PREG_PAD_GPIO3_EN_N, PREG_PAD_GPIO3_O, PREG_PAD_GPIO3_I},
     [PREG_PAD_GPIO4] = {PREG_PAD_GPIO4_EN_N, PREG_PAD_GPIO4_O, PREG_PAD_GPIO4_I},
     [PREG_PAD_GPIO5] = {PREG_PAD_GPIO5_EN_N, PREG_PAD_GPIO5_O, PREG_PAD_GPIO5_I},
-	/*                  0xc8100024,          0xc8100024,        0xc8100028  */
-	/*  #define CBUS_REG_OFFSET(reg) ((reg) << 2)                           */
-	/*  #define CBUS_REG_ADDR(reg)   (IO_CBUS_BASE + CBUS_REG_OFFSET(reg))  */
-	/*  (0xc8100024 - IO_CBUS_BASE) >> 2                                     */
-#define TO_CBUS_OFFSET(reg)	(((reg) - IO_CBUS_BASE) >> 2) 
-    [PREG_PAD_GPIOAO] = {TO_CBUS_OFFSET(0xc8100024), TO_CBUS_OFFSET(0xc8100024), TO_CBUS_OFFSET(0xc8100028)},
+    [PREG_PAD_GPIOAO] = {AO_GPIO_O_EN_N,     AO_GPIO_O_EN_N,   AO_GPIO_I},
 };
 
 int set_gpio_mode(gpio_bank_t bank, int bit, gpio_mode_t mode)
@@ -35,7 +30,10 @@ int set_gpio_mode(gpio_bank_t bank, int bit, gpio_mode_t mode)
         return 0;
     }
 #endif
-    WRITE_CBUS_REG_BITS(addr, mode, bit, 1);
+    if (bank==PREG_PAD_GPIOAO)
+        WRITE_AOBUS_REG_BITS(addr, mode, bit, 1);
+    else
+        WRITE_CBUS_REG_BITS(addr, mode, bit, 1);
     return 0;
 }
 
@@ -47,6 +45,8 @@ gpio_mode_t get_gpio_mode(gpio_bank_t bank, int bit)
         return get_exgpio_mode(bank - EXGPIO_BANK0, bit);
     }
 #endif
+    if (bank==PREG_PAD_GPIOAO)
+        return (READ_AOBUS_REG_BITS(addr, bit, 1) > 0) ? (GPIO_INPUT_MODE) : (GPIO_OUTPUT_MODE);
     return (READ_CBUS_REG_BITS(addr, bit, 1) > 0) ? (GPIO_INPUT_MODE) : (GPIO_OUTPUT_MODE);
 }
 
@@ -62,12 +62,11 @@ int set_gpio_val(gpio_bank_t bank, int bit, unsigned long val)
     }
 #endif
 	 /* AO output: Because GPIO enable and output use the same register, we need shift 16 bit*/
-	if(addr == TO_CBUS_OFFSET(0xc8100024)) { /* AO output need shift 16 bit*/
-		gpio_bit = bit + 16;
+	if(bank == PREG_PAD_GPIOAO) { /* AO output need shift 16 bit*/
+		WRITE_AOBUS_REG_BITS(addr, val ? 1 : 0, bit+16, 1);
 	} else {
-		gpio_bit = bit;
+		WRITE_CBUS_REG_BITS(addr, val ? 1 : 0, bit, 1);
 	}
-    WRITE_CBUS_REG_BITS(addr, val ? 1 : 0, gpio_bit, 1);
 
     return 0;
 }
@@ -80,6 +79,8 @@ unsigned long  get_gpio_val(gpio_bank_t bank, int bit)
         return get_exgpio_val(bank - EXGPIO_BANK0, bit);
     }
 #endif
+    if(bank == PREG_PAD_GPIOAO) 
+        return READ_AOBUS_REG_BITS(addr, bit, 1);
     return READ_CBUS_REG_BITS(addr, bit, 1);
 }
 
