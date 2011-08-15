@@ -14,6 +14,7 @@
  * GNU General Public License for more details.
  *
  */
+#define HDMI_DEBUG()
 
 #ifndef AVOS
 
@@ -666,6 +667,8 @@ hdmi_task_handle(void *data)
             hdmitx_device->HWOp.Cntl(hdmitx_device, HDMITX_HWCMD_MUX_HPD, 0);    
         }
     }
+    
+    HDMI_DEBUG();
 
     while (hdmitx_device->hpd_event != 0xff)
     {
@@ -778,6 +781,7 @@ avfs_device_driver hdmi_init(avfs_device_major_number major, avfs_device_minor_n
         major,
         (avfs_device_minor_number) 0
     );   
+    HDMI_DEBUG();
     memset(&hdmitx_device, 0, sizeof(hdmitx_dev_t));
     strcpy(lvideo_info.name, "");
     hdmitx_device.vic_count=0;
@@ -877,6 +881,7 @@ const static struct file_operations amhdmitx_fops = {
 static int amhdmitx_probe(struct platform_device *pdev)
 {
     int r;
+    HDMI_DEBUG();
     pr_dbg("amhdmitx_probe\n");
     r = alloc_chrdev_region(&hdmitx_id, 0, HDMI_TX_COUNT, DEVICE_NAME);
     if (r < 0) {
@@ -975,6 +980,7 @@ static struct platform_device* amhdmi_tx_device = NULL;
 
 static int  __init amhdmitx_init(void)
 {
+    HDMI_DEBUG();
     if(init_flag&INIT_FLAG_NOT_LOAD)
         return 0;
         
@@ -1081,6 +1087,7 @@ static  int __init hdmitx_boot_para_setup(char *s)
     char *token;
     unsigned token_len, token_offset, offset=0;
     int size=strlen(s);
+    HDMI_DEBUG();
     do{
         token=next_token_ex(separator, s, size, offset, &token_len, &token_offset);
         if(token){
