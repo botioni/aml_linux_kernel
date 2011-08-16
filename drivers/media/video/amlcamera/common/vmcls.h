@@ -108,11 +108,16 @@ static ssize_t write_attr2(struct class *cla,
 	return ret;
 }
 
-int camera_mirror_flag=0;  // 0: disable, 1: l&r mirror
+int camera_mirror_flag=0;  // 0: disable, 1: l&r mirror,2 t-b mirror
 
 static ssize_t mirror_read(struct class *cla,struct class_attribute *attr,char *buf)
 {
-    return snprintf(buf,80,"currnet mirror mode is %s \n",(camera_mirror_flag)?"l-r mirror":"normal");
+	if(camera_mirror_flag == 1)
+		return snprintf(buf,80,"currnet mirror mode is l-r mirror mode. value is: %d.\n",camera_mirror_flag);
+	else if(camera_mirror_flag == 2)
+		return snprintf(buf,80,"currnet mirror mode is t-b mirror mode. value is: %d.\n",camera_mirror_flag);
+	else
+		return snprintf(buf,80,"currnet mirror mode is normal mode. value is: %d.\n",camera_mirror_flag);
 }
 
 static ssize_t mirror_write(struct class *cla,

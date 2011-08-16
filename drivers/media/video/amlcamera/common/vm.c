@@ -666,7 +666,16 @@ int vm_ge2d_pre_process(vframe_t* vf, ge2d_context_t *context,config_para_ex_t* 
     ge2d_config->dst_para.width = output_para.width;
     ge2d_config->dst_para.height = output_para.height;
 
-    ge2d_config->dst_para.x_rev = (current_mirror)?1:0;
+    if(current_mirror==1){
+        ge2d_config->dst_para.x_rev = 1;
+        ge2d_config->dst_para.y_rev = 0;
+    }else if(current_mirror==2){
+        ge2d_config->dst_para.x_rev = 0;
+        ge2d_config->dst_para.y_rev = 1;
+    }else{
+        ge2d_config->dst_para.x_rev = 0;
+        ge2d_config->dst_para.y_rev = 0;
+    }
 
 //    printk("output_width is %d , output_height is %d \n",output_para.width ,output_para.height);
     if(ge2d_context_config_ex(context,ge2d_config)<0) {
@@ -687,7 +696,16 @@ int vm_ge2d_pre_process(vframe_t* vf, ge2d_context_t *context,config_para_ex_t* 
 		ge2d_config->dst_para.width = output_para.width/2;
 		ge2d_config->dst_para.height = output_para.height/2;
 
-                ge2d_config->dst_para.x_rev = (current_mirror)?1:0;
+                if(current_mirror==1){
+                    ge2d_config->dst_para.x_rev = 1;
+                    ge2d_config->dst_para.y_rev = 0;
+                }else if(current_mirror==2){
+                    ge2d_config->dst_para.x_rev = 0;
+                    ge2d_config->dst_para.y_rev = 1;
+                }else{
+                    ge2d_config->dst_para.x_rev = 0;
+                    ge2d_config->dst_para.y_rev = 0;
+                }
 
 		if(ge2d_context_config_ex(context,ge2d_config)<0) {
 			printk("++ge2d configing error.\n");
@@ -705,7 +723,16 @@ int vm_ge2d_pre_process(vframe_t* vf, ge2d_context_t *context,config_para_ex_t* 
 		ge2d_config->dst_para.width = output_para.width/2;
 		ge2d_config->dst_para.height = output_para.height/2;
 
-                ge2d_config->dst_para.x_rev = (current_mirror)?1:0;
+                if(current_mirror==1){
+                    ge2d_config->dst_para.x_rev = 1;
+                    ge2d_config->dst_para.y_rev = 0;
+                }else if(current_mirror==2){
+                    ge2d_config->dst_para.x_rev = 0;
+                    ge2d_config->dst_para.y_rev = 1;
+                }else{
+                    ge2d_config->dst_para.x_rev = 0;
+                    ge2d_config->dst_para.y_rev = 0;
+                }
 
 		if(ge2d_context_config_ex(context,ge2d_config)<0) {
 			printk("++ge2d configing error.\n");
@@ -727,7 +754,16 @@ int vm_ge2d_pre_process(vframe_t* vf, ge2d_context_t *context,config_para_ex_t* 
 		ge2d_config->dst_para.width = output_para.width/2;
 		ge2d_config->dst_para.height = output_para.height/2;
 
-                ge2d_config->dst_para.x_rev = (current_mirror)?1:0;
+                if(current_mirror==1){
+                    ge2d_config->dst_para.x_rev = 1;
+                    ge2d_config->dst_para.y_rev = 0;
+                }else if(current_mirror==2){
+                    ge2d_config->dst_para.x_rev = 0;
+                    ge2d_config->dst_para.y_rev = 1;
+                }else{
+                    ge2d_config->dst_para.x_rev = 0;
+                    ge2d_config->dst_para.y_rev = 0;
+                }
 
 		if(ge2d_context_config_ex(context,ge2d_config)<0) {
 			printk("++ge2d configing error.\n");
