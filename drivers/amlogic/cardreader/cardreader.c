@@ -745,6 +745,8 @@ static struct card_host_ops amlogic_card_ops = {
 	.enable_sdio_irq = amlogic_enable_sdio_irq,
 };
 
+struct card_host * the_card_host;
+
 static int amlogic_card_probe(struct platform_device *pdev) 
 {
 	struct card_host *host;
@@ -757,6 +759,7 @@ static int amlogic_card_probe(struct platform_device *pdev)
 		return -ENOMEM;	
 	}
 
+	the_card_host = host;
 	host->ops = &amlogic_card_ops;
 	aml_host = card_priv(host);	
 	aml_host->host = host;	

@@ -562,14 +562,16 @@ static void my_print_cmd(unsigned char cmd)
 	}
 }
 
-#define SDXC_CONTROLLER_SUPPORT
 int using_sdxc_controller = 0;	//set in sd_io_init()
 
-#ifdef SDXC_CONTROLLER_SUPPORT
+int sdxc_int_param = 0;
+unsigned int sdxc_delay = 20;	//5*32=160us
+
 int sdxc_send_cmd_hw(SD_MMC_Card_Info_t *sd_mmc_info, unsigned char cmd, unsigned long arg, SD_Response_Type_t res_type, unsigned char * res_buf, unsigned char *data_buf, unsigned long data_cnt, int retry_flag)
 {
 	int ret = SD_MMC_NO_ERROR, i, num_res;
 	unsigned char *buffer = NULL;
+	unsigned int value;
 
 	SDXC_Send_Reg_t *sdxc_send_reg;
 	SDXC_Ctrl_Reg_t *sdxc_ctrl_reg;
@@ -584,12 +586,12 @@ int sdxc_send_cmd_hw(SD_MMC_Card_Info_t *sd_mmc_info, unsigned char cmd, unsigne
 	dma_addr_t data_dma_to_device_addr=0;
 	dma_addr_t data_dma_from_device_addr=0;
 
-	//my_print_cmd(cmd);	//lin
+	my_print_cmd(cmd);	//lin
 
 	sdxc_send = 0;
 	sdxc_send_reg = (void *)&sdxc_send;
 
-	sdxc_ctrl = 0;
+	sdxc_ctrl = READ_CBUS_REG(SDHC_CTRL);
 	sdxc_ctrl_reg = (void *)&sdxc_ctrl;
 
 	sdxc_status = READ_CBUS_REG(SDHC_STAT);
@@ -599,17 +601,18 @@ int sdxc_send_cmd_hw(SD_MMC_Card_Info_t *sd_mmc_info, unsigned char cmd, unsigne
 	sdxc_pdma_reg = (void *) &sdxc_pdma;
 
 	sdxc_ctrl_reg->sdxc_soft_reset = 1;
+	sdxc_ctrl_reg->rx_timeout = 64;
 	WRITE_CBUS_REG(SDHC_CTRL, sdxc_ctrl);
-	sdxc_ctrl = 0;
-
+	
+	sd_delay_ms(10);
+	
 	sdxc_ctrl_reg->sdxc_soft_reset = 0;
 	WRITE_CBUS_REG(SDHC_CTRL, sdxc_ctrl);
-	sdxc_ctrl = 0;
 	
 	if(cmd == SD_SWITCH_FUNCTION)
-		sdxc_send_reg->command_index = 0x40 | (cmd-40);  //for distinguish ACMD6 and CMD6,Maybe more good way but now I cant find
+		sdxc_send_reg->command_index = cmd-40;  //for distinguish ACMD6 and CMD6,Maybe more good way but now I cant find
 	else	
-	    sdxc_send_reg->command_index = 0x40 | cmd;
+	    sdxc_send_reg->command_index = cmd;
 	//sdxx : cmd_send_reg->use_int_window = 1;		
 
 	sd_clear_response(res_buf);
@@ -631,6 +634,7 @@ int sdxc_send_cmd_hw(SD_MMC_Card_Info_t *sd_mmc_info, unsigned char cmd, unsigne
 			sdxc_send_reg->command_has_resp = 1;
 			sdxc_send_reg->response_length = 1;		//136 bits
 			//sdxx : cmd_send_reg->res_crc7_from_8 = 1;		//new not necessary ?
+			sdxc_send_reg->response_no_crc = 1;	//sdxx
 			break;
 		case RESPONSE_NONE:
 			sdxc_send_reg->command_has_resp = 0;
@@ -789,7 +793,8 @@ int sdxc_send_cmd_hw(SD_MMC_Card_Info_t *sd_mmc_info, unsigned char cmd, unsigne
     if(cmd == SD_MMC_STOP_TRANSMISSION)
         timeout = SD_MMC_WAIT_STOP_COUNT;
 
-	sdxc_status |= 0x00000FFF;	//sdxx : clear the interrupt status bits
+	////sdxc_status |= 0x00000FFF;	//sdxx : clear the interrupt status bits
+	sdxc_status |= 0xFFF00000;	//sdxx : clear the interrupt status bits
 	if(timeout > (sd_mmc_info->sdio_clk_unit*0x1FFF)/1000)
 	{
 		//sdxx : status_irq_reg->timing_out_count = 0x1FFF;
@@ -805,71 +810,107 @@ int sdxc_send_cmd_hw(SD_MMC_Card_Info_t *sd_mmc_info, unsigned char cmd, unsigne
 	{
 		WRITE_CBUS_REG(SDHC_ADDR, (unsigned long)buffer);
 	}
-	
+
+	WRITE_CBUS_REG(SDHC_ARGU, arg);
 	WRITE_CBUS_REG(SDHC_STAT, sdxc_status);
 	WRITE_CBUS_REG(SDHC_CTRL, sdxc_ctrl);
 
 	sdio_command_err = SDIO_NONE_ERR;
+
+	/*
 	if (sdxc_send_reg->command_has_resp && sdxc_send_reg->command_has_data)
 		sdio_command_int_num = 2;
 	else
 		sdio_command_int_num = 1;
+	*/
+	sdio_command_int_num = 0;
+	if (sdxc_send_reg->command_has_resp)
+		sdio_command_int_num++;
+
+	if (sdxc_send_reg->command_has_data)
+		sdio_command_int_num++;
 	
 	init_completion(&sdio_int_complete);
 	sdio_open_host_interrupt(SDIO_CMD_INT);
 	sdio_open_host_interrupt(SDIO_TIMEOUT_INT);
 
+	sdxc_int_param = 0;
 	WRITE_CBUS_REG(SDHC_SEND, sdxc_send);
-
-	timeout =500;/*5s*/
+	/*
+	timeout =500;//5s
 	timeout = wait_for_completion_timeout(&sdio_int_complete,timeout);
 	//wait_for_completion(&sdio_int_complete);
-
-	/*
-	if(sdio_timeout_int_times == 0 || timeout == 0){
-		ret = SD_MMC_ERROR_TIMEOUT;
-		if(timeout == 0)
-			printk("[sd_send_cmd_hw] wait_for_completion_timeout\n");
-		goto error;
+	*/
+	{
+		printk("+++busy\n");
+		while (1)
+		{
+			sdxc_status = READ_CBUS_REG(SDHC_STAT);
+			if (sdxc_status_reg->busy == 0)
+				break;
+		}
+		printk("---busy (%08x)\n", sdxc_status);
 	}
 
-	sdxc_status = READ_CBUS_REG(SDHC_STAT);
-	if(sdxc_send_reg->command_has_resp && (sdio_command_err == SDIO_RES_CRC_ERR)) {	//sdxx : which bit for crc error ?
-		ret = SD_MMC_ERROR_COM_CRC;
+	if (sdxc_status_reg->pack_timeout_int || sdxc_status_reg->res_timeout_int)
+	{
+		ret = SD_MMC_ERROR_TIMEOUT;
 		goto error;
 	}
 	
-	if(sdxc_send_reg->command_has_resp && (sdio_command_err == SDIO_RES_TIMEOUT_ERR)) {	//sdxx : which bit for timeout error ?
-		ret = SD_MMC_ERROR_TIMEOUT;
-		goto error;
-	}
-	*/
-	if (sdio_command_err != SDIO_NONE_ERR)
+	if (sdxc_status_reg->pack_crc_err_int || sdxc_status_reg->res_crc_err_int)
 	{
-		printk("sdxc_send_cmd_hw error=%d\n", sdio_command_err);
-		if ((sdio_command_err == SDIO_PACK_TIMEOUT_ERR) || (sdio_command_err == SDIO_RES_TIMEOUT_ERR))
-			ret = SD_MMC_ERROR_TIMEOUT;
-		else
-			ret = SD_MMC_ERROR_COM_CRC;
+		ret = SD_MMC_ERROR_COM_CRC;
 		goto error;
 	}
+
 
 	if (sdxc_send_reg->command_has_resp)
 	{
+		{	//lin : test resp[39:08]
+			sdxc_pdma_reg->pio_rd_resp = 0;
+			WRITE_CBUS_REG(SDHC_PDMA, sdxc_pdma);
+			value = READ_CBUS_REG(SDHC_ARGU);
+			printk("response[39:08]=%08x\n    ", value);
+
+			for (i = 7; i>= 0; i--)
+			{
+				sdxc_pdma_reg->pio_rd_resp = i;	
+				WRITE_CBUS_REG(SDHC_PDMA, sdxc_pdma);
+				value = READ_CBUS_REG(SDHC_ARGU);
+				printk("%08x ", value);
+			}
+			printk("\n");
+		}
+
 		if (sdxc_send_reg->response_length == 0)	//48 bits
 		{
-			num_res = 2;
+			num_res = 6;			
 		}
 		else	//136 bits
 		{
-			num_res = 5;
+			num_res = 17;
 		}
 
-		for (i = 1; i <= num_res; i++)
+		sdxc_pdma_reg->pio_rd_resp = 0;
+		while (1)
 		{
-			sdxc_pdma_reg->pio_rd_resp = i;
+			sdxc_pdma_reg->pio_rd_resp++;
 			WRITE_CBUS_REG(SDHC_PDMA, sdxc_pdma);
-			res_buf[i - 1] = READ_CBUS_REG(SDHC_ARGU);	//res_buf[] must >= 20 bytes
+			value = READ_CBUS_REG(SDHC_ARGU);
+			
+			res_buf[--num_res] = value & 0xFF;
+			if (num_res == 0)
+				break;
+			res_buf[--num_res] = (value >> 8) & 0xFF;
+			if (num_res == 0)
+				break;
+			res_buf[--num_res] = (value >> 16) & 0xFF;
+			if (num_res == 0)
+				break;
+			res_buf[--num_res] = (value >> 24) & 0xFF;
+			if (num_res == 0)
+				break;
 		}
 	}
 	
@@ -877,63 +918,127 @@ int sdxc_send_cmd_hw(SD_MMC_Card_Info_t *sd_mmc_info, unsigned char cmd, unsigne
 	if(ret)
 		goto error;
 
-	//cmd with adtc
-	switch(cmd)
+	/*
+	if (sdxc_send_reg->total_pack)
 	{
-		////case SD_READ_DAT_UNTIL_STOP:
-		case SD_MMC_READ_SINGLE_BLOCK:
-		case SD_MMC_READ_MULTIPLE_BLOCK:
-		case SD_SWITCH_FUNCTION:
-			if(!sdxc_status_reg->data_complete_int){	//sdxx : which bit for read_crc16_ok ?
-				ret = SD_MMC_ERROR_DATA_CRC;
-				goto error;
-			}
-			break;
-		case SD_MMC_WRITE_BLOCK:
-		case SD_MMC_WRITE_MULTIPLE_BLOCK:
-		case SD_MMC_PROGRAM_CSD:
-			if(!sdxc_status_reg->data_complete_int){	//sdxx : which bit for write_crc16_ok ?
-				ret =  SD_MMC_ERROR_DATA_CRC;
-				goto error;
-			}
-			break;
-		case SD_SEND_NUM_WR_BLOCKS:
-		case SD_MMC_SEND_WRITE_PROT:
-		case MMC_LOCK_UNLOCK:
-		case SD_SEND_SCR:
-		case SD_GEN_CMD:
-			if(!sdxc_status_reg->data_complete_int){	//sdxx : which bit for read_crc16_ok ?
-				ret = SD_MMC_ERROR_DATA_CRC;
-				goto error;
-			}
-			break;
+		sdxc_pdma_reg->dma_mode = 1;
+		WRITE_CBUS_REG(SDHC_PDMA, sdxc_pdma);
+		printk("+++dma multi\n");
+		while (1)
+		{
+			sdxc_status = READ_CBUS_REG(SDHC_STAT);
+			if (sdxc_status_reg->dma_done_int)
+				break;
+		}	
+		printk("---dma multi\n");
+		WRITE_CBUS_REG(SDHC_STAT, sdxc_status);	//clear dma_done_int
+		sdxc_pdma_reg->dma_mode = 0;
+		WRITE_CBUS_REG(SDHC_PDMA, sdxc_pdma);	//turn off dma mode
+	}
+	else if (sdxc_send_reg->command_has_data)
+	{
+		sdxc_pdma_reg->dma_mode = 1;
+		WRITE_CBUS_REG(SDHC_PDMA, sdxc_pdma);
+		printk("+++dma single\n");
+		while (1)
+		{
+			sdxc_status = READ_CBUS_REG(SDHC_STAT);
+			if (sdxc_status_reg->pack_complete_int)
+				break;
+		}		
+		printk("---dma single\n");
+		WRITE_CBUS_REG(SDHC_STAT, sdxc_status);	//clear pack_complete_int
+		sdxc_pdma_reg->dma_mode = 0;
+		WRITE_CBUS_REG(SDHC_PDMA, sdxc_pdma);	//turn off dma mode
+	}
+	*/
 
-		case IO_RW_EXTENDED:
-			if(arg & (1<<31))
+	if (sdxc_send_reg->command_has_data)
+	{
+		typedef unsigned int __u32;
+		#define MYSWAP32(x) ((__u32)(				\
+					(((__u32)(x) & (__u32)0x000000ffUL) << 24) |		\
+					(((__u32)(x) & (__u32)0x0000ff00UL) <<	8) |		\
+					(((__u32)(x) & (__u32)0x00ff0000UL) >>	8) |		\
+					(((__u32)(x) & (__u32)0xff000000UL) >> 24)))
+
+		unsigned int count;
+		unsigned int packs;
+		unsigned int* dest_buf; 
+		unsigned int* src_buf;
+		
+		if (sdxc_ctrl_reg->pack_len != 0)
+			count = sdxc_ctrl_reg->pack_len / 4;
+		else
+			count = 512 / 4;
+
+		packs = sdxc_send_reg->total_pack;
+		
+		printk("+++pio\n");
+
+		if ( sdxc_send_reg->data_direction == 0)	//rd
+		{
+			dest_buf = (unsigned int*)data_buf;
+			do 
 			{
-				if(!sdxc_status_reg->data_complete_int){	//sdxx : which bit for write_crc16_ok ?
-					ret =  SD_MMC_ERROR_DATA_CRC;
-					goto error;
-				}
-			}
-			else
-			{
-				if(!sd_mmc_info->sdio_read_crc_close)
+				i = 0;				
+				while (i < count)
 				{
-					if(!sdxc_status_reg->data_complete_int){	//sdxx : which bit for read_crc16_ok ?
-						ret = SD_MMC_ERROR_DATA_CRC;
-						goto error;
+					sd_delay_us(sdxc_delay);
+					value = READ_CBUS_REG(SDHC_DATA);
+					dest_buf[i++] = MYSWAP32(value);
+				}		
+				dest_buf += count;
+			} while (packs--);
+		}
+/*
+		if ( sdxc_send_reg->data_direction == 0)	//rd
+		{
+			unsigned int fifo_count;
+			dest_buf = (unsigned int*)data_buf;
+			do 
+			{
+				i = 0;				
+				while (i < count)
+				{
+					do 
+					{
+						sdxc_status = READ_CBUS_REG(SDHC_STAT);
+						fifo_count = sdxc_status_reg->rx_count * 2;		//64bits = 2 * 32bits
+					} while (fifo_count == 0);
+					
+					while (fifo_count--)
+					{
+						value = READ_CBUS_REG(SDHC_DATA);
+						dest_buf[i++] = MYSWAP32(value);
 					}
-				}
-			}
-			break;
-		default:
-			break;
-			
+				}		
+				dest_buf += count * 4;
+			} while (packs--);
+		}
+*/
+		else	//wr
+		{
+			src_buf = (unsigned int*)data_buf;
+			do 
+			{
+				i = 0;
+				while (i < count)
+				{
+					sd_delay_us(sdxc_delay);
+					value = src_buf[i++];
+					value = MYSWAP32(value);
+					WRITE_CBUS_REG(SDHC_DATA, value);
+				}		
+				src_buf += count;
+			} while (packs--);
+		}
+		printk("---pio\n");
 	}
 	
 	/*error need dma_unmap_single also*/
 error:
+	////printk("sdxc cmd : %d\n", sdxc_int_param);
 	if(data_dma_from_device_addr)
 	{
 		dma_unmap_single(NULL, data_dma_from_device_addr, data_cnt, DMA_FROM_DEVICE);
@@ -946,12 +1051,12 @@ error:
 	if((sdxc_send_reg->command_has_data == 1) && (sdxc_send_reg->data_direction == 0) && buffer && (data_buf != sd_mmc_info->sd_mmc_buf)
 		&& (!data_dma_from_device_addr) && (!data_dma_to_device_addr))
 	{
+		printk("Not sd_mmc_buf, copying\n");
 		memcpy(data_buf, sd_mmc_info->sd_mmc_buf, data_cnt);
 	}
 
 	return ret;
 }
-#endif /*SDXC_CONTROLLER_SUPPORT*/
 
 //Send command with response
 #ifdef SD_MMC_HW_CONTROL
@@ -969,10 +1074,8 @@ int sd_send_cmd_hw(SD_MMC_Card_Info_t *sd_mmc_info, unsigned char cmd, unsigned 
 	dma_addr_t data_dma_to_device_addr=0;
 	dma_addr_t data_dma_from_device_addr=0;
 
-#ifdef SDXC_CONTROLLER_SUPPORT
 	if (using_sdxc_controller)
 		return sdxc_send_cmd_hw(sd_mmc_info, cmd, arg, res_type, res_buf, data_buf, data_cnt, retry_flag);
-#endif 
 
 	//my_print_cmd(cmd);	//lin
 	
@@ -1328,6 +1431,7 @@ error:
 	if(cmd_send_reg->res_with_data && buffer && (data_buf != sd_mmc_info->sd_mmc_buf)
 		&& (!data_dma_from_device_addr) && (!data_dma_to_device_addr))
 	{
+		printk("Not sd_mmc_buf2, copying\n");
 		memcpy(data_buf, sd_mmc_info->sd_mmc_buf, data_cnt);
 	}
 
@@ -3229,7 +3333,8 @@ int sd_sw_reset(SD_MMC_Card_Info_t *sd_mmc_info)
 	
 	return ret;
 }
-
+//lin
+/*
 static int sd_change_to_low_voltage(SD_MMC_Card_Info_t *sd_mmc_info)
 {
 	unsigned char response[MAX_RESPONSE_BYTES];
@@ -3256,7 +3361,7 @@ static int sd_change_to_low_voltage(SD_MMC_Card_Info_t *sd_mmc_info)
 		return SD_MMC_NO_ERROR;
 	}	
 }
-
+*/
 int sd_voltage_validation(SD_MMC_Card_Info_t *sd_mmc_info)
 {
 	unsigned char response[MAX_RESPONSE_BYTES];
@@ -3271,6 +3376,7 @@ int sd_voltage_validation(SD_MMC_Card_Info_t *sd_mmc_info)
 	delay_cnt = 1;
 	//Detect if SD card is inserted first
 
+	printk("begin SDIO check ......\n");
 	do
 	{
 #ifdef SD_MMC_HW_CONTROL
@@ -3291,6 +3397,7 @@ int sd_voltage_validation(SD_MMC_Card_Info_t *sd_mmc_info)
 #endif
 	    if(ret == SD_MMC_ERROR_TIMEOUT)
 	    {	
+			printk("SEND OP timeout @1\n");
 		    error = sd_hw_reset(sd_mmc_info);
 		    if(error)
 		    {
@@ -3322,8 +3429,11 @@ int sd_voltage_validation(SD_MMC_Card_Info_t *sd_mmc_info)
             sd_delay_ms(delay_time);
 		    delay_cnt++;
         }
-    } while(delay_cnt < (SD_MMC_IDENTIFY_TIMEOUT/delay_time));
+    ////} while(delay_cnt < (SD_MMC_IDENTIFY_TIMEOUT/delay_time));	//lin
+    } while(delay_cnt < 10);
 
+
+	printk("begin SD&SDHC check ......\n");
 	sd_delay_ms(10);
 
 #ifdef SD_MMC_HW_CONTROL
@@ -3339,7 +3449,7 @@ int sd_voltage_validation(SD_MMC_Card_Info_t *sd_mmc_info)
 	if(ret)
 	{
 		if(ret == SD_MMC_ERROR_TIMEOUT) {
-			printk("SEND IF timeout\n");
+			printk("SEND IF timeout @2\n");
 			error = sd_hw_reset(sd_mmc_info);
 			if(error)
 			{
@@ -3445,8 +3555,10 @@ int sd_voltage_validation(SD_MMC_Card_Info_t *sd_mmc_info)
 
 		sd_delay_ms(delay_time);
 		delay_cnt++;
-	} while(delay_cnt < (SD_MMC_IDENTIFY_TIMEOUT/delay_time));
+    ////} while(delay_cnt < (SD_MMC_IDENTIFY_TIMEOUT/delay_time));	//lin
+    } while(delay_cnt < 10);
 
+	printk("begin MMC check ......\n");
 	sd_sw_reset(sd_mmc_info);
 	sd_delay_ms(10);
 
@@ -3479,7 +3591,8 @@ int sd_voltage_validation(SD_MMC_Card_Info_t *sd_mmc_info)
 		
 		sd_delay_ms(delay_time);
 		delay_cnt++;
-	} while(delay_cnt < (SD_MMC_IDENTIFY_TIMEOUT/delay_time));
+    ////} while(delay_cnt < (SD_MMC_IDENTIFY_TIMEOUT/delay_time));	//lin
+    } while(delay_cnt < 10);
 
 #ifdef SD_MMC_DEBUG
 	Debug_Printf("No any SD/MMC card detected!\n");
@@ -3540,7 +3653,7 @@ static void my_disp_csdv2(SDHC_REG_CSD_t *csd)
 	printk("Reserved7[2]=%d\n", csd->Reserved7);
 
 	printk("CRC[7]=%d\n", csd->CRC);
-	printk("NotUsed[1]=%d\n", csd->NotUsed);	
+	printk("NotUsed[1]=%d\n\n", csd->NotUsed);	
 }
 
 static void my_disp_csdv1(SD_REG_CSD_t *csd)
@@ -3602,8 +3715,10 @@ static void my_disp_csdv1(SD_REG_CSD_t *csd)
 	printk("Reserved5[2]=%d\n", csd->Reserved5);
 	
 	printk("CRC[7]=%d\n", csd->CRC);
-	printk("NotUsed[1]=%d\n", csd->NotUsed);
+	printk("NotUsed[1]=%d\n\n", csd->NotUsed);
 }
+//lin
+/*
 static void my_disp_ssr(SD_REG_SSR_t *ssr)
 {
 	unsigned int i;
@@ -3660,7 +3775,19 @@ static int sd_read_reg_ssr(SD_MMC_Card_Info_t *sd_mmc_info, SD_REG_SSR_t *ssr)
 
 	return SD_MMC_NO_ERROR;
 }
+*/
 
+//sys pll = 800M
+////#define CLK_DIV_IDENTIFY	1999	//400K
+#define CLK_DIV_IDENTIFY	3999	//IDENTIFY			(200KHz)
+#define CLK_DIV_25M			31		//DS, SDR12 			(25MHz)
+#define CLK_DIV_50M			15		//HS, SDR25, DDR50 	(50MHz)
+#define CLK_DIV_100M		7		//SDR50   			(100MHz)
+#define CLK_DIV_208M		3		//SDR104 			(208MHz)
+	
+#define CLK_DIV_HS_MMC		15
+#define CLK_DIV_HS_SDIO		15
+	
 int sd_identify_process(SD_MMC_Card_Info_t *sd_mmc_info)
 {
 	int ret = 0, slot_id, times;
@@ -3747,6 +3874,8 @@ int sd_identify_process(SD_MMC_Card_Info_t *sd_mmc_info)
 		sd_mmc_info->card_rca = ((SD_Response_R6_t *)response)->rca_high << 8 | ((SD_Response_R6_t *)response)->rca_low;
 	else if(sd_mmc_info->card_type == CARD_TYPE_MMC)
 		sd_mmc_info->card_rca = slot_id;
+
+	printk("Got RCA = %d\n", sd_mmc_info->card_rca);
 	
     if(sd_mmc_info->card_type == CARD_TYPE_SDIO)
     {
@@ -3895,14 +4024,14 @@ int sd_identify_process(SD_MMC_Card_Info_t *sd_mmc_info)
 			if(SD_WORK_MODE == CARD_HW_MODE)
 			{
 				ret = sd_send_cmd_hw(sd_mmc_info, SD_APP_CMD, sd_mmc_info->card_rca<<16, RESPONSE_R1, response, 0, 0, 1);
-				ret = sd_send_cmd_hw(sd_mmc_info, SD_SET_BUS_WIDTHS, 2, RESPONSE_R1, response, 0, 0, 1); //0 1bit, 10=4bits
+				ret = sd_send_cmd_hw(sd_mmc_info, SD_SET_BUS_WIDTHS, 0x02, RESPONSE_R1, response, 0, 0, 1); //0 1bit, 10=4bits
 			}
 #endif			
 #ifdef SD_MMC_SW_CONTROL
 			if(SD_WORK_MODE == CARD_SW_MODE)
 			{
 				ret = sd_send_cmd_sw(sd_mmc_info, SD_APP_CMD, sd_mmc_info->card_rca<<16, RESPONSE_R1, response);
-				ret = sd_send_cmd_sw(sd_mmc_info, SD_SET_BUS_WIDTHS, 2, RESPONSE_R1, response); //0 1bit, 10=4bits
+				ret = sd_send_cmd_sw(sd_mmc_info, SD_SET_BUS_WIDTHS, 0x02, RESPONSE_R1, response); //0 1bit, 10=4bits
 			}
 #endif
 			if(ret)
@@ -3941,7 +4070,7 @@ int sd_identify_process(SD_MMC_Card_Info_t *sd_mmc_info)
 			if(SD_WORK_MODE == CARD_HW_MODE)
 			{
 				ret = sd_send_cmd_hw(sd_mmc_info, SD_APP_CMD, sd_mmc_info->card_rca<<16, RESPONSE_R1, response, 0, 0, 1);
-				ret = sd_send_cmd_hw(sd_mmc_info, SD_SET_BUS_WIDTHS, 0, RESPONSE_R1, response, 0, 0, 1); //0 1bit, 10=4bits
+				ret = sd_send_cmd_hw(sd_mmc_info, SD_SET_BUS_WIDTHS, 0x00, RESPONSE_R1, response, 0, 0, 1); //0 1bit, 10=4bits
 			}
 #endif
 
@@ -3949,7 +4078,7 @@ int sd_identify_process(SD_MMC_Card_Info_t *sd_mmc_info)
 			if(SD_WORK_MODE == CARD_SW_MODE)
 			{
 				ret = sd_send_cmd_sw(sd_mmc_info, SD_APP_CMD, sd_mmc_info->card_rca<<16, RESPONSE_R1, response);
-				ret = sd_send_cmd_sw(sd_mmc_info, SD_SET_BUS_WIDTHS, 0, RESPONSE_R1, response); //0 1bit, 10=4bits
+				ret = sd_send_cmd_sw(sd_mmc_info, SD_SET_BUS_WIDTHS, 0x00, RESPONSE_R1, response); //0 1bit, 10=4bits
 			}
 #endif
 			
@@ -4013,7 +4142,15 @@ int sd_identify_process(SD_MMC_Card_Info_t *sd_mmc_info)
 	{
 		if (using_sdxc_controller)
 		{
-			//sdxx
+			unsigned long sdxc_clk = 0;
+			SDXC_Clk_Reg_t *sdxc_clk_reg = (void *)&sdxc_clk;
+			sdxc_clk = READ_CBUS_REG(SDHC_CLKC);
+			sdxc_clk_reg->clk_ctl_en = 0;
+			WRITE_CBUS_REG(SDHC_CLKC, sdxc_clk);
+			sdxc_clk_reg->clk_div = CLK_DIV_25M;
+			sdxc_clk_reg->clk_en = 1;
+			sdxc_clk_reg->clk_ctl_en = 1;
+			WRITE_CBUS_REG(SDHC_CLKC, sdxc_clk);
 		}
 		else
 		{
@@ -4044,11 +4181,8 @@ int sd_identify_process(SD_MMC_Card_Info_t *sd_mmc_info)
 	return SD_MMC_NO_ERROR;
 }
 
-#ifdef SDXC_CONTROLLER_SUPPORT
-int sdxc_mmc_init(SD_MMC_Card_Info_t *sd_mmc_info)
+int sdxc_mmc_staff_init(SD_MMC_Card_Info_t *sd_mmc_info)
 {
-	int error;
-	
 	//SDXC_Send_Reg_t *sdxc_send_reg;
 	//SDXC_Ctrl_Reg_t *sdxc_ctrl_reg;
 	//SDXC_Status_Reg_t *sdxc_status_reg;
@@ -4059,15 +4193,6 @@ int sdxc_mmc_init(SD_MMC_Card_Info_t *sd_mmc_info)
 	unsigned int sdxc_clk, sdxc_misc;
 	//unsigned int sdxc_send, sdxc_ctrl, sdxc_status, sdxc_clk, sdxc_pdma, sdxc_misc;
 
-	sdio_close_host_interrupt(SDIO_IF_INT);
-
-	if(++sd_mmc_info->init_retry > SD_MMC_INIT_RETRY)
-		return SD_MMC_ERROR_DRIVER_FAILURE;
-
-#ifdef  SD_MMC_DEBUG
-	Debug_Printf("\nSDXC initialization started......\n");
-#endif
-
     sd_mmc_prepare_power(sd_mmc_info);   
 	sd_mmc_power_on(sd_mmc_info);
 	
@@ -4075,13 +4200,16 @@ int sdxc_mmc_init(SD_MMC_Card_Info_t *sd_mmc_info)
 	sdxc_clk_reg = (void *)&sdxc_clk;
 	sdxc_clk_reg->clk_ctl_en = 0;
 	WRITE_CBUS_REG(SDHC_CLKC, sdxc_clk);
-	sdxc_clk_reg->clk_div = 4; //sdxx
+	sdxc_clk_reg->clk_in_sel = 1;
+	sdxc_clk_reg->clk_div = CLK_DIV_IDENTIFY; //sdxx
 	sdxc_clk_reg->clk_en = 1;
 	sdxc_clk_reg->clk_ctl_en = 1;
 	WRITE_CBUS_REG(SDHC_CLKC, sdxc_clk);
 
 	sdxc_misc = 0;
 	sdxc_misc_reg = (void *)&sdxc_misc;
+	sdxc_misc_reg->rx_limit = 0x20;
+	sdxc_misc_reg->tx_limit = 0x20;
 	sdxc_misc_reg->manual_stop = 1;
 	WRITE_CBUS_REG(SDHC_MISC, sdxc_misc);
 
@@ -4107,6 +4235,35 @@ int sdxc_mmc_init(SD_MMC_Card_Info_t *sd_mmc_info)
 	sd_mmc_info->single_blk_failed = 0;
 
 	sd_mmc_info->support_uhs_mode = 0;
+
+	//sd_mmc_info->disable_wide_bus = 1;	//sdxx
+	sd_mmc_info->read_multi_block_failed = 1;
+	sd_mmc_info->write_multi_block_failed = 1;
+
+	return SD_MMC_NO_ERROR;
+}
+
+int sdxc_mmc_init(SD_MMC_Card_Info_t *sd_mmc_info)
+{
+	int error;
+	
+	sdio_close_host_interrupt(SDIO_IF_INT);
+
+	if(++sd_mmc_info->init_retry > SD_MMC_INIT_RETRY)
+		return SD_MMC_ERROR_DRIVER_FAILURE;
+
+#ifdef  SD_MMC_DEBUG
+	Debug_Printf("\nSDXC initialization started......\n");
+#endif
+
+	error = sdxc_mmc_staff_init(sd_mmc_info);
+	if(error)
+	{
+#ifdef  SD_MMC_DEBUG
+		Debug_Printf("#%s error occured in sdxc_mmc_staff_init()()\n", sd_error_to_string(error));
+#endif
+		goto error;
+	}
 
 	sd_mmc_set_input(sd_mmc_info);
 	error = sd_hw_reset(sd_mmc_info);
@@ -4199,16 +4356,13 @@ error:
 	sd_gpio_enable(sd_mmc_info->io_pad_type);
 	return error;
 }
-#endif /*SDXC_CONTROLLER_SUPPORT*/
 
 int sd_mmc_init(SD_MMC_Card_Info_t *sd_mmc_info)
 {
 	int error;
 	
-#ifdef SDXC_CONTROLLER_SUPPORT
 	if (using_sdxc_controller)
 		return sdxc_mmc_init(sd_mmc_info);
-#endif
 
 	/*close IF INT before change to sd to avoid error IF INT*/
 	sdio_close_host_interrupt(SDIO_IF_INT);
@@ -4460,12 +4614,12 @@ static void my_disp_cid(MyCID *cid)
 	printk("PRV[8]=%d\n", cid->PRV);
 	printk("PSN[32]=0x%x\n", (unsigned int)cid->PSN);
 
-	printk("\nReserved[4]=%d\n", cid->Reserved);
+	printk("Reserved[4]=%d\n", cid->Reserved);
 	mdt = (cid->MDT_high << 8) | cid->MDT_low;
 	printk("year[8].month[4]=%ld.%ld\n", (mdt >> 4) + 2000, mdt & 0xF);
 
-	printk("\nNotUsed[1]=%d\n", cid->NotUsed);
-	printk("CRC[7]=%d\n", cid->CRC);
+	printk("NotUsed[1]=%d\n", cid->NotUsed);
+	printk("CRC[7]=%d\n\n", cid->CRC);
 
 	//printk("*************** from mmc *************\n");
 	//mmc_decode_cid(cid);
@@ -4499,7 +4653,7 @@ static void my_disp_scr(MySCR *scr)
 	printk("CMD_SUPPORT[2]=%d\n", scr->CMD_SUPPORT);
 	printk("Rsv2[6]=%d\n", scr->Rsv2);
 
-	printk("Reserved2[32]=%ld\n", scr->Reserved2);	
+	printk("Reserved2[32]=%ld\n\n", scr->Reserved2);	
 }
 
 //Read Operation Conditions Register
@@ -4995,7 +5149,7 @@ int sd_check_data_consistency(SD_MMC_Card_Info_t *sd_mmc_info)
 					error = sd_send_cmd_sw(sd_mmc_info, SD_APP_CMD, sd_mmc_info->card_rca<<16, RESPONSE_R1, response);
 					if(error)
 						return error;
-					error = sd_send_cmd_sw(sd_mmc_info, SD_SET_BUS_WIDTHS, 0, RESPONSE_R1, response); //0 1bit, 10=4bits
+					error = sd_send_cmd_sw(sd_mmc_info, SD_SET_BUS_WIDTHS, 0x00, RESPONSE_R1, response); //0 1bit, 10=4bits
 					if(error)
 						return error;
 				}
@@ -5129,7 +5283,8 @@ static int try_uhs_mode(SD_MMC_Card_Info_t *sd_mmc_info, unsigned long arg, SD_U
 	sdxc_clk_reg = (void *)&sdxc_clk;
 	sdxc_clk_reg->clk_ctl_en = 0;
 	WRITE_CBUS_REG(SDHC_CLKC, sdxc_clk);
-	sdxc_clk_reg->clk_div = 4; //sdxx
+	sdxc_clk_reg->clk_in_sel = 1;
+	sdxc_clk_reg->clk_div = CLK_DIV_IDENTIFY; //sdxx
 	sdxc_clk_reg->clk_en = 1;
 	sdxc_clk_reg->clk_ctl_en = 1;
 	WRITE_CBUS_REG(SDHC_CLKC, sdxc_clk);
@@ -5153,30 +5308,30 @@ static int try_uhs_mode(SD_MMC_Card_Info_t *sd_mmc_info, unsigned long arg, SD_U
 	if ((max_current_comsumption == 0) || (max_current_comsumption > max_output_current) || (switch_funtion_status->Function_Group_Status1 != (arg & 0x0F)))
 		return SD_ERROR_SWITCH_FUNCTION_COMUNICATION;
 
-	//???
 	sdxc_clk = 0;
 	sdxc_clk_reg = (void *)&sdxc_clk;
 	sdxc_clk_reg->clk_ctl_en = 0;
 	WRITE_CBUS_REG(SDHC_CLKC, sdxc_clk);
+	sdxc_clk_reg->clk_in_sel = 1;
 	switch (mode)
 	{
 		case SDR12 :
-			sdxc_clk_reg->clk_div = 4;
+			sdxc_clk_reg->clk_div = CLK_DIV_25M;
 			break;
 		case SDR25 :
-			sdxc_clk_reg->clk_div = 3;
+			sdxc_clk_reg->clk_div = CLK_DIV_50M;
 			break;
 		case SDR50 :
-			sdxc_clk_reg->clk_div = 2;
+			sdxc_clk_reg->clk_div = CLK_DIV_100M;
 			break;
 		case SDR104 :
-			sdxc_clk_reg->clk_div = 1;
+			sdxc_clk_reg->clk_div = CLK_DIV_208M;
 			break;
 		case DDR50 :	//same as SDR25
-			sdxc_clk_reg->clk_div = 3;
+			sdxc_clk_reg->clk_div = CLK_DIV_50M;
 			break;
 		default : 
-			sdxc_clk_reg->clk_div = 4;
+			sdxc_clk_reg->clk_div = CLK_DIV_IDENTIFY;
 			break;
 	}
 	sdxc_clk_reg->clk_en = 1;
@@ -5338,7 +5493,8 @@ static void my_disp_switch_status(SD_Switch_Function_Status_t *status)
 {
 
 	int i;
-	printk("Data_Struction_Verion : %d\n", status->Data_Struction_Verion		);
+	printk("\n****************switch status****************\n");
+	printk("Data_Struction_Verion : %d\n", status->Data_Struction_Verion);
 	printk("Max_Current_Consumption : %d\n", SWAP_SHORT(status->Max_Current_Consumption));
 	for (i = 0; i < 6; i++)
 	{
@@ -5351,7 +5507,7 @@ static void my_disp_switch_status(SD_Switch_Function_Status_t *status)
 	printk("Function_Group_Status4 : %d\n", status->Function_Group_Status4);
 	printk("Function_Group_Status3 : %d\n", status->Function_Group_Status3);
 	printk("Function_Group_Status2 : %d\n", status->Function_Group_Status2);
-	printk("Function_Group_Status1 : %d\n", status->Function_Group_Status1);
+	printk("Function_Group_Status1 : %d\n\n", status->Function_Group_Status1);
 /*
 	unsigned short max_current_comsumption;
 	
@@ -5426,7 +5582,7 @@ int sd_mmc_switch_function(SD_MMC_Card_Info_t *sd_mmc_info)
 				sdxc_clk = READ_CBUS_REG(SDHC_CLKC);
 				sdxc_clk_reg->clk_ctl_en = 0;
 				WRITE_CBUS_REG(SDHC_CLKC, sdxc_clk);
-				sdxc_clk_reg->clk_div = 1; //sdxx
+				sdxc_clk_reg->clk_div = CLK_DIV_50M; //sdxx
 				sdxc_clk_reg->clk_en = 1;
 				sdxc_clk_reg->clk_ctl_en = 1;
 				WRITE_CBUS_REG(SDHC_CLKC, sdxc_clk);
@@ -5457,7 +5613,7 @@ int sd_mmc_switch_function(SD_MMC_Card_Info_t *sd_mmc_info)
 			sdxc_clk = READ_CBUS_REG(SDHC_CLKC);
 			sdxc_clk_reg->clk_ctl_en = 0;
 			WRITE_CBUS_REG(SDHC_CLKC, sdxc_clk);
-			sdxc_clk_reg->clk_div = 3; //sdxx
+			sdxc_clk_reg->clk_div = CLK_DIV_HS_MMC; //sdxx
 			sdxc_clk_reg->clk_en = 1;
 			sdxc_clk_reg->clk_ctl_en = 1;
 			WRITE_CBUS_REG(SDHC_CLKC, sdxc_clk);
@@ -5490,7 +5646,7 @@ int sd_mmc_switch_function(SD_MMC_Card_Info_t *sd_mmc_info)
 					sdxc_clk = READ_CBUS_REG(SDHC_CLKC);
 					sdxc_clk_reg->clk_ctl_en = 0;
 					WRITE_CBUS_REG(SDHC_CLKC, sdxc_clk);
-					sdxc_clk_reg->clk_div = 2; //sdxx
+					sdxc_clk_reg->clk_div = CLK_DIV_HS_SDIO; //sdxx
 					sdxc_clk_reg->clk_en = 1;
 					sdxc_clk_reg->clk_ctl_en = 1;
 					WRITE_CBUS_REG(SDHC_CLKC, sdxc_clk);
@@ -5508,7 +5664,7 @@ int sd_mmc_switch_function(SD_MMC_Card_Info_t *sd_mmc_info)
 	        	sd_mmc_info->speed_class = HIGH_SPEED;
         	}
         }
-		else
+		else	//??? what about read High_Speed_REG error ???	//sdxx
 		{
 			if (using_sdxc_controller)
 			{				
@@ -5517,7 +5673,7 @@ int sd_mmc_switch_function(SD_MMC_Card_Info_t *sd_mmc_info)
 				sdxc_clk = READ_CBUS_REG(SDHC_CLKC);
 				sdxc_clk_reg->clk_ctl_en = 0;
 				WRITE_CBUS_REG(SDHC_CLKC, sdxc_clk);
-				sdxc_clk_reg->clk_div = 5; //sdxx
+				sdxc_clk_reg->clk_div = CLK_DIV_IDENTIFY; //sdxx
 				sdxc_clk_reg->clk_en = 1;
 				sdxc_clk_reg->clk_ctl_en = 1;
 				WRITE_CBUS_REG(SDHC_CLKC, sdxc_clk);
@@ -7536,4 +7692,1067 @@ int sdio_close_target_interrupt(SD_MMC_Card_Info_t *sd_mmc_info, int function_no
 			break;
 	}
 }*/
+
+//lin
+#define SDXC_B_ENABLE	CBUS_REG_ADDR(0x201b)
+#define SDXC_B_OUTPUT	CBUS_REG_ADDR(0x201c)
+#define SDXC_B_INPUT	CBUS_REG_ADDR(0x201d)
+
+static struct aml_card_info  my_card_info[] = {
+	[0] = {		//m3 sdhc
+		.name = "sd_card",
+		.work_mode = CARD_HW_MODE,
+		.io_pad_type = SDXC_CARD_0_5,
+		.card_ins_en_reg = SDXC_B_ENABLE,
+		.card_ins_en_mask = PREG_IO_29_MASK,
+		.card_ins_input_reg = SDXC_B_INPUT,
+		.card_ins_input_mask = PREG_IO_29_MASK,
+		.card_power_en_reg = SDXC_B_ENABLE,
+		.card_power_en_mask = PREG_IO_31_MASK,
+		.card_power_output_reg = SDXC_B_OUTPUT,
+		.card_power_output_mask = PREG_IO_31_MASK,
+		.card_power_en_lev = 0,
+		.card_wp_en_reg = 0,
+		.card_wp_en_mask = 0,
+		.card_wp_input_reg = 0,
+		.card_wp_input_mask = 0,
+		.card_extern_init = 0,
+	},
+    [1] = {		//m1 sdio
+        .name = "sd_card",
+        .work_mode = CARD_HW_MODE,
+        .io_pad_type = SDIO_B_CARD_0_5,
+        .card_ins_en_reg = CARD_GPIO_ENABLE,
+        .card_ins_en_mask = PREG_IO_29_MASK,
+        .card_ins_input_reg = CARD_GPIO_INPUT,
+        .card_ins_input_mask = PREG_IO_29_MASK,
+        .card_power_en_reg = CARD_GPIO_ENABLE,
+        .card_power_en_mask = PREG_IO_31_MASK,
+        .card_power_output_reg = CARD_GPIO_OUTPUT,
+        .card_power_output_mask = PREG_IO_31_MASK,
+        .card_power_en_lev = 0,
+        .card_wp_en_reg = 0,
+        .card_wp_en_mask = 0,
+        .card_wp_input_reg = 0,
+        .card_wp_input_mask = 0,
+        .card_extern_init = 0,
+    }	
+};
+
+static int myidx = 0;
+static struct memory_card* sdxc_card_setup(struct card_host *host, int idx)
+{
+	int err = 0;
+	struct memory_card* card;
+	SD_MMC_Card_Info_t *sd_mmc_info;
+
+	card = kzalloc(sizeof(struct memory_card), GFP_KERNEL);
+	if (!card)
+		return ERR_PTR(-ENOMEM);
+	
+	card_init_card(card, host);
+	
+	card->unit_state = CARD_UNIT_NOT_READY;
+	strcpy(card->name, "sdxc");
+	card->card_type = CARD_SECURE_DIGITAL;
+	//card->card_plat_info = &my_card_info[0];		//m3
+	//card->card_plat_info = &my_card_info[1];		//m1
+	card->card_plat_info = &my_card_info[idx];
+	__card_claim_host(host, card);
+	err = sd_mmc_probe(card);
+	using_sdxc_controller = 0;		//reset for sd_io_init()
+	card_release_host(host);
+
+	if (err)
+	{
+		kfree(card);
+		return NULL;
+	}
+
+	sd_mmc_info = (SD_MMC_Card_Info_t *)card->card_info;
+	if (idx == 0)
+		err = sdxc_mmc_staff_init(sd_mmc_info);
+	else
+		err = sd_mmc_staff_init(sd_mmc_info);
+	if (err)
+	{
+		kfree(card);
+		return NULL;
+
+	}
+	sd_mmc_set_input(sd_mmc_info);	//???
+	
+	myidx = idx;
+	return card;
+}	
+
+static int sdxc_card_present(struct memory_card* card)
+{
+	struct card_host *host = card->host;
+
+	__card_claim_host(host, card);
+	card->card_io_init(card);	//sd_io_init()
+	card->card_detector(card);	//sd_insert_detector()
+	using_sdxc_controller = 0;	//reset for sd_io_init()
+	card_release_host(host);
+	
+	if (card->card_status == CARD_INSERTED)
+		return 1;
+	else
+		return 0;
+}
+
+#define CHCEK_CONTINUE()	\
+	{	\
+	if (cursteps >= steps)	\
+		goto error;		\
+	printk("step %d\n", ++cursteps);	\
+	}
+
+static int sdxc_identify_verbose(SD_MMC_Card_Info_t *sd_mmc_info, int steps)
+{
+	int error;
+	int cursteps = 0;
+
+	sdio_close_host_interrupt(SDIO_IF_INT);
+
+#ifdef  SD_MMC_DEBUG
+	Debug_Printf("\nSDXC initialization started......\n");
+#endif
+
+	CHCEK_CONTINUE();	////1
+	sdxc_mmc_staff_init(sd_mmc_info);
+
+	CHCEK_CONTINUE();	////2
+	sd_mmc_set_input(sd_mmc_info);
+	error = sd_hw_reset(sd_mmc_info);
+	if(error)
+	{
+#ifdef  SD_MMC_DEBUG
+		Debug_Printf("#%s error occured in sd_hw_reset()\n", sd_error_to_string(error));
+#endif
+		goto error;
+	}
+
+	CHCEK_CONTINUE();	////3
+	error = sd_voltage_validation(sd_mmc_info);
+	
+	if(error)
+	{
+#ifdef  SD_MMC_DEBUG
+		Debug_Printf("#%s error occured in sd_voltage_validation()\n", sd_error_to_string(error));
+#endif
+		goto error;
+	}
+
+	CHCEK_CONTINUE();	////4
+	error = sd_identify_process(sd_mmc_info);
+	if(error)
+	{
+#ifdef  SD_MMC_DEBUG
+		Debug_Printf("#%s error occured in sd_identify_process()\n", sd_error_to_string(error));
+#endif
+		goto error;
+	}
+
+#ifdef SD_MMC_HW_CONTROL
+	if(SD_WORK_MODE == CARD_HW_MODE)
+	{
+		if(!sd_mmc_info->disable_high_speed)	
+		{
+			CHCEK_CONTINUE();	////5
+	    	error = sd_mmc_switch_function(sd_mmc_info);
+	    	if(error)
+	    	{
+#ifdef  SD_MMC_DEBUG
+		    	Debug_Printf("#%s error occured in sd_switch_funtion()\n", sd_error_to_string(error));
+#endif
+			//return error;
+	    	}
+		}
+	}
+#endif
+
+	if(sd_mmc_info->card_type == CARD_TYPE_SDIO)
+	{
+		error = sd_check_sdio_card_type(sd_mmc_info);
+		if(error)
+	    {
+#ifdef  SD_MMC_DEBUG
+		    Debug_Printf("#%s error occured in sd_check_sdio_card_type()\n", sd_error_to_string(error));
+#endif
+			goto error;
+	    }
+	}
+
+#ifdef SD_MMC_DEBUG
+	{
+		char *card_types[] = {
+			"Unknown",
+			"SD",
+			"SDHC",
+			"MMC",
+			"SDIO"
+		};
+		char *card_str = card_types[sd_mmc_info->card_type];
+		char *bus_str = sd_mmc_info->bus_width == SD_BUS_WIDE ? "Wide Bus" : "Single Bus";
+		char *speed_str = sd_mmc_info->speed_class == HIGH_SPEED ? "High Speed" : "Normal Speed";
+		Debug_Printf("sd_mmc_init() is completed successfully!\n");
+		Debug_Printf("This %s card is working in %s and %s mode!\n\n", card_str, bus_str, speed_str);
+	}
+#endif
+
+	CHCEK_CONTINUE();	////6
+	sd_mmc_info->inited_flag = 1;
+	sd_mmc_info->init_retry = 0;
+
+	/*		//sdxx
+	sd_mmc_info->sd_save_hw_io_flag = 1;
+	sd_mmc_info->sd_save_hw_io_config = READ_CBUS_REG(SDIO_CONFIG);
+	sd_mmc_info->sd_save_hw_io_mult_config = READ_CBUS_REG(SDIO_MULT_CONFIG);
+	*/
+	sd_gpio_enable(sd_mmc_info->io_pad_type);
+
+	return SD_MMC_NO_ERROR;
+
+error:
+	sd_gpio_enable(sd_mmc_info->io_pad_type);
+	return error;
+}
+
+static int sdxc_card_identify(struct memory_card* card, int steps)
+{
+	int ret;
+	SD_MMC_Card_Info_t *sd_mmc_info = (SD_MMC_Card_Info_t *)card->card_info;
+	struct card_host *host = card->host;
+
+	__card_claim_host(host, card);
+	if (myidx == 0)
+	{
+		using_sdxc_controller = 1;
+		ret = sdxc_identify_verbose(sd_mmc_info, steps);
+		using_sdxc_controller = 0;
+	}
+	else
+		ret = sd_mmc_init(sd_mmc_info);
+	card_release_host(host);
+
+	return ret;
+}
+
+static unsigned int my_parse_num(char *buf, char **res_buf)
+{
+	unsigned int value;
+	unsigned int c;
+
+	value = 0;
+	while(1)
+	{
+		c = *buf++;
+		if (c >= '0' && c <= '9')
+		{
+			value = value * 10 + c - '0';
+		}
+		else
+		{
+			break;
+		}
+	}
+
+	if (res_buf != NULL)
+		*res_buf = buf;
+	
+	return value;
+}
+
+static int sdxc_card_cmd(struct memory_card* card, unsigned int cmd)
+{
+	int ret;
+	unsigned char response[MAX_RESPONSE_BYTES];
+	SD_MMC_Card_Info_t *sd_mmc_info = (SD_MMC_Card_Info_t *)card->card_info;
+	struct card_host *host = card->host;
+
+	__card_claim_host(host, card);
+	sd_sdio_enable(sd_mmc_info->io_pad_type);
+	
+	if (myidx == 0)
+		using_sdxc_controller = 1;
+
+	switch (cmd)
+	{
+			case 0 : 	//SD_MMC_GO_IDLE_STATE
+				ret = sd_send_cmd_hw(sd_mmc_info, SD_MMC_GO_IDLE_STATE, 0, RESPONSE_NONE, 0, 0, 0, 1);
+				break;
+
+//begin voltage validation
+			case 8:	//SD_SEND_IF_COND
+				ret = sd_send_cmd_hw(sd_mmc_info, SD_SEND_IF_COND, 0x000001aa, RESPONSE_R7, response, 0, 0, 0);
+				break;
+
+			case 55:	//SD_APP_CMD
+				ret = sd_send_cmd_hw(sd_mmc_info, SD_APP_CMD, 0, RESPONSE_R1, response, 0, 0, 0);
+				break;
+
+			case 41:	//SD_APP_OP_COND	//acmd
+			{
+				SD_Response_R3_t * r3;
+				ret = sd_send_cmd_hw(sd_mmc_info, SD_APP_CMD, 0, RESPONSE_R1, response, 0, 0, 0);
+				if (ret)
+					break;
+				ret = sd_send_cmd_hw(sd_mmc_info, SD_APP_OP_COND, 0x40200000, RESPONSE_R3, response, 0, 0, 0);	//maybe check for ready
+				r3 = (SD_Response_R3_t *)response;
+				if(ret == SD_MMC_NO_ERROR && r3->ocr.Card_Busy)
+				{
+					printk("cmd41 : card ok\n");
+				}
+				else
+				{
+					printk("cmd41 : card still busy\n");
+				}
+				break;
+			}
+
+			case 42:	//SD_APP_OP_COND : loop until ready	//acmd
+			{
+				int loop = 0;
+				do
+				{
+					SD_Response_R3_t * r3;
+					
+					ret = sd_send_cmd_hw(sd_mmc_info, SD_APP_CMD, 0, RESPONSE_R1, response, 0, 0, 0);
+					if (ret)
+					{
+						sd_delay_ms(10);
+						loop++;
+						continue;
+					}
+					
+					ret = sd_send_cmd_hw(sd_mmc_info, SD_APP_OP_COND, 0x40200000, RESPONSE_R3, response, 0, 0, 0);	
+					r3 = (SD_Response_R3_t *)response;
+					if(ret == SD_MMC_NO_ERROR && r3->ocr.Card_Busy)
+					{
+						printk("cmd41 : card ok -- loop%d\n", loop);
+						break;
+					}
+					else
+					{
+						printk("cmd 41 : loop%d with %s\n", loop, sd_error_to_string(ret));
+					}
+
+					sd_delay_ms(10);
+					loop++;					
+				} while (loop < 10);
+				
+				break;
+			}
+
+//begin identify
+			case 2:	//SD_MMC_ALL_SEND_CID
+				ret = sd_send_cmd_hw(sd_mmc_info, SD_MMC_ALL_SEND_CID, 0, RESPONSE_R2_CID, response, 0, 0, 1);
+				break;
+
+			case 3:	//SD_MMC_SEND_RELATIVE_ADDR
+				ret = sd_send_cmd_hw(sd_mmc_info, SD_MMC_SEND_RELATIVE_ADDR, 0, RESPONSE_R6, response, 0, 0, 0); 	//maybe save the RCA value
+				sd_mmc_info->card_rca = ((SD_Response_R6_t *)response)->rca_high << 8 | ((SD_Response_R6_t *)response)->rca_low;
+				printk("Got RCA=0x%x (%d)\n", sd_mmc_info->card_rca, sd_mmc_info->card_rca);
+				break;
+
+			case 10:	//SD_MMC_SEND_CID
+				ret = sd_send_cmd_hw(sd_mmc_info, SD_MMC_SEND_CID, sd_mmc_info->card_rca<<16, RESPONSE_R2_CID, response, NULL, 0, 1);
+				if (ret == SD_MMC_NO_ERROR)
+				{
+					my_disp_cid((MyCID*)&(((SD_Response_R2_CID_t *)response)->cid));
+				}
+				break;
+
+			case 9:	//SD_MMC_SEND_CSD
+				ret = sd_send_cmd_hw(sd_mmc_info, SD_MMC_SEND_CSD, sd_mmc_info->card_rca<<16, RESPONSE_R2_CSD, response, 0, 0, 1);	//maybe parse the blk num & len
+				sd_mmc_info->blk_len = 512;
+				if (ret == SD_MMC_NO_ERROR)
+				{
+					my_disp_csdv2(&(((SDHC_Response_R2_CSD_t *)response)->csd));
+				}
+				break;
+
+			case 7:	//SD_MMC_SELECT_DESELECT_CARD
+				ret = sd_send_cmd_hw(sd_mmc_info, SD_MMC_SELECT_DESELECT_CARD, sd_mmc_info->card_rca<<16, RESPONSE_R1B, response, 0, 0, 1);
+				break;
+
+			case 51:	//SD_SEND_SCR 		//acmd
+				ret = sd_send_cmd_hw(sd_mmc_info, SD_APP_CMD, sd_mmc_info->card_rca<<16, RESPONSE_R1, response, 0, 0, 1);  
+				if (ret)
+					break;
+				ret = sd_send_cmd_hw(sd_mmc_info, SD_SEND_SCR, 0, RESPONSE_R1, response, sd_mmc_info->sd_mmc_buf, sizeof(SD_REG_SCR_t), 1);	//may be parse spec_version & bus bit modes
+				my_disp_scr((MySCR*)sd_mmc_info->sd_mmc_buf);
+				break;
+/*
+			case 6:	//SD_SET_BUS_WIDTHS : 4 bits		//acmd
+				sd_mmc_info->bus_width = SD_BUS_WIDE;
+				if (using_sdxc_controller)
+				{
+					unsigned long sdxc_ctrl = 0;
+					SDXC_Ctrl_Reg_t *sdxc_ctrl_reg = (void *)&sdxc_ctrl;
+					sdxc_ctrl = READ_CBUS_REG(SDHC_CTRL);
+					sdxc_ctrl_reg->dat_width = 1;
+					WRITE_CBUS_REG(SDHC_CTRL, sdxc_ctrl);
+				}
+				else
+				{
+					unsigned long sdio_config = 0;
+					SDIO_Config_Reg_t *config_reg = (void *)&sdio_config;
+					sdio_config = READ_CBUS_REG(SDIO_CONFIG);
+					config_reg->bus_width = 1;
+					WRITE_CBUS_REG(SDIO_CONFIG, sdio_config);
+				}
+				sd_delay_ms(100);
+				
+				ret = sd_send_cmd_hw(sd_mmc_info, SD_APP_CMD, sd_mmc_info->card_rca<<16, RESPONSE_R1, response, 0, 0, 1);  
+				if (ret)
+				{
+					sd_mmc_info->bus_width = SD_BUS_SINGLE;
+					if (using_sdxc_controller)
+					{
+						unsigned long sdxc_ctrl = 0;
+						SDXC_Ctrl_Reg_t *sdxc_ctrl_reg = (void *)&sdxc_ctrl;
+						sdxc_ctrl = READ_CBUS_REG(SDHC_CTRL);
+						sdxc_ctrl_reg->dat_width = 0;
+						WRITE_CBUS_REG(SDHC_CTRL, sdxc_ctrl);
+					}
+					else
+					{
+						unsigned long sdio_config = 0;
+						SDIO_Config_Reg_t *config_reg = (void *)&sdio_config;
+						sdio_config = READ_CBUS_REG(SDIO_CONFIG);
+						config_reg->bus_width = 0;
+						WRITE_CBUS_REG(SDIO_CONFIG, sdio_config);
+					}					
+					break;
+				}
+				
+				ret = sd_send_cmd_hw(sd_mmc_info, SD_SET_BUS_WIDTHS, 0x02, RESPONSE_R1, response, 0, 0, 1);
+				if (ret == SD_MMC_NO_ERROR)
+				{
+				}
+				else
+				{
+					sd_mmc_info->bus_width = SD_BUS_SINGLE;
+					if (using_sdxc_controller)
+					{
+						unsigned long sdxc_ctrl = 0;
+						SDXC_Ctrl_Reg_t *sdxc_ctrl_reg = (void *)&sdxc_ctrl;
+						sdxc_ctrl = READ_CBUS_REG(SDHC_CTRL);
+						sdxc_ctrl_reg->dat_width = 0;
+						WRITE_CBUS_REG(SDHC_CTRL, sdxc_ctrl);
+					}
+					else
+					{
+						unsigned long sdio_config = 0;
+						SDIO_Config_Reg_t *config_reg = (void *)&sdio_config;
+						sdio_config = READ_CBUS_REG(SDIO_CONFIG);
+						config_reg->bus_width = 0;
+						WRITE_CBUS_REG(SDIO_CONFIG, sdio_config);
+					}
+				}
+				break;
+
+			case 46:	//SD_SET_BUS_WIDTHS : 1 bit
+				sd_mmc_info->bus_width = SD_BUS_SINGLE;
+				if (using_sdxc_controller)
+				{
+					unsigned long sdxc_ctrl = 0;
+					SDXC_Ctrl_Reg_t *sdxc_ctrl_reg = (void *)&sdxc_ctrl;
+					sdxc_ctrl = READ_CBUS_REG(SDHC_CTRL);
+					sdxc_ctrl_reg->dat_width = 0;
+					WRITE_CBUS_REG(SDHC_CTRL, sdxc_ctrl);
+				}
+				else
+				{
+					unsigned long sdio_config = 0;
+					SDIO_Config_Reg_t *config_reg = (void *)&sdio_config;
+					sdio_config = READ_CBUS_REG(SDIO_CONFIG);
+					config_reg->bus_width = 0;
+					WRITE_CBUS_REG(SDIO_CONFIG, sdio_config);
+				}
+
+				ret = sd_send_cmd_hw(sd_mmc_info, SD_APP_CMD, sd_mmc_info->card_rca<<16, RESPONSE_R1, response, 0, 0, 1);  
+				if (ret)
+					break;
+				ret = sd_send_cmd_hw(sd_mmc_info, SD_SET_BUS_WIDTHS, 0x00, RESPONSE_R1, response, 0, 0, 1);
+				if (ret == SD_MMC_NO_ERROR)
+				{
+				}
+				else
+				{
+				}
+				break;
+*/
+			case 6: //SD_SET_BUS_WIDTHS : 4 bits		//acmd
+				ret = sd_send_cmd_hw(sd_mmc_info, SD_APP_CMD, sd_mmc_info->card_rca<<16, RESPONSE_R1, response, 0, 0, 1);  
+				if (ret)
+					break;
+				ret = sd_send_cmd_hw(sd_mmc_info, SD_SET_BUS_WIDTHS, 0x02, RESPONSE_R1, response, 0, 0, 1);
+				if (ret == SD_MMC_NO_ERROR)
+				{
+					sd_mmc_info->bus_width = SD_BUS_WIDE;
+					if (using_sdxc_controller)
+					{
+						unsigned long sdxc_ctrl = 0;
+						SDXC_Ctrl_Reg_t *sdxc_ctrl_reg = (void *)&sdxc_ctrl;
+						sdxc_ctrl = READ_CBUS_REG(SDHC_CTRL);
+						sdxc_ctrl_reg->dat_width = 1;
+						WRITE_CBUS_REG(SDHC_CTRL, sdxc_ctrl);
+					}
+					else
+					{
+						unsigned long sdio_config = 0;
+						SDIO_Config_Reg_t *config_reg = (void *)&sdio_config;
+						sdio_config = READ_CBUS_REG(SDIO_CONFIG);
+						config_reg->bus_width = 1;
+						WRITE_CBUS_REG(SDIO_CONFIG, sdio_config);
+					}
+				}
+				break;
+
+			case 46:	//SD_SET_BUS_WIDTHS : 1 bit		//acmd
+				ret = sd_send_cmd_hw(sd_mmc_info, SD_APP_CMD, sd_mmc_info->card_rca<<16, RESPONSE_R1, response, 0, 0, 1);  
+				if (ret)
+					break;
+				ret = sd_send_cmd_hw(sd_mmc_info, SD_SET_BUS_WIDTHS, 0x00, RESPONSE_R1, response, 0, 0, 1);
+				if (ret == SD_MMC_NO_ERROR)
+				{
+					sd_mmc_info->bus_width = SD_BUS_SINGLE;
+					if (using_sdxc_controller)
+					{
+						unsigned long sdxc_ctrl = 0;
+						SDXC_Ctrl_Reg_t *sdxc_ctrl_reg = (void *)&sdxc_ctrl;
+						sdxc_ctrl = READ_CBUS_REG(SDHC_CTRL);
+						sdxc_ctrl_reg->dat_width = 0;
+						WRITE_CBUS_REG(SDHC_CTRL, sdxc_ctrl);
+					}
+					else
+					{
+						unsigned long sdio_config = 0;
+						SDIO_Config_Reg_t *config_reg = (void *)&sdio_config;
+						sdio_config = READ_CBUS_REG(SDIO_CONFIG);
+						config_reg->bus_width = 0;
+						WRITE_CBUS_REG(SDIO_CONFIG, sdio_config);
+					}
+				}
+				break;
+
+			case 56 :	//SD_SWITCH_FUNCTION	//HS
+			{
+				unsigned char response[MAX_RESPONSE_BYTES];
+				unsigned char *status_data_buf = sd_mmc_info->sd_mmc_buf;
+				SD_Switch_Function_Status_t *switch_funtion_status;
+				unsigned long sdio_config = 0;
+				SDIO_Config_Reg_t *config_reg = NULL;
+				
+				memset(status_data_buf, 0, 64);
+				ret = sd_send_cmd_hw(sd_mmc_info, SD_SWITCH_FUNCTION, 0x00FFFF01, RESPONSE_R1, response, status_data_buf, 64, 1);
+				if(ret)
+					break;
+				
+				switch_funtion_status = (SD_Switch_Function_Status_t *)status_data_buf;
+				if(switch_funtion_status->Max_Current_Consumption == 0)
+				{
+					ret = SD_ERROR_SWITCH_FUNCTION_COMUNICATION;
+					break;
+				}
+				
+				my_disp_switch_status(switch_funtion_status);		//check disp
+				
+				memset(status_data_buf, 0, 64);
+				ret = sd_send_cmd_hw(sd_mmc_info, SD_SWITCH_FUNCTION, 0x80FFFF01, RESPONSE_R1, response, status_data_buf, 64, 1);	
+				if(ret)
+					break;
+				
+				switch_funtion_status = (SD_Switch_Function_Status_t *)status_data_buf;
+				if(switch_funtion_status->Max_Current_Consumption == 0 || switch_funtion_status->Function_Group_Status1 == 0xF)
+				{
+					ret = SD_ERROR_SWITCH_FUNCTION_COMUNICATION;
+					break;
+				}
+				
+				my_disp_switch_status(switch_funtion_status);		//switch disp
+				
+				if (using_sdxc_controller)
+				{				
+					unsigned long sdxc_clk = 0;
+					SDXC_Clk_Reg_t *sdxc_clk_reg = (void *)&sdxc_clk;
+					sdxc_clk = READ_CBUS_REG(SDHC_CLKC);
+					sdxc_clk_reg->clk_ctl_en = 0;
+					WRITE_CBUS_REG(SDHC_CLKC, sdxc_clk);
+					sdxc_clk_reg->clk_div = CLK_DIV_50M; //sdxx
+					sdxc_clk_reg->clk_en = 1;
+					sdxc_clk_reg->clk_ctl_en = 1;
+					WRITE_CBUS_REG(SDHC_CLKC, sdxc_clk);
+				}
+				else
+				{
+					sdio_config = 0;
+					config_reg = (void *)&sdio_config;
+					sdio_config = READ_CBUS_REG(SDIO_CONFIG);
+					config_reg->cmd_clk_divide = 1;//aml_system_clk / (2*SD_MMC_TRANSFER_HIGHSPEED_CLK) -1;
+					WRITE_CBUS_REG(SDIO_CONFIG, sdio_config);
+				}
+				
+				sd_mmc_info->sdio_clk_unit = 1000/SD_MMC_TRANSFER_HIGHSPEED_CLK;
+				sd_mmc_info->speed_class = HIGH_SPEED;
+				break;
+			}
+			
+			case 66 :	//SD_SWITCH_FUNCTION	//DS
+			{
+				unsigned char response[MAX_RESPONSE_BYTES];
+				unsigned char *status_data_buf = sd_mmc_info->sd_mmc_buf;
+				SD_Switch_Function_Status_t *switch_funtion_status;
+				unsigned long sdio_config = 0;
+				SDIO_Config_Reg_t *config_reg = NULL;
+				
+				memset(status_data_buf, 0, 64);
+				ret = sd_send_cmd_hw(sd_mmc_info, SD_SWITCH_FUNCTION, 0x00FFFF00, RESPONSE_R1, response, status_data_buf, 64, 1);
+				if(ret)
+					break;
+				
+				switch_funtion_status = (SD_Switch_Function_Status_t *)status_data_buf;
+				if(switch_funtion_status->Max_Current_Consumption == 0)
+				{
+					ret = SD_ERROR_SWITCH_FUNCTION_COMUNICATION;
+					break;
+				}
+
+				my_disp_switch_status(switch_funtion_status);		//check disp
+				
+				memset(status_data_buf, 0, 64);
+				ret = sd_send_cmd_hw(sd_mmc_info, SD_SWITCH_FUNCTION, 0x80FFFF00, RESPONSE_R1, response, status_data_buf, 64, 1);	
+				if(ret)
+					break;
+				
+				switch_funtion_status = (SD_Switch_Function_Status_t *)status_data_buf;
+				if(switch_funtion_status->Max_Current_Consumption == 0 || switch_funtion_status->Function_Group_Status1 == 0xF)
+				{
+					ret = SD_ERROR_SWITCH_FUNCTION_COMUNICATION;
+					break;
+				}
+				
+				my_disp_switch_status(switch_funtion_status);		//switch disp
+				
+				if (using_sdxc_controller)
+				{				
+					unsigned long sdxc_clk = 0;
+					SDXC_Clk_Reg_t *sdxc_clk_reg = (void *)&sdxc_clk;
+					sdxc_clk = READ_CBUS_REG(SDHC_CLKC);
+					sdxc_clk_reg->clk_ctl_en = 0;
+					WRITE_CBUS_REG(SDHC_CLKC, sdxc_clk);
+					sdxc_clk_reg->clk_div = CLK_DIV_25M; //sdxx
+					sdxc_clk_reg->clk_en = 1;
+					sdxc_clk_reg->clk_ctl_en = 1;
+					WRITE_CBUS_REG(SDHC_CLKC, sdxc_clk);
+				}
+				else
+				{
+					sdio_config = 0;
+					config_reg = (void *)&sdio_config;
+					sdio_config = READ_CBUS_REG(SDIO_CONFIG);
+					config_reg->cmd_clk_divide = 4;//aml_system_clk / (2*SD_MMC_TRANSFER_HIGHSPEED_CLK) -1;
+					WRITE_CBUS_REG(SDIO_CONFIG, sdio_config);
+				}
+				
+				sd_mmc_info->sdio_clk_unit = 1000/SD_MMC_TRANSFER_HIGHSPEED_CLK;
+				sd_mmc_info->speed_class = NORMAL_SPEED;
+				break;
+			}
+
+			default :
+				printk("unknowd cmd %d\n", cmd);
+				ret = SD_MMC_ERROR_GENERAL;
+				break;
+	}
+
+	using_sdxc_controller = 0;
+	
+	sd_gpio_enable(sd_mmc_info->io_pad_type);
+	card_release_host(host);
+
+	return ret;
+}
+
+static int sdxc_card_rw(struct memory_card* card, unsigned int cmd, unsigned int lba)
+{
+	int ret;
+	unsigned char response[MAX_RESPONSE_BYTES];
+	unsigned char* data_buf;
+	SD_MMC_Card_Info_t *sd_mmc_info = (SD_MMC_Card_Info_t *)card->card_info;
+	struct card_host *host = card->host;
+	static unsigned char start_num = 0x55;
+
+
+	__card_claim_host(host, card);
+	sd_sdio_enable(sd_mmc_info->io_pad_type);
+	
+	if (myidx == 0)
+		using_sdxc_controller = 1;
+
+	data_buf = sd_mmc_info->sd_mmc_buf;
+
+	switch (cmd)
+	{
+		case 20 :
+			start_num = lba;
+			printk("new start num = 0x%x -- %u\n", start_num, start_num);
+			break;
+
+		case 21 :
+			sdxc_delay = lba;
+			printk("new rw delay = %dus\n", sdxc_delay);
+			break;
+			
+		case 17 : //SD_MMC_READ_SINGLE_BLOCK
+		{	
+			int i;
+			for( i = 0; i < 512; i++)
+				data_buf[i] = 0xdd;
+			ret = sd_send_cmd_hw(sd_mmc_info, SD_MMC_READ_SINGLE_BLOCK, lba, RESPONSE_R1, response, data_buf, 512, 1);
+			if (ret == SD_MMC_NO_ERROR)
+			{
+				int i;
+				printk("read data from lba 0x%x -- %u\n", lba, lba);
+				for (i = 0; i < 512; i++)
+				{
+					printk("%02x", data_buf[i]);
+					if ((i % 4) == 3)
+						printk(" ");
+					if ((i % 32) == 31)
+						printk("\n");
+				}
+				printk("end of lba 0x%x \n", lba);
+			}
+			break;
+		}
+		
+		case 18 :	//SD_MMC_READ_MULTIPLE_BLOCK
+			ret = SD_ERROR_Reserved2;
+			break;
+
+		case 24 : //SD_MMC_WRITE_BLOCK
+		{
+			int i;
+			for( i = 0; i < 512; i++)
+				data_buf[i] = i + start_num;
+			printk("write data to lba 0x%x -- %u\n", lba, lba);
+			ret = sd_send_cmd_hw(sd_mmc_info, SD_MMC_WRITE_BLOCK, lba, RESPONSE_R1, response, data_buf, 512, 1);
+			break;
+		}
+		
+		case 25 : //SD_MMC_WRITE_MULTIPLE_BLOCK
+			ret = SD_ERROR_Reserved2;
+			break;
+
+		default :
+			printk("unknown cmd %d\n", cmd);
+			ret = SD_ERROR_Reserved1;
+			break;
+	}
+	
+	using_sdxc_controller = 0;
+	
+	sd_gpio_enable(sd_mmc_info->io_pad_type);
+	card_release_host(host);
+
+	return ret;
+}
+
+static void my_disp_sdhc_regs(void)
+{
+	unsigned int value;
+	
+	value = READ_CBUS_REG(SDHC_ARGU);
+	printk("\nSDHC_ARGU=0x%08x -- %u\n", value, value);
+	
+	value = READ_CBUS_REG(SDHC_SEND);
+	printk("SDHC_SEND=0x%08x -- %u\n", value, value);
+
+	value = READ_CBUS_REG(SDHC_CTRL);
+	printk("SDHC_CTRL=0x%08x -- %u\n", value, value);
+
+	value = READ_CBUS_REG(SDHC_STAT);
+	printk("SDHC_STAT=0x%08x -- %u\n", value, value);
+
+	value = READ_CBUS_REG(SDHC_CLKC);
+	printk("SDHC_CLKC=0x%08x -- %u\n", value, value);
+
+	value = READ_CBUS_REG(SDHC_ADDR);
+	printk("SDHC_ADDR=0x%08x -- %u\n", value, value);
+
+	value = READ_CBUS_REG(SDHC_PDMA);
+	printk("SDHC_PDMA=0x%08x -- %u\n", value, value);
+
+	value = READ_CBUS_REG(SDHC_MISC);
+	printk("SDHC_MISC=0x%08x -- %u\n", value, value);
+
+	value = READ_CBUS_REG(SDHC_DATA);
+	printk("SDHC_DATA=0x%08x -- %u\n\n", value, value);
+}
+
+static void my_write_reg(char *buf)
+{
+	unsigned int addr;
+	unsigned int value;
+
+	if (!(buf[0] >= '0' && buf[0] <= '8'))
+	{
+		printk("wrong addr\n");
+		return;
+	}
+	
+	addr = buf[0] - '0' + 0x2380;	//0x2380  is the sdhc controller's base address
+	value = my_parse_num(buf + 2, NULL);
+	printk("cmd5 : set addr(0x%x) to 0x%08x -- %d\n", addr, value, value);
+	WRITE_CBUS_REG(addr, value);
+}
+
+#include <linux/init.h>
+#include <linux/module.h>
+#include <linux/moduleparam.h>
+#include <linux/types.h>
+#include <linux/kernel.h>
+#include <linux/proc_fs.h>
+#include <linux/timer.h>
+#include <asm/uaccess.h>
+
+static struct proc_dir_entry *my_dir,*my_file;
+
+extern struct card_host * the_card_host;
+static struct memory_card *sdxc_card = NULL;
+
+//echo 10 > /proc/mydir/myfile
+static ssize_t my_write( struct file *file,
+			  const char __user *buffer,
+			  size_t len,
+			  loff_t *offset )
+{
+	char command;
+	
+	char *tmp_buf = kmalloc(len + 1, GFP_KERNEL);
+	if (tmp_buf == NULL)
+		return -EINVAL;
+	if (copy_from_user(tmp_buf, buffer, len))
+		return -EFAULT;
+	tmp_buf[len] = '\0';
+
+	command = tmp_buf[0];
+
+	switch (command)
+	{
+		case '1' : 	//setup : 10 or 11
+			if (sdxc_card != NULL)
+			{
+				printk("card(%p) exist, will be freed first\n", sdxc_card);
+				kfree(sdxc_card);
+				sdxc_card = NULL;
+			}
+			if (tmp_buf[1] == '0')
+				sdxc_card = sdxc_card_setup(the_card_host, 0);//sdio
+			else
+				sdxc_card = sdxc_card_setup(the_card_host, 1);//sdhc
+			if (sdxc_card)
+				printk("card(%p) setup success\n", sdxc_card);
+			else
+				printk("card setup fail\n");
+			break;
+
+		case '2' : //check present : 2
+			if (sdxc_card == NULL)
+			{
+				printk("send me command 1 first\n");
+			}
+			else
+			{
+				if (sdxc_card_present(sdxc_card))
+					printk("card is present\n");
+				else
+					printk("card not present\n");
+			}
+			break;
+
+		case '3' :	//identify : 36	//6 is steps (1~6)
+			if (sdxc_card == NULL)
+			{
+				printk("send me command 1 first\n");
+			}
+			else
+			{
+				int steps;
+				if (tmp_buf[1] >= '1' && tmp_buf[1] <= '9')
+					steps = tmp_buf[1] - '0';
+				else
+					steps = 2;
+					
+				if (sdxc_card_identify(sdxc_card, steps) == 0)
+					printk("steps=%d success\n", steps);
+				else
+					printk("steps=%d fail\n", steps);
+			}
+			break;
+
+		case '4' :	//disp regs : 4
+			my_disp_sdhc_regs();
+			break;
+
+		case '5' :	//write reg : 5 2 37	//2nd  is reg num (0~8), 3rd is value in decimal
+			my_write_reg(&tmp_buf[2]);
+			break;
+
+		case '7' :	//send single cmd : 7 0		//2nd is cmd idx (0, 8, 41,   2, 3, 10, 9, 7, 51, 6)	//acmd41, acmd51, acmd6
+					//other cmds : 55, 42, 46
+			{
+			unsigned int cmd;
+			int ret;
+
+			cmd = my_parse_num(&tmp_buf[2], NULL);
+			ret = sdxc_card_cmd(sdxc_card, cmd);
+			if (ret == 0)
+				printk("send cmd%d success\n", cmd);
+			else
+				printk("send cmd%d fail with %s\n", cmd, sd_error_to_string(ret));
+			break;
+			}
+
+		case '8' :	//send all identify cmds except acmd6 : 8
+			{
+			int ret = 0;
+			unsigned int cmds[] = {0, 8, 42, 2, 3, 10, 9, 7, 51};
+			int count = sizeof(cmds) / sizeof(cmds[0]);
+			int i = 0;
+			while (ret == 0 && i < count)
+			{
+				ret = sdxc_card_cmd(sdxc_card, cmds[i]);
+				i++;
+			}
+			if (ret == 0)
+				printk("card identify success\n");
+			else
+				printk("card identify fail\n");
+			break;
+			}
+
+		case '9' :	//send rw cmds : 9 17 6550550		//2nd is cmd (17, 18, 24, 25),  3rd is lba	
+					//two other funcs(20, 21) : 9 20 wr_start_num,  9 21 rw_delay_us
+			{
+				int ret;
+				unsigned int cmd;
+				unsigned int lba;
+				char *pcur;
+
+				cmd = my_parse_num(&tmp_buf[2], &pcur);
+				lba = my_parse_num(pcur, &pcur);
+				ret = sdxc_card_rw(sdxc_card, cmd, lba);
+				if (ret == 0)
+					printk("card rw success\n");
+				else
+					printk("card rw fail : %s\n", sd_error_to_string(ret));
+					
+				break;
+			}
+
+		default :
+			printk("unknow command : %c\n", command);
+			break;
+	}
+	
+	kfree(tmp_buf);
+	return len;
+}
+
+static ssize_t my_read( struct file *file,
+			  char __user *buffer,
+			  size_t len,
+			  loff_t *offset )
+{
+	int ret;
+
+	if (*offset == 0)
+	{
+		ret = sprintf(buffer, "sdxc_card(%p)\n", sdxc_card);
+		*offset = ret;
+	}
+	else
+	{
+		ret = 0;
+	}
+	
+	return ret;	
+}
+
+/*
+static ssize_t my_write( struct file *file,
+			  const char __user *buffer,
+			  size_t len,
+			  loff_t *offset )
+{
+	char *tmp_buf = kmalloc(len + 1, GFP_KERNEL);
+	if (tmp_buf == NULL)
+		return -EINVAL;
+	if (copy_from_user(tmp_buf, buffer, len))
+		return -EFAULT;
+	tmp_buf[len] = '\0';
+	
+	printk("%d : %s\n", len, tmp_buf);
+	kfree(tmp_buf);
+	return len;
+}
+*/
+			  
+static int my_open( struct inode *inode,
+				 struct file *file ) 
+{
+	return 0;
+}
+
+static int my_close( struct inode *inode, struct file *file )
+{
+	return 0;
+}
+
+static const struct file_operations my_ops = {
+	.owner = THIS_MODULE,
+	.read = my_read,
+	.write = my_write,
+	.open = my_open,
+	.release = my_close
+};
+
+#define MYDIR "mydir"
+#define MYFILE "myfile"
+
+int my_init(void)
+{
+  my_dir = (struct proc_dir_entry * )proc_mkdir(MYDIR,NULL);
+  if(my_dir == NULL){
+    printk("mkdir fail\n");
+     return -1;
+  }
+
+  my_file = (struct proc_dir_entry * )proc_create_data(MYFILE,0777,my_dir, &my_ops, NULL);
+  if(my_file == NULL){
+     remove_proc_entry(MYDIR, NULL);
+     my_dir = NULL;
+     printk("mkfile fail\n");
+     return -1;
+
+  }  
+  return 0;
+}
+
+void my_cleanup(void)
+{
+	if (my_dir)
+		remove_proc_entry(MYFILE,my_dir);
+	if (my_file)
+		remove_proc_entry(MYDIR, NULL);
+}
+
+module_init(my_init);
+module_exit(my_cleanup);
 

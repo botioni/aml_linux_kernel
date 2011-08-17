@@ -138,7 +138,7 @@ EXPORT_SYMBOL(card_init_card);
  */
 int card_register_card(struct memory_card *card)
 {
-	int ret;
+	int ret = 0;
 	
 	dev_set_name(&card->dev, "%s:%s", card_hostname(card->host), card->name);
 

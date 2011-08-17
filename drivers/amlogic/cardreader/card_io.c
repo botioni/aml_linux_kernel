@@ -386,10 +386,14 @@ void sdio_if_int_handler(struct card_host *host)
 	return;
 } 
 
+extern int sdxc_int_param;
+
 void sdio_cmd_int_handle(struct memory_card *card) 
 {
 	if (using_sdxc_controller)	//sdxx
 	{
+		sdxc_int_param += 1;
+		
 		if (sdio_command_int_num == 0)
 			complete(&sdio_int_complete);
 	}
@@ -405,6 +409,8 @@ void sdio_timeout_int_handle(struct memory_card *card)
 {
 	if (using_sdxc_controller)	//sdxx
 	{
+		sdxc_int_param += 100;
+		
 		complete(&sdio_int_complete);
 	}
 	else
