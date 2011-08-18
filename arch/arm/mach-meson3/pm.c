@@ -134,7 +134,6 @@ void power_gate_init(void)
     GATE_INIT(MMC_PCLK);
     GATE_INIT(MISC_DVIN);
     GATE_INIT(MISC_RDMA);
-    GATE_INIT(RESERVED9);
     GATE_INIT(UART2);
     GATE_INIT(VENCI_INT);
     GATE_INIT(VIU2);
@@ -186,7 +185,7 @@ void power_gate_switch(int flag)
     GATE_SWITCH(flag, MC_CLK);
     //GATE_SWITCH(flag, AHB_BRIDGE);
     //GATE_SWITCH(flag, ISA);
-    GATE_SWITCH(flag, APB_CBUS);
+    //GATE_SWITCH(flag, APB_CBUS);
     //GATE_SWITCH(flag, _1200XXX);
     GATE_SWITCH(flag, SPICC);
     GATE_SWITCH(flag, I2C);
@@ -203,10 +202,6 @@ void power_gate_switch(int flag)
     GATE_SWITCH(flag, AMRISC);
     GATE_SWITCH(flag, BT656_IN);
     //GATE_SWITCH(flag, ASSIST_MISC);
-    GATE_SWITCH(flag, VENC_I_TOP);
-    GATE_SWITCH(flag, VENC_P_TOP);
-    GATE_SWITCH(flag, VENC_T_TOP);
-    GATE_SWITCH(flag, VENC_DAC);
     GATE_SWITCH(flag, VI_CORE);
     GATE_SWITCH(flag, SPI2);
     GATE_SWITCH(flag, MDEC_CLK_ASSIST);
@@ -214,7 +209,6 @@ void power_gate_switch(int flag)
     GATE_SWITCH(flag, SPI1);
     GATE_SWITCH(flag, AUD_IN);
     GATE_SWITCH(flag, ETHERNET);
-    GATE_SWITCH(flag, DEMUX);
     GATE_SWITCH(flag, AIU_AI_TOP_GLUE);
     GATE_SWITCH(flag, AIU_IEC958);
     GATE_SWITCH(flag, AIU_I2S_OUT);
@@ -240,41 +234,16 @@ void power_gate_switch(int flag)
     GATE_SWITCH(flag, ROM_CLK);
     //GATE_SWITCH(flag, AHB_DATA_BUS);
     //GATE_SWITCH(flag, AHB_CONTROL_BUS);
-    GATE_SWITCH(flag, HDMI_INTR_SYNC);
-    GATE_SWITCH(flag, HDMI_PCLK);
     GATE_SWITCH(flag, MISC_USB1_TO_DDR);
     GATE_SWITCH(flag, MISC_USB0_TO_DDR);
     GATE_SWITCH(flag, AIU_PCLK);
-    GATE_SWITCH(flag, MMC_PCLK);
-    GATE_SWITCH(flag, MISC_DVIN);
-    GATE_SWITCH(flag, MISC_RDMA);
+    //GATE_SWITCH(flag, MMC_PCLK);
     GATE_SWITCH(flag, UART2);
-    GATE_SWITCH(flag, VENCI_INT);
-    GATE_SWITCH(flag, VIU2);
-    GATE_SWITCH(flag, VENCP_INT);
-    GATE_SWITCH(flag, VENCT_INT);
-    GATE_SWITCH(flag, VENCL_INT);
-    GATE_SWITCH(flag, VENC_L_TOP);
-    GATE_SWITCH(flag, VCLK2_VENCI);
-    GATE_SWITCH(flag, VCLK2_VENCI1);
-    GATE_SWITCH(flag, VCLK2_VENCP);
-    GATE_SWITCH(flag, VCLK2_VENCP1);
-    GATE_SWITCH(flag, VCLK2_VENCT);
-    GATE_SWITCH(flag, VCLK2_VENCT1);
-    GATE_SWITCH(flag, VCLK2_OTHER);
-    GATE_SWITCH(flag, VCLK2_ENCI);
-    GATE_SWITCH(flag, VCLK2_ENCP);
     GATE_SWITCH(flag, DAC_CLK);
     GATE_SWITCH(flag, AIU_AOCLK);
     GATE_SWITCH(flag, AIU_AMCLK);
     GATE_SWITCH(flag, AIU_ICE958_AMCLK);
-    GATE_SWITCH(flag, VCLK1_HDMI);
     GATE_SWITCH(flag, AIU_AUDIN_SCLK);
-    GATE_SWITCH(flag, ENC480P);
-    GATE_SWITCH(flag, VCLK2_ENCT);
-    GATE_SWITCH(flag, VCLK2_ENCL);
-    GATE_SWITCH(flag, VCLK2_VENCL);
-    GATE_SWITCH(flag, VCLK2_OTHER1);
 }
 EXPORT_SYMBOL(power_gate_switch);
 
@@ -339,13 +308,12 @@ static char clks_name[CLK_COUNT][32] = {
 };
 
 #ifdef EARLY_SUSPEND_USE_XTAL
-#define EARLY_CLK_COUNT 3
-#else
 #define EARLY_CLK_COUNT 2
+#else
+#define EARLY_CLK_COUNT 1
 #endif
 static char early_clk_flag[EARLY_CLK_COUNT];
 static unsigned early_clks[EARLY_CLK_COUNT] = {
-    HHI_ETH_CLK_CNTL,
     HHI_VID_CLK_CNTL,
 #ifdef EARLY_SUSPEND_USE_XTAL
     HHI_MPEG_CLK_CNTL,
@@ -353,7 +321,6 @@ static unsigned early_clks[EARLY_CLK_COUNT] = {
 };
 
 static char early_clks_name[EARLY_CLK_COUNT][32] = {
-    "HHI_ETH_CLK_CNTL",
     "HHI_VID_CLK_CNTL",
 #ifdef EARLY_SUSPEND_USE_XTAL
     "HHI_MPEG_CLK_CNTL",
@@ -765,7 +732,7 @@ static void meson_pm_suspend(void)
         pdata->set_vccx2(OFF);
     }
 
-//    power_gate_switch(OFF);
+    power_gate_switch(OFF);
 
 #ifdef SAVE_DDR_REGS
     printk("PCTL_TOGCNT1U_ADDR %x\n", READ_APB_REG(PCTL_TOGCNT1U_ADDR));
@@ -851,7 +818,7 @@ static void meson_pm_suspend(void)
     }
 #endif
 
-//    power_gate_switch(ON);
+    power_gate_switch(ON);
 
     usb_switch(ON, 0);
     usb_switch(ON, 1);
