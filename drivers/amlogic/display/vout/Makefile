@@ -46,7 +46,5 @@ obj-$(CONFIG_AML_TCON_REFB17)  += refb17t13.o
 
 obj-$(CONFIG_AML_TCON_P10)  += p10.o
 
-obj-$(CONFIG_AML_TCON_S7)  += s7.o
-
 #EXTRA_CFLAGS += -DCONFIG_PM
 
