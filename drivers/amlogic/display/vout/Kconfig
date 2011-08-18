@@ -126,6 +126,11 @@ config AML_TCON_P10
 	depends on  AM_TCON_OUTPUT
 	help  
 		P10 LCD panel module
+config AML_TCON_S7
+	tristate "S7 panel driver"
+	depends on  AM_TCON_OUTPUT
+	help  
+		S7 LCD panel module		
 		
 endmenu
 	
