@@ -601,7 +601,6 @@ int sdxc_send_cmd_hw(SD_MMC_Card_Info_t *sd_mmc_info, unsigned char cmd, unsigne
 	sdxc_pdma_reg = (void *) &sdxc_pdma;
 
 	sdxc_ctrl_reg->sdxc_soft_reset = 1;
-	sdxc_ctrl_reg->rx_timeout = 64;
 	WRITE_CBUS_REG(SDHC_CTRL, sdxc_ctrl);
 	
 	sd_delay_ms(10);
@@ -4184,14 +4183,14 @@ int sd_identify_process(SD_MMC_Card_Info_t *sd_mmc_info)
 int sdxc_mmc_staff_init(SD_MMC_Card_Info_t *sd_mmc_info)
 {
 	//SDXC_Send_Reg_t *sdxc_send_reg;
-	//SDXC_Ctrl_Reg_t *sdxc_ctrl_reg;
+	SDXC_Ctrl_Reg_t *sdxc_ctrl_reg;
 	//SDXC_Status_Reg_t *sdxc_status_reg;
 	SDXC_Clk_Reg_t *sdxc_clk_reg;
 	//SDXC_PDMA_Reg_t *sdxc_pdma_reg;
 	SDXC_Misc_Reg_t *sdxc_misc_reg;
 
-	unsigned int sdxc_clk, sdxc_misc;
-	//unsigned int sdxc_send, sdxc_ctrl, sdxc_status, sdxc_clk, sdxc_pdma, sdxc_misc;
+	unsigned int sdxc_ctrl, sdxc_clk, sdxc_misc;
+	//unsigned int sdxc_send, sdxc_status, sdxc_clk, sdxc_pdma, sdxc_misc;
 
     sd_mmc_prepare_power(sd_mmc_info);   
 	sd_mmc_power_on(sd_mmc_info);
@@ -4212,6 +4211,12 @@ int sdxc_mmc_staff_init(SD_MMC_Card_Info_t *sd_mmc_info)
 	sdxc_misc_reg->tx_limit = 0x20;
 	sdxc_misc_reg->manual_stop = 1;
 	WRITE_CBUS_REG(SDHC_MISC, sdxc_misc);
+
+	sdxc_ctrl = 0;
+	sdxc_ctrl_reg = (void *)&sdxc_ctrl;
+	sdxc_ctrl_reg->dat_width = 0;
+	sdxc_ctrl_reg->rx_timeout = 0x40;
+	WRITE_CBUS_REG(SDHC_CTRL, sdxc_ctrl);
 
 	sd_sdio_enable(sd_mmc_info->io_pad_type);
 
@@ -8526,7 +8531,7 @@ static struct proc_dir_entry *my_dir,*my_file;
 extern struct card_host * the_card_host;
 static struct memory_card *sdxc_card = NULL;
 
-//echo 10 > /proc/mydir/myfile
+//echo 10 > /proc/sdxc/cmd
 static ssize_t my_write( struct file *file,
 			  const char __user *buffer,
 			  size_t len,
@@ -8685,25 +8690,6 @@ static ssize_t my_read( struct file *file,
 	return ret;	
 }
 
-/*
-static ssize_t my_write( struct file *file,
-			  const char __user *buffer,
-			  size_t len,
-			  loff_t *offset )
-{
-	char *tmp_buf = kmalloc(len + 1, GFP_KERNEL);
-	if (tmp_buf == NULL)
-		return -EINVAL;
-	if (copy_from_user(tmp_buf, buffer, len))
-		return -EFAULT;
-	tmp_buf[len] = '\0';
-	
-	printk("%d : %s\n", len, tmp_buf);
-	kfree(tmp_buf);
-	return len;
-}
-*/
-			  
 static int my_open( struct inode *inode,
 				 struct file *file ) 
 {
@@ -8723,8 +8709,8 @@ static const struct file_operations my_ops = {
 	.release = my_close
 };
 
-#define MYDIR "mydir"
-#define MYFILE "myfile"
+#define MYDIR "sdxc"
+#define MYFILE "cmd"
 
 int my_init(void)
 {
@@ -8747,9 +8733,9 @@ int my_init(void)
 
 void my_cleanup(void)
 {
-	if (my_dir)
-		remove_proc_entry(MYFILE,my_dir);
 	if (my_file)
+		remove_proc_entry(MYFILE,my_dir);
+	if (my_dir)
 		remove_proc_entry(MYDIR, NULL);
 }
 
