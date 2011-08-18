@@ -655,6 +655,21 @@ static struct platform_device aml_audio = {
     .resource       =   aml_m3_audio_resource,
     .num_resources  =   ARRAY_SIZE(aml_m3_audio_resource),
 };
+
+int aml_m3_is_hp_pluged(void)
+{
+	return READ_CBUS_REG_BITS(PREG_PAD_GPIO0_I, 19, 1); //return 1: hp pluged, 0: hp unpluged.
+}
+
+
+struct aml_m3_platform_data {
+    int (*is_hp_pluged)(void);
+};
+
+
+static struct aml_m3_platform_data aml_m3_pdata = {
+    .is_hp_pluged = &aml_m3_is_hp_pluged,
+};
 #endif
 
 #ifdef CONFIG_ITK_CAPACITIVE_TOUCHSCREEN
