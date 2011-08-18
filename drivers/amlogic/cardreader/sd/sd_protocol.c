@@ -3428,8 +3428,7 @@ int sd_voltage_validation(SD_MMC_Card_Info_t *sd_mmc_info)
             sd_delay_ms(delay_time);
 		    delay_cnt++;
         }
-    ////} while(delay_cnt < (SD_MMC_IDENTIFY_TIMEOUT/delay_time));	//lin
-    } while(delay_cnt < 10);
+    } while(delay_cnt < (SD_MMC_IDENTIFY_TIMEOUT/delay_time));	//lin
 
 
 	printk("begin SD&SDHC check ......\n");
@@ -3554,8 +3553,7 @@ int sd_voltage_validation(SD_MMC_Card_Info_t *sd_mmc_info)
 
 		sd_delay_ms(delay_time);
 		delay_cnt++;
-    ////} while(delay_cnt < (SD_MMC_IDENTIFY_TIMEOUT/delay_time));	//lin
-    } while(delay_cnt < 10);
+    } while(delay_cnt < (SD_MMC_IDENTIFY_TIMEOUT/delay_time));	//lin
 
 	printk("begin MMC check ......\n");
 	sd_sw_reset(sd_mmc_info);
@@ -3590,8 +3588,7 @@ int sd_voltage_validation(SD_MMC_Card_Info_t *sd_mmc_info)
 		
 		sd_delay_ms(delay_time);
 		delay_cnt++;
-    ////} while(delay_cnt < (SD_MMC_IDENTIFY_TIMEOUT/delay_time));	//lin
-    } while(delay_cnt < 10);
+    } while(delay_cnt < (SD_MMC_IDENTIFY_TIMEOUT/delay_time));	//lin
 
 #ifdef SD_MMC_DEBUG
 	Debug_Printf("No any SD/MMC card detected!\n");
