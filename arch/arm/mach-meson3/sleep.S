@@ -96,42 +96,42 @@ ENTRY(meson_cpu_suspend)
     str     r8, [r2, #HIU_DDR_PLL_CTRL]
 #else
     /* lower ddr pll */    
-    ldr     r7, [r2, #HIU_DDR_PLL_CTRL]
-    str     r4, [r2, #HIU_DDR_PLL_CTRL]
+//    ldr     r7, [r2, #HIU_DDR_PLL_CTRL]
+//    str     r4, [r2, #HIU_DDR_PLL_CTRL]
 #endif
 
     /* ddr power gate */
-    ldr     r8, [r2, #HIU_GCLK_MPEG]
-    bic     r8, r8, #0x41
-    str     r8, [r2, #HIU_GCLK_MPEG]
+//    ldr     r8, [r2, #HIU_GCLK_MPEG]
+//    bic     r8, r8, #0x41
+//    str     r8, [r2, #HIU_GCLK_MPEG]
 
     /* lower core voltage */
-    bic     r8, r10, #0x0f
-    orr     r8, r8, r6
-    str     r8, [r9]
+//    bic     r8, r10, #0x0f
+//    orr     r8, r8, r6
+//    str     r8, [r9]
 
     /* System goes to sleep beyond after this instruction */
-    ldr     r8, [r2, #A9_AUTO_CLK0]
-    orr     r8, r8, #(1<<1)
-    str     r8, [r2, #A9_AUTO_CLK0]
-    bic     r8, r8, #(1<<1)
-    str     r8, [r2, #A9_AUTO_CLK0]
+//    ldr     r8, [r2, #A9_AUTO_CLK0]
+//    orr     r8, r8, #(1<<1)
+//    str     r8, [r2, #A9_AUTO_CLK0]
+//    bic     r8, r8, #(1<<1)
+//    str     r8, [r2, #A9_AUTO_CLK0]
     wfi
-    ldr     r8, [r2, #A9_AUTO_CLK0]
-    bic     r8, r8, #(1<<0)
-    str     r8, [r2, #A9_AUTO_CLK0]
+//    ldr     r8, [r2, #A9_AUTO_CLK0]
+//    bic     r8, r8, #(1<<0)
+//    str     r8, [r2, #A9_AUTO_CLK0]
     /* Wake up from sleep */
 
     /* restore core voltage */
-    str     r10, [r9]
-    mov     r8, #VOLTAGE_DLY
-2:  subs    r8, r8, #0x1
-    bne     2b
+//    str     r10, [r9]
+//    mov     r8, #VOLTAGE_DLY
+//2:  subs    r8, r8, #0x1
+//    bne     2b
 
     /* ddr power gate */
-    ldr     r8, [r2, #HIU_GCLK_MPEG]
-    orr     r8, r8, #0x41
-    str     r8, [r2, #HIU_GCLK_MPEG]
+//    ldr     r8, [r2, #HIU_GCLK_MPEG]
+//    orr     r8, r8, #0x41
+//    str     r8, [r2, #HIU_GCLK_MPEG]
 
 #ifdef TURN_OFF_DDR_PLL
     /* turn on ddr pll */
@@ -140,7 +140,7 @@ ENTRY(meson_cpu_suspend)
     str     r8, [r2, #HIU_DDR_PLL_CTRL] 
 #else
     /* restore ddr pll */
-    str     r7, [r2, #HIU_DDR_PLL_CTRL]
+//    str     r7, [r2, #HIU_DDR_PLL_CTRL]
 #endif
 
     /* Wait for PLL to lock */

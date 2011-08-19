@@ -789,7 +789,7 @@ static void meson_pm_suspend(void)
     CLEAR_CBUS_REG_MASK(HHI_SYS_CPU_CLK_CNTL, 1<<7);  // a9 use xtal
     SET_CBUS_REG_MASK(HHI_SYS_PLL_CNTL, (1 << 15));   // turn off sys pll
 
-#if 1
+#if 0
     while ((READ_AOBUS_REG(AO_RTC_ADDR1) >> 2) & 1){
         udelay(10);
     }
