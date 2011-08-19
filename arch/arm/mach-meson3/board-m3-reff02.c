@@ -1512,8 +1512,15 @@ static struct platform_device aml_efuse_device = {
 #endif
 
 #ifdef CONFIG_PMU_ACT8942
+static void power_off(void)
+{
+    //Power hold down
+    set_gpio_val(GPIOAO_bank_bit0_11(6), GPIOAO_bit_bit0_11(6), 0);
+    set_gpio_mode(GPIOAO_bank_bit0_11(6), GPIOAO_bit_bit0_11(6), GPIO_OUTPUT_MODE);
+}
+
 static struct platform_device aml_pmu_device = {
-    .name	= "pmu act8942",
+    .name	= "pmu_act8942",
     .id	= -1,
 };
 #endif
@@ -2216,7 +2223,7 @@ static __init void m1_init_machine(void)
     
     LED_PWM_REG0_init();
     power_hold();
-    pm_power_off = power_off;
+    pm_power_off = power_off;		//Elvis fool
     device_clk_setting();
     device_pinmux_init();
 #ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE
