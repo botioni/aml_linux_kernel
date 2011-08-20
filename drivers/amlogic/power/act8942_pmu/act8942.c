@@ -30,8 +30,16 @@
 
 #include "act8942.h"
 
+#define ACT8942_PMU_DEBUG_LOG		0
 
-#define DRIVER_VERSION			"0.0.1"
+#if ACT8942_PMU_DEBUG_LOG == 1
+	#define logd(x...)  	pr_info(x)
+#else
+	#define logd(x...)		NULL
+#endif
+
+
+#define DRIVER_VERSION			"0.1.0"
 #define	ACT8942_DEVICE_NAME		"pmu_act8942"
 #define	ACT8942_CLASS_NAME		"act8942_class"
 #define ACT8942_I2C_NAME		"act8942-i2c"
@@ -41,6 +49,9 @@
  */
 static DEFINE_IDR(pmu_id);
 static DEFINE_MUTEX(pmu_mutex);
+
+static int polling_interval = 2000;	//Elvis fool
+struct act8942_device_info *act8942_dev;	//Elvis Fool
 
 static dev_t act8942_devno;
 
@@ -57,8 +68,11 @@ struct act8942_device_info {
 	struct power_supply	bat;
 	struct power_supply	ac;	
 	struct power_supply	usb;
-
+	
 	struct i2c_client	*client;
+
+	struct timer_list polling_timer;
+	struct work_struct work_update;
 };
 
 static struct i2c_client *this_client;
@@ -111,8 +125,8 @@ inline int is_ac_online(void)
 	
 	act8942_read_i2c(this_client, (ACT8942_APCH_ADDR+0xa), &val);
 	
-	pr_info("%s: get from gpio is %d.\n", __FUNCTION__, tmp);
-	pr_info("%s: get from pmu is %d.\n", __FUNCTION__, val);	
+	logd("%s: get from gpio is %d.\n", __FUNCTION__, tmp);
+	logd("%s: get from pmu is %d.\n", __FUNCTION__, val);	
 	//return	(val & 0x2) ? 1 : 0;
 	return !tmp;
 }
@@ -121,7 +135,7 @@ inline int is_usb_online(void)
 {
 	u8 val;
 	act8942_read_i2c(this_client, (ACT8942_APCH_ADDR+0xa), &val);
-	pr_info("%s: get from pmu is %d.\n", __FUNCTION__, val);
+	logd("%s: get from pmu is %d.\n", __FUNCTION__, val);
 	//return	(val & 0x2) ? 0 : 1;
 	return 0;
 }
@@ -153,8 +167,8 @@ inline int get_charge_status(void)
 	
 	act8942_read_i2c(this_client, (ACT8942_APCH_ADDR+0xa), &val);
 
-	pr_info("%s: get from gpio is %d.\n", __FUNCTION__, tmp);
-	pr_info("%s: get from pmu is %d.\n", __FUNCTION__, val);
+	logd("%s: get from gpio is %d.\n", __FUNCTION__, tmp);
+	logd("%s: get from pmu is %d.\n", __FUNCTION__, val);
 	
 	return ((val>>4) & 0x3);
 }
@@ -165,11 +179,11 @@ inline int get_charge_status(void)
 inline int measure_voltage(void)
 {
 	int val;
-	udelay(1000);
+	msleep(2);
 	set_gpio_mode(GPIOA_bank_bit0_27(22), GPIOA_bit_bit0_27(22), GPIO_OUTPUT_MODE);
 	set_gpio_val(GPIOA_bank_bit0_27(22), GPIOA_bit_bit0_27(22), 1);
 	val = get_adc_sample(5) * (2 * 2500000 / 1023);
-	pr_info("%s: get from adc is %dmV.\n", __FUNCTION__, val);
+	logd("%s: get from adc is %dmV.\n", __FUNCTION__, val);
 	return val;
 }
 
@@ -184,17 +198,17 @@ inline int measure_current(void)
 	int val, Vh, Vl, Vdiff;
 	set_gpio_mode(GPIOA_bank_bit0_27(22), GPIOA_bit_bit0_27(22), GPIO_OUTPUT_MODE);
 	set_gpio_val(GPIOA_bank_bit0_27(22), GPIOA_bit_bit0_27(22), 1);
-	udelay(1000);
+	msleep(2);
 	Vl = get_adc_sample(5) * (2 * 2500000 / 1023);
-	pr_info("%s: Vh is %dmV.\n", __FUNCTION__, Vh);
+	logd("%s: Vh is %dmV.\n", __FUNCTION__, Vh);
 	set_gpio_mode(GPIOA_bank_bit0_27(22), GPIOA_bit_bit0_27(22), GPIO_OUTPUT_MODE);
 	set_gpio_val(GPIOA_bank_bit0_27(22), GPIOA_bit_bit0_27(22), 0);
-	udelay(1000);
+	msleep(2);
 	Vh = get_adc_sample(5) * (2 * 2500000 / 1023);
-	pr_info("%s: Vl is %dmV.\n", __FUNCTION__, Vl);
+	logd("%s: Vl is %dmV.\n", __FUNCTION__, Vl);
 	Vdiff = Vh - Vl;
 	val = Vdiff * 50;
-	pr_info("%s: get from adc is %dmA.\n", __FUNCTION__, val);
+	logd("%s: get from adc is %dmA.\n", __FUNCTION__, val);
 	return val;
 }
 
@@ -204,12 +218,12 @@ inline int measure_capacity(void)
 	tmp = measure_voltage();
 	if((tmp>4200000) || (get_charge_status() == 0x1))
 	{
-		pr_info("%s: get from PMU and adc is 100.\n", __FUNCTION__);
+		logd("%s: get from PMU and adc is 100.\n", __FUNCTION__);
 		return 100;
 	}
 	
 	val = (tmp - 3600000) / (600000 / 100);
-	pr_info("%s: get from adc is %d.\n", __FUNCTION__, val);
+	logd("%s: get from adc is %d.\n", __FUNCTION__, val);
 	return val;
 }
 
@@ -223,7 +237,7 @@ static int bat_power_get_property(struct power_supply *psy,
 {
 	int ret = 0;
 	u8 status;
-	struct act8942_device_info *di = to_act8942_device_info(psy);
+	struct act8942_device_info *act8942_dev = to_act8942_device_info(psy);
 
 	switch (psp)
 	{
@@ -330,30 +344,30 @@ static char *power_supply_list[] = {
 	"Battery",
 };
 
-static void act8942_powersupply_init(struct act8942_device_info *di)
+static void act8942_powersupply_init(struct act8942_device_info *act8942_dev)
 {
-	di->bat.name = "bat";
-	di->bat.type = POWER_SUPPLY_TYPE_BATTERY;
-	di->bat.properties = bat_power_props;
-	di->bat.num_properties = ARRAY_SIZE(bat_power_props);
-	di->bat.get_property = bat_power_get_property;
-	di->bat.external_power_changed = NULL;
+	act8942_dev->bat.name = "bat";
+	act8942_dev->bat.type = POWER_SUPPLY_TYPE_BATTERY;
+	act8942_dev->bat.properties = bat_power_props;
+	act8942_dev->bat.num_properties = ARRAY_SIZE(bat_power_props);
+	act8942_dev->bat.get_property = bat_power_get_property;
+	act8942_dev->bat.external_power_changed = NULL;
 
-    di->ac.name = "ac";
-	di->ac.type = POWER_SUPPLY_TYPE_MAINS;
-	di->ac.supplied_to = power_supply_list,
-	di->ac.num_supplicants = ARRAY_SIZE(power_supply_list),
-	di->ac.properties = ac_power_props;
-	di->ac.num_properties = ARRAY_SIZE(ac_power_props);
-	di->ac.get_property = ac_power_get_property;
+    act8942_dev->ac.name = "ac";
+	act8942_dev->ac.type = POWER_SUPPLY_TYPE_MAINS;
+	act8942_dev->ac.supplied_to = power_supply_list,
+	act8942_dev->ac.num_supplicants = ARRAY_SIZE(power_supply_list),
+	act8942_dev->ac.properties = ac_power_props;
+	act8942_dev->ac.num_properties = ARRAY_SIZE(ac_power_props);
+	act8942_dev->ac.get_property = ac_power_get_property;
 
-    di->usb.name = "usb";
-	di->usb.type = POWER_SUPPLY_TYPE_USB;
-	di->usb.supplied_to = power_supply_list,
-	di->usb.num_supplicants = ARRAY_SIZE(power_supply_list),
-	di->usb.properties = usb_power_props;
-	di->usb.num_properties = ARRAY_SIZE(usb_power_props);
-	di->usb.get_property = usb_power_get_property;	
+    act8942_dev->usb.name = "usb";
+	act8942_dev->usb.type = POWER_SUPPLY_TYPE_USB;
+	act8942_dev->usb.supplied_to = power_supply_list,
+	act8942_dev->usb.num_supplicants = ARRAY_SIZE(power_supply_list),
+	act8942_dev->usb.properties = usb_power_props;
+	act8942_dev->usb.num_properties = ARRAY_SIZE(usb_power_props);
+	act8942_dev->usb.get_property = usb_power_get_property;	
 }
 
 #ifdef CONFIG_USB_ANDROID
@@ -366,6 +380,27 @@ int pc_connect(int status)
 EXPORT_SYMBOL(pc_connect);
 
 #endif
+
+static void update_work_func(struct work_struct *work)
+{
+	logd("%s: work->data is 0x%x.\n", __FUNCTION__, work->data);
+	if(!is_ac_online()){
+		power_supply_changed(&act8942_dev->bat); 
+	}
+	else
+	{
+    //if((get_charge_status() > 0x0)){
+		power_supply_changed(&act8942_dev->ac);      
+	}
+}
+
+static void polling_func(unsigned long arg)
+{
+	struct act8942_device_info *act8942_dev = (struct act8942_device_info *)arg;
+	schedule_work(&(act8942_dev->work_update));
+	mod_timer(&(act8942_dev->polling_timer), jiffies + msecs_to_jiffies(polling_interval));  
+}
+
 
 /*
  * i2c specific code
@@ -554,9 +589,10 @@ static struct early_suspend act8942_early_suspend = {
 static int act8942_i2c_probe(struct i2c_client *client,
 				 const struct i2c_device_id *id)
 {
-	struct act8942_device_info *di;
+	//struct act8942_device_info *act8942_dev;	//Elvis Fool
 	int num;
 	int retval = 0;
+		
 	pr_info("act8942_i2c_probe\n");
 	/* Get new ID for the new PMU device */
 	retval = idr_pre_get(&pmu_id, GFP_KERNEL);
@@ -573,40 +609,48 @@ static int act8942_i2c_probe(struct i2c_client *client,
 		return retval;
 	}
 
-	di = kzalloc(sizeof(*di), GFP_KERNEL);
-	if (!di) {
+	act8942_dev = kzalloc(sizeof(*act8942_dev), GFP_KERNEL);
+	if (!act8942_dev) {
 		dev_err(&client->dev, "failed to allocate device info data\n");
 		retval = -ENOMEM;
 		goto act8942_failed_2;
 	}
-	di->id = num;
-	//di->chip = id->driver_data; //elvis
+	act8942_dev->id = num;
+	//act8942_dev->chip = id->driver_data; //elvis
 
 	this_client = client;
 
-	i2c_set_clientdata(client, di);
-	di->dev = &client->dev;
-	di->client = client;
+	i2c_set_clientdata(client, act8942_dev);
+	act8942_dev->dev = &client->dev;
+	act8942_dev->client = client;
 
-	act8942_powersupply_init(di);
+	act8942_powersupply_init(act8942_dev);
 
-	retval = power_supply_register(&client->dev, &di->bat);
+	retval = power_supply_register(&client->dev, &act8942_dev->bat);
 	if (retval) {
 		dev_err(&client->dev, "failed to register battery\n");
 		goto act8942_failed_2;
 	}
 
-	retval = power_supply_register(&client->dev, &di->ac);
+	retval = power_supply_register(&client->dev, &act8942_dev->ac);
 	if (retval) {
 		dev_err(&client->dev, "failed to register ac\n");
 		goto act8942_failed_2;
 	}
 	
-	retval = power_supply_register(&client->dev, &di->usb);
+	retval = power_supply_register(&client->dev, &act8942_dev->usb);
 	if (retval) {
 		dev_err(&client->dev, "failed to register usb\n");
 		goto act8942_failed_2;
 	}
+
+	INIT_WORK(&(act8942_dev->work_update), update_work_func);
+	
+	init_timer(&(act8942_dev->polling_timer));
+	act8942_dev->polling_timer.expires = jiffies + msecs_to_jiffies(polling_interval);
+	act8942_dev->polling_timer.function = polling_func;
+	act8942_dev->polling_timer.data = act8942_dev;
+    add_timer(&(act8942_dev->polling_timer));
 
 #ifdef CONFIG_HAS_EARLYSUSPEND
 	register_early_suspend(&act8942_early_suspend);
@@ -616,7 +660,7 @@ static int act8942_i2c_probe(struct i2c_client *client,
 	return 0;
 
 act8942_failed_2:
-	kfree(di);
+	kfree(act8942_dev);
 act8942_failed_1:
 	mutex_lock(&pmu_mutex);
 	idr_remove(&pmu_id, num);
@@ -627,17 +671,19 @@ act8942_failed_1:
 
 static int act8942_i2c_remove(struct i2c_client *client)
 {
-	struct act8942_device_info *di = i2c_get_clientdata(client);
+	struct act8942_device_info *act8942_dev = i2c_get_clientdata(client);
 	pr_info("act8942_i2c_remove\n");
-	power_supply_unregister(&di->bat);
+	power_supply_unregister(&act8942_dev->bat);
 
-	kfree(di->bat.name);
+	del_timer(&(act8942_dev->polling_timer));
+	
+	kfree(act8942_dev->bat.name);
 
 	mutex_lock(&pmu_mutex);
-	idr_remove(&pmu_id, di->id);
+	idr_remove(&pmu_id, act8942_dev->id);
 	mutex_unlock(&pmu_mutex);
 
-	kfree(di);
+	kfree(act8942_dev);
 
 #ifdef CONFIG_HAS_EARLYSUSPEND
 	unregister_early_suspend(&act8942_early_suspend);
@@ -755,7 +801,7 @@ static struct file_operations act8942_fops = {
 static int act8942_probe(struct platform_device *pdev)
 {
     int ret, i;
-	struct device *act8942_dev;
+	struct device *dev_p;
 	
 	pr_info("act8942_probe\n");
 	act8942_pmu_dev = kmalloc(sizeof(pmu_dev_t), GFP_KERNEL);
@@ -791,12 +837,12 @@ static int act8942_probe(struct platform_device *pdev)
 	}
 
 	/* create /dev nodes */
-    act8942_dev = device_create(&act8942_class, NULL, MKDEV(MAJOR(act8942_devno), 0),
+    dev_p = device_create(&act8942_class, NULL, MKDEV(MAJOR(act8942_devno), 0),
                         NULL, "act8942");
-    if (IS_ERR(act8942_dev)) {
+    if (IS_ERR(dev_p)) {
         pr_err("act8942: failed to create device node\n");
         /* @todo do with error */
-        return PTR_ERR(act8942_dev);;
+        return PTR_ERR(dev_p);;
     }
 
     printk( "act8942: driver initialized ok\n");
