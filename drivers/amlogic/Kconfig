@@ -60,11 +60,6 @@ source "drivers/amlogic/ppmgr/Kconfig"
 #	camera devices
 #
 source "drivers/amlogic/camera/Kconfig"
-#
-#	PMU devices
-#
-comment "PMU devices"
-source "drivers/amlogic/pmu/Kconfig"
 
 source "drivers/amlogic/modem/Kconfig"
 

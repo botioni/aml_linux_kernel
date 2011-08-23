@@ -1512,8 +1512,15 @@ static struct platform_device aml_efuse_device = {
 #endif
 
 #ifdef CONFIG_PMU_ACT8942
+static void power_off(void)
+{
+    //Power hold down
+    set_gpio_val(GPIOAO_bank_bit0_11(6), GPIOAO_bit_bit0_11(6), 0);
+    set_gpio_mode(GPIOAO_bank_bit0_11(6), GPIOAO_bit_bit0_11(6), GPIO_OUTPUT_MODE);
+}
+
 static struct platform_device aml_pmu_device = {
-    .name	= "pmu act8942",
+    .name	= "pmu_act8942",
     .id	= -1,
 };
 #endif
@@ -1759,6 +1766,7 @@ static unsigned aml_8726m_get_bl_level(void)
 #define BL_MAX_LEVEL 60000
 static void aml_8726m_set_bl_level(unsigned level)
 {
+	/*
     unsigned cs_level, hi, low;
     if(level < 20){
         cs_level = 0;
@@ -1781,6 +1789,24 @@ static void aml_8726m_set_bl_level(unsigned level)
 
     WRITE_CBUS_REG_BITS(PWM_PWM_A,low,0,16);  //low
     WRITE_CBUS_REG_BITS(PWM_PWM_A,hi,16,16);  //hi
+    */
+    unsigned cs_level;
+    if (level < 10)
+    {
+        cs_level = 15;
+    }
+    else if (level < 30)
+    {
+        cs_level = 14;
+    }
+    else if (level >=30 && level < 256)
+    {
+        cs_level = 13-((level - 30)/28);
+    }
+    else
+        cs_level = 3;
+
+    WRITE_CBUS_REG_BITS(LED_PWM_REG0, cs_level, 0, 4);
 }
 
 static void aml_8726m_power_on_bl(void)
@@ -2221,7 +2247,7 @@ static __init void m1_init_machine(void)
     
     LED_PWM_REG0_init();
     power_hold();
-    pm_power_off = power_off;
+    pm_power_off = power_off;		//Elvis fool
     device_clk_setting();
     device_pinmux_init();
 #ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE
