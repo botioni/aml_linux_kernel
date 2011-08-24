@@ -27,16 +27,7 @@
 #include <mach/pinmux.h>
 #include <mach/gpio.h>
 #include <linux/saradc.h>
-
-#include "act8942.h"
-
-#define ACT8942_PMU_DEBUG_LOG		0
-
-#if ACT8942_PMU_DEBUG_LOG == 1
-	#define logd(x...)  	pr_info(x)
-#else
-	#define logd(x...)		NULL
-#endif
+#include <linux/act8942.h>  
 
 
 #define DRIVER_VERSION			"0.1.0"
@@ -50,8 +41,9 @@
 static DEFINE_IDR(pmu_id);
 static DEFINE_MUTEX(pmu_mutex);
 
-static int polling_interval = 2000;	//Elvis fool
 struct act8942_device_info *act8942_dev;	//Elvis Fool
+
+struct act8942_operations* act8942_opts = NULL;
 
 static dev_t act8942_devno;
 
@@ -104,34 +96,22 @@ static enum power_supply_property usb_power_props[] = {
 };
 
 /*
- *	1.ACINSTAT
+ *	ACINSTAT
  *	ACIN Status. Indicates the state of the ACIN input, typically
  *	in order to identify the type of input supply connected. Value
  *	is 1 when ACIN is above the 1.2V precision threshold, value
  *	is 0 when ACIN is below this threshold.
- *
- *	2.Other Method
- *	DC_DET(GPIOA_20)	enable internal pullup
- *		High:		Disconnect
- *		Low:		Connect
  */
-inline int is_ac_online(void)
+static inline int is_ac_online(void)
 {
-	u8 val;
-	int tmp;
-	SET_CBUS_REG_MASK(PAD_PULL_UP_REG0, (1<<20));	//enable internal pullup
-	set_gpio_mode(GPIOA_bank_bit0_27(20), GPIOA_bit_bit0_27(20), GPIO_INPUT_MODE);
-	tmp = get_gpio_val(GPIOA_bank_bit0_27(20), GPIOA_bit_bit0_27(20));
-	
+	u8 val;	
 	act8942_read_i2c(this_client, (ACT8942_APCH_ADDR+0xa), &val);
 	
-	logd("%s: get from gpio is %d.\n", __FUNCTION__, tmp);
 	logd("%s: get from pmu is %d.\n", __FUNCTION__, val);	
-	//return	(val & 0x2) ? 1 : 0;
-	return !tmp;
+	return	(val & 0x2) ? 1 : 0;
 }
 
-inline int is_usb_online(void)
+static inline int is_usb_online(void)
 {
 	u8 val;
 	act8942_read_i2c(this_client, (ACT8942_APCH_ADDR+0xa), &val);
@@ -142,7 +122,7 @@ inline int is_usb_online(void)
 
 
 /*
- *	1.Charging Status Indication
+ *	Charging Status Indication
  *
  *	CSTATE[1]	CSTATE[0]	STATE MACHINE STATUS
  *
@@ -151,80 +131,16 @@ inline int is_usb_online(void)
  *		0			1		END-OF-CHARGE State
  *		0			0		SUSPEND/DISABLED / FAULT State
  *
- *	2.Other Method
- *
- *	nSTAT OUTPUT(GPIOA_21)	enable internal pullup
- *		High:		Full
- *		Low:		Charging
  */
-inline int get_charge_status(void)
+static inline int get_charge_status(void)
 {
 	u8 val;
-	int tmp;
-	SET_CBUS_REG_MASK(PAD_PULL_UP_REG0, (1<<21));	//enable internal pullup
-	set_gpio_mode(GPIOA_bank_bit0_27(21), GPIOA_bit_bit0_27(21), GPIO_INPUT_MODE);
-	tmp = get_gpio_val(GPIOA_bank_bit0_27(21), GPIOA_bit_bit0_27(21));
 	
 	act8942_read_i2c(this_client, (ACT8942_APCH_ADDR+0xa), &val);
 
-	logd("%s: get from gpio is %d.\n", __FUNCTION__, tmp);
 	logd("%s: get from pmu is %d.\n", __FUNCTION__, val);
 	
 	return ((val>>4) & 0x3);
-}
-
-/*
- *	When BAT_SEL(GPIOA_22) is High Vbat=Vadc*2
- */
-inline int measure_voltage(void)
-{
-	int val;
-	msleep(2);
-	set_gpio_mode(GPIOA_bank_bit0_27(22), GPIOA_bit_bit0_27(22), GPIO_OUTPUT_MODE);
-	set_gpio_val(GPIOA_bank_bit0_27(22), GPIOA_bit_bit0_27(22), 1);
-	val = get_adc_sample(5) * (2 * 2500000 / 1023);
-	logd("%s: get from adc is %dmV.\n", __FUNCTION__, val);
-	return val;
-}
-
-/*
- *	Get Vhigh when BAT_SEL(GPIOA_22) is High.
- *	Get Vlow when BAT_SEL(GPIOA_22) is Low.
- *	I = Vdiff / 0.02R
- *	Vdiff = Vhigh - Vlow
- */
-inline int measure_current(void)
-{
-	int val, Vh, Vl, Vdiff;
-	set_gpio_mode(GPIOA_bank_bit0_27(22), GPIOA_bit_bit0_27(22), GPIO_OUTPUT_MODE);
-	set_gpio_val(GPIOA_bank_bit0_27(22), GPIOA_bit_bit0_27(22), 1);
-	msleep(2);
-	Vl = get_adc_sample(5) * (2 * 2500000 / 1023);
-	logd("%s: Vh is %dmV.\n", __FUNCTION__, Vh);
-	set_gpio_mode(GPIOA_bank_bit0_27(22), GPIOA_bit_bit0_27(22), GPIO_OUTPUT_MODE);
-	set_gpio_val(GPIOA_bank_bit0_27(22), GPIOA_bit_bit0_27(22), 0);
-	msleep(2);
-	Vh = get_adc_sample(5) * (2 * 2500000 / 1023);
-	logd("%s: Vl is %dmV.\n", __FUNCTION__, Vl);
-	Vdiff = Vh - Vl;
-	val = Vdiff * 50;
-	logd("%s: get from adc is %dmA.\n", __FUNCTION__, val);
-	return val;
-}
-
-inline int measure_capacity(void)
-{
-	int val, tmp;
-	tmp = measure_voltage();
-	if((tmp>4200000) || (get_charge_status() == 0x1))
-	{
-		logd("%s: get from PMU and adc is 100.\n", __FUNCTION__);
-		return 100;
-	}
-	
-	val = (tmp - 3600000) / (600000 / 100);
-	logd("%s: get from adc is %d.\n", __FUNCTION__, val);
-	return val;
 }
 
 
@@ -242,9 +158,9 @@ static int bat_power_get_property(struct power_supply *psy,
 	switch (psp)
 	{
 		case POWER_SUPPLY_PROP_STATUS:
-			if(is_ac_online())
+			if(act8942_opts->is_ac_online())
 			{
-				status = get_charge_status();
+				status = act8942_opts->get_charge_status();
 				if(status == 0x1)
 				{
 					val->intval = POWER_SUPPLY_STATUS_FULL;
@@ -264,16 +180,23 @@ static int bat_power_get_property(struct power_supply *psy,
 			}
 			break;
 		case POWER_SUPPLY_PROP_VOLTAGE_NOW:
-			val->intval = measure_voltage();
+			val->intval = act8942_opts->measure_voltage();
 			break;
 		case POWER_SUPPLY_PROP_PRESENT:
 			val->intval = val->intval <= 0 ? 0 : 1;
 			break;
 		case POWER_SUPPLY_PROP_CURRENT_NOW:
-			val->intval = measure_current();
+			val->intval = act8942_opts->measure_current();
 			break;
 		case POWER_SUPPLY_PROP_CAPACITY:
-			val->intval = measure_capacity();
+			if(act8942_opts->is_ac_online())
+			{
+				val->intval = act8942_opts->measure_capacity_charging();
+			}
+			else
+			{
+				val->intval = act8942_opts->measure_capacity_battery();
+			}
 			break;
 		case POWER_SUPPLY_PROP_TEMP:
 			val->intval = NULL;		//temporary
@@ -308,10 +231,10 @@ static int ac_power_get_property(struct power_supply *psy,
 	switch (psp)
 	{
 		case POWER_SUPPLY_PROP_ONLINE:
-		val->intval = is_ac_online();
+		val->intval = act8942_opts->is_ac_online();
 		break;
 		case POWER_SUPPLY_PROP_VOLTAGE_NOW:	
-		val->intval = measure_voltage();
+		val->intval = act8942_opts->measure_voltage();
 		break;
 		default:
 		return -EINVAL;
@@ -328,10 +251,10 @@ static int usb_power_get_property(struct power_supply *psy,
 	switch (psp)
 	{
 		case POWER_SUPPLY_PROP_ONLINE:
-		val->intval = is_usb_online();	//temporary
+		val->intval = act8942_opts->is_usb_online();	//temporary
 		break;
 		case POWER_SUPPLY_PROP_VOLTAGE_NOW:	
-		val->intval = measure_voltage();
+		val->intval = act8942_opts->measure_voltage();
 		break;
 		default:
 		return -EINVAL;
@@ -398,7 +321,7 @@ static void polling_func(unsigned long arg)
 {
 	struct act8942_device_info *act8942_dev = (struct act8942_device_info *)arg;
 	schedule_work(&(act8942_dev->work_update));
-	mod_timer(&(act8942_dev->polling_timer), jiffies + msecs_to_jiffies(polling_interval));  
+	mod_timer(&(act8942_dev->polling_timer), jiffies + msecs_to_jiffies(act8942_opts->update_period));  
 }
 
 
@@ -454,7 +377,7 @@ static int act8942_write_i2c(struct i2c_client *client, u8 reg, u8 *val)
 }
 
 
-inline void	act8942_dump(struct i2c_client *client)
+static inline void	act8942_dump(struct i2c_client *client)
 {
 	u8 val = 0;
 	int ret = 0;
@@ -554,12 +477,64 @@ static struct class act8942_class = {
  *	Fast charge when CHG_CON(GPIOAO_11) is High.
  *	Slow charge when CHG_CON(GPIOAO_11) is Low.
  */
-int set_charge_current(int level)
+static int set_charge_current(int level)
 {
 	set_gpio_mode(GPIOAO_bank_bit0_11(11), GPIOAO_bit_bit0_11(11), GPIO_OUTPUT_MODE);
 	set_gpio_val(GPIOAO_bank_bit0_11(11), GPIOAO_bit_bit0_11(11), (level ? 1 : 0));
 	return 0;
 }
+
+static int act8942_operations_init(struct act8942_operations* pdata)
+{
+	act8942_opts = pdata;
+	if(act8942_opts->is_ac_online == NULL)
+	{
+		act8942_opts->is_ac_online = is_ac_online;
+	}
+	if(act8942_opts->is_usb_online == NULL)
+	{
+		act8942_opts->is_usb_online = is_usb_online;
+	}
+	if(act8942_opts->set_bat_off== NULL)
+	{
+		pr_err("act8942_opts->measure_voltage is NULL!\n");
+		return -1;
+	}
+	if(act8942_opts->get_charge_status == NULL)
+	{
+		act8942_opts->get_charge_status = get_charge_status;
+	}
+	if(act8942_opts->set_charge_current == NULL)
+	{
+		act8942_opts->set_charge_current = set_charge_current;
+	}
+	if(act8942_opts->measure_voltage == NULL)
+	{
+		pr_err("act8942_opts->measure_voltage is NULL!\n");
+		return -1;
+	}
+	if(act8942_opts->measure_current == NULL)
+	{
+		pr_err("act8942_opts->measure_current is NULL!\n");
+		return -1;
+	}
+	if(act8942_opts->measure_capacity_charging == NULL)
+	{
+		pr_err("act8942_opts->measure_capacity is NULL!\n");
+		return -1;
+	}
+	if(act8942_opts->measure_capacity_battery== NULL)
+	{
+		pr_err("act8942_opts->measure_capacity is NULL!\n");
+		return -1;
+	}
+	if(act8942_opts->update_period <= 0)
+	{
+		act8942_opts->update_period = 5000;
+	}
+	return 0;
+}
+
 
 #ifdef CONFIG_HAS_EARLYSUSPEND
 #include <linux/earlysuspend.h>
@@ -594,6 +569,13 @@ static int act8942_i2c_probe(struct i2c_client *client,
 	int retval = 0;
 		
 	pr_info("act8942_i2c_probe\n");
+
+	if(act8942_operations_init((struct act8942_operations*)client->dev.platform_data))
+	{
+		dev_err(&client->dev, "failed to init act8942_opts!\n");
+		return -EINVAL;
+	}
+	
 	/* Get new ID for the new PMU device */
 	retval = idr_pre_get(&pmu_id, GFP_KERNEL);
 	if (retval == 0)
@@ -647,7 +629,7 @@ static int act8942_i2c_probe(struct i2c_client *client,
 	INIT_WORK(&(act8942_dev->work_update), update_work_func);
 	
 	init_timer(&(act8942_dev->polling_timer));
-	act8942_dev->polling_timer.expires = jiffies + msecs_to_jiffies(polling_interval);
+	act8942_dev->polling_timer.expires = jiffies + msecs_to_jiffies(act8942_opts->update_period);
 	act8942_dev->polling_timer.function = polling_func;
 	act8942_dev->polling_timer.data = act8942_dev;
     add_timer(&(act8942_dev->polling_timer));

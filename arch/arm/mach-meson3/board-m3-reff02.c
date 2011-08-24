@@ -1512,12 +1512,136 @@ static struct platform_device aml_efuse_device = {
 #endif
 
 #ifdef CONFIG_PMU_ACT8942
+#include <linux/act8942.h>  
+
+
 static void power_off(void)
 {
     //Power hold down
     set_gpio_val(GPIOAO_bank_bit0_11(6), GPIOAO_bit_bit0_11(6), 0);
     set_gpio_mode(GPIOAO_bank_bit0_11(6), GPIOAO_bit_bit0_11(6), GPIO_OUTPUT_MODE);
 }
+
+
+
+/*
+ *	DC_DET(GPIOA_20)	enable internal pullup
+ *		High:		Disconnect
+ *		Low:		Connect
+ */
+static inline int is_ac_online(void)
+{
+	int val;
+	
+	SET_CBUS_REG_MASK(PAD_PULL_UP_REG0, (1<<20));	//enable internal pullup
+	set_gpio_mode(GPIOA_bank_bit0_27(20), GPIOA_bit_bit0_27(20), GPIO_INPUT_MODE);
+	val = get_gpio_val(GPIOA_bank_bit0_27(20), GPIOA_bit_bit0_27(20));
+	
+	logd("%s: get from gpio is %d.\n", __FUNCTION__, val);
+	
+	return !val;
+}
+
+//temporary
+static inline int is_usb_online(void)
+{
+	u8 val;
+
+	return 0;
+}
+
+
+/*
+ *	nSTAT OUTPUT(GPIOA_21)	enable internal pullup
+ *		High:		Full
+ *		Low:		Charging
+ */
+static inline int get_charge_status(void)
+{
+	int val;
+	
+	SET_CBUS_REG_MASK(PAD_PULL_UP_REG0, (1<<21));	//enable internal pullup
+	set_gpio_mode(GPIOA_bank_bit0_27(21), GPIOA_bit_bit0_27(21), GPIO_INPUT_MODE);
+	val = get_gpio_val(GPIOA_bank_bit0_27(21), GPIOA_bit_bit0_27(21));
+
+	logd("%s: get from gpio is %d.\n", __FUNCTION__, val);
+	
+	return val;
+}
+
+/*
+ *	When BAT_SEL(GPIOA_22) is High Vbat=Vadc*2
+ */
+static inline int measure_voltage(void)
+{
+	int val;
+	msleep(2);
+	set_gpio_mode(GPIOA_bank_bit0_27(22), GPIOA_bit_bit0_27(22), GPIO_OUTPUT_MODE);
+	set_gpio_val(GPIOA_bank_bit0_27(22), GPIOA_bit_bit0_27(22), 1);
+	val = get_adc_sample(5) * (2 * 2500000 / 1023);
+	logd("%s: get from adc is %dmV.\n", __FUNCTION__, val);
+	return val;
+}
+
+/*
+ *	Get Vhigh when BAT_SEL(GPIOA_22) is High.
+ *	Get Vlow when BAT_SEL(GPIOA_22) is Low.
+ *	I = Vdiff / 0.02R
+ *	Vdiff = Vhigh - Vlow
+ */
+static inline int measure_current(void)
+{
+	int val, Vh, Vl, Vdiff;
+	set_gpio_mode(GPIOA_bank_bit0_27(22), GPIOA_bit_bit0_27(22), GPIO_OUTPUT_MODE);
+	set_gpio_val(GPIOA_bank_bit0_27(22), GPIOA_bit_bit0_27(22), 1);
+	msleep(2);
+	Vl = get_adc_sample(5) * (2 * 2500000 / 1023);
+	logd("%s: Vh is %dmV.\n", __FUNCTION__, Vh);
+	set_gpio_mode(GPIOA_bank_bit0_27(22), GPIOA_bit_bit0_27(22), GPIO_OUTPUT_MODE);
+	set_gpio_val(GPIOA_bank_bit0_27(22), GPIOA_bit_bit0_27(22), 0);
+	msleep(2);
+	Vh = get_adc_sample(5) * (2 * 2500000 / 1023);
+	logd("%s: Vl is %dmV.\n", __FUNCTION__, Vl);
+	Vdiff = Vh - Vl;
+	val = Vdiff * 50;
+	logd("%s: get from adc is %dmA.\n", __FUNCTION__, val);
+	return val;
+}
+
+static inline int measure_capacity(void)
+{
+	int val, tmp;
+	tmp = measure_voltage();
+	if((tmp>4200000) || (get_charge_status() == 0x1))
+	{
+		logd("%s: get from PMU and adc is 100.\n", __FUNCTION__);
+		return 100;
+	}
+	
+	val = (tmp - 3600000) / (600000 / 100);
+	logd("%s: get from adc is %d.\n", __FUNCTION__, val);
+	return val;
+}
+
+//temporary
+static int set_bat_off(void)
+{
+	return 0;
+}
+
+
+static struct act8942_operations act8942_pdata = {
+	.is_ac_online = is_ac_online,
+	.is_usb_online = is_usb_online,
+	.set_bat_off = set_bat_off,
+	.get_charge_status = get_charge_status,
+	.measure_voltage = measure_voltage,
+	.measure_current = measure_current,
+	.measure_capacity_charging = measure_capacity,
+	.measure_capacity_battery = measure_capacity,
+	.update_period = 2000,	//2S
+};
+
 
 static struct platform_device aml_pmu_device = {
     .name	= "pmu_act8942",
@@ -2100,7 +2224,8 @@ static struct i2c_board_info __initdata aml_i2c_bus_info_2[] = {
 #endif
 #ifdef CONFIG_PMU_ACT8942
 	{
-        I2C_BOARD_INFO("act8942-i2c", 0x5b),
+        I2C_BOARD_INFO("act8942-i2c", ACT8942_ADDR),
+		.platform_data = (void *)&act8942_pdata,	
     },
 #endif
 };
