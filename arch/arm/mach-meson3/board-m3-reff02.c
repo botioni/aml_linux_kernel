@@ -741,14 +741,18 @@ static  struct platform_device aml_rtc_device = {
 #ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE_GC0308
 int gc0308_init(void)
 {
-    udelay(1000);
-    WRITE_CBUS_REG(HHI_ETH_CLK_CNTL,0x30f);// 24M XTAL
-    WRITE_CBUS_REG(HHI_DEMOD_PLL_CNTL,0x232);// 24M XTAL
-	udelay(1000);
+//    udelay(1000);
+//    WRITE_CBUS_REG(HHI_ETH_CLK_CNTL,0x30f);// 24M XTAL
+//    WRITE_CBUS_REG(HHI_DEMOD_PLL_CNTL,0x232);// 24M XTAL
+//	udelay(1000);
 	
     // set camera power disable
-    set_gpio_val(GPIOA_bank_bit0_27(25), GPIOA_bit_bit0_27(25), 1);    // set camera power disable
-    set_gpio_mode(GPIOA_bank_bit0_27(25), GPIOA_bit_bit0_27(25), GPIO_OUTPUT_MODE);
+    set_gpio_val(GPIOY_bank_bit0_22(10), GPIOY_bit_bit0_22(10), 0);    // set camera power disable
+    set_gpio_mode(GPIOY_bank_bit0_22(10), GPIOY_bit_bit0_22(10), GPIO_OUTPUT_MODE);
+    msleep(20);
+
+    set_gpio_val(GPIOY_bank_bit0_22(10), GPIOY_bit_bit0_22(10), 1);    // set camera power disable
+    set_gpio_mode(GPIOY_bank_bit0_22(10), GPIOY_bit_bit0_22(10), GPIO_OUTPUT_MODE);
     msleep(20);
     
     // set camera power enable
@@ -2138,7 +2142,7 @@ static int __init aml_i2c_init(void)
 #if defined(CONFIG_TVIN_BT656IN)
 static void __init bt656in_pinmux_init(void)
 {
-    SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, 0x3f<<6);
+    SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, 0xf<<6);
     SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_3, 1<<21);
 }
 
@@ -2177,13 +2181,13 @@ static void __init device_pinmux_init(void )
     bt656in_pinmux_init();
 #endif
     set_audio_pinmux(AUDIO_OUT_TEST_N);
-    set_audio_pinmux(AUDIO_IN_JTAG);
+   // set_audio_pinmux(AUDIO_IN_JTAG);
 #ifdef CONFIG_SIX_AXIS_SENSOR_MPU3050
     mpu3050_init_irq();
 #endif    
 #if 1
     //set clk for wifi
-    WRITE_CBUS_REG(HHI_GEN_CLK_CNTL,(READ_CBUS_REG(HHI_GEN_CLK_CNTL)&(~(0x7f<<0)))|(1<<0)|(1<<8)|(7<<9));
+    WRITE_CBUS_REG(HHI_GEN_CLK_CNTL,(READ_CBUS_REG(HHI_GEN_CLK_CNTL)&(~(0x7f<<0)))|(0<<0)|(1<<8)|(7<<9));
     CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO2_EN_N, (1<<15));    
     SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_3, (1<<22));
 #else
