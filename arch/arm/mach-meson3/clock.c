@@ -371,9 +371,9 @@ static int clk_set_rate_a9_clk(struct clk *clk, unsigned long rate)
     }
 
     CLEAR_CBUS_REG_MASK(HHI_SYS_CPU_CLK_CNTL, 1<<7); // cpu use xtal
-    if (r1 % r) { /* If the PLL freq is not the multuply of requiments, we need re-configurate sys pll */
-        ratio = 1;
-        // ratio = get_best_ratio_sys_pll(1, (0x3f + 1) * 2, 650 * CLK_1M, 1300 * CLK_1M,  r);
+ //   if (r1 % r) { /* If the PLL freq is not the multuply of requiments, we need re-configurate sys pll */
+ //       ratio = 1;
+        ratio = get_best_ratio_sys_pll(1, (0x3f + 1) * 2, 650 * CLK_1M, 1300 * CLK_1M,  r);
         if (ratio > 0) {
             ret = father_clk->set_rate(father_clk, r * ratio);
             if (ret < 0) {
@@ -381,16 +381,16 @@ static int clk_set_rate_a9_clk(struct clk *clk, unsigned long rate)
                 return ret;
             }
         }
-    } else { /* sys pll is multuply of requiments freq, we need not change sys pll setting*/
-        ratio = r1 / r;
-	}
+//    } else { /* sys pll is multuply of requiments freq, we need not change sys pll setting*/
+//        ratio = r1 / r;
+//	}
 
     clk->rate = r;
 
     local_irq_save(flags);
     WRITE_MPEG_REG(HHI_SYS_CPU_CLK_CNTL, // A9 clk set to system clock/2
                    (1 << 0) |  // 1 - sys pll clk
-                   ((ratio < 3 ? (ratio - 1) : 3) << 2) | // sys pll div 2
+                   ((ratio < 4 ? (ratio - 1) : 3) << 2) | // sys pll div 2
                    (1 << 4) |  // APB_CLK_ENABLE
                    (1 << 5) |  // AT_CLK_ENABLE
                    (1 << 7) |  // Connect A9 to the PLL divider output
@@ -701,25 +701,27 @@ static int cpu_clk_setting(unsigned long cpu_freq)
     unsigned ratio = 0;
     int ret = -1;
         
-    while (out_freq < 650 * CLK_1M){
+/*    while (out_freq < 650 * CLK_1M){
         out_freq*=2;
         if (od<2)
             od++;    
         else
             divider++;
     }
-
+*/
     CLEAR_CBUS_REG_MASK(HHI_SYS_CPU_CLK_CNTL, 1<<7); // cpu use xtal
-    ret = sys_clkpll_setting(0, cpu_freq << divider);
-    if (ret == 0) {
-        ratio = 1 << divider;
-        WRITE_MPEG_REG(HHI_SYS_CPU_CLK_CNTL,
+    ratio = get_best_ratio_sys_pll(1, (0x3f + 1) * 2, 650 * CLK_1M, 1300 * CLK_1M,  out_freq);
+    if (ratio > 0) {
+        ret = sys_clkpll_setting(0, cpu_freq * ratio);
+        if (ret == 0) {
+            WRITE_MPEG_REG(HHI_SYS_CPU_CLK_CNTL,
                    (1 << 0) |  // 1 - sys pll clk
-                   ((ratio < 3 ? (ratio - 1) : 3) << 2) | // sys pll divider
+                   ((ratio < 4 ? (ratio - 1) : 3) << 2) | // sys pll divider
                    (1 << 4) |  // APB_CLK_ENABLE
                    (1 << 5) |  // AT_CLK_ENABLE
                    ((ratio < 3 ? 0 : (ratio / 2) - 1) << 8));
-        ret = divider;
+            ret = ratio;
+        }
     }
     SET_CBUS_REG_MASK(HHI_SYS_CPU_CLK_CNTL, 1<<7); // cpu use sys pll
     return ret;

@@ -928,7 +928,7 @@ inline void vdin_set_default_regmap(unsigned int offset)
     // [   31]        mpeg.en               = 0 ***sub_module.enable***
     // [   30]        mpeg.even_fld         = 0/(odd, even)
 
-#if defined(CONFIG_ARCH_MESON)
+#if defined(CONFIG_ARCH_MESON) || defined (CONFIG_ARCH_MESON3)
     // [   29]        mpeg.force_vs         = 0 // for test
     // [   28]        mpeg.force_hs         = 0 // for test
 #elif defined(CONFIG_ARCH_MESON2)
@@ -1127,7 +1127,7 @@ inline void vdin_set_default_regmap(unsigned int offset)
     WRITE_CBUS_REG((VDIN_BLKBAR_CTRL1         + offset), 0x00000000);
 #endif
 
-#if defined(CONFIG_ARCH_MESON)
+#if defined(CONFIG_ARCH_MESON) || defined (CONFIG_ARCH_MESON3)
     // [31:22]        bbar.black_thr        = 4
 #elif defined(CONFIG_ARCH_MESON2)
     // [31:24]        bbar.black_thr        = 1

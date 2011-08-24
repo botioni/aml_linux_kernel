@@ -1,7 +1,7 @@
 #
 # Automatically generated make config: don't edit
 # Linux kernel version: 2.6.34
-# Fri Aug 19 22:04:44 2011
+# Wed Aug 24 10:48:26 2011
 #
 CONFIG_ARM=y
 CONFIG_HOLES_IN_ZONE=y
@@ -88,8 +88,8 @@ CONFIG_IPC_NS=y
 # CONFIG_USER_NS is not set
 CONFIG_PID_NS=y
 CONFIG_NET_NS=y
-# CONFIG_BLK_DEV_INITRD is not set
-# CONFIG_INITRAMFS_SOURCE is not set
+CONFIG_BLK_DEV_INITRD=y
+CONFIG_INITRAMFS_SOURCE="../out/target/product/f02ref/root/"
 CONFIG_INITRAMFS_ROOT_UID=0
 CONFIG_INITRAMFS_ROOT_GID=0
 CONFIG_RD_GZIP=y
@@ -552,7 +552,9 @@ CONFIG_MAC80211_RC_DEFAULT="minstrel"
 # CONFIG_MAC80211_DEBUGFS is not set
 # CONFIG_MAC80211_DEBUG_MENU is not set
 # CONFIG_WIMAX is not set
-# CONFIG_RFKILL is not set
+CONFIG_RFKILL=y
+CONFIG_RFKILL_PM=y
+CONFIG_RFKILL_INPUT=y
 # CONFIG_NET_9P is not set
 
 #
@@ -580,12 +582,17 @@ CONFIG_EXTRA_FIRMWARE=""
 #
 # Char devices
 #
-CONFIG_AM_UART_WITH_S_CORE=y
-# CONFIG_AM_UART_WITHOUT_S_CORE is not set
+# CONFIG_AM_UART_WITH_S_CORE is not set
+CONFIG_AM_UART_WITHOUT_S_CORE=y
 CONFIG_AM_UART0_SET_PORT_AO=y
 # CONFIG_AM_UART0_SET_PORT_A is not set
 # CONFIG_AM_UART0_SET_PORT_B is not set
 # CONFIG_AM_UART0_SET_PORT_C is not set
+
+#
+# ---SET ttyS1 support
+#
+# CONFIG_UART_USE_FIQ is not set
 
 #
 # Amlogic RTC support
@@ -637,7 +644,7 @@ CONFIG_LS_GL3526=y
 # Extern IO Support
 #
 # CONFIG_TCA6424 is not set
-CONFIG_SN7325=y
+# CONFIG_SN7325 is not set
 
 #
 # Amlogic GPIO Driver
@@ -736,6 +743,7 @@ CONFIG_BCM4329_NVRAM_PATH="broadcm_4329/nvram.txt"
 #
 # Amlogic BT Device Support
 #
+CONFIG_BT_DEVICE=y
 
 #
 # Media devices
@@ -795,7 +803,7 @@ CONFIG_FB_OSD2_DEFAULT_HEIGHT_VIRTUAL=32
 #
 # Amlogic Backlight Support
 #
-# CONFIG_AMLOGIC_BACKLIGHT is not set
+CONFIG_AMLOGIC_BACKLIGHT=y
 CONFIG_AM_GE2D=y
 CONFIG_AM_LOGO=y
 
@@ -1010,6 +1018,7 @@ CONFIG_MISC_DEVICES=y
 # CONFIG_DS1682 is not set
 # CONFIG_TI_DAC7512 is not set
 # CONFIG_UID_STAT is not set
+# CONFIG_WL127X_RFKILL is not set
 # CONFIG_APANIC is not set
 CONFIG_SIX_AXIS_SENSOR_MPU3050=y
 # CONFIG_C2PORT is not set
@@ -1156,6 +1165,7 @@ CONFIG_WLAN=y
 # CONFIG_USB_PEGASUS is not set
 # CONFIG_USB_RTL8150 is not set
 # CONFIG_USB_USBNET is not set
+# CONFIG_USB_HSO is not set
 # CONFIG_USB_IPHETH is not set
 # CONFIG_WAN is not set
 CONFIG_PPP=y
@@ -1491,6 +1501,8 @@ CONFIG_FB_CFB_IMAGEBLIT=y
 # CONFIG_FB_MB862XX is not set
 # CONFIG_FB_BROADSHEET is not set
 # CONFIG_BACKLIGHT_LCD_SUPPORT is not set
+CONFIG_BACKLIGHT_CLASS_DEVICE=y
+CONFIG_BACKLIGHT_GENERIC=y
 
 #
 # Display device support
