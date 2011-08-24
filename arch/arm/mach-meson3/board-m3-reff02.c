@@ -1946,17 +1946,38 @@ static struct platform_device bt_device = {
 
 static void bt_device_init(void)
 {
-
+	/* BT_RST_N */
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0, (1<<16));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_1, (1<<5));
+	
+	/* UART_RTS_N(BT) */
+	SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_4, (1<<10));
+		
+	/* UART_CTS_N(BT) */ 
+	SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_4, (1<<11));
+	
+	/* UART_TX(BT) */
+	SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_4, (1<<13));
+	
+	/* UART_RX(BT) */
+	SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_4, (1<<12));
 }
 
 static void bt_device_on(void)
 {
-	
+	/* BT_RST_N */
+	CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO2_EN_N, (1<<6));
+	CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO2_O, (1<<6));	
+	msleep(200);	
+	SET_CBUS_REG_MASK(PREG_PAD_GPIO2_O, (1<<6));
 }
 
 static void bt_device_off(void)
 {
-
+	/* BT_RST_N */
+	CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO2_EN_N, (1<<6));
+	CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO2_O, (1<<6));	
+	msleep(200);	
 }
 
 struct bt_dev_data bt_dev = {
@@ -2187,7 +2208,7 @@ static void __init device_pinmux_init(void )
 #endif    
 #if 1
     //set clk for wifi
-    WRITE_CBUS_REG(HHI_GEN_CLK_CNTL,(READ_CBUS_REG(HHI_GEN_CLK_CNTL)&(~(0x7f<<0)))|(0<<0)|(1<<8)|(7<<9));
+    WRITE_CBUS_REG(HHI_GEN_CLK_CNTL,(READ_CBUS_REG(HHI_GEN_CLK_CNTL)&(~(0x7f<<0)))|((0<<0)|(1<<8)|(7<<9)) );
     CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO2_EN_N, (1<<15));    
     SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_3, (1<<22));
 #else
