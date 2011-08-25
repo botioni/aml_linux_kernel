@@ -392,7 +392,7 @@ static inline bool vdin_port_valid(enum tvin_port_e port)
 {
     bool ret = false;
 
-#if defined(CONFIG_ARCH_MESON)
+#if defined(CONFIG_ARCH_MESON)|| defined (CONFIG_ARCH_MESON3)
     switch (port>>8)
     {
         case 0x01: // mpeg

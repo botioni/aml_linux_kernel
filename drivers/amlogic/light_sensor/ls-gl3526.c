@@ -102,7 +102,7 @@ static void light_sensor_dev_poll(struct input_polled_dev *dev)
 	struct input_dev *input_dev = dev->input;
 	int adc_val, i;
 
-	adc_val = get_adc_sample(3);
+	adc_val = get_adc_sample(6);
 	for(i = 0; i < LUX_LEVEL; i++) {
 		if(adc_val < sAdcValues[i])
 			break;

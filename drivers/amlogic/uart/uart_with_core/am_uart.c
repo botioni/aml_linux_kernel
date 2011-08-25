@@ -55,10 +55,12 @@
 /* --FIXME-- Because the ISA documents. Don't know the AO UART interrupt and UART2 interrupt*/
 static unsigned int uart_irqs[UART_NR] = {INT_UART_AO, INT_UART_0, INT_UART_1, INT_UART_2};
 static am_uart_t *uart_addr[UART_NR] = {UART_BASEADDRAO, UART_BASEADDR0, UART_BASEADDR1, UART_BASEADDR2};
+static unsigned int uart_FIFO_max_cnt[NR_PORTS] = {64,128,64,64};
 #else
 #define UART_NR     2
 static unsigned int uart_irqs[UART_NR] = { INT_UART,INT_UART_1 };
 static am_uart_t *uart_addr[UART_NR] = { UART_BASEADDR0,UART_BASEADDR1 };
+static unsigned int uart_FIFO_max_cnt[NR_PORTS] = {64,64};
 #endif
 
 
@@ -141,11 +143,14 @@ struct am_uart_port am_ports[UART_NR];
 void am_uart_put_char(int index,char ch)
 {
 	am_uart_t *uart = uart_addr[index];
+       unsigned int fifo_level = uart_FIFO_max_cnt[index];
 
+       fifo_level = (fifo_level-1)<<8;
+    
 	/* check if TXEMPTY (bit 7) in the status reg. is 1. Else, we
 	 * aren't supposed to write right now. Wait for some time.
 	 */
-	while (!((__raw_readl(&uart->status) & 0xff00)< 0x3f00)) ;
+	while (!((__raw_readl(&uart->status) & 0xff00)< fifo_level)) ;
 	__raw_writel(ch, &uart->wdata);
 }
 
@@ -169,6 +174,9 @@ static void receive_chars(struct am_uart_port *info, struct pt_regs *regs,
 	int mode;
         char ch;
         unsigned long flag = TTY_NORMAL;  
+        unsigned int fifo_level = uart_FIFO_max_cnt[info->line];
+
+       fifo_level = (fifo_level-1);
 
 	if (!tty) {
 		//printk("Uart : missing tty on line %d\n", info->line);
@@ -193,7 +201,7 @@ static void receive_chars(struct am_uart_port *info, struct pt_regs *regs,
                 tty_insert_flip_char(tty,ch,flag);
 
 		info->rx_cnt++;
-		if ((status = __raw_readl(&uart->status) & 0x3f))
+		if ((status = __raw_readl(&uart->status) & fifo_level))
 			rx = __raw_readl(&uart->rdata);
 	} while (status);
 
@@ -252,6 +260,10 @@ static void transmit_chars(struct am_uart_port *info)
 	unsigned int ch;
   struct circ_buf *xmit = &up->state->xmit;
 
+   unsigned int fifo_level = uart_FIFO_max_cnt[info->line];
+
+   fifo_level = (fifo_level-1)<<8;
+       
 	mutex_lock(&info->info_mutex);
 	if (up->x_char) {
 		__raw_writel(up->x_char, &uart->wdata);
@@ -264,7 +276,7 @@ static void transmit_chars(struct am_uart_port *info)
 
   while(!uart_circ_empty(xmit))
   {
-       if(((__raw_readl(&uart->status) & 0xff00) < 0x3f00)) {
+       if(((__raw_readl(&uart->status) & 0xff00) < fifo_level)) {
 		ch = xmit->buf[xmit->tail];
 		__raw_writel(ch, &uart->wdata);
 		xmit->tail = (xmit->tail+1) & (SERIAL_XMIT_SIZE - 1);
@@ -317,7 +329,10 @@ static void am_uart_workqueue(struct work_struct *work)
 	struct am_uart_port *info=container_of(work,struct am_uart_port,tqueue);
 	am_uart_t *uart = NULL;
 	struct tty_struct *tty = NULL;
+       unsigned int fifo_level = uart_FIFO_max_cnt[info->line];
 
+       fifo_level = (fifo_level-1)<<8;
+       
 	if (!info)
            goto out;
 
@@ -335,7 +350,7 @@ static void am_uart_workqueue(struct work_struct *work)
             BH_receive_chars(info);
        
 	if ((__raw_readl(&uart->mode) & UART_TXENB)
-	    &&((__raw_readl(&uart->status) & 0xff00) < 0x3f00)) {
+	    &&((__raw_readl(&uart->status) & 0xff00) < fifo_level)) {
 
 		transmit_chars(info);
 	}
@@ -376,7 +391,9 @@ static void am_uart_start_tx(struct uart_port *port)
   struct uart_port * up = &info->port;
 	unsigned int ch;
   struct circ_buf *xmit = &up->state->xmit;
-    
+   unsigned int fifo_level = uart_FIFO_max_cnt[info->line];
+
+   fifo_level = (fifo_level-1)<<8; 
 //	mutex_lock(&info->info_mutex);
 	mode = __raw_readl(&uart->mode);
 	mode |= UART_TXENB;
@@ -384,7 +401,7 @@ static void am_uart_start_tx(struct uart_port *port)
 
   while(!uart_circ_empty(xmit))
   {
-  if (((__raw_readl(&uart->status) & 0xff00) < 0x3f00)) {
+  if (((__raw_readl(&uart->status) & 0xff00) < fifo_level)) {
 		ch = xmit->buf[xmit->tail];
 		__raw_writel(ch, &uart->wdata);
 		xmit->tail = (xmit->tail+1) & (SERIAL_XMIT_SIZE - 1);
@@ -482,9 +499,12 @@ static int am_uart_get_poll_char(struct uart_port *port)
     struct am_uart_port * info = &am_ports[port->line];
     am_uart_t *uart = uart_addr[info->line];
     int status,rx;
+    unsigned int fifo_level = uart_FIFO_max_cnt[info->line];
+
+   fifo_level = (fifo_level-1);
 
     mutex_lock(&info->info_mutex);
-    if ((status = __raw_readl(&uart->status) & 0x7f))
+    if ((status = __raw_readl(&uart->status) & fifo_level))
 	      rx = __raw_readl(&uart->rdata);
     else
         rx = 0;
@@ -499,9 +519,12 @@ static void am_uart_put_poll_char(struct uart_port *port,
 {
     struct am_uart_port * info = &am_ports[port->line];
     am_uart_t *uart = uart_addr[info->line];
-    
+    unsigned int fifo_level = uart_FIFO_max_cnt[info->line];
+
+   fifo_level = (fifo_level-1)<<8;
+   
     mutex_lock(&info->info_mutex);
-    while (!((__raw_readl(&uart->status) & 0xff00)< 0x3f00)) ;
+    while (!((__raw_readl(&uart->status) & 0xff00)< fifo_level)) ;
 	  __raw_writel(c, &uart->wdata);
     mutex_unlock(&info->info_mutex);
 

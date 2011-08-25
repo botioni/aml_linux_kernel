@@ -24,6 +24,7 @@ typedef struct {
 	video_cam_early_suspend_fun_t early_suspend;
 	video_cam_late_resume_fun_t late_resume;
 	video_cam_disable_fun_t device_disable;
+	void* custom_init_script;
 	unsigned pri_dat;
 	
 }aml_plat_cam_data_t;

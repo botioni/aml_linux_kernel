@@ -29,7 +29,7 @@
 #define MPEG_FLD_BIT                    30
 #define MPEG_FLD_WID                    1
 
-#if defined(CONFIG_ARCH_MESON)
+#if defined(CONFIG_ARCH_MESON) || defined (CONFIG_ARCH_MESON3)
 #define FORCE_GO_FLD_BIT                29   // for test
 #define FORCE_GO_FLD_WID                1    // pulse signal
 #define FORCE_GO_LN_BIT                 28   // for test
@@ -683,7 +683,7 @@
 
 //#define VDIN_BLKBAR_CTRL0                       0x1260
 
-#if defined(CONFIG_ARCH_MESON)
+#if defined(CONFIG_ARCH_MESON) || defined (CONFIG_ARCH_MESON3)
 #define BLKBAR_BLK_LVL_BIT              22
 #define BLKBAR_BLK_LVL_WID              10  // threshold to judge a black point
 #elif defined(CONFIG_ARCH_MESON2)

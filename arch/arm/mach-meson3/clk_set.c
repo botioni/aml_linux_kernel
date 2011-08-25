@@ -75,18 +75,17 @@ int auto_select_eth_clk(void)
     return -1;
 }
 
-int sys_clkpll_setting(unsigned crystal_freq, unsigned  out_freq)
+int sys_clkpll_setting(unsigned crystal_freq, unsigned out_freq)
 {
     int i, n, m, lock_flag;
     int od=0;
-    int divider=0;
     unsigned lock_time=0;
     unsigned long result_freq, target_freq;
     unsigned long crys_M, out_M, middle_freq, flags;
     unsigned long freq_log[32];
     int log_index;
-    
-        if (!crystal_freq) {
+
+    if (!crystal_freq) {
         crystal_freq = get_xtal_clock();
     }
     while (out_freq < 650 * CLK_1M){
@@ -96,10 +95,6 @@ int sys_clkpll_setting(unsigned crystal_freq, unsigned  out_freq)
     if (od>2){
         printk(KERN_ERR "sys_clk_setting error, od is too big od=%d\n",od);
         return -1;
-    }
-    if (od==2){
-        divider++;
-        od--;
     }
     crys_M = crystal_freq / 1000000;
     out_M = out_freq / 1000000;
@@ -119,8 +114,8 @@ int sys_clkpll_setting(unsigned crystal_freq, unsigned  out_freq)
         printk(KERN_WARNING"sys_clk_setting  warning,VCO may no support out_freq,crys_M=%ldM,out=%ldM\n", crys_M, out_M);
     }
     local_irq_save(flags);
-    CLEAR_CBUS_REG_MASK(HHI_SYS_CPU_CLK_CNTL, 1<<7); // a9 use xtal
     WRITE_MPEG_REG(HHI_SYS_PLL_CNTL, m << 0 | n << 9 | od << 16); // disable and set sys PLL
+#if 0
     lock_flag = 0;
     log_index = 0;
     while(1){
@@ -128,25 +123,23 @@ int sys_clkpll_setting(unsigned crystal_freq, unsigned  out_freq)
         WRITE_CBUS_REG(MSR_CLK_REG0, (SYS_PLL_CLK<<20)|0x90063);
         while (!(READ_CBUS_REG(MSR_CLK_REG0)&0x20000000)){;}
         result_freq = READ_CBUS_REG(MSR_CLK_REG2) & 0x000FFFFF;
-        if ((result_freq <= target_freq+1)&&(result_freq >= target_freq-1)){ // delta<10k
+        if ((result_freq <= target_freq+2)&&(result_freq >= target_freq-2)){ // delta<10k
             lock_flag++;
             if (lock_flag>=3)
                 break;
         }
-        if (log_index<32) freq_log[log_index++]=result_freq;
+        if (log_index<32) 
+            freq_log[log_index++]=result_freq;
+        else 
+            break;
         lock_time+=100;
     }
-    WRITE_MPEG_REG(HHI_SYS_CPU_CLK_CNTL, // A9 clk set to system clock
-                       (1 << 0) |  // 1 - sys pll clk
-                       (divider << 2) |  // sys pll div 1 or 2
-                       (1 << 4) |  // APB_CLK_ENABLE
-                       (1 << 5) |  // AT_CLK_ENABLE
-                       (1 << 7));  // Connect A9 to the PLL divider output
+#endif
     local_irq_restore(flags);
-    for (i=0;i<log_index;i++)
-        printk(KERN_INFO "clk_util_clk_msr(%d) = %dMHz\n", SYS_PLL_CLK, freq_log[i]/100);
-    printk(KERN_INFO "a9_clk_setting crystal_req=%ld,out_freq=%ld,n=%d,m=%d,od=%d,divider=%d,locktime=%dus\n",crys_M,out_M,n,m,od,divider,lock_time);
-    return od+divider;
+//    for (i=0;i<log_index;i++)
+//        printk(KERN_INFO "clk_util_clk_msr(%d) = %dMHz\n", SYS_PLL_CLK, freq_log[i]/100);
+    printk(KERN_INFO "sys_clk_setting crystal_req=%ld,out_freq=%ld,n=%d,m=%d,od=%d,locktime=%dus\n",crys_M,out_M,n,m,od,lock_time);
+    return 0;
 }
 
 int misc_pll_setting(unsigned crystal_freq, unsigned  out_freq)

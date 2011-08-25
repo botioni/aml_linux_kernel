@@ -14,7 +14,7 @@
  * GNU General Public License for more details.
  *
  */
-#define HDMI_DEBUG()
+#define HDMI_DEBUG()  printk("HDMI DEBUG: %s [%d]", __FUNCTION__, __LINE__)
 
 #ifndef AVOS
 

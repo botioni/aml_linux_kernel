@@ -14,7 +14,7 @@
  * GNU General Public License for more details.
  *
  */
-#define HDMI_DEBUG()
+#define HDMI_DEBUG()  printk("HDMI DEBUG: %s [%d]\n", __FUNCTION__, __LINE__)
 
 #ifndef AVOS
 #include <linux/version.h>
@@ -926,9 +926,10 @@ static void digital_clk_on(unsigned char flag)
         //         .clk_div            ( hi_hdmi_clk_cntl[6:0] ),
         //         .clk_en             ( hi_hdmi_clk_cntl[8]   ),
         //         .clk_sel            ( hi_hdmi_clk_cntl[11:9]),
-        Wr( HHI_HDMI_CLK_CNTL,  ((2 << 9)  |   // select "misc" PLL
-                                 (1 << 8)  |   // Enable gated clock
-                                 (5 << 0)) );  // Divide the "other" PLL output by 6
+        Wr_reg_bits(HHI_HDMI_CLK_CNTL, 1, 8, 1);
+//        Wr( HHI_HDMI_CLK_CNTL,  ((2 << 9)  |   // select "misc" PLL
+//                                 (1 << 8)  |   // Enable gated clock
+//                                 (5 << 0)) );  // Divide the "other" PLL output by 6
     
 #else    
         // -----------------------------------------
@@ -1884,22 +1885,24 @@ static void hdmitx_config_tvenc_reg(int vic, unsigned reg, unsigned val)
             break;
         }
     }
-}    
+}
 
 static void hdmitx_set_pll(Hdmi_tx_video_para_t *param)
 {
     HDMI_DEBUG();
     printk("param->VIC:%d\n", param->VIC);
     
-    Wr_reg_bits(HHI_HDMI_CLK_CNTL, 0, 16, 4);   //cts_hdmi_tx_pixel_clk 0:clk_div1
-    Wr(HHI_HDMI_PLL_CNTL1, 0x40003);             //Fixed.
-    Wr(HHI_HDMI_PLL_CNTL2, 0x40e8);             //Fixed.
-    Wr(HHI_HDMI_AFC_CNTL, 0xc3);                //Fixed.
-    Wr(HHI_VID_DIVIDER_CNTL, 0x10043);          //set vid_pll_clk = HPLL_CLK_OUT_DIG / 5
-    Wr_reg_bits(HHI_VID_CLK_DIV, 1, 0, 7);      //0x1059
+    Wr_reg_bits(VPU_HDMI_SETTING, 2, 0, 2);     //[ 1: 0] src_sel. 0=Disable output to HDMI; 1=Select VENC_I output to HDMI; 2=Select VENC_P output.
+//    Wr_reg_bits(HHI_HDMI_CLK_CNTL, 0, 16, 4);   //0x1073, cts_hdmi_tx_pixel_clk 0:clk_div1
+//    Wr(HHI_HDMI_PLL_CNTL1, 0x40003);             //0x104f, Fixed.
+//    Wr(HHI_HDMI_PLL_CNTL2, 0x40e8);             //0x1058, Fixed.
+//    Wr(HHI_HDMI_AFC_CNTL, 0xc3);                //0x107f, Fixed.
+//    Wr(HHI_VID_DIVIDER_CNTL, 0x10043);          //0x1066, set vid_pll_clk = HPLL_CLK_OUT_DIG / 5
+//    Wr_reg_bits(HHI_VID_CLK_DIV, 1, 0, 7);      //0x1059
     Wr_reg_bits(HHI_VID_CLK_CNTL, 0, 16, 3);    //0x105f    0: vid_pll_clk
-    Wr_reg_bits(HHI_VID_CLK_CNTL, 1, 0, 1);     //0x105f    1: DIV1_EN
+    Wr_reg_bits(HHI_VID_CLK_CNTL, 0x1f, 0, 5);     //0x105f    1: DIV1_EN
     Wr_reg_bits(HHI_VID_CLK_CNTL, 1, 19, 1);    //0x105f    1: CLK_EN0
+
     switch(param->VIC)
     {
         case HDMI_480p60:
@@ -1910,7 +1913,17 @@ static void hdmitx_set_pll(Hdmi_tx_video_para_t *param)
         case HDMI_480i60_16x9:
         case HDMI_576i50:
         case HDMI_576i50_16x9:
-            Wr(HHI_HDMI_PLL_CNTL, (24<<10)|(270<<0));    //27MHz=24MHz*270/24/10
+            Wr(HHI_HDMI_PLL_CNTL, (3<<18)|(2<<10)|(90<<0));    //27MHz=24MHz*45/4/10
+            Wr(HHI_VID_CLK_DIV, 3);      //0x1059
+            Wr_reg_bits(HHI_HDMI_CLK_CNTL, 1, 16, 4);   //cts_hdmi_tx_pixel_clk
+//            switch(param->color_depth)
+//            {//TBD
+//                COLOR_30BIT:
+//                COLOR_36BIT:
+//                COLOR_48BIT:
+//                default:    //COLOR_24BIT
+//                    break;
+//            }
             break;
         case HDMI_1080p30:
         case HDMI_1080p24:
@@ -1919,10 +1932,15 @@ static void hdmitx_set_pll(Hdmi_tx_video_para_t *param)
         case HDMI_1080i60:
         case HDMI_1080i50:
             Wr(HHI_HDMI_PLL_CNTL, (12<<10)|(371<<0));    //74.2MHz=24MHz*371/12/10
+            Wr(HHI_VID_CLK_DIV, 0);      //0x1059
+            Wr_reg_bits(HHI_HDMI_CLK_CNTL, 1, 16, 4);   //cts_hdmi_tx_pixel_clk
+                                                        //[19:16] 0:clk_div1 1:clk_div2 2:clk_div4 3: clk_div6 ...
             break;
         case HDMI_1080p60:
         case HDMI_1080p50:
             Wr(HHI_HDMI_PLL_CNTL, (6<<10)|(371<<0));    //148.4MHz=24MHz*371/6/10
+            Wr(HHI_VID_CLK_DIV, 1);      //0x1059
+            Wr_reg_bits(HHI_HDMI_CLK_CNTL, 0, 16, 4);   //0x1073, cts_hdmi_tx_pixel_clk 
             break;
         default:
             break;
@@ -2133,7 +2151,7 @@ static int hdmitx_m3_set_dispmode(Hdmi_tx_video_para_t *param)
     }
 
     hdmitx_set_pll(param);
-        hdmi_hw_reset(param);    
+    hdmi_hw_reset(param);    
     if((param->VIC==HDMI_720p60)||(param->VIC==HDMI_720p50)||
         (param->VIC==HDMI_1080i60)||(param->VIC==HDMI_1080i50)){
         Wr(ENCP_VIDEO_HAVON_BEGIN,  Rd(ENCP_VIDEO_HAVON_BEGIN)-1);     
