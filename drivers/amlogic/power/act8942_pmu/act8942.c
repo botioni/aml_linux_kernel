@@ -161,17 +161,31 @@ static int bat_power_get_property(struct power_supply *psy,
 			if(act8942_opts->is_ac_online())
 			{
 				status = act8942_opts->get_charge_status();
-				if(status == 0x1)
+				if(act8942_opts->get_charge_status == get_charge_status)
 				{
-					val->intval = POWER_SUPPLY_STATUS_FULL;
-				}
-				else if(status == 0x0)
-				{
-					val->intval = POWER_SUPPLY_STATUS_NOT_CHARGING;
+					if(status == 0x1)
+					{
+						val->intval = POWER_SUPPLY_STATUS_FULL;
+					}
+					else if(status == 0x0)
+					{
+						val->intval = POWER_SUPPLY_STATUS_NOT_CHARGING;
+					}
+					else
+					{
+						val->intval = POWER_SUPPLY_STATUS_CHARGING;
+					}
 				}
 				else
 				{
-					val->intval = POWER_SUPPLY_STATUS_CHARGING;
+					if(status == 0x1)
+					{
+						val->intval = POWER_SUPPLY_STATUS_FULL;
+					}
+					else if(status == 0x0)
+					{
+						val->intval = POWER_SUPPLY_STATUS_CHARGING;
+					}
 				}
 			}
 			else
