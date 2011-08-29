@@ -159,6 +159,15 @@ unsigned int get_misc_pll_clk(void)
 }
 EXPORT_SYMBOL(get_misc_pll_clk);
 
+unsigned int get_ddr_pll_clk(void)
+{
+    static unsigned int freq = 0;
+    if (freq == 0) {
+        freq = (clk_util_clk_msr(DDR_PLL_CLK) * 1000000);
+    }
+    return freq;
+}
+EXPORT_SYMBOL(get_ddr_pll_clk);
 long clk_round_rate(struct clk *clk, unsigned long rate)
 {
     if (rate < clk->min) {
@@ -354,6 +363,7 @@ static int clk_set_rate_a9_clk(struct clk *clk, unsigned long rate)
     int ret;
     uint ratio = 0;
     unsigned long flags;
+    unsigned int clk_a9 = 0;
 
     if (r < 1000) {
         r = r * 1000000;
@@ -396,9 +406,10 @@ static int clk_set_rate_a9_clk(struct clk *clk, unsigned long rate)
                    (1 << 7) |  // Connect A9 to the PLL divider output
                    ((ratio < 3 ? 0 : (ratio / 2) - 1) << 8));
     udelay(10);
-    printk("********%s: clk_util_clk_msr(CTS_A9_CLK) = %dMHz\n", __FUNCTION__, clk_util_clk_msr(CTS_A9_CLK));
+    clk_a9 = clk_util_clk_msr(CTS_A9_CLK);
+    //printk("********%s: clk_util_clk_msr(CTS_A9_CLK) = %dMHz\n", __FUNCTION__, clk_util_clk_msr(CTS_A9_CLK));
     local_irq_restore(flags);
-
+    printk("********%s: clk_util_clk_msr(CTS_A9_CLK) = %dMHz\n", __FUNCTION__, clk_a9);
     return 0;
 }
 
