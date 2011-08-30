@@ -19,21 +19,22 @@
  *
  */
 
-#ifndef VFORMAT_H
-#define VFORMAT_H
+#ifndef VH264_MC_H
+#define VH264_MC_H
 
-typedef enum {
-    VFORMAT_MPEG12 = 0,
-    VFORMAT_MPEG4,
-    VFORMAT_H264,
-    VFORMAT_MJPEG,
-    VFORMAT_REAL,
-    VFORMAT_JPEG,
-    VFORMAT_VC1,
-    VFORMAT_AVS,
-    VFORMAT_YUV,    // Use SW decoder
-    VFORMAT_H264MVC,
-    VFORMAT_MAX
-} vformat_t;
+#define MicroCode vh264mvc_mc
+#include "h264c_mvc_linux.h"
 
-#endif /* VFORMAT_H */
+#undef MicroCode
+#define MicroCode vh264mvc_header_mc
+#include "h264header_mvc_linux.h"
+
+#undef MicroCode
+#define MicroCode vh264mvc_mmco_mc
+#include "h264mmc_mvc_linux.h"
+
+#undef MicroCode
+#define MicroCode vh264mvc_slice_mc
+#include "h264slice_mvc_linux.h"
+
+#endif
