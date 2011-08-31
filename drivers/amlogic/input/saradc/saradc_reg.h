@@ -141,6 +141,7 @@ enum {
 #define enable_clock()	set_bits(SAR_ADC_REG3, 1, 30, 1)
 #define disable_clock()	set_bits(SAR_ADC_REG3, 0, 30, 1)
 
+#define set_sc_phase() set_bits(SAR_ADC_REG3, 1, 26, 1)
 
 // REG4
 /* set_input_delay() - set input delay
