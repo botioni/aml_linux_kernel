@@ -1762,8 +1762,7 @@ static inline int get_bat_percentage(int adc_vaule, int *adc_table,
 		if ((adc_vaule > adc_table[i]) && (adc_vaule <= adc_table[i+1]))
 			break;
 	}
-	printk("%s: adc_vaule=%d, i=%d, per_table[i]=%d \n", 
-				__FUNCTION__, adc_vaule, i, per_table[i]);
+	//printk("%s: adc_vaule=%d, i=%d, per_table[i]=%d \n", __FUNCTION__, adc_vaule, i, per_table[i]);
 
 	return per_table[i];
 }
