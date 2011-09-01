@@ -335,6 +335,12 @@ int __init amvdec_init(void)
     amvdevtimer.data = (ulong) & amvdevtimer;
     amvdevtimer.function = vdec_paused_check_timer;
 #endif
+    CLK_GATE_OFF(MDEC_CLK_PIC_DC);
+    CLK_GATE_OFF(MDEC_CLK_DBLK);
+    CLK_GATE_OFF(MC_CLK);
+    CLK_GATE_OFF(IQIDCT_CLK);
+    //CLK_GATE_OFF(VLD_CLK);
+    CLK_GATE_OFF(AMRISC);    
     return 0;
 }
 static void __exit amvdec_exit(void)

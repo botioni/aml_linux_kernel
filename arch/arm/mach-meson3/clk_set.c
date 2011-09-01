@@ -110,7 +110,7 @@ int sys_clkpll_setting(unsigned crystal_freq, unsigned out_freq)
         printk(KERN_ERR "sys_clk_setting  error, m is too bigger m=%d,crys_M=%ldM,out=%ldM\n",m,crys_M,out_M);
         return -3;
     }
-    if (out_freq > 1300 * CLK_1M || out_freq < 650 * CLK_1M) {
+    if (out_freq > 1600 * CLK_1M || out_freq < 650 * CLK_1M) {
         printk(KERN_WARNING"sys_clk_setting  warning,VCO may no support out_freq,crys_M=%ldM,out=%ldM\n", crys_M, out_M);
     }
     local_irq_save(flags);

@@ -875,21 +875,10 @@ typedef struct {
 } pinmux_data_t;
 
 
-#define MAX_PINMUX	12
+#define MAX_PINMUX	1
 
 pinmux_data_t pinmux_data[MAX_PINMUX] = {
 	{"HDMI", 	0, (1<<2)|(1<<1)|(1<<0), 						1},
-	{"TCON", 	0, (1<<14)|(1<<11), 							1},
-	{"I2S_OUT",	0, (1<<18),						 				1},
-	{"I2S_CLK",	1, (1<<19)|(1<<15)|(1<<11),		 				1},
-	{"SPI",		1, (1<<29)|(1<<27)|(1<<25)|(1<<23),				1},
-	{"I2C",		2, (1<<5)|(1<<2),								1},
-	{"SD",		2, (1<<15)|(1<<14)|(1<<13)|(1<<12)|(1<<8),		1},
-	{"PWM",		2, (1<<31),										1},
-	{"UART_A",	3, (1<<24)|(1<23),								0},
-	{"RGB",		4, (1<<5)|(1<<4)|(1<<3)|(1<<2)|(1<<1)|(1<<0),	1},
-	{"UART_B",	5, (1<<24)|(1<23),								0},
-	{"REMOTE",	5, (1<<31),										1},
 };
 
 static unsigned pinmux_backup[6];
@@ -919,11 +908,9 @@ static void set_vccx2(int power_on)
 	int i;
     if (power_on){
 
-#if 0
 		restore_pinmux();
 		for (i=0;i<MAX_GPIO;i++)
 			restore_gpio(i);
-#endif		
         printk(KERN_INFO "set_vccx2 power up\n");
         set_gpio_mode(GPIOA_bank_bit0_27(26), GPIOA_bit_bit0_27(26), GPIO_OUTPUT_MODE);
         set_gpio_val(GPIOA_bank_bit0_27(26), GPIOA_bit_bit0_27(26), 0);
@@ -933,11 +920,9 @@ static void set_vccx2(int power_on)
         printk(KERN_INFO "set_vccx2 power down\n");        
         set_gpio_mode(GPIOA_bank_bit0_27(26), GPIOA_bit_bit0_27(26), GPIO_OUTPUT_MODE);
         set_gpio_val(GPIOA_bank_bit0_27(26), GPIOA_bit_bit0_27(26), 1);
-#if 0     
 		save_pinmux();
 		for (i=0;i<MAX_GPIO;i++)
 			save_gpio(i);
-#endif
     }
 }
 

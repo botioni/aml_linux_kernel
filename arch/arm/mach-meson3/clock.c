@@ -361,7 +361,7 @@ static int clk_set_rate_a9_clk(struct clk *clk, unsigned long rate)
     struct clk *father_clk;
     unsigned long r1;
     int ret;
-    uint ratio = 0;
+    uint ratio = 1;
     unsigned long flags;
     unsigned int clk_a9 = 0;
 
@@ -379,21 +379,20 @@ static int clk_set_rate_a9_clk(struct clk *clk, unsigned long rate)
     if (!r1) {
         return -1;
     }
-
+    
+    
+    while (r * ratio < 650000000){
+	ratio++;
+    }
+    //ratio = get_best_ratio_sys_pll(1, (0x3f + 1) * 2, 650 * CLK_1M, 1300 * CLK_1M,  r);
     CLEAR_CBUS_REG_MASK(HHI_SYS_CPU_CLK_CNTL, 1<<7); // cpu use xtal
- //   if (r1 % r) { /* If the PLL freq is not the multuply of requiments, we need re-configurate sys pll */
- //       ratio = 1;
-        ratio = get_best_ratio_sys_pll(1, (0x3f + 1) * 2, 650 * CLK_1M, 1300 * CLK_1M,  r);
-        if (ratio > 0) {
-            ret = father_clk->set_rate(father_clk, r * ratio);
-            if (ret < 0) {
-                SET_CBUS_REG_MASK(HHI_SYS_CPU_CLK_CNTL, 1<<7); // cpu use sys pll
-                return ret;
-            }
+    if (ratio > 0) {
+        ret = father_clk->set_rate(father_clk, r * ratio);
+        if (ret < 0) {
+            SET_CBUS_REG_MASK(HHI_SYS_CPU_CLK_CNTL, 1<<7); // cpu use sys pll
+            return ret;
         }
-//    } else { /* sys pll is multuply of requiments freq, we need not change sys pll setting*/
-//        ratio = r1 / r;
-//	}
+    }
 
     clk->rate = r;
 
@@ -405,9 +404,8 @@ static int clk_set_rate_a9_clk(struct clk *clk, unsigned long rate)
                    (1 << 5) |  // AT_CLK_ENABLE
                    (1 << 7) |  // Connect A9 to the PLL divider output
                    ((ratio < 3 ? 0 : (ratio / 2) - 1) << 8));
-    udelay(10);
-    local_irq_restore(flags);
     clk_a9 = clk_util_clk_msr(CTS_A9_CLK);
+    local_irq_restore(flags);
     printk("********%s: clk_util_clk_msr(CTS_A9_CLK) = %dMHz\n", __FUNCTION__, clk_a9);
     return 0;
 }
@@ -445,16 +443,16 @@ static struct clk clk81 = {
     .name       = "clk81",
     .rate       = 200000000,
     .min        = 100000000,
-    .max        = 400000000,
+    .max        = 200000000,
     .set_rate   = clk_set_rate_clk81,
 };
 
 static struct clk a9_clk = {
     .name       = "a9_clk",
-    .rate       = 600000000,
-    .min        = 144000000,
+    .rate       = 696000000,
+    .min        = 216000000,
 #if defined(CONFIG_ARCH_MESON3)
-    .max        = 650000000,
+    .max        = 648000000,
 #else
     .max        = 800000000,
 #endif
@@ -817,9 +815,9 @@ static int __init clk81_clock_setup(char *ptr)
         WRITE_AOBUS_REG_BITS(AO_UART_CONTROL, baudrate & 0xfff, 0, 12);
 
         WRITE_CBUS_REG(HHI_MALI_CLK_CNTL,
-                       (2 << 9)    |   // select misc pll as clock source
+                       (3 << 9)    |   // select misc pll as clock source
                        (1 << 8)    |   // enable clock gating
-                       (2 << 0));      // Misc clk / 3
+                       (1 << 0));      // Misc clk / 3
     }
 
 
