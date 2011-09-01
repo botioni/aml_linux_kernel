@@ -79,15 +79,8 @@ static void early_suspend(struct work_struct *work)
 	int i;
 	if (debug_mask & DEBUG_SUSPEND)
 		pr_info("Start: early_suspend_work\n");
-    for (i=0;i<60;i++){ // 60 seconds timeout for keyguard
         wake_up_all(&keyguard_wq);
-        wait_event_timeout(keyguard_wq,
-            !is_wake_lock_locked(WAKE_LOCK_SUSPEND,"Keyguard"),
-            HZ);
-        if (!is_wake_lock_locked(WAKE_LOCK_SUSPEND,"Keyguard"))
-            break;
-        printk("wait wake lock Keyguard for %d seconds ...\n", i);
-    }
+        //wait_event_timeout(keyguard_wq, !is_wake_lock_locked(WAKE_LOCK_SUSPEND,"Keyguard"), HZ);
 	mutex_lock(&early_suspend_lock);
 	spin_lock_irqsave(&state_lock, irqflags);
 	if (state == SUSPEND_REQUESTED)
