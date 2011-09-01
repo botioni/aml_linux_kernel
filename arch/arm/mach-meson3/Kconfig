@@ -12,6 +12,12 @@ config MACH_MESON3_REFF02
 	bool "Support M3 (WA) platform"
 	help
 	  Include support for the WA M3 board platform.
+
+config MACH_MESON3_REFF05
+	select GENERIC_ALLOCATOR
+	bool "Support M3 (SOCKET) platform"
+	help
+	  Include support for the AML M3 socket board platform.
 	    
 config MESON3_CLOCK_TICK_RATE
     int "Clock Tick Rate"
