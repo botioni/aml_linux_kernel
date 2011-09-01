@@ -27,6 +27,7 @@
 #include <linux/slab.h>
 #include <linux/dma-mapping.h>
 #include <linux/amports/vformat.h>
+#include <linux/clk.h>
 
 #ifdef CONFIG_PM
 #include <linux/pm.h>
@@ -195,12 +196,21 @@ s32 amvdec_loadmc(const u32 *p)
     return ret;
 }
 
+static unsigned long sys_clk_rate = 100000000;
 void amvdec_start(void)
 {
+    struct clk *sys_clk;
 #ifdef CONFIG_WAKELOCK
     amvdec_wake_lock();
 #endif
 
+    sys_clk = clk_get_sys("clk81", NULL);
+    if (sys_clk){
+        sys_clk_rate = clk_get_rate(sys_clk);
+        clk_set_rate(sys_clk, 200000000);
+        CLEAR_AOBUS_REG_MASK(AO_UART_CONTROL, (1 << 19) | 0xFFF);
+        WRITE_AOBUS_REG_BITS(AO_UART_CONTROL, ((200000000 / (115200 * 4)) - 1) & 0xfff, 0, 12);
+    }
     /* additional cbus dummy register reading for timing control */
     READ_MPEG_REG(RESET0_REGISTER);
     READ_MPEG_REG(RESET0_REGISTER);
@@ -219,6 +229,7 @@ void amvdec_start(void)
 void amvdec_stop(void)
 {
     ulong timeout = jiffies + HZ;
+    struct clk *sys_clk;
 
     WRITE_MPEG_REG(MPSR, 0);
     WRITE_MPEG_REG(CPSR, 0);
@@ -237,6 +248,12 @@ void amvdec_stop(void)
     READ_MPEG_REG(RESET0_REGISTER);
     READ_MPEG_REG(RESET0_REGISTER);
 
+    sys_clk = clk_get_sys("clk81", NULL);
+    if (sys_clk){
+        clk_set_rate(sys_clk, sys_clk_rate);
+        CLEAR_AOBUS_REG_MASK(AO_UART_CONTROL, (1 << 19) | 0xFFF);
+        WRITE_AOBUS_REG_BITS(AO_UART_CONTROL, ((sys_clk_rate / (115200 * 4)) - 1) & 0xfff, 0, 12);
+    }
 #ifdef CONFIG_WAKELOCK
     amvdec_wake_unlock();
 #endif
