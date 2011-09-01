@@ -159,6 +159,15 @@ unsigned int get_misc_pll_clk(void)
 }
 EXPORT_SYMBOL(get_misc_pll_clk);
 
+unsigned int get_ddr_pll_clk(void)
+{
+    static unsigned int freq = 0;
+    if (freq == 0) {
+        freq = (clk_util_clk_msr(DDR_PLL_CLK) * 1000000);
+    }
+    return freq;
+}
+EXPORT_SYMBOL(get_ddr_pll_clk);
 long clk_round_rate(struct clk *clk, unsigned long rate)
 {
     if (rate < clk->min) {
@@ -297,18 +306,18 @@ static int get_best_ratio_sys_pll(uint min_ratio, uint max_ratio, uint min_freq,
 
     for (ratio = min_ratio; ratio < 4; ratio++) { /* Deal with 1-3 ratio */
         pll_freq = out_freq * ratio;
-        printk("********%s: line %d ratio =%d, pll_freq =%d\n", __func__, __LINE__, ratio, pll_freq);
+        //printk("********%s: line %d ratio =%d, pll_freq =%d\n", __func__, __LINE__, ratio, pll_freq);
         if (pll_freq > min_freq && pll_freq < best_freq) {
             if (delta_freq > (best_freq - pll_freq)) {
                 delta_freq = best_freq - pll_freq;
                 found_ratio = ratio;
-				printk("********%s: line %d delta_freq =%d found_ratio = %d\n", __func__, __LINE__, delta_freq, found_ratio);
+				//printk("********%s: line %d delta_freq =%d found_ratio = %d\n", __func__, __LINE__, delta_freq, found_ratio);
             }
         } else if (pll_freq >= best_freq && pll_freq < max_freq) {
             if (delta_freq > (pll_freq - best_freq)) {
                 delta_freq = pll_freq - best_freq;
                 found_ratio = ratio;
-				printk("********%s: line %d delta_freq =%d found_ratio = %d\n", __func__, __LINE__, delta_freq, found_ratio);
+				//printk("********%s: line %d delta_freq =%d found_ratio = %d\n", __func__, __LINE__, delta_freq, found_ratio);
             }
         } else if (pll_freq > max_freq) {
             break;
@@ -318,18 +327,18 @@ static int get_best_ratio_sys_pll(uint min_ratio, uint max_ratio, uint min_freq,
         for (i=2; i< (max_ratio/2); i++) {
 			ratio = i * 2;
             pll_freq = out_freq * ratio;
-            printk("********%s: line %d ratio =%d, pll_freq =%d\n", __func__, __LINE__, ratio, pll_freq);
+            //printk("********%s: line %d ratio =%d, pll_freq =%d\n", __func__, __LINE__, ratio, pll_freq);
             if (pll_freq > min_freq && pll_freq < best_freq) {
                 if (delta_freq > (best_freq - pll_freq)) {
                     delta_freq = best_freq - pll_freq;
                     found_ratio = ratio;
-				printk("********%s: line %d delta_freq =%d found_ratio = %d\n", __func__, __LINE__, delta_freq, found_ratio);
+				//printk("********%s: line %d delta_freq =%d found_ratio = %d\n", __func__, __LINE__, delta_freq, found_ratio);
                 }
             } else if (pll_freq >= best_freq && pll_freq < max_freq) {
                 if (delta_freq > (pll_freq - best_freq)) {
                     delta_freq = pll_freq - best_freq;
                     found_ratio = ratio;
-				printk("********%s: line %d delta_freq =%d found_ratio = %d\n", __func__, __LINE__, delta_freq, found_ratio);
+				//printk("********%s: line %d delta_freq =%d found_ratio = %d\n", __func__, __LINE__, delta_freq, found_ratio);
                 }
             } else if (pll_freq > max_freq) {
                 break;
@@ -339,10 +348,10 @@ static int get_best_ratio_sys_pll(uint min_ratio, uint max_ratio, uint min_freq,
 
     /* Check if the ratio is avaliable */
     if (found_ratio){
-			printk("********%s: line %d found_ratio = %d\n", __func__, __LINE__, found_ratio);
+			//printk("********%s: line %d found_ratio = %d\n", __func__, __LINE__, found_ratio);
             return found_ratio;
     }
-    printk("********%s: line %d not found ratio!\n", __func__, __LINE__);
+    //printk("********%s: line %d not found ratio!\n", __func__, __LINE__);
 	return 1;
 }
 
@@ -354,6 +363,7 @@ static int clk_set_rate_a9_clk(struct clk *clk, unsigned long rate)
     int ret;
     uint ratio = 0;
     unsigned long flags;
+    unsigned int clk_a9 = 0;
 
     if (r < 1000) {
         r = r * 1000000;
@@ -396,9 +406,9 @@ static int clk_set_rate_a9_clk(struct clk *clk, unsigned long rate)
                    (1 << 7) |  // Connect A9 to the PLL divider output
                    ((ratio < 3 ? 0 : (ratio / 2) - 1) << 8));
     udelay(10);
-    printk("********%s: clk_util_clk_msr(CTS_A9_CLK) = %dMHz\n", __FUNCTION__, clk_util_clk_msr(CTS_A9_CLK));
     local_irq_restore(flags);
-
+    clk_a9 = clk_util_clk_msr(CTS_A9_CLK);
+    printk("********%s: clk_util_clk_msr(CTS_A9_CLK) = %dMHz\n", __FUNCTION__, clk_a9);
     return 0;
 }
 
@@ -442,9 +452,9 @@ static struct clk clk81 = {
 static struct clk a9_clk = {
     .name       = "a9_clk",
     .rate       = 600000000,
-    .min        = 200000000,
+    .min        = 144000000,
 #if defined(CONFIG_ARCH_MESON3)
-    .max        = 750000000,
+    .max        = 650000000,
 #else
     .max        = 800000000,
 #endif
@@ -809,7 +819,7 @@ static int __init clk81_clock_setup(char *ptr)
         WRITE_CBUS_REG(HHI_MALI_CLK_CNTL,
                        (2 << 9)    |   // select misc pll as clock source
                        (1 << 8)    |   // enable clock gating
-                       (3 << 0));      // Misc clk / 4
+                       (2 << 0));      // Misc clk / 3
     }
 
 

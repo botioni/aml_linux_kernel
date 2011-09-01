@@ -11,6 +11,15 @@
 
 #define ACT8942_ADDR 0x5b
 
+#define ACT8942_PMU_DEBUG_LOG		0
+
+#if ACT8942_PMU_DEBUG_LOG == 1
+	#define logd(x...)  	pr_info(x)
+#else
+	#define logd(x...)		NULL
+#endif
+
+
 #define ACT8942_SYS_ADDR 0x00
 #define ACT8942_REG1_ADDR 0x20
 #define ACT8942_REG2_ADDR 0x30
@@ -26,5 +35,21 @@ typedef struct act8942_i2c_msg
 	u8 reg;
 	u8 val;
 }	act8942_i2c_msg_t;
+
+struct act8942_operations {
+	int (*is_ac_online)(void);
+	int (*is_usb_online)(void);
+	void (*set_bat_off)(void);
+	int (*get_charge_status)(void);
+	int (*set_charge_current)(int level);
+	int (*measure_voltage)(void);
+	int (*measure_current)(void);
+	int (*measure_capacity_charging)(void);
+	int (*measure_capacity_battery)(void);
+
+	unsigned int update_period; /* msecs, default is 5000 */
+};
+
+
 #endif
 

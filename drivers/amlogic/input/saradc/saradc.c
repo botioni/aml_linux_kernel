@@ -62,6 +62,7 @@ static void saradc_reset(void)
 	set_detect_irq_pol(0);
 	disable_detect_irq();
 
+	set_sc_phase();
 	enable_sample_engine();
 
 //	printk("ADCREG reg0 =%x\n", get_reg(SAR_ADC_REG0));
@@ -139,7 +140,7 @@ int get_adc_sample(int chan)
 		return -1;
 		
 	spin_lock(&gp_saradc->lock);
-
+	
 	set_chan_list(chan, 1);
 	set_avg_mode(chan, NO_AVG_MODE, SAMPLE_NUM_8);
 	set_sample_mux(chan, chan_mux[chan]);
@@ -155,7 +156,7 @@ int get_adc_sample(int chan)
 	count = 0;
 	while (delta_busy() || sample_busy() || avg_busy()) {
 		if (++count > 10000) {
-        			printk(KERN_ERR "ADC busy error.\n");
+			printk(KERN_ERR "ADC busy error=%x.\n", READ_CBUS_REG(SAR_ADC_REG0));
 			goto end;
 		}
 	}
@@ -176,6 +177,7 @@ int get_adc_sample(int chan)
 end:
 	//printk("ch%d = %d, count=%d\n", chan, value, count);
 	disable_sample_engine();
+	set_sc_phase();
 	spin_unlock(&gp_saradc->lock);
 	return value;
 }

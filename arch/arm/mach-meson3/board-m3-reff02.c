@@ -1245,83 +1245,83 @@ static void set_bat_off(void)
 
 static int bat_value_table[37]={
 0,  //0    
-540,//0
-544,//4
-547,//10
-550,//15
-553,//16
-556,//18
-559,//20
-561,//23
-563,//26
-565,//29
-567,//32
-568,//35
-569,//37
-570,//40
-571,//43
-573,//46
-574,//49
-576,//51
-578,//54
-580,//57
-582,//60
-585,//63
-587,//66
-590,//68
-593,//71
-596,//74
-599,//77
-602,//80
-605,//83
-608,//85
-612,//88
-615,//91
-619,//95
-622,//97
-626,//100
-626 //100
+737,//0
+742,//4
+750,//10
+752,//15
+753,//16
+754,//18
+755,//20
+756,//23
+757,//26
+758,//29
+760,//32
+761,//35
+762,//37
+763,//40
+766,//43
+768,//46
+770,//49
+772,//51
+775,//54
+778,//57
+781,//60
+786,//63
+788,//66
+791,//68
+795,//71
+798,//74
+800,//77
+806,//80
+810,//83
+812,//85
+817,//88
+823,//91
+828,//95
+832,//97
+835,//100
+835 //100
 };
 
 static int bat_charge_value_table[37]={
 0,  //0    
-547,//0
-551,//4
-553,//10
-556,//15
-558,//16
-560,//18
-562,//20
-564,//23
-566,//26
-567,//29
-568,//32
-569,//35
-570,//37
-571,//40
-572,//43
-573,//46
-574,//49
-576,//51
-578,//54
-580,//57
-582,//60
-585,//63
-587,//66
-590,//68
-593,//71
-596,//74
-599,//77
-602,//80
-605,//83
-608,//85
-612,//88
-615,//91
-617,//95
-618,//97
-620,//100
-620 //100
-};
+766,//0
+773,//4
+779,//10
+780,//15
+781,//16
+782,//18
+783,//20
+784,//23
+785,//26
+786,//29
+787,//32
+788,//35
+789,//37
+790,//40
+791,//43
+792,//46
+794,//49
+796,//51
+798,//54
+802,//57
+804,//60
+807,//63
+809,//66
+810,//68
+813,//71
+815,//74
+818,//77
+820,//80
+823,//83
+825,//85
+828,//88
+831,//91
+836,//95
+839,//97
+842,//100
+842 //100
+}; 
 
 static int bat_level_table[37]={
 0,
@@ -1516,12 +1516,292 @@ static struct platform_device aml_efuse_device = {
 #endif
 
 #ifdef CONFIG_PMU_ACT8942
+#include <linux/act8942.h>  
+
+
 static void power_off(void)
 {
     //Power hold down
     set_gpio_val(GPIOAO_bank_bit0_11(6), GPIOAO_bit_bit0_11(6), 0);
     set_gpio_mode(GPIOAO_bank_bit0_11(6), GPIOAO_bit_bit0_11(6), GPIO_OUTPUT_MODE);
 }
+
+
+
+/*
+ *	DC_DET(GPIOA_20)	enable internal pullup
+ *		High:		Disconnect
+ *		Low:		Connect
+ */
+static inline int is_ac_online(void)
+{
+	int val;
+	
+	SET_CBUS_REG_MASK(PAD_PULL_UP_REG0, (1<<20));	//enable internal pullup
+	set_gpio_mode(GPIOA_bank_bit0_27(20), GPIOA_bit_bit0_27(20), GPIO_INPUT_MODE);
+	val = get_gpio_val(GPIOA_bank_bit0_27(20), GPIOA_bit_bit0_27(20));
+	
+	logd("%s: get from gpio is %d.\n", __FUNCTION__, val);
+	
+	return !val;
+}
+
+//temporary
+static inline int is_usb_online(void)
+{
+	u8 val;
+
+	return 0;
+}
+
+
+/*
+ *	nSTAT OUTPUT(GPIOA_21)	enable internal pullup
+ *		High:		Full
+ *		Low:		Charging
+ */
+static inline int get_charge_status(void)
+{
+	int val;
+	
+	SET_CBUS_REG_MASK(PAD_PULL_UP_REG0, (1<<21));	//enable internal pullup
+	set_gpio_mode(GPIOA_bank_bit0_27(21), GPIOA_bit_bit0_27(21), GPIO_INPUT_MODE);
+	val = get_gpio_val(GPIOA_bank_bit0_27(21), GPIOA_bit_bit0_27(21));
+
+	logd("%s: get from gpio is %d.\n", __FUNCTION__, val);
+	
+	return val;
+}
+
+static inline int get_bat_adc_value(void)
+{
+	return get_adc_sample(5);
+}
+
+/*
+ *	When BAT_SEL(GPIOA_22) is High Vbat=Vadc*2
+ */
+static inline int measure_voltage(void)
+{
+	int val;
+	msleep(2);
+	set_gpio_mode(GPIOA_bank_bit0_27(22), GPIOA_bit_bit0_27(22), GPIO_OUTPUT_MODE);
+	set_gpio_val(GPIOA_bank_bit0_27(22), GPIOA_bit_bit0_27(22), 1);
+	val = get_bat_adc_value() * (2 * 2500000 / 1023);
+	logd("%s: get from adc is %dmV.\n", __FUNCTION__, val);
+	return val;
+}
+
+/*
+ *	Get Vhigh when BAT_SEL(GPIOA_22) is High.
+ *	Get Vlow when BAT_SEL(GPIOA_22) is Low.
+ *	I = Vdiff / 0.02R
+ *	Vdiff = Vhigh - Vlow
+ */
+static inline int measure_current(void)
+{
+	int val, Vh, Vl, Vdiff;
+	set_gpio_mode(GPIOA_bank_bit0_27(22), GPIOA_bit_bit0_27(22), GPIO_OUTPUT_MODE);
+	set_gpio_val(GPIOA_bank_bit0_27(22), GPIOA_bit_bit0_27(22), 1);
+	msleep(2);
+	Vl = get_adc_sample(5) * (2 * 2500000 / 1023);
+	logd("%s: Vh is %dmV.\n", __FUNCTION__, Vh);
+	set_gpio_mode(GPIOA_bank_bit0_27(22), GPIOA_bit_bit0_27(22), GPIO_OUTPUT_MODE);
+	set_gpio_val(GPIOA_bank_bit0_27(22), GPIOA_bit_bit0_27(22), 0);
+	msleep(2);
+	Vh = get_adc_sample(5) * (2 * 2500000 / 1023);
+	logd("%s: Vl is %dmV.\n", __FUNCTION__, Vl);
+	Vdiff = Vh - Vl;
+	val = Vdiff * 50;
+	logd("%s: get from adc is %dmA.\n", __FUNCTION__, val);
+	return val;
+}
+
+static inline int measure_capacity(void)
+{
+	int val, tmp;
+	tmp = measure_voltage();
+	if((tmp>4200000) || (get_charge_status() == 0x1))
+	{
+		logd("%s: get from PMU and adc is 100.\n", __FUNCTION__);
+		return 100;
+	}
+	
+	val = (tmp - 3600000) / (600000 / 100);
+	logd("%s: get from adc is %d.\n", __FUNCTION__, val);
+	return val;
+}
+
+static int bat_value_table[37]={
+0,  //0    
+737,//0
+742,//4
+750,//10
+752,//15
+753,//16
+754,//18
+755,//20
+756,//23
+757,//26
+758,//29
+760,//32
+761,//35
+762,//37
+763,//40
+766,//43
+768,//46
+770,//49
+772,//51
+775,//54
+778,//57
+781,//60
+786,//63
+788,//66
+791,//68
+795,//71
+798,//74
+800,//77
+806,//80
+810,//83
+812,//85
+817,//88
+823,//91
+828,//95
+832,//97
+835,//100
+835 //100
+};
+
+static int bat_charge_value_table[37]={
+0,  //0    
+766,//0
+773,//4
+779,//10
+780,//15
+781,//16
+782,//18
+783,//20
+784,//23
+785,//26
+786,//29
+787,//32
+788,//35
+789,//37
+790,//40
+791,//43
+792,//46
+794,//49
+796,//51
+798,//54
+802,//57
+804,//60
+807,//63
+809,//66
+810,//68
+813,//71
+815,//74
+818,//77
+820,//80
+823,//83
+825,//85
+828,//88
+831,//91
+836,//95
+839,//97
+842,//100
+842 //100
+}; 
+
+static int bat_level_table[37]={
+0,
+0,
+4,
+10,
+15,
+16,
+18,
+20,
+23,
+26,
+29,
+32,
+35,
+37,
+40,
+43,
+46,
+49,
+51,
+54,
+57,
+60,
+63,
+66,
+68,
+71,
+74,
+77,
+80,
+83,
+85,
+88,
+91,
+95,
+97,
+100,
+100  
+};
+
+
+static inline int get_bat_percentage(int adc_vaule, int *adc_table, 
+										int *per_table, int table_size)
+{
+	int i;
+	
+	for(i=0; i<(table_size - 1); i++) {
+		if ((adc_vaule > adc_table[i]) && (adc_vaule <= adc_table[i+1]))
+			break;
+	}
+	//printk("%s: adc_vaule=%d, i=%d, per_table[i]=%d \n", __FUNCTION__, adc_vaule, i, per_table[i]);
+
+	return per_table[i];
+}
+
+static int act8942_measure_capacity_charging(void)
+{
+	int adc = get_bat_adc_value();
+	int table_size = sizeof(bat_charge_value_table)/sizeof(bat_charge_value_table[0]);
+	
+	return get_bat_percentage(adc, bat_charge_value_table, bat_level_table, table_size);
+}
+
+static int act8942_measure_capacity_battery(void)
+{
+	int adc = get_bat_adc_value();
+	int table_size = sizeof(bat_value_table)/sizeof(bat_value_table[0]);
+	
+	return get_bat_percentage(adc, bat_value_table, bat_level_table, table_size);
+}
+
+//temporary
+static int set_bat_off(void)
+{
+	return 0;
+}
+
+
+static struct act8942_operations act8942_pdata = {
+	.is_ac_online = is_ac_online,
+	.is_usb_online = is_usb_online,
+	.set_bat_off = set_bat_off,
+	.get_charge_status = get_charge_status,
+	.measure_voltage = measure_voltage,
+	.measure_current = measure_current,
+	.measure_capacity_charging = act8942_measure_capacity_charging,
+	.measure_capacity_battery = act8942_measure_capacity_battery,
+	.update_period = 2000,	//2S
+};
+
 
 static struct platform_device aml_pmu_device = {
     .name	= "pmu_act8942",
@@ -2144,7 +2424,8 @@ static struct i2c_board_info __initdata aml_i2c_bus_info_2[] = {
 #endif
 #ifdef CONFIG_PMU_ACT8942
 	{
-        I2C_BOARD_INFO("act8942-i2c", 0x5b),
+        I2C_BOARD_INFO("act8942-i2c", ACT8942_ADDR),
+		.platform_data = (void *)&act8942_pdata,	
     },
 #endif
 };

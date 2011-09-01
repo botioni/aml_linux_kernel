@@ -62,6 +62,14 @@ config AM_VDEC_H264
 	help
 	  Driver for h264 video decoder.
 
+config AM_VDEC_H264MVC
+	tristate "AMLOGIC H264MVC Video Decoder"
+	default y
+	select AM_VIDEO
+	select AM_PTSSERVER
+	help
+	  Driver for h264mvc video decoder.
+
 config AM_VDEC_MJPEG
 	tristate "AMLOGIC Motion JPEG Video Decoder"
 	default y
