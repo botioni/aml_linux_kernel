@@ -28,12 +28,15 @@
 #include "aml_pcm.h"
 #include "aml_audio_hw.h"
 
+//#define _AML_PCM_DEBUG_
 
 #define AOUT_EVENT_PREPARE  0x1
 extern int aout_notifier_call_chain(unsigned long val, void *v);
 
 unsigned int aml_pcm_playback_start_addr = 0;
 unsigned int aml_pcm_capture_start_addr  = 0;
+unsigned int aml_pcm_capture_start_phy = 0;
+unsigned int aml_pcm_capture_buf_size = 0;
 unsigned int aml_pcm_playback_off = 0;
 unsigned int aml_pcm_playback_enable = 1;
 
@@ -60,7 +63,7 @@ static const struct snd_pcm_hardware aml_pcm_hardware = {
 	.period_bytes_max	= 8*1024,
 	.periods_min		= 2,
 	.periods_max		= 1024,
-	.buffer_bytes_max	= 32 * 1024,
+	.buffer_bytes_max	= 64 * 1024,
 	
 	.rate_min = 32000,
   .rate_max = 48000,
@@ -81,7 +84,7 @@ static const struct snd_pcm_hardware aml_pcm_capture = {
 	.period_bytes_max	= 8*1024,
 	.periods_min		= 2,
 	.periods_max		= 1024,
-	.buffer_bytes_max	= 32 * 1024,
+	.buffer_bytes_max	= 64 * 1024,
 
 	.rate_min = 8000,
   .rate_max = 48000,
@@ -128,7 +131,7 @@ static int aml_pcm_preallocate_dma_buffer(struct snd_pcm *pcm,
 		(void *) buf->addr,
 		size);
 
-        aml_pcm_playback_start_addr = buf->area;
+        aml_pcm_playback_start_addr = (unsigned int)buf->area;
 	}else{
 		size = aml_pcm_capture.buffer_bytes_max;
 		buf->dev.type = SNDRV_DMA_TYPE_DEV;
@@ -142,7 +145,9 @@ static int aml_pcm_preallocate_dma_buffer(struct snd_pcm *pcm,
 		(void *) buf->addr,
 		size);
 
-        aml_pcm_capture_start_addr = buf->area;
+        aml_pcm_capture_start_addr = (unsigned int)buf->area;
+        aml_pcm_capture_start_phy = buf->addr;
+        aml_pcm_capture_buf_size = size;
 	}
 
 	if (!buf->area)
@@ -174,6 +179,12 @@ static int aml_pcm_hw_params(struct snd_pcm_substream *substream,
 	runtime->dma_bytes = params_buffer_bytes(params);
 
 	s->I2S_addr = runtime->dma_addr;
+
+
+    if(substream->stream == SNDRV_PCM_STREAM_PLAYBACK){
+        /* s->last_ptr must initialized as dma buffer's start addr */
+        s->last_ptr = runtime->dma_addr;
+    }
 	
 	return 0;
 }
@@ -251,8 +262,10 @@ static int aml_pcm_prepare(struct snd_pcm_substream *substream)
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK){
 			//printk("aml_pcm_prepare SNDRV_PCM_STREAM_PLAYBACK: dma_addr=%x, dma_bytes=%x\n", runtime->dma_addr, runtime->dma_bytes);
 	        _aiu_958_channel_status_t set;
-		    memset((void*)(&set), 0, sizeof(set));
-
+		 _aiu_958_raw_setting_t	raw_set;	
+		 memset((void*)(&raw_set), 0, sizeof(raw_set));
+		 memset((void*)(&set), 0, sizeof(set));
+		 raw_set.chan_stat = &set;
             audio_set_aiubuf(runtime->dma_addr, runtime->dma_bytes);
             
             switch(runtime->format){
@@ -281,7 +294,7 @@ static int aml_pcm_prepare(struct snd_pcm_substream *substream)
               set.chstat0_r = 0x1902;
               audio_set_958outbuf((runtime->dma_addr+runtime->dma_bytes+127)&(~127), runtime->dma_bytes);
             }
-            audio_set_958_mode(IEC958_MODE, &set);
+            audio_set_958_mode(IEC958_MODE, &raw_set);
 
 			memset((void*)runtime->dma_area,0,runtime->dma_bytes * 2 + 128);
 	}
@@ -416,8 +429,7 @@ static void aml_pcm_timer_callback(unsigned long data)
 		audio_stream_t *s = &prtd->s;
 
     unsigned int last_ptr, size;
-
-		if(substream->stream == SNDRV_PCM_STREAM_PLAYBACK){
+	if(substream->stream == SNDRV_PCM_STREAM_PLAYBACK){
 				if(s->active == 1){
 						spin_lock(&s->lock);
 						last_ptr = read_i2s_rd_ptr();
@@ -538,7 +550,7 @@ static int aml_pcm_copy_playback(struct snd_pcm_runtime *runtime, int channel,
         left = to;
 		right = to + 16;
 		if (pos % align) {
-		    printk("audio data unligned: pos=%d, n=%d, align=%d\n", pos, n, align);
+		    printk("audio data unligned: pos=%d, n=%d, align=%d\n", (int)pos, n, align);
 		}
 		for (j = 0; j < n; j += 64) {
 		    for (i = 0; i < 16; i++) {
@@ -557,7 +569,7 @@ static int aml_pcm_copy_playback(struct snd_pcm_runtime *runtime, int channel,
         right = to + 8;
 
         if(pos % align){
-          printk("audio data unaligned: pos=%d, n=%d, align=%d\n", pos, n, align);
+          printk("audio data unaligned: pos=%d, n=%d, align=%d\n", (int)pos, n, align);
         }
         for(j=0; j< n; j+= 64){
           for(i=0; i<8; i++){
@@ -577,7 +589,7 @@ static int aml_pcm_copy_playback(struct snd_pcm_runtime *runtime, int channel,
         right = to + 8;
         
         if(pos % align){
-          printk("audio data unaligned: pos=%d, n=%d, align=%d\n", pos, n, align);
+          printk("audio data unaligned: pos=%d, n=%d, align=%d\n", (int)pos, n, align);
         }
         for(j=0; j< n; j+= 64){
           for(i=0; i<8; i++){
