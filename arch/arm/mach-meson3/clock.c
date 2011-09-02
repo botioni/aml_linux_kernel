@@ -844,6 +844,8 @@ static int __init clk81_clock_setup(char *ptr)
         }
         clk = clk_util_clk_msr(CTS_MALI_CLK);
         printk("********%s: clk_util_clk_msr(CTS_MALI_CLK) = %dMHz\n", __FUNCTION__, clk);
+        clk = clk_util_clk_msr(CTS_DDR_CLK);
+        printk("********%s: clk_util_clk_msr(CTS_DDR_CLK) = %dMHz\n", __FUNCTION__, clk);
     }
 
     return 0;
