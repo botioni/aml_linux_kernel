@@ -35,6 +35,7 @@
 #include <asm/uaccess.h>
 #include <asm/delay.h>
 #include <mach/am_regs.h>
+#include <mach/clock.h>
 #include <mach/power_gate.h>
 #else
 #include "ioapi.h"
@@ -298,7 +299,7 @@ static void intr_handler(void *arg)
 
 static void hdmi_tvenc1080i_set(Hdmi_tx_video_para_t* param)
 {
-    unsigned long VFIFO2VD_TO_HDMI_LATENCY = 3;
+    unsigned long VFIFO2VD_TO_HDMI_LATENCY = 2; // Annie 01Sep2011: Change value from 3 to 2, due to video encoder path delay change.
     unsigned long TOTAL_PIXELS, PIXEL_REPEAT_HDMI, PIXEL_REPEAT_VENC, ACTIVE_PIXELS;
     unsigned FRONT_PORCH, HSYNC_PIXELS, ACTIVE_LINES, INTERLACE_MODE, TOTAL_LINES, SOF_LINES, VSYNC_LINES;
     unsigned LINES_F0, LINES_F1,BACK_PORCH, EOF_LINES, TOTAL_FRAMES;
@@ -416,28 +417,34 @@ static void hdmi_tvenc1080i_set(Hdmi_tx_video_para_t* param)
         Wr(ENCP_DVI_VSO_END_ODD,   vso_begin_odd);  // 2202
     }
 
-    Wr(VENC_DVI_SETTING, (1 << 0)               | //0=select enci hs/vs; 1=select encp hs/vs
-                         (0 << 1)               | //select vso/hso as hsync vsync
-                         (HSYNC_POLARITY << 2)  | //invert hs
-                         (VSYNC_POLARITY << 3)  | //invert vs
+    // Annie 01Sep2011: Register VENC_DVI_SETTING and VENC_DVI_SETTING_MORE are no long valid, use VPU_HDMI_SETTING instead.
+    Wr(VPU_HDMI_SETTING, (0                                 << 0) | // [    0] src_sel_enci
+                         (0                                 << 1) | // [    1] src_sel_encp
+                         (HSYNC_POLARITY                    << 2) | // [    2] inv_hsync. 1=Invert Hsync polarity.
+                         (VSYNC_POLARITY                    << 3) | // [    3] inv_vsync. 1=Invert Vsync polarity.
+                         (0                                 << 4) | // [    4] inv_dvi_clk. 1=Invert clock to external DVI, (clock invertion exists at internal HDMI).
+                         (((TX_INPUT_COLOR_FORMAT==0)?1:0)  << 5) | // [ 7: 5] data_comp_map. Input data is CrYCb(BRG), map the output data to desired format:
+                                                                    //                          0=output CrYCb(BRG);
+                                                                    //                          1=output YCbCr(RGB);
+                                                                    //                          2=output YCrCb(RBG);
+                                                                    //                          3=output CbCrY(GBR);
+                                                                    //                          4=output CbYCr(GRB);
+                                                                    //                          5=output CrCbY(BGR);
+                                                                    //                          6,7=Rsrv.
 #ifdef DOUBLE_CLK_720P_1080I
-                         (5 << 4)               | //select vclk1 as HDMI pixel clk
+                         (0                                 << 8) | // [11: 8] wr_rate. 0=A write every clk1; 1=A write every 2 clk1; ...; 15=A write every 16 clk1.
 #else                         
-                         (2 << 4)               | //select vclk1 as HDMI pixel clk
+                         (1                                 << 8) | // [11: 8] wr_rate. 0=A write every clk1; 1=A write every 2 clk1; ...; 15=A write every 16 clk1.
 #endif                         
-                         (1 << 7)               | //0=sel external dvi; 1= sel internal hdmi
-                         (0 << 8)               | //no invert clk
-                         (0 << 13)              | //cfg_dvi_mode_gamma_en
-                         (1 << 15)                //select encp_vs_dvi, encp_hs_dvi and encp_de as timing signal
+                         (0                                 <<12)   // [15:12] rd_rate. 0=A read every clk2; 1=A read every 2 clk2; ...; 15=A read every 16 clk2.
     );
-    
-    Wr(VENC_DVI_SETTING_MORE, (TX_INPUT_COLOR_FORMAT==0)? 1 : 0); // [0] 0=Map data pins from Venc to Hdmi Tx as CrYCb mode;
-    
+    Wr_reg_bits(VPU_HDMI_SETTING, 1, 1, 1);  // [    1] src_sel_encp: Enable ENCP output to HDMI
+
 }    
 
 static void hdmi_tvenc480i_set(Hdmi_tx_video_para_t* param)
 {
-    unsigned long VFIFO2VD_TO_HDMI_LATENCY = 2;
+    unsigned long VFIFO2VD_TO_HDMI_LATENCY = 1; // Annie 01Sep2011: Change value from 2 to 1, due to video encoder path delay change.
     unsigned long TOTAL_PIXELS, PIXEL_REPEAT_HDMI, PIXEL_REPEAT_VENC, ACTIVE_PIXELS;
     unsigned FRONT_PORCH, HSYNC_PIXELS, ACTIVE_LINES, INTERLACE_MODE, TOTAL_LINES, SOF_LINES, VSYNC_LINES;
     unsigned LINES_F0, LINES_F1,BACK_PORCH, EOF_LINES, TOTAL_FRAMES;
@@ -494,21 +501,24 @@ static void hdmi_tvenc480i_set(Hdmi_tx_video_para_t* param)
     front_porch_venc  = (FRONT_PORCH   / (1+PIXEL_REPEAT_HDMI)) * (1+PIXEL_REPEAT_VENC); // 38   / 2 * 2 = 38
     hsync_pixels_venc = (HSYNC_PIXELS  / (1+PIXEL_REPEAT_HDMI)) * (1+PIXEL_REPEAT_VENC); // 124  / 2 * 2 = 124
 
-    hdmi_print(0, "[ENCP_VIDEO_MODE:%x]=%x\n",ENCP_VIDEO_MODE, Rd(ENCP_VIDEO_MODE)); 
-    Wr(ENCP_VIDEO_MODE,Rd(ENCP_VIDEO_MODE)|(1<<14)); // cfg_de_v = 1
+    // Annie 01Sep2011: Comment out the following 2 lines. Because ENCP is not used for 480i and 576i.
+    //hdmi_print(0, "[ENCP_VIDEO_MODE:%x]=%x\n",ENCP_VIDEO_MODE, Rd(ENCP_VIDEO_MODE));
+    //Wr(ENCP_VIDEO_MODE,Rd(ENCP_VIDEO_MODE)|(1<<14)); // cfg_de_v = 1
 
     // Program DE timing
-    hdmi_print(0, "[VFIFO2VD_PIXEL_START:%x]=%x\n",VFIFO2VD_PIXEL_START, Rd(VFIFO2VD_PIXEL_START)); 
-    de_h_begin = modulo(Rd(VFIFO2VD_PIXEL_START) + VFIFO2VD_TO_HDMI_LATENCY,    total_pixels_venc); // (233 + 2) % 1716 = 235
-    de_h_end   = modulo(de_h_begin + active_pixels_venc,                        total_pixels_venc); // (235 + 1440) % 1716 = 1675
+    // Annie 01Sep2011: for 480/576i, replace VFIFO2VD_PIXEL_START with ENCI_VFIFO2VD_PIXEL_START.
+    hdmi_print(0, "[ENCI_VFIFO2VD_PIXEL_START:%x]=%x\n",ENCI_VFIFO2VD_PIXEL_START, Rd(ENCI_VFIFO2VD_PIXEL_START)); 
+    de_h_begin = modulo(Rd(ENCI_VFIFO2VD_PIXEL_START) + VFIFO2VD_TO_HDMI_LATENCY,   total_pixels_venc); // (233 + 2) % 1716 = 235
+    de_h_end   = modulo(de_h_begin + active_pixels_venc,                            total_pixels_venc); // (235 + 1440) % 1716 = 1675
     Wr(ENCI_DE_H_BEGIN, de_h_begin);    // 235
     Wr(ENCI_DE_H_END,   de_h_end);      // 1675
 
-    hdmi_print(0, "[VFIFO2VD_LINE_TOP_START:%x]=%x\n",VFIFO2VD_LINE_TOP_START, Rd(VFIFO2VD_LINE_TOP_START)); 
-    hdmi_print(0, "[VFIFO2VD_LINE_BOT_START:%x]=%x\n",VFIFO2VD_LINE_BOT_START, Rd(VFIFO2VD_LINE_BOT_START)); 
-    de_v_begin_even = Rd(VFIFO2VD_LINE_TOP_START);      // 17
+    // Annie 01Sep2011: for 480/576i, replace VFIFO2VD_LINE_TOP/BOT_START with ENCI_VFIFO2VD_LINE_TOP/BOT_START.
+    hdmi_print(0, "[ENCI_VFIFO2VD_LINE_TOP_START:%x]=%x\n",ENCI_VFIFO2VD_LINE_TOP_START, Rd(ENCI_VFIFO2VD_LINE_TOP_START)); 
+    hdmi_print(0, "[ENCI_VFIFO2VD_LINE_BOT_START:%x]=%x\n",ENCI_VFIFO2VD_LINE_BOT_START, Rd(ENCI_VFIFO2VD_LINE_BOT_START)); 
+    de_v_begin_even = Rd(ENCI_VFIFO2VD_LINE_TOP_START);      // 17
     de_v_end_even   = de_v_begin_even + ACTIVE_LINES;   // 17 + 240 = 257
-    de_v_begin_odd  = Rd(VFIFO2VD_LINE_BOT_START);      // 18
+    de_v_begin_odd  = Rd(ENCI_VFIFO2VD_LINE_BOT_START);      // 18
     de_v_end_odd    = de_v_begin_odd + ACTIVE_LINES;    // 18 + 480/2 = 258
     Wr(ENCI_DE_V_BEGIN_EVEN,de_v_begin_even);   // 17
     Wr(ENCI_DE_V_END_EVEN,  de_v_end_even);     // 257
@@ -591,20 +601,25 @@ static void hdmi_tvenc480i_set(Hdmi_tx_video_para_t* param)
         //stimulus_finish_fail(1);
     //}
 
-    Wr(VENC_DVI_SETTING, (0 << 0)               | //0=select enci hs/vs; 1=select encp hs/vs
-                         (0 << 1)               | //select vso/hso as hsync vsync
-                         (HSYNC_POLARITY << 2)  | //invert hs
-                         (VSYNC_POLARITY << 3)  | //invert vs
-                         (1 << 4)               | //select clk54 as clk
-                         (1 << 7)               | //0=sel external dvi; 1= sel internal hdmi
-                         (0 << 8)               | //no invert clk
-                         (0 << 13)              | //cfg_dvi_mode_gamma_en
-                         (1 << 15)                //select enci_vs_dvi, enci_hs_dvi and intl_de as timing signal
+    // Annie 01Sep2011: Register VENC_DVI_SETTING and VENC_DVI_SETTING_MORE are no long valid, use VPU_HDMI_SETTING instead.
+    Wr(VPU_HDMI_SETTING, (0                                 << 0) | // [    0] src_sel_enci
+                         (0                                 << 1) | // [    1] src_sel_encp
+                         (HSYNC_POLARITY                    << 2) | // [    2] inv_hsync. 1=Invert Hsync polarity.
+                         (VSYNC_POLARITY                    << 3) | // [    3] inv_vsync. 1=Invert Vsync polarity.
+                         (0                                 << 4) | // [    4] inv_dvi_clk. 1=Invert clock to external DVI, (clock invertion exists at internal HDMI).
+                         (((TX_INPUT_COLOR_FORMAT==0)?1:0)  << 5) | // [ 7: 5] data_comp_map. Input data is CrYCb(BRG), map the output data to desired format:
+                                                                    //                          0=output CrYCb(BRG);
+                                                                    //                          1=output YCbCr(RGB);
+                                                                    //                          2=output YCrCb(RBG);
+                                                                    //                          3=output CbCrY(GBR);
+                                                                    //                          4=output CbYCr(GRB);
+                                                                    //                          5=output CrCbY(BGR);
+                                                                    //                          6,7=Rsrv.
+                         (1                                 << 8) | // [11: 8] wr_rate. 0=A write every clk1; 1=A write every 2 clk1; ...; 15=A write every 16 clk1.
+                         (1                                 <<12)   // [15:12] rd_rate. 0=A read every clk2; 1=A read every 2 clk2; ...; 15=A read every 16 clk2.
     );
-    
-    Wr(VENC_DVI_SETTING_MORE, (TX_INPUT_COLOR_FORMAT==0)? 1 : 0); // [0] 0=Map data pins from Venc to Hdmi Tx as CrYCb mode;
-                                                                  //     1=Map data pins from Venc to Hdmi Tx as RGB mode.
-    
+    Wr_reg_bits(VPU_HDMI_SETTING, 1, 0, 1);  // [    0] src_sel_enci: Enable ENCI output to HDMI
+
 }    
 
 #ifndef AVOS
@@ -612,7 +627,7 @@ static
 #endif
 void hdmi_tvenc_set(Hdmi_tx_video_para_t *param)
 {
-    unsigned long VFIFO2VD_TO_HDMI_LATENCY = 3;
+    unsigned long VFIFO2VD_TO_HDMI_LATENCY = 2; // Annie 01Sep2011: Change value from 3 to 2, due to video encoder path delay change.
     unsigned long TOTAL_PIXELS, PIXEL_REPEAT_HDMI, PIXEL_REPEAT_VENC, ACTIVE_PIXELS;
     unsigned FRONT_PORCH, HSYNC_PIXELS, ACTIVE_LINES, INTERLACE_MODE, TOTAL_LINES, SOF_LINES, VSYNC_LINES;
     unsigned LINES_F0, LINES_F1,BACK_PORCH, EOF_LINES, TOTAL_FRAMES;
@@ -793,7 +808,8 @@ void hdmi_tvenc_set(Hdmi_tx_video_para_t *param)
         Wr(ENCP_DVI_VSO_BEGIN_ODD, vso_begin_odd);
         Wr(ENCP_DVI_VSO_END_ODD,   vso_begin_odd);
     }
-    Wr(VENC_DVI_SETTING_MORE, (TX_INPUT_COLOR_FORMAT==0)? 1 : 0); // [0] 0=Map data pins from Venc to Hdmi Tx as CrYCb mode;
+    // Annie 01Sep2011: Remove the following line as register VENC_DVI_SETTING_MORE is no long valid, use VPU_HDMI_SETTING instead.
+    //Wr(VENC_DVI_SETTING_MORE, (TX_INPUT_COLOR_FORMAT==0)? 1 : 0); // [0] 0=Map data pins from Venc to Hdmi Tx as CrYCb mode;
     
     switch(param->VIC)
     {
@@ -803,46 +819,70 @@ void hdmi_tvenc_set(Hdmi_tx_video_para_t *param)
         case HDMI_576p50_16x9:
 //Note: Hsync & Vsync polarity should be negative.
 //Refer to HDMI CTS 1.4A Page 169
-            Wr(VENC_DVI_SETTING, (1 << 0)               | //0=select enci hs/vs; 1=select encp hs/vs
-                                 (0 << 1)               | //select vso/hso as hsync vsync
-                                 (0 << 2)  | //invert hs
-                                 (0 << 3)  | //invert vs
-                                 (2 << 4)               | //select encp_dvi_clk = clk54/2
-                                 (1 << 7)               | //0=sel external dvi; 1= sel internal hdmi
-                                 (0 << 8)               | //no invert clk
-                                 (0 << 13)              | //cfg_dvi_mode_gamma_en
-                                 (1 << 15)                //select encp_vs_dvi, encp_hs_dvi and encp_de as timing signal
-              );
+            // Annie 01Sep2011: Register VENC_DVI_SETTING and VENC_DVI_SETTING_MORE are no long valid, use VPU_HDMI_SETTING instead.
+            Wr(VPU_HDMI_SETTING, (0                                 << 0) | // [    0] src_sel_enci
+                                 (0                                 << 1) | // [    1] src_sel_encp
+                                 (0                                 << 2) | // [    2] inv_hsync. 1=Invert Hsync polarity.
+                                 (0                                 << 3) | // [    3] inv_vsync. 1=Invert Vsync polarity.
+                                 (0                                 << 4) | // [    4] inv_dvi_clk. 1=Invert clock to external DVI, (clock invertion exists at internal HDMI).
+                                 (((TX_INPUT_COLOR_FORMAT==0)?1:0)  << 5) | // [ 7: 5] data_comp_map. Input data is CrYCb(BRG), map the output data to desired format:
+                                                                            //                          0=output CrYCb(BRG);
+                                                                            //                          1=output YCbCr(RGB);
+                                                                            //                          2=output YCrCb(RBG);
+                                                                            //                          3=output CbCrY(GBR);
+                                                                            //                          4=output CbYCr(GRB);
+                                                                            //                          5=output CrCbY(BGR);
+                                                                            //                          6,7=Rsrv.
+                                 (1                                 << 8) | // [11: 8] wr_rate. 0=A write every clk1; 1=A write every 2 clk1; ...; 15=A write every 16 clk1.
+                                 (0                                 <<12)   // [15:12] rd_rate. 0=A read every clk2; 1=A read every 2 clk2; ...; 15=A read every 16 clk2.
+            );
             break;
         case HDMI_720p60:
         case HDMI_720p50:
-            Wr(VENC_DVI_SETTING, (1 << 0)               | //0=select enci hs/vs; 1=select encp hs/vs
-                                 (0 << 1)               | //select vso/hso as hsync vsync
-                                 (HSYNC_POLARITY << 2)  | //invert hs
-                                 (VSYNC_POLARITY << 3)  | //invert vs
+            // Annie 01Sep2011: Register VENC_DVI_SETTING and VENC_DVI_SETTING_MORE are no long valid, use VPU_HDMI_SETTING instead.
+            Wr(VPU_HDMI_SETTING, (0                                 << 0) | // [    0] src_sel_enci
+                                 (0                                 << 1) | // [    1] src_sel_encp
+                                 (HSYNC_POLARITY                    << 2) | // [    2] inv_hsync. 1=Invert Hsync polarity.
+                                 (VSYNC_POLARITY                    << 3) | // [    3] inv_vsync. 1=Invert Vsync polarity.
+                                 (0                                 << 4) | // [    4] inv_dvi_clk. 1=Invert clock to external DVI, (clock invertion exists at internal HDMI).
+                                 (((TX_INPUT_COLOR_FORMAT==0)?1:0)  << 5) | // [ 7: 5] data_comp_map. Input data is CrYCb(BRG), map the output data to desired format:
+                                                                            //                          0=output CrYCb(BRG);
+                                                                            //                          1=output YCbCr(RGB);
+                                                                            //                          2=output YCrCb(RBG);
+                                                                            //                          3=output CbCrY(GBR);
+                                                                            //                          4=output CbYCr(GRB);
+                                                                            //                          5=output CrCbY(BGR);
+                                                                            //                          6,7=Rsrv.
 #ifdef DOUBLE_CLK_720P_1080I
-                                (1 << 4)               | //select encp_dvi_clk = clk54/2
+                                 (0                                 << 8) | // [11: 8] wr_rate. 0=A write every clk1; 1=A write every 2 clk1; ...; 15=A write every 16 clk1.
 #else
-                                (2 << 4)               | //select encp_dvi_clk = clk54/2
+                                 (1                                 << 8) | // [11: 8] wr_rate. 0=A write every clk1; 1=A write every 2 clk1; ...; 15=A write every 16 clk1.
 #endif                             
-                                 (1 << 7)               | //0=sel external dvi; 1= sel internal hdmi
-                                 (0 << 8)               | //no invert clk
-                                 (0 << 13)              | //cfg_dvi_mode_gamma_en
-                                 (1 << 15)                //select encp_vs_dvi, encp_hs_dvi and encp_de as timing signal
-              );
+                                 (0                                 <<12)   // [15:12] rd_rate. 0=A read every clk2; 1=A read every 2 clk2; ...; 15=A read every 16 clk2.
+            );
             break;
         default:
-            Wr(VENC_DVI_SETTING, (1 << 0)               | //0=select enci hs/vs; 1=select encp hs/vs
-                                 (0 << 1)               | //select vso/hso as hsync vsync
-                                 (HSYNC_POLARITY << 2)  | //invert hs
-                                 (VSYNC_POLARITY << 3)  | //invert vs
-                                 (1 << 4)               | //select clk54 as clk
-                                 (1 << 7)               | //0=sel external dvi; 1= sel internal hdmi
-                                 (0 << 8)               | //no invert clk
-                                 (0 << 13)              | //cfg_dvi_mode_gamma_en
-                                 (1 << 15)                //select encp_vs_dvi, encp_hs_dvi and encp_de as timing signal
-              );
+            // Annie 01Sep2011: Register VENC_DVI_SETTING and VENC_DVI_SETTING_MORE are no long valid, use VPU_HDMI_SETTING instead.
+            Wr(VPU_HDMI_SETTING, (0                                 << 0) | // [    0] src_sel_enci
+                                 (0                                 << 1) | // [    1] src_sel_encp
+                                 (HSYNC_POLARITY                    << 2) | // [    2] inv_hsync. 1=Invert Hsync polarity.
+                                 (VSYNC_POLARITY                    << 3) | // [    3] inv_vsync. 1=Invert Vsync polarity.
+                                 (0                                 << 4) | // [    4] inv_dvi_clk. 1=Invert clock to external DVI, (clock invertion exists at internal HDMI).
+                                 (((TX_INPUT_COLOR_FORMAT==0)?1:0)  << 5) | // [ 7: 5] data_comp_map. Input data is CrYCb(BRG), map the output data to desired format:
+                                                                            //                          0=output CrYCb(BRG);
+                                                                            //                          1=output YCbCr(RGB);
+                                                                            //                          2=output YCrCb(RBG);
+                                                                            //                          3=output CbCrY(GBR);
+                                                                            //                          4=output CbYCr(GRB);
+                                                                            //                          5=output CrCbY(BGR);
+                                                                            //                          6,7=Rsrv.
+                                 (0                                 << 8) | // [11: 8] wr_rate. 0=A write every clk1; 1=A write every 2 clk1; ...; 15=A write every 16 clk1.
+                                 (0                                 <<12)   // [15:12] rd_rate. 0=A read every clk2; 1=A read every 2 clk2; ...; 15=A read every 16 clk2.
+            );
     }
+
+    // Annie 01Sep2011: Register VENC_DVI_SETTING and VENC_DVI_SETTING_MORE are no long valid, use VPU_HDMI_SETTING instead.
+    Wr_reg_bits(VPU_HDMI_SETTING, 1, 1, 1);  // [    1] src_sel_encp: Enable ENCP output to HDMI
 }    
 
 /*
@@ -981,6 +1021,34 @@ void hdmi_hw_set_powermode( int power_mode, int vic)
 
             hdmi_wr_reg(TX_CORE_CALIB_MODE, 0xc);
             hdmi_wr_reg(TX_CORE_CALIB_VALUE, 0x0);
+            hdmi_wr_reg(0x010, 0x2);
+            switch(vic)
+            {
+                case HDMI_480p60:
+                case HDMI_480p60_16x9:
+                    hdmi_wr_reg(TX_SYS1_AFE_TEST, 0x7d);    //0x17
+                    hdmi_wr_reg(TX_CORE_CALIB_VALUE,0x6);   //0xf7
+                    hdmi_wr_reg(TX_SYS1_AFE_RESET, 0x2);    //0x16
+                    hdmi_wr_reg(TX_SYS1_BANDGAP, 0x0);      //0x14
+                    hdmi_wr_reg(TX_SYS1_BIAS, 0x0);         //0x15
+                    break;
+                case HDMI_720p60:
+                    hdmi_wr_reg(TX_SYS1_AFE_TEST, 0x7d);    //0x17
+                    hdmi_wr_reg(TX_CORE_CALIB_VALUE,0x4);   //0xf7
+                    hdmi_wr_reg(TX_SYS1_AFE_RESET, 0x2);    //0x16
+                    hdmi_wr_reg(TX_SYS1_BANDGAP, 0x0);      //0x14
+                    hdmi_wr_reg(TX_SYS1_BIAS, 0x3);         //0x15
+                    break;
+                case HDMI_1080p60:
+                    hdmi_wr_reg(TX_SYS1_AFE_TEST, 0x7d);    //0x17
+                    hdmi_wr_reg(TX_CORE_CALIB_VALUE,0xd);   //0xf7
+                    hdmi_wr_reg(TX_SYS1_AFE_RESET, 0x3);    //0x16
+                    hdmi_wr_reg(TX_SYS1_BANDGAP, 0x1);      //0x14
+                    hdmi_wr_reg(TX_SYS1_BIAS, 0x3);         //0x15
+                    break;
+                default:
+                    break;
+            }
 #ifdef MORE_LOW_P
             hdmi_wr_reg(0x010, 0x0);
             hdmi_wr_reg(0x01a, 0x3);
@@ -1892,13 +1960,9 @@ static void hdmitx_set_pll(Hdmi_tx_video_para_t *param)
     HDMI_DEBUG();
     printk("param->VIC:%d\n", param->VIC);
     
-    Wr_reg_bits(VPU_HDMI_SETTING, 2, 0, 2);     //[ 1: 0] src_sel. 0=Disable output to HDMI; 1=Select VENC_I output to HDMI; 2=Select VENC_P output.
-//    Wr_reg_bits(HHI_HDMI_CLK_CNTL, 0, 16, 4);   //0x1073, cts_hdmi_tx_pixel_clk 0:clk_div1
-//    Wr(HHI_HDMI_PLL_CNTL1, 0x40003);             //0x104f, Fixed.
-//    Wr(HHI_HDMI_PLL_CNTL2, 0x40e8);             //0x1058, Fixed.
-//    Wr(HHI_HDMI_AFC_CNTL, 0xc3);                //0x107f, Fixed.
-//    Wr(HHI_VID_DIVIDER_CNTL, 0x10043);          //0x1066, set vid_pll_clk = HPLL_CLK_OUT_DIG / 5
-//    Wr_reg_bits(HHI_VID_CLK_DIV, 1, 0, 7);      //0x1059
+//    Wr_reg_bits(VPU_HDMI_SETTING, 2, 0, 2);     //[ 1: 0] src_sel. 0=Disable output to HDMI; 1=Select VENC_I output to HDMI; 2=Select VENC_P output.
+
+    Wr(HHI_VID_DIVIDER_CNTL, 0x10843);          //0x1066, set vid_pll_clk = HPLL_CLK_OUT_DIG / 5
     Wr_reg_bits(HHI_VID_CLK_CNTL, 0, 16, 3);    //0x105f    0: vid_pll_clk
     Wr_reg_bits(HHI_VID_CLK_CNTL, 0x1f, 0, 5);     //0x105f    1: DIV1_EN
     Wr_reg_bits(HHI_VID_CLK_CNTL, 1, 19, 1);    //0x105f    1: CLK_EN0
@@ -1916,14 +1980,6 @@ static void hdmitx_set_pll(Hdmi_tx_video_para_t *param)
             Wr(HHI_HDMI_PLL_CNTL, (3<<18)|(2<<10)|(90<<0));    //27MHz=24MHz*45/4/10
             Wr(HHI_VID_CLK_DIV, 3);      //0x1059
             Wr_reg_bits(HHI_HDMI_CLK_CNTL, 1, 16, 4);   //cts_hdmi_tx_pixel_clk
-//            switch(param->color_depth)
-//            {//TBD
-//                COLOR_30BIT:
-//                COLOR_36BIT:
-//                COLOR_48BIT:
-//                default:    //COLOR_24BIT
-//                    break;
-//            }
             break;
         case HDMI_1080p30:
         case HDMI_1080p24:
@@ -1945,173 +2001,6 @@ static void hdmitx_set_pll(Hdmi_tx_video_para_t *param)
         default:
             break;
     }
-
-//#if 1
-//    Wr(HHI_HDMI_CLK_CNTL, 0x303);
-//    Wr(HHI_HDMI_PLL_CNTL1, 0x40e8);
-//    Wr(HHI_HDMI_AFC_CNTL, 0xc3);
-//    Wr(HHI_VID_DIVIDER_CNTL, 0x10803);
-//    switch(param->VIC)
-//    {
-//        case HDMI_480p60:
-//        case HDMI_480p60_16x9:
-//            Wr(HHI_HDMI_PLL_CNTL, (24<<10)|(270<<0));    //27MHz=24MHz*270/24/10
-//            break;
-//        case HDMI_720p60:
-//        case HDMI_1080i60:
-//            Wr(HHI_HDMI_PLL_CNTL, (12<<10)|(371<<0));    //74.2MHz=24MHz*371/12/10
-//            break;
-//        case HDMI_1080p60:
-//            Wr(HHI_HDMI_PLL_CNTL, (6<<10)|(371<<0));    //148.4MHz=24MHz*371/6/10
-//            break;
-//        default:
-//            break;
-//    }
-//#else
-//#ifndef AML_A3    
-//    if((param->VIC==HDMI_480p60)||(param->VIC==HDMI_480p60_16x9)
-//        ||(param->VIC==HDMI_576p50)||(param->VIC==HDMI_576p50_16x9)){
-//        if((hdmi_chip_type == HDMI_M1A)||(hdmi_pll_mode == 1)){
-//            Wr(HHI_HDMI_PLL_CNTL, 0x03040905); // For xtal=24MHz: PREDIV=5, POSTDIV=9, N=4, 0D=3, to get phy_clk=270MHz, tmds_clk=27MHz.
-//        }
-//        else{
-//            if(param->color_depth==COLOR_36BIT){
-//                Wr(HHI_HDMI_PLL_CNTL, 0x03040503); 
-//            }
-//            else if(param->color_depth==COLOR_30BIT){
-//                Wr(HHI_HDMI_PLL_CNTL, 0x0310050a); 
-//            }
-//            else{
-//                Wr(HHI_HDMI_PLL_CNTL, 0x03040502); //normal
-//            }
-//        }
-//    }
-//    else if((param->VIC==HDMI_480i60)||(param->VIC==HDMI_480i60_16x9)
-//        ||(param->VIC==HDMI_576i50)||(param->VIC==HDMI_576i50_16x9)){
-//        if((hdmi_chip_type == HDMI_M1A)||(hdmi_pll_mode == 1)){
-//            Wr(HHI_HDMI_PLL_CNTL, 0x03040905); // For xtal=24MHz: PREDIV=5, POSTDIV=9, N=4, 0D=3, to get phy_clk=270MHz, tmds_clk=27MHz.
-//        }
-//        else{
-//            if(param->color_depth==COLOR_36BIT){
-//                Wr(HHI_HDMI_PLL_CNTL, 0x03040503); 
-//            }
-//            else if(param->color_depth==COLOR_30BIT){
-//                Wr(HHI_HDMI_PLL_CNTL, 0x0310050a); 
-//            }
-//            else{
-//                Wr(HHI_HDMI_PLL_CNTL, 0x03040502); 
-//            }
-//        }
-//    }            
-//    else if(param->VIC==HDMI_1080p30){
-//        if((hdmi_chip_type == HDMI_M1A)||(hdmi_pll_mode == 1)){
-//            Wr(HHI_HDMI_PLL_CNTL, 0x0110210f);
-//            Wr(HHI_VID_CLK_DIV,3);
-//            //Wr(HHI_AUD_PLL_CNTL, 0x4863);
-//        }
-//        else{
-//            if(param->color_depth==COLOR_36BIT){
-//                Wr(HHI_HDMI_PLL_CNTL, 0x00040503); 
-//            }
-//            else if(param->color_depth==COLOR_30BIT){
-//                Wr(HHI_HDMI_PLL_CNTL, 0x0110050a); //30 bit
-//            }
-//            else{
-//                Wr(HHI_HDMI_PLL_CNTL, 0x01040502); //24 bit
-//            }
-//            Wr(HHI_VID_PLL_CNTL, 0x00190863); //0x00140863
-//            //Wr(HHI_VID_PLL_CNTL, 0x00190ead);
-//        }
-//    }
-//    else if(param->VIC==HDMI_1080p24){
-//        if((hdmi_chip_type == HDMI_M1A)||(hdmi_pll_mode == 1)){
-//            Wr(HHI_HDMI_PLL_CNTL, 0x0102030f);
-//            Wr(HHI_VID_CLK_DIV,4);
-//        }
-//        else{
-//            if(param->color_depth==COLOR_36BIT){
-//                Wr(HHI_HDMI_PLL_CNTL, 0x01040503); 
-//            }
-//            else if(param->color_depth==COLOR_30BIT){
-//                Wr(HHI_HDMI_PLL_CNTL, 0x0110050a); //30 bit
-//            }
-//            else{
-//                Wr(HHI_HDMI_PLL_CNTL, 0x01040502); //24 bit
-//            }
-//            Wr(HHI_VID_PLL_CNTL, 0x00190a63); //0x00140863
-//        }
-//    }
-//    else if((param->VIC==HDMI_1080p60)||(param->VIC==HDMI_1080p50)){
-//        if((hdmi_chip_type == HDMI_M1A)||(hdmi_pll_mode == 1)){
-//            Wr(HHI_HDMI_PLL_CNTL, 0x0008210f); // For 24MHz xtal: PREDIV=15, POSTDIV=33, N=8, 0D=0, to get phy_clk=1485MHz, tmds_clk=148.5MHz.
-//        }
-//        else{
-//            if(param->color_depth==COLOR_36BIT){
-//                Wr(HHI_HDMI_PLL_CNTL, 0x0010050c); 
-//            }
-//            else if(param->color_depth==COLOR_30BIT){
-//                Wr(HHI_HDMI_PLL_CNTL, 0x0010050a); 
-//            }
-//            else{
-//                Wr(HHI_HDMI_PLL_CNTL, 0x00040502); 
-//            }
-//        }
-//    }
-//    else if((param->VIC==HDMI_720p60)||(param->VIC==HDMI_720p50)){
-//        if((hdmi_chip_type == HDMI_M1A)||(hdmi_pll_mode == 1)){
-//#ifdef DOUBLE_CLK_720P_1080I
-//            Wr(HHI_HDMI_PLL_CNTL, 0x0008210f); // For 24MHz xtal: PREDIV=15, POSTDIV=33, N=8, 0D=0, to get phy_clk=1485MHz, tmds_clk=148.5MHz.
-//#else
-//            Wr(HHI_HDMI_PLL_CNTL, 0x0110210f); // For 24MHz xtal: PREDIV=15, POSTDIV=33, N=8, 0D=0, to get phy_clk=1485MHz, tmds_clk=148.5MHz.
-//#endif            
-//        }
-//        else{
-//#ifdef DOUBLE_CLK_720P_1080I
-//            Wr(HHI_HDMI_PLL_CNTL, 0x00040502); 
-//#else            
-//            if(param->color_depth==COLOR_36BIT){
-//                Wr(HHI_HDMI_PLL_CNTL, 0x00080503); 
-//            }
-//            else if(param->color_depth==COLOR_30BIT){
-//                Wr(HHI_HDMI_PLL_CNTL, 0x01100505); 
-//            }
-//            else{
-//                Wr(HHI_HDMI_PLL_CNTL, 0x01080502);
-//            }
-//#endif            
-//        }
-//    }   
-//    else if((param->VIC==HDMI_1080i60)||(param->VIC==HDMI_1080i50)){
-//        //Wr_reg_bits (HHI_VID_CLK_CNTL, 1, 4, 2);  // Select vclk1=54Mhz as HDMI TX pixel_clk to achieve 4-time pixel repeatition
-//        Wr_reg_bits (HHI_VID_CLK_CNTL, 0, 4, 2); 
-//        // set am_analog_top.u_video_pll.OD and XD to make HDMI PLL CKIN the same as vclk2/2
-//        //Wr_reg_bits (HHI_VID_PLL_CNTL, 1, 16, 1);  // OD: 0=no div, 1=div by 2
-//        //Wr_reg_bits (HHI_VID_PLL_CNTL, 4, 20, 9);  // XD: div by n
-//        if((hdmi_chip_type == HDMI_M1A)||(hdmi_pll_mode == 1)){
-//#ifdef DOUBLE_CLK_720P_1080I
-//            Wr(HHI_HDMI_PLL_CNTL, 0x0008210f); // For 24MHz xtal: PREDIV=15, POSTDIV=33, N=8, 0D=0, to get phy_clk=1485MHz, tmds_clk=148.5MHz.
-//#else
-//            Wr(HHI_HDMI_PLL_CNTL, 0x0110210f); // For 24MHz xtal: PREDIV=15, POSTDIV=33, N=8, 0D=0, to get phy_clk=1485MHz, tmds_clk=148.5MHz.
-//#endif            
-//        }
-//        else{
-//#ifdef DOUBLE_CLK_720P_1080I
-//            Wr(HHI_HDMI_PLL_CNTL, 0x00040502); 
-//#else            
-//            if(param->color_depth==COLOR_36BIT){
-//                Wr(HHI_HDMI_PLL_CNTL, 0x00080503); 
-//            }
-//            else if(param->color_depth==COLOR_30BIT){
-//                Wr(HHI_HDMI_PLL_CNTL, 0x01100505); 
-//            }
-//            else{
-//                Wr(HHI_HDMI_PLL_CNTL, 0x01080502); 
-//            }
-//#endif            
-//        }
-//    } 
-//#endif
-//#endif
 }
 
 static int hdmitx_m3_set_dispmode(Hdmi_tx_video_para_t *param)
@@ -2626,22 +2515,40 @@ static void hdmitx_m3_cntl(hdmitx_dev_t* hdmitx_device, int cmd, unsigned argv)
     else if(cmd == HDMITX_HWCMD_MUX_HPD){
          mux_hpd();
     } 
+// For test only. 
     else if(cmd == HDMITX_HWCMD_TURNOFF_HDMIHW){
         int unmux_hpd_flag = argv;
-        WRITE_MPEG_REG(VENC_DVI_SETTING, READ_MPEG_REG(VENC_DVI_SETTING)&(~(1<<13))); //bit 13 is used by HDMI only
-        digital_clk_on(4); //enable sys clk so that hdmi registers can be accessed when calling phy_pll_off/digit_clk_off
+//        WRITE_MPEG_REG(VENC_DVI_SETTING, READ_MPEG_REG(VENC_DVI_SETTING)&(~(1<<13))); //bit 13 is used by HDMI only
+//        digital_clk_on(4); //enable sys clk so that hdmi registers can be accessed when calling phy_pll_off/digit_clk_off
         if(unmux_hpd_flag){
             hdmi_print(1,"power off hdmi, unmux hpd\n");
-            phy_pll_off();
-            digital_clk_off(7); //off sys clk
-            unmux_hpd();
+//            phy_pll_off();
+//            digital_clk_off(7); //off sys clk
+//            unmux_hpd();
         }
         else{
             hdmi_print(1,"power off hdmi\n");
-            phy_pll_off();
-            digital_clk_off(3); //do not off sys clk
+//            phy_pll_off();
+//            digital_clk_off(3); //do not off sys clk
         }
     }
+    
+//    else if(cmd == HDMITX_HWCMD_TURNOFF_HDMIHW){
+//        int unmux_hpd_flag = argv;
+//        WRITE_MPEG_REG(VENC_DVI_SETTING, READ_MPEG_REG(VENC_DVI_SETTING)&(~(1<<13))); //bit 13 is used by HDMI only
+//        digital_clk_on(4); //enable sys clk so that hdmi registers can be accessed when calling phy_pll_off/digit_clk_off
+//        if(unmux_hpd_flag){
+//            hdmi_print(1,"power off hdmi, unmux hpd\n");
+//            phy_pll_off();
+//            digital_clk_off(7); //off sys clk
+//            unmux_hpd();
+//        }
+//        else{
+//            hdmi_print(1,"power off hdmi\n");
+//            phy_pll_off();
+//            digital_clk_off(3); //do not off sys clk
+//        }
+//    }
                 
 }
 #if 0
@@ -2703,6 +2610,622 @@ static void hdmitx_print_info(hdmitx_dev_t* hdmitx_device, int printk_flag)
     hdmi_print(printk_flag, "------------------\n");
 }
 
+#define VPP1_BASE_ADDR                 0x1d00
+#define VPP2_BASE_ADDR                 0x1900
+#define VPP_SIZE                       0xAB
+
+static void vpp_copy(void)
+{
+    unsigned int offset;
+    for(offset = 0; offset < VPP_SIZE; offset++)
+    {
+        WRITE_MPEG_REG((VPP2_BASE_ADDR+offset), READ_MPEG_REG(VPP1_BASE_ADDR+offset));
+    }
+}
+
+static void vpp_check(void)
+{
+    unsigned int offset;
+    unsigned int val1, val2;
+    for(offset = 0; offset < VPP_SIZE; offset++)
+    {
+        val1 = READ_MPEG_REG(VPP1_BASE_ADDR+offset);
+        val2 = READ_MPEG_REG(VPP2_BASE_ADDR+offset);
+        if(val1 != val2)
+            printk("VPP1 [%x]=%x    VPP2 [%x]=%x\n", VPP1_BASE_ADDR+offset, val1, VPP2_BASE_ADDR+offset, val2);
+    }
+}
+static void vpp_show(unsigned int no)
+{
+    unsigned int offset;
+    unsigned int addr;
+    if (no == 1){
+        addr = VPP1_BASE_ADDR;
+    }
+    if (no == 2){
+        addr = VPP2_BASE_ADDR;
+    }
+    for(offset = 0; offset < VPP_SIZE; offset++){
+        printk("VPP%d [%x]=%x\n", no, addr+offset, READ_MPEG_REG(addr+offset));
+    }
+}
+
+typedef enum {
+    F2V_IT2IT = 0,
+    F2V_IB2IB,
+    F2V_IT2IB,
+    F2V_IB2IT,
+    F2V_P2IT, 
+    F2V_P2IB, 
+    F2V_IT2P, 
+    F2V_IB2P, 
+    F2V_P2P,
+    F2V_TYPE_MAX
+} f2v_vphase_type_t;   /* frame to video conversion type */
+
+typedef struct {
+    unsigned char   rcv_num; //0~15
+    unsigned char   rpt_num; // 0~3 
+    unsigned short  phase;
+//    signed   char   repeat_skip_chroma;
+//    unsigned char   phase_chroma;
+} f2v_vphase_t;
+
+unsigned int filt_coef0[] =   //bicubic
+	{
+	0x00800000,
+	0x007f0100,
+	0xff7f0200,
+	0xfe7f0300,
+	0xfd7e0500,
+	0xfc7e0600,
+	0xfb7d0800,
+	0xfb7c0900,
+	0xfa7b0b00,
+	0xfa7a0dff,
+	0xf9790fff,
+	0xf97711ff,
+	0xf87613ff,
+	0xf87416fe,
+	0xf87218fe,
+	0xf8701afe,
+	0xf76f1dfd,
+	0xf76d1ffd,
+	0xf76b21fd,
+	0xf76824fd,
+	0xf76627fc,
+	0xf76429fc,
+	0xf7612cfc,
+	0xf75f2ffb,
+	0xf75d31fb,
+	0xf75a34fb,
+	0xf75837fa,
+	0xf7553afa,
+	0xf8523cfa,
+	0xf8503ff9,
+	0xf84d42f9,
+	0xf84a45f9,
+	0xf84848f8
+	};
+
+unsigned int filt_coef1[] =  //2 point bilinear
+	{
+	0x00800000,
+	0x007e0200,
+	0x007c0400,
+	0x007a0600,
+	0x00780800,
+	0x00760a00,
+	0x00740c00,
+	0x00720e00,
+	0x00701000,
+	0x006e1200,
+	0x006c1400,
+	0x006a1600,
+	0x00681800,
+	0x00661a00,
+	0x00641c00,
+	0x00621e00,
+	0x00602000,
+	0x005e2200,
+	0x005c2400,
+	0x005a2600,
+	0x00582800,
+	0x00562a00,
+	0x00542c00,
+	0x00522e00,
+	0x00503000,
+	0x004e3200,
+	0x004c3400,
+	0x004a3600,
+	0x00483800,
+	0x00463a00,
+	0x00443c00,
+	0x00423e00,
+	0x00404000
+	};
+
+unsigned int filt_coef2[] =  //2 point bilinear, bank_length == 2
+	{
+	0x80000000,
+	0x7e020000,
+	0x7c040000,
+	0x7a060000,
+	0x78080000,
+	0x760a0000,
+	0x740c0000,
+	0x720e0000,
+	0x70100000,
+	0x6e120000,
+	0x6c140000,
+	0x6a160000,
+	0x68180000,
+	0x661a0000,
+	0x641c0000,
+	0x621e0000,
+	0x60200000,
+	0x5e220000,
+	0x5c240000,
+	0x5a260000,
+	0x58280000,
+	0x562a0000,
+	0x542c0000,
+	0x522e0000,
+	0x50300000,
+	0x4e320000,
+	0x4c340000,
+	0x4a360000,
+	0x48380000,
+	0x463a0000,
+	0x443c0000,
+	0x423e0000,
+	0x40400000
+	};
+
+
+#define ZOOM_BITS       20
+#define PHASE_BITS      16
+
+static const unsigned char f2v_420_in_pos_luma[F2V_TYPE_MAX]   = {0,2,0,2,0,0,0,2,0};
+//static const unsigned char f2v_420_in_pos_chroma[F2V_TYPE_MAX] = {1,5,1,5,2,2,1,5,2};
+static const unsigned char f2v_420_out_pos[F2V_TYPE_MAX]       = {0,2,2,0,0,2,0,0,0};
+
+static void f2v_get_vertical_phase(unsigned zoom_ratio, f2v_vphase_type_t type, unsigned char bank_length,
+                            f2v_vphase_t *vphase)
+{
+    int offset_in, offset_out;
+    
+    /* luma */
+    offset_in = f2v_420_in_pos_luma[type] << PHASE_BITS;
+    offset_out = (f2v_420_out_pos[type] * zoom_ratio) >> (ZOOM_BITS - PHASE_BITS);
+#if 0
+    Wr(0xfe0, offset_in);
+    Wr(0xfe1, offset_out);
+#endif
+    
+    vphase->rcv_num = bank_length;
+    if (bank_length == 4 || bank_length == 3)
+       vphase->rpt_num = 1;     
+    else
+       vphase->rpt_num = 0;     
+
+    if (offset_in > offset_out) {
+        vphase->rpt_num = vphase->rpt_num + 1;     
+        vphase->phase = 
+            ((4 << PHASE_BITS) + offset_out - offset_in) >> 2;
+    }
+    else {
+        while ((offset_in + (4 << PHASE_BITS)) <= offset_out) {
+            if (vphase->rpt_num == 1)
+               vphase->rpt_num = 0;
+            else
+               vphase->rcv_num++;            
+            offset_in += 4 << PHASE_BITS;
+#if 0
+            Wr(0xfe1, offset_in);
+#endif
+        }
+        vphase->phase = (offset_out - offset_in) >> 2;
+#if 0
+        Wr(0xfe2, vphase->phase);
+#endif
+    }
+}
+
+
+static int vpp2_set_display(
+                    f2v_vphase_type_t top_conv_type, 
+                    f2v_vphase_type_t bot_conv_type, 
+                    unsigned char vert_bank_length,
+                    int dst_horz_start, int dst_vert_start,
+                    int src_w, int src_h, int dst_w, int dst_h,
+                    int prehsc_en, int prevsc_en,
+                    int prebld_vd1_en,
+                    int postbld_vd1_en,
+                    int postbld_en,
+                    int prebld_en,
+                    int postbld_w,
+                    int prebld_w,
+
+                    int osd1_en, 
+                    int osd1_sel,   //0: preblend   1: postblend
+                    int osd2_en,
+                    int osd2_sel,   //0: preblend   1: postblend    
+                    int osd2_foreground
+                    ) 
+{
+
+   int i;
+   int vert_phase_step, horz_phase_step;
+   int hsc_en, vsc_en;
+   int p_src_w, p_src_h;
+   f2v_vphase_t vphase;
+   unsigned char top_rcv_num, bot_rcv_num;
+   unsigned char top_rpt_num, bot_rpt_num;
+   unsigned short top_vphase, bot_vphase;
+   unsigned char is_frame;
+   int src_w_tmp;
+
+   is_frame = (top_conv_type == F2V_IT2P) || (top_conv_type == F2V_IB2P) ||
+              (top_conv_type == F2V_P2P);
+   
+
+   vsc_en = 1;
+   hsc_en = 1;
+
+   if (prebld_en) {
+        Wr(VPP2_PREBLEND_VD1_H_START_END, (0 << 16) | (src_w - 1)); 
+        Wr(VPP2_PREBLEND_VD1_V_START_END, (0 << 16) | (src_h - 1)); 
+        Wr(VPP2_PREBLEND_H_SIZE, prebld_w);
+   }
+
+   src_w_tmp = prebld_en ? prebld_w: src_w;
+   p_src_w =  (prehsc_en ? ((src_w_tmp+1) >>1) : src_w_tmp); 
+   p_src_h = prevsc_en ? ((src_h+1) >>1) : src_h; 
+
+    //write vert filter coefs
+    Wr (VPP2_SCALE_COEF_IDX, 0x0000);
+	for (i = 0; i < 33; i++)
+	{
+        if (vert_bank_length == 2)
+	        Wr(VPP2_SCALE_COEF, filt_coef2[i]); //bilinear
+        else
+	        Wr(VPP2_SCALE_COEF, filt_coef0[i]); //bicubic
+	}
+
+    //write horz filter coefs
+    Wr (VPP2_SCALE_COEF_IDX, 0x0100);
+	for (i = 0; i < 33; i++)
+	{
+	    Wr(VPP2_SCALE_COEF, filt_coef0[i]); //bicubic
+	}
+
+
+    vert_phase_step = (p_src_h << 20) / dst_h;
+    horz_phase_step = (p_src_w << 20) / dst_w;
+
+
+    if (is_frame) {
+       f2v_get_vertical_phase(vert_phase_step, top_conv_type, vert_bank_length, &vphase);
+       top_rcv_num = vphase.rcv_num;
+       top_rpt_num = vphase.rpt_num;
+       top_vphase = vphase.phase;
+
+       bot_rcv_num = 0;
+       bot_rpt_num = 0;
+       bot_vphase = 0;
+    }
+    else {
+       f2v_get_vertical_phase(vert_phase_step, top_conv_type, vert_bank_length, &vphase);
+       top_rcv_num = vphase.rcv_num;
+       top_rpt_num = vphase.rpt_num;
+       top_vphase = vphase.phase;
+
+       f2v_get_vertical_phase(vert_phase_step, bot_conv_type, vert_bank_length, &vphase);
+       bot_rcv_num = vphase.rcv_num;
+       bot_rpt_num = vphase.rpt_num;
+       bot_vphase = vphase.phase;
+    }
+    
+    
+    vert_phase_step = (vert_phase_step << 4);
+    horz_phase_step = (horz_phase_step << 4);
+   
+
+    Wr(VPP2_LINE_IN_LENGTH, src_w_tmp);
+    Wr(VPP2_PIC_IN_HEIGHT, src_h);
+
+    Wr(VPP2_VSC_REGION12_STARTP,  0);
+    Wr(VPP2_VSC_REGION34_STARTP, ((dst_h << 16) | dst_h));
+    Wr(VPP2_VSC_REGION4_ENDP, dst_h - 1);
+
+    Wr(VPP2_VSC_START_PHASE_STEP, vert_phase_step);
+    Wr(VPP2_VSC_REGION0_PHASE_SLOPE, 0);
+    Wr(VPP2_VSC_REGION1_PHASE_SLOPE, 0);
+    Wr(VPP2_VSC_REGION3_PHASE_SLOPE, 0);
+    Wr(VPP2_VSC_REGION4_PHASE_SLOPE, 0);
+
+    Wr(VPP2_VSC_PHASE_CTRL, ((!is_frame) << 16) |
+                            (0 << 15) |
+                            (bot_rpt_num << 13) |
+                            (bot_rcv_num << 8) |
+                            (0 << 7) |
+                            (top_rpt_num << 5) |
+                            (top_rcv_num) 
+                            );
+    Wr(VPP2_VSC_INI_PHASE, (bot_vphase << 16) | top_vphase);
+
+    Wr(VPP2_HSC_REGION12_STARTP, 0);
+    Wr(VPP2_HSC_REGION34_STARTP, (dst_w << 16) | dst_w);
+    Wr(VPP2_HSC_REGION4_ENDP, dst_w - 1);
+
+    Wr(VPP2_HSC_START_PHASE_STEP, horz_phase_step);
+    Wr(VPP2_HSC_REGION0_PHASE_SLOPE, 0);
+    Wr(VPP2_HSC_REGION1_PHASE_SLOPE, 0);
+    Wr(VPP2_HSC_REGION3_PHASE_SLOPE, 0);
+    Wr(VPP2_HSC_REGION4_PHASE_SLOPE, 0);
+
+    Wr(VPP2_HSC_PHASE_CTRL,(1 << 21) |
+                           (4 << 16) | 
+                           0
+                           );
+
+    Wr(VPP2_SC_MISC,(prehsc_en << 20) | //prehsc_en
+                    (prevsc_en << 19) | //prevsc_en 
+                    (vsc_en << 18) | //vsc_en 
+                    (hsc_en << 17) | //hsc_en 
+                    (1 << 16) | //sc_top_en 
+                    (1 << 15) | //vd1 sc out enable
+                    (0 << 12) | //horz nonlinear 4region enable
+                    (4 << 8)  | //horz scaler bank length
+                    (0 << 5)  | //vert scaler phase field mode enable
+                    (0 << 4)  | //vert nonlinear 4region enable
+                    (vert_bank_length << 0)    //vert scaler bank length
+                    );
+
+    
+
+    Wr(VPP2_POSTBLEND_VD1_H_START_END, (dst_horz_start << 16) | (dst_horz_start + dst_w - 1));
+    Wr(VPP2_POSTBLEND_VD1_V_START_END, (dst_vert_start << 16) | (dst_vert_start + dst_h - 1));
+    Wr(VPP2_POSTBLEND_H_SIZE, postbld_w);
+
+    Wr_reg_bits(VPP2_MISC,           ((osd2_en & (~osd2_sel)) << 17) | 
+                            ((osd1_en & (~osd1_sel)) << 16) | 
+                            (prebld_vd1_en << 14) | 
+                            ((osd2_en & osd2_sel) << 13) | 
+                            ((osd1_en & osd1_sel) << 12) | 
+                            (postbld_vd1_en << 10) | 
+                            (postbld_en << 7) | 
+                            (prebld_en << 6) |
+                            (osd2_foreground << 5) |
+                            (osd2_foreground << 4) | 
+                            (0 << 3) |
+                            (0 << 2) |
+                            (0 << 1) |
+                            0,
+                            0, 27
+      );
+
+    return 0;
+
+} /* vpp2_set_display */
+
+#define   set_rmem_if0_separate_simple  set_vd1_if0_separate_simple
+static void    set_vd1_if0_separate_simple(
+        unsigned long   luma_x_start,
+        unsigned long   luma_x_end,
+        unsigned long   luma_y_start,
+        unsigned long   luma_y_end,
+        unsigned long   chroma_x_start,
+        unsigned long   chroma_x_end,
+        unsigned long   chroma_y_start,
+        unsigned long   chroma_y_end,
+        unsigned long   canvas_addr0,
+        unsigned long   canvas_addr1,
+        unsigned long   canvas_addr2
+)
+{
+    // General register setup
+    unsigned long   bytes_per_pixel = 0;    // 1Byte per  
+    unsigned long   burst_size_cr   = 0;    // unused
+    unsigned long   burst_size_cb   = 0;    // unused
+    unsigned long   burst_size_y    = 3;    // 64x64 burst size
+    unsigned long   st_separate_en  = 1;
+
+    // ----------------------
+    // General register
+    // ----------------------
+
+    Wr(VD1_IF0_GEN_REG,         (4 << 19)               |   //hold lines
+                                (1 << 18)               |   // push pixel value
+                                (0 << 16)               |
+                                (bytes_per_pixel << 14) | 
+                                (burst_size_cr << 12)   |
+                                (burst_size_cb << 10)   |
+                                (burst_size_y << 8)     |
+                                (1 << 6)                |   // TODO: cntl_chro_rpt_lastl_ctrl
+                                (st_separate_en << 1)   |
+                                (0 << 0)                    // cntl_enable (don't enable just yet)
+      );
+                            
+    // ----------------------
+    // Canvas
+    // ----------------------
+    Wr(VD1_IF0_CANVAS0,         (canvas_addr2 << 16)     |   // cntl_canvas0_addr2
+                                (canvas_addr1 << 8)      |   // cntl_canvas0_addr1
+                                (canvas_addr0 << 0)          // cntl_canvas0_addr0
+    );
+
+    Wr(VD1_IF0_CANVAS1,         (0 << 16)               |   // cntl_canvas1_addr2
+                                (0 << 8)                |   // cntl_canvas1_addr1
+                                (0 << 0)                    // cntl_canvas1_addr0
+    );
+
+    // ----------------------
+    // Picture 0 X/Y start,end
+    // ----------------------
+    Wr(VD1_IF0_LUMA_X0,         (luma_x_end << 16)           |   // cntl_luma_x_end0
+                                (luma_x_start << 0)              // cntl_luma_x_start0
+    );
+    Wr(VD1_IF0_LUMA_Y0,         (luma_y_end << 16)           |   // cntl_luma_y_end0
+                                (luma_y_start << 0)              // cntl_luma_y_start0
+    );
+    Wr(VD1_IF0_CHROMA_X0,     (chroma_x_end << 16)      |
+                              (chroma_x_start << 0)
+    );                           
+    Wr(VD1_IF0_CHROMA_Y0,     (chroma_y_end << 16)      |
+                              (chroma_y_start << 0)
+    );                           
+
+    // ----------------------
+    // Picture 1 unused
+    // ----------------------
+    Wr(VD1_IF0_LUMA_X1,       0);                            // unused
+    Wr(VD1_IF0_LUMA_Y1,       0);                            // unused
+    Wr(VD1_IF0_CHROMA_X1,     0);                            // unused
+    Wr(VD1_IF0_CHROMA_Y1,     0);                            // unused
+
+    // ----------------------
+    // No Repeat or skip
+    // ----------------------
+    Wr(VD1_IF0_RPT_LOOP,        (0 << 24)               |   // cntl_chroma1_rpt_loop
+                                (0 << 16)               |   // cntl_luma1_rpt_loop
+                                (0 << 8)                |   // cntl_chroma0_rpt_loop
+                                (0 << 0)                    // cntl_luma0_rpt_loop
+    ); 
+
+    Wr(VD1_IF0_LUMA0_RPT_PAT,      0);                        // no skip /repeat
+    Wr(VD1_IF0_CHROMA0_RPT_PAT,    0);                        // unused
+    Wr(VD1_IF0_LUMA1_RPT_PAT,      0);                        // unused
+    Wr(VD1_IF0_CHROMA1_RPT_PAT,    0);                        // unused
+
+    Wr(VD1_IF0_LUMA_PSEL,          0);                        // unused only one picture 
+    Wr(VD1_IF0_CHROMA_PSEL,        0);                        // unused only one picture 
+
+
+    Wr(VD1_IF0_DUMMY_PIXEL,   0x00808000); 
+
+    // Enable VD1: vd_rmem_if0
+    Wr(VD1_IF0_GEN_REG,      Rd(VD1_IF0_GEN_REG) |  (1 << 0));                  // cntl_enable
+
+}
+
+static void set_vd1_fmt (int hfmt_en,
+                int hz_yc_ratio,        //2bit 
+                int hz_ini_phase,       //4bit
+                int vfmt_en,
+                int vt_yc_ratio,        //2bit
+                int vt_ini_phase,       //4bit
+                int y_length            
+                )
+{
+    int vt_phase_step = (16 >> vt_yc_ratio);  
+    int vfmt_w = (y_length >> hz_yc_ratio); 
+            
+    Wr(VIU_VD1_FMT_CTRL,      
+                              (0 << 28)       |     //hz rpt pixel        
+                              (hz_ini_phase << 24) |     //hz ini phase
+                              (0 << 23)         |        //repeat p0 enable
+                              (hz_yc_ratio << 21)  |     //hz yc ratio
+                              (hfmt_en << 20)   |        //hz enable
+                              (1 << 17)         |        //nrpt_phase0 enable
+                              (0 << 16)         |        //repeat l0 enable
+                              (0 << 12)         |        //skip line num
+                              (vt_ini_phase << 8)  |     //vt ini phase
+                              (vt_phase_step << 1) |     //vt phase step (3.4)
+                              (vfmt_en << 0)             //vt enable
+                              );
+                    
+
+    
+    Wr(VIU_VD1_FMT_W,        (y_length << 16)        |        //hz format width
+                             (vfmt_w << 0)                  //vt format width
+                             );
+        
+} /* set_vd1_fmt */
+
+static void vpp_test(void)
+{
+//    unsigned int data32;
+    unsigned char canvas_addr0, canvas_addr1, canvas_addr2;
+    int src_w, src_h, dst_w, dst_h;
+    int hz_yc_ratio, vt_yc_ratio;
+    unsigned char field_n = 0;
+    
+    if(field_n == 0) {
+        canvas_addr0 = 0;
+        canvas_addr1 = 1;
+        canvas_addr2 = 2;
+    }
+    else if(field_n == 1) {
+        canvas_addr0 = 3;
+        canvas_addr1 = 4;
+        canvas_addr2 = 5;
+    }
+    else if(field_n == 2) {
+        canvas_addr0 = 6;
+        canvas_addr1 = 7;
+        canvas_addr2 = 8;
+    }
+    else {
+        canvas_addr0 = 9;
+        canvas_addr1 = 10;
+        canvas_addr2 = 11;
+    }
+    field_n ++ ;
+    if (field_n == 4)
+        field_n = 0;
+           
+    src_w = 720; src_h = 480;
+    dst_w = 720; dst_h = 480;
+    hz_yc_ratio = 1;
+    vt_yc_ratio = 1;
+
+    set_rmem_if0_separate_simple(
+                                0,          
+                                src_w -1, 
+                                0,
+                                src_h -1,
+                                0,
+                                (src_w >> hz_yc_ratio) - 1,  //chroma_x_end,
+                                0,
+                                src_h - 1,         //chroma_y_end,
+                                canvas_addr0,
+                                canvas_addr1,
+                                canvas_addr2 
+                                );
+    
+    set_vd1_fmt (
+                1, //hfmt_en
+                hz_yc_ratio, //hz_yc_ratio
+                0, //hz_ini_phase
+                1, //vfmt_en
+                vt_yc_ratio, //vt_yc_ratio
+                0, //vt_ini_phase
+                src_w //y_length
+                );
+    vpp2_set_display(
+                    F2V_IT2IT,  //f2v_vphase_type_t top_conv_type,
+                    F2V_IB2IB,  //f2v_vphase_type_t bot_conv_type,
+                    4,         //unsigned char vert_bank_length,
+                    0, 0, //int dst_horz_start, int dst_vert_start,
+                    800, 600, //src_w, ACTIVE_LINES,    //int src_w, int src_h,
+                    800, 600, //src_w, ACTIVE_LINES,    //int dst_w, int dst_h,
+                    0, 0,   // int prehsc_en, int prevsc_en,
+                    1,      //int prebld_vd1_en,
+                    1,      //int postbld_vd1_en,
+                    1,      //int postbld_en,
+                    0,      //int prebld_en,
+                    800,  //src_w,  //int postbld_w,
+                    0,      //int prebld_w, 
+                    0,      //int osd1_en, 
+                    0,      //int osd1_sel,   //0: preblend   1: postblend
+                    0,      //int osd2_en,
+                    0,      //int osd2_sel,   //0: preblend   1: postblend    
+                    0       //int osd2_foreground
+                    ); 
+}
+
 static void hdmitx_m3_debug(hdmitx_dev_t* hdmitx_device, const char* buf)
 { 
 #ifndef AVOS
@@ -2718,6 +3241,59 @@ static void hdmitx_m3_debug(hdmitx_dev_t* hdmitx_device, const char* buf)
     if(strncmp(tmpbuf, "dumpreg", 7)==0){
         hdmitx_dump_tvenc_reg(hdmitx_device->cur_VIC, 1);
         return;
+    }
+    else if(strncmp(tmpbuf, "vppc", 4)==0){
+        if(*(tmpbuf+4) == 'p'){
+            printk("Copying VPP1 regs' values to VPP2 regs\n");
+            vpp_copy();
+            printk("Copying Done\n");
+        }
+        if(*(tmpbuf+4) == 'k'){
+            printk("Checking VPP1 regs's values and VPP2's\n");
+            vpp_check();
+            printk("Checking Done");
+        }
+        if(*(tmpbuf+4) == 's'){
+            value = *(tmpbuf+5) - '0';
+            if((value == 1) || (value == 2)){
+                printk("Reading VPP%d regs val\n", value);
+                vpp_show(value);
+                printk("Reading Done\n");
+            }
+        }
+        if(*(tmpbuf+4) == 't'){
+            vpp_test();
+        }
+    }
+    else if(strncmp(tmpbuf, "pllcalc", 7)==0){
+        adr=simple_strtoul(tmpbuf+7, NULL, 10);
+        if(adr == 0){
+            printk("CTS_VDAC_CLK1: %uMHz\n", clk_util_clk_msr(CTS_VDAC_CLK1));
+            printk("CTS_VDAC_CLK0: %uMHz\n", clk_util_clk_msr(CTS_VDAC_CLK0));
+            printk("CTS_A9_CLK: %uMHz\n", clk_util_clk_msr(CTS_A9_CLK));
+            printk("CTS_DDR_CLK: %uMHz\n", clk_util_clk_msr(CTS_DDR_CLK));
+            printk("LVDS_FIFO_CLK: %uMHz\n", clk_util_clk_msr(LVDS_FIFO_CLK));
+            printk("MOD_AUDIN_AMCLK_I: %uMHz\n", clk_util_clk_msr(MOD_AUDIN_AMCLK_I));
+            printk("CTS_AMCLK: %uMHz\n", clk_util_clk_msr(CTS_AMCLK));
+            printk("CLK81: %uMHz\n", clk_util_clk_msr(CLK81));
+            printk("AUD_PLL_CLK: %uMHz\n", clk_util_clk_msr(AUD_PLL_CLK));
+            printk("MISC_PLL_CLK: %uMHz\n", clk_util_clk_msr(MISC_PLL_CLK));
+            printk("DDR_PLL_CLK: %uMHz\n", clk_util_clk_msr(DDR_PLL_CLK));
+            printk("SYS_PLL_CLK: %uMHz\n", clk_util_clk_msr(SYS_PLL_CLK));
+            printk("CTS_HDMI_TX_PIXEL_CLK: %uMHz\n", clk_util_clk_msr(CTS_HDMI_TX_PIXEL_CLK));
+            printk("HDMI_CH3_TMDSCLK: %uMHz\n", clk_util_clk_msr(HDMI_CH3_TMDSCLK));
+            printk("CTS_HDMI_SYS_CLK: %uMHz\n", clk_util_clk_msr(CTS_HDMI_SYS_CLK));
+            printk("VID2_PLL_CLK: %uMHz\n", clk_util_clk_msr(VID2_PLL_CLK));
+            printk("VID_PLL_CLK: %uMHz\n", clk_util_clk_msr(VID_PLL_CLK));
+            printk("CTS_ENCI_CLK: %uMHz\n", clk_util_clk_msr(CTS_ENCI_CLK));
+            printk("CTS_ENCT_CLK: %uMHz\n", clk_util_clk_msr(CTS_ENCT_CLK));
+            printk("CTS_ENCL_CLK: %uMHz\n", clk_util_clk_msr(CTS_ENCL_CLK));
+            printk("CTS_ENCP_CLK: %uMHz\n", clk_util_clk_msr(CTS_ENCP_CLK));
+        }
+        else{
+            if(adr < 46)
+                printk("Other ID[%d] clk: %uMHz\n", adr, clk_util_clk_msr(adr));
+        }
     }
     else if(strncmp(tmpbuf, "cfgreg", 6)==0){
         adr=simple_strtoul(tmpbuf+6, NULL, 16);
@@ -2797,18 +3373,24 @@ static void hdmitx_m3_debug(hdmitx_dev_t* hdmitx_device, const char* buf)
         return;
     }
     else if(tmpbuf[0]=='w'){
+        unsigned read_back = 0;
         adr=simple_strtoul(tmpbuf+2, NULL, 16);
         value=simple_strtoul(buf+i+1, NULL, 16);
         if(buf[1]=='h'){
             hdmi_wr_reg(adr, value);
+            read_back = hdmi_rd_reg(adr);
         }
         else if(buf[1]=='c'){
             WRITE_MPEG_REG(adr, value);
+            read_back = READ_MPEG_REG(adr);
         }
         else if(buf[1]=='p'){
-            WRITE_APB_REG(adr, value);   
+            WRITE_APB_REG(adr, value);
+            read_back = READ_APB_REG(adr);
         }
         printk("write %x to %s reg[%x]\n",value,buf[1]=='p'?"APB":(buf[1]=='h'?"HDMI":"CBUS"), adr);
+        //Add read back function in order to judge writting is OK or NG.
+        printk("Read Back %s reg[%x]=%x\n",buf[1]=='p'?"APB":(buf[1]=='h'?"HDMI":"CBUS"), adr, read_back);
     }
     else if(tmpbuf[0]=='r'){
         adr=simple_strtoul(tmpbuf+2, NULL, 16);
