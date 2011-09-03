@@ -2329,15 +2329,11 @@ static int __init video_init(void)
     int r = 0;
     ulong clk = clk_get_rate(clk_get_sys("clk_misc_pll", NULL));
 
-
 #ifdef CONFIG_ARCH_MESON3
-    if ((clk == 800000000)) {
-        WRITE_CBUS_REG(HHI_MALI_CLK_CNTL,
-                       (2 << 9)    |   // select misc pll as clock source
+    WRITE_CBUS_REG(HHI_MALI_CLK_CNTL,
+                       (3 << 9)    |   // select ddr pll as clock source
                        (1 << 8)    |   // enable clock gating
-                       (3 << 0));      // Misc clk / 4
-    }
-
+                       (1 << 0));      // ddr clk / 2
 #else
     /* MALI clock settings */
     if ((clk <= 750000000) &&

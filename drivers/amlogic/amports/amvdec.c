@@ -207,9 +207,9 @@ void amvdec_start(void)
     sys_clk = clk_get_sys("clk81", NULL);
     if (sys_clk){
         sys_clk_rate = clk_get_rate(sys_clk);
-        clk_set_rate(sys_clk, 200000000);
+        clk_set_rate(sys_clk, 198000000);
         CLEAR_AOBUS_REG_MASK(AO_UART_CONTROL, (1 << 19) | 0xFFF);
-        WRITE_AOBUS_REG_BITS(AO_UART_CONTROL, ((200000000 / (115200 * 4)) - 1) & 0xfff, 0, 12);
+        WRITE_AOBUS_REG_BITS(AO_UART_CONTROL, ((198000000 / (115200 * 4)) - 1) & 0xfff, 0, 12);
     }
     /* additional cbus dummy register reading for timing control */
     READ_MPEG_REG(RESET0_REGISTER);
