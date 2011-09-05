@@ -390,6 +390,91 @@ static int act8942_write_i2c(struct i2c_client *client, u8 reg, u8 *val)
 	return err;
 }
 
+int get_vsel(void)	//Elvis Fool
+{
+	return 0;
+}
+void set_vsel(int level)	//Elvis Fool
+{
+	return;
+}
+
+/*
+ *	REGx/VSET[ ] Output Voltage Setting
+ *
+ *								REGx/VSET[5:3]
+ *	REGx/VSET[2:0]	000 	001 	010 	011 	100 	101 	110 	111
+ *			000 	0.600	0.800 	1.000 	1.200 	1.600 	2.000 	2.400 	3.200
+ *			001 	0.625	0.825 	1.025 	1.250 	1.650 	2.050 	2.500 	3.300
+ *			010 	0.650	0.850	1.050	1.300	1.700	2.100	2.600	3.400
+ *			011		0.675	0.875	1.075	1.350	1.750	2.150	2.700	3.500
+ *			100		0.700	0.900	1.100	1.400	1.800	2.200	2.800	3.600
+ *			101		0.725	0.925	1.125	1.450	1.850	2.250	2.900	3.700
+ *			110		0.750	0.950	1.150	1.500	1.900	2.300	3.000	3.800
+ *			111		0.775	0.975	1.175	1.550	1.950	2.350	3.100	3.900
+ *
+ */
+static const unsigned long vset_table[] = {
+	600,	625,	650,	675,	700,	725,	750,	775,
+	800,	825,	850,	875,	900,	925,	950,	975,
+	1000,	1025,	1050,	1075,	1100,	1125,	1150,	1175,
+	1200,	1250,	1300,	1350,	1400,	1450,	1500,	1550,
+	1600,	1650,	1700,	1750,	1800,	1850,	1900,	1950,
+	2000,	2050,	2100,	2150,	2200,	2250,	2300,	2350,
+	2400,	2500,	2600,	2700,	2800,	2900,	3000,	3100,
+	3200,	3300,	3400,	3500,	3600,	3700,	3800,	3900,
+};	//unit is mV
+
+static inline int get_vset_from_table(unsigned long voltage, uint8_t *val)
+{
+	uint8_t i;
+	if((voltage<600) || (voltage > 3900))
+	{
+		pr_err("Wrong VSET range! VSET range in [600:3900]mV\n");
+		return -EINVAL;
+	}
+	for(i=0; i++; i<ARRAY_SIZE(vset_table))
+	{
+		if(voltage == vset_table[i])
+		{
+			*val = i;
+			return 0;
+		}
+	}
+	pr_err("voltage invalid! Please notice vset_table!\n");
+	return -EINVAL;
+}
+
+static int set_reg_voltage(act8942_regx regx, unsigned long voltage)
+{
+	int ret = 0;
+	static u32 reg_addr[] = {ACT8942_REG1_ADDR, ACT8942_REG2_ADDR, ACT8942_REG3_ADDR,
+		ACT8942_REG4_ADDR, ACT8942_REG5_ADDR, ACT8942_REG6_ADDR, ACT8942_REG7_ADDR};
+	act8942_register_data_t register_data = { 0 };
+	if((regx<1) || (regx>7))
+	{
+		pr_err("Wrong REG number! REG number in [1:7]\n");
+		return -EINVAL;
+	}
+	get_vset_from_table(voltage, &register_data.d8);
+	ret = act8942_write_i2c(this_client, reg_addr[regx], &register_data.d8);
+}
+
+static int get_reg_voltage(act8942_regx regx, unsigned long *voltage)
+{
+	int ret = 0;
+	static u32 reg_addr[] = {ACT8942_REG1_ADDR, ACT8942_REG2_ADDR, ACT8942_REG3_ADDR,
+		ACT8942_REG4_ADDR, ACT8942_REG5_ADDR, ACT8942_REG6_ADDR, ACT8942_REG7_ADDR};
+	act8942_register_data_t register_data = { 0 };
+	if((regx<1) || (regx>7))
+	{
+		pr_err("Wrong REG number! REG number in [1:7]\n");
+		return -EINVAL;
+	}
+	ret = act8942_write_i2c(this_client, reg_addr[regx], &register_data.d8);
+	*voltage = vset_table[register_data.REGx_VSET];
+	return ret;
+}
 
 static inline void	act8942_dump(struct i2c_client *client)
 {
@@ -475,8 +560,31 @@ ssize_t act8942_info_show(struct class *class, struct class_attribute *attr, cha
 	return 0;
 }
 
+ssize_t act8942_test_show(struct class *class, struct class_attribute *attr, char *buf)
+{
+	unsigned long voltage;
+	if(get_reg_voltage(ACT8942_REG3, &voltage))
+	{
+		return -1;
+	}
+	pr_info("test:get %dmV\n", voltage);
+	return 0;
+}
+
+ssize_t act8942_test_store(struct class *class, struct class_attribute *attr, char *buf)
+{
+	unsigned long voltage = 3100;
+	if(set_reg_voltage(ACT8942_REG3, &voltage))
+	{
+		return -1;
+	}
+	pr_info("test:set %dmV\n", voltage);
+	return 0;
+}
+
 static struct class_attribute act8942_class_attrs[] = {
 	__ATTR(info, S_IRUGO | S_IWUSR, act8942_info_show, NULL),
+	__ATTR(info, S_IRUGO | S_IWUSR, act8942_test_show, act8942_test_store),
 	__ATTR_NULL
 };
 
