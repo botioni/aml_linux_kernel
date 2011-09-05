@@ -471,7 +471,7 @@ static int get_reg_voltage(act8942_regx regx, unsigned long *voltage)
 		pr_err("Wrong REG number! REG number in [1:7]\n");
 		return -EINVAL;
 	}
-	ret = act8942_write_i2c(this_client, reg_addr[regx], &register_data.d8);
+	ret = act8942_read_i2c(this_client, reg_addr[regx], &register_data.d8);
 	*voltage = vset_table[register_data.REGx_VSET];
 	return ret;
 }
@@ -584,7 +584,7 @@ ssize_t act8942_test_store(struct class *class, struct class_attribute *attr, ch
 
 static struct class_attribute act8942_class_attrs[] = {
 	__ATTR(info, S_IRUGO | S_IWUSR, act8942_info_show, NULL),
-	__ATTR(info, S_IRUGO | S_IWUSR, act8942_test_show, act8942_test_store),
+	__ATTR(test, S_IRUGO | S_IWUSR, act8942_test_show, act8942_test_store),
 	__ATTR_NULL
 };
 
