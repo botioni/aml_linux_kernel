@@ -31,6 +31,7 @@
 #include <linux/kernel.h>
 #include <linux/interrupt.h>
 #include <linux/logo/logo.h>
+#include <linux/delay.h>
 #include <mach/am_regs.h>
 #include <mach/clock.h>
 #include <asm/fiq.h>
@@ -317,7 +318,8 @@ static void vclk_set_lcd( int pll_sel, int pll_div_sel, int vclk_sel,
     } 
 
     // delay 2uS to allow the sync mux to switch over
-    WRITE_MPEG_REG( ISA_TIMERE, 0); while( READ_MPEG_REG(ISA_TIMERE) < 2 ) {}    
+    // WRITE_MPEG_REG( ISA_TIMERE, 0); while( READ_MPEG_REG(ISA_TIMERE) < 2 ) {}    
+    udelay(10);
 
 
     if(pll_sel){
@@ -339,7 +341,8 @@ static void vclk_set_lcd( int pll_sel, int pll_div_sel, int vclk_sel,
     else WRITE_MPEG_REG( HHI_VID_CLK_DIV, (READ_MPEG_REG(HHI_VID_CLK_DIV) & ~(0xFF << 0)) | (xd-1) );   // setup the XD divider value
 
     // delay 5uS
-    WRITE_MPEG_REG( ISA_TIMERE, 0); while( READ_MPEG_REG(ISA_TIMERE) < 5 ) {}    
+    // WRITE_MPEG_REG( ISA_TIMERE, 0); while( READ_MPEG_REG(ISA_TIMERE) < 5 ) {}    
+    udelay(10);
 
     if(vclk_sel) {
       if(pll_div_sel) WRITE_MPEG_REG_BITS (HHI_VIID_CLK_CNTL, 4, 16, 3);  // Bit[18:16] - v2_cntl_clk_in_sel
@@ -352,9 +355,10 @@ static void vclk_set_lcd( int pll_sel, int pll_div_sel, int vclk_sel,
       WRITE_MPEG_REG( HHI_VID_CLK_CNTL, READ_MPEG_REG(HHI_VID_CLK_CNTL) |  (1 << 19) );     //enable clk_div0 
       WRITE_MPEG_REG( HHI_VID_CLK_CNTL, READ_MPEG_REG(HHI_VID_CLK_CNTL) |  (1 << 20) );     //enable clk_div1 
     }
+    
     // delay 2uS
-
-    WRITE_MPEG_REG( ISA_TIMERE, 0); while( READ_MPEG_REG(ISA_TIMERE) < 2 ) {}    
+    //WRITE_MPEG_REG( ISA_TIMERE, 0); while( READ_MPEG_REG(ISA_TIMERE) < 2 ) {}    
+    udelay(10);
 
     // set tcon_clko setting
     WRITE_MPEG_REG_BITS (HHI_VID_CLK_CNTL, 
