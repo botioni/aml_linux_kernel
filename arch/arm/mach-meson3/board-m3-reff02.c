@@ -293,7 +293,7 @@ static int mpu3050_init_irq(void)
 
 static struct mpu3050_platform_data mpu3050_data = {
     .int_config = 0x10,
-    .orientation = {0,1,0,1,0,0,0,0,-1},
+    .orientation = {0,-1,0,-1,0,0,0,0,-1},
     .level_shifter = 0,
     .accel = {
                 .get_slave_descr = get_accel_slave_descr,
@@ -301,7 +301,7 @@ static struct mpu3050_platform_data mpu3050_data = {
                 // connected
                 .bus = EXT_SLAVE_BUS_SECONDARY, //The secondary I2C of MPU
                 .address = 0x1c,
-                .orientation = {-1,0,0,0,1,0,0,0,-1},
+                .orientation = {0,1,0,1,0,0,0,0,-1},
             },
     #ifdef CONFIG_SENSORS_MMC314X
     .compass = {
@@ -708,6 +708,8 @@ static struct itk_platform_data itk_pdata = {
     .tp_max_height = 2432,
     .lcd_max_width = 800,
     .lcd_max_height = 600,
+    .xpol = 1,
+    .ypol = 1,
 };
 #endif
 
