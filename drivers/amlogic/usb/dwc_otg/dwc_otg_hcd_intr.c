@@ -1470,13 +1470,14 @@ static int32_t handle_hc_nyet_intr(dwc_otg_hcd_t * _hcd,
 				 * No longer in the same full speed frame.
 				 * Treat this as a transaction error.
 				 */
-#if 0
+#if 1
 				/** @todo Fix system performance so this can
 				 * be treated as an error. Right now complete
 				 * splits cannot be scheduled precisely enough
 				 * due to other system activity, so this error
 				 * occurs regularly in Slave mode.
 				 */
+				 if(_hc->speed == DWC_OTG_EP_SPEED_LOW)
 				_qtd->error_count++;
 #endif
 				_qtd->complete_split = 0;
