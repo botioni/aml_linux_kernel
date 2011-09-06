@@ -2474,7 +2474,7 @@ static void __init device_pinmux_init(void )
 #ifdef CONFIG_SIX_AXIS_SENSOR_MPU3050
     mpu3050_init_irq();
 #endif    
-#if 1
+#if 0
     //set clk for wifi
     WRITE_CBUS_REG(HHI_GEN_CLK_CNTL,(READ_CBUS_REG(HHI_GEN_CLK_CNTL)&(~(0x7f<<0)))|((0<<0)|(1<<8)|(7<<9)) );
     CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO2_EN_N, (1<<15));    
