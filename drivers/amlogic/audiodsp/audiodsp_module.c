@@ -667,12 +667,7 @@ static ssize_t codec_mips_show(struct class* cla, struct class_attribute* attr, 
 {
     size_t ret = 0;
     struct audiodsp_priv *priv = audiodsp_privdata();
-    if(priv->stream_fmt < sizeof(audiodsp_mips)){    
-        ret = sprintf(buf, "%d\n", audiodsp_mips[priv->stream_fmt]);        
-    }
-    else{
-        ret = sprintf(buf, "%d\n", 200000);
-    }
+    ret = sprintf(buf, "%d\n", 192000); // set to lowest, because M3 ARC not using A9 clk / 2
     return ret;
 }
 
