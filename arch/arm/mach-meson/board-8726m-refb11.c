@@ -115,6 +115,9 @@
 #ifdef CONFIG_AR1520_GPS
 #include <linux/ar1520.h>
 #endif
+#if defined(CONFIG_VIDEO_AMLOGIC_FLASHLIGHT)
+#include <media/amlogic/flashlight.h>
+#endif
 #if defined(CONFIG_JPEGLOGO)
 static struct resource jpeglogo_resources[] = {
     [0] = {
@@ -1141,6 +1144,33 @@ aml_plat_cam_data_t video_gt2005_data = {
 };
 #endif /* VIDEO_AMLOGIC_CAPTURE_GT2005 */
 
+#if defined(CONFIG_VIDEO_AMLOGIC_FLASHLIGHT)
+static void flashlight_on(void)
+{
+	//OD1
+	 configIO(0, 0);
+	 setIO_level(0, 0, 1);
+}
+
+static void flashlight_off(void)
+{
+	//OD1
+	 configIO(0, 0);
+	 setIO_level(0, 1, 1);
+}
+static aml_plat_flashlight_data_t aml_flashlight_data = {
+	.flashlight_on = flashlight_on,
+	.flashlight_off = flashlight_off,
+};
+static struct platform_device aml_flashlight_device = {
+    .name	= "flashlight",
+    .id	= -1,
+    .dev = {
+                .platform_data = &aml_flashlight_data,
+           },
+};
+
+#endif
 
 #if defined(CONFIG_SUSPEND)
 
@@ -2343,6 +2373,8 @@ static struct platform_device __initdata *platform_devs[] = {
     #endif    	
     #ifdef CONFIG_AR1520_GPS
 	&aml_ar1520_device,
+#if defined(CONFIG_VIDEO_AMLOGIC_FLASHLIGHT)
+	&aml_flashlight_device,
     #endif
 };
 static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
