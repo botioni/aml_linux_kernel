@@ -435,6 +435,7 @@ static const reg_t tvregs_1080p[] = {
     {ENCP_VIDEO_VSO_BLINE,       0,     },
     {ENCP_VIDEO_VSO_ELINE,       5,     },
     {ENCP_VIDEO_MAX_LNCNT,       1124,  },
+    {VPU_VIU_VENC_MUX_CTRL,      0x000a,},      //New Add. If not set, when system boots up, switch panel to HDMI 1080P, nothing on TV.
     {VENC_VIDEO_PROG_MODE,       0x100, },
     {VENC_SYNC_ROUTE,            0,     },
     {VENC_INTCTRL,               0x200, },
