@@ -106,6 +106,7 @@
 
 #ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE
 #include <media/amlogic/aml_camera.h>
+#include <linux/camera/amlogic_camera_common.h>
 #endif
 
 #ifdef CONFIG_BQ27x00_BATTERY
