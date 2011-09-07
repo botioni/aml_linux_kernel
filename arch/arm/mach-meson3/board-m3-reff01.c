@@ -1588,7 +1588,10 @@ static void disable_unused_model(void)
 static __init void m1_init_machine(void)
 {
     meson_cache_init();
-
+#ifdef CONFIG_AML_SUSPEND
+		extern int (*pm_power_suspend)(void);
+		pm_power_suspend = meson_power_suspend;
+#endif /*CONFIG_AML_SUSPEND*/
     device_clk_setting();
     device_pinmux_init();
     platform_add_devices(platform_devs, ARRAY_SIZE(platform_devs));

@@ -2537,7 +2537,10 @@ static void __init LED_PWM_REG0_init(void)
 static __init void m1_init_machine(void)
 {
     meson_cache_init();
-    
+#ifdef CONFIG_AML_SUSPEND
+		extern int (*pm_power_suspend)(void);
+		pm_power_suspend = meson_power_suspend;
+#endif /*CONFIG_AML_SUSPEND*/    
     LED_PWM_REG0_init();
     power_hold();
     pm_power_off = power_off;		//Elvis fool

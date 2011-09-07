@@ -26,5 +26,7 @@ extern void pll_switch(int flag);
 extern void early_power_gate_switch(int flag);
 extern void early_clk_switch(int flag);
 extern void early_pll_switch(int flag);
-
+#ifdef CONFIG_AML_SUSPEND
+extern int meson_power_suspend(void);
+#endif /*CONFIG_AML_SUSPEND*/
 #endif

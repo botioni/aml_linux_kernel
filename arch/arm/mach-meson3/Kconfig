@@ -29,4 +29,9 @@ config MESON3_CLOCK_TICK_RATE
     int "Clock Tick Rate"
 	default 25000000
 
+config AML_SUSPEND
+		bool "Support M3 A9 domain power down"
+		depends on SUSPEND
+		default n
+		
 endmenu
