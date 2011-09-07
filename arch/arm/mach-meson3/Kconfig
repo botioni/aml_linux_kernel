@@ -12,6 +12,12 @@ config MACH_MESON3_REFF02
 	bool "Support M3 (WA) platform"
 	help
 	  Include support for the WA M3 board platform.
+	  
+config MACH_MESON3_REFF04
+	select GENERIC_ALLOCATOR
+	bool "Support M3 (Ramos) platform"
+	help
+	  Include support for the Ramos M3 board platform.
 
 config MACH_MESON3_REFF05
 	select GENERIC_ALLOCATOR
