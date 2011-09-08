@@ -103,6 +103,8 @@ static unsigned char init_flag=0;
 static unsigned char init_powermode=0;
 #endif
 #undef DISABLE_AUDIO
+unsigned char hdmi_audio_off_flag = 0;        //if set to 1, then HDMI will output no audio
+                                                //In KTV case, HDMI output Picture only, and Audio is driven by other sources.
 static int hpdmode = 1; /* 
                             0, do not unmux hpd when off or unplug ; 
                             1, unmux hpd when unplug;
@@ -678,7 +680,7 @@ hdmi_task_handle(void *data)
             }
         }
         
-        if((hdmitx_device->audio_param_update_flag)&&(hdmitx_device->cur_VIC != HDMI_Unkown)){
+        if((!hdmi_audio_off_flag)&&(hdmitx_device->audio_param_update_flag)&&(hdmitx_device->cur_VIC != HDMI_Unkown)){
             hdmitx_set_audio(hdmitx_device, &(hdmitx_device->cur_audio_param));
             hdmitx_device->audio_param_update_flag = 0;
             hdmi_print(1, "HDMI: set audio param\n");
@@ -1132,6 +1134,10 @@ static  int __init hdmitx_boot_para_setup(char *s)
                 tmp = simple_strtoul(token+9,NULL,10);
                 init_powermode=tmp|0x80;
                 printk("hdmi: set init powermode %d\n", tmp);                
+            }
+            else if(strncmp(token, "audiooff", 8)==0){
+                hdmi_audio_off_flag = 1;
+                printk("hdmi: set no audio output\n");
             }
         }    
         offset=token_offset;

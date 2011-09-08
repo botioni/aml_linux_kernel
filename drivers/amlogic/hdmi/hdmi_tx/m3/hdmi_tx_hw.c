@@ -71,7 +71,6 @@
 
 static void hdmi_audio_init(unsigned char spdif_flag);
 static void hdmitx_dump_tvenc_reg(int cur_VIC, int printk_flag);
-
 #define CEC0_LOG_ADDR 0x4
 
 //#define HPD_DELAY_CHECK
@@ -1043,8 +1042,8 @@ void hdmi_hw_set_powermode( int power_mode, int vic)
                     hdmi_wr_reg(TX_SYS1_AFE_TEST, 0x7d);    //0x17
                     hdmi_wr_reg(TX_CORE_CALIB_VALUE,0xd);   //0xf7
                     hdmi_wr_reg(TX_SYS1_AFE_RESET, 0x3);    //0x16
-                    hdmi_wr_reg(TX_SYS1_BANDGAP, 0x1);      //0x14
-                    hdmi_wr_reg(TX_SYS1_BIAS, 0x3);         //0x15
+                    hdmi_wr_reg(TX_SYS1_BANDGAP, 0x1);      //0x14 Prem
+                    hdmi_wr_reg(TX_SYS1_BIAS, 0x3);         //0x15 Slew
                     break;
                 default:
                     break;
@@ -1518,11 +1517,14 @@ static void hdmi_hw_reset(Hdmi_tx_video_para_t *param)
     tmp_add_data |= TX_OUTPUT_COLOR_RANGE   << 2; // [3:2] output_color_range:  0=16-235/240; 1=16-240; 2=1-254; 3=0-255.
     tmp_add_data |= TX_INPUT_COLOR_RANGE    << 0; // [1:0] input_color_range:   0=16-235/240; 1=16-240; 2=1-254; 3=0-255.
     hdmi_wr_reg(TX_VIDEO_DTV_OPTION_H, tmp_add_data); // 0x00
+    
+    if(!hdmi_audio_off_flag){
 #if 1
-    hdmi_audio_init(i2s_to_spdif_flag);
+        hdmi_audio_init(i2s_to_spdif_flag);
 #else
-    hdmi_wr_reg(TX_AUDIO_PACK, 0x00); // disable audio sample packets
+        hdmi_wr_reg(TX_AUDIO_PACK, 0x00); // disable audio sample packets
 #endif
+    }
     //tmp_add_data[7] = 1'b0;      // cp_desired
     //tmp_add_data[6] = 1'b0;      // ess_config
     //tmp_add_data[5] = 1'b0;      // set_avmute
@@ -2161,7 +2163,65 @@ static void hdmitx_m3_setaudioinfoframe(unsigned char* AUD_DB, unsigned char* CH
         }
     }
 }
+
+
+//------------------------------------------------------------------------------
+// set_hdmi_audio_source(unsigned int src)
+//
+// Description:
+// Select HDMI audio clock source, and I2S input data source.
+//
+// Parameters:
+//  src -- 0=no audio clock to HDMI; 1=pcmout to HDMI; 2=Aiu I2S out to HDMI.
+//------------------------------------------------------------------------------
+static void set_hdmi_audio_source(unsigned int src)
+{
+    unsigned long data32;
+    unsigned int i;
     
+    // Disable HDMI audio clock input and its I2S input
+    data32  = 0;
+    data32 |= 0     << 4;   // [5:4]    hdmi_data_sel: 00=disable hdmi i2s input; 01=Select pcm data; 10=Select AIU I2S data; 11=Not allowed.
+    data32 |= 0     << 0;   // [1:0]    hdmi_clk_sel: 00=Disable hdmi audio clock input; 01=Select pcm clock; 10=Select AIU aoclk; 11=Not allowed.
+    Wr(AIU_HDMI_CLK_DATA_CTRL, data32);
+
+    // Enable HDMI audio clock from the selected source
+    data32  = 0;
+    data32 |= 0      << 4;  // [5:4]    hdmi_data_sel: 00=disable hdmi i2s input; 01=Select pcm data; 10=Select AIU I2S data; 11=Not allowed.
+    data32 |= src   << 0;   // [1:0]    hdmi_clk_sel: 00=Disable hdmi audio clock input; 01=Select pcm clock; 10=Select AIU aoclk; 11=Not allowed.
+    Wr(AIU_HDMI_CLK_DATA_CTRL, data32);
+    
+    // Wait until clock change is settled
+    i = 0;
+    while ( (((Rd(AIU_HDMI_CLK_DATA_CTRL))>>8)&0x3) != src ) {
+//        if (i > 255) {
+//            //stimulus_print("[TEST.C] Error: set_hdmi_audio_source timeout!\n");
+//            //stimulus_finish_fail(10);
+//        }
+        i ++;
+        if(i>100000)
+            break;
+    }
+    if(i>100000)
+        printk("Time out: AIU_HDMI_CLK_DATA_CTRL\n");
+
+    // Enable HDMI I2S input from the selected source
+    data32  = 0;
+    data32 |= src   << 4;   // [5:4]    hdmi_data_sel: 00=disable hdmi i2s input; 01=Select pcm data; 10=Select AIU I2S data; 11=Not allowed.
+    data32 |= src   << 0;   // [1:0]    hdmi_clk_sel: 00=Disable hdmi audio clock input; 01=Select pcm clock; 10=Select AIU aoclk; 11=Not allowed.
+    Wr(AIU_HDMI_CLK_DATA_CTRL, data32);
+
+    // Wait until data change is settled
+    i = 0;
+    while ((((Rd(AIU_HDMI_CLK_DATA_CTRL))>>12)&0x3) != src ) {
+        i++;
+        if(i>100000)
+            break;
+    }
+    if(i>100000)
+        printk("Time out: AIU_HDMI_CLK_DATA_CTRL\n");
+} /* set_hdmi_audio_source */
+
 static int hdmitx_m3_set_audmode(struct hdmi_tx_dev_s* hdmitx_device, Hdmi_tx_audio_para_t* audio_param)
 {
     unsigned int audio_N_para = 6272;
@@ -2339,7 +2399,8 @@ static int hdmitx_m3_set_audmode(struct hdmi_tx_dev_s* hdmitx_device, Hdmi_tx_au
     hdmi_wr_reg(TX_SYS0_ACR_CTS_1, 0);      //(audio_CTS>>8) & 0xff);
     hdmi_wr_reg(TX_SYS0_ACR_CTS_2, 0);      //(1<<5)|(1<<4)|((audio_CTS>>16)&0xf));
     
-
+    set_hdmi_audio_source(i2s_to_spdif_flag ? 1 : 2);
+    
     if(i2s_to_spdif_flag)
         enable_audio_spdif();
     else
@@ -2605,625 +2666,12 @@ static void hdmitx_print_info(hdmitx_dev_t* hdmitx_device, int printk_flag)
     hdmi_print(printk_flag, "%spowerdown when unplug\n",hdmitx_device->unplug_powerdown?"":"do not ");
     hdmi_print(printk_flag, "use_tvenc_conf_flag=%d\n",use_tvenc_conf_flag); 
     hdmi_print(printk_flag, "vdac %s\n", power_off_vdac_flag?"off":"on");
-    hdmi_print(printk_flag, "audio out type %s\n", i2s_to_spdif_flag?"spdif":"i2s");
+    hdmi_print(printk_flag, "hdmi audio %s\n", hdmi_audio_off_flag?"off":"on");
+    if(!hdmi_audio_off_flag){
+        hdmi_print(printk_flag, "audio out type %s\n", i2s_to_spdif_flag?"spdif":"i2s");
+    }
     hdmi_print(printk_flag, "delay flag %d\n", delay_flag);
     hdmi_print(printk_flag, "------------------\n");
-}
-
-#define VPP1_BASE_ADDR                 0x1d00
-#define VPP2_BASE_ADDR                 0x1900
-#define VPP_SIZE                       0xAB
-
-static void vpp_copy(void)
-{
-    unsigned int offset;
-    for(offset = 0; offset < VPP_SIZE; offset++)
-    {
-        WRITE_MPEG_REG((VPP2_BASE_ADDR+offset), READ_MPEG_REG(VPP1_BASE_ADDR+offset));
-    }
-}
-
-static void vpp_check(void)
-{
-    unsigned int offset;
-    unsigned int val1, val2;
-    for(offset = 0; offset < VPP_SIZE; offset++)
-    {
-        val1 = READ_MPEG_REG(VPP1_BASE_ADDR+offset);
-        val2 = READ_MPEG_REG(VPP2_BASE_ADDR+offset);
-        if(val1 != val2)
-            printk("VPP1 [%x]=%x    VPP2 [%x]=%x\n", VPP1_BASE_ADDR+offset, val1, VPP2_BASE_ADDR+offset, val2);
-    }
-}
-static void vpp_show(unsigned int no)
-{
-    unsigned int offset;
-    unsigned int addr;
-    if (no == 1){
-        addr = VPP1_BASE_ADDR;
-    }
-    if (no == 2){
-        addr = VPP2_BASE_ADDR;
-    }
-    for(offset = 0; offset < VPP_SIZE; offset++){
-        printk("VPP%d [%x]=%x\n", no, addr+offset, READ_MPEG_REG(addr+offset));
-    }
-}
-
-typedef enum {
-    F2V_IT2IT = 0,
-    F2V_IB2IB,
-    F2V_IT2IB,
-    F2V_IB2IT,
-    F2V_P2IT, 
-    F2V_P2IB, 
-    F2V_IT2P, 
-    F2V_IB2P, 
-    F2V_P2P,
-    F2V_TYPE_MAX
-} f2v_vphase_type_t;   /* frame to video conversion type */
-
-typedef struct {
-    unsigned char   rcv_num; //0~15
-    unsigned char   rpt_num; // 0~3 
-    unsigned short  phase;
-//    signed   char   repeat_skip_chroma;
-//    unsigned char   phase_chroma;
-} f2v_vphase_t;
-
-unsigned int filt_coef0[] =   //bicubic
-	{
-	0x00800000,
-	0x007f0100,
-	0xff7f0200,
-	0xfe7f0300,
-	0xfd7e0500,
-	0xfc7e0600,
-	0xfb7d0800,
-	0xfb7c0900,
-	0xfa7b0b00,
-	0xfa7a0dff,
-	0xf9790fff,
-	0xf97711ff,
-	0xf87613ff,
-	0xf87416fe,
-	0xf87218fe,
-	0xf8701afe,
-	0xf76f1dfd,
-	0xf76d1ffd,
-	0xf76b21fd,
-	0xf76824fd,
-	0xf76627fc,
-	0xf76429fc,
-	0xf7612cfc,
-	0xf75f2ffb,
-	0xf75d31fb,
-	0xf75a34fb,
-	0xf75837fa,
-	0xf7553afa,
-	0xf8523cfa,
-	0xf8503ff9,
-	0xf84d42f9,
-	0xf84a45f9,
-	0xf84848f8
-	};
-
-unsigned int filt_coef1[] =  //2 point bilinear
-	{
-	0x00800000,
-	0x007e0200,
-	0x007c0400,
-	0x007a0600,
-	0x00780800,
-	0x00760a00,
-	0x00740c00,
-	0x00720e00,
-	0x00701000,
-	0x006e1200,
-	0x006c1400,
-	0x006a1600,
-	0x00681800,
-	0x00661a00,
-	0x00641c00,
-	0x00621e00,
-	0x00602000,
-	0x005e2200,
-	0x005c2400,
-	0x005a2600,
-	0x00582800,
-	0x00562a00,
-	0x00542c00,
-	0x00522e00,
-	0x00503000,
-	0x004e3200,
-	0x004c3400,
-	0x004a3600,
-	0x00483800,
-	0x00463a00,
-	0x00443c00,
-	0x00423e00,
-	0x00404000
-	};
-
-unsigned int filt_coef2[] =  //2 point bilinear, bank_length == 2
-	{
-	0x80000000,
-	0x7e020000,
-	0x7c040000,
-	0x7a060000,
-	0x78080000,
-	0x760a0000,
-	0x740c0000,
-	0x720e0000,
-	0x70100000,
-	0x6e120000,
-	0x6c140000,
-	0x6a160000,
-	0x68180000,
-	0x661a0000,
-	0x641c0000,
-	0x621e0000,
-	0x60200000,
-	0x5e220000,
-	0x5c240000,
-	0x5a260000,
-	0x58280000,
-	0x562a0000,
-	0x542c0000,
-	0x522e0000,
-	0x50300000,
-	0x4e320000,
-	0x4c340000,
-	0x4a360000,
-	0x48380000,
-	0x463a0000,
-	0x443c0000,
-	0x423e0000,
-	0x40400000
-	};
-
-
-#define ZOOM_BITS       20
-#define PHASE_BITS      16
-
-static const unsigned char f2v_420_in_pos_luma[F2V_TYPE_MAX]   = {0,2,0,2,0,0,0,2,0};
-//static const unsigned char f2v_420_in_pos_chroma[F2V_TYPE_MAX] = {1,5,1,5,2,2,1,5,2};
-static const unsigned char f2v_420_out_pos[F2V_TYPE_MAX]       = {0,2,2,0,0,2,0,0,0};
-
-static void f2v_get_vertical_phase(unsigned zoom_ratio, f2v_vphase_type_t type, unsigned char bank_length,
-                            f2v_vphase_t *vphase)
-{
-    int offset_in, offset_out;
-    
-    /* luma */
-    offset_in = f2v_420_in_pos_luma[type] << PHASE_BITS;
-    offset_out = (f2v_420_out_pos[type] * zoom_ratio) >> (ZOOM_BITS - PHASE_BITS);
-#if 0
-    Wr(0xfe0, offset_in);
-    Wr(0xfe1, offset_out);
-#endif
-    
-    vphase->rcv_num = bank_length;
-    if (bank_length == 4 || bank_length == 3)
-       vphase->rpt_num = 1;     
-    else
-       vphase->rpt_num = 0;     
-
-    if (offset_in > offset_out) {
-        vphase->rpt_num = vphase->rpt_num + 1;     
-        vphase->phase = 
-            ((4 << PHASE_BITS) + offset_out - offset_in) >> 2;
-    }
-    else {
-        while ((offset_in + (4 << PHASE_BITS)) <= offset_out) {
-            if (vphase->rpt_num == 1)
-               vphase->rpt_num = 0;
-            else
-               vphase->rcv_num++;            
-            offset_in += 4 << PHASE_BITS;
-#if 0
-            Wr(0xfe1, offset_in);
-#endif
-        }
-        vphase->phase = (offset_out - offset_in) >> 2;
-#if 0
-        Wr(0xfe2, vphase->phase);
-#endif
-    }
-}
-
-
-static int vpp2_set_display(
-                    f2v_vphase_type_t top_conv_type, 
-                    f2v_vphase_type_t bot_conv_type, 
-                    unsigned char vert_bank_length,
-                    int dst_horz_start, int dst_vert_start,
-                    int src_w, int src_h, int dst_w, int dst_h,
-                    int prehsc_en, int prevsc_en,
-                    int prebld_vd1_en,
-                    int postbld_vd1_en,
-                    int postbld_en,
-                    int prebld_en,
-                    int postbld_w,
-                    int prebld_w,
-
-                    int osd1_en, 
-                    int osd1_sel,   //0: preblend   1: postblend
-                    int osd2_en,
-                    int osd2_sel,   //0: preblend   1: postblend    
-                    int osd2_foreground
-                    ) 
-{
-
-   int i;
-   int vert_phase_step, horz_phase_step;
-   int hsc_en, vsc_en;
-   int p_src_w, p_src_h;
-   f2v_vphase_t vphase;
-   unsigned char top_rcv_num, bot_rcv_num;
-   unsigned char top_rpt_num, bot_rpt_num;
-   unsigned short top_vphase, bot_vphase;
-   unsigned char is_frame;
-   int src_w_tmp;
-
-   is_frame = (top_conv_type == F2V_IT2P) || (top_conv_type == F2V_IB2P) ||
-              (top_conv_type == F2V_P2P);
-   
-
-   vsc_en = 1;
-   hsc_en = 1;
-
-   if (prebld_en) {
-        Wr(VPP2_PREBLEND_VD1_H_START_END, (0 << 16) | (src_w - 1)); 
-        Wr(VPP2_PREBLEND_VD1_V_START_END, (0 << 16) | (src_h - 1)); 
-        Wr(VPP2_PREBLEND_H_SIZE, prebld_w);
-   }
-
-   src_w_tmp = prebld_en ? prebld_w: src_w;
-   p_src_w =  (prehsc_en ? ((src_w_tmp+1) >>1) : src_w_tmp); 
-   p_src_h = prevsc_en ? ((src_h+1) >>1) : src_h; 
-
-    //write vert filter coefs
-    Wr (VPP2_SCALE_COEF_IDX, 0x0000);
-	for (i = 0; i < 33; i++)
-	{
-        if (vert_bank_length == 2)
-	        Wr(VPP2_SCALE_COEF, filt_coef2[i]); //bilinear
-        else
-	        Wr(VPP2_SCALE_COEF, filt_coef0[i]); //bicubic
-	}
-
-    //write horz filter coefs
-    Wr (VPP2_SCALE_COEF_IDX, 0x0100);
-	for (i = 0; i < 33; i++)
-	{
-	    Wr(VPP2_SCALE_COEF, filt_coef0[i]); //bicubic
-	}
-
-
-    vert_phase_step = (p_src_h << 20) / dst_h;
-    horz_phase_step = (p_src_w << 20) / dst_w;
-
-
-    if (is_frame) {
-       f2v_get_vertical_phase(vert_phase_step, top_conv_type, vert_bank_length, &vphase);
-       top_rcv_num = vphase.rcv_num;
-       top_rpt_num = vphase.rpt_num;
-       top_vphase = vphase.phase;
-
-       bot_rcv_num = 0;
-       bot_rpt_num = 0;
-       bot_vphase = 0;
-    }
-    else {
-       f2v_get_vertical_phase(vert_phase_step, top_conv_type, vert_bank_length, &vphase);
-       top_rcv_num = vphase.rcv_num;
-       top_rpt_num = vphase.rpt_num;
-       top_vphase = vphase.phase;
-
-       f2v_get_vertical_phase(vert_phase_step, bot_conv_type, vert_bank_length, &vphase);
-       bot_rcv_num = vphase.rcv_num;
-       bot_rpt_num = vphase.rpt_num;
-       bot_vphase = vphase.phase;
-    }
-    
-    
-    vert_phase_step = (vert_phase_step << 4);
-    horz_phase_step = (horz_phase_step << 4);
-   
-
-    Wr(VPP2_LINE_IN_LENGTH, src_w_tmp);
-    Wr(VPP2_PIC_IN_HEIGHT, src_h);
-
-    Wr(VPP2_VSC_REGION12_STARTP,  0);
-    Wr(VPP2_VSC_REGION34_STARTP, ((dst_h << 16) | dst_h));
-    Wr(VPP2_VSC_REGION4_ENDP, dst_h - 1);
-
-    Wr(VPP2_VSC_START_PHASE_STEP, vert_phase_step);
-    Wr(VPP2_VSC_REGION0_PHASE_SLOPE, 0);
-    Wr(VPP2_VSC_REGION1_PHASE_SLOPE, 0);
-    Wr(VPP2_VSC_REGION3_PHASE_SLOPE, 0);
-    Wr(VPP2_VSC_REGION4_PHASE_SLOPE, 0);
-
-    Wr(VPP2_VSC_PHASE_CTRL, ((!is_frame) << 16) |
-                            (0 << 15) |
-                            (bot_rpt_num << 13) |
-                            (bot_rcv_num << 8) |
-                            (0 << 7) |
-                            (top_rpt_num << 5) |
-                            (top_rcv_num) 
-                            );
-    Wr(VPP2_VSC_INI_PHASE, (bot_vphase << 16) | top_vphase);
-
-    Wr(VPP2_HSC_REGION12_STARTP, 0);
-    Wr(VPP2_HSC_REGION34_STARTP, (dst_w << 16) | dst_w);
-    Wr(VPP2_HSC_REGION4_ENDP, dst_w - 1);
-
-    Wr(VPP2_HSC_START_PHASE_STEP, horz_phase_step);
-    Wr(VPP2_HSC_REGION0_PHASE_SLOPE, 0);
-    Wr(VPP2_HSC_REGION1_PHASE_SLOPE, 0);
-    Wr(VPP2_HSC_REGION3_PHASE_SLOPE, 0);
-    Wr(VPP2_HSC_REGION4_PHASE_SLOPE, 0);
-
-    Wr(VPP2_HSC_PHASE_CTRL,(1 << 21) |
-                           (4 << 16) | 
-                           0
-                           );
-
-    Wr(VPP2_SC_MISC,(prehsc_en << 20) | //prehsc_en
-                    (prevsc_en << 19) | //prevsc_en 
-                    (vsc_en << 18) | //vsc_en 
-                    (hsc_en << 17) | //hsc_en 
-                    (1 << 16) | //sc_top_en 
-                    (1 << 15) | //vd1 sc out enable
-                    (0 << 12) | //horz nonlinear 4region enable
-                    (4 << 8)  | //horz scaler bank length
-                    (0 << 5)  | //vert scaler phase field mode enable
-                    (0 << 4)  | //vert nonlinear 4region enable
-                    (vert_bank_length << 0)    //vert scaler bank length
-                    );
-
-    
-
-    Wr(VPP2_POSTBLEND_VD1_H_START_END, (dst_horz_start << 16) | (dst_horz_start + dst_w - 1));
-    Wr(VPP2_POSTBLEND_VD1_V_START_END, (dst_vert_start << 16) | (dst_vert_start + dst_h - 1));
-    Wr(VPP2_POSTBLEND_H_SIZE, postbld_w);
-
-    Wr_reg_bits(VPP2_MISC,           ((osd2_en & (~osd2_sel)) << 17) | 
-                            ((osd1_en & (~osd1_sel)) << 16) | 
-                            (prebld_vd1_en << 14) | 
-                            ((osd2_en & osd2_sel) << 13) | 
-                            ((osd1_en & osd1_sel) << 12) | 
-                            (postbld_vd1_en << 10) | 
-                            (postbld_en << 7) | 
-                            (prebld_en << 6) |
-                            (osd2_foreground << 5) |
-                            (osd2_foreground << 4) | 
-                            (0 << 3) |
-                            (0 << 2) |
-                            (0 << 1) |
-                            0,
-                            0, 27
-      );
-
-    return 0;
-
-} /* vpp2_set_display */
-
-#define   set_rmem_if0_separate_simple  set_vd1_if0_separate_simple
-static void    set_vd1_if0_separate_simple(
-        unsigned long   luma_x_start,
-        unsigned long   luma_x_end,
-        unsigned long   luma_y_start,
-        unsigned long   luma_y_end,
-        unsigned long   chroma_x_start,
-        unsigned long   chroma_x_end,
-        unsigned long   chroma_y_start,
-        unsigned long   chroma_y_end,
-        unsigned long   canvas_addr0,
-        unsigned long   canvas_addr1,
-        unsigned long   canvas_addr2
-)
-{
-    // General register setup
-    unsigned long   bytes_per_pixel = 0;    // 1Byte per  
-    unsigned long   burst_size_cr   = 0;    // unused
-    unsigned long   burst_size_cb   = 0;    // unused
-    unsigned long   burst_size_y    = 3;    // 64x64 burst size
-    unsigned long   st_separate_en  = 1;
-
-    // ----------------------
-    // General register
-    // ----------------------
-
-    Wr(VD1_IF0_GEN_REG,         (4 << 19)               |   //hold lines
-                                (1 << 18)               |   // push pixel value
-                                (0 << 16)               |
-                                (bytes_per_pixel << 14) | 
-                                (burst_size_cr << 12)   |
-                                (burst_size_cb << 10)   |
-                                (burst_size_y << 8)     |
-                                (1 << 6)                |   // TODO: cntl_chro_rpt_lastl_ctrl
-                                (st_separate_en << 1)   |
-                                (0 << 0)                    // cntl_enable (don't enable just yet)
-      );
-                            
-    // ----------------------
-    // Canvas
-    // ----------------------
-    Wr(VD1_IF0_CANVAS0,         (canvas_addr2 << 16)     |   // cntl_canvas0_addr2
-                                (canvas_addr1 << 8)      |   // cntl_canvas0_addr1
-                                (canvas_addr0 << 0)          // cntl_canvas0_addr0
-    );
-
-    Wr(VD1_IF0_CANVAS1,         (0 << 16)               |   // cntl_canvas1_addr2
-                                (0 << 8)                |   // cntl_canvas1_addr1
-                                (0 << 0)                    // cntl_canvas1_addr0
-    );
-
-    // ----------------------
-    // Picture 0 X/Y start,end
-    // ----------------------
-    Wr(VD1_IF0_LUMA_X0,         (luma_x_end << 16)           |   // cntl_luma_x_end0
-                                (luma_x_start << 0)              // cntl_luma_x_start0
-    );
-    Wr(VD1_IF0_LUMA_Y0,         (luma_y_end << 16)           |   // cntl_luma_y_end0
-                                (luma_y_start << 0)              // cntl_luma_y_start0
-    );
-    Wr(VD1_IF0_CHROMA_X0,     (chroma_x_end << 16)      |
-                              (chroma_x_start << 0)
-    );                           
-    Wr(VD1_IF0_CHROMA_Y0,     (chroma_y_end << 16)      |
-                              (chroma_y_start << 0)
-    );                           
-
-    // ----------------------
-    // Picture 1 unused
-    // ----------------------
-    Wr(VD1_IF0_LUMA_X1,       0);                            // unused
-    Wr(VD1_IF0_LUMA_Y1,       0);                            // unused
-    Wr(VD1_IF0_CHROMA_X1,     0);                            // unused
-    Wr(VD1_IF0_CHROMA_Y1,     0);                            // unused
-
-    // ----------------------
-    // No Repeat or skip
-    // ----------------------
-    Wr(VD1_IF0_RPT_LOOP,        (0 << 24)               |   // cntl_chroma1_rpt_loop
-                                (0 << 16)               |   // cntl_luma1_rpt_loop
-                                (0 << 8)                |   // cntl_chroma0_rpt_loop
-                                (0 << 0)                    // cntl_luma0_rpt_loop
-    ); 
-
-    Wr(VD1_IF0_LUMA0_RPT_PAT,      0);                        // no skip /repeat
-    Wr(VD1_IF0_CHROMA0_RPT_PAT,    0);                        // unused
-    Wr(VD1_IF0_LUMA1_RPT_PAT,      0);                        // unused
-    Wr(VD1_IF0_CHROMA1_RPT_PAT,    0);                        // unused
-
-    Wr(VD1_IF0_LUMA_PSEL,          0);                        // unused only one picture 
-    Wr(VD1_IF0_CHROMA_PSEL,        0);                        // unused only one picture 
-
-
-    Wr(VD1_IF0_DUMMY_PIXEL,   0x00808000); 
-
-    // Enable VD1: vd_rmem_if0
-    Wr(VD1_IF0_GEN_REG,      Rd(VD1_IF0_GEN_REG) |  (1 << 0));                  // cntl_enable
-
-}
-
-static void set_vd1_fmt (int hfmt_en,
-                int hz_yc_ratio,        //2bit 
-                int hz_ini_phase,       //4bit
-                int vfmt_en,
-                int vt_yc_ratio,        //2bit
-                int vt_ini_phase,       //4bit
-                int y_length            
-                )
-{
-    int vt_phase_step = (16 >> vt_yc_ratio);  
-    int vfmt_w = (y_length >> hz_yc_ratio); 
-            
-    Wr(VIU_VD1_FMT_CTRL,      
-                              (0 << 28)       |     //hz rpt pixel        
-                              (hz_ini_phase << 24) |     //hz ini phase
-                              (0 << 23)         |        //repeat p0 enable
-                              (hz_yc_ratio << 21)  |     //hz yc ratio
-                              (hfmt_en << 20)   |        //hz enable
-                              (1 << 17)         |        //nrpt_phase0 enable
-                              (0 << 16)         |        //repeat l0 enable
-                              (0 << 12)         |        //skip line num
-                              (vt_ini_phase << 8)  |     //vt ini phase
-                              (vt_phase_step << 1) |     //vt phase step (3.4)
-                              (vfmt_en << 0)             //vt enable
-                              );
-                    
-
-    
-    Wr(VIU_VD1_FMT_W,        (y_length << 16)        |        //hz format width
-                             (vfmt_w << 0)                  //vt format width
-                             );
-        
-} /* set_vd1_fmt */
-
-static void vpp_test(void)
-{
-//    unsigned int data32;
-    unsigned char canvas_addr0, canvas_addr1, canvas_addr2;
-    int src_w, src_h, dst_w, dst_h;
-    int hz_yc_ratio, vt_yc_ratio;
-    unsigned char field_n = 0;
-    
-    if(field_n == 0) {
-        canvas_addr0 = 0;
-        canvas_addr1 = 1;
-        canvas_addr2 = 2;
-    }
-    else if(field_n == 1) {
-        canvas_addr0 = 3;
-        canvas_addr1 = 4;
-        canvas_addr2 = 5;
-    }
-    else if(field_n == 2) {
-        canvas_addr0 = 6;
-        canvas_addr1 = 7;
-        canvas_addr2 = 8;
-    }
-    else {
-        canvas_addr0 = 9;
-        canvas_addr1 = 10;
-        canvas_addr2 = 11;
-    }
-    field_n ++ ;
-    if (field_n == 4)
-        field_n = 0;
-           
-    src_w = 720; src_h = 480;
-    dst_w = 720; dst_h = 480;
-    hz_yc_ratio = 1;
-    vt_yc_ratio = 1;
-
-    set_rmem_if0_separate_simple(
-                                0,          
-                                src_w -1, 
-                                0,
-                                src_h -1,
-                                0,
-                                (src_w >> hz_yc_ratio) - 1,  //chroma_x_end,
-                                0,
-                                src_h - 1,         //chroma_y_end,
-                                canvas_addr0,
-                                canvas_addr1,
-                                canvas_addr2 
-                                );
-    
-    set_vd1_fmt (
-                1, //hfmt_en
-                hz_yc_ratio, //hz_yc_ratio
-                0, //hz_ini_phase
-                1, //vfmt_en
-                vt_yc_ratio, //vt_yc_ratio
-                0, //vt_ini_phase
-                src_w //y_length
-                );
-    vpp2_set_display(
-                    F2V_IT2IT,  //f2v_vphase_type_t top_conv_type,
-                    F2V_IB2IB,  //f2v_vphase_type_t bot_conv_type,
-                    4,         //unsigned char vert_bank_length,
-                    0, 0, //int dst_horz_start, int dst_vert_start,
-                    800, 600, //src_w, ACTIVE_LINES,    //int src_w, int src_h,
-                    800, 600, //src_w, ACTIVE_LINES,    //int dst_w, int dst_h,
-                    0, 0,   // int prehsc_en, int prevsc_en,
-                    1,      //int prebld_vd1_en,
-                    1,      //int postbld_vd1_en,
-                    1,      //int postbld_en,
-                    0,      //int prebld_en,
-                    800,  //src_w,  //int postbld_w,
-                    0,      //int prebld_w, 
-                    0,      //int osd1_en, 
-                    0,      //int osd1_sel,   //0: preblend   1: postblend
-                    0,      //int osd2_en,
-                    0,      //int osd2_sel,   //0: preblend   1: postblend    
-                    0       //int osd2_foreground
-                    ); 
 }
 
 static void hdmitx_m3_debug(hdmitx_dev_t* hdmitx_device, const char* buf)
@@ -3241,29 +2689,6 @@ static void hdmitx_m3_debug(hdmitx_dev_t* hdmitx_device, const char* buf)
     if(strncmp(tmpbuf, "dumpreg", 7)==0){
         hdmitx_dump_tvenc_reg(hdmitx_device->cur_VIC, 1);
         return;
-    }
-    else if(strncmp(tmpbuf, "vppc", 4)==0){
-        if(*(tmpbuf+4) == 'p'){
-            printk("Copying VPP1 regs' values to VPP2 regs\n");
-            vpp_copy();
-            printk("Copying Done\n");
-        }
-        if(*(tmpbuf+4) == 'k'){
-            printk("Checking VPP1 regs's values and VPP2's\n");
-            vpp_check();
-            printk("Checking Done");
-        }
-        if(*(tmpbuf+4) == 's'){
-            value = *(tmpbuf+5) - '0';
-            if((value == 1) || (value == 2)){
-                printk("Reading VPP%d regs val\n", value);
-                vpp_show(value);
-                printk("Reading Done\n");
-            }
-        }
-        if(*(tmpbuf+4) == 't'){
-            vpp_test();
-        }
     }
     else if(strncmp(tmpbuf, "pllcalc", 7)==0){
         adr=simple_strtoul(tmpbuf+7, NULL, 10);
@@ -3293,6 +2718,17 @@ static void hdmitx_m3_debug(hdmitx_dev_t* hdmitx_device, const char* buf)
         else{
             if(adr < 46)
                 printk("Other ID[%d] clk: %uMHz\n", adr, clk_util_clk_msr(adr));
+        }
+    }
+    else if(strncmp(tmpbuf, "hdmiaudio", 9)==0){
+        value=simple_strtoul(tmpbuf+9, NULL, 16);
+        if(value == 1){
+            hdmi_audio_off_flag = 1;
+            hdmi_audio_init(i2s_to_spdif_flag);
+        }
+        else if(value == 0){
+            hdmi_audio_off_flag = 0;
+            hdmi_wr_reg(TX_AUDIO_PACK, 0x00); // disable audio sample packets
         }
     }
     else if(strncmp(tmpbuf, "cfgreg", 6)==0){

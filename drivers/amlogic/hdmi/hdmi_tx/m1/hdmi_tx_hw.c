@@ -857,13 +857,13 @@ static void unmux_hpd(void)
 #else
     Wr(PERIPHS_PIN_MUX_0, Rd(PERIPHS_PIN_MUX_0)&(~(1 << 1))); //use hpd as gpio
 #endif        
-//    Wr(PREG_EGPIO_EN_N, Rd(PREG_EGPIO_EN_N)|(1<<0)); //GPIOA_0 as input
+    Wr(PREG_EGPIO_EN_N, Rd(PREG_EGPIO_EN_N)|(1<<0)); //GPIOA_0 as input
 }    
 
 static int read_hpd_gpio(void)
 {
-    int level=0;
-    //level = Rd(PREG_EGPIO_I)&0x1; //read GPIOA_0
+    int level;
+    level = Rd(PREG_EGPIO_I)&0x1; //read GPIOA_0
     return level;
 }
 
@@ -954,6 +954,27 @@ void hdmi_hw_set_powermode( int power_mode, int vic)
 
             hdmi_wr_reg(TX_CORE_CALIB_MODE, 0xc);
             hdmi_wr_reg(TX_CORE_CALIB_VALUE, 0x0);
+            switch(vic)
+            {
+                case HDMI_480p60:
+                case HDMI_480p60_16x9:
+                case HDMI_720p60:
+                    hdmi_wr_reg(TX_SYS1_AFE_TEST, 0x1f);    //0x17
+                    hdmi_wr_reg(TX_CORE_CALIB_VALUE,0x3);   //0xf7
+                    hdmi_wr_reg(TX_SYS1_AFE_RESET, 0x1);    //0x16
+                    hdmi_wr_reg(TX_SYS1_BANDGAP, 0x0);      //0x14
+                    hdmi_wr_reg(TX_SYS1_BIAS, 0x0);         //0x15
+                    break;
+                case HDMI_1080p60:
+                    hdmi_wr_reg(TX_SYS1_AFE_TEST, 0x1f);     //0x17
+                    hdmi_wr_reg(TX_CORE_CALIB_VALUE, 0x9);   //0xf7
+                    hdmi_wr_reg(TX_SYS1_AFE_RESET, 0x2);     //0x16   //Def.
+                    //hdmi_wr_reg(TX_SYS1_AFE_RESET, 0x3);     //0x16   //for HDMICT#1, 1080P, Vswing is low.
+                    hdmi_wr_reg(TX_SYS1_BANDGAP, 0x2);       //0x14
+                    hdmi_wr_reg(TX_SYS1_BIAS, 0x3);          //0x15
+                default:
+                    break;
+            }
 #ifdef MORE_LOW_P
             hdmi_wr_reg(0x010, 0x0);
             hdmi_wr_reg(0x01a, 0x3);
@@ -1414,11 +1435,13 @@ static void hdmi_hw_reset(Hdmi_tx_video_para_t *param)
     tmp_add_data |= TX_OUTPUT_COLOR_RANGE   << 2; // [3:2] output_color_range:  0=16-235/240; 1=16-240; 2=1-254; 3=0-255.
     tmp_add_data |= TX_INPUT_COLOR_RANGE    << 0; // [1:0] input_color_range:   0=16-235/240; 1=16-240; 2=1-254; 3=0-255.
     hdmi_wr_reg(TX_VIDEO_DTV_OPTION_H, tmp_add_data); // 0x00
+    if(!hdmi_audio_off_flag){
 #if 1
-    hdmi_audio_init(i2s_to_spdif_flag);
+        hdmi_audio_init(i2s_to_spdif_flag);
 #else
-    hdmi_wr_reg(TX_AUDIO_PACK, 0x00); // disable audio sample packets
+        hdmi_wr_reg(TX_AUDIO_PACK, 0x00); // disable audio sample packets
 #endif
+    }
     //tmp_add_data[7] = 1'b0;      // cp_desired
     //tmp_add_data[6] = 1'b0;      // ess_config
     //tmp_add_data[5] = 1'b0;      // set_avmute
@@ -2582,7 +2605,10 @@ static void hdmitx_print_info(hdmitx_dev_t* hdmitx_device, int printk_flag)
     hdmi_print(printk_flag, "%spowerdown when unplug\n",hdmitx_device->unplug_powerdown?"":"do not ");
     hdmi_print(printk_flag, "use_tvenc_conf_flag=%d\n",use_tvenc_conf_flag); 
     hdmi_print(printk_flag, "vdac %s\n", power_off_vdac_flag?"off":"on");
-    hdmi_print(printk_flag, "audio out type %s\n", i2s_to_spdif_flag?"spdif":"i2s");
+    hdmi_print(printk_flag, "hdmi audio %s\n", hdmi_audio_off_flag?"off":"on");
+    if(!hdmi_audio_off_flag){
+        hdmi_print(printk_flag, "audio out type %s\n", i2s_to_spdif_flag?"spdif":"i2s");
+    }
     hdmi_print(printk_flag, "delay flag %d\n", delay_flag);
     hdmi_print(printk_flag, "------------------\n");
 }
@@ -2602,6 +2628,17 @@ static void hdmitx_m1b_debug(hdmitx_dev_t* hdmitx_device, const char* buf)
     if(strncmp(tmpbuf, "dumpreg", 7)==0){
         hdmitx_dump_tvenc_reg(hdmitx_device->cur_VIC, 1);
         return;
+    }
+    else if(strncmp(tmpbuf, "hdmiaudio", 9)==0){
+        value=simple_strtoul(tmpbuf+9, NULL, 16);
+        if(value == 1){
+            hdmi_audio_off_flag = 1;
+            hdmi_audio_init(i2s_to_spdif_flag);
+        }
+        else if(value == 0){
+            hdmi_audio_off_flag = 0;
+            hdmi_wr_reg(TX_AUDIO_PACK, 0x00); // disable audio sample packets
+        }
     }
     else if(strncmp(tmpbuf, "cfgreg", 6)==0){
         adr=simple_strtoul(tmpbuf+6, NULL, 16);
