@@ -20,7 +20,7 @@
 #endif
 
 typedef enum act8942_reg { 
-	ACT8942_REG1 = 0,
+	ACT8942_REG1 = 1,
 	ACT8942_REG2,
 	ACT8942_REG3,
 	ACT8942_REG4,
