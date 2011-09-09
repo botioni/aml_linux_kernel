@@ -44,6 +44,10 @@
 #include <media/videobuf-dma-sg.h>
 #include <linux/tvin/tvin.h>
 #include <linux/ctype.h>
+
+/*class property info.*/
+#include "vmcls.h"
+
 //#define DEBUG
 #define MAGIC_SG_MEM 0x17890714
 #define MAGIC_DC_MEM 0x0733ac61
@@ -597,6 +601,7 @@ int vm_ge2d_pre_process(vframe_t* vf, ge2d_context_t *context,config_para_ex_t* 
 	int ret;
 	int src_top ,src_left ,src_width, src_height;
     canvas_t cs0,cs1,cs2,cd;
+    int current_mirror = camera_mirror_flag;
     display_frame_t input_frame={0};
     ret = get_input_frame(&input_frame , vf);
 	src_top =     input_frame.content_top   ;
@@ -660,6 +665,18 @@ int vm_ge2d_pre_process(vframe_t* vf, ge2d_context_t *context,config_para_ex_t* 
     ge2d_config->dst_para.left = 0;
     ge2d_config->dst_para.width = output_para.width;
     ge2d_config->dst_para.height = output_para.height;
+
+    if(current_mirror==1){
+        ge2d_config->dst_para.x_rev = 1;
+        ge2d_config->dst_para.y_rev = 0;
+    }else if(current_mirror==2){
+        ge2d_config->dst_para.x_rev = 0;
+        ge2d_config->dst_para.y_rev = 1;
+    }else{
+        ge2d_config->dst_para.x_rev = 0;
+        ge2d_config->dst_para.y_rev = 0;
+    }
+
 //    printk("output_width is %d , output_height is %d \n",output_para.width ,output_para.height);
     if(ge2d_context_config_ex(context,ge2d_config)<0) {
         printk("++ge2d configing error.\n");
@@ -678,6 +695,18 @@ int vm_ge2d_pre_process(vframe_t* vf, ge2d_context_t *context,config_para_ex_t* 
 		ge2d_config->dst_para.format=GE2D_FORMAT_S8_CB|GE2D_LITTLE_ENDIAN;
 		ge2d_config->dst_para.width = output_para.width/2;
 		ge2d_config->dst_para.height = output_para.height/2;
+
+                if(current_mirror==1){
+                    ge2d_config->dst_para.x_rev = 1;
+                    ge2d_config->dst_para.y_rev = 0;
+                }else if(current_mirror==2){
+                    ge2d_config->dst_para.x_rev = 0;
+                    ge2d_config->dst_para.y_rev = 1;
+                }else{
+                    ge2d_config->dst_para.x_rev = 0;
+                    ge2d_config->dst_para.y_rev = 0;
+                }
+
 		if(ge2d_context_config_ex(context,ge2d_config)<0) {
 			printk("++ge2d configing error.\n");
 			return -1;
@@ -693,6 +722,18 @@ int vm_ge2d_pre_process(vframe_t* vf, ge2d_context_t *context,config_para_ex_t* 
 		ge2d_config->dst_para.format=GE2D_FORMAT_S8_CB|GE2D_LITTLE_ENDIAN;
 		ge2d_config->dst_para.width = output_para.width/2;
 		ge2d_config->dst_para.height = output_para.height/2;
+
+                if(current_mirror==1){
+                    ge2d_config->dst_para.x_rev = 1;
+                    ge2d_config->dst_para.y_rev = 0;
+                }else if(current_mirror==2){
+                    ge2d_config->dst_para.x_rev = 0;
+                    ge2d_config->dst_para.y_rev = 1;
+                }else{
+                    ge2d_config->dst_para.x_rev = 0;
+                    ge2d_config->dst_para.y_rev = 0;
+                }
+
 		if(ge2d_context_config_ex(context,ge2d_config)<0) {
 			printk("++ge2d configing error.\n");
 			return -1;
@@ -712,6 +753,18 @@ int vm_ge2d_pre_process(vframe_t* vf, ge2d_context_t *context,config_para_ex_t* 
 		ge2d_config->dst_para.format=GE2D_FORMAT_S8_CR|GE2D_LITTLE_ENDIAN;
 		ge2d_config->dst_para.width = output_para.width/2;
 		ge2d_config->dst_para.height = output_para.height/2;
+
+                if(current_mirror==1){
+                    ge2d_config->dst_para.x_rev = 1;
+                    ge2d_config->dst_para.y_rev = 0;
+                }else if(current_mirror==2){
+                    ge2d_config->dst_para.x_rev = 0;
+                    ge2d_config->dst_para.y_rev = 1;
+                }else{
+                    ge2d_config->dst_para.x_rev = 0;
+                    ge2d_config->dst_para.y_rev = 0;
+                }
+
 		if(ge2d_context_config_ex(context,ge2d_config)<0) {
 			printk("++ge2d configing error.\n");
 			return -1;
@@ -1005,9 +1058,6 @@ void set_vm_status(int flag) {
         vm_enable_flag=0;
     }
 }
-
-/*class property info.*/
-#include "vmcls.h"
 
 /***********************************************************************
 *

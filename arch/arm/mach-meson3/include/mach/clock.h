@@ -151,4 +151,5 @@ unsigned int clk_util_clk_msr(unsigned int clk_mux);
 unsigned int get_mpeg_clk(void );
 unsigned int get_system_clk(void );
 unsigned int get_misc_pll_clk(void );
+unsigned int get_ddr_pll_clk(void );
 #endif //__ARCH_ARM_MESON3_CLOCK_H

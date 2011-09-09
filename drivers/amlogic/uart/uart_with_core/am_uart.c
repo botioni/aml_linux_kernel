@@ -55,12 +55,12 @@
 /* --FIXME-- Because the ISA documents. Don't know the AO UART interrupt and UART2 interrupt*/
 static unsigned int uart_irqs[UART_NR] = {INT_UART_AO, INT_UART_0, INT_UART_1, INT_UART_2};
 static am_uart_t *uart_addr[UART_NR] = {UART_BASEADDRAO, UART_BASEADDR0, UART_BASEADDR1, UART_BASEADDR2};
-static unsigned int uart_FIFO_max_cnt[NR_PORTS] = {64,128,64,64};
+static unsigned int uart_FIFO_max_cnt[UART_NR] = {64,128,64,64};
 #else
 #define UART_NR     2
 static unsigned int uart_irqs[UART_NR] = { INT_UART,INT_UART_1 };
 static am_uart_t *uart_addr[UART_NR] = { UART_BASEADDR0,UART_BASEADDR1 };
-static unsigned int uart_FIFO_max_cnt[NR_PORTS] = {64,64};
+static unsigned int uart_FIFO_max_cnt[UART_NR] = {64,64};
 #endif
 
 

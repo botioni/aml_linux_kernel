@@ -161,17 +161,31 @@ static int bat_power_get_property(struct power_supply *psy,
 			if(act8942_opts->is_ac_online())
 			{
 				status = act8942_opts->get_charge_status();
-				if(status == 0x1)
+				if(act8942_opts->get_charge_status == get_charge_status)
 				{
-					val->intval = POWER_SUPPLY_STATUS_FULL;
-				}
-				else if(status == 0x0)
-				{
-					val->intval = POWER_SUPPLY_STATUS_NOT_CHARGING;
+					if(status == 0x1)
+					{
+						val->intval = POWER_SUPPLY_STATUS_FULL;
+					}
+					else if(status == 0x0)
+					{
+						val->intval = POWER_SUPPLY_STATUS_NOT_CHARGING;
+					}
+					else
+					{
+						val->intval = POWER_SUPPLY_STATUS_CHARGING;
+					}
 				}
 				else
 				{
-					val->intval = POWER_SUPPLY_STATUS_CHARGING;
+					if(status == 0x1)
+					{
+						val->intval = POWER_SUPPLY_STATUS_FULL;
+					}
+					else if(status == 0x0)
+					{
+						val->intval = POWER_SUPPLY_STATUS_CHARGING;
+					}
 				}
 			}
 			else
@@ -331,8 +345,6 @@ static void polling_func(unsigned long arg)
 
 static int act8942_read_i2c(struct i2c_client *client, u8 reg, u8 *val)
 {
-	int err;
-
 	if (!client->adapter)
 		return -ENODEV;
 
@@ -351,17 +363,19 @@ static int act8942_read_i2c(struct i2c_client *client, u8 reg, u8 *val)
         }
     };
 
-	err = i2c_transfer(client->adapter, msgs, 2);
+	if(i2c_transfer(client->adapter, msgs, 2) == 2)
+	{
+		return 0;
+	}
 
-	return err;
+	return -EBUSY;
 }
 
 static int act8942_write_i2c(struct i2c_client *client, u8 reg, u8 *val)
 {
-	int err;
 	unsigned char buff[2];
     buff[0] = reg;
-    buff[1] = val;
+    buff[1] = *val;
     struct i2c_msg msgs[] = {
         {
         .addr = client->addr,
@@ -371,11 +385,102 @@ static int act8942_write_i2c(struct i2c_client *client, u8 reg, u8 *val)
         }
     };
 
-	err = i2c_transfer(client->adapter, msgs, 1);
+	if(i2c_transfer(client->adapter, msgs, 1) == 1)
+	{
+		return 0;
+	}
 
-	return err;
+	return -EBUSY;
 }
 
+int get_vsel(void)	//Elvis Fool
+{
+	return 0;
+}
+void set_vsel(int level)	//Elvis Fool
+{
+	return;
+}
+
+/*
+ *	REGx/VSET[ ] Output Voltage Setting
+ *
+ *								REGx/VSET[5:3]
+ *	REGx/VSET[2:0]	000 	001 	010 	011 	100 	101 	110 	111
+ *			000 	0.600	0.800 	1.000 	1.200 	1.600 	2.000 	2.400 	3.200
+ *			001 	0.625	0.825 	1.025 	1.250 	1.650 	2.050 	2.500 	3.300
+ *			010 	0.650	0.850	1.050	1.300	1.700	2.100	2.600	3.400
+ *			011		0.675	0.875	1.075	1.350	1.750	2.150	2.700	3.500
+ *			100		0.700	0.900	1.100	1.400	1.800	2.200	2.800	3.600
+ *			101		0.725	0.925	1.125	1.450	1.850	2.250	2.900	3.700
+ *			110		0.750	0.950	1.150	1.500	1.900	2.300	3.000	3.800
+ *			111		0.775	0.975	1.175	1.550	1.950	2.350	3.100	3.900
+ *
+ */
+static const unsigned long vset_table[] = {
+	600,	625,	650,	675,	700,	725,	750,	775,
+	800,	825,	850,	875,	900,	925,	950,	975,
+	1000,	1025,	1050,	1075,	1100,	1125,	1150,	1175,
+	1200,	1250,	1300,	1350,	1400,	1450,	1500,	1550,
+	1600,	1650,	1700,	1750,	1800,	1850,	1900,	1950,
+	2000,	2050,	2100,	2150,	2200,	2250,	2300,	2350,
+	2400,	2500,	2600,	2700,	2800,	2900,	3000,	3100,
+	3200,	3300,	3400,	3500,	3600,	3700,	3800,	3900,
+};	//unit is mV
+
+static inline int get_vset_from_table(unsigned long voltage, uint8_t *val)
+{
+	uint8_t i, size;
+	*val = 0;
+	if((voltage<600) || (voltage > 3900))
+	{
+		pr_err("Wrong VSET range! VSET range in [600:3900]mV\n");
+		return -EINVAL;
+	}
+	
+	for(i=0; i<ARRAY_SIZE(vset_table); i++)
+	{
+		if(voltage == vset_table[i])
+		{
+			*val = i;
+			return 0;
+		}
+	}
+	pr_err("voltage invalid! Please notice vset_table!\n");
+	return -EINVAL;
+}
+
+static int set_reg_voltage(act8942_regx regx, unsigned long *voltage)
+{
+	int ret = 0;
+	static u32 reg_addr[] = {ACT8942_REG1_ADDR, ACT8942_REG2_ADDR, ACT8942_REG3_ADDR,
+		ACT8942_REG4_ADDR, ACT8942_REG5_ADDR, ACT8942_REG6_ADDR, ACT8942_REG7_ADDR};
+	act8942_register_data_t register_data = { 0 };
+	if((regx<1) || (regx>7))
+	{
+		pr_err("Wrong REG number! REG number in [1:7]\n");
+		return -EINVAL;
+	}
+	get_vset_from_table(*voltage, &register_data.d8);
+	ret = act8942_write_i2c(this_client, reg_addr[regx-1], &register_data.d8);	//regx-1 for compatible act8942_regx
+	return ret;
+}
+
+static int get_reg_voltage(act8942_regx regx, unsigned long *voltage)
+{
+	int ret = 0;
+	static u32 reg_addr[] = {ACT8942_REG1_ADDR, ACT8942_REG2_ADDR, ACT8942_REG3_ADDR,
+		ACT8942_REG4_ADDR, ACT8942_REG5_ADDR, ACT8942_REG6_ADDR, ACT8942_REG7_ADDR};
+	act8942_register_data_t register_data = { 0 };
+	if((regx<1) || (regx>7))
+	{
+		pr_err("Wrong REG number! REG number in [1:7]\n");
+		return -EINVAL;
+	}
+	ret = act8942_read_i2c(this_client, reg_addr[regx-1], &register_data.d8); //regx-1 for compatible act8942_regx
+	*voltage = vset_table[register_data.REGx_VSET];
+	return ret;
+}
 
 static inline void	act8942_dump(struct i2c_client *client)
 {
@@ -455,14 +560,138 @@ static inline void	act8942_dump(struct i2c_client *client)
 	pr_info("act8942: [0x%x] : 0x%x\n", ACT8942_APCH_ADDR+0xa, val);
 }
 
-ssize_t act8942_info_show(struct class *class, struct class_attribute *attr, char *buf)
+/****************************************************************************/
+/* max args accepted for monitor commands */
+#define CONFIG_SYS_MAXARGS		16
+//#define DEBUG_PARSER
+
+static int parse_line (char *line, char *argv[])
+{
+	int nargs = 0;
+
+#ifdef DEBUG_PARSER
+	pr_info ("parse_line: \"%s\"\n", line);
+#endif
+	while (nargs < CONFIG_SYS_MAXARGS) {
+
+		/* skip any white space */
+		while ((*line == ' ') || (*line == '\t')) {
+			++line;
+		}
+
+		if (*line == '\0') {	/* end of line, no more args	*/
+			argv[nargs] = NULL;
+#ifdef DEBUG_PARSER
+		pr_info ("parse_line: nargs=%d\n", nargs);
+#endif
+			return (nargs);
+		}
+
+		argv[nargs++] = line;	/* begin of argument string	*/
+
+		/* find end of string */
+		while (*line && (*line != ' ') && (*line != '\t')) {
+			++line;
+		}
+
+		if (*line == '\0') {	/* end of line, no more args	*/
+			argv[nargs] = NULL;
+#ifdef DEBUG_PARSER
+		pr_info ("parse_line: nargs=%d\n", nargs);
+#endif
+			return (nargs);
+		}
+
+		*line++ = '\0';		/* terminate current arg	 */
+	}
+
+	pr_info ("** Too many args (max. %d) **\n", CONFIG_SYS_MAXARGS);
+
+#ifdef DEBUG_PARSER
+	pr_info ("parse_line: nargs=%d\n", nargs);
+#endif
+	return (nargs);
+}
+
+/****************************************************************************/
+
+
+ssize_t act8942_register_dump(struct class *class, struct class_attribute *attr, char *buf)
 {
 	act8942_dump(this_client);
 	return 0;
 }
 
+ssize_t act8942_test_show(struct class *class, struct class_attribute *attr, char *buf)
+{
+	unsigned long voltage;
+	if(get_reg_voltage(ACT8942_REG3, &voltage))
+	{
+		return -1;
+	}
+	pr_info("test:get %dmV\n", voltage);
+	return 0;
+}
+
+ssize_t act8942_test_store(struct class *class, struct class_attribute *attr, char *buf)
+{
+	unsigned long voltage = 3100;
+	if(set_reg_voltage(ACT8942_REG3, &voltage))
+	{
+		return -1;
+	}
+	pr_info("test:set %dmV\n", voltage);
+	return 0;
+}
+
+ssize_t act8942_voltage_handle(struct class *class, struct class_attribute *attr, char *buf)
+{
+	char *argv[CONFIG_SYS_MAXARGS + 1];	/* NULL terminated	*/
+	int argc, i, ret, regx;
+	unsigned long voltage;
+	argc = parse_line(buf, argv);
+	if(argc < 2)
+	{
+		return -EINVAL;
+		//ToDo help 
+	}
+
+	if(!strcmp(argv[0], "get"))
+	{
+		ret = sscanf(argv[1], "reg%d", &regx);
+		if(get_reg_voltage(regx, &voltage))
+		{
+			return -1;
+		}
+		pr_info("act8942_voltage_handle: Get reg%d voltage is %dmV\n", regx,voltage);
+	}
+	else if(!strcmp(argv[0], "set"))
+	{
+		if(argc < 3)
+		{
+			return -EINVAL;
+			//ToDo help 
+		}
+		ret = sscanf(argv[1], "reg%d", &regx);
+		ret = sscanf(argv[2], "%d", &voltage);
+		if(set_reg_voltage(regx, &voltage))
+		{
+			return -1;
+		}
+		pr_info("act8942_voltage_handle: Set reg%d voltage is %dmV\n", regx,voltage);
+	}
+	else
+	{
+		return -EINVAL;
+		//ToDo help 
+	}
+	return 0;
+}
+
 static struct class_attribute act8942_class_attrs[] = {
-	__ATTR(info, S_IRUGO | S_IWUSR, act8942_info_show, NULL),
+	__ATTR(register_dump, S_IRUGO | S_IWUSR, act8942_register_dump, NULL),
+	__ATTR(voltage, S_IRUGO | S_IWUSR, NULL, act8942_voltage_handle),
+	__ATTR(test, S_IRUGO | S_IWUSR, act8942_test_show, act8942_test_store),
 	__ATTR_NULL
 };
 

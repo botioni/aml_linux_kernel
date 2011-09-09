@@ -65,6 +65,21 @@ int audio_clock_config_table[][11][2]=
 	}
 };
 
+/*Default acodec_regbank value*/
+unsigned int acodec_regbank[74] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00,  // Reg  0 -  5
+                                   0x00, 0x00, 0x00, 0x00, 0x00, 0x00,  // Reg  6 - 11
+                                   0x88, 0x01, 0x00, 0x00, 0x00, 0x00,  // Reg 12 - 17
+                                   0x00, 0x00, 0x00, 0x00, 0x00, 0x00,  // Reg 18 - 23
+                                   0x00, 0x00, 0x00, 0x00, 0x00, 0x00,  // Reg 24 - 29
+                                   0x00, 0x00, 0x54, 0x54, 0x28, 0x28,  // Reg 30 - 35
+                                   0x00, 0x00, 0x00, 0x00, 0x00, 0x00,  // Reg 36 - 41
+                                   0x00, 0x00, 0x00, 0x00, 0x00, 0x00,  // Reg 42 - 47
+                                   0x00, 0x00, 0x00, 0x00, 0x00, 0x00,  // Reg 48 - 53
+                                   0x00, 0x00, 0x00, 0x00, 0x00, 0x00,  // Reg 54 - 59
+                                   0x00, 0x00, 0x00, 0x00, 0x12, 0x12,  // Reg 60 - 65
+                                   0x14, 0x14, 0x12, 0x12, 0x00, 0x00,  // Reg 66 - 71
+                                   0x00, 0x00                           // Reg 72 - 73
+                                  };
 
 void audio_set_aiubuf(u32 addr, u32 size)
 {
@@ -109,27 +124,34 @@ void audio_in_i2s_set_buf(u32 addr, u32 size)
 	WRITE_MPEG_REG(AUDIN_FIFO0_START, addr & 0xffffffc0);
 	WRITE_MPEG_REG(AUDIN_FIFO0_PTR, (addr&0xffffffc0));
 	WRITE_MPEG_REG(AUDIN_FIFO0_END, (addr&0xffffffc0) + (size&0xffffffc0)-8);
-#ifdef CONFIG_SND_AML_M2
-	WRITE_MPEG_REG(AUDIN_SOURCE_SEL, (1<<0)); // select audio codec output as I2S source
-#endif
-	WRITE_MPEG_REG(AUDIN_FIFO0_CTRL, (1<<0)	// FIFO0_EN
-    								|(1<<2)	// load start address./* AUDIN_FIFO0_LOAD */
-									|(1<<3)	// DIN from i2sin./* AUDIN_FIFO0_DIN_SEL */ 
-	    							|(1<<6)	// 32 bits data in./*AUDIN_FIFO0_D32b */ 
-									|(0<<7)	// put the 24bits data to  low 24 bits./* AUDIN_FIFO0_h24b */16bit 
-									|(4<<8)	// /*AUDIN_FIFO0_ENDIAN */
-									|(2<<11)//2 channel./* AUDIN_FIFO0_CHAN*/
+
+	WRITE_MPEG_REG(AUDIN_FIFO0_CTRL, (1<<AUDIN_FIFO0_EN)	// FIFO0_EN
+    								|(1<<AUDIN_FIFO0_LOAD)	// load start address./* AUDIN_FIFO0_LOAD */
+									|(1<<AUDIN_FIFO0_DIN_SEL)	// DIN from i2sin./* AUDIN_FIFO0_DIN_SEL */ 
+	    							//|(1<<6)	// 32 bits data in./*AUDIN_FIFO0_D32b */ 
+									//|(0<<7)	// put the 24bits data to  low 24 bits./* AUDIN_FIFO0_h24b */16bit 
+									|(4<<AUDIN_FIFO0_ENDIAN)	// /*AUDIN_FIFO0_ENDIAN */
+									|(2<<AUDIN_FIFO0_CHAN)//2 channel./* AUDIN_FIFO0_CHAN*/
 		    						|(0<<16)	//to DDR
-                                    |(1<<15)    // Urgent request.  DDR SDRAM urgent request enable.
+                                    |(1<<AUDIN_FIFO0_UG)    // Urgent request.  DDR SDRAM urgent request enable.
                                     |(0<<17)    // Overflow Interrupt mask
                                     |(0<<18)    // Audio in INT
-			                    	|(1<<19)	//hold 0 enable
-								    |(0<<22)	// hold0 to aififo																	
-				  );			
-	WRITE_MPEG_REG(AUDIN_I2SIN_CTRL, (0<<I2SIN_SIZE)			///*bit8*/  16bit
+			                    	//|(1<<19)	//hold 0 enable
+								    |(0<<AUDIN_FIFO0_UG)	// hold0 to aififo																	
+				  );
+
+    WRITE_MPEG_REG(AUDIN_FIFO0_CTRL1,    0 << 4                       // fifo0_dest_sel
+                                       | 2 << 2                       // fifo0_din_byte_num
+                                       | 0 << 0);                      // fifo0_din_pos
+
+	
+	WRITE_MPEG_REG(AUDIN_I2SIN_CTRL, //(0<<I2SIN_SIZE)			///*bit8*/  16bit
+									 (3<<I2SIN_SIZE)
 									|(1<<I2SIN_CHAN_EN)		/*bit10~13*/ //2 channel 
 									|(1<<I2SIN_POS_SYNC)	
+									//|(0<<I2SIN_POS_SYNC)	
 									|(1<<I2SIN_LRCLK_SKEW)
+                                    |(1<<I2SIN_LRCLK_INVT)
 									|(1<<I2SIN_CLK_SEL)
 									|(1<<I2SIN_LRCLK_SEL)
 				    				|(1<<I2SIN_DIR)
@@ -245,8 +267,8 @@ void audio_util_set_dac_format(unsigned format)
 	WRITE_MPEG_REG(AIU_CLK_CTRL,		 (0 << 12) | // 958 divisor more, if true, divided by 2, 4, 6, 8.
 							(1 <<  8) | // alrclk skew: 1=alrclk transitions on the cycle before msb is sent
 							(1 <<  6) | // invert aoclk
-                            (1 <<  7) | // invert lrclk
-							(1 <<  4) | // 958 divisor: 0=no div; 1=div by 2; 2=div by 3; 3=div by 4.
+                            //(1 <<  7) | // invert lrclk
+							//(1 <<  4) | // 958 divisor: 0=no div; 1=div by 2; 2=div by 3; 3=div by 4.
 							//(2 <<  2) | // i2s divisor: 0=no div; 1=div by 2; 2=div by 4; 3=div by 8.
 							(0 <<  2) | // i2s divisor: 0=no div; 1=div by 2; 2=div by 4; 3=div by 8.
 							(1 <<  1) |  
@@ -343,8 +365,10 @@ void audio_set_clk(unsigned freq, unsigned fs_config)
     WRITE_MPEG_REG(HHI_AUD_PLL_CNTL3, 0x9649a941);
 		// select Audio PLL as MCLK source
 		//WRITE_MPEG_REG( HHI_AUD_CLK_CNTL, READ_MPEG_REG(HHI_AUD_CLK_CNTL) & ~(1 << 9));
-		WRITE_MPEG_REG_BITS(HHI_AUD_CLK_CNTL, 0, 9, 3);    //changed lishuai
-		WRITE_MPEG_REG_BITS(HHI_AUD_CLK_CNTL, 25-1, 0, 8); //New added
+		WRITE_MPEG_REG_BITS(HHI_AUD_CLK_CNTL, 0, 9, 3);    
+		//WRITE_MPEG_REG_BITS(HHI_AUD_CLK_CNTL, 25-1, 0, 8); 
+		
+		WRITE_MPEG_REG_BITS(HHI_AUD_CLK_CNTL, 13-1, 0, 8); 
 #endif		
     // Put the PLL to sleep
     WRITE_MPEG_REG( HHI_AUD_PLL_CNTL, READ_MPEG_REG(HHI_AUD_PLL_CNTL) | (1 << 15));//found
@@ -377,6 +401,89 @@ void audio_set_clk(unsigned freq, unsigned fs_config)
     }
 }
 
+void adac_wr_reg (unsigned long addr, unsigned long data)
+{
+    WRITE_APB_REG((APB_BASE+(addr<<2)), data);
+    acodec_regbank[addr] = data;
+} /* adac_wr_reg */
+
+unsigned long adac_rd_reg (unsigned long addr)
+{
+    unsigned long data;
+    data = READ_APB_REG(APB_BASE+(addr<<2));
+    return (data);
+} /* adac_rd_reg */
+
+void adac_rd_check_reg (unsigned long addr, unsigned long exp_data, unsigned long mask)
+{
+    unsigned long rd_data;
+    rd_data = adac_rd_reg(addr);
+    if ((rd_data | mask) != (exp_data | mask)) {
+        printk("Error: audio DAC register read data mismatch!\n");
+    }
+} /* adac_rd_check_reg */
+
+void wr_regbank (unsigned long rstdpz,
+                 unsigned long mclksel, 
+                 unsigned long i2sfsadc, 
+                 unsigned long i2sfsdac, 
+                 unsigned long i2ssplit, 
+                 unsigned long i2smode, 
+                 unsigned long pdauxdrvrz, 
+                 unsigned long pdauxdrvlz, 
+                 unsigned long pdhsdrvrz, 
+                 unsigned long pdhsdrvlz, 
+                 unsigned long pdlsdrvz, 
+                 unsigned long pddacrz, 
+                 unsigned long pddaclz, 
+                 unsigned long pdz, 
+                 unsigned long pdmbiasz, 
+                 unsigned long pdvcmbufz,
+                 unsigned long pdrpgaz, 
+                 unsigned long pdlpgaz, 
+                 unsigned long pdadcrz, 
+                 unsigned long pdadclz, 
+                 unsigned long hsmute, 
+                 unsigned long recmute, 
+                 unsigned long micmute, 
+                 unsigned long lmmute, 
+                 unsigned long lsmute, 
+                 unsigned long lmmix, 
+                 unsigned long recmix, 
+                 unsigned long ctr, 
+                 unsigned long enhp, 
+                 unsigned long lmvol, 
+                 unsigned long hsvol, 
+                 unsigned long pbmix, 
+                 unsigned long lsmix, 
+                 unsigned long micvol, 
+                 unsigned long recvol, 
+                 unsigned long recsel) 
+{
+    adac_wr_reg(0, (rstdpz<<1));
+    adac_wr_reg(2, (mclksel<<0));
+    adac_wr_reg(12, (i2sfsadc<<4) | (i2sfsdac<<0));
+    adac_wr_reg(13, (i2ssplit<<3) | (i2smode<<0));
+    adac_wr_reg(16, (pdauxdrvrz<<7) | (pdauxdrvlz<<6) | (pdhsdrvrz<<5) | (pdhsdrvlz<<4) | (pdlsdrvz<<2) | (pddacrz<<1) | (pddaclz<<0));
+    adac_wr_reg(17, (pdz<<7) | (pdmbiasz<<5) | (pdvcmbufz<<4) | (pdrpgaz<<3) | (pdlpgaz<<2) | (pdadcrz<<1) | (pdadclz<<0));
+    adac_wr_reg(24, (hsmute<<6) | (recmute<<4) | (micmute<<2) | (lmmute<<0));
+    adac_wr_reg(25, (lsmute<<2));
+    adac_wr_reg(26, (lmmix<<5) | (recmix<<3) | (ctr<<1));
+    adac_wr_reg(32, (lmvol&0xff));
+    adac_wr_reg(33, (lmvol>>8));
+    adac_wr_reg(34, (hsvol&0xff));
+    adac_wr_reg(35, (hsvol>>8));
+    adac_wr_reg(36, (pbmix&0xff));
+    adac_wr_reg(37, (pbmix>>8));
+    adac_wr_reg(38, (lsmix&0xff));
+    adac_wr_reg(39, (lsmix>>8));
+    adac_wr_reg(64, (micvol&0xff));
+    adac_wr_reg(65, (micvol>>8));
+    adac_wr_reg(66, (recvol&0xff));
+    adac_wr_reg(67, (recvol>>8));
+    adac_wr_reg(72, (recsel&0xff));
+    adac_wr_reg(73, (recsel>>8));
+} /* wr_regbank */
 
 
 //------------------------------------------------------------------------------
@@ -410,7 +517,7 @@ void set_acodec_source (unsigned int src)
     data32 |= src   << 0;   // [1:0]    acodec_clk_sel: 00=Disable acodec_sclk; 01=Select pcm clock; 10=Select AIU aoclk; 11=Not allowed.
     WRITE_MPEG_REG(AIU_CODEC_CLK_DATA_CTRL, data32);
 
-} /* set_acodec_source */
+}
 
 
 extern void audio_out_enabled(int flag);
@@ -488,7 +595,7 @@ static void audio_hw_set_958_pcm24(_aiu_958_raw_setting_t * set)
 void audio_set_958_mode(unsigned mode, _aiu_958_raw_setting_t * set)
 {
     if (mode == AIU_958_MODE_RAW) {
-        set_958_channel_status(set);
+        set_958_channel_status(set->chan_stat);
         if (ENABLE_IEC958) {
             WRITE_MPEG_REG(AIU_958_MISC, 1);
             WRITE_MPEG_REG_BITS(AIU_MEM_IEC958_CONTROL, 1, 8, 1);  // raw

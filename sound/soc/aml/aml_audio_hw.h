@@ -1,7 +1,9 @@
 #ifndef __AML_AUDIO_HW_H__
 #define __AML_AUDIO_HW_H__
 
-#if defined (CONFIG_ARCH_MESON) || defined (CONFIG_ARCH_MESON2)
+#if defined (CONFIG_ARCH_MESON) || defined (CONFIG_ARCH_MESON2) || defined (CONFIG_ARCH_MESON3)
+
+extern unsigned int acodec_regbank[];
 
 /* assumming PLL source is 24M */
 
@@ -168,24 +170,116 @@ void audio_i2s_swap_left_right(unsigned int flag);
 int audio_dac_set(unsigned freq);
 int if_audio_out_enable(void);
 int if_audio_in_i2s_enable(void);
+void audio_out_enabled(int flag);
 void audio_util_set_dac_format(unsigned format);
 void set_acodec_source (unsigned int src);
+void adac_wr_reg (unsigned long addr, unsigned long data);
+unsigned long adac_rd_reg (unsigned long addr);
+void adac_rd_check_reg (unsigned long addr, unsigned long exp_data, unsigned long mask);
+void wr_regbank (    unsigned long rstdpz,
+					 unsigned long mclksel, 
+					 unsigned long i2sfsadc, 
+					 unsigned long i2sfsdac, 
+					 unsigned long i2ssplit, 
+					 unsigned long i2smode, 
+					 unsigned long pdauxdrvrz, 
+					 unsigned long pdauxdrvlz, 
+					 unsigned long pdhsdrvrz, 
+					 unsigned long pdhsdrvlz, 
+					 unsigned long pdlsdrvz, 
+					 unsigned long pddacrz, 
+					 unsigned long pddaclz, 
+					 unsigned long pdz, 
+					 unsigned long pdmbiasz, 
+					 unsigned long pdvcmbufz,
+					 unsigned long pdrpgaz, 
+					 unsigned long pdlpgaz, 
+					 unsigned long pdadcrz, 
+					 unsigned long pdadclz, 
+					 unsigned long hsmute, 
+					 unsigned long recmute, 
+					 unsigned long micmute, 
+					 unsigned long lmmute, 
+					 unsigned long lsmute, 
+					 unsigned long lmmix, 
+					 unsigned long recmix, 
+					 unsigned long ctr, 
+					 unsigned long enhp, 
+					 unsigned long lmvol, 
+					 unsigned long hsvol, 
+					 unsigned long pbmix, 
+					 unsigned long lsmix, 
+					 unsigned long micvol, 
+					 unsigned long recvol, 
+					 unsigned long recsel);
 
 
-#define APB_ADAC_RESET                		(0x5000+0x00*4)
-#define APB_ADAC_LATCH                		(0x5000+0x01*4)
-#define APB_ADAC_CLOCK                		(0x5000+0x02*4)
-#define APB_ADAC_I2S_CONFIG_REG1      		(0x5000+0x0c*4)
-#define APB_ADAC_I2S_CONFIG_REG2      		(0x5000+0x0d*4)
-#define APB_ADAC_POWER_CTRL_REG1      		(0x5000+0x10*4)
-#define APB_ADAC_POWER_CTRL_REG2      		(0x5000+0x11*4)
-#define APB_ADAC_POWER_CTRL_REG3      		(0x5000+0x12*4)
-#define APB_ADAC_MUTE_CTRL_REG1       		(0x5000+0x18*4)
-#define APB_ADAC_DAC_ADC_MIXER        		(0x5000+0x1a*4)
-#define APB_ADAC_PLAYBACK_VOL_CTRL_LSB              (0x5000+0x20*4)
-#define APB_ADAC_PLAYBACK_VOL_CTRL_MSB              (0x5000+0x21*4)
-#define APB_ADAC_STEREO_HS_VOL_CTRL_LSB             (0x5000+0x22*4)
-#define APB_ADAC_STEREO_HS_VOL_CTRL_MSB             (0x5000+0x23*4)
+#define APB_BASE	0x4000
+
+#define ADAC_RESET                		0x00
+#define ADAC_LATCH                		0x01
+#define ADAC_CLOCK                		0x02
+// 0x03-0x0b  reserved
+#define ADAC_I2S_CONFIG_REG1      		0x0c
+#define ADAC_I2S_CONFIG_REG2      		0x0d
+// 0x0e - 0x0f reserved
+#define ADAC_POWER_CTRL_REG1      		0x10
+#define ADAC_POWER_CTRL_REG2      		0x11
+#define ADAC_POWER_CTRL_REG3      		0x12
+// 0x13-0x17 reserved
+#define ADAC_MUTE_CTRL_REG1       		0x18
+#define ADAC_MUTE_CTRL_REG2						0x19
+#define ADAC_DAC_ADC_MIXER        		0x1a
+// 0x1b-0x1f reserved
+#define ADAC_PLAYBACK_VOL_CTRL_LSB              0x20
+#define ADAC_PLAYBACK_VOL_CTRL_MSB              0x21
+#define ADAC_STEREO_HS_VOL_CTRL_LSB             0x22
+#define ADAC_STEREO_HS_VOL_CTRL_MSB             0x23
+
+#define ADAC_PLAYBACK_MIX_CTRL_LSB	0x24
+#define ADAC_PLAYBACK_MIX_CTRL_MSB	0x25
+
+#define ADAC_LS_MIX_CTRL_LSB		0x26
+#define ADAC_LS_MIX_CTRL_MSB		0x27
+
+#define ADAC_STEREO_PGA_VOL_LSB	0x40
+#define ADAC_STEREO_PGA_VOL_MSB	0x41
+
+#define ADAC_RECVOL_CTRL_LSB	0x42
+#define ADAC_RECVOL_CTRL_MSB	0x43
+
+#define ADAC_REC_CH_SEL_LSB		0x48
+#define ADAC_REC_CH_SEL_MSB		0x49
+
+#define ADAC_VCM_REG1		0x80
+#define ADAC_VCM_REG2		0x81
+
+#define ADAC_TEST_REG1	0xe0
+#define ADAC_TEST_REG2	0xe1
+#define ADAC_TEST_REG3	0xe2
+#define ADAC_TEST_REG4	0xe3
+
+#define ADAC_MAXREG	0xe4
+
+#define NO_CLOCK_TO_CODEC   0
+#define PCMOUT_TO_DAC       1
+#define AIU_I2SOUT_TO_DAC   2
+
+
+#define APB_ADAC_RESET                		(APB_BASE+ADAC_RESET*4)
+#define APB_ADAC_LATCH                		(APB_BASE+ADAC_LATCH*4)
+#define APB_ADAC_CLOCK                		(APB_BASE+ADAC_CLOCK*4)
+#define APB_ADAC_I2S_CONFIG_REG1      		(APB_BASE+ADAC_I2S_CONFIG_REG1*4)
+#define APB_ADAC_I2S_CONFIG_REG2      		(APB_BASE+ADAC_I2S_CONFIG_REG2*4)
+#define APB_ADAC_POWER_CTRL_REG1      		(APB_BASE+ADAC_POWER_CTRL_REG1*4)
+#define APB_ADAC_POWER_CTRL_REG2      		(APB_BASE+ADAC_POWER_CTRL_REG2*4)
+#define APB_ADAC_POWER_CTRL_REG3      		(APB_BASE+ADAC_POWER_CTRL_REG3*4)
+#define APB_ADAC_MUTE_CTRL_REG1       		(APB_BASE+ADAC_MUTE_CTRL_REG1*4)
+#define APB_ADAC_DAC_ADC_MIXER        		(APB_BASE+ADAC_DAC_ADC_MIXER*4)
+#define APB_ADAC_PLAYBACK_VOL_CTRL_LSB              (APB_BASE+ADAC_PLAYBACK_VOL_CTRL_LSB*4)
+#define APB_ADAC_PLAYBACK_VOL_CTRL_MSB              (APB_BASE+ADAC_PLAYBACK_VOL_CTRL_MSB*4)
+#define APB_ADAC_STEREO_HS_VOL_CTRL_LSB             (APB_BASE+ADAC_STEREO_HS_VOL_CTRL_LSB*4)
+#define APB_ADAC_STEREO_HS_VOL_CTRL_MSB             (APB_BASE+ADAC_STEREO_HS_VOL_CTRL_MSB*4)
 
 
 

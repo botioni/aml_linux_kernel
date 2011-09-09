@@ -96,7 +96,7 @@ void aml_m1_reset(struct snd_soc_codec* codec, bool first_time)
 	  msleep(100);
 	  snd_soc_write(codec,ADAC_CLOCK, 0);
 	  snd_soc_write(codec,ADAC_I2S_CONFIG_REG1, 6);	
-	  snd_soc_write(codec, ADAC_I2S_CONFIG_REG2, 1|(0<<3)); 		// I2S, split
+	  snd_soc_write(codec, ADAC_I2S_CONFIG_REG2, 1|(1<<3)); 		// I2S, split
 	
 	  snd_soc_write(codec, ADAC_POWER_CTRL_REG1, 0xc3);
 	  snd_soc_write(codec, ADAC_POWER_CTRL_REG2, 0);

@@ -19,57 +19,6 @@
 #include <mach/am_regs.h>
 #include "aml_audio_hw.h"
 
-#define APB_BASE	0x4000
-
-#define ADAC_RESET                		0x00
-#define ADAC_LATCH                		0x01
-#define ADAC_CLOCK                		0x02
-// 0x03-0x0b  reserved
-#define ADAC_I2S_CONFIG_REG1      		0x0c
-#define ADAC_I2S_CONFIG_REG2      		0x0d
-// 0x0e - 0x0f reserved
-#define ADAC_POWER_CTRL_REG1      		0x10
-#define ADAC_POWER_CTRL_REG2      		0x11
-#define ADAC_POWER_CTRL_REG3      		0x12
-// 0x13-0x17 reserved
-#define ADAC_MUTE_CTRL_REG1       		0x18
-#define ADAC_MUTE_CTRL_REG2						0x19
-#define ADAC_DAC_ADC_MIXER        		0x1a
-// 0x1b-0x1f reserved
-#define ADAC_PLAYBACK_VOL_CTRL_LSB              0x20
-#define ADAC_PLAYBACK_VOL_CTRL_MSB              0x21
-#define ADAC_STEREO_HS_VOL_CTRL_LSB             0x22
-#define ADAC_STEREO_HS_VOL_CTRL_MSB             0x23
-
-#define ADAC_PLAYBACK_MIX_CTRL_LSB	0x24
-#define ADAC_PLAYBACK_MIX_CTRL_MSB	0x25
-
-#define ADAC_LS_MIX_CTRL_LSB		0x26
-#define ADAC_LS_MIX_CTRL_MSB		0x27
-
-#define ADAC_STEREO_PGA_VOL_LSB	0x40
-#define ADAC_STEREO_PGA_VOL_MSB	0x41
-
-#define ADAC_RECVOL_CTRL_LSB	0x42
-#define ADAC_RECVOL_CTRL_MSB	0x43
-
-#define ADAC_REC_CH_SEL_LSB		0x48
-#define ADAC_REC_CH_SEL_MSB		0x49
-
-#define ADAC_VCM_REG1		0x80
-#define ADAC_VCM_REG2		0x81
-
-#define ADAC_TEST_REG1	0xe0
-#define ADAC_TEST_REG2	0xe1
-#define ADAC_TEST_REG3	0xe2
-#define ADAC_TEST_REG4	0xe3
-
-#define ADAC_MAXREG	0xe4
-
-#define NO_CLOCK_TO_CODEC   0
-#define PCMOUT_TO_DAC       1
-#define AIU_I2SOUT_TO_DAC   2
-
 struct snd_soc_codec_device soc_codec_dev_aml_m3;
 static struct snd_soc_codec *aml_m3_codec;
 
@@ -125,94 +74,172 @@ void aml_reset_path(struct snd_soc_codec* codec, AML_PATH_SET_TYPE type)
 
 void aml_m3_reset(struct snd_soc_codec* codec, bool first_time)
 {
-	unsigned long   data32;
+	unsigned long   i,data32;
 
 	if (first_time)
 	{
-        audio_set_clk(AUDIO_CLK_FREQ_48,0);
-		
-    	WRITE_MPEG_REG( HHI_AUD_PLL_CNTL, READ_MPEG_REG(HHI_AUD_PLL_CNTL) & ~(1 << 15));
-    	WRITE_MPEG_REG_BITS(HHI_AUD_CLK_CNTL, 1, 23, 1);
-        msleep(100);
-      
-    	data32  = 0;
-        data32 |= 0 << 15;  // [15]     audac_soft_reset_n
-        data32 |= 0 << 14;  // [14]     audac_reset_ctrl: 0=use audac_reset_n pulse from reset module; 1=use audac_soft_reset_n.
-        data32 |= 0 << 9;   // [9]      delay_rd_en
-        data32 |= 0 << 8;   // [8]      audac_reg_clk_inv
-        data32 |= 0x55 << 1;   // [7:1]    audac_i2caddr
-        data32 |= 0 << 0;   // [0]      audac_intfsel: 0=use host bus; 1=use I2C.
-        WRITE_MPEG_REG(AIU_AUDAC_CTRL0, data32);
+        //audio_set_clk(AUDIO_CLK_FREQ_48,0);
+        audio_set_clk(AUDIO_CLK_FREQ_192,0);
+	 	set_acodec_source(AIU_I2SOUT_TO_DAC);   // 0=no clock to CODEC; 1=pcmout to DAC; 2=Aiu I2S out to DAC.
 
-        // Enable APB3 fail on error
-        data32  = 0;
-        data32 |= 1     << 15;  // [15]     err_en
-        data32 |= 255   << 0;   // [11:0]   max_err
-        WRITE_MPEG_REG(AIU_AUDAC_CTRL1, data32);
-      
-        data32 = READ_MPEG_REG(AIU_AUDAC_CTRL0);
-        if (data32 != (0x55 << 1)) {
-    	    printk("audiocodec init error: AIU_AUDAC_CTRL0 = %x\n", data32);
-    	}
-        data32 = READ_MPEG_REG(AIU_AUDAC_CTRL1);
-        if (data32 != 0x80ff) {
-      		printk("audiocodec init error: AIU_AUDAC_CTRL1 = %x\n", data32);
-        }
-		
-		snd_soc_write(codec, ADAC_RESET, (0<<1));
-    	snd_soc_write(codec, ADAC_RESET, (0<<1));
-    	snd_soc_write(codec, ADAC_RESET, (0<<1));
-    	snd_soc_write(codec, ADAC_RESET, (0<<1));
-    	snd_soc_write(codec, ADAC_RESET, (0<<1));
-    	msleep(100);
-        
+    	// --------------------------------------------------------
+    	// Configure audio DAC control interface
+    	// --------------------------------------------------------
 
-    	snd_soc_write(codec,ADAC_CLOCK, 0); // 256fs
-    	snd_soc_write(codec, ADAC_I2S_CONFIG_REG1, (7<<4)|7);	 // samplerate for ADC&DAC
-    	snd_soc_write(codec, ADAC_I2S_CONFIG_REG2, 1|(1<<3)); 		// I2S | split
+	    data32  = 0;
+	    data32 |= 0     << 15;  // [15]     audac_soft_reset_n
+	    data32 |= 0     << 14;  // [14]     audac_reset_ctrl: 0=use audac_reset_n pulse from reset module; 1=use audac_soft_reset_n.
+	    data32 |= 0     << 9;   // [9]      delay_rd_en
+	    data32 |= 0     << 8;   // [8]      audac_reg_clk_inv
+	    data32 |= 0x55  << 1;   // [7:1]    audac_i2caddr
+	    data32 |= 0     << 0;   // [0]      audac_intfsel: 0=use host bus; 1=use I2C.
+	    WRITE_MPEG_REG(AIU_AUDAC_CTRL0, data32);
+			
+			
+	    WRITE_MPEG_REG( HHI_AUD_PLL_CNTL, READ_MPEG_REG(HHI_AUD_PLL_CNTL) & ~(1 << 15));
+	    WRITE_MPEG_REG_BITS(HHI_AUD_CLK_CNTL, 1, 23, 1);
+	    WRITE_MPEG_REG(AUDIN_SOURCE_SEL, (1<<0)); // select audio codec output as I2S source
+	    msleep(100);
+	 
+	    // Enable APB3 fail on error
+	    data32  = 0;
+	    data32 |= 1     << 15;  // [15]     err_en
+	    data32 |= 255   << 0;   // [11:0]   max_err
+	    WRITE_MPEG_REG(AIU_AUDAC_CTRL1, data32);
+	    // Check read back data
+	    data32 = READ_MPEG_REG(AIU_AUDAC_CTRL0);
+	    if (data32 != (0x55 << 1)) {
+			printk("audiocodec init error: AIU_AUDAC_CTRL0 = %x\n", data32);
+		}
+			
+		data32 = READ_MPEG_REG(AIU_AUDAC_CTRL1);
+		if (data32 != 0x80ff) {
+			printk("audiocodec init error: AIU_AUDAC_CTRL1 = %x\n", data32);
+		}
 
-        snd_soc_write(codec, ADAC_MUTE_CTRL_REG1,0);
-    	snd_soc_write(codec, ADAC_MUTE_CTRL_REG2, 0);
-        
-        snd_soc_write(codec,ADAC_DAC_ADC_MIXER, 0);
+	 	// Check audio DAC default register default values
+	 	for (i = 0; i < 74; i ++) {
+	 		adac_rd_check_reg(i, acodec_regbank[i], 0);                      
+ 		}
+		wr_regbank (0,			// rstdpz: active low.
+					0,			// mclksel[3:0]: master clock freq sel. 0=256Fs, 1=384Fs, ... 
+					8,		    // i2sfsadc[3:0]: sample freq sel. 0=8kHz, 1=11.025k, 2=12k, 3=16k, 4=22.05k, 5=24k, 6=32k, 7=44.1k, 8=48k, 9=88.2k, 10=96k, 11=192k, >11=Rsrv.
+					8,		    // i2sfsdac[3:0]: sample freq sel. 0=8kHz, 1=11.025k, 2=12k, 3=16k, 4=22.05k, 5=24k, 6=32k, 7=44.1k, 8=48k, 9=88.2k, 10=96k, 11=192k, >11=Rsrv.
+					1,			// i2ssplit: 0=single mode, 1=dual mode.
+					1,			// i2smode[2:0]: Data format sel. 0=Right justify, 1=I2S, 2=Left justify, 3=Burst1, 4=Burst2, 5=Mono burst1, 6=Mono burst2, 7=Rsrv.
+					1,			// pdauxdrvrz: 0=power down active, 1=normal.
+					1,			// pdauxdrvlz: 0=power down active, 1=normal.
+					1,			// pdhsdrvrz: 0=power down active, 1=normal.
+					1,			// pdhsdrvlz: 0=power down active, 1=normal.
+					1,			// pdlsdrvz: 0=power down active, 1=normal.
+					1,			// pddacrz: 0=power down active, 1=normal.
+					1,			// pddaclz: 0=power down active, 1=normal.
+					0,			// pdz: 0=power down active, 1=normal.
+					1,			// pdmbiasz: 0=power down active, 1=normal.
+					1,			// pdvcmbufz: 0=power down active, 1=normal.
+					1,			// pdrpgaz: 0=power down active, 1=normal.
+					1,			// pdlpgaz: 0=power down active, 1=normal.
+					1,			// pdadcrz: 0=power down active, 1=normal.
+					1,			// pdadclz: 0=power down active, 1=normal.
+					0,			// hsmute[1:0]: bit[1] Analog playback right channel mute, bit[0] Analog playback left channel mute.
+					0,			// recmute[1:0]: bit[1] Digital record right channel mute, bit[0] Digital record left channel mute.
+					0,			// micmute[1:0]: bit[1] Input PGA right channel mute, bit[0] Input PGA left channel mute.
+					0,			// lmmute[1:0]: bit[1] Digital playback right channel mute, bit[0] Digital playback left channel mute.
+					0,			// lsmute: loud speaker mute.
+					0,			// lmmix: Playback digital mixer sel.
+					0,			// recmix: Record digital mixer sel.
+					0,			// ctr[1:0]: test mode sel. 0=Normal, 1=Digital filter loopback, 2=Digital filter bypass, 3=Digital audio I/F loopback.
+					0,			// enhp: Record channel high pass filter enable.
+					0x5454, 	// lmvol[15:0]: Digital playback volumn control, [15:8] control right channel, [7:0] control left channel.
+								// 0=-126dB, 1=-124.5dB, ..., 0x53=-1.5dB, 0x54=0dB, >=0x55 Rsrv.
+					0x2828, 	// hsvol[15:0]: Analog playback headset volumn control, [15:8] control right channel, [7:0] control left channel.
+								// 0=-40dB, 1=-39dB, ..., 0x28=0dB, ..., 0x2e=6dB, >=0x2f Rsrv.
+					0,			// pbmix[15:0]: Playback channel mixing sel. [15:8] control right channel, [7:0] control left channel.
+								// 0=Left(Right) digital source only, 1=Analog source only, 2=Analog + left(right) digital,
+								// 3=Right(Left) digital sourcd only, 4=Left(Right) digital + right(left) digital, 5=Analog + right(left) digital,
+								// 6=Analog + left(right) digital + right(left) digital, >=7 Rsrv.
+					0x0001, 	// lsmix[15:0]
+					0x0404, 	// micvol[15:0]: Input PGA volume control. [15:8] control right channel, [7:0] control left channel.
+								// 0=-6dB, 1=-4.5dB, ..., 4=0dB, ..., 0x11=19.5dB, 0x12=21dB, >=0x13 Rsrv.
+					0x1414, 	// recvol[15:0]: Digital record channel master volume control. [15:8] control right channel, [7:0] control left channel.
+								// 0=30dB, 1=28.5dB, ..., 0x13=1.5dB, 0x14=0dB, 0x15=-1.5dB, ..., 0x54=-96dB, >=0x55 Rsrv.
+					0x0101);	// recsel[15:0]: Input PGA selection. [15:8] control right channel, [7:0] control left channel.
+								// 0x01=input1, 0x03=input2, 0x05=input3, 0x09=input4,
+								// 0x11=input5, 0x21=input6, 0x41=input7, 0x81=input8, others=Rsrv.
 
-        snd_soc_write(codec,ADAC_PLAYBACK_VOL_CTRL_LSB, 0x54);
-        snd_soc_write(codec,ADAC_PLAYBACK_VOL_CTRL_MSB, 0x54);
-        snd_soc_write(codec,ADAC_STEREO_HS_VOL_CTRL_LSB, 0x28);
-        snd_soc_write(codec,ADAC_STEREO_HS_VOL_CTRL_MSB, 0x28); 
 
-        snd_soc_write(codec, ADAC_PLAYBACK_MIX_CTRL_LSB, 0);
-        snd_soc_write(codec, ADAC_PLAYBACK_MIX_CTRL_MSB, 0);
 
-        snd_soc_write(codec, ADAC_STEREO_PGA_VOL_LSB, 4);
-        snd_soc_write(codec, ADAC_STEREO_PGA_VOL_MSB, 4);
+		// Check audio DAC register read-back values
+		for (i = 0; i < 74; i ++) {
+			adac_rd_check_reg(i, acodec_regbank[i], 0);
+		}
 
-        snd_soc_write(codec, ADAC_RECVOL_CTRL_LSB, 0x14);
-        snd_soc_write(codec, ADAC_RECVOL_CTRL_MSB, 0x14);
+	    udelay(10);
 
-        snd_soc_write(codec, ADAC_REC_CH_SEL_LSB, 1|(1<<(2-1)));// 1|(1<<(channel-1))
-        snd_soc_write(codec, ADAC_REC_CH_SEL_MSB, 1|(1<<(2-1)));// 1|(1<<(channel-1))
+/*			snd_soc_write(codec, ADAC_RESET, (0<<1));
+	    	snd_soc_write(codec, ADAC_RESET, (0<<1));
+	    	snd_soc_write(codec, ADAC_RESET, (0<<1));
+	    	snd_soc_write(codec, ADAC_RESET, (0<<1));
+	    	snd_soc_write(codec, ADAC_RESET, (0<<1));
+	    	msleep(100);
+	        
 
-        snd_soc_write(codec, ADAC_POWER_CTRL_REG1, 0xf7);
-      	snd_soc_write(codec, ADAC_POWER_CTRL_REG2, 0x2f);
+	    	snd_soc_write(codec,ADAC_CLOCK, 0); // 256fs
+	    	snd_soc_write(codec, ADAC_I2S_CONFIG_REG1, (7<<4)|7);	 // samplerate for ADC&DAC
+	    	snd_soc_write(codec, ADAC_I2S_CONFIG_REG2, 1|(1<<3)); 		// I2S | split
 
-        snd_soc_write(codec, ADAC_LS_MIX_CTRL_LSB, 1);
-        snd_soc_write(codec, ADAC_LS_MIX_CTRL_MSB, 0);
-      
-    	aml_reset_path(codec, AML_PWR_UP);
-        aml_reset_path(codec, AML_PWR_DOWN);
-    }
+	        snd_soc_write(codec, ADAC_MUTE_CTRL_REG1,0);
+	    	snd_soc_write(codec, ADAC_MUTE_CTRL_REG2, 0);
+	        
+	        snd_soc_write(codec,ADAC_DAC_ADC_MIXER, 0);
+
+	        snd_soc_write(codec,ADAC_PLAYBACK_VOL_CTRL_LSB, 0x54);
+	        snd_soc_write(codec,ADAC_PLAYBACK_VOL_CTRL_MSB, 0x54);
+	        snd_soc_write(codec,ADAC_STEREO_HS_VOL_CTRL_LSB, 0x28);
+	        snd_soc_write(codec,ADAC_STEREO_HS_VOL_CTRL_MSB, 0x28); 
+
+	        snd_soc_write(codec, ADAC_PLAYBACK_MIX_CTRL_LSB, 0);
+	        snd_soc_write(codec, ADAC_PLAYBACK_MIX_CTRL_MSB, 0);
+
+	        snd_soc_write(codec, ADAC_STEREO_PGA_VOL_LSB, 4);
+	        snd_soc_write(codec, ADAC_STEREO_PGA_VOL_MSB, 4);
+
+	        snd_soc_write(codec, ADAC_RECVOL_CTRL_LSB, 0x14);
+	        snd_soc_write(codec, ADAC_RECVOL_CTRL_MSB, 0x14);
+
+	        snd_soc_write(codec, ADAC_REC_CH_SEL_LSB, 1|(1<<(1-1)));// 1|(1<<(channel-1))
+	        snd_soc_write(codec, ADAC_REC_CH_SEL_MSB, 1|(1<<(1-1)));// 1|(1<<(channel-1))
+
+	        snd_soc_write(codec, ADAC_POWER_CTRL_REG1, 0xf7);
+	      	snd_soc_write(codec, ADAC_POWER_CTRL_REG2, 0x2f);
+
+	        snd_soc_write(codec, ADAC_LS_MIX_CTRL_LSB, 1);
+	        snd_soc_write(codec, ADAC_LS_MIX_CTRL_MSB, 0);
+	   
+	    	aml_reset_path(codec, AML_PWR_UP);
+	        aml_reset_path(codec, AML_PWR_DOWN);
+*/
+
+	}
     else
     {
         snd_soc_write(codec, ADAC_LS_MIX_CTRL_LSB, 1);
         snd_soc_write(codec, ADAC_LS_MIX_CTRL_MSB, 0);
         aml_reset_path(codec, AML_PWR_UP);
     }
+
+	latch_(codec);
 	snd_soc_write(codec, ADAC_RESET, (0<<1));
     latch_(codec);
+	latch_(codec);
+	latch_(codec);
 	snd_soc_write(codec, ADAC_RESET, (1<<1));
     latch_(codec);
+	latch_(codec);
+
+
     msleep(200);
+
 }
 
 
@@ -227,10 +254,11 @@ static int post_reset(struct snd_soc_dapm_widget *w,
 	struct snd_soc_codec *codec = w->codec;
     
 	if (SND_SOC_DAPM_POST_PMU == event)
+		{
         aml_m3_reset(codec,false);
+        }
     else if (SND_SOC_DAPM_POST_PMD == event && codec->active == 0)
         aml_reset_path(codec, AML_PWR_DOWN);
-    
 	return 0;
 }
 
@@ -353,6 +381,67 @@ static int aml_put_volsw_2r(struct snd_kcontrol *kcontrol,
     return 0;
 }
 
+static int aml_ai_source_get_enum(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value *ucontrol)
+{
+    //struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
+    //struct soc_enum *e = (struct soc_enum *)kcontrol->private_value;
+
+    if (READ_MPEG_REG(AUDIN_SOURCE_SEL) == 0)
+        WRITE_MPEG_REG(AUDIN_SOURCE_SEL, (1<<0)); // select audio codec output as I2S source
+    
+    if (READ_MPEG_REG(AUDIN_SOURCE_SEL) == 1) 
+        ucontrol->value.enumerated.item[0] = 0;// linein
+    else
+        ucontrol->value.enumerated.item[0] = 1;//hdmi
+        
+    return 0;
+}
+
+static int aml_ai_source_put_enum(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value *ucontrol)
+{
+    struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
+    //struct soc_enum *e = (struct soc_enum *)kcontrol->private_value;
+    
+    if (ucontrol->value.enumerated.item[0] == 0)
+        WRITE_MPEG_REG(AUDIN_SOURCE_SEL, (1<<0)); // select audio codec output as I2S source
+    else
+        WRITE_MPEG_REG(AUDIN_SOURCE_SEL,    (1<<4) | (2 << 0));    // Select HDMI RX output as AUDIN source
+
+    snd_soc_write(codec, ADAC_RESET, (0<<1));
+    latch_(codec);
+    snd_soc_write(codec, ADAC_RESET, (1<<1));
+    latch_(codec);
+    
+    return 0;
+}
+
+void aml_linein_start(void)
+{
+    // power up adc
+    unsigned int pwr_reg2 = snd_soc_read(aml_m3_codec, ADAC_POWER_CTRL_REG2);
+    snd_soc_write(aml_m3_codec, ADAC_POWER_CTRL_REG2, pwr_reg2|0xF);
+    latch_(aml_m3_codec);
+    // power up codec
+    aml_reset_path(aml_m3_codec, AML_PWR_UP);
+    snd_soc_write(aml_m3_codec, ADAC_RESET, (0<<1));
+    latch_(aml_m3_codec);
+    snd_soc_write(aml_m3_codec, ADAC_RESET, (1<<1));
+    latch_(aml_m3_codec);
+}
+
+void aml_linein_stop(void)
+{
+    // power down adc
+    unsigned int pwr_reg2 = snd_soc_read(aml_m3_codec, ADAC_POWER_CTRL_REG2);
+    snd_soc_write(aml_m3_codec, ADAC_POWER_CTRL_REG2, pwr_reg2&(~0xF));
+    latch_(aml_m3_codec);
+    // power down codec
+    if (aml_m3_codec->active == 0)
+        aml_reset_path(aml_m3_codec, AML_PWR_DOWN);
+}
+
 static const DECLARE_TLV_DB_SCALE(lineout_volume, -12600, 150, 0);
 static const DECLARE_TLV_DB_SCALE(hs_volume, -4000, 100, 0);
 static const DECLARE_TLV_DB_SCALE(linein_volume, -9600, 150, 0);
@@ -378,10 +467,22 @@ static const unsigned int linein_values[] = {
     1|(1<<(8-1))
     };
 
+static const char *iis_split_texts[] = {
+	"iis_not_split", "iis_split"
+	};
+
+static const unsigned int iis_split_values[] = {
+	0,
+	1
+    };
+
+
 static const SOC_VALUE_ENUM_SINGLE_DECL(left_linein_select, ADAC_REC_CH_SEL_LSB,
 		0, 0xff, left_linein_texts, linein_values);
 static const SOC_VALUE_ENUM_SINGLE_DECL(right_linein_select, ADAC_REC_CH_SEL_MSB,
 		0, 0xff, right_linein_texts, linein_values);
+static const SOC_VALUE_ENUM_SINGLE_DECL(iis_split_select, ADAC_I2S_CONFIG_REG2,
+		3, 0xff, iis_split_texts, iis_split_values);
 
 static const char *switch_op_modes_texts[] = {
 	"OFF", "ON"
@@ -403,6 +504,15 @@ static const struct soc_enum sp_op_modes_enum =
 			ARRAY_SIZE(switch_op_modes_texts),
 			switch_op_modes_texts);
 
+static const char *audio_in_source_texts[] = {
+	"LINEIN", "HDMI"
+};
+static const struct soc_enum audio_in_source_enum =
+	SOC_ENUM_SINGLE(SND_SOC_NOPM, 0,
+			ARRAY_SIZE(audio_in_source_texts),
+			audio_in_source_texts);
+
+
 static const struct snd_kcontrol_new amlm3_snd_controls[] = {
 	SOC_DOUBLE_R_EXT_TLV("LINEOUT Playback Volume", ADAC_PLAYBACK_VOL_CTRL_LSB, ADAC_PLAYBACK_VOL_CTRL_MSB,
 	       0, 84, 0, snd_soc_get_volsw_2r, aml_put_volsw_2r, lineout_volume),
@@ -415,6 +525,7 @@ static const struct snd_kcontrol_new amlm3_snd_controls[] = {
 
 	SOC_VALUE_ENUM("Left LINEIN Select",left_linein_select),
 	SOC_VALUE_ENUM("Right LINEIN Select",right_linein_select),
+	SOC_VALUE_ENUM("IIS Split Select", iis_split_select),
 
     SOC_ENUM_EXT("LOUT Playback Switch", lineout_op_modes_enum,
 		aml_switch_get_enum,aml_switch_put_enum),
@@ -427,6 +538,10 @@ static const struct snd_kcontrol_new amlm3_snd_controls[] = {
 		
 	SOC_ENUM_EXT("SP Playback Switch", sp_op_modes_enum,
 		aml_switch_get_enum,aml_switch_put_enum),
+
+    SOC_ENUM_EXT("Audio In Source", audio_in_source_enum,
+        aml_ai_source_get_enum,aml_ai_source_put_enum),
+
 };
 
 static const struct snd_kcontrol_new lineoutl_switch_controls =
@@ -482,6 +597,7 @@ static const struct snd_soc_dapm_widget amlm3_dapm_widgets[] = {
 	//SND_SOC_DAPM_PGA("HSR", ADAC_POWER_CTRL_REG1, 5, 0, NULL, 0),
 	
 	//SND_SOC_DAPM_PGA("PDZ", ADAC_POWER_CTRL_REG2, 7, 0, NULL, 0),
+	SND_SOC_DAPM_MICBIAS("MICBIAS", ADAC_POWER_CTRL_REG2, 5, 0)
 };
 
 /* Target, Path, Source */
@@ -525,18 +641,21 @@ static int aml_m3_write(struct snd_soc_codec *codec, unsigned int reg,
 {
     u16 *reg_cache = codec->reg_cache;
 	
+	//printk("***Entered %s:%s:\nWriting reg is %#x; value=%#x\n",__FILE__,__func__, reg, value);
 	if (reg >= codec->reg_cache_size)
 		return -EINVAL;
 	WRITE_APB_REG((APB_BASE+(reg<<2)), value);
-	//latch(codec);
 	reg_cache[reg] = value;
+
+//printk("Read back reg is %#x value=%#x\n", reg, READ_APB_REG(APB_BASE+(reg<<2)));
+
 	return 0;
 }
 
 static unsigned int aml_m3_read(struct snd_soc_codec *codec,
 							unsigned int reg)
 {
-	u16 *reg_cache = codec->reg_cache;
+	//u16 *reg_cache = codec->reg_cache;
 	if (reg >= codec->reg_cache_size)
 		return -EINVAL;
 	
@@ -809,12 +928,20 @@ static int aml_m3_codec_remove(struct platform_device *pdev)
 static int aml_m3_codec_suspend(struct platform_device* pdev)
 {
     printk("aml_m3_codec_suspend\n");
+    struct snd_soc_device *socdev = platform_get_drvdata(pdev);
+    struct snd_soc_codec *codec = socdev->card->codec;
+
+    aml_reset_path(codec, AML_PWR_DOWN);
     return 0;
 }
 
 static int aml_m3_codec_resume(struct platform_device* pdev)
 {
     printk("aml_m3_codec resume\n");
+    struct snd_soc_device *socdev = platform_get_drvdata(pdev);
+    struct snd_soc_codec *codec = socdev->card->codec;
+    
+    aml_m3_reset(codec, true);
     return 0;
 }
 #endif
@@ -841,8 +968,8 @@ static int aml_m3_register(struct aml_m3_codec_priv* aml_m3)
 	INIT_LIST_HEAD(&codec->dapm_widgets);
 	INIT_LIST_HEAD(&codec->dapm_paths);
 
+	printk("***Entered %s:%s\n",__FILE__,__func__);
 
-    printk("****Entred aml_m3_register\n");
 	codec->name = "AML_M3_CODEC";
 	codec->owner = THIS_MODULE;
 	codec->private_data = aml_m3;
@@ -862,7 +989,6 @@ static int aml_m3_register(struct aml_m3_codec_priv* aml_m3)
 	aml_m3_codec_dai.dev = codec->dev;
 	
 	aml_m3_reset(codec, true);
-	set_acodec_source(AIU_I2SOUT_TO_DAC);//lishuai added for m3
 	aml_m3_set_bias_level(codec, SND_SOC_BIAS_STANDBY);
 
 	aml_m3_codec = codec;
@@ -915,7 +1041,6 @@ static int aml_m3_codec_platform_probe(struct platform_device *pdev)
 
 	codec->dev = &pdev->dev;
 	platform_set_drvdata(pdev, aml_m3);
-
 	return aml_m3_register(aml_m3);
 }
 

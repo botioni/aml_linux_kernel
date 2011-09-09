@@ -82,7 +82,7 @@ int sys_clkpll_setting(unsigned crystal_freq, unsigned out_freq)
     unsigned lock_time=0;
     unsigned long result_freq, target_freq;
     unsigned long crys_M, out_M, middle_freq, flags;
-    unsigned long freq_log[32];
+    unsigned long freq_log[64];
     int log_index;
 
     if (!crystal_freq) {
@@ -101,7 +101,7 @@ int sys_clkpll_setting(unsigned crystal_freq, unsigned out_freq)
     middle_freq = get_max_common_divisor(crys_M, out_M);
     n = crys_M / middle_freq;
     m = out_M / middle_freq;
-    target_freq = (out_M * 100) >> od;
+    target_freq = out_M >> od;
     if (n > (1 << 5) - 1) {
         printk(KERN_ERR "sys_clk_setting  error, n is too bigger n=%d,crys_M=%ldM,out=%ldM\n",n,crys_M,out_M);
         return -2;
@@ -110,42 +110,44 @@ int sys_clkpll_setting(unsigned crystal_freq, unsigned out_freq)
         printk(KERN_ERR "sys_clk_setting  error, m is too bigger m=%d,crys_M=%ldM,out=%ldM\n",m,crys_M,out_M);
         return -3;
     }
-    if (out_freq > 1300 * CLK_1M || out_freq < 650 * CLK_1M) {
+    if (out_freq > 1600 * CLK_1M || out_freq < 650 * CLK_1M) {
         printk(KERN_WARNING"sys_clk_setting  warning,VCO may no support out_freq,crys_M=%ldM,out=%ldM\n", crys_M, out_M);
     }
     local_irq_save(flags);
     WRITE_MPEG_REG(HHI_SYS_PLL_CNTL, m << 0 | n << 9 | od << 16); // disable and set sys PLL
-#if 0
     lock_flag = 0;
     log_index = 0;
-    while(1){
-        WRITE_CBUS_REG(MSR_CLK_REG0, (SYS_PLL_CLK<<20)|0x80063); // measure 100uS
-        WRITE_CBUS_REG(MSR_CLK_REG0, (SYS_PLL_CLK<<20)|0x90063);
-        while (!(READ_CBUS_REG(MSR_CLK_REG0)&0x20000000)){;}
-        result_freq = READ_CBUS_REG(MSR_CLK_REG2) & 0x000FFFFF;
-        if ((result_freq <= target_freq+2)&&(result_freq >= target_freq-2)){ // delta<10k
+    for (i=0;i<64;i++){
+        result_freq = clk_util_clk_msr(SYS_PLL_CLK);
+        if ((result_freq <= target_freq+1)&&(result_freq >= target_freq-1)){
             lock_flag++;
             if (lock_flag>=3)
                 break;
         }
-        if (log_index<32) 
+        if (log_index<64) 
             freq_log[log_index++]=result_freq;
         else 
             break;
-        lock_time+=100;
+        lock_time+=64;
     }
-#endif
     local_irq_restore(flags);
-//    for (i=0;i<log_index;i++)
-//        printk(KERN_INFO "clk_util_clk_msr(%d) = %dMHz\n", SYS_PLL_CLK, freq_log[i]/100);
-    printk(KERN_INFO "sys_clk_setting crystal_req=%ld,out_freq=%ld,n=%d,m=%d,od=%d,locktime=%dus\n",crys_M,out_M,n,m,od,lock_time);
+    //printk("sys clk changed");
+    //for (i=0;i<log_index;i++)
+    //    printk("-%d", freq_log[i]);
+    //printk("\nsys_clk_setting crystal_req=%ld,out_freq=%ld,n=%d,m=%d,od=%d,locktime=%dus\n",crys_M,out_M,n,m,od,lock_time);
     return 0;
 }
 
 int misc_pll_setting(unsigned crystal_freq, unsigned  out_freq)
 {
-    int n, m, od;
+    int i, n, m, od;
     unsigned long crys_M, out_M, middle_freq;
+    unsigned long flags;
+    unsigned lock_flag, lock_time=0;
+    unsigned result_freq=0;
+    unsigned long freq_log[64];
+    int log_index;
+    
     if (!crystal_freq) {
         crystal_freq = get_xtal_clock();
     }
@@ -173,12 +175,34 @@ int misc_pll_setting(unsigned crystal_freq, unsigned  out_freq)
                m, crys_M, out_M);
         return -2;
     }
+    local_irq_save(flags);
     WRITE_MPEG_REG(HHI_OTHER_PLL_CNTL,
                    m |
                    n << 9 |
                    (od & 1) << 16
                   ); // misc PLL
-    printk(KERN_INFO "misc pll setting to crystal_req=%ld,out_freq=%ld,n=%d,m=%d,od=%d\n", crys_M, out_M / (od + 1), n, m, od);
+    lock_flag = 0;
+    log_index = 0;
+    for (i=0;i<64;i++){
+        result_freq = clk_util_clk_msr(MISC_PLL_CLK);
+        if ((result_freq <= out_M+1)&&(result_freq >= out_M-1)){
+            lock_flag++;
+            if (lock_flag>=3)
+                break;
+        }
+        if (log_index<64) 
+            freq_log[log_index++]=result_freq;
+        else 
+            break;
+        lock_time+=64;
+    }
+    WRITE_AOBUS_REG_BITS(AO_UART_CONTROL, (((out_freq/4) / (115200*4)) - 1) & 0xfff, 0, 12);
+
+    local_irq_restore(flags);
+    printk("misc pll changed");
+    for (i=0;i<log_index;i++)
+        printk("-%d", freq_log[i]);
+    printk("\nmisc pll setting to crystal_req=%ld,out_freq=%ld,n=%d,m=%d,od=%d,locktime=%dus\n", crys_M, out_M / (od + 1), n, m, od, lock_time);
     return 0;
 }
 

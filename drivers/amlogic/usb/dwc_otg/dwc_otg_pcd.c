@@ -928,7 +928,7 @@ static int dwc_otg_pcd_pullup(struct usb_gadget *_gadget, int is_on)
 
 static const struct usb_gadget_ops dwc_otg_pcd_ops = {
 	.get_frame = dwc_otg_pcd_get_frame,
-	.wakeup = dwc_otg_pcd_wakeup,
+	//.wakeup = dwc_otg_pcd_wakeup,
 	.pullup	= dwc_otg_pcd_pullup,
 	// current versions must always be self-powered
 };

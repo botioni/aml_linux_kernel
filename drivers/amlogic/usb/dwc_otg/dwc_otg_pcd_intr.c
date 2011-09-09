@@ -1612,6 +1612,12 @@ static void complete_ep(dwc_otg_pcd_ep_t * _ep)
 	if (!list_empty(&_ep->queue)) {
 		req = list_entry(_ep->queue.next, dwc_otg_pcd_request_t, queue);
 	}
+
+	if(!req){
+		DWC_DEBUGPL(DBG_PCDV, "req = NULL, return %s\n",__func__);
+		return;
+	}
+
 	DWC_DEBUGPL(DBG_PCD, "Requests %d\n", _ep->pcd->request_pending);
 
 	if (_ep->dwc_ep.is_in) {

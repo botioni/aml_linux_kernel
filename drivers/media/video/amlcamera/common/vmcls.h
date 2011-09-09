@@ -107,23 +107,51 @@ static ssize_t write_attr2(struct class *cla,
 
 	return ret;
 }
+
+int camera_mirror_flag=0;  // 0: disable, 1: l&r mirror,2 t-b mirror
+
+static ssize_t mirror_read(struct class *cla,struct class_attribute *attr,char *buf)
+{
+	if(camera_mirror_flag == 1)
+		return snprintf(buf,80,"currnet mirror mode is l-r mirror mode. value is: %d.\n",camera_mirror_flag);
+	else if(camera_mirror_flag == 2)
+		return snprintf(buf,80,"currnet mirror mode is t-b mirror mode. value is: %d.\n",camera_mirror_flag);
+	else
+		return snprintf(buf,80,"currnet mirror mode is normal mode. value is: %d.\n",camera_mirror_flag);
+}
+
+static ssize_t mirror_write(struct class *cla,
+					struct class_attribute *attr,
+					const char *buf, size_t count)
+{
+    ssize_t size;
+    char *endp;
+    camera_mirror_flag = simple_strtoul(buf, &endp, 0);
+    size = endp - buf;
+    return count;
+}
+
 static struct class_attribute vm_class_attrs[] = {
     __ATTR(info,
            S_IRUGO | S_IWUSR,
            show_vm_info,
-           NULL), 
+           NULL),
     __ATTR(attr0,
-           S_IRUGO | S_IWUSR,
+           S_IRUGO | S_IWUGO,
            read_attr0,
            write_attr0),
     __ATTR(attr1,
-           S_IRUGO | S_IWUSR,
+           S_IRUGO | S_IWUGO,
            read_attr1,
            write_attr1),
     __ATTR(attr2,
-           S_IRUGO | S_IWUSR,
+           S_IRUGO | S_IWUGO,
            read_attr2,
            write_attr2),
+    __ATTR(mirror,
+           S_IRUGO | S_IWUGO,
+           mirror_read,
+           mirror_write),
     __ATTR_NULL
 };
 

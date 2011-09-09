@@ -5580,7 +5580,7 @@ int sd_mmc_switch_function(SD_MMC_Card_Info_t *sd_mmc_info)
 	    if(switch_funtion_status->Max_Current_Consumption == 0)
 		    return SD_ERROR_SWITCH_FUNCTION_COMUNICATION;
 
-	    if(!(switch_funtion_status->Function_Group[5]>>8 && 0x03))
+	    if(!((switch_funtion_status->Function_Group[5]>>8) & 0x02)) 
 	    {	
 		    return SD_ERROR_NO_FUNCTION_SWITCH;
 	    }
@@ -5594,7 +5594,7 @@ int sd_mmc_switch_function(SD_MMC_Card_Info_t *sd_mmc_info)
 			    return ret;
 
 		    switch_funtion_status = (SD_Switch_Function_Status_t *)status_data_buf;
-		    if(switch_funtion_status->Max_Current_Consumption == 0 || switch_funtion_status->Function_Group_Status1 == 0xF)
+		    if(switch_funtion_status->Max_Current_Consumption == 0 || switch_funtion_status->Function_Group_Status1 != 0x01)
 			    return SD_ERROR_SWITCH_FUNCTION_COMUNICATION;
 
 			my_disp_switch_status(switch_funtion_status);		//switch disp

@@ -1098,7 +1098,7 @@ static int __init dwc_otg_driver_init(void)
 	return retval;
 }
 
-subsys_initcall(dwc_otg_driver_init);
+module_init(dwc_otg_driver_init);
 
 /** 
  * This function is called when the driver is removed from the kernel

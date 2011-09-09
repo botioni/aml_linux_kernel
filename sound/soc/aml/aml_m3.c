@@ -41,7 +41,9 @@ static int aml_m3_hw_params(struct snd_pcm_substream *substream,
 		struct snd_soc_dai *cpu_dai = rtd->dai->cpu_dai;
 		int ret;
 		// TODO
+#ifdef _AML_M3_HW_DEBUG_
 printk("***Entered %s:%s\n", __FILE__,__func__);
+#endif
 		
 		ret = snd_soc_dai_set_fmt(codec_dai, SND_SOC_DAIFMT_I2S|SND_SOC_DAIFMT_NB_NF|SND_SOC_DAIFMT_CBS_CFS);
 		if(ret<0)
@@ -65,8 +67,10 @@ static int aml_m3_set_bias_level(struct snd_soc_card *card,
     struct snd_soc_codec *codec = card->codec;
     // TODO
 
-	
+#ifdef _AML_M3_HW_DEBUG_
 printk("***Entered %s:%s: %d\n", __FILE__,__func__, level);
+#endif
+
     switch (level) {
     case SND_SOC_BIAS_ON:
     case SND_SOC_BIAS_PREPARE:
@@ -95,15 +99,20 @@ static const struct snd_soc_dapm_widget aml_m3_dapm_widgets[] = {
     SND_SOC_DAPM_SPK("Ext Spk", NULL),
     SND_SOC_DAPM_HP("HP", NULL),
     SND_SOC_DAPM_MIC("MIC IN", NULL),
-    SND_SOC_DAPM_MIC("HP MIC", NULL),
-    SND_SOC_DAPM_LINE("FM IN", NULL),
 };
 
 static const struct snd_soc_dapm_route intercon[] = {
-    {"Ext Spk", NULL, "LINEOUTL"},
+
+	{"Ext Spk", NULL, "LINEOUTL"},
     {"Ext Spk", NULL, "LINEOUTR"},
     {"HP", NULL, "HP_L"},
     {"HP", NULL, "HP_R"},
+	//{"LINEINL", "MICBIAS", "MIC IN"},
+	//{"LINEINR", "MICBIAS", "MIC IN"},
+		
+	{"MICBIAS", NULL, "MIC IN"},
+	{"LINEINR", NULL, "MICBIAS"},
+	{"LINEINL", NULL, "MICBIAS"},
 };
 
 #if HP_DET
@@ -120,7 +129,9 @@ static struct aml_m3_work_t{
 
 void mute_spk(struct snd_soc_codec* codec, int flag)
 {
+#ifdef _AML_M3_HW_DEBUG_
 	printk("***Entered %s:%s\n", __FILE__,__func__);
+#endif
 //    int gpio_status = 0;
     if(flag){
 //gpio_status = READ_CBUS_REG(PREG_PAD_GPIO2_EN_N);
@@ -149,24 +160,28 @@ static struct aml_m3_platform_data aml_m3_pdata = {
 
 static void aml_m3_hp_detect_queue(struct work_struct* work)
 {
-	int flag_changed = 0;
-	static int i = 1;   //save the last status of hp_detect_flag
+	//int flag_changed = 0;
+	//static int i = 1;   //save the last status of hp_detect_flag
 	struct aml_m3_work_t* pwork = container_of(work,struct aml_m3_work_t, aml_m3_workqueue);
     struct snd_soc_codec* codec = (struct snd_soc_codec*)(pwork->data);
-	//hp_detect_flag = aml_m3_is_hp_pluged();   //read the HP_DET pin
-	hp_detect_flag = aml_m3_is_hp_pluged();
-
+	hp_detect_flag = aml_m3_is_hp_pluged();   //read the HP_DET pin
 	//printk("***Entered %s:%s\n", __FILE__,__func__);
-	if (i != hp_detect_flag)
-		flag_changed = 1;
-	if(flag_changed && hp_detect_flag){ // HP
-        printk("Headphone pluged in\n");
+//	if (i != hp_detect_flag)
+//		flag_changed = 1;
+	if(/*flag_changed &&*/ hp_detect_flag){ // HP
+        //printk("Headphone pluged in\n");
+		//snd_soc_dapm_disable_pin(codec, "Ext Spk");
+        //snd_soc_dapm_enable_pin(codec, "HP");
+		//snd_soc_dapm_sync(codec);
         mute_spk(codec, 1);
-    }else if(flag_changed && !hp_detect_flag){  // HDMI
-        printk("Headphone unpluged\n");
+    }else if(/*flag_changed && */!hp_detect_flag){ 
+        //printk("Headphone unpluged\n");
+		//snd_soc_dapm_enable_pin(codec, "Ext Spk");
+        //snd_soc_dapm_disable_pin(codec, "HP");
+		//snd_soc_dapm_sync(codec);
         mute_spk(codec, 0);
 	}
-	i = hp_detect_flag;
+	//i = hp_detect_flag;
 }
 
 static void aml_m3_hp_detect_timer(unsigned long data)

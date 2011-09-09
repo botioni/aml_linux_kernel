@@ -293,7 +293,7 @@ static int mpu3050_init_irq(void)
 
 static struct mpu3050_platform_data mpu3050_data = {
     .int_config = 0x10,
-    .orientation = {0,1,0,1,0,0,0,0,-1},
+    .orientation = {0,-1,0,-1,0,0,0,0,-1},
     .level_shifter = 0,
     .accel = {
                 .get_slave_descr = get_accel_slave_descr,
@@ -301,7 +301,7 @@ static struct mpu3050_platform_data mpu3050_data = {
                 // connected
                 .bus = EXT_SLAVE_BUS_SECONDARY, //The secondary I2C of MPU
                 .address = 0x1c,
-                .orientation = {-1,0,0,0,1,0,0,0,-1},
+                .orientation = {0,1,0,1,0,0,0,0,-1},
             },
     #ifdef CONFIG_SENSORS_MMC314X
     .compass = {
@@ -708,6 +708,8 @@ static struct itk_platform_data itk_pdata = {
     .tp_max_height = 2432,
     .lcd_max_width = 800,
     .lcd_max_height = 600,
+    .xpol = 1,
+    .ypol = 1,
 };
 #endif
 
@@ -875,21 +877,10 @@ typedef struct {
 } pinmux_data_t;
 
 
-#define MAX_PINMUX	12
+#define MAX_PINMUX	1
 
 pinmux_data_t pinmux_data[MAX_PINMUX] = {
 	{"HDMI", 	0, (1<<2)|(1<<1)|(1<<0), 						1},
-	{"TCON", 	0, (1<<14)|(1<<11), 							1},
-	{"I2S_OUT",	0, (1<<18),						 				1},
-	{"I2S_CLK",	1, (1<<19)|(1<<15)|(1<<11),		 				1},
-	{"SPI",		1, (1<<29)|(1<<27)|(1<<25)|(1<<23),				1},
-	{"I2C",		2, (1<<5)|(1<<2),								1},
-	{"SD",		2, (1<<15)|(1<<14)|(1<<13)|(1<<12)|(1<<8),		1},
-	{"PWM",		2, (1<<31),										1},
-	{"UART_A",	3, (1<<24)|(1<23),								0},
-	{"RGB",		4, (1<<5)|(1<<4)|(1<<3)|(1<<2)|(1<<1)|(1<<0),	1},
-	{"UART_B",	5, (1<<24)|(1<23),								0},
-	{"REMOTE",	5, (1<<31),										1},
 };
 
 static unsigned pinmux_backup[6];
@@ -919,11 +910,9 @@ static void set_vccx2(int power_on)
 	int i;
     if (power_on){
 
-#if 0
 		restore_pinmux();
 		for (i=0;i<MAX_GPIO;i++)
 			restore_gpio(i);
-#endif		
         printk(KERN_INFO "set_vccx2 power up\n");
         set_gpio_mode(GPIOA_bank_bit0_27(26), GPIOA_bit_bit0_27(26), GPIO_OUTPUT_MODE);
         set_gpio_val(GPIOA_bank_bit0_27(26), GPIOA_bit_bit0_27(26), 0);
@@ -933,11 +922,9 @@ static void set_vccx2(int power_on)
         printk(KERN_INFO "set_vccx2 power down\n");        
         set_gpio_mode(GPIOA_bank_bit0_27(26), GPIOA_bit_bit0_27(26), GPIO_OUTPUT_MODE);
         set_gpio_val(GPIOA_bank_bit0_27(26), GPIOA_bit_bit0_27(26), 1);
-#if 0     
 		save_pinmux();
 		for (i=0;i<MAX_GPIO;i++)
 			save_gpio(i);
-#endif
     }
 }
 
@@ -1245,83 +1232,83 @@ static void set_bat_off(void)
 
 static int bat_value_table[37]={
 0,  //0    
-540,//0
-544,//4
-547,//10
-550,//15
-553,//16
-556,//18
-559,//20
-561,//23
-563,//26
-565,//29
-567,//32
-568,//35
-569,//37
-570,//40
-571,//43
-573,//46
-574,//49
-576,//51
-578,//54
-580,//57
-582,//60
-585,//63
-587,//66
-590,//68
-593,//71
-596,//74
-599,//77
-602,//80
-605,//83
-608,//85
-612,//88
-615,//91
-619,//95
-622,//97
-626,//100
-626 //100
+737,//0
+742,//4
+750,//10
+752,//15
+753,//16
+754,//18
+755,//20
+756,//23
+757,//26
+758,//29
+760,//32
+761,//35
+762,//37
+763,//40
+766,//43
+768,//46
+770,//49
+772,//51
+775,//54
+778,//57
+781,//60
+786,//63
+788,//66
+791,//68
+795,//71
+798,//74
+800,//77
+806,//80
+810,//83
+812,//85
+817,//88
+823,//91
+828,//95
+832,//97
+835,//100
+835 //100
 };
 
 static int bat_charge_value_table[37]={
 0,  //0    
-547,//0
-551,//4
-553,//10
-556,//15
-558,//16
-560,//18
-562,//20
-564,//23
-566,//26
-567,//29
-568,//32
-569,//35
-570,//37
-571,//40
-572,//43
-573,//46
-574,//49
-576,//51
-578,//54
-580,//57
-582,//60
-585,//63
-587,//66
-590,//68
-593,//71
-596,//74
-599,//77
-602,//80
-605,//83
-608,//85
-612,//88
-615,//91
-617,//95
-618,//97
-620,//100
-620 //100
-};
+766,//0
+773,//4
+779,//10
+780,//15
+781,//16
+782,//18
+783,//20
+784,//23
+785,//26
+786,//29
+787,//32
+788,//35
+789,//37
+790,//40
+791,//43
+792,//46
+794,//49
+796,//51
+798,//54
+802,//57
+804,//60
+807,//63
+809,//66
+810,//68
+813,//71
+815,//74
+818,//77
+820,//80
+823,//83
+825,//85
+828,//88
+831,//91
+836,//95
+839,//97
+842,//100
+842 //100
+}; 
 
 static int bat_level_table[37]={
 0,
@@ -1573,6 +1560,11 @@ static inline int get_charge_status(void)
 	return val;
 }
 
+static inline int get_bat_adc_value(void)
+{
+	return get_adc_sample(5);
+}
+
 /*
  *	When BAT_SEL(GPIOA_22) is High Vbat=Vadc*2
  */
@@ -1582,7 +1574,7 @@ static inline int measure_voltage(void)
 	msleep(2);
 	set_gpio_mode(GPIOA_bank_bit0_27(22), GPIOA_bit_bit0_27(22), GPIO_OUTPUT_MODE);
 	set_gpio_val(GPIOA_bank_bit0_27(22), GPIOA_bit_bit0_27(22), 1);
-	val = get_adc_sample(5) * (2 * 2500000 / 1023);
+	val = get_bat_adc_value() * (2 * 2500000 / 1023);
 	logd("%s: get from adc is %dmV.\n", __FUNCTION__, val);
 	return val;
 }
@@ -1627,6 +1619,157 @@ static inline int measure_capacity(void)
 	return val;
 }
 
+static int bat_value_table[37]={
+0,  //0    
+737,//0
+742,//4
+750,//10
+752,//15
+753,//16
+754,//18
+755,//20
+756,//23
+757,//26
+758,//29
+760,//32
+761,//35
+762,//37
+763,//40
+766,//43
+768,//46
+770,//49
+772,//51
+775,//54
+778,//57
+781,//60
+786,//63
+788,//66
+791,//68
+795,//71
+798,//74
+800,//77
+806,//80
+810,//83
+812,//85
+817,//88
+823,//91
+828,//95
+832,//97
+835,//100
+835 //100
+};
+
+static int bat_charge_value_table[37]={
+0,  //0    
+766,//0
+773,//4
+779,//10
+780,//15
+781,//16
+782,//18
+783,//20
+784,//23
+785,//26
+786,//29
+787,//32
+788,//35
+789,//37
+790,//40
+791,//43
+792,//46
+794,//49
+796,//51
+798,//54
+802,//57
+804,//60
+807,//63
+809,//66
+810,//68
+813,//71
+815,//74
+818,//77
+820,//80
+823,//83
+825,//85
+828,//88
+831,//91
+836,//95
+839,//97
+842,//100
+842 //100
+}; 
+
+static int bat_level_table[37]={
+0,
+0,
+4,
+10,
+15,
+16,
+18,
+20,
+23,
+26,
+29,
+32,
+35,
+37,
+40,
+43,
+46,
+49,
+51,
+54,
+57,
+60,
+63,
+66,
+68,
+71,
+74,
+77,
+80,
+83,
+85,
+88,
+91,
+95,
+97,
+100,
+100  
+};
+
+
+static inline int get_bat_percentage(int adc_vaule, int *adc_table, 
+										int *per_table, int table_size)
+{
+	int i;
+	
+	for(i=0; i<(table_size - 1); i++) {
+		if ((adc_vaule > adc_table[i]) && (adc_vaule <= adc_table[i+1]))
+			break;
+	}
+	//printk("%s: adc_vaule=%d, i=%d, per_table[i]=%d \n", __FUNCTION__, adc_vaule, i, per_table[i]);
+
+	return per_table[i];
+}
+
+static int act8942_measure_capacity_charging(void)
+{
+	int adc = get_bat_adc_value();
+	int table_size = sizeof(bat_charge_value_table)/sizeof(bat_charge_value_table[0]);
+	
+	return get_bat_percentage(adc, bat_charge_value_table, bat_level_table, table_size);
+}
+
+static int act8942_measure_capacity_battery(void)
+{
+	int adc = get_bat_adc_value();
+	int table_size = sizeof(bat_value_table)/sizeof(bat_value_table[0]);
+	
+	return get_bat_percentage(adc, bat_value_table, bat_level_table, table_size);
+}
+
 //temporary
 static int set_bat_off(void)
 {
@@ -1641,8 +1784,8 @@ static struct act8942_operations act8942_pdata = {
 	.get_charge_status = get_charge_status,
 	.measure_voltage = measure_voltage,
 	.measure_current = measure_current,
-	.measure_capacity_charging = measure_capacity,
-	.measure_capacity_battery = measure_capacity,
+	.measure_capacity_charging = act8942_measure_capacity_charging,
+	.measure_capacity_battery = act8942_measure_capacity_battery,
 	.update_period = 2000,	//2S
 };
 
@@ -2394,7 +2537,10 @@ static void __init LED_PWM_REG0_init(void)
 static __init void m1_init_machine(void)
 {
     meson_cache_init();
-    
+#ifdef CONFIG_AML_SUSPEND
+		extern int (*pm_power_suspend)(void);
+		pm_power_suspend = meson_power_suspend;
+#endif /*CONFIG_AML_SUSPEND*/    
     LED_PWM_REG0_init();
     power_hold();
     pm_power_off = power_off;		//Elvis fool

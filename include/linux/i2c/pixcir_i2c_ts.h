@@ -15,6 +15,9 @@ struct pixcir_i2c_ts_platform_data {
   unsigned int xpol :1;
   unsigned int ypol :1;
   unsigned int point_id_available :1;
+  
+  unsigned short *key_code;
+  unsigned short key_num;
 };
 
 #endif

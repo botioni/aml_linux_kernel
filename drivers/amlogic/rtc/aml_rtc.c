@@ -315,6 +315,61 @@ static int ser_access_write(unsigned long addr, unsigned long data)
 	return 0;
 }
 
+/***************************************************************************/
+int rtc_reset_gpo(unsigned level)
+{
+	unsigned data = 0;
+	data |= 1<<20;
+	//reset mode
+	if(!level){
+		data |= 1<<22;         //gpo pin level high
+	}
+	ser_access_write(RTC_GPO_COUNTER_ADDR, data);
+	rtc_wait_s_ready();
+	return 0;
+}
+
+typedef struct alarm_data_s{
+	int level;
+	unsigned alarm_sec;   //in s
+} alarm_data_t;
+
+/*
+ * Return RTC_GPO_COUNTER bit-24 value.
+ */
+int aml_rtc_alarm_status(void)
+{
+    u32 data32 = ser_access_read(RTC_GPO_COUNTER_ADDR);
+    RTC_DBG(RTC_DBG_VAL, "%s() RTC_GPO_COUNTER=%x\n", __func__, data32);
+    return (data32 & (1 << 24));
+}
+
+//set the rtc alarm
+//after alarm_data->alarm_sec, the gpo lvl will be //alarm_data->level 
+int rtc_set_alarm_aml(alarm_data_t *alarm_data) {
+	unsigned data = 0;
+	//reset the gpo level
+	rtc_reset_gpo(!(alarm_data->level));
+
+	data |= 2 << 20;    //output defined level after time
+
+	data |= (!(alarm_data->level & 1)) << 22;    //
+
+	if(alarm_data->alarm_sec >= 1024*1024){
+		return -1;
+	}
+
+	data |= alarm_data->alarm_sec - 1;
+	ser_access_write(RTC_GPO_COUNTER_ADDR, data);
+	rtc_wait_s_ready();
+
+	rtc_comm_delay();
+
+	return 0;
+}
+
+/*************************************************************************/
+
 
 // -----------------------------------------------------------------------------
 //                    Function: rtc_ser_static_write_manual
@@ -416,6 +471,30 @@ static int aml_rtc_write_time(struct device *dev, struct rtc_time *tm)
       return 0;
 }
 
+static int aml_rtc_set_alarm(struct device *dev, struct rtc_wkalrm *alarm)
+{
+	alarm_data_t alarm_data;
+	unsigned long alarm_secs, cur_secs;
+	struct rtc_time cur_time;
+	int ret;
+	//rtc_tm_to_time(&alarm->time, &secs);
+	
+	alarm_data.level = 0;
+	ret = rtc_tm_to_time(&alarm->time, &alarm_secs);
+	if (ret)
+		return ret;
+	aml_rtc_read_time(NULL, &cur_time);
+	ret = rtc_tm_to_time(&cur_time, &cur_secs);
+	if(alarm_secs >= cur_secs)
+		alarm_data.alarm_sec = alarm_secs - cur_secs;
+	else
+		alarm_data.alarm_sec =  0;
+
+	rtc_set_alarm_aml(&alarm_data);
+
+	return 0;
+}
+
 static char *rtc_reg[8]={
 							"RTC_COUNTER    ",
 							"RTC_GPO_COUNTER",
@@ -446,7 +525,7 @@ static const struct rtc_class_ops aml_rtc_ops ={
 
    .read_time = aml_rtc_read_time,
    .set_time = aml_rtc_write_time,
-
+    .set_alarm = aml_rtc_set_alarm,
 };
 
 static struct class_attribute rtc_class_attrs[] = {
@@ -500,6 +579,17 @@ out:
 	return ret;
 }
 
+static int aml_rtc_resume(struct platform_device *pdev)
+{
+    ser_access_write(RTC_GPO_COUNTER_ADDR,0x100000);
+    return 0;
+}
+
+static int aml_rtc_shutdown(struct platform_device *pdev)
+{
+    ser_access_write(RTC_GPO_COUNTER_ADDR,0x100000);
+    return 0;
+}
 
 static int aml_rtc_remove(struct platform_device *dev)
 {
@@ -523,6 +613,8 @@ struct platform_driver aml_rtc_driver = {
 
 	 .probe = aml_rtc_probe,
 	 .remove = __devexit_p(aml_rtc_remove),
+	.resume = aml_rtc_resume,
+	.shutdown = aml_rtc_shutdown,
 };
 
 static int  __init aml_rtc_init(void)

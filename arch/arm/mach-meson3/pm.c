@@ -564,7 +564,7 @@ typedef struct {
     unsigned enable; // 1:cbus 2:apb 3:ahb 0:disable
 } analog_t;
 
-#define ANALOG_COUNT    8
+#define ANALOG_COUNT    3
 static analog_t analog_regs[ANALOG_COUNT] = {
     {"SAR_ADC",             SAR_ADC_REG3,       1 << 28, (1 << 30) | (1 << 21),    0,  1},
     {"LED_PWM_REG0",        LED_PWM_REG0,       1 << 13,          1 << 12,              0,  0}, // needed for core voltage adjustment, so not off
