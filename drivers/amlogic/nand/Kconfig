@@ -14,7 +14,12 @@ config AM_NAND
         select MTD_CHAR
         help
 		This is Meson_M1 nand suport
-		
+
+config AM_NAND_RBPIN
+	bool "use nand rbpin (A3/M3 optional)"
+	    depends on AM_NAND
+	default y
+				
 config AML_NFTL
 	tristate "Amlogic NFTL (NAND Flash Translation Layer) support"
 	depends on (AM_NAND)

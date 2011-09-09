@@ -35,13 +35,9 @@ static int aml_ops_read_page(struct aml_nftl_info_t * aml_nftl_info, addr_blk_t 
 {
 	struct mtd_info *mtd = aml_nftl_info->mtd;
 	struct mtd_oob_ops aml_oob_ops;
-	loff_t from;
+	loff_t from= mtd->erasesize*blk_addr + page_addr * mtd->writesize;
 	size_t len, retlen;
 	int ret;
-
-	from = mtd->erasesize;
-	from *= blk_addr;
-	from += page_addr * mtd->writesize;
 
 	len = mtd->writesize;
 	aml_oob_ops.mode = MTD_OOB_AUTO;
@@ -70,13 +66,9 @@ static int aml_ops_write_pages(struct aml_nftl_info_t * aml_nftl_info, addr_blk_
 {
 	struct mtd_info *mtd = aml_nftl_info->mtd;
 	struct mtd_oob_ops aml_oob_ops;
-	loff_t from;
+	loff_t from= mtd->erasesize*blk_addr + page_addr * mtd->writesize;
 	size_t len, retlen;
 	int ret;
-
-	from = mtd->erasesize;
-	from *= blk_addr;
-	from += page_addr * mtd->writesize;
 
 	len = mtd->writesize * page_nums;
 	aml_oob_ops.mode = MTD_OOB_AUTO;
@@ -99,14 +91,9 @@ static int aml_ops_get_page_status(struct aml_nftl_info_t *aml_nftl_info, addr_b
 {
 	struct mtd_info *mtd = aml_nftl_info->mtd;
 	struct mtd_oob_ops aml_oob_ops;
-	struct mtd_ecc_stats stats;
-	loff_t from;
+	struct mtd_ecc_stats stats = mtd->ecc_stats;
+	loff_t from= mtd->erasesize*blk_addr + page_addr * mtd->writesize;
 	int ret;
-
-	stats = mtd->ecc_stats;
-	from = mtd->erasesize;
-	from *= blk_addr;
-	from += page_addr * mtd->writesize;
 
 	aml_oob_ops.mode = MTD_OOB_AUTO;
 	aml_oob_ops.len = 0;

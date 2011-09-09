@@ -281,6 +281,11 @@
 #define NAND_CMD_DUMMY_PROGRAM			0x11
 #define NAND_CMD_ERASE1_END				0xd1
 #define NAND_CMD_MULTI_CHIP_STATUS		0x78
+#define NAND_CMD_READMODE    0
+#define NAND_CMD_SetFeature		0xef
+#define NAND_CMD_GetFeature		0xee
+
+
 
 #define MAX_CHIP_NUM		4
 #define USER_BYTE_NUM		4
@@ -401,9 +406,13 @@ static void inline  nand_get_chip(void )
 	SET_CBUS_REG_MASK((PERIPHS_PIN_MUX_5),0x7<<7);
 	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_5,0x7<<1);
 	SET_CBUS_REG_MASK((PERIPHS_PIN_MUX_3),1<<31);
-	
+
+#if CONFIG_AM_NAND_RBPIN	
 	SET_CBUS_REG_MASK((PERIPHS_PIN_MUX_2), (1<<27) | (1<<26) | (1<<25) | (0xf<<18)|(1<<17));
-	
+#else
+	SET_CBUS_REG_MASK((PERIPHS_PIN_MUX_2), (1<<27) | (1<<26) | (1<<25) | (0xf<<18));
+#endif
+
 	//SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_1, ((1<<30) | (1<<28) | (1<<26) | (1<<24)));
 }
 static void inline nand_release_chip(void)
@@ -412,7 +421,11 @@ static void inline nand_release_chip(void)
 
 	WRITE_CBUS_REG (PREG_PAD_GPIO3_O,0x3ffff);
 	CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO3_EN_N,0x3ffff);	//enable gpio output
+#if CONFIG_AM_NAND_RBPIN	
 	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<27) | (1<<26) | (1<<25) | (0xf<<18)|(1<<17));
+#else
+		CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<27) | (1<<26) | (1<<25) | (0xf<<18));
+#endif
 //	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_1, ((1<<30) | (1<<28) | (1<<26) | (1<<24)));
 }
 

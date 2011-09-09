@@ -114,9 +114,9 @@ struct nftl_oobinfo_t{
 	addr_sect_t    sect;
     erase_count_t  ec;    //00, Bad
     addr_vtblk_t   vtblk; //-1 , free,-2~-10, Snapshot
-    unsigned        timestamp: 15;
-    unsigned       status_page: 1;
-};
+    int16_t        timestamp: 15;
+    int16_t       status_page: 1;
+} __attribute__ ((packed));
 
 struct phyblk_node_t{
     erase_count_t  ec;
@@ -126,7 +126,7 @@ struct phyblk_node_t{
     int16_t		  status_page;
     int16_t       timestamp;
     addr_sect_t    phy_page_map[MAX_PAGES_IN_BLOCK];
-};
+} __attribute__ ((packed));
 
 struct vtblk_node_t {
 	addr_blk_t	phy_blk_addr[MAX_BLK_NUM_PER_NODE];
