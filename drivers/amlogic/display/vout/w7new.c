@@ -1,5 +1,5 @@
 /*
- * AMLOGIC T13 LCD panel driver.
+ * AMLOGIC LCD panel driver.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,42 +25,39 @@
 #include <linux/slab.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
+#include <linux/delay.h>
 #include <linux/platform_device.h>
 #include <linux/vout/tcon.h>
+
+#ifdef CONFIG_SN7325
+#include <linux/sn7325.h>
+#endif
 
 #include <mach/gpio.h>
 #include <mach/am_regs.h>
 #include <mach/pinmux.h>
 #include <mach/power_gate.h>
-#include <linux/delay.h>
 
-#ifdef CONFIG_SN7325
-    #include <linux/sn7325.h>
-#endif
-
-/*
-For 8726M, Hanstar 7" */ 
+//cpt CLAA070MA22BW panel
 #define LCD_WIDTH       800 
-#define LCD_HEIGHT      480
-#define MAX_WIDTH       928
-#define MAX_HEIGHT      525
+#define LCD_HEIGHT      600
+#define MAX_WIDTH       1010
+#define MAX_HEIGHT      660
 #define VIDEO_ON_LINE   22
-
-//extern void msleep(unsigned int msecs);
 
 static void t13_power_on(void);
 static void t13_power_off(void);
 void power_on_backlight(void);
 void power_off_backlight(void);
 
-static lcdConfig_t lcd_config =
+static tcon_conf_t tcon_config =
 {
     .width      = LCD_WIDTH,
     .height     = LCD_HEIGHT,
     .max_width  = MAX_WIDTH,
     .max_height = MAX_HEIGHT,
     .video_on_line = VIDEO_ON_LINE,
-    .pll_ctrl = 0x062d,      //30MHz
+    .pll_ctrl = 0x063c,
     .clk_ctrl = 0x1fc1,
     .gamma_cntl_port = (1 << LCD_GAMMA_EN) | (0 << LCD_GAMMA_RVS_OUT) | (1 << LCD_GAMMA_VCOM_POL),
     .gamma_vcom_hswitch_addr = 0,
@@ -68,10 +65,14 @@ static lcdConfig_t lcd_config =
     .rgb_coeff_addr = 0x74a,
     .pol_cntl_addr = (0x0 << LCD_CPH1_POL) |(0x1 << LCD_HS_POL) | (0x1 << LCD_VS_POL),
     .dith_cntl_addr = 0x400,
-    .sth1_hs_addr = 27,
-    .sth1_he_addr = 17,
+    .sth1_hs_addr = 0,
+    .sth1_he_addr = 0,
     .sth1_vs_addr = 0,
-    .sth1_ve_addr = MAX_HEIGHT - 1,    
+    .sth1_ve_addr = 0,
+    .sth2_hs_addr = 0,
+    .sth2_he_addr = 0,
+    .sth2_vs_addr = 0,
+    .sth2_ve_addr = 0,
     .oeh_hs_addr = 67,
     .oeh_he_addr = 67+LCD_WIDTH,
     .oeh_vs_addr = VIDEO_ON_LINE,
@@ -82,20 +83,36 @@ static lcdConfig_t lcd_config =
     .cpv1_hs_addr = 0,
     .cpv1_he_addr = 0,
     .cpv1_vs_addr = 0,
-    .cpv1_ve_addr = 0,    
+    .cpv1_ve_addr = 0,
+    .cpv2_hs_addr = 0,
+    .cpv2_he_addr = 0,
+    .cpv2_vs_addr = 0,
+    .cpv2_ve_addr = 0,
     .stv1_hs_addr = 0,
-    .stv1_he_addr = MAX_WIDTH - 1,
-    .stv1_vs_addr = 5,
-    .stv1_ve_addr = 3,
+    .stv1_he_addr = 0,
+    .stv1_vs_addr = 0,
+    .stv1_ve_addr = 0,
+    .stv2_hs_addr = 0,
+    .stv2_he_addr = 0,
+    .stv2_vs_addr = 0,
+    .stv2_ve_addr = 0,
     .oev1_hs_addr = 0,
     .oev1_he_addr = 0,
     .oev1_vs_addr = 0,
-    .oev1_ve_addr = 0,    
+    .oev1_ve_addr = 0,
+    .oev2_hs_addr = 0,
+    .oev2_he_addr = 0,
+    .oev2_vs_addr = 0,
+    .oev2_ve_addr = 0,
+    .oev3_hs_addr = 0,
+    .oev3_he_addr = 0,
+    .oev3_vs_addr = 0,
+    .oev3_ve_addr = 0,
     .inv_cnt_addr = (0<<LCD_INV_EN) | (0<<LCD_INV_CNT),
     .tcon_misc_sel_addr = (1<<LCD_STV1_SEL) | (1<<LCD_STV2_SEL),
     .dual_port_cntl_addr = (1<<LCD_TTL_SEL) | (1<<LCD_ANALOG_SEL_CPH3) | (1<<LCD_ANALOG_3PHI_CLK_SEL) | (1<<1) | (1<<0),
     .flags = 0,
-    .screen_width = 5,
+    .screen_width = 4,
     .screen_height = 3,
     .sync_duration_num = 60,
     .sync_duration_den = 1,
@@ -104,15 +121,16 @@ static lcdConfig_t lcd_config =
     .backlight_on = power_on_backlight,
     .backlight_off = power_off_backlight,
 };
-static struct resource lcd_resources[] = {
+
+static struct resource tcon_resources[] = {
     [0] = {
-        .start = (ulong)&lcd_config,
-        .end   = (ulong)&lcd_config + sizeof(lcdConfig_t) - 1,
+        .start = (ulong)&tcon_config,
+        .end   = (ulong)&tcon_config + sizeof(tcon_conf_t) - 1,
         .flags = IORESOURCE_MEM,
     },
 };
 
-static void t13_setup_gama_table(lcdConfig_t *pConf)
+static void t13_setup_gama_table(tcon_conf_t *pConf)
 {
     int i;
     const unsigned short gamma_adjust[256] = {
@@ -134,76 +152,76 @@ static void t13_setup_gama_table(lcdConfig_t *pConf)
 }
 
 void power_on_backlight(void)
-{            
-    //BL_PWM -> GPIOA_7: 1 (E1)
-    set_gpio_val(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), 1);
-    set_gpio_mode(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), GPIO_OUTPUT_MODE); 
-    
-    //BL_adj -> VGHL_CS0: VGHL_PWM_REG0[3:0]=0x0
-    //Idim=(375*(VGHL_PWM_REG0[3:0])/15)uA; BL_max_level:VGHL_PWM_REG0[3:0]=0x0 / BL_min_level:VGHL_PWM_REG0[3:0]=0xf    
-    WRITE_CBUS_REG(VGHL_PWM_REG0, (READ_CBUS_REG(VGHL_PWM_REG0) &~(0xf<<0)));
-    WRITE_CBUS_REG(VGHL_PWM_REG0, (READ_CBUS_REG(VGHL_PWM_REG0) | (0<<0)));
+{
+    //BL_EN -> GPIOD_1: 1
+    //WRITE_CBUS_REG(0x2013, READ_CBUS_REG(0x2013)|(1<<17));
+    //WRITE_CBUS_REG(0x2012, READ_CBUS_REG(0x2012)&(~(1<<17)));
+    set_gpio_val(GPIOD_bank_bit0_9(1), GPIOD_bit_bit0_9(1), 1);
+    set_gpio_mode(GPIOD_bank_bit0_9(1), GPIOD_bit_bit0_9(1), GPIO_OUTPUT_MODE);
 }
 
 void power_off_backlight(void)
-{        
-    //BL_PWM -> GPIOA_7: 0 (E1)
-    set_gpio_val(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), 0);
-    set_gpio_mode(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), GPIO_OUTPUT_MODE);         
+{
+    //BL_EN -> GPIOD_1: 0
+    set_gpio_val(GPIOD_bank_bit0_9(1), GPIOD_bit_bit0_9(1), 0);
+    set_gpio_mode(GPIOD_bank_bit0_9(1), GPIOD_bit_bit0_9(1), GPIO_OUTPUT_MODE);
 }
 
 static void power_on_lcd(void)
-{   
-    //int setIO_level(unsigned char port, unsigned char iobits, unsigned char offset);    
-    //LCD3.3V  EIO -> OD0: 0 
-#ifdef CONFIG_SN7325
-    configIO(0, 0);
-    setIO_level(0, 0, 0);
-#endif    
-    msleep(20);
-    //AVDD  EIO -> OD4: 1
-#ifdef CONFIG_SN7325
-    configIO(0, 0);
-    setIO_level(0, 1, 4);
-#endif
-    msleep(50);    
+{
+    //GPIOA27 -> LCD_PWR_EN#: 0  lcd 3.3v
+    set_gpio_val(GPIOA_bank_bit0_27(27), GPIOA_bit_bit0_27(27), 0);
+    set_gpio_mode(GPIOA_bank_bit0_27(27), GPIOA_bit_bit0_27(27), GPIO_OUTPUT_MODE);
+    msleep(30);
+    
+    //GPIOC2 -> VCCx3_EN: 1
+    set_gpio_val(GPIOC_bank_bit0_15(2), GPIOC_bit_bit0_15(2), 1);
+    set_gpio_mode(GPIOC_bank_bit0_15(2), GPIOC_bit_bit0_15(2), GPIO_OUTPUT_MODE);
+    msleep(30);
+    
+
 }
 
 static void power_off_lcd(void)
-{    
-    msleep(50);
-    //AVDD  EIO -> OD4: 0
-#ifdef CONFIG_SN7325
-    configIO(0, 0);
-    setIO_level(0, 0, 4);
-#endif
-    msleep(20);
-    //LCD3.3V  EIO -> OD0: 1     
-#ifdef CONFIG_SN7325
-    configIO(0, 0);
-    setIO_level(0, 1, 0);
-#endif    
+{
+    power_off_backlight();
+    msleep(50);	
+    
+    //GPIOC2 -> VCCx3_EN: 0
+    set_gpio_val(GPIOC_bank_bit0_15(2), GPIOC_bit_bit0_15(2), 0);
+    set_gpio_mode(GPIOC_bank_bit0_15(2), GPIOC_bit_bit0_15(2), GPIO_OUTPUT_MODE);
+    msleep(30);
+    
+    //GPIOA27 -> LCD_PWR_EN#: 1  lcd 3.3v
+    set_gpio_val(GPIOA_bank_bit0_27(27), GPIOA_bit_bit0_27(27), 1);
+    set_gpio_mode(GPIOA_bank_bit0_27(27), GPIOA_bit_bit0_27(27), GPIO_OUTPUT_MODE);
+    msleep(10);
 }
 
 static void set_tcon_pinmux(void)
 {
     /* TCON control pins pinmux */
-    /* GPIOA_5 -> LCD_Clk, GPIOA_0 -> TCON_STH1, GPIOA_1 -> TCON_STV1, GPIOA_2 -> TCON_OEH, */
-    set_mio_mux(0, ((1<<11)|(1<<14)|(1<<15)|(1<<16)));    
-    set_mio_mux(4,(3<<0)|(3<<2)|(3<<4));   //For 8bits
-    
+    clear_mio_mux(1, 0x0f<<11); // disable cph50(11),cph1(12),cph2(13),cph3(14)
+#ifdef USE_CLKO
+    set_mio_mux(1, 1<<21); // enable clko
+#else
+    set_mio_mux(1, 1<<14); // enable cph1
+#endif
+    set_mio_mux(1, 1<<17); // enable oeh
+    set_mio_mux(0, 0x3f<<0);   //For 8bits RGB
 }
+
 static void t13_power_on(void)
 {
     video_dac_disable();
 	set_tcon_pinmux();
 	power_on_lcd();
-	power_on_backlight();
-      
+    printk("\n\nt13_power_on...\n\n");
+    power_on_backlight();
 }
+
 static void t13_power_off(void)
 {
-	power_off_backlight();
     	power_off_lcd();
 }
 
@@ -212,24 +230,22 @@ static void t13_io_init(void)
     printk("\n\nT13 LCD Init.\n\n");
 
     set_tcon_pinmux();
-
     power_on_lcd();
-    power_on_backlight();
 }
 
-static struct platform_device lcd_dev = {
+static struct platform_device tcon_dev = {
     .name = "tcon-dev",
     .id   = 0,
-    .num_resources = ARRAY_SIZE(lcd_resources),
-    .resource      = lcd_resources,
+    .num_resources = ARRAY_SIZE(tcon_resources),
+    .resource      = tcon_resources,
 };
 
 static int __init t13_init(void)
 {
-    t13_setup_gama_table(&lcd_config);
+    t13_setup_gama_table(&tcon_config);
     t13_io_init();
 
-    platform_device_register(&lcd_dev);
+    platform_device_register(&tcon_dev);
 
     return 0;
 }
@@ -239,7 +255,7 @@ static void __exit t13_exit(void)
     power_off_backlight();
     power_off_lcd();
 
-    platform_device_unregister(&lcd_dev);
+    platform_device_unregister(&tcon_dev);
 }
 
 subsys_initcall(t13_init);

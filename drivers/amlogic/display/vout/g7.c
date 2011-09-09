@@ -55,7 +55,7 @@ static void t13_power_off(void);
 void power_on_backlight(void);
 void power_off_backlight(void);
 
-static lcdConfig_t lcd_config =
+static tcon_conf_t tcon_config =
 {
     .width      = LCD_WIDTH,
     .height     = LCD_HEIGHT,
@@ -73,9 +73,13 @@ static lcdConfig_t lcd_config =
     .sth1_hs_addr = 27,
     .sth1_he_addr = 17,
     .sth1_vs_addr = 0,
-    .sth1_ve_addr = MAX_HEIGHT - 1,    
+    .sth1_ve_addr = MAX_HEIGHT - 1,
+    .sth2_hs_addr = 0,
+    .sth2_he_addr = 0,
+    .sth2_vs_addr = 0,
+    .sth2_ve_addr = 0,
     .oeh_hs_addr = 67,
-    .oeh_he_addr = 67+LCD_WIDTH,
+    .oeh_he_addr = 67+LCD_WIDTH-1,
     .oeh_vs_addr = VIDEO_ON_LINE,
     .oeh_ve_addr = VIDEO_ON_LINE+LCD_HEIGHT-1,
     .vcom_hswitch_addr = 0,
@@ -84,15 +88,31 @@ static lcdConfig_t lcd_config =
     .cpv1_hs_addr = 0,
     .cpv1_he_addr = 0,
     .cpv1_vs_addr = 0,
-    .cpv1_ve_addr = 0,    
+    .cpv1_ve_addr = 0,
+    .cpv2_hs_addr = 0,
+    .cpv2_he_addr = 0,
+    .cpv2_vs_addr = 0,
+    .cpv2_ve_addr = 0,
     .stv1_hs_addr = 0,
     .stv1_he_addr = MAX_WIDTH - 1,
     .stv1_vs_addr = 5,
-    .stv1_ve_addr = 3,    
+    .stv1_ve_addr = 3,
+    .stv2_hs_addr = 0,
+    .stv2_he_addr = 0,
+    .stv2_vs_addr = 0,
+    .stv2_ve_addr = 0,
     .oev1_hs_addr = 0,
     .oev1_he_addr = 0,
     .oev1_vs_addr = 0,
-    .oev1_ve_addr = 0,    
+    .oev1_ve_addr = 0,
+    .oev2_hs_addr = 0,
+    .oev2_he_addr = 0,
+    .oev2_vs_addr = 0,
+    .oev2_ve_addr = 0,
+    .oev3_hs_addr = 0,
+    .oev3_he_addr = 0,
+    .oev3_vs_addr = 0,
+    .oev3_ve_addr = 0,
     .inv_cnt_addr = (0<<LCD_INV_EN) | (0<<LCD_INV_CNT),
     .tcon_misc_sel_addr = (1<<LCD_STV1_SEL) | (1<<LCD_STV2_SEL),
     .dual_port_cntl_addr = (1<<LCD_TTL_SEL) | (1<<LCD_ANALOG_SEL_CPH3) | (1<<LCD_ANALOG_3PHI_CLK_SEL) | (0<<RGB_SWP) | (0<<BIT_SWP),
@@ -106,15 +126,15 @@ static lcdConfig_t lcd_config =
     .backlight_on = power_on_backlight,
     .backlight_off = power_off_backlight,
 };
-static struct resource lcd_resources[] = {
+static struct resource tcon_resources[] = {
     [0] = {
-        .start = (ulong)&lcd_config,
-        .end   = (ulong)&lcd_config + sizeof(lcdConfig_t) - 1,
+        .start = (ulong)&tcon_config,
+        .end   = (ulong)&tcon_config + sizeof(tcon_conf_t) - 1,
         .flags = IORESOURCE_MEM,
     },
 };
 
-static void t13_setup_gama_table(lcdConfig_t *pConf)
+static void t13_setup_gama_table(tcon_conf_t *pConf)
 {
     int i;
     const unsigned short gamma_adjust[256] = {
@@ -268,19 +288,19 @@ static void t13_io_init(void)
 	t13_power_on();
 }
 
-static struct platform_device lcd_dev = {
+static struct platform_device tcon_dev = {
     .name = "tcon-dev",
     .id   = 0,
-    .num_resources = ARRAY_SIZE(lcd_resources),
-    .resource      = lcd_resources,
+    .num_resources = ARRAY_SIZE(tcon_resources),
+    .resource      = tcon_resources,
 };
 
 static int __init t13_init(void)
 {
-    t13_setup_gama_table(&lcd_config);
+    t13_setup_gama_table(&tcon_config);
     t13_io_init();
 
-    platform_device_register(&lcd_dev);
+    platform_device_register(&tcon_dev);
 
     return 0;
 }
@@ -290,7 +310,7 @@ static void __exit t13_exit(void)
     power_off_backlight();
     power_off_lcd();
 
-    platform_device_unregister(&lcd_dev);
+    platform_device_unregister(&tcon_dev);
 }
 
 subsys_initcall(t13_init);
