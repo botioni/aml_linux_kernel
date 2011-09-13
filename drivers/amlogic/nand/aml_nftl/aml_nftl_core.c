@@ -20,20 +20,10 @@
 
 #include "aml_nftl.h"
 
-
-static int aml_nftl_read_page(struct aml_nftl_info_t * aml_nftl_info, addr_blk_t blk_addr, addr_page_t page_addr,
-								unsigned char *data_buf, unsigned char *nftl_oob_buf)
-{
-	struct aml_nftl_ops_t *aml_nftl_ops = aml_nftl_info->aml_nftl_ops;
-
-	return aml_nftl_ops->read_page(aml_nftl_info, blk_addr, page_addr, data_buf, nftl_oob_buf);
-}
-
 static void aml_nftl_update_sectmap(struct aml_nftl_info_t *aml_nftl_info, addr_blk_t phy_blk_addr, addr_page_t logic_page_addr, addr_page_t phy_page_addr)
 {
 	struct phyblk_node_t *phy_blk_node;
 	phy_blk_node = &aml_nftl_info->phypmt[phy_blk_addr];
-	BUG_ON(phy_blk_node->valid_sects < 0);
 
 	phy_blk_node->valid_sects++;
 	phy_blk_node->phy_page_map[logic_page_addr] = phy_page_addr;
@@ -61,6 +51,14 @@ static int aml_nftl_write_pages(struct aml_nftl_info_t * aml_nftl_info, addr_blk
 	return 0;
 }
 
+static int aml_nftl_read_page(struct aml_nftl_info_t * aml_nftl_info, addr_blk_t blk_addr, addr_page_t page_addr,
+								unsigned char *data_buf, unsigned char *nftl_oob_buf)
+{
+	struct aml_nftl_ops_t *aml_nftl_ops = aml_nftl_info->aml_nftl_ops;
+
+	return aml_nftl_ops->read_page(aml_nftl_info, blk_addr, page_addr, data_buf, nftl_oob_buf);
+}
+
 static int aml_nftl_copy_page(struct aml_nftl_info_t * aml_nftl_info, addr_blk_t dest_blk_addr, addr_page_t dest_page, 
 				addr_blk_t src_blk_addr, addr_page_t src_page)
 {
@@ -77,7 +75,6 @@ static int aml_nftl_copy_page(struct aml_nftl_info_t * aml_nftl_info, addr_blk_t
 		goto exit;
 	}
 
-	BUG_ON((nftl_oob_info->sect < 0) || (nftl_oob_info->sect >= aml_nftl_info->pages_per_blk));
 	nftl_oob_info->ec = phy_blk_node->ec;
 	nftl_oob_info->timestamp = phy_blk_node->timestamp;
 	nftl_oob_info->status_page = 1;
@@ -98,19 +95,30 @@ static int aml_nftl_get_page_status(struct aml_nftl_info_t *aml_nftl_info, addr_
 	return aml_nftl_ops->get_page_status(aml_nftl_info, blk_addr, page_addr, nftl_oob_buf);	
 }
 
+static int aml_nftl_blk_isbad(struct aml_nftl_info_t *aml_nftl_info, addr_blk_t blk_addr)
+{
+	struct aml_nftl_ops_t *aml_nftl_ops = aml_nftl_info->aml_nftl_ops;
+
+	return aml_nftl_ops->blk_isbad(aml_nftl_info, blk_addr);
+}
+
 static int aml_nftl_blk_mark_bad(struct aml_nftl_info_t *aml_nftl_info, addr_blk_t blk_addr)
 {
 	struct aml_nftl_ops_t *aml_nftl_ops = aml_nftl_info->aml_nftl_ops;
 	struct phyblk_node_t *phy_blk_node = &aml_nftl_info->phypmt[blk_addr];
 	struct vtblk_node_t  *vt_blk_node;
-	int i;
+	int i, j;
 
 	if (phy_blk_node->vtblk >= 0) {
 		vt_blk_node = &aml_nftl_info->vtpmt[phy_blk_node->vtblk];
-		for (i=0; i<=MAX_TIMESTAMP_NUM; i++) {
-			if (vt_blk_node->phy_blk_addr[i] == blk_addr)
+		for (i=0; i<MAX_BLK_NUM_PER_NODE; i++) {
+			if (vt_blk_node->phy_blk_addr[i] == blk_addr) {
 				vt_blk_node->phy_blk_addr[i] = BLOCK_INIT_VALUE;
+				break;
+			}
 		}
+		for (j=i; j<(MAX_BLK_NUM_PER_NODE-1); j++)
+			vt_blk_node->phy_blk_addr[j] = vt_blk_node->phy_blk_addr[j+1];
 	}
 	memset((unsigned char *)phy_blk_node, 0xff, sizeof(struct phyblk_node_t));
 	phy_blk_node->status_page = STATUS_BAD_BLOCK;
@@ -187,7 +195,7 @@ static void aml_nftl_erase_sect_map(struct aml_nftl_info_t * aml_nftl_info, addr
 		for (i=0; i<MAX_BLK_NUM_PER_NODE; i++) {
 			if (vt_blk_node->phy_blk_addr[i] == blk_addr)
 				aml_nftl_dbg("%d %d %d %d %d\n", vt_blk_node->phy_blk_addr[0], vt_blk_node->phy_blk_addr[1], vt_blk_node->phy_blk_addr[2], vt_blk_node->phy_blk_addr[3], blk_addr);
-			BUG_ON(vt_blk_node->phy_blk_addr[i] == blk_addr);
+			//BUG_ON(vt_blk_node->phy_blk_addr[i] == blk_addr);
 			//vt_blk_node->phy_blk_addr[i] = 0xffff;
 		}
 	}
@@ -196,7 +204,7 @@ static void aml_nftl_erase_sect_map(struct aml_nftl_info_t * aml_nftl_info, addr
 	phy_blk_node->valid_sects = 0;
 	phy_blk_node->vtblk = BLOCK_INIT_VALUE;
 	phy_blk_node->last_write = BLOCK_INIT_VALUE;
-	phy_blk_node->timestamp = 0x7fff;
+	phy_blk_node->timestamp = MAX_TIMESTAMP_NUM;
 	memset(phy_blk_node->phy_page_map, 0xff, (sizeof(addr_sect_t)*MAX_PAGES_IN_BLOCK));
 
 	return;
@@ -220,7 +228,7 @@ static int aml_nftl_add_node(struct aml_nftl_info_t *aml_nftl_info, addr_blk_t l
 	struct phyblk_node_t *phy_blk_node, *phy_blk_tmp_node;
 	struct vtblk_node_t  *vt_blk_node;
 	struct aml_nftl_wl_t *aml_nftl_wl;
-	uint32_t phy_blk_tmp, tmp_stamp;
+	uint32_t phy_blk_tmp;
 	int i, j, k;
 
 	aml_nftl_wl = aml_nftl_info->aml_nftl_wl;
@@ -249,6 +257,9 @@ static int aml_nftl_add_node(struct aml_nftl_info_t *aml_nftl_info, addr_blk_t l
 
 				phy_blk_tmp = vt_blk_node->phy_blk_addr[(MAX_BLK_NUM_PER_NODE - 1)];
 				phy_blk_tmp_node = &aml_nftl_info->phypmt[phy_blk_tmp];
+				if ((phy_blk_tmp_node->timestamp >= MAX_TIMESTAMP_NUM) || (phy_blk_tmp_node->timestamp < 0))
+					aml_nftl_creat_sectmap(aml_nftl_info, phy_blk_tmp);
+
 				if (phy_blk_tmp_node->timestamp >= MAX_TIMESTAMP_NUM)
 					phy_blk_node->timestamp = 0;
 				else
@@ -271,12 +282,13 @@ static int aml_nftl_add_node(struct aml_nftl_info_t *aml_nftl_info, addr_blk_t l
 add_node:
 	if (i == 0) {
 		phy_blk_node->timestamp = i;
-		tmp_stamp = MAX_TIMESTAMP_NUM;
 	}
 	else {
-		phy_blk_tmp_node = &aml_nftl_info->phypmt[vt_blk_node->phy_blk_addr[i-1]];
-		//BUG_ON(phy_blk_tmp_node->timestamp == MAX_TIMESTAMP_NUM);
-		tmp_stamp = phy_blk_tmp_node->timestamp;
+		phy_blk_tmp = vt_blk_node->phy_blk_addr[i-1];
+		phy_blk_tmp_node = &aml_nftl_info->phypmt[phy_blk_tmp];
+		if ((phy_blk_tmp_node->timestamp >= MAX_TIMESTAMP_NUM) || (phy_blk_tmp_node->timestamp < 0))
+			aml_nftl_creat_sectmap(aml_nftl_info, phy_blk_tmp);
+
 		if (phy_blk_tmp_node->timestamp >= MAX_TIMESTAMP_NUM)
 			phy_blk_node->timestamp = 0;
 		else
@@ -484,6 +496,319 @@ static int aml_nftl_write_sects(struct aml_nftl_info_t *aml_nftl_info, addr_page
 	return 0;
 }
 
+static void aml_nftl_add_block(struct aml_nftl_info_t *aml_nftl_info, addr_blk_t phy_blk, struct nftl_oobinfo_t *nftl_oob_info, void **timestamp_conflict_node)
+{
+	struct phyblk_node_t *phy_blk_node, *phy_blk_node_curt;
+	struct vtblk_node_t  *vt_blk_node;
+	struct aml_nftl_wl_t *aml_nftl_wl;
+	addr_blk_t phy_blk_save[MAX_BLK_NUM_PER_NODE+1], phy_blk_conflict[MAX_BLK_NUM_PER_NODE+1], phy_blk_add;
+	int i = 0, j, k, m, conflict = 0;
+
+	aml_nftl_wl = aml_nftl_info->aml_nftl_wl;
+	phy_blk_add = phy_blk;
+	phy_blk_node = &aml_nftl_info->phypmt[phy_blk];
+	phy_blk_node->ec = nftl_oob_info->ec;
+	phy_blk_node->vtblk = nftl_oob_info->vtblk;
+	phy_blk_node->timestamp = nftl_oob_info->timestamp;
+	vt_blk_node = &aml_nftl_info->vtpmt[nftl_oob_info->vtblk];
+
+add_block:
+	memset((unsigned char *)phy_blk_save, 0xff, sizeof(addr_blk_t)*(MAX_BLK_NUM_PER_NODE+1));
+	memcpy((unsigned char *)phy_blk_save, (unsigned char *)vt_blk_node, sizeof(struct vtblk_node_t));
+
+	do {
+
+		if ((phy_blk_save[i] < 0) || (i >= MAX_BLK_NUM_PER_NODE))
+			break;
+
+		phy_blk_node_curt = &aml_nftl_info->phypmt[phy_blk_save[i]];
+		//aml_nftl_dbg("block timestamp prev: %d next: %d phy blk: %d cur stamp: %d add stamp: %d vt blk: %d\n",
+				 //phy_blk_save[i], phy_blk_save[i+1], phy_blk, phy_blk_node_curt->timestamp, phy_blk_node->timestamp, phy_blk_node->vtblk);
+		if (phy_blk_node->timestamp == phy_blk_node_curt->timestamp) {
+			aml_nftl_dbg("nftl found timestamp bug node vt blk: %d phy blk: %d \n", nftl_oob_info->vtblk, phy_blk);
+			if (timestamp_conflict_node[nftl_oob_info->vtblk] == NULL) {
+				timestamp_conflict_node[nftl_oob_info->vtblk] = aml_nftl_malloc(sizeof(struct vtblk_node_t));
+				if (timestamp_conflict_node[nftl_oob_info->vtblk] == NULL)
+					return;
+				memset((unsigned char *)timestamp_conflict_node[nftl_oob_info->vtblk], 0xff, sizeof(struct vtblk_node_t));
+			}
+			if (phy_blk_node->ec < phy_blk_node_curt->ec) {
+				phy_blk_add = vt_blk_node->phy_blk_addr[i];
+				vt_blk_node->phy_blk_addr[i] = phy_blk;
+				phy_blk_node = &aml_nftl_info->phypmt[phy_blk_add];
+			}
+			vt_blk_node = (struct vtblk_node_t *)timestamp_conflict_node[nftl_oob_info->vtblk];
+			if (conflict == 1) {
+				aml_nftl_wl->add_free(aml_nftl_wl, phy_blk_add);
+				return;
+			}
+
+			conflict = 1;
+			goto add_block;
+		}
+		else if (phy_blk_node->timestamp < phy_blk_node_curt->timestamp)
+			break;
+
+	}while((i++) < MAX_BLK_NUM_PER_NODE);
+
+	for (j=MAX_BLK_NUM_PER_NODE; j>i; j--)
+		phy_blk_save[j] = phy_blk_save[j-1];
+	phy_blk_save[i] = phy_blk_add;
+
+	conflict = 0;
+	for (k=0; k<MAX_BLK_NUM_PER_NODE; k++) {
+		if ((phy_blk_save[k] < 0) || (phy_blk_save[k+1] < 0))
+			break;
+
+		phy_blk_node_curt = &aml_nftl_info->phypmt[phy_blk_save[k]];
+		phy_blk_node = &aml_nftl_info->phypmt[phy_blk_save[k+1]];
+		if ((phy_blk_node->timestamp - phy_blk_node_curt->timestamp) >= (MAX_TIMESTAMP_NUM - aml_nftl_info->accessibleblocks)) {
+			conflict = 1;
+			aml_nftl_dbg("nftl found timestamp full node vt blk: %d phy blk: %d \n", nftl_oob_info->vtblk, phy_blk);
+			break;
+		}
+	}
+	if (conflict == 1) {
+		memcpy((unsigned char *)phy_blk_conflict, (unsigned char *)phy_blk_save, sizeof(addr_blk_t)*(MAX_BLK_NUM_PER_NODE+1));
+		memset((unsigned char *)phy_blk_save, 0xff, sizeof(addr_blk_t)*(MAX_BLK_NUM_PER_NODE+1));
+		for (j=0; j<(MAX_BLK_NUM_PER_NODE-k); j++)
+			phy_blk_save[j] = phy_blk_conflict[k+1+j];
+
+		for (j=0; j<=k; j++) {
+			phy_blk_node = &aml_nftl_info->phypmt[phy_blk_conflict[j]];
+			for (i=0; i<=MAX_BLK_NUM_PER_NODE; i++) {
+				if (phy_blk_save[i] < 0) {
+					phy_blk_save[i] = phy_blk_conflict[j];
+					break;
+				}
+				phy_blk_node_curt = &aml_nftl_info->phypmt[phy_blk_save[i]];
+
+				if ((phy_blk_node_curt->timestamp - phy_blk_node->timestamp) >= (MAX_TIMESTAMP_NUM - aml_nftl_info->accessibleblocks))
+			continue;
+				else {
+					if ((phy_blk_node_curt->timestamp - phy_blk_node->timestamp) >= 1) {
+						for (m=MAX_BLK_NUM_PER_NODE; m>i; m--)
+							phy_blk_save[m] = phy_blk_save[m-1];
+						phy_blk_save[m] = phy_blk_conflict[j];
+					}
+				}
+			}
+		}
+	}
+
+	if (phy_blk_save[MAX_BLK_NUM_PER_NODE] >= 0) {
+		aml_nftl_wl->add_free(aml_nftl_wl, phy_blk_save[0]);
+		aml_nftl_wl->add_full(aml_nftl_wl, nftl_oob_info->vtblk, phy_blk_save[0]);
+		memcpy((unsigned char *)vt_blk_node, (unsigned char *)(&phy_blk_save[1]), sizeof(addr_blk_t)*MAX_BLK_NUM_PER_NODE);
+	}
+	else {
+		memcpy((unsigned char *)vt_blk_node, (unsigned char *)(&phy_blk_save[0]), sizeof(addr_blk_t)*MAX_BLK_NUM_PER_NODE);
+	}
+
+	//aml_nftl_dbg("NFTL add logic block to node for logic blk: %d root blk: %d ec: %d\n", nftl_oob_info->vtblk, phy_blk_save[i], phy_blk_node->ec);
+	return;
+}
+
+static void aml_nftl_check_full_node(struct aml_nftl_info_t *aml_nftl_info, void **timestamp_conflict_node)
+{
+	struct phyblk_node_t *phy_blk_node, *phy_blk_node_conflict;
+	struct vtblk_node_t  *vt_blk_node, *vt_blk_node_conflict;
+	struct aml_nftl_wl_t *aml_nftl_wl;
+	int error = 0, i = 0, j, k, m, free_num, total_valid = 0, conflict = 0, tmp_timestamp;
+	addr_blk_t phy_blk_num, vt_blk_num, ext_phy_blk, phy_blk_full;
+	addr_blk_t dest_blk, src_blk;
+	addr_page_t dest_page, src_page;
+	int16_t valid_page[MAX_BLK_NUM_PER_NODE];
+
+	aml_nftl_wl = aml_nftl_info->aml_nftl_wl;
+	for (vt_blk_num=0; vt_blk_num<aml_nftl_info->accessibleblocks; vt_blk_num++) {
+
+		if (timestamp_conflict_node[vt_blk_num] != NULL) {
+			vt_blk_node = &aml_nftl_info->vtpmt[vt_blk_num];
+			vt_blk_node_conflict = (struct vtblk_node_t *)timestamp_conflict_node[vt_blk_num];
+			for (i=(MAX_BLK_NUM_PER_NODE-1); i>=0; i--) {
+				if (vt_blk_node->phy_blk_addr[i] >= 0) {
+					phy_blk_node = &aml_nftl_info->phypmt[vt_blk_node->phy_blk_addr[i]];
+					tmp_timestamp = (phy_blk_node->timestamp + 1);
+				break;
+				}
+			}
+			phy_blk_node = &aml_nftl_info->phypmt[vt_blk_node->phy_blk_addr[0]];
+			phy_blk_node_conflict = &aml_nftl_info->phypmt[vt_blk_node_conflict->phy_blk_addr[0]];
+			if (phy_blk_node->timestamp != phy_blk_node_conflict->timestamp)
+				continue;
+
+			for (i=0; i<MAX_BLK_NUM_PER_NODE; i++) {
+				ext_phy_blk = vt_blk_node_conflict->phy_blk_addr[i];
+				if (ext_phy_blk >= 0) {
+					phy_blk_node_conflict = &aml_nftl_info->phypmt[ext_phy_blk];
+					aml_nftl_info->get_phy_sect_map(aml_nftl_info, ext_phy_blk);
+
+					phy_blk_num = vt_blk_node->phy_blk_addr[i];
+					if (phy_blk_num >= 0) {
+			phy_blk_node = &aml_nftl_info->phypmt[phy_blk_num];
+						if (phy_blk_node->timestamp == phy_blk_node_conflict->timestamp) {
+							vt_blk_node->phy_blk_addr[i] = BLOCK_INIT_VALUE;
+							error = aml_nftl_info->erase_block(aml_nftl_info, phy_blk_num);
+							if (error)
+								aml_nftl_info->blk_mark_bad(aml_nftl_info, phy_blk_num);
+							else
+								aml_nftl_wl->add_erased(aml_nftl_wl, phy_blk_num);
+						}
+						else
+							aml_nftl_info->get_phy_sect_map(aml_nftl_info, phy_blk_num);
+					}
+				}
+				else {
+					phy_blk_num = vt_blk_node->phy_blk_addr[i];
+					if (phy_blk_num >= 0) 
+						aml_nftl_info->get_phy_sect_map(aml_nftl_info, phy_blk_num);
+				}				
+			}
+
+			error = aml_nftl_wl->get_best_free(aml_nftl_wl, &dest_blk);
+			if (error)
+				continue;
+			aml_nftl_wl->add_used(aml_nftl_wl, dest_blk);
+
+			phy_blk_node = &aml_nftl_info->phypmt[dest_blk];
+			phy_blk_node->vtblk = vt_blk_num;
+			if (tmp_timestamp >= MAX_TIMESTAMP_NUM)
+				phy_blk_node->timestamp = 0;
+			else
+				phy_blk_node->timestamp = (tmp_timestamp + 1);
+
+			for(k=0; k<aml_nftl_wl->pages_per_blk; k++) {
+
+				src_blk = -1;
+				for (j=(MAX_BLK_NUM_PER_NODE - 1); j>=0; j--) {
+					phy_blk_num = vt_blk_node_conflict->phy_blk_addr[j];
+					if (phy_blk_num < 0)
+				continue;
+					phy_blk_node_conflict = &aml_nftl_info->phypmt[phy_blk_num];
+					if (phy_blk_node_conflict->phy_page_map[k] >= 0) {
+						src_blk = phy_blk_num;
+						src_page = phy_blk_node_conflict->phy_page_map[k];
+						break;
+					}
+				}
+				if (src_blk < 0) {
+					for (j=(MAX_BLK_NUM_PER_NODE - 1); j>=0; j--) {
+						phy_blk_num = vt_blk_node->phy_blk_addr[j];
+						if (phy_blk_num < 0)
+							continue;
+						phy_blk_node_conflict = &aml_nftl_info->phypmt[phy_blk_num];
+						if (phy_blk_node_conflict->phy_page_map[k] >= 0) {
+							src_blk = phy_blk_num;
+							src_page = phy_blk_node_conflict->phy_page_map[k];
+							break;
+						}
+					}
+			}
+				if (src_blk < 0) 
+					continue;
+
+				dest_page = phy_blk_node->last_write + 1;
+				aml_nftl_info->copy_page(aml_nftl_info, dest_blk, dest_page, src_blk, src_page);
+			}
+
+			for (i=0; i<MAX_BLK_NUM_PER_NODE; i++) {
+				if (vt_blk_node->phy_blk_addr[i] >= 0) {
+					aml_nftl_wl->add_free(aml_nftl_wl, vt_blk_node->phy_blk_addr[i]);
+					vt_blk_node->phy_blk_addr[i] = BLOCK_INIT_VALUE;
+				}
+				if (vt_blk_node_conflict->phy_blk_addr[i] >= 0) {
+					aml_nftl_wl->add_free(aml_nftl_wl, vt_blk_node_conflict->phy_blk_addr[i]);
+					vt_blk_node_conflict->phy_blk_addr[i] = BLOCK_INIT_VALUE;
+				}
+			}
+			vt_blk_node->phy_blk_addr[0] = dest_blk;
+			aml_nftl_free(timestamp_conflict_node[vt_blk_num]);
+			timestamp_conflict_node[vt_blk_num] = NULL;
+				continue;
+			}
+
+		if (conflict == 1)
+			continue;
+		error = aml_nftl_wl->get_full(aml_nftl_wl, vt_blk_num, &phy_blk_full);
+		if (error)
+			continue;
+
+		vt_blk_node = &aml_nftl_info->vtpmt[vt_blk_num];
+		for (i=0; i<MAX_BLK_NUM_PER_NODE; i++) {
+			if (vt_blk_node->phy_blk_addr[i] < 0)
+			continue;
+
+			phy_blk_num = vt_blk_node->phy_blk_addr[i];
+			error = aml_nftl_info->get_phy_sect_map(aml_nftl_info, phy_blk_num);
+			if (error)
+				continue;
+		}
+
+		memset((unsigned char *)valid_page, 0x0, sizeof(int16_t)*MAX_BLK_NUM_PER_NODE);
+		for (k=0; k<aml_nftl_info->pages_per_blk; k++) {
+
+			for (j=(MAX_BLK_NUM_PER_NODE - 1); j>=0; j--) {
+
+				if (vt_blk_node->phy_blk_addr[j] < 0)
+					continue;
+
+				phy_blk_num = vt_blk_node->phy_blk_addr[j];
+				phy_blk_node = &aml_nftl_info->phypmt[phy_blk_num];
+				if (phy_blk_node->phy_page_map[k] >= 0) {
+					valid_page[j]++;
+					break;
+				}
+			}
+		}
+
+		for (j=0; j<MAX_BLK_NUM_PER_NODE; j++) {
+			if (valid_page[j] == 0) {
+				aml_nftl_wl->add_free(aml_nftl_wl, vt_blk_node->phy_blk_addr[j]);
+				vt_blk_node->phy_blk_addr[j] = BLOCK_INIT_VALUE;
+			}
+			else 
+				break;
+		}
+		if (j == 0) {
+
+			for (m=0; m<MAX_BLK_NUM_PER_NODE; m++)
+				total_valid += valid_page[m];
+
+			ext_phy_blk = vt_blk_node->phy_blk_addr[(MAX_BLK_NUM_PER_NODE - 1)];
+			phy_blk_node = &aml_nftl_info->phypmt[ext_phy_blk];
+			if ((aml_nftl_info->vtpmt_special->vtblk_node == NULL)
+				 	&& (total_valid < aml_nftl_info->pages_per_blk)
+					&& (valid_page[MAX_BLK_NUM_PER_NODE-1] >= (phy_blk_node->last_write + 1))) {
+
+				aml_nftl_dbg("found conflict node vt blk: %d phy blk: %d\n", vt_blk_num, phy_blk_full);
+				aml_nftl_info->vtpmt_special->vtblk_node = vt_blk_node;
+				aml_nftl_info->vtpmt_special->ext_phy_blk_addr = ext_phy_blk;
+				for (j=(MAX_BLK_NUM_PER_NODE - 1); j>=1; j--) {
+					vt_blk_node->phy_blk_addr[j] = vt_blk_node->phy_blk_addr[j-1];
+				}
+				vt_blk_node->phy_blk_addr[0] = phy_blk_full;
+				aml_nftl_wl->gc_special(aml_nftl_wl);
+				conflict = 1;
+
+				continue;
+			}
+		}
+		else {
+
+		free_num = j;
+			for (k=0; k<(MAX_BLK_NUM_PER_NODE-free_num); k++) {
+				vt_blk_node->phy_blk_addr[k] = vt_blk_node->phy_blk_addr[j];
+				j++;
+			}
+		for (k=(MAX_BLK_NUM_PER_NODE-free_num); k<MAX_BLK_NUM_PER_NODE; k++) 
+			vt_blk_node->phy_blk_addr[k] = BLOCK_INIT_VALUE;
+	}
+	}
+
+	return;
+}
+
 static void aml_nftl_creat_structure(struct aml_nftl_info_t *aml_nftl_info)
 {
 	struct phyblk_node_t *phy_blk_node;
@@ -515,20 +840,20 @@ static void aml_nftl_creat_structure(struct aml_nftl_info_t *aml_nftl_info)
 				i++;
 				aml_nftl_dbg("creat phy sect map found bad block: %d vt blk : %d\n", phy_blk_num, vt_blk_num);
 				continue;
-			}
+}
 
 			error = aml_nftl_info->get_phy_sect_map(aml_nftl_info, phy_blk_num);
 			if (error) {
 				aml_nftl_dbg("creat phy sect map failed: %d\n", phy_blk_num);
 				//aml_nftl_info->accessibleblocks--;
 				i++;
-				continue;
+			continue;
 			}
 
 		}while ((i++) < MAX_BLK_NUM_PER_NODE);
 
 		if (vt_blk_node->phy_blk_addr[1] < 0)
-			continue;
+				continue;
 
 		memset((unsigned char *)valid_page, 0x0, sizeof(int16_t)*MAX_BLK_NUM_PER_NODE);
 		for (k=0; k<aml_nftl_info->pages_per_blk; k++) {
@@ -611,137 +936,6 @@ static void aml_nftl_creat_structure(struct aml_nftl_info_t *aml_nftl_info)
 	return;
 }
 
-
-void aml_nftl_add_block(struct aml_nftl_info_t *aml_nftl_info, addr_blk_t phy_blk, struct nftl_oobinfo_t *nftl_oob_info)
-{
-	struct phyblk_node_t *phy_blk_node, *phy_blk_node_curt;
-	struct vtblk_node_t  *vt_blk_node;
-	struct aml_nftl_wl_t *aml_nftl_wl;
-	addr_blk_t phy_blk_save[MAX_BLK_NUM_PER_NODE+1];
-	int i = 0, j;
-
-	aml_nftl_wl = aml_nftl_info->aml_nftl_wl;
-	phy_blk_node = &aml_nftl_info->phypmt[phy_blk];
-	phy_blk_node->ec = nftl_oob_info->ec;
-	phy_blk_node->vtblk = nftl_oob_info->vtblk;
-	phy_blk_node->timestamp = nftl_oob_info->timestamp;
-	vt_blk_node = &aml_nftl_info->vtpmt[nftl_oob_info->vtblk];
-
-	memset((unsigned char *)phy_blk_save, 0xff, sizeof(addr_blk_t)*(MAX_BLK_NUM_PER_NODE+1));
-	memcpy((unsigned char *)phy_blk_save, (unsigned char *)vt_blk_node, sizeof(struct vtblk_node_t));
-
-	do {
-
-		if ((phy_blk_save[i] < 0) || (i >= MAX_BLK_NUM_PER_NODE))
-			break;
-
-		phy_blk_node_curt = &aml_nftl_info->phypmt[phy_blk_save[i]];
-//		BUG_ON(phy_blk_node->timestamp == phy_blk_node_curt->timestamp);
-		if (phy_blk_node->timestamp < phy_blk_node_curt->timestamp)
-			break;
-
-		//aml_nftl_dbg("block timestamp prev: %d next: %d phy blk: %d cur stamp: %d add stamp: %d\n",
-				 //phy_blk_save[i], phy_blk_save[i+1], phy_blk, phy_blk_node_curt->timestamp, phy_blk_node->timestamp);
-
-	}while((i++) < MAX_BLK_NUM_PER_NODE);
-
-	for (j=MAX_BLK_NUM_PER_NODE; j>i; j--)
-		phy_blk_save[j] = phy_blk_save[j-1];
-	phy_blk_save[i] = phy_blk;
-	if (phy_blk_save[MAX_BLK_NUM_PER_NODE] >= 0) {
-		aml_nftl_wl->add_free(aml_nftl_wl, phy_blk_save[0]);
-		aml_nftl_wl->add_full(aml_nftl_wl, nftl_oob_info->vtblk, phy_blk_save[0]);
-		memcpy((unsigned char *)vt_blk_node, (unsigned char *)(&phy_blk_save[1]), sizeof(addr_blk_t)*MAX_BLK_NUM_PER_NODE);
-	}
-	else {
-		memcpy((unsigned char *)vt_blk_node, (unsigned char *)(&phy_blk_save[0]), sizeof(addr_blk_t)*MAX_BLK_NUM_PER_NODE);
-	}
-
-	//aml_nftl_dbg("NFTL add logic block to node for logic blk: %d root blk: %d i: %d\n", nftl_oob_info->vtblk, phy_blk_save[i], i);
-	return;
-}
-
-
-static void aml_nftl_check_full_node(struct aml_nftl_info_t *aml_nftl_info)
-{
-	struct phyblk_node_t *phy_blk_node;
-	struct vtblk_node_t  *vt_blk_node;
-	struct aml_nftl_wl_t *aml_nftl_wl;
-	int error = 0, i = 0, j, k, m, total_valid = 0;
-	addr_blk_t phy_blk_num, vt_blk_num, ext_phy_blk, phy_blk_full;
-	int16_t valid_page[MAX_BLK_NUM_PER_NODE];
-
-	aml_nftl_wl = aml_nftl_info->aml_nftl_wl;
-	for (vt_blk_num=0; vt_blk_num<aml_nftl_info->accessibleblocks; vt_blk_num++) {
-
-		error = aml_nftl_wl->get_full(aml_nftl_wl, vt_blk_num, &phy_blk_full);
-		if (error)
-			continue;
-
-		vt_blk_node = &aml_nftl_info->vtpmt[vt_blk_num];
-		for (i=0; i<MAX_BLK_NUM_PER_NODE; i++) {
-			if (vt_blk_node->phy_blk_addr[i] < 0)
-				continue;
-
-			phy_blk_num = vt_blk_node->phy_blk_addr[i];
-			error = aml_nftl_info->get_phy_sect_map(aml_nftl_info, phy_blk_num);
-			if (error)
-				continue;
-		}
-
-		memset((unsigned char *)valid_page, 0x0, sizeof(int16_t)*MAX_BLK_NUM_PER_NODE);
-		for (k=0; k<aml_nftl_info->pages_per_blk; k++) {
-
-			for (j=(MAX_BLK_NUM_PER_NODE - 1); j>=0; j--) {
-
-				if (vt_blk_node->phy_blk_addr[j] < 0)
-					continue;
-
-				phy_blk_num = vt_blk_node->phy_blk_addr[j];
-				phy_blk_node = &aml_nftl_info->phypmt[phy_blk_num];
-				if (phy_blk_node->phy_page_map[k] >= 0) {
-					valid_page[j]++;
-					break;
-				}
-			}
-		}
-
-		for (j=0; j<MAX_BLK_NUM_PER_NODE; j++) {
-			if (valid_page[j] == 0) {
-				aml_nftl_wl->add_free(aml_nftl_wl, vt_blk_node->phy_blk_addr[j]);
-				vt_blk_node->phy_blk_addr[j] = BLOCK_INIT_VALUE;
-			}
-			else 
-				break;
-		}
-		if (j == 0) {
-
-			for (m=0; m<MAX_BLK_NUM_PER_NODE; m++)
-				total_valid += valid_page[m];
-
-			ext_phy_blk = vt_blk_node->phy_blk_addr[(MAX_BLK_NUM_PER_NODE - 1)];
-			phy_blk_node = &aml_nftl_info->phypmt[ext_phy_blk];
-			if ((aml_nftl_info->vtpmt_special->vtblk_node == NULL)
-				 	&& (total_valid < aml_nftl_info->pages_per_blk)
-					&& (valid_page[MAX_BLK_NUM_PER_NODE-1] >= (phy_blk_node->last_write + 1))) {
-
-				aml_nftl_dbg("found conflict node vt blk: %d phy blk: %d\n", vt_blk_num, phy_blk_full);
-				aml_nftl_info->vtpmt_special->vtblk_node = vt_blk_node;
-				aml_nftl_info->vtpmt_special->ext_phy_blk_addr = ext_phy_blk;
-				for (j=(MAX_BLK_NUM_PER_NODE - 1); j>=1; j--) {
-					vt_blk_node->phy_blk_addr[j] = vt_blk_node->phy_blk_addr[j-1];
-				}
-				vt_blk_node->phy_blk_addr[0] = phy_blk_full;
-				aml_nftl_wl->gc_special(aml_nftl_wl);
-
-				break;
-			}
-		}
-	}
-
-	return;
-}
-
 int aml_nftl_initialize(struct aml_nftl_blk_t *aml_nftl_blk)
 {
 	struct mtd_info *mtd = aml_nftl_blk->mbd.mtd;
@@ -751,11 +945,12 @@ int aml_nftl_initialize(struct aml_nftl_blk_t *aml_nftl_blk)
 	int error = 0, phy_blk_num;
 	uint32_t phy_page_addr, size_in_blk;
 	uint32_t phys_erase_shift;
+	void **timestamp_conflict_node;
 	unsigned char nftl_oob_buf[sizeof(struct nftl_oobinfo_t)];
 
 	struct aml_nftl_info_t *aml_nftl_info = aml_nftl_malloc(sizeof(struct aml_nftl_info_t));
 	if (!aml_nftl_info)
-		return -1;
+		return -ENOMEM;
 
 	aml_nftl_blk->aml_nftl_info = aml_nftl_info;
 	aml_nftl_info->mtd = mtd;
@@ -763,13 +958,15 @@ int aml_nftl_initialize(struct aml_nftl_blk_t *aml_nftl_blk)
 	aml_nftl_info->oobsize = mtd->oobsize;
 	phys_erase_shift = ffs(mtd->erasesize) - 1;
 	size_in_blk =  (mtd->size >> phys_erase_shift);
-	BUG_ON(size_in_blk <= AML_LIMIT_FACTOR);
+	if (size_in_blk <= AML_LIMIT_FACTOR)
+		return -EPERM;
+
 	aml_nftl_info->pages_per_blk = mtd->erasesize / mtd->writesize;
 	aml_nftl_info->fillfactor = (size_in_blk / 32);
 	if (aml_nftl_info->fillfactor < AML_LIMIT_FACTOR)
 		aml_nftl_info->fillfactor = AML_LIMIT_FACTOR;
 	aml_nftl_info->accessibleblocks = size_in_blk - aml_nftl_info->fillfactor;
-	aml_nftl_blk->mbd.size = (aml_nftl_info->accessibleblocks * (mtd->erasesize  >> 9));
+
 	aml_nftl_info->copy_page_buf = aml_nftl_malloc(aml_nftl_info->writesize);
 	if (!aml_nftl_info->copy_page_buf)
 		return -ENOMEM;
@@ -782,6 +979,13 @@ int aml_nftl_initialize(struct aml_nftl_blk_t *aml_nftl_blk)
 	aml_nftl_info->vtpmt_special = aml_nftl_malloc(sizeof(struct vtblk_special_node_t));
 	if (!aml_nftl_info->vtpmt_special)
 		return -ENOMEM;
+	aml_nftl_info->vtpmt_special = aml_nftl_malloc(sizeof(struct vtblk_special_node_t));
+	if (!aml_nftl_info->vtpmt_special)
+		return -ENOMEM;
+	timestamp_conflict_node = (void **)aml_nftl_malloc(sizeof(void *) * aml_nftl_info->accessibleblocks);
+	if (!timestamp_conflict_node)
+		return -ENOMEM;
+
 	aml_nftl_info->vtpmt_special->vtblk_node = NULL;
 	aml_nftl_info->vtpmt_special->ext_phy_blk_addr = BLOCK_INIT_VALUE;
 	memset((unsigned char *)aml_nftl_info->phypmt, 0xff, sizeof(struct phyblk_node_t)*size_in_blk);
@@ -794,6 +998,7 @@ int aml_nftl_initialize(struct aml_nftl_blk_t *aml_nftl_blk)
 	aml_nftl_info->copy_page = aml_nftl_copy_page;
 	aml_nftl_info->get_page_status = aml_nftl_get_page_status;
 	aml_nftl_info->blk_mark_bad = aml_nftl_blk_mark_bad;
+	aml_nftl_info->blk_isbad = aml_nftl_blk_isbad;
 	aml_nftl_info->get_block_status = aml_nftl_get_block_status;
 	aml_nftl_info->get_phy_sect_map = aml_nftl_get_phy_sect_map;
 	aml_nftl_info->erase_block = aml_nftl_erase_block;
@@ -813,18 +1018,14 @@ int aml_nftl_initialize(struct aml_nftl_blk_t *aml_nftl_blk)
 		phy_page_addr = 0;
 		phy_blk_node = &aml_nftl_info->phypmt[phy_blk_num];
 
-		error = aml_nftl_info->get_page_status(aml_nftl_info, phy_blk_num, phy_page_addr, nftl_oob_buf);
-		if (nftl_oob_info->status_page == 0) {
-			int j ;
+		error = aml_nftl_info->blk_isbad(aml_nftl_info, phy_blk_num);
+		if (error) {
 			aml_nftl_info->accessibleblocks--;
-			aml_nftl_dbg("get status faile at blk: %d \n", phy_blk_num);
-			for(j=0;j<sizeof(struct nftl_oobinfo_t);j++)
-				aml_nftl_dbg(" %x  ", nftl_oob_buf[j]);
-				
-			aml_nftl_info->blk_mark_bad(aml_nftl_info, phy_blk_num);
+			aml_nftl_dbg("nftl detect bad blk at : %d \n", phy_blk_num);
 			continue;
 		}
 
+		error = aml_nftl_info->get_page_status(aml_nftl_info, phy_blk_num, phy_page_addr, nftl_oob_buf);
 		if (error) {
 			aml_nftl_info->accessibleblocks--;
 			phy_blk_node->status_page = STATUS_BAD_BLOCK;
@@ -832,23 +1033,45 @@ int aml_nftl_initialize(struct aml_nftl_blk_t *aml_nftl_blk)
 			continue;
 		}
 
-		if (nftl_oob_info->vtblk < 0) {
+		if (nftl_oob_info->status_page == 0) {
+			aml_nftl_info->accessibleblocks--;
+			aml_nftl_dbg("get status faile at blk: %d \n", phy_blk_num);
+			aml_nftl_info->blk_mark_bad(aml_nftl_info, phy_blk_num);
+			continue;
+		}
+
+		if (nftl_oob_info->vtblk == -1) {
+			phy_blk_node->valid_sects = 0;
+			phy_blk_node->ec = 0;
+			aml_nftl_wl->add_erased(aml_nftl_wl, phy_blk_num);	
+		}
+		else if ((nftl_oob_info->vtblk < 0) || (nftl_oob_info->vtblk >= (size_in_blk - aml_nftl_info->fillfactor))) {
+			aml_nftl_dbg("nftl invalid vtblk: %d \n", nftl_oob_info->vtblk);
+			error = aml_nftl_info->erase_block(aml_nftl_info, phy_blk_num);
+		if (error) {
+			aml_nftl_info->accessibleblocks--;
+			phy_blk_node->status_page = STATUS_BAD_BLOCK;
+				aml_nftl_info->blk_mark_bad(aml_nftl_info, phy_blk_num);
+		}
+			else {
 			phy_blk_node->valid_sects = 0;
 			phy_blk_node->ec = 0;
 			aml_nftl_wl->add_erased(aml_nftl_wl, phy_blk_num);
 		}
+		}
 		else {
 			aml_nftl_wl->add_used(aml_nftl_wl, phy_blk_num);
-			aml_nftl_add_block(aml_nftl_info, phy_blk_num, nftl_oob_info);
+			aml_nftl_add_block(aml_nftl_info, phy_blk_num, nftl_oob_info, timestamp_conflict_node);
 		}
-
 	}
 
-	aml_nftl_check_full_node(aml_nftl_info);
+	aml_nftl_check_full_node(aml_nftl_info, timestamp_conflict_node);
 
+	aml_nftl_free(timestamp_conflict_node);
 	aml_nftl_info->isinitialised = 0;
 	aml_nftl_info->cur_split_blk = 0;
 	aml_nftl_wl->gc_start_block = aml_nftl_info->accessibleblocks - 1;
+	aml_nftl_blk->mbd.size = (aml_nftl_info->accessibleblocks * (mtd->erasesize  >> 9));
 	aml_nftl_dbg("nftl initilize completely dev size: 0x%lx \n", aml_nftl_blk->mbd.size * 512);
 
 	return 0;

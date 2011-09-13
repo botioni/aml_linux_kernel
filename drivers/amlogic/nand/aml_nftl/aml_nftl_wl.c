@@ -198,7 +198,16 @@ static void add_used(struct aml_nftl_wl_t* wl, addr_blk_t blk)
  */
 static void add_erased(struct aml_nftl_wl_t* wl, addr_blk_t blk)
 {
-	struct wl_rb_t* tnode = construct_tnode(wl, blk);
+	struct aml_nftl_info_t *aml_nftl_info = wl->aml_nftl_info;
+	struct phyblk_node_t *phy_blk_node;
+	struct wl_rb_t* tnode;
+
+	phy_blk_node = &aml_nftl_info->phypmt[blk];
+	tnode = search_tree(wl, &wl->used_root, blk, phy_blk_node->ec);
+	if (tnode)
+		_del_used(wl, tnode);
+
+	tnode = construct_tnode(wl, blk);
 	if(tnode)
 		add_tree(wl, &wl->erased_root, tnode);
 }
@@ -240,9 +249,43 @@ static void add_free(struct aml_nftl_wl_t * wl, addr_blk_t blk)
 
 static void add_node_full(struct aml_nftl_wl_t* wl, addr_blk_t vt_blk, addr_blk_t phy_blk)
 {
-	struct wl_list_t* lnode = construct_lnode(wl, vt_blk, phy_blk);
-	if(lnode)
-		list_add(&lnode->list, &wl->node_full_head.list);
+	struct wl_list_t* lnode, *lnode_add;
+	struct list_head *l, *n;
+	struct phyblk_node_t *phy_blk_node, *phy_blk_tmp_node;
+	struct aml_nftl_info_t *aml_nftl_info = wl->aml_nftl_info;
+
+	phy_blk_node = &aml_nftl_info->phypmt[phy_blk];
+	if (!list_empty(&wl->node_full_head.list)) {
+		list_for_each_safe(l, n, &wl->node_full_head.list) {
+
+			lnode = list_to_node(l);
+			if (lnode->vt_blk == vt_blk) {
+				phy_blk_tmp_node = &aml_nftl_info->phypmt[lnode->phy_blk];
+				if (phy_blk_tmp_node->timestamp < phy_blk_node->timestamp) {
+					if ((phy_blk_node->timestamp - phy_blk_tmp_node->timestamp) < (MAX_TIMESTAMP_NUM - aml_nftl_info->accessibleblocks)) {
+						list_del(&lnode->list);
+						aml_nftl_free(lnode);
+					}
+					else
+						return;
+				}
+				else {
+					if ((phy_blk_tmp_node->timestamp - phy_blk_node->timestamp) >= (MAX_TIMESTAMP_NUM - aml_nftl_info->accessibleblocks)) {
+						list_del(&lnode->list);
+						aml_nftl_free(lnode);
+					}
+					else
+						return;
+				}
+			}
+		}
+	}
+
+	lnode_add = construct_lnode(wl, vt_blk, phy_blk);
+	if(lnode_add)
+		list_add(&lnode_add->list, &wl->node_full_head.list);
+
+	return;
 }
 
 static int32_t get_node_full(struct aml_nftl_wl_t* wl, addr_blk_t vt_blk, addr_blk_t *phy_blk)
@@ -523,7 +566,9 @@ static int32_t gc_copy_special(struct aml_nftl_wl_t* aml_nftl_wl)
 	addr_blk_t dest_blk, src_blk, phy_blk_tmp;
 	addr_page_t dest_page, src_page;
 
-	BUG_ON(aml_nftl_info->vtpmt_special->vtblk_node == NULL);
+	if (aml_nftl_info->vtpmt_special->vtblk_node == NULL)
+		return -1;
+
 	vt_special_node = aml_nftl_info->vtpmt_special->vtblk_node;
 	dest_blk = aml_nftl_info->vtpmt_special->ext_phy_blk_addr;
 

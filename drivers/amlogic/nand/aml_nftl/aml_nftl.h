@@ -44,7 +44,7 @@ typedef int16_t     	addr_linearblk_t;
 #define MAX_PAGES_IN_BLOCK       256
 #define MAX_BLKS_PER_SECTOR		 128
 #define MAX_BLK_NUM_PER_NODE	 4
-#define DEFAULT_SPLIT_UNIT		 2
+#define DEFAULT_SPLIT_UNIT		 1
 
 #define NFTL_BOUNCE_FREE		 		0
 #define NFTL_BOUNCE_USED		 		1
@@ -180,6 +180,7 @@ struct aml_nftl_ops_t{
     int		(*read_page)(struct aml_nftl_info_t * aml_nftl_info, addr_blk_t blk_addr, addr_page_t page_addr, unsigned char *data_buf, unsigned char *nftl_oob_buf);
     int		(*write_pages)(struct aml_nftl_info_t * aml_nftl_info, addr_blk_t blk_addr, addr_page_t page_addr, unsigned page_nums, unsigned char *data_buf, unsigned char *nftl_oob_buf);
     int    (* get_page_status)(struct aml_nftl_info_t *aml_nftl_info, addr_blk_t blk_addr, addr_page_t page_addr, unsigned char * nftl_oob_buf);
+    int    (* blk_isbad)(struct aml_nftl_info_t *aml_nftl_info, addr_blk_t blk_addr);
     int    (* blk_mark_bad)(struct aml_nftl_info_t *aml_nftl_info, addr_blk_t blk_addr);
     int    (* erase_block)(struct aml_nftl_info_t * aml_nftl_info, addr_blk_t blk_addr);
 };
@@ -267,12 +268,14 @@ struct aml_nftl_info_t{
     uint32_t    accessibleblocks;
     uint8_t      isinitialised;
     uint16_t	cur_split_blk;
+    uint32_t         fillfactor;
+
     unsigned char *copy_page_buf;
     struct vtblk_node_t   *vtpmt;
     struct phyblk_node_t  *phypmt;
     struct vtblk_special_node_t   *vtpmt_special;
     struct phyblk_node_t  *freepmt;
-    uint32_t         fillfactor;
+
     struct aml_nftl_ops_t  *aml_nftl_ops;
     struct aml_nftl_wl_t	*aml_nftl_wl;
 
@@ -280,6 +283,7 @@ struct aml_nftl_info_t{
     int		(*write_pages)(struct aml_nftl_info_t *aml_nftl_info, addr_blk_t blk_addr, addr_page_t page_addr, unsigned page_nums, unsigned char *data_buf, unsigned char *nftl_oob_buf);
     int    (* copy_page)(struct aml_nftl_info_t *aml_nftl_info, addr_blk_t dest_blk_addr, addr_page_t dest_page, addr_blk_t src_blk_addr, addr_page_t src_page);
     int    (* get_page_status)(struct aml_nftl_info_t *aml_nftl_info, addr_blk_t blk_addr, addr_page_t page_addr, unsigned char * nftl_oob_buf);
+    int    (* blk_isbad)(struct aml_nftl_info_t *aml_nftl_info, addr_blk_t blk_addr);
     int    (* blk_mark_bad)(struct aml_nftl_info_t *aml_nftl_info, addr_blk_t blk_addr);
     int    (* get_block_status)(struct aml_nftl_info_t *aml_nftl_info, addr_blk_t blk_addr, unsigned char *nftl_oob_buf);
     int    (* get_phy_sect_map)(struct aml_nftl_info_t *aml_nftl_info, addr_blk_t blk_addr);
