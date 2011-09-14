@@ -551,9 +551,15 @@ static struct resource amlogic_card_resource[] = {
 
 void extern_wifi_power(int is_power)
 {
+	CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO0_EN_N, (1<<6));	//Control WIFI_PWR_CTL
+	if(is_power)
+		SET_CBUS_REG_MASK(PREG_PAD_GPIO0_O, (1<<6));
+	else
+		CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO0_O, (1<<6));
+
 	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_1,(1<<11));
 	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0,(1<<18));
-	CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO2_EN_N, (1<<8));
+	CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO2_EN_N, (1<<8));	//Control WL_REG_ON
 	if(is_power)
 		SET_CBUS_REG_MASK(PREG_PAD_GPIO2_O, (1<<8));
 	else
@@ -593,7 +599,7 @@ static struct aml_card_info  amlogic_card_info[] = {
         .card_ins_en_mask = 0,
         .card_ins_input_reg = 0,
         .card_ins_input_mask = 0,
-        .card_power_en_reg = EGPIO_GPIOC_ENABLE,
+        .card_power_en_reg = EGPIO_GPIOC_ENABLE,	//Control WL_RST
         .card_power_en_mask = PREG_IO_7_MASK,
         .card_power_output_reg = EGPIO_GPIOC_OUTPUT,
         .card_power_output_mask = PREG_IO_7_MASK,
