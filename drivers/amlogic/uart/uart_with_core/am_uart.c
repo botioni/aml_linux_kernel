@@ -1198,6 +1198,23 @@ void raw_printk5(const char *str, uint n1, uint n2, uint n3, uint n4)
 
 EXPORT_SYMBOL(raw_printk5);
 
+int get_baud(int line)
+{
+    struct am_uart_port * info = &am_ports[line];
+
+    printk("uart%d %s %d\n", line, __FUNCTION__, info->baud);
+    return info->baud ? info->baud : 115200;
+}
+EXPORT_SYMBOL(get_baud);
+
+void set_baud(int line, unsigned long newbaud)
+{
+      struct am_uart_port * info = &am_ports[line];
+
+      change_speed(info, newbaud);
+      printk("uart%d %s %d\n", line, __FUNCTION__, info->baud);
+}
+EXPORT_SYMBOL(set_baud);
 
 MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("amlogic uart driver");
