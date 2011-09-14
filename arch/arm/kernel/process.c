@@ -36,6 +36,7 @@
 #include <asm/stacktrace.h>
 #include <asm/mach/time.h>
 #include <asm/cacheflush.h>
+#include <mach/sram.h>
 
 static const char *processor_modes[] = {
   "USER_26", "FIQ_26" , "IRQ_26" , "SVC_26" , "UK4_26" , "UK5_26" , "UK6_26" , "UK7_26" ,
@@ -83,9 +84,11 @@ static int __init hlt_setup(char *__unused)
 __setup("nohlt", nohlt_setup);
 __setup("hlt", hlt_setup);
 
+#define BOOT_MODE_SRAM_ADDR (0xC9000000 + SRAM_SIZE)
+
 void arm_machine_restart(char mode, const char *cmd)
 {
-	volatile u32* sram_vaddr = (u32*)ioremap(0xC9001E00, 4); 
+	volatile u32* sram_vaddr = (u32*)ioremap(BOOT_MODE_SRAM_ADDR, 4); 
 	*sram_vaddr = AMLOGIC_NORMAL_BOOT;
 
 	if(cmd){   
