@@ -30,6 +30,8 @@ static unsigned long __initdata init_clock = CONFIG_INIT_A9_CLOCK;
 static unsigned long __initdata init_clock = 0;
 #endif
 
+#define MAX_CPU_FREQ 768000000
+
 // -----------------------------------------
 // clk_util_clk_msr
 // -----------------------------------------
@@ -357,12 +359,12 @@ static int get_best_ratio_sys_pll(uint min_ratio, uint max_ratio, uint min_freq,
 	return 1;
 }
 
-static unsigned pll_seed = 768000000;
+static unsigned pll_seed = MAX_CPU_FREQ;
 static unsigned cpu_freq_table[4]={
     0,
-    192000000,
-    384000000,
-    768000000
+    MAX_CPU_FREQ/4,
+    MAX_CPU_FREQ/2,
+    MAX_CPU_FREQ
 };
 
 static int clk_set_rate_a9_clk(struct clk *clk, unsigned long rate)
@@ -411,9 +413,11 @@ static int clk_set_rate_a9_clk(struct clk *clk, unsigned long rate)
                    (1 << 5) |  // AT_CLK_ENABLE
                    (1 << 7) |  // Connect A9 to the PLL divider output
                    ((ratio < 3 ? 0 : (ratio / 2) - 1) << 8));
-    clk_a9 = clk_util_clk_msr(CTS_A9_CLK);
+    udelay(100);
+//    clk_a9 = clk_util_clk_msr(CTS_A9_CLK);
     local_irq_restore(flags);
-    printk("********%s: clk_util_clk_msr(CTS_A9_CLK %d) = %dMHz\n", __FUNCTION__, rate, clk_a9);
+//    printk("********%s: clk_util_clk_msr(CTS_A9_CLK %d) = %dMHz\n", __FUNCTION__, rate, clk_a9);
+    printk(KERN_INFO "a9clk=%d pll=%d ratio=%d\n", rate, r1, ratio); 
     return 0;
 }
 
@@ -434,7 +438,7 @@ static struct clk clk_sys_pll = {
 
 static struct clk clk_misc_pll = {
     .name       = "clk_misc_pll",
-    .rate       = 800000000,
+    .rate       = 480000000,
     .min        = 400000000,
     .max        = 800000000,
     .set_rate   = clk_set_rate_misc_pll,
@@ -456,9 +460,9 @@ static struct clk clk81 = {
 
 static struct clk a9_clk = {
     .name       = "a9_clk",
-    .rate       = 800000000,
-    .min        = 180000000,
-    .max        = 800000000,
+    .rate       = MAX_CPU_FREQ,
+    .min        = MAX_CPU_FREQ/4,
+    .max        = MAX_CPU_FREQ,
     .set_rate   = clk_set_rate_a9_clk,
 };
 

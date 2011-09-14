@@ -419,6 +419,9 @@ static void venc_set_lcd(tcon_conf_t *pConf, int havon_begin)
     WRITE_MPEG_REG(ENCT_VIDEO_VSO_BLINE,    0);
     WRITE_MPEG_REG(ENCT_VIDEO_VSO_ELINE,    2);
 
+    // disable sync on rgb
+    WRITE_MPEG_REG_BITS(ENCT_VIDEO_RGB_CTRL, 0, 0, 3);
+
     // bypass filter
     WRITE_MPEG_REG(ENCT_VIDEO_FILT_CTRL,    0x1000);
     
