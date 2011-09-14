@@ -184,6 +184,8 @@ static void hci_init_req(struct hci_dev *hdev, unsigned long opt)
 	struct sk_buff *skb;
 	__le16 param;
 	__u8 flt_type;
+    unsigned char buf[10] = {0x01, 0x0a, 0x0a, 0x01, 0x01, 0x01, 0x01, 0x00, 0x00, 0x00};
+    u16 opcode = (u16)((0x27 & 0x03ff)|(0x3f << 10));
 
 	BT_DBG("%s %ld", hdev->name, opt);
 
@@ -251,6 +253,9 @@ static void hci_init_req(struct hci_dev *hdev, unsigned long opt)
 	/* Connection accept timeout ~20 secs */
 	param = cpu_to_le16(0x7d00);
 	hci_send_cmd(hdev, HCI_OP_WRITE_CA_TIMEOUT, 2, &param);
+
+    /* sleep mode Setting */
+    hci_send_cmd(hdev, opcode, 10, buf);
 }
 
 static void hci_scan_req(struct hci_dev *hdev, unsigned long opt)
