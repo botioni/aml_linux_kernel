@@ -1505,16 +1505,6 @@ static struct platform_device aml_efuse_device = {
 #ifdef CONFIG_PMU_ACT8942
 #include <linux/act8942.h>  
 
-
-static void power_off(void)
-{
-    //Power hold down
-    set_gpio_val(GPIOAO_bank_bit0_11(6), GPIOAO_bit_bit0_11(6), 0);
-    set_gpio_mode(GPIOAO_bank_bit0_11(6), GPIOAO_bit_bit0_11(6), GPIO_OUTPUT_MODE);
-}
-
-
-
 /*
  *	DC_DET(GPIOA_20)	enable internal pullup
  *		High:		Disconnect
@@ -1531,6 +1521,25 @@ static inline int is_ac_online(void)
 	logd("%s: get from gpio is %d.\n", __FUNCTION__, val);
 	
 	return !val;
+}
+
+
+static void power_off(void)
+{
+    if(is_ac_online()){ //AC in after power off press
+        kernel_restart("charging_reboot");
+    }
+    
+    //BL_PWM power off
+    set_gpio_val(GPIOD_bank_bit0_9(1), GPIOD_bit_bit0_9(1), 0);
+    set_gpio_mode(GPIOD_bank_bit0_9(1), GPIOD_bit_bit0_9(1), GPIO_OUTPUT_MODE);
+
+    //VCCx2 power down
+    set_vccx2(0);
+    
+    //Power hold down
+    set_gpio_val(GPIOAO_bank_bit0_11(6), GPIOAO_bit_bit0_11(6), 0);
+    set_gpio_mode(GPIOAO_bank_bit0_11(6), GPIOAO_bit_bit0_11(6), GPIO_OUTPUT_MODE);
 }
 
 //temporary
