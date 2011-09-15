@@ -13,6 +13,8 @@
 #define SRAM_SIZE       127*1024 + 512
 #define SRAM_GRANULARITY    512
 
+#define REBOOT_MODE_OFFSET (SRAM_SIZE + SRAM_GRANULARITY - 4)
+
 /*
  * SRAM allocations return a CPU virtual address, or NULL on error.
  */

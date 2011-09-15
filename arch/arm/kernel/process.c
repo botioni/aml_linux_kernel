@@ -84,7 +84,7 @@ static int __init hlt_setup(char *__unused)
 __setup("nohlt", nohlt_setup);
 __setup("hlt", hlt_setup);
 
-#define BOOT_MODE_SRAM_ADDR (0xC9000000 + SRAM_SIZE)
+#define BOOT_MODE_SRAM_ADDR (0xC9000000 + REBOOT_MODE_OFFSET)
 
 void arm_machine_restart(char mode, const char *cmd)
 {
