@@ -932,7 +932,7 @@ u8 str_2char2num(u8 hch, u8 lch)
     return ((key_char2num(hch) * 10 ) + key_char2num(lch));
 }
 
-static u8 key_2char2num(u8 hch, u8 lch)
+u8 key_2char2num(u8 hch, u8 lch)
 {
     return ((key_char2num(hch) << 4) | key_char2num(lch));
 }
