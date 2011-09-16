@@ -122,13 +122,13 @@ static struct timer_list hpd_timer;
 
 //static struct tasklet_struct EDID_tasklet;
 static unsigned delay_flag = 0;
-#ifdef AML_A3
-static unsigned serial_reg_val=0x24;
-static unsigned char i2s_to_spdif_flag=1; //i2s clock in avos is div by 4 from amclk by audio driver, so use spdif
-#else
+//#ifdef AML_A3
+//static unsigned serial_reg_val=0x24;
+//static unsigned char i2s_to_spdif_flag=1; //i2s clock in avos is div by 4 from amclk by audio driver, so use spdif
+//#else
 static unsigned serial_reg_val=0x1; //0x22;
 static unsigned char i2s_to_spdif_flag=0;
-#endif
+//#endif
 static unsigned color_depth_f=0;
 static unsigned color_space_f=0;
 static unsigned char new_reset_sequence_flag=1;
@@ -1799,6 +1799,9 @@ static void hdmi_audio_init(unsigned char spdif_flag)
 
 static void enable_audio_spdif(void)
 {
+    
+    printk("Enable audio spdif to HDMI\n");
+    
         Wr( AIU_958_MISC, 0x204a ); // // Program the IEC958 Module in the AIU
         Wr( AIU_958_FORCE_LEFT, 0x0000 );
         Wr( AIU_958_CTRL, 0x0240 );
@@ -1822,9 +1825,11 @@ static void enable_audio_spdif(void)
 
 static void enable_audio_i2s(void)
 {
+    printk("Enable audio i2s to HDMI\n");
     hdmi_wr_reg(TX_AUDIO_I2S,   0x1 );  // Address  0x5A=0x0    TX_AUDIO_I2S
     hdmi_wr_reg(TX_AUDIO_SPDIF, 0); // TX AUDIO SPDIF Enable
     Wr(AIU_CLK_CTRL,        Rd(AIU_CLK_CTRL) | 3); // enable iec958 clock which is audio_master_clk
+    Wr(AIU_CLK_CTRL, (Rd(AIU_CLK_CTRL)&(~(0x3 << 4)))|(1<<4));
 #ifdef AML_A3
     //hdmi 958 clk  = amclk/128/2;
         Wr(AIU_CLK_CTRL, (Rd(AIU_CLK_CTRL)&(~(0x3<<4))&(~(1<<12)))|(0x1<<4));
@@ -2178,6 +2183,22 @@ static void set_hdmi_audio_source(unsigned int src)
 {
     unsigned long data32;
     unsigned int i;
+    
+    switch(src)
+    {
+        case 0:
+            printk("No audio clock to HDMI\n");
+            break;
+        case 1:
+            printk("PCM out to HDMI\n");
+            break;
+        case 2:
+            printk("I2S out to HDMI\n");
+            break;
+        default:
+            printk("Audio Src clock to HDMI Error\n");
+            break;
+    }
     
     // Disable HDMI audio clock input and its I2S input
     data32  = 0;
@@ -2690,6 +2711,14 @@ static void hdmitx_m3_debug(hdmitx_dev_t* hdmitx_device, const char* buf)
         hdmitx_dump_tvenc_reg(hdmitx_device->cur_VIC, 1);
         return;
     }
+    else if(strncmp(tmpbuf, "rdhdmireg", 9)==0){
+        unsigned char reg_val = 0;
+        unsigned int reg_adr = 0;
+        for (reg_adr = 0; reg_adr < 0x800; reg_adr ++){        //HDMI Regs address range: 0 ~ 0x7ff
+            reg_val = hdmi_rd_reg(reg_adr);
+            printk("HDMI Reg:0x%x  Val:0x%x\n", reg_adr, reg_val);
+        }
+    }
     else if(strncmp(tmpbuf, "pllcalc", 7)==0){
         adr=simple_strtoul(tmpbuf+7, NULL, 10);
         if(adr == 0){
@@ -2717,7 +2746,12 @@ static void hdmitx_m3_debug(hdmitx_dev_t* hdmitx_device, const char* buf)
         }
         else{
             if(adr < 46)
-                printk("Other ID[%d] clk: %uMHz\n", adr, clk_util_clk_msr(adr));
+                printk("Other Tree[%d] clk: %uMHz\n", adr, clk_util_clk_msr(adr));
+        }
+        if(*(tmpbuf+7) == 'a'){
+            for(adr = 0; adr < 46; adr ++){
+                printk("Other Tree[%d] clk: %uMHz\n", adr, clk_util_clk_msr(adr));
+            }
         }
     }
     else if(strncmp(tmpbuf, "hdmiaudio", 9)==0){
