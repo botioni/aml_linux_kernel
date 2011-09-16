@@ -2135,6 +2135,8 @@ static void aml_8726m_power_off_bl(void)
     CLEAR_CBUS_REG_MASK(PWM_MISC_REG_AB, (1 << 0));
     //set_gpio_val(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), 0);
     //set_gpio_mode(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), GPIO_OUTPUT_MODE);
+    set_gpio_val(GPIOD_bank_bit0_9(1), GPIOD_bit_bit0_9(1), 0);
+    set_gpio_mode(GPIOD_bank_bit0_9(1), GPIOD_bit_bit0_9(1), GPIO_OUTPUT_MODE);
 }
 
 struct aml_bl_platform_data aml_bl_platform =
@@ -2586,7 +2588,11 @@ static __init void m1_init_machine(void)
 #ifdef CONFIG_AML_SUSPEND
 		extern int (*pm_power_suspend)(void);
 		pm_power_suspend = meson_power_suspend;
-#endif /*CONFIG_AML_SUSPEND*/    
+#endif /*CONFIG_AML_SUSPEND*/
+
+#if defined(CONFIG_AMLOGIC_BACKLIGHT)
+	aml_8726m_power_off_bl();
+#endif
     LED_PWM_REG0_init();
     power_hold();
     pm_power_off = power_off;		//Elvis fool
