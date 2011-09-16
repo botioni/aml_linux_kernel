@@ -21,6 +21,11 @@
 #include <net/bluetooth/bluetooth.h>                                                                                  
 #include <net/bluetooth/hci_core.h>
 
+#ifdef CONFIG_HAS_EARLYSUSPEND
+#include <linux/earlysuspend.h>
+static struct early_suspend bt_early_suspend;
+#endif
+
 extern struct bt_dev_data bt_dev;
 void rfkill_switch_all(enum rfkill_type type, bool blocked);
 
@@ -62,9 +67,9 @@ static int bt_suspend(struct platform_device *pdev, pm_message_t state)
         //hci_send_cmd(hdev, opcode, 10, buf);
         //hci_suspend_dev(hdev);
 
-        //if (NULL != bt_dev.bt_dev_suspend) {
-        //    bt_dev.bt_dev_suspend();
-        //}
+        if (NULL != bt_dev.bt_dev_suspend) {
+            bt_dev.bt_dev_suspend();
+        }
         //msleep(10);
         bt_baud = get_baud(1);
     }
@@ -80,9 +85,9 @@ static int bt_resume(struct platform_device *pdev)
 
     if( hdev = hci_dev_get(0)){
         //hci_resume_dev(hdev);
-        //if (NULL != bt_dev.bt_dev_resume) {
-            //bt_dev.bt_dev_resume();
-        //}
+        if (NULL != bt_dev.bt_dev_resume) {
+            bt_dev.bt_dev_resume();
+        }
         set_baud(1, bt_baud);
     }
 
@@ -115,6 +120,13 @@ static int __init bt_probe(struct platform_device *pdev)
 		goto err_rfkill;
     }
 	platform_set_drvdata(pdev, bt_rfk);
+#ifdef CONFIG_HAS_EARLYSUSPEND                                                                                        
+        bt_early_suspend.level = EARLY_SUSPEND_LEVEL_DISABLE_FB;
+        bt_early_suspend.suspend = bt_suspend;
+        bt_early_suspend.resume = bt_resume;
+        bt_early_suspend.param = pdev;
+        register_early_suspend(&bt_early_suspend);
+#endif
 
 	return 0;	
 	
@@ -145,8 +157,10 @@ static struct platform_driver bt_driver = {
 	},
 	.probe		= bt_probe,
 	.remove		= bt_remove,
+#ifndef CONFIG_HAS_EARLYSUSPEND
 	.suspend    = bt_suspend,
     .resume     = bt_resume,
+#endif
 };
 
 static int __init bt_init(void)
