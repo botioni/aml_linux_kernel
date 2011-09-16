@@ -2235,6 +2235,23 @@ static struct platform_device android_usb_device = {
 };
 #endif
 
+#ifdef CONFIG_POST_PROCESS_MANAGER
+static struct resource ppmgr_resources[] = {
+    [0] = {
+        .start = PPMGR_ADDR_START,
+        .end   = PPMGR_ADDR_END,
+        .flags = IORESOURCE_MEM,
+    },
+};
+
+static struct platform_device ppmgr_device = {
+    .name       = "ppmgr",
+    .id         = 0,
+    .num_resources = ARRAY_SIZE(ppmgr_resources),
+    .resource      = ppmgr_resources,
+};
+#endif
+
 #ifdef CONFIG_BT_DEVICE
 #include <linux/bt-device.h>
 
@@ -2405,6 +2422,9 @@ static struct platform_device __initdata *platform_devs[] = {
 #endif
 #ifdef CONFIG_PMU_ACT8942
 	&aml_pmu_device,
+#endif
+#ifdef CONFIG_POST_PROCESS_MANAGER
+    &ppmgr_device,
 #endif
 };
 
