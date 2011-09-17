@@ -226,7 +226,7 @@ static void pixcir_ts_poscheck(struct work_struct *work)
 		posy2 = tsdata->pdata->ymax + tsdata->pdata->ymin - posy2;
 	}
 #if PIXCIR_DEBUG
-	printk("touching:%-3d,oldtouching:%-3d,x1:%-6d,y1:%-6d,x2:%-6d,y2:%-6d\n",touching, oldtouching, posx1, posy1, posx2, posy2);
+	//printk("touching:%-3d,oldtouching:%-3d,x1:%-6d,y1:%-6d,x2:%-6d,y2:%-6d\n",touching, oldtouching, posx1, posy1, posx2, posy2);
 #endif
 
 
@@ -297,7 +297,7 @@ static irqreturn_t pixcir_ts_isr(int irq, void *dev_id)
 {
 	struct pixcir_i2c_ts_data *tsdata = dev_id;
 	static int irq_count = 0;
-	printk("count irq = %d\n", irq_count++);
+	//printk("count irq = %d\n", irq_count++);
 	if (!irq_flag) {
 	disable_irq_nosync(irq);
 	queue_work(pixcir_wq, &tsdata->work.work);
