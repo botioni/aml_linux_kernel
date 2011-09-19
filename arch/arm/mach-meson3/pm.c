@@ -794,8 +794,13 @@ static void meson_pm_suspend(void)
         udelay(10);
     }
 #else
+#ifdef CONFIG_AML_SUSPEND
+extern int meson_power_suspend();
+			meson_power_suspend();
+#else
     WRITE_CBUS_REG(SYS_CPU_0_IRQ_IN2_INTR_MASK, pdata->power_key);     // enable rtc interrupt only
     meson_sram_suspend(pdata);
+#endif
 #endif
 
     CLEAR_CBUS_REG_MASK(HHI_SYS_PLL_CNTL, (1 << 15));   // turn on sys pll
