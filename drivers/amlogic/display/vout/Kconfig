@@ -166,6 +166,13 @@ config AML_LVDS_R_AT070TNA2
 	depends on AM_LCD_LVDS_OUTPUT
 	help
 		AT070TNA2 LVDS panel.
+		
+config AML_LVDS_HV070WSA_100
+  tristate "HV070WSA_100"
+  depends on AM_LCD_LVDS_OUTPUT
+  help
+	  HV070WSA_100 LVDS panel.
+
 
 config AML_MLVDS_A_TM080XDH		
 	tristate "A_TM080XDH"

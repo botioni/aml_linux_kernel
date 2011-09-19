@@ -525,11 +525,13 @@ static int lcd_set_current_vmode(vmode_t mode)
         return -EINVAL;
     WRITE_MPEG_REG(VPP_POSTBLEND_H_SIZE, pDev->lcd_info.width);
     _lcd_module_enable();
-    if (VMODE_INIT_NULL == pDev->lcd_info.mode)
+    if (VMODE_INIT_NULL != pDev->lcd_info.mode)
         pDev->lcd_info.mode = VMODE_LCD;
     else
         _enable_backlight(BL_MAX_LEVEL);
+
 	return 0;
+	
 }
 
 static vmode_t lcd_validate_vmode(char *mode)
