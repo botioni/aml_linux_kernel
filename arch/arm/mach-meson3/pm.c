@@ -766,13 +766,14 @@ static void meson_pm_suspend(void)
 
     pll_switch(OFF);
 
-
+#ifndef CONFIG_AML_SUSPEND
     printk("meson_sram_suspend params 0x%x, 0x%x, 0x%x, 0x%x, 0x%x, 0x%x\n",
            (unsigned)pdata->pctl_reg_base, (unsigned)pdata->mmc_reg_base, (unsigned)pdata->hiu_reg_base,
            (unsigned)pdata->power_key, (unsigned)pdata->ddr_clk, (unsigned)pdata->ddr_reg_backup);
 
     meson_sram_push(meson_sram_suspend, meson_cpu_suspend,
                     meson_cpu_suspend_sz);
+#endif
 
     printk(KERN_INFO "sleep ...\n");
 
@@ -842,8 +843,10 @@ static int meson_pm_prepare(void)
     WRITE_CBUS_REG(SYS_CPU_0_IRQ_IN1_INTR_MASK, 0x0);
     WRITE_CBUS_REG(SYS_CPU_0_IRQ_IN2_INTR_MASK, 0x0);
     WRITE_CBUS_REG(SYS_CPU_0_IRQ_IN3_INTR_MASK, 0x0);
+#ifndef CONFIG_AML_SUSPEND
     meson_sram_push(meson_sram_suspend, meson_cpu_suspend,
                     meson_cpu_suspend_sz);
+#endif
     return 0;
 }
 
@@ -870,6 +873,15 @@ static void meson_pm_finish(void)
     WRITE_CBUS_REG(SYS_CPU_0_IRQ_IN1_INTR_MASK, mask_save[1]);
     WRITE_CBUS_REG(SYS_CPU_0_IRQ_IN2_INTR_MASK, mask_save[2]);
     WRITE_CBUS_REG(SYS_CPU_0_IRQ_IN3_INTR_MASK, mask_save[3]);
+#ifdef CONFIG_AML_SUSPEND
+#ifdef CONFIG_EARLYSUSPEND
+extern void request_suspend_state(suspend_state_t new_state);
+	   request_suspend_state(0);		
+#else
+extern int enter_state(suspend_state_t state)
+		enter_state(state);
+#endif
+#endif
 }
 
 static struct platform_suspend_ops meson_pm_ops = {
@@ -905,15 +917,15 @@ static int __init meson_pm_probe(struct platform_device *pdev)
         return -ENOMEM;
     }
 
+#ifndef CONFIG_AML_SUSPEND
     meson_sram_suspend = sram_alloc(meson_cpu_suspend_sz);
     if (!meson_sram_suspend) {
         dev_err(&pdev->dev, "cannot allocate SRAM memory\n");
         return -ENOMEM;
     }
-
     meson_sram_push(meson_sram_suspend, meson_cpu_suspend,
                     meson_cpu_suspend_sz);
-
+#endif
     suspend_set_ops(&meson_pm_ops);
     printk(KERN_INFO "meson_pm_probe done 0x%x %d!\n", (unsigned)meson_sram_suspend, meson_cpu_suspend_sz);
     return 0;
