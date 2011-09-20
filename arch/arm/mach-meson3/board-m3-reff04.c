@@ -294,7 +294,7 @@ static int mpu3050_init_irq(void)
 
 static struct mpu3050_platform_data mpu3050_data = {
     .int_config = 0x10,
-    .orientation = {0,1,0,1,0,0,0,0,-1}, 
+    .orientation = {0,-1,0,-1,0,0,0,0,-1}, 
     .level_shifter = 0,
     .accel = {
                 .get_slave_descr = get_accel_slave_descr,
@@ -718,7 +718,7 @@ static struct pixcir_i2c_ts_platform_data pixcir_pdata = {
 	.gpio_shutdown = (GPIOC_bank_bit0_15(3)<<16) | GPIOC_bit_bit0_15(3), //GPIO_C3
 	.gpio_irq = (GPIOA_bank_bit0_27(16)<<16) | GPIOA_bit_bit0_27(16), //GPIO_A16
 	.xmin = 0,
-	.xmax = 1024,
+	.xmax = 1025,
 	.ymin = 0,
 	.ymax = 600,
   .swap_xy = 0,
@@ -1664,6 +1664,11 @@ static struct platform_device aml_efuse_device = {
 #ifdef CONFIG_PMU_ACT8942
 #include <linux/act8942.h>  
 
+static void act8942_set_charge_current(int level)
+{
+    set_gpio_val(GPIOAO_bank_bit0_11(11), GPIOAO_bit_bit0_11(11), level);    
+    set_gpio_mode(GPIOAO_bank_bit0_11(11), GPIOAO_bit_bit0_11(11), GPIO_OUTPUT_MODE);
+}
 
 static void power_off(void)
 {
@@ -2225,8 +2230,6 @@ static struct platform_device aml_nand_device = {
 
 static void aml_8726m_bl_init(void)
 {
-    // SET_CBUS_REG_MASK(PWM_MISC_REG_AB, (1 << 0));
-    // SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<31));
     printk("\n\nBacklight init.\n\n");
 }
 static unsigned bl_level;
@@ -2237,52 +2240,18 @@ static unsigned aml_8726m_get_bl_level(void)
 #define BL_MAX_LEVEL 60000
 static void aml_8726m_set_bl_level(unsigned level)
 {
-	/*
-    unsigned cs_level, hi, low;
-    if(level < 20){
-        cs_level = 0;
-    }
-    else if (level < 30)
-    {
-        cs_level = 1750;
-    }
-    else if (level >= 30 && level < 256)
-    {
-        cs_level = (level - 31) * 260 + 1760;
-    }
-    else
-        cs_level = BL_MAX_LEVEL;
-    
-
-    hi = cs_level;
-    low = BL_MAX_LEVEL - hi;
-
-
-    WRITE_CBUS_REG_BITS(PWM_PWM_A,low,0,16);  //low
-    WRITE_CBUS_REG_BITS(PWM_PWM_A,hi,16,16);  //hi
-    */
-    // unsigned cs_level;
-    // if (level < 10)
-    // {
-        // cs_level = 15;
-    // }
-    // else if (level < 30)
-    // {
-        // cs_level = 14;
-    // }
-    // else if (level >=30 && level < 256)
-    // {
-        // cs_level = 13-((level - 30)/28);
-    // }
-    // else
-        // cs_level = 3;
-
-    // WRITE_CBUS_REG_BITS(LED_PWM_REG0, cs_level, 0, 4);
+#ifdef CONFIG_AML_LVDS_R_AT070TNA2
+	extern void set_backlight_level(unsigned level);
+	bl_level = level;                         // 30 <= level <= 255
+	level = 255 - level + 30;
+	//printk("set backlight level = %d\n", level);
+	set_backlight_level(level);
+#endif
 }
 
 static void aml_8726m_power_on_bl(void)
 {
-#if 1
+#ifdef CONFIG_AML_LVDS_R_AT070TNA2
 	extern void power_on_backlight(void);
 	power_on_backlight();
 #else
@@ -2297,7 +2266,7 @@ static void aml_8726m_power_on_bl(void)
 
 static void aml_8726m_power_off_bl(void)
 {
-#if 1
+#ifdef CONFIG_AML_LVDS_R_AT070TNA2
 	extern void power_off_backlight(void);
 	power_off_backlight();
 #else
@@ -2767,7 +2736,7 @@ static void __init LED_PWM_REG0_init(void)
 
 }
 
-static __init void m1_init_machine(void)
+static __init void m3_init_machine(void)
 {
     meson_cache_init();
     
@@ -2790,6 +2759,10 @@ static __init void m1_init_machine(void)
     set_sata_phy_clk(SATA_PHY_CLOCK_SEL_DEMOD_PLL);
     lm_device_register(&sata_ld);
 #endif
+
+#ifdef CONFIG_PMU_ACT8942
+	act8942_set_charge_current(0);
+#endif
     disable_unused_model();
 }
 
@@ -2803,18 +2776,18 @@ static __initdata struct map_desc meson_video_mem_desc[] = {
     },
 };
 
-static __init void m1_map_io(void)
+static __init void m3_map_io(void)
 {
     meson_map_io();
     iotable_init(meson_video_mem_desc, ARRAY_SIZE(meson_video_mem_desc));
 }
 
-static __init void m1_irq_init(void)
+static __init void m3_irq_init(void)
 {
     meson_init_irq();
 }
 
-static __init void m1_fixup(struct machine_desc *mach, struct tag *tag, char **cmdline, struct meminfo *m)
+static __init void m3_fixup(struct machine_desc *mach, struct tag *tag, char **cmdline, struct meminfo *m)
 {
     struct membank *pbank;
     m->nr_banks = 0;
@@ -2834,11 +2807,11 @@ MACHINE_START(MESON3_8726M_SKT, "AMLOGIC MESON3 8726M SKT SH")
     .phys_io        = MESON_PERIPHS1_PHYS_BASE,
     .io_pg_offst    = (MESON_PERIPHS1_PHYS_BASE >> 18) & 0xfffc,
     .boot_params    = BOOT_PARAMS_OFFSET,
-    .map_io         = m1_map_io,
-    .init_irq       = m1_irq_init,
+    .map_io         = m3_map_io,
+    .init_irq       = m3_irq_init,
     .timer          = &meson_sys_timer,
-    .init_machine   = m1_init_machine,
-    .fixup          = m1_fixup,
+    .init_machine   = m3_init_machine,
+    .fixup          = m3_fixup,
     .video_start    = RESERVED_MEM_START,
     .video_end      = RESERVED_MEM_END,
 MACHINE_END

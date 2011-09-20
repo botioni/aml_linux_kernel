@@ -883,7 +883,7 @@ CONFIG_MALI=m
 #
 # AMLOGIC Post Process Manager driver
 #
-# CONFIG_POST_PROCESS_MANAGER is not set
+CONFIG_POST_PROCESS_MANAGER=y
 
 #
 # Amlogic CAMERA Support

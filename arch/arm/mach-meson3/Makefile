@@ -18,6 +18,7 @@ obj-$(CONFIG_ARCH_MESON3)	+= lm.o usbclock.o clk_set.o sram.o sleep.o
 
 obj-$(CONFIG_MACH_MESON3_REFF01)	+= board-m3-reff01.o
 obj-$(CONFIG_MACH_MESON3_REFF02)	+= board-m3-reff02.o
+obj-$(CONFIG_MACH_MESON3_REFF03)	+= board-m3-reff03.o
 obj-$(CONFIG_MACH_MESON3_REFF04)	+= board-m3-reff04.o
 obj-$(CONFIG_MACH_MESON3_REFF05)	+= board-m3-reff05.o
 obj-$(CONFIG_MACH_MESON3_REFF07)	+= board-m3-reff07.o

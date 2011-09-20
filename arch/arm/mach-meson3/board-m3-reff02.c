@@ -648,6 +648,24 @@ static struct resource aml_m3_audio_resource[] = {
     },
 };
 
+/* Check current mode, 0: panel; 1: !panel*/
+int get_display_mode(void) {
+	int fd;
+	int ret = 0;
+	char mode[8];	
+	
+	fd = sys_open("/sys/class/display/mode", O_RDWR | O_NDELAY, 0);
+	if(fd >= 0) {
+	  	memset(mode,0,8);
+	  	sys_read(fd,mode,8);
+	  	if(strncmp("panel",mode,5))
+	  		ret = 1;
+	  	sys_close(fd);
+	}
+
+	return ret;
+}
+
 #if defined(CONFIG_SND_AML_M3)
 static struct platform_device aml_audio = {
     .name               = "aml_m3_audio",
@@ -658,6 +676,9 @@ static struct platform_device aml_audio = {
 
 int aml_m3_is_hp_pluged(void)
 {
+	if(get_display_mode() != 0) //if !panel, return 1 to mute spk		
+		return 1;
+		
 	return READ_CBUS_REG_BITS(PREG_PAD_GPIO0_I, 19, 1); //return 1: hp pluged, 0: hp unpluged.
 }
 
@@ -1505,16 +1526,6 @@ static struct platform_device aml_efuse_device = {
 #ifdef CONFIG_PMU_ACT8942
 #include <linux/act8942.h>  
 
-
-static void power_off(void)
-{
-    //Power hold down
-    set_gpio_val(GPIOAO_bank_bit0_11(6), GPIOAO_bit_bit0_11(6), 0);
-    set_gpio_mode(GPIOAO_bank_bit0_11(6), GPIOAO_bit_bit0_11(6), GPIO_OUTPUT_MODE);
-}
-
-
-
 /*
  *	DC_DET(GPIOA_20)	enable internal pullup
  *		High:		Disconnect
@@ -1531,6 +1542,25 @@ static inline int is_ac_online(void)
 	logd("%s: get from gpio is %d.\n", __FUNCTION__, val);
 	
 	return !val;
+}
+
+
+static void power_off(void)
+{
+    if(is_ac_online()){ //AC in after power off press
+        kernel_restart("charging_reboot");
+    }
+    
+    //BL_PWM power off
+    set_gpio_val(GPIOD_bank_bit0_9(1), GPIOD_bit_bit0_9(1), 0);
+    set_gpio_mode(GPIOD_bank_bit0_9(1), GPIOD_bit_bit0_9(1), GPIO_OUTPUT_MODE);
+
+    //VCCx2 power down
+    set_vccx2(0);
+    
+    //Power hold down
+    set_gpio_val(GPIOAO_bank_bit0_11(6), GPIOAO_bit_bit0_11(6), 0);
+    set_gpio_mode(GPIOAO_bank_bit0_11(6), GPIOAO_bit_bit0_11(6), GPIO_OUTPUT_MODE);
 }
 
 //temporary
@@ -2105,6 +2135,8 @@ static void aml_8726m_power_off_bl(void)
     CLEAR_CBUS_REG_MASK(PWM_MISC_REG_AB, (1 << 0));
     //set_gpio_val(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), 0);
     //set_gpio_mode(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), GPIO_OUTPUT_MODE);
+    set_gpio_val(GPIOD_bank_bit0_9(1), GPIOD_bit_bit0_9(1), 0);
+    set_gpio_mode(GPIOD_bank_bit0_9(1), GPIOD_bit_bit0_9(1), GPIO_OUTPUT_MODE);
 }
 
 struct aml_bl_platform_data aml_bl_platform =
@@ -2203,6 +2235,23 @@ static struct platform_device android_usb_device = {
 };
 #endif
 
+#ifdef CONFIG_POST_PROCESS_MANAGER
+static struct resource ppmgr_resources[] = {
+    [0] = {
+        .start = PPMGR_ADDR_START,
+        .end   = PPMGR_ADDR_END,
+        .flags = IORESOURCE_MEM,
+    },
+};
+
+static struct platform_device ppmgr_device = {
+    .name       = "ppmgr",
+    .id         = 0,
+    .num_resources = ARRAY_SIZE(ppmgr_resources),
+    .resource      = ppmgr_resources,
+};
+#endif
+
 #ifdef CONFIG_BT_DEVICE
 #include <linux/bt-device.h>
 
@@ -2228,6 +2277,10 @@ static void bt_device_init(void)
 	
 	/* UART_RX(BT) */
 	SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_4, (1<<12));
+
+    /* BT_WAKE */
+    CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO4_EN_N, (1 << 10));
+    SET_CBUS_REG_MASK(PREG_PAD_GPIO4_O, (1 << 10));
 }
 
 static void bt_device_on(void)
@@ -2247,10 +2300,22 @@ static void bt_device_off(void)
 	msleep(200);	
 }
 
+static void bt_device_suspend(void)
+{
+    CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO4_O, (1 << 10));  
+}
+
+static void bt_device_resume(void)
+{    
+    SET_CBUS_REG_MASK(PREG_PAD_GPIO4_O, (1 << 10));
+}
+
 struct bt_dev_data bt_dev = {
     .bt_dev_init    = bt_device_init,
     .bt_dev_on      = bt_device_on,
     .bt_dev_off     = bt_device_off,
+    .bt_dev_suspend = bt_device_suspend,
+    .bt_dev_resume  = bt_device_resume,
 };
 #endif
 
@@ -2357,6 +2422,9 @@ static struct platform_device __initdata *platform_devs[] = {
 #endif
 #ifdef CONFIG_PMU_ACT8942
 	&aml_pmu_device,
+#endif
+#ifdef CONFIG_POST_PROCESS_MANAGER
+    &ppmgr_device,
 #endif
 };
 
@@ -2540,7 +2608,11 @@ static __init void m1_init_machine(void)
 #ifdef CONFIG_AML_SUSPEND
 		extern int (*pm_power_suspend)(void);
 		pm_power_suspend = meson_power_suspend;
-#endif /*CONFIG_AML_SUSPEND*/    
+#endif /*CONFIG_AML_SUSPEND*/
+
+#if defined(CONFIG_AMLOGIC_BACKLIGHT)
+	aml_8726m_power_off_bl();
+#endif
     LED_PWM_REG0_init();
     power_hold();
     pm_power_off = power_off;		//Elvis fool

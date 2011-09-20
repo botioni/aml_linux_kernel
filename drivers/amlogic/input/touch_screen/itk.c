@@ -155,10 +155,10 @@ ilitek_file_write(
 	};
         
 	// before sending data to touch device, we need to check whether the device is working or not
-	if(i2c.valid_i2c_register == 0){
-		printk(ILITEK_ERROR_LEVEL "%s, i2c device driver doesn't be registered\n", __func__);
-		return -1;
-	}
+//	if(i2c.valid_i2c_register == 0){
+//		printk(ILITEK_ERROR_LEVEL "%s, i2c device driver doesn't be registered\n", __func__);
+//		return -1;
+//	}
 
 	// check the buffer size whether it exceeds the local buffer size or not
 	if(count > 128){

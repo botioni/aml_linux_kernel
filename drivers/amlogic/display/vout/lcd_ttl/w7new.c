@@ -1,5 +1,5 @@
 /*
- * AMLOGIC T13 LCD panel driver.
+ * AMLOGIC LCD panel driver.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -38,42 +38,55 @@
 #include <mach/pinmux.h>
 #include <mach/power_gate.h>
 
-#define LCD_WIDTH       800 
-#define LCD_HEIGHT      600
-#define MAX_WIDTH       1010
-#define MAX_HEIGHT      660
-#define VIDEO_ON_LINE   22
+static void clear_tcon_pinmux(void);
+static void set_tcon_pinmux(void);
 
 static void t13_power_on(void);
 static void t13_power_off(void);
 void power_on_backlight(void);
 void power_off_backlight(void);
+unsigned get_backlight_level(void);
+void set_backlight_level(unsigned level);
 
-static tcon_conf_t tcon_config =
+//cpt CLAA070MA22BW panel
+#define LCD_WIDTH       800 
+#define LCD_HEIGHT      600
+#define MAX_WIDTH       1010
+#define MAX_HEIGHT      660
+#define VIDEO_ON_PIXEL  48
+#define VIDEO_ON_LINE   22
+
+//Define backlight control method
+#define BL_CTL_GPIO		0
+#define BL_CTL_PWM		1
+#define BL_CTL			BL_CTL_GPIO
+
+#define	BL_DIM_ANALOG	0
+#define BL_DIM_PWM		1
+#define	BL_DIM			BL_DIM_ANALOG
+
+static lcdConfig_t lcd_config =
 {
     .width      = LCD_WIDTH,
     .height     = LCD_HEIGHT,
     .max_width  = MAX_WIDTH,
     .max_height = MAX_HEIGHT,
     .video_on_line = VIDEO_ON_LINE,
-    .pll_ctrl = 0x063c,
-    .clk_ctrl = 0x1fc1,
+    .pll_ctrl = 0x1021e,
+	.pll_div = 0x18803,
+    .clk_ctrl = 0x1009,	//pll_sel,div_sel,vclk_sel,xd
     .gamma_cntl_port = (1 << LCD_GAMMA_EN) | (0 << LCD_GAMMA_RVS_OUT) | (1 << LCD_GAMMA_VCOM_POL),
     .gamma_vcom_hswitch_addr = 0,
     .rgb_base_addr = 0xf0,
     .rgb_coeff_addr = 0x74a,
     .pol_cntl_addr = (0x0 << LCD_CPH1_POL) |(0x1 << LCD_HS_POL) | (0x1 << LCD_VS_POL),
     .dith_cntl_addr = 0x400,
-    .sth1_hs_addr = 1000,
-    .sth1_he_addr = 987,
+    .sth1_hs_addr = 0,
+    .sth1_he_addr = 0,
     .sth1_vs_addr = 0,
-    .sth1_ve_addr = MAX_HEIGHT - 1,
-    .sth2_hs_addr = 0,
-    .sth2_he_addr = 0,
-    .sth2_vs_addr = 0,
-    .sth2_ve_addr = 0,
-    .oeh_hs_addr = 60,
-    .oeh_he_addr = 60+LCD_WIDTH-1,
+    .sth1_ve_addr = 0,    
+    .oeh_hs_addr = 67,
+    .oeh_he_addr = 67+LCD_WIDTH,
     .oeh_vs_addr = VIDEO_ON_LINE,
     .oeh_ve_addr = VIDEO_ON_LINE+LCD_HEIGHT-1,
     .vcom_hswitch_addr = 0,
@@ -82,31 +95,15 @@ static tcon_conf_t tcon_config =
     .cpv1_hs_addr = 0,
     .cpv1_he_addr = 0,
     .cpv1_vs_addr = 0,
-    .cpv1_ve_addr = 0,
-    .cpv2_hs_addr = 0,
-    .cpv2_he_addr = 0,
-    .cpv2_vs_addr = 0,
-    .cpv2_ve_addr = 0,
+    .cpv1_ve_addr = 0,    
     .stv1_hs_addr = 0,
-    .stv1_he_addr = MAX_WIDTH - 1,
-    .stv1_vs_addr = 656,
-    .stv1_ve_addr = 642,
-    .stv2_hs_addr = 0,
-    .stv2_he_addr = 0,
-    .stv2_vs_addr = 0,
-    .stv2_ve_addr = 0,
+    .stv1_he_addr = 0,
+    .stv1_vs_addr = 0,
+    .stv1_ve_addr = 0,    
     .oev1_hs_addr = 0,
     .oev1_he_addr = 0,
     .oev1_vs_addr = 0,
-    .oev1_ve_addr = 0,
-    .oev2_hs_addr = 0,
-    .oev2_he_addr = 0,
-    .oev2_vs_addr = 0,
-    .oev2_ve_addr = 0,
-    .oev3_hs_addr = 0,
-    .oev3_he_addr = 0,
-    .oev3_vs_addr = 0,
-    .oev3_ve_addr = 0,
+    .oev1_ve_addr = 0,    
     .inv_cnt_addr = (0<<LCD_INV_EN) | (0<<LCD_INV_CNT),
     .tcon_misc_sel_addr = (1<<LCD_STV1_SEL) | (1<<LCD_STV2_SEL),
     .dual_port_cntl_addr = (1<<LCD_TTL_SEL) | (1<<LCD_ANALOG_SEL_CPH3) | (1<<LCD_ANALOG_3PHI_CLK_SEL) | (1<<1) | (1<<0),
@@ -118,17 +115,20 @@ static tcon_conf_t tcon_config =
     .power_on=t13_power_on,
     .power_off=t13_power_off,
     .backlight_on = power_on_backlight,
-    .backlight_off = power_off_backlight,
+    .backlight_off = power_off_backlight,	
+	.get_bl_level = get_backlight_level,
+    .set_bl_level = set_backlight_level,
 };
-static struct resource tcon_resources[] = {
+
+static struct resource lcd_resources[] = {
     [0] = {
-        .start = (ulong)&tcon_config,
-        .end   = (ulong)&tcon_config + sizeof(tcon_conf_t) - 1,
+        .start = (ulong)&lcd_config,
+        .end   = (ulong)&lcd_config + sizeof(lcdConfig_t) - 1,
         .flags = IORESOURCE_MEM,
     },
 };
 
-static void t13_setup_gama_table(tcon_conf_t *pConf)
+static void t13_setup_gama_table(lcdConfig_t *pConf)
 {
     int i;
     const unsigned short gamma_adjust[256] = {
@@ -149,92 +149,122 @@ static void t13_setup_gama_table(tcon_conf_t *pConf)
     }
 }
 
+#define PWM_MAX			60000   //set pwm_freq=24MHz/PWM_MAX (Base on XTAL frequence: 24MHz, 0<PWM_MAX<65535)
+#define BL_MAX_LEVEL	0x100
 void power_on_backlight(void)
 {
-    //BL_PWM -> GPIOA_7: 1
-    set_gpio_val(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), 1);
-    set_gpio_mode(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), GPIO_OUTPUT_MODE);
+    //BL_EN -> GPIOD_1: 1
+    //WRITE_CBUS_REG(0x2013, READ_CBUS_REG(0x2013)|(1<<17));
+    //WRITE_CBUS_REG(0x2012, READ_CBUS_REG(0x2012)&(~(1<<17)));
+    set_gpio_val(GPIOD_bank_bit0_9(1), GPIOD_bit_bit0_9(1), 1);
+    set_gpio_mode(GPIOD_bank_bit0_9(1), GPIOD_bit_bit0_9(1), GPIO_OUTPUT_MODE);
 }
 
 void power_off_backlight(void)
 {
-    //BL_PWM -> GPIOA_7: 0
-    set_gpio_val(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), 0);
-    set_gpio_mode(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), GPIO_OUTPUT_MODE);
+    //BL_EN -> GPIOD_1: 0
+    set_gpio_val(GPIOD_bank_bit0_9(1), GPIOD_bit_bit0_9(1), 0);
+    set_gpio_mode(GPIOD_bank_bit0_9(1), GPIOD_bit_bit0_9(1), GPIO_OUTPUT_MODE);
+}
+
+static unsigned bl_level;
+unsigned get_backlight_level(void)
+{
+	// unsigned level=0;
+// #if (BL_DIM==BL_DIM_ANALOG)
+	// level = READ_MPEG_REG(LED_PWM_REG0) & (0xf<<0);
+	// level = level / 15 * BL_MAX_LEVEL;
+// #elif (BL_DIM==BL_DIM_PWM)
+	// level = READ_MPEG_REG(PWM_PWM_D) & (0xffff<<0);
+	// level = PWM_MAX - level;
+	// level = level / PWM_MAX * BL_MAX_LEVEL;
+// #endif	 
+	// return level;
+	printk("\nlcd parameter: get backlight level: %d.\n", bl_level);
+	return bl_level;
+}
+
+void set_backlight_level(unsigned level)
+{
+	level = level>=BL_MAX_LEVEL? BL_MAX_LEVEL:level;
+		
+	printk("\n\nlcd parameter: set backlight level: %d.\n\n", level);
+		
+#if (BL_DIM==BL_DIM_ANALOG)
+	level = level * 15 / BL_MAX_LEVEL;
+	WRITE_MPEG_REG(LED_PWM_REG0, (READ_MPEG_REG(LED_PWM_REG0) & ~(0xf << 0)) | (level<<0));	
+#elif (BL_DIM==BL_DIM_PWM)
+	level = (level / BL_MAX_LEVEL) * PWM_MAX;
+	WRITE_MPEG_REG(PWM_PWM_D, (level << 16) | ((PWM_MAX - level) << 0));	
+#endif		
 }
 
 static void power_on_lcd(void)
 {
-    //EIO -> OD0: 0  lcd 3.3v
-#ifdef CONFIG_SN7325
-    configIO(0, 0);
-    setIO_level(0, 0, 0);
-#endif
+    //GPIOA27 -> LCD_PWR_EN#: 0  lcd 3.3v
+    set_gpio_val(GPIOA_bank_bit0_27(27), GPIOA_bit_bit0_27(27), 0);
+    set_gpio_mode(GPIOA_bank_bit0_27(27), GPIOA_bit_bit0_27(27), GPIO_OUTPUT_MODE);
+    msleep(30);
+    
+    //GPIOC2 -> VCCx3_EN: 1
+    set_gpio_val(GPIOC_bank_bit0_15(2), GPIOC_bit_bit0_15(2), 1);
+    set_gpio_mode(GPIOC_bank_bit0_15(2), GPIOC_bit_bit0_15(2), GPIO_OUTPUT_MODE);
+    msleep(30);
+    
 
-    msleep(10);
-    
-    //EIO -> OD4: 0  lcd 3.3v
-#ifdef CONFIG_SN7325
-    configIO(0, 0);
-    setIO_level(0, 1, 4);
-#endif
-    msleep(100);
-    
-    //VCCx2_EN D17 GPIOA_6 --> H
-    set_gpio_val(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), 1);
-    set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);
 }
 
 static void power_off_lcd(void)
 {
     power_off_backlight();
+    msleep(50);	
     
-    //EIO -> OD4: 0  lcd 3.3v
-#ifdef CONFIG_SN7325
-    configIO(0, 0);
-    setIO_level(0, 0, 4);
-#endif
-    msleep(100);
+    //GPIOC2 -> VCCx3_EN: 0
+    set_gpio_val(GPIOC_bank_bit0_15(2), GPIOC_bit_bit0_15(2), 0);
+    set_gpio_mode(GPIOC_bank_bit0_15(2), GPIOC_bit_bit0_15(2), GPIO_OUTPUT_MODE);
+    msleep(30);
     
-    //EIO -> OD0: 0  lcd 3.3v
-#ifdef CONFIG_SN7325
-    configIO(0, 0);
-    setIO_level(0, 1, 0);
-#endif
-
-    msleep(10);    
-
-//    //VCCx2_EN D17 GPIOA_6 --> H
-//    set_gpio_val(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), 0);
-//    set_gpio_mode(GPIOA_bank_bit(6), GPIOA_bit_bit0_14(6), GPIO_OUTPUT_MODE);
- //   msleep(10);
-   //EIO -> OD7: 1
-//#ifdef CONFIG_SN7325
-//    configIO(0, 0);
-//    setIO_level(0, 1, 7);
-//#endif
+    //GPIOA27 -> LCD_PWR_EN#: 1  lcd 3.3v
+    set_gpio_val(GPIOA_bank_bit0_27(27), GPIOA_bit_bit0_27(27), 1);
+    set_gpio_mode(GPIOA_bank_bit0_27(27), GPIOA_bit_bit0_27(27), GPIO_OUTPUT_MODE);
+    msleep(10);
 }
 
 static void set_tcon_pinmux(void)
 {
     /* TCON control pins pinmux */
-    /* GPIOA_5 -> LCD_Clk, GPIOA_0 -> TCON_STH1, GPIOA_1 -> TCON_STV1, GPIOA_2 -> TCON_OEH, */
-    set_mio_mux(0, ((1<<11)|(1<<14)|(1<<15)|(1<<16)));
-    set_mio_mux(4,(3<<0)|(3<<2)|(3<<4));   //For 8bits
-    //PP1 -> UPDN:0, PP2 -> SHLR:1
-#ifdef CONFIG_SN7325
-    configIO(1, 0);
-    setIO_level(1, 0, 1);
-    setIO_level(1, 1, 2);
+    clear_mio_mux(1, 0x0f<<11); // disable cph50(11),cph1(12),cph2(13),cph3(14)
+#ifdef USE_CLKO
+    set_mio_mux(1, 1<<21); // enable clko
+#else
+    set_mio_mux(1, 1<<14); // enable cph1
 #endif
+    set_mio_mux(1, 1<<17); // enable oeh
+    set_mio_mux(0, 0x3f<<0);   //For 8bits RGB
 }
+
+static void clear_tcon_pinmux(void)
+{
+    /* TCON control pins pinmux */
+    clear_mio_mux(1, 0x0f<<11); // disable cph50(11),cph1(12),cph2(13),cph3(14)
+#ifdef USE_CLKO
+    clear_mio_mux(1, 1<<21); // enable clko
+#else
+    clear_mio_mux(1, 1<<14); // enable cph1
+#endif
+    clear_mio_mux(1, 1<<17); // enable oeh
+    clear_mio_mux(0, 0x3f<<0);   //For 8bits RGB
+}
+
 static void t13_power_on(void)
 {
     video_dac_disable();
 	set_tcon_pinmux();
 	power_on_lcd();
     printk("\n\nt13_power_on...\n\n");
+    power_on_backlight();
 }
+
 static void t13_power_off(void)
 {
     	power_off_lcd();
@@ -248,19 +278,19 @@ static void t13_io_init(void)
     power_on_lcd();
 }
 
-static struct platform_device tcon_dev = {
+static struct platform_device lcd_dev = {
     .name = "tcon-dev",
     .id   = 0,
-    .num_resources = ARRAY_SIZE(tcon_resources),
-    .resource      = tcon_resources,
+    .num_resources = ARRAY_SIZE(lcd_resources),
+    .resource      = lcd_resources,
 };
 
 static int __init t13_init(void)
 {
-    t13_setup_gama_table(&tcon_config);
+    t13_setup_gama_table(&lcd_config);
     t13_io_init();
 
-    platform_device_register(&tcon_dev);
+    platform_device_register(&lcd_dev);
 
     return 0;
 }
@@ -270,7 +300,7 @@ static void __exit t13_exit(void)
     power_off_backlight();
     power_off_lcd();
 
-    platform_device_unregister(&tcon_dev);
+    platform_device_unregister(&lcd_dev);
 }
 
 subsys_initcall(t13_init);
