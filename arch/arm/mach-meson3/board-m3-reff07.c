@@ -62,6 +62,10 @@
 #include <linux/mmc328x.h>
 #endif
 
+#ifdef CONFIG_SENSORS_MMA8452	//add by Rojam
+#include <linux/mma8452.h>
+#endif
+
 #ifdef CONFIG_SIX_AXIS_SENSOR_MPU3050
 #ifdef CONFIG_MPU_PRE_V340
 #include <linux/mpu.h>
@@ -676,6 +680,22 @@ struct aml_m3_platform_data {
 static struct aml_m3_platform_data aml_m3_pdata = {
     .is_hp_pluged = &aml_m3_is_hp_pluged,
 };
+#endif
+
+#ifdef CONFIG_TOUCHSCREEN_GOODIX_MALATA
+#include <linux/i2c/goodix_touch_malata.h>
+
+#define GPIO_GOODIX_PENIRQ ((GPIOA_bank_bit0_27(16)<<16) |GPIOA_bit_bit0_27(16)) 
+#define GPIO_GOODIX_PENIRQ_IDX (GPIOA_IDX + 16)
+
+#define GPIO_GOODIX_PWR ((GPIOA_bank_bit0_27(9)<<16) |GPIOA_bit_bit0_27(9)) 
+#define GPIO_GOODIX_RST ((GPIOC_bank_bit0_15(3)<<16) |GPIOC_bit_bit0_15(3)) 
+
+static struct  goodix_platform_data  goodix_touch_info = {
+        .reset = GPIO_GOODIX_RST,
+        .power_control = GPIO_GOODIX_PWR,
+};
+
 #endif
 
 #ifdef CONFIG_ITK_CAPACITIVE_TOUCHSCREEN
@@ -1986,7 +2006,7 @@ static struct aml_nand_platform aml_nand_mid_platform[] = {
 		.platform_nand_data = {
 			.chip =  {
 				.nr_chips = 1,
-				.options = (NAND_TIMING_MODE0| NAND_ECC_BCH30_MODE),
+				.options = (NAND_TIMING_MODE0| NAND_ECC_BCH24_MODE),
 
 				.nr_partitions = ARRAY_SIZE(multi_partition_info),
 				.partitions = multi_partition_info,
@@ -2381,6 +2401,15 @@ static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
         .platform_data = (void *)&itk_pdata,
     },
 #endif
+
+#ifdef CONFIG_TOUCHSCREEN_GOODIX_MALATA
+    {
+        I2C_BOARD_INFO("Goodix-TS", 0x5c),
+        .irq = GPIO_GOODIX_PENIRQ,
+        .platform_data = &goodix_touch_info,
+    },
+#endif
+
 #ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE_GC0308
 
 	{
@@ -2399,6 +2428,13 @@ static struct i2c_board_info __initdata aml_i2c_bus_info_1[] = {
 		I2C_BOARD_INFO(MMC328X_I2C_NAME,  MMC328X_I2C_ADDR),
 	},
 #endif
+
+#ifdef CONFIG_SENSORS_MMA8452
+    {
+        I2C_BOARD_INFO(MMA8452_I2C_NAME,  MMA8452_I2C_ADDR),
+    },
+#endif
+
 #ifdef CONFIG_SIX_AXIS_SENSOR_MPU3050
     {
         I2C_BOARD_INFO("mpu3050", 0x68),
@@ -2554,6 +2590,20 @@ static __init void m1_init_machine(void)
 #endif
     device_clk_setting();
     device_pinmux_init();
+
+#ifdef CONFIG_TOUCHSCREEN_GOODIX_MALATA
+	gpio_direction_output(GPIO_GOODIX_PWR, 0);
+	msleep(200);
+	gpio_direction_output(GPIO_GOODIX_RST, 0);
+	gpio_direction_output(GPIO_GOODIX_RST, 1);
+	
+    /* set input mode */
+    gpio_direction_input(GPIO_GOODIX_PENIRQ);
+    /* set gpio interrupt #0 source=GPIOA_16, and triggered by falling edge(=1) */
+    gpio_enable_edge_int(GPIO_GOODIX_PENIRQ_IDX, 1, 0);
+        
+#endif
+
 #ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE
     camera_power_on_init();
 #endif

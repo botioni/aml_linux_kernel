@@ -26,6 +26,8 @@ fw-shipped- += acenic/tg1.bin
 else
 acenic-objs := acenic/tg1.bin acenic/tg2.bin
 endif
+
+fw-shipped-$(CONFIG_SAMSUNG_WIFI_4329) += bcm4329/fw_bcm4329.bin bcm4329/nvram.txt
 fw-shipped-$(CONFIG_SDIO_DHD_CDC_WIFI_4319) += broadcm_4319/sdio-g-cdc-full11n-reclaim-roml-wme.bin broadcm_4319/nvram_4319_201008.txt
 fw-shipped-$(CONFIG_SDIO_DHD_CDC_WIFI_4329) += broadcm_4329/sdio-g-cdc-full11n-reclaim-roml-wme-idsup.bin broadcm_4329/nvram.txt
 fw-shipped-$(CONFIG_SDIO_ATHEROS_6302_WIFI) += atheros_6302/otp.bin.z77 atheros_6302/athwlan.bin.z77 atheros_6302/data.patch.bin atheros_6302/bdata.SD31.bin
