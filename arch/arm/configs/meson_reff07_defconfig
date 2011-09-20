@@ -704,7 +704,9 @@ CONFIG_SDIO=y
 #
 # AMLOGIC NAND Flash support
 #
-# CONFIG_AM_NAND is not set
+CONFIG_AM_NAND=y
+# CONFIG_AM_NAND_RBPIN is not set
+CONFIG_AML_NFTL=y
 
 #
 # AMLOGIC DEMOD Support
