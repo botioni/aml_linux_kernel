@@ -1651,82 +1651,82 @@ static inline int measure_capacity(void)
 
 static int bat_value_table[37]={
 0,  //0    
-737,//0
-742,//4
-750,//10
-752,//15
-753,//16
-754,//18
-755,//20
-756,//23
-757,//26
-758,//29
-760,//32
-761,//35
-762,//37
-763,//40
-766,//43
-768,//46
-770,//49
-772,//51
-775,//54
-778,//57
-781,//60
-786,//63
-788,//66
-791,//68
-795,//71
-798,//74
-800,//77
-806,//80
-810,//83
-812,//85
-817,//88
-823,//91
-828,//95
-832,//97
-835,//100
+730,//0  
+737,//4  
+742,//10 
+750,//15 
+752,//16 
+753,//18 
+754,//20 
+755,//23 
+756,//26 
+757,//29 
+758,//32 
+760,//35 
+761,//37 
+762,//40 
+763,//43 
+766,//46 
+768,//49 
+770,//51 
+772,//54 
+775,//57 
+778,//60 
+781,//63 
+786,//66 
+788,//68 
+791,//71 
+795,//74 
+798,//77 
+800,//80 
+806,//83 
+810,//85 
+812,//88 
+817,//91 
+823,//95 
+828,//97 
+832,//100
 835 //100
 };
 
 static int bat_charge_value_table[37]={
 0,  //0    
-766,//0
-773,//4
-779,//10
-780,//15
-781,//16
-782,//18
-783,//20
-784,//23
-785,//26
-786,//29
-787,//32
-788,//35
-789,//37
-790,//40
-791,//43
-792,//46
-794,//49
-796,//51
-798,//54
-802,//57
-804,//60
-807,//63
-809,//66
-810,//68
-813,//71
-815,//74
-818,//77
-820,//80
-823,//83
-825,//85
-828,//88
-831,//91
-836,//95
-839,//97
-842,//100
-842 //100
+770,//0
+782,//4
+787,//10
+795,//15
+797,//16
+798,//18
+799,//20
+800,//23
+801,//26
+802,//29
+803,//32
+805,//35
+806,//37
+807,//40
+808,//43
+811,//46
+813,//49
+815,//51
+817,//54
+820,//57
+823,//60
+826,//63
+831,//66
+833,//68
+836,//71
+840,//74
+843,//77
+845,//80
+847,//83
+848,//85
+849,//88
+852,//91
+854,//95
+855,//97
+856,//100
+857 //100
 }; 
 
 static int bat_level_table[37]={
@@ -1770,33 +1770,98 @@ static int bat_level_table[37]={
 };
 
 
+
+
+static int get_bat_adc_average(void)
+{
+    static struct {
+      int adc_current;
+      int adc_array[20];
+    }bat_adc;
+    static int ac_status_prev = -1;
+    
+    int ac_status = is_ac_online();
+    if (ac_status_prev != ac_status) {
+        ac_status_prev = ac_status;
+        memset(&bat_adc, 0, sizeof(bat_adc));
+    }
+
+    int adc = get_bat_adc_value();
+    if (ac_status) {
+        adc -= 5;
+    }
+    bat_adc.adc_current = 
+        (bat_adc.adc_current + 1) % ARRAY_SIZE(bat_adc.adc_array);
+    bat_adc.adc_array[bat_adc.adc_current] = adc;
+
+    //cal average
+    int adc_average = 0;
+    int adc_sum = 0;
+    int valid_num = 0;
+    int i;
+    for (i=0; i<ARRAY_SIZE(bat_adc.adc_array); i++) {
+        if (bat_adc.adc_array[i] != 0) {
+            adc_sum += bat_adc.adc_array[i];
+            valid_num++;
+        }
+    }
+
+    if (valid_num > 0)
+        adc_average = adc_sum / valid_num;
+
+    //printk("adc=%d, adc_average=%d\n", adc, adc_average);
+    return adc_average;
+}
+
+
 static inline int get_bat_percentage(int adc_vaule, int *adc_table, 
 										int *per_table, int table_size)
 {
+    static int percentage_prev = -1;
+    
 	int i;
+	int percentage = 0;
 	
 	for(i=0; i<(table_size - 1); i++) {
-		if ((adc_vaule > adc_table[i]) && (adc_vaule <= adc_table[i+1]))
-			break;
+		if ((adc_vaule >= adc_table[i]) && (adc_vaule < adc_table[i+1])) {
+            break;
+		}
 	}
-	//printk("%s: adc_vaule=%d, i=%d, per_table[i]=%d \n", __FUNCTION__, adc_vaule, i, per_table[i]);
+    percentage = per_table[i];
+    
+    if (percentage_prev == -1)
+        percentage_prev = percentage;
 
-	return per_table[i];
+    int ac_status = is_ac_online();
+    if (ac_status) {
+        //ac online   don't report percentage smaller than prev 
+        percentage = (percentage > percentage_prev) ? percentage : percentage_prev;
+    } else {
+        //ac  not online   don't report percentage bigger than prev 
+        percentage = (percentage < percentage_prev) ? percentage : percentage_prev;
+    }
+    //printk("percentage=%d, percentage_prev=%d\n", percentage, percentage_prev);
+
+    percentage_prev = percentage;
+
+	return percentage;
 }
 
 static int act8942_measure_capacity_charging(void)
 {
-	int adc = get_bat_adc_value();
-	int table_size = sizeof(bat_charge_value_table)/sizeof(bat_charge_value_table[0]);
-	
+	//printk("------%s  ", __FUNCTION__);
+
+	int adc = get_bat_adc_average();
+	int table_size = ARRAY_SIZE(bat_charge_value_table);
 	return get_bat_percentage(adc, bat_charge_value_table, bat_level_table, table_size);
 }
 
 static int act8942_measure_capacity_battery(void)
 {
-	int adc = get_bat_adc_value();
-	int table_size = sizeof(bat_value_table)/sizeof(bat_value_table[0]);
-	
+	//printk("------%s  ", __FUNCTION__);
+	int adc = get_bat_adc_average();
+	int table_size = ARRAY_SIZE(bat_value_table);
+
 	return get_bat_percentage(adc, bat_value_table, bat_level_table, table_size);
 }
 
