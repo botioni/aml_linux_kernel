@@ -7,6 +7,8 @@
  * License terms: GNU General Public License (GPL) version 2
  * Platform machine definition.
  */
+ 
+
 #include <linux/kernel.h>
 #include <linux/init.h>
 #include <linux/mm.h>
