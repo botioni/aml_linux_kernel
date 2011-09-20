@@ -56,6 +56,9 @@ void set_backlight_level(unsigned level);
 #define VIDEO_ON_PIXEL  48
 #define VIDEO_ON_LINE   22
 
+#define BL_ON            1
+#define BL_OFF           0
+
 //Define backlight control method
 #define BL_CTL_GPIO		0
 #define BL_CTL_PWM		1
@@ -64,6 +67,10 @@ void set_backlight_level(unsigned level);
 #define	BL_DIM_ANALOG	0
 #define BL_DIM_PWM		1
 #define	BL_DIM			BL_DIM_ANALOG
+
+#ifdef CONFIG_AM_LOGO
+static int bl_state = BL_ON;
+#endif
 
 static lcdConfig_t lcd_config =
 {
@@ -153,6 +160,12 @@ static void t13_setup_gama_table(lcdConfig_t *pConf)
 #define BL_MAX_LEVEL	0x100
 void power_on_backlight(void)
 {
+#ifdef CONFIG_AM_LOGO    
+    if(bl_state == BL_ON)
+        return;
+    bl_state = BL_ON; 
+#endif
+    
     //BL_EN -> GPIOD_1: 1
     //WRITE_CBUS_REG(0x2013, READ_CBUS_REG(0x2013)|(1<<17));
     //WRITE_CBUS_REG(0x2012, READ_CBUS_REG(0x2012)&(~(1<<17)));
@@ -162,6 +175,12 @@ void power_on_backlight(void)
 
 void power_off_backlight(void)
 {
+#ifdef CONFIG_AM_LOGO    
+    if(bl_state == BL_OFF)
+        return;
+    bl_state = BL_OFF;
+#endif 
+
     //BL_EN -> GPIOD_1: 0
     set_gpio_val(GPIOD_bank_bit0_9(1), GPIOD_bit_bit0_9(1), 0);
     set_gpio_mode(GPIOD_bank_bit0_9(1), GPIOD_bit_bit0_9(1), GPIO_OUTPUT_MODE);
@@ -256,13 +275,34 @@ static void clear_tcon_pinmux(void)
     clear_mio_mux(0, 0x3f<<0);   //For 8bits RGB
 }
 
+#ifdef CONFIG_AM_LOGO
+extern void (*Power_on_bl)(void);
+//called when kernel logo is displayed.
+//backlight will be powered on right here
+static void power_on_bl(void)
+{
+    set_tcon_pinmux();
+    msleep(200);
+    
+    bl_state = BL_OFF; 
+
+    power_on_backlight();
+}
+#endif
+
 static void t13_power_on(void)
 {
     video_dac_disable();
-	set_tcon_pinmux();
+	//set_tcon_pinmux();
 	power_on_lcd();
     printk("\n\nt13_power_on...\n\n");
+#ifdef CONFIG_AM_LOGO
+    Power_on_bl = power_on_bl;
+#else
+    set_tcon_pinmux();
     power_on_backlight();
+#endif /* CONFIG_AM_LOGO */
+    
 }
 
 static void t13_power_off(void)
@@ -274,7 +314,7 @@ static void t13_io_init(void)
 {
     printk("\n\nT13 LCD Init.\n\n");
 
-    set_tcon_pinmux();
+    //set_tcon_pinmux();
     power_on_lcd();
 }
 
