@@ -332,8 +332,8 @@ static void __exit t13_exit(void)
     platform_device_unregister(&lcd_dev);
 }
 
-//subsys_initcall(t13_init);
-module_init(t13_init);
+subsys_initcall(t13_init);
+//module_init(t13_init);
 module_exit(t13_exit);
 
 MODULE_DESCRIPTION("AMLOGIC T13 LCD panel driver");
