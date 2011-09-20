@@ -27,11 +27,12 @@
 #define OSD_720_PIX			(1280*720)
 #define OSD_1080_PIX		(1920*1080)
 #define OSD_PANEL_PIX		(800*600)
+#define OSD_LVDS_PANEL_PIX		(1024*600)
 #define B16BpP	(2)
 #define B32BpP	(4)
 #define DOUBLE_BUFFER	(2)
 
-#define OSD1_MAX_MEM		U_ALIGN(OSD_PANEL_PIX*B32BpP*DOUBLE_BUFFER)
+#define OSD1_MAX_MEM		U_ALIGN(OSD_LVDS_PANEL_PIX*B32BpP*DOUBLE_BUFFER)
 #define OSD2_MAX_MEM		U_ALIGN(32*32*B32BpP)
 
 /******** Reserved memory configuration ***************/
