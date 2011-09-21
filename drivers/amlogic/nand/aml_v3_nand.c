@@ -1384,7 +1384,7 @@ static uint8_t aml_platform_read_byte(struct mtd_info *mtd)
 	struct nand_chip *chip = mtd->priv;
 	struct aml_nand_chip *aml_chip = mtd_to_nand_chip(mtd);
 	
-	NFC_CMD_FIFO_RESET();
+//	NFC_CMD_FIFO_RESET();
 
 	NFC_SEND_CMD(aml_chip->chip_selected | DRD | 0);
 	NFC_SEND_CMD(aml_chip->chip_selected | IDLE | 5);

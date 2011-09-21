@@ -658,6 +658,24 @@ static struct resource aml_m3_audio_resource[] = {
     },
 };
 
+/* Check current mode, 0: panel; 1: !panel*/
+int get_display_mode(void) {
+	int fd;
+	int ret = 0;
+	char mode[8];	
+	
+	fd = sys_open("/sys/class/display/mode", O_RDWR | O_NDELAY, 0);
+	if(fd >= 0) {
+	  	memset(mode,0,8);
+	  	sys_read(fd,mode,8);
+	  	if(strncmp("panel",mode,5))
+	  		ret = 1;
+	  	sys_close(fd);
+	}
+
+	return ret;
+}
+
 #if defined(CONFIG_SND_AML_M3)
 static struct platform_device aml_audio = {
     .name               = "aml_m3_audio",
@@ -668,6 +686,9 @@ static struct platform_device aml_audio = {
 
 int aml_m3_is_hp_pluged(void)
 {
+	if(get_display_mode() != 0) //if !panel, return 1 to mute spk		
+		return 1;
+	SET_CBUS_REG_MASK(PREG_PAD_GPIO0_EN_N, (1<<19));	//set HP_DET(GPIOA_19) as input to detect headphone plug or not.
 	return READ_CBUS_REG_BITS(PREG_PAD_GPIO0_I, 19, 1); //return 1: hp pluged, 0: hp unpluged.
 }
 
