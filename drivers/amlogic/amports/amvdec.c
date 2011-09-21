@@ -318,7 +318,7 @@ int amvdev_pause(void)
 }
 int amvdev_resume(void)
 {
-    amvdec_wake_lock();
+    //amvdec_wake_lock();
     del_timer_sync(&amvdevtimer);
     return 0;
 }
@@ -326,8 +326,8 @@ int amvdev_resume(void)
 static void vdec_paused_check_timer(unsigned long arg)
 {
     if (vdec_is_paused()) {
-        printk("vdec paused and release wakelock now\n");
-        amvdec_wake_unlock();
+        //printk("vdec paused and release wakelock now\n");
+        //amvdec_wake_unlock();
     } else {
         mod_timer(&amvdevtimer, jiffies + WAKE_CHECK_INTERVAL);
     }

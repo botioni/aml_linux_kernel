@@ -44,6 +44,7 @@ static int early_suspend_flag = 0;
 
 #include "sleep.h"
 //#define EARLY_SUSPEND_USE_XTAL
+//#define AML_SUSPEND_DEBUG
 
 static void (*meson_sram_suspend)(struct meson_pm_config *);
 static struct meson_pm_config *pdata;
@@ -777,7 +778,7 @@ static void meson_pm_suspend(void)
 
     printk(KERN_INFO "sleep ...\n");
 
-    
+#ifndef CONFIG_AML_SUSPEND
     auto_clk_gating_setup(2,                             // select 100uS timebase
                           MODE_IRQ_ONLY_WAKE,         // Set interrupt wakeup only
                           0,                          // don't clear the FIQ global mask
@@ -786,6 +787,7 @@ static void meson_pm_suspend(void)
                           1,                          // 1uS gate delay
                           1,                          // Set the delay wakeup time (1mS)
                           1);                         // 1uS enable delay
+#endif
 
     CLEAR_CBUS_REG_MASK(HHI_SYS_CPU_CLK_CNTL, 1<<7);  // a9 use xtal
     SET_CBUS_REG_MASK(HHI_SYS_PLL_CNTL, (1 << 15));   // turn off sys pll
@@ -874,12 +876,14 @@ static void meson_pm_finish(void)
     WRITE_CBUS_REG(SYS_CPU_0_IRQ_IN2_INTR_MASK, mask_save[2]);
     WRITE_CBUS_REG(SYS_CPU_0_IRQ_IN3_INTR_MASK, mask_save[3]);
 #ifdef CONFIG_AML_SUSPEND
+#ifdef AML_SUSPEND_DEBUG // only use this when debug without android rootfs
 #ifdef CONFIG_EARLYSUSPEND
 extern void request_suspend_state(suspend_state_t new_state);
 	   request_suspend_state(0);		
 #else
 extern int enter_state(suspend_state_t state)
 		enter_state(state);
+#endif
 #endif
 #endif
 }
