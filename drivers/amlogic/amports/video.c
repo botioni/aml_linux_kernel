@@ -110,6 +110,11 @@ MODULE_AMLOG(LOG_LEVEL_ERROR, 0, LOG_DEFAULT_LEVEL_DESC, LOG_MASK_DESC);
          VPP_VD1_PREBLEND|VPP_VD2_PREBLEND|VPP_VD2_POSTBLEND|VPP_VD1_POSTBLEND ); \
     } while (0)
 
+#define DisableVideoLayer_PREBELEND() \
+    do { CLEAR_MPEG_REG_MASK(VPP_MISC, \
+         VPP_VD1_PREBLEND|VPP_VD2_PREBLEND); \
+    } while (0)
+
 /*********************************************************/
 
 #define VOUT_TYPE_TOP_FIELD 0
@@ -136,16 +141,71 @@ typedef struct {
 static video_pm_state_t pm_state;
 #endif
 
+static DEFINE_MUTEX(video_module_mutex);
 static spinlock_t lock = SPIN_LOCK_UNLOCKED;
 static u32 frame_par_ready_to_set, frame_par_force_to_set;
 static u32 vpts_remainder;
 static bool video_property_changed = false;
 static u32 video_notify_flag = 0;
 
+#ifdef CONFIG_POST_PROCESS_MANAGER_PPSCALER
+static u32 video_scaler_mode = 0;
+static int content_top = 0, content_left = 0, content_w = 0, content_h = 0;
+static int scaler_pos_changed = 0;
+#endif
+
 int video_property_notify(int flag)
 {
-	video_property_changed  = flag;	
+    video_property_changed  = flag;	
+    return 0;
 }
+
+#ifdef CONFIG_POST_PROCESS_MANAGER_PPSCALER
+int video_scaler_notify(int flag)
+{
+    video_scaler_mode  = flag;	
+    video_property_changed = true;
+    return 0;
+}
+
+u32 amvideo_get_scaler_para(int* x, int* y, int* w, int* h, u32* ratio)
+{
+    *x = content_left;
+    *y = content_top;
+    *w = content_w;
+    *h = content_h;
+    //*ratio = 100;
+    return video_scaler_mode;
+}
+
+void amvideo_set_scaler_para(int x, int y, int w, int h,int flag)
+{
+    mutex_lock(&video_module_mutex);
+    if(w < 2)
+        w = 0;
+    if(h < 2)
+        h = 0;
+    if(flag){
+        if((content_left!=x)||(content_top!=y)||(content_w!=w)||(content_h!=h))
+            scaler_pos_changed = 1;
+        content_left = x;
+        content_top = y;
+        content_w = w;
+        content_h = h;
+    }else{
+        vpp_set_video_layer_position(x, y, w, h); 
+    }
+    video_property_changed = true;
+    mutex_unlock(&video_module_mutex);
+    return;
+}
+
+
+u32 amvideo_get_scaler_mode(void)
+{
+    return video_scaler_mode;
+}
+#endif
 
 /* display canvas */
 static u32 disp_canvas_index[6] = {
@@ -631,6 +691,10 @@ static void vsync_toggle_frame(vframe_t *vf)
 
     cur_dispbuf = vf;
 
+    if (disable_video == VIDEO_DISABLE_FORNEXT) {
+        EnableVideoLayer();
+        disable_video = VIDEO_DISABLE_NONE;
+    }
     if (first_picture && (disable_video != VIDEO_DISABLE_NORMAL)) {
         EnableVideoLayer();
         
@@ -936,24 +1000,32 @@ static inline bool vpts_expire(vframe_t *cur_vf, vframe_t *next_vf)
 
 static void vsync_notify(void)
 {
-	if (video_notify_flag & VIDEO_NOTIFY_TRICK_WAIT) {
-	    wake_up_interruptible(&amvideo_trick_wait);
-	    video_notify_flag &= ~VIDEO_NOTIFY_TRICK_WAIT;
-	}
-	if (video_notify_flag & VIDEO_NOTIFY_FRAME_WAIT) {
-		video_notify_flag &= ~VIDEO_NOTIFY_FRAME_WAIT;
-		 if ((vfp) && (vfp->event_cb)) {
-		 vfp->event_cb(VFRAME_EVENT_RECEIVER_FRAME_WAIT, NULL, NULL);
-		}	
-	}
-	if (video_notify_flag & (VIDEO_NOTIFY_PROVIDER_GET | VIDEO_NOTIFY_PROVIDER_PUT)) {
-		const vframe_provider_t *vfp = get_vfp();
+    if (video_notify_flag & VIDEO_NOTIFY_TRICK_WAIT) {
+        wake_up_interruptible(&amvideo_trick_wait);
+        video_notify_flag &= ~VIDEO_NOTIFY_TRICK_WAIT;
+    }
+    if (video_notify_flag & VIDEO_NOTIFY_FRAME_WAIT) {
+        video_notify_flag &= ~VIDEO_NOTIFY_FRAME_WAIT;
+        if ((vfp) && (vfp->event_cb)) {
+            vfp->event_cb(VFRAME_EVENT_RECEIVER_FRAME_WAIT, NULL, NULL);
+        }	
+    }
+#ifdef CONFIG_POST_PROCESS_MANAGER_PPSCALER
+    if (video_notify_flag & VIDEO_NOTIFY_POS_CHANGED) {
+        video_notify_flag &= ~VIDEO_NOTIFY_POS_CHANGED;
+        if ((vfp) && (vfp->event_cb)) {
+            vfp->event_cb(VFRAME_EVENT_RECEIVER_POS_CHANGED, NULL, NULL);
+        }	
+    }
+#endif
+    if (video_notify_flag & (VIDEO_NOTIFY_PROVIDER_GET | VIDEO_NOTIFY_PROVIDER_PUT)) {
+        const vframe_provider_t *vfp = get_vfp();
 
         if ((vfp) && (vfp->event_cb)) {
             int event = 0;
 
             if (video_notify_flag & VIDEO_NOTIFY_PROVIDER_GET)
-			    event |= VFRAME_EVENT_RECEIVER_GET;
+                event |= VFRAME_EVENT_RECEIVER_GET;
             if (video_notify_flag & VIDEO_NOTIFY_PROVIDER_PUT)
                 event |= VFRAME_EVENT_RECEIVER_PUT;
 
@@ -1262,10 +1334,19 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
     }
 
 exit:
-	if(timer_count > 50){
-		timer_count	 =0 ;
-		video_notify_flag |= VIDEO_NOTIFY_FRAME_WAIT;		
-	}
+    if(timer_count > 50){
+        timer_count = 0 ;
+        video_notify_flag |= VIDEO_NOTIFY_FRAME_WAIT;	
+#ifdef CONFIG_POST_PROCESS_MANAGER_PPSCALER
+        if((video_scaler_mode)&&(scaler_pos_changed)){
+            video_notify_flag |= VIDEO_NOTIFY_POS_CHANGED;
+            scaler_pos_changed = 0;
+        }else{
+            scaler_pos_changed = 0;
+            video_notify_flag &= ~VIDEO_NOTIFY_POS_CHANGED;
+        }
+#endif        	
+    }
 #ifdef FIQ_VSYNC
     if (video_notify_flag)
         fiq_bridge_pulse_trigger(&vsync_fiq_bridge);
@@ -1373,7 +1454,7 @@ void vf_reg_provider(const vframe_provider_t *p)
     spin_lock_irqsave(&lock, flags);
 
     if (vfp) {
-        vf_unreg_provider();
+        vf_unreg_provider(vfp);
     }
 
     vfp = p;
@@ -1393,13 +1474,17 @@ int get_curren_frame_para(int* top ,int* left , int* bottom, int* right)
 	return 	0;
 }
 
-void vf_unreg_provider(void)
+void vf_unreg_provider(const vframe_provider_t *p)
 {
     ulong flags;
 
     int deinterlace_mode = get_deinterlace_mode();
 
     spin_lock_irqsave(&lock, flags);
+    if(vfp != p){
+        spin_unlock_irqrestore(&lock, flags);
+        return;
+    }
 
     if (cur_dispbuf) {
         vf_local = *cur_dispbuf;
@@ -1411,7 +1496,14 @@ void vf_unreg_provider(void)
     }
 
     if (blackout) {
+#ifdef CONFIG_POST_PROCESS_MANAGER_PPSCALER
+        if(video_scaler_mode)
+            DisableVideoLayer_PREBELEND();
+        else
+            DisableVideoLayer();
+#else
         DisableVideoLayer();
+#endif	
     }
 
     //if (!trickmode_fffb)
@@ -1429,11 +1521,16 @@ void vf_unreg_provider(void)
     spin_unlock_irqrestore(&lock, flags);
 }
 
-void vf_light_unreg_provider(void)
+void vf_light_unreg_provider(const vframe_provider_t *p)
 {
     ulong flags;
 
     spin_lock_irqsave(&lock, flags);
+
+    if(vfp != p){
+        spin_unlock_irqrestore(&lock, flags);
+        return;
+    }
 
     if (cur_dispbuf) {
         vf_local = *cur_dispbuf;
@@ -1755,8 +1852,6 @@ const static struct file_operations amvideo_fops = {
 #define MAX_NUMBER_PARA 10
 #define AMVIDEO_CLASS_NAME "video"
 
-static DEFINE_MUTEX(video_module_mutex);
-
 static int parse_para(const char *para, int para_num, int *result)
 {
     char *endp;
@@ -1802,15 +1897,31 @@ static void set_video_window(const char *para)
         w = parsed[2] - parsed[0] + 1;
         h = parsed[3] - parsed[1] + 1;
 
-        if ((w == 1) && (h == 1)) {
-            vpp_set_video_layer_position(parsed[0], parsed[1], 0, 0);
-        } else if ((w > 0) && (h > 0)) {
-            vpp_set_video_layer_position(parsed[0], parsed[1], w, h);
+#ifdef CONFIG_POST_PROCESS_MANAGER_PPSCALER
+        if(video_scaler_mode){
+            if ((w == 1) && (h == 1)){
+                w= 0;
+                h = 0;
+            }
+            if((content_left!=parsed[0])||(content_top!=parsed[1])||(content_w!=w)||(content_h!=h))
+                scaler_pos_changed = 1;
+            content_left = parsed[0];
+            content_top = parsed[1];
+            content_w = w;
+            content_h = h;   
+            //video_notify_flag = video_notify_flag|VIDEO_NOTIFY_POS_CHANGED;
+        }else
+#endif
+        {
+            if ((w == 1) && (h == 1)) {
+                w = h = 0;
+                vpp_set_video_layer_position(parsed[0], parsed[1], 0, 0);
+            } else if ((w > 0) && (h > 0)) {
+                vpp_set_video_layer_position(parsed[0], parsed[1], w, h);
+            }
         }
         video_property_changed = true;
-
     }
-
     amlog_mask(LOG_MASK_SYSFS,
                "video=>x0:%d,y0:%d,x1:%d,y1:%d\r\n ",
                parsed[0], parsed[1], parsed[2], parsed[3]);
@@ -1819,9 +1930,17 @@ static void set_video_window(const char *para)
 static ssize_t video_axis_show(struct class *cla, struct class_attribute *attr, char *buf)
 {
     int x, y, w, h;
-
-    vpp_get_video_layer_position(&x, &y, &w, &h);
-
+#ifdef CONFIG_POST_PROCESS_MANAGER_PPSCALER
+    if(video_scaler_mode){
+        x = content_left;
+        y = content_top;
+        w = content_w;
+        h = content_h;
+    }else
+#endif
+    {
+        vpp_get_video_layer_position(&x, &y, &w, &h);
+    }
     return snprintf(buf, 40, "%d %d %d %d\n", x, y, x + w - 1, y + h - 1);
 }
 
@@ -1996,11 +2115,18 @@ static ssize_t video_disable_store(struct class *cla, struct class_attribute *at
     if ((val < VIDEO_DISABLE_NONE) || (val > VIDEO_DISABLE_FORNEXT)) {
         return -EINVAL;
     }
-    
+
     disable_video = val;
 
     if (disable_video != VIDEO_DISABLE_NONE) {
+#ifdef CONFIG_POST_PROCESS_MANAGER_PPSCALER
+        if(video_scaler_mode)
+            DisableVideoLayer_PREBELEND();
+        else
+            DisableVideoLayer();
+#else
         DisableVideoLayer();
+#endif
         
         if ((disable_video == VIDEO_DISABLE_FORNEXT) && cur_dispbuf && (cur_dispbuf != &vf_local))
             video_property_changed = true;
@@ -2274,7 +2400,7 @@ static struct notifier_block vout_notifier = {
     .notifier_call  = vout_notify_callback,
 };
 
-vframe_t* get_cur_dispbuf()
+vframe_t* get_cur_dispbuf(void)
 {
 	return  cur_dispbuf;	
 }

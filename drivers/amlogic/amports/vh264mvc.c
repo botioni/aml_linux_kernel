@@ -1230,7 +1230,7 @@ static int vh264mvc_stop(void)
         ulong flags;
         spin_lock_irqsave(&lock, flags);
         spin_unlock_irqrestore(&lock, flags);
-        vf_unreg_provider();
+        vf_unreg_provider(&vh264mvc_vf_provider);
         stat &= ~STAT_VF_HOOK;
     }
 

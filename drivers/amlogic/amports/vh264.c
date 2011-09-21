@@ -335,7 +335,7 @@ static void vh264_isr(void)
 #ifdef CONFIG_POST_PROCESS_MANAGER
             vh264_ppmgr_reset();
 #else 
-            vf_light_unreg_provider();
+            vf_light_unreg_provider(&vh264_vf_provider);
             vh264_local_init();
             vf_reg_provider(&vh264_vf_provider);
 #endif       	
@@ -828,7 +828,7 @@ static void vh264_put_timer_func(unsigned long arg)
 #ifdef CONFIG_POST_PROCESS_MANAGER
                 vh264_ppmgr_reset();
 #else 
-                vf_light_unreg_provider();
+                vf_light_unreg_provider(&vh264_vf_provider);
                 vh264_local_init();
                 vf_reg_provider(&vh264_vf_provider);
 #endif                            
@@ -842,7 +842,7 @@ static void vh264_put_timer_func(unsigned long arg)
 #ifdef CONFIG_POST_PROCESS_MANAGER
         vh264_ppmgr_reset();
 #else 
-        vf_light_unreg_provider();
+        vf_light_unreg_provider(&vh264_vf_provider);
         vh264_local_init();
         vf_reg_provider(&vh264_vf_provider);
 #endif
@@ -858,7 +858,7 @@ static void vh264_put_timer_func(unsigned long arg)
 #ifdef CONFIG_POST_PROCESS_MANAGER
             vh264_ppmgr_reset();
 #else
-            vf_light_unreg_provider();
+            vf_light_unreg_provider(&vh264_vf_provider);
             vh264_local_init();
             vf_reg_provider(&vh264_vf_provider);
 #endif
@@ -1134,7 +1134,7 @@ static int vh264_stop(void)
 	if ((vf_receiver) && (vf_receiver->event_cb))
 	vf_receiver->event_cb(VFRAME_EVENT_PROVIDER_UNREG, NULL, NULL); 	
  #else 
- 	vf_unreg_provider();
+ 	vf_unreg_provider(&vh264_vf_provider);
  #endif         
         stat &= ~STAT_VF_HOOK;
     }

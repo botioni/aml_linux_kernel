@@ -603,7 +603,7 @@ static void vvc1_put_timer_func(unsigned long arg)
 #ifdef CONFIG_POST_PROCESS_MANAGER
         vvc1_ppmgr_reset();
 #else 
-        vf_light_unreg_provider();
+        vf_light_unreg_provider(&vvc1_vf_provider);
         vvc1_local_init();
         vf_reg_provider(&vvc1_vf_provider);
 #endif         
@@ -752,7 +752,7 @@ static int amvdec_vc1_remove(struct platform_device *pdev)
 	if ((vf_receiver) && (vf_receiver->event_cb))
 	vf_receiver->event_cb(VFRAME_EVENT_PROVIDER_UNREG, NULL, NULL); 	
  #else 
- 	vf_unreg_provider();
+ 	vf_unreg_provider(&vvc1_vf_provider);
  #endif         
         stat &= ~STAT_VF_HOOK;
     }

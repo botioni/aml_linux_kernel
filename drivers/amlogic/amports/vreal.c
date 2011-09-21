@@ -742,7 +742,7 @@ static int amvdec_real_remove(struct platform_device *pdev)
 	if ((vf_receiver) && (vf_receiver->event_cb))
 	vf_receiver->event_cb(VFRAME_EVENT_PROVIDER_UNREG, NULL, NULL); 	
  #else 
- 	vf_unreg_provider();
+ 	vf_unreg_provider(&vreal_vf_provider);
  #endif         
         stat &= ~STAT_VF_HOOK;
     }

@@ -29,6 +29,7 @@
 #define VPP_FLAG_ZOOM_SHORTSIDE     0x00000080
 #define VPP_FLAG_AR_MASK            0x0003ff00
 #define VPP_FLAG_AR_BITS            8
+#define VPP_FLAG_PORTRAIT_MODE      0x00040000
 
 #define IDX_H           (2 << 8)
 #define IDX_V_Y         (1 << 13)

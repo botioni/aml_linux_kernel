@@ -395,6 +395,13 @@ void osd_change_osd_order_hw(u32 index,u32 order)
 void osd_free_scale_enable_hw(u32 index,u32 enable)
 {
 	static  dispdata_t	save_disp_data={0,0,0,0};
+#ifdef CONFIG_AM_VIDEO 
+#ifdef CONFIG_POST_PROCESS_MANAGER
+	int mode_changed = 0;
+	if((index==OSD1)&&(osd_hw.free_scale_enable[index]!=enable))
+		mode_changed = 1;
+#endif
+#endif
 
 	amlog_level(LOG_LEVEL_HIGH,"osd%d free scale %s\r\n",index,enable?"ENABLE":"DISABLE");
 	osd_hw.free_scale_enable[index]=enable;
@@ -426,12 +433,18 @@ void osd_free_scale_enable_hw(u32 index,u32 enable)
 			memcpy(&osd_hw.dispdata[OSD1],&save_disp_data,sizeof(dispdata_t));
 			add_to_update_list(OSD1,DISP_GEOMETRY);
 #ifdef CONFIG_AM_VIDEO  			
-			vf_unreg_provider();
+			vf_unreg_provider(&osd_vf_provider);
 #endif
 				
 		}
 	}
 	osd_enable_hw(osd_hw.enable[index],index);
+#ifdef CONFIG_AM_VIDEO  
+#ifdef CONFIG_POST_PROCESS_MANAGER
+	if(mode_changed)
+		vf_ppmgr_reset();
+#endif
+#endif
 
 }
 void  osd_free_scale_width_hw(u32 index,u32 width)
