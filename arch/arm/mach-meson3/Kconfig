@@ -31,6 +31,12 @@ config MACH_MESON3_REFF05
 	help
 	  Include support for the AML M3 socket board platform.
 
+config MACH_MESON3_REFF06
+	select GENERIC_ALLOCATOR
+	bool "Support M3 (Ainol) platform"
+	help
+	  Include support for the AML M3 socket board platform.
+
 config MACH_MESON3_REFF07
 	select GENERIC_ALLOCATOR
 	bool "Support M3 (Malata) platform"

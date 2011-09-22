@@ -267,7 +267,7 @@ void audio_util_set_dac_format(unsigned format)
 	WRITE_MPEG_REG(AIU_CLK_CTRL,		 (0 << 12) | // 958 divisor more, if true, divided by 2, 4, 6, 8.
 							(1 <<  8) | // alrclk skew: 1=alrclk transitions on the cycle before msb is sent
 							(1 <<  6) | // invert aoclk
-                            //(1 <<  7) | // invert lrclk
+                                                        (1 <<  7) | // invert lrclk
 							//(1 <<  4) | // 958 divisor: 0=no div; 1=div by 2; 2=div by 3; 3=div by 4.
 							//(2 <<  2) | // i2s divisor: 0=no div; 1=div by 2; 2=div by 4; 3=div by 8.
 							(0 <<  2) | // i2s divisor: 0=no div; 1=div by 2; 2=div by 4; 3=div by 8.
