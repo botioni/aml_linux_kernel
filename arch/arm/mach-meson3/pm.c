@@ -253,13 +253,10 @@ void early_power_gate_switch(int flag)
     GATE_SWITCH(flag, AMRISC);
     GATE_SWITCH(flag, AUD_IN);
     GATE_SWITCH(flag, BLK_MOV);
-    GATE_SWITCH(flag, BT656_IN);
     GATE_SWITCH(flag, VENC_I_TOP);
     GATE_SWITCH(flag, VENC_P_TOP);
     GATE_SWITCH(flag, VENC_T_TOP);
     GATE_SWITCH(flag, VENC_DAC);
-    GATE_SWITCH(flag, GE2D);
-    GATE_SWITCH(flag, VIDEO_IN);
     GATE_SWITCH(flag, HDMI_INTR_SYNC);
     GATE_SWITCH(flag, HDMI_PCLK);
     GATE_SWITCH(flag, MISC_DVIN);
