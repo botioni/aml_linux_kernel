@@ -62,10 +62,6 @@
 #include <linux/mmc328x.h>
 #endif
 
-#ifdef CONFIG_SENSORS_MMA8452	//add by Rojam
-#include <linux/mma8452.h>
-#endif
-
 #ifdef CONFIG_SIX_AXIS_SENSOR_MPU3050
 #ifdef CONFIG_MPU_PRE_V340
 #include <linux/mpu.h>
@@ -2448,12 +2444,6 @@ static struct i2c_board_info __initdata aml_i2c_bus_info_1[] = {
 	{
 		I2C_BOARD_INFO(MMC328X_I2C_NAME,  MMC328X_I2C_ADDR),
 	},
-#endif
-
-#ifdef CONFIG_SENSORS_MMA8452
-    {
-        I2C_BOARD_INFO(MMA8452_I2C_NAME,  MMA8452_I2C_ADDR),
-    },
 #endif
 
 #ifdef CONFIG_SIX_AXIS_SENSOR_MPU3050
