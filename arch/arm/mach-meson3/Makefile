@@ -21,6 +21,7 @@ obj-$(CONFIG_MACH_MESON3_REFF02)	+= board-m3-reff02.o
 obj-$(CONFIG_MACH_MESON3_REFF03)	+= board-m3-reff03.o
 obj-$(CONFIG_MACH_MESON3_REFF04)	+= board-m3-reff04.o
 obj-$(CONFIG_MACH_MESON3_REFF05)	+= board-m3-reff05.o
+obj-$(CONFIG_MACH_MESON3_REFF06)	+= board-m3-reff06.o
 obj-$(CONFIG_MACH_MESON3_REFF07)	+= board-m3-reff07.o
 obj-$(CONFIG_MACH_MESON3_REFF08)	+= board-m3-reff08.o
 

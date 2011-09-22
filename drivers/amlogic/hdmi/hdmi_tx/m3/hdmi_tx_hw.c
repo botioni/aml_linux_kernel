@@ -139,22 +139,6 @@ static unsigned char use_tvenc_conf_flag=1;
 static unsigned char hpd_debug_mode=0;
 #define HPD_DEBUG_IGNORE_UNPLUG   1
 
-// For debug M3 only
-#undef HHI_VID_DIVIDER_CNTL
-#undef HHI_HDMI_PLL_CNTL
-#undef HHI_HDMI_PLL_CNTL1
-#undef HHI_HDMI_PLL_CNTL2
-#undef HHI_HDMI_CLK_CNTL
-#undef HHI_HDMI_AFC_CNTL
-#define HHI_VID_DIVIDER_CNTL    0x1066
-#define HHI_HDMI_PLL_CNTL   0x105c
-#define HHI_HDMI_PLL_CNTL1  0x104f
-#define HHI_HDMI_PLL_CNTL2  0x1058
-#define HHI_HDMI_CLK_CNTL   0x1073
-#define HHI_HDMI_AFC_CNTL   0x107f
-
-
-
 static unsigned long modulo(unsigned long a, unsigned long b)
 {
     if (a >= b) {
@@ -920,14 +904,14 @@ static void unmux_hpd(void)
 //    Wr(PREG_PAD_GPIO2_EN_N, Rd(PREG_PAD_GPIO2_EN_N)|(1<<0)); //GPIOA_0 as input
     Wr(PERIPHS_PIN_MUX_1, Rd(PERIPHS_PIN_MUX_1)&~(1 << 22));
     //GPIOC_10 0x2012[10]
-    Wr(0x2012, Rd(0x2012)|(1<<10)); //GPIOC_10 as input
+    Wr(PREG_PAD_GPIO2_EN_N, Rd(PREG_PAD_GPIO2_EN_N)|(1<<10)); //GPIOC_10 as input
 }    
 
 static int read_hpd_gpio(void)
 {
     int level;
 //    level = Rd(PREG_PAD_GPIO2_I)&0x1; //read GPIOA_0
-    level = !!(Rd(0x2014)&(1<<10)); //read GPIOC_10
+    level = !!(Rd(PREG_PAD_GPIO2_I)&(1<<10)); //read GPIOC_10
     return level;
 }
 
@@ -936,15 +920,16 @@ static void digital_clk_off(unsigned char flag)
     if(flag&1){
 //#ifdef AML_A3
     /* off hdmi audio clock */
-        hdmi_wr_reg(OTHER_BASE_ADDR + HDMI_OTHER_CTRL1,  hdmi_rd_reg(OTHER_BASE_ADDR + HDMI_OTHER_CTRL1)&(~(1<<13))); //
-        hdmi_wr_reg(TX_AUDIO_FORMAT, hdmi_rd_reg(TX_AUDIO_FORMAT)|(1<<7));
-        hdmi_wr_reg(TX_AUDIO_I2S, hdmi_rd_reg(TX_AUDIO_I2S)|(1<<1));
+//        hdmi_wr_reg(OTHER_BASE_ADDR + HDMI_OTHER_CTRL1,  hdmi_rd_reg(OTHER_BASE_ADDR + HDMI_OTHER_CTRL1)&(~(1<<13))); //
+//        hdmi_wr_reg(TX_AUDIO_FORMAT, hdmi_rd_reg(TX_AUDIO_FORMAT)|(1<<7));
+//        hdmi_wr_reg(TX_AUDIO_I2S, hdmi_rd_reg(TX_AUDIO_I2S)|(1<<1));
 //#endif    
     }
 
     if(flag&2){
         /* off hdmi pixel clock */
-        Wr(HHI_GCLK_OTHER, Rd(HHI_GCLK_OTHER)&(~(1<<17))); //disable pixel clock, set cbus reg HHI_GCLK_OTHER bit [17] = 0
+        Wr(HHI_GCLK_MPEG2, Rd(HHI_GCLK_MPEG2)&(~(1<<4))); //disable pixel clock, set cbus reg HHI_GCLK_MPEG2 bit [4] = 0
+        Wr(HHI_GCLK_OTHER, Rd(HHI_GCLK_OTHER)&(~(1<<17))); //disable VCLK1_HDMI GATE, set cbus reg HHI_GCLK_OTHER bit [17] = 0
         Wr(VENC_DVI_SETTING, (Rd(VENC_DVI_SETTING)&(~(7<<4)))|(5<<4)); //set cbus reg VENC_DVI_SETTING bit[6:4] = 0x5
     }
     if(flag&4){
@@ -984,7 +969,8 @@ static void digital_clk_on(unsigned char flag)
     }
     if(flag&2){
         /* on hdmi pixel clock */
-        Wr(HHI_GCLK_OTHER, Rd(HHI_GCLK_OTHER)|(1<<17)); //enable pixel clock, set cbus reg HHI_GCLK_OTHER bit [17] = 1
+        Wr(HHI_GCLK_MPEG2, Rd(HHI_GCLK_MPEG2)|(1<<4)); //enable pixel clock, set cbus reg HHI_GCLK_MPEG2 bit [4] = 1
+        Wr(HHI_GCLK_OTHER, Rd(HHI_GCLK_OTHER)|(1<<17)); //enable VCLK1_HDMI GATE, set cbus reg HHI_GCLK_OTHER bit [17] = 1
     }
     if(flag&1){
 //#ifdef AML_A3
@@ -997,17 +983,16 @@ static void digital_clk_on(unsigned char flag)
 static void phy_pll_off(void)
 {
     /* power down hdmi phy */
-    hdmi_wr_reg(TX_CORE_CALIB_MODE, 0x8);
-    hdmi_wr_reg(TX_SYS1_TERMINATION, hdmi_rd_reg(TX_SYS1_TERMINATION)&(~0xf));
-    hdmi_wr_reg(TX_SYS1_AFE_SPARE0, hdmi_rd_reg(TX_SYS1_AFE_SPARE0)&(~0xf));
-    hdmi_wr_reg(TX_SYS1_AFE_TEST, hdmi_rd_reg(TX_SYS1_AFE_TEST)&(~0x1f));
+//    hdmi_wr_reg(TX_CORE_CALIB_MODE, 0x8);
+//    hdmi_wr_reg(TX_SYS1_TERMINATION, hdmi_rd_reg(TX_SYS1_TERMINATION)&(~0xf));
+//    hdmi_wr_reg(TX_SYS1_AFE_SPARE0, hdmi_rd_reg(TX_SYS1_AFE_SPARE0)&(~0xf));
+//    hdmi_wr_reg(TX_SYS1_AFE_TEST, hdmi_rd_reg(TX_SYS1_AFE_TEST)&(~0x1f));
         /**/
 #ifndef AML_A3
         /* no HDMI PLL in A3 */
-    Wr(HHI_HDMI_PLL_CNTL, Rd(HHI_HDMI_PLL_CNTL)|(1<<30)); //disable HDMI PLL
-    Wr(HHI_HDMI_PLL_CNTL2, Rd(HHI_HDMI_PLL_CNTL2)&(~0x38));
+    Wr(HHI_VID_PLL_CNTL, Rd(HHI_VID_PLL_CNTL)|(1<<30)); //disable HDMI PLL
+    Wr(HHI_VID_PLL_CNTL3, Rd(HHI_VID_PLL_CNTL3)&(~0x38));
 #endif   
-    
 }
 
 /**/
@@ -1086,15 +1071,15 @@ void hdmi_hw_init(hdmitx_dev_t* hdmitx_device)
     digital_clk_on(7);
 #ifndef AML_A3
     if((hdmi_chip_type == HDMI_M1A)||(hdmi_pll_mode == 1)){
-        Wr(HHI_HDMI_PLL_CNTL2, 0x50e8);
+        Wr(HHI_VID_PLL_CNTL3, 0x50e8);
     }
     else{
-        Wr(HHI_HDMI_PLL_CNTL2, 0x40e8);
+        Wr(HHI_VID_PLL_CNTL3, 0x40e8);
     }
 
-    Wr(HHI_HDMI_PLL_CNTL, 0x03040502); 
+    Wr(HHI_VID_PLL_CNTL, 0x03040502); 
 
-    Wr(HHI_HDMI_PLL_CNTL1, 0x00040003);
+    Wr(HHI_VID_PLL_CNTL2, 0x00040003);
 #endif
     Wr(HHI_HDMI_AFC_CNTL, Rd(HHI_HDMI_AFC_CNTL) | 0x3);
     // Configure HDMI TX serializer:
@@ -1285,17 +1270,17 @@ static void hdmi_hw_reset(Hdmi_tx_video_para_t *param)
 #ifndef AML_A3
     // Configure HDMI PLL
     if((hdmi_chip_type == HDMI_M1A)||(hdmi_pll_mode == 1)){
-        Wr(HHI_HDMI_PLL_CNTL2, 0x50e8);
+        Wr(HHI_VID_PLL_CNTL3, 0x50e8);
     }
     else{
-        Wr(HHI_HDMI_PLL_CNTL2, 0x40e8);
+        Wr(HHI_VID_PLL_CNTL3, 0x40e8);
     }
 
     if(new_reset_sequence_flag){
-        Wr(HHI_HDMI_PLL_CNTL1, 0x00040003); //should turn on always for new reset sequence
+        Wr(HHI_VID_PLL_CNTL2, 0x00040003); //should turn on always for new reset sequence
     }
     else{
-        Wr(HHI_HDMI_PLL_CNTL1, 0x00040003); 
+        Wr(HHI_VID_PLL_CNTL2, 0x00040003); 
     }
 #endif
     if(delay_flag&2)
@@ -1345,7 +1330,7 @@ static void hdmi_hw_reset(Hdmi_tx_video_para_t *param)
     
     // delay 1000uS, then check HPLL_LOCK
     delay_us(1000);
-    //while ( (Rd(HHI_HDMI_PLL_CNTL2) & (1<<31)) != (1<<31) );
+    //while ( (Rd(HHI_VID_PLL_CNTL3) & (1<<31)) != (1<<31) );
  
 //////////////////////////////reset    
     if(new_reset_sequence_flag){
@@ -1624,13 +1609,13 @@ static void hdmi_hw_reset(Hdmi_tx_video_para_t *param)
     }
     else{
 #ifndef AML_A3
-        Wr(HHI_HDMI_PLL_CNTL1, 0x00040000); // turn off phy_clk
+        Wr(HHI_VID_PLL_CNTL2, 0x00040000); // turn off phy_clk
         delay_us(10);
     
         hdmi_wr_reg(TX_SYS5_TX_SOFT_RESET_2, 0x01); // Release serializer resets
         delay_us(10);
     
-        Wr(HHI_HDMI_PLL_CNTL1, 0x00040003); // turn on phy_clk
+        Wr(HHI_VID_PLL_CNTL2, 0x00040003); // turn on phy_clk
         delay_us(10);
     
         hdmi_wr_reg(TX_SYS5_TX_SOFT_RESET_2, 0x00); // Release reset on TX digital clock channel
@@ -1984,7 +1969,7 @@ static void hdmitx_set_pll(Hdmi_tx_video_para_t *param)
         case HDMI_480i60_16x9:
         case HDMI_576i50:
         case HDMI_576i50_16x9:
-            Wr(HHI_HDMI_PLL_CNTL, (3<<18)|(2<<10)|(90<<0));    //27MHz=24MHz*45/4/10
+            Wr(HHI_VID_PLL_CNTL, (3<<18)|(2<<10)|(90<<0));    //27MHz=24MHz*45/4/10
             Wr(HHI_VID_CLK_DIV, 3);      //0x1059
             Wr_reg_bits(HHI_HDMI_CLK_CNTL, 1, 16, 4);   //cts_hdmi_tx_pixel_clk
             break;
@@ -1994,14 +1979,14 @@ static void hdmitx_set_pll(Hdmi_tx_video_para_t *param)
         case HDMI_720p50:
         case HDMI_1080i60:
         case HDMI_1080i50:
-            Wr(HHI_HDMI_PLL_CNTL, (12<<10)|(371<<0));    //74.2MHz=24MHz*371/12/10
+            Wr(HHI_VID_PLL_CNTL, (12<<10)|(371<<0));    //74.2MHz=24MHz*371/12/10
             Wr(HHI_VID_CLK_DIV, 0);      //0x1059
             Wr_reg_bits(HHI_HDMI_CLK_CNTL, 1, 16, 4);   //cts_hdmi_tx_pixel_clk
                                                         //[19:16] 0:clk_div1 1:clk_div2 2:clk_div4 3: clk_div6 ...
             break;
         case HDMI_1080p60:
         case HDMI_1080p50:
-            Wr(HHI_HDMI_PLL_CNTL, (6<<10)|(371<<0));    //148.4MHz=24MHz*371/6/10
+            Wr(HHI_VID_PLL_CNTL, (6<<10)|(371<<0));    //148.4MHz=24MHz*371/6/10
             Wr(HHI_VID_CLK_DIV, 1);      //0x1059
             Wr_reg_bits(HHI_HDMI_CLK_CNTL, 0, 16, 4);   //0x1073, cts_hdmi_tx_pixel_clk 
             break;
@@ -2604,14 +2589,14 @@ static void hdmitx_m3_cntl(hdmitx_dev_t* hdmitx_device, int cmd, unsigned argv)
 //        digital_clk_on(4); //enable sys clk so that hdmi registers can be accessed when calling phy_pll_off/digit_clk_off
         if(unmux_hpd_flag){
             hdmi_print(1,"power off hdmi, unmux hpd\n");
-//            phy_pll_off();
-//            digital_clk_off(7); //off sys clk
-//            unmux_hpd();
+            phy_pll_off();
+            digital_clk_off(7); //off sys clk
+            unmux_hpd();
         }
         else{
             hdmi_print(1,"power off hdmi\n");
-//            phy_pll_off();
-//            digital_clk_off(3); //do not off sys clk
+            phy_pll_off();
+            digital_clk_off(3); //do not off sys clk
         }
     }
     

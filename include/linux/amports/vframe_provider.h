@@ -35,7 +35,7 @@ typedef struct vframe_states {
 #define VFRAME_EVENT_PROVIDER_LIGHT_UNREG       2
 #define VFRAME_EVENT_PROVIDER_START             3
 #define VFRAME_EVENT_PROVIDER_VFRAME_READY      4
-#define VFRAME_EVENT_PROVIDER_QUREY_STATE        5 
+#define VFRAME_EVENT_PROVIDER_QUREY_STATE       5 
 
 typedef enum {
 	RECEIVER_INACTIVE = 0 ,
@@ -44,7 +44,8 @@ typedef enum {
 
 #define VFRAME_EVENT_RECEIVER_GET               0x01
 #define VFRAME_EVENT_RECEIVER_PUT               0x02
-#define VFRAME_EVENT_RECEIVER_FRAME_WAIT               0x04
+#define VFRAME_EVENT_RECEIVER_FRAME_WAIT        0x04
+#define VFRAME_EVENT_RECEIVER_POS_CHANGED       0x08
 
 typedef struct vframe_provider_s {
     vframe_t * (*peek)(void);
@@ -59,13 +60,14 @@ typedef struct vframe_receiver_op_s {
 } vframe_receiver_op_t;
 
 void vf_reg_provider(const vframe_provider_t *p);
-void vf_unreg_provider(void);
-void vf_light_unreg_provider(void);
+void vf_unreg_provider(const vframe_provider_t *p);
+void vf_light_unreg_provider(const vframe_provider_t *p);
 unsigned int get_post_canvas(void);
 unsigned int vf_keep_current(void);
 vframe_receiver_op_t* vf_vm_reg_provider(const vframe_provider_t *p);
 vframe_receiver_op_t* vf_vm_unreg_provider(void);
- #ifdef CONFIG_POST_PROCESS_MANAGER
+const vframe_provider_t * get_vfp(void);
+#ifdef CONFIG_POST_PROCESS_MANAGER
 const vframe_receiver_op_t* vf_ppmgr_reg_provider(const struct vframe_provider_s *p);
 void vf_ppmgr_reset(void);
 void vf_ppmgr_unreg_provider(void);

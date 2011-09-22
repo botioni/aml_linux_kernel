@@ -427,7 +427,7 @@ static  int  thread_progress(void *para)
 		if (priv->state== PIC_FETCHED)
 		{
 #ifdef CONFIG_AM_VIDEO 	
-			vf_unreg_provider();
+			vf_unreg_provider(&jpeglogo_vf_provider);
 #endif
 			kfree(priv);
 			amlog_mask_level(LOG_MASK_PARSER,LOG_LEVEL_LOW,"logo fetched\n");

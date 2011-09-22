@@ -215,7 +215,7 @@ void vdin_unreg_vf_provider(void)
 #ifdef CONFIG_AMLOGIC_VIDEOIN_MANAGER
       vf_receiver  = vf_vm_unreg_provider();
 #else 
-       vf_unreg_provider();
+       vf_unreg_provider(&vdin_vf_provider);
 #endif
 }
 

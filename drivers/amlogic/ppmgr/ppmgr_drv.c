@@ -30,21 +30,21 @@ static int ppmgr_enable_flag=0;
 static int property_change = 0;
 ppmgr_device_t  ppmgr_device;
 
-int get_bypass_mode()
+int get_bypass_mode(void)
 {
-	return ppmgr_device.bypass;
+    return ppmgr_device.bypass;
 }
 
-int get_property_change()
+int get_property_change(void)
 {
-	return property_change;	
+    return property_change;	
 }
 void set_property_change(int flag)
 {
-	property_change = flag;	
+    property_change = flag;	
 }
 
-int get_ppmgr_status() {
+int get_ppmgr_status(void) {
     return ppmgr_enable_flag;
 }
 
@@ -105,8 +105,6 @@ static ssize_t show_ppmgr_info(struct class *cla,struct class_attribute *attr,ch
 
 static ssize_t angle_read(struct class *cla,struct class_attribute *attr,char *buf)
 {
-	//ppmgr_device_t* ppmgr_dev=(ppmgr_device_t*)cla;
-	
     return snprintf(buf,80,"current angel is %d\n",ppmgr_device.angle);
 }
 
@@ -114,21 +112,72 @@ static ssize_t angle_write(struct class *cla,
 					struct class_attribute *attr,
 					const char *buf, size_t count)
 {
-	ssize_t ret = -EINVAL, size;
-	char *endp;
-	int angle  =  simple_strtoul(buf, &endp, 0);
-	if(angle != ppmgr_device.angle ){		
-		property_change = 1;
-	}
-	ppmgr_device.angle = angle;
-	size = endp - buf;
-	return count;
+    ssize_t size;
+    char *endp;
+    int angle  =  simple_strtoul(buf, &endp, 0);
+    printk("==%d==\n",angle);
+    if(angle>3) {
+        if(angle==90) angle=1;
+        else if(angle==180) angle=2;
+        else if(angle==270) angle=3;
+        else {
+            printk("invalid angle value\n");
+            printk("you should set 0 or 0 for 0 clock wise,");
+            printk("1 or 90 for 90 clockwise,2 or 180 for 180 clockwise");
+            printk("3 or 270 for 270 clockwise\n");
+            return -EINVAL;
+        }
+    }
+	
+    if(angle != ppmgr_device.angle ){		
+        property_change = 1;
+    }
+    ppmgr_device.angle = angle;
+    ppmgr_device.videoangle = (ppmgr_device.angle+ ppmgr_device.orientation)%4;
+    printk("angle:%d,orientation:%d,videoangle:%d \n",ppmgr_device.angle ,
+    ppmgr_device.orientation, ppmgr_device.videoangle);
+    size = endp - buf;
+    return count;
+}
+
+static ssize_t orientation_read(struct class *cla,struct class_attribute *attr,char *buf)
+{
+    //ppmgr_device_t* ppmgr_dev=(ppmgr_device_t*)cla;
+    return snprintf(buf,80,"current orientation is %d\n",ppmgr_device.orientation*90);
+}
+
+/* set the initial orientation for video, it should be set before video start. */
+static ssize_t orientation_write(struct class *cla,
+					struct class_attribute *attr,
+					const char *buf, size_t count)
+{
+    ssize_t ret = -EINVAL, size;
+    char *endp;
+    unsigned angle  =  simple_strtoul(buf, &endp, 0);
+    //if(property_change) return ret;
+    if(angle>3) {
+        if(angle==90) angle=1;
+        else if(angle==180) angle=2;
+        else if(angle==270) angle=3;
+        else {
+            printk("invalid orientation value\n");
+            printk("you should set 0 or 0 for 0 clock wise,");
+            printk("1 or 90 for 90 clockwise,2 or 180 for 180 clockwise");
+            printk("3 or 270 for 270 clockwise\n");
+            return ret;
+        }
+    }
+    ppmgr_device.orientation = angle;
+    ppmgr_device.videoangle = (ppmgr_device.angle+ ppmgr_device.orientation)%4;
+    printk("angle:%d,orientation:%d,videoangle:%d \n",ppmgr_device.angle ,
+        ppmgr_device.orientation, ppmgr_device.videoangle);
+    size = endp - buf;
+    return count;
 }
 
 static ssize_t bypass_read(struct class *cla,struct class_attribute *attr,char *buf)
 {
-	//ppmgr_device_t* ppmgr_dev=(ppmgr_device_t*)cla;
-	
+    //ppmgr_device_t* ppmgr_dev=(ppmgr_device_t*)cla;
     return snprintf(buf,80,"current bypass is %d\n",ppmgr_device.bypass);
 }
 
@@ -136,12 +185,12 @@ static ssize_t bypass_write(struct class *cla,
 					struct class_attribute *attr,
 					const char *buf, size_t count)
 {
-	ssize_t ret = -EINVAL, size;
-	char *endp;
+    ssize_t size;
+    char *endp;
 
-	ppmgr_device.bypass = simple_strtoul(buf, &endp, 0);
-	size = endp - buf;
-	return count;
+    ppmgr_device.bypass = simple_strtoul(buf, &endp, 0);
+    size = endp - buf;
+    return count;
 }
 
 
@@ -153,39 +202,39 @@ static ssize_t rect_read(struct class *cla,struct class_attribute *attr,char *bu
 
 static ssize_t rect_write(struct class *cla,struct class_attribute *attr,const char *buf, size_t count)
 {
-	char* errstr="data error,access string is \"left,top,width,height\"\n";
-	char* strp=buf;
-	char* endp;
-	int value_array[4];
+    char* errstr="data error,access string is \"left,top,width,height\"\n";
+    char* strp=(char*)buf;
+    char* endp;
+    int value_array[4];
     static int buflen;
     static char* tokenlen;
-	int i;
+    int i;
     buflen=strlen(buf);
-	value_array[0]=value_array[1]=value_array[2]=value_array[3]= -1;
+    value_array[0]=value_array[1]=value_array[2]=value_array[3]= -1;
 	
-	for(i=0;i<4;i++) {
-		if(buflen==0) {
-			printk(errstr);
-			return  -EINVAL;
-		}
-		tokenlen=strnchr(strp,buflen,',');
-		if(tokenlen!=NULL) *tokenlen='\0';
-		value_array[i]= simple_strtoul(strp,&endp,0);
-		if((endp-strp)>(tokenlen-strp)) break;
-		if(tokenlen!=NULL)  {
-			*tokenlen=',';
-			strp= tokenlen+1;
-			buflen=strlen(strp);
-		}  else 
-			break;
-	}
+    for(i=0;i<4;i++) {
+        if(buflen==0) {
+            printk(errstr);
+            return  -EINVAL;
+        }
+        tokenlen=strnchr(strp,buflen,',');
+        if(tokenlen!=NULL) *tokenlen='\0';
+        value_array[i]= simple_strtoul(strp,&endp,0);
+        if((endp-strp)>(tokenlen-strp)) break;
+        if(tokenlen!=NULL)  {
+            *tokenlen=',';
+            strp= tokenlen+1;
+            buflen=strlen(strp);
+        }  else 
+            break;
+    }
 	
-	if(value_array[0]>=0) ppmgr_device.left= value_array[0];
-	if(value_array[1]>=0) ppmgr_device.left= value_array[1];
-	if(value_array[2]>0) ppmgr_device.left= value_array[2];
-	if(value_array[3]>0) ppmgr_device.left= value_array[3];
+    if(value_array[0]>=0) ppmgr_device.left= value_array[0];
+    if(value_array[1]>=0) ppmgr_device.left= value_array[1];
+    if(value_array[2]>0) ppmgr_device.left= value_array[2];
+    if(value_array[3]>0) ppmgr_device.left= value_array[3];
 
-	return count;
+    return count;
 }
 
 static ssize_t disp_read(struct class *cla,struct class_attribute *attr,char *buf)
@@ -201,7 +250,7 @@ static void set_disp_para(const char *para)
         w = parsed[0] ;
         h = parsed[1];
         ppmgr_device.disp_width = w ;
-         ppmgr_device.disp_height =  h ;
+        ppmgr_device.disp_height =  h ;
     }
 }
 
@@ -209,9 +258,70 @@ static ssize_t disp_write(struct device *dev,
 					struct device_attribute *attr,
 					const char *buf, size_t count)
 {
-	set_disp_para(buf);
-	return 0;
+    set_disp_para(buf);
+    return 0;
 }
+
+#ifdef CONFIG_POST_PROCESS_MANAGER_PPSCALER
+extern int video_scaler_notify(int flag);
+extern void amvideo_set_scaler_para(int x, int y, int w, int h,int flag);
+
+static ssize_t ppscaler_read(struct class *cla,struct class_attribute *attr,char *buf)
+{
+    return snprintf(buf,80,"current ppscaler mode is %s\n",(ppmgr_device.ppscaler_flag)?"enabled":"disabled");
+}
+
+static ssize_t ppscaler_write(struct class *cla,
+					struct class_attribute *attr,
+					const char *buf, size_t count)
+{
+    ssize_t size;
+    char *endp;
+    int flag = simple_strtoul(buf, &endp, 0);
+    if((flag<2)&&(flag != ppmgr_device.ppscaler_flag)){
+        if(flag)
+            video_scaler_notify(1);
+        else
+            video_scaler_notify(0);
+        ppmgr_device.ppscaler_flag = flag;
+    }
+    size = endp - buf;
+    return count;
+}
+
+
+static void set_ppscaler_para(const char *para)
+{
+    int parsed[5];
+
+    if (likely(parse_para(para, 5, parsed) == 5)) {
+        ppmgr_device.scale_h_start = parsed[0];
+        ppmgr_device.scale_v_start = parsed[1];
+        ppmgr_device.scale_h_end = parsed[2];
+        ppmgr_device.scale_v_end = parsed[3];
+        amvideo_set_scaler_para(ppmgr_device.scale_h_start,ppmgr_device.scale_v_start,
+                                ppmgr_device.scale_h_end-ppmgr_device.scale_h_start+1,
+                                ppmgr_device.scale_v_end-ppmgr_device.scale_v_start+1,parsed[4]);
+    }
+}
+
+static ssize_t ppscaler_rect_read(struct class *cla,struct class_attribute *attr,char *buf)
+{
+    return snprintf(buf,80,"ppscaler rect:\nx:%d,y:%d,w:%d,h:%d\n",
+            ppmgr_device.scale_h_start,ppmgr_device.scale_v_start,
+            ppmgr_device.scale_h_end-ppmgr_device.scale_h_start+1,
+            ppmgr_device.scale_v_end-ppmgr_device.scale_v_start+1);
+}
+
+static ssize_t ppscaler_rect_write(struct class *cla,
+					struct class_attribute *attr,
+					const char *buf, size_t count)
+{
+    set_ppscaler_para(buf);
+    return 0;
+}
+#endif
+
 static struct class_attribute ppmgr_class_attrs[] = {
     __ATTR(info,
            S_IRUGO | S_IWUSR,
@@ -230,12 +340,25 @@ static struct class_attribute ppmgr_class_attrs[] = {
            bypass_read,
            bypass_write),   
            
-       __ATTR(disp,
+    __ATTR(disp,
            S_IRUGO | S_IWUSR,
            disp_read,
            disp_write),          
-           
-                   
+
+    __ATTR(orientation,
+           S_IRUGO | S_IWUSR,
+           orientation_read,
+           orientation_write),           
+#ifdef CONFIG_POST_PROCESS_MANAGER_PPSCALER
+    __ATTR(ppscaler,
+           S_IRUGO | S_IWUSR,
+           ppscaler_read,
+           ppscaler_write),       
+    __ATTR(ppscaler_rect,
+           S_IRUGO | S_IWUSR,
+           ppscaler_rect_read,
+           ppscaler_rect_write),   
+#endif
     __ATTR_NULL
 };
 
@@ -247,11 +370,11 @@ static struct class ppmgr_class = {
 struct class* init_ppmgr_cls() {
     int  ret=0;
     ret = class_register(&ppmgr_class);
-	if(ret<0 )
-	{
-		amlog_level(LOG_LEVEL_HIGH,"error create ppmgr class\r\n");
-		return NULL;
-	}
+    if(ret<0 )
+    {
+        amlog_level(LOG_LEVEL_HIGH,"error create ppmgr class\r\n");
+        return NULL;
+    }
     return &ppmgr_class;
 }
 
@@ -262,8 +385,8 @@ struct class* init_ppmgr_cls() {
 ************************************************************************/
 
 void set_ppmgr_buf_info(char* start,unsigned int size) {
-    ppmgr_device.buffer_start=start;
-    ppmgr_device.buffer_size=size;
+    ppmgr_device.buffer_start=(char*)start;
+    ppmgr_device.buffer_size=(char*)size;
 }
 
 void get_ppmgr_buf_info(char** start,unsigned int* size) {
@@ -271,36 +394,26 @@ void get_ppmgr_buf_info(char** start,unsigned int* size) {
     *size=ppmgr_device.buffer_size;
 }
 
-static  bool   command_valid(unsigned int cmd)
-{
-    return true;
-}
-
 static int ppmgr_open(struct inode *inode, struct file *file) 
 {
-	 ge2d_context_t *context;
-	 //we create one ge2d workqueue for this file handler.
-	 
-	 amlog_level(LOG_LEVEL_LOW,"open one ppmgr device\n");
-	 file->private_data=context;
-	 ppmgr_device.open_count++;
-	 return 0;
+    ppmgr_device.open_count++;
+    return 0;
 }
 
-static int ppmgr_ioctl(struct inode *inode, struct file *filp,
+/*static int ppmgr_ioctl(struct inode *inode, struct file *filp,
                  unsigned int cmd, unsigned long args)
 {
 
-	ge2d_context_t *context=(ge2d_context_t *)filp->private_data;
-	void  __user* argp =(void __user*)args;
-	config_para_t     ge2d_config;	
-	ge2d_para_t  para ;
-	int  ret=0,flag;    	
+    ge2d_context_t *context=(ge2d_context_t *)filp->private_data;
+    void  __user* argp =(void __user*)args;
+    config_para_t     ge2d_config;	
+    ge2d_para_t  para ;
+    int  ret=0,flag;    	
     frame_info_t frame_info;
 
-	switch (cmd)
-   	{
-   	    case PPMGR_IOC_2OSD0:
+    switch (cmd)
+    {
+        case PPMGR_IOC_2OSD0:
             break;
         case PPMGR_IOC_ENABLE_PP:
             flag=(int)argp;
@@ -309,28 +422,28 @@ static int ppmgr_ioctl(struct inode *inode, struct file *filp,
         case PPMGR_IOC_CONFIG_FRAME:
             copy_from_user(&frame_info,argp,sizeof(frame_info_t));
             break;
-		default :
-		    return -ENOIOCTLCMD;
+        default :
+            return -ENOIOCTLCMD;
 		
-   	}
- 	return ret;
+    }
+    return ret;
 }
+*/
 
 static int ppmgr_release(struct inode *inode, struct file *file)
 {
 #ifdef CONFIG_ARCH_MESON
-	ge2d_context_t *context=(ge2d_context_t *)file->private_data;
+    ge2d_context_t *context=(ge2d_context_t *)file->private_data;
 	
-	if(context && (0==destroy_ge2d_work_queue(context)))
-	{
-		ppmgr_device.open_count--;
-
-		return 0;
-	}
-	amlog_level(LOG_LEVEL_LOW,"release one ppmgr device\n");
-	return -1;
+    if(context && (0==destroy_ge2d_work_queue(context)))
+    {
+        ppmgr_device.open_count--;
+        return 0;
+    }
+    amlog_level(LOG_LEVEL_LOW,"release one ppmgr device\n");
+    return -1;
 #else
-	return 0;
+    return 0;
 #endif
 }
 
@@ -341,41 +454,49 @@ static int ppmgr_release(struct inode *inode, struct file *file)
 ************************************************************************/
 
 static const struct file_operations ppmgr_fops = {
-	.owner		= THIS_MODULE,
-	.open		=ppmgr_open,  
-	//.ioctl		= ppmgr_ioctl,
-	.release		= ppmgr_release, 	
+    .owner   = THIS_MODULE,
+    .open    = ppmgr_open,  
+    //.ioctl = ppmgr_ioctl,
+    .release = ppmgr_release, 	
 };
 
 int  init_ppmgr_device(void)
 {
-	int  ret=0;
+    int  ret=0;
+
+    strcpy(ppmgr_device.name,"ppmgr");
+    ret=register_chrdev(0,ppmgr_device.name,&ppmgr_fops);
+    if(ret <=0) 
+    {
+        amlog_level(LOG_LEVEL_HIGH,"register ppmgr device error\r\n");
+        return  ret ;
+    }
+    ppmgr_device.major=ret;
+    ppmgr_device.dbg_enable=0;
 	
-	strcpy(ppmgr_device.name,"ppmgr");
-	ret=register_chrdev(0,ppmgr_device.name,&ppmgr_fops);
-	if(ret <=0) 
-	{
-		amlog_level(LOG_LEVEL_HIGH,"register ppmgr device error\r\n");
-		return  ret ;
-	}
-	ppmgr_device.major=ret;
-	ppmgr_device.dbg_enable=0;
-	
-	ppmgr_device.angle=0;
-	
-	amlog_level(LOG_LEVEL_LOW,"ppmgr_dev major:%d\r\n",ret);
+    ppmgr_device.angle=0;
+    ppmgr_device.videoangle=0;
+    ppmgr_device.orientation=0;
+#ifdef CONFIG_POST_PROCESS_MANAGER_PPSCALER
+    ppmgr_device.ppscaler_flag = 0;
+    ppmgr_device.scale_h_start = 0;
+    ppmgr_device.scale_h_end = 0;
+    ppmgr_device.scale_v_start = 0;
+    ppmgr_device.scale_v_end = 0;
+#endif
+    amlog_level(LOG_LEVEL_LOW,"ppmgr_dev major:%d\r\n",ret);
     
     if((ppmgr_device.cla = init_ppmgr_cls())==NULL) return -1;
     ppmgr_device.dev=device_create(ppmgr_device.cla,NULL,MKDEV(ppmgr_device.major,0),NULL,ppmgr_device.name);
-	if (IS_ERR(ppmgr_device.dev)) {
-		amlog_level(LOG_LEVEL_HIGH,"create ppmgr device error\n");
-		goto unregister_dev;
-	}
+    if (IS_ERR(ppmgr_device.dev)) {
+        amlog_level(LOG_LEVEL_HIGH,"create ppmgr device error\n");
+        goto unregister_dev;
+    }
     
     if(ppmgr_buffer_init()<0) goto unregister_dev;
     //if(start_vpp_task()<0) return -1;
     
-	return 0;
+    return 0;
 	
 unregister_dev:
     class_unregister(ppmgr_device.cla);
@@ -386,15 +507,15 @@ int uninit_ppmgr_device(void)
 {
     stop_vpp_task();
     
-	if(ppmgr_device.cla)
-	{
-		if(ppmgr_device.dev)
-		device_destroy(ppmgr_device.cla, MKDEV(ppmgr_device.major, 0));
-	    	class_unregister(ppmgr_device.cla);
-	}
-	
-	unregister_chrdev(ppmgr_device.major, ppmgr_device.name);
-	return  0;
+    if(ppmgr_device.cla)
+    {
+        if(ppmgr_device.dev)
+            device_destroy(ppmgr_device.cla, MKDEV(ppmgr_device.major, 0));
+        class_unregister(ppmgr_device.cla);
+    }
+    
+    unregister_chrdev(ppmgr_device.major, ppmgr_device.name);
+    return  0;
 }
 
 /*******************************************************************
@@ -429,22 +550,21 @@ static int ppmgr_driver_probe(struct platform_device *pdev)
 
 static int ppmgr_drv_remove(struct platform_device *plat_dev)
 {
-	//struct rtc_device *rtc = platform_get_drvdata(plat_dev);
-
-	//rtc_device_unregister(rtc);
-	//device_remove_file(&plat_dev->dev, &dev_attr_irq);
+    //struct rtc_device *rtc = platform_get_drvdata(plat_dev);
+    //rtc_device_unregister(rtc);
+    //device_remove_file(&plat_dev->dev, &dev_attr_irq);
     uninit_ppmgr_device();
-	return 0;
+    return 0;
 }
 
 /* general interface for a linux driver .*/
 struct platform_driver ppmgr_drv = {
-        .probe  = ppmgr_driver_probe,
-        .remove = ppmgr_drv_remove,
-        .driver = {
-                .name = "ppmgr",
-                .owner = THIS_MODULE,
-        }
+    .probe  = ppmgr_driver_probe,
+    .remove = ppmgr_drv_remove,
+    .driver = {
+        .name = "ppmgr",
+        .owner = THIS_MODULE,
+    }
 };
 
 static int __init
@@ -452,26 +572,13 @@ ppmgr_init_module(void)
 {
     int err;
 
-   	amlog_level(LOG_LEVEL_HIGH,"ppmgr_init\n");
-	
-	if ((err = platform_driver_register(&ppmgr_drv))) {
-		return err;
-	}
-	if(ppmgr_dev0=platform_device_alloc("ppmgr",0)==NULL) {
-		err =-ENOMEM;
-		goto exit_driver_unregister;
-	}
-    
-    if((err=platform_device_add(ppmgr_dev0))==NULL)
-        goto exit_free_dev;
+    amlog_level(LOG_LEVEL_HIGH,"ppmgr_init\n");
+    if ((err = platform_driver_register(&ppmgr_drv))) {
+        return err;
+    }
+
     return err;
-
-exit_free_dev:
-	platform_device_put(ppmgr_dev0);
-
-exit_driver_unregister:
-	platform_driver_unregister(&ppmgr_drv);
-	return err;
+	
 }
 
 static void __exit

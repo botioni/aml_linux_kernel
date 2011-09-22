@@ -10,12 +10,22 @@ typedef  struct {
 	unsigned  int 		dbg_enable;
 	char* buffer_start;
 	unsigned int buffer_size;
-	int angle;
+	
+	unsigned angle;
+	unsigned orientation;
+	unsigned videoangle; 
+	
 	int bypass;
 	int disp_width;
 	int disp_height;
-
-    const vinfo_t *vinfo;
+#ifdef CONFIG_POST_PROCESS_MANAGER_PPSCALER
+	int ppscaler_flag;
+	int scale_h_start;
+	int scale_h_end;
+	int scale_v_start;
+	int scale_v_end;
+#endif
+	const vinfo_t *vinfo;
 	int left;
 	int top;
 	int width;
