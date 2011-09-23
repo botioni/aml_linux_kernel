@@ -835,7 +835,6 @@ static int act8942_i2c_probe(struct i2c_client *client,
 	act8942_dev->dev = &client->dev;
 	act8942_dev->client = client;
 
-#if 0
 	act8942_powersupply_init(act8942_dev);
 
 	retval = power_supply_register(&client->dev, &act8942_dev->bat);
@@ -863,7 +862,7 @@ static int act8942_i2c_probe(struct i2c_client *client,
 	act8942_dev->polling_timer.function = polling_func;
 	act8942_dev->polling_timer.data = act8942_dev;
     add_timer(&(act8942_dev->polling_timer));
-#endif
+
 #ifdef CONFIG_HAS_EARLYSUSPEND
 	register_early_suspend(&act8942_early_suspend);
 #endif
