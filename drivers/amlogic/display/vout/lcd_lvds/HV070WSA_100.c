@@ -61,9 +61,6 @@ void set_backlight_level(unsigned level);
 #define BL_CTL_PWM		1
 #define BL_CTL			BL_CTL_GPIO
 
-#define	BL_DIM_ANALOG	0
-#define BL_DIM_PWM		1
-#define	BL_DIM			BL_DIM_ANALOG
 
 // Define LVDS physical PREM SWING VCM REF
 static lvds_phy_control_t lcd_lvds_phy_control = 
@@ -89,11 +86,8 @@ static lcdConfig_t lcd_config =
     .height     = LCD_HEIGHT,
     .max_width  = MAX_WIDTH,
     .max_height = MAX_HEIGHT,
-	  .video_on_pixel = VIDEO_ON_PIXEL,
+	.video_on_pixel = VIDEO_ON_PIXEL,
     .video_on_line = VIDEO_ON_LINE,
-//    .pll_ctrl = 0x1021e,
-//    .pll_div = 0x18803,
-//	  .clk_ctrl = 0x1111,	//pll_sel,div_sel,vclk_sel,xd
     .pll_ctrl = 0x1021e,
     .pll_div = 0x18803,
 	.clk_ctrl = 0x1111,	//pll_sel,div_sel,vclk_sel,xd
@@ -106,11 +100,11 @@ static lcdConfig_t lcd_config =
     .pol_cntl_addr = (0x0 << LCD_CPH1_POL) |(0x1 << LCD_HS_POL) | (0x1 << LCD_VS_POL),
     .dith_cntl_addr = 0x600,
 
-	  .sth1_hs_addr = 10,
+	.sth1_hs_addr = 10,
     .sth1_he_addr = 20,
     .sth1_vs_addr = 0,
     .sth1_ve_addr = MAX_HEIGHT - 1,
-	  .stv1_hs_addr = 10,
+	.stv1_hs_addr = 10,
     .stv1_he_addr = 20,
     .stv1_vs_addr = 2,
     .stv1_ve_addr = 4,
@@ -124,12 +118,12 @@ static lcdConfig_t lcd_config =
     .screen_height = 9,
     .sync_duration_num = 60,
     .sync_duration_den = 1,
-	  .lvds_config = &lcd_lvds_config,
+	.lvds_config = &lcd_lvds_config,
     .power_on=t13_power_on,
     .power_off=t13_power_off,
     .backlight_on = power_on_backlight,
     .backlight_off = power_off_backlight,
-	  .get_bl_level = get_backlight_level,
+	.get_bl_level = get_backlight_level,
     .set_bl_level = set_backlight_level,
 };
 static struct resource lcd_resources[] = {
@@ -162,17 +156,18 @@ static void t13_setup_gama_table(lcdConfig_t *pConf)
 }
 
 #define PWM_MAX			60000   //set pwm_freq=24MHz/PWM_MAX (Base on XTAL frequence: 24MHz, 0<PWM_MAX<65535)
-#define BL_MAX_LEVEL	0x100
+#define BL_MAX_LEVEL	255
+#define BL_MIN_LEVEL	90
 void power_on_backlight(void)
 {
     msleep(20);
 	lvds_port_enable();
 	
-	msleep(100);
+	msleep(50);
 	//BL_EN: GPIOD_1(V_LED)	    
 #if (BL_CTL==BL_CTL_GPIO)	
-	WRITE_MPEG_REG(PREG_PAD_GPIO0_I, READ_MPEG_REG(PREG_PAD_GPIO0_I) & ~(1 << 3));    
-    WRITE_MPEG_REG(PREG_PAD_GPIO0_O, READ_MPEG_REG(PREG_PAD_GPIO0_O) & ~(1 << 28));
+	WRITE_MPEG_REG(PERIPHS_PIN_MUX_2, READ_MPEG_REG(PERIPHS_PIN_MUX_2) & ~(1 << 3));    
+    WRITE_MPEG_REG(PERIPHS_PIN_MUX_1, READ_MPEG_REG(PERIPHS_PIN_MUX_1) & ~(1 << 28));
     WRITE_MPEG_REG(PREG_PAD_GPIO2_EN_N, READ_MPEG_REG(PREG_PAD_GPIO2_EN_N) & ~(1 << 17));
     WRITE_MPEG_REG(PREG_PAD_GPIO2_O, READ_MPEG_REG(PREG_PAD_GPIO2_O) | (1 << 17));    
 
@@ -192,8 +187,8 @@ void power_off_backlight(void)
 	//BL_EN: GPIOD_1(V_LED)
 	    
 #if (BL_CTL==BL_CTL_GPIO)	
-	WRITE_MPEG_REG(PREG_PAD_GPIO0_I, READ_MPEG_REG(PREG_PAD_GPIO0_I) & ~(1 << 3));    
-    WRITE_MPEG_REG(PREG_PAD_GPIO0_O, READ_MPEG_REG(PREG_PAD_GPIO0_O) & ~(1 << 28));
+	WRITE_MPEG_REG(PERIPHS_PIN_MUX_2, READ_MPEG_REG(PERIPHS_PIN_MUX_2) & ~(1 << 3));    
+    WRITE_MPEG_REG(PERIPHS_PIN_MUX_1, READ_MPEG_REG(PERIPHS_PIN_MUX_1) & ~(1 << 28));
     WRITE_MPEG_REG(PREG_PAD_GPIO2_EN_N, READ_MPEG_REG(PREG_PAD_GPIO2_EN_N) & ~(1 << 17));
     WRITE_MPEG_REG(PREG_PAD_GPIO2_O, READ_MPEG_REG(PREG_PAD_GPIO2_O) & ~(1 << 17)); 
 #elif (BL_CTL==BL_CTL_PWM)
@@ -210,51 +205,51 @@ void power_off_backlight(void)
 static unsigned bl_level;
 unsigned get_backlight_level(void)
 {
-	// unsigned level=0;
-// #if (BL_DIM==BL_DIM_ANALOG)
-	// level = READ_MPEG_REG(LED_PWM_REG0) & (0xf<<0);
-	// level = level / 15 * BL_MAX_LEVEL;
-// #elif (BL_DIM==BL_DIM_PWM)
-	// level = READ_MPEG_REG(PWM_PWM_D) & (0xffff<<0);
-	// level = PWM_MAX - level;
-	// level = level / PWM_MAX * BL_MAX_LEVEL;
-// #endif	 
-	// return level;
 	return bl_level;
 }
 
 void set_backlight_level(unsigned level)
 {
-	level = level>=BL_MAX_LEVEL? BL_MAX_LEVEL:level;
-#if (BL_DIM==BL_DIM_ANALOG)
-	level = level * 15 / BL_MAX_LEVEL;
-	WRITE_MPEG_REG(LED_PWM_REG0, (READ_MPEG_REG(LED_PWM_REG0) & ~(0xf << 0)) | (level<<0));	
-#elif (BL_DIM==BL_DIM_PWM)
-	level = (level / BL_MAX_LEVEL) * PWM_MAX;
-	WRITE_MPEG_REG(PWM_PWM_D, (level << 16) | ((PWM_MAX - level) << 0));	
+	level = level>BL_MAX_LEVEL ? BL_MAX_LEVEL:(level<BL_MIN_LEVEL ? BL_MIN_LEVEL:level);		
+	printk("\n\nlcd parameter: set backlight level: %d.\n\n", level);
+	
+#if (BL_CTL==BL_CTL_GPIO)
+	WRITE_MPEG_REG(PERIPHS_PIN_MUX_3, READ_MPEG_REG(PERIPHS_PIN_MUX_3)|(1 << 25));	//GPIOC_19 set as PWM
+
+	WRITE_MPEG_REG(PWM_MISC_REG_CD, READ_MPEG_REG(PWM_MISC_REG_CD)|(1 << 15));
+	WRITE_MPEG_REG(PWM_MISC_REG_CD, READ_MPEG_REG(PWM_MISC_REG_CD)|(1 << 0));
+	WRITE_CBUS_REG_BITS(PWM_MISC_REG_CD, 0, 8, 7);	//set PWM_A_CLK_DIV 0
+	WRITE_CBUS_REG_BITS(PWM_MISC_REG_CD, 0, 4, 2);	//set PWM_A_CLK_SEL 0 use XTAL
+
+	level = level * PWM_MAX / BL_MAX_LEVEL ;	
+    WRITE_MPEG_REG(PWM_PWM_C, (level << 16) | ((PWM_MAX - level) << 0));
+#elif (BL_CTL==BL_CTL_PWM)	
+	level = level * PWM_MAX / BL_MAX_LEVEL ;	
+	WRITE_CBUS_REG_BITS(PWM_PWM_C, (PWM_MAX - level), 0, 16);  //pwm low
+    WRITE_CBUS_REG_BITS(PWM_PWM_C, level, 16, 16);  //pwm high	
 #endif	
 }
 
 static void power_on_lcd(void)
 {
 	//LCD_PWR_EN# LCD_3.0V
-    WRITE_MPEG_REG(PREG_PAD_GPIO0_EN_N, READ_MPEG_REG(PREG_PAD_GPIO0_EN_N) & ~(1 << 10));
+    WRITE_MPEG_REG(PERIPHS_PIN_MUX_0, READ_MPEG_REG(PERIPHS_PIN_MUX_0) & ~(1 << 10));
    	WRITE_MPEG_REG(PERIPHS_PIN_MUX_7, READ_MPEG_REG(PERIPHS_PIN_MUX_7) & ~(1 << 15));    
     WRITE_MPEG_REG(PREG_PAD_GPIO0_EN_N, READ_MPEG_REG(PREG_PAD_GPIO0_EN_N) & ~(1 << 27));
    	WRITE_MPEG_REG(PREG_PAD_GPIO0_O, READ_MPEG_REG(PREG_PAD_GPIO0_O) & ~(1 << 27)); 
     msleep(10);
   //LCD_BL_PWM
-	WRITE_MPEG_REG(PREG_PAD_GPIO1_EN_N, READ_MPEG_REG(PREG_PAD_GPIO1_EN_N) & ~(1 << 24));    
-    WRITE_MPEG_REG(PREG_PAD_GPIO1_EN_N, READ_MPEG_REG(PREG_PAD_GPIO1_EN_N) & ~(1 << 25));  
+	WRITE_MPEG_REG(PERIPHS_PIN_MUX_3, READ_MPEG_REG(PERIPHS_PIN_MUX_3) & ~(1 << 24));    
+    WRITE_MPEG_REG(PERIPHS_PIN_MUX_3, READ_MPEG_REG(PERIPHS_PIN_MUX_3) & ~(1 << 25));  
 	WRITE_MPEG_REG(PERIPHS_PIN_MUX_7, READ_MPEG_REG(PERIPHS_PIN_MUX_7) & ~(1 << 17));    
-    WRITE_MPEG_REG(PREG_PAD_GPIO0_EN_N, READ_MPEG_REG(PREG_PAD_GPIO0_EN_N) & ~(1 << 19));
+    WRITE_MPEG_REG(PERIPHS_PIN_MUX_0, READ_MPEG_REG(PERIPHS_PIN_MUX_0) & ~(1 << 19));
 	WRITE_MPEG_REG(PREG_PAD_GPIO2_EN_N, READ_MPEG_REG(PREG_PAD_GPIO2_EN_N) & ~(1 << 9));    
     WRITE_MPEG_REG(PREG_PAD_GPIO2_O, READ_MPEG_REG(PREG_PAD_GPIO2_O) | (1 << 9));
 	msleep(10);
 	
 	//TCH_PWR_EN
-	WRITE_MPEG_REG(PREG_PAD_GPIO1_EN_N, READ_MPEG_REG(PREG_PAD_GPIO1_EN_N) & ~(1 << 1));    
-    WRITE_MPEG_REG(PREG_PAD_GPIO0_EN_N, READ_MPEG_REG(PREG_PAD_GPIO0_EN_N) & ~(1 << 6));
+	WRITE_MPEG_REG(PERIPHS_PIN_MUX_3, READ_MPEG_REG(PERIPHS_PIN_MUX_3) & ~(1 << 1));    
+    WRITE_MPEG_REG(PERIPHS_PIN_MUX_0, READ_MPEG_REG(PERIPHS_PIN_MUX_0) & ~(1 << 6));
 	WRITE_MPEG_REG(PREG_PAD_GPIO0_EN_N, READ_MPEG_REG(PREG_PAD_GPIO0_EN_N) & ~(1 << 9));    
     WRITE_MPEG_REG(PREG_PAD_GPIO0_O, READ_MPEG_REG(PREG_PAD_GPIO0_O) & ~(1 << 9));
 	msleep(10);
@@ -263,29 +258,27 @@ static void power_on_lcd(void)
 static void power_off_lcd(void)
 {
 	//TCH_PWR_EN
-	WRITE_MPEG_REG(PREG_PAD_GPIO1_EN_N, READ_MPEG_REG(PREG_PAD_GPIO1_EN_N) & ~(1 << 1));    
-    WRITE_MPEG_REG(PREG_PAD_GPIO0_EN_N, READ_MPEG_REG(PREG_PAD_GPIO0_EN_N) & ~(1 << 6));
-	WRITE_MPEG_REG(PREG_PAD_GPIO0_EN_N, READ_MPEG_REG(PREG_PAD_GPIO0_EN_N) & ~(1 << 9));    
+	WRITE_MPEG_REG(PERIPHS_PIN_MUX_3, READ_MPEG_REG(PERIPHS_PIN_MUX_3) & ~(1 << 1));    
+    WRITE_MPEG_REG(PERIPHS_PIN_MUX_0, READ_MPEG_REG(PERIPHS_PIN_MUX_0) & ~(1 << 6));
+	WRITE_MPEG_REG(PREG_PAD_GPIO2_EN_N, READ_MPEG_REG(PREG_PAD_GPIO2_EN_N) & ~(1 << 9));    
     WRITE_MPEG_REG(PREG_PAD_GPIO0_O, READ_MPEG_REG(PREG_PAD_GPIO0_O) | (1 << 9));
 	msleep(10);
 
-  //LCD_BL_PWM
-	WRITE_MPEG_REG(PREG_PAD_GPIO1_EN_N, READ_MPEG_REG(PREG_PAD_GPIO1_EN_N) & ~(1 << 24));    
-    WRITE_MPEG_REG(PREG_PAD_GPIO1_EN_N, READ_MPEG_REG(PREG_PAD_GPIO1_EN_N) & ~(1 << 25));  
-	WRITE_MPEG_REG(PERIPHS_PIN_MUX_7, READ_MPEG_REG(PERIPHS_PIN_MUX_7) & ~(1 << 17));    
-    WRITE_MPEG_REG(PREG_PAD_GPIO0_EN_N, READ_MPEG_REG(PREG_PAD_GPIO0_EN_N) & ~(1 << 19));
+    //LCD_BL_PWM
+	WRITE_MPEG_REG(PERIPHS_PIN_MUX_3, READ_MPEG_REG(PERIPHS_PIN_MUX_3) & ~(1 << 24));    
+    WRITE_MPEG_REG(PERIPHS_PIN_MUX_3, READ_MPEG_REG(PERIPHS_PIN_MUX_3) & ~(1 << 25));  
+    WRITE_MPEG_REG(PERIPHS_PIN_MUX_7, READ_MPEG_REG(PERIPHS_PIN_MUX_7) & ~(1 << 17));    
+    WRITE_MPEG_REG(PERIPHS_PIN_MUX_0, READ_MPEG_REG(PERIPHS_PIN_MUX_0) & ~(1 << 19));
 	WRITE_MPEG_REG(PREG_PAD_GPIO2_EN_N, READ_MPEG_REG(PREG_PAD_GPIO2_EN_N) & ~(1 << 9));    
     WRITE_MPEG_REG(PREG_PAD_GPIO2_O, READ_MPEG_REG(PREG_PAD_GPIO2_O) & ~(1 << 9));
 	msleep(10);
 	
 	//LCD_PWR_EN# LCD_3.0V
-    WRITE_MPEG_REG(PREG_PAD_GPIO0_EN_N, READ_MPEG_REG(PREG_PAD_GPIO0_EN_N) & ~(1 << 10));
+    WRITE_MPEG_REG(PERIPHS_PIN_MUX_0, READ_MPEG_REG(PERIPHS_PIN_MUX_0) & ~(1 << 10));
    	WRITE_MPEG_REG(PERIPHS_PIN_MUX_7, READ_MPEG_REG(PERIPHS_PIN_MUX_7) & ~(1 << 15));    
     WRITE_MPEG_REG(PREG_PAD_GPIO0_EN_N, READ_MPEG_REG(PREG_PAD_GPIO0_EN_N) & ~(1 << 27));
    	WRITE_MPEG_REG(PREG_PAD_GPIO0_O, READ_MPEG_REG(PREG_PAD_GPIO0_O) | (1 << 27)); 
-    msleep(10);
-	
-
+    msleep(10);	
 }
 
 static void lvds_port_enable(void)
@@ -307,7 +300,7 @@ static void t13_power_on(void)
 {
     video_dac_disable();
 	power_on_lcd();	
-	power_on_backlight();   //disable when required power sequence.
+	//power_on_backlight();   //disable when required power sequence.
     printk("\n\nt13_power_on...\n\n");
 }
 static void t13_power_off(void)
@@ -320,7 +313,7 @@ static void t13_io_init(void)
 {
     printk("\n\nT13 LCD Init.\n\n");   
     power_on_lcd();	
-	power_on_backlight();	//disable when required power sequence.
+	//power_on_backlight();	//disable when required power sequence.
 }
 
 static struct platform_device lcd_dev = {

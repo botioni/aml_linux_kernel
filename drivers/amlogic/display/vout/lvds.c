@@ -433,7 +433,7 @@ static void init_lvds_phy(lcdConfig_t *pConf)
     WRITE_MPEG_REG(LVDS_PHY_CNTL7,0xcccc);
     WRITE_MPEG_REG(LVDS_PHY_CNTL8,0xcccc);
 
-	WRITE_MPEG_REG(LVDS_PHY_CNTL4, READ_MPEG_REG(LVDS_PHY_CNTL4) & ~(0x7f<<0));  //disable LVDS phy port. wait for power on sequence.
+	//WRITE_MPEG_REG(LVDS_PHY_CNTL4, READ_MPEG_REG(LVDS_PHY_CNTL4) & ~(0x7f<<0));  //disable LVDS phy port. wait for power on sequence.
 }
 
 static inline void _init_tvenc(lcdConfig_t *pConf)
@@ -510,8 +510,8 @@ static void _lcd_module_enable(void)
 	BUG_ON(pDev==NULL);
     pDev->conf.power_on?pDev->conf.power_on():0;
     _init_tvenc(&pDev->conf);    		//ENCL
-    	_init_tcon_lvds(&pDev->conf);	//L_TCON
-    	_enable_vsync_interrupt();
+    _init_tcon_lvds(&pDev->conf);	//L_TCON
+    _enable_vsync_interrupt();
 }
 
 static const vinfo_t *lcd_get_current_info(void)
@@ -525,7 +525,7 @@ static int lcd_set_current_vmode(vmode_t mode)
         return -EINVAL;
     WRITE_MPEG_REG(VPP_POSTBLEND_H_SIZE, pDev->lcd_info.width);
     _lcd_module_enable();
-    if (VMODE_INIT_NULL != pDev->lcd_info.mode)
+    if (VMODE_INIT_NULL == pDev->lcd_info.mode)
         pDev->lcd_info.mode = VMODE_LCD;
     else
         _enable_backlight(BL_MAX_LEVEL);

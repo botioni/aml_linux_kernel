@@ -699,19 +699,19 @@ static struct aml_m3_platform_data aml_m3_pdata = {
 };
 #endif
 
-#ifdef CONFIG_TOUCHSCREEN_GOODIX_MALATA
-#include <linux/i2c/goodix_touch_malata.h>
+#ifdef CONFIG_GOODIX_GT8XX_CAPACITIVE_TOUCHSCREEN
+#include <linux/goodix_touch_malata.h>
 
 #define GPIO_GOODIX_PENIRQ ((GPIOA_bank_bit0_27(16)<<16) |GPIOA_bit_bit0_27(16)) 
 #define GPIO_GOODIX_PENIRQ_IDX (GPIOA_IDX + 16)
 
 #define GPIO_GOODIX_PWR ((GPIOA_bank_bit0_27(9)<<16) |GPIOA_bit_bit0_27(9)) 
 #define GPIO_GOODIX_RST ((GPIOC_bank_bit0_15(3)<<16) |GPIOC_bit_bit0_15(3)) 
-
-static struct  goodix_platform_data  goodix_touch_info = {
-        .reset = GPIO_GOODIX_RST,
-        .power_control = GPIO_GOODIX_PWR,
-};
+//
+//static struct  goodix_platform_data  goodix_touch_info = {
+//        .reset = GPIO_GOODIX_RST,
+//        .power_control = GPIO_GOODIX_PWR,
+//};
 
 #endif
 
@@ -782,6 +782,98 @@ static  struct platform_device aml_rtc_device = {
             .id               = -1,
     };
 #endif
+
+
+
+#if defined(CONFIG_VIDEO_AMLOGIC_CAPTURE_GT2005)
+//#include <media/amlogic/aml_camera.h>
+
+static int gt2005_v4l2_init(void)
+{
+    udelay(1000);
+    WRITE_CBUS_REG(HHI_ETH_CLK_CNTL,0x30f);// 24M XTAL
+    WRITE_CBUS_REG(HHI_DEMOD_PLL_CNTL,0x232);// 24M XTAL
+	udelay(1000);
+
+    //eth_set_pinmux(ETH_BANK0_GPIOC3_C12,ETH_CLK_OUT_GPIOC12_REG3_1, 1);
+   #ifdef CONFIG_SN7325
+	printk( "amlogic camera driver: init CONFIG_SN7325. \n");
+	configIO(1, 0);
+	//setIO_level(1, 0, 1);//30m poweer_disable
+	//1:PP, 0:Level, 2:ppnum
+	setIO_level(1, 0, 1);//200m poweer_disable
+	//setIO_level(1, 1, 0);//30m pwd disable
+	setIO_level(1, 0, 6);//200m pwd low
+	configIO(0, 0);//OD
+	//setIO_level(0, 0, 3);//30m reset low
+	setIO_level(0, 0, 2);//200m reset low
+	configIO(1, 0);//PP
+	msleep(10);
+	setIO_level(1, 1, 1);//200m poweer_enable
+	msleep(10);
+	configIO(0, 0);
+	setIO_level(0, 1, 2);//200m reset high
+	
+	msleep(10);
+	configIO(1, 0);
+	setIO_level(1, 1, 6);//200m pwd high
+	//configIO(1, 0);
+	msleep(20);
+    
+    #endif
+
+}
+static int gt2005_v4l2_uninit(void)
+{
+   #ifdef CONFIG_SN7325
+	printk( "amlogic camera driver: uninit gt2005_v4l2_uninit. \n");
+	configIO(1, 0);
+	setIO_level(1, 0, 1);//200m poweer_disable
+	setIO_level(1, 0, 6);//200m pwd low
+	configIO(0, 0);
+	setIO_level(0, 0, 2);//200m reset low
+	msleep(20); 
+    #endif
+
+}
+static int gt2005_v4l2_disable(void)
+{
+   #if 0
+	printk( "amlogic camera driver: gt2005_v4l2_disable. \n");
+	configIO(1, 0);
+	setIO_level(1, 0, 6);//200m pwd low
+	msleep(20); 
+    #endif
+
+}
+
+static void gt2005_v4l2_early_suspend(void)
+{
+#if  defined(CONFIG_TCA6424)||defined(CONFIG_SN7325)
+	configIO(1, 0);
+	setIO_level(1, 0, 1);
+#endif	
+}
+
+static void gt2005_v4l2_late_resume(void)
+{
+#if  defined(CONFIG_TCA6424)||defined(CONFIG_SN7325)
+	configIO(1, 0);
+	setIO_level(1, 1, 1);
+#endif	
+}
+
+aml_plat_cam_data_t video_gt2005_data = {
+	.name="video-gt2005",
+	.video_nr=0,
+	.device_init= gt2005_v4l2_init,
+	.device_uninit=gt2005_v4l2_uninit,
+	.early_suspend = gt2005_v4l2_early_suspend,
+	.late_resume = gt2005_v4l2_late_resume,
+	.device_disable=gt2005_v4l2_disable,
+};
+#endif /* VIDEO_AMLOGIC_CAPTURE_GT2005 */
+
 
 #ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE_GC0308
 int gc0308_init(void)
@@ -2063,6 +2155,11 @@ static struct platform_device aml_nand_device = {
 
 #if defined(CONFIG_AMLOGIC_BACKLIGHT)
 
+extern void power_on_backlight(void);
+extern void power_off_backlight(void);
+extern unsigned get_backlight_level(void);
+extern void set_backlight_level(unsigned level);
+
 #define PWM_TCNT        (600-1)
 #define PWM_MAX_VAL    (420)
 
@@ -2152,11 +2249,10 @@ static void aml_8726m_power_off_bl(void)
 
 struct aml_bl_platform_data aml_bl_platform =
 {
-    .bl_init = aml_8726m_bl_init,
-    .power_on_bl = aml_8726m_power_on_bl,
-    .power_off_bl = aml_8726m_power_off_bl,
-    .get_bl_level = aml_8726m_get_bl_level,
-    .set_bl_level = aml_8726m_set_bl_level,
+    .power_on_bl = power_on_backlight,
+    .power_off_bl = power_off_backlight,
+    .get_bl_level = get_backlight_level,
+    .set_bl_level = set_backlight_level,
 };
 
 static struct platform_device aml_bl_device = {
@@ -2419,11 +2515,19 @@ static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
     },
 #endif
 
-#ifdef CONFIG_TOUCHSCREEN_GOODIX_MALATA
+#ifdef CONFIG_GOODIX_GT8XX_CAPACITIVE_TOUCHSCREEN
     {
-        I2C_BOARD_INFO("Goodix-TS", 0x5c),
-        .irq = GPIO_GOODIX_PENIRQ,
-        .platform_data = &goodix_touch_info,
+        I2C_BOARD_INFO(GOODIX_I2C_NAME, GOODIX_I2C_ADDR),
+//        .irq = GPIO_GOODIX_PENIRQ,
+//        .platform_data = &goodix_touch_info,
+    },
+#endif
+
+#if CONFIG_VIDEO_AMLOGIC_CAPTURE_GT2005
+    {
+    	/*gt2005 i2c address is 0x78/0x79*/
+    	I2C_BOARD_INFO("gt2005_i2c",  0x78 >> 1 ),
+    	.platform_data = (void *)&video_gt2005_data
     },
 #endif
 
@@ -2602,7 +2706,7 @@ static __init void m1_init_machine(void)
     device_clk_setting();
     device_pinmux_init();
 
-#ifdef CONFIG_TOUCHSCREEN_GOODIX_MALATA
+#ifdef CONFIG_GOODIX_GT8XX_CAPACITIVE_TOUCHSCREEN
 	gpio_direction_output(GPIO_GOODIX_PWR, 0);
 	msleep(200);
 	gpio_direction_output(GPIO_GOODIX_RST, 0);
@@ -2611,7 +2715,7 @@ static __init void m1_init_machine(void)
     /* set input mode */
     gpio_direction_input(GPIO_GOODIX_PENIRQ);
     /* set gpio interrupt #0 source=GPIOA_16, and triggered by falling edge(=1) */
-    gpio_enable_edge_int(GPIO_GOODIX_PENIRQ_IDX, 1, 0);
+    gpio_enable_edge_int(GPIO_GOODIX_PENIRQ_IDX, 1, INT_GPIO_2-INT_GPIO_0);
         
 #endif
 
