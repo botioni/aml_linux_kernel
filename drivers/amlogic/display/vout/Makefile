@@ -45,6 +45,8 @@ obj-$(CONFIG_AML_TCON_G7)  += lcd_ttl/g7.o
 
 obj-$(CONFIG_AML_TCON_A18)  += lcd_ttl/a18.o
 
+obj-$(CONFIG_AML_TCON_S7)  += lcd_ttl/s7.o
+
 obj-$(CONFIG_AML_TCON_A19)  += lcd_ttl/a19.o
 
 obj-$(CONFIG_AML_TCON_R10)  += lcd_ttl/r10.o

@@ -150,11 +150,19 @@ config AML_TCON_REFB17
 	depends on  AM_LCD_TTL_OUTPUT
 	help  
 		T13 LCD panel module	
+		
 config AML_TCON_P10
 	tristate "P10 panel driver"
 	depends on  AM_LCD_TTL_OUTPUT
 	help  
 		P10 LCD panel module
+		
+config AML_TCON_S7
+	tristate "S7 panel driver"
+	depends on  AM_LCD_TTL_OUTPUT
+	help  
+		S7 LCD panel module		
+		
 config AML_TCON_Y7
 	tristate "Y7 panel driver"
 	depends on  AM_LCD_TTL_OUTPUT
