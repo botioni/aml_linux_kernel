@@ -304,4 +304,55 @@ config SDIO_TI_WIFI_WGT7310
 	  This module adds support for wireless adapters based on
 	  Ti wgt7310 chipset.
 
+config SDIO_DHD_CDC_WIFI_4319_MODULE
+	tristate "Broadcom 4319 wireless cards support"
+	depends on SD_MMC
+	select WIRELESS_EXT
+	select WEXT_PRIV
+	---help---
+	  This module adds support for wireless adapters based on
+	  Broadcom 4319 chipset.
+
+	  
+config SDIO_DHD_CDC_WIFI_4329_MODULE
+	tristate "Broadcom 4329 wireless cards support"
+	depends on SD_MMC
+	select WIRELESS_EXT
+	select WEXT_PRIV
+	---help---
+	  This module adds support for wireless adapters based on
+	  Broadcom 4329 chipset.
+
+config BCM4329_WIFI_CONTROL_FUNC
+	bool "Use bcm4329_wlan device"
+	depends on SDIO_DHD_CDC_WIFI_4329_MODULE
+	default n
+	---help---
+	   Use this option to get various parameters from architecture specific
+	   bcm4329_wlan platform device. Say n if unsure.
+
+#if BCM4329_WIFI_CONTROL_FUNC
+
+#config BCM4329_DHD_USE_STATIC_BUF
+#	bool "Use static buffer"
+#	depends on SDIO_DHD_CDC_WIFI_4329_MODULE
+#	default n
+#	---help---
+#	   Use static buffer from kernel heap allocated during bcm4329_wlan
+#	   platform device creation.
+
+config BCM4329_HW_OOB
+	bool "Use out of band interrupt"
+	depends on SDIO_DHD_CDC_WIFI_4329_MODULE
+	default n
+	---help---
+	   Use out of band interrupt for wake on wireless.
+
+config BCM4329_OOB_INTR_ONLY
+	bool "Use out of band interrupt only"
+	depends on SDIO_DHD_CDC_WIFI_4329_MODULE
+	default n
+	---help---
+	   Use out of band interrupt for all interrupts(including SDIO interrupts).
+	      
 endmenu

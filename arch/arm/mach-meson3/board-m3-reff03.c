@@ -127,6 +127,14 @@
 #include <linux/efuse.h>
 #endif
 
+#ifdef CONFIG_TOUCHSCREEN_IT7260
+#define TOUCHSCREEN_PIN_INIT
+#endif
+
+#ifdef CONFIG_TOUCHSCREEN_ZINITIX
+#define TOUCHSCREEN_PIN_INIT
+#endif
+
 #if defined(CONFIG_JPEGLOGO)
 static struct resource jpeglogo_resources[] = {
     [0] = {
@@ -282,6 +290,17 @@ static int sn7325_pwr_rst(void)
 
 static struct sn7325_platform_data sn7325_pdata = {
     .pwr_rst = &sn7325_pwr_rst,
+};
+#endif
+
+#ifdef CONFIG_SENSORS_LIS3DH
+static struct lis3dh_platform_data lis3dh_acc_data = {
+	.axis_map_x = 1,
+	.axis_map_y = 1,
+	.axis_map_z = 1,
+	.negate_x = 0,
+	.negate_y = 0,
+	.negate_z = 0,
 };
 #endif
 
@@ -589,45 +608,45 @@ void inand_extern_init(void)
 static struct mtd_partition eMMc_partition_info[] = 
 {
 	{
+		.name = "logo",
+		.offset = SZ_1M,
+		.size = 3*SZ_1M,
+	},
+	{
 		.name = "aml_logo",
-		.offset = 0*SZ_1M,
-		.size = 4*SZ_1M,
+		.offset = 4*SZ_1M,
+		.size = 3*SZ_1M,
 	},
 	{
 		.name = "recovery",
-		.offset = 4*SZ_1M,
-		.size = 32*SZ_1M,
+		.offset = 7*SZ_1M,
+		.size = 5*SZ_1M,
 	},
 	{
 		.name = "boot",
-		.offset = 36*SZ_1M,
-		.size = 32*SZ_1M,
+		.offset = 12*SZ_1M,
+		.size = 4*SZ_1M,
 	},
 	{
 		.name = "system",
-		.offset = 68*SZ_1M,
-		.size = 220*SZ_1M,
+		.offset = 16*SZ_1M,
+		.size = 256*SZ_1M,
 	},
 	{
 		.name = "cache",
-		.offset = 288*SZ_1M,
-		.size = 128*SZ_1M,
+		.offset = 272*SZ_1M,
+		.size = 64*SZ_1M,
 	},
 	{
 		.name = "userdata",
-		.offset = 416*SZ_1M,
-		.size = 300*SZ_1M,
-	},
-	{
-		.name = "SNS",
-		.offset = 716*SZ_1M,
-		.size = 310*SZ_1M,
-	},
-	{
-		.name = "media",
-		.offset = MTDPART_OFS_APPEND,
-		.size = MTDPART_SIZ_FULL,
-	},
+		.offset = 336*SZ_1M,
+		.size = 1024*SZ_1M,
+	}	
+//	{
+//		.name = "userdata",
+//		.offset = MTDPART_OFS_APPEND,
+//		.size = MTDPART_SIZ_FULL,
+//	},
 };
 
 static struct aml_card_info  amlogic_card_info[] = {
@@ -784,27 +803,13 @@ static struct itk_platform_data itk_pdata = {
 };
 #endif
 
-#ifdef CONFIG_TOUCHSCREEN_IT7260
+#ifdef TOUCHSCREEN_PIN_INIT
 #include <linux/i2c/aml_i2c_ts.h>       // Define general TP I2C platform data.
 
 #define GPIO_TOUCH_INT_PIN ((GPIOA_bank_bit0_27(16)<<16) | GPIOA_bit_bit0_27(16))
 #define GPIO_TOUCH_RST_PIN ((GPIOC_bank_bit0_15(2)<<16) | GPIOC_bit_bit0_15(2))
 #define GPIO_TOUCH_OFF_PIN ((GPIOC_bank_bit0_15(3)<<16) | GPIOC_bit_bit0_15(3))
 #define GPIO_TOUCH_INT INT_GPIO_0
-
-static int i2c_ts_init_irq(void)
-{
-    /* set input mode */
-    gpio_direction_input(GPIO_TOUCH_INT_PIN);
-    /* set gpio interrupt #0 source=GPIOD_24, and triggered by falling edge(=1) */
-    gpio_enable_edge_int(gpio_to_idx(GPIO_TOUCH_INT_PIN), 1, GPIO_TOUCH_INT - INT_GPIO_0);
-
-    return 0;
-}
-
-static struct amli2cts_platform_data i2c_ts_pdata = {
-    .init_irq = &i2c_ts_init_irq,
-};
 
 //
 // FUNCTION NAME.
@@ -841,10 +846,20 @@ static int __init i2c_ts_power_on_sequence(void)
     gpio_set_value(GPIO_TOUCH_INT_PIN, 1); // Touch INT pull high.
     gpio_direction_input(GPIO_TOUCH_INT_PIN);
 
+    mdelay(500);                        // Must delay 500ms for Sain TP.
+
+    /* set input mode */
+    gpio_direction_input(GPIO_TOUCH_INT_PIN);
+    /* set gpio interrupt #0 source=GPIOD_24, and triggered by falling edge(=1) */
+    gpio_enable_level_int(gpio_to_idx(GPIO_TOUCH_INT_PIN), 1, GPIO_TOUCH_INT - INT_GPIO_0);
+    //gpio_enable_edge_int(gpio_to_idx(GPIO_TOUCH_INT_PIN), 1, GPIO_TOUCH_INT - INT_GPIO_0);
+
     return 0;
 }
 
 #endif
+
+
 #ifdef CONFIG_ANDROID_PMEM
 static struct android_pmem_platform_data pmem_data =
 {
@@ -1797,7 +1812,7 @@ static struct aml_m1_nand_platform aml_2kpage128kblocknand_platform = {
     .page_size = 2048,
     .spare_size=64,
     .erase_size= 128*1024,
-    .bch_mode=1,            //BCH8
+    .bch_mode=1,//BCH8
     .encode_size=528,
     .timing_mode=5,
     .ce_num=1,
@@ -1810,9 +1825,9 @@ static struct aml_m1_nand_platform aml_2kpage128kblocknand_platform = {
 /*static struct aml_m1_nand_platform aml_Micron4GBABAnand_platform = 
 {
     .page_size=2048*2,
-    .spare_size=224,       //for micron ABA 4GB
+    .spare_size=224,//for micron ABA 4GB
     .erase_size=1024*1024,
-    .bch_mode=3,        //BCH16
+    .bch_mode=3,//BCH16
     .encode_size=540,
     .timing_mode=5,
     .onfi_mode=1,
@@ -1867,6 +1882,7 @@ static struct platform_device aml_nand_device = {
 		.size = 32*1024*1024,
 	},
 };*/
+
 
 static struct mtd_partition multi_partition_info[] = 
 {
@@ -1970,99 +1986,17 @@ static struct platform_device aml_nand_device = {
 #endif
 
 #if defined(CONFIG_AMLOGIC_BACKLIGHT)
-#define PWM_TCNT        (600-1)
-#define PWM_MAX_VAL    (420)
-
-static void aml_8726m_bl_init(void)
-{
-    SET_CBUS_REG_MASK(PWM_MISC_REG_AB, (1 << 0));
-    SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<31));
-    printk("\n\nBacklight init.\n\n");
-}
-static unsigned bl_level;
-static unsigned aml_8726m_get_bl_level(void)
-{
-    return bl_level;
-}
-
-#define BL_MAX_LEVEL 60000
-static void aml_8726m_set_bl_level(unsigned level)
-{
-	/*
-    unsigned cs_level, hi, low;
-    if(level < 20){
-        cs_level = 0;
-    }
-    else if (level < 30)
-    {
-        cs_level = 1750;
-    }
-    else if (level >= 30 && level < 256)
-    {
-        cs_level = (level - 31) * 260 + 1760;
-    }
-    else
-        cs_level = BL_MAX_LEVEL;
-    
-    hi = cs_level;
-    low = BL_MAX_LEVEL - hi;
-
-    WRITE_CBUS_REG_BITS(PWM_PWM_A,low,0,16);  //low
-    WRITE_CBUS_REG_BITS(PWM_PWM_A,hi,16,16);  //hi
-    */
-    unsigned cs_level;
-    if (level < 10)
-    {
-        cs_level = 15;
-    }
-    else if (level < 30)
-    {
-        cs_level = 14;
-    }
-    else if (level >=30 && level < 256)
-    {
-        cs_level = 13-((level - 30)/28);
-    }
-    else
-        cs_level = 3;
-
-    WRITE_CBUS_REG_BITS(LED_PWM_REG0, cs_level, 0, 4);
-}
-
-static void aml_8726m_power_on_bl(void)
-{
-    msleep(100);
-    SET_CBUS_REG_MASK(PWM_MISC_REG_AB, (1 << 0));
-    msleep(100);
-    SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<31));
-    msleep(100);
-    //EIO -> OD4: 1
-#ifdef CONFIG_SN7325
-    configIO(0, 0);
-    setIO_level(0, 1, 4);
-#endif
-}
-
-static void aml_8726m_power_off_bl(void)
-{
-    //EIO -> OD4: 0
-#ifdef CONFIG_SN7325
-    configIO(0, 0);
-    setIO_level(0, 0, 4);
-#endif
-    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<31));
-    CLEAR_CBUS_REG_MASK(PWM_MISC_REG_AB, (1 << 0));
-    //set_gpio_val(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), 0);
-    //set_gpio_mode(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), GPIO_OUTPUT_MODE);
-}
+extern void power_on_backlight(void);
+extern void power_off_backlight(void);
+extern unsigned get_backlight_level(void);
+extern void set_backlight_level(unsigned level);
 
 struct aml_bl_platform_data aml_bl_platform =
-{
-    .bl_init = aml_8726m_bl_init,
-    .power_on_bl = aml_8726m_power_on_bl,
-    .power_off_bl = aml_8726m_power_off_bl,
-    .get_bl_level = aml_8726m_get_bl_level,
-    .set_bl_level = aml_8726m_set_bl_level,
+{    
+    .power_on_bl = power_on_backlight,
+    .power_off_bl = power_off_backlight,
+    .get_bl_level = get_backlight_level,
+    .set_bl_level = set_backlight_level,
 };
 
 static struct platform_device aml_bl_device = {
@@ -2416,16 +2350,23 @@ static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
 #ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE_GC0308
 	{
         /*gc0308 i2c address is 0x42/0x43*/
-		I2C_BOARD_INFO("gc0308_i2c",  0x42 >> 1),
+		I2C_BOARD_INFO("gc0308_i2c", 0x42 >> 1),
 		.platform_data = (void *)&video_gc0308_data,
 	},
 #endif
+#if 1
 #ifdef CONFIG_TOUCHSCREEN_IT7260
     {
         I2C_BOARD_INFO("IT7260", 0x46),
         .irq = GPIO_TOUCH_INT,
-        .platform_data = (void *) &i2c_ts_pdata,
     },
+#endif
+#ifdef CONFIG_TOUCHSCREEN_ZINITIX
+    {
+        I2C_BOARD_INFO("zinitix_touch", 0x20),
+        .irq = GPIO_TOUCH_INT,
+    },
+#endif
 #endif
 };
 
@@ -2437,7 +2378,8 @@ static struct i2c_board_info __initdata aml_i2c_bus_info_1[] = {
 #endif
 #ifdef CONFIG_SENSORS_LIS3DH
 	{
-		I2C_BOARD_INFO("lis3dh", 0x0C),
+        I2C_BOARD_INFO("lis3dh", 0x0C),
+        //.platform_data = (void *)&lis3dh_acc_data,
 	},
 #endif
 #ifdef CONFIG_SENSORS_CWGD
@@ -2523,6 +2465,9 @@ static void __init device_pinmux_init(void )
 #endif
     set_audio_pinmux(AUDIO_OUT_TEST_N);
     //set_audio_pinmux(AUDIO_IN_JTAG);
+#ifdef CONFIG_SENSORS_CWGD
+    //cwgd_init_irq();
+#endif
 #ifdef CONFIG_SIX_AXIS_SENSOR_MPU3050
     mpu3050_init_irq();
 #endif
@@ -2599,14 +2544,14 @@ static __init void m1_init_machine(void)
 {
     meson_cache_init();
 #ifdef CONFIG_AML_SUSPEND
-		extern int (*pm_power_suspend)(void);
-		pm_power_suspend = meson_power_suspend;
-#endif /*CONFIG_AML_SUSPEND*/    
+    extern int (*pm_power_suspend)(void);
+    pm_power_suspend = meson_power_suspend;
+#endif /*CONFIG_AML_SUSPEND*/
     LED_PWM_REG0_init();
     power_hold();
-    pm_power_off = power_off;		//Elvis fool
+    pm_power_off = power_off;//Elvis fool
     device_clk_setting();
-#ifdef CONFIG_TOUCHSCREEN_IT7260
+#ifdef TOUCHSCREEN_PIN_INIT
     i2c_ts_power_on_sequence();
 #endif
     device_pinmux_init();
