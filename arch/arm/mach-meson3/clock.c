@@ -393,6 +393,7 @@ static int clk_set_rate_a9_clk(struct clk *clk, unsigned long rate)
         return -1;
     }
     
+    local_irq_save(flags);
     CLEAR_CBUS_REG_MASK(HHI_SYS_CPU_CLK_CNTL, 1<<7); // cpu use xtal
     if (r1!=pll_seed){
         ret = father_clk->set_rate(father_clk, pll_seed);
@@ -405,15 +406,15 @@ static int clk_set_rate_a9_clk(struct clk *clk, unsigned long rate)
     ratio = pll_seed / cpu_freq_table[i];
     clk->rate = rate;
 
-    local_irq_save(flags);
     WRITE_MPEG_REG(HHI_SYS_CPU_CLK_CNTL, // A9 clk set to system clock/2
                    (1 << 0) |  // 1 - sys pll clk
                    ((ratio < 4 ? (ratio - 1) : 3) << 2) | // sys pll div 2
                    (1 << 4) |  // APB_CLK_ENABLE
                    (1 << 5) |  // AT_CLK_ENABLE
-                   (1 << 7) |  // Connect A9 to the PLL divider output
+                   (0 << 7) |  // Connect A9 to the PLL divider output
                    ((ratio < 3 ? 0 : (ratio / 2) - 1) << 8));
-    udelay(100);
+    udelay(10);
+    SET_CBUS_REG_MASK(HHI_SYS_CPU_CLK_CNTL, 1<<7);
 //    clk_a9 = clk_util_clk_msr(CTS_A9_CLK);
     local_irq_restore(flags);
 //    printk("********%s: clk_util_clk_msr(CTS_A9_CLK %d) = %dMHz\n", __FUNCTION__, rate, clk_a9);
@@ -735,8 +736,8 @@ static int cpu_clk_setting(unsigned long cpu_freq)
                    ((ratio < 3 ? 0 : (ratio / 2) - 1) << 8));
         ret = ratio;
     }
-    SET_CBUS_REG_MASK(HHI_SYS_CPU_CLK_CNTL, 1<<7); // cpu use sys pll
     udelay(10);
+    SET_CBUS_REG_MASK(HHI_SYS_CPU_CLK_CNTL, 1<<7); // cpu use sys pll
     lock = 0;
     for (i = 0;i < 32;i++){
         clk = clk_util_clk_msr(CTS_A9_CLK)*1000000;
