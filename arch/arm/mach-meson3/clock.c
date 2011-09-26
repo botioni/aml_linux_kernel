@@ -30,8 +30,6 @@ static unsigned long __initdata init_clock = CONFIG_INIT_A9_CLOCK;
 static unsigned long __initdata init_clock = 0;
 #endif
 
-#define MAX_CPU_FREQ 768000000
-
 // -----------------------------------------
 // clk_util_clk_msr
 // -----------------------------------------
@@ -359,66 +357,32 @@ static int get_best_ratio_sys_pll(uint min_ratio, uint max_ratio, uint min_freq,
 	return 1;
 }
 
-static unsigned pll_seed = MAX_CPU_FREQ;
-static unsigned cpu_freq_table[4]={
-    0,
-    MAX_CPU_FREQ/4,
-    MAX_CPU_FREQ/2,
-    MAX_CPU_FREQ
-};
 
 static int clk_set_rate_a9_clk(struct clk *clk, unsigned long rate)
 {
     unsigned long r = rate;
     struct clk *father_clk;
-    unsigned long r1;
-    int ret, i;
-    uint ratio = 1;
+    int ret;
     unsigned long flags;
     unsigned int clk_a9 = 0;
 
-    if ((r==0)||(r>pll_seed))
-        return -1;
-    for (i=1;i<4;i++)
-        if (r<=cpu_freq_table[i])
-            break;
-    if ((clk->rate<=cpu_freq_table[i])&&(clk->rate>cpu_freq_table[i-1])){
-        clk->rate = rate;
-        return 0;
-    } 
-    r = cpu_freq_table[i];
     father_clk = clk_get_sys("clk_sys_pll", NULL);
-    r1 = clk_get_rate(father_clk);
-    if (!r1) {
-        return -1;
-    }
-    
     local_irq_save(flags);
     CLEAR_CBUS_REG_MASK(HHI_SYS_CPU_CLK_CNTL, 1<<7); // cpu use xtal
-    if (r1!=pll_seed){
-        ret = father_clk->set_rate(father_clk, pll_seed);
-        if (ret < 0) {
-            SET_CBUS_REG_MASK(HHI_SYS_CPU_CLK_CNTL, 1<<7); // cpu use sys pll
-            return ret;
-        }
-    }
-
-    ratio = pll_seed / cpu_freq_table[i];
-    clk->rate = rate;
-
-    WRITE_MPEG_REG(HHI_SYS_CPU_CLK_CNTL, // A9 clk set to system clock/2
+    ret = father_clk->set_rate(father_clk, rate);
+    WRITE_MPEG_REG(HHI_SYS_CPU_CLK_CNTL,
                    (1 << 0) |  // 1 - sys pll clk
-                   ((ratio < 4 ? (ratio - 1) : 3) << 2) | // sys pll div 2
+                   (0 << 2) |  // sys pll div 1
                    (1 << 4) |  // APB_CLK_ENABLE
                    (1 << 5) |  // AT_CLK_ENABLE
-                   (0 << 7) |  // Connect A9 to the PLL divider output
-                   ((ratio < 3 ? 0 : (ratio / 2) - 1) << 8));
-    udelay(10);
-    SET_CBUS_REG_MASK(HHI_SYS_CPU_CLK_CNTL, 1<<7);
-//    clk_a9 = clk_util_clk_msr(CTS_A9_CLK);
+                   (0 << 7) |  // not connect A9 to the PLL divider output
+                   (0 << 8)); 
+    clk_a9 = READ_MPEG_REG(HHI_SYS_CPU_CLK_CNTL); // read cbus for a short delay
+    SET_CBUS_REG_MASK(HHI_SYS_CPU_CLK_CNTL, 1<<7); // cpu use sys pll
+    clk->rate = rate;
     local_irq_restore(flags);
-//    printk("********%s: clk_util_clk_msr(CTS_A9_CLK %d) = %dMHz\n", __FUNCTION__, rate, clk_a9);
-    printk(KERN_INFO "a9clk=%d pll=%d ratio=%d\n", rate, r1, ratio); 
+//    clk_a9 = clk_util_clk_msr(CTS_A9_CLK);
+//    printk(KERN_INFO "(CTS_A9_CLK %d) = %dMHz\n", rate, clk_a9);
     return 0;
 }
 
@@ -431,8 +395,8 @@ static struct clk xtal_clk = {
 
 static struct clk clk_sys_pll = {
     .name       = "clk_sys_pll",
-    .rate       = 800000000,
-    .min        = 600000000,
+    .rate       =  800000000,
+    .min        =  200000000,
     .max        = 1600000000,
     .set_rate   = clk_set_rate_sys_pll,
 };
@@ -461,9 +425,9 @@ static struct clk clk81 = {
 
 static struct clk a9_clk = {
     .name       = "a9_clk",
-    .rate       = MAX_CPU_FREQ,
-    .min        = MAX_CPU_FREQ/4,
-    .max        = MAX_CPU_FREQ,
+    .rate       = 600000000,
+    .min        = 200000000,
+    .max        = 800000000,
     .set_rate   = clk_set_rate_a9_clk,
 };
 
@@ -711,42 +675,26 @@ static struct clk_lookup lookups[] = {
 
 static int cpu_clk_setting(unsigned long cpu_freq)
 {
-    unsigned long out_freq = cpu_freq;
-    unsigned od = 0;
-    unsigned divider = 0;
-    unsigned ratio = 0;
-    int i, ret = -1, lock;
+    int ret = 0;
     unsigned long clk;
+    unsigned long flags;
  
-    if ((out_freq==0)||(out_freq>pll_seed))
-        return -1;
-    for (i=1;i<4;i++)
-        if (out_freq<=cpu_freq_table[i])
-            break;
-    out_freq = cpu_freq_table[i];
-    ratio = pll_seed / out_freq;
+    local_irq_save(flags);
     CLEAR_CBUS_REG_MASK(HHI_SYS_CPU_CLK_CNTL, 1<<7); // cpu use xtal
-    ret = sys_clkpll_setting(0, pll_seed);
-    if (ret == 0) {
-        WRITE_MPEG_REG(HHI_SYS_CPU_CLK_CNTL,
+    ret = sys_clkpll_setting(0, cpu_freq); 
+    WRITE_MPEG_REG(HHI_SYS_CPU_CLK_CNTL,
                    (1 << 0) |  // 1 - sys pll clk
-                   ((ratio < 4 ? (ratio - 1) : 3) << 2) | // sys pll divider
+                   (0 << 2) |  // sys pll div 1
                    (1 << 4) |  // APB_CLK_ENABLE
                    (1 << 5) |  // AT_CLK_ENABLE
-                   ((ratio < 3 ? 0 : (ratio / 2) - 1) << 8));
-        ret = ratio;
-    }
-    udelay(10);
+                   (0 << 7) |  // not connect A9 to the PLL divider output
+                   (0 << 8)); 
+    clk = READ_MPEG_REG(HHI_SYS_CPU_CLK_CNTL); // read cbus for a short delay
     SET_CBUS_REG_MASK(HHI_SYS_CPU_CLK_CNTL, 1<<7); // cpu use sys pll
-    lock = 0;
-    for (i = 0;i < 32;i++){
-        clk = clk_util_clk_msr(CTS_A9_CLK)*1000000;
-        printk("********%s: clk_util_clk_msr(CTS_A9_CLK) = %dHz\n", __FUNCTION__, clk);
-        if ((clk<=out_freq+1000000)&&(clk>=out_freq-1000000)){
-            lock++;
-            if (lock==3) break;
-        }
-    }
+    local_irq_restore(flags);
+
+    clk = clk_util_clk_msr(CTS_A9_CLK);
+    printk("********%s: clk_util_clk_msr(CTS_A9_CLK) = %dMHz\n", __FUNCTION__, clk);
     return ret;
 }
 
@@ -830,14 +778,15 @@ static int __init clk81_clock_setup(char *ptr)
                        (1 << 8)    |   // enable clock gating
                        (1 << 0));      // ddr clk / 2
         lock = 0;
-        for (i = 0;i < 32;i++){
+        for (i = 0;i < 64;i++){
             clk = clk_util_clk_msr(CLK81)*1000000;
-            printk("********%s: clk_util_clk_msr(CLK81) = %dHz\n", __FUNCTION__, clk);
             if ((clk<clock+1000000)&&(clk>clock-1000000)){
                 lock++;
                 if (lock==3) break;
             }
         }
+        clk = clk_util_clk_msr(CLK81);
+        printk("********%s: clk_util_clk_msr(CLK81) = %dMHz\n", __FUNCTION__, clk);
         clk = clk_util_clk_msr(CTS_MALI_CLK);
         printk("********%s: clk_util_clk_msr(CTS_MALI_CLK) = %dMHz\n", __FUNCTION__, clk);
         clk = clk_util_clk_msr(CTS_DDR_CLK);
