@@ -57,6 +57,8 @@ struct act8942_operations {
 	int (*measure_capacity_battery)(void);
 
 	unsigned int update_period; /* msecs, default is 5000 */
+	unsigned int asn; /* Average Sample Number: 0 or 1 is disabled */
+	unsigned int rvp; /* reverse voltage protection: 1:enable; 0:disable */
 };
 
 typedef union act8942_register_data
