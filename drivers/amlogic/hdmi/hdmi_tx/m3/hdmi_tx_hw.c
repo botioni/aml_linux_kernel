@@ -928,7 +928,7 @@ static void digital_clk_off(unsigned char flag)
 
     if(flag&2){
         /* off hdmi pixel clock */
-        Wr(HHI_GCLK_MPEG2, Rd(HHI_GCLK_MPEG2)&(~(1<<4))); //disable pixel clock, set cbus reg HHI_GCLK_MPEG2 bit [4] = 0
+//        Wr(HHI_GCLK_MPEG2, Rd(HHI_GCLK_MPEG2)&(~(1<<4))); //disable pixel clock, set cbus reg HHI_GCLK_MPEG2 bit [4] = 0
         Wr(HHI_GCLK_OTHER, Rd(HHI_GCLK_OTHER)&(~(1<<17))); //disable VCLK1_HDMI GATE, set cbus reg HHI_GCLK_OTHER bit [17] = 0
         Wr(VENC_DVI_SETTING, (Rd(VENC_DVI_SETTING)&(~(7<<4)))|(5<<4)); //set cbus reg VENC_DVI_SETTING bit[6:4] = 0x5
     }
@@ -969,7 +969,7 @@ static void digital_clk_on(unsigned char flag)
     }
     if(flag&2){
         /* on hdmi pixel clock */
-        Wr(HHI_GCLK_MPEG2, Rd(HHI_GCLK_MPEG2)|(1<<4)); //enable pixel clock, set cbus reg HHI_GCLK_MPEG2 bit [4] = 1
+//        Wr(HHI_GCLK_MPEG2, Rd(HHI_GCLK_MPEG2)|(1<<4)); //enable pixel clock, set cbus reg HHI_GCLK_MPEG2 bit [4] = 1
         Wr(HHI_GCLK_OTHER, Rd(HHI_GCLK_OTHER)|(1<<17)); //enable VCLK1_HDMI GATE, set cbus reg HHI_GCLK_OTHER bit [17] = 1
     }
     if(flag&1){
