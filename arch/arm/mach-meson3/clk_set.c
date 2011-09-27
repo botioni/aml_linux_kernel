@@ -70,71 +70,71 @@ int eth_clk_set(int selectclk, unsigned long clk_freq, unsigned long out_clk, un
     udelay(100);
     return 0;
 }
+
 int auto_select_eth_clk(void)
 {
     return -1;
 }
 
+static unsigned pll_setting[13]={
+    0x20222,
+    0x20228,
+    0x2022c,
+    0x20234,
+    0x10220,
+    0x10224,
+    0x10228,
+    0x1022c,
+    0x10230,
+    0x10234,
+    0x0021c,
+    0x0021e,
+    0x00220
+};
+
 int sys_clkpll_setting(unsigned crystal_freq, unsigned out_freq)
 {
-    int i, n, m, lock_flag;
-    int od=0;
+    int i, lock_flag;
     unsigned lock_time=0;
     unsigned long result_freq, target_freq;
-    unsigned long crys_M, out_M, middle_freq, flags;
+    unsigned long crys_M, out_M;
     unsigned long freq_log[64];
     int log_index;
+    unsigned target_pll_setting;
 
-    if (!crystal_freq) {
+    if (!crystal_freq)
         crystal_freq = get_xtal_clock();
-    }
-    while (out_freq < 650 * CLK_1M){
-        out_freq*=2;
-        od++;
-    }
-    if (od>2){
-        printk(KERN_ERR "sys_clk_setting error, od is too big od=%d\n",od);
-        return -1;
-    }
     crys_M = crystal_freq / 1000000;
     out_M = out_freq / 1000000;
-    middle_freq = get_max_common_divisor(crys_M, out_M);
-    n = crys_M / middle_freq;
-    m = out_M / middle_freq;
-    target_freq = out_M >> od;
-    if (n > (1 << 5) - 1) {
-        printk(KERN_ERR "sys_clk_setting  error, n is too bigger n=%d,crys_M=%ldM,out=%ldM\n",n,crys_M,out_M);
-        return -2;
-    }
-    if (m > (1 << 9) - 1) {
-        printk(KERN_ERR "sys_clk_setting  error, m is too bigger m=%d,crys_M=%ldM,out=%ldM\n",m,crys_M,out_M);
-        return -3;
-    }
-    if (out_freq > 1600 * CLK_1M || out_freq < 650 * CLK_1M) {
-        printk(KERN_WARNING"sys_clk_setting  warning,VCO may no support out_freq,crys_M=%ldM,out=%ldM\n", crys_M, out_M);
-    }
-    local_irq_save(flags);
-    WRITE_MPEG_REG(HHI_SYS_PLL_CNTL, m << 0 | n << 9 | od << 16); // disable and set sys PLL
-    lock_flag = 0;
-    log_index = 0;
-    for (i=0;i<64;i++){
-        result_freq = clk_util_clk_msr(SYS_PLL_CLK);
-        if ((result_freq <= target_freq+1)&&(result_freq >= target_freq-1)){
-            lock_flag++;
-            if (lock_flag>=3)
+    i = (out_M-200)/50;
+    if (i>12) i=12;
+    target_pll_setting = pll_setting[i];
+    if (READ_MPEG_REG(HHI_SYS_PLL_CNTL)!=target_pll_setting){
+        WRITE_MPEG_REG(HHI_SYS_PLL_CNTL, target_pll_setting); 
+        WRITE_MPEG_REG(HHI_SYS_PLL_CNTL2, 0x065e11ff); 
+        WRITE_MPEG_REG(HHI_SYS_PLL_CNTL3, 0x1649a941); 
+        lock_flag = 0;
+        log_index = 0;
+        target_freq = ((pll_setting[i]&0x1ff)*crys_M)>>(pll_setting[i]>>16);
+        for (i=0;i<64;i++){
+            result_freq = clk_util_clk_msr(SYS_PLL_CLK);
+            if ((result_freq <= target_freq+1)&&(result_freq >= target_freq-1)){
+                lock_flag++;
+                if (lock_flag>=3)
+                    break;
+            }
+            if (log_index<64) 
+                freq_log[log_index++]=result_freq;
+            else 
                 break;
+            lock_time+=64;
         }
-        if (log_index<64) 
-            freq_log[log_index++]=result_freq;
-        else 
-            break;
-        lock_time+=64;
+       
+        //printk("sys clk changed");
+        //for (i=0;i<log_index;i++)
+        //    printk("-%d", freq_log[i]);
+        printk("\ncpu_clk_changed: out_freq=%ld,pll_setting=%x,locktime=%dus\n",out_M,target_pll_setting,lock_time);
     }
-    local_irq_restore(flags);
-    //printk("sys clk changed");
-    //for (i=0;i<log_index;i++)
-    //    printk("-%d", freq_log[i]);
-    //printk("\nsys_clk_setting crystal_req=%ld,out_freq=%ld,n=%d,m=%d,od=%d,locktime=%dus\n",crys_M,out_M,n,m,od,lock_time);
     return 0;
 }
 
