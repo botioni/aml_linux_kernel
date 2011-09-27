@@ -289,7 +289,7 @@ static void set_lvds_pll(lcdConfig_t *pConf)
 	unsigned pll_reg, div_reg, xd;
 	int pll_sel, pll_div_sel, vclk_sel;	
 	pll_reg = pConf->pll_ctrl;
-	div_reg = pConf->pll_div | 0x3;	
+	div_reg = pConf->div_ctrl | 0x3;	
 	xd = pConf->clk_ctrl & 0xf;
 	pll_sel = ((pConf->clk_ctrl) >>12) & 0x1;
 	pll_div_sel = ((pConf->clk_ctrl) >>8) & 0x1;
@@ -433,7 +433,7 @@ static void init_lvds_phy(lcdConfig_t *pConf)
     WRITE_MPEG_REG(LVDS_PHY_CNTL7,0xcccc);
     WRITE_MPEG_REG(LVDS_PHY_CNTL8,0xcccc);
 
-	//WRITE_MPEG_REG(LVDS_PHY_CNTL4, READ_MPEG_REG(LVDS_PHY_CNTL4) & ~(0x7f<<0));  //disable LVDS phy port. wait for power on sequence.
+	WRITE_MPEG_REG(LVDS_PHY_CNTL4, READ_MPEG_REG(LVDS_PHY_CNTL4) & ~(0x7f<<0));  //disable LVDS phy port. wait for power on sequence.
 }
 
 static inline void _init_tvenc(lcdConfig_t *pConf)

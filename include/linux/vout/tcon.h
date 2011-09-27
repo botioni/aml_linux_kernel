@@ -177,7 +177,7 @@ typedef struct {
 
 	u32 pll_ctrl;		/* video PLL settings */
 	u32 clk_ctrl;		/* video PLL clock settings */
-	u32 pll_div;		/* video pll div settings */
+	u32 div_ctrl;		/* video pll div settings */
 
 	u16 gamma_cntl_port;
 	u16 gamma_vcom_hswitch_addr;

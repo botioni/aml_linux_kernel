@@ -69,7 +69,7 @@ static lcdConfig_t lcd_config =
 	.video_on_pixel = VIDEO_ON_PIXEL,
     .video_on_line = VIDEO_ON_LINE,
     .pll_ctrl = 0x20221,
-	.pll_div = 0x18803,
+	.div_ctrl = 0x18803,
     .clk_ctrl = 0x1009,	//pll_sel,div_sel,vclk_sel,xd
     .gamma_cntl_port = (1 << LCD_GAMMA_EN) | (0 << LCD_GAMMA_RVS_OUT) | (1 << LCD_GAMMA_VCOM_POL),
     .gamma_vcom_hswitch_addr = 0,
@@ -203,6 +203,7 @@ void set_backlight_level(unsigned level)
 		
 #if (BL_CTL==BL_CTL_GPIO)
 	level = level * 15 / BL_MAX_LEVEL;	
+	level = 15 - level;
 	WRITE_CBUS_REG_BITS(LED_PWM_REG0, level, 0, 4);	
 #elif (BL_CTL==BL_CTL_PWM)	
 	level = level * PWM_MAX / BL_MAX_LEVEL ;	
