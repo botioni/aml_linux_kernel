@@ -788,89 +788,72 @@ static  struct platform_device aml_rtc_device = {
 #if defined(CONFIG_VIDEO_AMLOGIC_CAPTURE_GT2005)
 //#include <media/amlogic/aml_camera.h>
 
-static int gt2005_v4l2_init(void)
+static int gt2005_init(void)
 {
-    udelay(1000);
-    WRITE_CBUS_REG(HHI_ETH_CLK_CNTL,0x30f);// 24M XTAL
-    WRITE_CBUS_REG(HHI_DEMOD_PLL_CNTL,0x232);// 24M XTAL
+	//SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, 0x3c0);	//GPIOY_21:clk,GPIOY_13-GPIOY_20:D0-D7,GPIOY_11:HS,GPIOY_12:VS
+
+	WRITE_MPEG_REG(PERIPHS_PIN_MUX_0, READ_MPEG_REG(PERIPHS_PIN_MUX_0)&~(1 << 8));	//GPIOA_25 set as CM_PWDN1
+	WRITE_MPEG_REG(PERIPHS_PIN_MUX_7, READ_MPEG_REG(PERIPHS_PIN_MUX_7)&~(1 << 13));	//GPIOA_25 set as CM_PWDN1
+	set_gpio_val(GPIOA_bank_bit0_27(25), GPIOA_bit_bit0_27(25), 1);    //set CM_PWDN1 output high
+	set_gpio_mode(GPIOA_bank_bit0_27(25), GPIOA_bit_bit0_27(25), GPIO_OUTPUT_MODE);//set CM_PWDN1 output
+
+	WRITE_MPEG_REG(PERIPHS_PIN_MUX_8, READ_MPEG_REG(PERIPHS_PIN_MUX_8)&~((1 << 10)|(1 << 11)));	//GPIOY_10 set CM_RST as GPIO
+	set_gpio_val(GPIOY_bank_bit0_22(10), GPIOY_bit_bit0_22(10), 0);    //set CM_PWDN1 output high
+	set_gpio_mode(GPIOY_bank_bit0_22(10), GPIOY_bit_bit0_22(10), GPIO_OUTPUT_MODE);//set CM_PWDN1 output
 	udelay(1000);
+	set_gpio_val(GPIOY_bank_bit0_22(10), GPIOY_bit_bit0_22(10), 1);    //set CM_PWDN1 output high
 
-    //eth_set_pinmux(ETH_BANK0_GPIOC3_C12,ETH_CLK_OUT_GPIOC12_REG3_1, 1);
-   #ifdef CONFIG_SN7325
-	printk( "amlogic camera driver: init CONFIG_SN7325. \n");
-	configIO(1, 0);
-	//setIO_level(1, 0, 1);//30m poweer_disable
-	//1:PP, 0:Level, 2:ppnum
-	setIO_level(1, 0, 1);//200m poweer_disable
-	//setIO_level(1, 1, 0);//30m pwd disable
-	setIO_level(1, 0, 6);//200m pwd low
-	configIO(0, 0);//OD
-	//setIO_level(0, 0, 3);//30m reset low
-	setIO_level(0, 0, 2);//200m reset low
-	configIO(1, 0);//PP
-	msleep(10);
-	setIO_level(1, 1, 1);//200m poweer_enable
-	msleep(10);
-	configIO(0, 0);
-	setIO_level(0, 1, 2);//200m reset high
+	WRITE_MPEG_REG(PERIPHS_PIN_MUX_2, READ_MPEG_REG(PERIPHS_PIN_MUX_2)|(1 << 2));	//GPIOD_0 enable PWM_C for CMMCLK 
+	WRITE_MPEG_REG(PERIPHS_PIN_MUX_1, READ_MPEG_REG(PERIPHS_PIN_MUX_1)&~(1 << 29));	//GPIOD_0 disable LCD_VGHL_PWM
+	SET_CBUS_REG_MASK(PWM_MISC_REG_CD, (1 << 0)|(1 << 15)|(3 << 4 ));	//Enable PWM_D clock,Enable PWM_D output,select sys_pll_clk
+	WRITE_CBUS_REG_BITS(PWM_PWM_C,(0x6),0,16);  //low
+	WRITE_CBUS_REG_BITS(PWM_PWM_C,(0x6),16,16);  //hi  
 	
-	msleep(10);
-	configIO(1, 0);
-	setIO_level(1, 1, 6);//200m pwd high
-	//configIO(1, 0);
-	msleep(20);
-    
-    #endif
-
-}
-static int gt2005_v4l2_uninit(void)
-{
-   #ifdef CONFIG_SN7325
-	printk( "amlogic camera driver: uninit gt2005_v4l2_uninit. \n");
-	configIO(1, 0);
-	setIO_level(1, 0, 1);//200m poweer_disable
-	setIO_level(1, 0, 6);//200m pwd low
-	configIO(0, 0);
-	setIO_level(0, 0, 2);//200m reset low
-	msleep(20); 
-    #endif
-
-}
-static int gt2005_v4l2_disable(void)
-{
-   #if 0
-	printk( "amlogic camera driver: gt2005_v4l2_disable. \n");
-	configIO(1, 0);
-	setIO_level(1, 0, 6);//200m pwd low
-	msleep(20); 
-    #endif
-
+	printk( "amlogic camera driver: init gt2005_init. \n");
+	return 0;
 }
 
-static void gt2005_v4l2_early_suspend(void)
+static int gt2005_uninit(void)
 {
-#if  defined(CONFIG_TCA6424)||defined(CONFIG_SN7325)
-	configIO(1, 0);
-	setIO_level(1, 0, 1);
-#endif	
+	printk( "amlogic camera driver: uninit gt2005_uninit. \n");
+
+    set_gpio_val(GPIOA_bank_bit0_27(25), GPIOA_bit_bit0_27(25), 1);    // set camera power disable
+    set_gpio_mode(GPIOA_bank_bit0_27(25), GPIOA_bit_bit0_27(25), GPIO_OUTPUT_MODE);
+	return 0;
 }
 
-static void gt2005_v4l2_late_resume(void)
+static int gt2005_disable(void)
 {
-#if  defined(CONFIG_TCA6424)||defined(CONFIG_SN7325)
-	configIO(1, 0);
-	setIO_level(1, 1, 1);
-#endif	
+	printk( "amlogic camera driver: gt2005_disable. \n");
+    set_gpio_val(GPIOA_bank_bit0_27(25), GPIOA_bit_bit0_27(25), 1);    // set camera power disable
+    set_gpio_mode(GPIOA_bank_bit0_27(25), GPIOA_bit_bit0_27(25), GPIO_OUTPUT_MODE);
+	return 0;
+}
+
+static void gt2005_early_suspend(void)
+{
+	printk( "amlogic camera driver: gt2005_early_suspend. \n");
+    set_gpio_val(GPIOA_bank_bit0_27(25), GPIOA_bit_bit0_27(25), 1);    // set camera power disable
+    set_gpio_mode(GPIOA_bank_bit0_27(25), GPIOA_bit_bit0_27(25), GPIO_OUTPUT_MODE);
+	return 0;
+}
+
+static void gt2005_late_resume(void)
+{
+	printk( "amlogic camera driver: gt2005_late_resume. \n");
+    set_gpio_val(GPIOA_bank_bit0_27(25), GPIOA_bit_bit0_27(25), 0);    // set camera power enable
+    set_gpio_mode(GPIOA_bank_bit0_27(25), GPIOA_bit_bit0_27(25), GPIO_OUTPUT_MODE);
+	return 0;
 }
 
 aml_plat_cam_data_t video_gt2005_data = {
 	.name="video-gt2005",
 	.video_nr=0,
-	.device_init= gt2005_v4l2_init,
-	.device_uninit=gt2005_v4l2_uninit,
-	.early_suspend = gt2005_v4l2_early_suspend,
-	.late_resume = gt2005_v4l2_late_resume,
-	.device_disable=gt2005_v4l2_disable,
+	.device_init= gt2005_init,
+	.device_uninit=gt2005_uninit,
+	.early_suspend = gt2005_early_suspend,
+	.late_resume = gt2005_late_resume,
+	.device_disable=gt2005_disable,
 };
 #endif /* VIDEO_AMLOGIC_CAPTURE_GT2005 */
 
@@ -953,7 +936,7 @@ static void gc0308_v4l2_late_resume(void)
 
 aml_plat_cam_data_t video_gc0308_data = {
 	.name="video-gc0308",
-	.video_nr=0,//1,
+	.video_nr=1,
 	.device_init= gc0308_v4l2_init,
 	.device_uninit=gc0308_v4l2_uninit,
 	.early_suspend = gc0308_v4l2_early_suspend,
@@ -2159,93 +2142,6 @@ extern void power_on_backlight(void);
 extern void power_off_backlight(void);
 extern unsigned get_backlight_level(void);
 extern void set_backlight_level(unsigned level);
-
-#define PWM_TCNT        (600-1)
-#define PWM_MAX_VAL    (420)
-
-static void aml_8726m_bl_init(void)
-{
-    SET_CBUS_REG_MASK(PWM_MISC_REG_AB, (1 << 0));
-    SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<31));
-    printk("\n\nBacklight init.\n\n");
-}
-static unsigned bl_level;
-static unsigned aml_8726m_get_bl_level(void)
-{
-    return bl_level;
-}
-#define BL_MAX_LEVEL 60000
-static void aml_8726m_set_bl_level(unsigned level)
-{
-	/*
-    unsigned cs_level, hi, low;
-    if(level < 20){
-        cs_level = 0;
-    }
-    else if (level < 30)
-    {
-        cs_level = 1750;
-    }
-    else if (level >= 30 && level < 256)
-    {
-        cs_level = (level - 31) * 260 + 1760;
-    }
-    else
-        cs_level = BL_MAX_LEVEL;
-    
-
-    hi = cs_level;
-    low = BL_MAX_LEVEL - hi;
-
-
-    WRITE_CBUS_REG_BITS(PWM_PWM_A,low,0,16);  //low
-    WRITE_CBUS_REG_BITS(PWM_PWM_A,hi,16,16);  //hi
-    */
-    unsigned cs_level;
-    if (level < 10)
-    {
-        cs_level = 15;
-    }
-    else if (level < 30)
-    {
-        cs_level = 14;
-    }
-    else if (level >=30 && level < 256)
-    {
-        cs_level = 13-((level - 30)/28);
-    }
-    else
-        cs_level = 3;
-
-    WRITE_CBUS_REG_BITS(LED_PWM_REG0, cs_level, 0, 4);
-}
-
-static void aml_8726m_power_on_bl(void)
-{
-    msleep(100);
-    SET_CBUS_REG_MASK(PWM_MISC_REG_AB, (1 << 0));
-    msleep(100);
-    SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<31));
-    msleep(100);
-    //EIO -> OD4: 1
-#ifdef CONFIG_SN7325
-    configIO(0, 0);
-    setIO_level(0, 1, 4);
-#endif
-}
-
-static void aml_8726m_power_off_bl(void)
-{
-    //EIO -> OD4: 0
-#ifdef CONFIG_SN7325
-    configIO(0, 0);
-    setIO_level(0, 0, 4);
-#endif
-    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<31));
-    CLEAR_CBUS_REG_MASK(PWM_MISC_REG_AB, (1 << 0));
-    //set_gpio_val(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), 0);
-    //set_gpio_mode(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), GPIO_OUTPUT_MODE);
-}
 
 struct aml_bl_platform_data aml_bl_platform =
 {
