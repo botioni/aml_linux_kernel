@@ -231,6 +231,7 @@ static const reg_t tvregs_480p[] = {
     {ENCP_VIDEO_HSO_END,         0x5,   },
     {ENCP_VIDEO_VSO_BEGIN,       0x3,   },
     {ENCP_VIDEO_VSO_END,         0x5,   },
+    {ENCP_VIDEO_VSO_BLINE,       0,     },  //added by JZD. Switch Panel to 480p first time, movie video flicks if not set this to 0
     {VENC_SYNC_ROUTE,            0,     },
     {VENC_INTCTRL,               0x200, },
     {VFIFO2VD_CTL,               0,     },
