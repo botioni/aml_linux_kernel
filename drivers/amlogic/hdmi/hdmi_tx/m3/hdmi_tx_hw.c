@@ -927,9 +927,9 @@ static void clk81_set(void)
     if (clk_tmp)
     {
         clk81_rate = clk_get_rate(clk_tmp);
-        clk_set_rate(clk_tmp, 198000000);
+        clk_set_rate(clk_tmp, 168000000);
         CLEAR_AOBUS_REG_MASK(AO_UART_CONTROL, (1 << 19) | 0xFFF);
-        WRITE_AOBUS_REG_BITS(AO_UART_CONTROL, ((198000000 / (115200 * 4)) - 1) & 0xfff, 0, 12);
+        WRITE_AOBUS_REG_BITS(AO_UART_CONTROL, ((168000000 / (115200 * 4)) - 1) & 0xfff, 0, 12);
     }
     msleep(2);  //Waiting some time
     printk("%s clk81_rate: %d\n", __FUNCTION__, clk81_rate);
