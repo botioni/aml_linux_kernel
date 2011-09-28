@@ -930,7 +930,7 @@ static int aml_m3_codec_suspend(struct platform_device* pdev)
     printk("aml_m3_codec_suspend\n");
     struct snd_soc_device *socdev = platform_get_drvdata(pdev);
     struct snd_soc_codec *codec = socdev->card->codec;
-
+    WRITE_MPEG_REG( HHI_GCLK_MPEG1, READ_MPEG_REG(HHI_GCLK_MPEG1)&~(1 << 2));
     aml_reset_path(codec, AML_PWR_DOWN);
     return 0;
 }
@@ -940,7 +940,7 @@ static int aml_m3_codec_resume(struct platform_device* pdev)
     printk("aml_m3_codec resume\n");
     struct snd_soc_device *socdev = platform_get_drvdata(pdev);
     struct snd_soc_codec *codec = socdev->card->codec;
-    
+    WRITE_MPEG_REG( HHI_GCLK_MPEG1, READ_MPEG_REG(HHI_GCLK_MPEG1)|(1 << 2));
     aml_m3_reset(codec, true);
     return 0;
 }
