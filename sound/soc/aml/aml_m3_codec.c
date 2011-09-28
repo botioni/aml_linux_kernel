@@ -159,7 +159,7 @@ void aml_m3_reset(struct snd_soc_codec* codec, bool first_time)
 								// 3=Right(Left) digital sourcd only, 4=Left(Right) digital + right(left) digital, 5=Analog + right(left) digital,
 								// 6=Analog + left(right) digital + right(left) digital, >=7 Rsrv.
 					0x0001, 	// lsmix[15:0]
-					0x0404, 	// micvol[15:0]: Input PGA volume control. [15:8] control right channel, [7:0] control left channel.
+					0x1212, 	// micvol[15:0]: Input PGA volume control. [15:8] control right channel, [7:0] control left channel.
 								// 0=-6dB, 1=-4.5dB, ..., 4=0dB, ..., 0x11=19.5dB, 0x12=21dB, >=0x13 Rsrv.
 					0x1414, 	// recvol[15:0]: Digital record channel master volume control. [15:8] control right channel, [7:0] control left channel.
 								// 0=30dB, 1=28.5dB, ..., 0x13=1.5dB, 0x14=0dB, 0x15=-1.5dB, ..., 0x54=-96dB, >=0x55 Rsrv.
