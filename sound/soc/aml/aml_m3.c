@@ -22,7 +22,7 @@
 #include "aml_dai.h"
 #include "aml_pcm.h"
 #include "aml_m3_codec.h"
-
+#include "aml_audio_hw.h"
 #define HP_DET 1
 
 
@@ -173,12 +173,14 @@ static void aml_m3_hp_detect_queue(struct work_struct* work)
 		//snd_soc_dapm_disable_pin(codec, "Ext Spk");
         //snd_soc_dapm_enable_pin(codec, "HP");
 		//snd_soc_dapm_sync(codec);
+	snd_soc_write(codec, ADAC_MUTE_CTRL_REG1, 0); //unmute HP
         mute_spk(codec, 1);
     }else if(/*flag_changed && */!hp_detect_flag){ 
         //printk("Headphone unpluged\n");
 		//snd_soc_dapm_enable_pin(codec, "Ext Spk");
         //snd_soc_dapm_disable_pin(codec, "HP");
 		//snd_soc_dapm_sync(codec);
+	snd_soc_write(codec, ADAC_MUTE_CTRL_REG1, 0xc);//mute HP
         mute_spk(codec, 0);
 	}
 	//i = hp_detect_flag;
