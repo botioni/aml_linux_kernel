@@ -2272,6 +2272,10 @@ static void bt_device_init(void)
 	
 	/* UART_RX(BT) */
 	SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_4, (1<<12));
+	
+	/* BT_WAKE */
+    CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO4_EN_N, (1 << 10));
+    SET_CBUS_REG_MASK(PREG_PAD_GPIO4_O, (1 << 10));
 }
 
 static void bt_device_on(void)
