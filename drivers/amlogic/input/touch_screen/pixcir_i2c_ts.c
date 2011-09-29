@@ -217,6 +217,23 @@ static void pixcir_ts_poscheck(struct work_struct *work)
 		swap(posx1, posy1);
 		swap(posx2, posy2);
 	}
+	if (posx1 > tsdata->pdata->xmax) {
+		//printk("posx1 error(%d)\n",posx1);
+		goto out;
+	}
+	if (posy1 > tsdata->pdata->ymax) {
+		//printk("posy1 error(%d)\n",posy1);
+		goto out;
+	}
+	if (posx2 > tsdata->pdata->xmax) {
+		//printk("posx2 error(%d)\n",posx2);
+		goto out;
+	}
+	if (posy2 > tsdata->pdata->ymax) {
+		//printk("posy2 error(%d)\n",posy2);
+		goto out;
+	}
+		
 	if (tsdata->pdata->xpol) {
 		posx1 = tsdata->pdata->xmax + tsdata->pdata->xmin - posx1;
 		posx2 = tsdata->pdata->xmax + tsdata->pdata->xmin - posx2;
