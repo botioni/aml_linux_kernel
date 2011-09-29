@@ -291,6 +291,8 @@ typedef struct fmt_info_s {
 	unsigned short			frame_rate;//rate of frame 
 	unsigned short			h_active;  //camera in the unit of pixel
     unsigned short			v_active;  //camera in the unit of line
+    unsigned short           hsync_phase;
+    unsigned short 		vsync_phase;
     unsigned int			reserved;  // reserved
 } fmt_info_t;
 
