@@ -1493,7 +1493,7 @@ static struct platform_device power_dev = {
 #endif
 
 #ifdef CONFIG_BQ27x00_BATTERY
-static int is_ac_connected(void)
+static int bq27x00_is_ac_connected(void)
 {
 	    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_7, (1<<8));
 	    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0, (1<<6)); 
@@ -1503,7 +1503,7 @@ static int is_ac_connected(void)
 	return (READ_CBUS_REG(PREG_PAD_GPIO0_I)&(1<<20))? 0:1;//dc_det
 }
 
-static int get_charge_status()
+static int bq27x00_get_charge_status()
 {
 	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_7, (1<<9));
 	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0, (1<<6));	
@@ -1513,20 +1513,20 @@ static int get_charge_status()
     return (READ_CBUS_REG(PREG_PAD_GPIO0_I)&(1<<21))? 1:0;//chg_stat
 }
 
-static void set_charge(int flags)
+static void bq27x00_set_charge(int flags)
 {
 }
 
-static void set_bat_off(void)
+static void bq27x00_set_bat_off(void)
 {
 
 }
 
 static struct bq27x00_battery_pdata bq27x00_pdata = {
-	.is_ac_online	= is_ac_connected,
-	.get_charge_status = get_charge_status,	
-	.set_charge = set_charge,
-	.set_bat_off = set_bat_off,
+	.is_ac_online	= bq27x00_is_ac_connected,
+	.get_charge_status = bq27x00_get_charge_status,	
+	.set_charge = bq27x00_set_charge,
+	.set_bat_off = bq27x00_set_bat_off,
     .chip = 1,
 };
 #endif
