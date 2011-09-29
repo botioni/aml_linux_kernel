@@ -699,20 +699,19 @@ static struct aml_m3_platform_data aml_m3_pdata = {
 };
 #endif
 
-#ifdef CONFIG_GOODIX_GT8XX_CAPACITIVE_TOUCHSCREEN
-#include <linux/goodix_touch_malata.h>
+#ifdef CONFIG_GOODIX_GT819_CAPACITIVE_TOUCHSCREEN
+#include <linux/goodix_touch_gt819.h>
 
 #define GPIO_GOODIX_PENIRQ ((GPIOA_bank_bit0_27(16)<<16) |GPIOA_bit_bit0_27(16)) 
-#define GPIO_GOODIX_PENIRQ_IDX (GPIOA_IDX + 16)
-
 #define GPIO_GOODIX_PWR ((GPIOA_bank_bit0_27(9)<<16) |GPIOA_bit_bit0_27(9)) 
 #define GPIO_GOODIX_RST ((GPIOC_bank_bit0_15(3)<<16) |GPIOC_bit_bit0_15(3)) 
-//
-//static struct  goodix_platform_data  goodix_touch_info = {
-//        .reset = GPIO_GOODIX_RST,
-//        .power_control = GPIO_GOODIX_PWR,
-//};
 
+static struct goodix_i2c_rmi_platform_data goodix_ts_pdata = {
+    .gpio_pwr = GPIO_GOODIX_PWR,
+    .gpio_rst = GPIO_GOODIX_RST,
+    .gpio_irq = GPIO_GOODIX_PENIRQ,
+    .irq_edge = 1, /* 0:rising edge, 1:falling edge */
+};
 #endif
 
 #ifdef CONFIG_ITK_CAPACITIVE_TOUCHSCREEN
@@ -2411,13 +2410,14 @@ static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
     },
 #endif
 
-#ifdef CONFIG_GOODIX_GT8XX_CAPACITIVE_TOUCHSCREEN
+#ifdef CONFIG_GOODIX_GT819_CAPACITIVE_TOUCHSCREEN
     {
         I2C_BOARD_INFO(GOODIX_I2C_NAME, GOODIX_I2C_ADDR),
-//        .irq = GPIO_GOODIX_PENIRQ,
-//        .platform_data = &goodix_touch_info,
+        .irq = INT_GPIO_0,
+        .platform_data = (void *)&goodix_ts_pdata,
     },
 #endif
+
 
 #if CONFIG_VIDEO_AMLOGIC_CAPTURE_GT2005
     {
@@ -2601,19 +2601,6 @@ static __init void m1_init_machine(void)
 #endif
     device_clk_setting();
     device_pinmux_init();
-
-#ifdef CONFIG_GOODIX_GT8XX_CAPACITIVE_TOUCHSCREEN
-	gpio_direction_output(GPIO_GOODIX_PWR, 0);
-	msleep(200);
-	gpio_direction_output(GPIO_GOODIX_RST, 0);
-	gpio_direction_output(GPIO_GOODIX_RST, 1);
-	
-    /* set input mode */
-    gpio_direction_input(GPIO_GOODIX_PENIRQ);
-    /* set gpio interrupt #0 source=GPIOA_16, and triggered by falling edge(=1) */
-    gpio_enable_edge_int(GPIO_GOODIX_PENIRQ_IDX, 1, INT_GPIO_2-INT_GPIO_0);
-        
-#endif
 
 #ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE
     camera_power_on_init();
