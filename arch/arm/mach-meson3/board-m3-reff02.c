@@ -1734,35 +1734,35 @@ static int bat_value_table[37]={
 static int bat_charge_value_table[37]={
 0,  //0    
 770,//0
-782,//4
-787,//10
-795,//15
-797,//16
-798,//18
-799,//20
-800,//23
-801,//26
-802,//29
-803,//32
-805,//35
-806,//37
-807,//40
-808,//43
-811,//46
-813,//49
-815,//51
-817,//54
-820,//57
-823,//60
-826,//63
-831,//66
-833,//68
-836,//71
-840,//74
-843,//77
-845,//80
-847,//83
-848,//85
+776,//4
+781,//10
+788,//15
+790,//16
+791,//18
+792,//20
+793,//23
+794,//26
+795,//29
+796,//32
+797,//35
+798,//37
+799,//40
+800,//43
+803,//46
+806,//49
+808,//51
+810,//54
+812,//57
+815,//60
+818,//63
+822,//66
+827,//68
+830,//71
+833,//74
+836,//77
+838,//80
+843,//83
+847,//85
 849,//88
 852,//91
 854,//95
@@ -1811,89 +1811,23 @@ static int bat_level_table[37]={
 100  
 };
 
-
-
-
-static int get_bat_adc_average(void)
-{
-    static struct {
-      int adc_current;
-      int adc_array[20];
-    }bat_adc;
-    static int ac_status_prev = -1;
-    
-    int ac_status = is_ac_online();
-    if (ac_status_prev != ac_status) {
-        ac_status_prev = ac_status;
-        memset(&bat_adc, 0, sizeof(bat_adc));
-    }
-
-    int adc = get_bat_adc_value();
-    if (ac_status) {
-        adc -= 5;
-    }
-    bat_adc.adc_current = 
-        (bat_adc.adc_current + 1) % ARRAY_SIZE(bat_adc.adc_array);
-    bat_adc.adc_array[bat_adc.adc_current] = adc;
-
-    //cal average
-    int adc_average = 0;
-    int adc_sum = 0;
-    int valid_num = 0;
-    int i;
-    for (i=0; i<ARRAY_SIZE(bat_adc.adc_array); i++) {
-        if (bat_adc.adc_array[i] != 0) {
-            adc_sum += bat_adc.adc_array[i];
-            valid_num++;
-        }
-    }
-
-    if (valid_num > 0)
-        adc_average = adc_sum / valid_num;
-
-    //printk("adc=%d, adc_average=%d\n", adc, adc_average);
-    return adc_average;
-}
-
-
 static inline int get_bat_percentage(int adc_vaule, int *adc_table, 
 										int *per_table, int table_size)
 {
-    static int percentage_prev = -1;
-    
 	int i;
-	int percentage = 0;
 	
 	for(i=0; i<(table_size - 1); i++) {
 		if ((adc_vaule >= adc_table[i]) && (adc_vaule < adc_table[i+1])) {
             break;
 		}
 	}
-    percentage = per_table[i];
-    
-    if (percentage_prev == -1)
-        percentage_prev = percentage;
-
-    int ac_status = is_ac_online();
-    if (ac_status) {
-        //ac online   don't report percentage smaller than prev 
-        percentage = (percentage > percentage_prev) ? percentage : percentage_prev;
-    } else {
-        //ac  not online   don't report percentage bigger than prev 
-        percentage = (percentage < percentage_prev) ? percentage : percentage_prev;
-    }
-    //printk("percentage=%d, percentage_prev=%d\n", percentage, percentage_prev);
-
-    percentage_prev = percentage;
-
-	return percentage;
+	return per_table[i];
 }
 
 static int act8942_measure_capacity_charging(void)
 {
 	//printk("------%s  ", __FUNCTION__);
-
-	int adc = get_bat_adc_average();
+	int adc = get_bat_adc_value();
 	int table_size = ARRAY_SIZE(bat_charge_value_table);
 	return get_bat_percentage(adc, bat_charge_value_table, bat_level_table, table_size);
 }
@@ -1901,7 +1835,7 @@ static int act8942_measure_capacity_charging(void)
 static int act8942_measure_capacity_battery(void)
 {
 	//printk("------%s  ", __FUNCTION__);
-	int adc = get_bat_adc_average();
+	int adc = get_bat_adc_value();
 	int table_size = ARRAY_SIZE(bat_value_table);
 
 	return get_bat_percentage(adc, bat_value_table, bat_level_table, table_size);
@@ -1924,6 +1858,8 @@ static struct act8942_operations act8942_pdata = {
 	.measure_capacity_charging = act8942_measure_capacity_charging,
 	.measure_capacity_battery = act8942_measure_capacity_battery,
 	.update_period = 2000,	//2S
+	.asn = 5,				//Average Sample Number
+	.rvp = 1,				//reverse voltage protection: 1:enable; 0:disable
 };
 
 
@@ -1934,119 +1870,6 @@ static struct platform_device aml_pmu_device = {
 #endif
 
 #ifdef CONFIG_AM_NAND
-/*static struct mtd_partition partition_info[] = 
-{
-    {
-		.name = "U-BOOT",
-        .offset = 0,
-        .size=4*1024*1024,
-    //  .set_flags=0,
-    //  .dual_partnum=0,
-    },
-    {
-		.name = "Boot Para",
-        .offset = 4*1024*1024,
-        .size=4*1024*1024,
-    //  .set_flags=0,
-    //  .dual_partnum=0,
-    },
-    {
-		.name = "Kernel",
-        .offset = 8*1024*1024,
-        .size=4*1024*1024,
-    //  .set_flags=0,
-    //  .dual_partnum=0,
-    },
-    {
-		.name = "YAFFS2",
-		.offset=MTDPART_OFS_APPEND,
-        .size = MTDPART_SIZ_FULL,
-    //  .set_flags=0,
-    //  .dual_partnum=0,
-    },
-//	{	.name="FTL_Part",
-//		.offset=MTDPART_OFS_APPEND,
-//		.size=MTDPART_SIZ_FULL,
-//	//	.set_flags=MTD_AVNFTL,
-//	//	.dual_partnum=1,
-//	}
-};
-
-static struct aml_m1_nand_platform aml_2kpage128kblocknand_platform = {
-    .page_size = 2048,
-    .spare_size=64,
-    .erase_size= 128*1024,
-    .bch_mode=1,            //BCH8
-    .encode_size=528,
-    .timing_mode=5,
-    .ce_num=1,
-    .onfi_mode=0,
-    .partitions = partition_info,
-    .nr_partitions = ARRAY_SIZE(partition_info),
-};
-*/
-
-/*static struct aml_m1_nand_platform aml_Micron4GBABAnand_platform = 
-{
-    .page_size = 2048*2,
-    .spare_size= 224,       //for micron ABA 4GB
-    .erase_size=1024*1024,
-    .bch_mode=    3,        //BCH16
-    .encode_size=540,
-    .timing_mode=5,
-    .onfi_mode=1,
-    .ce_num=1,
-    .partitions = partition_info,
-    .nr_partitions = ARRAY_SIZE(partition_info),
-};
-
-static struct resource aml_nand_resources[] = {
-    {
-        .start = 0xc1108600,
-        .end = 0xc1108624,
-        .flags = IORESOURCE_MEM,
-    },
-};
-
-static struct platform_device aml_nand_device = {
-    .name = "aml_m1_nand",
-    .id = 0,
-    .num_resources = ARRAY_SIZE(aml_nand_resources),
-    .resource = aml_nand_resources,
-    .dev = {
-        .platform_data = &aml_Micron4GBABAnand_platform,
-    },
-};*/
-
-/*static struct mtd_partition normal_partition_info[] = 
-{
-	{
-		.name = "environment",
-		.offset = 8*1024*1024,
-		.size = 8*1024*1024,
-	},
-	{
-		.name = "splash",
-		.offset = 16*1024*1024,
-		.size = 4*1024*1024,
-	},
-	{
-		.name = "recovery",
-		.offset = 20*1024*1024,
-		.size = 16*1024*1024,
-	},
-	{
-		.name = "boot",
-		.offset = 36*1024*1024,
-		.size = 16*1024*1024,
-	},
-	{
-		.name = "cache",
-		.offset = 52*1024*1024,
-		.size = 32*1024*1024,
-	},
-};*/
-
 static struct mtd_partition multi_partition_info[] = 
 {
 	{

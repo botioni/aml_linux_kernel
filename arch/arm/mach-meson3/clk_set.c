@@ -87,7 +87,7 @@ static unsigned pll_setting[13]={
     0x1022c,
     0x10230,
     0x10234,
-    0x0021c,
+    0x10236,
     0x0021e,
     0x00220
 };

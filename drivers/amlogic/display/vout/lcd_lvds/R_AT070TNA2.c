@@ -61,10 +61,6 @@ void set_backlight_level(unsigned level);
 #define BL_CTL_PWM		1
 #define BL_CTL			BL_CTL_GPIO
 
-#define	BL_DIM_ANALOG	0
-#define BL_DIM_PWM		1
-#define	BL_DIM			BL_DIM_ANALOG
-
 // Define LVDS physical PREM SWING VCM REF
 static lvds_phy_control_t lcd_lvds_phy_control = 
 {
@@ -92,7 +88,7 @@ static lcdConfig_t lcd_config =
 	.video_on_pixel = VIDEO_ON_PIXEL,
     .video_on_line = VIDEO_ON_LINE,
     .pll_ctrl = 0x1021e,
-    .pll_div = 0x18803,
+    .div_ctrl = 0x18803,
 	.clk_ctrl = 0x1111,	//pll_sel,div_sel,vclk_sel,xd
 	
     .gamma_cntl_port = (1 << LCD_GAMMA_EN) | (0 << LCD_GAMMA_RVS_OUT) | (1 << LCD_GAMMA_VCOM_POL),
@@ -159,7 +155,8 @@ static void t13_setup_gama_table(lcdConfig_t *pConf)
 }
 
 #define PWM_MAX			60000   //set pwm_freq=24MHz/PWM_MAX (Base on XTAL frequence: 24MHz, 0<PWM_MAX<65535)
-#define BL_MAX_LEVEL	0x100
+#define BL_MAX_LEVEL	255
+#define BL_MIN_LEVEL	0
 void power_on_backlight(void)
 {
     msleep(20);
@@ -171,10 +168,11 @@ void power_on_backlight(void)
     WRITE_MPEG_REG(0x2013, READ_MPEG_REG(0x2013) | (1 << 17));    
     WRITE_MPEG_REG(0x2012, READ_MPEG_REG(0x2012) & ~(1 << 17));
 #elif (BL_CTL==BL_CTL_PWM)
-	int pwm_div=0;  //pwm_freq=24M/(pwm_div+1)/PWM_MAX
-	WRITE_MPEG_REG(PWM_PWM_D, (PWM_MAX<<16) | (0<<0));    //set pwm duty 100%
-    WRITE_MPEG_REG(PWM_MISC_REG_CD, READ_MPEG_REG(PWM_MISC_REG_CD) | ((1 << 23) | (pwm_div<<16) | (1<<1)));  //set pwm clk & enable pwm
-	WRITE_MPEG_REG(PERIPHS_PIN_MUX_2, READ_MPEG_REG(PERIPHS_PIN_MUX_2) | (1<<3));  //enable pwm pinmux
+	int pwm_div=0;  //pwm_freq=24M/(pwm_div+1)/PWM_MAX	
+	WRITE_CBUS_REG_BITS(PWM_PWM_D, 0, 0, 16);  //pwm low
+    WRITE_CBUS_REG_BITS(PWM_PWM_D, PWM_MAX, 16, 16);  //pwm high
+	SET_CBUS_REG_MASK(PWM_MISC_REG_CD, ((1 << 23) | (pwm_div<<16) | (1<<1)));  //enable pwm clk & pwm output
+    SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<3));  //enable pwm pinmux
 #endif
     msleep(100);
 
@@ -187,7 +185,9 @@ void power_off_backlight(void)
 #if (BL_CTL==BL_CTL_GPIO)	
     WRITE_MPEG_REG(0x2013, READ_MPEG_REG(0x2013) & ~(1 << 17));
 #elif (BL_CTL==BL_CTL_PWM)
-	WRITE_MPEG_REG(PWM_MISC_REG_CD, READ_MPEG_REG(PWM_MISC_REG_CD) & ~(1<<1));  //disable pwm
+	WRITE_CBUS_REG_BITS(PWM_PWM_D, PWM_MAX, 0, 16);  //pwm low
+    WRITE_CBUS_REG_BITS(PWM_PWM_D, 0, 16, 16);  //pwm high
+    CLEAR_CBUS_REG_MASK(PWM_MISC_REG_CD, ((1 << 23) | (1<<1)));  //disable pwm clk & pwm output
 #endif	
 	
 	msleep(20);
@@ -200,29 +200,21 @@ void power_off_backlight(void)
 static unsigned bl_level;
 unsigned get_backlight_level(void)
 {
-	// unsigned level=0;
-// #if (BL_DIM==BL_DIM_ANALOG)
-	// level = READ_MPEG_REG(LED_PWM_REG0) & (0xf<<0);
-	// level = level / 15 * BL_MAX_LEVEL;
-// #elif (BL_DIM==BL_DIM_PWM)
-	// level = READ_MPEG_REG(PWM_PWM_D) & (0xffff<<0);
-	// level = PWM_MAX - level;
-	// level = level / PWM_MAX * BL_MAX_LEVEL;
-// #endif	 
-	// return level;
 	return bl_level;
 }
 
 void set_backlight_level(unsigned level)
 {
-	level = level>=BL_MAX_LEVEL? BL_MAX_LEVEL:level;
-#if (BL_DIM==BL_DIM_ANALOG)
-	level = level * 15 / BL_MAX_LEVEL;
-	WRITE_MPEG_REG(LED_PWM_REG0, (READ_MPEG_REG(LED_PWM_REG0) & ~(0xf << 0)) | (level<<0));	
-#elif (BL_DIM==BL_DIM_PWM)
-	level = (level / BL_MAX_LEVEL) * PWM_MAX;
-	WRITE_MPEG_REG(PWM_PWM_D, (level << 16) | ((PWM_MAX - level) << 0));	
-#endif	
+	level = level>BL_MAX_LEVEL ? BL_MAX_LEVEL:(level<BL_MIN_LEVEL ? BL_MIN_LEVEL:level);		
+#if (BL_CTL==BL_CTL_GPIO)
+	level = level * 15 / BL_MAX_LEVEL;	
+	level = 15 - level;
+	WRITE_CBUS_REG_BITS(LED_PWM_REG0, level, 0, 4);	
+#elif (BL_CTL==BL_CTL_PWM)	
+	level = level * PWM_MAX / BL_MAX_LEVEL ;	
+	WRITE_CBUS_REG_BITS(PWM_PWM_D, (PWM_MAX - level), 0, 16);  //pwm low
+    WRITE_CBUS_REG_BITS(PWM_PWM_D, level, 16, 16);  //pwm high	
+#endif
 }
 
 static void power_on_lcd(void)

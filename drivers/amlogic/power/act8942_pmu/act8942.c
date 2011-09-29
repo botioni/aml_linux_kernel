@@ -95,6 +95,8 @@ static enum power_supply_property usb_power_props[] = {
 	POWER_SUPPLY_PROP_VOLTAGE_NOW,
 };
 
+inline static int measure_capacity_advanced(void);
+
 /*
  *	ACINSTAT
  *	ACIN Status. Indicates the state of the ACIN input, typically
@@ -203,14 +205,7 @@ static int bat_power_get_property(struct power_supply *psy,
 			val->intval = act8942_opts->measure_current();
 			break;
 		case POWER_SUPPLY_PROP_CAPACITY:
-			if(act8942_opts->is_ac_online())
-			{
-				val->intval = act8942_opts->measure_capacity_charging();
-			}
-			else
-			{
-				val->intval = act8942_opts->measure_capacity_battery();
-			}
+			val->intval = measure_capacity_advanced();
 			break;
 		case POWER_SUPPLY_PROP_TEMP:
 			val->intval = NULL;		//temporary
@@ -763,6 +758,83 @@ static int act8942_operations_init(struct act8942_operations* pdata)
 	}
 	return 0;
 }
+
+inline static int measure_capacity_advanced(void)	
+{
+	static int connect_status = -1, capacity = -1;
+	static int capacity_sample_array[20];
+	static int capacity_sample_pointer = 0;
+	int current_capacity, i, tmp = 0;
+	int current_status = act8942_opts->is_ac_online();
+
+
+
+	if(current_status)
+	{
+		current_capacity = act8942_opts->measure_capacity_charging();
+	}
+	else
+	{
+		current_capacity = act8942_opts->measure_capacity_battery();
+	}
+
+	if(act8942_opts->rvp)
+	{
+		if(capacity < 0)
+		{
+			capacity = current_capacity;
+		}
+		else
+		{
+			if (current_status) {
+		        //ac online   don't report percentage smaller than prev 
+				capacity = (current_capacity > capacity) ? current_capacity : capacity;
+		    } else {
+		        //ac  not online   don't report percentage bigger than prev 
+		        capacity = (current_capacity < capacity) ? current_capacity : capacity;
+		    }
+		}
+	}
+	else
+	{
+		capacity = current_capacity;
+	}
+
+	if(act8942_opts->asn < 2)
+	{
+		return capacity;
+	}
+	
+	if(connect_status != current_status)
+	{
+		//memset(capacity_sample_array, capacity, act8942_opts->asn*4);
+		for(i=0; i<act8942_opts->asn; i++)
+		{
+			capacity_sample_array[i] = capacity;
+		}
+		capacity_sample_pointer = 0;
+		connect_status = current_status;
+		return capacity;
+	}
+
+	capacity_sample_array[capacity_sample_pointer] = capacity;
+	if(capacity_sample_pointer >= act8942_opts->asn)
+	{
+		capacity_sample_pointer = 0;
+	}
+	else
+	{
+		capacity_sample_pointer++;
+	}
+
+	for(i=0; i<act8942_opts->asn; i++)
+	{
+		tmp += capacity_sample_array[i];
+	}
+	//pr_info("current_capacity=%d%, capacity=%d,	tmp=%d%.\n", current_capacity, capacity, tmp);
+	return((tmp/act8942_opts->asn)%100);
+}
+
 
 
 #ifdef CONFIG_HAS_EARLYSUSPEND

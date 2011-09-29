@@ -1495,12 +1495,22 @@ static struct platform_device power_dev = {
 #ifdef CONFIG_BQ27x00_BATTERY
 static int is_ac_connected(void)
 {
-	return (READ_CBUS_REG(ASSIST_HW_REV)&(1<<9))? 1:0;//GP_INPUT1
+	    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_7, (1<<8));
+	    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0, (1<<6)); 
+	    SET_CBUS_REG_MASK(PREG_PAD_GPIO0_EN_N, (1<<20));
+	    
+	    msleep(20);
+	return (READ_CBUS_REG(PREG_PAD_GPIO0_I)&(1<<20))? 0:1;//dc_det
 }
 
 static int get_charge_status()
 {
-    return (READ_CBUS_REG(ASSIST_HW_REV)&(1<<8))? 1:0;//GP_INPUT0
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_7, (1<<9));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0, (1<<6));	
+	SET_CBUS_REG_MASK(PREG_PAD_GPIO0_EN_N, (1<<21));
+	
+	msleep(20);
+    return (READ_CBUS_REG(PREG_PAD_GPIO0_I)&(1<<21))? 1:0;//chg_stat
 }
 
 static void set_charge(int flags)
@@ -2458,7 +2468,7 @@ static struct i2c_board_info __initdata aml_i2c_bus_info_1[] = {
 static struct i2c_board_info __initdata aml_i2c_bus_info_2[] = {
 #ifdef CONFIG_BQ27x00_BATTERY
     {
-        I2C_BOARD_INFO("bq27200", 0x55),
+        I2C_BOARD_INFO("bq27500", 0x55),
         .platform_data = (void *)&bq27x00_pdata,
     },
 #endif
@@ -2519,6 +2529,14 @@ static void __init device_pinmux_init(void )
     /*pinmux of eth*/
     //eth_pinmux_init();
     aml_i2c_init();
+
+    #if defined(CONFIG_BQ27x00_BATTERY)
+
+    //add by guangli.wu for bq27541
+    WRITE_AOBUS_REG(AO_GPIO_O_EN_N, (READ_AOBUS_REG(AO_GPIO_O_EN_N) &~(1<<11)));
+    WRITE_AOBUS_REG(AO_GPIO_O_EN_N, (READ_AOBUS_REG(AO_GPIO_O_EN_N) &~(1<<27)));
+#endif
+    
 #if defined(CONFIG_TVIN_BT656IN)
     bt656in_pinmux_init();
 #endif

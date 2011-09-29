@@ -71,10 +71,6 @@ void set_backlight_level(unsigned level);
 #define BL_CTL_PWM		1
 #define BL_CTL			BL_CTL_GPIO
 
-#define	BL_DIM_ANALOG	0
-#define BL_DIM_PWM		1
-#define	BL_DIM			BL_DIM_ANALOG
-
 static mlvds_tcon_config_t lcd_mlvds_tcon_config[8]=
 {
 	{STH_CHANNEL, 0, 1400+5, 1400+5+30, VIDEO_ON_LINE, VIDEO_ON_LINE+768-1, 0, 0, 0, 0},
@@ -130,7 +126,7 @@ static lcdConfig_t lcd_config =
 	.video_on_pixel = VIDEO_ON_PIXEL,
     .video_on_line = VIDEO_ON_LINE,
     .pll_ctrl = 0x889, //0x10222,
-    .pll_div = 0x813, //0x18813,
+    .div_ctrl = 0x813, //0x18813,
 	.clk_ctrl = 0x1111,	//pll_sel,div_sel,vclk_sel,xd
 	
     .gamma_cntl_port = (1 << LCD_GAMMA_EN) | (0 << LCD_GAMMA_RVS_OUT) | (0 << LCD_GAMMA_VCOM_POL),
@@ -191,8 +187,8 @@ static void t13_setup_gama_table(lcdConfig_t *pConf)
 }
 
 #define PWM_MAX			60000   //set pwm_freq=24MHz/PWM_MAX (Base on XTAL frequence: 24MHz, 0<PWM_MAX<65535)
-#define BL_MAX_LEVEL	0x100
-
+#define BL_MAX_LEVEL	255
+#define BL_MIN_LEVEL	0
 void power_on_backlight(void)
 {
     msleep(20);
@@ -234,29 +230,21 @@ void power_off_backlight(void)
 static unsigned bl_level;
 unsigned get_backlight_level(void)
 {
-	// unsigned level=0;
-// #if (BL_DIM==BL_DIM_ANALOG)
-	// level = READ_MPEG_REG(LED_PWM_REG0) & (0xf<<0);
-	// level = level / 15 * BL_MAX_LEVEL;
-// #elif (BL_DIM==BL_DIM_PWM)
-	// level = READ_MPEG_REG(PWM_PWM_D) & (0xffff<<0);
-	// level = PWM_MAX - level;
-	// level = level / PWM_MAX * BL_MAX_LEVEL;
-// #endif	 
-	// return level;
 	return bl_level;
 }
 
 void set_backlight_level(unsigned level)
 {
-	level = level>=BL_MAX_LEVEL? BL_MAX_LEVEL:level;
-#if (BL_DIM==BL_DIM_ANALOG)
-	level = level * 15 / BL_MAX_LEVEL;
-	WRITE_MPEG_REG(LED_PWM_REG0, (READ_MPEG_REG(LED_PWM_REG0) & ~(0xf << 0)) | (level<<0));	
-#elif (BL_DIM==BL_DIM_PWM)
-	level = (level / BL_MAX_LEVEL) * PWM_MAX;
-	WRITE_MPEG_REG(PWM_PWM_D, (level << 16) | ((PWM_MAX - level) << 0));	
-#endif	
+	level = level>BL_MAX_LEVEL ? BL_MAX_LEVEL:(level<BL_MIN_LEVEL ? BL_MIN_LEVEL:level);		
+#if (BL_CTL==BL_CTL_GPIO)
+	level = level * 15 / BL_MAX_LEVEL;	
+	level = 15 - level;
+	WRITE_CBUS_REG_BITS(LED_PWM_REG0, level, 0, 4);	
+#elif (BL_CTL==BL_CTL_PWM)	
+	level = level * PWM_MAX / BL_MAX_LEVEL ;	
+	WRITE_CBUS_REG_BITS(PWM_PWM_D, (PWM_MAX - level), 0, 16);  //pwm low
+    WRITE_CBUS_REG_BITS(PWM_PWM_D, level, 16, 16);  //pwm high	
+#endif		
 }
 
 static void power_on_lcd(void)

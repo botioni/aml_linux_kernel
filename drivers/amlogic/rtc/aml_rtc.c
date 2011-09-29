@@ -42,7 +42,7 @@ int c_dbg_lvl = 0;
 
 #define s_ready                  1 << RTC_REG1_BIT_s_ready  
 #define s_do                       1 << RTC_REG1_BIT_sdo
-#define RESET_RETRY_TIMES           15
+#define RESET_RETRY_TIMES           3
 
 #define WR_RTC(addr, data)         WRITE_AOBUS_REG(addr, data)
 #define RD_RTC(addr)                   READ_AOBUS_REG(addr)
@@ -266,6 +266,12 @@ static void rtc_set_mode(unsigned mode)
 	RTC_sdi_LOW(0);
 }
 
+static void aml_rtc_reset(void)
+{
+	printk("error, the rtc serial communication abnormal, reset the rtc!\n");
+	WRITE_CBUS_REG(RESET3_REGISTER, 0x1<<3);
+}
+
 
 static unsigned int ser_access_read(unsigned long addr)
 {
@@ -301,8 +307,10 @@ static int ser_access_write(unsigned long addr, unsigned long data)
 	
 	while(rtc_comm_init()<0){
 		
-		if(s_nrdy_cnt>RESET_RETRY_TIMES)
+		if(s_nrdy_cnt>RESET_RETRY_TIMES) {
+			aml_rtc_reset();
 			return -1;
+		}
 		rtc_reset_s_ready( );
 		s_nrdy_cnt++;
 	}
@@ -316,15 +324,21 @@ static int ser_access_write(unsigned long addr, unsigned long data)
 }
 
 /***************************************************************************/
-int rtc_reset_gpo(unsigned level)
+int rtc_reset_gpo(struct device *dev, unsigned level)
 {
+	struct aml_rtc_priv *priv;
+	priv = dev_get_drvdata(dev);
 	unsigned data = 0;
 	data |= 1<<20;
 	//reset mode
 	if(!level){
 		data |= 1<<22;         //gpo pin level high
 	}
+	
+	spin_lock(&priv->lock);
 	ser_access_write(RTC_GPO_COUNTER_ADDR, data);
+	spin_unlock(&priv->lock);
+	
 	rtc_wait_s_ready();
 	return 0;
 }
@@ -346,10 +360,13 @@ int aml_rtc_alarm_status(void)
 
 //set the rtc alarm
 //after alarm_data->alarm_sec, the gpo lvl will be //alarm_data->level 
-int rtc_set_alarm_aml(alarm_data_t *alarm_data) {
+int rtc_set_alarm_aml(struct device *dev, alarm_data_t *alarm_data) {
 	unsigned data = 0;
 	//reset the gpo level
-	rtc_reset_gpo(!(alarm_data->level));
+	struct aml_rtc_priv *priv;
+	priv = dev_get_drvdata(dev);
+	
+	rtc_reset_gpo(dev, !(alarm_data->level));
 
 	data |= 2 << 20;    //output defined level after time
 
@@ -360,7 +377,11 @@ int rtc_set_alarm_aml(alarm_data_t *alarm_data) {
 	}
 
 	data |= alarm_data->alarm_sec - 1;
+	
+	spin_lock(&priv->lock);
 	ser_access_write(RTC_GPO_COUNTER_ADDR, data);
+	spin_unlock(&priv->lock);
+	
 	rtc_wait_s_ready();
 
 	rtc_comm_delay();
@@ -435,13 +456,13 @@ static void static_register_write(unsigned data)
 static int aml_rtc_read_time(struct device *dev, struct rtc_time *tm)
 {
     unsigned int time_t;
-    //struct aml_rtc_priv *priv;
+    struct aml_rtc_priv *priv;
 
-    //priv = platform_get_drvdata(dev);
+    priv = dev_get_drvdata(dev);
     RTC_DBG(RTC_DBG_VAL, "aml_rtc: read rtc time\n");
-    //spin_lock(priv->lock);
+    spin_lock(&priv->lock);
     time_t = ser_access_read(RTC_COUNTER_ADDR);
-    // spin_unlock(priv->lock);
+    spin_unlock(&priv->lock);
     RTC_DBG(RTC_DBG_VAL, "aml_rtc: have read the rtc time, time is %d\n", time_t);
     if ((int)time_t < 0) {
         RTC_DBG(RTC_DBG_VAL, "aml_rtc: time(%d) < 0, reset to 0", time_t);
@@ -450,23 +471,22 @@ static int aml_rtc_read_time(struct device *dev, struct rtc_time *tm)
     rtc_time_to_tm(time_t, tm);
 
     return 0;
-
 }
 
 static int aml_rtc_write_time(struct device *dev, struct rtc_time *tm)
 {
       unsigned long time_t;
-      //struct aml_rtc_priv *priv;
+      struct aml_rtc_priv *priv;
 
-      //priv = platform_get_drvdata(dev);
+      priv = dev_get_drvdata(dev);
 
       rtc_tm_to_time(tm, &time_t);
      
-      //spin_lock(&priv->lock);  
+      spin_lock(&priv->lock);
       RTC_DBG(RTC_DBG_VAL, "aml_rtc : write the rtc time, time is %ld\n", time_t);
       ser_access_write(RTC_COUNTER_ADDR, time_t);
       RTC_DBG(RTC_DBG_VAL, "aml_rtc : the time has been written\n");
-      //spin_unlock(&priv->lock);  
+      spin_unlock(&priv->lock);
 
       return 0;
 }
@@ -477,6 +497,9 @@ static int aml_rtc_set_alarm(struct device *dev, struct rtc_wkalrm *alarm)
 	unsigned long alarm_secs, cur_secs;
 	struct rtc_time cur_time;
 	int ret;
+	struct aml_rtc_priv *priv;
+
+	priv = dev_get_drvdata(dev);
 	//rtc_tm_to_time(&alarm->time, &secs);
 	
 	alarm_data.level = 0;
@@ -490,7 +513,9 @@ static int aml_rtc_set_alarm(struct device *dev, struct rtc_wkalrm *alarm)
 	else
 		alarm_data.alarm_sec =  0;
 
-	rtc_set_alarm_aml(&alarm_data);
+	spin_lock(&priv->lock);
+	rtc_set_alarm_aml(dev, &alarm_data);
+	spin_unlock(&priv->lock);
 
 	return 0;
 }
@@ -522,7 +547,6 @@ static ssize_t show_rtc_reg(struct class *class, struct class_attribute *attr,	c
 }
 
 static const struct rtc_class_ops aml_rtc_ops ={
-
    .read_time = aml_rtc_read_time,
    .set_time = aml_rtc_write_time,
     .set_alarm = aml_rtc_set_alarm,
@@ -581,13 +605,23 @@ out:
 
 static int aml_rtc_resume(struct platform_device *pdev)
 {
+	struct aml_rtc_priv *priv;
+	priv = platform_get_drvdata(pdev);
+
+	spin_lock(&priv->lock);
     ser_access_write(RTC_GPO_COUNTER_ADDR,0x100000);
+	spin_unlock(&priv->lock);
     return 0;
 }
 
 static int aml_rtc_shutdown(struct platform_device *pdev)
 {
+	struct aml_rtc_priv *priv;
+	priv = platform_get_drvdata(pdev);
+	
+	spin_lock(&priv->lock);
     ser_access_write(RTC_GPO_COUNTER_ADDR,0x100000);
+	spin_unlock(&priv->lock);
     return 0;
 }
 

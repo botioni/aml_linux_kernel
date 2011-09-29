@@ -473,7 +473,7 @@ static void set_mlvds_pll(lcdConfig_t *pConf)
 	unsigned pll_reg, div_reg, xd;
 	int pll_sel, pll_div_sel, vclk_sel;	
 	pll_reg = pConf->pll_ctrl;
-	div_reg = pConf->pll_div | 0x3;	
+	div_reg = pConf->div_ctrl | 0x3;	
 	xd = pConf->clk_ctrl & 0xf;
 	pll_sel = ((pConf->clk_ctrl) >>12) & 0x1;
 	pll_div_sel = ((pConf->clk_ctrl) >>8) & 0x1;
