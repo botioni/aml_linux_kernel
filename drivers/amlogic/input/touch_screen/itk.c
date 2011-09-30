@@ -354,6 +354,8 @@ struct ts_event {
  * @tp_xmax:        max virtual resolution
  * @tp_ymax:        max virtual resolution
  * @pdata:          platform-specific information
+ * @running:		workqueue is running 
+ * @work_exit:		the workqueue need to exit
  */
 struct itk {
        struct i2c_client *client;
@@ -374,6 +376,8 @@ struct itk {
        int tp_xmax;
        int tp_ymax;
        struct itk_platform_data *pdata;
+		int running;			//add by sz.zhuw 20110927
+		int work_exit;
 };
 
 static int 
@@ -566,6 +570,12 @@ static void itk_work(struct work_struct *work)
     int i = 0, j = 1;
     int ret = -1;
 
+	if(ts->work_exit){
+		ts->running	= 0;
+		ts->work_exit	= 0;
+		return;
+	}
+
     if (itk_get_pendown_state(ts)) 
     {
     		ret = itk_read_sensor(ts);
@@ -678,6 +688,7 @@ restart:
         }
         ts->touching_num = 0;
         enable_irq(ts->client->irq);
+		ts->running	= 0;
     }
 }
 
@@ -690,7 +701,7 @@ static enum hrtimer_restart itk_timer(struct hrtimer *timer)
 {
     struct itk *ts = container_of(timer, struct itk, timer);
     unsigned long flags = 0;
-    
+    ts->running	= 1;
     spin_lock_irqsave(&ts->lock, flags);
 //  printk(KERN_INFO "enter timer\n");
     queue_work(ts->workqueue, &ts->work);
@@ -717,6 +728,7 @@ static irqreturn_t itk_interrupt(int irq, void *dev_id)
     /* if the pen is down, disable IRQ and start timer chain */
     if (itk_get_pendown_state(ts)) {
         disable_irq_nosync(client->irq);
+		ts->running	= 1;
 #ifdef TS_DELAY_WORK
         schedule_delayed_work(&ts->work, msecs_to_jiffies(TS_POLL_DELAY));
 #else
@@ -742,10 +754,16 @@ static void aml_itk_early_suspend(struct early_suspend *h)
 	itk_data->touch_on(0);*/
 	int ret;
 	uint8_t cmd = ILITEK_TP_CMD_SET_SLEEP_MODE;
+	struct itk *ts =(struct itk *)(h->param);
+	if(ts->running){
+		ts->work_exit	= 1;
+		mdelay(10);
+	}else{
+		disable_irq(i2c.client->irq);
+	}	
   struct i2c_msg msgs_cmd[] = {
 	{.addr = i2c.client->addr, .flags = 0, .len = 1, .buf = &cmd,},
 	};
-	disable_irq(i2c.client->irq);
                 printk(ILITEK_DEBUG_LEVEL "%s, disable i2c irq\n", __func__);
   
   ret = ilitek_i2c_transfer(i2c.client, msgs_cmd, 1);
@@ -754,14 +772,53 @@ static void aml_itk_early_suspend(struct early_suspend *h)
 	}
   
 }
+static void aml_read_itk_version(void)
+{
+	u8 data_fv[3];
+	u8 data_pv[2];
+	int ret;
+	ret	= itk_read_block(i2c.client, 0x40, 3, data_fv);
+	if(ret < 0){
+		printk("%s read Firmware Version failed\n",__FUNCTION__);
+	}else{
+		printk("%s read Firmware:%d:%d:%d\n",__FUNCTION__,data_fv[0],data_fv[1],data_fv[2]);
+	}
+	ret	= itk_read_block(i2c.client, 0x42, 2, data_pv);
+	if(ret < 0){
+		printk("%s read Protocol Version failed\n",__FUNCTION__);
+	}else{
+		printk("%s read Protocol:%d:%d\n",__FUNCTION__,data_pv[0],data_pv[1]);
+	}
+}
 
+static void aml_itk_once_reset(void)
+{
+	int ret;
+	uint8_t cmd = ILITEK_TP_CMD_SET_SLEEP_MODE;
+
+	struct i2c_msg msgs_cmd[] = {
+	{
+		.addr = i2c.client->addr, .flags = 0, .len = 1, .buf = &cmd,},
+	};
+
+	ret = ilitek_i2c_transfer(i2c.client, msgs_cmd, 1);
+	mdelay(5);
+
+	if(itk_data && itk_data->get_irq_level){	
+		itk_data->touch_on(0);
+		mdelay(20);
+		itk_data->touch_on(1);
+		mdelay(10);
+		printk("%s\n",__FUNCTION__);
+	}	
+}
 static void aml_itk_late_resume(struct early_suspend *h)
 {
 	printk("enter -----> %s \n",__FUNCTION__);
 	if(itk_data->touch_on){
 			
       itk_data->touch_on(0);
-      msleep(10);
+      msleep(20);
       
       itk_data->touch_on(1);
       enable_irq(i2c.client->irq);
@@ -808,6 +865,12 @@ static int itk_probe(struct i2c_client *client,
         goto fail;
     }
 
+	aml_itk_once_reset();
+	aml_read_itk_version();
+	ts->running	= 0;
+	ts->work_exit	= 0;
+	
+	
     if (ts->pdata->init_irq) {
         err = ts->pdata->init_irq();
         if (err < 0) {
@@ -851,7 +914,7 @@ static int itk_probe(struct i2c_client *client,
     itk_early_suspend.level = EARLY_SUSPEND_LEVEL_BLANK_SCREEN;
     itk_early_suspend.suspend = aml_itk_early_suspend;
     itk_early_suspend.resume = aml_itk_late_resume;
-    itk_early_suspend.param = client;
+    itk_early_suspend.param = ts;//client;
 	register_early_suspend(&itk_early_suspend);
     #endif
     i2c_set_clientdata(client, ts);
