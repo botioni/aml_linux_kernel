@@ -1738,7 +1738,7 @@ static struct platform_device aml_efuse_device = {
 #endif
 
 #ifdef CONFIG_PMU_ACT8942
-#include <linux/act8942.h>  
+#include <linux/act8xxx.h>  
 
 static void act8942_set_charge_current(int level)
 {
@@ -2604,7 +2604,7 @@ static struct i2c_board_info __initdata aml_i2c_bus_info_2[] = {
 #endif
 #ifdef CONFIG_PMU_ACT8942
 	{
-        I2C_BOARD_INFO("act8942-i2c", ACT8942_ADDR),
+        I2C_BOARD_INFO("act8942-i2c", ACT8xxx_ADDR),
 		.platform_data = (void *)&act8942_pdata,	
     },
 #endif
