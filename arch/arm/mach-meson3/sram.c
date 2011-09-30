@@ -8,6 +8,7 @@
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
  */
+#ifndef CONFIG_AML_SUSPEND
 #include <linux/module.h>
 #include <linux/init.h>
 #include <linux/genalloc.h>
@@ -57,4 +58,4 @@ static int __init sram_init(void)
     return status;
 }
 core_initcall(sram_init);
-
+#endif
