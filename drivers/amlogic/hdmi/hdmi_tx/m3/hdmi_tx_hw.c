@@ -917,6 +917,7 @@ static int read_hpd_gpio(void)
     return level;
 }
 
+#if 0
 static unsigned long clk81_rate = 100000000;
 
 static void clk81_set(void)
@@ -949,10 +950,11 @@ static void clk81_resume(void)
     msleep(2);  //Waiting some time
     printk("%s clk81_rate: %d\n", __FUNCTION__, clk81_rate);
 }
+#endif
 
 static void digital_clk_off(unsigned char flag)
 {
-    clk81_resume();
+//    clk81_resume();
     if(flag&1){
 //#ifdef AML_A3
     /* off hdmi audio clock */
@@ -976,7 +978,7 @@ static void digital_clk_off(unsigned char flag)
 
 static void digital_clk_on(unsigned char flag)
 {
-    clk81_set();
+//    clk81_set();
     if(flag&4){
         /* on hdmi sys clock */
 //#ifdef AML_A3
