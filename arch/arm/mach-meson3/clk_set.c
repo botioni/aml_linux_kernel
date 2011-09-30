@@ -77,15 +77,15 @@ int auto_select_eth_clk(void)
 }
 
 static unsigned pll_setting[13]={
-    0x20220,
-    0x20220,
-    0x20220,
-    0x20220,
-    0x10220,
-    0x10220,
-    0x10220,
-    0x10220,
-    0x10220,
+    0x20222,
+    0x20222,
+    0x20222,
+    0x20222,
+    0x10222,
+    0x10222,
+    0x10222,
+    0x10222,
+    0x10222,
     0x00220,
     0x00220,
     0x00220,
@@ -112,7 +112,7 @@ int sys_clkpll_setting(unsigned crystal_freq, unsigned out_freq)
     if (READ_MPEG_REG(HHI_SYS_PLL_CNTL)!=target_pll_setting){
         WRITE_MPEG_REG(HHI_SYS_PLL_CNTL, target_pll_setting); 
         WRITE_MPEG_REG(HHI_SYS_PLL_CNTL2, 0x065e11ff); 
-        WRITE_MPEG_REG(HHI_SYS_PLL_CNTL3, 0x0249a941); 
+        WRITE_MPEG_REG(HHI_SYS_PLL_CNTL3, 0x1649a941); 
         lock_flag = 0;
         log_index = 0;
         target_freq = ((pll_setting[i]&0x1ff)*crys_M)>>(pll_setting[i]>>16);
@@ -120,7 +120,7 @@ int sys_clkpll_setting(unsigned crystal_freq, unsigned out_freq)
             result_freq = clk_util_clk_msr(SYS_PLL_CLK);
             if ((result_freq <= target_freq+1)&&(result_freq >= target_freq-1)){
                 lock_flag++;
-                if (lock_flag>=3)
+                if (lock_flag>=2)
                     break;
             }
             if (log_index<64) 
