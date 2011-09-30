@@ -1579,7 +1579,7 @@ static struct platform_device aml_efuse_device = {
 };
 #endif
 
-#ifdef CONFIG_PMU_ACT8942
+#ifdef CONFIG_PMU_ACT8xxx
 #include <linux/act8xxx.h>  
 
 /*
@@ -1627,7 +1627,7 @@ static inline int is_usb_online(void)
 	return 0;
 }
 
-
+#ifdef CONFIG_PMU_ACT8942
 /*
  *	nSTAT OUTPUT(GPIOA_21)	enable internal pullup
  *		High:		Full
@@ -1876,10 +1876,10 @@ static struct act8942_operations act8942_pdata = {
 	.asn = 5,				//Average Sample Number
 	.rvp = 1,				//reverse voltage protection: 1:enable; 0:disable
 };
-
+#endif
 
 static struct platform_device aml_pmu_device = {
-    .name	= "pmu_act8942",
+    .name	= ACT8xxx_DEVICE_NAME,
     .id	= -1,
 };
 #endif
@@ -2365,7 +2365,7 @@ static struct platform_device __initdata *platform_devs[] = {
 #ifdef CONFIG_EFUSE
 	&aml_efuse_device,
 #endif
-#ifdef CONFIG_PMU_ACT8942
+#ifdef CONFIG_PMU_ACT8xxx
 	&aml_pmu_device,
 #endif
 #ifdef CONFIG_POST_PROCESS_MANAGER
@@ -2424,8 +2424,10 @@ static struct i2c_board_info __initdata aml_i2c_bus_info_2[] = {
 #endif
 #ifdef CONFIG_PMU_ACT8942
 	{
-        I2C_BOARD_INFO("act8942-i2c", ACT8942_ADDR),
-		.platform_data = (void *)&act8942_pdata,	
+        I2C_BOARD_INFO(ACT8xxx_I2C_NAME, ACT8xxx_ADDR),
+#ifdef CONFIG_PMU_ACT8942
+		.platform_data = (void *)&act8942_pdata,
+#endif
     },
 #endif
 };
