@@ -1580,7 +1580,7 @@ static struct platform_device aml_efuse_device = {
 #endif
 
 #ifdef CONFIG_PMU_ACT8942
-#include <linux/act8942.h>  
+#include <linux/act8xxx.h>  
 
 /*
  *	DC_DET(GPIOA_20)	enable internal pullup
