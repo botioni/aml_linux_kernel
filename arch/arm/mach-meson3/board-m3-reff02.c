@@ -816,10 +816,14 @@ static  struct platform_device aml_rtc_device = {
 #ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE_GC0308
 int gc0308_init(void)
 {
-//    udelay(1000);
-//    WRITE_CBUS_REG(HHI_ETH_CLK_CNTL,0x30f);// 24M XTAL
-//    WRITE_CBUS_REG(HHI_DEMOD_PLL_CNTL,0x232);// 24M XTAL
-//	udelay(1000);
+    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_1, (1<<29)); 
+    SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<2));
+
+    unsigned pwm_cnt = get_ddr_pll_clk()/48000000 - 1;
+    pwm_cnt &= 0xffff;
+    WRITE_CBUS_REG(PWM_PWM_C, (pwm_cnt<<16) | pwm_cnt);
+    SET_CBUS_REG_MASK(PWM_MISC_REG_CD, (1<<15)|(0<<8)|(1<<4)|(1<<0)); //select ddr pll for source, and clk divide 
+
 	
     // set camera power disable
     set_gpio_val(GPIOY_bank_bit0_22(10), GPIOY_bit_bit0_22(10), 0);    // set camera power disable
@@ -1831,7 +1835,8 @@ static inline int get_bat_percentage(int adc_vaule, int *adc_table,
             break;
 		}
 	}
-	return per_table[i];
+	//return per_table[i];
+	return 50;
 }
 
 static int act8942_measure_capacity_charging(void)
@@ -2487,10 +2492,6 @@ static void __init device_pinmux_init(void )
     WRITE_CBUS_REG(HHI_GEN_CLK_CNTL,(READ_CBUS_REG(HHI_GEN_CLK_CNTL)&(~(0x7f<<0)))|((0<<0)|(1<<8)|(7<<9)) );
     CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO2_EN_N, (1<<15));    
     SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_3, (1<<22));
-#else
-    // set clk for camera
-    WRITE_CBUS_REG(HHI_GEN_CLK_CNTL,(READ_CBUS_REG(HHI_GEN_CLK_CNTL)&(~(0x7f<<0)))|(0<<0)|(1<<8)|(0<<9));
-    CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO2_EN_N, (1<<15));   
 #endif
 }
 
