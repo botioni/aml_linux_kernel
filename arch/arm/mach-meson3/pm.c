@@ -879,7 +879,7 @@ extern void request_suspend_state(suspend_state_t new_state);
 	   request_suspend_state(0);		
 #else
 extern int enter_state(suspend_state_t state)
-		enter_state(state);
+		enter_state(0);
 #endif
 #endif
 #endif
@@ -912,13 +912,14 @@ static int __init meson_pm_probe(struct platform_device *pdev)
         dev_err(&pdev->dev, "cannot get platform data\n");
         return -ENOENT;
     }
+	
+#ifndef CONFIG_AML_SUSPEND
     pdata->ddr_reg_backup = sram_alloc(32 * 4);
     if (!pdata->ddr_reg_backup) {
         dev_err(&pdev->dev, "cannot allocate SRAM memory\n");
         return -ENOMEM;
     }
 
-#ifndef CONFIG_AML_SUSPEND
     meson_sram_suspend = sram_alloc(meson_cpu_suspend_sz);
     if (!meson_sram_suspend) {
         dev_err(&pdev->dev, "cannot allocate SRAM memory\n");
