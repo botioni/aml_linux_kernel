@@ -185,10 +185,18 @@ static void keyinput_tasklet(unsigned long data)
     }
 }
 
+#ifdef CONFIG_AML_RTC
+extern int aml_rtc_alarm_status(void);
+#endif /* CONFIG_AML_RTC */
 static irqreturn_t am_key_interrupt(int irq, void *dev)
 {
+    int alarm = 0;
+#ifdef CONFIG_AML_RTC
+    alarm = aml_rtc_alarm_status();
+#endif /* CONFIG_AML_RTC */
     KeyInput->status = (READ_AOBUS_REG(AO_RTC_ADDR1)>>2)&1;
     WRITE_AOBUS_REG(AO_RTC_ADDR1, (READ_AOBUS_REG(AO_RTC_ADDR1) | (0x0000c000)));
+    if (!alarm)
 //    if (!KeyInput->suspend)
         tasklet_schedule(&ki_tasklet);
 //    else
