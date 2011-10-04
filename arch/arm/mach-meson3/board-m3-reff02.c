@@ -2601,17 +2601,46 @@ static __init void m1_irq_init(void)
 static __init void m1_fixup(struct machine_desc *mach, struct tag *tag, char **cmdline, struct meminfo *m)
 {
     struct membank *pbank;
+    
+    // PHYS_MEM_START ~ RESERVED_MEM_START
     m->nr_banks = 0;
     pbank=&m->bank[m->nr_banks];
     pbank->start = PAGE_ALIGN(PHYS_MEM_START);
     pbank->size  = SZ_64M & PAGE_MASK;
     pbank->node  = PHYS_TO_NID(PHYS_MEM_START);
     m->nr_banks++;
+#ifdef CONFIG_AML_SUSPEND
+    if (PHYS_MEM_END>256*SZ_1M){
+    	  // RESERVED_MEM_END ~ 256M
+        pbank=&m->bank[m->nr_banks];
+        pbank->start = PAGE_ALIGN(RESERVED_MEM_END+1);
+        pbank->size  = (PHYS_MEM_START+255*SZ_1M-(RESERVED_MEM_END+1)) & PAGE_MASK;
+        pbank->node  = PHYS_TO_NID(RESERVED_MEM_END+1);
+        m->nr_banks++;
+
+        // 256M ~ PHYS_MEM_END
+        pbank=&m->bank[m->nr_banks];
+        pbank->start = PAGE_ALIGN(PHYS_MEM_START+256*SZ_1M);
+        pbank->size  = (PHYS_MEM_END+1-256*SZ_1M) & PAGE_MASK;
+        pbank->node  = PHYS_TO_NID(PHYS_MEM_START+256*SZ_1M);
+        m->nr_banks++;
+    }
+    else{
+    	  // RESERVED_MEM_END ~ PHYS_MEM_END - 1M
+        pbank=&m->bank[m->nr_banks];
+        pbank->start = PAGE_ALIGN(RESERVED_MEM_END+1);
+        pbank->size  = (PHYS_MEM_END-RESERVED_MEM_END-SZ_1M) & PAGE_MASK;
+        pbank->node  = PHYS_TO_NID(RESERVED_MEM_END+1);
+        m->nr_banks++;
+    }
+#else
+    // RESERVED_MEM_END ~ PHYS_MEM_END 
     pbank=&m->bank[m->nr_banks];
     pbank->start = PAGE_ALIGN(RESERVED_MEM_END+1);
     pbank->size  = (PHYS_MEM_END-RESERVED_MEM_END) & PAGE_MASK;
     pbank->node  = PHYS_TO_NID(RESERVED_MEM_END+1);
     m->nr_banks++;
+#endif
 }
 
 MACHINE_START(MESON3_8726M_SKT, "AMLOGIC MESON3 8726M SKT SH")

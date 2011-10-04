@@ -700,10 +700,6 @@ static void auto_clk_gating_setup(
 
 static void meson_pm_suspend(void)
 {
-#ifdef SAVE_DDR_REGS
-    int *p = pdata->ddr_reg_backup;
-    int i;
-#endif
     unsigned ddr_clk_N;
     unsigned mpeg_clk_backup;
 
@@ -731,34 +727,6 @@ static void meson_pm_suspend(void)
     }
 
     power_gate_switch(OFF);
-
-#ifdef SAVE_DDR_REGS
-    printk("PCTL_TOGCNT1U_ADDR %x\n", READ_APB_REG(PCTL_TOGCNT1U_ADDR));
-    printk("PCTL_TOGCNT100N_ADDR %x\n", READ_APB_REG(PCTL_TOGCNT100N_ADDR));
-    printk("PCTL_TREFI_ADDR %x\n", READ_APB_REG(PCTL_TREFI_ADDR));
-    printk("PCTL_ZQCR_ADDR %x\n", READ_APB_REG(PCTL_ZQCR_ADDR));
-    printk("PCTL_ODTCFG_ADDR %x\n", READ_APB_REG(PCTL_ODTCFG_ADDR));
-    printk("PCTL_TMRD_ADDR %x\n", READ_APB_REG(PCTL_TMRD_ADDR));
-    printk("PCTL_TRFC_ADDR %x\n", READ_APB_REG(PCTL_TRFC_ADDR));
-    printk("PCTL_TRP_ADDR %x\n", READ_APB_REG(PCTL_TRP_ADDR));
-    printk("PCTL_TAL_ADDR %x\n", READ_APB_REG(PCTL_TAL_ADDR));
-    printk("PCTL_TCWL_ADDR %x\n", READ_APB_REG(PCTL_TCWL_ADDR));
-    printk("PCTL_TCL_ADDR %x\n", READ_APB_REG(PCTL_TCL_ADDR));
-    printk("PCTL_TRAS_ADDR %x\n", READ_APB_REG(PCTL_TRAS_ADDR));
-    printk("PCTL_TRC_ADDR %x\n", READ_APB_REG(PCTL_TRC_ADDR));
-    printk("PCTL_TRCD_ADDR %x\n", READ_APB_REG(PCTL_TRCD_ADDR));
-    printk("PCTL_TRRD_ADDR %x\n", READ_APB_REG(PCTL_TRRD_ADDR));
-    printk("PCTL_TRTP_ADDR %x\n", READ_APB_REG(PCTL_TRTP_ADDR));
-    printk("PCTL_TWR_ADDR %x\n", READ_APB_REG(PCTL_TWR_ADDR));
-    printk("PCTL_TWTR_ADDR %x\n", READ_APB_REG(PCTL_TWTR_ADDR));
-    printk("PCTL_TEXSR_ADDR %x\n", READ_APB_REG(PCTL_TEXSR_ADDR));
-    printk("PCTL_TXP_ADDR %x\n", READ_APB_REG(PCTL_TXP_ADDR));
-    printk("PCTL_TDQS_ADDR %x\n", READ_APB_REG(PCTL_TDQS_ADDR));
-    printk("PCTL_MCFG_ADDR %x\n", READ_APB_REG(PCTL_MCFG_ADDR));
-    printk("PCTL_RSLR0_ADDR %x\n", READ_APB_REG(PCTL_RSLR0_ADDR));
-    printk("PCTL_RDGR0_ADDR %x\n", READ_APB_REG(PCTL_RDGR0_ADDR));
-    printk("MMC_DDR_CTRL %x\n", READ_APB_REG(MMC_DDR_CTRL));
-#endif
 
     clk_switch(OFF);
 
@@ -796,7 +764,7 @@ static void meson_pm_suspend(void)
 #else
 #ifdef CONFIG_AML_SUSPEND
 extern int meson_power_suspend();
-			meson_power_suspend();
+    meson_power_suspend();
 #else
     WRITE_CBUS_REG(SYS_CPU_0_IRQ_IN2_INTR_MASK, pdata->power_key);     // enable rtc interrupt only
     meson_sram_suspend(pdata);
@@ -816,12 +784,6 @@ extern int meson_power_suspend();
     pll_switch(ON);
 
     clk_switch(ON);
-
-#ifdef SAVE_DDR_REGS
-    for (i = 0; i < 100 / 4; i++) {
-        printk("%x\n", p[i]);
-    }
-#endif
 
     power_gate_switch(ON);
 
