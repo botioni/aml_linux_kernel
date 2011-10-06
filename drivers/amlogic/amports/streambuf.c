@@ -245,7 +245,7 @@ s32 stbuf_wait_space(struct stream_buf_s *stream_buf, size_t count)
 
     p->wcnt = count;
 
-    setup_timer(&p->timer, _stbuf_timer_func, 0);
+    setup_timer(&p->timer, _stbuf_timer_func, (ulong)p);
 
     mod_timer(&p->timer, jiffies + STBUF_WAIT_INTERVAL);
     
