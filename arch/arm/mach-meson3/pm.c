@@ -565,7 +565,7 @@ typedef struct {
 #define ANALOG_COUNT    3
 static analog_t analog_regs[ANALOG_COUNT] = {
     {"SAR_ADC",             SAR_ADC_REG3,       1 << 28, (1 << 30) | (1 << 21),    0,  1},
-    {"LED_PWM_REG0",        LED_PWM_REG0,       1 << 13,          1 << 12,              0,  0}, // needed for core voltage adjustment, so not off
+    {"LED_PWM_REG0",        LED_PWM_REG0,       1 << 13,          1 << 12,              0,  1}, // needed for core voltage adjustment, so not off
     {"VGHL_PWM_REG0",       VGHL_PWM_REG0,      1 << 13,          1 << 12,              0,  1},
 };
 
@@ -717,7 +717,7 @@ static void meson_pm_suspend(void)
 
     printk(KERN_INFO "target ddr clock 0x%x!\n", pdata->ddr_clk);
 
-//    analog_switch(OFF);
+    analog_switch(OFF);
 
     usb_switch(OFF, 0);
     usb_switch(OFF, 1);
@@ -790,7 +790,7 @@ extern int meson_power_suspend();
     usb_switch(ON, 0);
     usb_switch(ON, 1);
 
-//    analog_switch(ON);
+    analog_switch(ON);
 }
 
 static int meson_pm_prepare(void)
