@@ -27,7 +27,7 @@
 #if ACT8xxx_PMU_DEBUG_LOG == 1
 	#define logd(x...)  	pr_info(x)
 #else
-	#define logd(x...)		NULL
+	#define logd(x...)	
 #endif
 
 typedef enum act8xxx_reg { 

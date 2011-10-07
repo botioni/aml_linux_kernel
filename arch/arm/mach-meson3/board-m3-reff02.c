@@ -838,7 +838,7 @@ int gc0308_init(void)
     set_gpio_val(GPIOA_bank_bit0_27(25), GPIOA_bit_bit0_27(25), 0);    // set camera power enable
     set_gpio_mode(GPIOA_bank_bit0_27(25), GPIOA_bit_bit0_27(25), GPIO_OUTPUT_MODE);
     msleep(20);
-
+    return 0;
 }
 #endif
 
@@ -1619,6 +1619,7 @@ static void power_off(void)
     set_gpio_mode(GPIOAO_bank_bit0_11(6), GPIOAO_bit_bit0_11(6), GPIO_OUTPUT_MODE);
 }
 
+/*
 //temporary
 static inline int is_usb_online(void)
 {
@@ -1626,6 +1627,7 @@ static inline int is_usb_online(void)
 
 	return 0;
 }
+*/
 
 #ifdef CONFIG_PMU_ACT8942
 /*
@@ -1864,7 +1866,7 @@ static int set_bat_off(void)
 
 static struct act8942_operations act8942_pdata = {
 	.is_ac_online = is_ac_online,
-	.is_usb_online = is_usb_online,
+	//.is_usb_online = is_usb_online,
 	.set_bat_off = set_bat_off,
 	.get_charge_status = get_charge_status,
 	.measure_voltage = measure_voltage,

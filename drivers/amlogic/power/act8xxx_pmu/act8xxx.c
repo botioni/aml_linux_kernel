@@ -31,6 +31,8 @@
 
 #define DRIVER_VERSION			"0.1.0"
 
+static int usb_status = 0;
+static int new_usb_status = 0;
 
 /* If the system has several batteries we need a different name for each
  * of them...
@@ -72,12 +74,15 @@ static struct i2c_client *this_client;
 static int act8xxx_read_i2c(struct i2c_client *client, u8 reg, u8 *val);
 
 #ifdef CONFIG_USB_ANDROID
-int pc_connect(int status) 
+int pc_connect(int status)
 {
-	//Elvis empty
-    return 0;
-} 
-
+	new_usb_status = status;
+	if(new_usb_status == usb_status)
+		return 1;
+	usb_status = new_usb_status;
+	power_supply_changed(&act8xxx_dev->usb);
+	return 0;
+}
 EXPORT_SYMBOL(pc_connect);
 #endif
 
@@ -126,13 +131,8 @@ static inline int is_ac_online(void)
 
 static inline int is_usb_online(void)
 {
-	u8 val;
-	act8xxx_read_i2c(this_client, (ACT8942_APCH_ADDR+0xa), &val);
-	logd("%s: get from pmu is %d.\n", __FUNCTION__, val);
-	//return	(val & 0x2) ? 0 : 1;
-	return 0;
+	return usb_status;
 }
-
 
 /*
  *	Charging Status Indication
@@ -166,7 +166,7 @@ static int bat_power_get_property(struct power_supply *psy,
 {
 	int ret = 0;
 	u8 status;
-	struct act8xxx_device_info *act8942_dev = to_act8942_device_info(psy);
+	//struct act8xxx_device_info *act8942_dev = to_act8942_device_info(psy);
 
 	switch (psp)
 	{
@@ -219,7 +219,7 @@ static int bat_power_get_property(struct power_supply *psy,
 			val->intval = measure_capacity_advanced();
 			break;
 		case POWER_SUPPLY_PROP_TEMP:
-			val->intval = NULL;		//temporary
+			val->intval = 0;		//temporary
 			break;
 //	case POWER_SUPPLY_PROP_TIME_TO_EMPTY_NOW:
 //		ret = bq27x00_battery_time(di, BQ27x00_REG_TTE, val);
@@ -425,7 +425,7 @@ static const unsigned long vset_table[] = {
 
 static inline int get_vset_from_table(unsigned long voltage, uint8_t *val)
 {
-	uint8_t i, size;
+	uint8_t i;
 	*val = 0;
 	if((voltage<600) || (voltage > 3900))
 	{
@@ -626,7 +626,7 @@ ssize_t act8xxx_test_show(struct class *class, struct class_attribute *attr, cha
 	{
 		return -1;
 	}
-	pr_info("test:get %dmV\n", voltage);
+	pr_info("test:get %ldmV\n", voltage);
 	return 0;
 }
 
@@ -637,14 +637,14 @@ ssize_t act8xxx_test_store(struct class *class, struct class_attribute *attr, ch
 	{
 		return -1;
 	}
-	pr_info("test:set %dmV\n", voltage);
+	pr_info("test:set %ldmV\n", voltage);
 	return 0;
 }
 
 ssize_t act8xxx_voltage_handle(struct class *class, struct class_attribute *attr, char *buf)
 {
 	char *argv[CONFIG_SYS_MAXARGS + 1];	/* NULL terminated	*/
-	int argc, i, ret, regx;
+	int argc, ret, regx;
 	unsigned long voltage;
 	argc = parse_line(buf, argv);
 	if(argc < 2)
@@ -660,7 +660,7 @@ ssize_t act8xxx_voltage_handle(struct class *class, struct class_attribute *attr
 		{
 			return -1;
 		}
-		pr_info("act8xxx_voltage_handle: Get reg%d voltage is %dmV\n", regx,voltage);
+		pr_info("act8xxx_voltage_handle: Get reg%d voltage is %lumV\n", regx,voltage);
 	}
 	else if(!strcmp(argv[0], "set"))
 	{
@@ -670,12 +670,12 @@ ssize_t act8xxx_voltage_handle(struct class *class, struct class_attribute *attr
 			//ToDo help 
 		}
 		ret = sscanf(argv[1], "reg%d", &regx);
-		ret = sscanf(argv[2], "%d", &voltage);
+		ret = sscanf(argv[2], "%ld", &voltage);
 		if(set_reg_voltage(regx, &voltage))
 		{
 			return -1;
 		}
-		pr_info("act8xxx_voltage_handle: Set reg%d voltage is %dmV\n", regx,voltage);
+		pr_info("act8xxx_voltage_handle: Set reg%d voltage is %lumV\n", regx,voltage);
 	}
 	else
 	{
@@ -1099,7 +1099,7 @@ static struct file_operations act8xxx_fops = {
 
 static int act8xxx_probe(struct platform_device *pdev)
 {
-    int ret, i;
+	int ret;
 	struct device *dev_p;
 	
 	pr_info("act8xxx_probe\n");
