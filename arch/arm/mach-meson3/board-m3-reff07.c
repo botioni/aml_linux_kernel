@@ -120,6 +120,14 @@
 #include <linux/efuse.h>
 #endif
 
+
+#if defined(CONFIG_AMLOGIC_BACKLIGHT)
+extern void power_on_backlight(void);
+extern void power_off_backlight(void);
+extern unsigned get_backlight_level(void);
+extern void set_backlight_level(unsigned level);
+#endif
+
 #if defined(CONFIG_JPEGLOGO)
 static struct resource jpeglogo_resources[] = {
     [0] = {
@@ -1629,17 +1637,9 @@ static struct platform_device aml_efuse_device = {
 };
 #endif
 
-#ifdef CONFIG_PMU_ACT8942
-#include <linux/act8942.h>  
 
-
-static void power_off(void)
-{
-    //Power hold down
-    set_gpio_val(GPIOAO_bank_bit0_11(6), GPIOAO_bit_bit0_11(6), 0);
-    set_gpio_mode(GPIOAO_bank_bit0_11(6), GPIOAO_bit_bit0_11(6), GPIO_OUTPUT_MODE);
-}
-
+#ifdef CONFIG_PMU_ACT8xxx
+#include <linux/act8xxx.h>  
 
 
 /*
@@ -1659,6 +1659,20 @@ static inline int is_ac_online(void)
 	
 	return !val;
 }
+
+static void power_off(void)
+{
+	power_off_backlight();
+    //VCCx2 power down
+    set_vccx2(0);
+
+    //Power hold down
+    set_gpio_val(GPIOAO_bank_bit0_11(6), GPIOAO_bit_bit0_11(6), 0);
+    set_gpio_mode(GPIOAO_bank_bit0_11(6), GPIOAO_bit_bit0_11(6), GPIO_OUTPUT_MODE);
+}
+
+
+#ifdef CONFIG_PMU_ACT8942
 
 //temporary
 static inline int is_usb_online(void)
@@ -1916,9 +1930,10 @@ static struct act8942_operations act8942_pdata = {
 	.update_period = 2000,	//2S
 };
 
+#endif
 
 static struct platform_device aml_pmu_device = {
-    .name	= "pmu_act8942",
+    .name	= "ACT8xxx_DEVICE_NAME",
     .id	= -1,
 };
 #endif
@@ -2146,12 +2161,6 @@ static struct platform_device aml_nand_device = {
 #endif
 
 #if defined(CONFIG_AMLOGIC_BACKLIGHT)
-
-extern void power_on_backlight(void);
-extern void power_off_backlight(void);
-extern unsigned get_backlight_level(void);
-extern void set_backlight_level(unsigned level);
-
 struct aml_bl_platform_data aml_bl_platform =
 {
     .power_on_bl = power_on_backlight,
@@ -2403,7 +2412,7 @@ static struct platform_device __initdata *platform_devs[] = {
 #ifdef CONFIG_EFUSE
 	&aml_efuse_device,
 #endif
-#ifdef CONFIG_PMU_ACT8942
+#ifdef CONFIG_PMU_ACT8xxx
 	&aml_pmu_device,
 #endif
 };
@@ -2476,10 +2485,12 @@ static struct i2c_board_info __initdata aml_i2c_bus_info_2[] = {
         .platform_data = (void *)&bq27x00_pdata,
     },
 #endif
-#ifdef CONFIG_PMU_ACT8942
+#ifdef CONFIG_PMU_ACT8862
 	{
-        I2C_BOARD_INFO("act8942-i2c", ACT8942_ADDR),
+        I2C_BOARD_INFO("ACT8xxx_I2C_NAME", ACT8xxx_ADDR),
+#ifdef CONFIG_PMU_ACT8942
 		.platform_data = (void *)&act8942_pdata,	
+#endif
     },
 #endif
 };
@@ -2618,7 +2629,7 @@ static __init void m1_init_machine(void)
 #endif /*CONFIG_AML_SUSPEND*/    
     LED_PWM_REG0_init();
     power_hold();
-#if defined(CONFIG_PMU_ACT8942)|| defined(CONFIG_AMLOGIC_PM)
+#if defined(CONFIG_PMU_ACT8862)|| defined(CONFIG_AMLOGIC_PM)
     pm_power_off = power_off;		//Elvis fool
 #endif
     device_clk_setting();
