@@ -498,8 +498,8 @@ static const reg_t tvregs_1080i_50hz[] = {
     {ENCP_VIDEO_HSO_END,         230,   },
 
     /* vsync horizontal timing */
-    {ENCP_VIDEO_EQPULS_BEGIN,    2288,  },
-    {ENCP_VIDEO_EQPULS_END,      2464,  },
+    {ENCP_VIDEO_EQPULS_BEGIN,    2728,  },
+    {ENCP_VIDEO_EQPULS_END,      2904,  },
     {ENCP_VIDEO_VSPULS_BEGIN,    440,   },
     {ENCP_VIDEO_VSPULS_END,      2200,  },
 
