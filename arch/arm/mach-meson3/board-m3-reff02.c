@@ -303,7 +303,7 @@ static struct mpu3050_platform_data mpu3050_data = {
                 .address = 0x1c,
                 .orientation = {0,1,0,1,0,0,0,0,-1},
             },
-    #ifdef CONFIG_SENSORS_MMC314X
+    #ifdef CONFIG_MPU_SENSORS_MMC314X
     .compass = {
                 .get_slave_descr = mmc314x_get_slave_descr,
                 .adapt_num = 0, // The i2c bus to which the compass device is. 
@@ -313,6 +313,16 @@ static struct mpu3050_platform_data mpu3050_data = {
                 .address = 0x30,
                 .orientation = { -1, 0, 0,  0, 1, 0,  0, 0, -1 },
            } 
+#elif defined (CONFIG_MPU_SENSORS_MMC328X) 
+    .compass = {
+                .get_slave_descr = mmc328x_get_slave_descr,
+                .adapt_num = 1, // The i2c bus to which the compass device is. 
+                // It can be difference with mpu
+                // connected
+                .bus = EXT_SLAVE_BUS_PRIMARY,
+                .address = 0x30,
+                .orientation = /*{ 0, 1, 0,  1, 0, 0,  0, 0, -1 }*/ {0,1,0,1,0,0,0,0,-1}
+           }
 #endif
 
     };
@@ -806,10 +816,14 @@ static  struct platform_device aml_rtc_device = {
 #ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE_GC0308
 int gc0308_init(void)
 {
-//    udelay(1000);
-//    WRITE_CBUS_REG(HHI_ETH_CLK_CNTL,0x30f);// 24M XTAL
-//    WRITE_CBUS_REG(HHI_DEMOD_PLL_CNTL,0x232);// 24M XTAL
-//	udelay(1000);
+    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_1, (1<<29)); 
+    SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<2));
+
+    unsigned pwm_cnt = get_ddr_pll_clk()/48000000 - 1;
+    pwm_cnt &= 0xffff;
+    WRITE_CBUS_REG(PWM_PWM_C, (pwm_cnt<<16) | pwm_cnt);
+    SET_CBUS_REG_MASK(PWM_MISC_REG_CD, (1<<15)|(0<<8)|(1<<4)|(1<<0)); //select ddr pll for source, and clk divide 
+
 	
     // set camera power disable
     set_gpio_val(GPIOY_bank_bit0_22(10), GPIOY_bit_bit0_22(10), 0);    // set camera power disable
@@ -824,7 +838,7 @@ int gc0308_init(void)
     set_gpio_val(GPIOA_bank_bit0_27(25), GPIOA_bit_bit0_27(25), 0);    // set camera power enable
     set_gpio_mode(GPIOA_bank_bit0_27(25), GPIOA_bit_bit0_27(25), GPIO_OUTPUT_MODE);
     msleep(20);
-
+    return 0;
 }
 #endif
 
@@ -1565,8 +1579,8 @@ static struct platform_device aml_efuse_device = {
 };
 #endif
 
-#ifdef CONFIG_PMU_ACT8942
-#include <linux/act8942.h>  
+#ifdef CONFIG_PMU_ACT8xxx
+#include <linux/act8xxx.h>  
 
 /*
  *	DC_DET(GPIOA_20)	enable internal pullup
@@ -1605,6 +1619,7 @@ static void power_off(void)
     set_gpio_mode(GPIOAO_bank_bit0_11(6), GPIOAO_bit_bit0_11(6), GPIO_OUTPUT_MODE);
 }
 
+/*
 //temporary
 static inline int is_usb_online(void)
 {
@@ -1612,8 +1627,9 @@ static inline int is_usb_online(void)
 
 	return 0;
 }
+*/
 
-
+#ifdef CONFIG_PMU_ACT8942
 /*
  *	nSTAT OUTPUT(GPIOA_21)	enable internal pullup
  *		High:		Full
@@ -1850,7 +1866,7 @@ static int set_bat_off(void)
 
 static struct act8942_operations act8942_pdata = {
 	.is_ac_online = is_ac_online,
-	.is_usb_online = is_usb_online,
+	//.is_usb_online = is_usb_online,
 	.set_bat_off = set_bat_off,
 	.get_charge_status = get_charge_status,
 	.measure_voltage = measure_voltage,
@@ -1861,10 +1877,10 @@ static struct act8942_operations act8942_pdata = {
 	.asn = 5,				//Average Sample Number
 	.rvp = 1,				//reverse voltage protection: 1:enable; 0:disable
 };
-
+#endif
 
 static struct platform_device aml_pmu_device = {
-    .name	= "pmu_act8942",
+    .name	= ACT8xxx_DEVICE_NAME,
     .id	= -1,
 };
 #endif
@@ -2285,6 +2301,9 @@ static struct platform_device __initdata *platform_devs[] = {
 #if defined(CONFIG_CARDREADER)
     &amlogic_card_device,
 #endif
+#if defined(CONFIG_AML_RTC)
+    &aml_rtc_device,
+#endif
 #if defined(CONFIG_KEYPADS_AM)||defined(CONFIG_VIRTUAL_REMOTE)||defined(CONFIG_KEYPADS_AM_MODULE)
     &input_device,
 #endif
@@ -2305,9 +2324,6 @@ static struct platform_device __initdata *platform_devs[] = {
 #endif
 #if defined(CONFIG_NAND_FLASH_DRIVER_MULTIPLANE_CE)
     &aml_nand_device,
-#endif
-#if defined(CONFIG_AML_RTC)
-    &aml_rtc_device,
 #endif
 #ifdef CONFIG_AMLOGIC_VIDEOIN_MANAGER
 	&vm_device,
@@ -2350,7 +2366,7 @@ static struct platform_device __initdata *platform_devs[] = {
 #ifdef CONFIG_EFUSE
 	&aml_efuse_device,
 #endif
-#ifdef CONFIG_PMU_ACT8942
+#ifdef CONFIG_PMU_ACT8xxx
 	&aml_pmu_device,
 #endif
 #ifdef CONFIG_POST_PROCESS_MANAGER
@@ -2409,8 +2425,10 @@ static struct i2c_board_info __initdata aml_i2c_bus_info_2[] = {
 #endif
 #ifdef CONFIG_PMU_ACT8942
 	{
-        I2C_BOARD_INFO("act8942-i2c", ACT8942_ADDR),
-		.platform_data = (void *)&act8942_pdata,	
+        I2C_BOARD_INFO(ACT8xxx_I2C_NAME, ACT8xxx_ADDR),
+#ifdef CONFIG_PMU_ACT8942
+		.platform_data = (void *)&act8942_pdata,
+#endif
     },
 #endif
 };
@@ -2477,10 +2495,6 @@ static void __init device_pinmux_init(void )
     WRITE_CBUS_REG(HHI_GEN_CLK_CNTL,(READ_CBUS_REG(HHI_GEN_CLK_CNTL)&(~(0x7f<<0)))|((0<<0)|(1<<8)|(7<<9)) );
     CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO2_EN_N, (1<<15));    
     SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_3, (1<<22));
-#else
-    // set clk for camera
-    WRITE_CBUS_REG(HHI_GEN_CLK_CNTL,(READ_CBUS_REG(HHI_GEN_CLK_CNTL)&(~(0x7f<<0)))|(0<<0)|(1<<8)|(0<<9));
-    CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO2_EN_N, (1<<15));   
 #endif
 }
 
@@ -2589,17 +2603,46 @@ static __init void m1_irq_init(void)
 static __init void m1_fixup(struct machine_desc *mach, struct tag *tag, char **cmdline, struct meminfo *m)
 {
     struct membank *pbank;
+    
+    // PHYS_MEM_START ~ RESERVED_MEM_START
     m->nr_banks = 0;
     pbank=&m->bank[m->nr_banks];
     pbank->start = PAGE_ALIGN(PHYS_MEM_START);
     pbank->size  = SZ_64M & PAGE_MASK;
     pbank->node  = PHYS_TO_NID(PHYS_MEM_START);
     m->nr_banks++;
+#ifdef CONFIG_AML_SUSPEND
+    if (PHYS_MEM_END>256*SZ_1M){
+    	  // RESERVED_MEM_END ~ 256M
+        pbank=&m->bank[m->nr_banks];
+        pbank->start = PAGE_ALIGN(RESERVED_MEM_END+1);
+        pbank->size  = (PHYS_MEM_START+255*SZ_1M-(RESERVED_MEM_END+1)) & PAGE_MASK;
+        pbank->node  = PHYS_TO_NID(RESERVED_MEM_END+1);
+        m->nr_banks++;
+
+        // 256M ~ PHYS_MEM_END
+        pbank=&m->bank[m->nr_banks];
+        pbank->start = PAGE_ALIGN(PHYS_MEM_START+256*SZ_1M);
+        pbank->size  = (PHYS_MEM_END+1-256*SZ_1M) & PAGE_MASK;
+        pbank->node  = PHYS_TO_NID(PHYS_MEM_START+256*SZ_1M);
+        m->nr_banks++;
+    }
+    else{
+    	  // RESERVED_MEM_END ~ PHYS_MEM_END - 1M
+        pbank=&m->bank[m->nr_banks];
+        pbank->start = PAGE_ALIGN(RESERVED_MEM_END+1);
+        pbank->size  = (PHYS_MEM_END-RESERVED_MEM_END-SZ_1M) & PAGE_MASK;
+        pbank->node  = PHYS_TO_NID(RESERVED_MEM_END+1);
+        m->nr_banks++;
+    }
+#else
+    // RESERVED_MEM_END ~ PHYS_MEM_END 
     pbank=&m->bank[m->nr_banks];
     pbank->start = PAGE_ALIGN(RESERVED_MEM_END+1);
     pbank->size  = (PHYS_MEM_END-RESERVED_MEM_END) & PAGE_MASK;
     pbank->node  = PHYS_TO_NID(RESERVED_MEM_END+1);
     m->nr_banks++;
+#endif
 }
 
 MACHINE_START(MESON3_8726M_SKT, "AMLOGIC MESON3 8726M SKT SH")

@@ -565,7 +565,7 @@ typedef struct {
 #define ANALOG_COUNT    3
 static analog_t analog_regs[ANALOG_COUNT] = {
     {"SAR_ADC",             SAR_ADC_REG3,       1 << 28, (1 << 30) | (1 << 21),    0,  1},
-    {"LED_PWM_REG0",        LED_PWM_REG0,       1 << 13,          1 << 12,              0,  0}, // needed for core voltage adjustment, so not off
+    {"LED_PWM_REG0",        LED_PWM_REG0,       1 << 13,          1 << 12,              0,  1}, // needed for core voltage adjustment, so not off
     {"VGHL_PWM_REG0",       VGHL_PWM_REG0,      1 << 13,          1 << 12,              0,  1},
 };
 
@@ -700,10 +700,6 @@ static void auto_clk_gating_setup(
 
 static void meson_pm_suspend(void)
 {
-#ifdef SAVE_DDR_REGS
-    int *p = pdata->ddr_reg_backup;
-    int i;
-#endif
     unsigned ddr_clk_N;
     unsigned mpeg_clk_backup;
 
@@ -721,7 +717,7 @@ static void meson_pm_suspend(void)
 
     printk(KERN_INFO "target ddr clock 0x%x!\n", pdata->ddr_clk);
 
-//    analog_switch(OFF);
+    analog_switch(OFF);
 
     usb_switch(OFF, 0);
     usb_switch(OFF, 1);
@@ -731,34 +727,6 @@ static void meson_pm_suspend(void)
     }
 
     power_gate_switch(OFF);
-
-#ifdef SAVE_DDR_REGS
-    printk("PCTL_TOGCNT1U_ADDR %x\n", READ_APB_REG(PCTL_TOGCNT1U_ADDR));
-    printk("PCTL_TOGCNT100N_ADDR %x\n", READ_APB_REG(PCTL_TOGCNT100N_ADDR));
-    printk("PCTL_TREFI_ADDR %x\n", READ_APB_REG(PCTL_TREFI_ADDR));
-    printk("PCTL_ZQCR_ADDR %x\n", READ_APB_REG(PCTL_ZQCR_ADDR));
-    printk("PCTL_ODTCFG_ADDR %x\n", READ_APB_REG(PCTL_ODTCFG_ADDR));
-    printk("PCTL_TMRD_ADDR %x\n", READ_APB_REG(PCTL_TMRD_ADDR));
-    printk("PCTL_TRFC_ADDR %x\n", READ_APB_REG(PCTL_TRFC_ADDR));
-    printk("PCTL_TRP_ADDR %x\n", READ_APB_REG(PCTL_TRP_ADDR));
-    printk("PCTL_TAL_ADDR %x\n", READ_APB_REG(PCTL_TAL_ADDR));
-    printk("PCTL_TCWL_ADDR %x\n", READ_APB_REG(PCTL_TCWL_ADDR));
-    printk("PCTL_TCL_ADDR %x\n", READ_APB_REG(PCTL_TCL_ADDR));
-    printk("PCTL_TRAS_ADDR %x\n", READ_APB_REG(PCTL_TRAS_ADDR));
-    printk("PCTL_TRC_ADDR %x\n", READ_APB_REG(PCTL_TRC_ADDR));
-    printk("PCTL_TRCD_ADDR %x\n", READ_APB_REG(PCTL_TRCD_ADDR));
-    printk("PCTL_TRRD_ADDR %x\n", READ_APB_REG(PCTL_TRRD_ADDR));
-    printk("PCTL_TRTP_ADDR %x\n", READ_APB_REG(PCTL_TRTP_ADDR));
-    printk("PCTL_TWR_ADDR %x\n", READ_APB_REG(PCTL_TWR_ADDR));
-    printk("PCTL_TWTR_ADDR %x\n", READ_APB_REG(PCTL_TWTR_ADDR));
-    printk("PCTL_TEXSR_ADDR %x\n", READ_APB_REG(PCTL_TEXSR_ADDR));
-    printk("PCTL_TXP_ADDR %x\n", READ_APB_REG(PCTL_TXP_ADDR));
-    printk("PCTL_TDQS_ADDR %x\n", READ_APB_REG(PCTL_TDQS_ADDR));
-    printk("PCTL_MCFG_ADDR %x\n", READ_APB_REG(PCTL_MCFG_ADDR));
-    printk("PCTL_RSLR0_ADDR %x\n", READ_APB_REG(PCTL_RSLR0_ADDR));
-    printk("PCTL_RDGR0_ADDR %x\n", READ_APB_REG(PCTL_RDGR0_ADDR));
-    printk("MMC_DDR_CTRL %x\n", READ_APB_REG(MMC_DDR_CTRL));
-#endif
 
     clk_switch(OFF);
 
@@ -796,7 +764,7 @@ static void meson_pm_suspend(void)
 #else
 #ifdef CONFIG_AML_SUSPEND
 extern int meson_power_suspend();
-			meson_power_suspend();
+    meson_power_suspend();
 #else
     WRITE_CBUS_REG(SYS_CPU_0_IRQ_IN2_INTR_MASK, pdata->power_key);     // enable rtc interrupt only
     meson_sram_suspend(pdata);
@@ -817,18 +785,12 @@ extern int meson_power_suspend();
 
     clk_switch(ON);
 
-#ifdef SAVE_DDR_REGS
-    for (i = 0; i < 100 / 4; i++) {
-        printk("%x\n", p[i]);
-    }
-#endif
-
     power_gate_switch(ON);
 
     usb_switch(ON, 0);
     usb_switch(ON, 1);
 
-//    analog_switch(ON);
+    analog_switch(ON);
 }
 
 static int meson_pm_prepare(void)
@@ -879,7 +841,7 @@ extern void request_suspend_state(suspend_state_t new_state);
 	   request_suspend_state(0);		
 #else
 extern int enter_state(suspend_state_t state)
-		enter_state(state);
+		enter_state(0);
 #endif
 #endif
 #endif
@@ -912,13 +874,14 @@ static int __init meson_pm_probe(struct platform_device *pdev)
         dev_err(&pdev->dev, "cannot get platform data\n");
         return -ENOENT;
     }
+	
+#ifndef CONFIG_AML_SUSPEND
     pdata->ddr_reg_backup = sram_alloc(32 * 4);
     if (!pdata->ddr_reg_backup) {
         dev_err(&pdev->dev, "cannot allocate SRAM memory\n");
         return -ENOMEM;
     }
 
-#ifndef CONFIG_AML_SUSPEND
     meson_sram_suspend = sram_alloc(meson_cpu_suspend_sz);
     if (!meson_sram_suspend) {
         dev_err(&pdev->dev, "cannot allocate SRAM memory\n");

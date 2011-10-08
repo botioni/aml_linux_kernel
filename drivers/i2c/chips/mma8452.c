@@ -38,7 +38,7 @@
 
 #include <linux/mma8452.h>
 
-#define DEBUG			1
+#define DEBUG			0
 #define MAX_FAILURE_COUNT	3
 
 #define MMA8452_DELAY_PWRON	300	/* ms, >= 300 ms */

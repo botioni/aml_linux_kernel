@@ -78,17 +78,17 @@ int auto_select_eth_clk(void)
 
 static unsigned pll_setting[13]={
     0x20222,
-    0x20228,
-    0x2022c,
-    0x20234,
-    0x10220,
-    0x10224,
-    0x10228,
-    0x1022c,
-    0x10230,
-    0x10234,
-    0x10236,
-    0x0021e,
+    0x20222,
+    0x20222,
+    0x20222,
+    0x10222,
+    0x10222,
+    0x10222,
+    0x10222,
+    0x10222,
+    0x00220,
+    0x00220,
+    0x00220,
     0x00220
 };
 
@@ -120,7 +120,7 @@ int sys_clkpll_setting(unsigned crystal_freq, unsigned out_freq)
             result_freq = clk_util_clk_msr(SYS_PLL_CLK);
             if ((result_freq <= target_freq+1)&&(result_freq >= target_freq-1)){
                 lock_flag++;
-                if (lock_flag>=3)
+                if (lock_flag>=2)
                     break;
             }
             if (log_index<64) 

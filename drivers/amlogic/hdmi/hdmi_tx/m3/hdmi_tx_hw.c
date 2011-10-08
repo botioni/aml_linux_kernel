@@ -37,6 +37,8 @@
 #include <mach/am_regs.h>
 #include <mach/clock.h>
 #include <mach/power_gate.h>
+#include <linux/clk.h>
+
 #else
 #include "ioapi.h"
 #include <chipsupport/chipsupport.h>
@@ -915,8 +917,44 @@ static int read_hpd_gpio(void)
     return level;
 }
 
+#if 0
+static unsigned long clk81_rate = 100000000;
+
+static void clk81_set(void)
+{
+    struct clk *clk_tmp;
+
+    clk_tmp = clk_get_sys("clk81", NULL);
+    if (clk_tmp)
+    {
+        clk81_rate = clk_get_rate(clk_tmp);
+        clk_set_rate(clk_tmp, 168000000);
+        CLEAR_AOBUS_REG_MASK(AO_UART_CONTROL, (1 << 19) | 0xFFF);
+        WRITE_AOBUS_REG_BITS(AO_UART_CONTROL, ((168000000 / (115200 * 4)) - 1) & 0xfff, 0, 12);
+    }
+    msleep(2);  //Waiting some time
+    printk("%s clk81_rate: %d\n", __FUNCTION__, clk81_rate);
+}
+
+static void clk81_resume(void)
+{
+    struct clk *clk_tmp;
+    
+    clk_tmp = clk_get_sys("clk81", NULL);
+    if (clk_tmp)
+    {
+        clk_set_rate(clk_tmp, clk81_rate);
+        CLEAR_AOBUS_REG_MASK(AO_UART_CONTROL, (1 << 19) | 0xFFF);
+        WRITE_AOBUS_REG_BITS(AO_UART_CONTROL, ((clk81_rate / (115200 * 4)) - 1) & 0xfff, 0, 12);
+    }
+    msleep(2);  //Waiting some time
+    printk("%s clk81_rate: %d\n", __FUNCTION__, clk81_rate);
+}
+#endif
+
 static void digital_clk_off(unsigned char flag)
 {
+//    clk81_resume();
     if(flag&1){
 //#ifdef AML_A3
     /* off hdmi audio clock */
@@ -940,6 +978,7 @@ static void digital_clk_off(unsigned char flag)
 
 static void digital_clk_on(unsigned char flag)
 {
+//    clk81_set();
     if(flag&4){
         /* on hdmi sys clock */
 //#ifdef AML_A3
@@ -2692,21 +2731,30 @@ static void hdmitx_m3_debug(hdmitx_dev_t* hdmitx_device, const char* buf)
         i++;    
     }
     tmpbuf[i]=0;
-    if(strncmp(tmpbuf, "dumpreg", 7)==0){
+    if((strncmp(tmpbuf, "dumpreg", 7)==0) || (strncmp(tmpbuf, "dumptvencreg", 12)==0)){
         hdmitx_dump_tvenc_reg(hdmitx_device->cur_VIC, 1);
         return;
     }
-    else if(strncmp(tmpbuf, "rdhdmireg", 9)==0){
+    else if(strncmp(tmpbuf, "dumphdmireg", 11)==0){
         unsigned char reg_val = 0;
         unsigned int reg_adr = 0;
         for (reg_adr = 0; reg_adr < 0x800; reg_adr ++){        //HDMI Regs address range: 0 ~ 0x7ff
             reg_val = hdmi_rd_reg(reg_adr);
-            printk("HDMI Reg:0x%x  Val:0x%x\n", reg_adr, reg_val);
+            printk("HDMI[0x%x]: 0x%x\n", reg_adr, reg_val);
+        }
+        return ;
+    }
+    else if(strncmp(tmpbuf, "dumpcbusreg", 11)==0){
+        unsigned j;
+        adr=simple_strtoul(tmpbuf+11, NULL, 16);  //CBUS Start addr
+        value=simple_strtoul(buf+i+1, NULL, 16); //CBUS End addr
+        for(j = 0 ; j < value-adr+1 ; j++){
+            printk("CBUS[0x%x]: 0x%x\n", adr+j, READ_MPEG_REG(adr+j));
         }
     }
     else if(strncmp(tmpbuf, "pllcalc", 7)==0){
         adr=simple_strtoul(tmpbuf+7, NULL, 10);
-        if(adr == 0){
+        if((adr == 0) && (*(tmpbuf+7) != 'a')){
             printk("CTS_VDAC_CLK1: %uMHz\n", clk_util_clk_msr(CTS_VDAC_CLK1));
             printk("CTS_VDAC_CLK0: %uMHz\n", clk_util_clk_msr(CTS_VDAC_CLK0));
             printk("CTS_A9_CLK: %uMHz\n", clk_util_clk_msr(CTS_A9_CLK));
@@ -2731,13 +2779,14 @@ static void hdmitx_m3_debug(hdmitx_dev_t* hdmitx_device, const char* buf)
         }
         else{
             if(adr < 46)
-                printk("Other Tree[%d] clk: %uMHz\n", adr, clk_util_clk_msr(adr));
+                printk("Tree[%d] clk: %uMHz\n", adr, clk_util_clk_msr(adr));
         }
         if(*(tmpbuf+7) == 'a'){
             for(adr = 0; adr < 46; adr ++){
-                printk("Other Tree[%d] clk: %uMHz\n", adr, clk_util_clk_msr(adr));
+                printk("Tree[%d] clk: %uMHz\n", adr, clk_util_clk_msr(adr));
             }
         }
+        return;
     }
     else if(strncmp(tmpbuf, "hdmiaudio", 9)==0){
         value=simple_strtoul(tmpbuf+9, NULL, 16);
@@ -2749,6 +2798,7 @@ static void hdmitx_m3_debug(hdmitx_dev_t* hdmitx_device, const char* buf)
             hdmi_audio_off_flag = 0;
             hdmi_wr_reg(TX_AUDIO_PACK, 0x00); // disable audio sample packets
         }
+        return;
     }
     else if(strncmp(tmpbuf, "cfgreg", 6)==0){
         adr=simple_strtoul(tmpbuf+6, NULL, 16);
