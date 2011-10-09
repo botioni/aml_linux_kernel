@@ -187,6 +187,8 @@ static void intr_handler(void *arg)
 #else
     hdmitx_dev_t* hdmitx_device = (hdmitx_dev_t*)arg;
 #endif    
+
+    WRITE_MPEG_REG(HHI_GCLK_MPEG2, READ_MPEG_REG(HHI_GCLK_MPEG2) | (1<<4));     //Enable HDMI PCLK
     
     data32 = hdmi_rd_reg(OTHER_BASE_ADDR + HDMI_OTHER_INTR_STAT); 
     hdmi_print(1,"HDMI irq %x\n",data32);
@@ -932,7 +934,7 @@ static void clk81_set(void)
         WRITE_AOBUS_REG_BITS(AO_UART_CONTROL, ((168000000 / (115200 * 4)) - 1) & 0xfff, 0, 12);
     }
     msleep(2);  //Waiting some time
-    printk("%s clk81_rate: %d\n", __FUNCTION__, clk81_rate);
+    //printk("%s clk81_rate: %d\n", __FUNCTION__, clk81_rate);
 }
 
 static void clk81_resume(void)
@@ -947,7 +949,7 @@ static void clk81_resume(void)
         WRITE_AOBUS_REG_BITS(AO_UART_CONTROL, ((clk81_rate / (115200 * 4)) - 1) & 0xfff, 0, 12);
     }
     msleep(2);  //Waiting some time
-    printk("%s clk81_rate: %d\n", __FUNCTION__, clk81_rate);
+    //printk("%s clk81_rate: %d\n", __FUNCTION__, clk81_rate);
 }
 
 static void digital_clk_off(unsigned char flag)
