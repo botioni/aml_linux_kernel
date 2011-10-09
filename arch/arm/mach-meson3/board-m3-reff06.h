@@ -26,7 +26,7 @@
 #define OSD_576_PIX			(768*576)
 #define OSD_720_PIX			(1280*720)
 #define OSD_1080_PIX		(1920*1080)
-#define OSD_PANEL_PIX		(800*600)
+#define OSD_PANEL_PIX		(1280*768)
 #define B16BpP	(2)
 #define B32BpP	(4)
 #define DOUBLE_BUFFER	(2)
