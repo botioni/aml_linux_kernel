@@ -106,6 +106,7 @@
 
 #ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE
 #include <media/amlogic/aml_camera.h>
+#include <linux/camera/amlogic_camera_common.h>
 #endif
 
 #ifdef CONFIG_BQ27x00_BATTERY
@@ -899,13 +900,19 @@ static void gc0308_v4l2_late_resume(void)
     set_gpio_mode(GPIOA_bank_bit0_27(25), GPIOA_bit_bit0_27(25), GPIO_OUTPUT_MODE);
 }
 
+static aml_camera_i2c_fig1_t gc0308_custom_init_script[] = {
+	{0x14,0x11}, // h_v
+	{0xff,0xff},
+};
+
 aml_plat_cam_data_t video_gc0308_data = {
 	.name="video-gc0308",
-	.video_nr=0,//1,
+	.video_nr=1,//1,
 	.device_init= gc0308_v4l2_init,
 	.device_uninit=gc0308_v4l2_uninit,
 	.early_suspend = gc0308_v4l2_early_suspend,
 	.late_resume = gc0308_v4l2_late_resume,
+	.custom_init_script = gc0308_custom_init_script,
 };
 
 
@@ -977,7 +984,7 @@ static void gt2005_v4l2_late_resume(void)
 
 aml_plat_cam_data_t video_gt2005_data = {
 	.name="video-gt2005",
-	.video_nr=1,   //    1
+	.video_nr=0,   //    1
 	.device_init= gt2005_v4l2_init,
 	.device_uninit=gt2005_v4l2_uninit,
 	.early_suspend = gt2005_v4l2_early_suspend,
