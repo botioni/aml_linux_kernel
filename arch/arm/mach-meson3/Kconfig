@@ -49,6 +49,12 @@ config MACH_MESON3_REFF08
 	help
 	  Include support for the AML M3 socket board platform.
 
+config MACH_MESON3_REFF09
+	select GENERIC_ALLOCATOR
+	bool "Support M3 F09 platform"
+	help
+	  Include support for the AML M3 board platform.
+
 config MESON3_CLOCK_TICK_RATE
     int "Clock Tick Rate"
 	default 25000000

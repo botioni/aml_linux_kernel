@@ -6,45 +6,59 @@
  * Author:  elvis yu<elvis.yu@amlogic.com>
  */
 
-#ifndef _PMU_ACT8942_H
-#define _PMU_ACT8942_H
+#ifndef _PMU_ACT8xxx_H
+#define _PMU_ACT8xxx_H
 
-#define ACT8942_ADDR 0x5b
+#define ACT8xxx_ADDR 0x5b
 
-#define ACT8942_PMU_DEBUG_LOG		0
-
-#if ACT8942_PMU_DEBUG_LOG == 1
-	#define logd(x...)  	pr_info(x)
-#else
-	#define logd(x...)		NULL
+#ifdef CONFIG_PMU_ACT8942
+#define	ACT8xxx_DEVICE_NAME		"pmu_act8942"
+#define	ACT8xxx_CLASS_NAME		"act8942_class"
+#define ACT8xxx_I2C_NAME		"act8942-i2c"
+#elif defined(CONFIG_PMU_ACT8862)
+#define	ACT8xxx_DEVICE_NAME		"pmu_act8862"
+#define	ACT8xxx_CLASS_NAME		"act8862_class"
+#define ACT8xxx_I2C_NAME		"act8862-i2c"
 #endif
 
-typedef enum act8942_reg { 
-	ACT8942_REG1 = 1,
-	ACT8942_REG2,
-	ACT8942_REG3,
-	ACT8942_REG4,
-	ACT8942_REG5,
-	ACT8942_REG6,
-	ACT8942_REG7,
-} act8942_regx;
 
-#define ACT8942_SYS_ADDR 0x00
-#define ACT8942_REG1_ADDR 0x20
-#define ACT8942_REG2_ADDR 0x30
-#define ACT8942_REG3_ADDR 0x40
-#define ACT8942_REG4_ADDR 0x50
-#define ACT8942_REG5_ADDR 0x54
-#define ACT8942_REG6_ADDR 0x60
-#define ACT8942_REG7_ADDR 0x64
+#define ACT8xxx_PMU_DEBUG_LOG		0
+
+#if ACT8xxx_PMU_DEBUG_LOG == 1
+	#define logd(x...)  	pr_info(x)
+#else
+	#define logd(x...)	
+#endif
+
+typedef enum act8xxx_reg { 
+	ACT8xxx_REG1 = 1,
+	ACT8xxx_REG2,
+	ACT8xxx_REG3,
+	ACT8xxx_REG4,
+	ACT8xxx_REG5,
+	ACT8xxx_REG6,
+	ACT8xxx_REG7,
+} act8xxx_regx;
+
+#define ACT8xxx_SYS_ADDR 0x00
+#define ACT8xxx_REG1_ADDR 0x20
+#define ACT8xxx_REG2_ADDR 0x30
+#define ACT8xxx_REG3_ADDR 0x40
+#define ACT8xxx_REG4_ADDR 0x50
+#define ACT8xxx_REG5_ADDR 0x54
+#define ACT8xxx_REG6_ADDR 0x60
+#define ACT8xxx_REG7_ADDR 0x64
+#ifdef CONFIG_PMU_ACT8942
 #define ACT8942_APCH_ADDR 0x70
+#endif
 
-typedef struct act8942_i2c_msg
+typedef struct act8xxx_i2c_msg
 {
 	u8 reg;
 	u8 val;
-}	act8942_i2c_msg_t;
+}	act8xxx_i2c_msg_t;
 
+#ifdef CONFIG_PMU_ACT8942
 struct act8942_operations {
 	int (*is_ac_online)(void);
 	int (*is_usb_online)(void);
@@ -60,8 +74,9 @@ struct act8942_operations {
 	unsigned int asn; /* Average Sample Number: 0 or 1 is disabled */
 	unsigned int rvp; /* reverse voltage protection: 1:enable; 0:disable */
 };
+#endif
 
-typedef union act8942_register_data
+typedef union act8xxx_register_data
 {
 	/** raw register data */
 	uint8_t d8;
@@ -193,7 +208,7 @@ typedef union act8942_register_data
 	 	 */
 		unsigned ON : 1;
 	} REGx_b;
-} act8942_register_data_t;
+} act8xxx_register_data_t;
 
 #endif
 

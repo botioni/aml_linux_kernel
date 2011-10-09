@@ -126,6 +126,12 @@ config MPU_SENSORS_MMC314X
     help
       This enables support for the MEMSIC mmc314x compass
 
+config MPU_SENSORS_MMC328X
+    bool "MEMSIC mmc328x"
+    depends on MPU_SENSORS_MPU3050
+    help
+      This enables support for the MEMSIC mmc328x compass
+
 config MPU_SENSORS_AMI30X
     bool "Aichi Steel ami30X"
     depends on MPU_SENSORS_MPU3050

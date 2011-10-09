@@ -120,6 +120,14 @@
 #include <linux/efuse.h>
 #endif
 
+
+#if defined(CONFIG_AMLOGIC_BACKLIGHT)
+extern void power_on_backlight(void);
+extern void power_off_backlight(void);
+extern unsigned get_backlight_level(void);
+extern void set_backlight_level(unsigned level);
+#endif
+
 #if defined(CONFIG_JPEGLOGO)
 static struct resource jpeglogo_resources[] = {
     [0] = {
@@ -699,20 +707,19 @@ static struct aml_m3_platform_data aml_m3_pdata = {
 };
 #endif
 
-#ifdef CONFIG_GOODIX_GT8XX_CAPACITIVE_TOUCHSCREEN
-#include <linux/goodix_touch_malata.h>
+#ifdef CONFIG_GOODIX_GT819_CAPACITIVE_TOUCHSCREEN
+#include <linux/goodix_touch_gt819.h>
 
 #define GPIO_GOODIX_PENIRQ ((GPIOA_bank_bit0_27(16)<<16) |GPIOA_bit_bit0_27(16)) 
-#define GPIO_GOODIX_PENIRQ_IDX (GPIOA_IDX + 16)
-
 #define GPIO_GOODIX_PWR ((GPIOA_bank_bit0_27(9)<<16) |GPIOA_bit_bit0_27(9)) 
 #define GPIO_GOODIX_RST ((GPIOC_bank_bit0_15(3)<<16) |GPIOC_bit_bit0_15(3)) 
-//
-//static struct  goodix_platform_data  goodix_touch_info = {
-//        .reset = GPIO_GOODIX_RST,
-//        .power_control = GPIO_GOODIX_PWR,
-//};
 
+static struct goodix_i2c_rmi_platform_data goodix_ts_pdata = {
+    .gpio_pwr = GPIO_GOODIX_PWR,
+    .gpio_rst = GPIO_GOODIX_RST,
+    .gpio_irq = GPIO_GOODIX_PENIRQ,
+    .irq_edge = 1, /* 0:rising edge, 1:falling edge */
+};
 #endif
 
 #ifdef CONFIG_ITK_CAPACITIVE_TOUCHSCREEN
@@ -1494,7 +1501,7 @@ static struct platform_device power_dev = {
 #endif
 
 #ifdef CONFIG_BQ27x00_BATTERY
-static int is_ac_connected(void)
+static int bq27x00_is_ac_connected(void)
 {
 	    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_7, (1<<8));
 	    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0, (1<<6)); 
@@ -1504,7 +1511,7 @@ static int is_ac_connected(void)
 	return (READ_CBUS_REG(PREG_PAD_GPIO0_I)&(1<<20))? 0:1;//dc_det
 }
 
-static int get_charge_status()
+static int bq27x00_get_charge_status()
 {
 	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_7, (1<<9));
 	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0, (1<<6));	
@@ -1514,20 +1521,20 @@ static int get_charge_status()
     return (READ_CBUS_REG(PREG_PAD_GPIO0_I)&(1<<21))? 1:0;//chg_stat
 }
 
-static void set_charge(int flags)
+static void bq27x00_set_charge(int flags)
 {
 }
 
-static void set_bat_off(void)
+static void bq27x00_set_bat_off(void)
 {
 
 }
 
 static struct bq27x00_battery_pdata bq27x00_pdata = {
-	.is_ac_online	= is_ac_connected,
-	.get_charge_status = get_charge_status,	
-	.set_charge = set_charge,
-	.set_bat_off = set_bat_off,
+	.is_ac_online	= bq27x00_is_ac_connected,
+	.get_charge_status = bq27x00_get_charge_status,	
+	.set_charge = bq27x00_set_charge,
+	.set_bat_off = bq27x00_set_bat_off,
     .chip = 1,
 };
 #endif
@@ -1630,17 +1637,9 @@ static struct platform_device aml_efuse_device = {
 };
 #endif
 
-#ifdef CONFIG_PMU_ACT8942
-#include <linux/act8942.h>  
 
-
-static void power_off(void)
-{
-    //Power hold down
-    set_gpio_val(GPIOAO_bank_bit0_11(6), GPIOAO_bit_bit0_11(6), 0);
-    set_gpio_mode(GPIOAO_bank_bit0_11(6), GPIOAO_bit_bit0_11(6), GPIO_OUTPUT_MODE);
-}
-
+#ifdef CONFIG_PMU_ACT8xxx
+#include <linux/act8xxx.h>  
 
 
 /*
@@ -1660,6 +1659,20 @@ static inline int is_ac_online(void)
 	
 	return !val;
 }
+
+static void power_off(void)
+{
+	power_off_backlight();
+    //VCCx2 power down
+    set_vccx2(0);
+
+    //Power hold down
+    set_gpio_val(GPIOAO_bank_bit0_11(6), GPIOAO_bit_bit0_11(6), 0);
+    set_gpio_mode(GPIOAO_bank_bit0_11(6), GPIOAO_bit_bit0_11(6), GPIO_OUTPUT_MODE);
+}
+
+
+#ifdef CONFIG_PMU_ACT8942
 
 //temporary
 static inline int is_usb_online(void)
@@ -1917,9 +1930,10 @@ static struct act8942_operations act8942_pdata = {
 	.update_period = 2000,	//2S
 };
 
+#endif
 
 static struct platform_device aml_pmu_device = {
-    .name	= "pmu_act8942",
+    .name	= "ACT8xxx_DEVICE_NAME",
     .id	= -1,
 };
 #endif
@@ -2147,12 +2161,6 @@ static struct platform_device aml_nand_device = {
 #endif
 
 #if defined(CONFIG_AMLOGIC_BACKLIGHT)
-
-extern void power_on_backlight(void);
-extern void power_off_backlight(void);
-extern unsigned get_backlight_level(void);
-extern void set_backlight_level(unsigned level);
-
 struct aml_bl_platform_data aml_bl_platform =
 {
     .power_on_bl = power_on_backlight,
@@ -2273,6 +2281,10 @@ static void bt_device_init(void)
 	
 	/* UART_RX(BT) */
 	SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_4, (1<<12));
+	
+	/* BT_WAKE */
+    CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO4_EN_N, (1 << 10));
+    SET_CBUS_REG_MASK(PREG_PAD_GPIO4_O, (1 << 10));
 }
 
 static void bt_device_on(void)
@@ -2400,7 +2412,7 @@ static struct platform_device __initdata *platform_devs[] = {
 #ifdef CONFIG_EFUSE
 	&aml_efuse_device,
 #endif
-#ifdef CONFIG_PMU_ACT8942
+#ifdef CONFIG_PMU_ACT8xxx
 	&aml_pmu_device,
 #endif
 };
@@ -2421,13 +2433,14 @@ static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
     },
 #endif
 
-#ifdef CONFIG_GOODIX_GT8XX_CAPACITIVE_TOUCHSCREEN
+#ifdef CONFIG_GOODIX_GT819_CAPACITIVE_TOUCHSCREEN
     {
         I2C_BOARD_INFO(GOODIX_I2C_NAME, GOODIX_I2C_ADDR),
-//        .irq = GPIO_GOODIX_PENIRQ,
-//        .platform_data = &goodix_touch_info,
+        .irq = INT_GPIO_0,
+        .platform_data = (void *)&goodix_ts_pdata,
     },
 #endif
+
 
 #if CONFIG_VIDEO_AMLOGIC_CAPTURE_GT2005
     {
@@ -2472,10 +2485,12 @@ static struct i2c_board_info __initdata aml_i2c_bus_info_2[] = {
         .platform_data = (void *)&bq27x00_pdata,
     },
 #endif
-#ifdef CONFIG_PMU_ACT8942
+#ifdef CONFIG_PMU_ACT8862
 	{
-        I2C_BOARD_INFO("act8942-i2c", ACT8942_ADDR),
+        I2C_BOARD_INFO("ACT8xxx_I2C_NAME", ACT8xxx_ADDR),
+#ifdef CONFIG_PMU_ACT8942
 		.platform_data = (void *)&act8942_pdata,	
+#endif
     },
 #endif
 };
@@ -2614,24 +2629,11 @@ static __init void m1_init_machine(void)
 #endif /*CONFIG_AML_SUSPEND*/    
     LED_PWM_REG0_init();
     power_hold();
-#if defined(CONFIG_PMU_ACT8942)|| defined(CONFIG_AMLOGIC_PM)
+#if defined(CONFIG_PMU_ACT8862)|| defined(CONFIG_AMLOGIC_PM)
     pm_power_off = power_off;		//Elvis fool
 #endif
     device_clk_setting();
     device_pinmux_init();
-
-#ifdef CONFIG_GOODIX_GT8XX_CAPACITIVE_TOUCHSCREEN
-	gpio_direction_output(GPIO_GOODIX_PWR, 0);
-	msleep(200);
-	gpio_direction_output(GPIO_GOODIX_RST, 0);
-	gpio_direction_output(GPIO_GOODIX_RST, 1);
-	
-    /* set input mode */
-    gpio_direction_input(GPIO_GOODIX_PENIRQ);
-    /* set gpio interrupt #0 source=GPIOA_16, and triggered by falling edge(=1) */
-    gpio_enable_edge_int(GPIO_GOODIX_PENIRQ_IDX, 1, INT_GPIO_2-INT_GPIO_0);
-        
-#endif
 
 #ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE
     camera_power_on_init();

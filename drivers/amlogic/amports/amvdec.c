@@ -204,6 +204,7 @@ void amvdec_start(void)
     amvdec_wake_lock();
 #endif
 
+#if 0
     sys_clk = clk_get_sys("clk81", NULL);
     if (sys_clk){
         sys_clk_rate = clk_get_rate(sys_clk);
@@ -211,6 +212,8 @@ void amvdec_start(void)
         CLEAR_AOBUS_REG_MASK(AO_UART_CONTROL, (1 << 19) | 0xFFF);
         WRITE_AOBUS_REG_BITS(AO_UART_CONTROL, ((192000000 / (115200 * 4)) - 1) & 0xfff, 0, 12);
     }
+#endif
+
     /* additional cbus dummy register reading for timing control */
     READ_MPEG_REG(RESET0_REGISTER);
     READ_MPEG_REG(RESET0_REGISTER);
@@ -248,12 +251,14 @@ void amvdec_stop(void)
     READ_MPEG_REG(RESET0_REGISTER);
     READ_MPEG_REG(RESET0_REGISTER);
 
+#if 0
     sys_clk = clk_get_sys("clk81", NULL);
     if (sys_clk){
         clk_set_rate(sys_clk, sys_clk_rate);
         CLEAR_AOBUS_REG_MASK(AO_UART_CONTROL, (1 << 19) | 0xFFF);
         WRITE_AOBUS_REG_BITS(AO_UART_CONTROL, ((sys_clk_rate / (115200 * 4)) - 1) & 0xfff, 0, 12);
     }
+#endif
 #ifdef CONFIG_WAKELOCK
     amvdec_wake_unlock();
 #endif

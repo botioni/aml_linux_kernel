@@ -1,10 +1,10 @@
-#ifndef __BOARD_8626M_F04_H
-#define __BOARD_8626M_F04_H
+#ifndef __BOARD_M3_REF_REFF09_H
+#define __BOARD_M3_REF_REFF09_H
 
 #include <asm/page.h>
 
 #define PHYS_MEM_START		(0x80000000)
-#define PHYS_MEM_SIZE		(256*SZ_1M)
+#define PHYS_MEM_SIZE		(512*SZ_1M)
 #define PHYS_MEM_END		(PHYS_MEM_START + PHYS_MEM_SIZE -1 )
 
 /******** Reserved memory setting ************************/
@@ -26,7 +26,7 @@
 #define OSD_576_PIX			(768*576)
 #define OSD_720_PIX			(1280*720)
 #define OSD_1080_PIX		(1920*1080)
-#define OSD_PANEL_PIX		(1024*600)
+#define OSD_PANEL_PIX		(800*600)
 #define B16BpP	(2)
 #define B32BpP	(4)
 #define DOUBLE_BUFFER	(2)
@@ -82,9 +82,9 @@
 
 #ifdef CONFIG_POST_PROCESS_MANAGER
 #ifdef CONFIG_POST_PROCESS_MANAGER_PPSCALER
-#define PPMGR_MEM_SIZE               1024 * 600*18
+#define PPMGR_MEM_SIZE               800 * 640*18
 #else
-#define PPMGR_MEM_SIZE               1024 * 600*15
+#define PPMGR_MEM_SIZE               800 * 640*15
 #endif
 #else
 #define PPMGR_MEM_SIZE		0

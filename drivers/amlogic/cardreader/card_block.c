@@ -317,7 +317,8 @@ static int card_queue_thread(void *d)
 				/*wait sdio handle irq & xfer data*/
 				for(rewait=3;(!sdio_irq_handled)&&(rewait--);)
 					schedule();
-				req = blk_fetch_request(q);
+				if (!blk_queue_plugged(q))
+					req = blk_fetch_request(q);
 				if (req)
 					break;
 
