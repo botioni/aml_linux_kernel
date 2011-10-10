@@ -322,13 +322,31 @@ int it7230_write_reg(unsigned char page, unsigned char addr_byte, unsigned short
     #endif
     if (page != current_page) {
         ret = i2c_transfer(client->adapter, &msg[0], 1);
+        if (ret < 0) {
+            printk(KERN_ERR "it7230 switch bank fail\n");
+        }
+        else {
+            printk("it7230 switch to bank %d \n", current_page);
             current_page = page;
-        msleep(10);
+            msleep(10);
+        }
     }
     ret = i2c_transfer(client->adapter, &msg[1], 1);
     //When the "reset" bit of PCR register is 1, current_page is set to 0.
-    if ((CAPS_PCR == addr_byte) && (1 == page) && (data_word & 0x0001))
-        current_page = 0;
+    if ( (CAPS_PCR == addr_byte) && (1 == page) && (data_word & 0x0001)) {
+        int retry_count = 0;
+        while ((ret < 0) && (retry_count++ < 5)) {
+            msleep(10);
+            ret = i2c_transfer(client->adapter, &msg[1], 1);
+        }
+        if (ret >=0) {
+            current_page = 0;
+            msleep(10);
+        }
+        else {
+            printk(KERN_ERR "it7230 write reset fail\n");
+        }
+    }
     return ret;
 }
 
