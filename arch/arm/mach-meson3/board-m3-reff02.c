@@ -1246,341 +1246,7 @@ static struct platform_device modem_dev = {
 
 #endif
 
-#ifdef CONFIG_AMLOGIC_PM
-
-static int is_ac_connected(void)
-{
-    return (READ_CBUS_REG(ASSIST_HW_REV)&(1<<9))? 1:0;
-}
-
-//static int is_usb_connected(void)
-//{
-//  return 0;
-//}
-
-static void set_charge(int flags)
-{
-    //GPIOD_22 low: fast charge high: slow charge
-   // CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_7, (1<<18));
-   // if(flags == 1)
-        //set_gpio_val(GPIOD_bank_bit2_24(22), GPIOD_bit_bit2_24(22), 0); //fast charge
-    //else
-        //set_gpio_val(GPIOD_bank_bit2_24(22), GPIOD_bit_bit2_24(22), 1); //slow charge
-    //set_gpio_mode(GPIOD_bank_bit2_24(22), GPIOD_bit_bit2_24(22), GPIO_OUTPUT_MODE);
-}
-
-#ifdef CONFIG_SARADC_AM
-extern int get_adc_sample(int chan);
-#endif
-static int get_bat_vol(void)
-{
-#ifdef CONFIG_SARADC_AM
-    return get_adc_sample(5);
-#else
-        return 0;
-#endif
-}
-
-static int get_charge_status(void)
-{
-    return (READ_CBUS_REG(ASSIST_HW_REV)&(1<<8))? 1:0;
-}
-
-static void power_off(void)
-{
-    //Power hold down
-    set_gpio_val(GPIOAO_bank_bit0_11(6), GPIOAO_bit_bit0_11(6), 0);
-    set_gpio_mode(GPIOAO_bank_bit0_11(6), GPIOAO_bit_bit0_11(6), GPIO_OUTPUT_MODE);
-}
-
-static void set_bat_off(void)
-{
-    //BL_PWM power off
-    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<31));
-    CLEAR_CBUS_REG_MASK(PWM_MISC_REG_AB, (1 << 0));
-    //set_gpio_val(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), 0);
-    //set_gpio_mode(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), GPIO_OUTPUT_MODE);
-
-    //VCCx2 power down
-#if defined(CONFIG_SUSPEND)
-    set_vccx2(0);
-#endif
-}
-
-static int bat_value_table[37]={
-0,  //0    
-737,//0
-742,//4
-750,//10
-752,//15
-753,//16
-754,//18
-755,//20
-756,//23
-757,//26
-758,//29
-760,//32
-761,//35
-762,//37
-763,//40
-766,//43
-768,//46
-770,//49
-772,//51
-775,//54
-778,//57
-781,//60
-786,//63
-788,//66
-791,//68
-795,//71
-798,//74
-800,//77
-806,//80
-810,//83
-812,//85
-817,//88
-823,//91
-828,//95
-832,//97
-835,//100
-835 //100
-};
-
-static int bat_charge_value_table[37]={
-0,  //0    
-766,//0
-773,//4
-779,//10
-780,//15
-781,//16
-782,//18
-783,//20
-784,//23
-785,//26
-786,//29
-787,//32
-788,//35
-789,//37
-790,//40
-791,//43
-792,//46
-794,//49
-796,//51
-798,//54
-802,//57
-804,//60
-807,//63
-809,//66
-810,//68
-813,//71
-815,//74
-818,//77
-820,//80
-823,//83
-825,//85
-828,//88
-831,//91
-836,//95
-839,//97
-842,//100
-842 //100
-}; 
-
-static int bat_level_table[37]={
-0,
-0,
-4,
-10,
-15,
-16,
-18,
-20,
-23,
-26,
-29,
-32,
-35,
-37,
-40,
-43,
-46,
-49,
-51,
-54,
-57,
-60,
-63,
-66,
-68,
-71,
-74,
-77,
-80,
-83,
-85,
-88,
-91,
-95,
-97,
-100,
-100  
-};
-
-static struct aml_power_pdata power_pdata = {
-	.is_ac_online	= is_ac_connected,
-	//.is_usb_online	= is_usb_connected,
-	.set_charge = set_charge,
-	.get_bat_vol = get_bat_vol,
-	.get_charge_status = get_charge_status,
-	.set_bat_off = set_bat_off,
-	.bat_value_table = bat_value_table,
-	.bat_charge_value_table = bat_charge_value_table,
-	.bat_level_table = bat_level_table,
-	.bat_table_len = 37,		
-	.is_support_usb_charging = 0,
-	//.supplied_to = supplicants,
-	//.num_supplicants = ARRAY_SIZE(supplicants),
-};
-
-static struct platform_device power_dev = {
-    .name       = "aml-power",
-    .id     = -1,
-    .dev = {
-        .platform_data  = &power_pdata,
-    },
-};
-#endif
-
-#ifdef CONFIG_BQ27x00_BATTERY
-static int is_ac_connected(void)
-{
-	return (READ_CBUS_REG(ASSIST_HW_REV)&(1<<9))? 1:0;//GP_INPUT1
-}
-
-static int get_charge_status()
-{
-    return (READ_CBUS_REG(ASSIST_HW_REV)&(1<<8))? 1:0;//GP_INPUT0
-}
-
-static void set_charge(int flags)
-{
-}
-
-static void set_bat_off(void)
-{
-
-}
-
-static struct bq27x00_battery_pdata bq27x00_pdata = {
-	.is_ac_online	= is_ac_connected,
-	.get_charge_status = get_charge_status,	
-	.set_charge = set_charge,
-	.set_bat_off = set_bat_off,
-    .chip = 1,
-};
-#endif
-
-#if defined(CONFIG_AM_UART_WITH_S_CORE)
-static struct aml_uart_platform aml_uart_plat = {
-    .uart_line[0]       =   UART_AO,
-    .uart_line[1]       =   UART_A,
-    .uart_line[2]       =   UART_B,
-    .uart_line[3]       =   UART_C
-};
-
-static struct platform_device aml_uart_device = {
-    .name         = "am_uart",  
-    .id       = -1, 
-    .num_resources    = 0,  
-    .resource     = NULL,   
-    .dev = {        
-                .platform_data = &aml_uart_plat,
-           },
-};
-#endif
-
-#ifdef CONFIG_AR1520_GPS
-static void ar1520_power_on(void)
-{
-#ifdef CONFIG_SN7325
-	printk("power on gps\n");
-	configIO(0, 0);
-	setIO_level(0, 1, 7);//OD7
-#endif	
-}
-
-static void ar1520_power_off(void)
-{
-#ifdef CONFIG_SN7325
-	printk("power off gps\n");
-	configIO(0, 0);
-	setIO_level(0, 0, 7);//OD7
-#endif	
-}
-
-static void ar1520_reset(void)
-{
-#ifdef CONFIG_SN7325
-	printk("reset gps\n");
-	msleep(200);
-	configIO(0, 0);
-	setIO_level(0, 0, 4);//OD4
-	msleep(200);
-	configIO(0, 0);
-	setIO_level(0, 1, 4);//OD4
-	msleep(200);
-	configIO(0, 0);
-	setIO_level(0, 0, 4);//OD4
-	msleep(200);
-	configIO(0, 0);
-	setIO_level(0, 1, 4);//OD4
-#endif	
-}
-
-static struct ar1520_platform_data aml_ar1520_plat = {
-	.power_on = ar1520_power_on,
-	.power_off = ar1520_power_off,
-	.reset = ar1520_reset,
-};
-
-static struct platform_device aml_ar1520_device = {	
-    .name         = "ar1520_gps",  
-    .id       = -1, 
-    .dev = {        
-                .platform_data = &aml_ar1520_plat,  
-           },
-};
-#endif
-
-#ifdef CONFIG_EFUSE
-static bool efuse_data_verify(unsigned char *usid)
-{  int len;
-  
-    len = strlen(usid);
-    if((len > 8)&&(len<31) )
-        return true;
-		else
-				return false;
-}
-
-static struct efuse_platform_data aml_efuse_plat = {
-    .pos = 337,
-    .count = 30,
-    .data_verify = efuse_data_verify,
-};
-
-static struct platform_device aml_efuse_device = {
-    .name	= "efuse",
-    .id	= -1,
-    .dev = {
-                .platform_data = &aml_efuse_plat,
-           },
-};
-#endif
-
-#ifdef CONFIG_PMU_ACT8xxx
-#include <linux/act8xxx.h>  
+//Amlogic Power Management Support
 
 /*
  *	DC_DET(GPIOA_20)	enable internal pullup
@@ -1595,7 +1261,7 @@ static inline int is_ac_online(void)
 	set_gpio_mode(GPIOA_bank_bit0_27(20), GPIOA_bit_bit0_27(20), GPIO_INPUT_MODE);
 	val = get_gpio_val(GPIOA_bank_bit0_27(20), GPIOA_bit_bit0_27(20));
 	
-	logd("%s: get from gpio is %d.\n", __FUNCTION__, val);
+	//logd("%s: get from gpio is %d.\n", __FUNCTION__, val);
 	
 	return !val;
 }
@@ -1620,17 +1286,6 @@ static void power_off(void)
 }
 
 /*
-//temporary
-static inline int is_usb_online(void)
-{
-	u8 val;
-
-	return 0;
-}
-*/
-
-#ifdef CONFIG_PMU_ACT8942
-/*
  *	nSTAT OUTPUT(GPIOA_21)	enable internal pullup
  *		High:		Full
  *		Low:		Charging
@@ -1643,11 +1298,42 @@ static inline int get_charge_status(void)
 	set_gpio_mode(GPIOA_bank_bit0_27(21), GPIOA_bit_bit0_27(21), GPIO_INPUT_MODE);
 	val = get_gpio_val(GPIOA_bank_bit0_27(21), GPIOA_bit_bit0_27(21));
 
-	logd("%s: get from gpio is %d.\n", __FUNCTION__, val);
+	//logd("%s: get from gpio is %d.\n", __FUNCTION__, val);
 	
 	return val;
 }
 
+/*
+ *	Fast charge when CHG_CON(GPIOAO_11) is High.
+ *	Slow charge when CHG_CON(GPIOAO_11) is Low.
+ */
+static int set_charge_current(int level)
+{
+	set_gpio_mode(GPIOAO_bank_bit0_11(11), GPIOAO_bit_bit0_11(11), GPIO_OUTPUT_MODE);
+	set_gpio_val(GPIOAO_bank_bit0_11(11), GPIOAO_bit_bit0_11(11), (level ? 1 : 0));
+	return 0;
+}
+
+//temporary
+static int set_bat_off(void)
+{
+	return 0;
+}
+
+#ifdef CONFIG_PMU_ACT8xxx
+#include <linux/act8xxx.h>  
+
+/*
+//temporary
+static inline int is_usb_online(void)
+{
+	u8 val;
+
+	return 0;
+}
+*/
+
+#ifdef CONFIG_PMU_ACT8942
 static inline int get_bat_adc_value(void)
 {
 	return get_adc_sample(5);
@@ -1837,8 +1523,7 @@ static inline int get_bat_percentage(int adc_vaule, int *adc_table,
             break;
 		}
 	}
-	//return per_table[i];
-	return 50;
+	return per_table[i];
 }
 
 static int act8942_measure_capacity_charging(void)
@@ -1858,18 +1543,12 @@ static int act8942_measure_capacity_battery(void)
 	return get_bat_percentage(adc, bat_value_table, bat_level_table, table_size);
 }
 
-//temporary
-static int set_bat_off(void)
-{
-	return 0;
-}
-
-
 static struct act8942_operations act8942_pdata = {
 	.is_ac_online = is_ac_online,
 	//.is_usb_online = is_usb_online,
 	.set_bat_off = set_bat_off,
 	.get_charge_status = get_charge_status,
+	.set_charge_current = set_charge_current,
 	.measure_voltage = measure_voltage,
 	.measure_current = measure_current,
 	.measure_capacity_charging = act8942_measure_capacity_charging,
@@ -1883,6 +1562,114 @@ static struct act8942_operations act8942_pdata = {
 static struct platform_device aml_pmu_device = {
     .name	= ACT8xxx_DEVICE_NAME,
     .id	= -1,
+};
+#endif
+
+#ifdef CONFIG_BQ27x00_BATTERY
+static struct bq27x00_battery_pdata bq27x00_pdata = {
+	.is_ac_online	= is_ac_online,
+	.get_charge_status = get_charge_status,	
+	.set_charge = set_charge_current,
+	.set_bat_off = set_bat_off,
+    .chip = 1,
+};
+#endif
+
+#if defined(CONFIG_AM_UART_WITH_S_CORE)
+static struct aml_uart_platform aml_uart_plat = {
+    .uart_line[0]       =   UART_AO,
+    .uart_line[1]       =   UART_A,
+    .uart_line[2]       =   UART_B,
+    .uart_line[3]       =   UART_C
+};
+
+static struct platform_device aml_uart_device = {
+    .name         = "am_uart",  
+    .id       = -1, 
+    .num_resources    = 0,  
+    .resource     = NULL,   
+    .dev = {        
+                .platform_data = &aml_uart_plat,
+           },
+};
+#endif
+
+#ifdef CONFIG_AR1520_GPS
+static void ar1520_power_on(void)
+{
+#ifdef CONFIG_SN7325
+	printk("power on gps\n");
+	configIO(0, 0);
+	setIO_level(0, 1, 7);//OD7
+#endif	
+}
+
+static void ar1520_power_off(void)
+{
+#ifdef CONFIG_SN7325
+	printk("power off gps\n");
+	configIO(0, 0);
+	setIO_level(0, 0, 7);//OD7
+#endif	
+}
+
+static void ar1520_reset(void)
+{
+#ifdef CONFIG_SN7325
+	printk("reset gps\n");
+	msleep(200);
+	configIO(0, 0);
+	setIO_level(0, 0, 4);//OD4
+	msleep(200);
+	configIO(0, 0);
+	setIO_level(0, 1, 4);//OD4
+	msleep(200);
+	configIO(0, 0);
+	setIO_level(0, 0, 4);//OD4
+	msleep(200);
+	configIO(0, 0);
+	setIO_level(0, 1, 4);//OD4
+#endif	
+}
+
+static struct ar1520_platform_data aml_ar1520_plat = {
+	.power_on = ar1520_power_on,
+	.power_off = ar1520_power_off,
+	.reset = ar1520_reset,
+};
+
+static struct platform_device aml_ar1520_device = {	
+    .name         = "ar1520_gps",  
+    .id       = -1, 
+    .dev = {        
+                .platform_data = &aml_ar1520_plat,  
+           },
+};
+#endif
+
+#ifdef CONFIG_EFUSE
+static bool efuse_data_verify(unsigned char *usid)
+{  int len;
+  
+    len = strlen(usid);
+    if((len > 8)&&(len<31) )
+        return true;
+		else
+				return false;
+}
+
+static struct efuse_platform_data aml_efuse_plat = {
+    .pos = 337,
+    .count = 30,
+    .data_verify = efuse_data_verify,
+};
+
+static struct platform_device aml_efuse_device = {
+    .name	= "efuse",
+    .id	= -1,
+    .dev = {
+                .platform_data = &aml_efuse_plat,
+           },
 };
 #endif
 
@@ -2420,7 +2207,7 @@ static struct i2c_board_info __initdata aml_i2c_bus_info_1[] = {
 static struct i2c_board_info __initdata aml_i2c_bus_info_2[] = {
 #ifdef CONFIG_BQ27x00_BATTERY
     {
-        I2C_BOARD_INFO("bq27200", 0x55),
+        I2C_BOARD_INFO("bq27500", 0x55),
         .platform_data = (void *)&bq27x00_pdata,
     },
 #endif
