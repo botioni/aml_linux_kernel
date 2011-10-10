@@ -26,6 +26,7 @@
 #include <mach/platform.h>
 #include <mach/memory.h>
 #include <mach/clock.h>
+#include <mach/usbclock.h>
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>
 #include <asm/setup.h>
@@ -552,15 +553,18 @@ static struct resource amlogic_card_resource[] = {
 
 void extern_wifi_power(int is_power)
 {
-    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_1,(1<<11));
+    //CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_1,(1<<11));
     //CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0,(1<<18));   //GPIOC 8
-    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0, (1<<28));   //GPIOD 8
-    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_1, (1<<20));    //GPIOD 8
-    CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO2_EN_N, (1<<8));
+    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0, (1<<28));   //GPIOD 8 pin mux
+    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_1, (1<<20));    //GPIOD 8 pin mux
+    CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO2_EN_N, (1<<24));
     if(is_power)
-        SET_CBUS_REG_MASK(PREG_PAD_GPIO2_O, (1<<8));
+        SET_CBUS_REG_MASK(PREG_PAD_GPIO2_O, (1<<24));
     else
-        CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO2_O, (1<<8));
+        CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO2_O, (1<<24));
+    //clean GPIOD_7 pin mux for WL_RST_N 
+    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0, (1<<27));
+    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_1, (1<<14)|(1<<13)|(1<<12)|(1<<11));
 }
 
 EXPORT_SYMBOL(extern_wifi_power);
@@ -605,10 +609,10 @@ static struct aml_card_info  amlogic_card_info[] = {
         .card_ins_en_mask = 0,
         .card_ins_input_reg = 0,
         .card_ins_input_mask = 0,
-        .card_power_en_reg = EGPIO_GPIOC_ENABLE,
-        .card_power_en_mask = PREG_IO_7_MASK,
-        .card_power_output_reg = EGPIO_GPIOC_OUTPUT,
-        .card_power_output_mask = PREG_IO_7_MASK,
+        .card_power_en_reg = EGPIO_GPIOD_ENABLE,
+        .card_power_en_mask = PREG_IO_23_MASK,
+        .card_power_output_reg = EGPIO_GPIOD_OUTPUT,
+        .card_power_output_mask = PREG_IO_23_MASK,
         .card_power_en_lev = 1,
         .card_wp_en_reg = 0,
         .card_wp_en_mask = 0,
@@ -2643,6 +2647,7 @@ static __init void m1_init_machine(void)
 #ifdef CONFIG_USB_DWC_OTG_HCD
     set_usb_phy_clk(USB_PHY_CLOCK_SEL_XTAL_DIV2);
     lm_device_register(&usb_ld_a);
+    set_usb_phy_id_mode(USB_PHY_PORT_B,USB_PHY_MODE_SW_HOST);
     lm_device_register(&usb_ld_b);
 #endif
 #ifdef CONFIG_SATA_DWC_AHCI
