@@ -552,13 +552,15 @@ static struct resource amlogic_card_resource[] = {
 
 void extern_wifi_power(int is_power)
 {
-	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_1,(1<<11));
-	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0,(1<<18));
-	CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO2_EN_N, (1<<8));
-	if(is_power)
-		SET_CBUS_REG_MASK(PREG_PAD_GPIO2_O, (1<<8));
-	else
-		CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO2_O, (1<<8));
+    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_1,(1<<11));
+    //CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0,(1<<18));   //GPIOC 8
+    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0, (1<<28));   //GPIOD 8
+    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_1, (1<<20));    //GPIOD 8
+    CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO2_EN_N, (1<<8));
+    if(is_power)
+        SET_CBUS_REG_MASK(PREG_PAD_GPIO2_O, (1<<8));
+    else
+        CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO2_O, (1<<8));
 }
 
 EXPORT_SYMBOL(extern_wifi_power);
@@ -2126,13 +2128,18 @@ static void aml_8726m_power_off_bl(void)
     //set_gpio_mode(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), GPIO_OUTPUT_MODE);
 */}
 
+extern void power_on_backlight(void);
+extern void power_off_backlight(void);
+extern unsigned get_backlight_level(void);
+extern void set_backlight_level(unsigned level);
+
 struct aml_bl_platform_data aml_bl_platform =
 {
-    .bl_init = aml_8726m_bl_init,
-    .power_on_bl = aml_8726m_power_on_bl,
-    .power_off_bl = aml_8726m_power_off_bl,
-    .get_bl_level = aml_8726m_get_bl_level,
-    .set_bl_level = aml_8726m_set_bl_level,
+    //.bl_init = aml_8726m_bl_init,
+    .power_on_bl = power_on_backlight,
+    .power_off_bl = power_off_backlight,
+    .get_bl_level = get_backlight_level,
+    .set_bl_level = set_backlight_level,
 };
 
 static struct platform_device aml_bl_device = {
