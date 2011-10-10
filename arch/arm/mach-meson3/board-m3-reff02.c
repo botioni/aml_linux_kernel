@@ -1837,7 +1837,8 @@ static inline int get_bat_percentage(int adc_vaule, int *adc_table,
             break;
 		}
 	}
-	return per_table[i];
+	//return per_table[i];
+	return 50;
 }
 
 static int act8942_measure_capacity_charging(void)
