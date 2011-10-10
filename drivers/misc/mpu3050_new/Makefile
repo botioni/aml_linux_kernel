@@ -83,6 +83,10 @@ ifdef CONFIG_MPU_SENSORS_MMC314X
 mpu3050-objs += $(MLLITE_DIR)compass/mmc314x.o
 endif
 
+ifdef CONFIG_MPU_SENSORS_MMC328X
+mpu3050-objs += $(MLLITE_DIR)compass/mmc328x.o
+endif
+
 ifdef CONFIG_MPU_SENSORS_YAS529
 mpu3050-objs += $(MLLITE_DIR)compass/yas529-kernel.o
 endif

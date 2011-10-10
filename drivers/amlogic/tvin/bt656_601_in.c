@@ -102,6 +102,8 @@ am656in_t am656in_dec_info = {
 		.fmt_info.fmt = TVIN_SIG_FMT_NULL,
         .fmt_info.v_active=0,
         .fmt_info.h_active=0,
+        .fmt_info.vsync_phase=0,
+        .fmt_info.hsync_phase=0,        
         .fmt_info.frame_rate=0,
         .status     = TVIN_SIG_STATUS_NULL,
         .cap_addr   = 0,
@@ -216,6 +218,8 @@ static void init_656in_dec_parameter(fmt_info_t fmt_info)
             am656in_dec_info.active_line = fmt_info.v_active;
 			am656in_dec_info.para.fmt_info.h_active = fmt_info.h_active;
             am656in_dec_info.para.fmt_info.v_active = fmt_info.v_active;
+            am656in_dec_info.para.fmt_info.hsync_phase = fmt_info.hsync_phase;
+            am656in_dec_info.para.fmt_info.vsync_phase = fmt_info.vsync_phase;
             pr_dbg("%dx%d input mode is selected for camera, \n",fmt_info.h_active,fmt_info.v_active);
             break;
         case TVIN_SIG_FMT_NULL:
@@ -522,7 +526,8 @@ static void reinit_camera_dec(void)
 {
     //reset_bt656in_module();
 	int temp_data;
-
+	int hsync_enable = am656in_dec_info.para.fmt_info.hsync_phase ;
+	int vsync_enable = am656in_dec_info.para.fmt_info.vsync_phase ;
     temp_data = READ_CBUS_REG(BT_CTRL);
     temp_data &= ~( 1 << BT_EN_BIT );
     WRITE_CBUS_REG(BT_CTRL, temp_data); //disable BT656 input
@@ -539,6 +544,7 @@ static void reinit_camera_dec(void)
                                         (0 << BT_IDQ_PHASE )   |
                                         ( 0 << BT_FID_HSVS ) |         // FID came from HS VS.
                                         ( 1 << BT_VSYNC_PHASE ) |
+                                        (hsync_enable << BT_HSYNC_PHASE)|
                                         (0 << BT_D8B )     |
                                         (4 << BT_FID_DELAY ) |
                                         (0 << BT_VSYNC_DELAY) |

@@ -2032,6 +2032,8 @@ static int vidioc_streamon(struct file *file, void *priv, enum v4l2_buf_type i)
 	para.fmt_info.frame_rate = 150;
 	para.fmt_info.h_active = 640;
 	para.fmt_info.v_active = 480;
+	para.fmt_info.hsync_phase = 0;
+	para.fmt_info.vsync_phase  = 1;	
 	ret =  videobuf_streamon(&fh->vb_vidq);
 	if(ret == 0){
     start_tvin_service(0,&para);

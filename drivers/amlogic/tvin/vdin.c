@@ -207,10 +207,11 @@ int start_tvin_service(int no ,tvin_parm_t *para)
     devp->para.fmt_info.fmt= para->fmt_info.fmt;
 	devp->para.fmt_info.h_active= para->fmt_info.h_active;
 	devp->para.fmt_info.v_active= para->fmt_info.v_active;
+	devp->para.fmt_info.hsync_phase= para->fmt_info.hsync_phase;
+	devp->para.fmt_info.vsync_phase= para->fmt_info.vsync_phase;	
 	devp->para.fmt_info.frame_rate= para->fmt_info.frame_rate;
     devp->flags |= VDIN_FLAG_DEC_STARTED;  
-            printk("devp addr is %x",devp);
-            printk("addr_offset is %x",devp->addr_offset);          
+  
     vdin_start_dec(devp);  
     msleep(10);
     tasklet_enable(&devp->isr_tasklet);

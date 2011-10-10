@@ -152,6 +152,8 @@ static void __efuse_write_byte( unsigned long addr, unsigned long data )
 		WRITE_CBUS_REG_BITS( EFUSE_CNTL1, CNTL1_AUTO_WR_ENABLE_OFF,
 		CNTL1_AUTO_WR_ENABLE_BIT, CNTL1_AUTO_WR_ENABLE_SIZE );
 	}
+
+	//printk(KERN_INFO "__efuse_write_byte: addr=%ld, data=0x%ld\n", addr, data);
 }
 
 static void __efuse_read_dword( unsigned long addr, unsigned long *data )
@@ -226,7 +228,9 @@ static ssize_t __efuse_read( char *buf,
 	unsigned pos = *ppos;
 	unsigned long *pdw;
 	char* tmp_p;
-	unsigned int dwsize = (count + 3) >> 2;
+	
+	/*pos may not align to 4*/
+	unsigned int dwsize = (count + 3 +  pos%4) >> 2;
 
 	if (!contents) {
 		printk(KERN_INFO "memory not enough\n"); 
@@ -244,12 +248,13 @@ static ssize_t __efuse_read( char *buf,
 		#ifdef EFUSE_DEBUG     
 		__efuse_read_dword_debug(pos, pdw);
 		#else
-                __efuse_read_dword(pos, pdw);
-                #endif
+		/*if pos does not align to 4,  __efuse_read_dword read from next dword, so, discount this un-aligned partition*/
+		__efuse_read_dword((pos - pos%4), pdw);
+		#endif
 	}     
 	
 	tmp_p = (char*)contents;
-        tmp_p += *ppos;                           
+       tmp_p += *ppos;                           
 
 	memcpy(buf, tmp_p, count);
 
@@ -460,29 +465,35 @@ static const struct file_operations efuse_fops = {
 /* Sysfs Files */
 static ssize_t mac_show(struct class *cla, struct class_attribute *attr, char *buf)
 {
-	char buf_mac[6] = {0};
+	char buf_mac[8] = {0};
+	char dec_mac[6] = {0};
 	loff_t ppos = MAC_POS;
-		__efuse_read(buf_mac, sizeof(buf_mac), &ppos);
+	__efuse_read(buf_mac, sizeof(buf_mac), &ppos);
+	efuse_bch_dec(buf_mac, 7, dec_mac);
 	return sprintf(buf, "%02x:%02x:%02x:%02x:%02x:%02x\n",
-			buf_mac[0],buf_mac[1],buf_mac[2],buf_mac[3],buf_mac[4],buf_mac[5]);
+			dec_mac[0],dec_mac[1],dec_mac[2],dec_mac[3],dec_mac[4],dec_mac[5]);
 }
 
 static ssize_t mac_wifi_show(struct class *cla, struct class_attribute *attr, char *buf)
 {
-	char buf_mac[6] = {0};
+	char buf_mac[8] = {0};
+	char dec_mac[6] = {0};
 	loff_t ppos = MAC_WIFI_POS;
 	__efuse_read(buf_mac, sizeof(buf_mac), &ppos);
+	efuse_bch_dec(buf_mac, 7, dec_mac);
 	return sprintf(buf, "%02x:%02x:%02x:%02x:%02x:%02x\n",
-		buf_mac[0],buf_mac[1],buf_mac[2],buf_mac[3],buf_mac[4],buf_mac[5]);
+		dec_mac[0],dec_mac[1],dec_mac[2],dec_mac[3],dec_mac[4],dec_mac[5]);
 }
 
 static ssize_t mac_bt_show(struct class *cla, struct class_attribute *attr, char *buf)
 {
-	char buf_mac[6] = {0};
+	char buf_mac[8] = {0};
+	char dec_mac[6] = {0};
 	loff_t ppos = MAC_BT_POS;
 	__efuse_read(buf_mac, sizeof(buf_mac), &ppos);
+	efuse_bch_dec(buf_mac, 7, dec_mac);
 	return sprintf(buf, "%02x:%02x:%02x:%02x:%02x:%02x\n",
-		buf_mac[0],buf_mac[1],buf_mac[2],buf_mac[3],buf_mac[4],buf_mac[5]);
+		dec_mac[0],dec_mac[1],dec_mac[2],dec_mac[3],dec_mac[4],dec_mac[5]);
 }
 
 
