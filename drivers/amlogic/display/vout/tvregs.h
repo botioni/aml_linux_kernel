@@ -663,10 +663,10 @@ static const reg_t *tvregsTab[] = {
     tvregs_576cvbs,
     tvregs_576p,
     tvregs_720p,
-    tvregs_720p_50hz,
-    tvregs_1080i,
-    tvregs_1080i_50hz,
+    tvregs_1080i,       //Adjust tvregs_* sequences and match the enum define in tvmode.h
     tvregs_1080p,
+    tvregs_720p_50hz,
+    tvregs_1080i_50hz,
     tvregs_1080p_50hz,
 };
 
