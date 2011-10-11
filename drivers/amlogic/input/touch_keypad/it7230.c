@@ -39,9 +39,9 @@
 #define KP_POLL_DELAY       (1 * 1000000)
 #define KP_POLL_PERIOD      (5 * 1000000)
 
-#define _DEBUG_IT7230_I2C
-#define _DEBUG_IT7230_READ_
-#define _DEBUG_IT7230_INIT_
+//#define _DEBUG_IT7230_I2C
+//#define _DEBUG_IT7230_READ_
+//#define _DEBUG_IT7230_INIT_
 int it7230_read_reg(unsigned char page, unsigned char addr_byte);
 int it7230_write_reg(unsigned char page, unsigned char addr_byte, unsigned short data_word);
 
@@ -334,18 +334,7 @@ int it7230_write_reg(unsigned char page, unsigned char addr_byte, unsigned short
     ret = i2c_transfer(client->adapter, &msg[1], 1);
     //When the "reset" bit of PCR register is 1, current_page is set to 0.
     if ( (CAPS_PCR == addr_byte) && (1 == page) && (data_word & 0x0001)) {
-        int retry_count = 0;
-        while ((ret < 0) && (retry_count++ < 5)) {
-            msleep(10);
-            ret = i2c_transfer(client->adapter, &msg[1], 1);
-        }
-        if (ret >=0) {
-            current_page = 0;
-            msleep(10);
-        }
-        else {
-            printk(KERN_ERR "it7230 write reset fail\n");
-        }
+        current_page = 0;
     }
     return ret;
 }
