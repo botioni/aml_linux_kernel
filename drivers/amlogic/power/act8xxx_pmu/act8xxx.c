@@ -74,6 +74,7 @@ static struct i2c_client *this_client;
 static int act8xxx_read_i2c(struct i2c_client *client, u8 reg, u8 *val);
 
 #ifdef CONFIG_USB_ANDROID
+#ifdef CONFIG_PMU_ACT8942
 int pc_connect(int status)
 {
 	new_usb_status = status;
@@ -84,6 +85,7 @@ int pc_connect(int status)
 	return 0;
 }
 EXPORT_SYMBOL(pc_connect);
+#endif
 #endif
 
 #ifdef CONFIG_PMU_ACT8942
@@ -699,18 +701,6 @@ static struct class act8xxx_class = {
 
 
 #ifdef CONFIG_PMU_ACT8942
-
-/*
- *	Fast charge when CHG_CON(GPIOAO_11) is High.
- *	Slow charge when CHG_CON(GPIOAO_11) is Low.
- */
-static int set_charge_current(int level)
-{
-	set_gpio_mode(GPIOAO_bank_bit0_11(11), GPIOAO_bit_bit0_11(11), GPIO_OUTPUT_MODE);
-	set_gpio_val(GPIOAO_bank_bit0_11(11), GPIOAO_bit_bit0_11(11), (level ? 1 : 0));
-	return 0;
-}
-
 static int act8942_operations_init(struct act8942_operations* pdata)
 {
 	act8942_opts = pdata;
@@ -733,7 +723,8 @@ static int act8942_operations_init(struct act8942_operations* pdata)
 	}
 	if(act8942_opts->set_charge_current == NULL)
 	{
-		act8942_opts->set_charge_current = set_charge_current;
+		pr_err("act8942_opts->set_charge_current is NULL!\n");
+		return -1;
 	}
 	if(act8942_opts->measure_voltage == NULL)
 	{
@@ -843,13 +834,13 @@ inline static int measure_capacity_advanced(void)
 #ifdef CONFIG_PMU_ACT8942	
 static void act8xxx_suspend(struct early_suspend *h)
 {
-	set_charge_current(1);
+	act8942_opts->set_charge_current(1);
 	pr_info("fast charger on early_suspend\n\n");    
 }
 
 static void act8xxx_resume(struct early_suspend *h)
 {
-    set_charge_current(0);
+    act8942_opts->set_charge_current(0);
 	pr_info("slow charger on resume\n\n");
 }
 

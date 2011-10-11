@@ -180,7 +180,7 @@ static void aml_m3_hp_detect_queue(struct work_struct* work)
 		//snd_soc_dapm_enable_pin(codec, "Ext Spk");
         //snd_soc_dapm_disable_pin(codec, "HP");
 		//snd_soc_dapm_sync(codec);
-	snd_soc_write(codec, ADAC_MUTE_CTRL_REG1, 0xc);//mute HP
+	snd_soc_write(codec, ADAC_MUTE_CTRL_REG1, 0xc0);//mute HP
         mute_spk(codec, 0);
 	}
 	//i = hp_detect_flag;

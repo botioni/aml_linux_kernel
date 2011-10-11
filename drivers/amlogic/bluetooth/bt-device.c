@@ -55,21 +55,53 @@ static const struct rfkill_ops bt_rfkill_ops = {
 	.set_block = bt_set_block,
 };
 
-static int bt_suspend(struct platform_device *pdev, pm_message_t state)                                               
+static int bt_earlysuspend(struct platform_device *pdev, pm_message_t state)                                               
 {
     struct hci_dev *hdev;
-    //unsigned char buf[10] = {0x01, 0x0a, 0x0a, 0x01, 0x01, 0x01, 0x01, 0x00, 0x00, 0x00};
-    //u16 opcode = (u16)((0x27 & 0x03ff)|(0x3f << 10));
-    
-    pr_info("BCM_BT: going suspend\n");
+        
+    pr_info("BCM_BT: going early suspend\n");
 
     if( hdev = hci_dev_get(0)){
-        //hci_send_cmd(hdev, opcode, 10, buf);
-        //hci_suspend_dev(hdev);
-
+        
         if (NULL != bt_dev.bt_dev_suspend) {
             bt_dev.bt_dev_suspend();
         }
+        //msleep(10);
+        //bt_baud = get_baud(1);
+    }
+
+    return 0;
+}
+
+static int bt_earlyresume(struct platform_device *pdev)
+{
+    struct hci_dev *hdev;
+    
+    pr_info("BCM_BT: going later resume\n");
+
+    if( hdev = hci_dev_get(0)){
+        //hci_resume_dev(hdev);
+        if (NULL != bt_dev.bt_dev_resume) {
+            bt_dev.bt_dev_resume();
+        }
+        //set_baud(1, bt_baud);
+    }
+
+    return 0;
+}
+
+static int bt_suspend(struct platform_device *pdev, pm_message_t state)                                               
+{
+    struct hci_dev *hdev;
+    
+    pr_info("BCM_BT: going suspend\n");
+
+    if( hdev = hci_dev_get(0)){        
+#ifndef CONFIG_HAS_EARLYSUSPEND
+        if (NULL != bt_dev.bt_dev_suspend) {
+            bt_dev.bt_dev_suspend();
+        }
+#endif
         //msleep(10);
         bt_baud = get_baud(1);
     }
@@ -84,10 +116,12 @@ static int bt_resume(struct platform_device *pdev)
     pr_info("BCM_BT: going resume\n");
 
     if( hdev = hci_dev_get(0)){
+#ifndef CONFIG_HAS_EARLYSUSPEND
         //hci_resume_dev(hdev);
         if (NULL != bt_dev.bt_dev_resume) {
             bt_dev.bt_dev_resume();
         }
+#endif
         set_baud(1, bt_baud);
     }
 
@@ -122,8 +156,8 @@ static int __init bt_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, bt_rfk);
 #ifdef CONFIG_HAS_EARLYSUSPEND                                                                                        
         bt_early_suspend.level = EARLY_SUSPEND_LEVEL_DISABLE_FB;
-        bt_early_suspend.suspend = bt_suspend;
-        bt_early_suspend.resume = bt_resume;
+        bt_early_suspend.suspend = bt_earlysuspend;
+        bt_early_suspend.resume = bt_earlyresume;
         bt_early_suspend.param = pdev;
         register_early_suspend(&bt_early_suspend);
 #endif
@@ -157,10 +191,8 @@ static struct platform_driver bt_driver = {
 	},
 	.probe		= bt_probe,
 	.remove		= bt_remove,
-#ifndef CONFIG_HAS_EARLYSUSPEND
 	.suspend    = bt_suspend,
     .resume     = bt_resume,
-#endif
 };
 
 static int __init bt_init(void)

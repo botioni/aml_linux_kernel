@@ -26,6 +26,7 @@
 #include <mach/platform.h>
 #include <mach/memory.h>
 #include <mach/clock.h>
+#include <mach/usbclock.h>
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>
 #include <asm/setup.h>
@@ -552,17 +553,31 @@ static struct resource amlogic_card_resource[] = {
 
 void extern_wifi_power(int is_power)
 {
-	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_1,(1<<11));
-	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0,(1<<18));
-	CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO2_EN_N, (1<<8));
-	if(is_power)
-		SET_CBUS_REG_MASK(PREG_PAD_GPIO2_O, (1<<8));
-	else
-		CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO2_O, (1<<8));
+    //CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_1,(1<<11));
+    //CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0,(1<<18));   //GPIOC 8
+    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0, (1<<28));   //GPIOD 8 pin mux
+    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_1, (1<<20));    //GPIOD 8 pin mux
+    CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO2_EN_N, (1<<24));
+    if(is_power)
+        SET_CBUS_REG_MASK(PREG_PAD_GPIO2_O, (1<<24));
+    else
+        CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO2_O, (1<<24));
+    //clean GPIOD_7 pin mux for WL_RST_N 
+    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0, (1<<27));
+    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_1, (1<<14)|(1<<13)|(1<<12)|(1<<11));
 }
+
+EXPORT_SYMBOL(extern_wifi_power);
+
+#define GPIO_WIFI_HOSTWAKE  ((GPIOX_bank_bit0_31(11)<<16) |GPIOX_bit_bit0_31(11))
 
 void sdio_extern_init(void)
 {
+    #if defined(CONFIG_BCM4329_HW_OOB) || defined(CONFIG_BCM4329_OOB_INTR_ONLY)/* Jone add */
+    gpio_direction_input(GPIO_WIFI_HOSTWAKE);
+    gpio_enable_level_int(gpio_to_idx(GPIO_WIFI_HOSTWAKE), 0, 4);
+    gpio_enable_edge_int(gpio_to_idx(GPIO_WIFI_HOSTWAKE), 0, 4);
+    #endif /* (CONFIG_BCM4329_HW_OOB) || (CONFIG_BCM4329_OOB_INTR_ONLY) Jone add */
     extern_wifi_power(1);
 }
 
@@ -594,10 +609,10 @@ static struct aml_card_info  amlogic_card_info[] = {
         .card_ins_en_mask = 0,
         .card_ins_input_reg = 0,
         .card_ins_input_mask = 0,
-        .card_power_en_reg = EGPIO_GPIOC_ENABLE,
-        .card_power_en_mask = PREG_IO_7_MASK,
-        .card_power_output_reg = EGPIO_GPIOC_OUTPUT,
-        .card_power_output_mask = PREG_IO_7_MASK,
+        .card_power_en_reg = EGPIO_GPIOD_ENABLE,
+        .card_power_en_mask = PREG_IO_23_MASK,
+        .card_power_output_reg = EGPIO_GPIOD_OUTPUT,
+        .card_power_output_mask = PREG_IO_23_MASK,
         .card_power_en_lev = 1,
         .card_wp_en_reg = 0,
         .card_wp_en_mask = 0,
@@ -606,6 +621,39 @@ static struct aml_card_info  amlogic_card_info[] = {
         .card_extern_init = sdio_extern_init,
     },
 };
+
+void extern_wifi_reset(int is_on)
+{
+    unsigned int val;
+    
+    /*output*/
+    val = readl(amlogic_card_info[1].card_power_en_reg);
+    val &= ~(amlogic_card_info[1].card_power_en_mask);
+    writel(val, amlogic_card_info[1].card_power_en_reg);
+        
+    if(is_on){
+        /*high*/
+        val = readl(amlogic_card_info[1].card_power_output_reg);
+        val |=(amlogic_card_info[1].card_power_output_mask);
+        writel(val, amlogic_card_info[1].card_power_output_reg);
+        printk("on val = %x\n", val);
+    }
+    else{
+        /*low*/
+        val = readl(amlogic_card_info[1].card_power_output_reg);
+        val &=~(amlogic_card_info[1].card_power_output_mask);
+        writel(val, amlogic_card_info[1].card_power_output_reg);
+        printk("off val = %x\n", val);
+    }
+
+    printk("ouput %x, bit %d, level %x, bit %d\n",
+            amlogic_card_info[1].card_power_en_reg,
+            amlogic_card_info[1].card_power_en_mask,
+            amlogic_card_info[1].card_power_output_reg,
+            amlogic_card_info[1].card_power_output_mask);
+    return;
+}
+EXPORT_SYMBOL(extern_wifi_reset);
 
 static struct aml_card_platform amlogic_card_platform = {
     .card_num = ARRAY_SIZE(amlogic_card_info),
@@ -817,10 +865,14 @@ static  struct platform_device aml_rtc_device = {
 #ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE_GC0308
 int gc0308_init(void)
 {
-//    udelay(1000);
-//    WRITE_CBUS_REG(HHI_ETH_CLK_CNTL,0x30f);// 24M XTAL
-//    WRITE_CBUS_REG(HHI_DEMOD_PLL_CNTL,0x232);// 24M XTAL
-//	udelay(1000);
+    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_1, (1<<29)); 
+    SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<2));
+
+    unsigned pwm_cnt = get_ddr_pll_clk()/48000000 - 1;
+    pwm_cnt &= 0xffff;
+    WRITE_CBUS_REG(PWM_PWM_C, (pwm_cnt<<16) | pwm_cnt);
+    SET_CBUS_REG_MASK(PWM_MISC_REG_CD, (1<<15)|(0<<8)|(1<<4)|(1<<0)); //select ddr pll for source, and clk divide 
+
 	
     // set camera power disable
     set_gpio_val(GPIOY_bank_bit0_22(10), GPIOY_bit_bit0_22(10), 0);    // set camera power disable
@@ -835,7 +887,7 @@ int gc0308_init(void)
     set_gpio_val(GPIOA_bank_bit0_27(25), GPIOA_bit_bit0_27(25), 0);    // set camera power enable
     set_gpio_mode(GPIOA_bank_bit0_27(25), GPIOA_bit_bit0_27(25), GPIO_OUTPUT_MODE);
     msleep(20);
-
+    return 0;
 }
 #endif
 
@@ -1576,8 +1628,8 @@ static struct platform_device aml_efuse_device = {
 };
 #endif
 
-#ifdef CONFIG_PMU_ACT8942
-#include <linux/act8942.h>  
+#ifdef CONFIG_PMU_ACT8xxx
+#include <linux/act8xxx.h>  
 
 /*
  *	DC_DET(GPIOA_20)	enable internal pullup
@@ -1616,6 +1668,7 @@ static void power_off(void)
     set_gpio_mode(GPIOAO_bank_bit0_11(6), GPIOAO_bit_bit0_11(6), GPIO_OUTPUT_MODE);
 }
 
+/*
 //temporary
 static inline int is_usb_online(void)
 {
@@ -1623,8 +1676,9 @@ static inline int is_usb_online(void)
 
 	return 0;
 }
+*/
 
-
+#ifdef CONFIG_PMU_ACT8942
 /*
  *	nSTAT OUTPUT(GPIOA_21)	enable internal pullup
  *		High:		Full
@@ -1702,6 +1756,156 @@ static inline int measure_capacity(void)
 	return val;
 }
 
+static int bat_value_table[37]={
+0,  //0    
+730,//0  
+737,//4  
+742,//10 
+750,//15 
+752,//16 
+753,//18 
+754,//20 
+755,//23 
+756,//26 
+757,//29 
+758,//32 
+760,//35 
+761,//37 
+762,//40 
+763,//43 
+766,//46 
+768,//49 
+770,//51 
+772,//54 
+775,//57 
+778,//60 
+781,//63 
+786,//66 
+788,//68 
+791,//71 
+795,//74 
+798,//77 
+800,//80 
+806,//83 
+810,//85 
+812,//88 
+817,//91 
+823,//95 
+828,//97 
+832,//100
+835 //100
+};
+
+static int bat_charge_value_table[37]={
+0,  //0    
+770,//0
+776,//4
+781,//10
+788,//15
+790,//16
+791,//18
+792,//20
+793,//23
+794,//26
+795,//29
+796,//32
+797,//35
+798,//37
+799,//40
+800,//43
+803,//46
+806,//49
+808,//51
+810,//54
+812,//57
+815,//60
+818,//63
+822,//66
+827,//68
+830,//71
+833,//74
+836,//77
+838,//80
+843,//83
+847,//85
+849,//88
+852,//91
+854,//95
+855,//97
+856,//100
+857 //100
+}; 
+
+static int bat_level_table[37]={
+0,
+0,
+4,
+10,
+15,
+16,
+18,
+20,
+23,
+26,
+29,
+32,
+35,
+37,
+40,
+43,
+46,
+49,
+51,
+54,
+57,
+60,
+63,
+66,
+68,
+71,
+74,
+77,
+80,
+83,
+85,
+88,
+91,
+95,
+97,
+100,
+100  
+};
+
+static inline int get_bat_percentage(int adc_vaule, int *adc_table, 
+										int *per_table, int table_size)
+{
+	int i;
+	
+	for(i=0; i<(table_size - 1); i++) {
+		if ((adc_vaule >= adc_table[i]) && (adc_vaule < adc_table[i+1])) {
+            break;
+		}
+	}
+	return per_table[i];
+}
+
+static int act8942_measure_capacity_charging(void)
+{
+	//printk("------%s  ", __FUNCTION__);
+	int adc = get_bat_adc_value();
+	int table_size = ARRAY_SIZE(bat_charge_value_table);
+	return get_bat_percentage(adc, bat_charge_value_table, bat_level_table, table_size);
+}
+
+static int act8942_measure_capacity_battery(void)
+{
+	//printk("------%s  ", __FUNCTION__);
+	int adc = get_bat_adc_value();
+	int table_size = ARRAY_SIZE(bat_value_table);
+
+	return get_bat_percentage(adc, bat_value_table, bat_level_table, table_size);
+}
+
 //temporary
 static int set_bat_off(void)
 {
@@ -1711,137 +1915,26 @@ static int set_bat_off(void)
 
 static struct act8942_operations act8942_pdata = {
 	.is_ac_online = is_ac_online,
-	.is_usb_online = is_usb_online,
+	//.is_usb_online = is_usb_online,
 	.set_bat_off = set_bat_off,
 	.get_charge_status = get_charge_status,
 	.measure_voltage = measure_voltage,
 	.measure_current = measure_current,
-	.measure_capacity_charging = measure_capacity,
-	.measure_capacity_battery = measure_capacity,
+	.measure_capacity_charging = act8942_measure_capacity_charging,
+	.measure_capacity_battery = act8942_measure_capacity_battery,
 	.update_period = 2000,	//2S
+	.asn = 5,				//Average Sample Number
+	.rvp = 1,				//reverse voltage protection: 1:enable; 0:disable
 };
-
+#endif
 
 static struct platform_device aml_pmu_device = {
-    .name	= "pmu_act8942",
+    .name	= ACT8xxx_DEVICE_NAME,
     .id	= -1,
 };
 #endif
 
 #ifdef CONFIG_AM_NAND
-/*static struct mtd_partition partition_info[] = 
-{
-    {
-		.name = "U-BOOT",
-        .offset = 0,
-        .size=4*1024*1024,
-    //  .set_flags=0,
-    //  .dual_partnum=0,
-    },
-    {
-		.name = "Boot Para",
-        .offset = 4*1024*1024,
-        .size=4*1024*1024,
-    //  .set_flags=0,
-    //  .dual_partnum=0,
-    },
-    {
-		.name = "Kernel",
-        .offset = 8*1024*1024,
-        .size=4*1024*1024,
-    //  .set_flags=0,
-    //  .dual_partnum=0,
-    },
-    {
-		.name = "YAFFS2",
-		.offset=MTDPART_OFS_APPEND,
-        .size = MTDPART_SIZ_FULL,
-    //  .set_flags=0,
-    //  .dual_partnum=0,
-    },
-//	{	.name="FTL_Part",
-//		.offset=MTDPART_OFS_APPEND,
-//		.size=MTDPART_SIZ_FULL,
-//	//	.set_flags=MTD_AVNFTL,
-//	//	.dual_partnum=1,
-//	}
-};
-
-static struct aml_m1_nand_platform aml_2kpage128kblocknand_platform = {
-    .page_size = 2048,
-    .spare_size=64,
-    .erase_size= 128*1024,
-    .bch_mode=1,            //BCH8
-    .encode_size=528,
-    .timing_mode=5,
-    .ce_num=1,
-    .onfi_mode=0,
-    .partitions = partition_info,
-    .nr_partitions = ARRAY_SIZE(partition_info),
-};
-*/
-
-/*static struct aml_m1_nand_platform aml_Micron4GBABAnand_platform = 
-{
-    .page_size = 2048*2,
-    .spare_size= 224,       //for micron ABA 4GB
-    .erase_size=1024*1024,
-    .bch_mode=    3,        //BCH16
-    .encode_size=540,
-    .timing_mode=5,
-    .onfi_mode=1,
-    .ce_num=1,
-    .partitions = partition_info,
-    .nr_partitions = ARRAY_SIZE(partition_info),
-};
-
-static struct resource aml_nand_resources[] = {
-    {
-        .start = 0xc1108600,
-        .end = 0xc1108624,
-        .flags = IORESOURCE_MEM,
-    },
-};
-
-static struct platform_device aml_nand_device = {
-    .name = "aml_m1_nand",
-    .id = 0,
-    .num_resources = ARRAY_SIZE(aml_nand_resources),
-    .resource = aml_nand_resources,
-    .dev = {
-        .platform_data = &aml_Micron4GBABAnand_platform,
-    },
-};*/
-
-/*static struct mtd_partition normal_partition_info[] = 
-{
-	{
-		.name = "environment",
-		.offset = 8*1024*1024,
-		.size = 8*1024*1024,
-	},
-	{
-		.name = "splash",
-		.offset = 16*1024*1024,
-		.size = 4*1024*1024,
-	},
-	{
-		.name = "recovery",
-		.offset = 20*1024*1024,
-		.size = 16*1024*1024,
-	},
-	{
-		.name = "boot",
-		.offset = 36*1024*1024,
-		.size = 16*1024*1024,
-	},
-	{
-		.name = "cache",
-		.offset = 52*1024*1024,
-		.size = 32*1024*1024,
-	},
-};*/
-
 static struct mtd_partition multi_partition_info[] = 
 {
 	{
@@ -2039,13 +2132,18 @@ static void aml_8726m_power_off_bl(void)
     //set_gpio_mode(GPIOA_bank_bit(7), GPIOA_bit_bit0_14(7), GPIO_OUTPUT_MODE);
 */}
 
+extern void power_on_backlight(void);
+extern void power_off_backlight(void);
+extern unsigned get_backlight_level(void);
+extern void set_backlight_level(unsigned level);
+
 struct aml_bl_platform_data aml_bl_platform =
 {
-    .bl_init = aml_8726m_bl_init,
-    .power_on_bl = aml_8726m_power_on_bl,
-    .power_off_bl = aml_8726m_power_off_bl,
-    .get_bl_level = aml_8726m_get_bl_level,
-    .set_bl_level = aml_8726m_set_bl_level,
+    //.bl_init = aml_8726m_bl_init,
+    .power_on_bl = power_on_backlight,
+    .power_off_bl = power_off_backlight,
+    .get_bl_level = get_backlight_level,
+    .set_bl_level = set_backlight_level,
 };
 
 static struct platform_device aml_bl_device = {
@@ -2255,6 +2353,9 @@ static struct platform_device __initdata *platform_devs[] = {
 #if defined(CONFIG_CARDREADER)
     &amlogic_card_device,
 #endif
+#if defined(CONFIG_AML_RTC)
+    &aml_rtc_device,
+#endif
 #if defined(CONFIG_KEYPADS_AM)||defined(CONFIG_VIRTUAL_REMOTE)||defined(CONFIG_KEYPADS_AM_MODULE)
     &input_device,
 #endif
@@ -2275,9 +2376,6 @@ static struct platform_device __initdata *platform_devs[] = {
 #endif
 #if defined(CONFIG_NAND_FLASH_DRIVER_MULTIPLANE_CE)
     &aml_nand_device,
-#endif
-#if defined(CONFIG_AML_RTC)
-    &aml_rtc_device,
 #endif
 #ifdef CONFIG_AMLOGIC_VIDEOIN_MANAGER
 	&vm_device,
@@ -2320,7 +2418,7 @@ static struct platform_device __initdata *platform_devs[] = {
 #ifdef CONFIG_EFUSE
 	&aml_efuse_device,
 #endif
-#ifdef CONFIG_PMU_ACT8942
+#ifdef CONFIG_PMU_ACT8xxx
 	&aml_pmu_device,
 #endif
 #ifdef CONFIG_POST_PROCESS_MANAGER
@@ -2361,13 +2459,6 @@ static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
 #endif
 //#ifdef CONFIG_CAMERA_OV9650FSL
 //#endif
-/*#ifdef CONFIG_MXC_MMA7660
-	{
-		I2C_BOARD_INFO("mma7660", 0x4C),
-		.irq = INT_GPIO_2,
-	},
-#endif
-*/
 };
 
 static struct i2c_board_info __initdata aml_i2c_bus_info_1[] = {
@@ -2392,10 +2483,12 @@ static struct i2c_board_info __initdata aml_i2c_bus_info_2[] = {
         .platform_data = (void *)&bq27x00_pdata,
     },
 #endif
-#if 0//def CONFIG_PMU_ACT8942
+#ifdef CONFIG_PMU_ACT8942
 	{
-        I2C_BOARD_INFO("act8942-i2c", ACT8942_ADDR),
-		.platform_data = (void *)&act8942_pdata,	
+        I2C_BOARD_INFO(ACT8xxx_I2C_NAME, ACT8xxx_ADDR),
+#ifdef CONFIG_PMU_ACT8942
+		.platform_data = (void *)&act8942_pdata,
+#endif
     },
 #endif
 };
@@ -2462,10 +2555,6 @@ static void __init device_pinmux_init(void )
     WRITE_CBUS_REG(HHI_GEN_CLK_CNTL,(READ_CBUS_REG(HHI_GEN_CLK_CNTL)&(~(0x7f<<0)))|((0<<0)|(1<<8)|(7<<9)) );
     CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO2_EN_N, (1<<15));    
     SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_3, (1<<22));
-#else
-    // set clk for camera
-    WRITE_CBUS_REG(HHI_GEN_CLK_CNTL,(READ_CBUS_REG(HHI_GEN_CLK_CNTL)&(~(0x7f<<0)))|(0<<0)|(1<<8)|(0<<9));
-    CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO2_EN_N, (1<<15));   
 #endif
 }
 
@@ -2558,6 +2647,7 @@ static __init void m1_init_machine(void)
 #ifdef CONFIG_USB_DWC_OTG_HCD
     set_usb_phy_clk(USB_PHY_CLOCK_SEL_XTAL_DIV2);
     lm_device_register(&usb_ld_a);
+    set_usb_phy_id_mode(USB_PHY_PORT_B,USB_PHY_MODE_SW_HOST);
     lm_device_register(&usb_ld_b);
 #endif
 #ifdef CONFIG_SATA_DWC_AHCI
@@ -2595,17 +2685,46 @@ static __init void m1_irq_init(void)
 static __init void m1_fixup(struct machine_desc *mach, struct tag *tag, char **cmdline, struct meminfo *m)
 {
     struct membank *pbank;
+    
+    // PHYS_MEM_START ~ RESERVED_MEM_START
     m->nr_banks = 0;
     pbank=&m->bank[m->nr_banks];
     pbank->start = PAGE_ALIGN(PHYS_MEM_START);
     pbank->size  = SZ_64M & PAGE_MASK;
     pbank->node  = PHYS_TO_NID(PHYS_MEM_START);
     m->nr_banks++;
+#ifdef CONFIG_AML_SUSPEND
+    if (PHYS_MEM_END>256*SZ_1M){
+    	  // RESERVED_MEM_END ~ 256M
+        pbank=&m->bank[m->nr_banks];
+        pbank->start = PAGE_ALIGN(RESERVED_MEM_END+1);
+        pbank->size  = (PHYS_MEM_START+255*SZ_1M-(RESERVED_MEM_END+1)) & PAGE_MASK;
+        pbank->node  = PHYS_TO_NID(RESERVED_MEM_END+1);
+        m->nr_banks++;
+
+        // 256M ~ PHYS_MEM_END
+        pbank=&m->bank[m->nr_banks];
+        pbank->start = PAGE_ALIGN(PHYS_MEM_START+256*SZ_1M);
+        pbank->size  = (PHYS_MEM_END+1-256*SZ_1M) & PAGE_MASK;
+        pbank->node  = PHYS_TO_NID(PHYS_MEM_START+256*SZ_1M);
+        m->nr_banks++;
+    }
+    else{
+    	  // RESERVED_MEM_END ~ PHYS_MEM_END - 1M
+        pbank=&m->bank[m->nr_banks];
+        pbank->start = PAGE_ALIGN(RESERVED_MEM_END+1);
+        pbank->size  = (PHYS_MEM_END-RESERVED_MEM_END-SZ_1M) & PAGE_MASK;
+        pbank->node  = PHYS_TO_NID(RESERVED_MEM_END+1);
+        m->nr_banks++;
+    }
+#else
+    // RESERVED_MEM_END ~ PHYS_MEM_END 
     pbank=&m->bank[m->nr_banks];
     pbank->start = PAGE_ALIGN(RESERVED_MEM_END+1);
     pbank->size  = (PHYS_MEM_END-RESERVED_MEM_END) & PAGE_MASK;
     pbank->node  = PHYS_TO_NID(RESERVED_MEM_END+1);
     m->nr_banks++;
+#endif
 }
 
 MACHINE_START(MESON3_8726M_SKT, "AMLOGIC MESON3 8726M SKT SH")
