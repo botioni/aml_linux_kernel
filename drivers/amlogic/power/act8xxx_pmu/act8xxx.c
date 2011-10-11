@@ -459,6 +459,7 @@ static int set_reg_voltage(act8xxx_regx regx, unsigned long *voltage)
 		return -EINVAL;
 	}
 	get_vset_from_table(*voltage, &register_data.d8);
+	//pr_err("set_reg_voltage:	reg_addr = 0x%02x,	data = 0x%x\n", reg_addr[regx-1], register_data.d8);
 	ret = act8xxx_write_i2c(this_client, reg_addr[regx-1], &register_data.d8);	//regx-1 for compatible act8xxx_regx
 	return ret;
 }

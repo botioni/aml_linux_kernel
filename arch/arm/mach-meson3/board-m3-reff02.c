@@ -2211,7 +2211,7 @@ static struct i2c_board_info __initdata aml_i2c_bus_info_2[] = {
         .platform_data = (void *)&bq27x00_pdata,
     },
 #endif
-#ifdef CONFIG_PMU_ACT8942
+#ifdef CONFIG_PMU_ACT8xxx
 	{
         I2C_BOARD_INFO(ACT8xxx_I2C_NAME, ACT8xxx_ADDR),
 #ifdef CONFIG_PMU_ACT8942
