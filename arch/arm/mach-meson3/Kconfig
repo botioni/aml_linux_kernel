@@ -55,6 +55,12 @@ config MACH_MESON3_REFF09
 	help
 	  Include support for the AML M3 board platform.
 
+config MACH_MESON3_REFC10
+	select GENERIC_ALLOCATOR
+	bool "Support M3 (Asus) MBX platform"
+	help
+	  Include support for the Asus M3 board platform.
+	  
 config MESON3_CLOCK_TICK_RATE
     int "Clock Tick Rate"
 	default 25000000
