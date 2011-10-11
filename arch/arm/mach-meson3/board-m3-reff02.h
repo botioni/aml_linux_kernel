@@ -82,9 +82,9 @@
 
 #ifdef CONFIG_POST_PROCESS_MANAGER
 #ifdef CONFIG_POST_PROCESS_MANAGER_PPSCALER
-#define PPMGR_MEM_SIZE               800 * 600*18
+#define PPMGR_MEM_SIZE               800 * 640 * 18
 #else
-#define PPMGR_MEM_SIZE               800 * 600*15
+#define PPMGR_MEM_SIZE               800 * 640 * 15
 #endif
 #else
 #define PPMGR_MEM_SIZE		0
