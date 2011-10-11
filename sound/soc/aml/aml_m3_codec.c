@@ -149,7 +149,7 @@ void aml_m3_reset(struct snd_soc_codec* codec, bool first_time)
 					0,			// lmmix: Playback digital mixer sel.
 					0,			// recmix: Record digital mixer sel.
 					0,			// ctr[1:0]: test mode sel. 0=Normal, 1=Digital filter loopback, 2=Digital filter bypass, 3=Digital audio I/F loopback.
-					0,			// enhp: Record channel high pass filter enable.
+					1,			// enhp: Record channel high pass filter enable.
 					0x5454, 	// lmvol[15:0]: Digital playback volumn control, [15:8] control right channel, [7:0] control left channel.
 								// 0=-126dB, 1=-124.5dB, ..., 0x53=-1.5dB, 0x54=0dB, >=0x55 Rsrv.
 					0x2828, 	// hsvol[15:0]: Analog playback headset volumn control, [15:8] control right channel, [7:0] control left channel.
