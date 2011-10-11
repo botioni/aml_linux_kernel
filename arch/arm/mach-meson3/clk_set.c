@@ -112,7 +112,8 @@ int sys_clkpll_setting(unsigned crystal_freq, unsigned out_freq)
     if (READ_MPEG_REG(HHI_SYS_PLL_CNTL)!=target_pll_setting){
         WRITE_MPEG_REG(HHI_SYS_PLL_CNTL, target_pll_setting); 
         WRITE_MPEG_REG(HHI_SYS_PLL_CNTL2, 0x065e11ff); 
-        WRITE_MPEG_REG(HHI_SYS_PLL_CNTL3, 0x1649a941); 
+        WRITE_MPEG_REG(HHI_SYS_PLL_CNTL3, 0x0249a941);  // 0x1649a941 for 720M~1460M and 0x249a941 for 680M~1410M
+        WRITE_MPEG_REG(RESET5_REGISTER, (1<<2));        // reset sys pll
         lock_flag = 0;
         log_index = 0;
         target_freq = ((pll_setting[i]&0x1ff)*crys_M)>>(pll_setting[i]>>16);
@@ -129,6 +130,7 @@ int sys_clkpll_setting(unsigned crystal_freq, unsigned out_freq)
                 break;
             lock_time+=64;
         }
+        lock_time-=64;
        
         //printk("sys clk changed");
         //for (i=0;i<log_index;i++)
