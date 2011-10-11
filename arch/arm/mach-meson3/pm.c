@@ -285,11 +285,12 @@ void early_power_gate_switch(int flag)
 }
 EXPORT_SYMBOL(early_power_gate_switch);
 
-#define CLK_COUNT 6
+#define CLK_COUNT 7
 static char clk_flag[CLK_COUNT];
 static unsigned clks[CLK_COUNT] = {
     HHI_ETH_CLK_CNTL,
     HHI_VID_CLK_CNTL,
+    HHI_VIID_CLK_CNTL,
     HHI_AUD_CLK_CNTL,
     HHI_MALI_CLK_CNTL,
     HHI_HDMI_CLK_CNTL,
@@ -299,6 +300,7 @@ static unsigned clks[CLK_COUNT] = {
 static char clks_name[CLK_COUNT][32] = {
     "HHI_ETH_CLK_CNTL",
     "HHI_VID_CLK_CNTL",
+    "HHI_VIID_CLK_CNTL",
     "HHI_AUD_CLK_CNTL",
     "HHI_MALI_CLK_CNTL",
     "HHI_HDMI_CLK_CNTL",
@@ -306,13 +308,14 @@ static char clks_name[CLK_COUNT][32] = {
 };
 
 #ifdef EARLY_SUSPEND_USE_XTAL
-#define EARLY_CLK_COUNT 2
+#define EARLY_CLK_COUNT 3
 #else
-#define EARLY_CLK_COUNT 1
+#define EARLY_CLK_COUNT 2
 #endif
 static char early_clk_flag[EARLY_CLK_COUNT];
 static unsigned early_clks[EARLY_CLK_COUNT] = {
     HHI_VID_CLK_CNTL,
+    HHI_VIID_CLK_CNTL,
 #ifdef EARLY_SUSPEND_USE_XTAL
     HHI_MPEG_CLK_CNTL,
 #endif
@@ -320,6 +323,7 @@ static unsigned early_clks[EARLY_CLK_COUNT] = {
 
 static char early_clks_name[EARLY_CLK_COUNT][32] = {
     "HHI_VID_CLK_CNTL",
+    "HHI_VIID_CLK_CNTL",
 #ifdef EARLY_SUSPEND_USE_XTAL
     "HHI_MPEG_CLK_CNTL",
 #endif
@@ -334,8 +338,8 @@ void clk_switch(int flag)
     if (flag) {
         for (i = CLK_COUNT - 1; i >= 0; i--) {
             if (clk_flag[i]) {
-                if (clks[i] == HHI_VID_CLK_CNTL) {
-                    SET_CBUS_REG_MASK(clks[i], (1<<19)|(1<<20));
+                if ((clks[i] == HHI_VID_CLK_CNTL)||(clks[i] == HHI_VIID_CLK_CNTL)) {
+                    WRITE_CBUS_REG_BITS(clks[i], clk_flag[i], 19, 2);
                 } else if (clks[i] == HHI_MPEG_CLK_CNTL) {
                     udelay(1000);
                     SET_CBUS_REG_MASK(clks[i], (1 << 8)); // normal
@@ -355,7 +359,7 @@ void clk_switch(int flag)
         }
     } else {
         for (i = 0; i < CLK_COUNT; i++) {
-            if (clks[i] == HHI_VID_CLK_CNTL) {
+            if ((clks[i] == HHI_VID_CLK_CNTL)||(clks[i] == HHI_VIID_CLK_CNTL)) {
                 clk_flag[i] = READ_CBUS_REG_BITS(clks[i], 19, 2);
                 if (clk_flag[i]) {
                     CLEAR_CBUS_REG_MASK(clks[i], (1<<19)|(1<<20));
@@ -396,8 +400,8 @@ void early_clk_switch(int flag)
     if (flag) {
         for (i = EARLY_CLK_COUNT - 1; i >= 0; i--) {
             if (early_clk_flag[i]) {
-                if (early_clks[i] == HHI_VID_CLK_CNTL) {
-                    SET_CBUS_REG_MASK(early_clks[i], (1<<19)|(1<<20));
+                if ((early_clks[i] == HHI_VID_CLK_CNTL)||(early_clks[i] == HHI_VIID_CLK_CNTL)) {
+                    WRITE_CBUS_REG_BITS(early_clks[i], early_clk_flag[i], 19, 2);
                 } 
 #ifdef EARLY_SUSPEND_USE_XTAL
                 else if (early_clks[i] == HHI_MPEG_CLK_CNTL) {
@@ -426,7 +430,7 @@ void early_clk_switch(int flag)
         xtal_uart_rate_backup = sys_clk->rate;
 
         for (i = 0; i < EARLY_CLK_COUNT; i++) {
-            if (early_clks[i] == HHI_VID_CLK_CNTL) {
+            if ((early_clks[i] == HHI_VID_CLK_CNTL)||(early_clks[i] == HHI_VIID_CLK_CNTL)) {
                 early_clk_flag[i] = READ_CBUS_REG_BITS(early_clks[i], 19, 2);
                 if (early_clk_flag[i]) {
                     CLEAR_CBUS_REG_MASK(early_clks[i], (1<<19)|(1<<20));
@@ -461,28 +465,32 @@ void early_clk_switch(int flag)
 }
 EXPORT_SYMBOL(early_clk_switch);
 
-#define PLL_COUNT 3
+#define PLL_COUNT 4
 static char pll_flag[PLL_COUNT];
 static unsigned plls[PLL_COUNT] = {
     HHI_VID_PLL_CNTL,
+    HHI_VIID_PLL_CNTL,
     HHI_AUD_PLL_CNTL,
     HHI_OTHER_PLL_CNTL,
 };
 
 static char plls_name[PLL_COUNT][32] = {
     "HHI_VID_PLL_CNTL",
+    "HHI_VIID_PLL_CNTL",
     "HHI_AUD_PLL_CNTL",
     "HHI_OTHER_PLL_CNTL",
 };
 
-#define EARLY_PLL_COUNT 1
+#define EARLY_PLL_COUNT 2
 static char early_pll_flag[EARLY_PLL_COUNT];
 static unsigned early_plls[EARLY_PLL_COUNT] = {
     HHI_VID_PLL_CNTL,
+    HHI_VIID_PLL_CNTL,
 };
 
 static char early_plls_name[EARLY_PLL_COUNT][32] = {
     "HHI_VID_PLL_CNTL",
+    "HHI_VIID_PLL_CNTL",
 };
 
 void pll_switch(int flag)
@@ -492,7 +500,7 @@ void pll_switch(int flag)
         for (i = PLL_COUNT - 1; i >= 0; i--) {
             if (pll_flag[i]) {
                 printk(KERN_INFO "pll %s(%x) on\n", plls_name[i], plls[i]);
-                if (plls[i]==HHI_VID_PLL_CNTL){
+                if ((plls[i]==HHI_VID_PLL_CNTL)||(plls[i]==HHI_VIID_PLL_CNTL)){
                     CLEAR_CBUS_REG_MASK(plls[i], (1 << 30));
                     pll_flag[i] = 0;
                 }
@@ -505,10 +513,13 @@ void pll_switch(int flag)
         udelay(1000);
     } else {
         for (i = 0; i < PLL_COUNT; i++) {
-            pll_flag[i] = READ_CBUS_REG_BITS(plls[i], 15, 1) ? 0 : 1;
+        	  if ((plls[i]==HHI_VID_PLL_CNTL)||(plls[i]==HHI_VIID_PLL_CNTL))
+        	  	  pll_flag[i] = READ_CBUS_REG_BITS(plls[i], 30, 1) ? 0 : 1;
+        	  else	
+                pll_flag[i] = READ_CBUS_REG_BITS(plls[i], 15, 1) ? 0 : 1;
             if (pll_flag[i]) {
                 printk(KERN_INFO "pll %s(%x) off\n", plls_name[i], plls[i]);
-                if (plls[i]==HHI_VID_PLL_CNTL){
+                if ((plls[i]==HHI_VID_PLL_CNTL)||(plls[i]==HHI_VIID_PLL_CNTL)){
                     SET_CBUS_REG_MASK(plls[i], (1 << 30));
                 }
                 else{            
@@ -526,7 +537,7 @@ void early_pll_switch(int flag)
     if (flag) {
         for (i = EARLY_PLL_COUNT - 1; i >= 0; i--) {
             if (early_pll_flag[i]) {
-                if (early_plls[i]==HHI_VID_PLL_CNTL){
+                if ((early_plls[i]==HHI_VID_PLL_CNTL)||(early_plls[i]==HHI_VIID_PLL_CNTL)){
                     CLEAR_CBUS_REG_MASK(early_plls[i], (1 << 30));
                     early_pll_flag[i] = 0;
                 }
@@ -540,10 +551,13 @@ void early_pll_switch(int flag)
         udelay(1000);
     } else {
         for (i = 0; i < EARLY_PLL_COUNT; i++) {
-            early_pll_flag[i] = READ_CBUS_REG_BITS(early_plls[i], 15, 1) ? 0 : 1;
+            if ((early_plls[i]==HHI_VID_PLL_CNTL)||(early_plls[i]==HHI_VIID_PLL_CNTL))
+                early_pll_flag[i] = READ_CBUS_REG_BITS(early_plls[i], 30, 1) ? 0 : 1;
+            else
+                early_pll_flag[i] = READ_CBUS_REG_BITS(early_plls[i], 15, 1) ? 0 : 1;
             if (early_pll_flag[i]) {
                 printk(KERN_INFO "early pll %s(%x) off\n", early_plls_name[i], early_plls[i]);
-                if (early_plls[i]==HHI_VID_PLL_CNTL)
+                if ((early_plls[i]==HHI_VID_PLL_CNTL)||(early_plls[i]==HHI_VIID_PLL_CNTL))
                     SET_CBUS_REG_MASK(early_plls[i], (1 << 30));
                 else
                     SET_CBUS_REG_MASK(early_plls[i], (1 << 15));
