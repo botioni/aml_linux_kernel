@@ -364,7 +364,7 @@ void mali_core_renderunit_timeout_function_hang_detection(void *arg)
 	if( !core ) return;
 
 	/* if NOT idle OR has TIMED_OUT */
-	if ( !((CORE_WATCHDOG_TIMEOUT == core->state ) || (CORE_IDLE== core->state)) )
+	if ( !((CORE_WATCHDOG_TIMEOUT == core->state ) || (CORE_IDLE== core->state)) || (CORE_OFF == core->state) )
 	{
 		core->state = CORE_HANG_CHECK_TIMEOUT;
 		action = MALI_TRUE;
