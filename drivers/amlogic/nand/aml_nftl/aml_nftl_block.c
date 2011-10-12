@@ -47,11 +47,12 @@ static struct mutex aml_nftl_lock;
 
 #define nftl_notifier_to_blk(l)	container_of(l, struct aml_nftl_blk_t, nb)
 #define cache_list_to_node(l)	container_of(l, struct write_cache_node, list)
+#define free_list_to_node(l)	container_of(l, struct free_sects_list, list)
 
 static int aml_nftl_write_cache_data(struct aml_nftl_blk_t *aml_nftl_blk, uint8_t cache_flag)
 {
 	struct aml_nftl_info_t *aml_nftl_info;
-	int err = 0, i, j;
+	int err = 0, i, j, limit_cache_cnt = NFTL_CACHE_FORCE_WRITE_LEN / 4;
 	uint32_t blks_per_sect, current_cache_cnt;
 	struct list_head *l, *n;
 
@@ -78,10 +79,10 @@ static int aml_nftl_write_cache_data(struct aml_nftl_blk_t *aml_nftl_blk, uint8_
 					memcpy(cache_node->buf + j*512, aml_nftl_blk->cache_buf + j*512, 512);
 			}
 		}
-		if (cache_node->vt_sect_addr == aml_nftl_blk->cache_sect_addr)
+		if (aml_nftl_blk->cache_sect_addr == cache_node->vt_sect_addr)
 			memcpy(aml_nftl_blk->cache_buf, cache_node->buf, 512 * blks_per_sect);
 
-		err = aml_nftl_info->write_sects(aml_nftl_info, cache_node->vt_sect_addr, 1, cache_node->buf);
+		err = aml_nftl_info->write_sect(aml_nftl_info, cache_node->vt_sect_addr, cache_node->buf);
 		if (err)
 			return err;
 
@@ -92,10 +93,9 @@ static int aml_nftl_write_cache_data(struct aml_nftl_blk_t *aml_nftl_blk, uint8_
 		list_del(&cache_node->list);
 		aml_nftl_free(cache_node);
 		aml_nftl_blk->cache_buf_cnt--;
-		if ((cache_flag != CACHE_CLEAR_ALL) && (aml_nftl_blk->cache_buf_cnt <= (current_cache_cnt - 2)))
+		if ((cache_flag != CACHE_CLEAR_ALL) && (aml_nftl_blk->cache_buf_cnt <= (current_cache_cnt - limit_cache_cnt)))
 			return 0;
 	}
-	//BUG_ON(aml_nftl_blk->cache_buf_cnt != 0);
 
 	return 0;
 }
@@ -125,17 +125,15 @@ static int aml_nftl_search_cache_list(struct aml_nftl_blk_t *aml_nftl_blk, uint3
 				aml_nftl_blk->cache_sect_addr = sect_addr;
 
 				for (j=0; j<blks_per_sect; j++) {
-					if (!cache_node->cache_fill_status[j]) {
-						memcpy(cache_node->buf + j*512, aml_nftl_blk->cache_buf + j*512, 512);
-						cache_node->cache_fill_status[j] = 1;
-					}
-					else {
+					if (cache_node->cache_fill_status[j])
 						memcpy(aml_nftl_blk->cache_buf + j*512, cache_node->buf + j*512, 512);
-					}
 				}
+				memcpy(buf, aml_nftl_blk->cache_buf + blk_pos * 512, blk_num * 512);
+			}
+			else {
+				memcpy(buf, cache_node->buf + blk_pos * 512, blk_num * 512);
 			}
 
-			memcpy(buf, cache_node->buf + blk_pos * 512, blk_num * 512);
 			return 0;
 		}
 	}
@@ -148,7 +146,7 @@ static int aml_nftl_add_cache_list(struct aml_nftl_blk_t *aml_nftl_blk, uint32_t
 {
 	struct aml_nftl_info_t *aml_nftl_info = aml_nftl_blk->aml_nftl_info;
 	struct write_cache_node *cache_node;
-	int err = 0, i, j;
+	int err = 0, i, j, need_write = 0;
 	uint32_t blks_per_sect;
 	struct list_head *l, *n;
 
@@ -157,6 +155,13 @@ static int aml_nftl_add_cache_list(struct aml_nftl_blk_t *aml_nftl_blk, uint32_t
 		cache_node = cache_list_to_node(l);
 
 		if (cache_node->vt_sect_addr == sect_addr) {
+
+			for (j=0; j<blks_per_sect; j++) {
+				if (!cache_node->cache_fill_status[j])
+					break;
+			}
+			if (j >= blks_per_sect)
+				need_write = 1;
 
 			for (i=blk_pos; i<(blk_pos+blk_num); i++)
 				cache_node->cache_fill_status[i] = 1;
@@ -167,8 +172,12 @@ static int aml_nftl_add_cache_list(struct aml_nftl_blk_t *aml_nftl_blk, uint32_t
 					break;
 			}
 
-			if (j >= blks_per_sect) {
-				err = aml_nftl_info->write_sects(aml_nftl_info, sect_addr, 1, cache_node->buf);
+			if ((j >= blks_per_sect) && (need_write == 1)) {
+
+				if (aml_nftl_blk->cache_sect_addr == cache_node->vt_sect_addr)
+					memcpy(aml_nftl_blk->cache_buf, cache_node->buf, 512 * blks_per_sect);
+
+				err = aml_nftl_info->write_sect(aml_nftl_info, sect_addr, cache_node->buf);
 				if (err)
 					return err;
 
@@ -199,6 +208,7 @@ static int aml_nftl_add_cache_list(struct aml_nftl_blk_t *aml_nftl_blk, uint32_t
 	cache_node = aml_nftl_malloc(sizeof(struct write_cache_node));
 	if (!cache_node)
 		return -ENOMEM;
+	memset(cache_node->cache_fill_status, 0, MAX_BLKS_PER_SECTOR);
 
 	for (i=0; i<NFTL_CACHE_FORCE_WRITE_LEN; i++) {
 		if ((aml_nftl_blk->bounce_buf_free[i] == NFTL_BOUNCE_FREE) && (aml_nftl_blk->bounce_buf != NULL)) {
@@ -312,7 +322,7 @@ static int aml_nftl_write_data(struct aml_nftl_blk_t *aml_nftl_blk, unsigned lon
 	write_sect_addr = block / blks_per_sect;
 	total_blk_count = nblk;
 	write_misalign_num = ((blks_per_sect - block % blks_per_sect) > nblk ? nblk : (blks_per_sect - block % blks_per_sect));
-	//aml_nftl_dbg("nftl write data blk: %d page: %d block: %d count %d\n", (write_sect_addr / aml_nftl_info->pages_per_blk), (write_sect_addr % aml_nftl_info->pages_per_blk), block, nblk);
+	//aml_nftl_dbg("nftl write data blk: %d page: %d block: %ld count %d\n", (write_sect_addr / aml_nftl_info->pages_per_blk), (write_sect_addr % aml_nftl_info->pages_per_blk), block, nblk);
 
 	if (block % blks_per_sect) {
 		status = aml_nftl_blk->add_cache_list(aml_nftl_blk, write_sect_addr, block % blks_per_sect, write_misalign_num, buf);
@@ -332,7 +342,10 @@ static int aml_nftl_write_data(struct aml_nftl_blk_t *aml_nftl_blk, unsigned lon
 				return status;
 
 			if (status == CACHE_LIST_NOT_FOUND) {
-				error = aml_nftl_info->write_sects(aml_nftl_info, write_sect_addr, 1, buf + buf_offset);
+				if (aml_nftl_blk->cache_sect_addr == write_sect_addr)
+					memcpy(aml_nftl_blk->cache_buf, buf + buf_offset, 512 * blks_per_sect);
+
+				error = aml_nftl_info->write_sect(aml_nftl_info, write_sect_addr, buf + buf_offset);
 				if (error)
 					return error;
 			}
@@ -340,12 +353,6 @@ static int aml_nftl_write_data(struct aml_nftl_blk_t *aml_nftl_blk, unsigned lon
 			total_blk_count -= blks_per_sect;
 			buf_offset += aml_nftl_info->writesize;
 		}
-		/*error = aml_nftl_info->write_sects(aml_nftl_info, write_sect_addr, write_sect_num, buf + buf_offset);
-		if (error)
-			return error;
-		write_sect_addr += write_sect_num;
-		total_blk_count -= write_sect_num * blks_per_sect;
-		buf_offset += write_sect_num * aml_nftl_info->writesize;*/
 	}
 
 	if (total_blk_count > 0) {
@@ -475,6 +482,7 @@ int aml_nftl_init_bounce_buf(struct mtd_blktrans_dev *dev, struct request_queue 
 	for (i=0; i<NFTL_CACHE_FORCE_WRITE_LEN; i++)
 		aml_nftl_blk->bounce_buf_free[i] = NFTL_BOUNCE_FREE;
 
+	queue_flag_test_and_set(QUEUE_FLAG_NONROT, rq);
 	blk_queue_bounce_limit(aml_nftl_blk->queue, BLK_BOUNCE_HIGH);
 	blk_queue_max_hw_sectors(aml_nftl_blk->queue, bouncesz / 512);
 	blk_queue_physical_block_size(aml_nftl_blk->queue, bouncesz);
@@ -504,7 +512,124 @@ int aml_nftl_init_bounce_buf(struct mtd_blktrans_dev *dev, struct request_queue 
 	return 0;
 }
 
-int do_nftltrans_request(struct mtd_blktrans_ops *tr,
+static void aml_nftl_search_free_list(struct aml_nftl_blk_t *aml_nftl_blk, uint32_t sect_addr,
+										uint32_t blk_pos, uint32_t blk_num)
+{
+	struct aml_nftl_info_t *aml_nftl_info = aml_nftl_blk->aml_nftl_info;
+	struct free_sects_list *free_list;
+	int i;
+	uint32_t blks_per_sect;
+	struct list_head *l, *n;
+
+	blks_per_sect = aml_nftl_info->writesize / 512;
+	list_for_each_safe(l, n, &aml_nftl_blk->free_list) {
+		free_list = free_list_to_node(l);
+
+		if (free_list->vt_sect_addr == sect_addr) {
+			for (i=blk_pos; i<(blk_pos+blk_num); i++) {
+				if (free_list->free_blk_status[i])
+					free_list->free_blk_status[i] = 0;
+			}
+
+			for (i=0; i<blks_per_sect; i++) {
+				if (free_list->free_blk_status[i])
+					break;;
+			}
+			if (i >= blks_per_sect) {
+				list_del(&free_list->list);
+				aml_nftl_free(free_list);
+				return;
+			}
+			return;
+		}
+	}
+
+	return;
+}
+
+static int aml_nftl_add_free_list(struct aml_nftl_blk_t *aml_nftl_blk, uint32_t sect_addr,
+										uint32_t blk_pos, uint32_t blk_num)
+{
+	struct aml_nftl_info_t *aml_nftl_info = aml_nftl_blk->aml_nftl_info;
+	struct free_sects_list *free_list;
+	int i;
+	uint32_t blks_per_sect;
+	struct list_head *l, *n;
+
+	blks_per_sect = aml_nftl_info->writesize / 512;
+	list_for_each_safe(l, n, &aml_nftl_blk->free_list) {
+		free_list = free_list_to_node(l);
+
+		if (free_list->vt_sect_addr == sect_addr) {
+			for (i=blk_pos; i<(blk_pos+blk_num); i++)
+				free_list->free_blk_status[i] = 1;
+
+			for (i=0; i<blks_per_sect; i++) {
+				if (free_list->free_blk_status[i] == 0)
+					break;;
+			}
+			if (i >= blks_per_sect) {
+				list_del(&free_list->list);
+				aml_nftl_free(free_list);
+				return 0;
+			}
+
+			return 1;
+		}
+	}
+
+	if ((blk_pos == 0) && (blk_num == blks_per_sect))
+		return 0;
+
+	free_list = aml_nftl_malloc(sizeof(struct free_sects_list));
+	if (!free_list)
+		return -ENOMEM;
+
+	free_list->vt_sect_addr = sect_addr;
+	for (i=blk_pos; i<(blk_pos+blk_num); i++)
+		free_list->free_blk_status[i] = 1;
+	list_add_tail(&free_list->list, &aml_nftl_blk->free_list);
+
+	return 1;
+}
+
+static void aml_nftl_update_blktrans_sysinfo(struct mtd_blktrans_dev *dev, unsigned int cmd, unsigned long arg)
+{
+	struct aml_nftl_blk_t *aml_nftl_blk = (void *)dev;
+	struct aml_nftl_info_t *aml_nftl_info = aml_nftl_blk->aml_nftl_info;
+	struct fat_sectors *aml_nftl_sects = (struct fat_sectors *)arg;
+	unsigned sect_addr, blks_per_sect, nblk, blk_pos, blk_num;
+
+	mutex_lock(&aml_nftl_lock);
+
+	nblk = aml_nftl_sects->sectors;
+	blks_per_sect = aml_nftl_info->writesize / 512;
+	sect_addr = (uint32_t)aml_nftl_sects->start / blks_per_sect;
+	blk_pos = (uint32_t)aml_nftl_sects->start % blks_per_sect;
+	while (nblk > 0){
+		blk_pos = blk_pos % blks_per_sect;
+		blk_num = ((blks_per_sect - blk_pos) > nblk ? nblk : (blks_per_sect - blk_pos ));
+		if (cmd == BLKGETSECTS) {
+			aml_nftl_search_free_list(aml_nftl_blk, sect_addr, blk_pos, blk_num);
+		}
+		else if (cmd == BLKFREESECTS) {
+			if (!aml_nftl_add_free_list(aml_nftl_blk, sect_addr, blk_pos, blk_num))
+				aml_nftl_info->delete_sect(aml_nftl_info, sect_addr);
+		}
+		else {
+			break;
+		}
+		nblk -= blk_num;
+		blk_pos += blk_num;
+		sect_addr++;
+	};
+
+	mutex_unlock(&aml_nftl_lock);
+
+	return;
+}
+
+static int do_nftltrans_request(struct mtd_blktrans_ops *tr,
 			       struct mtd_blktrans_dev *dev,
 			       struct request *req)
 {
@@ -611,8 +736,11 @@ static int aml_nftl_thread(void *arg)
 
 				ktime_get_ts(&ts_nftl_current);
 				if ((ts_nftl_current.tv_sec - aml_nftl_blk->ts_write_start.tv_sec) >= NFTL_FLUSH_DATA_TIME) {
-					aml_nftl_dbg("nftl writed cache data: %d \n", aml_nftl_blk->cache_buf_cnt);
-					aml_nftl_blk->write_cache_data(aml_nftl_blk, CACHE_CLEAR_ALL);
+					aml_nftl_dbg("nftl writed cache data: %d %d %d\n", aml_nftl_blk->cache_buf_cnt, aml_nftl_wl->used_root.count, aml_nftl_wl->free_root.count);
+					if (aml_nftl_blk->cache_buf_cnt >= (NFTL_CACHE_FORCE_WRITE_LEN / 2))
+						aml_nftl_blk->write_cache_data(aml_nftl_blk, 0);
+					else
+						aml_nftl_blk->write_cache_data(aml_nftl_blk, CACHE_CLEAR_ALL);
 				}
 
 				if (aml_nftl_blk->cache_buf_cnt > 0) {
@@ -620,7 +748,8 @@ static int aml_nftl_thread(void *arg)
 					continue;
 				}
 				else {
-					//aml_nftl_blk->write_cache_data(aml_nftl_blk, CACHE_CLEAR_ALL);
+					if ((aml_nftl_wl->free_root.count < (aml_nftl_info->fillfactor / 2)) && (!aml_nftl_wl->erased_root.count))
+						aml_nftl_wl->gc_need_flag = 1;
 					aml_nftl_blk->cache_buf_status = NFTL_CACHE_STATUS_IDLE;
 				}
 			}
@@ -632,16 +761,15 @@ static int aml_nftl_thread(void *arg)
 		}
 
 		if (!aml_nftl_info->isinitialised) {
-/*
+
 			mutex_unlock(&aml_nftl_lock);
 			set_current_state(TASK_INTERRUPTIBLE);
-			schedule_timeout(period);
+			schedule_timeout(10);
 
 			mutex_lock(&aml_nftl_lock);
 			aml_nftl_info->creat_structure(aml_nftl_info);
 			mutex_unlock(&aml_nftl_lock);
 			continue;
-*/
 		}
 
 		if (!aml_nftl_wl->gc_need_flag) {
@@ -651,8 +779,14 @@ static int aml_nftl_thread(void *arg)
 			continue;
 		}
 
-		aml_nftl_wl->garbage_collect(aml_nftl_wl, 0);
+		aml_nftl_wl->garbage_collect(aml_nftl_wl, DO_COPY_PAGE);
+		if (aml_nftl_wl->free_root.count >= (aml_nftl_info->fillfactor / 2)) {
+			aml_nftl_dbg("nftl initilize garbage completely: %d \n", aml_nftl_wl->free_root.count);
+			aml_nftl_wl->gc_need_flag = 0;
+		}
 		mutex_unlock(&aml_nftl_lock);
+		set_current_state(TASK_INTERRUPTIBLE);
+		schedule_timeout(period);
 	}
 
 	return 0;
@@ -696,7 +830,7 @@ static void aml_nftl_add_mtd(struct mtd_blktrans_ops *tr, struct mtd_info *mtd)
 
 	register_reboot_notifier(&aml_nftl_blk->nb);
 	INIT_LIST_HEAD(&aml_nftl_blk->cache_list);
-	//spin_lock_init(&aml_nftl_blk->thread_lock);
+	INIT_LIST_HEAD(&aml_nftl_blk->free_list);
 	aml_nftl_blk->read_data = aml_nftl_read_data;
 	aml_nftl_blk->write_data = aml_nftl_write_data;
 	aml_nftl_blk->write_cache_data = aml_nftl_write_cache_data;
@@ -772,6 +906,7 @@ static struct mtd_blktrans_ops aml_nftl_tr = {
 	.blksize 	= 512,
 	.open		= aml_nftl_open,
 	.release	= aml_nftl_release,
+	.update_blktrans_sysinfo = aml_nftl_update_blktrans_sysinfo,
 	.do_blktrans_request = do_nftltrans_request,
 	.writesect	= aml_nftl_writesect,
 	.flush		= aml_nftl_flush,

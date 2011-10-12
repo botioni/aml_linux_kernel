@@ -1580,7 +1580,10 @@ static int nand_do_read_oob(struct mtd_info *mtd, loff_t from,
 	page = realpage & chip->pagemask;
 
 	while(1) {
-		sndcmd = chip->ecc.read_oob(mtd, chip, page, sndcmd);
+		if (!sndcmd)
+			sndcmd = chip->ecc.read_oob(mtd, chip, page, sndcmd);
+		else
+			sndcmd = chip->ecc.read_oob(mtd, chip, page, readlen);
 
 		len = min(len, readlen);
 		buf = nand_transfer_oob(chip, buf, ops, len);

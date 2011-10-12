@@ -38,27 +38,34 @@ typedef int16_t     	addr_linearblk_t;
 
 //#define NFTL_DONT_CACHE_DATA
 
+#define AML_NFTL_MAGIC			 "aml_nftl"
 #define AML_NFTL_MAJOR			 250
 #define TIMESTAMP_LENGTH         15
 #define MAX_TIMESTAMP_NUM        ((1<<(TIMESTAMP_LENGTH-1))-1)
 #define MAX_PAGES_IN_BLOCK       256
 #define MAX_BLKS_PER_SECTOR		 128
 #define MAX_BLK_NUM_PER_NODE	 4
-#define DEFAULT_SPLIT_UNIT		 1
+#define BASIC_BLK_NUM_PER_NODE	 2
+#define DEFAULT_SPLIT_UNIT		 8
+#define NFTL_FAT_TABLE_NUM		 2
 
+#define DEFAULT_SPLIT_UNIT_GARBAGE		8
 #define NFTL_BOUNCE_FREE		 		0
 #define NFTL_BOUNCE_USED		 		1
-#define NFTL_MAX_SCHEDULE_TIMEOUT		800
-#define NFTL_FLUSH_DATA_TIME			3
+#define NFTL_MAX_SCHEDULE_TIMEOUT		1000
+#define NFTL_FLUSH_DATA_TIME			8
 #define NFTL_CACHE_STATUS_IDLE			0
 #define NFTL_CACHE_STATUS_READY			1
 #define NFTL_CACHE_STATUS_READY_DONE	2
 #define NFTL_CACHE_STATUS_DONE			3
-#define NFTL_CACHE_FORCE_WRITE_LEN		8
+#define NFTL_CACHE_FORCE_WRITE_LEN		16
 #define CACHE_CLEAR_ALL					1
 #define AML_NFTL_BOUNCE_SIZE	 		0x40000
 #define AML_LIMIT_FACTOR		 4
 #define DO_COPY_PAGE			 1
+#define DO_COPY_PAGE_TOTAL		 2
+#define DO_COPY_PAGE_AVERAGELY	 3
+#define AVERAGELY_COPY_NUM		 2
 #define READ_OPERATION			 0
 #define WRITE_OPERATION			 1
 #define CACHE_LIST_NOT_FOUND	 1
@@ -114,9 +121,9 @@ struct nftl_oobinfo_t{
 	addr_sect_t    sect;
     erase_count_t  ec;    //00, Bad
     addr_vtblk_t   vtblk; //-1 , free,-2~-10, Snapshot
-    int16_t        timestamp: 15;
-    int16_t       status_page: 1;
-} __attribute__ ((packed));
+    unsigned        timestamp: 15;
+    unsigned       status_page: 1;
+};
 
 struct phyblk_node_t{
     erase_count_t  ec;
@@ -126,16 +133,18 @@ struct phyblk_node_t{
     int16_t		  status_page;
     int16_t       timestamp;
     addr_sect_t    phy_page_map[MAX_PAGES_IN_BLOCK];
-} __attribute__ ((packed));
+    uint8_t		   phy_page_delete[MAX_PAGES_IN_BLOCK>>3];
+};
 
 struct vtblk_node_t {
-	addr_blk_t	phy_blk_addr[MAX_BLK_NUM_PER_NODE];
+	addr_blk_t	phy_blk_addr;
+	struct vtblk_node_t *next;
 };
 
-struct vtblk_special_node_t {
+/*struct vtblk_special_node_t {
 	struct vtblk_node_t *vtblk_node;
 	addr_blk_t	ext_phy_blk_addr;
-};
+};*/
 
 struct write_cache_node {
 
@@ -146,6 +155,12 @@ struct write_cache_node {
    	unsigned char cache_fill_status[MAX_BLKS_PER_SECTOR];		//blk unit fill status every vitual sector
 };
 
+struct free_sects_list {
+
+	struct list_head list;
+   	uint32_t vt_sect_addr;	
+   	unsigned char free_blk_status[MAX_BLKS_PER_SECTOR];
+};
 
 struct wl_rb_t {
 	struct rb_node	rb_node;
@@ -159,6 +174,11 @@ struct wl_list_t {
 	addr_blk_t 	phy_blk;
 };
 
+struct gc_blk_list {
+	struct list_head list;
+   	addr_blk_t	gc_blk_addr;	
+};
+
 /**
 * tree root & node count 
 */
@@ -167,19 +187,15 @@ struct wl_tree_t {
 	uint16_t		count;	/*number of nodes in this tree*/
 };
 
-//typedef  struct aml_nftl_info_s 	aml_nftl_info_t;
-//typedef  struct aml_nftl_blk_s 	    aml_nftl_blk_t;
-//typedef  struct aml_nftl_ops_s 	    aml_nftl_ops_t;
-//typedef struct aml_nftl_wl_s 	aml_nftl_wl_t;
 struct aml_nftl_blk_t;
 struct aml_nftl_ops_t;
 struct aml_nftl_info_t;
 struct aml_nftl_wl_t;
 
 struct aml_nftl_ops_t{
-    int		(*read_page)(struct aml_nftl_info_t * aml_nftl_info, addr_blk_t blk_addr, addr_page_t page_addr, unsigned char *data_buf, unsigned char *nftl_oob_buf);
-    int		(*write_pages)(struct aml_nftl_info_t * aml_nftl_info, addr_blk_t blk_addr, addr_page_t page_addr, unsigned page_nums, unsigned char *data_buf, unsigned char *nftl_oob_buf);
-    int    (* get_page_status)(struct aml_nftl_info_t *aml_nftl_info, addr_blk_t blk_addr, addr_page_t page_addr, unsigned char * nftl_oob_buf);
+    int		(*read_page)(struct aml_nftl_info_t * aml_nftl_info, addr_blk_t blk_addr, addr_page_t page_addr, unsigned char *data_buf, unsigned char *nftl_oob_buf, int oob_len);
+    int		(*write_page)(struct aml_nftl_info_t * aml_nftl_info, addr_blk_t blk_addr, addr_page_t page_addr, unsigned char *data_buf, unsigned char *nftl_oob_buf, int oob_len);
+    int     (*read_page_oob)(struct aml_nftl_info_t *aml_nftl_info, addr_blk_t blk_addr, addr_page_t page_addr, unsigned char * nftl_oob_buf, int oob_len);
     int    (* blk_isbad)(struct aml_nftl_info_t *aml_nftl_info, addr_blk_t blk_addr);
     int    (* blk_mark_bad)(struct aml_nftl_info_t *aml_nftl_info, addr_blk_t blk_addr);
     int    (* erase_block)(struct aml_nftl_info_t * aml_nftl_info, addr_blk_t blk_addr);
@@ -195,14 +211,16 @@ struct aml_nftl_wl_t {
 	struct wl_tree_t		free_root;
 	struct wl_tree_t		used_root;
 	/*list for dynamic wl(leaf blocks), read ecc error blocks*/
-	struct wl_list_t		node_full_head;
 	struct wl_list_t		readerr_head;
+	struct list_head 		gc_blk_list;
 	
 	/*static wl threshold*/
 	uint32_t		wl_delta;
 	uint32_t		cur_delta;
 	uint8_t			gc_need_flag;
 	addr_blk_t		gc_start_block;
+	addr_blk_t	  	wait_gc_block;
+	addr_sect_t		page_copy_per_gc;
 
 	/*
 	 * pages per physical block & total blocks, get from hardware layer,
@@ -214,12 +232,11 @@ struct aml_nftl_wl_t {
 	void (*add_free)(struct aml_nftl_wl_t *wl, addr_blk_t blk);
 	void (*add_erased)(struct aml_nftl_wl_t *wl, addr_blk_t blk);
 	void (*add_used)(struct aml_nftl_wl_t *wl, addr_blk_t blk);
-	void (*add_full)(struct aml_nftl_wl_t* wl, addr_blk_t vt_blk, addr_blk_t phy_blk);
+	void (*add_gc)(struct aml_nftl_wl_t *wl, addr_blk_t blk);
 	int32_t (*get_best_free)(struct aml_nftl_wl_t *wl, addr_blk_t *blk);
-	int32_t (*get_full)(struct aml_nftl_wl_t *wl, addr_blk_t vt_blk, addr_blk_t *phy_blk);
 
 	/*nftl node info adapter function*/
-	int (*gc_special)(struct aml_nftl_wl_t *aml_nftl_wl);
+	int (*garbage_one)(struct aml_nftl_wl_t *aml_nftl_wl, addr_blk_t vt_blk, uint8_t gc_flag);
 	//int (*gc_structure_full)(struct aml_nftl_wl_t *aml_nftl_wl, addr_page_t logic_page_addr, unsigned char *buf);
 	int (*garbage_collect)(struct aml_nftl_wl_t *aml_nftl_wl, uint8_t gc_flag);
 };
@@ -239,6 +256,7 @@ struct aml_nftl_blk_t{
 	unsigned int		bounce_sg_len;
 
     struct list_head cache_list;
+    struct list_head free_list;
     struct mutex cache_mutex;
 
 	int cache_sect_addr;
@@ -265,42 +283,55 @@ struct aml_nftl_info_t{
 
     uint32_t	  startblock;
     uint32_t	  endBlock;
-    uint32_t    accessibleblocks;
-    uint8_t      isinitialised;
-    uint16_t	cur_split_blk;
-    uint32_t         fillfactor;
+    uint32_t      accessibleblocks;
+    uint8_t       isinitialised;
+    uint16_t	  cur_split_blk;
+    uint32_t      fillfactor;
+    addr_blk_t	  current_write_block;
+    addr_sect_t	  continue_writed_sects;
 
     unsigned char *copy_page_buf;
-    struct vtblk_node_t   *vtpmt;
+    void   		**vtpmt;
     struct phyblk_node_t  *phypmt;
-    struct vtblk_special_node_t   *vtpmt_special;
-    struct phyblk_node_t  *freepmt;
 
     struct aml_nftl_ops_t  *aml_nftl_ops;
     struct aml_nftl_wl_t	*aml_nftl_wl;
 
-    int		(*read_page)(struct aml_nftl_info_t *aml_nftl_info, addr_blk_t blk_addr, addr_page_t page_addr, unsigned char *data_buf, unsigned char *nftl_oob_buf);
-    int		(*write_pages)(struct aml_nftl_info_t *aml_nftl_info, addr_blk_t blk_addr, addr_page_t page_addr, unsigned page_nums, unsigned char *data_buf, unsigned char *nftl_oob_buf);
+    int		(*read_page)(struct aml_nftl_info_t *aml_nftl_info, addr_blk_t blk_addr, addr_page_t page_addr, unsigned char *data_buf, unsigned char *nftl_oob_buf, int oob_len);
+    int		(*write_page)(struct aml_nftl_info_t *aml_nftl_info, addr_blk_t blk_addr, addr_page_t page_addr, unsigned char *data_buf, unsigned char *nftl_oob_buf, int oob_len);
     int    (* copy_page)(struct aml_nftl_info_t *aml_nftl_info, addr_blk_t dest_blk_addr, addr_page_t dest_page, addr_blk_t src_blk_addr, addr_page_t src_page);
-    int    (* get_page_status)(struct aml_nftl_info_t *aml_nftl_info, addr_blk_t blk_addr, addr_page_t page_addr, unsigned char * nftl_oob_buf);
+    int     (*get_page_info)(struct aml_nftl_info_t *aml_nftl_info, addr_blk_t blk_addr, addr_page_t page_addr, unsigned char * nftl_oob_buf, int oob_len);
     int    (* blk_isbad)(struct aml_nftl_info_t *aml_nftl_info, addr_blk_t blk_addr);
     int    (* blk_mark_bad)(struct aml_nftl_info_t *aml_nftl_info, addr_blk_t blk_addr);
-    int    (* get_block_status)(struct aml_nftl_info_t *aml_nftl_info, addr_blk_t blk_addr, unsigned char *nftl_oob_buf);
     int    (* get_phy_sect_map)(struct aml_nftl_info_t *aml_nftl_info, addr_blk_t blk_addr);
     int    (* erase_block)(struct aml_nftl_info_t *aml_nftl_info, addr_blk_t blk_addr);
 
     int (* delete_sector)(struct aml_nftl_info_t *aml_nftl_info,addr_page_t page,uint32_t len);
 	int (*read_sect)(struct aml_nftl_info_t *aml_nftl_info, addr_page_t sect_addr, unsigned char *buf);
-	int (*write_sects)(struct aml_nftl_info_t *aml_nftl_info, addr_page_t sect_addr, unsigned sect_nums, unsigned char *buf);
+	int (*write_sect)(struct aml_nftl_info_t *aml_nftl_info, addr_page_t sect_addr, unsigned char *buf);
+	void (*delete_sect)(struct aml_nftl_info_t *aml_nftl_info, addr_page_t sect_addr);
 	void (*creat_structure)(struct aml_nftl_info_t *aml_nftl_info);
 };
 
 #pragma pack()
 
+static inline unsigned int aml_nftl_get_node_length(struct aml_nftl_info_t *aml_nftl_info, struct vtblk_node_t  *vt_blk_node)
+{
+	unsigned int node_length = 0;
+
+	while (vt_blk_node != NULL) {
+		node_length++;
+		vt_blk_node = vt_blk_node->next;
+	}
+	return node_length;
+}
+
 extern void aml_nftl_ops_init(struct aml_nftl_info_t *aml_nftl_info);
 extern int aml_nftl_initialize(struct aml_nftl_blk_t *aml_nftl_blk);
 extern void aml_nftl_info_release(struct aml_nftl_info_t *aml_nftl_info);
 extern int aml_nftl_wl_init(struct aml_nftl_info_t *aml_nftl_info);
+extern int aml_nftl_check_node(struct aml_nftl_info_t *aml_nftl_info, addr_blk_t blk_addr);
+extern int aml_nftl_add_node(struct aml_nftl_info_t *aml_nftl_info, addr_blk_t logic_blk_addr, addr_blk_t phy_blk_addr);
 #endif
 
 

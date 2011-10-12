@@ -940,7 +940,7 @@ static struct aml_nand_platform aml_nand_mid_platform[] = {
         .platform_nand_data = {
             .chip =  {
                 .nr_chips = 1,
-                .options = (NAND_TIMING_MODE5 | NAND_ECC_BCH16_MODE),
+				.options = (NAND_TIMING_MODE5 | NAND_ECC_BCH60_1K_MODE),
             },
         },
         .T_REA = 20,
@@ -956,7 +956,7 @@ static struct aml_nand_platform aml_nand_mid_platform[] = {
                 .nr_chips = 4,
                 .nr_partitions = ARRAY_SIZE(normal_partition_info),
                 .partitions = normal_partition_info,
-                .options = (NAND_TIMING_MODE5 | NAND_ECC_BCH16_MODE | NAND_TWO_PLANE_MODE),
+                .options = (NAND_TIMING_MODE5 | NAND_ECC_BCH60_1K_MODE | NAND_TWO_PLANE_MODE),
             },
         },
         .T_REA = 20,
@@ -978,7 +978,7 @@ static struct resource aml_nand_resources[] = {
 };
 
 static struct platform_device aml_nand_device = {
-    .name = "aml_m1_nand",
+    .name = "aml_m3_nand",
     .id = 0,
     .num_resources = ARRAY_SIZE(aml_nand_resources),
     .resource = aml_nand_resources,
@@ -986,7 +986,6 @@ static struct platform_device aml_nand_device = {
         .platform_data = &aml_nand_mid_device,
     },
 };
-
 #endif
 
 #if defined(CONFIG_AMLOGIC_BACKLIGHT)

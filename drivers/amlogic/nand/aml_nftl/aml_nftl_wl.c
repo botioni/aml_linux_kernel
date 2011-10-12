@@ -10,6 +10,7 @@
 #include "aml_nftl.h"
 
 #define list_to_node(l)	container_of(l, struct wl_list_t, list)
+#define list_to_gc_node(l)	container_of(l, struct gc_blk_list, list)
 /**
  * construct_lnode - construct list node
  * @ vblk : logical block addr
@@ -247,69 +248,6 @@ static void add_free(struct aml_nftl_wl_t * wl, addr_blk_t blk)
 	}
 }
 
-static void add_node_full(struct aml_nftl_wl_t* wl, addr_blk_t vt_blk, addr_blk_t phy_blk)
-{
-	struct wl_list_t* lnode, *lnode_add;
-	struct list_head *l, *n;
-	struct phyblk_node_t *phy_blk_node, *phy_blk_tmp_node;
-	struct aml_nftl_info_t *aml_nftl_info = wl->aml_nftl_info;
-
-	phy_blk_node = &aml_nftl_info->phypmt[phy_blk];
-	if (!list_empty(&wl->node_full_head.list)) {
-		list_for_each_safe(l, n, &wl->node_full_head.list) {
-
-			lnode = list_to_node(l);
-			if (lnode->vt_blk == vt_blk) {
-				phy_blk_tmp_node = &aml_nftl_info->phypmt[lnode->phy_blk];
-				if (phy_blk_tmp_node->timestamp < phy_blk_node->timestamp) {
-					if ((phy_blk_node->timestamp - phy_blk_tmp_node->timestamp) < (MAX_TIMESTAMP_NUM - aml_nftl_info->accessibleblocks)) {
-						list_del(&lnode->list);
-						aml_nftl_free(lnode);
-					}
-					else
-						return;
-				}
-				else {
-					if ((phy_blk_tmp_node->timestamp - phy_blk_node->timestamp) >= (MAX_TIMESTAMP_NUM - aml_nftl_info->accessibleblocks)) {
-						list_del(&lnode->list);
-						aml_nftl_free(lnode);
-					}
-					else
-						return;
-				}
-			}
-		}
-	}
-
-	lnode_add = construct_lnode(wl, vt_blk, phy_blk);
-	if(lnode_add)
-		list_add(&lnode_add->list, &wl->node_full_head.list);
-
-	return;
-}
-
-static int32_t get_node_full(struct aml_nftl_wl_t* wl, addr_blk_t vt_blk, addr_blk_t *phy_blk)
-{
-	struct wl_list_t* lnode;
-	struct list_head *l, *n;
-
-	if (list_empty(&wl->node_full_head.list))
-		return -ENOENT;
-
-	list_for_each_safe(l, n, &wl->node_full_head.list) {
-
-		lnode = list_to_node(l);
-		if (lnode->vt_blk == vt_blk) {
-			*phy_blk = lnode->phy_blk;
-			list_del(&lnode->list);
-			aml_nftl_free(lnode);
-			return 0;
-		}
-	}
-
-	return -ENOENT;
-}
-
 /**
  * staticwl_linear_blk - static wear leveling this linear block
  * @ blk : root linear block
@@ -336,8 +274,8 @@ static int32_t staticwl_linear_blk(struct aml_nftl_wl_t* aml_nftl_wl, addr_blk_t
 		return -ENOENT;
 
 	aml_nftl_wl->add_used(aml_nftl_wl, dest_blk);
-	vt_blk_node = &aml_nftl_info->vtpmt[blk];
-	src_blk = vt_blk_node->phy_blk_addr[0];
+	vt_blk_node = (struct vtblk_node_t *)(*(aml_nftl_info->vtpmt + blk));
+	src_blk = vt_blk_node->phy_blk_addr;
 	phy_blk_node_src = &aml_nftl_info->phypmt[src_blk];
 
 	phy_blk_node_dest = &aml_nftl_info->phypmt[dest_blk];
@@ -351,194 +289,135 @@ static int32_t staticwl_linear_blk(struct aml_nftl_wl_t* aml_nftl_wl, addr_blk_t
 	for(i=0; i<aml_nftl_wl->pages_per_blk; i++){
 
 		src_page = phy_blk_node_src->phy_page_map[i];
+		if (src_page < 0)
+			continue;
 
 		dest_page = phy_blk_node_dest->last_write + 1;
 		aml_nftl_info->copy_page(aml_nftl_info, dest_blk, dest_page, src_blk, src_page);
 	}
 
 	aml_nftl_wl->add_free(aml_nftl_wl, src_blk);
-	vt_blk_node->phy_blk_addr[0] = dest_blk;
+	vt_blk_node->phy_blk_addr = dest_blk;
 	return 0;
+}
+
+static void add_gc(struct aml_nftl_wl_t* aml_nftl_wl, addr_blk_t gc_blk_addr)
+{
+	struct gc_blk_list *gc_add_list, *gc_cur_list, *gc_prev_list = NULL;
+	struct list_head *l, *n;
+
+	if (gc_blk_addr < NFTL_FAT_TABLE_NUM)
+		return;
+
+	if (!list_empty(&aml_nftl_wl->gc_blk_list)) {
+		list_for_each_safe(l, n, &aml_nftl_wl->gc_blk_list) {
+			gc_cur_list = list_to_gc_node(l);
+			if (gc_cur_list->gc_blk_addr == gc_blk_addr)
+				return;
+			else if (gc_blk_addr < gc_cur_list->gc_blk_addr) {
+				gc_cur_list = gc_prev_list;
+				break;
+			}
+			else
+				gc_prev_list = gc_cur_list;
+		}
+	}
+	else {
+		gc_cur_list = NULL;
+	}
+
+	gc_add_list = aml_nftl_malloc(sizeof(struct gc_blk_list));
+	if (!gc_add_list)
+		return;
+	gc_add_list->gc_blk_addr = gc_blk_addr;
+
+	if (gc_cur_list != NULL)
+		list_add(&gc_add_list->list, &gc_cur_list->list);
+	else
+		list_add(&gc_add_list->list, &aml_nftl_wl->gc_blk_list);
+	return;
 }
 
 static int gc_get_dirty_block(struct aml_nftl_wl_t* aml_nftl_wl, uint8_t gc_flag)
 {
 	struct aml_nftl_info_t *aml_nftl_info = aml_nftl_wl->aml_nftl_info;
-	struct phyblk_node_t *phy_blk_node_src, *phy_blk_node_dest;
+	struct gc_blk_list *gc_cur_list;
+	struct list_head *l, *n;
 	struct vtblk_node_t  *vt_blk_node;
-	int16_t i, j, k, free_num, free_num2, valid_page[MAX_BLK_NUM_PER_NODE], erase_gc_num = 0, copy_gc_num = 0;
-	addr_blk_t dest_blk, src_blk;
-	addr_page_t dest_page, src_page;
-	unsigned valid_page_save;
+	struct phyblk_node_t *phy_blk_node;
+	addr_blk_t dest_blk;
+	int16_t vt_blk_num, start_free_num;
+	int node_length, valid_page, k;
 
-	for (i=aml_nftl_wl->gc_start_block; i>=0; i--) {
-
-		vt_blk_node = &aml_nftl_info->vtpmt[i];
-		if (vt_blk_node->phy_blk_addr[0] < 0)
-			continue;
-
-		if (vt_blk_node->phy_blk_addr[1] < 0) {
-			if(aml_nftl_wl->cur_delta >= aml_nftl_wl->wl_delta)
-				staticwl_linear_blk(aml_nftl_wl, i);
-
-			continue;
-		}
-
-		memset((unsigned char *)valid_page, 0x0, sizeof(int16_t)*MAX_BLK_NUM_PER_NODE);
-		for (k=0; k<aml_nftl_wl->pages_per_blk; k++) {
-
-			for (j=(MAX_BLK_NUM_PER_NODE - 1); j>=0; j--) {
-
-				if (vt_blk_node->phy_blk_addr[j] < 0)
-					continue;
-
-				phy_blk_node_src = &aml_nftl_info->phypmt[vt_blk_node->phy_blk_addr[j]];
-				aml_nftl_info->get_phy_sect_map(aml_nftl_info, vt_blk_node->phy_blk_addr[j]);
-				if (phy_blk_node_src->phy_page_map[k] >= 0) {
-					valid_page[j]++;
-					break;
-				}
-			}
-		}
-
-		for (j=0; j<MAX_BLK_NUM_PER_NODE; j++) {
-			if (valid_page[j] == 0) {
-				aml_nftl_wl->add_free(aml_nftl_wl, vt_blk_node->phy_blk_addr[j]);
-				vt_blk_node->phy_blk_addr[j] = BLOCK_INIT_VALUE;
-				erase_gc_num++;
-			}
-			else 
-				break;
-		}
-		free_num = j;
-		free_num2 = free_num;
-		for (k=0; k<(MAX_BLK_NUM_PER_NODE-free_num); k++) {
-			vt_blk_node->phy_blk_addr[k] = vt_blk_node->phy_blk_addr[j];
-			valid_page[k] = valid_page[j];
-			j++;
-		}
-
-		for (k=(MAX_BLK_NUM_PER_NODE-free_num); k<MAX_BLK_NUM_PER_NODE; k++) {
-			vt_blk_node->phy_blk_addr[k] = BLOCK_INIT_VALUE;
-			valid_page[k] = 0;
-		}
-		if (erase_gc_num >= 4)
-			break;
-
-		//if space is small do copy page garbage collect
-		if (gc_flag == DO_COPY_PAGE) {
-
-			if ((vt_blk_node->phy_blk_addr[1] < 0) || (vt_blk_node->phy_blk_addr[0] < 0))
+	start_free_num = aml_nftl_wl->free_root.count;
+	if (!list_empty(&aml_nftl_wl->gc_blk_list)) {
+		list_for_each_safe(l, n, &aml_nftl_wl->gc_blk_list) {
+			gc_cur_list = list_to_gc_node(l);
+			vt_blk_num = gc_cur_list->gc_blk_addr;
+			if (vt_blk_num == aml_nftl_info->current_write_block)
+				continue;
+			if ((vt_blk_num >= aml_nftl_info->current_write_block - MAX_BLK_NUM_PER_NODE) 
+				&& (vt_blk_num <= aml_nftl_info->current_write_block + MAX_BLK_NUM_PER_NODE)
+				&& (gc_flag != DO_COPY_PAGE))
 				continue;
 
-			for (k=2; k<MAX_BLK_NUM_PER_NODE; k++) {
-
-				if (vt_blk_node->phy_blk_addr[k] < 0)
-					break;
-				phy_blk_node_dest = &aml_nftl_info->phypmt[vt_blk_node->phy_blk_addr[k]];
-				//aml_nftl_dbg("nftl vt node phy blk: %d valid page: %d last write: %d vt blk: %d\n", vt_blk_node->phy_blk_addr[k], valid_page[k], phy_blk_node_dest->last_write, i);
+			vt_blk_node = (struct vtblk_node_t *)(*(aml_nftl_info->vtpmt + vt_blk_num));
+			node_length = aml_nftl_get_node_length(aml_nftl_info, vt_blk_node);
+			if (node_length < BASIC_BLK_NUM_PER_NODE) {
+				list_del(&gc_cur_list->list);
+				aml_nftl_free(gc_cur_list);
+				continue;
 			}
 
-			dest_blk = vt_blk_node->phy_blk_addr[k-1];
-			free_num = (k - 2);
-			free_num2 = free_num;
-			phy_blk_node_dest = &aml_nftl_info->phypmt[dest_blk];
+			aml_nftl_check_node(aml_nftl_info, vt_blk_num);
+			vt_blk_node = (struct vtblk_node_t *)(*(aml_nftl_info->vtpmt + vt_blk_num));
+			node_length = aml_nftl_get_node_length(aml_nftl_info, vt_blk_node);
+			if (node_length < BASIC_BLK_NUM_PER_NODE) {
+				list_del(&gc_cur_list->list);
+				aml_nftl_free(gc_cur_list);
+				continue;
+			}
 
-			if (valid_page[k-1] >= (phy_blk_node_dest->last_write + 1)) {
-				//needn`t get free block just copy in node
-
-				valid_page_save = valid_page[k-1];
-
-				for(k=0; k<aml_nftl_wl->pages_per_blk; k++) {
-
-					if (phy_blk_node_dest->phy_page_map[k] >= 0)
-						continue;
-
-					free_num = free_num2;
-					do {
-						src_blk = vt_blk_node->phy_blk_addr[free_num];
-						phy_blk_node_src = &aml_nftl_info->phypmt[src_blk];
-						if (phy_blk_node_src->phy_page_map[k] >= 0) {
-							src_page = phy_blk_node_src->phy_page_map[k];
-							break;
-						}
-						free_num--;
-
-					}while (free_num >= 0);
-					if (free_num < 0) 
-						continue;
-
-					dest_page = phy_blk_node_dest->last_write + 1;
-					aml_nftl_info->copy_page(aml_nftl_info, dest_blk, dest_page, src_blk, src_page);
+			if (aml_nftl_wl->free_root.count <= AML_LIMIT_FACTOR) {
+				vt_blk_node = (struct vtblk_node_t *)(*(aml_nftl_info->vtpmt + vt_blk_num));
+				dest_blk = vt_blk_node->phy_blk_addr;
+				phy_blk_node = &aml_nftl_info->phypmt[dest_blk];
+				aml_nftl_info->get_phy_sect_map(aml_nftl_info, dest_blk);
+				valid_page = 0;
+				for (k=0; k<aml_nftl_wl->pages_per_blk; k++) {
+					if (phy_blk_node->phy_page_map[k] >= 0)
+						valid_page++;
 				}
-
-				for (j=0; j<=free_num2; j++) {
-					if (vt_blk_node->phy_blk_addr[j] < 0)
-						aml_nftl_dbg("nftl garbage copy in node block addr: %d  %d  %d  %d %d\n", vt_blk_node->phy_blk_addr[0], vt_blk_node->phy_blk_addr[1], vt_blk_node->phy_blk_addr[2], vt_blk_node->phy_blk_addr[3], j);
-					aml_nftl_wl->add_free(aml_nftl_wl, vt_blk_node->phy_blk_addr[j]);
-					vt_blk_node->phy_blk_addr[j] = BLOCK_INIT_VALUE;
-					copy_gc_num++;
-				}	
-				vt_blk_node->phy_blk_addr[0] = dest_blk;
-				vt_blk_node->phy_blk_addr[free_num2+1] = BLOCK_INIT_VALUE;		
-			}
-			else {
-				if(aml_nftl_wl->get_best_free(aml_nftl_wl, &dest_blk))
+				if ((valid_page < (phy_blk_node->last_write + 1)) && (gc_flag != DO_COPY_PAGE))
 					continue;
-
-				aml_nftl_wl->add_used(aml_nftl_wl, dest_blk);
-				free_num++;
-				free_num2 = free_num;
-				phy_blk_node_src = &aml_nftl_info->phypmt[vt_blk_node->phy_blk_addr[free_num]];
-				phy_blk_node_dest = &aml_nftl_info->phypmt[dest_blk];
-				phy_blk_node_dest->vtblk = i;
-				if (phy_blk_node_src->timestamp >= MAX_TIMESTAMP_NUM)
-					phy_blk_node_dest->timestamp = 0;
-				else
-					phy_blk_node_dest->timestamp = (phy_blk_node_src->timestamp + 1);
-
-				for(k=0; k<aml_nftl_wl->pages_per_blk; k++) {
-
-					free_num = free_num2;
-					do {
-						src_blk = vt_blk_node->phy_blk_addr[free_num];
-						phy_blk_node_src = &aml_nftl_info->phypmt[src_blk];
-						if (phy_blk_node_src->phy_page_map[k] >= 0) {
-							src_page = phy_blk_node_src->phy_page_map[k];
-							break;
-						}
-						free_num--;
-
-					}while (free_num >= 0);
-					if (free_num < 0)
-						continue;
-
-					dest_page = phy_blk_node_dest->last_write + 1;
-					aml_nftl_info->copy_page(aml_nftl_info, dest_blk, dest_page, src_blk, src_page);
-				}
-
-				for (j=0; j<=free_num2; j++) {
-					if (vt_blk_node->phy_blk_addr[j] < 0)
-						aml_nftl_dbg("nftl garbage get free copy  block addr: %d  %d  %d  %d %d\n", vt_blk_node->phy_blk_addr[0], vt_blk_node->phy_blk_addr[1], vt_blk_node->phy_blk_addr[2], vt_blk_node->phy_blk_addr[3], j);
-					aml_nftl_wl->add_free(aml_nftl_wl, vt_blk_node->phy_blk_addr[j]);
-					vt_blk_node->phy_blk_addr[j] = BLOCK_INIT_VALUE;
-					copy_gc_num++;
-				}	
-				vt_blk_node->phy_blk_addr[0] = dest_blk;
-
 			}
-			if (copy_gc_num >= 1)
-				break;
+
+			aml_nftl_wl->wait_gc_block = vt_blk_num;
+			list_del(&gc_cur_list->list);
+			aml_nftl_free(gc_cur_list);
+			break;
+		}
+	}
+	else {
+		for (vt_blk_num=aml_nftl_info->accessibleblocks - 1; vt_blk_num>=0; vt_blk_num--) {
+
+			vt_blk_node = (struct vtblk_node_t *)(*(aml_nftl_info->vtpmt + vt_blk_num));
+			if (vt_blk_node == NULL)
+				continue;
+
+			node_length = aml_nftl_get_node_length(aml_nftl_info, vt_blk_node);
+			if (node_length == 1) {
+				if(aml_nftl_wl->cur_delta >= aml_nftl_wl->wl_delta)
+					staticwl_linear_blk(aml_nftl_wl, vt_blk_num);
+
+				continue;
+			}
+
+			aml_nftl_wl->add_gc(aml_nftl_wl, vt_blk_num);
 		}
 	}
 
-	//aml_nftl_dbg("nftl garbage block num: %d free num: %d flag: %d\n", (copy_gc_num + erase_gc_num), aml_nftl_wl->free_root.count, gc_flag);
-	if (i <= 2)
-		aml_nftl_wl->gc_start_block = aml_nftl_info->accessibleblocks - 1;
-	else
-		aml_nftl_wl->gc_start_block = i;
-	aml_nftl_wl->gc_need_flag = 0;
-	return (copy_gc_num + erase_gc_num);
+	return (aml_nftl_wl->free_root.count - start_free_num);
 }
 
 /**
@@ -556,80 +435,143 @@ static int gc_get_dirty_block(struct aml_nftl_wl_t* aml_nftl_wl, uint8_t gc_flag
  *         add_free will not process invalid block(if no sleaf in this vblk)
  *     8. free temp sroot, sleaf sector map
  */
-static int32_t gc_copy_special(struct aml_nftl_wl_t* aml_nftl_wl)
+static int32_t gc_copy_one(struct aml_nftl_wl_t* aml_nftl_wl, addr_blk_t vt_blk, uint8_t gc_flag)
 {
-	int status = 0;
+	int gc_free = 0, node_length, node_length_cnt, k, writed_pages = 0;
 	struct aml_nftl_info_t *aml_nftl_info = aml_nftl_wl->aml_nftl_info;
-	struct phyblk_node_t *phy_blk_tmp_node, *phy_blk_node_dest;
-	struct vtblk_node_t  *vt_special_node;
-	int16_t i, j;
-	addr_blk_t dest_blk, src_blk, phy_blk_tmp;
+	struct phyblk_node_t *phy_blk_src_node, *phy_blk_node_dest;
+	struct vtblk_node_t  *vt_blk_node, *vt_blk_node_free;
+	addr_blk_t dest_blk, src_blk;
 	addr_page_t dest_page, src_page;
 
-	if (aml_nftl_info->vtpmt_special->vtblk_node == NULL)
-		return -1;
+	vt_blk_node = (struct vtblk_node_t *)(*(aml_nftl_info->vtpmt + vt_blk));
+	if (vt_blk_node == NULL)
+		return -ENOMEM;
 
-	vt_special_node = aml_nftl_info->vtpmt_special->vtblk_node;
-	dest_blk = aml_nftl_info->vtpmt_special->ext_phy_blk_addr;
-
+	dest_blk = vt_blk_node->phy_blk_addr;
 	phy_blk_node_dest = &aml_nftl_info->phypmt[dest_blk];
+	node_length = aml_nftl_get_node_length(aml_nftl_info, vt_blk_node);
 
-	for (i=0; i<aml_nftl_wl->pages_per_blk; i++) {
+	for (k=0; k<aml_nftl_wl->pages_per_blk; k++) {
 
-		if (phy_blk_node_dest->phy_page_map[i] >= 0)
+		if (phy_blk_node_dest->phy_page_map[k] >= 0)
 			continue;
 
-		for (j=(MAX_BLK_NUM_PER_NODE - 1); j>=0; j--) {
-			phy_blk_tmp = vt_special_node->phy_blk_addr[j];
-			phy_blk_tmp_node = &aml_nftl_info->phypmt[phy_blk_tmp];
-			if (phy_blk_tmp_node->phy_page_map[i] >= 0) {
-				src_blk = phy_blk_tmp;
-				src_page = phy_blk_tmp_node->phy_page_map[i];
+		node_length_cnt = 0;
+		src_blk = -1;
+		src_page = -1;
+		vt_blk_node = (struct vtblk_node_t *)(*(aml_nftl_info->vtpmt + vt_blk));
+		while (vt_blk_node != NULL) {
+
+			node_length_cnt++;
+			src_blk = vt_blk_node->phy_blk_addr;
+			phy_blk_src_node = &aml_nftl_info->phypmt[src_blk];
+			if ((phy_blk_src_node->phy_page_map[k] >= 0) && (phy_blk_src_node->phy_page_delete[k>>3] & (1 << (k % 8)))) {
+				src_page = phy_blk_src_node->phy_page_map[k];
 				break;
 			}
+			vt_blk_node = vt_blk_node->next;
 		}
-		if ((phy_blk_tmp_node->phy_page_map[i] < 0) || (j > 0))
+		if ((src_page < 0) || (src_blk < 0) || ((node_length_cnt < node_length) && (gc_flag == 0)))
 			continue;
 
 		dest_page = phy_blk_node_dest->last_write + 1;
 		aml_nftl_info->copy_page(aml_nftl_info, dest_blk, dest_page, src_blk, src_page);
+		writed_pages++;
+		if ((gc_flag == DO_COPY_PAGE_AVERAGELY) && (writed_pages >= aml_nftl_wl->page_copy_per_gc) && (k < (aml_nftl_wl->pages_per_blk - aml_nftl_wl->page_copy_per_gc)))
+			goto exit;
 	}
 
-	aml_nftl_wl->add_free(aml_nftl_wl, vt_special_node->phy_blk_addr[0]);
-	for (j=0; j<(MAX_BLK_NUM_PER_NODE - 1); j++) {
-		//aml_nftl_wl->add_free(aml_nftl_wl, vt_special_node->phy_blk_addr[j]);
-		vt_special_node->phy_blk_addr[j] = vt_special_node->phy_blk_addr[j+1];
+	node_length_cnt = 0;
+	vt_blk_node = (struct vtblk_node_t *)(*(aml_nftl_info->vtpmt + vt_blk));
+	while (vt_blk_node->next != NULL) {
+		node_length_cnt++;
+		vt_blk_node_free = vt_blk_node->next;
+		if (((node_length_cnt == (node_length - 1)) && (gc_flag == 0))
+			|| ((node_length_cnt > 0) && (gc_flag != 0))) {
+			aml_nftl_wl->add_free(aml_nftl_wl, vt_blk_node_free->phy_blk_addr);
+			vt_blk_node->next = vt_blk_node_free->next;
+			aml_nftl_free(vt_blk_node_free);
+			gc_free++;
+			continue;
+		}
+		if (vt_blk_node->next != NULL)
+			vt_blk_node = vt_blk_node->next;
 	}
-	vt_special_node->phy_blk_addr[MAX_BLK_NUM_PER_NODE-1] = dest_blk;
-	aml_nftl_info->vtpmt_special->vtblk_node = NULL;
-	aml_nftl_info->vtpmt_special->ext_phy_blk_addr = BLOCK_INIT_VALUE;
 
-	return status;
+exit:
+	return gc_free;
 }
 
 static int aml_nftl_garbage_collect(struct aml_nftl_wl_t *aml_nftl_wl, uint8_t gc_flag)
 {
-	int gc_num = 0, copy_page_bounce_num;
+	struct vtblk_node_t  *vt_blk_node;
+	struct phyblk_node_t *phy_blk_node;
+	addr_blk_t dest_blk, vt_blk_num;
+	int gc_num = 0, copy_page_bounce_num, copy_page_total_num, valid_page, k;
 	struct aml_nftl_info_t *aml_nftl_info = aml_nftl_wl->aml_nftl_info;
 
-	if (aml_nftl_info->isinitialised == 0) {
-		gc_num = gc_get_dirty_block(aml_nftl_wl, 0);
-		if (gc_num >= 4) 
-			return gc_num;
+	if ((aml_nftl_info->fillfactor / 4) >= AML_LIMIT_FACTOR)
+		copy_page_total_num = aml_nftl_info->fillfactor / 4;
+	else
+		copy_page_total_num = AML_LIMIT_FACTOR;
+	copy_page_bounce_num = copy_page_total_num * 2;
 
-		aml_nftl_info->isinitialised = 1;
-		aml_nftl_wl->gc_start_block = aml_nftl_info->accessibleblocks - 1;
-		aml_nftl_dbg("nftl creat stucture completely in garbage free blk: %d erased blk: %d\n", aml_nftl_wl->free_root.count, aml_nftl_wl->erased_root.count);
+	if ((aml_nftl_wl->wait_gc_block < 0) && (aml_nftl_wl->free_root.count < copy_page_bounce_num)) {
+		gc_get_dirty_block(aml_nftl_wl, 0);
+		if (aml_nftl_wl->wait_gc_block < 0)
+			gc_get_dirty_block(aml_nftl_wl, DO_COPY_PAGE);
+		if ((gc_flag == 0) && (aml_nftl_wl->free_root.count >= copy_page_total_num))
+			return 0;
 	}
-	if ((aml_nftl_info->fillfactor/8) >= AML_LIMIT_FACTOR)
-		copy_page_bounce_num = aml_nftl_info->fillfactor / 8;
-	else
-		copy_page_bounce_num = AML_LIMIT_FACTOR;
+	if (aml_nftl_wl->wait_gc_block >= 0) {
+		if ((aml_nftl_wl->free_root.count < copy_page_total_num) || (gc_flag == DO_COPY_PAGE))
+			aml_nftl_wl->page_copy_per_gc = aml_nftl_wl->pages_per_blk;
+		else if (aml_nftl_wl->free_root.count >= (copy_page_total_num + AML_LIMIT_FACTOR))
+			aml_nftl_wl->page_copy_per_gc = 4;
+		else
+			aml_nftl_wl->page_copy_per_gc = 8;
 
-	if ((aml_nftl_wl->free_root.count <= copy_page_bounce_num) || (gc_flag == DO_COPY_PAGE))
-		return gc_get_dirty_block(aml_nftl_wl, DO_COPY_PAGE);
-	else
-		return gc_get_dirty_block(aml_nftl_wl, 0);
+		vt_blk_node = (struct vtblk_node_t *)(*(aml_nftl_info->vtpmt + aml_nftl_wl->wait_gc_block));
+		dest_blk = vt_blk_node->phy_blk_addr;
+		phy_blk_node = &aml_nftl_info->phypmt[dest_blk];
+		aml_nftl_info->get_phy_sect_map(aml_nftl_info, dest_blk);
+		valid_page = 0;
+		for (k=0; k<aml_nftl_wl->pages_per_blk; k++) {
+			if (phy_blk_node->phy_page_map[k] >= 0)
+				valid_page++;
+		}
+
+		if (valid_page < (phy_blk_node->last_write + 1)) {
+			if(aml_nftl_wl->get_best_free(aml_nftl_wl, &dest_blk)) {
+				aml_nftl_dbg("nftl garbage couldn`t found free block: %d %d\n", aml_nftl_wl->wait_gc_block, aml_nftl_wl->free_root.count);
+				vt_blk_num = aml_nftl_wl->wait_gc_block;
+				aml_nftl_wl->wait_gc_block = BLOCK_INIT_VALUE;
+				gc_get_dirty_block(aml_nftl_wl, 0);
+				if (aml_nftl_wl->wait_gc_block < 0) {
+					aml_nftl_dbg("nftl garbage couldn`t found copy block: %d %d\n", aml_nftl_wl->wait_gc_block, aml_nftl_wl->free_root.count);
+					return 0;
+				}
+				gc_num = aml_nftl_wl->garbage_one(aml_nftl_wl, aml_nftl_wl->wait_gc_block, DO_COPY_PAGE_AVERAGELY);
+				if (gc_num > 0)
+					aml_nftl_wl->wait_gc_block = BLOCK_INIT_VALUE;
+				aml_nftl_wl->wait_gc_block = vt_blk_num;
+				if (aml_nftl_wl->get_best_free(aml_nftl_wl, &dest_blk))
+				return 0;
+			}
+
+			aml_nftl_add_node(aml_nftl_info, aml_nftl_wl->wait_gc_block, dest_blk);
+			aml_nftl_wl->add_used(aml_nftl_wl, dest_blk);
+		}
+
+		gc_num = aml_nftl_wl->garbage_one(aml_nftl_wl, aml_nftl_wl->wait_gc_block, DO_COPY_PAGE_AVERAGELY);
+		if (gc_num > 0)
+			aml_nftl_wl->wait_gc_block = BLOCK_INIT_VALUE;
+
+		return gc_num;
+	}
+
+		return 0;
 }
 
 /**
@@ -690,20 +632,19 @@ int aml_nftl_wl_init(struct aml_nftl_info_t *aml_nftl_info)
 	aml_nftl_wl->free_root.root = RB_ROOT;
 	aml_nftl_wl->used_root.root = RB_ROOT;
 
-	INIT_LIST_HEAD(&aml_nftl_wl->node_full_head.list);
-	aml_nftl_wl->node_full_head.vt_blk = BLOCK_INIT_VALUE;
+	INIT_LIST_HEAD(&aml_nftl_wl->gc_blk_list);
 	INIT_LIST_HEAD(&aml_nftl_wl->readerr_head.list);
 	aml_nftl_wl->readerr_head.vt_blk = BLOCK_INIT_VALUE;
+	aml_nftl_wl->wait_gc_block = BLOCK_INIT_VALUE;
 
 	/*init function pointer*/
 	aml_nftl_wl->add_free = add_free;
 	aml_nftl_wl->add_erased = add_erased;
 	aml_nftl_wl->add_used = add_used;
-	aml_nftl_wl->add_full = add_node_full;
+	aml_nftl_wl->add_gc = add_gc;
 	aml_nftl_wl->get_best_free = get_best_free;
-	aml_nftl_wl->get_full = get_node_full;
 
-	aml_nftl_wl->gc_special = gc_copy_special;
+	aml_nftl_wl->garbage_one = gc_copy_one;
 	aml_nftl_wl->garbage_collect = aml_nftl_garbage_collect;
 
 	return 0;

@@ -193,6 +193,11 @@ static int blktrans_ioctl(struct block_device *bdev, fmode_t mode,
 			return tr->flush(dev);
 		/* The core code did the work, we had nothing to do. */
 		return 0;
+	case BLKGETSECTS:
+	case BLKFREESECTS:
+		if (tr->update_blktrans_sysinfo)
+			tr->update_blktrans_sysinfo(dev, cmd, arg);
+		return 0;
 	default:
 		return -ENOTTY;
 	}
