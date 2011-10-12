@@ -392,4 +392,13 @@ endchoice
 
 source "drivers/misc/mpu3050/Kconfig"
 source "drivers/misc/mpu3050_new/Kconfig"
+
+config BOSCH_SENSOR
+	tristate "BOSCH BMA222 acceleration sensor"
+	depends on I2C && SYSFS
+	help
+	  If you say yes here you get support for the BOSCH BMA222
+	  acceleration sensor.
+source "drivers/misc/bosch_bma222/Kconfig"
+
 endif # MISC_DEVICES

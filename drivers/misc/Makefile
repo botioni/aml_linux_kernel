@@ -37,3 +37,4 @@ obj-$(CONFIG_WL127X_RFKILL)	+= wl127x-rfkill.o
 obj-$(CONFIG_APANIC)		+= apanic.o
 obj-$(CONFIG_MPU_PRE_V340)	+= mpu3050/
 obj-$(CONFIG_MPU_NEW)		+= mpu3050_new/
+obj-$(CONFIG_BOSCH_SENSOR)		+= bosch_bma222/
