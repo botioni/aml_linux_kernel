@@ -2211,7 +2211,7 @@ static struct i2c_board_info __initdata aml_i2c_bus_info_2[] = {
         .platform_data = (void *)&bq27x00_pdata,
     },
 #endif
-#ifdef CONFIG_PMU_ACT8942
+#ifdef CONFIG_PMU_ACT8xxx
 	{
         I2C_BOARD_INFO(ACT8xxx_I2C_NAME, ACT8xxx_ADDR),
 #ifdef CONFIG_PMU_ACT8942
@@ -2400,7 +2400,7 @@ static __init void m1_fixup(struct machine_desc *mach, struct tag *tag, char **c
     pbank->node  = PHYS_TO_NID(PHYS_MEM_START);
     m->nr_banks++;
 #ifdef CONFIG_AML_SUSPEND
-    if (PHYS_MEM_END>256*SZ_1M){
+    if (PHYS_MEM_SIZE>256*SZ_1M){
     	  // RESERVED_MEM_END ~ 256M
         pbank=&m->bank[m->nr_banks];
         pbank->start = PAGE_ALIGN(RESERVED_MEM_END+1);

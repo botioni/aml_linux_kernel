@@ -55,7 +55,11 @@ static struct fb_var_screeninfo mydef_var[] = {
 #endif
 	.xoffset         = 0,
 	.yoffset         = 0,
-	.bits_per_pixel  = 16,
+#if defined(CONFIG_FB_OSD1_DEFAULT_BITS_PER_PIXEL)
+	.bits_per_pixel  = CONFIG_FB_OSD1_DEFAULT_BITS_PER_PIXEL,
+#else
+	.bits_per_pixel = 16,
+#endif
 	.grayscale       = 0,
 	.red             = {0, 0, 0},
 	.green           = {0, 0, 0},
@@ -104,7 +108,11 @@ static struct fb_var_screeninfo mydef_var[] = {
 #endif
 	.xoffset         = 0,
 	.yoffset         = 0,
-	.bits_per_pixel  = 32,
+#if defined(CONFIG_FB_OSD2_DEFAULT_BITS_PER_PIXEL)
+	.bits_per_pixel  = CONFIG_FB_OSD2_DEFAULT_BITS_PER_PIXEL,
+#else
+	.bits_per_pixel = 32,
+#endif
 	.grayscale       = 0,
 	.red             = {0, 0, 0},  //leave as it is ,set by system.
 	.green           = {0, 0, 0},

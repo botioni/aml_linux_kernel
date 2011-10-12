@@ -27,7 +27,7 @@ TARGET_PLATFORM ?= aml-meson
 CONFIG ?= aml-meson-m400-1
 
 ## @note Should allow overriding of building UMP for non-debug:
-EXTRA_CFLAGS += -DDEBUG
+EXTRA_CFLAGS += -DDEBUG -DMALI_STATE_TRACKING=0
 
 # linux build system integration
 
