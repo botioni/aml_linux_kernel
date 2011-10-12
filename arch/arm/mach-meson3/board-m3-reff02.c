@@ -2400,7 +2400,7 @@ static __init void m1_fixup(struct machine_desc *mach, struct tag *tag, char **c
     pbank->node  = PHYS_TO_NID(PHYS_MEM_START);
     m->nr_banks++;
 #ifdef CONFIG_AML_SUSPEND
-    if (PHYS_MEM_END>256*SZ_1M){
+    if (PHYS_MEM_SIZE>256*SZ_1M){
     	  // RESERVED_MEM_END ~ 256M
         pbank=&m->bank[m->nr_banks];
         pbank->start = PAGE_ALIGN(RESERVED_MEM_END+1);
