@@ -451,7 +451,11 @@ static int __init early_mem(char *p)
 			arm_add_memory(start, size>(vstart-start)?(vstart-start):size);
 			if(size>(vend-start))
 			{
+#ifdef CONFIG_AML_SUSPEND
+				arm_add_memory(vend+1,size-(vend-start+1)-SZ_1M);
+#else
 				arm_add_memory(vend+1,size-(vend-start+1));
+#endif
 			}
 		}
 		else

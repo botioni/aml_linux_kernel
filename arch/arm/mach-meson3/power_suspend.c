@@ -60,7 +60,7 @@ int meson_power_suspend()
 //	i =	readl(0xF4200100);
 //	printk("ww: l2:%X\n",i);
 
-	addr = 0xFF04400;
+	addr = 0x1FF04400;
 	p_addr = virt_to_phys(addr);
 	printk("entry address:%x\n",p_addr);
 	
