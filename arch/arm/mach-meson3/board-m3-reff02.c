@@ -2403,7 +2403,7 @@ static __init void m1_fixup(struct machine_desc *mach, struct tag *tag, char **c
         // 256M ~ PHYS_MEM_END
         pbank=&m->bank[m->nr_banks];
         pbank->start = PAGE_ALIGN(PHYS_MEM_START+256*SZ_1M);
-        pbank->size  = (PHYS_MEM_END+1-256*SZ_1M) & PAGE_MASK;
+        pbank->size  = (PHYS_MEM_SIZE-256*SZ_1M) & PAGE_MASK;
         pbank->node  = PHYS_TO_NID(PHYS_MEM_START+256*SZ_1M);
         m->nr_banks++;
     }
