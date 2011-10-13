@@ -73,6 +73,9 @@
 
 static void hdmi_audio_init(unsigned char spdif_flag);
 static void hdmitx_dump_tvenc_reg(int cur_VIC, int printk_flag);
+static void hdmi_suspend(void)
+static void hdmi_wakeup(void)
+
 #define CEC0_LOG_ADDR 0x4
 
 //#define HPD_DELAY_CHECK
@@ -971,6 +974,11 @@ static void digital_clk_off(unsigned char flag)
 //        Wr(HHI_GCLK_MPEG2, Rd(HHI_GCLK_MPEG2)&(~(1<<4))); //disable pixel clock, set cbus reg HHI_GCLK_MPEG2 bit [4] = 0
         Wr(HHI_GCLK_OTHER, Rd(HHI_GCLK_OTHER)&(~(1<<17))); //disable VCLK1_HDMI GATE, set cbus reg HHI_GCLK_OTHER bit [17] = 0
         Wr(VENC_DVI_SETTING, (Rd(VENC_DVI_SETTING)&(~(7<<4)))|(5<<4)); //set cbus reg VENC_DVI_SETTING bit[6:4] = 0x5
+#if 1
+    // Second turn off gate.
+        WRITE_MPEG_REG(HHI_GCLK_MPEG2, READ_MPEG_REG(HHI_GCLK_MPEG2) & (~(1<<4)));     //Disable HDMI PCLK
+#endif 
+ 
     }
     if(flag&4){
         /* off hdmi sys clock */
@@ -1010,6 +1018,9 @@ static void digital_clk_on(unsigned char flag)
     }
     if(flag&2){
         /* on hdmi pixel clock */
+#if 1
+        WRITE_MPEG_REG(HHI_GCLK_MPEG2, READ_MPEG_REG(HHI_GCLK_MPEG2) | (1<<4));     //Enable HDMI PCLK
+#endif        
 //        Wr(HHI_GCLK_MPEG2, Rd(HHI_GCLK_MPEG2)|(1<<4)); //enable pixel clock, set cbus reg HHI_GCLK_MPEG2 bit [4] = 1
         Wr(HHI_GCLK_OTHER, Rd(HHI_GCLK_OTHER)|(1<<17)); //enable VCLK1_HDMI GATE, set cbus reg HHI_GCLK_OTHER bit [17] = 1
     }
@@ -1029,16 +1040,21 @@ static void phy_pll_off(void)
 //    hdmi_wr_reg(TX_SYS1_AFE_SPARE0, hdmi_rd_reg(TX_SYS1_AFE_SPARE0)&(~0xf));
 //    hdmi_wr_reg(TX_SYS1_AFE_TEST, hdmi_rd_reg(TX_SYS1_AFE_TEST)&(~0x1f));
         /**/
+    hdmi_suspend();
+#if 0 
+//no HDMI PLL in M3   
 #ifndef AML_A3
         /* no HDMI PLL in A3 */
     Wr(HHI_VID_PLL_CNTL, Rd(HHI_VID_PLL_CNTL)|(1<<30)); //disable HDMI PLL
     Wr(HHI_VID_PLL_CNTL3, Rd(HHI_VID_PLL_CNTL3)&(~0x38));
-#endif   
+#endif 
+#endif  
 }
 
 /**/
 void hdmi_hw_set_powermode( int power_mode, int vic)
 {
+    hdmi_wakeup();
     switch(power_mode){
         case 1:
             hdmi_wr_reg(0x016, 0x02);
@@ -3119,7 +3135,10 @@ typedef struct
     unsigned long val_save;
 }hdmi_phy_t;
 
-static hdmi_phy_t hdmi_phy_reg [10] = {
+static char hdmi_phy_reg_save_flag = 0;
+
+#define HDMI_PHY_REG_NUM    9
+static hdmi_phy_t hdmi_phy_reg [HDMI_PHY_REG_NUM] = {
                          {0x10, 0x2, 0x0},
                          {0x11, 0x0, 0x0},
                          {0x12, 0x1, 0x0},
@@ -3128,47 +3147,60 @@ static hdmi_phy_t hdmi_phy_reg [10] = {
                          {0x15, 0x3, 0x0},
                          {0x16, 0x1, 0x0},
                          {0x17, 0x0, 0x0},
-                         {0x18, 0x24,0x0},
+                         //{0x18, 0x24,0x0}, remove this line per shichao's suggestion, rain
                          {0x1a, 0x3, 0x0},
                         };
-extern void hdmi_suspend(void)
+                        
+static void hdmi_suspend(void)
 {
     // First backup HDMI PHY register according to Chao Shi.
     int i;
+#if 0    
     WRITE_MPEG_REG(HHI_GCLK_MPEG2, READ_MPEG_REG(HHI_GCLK_MPEG2) | (1<<4));     //Enable HDMI PCLK
     WRITE_MPEG_REG(0x1073, READ_MPEG_REG(0x1073) | (1<<8));
     for(i = 0 ; i< 10000; i++)
     {
         //Delay some time
     }
-    for(i = 0; i < 10; i++)
+#endif    
+    for(i = 0; i < HDMI_PHY_REG_NUM; i++)
     {
         hdmi_phy_reg[i].val_save = hdmi_rd_reg(hdmi_phy_reg[i].reg);
     }
-    for(i = 0; i < 10; i++)
+    for(i = 0; i < HDMI_PHY_REG_NUM; i++)
     {   
         hdmi_wr_reg(hdmi_phy_reg[i].reg, hdmi_phy_reg[i].val_sleep);
     }
+    hdmi_phy_reg_save_flag = 1;
+#if 0 
+//move this code to digital_clk_off(), rain
     // Second turn off gate.
     WRITE_MPEG_REG(0x1073, 0x0);
     WRITE_MPEG_REG(HHI_GCLK_MPEG2, READ_MPEG_REG(HHI_GCLK_MPEG2) & (~(1<<4)));     //Disable HDMI PCLK
+#endif
     printk("Hdmi phy suspend\n");
 }
 
-extern void hdmi_wakeup(void)
+static void hdmi_wakeup(void)
 {
     int i;
+#if 0  
+//move this code to digital_clk_on(), rain
     WRITE_MPEG_REG(HHI_GCLK_MPEG2, READ_MPEG_REG(HHI_GCLK_MPEG2) | (1<<4));     //Enable HDMI PCLK
     WRITE_MPEG_REG(0x1073, READ_MPEG_REG(0x1073) | (1<<8));
     for(i = 0 ; i< 10000; i++)
     {
         //Delay some time
     }
-    for(i = 0; i < 10; i++)
-    {
-        hdmi_wr_reg(hdmi_phy_reg[i].reg, hdmi_phy_reg[i].val_save);
+#endif
+    if(hdmi_phy_reg_save_flag){
+        for(i = 0; i < HDMI_PHY_REG_NUM; i++)
+        {
+            hdmi_wr_reg(hdmi_phy_reg[i].reg, hdmi_phy_reg[i].val_save);
+        }
+        printk("Hdmi phy wakeup\n");
+        hdmi_phy_reg_save_flag = 0;
     }
-    printk("Hdmi phy wakeup\n");
 }
 
 #if 0
