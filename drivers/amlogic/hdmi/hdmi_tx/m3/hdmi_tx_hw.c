@@ -73,8 +73,8 @@
 
 static void hdmi_audio_init(unsigned char spdif_flag);
 static void hdmitx_dump_tvenc_reg(int cur_VIC, int printk_flag);
-static void hdmi_suspend(void)
-static void hdmi_wakeup(void)
+static void hdmi_suspend(void);
+static void hdmi_wakeup(void);
 
 #define CEC0_LOG_ADDR 0x4
 
