@@ -716,6 +716,8 @@ static void meson_pm_suspend(void)
 {
     unsigned ddr_clk_N;
     unsigned mpeg_clk_backup;
+    extern void hdmi_suspend(void);
+    extern void hdmi_wakeup(void);
 
     printk(KERN_INFO "enter meson_pm_suspend!\n");
 
@@ -754,7 +756,8 @@ static void meson_pm_suspend(void)
     meson_sram_push(meson_sram_suspend, meson_cpu_suspend,
                     meson_cpu_suspend_sz);
 #endif
-
+    
+    hdmi_suspend();
     printk(KERN_INFO "sleep ...\n");
 
 #ifndef CONFIG_AML_SUSPEND
@@ -805,6 +808,7 @@ extern int meson_power_suspend();
     usb_switch(ON, 1);
 
     analog_switch(ON);
+    hdmi_wakeup();
 }
 
 static int meson_pm_prepare(void)

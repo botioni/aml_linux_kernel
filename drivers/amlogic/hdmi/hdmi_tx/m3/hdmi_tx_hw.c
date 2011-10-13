@@ -3108,6 +3108,69 @@ static irqreturn_t cec_handler(int irq, void *dev_instance)
 }
 #endif
 
+// The following two functions should move to 
+// static struct platform_driver amhdmitx_driver.suspend & .wakeup
+// For tempelet use only.
+// Later will change it.
+typedef struct 
+{
+    unsigned long reg;
+    unsigned long val_sleep;
+    unsigned long val_save;
+}hdmi_phy_t;
+
+static hdmi_phy_t hdmi_phy_reg [10] = {
+                         {0x10, 0x2, 0x0},
+                         {0x11, 0x0, 0x0},
+                         {0x12, 0x1, 0x0},
+                         {0x13, 0xc, 0x0},
+                         {0x14, 0x1, 0x0},
+                         {0x15, 0x3, 0x0},
+                         {0x16, 0x1, 0x0},
+                         {0x17, 0x0, 0x0},
+                         {0x18, 0x24,0x0},
+                         {0x1a, 0x3, 0x0},
+                        };
+extern void hdmi_suspend(void)
+{
+    // First backup HDMI PHY register according to Chao Shi.
+    int i;
+    WRITE_MPEG_REG(HHI_GCLK_MPEG2, READ_MPEG_REG(HHI_GCLK_MPEG2) | (1<<4));     //Enable HDMI PCLK
+    WRITE_MPEG_REG(0x1073, READ_MPEG_REG(0x1073) | (1<<8));
+    for(i = 0 ; i< 10000; i++)
+    {
+        //Delay some time
+    }
+    for(i = 0; i < 10; i++)
+    {
+        hdmi_phy_reg[i].val_save = hdmi_rd_reg(hdmi_phy_reg[i].reg);
+    }
+    for(i = 0; i < 10; i++)
+    {   
+        hdmi_wr_reg(hdmi_phy_reg[i].reg, hdmi_phy_reg[i].val_sleep);
+    }
+    // Second turn off gate.
+    WRITE_MPEG_REG(0x1073, 0x0);
+    WRITE_MPEG_REG(HHI_GCLK_MPEG2, READ_MPEG_REG(HHI_GCLK_MPEG2) & (~(1<<4)));     //Disable HDMI PCLK
+    printk("Hdmi phy suspend\n");
+}
+
+extern void hdmi_wakeup(void)
+{
+    int i;
+    WRITE_MPEG_REG(HHI_GCLK_MPEG2, READ_MPEG_REG(HHI_GCLK_MPEG2) | (1<<4));     //Enable HDMI PCLK
+    WRITE_MPEG_REG(0x1073, READ_MPEG_REG(0x1073) | (1<<8));
+    for(i = 0 ; i< 10000; i++)
+    {
+        //Delay some time
+    }
+    for(i = 0; i < 10; i++)
+    {
+        hdmi_wr_reg(hdmi_phy_reg[i].reg, hdmi_phy_reg[i].val_save);
+    }
+    printk("Hdmi phy wakeup\n");
+}
+
 #if 0
 static void hdcp_status_loop_check()
 {
