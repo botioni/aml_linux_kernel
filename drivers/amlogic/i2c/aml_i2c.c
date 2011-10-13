@@ -13,7 +13,7 @@
 #include <linux/i2c-algo-bit.h>
 
 #include "aml_i2c.h"
-
+static int no_stop_flag = 0;
 static void aml_i2c_set_clk(struct aml_i2c *i2c, unsigned int speed) 
 {	
 	unsigned int i2c_clock_set;
@@ -157,6 +157,9 @@ static int aml_i2c_wait_ack(struct aml_i2c *i2c)
 			      i2c->cur_token = ctrl->cur_token;
 				/*set to gpio, more easier to fail again*/
 				//aml_i2c_clr_pinmux(i2c);
+				no_stop_flag = 1; /*controler will auto send stop in this case,
+				                    The CLK line will be polled if software
+				                    send stop again */
 				return -EIO;
 			}
 			else
@@ -207,6 +210,7 @@ static void aml_i2c_fill_data(struct aml_i2c *i2c, unsigned char *buf,
 
 static void aml_i2c_xfer_prepare(struct aml_i2c *i2c, unsigned int speed)
 {
+    no_stop_flag = 0;
 	aml_i2c_pinmux_master(i2c);
 	aml_i2c_set_clk(i2c, speed);
 } 
@@ -233,6 +237,8 @@ static int aml_i2c_do_address(struct aml_i2c *i2c, unsigned int addr)
 
 static void aml_i2c_stop(struct aml_i2c *i2c)
 {
+    if (no_stop_flag)
+        return;
 	aml_i2c_clear_token_list(i2c);
 	i2c->token_tag[0]=TOKEN_STOP;
 	aml_i2c_set_token_list(i2c);
