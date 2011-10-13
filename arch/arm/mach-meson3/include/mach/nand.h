@@ -16,7 +16,7 @@
 
 #define NAND_CONVERST_ADDR	  		0xa0000000
 #define M3_BOOT_WRITE_SIZE	  		0x600
-#define M3_BOOT_COPY_NUM	  		1
+#define M3_BOOT_COPY_NUM	  		4
 #define M3_BOOT_PAGES_PER_COPY	 	256
 
 #define NFC_BASE			  CBUS_REG_ADDR(NAND_CMD)
@@ -214,7 +214,8 @@
 #define AML_NORMAL						0
 #define AML_MULTI_CHIP					1
 #define AML_MULTI_CHIP_SHARE_RB			2
-#define AML_INTERLEAVING_MODE			4
+#define AML_CHIP_NONE_RB				4
+#define AML_INTERLEAVING_MODE			8
 
 #define AML_NAND_CE0         			0xe
 #define AML_NAND_CE1         			0xd

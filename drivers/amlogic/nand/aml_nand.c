@@ -651,11 +651,15 @@ static int aml_platform_wait_devready(struct aml_nand_chip *aml_chip, int chipnr
 	/* wait until command is processed or timeout occures */
 	aml_chip->aml_nand_select_chip(aml_chip, chipnr);
 	do {
-		if (aml_chip->ops_mode == AML_MULTI_CHIP_SHARE_RB) {
+		if (aml_chip->ops_mode & AML_MULTI_CHIP_SHARE_RB) {
 			aml_chip->aml_nand_command(aml_chip, NAND_CMD_STATUS, -1, -1, chipnr);
 			status = (int)chip->read_byte(mtd);
-			if (status & NAND_STATUS_READY_MULTI)
+			if (status & NAND_STATUS_READY)
 				break;
+		}
+		else if (aml_chip->ops_mode & AML_CHIP_NONE_RB) {
+			udelay(chip->chip_delay);
+			break;
 		}
 		else {
 			if (chip->dev_ready(mtd))
@@ -711,7 +715,7 @@ static int aml_nand_wait(struct mtd_info *mtd, struct nand_chip *chip)
 			//active ce for operation chip and send cmd
 			aml_chip->aml_nand_select_chip(aml_chip, i);
 
-			if (aml_chip->ops_mode == AML_MULTI_CHIP_SHARE_RB) {
+			if (aml_chip->ops_mode & AML_MULTI_CHIP_SHARE_RB) {
 
 				time_cnt = 0;
 				while (time_cnt++ < 0x10000) {
@@ -3232,8 +3236,9 @@ int aml_nand_init(struct aml_nand_chip *aml_chip)
 		aml_chip->rb_enable[i] = (((plat->ready_busy_pad >> i*4) & 0xf) << 10);
 	}
 	if (!aml_chip->rb_enable[0]) {
-		aml_chip->ops_mode = AML_MULTI_CHIP_SHARE_RB;
+		aml_chip->ops_mode |= AML_CHIP_NONE_RB;
 		chip->dev_ready = NULL;
+		chip->chip_delay = 200;
 	}
 
 	aml_chip->aml_nand_hw_init(aml_chip);

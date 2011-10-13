@@ -170,7 +170,8 @@ typedef unsigned  t_ecc_mode;
 #define AML_NORMAL						0
 #define AML_MULTI_CHIP					1
 #define AML_MULTI_CHIP_SHARE_RB			2
-#define AML_INTERLEAVING_MODE			4
+#define AML_CHIP_NONE_RB				4
+#define AML_INTERLEAVING_MODE			8
 
 #define AML_NAND_CE0         			0xe
 #define AML_NAND_CE1         			0xd
