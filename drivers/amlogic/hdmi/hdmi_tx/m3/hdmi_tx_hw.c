@@ -2652,7 +2652,8 @@ static void hdmitx_m3_cntl(hdmitx_dev_t* hdmitx_device, int cmd, unsigned argv)
         }
         else{
             hdmi_print(1,"power off hdmi\n");
-            phy_pll_off();
+            digital_clk_on(6);
+            phy_pll_off();      //should call digital_clk_on(), otherwise hdmi_rd/wr_reg will hungup
             digital_clk_off(3); //do not off sys clk
         }
     }

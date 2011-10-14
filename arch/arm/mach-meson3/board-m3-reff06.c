@@ -58,6 +58,9 @@
 #include <linux/android_pmem.h>
 #endif
 
+#ifdef CONFIG_GOODIX_CAPACITIVE_TOUCHSCREEN
+#include <linux/goodix_touch.h>
+#endif
 
 #ifdef CONFIG_SENSORS_MMC328X
 #include <linux/mmc328x.h>
@@ -189,6 +192,33 @@ static struct platform_device adc_ts_device = {
     },
 };
 #endif
+#ifdef CONFIG_ANDROID_TIMED_GPIO
+#include <linux/timed_gpio.h>
+//printk("Charles:CONFIG_ANDROID_TIMED_GPIO!!!!!\n");
+static struct timed_gpio timed_gpio_array[]= {
+	[0] ={
+		.name = "vibrator",
+	//	.gpio = ((GPIOD_bank_bit2_24(4)<<16) |GPIOD_bit_bit2_24(4)),
+//		.gpio=((GPIOC_bank_bit0_15(14)<<16) | GPIOC_bit_bit0_15(14)),
+		.max_timeout = 10*1000, //10 s 
+		.active_low = 1,
+	},
+
+};
+static struct timed_gpio_platform_data timed_gpio_info = {
+	.num_gpios = ARRAY_SIZE(timed_gpio_array),
+	.gpios = timed_gpio_array,
+};
+
+struct platform_device timed_gpio_device = {
+	.name		  = TIMED_GPIO_NAME,
+	.id 	= -1,
+	.dev            = {
+		.platform_data  = &timed_gpio_info,
+	}
+};
+
+#endif
 
 #if defined(CONFIG_ADC_KEYPADS_AM)||defined(CONFIG_ADC_KEYPADS_AM_MODULE)
 #include <linux/input.h>
@@ -305,7 +335,7 @@ static struct mpu3050_platform_data mpu3050_data = {
                 .address = 0x1c,
                 .orientation = {-1,0,0,0,1,0,0,0,-1},
             },
-    #ifdef CONFIG_SENSORS_MMC314X
+    #ifdef CONFIG_MPU_SENSORS_MMC314X
     .compass = {
                 .get_slave_descr = mmc314x_get_slave_descr,
                 .adapt_num = 0, // The i2c bus to which the compass device is. 
@@ -315,6 +345,16 @@ static struct mpu3050_platform_data mpu3050_data = {
                 .address = 0x30,
                 .orientation = { -1, 0, 0,  0, 1, 0,  0, 0, -1 },
            } 
+#elif defined (CONFIG_MPU_SENSORS_MMC328X) 
+    .compass = {
+                .get_slave_descr = mmc328x_get_slave_descr,
+                .adapt_num = 1, // The i2c bus to which the compass device is. 
+                // It can be difference with mpu
+                // connected
+                .bus = EXT_SLAVE_BUS_PRIMARY,
+                .address = 0x30,
+                .orientation = /*{ 0, 1, 0,  1, 0, 0,  0, 0, -1 }*/ {0,1,0,1,0,0,0,0,-1}
+           }
 #endif
 
     };
@@ -742,6 +782,88 @@ static struct aml_m3_platform_data aml_m3_pdata = {
 };
 #endif
 
+#ifdef CONFIG_GOODIX_CAPACITIVE_TOUCHSCREEN
+#if 0
+#define GPIO_GOODIX_PENIRQ ((GPIOD_bank_bit2_24(24)<<16) |GPIOD_bit_bit2_24(24)) 
+#define GPIO_GOODIX_RST
+
+static int goodix_init_irq(void)
+{
+/* memson
+    Bit(s)  Description
+    256-105 Unused
+    104     JTAG_TDO
+    103     JTAG_TDI
+    102     JTAG_TMS
+    101     JTAG_TCK
+    100     gpioA_23
+    99      gpioA_24
+    98      gpioA_25
+    97      gpioA_26
+    98-76    gpioE[21:0]
+    75-50   gpioD[24:0]
+    49-23   gpioC[26:0]
+    22-15   gpioB[22;15]
+    14-0    gpioA[14:0]
+ */
+
+    /* set input mode */
+    gpio_direction_input(GPIO_GOODIX_PENIRQ);
+    /* set gpio interrupt #0 source=GPIOD_24, and triggered by falling edge(=1) */
+    gpio_enable_edge_int(50+24, 1, 0);
+
+    return 0;
+}
+static int goodix_get_irq_level(void)
+{
+    return gpio_get_value(GPIO_GOODIX_PENIRQ);
+}
+#endif
+
+u8 ts_config_data[] = {
+/*
+    0x30,0x19,0x05,0x06,0x28,0x02,0x14,0x14,0x10,0x1E,
+    0x70,0x14,0x00,0x1E,0x00,0x01,0x23,0x45,0x67,0x89,
+    0xAB,0xCD,0xE0,0x00,0x00,0x00,0x00,0x4D,0xC7,0x20,
+    0x03,0x00,0x00,0x50,0x3C,0x1E,0xB4,0x00,0x00,0x00,
+    0x00,0x00,0x00,0x28,0x00,0x00,0x00,0x00,0x00,0x00,
+    0x00,0x00,0x00,0x01
+*/
+/*  
+  0x30,0x06,0x05,0x04,0x28,0x02,0x14,0x60,0x10,0x3C,0xB0,
+    0x14,0x00,0x1E,0x00,0x01,0x23,0x45,0x67,0x89,0xAB,
+    0xCD,0xE0,0x00,0x00,0x32,0x28,0x4D,0xC4,0x20,0x01,
+    0x01,0x03,0x50,0x3C,0x1E,0xB4,0x00,0x2B,0x27,0xFF,
+    0xB4,0x00,0x50,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+    0x00,0x00,0x01
+*/    
+ 
+	0x30,0x19,0x05,0x06,0x28,0x02,0x14,0x20,0x10,0x3C,0xB0,
+	0x14,0x00,0x1E,0x00,0x01,0x23,0x45,0x67,0x89,0xAB,
+	0xCD,0xE1,0x00,0x00,0x00,0x00,0x4D,0xCF,0x20,0x01,
+	0x01,0x83,0x50,0x3C,0x1E,0xB4,0x00,0x0A,0x50,0x78,
+	0x1E,0x00,0x50,0x32,0x71,0x00,0x00,0x00,0x00,0x00,
+	0x00,0x00,0x01
+};
+   
+static struct goodix_i2c_rmi_platform_data ts_pdata = {
+//    .gpio_shutdown = ((GPIOA_bank_bit(3)<<16) |GPIOA_bit_bit0_14(3)),
+//    .gpio_irq = ((GPIOD_bank_bit2_24(17)<<16) |GPIOD_bit_bit2_24(17)),
+//    .init_irq = &goodix_init_irq,
+//    .get_irq_level = &goodix_get_irq_level,
+    .gpio_shutdown = ((GPIOD_bank_bit0_9(2)<<16) |GPIOD_bit_bit0_9(2)),
+    .gpio_irq =  ((GPIOA_bank_bit0_27(16)<<16) | GPIOA_bit_bit0_27(16)),
+    .irq_edge = 1, /* 0:rising edge, 1:falling edge */
+    .swap_xy = 1,
+    .xpol = 0,
+    .ypol = 1,
+    .xmax = 7680,
+    .ymax = 5120,
+    .config_info_len = ARRAY_SIZE(ts_config_data),
+    .config_info = ts_config_data,
+};
+#endif
+
 #ifdef CONFIG_ITK_CAPACITIVE_TOUCHSCREEN
 #include <linux/i2c/itk.h>
 #define GPIO_ITK_PENIRQ ((GPIOA_bank_bit0_27(16)<<16) | GPIOA_bit_bit0_27(16))
@@ -1031,6 +1153,14 @@ static void restore_pinmux(void)
 		 WRITE_CBUS_REG(PERIPHS_PIN_MUX_0+i, pinmux_backup[i]);
 }
 
+#ifdef CONFIG_ANDROID_TIMED_GPIO
+void power_off_vibrate(void)
+{
+	gpio_direction_vibrator_output(0, 0);
+	mdelay(1000);
+	gpio_direction_vibrator_output(0, 1);
+}
+#endif
 static void set_vccx2(int power_on)
 {
 	int i;
@@ -1042,6 +1172,12 @@ static void set_vccx2(int power_on)
         printk(KERN_INFO "set_vccx2 power up\n");
         set_gpio_mode(GPIOA_bank_bit0_27(26), GPIOA_bit_bit0_27(26), GPIO_OUTPUT_MODE);
         set_gpio_val(GPIOA_bank_bit0_27(26), GPIOA_bit_bit0_27(26), 0);
+				#ifdef CONFIG_GOODIX_CAPACITIVE_TOUCHSCREEN
+				
+        		gpio_direction_output(ts_pdata.gpio_shutdown, 0);
+				#elif defined CONFIG_PIXCIR_CAPACITIVE_TOUCHSCREEN
+        		gpio_direction_output(pixcir_pdata.gpio_shutdown, 1);
+				#endif
               
     }
     else{
@@ -2253,8 +2389,10 @@ static struct platform_device bt_device = {
 static void bt_device_init(void)
 {
 	/* BT_RST_N */
-	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0, (1<<16));
-	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_1, (1<<5));
+	//CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0, (1<<16));
+	//CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_1, (1<<5));
+	clear_mio_mux(0, (1<<26));
+	clear_mio_mux(1, (1<<15));
 	
 	/* UART_RTS_N(BT) */
 	SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_4, (1<<10));
@@ -2276,17 +2414,30 @@ static void bt_device_init(void)
 static void bt_device_on(void)
 {
 	/* BT_RST_N */
+	/*
 	CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO2_EN_N, (1<<6));
 	CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO2_O, (1<<6));	
 	msleep(200);	
 	SET_CBUS_REG_MASK(PREG_PAD_GPIO2_O, (1<<6));
+	*/
+	//for Ainol M3
+	CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO2_EN_N, (1<<22));
+	CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO2_O, (1<<22));	
+	msleep(200);	
+	SET_CBUS_REG_MASK(PREG_PAD_GPIO2_O, (1<<22));
 }
 
 static void bt_device_off(void)
 {
 	/* BT_RST_N */
+	/*
 	CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO2_EN_N, (1<<6));
 	CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO2_O, (1<<6));	
+	msleep(200);	
+	*/
+	//for Ainol M3 BT
+	CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO2_EN_N, (1<<22));
+	CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO2_O, (1<<22));	
 	msleep(200);	
 }
 
@@ -2426,6 +2577,14 @@ static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
         .platform_data = (void *)&it7230_pdata,
     },
 #endif
+
+#ifdef CONFIG_GOODIX_CAPACITIVE_TOUCHSCREEN
+    {
+        I2C_BOARD_INFO(GOODIX_I2C_NAME, GOODIX_I2C_ADDR),
+        .irq = INT_GPIO_0,
+        .platform_data = (void *)&ts_pdata,
+    },
+#endif
 #ifdef CONFIG_ITK_CAPACITIVE_TOUCHSCREEN
     {
         I2C_BOARD_INFO("itk", 0x41),
@@ -2466,6 +2625,14 @@ static struct i2c_board_info __initdata aml_i2c_bus_info_1[] = {
         .platform_data = (void *)&mpu3050_data,
     },
 #endif
+
+#ifdef CONFIG_MXC_MMA7660
+	{
+		I2C_BOARD_INFO("mma7660", 0x4C),
+		.irq = INT_GPIO_2,
+	},
+#endif
+
 };
 
 static struct i2c_board_info __initdata aml_i2c_bus_info_2[] = {
@@ -2565,7 +2732,8 @@ static void disable_unused_model(void)
     CLK_GATE_OFF(ETHERNET);
 //    CLK_GATE_OFF(SATA);
 //    CLK_GATE_OFF(WIFI);
-    video_dac_disable();
+// for Ainol M3 YPbPr output
+ //   video_dac_disable();
  }
 static void __init power_hold(void)
 {
@@ -2577,6 +2745,7 @@ static void __init power_hold(void)
     printk(KERN_INFO "set_vccx2 power up\n");
     set_gpio_mode(GPIOA_bank_bit0_27(26), GPIOA_bit_bit0_27(26), GPIO_OUTPUT_MODE);
     set_gpio_val(GPIOA_bank_bit0_27(26), GPIOA_bit_bit0_27(26), 0);
+    msleep(20);
 }
 
 static void __init LED_PWM_REG0_init(void)

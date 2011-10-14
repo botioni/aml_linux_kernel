@@ -522,13 +522,13 @@ static void _init_vout(tcon_dev_t *pDev)
 
 static void _tcon_init(lcdConfig_t *pConf)
 {
-	logo_object_t  *init_logo_obj=NULL;
+	//logo_object_t  *init_logo_obj=NULL;
 
 	
 	_init_vout(pDev);
-	init_logo_obj = get_current_logo_obj();	
-	if(NULL==init_logo_obj ||!init_logo_obj->para.loaded)
-    	_lcd_module_enable();
+	//init_logo_obj = get_current_logo_obj();	
+	//if(NULL==init_logo_obj ||!init_logo_obj->para.loaded)
+    	//_lcd_module_enable();
 }
 
 static int tcon_probe(struct platform_device *pdev)
