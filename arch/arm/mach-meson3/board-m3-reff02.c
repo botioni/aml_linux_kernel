@@ -1454,9 +1454,9 @@ extern void set_backlight_level(unsigned level);
 
 struct aml_bl_platform_data aml_bl_platform =
 {    
-    .power_on_bl = power_on_backlight,
-    .power_off_bl = power_off_backlight,
-    .get_bl_level = get_backlight_level,
+   // .power_on_bl = power_on_backlight,
+   // .power_off_bl = power_off_backlight,
+   // .get_bl_level = get_backlight_level,
     .set_bl_level = set_backlight_level,
 };
 
