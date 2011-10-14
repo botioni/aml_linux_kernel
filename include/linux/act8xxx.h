@@ -48,9 +48,7 @@ typedef enum act8xxx_reg {
 #define ACT8xxx_REG5_ADDR 0x54
 #define ACT8xxx_REG6_ADDR 0x60
 #define ACT8xxx_REG7_ADDR 0x64
-#ifdef CONFIG_PMU_ACT8942
 #define ACT8942_APCH_ADDR 0x70
-#endif
 
 typedef struct act8xxx_i2c_msg
 {
@@ -209,6 +207,8 @@ typedef union act8xxx_register_data
 		unsigned ON : 1;
 	} REGx_b;
 } act8xxx_register_data_t;
+
+int act8xxx_is_ac_online(void);
 
 #endif
 

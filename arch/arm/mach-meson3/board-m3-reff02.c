@@ -79,6 +79,8 @@
 #include <linux/efuse.h>
 #endif
 
+extern int act8xxx_is_ac_online(void);
+
 #if defined(CONFIG_KEYPADS_AM)||defined(CONFIG_KEYPADS_AM_MODULE)
 static struct resource intput_resources[] = {
     {
@@ -987,7 +989,8 @@ static struct platform_device aml_i2c_device2 = {
 
 #endif
 
-
+#ifdef CONFIG_PMU_ACT8xxx
+#include <linux/act8xxx.h>  
 
 //Amlogic Power Management Support
 
@@ -996,7 +999,7 @@ static struct platform_device aml_i2c_device2 = {
  *		High:		Disconnect
  *		Low:		Connect
  */
-static inline int is_ac_online(void)
+static inline int gpio_is_ac_online(void)
 {
 	int val;
 	
@@ -1009,6 +1012,10 @@ static inline int is_ac_online(void)
 	return !val;
 }
 
+static int is_ac_online(void)
+{
+	return act8xxx_is_ac_online();
+}
 
 static void power_off(void)
 {
@@ -1062,9 +1069,6 @@ static int set_bat_off(void)
 {
 	return 0;
 }
-
-#ifdef CONFIG_PMU_ACT8xxx
-#include <linux/act8xxx.h>  
 
 /*
 //temporary

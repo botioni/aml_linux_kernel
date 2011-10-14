@@ -69,7 +69,7 @@ struct act8xxx_device_info {
 #endif
 };
 
-static struct i2c_client *this_client;
+static struct i2c_client *this_client = NULL;
 
 static int act8xxx_read_i2c(struct i2c_client *client, u8 reg, u8 *val);
 
@@ -87,33 +87,6 @@ int pc_connect(int status)
 EXPORT_SYMBOL(pc_connect);
 #endif
 #endif
-
-#ifdef CONFIG_PMU_ACT8942
-static enum power_supply_property bat_power_props[] = {
-	POWER_SUPPLY_PROP_STATUS,
-	POWER_SUPPLY_PROP_HEALTH,
-	POWER_SUPPLY_PROP_PRESENT,
-	POWER_SUPPLY_PROP_TECHNOLOGY,
-	POWER_SUPPLY_PROP_VOLTAGE_NOW,
-	POWER_SUPPLY_PROP_CURRENT_NOW,
-	POWER_SUPPLY_PROP_CAPACITY,
-	POWER_SUPPLY_PROP_TEMP,
-//	POWER_SUPPLY_PROP_TIME_TO_EMPTY_NOW,
-//	POWER_SUPPLY_PROP_TIME_TO_EMPTY_AVG,
-//	POWER_SUPPLY_PROP_TIME_TO_FULL_NOW,
-};
-
-static enum power_supply_property ac_power_props[] = {
-	POWER_SUPPLY_PROP_ONLINE,
-	POWER_SUPPLY_PROP_VOLTAGE_NOW,
-};
-
-static enum power_supply_property usb_power_props[] = {
-	POWER_SUPPLY_PROP_ONLINE,
-	POWER_SUPPLY_PROP_VOLTAGE_NOW,
-};
-
-inline static int measure_capacity_advanced(void);
 
 /*
  *	ACINSTAT
@@ -158,6 +131,44 @@ static inline int get_charge_status(void)
 	return ((val>>4) & 0x3);
 }
 
+//export this interface for other driver
+int act8xxx_is_ac_online(void)
+{	
+	if(this_client == NULL)
+	{
+		pr_err("act8xxx: have not init now, wait.... \n");
+		return 1;
+	}
+	return is_ac_online();
+}
+EXPORT_SYMBOL(act8xxx_is_ac_online);
+
+#ifdef CONFIG_PMU_ACT8942
+static enum power_supply_property bat_power_props[] = {
+	POWER_SUPPLY_PROP_STATUS,
+	POWER_SUPPLY_PROP_HEALTH,
+	POWER_SUPPLY_PROP_PRESENT,
+	POWER_SUPPLY_PROP_TECHNOLOGY,
+	POWER_SUPPLY_PROP_VOLTAGE_NOW,
+	POWER_SUPPLY_PROP_CURRENT_NOW,
+	POWER_SUPPLY_PROP_CAPACITY,
+	POWER_SUPPLY_PROP_TEMP,
+//	POWER_SUPPLY_PROP_TIME_TO_EMPTY_NOW,
+//	POWER_SUPPLY_PROP_TIME_TO_EMPTY_AVG,
+//	POWER_SUPPLY_PROP_TIME_TO_FULL_NOW,
+};
+
+static enum power_supply_property ac_power_props[] = {
+	POWER_SUPPLY_PROP_ONLINE,
+	POWER_SUPPLY_PROP_VOLTAGE_NOW,
+};
+
+static enum power_supply_property usb_power_props[] = {
+	POWER_SUPPLY_PROP_ONLINE,
+	POWER_SUPPLY_PROP_VOLTAGE_NOW,
+};
+
+inline static int measure_capacity_advanced(void);
 
 #define to_act8942_device_info(x) container_of((x), \
 				struct act8xxx_device_info, bat);
