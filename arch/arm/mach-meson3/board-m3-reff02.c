@@ -1447,75 +1447,17 @@ static struct platform_device aml_nand_device = {
 #endif
 
 #if defined(CONFIG_AMLOGIC_BACKLIGHT)
-
-#define PWM_TCNT        (600-1)
-#define PWM_MAX_VAL    (420)
-
-static void aml_8726m_bl_init(void)
-{
-    SET_CBUS_REG_MASK(PWM_MISC_REG_AB, (1 << 0));
-    SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<31));
-    printk("ff02 aml_8726m_bl_init\n");
-    //dump_stack();
-}
-static unsigned bl_level;
-static unsigned aml_8726m_get_bl_level(void)
-{
-    return bl_level;
-}
-#define BL_MAX_LEVEL 60000
-static void aml_8726m_set_bl_level(unsigned level)
-{
-    printk("ff02 aml_8726m_set_bl_level\n");
-    //dump_stack();
-    unsigned cs_level;
-    if (level < 10)
-    {
-        cs_level = 15;
-    }
-    else if (level < 30)
-    {
-        cs_level = 14;
-    }
-    else if (level >=30 && level < 256)
-    {
-        cs_level = 13-((level - 30)/28);
-    }
-    else
-        cs_level = 3;
-
-    WRITE_CBUS_REG_BITS(LED_PWM_REG0, cs_level, 0, 4);
-}
-
-static void aml_8726m_power_on_bl(void)
-{
-    printk("ff02 aml_8726m_power_on_bl\n");
-    //dump_stack();
-    msleep(100);
-    SET_CBUS_REG_MASK(PWM_MISC_REG_AB, (1 << 0));
-    msleep(100);
-    SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<31));
-    msleep(100);
-
-}
-
-static void aml_8726m_power_off_bl(void)
-{
-    printk("ff02 aml_8726m_power_off_bl\n");
-    //dump_stack();
-    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<31));
-    CLEAR_CBUS_REG_MASK(PWM_MISC_REG_AB, (1 << 0));
-    set_gpio_val(GPIOD_bank_bit0_9(1), GPIOD_bit_bit0_9(1), 0);
-    set_gpio_mode(GPIOD_bank_bit0_9(1), GPIOD_bit_bit0_9(1), GPIO_OUTPUT_MODE);
-}
+extern void power_on_backlight(void);
+extern void power_off_backlight(void);
+extern unsigned get_backlight_level(void);
+extern void set_backlight_level(unsigned level);
 
 struct aml_bl_platform_data aml_bl_platform =
-{
-    .bl_init = aml_8726m_bl_init,
-    .power_on_bl = aml_8726m_power_on_bl,
-    .power_off_bl = aml_8726m_power_off_bl,
-    .get_bl_level = aml_8726m_get_bl_level,
-    .set_bl_level = aml_8726m_set_bl_level,
+{    
+    .power_on_bl = power_on_backlight,
+    .power_off_bl = power_off_backlight,
+    .get_bl_level = get_backlight_level,
+    .set_bl_level = set_backlight_level,
 };
 
 static struct platform_device aml_bl_device = {
@@ -1928,7 +1870,7 @@ static __init void m1_init_machine(void)
 #endif /*CONFIG_AML_SUSPEND*/
 
 #if defined(CONFIG_AMLOGIC_BACKLIGHT)
-	aml_8726m_power_off_bl();
+	power_off_backlight();
 #endif
     LED_PWM_REG0_init();
     power_hold();

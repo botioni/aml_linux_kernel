@@ -65,7 +65,8 @@ void set_backlight_level(unsigned level);
 #define BL_CTL			BL_CTL_GPIO
 
 #ifdef CONFIG_AM_LOGO
-static int bl_state = BL_ON;
+static int bl_state = -1;
+static int disable_bl_on_flag = 1; //disable bl on until logo has been displayed
 #endif
 
 static lcdConfig_t lcd_config =
@@ -154,15 +155,16 @@ static void t13_setup_gama_table(lcdConfig_t *pConf)
 
 #define PWM_MAX			60000   //set pwm_freq=24MHz/PWM_MAX (Base on XTAL frequence: 24MHz, 0<PWM_MAX<65535)
 #define BL_MAX_LEVEL	255
-#define BL_MIN_LEVEL	25	
+#define BL_MIN_LEVEL	0	
 void power_on_backlight(void)
 {
+
 #ifdef CONFIG_AM_LOGO    
-    if(bl_state == BL_ON)
+    if ((bl_state == BL_ON) || (disable_bl_on_flag))
         return;
     bl_state = BL_ON; 
 #endif
-    
+
     //BL_EN -> GPIOD_1: 1
     //WRITE_CBUS_REG(0x2013, READ_CBUS_REG(0x2013)|(1<<17));
     //WRITE_CBUS_REG(0x2012, READ_CBUS_REG(0x2012)&(~(1<<17)));
@@ -197,6 +199,12 @@ void set_backlight_level(unsigned level)
 	printk("\n\nlcd parameter: set backlight level: %d.\n\n", level);
 		
 #if (BL_CTL==BL_CTL_GPIO)
+/*
+    if (level > BL_MIN_LEVEL)
+        power_on_backlight();
+    else
+        power_off_backlight();
+*/
 	level = level * 15 / BL_MAX_LEVEL;	
 	level = 15 - level;
 	WRITE_CBUS_REG_BITS(LED_PWM_REG0, level, 0, 4);	
@@ -274,6 +282,7 @@ static void power_on_bl(void)
     msleep(200);
     
     bl_state = BL_OFF; 
+    disable_bl_on_flag = 0;
 
     power_on_backlight();
 }
