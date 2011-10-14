@@ -55,7 +55,7 @@ config MACH_MESON3_REFF09
 	help
 	  Include support for the AML M3 board platform.
 
-config MACH_MESON3_REFC10
+config MACH_MESON3_REFF10
 	select GENERIC_ALLOCATOR
 	bool "Support M3 (Asus) MBX platform"
 	help

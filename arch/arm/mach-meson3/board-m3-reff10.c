@@ -32,7 +32,7 @@
 #include <mach/lm.h>
 #include <asm/memory.h>
 #include <asm/mach/map.h>
-#include <mach/nand_m3.h>
+#include <mach/nand.h>
 #include <linux/i2c.h>
 #include <linux/i2c-aml.h>
 #include <mach/power_gate.h>
@@ -48,7 +48,7 @@
 #include <mach/gpio.h>
 #include <linux/delay.h>
 #include <mach/clk_set.h>
-#include "board-m3-reff02.h"
+#include "board-m3-reff10.h"
 
 
 #ifdef CONFIG_ANDROID_PMEM
@@ -147,7 +147,7 @@ static struct resource intput_resources[] = {
     {
         .start = 0x0,
         .end = 0x0,
-        .name="8726",
+        .name="8726M3",
         .flags = IORESOURCE_IO,
     },
 };
@@ -2063,42 +2063,31 @@ static struct mtd_partition multi_partition_info[] =
 
 
 static struct aml_nand_platform aml_nand_mid_platform[] = {
-#ifndef CONFIG_AMLOGIC_SPI_NOR
 {
 		.name = NAND_BOOT_NAME,
 		.chip_enable_pad = AML_NAND_CE0,
-		.ready_busy_pad = AML_NAND_CE0,
+		//.ready_busy_pad = AML_NAND_CE0,
 		.platform_nand_data = {
 			.chip =  {
 				.nr_chips = 1,
-				.options = (NAND_TIMING_MODE0 | NAND_ECC_BCH16_MODE),
+				.options = (NAND_TIMING_MODE5 | NAND_ECC_BCH60_1K_MODE),
 			},
     	},
-			.rbpin_mode=1,
-			.short_pgsz=384,
-			.ran_mode=0,
 			.T_REA = 20,
 			.T_RHOH = 15,
 	},
-#endif	
 {
 		.name = NAND_MULTI_NAME,
-		.chip_enable_pad = (AML_NAND_CE0),
-		.ready_busy_pad = (AML_NAND_CE0),
-
+		.chip_enable_pad = (AML_NAND_CE0 | (AML_NAND_CE1 << 4) | (AML_NAND_CE2 << 8) | (AML_NAND_CE3 << 12)),
+		//.ready_busy_pad = (AML_NAND_CE0 | (AML_NAND_CE0 << 4) | (AML_NAND_CE1 << 8) | (AML_NAND_CE1 << 12)),
 		.platform_nand_data = {
 			.chip =  {
-				.nr_chips = 1,
-				.options = (NAND_TIMING_MODE0| NAND_ECC_BCH30_MODE),
-//				.options = (NAND_TIMING_MODE5| NAND_ECC_BCH24_MODE),
-
+				.nr_chips = 4,
 				.nr_partitions = ARRAY_SIZE(multi_partition_info),
 				.partitions = multi_partition_info,
+				.options = (NAND_TIMING_MODE5 | NAND_ECC_BCH60_1K_MODE | NAND_TWO_PLANE_MODE),
 			},
     	},
-			.rbpin_mode = 1,
-			.short_pgsz = 0,
-			.ran_mode = 0,
 			.T_REA = 20,
 			.T_RHOH = 15,
 	}
