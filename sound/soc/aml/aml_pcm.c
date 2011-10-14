@@ -639,8 +639,8 @@ static int aml_pcm_copy_capture(struct snd_pcm_runtime *runtime, int channel,
 		        	t1 = (*left++);
 		        	t2 = (*right++);
 		        	//printk("%08x,%08x,", t1, t2);
-	              *to++ = (unsigned short)((t1>>8)&0xffff);
-	              *to++ = (unsigned short)((t2>>8)&0xffff);
+	              *to++ = (unsigned short)(((t1+t2)>>8)&0xffff);
+	              *to++ = (unsigned short)(((t1+t2)>>8)&0xffff);
 		         }
 		         //printk("\n");
 		        left += 8;
