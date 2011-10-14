@@ -90,6 +90,11 @@ static  pin_config_t  pin_config[]={
 			.pin_mux=5,
 			.bit=(1<<31),
 		},
+		{
+			.platform_name="8726M3",
+			.pin_mux=0,
+			.bit=(1<<0),
+		},
 } ;
 
 static __u16 key_map[256];
@@ -224,16 +229,15 @@ static void kp_repeat_sr(unsigned long data)
 	u32 	status;
 	u32  timer_period;
 	
-	status = READ_MPEG_REG(IR_DEC_STATUS);
+	status = READ_AOBUS_REG(AO_IR_DEC_STATUS);
 	switch(status&REMOTE_HW_DECODER_STATUS_MASK) 
 	{
 		case REMOTE_HW_DECODER_STATUS_OK:
 		kp_send_key(kp_data->input, (kp_data->cur_keycode>>16)&0xff, 0);	
 		break ;
 		default:
-		SET_MPEG_REG_MASK(IR_DEC_REG1,1);//reset ir deocoder
-		CLEAR_MPEG_REG_MASK(IR_DEC_REG1,1);
-		
+		SET_AOBUS_REG_MASK(AO_IR_DEC_REG1,1);//reset ir deocoder
+		CLEAR_AOBUS_REG_MASK(AO_IR_DEC_REG1,1);	
 		if(kp_data->repeat_tick !=0)//new key coming in.
 		{
 			timer_period= jiffies + 10 ;  //timer peroid waiting for a stable state.
@@ -271,7 +275,7 @@ static irqreturn_t kp_interrupt(int irq, void *dev_id)
 static  void  kp_fiq_interrupt(void)
 {
 	kp_sw_reprot_key((unsigned long)gp_kp);
-	WRITE_MPEG_REG(IRQ_CLR_REG(NEC_REMOTE_IRQ_NO), 1 << IRQ_BIT(NEC_REMOTE_IRQ_NO));
+	WRITE_AOBUS_REG(IRQ_CLR_REG(NEC_REMOTE_IRQ_NO), 1 << IRQ_BIT(NEC_REMOTE_IRQ_NO));
 }
 static inline int kp_hw_reprot_key(struct kp *kp_data )
 {
@@ -281,9 +285,8 @@ static inline int kp_hw_reprot_key(struct kp *kp_data )
     static  int last_custom_code;
 
     // 1        get  scan code
-    scan_code=READ_MPEG_REG(IR_DEC_FRAME);
-    status=READ_MPEG_REG(IR_DEC_STATUS);
-
+    scan_code=READ_AOBUS_REG(AO_IR_DEC_FRAME);
+    status=READ_AOBUS_REG(AO_IR_DEC_STATUS);
     key_index=0 ;
     key_hold=-1 ;
     if(scan_code)  //key first press
@@ -432,16 +435,24 @@ static int    hardware_init(struct platform_device *pdev)
         printk("can not get config for remote keybrd.\n");
         return -1;
     }
-	set_mio_mux(config->pin_mux,config->bit); 	
-    //step 1 :set reg IR_DEC_CONTROL
+	if (!strcmp(config->platform_name, "8726M3"))
+	{
+		int val = READ_AOBUS_REG(AO_RTI_PIN_MUX_REG);
+		WRITE_AOBUS_REG(AO_RTI_PIN_MUX_REG, val | config->bit);
+	}
+	else
+	{
+		set_mio_mux(config->pin_mux,config->bit); 	
+	}
+    //step 1 :set reg AO_IR_DEC_CONTROL
     	control_value = 3<<28|(0xFA0 << 12) |0x13;
 
-    	WRITE_MPEG_REG(IR_DEC_REG0, control_value);
-    	control_value = READ_MPEG_REG(IR_DEC_REG1);
-    	WRITE_MPEG_REG(IR_DEC_REG1, control_value | IR_CONTROL_HOLD_LAST_KEY);
+    	WRITE_AOBUS_REG(AO_IR_DEC_REG0, control_value);
+    	control_value = READ_AOBUS_REG(AO_IR_DEC_REG1);
+    	WRITE_AOBUS_REG(AO_IR_DEC_REG1, control_value | IR_CONTROL_HOLD_LAST_KEY);
 
-    	status = READ_MPEG_REG(IR_DEC_STATUS);
-    	data_value = READ_MPEG_REG(IR_DEC_FRAME);
+    	status = READ_AOBUS_REG(AO_IR_DEC_STATUS);
+    	data_value = READ_AOBUS_REG(AO_IR_DEC_FRAME);
 
     //step 2 : request nec_remote irq  & enable it
     return request_irq(NEC_REMOTE_IRQ_NO, kp_interrupt,
@@ -454,17 +465,16 @@ work_mode_config(unsigned int cur_mode)
 	unsigned int  control_value;
     	static unsigned int 	last_mode=REMOTE_WORK_MODE_INV;
 	struct irq_desc *desc = irq_to_desc(NEC_REMOTE_IRQ_NO);	
-
    	if(last_mode == cur_mode) return -1;	
     	if(cur_mode&REMOTE_WORK_MODE_HW)
     	{
       	  	control_value=0xbe40; //ignore  custom code .
-      	  	WRITE_MPEG_REG(IR_DEC_REG1,control_value|IR_CONTROL_HOLD_LAST_KEY);
+      	  	WRITE_AOBUS_REG(AO_IR_DEC_REG1,control_value|IR_CONTROL_HOLD_LAST_KEY);
     	}
 	else
 	{
 		control_value=0x8578;
-        	WRITE_MPEG_REG(IR_DEC_REG1,control_value);
+        	WRITE_AOBUS_REG(AO_IR_DEC_REG1,control_value);
     	}
 
     	switch(cur_mode&REMOTE_WORK_MODE_MASK)
@@ -567,22 +577,22 @@ remote_config_ioctl(struct inode *inode, struct file *filp,
         copy_from_user(&kp->custom_code,argp,sizeof(long));
         break;
         case  REMOTE_IOC_SET_REG_BASE_GEN:
-        WRITE_MPEG_REG(IR_DEC_REG0,val);
+        WRITE_AOBUS_REG(AO_IR_DEC_REG0,val);
         break;
         case REMOTE_IOC_SET_REG_CONTROL:
-        WRITE_MPEG_REG(IR_DEC_REG1,val);
+        WRITE_AOBUS_REG(AO_IR_DEC_REG1,val);
         break;
         case REMOTE_IOC_SET_REG_LEADER_ACT:
-        WRITE_MPEG_REG(IR_DEC_LDR_ACTIVE,val);
+        WRITE_AOBUS_REG(AO_IR_DEC_LDR_ACTIVE,val);
         break;
         case REMOTE_IOC_SET_REG_LEADER_IDLE:
-        WRITE_MPEG_REG(IR_DEC_LDR_IDLE,val);
+        WRITE_AOBUS_REG(AO_IR_DEC_LDR_IDLE,val);
         break;
         case REMOTE_IOC_SET_REG_REPEAT_LEADER:
-        WRITE_MPEG_REG(IR_DEC_LDR_REPEAT,val);
+        WRITE_AOBUS_REG(AO_IR_DEC_LDR_REPEAT,val);
         break;
         case REMOTE_IOC_SET_REG_BIT0_TIME:
-        WRITE_MPEG_REG(IR_DEC_BIT_0,val);
+        WRITE_AOBUS_REG(AO_IR_DEC_BIT_0,val);
         break;
         case REMOTE_IOC_SET_RELEASE_DELAY:
         copy_from_user(&kp->release_delay,argp,sizeof(long));
@@ -606,28 +616,28 @@ remote_config_ioctl(struct inode *inode, struct file *filp,
         break;
         // 2 get  part
         case REMOTE_IOC_GET_REG_BASE_GEN:
-        val=READ_MPEG_REG(IR_DEC_REG0);
+        val=READ_AOBUS_REG(AO_IR_DEC_REG0);
         break;
         case REMOTE_IOC_GET_REG_CONTROL:
-        val=READ_MPEG_REG(IR_DEC_REG1);
+        val=READ_AOBUS_REG(AO_IR_DEC_REG1);
         break;
         case REMOTE_IOC_GET_REG_LEADER_ACT:
-        val=READ_MPEG_REG(IR_DEC_LDR_ACTIVE);
+        val=READ_AOBUS_REG(AO_IR_DEC_LDR_ACTIVE);
         break;
         case REMOTE_IOC_GET_REG_LEADER_IDLE:
-        val=READ_MPEG_REG(IR_DEC_LDR_IDLE);
+        val=READ_AOBUS_REG(AO_IR_DEC_LDR_IDLE);
         break;
         case REMOTE_IOC_GET_REG_REPEAT_LEADER:
-        val=READ_MPEG_REG(IR_DEC_LDR_REPEAT);
+        val=READ_AOBUS_REG(AO_IR_DEC_LDR_REPEAT);
         break;
         case REMOTE_IOC_GET_REG_BIT0_TIME:
-        val=READ_MPEG_REG(IR_DEC_BIT_0);
+        val=READ_AOBUS_REG(AO_IR_DEC_BIT_0);
         break;
         case REMOTE_IOC_GET_REG_FRAME_DATA:
-        val=READ_MPEG_REG(IR_DEC_FRAME);
+        val=READ_AOBUS_REG(AO_IR_DEC_FRAME);
         break;
         case REMOTE_IOC_GET_REG_FRAME_STATUS:
-        val=READ_MPEG_REG(IR_DEC_STATUS);
+        val=READ_AOBUS_REG(AO_IR_DEC_STATUS);
         break;
         //sw
         case REMOTE_IOC_GET_TW_LEADER_ACT:
