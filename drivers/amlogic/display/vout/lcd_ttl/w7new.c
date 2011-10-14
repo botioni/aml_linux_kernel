@@ -157,12 +157,10 @@ void power_on_backlight(void)
 {
 	printk(" w7 power_on_backlight \n");
 	//dump_stack();
-	msleep(20);
-	set_tcon_pinmux();
 	msleep(100);
-        set_gpio_val(GPIOD_bank_bit0_9(1), GPIOD_bit_bit0_9(1), 1);
-        set_gpio_mode(GPIOD_bank_bit0_9(1), GPIOD_bit_bit0_9(1), GPIO_OUTPUT_MODE);
-	msleep(100);
+    set_gpio_val(GPIOD_bank_bit0_9(1), GPIOD_bit_bit0_9(1), 1);
+    set_gpio_mode(GPIOD_bank_bit0_9(1), GPIOD_bit_bit0_9(1), GPIO_OUTPUT_MODE);
+	//msleep(100);
 }
 
 void power_off_backlight(void)
@@ -172,9 +170,9 @@ void power_off_backlight(void)
     //BL_EN -> GPIOD_1: 0
     set_gpio_val(GPIOD_bank_bit0_9(1), GPIOD_bit_bit0_9(1), 0);
     set_gpio_mode(GPIOD_bank_bit0_9(1), GPIOD_bit_bit0_9(1), GPIO_OUTPUT_MODE);
-	msleep(50);
-	clear_tcon_pinmux();
-	msleep(50);
+	//msleep(50);
+	//clear_tcon_pinmux();
+	//msleep(50);
 }
 
 static unsigned bl_level;
@@ -234,7 +232,7 @@ static void power_off_lcd(void)
 {
      printk(" w7 power_off_lcd \n");
     //power_off_backlight();
-   // msleep(50);	
+    //msleep(50);	
     
     //GPIOC2 -> VCCx3_EN: 0
     set_gpio_val(GPIOC_bank_bit0_15(2), GPIOC_bit_bit0_15(2), 0);
@@ -280,6 +278,8 @@ extern void (*Power_on_bl)(void);
 static void power_on_bl(void)
 {
     printk(" w7 power_on_bl \n");
+	msleep(50);
+	set_tcon_pinmux();
     power_on_backlight();
 }
 #endif
