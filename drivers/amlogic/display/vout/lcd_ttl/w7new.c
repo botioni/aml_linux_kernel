@@ -189,7 +189,7 @@ void set_backlight_level(unsigned level)
 	printk("\n\nlcd parameter: set backlight level: %d.\n\n", level);
 		
 #if (BL_CTL==BL_CTL_GPIO)
-
+/*
     if (level > BL_MIN_LEVEL)
     	{
     	set_gpio_val(GPIOD_bank_bit0_9(1), GPIOD_bit_bit0_9(1), 1);
@@ -202,7 +202,7 @@ void set_backlight_level(unsigned level)
     	set_gpio_mode(GPIOD_bank_bit0_9(1), GPIOD_bit_bit0_9(1), GPIO_OUTPUT_MODE);
         //power_off_backlight();
         }
-
+*/
 	level = level * 15 / BL_MAX_LEVEL;	
 	level = 15 - level;
 	WRITE_CBUS_REG_BITS(LED_PWM_REG0, level, 0, 4);	
