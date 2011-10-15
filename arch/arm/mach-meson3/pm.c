@@ -579,7 +579,11 @@ typedef struct {
 #define ANALOG_COUNT    3
 static analog_t analog_regs[ANALOG_COUNT] = {
     {"SAR_ADC",             SAR_ADC_REG3,       1 << 28, (1 << 30) | (1 << 21),    0,  1},
-    {"LED_PWM_REG0",        LED_PWM_REG0,       1 << 13,          1 << 12,              0,  1}, // needed for core voltage adjustment, so not off
+#ifdef ADJUST_CORE_VOLTAGE
+    {"LED_PWM_REG0",        LED_PWM_REG0,       1 << 13,          1 << 12,              0,  0}, // needed for core voltage adjustment, so not off
+#else
+    {"LED_PWM_REG0",        LED_PWM_REG0,       1 << 13,          1 << 12,              0,  1},
+#endif
     {"VGHL_PWM_REG0",       VGHL_PWM_REG0,      1 << 13,          1 << 12,              0,  1},
 };
 
@@ -716,6 +720,10 @@ static void meson_pm_suspend(void)
 {
     unsigned ddr_clk_N;
     unsigned mpeg_clk_backup;
+#ifdef ADJUST_CORE_VOLTAGE
+    unsigned vcck_backup = READ_CBUS_REG_BITS(LED_PWM_REG0, 0, 4);
+    printk(KERN_INFO "current vcck is 0x%x!\n", vcck_backup);
+#endif
 
     printk(KERN_INFO "enter meson_pm_suspend!\n");
 
@@ -770,6 +778,9 @@ static void meson_pm_suspend(void)
 
     CLEAR_CBUS_REG_MASK(HHI_SYS_CPU_CLK_CNTL, 1<<7);  // a9 use xtal
     SET_CBUS_REG_MASK(HHI_SYS_PLL_CNTL, (1 << 15));   // turn off sys pll
+#ifdef ADJUST_CORE_VOLTAGE
+    WRITE_CBUS_REG_BITS(LED_PWM_REG0, 0, 0, 4);
+#endif
 
 #if 0
     while ((READ_AOBUS_REG(AO_RTC_ADDR1) >> 2) & 1){
@@ -785,6 +796,10 @@ extern int meson_power_suspend();
 #endif
 #endif
 
+#ifdef ADJUST_CORE_VOLTAGE
+    WRITE_CBUS_REG_BITS(LED_PWM_REG0, vcck_backup, 0, 4);
+    udelay(100);
+#endif
     CLEAR_CBUS_REG_MASK(HHI_SYS_PLL_CNTL, (1 << 15));   // turn on sys pll
     udelay(10);
     SET_CBUS_REG_MASK(HHI_SYS_CPU_CLK_CNTL, (1 << 7));  // a9 use pll
