@@ -39,6 +39,7 @@
 #include <linux/aml_bl.h>
 #include <linux/syscalls.h>
 #include <linux/reboot.h>
+#include <mach/usbclock.h>
 
 #ifdef CONFIG_AM_UART_WITH_S_CORE 
 #include <linux/uart-aml.h>
@@ -804,8 +805,7 @@ static  struct platform_device aml_rtc_device = {
 
 
 
-#if defined(CONFIG_VIDEO_AMLOGIC_CAPTURE_GT2005)
-//#include <media/amlogic/aml_camera.h>
+#ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE_GT2005
 
 static int gt2005_init(void)
 {
@@ -1750,119 +1750,6 @@ static struct platform_device aml_pmu_device = {
 #endif
 
 #ifdef CONFIG_AM_NAND
-/*static struct mtd_partition partition_info[] = 
-{
-    {
-		.name = "U-BOOT",
-        .offset = 0,
-        .size=4*1024*1024,
-    //  .set_flags=0,
-    //  .dual_partnum=0,
-    },
-    {
-		.name = "Boot Para",
-        .offset = 4*1024*1024,
-        .size=4*1024*1024,
-    //  .set_flags=0,
-    //  .dual_partnum=0,
-    },
-    {
-		.name = "Kernel",
-        .offset = 8*1024*1024,
-        .size=4*1024*1024,
-    //  .set_flags=0,
-    //  .dual_partnum=0,
-    },
-    {
-		.name = "YAFFS2",
-		.offset=MTDPART_OFS_APPEND,
-        .size = MTDPART_SIZ_FULL,
-    //  .set_flags=0,
-    //  .dual_partnum=0,
-    },
-//	{	.name="FTL_Part",
-//		.offset=MTDPART_OFS_APPEND,
-//		.size=MTDPART_SIZ_FULL,
-//	//	.set_flags=MTD_AVNFTL,
-//	//	.dual_partnum=1,
-//	}
-};
-
-static struct aml_m1_nand_platform aml_2kpage128kblocknand_platform = {
-    .page_size = 2048,
-    .spare_size=64,
-    .erase_size= 128*1024,
-    .bch_mode=1,            //BCH8
-    .encode_size=528,
-    .timing_mode=5,
-    .ce_num=1,
-    .onfi_mode=0,
-    .partitions = partition_info,
-    .nr_partitions = ARRAY_SIZE(partition_info),
-};
-*/
-
-/*static struct aml_m1_nand_platform aml_Micron4GBABAnand_platform = 
-{
-    .page_size = 2048*2,
-    .spare_size= 224,       //for micron ABA 4GB
-    .erase_size=1024*1024,
-    .bch_mode=    3,        //BCH16
-    .encode_size=540,
-    .timing_mode=5,
-    .onfi_mode=1,
-    .ce_num=1,
-    .partitions = partition_info,
-    .nr_partitions = ARRAY_SIZE(partition_info),
-};
-
-static struct resource aml_nand_resources[] = {
-    {
-        .start = 0xc1108600,
-        .end = 0xc1108624,
-        .flags = IORESOURCE_MEM,
-    },
-};
-
-static struct platform_device aml_nand_device = {
-    .name = "aml_m1_nand",
-    .id = 0,
-    .num_resources = ARRAY_SIZE(aml_nand_resources),
-    .resource = aml_nand_resources,
-    .dev = {
-        .platform_data = &aml_Micron4GBABAnand_platform,
-    },
-};*/
-
-/*static struct mtd_partition normal_partition_info[] = 
-{
-	{
-		.name = "environment",
-		.offset = 8*1024*1024,
-		.size = 8*1024*1024,
-	},
-	{
-		.name = "splash",
-		.offset = 16*1024*1024,
-		.size = 4*1024*1024,
-	},
-	{
-		.name = "recovery",
-		.offset = 20*1024*1024,
-		.size = 16*1024*1024,
-	},
-	{
-		.name = "boot",
-		.offset = 36*1024*1024,
-		.size = 16*1024*1024,
-	},
-	{
-		.name = "cache",
-		.offset = 52*1024*1024,
-		.size = 32*1024*1024,
-	},
-};*/
-
 static struct mtd_partition multi_partition_info[] = 
 {
 	{
@@ -2136,6 +2023,38 @@ struct bt_dev_data bt_dev = {
 };
 #endif
 
+
+#ifdef CONFIG_USB_SERIAL_OPTION
+
+static int __init aml_3g_power_on_init(void)
+{
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0, (1<<6));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_3, (1<<5));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_6, (1<<23)); 
+
+	// 3G_PWR_CTL pull low to power on 3G module.
+    set_gpio_val(GPIOA_bank_bit0_27(2), GPIOA_bit_bit0_27(2), 0);    // GPIOA_2: H
+    set_gpio_mode(GPIOA_bank_bit0_27(2), GPIOA_bit_bit0_27(2), GPIO_OUTPUT_MODE);
+
+    // 3G_PWR_ON pull high.
+    set_gpio_val(GPIOA_bank_bit0_27(1), GPIOA_bit_bit0_27(1), 1);    // GPIOA_1: H
+    set_gpio_mode(GPIOA_bank_bit0_27(1), GPIOA_bit_bit0_27(1), GPIO_OUTPUT_MODE);
+    mdelay(3000);
+	
+	// 3G_PWR_ON pull low.
+    set_gpio_val(GPIOA_bank_bit0_27(1), GPIOA_bit_bit0_27(1), 0);    // GPIOA_1: H
+    set_gpio_mode(GPIOA_bank_bit0_27(1), GPIOA_bit_bit0_27(1), GPIO_OUTPUT_MODE);
+	mdelay(600);
+    // 3G_PWR_ON pull high.
+    set_gpio_val(GPIOA_bank_bit0_27(1), GPIOA_bit_bit0_27(1), 1);    // GPIOA_1: H
+    set_gpio_mode(GPIOA_bank_bit0_27(1), GPIOA_bit_bit0_27(1), GPIO_INPUT_MODE);
+
+    // 3G_RSTn pull low.
+    set_gpio_mode(GPIOA_bank_bit0_27(3), GPIOA_bit_bit0_27(3), GPIO_INPUT_MODE);
+    return 0;
+}
+#endif
+
 static struct platform_device __initdata *platform_devs[] = {
 #if defined(CONFIG_JPEGLOGO)
     &jpeglogo_device,
@@ -2270,7 +2189,7 @@ static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
 #endif
 
 
-#if CONFIG_VIDEO_AMLOGIC_CAPTURE_GT2005
+#ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE_GT2005
     {
     	/*gt2005 i2c address is 0x78/0x79*/
     	I2C_BOARD_INFO("gt2005_i2c",  0x78 >> 1 ),
@@ -2286,8 +2205,6 @@ static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
 		.platform_data = (void *)&video_gc0308_data,
 	},
 #endif
-//#ifdef CONFIG_CAMERA_OV9650FSL
-//#endif
 };
 
 static struct i2c_board_info __initdata aml_i2c_bus_info_1[] = {
@@ -2465,11 +2382,16 @@ static __init void m1_init_machine(void)
 #ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE
     camera_power_on_init();
 #endif
+
+#ifdef CONFIG_USB_SERIAL_OPTION
+    aml_3g_power_on_init();
+#endif
     platform_add_devices(platform_devs, ARRAY_SIZE(platform_devs));
 
 #ifdef CONFIG_USB_DWC_OTG_HCD
     set_usb_phy_clk(USB_PHY_CLOCK_SEL_XTAL_DIV2);
     lm_device_register(&usb_ld_a);
+    set_usb_phy_id_mode(USB_PHY_PORT_B,USB_PHY_MODE_SW_HOST);
     lm_device_register(&usb_ld_b);
 #endif
 #ifdef CONFIG_SATA_DWC_AHCI
