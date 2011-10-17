@@ -22,6 +22,7 @@
 
 #define AML_I2C_MASTER_A			0
 #define AML_I2C_MASTER_B 			1
+#define AML_I2C_MASTER_AO			2
 
 #define AML_I2C_SLAVE_ADDR			0x6c
 
