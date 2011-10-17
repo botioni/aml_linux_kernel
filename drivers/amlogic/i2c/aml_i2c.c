@@ -15,9 +15,8 @@
 #include "aml_i2c.h"
 static int no_stop_flag = 0;
 
-#define AML_I2C_GLOBAL_XFER_LOCK
-#ifdef AML_I2C_GLOBAL_XFER_LOCK
-volatile struct mutex aml_i2c_xfer_lock;	//add by sz.wu.zhu 20111115
+#ifdef CONFIG_ARCH_MESON3
+volatile struct mutex aml_i2c_xfer_lock;	//add by sz.wu.zhu 20111017
 #endif
 
 static void aml_i2c_set_clk(struct aml_i2c *i2c, unsigned int speed) 
@@ -371,11 +370,15 @@ static int aml_i2c_xfer(struct i2c_adapter *i2c_adap, struct i2c_msg *msgs,
 
 	BUG_ON(!i2c);
 	/*should not use spin_lock, cond_resched in wait ack*/
-#ifdef AML_I2C_GLOBAL_XFER_LOCK
-	mutex_lock(&aml_i2c_xfer_lock);
+#ifdef CONFIG_ARCH_MESON3
+	if((AML_I2C_MASTER_A ==i2c->master_no) || (AML_I2C_MASTER_B ==i2c->master_no)){
+		mutex_lock(&aml_i2c_xfer_lock);
+	}else{
+		mutex_lock(&i2c->lock);
+	}
 #else
 	mutex_lock(&i2c->lock);
-#endif	
+#endif
 
 	i2c->ops->xfer_prepare(i2c, i2c->master_i2c_speed);
 	/*make sure change speed before start*/
@@ -399,10 +402,14 @@ static int aml_i2c_xfer(struct i2c_adapter *i2c_adap, struct i2c_msg *msgs,
 	
 	/* Return the number of messages processed, or the error code*/
 	if (ret == 0){
-#ifdef AML_I2C_GLOBAL_XFER_LOCK	
-	    mutex_unlock(&aml_i2c_xfer_lock);
-#else		
-	    mutex_unlock(&i2c->lock);
+#ifdef CONFIG_ARCH_MESON3
+		if((AML_I2C_MASTER_A ==i2c->master_no) || (AML_I2C_MASTER_B ==i2c->master_no)){
+			mutex_unlock(&aml_i2c_xfer_lock);
+		}else{
+			mutex_unlock(&i2c->lock);
+		}
+#else
+		mutex_unlock(&i2c->lock);
 #endif		
 		return num;
        }
@@ -412,10 +419,14 @@ static int aml_i2c_xfer(struct i2c_adapter *i2c_adap, struct i2c_msg *msgs,
                    ret, ret == -EIO ? "-EIO" : "-ETIMEOUT", i2c->cur_token,
 			i2c->master_no, i2c->master_i2c_speed/1000, 
 			i2c->cur_slave_addr);
-#ifdef AML_I2C_GLOBAL_XFER_LOCK	
-	    mutex_unlock(&aml_i2c_xfer_lock);
-#else		
-	    mutex_unlock(&i2c->lock);
+#ifdef CONFIG_ARCH_MESON3
+		if((AML_I2C_MASTER_A ==i2c->master_no) || (AML_I2C_MASTER_B ==i2c->master_no)){
+			mutex_unlock(&aml_i2c_xfer_lock);
+		}else{
+			mutex_unlock(&i2c->lock);
+		}
+#else
+		mutex_unlock(&i2c->lock);
 #endif
 		return -EAGAIN;
 	}
@@ -431,8 +442,12 @@ static int aml_i2c_xfer_s2(struct i2c_adapter *i2c_adap, struct i2c_msg *msgs,
 	unsigned int ret=0;
 	
 	BUG_ON(!i2c);
-#ifdef AML_I2C_GLOBAL_XFER_LOCK
-	mutex_lock(&aml_i2c_xfer_lock);
+#ifdef CONFIG_ARCH_MESON3
+	if((AML_I2C_MASTER_A ==i2c->master_no) || (AML_I2C_MASTER_B ==i2c->master_no)){
+		mutex_lock(&aml_i2c_xfer_lock);
+	}else{
+		mutex_lock(&i2c->lock);
+	}
 #else
 	mutex_lock(&i2c->lock);
 #endif
@@ -458,10 +473,14 @@ static int aml_i2c_xfer_s2(struct i2c_adapter *i2c_adap, struct i2c_msg *msgs,
 
 	/* Return the number of messages processed, or the error code*/
 	if (ret == 0){
-#ifdef AML_I2C_GLOBAL_XFER_LOCK	
-	    mutex_unlock(&aml_i2c_xfer_lock);
-#else		
-	    mutex_unlock(&i2c->lock);
+#ifdef CONFIG_ARCH_MESON3
+		if((AML_I2C_MASTER_A ==i2c->master_no) || (AML_I2C_MASTER_B ==i2c->master_no)){
+			mutex_unlock(&aml_i2c_xfer_lock);
+		}else{
+			mutex_unlock(&i2c->lock);
+		}
+#else
+		mutex_unlock(&i2c->lock);
 #endif
 		return num;
       }
@@ -471,10 +490,14 @@ static int aml_i2c_xfer_s2(struct i2c_adapter *i2c_adap, struct i2c_msg *msgs,
                    ret, ret == -EIO ? "-EIO" : "-ETIMEOUT", i2c->cur_token,
 			i2c->master_no, i2c->master_i2c_speed2/1000, 
 			i2c->cur_slave_addr);
-#ifdef AML_I2C_GLOBAL_XFER_LOCK	
-	    mutex_unlock(&aml_i2c_xfer_lock);
-#else		
-	    mutex_unlock(&i2c->lock);
+#ifdef CONFIG_ARCH_MESON3
+		if((AML_I2C_MASTER_A ==i2c->master_no) || (AML_I2C_MASTER_B ==i2c->master_no)){
+			mutex_unlock(&aml_i2c_xfer_lock);
+		}else{
+			mutex_unlock(&i2c->lock);
+		}
+#else
+		mutex_unlock(&i2c->lock);
 #endif
 		return -EAGAIN;
 	}
@@ -775,7 +798,7 @@ static int __init aml_i2c_init(void)
 	printk("%s : %s\n", __FILE__, __FUNCTION__);
 
 	int ret;
-#ifdef AML_I2C_GLOBAL_XFER_LOCK	
+#ifdef CONFIG_ARCH_MESON3	
 	mutex_init(&aml_i2c_xfer_lock);
 	ret	= platform_driver_register(&aml_i2c_driver);
 	if(ret){
@@ -790,6 +813,9 @@ static int __init aml_i2c_init(void)
 static void __exit aml_i2c_exit(void) 
 {
 	printk("%s : %s\n", __FILE__, __FUNCTION__);
+#ifdef CONFIG_ARCH_MESON3	
+	mutex_destroy(&aml_i2c_xfer_lock);
+#endif
 	platform_driver_unregister(&aml_i2c_driver);
 } 
 
