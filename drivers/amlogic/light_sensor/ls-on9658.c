@@ -24,17 +24,25 @@
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/saradc.h>
+#include <linux/delay.h>
 
 #define POLL_INTERVAL	2000 	/* poll for input every 2s*/
 #define LUX_LEVEL	4					/* 0~4 report 5 levels*/
+
+//#define ON9658_DEBUG
+#ifdef ON9658_DEBUG
+#define DEBUG_OUT(fmt,args...)    printk(fmt,##args)
+#else
+#define DEBUG_OUT(fmt,args...)
+#endif
 
 static struct platform_device *pdev;
 static struct input_polled_dev *light_sensor_idev;
 
 static const int sAdcValues[LUX_LEVEL] = {
-    600,
-    300,
-    150,    
+    500,
+    50, //invalid
+    50, //invalid
 	50
 };
 
@@ -100,9 +108,19 @@ static struct platform_driver light_sensor_driver = {
 static void light_sensor_dev_poll(struct input_polled_dev *dev)
 {
 	struct input_dev *input_dev = dev->input;
-	int adc_val, i;
+	int adc_val, adc_val2, i;
 
 	adc_val = get_adc_sample(6);
+	msleep(3);
+	adc_val2 = get_adc_sample(6);
+	if ((adc_val < 0) || (adc_val < 0)) {
+		printk(KERN_ERR "light_sensor_dev_poll get_adc_sample %d %d\n", adc_val, adc_val2);
+		return;
+	}
+	
+	adc_val = (adc_val + adc_val2)/2;
+	DEBUG_OUT("light_sensor: light_sensor_dev_poll adc_val = %d\n", adc_val);
+	
 	for(i = 0; i < LUX_LEVEL; i++) {
 		if(adc_val > sAdcValues[i])
 			break;
@@ -113,7 +131,7 @@ static void light_sensor_dev_poll(struct input_polled_dev *dev)
 		input_report_abs(input_dev, ABS_X, ls_info.lux_level);
 		input_sync(input_dev);
 		
-		//printk(KERN_INFO "light_sensor: light_sensor_dev_poll lux_level = %d\n", ls_info.lux_level);
+		DEBUG_OUT("light_sensor: light_sensor_dev_poll lux_level = %d\n", ls_info.lux_level);
 	}	
 }
 

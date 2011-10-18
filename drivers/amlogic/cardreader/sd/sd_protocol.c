@@ -4488,7 +4488,7 @@ int sd_mmc_init(SD_MMC_Card_Info_t *sd_mmc_info)
 			"SD",
 			"SDHC",
 			"MMC",
-			"EMMC"
+			"EMMC",
 			"SDIO"
 		};
 		char *card_str = card_types[sd_mmc_info->card_type];
@@ -7928,6 +7928,7 @@ static int sdxc_identify_verbose(SD_MMC_Card_Info_t *sd_mmc_info, int steps)
 			"SD",
 			"SDHC",
 			"MMC",
+			"EMMC",
 			"SDIO"
 		};
 		char *card_str = card_types[sd_mmc_info->card_type];

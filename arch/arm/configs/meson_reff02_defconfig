@@ -649,8 +649,8 @@ CONFIG_PMU_ACT8862=y
 #
 # Amlogic Light Sensor Support
 #
-CONFIG_LS_GL3526=y
-# CONFIG_LS_ON9658 is not set
+# CONFIG_LS_GL3526 is not set
+CONFIG_LS_ON9658=y
 
 #
 # Extern IO Support

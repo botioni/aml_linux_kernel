@@ -47,7 +47,13 @@ void sd_open(struct memory_card *card)
 	if (aml_card_info->card_extern_init)
 		aml_card_info->card_extern_init();
 	ret = sd_mmc_init(sd_mmc_info);
+	
+	if(ret)
+		ret = sd_mmc_init(sd_mmc_info);
 
+	if(ret)
+		ret = sd_mmc_init(sd_mmc_info);
+		
 	card->capacity = sd_mmc_info->blk_nums;
 	card->sdio_funcs  = sd_mmc_info->sdio_function_nums;
 	memcpy(card->raw_cid, &(sd_mmc_info->raw_cid), sizeof(card->raw_cid));
