@@ -103,7 +103,12 @@ struct aml_rtc_priv{
 	struct rtc_device *rtc;
        unsigned long base_addr;
 	spinlock_t lock;
+	struct timer_list timer;
+	struct work_struct work;
+	struct workqueue_struct *rtc_work_queue;
 };
+
+static void reset_gpo_work(struct work_struct *work);
 
 static void delay_us(int us)
 {
@@ -309,6 +314,7 @@ static int ser_access_write(unsigned long addr, unsigned long data)
 		
 		if(s_nrdy_cnt>RESET_RETRY_TIMES) {
 			aml_rtc_reset();
+			printk("error: rtc serial communication abnormal!\n");
 			return -1;
 		}
 		rtc_reset_s_ready( );
@@ -326,9 +332,9 @@ static int ser_access_write(unsigned long addr, unsigned long data)
 /***************************************************************************/
 int rtc_reset_gpo(struct device *dev, unsigned level)
 {
+	unsigned data = 0;
 	struct aml_rtc_priv *priv;
 	priv = dev_get_drvdata(dev);
-	unsigned data = 0;
 	data |= 1<<20;
 	//reset mode
 	if(!level){
@@ -509,7 +515,7 @@ static int aml_rtc_set_alarm(struct device *dev, struct rtc_wkalrm *alarm)
 	aml_rtc_read_time(NULL, &cur_time);
 	ret = rtc_tm_to_time(&cur_time, &cur_secs);
 	if(alarm_secs >= cur_secs)
-		alarm_data.alarm_sec = alarm_secs - cur_secs;
+		alarm_data.alarm_sec = alarm_secs - cur_secs + 3; 
 	else
 		alarm_data.alarm_sec =  0;
 
@@ -543,6 +549,7 @@ static ssize_t show_rtc_reg(struct class *class, struct class_attribute *attr,	c
 		printk(" %20s : 0x%x \n",rtc_reg[i],ser_access_read(i));
 	}
 	
+
 	return 0;
 }
 
@@ -572,8 +579,15 @@ static int aml_rtc_probe(struct platform_device *pdev)
 
 	if(!priv)
 		return -ENOMEM;
-	
+	INIT_WORK(&priv->work, reset_gpo_work);
       platform_set_drvdata(pdev, priv);
+	
+	priv->rtc_work_queue = create_singlethread_workqueue("rtc");
+	if (priv->rtc_work_queue == NULL) {
+		ret = -ENOMEM;
+		goto out;
+	}
+	
 	
 	priv->rtc = rtc_device_register("aml_rtc", &pdev->dev, \
 		                                              &aml_rtc_ops, THIS_MODULE);
@@ -599,10 +613,56 @@ static int aml_rtc_probe(struct platform_device *pdev)
 	return 0;
 
 out:
+	if(priv->rtc_work_queue)
+		destroy_workqueue(priv->rtc_work_queue);
 	kfree(priv);
 	return ret;
 }
 
+static int get_gpo_flag(struct aml_rtc_priv *priv)
+{
+	u32 data32 = 0;
+	int ret = 0;
+
+	spin_lock(&priv->lock);
+	data32 = ser_access_read(RTC_GPO_COUNTER_ADDR);
+	spin_unlock(&priv->lock);
+	
+	RTC_DBG(RTC_DBG_VAL, "%s() RTC_GPO_COUNTER=%x\n", __func__, data32);
+	ret = !!(data32 & (1 << 24));
+	
+	return ret;
+}
+
+static void reset_gpo_work(struct work_struct *work)
+{
+	struct aml_rtc_priv *priv = container_of(work, struct aml_rtc_priv, work);
+	int count = 5;
+	
+	while(get_gpo_flag(priv)) {
+		spin_lock(&priv->lock);
+		ser_access_write(RTC_GPO_COUNTER_ADDR,0x100000);
+		spin_unlock(&priv->lock);				
+		count--;
+		if(count <= 0) {
+			printk("error: can not reset gpo !!!!!!!!!!!!!!!!!!!!\n");
+			count = 5;
+			//panic("gpo can not be reset");
+		}
+	}
+	
+	printk("reset gpo !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
+
+}
+
+static int power_down_gpo(unsigned long data)
+{
+	struct aml_rtc_priv *priv = (struct aml_rtc_priv *)data;
+	queue_work(priv->rtc_work_queue, &priv->work);
+	
+	return 0;
+}
+	
 static int aml_rtc_resume(struct platform_device *pdev)
 {
 	struct aml_rtc_priv *priv;
@@ -611,6 +671,11 @@ static int aml_rtc_resume(struct platform_device *pdev)
 	spin_lock(&priv->lock);
     ser_access_write(RTC_GPO_COUNTER_ADDR,0x100000);
 	spin_unlock(&priv->lock);
+	
+	queue_work(priv->rtc_work_queue, &priv->work);
+	//setup_timer(&priv->timer, power_down_gpo, priv) ;
+    	//mod_timer(&priv->timer, jiffies + msecs_to_jiffies(10000));
+	
     return 0;
 }
 
@@ -628,15 +693,13 @@ static int aml_rtc_shutdown(struct platform_device *pdev)
 static int aml_rtc_remove(struct platform_device *dev)
 {
        struct aml_rtc_priv *priv = platform_get_drvdata(dev);
-
 	rtc_device_unregister(priv->rtc);
-
+	if (priv->rtc_work_queue)
+		destroy_workqueue(priv->rtc_work_queue);
+	del_timer(&priv->timer);
 	kfree(priv);
-
 	return 0;
-	
 }
-
 
 struct platform_driver aml_rtc_driver = {
 
