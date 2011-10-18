@@ -79,7 +79,7 @@
 #include <linux/efuse.h>
 #endif
 
-extern int act8xxx_is_ac_online(void);
+
 
 #if defined(CONFIG_KEYPADS_AM)||defined(CONFIG_KEYPADS_AM_MODULE)
 static struct resource intput_resources[] = {
@@ -991,7 +991,7 @@ static struct platform_device aml_i2c_device2 = {
 
 #ifdef CONFIG_PMU_ACT8xxx
 #include <linux/act8xxx.h>  
-
+extern int act8xxx_is_ac_online(void);
 //Amlogic Power Management Support
 
 /*
