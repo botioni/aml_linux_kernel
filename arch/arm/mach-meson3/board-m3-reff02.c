@@ -923,7 +923,7 @@ static struct aml_i2c_platform aml_i2c_plat2 = {
     .wait_xfer_interval = 5,
     .master_no      = AML_I2C_MASTER_AO,
     .use_pio            = 0,
-    .master_i2c_speed   = AML_I2C_SPPED_300K,
+    .master_i2c_speed   = AML_I2C_SPPED_100K,
 
     .master_pinmux = {
         .scl_reg    = MESON_I2C_MASTER_GPIOAO_4_REG,
