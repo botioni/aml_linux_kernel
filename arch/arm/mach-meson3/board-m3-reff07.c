@@ -1775,16 +1775,16 @@ static struct mtd_partition multi_partition_info[] =
 	{
 		.name = "system",
 		.offset = 128*SZ_1M+40*SZ_1M,
-		.size = 256*SZ_1M,
+		.size = 384*SZ_1M,
 	},
 	{
 		.name = "cache",
-		.offset = 384*SZ_1M+40*SZ_1M,
+		.offset = 512*SZ_1M+40*SZ_1M,
 		.size = 128*SZ_1M,
 	},
 	{
 		.name = "userdata",
-		.offset = 512*SZ_1M+40*SZ_1M,
+		.offset = 640*SZ_1M+40*SZ_1M,
 		.size = 512*SZ_1M,
 	},
 	{
