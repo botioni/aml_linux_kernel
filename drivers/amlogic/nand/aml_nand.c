@@ -219,7 +219,7 @@ struct aml_nand_flash_dev aml_nand_flash_ids[] = {
 	{NULL,}
 };
 
-static uint8_t aml_nand_get_onfi_features(struct aml_nand_chip *aml_chip,  uint8_t *buf, int addr)
+uint8_t aml_nand_get_onfi_features(struct aml_nand_chip *aml_chip,  uint8_t *buf, int addr)
 {
 	struct nand_chip *chip = &aml_chip->chip;
 	struct mtd_info *mtd = &aml_chip->mtd;
@@ -240,7 +240,7 @@ static uint8_t aml_nand_get_onfi_features(struct aml_nand_chip *aml_chip,  uint8
 	return 0;
 }
 
-static void aml_nand_set_onfi_features(struct aml_nand_chip *aml_chip,  uint8_t *buf, int addr)
+void aml_nand_set_onfi_features(struct aml_nand_chip *aml_chip,  uint8_t *buf, int addr)
 {
 	int i, j;
 
@@ -1942,14 +1942,6 @@ static void aml_platform_nand_resume(struct early_suspend *nand_early_suspend)
 
 static int aml_nand_suspend(struct mtd_info *mtd)
 {
-	/*struct aml_nand_chip *aml_chip = mtd_to_nand_chip(mtd);
-	if (nand_erarly_suspend_flag){
-		aml_chip->aml_nand_hw_init(aml_chip);
-		NFC_SET_TIMING(0, 5, -6);
-		if (nand_erarly_suspend_flag)
-			nand_erarly_suspend_flag = 0;
-	}*/
-
 	printk("aml_nand suspend entered\n");
 	return 0;
 }

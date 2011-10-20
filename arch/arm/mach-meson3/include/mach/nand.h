@@ -484,6 +484,8 @@ static inline struct aml_nand_chip *mtd_to_nand_chip(struct mtd_info *mtd)
 }
 
 extern int aml_nand_init(struct aml_nand_chip *aml_chip);
+extern uint8_t aml_nand_get_onfi_features(struct aml_nand_chip *aml_chip,  uint8_t *buf, int addr);
+extern void aml_nand_set_onfi_features(struct aml_nand_chip *aml_chip,  uint8_t *buf, int addr);
 
 #endif // NAND_H_INCLUDED
 

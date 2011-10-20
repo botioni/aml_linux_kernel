@@ -59,7 +59,7 @@ static void m3_nand_select_chip(struct aml_nand_chip *aml_chip, int chipnr)
 			aml_chip->chip_selected = aml_chip->chip_enable[chipnr];
 			aml_chip->rb_received = aml_chip->rb_enable[chipnr];
 
-			for (i=1; i<aml_chip->chip_num; i++) {
+			for (i=0; i<aml_chip->chip_num; i++) {
 
 				if (aml_chip->valid_chip[i]) {
 
@@ -160,6 +160,73 @@ static void m3_nand_adjust_timing(struct aml_nand_chip *aml_chip)
 	NFC_SEND_CMD(1<<31);
 	printk("bus_cycle=%d, bus_timing=%d, start_cycle=%d, end_cycle=%d,system=%d.%dns\n",
 		bus_cycle, bus_timing, start_cycle, end_cycle, sys_time/10, sys_time%10);
+}
+
+#ifdef CONFIG_HAS_EARLYSUSPEND
+static void m3_nand_early_suspend(struct early_suspend *nand_early_suspend)
+{
+	printk("m3_nand_early suspend entered\n");
+	return;
+}
+
+static void m3_nand_late_resume(struct early_suspend *nand_early_suspend)
+{
+	printk("m3_nand_late resume entered\n");
+	return;
+}
+#endif
+
+static int m3_nand_suspend(struct mtd_info *mtd)
+{
+	struct aml_nand_chip *aml_chip = mtd_to_nand_chip(mtd);
+	struct aml_nand_platform *plat = aml_chip->platform;
+	struct nand_chip *chip = &aml_chip->chip;
+	spinlock_t *lock = &chip->controller->lock;
+
+	if (!strncmp((char*)plat->name, NAND_BOOT_NAME, strlen((const char*)NAND_BOOT_NAME)))
+		return 0;
+
+	spin_lock(lock);
+	if (!chip->controller->active)
+		chip->controller->active = chip;
+	chip->state = FL_PM_SUSPENDED;
+	spin_unlock(lock);
+
+	printk("m3 nand suspend entered\n");
+	return 0;
+}
+
+static void m3_nand_resume(struct mtd_info *mtd)
+{
+	struct aml_nand_chip *aml_chip = mtd_to_nand_chip(mtd);
+	struct aml_nand_platform *plat = aml_chip->platform;
+	struct nand_chip *chip = &aml_chip->chip;
+	u8 onfi_features[4];
+
+	if (!strncmp((char*)plat->name, NAND_BOOT_NAME, strlen((const char*)NAND_BOOT_NAME)))
+		return;
+
+	chip->select_chip(mtd, 0);
+	chip->cmdfunc(mtd, NAND_CMD_RESET, -1, -1);
+
+	if (aml_chip->onfi_mode) {
+		aml_nand_set_onfi_features(aml_chip, (uint8_t *)(&aml_chip->onfi_mode), ONFI_TIMING_ADDR);
+		aml_nand_get_onfi_features(aml_chip, onfi_features, ONFI_TIMING_ADDR);
+		if (onfi_features[0] != aml_chip->onfi_mode) {
+			aml_chip->T_REA = DEFAULT_T_REA;
+			aml_chip->T_RHOH = DEFAULT_T_RHOH;
+			printk("onfi timing mode set failed: %x\n", onfi_features[0]);		
+		}
+	}
+	chip->select_chip(mtd, -1);
+
+	spin_lock(&chip->controller->lock);
+	chip->controller->active = NULL;
+	chip->state = FL_READY;
+	spin_unlock(&chip->controller->lock);
+
+	printk("m3 nand resume entered\n");
+	return;
 }
 
 static int m3_nand_options_confirm(struct aml_nand_chip *aml_chip)
@@ -654,6 +721,8 @@ static int aml_nand_probe(struct aml_nand_platform *plat, struct device *dev)
 	aml_chip->aml_nand_dma_read = m3_nand_dma_read;
 	aml_chip->aml_nand_dma_write = m3_nand_dma_write;
 	aml_chip->aml_nand_hwecc_correct = m3_nand_hwecc_correct;
+    aml_chip->nand_early_suspend.suspend = m3_nand_early_suspend;
+    aml_chip->nand_early_suspend.resume = m3_nand_late_resume;
 
 	err = aml_nand_init(aml_chip);
 	if (err)
@@ -672,6 +741,8 @@ static int aml_nand_probe(struct aml_nand_platform *plat, struct device *dev)
 		mtd->oobavail = chip->ecc.layout->oobavail;
 		mtd->ecclayout = chip->ecc.layout;
 	}
+	mtd->suspend = m3_nand_suspend;
+	mtd->resume = m3_nand_resume;
 
 	return 0;
 
