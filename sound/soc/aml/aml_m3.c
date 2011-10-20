@@ -126,6 +126,7 @@ static struct aml_m3_work_t{
 	struct work_struct aml_m3_workqueue;
 }aml_m3_work;
 
+extern void latch_(struct snd_soc_codec* codec);
 
 void mute_spk(struct snd_soc_codec* codec, int flag)
 {
@@ -160,30 +161,33 @@ static struct aml_m3_platform_data aml_m3_pdata = {
 
 static void aml_m3_hp_detect_queue(struct work_struct* work)
 {
-	//int flag_changed = 0;
-	//static int i = 1;   //save the last status of hp_detect_flag
+	int level = 0x0;
+	u16 reg;
 	struct aml_m3_work_t* pwork = container_of(work,struct aml_m3_work_t, aml_m3_workqueue);
     struct snd_soc_codec* codec = (struct snd_soc_codec*)(pwork->data);
-	hp_detect_flag = aml_m3_is_hp_pluged();   //read the HP_DET pin
-	//printk("***Entered %s:%s\n", __FILE__,__func__);
-//	if (i != hp_detect_flag)
-//		flag_changed = 1;
-	if(/*flag_changed &&*/ hp_detect_flag){ // HP
-        //printk("Headphone pluged in\n");
-		//snd_soc_dapm_disable_pin(codec, "Ext Spk");
-        //snd_soc_dapm_enable_pin(codec, "HP");
-		//snd_soc_dapm_sync(codec);
-	snd_soc_write(codec, ADAC_MUTE_CTRL_REG1, 0); //unmute HP
-        mute_spk(codec, 1);
-    }else if(/*flag_changed && */!hp_detect_flag){ 
-        //printk("Headphone unpluged\n");
-		//snd_soc_dapm_enable_pin(codec, "Ext Spk");
-        //snd_soc_dapm_disable_pin(codec, "HP");
-		//snd_soc_dapm_sync(codec);
-	snd_soc_write(codec, ADAC_MUTE_CTRL_REG1, 0xc0);//mute HP
-        mute_spk(codec, 0);
+
+    //if ((aml_dai[1].ac97_pdata) && ((struct aml_m3_pdata *) (aml_dai[1].ac97_pdata))->is_hp_pluged)
+        //level = ((struct aml_m3_pdata *) (aml_dai[1].ac97_pdata))->is_hp_pluged();
+	level = aml_m3_is_hp_pluged();
+	//printk("level = %x, hp_detect_flag = %x\n", level, hp_detect_flag);
+
+	if(level == 0x1 && hp_detect_flag!= 0x1){ // HP
+		printk("Headphone pluged in\n");
+		reg = snd_soc_read(codec, ADAC_MUTE_CTRL_REG1);
+		reg &= ~0xc0;
+		snd_soc_write(codec, ADAC_MUTE_CTRL_REG1, reg); //unmute HP
+    	mute_spk(codec, 1);
+    	latch_(codec);
+		hp_detect_flag = level;
+	}else if(level != hp_detect_flag){ // HDMI
+		printk("Headphone unpluged\n");
+		reg = snd_soc_read(codec, ADAC_MUTE_CTRL_REG1);
+		reg |= 0xc0;;
+		snd_soc_write(codec, ADAC_MUTE_CTRL_REG1, reg);//mute HP
+		mute_spk(codec, 0);
+		latch_(codec);
+		hp_detect_flag = level;
 	}
-	//i = hp_detect_flag;
 }
 
 static void aml_m3_hp_detect_timer(unsigned long data)
@@ -199,10 +203,10 @@ static void aml_m3_hp_detect_timer(unsigned long data)
 static int aml_m3_codec_init(struct snd_soc_codec *codec)
 {
     struct snd_soc_card *card = codec->socdev->card;
-	
-	printk("***Entered %s:%s:\n", __FILE__,__func__);
 
-    int err;
+	int err;
+	printk("***Entered %s:%s:\n", __FILE__,__func__);
+   
     //Add board specific DAPM widgets and routes
     err = snd_soc_dapm_new_controls(codec, aml_m3_dapm_widgets, ARRAY_SIZE(aml_m3_dapm_widgets));
     if(err){
