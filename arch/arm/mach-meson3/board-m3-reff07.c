@@ -836,7 +836,7 @@ static int gt2005_uninit(void)
 {
 	printk( "amlogic camera driver: uninit gt2005_uninit. \n");
 
-    set_gpio_val(GPIOA_bank_bit0_27(25), GPIOA_bit_bit0_27(25), 1);    // set camera power disable
+    set_gpio_val(GPIOA_bank_bit0_27(25), GPIOA_bit_bit0_27(25), 0);    // set camera power disable
     set_gpio_mode(GPIOA_bank_bit0_27(25), GPIOA_bit_bit0_27(25), GPIO_OUTPUT_MODE);
 	return 0;
 }
@@ -844,7 +844,7 @@ static int gt2005_uninit(void)
 static int gt2005_disable(void)
 {
 	printk( "amlogic camera driver: gt2005_disable. \n");
-    set_gpio_val(GPIOA_bank_bit0_27(25), GPIOA_bit_bit0_27(25), 1);    // set camera power disable
+    set_gpio_val(GPIOA_bank_bit0_27(25), GPIOA_bit_bit0_27(25),0);    // set camera power disable
     set_gpio_mode(GPIOA_bank_bit0_27(25), GPIOA_bit_bit0_27(25), GPIO_OUTPUT_MODE);
 	return 0;
 }
@@ -852,7 +852,7 @@ static int gt2005_disable(void)
 static void gt2005_early_suspend(void)
 {
 	printk( "amlogic camera driver: gt2005_early_suspend. \n");
-    set_gpio_val(GPIOA_bank_bit0_27(25), GPIOA_bit_bit0_27(25), 1);    // set camera power disable
+    set_gpio_val(GPIOA_bank_bit0_27(25), GPIOA_bit_bit0_27(25), 0);    // set camera power disable
     set_gpio_mode(GPIOA_bank_bit0_27(25), GPIOA_bit_bit0_27(25), GPIO_OUTPUT_MODE);
 	return 0;
 }
@@ -860,7 +860,7 @@ static void gt2005_early_suspend(void)
 static void gt2005_late_resume(void)
 {
 	printk( "amlogic camera driver: gt2005_late_resume. \n");
-    set_gpio_val(GPIOA_bank_bit0_27(25), GPIOA_bit_bit0_27(25), 0);    // set camera power enable
+    set_gpio_val(GPIOA_bank_bit0_27(25), GPIOA_bit_bit0_27(25), 1);    // set camera power enable
     set_gpio_mode(GPIOA_bank_bit0_27(25), GPIOA_bit_bit0_27(25), GPIO_OUTPUT_MODE);
 	return 0;
 }
