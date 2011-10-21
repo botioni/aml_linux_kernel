@@ -403,9 +403,9 @@ static int __init axp_board_init(void)
         
             pmu_usbcur = 900;
         
-            pmu_pwroff_vol = 3300;
+            pmu_pwroff_vol = 2600;
         
-            pmu_pwron_vol = 2900;
+            pmu_pwron_vol = 2600;
         
             dcdc2_vol = 1520;//1400;
         

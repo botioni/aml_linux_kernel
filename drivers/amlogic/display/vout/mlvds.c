@@ -823,7 +823,7 @@ static void init_lvds_phy(lcdConfig_t *pConf)
     WRITE_MPEG_REG(LVDS_PHY_CNTL7,0xcccc);
     WRITE_MPEG_REG(LVDS_PHY_CNTL8,0xcccc);	
 	
-	WRITE_MPEG_REG(LVDS_PHY_CNTL4, READ_MPEG_REG(LVDS_PHY_CNTL4) & ~(0x7f<<0));  //disable LVDS phy port. wait for power on sequence.
+	//WRITE_MPEG_REG(LVDS_PHY_CNTL4, READ_MPEG_REG(LVDS_PHY_CNTL4) & ~(0x7f<<0));  //disable LVDS phy port. wait for power on sequence.
 }
  
 static inline void _init_tvenc(lcdConfig_t *pConf)
