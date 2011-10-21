@@ -43,6 +43,13 @@ extern unsigned int clk_util_clk_msr(unsigned int clk_mux);
 #define BL_MAX_LEVEL 0x100
 #define PANEL_NAME	"panel"
 
+//#define PRINT_DEBUG_INFO
+#ifdef PRINT_DEBUG_INFO
+#define PRINT_INFO(...)		printk(__VA_ARGS__)
+#else
+#define PRINT_INFO(...)	
+#endif
+
 typedef struct {
 	lcdConfig_t conf;
 	vinfo_t lcd_info;
@@ -89,7 +96,7 @@ static void set_lcd_gamma_table_A(u16 *data, u32 rgb_mask)
 
 static inline void _init_tcon_B(lcdConfig_t *pConf)
 {
-    printk("setup tcon\n");
+    PRINT_INFO("setup tcon\n");
     set_lcd_gamma_table_B(pConf->GammaTableR, H_SEL_R);
     set_lcd_gamma_table_B(pConf->GammaTableG, H_SEL_G);
     set_lcd_gamma_table_B(pConf->GammaTableB, H_SEL_B);
@@ -137,43 +144,43 @@ static inline void _init_tcon_B(lcdConfig_t *pConf)
 
     CLEAR_MPEG_REG_MASK(VPP_MISC, VPP_OUT_SATURATE);
 
-    printk("RGB_BASE = %x %x\n", READ_MPEG_REG(RGB_BASE_ADDR),    pConf->rgb_base_addr);
-    printk("RGB_COEFF = %x %x\n", READ_MPEG_REG(RGB_COEFF_ADDR),  pConf->rgb_coeff_addr);
-    printk("POL_CNTL = %x %x\n", READ_MPEG_REG(POL_CNTL_ADDR),    pConf->pol_cntl_addr);
-    printk("DITH_CNTL = %x %x\n", READ_MPEG_REG(DITH_CNTL_ADDR),  pConf->dith_cntl_addr);
+    PRINT_INFO("RGB_BASE = %x %x\n", READ_MPEG_REG(RGB_BASE_ADDR),    pConf->rgb_base_addr);
+    PRINT_INFO("RGB_COEFF = %x %x\n", READ_MPEG_REG(RGB_COEFF_ADDR),  pConf->rgb_coeff_addr);
+    PRINT_INFO("POL_CNTL = %x %x\n", READ_MPEG_REG(POL_CNTL_ADDR),    pConf->pol_cntl_addr);
+    PRINT_INFO("DITH_CNTL = %x %x\n", READ_MPEG_REG(DITH_CNTL_ADDR),  pConf->dith_cntl_addr);
 
-    printk("STH1_HS = %x %x\n", READ_MPEG_REG(STH1_HS_ADDR),    pConf->sth1_hs_addr);
-    printk("STH1_HE = %x %x\n", READ_MPEG_REG(STH1_HE_ADDR),    pConf->sth1_he_addr);
-    printk("STH1_VS = %x %x\n", READ_MPEG_REG(STH1_VS_ADDR),    pConf->sth1_vs_addr);
-    printk("STH1_VE = %x %x\n", READ_MPEG_REG(STH1_VE_ADDR),     pConf->sth1_ve_addr);
+    PRINT_INFO("STH1_HS = %x %x\n", READ_MPEG_REG(STH1_HS_ADDR),    pConf->sth1_hs_addr);
+    PRINT_INFO("STH1_HE = %x %x\n", READ_MPEG_REG(STH1_HE_ADDR),    pConf->sth1_he_addr);
+    PRINT_INFO("STH1_VS = %x %x\n", READ_MPEG_REG(STH1_VS_ADDR),    pConf->sth1_vs_addr);
+    PRINT_INFO("STH1_VE = %x %x\n", READ_MPEG_REG(STH1_VE_ADDR),     pConf->sth1_ve_addr);
 
-    printk("OEH_HS = %x %x\n", READ_MPEG_REG(OEH_HS_ADDR),     pConf->oeh_hs_addr);
-    printk("OEH_HS = %x %x\n", READ_MPEG_REG(OEH_HE_ADDR),     pConf->oeh_he_addr);
-    printk("OEH_HS = %x %x\n", READ_MPEG_REG(OEH_VS_ADDR),     pConf->oeh_vs_addr);
-    printk("OEH_HS = %x %x\n", READ_MPEG_REG(OEH_VE_ADDR),     pConf->oeh_ve_addr);
+    PRINT_INFO("OEH_HS = %x %x\n", READ_MPEG_REG(OEH_HS_ADDR),     pConf->oeh_hs_addr);
+    PRINT_INFO("OEH_HS = %x %x\n", READ_MPEG_REG(OEH_HE_ADDR),     pConf->oeh_he_addr);
+    PRINT_INFO("OEH_HS = %x %x\n", READ_MPEG_REG(OEH_VS_ADDR),     pConf->oeh_vs_addr);
+    PRINT_INFO("OEH_HS = %x %x\n", READ_MPEG_REG(OEH_VE_ADDR),     pConf->oeh_ve_addr);
 
-    printk("COM_HSWITCH = %x %x\n", READ_MPEG_REG(VCOM_HSWITCH_ADDR), pConf->vcom_hswitch_addr);
-    printk("VCOM_VS = %x %x\n", READ_MPEG_REG(VCOM_VS_ADDR),    pConf->vcom_vs_addr);
-    printk("VCOM_VE = %x %x\n", READ_MPEG_REG(VCOM_VE_ADDR),    pConf->vcom_ve_addr);
+    PRINT_INFO("COM_HSWITCH = %x %x\n", READ_MPEG_REG(VCOM_HSWITCH_ADDR), pConf->vcom_hswitch_addr);
+    PRINT_INFO("VCOM_VS = %x %x\n", READ_MPEG_REG(VCOM_VS_ADDR),    pConf->vcom_vs_addr);
+    PRINT_INFO("VCOM_VE = %x %x\n", READ_MPEG_REG(VCOM_VE_ADDR),    pConf->vcom_ve_addr);
 
-    printk("CPV1_HS = %x %x\n", READ_MPEG_REG(CPV1_HS_ADDR),    pConf->cpv1_hs_addr);
-    printk("CPV1_HE = %x %x\n", READ_MPEG_REG(CPV1_HE_ADDR),    pConf->cpv1_he_addr);
-    printk("CPV1_VS = %x %x\n", READ_MPEG_REG(CPV1_VS_ADDR),    pConf->cpv1_vs_addr);
-    printk("CPV1_VE = %x %x\n", READ_MPEG_REG(CPV1_VE_ADDR),    pConf->cpv1_ve_addr);
+    PRINT_INFO("CPV1_HS = %x %x\n", READ_MPEG_REG(CPV1_HS_ADDR),    pConf->cpv1_hs_addr);
+    PRINT_INFO("CPV1_HE = %x %x\n", READ_MPEG_REG(CPV1_HE_ADDR),    pConf->cpv1_he_addr);
+    PRINT_INFO("CPV1_VS = %x %x\n", READ_MPEG_REG(CPV1_VS_ADDR),    pConf->cpv1_vs_addr);
+    PRINT_INFO("CPV1_VE = %x %x\n", READ_MPEG_REG(CPV1_VE_ADDR),    pConf->cpv1_ve_addr);
 
-    printk("STV1_HS = %x %x\n", READ_MPEG_REG(STV1_HS_ADDR),    pConf->stv1_hs_addr);
-    printk("STV1_HS = %x %x\n", READ_MPEG_REG(STV1_HE_ADDR),    pConf->stv1_he_addr);
-    printk("STV1_HS = %x %x\n", READ_MPEG_REG(STV1_VS_ADDR),    pConf->stv1_vs_addr);
-    printk("STV1_HS = %x %x\n", READ_MPEG_REG(STV1_VE_ADDR),    pConf->stv1_ve_addr);
+    PRINT_INFO("STV1_HS = %x %x\n", READ_MPEG_REG(STV1_HS_ADDR),    pConf->stv1_hs_addr);
+    PRINT_INFO("STV1_HS = %x %x\n", READ_MPEG_REG(STV1_HE_ADDR),    pConf->stv1_he_addr);
+    PRINT_INFO("STV1_HS = %x %x\n", READ_MPEG_REG(STV1_VS_ADDR),    pConf->stv1_vs_addr);
+    PRINT_INFO("STV1_HS = %x %x\n", READ_MPEG_REG(STV1_VE_ADDR),    pConf->stv1_ve_addr);
 
-    printk("OEV1_HS = %x %x\n", READ_MPEG_REG(OEV1_HS_ADDR),    pConf->oev1_hs_addr);
-    printk("OEV1_HE = %x %x\n", READ_MPEG_REG(OEV1_HE_ADDR),    pConf->oev1_he_addr);
-    printk("OEV1_VS = %x %x\n", READ_MPEG_REG(OEV1_VS_ADDR),    pConf->oev1_vs_addr);
-    printk("OEV1_VE = %x %x\n", READ_MPEG_REG(OEV1_VE_ADDR),    pConf->oev1_ve_addr);
+    PRINT_INFO("OEV1_HS = %x %x\n", READ_MPEG_REG(OEV1_HS_ADDR),    pConf->oev1_hs_addr);
+    PRINT_INFO("OEV1_HE = %x %x\n", READ_MPEG_REG(OEV1_HE_ADDR),    pConf->oev1_he_addr);
+    PRINT_INFO("OEV1_VS = %x %x\n", READ_MPEG_REG(OEV1_VS_ADDR),    pConf->oev1_vs_addr);
+    PRINT_INFO("OEV1_VE = %x %x\n", READ_MPEG_REG(OEV1_VE_ADDR),    pConf->oev1_ve_addr);
 
-    printk("INV_CNT = %x %x\n", READ_MPEG_REG(INV_CNT_ADDR),    pConf->inv_cnt_addr);
-    printk("TCON_MISC_SEL_ADDR = %x %x\n", READ_MPEG_REG(TCON_MISC_SEL_ADDR), 	pConf->tcon_misc_sel_addr);
-    printk("DUAL_PORT_CNTL = %x %x\n", READ_MPEG_REG(DUAL_PORT_CNTL_ADDR), pConf->dual_port_cntl_addr);
+    PRINT_INFO("INV_CNT = %x %x\n", READ_MPEG_REG(INV_CNT_ADDR),    pConf->inv_cnt_addr);
+    PRINT_INFO("TCON_MISC_SEL_ADDR = %x %x\n", READ_MPEG_REG(TCON_MISC_SEL_ADDR), 	pConf->tcon_misc_sel_addr);
+    PRINT_INFO("DUAL_PORT_CNTL = %x %x\n", READ_MPEG_REG(DUAL_PORT_CNTL_ADDR), pConf->dual_port_cntl_addr);
 }
 
 static inline void _init_tcon_A(lcdConfig_t *pConf)
@@ -229,7 +236,7 @@ static inline void _init_tcon_A(lcdConfig_t *pConf)
 static void vclk_set_lcd( int pll_sel, int pll_div_sel, int vclk_sel, 
                    unsigned long pll_reg, unsigned long vid_div_reg, unsigned int xd)
 {
-    printk("setup lcd clk.\n");
+    PRINT_INFO("setup lcd clk.\n");
     vid_div_reg |= (1 << 16) ; // turn clock gate on
     vid_div_reg |= (pll_sel << 15); // vid_div_clk_sel
     
@@ -312,9 +319,9 @@ static void vclk_set_lcd( int pll_sel, int pll_div_sel, int vclk_sel,
       WRITE_MPEG_REG_BITS (HHI_VID_CLK_CNTL, 0, 15, 1);  //release soft reset
     }
     
-    printk("video pl1 clk = %d\n", clk_util_clk_msr(VID_PLL_CLK));
-    printk("video pll2 clk = %d\n", clk_util_clk_msr(VID2_PLL_CLK));
-    printk("cts_enct clk = %d\n", clk_util_clk_msr(CTS_ENCT_CLK));
+    PRINT_INFO("video pl1 clk = %d\n", clk_util_clk_msr(VID_PLL_CLK));
+    PRINT_INFO("video pll2 clk = %d\n", clk_util_clk_msr(VID2_PLL_CLK));
+    PRINT_INFO("cts_enct clk = %d\n", clk_util_clk_msr(CTS_ENCT_CLK));
 }
 
 static void set_lcd_pll(lcdConfig_t *pConf)
@@ -329,13 +336,13 @@ static void set_lcd_pll(lcdConfig_t *pConf)
 	pll_div_sel = ((pConf->clk_ctrl) >>8) & 0x1;
 	vclk_sel = ((pConf->clk_ctrl) >>4) & 0x1;		
 	
-	printk("pll_sel=%d, pll_div_sel=%d, vclk_sel=%d, pll_reg=0x%x, div_reg=0x%x, xd=%d.\n", pll_sel, pll_div_sel, vclk_sel, pll_reg, div_reg, xd);
+	PRINT_INFO("pll_sel=%d, pll_div_sel=%d, vclk_sel=%d, pll_reg=0x%x, div_reg=0x%x, xd=%d.\n", pll_sel, pll_div_sel, vclk_sel, pll_reg, div_reg, xd);
 	vclk_set_lcd(pll_sel, pll_div_sel, vclk_sel, pll_reg, div_reg, xd); 	
 }
 
 static void venc_set_lcd(lcdConfig_t *pConf)
 {
-    printk("setup lcd tvencoder.\n");
+    PRINT_INFO("setup lcd tvencoder.\n");
     WRITE_MPEG_REG(VPU_VIU_VENC_MUX_CTRL,
        (3<<0) |    // viu1 select enct
        (3<<2)      // viu2 select enct
@@ -476,7 +483,7 @@ static int lcd_module_disable(vmode_t cur_vmod)
 static int lcd_suspend(void)
 {
 	BUG_ON(pDev==NULL);
-    printk("lcd_suspend \n");
+    PRINT_INFO("lcd_suspend \n");
     _disable_backlight();
 	pDev->conf.power_off?pDev->conf.power_off():0;
 
@@ -484,7 +491,7 @@ static int lcd_suspend(void)
 }
 static int lcd_resume(void)
 {
-	printk("lcd_resume\n");
+	PRINT_INFO("lcd_resume\n");
 	_lcd_module_enable();
     _enable_backlight(BL_MAX_LEVEL);
 	return 0;
@@ -537,13 +544,13 @@ static int tcon_probe(struct platform_device *pdev)
 
     pDev = (tcon_dev_t *)kmalloc(sizeof(tcon_dev_t), GFP_KERNEL);
     if (!pDev) {
-        printk("[tcon]: Not enough memory.\n");
+        PRINT_INFO("[tcon]: Not enough memory.\n");
         return -ENOMEM;
     }
 
     s = platform_get_resource(pdev, IORESOURCE_MEM, 0);
     if (!s) {
-        printk("[tcon]: No tcon configuration data specified.\n");
+        PRINT_INFO("[tcon]: No tcon configuration data specified.\n");
         kfree(pDev);
         return -EINVAL;
     }
@@ -572,7 +579,7 @@ static struct platform_driver tcon_driver = {
 static int __init tcon_init(void)
 {
     if (platform_driver_register(&tcon_driver)) {
-        printk("failed to register tcon driver module\n");
+        PRINT_INFO("failed to register tcon driver module\n");
         return -ENODEV;
     }
 

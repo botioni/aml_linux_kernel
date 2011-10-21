@@ -433,6 +433,7 @@ void sdio_reinit(void)
 EXPORT_SYMBOL(sdio_reinit);
 
 #ifdef CONFIG_SDIO
+int sdio_read_common_cis(struct memory_card *card);
 int sdio_read_func_cis(struct sdio_func *func);
 static int card_sdio_init_func(struct memory_card *card, unsigned int fn)
 {
@@ -471,6 +472,11 @@ extern int amlogic_wifi_power(int on);
 static int card_sdio_init_card(struct memory_card *card)
 {
 	int err, i;
+
+       /*read common cis for samsung nrx600 wifi*/
+        card_claim_host(card->host);
+        sdio_read_common_cis(card);
+        card_release_host(card->host);
 
 	for (i = 0; i < card->sdio_funcs; i++) {
 		err = card_sdio_init_func(card, i + 1);

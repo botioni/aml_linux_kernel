@@ -22,13 +22,6 @@
 
 
 
-//#include <linux/i2c.h>
-//#include <linux/input.h>
-//#include <linux/earlysuspend.h>
-//#include <linux/interrupt.h>
-//#include <linux/delay.h>
-//#include <linux/ft5x06_ts.h>
-
 #include <linux/i2c.h>
 #include <linux/delay.h>
 #include <linux/input.h>
@@ -40,24 +33,25 @@
 #include <linux/workqueue.h>
 #include <mach/gpio.h>
 #include <linux/ft5x06_ts.h>
-
+static int ft5x0x_write_reg(u8 addr, u8 para);
+static int ft5x0x_read_reg(u8 addr, u8 *pdata);
 static struct i2c_client *this_client;
-static struct ft5x0x_ts_platform_data *pdata;
-
-#define CONFIG_FT5X0X_MULTITOUCH 1
-
+static struct ts_platform_data *focaltechPdata2;
+static int ft5x0x_printk_enable_flag=0;
+#define CONFIG_FT5X0X_MULTITOUCH 
+#define printfocaltek 
 struct ts_event {
-	u16	x1;
-	u16	y1;
-	u16	x2;
-	u16	y2;
-	u16	x3;
-	u16	y3;
-	u16	x4;
-	u16	y4;
-	u16	x5;
-	u16	y5;
-	u16	pressure;
+	s16	x1;
+	s16	y1;
+	s16	x2;
+	s16	y2;
+	s16	x3;
+	s16	y3;
+	s16	x4;
+	s16	y4;
+	s16	x5;
+	s16	y5;
+	s16	pressure;
     u8  touch_point;
 };
 
@@ -67,7 +61,86 @@ struct ft5x0x_ts_data {
 	struct work_struct 	pen_event_work;
 	struct workqueue_struct *ts_workqueue;
 	struct early_suspend	early_suspend;
+	short keypad;
 };
+#define CONFIG_TOUCH_PANEL_KEY
+static int FOCALTECH_SCREEN_MAX_X;
+static int FOCALTECH_SCREEN_MAX_Y;
+#define ft5x0x_dbg(fmt, args...)  { if(ft5x0x_printk_enable_flag) \
+					printk( KERN_DEBUG "[ft5x0x]: " fmt, ## args); }
+
+//#define AC_DETECT_IN_TOUCH_DRIVER
+static int ac_detect_flag_current=0;
+static int ac_detect_flag_old=3;
+#ifdef AC_DETECT_IN_TOUCH_DRIVER
+static void Ac_Detect_In_Touch_Driver(void)
+{
+	unsigned char ver;
+	int ac_detect_flag_temp=0;
+	ac_detect_flag_temp=focaltechPdata2->Ac_is_connect();
+	ac_detect_flag_current=ac_detect_flag_temp;
+	if(ac_detect_flag_current!=ac_detect_flag_old)
+		{
+		if(1==focaltechPdata2->Ac_is_connect())
+			ft5x0x_write_reg(0xb2,0x1);
+		else
+			ft5x0x_write_reg(0xb2,0x0);
+		ac_detect_flag_old=ac_detect_flag_current;
+		}
+	if(1==ft5x0x_printk_enable_flag)
+		{
+		ft5x0x_read_reg(0xb2, &ver);
+		printk("reg 0xb2=%d\n",ver);
+		}
+}
+#endif
+static ssize_t ft5x0x_read(struct device *dev, struct device_attribute *attr, char *buf)
+{
+    struct capts *ts = (struct capts *)dev_get_drvdata(dev);
+
+    if (!strcmp(attr->attr.name, "ft5x0xPrintFlag")) {
+        memcpy(buf, &ft5x0x_printk_enable_flag,sizeof(ft5x0x_printk_enable_flag));
+        printk("buf[0]=%d, buf[1]=%d\n", buf[0], buf[1]);
+        return sizeof(ft5x0x_printk_enable_flag);
+    }
+    return 0;
+}
+
+static ssize_t ft5x0x_write(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+{
+    int ret = 0;
+    struct capts *ts = (struct capts *)dev_get_drvdata(dev);
+
+    if (!strcmp(attr->attr.name, "ft5x0xPrintFlag")) {
+		printk("buf[0]=%d, buf[1]=%d\n", buf[0], buf[1]);
+		if (buf[0] == '0') ft5x0x_printk_enable_flag = 0;
+		if (buf[0] == '1') ft5x0x_printk_enable_flag = 1;
+		if (buf[0] == '2')
+			{
+			ft5x0x_printk_enable_flag=2;
+		if(focaltechPdata2&&focaltechPdata2->power_off&&focaltechPdata2->power_on){
+		focaltechPdata2->power_off();
+		msleep(50);
+		focaltechPdata2->power_on();
+		msleep(200);
+			}
+			}
+    }
+    
+    return count;
+}
+
+static DEVICE_ATTR(ft5x0xPrintFlag, S_IRWXUGO, ft5x0x_read, ft5x0x_write);
+static struct attribute *ft5x0x_attr[] = {
+    &dev_attr_ft5x0xPrintFlag.attr,
+    NULL
+};
+
+static struct attribute_group ft5x0x_attr_group = {
+    .name = NULL,
+    .attrs = ft5x0x_attr,
+};
+
 
 /***********************************************************************************************
 Name	:	ft5x0x_i2c_rxdata 
@@ -227,6 +300,378 @@ static unsigned char ft5x0x_read_fw_ver(void)
 }
 
 
+//#define CONFIG_SUPPORT_FTS_CTP_UPG
+
+
+#ifdef CONFIG_SUPPORT_FTS_CTP_UPG
+
+typedef enum
+{
+    ERR_OK,
+    ERR_MODE,
+    ERR_READID,
+    ERR_ERASE,
+    ERR_STATUS,
+    ERR_ECC,
+    ERR_DL_ERASE_FAIL,
+    ERR_DL_PROGRAM_FAIL,
+    ERR_DL_VERIFY_FAIL
+}E_UPGRADE_ERR_TYPE;
+
+typedef unsigned char         FTS_BYTE;     //8 bit
+typedef unsigned short        FTS_WORD;    //16 bit
+typedef unsigned int          FTS_DWRD;    //16 bit
+typedef unsigned char         FTS_BOOL;    //8 bit
+
+#define FTS_NULL                0x0
+#define FTS_TRUE                0x01
+#define FTS_FALSE              0x0
+
+#define I2C_CTPM_ADDRESS       0x70
+
+
+void delay_qt_ms(unsigned long  w_ms)
+{
+    unsigned long i;
+    unsigned long j;
+
+    for (i = 0; i < w_ms; i++)
+    {
+        for (j = 0; j < 1000; j++)
+        {
+            udelay(1);
+        }
+    }
+}
+
+
+/*
+[function]: 
+    callback: read data from ctpm by i2c interface,implemented by special user;
+[parameters]:
+    bt_ctpm_addr[in]    :the address of the ctpm;
+    pbt_buf[out]        :data buffer;
+    dw_lenth[in]        :the length of the data buffer;
+[return]:
+    FTS_TRUE     :success;
+    FTS_FALSE    :fail;
+*/
+FTS_BOOL i2c_read_interface(FTS_BYTE bt_ctpm_addr, FTS_BYTE* pbt_buf, FTS_DWRD dw_lenth)
+{
+    int ret;
+    
+    ret=i2c_master_recv(this_client, pbt_buf, dw_lenth);
+
+    if(ret<=0)
+    {
+        printk("[TSP]i2c_read_interface error\n");
+        return FTS_FALSE;
+    }
+  
+    return FTS_TRUE;
+}
+
+/*
+[function]: 
+    callback: write data to ctpm by i2c interface,implemented by special user;
+[parameters]:
+    bt_ctpm_addr[in]    :the address of the ctpm;
+    pbt_buf[in]        :data buffer;
+    dw_lenth[in]        :the length of the data buffer;
+[return]:
+    FTS_TRUE     :success;
+    FTS_FALSE    :fail;
+*/
+FTS_BOOL i2c_write_interface(FTS_BYTE bt_ctpm_addr, FTS_BYTE* pbt_buf, FTS_DWRD dw_lenth)
+{
+    int ret;
+    ret=i2c_master_send(this_client, pbt_buf, dw_lenth);
+    if(ret<=0)
+    {
+        printk("[TSP]i2c_write_interface error line = %d, ret = %d\n", __LINE__, ret);
+        return FTS_FALSE;
+    }
+
+    return FTS_TRUE;
+}
+
+/*
+[function]: 
+    send a command to ctpm.
+[parameters]:
+    btcmd[in]        :command code;
+    btPara1[in]    :parameter 1;    
+    btPara2[in]    :parameter 2;    
+    btPara3[in]    :parameter 3;    
+    num[in]        :the valid input parameter numbers, if only command code needed and no parameters followed,then the num is 1;    
+[return]:
+    FTS_TRUE    :success;
+    FTS_FALSE    :io fail;
+*/
+FTS_BOOL cmd_write(FTS_BYTE btcmd,FTS_BYTE btPara1,FTS_BYTE btPara2,FTS_BYTE btPara3,FTS_BYTE num)
+{
+    FTS_BYTE write_cmd[4] = {0};
+
+    write_cmd[0] = btcmd;
+    write_cmd[1] = btPara1;
+    write_cmd[2] = btPara2;
+    write_cmd[3] = btPara3;
+    return i2c_write_interface(I2C_CTPM_ADDRESS, write_cmd, num);
+}
+
+/*
+[function]: 
+    write data to ctpm , the destination address is 0.
+[parameters]:
+    pbt_buf[in]    :point to data buffer;
+    bt_len[in]        :the data numbers;    
+[return]:
+    FTS_TRUE    :success;
+    FTS_FALSE    :io fail;
+*/
+FTS_BOOL byte_write(FTS_BYTE* pbt_buf, FTS_DWRD dw_len)
+{
+    
+    return i2c_write_interface(I2C_CTPM_ADDRESS, pbt_buf, dw_len);
+}
+
+/*
+[function]: 
+    read out data from ctpm,the destination address is 0.
+[parameters]:
+    pbt_buf[out]    :point to data buffer;
+    bt_len[in]        :the data numbers;    
+[return]:
+    FTS_TRUE    :success;
+    FTS_FALSE    :io fail;
+*/
+FTS_BOOL byte_read(FTS_BYTE* pbt_buf, FTS_BYTE bt_len)
+{
+    return i2c_read_interface(I2C_CTPM_ADDRESS, pbt_buf, bt_len);
+}
+
+
+/*
+[function]: 
+    burn the FW to ctpm.
+[parameters]:(ref. SPEC)
+    pbt_buf[in]    :point to Head+FW ;
+    dw_lenth[in]:the length of the FW + 6(the Head length);    
+    bt_ecc[in]    :the ECC of the FW
+[return]:
+    ERR_OK        :no error;
+    ERR_MODE    :fail to switch to UPDATE mode;
+    ERR_READID    :read id fail;
+    ERR_ERASE    :erase chip fail;
+    ERR_STATUS    :status error;
+    ERR_ECC        :ecc error.
+*/
+
+
+#define    FTS_PACKET_LENGTH        128
+#ifdef CONFIG_MACH_MESON_8726M_REFB04
+static unsigned char CTPM_FW[]=
+{
+#include "ft_app848.ft"
+};
+#else
+static unsigned char CTPM_FW[]=
+{
+#include "ft_app.ft"
+};
+#endif
+E_UPGRADE_ERR_TYPE  fts_ctpm_fw_upgrade(FTS_BYTE* pbt_buf, FTS_DWRD dw_lenth)
+{
+    FTS_BYTE reg_val[2] = {0};
+    FTS_DWRD i = 0;
+
+    FTS_DWRD  packet_number;
+    FTS_DWRD  j;
+    FTS_DWRD  temp;
+    FTS_DWRD  lenght;
+    FTS_BYTE  packet_buf[FTS_PACKET_LENGTH + 6];
+    FTS_BYTE  auc_i2c_write_buf[10];
+    FTS_BYTE bt_ecc;
+    int      i_ret;
+
+    /*********Step 1:Reset  CTPM *****/
+    /*write 0xaa to register 0xfc*/
+    ft5x0x_write_reg(0xfc,0xaa);
+    delay_qt_ms(50);
+     /*write 0x55 to register 0xfc*/
+    ft5x0x_write_reg(0xfc,0x55);
+    printk("[TSP] Step 1: Reset CTPM test\n");
+   
+    delay_qt_ms(30);   
+
+
+    /*********Step 2:Enter upgrade mode *****/
+    auc_i2c_write_buf[0] = 0x55;
+    auc_i2c_write_buf[1] = 0xaa;
+    do
+    {
+        i ++;
+        i_ret = ft5x0x_i2c_txdata(auc_i2c_write_buf, 2);
+        delay_qt_ms(5);
+    }while(i_ret <= 0 && i < 5 );
+
+    /*********Step 3:check READ-ID***********************/ 
+	delay_qt_ms(5);
+    cmd_write(0x90,0x00,0x00,0x00,4);
+    byte_read(reg_val,2);
+    if (reg_val[0] == 0x79 && reg_val[1] == 0x3)
+    {
+        printk("[TSP] Step 3: CTPM ID,ID1 = 0x%x,ID2 = 0x%x\n",reg_val[0],reg_val[1]);
+    }
+    else
+    {
+    	for(i=0;i<10;i++)
+    		{
+    		 byte_read(reg_val,2);
+			 if (reg_val[0] == 0x79 && reg_val[1] == 0x3)
+			 	{
+			 	 printk("[TSP] Step 3: succes = 0x%x",i);
+				 break;
+			 	}
+			 else
+			 	{
+			 	 printk("[TSP] Step 3: error = 0x%x",i);
+			 	}
+    		}
+		if(i==10)
+			{
+			printk("[TSP] Step 3: return error = 0x%x",i);
+        	return ERR_READID;
+			}
+        //i_is_new_protocol = 1;
+    }
+
+     /*********Step 4:erase app*******************************/
+    cmd_write(0x61,0x00,0x00,0x00,1);
+   
+    delay_qt_ms(1500);
+    printk("[TSP] Step 4: erase. \n");
+
+    /*********Step 5:write firmware(FW) to ctpm flash*********/
+    bt_ecc = 0;
+    printk("[TSP] Step 5: start upgrade. \n");
+    dw_lenth = dw_lenth - 8;
+    packet_number = (dw_lenth) / FTS_PACKET_LENGTH;
+    packet_buf[0] = 0xbf;
+    packet_buf[1] = 0x00;
+    for (j=0;j<packet_number;j++)
+    {
+        temp = j * FTS_PACKET_LENGTH;
+        packet_buf[2] = (FTS_BYTE)(temp>>8);
+        packet_buf[3] = (FTS_BYTE)temp;
+        lenght = FTS_PACKET_LENGTH;
+        packet_buf[4] = (FTS_BYTE)(lenght>>8);
+        packet_buf[5] = (FTS_BYTE)lenght;
+
+        for (i=0;i<FTS_PACKET_LENGTH;i++)
+        {
+            packet_buf[6+i] = pbt_buf[j*FTS_PACKET_LENGTH + i]; 
+            bt_ecc ^= packet_buf[6+i];
+        }
+        
+        byte_write(&packet_buf[0],FTS_PACKET_LENGTH + 6);
+        delay_qt_ms(FTS_PACKET_LENGTH/6 + 1);
+        if ((j * FTS_PACKET_LENGTH % 1024) == 0)
+        {
+              printk("[TSP] upgrade the 0x%x th byte.\n", ((unsigned int)j) * FTS_PACKET_LENGTH);
+        }
+    }
+
+    if ((dw_lenth) % FTS_PACKET_LENGTH > 0)
+    {
+        temp = packet_number * FTS_PACKET_LENGTH;
+        packet_buf[2] = (FTS_BYTE)(temp>>8);
+        packet_buf[3] = (FTS_BYTE)temp;
+
+        temp = (dw_lenth) % FTS_PACKET_LENGTH;
+        packet_buf[4] = (FTS_BYTE)(temp>>8);
+        packet_buf[5] = (FTS_BYTE)temp;
+
+        for (i=0;i<temp;i++)
+        {
+            packet_buf[6+i] = pbt_buf[ packet_number*FTS_PACKET_LENGTH + i]; 
+            bt_ecc ^= packet_buf[6+i];
+        }
+
+        byte_write(&packet_buf[0],temp+6);    
+        delay_qt_ms(20);
+    }
+
+    //send the last six byte
+    for (i = 0; i<6; i++)
+    {
+        temp = 0x6ffa + i;
+        packet_buf[2] = (FTS_BYTE)(temp>>8);
+        packet_buf[3] = (FTS_BYTE)temp;
+        temp =1;
+        packet_buf[4] = (FTS_BYTE)(temp>>8);
+        packet_buf[5] = (FTS_BYTE)temp;
+        packet_buf[6] = pbt_buf[ dw_lenth + i]; 
+        bt_ecc ^= packet_buf[6];
+
+        byte_write(&packet_buf[0],7);  
+        delay_qt_ms(20);
+    }
+
+    /*********Step 6: read out checksum***********************/
+    /*send the opration head*/
+    cmd_write(0xcc,0x00,0x00,0x00,1);
+    byte_read(reg_val,1);
+    printk("[TSP] Step 6:  ecc read 0x%x, new firmware 0x%x. \n", reg_val[0], bt_ecc);
+    if(reg_val[0] != bt_ecc)
+    {
+    printk("[TSP] Step 6:  ecc error and return \n");
+        return ERR_ECC;
+    }
+
+    /*********Step 7: reset the new FW***********************/
+	
+    cmd_write(0x07,0x00,0x00,0x00,1);
+	printk("[TSP] Step 7 \n");
+    return ERR_OK;
+}
+
+
+int fts_ctpm_fw_upgrade_with_i_file(void)
+{
+   FTS_BYTE*     pbt_buf = FTS_NULL;
+   int i_ret;
+    
+    //=========FW upgrade========================*/
+   pbt_buf = CTPM_FW;
+   /*call the upgrade function*/
+   i_ret =  fts_ctpm_fw_upgrade(pbt_buf,sizeof(CTPM_FW));
+   if (i_ret != 0)
+   {
+       //error handling ...
+       //TBD
+   }
+
+   return i_ret;
+}
+
+unsigned char fts_ctpm_get_upg_ver(void)
+{
+    unsigned int ui_sz;
+    ui_sz = sizeof(CTPM_FW);
+    if (ui_sz > 2)
+    {
+        return CTPM_FW[ui_sz - 2];
+    }
+    else
+    {
+        //TBD, error handling?
+        return 0xff; //default value
+    }
+}
+
+#endif
+
 /***********************************************************************************************
 Name	:	 
 
@@ -243,6 +688,12 @@ static void ft5x0x_ts_release(void)
 	struct ft5x0x_ts_data *data = i2c_get_clientdata(this_client);
 #ifdef CONFIG_FT5X0X_MULTITOUCH	
 	input_report_abs(data->input_dev, ABS_MT_TOUCH_MAJOR, 0);
+  if (data->keypad > 0) {
+  	input_report_key(data->input_dev, data->keypad, 0);
+  	input_sync(data->input_dev);
+		printk("key(%d) up\n", data->keypad);
+  }
+  data->keypad = 0;
 #else
 	input_report_abs(data->input_dev, ABS_PRESSURE, 0);
 	input_report_key(data->input_dev, BTN_TOUCH, 0);
@@ -277,24 +728,36 @@ static int ft5x0x_read_data(void)
         ft5x0x_ts_release();
         return 1; 
     }
-
+#ifdef AC_DETECT_IN_TOUCH_DRIVER
+	Ac_Detect_In_Touch_Driver();
+#endif
 #ifdef CONFIG_FT5X0X_MULTITOUCH
     switch (event->touch_point) {
 		case 5:
 			event->x5 = (s16)(buf[0x1b] & 0x0F)<<8 | (s16)buf[0x1c];
 			event->y5 = (s16)(buf[0x1d] & 0x0F)<<8 | (s16)buf[0x1e];
+			event->x5 = FOCALTECH_SCREEN_MAX_X - event->x5;
+			event->y5 = FOCALTECH_SCREEN_MAX_Y - event->y5;
 		case 4:
 			event->x4 = (s16)(buf[0x15] & 0x0F)<<8 | (s16)buf[0x16];
 			event->y4 = (s16)(buf[0x17] & 0x0F)<<8 | (s16)buf[0x18];
+			event->x4 = FOCALTECH_SCREEN_MAX_X - event->x4;
+			event->y4 = FOCALTECH_SCREEN_MAX_Y - event->y4;
 		case 3:
 			event->x3 = (s16)(buf[0x0f] & 0x0F)<<8 | (s16)buf[0x10];
 			event->y3 = (s16)(buf[0x11] & 0x0F)<<8 | (s16)buf[0x12];
+			event->x3 = FOCALTECH_SCREEN_MAX_X - event->x3;
+			event->y3 = FOCALTECH_SCREEN_MAX_Y - event->y3;
 		case 2:
 			event->x2 = (s16)(buf[9] & 0x0F)<<8 | (s16)buf[10];
 			event->y2 = (s16)(buf[11] & 0x0F)<<8 | (s16)buf[12];
+			event->x2 = FOCALTECH_SCREEN_MAX_X - event->x2;
+			event->y2 = FOCALTECH_SCREEN_MAX_Y - event->y2;
 		case 1:
 			event->x1 = (s16)(buf[3] & 0x0F)<<8 | (s16)buf[4];
 			event->y1 = (s16)(buf[5] & 0x0F)<<8 | (s16)buf[6];
+			event->x1 = FOCALTECH_SCREEN_MAX_X - event->x1;
+			event->y1 = FOCALTECH_SCREEN_MAX_Y - event->y1;
             break;
 		default:
 		    return -1;
@@ -330,7 +793,7 @@ static void ft5x0x_report_value(void)
 	struct ts_event *event = &data->event;
 	u8 uVersion;
 
-		printk("==ft5x0x_report_value =\n");
+		printfocaltek("==ft5x0x_report_value =\n");
 #ifdef CONFIG_FT5X0X_MULTITOUCH
 	switch(event->touch_point) {
 		case 5:
@@ -339,38 +802,75 @@ static void ft5x0x_report_value(void)
 			input_report_abs(data->input_dev, ABS_MT_POSITION_Y, event->y5);
 			input_report_abs(data->input_dev, ABS_MT_WIDTH_MAJOR, 1);
 			input_mt_sync(data->input_dev);
-			printk("===x2 = %d,y2 = %d ====\n",event->x2,event->y2);
+			if(ft5x0x_printk_enable_flag)
+			printk("===x5 = %d,y5 = %d ====\n",event->x5,event->y5);
 		case 4:
 			input_report_abs(data->input_dev, ABS_MT_TOUCH_MAJOR, event->pressure);
 			input_report_abs(data->input_dev, ABS_MT_POSITION_X, event->x4);
 			input_report_abs(data->input_dev, ABS_MT_POSITION_Y, event->y4);
 			input_report_abs(data->input_dev, ABS_MT_WIDTH_MAJOR, 1);
 			input_mt_sync(data->input_dev);
-			printk("===x2 = %d,y2 = %d ====\n",event->x2,event->y2);
+			if(ft5x0x_printk_enable_flag)
+			printk("===x4 = %d,y4 = %d ====\n",event->x4,event->y4);
 		case 3:
 			input_report_abs(data->input_dev, ABS_MT_TOUCH_MAJOR, event->pressure);
 			input_report_abs(data->input_dev, ABS_MT_POSITION_X, event->x3);
 			input_report_abs(data->input_dev, ABS_MT_POSITION_Y, event->y3);
 			input_report_abs(data->input_dev, ABS_MT_WIDTH_MAJOR, 1);
 			input_mt_sync(data->input_dev);
-			printk("===x2 = %d,y2 = %d ====\n",event->x2,event->y2);
+			if(ft5x0x_printk_enable_flag)
+			printk("===x3 = %d,y3 = %d ====\n",event->x3,event->y3);
 		case 2:
 			input_report_abs(data->input_dev, ABS_MT_TOUCH_MAJOR, event->pressure);
 			input_report_abs(data->input_dev, ABS_MT_POSITION_X, event->x2);
 			input_report_abs(data->input_dev, ABS_MT_POSITION_Y, event->y2);
 			input_report_abs(data->input_dev, ABS_MT_WIDTH_MAJOR, 1);
 			input_mt_sync(data->input_dev);
+			if(ft5x0x_printk_enable_flag)
 			printk("===x2 = %d,y2 = %d ====\n",event->x2,event->y2);
 		case 1:
+#ifdef CONFIG_TOUCH_PANEL_KEY			     
+      if(event->x1 < 0)  {
+      		if (data->keypad == 0) {
+						if((event->y1>0)&&(event->y1<20)) {
+							data->keypad = KEY_HOME;
+	          }	
+						else if((event->y1>40)&&(event->y1<80)) {
+							data->keypad = KEY_MENU;
+		        }
+						else  if((event->y1>100)&&(event->y1<140)) {
+							data->keypad = KEY_BACK;
+	          }
+	          else {
+	          }
+	          
+	          if (data->keypad > 0) {
+	          	input_report_key(data->input_dev, data->keypad, 1);
+		          input_sync(data->input_dev);
+		          printk("key(%d) down\n", data->keypad);
+	        	}
+	        }
+      }
+			else if (data->keypad < 1) {
+				data->keypad = -1;
+				input_report_abs(data->input_dev, ABS_MT_TOUCH_MAJOR, event->pressure);
+				input_report_abs(data->input_dev, ABS_MT_POSITION_X, event->x1);
+				input_report_abs(data->input_dev, ABS_MT_POSITION_Y, event->y1);
+				input_report_abs(data->input_dev, ABS_MT_WIDTH_MAJOR, 1);
+				input_mt_sync(data->input_dev);
+			}
+#else
 			input_report_abs(data->input_dev, ABS_MT_TOUCH_MAJOR, event->pressure);
 			input_report_abs(data->input_dev, ABS_MT_POSITION_X, event->x1);
 			input_report_abs(data->input_dev, ABS_MT_POSITION_Y, event->y1);
 			input_report_abs(data->input_dev, ABS_MT_WIDTH_MAJOR, 1);
 			input_mt_sync(data->input_dev);
+#endif		
+			if(ft5x0x_printk_enable_flag)
 			printk("===x1 = %d,y1 = %d ====\n",event->x1,event->y1);
 
 		default:
-//			printk("==touch_point default =\n");
+//			printfocaltek("==touch_point default =\n");
 			break;
 	}
 #else	/* CONFIG_FT5X0X_MULTITOUCH*/
@@ -400,18 +900,11 @@ function	:
 static void ft5x0x_ts_pen_irq_work(struct work_struct *work)
 {
 	int ret = -1;
-//	printk("==work 1=\n");
-//if(!(this_client->dev->platform_data->get_irq_level())){
 	ret = ft5x0x_read_data();	
 	if (ret == 0) {	
 		ft5x0x_report_value();
-//	}
-//	else printk("data package read error\n");
-//	printk("==work 2=\n");
-//    	msleep(1);
-    enable_irq(this_client->irq);
-}
-//	enable_irq(IRQ_EINT(6));
+	}
+	enable_irq(this_client->irq);
 }
 /***********************************************************************************************
 Name	:	 
@@ -426,15 +919,16 @@ function	:
 ***********************************************************************************************/
 static irqreturn_t ft5x0x_ts_interrupt(int irq, void *dev_id)
 {
+	static int irq_count = 0;
+	printk("irq count = %d\n", irq_count++);
+	if (irq_count == 1)
+		return IRQ_HANDLED;
 	struct ft5x0x_ts_data *ft5x0x_ts = dev_id;
     	disable_irq_nosync(this_client->irq);	
-//	disable_irq(IRQ_EINT(6));
-	//printk("==int=\n");
-	printk("ret=%d\n",irq);
+	printfocaltek("enter irq(%d, %d)\n",irq, this_client->irq);
 	if (!work_pending(&ft5x0x_ts->pen_event_work)) {
 		queue_work(ft5x0x_ts->ts_workqueue, &ft5x0x_ts->pen_event_work);
 	}
-
 	return IRQ_HANDLED;
 }
 #ifdef CONFIG_HAS_EARLYSUSPEND
@@ -460,7 +954,10 @@ static void ft5x0x_ts_suspend(struct early_suspend *handler)
 //	cancel_work_sync(&ts->pen_event_work);
 //	flush_workqueue(ts->ts_workqueue);
 	// ==set mode ==, 
-//    	ft5x0x_set_reg(FT5X0X_REG_PMODE, PMODE_HIBERNATE);
+   // ft5x0x_write_reg(FT5X0X_REG_PMODE, PMODE_HIBERNATE);
+		if(focaltechPdata2&&focaltechPdata2->power_off&&focaltechPdata2->power_on){
+		focaltechPdata2->power_off();
+	}
 }
 /***********************************************************************************************
 Name	:	 
@@ -476,6 +973,13 @@ function	:
 static void ft5x0x_ts_resume(struct early_suspend *handler)
 {
 	printk("==ft5x0x_ts_resume=\n");
+		if(focaltechPdata2&&focaltechPdata2->power_off&&focaltechPdata2->power_on){
+		//focaltechPdata2->power_off();
+		//msleep(50);
+		focaltechPdata2->power_on();
+		msleep(200);
+	}
+
 	// wake the mode
 //	__gpio_as_output(GPIO_FT5X0X_WAKE);		
 //	__gpio_clear_pin(GPIO_FT5X0X_WAKE);		//set wake = 0,base on system
@@ -505,13 +1009,18 @@ ft5x0x_ts_probe(struct i2c_client *client, const struct i2c_device_id *id)
 	int err = 0;
 	unsigned char uc_reg_value; 
 	struct ts_platform_data *pdata = client->dev.platform_data;
-		if(pdata&&pdata->power_off&&pdata->power_on){
-		pdata->power_off();
-		mdelay(50);
-		pdata->power_on();
-		mdelay(200);
-	}
+		focaltechPdata2 = client->dev.platform_data;
+//		if(pdata&&pdata->power_off&&pdata->power_on){
+//		pdata->power_off();
+//		mdelay(50);
+//		pdata->power_on();
+//		mdelay(200);
+//	}
+
+	FOCALTECH_SCREEN_MAX_X=pdata->screen_max_x;
+	FOCALTECH_SCREEN_MAX_Y=pdata->screen_max_y;
 	printk("==ft5x0x_ts_probe=\n");
+	
 	
 	if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C)) {
 		err = -ENODEV;
@@ -526,28 +1035,18 @@ ft5x0x_ts_probe(struct i2c_client *client, const struct i2c_device_id *id)
 		goto exit_alloc_data_failed;
 	}
 
-    printk("==kzalloc success=\n");
+	printk("==kzalloc success=\n");
 	this_client = client;
 	i2c_set_clientdata(client, ft5x0x_ts);
-  printk("==i2c_set_clientdata success=\n");
 
 	INIT_WORK(&ft5x0x_ts->pen_event_work, ft5x0x_ts_pen_irq_work);
-printk("==INIT_WORK success=\n");
 	ft5x0x_ts->ts_workqueue = create_singlethread_workqueue(dev_name(&client->dev));
-printk("==create_singlethread_workqueue success=\n");	
 	if (!ft5x0x_ts->ts_workqueue) {
 		err = -ESRCH;
 		goto exit_create_singlethread;
 	}
-printk("==exit_create_singlethread =\n");	
-
-//	pdata = client->dev.platform_data;
-//	if (pdata == NULL) {
-//		dev_err(&client->dev, "%s: platform data is null\n", __func__);
-//		goto exit_platform_data_null;
-//	}
 	
-
+  ft5x0x_ts->keypad = 0;
 //	__gpio_as_irq_fall_edge(pdata->intr);		//
 printk("==enable Irq=\n");
     if (pdata->init_irq) {
@@ -573,11 +1072,16 @@ printk("==enable Irq success=\n");
 	set_bit(ABS_MT_POSITION_X, input_dev->absbit);
 	set_bit(ABS_MT_POSITION_Y, input_dev->absbit);
 	set_bit(ABS_MT_WIDTH_MAJOR, input_dev->absbit);
+#ifdef CONFIG_TOUCH_PANEL_KEY
+	set_bit(KEY_HOME, input_dev->keybit);
+	set_bit(KEY_MENU, input_dev->keybit);
+	set_bit(KEY_BACK, input_dev->keybit);
+#endif
 
 	input_set_abs_params(input_dev,
-			     ABS_MT_POSITION_X, 0, SCREEN_MAX_X, 0, 0);
+			     ABS_MT_POSITION_X, 0, FOCALTECH_SCREEN_MAX_X, 0, 0);
 	input_set_abs_params(input_dev,
-			     ABS_MT_POSITION_Y, 0, SCREEN_MAX_Y, 0, 0);
+			     ABS_MT_POSITION_Y, 0, FOCALTECH_SCREEN_MAX_Y, 0, 0);
 	input_set_abs_params(input_dev,
 			     ABS_MT_TOUCH_MAJOR, 0, PRESS_MAX, 0, 0);
 	input_set_abs_params(input_dev,
@@ -588,14 +1092,16 @@ printk("==enable Irq success=\n");
 	set_bit(ABS_PRESSURE, input_dev->absbit);
 	set_bit(BTN_TOUCH, input_dev->keybit);
 
-	input_set_abs_params(input_dev, ABS_X, 0, SCREEN_MAX_X, 0, 0);
-	input_set_abs_params(input_dev, ABS_Y, 0, SCREEN_MAX_Y, 0, 0);
-	input_set_abs_params(input_dev,
-			     ABS_PRESSURE, 0, PRESS_MAX, 0 , 0);
+	input_set_abs_params(input_dev, ABS_X, 0, FOCALTECH_SCREEN_MAX_X, 0, 0);
+	input_set_abs_params(input_dev, ABS_Y, 0, FOCALTECH_SCREEN_MAX_Y, 0, 0);
+	input_set_abs_params(input_dev, ABS_PRESSURE, 0, PRESS_MAX, 0 , 0);
 #endif
 
 	set_bit(EV_ABS, input_dev->evbit);
 	set_bit(EV_KEY, input_dev->evbit);
+#ifdef CONFIG_TOUCH_PANEL_KEY
+	set_bit(EV_SYN, input_dev->evbit);
+#endif	
 
 	input_dev->name		= FT5X0X_NAME;		//dev_name(&client->dev)
 	err = input_register_device(input_dev);
@@ -614,22 +1120,29 @@ printk("==enable Irq success=\n");
 	register_early_suspend(&ft5x0x_ts->early_suspend);
 #endif
 
-//	printk("==request_irq=\n");
+#ifdef CONFIG_SUPPORT_FTS_CTP_UPG
+    msleep(50);
+    //get some register information
+    uc_reg_value = ft5x0x_read_fw_ver();
+    printk("[FST] Firmware old version = 0x%x\n", uc_reg_value);
+
+
+    fts_ctpm_fw_upgrade_with_i_file();
+    mdelay(200);
+    uc_reg_value = ft5x0x_read_fw_ver();
+    printk("[FST] Firmware new version = 0x%x\n", uc_reg_value);
+#endif
+    uc_reg_value = ft5x0x_read_fw_ver();
+    printk("[FST] Firmware new version = 0x%x\n", uc_reg_value);
+
+
+//	printfocaltek("==request_irq=\n");
 	err = request_irq(client->irq, ft5x0x_ts_interrupt, IRQF_DISABLED, "ft5x0x_ts", ft5x0x_ts);
 //	err = request_irq(IRQ_EINT(6), ft5x0x_ts_interrupt, IRQF_TRIGGER_FALLING, "ft5x0x_ts", ft5x0x_ts);
 	if (err < 0) {
 		dev_err(&client->dev, "ft5x0x_probe: request irq failed\n");
 		goto exit_irq_request_failed;
 	}
-
-    msleep(50);
-    //get some register information
-    uc_reg_value = ft5x0x_read_fw_ver();
-    printk("[FST] Firmware version = 0x%x\n", uc_reg_value);
-
-
-//    fts_ctpm_fw_upgrade_with_i_file();
-
 
     
 //wake the CTPM
@@ -641,8 +1154,10 @@ printk("==enable Irq success=\n");
 //	ft5x0x_set_reg(0x88, 0x05); //5, 6,7,8
 //	ft5x0x_set_reg(0x80, 30);
 //	msleep(50);
-    	enable_irq(this_client->irq);
+//  enable_irq(this_client->irq);
    // enable_irq(IRQ_EINT(6));
+   
+    err = sysfs_create_group(&client->dev.kobj, &ft5x0x_attr_group);
 
 	printk("==probe over =\n");
     return 0;

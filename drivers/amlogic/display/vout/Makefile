@@ -10,6 +10,7 @@ obj-$(CONFIG_AM_LCD_MLVDS_OUTPUT)  += mlvds.o
 
 obj-$(CONFIG_AML_MLVDS_A_TM080XDH)  += lcd_mlvds/A_TM080XDH.o
 
+obj-$(CONFIG_AML_MLVDS_G_TM080XDH)  += lcd_mlvds/G_TM080XDH.o
 
 obj-$(CONFIG_AM_LCD_LVDS_OUTPUT)  += lvds.o
 

@@ -34,6 +34,7 @@ fw-shipped-$(CONFIG_SDIO_ATHEROS_6302_WIFI) += atheros_6302/otp.bin.z77 atheros_
 fw-shipped-$(CONFIG_SDIO_ATHEROS_6102_WIFI) += atheros_6102/calData_ar6102_15dBm.bin atheros_6102/athwlan.bin.z77 atheros_6102/data.patch.hw2_0.bin
 fw-shipped-$(CONFIG_SDIO_MARVELL_NH387_WIFI) += mrvl/sd8787_uapsta.bin mrvl/sd8787_uapsta_w1.bin
 fw-shipped-$(CONFIG_RALINK_3070_USB_WIFI) += ralink/3070/RT2870STA.dat
+fw-shipped-$(CONFIG_SDIO_NRX600) += nano_nrx600/x_mac.axf
 fw-shipped-$(CONFIG_3C359) += 3com/3C359.bin
 fw-shipped-$(CONFIG_ACENIC) += $(acenic-objs)
 fw-shipped-$(CONFIG_ADAPTEC_STARFIRE) += adaptec/starfire_rx.bin \

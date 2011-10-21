@@ -143,7 +143,7 @@ int card_register_card(struct memory_card *card)
 	dev_set_name(&card->dev, "%s:%s", card_hostname(card->host), card->name);
 
 	/*return device_add(&card->dev);*/
-	device_add(&card->dev);
+	ret = device_add(&card->dev);
 
 	complete(&card_devadd_comp);
 	return ret;
