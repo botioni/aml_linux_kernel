@@ -499,3 +499,9 @@ void sd_gpio_enable(SDIO_Pad_Type_t io_pad_type)
 	return;
 }
 
+/*set SDIO_MULT_CONFIG 0, SDIO CLK(SDIOA) temp be 50M, unwork on samsung NRX600 wifi*/
+void sd_gpio_enable_sdioa(void)
+{
+    CLEAR_CBUS_REG_MASK(CARD_PIN_MUX_8, (0x3F<<0));
+}
+

@@ -147,7 +147,7 @@ static int sd_request(struct memory_card *card, struct card_blk_request *brq)
 		brq->card_data.error = sd_mmc_write_data(sd_mmc_info, lba, byte_cnt, data_buf);
 	}
 
-	sd_gpio_enable(sd_mmc_info->io_pad_type);
+	//sd_gpio_enable(sd_mmc_info->io_pad_type);
 
 	sdio_card = card_find_card(host, CARD_SDIO);
 	if(sdio_card)

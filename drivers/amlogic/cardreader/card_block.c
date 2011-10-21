@@ -306,6 +306,9 @@ static int card_queue_thread(void *d)
 	add_wait_queue(&card_thread_wq, &wait);
 	do {
 		struct request *req = NULL;
+		/*wait sdio handle irq & xfer data*/
+                for(rewait=3;(!sdio_irq_handled)&&(rewait--);)
+                	schedule();
 
 		spin_lock_irq(q->queue_lock);
 		cq_node_current = card_queue_head;
@@ -314,9 +317,6 @@ static int card_queue_thread(void *d)
 			cq = cq_node_current->cq;
 			q = cq->queue;
 			if (cq_node_current->cq_flag) {
-				/*wait sdio handle irq & xfer data*/
-				for(rewait=3;(!sdio_irq_handled)&&(rewait--);)
-					schedule();
 				if (!blk_queue_plugged(q))
 					req = blk_fetch_request(q);
 				if (req)

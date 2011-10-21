@@ -4385,6 +4385,10 @@ int sd_mmc_init(SD_MMC_Card_Info_t *sd_mmc_info)
 	if (using_sdxc_controller)
 		return sdxc_mmc_init(sd_mmc_info);
 
+	/*clear sdio pinmux before close IF INT, nrx600 wakeup ok*/
+        //CLEAR_CBUS_REG_MASK(CARD_PIN_MUX_8, (0x3F<<0));
+        sd_gpio_enable_sdioa();
+
 	/*close IF INT before change to sd to avoid error IF INT*/
 	sdio_close_host_interrupt(SDIO_IF_INT);
 	WRITE_CBUS_REG(SDIO_CONFIG, 0);
@@ -7928,7 +7932,6 @@ static int sdxc_identify_verbose(SD_MMC_Card_Info_t *sd_mmc_info, int steps)
 			"SD",
 			"SDHC",
 			"MMC",
-			"EMMC",
 			"SDIO"
 		};
 		char *card_str = card_types[sd_mmc_info->card_type];
@@ -8001,6 +8004,68 @@ static unsigned int my_parse_num(char *buf, char **res_buf)
 	
 	return value;
 }
+
+/*sdio_select_card & sdio_read_rca & sdio_rw_direct used by nrx600, 
+    claim host in nano_download
+*/
+int sdio_select_card(struct memory_card *card)
+{
+    int ret;
+    SD_MMC_Card_Info_t *sd_mmc_info;
+    unsigned char response[MAX_RESPONSE_BYTES];
+    BUG_ON(!card);
+    sd_mmc_info = (SD_MMC_Card_Info_t *)card->card_info;
+
+    card->host->card_busy = card;
+    ret = sd_send_cmd_hw(sd_mmc_info, SD_MMC_SELECT_DESELECT_CARD,
+                sd_mmc_info->card_rca<<16, RESPONSE_R1B, response, 0,
+ 0, 1);
+    if(ret)
+        printk("[sdio_select_card] ret = %d\n", ret);
+    return ret;
+}
+EXPORT_SYMBOL(sdio_select_card);
+
+int sdio_read_rca(struct memory_card *card, unsigned* rca)
+{
+    int ret, slot_id;
+    unsigned char response[MAX_RESPONSE_BYTES];
+    SD_MMC_Card_Info_t *sd_mmc_info;
+    BUG_ON(!card);
+    sd_mmc_info = (SD_MMC_Card_Info_t *)card->card_info;
+
+    card->host->card_busy = card;
+    slot_id = 1;
+    ret = sd_send_cmd_hw(sd_mmc_info, SD_MMC_SEND_RELATIVE_ADDR, slot_id<<16,
+                RESPONSE_R6, response, 0, 0, 0);   ///* Send out a byte to read RCA*/
+    if(ret)
+        printk("[sdio_read_rca] ret = %d\n", ret);
+    sd_mmc_info->card_rca = ((SD_Response_R6_t *)response)->rca_high << 8 |
+                ((SD_Response_R6_t *)response)->rca_low;
+    *rca = sd_mmc_info->card_rca;
+    printk("*rca = %x\n", *rca);
+    return ret;
+}
+EXPORT_SYMBOL(sdio_read_rca);
+
+
+int sdio_rw_direct(struct memory_card  *card, unsigned int arg)
+{
+    int ret, slot_id;
+    unsigned char response[MAX_RESPONSE_BYTES];
+    SD_MMC_Card_Info_t *sd_mmc_info;
+    BUG_ON(!card);
+    sd_mmc_info = (SD_MMC_Card_Info_t *)card->card_info;
+
+    card->host->card_busy = card;
+    ret = sd_send_cmd_hw(sd_mmc_info, IO_RW_DIRECT, arg, RESPONSE_R5,
+                    response, 0, 0, 1);
+    if(ret)
+        printk("[sdio_rw_direct] ret = %d\n", ret);
+    return ret;
+}
+EXPORT_SYMBOL(sdio_rw_direct);
+
 
 static int sdxc_card_cmd(struct memory_card* card, unsigned int cmd)
 {

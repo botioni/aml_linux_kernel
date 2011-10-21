@@ -63,6 +63,7 @@ extern unsigned SD_WORK_MODE;
 
 extern void sd_sdio_enable(SDIO_Pad_Type_t io_pad_type);
 extern void sd_gpio_enable(SDIO_Pad_Type_t io_pad_type);
+extern void sd_gpio_enable_sdioa(void);
 
 #else				//SD_IO_EXTERNAL
 
