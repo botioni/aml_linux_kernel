@@ -833,7 +833,7 @@ static struct aml_i2c_platform aml_i2c_plat = {
     .wait_ack_interval  = 5,
     .wait_read_interval = 5,
     .wait_xfer_interval = 5,
-//    .master_no      = 0,
+    .master_no      = AML_I2C_MASTER_A,
     .use_pio            = 0,
     .master_i2c_speed   = AML_I2C_SPPED_300K,
 
@@ -850,7 +850,7 @@ static struct aml_i2c_platform aml_i2c_plat1 = {
     .wait_ack_interval  = 5,
     .wait_read_interval = 5,
     .wait_xfer_interval = 5,
-//    .master_no      = 1,
+    .master_no      = AML_I2C_MASTER_B,
     .use_pio            = 0,
     .master_i2c_speed   = AML_I2C_SPPED_300K,
 
@@ -867,7 +867,7 @@ static struct aml_i2c_platform aml_i2c_plat2 = {
     .wait_ack_interval  = 5,
     .wait_read_interval = 5,
     .wait_xfer_interval = 5,
-//    .master_no      = 2,
+    .master_no      = AML_I2C_MASTER_AO,
     .use_pio            = 0,
     .master_i2c_speed   = AML_I2C_SPPED_300K,
 
@@ -1071,11 +1071,10 @@ extern unsigned get_backlight_level(void);
 extern void set_backlight_level(unsigned level);
 
 struct aml_bl_platform_data aml_bl_platform =
-{
-    //.bl_init = aml_8726m_bl_init,
-    .power_on_bl = power_on_backlight,
-    .power_off_bl = power_off_backlight,
-    .get_bl_level = get_backlight_level,
+{    
+   // .power_on_bl = power_on_backlight,
+   // .power_off_bl = power_off_backlight,
+   // .get_bl_level = get_backlight_level,
     .set_bl_level = set_backlight_level,
 };
 
@@ -1446,7 +1445,7 @@ static __init void m1_init_machine(void)
 #endif /*CONFIG_AML_SUSPEND*/
 
 #if defined(CONFIG_AMLOGIC_BACKLIGHT)
-//	aml_8726m_power_off_bl();
+	power_off_backlight();
 #endif
     LED_PWM_REG0_init();
     power_hold();
