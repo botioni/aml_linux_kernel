@@ -718,6 +718,21 @@ struct aml_m3_platform_data {
 static struct aml_m3_platform_data aml_m3_pdata = {
     .is_hp_pluged = &aml_m3_is_hp_pluged,
 };
+
+void mute_spk(struct snd_soc_codec* codec, int flag)
+{
+#ifdef _AML_M3_HW_DEBUG_
+	printk("***Entered %s:%s\n", __FILE__,__func__);
+#endif
+    if(flag){
+		set_gpio_val(GPIOC_bank_bit0_15(4), GPIOC_bit_bit0_15(4), 0);	 // mute speak
+		set_gpio_mode(GPIOC_bank_bit0_15(4), GPIOC_bit_bit0_15(4), GPIO_OUTPUT_MODE);
+	}else{
+		set_gpio_val(GPIOC_bank_bit0_15(4), GPIOC_bit_bit0_15(4), 1);	 // unmute speak
+		set_gpio_mode(GPIOC_bank_bit0_15(4), GPIOC_bit_bit0_15(4), GPIO_OUTPUT_MODE);
+	}
+}
+
 #endif
 
 #ifdef CONFIG_GOODIX_GT819_CAPACITIVE_TOUCHSCREEN
