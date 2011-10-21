@@ -46,6 +46,9 @@
 #include <mach/clk_set.h>
 #include "board-m3-reff11.h"
 
+#ifdef CONFIG_AW_AXP
+#include "../../../drivers/amlogic/power/axp_power/axp-gpio.h"
+#endif
 
 #ifdef CONFIG_USB_ANDROID
 #include <linux/usb/android_composite.h>
@@ -63,6 +66,9 @@
 #include <linux/efuse.h>
 #endif
 
+#ifdef CONFIG_AW_AXP
+extern void axp_power_off(void);
+#endif
 
 #if defined(CONFIG_KEYPADS_AM)||defined(CONFIG_KEYPADS_AM_MODULE)
 static struct resource intput_resources[] = {
@@ -341,14 +347,20 @@ void extern_wifi_power(int is_power)
     CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_6, (1<<20));
     CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_3, (1<<5));
     CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_6, (1<<22));
-    CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO0_EN_N, (1<<6));
+    CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO0_EN_N, (1<<4));
     SET_CBUS_REG_MASK(PREG_PAD_GPIO0_O, (1<<4));
 
     //delay at least 100us
     udelay(500);
 
-    //VDD 1V2 high
-    CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO0_EN_N, (1<<4));
+    //SHUTDOWN high
+    CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO0_EN_N, (1<<6));
+    SET_CBUS_REG_MASK(PREG_PAD_GPIO0_O, (1<<6));
+
+    //delay at least 100us
+    udelay(500);
+
+    //VDD 1V2 low
     if(is_power)
             CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO0_O, (1<<4));
     else
@@ -359,15 +371,8 @@ void extern_wifi_power(int is_power)
 
 EXPORT_SYMBOL(extern_wifi_power);
 
-#define GPIO_WIFI_HOSTWAKE  ((GPIOX_bank_bit0_31(11)<<16) |GPIOX_bit_bit0_31(11))
-
 void sdio_extern_init(void)
 {
-    #if defined(CONFIG_BCM4329_HW_OOB) || defined(CONFIG_BCM4329_OOB_INTR_ONLY)
-    gpio_direction_input(GPIO_WIFI_HOSTWAKE);
-    gpio_enable_level_int(gpio_to_idx(GPIO_WIFI_HOSTWAKE), 0, 4);
-    gpio_enable_edge_int(gpio_to_idx(GPIO_WIFI_HOSTWAKE), 0, 4);
-    #endif
     extern_wifi_power(1);
 }
 
@@ -399,10 +404,10 @@ static struct aml_card_info  amlogic_card_info[] = {
         .card_ins_en_mask = 0,
         .card_ins_input_reg = 0,
         .card_ins_input_mask = 0,
-        .card_power_en_reg = EGPIO_GPIOD_ENABLE,
-        .card_power_en_mask = PREG_IO_23_MASK,
-        .card_power_output_reg = EGPIO_GPIOD_OUTPUT,
-        .card_power_output_mask = PREG_IO_23_MASK,
+        .card_power_en_reg = 0,
+        .card_power_en_mask = 0,
+        .card_power_output_reg = 0,
+        .card_power_output_mask = 0,
         .card_power_en_lev = 1,
         .card_wp_en_reg = 0,
         .card_wp_en_mask = 0,
@@ -411,39 +416,6 @@ static struct aml_card_info  amlogic_card_info[] = {
         .card_extern_init = sdio_extern_init,
     },
 };
-
-void extern_wifi_reset(int is_on)
-{
-    unsigned int val;
-    
-    /*output*/
-    val = readl(amlogic_card_info[1].card_power_en_reg);
-    val &= ~(amlogic_card_info[1].card_power_en_mask);
-    writel(val, amlogic_card_info[1].card_power_en_reg);
-        
-    if(is_on){
-        /*high*/
-        val = readl(amlogic_card_info[1].card_power_output_reg);
-        val |=(amlogic_card_info[1].card_power_output_mask);
-        writel(val, amlogic_card_info[1].card_power_output_reg);
-        printk("on val = %x\n", val);
-    }
-    else{
-        /*low*/
-        val = readl(amlogic_card_info[1].card_power_output_reg);
-        val &=~(amlogic_card_info[1].card_power_output_mask);
-        writel(val, amlogic_card_info[1].card_power_output_reg);
-        printk("off val = %x\n", val);
-    }
-
-    printk("ouput %x, bit %d, level %x, bit %d\n",
-            amlogic_card_info[1].card_power_en_reg,
-            amlogic_card_info[1].card_power_en_mask,
-            amlogic_card_info[1].card_power_output_reg,
-            amlogic_card_info[1].card_power_output_mask);
-    return;
-}
-EXPORT_SYMBOL(extern_wifi_reset);
 
 static struct aml_card_platform amlogic_card_platform = {
     .card_num = ARRAY_SIZE(amlogic_card_info),
@@ -532,6 +504,105 @@ static struct aml_m3_platform_data aml_m3_pdata = {
 };
 #endif
 
+#ifdef CONFIG_FOCALTECH_CAPACITIVE_TOUCHSCREEN
+#include <linux/ft5x06_ts.h>
+/* GPIOD_24 */
+//#define GPIO_FT_RST ((GPIOC_bank_bit0_15(3)<<16) | GPIOC_bit_bit0_15(3))
+#define GPIO_FT_RST  ((GPIOA_bank_bit0_27(1)<<16) |GPIOA_bit_bit0_27(1))
+#define GPIO_FT_IRQ  ((GPIOA_bank_bit0_27(16)<<16) |GPIOA_bit_bit0_27(16))
+//#define TS_IRQ_IDX     (GPIOD_IDX + 24)
+
+static int ts_init_irq(void);
+static int ts_get_irq_level(void);
+static void ts_power_on (void)
+{
+	gpio_direction_output(GPIO_FT_RST, 1);
+}
+
+static void ts_power_off (void)
+{
+	gpio_direction_output(GPIO_FT_RST, 0);
+}
+
+static int IS_AC_connected(void)
+{
+	//return (READ_CBUS_REG(ASSIST_HW_REV)&(1<<9))? 1:0;//GP_INPUT1
+	return 0;
+}
+
+static struct ts_platform_data ts_pdata = {
+    .mode = TS_MODE_INT_FALLING,
+    .irq = INT_GPIO_0,
+    .init_irq = ts_init_irq,
+    .get_irq_level = ts_get_irq_level,
+//    .info = {
+//        .xmin = 0,
+//        .xmax = 4095,
+//        .ymin = 0,
+//        .ymax = 4095,
+//        .zmin = 0,
+//        .zmax = 1,
+//        .wmin = 0,
+//        .wmax = 1,
+//        .swap_xy = 0,
+//        .x_pol = 1,
+//        .y_pol = 1
+//    },
+    .data = 0,
+    .power_on = 0, //ts_power_on,
+    .power_off = 0, //ts_power_off,
+    .Ac_is_connect= 0, //IS_AC_connected,
+    .screen_max_x=1280,
+    .screen_max_y=768,
+};
+static int ts_init_irq(void)
+{
+    int group = ts_pdata.irq - INT_GPIO_0;
+    int mode =  ts_pdata.mode;
+
+    if (mode < TS_MODE_TIMER_READ) {
+        gpio_direction_input(GPIO_FT_IRQ);
+        if (mode == TS_MODE_INT_FALLING) {
+            gpio_enable_edge_int(gpio_to_idx(GPIO_FT_IRQ), 1, group);
+        }
+        else if (mode == TS_MODE_INT_RISING) {
+            gpio_enable_edge_int(gpio_to_idx(GPIO_FT_IRQ), 0, group);
+        }
+        else if (mode == TS_MODE_INT_LOW) {
+            gpio_enable_level_int(gpio_to_idx(GPIO_FT_IRQ), 1, group);
+        }
+        else if (mode == TS_MODE_INT_HIGH) {
+            gpio_enable_level_int(gpio_to_idx(GPIO_FT_IRQ), 0, group);
+        }
+    }
+    return 0;
+}
+
+static int ts_get_irq_level(void)
+{
+    return gpio_get_value(GPIO_FT_IRQ);
+}
+#endif
+
+#ifdef CONFIG_ANDROID_PMEM
+static struct android_pmem_platform_data pmem_data =
+{
+    .name = "pmem",
+    .start = PMEM_START,
+    .size = PMEM_SIZE,
+    .no_allocator = 1,
+    .cached = 0,
+};
+
+static struct platform_device android_pmem_device =
+{
+    .name = "android_pmem",
+    .id = 0,
+    .dev = {
+        .platform_data = &pmem_data,
+    },
+};
+#endif
 
 #if defined(CONFIG_AML_RTC)
 static  struct platform_device aml_rtc_device = {
@@ -718,14 +789,17 @@ static void set_vccx2(int power_on)
 		for (i=0;i<MAX_GPIO;i++)
 			restore_gpio(i);
         printk(KERN_INFO "set_vccx2 power up\n");
-        set_gpio_mode(GPIOA_bank_bit0_27(26), GPIOA_bit_bit0_27(26), GPIO_OUTPUT_MODE);
-        set_gpio_val(GPIOA_bank_bit0_27(26), GPIOA_bit_bit0_27(26), 0);
+#ifdef CONFIG_AW_AXP
+        axp_gpio_set_io(2,1);
+        axp_gpio_set_value(2, 0);
+#endif
               
     }
     else{
         printk(KERN_INFO "set_vccx2 power down\n");        
-        set_gpio_mode(GPIOA_bank_bit0_27(26), GPIOA_bit_bit0_27(26), GPIO_OUTPUT_MODE);
-        set_gpio_val(GPIOA_bank_bit0_27(26), GPIOA_bit_bit0_27(26), 1);
+#ifdef CONFIG_AW_AXP         
+        axp_gpio_set_io(2,0);
+#endif
 		save_pinmux();
 		for (i=0;i<MAX_GPIO;i++)
 			save_gpio(i);
@@ -1269,13 +1343,29 @@ static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
 		.platform_data = (void *)&video_gc0308_data,
 	},
 #endif
+#ifdef CONFIG_FOCALTECH_CAPACITIVE_TOUCHSCREEN
+    {
+        I2C_BOARD_INFO("ft5x06", 0x38),
+        .platform_data = (void *)&ts_pdata,
+    },
+#endif
 
 };
 
+static struct i2c_board_info __initdata aml_i2c_bus_info_1[] = {
+#ifdef CONFIG_BOSCH_BMA222
+	{
+		I2C_BOARD_INFO("bma222",  0x08),
+		//.irq = INT_GPIO_1,
+	},
+#endif
+};
 static int __init aml_i2c_init(void)
 {
     i2c_register_board_info(0, aml_i2c_bus_info,
         ARRAY_SIZE(aml_i2c_bus_info));
+    i2c_register_board_info(1, aml_i2c_bus_info_1,
+        ARRAY_SIZE(aml_i2c_bus_info_1)); 
     return 0;
 }
 

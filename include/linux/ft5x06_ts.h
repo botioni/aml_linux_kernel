@@ -1,8 +1,7 @@
 #ifndef __LINUX_FT5X0X_TS_H__
 #define __LINUX_FT5X0X_TS_H__
 
-#define SCREEN_MAX_X    1024
-#define SCREEN_MAX_Y    600
+
 #define PRESS_MAX       255
 
 #define FT5X0X_NAME	"ft5x06"//"synaptics_i2c_rmi"//"synaptics-rmi-ts"// 
@@ -114,5 +113,8 @@ struct ts_platform_data {
     void *data;
     void (*power_on)(void);
     void (*power_off)(void); 
+	int (*Ac_is_connect)(void);
+    int screen_max_x;
+    int screen_max_y;
 };
 #endif
