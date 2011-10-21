@@ -64,7 +64,12 @@ void set_backlight_level(unsigned level);
 #define BL_CTL_PWM		1
 #define BL_CTL			BL_CTL_GPIO
 
-
+//#define PRINT_DEBUG_INFO
+#ifdef PRINT_DEBUG_INFO
+#define PRINT_INFO(...)		printk(__VA_ARGS__)
+#else
+#define PRINT_INFO(...)	
+#endif
 
 static lcdConfig_t lcd_config =
 {
@@ -155,7 +160,7 @@ static void t13_setup_gama_table(lcdConfig_t *pConf)
 #define BL_MIN_LEVEL	0	
 void power_on_backlight(void)
 {
-	printk(" w7 power_on_backlight \n");
+	PRINT_INFO(" w7 power_on_backlight \n");
 	//dump_stack();
 	msleep(100);
     set_gpio_val(GPIOD_bank_bit0_9(1), GPIOD_bit_bit0_9(1), 1);
@@ -166,7 +171,7 @@ void power_on_backlight(void)
 void power_off_backlight(void)
 {
  
-    printk(" w7 power_off_backlight \n");
+    PRINT_INFO(" w7 power_off_backlight \n");
     //BL_EN -> GPIOD_1: 0
     set_gpio_val(GPIOD_bank_bit0_9(1), GPIOD_bit_bit0_9(1), 0);
     set_gpio_mode(GPIOD_bank_bit0_9(1), GPIOD_bit_bit0_9(1), GPIO_OUTPUT_MODE);
@@ -178,7 +183,7 @@ void power_off_backlight(void)
 static unsigned bl_level;
 unsigned get_backlight_level(void)
 {
-	printk("\nlcd parameter: get backlight level: %d.\n", bl_level);
+	PRINT_INFO("\nlcd parameter: get backlight level: %d.\n", bl_level);
 	return bl_level;
 }
 
@@ -186,7 +191,7 @@ void set_backlight_level(unsigned level)
 {
 	level = level>BL_MAX_LEVEL ? BL_MAX_LEVEL:(level<BL_MIN_LEVEL ? BL_MIN_LEVEL:level);		
 		
-	printk("\n\nlcd parameter: set backlight level: %d.\n\n", level);
+	PRINT_INFO("\n\nlcd parameter: set backlight level: %d.\n\n", level);
 		
 #if (BL_CTL==BL_CTL_GPIO)
 /*
@@ -230,7 +235,7 @@ static void power_on_lcd(void)
 
 static void power_off_lcd(void)
 {
-     printk(" w7 power_off_lcd \n");
+     PRINT_INFO(" w7 power_off_lcd \n");
     //power_off_backlight();
     //msleep(50);	
     
@@ -277,7 +282,7 @@ extern void (*Power_on_bl)(void);
 //backlight will be powered on right here
 static void power_on_bl(void)
 {
-    printk(" w7 power_on_bl \n");
+    PRINT_INFO(" w7 power_on_bl \n");
 	msleep(50);
 	set_tcon_pinmux();
     power_on_backlight();
@@ -289,7 +294,7 @@ static void t13_power_on(void)
     video_dac_disable();
 	//set_tcon_pinmux();
 	power_on_lcd();
-    printk("\n\nt13_power_on...\n\n");
+    PRINT_INFO("\n\nt13_power_on...\n\n");
     Power_on_bl = power_on_bl;
 }
 
@@ -300,7 +305,7 @@ static void t13_power_off(void)
 
 static void t13_io_init(void)
 {
-    printk("\n\nT13 LCD Init.\n\n");
+    PRINT_INFO("\n\nT13 LCD Init.\n\n");
 
     //set_tcon_pinmux();
     power_on_lcd();
