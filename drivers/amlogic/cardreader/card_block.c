@@ -850,7 +850,7 @@ static int card_blk_resume(struct memory_card *card)
 		if(host->card_task)
 			wake_up_process(host->card_task);
 	}
-	if(host->sdio_task_state)
+	if((host->sdio_task_state)&&((card->card_type == CARD_SDIO)))
 	{
 		host->sdio_task_state = 0;
 		if(host->sdio_irq_thread)
