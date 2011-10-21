@@ -29,7 +29,7 @@
 #if HP_DET
 static struct timer_list timer;
 static int hp_detect_flag = 0;
-void mute_spk(struct snd_soc_codec* codec, int flag);
+extern void mute_spk(struct snd_soc_codec* codec, int flag);
 extern int aml_m3_is_hp_pluged(void);
 #endif
 
@@ -127,37 +127,6 @@ static struct aml_m3_work_t{
 }aml_m3_work;
 
 extern void latch_(struct snd_soc_codec* codec);
-
-void mute_spk(struct snd_soc_codec* codec, int flag)
-{
-#ifdef _AML_M3_HW_DEBUG_
-	printk("***Entered %s:%s\n", __FILE__,__func__);
-#endif
-//    int gpio_status = 0;
-    if(flag){
-//gpio_status = READ_CBUS_REG(PREG_PAD_GPIO2_EN_N);
-//printk("$$$$gpio_status1=%#x\n",gpio_status);
-		set_gpio_val(GPIOC_bank_bit0_15(4), GPIOC_bit_bit0_15(4), 0);	 // mute speak
-		set_gpio_mode(GPIOC_bank_bit0_15(4), GPIOC_bit_bit0_15(4), GPIO_OUTPUT_MODE);
-	}else{
-//gpio_status = READ_CBUS_REG(PREG_PAD_GPIO2_EN_N);
-//printk("$$$$gpio_status2=%#x\n",gpio_status);
-		set_gpio_val(GPIOC_bank_bit0_15(4), GPIOC_bit_bit0_15(4), 1);	 // unmute speak
-		set_gpio_mode(GPIOC_bank_bit0_15(4), GPIOC_bit_bit0_15(4), GPIO_OUTPUT_MODE);
-	}
-}
-/////
-/*
-struct aml_m3_platform_data {
-    int (*is_hp_pluged)(void);
-};
-
-
-static struct aml_m3_platform_data aml_m3_pdata = {
-    .is_hp_pluged = &aml_m3_is_hp_pluged,
-};
-*/
-///
 
 static void aml_m3_hp_detect_queue(struct work_struct* work)
 {
