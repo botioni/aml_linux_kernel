@@ -88,7 +88,7 @@ static lcdConfig_t lcd_config =
     .max_height = MAX_HEIGHT,
 	.video_on_pixel = VIDEO_ON_PIXEL,
     .video_on_line = VIDEO_ON_LINE,
-    .pll_ctrl = 0x1021e,
+    .pll_ctrl = 0x1021a,
     .div_ctrl = 0x18803,
 	.clk_ctrl = 0x1111,	//pll_sel,div_sel,vclk_sel,xd
 	
