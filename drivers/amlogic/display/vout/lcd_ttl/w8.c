@@ -55,6 +55,8 @@ void set_backlight_level(unsigned level);
 #define VIDEO_ON_PIXEL  48
 #define VIDEO_ON_LINE   22 //17
 
+#define BL_ON            1
+#define BL_OFF           0
 //Define backlight control method
 #define BL_CTL_GPIO		0
 #define BL_CTL_PWM		1
@@ -66,7 +68,6 @@ static lcdConfig_t lcd_config =
     .height     = LCD_HEIGHT,
     .max_width  = MAX_WIDTH,
     .max_height = MAX_HEIGHT,
-	.video_on_pixel = VIDEO_ON_PIXEL,
     .video_on_line = VIDEO_ON_LINE,
     .pll_ctrl = 0x1021e,
 	.div_ctrl = 0x18803,
@@ -80,7 +81,7 @@ static lcdConfig_t lcd_config =
     .sth1_hs_addr = 0,
     .sth1_he_addr = 0,
     .sth1_vs_addr = 0,
-    .sth1_ve_addr = 0,
+    .sth1_ve_addr = 0,    
     .oeh_hs_addr = 67,
     .oeh_he_addr = 67+LCD_WIDTH,
     .oeh_vs_addr = VIDEO_ON_LINE,
@@ -91,15 +92,15 @@ static lcdConfig_t lcd_config =
     .cpv1_hs_addr = 0,
     .cpv1_he_addr = 0,
     .cpv1_vs_addr = 0,
-    .cpv1_ve_addr = 0,
+    .cpv1_ve_addr = 0,    
     .stv1_hs_addr = 0,
     .stv1_he_addr = 0,
     .stv1_vs_addr = 0,
-    .stv1_ve_addr = 0,
+    .stv1_ve_addr = 0,    
     .oev1_hs_addr = 0,
     .oev1_he_addr = 0,
     .oev1_vs_addr = 0,
-    .oev1_ve_addr = 0,
+    .oev1_ve_addr = 0,    
     .inv_cnt_addr = (0<<LCD_INV_EN) | (0<<LCD_INV_CNT),
     .tcon_misc_sel_addr = (1<<LCD_STV1_SEL) | (1<<LCD_STV2_SEL),
     .dual_port_cntl_addr = (1<<LCD_TTL_SEL) | (1<<LCD_ANALOG_SEL_CPH3) | (1<<LCD_ANALOG_3PHI_CLK_SEL) | (0<<RGB_SWP) | (0<<BIT_SWP),
@@ -111,7 +112,7 @@ static lcdConfig_t lcd_config =
     .power_on=t13_power_on,
     .power_off=t13_power_off,
     .backlight_on = power_on_backlight,
-    .backlight_off = power_off_backlight,
+    .backlight_off = power_off_backlight,	
 	.get_bl_level = get_backlight_level,
     .set_bl_level = set_backlight_level,
 };
@@ -128,14 +129,14 @@ static void t13_setup_gama_table(lcdConfig_t *pConf)
 {
     int i;
     const unsigned short gamma_adjust[256] = {
-        0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,16,17,18,18,19,20,20,21,22,23,23,24,25,25,26,27,28,
-        28,29,30,30,31,32,33,33,34,35,36,37,37,38,38,39,40,41,42,42,43,44,45,45,46,47,48,49,49,50,51,52,
-        53,54,55,56,57,58,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72,73,74,74,75,76,77,77,78,79,79,80,
-        81,81,82,82,83,84,84,85,85,86,86,87,88,88,89,89,90,91,91,92,93,93,94,95,96,96,97,98,99,100,100,101,
-        102,102,103,104,105,105,106,107,108,108,109,110,110,111,112,113,113,114,115,115,116,117,118,119,119,120,121,122,123,124,125,126,
-        127,129,129,130,131,133,134,134,136,136,137,138,139,140,141,142,143,144,144,145,146,147,148,149,149,150,152,152,154,154,155,157,
-        157,158,159,160,161,162,163,164,165,166,167,168,169,170,170,171,172,173,174,175,176,177,178,179,181,182,184,185,187,189,191,192,
-        194,196,197,199,201,202,203,205,206,208,209,211,212,214,215,217,219,220,222,223,225,227,228,230,232,234,236,239,242,245,250,255
+        0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,
+        32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,
+        64,65,66,67,68,69,70,71,72,73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88,89,90,91,92,93,94,95,
+        96,97,98,99,100,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,123,124,125,126,127,
+        128,129,130,131,132,133,134,135,136,137,138,139,140,141,142,143,144,145,146,147,148,149,150,151,152,153,154,155,156,157,158,159,
+        160,161,162,163,164,165,166,167,168,169,170,171,172,173,174,175,176,177,178,179,180,181,182,183,184,185,186,187,188,189,190,191,
+        192,193,194,195,196,197,198,199,200,201,202,203,204,205,206,207,208,209,210,211,212,213,214,215,216,217,218,219,220,221,222,223,
+        224,225,226,227,228,229,230,231,232,233,234,235,236,237,238,239,240,241,242,243,244,245,246,247,248,249,250,251,252,253,254,255
     };
 
     for (i=0; i<256; i++) {
@@ -147,46 +148,27 @@ static void t13_setup_gama_table(lcdConfig_t *pConf)
 
 #define PWM_MAX			60000   //set pwm_freq=24MHz/PWM_MAX (Base on XTAL frequence: 24MHz, 0<PWM_MAX<65535)
 #define BL_MAX_LEVEL	255
-#define BL_MIN_LEVEL	50		
+#define BL_MIN_LEVEL	0	
 void power_on_backlight(void)
 {
-    msleep(20);
-	set_tcon_pinmux();
-	msleep(50);
-	
-	//BL_EN -> GPIOD_1: 1
-#if (BL_CTL==BL_CTL_GPIO)
-  	set_gpio_mode(GPIOD_bank_bit0_9(1), GPIOD_bit_bit0_9(1), GPIO_OUTPUT_MODE); 
-	set_gpio_val(GPIOD_bank_bit0_9(1), GPIOD_bit_bit0_9(1), 1);
-#elif (BL_CTL==BL_CTL_PWM)
-	int pwm_div=0;  //pwm_freq=24M/(pwm_div+1)/PWM_MAX	
-	WRITE_CBUS_REG_BITS(PWM_PWM_D, 0, 0, 16);  //pwm low
-    WRITE_CBUS_REG_BITS(PWM_PWM_D, PWM_MAX, 16, 16);  //pwm high
-	SET_CBUS_REG_MASK(PWM_MISC_REG_CD, ((1 << 23) | (pwm_div<<16) | (1<<1)));  //enable pwm clk & pwm output
-    SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<3));  //enable pwm pinmux
-#endif
+	printk(" w8 power_on_backlight \n");
+	//dump_stack();
 	msleep(100);
-	
-	printk("\nlcd parameter: power_on_backlight.\n");	
+    set_gpio_val(GPIOD_bank_bit0_9(1), GPIOD_bit_bit0_9(1), 1);
+    set_gpio_mode(GPIOD_bank_bit0_9(1), GPIOD_bit_bit0_9(1), GPIO_OUTPUT_MODE);
+	//msleep(100);
 }
 
 void power_off_backlight(void)
 {
-	//BL_EN -> GPIOD_1: 1
-#if (BL_CTL==BL_CTL_GPIO)
-    set_gpio_mode(GPIOD_bank_bit0_9(1), GPIOD_bit_bit0_9(1), GPIO_OUTPUT_MODE); 
-	set_gpio_val(GPIOD_bank_bit0_9(1), GPIOD_bit_bit0_9(1), 0);
-#elif (BL_CTL==BL_CTL_PWM)	  
-	WRITE_CBUS_REG_BITS(PWM_PWM_D, PWM_MAX, 0, 16);  //pwm low
-    WRITE_CBUS_REG_BITS(PWM_PWM_D, 0, 16, 16);  //pwm high
-    CLEAR_CBUS_REG_MASK(PWM_MISC_REG_CD, ((1 << 23) | (1<<1)));  //disable pwm clk & pwm output
-#endif		
-	msleep(20);
-	
-	clear_tcon_pinmux();
-	msleep(20);	
-	
-	printk("\nlcd parameter: power_off_backlight.\n");
+ 
+    printk(" w8 power_off_backlight \n");
+    //BL_EN -> GPIOD_1: 0
+    set_gpio_val(GPIOD_bank_bit0_9(1), GPIOD_bit_bit0_9(1), 0);
+    set_gpio_mode(GPIOD_bank_bit0_9(1), GPIOD_bit_bit0_9(1), GPIO_OUTPUT_MODE);
+	//msleep(50);
+	//clear_tcon_pinmux();
+	//msleep(50);
 }
 
 static unsigned bl_level;
@@ -198,7 +180,7 @@ unsigned get_backlight_level(void)
 
 void set_backlight_level(unsigned level)
 {
-	level = level>BL_MAX_LEVEL ? BL_MAX_LEVEL:(level<BL_MIN_LEVEL ? BL_MIN_LEVEL:level);
+	level = level>BL_MAX_LEVEL ? BL_MAX_LEVEL:(level<BL_MIN_LEVEL ? BL_MIN_LEVEL:level);		
 		
 	printk("\n\nlcd parameter: set backlight level: %d.\n\n", level);
 		
@@ -214,33 +196,35 @@ void set_backlight_level(unsigned level)
 }
 
 static void power_on_lcd(void)
-{	
-	//GPIOA_27 -> LCD_PWR_EN#: 0
-	set_gpio_val(GPIOA_bank_bit0_27(27), GPIOA_bit_bit0_27(27), 0); 
-	set_gpio_mode(GPIOA_bank_bit0_27(27), GPIOA_bit_bit0_27(27), GPIO_OUTPUT_MODE); 	
-	msleep(20);
-	
-	//GPIOC_2 -> VCCx3_EN#: 1 
+{
+    //GPIOA27 -> LCD_PWR_EN#: 0  lcd 3.3v
+    set_gpio_val(GPIOA_bank_bit0_27(27), GPIOA_bit_bit0_27(27), 0);
+    set_gpio_mode(GPIOA_bank_bit0_27(27), GPIOA_bit_bit0_27(27), GPIO_OUTPUT_MODE);
+    msleep(30);
+    
+    //GPIOC2 -> VCCx3_EN: 1
     set_gpio_val(GPIOC_bank_bit0_15(2), GPIOC_bit_bit0_15(2), 1);
-	set_gpio_mode(GPIOC_bank_bit0_15(2), GPIOC_bit_bit0_15(2), GPIO_OUTPUT_MODE);	
-	msleep(20); 
+    set_gpio_mode(GPIOC_bank_bit0_15(2), GPIOC_bit_bit0_15(2), GPIO_OUTPUT_MODE);
+    msleep(30);
+    
+
 }
 
 static void power_off_lcd(void)
 {
-    power_off_backlight();
-    msleep(50);	
-
-	//GPIOC_2 -> VCCx3_EN#: 0 
+     printk(" w8 power_off_lcd \n");
+    //power_off_backlight();
+    //msleep(50);	
+    
+    //GPIOC2 -> VCCx3_EN: 0
     set_gpio_val(GPIOC_bank_bit0_15(2), GPIOC_bit_bit0_15(2), 0);
-	set_gpio_mode(GPIOC_bank_bit0_15(2), GPIOC_bit_bit0_15(2), GPIO_OUTPUT_MODE); 	
-	msleep(20);
-	
-	//GPIOA_27 -> LCD_PWR_EN#: 1
-	set_gpio_val(GPIOA_bank_bit0_27(27), GPIOA_bit_bit0_27(27), 1); 
-	set_gpio_mode(GPIOA_bank_bit0_27(27), GPIOA_bit_bit0_27(27), GPIO_OUTPUT_MODE); 	
-	msleep(20);
-
+    set_gpio_mode(GPIOC_bank_bit0_15(2), GPIOC_bit_bit0_15(2), GPIO_OUTPUT_MODE);
+    msleep(30);
+    
+    //GPIOA27 -> LCD_PWR_EN#: 1  lcd 3.3v
+    set_gpio_val(GPIOA_bank_bit0_27(27), GPIOA_bit_bit0_27(27), 1);
+    set_gpio_mode(GPIOA_bank_bit0_27(27), GPIOA_bit_bit0_27(27), GPIO_OUTPUT_MODE);
+    msleep(10);
 }
 
 static void set_tcon_pinmux(void)
@@ -273,6 +257,18 @@ static void clear_tcon_pinmux(void)
 	printk("\nlcd parameter: disable lcd signal ports.\n");
 }
 
+#ifdef CONFIG_AM_LOGO
+extern void (*Power_on_bl)(void);
+//called when kernel logo is displayed.
+//backlight will be powered on right here
+static void power_on_bl(void)
+{
+    printk(" w7 power_on_bl \n");
+	msleep(50);
+	set_tcon_pinmux();
+    power_on_backlight();
+}
+#endif
 
 static void t13_power_on(void)
 {
@@ -280,13 +276,12 @@ static void t13_power_on(void)
 	//set_tcon_pinmux();
 	power_on_lcd();
     printk("\n\nt13_power_on...\n\n");
-    //power_on_backlight();
+    Power_on_bl = power_on_bl;
 }
 
 static void t13_power_off(void)
 {
-	power_off_backlight();
-    power_off_lcd();
+    	power_off_lcd();
 }
 
 static void t13_io_init(void)

@@ -70,6 +70,7 @@ static int int_count=0;
 static int err_count = 0;
 static int low_count=0;
 
+#if 0  //1:726B2   0:726A
 const sInitCapSReg asInitCapSReg[] = {  
 { PAGE_1,  CAPS_PCR,        0x0001},
 { PAGE_1,  CAPS_PSR,        0x0001},
@@ -139,6 +140,77 @@ const sInitCapSReg asInitCapSReg[] = {
 { PAGE_1,  CAPS_PCR,        0x3C06}
 };
 
+#else
+const sInitCapSReg asInitCapSReg[] = {
+{ PAGE_1,  CAPS_PCR     ,0x0001},  
+{ PAGE_1,  CAPS_PSR     ,0x0001},
+{ PAGE_1,  CAPS_PSR     ,0x0001},
+{ PAGE_1,  CAPS_PSR     ,0x0001},  
+{ PAGE_1,  CAPS_PMR      ,0x0000},
+{ PAGE_1,  CAPS_RTR      ,0x0000},
+{ PAGE_1,  CAPS_CTR      ,0x0000},
+{ PAGE_1,  CAPS_CRMR     ,0x0020},
+{ PAGE_1,  CAPS_PDR      ,0x1FFF},
+{ PAGE_1,  CAPS_DR       ,0x0050},
+{ PAGE_1,  CAPS_S0CR    ,0xC043},
+{ PAGE_1,  CAPS_S1CR    ,0xC023},
+{ PAGE_1,  CAPS_S2CR    ,0xC013},
+{ PAGE_1,  CAPS_S3CR    ,0xC079},
+{ PAGE_1,  CAPS_C1COR   ,0x68DA},
+{ PAGE_1,  CAPS_C2COR   ,0x68D8},
+{ PAGE_1,  CAPS_C3COR   ,0x68C0},
+{ PAGE_1,  CAPS_C4COR   ,0x68D2},
+{ PAGE_1,  CAPS_C7COR   ,0x68D3},
+{ PAGE_1,  CAPS_C9COR   ,0x68C0},
+{ PAGE_1,  CAPS_ICR0     ,0xFFBF},
+{ PAGE_1,  CAPS_ICR1     ,0x0FFB},
+{ PAGE_1,  CAPS_COER0    ,0xFFFF},
+{ PAGE_1,  CAPS_COER1    ,0x03FF},
+{ PAGE_1,  CAPS_CGCR     ,0x0001},
+{ PAGE_1,  CAPS_LEDBR   ,0x0000},
+{ PAGE_1,  CAPS_GPIODR   ,0x0000},
+{ PAGE_1,  CAPS_GPIOOR   ,0x0000},
+{ PAGE_1,  CAPS_GPIOMR   ,0x0000},
+{ PAGE_1,  CAPS_GPIOLR   ,0x009C},
+{ PAGE_1,  CAPS_GPIOER   ,0x0000},
+{ PAGE_1,  CAPS_LEDCMR0  ,0xffDD},//0x12DD
+{ PAGE_1,  CAPS_LEDCMR1  ,0xfDDf},//0x3DD0
+{ PAGE_1,  CAPS_LEDCMR2  ,0xDDDD},
+{ PAGE_1,  CAPS_LEDCMR3  ,0x0DDD},
+{ PAGE_1,  CAPS_LEDRPR   ,0x302A},
+{ PAGE_1,  CAPS_LEDBR    ,0x001F},
+{ PAGE_1,  CAPS_LEDCGCR  ,0x009C},
+{ PAGE_1,  CAPS_LEDPR0   ,0x2244},
+{ PAGE_1,  CAPS_LEDPR1   ,0x2442},
+{ PAGE_1,  CAPS_LEDPR2   ,0x4444},
+{ PAGE_1,  CAPS_LEDPR3   ,0x0444},
+{ PAGE_1,  CAPS_GPIOMSR  ,0x009C},
+{ PAGE_0,  CAPS_S0DLR   ,0x8000},
+{ PAGE_0,  CAPS_S0OHCR  ,0x0600},
+{ PAGE_0,  CAPS_S0OLCR  ,0x7000},
+{ PAGE_0,  CAPS_S0SR    ,0xCC88},
+{ PAGE_0,  CAPS_S1DLR   ,0x8000},
+{ PAGE_0,  CAPS_S1OHCR  ,0x0600},
+{ PAGE_0,  CAPS_S1OLCR  ,0x7000},
+{ PAGE_0,  CAPS_S1SR    ,0xCC88},
+{ PAGE_0,  CAPS_S2DLR   ,0x8000},
+{ PAGE_0,  CAPS_S2OHCR  ,0x0600},
+{ PAGE_0,  CAPS_S2OLCR  ,0x7000},
+{ PAGE_0,  CAPS_S2SR    ,0xCC88},
+{ PAGE_0,  CAPS_S3DLR   ,0x8000},
+{ PAGE_0,  CAPS_S3OHCR  ,0x0600},
+{ PAGE_0,  CAPS_S3OLCR  ,0x7000},
+{ PAGE_0,  CAPS_S3SR    ,0xCC88},
+{ PAGE_0,  CAPS_SXCHAIER ,0x0000},
+{ PAGE_0,  CAPS_SXCHRIER ,0x0000},
+{ PAGE_0,  CAPS_SXCLAIER ,0x0000},
+{ PAGE_0,  CAPS_SXCLRIER ,0x0000},
+{ PAGE_1,  CAPS_GPIONPCR     ,0x1FFF},
+{ PAGE_1,  CAPS_CFER     ,0x4000},
+{ PAGE_1,  CAPS_PCR      ,0x3C06}
+};
+
+#endif
 /*****************************************
   initial the IT7230
 ***************************************/
