@@ -717,7 +717,89 @@ aml_plat_cam_data_t video_gc0308_data = {
 
 
 #endif
+#if defined(CONFIG_VIDEO_AMLOGIC_CAPTURE_OV2655)
+static int ov2655_probe(void)
+{
+    SET_CBUS_REG_MASK(PWM_MISC_REG_CD, (1 << 0)|(1 << 15)|(1 << 4));
+    udelay(1000);
+    WRITE_MPEG_REG_BITS(PERIPHS_PIN_MUX_2,1,2,1);;
+	WRITE_CBUS_REG_BITS(PWM_PWM_C,(0x9),0,16);  //low
+	WRITE_CBUS_REG_BITS(PWM_PWM_C,(0x9),16,16);  //hi  
+	udelay(1000);
+	// set camera VDD enable
+	set_gpio_val(GPIOA_bank_bit0_27(23), GPIOA_bit_bit0_27(23), 1);    // set camera VDD enable
+    set_gpio_mode(GPIOA_bank_bit0_27(23), GPIOA_bit_bit0_27(23), GPIO_OUTPUT_MODE);
+    msleep(5);
+    // set camera reset enable
+    set_gpio_val(GPIOY_bank_bit0_22(10), GPIOY_bit_bit0_22(10), 1);    // set camera reset enable
+    set_gpio_mode(GPIOY_bank_bit0_22(10), GPIOY_bit_bit0_22(10), GPIO_OUTPUT_MODE);
+    msleep(5);
+    
+    // set camera power enable
+    set_gpio_val(GPIOA_bank_bit0_27(24), GPIOA_bit_bit0_27(24), 0);    // set camera power enable
+    set_gpio_mode(GPIOA_bank_bit0_27(24), GPIOA_bit_bit0_27(24), GPIO_OUTPUT_MODE);
+    msleep(5);
 
+}
+
+static int ov2655_init(void)
+{
+    SET_CBUS_REG_MASK(PWM_MISC_REG_CD, (1 << 0)|(1 << 15)|(3 << 4));
+    udelay(1000);
+    WRITE_MPEG_REG_BITS(PERIPHS_PIN_MUX_2,1,2,1);;
+	WRITE_CBUS_REG_BITS(PWM_PWM_C,(0x6),0,16);  //low
+	WRITE_CBUS_REG_BITS(PWM_PWM_C,(0x6),16,16);  //hi  
+	udelay(1000);
+	// set camera VDD enable
+	set_gpio_val(GPIOA_bank_bit0_27(23), GPIOA_bit_bit0_27(23), 1);    // set camera VDD enable
+    set_gpio_mode(GPIOA_bank_bit0_27(23), GPIOA_bit_bit0_27(23), GPIO_OUTPUT_MODE);
+    msleep(5);
+    // set camera reset disable
+    set_gpio_val(GPIOY_bank_bit0_22(10), GPIOY_bit_bit0_22(10), 1);    // set camera power disable
+    set_gpio_mode(GPIOY_bank_bit0_22(10), GPIOY_bit_bit0_22(10), GPIO_OUTPUT_MODE);
+    msleep(5);
+    
+    // set camera power enable
+    set_gpio_val(GPIOA_bank_bit0_27(24), GPIOA_bit_bit0_27(24), 0);    // set camera power enable
+    set_gpio_mode(GPIOA_bank_bit0_27(24), GPIOA_bit_bit0_27(24), GPIO_OUTPUT_MODE);
+    msleep(5);
+}
+static int ov2655_v4l2_init(void)
+{
+	ov2655_init();
+}
+
+static int ov2655_v4l2_uninit(void)
+{
+	printk( "amlogic camera driver: ov2655_v4l2_uninit. \n");
+    set_gpio_val(GPIOA_bank_bit0_27(24), GPIOA_bit_bit0_27(24), 1);    // set camera power enable
+    set_gpio_mode(GPIOA_bank_bit0_27(24), GPIOA_bit_bit0_27(24), GPIO_OUTPUT_MODE);
+	msleep(5);
+	SET_CBUS_REG_MASK(PWM_MISC_REG_CD, (0 << 0)|(0 << 2));
+}
+
+static void ov2655_v4l2_early_suspend(void)
+{
+    /// set camera VDD disable
+	set_gpio_val(GPIOA_bank_bit0_27(23), GPIOA_bit_bit0_27(23), 0);    // set camera VDD enable
+    set_gpio_mode(GPIOA_bank_bit0_27(23), GPIOA_bit_bit0_27(23), GPIO_OUTPUT_MODE);
+}
+
+static void ov2655_v4l2_late_resume(void)
+{
+	ov2655_probe();	
+}
+
+aml_plat_cam_data_t video_ov2655_data = {
+	.name="video-ov2655",
+	.video_nr=1,
+	.device_init=ov2655_v4l2_init,
+	.device_uninit=ov2655_v4l2_uninit,
+	.early_suspend=ov2655_v4l2_early_suspend,
+	.late_resume=ov2655_v4l2_late_resume,
+	.device_probe=ov2655_probe,
+};
+#endif
 #if defined(CONFIG_SUSPEND)
 
 typedef struct {
@@ -1355,6 +1437,12 @@ static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
         /*gc0308 i2c address is 0x42/0x43*/
 		I2C_BOARD_INFO("gc0308_i2c",  0x42 >> 1),
 		.platform_data = (void *)&video_gc0308_data,
+	},
+#endif
+#ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE_OV2655
+	{
+		I2C_BOARD_INFO("ov2655_i2c", 0x60 >> 1),
+		.platform_data = (void *)&video_ov2655_data,
 	},
 #endif
 #ifdef CONFIG_FOCALTECH_CAPACITIVE_TOUCHSCREEN
