@@ -354,5 +354,15 @@ config BCM4329_OOB_INTR_ONLY
 	default n
 	---help---
 	   Use out of band interrupt for all interrupts(including SDIO interrupts).
+
+config SDIO_NRX600
+        tristate "NANO NRX600 wireless card support"
+        depends on SD_MMC
+	select SDIO_HARD_IRQ
+        select WIRELESS_EXT
+        select WEXT_PRIV
+        select SDIO_HARD_IRQ
+        ---help---
+           SUMSANG NRX600
 	      
 endmenu
