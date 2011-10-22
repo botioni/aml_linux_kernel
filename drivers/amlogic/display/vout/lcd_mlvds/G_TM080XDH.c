@@ -313,25 +313,31 @@ static void lvds_port_disable(void)
 	WRITE_MPEG_REG(0x202c, READ_MPEG_REG(0x202c) & ~(pinmux<<12));  //clear tcon pinmux
 	WRITE_MPEG_REG(0x2012, READ_MPEG_REG(0x2012) | (pinmux<<2));  //set tcon pin as input
 }
-
+#ifdef CONFIG_AM_LOGO
+extern void (*Power_on_bl)(void);
+//called when kernel logo is displayed.
+//backlight will be powered on right here
+static void power_on_bl(void)
+{
+    power_on_backlight();
+}
+#endif
 static void t13_power_on(void)
 {
     video_dac_disable();	
 	power_on_lcd();	
-	power_on_backlight();	//disable when required power sequence
-    printk("\n\nt13_power_on...\n\n");
+   // PRINT_INFO("\n\nt13_power_on...\n\n");
+    Power_on_bl = power_on_bl;
 }
 static void t13_power_off(void)
-{    
-	power_off_backlight();
-	power_off_lcd();
+{
+    	power_off_lcd();
 }
 
 static void t13_io_init(void)
 {
     printk("\n\nT13 LCD Init.\n\n");    
     power_on_lcd();	
-	power_on_backlight();	//disable when required power sequence
 }
 
 static struct platform_device lcd_dev = {
@@ -343,7 +349,6 @@ static struct platform_device lcd_dev = {
 
 static int __init t13_init(void)
 {
-    power_off_backlight();
     t13_setup_gama_table(&lcd_config);
     t13_io_init();
 
