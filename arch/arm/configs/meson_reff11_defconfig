@@ -757,7 +757,7 @@ CONFIG_SDIO_NRX600=y
 #
 # Amlogic BT Device Support
 #
-CONFIG_BT_DEVICE=y
+# CONFIG_BT_DEVICE is not set
 
 #
 # Media devices

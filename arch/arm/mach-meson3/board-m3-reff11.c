@@ -639,11 +639,11 @@ int gc0308_init(void)
 
 	
     // set camera power disable
-    set_gpio_val(GPIOY_bank_bit0_22(10), GPIOY_bit_bit0_22(10), 0);    // set camera power disable
+    set_gpio_val(GPIOY_bank_bit0_22(10), GPIOY_bit_bit0_22(10), 0);    // reset IO
     set_gpio_mode(GPIOY_bank_bit0_22(10), GPIOY_bit_bit0_22(10), GPIO_OUTPUT_MODE);
     msleep(20);
 
-    set_gpio_val(GPIOY_bank_bit0_22(10), GPIOY_bit_bit0_22(10), 1);    // set camera power disable
+    set_gpio_val(GPIOY_bank_bit0_22(10), GPIOY_bit_bit0_22(10), 1);    // reset IO
     set_gpio_mode(GPIOY_bank_bit0_22(10), GPIOY_bit_bit0_22(10), GPIO_OUTPUT_MODE);
     msleep(20);
     
@@ -726,12 +726,8 @@ static int ov2655_probe(void)
 	WRITE_CBUS_REG_BITS(PWM_PWM_C,(0x9),0,16);  //low
 	WRITE_CBUS_REG_BITS(PWM_PWM_C,(0x9),16,16);  //hi  
 	udelay(1000);
-	// set camera VDD enable
-	set_gpio_val(GPIOA_bank_bit0_27(23), GPIOA_bit_bit0_27(23), 1);    // set camera VDD enable
-    set_gpio_mode(GPIOA_bank_bit0_27(23), GPIOA_bit_bit0_27(23), GPIO_OUTPUT_MODE);
-    msleep(5);
     // set camera reset enable
-    set_gpio_val(GPIOY_bank_bit0_22(10), GPIOY_bit_bit0_22(10), 1);    // set camera reset enable
+    set_gpio_val(GPIOY_bank_bit0_22(10), GPIOY_bit_bit0_22(10), 1);    // reset IO
     set_gpio_mode(GPIOY_bank_bit0_22(10), GPIOY_bit_bit0_22(10), GPIO_OUTPUT_MODE);
     msleep(5);
     
@@ -750,12 +746,8 @@ static int ov2655_init(void)
 	WRITE_CBUS_REG_BITS(PWM_PWM_C,(0x6),0,16);  //low
 	WRITE_CBUS_REG_BITS(PWM_PWM_C,(0x6),16,16);  //hi  
 	udelay(1000);
-	// set camera VDD enable
-	set_gpio_val(GPIOA_bank_bit0_27(23), GPIOA_bit_bit0_27(23), 1);    // set camera VDD enable
-    set_gpio_mode(GPIOA_bank_bit0_27(23), GPIOA_bit_bit0_27(23), GPIO_OUTPUT_MODE);
-    msleep(5);
     // set camera reset disable
-    set_gpio_val(GPIOY_bank_bit0_22(10), GPIOY_bit_bit0_22(10), 1);    // set camera power disable
+    set_gpio_val(GPIOY_bank_bit0_22(10), GPIOY_bit_bit0_22(10), 1);    // reset IO
     set_gpio_mode(GPIOY_bank_bit0_22(10), GPIOY_bit_bit0_22(10), GPIO_OUTPUT_MODE);
     msleep(5);
     
@@ -772,7 +764,7 @@ static int ov2655_v4l2_init(void)
 static int ov2655_v4l2_uninit(void)
 {
 	printk( "amlogic camera driver: ov2655_v4l2_uninit. \n");
-    set_gpio_val(GPIOA_bank_bit0_27(24), GPIOA_bit_bit0_27(24), 1);    // set camera power enable
+    set_gpio_val(GPIOA_bank_bit0_27(24), GPIOA_bit_bit0_27(24), 1);    // set camera power disable
     set_gpio_mode(GPIOA_bank_bit0_27(24), GPIOA_bit_bit0_27(24), GPIO_OUTPUT_MODE);
 	msleep(5);
 	SET_CBUS_REG_MASK(PWM_MISC_REG_CD, (0 << 0)|(0 << 2));
@@ -781,8 +773,8 @@ static int ov2655_v4l2_uninit(void)
 static void ov2655_v4l2_early_suspend(void)
 {
     /// set camera VDD disable
-	set_gpio_val(GPIOA_bank_bit0_27(23), GPIOA_bit_bit0_27(23), 0);    // set camera VDD enable
-    set_gpio_mode(GPIOA_bank_bit0_27(23), GPIOA_bit_bit0_27(23), GPIO_OUTPUT_MODE);
+    set_gpio_val(GPIOA_bank_bit0_27(24), GPIOA_bit_bit0_27(24), 1);    // set camera power disable
+    set_gpio_mode(GPIOA_bank_bit0_27(24), GPIOA_bit_bit0_27(24), GPIO_OUTPUT_MODE);
 }
 
 static void ov2655_v4l2_late_resume(void)
@@ -1279,72 +1271,6 @@ static struct platform_device ppmgr_device = {
 };
 #endif
 
-#ifdef CONFIG_BT_DEVICE
-#include <linux/bt-device.h>
-
-static struct platform_device bt_device = {
-	.name             = "bt-dev",
-	.id               = -1,
-};
-
-static void bt_device_init(void)
-{
-	/* BT_RST_N */
-	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0, (1<<16));
-	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_1, (1<<5));
-	
-	/* UART_RTS_N(BT) */
-	SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_4, (1<<10));
-		
-	/* UART_CTS_N(BT) */ 
-	SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_4, (1<<11));
-	
-	/* UART_TX(BT) */
-	SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_4, (1<<13));
-	
-	/* UART_RX(BT) */
-	SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_4, (1<<12));
-
-    /* BT_WAKE */
-    CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO4_EN_N, (1 << 10));
-    SET_CBUS_REG_MASK(PREG_PAD_GPIO4_O, (1 << 10));
-}
-
-static void bt_device_on(void)
-{
-	/* BT_RST_N */
-	CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO2_EN_N, (1<<6));
-	CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO2_O, (1<<6));	
-	msleep(200);	
-	SET_CBUS_REG_MASK(PREG_PAD_GPIO2_O, (1<<6));
-}
-
-static void bt_device_off(void)
-{
-	/* BT_RST_N */
-	CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO2_EN_N, (1<<6));
-	CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO2_O, (1<<6));	
-	msleep(200);	
-}
-
-static void bt_device_suspend(void)
-{
-    CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO4_O, (1 << 10));  
-}
-
-static void bt_device_resume(void)
-{    
-    SET_CBUS_REG_MASK(PREG_PAD_GPIO4_O, (1 << 10));
-}
-
-struct bt_dev_data bt_dev = {
-    .bt_dev_init    = bt_device_init,
-    .bt_dev_on      = bt_device_on,
-    .bt_dev_off     = bt_device_off,
-    .bt_dev_suspend = bt_device_suspend,
-    .bt_dev_resume  = bt_device_resume,
-};
-#endif
 
 static struct platform_device __initdata *platform_devs[] = {
 #if defined(CONFIG_FB_AM)
@@ -1417,9 +1343,6 @@ static struct platform_device __initdata *platform_devs[] = {
     #ifdef CONFIG_USB_ANDROID_MASS_STORAGE
         &usb_mass_storage_device,
     #endif
-#endif
-#ifdef CONFIG_BT_DEVICE  
-    &bt_device,
 #endif
 
 #ifdef CONFIG_EFUSE
