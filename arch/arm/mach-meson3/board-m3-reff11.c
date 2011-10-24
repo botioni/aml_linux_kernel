@@ -1413,12 +1413,7 @@ static void __init device_pinmux_init(void )
 #endif
     set_audio_pinmux(AUDIO_OUT_TEST_N);
    // set_audio_pinmux(AUDIO_IN_JTAG);
-#if 1
-    //set clk for wifi
-    WRITE_CBUS_REG(HHI_GEN_CLK_CNTL,(READ_CBUS_REG(HHI_GEN_CLK_CNTL)&(~(0x7f<<0)))|((0<<0)|(1<<8)|(7<<9)) );
-    CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO2_EN_N, (1<<15));    
-    SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_3, (1<<22));
-#endif
+
 }
 
 
