@@ -53,7 +53,7 @@ void set_backlight_level(unsigned level);
 #define LCD_HEIGHT      768
 #define MAX_WIDTH       1440
 #define MAX_HEIGHT      810//790
-#define VIDEO_ON_PIXEL  64//80//64
+#define VIDEO_ON_PIXEL  80//80//64
 #define VIDEO_ON_LINE   17//22//17 // Display Start Line
 
 //Define miniLVDS tcon channel
@@ -220,11 +220,12 @@ void power_off_backlight(void)
 	WRITE_MPEG_REG(PWM_MISC_REG_CD, READ_MPEG_REG(PWM_MISC_REG_CD) & ~(1<<1));  //disable pwm
 #endif	
 	
+	printk("\n\npower_off_backlight.\n\n");
+	
 	msleep(20);
 	lvds_port_disable();
 	msleep(20);
 	
-	printk("\n\npower_off_backlight.\n\n");
 }
 
 static unsigned bl_level;
@@ -255,6 +256,8 @@ static void power_on_lcd(void)
     msleep(10);
 	
 	//VCCx3_EN: GPIOD_2
+	WRITE_MPEG_REG(0x202c, READ_MPEG_REG(0x202c) & ~(1 << 22));
+	WRITE_MPEG_REG(0x202d, READ_MPEG_REG(0x202d) & ~(1 << 19));
 	WRITE_MPEG_REG(0x2013, READ_MPEG_REG(0x2013) | (1 << 18));    
     WRITE_MPEG_REG(0x2012, READ_MPEG_REG(0x2012) & ~(1 << 18));
 	msleep(10);
@@ -278,7 +281,7 @@ static void lvds_port_enable(void)
 	unsigned pinmux = 0;
 	printk("\n\nminiLVDS port enable.\n");
 	pinmux = lcd_config.mlvds_config->set_mlvds_pinmux;		
-	WRITE_MPEG_REG(0x202c, READ_MPEG_REG(0x202c) | (pinmux<<12) | (pinmux<<22));  //set tcon pinmux	
+	WRITE_MPEG_REG(0x202c, READ_MPEG_REG(0x202c) | (pinmux<<12) );  //set tcon pinmux	
 	
 	WRITE_MPEG_REG(0x2013, READ_MPEG_REG(0x2013) | (1<<2));
 	WRITE_MPEG_REG(0x2012, READ_MPEG_REG(0x2012) & ~(1<<2));  //set sth high
@@ -303,7 +306,7 @@ static void t13_power_on(void)
 {
     video_dac_disable();	
 	power_on_lcd();	
-	power_on_backlight();	//disable when required power sequence
+	//power_on_backlight();	//disable when required power sequence
     printk("\n\nt13_power_on...\n\n");
 }
 static void t13_power_off(void)
@@ -316,7 +319,7 @@ static void t13_io_init(void)
 {
     printk("\n\nT13 LCD Init.\n\n");    
     power_on_lcd();	
-	power_on_backlight();	//disable when required power sequence
+	//power_on_backlight();	//disable when required power sequence
 }
 
 static struct platform_device lcd_dev = {
