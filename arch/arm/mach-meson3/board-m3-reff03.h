@@ -4,7 +4,7 @@
 #include <asm/page.h>
 
 #define PHYS_MEM_START		(0x80000000)
-#define PHYS_MEM_SIZE		(256*SZ_1M)
+#define PHYS_MEM_SIZE		(512*SZ_1M)
 #define PHYS_MEM_END		(PHYS_MEM_START + PHYS_MEM_SIZE -1 )
 
 /******** Reserved memory setting ************************/
@@ -80,8 +80,20 @@
 #define DI_ADDR_START		U_ALIGN(VM_ADDR_END)
 #define DI_ADDR_END			(DI_ADDR_START+DI_MEM_SIZE-1)
 
+#ifdef CONFIG_POST_PROCESS_MANAGER
+#ifdef CONFIG_POST_PROCESS_MANAGER_PPSCALER
+#define PPMGR_MEM_SIZE               800 * 640*18
+#else
+#define PPMGR_MEM_SIZE               800 * 640*15
+#endif
+#else
+#define PPMGR_MEM_SIZE         0
+#endif /* CONFIG_POST_PROCESS_MANAGER */
+
+#define PPMGR_ADDR_START       U_ALIGN(DI_ADDR_END)
+#define PPMGR_ADDR_END         (PPMGR_ADDR_START+PPMGR_MEM_SIZE-1)
 #define STREAMBUF_MEM_SIZE   		(SZ_1M*7)
-#define STREAMBUF_ADDR_START		U_ALIGN(DI_ADDR_END)
+#define STREAMBUF_ADDR_START   U_ALIGN(PPMGR_ADDR_END)
 #define STREAMBUF_ADDR_END		(STREAMBUF_ADDR_START+STREAMBUF_MEM_SIZE-1)
 
 #define RESERVED_MEM_END	(STREAMBUF_ADDR_END)
