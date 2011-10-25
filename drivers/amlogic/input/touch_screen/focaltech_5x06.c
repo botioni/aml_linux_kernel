@@ -736,28 +736,39 @@ static int ft5x0x_read_data(void)
 		case 5:
 			event->x5 = (s16)(buf[0x1b] & 0x0F)<<8 | (s16)buf[0x1c];
 			event->y5 = (s16)(buf[0x1d] & 0x0F)<<8 | (s16)buf[0x1e];
-			event->x5 = FOCALTECH_SCREEN_MAX_X - event->x5;
-			event->y5 = FOCALTECH_SCREEN_MAX_Y - event->y5;
+//			event->x5 = FOCALTECH_SCREEN_MAX_X - event->x5;
+//			event->y5 = FOCALTECH_SCREEN_MAX_Y - event->y5;
+			if ( event->y5 == 0 )	event->y5 = 1;
+			if ( event->x5 == 0 )event->x5 = 1;
+
 		case 4:
 			event->x4 = (s16)(buf[0x15] & 0x0F)<<8 | (s16)buf[0x16];
 			event->y4 = (s16)(buf[0x17] & 0x0F)<<8 | (s16)buf[0x18];
-			event->x4 = FOCALTECH_SCREEN_MAX_X - event->x4;
-			event->y4 = FOCALTECH_SCREEN_MAX_Y - event->y4;
+//			event->x4 = FOCALTECH_SCREEN_MAX_X - event->x4;
+//			event->y4 = FOCALTECH_SCREEN_MAX_Y - event->y4;
+			if ( event->y4 == 0 )	event->y4 = 1;
+			if ( event->x4 == 0 )event->x4 = 1;
 		case 3:
 			event->x3 = (s16)(buf[0x0f] & 0x0F)<<8 | (s16)buf[0x10];
 			event->y3 = (s16)(buf[0x11] & 0x0F)<<8 | (s16)buf[0x12];
-			event->x3 = FOCALTECH_SCREEN_MAX_X - event->x3;
-			event->y3 = FOCALTECH_SCREEN_MAX_Y - event->y3;
+//			event->x3 = FOCALTECH_SCREEN_MAX_X - event->x3;
+//			event->y3 = FOCALTECH_SCREEN_MAX_Y - event->y3;
+			if ( event->y3 == 0 )	event->y3 = 1;
+			if ( event->x3 == 0 )event->x3 = 1;
 		case 2:
 			event->x2 = (s16)(buf[9] & 0x0F)<<8 | (s16)buf[10];
 			event->y2 = (s16)(buf[11] & 0x0F)<<8 | (s16)buf[12];
 			event->x2 = FOCALTECH_SCREEN_MAX_X - event->x2;
 			event->y2 = FOCALTECH_SCREEN_MAX_Y - event->y2;
+			if ( event->y2 == 0 )	event->y2 = 1;
+			if ( event->x2 == 0 )event->x2 = 1;
 		case 1:
 			event->x1 = (s16)(buf[3] & 0x0F)<<8 | (s16)buf[4];
 			event->y1 = (s16)(buf[5] & 0x0F)<<8 | (s16)buf[6];
-			event->x1 = FOCALTECH_SCREEN_MAX_X - event->x1;
-			event->y1 = FOCALTECH_SCREEN_MAX_Y - event->y1;
+//			event->x1 = FOCALTECH_SCREEN_MAX_X - event->x1;
+//			event->y1 = FOCALTECH_SCREEN_MAX_Y - event->y1;
+			if ( event->y1 == 0 )	event->y1 = 1;
+			if ( event->x1 == 0 )event->x1 = 1;
             break;
 		default:
 		    return -1;
@@ -830,15 +841,15 @@ static void ft5x0x_report_value(void)
 			printk("===x2 = %d,y2 = %d ====\n",event->x2,event->y2);
 		case 1:
 #ifdef CONFIG_TOUCH_PANEL_KEY			     
-      if(event->x1 < 0)  {
+       if(event->x1 > 1280) {
       		if (data->keypad == 0) {
-						if((event->y1>0)&&(event->y1<20)) {
+						if((event->y1>1260)&&(event->y1<1280)) {
 							data->keypad = KEY_HOME;
 	          }	
-						else if((event->y1>40)&&(event->y1<80)) {
+						else if((event->y1>1200)&&(event->y1<1240)) {
 							data->keypad = KEY_MENU;
 		        }
-						else  if((event->y1>100)&&(event->y1<140)) {
+						else  if((event->y1>1140)&&(event->y1<1180)) {
 							data->keypad = KEY_BACK;
 	          }
 	          else {

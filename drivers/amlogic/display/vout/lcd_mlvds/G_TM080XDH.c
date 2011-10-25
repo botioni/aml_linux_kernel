@@ -116,7 +116,7 @@ static mlvds_config_t lcd_mlvds_config =
                          |(0 << 7) ),
     .mlvds_tcon_config = &lcd_mlvds_tcon_config[0],
     .lvds_phy_control = &lcd_lvds_phy_control,
-    .scan_function = 0,
+    .scan_function = 1,
     .phase_select = 1,
     .TL080_phase =7,
 };
