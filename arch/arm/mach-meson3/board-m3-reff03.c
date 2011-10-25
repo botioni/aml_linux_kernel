@@ -32,7 +32,7 @@
 #include <mach/lm.h>
 #include <asm/memory.h>
 #include <asm/mach/map.h>
-#include <mach/nand_m3.h>
+//#include <mach/nand_m3.h>
 #include <linux/i2c.h>
 #include <linux/i2c-aml.h>
 #include <mach/power_gate.h>
@@ -664,6 +664,20 @@ int aml_m3_is_AMP_MUTE(void)
 	  CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0,(1<<14));
     set_gpio_mode(GPIOC_bank_bit0_15(4), GPIOC_bit_bit0_15(4), GPIO_OUTPUT_MODE);
     set_gpio_val(GPIOC_bank_bit0_15(4), GPIOC_bit_bit0_15(4), 1);  // GPIOC_4: H:umute L:mute
+}
+
+void mute_spk(struct snd_soc_codec* codec, int flag)
+{
+//#ifdef _AML_M3_HW_DEBUG_
+//	printk("***Entered %s:%s\n", __FILE__,__func__);
+//#endif
+//    if(flag){
+//		set_gpio_val(GPIOC_bank_bit0_15(4), GPIOC_bit_bit0_15(4), 0);	 // mute speak
+//		set_gpio_mode(GPIOC_bank_bit0_15(4), GPIOC_bit_bit0_15(4), GPIO_OUTPUT_MODE);
+//	}else{
+//		set_gpio_val(GPIOC_bank_bit0_15(4), GPIOC_bit_bit0_15(4), 1);	 // unmute speak
+//		set_gpio_mode(GPIOC_bank_bit0_15(4), GPIOC_bit_bit0_15(4), GPIO_OUTPUT_MODE);
+//	}
 }
 
 int aml_m3_is_hp_pluged(void)

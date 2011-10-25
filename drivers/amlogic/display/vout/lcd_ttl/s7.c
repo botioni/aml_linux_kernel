@@ -150,6 +150,8 @@ static void t13_setup_gama_table(lcdConfig_t *pConf)
 #define BL_MIN_LEVEL	25		
 void power_on_backlight(void)
 {
+    msleep(20);
+	set_tcon_pinmux();
 	msleep(50);
 
 	//LCD_BL_5V -> GPIOA_9: 1
@@ -172,6 +174,7 @@ void power_on_backlight(void)
 	SET_CBUS_REG_MASK(PWM_MISC_REG_CD, ((1 << 23) | (pwm_div<<16) | (1<<1)));  //enable pwm clk & pwm output
     SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<3));  //enable pwm pinmux
 #endif
+	msleep(100);
 	
 	printk("\nlcd parameter: power_on_backlight.\n");	
 }
@@ -196,6 +199,10 @@ void power_off_backlight(void)
 	clear_mio_mux(0, (1<<6));
 	set_gpio_mode(GPIOA_bank_bit0_27(9),GPIOA_bit_bit0_27(9),GPIO_OUTPUT_MODE);
 	set_gpio_val(GPIOA_bank_bit0_27(9),GPIOA_bit_bit0_27(9), 0);
+	msleep(20);
+	
+	clear_tcon_pinmux();
+	msleep(20);	
 	
 	printk("\nlcd parameter: power_off_backlight.\n");
 }
@@ -244,6 +251,8 @@ static void power_on_lcd(void)
 
 static void power_off_lcd(void)
 {
+    power_off_backlight();
+    msleep(50);	
 
 	//GPIOA_27 -> EN_VDD_BL#: 0  LCD_+10V,VGH_+16V,VGL_-7V	
   	clear_mio_mux(1,((1<<2) | (1<<3) | (1<<4) | (1<<11)));
@@ -292,18 +301,7 @@ static void clear_tcon_pinmux(void)
 	
 	printk("\nlcd parameter: disable lcd signal ports.\n");
 }
-#ifdef CONFIG_AM_LOGO
-extern void (*Power_on_bl)(void);
-//called when kernel logo is displayed.
-//backlight will be powered on right here
-static void power_on_bl(void)
-{
-    printk(" w7 power_on_bl \n");
-	msleep(50);
-	set_tcon_pinmux();
-    power_on_backlight();
-}
-#endif
+
 
 static void t13_power_on(void)
 {
@@ -316,6 +314,7 @@ static void t13_power_on(void)
 
 static void t13_power_off(void)
 {
+	power_off_backlight();
     	power_off_lcd();
 }
 
