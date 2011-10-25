@@ -687,12 +687,14 @@ static void ft5x0x_ts_release(void)
 {
 	struct ft5x0x_ts_data *data = i2c_get_clientdata(this_client);
 #ifdef CONFIG_FT5X0X_MULTITOUCH	
-	input_report_abs(data->input_dev, ABS_MT_TOUCH_MAJOR, 0);
   if (data->keypad > 0) {
   	input_report_key(data->input_dev, data->keypad, 0);
   	input_sync(data->input_dev);
-		printk("key(%d) up\n", data->keypad);
+		ft5x0x_dbg("key(%d) up\n", data->keypad);
   }
+  else {
+		input_report_abs(data->input_dev, ABS_MT_TOUCH_MAJOR, 0);
+	}
   data->keypad = 0;
 #else
 	input_report_abs(data->input_dev, ABS_PRESSURE, 0);
@@ -841,15 +843,15 @@ static void ft5x0x_report_value(void)
 			printk("===x2 = %d,y2 = %d ====\n",event->x2,event->y2);
 		case 1:
 #ifdef CONFIG_TOUCH_PANEL_KEY			     
-       if(event->x1 > 1280) {
+      if(event->x1 > 1280)  {
       		if (data->keypad == 0) {
-						if((event->y1>1260)&&(event->y1<1280)) {
+						if((event->y1>748)&&(event->y1<768)) {
 							data->keypad = KEY_HOME;
 	          }	
-						else if((event->y1>1200)&&(event->y1<1240)) {
+						else if((event->y1>688)&&(event->y1<728)) {
 							data->keypad = KEY_MENU;
 		        }
-						else  if((event->y1>1140)&&(event->y1<1180)) {
+						else  if((event->y1>628)&&(event->y1<668)) {
 							data->keypad = KEY_BACK;
 	          }
 	          else {
@@ -858,7 +860,7 @@ static void ft5x0x_report_value(void)
 	          if (data->keypad > 0) {
 	          	input_report_key(data->input_dev, data->keypad, 1);
 		          input_sync(data->input_dev);
-		          printk("key(%d) down\n", data->keypad);
+		          ft5x0x_dbg("key(%d) down\n", data->keypad);
 	        	}
 	        }
       }
@@ -930,10 +932,6 @@ function	:
 ***********************************************************************************************/
 static irqreturn_t ft5x0x_ts_interrupt(int irq, void *dev_id)
 {
-	static int irq_count = 0;
-	printk("irq count = %d\n", irq_count++);
-	if (irq_count == 1)
-		return IRQ_HANDLED;
 	struct ft5x0x_ts_data *ft5x0x_ts = dev_id;
     	disable_irq_nosync(this_client->irq);	
 	printfocaltek("enter irq(%d, %d)\n",irq, this_client->irq);
@@ -1021,12 +1019,12 @@ ft5x0x_ts_probe(struct i2c_client *client, const struct i2c_device_id *id)
 	unsigned char uc_reg_value; 
 	struct ts_platform_data *pdata = client->dev.platform_data;
 		focaltechPdata2 = client->dev.platform_data;
-//		if(pdata&&pdata->power_off&&pdata->power_on){
-//		pdata->power_off();
-//		mdelay(50);
-//		pdata->power_on();
-//		mdelay(200);
-//	}
+		if(pdata&&pdata->power_off&&pdata->power_on){
+		pdata->power_off();
+		mdelay(50);
+		pdata->power_on();
+		mdelay(200);
+	}
 
 	FOCALTECH_SCREEN_MAX_X=pdata->screen_max_x;
 	FOCALTECH_SCREEN_MAX_Y=pdata->screen_max_y;

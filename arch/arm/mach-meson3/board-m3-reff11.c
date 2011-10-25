@@ -564,9 +564,9 @@ static struct ts_platform_data ts_pdata = {
 //        .y_pol = 1
 //    },
     .data = 0,
-    .power_on = 0, //ts_power_on,
-    .power_off = 0, //ts_power_off,
-    .Ac_is_connect= 0, //IS_AC_connected,
+    .power_on = ts_power_on,
+    .power_off = ts_power_off,
+    .Ac_is_connect= IS_AC_connected,
     .screen_max_x=1280,
     .screen_max_y=768,
 };
