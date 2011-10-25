@@ -760,8 +760,8 @@ static int ft5x0x_read_data(void)
 		case 2:
 			event->x2 = (s16)(buf[9] & 0x0F)<<8 | (s16)buf[10];
 			event->y2 = (s16)(buf[11] & 0x0F)<<8 | (s16)buf[12];
-			event->x2 = FOCALTECH_SCREEN_MAX_X - event->x2;
-			event->y2 = FOCALTECH_SCREEN_MAX_Y - event->y2;
+			//event->x2 = FOCALTECH_SCREEN_MAX_X - event->x2;
+			//event->y2 = FOCALTECH_SCREEN_MAX_Y - event->y2;
 			if ( event->y2 == 0 )	event->y2 = 1;
 			if ( event->x2 == 0 )event->x2 = 1;
 		case 1:
