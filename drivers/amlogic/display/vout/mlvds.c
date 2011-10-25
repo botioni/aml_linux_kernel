@@ -667,6 +667,7 @@ static void set_mlvds_control(lcdConfig_t *pConf)
 	int test_bit_num = pConf->mlvds_config->test_bit_num;
     int test_pair_num = pConf->mlvds_config->test_pair_num;
     int test_dual_gate = pConf->mlvds_config->test_dual_gate;
+	int scan_function = pConf->mlvds_config->scan_function;     //0:U->D,L->R  //1:D->U,R->L
     int mlvds_insert_start;
     unsigned int reset_offset;
     unsigned int reset_length;
@@ -721,7 +722,7 @@ static void set_mlvds_control(lcdConfig_t *pConf)
              ((test_pair_num == 6) << mLVDS_pair_num) |
              (0 << mLVDS_msb_first) |
              (0 << mLVDS_PORT_SWAP) |
-             (0 << mLVDS_MLSB_SWAP) |
+             ((scan_function=1 ? 1:0) << mLVDS_MLSB_SWAP) |
              (0 << mLVDS_PN_SWAP) |
              (1 << mLVDS_en);
     WRITE_MPEG_REG(MLVDS_CONTROL,  (data32 & 0xffff));
@@ -735,9 +736,9 @@ static void set_mlvds_control(lcdConfig_t *pConf)
                    ( 0<<6 ) | // dual port
                    ( 0<<7 ) | // use tcon control
                    ( 1<<8 ) | // 0:10bits, 1:8bits, 2:6bits, 3:4bits.
-                   ( 0<<10 ) | // 0:R, 1:G, 2:B, 3:0
-                   ( 1<<12 ) |
-                   ( 2<<14 ));
+                   ( (scan_function=1 ? 2:0)<<10 ) |  //r_select // 0:R, 1:G, 2:B, 3:0
+                   ( 1<<12 ) |                        //g_select
+                   ( (scan_function=1 ? 0:2)<<14 ));  //b_select
    
     WRITE_MPEG_REG(L_POL_CNTL_ADDR,  (1 << DCLK_SEL) |  
        //(0x1 << HS_POL) |
@@ -823,7 +824,7 @@ static void init_lvds_phy(lcdConfig_t *pConf)
     WRITE_MPEG_REG(LVDS_PHY_CNTL7,0xcccc);
     WRITE_MPEG_REG(LVDS_PHY_CNTL8,0xcccc);	
 	
-	//WRITE_MPEG_REG(LVDS_PHY_CNTL4, READ_MPEG_REG(LVDS_PHY_CNTL4) & ~(0x7f<<0));  //disable LVDS phy port. wait for power on sequence.
+	WRITE_MPEG_REG(LVDS_PHY_CNTL4, READ_MPEG_REG(LVDS_PHY_CNTL4) & ~(0x7f<<0));  //disable LVDS phy port. wait for power on sequence.
 }
  
 static inline void _init_tvenc(lcdConfig_t *pConf)
