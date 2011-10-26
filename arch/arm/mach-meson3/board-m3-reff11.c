@@ -60,6 +60,7 @@
 
 #ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE
 #include <media/amlogic/aml_camera.h>
+#include <linux/camera/amlogic_camera_common.h>
 #endif
 
 #ifdef CONFIG_EFUSE
@@ -672,16 +673,6 @@ static struct platform_device vm_device =
 };
 #endif /* AMLOGIC_VIDEOIN_MANAGER */
 
-#ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE
-static void __init camera_power_on_init(void)
-{
-    udelay(1000);
-    SET_CBUS_REG_MASK(HHI_ETH_CLK_CNTL,0x30f);// 24M XTAL
-    SET_CBUS_REG_MASK(HHI_DEMOD_PLL_CNTL,0x232);// 24M XTAL
-
-    //eth_set_pinmux(ETH_BANK0_GPIOC3_C12,ETH_CLK_OUT_GPIOC12_REG3_1, 1);		
-}
-#endif
 #if defined(CONFIG_VIDEO_AMLOGIC_CAPTURE_GC0308)
 static int gc0308_v4l2_init(void)
 {
@@ -706,47 +697,44 @@ static void gc0308_v4l2_late_resume(void)
     set_gpio_mode(GPIOA_bank_bit0_27(25), GPIOA_bit_bit0_27(25), GPIO_OUTPUT_MODE);
 }
 
+static struct aml_camera_i2c_fig1_s gc0308_custom_init_script[] = {
+	{0x14,0x11}, 
+	{0xff,0xff},
+};	
+	
 aml_plat_cam_data_t video_gc0308_data = {
 	.name="video-gc0308",
-	.video_nr=0,//1,
+	.video_nr=1,//1,
 	.device_init= gc0308_v4l2_init,
 	.device_uninit=gc0308_v4l2_uninit,
 	.early_suspend = gc0308_v4l2_early_suspend,
 	.late_resume = gc0308_v4l2_late_resume,
+	.custom_init_script = gc0308_custom_init_script,
 };
 
 
 #endif
 #if defined(CONFIG_VIDEO_AMLOGIC_CAPTURE_OV2655)
-static int ov2655_probe(void)
-{
-    SET_CBUS_REG_MASK(PWM_MISC_REG_CD, (1 << 0)|(1 << 15)|(1 << 4));
-    udelay(1000);
-    WRITE_MPEG_REG_BITS(PERIPHS_PIN_MUX_2,1,2,1);;
-	WRITE_CBUS_REG_BITS(PWM_PWM_C,(0x9),0,16);  //low
-	WRITE_CBUS_REG_BITS(PWM_PWM_C,(0x9),16,16);  //hi  
-	udelay(1000);
-    // set camera reset enable
-    set_gpio_val(GPIOY_bank_bit0_22(10), GPIOY_bit_bit0_22(10), 1);    // reset IO
-    set_gpio_mode(GPIOY_bank_bit0_22(10), GPIOY_bit_bit0_22(10), GPIO_OUTPUT_MODE);
-    msleep(5);
-    
-    // set camera power enable
-    set_gpio_val(GPIOA_bank_bit0_27(24), GPIOA_bit_bit0_27(24), 0);    // set camera power enable
-    set_gpio_mode(GPIOA_bank_bit0_27(24), GPIOA_bit_bit0_27(24), GPIO_OUTPUT_MODE);
-    msleep(5);
-
-}
 
 static int ov2655_init(void)
 {
-    SET_CBUS_REG_MASK(PWM_MISC_REG_CD, (1 << 0)|(1 << 15)|(3 << 4));
+    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_1, (1<<29)); 
+    SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<2));
+
+    unsigned pwm_cnt = get_ddr_pll_clk()/48000000 - 1;
+    pwm_cnt &= 0xffff;
+    WRITE_CBUS_REG(PWM_PWM_C, (pwm_cnt<<16) | pwm_cnt);
+    SET_CBUS_REG_MASK(PWM_MISC_REG_CD, (1<<15)|(0<<8)|(1<<4)|(1<<0)); //select ddr pll for source, and clk divide 
     udelay(1000);
-    WRITE_MPEG_REG_BITS(PERIPHS_PIN_MUX_2,1,2,1);;
-	WRITE_CBUS_REG_BITS(PWM_PWM_C,(0x6),0,16);  //low
-	WRITE_CBUS_REG_BITS(PWM_PWM_C,(0x6),16,16);  //hi  
-	udelay(1000);
+    // set camera power enable
+    set_gpio_val(GPIOA_bank_bit0_27(25), GPIOA_bit_bit0_27(25), 1);    // set 0308 camera power disable
+    set_gpio_mode(GPIOA_bank_bit0_27(25), GPIOA_bit_bit0_27(25), GPIO_OUTPUT_MODE);
+    msleep(5);
+    
     // set camera reset disable
+    set_gpio_val(GPIOY_bank_bit0_22(10), GPIOY_bit_bit0_22(10), 0);    // reset IO
+    set_gpio_mode(GPIOY_bank_bit0_22(10), GPIOY_bit_bit0_22(10), GPIO_OUTPUT_MODE);
+    msleep(5);
     set_gpio_val(GPIOY_bank_bit0_22(10), GPIOY_bit_bit0_22(10), 1);    // reset IO
     set_gpio_mode(GPIOY_bank_bit0_22(10), GPIOY_bit_bit0_22(10), GPIO_OUTPUT_MODE);
     msleep(5);
@@ -755,10 +743,8 @@ static int ov2655_init(void)
     set_gpio_val(GPIOA_bank_bit0_27(24), GPIOA_bit_bit0_27(24), 0);    // set camera power enable
     set_gpio_mode(GPIOA_bank_bit0_27(24), GPIOA_bit_bit0_27(24), GPIO_OUTPUT_MODE);
     msleep(5);
-}
-static int ov2655_v4l2_init(void)
-{
-	ov2655_init();
+    
+
 }
 
 static int ov2655_v4l2_uninit(void)
@@ -766,8 +752,6 @@ static int ov2655_v4l2_uninit(void)
 	printk( "amlogic camera driver: ov2655_v4l2_uninit. \n");
     set_gpio_val(GPIOA_bank_bit0_27(24), GPIOA_bit_bit0_27(24), 1);    // set camera power disable
     set_gpio_mode(GPIOA_bank_bit0_27(24), GPIOA_bit_bit0_27(24), GPIO_OUTPUT_MODE);
-	msleep(5);
-	SET_CBUS_REG_MASK(PWM_MISC_REG_CD, (0 << 0)|(0 << 2));
 }
 
 static void ov2655_v4l2_early_suspend(void)
@@ -779,17 +763,17 @@ static void ov2655_v4l2_early_suspend(void)
 
 static void ov2655_v4l2_late_resume(void)
 {
-	ov2655_probe();	
+	ov2655_init();	
 }
 
 aml_plat_cam_data_t video_ov2655_data = {
 	.name="video-ov2655",
-	.video_nr=1,
-	.device_init=ov2655_v4l2_init,
+	.video_nr=0,
+	.device_init=ov2655_init,
 	.device_uninit=ov2655_v4l2_uninit,
 	.early_suspend=ov2655_v4l2_early_suspend,
 	.late_resume=ov2655_v4l2_late_resume,
-	.device_probe=ov2655_probe,
+	.device_probe=ov2655_init,
 };
 #endif
 #if defined(CONFIG_SUSPEND)
@@ -1472,9 +1456,6 @@ static __init void m1_init_machine(void)
     power_hold();
 //    pm_power_off = power_off;		//Elvis fool
     device_pinmux_init();
-#ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE
-    camera_power_on_init();
-#endif
     platform_add_devices(platform_devs, ARRAY_SIZE(platform_devs));
 
 #ifdef CONFIG_USB_DWC_OTG_HCD
