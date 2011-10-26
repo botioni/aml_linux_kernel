@@ -654,6 +654,39 @@ static struct aml_card_info  amlogic_card_info[] = {
     },
 };
 
+void extern_wifi_reset(int is_on)
+{
+    unsigned int val;
+    
+    /*output*/
+    val = readl(amlogic_card_info[1].card_power_en_reg);
+    val &= ~(amlogic_card_info[1].card_power_en_mask);
+    writel(val, amlogic_card_info[1].card_power_en_reg);
+        
+    if(is_on){
+        /*high*/
+        val = readl(amlogic_card_info[1].card_power_output_reg);
+        val |=(amlogic_card_info[1].card_power_output_mask);
+        writel(val, amlogic_card_info[1].card_power_output_reg);
+        printk("on val = %x\n", val);
+    }
+    else{
+        /*low*/
+        val = readl(amlogic_card_info[1].card_power_output_reg);
+        val &=~(amlogic_card_info[1].card_power_output_mask);
+        writel(val, amlogic_card_info[1].card_power_output_reg);
+        printk("off val = %x\n", val);
+    }
+
+    printk("ouput %x, bit %d, level %x, bit %d\n",
+            amlogic_card_info[1].card_power_en_reg,
+            amlogic_card_info[1].card_power_en_mask,
+            amlogic_card_info[1].card_power_output_reg,
+            amlogic_card_info[1].card_power_output_mask);
+    return;
+}
+EXPORT_SYMBOL(extern_wifi_reset);
+
 static struct aml_card_platform amlogic_card_platform = {
     .card_num = ARRAY_SIZE(amlogic_card_info),
     .card_info = amlogic_card_info,
