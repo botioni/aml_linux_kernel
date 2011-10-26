@@ -294,6 +294,12 @@ static int sis92xx_resume(struct early_suspend *handler)
  	int ret = -1;
 	if(handler && handler->param) {
 		struct i2c_client *client = (struct i2c_client *)handler->param;
+		struct ts_platform_data *pdata = client->dev.platform_data;
+		if(pdata&&pdata->power_off&&pdata->power_on){
+			pdata->power_off();
+			mdelay(50);
+			pdata->power_on();
+		}
 		ret = capts_resume(&client->dev);
 	}
 	return ret;
