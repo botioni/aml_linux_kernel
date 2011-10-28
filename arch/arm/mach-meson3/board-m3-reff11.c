@@ -1432,7 +1432,7 @@ static __init void m1_init_machine(void)
 #ifdef CONFIG_USB_DWC_OTG_HCD
     set_usb_phy_clk(USB_PHY_CLOCK_SEL_XTAL_DIV2);
     lm_device_register(&usb_ld_a);
-    lm_device_register(&usb_ld_b);
+   // lm_device_register(&usb_ld_b);
 #endif
     disable_unused_model();
 }
