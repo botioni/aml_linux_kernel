@@ -47,17 +47,7 @@
 #include "board-m3-reff08.h"
 
 
-#ifdef CONFIG_SENSORS_MMC328X
-#include <linux/mmc328x.h>
-#endif
 
-#ifdef CONFIG_SIX_AXIS_SENSOR_MPU3050
-#ifdef CONFIG_MPU_PRE_V340
-#include <linux/mpu.h>
-#else
-#include <linux/mpu_new/mpu.h>
-#endif
-#endif
 
 #ifdef CONFIG_AMLOGIC_PM
 #include <linux/power_supply.h>
@@ -76,9 +66,7 @@
 #include <media/amlogic/aml_camera.h>
 #endif
 
-#ifdef CONFIG_BQ27x00_BATTERY
-#include <linux/bq27x00_battery.h>
-#endif
+#
 
 #ifdef CONFIG_EFUSE
 #include <linux/efuse.h>
@@ -200,56 +188,6 @@ static struct platform_device input_device_key = {
         .platform_data = &key_input_pdata,
     }
 };
-#endif
-
-
-#ifdef CONFIG_SIX_AXIS_SENSOR_MPU3050
-#define GPIO_mpu3050_PENIRQ ((GPIOA_bank_bit0_27(14)<<16) | GPIOA_bit_bit0_27(14))
-#define MPU3050_IRQ  INT_GPIO_1
-static int mpu3050_init_irq(void)
-{
-    /* set input mode */
-    gpio_direction_input(GPIO_mpu3050_PENIRQ);
-    /* map GPIO_mpu3050_PENIRQ map to gpio interrupt, and triggered by rising edge(=0) */
-    gpio_enable_edge_int(gpio_to_idx(GPIO_mpu3050_PENIRQ), 0, MPU3050_IRQ-INT_GPIO_0);
-    return 0;
-}
-
-static struct mpu3050_platform_data mpu3050_data = {
-    .int_config = 0x10,
-    .orientation = {0,-1,0,-1,0,0,0,0,-1},
-    .level_shifter = 0,
-    .accel = {
-                .get_slave_descr = get_accel_slave_descr,
-                .adapt_num = 1, // The i2c bus to which the mpu device is
-                // connected
-                .bus = EXT_SLAVE_BUS_SECONDARY, //The secondary I2C of MPU
-                .address = 0x1c,
-                .orientation = {0,1,0,1,0,0,0,0,-1},
-            },
-    #ifdef CONFIG_MPU_SENSORS_MMC314X
-    .compass = {
-                .get_slave_descr = mmc314x_get_slave_descr,
-                .adapt_num = 0, // The i2c bus to which the compass device is. 
-                // It can be difference with mpu
-                // connected
-                .bus = EXT_SLAVE_BUS_PRIMARY,
-                .address = 0x30,
-                .orientation = { -1, 0, 0,  0, 1, 0,  0, 0, -1 },
-           } 
-#elif defined (CONFIG_MPU_SENSORS_MMC328X) 
-    .compass = {
-                .get_slave_descr = mmc328x_get_slave_descr,
-                .adapt_num = 1, // The i2c bus to which the compass device is. 
-                // It can be difference with mpu
-                // connected
-                .bus = EXT_SLAVE_BUS_PRIMARY,
-                .address = 0x30,
-                .orientation = /*{ 0, 1, 0,  1, 0, 0,  0, 0, -1 }*/ {0,1,0,1,0,0,0,0,-1}
-           }
-#endif
-
-    };
 #endif
 
 
@@ -393,40 +331,9 @@ static struct platform_device vdin_device = {
 #endif
 
 #ifdef CONFIG_TVIN_BT656IN
-//add pin mux info for bt656 input
-#if 0
-static struct resource bt656in_resources[] = {
-    [0] = {
-        .start =  VDIN_ADDR_START,      //pbufAddr
-        .end   = VDIN_ADDR_END,             //pbufAddr + size
-        .flags = IORESOURCE_MEM,
-    },
-    [1] = {     //bt656/camera/bt601 input resource pin mux setting
-        .start =  0x3000,       //mask--mux gpioD 15 to bt656 clk;  mux gpioD 16:23 to be bt656 dt_in
-        .end   = PERIPHS_PIN_MUX_5 + 0x3000,
-        .flags = IORESOURCE_MEM,
-    },
-
-    [2] = {         //camera/bt601 input resource pin mux setting
-        .start =  0x1c000,      //mask--mux gpioD 12 to bt601 FIQ; mux gpioD 13 to bt601HS; mux gpioD 14 to bt601 VS;
-        .end   = PERIPHS_PIN_MUX_5 + 0x1c000,
-        .flags = IORESOURCE_MEM,
-    },
-
-    [3] = {         //bt601 input resource pin mux setting
-        .start =  0x800,        //mask--mux gpioD 24 to bt601 IDQ;;
-        .end   = PERIPHS_PIN_MUX_5 + 0x800,
-        .flags = IORESOURCE_MEM,
-    },
-
-};
-#endif
-
 static struct platform_device bt656in_device = {
     .name       = "amvdec_656in",
     .id         = -1,
-//    .num_resources = ARRAY_SIZE(bt656in_resources),
-//    .resource      = bt656in_resources,
 };
 #endif
 
@@ -620,6 +527,11 @@ struct aml_m3_platform_data {
     int (*is_hp_pluged)(void);
 };
 
+
+static struct aml_m3_platform_data aml_m3_pdata = {
+    .is_hp_pluged = &aml_m3_is_hp_pluged,
+};
+
 void mute_spk(struct snd_soc_codec* codec, int flag)
 {
 #ifdef _AML_M3_HW_DEBUG_
@@ -634,52 +546,8 @@ void mute_spk(struct snd_soc_codec* codec, int flag)
 	}*/
 }
 
-
-static struct aml_m3_platform_data aml_m3_pdata = {
-    .is_hp_pluged = &aml_m3_is_hp_pluged,
-};
 #endif
 
-#ifdef CONFIG_ITK_CAPACITIVE_TOUCHSCREEN
-#include <linux/i2c/itk.h>
-#define GPIO_ITK_PENIRQ ((GPIOA_bank_bit0_27(16)<<16) | GPIOA_bit_bit0_27(16))
-#define GPIO_ITK_RST ((GPIOC_bank_bit0_15(3)<<16) | GPIOC_bit_bit0_15(3))
-#define ITK_INT INT_GPIO_0
-static int itk_init_irq(void)
-{
-    /* set input mode */
-    gpio_direction_input(GPIO_ITK_PENIRQ);
-    /* set gpio interrupt #0 source=GPIOD_24, and triggered by falling edge(=1) */
-    gpio_enable_edge_int(gpio_to_idx(GPIO_ITK_PENIRQ), 1, ITK_INT-INT_GPIO_0);
-
-    return 0;
-}
-static int itk_get_irq_level(void)
-{
-    return gpio_get_value(GPIO_ITK_PENIRQ);
-}
-
-void touch_on(int flag)
-{
-	printk("enter %s flag=%d \n",__FUNCTION__,flag);
-	if(flag)
-		gpio_direction_output(GPIO_ITK_RST, 1);
-	else
-		gpio_direction_output(GPIO_ITK_RST, 0);
-}
-
-static struct itk_platform_data itk_pdata = {
-    .init_irq = &itk_init_irq,
-    .get_irq_level = &itk_get_irq_level,
-    .touch_on =  touch_on,
-    .tp_max_width = 3328,
-    .tp_max_height = 2432,
-    .lcd_max_width = 800,
-    .lcd_max_height = 600,
-    .xpol = 1,
-    .ypol = 1,
-};
-#endif
 
 #ifdef CONFIG_SIS92XX_CAPACITIVE_TOUCHSCREEN
 #include <linux/ft5x06_ts.h>
@@ -1663,9 +1531,6 @@ static struct platform_device __initdata *platform_devs[] = {
 #ifdef CONFIG_EFUSE
 	&aml_efuse_device,
 #endif
-#ifdef CONFIG_PMU_ACT8xxx
-	&aml_pmu_device,
-#endif
 #ifdef CONFIG_POST_PROCESS_MANAGER
     &ppmgr_device,
 #endif
@@ -1673,13 +1538,7 @@ static struct platform_device __initdata *platform_devs[] = {
 
 static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
 
-#ifdef CONFIG_ITK_CAPACITIVE_TOUCHSCREEN
-    {
-        I2C_BOARD_INFO("itk", 0x41),
-        .irq = ITK_INT,
-        .platform_data = (void *)&itk_pdata,
-    },
-#endif
+
 #ifdef CONFIG_SIS92XX_CAPACITIVE_TOUCHSCREEN
     {
         I2C_BOARD_INFO("sis92xx", 0x05),
@@ -1696,8 +1555,7 @@ static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
 		.platform_data = (void *)&video_gc0308_data,
 	},
 #endif
-//#ifdef CONFIG_CAMERA_OV9650FSL
-//#endif
+
 #ifdef CONFIG_MXC_MMA7660
 	{
 		I2C_BOARD_INFO("mma7660", 0x4C),
@@ -1719,10 +1577,7 @@ static int __init aml_i2c_init(void)
 {
     i2c_register_board_info(0, aml_i2c_bus_info,
         ARRAY_SIZE(aml_i2c_bus_info));
-    i2c_register_board_info(1, aml_i2c_bus_info_1,
-        ARRAY_SIZE(aml_i2c_bus_info_1)); 
-    i2c_register_board_info(2, aml_i2c_bus_info_2,
-        ARRAY_SIZE(aml_i2c_bus_info_2)); 
+
     return 0;
 }
 
@@ -1735,15 +1590,6 @@ static void __init bt656in_pinmux_init(void)
 
 
 #endif
-static void __init eth_pinmux_init(void)
-{
-
-    CLEAR_CBUS_REG_MASK(PREG_ETHERNET_ADDR0, 1);
-    SET_CBUS_REG_MASK(PREG_ETHERNET_ADDR0, (1 << 1));
-    SET_CBUS_REG_MASK(PREG_ETHERNET_ADDR0, 1);
-    udelay(100);
-    aml_i2c_init();
-}
 
 static void __init device_pinmux_init(void )
 {
@@ -1754,9 +1600,7 @@ static void __init device_pinmux_init(void )
 #endif
     set_audio_pinmux(AUDIO_OUT_TEST_N);
    // set_audio_pinmux(AUDIO_IN_JTAG);
-#ifdef CONFIG_SIX_AXIS_SENSOR_MPU3050
-    mpu3050_init_irq();
-#endif    
+   
 #if 0
     //set clk for wifi
     WRITE_CBUS_REG(HHI_GEN_CLK_CNTL,(READ_CBUS_REG(HHI_GEN_CLK_CNTL)&(~(0x7f<<0)))|((0<<0)|(1<<8)|(7<<9)) );
