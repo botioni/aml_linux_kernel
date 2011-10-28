@@ -523,9 +523,15 @@ void mute_spk(struct snd_soc_codec* codec, int flag)
 #ifdef CONFIG_FOCALTECH_CAPACITIVE_TOUCHSCREEN
 #include <linux/ft5x06_ts.h>
 /* GPIOD_24 */
+#define GPIO_KEY_LED  ((GPIOA_bank_bit0_27(18)<<16) |GPIOA_bit_bit0_27(18))
 #define GPIO_FT_RST  ((GPIOA_bank_bit0_27(1)<<16) |GPIOA_bit_bit0_27(1))
 #define GPIO_FT_IRQ  ((GPIOA_bank_bit0_27(16)<<16) |GPIOA_bit_bit0_27(16))
 #define FT_IRQ	INT_GPIO_0
+
+static void key_led_ctrl(int on)
+{
+	gpio_direction_output(GPIO_KEY_LED, on);
+}
 
 static void ts_power(int on)
 {
@@ -570,6 +576,7 @@ static struct ts_platform_data ts_pdata = {
     .ypol = 0,
     .tp_key = &tp_key_list[0],
     .tp_key_num = ARRAY_SIZE(tp_key_list),
+    .key_led_ctrl = key_led_ctrl,
 };
 
 #endif

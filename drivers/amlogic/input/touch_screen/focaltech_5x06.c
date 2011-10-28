@@ -921,6 +921,8 @@ static void ft5x0x_ts_suspend(struct early_suspend *handler)
 		ft5x0x_read_reg(0xa5, &data);
 		printk("read back: reg[0xa5] = %d\n", data);
 	}
+	if (focaltechPdata2->key_led_ctrl)
+		focaltechPdata2->key_led_ctrl(0);
 }
 /***********************************************************************************************
 Name	:	 
@@ -942,6 +944,8 @@ static void ft5x0x_ts_resume(struct early_suspend *handler)
 		focaltechPdata2->power(1);
 		msleep(200);
 	}
+	if (focaltechPdata2->key_led_ctrl)
+		focaltechPdata2->key_led_ctrl(1);
 }
 #endif  //CONFIG_HAS_EARLYSUSPEND
 /***********************************************************************************************
@@ -1109,6 +1113,8 @@ printk("==enable Irq success=\n");
    
     err = sysfs_create_group(&client->dev.kobj, &ft5x0x_attr_group);
 
+	if (focaltechPdata2->key_led_ctrl)
+		focaltechPdata2->key_led_ctrl(1);
 	printk("==probe over =\n");
     return 0;
 
