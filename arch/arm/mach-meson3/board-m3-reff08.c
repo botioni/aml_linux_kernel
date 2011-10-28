@@ -775,17 +775,6 @@ static struct platform_device vm_device =
 };
 #endif /* AMLOGIC_VIDEOIN_MANAGER */
 
-#ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE
-static void __init camera_power_on_init(void)
-{
-    udelay(1000);
-    SET_CBUS_REG_MASK(HHI_ETH_CLK_CNTL,0x30f);// 24M XTAL
-    SET_CBUS_REG_MASK(HHI_DEMOD_PLL_CNTL,0x232);// 24M XTAL
-
-    //eth_set_pinmux(ETH_BANK0_GPIOC3_C12,ETH_CLK_OUT_GPIOC12_REG3_1, 1);		
-}
-#endif
-
 #if defined(CONFIG_VIDEO_AMLOGIC_CAPTURE_GC0308)
 static int gc0308_v4l2_init(void)
 {
@@ -955,7 +944,7 @@ static struct aml_i2c_platform aml_i2c_plat = {
     .wait_ack_interval  = 5,
     .wait_read_interval = 5,
     .wait_xfer_interval = 5,
-//    .master_no      = 0,
+    .master_no      = AML_I2C_MASTER_A,
     .use_pio            = 0,
     .master_i2c_speed   = AML_I2C_SPPED_100K,
 
@@ -972,7 +961,7 @@ static struct aml_i2c_platform aml_i2c_plat1 = {
     .wait_ack_interval  = 5,
     .wait_read_interval = 5,
     .wait_xfer_interval = 5,
-//    .master_no      = 1,
+    .master_no      = AML_I2C_MASTER_B,
     .use_pio            = 0,
     .master_i2c_speed   = AML_I2C_SPPED_100K,
 
@@ -989,7 +978,7 @@ static struct aml_i2c_platform aml_i2c_plat2 = {
     .wait_ack_interval  = 5,
     .wait_read_interval = 5,
     .wait_xfer_interval = 5,
-//    .master_no      = 2,
+    .master_no      = AML_I2C_MASTER_AO,
     .use_pio            = 0,
     .master_i2c_speed   = AML_I2C_SPPED_100K,
 
@@ -1652,8 +1641,7 @@ static struct platform_device __initdata *platform_devs[] = {
 
 #if defined(CONFIG_I2C_AML)|| defined(CONFIG_I2C_HW_AML)
     &aml_i2c_device,
-    &aml_i2c_device1,
-    &aml_i2c_device2,
+
 #endif
 
 #if defined(CONFIG_AMLOGIC_BACKLIGHT)
@@ -1720,35 +1708,11 @@ static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
 };
 
 static struct i2c_board_info __initdata aml_i2c_bus_info_1[] = {
-#ifdef CONFIG_SENSORS_MMC328X
-	{
-		I2C_BOARD_INFO(MMC328X_I2C_NAME,  MMC328X_I2C_ADDR),
-	},
-#endif
-#ifdef CONFIG_SIX_AXIS_SENSOR_MPU3050
-    {
-        I2C_BOARD_INFO("mpu3050", 0x68),
-        .irq = MPU3050_IRQ,
-        .platform_data = (void *)&mpu3050_data,
-    },
-#endif
+
 };
 
 static struct i2c_board_info __initdata aml_i2c_bus_info_2[] = {
-#ifdef CONFIG_BQ27x00_BATTERY
-    {
-        I2C_BOARD_INFO("bq27500", 0x55),
-        .platform_data = (void *)&bq27x00_pdata,
-    },
-#endif
-#ifdef CONFIG_PMU_ACT8xxx
-	{
-        I2C_BOARD_INFO(ACT8xxx_I2C_NAME, ACT8xxx_ADDR),
-#ifdef CONFIG_PMU_ACT8942
-		.platform_data = (void *)&act8942_pdata,
-#endif
-    },
-#endif
+
 };
 
 static int __init aml_i2c_init(void)
@@ -1885,9 +1849,7 @@ static __init void m1_init_machine(void)
     power_hold();
     pm_power_off = power_off;		//Elvis fool
     device_pinmux_init();
-#ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE
-    camera_power_on_init();
-#endif
+
     platform_add_devices(platform_devs, ARRAY_SIZE(platform_devs));
 
 #ifdef CONFIG_USB_DWC_OTG_HCD
