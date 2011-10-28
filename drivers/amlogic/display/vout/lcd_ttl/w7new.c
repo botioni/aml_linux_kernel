@@ -285,6 +285,7 @@ static void power_on_bl(void)
     PRINT_INFO(" w7 power_on_bl \n");
 	msleep(50);
 	set_tcon_pinmux();
+	WRITE_CBUS_REG_BITS(LED_PWM_REG0, 1, 12, 2); 
     power_on_backlight();
 }
 #endif

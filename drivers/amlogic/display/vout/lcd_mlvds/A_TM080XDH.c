@@ -195,6 +195,7 @@ void power_on_backlight(void)
 	lvds_port_enable();
 	
 	msleep(100);
+	WRITE_CBUS_REG_BITS(LED_PWM_REG0, 1, 12, 2);
 	//BL_EN: GPIOD_1(PWM_D)
 #if (BL_CTL==BL_CTL_GPIO)	
     WRITE_MPEG_REG(0x2013, READ_MPEG_REG(0x2013) | (1 << 17));    
