@@ -145,7 +145,7 @@ static s32 vh264mvc_init(void);
 #define CMD_ALLOC_VIEW_1           2 
 #define CMD_FRAME_DISPLAY          3 
 
-#define CANVAS_INDEX_START         106
+#define CANVAS_INDEX_START         120
 
 unsigned  DECODE_BUFFER_START=0x00200000;
 unsigned DECODE_BUFFER_END=0x05000000;
@@ -809,9 +809,10 @@ static void vh264mvc_isr(void)
                         in_list_flag = 1;
                         list_del(&(p->list));
                         list_add_tail(&(p->list), &ready_list_head);
-
+#ifdef CONFIG_POST_PROCESS_MANAGER
                         if (vf_receiver)
-                            vf_receiver->event_cb(VFRAME_EVENT_PROVIDER_VFRAME_READY, NULL, NULL);	                
+                            vf_receiver->event_cb(VFRAME_EVENT_PROVIDER_VFRAME_READY, NULL, NULL);	   
+#endif             
                     }
                 }
                 raw_local_irq_restore(fiq_flag);
@@ -1183,8 +1184,14 @@ static s32 vh264mvc_init(void)
 
     stat |= STAT_ISR_REG;
 
+ #ifdef CONFIG_POST_PROCESS_MANAGER
+    vf_receiver = vf_ppmgr_reg_provider(&vh264mvc_vf_provider);
+    if ((vf_receiver) && (vf_receiver->event_cb))
+        vf_receiver->event_cb(VFRAME_EVENT_PROVIDER_START, NULL, NULL); 	
+ #else 
     vf_reg_provider(&vh264mvc_vf_provider);
-
+ #endif 
+ 
     stat |= STAT_VF_HOOK;
 
     recycle_timer.data = (ulong) & recycle_timer;
@@ -1230,7 +1237,13 @@ static int vh264mvc_stop(void)
         ulong flags;
         spin_lock_irqsave(&lock, flags);
         spin_unlock_irqrestore(&lock, flags);
+ #ifdef CONFIG_POST_PROCESS_MANAGER
+        vf_ppmgr_unreg_provider();
+        if ((vf_receiver) && (vf_receiver->event_cb))
+            vf_receiver->event_cb(VFRAME_EVENT_PROVIDER_UNREG, NULL, NULL); 	
+ #else 
         vf_unreg_provider(&vh264mvc_vf_provider);
+ #endif  
         stat &= ~STAT_VF_HOOK;
     }
 

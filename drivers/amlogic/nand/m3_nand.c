@@ -604,6 +604,12 @@ static void m3_nand_boot_write_page_hwecc(struct mtd_info *mtd, struct nand_chip
 	else
 		bch_mode = aml_chip->bch_mode;
 	ecc_size = chip->ecc.size;
+
+	for (i=0; i<mtd->oobavail; i+=2) {
+		oob_buf[i] = 0x55;
+		oob_buf[i+1] = 0xaa;
+	}
+	i = 0;
 	if (aml_chip->valid_chip[i]) {
 
 		aml_chip->aml_nand_select_chip(aml_chip, i);

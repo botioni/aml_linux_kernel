@@ -66,25 +66,25 @@ static int bt_earlysuspend(struct platform_device *pdev, pm_message_t state)
         if (NULL != bt_dev.bt_dev_suspend) {
             bt_dev.bt_dev_suspend();
         }
-        //msleep(10);
-        //bt_baud = get_baud(1);
+    
     }
 
     return 0;
 }
 
-static int bt_earlyresume(struct platform_device *pdev)
+static int bt_lateresume(struct platform_device *pdev)
 {
     struct hci_dev *hdev;
     
     pr_info("BCM_BT: going later resume\n");
 
     if( hdev = hci_dev_get(0)){
-        //hci_resume_dev(hdev);
+        
         if (NULL != bt_dev.bt_dev_resume) {
             bt_dev.bt_dev_resume();
         }
-        //set_baud(1, bt_baud);
+		/* when call the hci_dev_open after hci_dev_close, the bt will be restart */
+		hci_dev_open(0);
     }
 
     return 0;
@@ -102,8 +102,8 @@ static int bt_suspend(struct platform_device *pdev, pm_message_t state)
             bt_dev.bt_dev_suspend();
         }
 #endif
-        //msleep(10);
-        bt_baud = get_baud(1);
+		/* if we do not power off bt , we should restore uart baud */
+        //bt_baud = get_baud(1);    
     }
 
     return 0;
@@ -116,13 +116,13 @@ static int bt_resume(struct platform_device *pdev)
     pr_info("BCM_BT: going resume\n");
 
     if( hdev = hci_dev_get(0)){
-#ifndef CONFIG_HAS_EARLYSUSPEND
-        //hci_resume_dev(hdev);
+#ifndef CONFIG_HAS_EARLYSUSPEND        
         if (NULL != bt_dev.bt_dev_resume) {
             bt_dev.bt_dev_resume();
         }
 #endif
-        set_baud(1, bt_baud);
+        //set_baud(1, bt_baud);
+		hci_dev_close(0);
     }
 
     return 0;
@@ -147,7 +147,8 @@ static int __init bt_probe(struct platform_device *pdev)
 		rc = -ENOMEM;
 		goto err_rfk_alloc;
 	}
-    rfkill_init_sw_state(bt_rfk, false);
+	/* if not set false, the bt_set_block will call when rfkill class resume */
+    //rfkill_init_sw_state(bt_rfk, false);      //we want to reset bt when system resume
 	rc = rfkill_register(bt_rfk);
 	if (rc){
         printk("rfkill_register fail\n");
@@ -157,7 +158,7 @@ static int __init bt_probe(struct platform_device *pdev)
 #ifdef CONFIG_HAS_EARLYSUSPEND                                                                                        
         bt_early_suspend.level = EARLY_SUSPEND_LEVEL_DISABLE_FB;
         bt_early_suspend.suspend = bt_earlysuspend;
-        bt_early_suspend.resume = bt_earlyresume;
+        bt_early_suspend.resume = bt_lateresume;
         bt_early_suspend.param = pdev;
         register_early_suspend(&bt_early_suspend);
 #endif
