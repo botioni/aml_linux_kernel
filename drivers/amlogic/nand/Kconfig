@@ -19,6 +19,11 @@ config AM_NAND_RBPIN
 	bool "use nand rbpin (A3/M3 optional)"
 	    depends on AM_NAND
 	default y
+	
+config AML_NAND_ENV
+	bool "use aml nand env (/dev/nand_env)"
+	    depends on AM_NAND
+	default y
 				
 config AML_NFTL
 	tristate "Amlogic NFTL (NAND Flash Translation Layer) support"

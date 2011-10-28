@@ -254,6 +254,11 @@ static void m1_nand_boot_write_page_hwecc(struct mtd_info *mtd, struct nand_chip
 	if (aml_chip->oob_size < (ecc_bytes + user_byte_num))
 		nand_page_size -= chip->ecc.size;
 
+	for (i=0; i<mtd->oobavail; i+=2) {
+		oob_buf[i] = 0xaa;
+		oob_buf[i+1] = 0x55;
+	}
+	i = 0;
 	memset(oob_buf + mtd->oobavail, 0xa5, user_byte_num * (mtd->writesize / nand_page_size));
 	if (aml_chip->valid_chip[i]) {
 

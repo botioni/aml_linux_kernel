@@ -110,22 +110,22 @@
 #define BATMAXVOL				4200000								//set battery max design volatge
 #define BATMINVOL				3500000								//set battery min design volatge
 
-#define OCVREG0			    0x01									//3.1328
-#define OCVREG1			    0x01									//3.2736
-#define OCVREG2			    0x02									//3.4144
-#define OCVREG3			    0x05									//3.5552
-#define OCVREG4			    0x07									//3.6256
-#define OCVREG5			    0x0D									//3.6608
-#define OCVREG6			    0x10									//3.6960
-#define OCVREG7			    0x1A									//3.7312
-#define OCVREG8			    0x24									//3.7664
-#define OCVREG9			    0x2E									//3.8016
-#define OCVREGA			    0x35									//3.8368
-#define OCVREGB			    0x3D									//3.8720
-#define OCVREGC			    0x49									//3.9424
-#define OCVREGD			    0x54									//4.0128
-#define OCVREGE			    0x5C									//4.0832
-#define OCVREGF			    0x63									//4.1536
+#define OCVREG0			    0 									//3.1328
+#define OCVREG1			    0 									//3.2736
+#define OCVREG2			    3 									//3.4144
+#define OCVREG3			    7 									//3.5552
+#define OCVREG4			    11									//3.6256
+#define OCVREG5			    13									//3.6608
+#define OCVREG6			    18									//3.6960
+#define OCVREG7			    23									//3.7312
+#define OCVREG8			    39									//3.7664
+#define OCVREG9			    51									//3.8016
+#define OCVREGA			    58									//3.8368
+#define OCVREGB			    64									//3.8720
+#define OCVREGC			    75									//3.9424
+#define OCVREGD			    85									//4.0128
+#define OCVREGE			    92									//4.0832
+#define OCVREGF			    99									//4.1536
 
 extern int pmu_used;
 extern int pmu_twi_id;
