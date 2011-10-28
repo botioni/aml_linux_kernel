@@ -523,21 +523,26 @@ void mute_spk(struct snd_soc_codec* codec, int flag)
 #ifdef CONFIG_FOCALTECH_CAPACITIVE_TOUCHSCREEN
 #include <linux/ft5x06_ts.h>
 /* GPIOD_24 */
-//#define GPIO_FT_RST ((GPIOC_bank_bit0_15(3)<<16) | GPIOC_bit_bit0_15(3))
 #define GPIO_FT_RST  ((GPIOA_bank_bit0_27(1)<<16) |GPIOA_bit_bit0_27(1))
 #define GPIO_FT_IRQ  ((GPIOA_bank_bit0_27(16)<<16) |GPIOA_bit_bit0_27(16))
-//#define TS_IRQ_IDX     (GPIOD_IDX + 24)
+#define FT_IRQ	INT_GPIO_0
 
-static int ts_init_irq(void);
-static int ts_get_irq_level(void);
-static void ts_power_on (void)
+static void ts_power(int on)
 {
-	gpio_direction_output(GPIO_FT_RST, 1);
+	gpio_direction_output(GPIO_FT_RST, on);
 }
 
-static void ts_power_off (void)
+static int ts_init_irq(void)
 {
-	gpio_direction_output(GPIO_FT_RST, 0);
+	gpio_direction_input(GPIO_FT_IRQ);
+	gpio_enable_edge_int(gpio_to_idx(GPIO_FT_IRQ), 1, FT_IRQ - INT_GPIO_0);
+
+	return 0;
+}
+
+static int ts_get_irq_level(void)
+{
+	return gpio_get_value(GPIO_FT_IRQ);
 }
 
 static int IS_AC_connected(void)
@@ -546,58 +551,27 @@ static int IS_AC_connected(void)
 	return 0;
 }
 
+static struct tp_key tp_key_list[] = {
+	{KEY_HOME, 1280, 1400, 748, 768},
+	{KEY_MENU, 1280, 1400, 688, 728},
+	{KEY_BACK, 1280, 1400, 628, 668},
+};
+
 static struct ts_platform_data ts_pdata = {
-    .mode = TS_MODE_INT_FALLING,
-    .irq = INT_GPIO_0,
+    .irq = FT_IRQ,
     .init_irq = ts_init_irq,
     .get_irq_level = ts_get_irq_level,
-//    .info = {
-//        .xmin = 0,
-//        .xmax = 4095,
-//        .ymin = 0,
-//        .ymax = 4095,
-//        .zmin = 0,
-//        .zmax = 1,
-//        .wmin = 0,
-//        .wmax = 1,
-//        .swap_xy = 0,
-//        .x_pol = 1,
-//        .y_pol = 1
-//    },
-    .data = 0,
-    .power_on = ts_power_on,
-    .power_off = ts_power_off,
+    .power = ts_power,
     .Ac_is_connect= IS_AC_connected,
     .screen_max_x=1280,
     .screen_max_y=768,
+    .swap_xy = 0,
+    .xpol = 0,
+    .ypol = 0,
+    .tp_key = &tp_key_list[0],
+    .tp_key_num = ARRAY_SIZE(tp_key_list),
 };
-static int ts_init_irq(void)
-{
-    int group = ts_pdata.irq - INT_GPIO_0;
-    int mode =  ts_pdata.mode;
 
-    if (mode < TS_MODE_TIMER_READ) {
-        gpio_direction_input(GPIO_FT_IRQ);
-        if (mode == TS_MODE_INT_FALLING) {
-            gpio_enable_edge_int(gpio_to_idx(GPIO_FT_IRQ), 1, group);
-        }
-        else if (mode == TS_MODE_INT_RISING) {
-            gpio_enable_edge_int(gpio_to_idx(GPIO_FT_IRQ), 0, group);
-        }
-        else if (mode == TS_MODE_INT_LOW) {
-            gpio_enable_level_int(gpio_to_idx(GPIO_FT_IRQ), 1, group);
-        }
-        else if (mode == TS_MODE_INT_HIGH) {
-            gpio_enable_level_int(gpio_to_idx(GPIO_FT_IRQ), 0, group);
-        }
-    }
-    return 0;
-}
-
-static int ts_get_irq_level(void)
-{
-    return gpio_get_value(GPIO_FT_IRQ);
-}
 #endif
 
 #ifdef CONFIG_ANDROID_PMEM

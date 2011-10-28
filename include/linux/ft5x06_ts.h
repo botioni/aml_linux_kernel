@@ -63,58 +63,40 @@ enum ft5x0x_ts_regs {
 #define PMODE_HIBERNATE     0x03
 
 
-	#ifndef ABS_MT_TOUCH_MAJOR
-	#define ABS_MT_TOUCH_MAJOR	0x30	/* touching ellipse */
-	#define ABS_MT_TOUCH_MINOR	0x31	/* (omit if circular) */
-	#define ABS_MT_WIDTH_MAJOR	0x32	/* approaching ellipse */
-	#define ABS_MT_WIDTH_MINOR	0x33	/* (omit if circular) */
-	#define ABS_MT_ORIENTATION	0x34	/* Ellipse orientation */
-	#define ABS_MT_POSITION_X	0x35	/* Center X ellipse position */
-	#define ABS_MT_POSITION_Y	0x36	/* Center Y ellipse position */
-	#define ABS_MT_TOOL_TYPE	0x37	/* Type of touching device */
-	#define ABS_MT_BLOB_ID		0x38	/* Group set of pkts as blob */
-	#endif /* ABS_MT_TOUCH_MAJOR */
+//	#ifndef ABS_MT_TOUCH_MAJOR
+//	#define ABS_MT_TOUCH_MAJOR	0x30	/* touching ellipse */
+//	#define ABS_MT_TOUCH_MINOR	0x31	/* (omit if circular) */
+//	#define ABS_MT_WIDTH_MAJOR	0x32	/* approaching ellipse */
+//	#define ABS_MT_WIDTH_MINOR	0x33	/* (omit if circular) */
+//	#define ABS_MT_ORIENTATION	0x34	/* Ellipse orientation */
+//	#define ABS_MT_POSITION_X	0x35	/* Center X ellipse position */
+//	#define ABS_MT_POSITION_Y	0x36	/* Center Y ellipse position */
+//	#define ABS_MT_TOOL_TYPE	0x37	/* Type of touching device */
+//	#define ABS_MT_BLOB_ID		0x38	/* Group set of pkts as blob */
+//	#endif /* ABS_MT_TOUCH_MAJOR */
 
-enum ts_mode {
-    TS_MODE_INT_FALLING,
-    TS_MODE_INT_RISING,
-    TS_MODE_INT_LOW,
-    TS_MODE_INT_HIGH,
-    TS_MODE_TIMER_LOW,
-    TS_MODE_TIMER_HIGH,
-    TS_MODE_TIMER_READ,
-    TS_MODE_NUM,
+struct tp_key {
+	int key;
+	s16 x1;
+	s16 x2;
+	s16 y1;
+	s16 y2;
 };
 
-struct ts_info {
-    unsigned short xmin;
-    unsigned short xmax;
-    unsigned short ymin;
-    unsigned short ymax;
-    unsigned short zmin;
-    unsigned short zmax;
-    unsigned short wmin;
-    unsigned short wmax;
-
-    unsigned short swap_xy:1;
-    unsigned short x_pol:1;
-    unsigned short y_pol:1;
-};
-
-
-struct ts_platform_data {
-    int mode;
-    int irq;
-    int (*init_irq)(void);
-    int (*get_irq_level)(void);
-    int poll_period;
-    bool cache_enable;
-    struct ts_info info;
-    void *data;
-    void (*power_on)(void);
-    void (*power_off)(void); 
+struct ts_platform_data{
+	int irq;
+	int (*init_irq)(void);
+	int (*get_irq_level)(void);
+	void (*power)(int on);
 	int (*Ac_is_connect)(void);
-    int screen_max_x;
-    int screen_max_y;
+	int screen_max_x;
+	int screen_max_y;
+	u8 swap_xy :1;
+	u8 xpol :1;
+	u8 ypol :1;
+	struct tp_key *tp_key;
+	u8 tp_key_num;
+	void (*key_led_ctrl)(int on);
 };
+
 #endif
