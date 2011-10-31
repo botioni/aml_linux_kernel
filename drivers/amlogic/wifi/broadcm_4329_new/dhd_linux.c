@@ -2304,6 +2304,7 @@ dhd_bus_start(dhd_pub_t *dhdp)
 	dhd_os_sdunlock(dhdp);
 
 #ifdef EMBEDDED_PLATFORM
+	msleep(200);
 	bcm_mkiovar("event_msgs", dhdp->eventmask, WL_EVENTING_MASK_LEN, iovbuf, sizeof(iovbuf));
 	dhdcdc_query_ioctl(dhdp, 0, WLC_GET_VAR, iovbuf, sizeof(iovbuf));
 	bcopy(iovbuf, dhdp->eventmask, WL_EVENTING_MASK_LEN);

@@ -25,13 +25,13 @@
 #include "efuse_regs.h"
 
 #define EFUSE_MODULE_NAME   "efuse"
-#define EFUSE_DRIVER_NAME   "efuse"
+#define EFUSE_DRIVER_NAME		"efuse"
 #define EFUSE_DEVICE_NAME   "efuse"
 #define EFUSE_CLASS_NAME    "efuse"
 
 #define EFUSE_BITS		3072
 #define EFUSE_BYTES		384  //(EFUSE_BITS/8)
-#define EFUSE_DWORDS		96  //(EFUSE_BITS/32)
+#define EFUSE_DWORDS	96  //(EFUSE_BITS/32)
 
 #define DOUBLE_WORD_BYTES	4
 //#define hemingdebug	printk("heming add %s %d",__FUNCTION__,__LINE__);
@@ -158,15 +158,16 @@ static void __efuse_write_byte( unsigned long addr, unsigned long data )
 
 static void __efuse_read_dword( unsigned long addr, unsigned long *data )
 {
-	unsigned long auto_rd_is_enabled = 0;
+	//unsigned long auto_rd_is_enabled = 0;
+	
 
-	if( READ_CBUS_REG(EFUSE_CNTL1) & ( 1 << CNTL1_AUTO_RD_ENABLE_BIT ) ){                                                                               
-		auto_rd_is_enabled = 1;
-	} else {                                                                               
+	//if( READ_CBUS_REG(EFUSE_CNTL1) & ( 1 << CNTL1_AUTO_RD_ENABLE_BIT ) ){                                                                               
+	//	auto_rd_is_enabled = 1;
+	//} else {                                                                               
 		/* temporarily enable Read mode */
 		WRITE_CBUS_REG_BITS( EFUSE_CNTL1, CNTL1_AUTO_RD_ENABLE_ON,
 		CNTL1_AUTO_RD_ENABLE_BIT, CNTL1_AUTO_RD_ENABLE_SIZE );
-	}
+	//}
 
 	/* write the address */
 	WRITE_CBUS_REG_BITS( EFUSE_CNTL1, addr,
@@ -192,10 +193,10 @@ static void __efuse_read_dword( unsigned long addr, unsigned long *data )
 	( *data ) = READ_CBUS_REG( EFUSE_CNTL2 );
 
 	/* if auto read wasn't enabled and we enabled it, then disable it upon exit */
-	if ( auto_rd_is_enabled == 0 ){                                                                               
+	//if ( auto_rd_is_enabled == 0 ){                                                                               
 		WRITE_CBUS_REG_BITS( EFUSE_CNTL1, CNTL1_AUTO_RD_ENABLE_OFF,
 		CNTL1_AUTO_RD_ENABLE_BIT, CNTL1_AUTO_RD_ENABLE_SIZE );
-	}
+	//}
 
 	//printk(KERN_INFO "__efuse_read_dword: addr=%ld, data=0x%lx\n", addr, *data);
 }
@@ -269,7 +270,7 @@ static ssize_t efuse_read( struct file *file, char __user *buf,
 	size_t count, loff_t *ppos )
 {
 	int ret;
-	loff_t local_ppos = *ppos;
+	//loff_t local_ppos = *ppos;
 	size_t local_count = 0;
 	unsigned char* local_buf = (unsigned char*)kzalloc(sizeof(char)*count, GFP_KERNEL);
 	
@@ -278,7 +279,7 @@ static ssize_t efuse_read( struct file *file, char __user *buf,
 		return -ENOMEM;
 	}
 	
-	local_count = __efuse_read(local_buf, count, &local_ppos);
+	local_count = __efuse_read(local_buf, count, /*&local_ppos*/ppos);
 	
 	if (local_count <= 0) {
 		ret =  -EFAULT;
@@ -305,7 +306,7 @@ static int check_if_efused(loff_t pos, size_t count)
 		if (__efuse_read(buf, count, &local_pos) == count) {
 			for (i = 0; i < count; i++) {
 				if (buf[i]) {
-					printk("pos %d value is %d", pos + i, buf[i]);
+					printk("pos %d value is %d", (size_t)(pos + i), buf[i]);
 					return 1;
 				}
 			}
@@ -322,8 +323,8 @@ static int check_if_efused(loff_t pos, size_t count)
 static ssize_t efuse_write( struct file *file, const char __user *buf,
 	size_t count, loff_t *ppos )
 {
-	unsigned char* contents = (char*)kzalloc(sizeof(char)*EFUSE_BYTES, GFP_KERNEL);                                        
-	unsigned pos = *ppos;
+	unsigned char* contents = (unsigned char*)kzalloc(sizeof(unsigned char)*EFUSE_BYTES, GFP_KERNEL);                                        
+	unsigned int  pos = (unsigned int)*ppos;
 	unsigned char *pc;
 	int ret;                                                         
 
@@ -341,7 +342,7 @@ static ssize_t efuse_write( struct file *file, const char __user *buf,
 
 	//printk(KERN_INFO "\nefuse_write: f_pos: %lld, ppos: %lld\n", file->f_pos, *ppos);
 
-	if (ret = check_if_efused(pos, count)) {
+	if ((ret = check_if_efused(pos, count))) {
 		printk(KERN_INFO "the chip has been efused\n");
 		if (ret == 1)
 			return -EROFS;
@@ -674,8 +675,8 @@ static int bch_dec(int c[255], int n, int t)
 void efuse_bch_enc(const char *ibuf, int isize, char *obuf)
 {
 	int i, j;
-	int cnt, tmp;
-	int errnum, errbit;
+	int tmp;
+	//int errnum, errbit;
 	char info;
 	int c[255];
 
@@ -715,7 +716,7 @@ void efuse_bch_enc(const char *ibuf, int isize, char *obuf)
 void efuse_bch_dec(const char *ibuf, int isize, char *obuf)
 {
 	int i, j;
-	int cnt, tmp;
+	int tmp;
 	char info;
 	int c[255];
 
@@ -752,7 +753,7 @@ struct device *efuse_class_to_device(struct class *cla)
 {
 	struct device		*dev;
 
-	dev = class_find_device(cla, NULL, cla->name,
+	dev = class_find_device(cla, NULL, (void*)cla->name,
 				efuse_device_match);
 	if (!dev)
 		printk("%s no matched device found!/n",__FUNCTION__);
@@ -967,7 +968,7 @@ static int efuse_probe(struct platform_device *pdev)
 {
 	 int ret;
 	 struct device *devp;
-
+	 printk( KERN_INFO "efuse===========================================\n");
 	 ret = alloc_chrdev_region(&efuse_devno, 0, 1, EFUSE_DEVICE_NAME);
 	 if (ret < 0) {
 			 printk(KERN_ERR "efuse: failed to allocate major number\n");
@@ -1016,7 +1017,12 @@ static int efuse_probe(struct platform_device *pdev)
 	 /* disable efuse encryption */
 	 WRITE_CBUS_REG_BITS( EFUSE_CNTL4, CNTL1_AUTO_WR_ENABLE_OFF,
 		 CNTL4_ENCRYPT_ENABLE_BIT, CNTL4_ENCRYPT_ENABLE_SIZE );
-
+		 // rd off
+	WRITE_CBUS_REG_BITS( EFUSE_CNTL1, CNTL1_AUTO_RD_ENABLE_OFF,
+		CNTL1_AUTO_RD_ENABLE_BIT, CNTL1_AUTO_RD_ENABLE_SIZE );
+		//wr off
+		WRITE_CBUS_REG_BITS( EFUSE_CNTL1, CNTL1_AUTO_WR_ENABLE_OFF,
+		CNTL1_AUTO_WR_ENABLE_BIT, CNTL1_AUTO_WR_ENABLE_SIZE );
 	 return 0;
 
  error4:
@@ -1061,6 +1067,7 @@ static int __init efuse_init(void)
 		printk(KERN_ERR "failed to register efuse driver, error %d\n", ret);
 		return -ENODEV;
 	}
+	printk( KERN_INFO "efuse--------------------------------------------\n");
 	return ret;
 }
 

@@ -144,9 +144,9 @@ dhd_customer_gpio_wlan_ctrl(int onoff)
 			wifi_set_power(1, 0);
 #endif
                     extern_wifi_reset(0);
-                    mdelay(200);
+                    mdelay(500);
                     extern_wifi_reset(1);
-                    mdelay(200);
+                    mdelay(500);
                     sdio_reinit();
 			WL_ERROR(("=========== WLAN going back to live  ========\n"));
 		break;
@@ -170,11 +170,11 @@ dhd_customer_gpio_wlan_ctrl(int onoff)
 			OSL_DELAY(200);
 
                     extern_wifi_power(1);
-                    mdelay(200);
+                    mdelay(500);
                     extern_wifi_reset(0);
-                    mdelay(200);
+                    mdelay(500);
                     extern_wifi_reset(1);
-                    mdelay(200);
+                    mdelay(500);
                     sdio_reinit();
 		break;
 	}

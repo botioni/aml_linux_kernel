@@ -24,25 +24,26 @@ bit[13]     AUTO_WR_START
 bit[12]     AUTO_WR_ENABLE                          
 bit[11]     BYTE_ADDR_SET                           
 bit[10]                                             
-bit[9-0]    BYTE_ADDR                               
-**/                                                 
+bit[9-0]    BYTE_ADDR
+**/
+
 #define CNTL1_AUTO_RD_BUSY_BIT              26
 #define CNTL1_AUTO_RD_BUSY_SIZE             1
-                                                    
+  
 #define CNTL1_AUTO_RD_START_BIT             25
-#define CNTL1_AUTO_RD_START_SIZE            1
-                                                    
+#define CNTL1_AUTO_RD_START_SIZE						1
+
 #define CNTL1_AUTO_RD_ENABLE_BIT            24
-#define CNTL1_AUTO_RD_ENABLE_SIZE           1       
-#define CNTL1_AUTO_RD_ENABLE_ON             1       
-#define CNTL1_AUTO_RD_ENABLE_OFF            0       
+#define CNTL1_AUTO_RD_ENABLE_SIZE           1
+#define CNTL1_AUTO_RD_ENABLE_ON             1
+#define CNTL1_AUTO_RD_ENABLE_OFF            0
                                                     
                                                     
                                                     
-#define CNTL1_BYTE_WR_DATA_BIT              16
-#define CNTL1_BYTE_WR_DATA_SIZE             8
-                                                    
-#define CNTL1_AUTO_WR_BUSY_BIT              14      
+#define CNTL1_BYTE_WR_DATA_BIT							16
+#define CNTL1_BYTE_WR_DATA_SIZE							8
+
+#define CNTL1_AUTO_WR_BUSY_BIT              14
 #define CNTL1_AUTO_WR_BUSY_SIZE             1
                                                     
 #define CNTL1_AUTO_WR_START_BIT             13
@@ -53,22 +54,22 @@ bit[9-0]    BYTE_ADDR
                                                     
                                                     
 #define CNTL1_AUTO_WR_ENABLE_BIT            12
-#define CNTL1_AUTO_WR_ENABLE_SIZE           1       
-#define CNTL1_AUTO_WR_ENABLE_ON             1       
-#define CNTL1_AUTO_WR_ENABLE_OFF            0       
+#define CNTL1_AUTO_WR_ENABLE_SIZE           1
+#define CNTL1_AUTO_WR_ENABLE_ON             1
+#define CNTL1_AUTO_WR_ENABLE_OFF            0
+
+                                                    
+                                                    
+#define CNTL1_BYTE_ADDR_SET_BIT             11
+#define CNTL1_BYTE_ADDR_SET_SIZE            1
+#define CNTL1_BYTE_ADDR_SET_ON              1
+#define CNTL1_BYTE_ADDR_SET_OFF             0
                                                     
                                                     
                                                     
-#define CNTL1_BYTE_ADDR_SET_BIT             11      
-#define CNTL1_BYTE_ADDR_SET_SIZE            1       
-#define CNTL1_BYTE_ADDR_SET_ON              1       
-#define CNTL1_BYTE_ADDR_SET_OFF             0       
                                                     
-                                                    
-                                                    
-                                                    
-#define CNTL1_BYTE_ADDR_BIT                 0       
-#define CNTL1_BYTE_ADDR_SIZE                10      
+#define CNTL1_BYTE_ADDR_BIT                 0
+#define CNTL1_BYTE_ADDR_SIZE                10
                                                     
                                                     
 /* EFUSE_CNTL2 */                                   
@@ -110,13 +111,13 @@ bit[7-0]    XOR
                                                    
 #if 0
 /* defined in am_regs.h */                         
-#define WRITE_MPEG_REG(reg, val) \                 
+#define WRITE_MPEG_REG(reg, val)	\
         WRITE_CBUS_REG(reg, val)                   
-#define READ_MPEG_REG(reg) \                       
+#define READ_MPEG_REG(reg) \
         READ_CBUS_REG(reg)                         
 #define WRITE_MPEG_REG_BITS(reg, val, start, len) \
         WRITE_CBUS_REG_BITS(reg, val, start, len)  
-#define READ_MPEG_REG_BITS(reg, start, len) \      
+#define READ_MPEG_REG_BITS(reg, start, len) \
         READ_CBUS_REG_BITS(reg, start, len)        
 #endif                                             
                                                    
