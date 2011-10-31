@@ -552,6 +552,17 @@ int card_init_queue(struct card_queue *cq, struct memory_card *card,
 		}
 	}
 
+	/*change card io scheduler from cfq to deadline*/
+	cq->queue->queuedata = cq;
+	elevator_exit(cq->queue->elevator);
+	cq->queue->elevator = NULL;
+	ret = elevator_init(cq->queue, "deadline");
+	if (ret) {
+             printk("[card_init_queue] elevator_init deadline fail\n");
+		blk_cleanup_queue(cq->queue);
+		return ret;
+	}
+
 	if (card_queue_head == NULL)
 	{
 		card_queue_head = kmalloc(sizeof(struct card_queue_list), GFP_KERNEL);
