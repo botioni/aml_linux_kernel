@@ -263,6 +263,10 @@ osd_ioctl(struct fb_info *info, unsigned int cmd,
    	 u32  srckey_enable;
 	 u32  gbl_alpha;
 	 u32  osd_order;
+	 s32  osd_axis[4] = {0};
+	 u32  block_windows[8] = {0};
+	 u32  block_mode;
+
     	switch (cmd)
   	{
    		case  FBIOPUT_OSD_SRCKEY_ENABLE:
@@ -274,6 +278,10 @@ osd_ioctl(struct fb_info *info, unsigned int cmd,
 		case FBIOPUT_OSD_SET_GBL_ALPHA:
 			copy_from_user(&gbl_alpha,argp,sizeof(u32));
 			break;
+		case FBIOPUT_OSD_SCALE_AXIS:
+			copy_from_user(&osd_axis, argp, 4 * sizeof(s32));
+			break;
+		case FBIOGET_OSD_SCALE_AXIS:
 		case FBIOPUT_OSD_ORDER:
 		case FBIOGET_OSD_ORDER:
 		case FBIOGET_OSD_GET_GBL_ALPHA:
@@ -282,6 +290,18 @@ osd_ioctl(struct fb_info *info, unsigned int cmd,
 		case FBIOPUT_OSD_FREE_SCALE_ENABLE:
 		case FBIOPUT_OSD_FREE_SCALE_WIDTH:
 		case FBIOPUT_OSD_FREE_SCALE_HEIGHT:
+		case FBIOGET_OSD_BLOCK_WINDOWS:
+		case FBIOGET_OSD_BLOCK_MODE:
+		case FBIOGET_OSD_FREE_SCALE_AXIS:
+			break;
+		case FBIOPUT_OSD_BLOCK_MODE:
+			block_mode = (u32)argp;
+			break;
+		case FBIOPUT_OSD_BLOCK_WINDOWS:
+			copy_from_user(&block_windows, argp, 8 * sizeof(u32));
+			break;
+		case FBIOPUT_OSD_FREE_SCALE_AXIS:
+			copy_from_user(&osd_axis, argp, 4 * sizeof(s32));
 			break;
 		default :
 			amlog_mask_level(LOG_MASK_IOCTL,LOG_LEVEL_HIGH,"command not supported\r\n ");
@@ -360,6 +380,38 @@ osd_ioctl(struct fb_info *info, unsigned int cmd,
 	 	gbl_alpha=osddev_get_gbl_alpha(info->node);
 	 	copy_to_user(argp, &gbl_alpha, sizeof(u32));
 	  	break;
+
+		case FBIOGET_OSD_SCALE_AXIS:
+			osddev_get_scale_axis(info->node, &osd_axis[0], &osd_axis[1], &osd_axis[2], &osd_axis[3]);
+			copy_to_user(argp, &osd_axis, 4 * sizeof(s32));
+			break;
+		case FBIOPUT_OSD_SCALE_AXIS:
+			osddev_set_scale_axis(info->node, osd_axis[0], osd_axis[1], osd_axis[2], osd_axis[3]);
+			break;
+		case FBIOGET_OSD_BLOCK_WINDOWS:
+			osddev_get_block_windows(info->node, block_windows);
+			copy_to_user(argp, &block_windows, 8 * sizeof(u32));
+			break;
+		case FBIOPUT_OSD_BLOCK_WINDOWS:
+			osddev_set_block_windows(info->node, block_windows);
+			break;
+		case FBIOPUT_OSD_BLOCK_MODE:
+			osddev_set_block_mode(info->node, block_mode);
+			break;
+		case FBIOGET_OSD_BLOCK_MODE:
+			osddev_get_block_mode(info->node, &block_mode);
+			copy_to_user(argp, &block_mode, sizeof(u32));
+			break;
+		case FBIOGET_OSD_FREE_SCALE_AXIS:
+			osddev_get_free_scale_axis(info->node, &osd_axis[0], &osd_axis[1], &osd_axis[2], &osd_axis[3]);
+			copy_to_user(argp, &osd_axis, 4 * sizeof(s32));
+			break;
+		case FBIOPUT_OSD_FREE_SCALE_AXIS:
+			osddev_set_free_scale_axis(info->node, osd_axis[0], osd_axis[1], osd_axis[2], osd_axis[3]);
+			break;
+
+		default:
+			break;
     	}
 
    	mutex_unlock(&fbdev->lock);
@@ -501,6 +553,7 @@ int osd_notify_callback(struct notifier_block *block, unsigned long cmd , void *
 		{	
 			if(!disp_rect)  break;
 			fb_dev=gp_fbdev_list[i];
+			if(fb_dev->preblend_enable) break;  //if osd layer preblend ,it's position is controled by vpp.
 			fb_dev->osd_ctl.disp_start_x=disp_rect->x  ;
 			fb_dev->osd_ctl.disp_start_y=disp_rect->y  ;
 			amlog_mask_level(LOG_MASK_PARA,LOG_LEVEL_LOW,"set disp axis: x:%d y:%d w:%d h:%d\r\n"  , \
@@ -539,6 +592,24 @@ int osd_notify_callback(struct notifier_block *block, unsigned long cmd , void *
 static struct notifier_block osd_notifier_nb = {
 	.notifier_call	= osd_notify_callback,
 };
+static ssize_t store_preblend_enable(struct device *device, struct device_attribute *attr,
+			 const char *buf, size_t count)
+{
+	struct fb_info *fb_info = dev_get_drvdata(device);
+	struct myfb_dev *fbdev = (struct myfb_dev *)fb_info->par;
+	fbdev->preblend_enable= simple_strtoul(buf, NULL, 0);
+	vout_notifier_call_chain(VOUT_EVENT_OSD_PREBLEND_ENABLE,&fbdev->preblend_enable) ;
+	return count;
+}
+
+static ssize_t show_preblend_enable(struct device *device, struct device_attribute *attr,
+			char *buf)
+{
+	struct fb_info *fb_info = dev_get_drvdata(device);
+	struct myfb_dev *fbdev = (struct myfb_dev *)fb_info->par;
+	return snprintf(buf, PAGE_SIZE, "preblend[%s]\n",fbdev->preblend_enable?"enable":"disable");
+}
+
 static ssize_t store_enable_3d(struct device *device, struct device_attribute *attr,
 			 const char *buf, size_t count)
 {
@@ -667,6 +738,91 @@ static ssize_t show_enable_key_onhold(struct device *device, struct device_attri
 	return snprintf(buf, PAGE_SIZE, (fbdev->enable_key_flag & KEYCOLOR_FLAG_ONHOLD) ? "1\n" : "0\n");
 }
 
+
+static int parse_para(const char *para, int para_num, int *result)
+{
+	char *endp;
+	const char *startp = para;
+	int *out = result;
+	int len = 0, count = 0;
+
+	if (!startp)
+		return 0;
+
+	len = strlen(startp);
+
+	do {
+		while (startp && (isspace(*startp) || !isgraph(*startp)) && len) {
+			startp++;
+			len--;
+		}
+
+		if (len == 0)
+			break;
+
+		*out++ = simple_strtol(startp, &endp, 0);
+
+		len -= endp - startp;
+		startp = endp;
+		count++;
+
+	} while ((endp) && (count < para_num) && (len > 0));
+
+	return count;
+}
+
+static ssize_t show_free_scale_axis(struct device *device, struct device_attribute *attr,
+			 char *buf)
+{
+	struct fb_info *fb_info = dev_get_drvdata(device);
+	int x, y, w, h;
+
+	osddev_get_free_scale_axis(fb_info->node, &x, &y, &w, &h);
+
+    return snprintf(buf, PAGE_SIZE, "%d %d %d %d\n", x, y, w, h);
+}
+
+static ssize_t store_free_scale_axis(struct device *device, struct device_attribute *attr,
+			 const char *buf, size_t count)
+{
+	struct fb_info *fb_info = dev_get_drvdata(device);
+	int parsed[4];
+
+	if (likely(parse_para(buf, 4, parsed) == 4)) {
+		osddev_set_free_scale_axis(fb_info->node, parsed[0], parsed[1], parsed[2], parsed[3]);
+	} else {
+		amlog_level(LOG_LEVEL_HIGH, "set free scale axis error\n");
+	}
+
+	return count;
+}
+
+static ssize_t show_scale_axis(struct device *device, struct device_attribute *attr,
+			 char *buf)
+{
+	struct fb_info *fb_info = dev_get_drvdata(device);
+	int x0, y0, x1, y1;
+
+	osddev_get_scale_axis(fb_info->node, &x0, &y0, &x1, &y1);
+
+    return snprintf(buf, PAGE_SIZE, "%d %d %d %d\n", x0, y0, x1, y1);
+}
+
+static ssize_t store_scale_axis(struct device *device, struct device_attribute *attr,
+			 const char *buf, size_t count)
+{
+	struct fb_info *fb_info = dev_get_drvdata(device);
+	int parsed[4];
+
+	if (likely(parse_para(buf, 4, parsed) == 4)) {
+		osddev_set_scale_axis(fb_info->node, parsed[0], parsed[1], parsed[2], parsed[3]);
+	} else {
+		amlog_level(LOG_LEVEL_HIGH, "set scale axis error\n");
+	}
+
+	return count;
+}
+
 static ssize_t store_scale_width(struct device *device, struct device_attribute *attr,
 			 const char *buf, size_t count)
 {
@@ -678,6 +834,7 @@ static ssize_t store_scale_width(struct device *device, struct device_attribute 
 		return err;
 	return count;
 }
+
 static ssize_t store_scale_height(struct device *device, struct device_attribute *attr,
 			 const char *buf, size_t count)
 {
@@ -743,16 +900,71 @@ static ssize_t show_order(struct device *device, struct device_attribute *attr,
 		return err;
 	return snprintf(buf, PAGE_SIZE, "order:[0x%x]\n",fbdev->order);
 }
+
+static ssize_t show_block_windows(struct device *device, struct device_attribute *attr,
+			 char *buf)
+{
+	struct fb_info *fb_info = dev_get_drvdata(device);
+	u32 wins[8];
+
+	osddev_get_block_windows(fb_info->node, wins);
+
+    return snprintf(buf, PAGE_SIZE, "0x%x 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x\n", 
+			wins[0], wins[1], wins[2], wins[3], wins[4], wins[5], wins[6], wins[7]);
+}
+
+static ssize_t store_block_windows(struct device *device, struct device_attribute *attr,
+			 const char *buf, size_t count)
+{
+	struct fb_info *fb_info = dev_get_drvdata(device);
+	int parsed[8];
+
+	if (likely(parse_para(buf, 8, parsed) == 8)) {
+		osddev_set_block_windows(fb_info->node, parsed);
+	} else {
+		amlog_level(LOG_LEVEL_HIGH, "set block windows error\n");
+	}
+
+	return count;
+}
+
+static ssize_t show_block_mode(struct device *device, struct device_attribute *attr,
+			 char *buf)
+{
+	struct fb_info *fb_info = dev_get_drvdata(device);
+	u32 mode;
+
+	osddev_get_block_mode(fb_info->node, &mode);
+
+    return snprintf(buf, PAGE_SIZE, "0x%x\n", mode);
+}
+
+static ssize_t store_block_mode(struct device *device, struct device_attribute *attr,
+			 const char *buf, size_t count)
+{
+	struct fb_info *fb_info = dev_get_drvdata(device);
+	u32 mode;
+
+	mode = simple_strtoul(buf, NULL, 0);
+	osddev_set_block_mode(fb_info->node, mode);
+
+	return count;
+}
 static struct device_attribute osd_attrs[] = {
 	__ATTR(scale, S_IRUGO|S_IWUSR, show_scale, store_scale),
 	__ATTR(order, S_IRUGO|S_IWUSR, show_order, store_order),	
 	__ATTR(enable_3d, S_IRUGO|S_IWUSR, show_enable_3d, store_enable_3d),
+	__ATTR(preblend_enable,S_IRUGO|S_IWUSR, show_preblend_enable, store_preblend_enable),
 	__ATTR(free_scale, S_IRUGO|S_IWUSR, NULL, store_free_scale),
+	__ATTR(scale_axis, S_IRUGO|S_IWUSR, show_scale_axis, store_scale_axis),
 	__ATTR(scale_width, S_IRUGO|S_IWUSR, NULL, store_scale_width),
 	__ATTR(scale_height, S_IRUGO|S_IWUSR, NULL, store_scale_height),
     __ATTR(color_key, S_IRUGO|S_IWUSR, show_color_key, store_color_key),
     __ATTR(enable_key, S_IRUGO|S_IWUSR, show_enable_key, store_enable_key),
     __ATTR(enable_key_onhold, S_IRUGO|S_IWUSR, show_enable_key_onhold, store_enable_key_onhold),
+	__ATTR(block_windows, S_IRUGO|S_IWUSR, show_block_windows, store_block_windows),
+	__ATTR(block_mode, S_IRUGO|S_IWUSR, show_block_mode, store_block_mode),
+	__ATTR(free_scale_axis, S_IRUGO|S_IWUSR, show_free_scale_axis, store_free_scale_axis),
 };		
 
 #ifdef  CONFIG_PM
