@@ -76,24 +76,26 @@ int auto_select_eth_clk(void)
     return -1;
 }
 
-static unsigned pll_setting[17]={
-    0x20222,
-    0x20222,
-    0x20222,
-    0x20222,
-    0x10222,
-    0x10222,
-    0x10222,
-    0x10222,
-    0x10222,
-    0x00220,
-    0x00220,
-    0x00220,
-    0x00220,
-    0x00221,
-    0x00221,
-    0x00221,
-    0x00221,
+//0x065e11ff,0x0249a941, // min current for 750~1300
+//0x065e31ff,0xbe49a941, // max current for 500~750
+static unsigned pll_setting[17][3]={
+    {0x20222,0x065e11ff,0x0249a941},
+    {0x2022a,0x065e11ff,0x0249a941},
+    {0x20232,0x065e11ff,0x0249a941},
+    {0x1021d,0x065e31ff,0xbe49a941},
+    {0x10221,0x065e11ff,0x0249a941},
+    {0x10225,0x065e11ff,0x0249a941},
+    {0x1022a,0x065e11ff,0x0249a941},
+    {0x1022e,0x065e11ff,0x0249a941},
+    {0x10232,0x065e11ff,0x0249a941},
+    {0x10236,0x065e11ff,0x0249a941},
+    {0x0021d,0x065e31ff,0xbe49a941},
+    {0x0021f,0x065e31ff,0xbe49a941},
+    {0x00220,0x065e11ff,0x0249a941},
+    {0x00220,0x065e11ff,0x0249a941},
+    {0x00221,0x065e11ff,0x0249a941},
+    {0x00221,0x065e11ff,0x0249a941},
+    {0x00221,0x065e11ff,0x0249a941},
 };
 
 int sys_clkpll_setting(unsigned crystal_freq, unsigned out_freq)
@@ -112,15 +114,15 @@ int sys_clkpll_setting(unsigned crystal_freq, unsigned out_freq)
     out_M = out_freq / 1000000;
     i = (out_M-200)/50;
     if (i>16) i=16;
-    target_pll_setting = pll_setting[i];
+    target_pll_setting = pll_setting[i][0];
     if (READ_MPEG_REG(HHI_SYS_PLL_CNTL)!=target_pll_setting){
         WRITE_MPEG_REG(HHI_SYS_PLL_CNTL, target_pll_setting); 
-        WRITE_MPEG_REG(HHI_SYS_PLL_CNTL2, 0x065e11ff); 
-        WRITE_MPEG_REG(HHI_SYS_PLL_CNTL3, 0x0249a941);  // 0x1649a941 for 720M~1460M and 0x249a941 for 680M~1410M
+        WRITE_MPEG_REG(HHI_SYS_PLL_CNTL2, pll_setting[i][1]); 
+        WRITE_MPEG_REG(HHI_SYS_PLL_CNTL3, pll_setting[i][2]);
         WRITE_MPEG_REG(RESET5_REGISTER, (1<<2));        // reset sys pll
         lock_flag = 0;
         log_index = 0;
-        target_freq = ((pll_setting[i]&0x1ff)*crys_M)>>(pll_setting[i]>>16);
+        target_freq = ((target_pll_setting&0x1ff)*crys_M)>>(target_pll_setting>>16);
         for (i=0;i<64;i++){
             result_freq = clk_util_clk_msr(SYS_PLL_CLK);
             if ((result_freq <= target_freq+1)&&(result_freq >= target_freq-1)){

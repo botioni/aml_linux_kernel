@@ -203,9 +203,10 @@ static irqreturn_t am_key_interrupt(int irq, void *dev)
      * Read RTC alarm GPO status bit to differentiate between the two cases.
      */
 #ifdef CONFIG_AML_RTC
-    if (jiffies_to_msecs(jiffies - resume_jeff_num) < 1000)
-        return IRQ_HANDLED;
-    alarm = aml_rtc_alarm_status();
+	alarm = (READ_AOBUS_REG(AO_RTC_ADDR1)>>3)&1;
+//    if (jiffies_to_msecs(jiffies - resume_jeff_num) < 1000)
+//        return IRQ_HANDLED;
+//    alarm = aml_rtc_alarm_status();
 #endif /* CONFIG_AML_RTC */
 
     KeyInput->status = (READ_AOBUS_REG(AO_RTC_ADDR1)>>2)&1;
