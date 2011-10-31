@@ -25,13 +25,13 @@
 #include "efuse_regs.h"
 
 #define EFUSE_MODULE_NAME   "efuse"
-#define EFUSE_DRIVER_NAME   "efuse"
+#define EFUSE_DRIVER_NAME		"efuse"
 #define EFUSE_DEVICE_NAME   "efuse"
 #define EFUSE_CLASS_NAME    "efuse"
 
 #define EFUSE_BITS		3072
 #define EFUSE_BYTES		384  //(EFUSE_BITS/8)
-#define EFUSE_DWORDS		96  //(EFUSE_BITS/32)
+#define EFUSE_DWORDS	96  //(EFUSE_BITS/32)
 
 #define DOUBLE_WORD_BYTES	4
 //#define hemingdebug	printk("heming add %s %d",__FUNCTION__,__LINE__);
@@ -270,7 +270,7 @@ static ssize_t efuse_read( struct file *file, char __user *buf,
 	size_t count, loff_t *ppos )
 {
 	int ret;
-	loff_t local_ppos = *ppos;
+	//loff_t local_ppos = *ppos;
 	size_t local_count = 0;
 	unsigned char* local_buf = (unsigned char*)kzalloc(sizeof(char)*count, GFP_KERNEL);
 	
@@ -299,7 +299,7 @@ error_exit:
 
 static int check_if_efused(loff_t pos, size_t count)
 {
-	size_t local_pos = (size_t)pos;
+	loff_t local_pos = pos;
 	int i;
 	unsigned char* buf = (unsigned char*)kzalloc(sizeof(char)*count, GFP_KERNEL);
 	if (buf) {
@@ -342,7 +342,7 @@ static ssize_t efuse_write( struct file *file, const char __user *buf,
 
 	//printk(KERN_INFO "\nefuse_write: f_pos: %lld, ppos: %lld\n", file->f_pos, *ppos);
 
-	if (ret = check_if_efused(pos, count)) {
+	if ((ret = check_if_efused(pos, count))) {
 		printk(KERN_INFO "the chip has been efused\n");
 		if (ret == 1)
 			return -EROFS;
@@ -675,8 +675,8 @@ static int bch_dec(int c[255], int n, int t)
 void efuse_bch_enc(const char *ibuf, int isize, char *obuf)
 {
 	int i, j;
-	int cnt, tmp;
-	int errnum, errbit;
+	int tmp;
+	//int errnum, errbit;
 	char info;
 	int c[255];
 
@@ -716,7 +716,7 @@ void efuse_bch_enc(const char *ibuf, int isize, char *obuf)
 void efuse_bch_dec(const char *ibuf, int isize, char *obuf)
 {
 	int i, j;
-	int cnt, tmp;
+	int tmp;
 	char info;
 	int c[255];
 
@@ -753,7 +753,7 @@ struct device *efuse_class_to_device(struct class *cla)
 {
 	struct device		*dev;
 
-	dev = class_find_device(cla, NULL, cla->name,
+	dev = class_find_device(cla, NULL, (void*)cla->name,
 				efuse_device_match);
 	if (!dev)
 		printk("%s no matched device found!/n",__FUNCTION__);
