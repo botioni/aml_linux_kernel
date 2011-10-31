@@ -38,36 +38,48 @@ static int ft5x0x_read_reg(u8 addr, u8 *pdata);
 static struct i2c_client *this_client;
 static struct ts_platform_data *focaltechPdata2;
 static int ft5x0x_printk_enable_flag=0;
-#define CONFIG_FT5X0X_MULTITOUCH 
-#define printfocaltek 
+
+#define FT5X0X_EVENT_MAX	5
+#define CONFIG_TOUCH_PANEL_KEY
+
+#ifdef CONFIG_TOUCH_PANEL_KEY
+#define TP_KEY_GUARANTEE_TIME_AFTER_TOUCH 100 * 1000000//unit msec
+
+enum {
+	NO_TOUCH,
+	TOUCH_KEY,
+	TOUCH_SCREEN,
+	TOUCH_SCREEN_RELEASE,
+};
+#endif
+
 struct ts_event {
-	s16	x1;
-	s16	y1;
-	s16	x2;
-	s16	y2;
-	s16	x3;
-	s16	y3;
-	s16	x4;
-	s16	y4;
-	s16	x5;
-	s16	y5;
-	s16	pressure;
-    u8  touch_point;
+	u8 id;
+	s16	x;
+	s16	y;
+	s16	z;
+	s16 w;
 };
 
 struct ft5x0x_ts_data {
 	struct input_dev	*input_dev;
-	struct ts_event		event;
+	struct ts_event	event[FT5X0X_EVENT_MAX];
+	u8 event_num;
 	struct work_struct 	pen_event_work;
 	struct workqueue_struct *ts_workqueue;
 	struct early_suspend	early_suspend;
-	short keypad;
+#ifdef CONFIG_TOUCH_PANEL_KEY
+	u8 touch_state;
+	short key;
+	struct hrtimer timer;
+	struct ts_event first_event;
+	int offset;
+	int touch_count;
+#endif
 };
-#define CONFIG_TOUCH_PANEL_KEY
-static int FOCALTECH_SCREEN_MAX_X;
-static int FOCALTECH_SCREEN_MAX_Y;
+
 #define ft5x0x_dbg(fmt, args...)  { if(ft5x0x_printk_enable_flag) \
-					printk( KERN_DEBUG "[ft5x0x]: " fmt, ## args); }
+					printk("[ft5x0x]: " fmt, ## args); }
 
 //#define AC_DETECT_IN_TOUCH_DRIVER
 static int ac_detect_flag_current=0;
@@ -108,26 +120,32 @@ static ssize_t ft5x0x_read(struct device *dev, struct device_attribute *attr, ch
 
 static ssize_t ft5x0x_write(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
 {
-    int ret = 0;
-    struct capts *ts = (struct capts *)dev_get_drvdata(dev);
+	int ret = 0;
+	struct capts *ts = (struct capts *)dev_get_drvdata(dev);
 
-    if (!strcmp(attr->attr.name, "ft5x0xPrintFlag")) {
+	if (!strcmp(attr->attr.name, "ft5x0xPrintFlag")) {
 		printk("buf[0]=%d, buf[1]=%d\n", buf[0], buf[1]);
 		if (buf[0] == '0') ft5x0x_printk_enable_flag = 0;
 		if (buf[0] == '1') ft5x0x_printk_enable_flag = 1;
-		if (buf[0] == '2')
-			{
+		if (buf[0] == '2') {
 			ft5x0x_printk_enable_flag=2;
-		if(focaltechPdata2&&focaltechPdata2->power_off&&focaltechPdata2->power_on){
-		focaltechPdata2->power_off();
-		msleep(50);
-		focaltechPdata2->power_on();
-		msleep(200);
+			if(focaltechPdata2->power){
+				focaltechPdata2->power(0);
+				msleep(50);
+				focaltechPdata2->power(1);
+				msleep(200);
 			}
-			}
+		}
+		if (buf[0] == '3') {
+			u8 data;
+			ft5x0x_write_reg(0xa5, 0x03);
+			printk("set reg[0xa5] = 0x03\n");
+			msleep(20);
+			ft5x0x_read_reg(0xa5, &data);
+			printk("read back: reg[0xa5] = %d\n", data);
     }
-    
-    return count;
+  }
+	return count;
 }
 
 static DEVICE_ATTR(ft5x0xPrintFlag, S_IRWXUGO, ft5x0x_read, ft5x0x_write);
@@ -672,233 +690,88 @@ unsigned char fts_ctpm_get_upg_ver(void)
 
 #endif
 
-/***********************************************************************************************
-Name	:	 
 
-Input	:	
-                     
 
-Output	:	
-
-function	:	
-
-***********************************************************************************************/
-static void ft5x0x_ts_release(void)
+static int is_tp_key(struct tp_key *tp_key, int key_num, int x, int y)
 {
-	struct ft5x0x_ts_data *data = i2c_get_clientdata(this_client);
-#ifdef CONFIG_FT5X0X_MULTITOUCH	
-  if (data->keypad > 0) {
-  	input_report_key(data->input_dev, data->keypad, 0);
-  	input_sync(data->input_dev);
-		ft5x0x_dbg("key(%d) up\n", data->keypad);
-  }
-  else {
-		input_report_abs(data->input_dev, ABS_MT_TOUCH_MAJOR, 0);
+	int i;
+	
+	if (tp_key && key_num) {
+		for (i=0; i<key_num; i++) {
+			if ((x > tp_key->x1) && (x < tp_key->x2)
+			&& (y > tp_key->y1) && (y < tp_key->y2)) {
+				return tp_key->key;
+			}
+			tp_key++;
+		}
 	}
-  data->keypad = 0;
-#else
-	input_report_abs(data->input_dev, ABS_PRESSURE, 0);
-	input_report_key(data->input_dev, BTN_TOUCH, 0);
-#endif
-	input_sync(data->input_dev);
+	return 0;
 }
 
-static int ft5x0x_read_data(void)
+static enum hrtimer_restart ft5x0x_timer(struct hrtimer *timer)
 {
-	struct ft5x0x_ts_data *data = i2c_get_clientdata(this_client);
-	struct ts_event *event = &data->event;
-//	u8 buf[14] = {0};
-	u8 buf[32] = {0};
-	int ret = -1;
+	struct ft5x0x_ts_data *data = container_of(timer, struct ft5x0x_ts_data, timer);
+	input_report_abs(data->input_dev, ABS_MT_TOUCH_MAJOR, 0);
+	input_sync(data->input_dev);
+	ft5x0x_dbg("touch screen up(2)!\n");
+ 	data->touch_state = NO_TOUCH;
+	return HRTIMER_NORESTART;
+};
 
-#ifdef CONFIG_FT5X0X_MULTITOUCH
-//	ret = ft5x0x_i2c_rxdata(buf, 13);
+
+/*
+ * return event number.
+*/
+static int ft5x0x_get_event(struct ts_event *event)
+{
+	u8 buf[32] = {0};
+	int ret, i;
+
 	ret = ft5x0x_i2c_rxdata(buf, 31);
-#else
-    ret = ft5x0x_i2c_rxdata(buf, 7);
-#endif
-    if (ret < 0) {
+	if (ret < 0) {
 		printk("%s read_data i2c_rxdata failed: %d\n", __func__, ret);
 		return ret;
 	}
 
-	memset(event, 0, sizeof(struct ts_event));
-//	event->touch_point = buf[2] & 0x03;// 0000 0011
-	event->touch_point = buf[2] & 0x07;// 000 0111
-
-    if (event->touch_point == 0) {
-        ft5x0x_ts_release();
-        return 1; 
-    }
-#ifdef AC_DETECT_IN_TOUCH_DRIVER
-	Ac_Detect_In_Touch_Driver();
-#endif
-#ifdef CONFIG_FT5X0X_MULTITOUCH
-    switch (event->touch_point) {
-		case 5:
-			event->x5 = (s16)(buf[0x1b] & 0x0F)<<8 | (s16)buf[0x1c];
-			event->y5 = (s16)(buf[0x1d] & 0x0F)<<8 | (s16)buf[0x1e];
-//			event->x5 = FOCALTECH_SCREEN_MAX_X - event->x5;
-//			event->y5 = FOCALTECH_SCREEN_MAX_Y - event->y5;
-			if ( event->y5 == 0 )	event->y5 = 1;
-			if ( event->x5 == 0 )event->x5 = 1;
-
-		case 4:
-			event->x4 = (s16)(buf[0x15] & 0x0F)<<8 | (s16)buf[0x16];
-			event->y4 = (s16)(buf[0x17] & 0x0F)<<8 | (s16)buf[0x18];
-//			event->x4 = FOCALTECH_SCREEN_MAX_X - event->x4;
-//			event->y4 = FOCALTECH_SCREEN_MAX_Y - event->y4;
-			if ( event->y4 == 0 )	event->y4 = 1;
-			if ( event->x4 == 0 )event->x4 = 1;
-		case 3:
-			event->x3 = (s16)(buf[0x0f] & 0x0F)<<8 | (s16)buf[0x10];
-			event->y3 = (s16)(buf[0x11] & 0x0F)<<8 | (s16)buf[0x12];
-//			event->x3 = FOCALTECH_SCREEN_MAX_X - event->x3;
-//			event->y3 = FOCALTECH_SCREEN_MAX_Y - event->y3;
-			if ( event->y3 == 0 )	event->y3 = 1;
-			if ( event->x3 == 0 )event->x3 = 1;
-		case 2:
-			event->x2 = (s16)(buf[9] & 0x0F)<<8 | (s16)buf[10];
-			event->y2 = (s16)(buf[11] & 0x0F)<<8 | (s16)buf[12];
-			//event->x2 = FOCALTECH_SCREEN_MAX_X - event->x2;
-			//event->y2 = FOCALTECH_SCREEN_MAX_Y - event->y2;
-			if ( event->y2 == 0 )	event->y2 = 1;
-			if ( event->x2 == 0 )event->x2 = 1;
-		case 1:
-			event->x1 = (s16)(buf[3] & 0x0F)<<8 | (s16)buf[4];
-			event->y1 = (s16)(buf[5] & 0x0F)<<8 | (s16)buf[6];
-//			event->x1 = FOCALTECH_SCREEN_MAX_X - event->x1;
-//			event->y1 = FOCALTECH_SCREEN_MAX_Y - event->y1;
-			if ( event->y1 == 0 )	event->y1 = 1;
-			if ( event->x1 == 0 )event->x1 = 1;
-            break;
-		default:
-		    return -1;
+	ret = (buf[2] & 0x07);
+	if (ret > FT5X0X_EVENT_MAX) ret = FT5X0X_EVENT_MAX;
+	for (i=0; i<ret; i++) {
+		event->id = i;
+		event->x = (s16)(buf[3+i*6] & 0x0F)<<8 | (s16)buf[4+i*6];
+		event->y = (s16)(buf[5+i*6] & 0x0F)<<8 | (s16)buf[6+i*6];
+    event->z = 200;
+    event->w = 1;
+    if (focaltechPdata2->swap_xy)
+    	swap(event->x, event->y);
+    if (focaltechPdata2->xpol)
+			event->x = focaltechPdata2->screen_max_x - event->x;
+    if (focaltechPdata2->ypol)
+			event->y = focaltechPdata2->screen_max_y - event->y;
+		if (event->x == 0) event->x = 1;
+		if (event->y == 0) event->y = 1;
+		event++;
 	}
-#else
-    if (event->touch_point == 1) {
-    	event->x1 = (s16)(buf[3] & 0x0F)<<8 | (s16)buf[4];
-		event->y1 = (s16)(buf[5] & 0x0F)<<8 | (s16)buf[6];
-    }
-#endif
-    event->pressure = 200;
 
-	dev_dbg(&this_client->dev, "%s: 1:%d %d 2:%d %d \n", __func__,
-		event->x1, event->y1, event->x2, event->y2);
-	//printk("%d (%d, %d), (%d, %d)\n", event->touch_point, event->x1, event->y1, event->x2, event->y2);
-
-    return 0;
+	return ret;
 }
-/***********************************************************************************************
-Name	:	 
 
-Input	:	
-                     
-
-Output	:	
-
-function	:	
-
-***********************************************************************************************/
-static void ft5x0x_report_value(void)
+static void ft5x0x_report_mt_event(struct input_dev *input, struct ts_event *event, int event_num)
 {
-	struct ft5x0x_ts_data *data = i2c_get_clientdata(this_client);
-	struct ts_event *event = &data->event;
-	u8 uVersion;
-
-		printfocaltek("==ft5x0x_report_value =\n");
-#ifdef CONFIG_FT5X0X_MULTITOUCH
-	switch(event->touch_point) {
-		case 5:
-			input_report_abs(data->input_dev, ABS_MT_TOUCH_MAJOR, event->pressure);
-			input_report_abs(data->input_dev, ABS_MT_POSITION_X, event->x5);
-			input_report_abs(data->input_dev, ABS_MT_POSITION_Y, event->y5);
-			input_report_abs(data->input_dev, ABS_MT_WIDTH_MAJOR, 1);
-			input_mt_sync(data->input_dev);
-			if(ft5x0x_printk_enable_flag)
-			printk("===x5 = %d,y5 = %d ====\n",event->x5,event->y5);
-		case 4:
-			input_report_abs(data->input_dev, ABS_MT_TOUCH_MAJOR, event->pressure);
-			input_report_abs(data->input_dev, ABS_MT_POSITION_X, event->x4);
-			input_report_abs(data->input_dev, ABS_MT_POSITION_Y, event->y4);
-			input_report_abs(data->input_dev, ABS_MT_WIDTH_MAJOR, 1);
-			input_mt_sync(data->input_dev);
-			if(ft5x0x_printk_enable_flag)
-			printk("===x4 = %d,y4 = %d ====\n",event->x4,event->y4);
-		case 3:
-			input_report_abs(data->input_dev, ABS_MT_TOUCH_MAJOR, event->pressure);
-			input_report_abs(data->input_dev, ABS_MT_POSITION_X, event->x3);
-			input_report_abs(data->input_dev, ABS_MT_POSITION_Y, event->y3);
-			input_report_abs(data->input_dev, ABS_MT_WIDTH_MAJOR, 1);
-			input_mt_sync(data->input_dev);
-			if(ft5x0x_printk_enable_flag)
-			printk("===x3 = %d,y3 = %d ====\n",event->x3,event->y3);
-		case 2:
-			input_report_abs(data->input_dev, ABS_MT_TOUCH_MAJOR, event->pressure);
-			input_report_abs(data->input_dev, ABS_MT_POSITION_X, event->x2);
-			input_report_abs(data->input_dev, ABS_MT_POSITION_Y, event->y2);
-			input_report_abs(data->input_dev, ABS_MT_WIDTH_MAJOR, 1);
-			input_mt_sync(data->input_dev);
-			if(ft5x0x_printk_enable_flag)
-			printk("===x2 = %d,y2 = %d ====\n",event->x2,event->y2);
-		case 1:
-#ifdef CONFIG_TOUCH_PANEL_KEY			     
-      if(event->x1 > 1280)  {
-      		if (data->keypad == 0) {
-						if((event->y1>748)&&(event->y1<768)) {
-							data->keypad = KEY_HOME;
-	          }	
-						else if((event->y1>688)&&(event->y1<728)) {
-							data->keypad = KEY_MENU;
-		        }
-						else  if((event->y1>628)&&(event->y1<668)) {
-							data->keypad = KEY_BACK;
-	          }
-	          else {
-	          }
-	          
-	          if (data->keypad > 0) {
-	          	input_report_key(data->input_dev, data->keypad, 1);
-		          input_sync(data->input_dev);
-		          ft5x0x_dbg("key(%d) down\n", data->keypad);
-	        	}
-	        }
-      }
-			else if (data->keypad < 1) {
-				data->keypad = -1;
-				input_report_abs(data->input_dev, ABS_MT_TOUCH_MAJOR, event->pressure);
-				input_report_abs(data->input_dev, ABS_MT_POSITION_X, event->x1);
-				input_report_abs(data->input_dev, ABS_MT_POSITION_Y, event->y1);
-				input_report_abs(data->input_dev, ABS_MT_WIDTH_MAJOR, 1);
-				input_mt_sync(data->input_dev);
-			}
-#else
-			input_report_abs(data->input_dev, ABS_MT_TOUCH_MAJOR, event->pressure);
-			input_report_abs(data->input_dev, ABS_MT_POSITION_X, event->x1);
-			input_report_abs(data->input_dev, ABS_MT_POSITION_Y, event->y1);
-			input_report_abs(data->input_dev, ABS_MT_WIDTH_MAJOR, 1);
-			input_mt_sync(data->input_dev);
-#endif		
-			if(ft5x0x_printk_enable_flag)
-			printk("===x1 = %d,y1 = %d ====\n",event->x1,event->y1);
-
-		default:
-//			printfocaltek("==touch_point default =\n");
-			break;
+	int i;
+	
+	for (i=0; i<event_num; i++) {
+//		input_report_abs(input, ABS_MT_TOUCH_ID, event->id);
+		input_report_abs(input, ABS_MT_POSITION_X, event->x);
+		input_report_abs(input, ABS_MT_POSITION_Y, event->y);
+		input_report_abs(input, ABS_MT_TOUCH_MAJOR, event->z);
+		input_report_abs(input, ABS_MT_WIDTH_MAJOR, event->w);
+		input_mt_sync(input);
+		ft5x0x_dbg("point_%d: %d, %d\n",event->id, event->x,event->y);
+		event++;
 	}
-#else	/* CONFIG_FT5X0X_MULTITOUCH*/
-	if (event->touch_point == 1) {
-		input_report_abs(data->input_dev, ABS_X, event->x1);
-		input_report_abs(data->input_dev, ABS_Y, event->y1);
-		input_report_abs(data->input_dev, ABS_PRESSURE, event->pressure);
-	}
-	input_report_key(data->input_dev, BTN_TOUCH, 1);
-#endif	/* CONFIG_FT5X0X_MULTITOUCH*/
-	input_sync(data->input_dev);
+	input_sync(input);
+}
 
-	dev_dbg(&this_client->dev, "%s: 1:%d %d 2:%d %d \n", __func__,
-		event->x1, event->y1, event->x2, event->y2);
-}	/*end ft5x0x_report_value*/
 /***********************************************************************************************
 Name	:	 
 
@@ -912,11 +785,93 @@ function	:
 ***********************************************************************************************/
 static void ft5x0x_ts_pen_irq_work(struct work_struct *work)
 {
-	int ret = -1;
-	ret = ft5x0x_read_data();	
-	if (ret == 0) {	
-		ft5x0x_report_value();
+	struct ft5x0x_ts_data *data = i2c_get_clientdata(this_client);
+	struct ts_event *event = &data->event[0];
+	int event_num = 0;
+	
+	event_num = ft5x0x_get_event(event);
+	if (event_num < 0) {
+		enable_irq(this_client->irq);
+		return;
 	}
+
+#ifdef AC_DETECT_IN_TOUCH_DRIVER
+	Ac_Detect_In_Touch_Driver();
+#endif
+
+#ifdef CONFIG_TOUCH_PANEL_KEY
+	int key = 0;
+	if (event_num == 1) {
+		key = is_tp_key(focaltechPdata2->tp_key, focaltechPdata2->tp_key_num, event->x, event->y);
+		if (key)
+			ft5x0x_dbg("key pos: %d, %d\n", event->x,event->y);
+	}
+	
+	switch (data->touch_state) {
+	case NO_TOUCH:
+		if(key)	{
+			input_report_key(data->input_dev, key, 1);
+			input_sync(data->input_dev);
+			ft5x0x_dbg("touch key(%d) down\n", key);
+			data->key = key;
+			data->touch_state = TOUCH_KEY;
+		}
+		else if (event_num) {
+			ft5x0x_dbg("touch screen down\n");
+			ft5x0x_report_mt_event(data->input_dev, event, event_num);
+			data->first_event = data->event[0];
+			data->offset = 0;
+			data->touch_count = 0;
+			data->touch_state = TOUCH_SCREEN;
+		}
+		break;
+		
+	case TOUCH_KEY:
+		if (!event_num) {
+			input_report_key(data->input_dev, data->key, 0);
+			input_sync(data->input_dev);
+			ft5x0x_dbg("touch key(%d) up\n", data->key);
+			data->touch_state = NO_TOUCH;
+		}
+		break;
+		
+	case TOUCH_SCREEN:
+		if (!event_num) {
+			if ((data->offset < 10) && (data->touch_count > 1)) {
+				input_report_abs(data->input_dev, ABS_MT_TOUCH_MAJOR, 0);
+				input_sync(data->input_dev);
+				ft5x0x_dbg("touch screen up!\n");
+	     	data->touch_state = NO_TOUCH;
+    	}
+    	else {
+				ft5x0x_dbg("touch screen up(1)\n");
+	      hrtimer_start(&data->timer, ktime_set(0, TP_KEY_GUARANTEE_TIME_AFTER_TOUCH), HRTIMER_MODE_REL);
+			}
+		}
+		else {
+			hrtimer_cancel(&data->timer);
+			data->touch_count++;
+			if (!key) {
+				int offset;
+				ft5x0x_report_mt_event(data->input_dev, event, event_num);
+				offset = abs(event->x - data->first_event.x);
+				offset += abs(event->y - data->first_event.y);
+				if (offset > data->offset) data->offset = offset;
+			}
+		}
+		break;
+		
+	default:
+		break;
+	}
+#else
+	if (event_num)
+		ft5x0x_report_mt_event(data->input_dev, event, event_num);
+	else {
+		input_report_abs(data->input_dev, ABS_MT_TOUCH_MAJOR, 0);
+		input_sync(data->input_dev);
+	}
+#endif
 	enable_irq(this_client->irq);
 }
 /***********************************************************************************************
@@ -932,9 +887,10 @@ function	:
 ***********************************************************************************************/
 static irqreturn_t ft5x0x_ts_interrupt(int irq, void *dev_id)
 {
+//	static int irq_count = 0;
+//	printk("irq count: %d\n", irq_count++);
 	struct ft5x0x_ts_data *ft5x0x_ts = dev_id;
-    	disable_irq_nosync(this_client->irq);	
-	printfocaltek("enter irq(%d, %d)\n",irq, this_client->irq);
+	disable_irq_nosync(this_client->irq);	
 	if (!work_pending(&ft5x0x_ts->pen_event_work)) {
 		queue_work(ft5x0x_ts->ts_workqueue, &ft5x0x_ts->pen_event_work);
 	}
@@ -956,17 +912,17 @@ static void ft5x0x_ts_suspend(struct early_suspend *handler)
 {
 //	struct ft5x0x_ts_data *ts;
 //	ts =  container_of(handler, struct ft5x0x_ts_data, early_suspend);
-
 	printk("==ft5x0x_ts_suspend=\n");
-//	disable_irq(this_client->irq);
-//	disable_irq(IRQ_EINT(6));
-//	cancel_work_sync(&ts->pen_event_work);
-//	flush_workqueue(ts->ts_workqueue);
-	// ==set mode ==, 
-   // ft5x0x_write_reg(FT5X0X_REG_PMODE, PMODE_HIBERNATE);
-		if(focaltechPdata2&&focaltechPdata2->power_off&&focaltechPdata2->power_on){
-		focaltechPdata2->power_off();
+	if(focaltechPdata2->power) {
+		u8 data;
+		ft5x0x_write_reg(0xa5, 0x03);
+		printk("set reg[0xa5] = 0x03\n");
+		msleep(20);
+		ft5x0x_read_reg(0xa5, &data);
+		printk("read back: reg[0xa5] = %d\n", data);
 	}
+	if (focaltechPdata2->key_led_ctrl)
+		focaltechPdata2->key_led_ctrl(0);
 }
 /***********************************************************************************************
 Name	:	 
@@ -982,21 +938,14 @@ function	:
 static void ft5x0x_ts_resume(struct early_suspend *handler)
 {
 	printk("==ft5x0x_ts_resume=\n");
-		if(focaltechPdata2&&focaltechPdata2->power_off&&focaltechPdata2->power_on){
-		//focaltechPdata2->power_off();
-		//msleep(50);
-		focaltechPdata2->power_on();
+	if(focaltechPdata2->power) {
+		focaltechPdata2->power(0);
+		msleep(50);
+		focaltechPdata2->power(1);
 		msleep(200);
 	}
-
-	// wake the mode
-//	__gpio_as_output(GPIO_FT5X0X_WAKE);		
-//	__gpio_clear_pin(GPIO_FT5X0X_WAKE);		//set wake = 0,base on system
-//	 msleep(100);
-//	__gpio_set_pin(GPIO_FT5X0X_WAKE);			//set wake = 1,base on system
-//	msleep(100);
-//	enable_irq(this_client->irq);
-//	enable_irq(IRQ_EINT(6));
+	if (focaltechPdata2->key_led_ctrl)
+		focaltechPdata2->key_led_ctrl(1);
 }
 #endif  //CONFIG_HAS_EARLYSUSPEND
 /***********************************************************************************************
@@ -1018,16 +967,21 @@ ft5x0x_ts_probe(struct i2c_client *client, const struct i2c_device_id *id)
 	int err = 0;
 	unsigned char uc_reg_value; 
 	struct ts_platform_data *pdata = client->dev.platform_data;
-		focaltechPdata2 = client->dev.platform_data;
-		if(pdata&&pdata->power_off&&pdata->power_on){
-		pdata->power_off();
+	
+	if (!pdata) {
+		printk("%s: no platform data\n", __FUNCTION__);
+		err = -ENODEV;
+		goto exit_check_functionality_failed;
+		
+	}
+	focaltechPdata2 = client->dev.platform_data;
+	if(pdata->power){
+		pdata->power(0);
 		mdelay(50);
-		pdata->power_on();
+		pdata->power(1);
 		mdelay(200);
 	}
 
-	FOCALTECH_SCREEN_MAX_X=pdata->screen_max_x;
-	FOCALTECH_SCREEN_MAX_Y=pdata->screen_max_y;
 	printk("==ft5x0x_ts_probe=\n");
 	
 	
@@ -1054,8 +1008,7 @@ ft5x0x_ts_probe(struct i2c_client *client, const struct i2c_device_id *id)
 		err = -ESRCH;
 		goto exit_create_singlethread;
 	}
-	
-  ft5x0x_ts->keypad = 0;
+ 
 //	__gpio_as_irq_fall_edge(pdata->intr);		//
 printk("==enable Irq=\n");
     if (pdata->init_irq) {
@@ -1075,42 +1028,36 @@ printk("==enable Irq success=\n");
 	}
 	
 	ft5x0x_ts->input_dev = input_dev;
+#ifdef CONFIG_TOUCH_PANEL_KEY
+	ft5x0x_ts->touch_state = NO_TOUCH;
+	ft5x0x_ts->key = 0;
+	if (pdata->tp_key && pdata->tp_key_num) {
+		int i;
+		for (i=0; i<pdata->tp_key_num; i++) {
+			set_bit(pdata->tp_key[i].key, input_dev->keybit);
+			printk("tp key (%d)registered\n", pdata->tp_key[i].key);
+		}
+		set_bit(EV_SYN, input_dev->evbit);
+		hrtimer_init(&ft5x0x_ts->timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
+		ft5x0x_ts->timer.function = ft5x0x_timer;
+	}
+#endif
 
-#ifdef CONFIG_FT5X0X_MULTITOUCH
 	set_bit(ABS_MT_TOUCH_MAJOR, input_dev->absbit);
 	set_bit(ABS_MT_POSITION_X, input_dev->absbit);
 	set_bit(ABS_MT_POSITION_Y, input_dev->absbit);
 	set_bit(ABS_MT_WIDTH_MAJOR, input_dev->absbit);
-#ifdef CONFIG_TOUCH_PANEL_KEY
-	set_bit(KEY_HOME, input_dev->keybit);
-	set_bit(KEY_MENU, input_dev->keybit);
-	set_bit(KEY_BACK, input_dev->keybit);
-#endif
-
 	input_set_abs_params(input_dev,
-			     ABS_MT_POSITION_X, 0, FOCALTECH_SCREEN_MAX_X, 0, 0);
+			     ABS_MT_POSITION_X, 0, pdata->screen_max_x, 0, 0);
 	input_set_abs_params(input_dev,
-			     ABS_MT_POSITION_Y, 0, FOCALTECH_SCREEN_MAX_Y, 0, 0);
+			     ABS_MT_POSITION_Y, 0, pdata->screen_max_y, 0, 0);
 	input_set_abs_params(input_dev,
 			     ABS_MT_TOUCH_MAJOR, 0, PRESS_MAX, 0, 0);
 	input_set_abs_params(input_dev,
 			     ABS_MT_WIDTH_MAJOR, 0, 200, 0, 0);
-#else
-	set_bit(ABS_X, input_dev->absbit);
-	set_bit(ABS_Y, input_dev->absbit);
-	set_bit(ABS_PRESSURE, input_dev->absbit);
-	set_bit(BTN_TOUCH, input_dev->keybit);
-
-	input_set_abs_params(input_dev, ABS_X, 0, FOCALTECH_SCREEN_MAX_X, 0, 0);
-	input_set_abs_params(input_dev, ABS_Y, 0, FOCALTECH_SCREEN_MAX_Y, 0, 0);
-	input_set_abs_params(input_dev, ABS_PRESSURE, 0, PRESS_MAX, 0 , 0);
-#endif
 
 	set_bit(EV_ABS, input_dev->evbit);
 	set_bit(EV_KEY, input_dev->evbit);
-#ifdef CONFIG_TOUCH_PANEL_KEY
-	set_bit(EV_SYN, input_dev->evbit);
-#endif	
 
 	input_dev->name		= FT5X0X_NAME;		//dev_name(&client->dev)
 	err = input_register_device(input_dev);
@@ -1144,8 +1091,6 @@ printk("==enable Irq success=\n");
     uc_reg_value = ft5x0x_read_fw_ver();
     printk("[FST] Firmware new version = 0x%x\n", uc_reg_value);
 
-
-//	printfocaltek("==request_irq=\n");
 	err = request_irq(client->irq, ft5x0x_ts_interrupt, IRQF_DISABLED, "ft5x0x_ts", ft5x0x_ts);
 //	err = request_irq(IRQ_EINT(6), ft5x0x_ts_interrupt, IRQF_TRIGGER_FALLING, "ft5x0x_ts", ft5x0x_ts);
 	if (err < 0) {
@@ -1168,6 +1113,8 @@ printk("==enable Irq success=\n");
    
     err = sysfs_create_group(&client->dev.kobj, &ft5x0x_attr_group);
 
+	if (focaltechPdata2->key_led_ctrl)
+		focaltechPdata2->key_led_ctrl(1);
 	printk("==probe over =\n");
     return 0;
 

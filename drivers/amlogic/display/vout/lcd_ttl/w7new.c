@@ -162,6 +162,7 @@ void power_on_backlight(void)
 {
 	PRINT_INFO(" w7 power_on_backlight \n");
 	//dump_stack();
+	WRITE_CBUS_REG_BITS(LED_PWM_REG0, 1, 12, 2); 
 	msleep(100);
     set_gpio_val(GPIOD_bank_bit0_9(1), GPIOD_bit_bit0_9(1), 1);
     set_gpio_mode(GPIOD_bank_bit0_9(1), GPIOD_bit_bit0_9(1), GPIO_OUTPUT_MODE);

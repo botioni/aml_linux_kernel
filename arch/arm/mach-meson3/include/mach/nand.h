@@ -3,6 +3,7 @@
 #define NAND_H_INCLUDED
 #include <linux/dma-mapping.h>
 #include <linux/clk.h>
+#include <linux/cdev.h>
 #include "am_regs.h"
 #include <linux/earlysuspend.h>
 
@@ -423,6 +424,9 @@ struct aml_nand_chip {
 
 	/* device info */
 	struct device			*device;
+
+	/* nand env device */
+	struct cdev				nand_env_cdev;
 
 	struct early_suspend nand_early_suspend;
 

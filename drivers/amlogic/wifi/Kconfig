@@ -114,7 +114,7 @@ config RTL8XXX_CU_USB_WIFI
 	  Realtek 8192CU chipset.
 
 config SDIO_ATHEROS_6302_WIFI
-	bool "ATHEROS 6302 wireless cards support"
+	tristate "ATHEROS 6302 wireless cards support"
 	depends on SD_MMC
 	select WIRELESS_EXT
 	select WEXT_PRIV

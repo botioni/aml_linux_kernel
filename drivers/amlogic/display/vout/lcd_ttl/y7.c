@@ -146,7 +146,7 @@ static void t13_setup_gama_table(lcdConfig_t *pConf)
 
 #define PWM_MAX			60000   //set pwm_freq=24MHz/PWM_MAX (Base on XTAL frequence: 24MHz, 0<PWM_MAX<65535)
 #define BL_MAX_LEVEL	255
-#define BL_MIN_LEVEL	40
+#define BL_MIN_LEVEL	1//40
 void power_on_backlight(void)
 {
     msleep(20);
@@ -159,8 +159,8 @@ void power_on_backlight(void)
     set_gpio_mode(GPIOD_bank_bit0_9(1), GPIOD_bit_bit0_9(1), GPIO_OUTPUT_MODE);
 #elif (BL_CTL==BL_CTL_PWM)
 	int pwm_div=0;  //pwm_freq=24M/(pwm_div+1)/PWM_MAX	
-	WRITE_CBUS_REG_BITS(PWM_PWM_D, 0, 0, 16);  //pwm low
-    WRITE_CBUS_REG_BITS(PWM_PWM_D, PWM_MAX, 16, 16);  //pwm high
+	//WRITE_CBUS_REG_BITS(PWM_PWM_D, 0, 0, 16);  //pwm low
+    //WRITE_CBUS_REG_BITS(PWM_PWM_D, PWM_MAX, 16, 16);  //pwm high
 	SET_CBUS_REG_MASK(PWM_MISC_REG_CD, ((1 << 23) | (pwm_div<<16) | (1<<1)));  //enable pwm clk & pwm output
     SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<3));  //enable pwm pinmux
 #endif
@@ -236,11 +236,9 @@ static void power_off_lcd(void)
 	msleep(20);	
 	
 	//LCD_3.3V -> GPIOA_27: 0
-	set_gpio_val(GPIOA_bank_bit0_27(27), GPIOA_bit_bit0_27(27), 0);
-    set_gpio_mode(GPIOA_bank_bit0_27(27), GPIOA_bit_bit0_27(27), GPIO_OUTPUT_MODE);
-	msleep(20);
-	
-	printk("\nlcd parameter: power off lcd.\n");
+//	set_gpio_val(GPIOA_bank_bit0_27(27), GPIOA_bit_bit0_27(27), 0);
+//    set_gpio_mode(GPIOA_bank_bit0_27(27), GPIOA_bit_bit0_27(27), GPIO_OUTPUT_MODE);
+//	msleep(20);
 }
 
 static void set_tcon_pinmux(void)
@@ -271,16 +269,12 @@ static void clear_tcon_pinmux(void)
 
 static void t13_power_on(void)
 {
-	printk(KERN_INFO "\n\nT13 LCD t13_power_on.\n\n");
-	
     video_dac_disable();	
 	power_on_lcd();
 	//power_on_backlight();   //disable when required power sequence   
 }
 static void t13_power_off(void)
 {
-	printk(KERN_INFO "\n\nT13 LCD t13_power_off.\n\n");
-
 	power_off_backlight();
     power_off_lcd();
 }

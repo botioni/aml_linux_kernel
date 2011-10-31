@@ -14,6 +14,8 @@
 #include <linux/io.h>
 #include <linux/bitops.h>
 #include <linux/crc32.h>
+#include <linux/fs.h>
+#include <asm/uaccess.h>
 
 #include <linux/mtd/mtd.h>
 #include <linux/mtd/nand.h>
@@ -2930,6 +2932,167 @@ static int aml_nand_scan_bbt(struct mtd_info *mtd)
 	return 0;
 }
 
+#ifdef CONFIG_AML_NAND_ENV
+static struct mtd_info *nand_env_mtd = NULL;
+#define NAND_ENV_DEVICE_NAME	"nand_env"
+
+static int nand_env_open(struct inode * inode, struct file * filp)
+{
+	return 0;
+}
+/*
+ * This funcion reads the u-boot envionment variables. 
+ * The f_pos points directly to the env location.
+ */
+static ssize_t nand_env_read(struct file *file, char __user *buf,
+			size_t count, loff_t *ppos)
+{
+	env_t *env_ptr = NULL;
+	ssize_t read_size;
+	int error = 0;
+	if(*ppos == CONFIG_ENV_SIZE)
+	{
+		return 0;
+	}
+
+	if(*ppos >= CONFIG_ENV_SIZE)
+	{
+		printk(KERN_ERR "nand env: data access violation!\n");
+		return -EFAULT;
+	}
+
+	env_ptr = kzalloc(sizeof(env_t), GFP_KERNEL);
+	if (env_ptr == NULL)
+	{
+		return -ENOMEM;
+	}
+	
+	error = aml_nand_read_env (nand_env_mtd, 0, (u_char *)env_ptr);
+
+	if (error) 
+	{
+		printk("nand_env_read: nand env read failed: %llx, %d\n", (uint64_t)*ppos, error);
+		kfree(env_ptr);
+		return -EFAULT;
+	}
+
+	if((*ppos + count) > CONFIG_ENV_SIZE)
+	{
+		read_size = CONFIG_ENV_SIZE - *ppos;
+	}
+	else
+	{
+		read_size = count;
+	}
+
+	copy_to_user(buf, (env_ptr + *ppos), read_size);
+
+	*ppos += read_size;
+	
+	kfree(env_ptr);
+	return read_size;
+}
+
+static ssize_t nand_env_write(struct file *file, const char __user *buf,
+			 size_t count, loff_t *ppos)
+{
+	u_char *env_ptr = NULL;
+	ssize_t write_size;
+	int error = 0;
+	
+	if(*ppos == CONFIG_ENV_SIZE)
+	{
+		return 0;
+	}
+
+	if(*ppos >= CONFIG_ENV_SIZE)
+	{
+		printk(KERN_ERR "nand env: data access violation!\n");
+		return -EFAULT;
+	}
+
+	env_ptr = kzalloc(sizeof(env_t), GFP_KERNEL);
+	if (env_ptr == NULL)
+	{
+		return -ENOMEM;
+	}
+
+	error = aml_nand_read_env (nand_env_mtd, 0, (u_char *)env_ptr);
+
+	if (error) 
+	{
+		printk("nand_env_read: nand env read failed: %llx, %d\n", (uint64_t)*ppos, error);
+		kfree(env_ptr);
+		return -EFAULT;
+	}
+
+	if((*ppos + count) > CONFIG_ENV_SIZE)
+	{
+		write_size = CONFIG_ENV_SIZE - *ppos;
+	}
+	else
+	{
+		write_size = count;
+	}
+
+	copy_from_user((env_ptr + *ppos), buf, write_size);
+
+	error = aml_nand_save_env(nand_env_mtd, env_ptr);
+
+	if (error) 
+	{
+		printk("nand_env_read: nand env read failed: %llx, %d\n", (uint64_t)*ppos, error);
+		kfree(env_ptr);
+		return -EFAULT;
+	}
+
+	*ppos += write_size;
+	
+	kfree(env_ptr);
+	return write_size;
+}
+
+static int nand_env_close(struct inode *inode, struct file *file)
+{
+	return 0;
+}
+
+static int nand_env_ioctl(struct inode *inode, struct file *file,
+		     u_int cmd, u_long arg)
+{
+	return 0;
+}
+
+static int nand_env_cls_suspend(struct device *dev, pm_message_t state)
+{
+		return 0;
+}
+
+static int nand_env_cls_resume(struct device *dev)
+{
+	return 0;
+}
+
+
+static struct class nand_env_class = {
+    
+	.name = "nand_env",
+	.owner = THIS_MODULE,
+	.suspend = nand_env_cls_suspend,
+	.resume = nand_env_cls_resume,
+};
+
+static struct file_operations nand_env_fops = {
+    .owner	= THIS_MODULE,
+    .open	= nand_env_open,
+    .read	= nand_env_read,
+    .write	= nand_env_write,
+    .release	= nand_env_close,
+    .ioctl	= nand_env_ioctl,
+};
+
+#endif
+
 int aml_nand_init(struct aml_nand_chip *aml_chip)
 {
 	struct aml_nand_platform *plat = aml_chip->platform;
@@ -3397,6 +3560,43 @@ int aml_nand_init(struct aml_nand_chip *aml_chip)
 		err = aml_nand_env_check(mtd);
 		if (err)
 			printk("invalid nand env\n");
+
+#ifdef CONFIG_AML_NAND_ENV
+			int ret;
+			struct device *devp;
+			static dev_t nand_env_devno;
+			pr_info("nand env: nand_env_probe. \n");
+
+			nand_env_mtd = mtd;
+			
+			ret = alloc_chrdev_region(&nand_env_devno, 0, 1, NAND_ENV_DEVICE_NAME);
+			
+			if (ret < 0) {
+				pr_err("nand_env: failed to allocate chrdev. \n");
+				return 0;
+			}
+			/* connect the file operations with cdev */
+			cdev_init(&aml_chip->nand_env_cdev, &nand_env_fops);
+			aml_chip->nand_env_cdev.owner = THIS_MODULE;
+
+			/* connect the major/minor number to the cdev */
+			ret = cdev_add(&aml_chip->nand_env_cdev, nand_env_devno, 1);
+			if (ret) {
+				pr_err("nand env: failed to add device. \n");
+				/* @todo do with error */
+				return ret;
+			}
+
+			ret = class_register(&nand_env_class);
+			if (ret < 0) {
+				printk(KERN_NOTICE "class_register(&nand_env_class) failed!\n");
+			}
+			devp = device_create(&nand_env_class, NULL, nand_env_devno, NULL, "nand_env");
+			if (IS_ERR(devp)) {
+			 	printk(KERN_ERR "nand_env: failed to create device node\n");
+			 	ret = PTR_ERR(devp);
+	 		}
+#endif
 	}
 
 	if (aml_nand_add_partition(aml_chip) != 0) {
