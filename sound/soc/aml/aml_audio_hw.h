@@ -175,7 +175,6 @@ void audio_util_set_dac_format(unsigned format);
 void set_acodec_source (unsigned int src);
 void adac_wr_reg (unsigned long addr, unsigned long data);
 unsigned long adac_rd_reg (unsigned long addr);
-void adac_rd_check_reg (unsigned long addr, unsigned long exp_data, unsigned long mask);
 void wr_regbank (    unsigned long rstdpz,
 					 unsigned long mclksel, 
 					 unsigned long i2sfsadc, 
