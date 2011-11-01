@@ -95,7 +95,7 @@ static unsigned pll_setting[17][3]={
     {0x00220,0x065e11ff,0x0249a941},
     {0x00221,0x065e11ff,0x0249a941},
     {0x00221,0x065e11ff,0x0249a941},
-    {0x00221,0x065e11ff,0x0249a941},
+    {0x00222,0x065e11ff,0x0249a941},
 };
 
 int sys_clkpll_setting(unsigned crystal_freq, unsigned out_freq)
