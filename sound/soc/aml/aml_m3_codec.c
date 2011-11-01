@@ -117,10 +117,6 @@ void aml_m3_reset(struct snd_soc_codec* codec, bool first_time)
 			printk("audiocodec init error: AIU_AUDAC_CTRL1 = %x\n", data32);
 		}
 
-	 	// Check audio DAC default register default values
-	 	for (i = 0; i < 74; i ++) {
-	 		adac_rd_check_reg(i, acodec_regbank[i], 0);                      
- 		}
 		wr_regbank (0,			// rstdpz: active low.
 					0,			// mclksel[3:0]: master clock freq sel. 0=256Fs, 1=384Fs, ... 
 					8,		    // i2sfsadc[3:0]: sample freq sel. 0=8kHz, 1=11.025k, 2=12k, 3=16k, 4=22.05k, 5=24k, 6=32k, 7=44.1k, 8=48k, 9=88.2k, 10=96k, 11=192k, >11=Rsrv.
@@ -166,13 +162,6 @@ void aml_m3_reset(struct snd_soc_codec* codec, bool first_time)
 					0x0101);	// recsel[15:0]: Input PGA selection. [15:8] control right channel, [7:0] control left channel.
 								// 0x01=input1, 0x03=input2, 0x05=input3, 0x09=input4,
 								// 0x11=input5, 0x21=input6, 0x41=input7, 0x81=input8, others=Rsrv.
-
-
-
-		// Check audio DAC register read-back values
-		for (i = 0; i < 74; i ++) {
-			adac_rd_check_reg(i, acodec_regbank[i], 0);
-		}
 
 	    udelay(10);
 

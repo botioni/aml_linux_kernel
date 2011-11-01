@@ -414,15 +414,6 @@ unsigned long adac_rd_reg (unsigned long addr)
     return (data);
 } /* adac_rd_reg */
 
-void adac_rd_check_reg (unsigned long addr, unsigned long exp_data, unsigned long mask)
-{
-    unsigned long rd_data;
-    rd_data = adac_rd_reg(addr);
-    if ((rd_data | mask) != (exp_data | mask)) {
-        printk("Error: audio DAC register read data mismatch!\n");
-    }
-} /* adac_rd_check_reg */
-
 void wr_regbank (unsigned long rstdpz,
                  unsigned long mclksel, 
                  unsigned long i2sfsadc, 
