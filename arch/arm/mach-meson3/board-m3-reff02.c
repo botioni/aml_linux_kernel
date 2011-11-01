@@ -432,9 +432,34 @@ static struct resource amlogic_card_resource[] = {
         .flags = 0x200,
     }
 };
+/* WIFI ON Flag */
+static int WIFI_ON;
+/* BT ON Flag */
+static int BT_ON;
+/* WL_BT_REG_ON control function */
+static void reg_on_control(int is_on)
+{
+    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_1,(1<<11));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0,(1<<18));
+	CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO2_EN_N, (1<<8));
+    
+    if(is_on){
+		SET_CBUS_REG_MASK(PREG_PAD_GPIO2_O, (1<<8));
+    }
+	else{
+        /* only pull donw reg_on pin when wifi and bt off */
+        if((!WIFI_ON) && (!BT_ON)){
+		    CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO2_O, (1<<8));
+            printk("WIFI BT Power down\n");
+        }
+	}
+}
 
 void extern_wifi_power(int is_power)
 {
+    WIFI_ON = is_power;
+    reg_on_control(is_power);
+    /*
 	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_1,(1<<11));
 	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0,(1<<18));
 	CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO2_EN_N, (1<<8));
@@ -442,6 +467,7 @@ void extern_wifi_power(int is_power)
 		SET_CBUS_REG_MASK(PREG_PAD_GPIO2_O, (1<<8));
 	else
 		CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO2_O, (1<<8));
+		*/
 }
 
 EXPORT_SYMBOL(extern_wifi_power);
@@ -1605,6 +1631,9 @@ static void bt_device_init(void)
 
 static void bt_device_on(void)
 {
+    /* reg_on */
+    BT_ON = 1;
+    reg_on_control(1);
 	/* BT_RST_N */
 	CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO2_EN_N, (1<<6));
 	CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO2_O, (1<<6));	
@@ -1614,6 +1643,8 @@ static void bt_device_on(void)
 
 static void bt_device_off(void)
 {
+    BT_ON = 0;
+    reg_on_control(0);
 	/* BT_RST_N */
 	CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO2_EN_N, (1<<6));
 	CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO2_O, (1<<6));	
