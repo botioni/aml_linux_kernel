@@ -101,6 +101,48 @@ static struct platform_device saradc_device = {
 };
 #endif
 
+#ifdef CONFIG_ANDROID_TIMED_GPIO	//add by sz.wu.zhu
+#ifndef _LINUX_TIMED_GPIO_H
+#define _LINUX_TIMED_GPIO_H
+
+#define TIMED_GPIO_NAME "timed-gpio"
+
+struct timed_gpio {
+	const char *name;
+	unsigned 	gpio;
+	int		max_timeout;
+	u8 		active_low;
+};
+
+struct timed_gpio_platform_data {
+	int 		num_gpios;
+	struct timed_gpio *gpios;
+};
+
+#endif
+
+static struct timed_gpio amlogic_gpio_vibravor_gpios[] ={
+	{
+		.name	="vibrator",
+		.gpio	=( GPIOC_bank_bit0_15(14) << 16 )|GPIOC_bit_bit0_15(14),	//gpioc_14
+		.max_timeout	= 15000,											//15s
+		.active_low	= 1,
+	},
+};
+
+static struct timed_gpio_platform_data amlogic_gpio_vibravor_data= {
+	.num_gpios	= 1,
+	.gpios		= amlogic_gpio_vibravor_gpios,
+};
+
+static struct platform_device amlogic_gpio_vibravor = {
+	.name = TIMED_GPIO_NAME,
+	.dev={
+		.platform_data= &amlogic_gpio_vibravor_data,
+	},
+};
+#endif
+
 #ifdef CONFIG_ADC_TOUCHSCREEN_AM
 #include <linux/adc_ts.h>
 
@@ -1305,6 +1347,9 @@ static struct platform_device __initdata *platform_devs[] = {
 #endif
 #ifdef CONFIG_POST_PROCESS_MANAGER
     &ppmgr_device,
+#endif
+#ifdef CONFIG_ANDROID_TIMED_GPIO
+	&amlogic_gpio_vibravor,
 #endif
 };
 
