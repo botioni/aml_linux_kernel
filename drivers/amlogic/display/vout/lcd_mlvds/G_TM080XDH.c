@@ -66,9 +66,9 @@ void set_backlight_level(unsigned level);
 #define LD_CHANNEL 		5   //ld
 #define CPV_CHANNEL 	3   //ckv
 #define OE_CHANNEL 		2   //oev
-#define EVEN_CHANNEL 	4
+#define EVEN_CHANNEL 	4   //3D PWM+
 #define POL_CHANNEL 	6   //pol
-#define PCLK_CHANNEL 	7
+#define PCLK_CHANNEL 	7   //3D PWM-
 
 //Define backlight control method
 #define BL_CTL_GPIO		0
@@ -82,16 +82,16 @@ static mlvds_tcon_config_t lcd_mlvds_tcon_config[8]=
     {LD_CHANNEL, 0, 1400+10, 1400+10+10, VIDEO_ON_LINE-1, VIDEO_ON_LINE+768, 1400+10+1448,1400+10+10+1448, VIDEO_ON_LINE-1, VIDEO_ON_LINE+768+1},
     {CPV_CHANNEL, 0, 700, 1400, VIDEO_ON_LINE-1, VIDEO_ON_LINE+768, 700+1448, 1400+1448, VIDEO_ON_LINE-1, VIDEO_ON_LINE+768},
     {OE_CHANNEL, 0, 1300, 1440, VIDEO_ON_LINE, VIDEO_ON_LINE+768, 1300+1448, 1440+1448, VIDEO_ON_LINE, VIDEO_ON_LINE+768},
-    {EVEN_CHANNEL, 0, 0xffff, 0xffff, 0xffff, 0xffff, 0, 0, 0, 0},
+    {EVEN_CHANNEL, 1, 0, 1448+1448-1, 0, (MAX_HEIGHT/2)-1, 0, 0, 0, 0},
     {POL_CHANNEL, 0, 1400+10-(1440/2), 1400+10-(1440/2)+1440-1448, VIDEO_ON_LINE, VIDEO_ON_LINE+768, 1400+10-(1440/2)+1448, 1400+10-(1440/2)+1440-1448+1448, VIDEO_ON_LINE, VIDEO_ON_LINE+768},
-	{PCLK_CHANNEL, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+	{PCLK_CHANNEL, 1, 0, 1448+1448-1, MAX_HEIGHT/2, MAX_HEIGHT-1, 0, 0, 0, 0}
 };
 
 // Define LVDS physical PREM SWING VCM REF
 static lvds_phy_control_t lcd_lvds_phy_control = 
 {
-    .lvds_prem_ctl = 0x1,		//0x8  //0x1
-    .lvds_swing_ctl = 0x1,	    //0x8  //0x1
+    .lvds_prem_ctl = 0x1,		//0xf  //0x1
+    .lvds_swing_ctl = 0x1,	    //0x3  //0x1
     .lvds_vcm_ctl = 0x1,
     .lvds_ref_ctl = 0xf, 
 };
@@ -293,15 +293,22 @@ static void power_off_lcd(void)
 static void lvds_port_enable(void)
 {
 	unsigned pinmux = 0;
+	//int ext_pixel =lcd_config.mlvds_config->total_line_clk;	
 	printk("\n\nminiLVDS port enable.\n");
+	//WRITE_MPEG_REG(L_DE_HS_ADDR, (0x6 << 12) | ext_pixel);   // 0xf -- enable double_tcon fir channel7:4
+  	//WRITE_MPEG_REG(L_DE_HE_ADDR, (0xf << 12) | ext_pixel);   // 0xf -- enable double_tcon fir channel3:0
 	pinmux = lcd_config.mlvds_config->set_mlvds_pinmux;		
 	WRITE_MPEG_REG(0x202c, READ_MPEG_REG(0x202c) | (pinmux<<12));  //set tcon pinmux	
 	
 	WRITE_MPEG_REG(0x2013, READ_MPEG_REG(0x2013) | (1<<2));
 	WRITE_MPEG_REG(0x2012, READ_MPEG_REG(0x2012) & ~(1<<2));  //set sth high
 	
+	WRITE_MPEG_REG( LVDS_GEN_CNTL, (READ_MPEG_REG(LVDS_GEN_CNTL) | (1 << 3))); // enable fifo
+	
 	//enable minilvds_data channel
 	WRITE_MPEG_REG(LVDS_PHY_CNTL4, READ_MPEG_REG(LVDS_PHY_CNTL4) | (0x7f<<0));
+	
+	
 }
 
 static void lvds_port_disable(void)
@@ -310,6 +317,8 @@ static void lvds_port_disable(void)
 	printk("\n\nminiLVDS port disable.\n");
 	//disable minilvds_data channel
 	WRITE_MPEG_REG(LVDS_PHY_CNTL4, READ_MPEG_REG(LVDS_PHY_CNTL4) & ~(0x7f<<0));	
+	
+	WRITE_MPEG_REG( LVDS_GEN_CNTL, (READ_MPEG_REG(LVDS_GEN_CNTL) & ~(1 << 3))); // disable fifo
 	
 	pinmux = lcd_config.mlvds_config->set_mlvds_pinmux;		
 	WRITE_MPEG_REG(0x202c, READ_MPEG_REG(0x202c) & ~(pinmux<<12));  //clear tcon pinmux
