@@ -1391,7 +1391,7 @@ static struct mtd_partition multi_partition_info[] =
 	{
 		.name = "userdata",
 		.offset = 640*SZ_1M+40*SZ_1M,
-		.size = 512*SZ_1M,
+		.size = 1024*SZ_1M,
 	},
 	{
 		.name = "NFTL_Part",

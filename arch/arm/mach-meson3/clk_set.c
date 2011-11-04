@@ -82,15 +82,15 @@ static unsigned pll_setting[17][3]={
     {0x20222,0x065e11ff,0x0249a941},
     {0x2022a,0x065e11ff,0x0249a941},
     {0x20232,0x065e11ff,0x0249a941},
-    {0x1021d,0x065e31ff,0xbe49a941},
+    {0x2023a,0x065e31ff,0xbe49a941},
     {0x10221,0x065e11ff,0x0249a941},
     {0x10225,0x065e11ff,0x0249a941},
     {0x1022a,0x065e11ff,0x0249a941},
     {0x1022e,0x065e11ff,0x0249a941},
     {0x10232,0x065e11ff,0x0249a941},
     {0x10236,0x065e11ff,0x0249a941},
-    {0x0021d,0x065e31ff,0xbe49a941},
-    {0x0021f,0x065e31ff,0xbe49a941},
+    {0x1023a,0x065e31ff,0xbe49a941},
+    {0x1023e,0x065e31ff,0xbe49a941},
     {0x00220,0x065e11ff,0x0249a941},
     {0x00220,0x065e11ff,0x0249a941},
     {0x00221,0x065e11ff,0x0249a941},
@@ -120,6 +120,7 @@ int sys_clkpll_setting(unsigned crystal_freq, unsigned out_freq)
         WRITE_MPEG_REG(HHI_SYS_PLL_CNTL2, pll_setting[i][1]); 
         WRITE_MPEG_REG(HHI_SYS_PLL_CNTL3, pll_setting[i][2]);
         WRITE_MPEG_REG(RESET5_REGISTER, (1<<2));        // reset sys pll
+
         lock_flag = 0;
         log_index = 0;
         target_freq = ((target_pll_setting&0x1ff)*crys_M)>>(target_pll_setting>>16);
@@ -127,7 +128,7 @@ int sys_clkpll_setting(unsigned crystal_freq, unsigned out_freq)
             result_freq = clk_util_clk_msr(SYS_PLL_CLK);
             if ((result_freq <= target_freq+1)&&(result_freq >= target_freq-1)){
                 lock_flag++;
-                if (lock_flag>=2)
+                if (lock_flag>=1)
                     break;
             }
             if (log_index<64) 
@@ -141,7 +142,7 @@ int sys_clkpll_setting(unsigned crystal_freq, unsigned out_freq)
         //printk("sys clk changed");
         //for (i=0;i<log_index;i++)
         //    printk("-%d", freq_log[i]);
-        printk("\ncpu_clk_changed: out_freq=%ld,pll_setting=%x,locktime=%dus\n",out_M,target_pll_setting,lock_time);
+        //printk("\ncpu_clk_changed: out_freq=%ld,pll_setting=%x,locktime=%dus\n",out_M,target_pll_setting,lock_time);
     }
     return 0;
 }
@@ -209,7 +210,7 @@ int misc_pll_setting(unsigned crystal_freq, unsigned  out_freq)
     local_irq_restore(flags);
     printk("misc pll changed");
     for (i=0;i<log_index;i++)
-        printk("-%d", freq_log[i]);
+        printk("-%ld", freq_log[i]);
     printk("\nmisc pll setting to crystal_req=%ld,out_freq=%ld,n=%d,m=%d,od=%d,locktime=%dus\n", crys_M, out_M / (od + 1), n, m, od, lock_time);
     return 0;
 }
