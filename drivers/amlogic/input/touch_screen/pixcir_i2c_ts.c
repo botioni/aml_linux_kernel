@@ -71,6 +71,60 @@ static struct class *i2c_dev_class;
 static LIST_HEAD( i2c_dev_list);
 static DEFINE_SPINLOCK( i2c_dev_list_lock);
 
+/* debug switch start */
+static int enable_debug=0;
+static ssize_t show_pixcir_debug_flag(struct class* class, struct class_attribute* attr, char* buf)
+{
+    ssize_t ret = 0;
+
+    ret = sprintf(buf, "%d\n", enable_debug);
+
+    return ret;
+}
+
+static ssize_t store_pixcir_debug_flag(struct class* class, struct class_attribute* attr, const char* buf, size_t count)
+{
+    u32 reg;
+
+    switch(buf[0]) {
+        case '1':
+            enable_debug=1;
+            break;
+
+        case '0':
+            enable_debug=0;
+            break;
+
+        default:
+            printk("unknow command!\n");
+    }
+
+    return count;
+}
+
+static struct class_attribute pixcir_debug_attrs[]={
+  __ATTR(enable_debug, S_IRUGO | S_IWUSR, show_pixcir_debug_flag, store_pixcir_debug_flag),
+  __ATTR_NULL
+};
+
+static void create_pixcir_debug_attrs(struct class* class)
+{
+  int i=0;
+  for(i=0; pixcir_debug_attrs[i].attr.name; i++){
+    class_create_file(class, &pixcir_debug_attrs[i]);
+  }
+}
+
+static void remove_pixcir_debug_attrs(struct class* class)
+{
+  int i=0;
+  for(i=0; pixcir_debug_attrs[i].attr.name; i++){
+    class_remove_file(class, &pixcir_debug_attrs[i]);
+  }
+}
+/* debug switch end */
+
+
 /*static int i2cdev_check(struct device *dev, void *addrp)
  {
  struct i2c_client *client = i2c_verify_client(dev);
@@ -217,21 +271,25 @@ static void pixcir_ts_poscheck(struct work_struct *work)
 		swap(posx1, posy1);
 		swap(posx2, posy2);
 	}
-	if (posx1 > tsdata->pdata->xmax) {
+	if (posx1 >= tsdata->pdata->xmax) {
+	    posx1 --;
 		//printk("posx1 error(%d)\n",posx1);
-		goto out;
+		//goto out;
 	}
-	if (posy1 > tsdata->pdata->ymax) {
+	if (posy1 >= tsdata->pdata->ymax) {
+	    posy1 --;
 		//printk("posy1 error(%d)\n",posy1);
-		goto out;
+		//goto out;
 	}
-	if (posx2 > tsdata->pdata->xmax) {
+	if (posx2 >= tsdata->pdata->xmax) {
+	    posx2 --;
 		//printk("posx2 error(%d)\n",posx2);
-		goto out;
+		//goto out;
 	}
-	if (posy2 > tsdata->pdata->ymax) {
+	if (posy2 >= tsdata->pdata->ymax) {
+	    posy2 --;
 		//printk("posy2 error(%d)\n",posy2);
-		goto out;
+		//goto out;
 	}
 		
 	if (tsdata->pdata->xpol) {
@@ -242,6 +300,9 @@ static void pixcir_ts_poscheck(struct work_struct *work)
 		posy1 = tsdata->pdata->ymax + tsdata->pdata->ymin - posy1;
 		posy2 = tsdata->pdata->ymax + tsdata->pdata->ymin - posy2;
 	}
+	if (enable_debug)
+		printk("touching:%-3d,oldtouching:%-3d,x1:%-6d,y1:%-6d,x2:%-6d,y2:%-6d\n",touching, oldtouching, posx1, posy1, posx2, posy2);
+		
 #if PIXCIR_DEBUG
 	//printk("touching:%-3d,oldtouching:%-3d,x1:%-6d,y1:%-6d,x2:%-6d,y2:%-6d\n",touching, oldtouching, posx1, posy1, posx2, posy2);
 #endif
@@ -314,7 +375,8 @@ static irqreturn_t pixcir_ts_isr(int irq, void *dev_id)
 {
 	struct pixcir_i2c_ts_data *tsdata = dev_id;
 	static int irq_count = 0;
-	//printk("count irq = %d\n", irq_count++);
+	if (enable_debug)
+		printk("count irq = %d\n", irq_count++);
 	if (!irq_flag) {
 	disable_irq_nosync(irq);
 	queue_work(pixcir_wq, &tsdata->work.work);
@@ -492,9 +554,9 @@ static int pixcir_i2c_ts_remove(struct i2c_client *client)
 static int pixcir_i2c_ts_suspend(struct i2c_client *client, pm_message_t mesg)
 {
 	struct pixcir_i2c_ts_data *tsdata = dev_get_drvdata(&client->dev);
-
-	if (device_may_wakeup(&client->dev))
-		enable_irq_wake(tsdata->irq);
+	disable_irq_nosync(tsdata->irq);
+	//if (device_may_wakeup(&client->dev))
+	//	enable_irq_wake(tsdata->irq);
 
 	return 0;
 }
@@ -502,9 +564,9 @@ static int pixcir_i2c_ts_suspend(struct i2c_client *client, pm_message_t mesg)
 static int pixcir_i2c_ts_resume(struct i2c_client *client)
 {
 	struct pixcir_i2c_ts_data *tsdata = dev_get_drvdata(&client->dev);
-
-	if (device_may_wakeup(&client->dev))
-		disable_irq_wake(tsdata->irq);
+	enable_irq(tsdata->irq);
+	//if (device_may_wakeup(&client->dev))
+	//	disable_irq_wake(tsdata->irq);
 
 	return 0;
 }
@@ -723,6 +785,7 @@ static int __init pixcir_i2c_ts_init(void)
 		ret = PTR_ERR(i2c_dev_class);
 		class_destroy(i2c_dev_class);
 	}
+	create_pixcir_debug_attrs(i2c_dev_class);
 	/********************************V2.0-Bee-0928-BOTTOM******************************************/
 	return i2c_add_driver(&pixcir_i2c_ts_driver);
 }
@@ -731,6 +794,7 @@ static void __exit pixcir_i2c_ts_exit(void)
 {
 	i2c_del_driver(&pixcir_i2c_ts_driver);
 	/********************************V2.0-Bee-0928-TOP******************************************/
+	remove_pixcir_debug_attrs(i2c_dev_class);
 	class_destroy(i2c_dev_class);
 	unregister_chrdev(I2C_MAJOR,"pixcir_i2c_ts");
 	/********************************V2.0-Bee-0928-BOTTOM******************************************/
