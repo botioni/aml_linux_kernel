@@ -234,17 +234,25 @@ static int aml_nftl_creat_sectmap(struct aml_nftl_info_t *aml_nftl_info, addr_bl
 
 	page_per_blk = aml_nftl_info->pages_per_blk;
 	for (i=0; i<page_per_blk; i++) {
-		status = aml_nftl_info->get_page_info(aml_nftl_info, phy_blk_addr, i, nftl_oob_buf, sizeof(struct nftl_oobinfo_t));
-		if (status) {
-			aml_nftl_dbg("nftl creat sect map faile at: %d\n", phy_blk_addr);
-			return AML_NFTL_FAILURE;
-		}
 
 		if (i == 0) {
+    		status = aml_nftl_info->get_page_info(aml_nftl_info, phy_blk_addr, i, nftl_oob_buf, sizeof(struct nftl_oobinfo_t));
+    		if (status) {
+    			aml_nftl_dbg("nftl creat sect map faile at: %d\n", phy_blk_addr);
+    			return AML_NFTL_FAILURE;
+    		}		    
 			phy_blk_node->ec = nftl_oob_info->ec;
 			phy_blk_node->vtblk = nftl_oob_info->vtblk;
 			phy_blk_node->timestamp = nftl_oob_info->timestamp;
 		}
+		else{
+            status = aml_nftl_info->get_page_info(aml_nftl_info, phy_blk_addr, i, nftl_oob_buf, sizeof(addr_sect_t));
+    		if (status) {
+    			aml_nftl_dbg("nftl creat sect map faile at: %d\n", phy_blk_addr);
+    			return AML_NFTL_FAILURE;
+    		}		    
+		}
+		    
 		if (nftl_oob_info->sect >= 0) {
 			phy_blk_node->phy_page_map[nftl_oob_info->sect] = i;
 			phy_blk_node->last_write = i;
@@ -665,9 +673,11 @@ static void aml_nftl_check_conflict_node(struct aml_nftl_info_t *aml_nftl_info)
 			continue;
 
 		node_length = aml_nftl_get_node_length(aml_nftl_info, vt_blk_node);
-		if (node_length < BASIC_BLK_NUM_PER_NODE)
+		if (node_length < MAX_BLK_NUM_PER_NODE/* BASIC_BLK_NUM_PER_NODE */)
 			continue;
-
+			
+        //aml_nftl_dbg("need check conflict node vt blk: %d and node_length:%d\n", vt_blk_num, node_length);
+        
 		status = aml_nftl_check_node(aml_nftl_info, vt_blk_num);
 		vt_blk_node = (struct vtblk_node_t *)(*(aml_nftl_info->vtpmt + vt_blk_num));
 		if (aml_nftl_get_node_length(aml_nftl_info, vt_blk_node) >= BASIC_BLK_NUM_PER_NODE)
@@ -684,9 +694,9 @@ static void aml_nftl_check_conflict_node(struct aml_nftl_info_t *aml_nftl_info)
 			}
 		}
 	}
-	if (vt_blk_num >= aml_nftl_info->accessibleblocks)
-		aml_nftl_info->isinitialised = 1;
-	aml_nftl_info->cur_split_blk = vt_blk_num;
+//	if (vt_blk_num >= aml_nftl_info->accessibleblocks)
+//		aml_nftl_info->isinitialised = 1;
+//	aml_nftl_info->cur_split_blk = vt_blk_num;
 
 	return;
 }
