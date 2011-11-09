@@ -693,6 +693,7 @@ static void vsync_toggle_frame(vframe_t *vf)
 
     if (disable_video == VIDEO_DISABLE_FORNEXT) {
         EnableVideoLayer();
+		printk("disable video is auto changed to enable\n");
         disable_video = VIDEO_DISABLE_NONE;
     }
     if (first_picture && (disable_video != VIDEO_DISABLE_NORMAL)) {
@@ -2111,7 +2112,7 @@ static ssize_t video_disable_store(struct class *cla, struct class_attribute *at
     if (r != 1) {
         return -EINVAL;
     }
-    
+    printk("video disable try be changed to %d by %s\n",val,current->comm);
     if ((val < VIDEO_DISABLE_NONE) || (val > VIDEO_DISABLE_FORNEXT)) {
         return -EINVAL;
     }
