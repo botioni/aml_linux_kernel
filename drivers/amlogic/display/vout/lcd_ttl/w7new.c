@@ -78,9 +78,9 @@ static lcdConfig_t lcd_config =
     .max_width  = MAX_WIDTH,
     .max_height = MAX_HEIGHT,
     .video_on_line = VIDEO_ON_LINE,
-    .pll_ctrl = 0x1021e,
+    .pll_ctrl = 0x1021f,
 	.div_ctrl = 0x18803,
-    .clk_ctrl = 0x1009,	//pll_sel,div_sel,vclk_sel,xd
+    .clk_ctrl = 0x100b,	//pll_sel,div_sel,vclk_sel,xd
     .gamma_cntl_port = (1 << LCD_GAMMA_EN) | (0 << LCD_GAMMA_RVS_OUT) | (1 << LCD_GAMMA_VCOM_POL),
     .gamma_vcom_hswitch_addr = 0,
     .rgb_base_addr = 0xf0,
@@ -112,12 +112,12 @@ static lcdConfig_t lcd_config =
     .oev1_ve_addr = 0,    
     .inv_cnt_addr = (0<<LCD_INV_EN) | (0<<LCD_INV_CNT),
     .tcon_misc_sel_addr = (1<<LCD_STV1_SEL) | (1<<LCD_STV2_SEL),
-    .dual_port_cntl_addr = (1<<LCD_TTL_SEL) | (1<<LCD_ANALOG_SEL_CPH3) | (1<<LCD_ANALOG_3PHI_CLK_SEL) | (1<<1) | (1<<0),
+    .dual_port_cntl_addr = (1<<LCD_TTL_SEL) | (1<<LCD_ANALOG_SEL_CPH3) | (1<<LCD_ANALOG_3PHI_CLK_SEL) | (1<<RGB_SWP) | (1<<BIT_SWP),
     .flags = 0,
     .screen_width = 4,
     .screen_height = 3,
-    .sync_duration_num = 60,
-    .sync_duration_den = 1,
+    .sync_duration_num = 507,
+    .sync_duration_den = 10,
     .power_on=t13_power_on,
     .power_off=t13_power_off,
     .backlight_on = power_on_backlight,
@@ -160,24 +160,25 @@ static void t13_setup_gama_table(lcdConfig_t *pConf)
 #define BL_MIN_LEVEL	0	
 void power_on_backlight(void)
 {
+	set_tcon_pinmux();
+	msleep(50);
+	
 	PRINT_INFO(" w7 power_on_backlight \n");
 	//dump_stack();
-	WRITE_CBUS_REG_BITS(LED_PWM_REG0, 1, 12, 2); 
-	msleep(100);
+	WRITE_CBUS_REG_BITS(LED_PWM_REG0, 1, 12, 2); 	
     set_gpio_val(GPIOD_bank_bit0_9(1), GPIOD_bit_bit0_9(1), 1);
-    set_gpio_mode(GPIOD_bank_bit0_9(1), GPIOD_bit_bit0_9(1), GPIO_OUTPUT_MODE);
-	//msleep(100);
+    set_gpio_mode(GPIOD_bank_bit0_9(1), GPIOD_bit_bit0_9(1), GPIO_OUTPUT_MODE);	
 }
 
 void power_off_backlight(void)
-{
- 
+{ 
     PRINT_INFO(" w7 power_off_backlight \n");
     //BL_EN -> GPIOD_1: 0
     set_gpio_val(GPIOD_bank_bit0_9(1), GPIOD_bit_bit0_9(1), 0);
     set_gpio_mode(GPIOD_bank_bit0_9(1), GPIOD_bit_bit0_9(1), GPIO_OUTPUT_MODE);
-	//msleep(50);
-	//clear_tcon_pinmux();
+	msleep(20);
+	
+	clear_tcon_pinmux();
 	//msleep(50);
 }
 
@@ -221,7 +222,8 @@ void set_backlight_level(unsigned level)
 
 static void power_on_lcd(void)
 {
-    //GPIOA27 -> LCD_PWR_EN#: 0  lcd 3.3v
+    PRINT_INFO(" w7 power_on_lcd \n");
+	//GPIOA27 -> LCD_PWR_EN#: 0  lcd 3.3v
     set_gpio_val(GPIOA_bank_bit0_27(27), GPIOA_bit_bit0_27(27), 0);
     set_gpio_mode(GPIOA_bank_bit0_27(27), GPIOA_bit_bit0_27(27), GPIO_OUTPUT_MODE);
     msleep(30);
@@ -230,16 +232,11 @@ static void power_on_lcd(void)
     set_gpio_val(GPIOC_bank_bit0_15(2), GPIOC_bit_bit0_15(2), 1);
     set_gpio_mode(GPIOC_bank_bit0_15(2), GPIOC_bit_bit0_15(2), GPIO_OUTPUT_MODE);
     msleep(30);
-    
-
 }
 
 static void power_off_lcd(void)
 {
-     PRINT_INFO(" w7 power_off_lcd \n");
-    //power_off_backlight();
-    //msleep(50);	
-    
+     PRINT_INFO(" w7 power_off_lcd \n");    
     //GPIOC2 -> VCCx3_EN: 0
     set_gpio_val(GPIOC_bank_bit0_15(2), GPIOC_bit_bit0_15(2), 0);
     set_gpio_mode(GPIOC_bank_bit0_15(2), GPIOC_bit_bit0_15(2), GPIO_OUTPUT_MODE);
@@ -253,7 +250,8 @@ static void power_off_lcd(void)
 
 static void set_tcon_pinmux(void)
 {
-    /* TCON control pins pinmux */
+    PRINT_INFO("\nlcd: enable lcd signal ports.\n");
+	/* TCON control pins pinmux */
     clear_mio_mux(1, 0x0f<<11); // disable cph50(11),cph1(12),cph2(13),cph3(14)
 #ifdef USE_CLKO
     set_mio_mux(1, 1<<21); // enable clko
@@ -266,7 +264,8 @@ static void set_tcon_pinmux(void)
 
 static void clear_tcon_pinmux(void)
 {
-    /* TCON control pins pinmux */
+    PRINT_INFO("\nlcd: disable lcd signal ports.\n");
+	/* TCON control pins pinmux */
     clear_mio_mux(1, 0x0f<<11); // disable cph50(11),cph1(12),cph2(13),cph3(14)
 #ifdef USE_CLKO
     clear_mio_mux(1, 1<<21); // enable clko
@@ -275,6 +274,10 @@ static void clear_tcon_pinmux(void)
 #endif
     clear_mio_mux(1, 1<<17); // enable oeh
     clear_mio_mux(0, 0x3f<<0);   //For 8bits RGB
+	
+	WRITE_MPEG_REG(0x2012, READ_MPEG_REG(0x2012) | ((1<<20)|(1<<23)));  //set oeh & cph channel as GPIO input
+	WRITE_MPEG_REG(0x200f, READ_MPEG_REG(0x200f) | (0xffffff<<0));  //For RGB 8bit, set RGB data channel as GPIO input
+	//WRITE_MPEG_REG(0x200f, READ_MPEG_REG(0x200f) | ((0x3f<<2)|(0x3f<<10)|(0x3f<<18)));  //For RGB 6bit, set RGB data channel as GPIO input
 }
 
 #ifdef CONFIG_AM_LOGO
@@ -285,7 +288,7 @@ static void power_on_bl(void)
 {
     PRINT_INFO(" w7 power_on_bl \n");
 	msleep(50);
-	set_tcon_pinmux();
+	//set_tcon_pinmux();
     power_on_backlight();
 }
 #endif
