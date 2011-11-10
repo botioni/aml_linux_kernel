@@ -424,6 +424,9 @@ static int itk_register_input(struct itk *ts)
     dev->name = "Touch Screen";
     dev->phys = "I2C";
     dev->id.bustype = BUS_I2C;
+    dev->id.vendor = 0x222a;
+    dev->id.product = 0x0001;
+    dev->id.version = 0x0001;
 
     set_bit(EV_ABS, dev->evbit);
     set_bit(EV_KEY, dev->evbit);
