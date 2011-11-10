@@ -489,7 +489,7 @@ void wr_regbank (unsigned long rstdpz,
     adac_wr_reg(17, (pdz<<7) | (pdmbiasz<<5) | (pdvcmbufz<<4) | (pdrpgaz<<3) | (pdlpgaz<<2) | (pdadcrz<<1) | (pdadclz<<0));
     adac_wr_reg(24, (hsmute<<6) | (recmute<<4) | (micmute<<2) | (lmmute<<0));
     adac_wr_reg(25, (lsmute<<2));
-    adac_wr_reg(26, (lmmix<<5) | (recmix<<3) | (ctr<<1));
+    adac_wr_reg(26, (lmmix<<5) | (recmix<<3) | (ctr<<1) | (enhp<<0));
     adac_wr_reg(32, (lmvol&0xff));
     adac_wr_reg(33, (lmvol>>8));
     adac_wr_reg(34, (hsvol&0xff));
