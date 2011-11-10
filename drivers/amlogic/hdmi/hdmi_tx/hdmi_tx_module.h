@@ -90,7 +90,7 @@ typedef struct hdmi_tx_dev_s {
 #define HDMI_AUDIO_CONTENT_PROTECTION   5
 
 
-#define HDMITX_VER "2011Oct27a"
+#define HDMITX_VER "2011Nov10"
 /************************************
 *    hdmitx protocol level interface
 *************************************/
