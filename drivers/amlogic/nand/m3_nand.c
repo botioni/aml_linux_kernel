@@ -546,6 +546,13 @@ static int m3_nand_boot_read_page_hwecc(struct mtd_info *mtd, struct nand_chip *
 	int user_byte_num = (chip->ecc.steps * aml_chip->user_byte_mode);
 	int error = 0, i = 0, stat = 0, bch_mode, ecc_size;
 
+	if (page >= (M3_BOOT_PAGES_PER_COPY - 1)) {
+		memset(buf, 0, (1 << chip->page_shift));
+		goto exit;
+	}
+
+	chip->cmdfunc(mtd, NAND_CMD_READ0, 0x00, (page + 1));
+	ecc_size = chip->ecc.size;
 	if (((page % M3_BOOT_PAGES_PER_COPY) == 0) && (aml_chip->bch_mode != NAND_ECC_BCH_SHORT)) {
 		nand_page_size = (mtd->writesize / 512) * NAND_ECC_UNIT_SHORT;
 		bch_mode = NAND_ECC_BCH_SHORT;
@@ -553,7 +560,7 @@ static int m3_nand_boot_read_page_hwecc(struct mtd_info *mtd, struct nand_chip *
 	}
 	else
 		bch_mode = aml_chip->bch_mode;
-	ecc_size = chip->ecc.size;
+
 	memset(buf, 0xff, (1 << chip->page_shift));
 	if (aml_chip->valid_chip[i]) {
 
@@ -596,6 +603,7 @@ static void m3_nand_boot_write_page_hwecc(struct mtd_info *mtd, struct nand_chip
 	int user_byte_num = (chip->ecc.steps * aml_chip->user_byte_mode);
 	int error = 0, i = 0, bch_mode, ecc_size;
 
+	ecc_size = chip->ecc.size;
 	if (((aml_chip->page_addr % M3_BOOT_PAGES_PER_COPY) == 0) && (aml_chip->bch_mode != NAND_ECC_BCH_SHORT)) {
 		nand_page_size = (mtd->writesize / 512) * NAND_ECC_UNIT_SHORT;
 		bch_mode = NAND_ECC_BCH_SHORT;
@@ -603,7 +611,6 @@ static void m3_nand_boot_write_page_hwecc(struct mtd_info *mtd, struct nand_chip
 	}
 	else
 		bch_mode = aml_chip->bch_mode;
-	ecc_size = chip->ecc.size;
 
 	for (i=0; i<mtd->oobavail; i+=2) {
 		oob_buf[i] = 0x55;
@@ -637,7 +644,7 @@ static int m3_nand_boot_write_page(struct mtd_info *mtd, struct nand_chip *chip,
 	struct aml_nand_chip *aml_chip = mtd_to_nand_chip(mtd);
 	int status, i, write_page, configure_data, pages_per_blk;
 
-	if (page >= M3_BOOT_PAGES_PER_COPY)
+	if (page >= (M3_BOOT_PAGES_PER_COPY - 1))
 		return 0;
 
 	pages_per_blk = (1 << (chip->phys_erase_shift - chip->page_shift));
