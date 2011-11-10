@@ -10,7 +10,7 @@
 
 #define NAND_SYS_CLK_NAME	  "clk81"
 #define NAND_CYCLE_DELAY	  75
-#define NAND_BOOT_NAME		  "nandboot"
+#define NAND_BOOT_NAME		  "bootloader"
 #define NAND_NORMAL_NAME	  "nandnormal"
 #define NAND_MULTI_NAME		  "nandmulti"
 

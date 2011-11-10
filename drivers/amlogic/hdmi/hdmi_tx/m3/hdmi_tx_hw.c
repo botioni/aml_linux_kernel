@@ -975,6 +975,7 @@ static void digital_clk_off(unsigned char flag)
         Wr(HHI_GCLK_OTHER, Rd(HHI_GCLK_OTHER)&(~(1<<17))); //disable VCLK1_HDMI GATE, set cbus reg HHI_GCLK_OTHER bit [17] = 0
         Wr(VENC_DVI_SETTING, (Rd(VENC_DVI_SETTING)&(~(7<<4)))|(5<<4)); //set cbus reg VENC_DVI_SETTING bit[6:4] = 0x5
         Wr(HHI_VID_PLL_CNTL, (Rd(HHI_VID_PLL_CNTL) | (1<<30)));     //0x105c[30]PD, 1: PowerDown
+        Wr(HHI_VID_PLL_CNTL3, (Rd(HHI_VID_PLL_CNTL3) & ~((1<<5)|(1<<3))));  //0x1058[5]VBG_PU [3]IREXT_PU
 #if 1
     // Second turn off gate.
         WRITE_MPEG_REG(HHI_GCLK_MPEG2, READ_MPEG_REG(HHI_GCLK_MPEG2) & (~(1<<4)));     //Disable HDMI PCLK
@@ -989,6 +990,7 @@ static void digital_clk_off(unsigned char flag)
 
 static void digital_clk_on(unsigned char flag)
 {
+    int i;
 //    clk81_set();
     if(flag&4){
         /* on hdmi sys clock */
@@ -1021,6 +1023,9 @@ static void digital_clk_on(unsigned char flag)
         /* on hdmi pixel clock */
 #if 1
         WRITE_MPEG_REG(HHI_GCLK_MPEG2, READ_MPEG_REG(HHI_GCLK_MPEG2) | (1<<4));     //Enable HDMI PCLK
+        Wr(HHI_VID_PLL_CNTL3, (Rd(HHI_VID_PLL_CNTL3) | ((1<<5)|(1<<3))));  //0x1058[5]VBG_PU [3]IREXT_PU
+        i=100;
+        while(i--);     //delay some time and then PowerUp HHI_VID_PLL
         Wr(HHI_VID_PLL_CNTL, (Rd(HHI_VID_PLL_CNTL) & ~(1<<30)));     //0x105c[30]PD, 0: Power Up
 #endif        
 //        Wr(HHI_GCLK_MPEG2, Rd(HHI_GCLK_MPEG2)|(1<<4)); //enable pixel clock, set cbus reg HHI_GCLK_MPEG2 bit [4] = 1
@@ -1048,6 +1053,7 @@ static void phy_pll_off(void)
 #ifndef AML_A3
         /* no HDMI PLL in A3 */
     Wr(HHI_VID_PLL_CNTL, Rd(HHI_VID_PLL_CNTL)|(1<<30)); //disable HDMI PLL
+    
     Wr(HHI_VID_PLL_CNTL3, Rd(HHI_VID_PLL_CNTL3)&(~0x38));
 #endif 
 #endif  
