@@ -204,20 +204,22 @@ static irqreturn_t am_key_interrupt(int irq, void *dev)
      */
 #ifdef CONFIG_AML_RTC
 	alarm = (READ_AOBUS_REG(AO_RTC_ADDR1)>>3)&1;
-//    if (jiffies_to_msecs(jiffies - resume_jeff_num) < 1000)
-//        return IRQ_HANDLED;
-//    alarm = aml_rtc_alarm_status();
 #endif /* CONFIG_AML_RTC */
-
-    KeyInput->status = (READ_AOBUS_REG(AO_RTC_ADDR1)>>2)&1;
-    WRITE_AOBUS_REG(AO_RTC_ADDR1, (READ_AOBUS_REG(AO_RTC_ADDR1) | (0x0000c000)));
-    if (!alarm) {
-//    if (!KeyInput->suspend)
-        tasklet_schedule(&ki_tasklet);
-//    else
-//        printk("key interrupt when suspend\n");
-    }
-    return IRQ_HANDLED;
+	if (!alarm) {
+		if (KeyInput->suspend){ // when suspend
+			if (READ_AOBUS_REG(AO_RTI_STATUS_REG2)!=0x12345678){
+				WRITE_AOBUS_REG(AO_RTI_STATUS_REG2, 0x12345678);
+				KeyInput->status = 0;
+				tasklet_schedule(&ki_tasklet);
+			}
+		}
+		else{
+			KeyInput->status = (READ_AOBUS_REG(AO_RTC_ADDR1)>>2)&1;
+			tasklet_schedule(&ki_tasklet);
+		}
+	}
+	WRITE_AOBUS_REG(AO_RTC_ADDR1, (READ_AOBUS_REG(AO_RTC_ADDR1) | (0x0000c000)));
+	return IRQ_HANDLED;
 }
 //#endif
 
@@ -387,6 +389,13 @@ static int key_input_resume(struct platform_device *dev)
 #ifdef CONFIG_AML_RTC
     resume_jeff_num = jiffies;
 #endif 
+	if (READ_AOBUS_REG(AO_RTI_STATUS_REG2)==0x12345678){
+		WRITE_AOBUS_REG(AO_RTI_STATUS_REG2, 0);
+		if ((READ_AOBUS_REG(AO_RTC_ADDR1)>>2)&1){ // released
+			KeyInput->status = 1;
+			tasklet_schedule(&ki_tasklet);
+		}
+	}
     return 0;
 }
 #else
