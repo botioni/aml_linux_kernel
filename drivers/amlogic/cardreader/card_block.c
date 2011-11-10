@@ -310,15 +310,18 @@ static int card_queue_thread(void *d)
                 for(rewait=3;(!sdio_irq_handled)&&(rewait--);)
                 	schedule();
 
-		spin_lock_irq(q->queue_lock);
+	//	spin_lock_irq(q->queue_lock);
 		cq_node_current = card_queue_head;
 		WARN_ON(!card_queue_head);
 		while (cq_node_current != NULL) {
 			cq = cq_node_current->cq;
 			q = cq->queue;
 			if (cq_node_current->cq_flag) {
-				if (!blk_queue_plugged(q))
+				if (!blk_queue_plugged(q)) {
+					spin_lock_irq(q->queue_lock);
 					req = blk_fetch_request(q);
+					spin_unlock_irq(q->queue_lock);
+				}
 				if (req)
 					break;
 
@@ -329,7 +332,7 @@ static int card_queue_thread(void *d)
 		}
 
 		cq->req = req;
-		spin_unlock_irq(q->queue_lock);
+	//	spin_unlock_irq(q->queue_lock);
 
 		if (cq->flags & CARD_QUEUE_EXIT)
 			break;
