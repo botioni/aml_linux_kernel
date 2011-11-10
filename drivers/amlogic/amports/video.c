@@ -693,7 +693,7 @@ static void vsync_toggle_frame(vframe_t *vf)
 
     if (disable_video == VIDEO_DISABLE_FORNEXT) {
         EnableVideoLayer();
-		printk("disable video is auto changed to enable\n");
+	///printk("disable video is auto changed to enable\n");
         disable_video = VIDEO_DISABLE_NONE;
     }
     if (first_picture && (disable_video != VIDEO_DISABLE_NORMAL)) {
