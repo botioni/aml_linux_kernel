@@ -142,6 +142,9 @@ static void aml_m3_hp_detect_queue(struct work_struct* work)
 
 	if(level == 0x1 && hp_detect_flag!= 0x1){ // HP
 		printk("Headphone pluged in\n");
+		reg = snd_soc_read(codec, ADAC_POWER_CTRL_REG1);
+		reg |= 0x30;
+		snd_soc_write(codec, ADAC_POWER_CTRL_REG1, reg);//open HP power
 		reg = snd_soc_read(codec, ADAC_MUTE_CTRL_REG1);
 		reg &= ~0xc0;
 		snd_soc_write(codec, ADAC_MUTE_CTRL_REG1, reg); //unmute HP
@@ -150,8 +153,11 @@ static void aml_m3_hp_detect_queue(struct work_struct* work)
 		hp_detect_flag = level;
 	}else if(level != hp_detect_flag){ // HDMI
 		printk("Headphone unpluged\n");
+		reg = snd_soc_read(codec, ADAC_POWER_CTRL_REG1);
+		reg &= ~0x30;
+		snd_soc_write(codec, ADAC_POWER_CTRL_REG1, reg); //close HP power
 		reg = snd_soc_read(codec, ADAC_MUTE_CTRL_REG1);
-		reg |= 0xc0;;
+		reg |= 0xc0;
 		snd_soc_write(codec, ADAC_MUTE_CTRL_REG1, reg);//mute HP
 		mute_spk(codec, 0);
 		latch_(codec);

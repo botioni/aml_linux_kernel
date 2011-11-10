@@ -693,6 +693,7 @@ static void vsync_toggle_frame(vframe_t *vf)
 
     if (disable_video == VIDEO_DISABLE_FORNEXT) {
         EnableVideoLayer();
+		printk("disable video is auto changed to enable\n");
         disable_video = VIDEO_DISABLE_NONE;
     }
     if (first_picture && (disable_video != VIDEO_DISABLE_NORMAL)) {
@@ -2111,7 +2112,7 @@ static ssize_t video_disable_store(struct class *cla, struct class_attribute *at
     if (r != 1) {
         return -EINVAL;
     }
-    
+    printk("video disable try be changed to %d by %s\n",val,current->comm);
     if ((val < VIDEO_DISABLE_NONE) || (val > VIDEO_DISABLE_FORNEXT)) {
         return -EINVAL;
     }
@@ -2455,12 +2456,7 @@ static int __init video_init(void)
     int r = 0;
     ulong clk = clk_get_rate(clk_get_sys("clk_misc_pll", NULL));
 
-#ifdef CONFIG_ARCH_MESON3
-    WRITE_CBUS_REG(HHI_MALI_CLK_CNTL,
-                       (3 << 9)    |   // select ddr pll as clock source
-                       (1 << 8)    |   // enable clock gating
-                       (1 << 0));      // ddr clk / 2
-#else
+#ifndef CONFIG_ARCH_MESON3
     /* MALI clock settings */
     if ((clk <= 750000000) &&
         (clk >= 600000000)) {

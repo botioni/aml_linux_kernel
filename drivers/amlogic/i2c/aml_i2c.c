@@ -242,8 +242,11 @@ static int aml_i2c_do_address(struct aml_i2c *i2c, unsigned int addr)
 
 static void aml_i2c_stop(struct aml_i2c *i2c)
 {
-    if (no_stop_flag)
-        return;
+	if (no_stop_flag) {
+		aml_i2c_clear_token_list(i2c);
+		aml_i2c_clr_pinmux(i2c);
+		return;
+	}
 	aml_i2c_clear_token_list(i2c);
 	i2c->token_tag[0]=TOKEN_STOP;
 	aml_i2c_set_token_list(i2c);

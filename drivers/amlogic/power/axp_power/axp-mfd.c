@@ -14,12 +14,26 @@
 #include <linux/clk.h>
 #include <linux/delay.h>
 #include <linux/slab.h>
+#include <mach/am_regs.h>
+#include <mach/gpio.h>
 
 #include "axp-cfg.h"
 #include "axp18-mfd.h"
 #include "axp19-mfd.h"
 #include "axp20-mfd.h"
 
+static inline int is_ac_online(void)
+{
+	int val;
+	
+	SET_CBUS_REG_MASK(PAD_PULL_UP_REG0, (1<<20));	//enable internal pullup
+	set_gpio_mode(GPIOA_bank_bit0_27(20), GPIOA_bit_bit0_27(20), GPIO_INPUT_MODE);
+	val = get_gpio_val(GPIOA_bank_bit0_27(20), GPIOA_bit_bit0_27(20));
+	
+	//logd("%s: get from gpio is %d.\n", __FUNCTION__, val);
+	
+	return !val;
+}
 
 static void axp_mfd_irq_work(struct work_struct *work)
 {
@@ -198,7 +212,9 @@ failed:
  void axp_power_off(void)
 {
 	uint8_t val;
-
+    if(is_ac_online()){
+        arm_pm_restart("","charging_reboot");
+    }
 #if defined (CONFIG_AW_AXP18)
 	axp_set_bits(&axp->dev, POWER18_ONOFF, 0x80);
 #endif
@@ -281,7 +297,7 @@ static int __devinit axp_mfd_probe(struct i2c_client *client,
 	ret = chip->ops->init_chip(chip);
 	if (ret)
 		goto out_free_chip;
-
+    /*
 	ret = request_irq(client->irq, axp_mfd_irq_handler,
 		IRQF_DISABLED, "axp_mfd", chip);
   	if (ret) {
@@ -289,7 +305,7 @@ static int __devinit axp_mfd_probe(struct i2c_client *client,
   				client->irq);
   		goto out_free_chip;
   	}
-
+    */
 
 	ret = axp_mfd_add_subdevs(chip, pdata);
 	if (ret)

@@ -709,7 +709,7 @@ static ssize_t dsp_working_status_show(struct class* cla, struct class_attribute
 }
 static struct class_attribute audiodsp_attrs[]={
     __ATTR_RO(codec_fmt),
-    __ATTR_RO(codec_mips),
+   // __ATTR_RO(codec_mips),   //no need for M3
     __ATTR_RO(codec_fatal_err),
     __ATTR_RO(swap_buf_ptr),
     __ATTR_RO(dsp_working_status),

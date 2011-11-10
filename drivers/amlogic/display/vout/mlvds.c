@@ -224,8 +224,8 @@ static void set_tcon_mlvds(lcdConfig_t *pConf)
 
     pclk_div = (bit_num == 8) ? 3 : // phy_clk / 8
                                 2 ; // phy_clk / 6
-   data32 = (1 << ((mlvds_tconfig_l[7].channel_num)-2+tcon_pclk_enable)) |  // enable PCLK_CHANNEL
-            (pclk_div << tcon_pclk_div) |
+   data32 = (0 << ((mlvds_tconfig_l[7].channel_num)-2+tcon_pclk_enable)) |  // enable PCLK_CHANNEL
+            (pclk_div << tcon_pclk_div) | 
             (
               (pair_num == 6) ?
               (
@@ -745,7 +745,7 @@ static void set_mlvds_control(lcdConfig_t *pConf)
        (0x1 << VS_POL)
     );
 
-    WRITE_MPEG_REG( LVDS_GEN_CNTL, (READ_MPEG_REG(LVDS_GEN_CNTL) | (1 << 3))); // enable fifo
+    //WRITE_MPEG_REG( LVDS_GEN_CNTL, (READ_MPEG_REG(LVDS_GEN_CNTL) | (1 << 3))); // enable fifo
 }
 
 static void venc_set_mlvds(lcdConfig_t *pConf)

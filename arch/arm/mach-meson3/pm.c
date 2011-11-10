@@ -801,14 +801,15 @@ extern int meson_power_suspend();
     udelay(100);
 #endif
     CLEAR_CBUS_REG_MASK(HHI_SYS_PLL_CNTL, (1 << 15));   // turn on sys pll
-    udelay(10);
-    SET_CBUS_REG_MASK(HHI_SYS_CPU_CLK_CNTL, (1 << 7));  // a9 use pll
+    udelay(500); // wait for pll stable
 
     printk(KERN_INFO "... wake up\n");
 
     if (pdata->set_vccx2) {
         pdata->set_vccx2(ON);
     }
+
+    SET_CBUS_REG_MASK(HHI_SYS_CPU_CLK_CNTL, (1 << 7));  // a9 use pll
 
     pll_switch(ON);
 

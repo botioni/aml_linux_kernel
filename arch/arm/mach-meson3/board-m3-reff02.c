@@ -270,6 +270,21 @@ static struct platform_device fb_device = {
     .resource      = fb_device_resources,
 };
 #endif
+#ifdef CONFIG_USB_PHY_CONTROL
+static struct resource usb_phy_control_device_resources[] = {
+	{
+		.start = CBUS_REG_ADDR(PREI_USB_PHY_REG),
+		.end = -1,
+		.flags = IORESOURCE_MEM,
+	},
+};
+
+static struct platform_device usb_phy_control_device = {
+	.name = "usb_phy_control",
+	.id = -1,
+	.resource = usb_phy_control_device_resources,
+};
+#endif
 #ifdef CONFIG_USB_DWC_OTG_HCD
 static void set_usb_a_vbus_power(char is_power_on)
 {
@@ -1755,6 +1770,9 @@ static struct platform_device __initdata *platform_devs[] = {
 #ifdef CONFIG_POST_PROCESS_MANAGER
     &ppmgr_device,
 #endif
+#if defined(CONFIG_USB_PHY_CONTROL)
+    &usb_phy_control_device,
+#endif
 };
 
 static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
@@ -1924,6 +1942,7 @@ static __init void m1_init_machine(void)
     lm_device_register(&usb_ld_b);
 #endif
     disable_unused_model();
+    WRITE_CBUS_REG_BITS(PAD_PULL_UP_REG0,1,19,1);
 }
 
 /*VIDEO MEMORY MAPING*/

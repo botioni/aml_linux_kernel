@@ -15,7 +15,7 @@ obj-$(CONFIG_AW_AXP19) += axp19-gpio.o
 obj-$(CONFIG_AW_AXP19) += virtual19.o
 obj-$(CONFIG_AW_AXP19) += virtual19_dev.o
 
-obj-$(CONFIG_AW_AXP20) += axp20-board.o
+#obj-$(CONFIG_AW_AXP20) += axp20-board.o
 obj-$(CONFIG_AW_AXP20) += axp20-regu.o
 obj-$(CONFIG_AW_AXP20) += axp20-sply.o
 obj-$(CONFIG_AW_AXP20) += axp20-gpio.o
