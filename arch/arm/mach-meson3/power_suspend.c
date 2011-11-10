@@ -53,17 +53,10 @@ int meson_power_suspend()
   unsigned p_addr;
 	void	(*pwrtest_entry)(unsigned,unsigned,unsigned,unsigned);
 
-//	printk("enter power down flow... \n");
-	
 	flush_cache_all();
-	
-//	i =	readl(0xF4200100);
-//	printk("ww: l2:%X\n",i);
 
 	addr = 0x1FF04400;
 	p_addr = virt_to_phys(addr);
-	printk("entry address:%x\n",p_addr);
-	
 	pwrtest_entry = (void (*)(unsigned,unsigned,unsigned,unsigned))p_addr;
 	if(test_flag != 1234){
 		test_flag = 1234;
@@ -73,10 +66,6 @@ int meson_power_suspend()
 
 	printk("power down cpu --\n");
 	pwrtest_entry(APPF_POWER_DOWN_CPU,0,0,APPF_SAVE_PMU|APPF_SAVE_VFP|APPF_SAVE_L2);
-
-	//wait for moment
-	i =	readl(0xF4200100);
-	printk("ww: ok l2:%x\n",i);
 
 	return 0;
 }
