@@ -775,7 +775,7 @@ static void meson_pm_suspend(void)
                           1,                          // Set the delay wakeup time (1mS)
                           1);                         // 1uS enable delay
 #endif
-
+	WRITE_MPEG_REG_BITS(HHI_MALI_CLK_CNTL, 0, 9, 3); // mali use xtal
     CLEAR_CBUS_REG_MASK(HHI_SYS_CPU_CLK_CNTL, 1<<7);  // a9 use xtal
     SET_CBUS_REG_MASK(HHI_SYS_PLL_CNTL, (1 << 15));   // turn off sys pll
 #ifdef ADJUST_CORE_VOLTAGE
@@ -810,6 +810,7 @@ extern int meson_power_suspend();
     }
 
     SET_CBUS_REG_MASK(HHI_SYS_CPU_CLK_CNTL, (1 << 7));  // a9 use pll
+    WRITE_MPEG_REG_BITS(HHI_MALI_CLK_CNTL, 3, 9, 3); // mali use pll
 
     pll_switch(ON);
 
