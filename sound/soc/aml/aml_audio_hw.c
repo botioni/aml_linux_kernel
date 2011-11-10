@@ -283,6 +283,7 @@ void audio_util_set_dac_format(unsigned format)
 	WRITE_MPEG_REG(AIU_I2S_SOURCE_DESC, 0x0001);	// four 2-channel
 }
 
+extern unsigned int get_ddr_pll_clk(void);
 void audio_set_clk(unsigned freq, unsigned fs_config)
 {
     int i;
@@ -357,6 +358,35 @@ void audio_set_clk(unsigned freq, unsigned fs_config)
 		
 		audio_clock_config = audio_clock_config_table[xtal];		
 	
+#ifdef CONFIG_SND_AML_M3
+	if (((clk_get_rate(clk)==24000000)&&(get_ddr_pll_clk()==516000000)&&(index=2))) // 48k
+	{
+		WRITE_MPEG_REG( HHI_AUD_CLK_CNTL, READ_MPEG_REG(HHI_AUD_CLK_CNTL) & ~(1 << 8)); // audio clock off
+		WRITE_MPEG_REG( HHI_AUD_PLL_CNTL, READ_MPEG_REG(HHI_AUD_PLL_CNTL) | (1 << 15)); // audio pll off
+		WRITE_MPEG_REG_BITS(HHI_AUD_CLK_CNTL, 4, 9, 3); // select ddr
+		WRITE_MPEG_REG_BITS(HHI_AUD_CLK_CNTL, 42-1, 0, 8); // 516/42
+		WRITE_MPEG_REG_BITS(AIU_CODEC_ADC_LRCLK_CTRL, 64-1, 0, 12);//set codec adc ratio---lrclk
+		WRITE_MPEG_REG_BITS(AIU_CODEC_DAC_LRCLK_CTRL, 64-1, 0, 12);//set codec dac ratio---lrclk
+		WRITE_MPEG_REG(HHI_AUD_CLK_CNTL, READ_MPEG_REG(HHI_AUD_CLK_CNTL) | (1<<23));// gate audac_clkpi
+		WRITE_MPEG_REG(HHI_AUD_CLK_CNTL, READ_MPEG_REG(HHI_AUD_CLK_CNTL) | (1 << 8));
+		printk(KERN_INFO "audio 48k clock from ddr pll %dM\n", 516);
+		return;
+	}
+	else if (((clk_get_rate(clk)==24000000)&&(get_ddr_pll_clk()==508000000)&&(index=1))) // 44.1k
+	{
+		WRITE_MPEG_REG( HHI_AUD_CLK_CNTL, READ_MPEG_REG(HHI_AUD_CLK_CNTL) & ~(1 << 8)); // audio clock off
+		WRITE_MPEG_REG( HHI_AUD_PLL_CNTL, READ_MPEG_REG(HHI_AUD_PLL_CNTL) | (1 << 15)); // audio pll off
+		WRITE_MPEG_REG_BITS(HHI_AUD_CLK_CNTL, 4, 9, 3); // select ddr
+		WRITE_MPEG_REG_BITS(HHI_AUD_CLK_CNTL, 45-1, 0, 8); // 508/45
+		WRITE_MPEG_REG_BITS(AIU_CODEC_ADC_LRCLK_CTRL, 64-1, 0, 12);//set codec adc ratio---lrclk
+		WRITE_MPEG_REG_BITS(AIU_CODEC_DAC_LRCLK_CTRL, 64-1, 0, 12);//set codec dac ratio---lrclk
+		WRITE_MPEG_REG(HHI_AUD_CLK_CNTL, READ_MPEG_REG(HHI_AUD_CLK_CNTL) | (1<<23));// gate audac_clkpi
+		WRITE_MPEG_REG(HHI_AUD_CLK_CNTL, READ_MPEG_REG(HHI_AUD_CLK_CNTL) | (1 << 8));
+		printk(KERN_INFO "audio 44.1k clock from ddr pll %dM\n", 508);
+		return;
+	}
+#endif		
+
     // gate the clock off
     WRITE_MPEG_REG( HHI_AUD_CLK_CNTL, READ_MPEG_REG(HHI_AUD_CLK_CNTL) & ~(1 << 8));
 

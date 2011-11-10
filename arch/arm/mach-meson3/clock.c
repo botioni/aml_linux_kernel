@@ -770,10 +770,34 @@ static int __init clk81_clock_setup(char *ptr)
     int clock = clkparse(ptr, 0);
     int i, lock;
     unsigned long clk;
+    int baudrate;
+
+    if (!ddr_pll_clk){
+    	ddr_pll_clk = clk_util_clk_msr(CTS_DDR_CLK);
+    	printk("(CTS_DDR_CLK) = %ldMHz\n", ddr_pll_clk);
+    }
+
+	if ((ddr_pll_clk==516)||(ddr_pll_clk==508)){
+        clock = clk81.rate = ddr_pll_clk*1000000/3;
+        baudrate = (clock / (115200 * 4)) - 1;
+        CLEAR_CBUS_REG_MASK(HHI_MPEG_CLK_CNTL, (1 << 8)); // use xtal
+        WRITE_MPEG_REG(HHI_MPEG_CLK_CNTL,   // MPEG clk81 set to misc/4
+                       (3 << 12) |               // select ddr PLL
+                       ((3 - 1) << 0) |          // div3
+                       (1 << 7) |                // cntl_hi_mpeg_div_en, enable gating
+					   (1 << 15));                // Production clock enable
+		SET_CBUS_REG_MASK(HHI_MPEG_CLK_CNTL, (1 << 8)); // use pll
+        WRITE_AOBUS_REG_BITS(AO_UART_CONTROL, baudrate & 0xfff, 0, 12);
+        SET_CBUS_REG_MASK(HHI_OTHER_PLL_CNTL, (1 << 15)); // other pll off
+
+        clk = clk_util_clk_msr(CLK81);
+        printk("(CLK81) = %ldMHz\n", clk);
+        return 0;			
+	}
 
     if (misc_pll_setting(0, clock * 4) == 0) {
         /* todo: uart baudrate depends on clk81, assume 115200 baudrate */
-        int baudrate = (clock / (115200 * 4)) - 1;
+        baudrate = (clock / (115200 * 4)) - 1;
 
         clk_misc_pll.rate = clock * 4;
         clk81.rate = clock;
