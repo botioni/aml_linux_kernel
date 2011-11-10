@@ -309,6 +309,7 @@ static int clk_set_rate_a9_clk(struct clk *clk, unsigned long rate)
     father_clk = clk_get_sys("clk_sys_pll", NULL);
     local_irq_save(flags);
     CLEAR_CBUS_REG_MASK(HHI_SYS_CPU_CLK_CNTL, 1<<7); // cpu use xtal
+	WRITE_MPEG_REG_BITS(HHI_MALI_CLK_CNTL, 0, 9, 3); // mali use xtal
 	
 	divider = 0;
 	while ((rate<<divider)<200000000)
@@ -340,7 +341,6 @@ static int clk_set_rate_a9_clk(struct clk *clk, unsigned long rate)
     clk->rate = rate;
     local_irq_restore(flags);
 
-	printk("(CTS_A9_CLK) = %ldMHz\n", rate/1000000);
     if (!ddr_pll_clk){
     	ddr_pll_clk = clk_util_clk_msr(CTS_DDR_CLK);
     	printk("(CTS_DDR_CLK) = %ldMHz\n", ddr_pll_clk);
@@ -360,6 +360,10 @@ static int clk_set_rate_a9_clk(struct clk *clk, unsigned long rate)
     	//target_clk = clk_util_clk_msr(CTS_MALI_CLK);
     	//printk("(CTS_MALI_CLK) = %ldMHz\n", target_clk);
 	}
+	else{
+		WRITE_MPEG_REG_BITS(HHI_MALI_CLK_CNTL, 3, 9, 3); // mali use ddr pll
+	}
+	printk("(CTS_A9_CLK) = %ldMHz\n", rate/1000000);
 
     return 0;
 }
@@ -664,6 +668,8 @@ static int cpu_clk_setting(unsigned long cpu_freq)
 		return -1;
     local_irq_save(flags);
     CLEAR_CBUS_REG_MASK(HHI_SYS_CPU_CLK_CNTL, 1<<7); // cpu use xtal
+    WRITE_MPEG_REG_BITS(HHI_MALI_CLK_CNTL, 0, 9, 3); // mali use xtal
+    
     ret = sys_clkpll_setting(0, cpu_freq<<divider); 
 	if (divider<2){
 	    WRITE_MPEG_REG(HHI_SYS_CPU_CLK_CNTL,
@@ -687,7 +693,6 @@ static int cpu_clk_setting(unsigned long cpu_freq)
     SET_CBUS_REG_MASK(HHI_SYS_CPU_CLK_CNTL, 1<<7); // cpu use sys pll
     local_irq_restore(flags);
 
-	printk("(CTS_A9_CLK) = %ldMHz\n", cpu_freq/1000000);
     if (!ddr_pll_clk){
     	ddr_pll_clk = clk_util_clk_msr(CTS_DDR_CLK);
     	printk("(CTS_DDR_CLK) = %ldMHz\n", ddr_pll_clk);
@@ -707,6 +712,10 @@ static int cpu_clk_setting(unsigned long cpu_freq)
     	//target_clk = clk_util_clk_msr(CTS_MALI_CLK);
     	//printk("(CTS_MALI_CLK) = %ldMHz\n", target_clk);
 	}
+	else{
+		WRITE_MPEG_REG_BITS(HHI_MALI_CLK_CNTL, 3, 9, 3); // mali use ddr pll
+	}
+	printk("(CTS_A9_CLK) = %ldMHz\n", cpu_freq/1000000);
                        
     return ret;
 }
