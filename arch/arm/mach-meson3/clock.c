@@ -279,9 +279,11 @@ static int clk_set_rate_clk81(struct clk *clk, unsigned long rate)
     r1 = clk_get_rate(father_clk);
 
     if (r1 != r * 4) {
+    	CLEAR_CBUS_REG_MASK(HHI_MPEG_CLK_CNTL, 1<<8); // clk81 to xtal
         ret = father_clk->set_rate(father_clk, r * 4);
 
         if (ret != 0) {
+        	SET_CBUS_REG_MASK(HHI_MPEG_CLK_CNTL, 1<<8); // clk81 to pll
             return ret;
         }
     }
@@ -291,10 +293,13 @@ static int clk_set_rate_clk81(struct clk *clk, unsigned long rate)
     WRITE_MPEG_REG(HHI_MPEG_CLK_CNTL,
                    (2 << 12) |          // select SYS PLL
                    ((4 - 1) << 0) |     // div1
-                   (1 << 7) |           // cntl_hi_mpeg_div_en, enable gating
+                   (1 << 7));           // cntl_hi_mpeg_div_en, enable gating
+    r1 = READ_MPEG_REG(HHI_MPEG_CLK_CNTL);
+    SET_MPEG_REG_MASK(HHI_MPEG_CLK_CNTL,
                    (1 << 8));           // Connect clk81 to the PLL divider output
 
     clk81 = clk_util_clk_msr(CLK81);
+    printk("(CTS_CLK81) = %ldMHz\n", clk81);
     return 0;
 }
 
@@ -305,20 +310,16 @@ static int clk_set_rate_a9_clk(struct clk *clk, unsigned long rate)
     unsigned long flags;
     unsigned int clk_a9 = 0;
     unsigned long target_clk;
-    int mali_divider = 0;
 	
     father_clk = clk_get_sys("clk_sys_pll", NULL);
-    local_irq_save(flags);
-    mali_divider = READ_CBUS_REG(HHI_MALI_CLK_CNTL)&0x7f;
-	WRITE_MPEG_REG_BITS(HHI_MALI_CLK_CNTL, 0, 9, 3); // mali use xtal
-	WRITE_MPEG_REG_BITS(HHI_MALI_CLK_CNTL, 1, 0, 7); // mali use xtal/2
-    CLEAR_CBUS_REG_MASK(HHI_SYS_CPU_CLK_CNTL, 1<<7); // cpu use xtal
-	
 	divider = 0;
 	while ((rate<<divider)<200000000)
 		divider++;
-	if (divider>2)
+	if (divider>2){
 		return -1;
+	}
+    local_irq_save(flags);
+    CLEAR_CBUS_REG_MASK(HHI_SYS_CPU_CLK_CNTL, 1<<7); // cpu use xtal
     ret = father_clk->set_rate(father_clk, rate<<divider);
 	if (divider<2){
 	    WRITE_MPEG_REG(HHI_SYS_CPU_CLK_CNTL,
@@ -326,7 +327,6 @@ static int clk_set_rate_a9_clk(struct clk *clk, unsigned long rate)
 	                   (divider << 2) |  // sys pll div 1 or 2
 	                   (1 << 4) |  // APB_CLK_ENABLE
 	                   (1 << 5) |  // AT_CLK_ENABLE
-	                   (0 << 7) |  // not connect A9 to the PLL divider output
 	                   (0 << 8)); 
 	}
 	else
@@ -336,13 +336,12 @@ static int clk_set_rate_a9_clk(struct clk *clk, unsigned long rate)
 	                   (3 << 2) |  // sys pll div 4
 	                   (1 << 4) |  // APB_CLK_ENABLE
 	                   (1 << 5) |  // AT_CLK_ENABLE
-	                   (0 << 7) |  // not connect A9 to the PLL divider output
 	                   (2 << 8)); 
 	}
     clk_a9 = READ_MPEG_REG(HHI_SYS_CPU_CLK_CNTL); // read cbus for a short delay
     SET_CBUS_REG_MASK(HHI_SYS_CPU_CLK_CNTL, 1<<7); // cpu use sys pll
-    clk->rate = rate;
     local_irq_restore(flags);
+    clk->rate = rate;
 
     if (!ddr_pll_clk){
     	ddr_pll_clk = clk_util_clk_msr(CTS_DDR_CLK);
@@ -354,21 +353,20 @@ static int clk_set_rate_a9_clk(struct clk *clk, unsigned long rate)
 	divider = 1;
 	while ((divider * target_clk < ddr_pll_clk) || (264 * divider < ddr_pll_clk))
 		divider++;
-    if ((divider-1) != mali_divider){
+    if ((divider-1) != (READ_MPEG_REG(HHI_MALI_CLK_CNTL)&0x7f)){
+	    local_irq_save(flags);
+		CLEAR_CBUS_REG_MASK(HHI_MALI_CLK_CNTL, 1<<8); // mali off
     	WRITE_CBUS_REG(HHI_MALI_CLK_CNTL,
                        (3 << 9)    |   		// select ddr pll as clock source
-                       (1 << 8)    |   		// enable clock gating
                        ((divider-1) << 0)); // ddr clk / divider
+        clk_a9 = READ_MPEG_REG(HHI_MALI_CLK_CNTL);          
+		SET_CBUS_REG_MASK(HHI_MALI_CLK_CNTL, 1<<8); // mali on
+    	local_irq_restore(flags);
         printk("(CTS_MALI_CLK) = %ldMHz\n", ddr_pll_clk/divider);
     	//target_clk = clk_util_clk_msr(CTS_MALI_CLK);
     	//printk("(CTS_MALI_CLK) = %ldMHz\n", target_clk);
 	}
-	else{
-		WRITE_MPEG_REG_BITS(HHI_MALI_CLK_CNTL, mali_divider, 0, 7);
-		WRITE_MPEG_REG_BITS(HHI_MALI_CLK_CNTL, 3, 9, 3); // mali use ddr pll
-	}
 	printk("(CTS_A9_CLK) = %ldMHz\n", rate/1000000);
-
     return 0;
 }
 
@@ -665,16 +663,13 @@ static int cpu_clk_setting(unsigned long cpu_freq)
     unsigned long target_clk;
     unsigned long flags;
 	int divider = 0;
-	int mali_divider = 0;
 	
 	while ((cpu_freq<<divider)<200000000)
 		divider++;
 	if (divider>2)
 		return -1;
     local_irq_save(flags);
-    mali_divider = READ_CBUS_REG(HHI_MALI_CLK_CNTL)&0x7f;
-    WRITE_MPEG_REG_BITS(HHI_MALI_CLK_CNTL, 0, 9, 3); // mali use xtal
-    WRITE_MPEG_REG_BITS(HHI_MALI_CLK_CNTL, 1, 0, 7); // mali use xtal/2
+    CLEAR_MPEG_REG_MASK(HHI_MALI_CLK_CNTL, 1<<8); // mali off
     CLEAR_CBUS_REG_MASK(HHI_SYS_CPU_CLK_CNTL, 1<<7); // cpu use xtal
     
     ret = sys_clkpll_setting(0, cpu_freq<<divider); 
@@ -710,7 +705,7 @@ static int cpu_clk_setting(unsigned long cpu_freq)
 	divider = 1;
 	while ((divider * target_clk < ddr_pll_clk) || (264 * divider < ddr_pll_clk))
 		divider++;
-    if ((divider-1) != mali_divider){
+    if ((divider-1) != (READ_CBUS_REG(HHI_MALI_CLK_CNTL)&0x7f)){
     	WRITE_CBUS_REG(HHI_MALI_CLK_CNTL,
                        (3 << 9)    |   		// select ddr pll as clock source
                        (1 << 8)    |   		// enable clock gating
@@ -720,8 +715,7 @@ static int cpu_clk_setting(unsigned long cpu_freq)
     	//printk("(CTS_MALI_CLK) = %ldMHz\n", target_clk);
 	}
 	else{
-		WRITE_MPEG_REG_BITS(HHI_MALI_CLK_CNTL, mali_divider, 0, 7);
-		WRITE_MPEG_REG_BITS(HHI_MALI_CLK_CNTL, 3, 9, 3); // mali use ddr pll
+		SET_MPEG_REG_MASK(HHI_MALI_CLK_CNTL, 1<<8); // mali on
 	}
 	printk("(CTS_A9_CLK) = %ldMHz\n", cpu_freq/1000000);
                        
@@ -785,7 +779,6 @@ __setup("a9_clk=", a9_clock_setup);
 static int __init clk81_clock_setup(char *ptr)
 {
     int clock = clkparse(ptr, 0);
-    int i, lock;
     unsigned long clk;
     int baudrate;
 
@@ -812,6 +805,7 @@ static int __init clk81_clock_setup(char *ptr)
         return 0;			
 	}
 
+	CLEAR_CBUS_REG_MASK(HHI_MPEG_CLK_CNTL, 1<<8);
     if (misc_pll_setting(0, clock * 4) == 0) {
         /* todo: uart baudrate depends on clk81, assume 115200 baudrate */
         baudrate = (clock / (115200 * 4)) - 1;
@@ -822,23 +816,13 @@ static int __init clk81_clock_setup(char *ptr)
                        (2 << 12) |               // select misc PLL
                        ((4 - 1) << 0) |          // div1
                        (1 << 7) |                // cntl_hi_mpeg_div_en, enable gating
-                       (1 << 8) |                // Connect clk81 to the PLL divider output
 					   (1 << 15));                // Production clock enable
-
         WRITE_AOBUS_REG_BITS(AO_UART_CONTROL, baudrate & 0xfff, 0, 12);
-
-        lock = 0;
-        for (i = 0;i < 64;i++){
-            clk = clk_util_clk_msr(CLK81)*1000000;
-            if ((clk<clock+1000000)&&(clk>clock-1000000)){
-                lock++;
-                if (lock==3) break;
-            }
-        }
-        clk = clk_util_clk_msr(CLK81);
-        printk("(CLK81) = %ldMHz\n", clk);
     }
-
+   	SET_CBUS_REG_MASK(HHI_MPEG_CLK_CNTL, 1<<8);
+   	
+    clk = clk_util_clk_msr(CLK81);
+    printk("(CLK81) = %ldMHz\n", clk);
     return 0;
 }
 __setup("clk81=", clk81_clock_setup);

@@ -149,13 +149,9 @@ int sys_clkpll_setting(unsigned crystal_freq, unsigned out_freq)
 
 int misc_pll_setting(unsigned crystal_freq, unsigned  out_freq)
 {
-    int i, n, m, od;
+    int n, m, od;
     unsigned long crys_M, out_M, middle_freq;
     unsigned long flags;
-    unsigned lock_flag, lock_time=0;
-    unsigned result_freq=0;
-    unsigned long freq_log[64];
-    int log_index;
     
     if (!crystal_freq) {
         crystal_freq = get_xtal_clock();
@@ -164,8 +160,7 @@ int misc_pll_setting(unsigned crystal_freq, unsigned  out_freq)
     out_M = out_freq / 1000000;
     if (out_M < 400) {
         /*if <400M, Od=1*/
-        od = 1;/*out=pll_out/(1<<od)
-                 */
+        od = 1;/*out=pll_out/(1<<od)*/
         out_M = out_M << 1;
     } else {
         od = 0;
@@ -190,28 +185,10 @@ int misc_pll_setting(unsigned crystal_freq, unsigned  out_freq)
                    n << 9 |
                    (od & 1) << 16
                   ); // misc PLL
-    lock_flag = 0;
-    log_index = 0;
-    for (i=0;i<64;i++){
-        result_freq = clk_util_clk_msr(MISC_PLL_CLK);
-        if ((result_freq <= out_M+1)&&(result_freq >= out_M-1)){
-            lock_flag++;
-            if (lock_flag>=3)
-                break;
-        }
-        if (log_index<64) 
-            freq_log[log_index++]=result_freq;
-        else 
-            break;
-        lock_time+=64;
-    }
+    WRITE_MPEG_REG(RESET5_REGISTER, (1<<1));        // reset misc pll
     WRITE_AOBUS_REG_BITS(AO_UART_CONTROL, (((out_freq/4) / (115200*4)) - 1) & 0xfff, 0, 12);
-
     local_irq_restore(flags);
-    printk("misc pll changed");
-    for (i=0;i<log_index;i++)
-        printk("-%ld", freq_log[i]);
-    printk("\nmisc pll setting to crystal_req=%ld,out_freq=%ld,n=%d,m=%d,od=%d,locktime=%dus\n", crys_M, out_M / (od + 1), n, m, od, lock_time);
+	udelay(100);
     return 0;
 }
 
