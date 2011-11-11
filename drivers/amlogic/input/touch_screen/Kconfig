@@ -112,3 +112,13 @@ config PIXCIR_CAPACITIVE_TOUCHSCREEN
 
 	  To compile this driver as a module, choose M here: the
 	  module will be called .  
+
+config IT7260_CAPACITIVE_TOUCHSCREEN
+	tristate "ite it7260 capacitive touch panel"
+	depends on I2C
+	default n
+	help
+	  Say Y here if you want to use the it7260 capacitive panel.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called .  

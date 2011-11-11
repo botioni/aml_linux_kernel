@@ -26,6 +26,10 @@ static struct early_suspend itk_early_suspend;
 #endif
 
 // definition
+#define TS_IDLE_TIME (400 * 1000000)
+#define TS_SLEEP_TIME (200 * 1000000)
+#define TS_WAKEUP_TIME (200 * 1000000)
+
 #define ILITEK_I2C_RETRY_COUNT			3
 #define ILITEK_I2C_DEFAULT_ADDRESS      0x41
 #define ILITEK_I2C_DRIVER_NAME			"ilitek_i2c"
@@ -579,6 +583,23 @@ static void itk_work(struct work_struct *work)
 		return;
 	}
 
+	spin_lock(&ts->lock);	
+	if (ts->running == 2) {
+		ts->pdata->touch_on(0);
+		hrtimer_start(&ts->timer, ktime_set(0, TS_SLEEP_TIME), HRTIMER_MODE_REL);
+		ts->running = 3;
+		spin_unlock(&ts->lock);
+		return;
+	}
+	else if (ts->running == 3) {
+		ts->pdata->touch_on(1);
+		hrtimer_start(&ts->timer, ktime_set(0, TS_WAKEUP_TIME), HRTIMER_MODE_REL);
+		ts->running = 2;
+		spin_unlock(&ts->lock);
+		return;
+	}
+	spin_unlock(&ts->lock);	
+
     if (itk_get_pendown_state(ts)) 
     {
     		ret = itk_read_sensor(ts);
@@ -691,7 +712,9 @@ restart:
         }
         ts->touching_num = 0;
         enable_irq(ts->client->irq);
-		ts->running	= 0;
+				printk("start idle timer\n");
+        hrtimer_start(&ts->timer, ktime_set(0, TS_IDLE_TIME), HRTIMER_MODE_REL);
+				ts->running	= 2;
     }
 }
 
@@ -704,7 +727,7 @@ static enum hrtimer_restart itk_timer(struct hrtimer *timer)
 {
     struct itk *ts = container_of(timer, struct itk, timer);
     unsigned long flags = 0;
-    ts->running	= 1;
+//    ts->running	= 1;
     spin_lock_irqsave(&ts->lock, flags);
 //  printk(KERN_INFO "enter timer\n");
     queue_work(ts->workqueue, &ts->work);
