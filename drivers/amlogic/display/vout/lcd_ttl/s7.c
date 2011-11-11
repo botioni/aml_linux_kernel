@@ -40,7 +40,6 @@
 
 static void clear_tcon_pinmux(void);
 static void set_tcon_pinmux(void);
-
 static void t13_power_on(void);
 static void t13_power_off(void);
 void power_on_backlight(void);
@@ -60,22 +59,29 @@ void set_backlight_level(unsigned level);
 #define BL_CTL_PWM		1
 #define BL_CTL			BL_CTL_PWM
 
+//#define PRINT_DEBUG_INFO
+#ifdef PRINT_DEBUG_INFO
+#define PRINT_INFO(...)		printk(__VA_ARGS__)
+#else
+#define PRINT_INFO(...)
+#endif
+
 static lcdConfig_t lcd_config =
 {
     .width      = LCD_WIDTH,
     .height     = LCD_HEIGHT,
     .max_width  = MAX_WIDTH,
     .max_height = MAX_HEIGHT,
-	.video_on_pixel = VIDEO_ON_PIXEL,
+    .video_on_pixel = VIDEO_ON_PIXEL,
     .video_on_line = VIDEO_ON_LINE,
-    .pll_ctrl = 0x1021e,
-	.div_ctrl = 0x18803,
-    .clk_ctrl = 0x100c,	//pll_sel,div_sel,vclk_sel,xd
+    .pll_ctrl = 0x1021e,//30MHz
+    .div_ctrl = 0x18803,
+    .clk_ctrl = 0x100c,//pll_sel,div_sel,vclk_sel,xd
     .gamma_cntl_port = (1 << LCD_GAMMA_EN) | (0 << LCD_GAMMA_RVS_OUT) | (1 << LCD_GAMMA_VCOM_POL),
     .gamma_vcom_hswitch_addr = 0,
     .rgb_base_addr = 0xf0,
     .rgb_coeff_addr = 0x74a,
-    .pol_cntl_addr = (0x0 << LCD_CPH1_POL) |(0x1 << LCD_HS_POL) | (0x1 << LCD_VS_POL),
+    .pol_cntl_addr = (0x0 << LCD_CPH1_POL) | (0x1 << LCD_HS_POL) | (0x1 << LCD_VS_POL),
     .dith_cntl_addr = 0x600,
     .sth1_hs_addr = 0,
     .sth1_he_addr = 0,
@@ -104,15 +110,15 @@ static lcdConfig_t lcd_config =
     .tcon_misc_sel_addr = (1<<LCD_STV1_SEL) | (1<<LCD_STV2_SEL),
     .dual_port_cntl_addr = (1<<LCD_TTL_SEL) | (1<<LCD_ANALOG_SEL_CPH3) | (1<<LCD_ANALOG_3PHI_CLK_SEL) | (0<<RGB_SWP) | (0<<BIT_SWP),
     .flags = LCD_DIGITAL_TTL,
-    .screen_width = 4,
-    .screen_height = 3,
+    .screen_width = 16,
+    .screen_height = 9,
     .sync_duration_num = 493,
     .sync_duration_den = 8,
-    .power_on=t13_power_on,
-    .power_off=t13_power_off,
+    .power_on = t13_power_on,
+    .power_off = t13_power_off,
     .backlight_on = power_on_backlight,
     .backlight_off = power_off_backlight,
-	.get_bl_level = get_backlight_level,
+    .get_bl_level = get_backlight_level,
     .set_bl_level = set_backlight_level,
 };
 
@@ -151,139 +157,134 @@ static void t13_setup_gama_table(lcdConfig_t *pConf)
 void power_on_backlight(void)
 {
     msleep(20);
-	set_tcon_pinmux();
-	msleep(50);
+    set_tcon_pinmux();
+    msleep(100);
 
-	//LCD_BL_5V -> GPIOA_9: 1
-	clear_mio_mux(3, (1<<1));
-	clear_mio_mux(0, (1<<6));
-	set_gpio_mode(GPIOA_bank_bit0_27(9),GPIOA_bit_bit0_27(9),GPIO_OUTPUT_MODE);
-	set_gpio_val(GPIOA_bank_bit0_27(9),GPIOA_bit_bit0_27(9), 1);
-	msleep(50);
+    //LCD_BL_5V -> GPIOA_9: 1
+    clear_mio_mux(3, (1<<1));
+    clear_mio_mux(0, (1<<6));
+    set_gpio_mode(GPIOA_bank_bit0_27(9),GPIOA_bit_bit0_27(9),GPIO_OUTPUT_MODE);
+    set_gpio_val(GPIOA_bank_bit0_27(9),GPIOA_bit_bit0_27(9), 1);
+    msleep(50);
 
-	//BL_EN -> GPIOD_1: 1
-#if (BL_CTL==BL_CTL_GPIO)		
-  	clear_mio_mux(1,(1<<28));
-  	clear_mio_mux(2,(1<<3));
-  	set_gpio_mode(GPIOD_bank_bit0_9(1), GPIOD_bit_bit0_9(1), GPIO_OUTPUT_MODE); 
-	  set_gpio_val(GPIOD_bank_bit0_9(1), GPIOD_bit_bit0_9(1), 1);
+    //BL_EN -> GPIOD_1: 1
+#if (BL_CTL==BL_CTL_GPIO)
+	WRITE_CBUS_REG_BITS(LED_PWM_REG0, 1, 12, 2);
+    clear_mio_mux(1,(1<<28));
+    clear_mio_mux(2,(1<<3));
+    set_gpio_mode(GPIOD_bank_bit0_9(1), GPIOD_bit_bit0_9(1), GPIO_OUTPUT_MODE); 
+    set_gpio_val(GPIOD_bank_bit0_9(1), GPIOD_bit_bit0_9(1), 1);
 #elif (BL_CTL==BL_CTL_PWM)
-	int pwm_div=0;  //pwm_freq=24M/(pwm_div+1)/PWM_MAX	
-	WRITE_CBUS_REG_BITS(PWM_PWM_D, 0, 0, 16);  //pwm low
+    int pwm_div=0;  //pwm_freq=24M/(pwm_div+1)/PWM_MAX
+    WRITE_CBUS_REG_BITS(PWM_PWM_D, 0, 0, 16);  //pwm low
     WRITE_CBUS_REG_BITS(PWM_PWM_D, PWM_MAX, 16, 16);  //pwm high
-	SET_CBUS_REG_MASK(PWM_MISC_REG_CD, ((1 << 23) | (pwm_div<<16) | (1<<1)));  //enable pwm clk & pwm output
+    SET_CBUS_REG_MASK(PWM_MISC_REG_CD, ((1 << 23) | (pwm_div<<16) | (1<<1)));  //enable pwm clk & pwm output
     SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<3));  //enable pwm pinmux
 #endif
-	msleep(100);
-	
-	printk("\nlcd parameter: power_on_backlight.\n");	
+    msleep(100);
+
+    PRINT_INFO("\nlcd parameter: power_on_backlight.\n");
 }
 
 void power_off_backlight(void)
 {
-	//BL_EN -> GPIOD_1: 1
-#if (BL_CTL==BL_CTL_GPIO)		
-  	clear_mio_mux(1,(1<<28));
-  	clear_mio_mux(2,(1<<3));
+    //BL_EN -> GPIOD_1: 1
+#if (BL_CTL==BL_CTL_GPIO)
+    clear_mio_mux(1,(1<<28));
+    clear_mio_mux(2,(1<<3));
     set_gpio_mode(GPIOD_bank_bit0_9(1), GPIOD_bit_bit0_9(1), GPIO_OUTPUT_MODE); 
-	  set_gpio_val(GPIOD_bank_bit0_9(1), GPIOD_bit_bit0_9(1), 0);
-#elif (BL_CTL==BL_CTL_PWM)	  
-	WRITE_CBUS_REG_BITS(PWM_PWM_D, PWM_MAX, 0, 16);  //pwm low
+    set_gpio_val(GPIOD_bank_bit0_9(1), GPIOD_bit_bit0_9(1), 0);
+#elif (BL_CTL==BL_CTL_PWM)
+    WRITE_CBUS_REG_BITS(PWM_PWM_D, PWM_MAX, 0, 16);  //pwm low
     WRITE_CBUS_REG_BITS(PWM_PWM_D, 0, 16, 16);  //pwm high
     CLEAR_CBUS_REG_MASK(PWM_MISC_REG_CD, ((1 << 23) | (1<<1)));  //disable pwm clk & pwm output
-#endif		
-	msleep(20);
+#endif
+    msleep(20);
 
-	//LCD_BL_5V->GPIOA_9: 0
-	clear_mio_mux(3, (1<<1));
-	clear_mio_mux(0, (1<<6));
-	set_gpio_mode(GPIOA_bank_bit0_27(9),GPIOA_bit_bit0_27(9),GPIO_OUTPUT_MODE);
-	set_gpio_val(GPIOA_bank_bit0_27(9),GPIOA_bit_bit0_27(9), 0);
-	msleep(20);
-	
-	clear_tcon_pinmux();
-	msleep(20);	
-	
-	printk("\nlcd parameter: power_off_backlight.\n");
+    //LCD_BL_5V->GPIOA_9: 0
+    clear_mio_mux(3, (1<<1));
+    clear_mio_mux(0, (1<<6));
+    set_gpio_mode(GPIOA_bank_bit0_27(9),GPIOA_bit_bit0_27(9),GPIO_OUTPUT_MODE);
+    set_gpio_val(GPIOA_bank_bit0_27(9),GPIOA_bit_bit0_27(9), 0);
+    msleep(20);
+
+    PRINT_INFO("\nlcd parameter: power_off_backlight.\n");
 }
 
 static unsigned bl_level;
 unsigned get_backlight_level(void)
 {
-	printk("\nlcd parameter: get backlight level: %d.\n", bl_level);
-	return bl_level;
+    PRINT_INFO("\nlcd parameter: get backlight level: %d.\n", bl_level);
+    return bl_level;
 }
 
 void set_backlight_level(unsigned level)
 {
-	level = level>BL_MAX_LEVEL ? BL_MAX_LEVEL:(level<BL_MIN_LEVEL ? BL_MIN_LEVEL:level);
+    level = level>BL_MAX_LEVEL ? BL_MAX_LEVEL:(level<BL_MIN_LEVEL ? BL_MIN_LEVEL:level);
 		
-	printk("\n\nlcd parameter: set backlight level: %d.\n\n", level);
+    PRINT_INFO("\n\nlcd parameter: set backlight level: %d.\n\n", level);
 		
 #if (BL_CTL==BL_CTL_GPIO)
-	level = level * 15 / BL_MAX_LEVEL;	
-	level = 15 - level;
-	WRITE_CBUS_REG_BITS(LED_PWM_REG0, level, 0, 4);	
-#elif (BL_CTL==BL_CTL_PWM)	
-	level = level * PWM_MAX / BL_MAX_LEVEL ;	
-	WRITE_CBUS_REG_BITS(PWM_PWM_D, (PWM_MAX - level), 0, 16);  //pwm low
-    WRITE_CBUS_REG_BITS(PWM_PWM_D, level, 16, 16);  //pwm high	
-#endif	
+    level = level * 15 / BL_MAX_LEVEL;
+    level = 15 - level;
+    WRITE_CBUS_REG_BITS(LED_PWM_REG0, level, 0, 4);
+#elif (BL_CTL==BL_CTL_PWM)
+    level = level * PWM_MAX / BL_MAX_LEVEL;
+    WRITE_CBUS_REG_BITS(PWM_PWM_D, (PWM_MAX - level), 0, 16);  //pwm low
+    WRITE_CBUS_REG_BITS(PWM_PWM_D, level, 16, 16);  //pwm high
+#endif
 }
 
 static void power_on_lcd(void)
-{	
-	//GPIOA_27 -> EN_VDD_BL#: 1  LCD_+10V,VGH_+16V,VGL_-7V  	
-  	clear_mio_mux(1,((1<<2) | (1<<3) | (1<<4) | (1<<11)));
-  	clear_mio_mux(0,(1<<17));
-    set_gpio_mode(GPIOC_bank_bit0_15(7), GPIOC_bit_bit0_15(7), GPIO_OUTPUT_MODE); 
-	  set_gpio_val(GPIOC_bank_bit0_15(7), GPIOC_bit_bit0_15(7), 1);
-	  msleep(30);
-	
-	//GPIOC_7 -> EN_VDD_PNL#: 1  LCD7_+3.3V
-	clear_mio_mux(1,((1<<2) | (1<<3) | (1<<4) | (1<<11)));
-  clear_mio_mux(0,(1<<17));
-  set_gpio_mode(GPIOA_bank_bit0_27(27), GPIOA_bit_bit0_27(27), GPIO_OUTPUT_MODE); 
-	set_gpio_val(GPIOA_bank_bit0_27(27), GPIOA_bit_bit0_27(27), 1);	
-	msleep(30);   
+{
+    //GPIOC_7 -> EN_VDD_PNL#: 1  LCD7_+3.3V
+    clear_mio_mux(1,((1<<2) | (1<<3) | (1<<4) | (1<<11)));
+    clear_mio_mux(0,(1<<17));
+    set_gpio_mode(GPIOA_bank_bit0_27(27), GPIOA_bit_bit0_27(27), GPIO_OUTPUT_MODE);
+    set_gpio_val(GPIOA_bank_bit0_27(27), GPIOA_bit_bit0_27(27), 1);
+    msleep(50);
 
+    //GPIOA_27 -> EN_VDD_BL#: 1  LCD_+10V,VGH_+16V,VGL_-7V
+    clear_mio_mux(1,((1<<2) | (1<<3) | (1<<4) | (1<<11)));
+    clear_mio_mux(0,(1<<17));
+    set_gpio_mode(GPIOC_bank_bit0_15(7), GPIOC_bit_bit0_15(7), GPIO_OUTPUT_MODE); 
+    set_gpio_val(GPIOC_bank_bit0_15(7), GPIOC_bit_bit0_15(7), 1);
+    msleep(50);
 }
 
 static void power_off_lcd(void)
 {
     power_off_backlight();
     msleep(50);	
-
-	//GPIOA_27 -> EN_VDD_BL#: 0  LCD_+10V,VGH_+16V,VGL_-7V	
-  	clear_mio_mux(1,((1<<2) | (1<<3) | (1<<4) | (1<<11)));
-  	clear_mio_mux(0,(1<<17));
+	clear_tcon_pinmux();
+	msleep(20);
+    //GPIOA_27 -> EN_VDD_BL#: 0  LCD_+10V,VGH_+16V,VGL_-7V
+    clear_mio_mux(1,((1<<2) | (1<<3) | (1<<4) | (1<<11)));
+    clear_mio_mux(0,(1<<17));
     set_gpio_mode(GPIOC_bank_bit0_15(7), GPIOC_bit_bit0_15(7), GPIO_OUTPUT_MODE); 
-	  set_gpio_val(GPIOC_bank_bit0_15(7), GPIOC_bit_bit0_15(7), 0);
-	  msleep(30);
-	
-	
-	//GPIOC_7 -> EN_VDD_PNL#: 0  LCD7_+3.3V
-	clear_mio_mux(1,((1<<2) | (1<<3) | (1<<4) | (1<<11)));
-  clear_mio_mux(0,(1<<17));
-  set_gpio_mode(GPIOA_bank_bit0_27(27), GPIOA_bit_bit0_27(27), GPIO_OUTPUT_MODE); 
-	set_gpio_val(GPIOA_bank_bit0_27(27), GPIOA_bit_bit0_27(27), 0);	
-	msleep(30);
+    set_gpio_val(GPIOC_bank_bit0_15(7), GPIOC_bit_bit0_15(7), 0);
+    msleep(30);
 
+    //GPIOC_7 -> EN_VDD_PNL#: 0  LCD7_+3.3V
+    clear_mio_mux(1,((1<<2) | (1<<3) | (1<<4) | (1<<11)));
+    clear_mio_mux(0,(1<<17));
+    set_gpio_mode(GPIOA_bank_bit0_27(27), GPIOA_bit_bit0_27(27), GPIO_OUTPUT_MODE); 
+    set_gpio_val(GPIOA_bank_bit0_27(27), GPIOA_bit_bit0_27(27), 0);
+    msleep(30);
 }
 
 static void set_tcon_pinmux(void)
 {
-	
-	/* TCON control pins pinmux */
-      clear_mio_mux(1, ((1<<11) | (1<<12) | (1<<13))); // disable cph50(11),cph2(13),cph3(12)
-  		clear_mio_mux(0,((1<<24) | (1<<27))); //disable mLVDS
+    /* TCON control pins pinmux */
+    clear_mio_mux(1, ((1<<11) | (1<<12) | (1<<13))); // disable cph50(11),cph2(13),cph3(12)
+    clear_mio_mux(0,((1<<24) | (1<<27))); //disable mLVDS
 
-      set_mio_mux(1, 1<<14); // enable cph1
-      set_mio_mux(1, 1<<17); // enable oeh
-      //set_mio_mux(0, 0x3f<<0);//For 8bits RGB
-	  set_mio_mux(0,(1<<0)|(1<<2)|(1<<4));   //For 6bits
+    set_mio_mux(1, 1<<14); // enable cph1
+    set_mio_mux(1, 1<<17); // enable oeh
+    //set_mio_mux(0, 0x3f<<0);//For 8bits RGB
+    set_mio_mux(0,(1<<0)|(1<<2)|(1<<4));//For 6bits RGB
 	
-	printk("\nlcd parameter: enable lcd signal ports.\n");
+    PRINT_INFO("\nlcd parameter: enable lcd signal ports.\n");
 }
 
 static void clear_tcon_pinmux(void)
@@ -293,51 +294,49 @@ static void clear_tcon_pinmux(void)
     clear_mio_mux(1, 1<<14); // disable cph1
     clear_mio_mux(1, 1<<17); // disable oeh
     //clear_mio_mux(0, 0x3f<<0);//For 8bits RGB
-	clear_mio_mux(0,(1<<0)|(1<<2)|(1<<4));   //For 6bits
+    clear_mio_mux(0,(1<<0)|(1<<2)|(1<<4));//For 6bits RGB
 	
-	WRITE_MPEG_REG(0x2012, READ_MPEG_REG(0x2012) | ((1<<20)|(1<<23)));
-	//WRITE_MPEG_REG(0x200f, READ_MPEG_REG(0x200f) | (0xffffff<<0));  //For RGB 8bit	
-	WRITE_MPEG_REG(0x200f, READ_MPEG_REG(0x200f) | ((0x3f<<2)|(0x3f<<10)|(0x3f<<18)));  //For RGB 6bit
+    WRITE_MPEG_REG(0x2012, READ_MPEG_REG(0x2012) | ((1<<20)|(1<<23)));
+    //WRITE_MPEG_REG(0x200f, READ_MPEG_REG(0x200f) | (0xffffff<<0));//For RGB 8bit	
+    WRITE_MPEG_REG(0x200f, READ_MPEG_REG(0x200f) | ((0x3f<<2)|(0x3f<<10)|(0x3f<<18)));//For RGB 6bit
 	
-	printk("\nlcd parameter: disable lcd signal ports.\n");
+    PRINT_INFO("\nlcd parameter: disable lcd signal ports.\n");
 }
-
 
 static void t13_power_on(void)
 {
     video_dac_disable();
-	//set_tcon_pinmux();
-	power_on_lcd();
-    printk("\n\nt13_power_on...\n\n");
-    //power_on_backlight();
+    //set_tcon_pinmux();
+    power_on_lcd();
+    PRINT_INFO("\n\nt13_power_on...\n\n");
 }
 
 static void t13_power_off(void)
 {
-	power_off_backlight();
-    	power_off_lcd();
+    power_off_backlight();
+    power_off_lcd();
 }
 
 static void t13_io_init(void)
 {
-    printk("\n\nT13 LCD Init.\n\n");
+    PRINT_INFO("\n\nT13 LCD Init.\n\n");
 
     //set_tcon_pinmux();
     power_on_lcd();
 }
 
+
 static struct platform_device lcd_dev = {
     .name = "tcon-dev",
-    .id   = 0,
+    .id = 0,
     .num_resources = ARRAY_SIZE(lcd_resources),
-    .resource      = lcd_resources,
+    .resource = lcd_resources,
 };
 
 static int __init t13_init(void)
 {
     t13_setup_gama_table(&lcd_config);
     t13_io_init();
-
     platform_device_register(&lcd_dev);
 
     return 0;
@@ -347,7 +346,6 @@ static void __exit t13_exit(void)
 {
     power_off_backlight();
     power_off_lcd();
-
     platform_device_unregister(&lcd_dev);
 }
 
