@@ -161,7 +161,7 @@ static void t13_setup_gama_table(lcdConfig_t *pConf)
 void power_on_backlight(void)
 {
 	set_tcon_pinmux();
-	msleep(50);
+	msleep(100);
 	
 	PRINT_INFO(" w7 power_on_backlight \n");
 	//dump_stack();
