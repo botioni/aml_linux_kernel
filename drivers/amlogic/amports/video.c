@@ -691,17 +691,19 @@ static void vsync_toggle_frame(vframe_t *vf)
 
     cur_dispbuf = vf;
 
-    if (disable_video == VIDEO_DISABLE_FORNEXT) {
-        EnableVideoLayer();
-	///printk("disable video is auto changed to enable\n");
-        disable_video = VIDEO_DISABLE_NONE;
-    }
-    if (first_picture && (disable_video != VIDEO_DISABLE_NORMAL)) {
-        EnableVideoLayer();
+    if ((vf->type & VIDTYPE_NO_VIDEO_ENABLE) == 0) {
+        if (disable_video == VIDEO_DISABLE_FORNEXT) {
+            EnableVideoLayer();
+            disable_video = VIDEO_DISABLE_NONE;
+        }
+        if (first_picture && (disable_video != VIDEO_DISABLE_NORMAL)) {
+            EnableVideoLayer();
         
-        if (cur_dispbuf->type & VIDTYPE_MVC)
-            EnableVideoLayer2();
+            if (cur_dispbuf->type & VIDTYPE_MVC)
+                EnableVideoLayer2();
+        }
     }
+
     if (first_picture) {
         frame_par_ready_to_set = 1;
 

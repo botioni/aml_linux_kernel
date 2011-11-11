@@ -438,7 +438,7 @@ void osd_free_scale_enable_hw(u32 index,u32 enable)
 				vf.height=osd_hw.free_scale_height[OSD1];
 			}
 //			vf.type = (osd_hw.scan_mode==SCAN_MODE_INTERLACE ?VIDTYPE_INTERLACE:VIDTYPE_PROGRESSIVE) | VIDTYPE_VIU_FIELD;
-			vf.type = (VIDTYPE_PROGRESSIVE | VIDTYPE_VIU_FIELD);
+			vf.type = (VIDTYPE_NO_VIDEO_ENABLE | VIDTYPE_PROGRESSIVE | VIDTYPE_VIU_FIELD);
 			vf.ratio_control=DISP_RATIO_FORCECONFIG|DISP_RATIO_NO_KEEPRATIO;
 #ifdef CONFIG_AM_VIDEO 			
 			vf_reg_provider(&osd_vf_provider);
