@@ -178,18 +178,18 @@ static vframe_t *vdin_vf_peek(void)
 static vframe_t *vdin_vf_get(void)
 {
     vframe_t *vf;
-    spin_lock(&vdin_fifo_lock);
+    //spin_lock(&vdin_fifo_lock);
     vf = vfq_pop(&display_q);
-    spin_unlock(&vdin_fifo_lock);
+    //spin_unlock(&vdin_fifo_lock);
     return vf;
 
 }
 
 static void vdin_vf_put(vframe_t *vf)
 {
-    spin_lock(&vdin_fifo_lock);
+    //spin_lock(&vdin_fifo_lock);
 	vfq_push(&recycle_q, vf);
-    spin_unlock(&vdin_fifo_lock);
+    //spin_unlock(&vdin_fifo_lock);
 }
 
 
