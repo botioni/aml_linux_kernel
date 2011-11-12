@@ -345,6 +345,7 @@ static void polling_func(unsigned long arg)
 	schedule_work(&(act8942_dev->work_update));
 	mod_timer(&(act8942_dev->polling_timer), jiffies + msecs_to_jiffies(act8942_opts->update_period));  
 }
+
 #endif
 
 /*
@@ -877,6 +878,13 @@ static struct early_suspend act8xxx_early_suspend = {
 };
 #endif
 
+static void init_act8xxx_power(void)
+{
+	unsigned long voltage = 1200;
+	set_reg_voltage(ACT8xxx_REG1, &voltage); //init the ao/ee with 1.2v votage.
+	//act8xxx_write_i2c(this_client, ACT8xxx_REG1_ADDR, 24);//init the ao/ee with 1.2v votage.
+}
+
 static int act8xxx_i2c_probe(struct i2c_client *client,
 				 const struct i2c_device_id *id)
 {
@@ -951,8 +959,9 @@ static int act8xxx_i2c_probe(struct i2c_client *client,
 	act8xxx_dev->polling_timer.expires = jiffies + msecs_to_jiffies(act8942_opts->update_period);
 	act8xxx_dev->polling_timer.function = polling_func;
 	act8xxx_dev->polling_timer.data = act8xxx_dev;
-    add_timer(&(act8xxx_dev->polling_timer));
+	add_timer(&(act8xxx_dev->polling_timer));
 #endif
+	init_act8xxx_power(); 
 
 #ifdef CONFIG_HAS_EARLYSUSPEND
 	register_early_suspend(&act8xxx_early_suspend);
@@ -1099,7 +1108,6 @@ static struct file_operations act8xxx_fops = {
     .ioctl   = act8xxx_ioctl,
 };
 
-
 static int act8xxx_probe(struct platform_device *pdev)
 {
 	int ret;
@@ -1141,6 +1149,7 @@ static int act8xxx_probe(struct platform_device *pdev)
 	/* create /dev nodes */
     dev_p = device_create(&act8xxx_class, NULL, MKDEV(MAJOR(act8xxx_devno), 0),
                         NULL, "act8xxx");
+                      
     if (IS_ERR(dev_p)) {
         pr_err("act8xxx: failed to create device node\n");
         /* @todo do with error */
