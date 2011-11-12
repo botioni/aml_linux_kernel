@@ -1648,11 +1648,13 @@ static void gc0308_thread_tick(struct gc0308_fh *fh)
 	do_gettimeofday(&buf->vb.ts);
 
 	/* Fill buffer */
+	spin_unlock_irqrestore(&dev->slock, flags);
 	gc0308_fillbuff(fh, buf);
 	dprintk(dev, 1, "filled buffer %p\n", buf);
 
 	wake_up(&buf->vb.done);
 	dprintk(dev, 2, "[%p/%d] wakeup\n", buf, buf->vb. i);
+	return;
 unlock:
 	spin_unlock_irqrestore(&dev->slock, flags);
 	return;
