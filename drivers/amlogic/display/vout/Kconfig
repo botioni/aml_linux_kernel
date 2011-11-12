@@ -72,6 +72,12 @@ config AML_LVDS_HV070WSA_100
   depends on AM_LCD_LVDS_OUTPUT
   help
 	  HV070WSA_100 LVDS panel.
+	  
+config AML_LVDS_G_TM081JF01
+  tristate "G_TM081JF01"
+  depends on AM_LCD_LVDS_OUTPUT
+  help
+	  G_TM081JF01 LVDS panel.
 
 
 config AML_MLVDS_A_TM080XDH		

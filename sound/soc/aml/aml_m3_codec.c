@@ -339,9 +339,13 @@ static int aml_switch_put_enum(struct snd_kcontrol *kcontrol,
     }
 
     pwr_reg = snd_soc_read(codec, e->reg);
-    snd_soc_write(codec, e->reg, (pwr_reg&(1<<~(e->shift_l)))|((1<<(e->shift_l))));
-    snd_soc_write(codec, e->reg, (pwr_reg&(1<<~(e->shift_r)))|((1<<(e->shift_r))));
-    
+    if(ucontrol->value.enumerated.item[0] == 0){
+    snd_soc_write(codec, e->reg, (pwr_reg&(~(0x1<<(e->shift_l)|0x1<<(e->shift_r)))));
+    }
+    else{
+    snd_soc_write(codec, e->reg, (pwr_reg|(0x1<<(e->shift_l)|0x1<<(e->shift_r))));
+    }
+
 	list_for_each_entry(w, &codec->dapm_widgets, list) {
         if (lname && !strcmp(lname, w->name))
         {

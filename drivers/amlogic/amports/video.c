@@ -221,7 +221,7 @@ static u32 post_canvas = 0;
 static ulong keep_y_addr = 0, *keep_y_addr_remap = NULL;
 static ulong keep_u_addr = 0, *keep_u_addr_remap = NULL;
 static ulong keep_v_addr = 0, *keep_v_addr_remap = NULL;
-#define Y_BUFFER_SIZE   0x200000 // for 1920*1088
+#define Y_BUFFER_SIZE   0x400000 // for 1280*800*3 yuv444 case
 #define U_BUFFER_SIZE   0x80000
 #define V_BUFFER_SIZE   0x80000
 
@@ -1568,6 +1568,7 @@ unsigned int vf_keep_current(void)
 {
     u32 cur_index;
     u32 y_index, u_index, v_index;
+    canvas_t cs0,cs1,cs2,cd;
 
     int deinterlace_mode = get_deinterlace_mode();
 
@@ -1597,13 +1598,31 @@ unsigned int vf_keep_current(void)
     u_index = (cur_index >> 8) & 0xff;
     v_index = (cur_index >> 16) & 0xff;
 
-    if (keep_y_addr != canvas_get_addr(y_index) && /*must not the same address*/
-        canvas_dup(keep_y_addr_remap, canvas_get_addr(y_index), Y_BUFFER_SIZE) &&
-        canvas_dup(keep_u_addr_remap, canvas_get_addr(u_index), U_BUFFER_SIZE) &&
-        canvas_dup(keep_v_addr_remap, canvas_get_addr(v_index), V_BUFFER_SIZE)) {
-        canvas_update_addr(y_index, (u32)keep_y_addr);
-        canvas_update_addr(u_index, (u32)keep_u_addr);
-        canvas_update_addr(v_index, (u32)keep_v_addr);
+    if ((cur_dispbuf->type & VIDTYPE_VIU_422) == VIDTYPE_VIU_422) {
+	 canvas_read(y_index,&cd);
+        if (keep_y_addr != canvas_get_addr(y_index) && /*must not the same address*/
+            canvas_dup(keep_y_addr_remap, canvas_get_addr(y_index), (cd.width)*(cd.height))) {
+            canvas_update_addr(y_index, (u32)keep_y_addr);
+        }
+    } else if ((cur_dispbuf->type & VIDTYPE_VIU_444) == VIDTYPE_VIU_444) {
+    	 canvas_read(y_index,&cd);
+        if (keep_y_addr != canvas_get_addr(y_index) && /*must not the same address*/ 
+            canvas_dup(keep_y_addr_remap, canvas_get_addr(y_index), (cd.width)*(cd.height))){
+            canvas_update_addr(y_index, (u32)keep_y_addr);
+        }
+    } else {
+        canvas_read(y_index,&cs0);
+        canvas_read(u_index,&cs1);
+        canvas_read(v_index,&cs2);
+        
+        if (keep_y_addr != canvas_get_addr(y_index) && /*must not the same address*/
+            canvas_dup(keep_y_addr_remap, canvas_get_addr(y_index), (cs0.width *cs0.height)) &&
+            canvas_dup(keep_u_addr_remap, canvas_get_addr(u_index), (cs1.width *cs1.height)) &&
+            canvas_dup(keep_v_addr_remap, canvas_get_addr(v_index), (cs2.width *cs2.height))) {
+            canvas_update_addr(y_index, (u32)keep_y_addr);
+            canvas_update_addr(u_index, (u32)keep_u_addr);
+            canvas_update_addr(v_index, (u32)keep_v_addr);
+        }
     }
 
     return 0;

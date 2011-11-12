@@ -1918,6 +1918,35 @@ static void __init LED_PWM_REG0_init(void)
 
 }
 
+#if defined(CONFIG_AML_INIT_GATE_OFF)
+#define GATE_INIT_OFF(_MOD) CLEAR_CBUS_REG_MASK(GCLK_REG_##_MOD, GCLK_MASK_##_MOD);
+
+static __init void init_gate_off(void) 
+{
+	//turn of video gates
+	GATE_INIT_OFF(VCLK2_VENCP1);
+	GATE_INIT_OFF(VCLK2_VENCP);
+	GATE_INIT_OFF(VCLK2_VENCL);
+	GATE_INIT_OFF(VCLK2_ENCL);
+	GATE_INIT_OFF(VCLK2_OTHER1);
+	GATE_INIT_OFF(VCLK2_VENCI1);
+	GATE_INIT_OFF(VCLK2_VENCI);
+	GATE_INIT_OFF(VENC_P_TOP);
+	GATE_INIT_OFF(VENC_L_TOP);
+	GATE_INIT_OFF(VENC_I_TOP);
+	//GATE_INIT_OFF(VCLK2_VENCT);
+	//GATE_INIT_OFF(VCLK2_ENCT);
+	GATE_INIT_OFF(VENCP_INT);
+	GATE_INIT_OFF(VENCL_INT);
+	GATE_INIT_OFF(VCLK2_ENCI);
+	GATE_INIT_OFF(VCLK2_ENCP);
+	GATE_INIT_OFF(VCLK2_OTHER);
+	GATE_INIT_OFF(ENC480P);
+	GATE_INIT_OFF(VENC_DAC);
+	GATE_INIT_OFF(DAC_CLK);
+}
+#endif    
+
 static __init void m1_init_machine(void)
 {
     meson_cache_init();
@@ -1933,6 +1962,10 @@ static __init void m1_init_machine(void)
     power_hold();
     pm_power_off = power_off;		//Elvis fool
     device_pinmux_init();
+    
+#if defined(CONFIG_AML_INIT_GATE_OFF)
+    init_gate_off();
+#endif    
 
     platform_add_devices(platform_devs, ARRAY_SIZE(platform_devs));
 

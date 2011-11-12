@@ -108,6 +108,7 @@ extern void gpio_enable_level_int(int pin , int flag, int group);
  * @param [in] filter from 0~7(*222ns)
  * @param [in] group  this interrupt belong to which interrupt group  from 0 to 7
  */
+int gpio_enable_irq(unsigned gpio, int irq, int irq_flag);
 extern void gpio_enable_int_filter(int filter, int group);
 
 extern int gpio_is_valid(int number);

@@ -5,6 +5,7 @@ Linux gpio.C
 #include <linux/module.h>
 #include <mach/am_regs.h>
 #include <mach/gpio.h>
+#include <linux/interrupt.h>
 
 struct gpio_addr {
     unsigned long mode_addr;
@@ -158,6 +159,25 @@ void gpio_enable_level_int(int pin , int flag, int group)
 	WRITE_CBUS_REG_BITS(GPIO_INTR_EDGE_POL, flag, group+16, 1);
 }
 
+
+int gpio_enable_irq(unsigned gpio, int irq, int irq_flag)
+{
+	int pin = gpio_to_idx(gpio);
+	int group = irq-INT_GPIO_0;
+	
+	if (irq_flag == IRQF_TRIGGER_RISING)
+		gpio_enable_edge_int(pin, 0, group);
+	else if (irq_flag == IRQF_TRIGGER_FALLING)
+		gpio_enable_edge_int(pin, 1, group);
+	else if (irq_flag == IRQF_TRIGGER_HIGH)
+		gpio_enable_level_int(pin, 0, group);
+	else if (irq_flag == IRQF_TRIGGER_LOW)
+		gpio_enable_level_int(pin, 1, group);
+	else
+		return -1;
+	return 0;
+}
+
 /**
  * enable gpio interrupt filter
  *
@@ -191,7 +211,7 @@ int gpio_direction_input(unsigned gpio)
     int bit = gpio & 0xFFFF;
     set_gpio_mode(bank, bit, GPIO_INPUT_MODE);
     printk("set gpio%d.%d input\n", bank, bit);
-    return 0;
+    return (get_gpio_val(bank, bit));
 }
 
 int gpio_direction_output(unsigned gpio, int value)
@@ -200,7 +220,7 @@ int gpio_direction_output(unsigned gpio, int value)
     int bit = gpio & 0xFFFF;
     set_gpio_val(bank, bit, value ? 1 : 0);
     set_gpio_mode(bank, bit, GPIO_OUTPUT_MODE);
-    printk("set gpio%d.%d output\n", bank, bit);
+    printk("set gpio%d.%d output(%d)\n", bank, bit, value);
     return 0;
 }
 

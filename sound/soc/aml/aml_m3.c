@@ -7,6 +7,7 @@
 #include <linux/platform_device.h>
 #include <linux/i2c.h>
 #include <linux/workqueue.h>
+#include <linux/switch.h>
 
 #include <sound/core.h>
 #include <sound/pcm.h>
@@ -27,10 +28,21 @@
 
 
 #if HP_DET
+static struct snd_soc_jack hp_jack;
+
+static struct snd_soc_jack_pin hp_jack_pins[] = {
+    { .pin = "HP", .mask = SND_JACK_HEADSET },
+    { .pin = "HP_L", .mask = SND_JACK_HEADSET },
+    { .pin = "HP_R", .mask = SND_JACK_HEADSET },
+    { .pin = "HP_L Switch", .mask = SND_JACK_HEADSET },
+    { .pin = "HP_R Switch", .mask = SND_JACK_HEADSET },
+};
+
 static struct timer_list timer;
 static int hp_detect_flag = 0;
 extern void mute_spk(struct snd_soc_codec* codec, int flag);
 extern int aml_m3_is_hp_pluged(void);
+static struct switch_dev sdev;
 #endif
 
 static int aml_m3_hw_params(struct snd_pcm_substream *substream,
@@ -142,26 +154,24 @@ static void aml_m3_hp_detect_queue(struct work_struct* work)
 
 	if(level == 0x1 && hp_detect_flag!= 0x1){ // HP
 		printk("Headphone pluged in\n");
-		reg = snd_soc_read(codec, ADAC_POWER_CTRL_REG1);
-		reg |= 0x30;
-		snd_soc_write(codec, ADAC_POWER_CTRL_REG1, reg);//open HP power
+		snd_soc_jack_report(&hp_jack, SND_JACK_HEADSET, SND_JACK_HEADSET);
 		reg = snd_soc_read(codec, ADAC_MUTE_CTRL_REG1);
 		reg &= ~0xc0;
 		snd_soc_write(codec, ADAC_MUTE_CTRL_REG1, reg); //unmute HP
     	mute_spk(codec, 1);
     	latch_(codec);
 		hp_detect_flag = level;
+		switch_set_state(&sdev, 1);
 	}else if(level != hp_detect_flag){ // HDMI
 		printk("Headphone unpluged\n");
-		reg = snd_soc_read(codec, ADAC_POWER_CTRL_REG1);
-		reg &= ~0x30;
-		snd_soc_write(codec, ADAC_POWER_CTRL_REG1, reg); //close HP power
+        snd_soc_jack_report(&hp_jack,0, SND_JACK_HEADSET);
 		reg = snd_soc_read(codec, ADAC_MUTE_CTRL_REG1);
 		reg |= 0xc0;
 		snd_soc_write(codec, ADAC_MUTE_CTRL_REG1, reg);//mute HP
 		mute_spk(codec, 0);
 		latch_(codec);
 		hp_detect_flag = level;
+		switch_set_state(&sdev, 0);
 	}
 }
 
@@ -199,7 +209,7 @@ static int aml_m3_codec_init(struct snd_soc_codec *codec)
 #if HP_DET
         hp_detect_flag = 1; // If is_hp_pluged function is not registered in bsp, set speaker as default.
 
-    /*err = snd_soc_jack_new(card, "hp_switch",
+    err = snd_soc_jack_new(card, "hp_switch",
         SND_JACK_HEADSET, &hp_jack);
     if(err){
         dev_warn(card->dev, "Failed to alloc resource for hook switch\n");
@@ -209,7 +219,7 @@ static int aml_m3_codec_init(struct snd_soc_codec *codec)
             dev_warn(card->dev, "Failed to setup hook hp jack pin\n");
         }
     }
-	*/
+	/**/
     // create a timer to poll the HP IN status
     spin_lock_init(&lock);
     timer.function = &aml_m3_hp_detect_timer;
@@ -219,7 +229,7 @@ static int aml_m3_codec_init(struct snd_soc_codec *codec)
     INIT_WORK(&aml_m3_work.aml_m3_workqueue, aml_m3_hp_detect_queue);
 #endif
 
-    /*snd_soc_dapm_nc_pin(codec,"LINPUT1");
+    snd_soc_dapm_nc_pin(codec,"LINPUT1");
     snd_soc_dapm_nc_pin(codec,"RINPUT1");
 
     snd_soc_dapm_enable_pin(codec, "Ext Spk");
@@ -229,7 +239,7 @@ static int aml_m3_codec_init(struct snd_soc_codec *codec)
     snd_soc_dapm_disable_pin(codec, "FM IN");
 
     snd_soc_dapm_sync(codec);
-	*/
+	/**/
     return 0;
 }
 
@@ -278,14 +288,24 @@ printk("***Entered %s:%s\n", __FILE__,__func__);
 		ret = platform_device_add(aml_m3_snd_device);
 		if (ret) {
 			printk(KERN_ERR "ASoC: Platform device allocation failed\n");
-			goto error;
+			goto error2;
 		}
 		
 		aml_m3_platform_device = platform_device_register_simple("aml_m3_codec",
 								-1, NULL, 0);
-		return 0;							
-error:								
-		platform_device_put(aml_m3_snd_device);								
+#if HP_DET
+		sdev.name = "h2w";//for report headphone to android
+		ret = switch_dev_register(&sdev);
+		if (ret < 0){
+			printk(KERN_ERR "ASoC: register switch dev failed\n");
+			goto error1;
+		}
+#endif
+		return 0;
+error1:
+		platform_device_unregister(aml_m3_snd_device);
+error2:
+		platform_device_put(aml_m3_snd_device);
 		return ret;
 }
 
@@ -295,7 +315,7 @@ printk("***Entered %s:%s\n", __FILE__,__func__);
 
 #if HP_DET
     del_timer_sync(&timer);
-    
+    switch_dev_unregister(&sdev);
 #endif
     platform_device_unregister(aml_m3_snd_device);
     return 0;

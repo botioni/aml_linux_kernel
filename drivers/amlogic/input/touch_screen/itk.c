@@ -586,7 +586,7 @@ static void itk_work(struct work_struct *work)
             printk(KERN_INFO "work read i2c failed\n");
             goto restart;
         }
-        else if(ret == 2)  //有手超過邊界...所有點都不上報
+        else if(ret == 2)  //|3∟a?W1L???谷...?辰|3?I3㏒∟㏒∟W3?
         {
         	ts->touching_num = 0;
         }

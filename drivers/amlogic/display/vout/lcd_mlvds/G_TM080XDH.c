@@ -75,6 +75,14 @@ void set_backlight_level(unsigned level);
 #define BL_CTL_PWM		1
 #define BL_CTL			BL_CTL_GPIO
 
+#define BL_MAX_LEVEL_2D		220
+#define BL_MIN_LEVEL_2D		0
+#define BL_MAX_LEVEL_3D		255
+#define BL_MIN_LEVEL_3D		20
+static unsigned BL_MAX=0;
+static unsigned BL_MIN=0;
+static unsigned bl_level;
+
 static mlvds_tcon_config_t lcd_mlvds_tcon_config[8]=
 {
 	{STH_CHANNEL, 0, 1400+5, 1400+5+30, VIDEO_ON_LINE, VIDEO_ON_LINE+768-1, 0, 0, 0, 0},
@@ -168,32 +176,169 @@ static struct resource lcd_resources[] = {
         .flags = IORESOURCE_MEM,
     },
 };
-
-static void t13_setup_gama_table(lcdConfig_t *pConf)
+#define  fe_H  115
+#define  fe_L  100
+static void t13_setup_gama_table(lcdConfig_t *pConf, int flag)
 {
-    int i;
+	int i,j,org,k;					
+	int duang[6] = {0,16,24,180,240,256};
+	
     const unsigned short gamma_adjust[256] = {
-		0,1,2,4,5,6,7,8,10,11,12,13,14,15,17,19,20,21,22,23,23,24,25,26,27,28,29,31,32,33,34,35,
-		36,37,38,39,40,41,42,43,44,45,45,46,47,48,49,50,50,51,52,53,53,54,55,56,57,58,59,60,61,63,64,66,
-		67,69,70,72,73,74,75,77,78,79,80,81,82,84,85,86,87,88,89,91,92,93,95,95,97,98,99,100,101,102,103,104,
-		105,106,107,108,108,109,110,110,111,112,113,114,114,115,116,117,118,119,119,120,122,123,124,125,127,128,129,131,133,134,135,136,
-		138,139,140,141,142,144,144,146,147,148,149,150,151,152,153,154,155,157,158,159,160,161,162,163,163,164,165,166,167,167,168,169,
-		170,171,171,172,173,173,174,175,176,176,177,178,179,179,180,181,182,183,184,185,187,188,189,190,191,192,193,194,196,197,197,198,
-		200,200,201,202,203,204,205,206,207,207,208,209,210,211,212,213,214,214,215,216,217,218,219,220,221,222,222,223,224,225,226,227,
-		228,229,230,230,231,232,233,234,235,235,236,237,238,239,239,241,242,242,243,244,245,246,247,248,249,249,250,251,252,253,254,255,
+		0,2,4,6,8,9,11,13,15,17,19,21,23,24,26,30,31,33,34,35,37,38,39,40,41,42,43,44,45,46,47,48,
+		49,50,51,52,53,54,55,56,57,58,59,60,61,62,64,65,66,67,68,69,70,72,73,74,75,76,77,78,79,80,81,82,
+		83,84,85,86,87,88,89,90,91,92,93,94,95,96,96,97,99,100,101,102,103,104,105,106,108,109,110,111,112,114,116,117,
+		119,120,122,124,126,128,130,132,133,134,136,137,138,139,140,141,142,143,144,145,146,146,148,149,149,150,151,152,153,154,155,156,
+		157,158,159,160,161,162,162,164,164,165,166,167,168,168,169,170,170,171,172,173,174,174,175,176,176,177,178,179,180,181,182,183,
+		184,185,186,187,189,190,191,192,193,194,195,196,197,198,199,200,201,202,202,203,204,205,205,206,207,208,208,209,209,210,211,212,
+		212,213,214,214,215,215,216,217,217,218,218,219,220,220,221,221,222,222,223,223,224,224,225,226,226,227,227,228,228,228,229,230,
+		230,231,231,232,232,233,233,234,234,235,236,236,237,238,238,239,240,241,241,242,243,244,245,246,247,248,249,250,252,253,254,255,
+		};	
 
-    };
+	if (flag==1)  //for 3D gamma
+	{
+		for(i=duang[0];i<duang[1];i++)
+		{
+			pConf->GammaTableR[i]=gamma_adjust[i]<<2;
+			pConf->GammaTableG[i]=gamma_adjust[i]<<2;
+			pConf->GammaTableB[i]=gamma_adjust[i]<<2;
+			j = gamma_adjust[i];
+		}
+		
+		k = (fe_H*gamma_adjust[duang[2]-1])/fe_L;
+		org = ((k-j)*100)/(duang[2]-duang[1]);
 
-    for (i=0; i<256; i++) {
-        pConf->GammaTableR[i] = gamma_adjust[i] << 2;
-        pConf->GammaTableG[i] = gamma_adjust[i] << 2;
-        pConf->GammaTableB[i] = gamma_adjust[i] << 2;
-    }
+		for(i=duang[1];i<duang[2];i++)
+		{
+			pConf->GammaTableR[i]=(j+(org*(i-duang[1]+1)/100))<<2;
+			pConf->GammaTableG[i]=(j+(org*(i-duang[1]+1)/100))<<2;
+			pConf->GammaTableB[i]=(j+(org*(i-duang[1]+1)/100))<<2;
+		}
+		
+		for(i=duang[2];i<duang[3];i++)
+		{
+			k = (fe_H*gamma_adjust[i])/fe_L;
+			pConf->GammaTableR[i]=k<<2;
+			pConf->GammaTableG[i]=k<<2;
+			pConf->GammaTableB[i]=k<<2;
+			j = k;
+		}
+		org = ((gamma_adjust[duang[4]]-j)*1000)/(duang[4]-duang[3]);
+		for(i=duang[3];i<duang[4];i++)
+		{
+			pConf->GammaTableR[i]=(j+org*(i-duang[3]+1)/1000)<<2;
+			pConf->GammaTableG[i]=(j+org*(i-duang[3]+1)/1000)<<2;
+			pConf->GammaTableB[i]=(j+org*(i-duang[3]+1)/1000)<<2;
+		}
+		for(i=duang[4];i<duang[5];i++)
+		{
+			pConf->GammaTableR[i]=gamma_adjust[i]<<2;
+			pConf->GammaTableG[i]=gamma_adjust[i]<<2;
+			pConf->GammaTableB[i]=gamma_adjust[i]<<2;
+		}		
+	}
+	else   //for 2D gamma
+	{
+		for (i=0; i<256; i++) 
+		{
+			pConf->GammaTableR[i] = gamma_adjust[i] << 2;
+			pConf->GammaTableG[i] = gamma_adjust[i] << 2;
+			pConf->GammaTableB[i] = gamma_adjust[i] << 2;
+		}
+	}
 }
 
+static void set_gamma_table(u16 *data, u32 rgb_mask)
+{
+    int i;
+	
+	//printk("\n\nlcd: gamma table %d_[127][255] is: %d, %d.\n\n", rgb_mask, data[127], data[255]);
+	
+    while (!(READ_MPEG_REG(L_GAMMA_CNTL_PORT) & (0x1 << ADR_RDY)));
+    WRITE_MPEG_REG(L_GAMMA_ADDR_PORT, (0x1 << H_AUTO_INC) |
+                                    (0x1 << rgb_mask)   |
+                                    (0x0 << HADR));
+    for (i=0;i<256;i++) {
+        while (!( READ_MPEG_REG(L_GAMMA_CNTL_PORT) & (0x1 << WR_RDY) )) ;
+        WRITE_MPEG_REG(L_GAMMA_DATA_PORT, data[i]);
+    }
+    while (!(READ_MPEG_REG(L_GAMMA_CNTL_PORT) & (0x1 << ADR_RDY)));
+    WRITE_MPEG_REG(L_GAMMA_ADDR_PORT, (0x1 << H_AUTO_INC) |
+                                    (0x1 << rgb_mask)   |
+                                    (0x23 << HADR));
+}
+
+static void chang_gamma_table(int flag)
+{
+	t13_setup_gama_table(&lcd_config, flag);
+	
+	set_gamma_table(lcd_config.GammaTableR, H_SEL_R);
+    set_gamma_table(lcd_config.GammaTableG, H_SEL_G);
+    set_gamma_table(lcd_config.GammaTableB, H_SEL_B);
+}
+
+static void pwm_3d(int flag)
+{
+	if (flag==1)
+	{
+		WRITE_MPEG_REG(0x202c, READ_MPEG_REG(0x202c) | ((1<<16)|(1<<19)));  //enable 3d PWM channel
+	}
+	else
+	{
+		WRITE_MPEG_REG(0x202c, READ_MPEG_REG(0x202c) & ~((1<<16)|(1<<19)));  //disable 3d PWM channel
+		WRITE_MPEG_REG(0x202d, READ_MPEG_REG(0x202d) & ~(1<<5));  			 //clear other pinmux
+		WRITE_MPEG_REG(0x202f, READ_MPEG_REG(0x202f) & ~((1<<24)|(1<<25)));  //clear other pinmux
+		WRITE_MPEG_REG(0x2033, READ_MPEG_REG(0x2033) & ~(1<<17));  //clear other pinmux
+		WRITE_MPEG_REG(0x2013, READ_MPEG_REG(0x2013) & ~((1<<6)|(1<<9)));  	 //set pwm channel output low
+		WRITE_MPEG_REG(0x2012, READ_MPEG_REG(0x2012) & ~((1<<6)|(1<<9)));  	 //set pwm channel as GPIO output
+	}
+}
+void control_lcd_3d(char flag_3d) {
+    chang_gamma_table(flag_3d);
+    pwm_3d(flag_3d);
+    if (flag_3d)
+    {
+    	BL_MAX=BL_MAX_LEVEL_3D;
+    	BL_MIN=BL_MIN_LEVEL_3D;
+    }
+    else
+    {
+    	BL_MAX=BL_MAX_LEVEL_2D;
+    	BL_MIN=BL_MIN_LEVEL_2D;
+    }
+    set_backlight_level(bl_level);    //change BL @ 2D/3D mode
+}
+
+static ssize_t control_enable3d(struct class *class, 
+			struct class_attribute *attr,	const char *buf, size_t count)
+{
+    char flag_3d = buf[0] ;    
+    if(flag_3d == '1') {
+        flag_3d = 1;
+        printk("\nLCD 3D on.\n");
+    }else{
+        flag_3d = 0;
+        printk("\nLCD 3D off.\n");
+    }
+    
+    control_lcd_3d(flag_3d);
+
+	return 0;
+}
+
+static struct class_attribute enable3d_class_attrs[] = {
+    __ATTR(enable-3d,  S_IRUGO | S_IWUSR, NULL,    control_enable3d), 
+    __ATTR_NULL
+};
+
+static struct class enable3d_class = {
+    .name = "enable3d",
+    .class_attrs = enable3d_class_attrs,
+};
+
+
 #define PWM_MAX			60000   //set pwm_freq=24MHz/PWM_MAX (Base on XTAL frequence: 24MHz, 0<PWM_MAX<65535)
-#define BL_MAX_LEVEL	255
-#define BL_MIN_LEVEL	0
+#define BL_MAX_LEVEL		255
+#define BL_MIN_LEVEL		0
 void power_on_backlight(void)
 {
     msleep(20);
@@ -201,6 +346,8 @@ void power_on_backlight(void)
 	
 	msleep(100);
 	WRITE_CBUS_REG_BITS(LED_PWM_REG0, 1, 12, 2);
+	BL_MAX=BL_MAX_LEVEL_2D;
+	BL_MIN=BL_MIN_LEVEL_2D;
 	//BL_EN: GPIOD_1(PWM_D)
 #if (BL_CTL==BL_CTL_GPIO)	
     WRITE_MPEG_REG(0x2013, READ_MPEG_REG(0x2013) | (1 << 17));    
@@ -233,7 +380,6 @@ void power_off_backlight(void)
 	printk("\n\npower_off_backlight.\n\n");
 }
 
-static unsigned bl_level;
 unsigned get_backlight_level(void)
 {
 	return bl_level;
@@ -241,7 +387,11 @@ unsigned get_backlight_level(void)
 
 void set_backlight_level(unsigned level)
 {
+	bl_level=level;
 	level = level>BL_MAX_LEVEL ? BL_MAX_LEVEL:(level<BL_MIN_LEVEL ? BL_MIN_LEVEL:level);		
+	//printk("\n\nset backlight sys_level: %d\n", level);
+	level=(level*(BL_MAX-BL_MIN)/BL_MAX_LEVEL)+BL_MIN;	
+	//printk("\n\nset backlight mode_level: %d\n", level);
 #if (BL_CTL==BL_CTL_GPIO)
 	level = level * 15 / BL_MAX_LEVEL;	
 	level = 15 - level;
@@ -250,7 +400,7 @@ void set_backlight_level(unsigned level)
 	level = level * PWM_MAX / BL_MAX_LEVEL ;	
 	WRITE_CBUS_REG_BITS(PWM_PWM_D, (PWM_MAX - level), 0, 16);  //pwm low
     WRITE_CBUS_REG_BITS(PWM_PWM_D, level, 16, 16);  //pwm high	
-#endif		
+#endif	
 }
 
 static void power_on_lcd(void)
@@ -293,10 +443,11 @@ static void power_off_lcd(void)
 static void lvds_port_enable(void)
 {
 	unsigned pinmux = 0;
-	//int ext_pixel =lcd_config.mlvds_config->total_line_clk;	
+	int ext_pixel =lcd_config.mlvds_config->total_line_clk;	
 	printk("\n\nminiLVDS port enable.\n");
-	//WRITE_MPEG_REG(L_DE_HS_ADDR, (0x6 << 12) | ext_pixel);   // 0xf -- enable double_tcon fir channel7:4
-  	//WRITE_MPEG_REG(L_DE_HE_ADDR, (0xf << 12) | ext_pixel);   // 0xf -- enable double_tcon fir channel3:0
+	WRITE_MPEG_REG(L_DE_HS_ADDR, (0x6 << 12) | ext_pixel);   // 0xf -- enable double_tcon fir channel7:4
+  	WRITE_MPEG_REG(L_DE_HE_ADDR, (0xf << 12) | ext_pixel);   // 0xf -- enable double_tcon fir channel3:0
+  	WRITE_MPEG_REG(0x202d, READ_MPEG_REG(0x202d) & ~(0xfdc));  //clear tcon other pinmux
 	pinmux = lcd_config.mlvds_config->set_mlvds_pinmux;		
 	WRITE_MPEG_REG(0x202c, READ_MPEG_REG(0x202c) | (pinmux<<12));  //set tcon pinmux	
 	
@@ -308,7 +459,7 @@ static void lvds_port_enable(void)
 	//enable minilvds_data channel
 	WRITE_MPEG_REG(LVDS_PHY_CNTL4, READ_MPEG_REG(LVDS_PHY_CNTL4) | (0x7f<<0));
 	
-	
+	control_lcd_3d(0);  //for test
 }
 
 static void lvds_port_disable(void)
@@ -322,7 +473,13 @@ static void lvds_port_disable(void)
 	
 	pinmux = lcd_config.mlvds_config->set_mlvds_pinmux;		
 	WRITE_MPEG_REG(0x202c, READ_MPEG_REG(0x202c) & ~(pinmux<<12));  //clear tcon pinmux
-	WRITE_MPEG_REG(0x2012, READ_MPEG_REG(0x2012) | (pinmux<<2));  //set tcon pin as input
+	//WRITE_MPEG_REG(0x2012, READ_MPEG_REG(0x2012) | (pinmux<<2));  //set tcon pin as input
+	WRITE_MPEG_REG(0x202d, READ_MPEG_REG(0x202d) & ~(0xfdc));  //clear tcon other pinmux
+	WRITE_MPEG_REG(0x2013, READ_MPEG_REG(0x2013) & ~(pinmux<<2));	//set tcon low
+	WRITE_MPEG_REG(0x2012, READ_MPEG_REG(0x2012) & ~(pinmux<<2));  //set tcon as GPIO output
+	WRITE_MPEG_REG(0x2013, READ_MPEG_REG(0x2013) & ~(1<<2));	//set sth low
+	//WRITE_MPEG_REG(0x2012, READ_MPEG_REG(0x2012) & ~(1<<2));  //set sth as GPIO output
+	control_lcd_3d(0);
 }
 #ifdef CONFIG_AM_LOGO
 extern void (*Power_on_bl)(void);
@@ -360,10 +517,17 @@ static struct platform_device lcd_dev = {
 
 static int __init t13_init(void)
 {
-    t13_setup_gama_table(&lcd_config);
+    int ret ;
+    
+    t13_setup_gama_table(&lcd_config, 0);
     t13_io_init();
 
     platform_device_register(&lcd_dev);
+    
+    ret = class_register(&enable3d_class);
+	if(ret){
+		printk(" class register enable3d_class fail!\n");
+	}
 
     return 0;
 }

@@ -55,6 +55,8 @@ typedef struct {
 	vinfo_t lcd_info;
 } tcon_dev_t;
 
+static unsigned long ddr_pll_clk = 0;
+
 static tcon_dev_t *pDev = NULL;
 
 static void _tcon_init(lcdConfig_t *pConf) ;
@@ -253,18 +255,31 @@ static void vclk_set_lcd( int pll_sel, int pll_div_sel, int vclk_sel,
     //WRITE_MPEG_REG( ISA_TIMERE, 0); while( READ_MPEG_REG(ISA_TIMERE) < 2 ) {}    
 	udelay(2);
 
-    if(pll_sel){
-        WRITE_MPEG_REG( HHI_VIID_PLL_CNTL, pll_reg|(1<<30) );
-        WRITE_MPEG_REG( HHI_VIID_PLL_CNTL2, 0x65e31ff );
-        WRITE_MPEG_REG( HHI_VIID_PLL_CNTL3, 0x9649a941 );
-        WRITE_MPEG_REG( HHI_VIID_PLL_CNTL, pll_reg );
-    }    
-    else{
+    if (!ddr_pll_clk){
+		ddr_pll_clk = clk_util_clk_msr(CTS_DDR_CLK);
+		printk("(CTS_DDR_CLK) = %ldMHz\n", ddr_pll_clk);
+    }
+
+    if ((ddr_pll_clk==516)||(ddr_pll_clk==508)) { //use ddr pll 
         WRITE_MPEG_REG( HHI_VID_PLL_CNTL, pll_reg|(1<<30) );
         WRITE_MPEG_REG( HHI_VID_PLL_CNTL2, 0x65e31ff );
         WRITE_MPEG_REG( HHI_VID_PLL_CNTL3, 0x9649a941 );
-        WRITE_MPEG_REG( HHI_VID_PLL_CNTL, pll_reg );
+        WRITE_MPEG_REG( HHI_VID_PLL_CNTL, pll_reg|(1<<30) );
+    } else {
+        if(pll_sel){
+            WRITE_MPEG_REG( HHI_VIID_PLL_CNTL, pll_reg|(1<<30) );
+            WRITE_MPEG_REG( HHI_VIID_PLL_CNTL2, 0x65e31ff );
+            WRITE_MPEG_REG( HHI_VIID_PLL_CNTL3, 0x9649a941 );
+            WRITE_MPEG_REG( HHI_VIID_PLL_CNTL, pll_reg );
+        }    
+        else{
+            WRITE_MPEG_REG( HHI_VID_PLL_CNTL, pll_reg|(1<<30) );
+            WRITE_MPEG_REG( HHI_VID_PLL_CNTL2, 0x65e31ff );
+            WRITE_MPEG_REG( HHI_VID_PLL_CNTL3, 0x9649a941 );
+            WRITE_MPEG_REG( HHI_VID_PLL_CNTL, pll_reg );
+        }
     }
+    
     if(pll_div_sel ) WRITE_MPEG_REG( HHI_VIID_DIVIDER_CNTL,   vid_div_reg);
     else WRITE_MPEG_REG( HHI_VID_DIVIDER_CNTL,   vid_div_reg);
 
@@ -275,6 +290,11 @@ static void vclk_set_lcd( int pll_sel, int pll_div_sel, int vclk_sel,
     //WRITE_MPEG_REG( ISA_TIMERE, 0); while( READ_MPEG_REG(ISA_TIMERE) < 5 ) {}    
 	udelay(5);
 	
+    if ((ddr_pll_clk==516)||(ddr_pll_clk==508)) { //use ddr pll 
+        WRITE_MPEG_REG_BITS (HHI_VID_CLK_CNTL, 3, 16, 3);
+        WRITE_MPEG_REG( HHI_VID_CLK_CNTL, READ_MPEG_REG(HHI_VID_CLK_CNTL) |  (1 << 19) );     //enable clk_div0 
+        WRITE_MPEG_REG( HHI_VID_CLK_CNTL, READ_MPEG_REG(HHI_VID_CLK_CNTL) |  (1 << 20) );    //enable clk_div1 
+    } else {
     if(vclk_sel) {
       if(pll_div_sel) WRITE_MPEG_REG_BITS (HHI_VIID_CLK_CNTL, 4, 16, 3);  // Bit[18:16] - v2_cntl_clk_in_sel
       else WRITE_MPEG_REG_BITS (HHI_VIID_CLK_CNTL, 0, 16, 3);  // Bit[18:16] - cntl_clk_in_sel
@@ -285,6 +305,7 @@ static void vclk_set_lcd( int pll_sel, int pll_div_sel, int vclk_sel,
       else WRITE_MPEG_REG_BITS (HHI_VID_CLK_CNTL, 0, 16, 3);  // Bit[18:16] - cntl_clk_in_sel
       WRITE_MPEG_REG( HHI_VID_CLK_CNTL, READ_MPEG_REG(HHI_VID_CLK_CNTL) |  (1 << 19) );     //enable clk_div0 
       WRITE_MPEG_REG( HHI_VID_CLK_CNTL, READ_MPEG_REG(HHI_VID_CLK_CNTL) |  (1 << 20) );     //enable clk_div1 
+    }
     }
     // delay 2uS
     //WRITE_MPEG_REG( ISA_TIMERE, 0); while( READ_MPEG_REG(ISA_TIMERE) < 2 ) {}    
@@ -514,6 +535,14 @@ static vout_server_t lcd_vout_server={
 
 static void _init_vout(tcon_dev_t *pDev)
 {
+	if (!ddr_pll_clk){
+		ddr_pll_clk = clk_util_clk_msr(CTS_DDR_CLK);
+		printk("(CTS_DDR_CLK) = %ldMHz\n", ddr_pll_clk);
+        }
+        if ((ddr_pll_clk==516)||(ddr_pll_clk==508)) { //use ddr pll 
+            pDev->conf.clk_ctrl = 0x100d;
+            pDev->conf.sync_duration_num = 553;
+        }
 	pDev->lcd_info.name = PANEL_NAME;
     pDev->lcd_info.mode = VMODE_INIT_NULL;
 	pDev->lcd_info.width = pDev->conf.width;
