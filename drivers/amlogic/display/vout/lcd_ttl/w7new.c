@@ -276,7 +276,8 @@ static void clear_tcon_pinmux(void)
     clear_mio_mux(0, 0x3f<<0);   //For 8bits RGB
 	
 	WRITE_MPEG_REG(0x2012, READ_MPEG_REG(0x2012) | ((1<<20)|(1<<23)));  //set oeh & cph channel as GPIO input
-	WRITE_MPEG_REG(0x200f, READ_MPEG_REG(0x200f) | (0xffffff<<0));  //For RGB 8bit, set RGB data channel as GPIO input
+	WRITE_MPEG_REG(0x2010, READ_MPEG_REG(0x2010) & ~(0xffffff<<0));  //For RGB 8bit, set RGB data channel as GPIO input
+	WRITE_MPEG_REG(0x200f, READ_MPEG_REG(0x200f) & ~(0xffffff<<0));  //For RGB 8bit, set RGB data channel as GPIO input
 	//WRITE_MPEG_REG(0x200f, READ_MPEG_REG(0x200f) | ((0x3f<<2)|(0x3f<<10)|(0x3f<<18)));  //For RGB 6bit, set RGB data channel as GPIO input
 }
 
