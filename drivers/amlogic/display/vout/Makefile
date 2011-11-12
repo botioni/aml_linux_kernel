@@ -18,6 +18,8 @@ obj-$(CONFIG_AML_LVDS_R_AT070TNA2)  += lcd_lvds/R_AT070TNA2.o
 
 obj-$(CONFIG_AML_LVDS_HV070WSA_100)  += lcd_lvds/HV070WSA_100.o
 
+obj-$(CONFIG_AML_LVDS_G_TM081JF01)  += lcd_lvds/G_TM081JFH01.o
+
 obj-$(CONFIG_AM_LCD_TTL_OUTPUT)  += tcon.o
 
 obj-$(CONFIG_AML_TCON_W7NEW)  += lcd_ttl/w7new.o

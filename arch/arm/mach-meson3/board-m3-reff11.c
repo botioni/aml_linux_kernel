@@ -564,6 +564,21 @@ static struct platform_device fb_device = {
     .resource      = fb_device_resources,
 };
 #endif
+#ifdef CONFIG_USB_PHY_CONTROL
+static struct resource usb_phy_control_device_resources[] = {
+	{
+		.start = CBUS_REG_ADDR(PREI_USB_PHY_REG),
+		.end = -1,
+		.flags = IORESOURCE_MEM,
+	},
+};
+
+static struct platform_device usb_phy_control_device = {
+	.name = "usb_phy_control",
+	.id = -1,
+	.resource = usb_phy_control_device_resources,
+};
+#endif
 #ifdef CONFIG_USB_DWC_OTG_HCD
 static void set_usb_a_vbus_power(char is_power_on)
 {
@@ -854,9 +869,6 @@ struct aml_m3_platform_data {
 };
 
 
-static struct aml_m3_platform_data aml_m3_pdata = {
-    .is_hp_pluged = &aml_m3_is_hp_pluged,
-};
 
 void mute_spk(struct snd_soc_codec* codec, int flag)
 {
@@ -872,6 +884,9 @@ void mute_spk(struct snd_soc_codec* codec, int flag)
 	}
 }
 
+static struct aml_m3_platform_data aml_m3_pdata = {
+    .is_hp_pluged = &aml_m3_is_hp_pluged,
+};
 #endif
 
 #ifdef CONFIG_FOCALTECH_CAPACITIVE_TOUCHSCREEN
@@ -935,25 +950,6 @@ static struct ts_platform_data ts_pdata = {
 
 #endif
 
-#ifdef CONFIG_ANDROID_PMEM
-static struct android_pmem_platform_data pmem_data =
-{
-    .name = "pmem",
-    .start = PMEM_START,
-    .size = PMEM_SIZE,
-    .no_allocator = 1,
-    .cached = 0,
-};
-
-static struct platform_device android_pmem_device =
-{
-    .name = "android_pmem",
-    .id = 0,
-    .dev = {
-        .platform_data = &pmem_data,
-    },
-};
-#endif
 
 #if defined(CONFIG_AML_RTC)
 static  struct platform_device aml_rtc_device = {
@@ -1187,12 +1183,16 @@ static void set_vccx2(int power_on)
 		for (i=0;i<MAX_GPIO;i++)
 			restore_gpio(i);
         printk(KERN_INFO "set_vccx2 power up\n");
-
+		//Gadmei board needn't it because it uses PMU AXP202 to control.
+        //set_gpio_mode(GPIOA_bank_bit0_27(26), GPIOA_bit_bit0_27(26), GPIO_OUTPUT_MODE);
+       // set_gpio_val(GPIOA_bank_bit0_27(26), GPIOA_bit_bit0_27(26), 0);
               
     }
     else{
-        printk(KERN_INFO "set_vccx2 power down\n");        
-
+        printk(KERN_INFO "set_vccx2 power down\n"); 
+		//Gadmei board needn't it because it uses PMU AXP202 to control.       
+        //set_gpio_mode(GPIOA_bank_bit0_27(26), GPIOA_bit_bit0_27(26), GPIO_OUTPUT_MODE);
+        //set_gpio_val(GPIOA_bank_bit0_27(26), GPIOA_bit_bit0_27(26), 1);
 		save_pinmux();
 		for (i=0;i<MAX_GPIO;i++)
 			save_gpio(i);
@@ -1655,6 +1655,9 @@ static struct platform_device __initdata *platform_devs[] = {
 #ifdef CONFIG_POST_PROCESS_MANAGER
     &ppmgr_device,
 #endif
+#if defined(CONFIG_USB_PHY_CONTROL)
+    &usb_phy_control_device,
+#endif
 #ifdef CONFIG_ANDROID_TIMED_GPIO
 	&amlogic_gpio_vibravor,
 #endif
@@ -1864,6 +1867,7 @@ static __init void m1_init_machine(void)
 #endif
     LED_PWM_REG0_init();
     power_hold();
+// Gadmei uses PMU to control.
 //    pm_power_off = power_off;		//Elvis fool
     device_pinmux_init();
     platform_add_devices(platform_devs, ARRAY_SIZE(platform_devs));
@@ -1871,9 +1875,10 @@ static __init void m1_init_machine(void)
 #ifdef CONFIG_USB_DWC_OTG_HCD
     set_usb_phy_clk(USB_PHY_CLOCK_SEL_XTAL_DIV2);
     lm_device_register(&usb_ld_a);
-   // lm_device_register(&usb_ld_b);
+    //lm_device_register(&usb_ld_b);
 #endif
     disable_unused_model();
+    WRITE_CBUS_REG_BITS(PAD_PULL_UP_REG0,1,19,1);
 }
 
 /*VIDEO MEMORY MAPING*/

@@ -43,10 +43,13 @@ static int ft5x0x_printk_enable_flag=0;
 #define CONFIG_TOUCH_PANEL_KEY
 
 #ifdef CONFIG_TOUCH_PANEL_KEY
-#define TP_KEY_GUARANTEE_TIME_AFTER_TOUCH 100 * 1000000//unit msec
-
+#define TOUCH_SCREEN_RELEASE_DELAY (100 * 1000000)//unit usec
+#define TAP_KEY_RELEASE_DELAY (100 * 1000000)
+#define TAP_KEY_TIME 10
 enum {
 	NO_TOUCH,
+	TOUCH_KEY_PRE,
+	TAP_KEY,
 	TOUCH_KEY,
 	TOUCH_SCREEN,
 	TOUCH_SCREEN_RELEASE,
@@ -318,10 +321,10 @@ static unsigned char ft5x0x_read_fw_ver(void)
 }
 
 
-//#define CONFIG_SUPPORT_FTS_CTP_UPG
+//#define CONFIG_FOCALTECH_TOUCHSCREEN_CODE_UPG
 
 
-#ifdef CONFIG_SUPPORT_FTS_CTP_UPG
+#ifdef CONFIG_FOCALTECH_TOUCHSCREEN_CODE_UPG
 
 typedef enum
 {
@@ -711,9 +714,19 @@ static int is_tp_key(struct tp_key *tp_key, int key_num, int x, int y)
 static enum hrtimer_restart ft5x0x_timer(struct hrtimer *timer)
 {
 	struct ft5x0x_ts_data *data = container_of(timer, struct ft5x0x_ts_data, timer);
-	input_report_abs(data->input_dev, ABS_MT_TOUCH_MAJOR, 0);
-	input_sync(data->input_dev);
-	ft5x0x_dbg("touch screen up(2)!\n");
+
+ 	if (data->touch_state == TOUCH_SCREEN) {
+		input_report_abs(data->input_dev, ABS_MT_TOUCH_MAJOR, 0);
+		input_sync(data->input_dev);
+		ft5x0x_dbg("touch screen up(2)!\n");
+	}
+ 	else if (data->touch_state == TAP_KEY) {
+		input_report_key(data->input_dev, data->key, 1);
+		input_report_key(data->input_dev, data->key, 0);
+		input_sync(data->input_dev);
+		ft5x0x_dbg("touch key(%d) down(short)\n", data->key);
+		ft5x0x_dbg("touch key(%d) up(short)\n", data->key);
+	}
  	data->touch_state = NO_TOUCH;
 	return HRTIMER_NORESTART;
 };
@@ -772,6 +785,18 @@ static void ft5x0x_report_mt_event(struct input_dev *input, struct ts_event *eve
 	input_sync(input);
 }
 
+#define enter_touch_screen_state() {\
+	data->first_event = data->event[0];\
+	data->offset = 0;\
+	data->touch_count = 0;\
+	data->touch_state = TOUCH_SCREEN;\
+}
+
+#define enter_key_pre_state() {\
+	data->key = key;\
+	data->touch_count = 0;\
+	data->touch_state = TOUCH_KEY_PRE;\
+}
 /***********************************************************************************************
 Name	:	 
 
@@ -810,19 +835,51 @@ static void ft5x0x_ts_pen_irq_work(struct work_struct *work)
 	switch (data->touch_state) {
 	case NO_TOUCH:
 		if(key)	{
-			input_report_key(data->input_dev, key, 1);
-			input_sync(data->input_dev);
-			ft5x0x_dbg("touch key(%d) down\n", key);
-			data->key = key;
-			data->touch_state = TOUCH_KEY;
+			ft5x0x_dbg("touch key(%d) down 0\n", key);
+			enter_key_pre_state();
 		}
 		else if (event_num) {
 			ft5x0x_dbg("touch screen down\n");
 			ft5x0x_report_mt_event(data->input_dev, event, event_num);
-			data->first_event = data->event[0];
-			data->offset = 0;
-			data->touch_count = 0;
-			data->touch_state = TOUCH_SCREEN;
+			enter_touch_screen_state();
+		}
+		break;
+
+	case TOUCH_KEY_PRE:
+		if (key) {
+			data->key = key;
+			if (++data->touch_count > TAP_KEY_TIME) {
+				ft5x0x_dbg("touch key(%d) down\n", key);
+				input_report_key(data->input_dev, key, 1);
+				input_sync(data->input_dev);
+				data->touch_state = TOUCH_KEY;
+			}
+		}
+		else if(event_num) {
+			ft5x0x_report_mt_event(data->input_dev, event, event_num);
+			enter_touch_screen_state();
+		}		
+		else {
+			hrtimer_start(&data->timer, ktime_set(0, TAP_KEY_RELEASE_DELAY), HRTIMER_MODE_REL);
+			data->touch_state = TAP_KEY;
+		}
+		break;
+	
+	case TAP_KEY:
+		if (key) {
+			hrtimer_cancel(&data->timer);
+			input_report_key(data->input_dev, data->key, 1);
+			input_report_key(data->input_dev, data->key, 0);
+			input_sync(data->input_dev);
+			ft5x0x_dbg("touch key(%d) down(tap)\n", data->key);
+			ft5x0x_dbg("touch key(%d) up(tap)\n", data->key);
+			enter_key_pre_state();
+		}
+		else if (event_num) {
+			hrtimer_cancel(&data->timer);
+			ft5x0x_dbg("ignore the tap key!\n");
+			ft5x0x_report_mt_event(data->input_dev, event, event_num);
+			enter_touch_screen_state();
 		}
 		break;
 		
@@ -845,7 +902,7 @@ static void ft5x0x_ts_pen_irq_work(struct work_struct *work)
     	}
     	else {
 				ft5x0x_dbg("touch screen up(1)\n");
-	      hrtimer_start(&data->timer, ktime_set(0, TP_KEY_GUARANTEE_TIME_AFTER_TOUCH), HRTIMER_MODE_REL);
+	      hrtimer_start(&data->timer, ktime_set(0, TOUCH_SCREEN_RELEASE_DELAY), HRTIMER_MODE_REL);
 			}
 		}
 		else {
@@ -1076,7 +1133,7 @@ printk("==enable Irq success=\n");
 	register_early_suspend(&ft5x0x_ts->early_suspend);
 #endif
 
-#ifdef CONFIG_SUPPORT_FTS_CTP_UPG
+#ifdef CONFIG_FOCALTECH_TOUCHSCREEN_CODE_UPG
     msleep(50);
     //get some register information
     uc_reg_value = ft5x0x_read_fw_ver();
