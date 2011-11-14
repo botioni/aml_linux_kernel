@@ -878,12 +878,14 @@ static struct early_suspend act8xxx_early_suspend = {
 };
 #endif
 
+#if defined(CONFIG_AML_INIT_GATE_OFF)
 static void init_act8xxx_power(void)
 {
 	unsigned long voltage = 1200;
 	set_reg_voltage(ACT8xxx_REG1, &voltage); //init the ao/ee with 1.2v votage.
 	//act8xxx_write_i2c(this_client, ACT8xxx_REG1_ADDR, 24);//init the ao/ee with 1.2v votage.
 }
+#endif
 
 static int act8xxx_i2c_probe(struct i2c_client *client,
 				 const struct i2c_device_id *id)
@@ -961,7 +963,10 @@ static int act8xxx_i2c_probe(struct i2c_client *client,
 	act8xxx_dev->polling_timer.data = act8xxx_dev;
 	add_timer(&(act8xxx_dev->polling_timer));
 #endif
+
+#if defined(CONFIG_AML_INIT_GATE_OFF)
 	init_act8xxx_power(); 
+#endif
 
 #ifdef CONFIG_HAS_EARLYSUSPEND
 	register_early_suspend(&act8xxx_early_suspend);
