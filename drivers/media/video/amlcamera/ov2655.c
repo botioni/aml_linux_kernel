@@ -1832,7 +1832,7 @@ static void ov2655_thread_tick(struct ov2655_fh *fh)
 	do_gettimeofday(&buf->vb.ts);
 
 	/* Fill buffer */
-	spin_unlock_irqrestore(&dev->slock, flags)
+	spin_unlock_irqrestore(&dev->slock, flags);
 	ov2655_fillbuff(fh, buf);
 	dprintk(dev, 1, "filled buffer %p\n", buf);
 
