@@ -98,6 +98,18 @@ static unsigned pll_setting[17][3]={
     {0x00222,0x065e11ff,0x0249a941},
 };
 
+unsigned get_sys_clkpll_setting(unsigned crystal_freq, unsigned out_freq)
+{
+    unsigned long crys_M, out_M, i;
+    if (!crystal_freq)
+        crystal_freq = get_xtal_clock();
+    crys_M = crystal_freq / 1000000;
+    out_M = out_freq / 1000000;
+    i = (out_M-200)/50;
+    if (i>16) i=16;
+    return pll_setting[i][0];
+}
+
 int sys_clkpll_setting(unsigned crystal_freq, unsigned out_freq)
 {
     int i, lock_flag;

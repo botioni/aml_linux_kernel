@@ -303,6 +303,7 @@ static int clk_set_rate_clk81(struct clk *clk, unsigned long rate)
     return 0;
 }
 
+extern int get_sys_clkpll_setting(unsigned crystal_freq, unsigned out_freq);
 static int clk_set_rate_a9_clk(struct clk *clk, unsigned long rate)
 {
     struct clk *father_clk;
@@ -310,6 +311,7 @@ static int clk_set_rate_a9_clk(struct clk *clk, unsigned long rate)
     unsigned long flags;
     unsigned int clk_a9 = 0;
     unsigned long target_clk;
+    int mali_divider;
 	
     father_clk = clk_get_sys("clk_sys_pll", NULL);
 	divider = 0;
@@ -318,7 +320,27 @@ static int clk_set_rate_a9_clk(struct clk *clk, unsigned long rate)
 	if (divider>2){
 		return -1;
 	}
+
+    target_clk = get_sys_clkpll_setting(0, rate<<divider);
+    target_clk = (((target_clk&0x1ff)*get_xtal_clock()/1000000)>>(target_clk>>16))>>divider;
+    if (!ddr_pll_clk)
+    	ddr_pll_clk = clk_util_clk_msr(CTS_DDR_CLK);
+    mali_divider = 1;
+	while ((mali_divider * target_clk < ddr_pll_clk) || (264 * mali_divider < ddr_pll_clk)) // assume mali max 264M
+		mali_divider++;
+    
     local_irq_save(flags);
+    if (((mali_divider-1) != (READ_MPEG_REG(HHI_MALI_CLK_CNTL)&0x7f))&&(READ_CBUS_REG(HHI_MALI_CLK_CNTL)&(1<<8))){ // if mali busy skip change clk
+    	local_irq_restore(flags);
+    	return -1;
+	}
+
+    if ((mali_divider-1) != (READ_MPEG_REG(HHI_MALI_CLK_CNTL)&0x7f)){
+		CLEAR_CBUS_REG_MASK(HHI_MALI_CLK_CNTL, 1<<8); // mali off
+	    WRITE_CBUS_REG(HHI_MALI_CLK_CNTL,
+	               (3 << 9)    |   		// select ddr pll as clock source
+	               ((mali_divider-1) << 0)); // ddr clk / divider
+	}
     CLEAR_CBUS_REG_MASK(HHI_SYS_CPU_CLK_CNTL, 1<<7); // cpu use xtal
     ret = father_clk->set_rate(father_clk, rate<<divider);
 	if (divider<2){
@@ -340,33 +362,13 @@ static int clk_set_rate_a9_clk(struct clk *clk, unsigned long rate)
 	}
     clk_a9 = READ_MPEG_REG(HHI_SYS_CPU_CLK_CNTL); // read cbus for a short delay
     SET_CBUS_REG_MASK(HHI_SYS_CPU_CLK_CNTL, 1<<7); // cpu use sys pll
-    local_irq_restore(flags);
     clk->rate = rate;
+	SET_CBUS_REG_MASK(HHI_MALI_CLK_CNTL, 1<<8); // mali on
+    local_irq_restore(flags);
 
-    if (!ddr_pll_clk){
-    	ddr_pll_clk = clk_util_clk_msr(CTS_DDR_CLK);
-    	printk("(CTS_DDR_CLK) = %ldMHz\n", ddr_pll_clk);
-    }
-    target_clk = READ_MPEG_REG(HHI_SYS_PLL_CNTL);
-    target_clk = (((target_clk&0x1ff)*get_xtal_clock()/1000000)>>(target_clk>>16))>>divider;
-    //printk("(CTS_A9_CLK) = %ldMHz\n", target_clk);
-	divider = 1;
-	while ((divider * target_clk < ddr_pll_clk) || (264 * divider < ddr_pll_clk))
-		divider++;
-    if ((divider-1) != (READ_MPEG_REG(HHI_MALI_CLK_CNTL)&0x7f)){
-	    local_irq_save(flags);
-		CLEAR_CBUS_REG_MASK(HHI_MALI_CLK_CNTL, 1<<8); // mali off
-    	WRITE_CBUS_REG(HHI_MALI_CLK_CNTL,
-                       (3 << 9)    |   		// select ddr pll as clock source
-                       ((divider-1) << 0)); // ddr clk / divider
-        clk_a9 = READ_MPEG_REG(HHI_MALI_CLK_CNTL);          
-		SET_CBUS_REG_MASK(HHI_MALI_CLK_CNTL, 1<<8); // mali on
-    	local_irq_restore(flags);
-        printk("(CTS_MALI_CLK) = %ldMHz\n", ddr_pll_clk/divider);
-    	//target_clk = clk_util_clk_msr(CTS_MALI_CLK);
-    	//printk("(CTS_MALI_CLK) = %ldMHz\n", target_clk);
-	}
-	printk("(CTS_A9_CLK) = %ldMHz\n", rate/1000000);
+    printk(KERN_INFO "-----------------------------------\n");
+    printk(KERN_INFO "(CTS_MALI_CLK) = %ldMHz\n", ddr_pll_clk/mali_divider);
+	printk(KERN_INFO "(CTS_A9_CLK) = %ldMHz\n", rate/1000000);
     return 0;
 }
 
