@@ -161,13 +161,15 @@ static void t13_setup_gama_table(lcdConfig_t *pConf)
 void power_on_backlight(void)
 {
 	set_tcon_pinmux();
-	msleep(100);
+	WRITE_CBUS_REG_BITS(LED_PWM_REG0, 1, 12, 2); 
+	msleep(300); // wait for PWM charge
 	
 	PRINT_INFO(" w7 power_on_backlight \n");
 	//dump_stack();
-	WRITE_CBUS_REG_BITS(LED_PWM_REG0, 1, 12, 2); 	
+	
     set_gpio_val(GPIOD_bank_bit0_9(1), GPIOD_bit_bit0_9(1), 1);
     set_gpio_mode(GPIOD_bank_bit0_9(1), GPIOD_bit_bit0_9(1), GPIO_OUTPUT_MODE);	
+    //printk("======================= backlight on ==========================\n");
 }
 
 void power_off_backlight(void)
@@ -176,10 +178,9 @@ void power_off_backlight(void)
     //BL_EN -> GPIOD_1: 0
     set_gpio_val(GPIOD_bank_bit0_9(1), GPIOD_bit_bit0_9(1), 0);
     set_gpio_mode(GPIOD_bank_bit0_9(1), GPIOD_bit_bit0_9(1), GPIO_OUTPUT_MODE);
-	msleep(20);
+    //printk("======================= backlight off ==========================\n");
 	
 	clear_tcon_pinmux();
-	//msleep(50);
 }
 
 static unsigned bl_level;
@@ -223,29 +224,27 @@ void set_backlight_level(unsigned level)
 static void power_on_lcd(void)
 {
     PRINT_INFO(" w7 power_on_lcd \n");
+    //printk("======================= panel on ==========================\n");
 	//GPIOA27 -> LCD_PWR_EN#: 0  lcd 3.3v
     set_gpio_val(GPIOA_bank_bit0_27(27), GPIOA_bit_bit0_27(27), 0);
     set_gpio_mode(GPIOA_bank_bit0_27(27), GPIOA_bit_bit0_27(27), GPIO_OUTPUT_MODE);
-    msleep(30);
     
     //GPIOC2 -> VCCx3_EN: 1
     set_gpio_val(GPIOC_bank_bit0_15(2), GPIOC_bit_bit0_15(2), 1);
     set_gpio_mode(GPIOC_bank_bit0_15(2), GPIOC_bit_bit0_15(2), GPIO_OUTPUT_MODE);
-    msleep(30);
 }
 
 static void power_off_lcd(void)
 {
-     PRINT_INFO(" w7 power_off_lcd \n");    
+    PRINT_INFO(" w7 power_off_lcd \n");    
+    //printk("======================= panel off ==========================\n");
     //GPIOC2 -> VCCx3_EN: 0
     set_gpio_val(GPIOC_bank_bit0_15(2), GPIOC_bit_bit0_15(2), 0);
     set_gpio_mode(GPIOC_bank_bit0_15(2), GPIOC_bit_bit0_15(2), GPIO_OUTPUT_MODE);
-    msleep(30);
     
     //GPIOA27 -> LCD_PWR_EN#: 1  lcd 3.3v
     set_gpio_val(GPIOA_bank_bit0_27(27), GPIOA_bit_bit0_27(27), 1);
     set_gpio_mode(GPIOA_bank_bit0_27(27), GPIOA_bit_bit0_27(27), GPIO_OUTPUT_MODE);
-    msleep(10);
 }
 
 static void set_tcon_pinmux(void)
