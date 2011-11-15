@@ -787,7 +787,7 @@ static int __init clk81_clock_setup(char *ptr)
     	printk("(CTS_DDR_CLK) = %ldMHz\n", ddr_pll_clk);
     }
 
-	if ((ddr_pll_clk==516)||(ddr_pll_clk==508)){
+	if ((ddr_pll_clk==516)||(ddr_pll_clk==508)||(ddr_pll_clk==474)){
         clock = clk81.rate = ddr_pll_clk*1000000/3;
         baudrate = (clock / (115200 * 4)) - 1;
         CLEAR_CBUS_REG_MASK(HHI_MPEG_CLK_CNTL, (1 << 8)); // use xtal
