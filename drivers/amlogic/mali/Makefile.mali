@@ -41,7 +41,7 @@ USING_PROFILING ?= 0
 TIMESTAMP ?= default
 BUILD ?= debug
 CONFIG ?= aml-meson-m400-1
-TARGET_PLATFORM ?= default
+TARGET_PLATFORM ?= meson_platform
 
 ifeq ($(USING_UMP),1)
 	UMP_SYMVERS_FILE = ../ump/Module.symvers
