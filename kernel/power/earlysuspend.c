@@ -94,6 +94,17 @@ static void early_suspend(struct work_struct *work)
 		goto abort;
 	}
 
+	wake_up_all(&keyguard_wq);
+	for (i=0;i<100;i++){
+		if (!(state & SUSPENDED)) // suspend abort
+			break;
+		if (!is_wake_lock_locked(WAKE_LOCK_SUSPEND,"Keyguard")){
+			pr_info("*** keyguard ready in %dms ***\n", i*100);
+			break;
+		}
+		wait_event_timeout(keyguard_wq, !is_wake_lock_locked(WAKE_LOCK_SUSPEND,"Keyguard"), HZ/10);
+	}
+
 	if (debug_mask & DEBUG_SUSPEND)
 		pr_info("early_suspend: call handlers\n");
 	list_for_each_entry(pos, &early_suspend_handlers, link) {
@@ -105,17 +116,6 @@ static void early_suspend(struct work_struct *work)
 		pr_info("early_suspend: sync\n");
 
 	sys_sync();
-
-	wake_up_all(&keyguard_wq);
-	for (i=0;i<100;i++){
-		if (!(state & SUSPENDED)) // suspend abort
-			break;
-		if (!is_wake_lock_locked(WAKE_LOCK_SUSPEND,"Keyguard")){
-			pr_info("*** keyguard ready in %dms ***\n", i*100);
-			break;
-		}
-		wait_event_timeout(keyguard_wq, !is_wake_lock_locked(WAKE_LOCK_SUSPEND,"Keyguard"), HZ/10);
-	}
 
 abort:
 	spin_lock_irqsave(&state_lock, irqflags);
