@@ -1324,6 +1324,8 @@ int sd_send_cmd_hw(SD_MMC_Card_Info_t *sd_mmc_info, unsigned char cmd, unsigned 
 		ret = SD_MMC_ERROR_TIMEOUT;
 		if(timeout == 0)
 			printk("[sd_send_cmd_hw] wait_for_completion_timeout\n");
+		sdio_close_host_interrupt(SDIO_CMD_INT);
+		sdio_close_host_interrupt(SDIO_TIMEOUT_INT);
 		goto error;
 	}
 
