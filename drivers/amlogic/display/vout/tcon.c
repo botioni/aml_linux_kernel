@@ -265,6 +265,7 @@ static void vclk_set_lcd( int pll_sel, int pll_div_sel, int vclk_sel,
         //WRITE_MPEG_REG( HHI_VID_PLL_CNTL2, 0x65e31ff );
         //WRITE_MPEG_REG( HHI_VID_PLL_CNTL3, 0x9649a941 );
         WRITE_MPEG_REG( HHI_VIID_PLL_CNTL, pll_reg|(1<<30) );
+        
     } else {
         if(pll_sel){
             WRITE_MPEG_REG( HHI_VIID_PLL_CNTL, pll_reg|(1<<30) );
@@ -294,6 +295,9 @@ static void vclk_set_lcd( int pll_sel, int pll_div_sel, int vclk_sel,
         WRITE_MPEG_REG_BITS (HHI_VID_CLK_CNTL, 3, 16, 3);
         WRITE_MPEG_REG( HHI_VID_CLK_CNTL, READ_MPEG_REG(HHI_VID_CLK_CNTL) |  (1 << 19) );     //enable clk_div0 
         WRITE_MPEG_REG( HHI_VID_CLK_CNTL, READ_MPEG_REG(HHI_VID_CLK_CNTL) |  (1 << 20) );    //enable clk_div1 
+        WRITE_MPEG_REG( HHI_VID_CLK_DIV, (READ_MPEG_REG(HHI_VID_CLK_DIV) & ~(0xFF << 24)) | (0x99 << 24));  //turn off enci and encp
+        WRITE_MPEG_REG( HHI_VIID_CLK_DIV, (READ_MPEG_REG(HHI_VIID_CLK_DIV) & ~(0xFF00F << 12)) | (0x99009 << 12) ); //turn off encl vdac_clk1 vdac_clk0
+        WRITE_MPEG_REG( HHI_HDMI_CLK_CNTL, (READ_MPEG_REG(HHI_HDMI_CLK_CNTL) & ~(0xF << 16)) | (0x9 << 16) ); //turn off hdmi_tx_pixel_clk 
     } else {
         if(vclk_sel) {
             if(pll_div_sel) WRITE_MPEG_REG_BITS (HHI_VIID_CLK_CNTL, 4, 16, 3);  // Bit[18:16] - v2_cntl_clk_in_sel
