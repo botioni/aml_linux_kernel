@@ -208,6 +208,25 @@ static irqreturn_t am_key_interrupt(int irq, void *dev)
 		alarm = 1;
 	}
 #endif /* CONFIG_AML_RTC */
+#ifdef CONFIG_AML_SUSPEND
+		KeyInput->status = (READ_AOBUS_REG(AO_RTC_ADDR1)>>2)&1;
+   	if(READ_AOBUS_REG(AO_RTI_STATUS_REG2)== 0x1234abcd)
+   	{
+	   		WRITE_AOBUS_REG(AO_RTI_STATUS_REG2,0);
+    		if(alarm == 0){
+    			if(((READ_AOBUS_REG(AO_RTC_ADDR1)>>2)&1) == 1){
+    			KeyInput->status = 0;
+    			printk(KERN_INFO "Force key down: %x\n",READ_AOBUS_REG(AO_RTC_ADDR1));
+    	 	  WRITE_AOBUS_REG(AO_RTC_ADDR1, (READ_AOBUS_REG(AO_RTC_ADDR1) | (0x0000c000)));
+    	 	  keyinput_tasklet(0);
+    	 	  return IRQ_HANDLED;
+     			}
+     		}
+     }
+   WRITE_AOBUS_REG(AO_RTC_ADDR1, (READ_AOBUS_REG(AO_RTC_ADDR1) | (0x0000c000)));
+   if (!alarm) 
+        tasklet_schedule(&ki_tasklet);
+#else    
 	if (!alarm) {
 		if (KeyInput->suspend){ // when suspend
 			if (READ_AOBUS_REG(AO_RTI_STATUS_REG2)!=0x12345678){
@@ -222,6 +241,7 @@ static irqreturn_t am_key_interrupt(int irq, void *dev)
 		}
 	}
 	WRITE_AOBUS_REG(AO_RTC_ADDR1, (READ_AOBUS_REG(AO_RTC_ADDR1) | (0x0000c000)));
+#endif
 	return IRQ_HANDLED;
 }
 //#endif
