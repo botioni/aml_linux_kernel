@@ -44,6 +44,7 @@
 
 #define HANDLE_H264_IRQ
 #define DEBUG_PTS
+#define DROP_B_FRAME_FOR_1080P_50_60FPS
 
 /* 12M for L41 */
 #define MAX_DPB_BUFF_SIZE       (12*1024*1024)
@@ -140,7 +141,9 @@ static u32 aspect_ratio_info;
 static u32 num_units_in_tick;
 static u32 time_scale;
 static u32 h264_ar;
-
+#ifdef DROP_B_FRAME_FOR_1080P_50_60FPS
+static u32 last_interlaced;
+#endif
 static u8 neg_poc_counter;
 static unsigned char h264_first_pts_ready;
 static u32 h264pts1, h264pts2;
@@ -323,6 +326,15 @@ static void vh264_isr(void)
     }
 
     cpu_cmd = READ_MPEG_REG(AV_SCRATCH_0);
+
+#ifdef DROP_B_FRAME_FOR_1080P_50_60FPS
+    if((frame_dur < 2000) && 
+       (frame_width >= 1400) &&
+       (frame_height >= 1000) &&
+       (last_interlaced == 0)) {
+        SET_MPEG_REG_MASK(AV_SCRATCH_F, 0x8);
+    }
+#endif
 
     if ((cpu_cmd & 0xff) == 1) {
         int timing_info_present_flag, aspect_ratio_info_present_flag, aspect_ratio_idc;
@@ -605,7 +617,9 @@ static void vh264_isr(void)
             idr_flag = status & 0x400;
             neg_poc = status & 0x800;
             b_offset = (status >> 16) & 0xffff;
-
+#ifdef DROP_B_FRAME_FOR_1080P_50_60FPS
+            last_interlaced = prog_frame ? 0 : 1;
+#endif
             vf = &vfpool[fill_ptr];
             vfpool_idx[fill_ptr] = buffer_index;
             vf->ratio_control = 0;
@@ -1000,6 +1014,9 @@ static void vh264_local_init(void)
         vfpool[i].bufWidth = 1920;
     }
 
+#ifdef DROP_B_FRAME_FOR_1080P_50_60FPS
+    last_interlaced = 1;
+#endif
     neg_poc_counter = 0;
     h264_first_pts_ready = 0;
     h264pts1 = 0;
