@@ -211,7 +211,8 @@ void wr_regbank (    unsigned long rstdpz,
 					 unsigned long micvol, 
 					 unsigned long recvol, 
 					 unsigned long recsel);
-
+void adac_power_up_mode_2(void);
+void adac_startup_seq(void);
 
 #define APB_BASE	0x4000
 

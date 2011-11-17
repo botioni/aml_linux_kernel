@@ -22,6 +22,9 @@
 struct snd_soc_codec_device soc_codec_dev_aml_m3;
 static struct snd_soc_codec *aml_m3_codec;
 
+extern int aml_m3_is_hp_pluged(void);
+extern void mute_spk(struct snd_soc_codec* codec, int flag);
+
 /* codec private data */
 struct aml_m3_codec_priv {
 	struct snd_soc_codec codec;
@@ -162,9 +165,26 @@ void aml_m3_reset(struct snd_soc_codec* codec, bool first_time)
 					0x0101);	// recsel[15:0]: Input PGA selection. [15:8] control right channel, [7:0] control left channel.
 								// 0x01=input1, 0x03=input2, 0x05=input3, 0x09=input4,
 								// 0x11=input5, 0x21=input6, 0x41=input7, 0x81=input8, others=Rsrv.
+        adac_power_up_mode_2();
+        adac_startup_seq();
 
 	    udelay(10);
-
+	    
+	    if(aml_m3_is_hp_pluged()) {
+	    	data32 = snd_soc_read(codec, ADAC_MUTE_CTRL_REG1);
+		    data32 &= ~0xc0;
+		    snd_soc_write(codec, ADAC_MUTE_CTRL_REG1, data32); //unmute HP
+    	    mute_spk(codec, 1);
+    	    latch_(codec);
+    	}
+    	else {
+    		data32 = snd_soc_read(codec, ADAC_MUTE_CTRL_REG1);
+	    	data32 |= 0xc0;
+		    snd_soc_write(codec, ADAC_MUTE_CTRL_REG1, data32);//mute HP
+    		mute_spk(codec, 0);
+	    	latch_(codec);
+        }
+	    
 /*			snd_soc_write(codec, ADAC_RESET, (0<<1));
 	    	snd_soc_write(codec, ADAC_RESET, (0<<1));
 	    	snd_soc_write(codec, ADAC_RESET, (0<<1));
@@ -215,20 +235,19 @@ void aml_m3_reset(struct snd_soc_codec* codec, bool first_time)
         snd_soc_write(codec, ADAC_LS_MIX_CTRL_LSB, 1);
         snd_soc_write(codec, ADAC_LS_MIX_CTRL_MSB, 0);
         aml_reset_path(codec, AML_PWR_UP);
-    }
 
-	latch_(codec);
-	snd_soc_write(codec, ADAC_RESET, (0<<1));
-    latch_(codec);
-	latch_(codec);
-	latch_(codec);
-	snd_soc_write(codec, ADAC_RESET, (1<<1));
-    latch_(codec);
-	latch_(codec);
+    	latch_(codec);
+	    snd_soc_write(codec, ADAC_RESET, (0<<1));
+        latch_(codec);
+	    latch_(codec);
+    	latch_(codec);
+	    snd_soc_write(codec, ADAC_RESET, (1<<1));
+        latch_(codec);
+	    latch_(codec);
+    }
 
 
     msleep(200);
-
 }
 
 

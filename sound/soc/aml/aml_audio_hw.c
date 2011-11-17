@@ -65,6 +65,7 @@ int audio_clock_config_table[][11][2]=
 	}
 };
 
+#if 0
 /*Default acodec_regbank value*/
 unsigned int acodec_regbank[74] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00,  // Reg  0 -  5
                                    0x00, 0x00, 0x00, 0x00, 0x00, 0x00,  // Reg  6 - 11
@@ -80,6 +81,7 @@ unsigned int acodec_regbank[74] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00,  // Reg  
                                    0x14, 0x14, 0x12, 0x12, 0x00, 0x00,  // Reg 66 - 71
                                    0x00, 0x00                           // Reg 72 - 73
                                   };
+#endif
 
 void audio_set_aiubuf(u32 addr, u32 size)
 {
@@ -447,7 +449,7 @@ void audio_set_clk(unsigned freq, unsigned fs_config)
 void adac_wr_reg (unsigned long addr, unsigned long data)
 {
     WRITE_APB_REG((APB_BASE+(addr<<2)), data);
-    acodec_regbank[addr] = data;
+    //acodec_regbank[addr] = data;
 } /* adac_wr_reg */
 
 unsigned long adac_rd_reg (unsigned long addr)
@@ -519,6 +521,31 @@ void wr_regbank (unsigned long rstdpz,
     adac_wr_reg(73, (recsel>>8));
 } /* wr_regbank */
 
+void adac_power_up_mode_2(void)
+{
+    adac_wr_reg(224, 0x11);
+}
+
+static inline void adac_latch(void)
+{
+    adac_wr_reg(1, 1);
+    adac_wr_reg(1, 0);
+}
+
+void adac_startup_seq(void)
+{
+    /* toggle pdz 0->1 */
+    adac_wr_reg(17, adac_rd_reg(17) & ~0x80);
+    adac_latch();
+    adac_wr_reg(17, adac_rd_reg(17) | 0x80);
+    adac_latch();
+
+    /* toggle rstdpz 0->1 */
+    adac_wr_reg(0, adac_rd_reg(0) & ~2);
+    adac_latch();
+    adac_wr_reg(0, adac_rd_reg(0) | 2);
+    adac_latch();
+}
 
 //------------------------------------------------------------------------------
 // set_acodec_source(unsigned int src)
