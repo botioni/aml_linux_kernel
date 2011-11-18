@@ -2018,8 +2018,18 @@ static void hdmitx_set_pll(Hdmi_tx_video_para_t *param)
     printk("param->VIC:%d\n", param->VIC);
     
 //    Wr_reg_bits(VPU_HDMI_SETTING, 2, 0, 2);     //[ 1: 0] src_sel. 0=Disable output to HDMI; 1=Select VENC_I output to HDMI; 2=Select VENC_P output.
+    
+    //reset HHI_VID_DIVIDER_CNTL
+    Wr(HHI_VID_DIVIDER_CNTL, Rd(HHI_VID_DIVIDER_CNTL)|(1<<7));    //0x1066[7]:SOFT_RESET_POST
+    Wr(HHI_VID_DIVIDER_CNTL, Rd(HHI_VID_DIVIDER_CNTL)|(1<<3));    //0x1066[3]:SOFT_RESET_PRE
+    Wr(HHI_VID_DIVIDER_CNTL, Rd(HHI_VID_DIVIDER_CNTL)&(~(1<<1)));    //0x1066[1]:RESET_N_POST
+    Wr(HHI_VID_DIVIDER_CNTL, Rd(HHI_VID_DIVIDER_CNTL)&(~(1<<0)));    //0x1066[0]:RESET_N_PRE
+    msleep(2);
+    Wr(HHI_VID_DIVIDER_CNTL, Rd(HHI_VID_DIVIDER_CNTL)&(~((1<<7)|(1<<3))));
+    Wr(HHI_VID_DIVIDER_CNTL, Rd(HHI_VID_DIVIDER_CNTL)|((1<<1)|(1<<0)));
 
     Wr(HHI_VID_DIVIDER_CNTL, 0x10843);          //0x1066, set vid_pll_clk = HPLL_CLK_OUT_DIG / 5
+
     Wr_reg_bits(HHI_VID_CLK_CNTL, 0, 16, 3);    //0x105f    0: vid_pll_clk
     Wr_reg_bits(HHI_VID_CLK_CNTL, 0x1f, 0, 5);     //0x105f    1: DIV1_EN
     Wr_reg_bits(HHI_VID_CLK_CNTL, 1, 19, 1);    //0x105f    1: CLK_EN0
