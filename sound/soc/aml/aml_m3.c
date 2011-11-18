@@ -19,7 +19,7 @@
 #include <asm/mach-types.h>
 #include <mach/hardware.h>
 #include <mach/gpio.h>
-
+#include <sound/aml_platform.h>
 #include "aml_dai.h"
 #include "aml_pcm.h"
 #include "aml_m3_codec.h"
@@ -281,7 +281,9 @@ printk("***Entered %s:%s\n", __FILE__,__func__);
 			printk(KERN_ERR "ASoC: Platform device allocation failed\n");
 			ret = -ENOMEM;
 		}
-	
+		
+		aml_m3_snd_device->dev.platform_data = pdev->dev.platform_data;
+		
 		platform_set_drvdata(aml_m3_snd_device,&aml_m3_snd_devdata);
 		aml_m3_snd_devdata.dev = &aml_m3_snd_device->dev;
 	

@@ -19,7 +19,7 @@
 #include <sound/soc.h>
 #include <sound/pcm_params.h>
 
-
+#include <sound/aml_platform.h>
 #include <mach/am_regs.h>
 #include <mach/pinmux.h>
 
@@ -106,7 +106,70 @@ struct aml_runtime_data {
 	struct timer_list timer;	// timeer for playback and capture
 };
 
+/*--------------------------------------------------------------------------*\
+ * audio clock gating
+\*--------------------------------------------------------------------------*/
 
+static void aml_audio_clock_gating_disable(void)
+{
+	//printk("***Entered %s:%s\n", __FILE__,__func__);
+	//WRITE_CBUS_REG(HHI_GCLK_MPEG0, READ_CBUS_REG(HHI_GCLK_MPEG0)&~(1<<18));
+	WRITE_CBUS_REG(HHI_GCLK_MPEG1, READ_CBUS_REG(HHI_GCLK_MPEG1)&~(1<<2)
+								    //&~(0xFF<<6)
+								    );
+	//WRITE_CBUS_REG(HHI_GCLK_MPEG2, READ_CBUS_REG(HHI_GCLK_MPEG2)&~(1<<10));
+	//WRITE_CBUS_REG(HHI_GCLK_OTHER, READ_CBUS_REG(HHI_GCLK_OTHER)&~(1<<10)
+								    //&~(1<<18)
+								    //&~(0x7<<14));
+	WRITE_APB_REG(APB_ADAC_POWER_CTRL_REG2, READ_APB_REG(APB_ADAC_POWER_CTRL_REG2)&(~(1<<7)));
+	adac_latch();
+	
+}
+
+static void aml_audio_clock_gating_enable(void)
+{
+	printk("***Entered %s:%s\n", __FILE__,__func__);
+	//WRITE_CBUS_REG(HHI_GCLK_MPEG0, READ_CBUS_REG(HHI_GCLK_MPEG0)|(1<<18));
+	WRITE_CBUS_REG(HHI_GCLK_MPEG1, READ_CBUS_REG(HHI_GCLK_MPEG1)|(1<<2)
+								    //|(0xFF<<6)
+								    );
+	//WRITE_CBUS_REG(HHI_GCLK_MPEG2, READ_CBUS_REG(HHI_GCLK_MPEG2)|(1<<10));
+	//WRITE_CBUS_REG(HHI_GCLK_OTHER, READ_CBUS_REG(HHI_GCLK_OTHER)|(1<<10)
+								    //|(1<<18)
+								    //|(0x7<<14));
+	WRITE_APB_REG(APB_ADAC_POWER_CTRL_REG2, READ_APB_REG(APB_ADAC_POWER_CTRL_REG2)|(1<<7));
+	adac_latch();
+}
+
+/*--------------------------------------------------------------------------*\
+ * audio power gating
+ * power up/down the audio module
+\*--------------------------------------------------------------------------*/
+static void aml_audio_dac_power_gating(int flag)//flag=1 : on; flag=0 : off
+{
+	u32 value;
+	value = READ_APB_REG(APB_ADAC_POWER_CTRL_REG1);
+	if(flag){
+		value |= 3;
+	}
+	else{
+		value &= ~3;
+	}
+	WRITE_APB_REG(APB_ADAC_POWER_CTRL_REG1, value);
+}
+
+static void aml_audio_adc_power_gating(int flag)//flag=1 : on; flag=0 : off
+{
+	u32 value;
+	value = READ_APB_REG(APB_ADAC_POWER_CTRL_REG2);
+	if(flag){
+		value |= 3;
+	}
+	else{
+		value &= ~3;
+	}
+	WRITE_APB_REG(APB_ADAC_POWER_CTRL_REG2, value);
+}
 /*--------------------------------------------------------------------------*\
  * Helper functions
 \*--------------------------------------------------------------------------*/
@@ -330,7 +393,10 @@ static int aml_pcm_trigger(struct snd_pcm_substream *substream,
 	struct aml_runtime_data *prtd = rtd->private_data;
 	audio_stream_t *s = &prtd->s;
 	int ret = 0;
-	
+	struct aml_audio_platform *p;
+//printk("\n\n***Entered %s:%s\n\n", __FILE__,__func__);
+
+	p = (struct aml_audio_platform *)prtd->pcm->card->dev->platform_data;
 	spin_lock(&s->lock);
 	switch (cmd) {
 	case SNDRV_PCM_TRIGGER_START:
@@ -344,6 +410,11 @@ static int aml_pcm_trigger(struct snd_pcm_substream *substream,
 		// TODO
 		if(substream->stream == SNDRV_PCM_STREAM_PLAYBACK){
 		//    printk("aml_pcm_trigger: playback start\n");
+if(p&&p->audio_pre_start&&p->is_hp_pluged){
+	if(!p->is_hp_pluged())
+		p->audio_pre_start();
+}
+aml_audio_clock_gating_enable();
 			audio_enable_ouput(1);
 		}else{
 		//	printk("aml_pcm_trigger: capture start\n");
@@ -366,7 +437,12 @@ static int aml_pcm_trigger(struct snd_pcm_substream *substream,
 		s->active = 0;
 		if(substream->stream == SNDRV_PCM_STREAM_PLAYBACK){
         //    printk("aml_pcm_trigger: playback stop\n");
-				audio_enable_ouput(0);
+			audio_enable_ouput(0);
+			if(p&&p->audio_post_stop&&p->is_hp_pluged){
+				if(!p->is_hp_pluged())
+					p->audio_post_stop();
+			}
+			aml_audio_clock_gating_disable();
 		}else{
         //    printk("aml_pcm_trigger: capture stop\n");
 				audio_in_i2s_enable(0);
