@@ -13,10 +13,10 @@
 #include <mach/am_regs.h>
 #endif
 
-//#include "../sound/aml_audio_hw.h"
-
-
+#if !defined(CONFIG_PREEMPT)
 #define CONFIG_AM_TIMESYNC_LOG
+#endif
+
 #ifdef CONFIG_AM_TIMESYNC_LOG
 #define AMLOG
 #define LOG_LEVEL_ERROR     0
@@ -278,18 +278,9 @@ static void tsync_pcr_recover_timer_func(unsigned long arg)
     add_timer(&tsync_pcr_recover_timer);
 }
 
-void tsync_avevent(avevent_t event, u32 param)
+void tsync_avevent_locked(avevent_t event, u32 param)
 {
-    ulong flags;
     u32 t;
-    ulong fiq_flag;
-    amlog_level(LOG_LEVEL_INFO, "[%s]event:%d, param %d\n",
-                __FUNCTION__, event, param);
-    spin_lock_irqsave(&lock, flags);
-
-    raw_local_save_flags(fiq_flag);
-
-    local_fiq_disable();
 
     switch (event) {
     case VIDEO_START:
@@ -517,6 +508,22 @@ void tsync_avevent(avevent_t event, u32 param)
     default:
         break;
     }
+}
+EXPORT_SYMBOL(tsync_avevent_locked);
+
+void tsync_avevent(avevent_t event, u32 param)
+{
+    ulong flags;
+    ulong fiq_flag;
+    amlog_level(LOG_LEVEL_INFO, "[%s]event:%d, param %d\n",
+                __FUNCTION__, event, param);
+    spin_lock_irqsave(&lock, flags);
+
+    raw_local_save_flags(fiq_flag);
+
+    local_fiq_disable();
+
+    tsync_avevent_locked(event, param);
 
     raw_local_irq_restore(fiq_flag);
 

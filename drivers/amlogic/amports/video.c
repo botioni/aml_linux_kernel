@@ -992,7 +992,7 @@ static inline bool vpts_expire(vframe_t *cur_vf, vframe_t *next_vf)
         pts = timestamp_vpts_get() + (cur_vf ? DUR2PTS(cur_vf->duration) : 0);
 
         if ((systime - pts) >= 0) {
-            tsync_avevent(VIDEO_TSTAMP_DISCONTINUITY, next_vf->pts);
+            tsync_avevent_locked(VIDEO_TSTAMP_DISCONTINUITY, next_vf->pts);
 			printk("video discontinue, system=0x%x vpts=0x%x\n", systime, pts);
             return true;
         }
@@ -1000,6 +1000,10 @@ static inline bool vpts_expire(vframe_t *cur_vf, vframe_t *next_vf)
 
     return ((int)(timestamp_pcrscr_get() - pts) >= 0);
 }
+
+#if defined(CONFIG_CLK81_DFS)
+extern int check_and_set_clk81(void);
+#endif
 
 static void vsync_notify(void)
 {
@@ -1037,6 +1041,10 @@ static void vsync_notify(void)
 
         video_notify_flag &= ~(VIDEO_NOTIFY_PROVIDER_GET | VIDEO_NOTIFY_PROVIDER_PUT);
     }
+    
+#if defined(CONFIG_CLK81_DFS)   
+	check_and_set_clk81();
+#endif
 }
 
 #ifdef FIQ_VSYNC
@@ -1089,7 +1097,7 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
         vf = vf_peek();
 
         if (vf) {
-            tsync_avevent(VIDEO_START,
+            tsync_avevent_locked(VIDEO_START,
                           (vf->pts) ? vf->pts : timestamp_vpts_get());
 
 #ifdef SLOW_SYNC_REPEAT
