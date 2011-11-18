@@ -13,10 +13,10 @@
 #include <mach/am_regs.h>
 #endif
 
-//#include "../sound/aml_audio_hw.h"
-
-
+#if !defined(CONFIG_PREEMPT)
 #define CONFIG_AM_TIMESYNC_LOG
+#endif
+
 #ifdef CONFIG_AM_TIMESYNC_LOG
 #define AMLOG
 #define LOG_LEVEL_ERROR     0
