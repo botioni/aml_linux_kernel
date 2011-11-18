@@ -15,7 +15,6 @@
 #include <sound/soc-dapm.h>
 #include <sound/initval.h>
 #include <sound/tlv.h>
-#include <sound/aml_platform.h>
 
 #include <mach/am_regs.h>
 #include "aml_audio_hw.h"
@@ -246,8 +245,8 @@ void aml_m3_reset(struct snd_soc_codec* codec, bool first_time)
         latch_(codec);
 	    latch_(codec);
     }
-	WRITE_CBUS_REG(HHI_GCLK_MPEG1, READ_CBUS_REG(HHI_GCLK_MPEG1)&~(1<<2));
-    aml_reset_path(codec, AML_PWR_DOWN);
+
+
     msleep(200);
 }
 
@@ -901,11 +900,7 @@ static int aml_m3_codec_probe(struct platform_device *pdev)
 {
 	struct snd_soc_device *socdev = platform_get_drvdata(pdev);
 	struct snd_soc_codec *codec;
-	struct aml_audio_platform *p;
 	int ret = 0;
-printk("***Entered %s:%s\n", __FILE__,__func__);
-	p = pdev->dev.platform_data;
-	socdev->card->dev->platform_data = p;
 
 	if (!aml_m3_codec) {
 		dev_err(&pdev->dev, "AML_M3_CODEC not yet discovered\n");

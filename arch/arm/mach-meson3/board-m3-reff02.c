@@ -79,7 +79,7 @@
 #include <linux/efuse.h>
 #endif
 
-#include <sound/aml_platform.h>
+
 
 #if defined(CONFIG_KEYPADS_AM)||defined(CONFIG_KEYPADS_AM_MODULE)
 static struct resource intput_resources[] = {
@@ -634,6 +634,13 @@ int get_display_mode(void) {
 }
 
 #if defined(CONFIG_SND_AML_M3)
+static struct platform_device aml_audio = {
+    .name               = "aml_m3_audio",
+    .id                     = -1,
+    .resource       =   aml_m3_audio_resource,
+    .num_resources  =   ARRAY_SIZE(aml_m3_audio_resource),
+};
+
 int aml_m3_is_hp_pluged(void)
 {
 	if(get_display_mode() != 0) //if !panel, return 1 to mute spk		
@@ -641,6 +648,11 @@ int aml_m3_is_hp_pluged(void)
 		
 	return READ_CBUS_REG_BITS(PREG_PAD_GPIO0_I, 19, 1); //return 1: hp pluged, 0: hp unpluged.
 }
+
+
+struct aml_m3_platform_data {
+    int (*is_hp_pluged)(void);
+};
 
 void mute_spk(struct snd_soc_codec* codec, int flag)
 {
@@ -656,35 +668,9 @@ void mute_spk(struct snd_soc_codec* codec, int flag)
 	}
 }
 
-static void unmute_spk_pre_start(void)
-{
-	printk("aml_audio_pre_start\n");
-	set_gpio_val(GPIOC_bank_bit0_15(4), GPIOC_bit_bit0_15(4), 1);	 // unmute speak
-	set_gpio_mode(GPIOC_bank_bit0_15(4), GPIOC_bit_bit0_15(4), GPIO_OUTPUT_MODE);
-}
 
-static void mute_spk_post_stop(void)
-{
-	printk("aml_audio_post_stop\n");
-	set_gpio_val(GPIOC_bank_bit0_15(4), GPIOC_bit_bit0_15(4), 0);	 // mute speak
-	set_gpio_mode(GPIOC_bank_bit0_15(4), GPIOC_bit_bit0_15(4), GPIO_OUTPUT_MODE);
-}
-
-static struct aml_audio_platform aml_audio_pdata = {
+static struct aml_m3_platform_data aml_m3_pdata = {
     .is_hp_pluged = &aml_m3_is_hp_pluged,
-	.mute_spk = &mute_spk,
-	.audio_pre_start = &unmute_spk_pre_start,
-	.audio_post_stop = &mute_spk_post_stop,
-};
-
-static struct platform_device aml_audio = {
-    .name               = "aml_m3_audio",
-    .id                     = -1,
-    .resource       =   aml_m3_audio_resource,
-    .num_resources  =   ARRAY_SIZE(aml_m3_audio_resource),
-    .dev = {
-        .platform_data = &aml_audio_pdata,
-    },
 };
 #endif
 
