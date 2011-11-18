@@ -596,6 +596,7 @@ static void itk_work(struct work_struct *work)
             #ifdef ITK_TS_DEBUG_INFO
             printk(KERN_INFO "DOWN\n");
             #endif
+            input_report_key(ts->input, BTN_TOUCH,  1);
         }
         switch (ts->touching_num)
         {
@@ -671,6 +672,7 @@ restart:
             #ifdef ITK_TS_DEBUG_INFO
             printk(KERN_INFO "UP\n");
             #endif
+            input_report_key(ts->input, BTN_TOUCH,  0);
             input_report_abs(ts->input, ABS_MT_TOUCH_MAJOR, 0);
             #ifdef ITK_TS_DEBUG_REPORT
             printk(KERN_INFO "report ABS_MT_TOUCH_MAJOR %d\n", 0);

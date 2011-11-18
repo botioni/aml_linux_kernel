@@ -260,7 +260,7 @@ static void vclk_set_lcd( int pll_sel, int pll_div_sel, int vclk_sel,
 		printk("(CTS_DDR_CLK) = %ldMHz\n", ddr_pll_clk);
     }
 
-    if ((ddr_pll_clk==516)||(ddr_pll_clk==508)||(ddr_pll_clk==474)) { //use ddr pll 
+    if ((ddr_pll_clk==516)||(ddr_pll_clk==508)||(ddr_pll_clk==474)||(ddr_pll_clk==486)) { //use ddr pll 
         WRITE_MPEG_REG( HHI_VID_PLL_CNTL, pll_reg|(1<<30) );
         //WRITE_MPEG_REG( HHI_VID_PLL_CNTL2, 0x65e31ff );
         //WRITE_MPEG_REG( HHI_VID_PLL_CNTL3, 0x9649a941 );
@@ -291,7 +291,7 @@ static void vclk_set_lcd( int pll_sel, int pll_div_sel, int vclk_sel,
     //WRITE_MPEG_REG( ISA_TIMERE, 0); while( READ_MPEG_REG(ISA_TIMERE) < 5 ) {}    
 	udelay(5);
 	
-    if ((ddr_pll_clk==516)||(ddr_pll_clk==508)||(ddr_pll_clk==474)) { //use ddr pll 
+    if ((ddr_pll_clk==516)||(ddr_pll_clk==508)||(ddr_pll_clk==474)||(ddr_pll_clk==486)) { //use ddr pll 
         WRITE_MPEG_REG_BITS (HHI_VID_CLK_CNTL, 3, 16, 3);
         WRITE_MPEG_REG( HHI_VID_CLK_CNTL, READ_MPEG_REG(HHI_VID_CLK_CNTL) |  (1 << 19) );     //enable clk_div0 
         WRITE_MPEG_REG( HHI_VID_CLK_CNTL, READ_MPEG_REG(HHI_VID_CLK_CNTL) |  (1 << 20) );    //enable clk_div1 
@@ -548,6 +548,9 @@ static void _init_vout(tcon_dev_t *pDev)
 		pDev->conf.sync_duration_num = 516;
         } else if (ddr_pll_clk==508) { //use ddr pll 
 		pDev->conf.clk_ctrl = 0x100e;
+		pDev->conf.sync_duration_num = 508;
+        } else if (ddr_pll_clk==486){ //use ddr pll 
+		pDev->conf.clk_ctrl = 0x100f;
 		pDev->conf.sync_duration_num = 508;
         } else if (ddr_pll_clk==474){ //use ddr pll 
 		pDev->conf.clk_ctrl = 0x100d;
