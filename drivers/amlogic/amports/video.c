@@ -992,7 +992,7 @@ static inline bool vpts_expire(vframe_t *cur_vf, vframe_t *next_vf)
         pts = timestamp_vpts_get() + (cur_vf ? DUR2PTS(cur_vf->duration) : 0);
 
         if ((systime - pts) >= 0) {
-            tsync_avevent(VIDEO_TSTAMP_DISCONTINUITY, next_vf->pts);
+            tsync_avevent_locked(VIDEO_TSTAMP_DISCONTINUITY, next_vf->pts);
 			printk("video discontinue, system=0x%x vpts=0x%x\n", systime, pts);
             return true;
         }
@@ -1097,7 +1097,7 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
         vf = vf_peek();
 
         if (vf) {
-            tsync_avevent(VIDEO_START,
+            tsync_avevent_locked(VIDEO_START,
                           (vf->pts) ? vf->pts : timestamp_vpts_get());
 
 #ifdef SLOW_SYNC_REPEAT

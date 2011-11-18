@@ -415,6 +415,14 @@ void sdio_timeout_int_handle(struct memory_card *card)
 	}
 	else
 	{
+		if (card == NULL)
+		{
+			printk("sdio null\n");
+			sdio_close_host_interrupt(SDIO_TIMEOUT_INT);
+			complete(&sdio_int_complete);
+			return;
+		}
+
 		card->card_io_init(card);
 		card->card_detector(card);
 		if ((card->card_status == CARD_REMOVED) || (++sdio_timeout_int_num >= sdio_timeout_int_times)) {
