@@ -79,9 +79,5 @@ config AML_SUSPEND
 config AML_INIT_GATE_OFF
 	bool "turn the gates off when system init"
 	default n
-	
-config CLK81_DFS
-	bool "scale clk81 freqence in dynamic mode"
-	default n
 		
 endmenu
