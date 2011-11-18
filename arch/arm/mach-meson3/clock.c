@@ -336,7 +336,6 @@ static int clk_set_rate_a9_clk(struct clk *clk, unsigned long rate)
 	}
 
     if ((mali_divider-1) != (READ_MPEG_REG(HHI_MALI_CLK_CNTL)&0x7f)){
-		CLEAR_CBUS_REG_MASK(HHI_MALI_CLK_CNTL, 1<<8); // mali off
 	    WRITE_CBUS_REG(HHI_MALI_CLK_CNTL,
 	               (3 << 9)    |   		// select ddr pll as clock source
 	               ((mali_divider-1) << 0)); // ddr clk / divider
@@ -363,7 +362,6 @@ static int clk_set_rate_a9_clk(struct clk *clk, unsigned long rate)
     clk_a9 = READ_MPEG_REG(HHI_SYS_CPU_CLK_CNTL); // read cbus for a short delay
     SET_CBUS_REG_MASK(HHI_SYS_CPU_CLK_CNTL, 1<<7); // cpu use sys pll
     clk->rate = rate;
-	SET_CBUS_REG_MASK(HHI_MALI_CLK_CNTL, 1<<8); // mali on
     local_irq_restore(flags);
 
     printk(KERN_INFO "-----------------------------------\n");
