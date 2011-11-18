@@ -1,1 +1,3 @@
-obj-$(CONFIG_AR1520_GPS) += ar1520/
+# File: Makefile
+
+obj-$(CONFIG_GPS_POWERCTRL) += gps_power.o
