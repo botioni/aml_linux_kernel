@@ -14,6 +14,8 @@
 #include <linux/init.h>
 #include <linux/spinlock.h>
 #include <linux/delay.h>
+#include <linux/sysfs.h>
+#include <linux/device.h>
 
 #include <asm/clkdev.h>
 #include <mach/clock.h>
@@ -724,16 +726,183 @@ static int cpu_clk_setting(unsigned long cpu_freq)
     return ret;
 }
 
+#if defined(CONFIG_CLK81_DFS)
+#define MAX_FREQ_LEVEL 1
+
+static int clk81_freq_level = 0;
+static int new_clk81_freq_level = 0;
+static int crystal_freq = 0;
+
+static int level_freq[MAX_FREQ_LEVEL+1] = {
+	128000000,
+	192000000,
+};
+
+static int set_clk81_level(int level)
+{
+	int clock = level_freq[level];
+	unsigned long clk;
+	int baudrate;
+
+	if (((ddr_pll_clk==516)||(ddr_pll_clk==508)||(ddr_pll_clk==474)
+		||(ddr_pll_clk==486))&& level == 0){
+		clock = clk81.rate = ddr_pll_clk*1000000/4;
+		baudrate = (clock / (115200 * 4)) - 1;
+		CLEAR_CBUS_REG_MASK(HHI_MPEG_CLK_CNTL, (1 << 8)); // use xtal
+		WRITE_MPEG_REG(HHI_MPEG_CLK_CNTL,	// MPEG clk81 set to misc/4
+				(3 << 12)	|	// select ddr PLL
+				((4 - 1) << 0)	|	// div3
+				(1 << 7)	|	// cntl_hi_mpeg_div_en, enable gating
+				(1 << 15));		// Production clock enable
+		SET_CBUS_REG_MASK(HHI_MPEG_CLK_CNTL, (1 << 8)); // use pll
+		WRITE_AOBUS_REG_BITS(AO_UART_CONTROL, baudrate & 0xfff, 0, 12);
+		SET_CBUS_REG_MASK(HHI_OTHER_PLL_CNTL, (1 << 15)); // other pll off
+
+		clk = clk_util_clk_msr(CLK81);
+		printk("(CLK81) = %ldMHz\n", clk);
+		return 0;			
+	}
+
+	CLEAR_CBUS_REG_MASK(HHI_MPEG_CLK_CNTL, 1<<8);
+	baudrate = (clock / (115200 * 4)) - 1;
+	clk81.rate = clock;
+	WRITE_MPEG_REG(HHI_MPEG_CLK_CNTL,	// MPEG clk81 set to misc/4
+				(2 << 12)	|	// select misc PLL
+				((4 - 1) << 0)	|	// div1
+				(1 << 7)	|	// cntl_hi_mpeg_div_en, enable gating
+				(1 << 15));		// Production clock enable
+	WRITE_AOBUS_REG_BITS(AO_UART_CONTROL, baudrate & 0xfff, 0, 12);
+	SET_CBUS_REG_MASK(HHI_MPEG_CLK_CNTL, 1<<8);
+	return 0;
+}
+
+int check_and_set_clk81(void)
+{
+	if (clk81_freq_level != new_clk81_freq_level) {
+		set_clk81_level(new_clk81_freq_level);
+		clk81_freq_level = new_clk81_freq_level;
+	}
+	return 0;
+}	
+EXPORT_SYMBOL(check_and_set_clk81);
+
+static int get_max_common_divisor(int a, int b)
+{
+    while (b) {
+        int temp = b;
+        b = a % b;
+        a = temp;
+    }
+    return a;
+}
+
+static clk81_pll_setting(unsigned crystal_freq, unsigned  out_freq)
+{
+    int n, m, od;
+    unsigned long crys_M, out_M, middle_freq;
+    unsigned long flags;
+    
+    
+    crys_M = crystal_freq / 1000000;
+    out_M = out_freq / 1000000;
+    if (out_M < 400) {
+        /*if <400M, Od=1*/
+        od = 1;/*out=pll_out/(1<<od)*/
+        out_M = out_M << 1;
+    } else {
+        od = 0;
+    }
+
+    middle_freq = get_max_common_divisor(crys_M, out_M);
+    n = crys_M / middle_freq;
+    m = out_M / (middle_freq);
+    if (n > (1 << 5) - 1) {
+        printk(KERN_ERR "misc_pll_setting  error, n is too bigger n=%d,crys_M=%ldM,out=%ldM\n",
+               n, crys_M, out_M);
+        return -1;
+    }
+    if (m > (1 << 9) - 1) {
+        printk(KERN_ERR "misc_pll_setting  error, m is too bigger m=%d,crys_M=%ldM,out=%ldM\n",
+               m, crys_M, out_M);
+        return -2;
+    }
+    local_irq_save(flags);
+    WRITE_MPEG_REG(HHI_OTHER_PLL_CNTL,
+                   m |
+                   n << 9 |
+                   (od & 1) << 16
+                  ); // misc PLL
+    WRITE_MPEG_REG(RESET5_REGISTER, (1<<1));        // reset misc pll
+    //WRITE_AOBUS_REG_BITS(AO_UART_CONTROL, (((out_freq/4) / (115200*4)) - 1) & 0xfff, 0, 12);
+    local_irq_restore(flags);
+	udelay(100);
+    return 0;	
+}
+
+static ssize_t  clk81_level_store(struct class *cla, struct class_attribute *attr, char *buf,size_t count)
+{
+	//printk("set freq as level %s\n", buf);
+	int val = 0;
+	if (!crystal_freq) {
+		crystal_freq = get_xtal_clock();
+	}
+	if(sscanf(buf, "%d", &val) == 1) {
+		if (val > MAX_FREQ_LEVEL) {
+			printk("level can not greater than %d\n", MAX_FREQ_LEVEL);
+			return -1;
+		}
+		if (val < 0) {
+			printk("level can not less  than 0 \n");
+			return -1;
+		}
+		if (clk81_freq_level == val)
+			return 0;
+		//set_clk81_level(val);
+		if (val == 1) {
+			SET_CBUS_REG_MASK(HHI_OTHER_PLL_CNTL, (0 << 15)); // other pll on
+			if  (clk81_pll_setting(crystal_freq, level_freq[1] * 4) != 0) {
+				printk("the misc pll can not be set\n");
+				SET_CBUS_REG_MASK(HHI_OTHER_PLL_CNTL, (1 << 15)); // other pll off
+				return -1;
+			}
+		}
+		new_clk81_freq_level = val;
+		return 0;
+	} else
+		return -1;
+}
+
+static ssize_t  clk81_level_show(struct class *cla, struct class_attribute *attr, char *buf)
+{
+	printk("level is %d\n",  clk81_freq_level);
+	return 0;
+}
+
+static struct class_attribute clk81_class_attrs[] = {
+	__ATTR(clk81_freq_level, S_IRWXU, clk81_level_show, clk81_level_store),
+	__ATTR_NULL,
+};
+
+static struct class clk81_class = {    
+	.name = "aml_clk81",
+	.class_attrs = clk81_class_attrs,
+};
+#endif
+
 static int __init meson_clock_init(void)
 {
     int ret;
     if (init_clock && init_clock != a9_clk.rate) {
         ret = cpu_clk_setting(init_clock);
-        if (ret>=0){
+    	if (ret>=0){
             a9_clk.rate = init_clock;
             clk_sys_pll.rate = init_clock << ret;
         }
     }
+
+#if defined(CONFIG_CLK81_DFS)
+    ret = class_register(&clk81_class);
+#endif
 
     /* Register the lookups */
     clkdev_add_table(lookups, ARRAY_SIZE(lookups));
@@ -798,12 +967,15 @@ static int __init clk81_clock_setup(char *ptr)
                        ((3 - 1) << 0) |          // div3
                        (1 << 7) |                // cntl_hi_mpeg_div_en, enable gating
 					   (1 << 15));                // Production clock enable
-		SET_CBUS_REG_MASK(HHI_MPEG_CLK_CNTL, (1 << 8)); // use pll
+	SET_CBUS_REG_MASK(HHI_MPEG_CLK_CNTL, (1 << 8)); // use pll
         WRITE_AOBUS_REG_BITS(AO_UART_CONTROL, baudrate & 0xfff, 0, 12);
         SET_CBUS_REG_MASK(HHI_OTHER_PLL_CNTL, (1 << 15)); // other pll off
 
         clk = clk_util_clk_msr(CLK81);
         printk("(CLK81) = %ldMHz\n", clk);
+#if defined(CONFIG_CLK81_DFS)
+        new_clk81_freq_level = clk81_freq_level = 0; 
+#endif
         return 0;			
 	}
 
@@ -825,6 +997,9 @@ static int __init clk81_clock_setup(char *ptr)
    	
     clk = clk_util_clk_msr(CLK81);
     printk("(CLK81) = %ldMHz\n", clk);
+#if defined(CONFIG_CLK81_DFS)
+    new_clk81_freq_level = clk81_freq_level = 1;
+#endif
     return 0;
 }
 __setup("clk81=", clk81_clock_setup);
