@@ -615,21 +615,13 @@ static struct resource aml_m3_audio_resource[] = {
     },
 };
 
+extern char* get_vout_mode_internal(void);
+
 /* Check current mode, 0: panel; 1: !panel*/
 int get_display_mode(void) {
-	int fd;
 	int ret = 0;
-	char mode[8];	
-	
-	fd = sys_open("/sys/class/display/mode", O_RDWR | O_NDELAY, 0);
-	if(fd >= 0) {
-	  	memset(mode,0,8);
-	  	sys_read(fd,mode,8);
-	  	if(strncmp("panel",mode,5))
-	  		ret = 1;
-	  	sys_close(fd);
-	}
-
+	if(strncmp("panel", get_vout_mode_internal(), 5))
+		ret = 1;
 	return ret;
 }
 

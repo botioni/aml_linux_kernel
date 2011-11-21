@@ -176,6 +176,13 @@ static  void  set_vout_mode(char * name)
 	amlog_mask_level(LOG_MASK_PARA,LOG_LEVEL_LOW,"new mode %s set ok\r\n",name);
 	vout_notifier_call_chain(VOUT_EVENT_MODE_CHANGE,&mode) ;
 }
+
+char* get_vout_mode_internal(void)
+{
+	return mode;
+}
+EXPORT_SYMBOL(get_vout_mode_internal);
+
 //axis type : 0x12  0x100 0x120 0x130
 static void  set_vout_window(char *para) 
 {
