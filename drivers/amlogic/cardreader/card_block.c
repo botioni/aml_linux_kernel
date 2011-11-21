@@ -78,7 +78,9 @@ void card_cleanup_queue(struct card_queue *cq)
 {
 	struct card_queue_list *cq_node_current = card_queue_head;
 	struct card_queue_list *cq_node_prev = NULL;
-
+	struct request_queue *q = cq->queue;
+	unsigned long flags;
+	
 	while (cq_node_current != NULL){
 		if (cq_node_current->cq == cq)
 			break;
@@ -104,6 +106,12 @@ void card_cleanup_queue(struct card_queue *cq)
 	kfree(cq->sg);
 	cq->sg = NULL;
 
+	/* Empty the queue */   
+	spin_lock_irqsave(q->queue_lock, flags);
+	q->queuedata = NULL;
+	blk_start_queue(q);
+	spin_unlock_irqrestore(q->queue_lock, flags);
+	
 	//blk_cleanup_queue(cq->queue);
 
 	cq->card = NULL;
@@ -233,7 +241,16 @@ static void card_request(struct request_queue *q)
 {
 	struct card_queue *cq = q->queuedata;
 	struct card_queue_list *cq_node_current = card_queue_head;
+    struct request* req; 
 
+	if (!cq) {
+		while ((req = blk_fetch_request(q)) != NULL) {
+			req->cmd_flags |= REQ_QUIET;
+			__blk_end_request_all(req, -EIO);
+		}
+		return;
+	}
+	
 	WARN_ON(!cq);
 	WARN_ON(!cq_node_current);
 	WARN_ON(!cq_node_current->cq);
