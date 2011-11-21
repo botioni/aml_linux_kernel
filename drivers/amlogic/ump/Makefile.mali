@@ -25,25 +25,28 @@ USING_MMU ?= 1
 USING_UMP := 1
 TARGET_PLATFORM ?= aml-meson
 CONFIG ?= aml-meson-m400-1
+BUILD ?= debug
 
-## @note Should allow overriding of building UMP for non-debug:
 EXTRA_CFLAGS += -DDEBUG -DMALI_STATE_TRACKING=0
+ifeq ($(BUILD), debug)
+EXTRA_CFLAGS += -DDEBUG
+endif
 
 # linux build system integration
 
 ifneq ($(KERNELRELEASE),)
 # Inside the kernel build system
 
-EXTRA_CFLAGS += -I$(TOP) -I$(TOP)/common -I$(TOP)/linux -I$(TOP)/../mali/common -I$(TOP)/../mali/linux -I$(TOP)/include/ump
+EXTRA_CFLAGS += -I$(KBUILD_EXTMOD) -I$(KBUILD_EXTMOD)/common -I$(KBUILD_EXTMOD)/linux -I$(KBUILD_EXTMOD)/../mali/common -I$(KBUILD_EXTMOD)/../mali/linux -I$(KBUILD_EXTMOD)/include/ump
 
 # For customer releases the Linux Device Drivers will be provided as ARM proprietary and GPL releases:
 # The ARM proprietary product will only include the license/proprietary directory
 # The GPL product will only include the license/gpl directory
 
-ifeq ($(wildcard $(TOP)/linux/license/gpl/*),)
-EXTRA_CFLAGS += -I$(TOP)/linux/license/proprietary
+ifeq ($(wildcard $(KBUILD_EXTMOD)/linux/license/gpl/*),)
+EXTRA_CFLAGS += -I$(KBUILD_EXTMOD)/linux/license/proprietary
 else
-EXTRA_CFLAGS += -I$(TOP)/linux/license/gpl
+EXTRA_CFLAGS += -I$(KBUILD_EXTMOD)/linux/license/gpl
 endif
 
 SRC +=	$(UMP_FILE_PREFIX)linux/ump_kernel_linux.c \
