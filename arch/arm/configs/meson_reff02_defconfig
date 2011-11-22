@@ -1,7 +1,7 @@
 #
 # Automatically generated make config: don't edit
 # Linux kernel version: 2.6.34
-# Sat Nov 12 22:11:37 2011
+# Mon Nov 21 13:34:07 2011
 #
 CONFIG_ARM=y
 CONFIG_HOLES_IN_ZONE=y
@@ -284,6 +284,7 @@ CONFIG_MACH_MESON3_REFF02=y
 CONFIG_MESON3_CLOCK_TICK_RATE=25000000
 CONFIG_AML_SUSPEND=y
 # CONFIG_AML_INIT_GATE_OFF is not set
+# CONFIG_CLK81_DFS is not set
 
 #
 # Processor Type
@@ -614,7 +615,9 @@ CONFIG_BT_L2CAP=y
 CONFIG_BT_SCO=y
 CONFIG_BT_RFCOMM=y
 CONFIG_BT_RFCOMM_TTY=y
-# CONFIG_BT_BNEP is not set
+CONFIG_BT_BNEP=y
+# CONFIG_BT_BNEP_MC_FILTER is not set
+# CONFIG_BT_BNEP_PROTO_FILTER is not set
 CONFIG_BT_HIDP=y
 
 #
@@ -782,7 +785,7 @@ CONFIG_EFUSE=y
 #
 # Amlogic GPS Support
 #
-# CONFIG_AR1520_GPS is not set
+# CONFIG_GPS_POWERCTRL is not set
 
 #
 # Block devices
