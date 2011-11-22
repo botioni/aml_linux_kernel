@@ -951,10 +951,19 @@ static int __init clk81_clock_setup(char *ptr)
     unsigned long clk;
     int baudrate;
 
+	clk = clk_util_clk_msr(CLK81);
+    printk("CLK81(from MSR_CLK_REG) = %ldMHz, a9_clk(from args) = %ld\n", (clk*1000000), clock);
+
     if (!ddr_pll_clk){
     	ddr_pll_clk = clk_util_clk_msr(CTS_DDR_CLK);
     	printk("(CTS_DDR_CLK) = %ldMHz\n", ddr_pll_clk);
     }
+
+	if((clk*1000000) == clock)
+	{
+		printk("CLK81 is the same as args\n");
+		return 0;
+	}
 
 	if ((ddr_pll_clk==516)||(ddr_pll_clk==508)||(ddr_pll_clk==474)){
         clock = clk81.rate = ddr_pll_clk*1000000/3;
@@ -970,7 +979,7 @@ static int __init clk81_clock_setup(char *ptr)
         SET_CBUS_REG_MASK(HHI_OTHER_PLL_CNTL, (1 << 15)); // other pll off
 
         clk = clk_util_clk_msr(CLK81);
-        printk("(CLK81) = %ldMHz\n", clk);
+        printk("set CLK81 to %ldMHz, ddr_pll_clk = %ldMHz\n", clk, ddr_pll_clk);
 #if defined(CONFIG_CLK81_DFS)
         new_clk81_freq_level = clk81_freq_level = 0; 
 #endif
@@ -994,7 +1003,7 @@ static int __init clk81_clock_setup(char *ptr)
    	SET_CBUS_REG_MASK(HHI_MPEG_CLK_CNTL, 1<<8);
    	
     clk = clk_util_clk_msr(CLK81);
-    printk("(CLK81) = %ldMHz\n", clk);
+    printk("set CLK81 to %ldMHz\n", clk);
 #if defined(CONFIG_CLK81_DFS)
     new_clk81_freq_level = clk81_freq_level = 1;
 #endif
