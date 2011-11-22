@@ -1246,6 +1246,8 @@ static int ppmgr_task(void *data)
         }
         
         if (ppmgr_blocking) {
+            if((dec_vfp)&&(dec_vfp->event_cb))
+                dec_vfp->event_cb(VFRAME_EVENT_RECEIVER_RESET,NULL,NULL);
             vf_light_unreg_provider(&ppmgr_vf_provider);
             vf_local_init();
             vf_reg_provider(&ppmgr_vf_provider);
@@ -1342,6 +1344,9 @@ int ppmgr_buffer_init(void)
 int start_vpp_task(void)
 {
     if (!task) {
+        ppmgr_blocking = false;
+        if(get_vfp()!=&ppmgr_vf_provider)
+            vf_reg_provider(&ppmgr_vf_provider);
         vf_local_init();
         task = kthread_run(ppmgr_task, 0, "ppmgr");
     }

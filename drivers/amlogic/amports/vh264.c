@@ -103,6 +103,7 @@ static const struct vframe_receiver_op_s *vf_receiver;
 static vframe_t *vh264_vf_peek(void);
 static vframe_t *vh264_vf_get(void);
 static void vh264_vf_put(vframe_t *);
+static int vh264_event_cb(int type, void *data, void *private_data);
 static int  vh264_vf_states(vframe_states_t *states);
 
 static void vh264_prot_init(void);
@@ -115,6 +116,7 @@ static const struct vframe_provider_s vh264_vf_provider = {
     .peek = vh264_vf_peek,
     .get = vh264_vf_get,
     .put = vh264_vf_put,
+    .event_cb = vh264_event_cb,
     .vf_states = vh264_vf_states,
 };
 
@@ -243,6 +245,31 @@ static void vh264_vf_put(vframe_t *vf)
 {
     INCPTR(putting_ptr);
 }
+
+static int vh264_event_cb(int type, void *data, void *private_data)
+{
+#if 0  // currently for h264, disable it
+    if(type & VFRAME_EVENT_RECEIVER_RESET){
+        unsigned long flags;
+        amvdec_stop();
+#ifndef CONFIG_POST_PROCESS_MANAGER
+        vf_light_unreg_provider(&vh264_vf_provider);
+#endif
+        spin_lock_irqsave(&lock, flags);
+        const struct vframe_receiver_op_s *vf_receiver_bak = vf_receiver;
+        vh264_local_init();
+        vf_receiver = vf_receiver_bak;
+        vh264_prot_init();
+        spin_unlock_irqrestore(&lock, flags); 
+#ifndef CONFIG_POST_PROCESS_MANAGER
+        vf_reg_provider(&vh264_vf_provider);
+#endif              
+        amvdec_start();
+    }
+#endif
+    return 0;        
+}
+
 static int  vh264_vf_states(vframe_states_t *states)
 {
     unsigned long flags;

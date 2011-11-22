@@ -61,6 +61,7 @@ static const struct vframe_receiver_op_s *vf_receiver;
 static vframe_t *vh264mvc_vf_peek(void);
 static vframe_t *vh264mvc_vf_get(void);
 static void vh264mvc_vf_put(vframe_t *);
+static int vh264mvc_event_cb(int type, void *data, void *private_data);
 
 static void vh264mvc_prot_init(void);
 static void vh264mvc_local_init(void);
@@ -71,10 +72,11 @@ static const char vh264mvc_dec_id[] = "vh264mvc-dev";
 #define PROVIDER_NAME   "decoder.h264mvc"
 
 static const struct vframe_provider_s vh264mvc_vf_provider = {
-        .peek = vh264mvc_vf_peek,
-        .get = vh264mvc_vf_get,
-        .put = vh264mvc_vf_put,
-        .vf_states=NULL,
+    .peek = vh264mvc_vf_peek,
+    .get = vh264mvc_vf_get,
+    .put = vh264mvc_vf_put,
+    .event_cb = vh264mvc_event_cb,
+    .vf_states=NULL,
 };
 
 static u32 frame_width, frame_height, frame_dur;
@@ -407,6 +409,28 @@ static void vh264mvc_vf_put(vframe_t *vf)
     mvc_buf = to_mvcbuf(vf);
     list_add_tail(&mvc_buf->list, &recycle_list_head);
     recycle_vframe();
+}
+
+static int vh264mvc_event_cb(int type, void *data, void *private_data)
+{
+    if(type & VFRAME_EVENT_RECEIVER_RESET){
+        unsigned long flags;
+        amvdec_stop();
+#ifndef CONFIG_POST_PROCESS_MANAGER
+        vf_light_unreg_provider(&vh264mvc_vf_provider);
+#endif
+        spin_lock_irqsave(&lock, flags);
+        const struct vframe_receiver_op_s *vf_receiver_bak = vf_receiver;
+        vh264mvc_local_init();
+        vf_receiver = vf_receiver_bak;
+        vh264mvc_prot_init();
+        spin_unlock_irqrestore(&lock, flags); 
+#ifndef CONFIG_POST_PROCESS_MANAGER
+        vf_reg_provider(&vh264mvc_vf_provider);
+#endif              
+        amvdec_start();
+    }
+    return 0;        
 }
 
 /**/

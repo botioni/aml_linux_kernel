@@ -46,6 +46,7 @@ typedef enum {
 #define VFRAME_EVENT_RECEIVER_PUT               0x02
 #define VFRAME_EVENT_RECEIVER_FRAME_WAIT        0x04
 #define VFRAME_EVENT_RECEIVER_POS_CHANGED       0x08
+#define VFRAME_EVENT_RECEIVER_RESET             0x10
 
 typedef struct vframe_provider_s {
     vframe_t * (*peek)(void);

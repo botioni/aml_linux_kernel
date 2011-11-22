@@ -91,14 +91,18 @@ MODULE_AMLOG(LOG_LEVEL_ERROR, 0, LOG_LEVEL_DESC, LOG_DEFAULT_MASK_DESC);
 static vframe_t *vmpeg_vf_peek(void);
 static vframe_t *vmpeg_vf_get(void);
 static void vmpeg_vf_put(vframe_t *);
+static int vmpeg_event_cb(int type, void *data, void *private_data);
 static int  vmpeg_vf_states(vframe_states_t *states);
 
+static void vmpeg12_prot_init(void);
+static void vmpeg12_local_init(void);
 
 static const char vmpeg12_dec_id[] = "vmpeg12-dev";
 static const struct vframe_provider_s vmpeg_vf_provider = {
     .peek = vmpeg_vf_peek,
     .get  = vmpeg_vf_get,
     .put  = vmpeg_vf_put,
+    .event_cb = vmpeg_event_cb,
     .vf_states = vmpeg_vf_states,
 };
 
@@ -333,6 +337,28 @@ static vframe_t *vmpeg_vf_get(void)
 static void vmpeg_vf_put(vframe_t *vf)
 {
     vfq_push(&recycle_q, vf);
+}
+
+static int vmpeg_event_cb(int type, void *data, void *private_data)
+{
+    if(type & VFRAME_EVENT_RECEIVER_RESET){
+        unsigned long flags;
+        amvdec_stop();
+#ifndef CONFIG_POST_PROCESS_MANAGER
+        vf_light_unreg_provider(&vmpeg_vf_provider);
+#endif
+        spin_lock_irqsave(&lock, flags);
+        const struct vframe_receiver_op_s *vf_receiver_bak = vf_receiver;
+        vmpeg12_local_init();
+        vf_receiver = vf_receiver_bak;
+        vmpeg12_prot_init();
+        spin_unlock_irqrestore(&lock, flags); 
+#ifndef CONFIG_POST_PROCESS_MANAGER
+        vf_reg_provider(&vmpeg_vf_provider);
+#endif              
+        amvdec_start();
+    }
+    return 0;        
 }
 
 static int  vmpeg_vf_states(vframe_states_t *states)

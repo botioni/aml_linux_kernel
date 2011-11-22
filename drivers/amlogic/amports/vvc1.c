@@ -76,7 +76,11 @@
 static vframe_t *vvc1_vf_peek(void);
 static vframe_t *vvc1_vf_get(void);
 static void vvc1_vf_put(vframe_t *);
+static int vvc1_event_cb(int type, void *data, void *private_data);
 static int  vvc1_vf_states(vframe_states_t *states);
+
+static void vvc1_prot_init(void);
+static void vvc1_local_init(void);
 
 static const char vvc1_dec_id[] = "vvc1-dev";
 
@@ -84,6 +88,7 @@ static const struct vframe_provider_s vvc1_vf_provider = {
     .peek = vvc1_vf_peek,
     .get = vvc1_vf_get,
     .put = vvc1_vf_put,
+    .event_cb = vvc1_event_cb,
     .vf_states = vvc1_vf_states,
 };
 static const struct vframe_receiver_op_s *vf_receiver;
@@ -430,6 +435,28 @@ static int vvc1_vf_states(vframe_states_t *states)
     
     spin_unlock_irqrestore(&lock, flags);
     return 0;
+}
+
+static int vvc1_event_cb(int type, void *data, void *private_data)
+{
+    if(type & VFRAME_EVENT_RECEIVER_RESET){
+        unsigned long flags;
+        amvdec_stop();
+#ifndef CONFIG_POST_PROCESS_MANAGER
+        vf_light_unreg_provider(&vvc1_vf_provider);
+#endif
+        spin_lock_irqsave(&lock, flags);
+        const struct vframe_receiver_op_s *vf_receiver_bak = vf_receiver;
+        vvc1_local_init();
+        vf_receiver = vf_receiver_bak;
+        vvc1_prot_init();
+        spin_unlock_irqrestore(&lock, flags); 
+#ifndef CONFIG_POST_PROCESS_MANAGER
+        vf_reg_provider(&vvc1_vf_provider);
+#endif              
+        amvdec_start();
+    }
+    return 0;        
 }
 
 int vvc1_dec_status(struct vdec_status *vstatus)
