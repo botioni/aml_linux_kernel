@@ -50,14 +50,14 @@ int meson_power_suspend()
 	static int test_flag = 0;
 	int i;
 	unsigned addr;
-  unsigned p_addr;
+	const entry_offset = 0x4400;
 	void	(*pwrtest_entry)(unsigned,unsigned,unsigned,unsigned);
 
 	flush_cache_all();
 
-	addr = 0x1FF04400;
-	p_addr = virt_to_phys(addr);
-	pwrtest_entry = (void (*)(unsigned,unsigned,unsigned,unsigned))p_addr;
+	addr = phys_to_virt(PHYS_OFFSET + CONFIG_AML_SUSPEND_FIRMWARE_BASE);
+	addr += entry_offset;
+	pwrtest_entry = (void (*)(unsigned,unsigned,unsigned,unsigned))addr;
 	if(test_flag != 1234){
 		test_flag = 1234;
 		printk("initial appf\n");

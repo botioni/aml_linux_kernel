@@ -2051,8 +2051,8 @@ static __initdata struct map_desc meson_video_mem_desc[] = {
     },
 #ifdef CONFIG_AML_SUSPEND
     {
-        .virtual    = PAGE_ALIGN(0xdff00000),
-        .pfn        = __phys_to_pfn(0x1ff00000),
+        .virtual    = PAGE_ALIGN(__phys_to_virt(PHYS_OFFSET + CONFIG_AML_SUSPEND_FIRMWARE_BASE)),
+        .pfn        = __phys_to_pfn(PHYS_OFFSET + CONFIG_AML_SUSPEND_FIRMWARE_BASE),
         .length     = SZ_1M,
         .type       = MT_MEMORY,
     },

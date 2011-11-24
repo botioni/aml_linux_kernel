@@ -83,5 +83,12 @@ config AML_INIT_GATE_OFF
 config CLK81_DFS
 	bool "scale clk81 freqence in dynamic mode"
 	default n
-		
+
+config AML_SUSPEND_FIRMWARE_BASE
+	hex
+	default 0x1ff00000
+	depends on AML_SUSPEND
+	help
+	  The base address of 1MB of memory to be reserved for suspend firmware.
+
 endmenu

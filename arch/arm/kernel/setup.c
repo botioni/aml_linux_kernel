@@ -440,29 +440,36 @@ static int __init early_mem(char *p)
 		start = memparse(endp + 1, NULL);
 #if defined(CONFIG_AMLOGIC_SERIES)
 	{
-		/*64M-128M is reversed for VIDEO MEMORY*/
-		unsigned long vstart,vend;
+		unsigned long bankstart;
+		bankstart = start;
+		/*64M-170M(approx.) is reserved for VIDEO MEMORY*/
 		if(	init_mach_mdesc &&
 			init_mach_mdesc->video_start>start &&
 			init_mach_mdesc->video_end>init_mach_mdesc->video_start)
 		{
+			unsigned long vstart, vend, vsize;
 			vstart=init_mach_mdesc->video_start;
 			vend=init_mach_mdesc->video_end;
-			arm_add_memory(start, size>(vstart-start)?(vstart-start):size);
-			if(size>(vend-start))
-			{
+			vsize = size > (vstart - start) ? (vstart - start) : size;
+			/* 0M-64M */
+			arm_add_memory(bankstart, vstart - bankstart);
+			bankstart = PAGE_ALIGN(vend);
+		}
 #ifdef CONFIG_AML_SUSPEND
-				arm_add_memory(vend+1,size-(vend-start+1)-SZ_1M);
-#else
-				arm_add_memory(vend+1,size-(vend-start+1));
+		if (bankstart < start + size) {
+			/* 511M-512M is reserved for suspend firmware. */
+			unsigned long firmwarestart, firmwaresize, firmwareend;
+			firmwarestart = PHYS_OFFSET + CONFIG_AML_SUSPEND_FIRMWARE_BASE;
+			firmwaresize = SZ_1M;
+			firmwareend = firmwarestart + firmwaresize;
+			/* 170M-511M */
+			arm_add_memory(bankstart, firmwarestart - bankstart);
+			bankstart = PAGE_ALIGN(firmwareend);
+		}
 #endif
-			}
-		}
-		else
-		{
-			arm_add_memory(start, size);
-		}
-		
+		/* 170-end or 512-end (ifdef CONFIG_AML_SUSPEND) */
+		if (bankstart < start + size)
+			arm_add_memory(bankstart, start + size - bankstart);
 	}
 #else
 		arm_add_memory(start, size);
