@@ -460,6 +460,7 @@ static int sub_port_reset(stream_port_t *port, struct stream_buf_s * pbuf)
 
     if (port->sid == 0xffff) { // es sub
         esparser_sub_reset();
+        pbuf->flag |= BUF_FLAG_PARSER;
     }
 
     pbuf->flag |= BUF_FLAG_IN_USE;
