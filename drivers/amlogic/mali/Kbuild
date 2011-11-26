@@ -37,10 +37,9 @@ TARGET_PLATFORM ?= meson_platform
 KERNEL_RUNTIME_PM_ENABLED ?= 0
 CONFIG ?= aml-meson-m400-1
 
-TOP=$(dir $(realpath $(lastword $(MAKEFILE_LIST))))
 ifeq ($(USING_UMP),1)
 	UMP_SYMVERS_FILE = ../ump/Module.symvers
-	KBUILD_EXTRA_SYMBOLS = $(TOP)/$(UMP_SYMVERS_FILE)
+	KBUILD_EXTRA_SYMBOLS = $(src)/$(UMP_SYMVERS_FILE)
 endif
 
 # Get path to driver source from Linux build system
