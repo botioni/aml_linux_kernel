@@ -23,8 +23,9 @@ FILES_PREFIX=
 -include ../../../arm_internal.mak
 
 ifeq ($(USING_UMP),1)
+    TOP=$(dir $(realpath $(lastword $(MAKEFILE_LIST))))
 	UMP_SYMVERS_FILE = ../ump/Module.symvers
-	KBUILD_EXTRA_SYMBOLS = $(CURDIR)/$(UMP_SYMVERS_FILE)
+	KBUILD_EXTRA_SYMBOLS = $(TOP)/$(UMP_SYMVERS_FILE)
 endif
 
 # Get any user defined KDIR-<names> or maybe even a hardcoded KDIR
