@@ -265,6 +265,15 @@ static int clk_set_rate_misc_pll(struct clk *clk, unsigned long rate)
     return ret;
 }
 
+static unsigned long clk_get_rate_clk81(struct clk *clk)
+{
+    unsigned long rate;
+
+    rate = clk_util_clk_msr(CLK81) * 1000000;
+    clk->rate = rate;
+    return rate;
+}
+
 static int clk_set_rate_clk81(struct clk *clk, unsigned long rate)
 {
     unsigned long r = rate;
@@ -406,6 +415,7 @@ static struct clk clk81 = {
     .rate       = 120000000,
     .min        = 100000000,
     .max        = 200000000,
+    .get_rate   = clk_get_rate_clk81,
     .set_rate   = clk_set_rate_clk81,
 };
 
