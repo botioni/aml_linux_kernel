@@ -72,7 +72,7 @@ static void set_lvds_gamma_table(u16 *data, u32 rgb_mask)
 
 static inline void _init_tcon_lvds(lcdConfig_t *pConf)
 {
-    printk("setup lvds tcon\n");
+    //printk("setup lvds tcon\n");
 	set_lvds_gamma_table(pConf->GammaTableR, H_SEL_R);
     set_lvds_gamma_table(pConf->GammaTableG, H_SEL_G);
     set_lvds_gamma_table(pConf->GammaTableB, H_SEL_B);
@@ -120,10 +120,10 @@ static inline void _init_tcon_lvds(lcdConfig_t *pConf)
 
     CLEAR_MPEG_REG_MASK(VPP_MISC, VPP_OUT_SATURATE);
 	
-	printk("RGB_BASE = %x %x\n", READ_MPEG_REG(L_RGB_BASE_ADDR),    pConf->rgb_base_addr);
-    printk("RGB_COEFF = %x %x\n", READ_MPEG_REG(L_RGB_COEFF_ADDR),  pConf->rgb_coeff_addr);
-    printk("POL_CNTL = %x %x\n", READ_MPEG_REG(L_POL_CNTL_ADDR),    pConf->pol_cntl_addr);
-    printk("DITH_CNTL = %x %x\n", READ_MPEG_REG(L_DITH_CNTL_ADDR),  pConf->dith_cntl_addr);
+	  //printk("RGB_BASE = %x %x\n", READ_MPEG_REG(L_RGB_BASE_ADDR),    pConf->rgb_base_addr);
+    //printk("RGB_COEFF = %x %x\n", READ_MPEG_REG(L_RGB_COEFF_ADDR),  pConf->rgb_coeff_addr);
+    //printk("POL_CNTL = %x %x\n", READ_MPEG_REG(L_POL_CNTL_ADDR),    pConf->pol_cntl_addr);
+    //printk("DITH_CNTL = %x %x\n", READ_MPEG_REG(L_DITH_CNTL_ADDR),  pConf->dith_cntl_addr);
 
     // printk("STH1_HS = %x %x\n", READ_MPEG_REG(L_STH1_HS_ADDR),    pConf->sth1_hs_addr);
     // printk("STH1_HE = %x %x\n", READ_MPEG_REG(L_STH1_HE_ADDR),    pConf->sth1_he_addr);
@@ -154,9 +154,9 @@ static inline void _init_tcon_lvds(lcdConfig_t *pConf)
     // printk("OEV1_VS = %x %x\n", READ_MPEG_REG(L_OEV1_VS_ADDR),    pConf->oev1_vs_addr);
     // printk("OEV1_VE = %x %x\n", READ_MPEG_REG(L_OEV1_VE_ADDR),    pConf->oev1_ve_addr);
 
-    printk("INV_CNT = %x %x\n", READ_MPEG_REG(L_INV_CNT_ADDR),    pConf->inv_cnt_addr);
-    printk("TCON_MISC_SEL_ADDR = %x %x\n", READ_MPEG_REG(L_TCON_MISC_SEL_ADDR), 	pConf->tcon_misc_sel_addr);
-    printk("DUAL_PORT_CNTL = %x %x\n", READ_MPEG_REG(L_DUAL_PORT_CNTL_ADDR), pConf->dual_port_cntl_addr);
+    //printk("INV_CNT = %x %x\n", READ_MPEG_REG(L_INV_CNT_ADDR),    pConf->inv_cnt_addr);
+    //printk("TCON_MISC_SEL_ADDR = %x %x\n", READ_MPEG_REG(L_TCON_MISC_SEL_ADDR), 	pConf->tcon_misc_sel_addr);
+    //printk("DUAL_PORT_CNTL = %x %x\n", READ_MPEG_REG(L_DUAL_PORT_CNTL_ADDR), pConf->dual_port_cntl_addr);
 }
 
 static void    clk_util_lvds_set_clk_div(  unsigned long   divn_sel,
@@ -272,14 +272,14 @@ static void vclk_set_lcd_lvds( int lcd_lvds, int pll_sel, int pll_div_sel, int v
       WRITE_MPEG_REG_BITS (HHI_VID_CLK_CNTL, 0, 15, 1);  //release soft reset
     }
     
-	printk("video pl1 clk = %d\n", clk_util_clk_msr(VID_PLL_CLK));
-    printk("video pll2 clk = %d\n", clk_util_clk_msr(VID2_PLL_CLK));
-    printk("cts_encl clk = %d\n", clk_util_clk_msr(CTS_ENCL_CLK));
+	  //printk("video pl1 clk = %d\n", clk_util_clk_msr(VID_PLL_CLK));
+    //printk("video pll2 clk = %d\n", clk_util_clk_msr(VID2_PLL_CLK));
+    //printk("cts_encl clk = %d\n", clk_util_clk_msr(CTS_ENCL_CLK));
 }
 
 static void set_lvds_pll(lcdConfig_t *pConf)
 {
-    printk("setup lvds clk.\n");		
+    //printk("setup lvds clk.\n");		
 	    
     int pll_div_post;
     int phy_clk_div2;
@@ -330,7 +330,7 @@ static void set_lvds_pll(lcdConfig_t *pConf)
 
 static void venc_set_lvds(lcdConfig_t *pConf)
 {
-    printk("setup lvds tvencoder.\n");
+    //printk("setup lvds tvencoder.\n");
     
 	WRITE_MPEG_REG(ENCL_VIDEO_EN,           0);
 	//int havon_begin = 80;
@@ -371,7 +371,7 @@ static void venc_set_lvds(lcdConfig_t *pConf)
 
 static void set_lvds_control(lcdConfig_t *pConf)
 {
-    printk("setup lvds control.\n");
+    //printk("setup lvds control.\n");
 	
 	unsigned long data32;    
 
@@ -400,17 +400,17 @@ static void set_lvds_control(lcdConfig_t *pConf)
                    ( 2<<14 )); //b_select  //0:R, 1:G, 2:B, 3:0
 				   
     WRITE_MPEG_REG( LVDS_GEN_CNTL, (READ_MPEG_REG(LVDS_GEN_CNTL) | (1 << 0)) );  //fifo enable  
-    WRITE_MPEG_REG( LVDS_GEN_CNTL, (READ_MPEG_REG(LVDS_GEN_CNTL) | (1 << 3))); // enable fifo
+    //WRITE_MPEG_REG( LVDS_GEN_CNTL, (READ_MPEG_REG(LVDS_GEN_CNTL) | (1 << 3))); // enable fifo
 }
 
 static void init_lvds_phy(lcdConfig_t *pConf)
 {
-    printk("init lvds phy.\n");
+    //printk("init lvds phy.\n");
 	
 	unsigned tmp_add_data;
     WRITE_MPEG_REG(LVDS_PHY_CNTL4, READ_MPEG_REG(LVDS_PHY_CNTL4)|0xfff);	
 	
-    WRITE_MPEG_REG(LVDS_PHY_CNTL3, 0x36);  //0x3f
+    WRITE_MPEG_REG(LVDS_PHY_CNTL3, 0x36);  //0x3f  //0x36
 
     // tmp_add_data  = 0;
     // tmp_add_data |= 0xf<<0; //LVDS_PREM_CTL<3:0>=<1111>
@@ -433,7 +433,7 @@ static void init_lvds_phy(lcdConfig_t *pConf)
     WRITE_MPEG_REG(LVDS_PHY_CNTL7,0xcccc);
     WRITE_MPEG_REG(LVDS_PHY_CNTL8,0xcccc);
 
-	WRITE_MPEG_REG(LVDS_PHY_CNTL4, READ_MPEG_REG(LVDS_PHY_CNTL4) & ~(0x7f<<0));  //disable LVDS phy port. wait for power on sequence.
+	WRITE_MPEG_REG(LVDS_PHY_CNTL4, READ_MPEG_REG(LVDS_PHY_CNTL4) & ~(0x7f<<0));  //disable LVDS phy port. wait for power on sequence.	
 }
 
 static inline void _init_tvenc(lcdConfig_t *pConf)
@@ -503,9 +503,9 @@ static void _disable_backlight(void)
 }
 static void _lcd_module_enable(void)
 {
-    printk("\n\n*********************\n");
+  //  printk("\n\n*********************\n");
 	printk("LCD module enable.\n");
-	printk("\n*********************\n\n");
+	//printk("\n*********************\n\n");
 	
 	BUG_ON(pDev==NULL);
     pDev->conf.power_on?pDev->conf.power_on():0;
@@ -568,7 +568,8 @@ static int lcd_suspend(void)
 static int lcd_resume(void)
 {
 	printk("lcd_resume\n");
-	_lcd_module_enable();
+	//_lcd_module_enable();
+	pDev->conf.power_on?pDev->conf.power_on():0;
     _enable_backlight(BL_MAX_LEVEL);
 	return 0;
 }

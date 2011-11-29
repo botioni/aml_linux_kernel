@@ -553,17 +553,22 @@ static int pixcir_i2c_ts_remove(struct i2c_client *client)
 
 static int pixcir_i2c_ts_suspend(struct i2c_client *client, pm_message_t mesg)
 {
+	unsigned char buf[2]={0x14, 0x03};
 	struct pixcir_i2c_ts_data *tsdata = dev_get_drvdata(&client->dev);
 	disable_irq_nosync(tsdata->irq);
 	//if (device_may_wakeup(&client->dev))
 	//	enable_irq_wake(tsdata->irq);
-
+	i2c_master_send(client, buf, 2);
 	return 0;
 }
 
 static int pixcir_i2c_ts_resume(struct i2c_client *client)
 {
 	struct pixcir_i2c_ts_data *tsdata = dev_get_drvdata(&client->dev);
+	gpio_direction_output(gpio_shutdown, 0);
+	msleep(20);
+	gpio_direction_output(gpio_shutdown, 1);
+	msleep(50);
 	enable_irq(tsdata->irq);
 	//if (device_may_wakeup(&client->dev))
 	//	disable_irq_wake(tsdata->irq);

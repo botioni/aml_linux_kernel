@@ -31,6 +31,9 @@
 
 #define DRIVER_VERSION			"0.1.0"
 
+static int dbg_enable = 0;
+#define act8xxx_dbg(level, fmt, args...)  { if(level) \
+					printk("[goodix]: " fmt, ## args); }
 static int usb_status = 0;
 static int new_usb_status = 0;
 
@@ -66,6 +69,9 @@ struct act8xxx_device_info {
 	struct power_supply	usb;
 	struct timer_list polling_timer;
 	struct work_struct work_update;
+	int ac_status;
+	int capacity;
+	int bat_status;	
 #endif
 };
 
@@ -143,6 +149,38 @@ int act8xxx_is_ac_online(void)
 }
 EXPORT_SYMBOL(act8xxx_is_ac_online);
 
+static inline int get_bat_status(void)
+{
+    int ret,status;
+    
+    if(act8942_opts->is_ac_online()){
+        status = act8942_opts->get_charge_status();
+        if(act8942_opts->get_charge_status == get_charge_status){
+            if(status == 0x1){
+                ret = POWER_SUPPLY_STATUS_FULL;
+            }
+            else if(status == 0x0){
+                ret = POWER_SUPPLY_STATUS_NOT_CHARGING;
+            }
+            else{
+                ret = POWER_SUPPLY_STATUS_CHARGING;
+            }
+        }
+        else{//if(act8942_opts->get_charge_status == get_charge_status)
+            if(status == 0x1){
+                ret = POWER_SUPPLY_STATUS_FULL;
+            }
+            else if(status == 0x0){
+                ret = POWER_SUPPLY_STATUS_CHARGING;
+            }
+        }
+    }//if(act8942_opts->is_ac_online())
+    else{
+        ret = POWER_SUPPLY_STATUS_DISCHARGING;
+    }
+    
+    return ret;
+}
 #ifdef CONFIG_PMU_ACT8942
 static enum power_supply_property bat_power_props[] = {
 	POWER_SUPPLY_PROP_STATUS,
@@ -184,40 +222,7 @@ static int bat_power_get_property(struct power_supply *psy,
 	switch (psp)
 	{
 		case POWER_SUPPLY_PROP_STATUS:
-			if(act8942_opts->is_ac_online())
-			{
-				status = act8942_opts->get_charge_status();
-				if(act8942_opts->get_charge_status == get_charge_status)
-				{
-					if(status == 0x1)
-					{
-						val->intval = POWER_SUPPLY_STATUS_FULL;
-					}
-					else if(status == 0x0)
-					{
-						val->intval = POWER_SUPPLY_STATUS_NOT_CHARGING;
-					}
-					else
-					{
-						val->intval = POWER_SUPPLY_STATUS_CHARGING;
-					}
-				}
-				else
-				{
-					if(status == 0x1)
-					{
-						val->intval = POWER_SUPPLY_STATUS_FULL;
-					}
-					else if(status == 0x0)
-					{
-						val->intval = POWER_SUPPLY_STATUS_CHARGING;
-					}
-				}
-			}
-			else
-			{
-				val->intval = POWER_SUPPLY_STATUS_DISCHARGING;
-			}
+            val->intval = act8xxx_dev->bat_status;
 			break;
 		case POWER_SUPPLY_PROP_VOLTAGE_NOW:
 			val->intval = act8942_opts->measure_voltage();
@@ -229,7 +234,7 @@ static int bat_power_get_property(struct power_supply *psy,
 			val->intval = act8942_opts->measure_current();
 			break;
 		case POWER_SUPPLY_PROP_CAPACITY:
-			val->intval = measure_capacity_advanced();
+			val->intval = act8xxx_dev->capacity;
 			break;
 		case POWER_SUPPLY_PROP_TEMP:
 			val->intval = 0;		//temporary
@@ -328,15 +333,26 @@ static void act8942_powersupply_init(struct act8xxx_device_info *act8942_dev)
 
 static void update_work_func(struct work_struct *work)
 {
-	logd("%s: work->data is 0x%x.\n", __FUNCTION__, work->data);
-	if(!is_ac_online()){
-		power_supply_changed(&act8xxx_dev->bat); 
+
+	int capacity,bat_status;
+	
+	capacity = measure_capacity_advanced();
+	bat_status = get_bat_status();
+	
+	if(act8xxx_dev->ac_status != is_ac_online()){
+		power_supply_changed(&act8xxx_dev->ac);		    
 	}
-	else
-	{
-    //if((get_charge_status() > 0x0)){
-		power_supply_changed(&act8xxx_dev->ac);      
+	
+	if(act8xxx_dev->capacity != capacity){
+	    act8xxx_dev->capacity = capacity;
+	    power_supply_changed(&act8xxx_dev->bat);
 	}
+
+	if(act8xxx_dev->bat_status != bat_status){
+	    act8xxx_dev->bat_status = bat_status;
+	    power_supply_changed(&act8xxx_dev->bat);
+	}
+		
 }
 
 static void polling_func(unsigned long arg)
@@ -345,7 +361,6 @@ static void polling_func(unsigned long arg)
 	schedule_work(&(act8942_dev->work_update));
 	mod_timer(&(act8942_dev->polling_timer), jiffies + msecs_to_jiffies(act8942_opts->update_period));  
 }
-
 #endif
 
 /*
@@ -656,6 +671,16 @@ ssize_t act8xxx_test_store(struct class *class, struct class_attribute *attr, ch
 	return 0;
 }
 
+ssize_t act8xxx_debug_store(struct class *class, struct class_attribute *attr, char *buf)
+{
+    dbg_enable = !dbg_enable;
+    if(dbg_enable)
+	    pr_info("enable act8xxx log \n");
+	else
+	    pr_info("disable act8xxx log \n");	    
+	return 0;
+}
+
 ssize_t act8xxx_voltage_handle(struct class *class, struct class_attribute *attr, char *buf)
 {
 	char *argv[CONFIG_SYS_MAXARGS + 1];	/* NULL terminated	*/
@@ -704,6 +729,7 @@ static struct class_attribute act8xxx_class_attrs[] = {
 	__ATTR(register_dump, S_IRUGO | S_IWUSR, act8xxx_register_dump, NULL),
 	__ATTR(voltage, S_IRUGO | S_IWUSR, NULL, act8xxx_voltage_handle),
 	__ATTR(test, S_IRUGO | S_IWUSR, act8xxx_test_show, act8xxx_test_store),
+	__ATTR(debug, S_IRUGO | S_IWUSR, NULL, act8xxx_debug_store),	
 	__ATTR_NULL
 };
 
@@ -765,15 +791,18 @@ static int act8942_operations_init(struct act8942_operations* pdata)
 	}
 	return 0;
 }
+static int capacity_sample_array[20]={
+-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+};
+static int capacity_sample_pointer = 0;
 
 inline static int measure_capacity_advanced(void)	
 {
-	static int connect_status = -1, capacity = -1;
-	static int capacity_sample_array[20];
-	static int capacity_sample_pointer = 0;
-	int current_capacity, i, tmp = 0;
+	int current_capacity, i,capacity;	
+    int num,sum,min,max;
+    	
 	int current_status = act8942_opts->is_ac_online();
-
 
 
 	if(current_status)
@@ -784,61 +813,64 @@ inline static int measure_capacity_advanced(void)
 	{
 		current_capacity = act8942_opts->measure_capacity_battery();
 	}
-	if(act8942_opts->rvp)
+
+	act8xxx_dbg(dbg_enable, "current_status=%d,current_capacity = %d\n", current_status,current_capacity);
+	
+	if(act8942_opts->asn < 2)
 	{
-		if(capacity < 0)
-		{
-			capacity = current_capacity;
-		}
-		else
-		{
-			if (current_status) {
-		        //ac online   don't report percentage smaller than prev 
-				capacity = (current_capacity > capacity) ? current_capacity : capacity;
-		    } else {
-		        //ac  not online   don't report percentage bigger than prev 
-		        capacity = (current_capacity < capacity) ? current_capacity : capacity;
-		    }
-		}
+		return current_capacity;
+	}
+	
+    capacity_sample_array[capacity_sample_pointer] = current_capacity;
+    capacity_sample_pointer ++;
+    
+    if(capacity_sample_pointer >= act8942_opts->asn){
+        capacity_sample_pointer = 0;
+    }
+    	
+    sum = 0;
+    num = 0;
+    min = 100;
+    max = 0; 
+    
+    for(i = 0;i<act8942_opts->asn;i++){
+        if(capacity_sample_array[i] != -1){
+            sum += capacity_sample_array[i];
+            num ++;
+            if(max < capacity_sample_array[i])
+                max = capacity_sample_array[i];
+            if(min > capacity_sample_array[i])
+                min = capacity_sample_array[i];    
+        }       
+    }
+  
+    // drop max and min capacity
+    if(num>2){
+        sum = sum - max -min;
+    }
+    else{
+        return -1;
+    }
+    
+    current_capacity = sum/(num-2);   
+    
+	if(act8942_opts->rvp&&act8xxx_dev->capacity != -1)
+	{
+        if (current_status) {
+            //ac online   don't report percentage smaller than prev 
+        	capacity = (current_capacity > act8xxx_dev->capacity) ? current_capacity : act8xxx_dev->capacity;
+        } else {
+            //ac  not online   don't report percentage bigger than prev 
+            capacity = (current_capacity < act8xxx_dev->capacity) ? current_capacity : act8xxx_dev->capacity;
+        }
+
 	}
 	else
 	{
 		capacity = current_capacity;
 	}
-
-	if(act8942_opts->asn < 2)
-	{
-		return capacity;
-	}
-	
-	if(connect_status != current_status)
-	{
-		//memset(capacity_sample_array, capacity, act8942_opts->asn*4);
-		for(i=0; i<act8942_opts->asn; i++)
-		{
-			capacity_sample_array[i] = capacity;
-		}
-		capacity_sample_pointer = 0;
-		connect_status = current_status;
-		return capacity;
-	}
-
-	capacity_sample_array[capacity_sample_pointer] = capacity;
-	if(capacity_sample_pointer >= act8942_opts->asn)
-	{
-		capacity_sample_pointer = 0;
-	}
-	else
-	{
-		capacity_sample_pointer++;
-	}
-
-	for(i=0; i<act8942_opts->asn; i++)
-	{
-		tmp += capacity_sample_array[i];
-	}
-	//pr_info("current_capacity=%d%, capacity=%d,	tmp=%d%.\n", current_capacity, capacity, tmp);
-	return(tmp/act8942_opts->asn);
+	act8xxx_dbg(dbg_enable, "sum=%d,num =%d,max=%d,min=%d,real_capacity =%d,capacity =%d \n", sum,num,max,min,current_capacity,capacity);		
+	return capacity;
 }
 #endif
 
@@ -917,6 +949,7 @@ static int act8xxx_i2c_probe(struct i2c_client *client,
 		goto act8xxx_failed_2;
 	}
 	act8xxx_dev->id = num;
+	act8xxx_dev->capacity = -1;
 	//act8xxx_dev->chip = id->driver_data; //elvis
 
 	this_client = client;
@@ -952,7 +985,7 @@ static int act8xxx_i2c_probe(struct i2c_client *client,
 	act8xxx_dev->polling_timer.expires = jiffies + msecs_to_jiffies(act8942_opts->update_period);
 	act8xxx_dev->polling_timer.function = polling_func;
 	act8xxx_dev->polling_timer.data = act8xxx_dev;
-	add_timer(&(act8xxx_dev->polling_timer));
+    add_timer(&(act8xxx_dev->polling_timer));
 #endif
 
 #ifdef CONFIG_HAS_EARLYSUSPEND
@@ -1100,6 +1133,23 @@ static struct file_operations act8xxx_fops = {
     .ioctl   = act8xxx_ioctl,
 };
 
+static void pmu_power_off(void)
+{
+	u8 val = 0;
+	int ret = 0;
+	if(act8942_opts->is_ac_online()){ //AC in after power off press
+        arm_pm_restart("","charging_reboot");
+	}
+    
+	ret = act8xxx_read_i2c(this_client, ACT8xxx_REG4_ADDR+1, &val);
+	val = val|0x80;
+	//printk("val = %x\n",val);
+  ret = act8xxx_write_i2c(this_client, ACT8xxx_REG4_ADDR+1, &val);
+  val = val&(~(0x80));
+	//printk("val = %x\n",val);    
+  ret = act8xxx_write_i2c(this_client, ACT8xxx_REG4_ADDR+1, &val);    
+}
+
 static int act8xxx_probe(struct platform_device *pdev)
 {
 	int ret;
@@ -1141,7 +1191,6 @@ static int act8xxx_probe(struct platform_device *pdev)
 	/* create /dev nodes */
     dev_p = device_create(&act8xxx_class, NULL, MKDEV(MAJOR(act8xxx_devno), 0),
                         NULL, "act8xxx");
-                      
     if (IS_ERR(dev_p)) {
         pr_err("act8xxx: failed to create device node\n");
         /* @todo do with error */
@@ -1149,6 +1198,9 @@ static int act8xxx_probe(struct platform_device *pdev)
     }
 
     printk( "act8xxx: driver initialized ok\n");
+    
+    if(pm_power_off == NULL)
+	    pm_power_off = pmu_power_off;
 	
     return ret;
 }

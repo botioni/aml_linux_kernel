@@ -47,7 +47,12 @@ void power_on_backlight(void);
 void power_off_backlight(void);
 unsigned get_backlight_level(void);
 void set_backlight_level(unsigned level);
-
+#ifdef CONFIG_AW_AXP
+extern int axp_gpio_set_io(int gpio, int io_state);
+extern int axp_gpio_get_io(int gpio, int *io_state);
+extern int axp_gpio_set_value(int gpio, int value);
+extern int axp_gpio_get_value(int gpio, int *value);
+#endif
 //AT070TNA2
 #define LCD_WIDTH       1024
 #define LCD_HEIGHT      600
@@ -65,7 +70,7 @@ void set_backlight_level(unsigned level);
 static lvds_phy_control_t lcd_lvds_phy_control = 
 {
     .lvds_prem_ctl = 0x1,		//0xf  //0x1
-    .lvds_swing_ctl = 0x1,	    //0x3  //0x1
+    .lvds_swing_ctl = 0x3,	    //0x3  //0x1
     .lvds_vcm_ctl = 0x1,
     .lvds_ref_ctl = 0xf, 
 };
@@ -87,8 +92,8 @@ static lcdConfig_t lcd_config =
     .max_height = MAX_HEIGHT,
 	.video_on_pixel = VIDEO_ON_PIXEL,
     .video_on_line = VIDEO_ON_LINE,
-    .pll_ctrl = 0x1021e,
-    .div_ctrl = 0x18803,
+    .pll_ctrl = 0x10232,  //0x1021e
+    .div_ctrl = 0x18813,  //0x18803
 	.clk_ctrl = 0x1111,	//pll_sel,div_sel,vclk_sel,xd
 	
     .gamma_cntl_port = (1 << LCD_GAMMA_EN) | (0 << LCD_GAMMA_RVS_OUT) | (1 << LCD_GAMMA_VCOM_POL),
@@ -115,8 +120,8 @@ static lcdConfig_t lcd_config =
     .flags = LCD_DIGITAL_LVDS,
     .screen_width = 4,
     .screen_height = 3,
-    .sync_duration_num = 60,
-    .sync_duration_den = 1,
+    .sync_duration_num = 502,  // 60
+    .sync_duration_den = 10,	 // 1	
 	.lvds_config = &lcd_lvds_config,
     .power_on=t13_power_on,
     .power_off=t13_power_off,
@@ -159,11 +164,12 @@ static void t13_setup_gama_table(lcdConfig_t *pConf)
 #define BL_MIN_LEVEL	0
 void power_on_backlight(void)
 {
-    msleep(20);
 	lvds_port_enable();
 	
-	msleep(100);
 	//BL_EN: GPIOD_1(PWM_D)
+	WRITE_CBUS_REG_BITS(LED_PWM_REG0, 1, 12, 2); 
+	msleep(300);
+
 #if (BL_CTL==BL_CTL_GPIO)	
     WRITE_MPEG_REG(0x2013, READ_MPEG_REG(0x2013) | (1 << 17));    
     WRITE_MPEG_REG(0x2012, READ_MPEG_REG(0x2012) & ~(1 << 17));
@@ -174,14 +180,13 @@ void power_on_backlight(void)
 	SET_CBUS_REG_MASK(PWM_MISC_REG_CD, ((1 << 23) | (pwm_div<<16) | (1<<1)));  //enable pwm clk & pwm output
     SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<3));  //enable pwm pinmux
 #endif
-    msleep(100);
 
-    printk("\n\npower_on_backlight.\n\n");
+   //printk("\n\nLCD: power_on_backlight.\n\n");
 }
 
 void power_off_backlight(void)
 {
-    //BL_EN: GPIOD_1(PWM_D)    
+	//BL_EN: GPIOD_1(PWM_D)    
 #if (BL_CTL==BL_CTL_GPIO)	
     WRITE_MPEG_REG(0x2013, READ_MPEG_REG(0x2013) & ~(1 << 17));
 #elif (BL_CTL==BL_CTL_PWM)
@@ -192,9 +197,7 @@ void power_off_backlight(void)
 	
 	msleep(20);
 	lvds_port_disable();
-	msleep(20);
-	
-	printk("\n\npower_off_backlight.\n\n");
+	msleep(20);	
 }
 
 static unsigned bl_level;
@@ -205,11 +208,17 @@ unsigned get_backlight_level(void)
 
 void set_backlight_level(unsigned level)
 {
+	//printk("set_backlight_level %d\n", level);
 	level = level>BL_MAX_LEVEL ? BL_MAX_LEVEL:(level<BL_MIN_LEVEL ? BL_MIN_LEVEL:level);		
 #if (BL_CTL==BL_CTL_GPIO)
-	level = level * 15 / BL_MAX_LEVEL;	
-	level = 15 - level;
-	WRITE_CBUS_REG_BITS(LED_PWM_REG0, level, 0, 4);	
+  if (level == BL_MIN_LEVEL){
+  	level = 15;
+  }
+  else {
+	  level = level * 10 / BL_MAX_LEVEL;	
+	  level = 13 - level;
+	}
+	WRITE_CBUS_REG_BITS(LED_PWM_REG0, level, 0, 4);	// [3-13] 10 level
 #elif (BL_CTL==BL_CTL_PWM)	
 	level = level * PWM_MAX / BL_MAX_LEVEL ;	
 	WRITE_CBUS_REG_BITS(PWM_PWM_D, (PWM_MAX - level), 0, 16);  //pwm low
@@ -219,23 +228,33 @@ void set_backlight_level(unsigned level)
 
 static void power_on_lcd(void)
 {
+	//printk("\n\nLCD: power on lcd.\n");
 	//LCD_PWR_EN
 	WRITE_MPEG_REG(0x200d, READ_MPEG_REG(0x200d) & ~(1 << 27));    
     WRITE_MPEG_REG(0x200c, READ_MPEG_REG(0x200c) & ~(1 << 27));
-    msleep(10);
+    msleep(100);
 	
 	//VCCx3_EN
 	WRITE_MPEG_REG(0x2013, READ_MPEG_REG(0x2013) | (1 << 2));    
     WRITE_MPEG_REG(0x2012, READ_MPEG_REG(0x2012) & ~(1 << 2));
+#ifdef CONFIG_AW_AXP
+    axp_gpio_set_io(3,1);
+    axp_gpio_set_value(3, 0);     
+#endif
 	msleep(10);
 }
 
 static void power_off_lcd(void)
 {
+	//printk("\n\nLCD: power off lcd.\n");
 	//VCCx3_EN
 	WRITE_MPEG_REG(0x2013, READ_MPEG_REG(0x2013) & ~(1 << 2));    
     //WRITE_MPEG_REG(0x2012, READ_MPEG_REG(0x2012) & ~(1 << 2));
-	msleep(10);
+#ifdef CONFIG_AW_AXP
+    axp_gpio_set_io(3,1);
+    axp_gpio_set_value(3, 1); 
+#endif
+	msleep(50);
 	
 	//LCD_PWR_EN
 	WRITE_MPEG_REG(0x200d, READ_MPEG_REG(0x200d) | (1 << 27));    
@@ -245,15 +264,33 @@ static void power_off_lcd(void)
 
 static void lvds_port_enable(void)
 {	
-	printk("\n\nLVDS port enable.\n");	
+	//printk("\n\nLCD: enable LVDS fifo.\n");
+	// disable lvds fifo
+    //WRITE_MPEG_REG(LVDS_GEN_CNTL, READ_MPEG_REG(LVDS_GEN_CNTL) & ~((1<<0)|(1<<3)));
+    // enable lvds fifo
+    WRITE_MPEG_REG(LVDS_GEN_CNTL, READ_MPEG_REG(LVDS_GEN_CNTL) | (1<<3));
+	
+	//printk("\n\nLCD: LVDS port enable.\n");	
 	//enable minilvds_data channel
-	WRITE_MPEG_REG(LVDS_PHY_CNTL4, READ_MPEG_REG(LVDS_PHY_CNTL4) | (0x2f<<0));
+	WRITE_MPEG_REG(LVDS_PHY_CNTL4, READ_MPEG_REG(LVDS_PHY_CNTL4) | (0x2f<<0));	
+	
+	msleep(30);
+	//printk("\n\nLCD: LVDS serializer soft reset.\n");
+	// Set soft Reset lvds_phy_ser_top
+    //WRITE_MPEG_REG(LVDS_PHY_CLK_CNTL, READ_MPEG_REG(LVDS_PHY_CLK_CNTL) | (1<<14));
+    // Release soft Reset lvds_phy_ser_top
+    //WRITE_MPEG_REG(LVDS_PHY_CLK_CNTL, READ_MPEG_REG(LVDS_PHY_CLK_CNTL) & ~(1<<14));	
 }
 
 static void lvds_port_disable(void)
 {		
+	//printk("\n\nLCD: LVDS port disable.\n");
 	//disable minilvds_data channel
-	WRITE_MPEG_REG(LVDS_PHY_CNTL4, READ_MPEG_REG(LVDS_PHY_CNTL4) & ~(0x7f<<0));		
+	WRITE_MPEG_REG(LVDS_PHY_CNTL4, READ_MPEG_REG(LVDS_PHY_CNTL4) & ~(0x7f<<0));	
+	
+	//printk("\n\nLCD: disable LVDS fifo.\n");
+	// disable lvds fifo
+	WRITE_MPEG_REG(LVDS_GEN_CNTL, READ_MPEG_REG(LVDS_GEN_CNTL) & ~(1<<3));
 }
 
 static void t13_power_on(void)
@@ -261,7 +298,7 @@ static void t13_power_on(void)
     video_dac_disable();	
 	power_on_lcd();	
 	//power_on_backlight();   //disable when required power sequence.
-    printk("\n\nt13_power_on...\n\n");
+    //printk("\n\nt13_power_on...\n\n");
 }
 static void t13_power_off(void)
 {    
@@ -271,7 +308,7 @@ static void t13_power_off(void)
 
 static void t13_io_init(void)
 {
-    printk("\n\nT13 LCD Init.\n\n");    
+    //printk("\n\nT13 LCD Init.\n\n");    
     power_on_lcd();	
 	//power_on_backlight();	//disable when required power sequence.
 }
