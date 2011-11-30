@@ -149,6 +149,7 @@ int act8xxx_is_ac_online(void)
 }
 EXPORT_SYMBOL(act8xxx_is_ac_online);
 
+#ifdef CONFIG_PMU_ACT8942
 static inline int get_bat_status(void)
 {
     int ret,status;
@@ -181,7 +182,7 @@ static inline int get_bat_status(void)
     
     return ret;
 }
-#ifdef CONFIG_PMU_ACT8942
+
 static enum power_supply_property bat_power_props[] = {
 	POWER_SUPPLY_PROP_STATUS,
 	POWER_SUPPLY_PROP_HEALTH,
@@ -949,7 +950,9 @@ static int act8xxx_i2c_probe(struct i2c_client *client,
 		goto act8xxx_failed_2;
 	}
 	act8xxx_dev->id = num;
+#ifdef CONFIG_PMU_ACT8942		
 	act8xxx_dev->capacity = -1;
+#endif	
 	//act8xxx_dev->chip = id->driver_data; //elvis
 
 	this_client = client;
@@ -1132,7 +1135,7 @@ static struct file_operations act8xxx_fops = {
     .release = act8xxx_release,
     .ioctl   = act8xxx_ioctl,
 };
-
+#ifdef CONFIG_PMU_ACT8942
 static void pmu_power_off(void)
 {
 	u8 val = 0;
@@ -1149,6 +1152,7 @@ static void pmu_power_off(void)
 	//printk("val = %x\n",val);    
   ret = act8xxx_write_i2c(this_client, ACT8xxx_REG4_ADDR+1, &val);    
 }
+#endif
 
 static int act8xxx_probe(struct platform_device *pdev)
 {
@@ -1198,10 +1202,10 @@ static int act8xxx_probe(struct platform_device *pdev)
     }
 
     printk( "act8xxx: driver initialized ok\n");
-    
+#ifdef CONFIG_PMU_ACT8942		    
     if(pm_power_off == NULL)
 	    pm_power_off = pmu_power_off;
-	
+#endif	
     return ret;
 }
 
