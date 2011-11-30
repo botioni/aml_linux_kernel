@@ -39,7 +39,7 @@
 #include <mach/am_regs.h>
 
 #include <linux/osd/osd_dev.h>
-
+#include <linux/switch.h>
 #else
 
 #include "includes.h"
@@ -87,6 +87,9 @@ static struct device *hdmitx_dev;
 #endif
 
 static hdmitx_dev_t hdmitx_device;
+static struct switch_dev sdev = {	// android ics switch device
+	.name = "hdmi",
+	};	
 
 //static HDMI_TX_INFO_t hdmi_info;
 #define INIT_FLAG_VDACOFF        0x1
@@ -694,6 +697,7 @@ hdmi_task_handle(void *data)
                 hdmitx_edid_parse(hdmitx_device);
                 set_disp_mode_auto();
 
+				switch_set_state(&sdev, 1);
                 hdmitx_device->hpd_event = 0;
             }    
         }
@@ -711,6 +715,7 @@ hdmi_task_handle(void *data)
             }
             hdmitx_device->cur_VIC = HDMI_Unkown;
 
+			switch_set_state(&sdev, 0);
             hdmitx_device->hpd_event = 0;
         }    
         else{
@@ -933,12 +938,20 @@ static int amhdmitx_probe(struct platform_device *pdev)
     aout_register_client(&hdmitx_notifier_nb_a);
 #endif
     hdmitx_device.task = kthread_run(hdmi_task_handle, &hdmitx_device, "kthread_hdmi");
+    
+	switch_dev_register(&sdev);
+	if (r < 0){
+		printk(KERN_ERR "hdmitx: register switch dev failed\n");
+		return r;
+	}    
 
     return r;
 }
 
 static int amhdmitx_remove(struct platform_device *pdev)
 {
+	switch_dev_unregister(&sdev);
+	
     if(hdmitx_device.HWOp.UnInit){
         hdmitx_device.HWOp.UnInit(&hdmitx_device);
     }
