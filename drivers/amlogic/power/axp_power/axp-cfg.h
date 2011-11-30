@@ -7,7 +7,8 @@
 #define	AXP18_I2CBUS		1
 #define	AXP19_I2CBUS		0
 #define	AXP20_I2CBUS		2
-#define BATRDC				200 //initial rdc
+#define BATRDC				84 //initial rdc
+#define RDC_MAX       174
 #define AXP20_IRQNO     0
 
 
@@ -92,9 +93,9 @@
 #define FUELGUAGE_TOP_LEVEL	100     //>4.16v,100%
 
 #define INTLDO4					2800000								//initial ldo4 voltage
-#define INIT_RDC				200										//initial rdc
+#define INIT_RDC				150										//initial rdc
 #define TIMER 					20										//axp19 renew capability time
-#define BATTERYCAP      2600									// battery capability
+#define BATTERYCAP      4800									// battery capability
 #define RENEW_TIME      10										//axp20 renew capability time
 #define INTCHGCUR				500000								//set initial charging current limite
 #define SUSCHGCUR				1000000								//set suspend charging current limite
@@ -113,16 +114,16 @@
 #define OCVREG0			    0 									//3.1328
 #define OCVREG1			    0 									//3.2736
 #define OCVREG2			    0 									//3.4144
-#define OCVREG3			    4 									//3.5552
-#define OCVREG4			    8 									//3.6256
-#define OCVREG5			    10									//3.6608
-#define OCVREG6			    15									//3.6960
-#define OCVREG7			    21									//3.7312
-#define OCVREG8			    37									//3.7664
-#define OCVREG9			    50									//3.8016
-#define OCVREGA			    57									//3.8368
-#define OCVREGB			    63									//3.8720
-#define OCVREGC			    74									//3.9424
+#define OCVREG3			    0 									//3.5552
+#define OCVREG4			    15 									//3.6256
+#define OCVREG5			    19									//3.6608
+#define OCVREG6			    23									//3.6960
+#define OCVREG7			    29									//3.7312
+#define OCVREG8			    45									//3.7664
+#define OCVREG9			    56									//3.8016
+#define OCVREGA			    62									//3.8368
+#define OCVREGB			    68									//3.8720
+#define OCVREGC			    75									//3.9424
 #define OCVREGD			    85									//4.0128
 #define OCVREGE			    92									//4.0832
 #define OCVREGF			    99									//4.1536

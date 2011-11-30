@@ -716,6 +716,7 @@ static enum hrtimer_restart ft5x0x_timer(struct hrtimer *timer)
 	struct ft5x0x_ts_data *data = container_of(timer, struct ft5x0x_ts_data, timer);
 
  	if (data->touch_state == TOUCH_SCREEN) {
+		input_report_key(data->input_dev, BTN_TOUCH, 0);
 		input_report_abs(data->input_dev, ABS_MT_TOUCH_MAJOR, 0);
 		input_sync(data->input_dev);
 		ft5x0x_dbg("touch screen up(2)!\n");
@@ -789,6 +790,7 @@ static void ft5x0x_report_mt_event(struct input_dev *input, struct ts_event *eve
 	data->first_event = data->event[0];\
 	data->offset = 0;\
 	data->touch_count = 0;\
+	input_report_key(data->input_dev, BTN_TOUCH, 1);\
 	data->touch_state = TOUCH_SCREEN;\
 }
 
@@ -895,6 +897,7 @@ static void ft5x0x_ts_pen_irq_work(struct work_struct *work)
 	case TOUCH_SCREEN:
 		if (!event_num) {
 			if ((data->offset < 10) && (data->touch_count > 1)) {
+				input_report_key(data->input_dev, BTN_TOUCH, 0);
 				input_report_abs(data->input_dev, ABS_MT_TOUCH_MAJOR, 0);
 				input_sync(data->input_dev);
 				ft5x0x_dbg("touch screen up!\n");
@@ -1100,6 +1103,7 @@ printk("==enable Irq success=\n");
 	}
 #endif
 
+	set_bit(BTN_TOUCH, input_dev->keybit);
 	set_bit(ABS_MT_TOUCH_MAJOR, input_dev->absbit);
 	set_bit(ABS_MT_POSITION_X, input_dev->absbit);
 	set_bit(ABS_MT_POSITION_Y, input_dev->absbit);

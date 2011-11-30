@@ -1030,7 +1030,7 @@ static struct aml_camera_i2c_fig1_s gc0308_custom_init_script[] = {
 	
 aml_plat_cam_data_t video_gc0308_data = {
 	.name="video-gc0308",
-	.video_nr=1,//1,
+	.video_nr=0,//1,
 	.device_init= gc0308_v4l2_init,
 	.device_uninit=gc0308_v4l2_uninit,
 	.early_suspend = gc0308_v4l2_early_suspend,
@@ -1040,6 +1040,104 @@ aml_plat_cam_data_t video_gc0308_data = {
 
 
 #endif
+#if defined(CONFIG_VIDEO_AMLOGIC_CAPTURE_GT2005)
+static void gt2005_init(void)
+{
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_1, (1<<29)); 
+    SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<2));
+
+    unsigned pwm_cnt = get_ddr_pll_clk()/48000000 - 1;
+    pwm_cnt &= 0xffff;
+    WRITE_CBUS_REG(PWM_PWM_C, (pwm_cnt<<16) | pwm_cnt);
+    SET_CBUS_REG_MASK(PWM_MISC_REG_CD, (1<<15)|(0<<8)|(1<<4)|(1<<0)); //select ddr pll for source, and clk divide 
+    
+    // reset low 
+    printk( "amlogic camera driver: gt2005_v4l2_init. \n");
+    set_gpio_val(GPIOY_bank_bit0_22(10), GPIOY_bit_bit0_22(10), 0);   
+    set_gpio_mode(GPIOY_bank_bit0_22(10), GPIOY_bit_bit0_22(10), GPIO_OUTPUT_MODE);
+	
+    // set camera power disanable
+    set_gpio_val(GPIOA_bank_bit0_27(24), GPIOA_bit_bit0_27(24), 0);    
+    set_gpio_mode(GPIOA_bank_bit0_27(24), GPIOA_bit_bit0_27(24), GPIO_OUTPUT_MODE);
+	
+    msleep(20);
+	
+	// reset high
+    set_gpio_val(GPIOY_bank_bit0_22(10), GPIOY_bit_bit0_22(10), 1);    
+    set_gpio_mode(GPIOY_bank_bit0_22(10), GPIOY_bit_bit0_22(10), GPIO_OUTPUT_MODE);
+    msleep(20);
+    
+    // set camera power enable
+    set_gpio_val(GPIOA_bank_bit0_27(24), GPIOA_bit_bit0_27(24), 1);    
+    set_gpio_mode(GPIOA_bank_bit0_27(24), GPIOA_bit_bit0_27(24), GPIO_OUTPUT_MODE);
+    msleep(20);	
+}
+static void gt2005_v4l2_init(void)
+{
+    gt2005_have_inited=1;
+	gt2005_init();
+}
+static void gt2005_v4l2_uninit(void)
+{
+    gt2005_have_inited=0;
+    set_gpio_val(GPIOA_bank_bit0_27(24), GPIOA_bit_bit0_27(24), 0);    // set camera power disable
+    set_gpio_mode(GPIOA_bank_bit0_27(24), GPIOA_bit_bit0_27(24), GPIO_OUTPUT_MODE);
+	msleep(5);
+	unsigned pwm_cnt = get_ddr_pll_clk()/48000000 - 1;
+    pwm_cnt &= 0xffff;
+    WRITE_CBUS_REG(PWM_PWM_C, (pwm_cnt<<16) | pwm_cnt);
+	#if defined(CONFIG_VIDEO_AMLOGIC_CAPTURE_GC0308)
+	if(gc0308_have_inited==0)
+	#endif
+	CLEAR_CBUS_REG_MASK(PWM_MISC_REG_CD, (1 << 0)|(1 << 2));
+	//printk( "amlogic camera driver: gt2005_v4l2_uninit.\n");
+    //set_gpio_val(GPIOA_bank_bit0_27(24), GPIOA_bit_bit0_27(24), 0);    // set camera power disable
+    //set_gpio_mode(GPIOA_bank_bit0_27(24), GPIOA_bit_bit0_27(24), GPIO_OUTPUT_MODE);
+}
+static void gt2005_v4l2_disable(void)
+{
+
+}
+
+static void gt2005_v4l2_early_suspend(void)
+{
+	//printk( "amlogic camera driver: gt2005_v4l2_early_suspend. \n");
+    //set_gpio_val(GPIOA_bank_bit0_27(24), GPIOA_bit_bit0_27(24), 0);    // set camera power disable
+    //set_gpio_mode(GPIOA_bank_bit0_27(24), GPIOA_bit_bit0_27(24), GPIO_OUTPUT_MODE);
+}
+
+static void gt2005_v4l2_late_resume(void)
+{
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_1, (1<<29)); 
+    SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<2));
+
+    unsigned pwm_cnt = get_ddr_pll_clk()/48000000 - 1;
+    pwm_cnt &= 0xffff;
+    WRITE_CBUS_REG(PWM_PWM_C, (pwm_cnt<<16) | pwm_cnt);
+    SET_CBUS_REG_MASK(PWM_MISC_REG_CD, (1<<15)|(0<<8)|(1<<4)|(1<<0)); //select ddr pll for source, and clk divide 
+    msleep(20);
+	// reset high
+    set_gpio_val(GPIOY_bank_bit0_22(10), GPIOY_bit_bit0_22(10), 1);    
+    set_gpio_mode(GPIOY_bank_bit0_22(10), GPIOY_bit_bit0_22(10), GPIO_OUTPUT_MODE);
+    msleep(20);
+    
+    // set camera power enable
+    set_gpio_val(GPIOA_bank_bit0_27(24), GPIOA_bit_bit0_27(24), 1);    
+    set_gpio_mode(GPIOA_bank_bit0_27(24), GPIOA_bit_bit0_27(24), GPIO_OUTPUT_MODE);
+    msleep(20);	
+}
+
+aml_plat_cam_data_t video_gt2005_data = {
+	.name="video-gt2005",
+	.video_nr=1,   //    1
+	.device_init= gt2005_v4l2_init,
+	.device_uninit=gt2005_v4l2_uninit,
+	.early_suspend = gt2005_v4l2_early_suspend,
+	.late_resume = gt2005_v4l2_late_resume,
+	.device_disable=gt2005_v4l2_disable,
+};
+#endif
+
 #if defined(CONFIG_VIDEO_AMLOGIC_CAPTURE_OV2655)
 
 static int ov2655_init(void)
@@ -1089,7 +1187,7 @@ static void ov2655_v4l2_late_resume(void)
 
 aml_plat_cam_data_t video_ov2655_data = {
 	.name="video-ov2655",
-	.video_nr=0,
+	.video_nr=1,
 	.device_init=ov2655_init,
 	.device_uninit=ov2655_v4l2_uninit,
 	.early_suspend=ov2655_v4l2_early_suspend,
@@ -1672,6 +1770,13 @@ static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
 		.platform_data = (void *)&video_gc0308_data,
 	},
 #endif
+#if CONFIG_VIDEO_AMLOGIC_CAPTURE_GT2005
+    {
+    	/*gt2005 i2c address is 0x78/0x79*/
+    	I2C_BOARD_INFO("gt2005_i2c",  0x78 >> 1 ),
+    	.platform_data = (void *)&video_gt2005_data
+    },
+#endif
 #ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE_OV2655
 	{
 		I2C_BOARD_INFO("ov2655_i2c", 0x60 >> 1),
@@ -1808,7 +1913,7 @@ static void __init device_pinmux_init(void )
 #if defined(CONFIG_TVIN_BT656IN)
     bt656in_pinmux_init();
 #endif
-    set_audio_pinmux(AUDIO_OUT_TEST_N);
+    //set_audio_pinmux(AUDIO_OUT_TEST_N);
    // set_audio_pinmux(AUDIO_IN_JTAG);
 
 }
@@ -1891,8 +1996,8 @@ static __initdata struct map_desc meson_video_mem_desc[] = {
     },
 #ifdef CONFIG_AML_SUSPEND
     {
-        .virtual    = PAGE_ALIGN(__phys_to_virt(PHYS_OFFSET + CONFIG_AML_SUSPEND_FIRMWARE_BASE)),
-        .pfn        = __phys_to_pfn(PHYS_OFFSET + CONFIG_AML_SUSPEND_FIRMWARE_BASE),
+        .virtual    = PAGE_ALIGN(0xdff00000),
+        .pfn        = __phys_to_pfn(0x1ff00000),
         .length     = SZ_1M,
         .type       = MT_MEMORY,
     },
