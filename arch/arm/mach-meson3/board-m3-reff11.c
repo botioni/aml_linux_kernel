@@ -1959,7 +1959,7 @@ static void __init LED_PWM_REG0_init(void)
 
 }
 
-static __init void m1_init_machine(void)
+static __init void m3_init_machine(void)
 {
     meson_cache_init();
 #ifdef CONFIG_AML_SUSPEND
@@ -1983,6 +1983,7 @@ static __init void m1_init_machine(void)
     //lm_device_register(&usb_ld_b);
 #endif
     disable_unused_model();
+    // hp detect
     WRITE_CBUS_REG_BITS(PAD_PULL_UP_REG0,1,19,1);
 }
 
@@ -1996,30 +1997,28 @@ static __initdata struct map_desc meson_video_mem_desc[] = {
     },
 #ifdef CONFIG_AML_SUSPEND
     {
-        .virtual    = PAGE_ALIGN(0xdff00000),
-        .pfn        = __phys_to_pfn(0x1ff00000),
+        .virtual    = PAGE_ALIGN(__phys_to_virt(PHYS_OFFSET + CONFIG_AML_SUSPEND_FIRMWARE_BASE)),
+        .pfn        = __phys_to_pfn(PHYS_OFFSET + CONFIG_AML_SUSPEND_FIRMWARE_BASE),
         .length     = SZ_1M,
         .type       = MT_MEMORY,
     },
 #endif
 };
 
-static __init void m1_map_io(void)
+static __init void m3_map_io(void)
 {
     meson_map_io();
     iotable_init(meson_video_mem_desc, ARRAY_SIZE(meson_video_mem_desc));
 }
 
-static __init void m1_irq_init(void)
+static __init void m3_irq_init(void)
 {
     meson_init_irq();
 }
 
-static __init void m1_fixup(struct machine_desc *mach, struct tag *tag, char **cmdline, struct meminfo *m)
+static __init void m3_fixup(struct machine_desc *mach, struct tag *tag, char **cmdline, struct meminfo *m)
 {
     struct membank *pbank;
-    
-    // PHYS_MEM_START ~ RESERVED_MEM_START
     m->nr_banks = 0;
     pbank=&m->bank[m->nr_banks];
     pbank->start = PAGE_ALIGN(PHYS_MEM_START);
@@ -2042,11 +2041,11 @@ MACHINE_START(MESON3_8726M_SKT, "AMLOGIC MESON3 8726M SKT SH")
     .phys_io        = MESON_PERIPHS1_PHYS_BASE,
     .io_pg_offst    = (MESON_PERIPHS1_PHYS_BASE >> 18) & 0xfffc,
     .boot_params    = BOOT_PARAMS_OFFSET,
-    .map_io         = m1_map_io,
-    .init_irq       = m1_irq_init,
+    .map_io         = m3_map_io,
+    .init_irq       = m3_irq_init,
     .timer          = &meson_sys_timer,
-    .init_machine   = m1_init_machine,
-    .fixup          = m1_fixup,
+    .init_machine   = m3_init_machine,
+    .fixup          = m3_fixup,
     .video_start    = RESERVED_MEM_START,
     .video_end      = RESERVED_MEM_END,
 MACHINE_END
