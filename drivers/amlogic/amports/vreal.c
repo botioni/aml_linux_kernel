@@ -771,6 +771,12 @@ static struct platform_driver amvdec_real_driver = {
     }
 };
 
+static struct codec_profile_t amvdec_real_profile = {
+	.name = "real",
+	.profile = "rmvb,"
+};
+
+
 static int __init amvdec_real_driver_init_module(void)
 {
     printk("amvdec_real module init\n");
@@ -779,7 +785,7 @@ static int __init amvdec_real_driver_init_module(void)
         printk("failed to register amvdec_real driver\n");
         return -ENODEV;
     }
-
+	vcodec_profile_register(&amvdec_real_profile);
     return 0;
 }
 

@@ -1229,6 +1229,11 @@ static struct platform_driver amvdec_h264_driver = {
     }
 };
 
+static struct codec_profile_t amvdec_h264_profile = {
+	.name = "h264",
+	.profile = ""
+};
+
 static int __init amvdec_h264_driver_init_module(void)
 {
     printk("amvdec_h264 module init\n");
@@ -1237,7 +1242,7 @@ static int __init amvdec_h264_driver_init_module(void)
         printk("failed to register amvdec_h264 driver\n");
         return -ENODEV;
     }
-
+	vcodec_profile_register(&amvdec_h264_profile);
     return 0;
 }
 

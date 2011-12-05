@@ -781,6 +781,18 @@ static struct platform_driver amvdec_vc1_driver = {
     }
 };
 
+#ifdef CONFIG_ARCH_MESON3
+static struct codec_profile_t amvdec_vc1_profile = {
+	.name = "vc1",
+	.profile = "progressive, interlace, wmv3"
+};
+#else
+static struct codec_profile_t amvdec_vc1_profile = {
+	.name = "vc1",
+	.profile = "progressive, wmv3"
+};
+#endif
+
 static int __init amvdec_vc1_driver_init_module(void)
 {
     printk("amvdec_vc1 module init\n");
@@ -789,7 +801,7 @@ static int __init amvdec_vc1_driver_init_module(void)
         printk("failed to register amvdec_vc1 driver\n");
         return -ENODEV;
     }
-
+	vcodec_profile_register(&amvdec_vc1_profile);
     return 0;
 }
 

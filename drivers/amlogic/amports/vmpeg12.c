@@ -641,6 +641,11 @@ static struct platform_driver amvdec_mpeg12_driver = {
     }
 };
 
+static struct codec_profile_t amvdec_mpeg12_profile = {
+	.name = "mpeg12",
+	.profile = ""
+};
+
 static int __init amvdec_mpeg12_driver_init_module(void)
 {
     amlog_level(LOG_LEVEL_INFO, "amvdec_mpeg12 module init\n");
@@ -649,7 +654,7 @@ static int __init amvdec_mpeg12_driver_init_module(void)
         amlog_level(LOG_LEVEL_ERROR, "failed to register amvdec_mpeg12 driver\n");
         return -ENODEV;
     }
-
+	vcodec_profile_register(&amvdec_mpeg12_profile);
     return 0;
 }
 

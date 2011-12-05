@@ -197,6 +197,15 @@ struct dec_sysinfo {
     unsigned int    ratio;
     void *          param;
 };
+struct codec_profile_t
+{
+	char *name;		// video codec short name 
+	char *profile;	// Attributes,seperated by commas 
+};
+#define SUPPORT_VDEC_NUM	(8)
+
+int vcodec_profile_register(const struct codec_profile_t *vdec_profile);
+ssize_t vcodec_profile_read(const char *buf,int size);
 
 #ifdef __KERNEL__
 #ifdef ENABLE_DEMUX_DRIVER

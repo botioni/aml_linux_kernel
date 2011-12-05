@@ -807,7 +807,10 @@ static struct platform_driver amvdec_mpeg4_driver = {
         .name = DRIVER_NAME,
     }
 };
-
+static struct codec_profile_t amvdec_mpeg4_profile = {
+	.name = "mpeg4",
+	.profile = ""
+};
 static int __init amvdec_mpeg4_driver_init_module(void)
 {
     amlog_level(LOG_LEVEL_INFO, "amvdec_mpeg4 module init\n");
@@ -816,7 +819,7 @@ static int __init amvdec_mpeg4_driver_init_module(void)
         amlog_level(LOG_LEVEL_ERROR, "failed to register amvdec_mpeg4 driver\n");
         return -ENODEV;
     }
-
+	vcodec_profile_register(&amvdec_mpeg4_profile);
     return 0;
 }
 
