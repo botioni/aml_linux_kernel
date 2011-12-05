@@ -1,7 +1,7 @@
 #
 # Automatically generated make config: don't edit
 # Linux kernel version: 2.6.34
-# Wed Nov 30 15:11:31 2011
+# Sun Dec  4 22:24:32 2011
 #
 CONFIG_ARM=y
 CONFIG_HOLES_IN_ZONE=y
@@ -1885,11 +1885,7 @@ CONFIG_USB_GADGET_DUALSPEED=y
 # CONFIG_USB_G_SERIAL is not set
 # CONFIG_USB_MIDI_GADGET is not set
 # CONFIG_USB_G_PRINTER is not set
-CONFIG_USB_ANDROID=y
-# CONFIG_USB_ANDROID_ACM is not set
-CONFIG_USB_ANDROID_ADB=y
-CONFIG_USB_ANDROID_MASS_STORAGE=y
-# CONFIG_USB_ANDROID_RNDIS is not set
+CONFIG_USB_G_ANDROID=y
 # CONFIG_USB_CDC_COMPOSITE is not set
 # CONFIG_USB_G_NOKIA is not set
 # CONFIG_USB_G_MULTI is not set
