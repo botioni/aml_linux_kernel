@@ -235,7 +235,13 @@ static int bat_power_get_property(struct power_supply *psy,
 			val->intval = act8942_opts->measure_current();
 			break;
 		case POWER_SUPPLY_PROP_CAPACITY:
-			val->intval = act8xxx_dev->capacity;
+		    if((act8xxx_dev->bat_status == POWER_SUPPLY_STATUS_CHARGING)
+		        &&(act8xxx_dev->capacity == 0)){
+                val->intval = 1;
+		    }
+		    else{
+			    val->intval = act8xxx_dev->capacity;
+			}
 			break;
 		case POWER_SUPPLY_PROP_TEMP:
 			val->intval = 0;		//temporary
