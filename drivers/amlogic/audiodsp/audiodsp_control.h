@@ -56,5 +56,7 @@ char *data;
 #define MCODEC_FMT_PCM      (1<<10)
 #define MCODEC_FMT_WMAPRO     (1<<11)
 #define MCODEC_FMT_ALAC     (1<<12)
+#define MCODEC_FMT_AAC_LATM     (1<<14)
+#define MCODEC_FMT_APE     (1<<15)
 #endif
 
