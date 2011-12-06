@@ -91,6 +91,8 @@ static spinlock_t lock = SPIN_LOCK_UNLOCKED;
 static tsync_mode_t tsync_mode = TSYNC_MODE_AMASTER;
 static tsync_stat_t tsync_stat = TSYNC_STAT_PCRSCR_SETUP_NONE;
 static int tsync_enable = 0;   //1;
+static int apts_discontinue = 0;
+static int vpts_discontinue = 0;
 static int pts_discontinue = 0;
 static int tsync_abreak = 0;
 static bool tsync_pcr_recover_enable = false;
@@ -366,6 +368,9 @@ void tsync_avevent_locked(avevent_t event, u32 param)
 
             timestamp_pcrscr_set(param);
 
+			vpts_discontinue = 1;
+			printk("video pts discontinue, set pts_discontinue");
+
             amlog_level(LOG_LEVEL_ATTENTION, "reset scr from vpts to 0x%x\n", param);
 
         }
@@ -373,14 +378,12 @@ void tsync_avevent_locked(avevent_t event, u32 param)
 
     case AUDIO_TSTAMP_DISCONTINUITY:
 		timestamp_apts_set(param);
-        amlog_level(LOG_LEVEL_ATTENTION, "audio discontinue, reset apts, 0x%x\n", param);
-
-		pts_discontinue = 1;
+        amlog_level(LOG_LEVEL_ATTENTION, "audio discontinue, reset apts, 0x%x\n", param);	
 		 
         if (!tsync_enable) {
             break;
-        }
-
+        }		
+			
         t = timestamp_pcrscr_get();
 
         amlog_level(LOG_LEVEL_ATTENTION, "AUDIO_TSTAMP_DISCONTINUITY, 0x%x, 0x%x\n", t, param);
@@ -391,10 +394,11 @@ void tsync_avevent_locked(avevent_t event, u32 param)
              */
             tsync_mode = TSYNC_MODE_VMASTER;
 
-            timestamp_apts_set(param);
+            timestamp_apts_set(param);			
+			apts_discontinue = 1;
+			printk("audio pts discontinue, set pts_discontinue");
 
-            amlog_level(LOG_LEVEL_ATTENTION, "apts interrupt: 0x%x\n", param);
-
+            amlog_level(LOG_LEVEL_ATTENTION, "apts interrupt: 0x%x\n", param);			
         } else {
             tsync_mode = TSYNC_MODE_AMASTER;
         }
@@ -571,17 +575,29 @@ void tsync_set_enable(int enable)
 }
 EXPORT_SYMBOL(tsync_set_enable);
 
-int tsync_get_syncdiscont(void)
+int tsync_get_sync_adiscont(void)
 {	
-    return pts_discontinue;
+    return apts_discontinue;
 }
-EXPORT_SYMBOL(tsync_get_syncdiscont);
+EXPORT_SYMBOL(tsync_get_sync_adiscont);
 
-void tsync_set_syncdiscont(int syncdiscont)
-{
-    pts_discontinue = syncdiscont;
+int tsync_get_sync_vdiscont(void)
+{	
+    return vpts_discontinue;
 }
-EXPORT_SYMBOL(tsync_set_syncdiscont);
+EXPORT_SYMBOL(tsync_get_sync_vdiscont);
+
+void tsync_set_sync_adiscont(int syncdiscont)
+{
+    apts_discontinue = syncdiscont;
+}
+EXPORT_SYMBOL(tsync_set_sync_adiscont);
+
+void tsync_set_sync_vdiscont(int syncdiscont)
+{
+    vpts_discontinue = syncdiscont;
+}
+EXPORT_SYMBOL(tsync_set_sync_vdiscont);
 
 int tsync_set_apts(unsigned pts)
 {
@@ -883,6 +899,7 @@ static ssize_t show_discontinue(struct class *class,
                                 struct class_attribute *attr,
                                 char *buf)
 {
+	pts_discontinue = vpts_discontinue || apts_discontinue;
     if (pts_discontinue) {
         return sprintf(buf, "1: pts_discontinue\n");
     }

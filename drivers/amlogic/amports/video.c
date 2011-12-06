@@ -1697,12 +1697,20 @@ static int amvideo_ioctl(struct inode *inode, struct file *file,
         tsync_set_enable(arg);
         break;
 
-    case AMSTREAM_IOC_SET_SYNCDISCON:
-        tsync_set_syncdiscont(arg);
+    case AMSTREAM_IOC_SET_SYNC_ADISCON:
+        tsync_set_sync_adiscont(arg);
         break;
 
-    case AMSTREAM_IOC_GET_SYNCDISCON:
-        *((u32 *)arg) = tsync_get_syncdiscont();
+	 case AMSTREAM_IOC_SET_SYNC_VDISCON:
+        tsync_set_sync_vdiscont(arg);
+        break;
+
+    case AMSTREAM_IOC_GET_SYNC_ADISCON:
+        *((u32 *)arg) = tsync_get_sync_adiscont();
+        break;
+
+	case AMSTREAM_IOC_GET_SYNC_VDISCON:
+        *((u32 *)arg) = tsync_get_sync_vdiscont();
         break;
 
     case AMSTREAM_IOC_CLEAR_VBUF: {

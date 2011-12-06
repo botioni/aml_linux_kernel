@@ -60,9 +60,13 @@ extern void tsync_set_dec_reset(void);
 
 extern void tsync_set_enable(int enable);
 
-extern int tsync_get_syncdiscont(void);
+extern int tsync_get_sync_adiscont(void);
 
-extern void tsync_set_syncdiscont(int syncdiscont);
+extern int tsync_get_sync_vdiscont(void);
+
+extern void tsync_set_sync_adiscont(int syncdiscont);
+
+extern void tsync_set_sync_vdiscont(int syncdiscont);
 
 extern int tsync_set_apts(unsigned pts);
 
