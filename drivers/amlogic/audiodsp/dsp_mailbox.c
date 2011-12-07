@@ -207,14 +207,27 @@ static irqreturn_t audiodsp_mailbox_irq(int irq, void *data)
 static void audiodsp_mailbox_work_queue(struct work_struct*work)
 {
     struct audiodsp_work_t* pwork = container_of(work,struct audiodsp_work_t, audiodsp_workqueue);
-    char* message = pwork->buf;
-    printk(KERN_INFO "%s",message);
+    char* message;
+    if(pwork){
+      message = pwork->buf;
+      if(message)
+        printk(KERN_INFO "%s",message);
+      else
+        printk(KERN_INFO "the message from mailbox is NULL\n");
+    }else{
+      printk(KERN_INFO "the work queue for audiodsp mailbox is empty\n");
+    }
 }
 
 int audiodsp_init_mailbox(struct audiodsp_priv *priv)
 {
-	request_irq(INT_MAILBOX_1B, audiodsp_mailbox_irq,
+    int err;
+	err = request_irq(INT_MAILBOX_1B, audiodsp_mailbox_irq,
                     IRQF_SHARED, "audiodsp_mailbox", (void *)priv);
+    if(err != 0){
+      printk("request IRQ for dsp mailbox failed: errno = %x\n", err);
+      return -1;
+    }
 	//WRITE_MPEG_REG(ASSIST_MBOX0_MASK, 0xffffffff);
 	priv->mailbox_reg=(struct mail_msg *)MAILBOX1_REG(0);
 	priv->mailbox_reg2=(struct mail_msg *)MAILBOX2_REG(0);
