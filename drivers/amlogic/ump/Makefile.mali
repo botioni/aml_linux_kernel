@@ -15,6 +15,7 @@ TOP=$(dir $(realpath $(lastword $(MAKEFILE_LIST))))
 ifneq ($(KBUILD_EXTMOD),)
 include $(KBUILD_EXTMOD)/Makefile.common
 else
+KBUILD_EXTMOD=$(TOP)
 include $(TOP)/Makefile.common
 endif
 
