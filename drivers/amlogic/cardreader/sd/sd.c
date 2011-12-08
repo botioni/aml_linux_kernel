@@ -87,15 +87,19 @@ void sd_close(struct memory_card *card)
 void sd_suspend(struct memory_card *card)
 {
 	struct aml_card_info *aml_card_info = card->card_plat_info;
+	struct card_host *host = card->host;
 	
 	SD_MMC_Card_Info_t *sd_mmc_info = (SD_MMC_Card_Info_t *)card->card_info;
 
 	printk("***Entered %s:%s\n", __FILE__,__func__);	
 	
+	__card_claim_host(host, card);
+	
 	CLK_GATE_OFF(SDIO);  
 	 
 	if(card->card_type == CARD_SDIO)
 	{
+		card_release_host(host);
 		return;
 	}
 		        
@@ -110,6 +114,8 @@ void sd_suspend(struct memory_card *card)
 	sd_mmc_info->sdio_clk_unit = 3000;
 	sd_mmc_info->clks_nac = SD_MMC_TIME_NAC_DEFAULT;
 	sd_mmc_info->max_blk_count = card->host->max_blk_count;
+	
+	card_release_host(host);
 	
 }
 
