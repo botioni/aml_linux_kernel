@@ -25,7 +25,7 @@
 #define MIN_CACHE_ALIGN(x)	(((x-4)&(~0x1f)))
 #define MAX_CACHE_ALIGN(x)	((x+0x1f)&(~0x1f))
 
-static int decopt = -1;
+static int decopt = 0x0000ffff;
 
 #define RESET_AUD_ARC	(1<<13)
 static void	enable_dsp(int flag)
@@ -309,7 +309,7 @@ static  int __init decode_option_setup(char *s)
 {
     int value = -1;
     if(strict_strtoul(s, 16, &value)){
-      decopt = -1;
+      decopt = 0x0000ffff;
       return -1;
     }
     decopt = value;
