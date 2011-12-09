@@ -87,15 +87,19 @@ void sd_close(struct memory_card *card)
 void sd_suspend(struct memory_card *card)
 {
 	struct aml_card_info *aml_card_info = card->card_plat_info;
+	struct card_host *host = card->host;
 	
 	SD_MMC_Card_Info_t *sd_mmc_info = (SD_MMC_Card_Info_t *)card->card_info;
 
 	printk("***Entered %s:%s\n", __FILE__,__func__);	
 	
+	__card_claim_host(host, card);
+	
 	CLK_GATE_OFF(SDIO);  
 	 
 	if(card->card_type == CARD_SDIO)
 	{
+		card_release_host(host);
 		return;
 	}
 		        
@@ -111,6 +115,8 @@ void sd_suspend(struct memory_card *card)
 	sd_mmc_info->clks_nac = SD_MMC_TIME_NAC_DEFAULT;
 	sd_mmc_info->max_blk_count = card->host->max_blk_count;
 	
+	card_release_host(host);
+	
 }
 
 void sd_resume(struct memory_card *card)
@@ -123,7 +129,7 @@ void sd_resume(struct memory_card *card)
 static int sd_request(struct memory_card *card, struct card_blk_request *brq)
 {
 	SD_MMC_Card_Info_t *sd_mmc_info = (SD_MMC_Card_Info_t *)card->card_info;
-	unsigned int lba, byte_cnt;
+	unsigned int lba, byte_cnt,ret;
 	unsigned char *data_buf;
 	struct card_host *host = card->host;
 	struct memory_card *sdio_card;
@@ -137,7 +143,21 @@ static int sd_request(struct memory_card *card, struct card_blk_request *brq)
 		printk("[sd_request] sd_mmc_info == NULL, return SD_MMC_ERROR_NO_CARD_INS\n");
 		return 0;
 	}
-
+	
+	if(!sd_mmc_info->blk_len){
+		card->card_io_init(card);
+		card->card_detector(card);
+      
+		if(card->card_status == CARD_REMOVED){
+			brq->card_data.error = SD_MMC_ERROR_NO_CARD_INS;
+			return 0;      	
+		}
+		ret = sd_mmc_init(sd_mmc_info); 
+		if(ret){
+			brq->card_data.error = SD_MMC_ERROR_NO_CARD_INS;
+			return 0;
+		}
+    }	
 	sdio_close_host_interrupt(SDIO_IF_INT);
 	sd_sdio_enable(sd_mmc_info->io_pad_type);
 	if(brq->crq.cmd == READ) {

@@ -48,23 +48,28 @@ config_uImage_recovery:.config_orig
 #	CONFIG_INITRAMFS_SOURCE="../out/target/product/f02ref/root/"
 
 
-modules:config_uImage	
+pmodules:config_uImage	
 	cp -f config_uImage .config
 	mkdir -p $(MOD_DIR)
 	$(MMAKE) modules	 MOD_INS_DIR=$(MOD_DIR)
+	cp -f $(MOD_DIR)/mali.ko $(RECOVERY_ROOT)/boot/
+	cp -f $(MOD_DIR)/ump.ko $(RECOVERY_ROOT)/boot/
 
-uImage:config_uImage
+puImage:config_uImage
 	cp -f config_uImage .config
 	$(MMAKE) uImage 
 	cp arch/arm/boot/uImage uImage
 
-uImage_recovery:config_uImage_recovery
+puImage_recovery:config_uImage_recovery
 	cp -f config_uImage_recovery .config
 	$(MMAKE) uImage
 	cp arch/arm/boot/uImage uImage_recovery
 
+modules:config_uImage pmodules
+uImage:config_uImage puImage
+uImage_recovery:modules config_uImage_recovery puImage_recovery
 
-stepbuild:preconfig modules uImage uImage_recovery 
+stepbuild:preconfig config_uImage puImage pmodules puImage config_uImage_recovery puImage_recovery 
 	
 
 all:stepbuild
@@ -72,6 +77,4 @@ all:stepbuild
 install:all
 	cp -f uImage $(IMAGE_ROOT)/
 	cp -f uImage_recovery $(IMAGE_ROOT)/
-	cp -f $(MOD_DIR)/mali.ko $(RECOVERY_ROOT)/boot/
-	cp -f $(MOD_DIR)/ump.ko $(RECOVERY_ROOT)/boot/
 	cp -f $(MOD_DIR)/*.ko $(IMAGE_ROOT)/system/lib/

@@ -26,6 +26,7 @@
 #include <mach/platform.h>
 #include <mach/memory.h>
 #include <mach/clock.h>
+#include <mach/usbclock.h>
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>
 #include <asm/setup.h>
@@ -957,9 +958,89 @@ static  struct platform_device aml_rtc_device = {
             .id               = -1,
     };
 #endif
-
+#if defined (CONFIG_AMLOGIC_VIDEOIN_MANAGER)
+static struct resource vm_resources[] = {
+    [0] = {
+        .start =  VM_ADDR_START,
+        .end   = VM_ADDR_END,
+        .flags = IORESOURCE_MEM,
+    },
+};
+static struct platform_device vm_device =
+{
+	.name = "vm",
+	.id = 0,
+    .num_resources = ARRAY_SIZE(vm_resources),
+    .resource      = vm_resources,
+};
+#endif /* AMLOGIC_VIDEOIN_MANAGER */
 #ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE_GC0308
 int gc0308_init(void)
+{
+    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_1, (1<<29)); 
+    SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<2));
+
+    unsigned pwm_cnt = get_ddr_pll_clk()/48000000 - 1;
+    pwm_cnt &= 0xffff;
+    WRITE_CBUS_REG(PWM_PWM_C, (pwm_cnt<<16) | pwm_cnt);
+    SET_CBUS_REG_MASK(PWM_MISC_REG_CD, (1<<15)|(0<<8)|(1<<4)|(1<<0)); //select ddr pll for source, and clk divide 
+	msleep(20);
+    // set camera power enable
+    set_gpio_val(GPIOA_bank_bit0_27(25), GPIOA_bit_bit0_27(25), 1);    // set camera power enable
+    set_gpio_mode(GPIOA_bank_bit0_27(25), GPIOA_bit_bit0_27(25), GPIO_OUTPUT_MODE);
+    msleep(20);
+    
+    set_gpio_val(GPIOY_bank_bit0_22(10), GPIOY_bit_bit0_22(10), 0);    // reset IO
+    set_gpio_mode(GPIOY_bank_bit0_22(10), GPIOY_bit_bit0_22(10), GPIO_OUTPUT_MODE);
+    msleep(20);
+
+    set_gpio_val(GPIOY_bank_bit0_22(10), GPIOY_bit_bit0_22(10), 1);    // reset IO
+    set_gpio_mode(GPIOY_bank_bit0_22(10), GPIOY_bit_bit0_22(10), GPIO_OUTPUT_MODE);
+    msleep(20);
+    
+    // set camera power enable
+    set_gpio_val(GPIOA_bank_bit0_27(25), GPIOA_bit_bit0_27(25), 0);    // set camera power enable
+    set_gpio_mode(GPIOA_bank_bit0_27(25), GPIOA_bit_bit0_27(25), GPIO_OUTPUT_MODE);
+    msleep(20);
+    return 0;
+}
+#endif
+
+static int gc0308_have_inited = 0;
+static int gt2005_have_inited = 0;
+static int ov2655_have_inited = 0;
+
+#if defined(CONFIG_VIDEO_AMLOGIC_CAPTURE_GC0308)
+static int gc0308_v4l2_init(void)
+{
+    gc0308_have_inited=1;
+	gc0308_init();
+}
+static int gc0308_v4l2_uninit(void)
+{
+    gc0308_have_inited=0;
+	printk( "amlogic camera driver: gc0308_v4l2_uninit. \n");
+    set_gpio_val(GPIOA_bank_bit0_27(25), GPIOA_bit_bit0_27(25), 1);    // set camera power disable
+    set_gpio_mode(GPIOA_bank_bit0_27(25), GPIOA_bit_bit0_27(25), GPIO_OUTPUT_MODE);
+	msleep(5);
+	unsigned pwm_cnt = get_ddr_pll_clk()/48000000 - 1;
+    pwm_cnt &= 0xffff;
+    WRITE_CBUS_REG(PWM_PWM_C, (pwm_cnt<<16) | pwm_cnt);
+	#if defined(CONFIG_VIDEO_AMLOGIC_CAPTURE_OV2655)
+	if(ov2655_have_inited==0)
+	#endif
+	#if defined(CONFIG_VIDEO_AMLOGIC_CAPTURE_GT2005)
+	if(gt2005_have_inited==0)
+	#endif
+	CLEAR_CBUS_REG_MASK(PWM_MISC_REG_CD, (1 << 0)|(1 << 2));
+}
+static void gc0308_v4l2_early_suspend(void)
+{
+    //set_gpio_val(GPIOA_bank_bit0_27(25), GPIOA_bit_bit0_27(25), 1);    // set camera power disable
+    //set_gpio_mode(GPIOA_bank_bit0_27(25), GPIOA_bit_bit0_27(25), GPIO_OUTPUT_MODE);
+}
+
+static void gc0308_v4l2_late_resume(void)
 {
     CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_1, (1<<29)); 
     SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<2));
@@ -978,49 +1059,6 @@ int gc0308_init(void)
     set_gpio_val(GPIOA_bank_bit0_27(25), GPIOA_bit_bit0_27(25), 0);    // set camera power enable
     set_gpio_mode(GPIOA_bank_bit0_27(25), GPIOA_bit_bit0_27(25), GPIO_OUTPUT_MODE);
     msleep(20);
-    return 0;
-}
-#endif
-
-#if defined (CONFIG_AMLOGIC_VIDEOIN_MANAGER)
-static struct resource vm_resources[] = {
-    [0] = {
-        .start =  VM_ADDR_START,
-        .end   = VM_ADDR_END,
-        .flags = IORESOURCE_MEM,
-    },
-};
-static struct platform_device vm_device =
-{
-	.name = "vm",
-	.id = 0,
-    .num_resources = ARRAY_SIZE(vm_resources),
-    .resource      = vm_resources,
-};
-#endif /* AMLOGIC_VIDEOIN_MANAGER */
-
-#if defined(CONFIG_VIDEO_AMLOGIC_CAPTURE_GC0308)
-static int gc0308_v4l2_init(void)
-{
-	gc0308_init();
-}
-static int gc0308_v4l2_uninit(void)
-{
-
-	printk( "amlogic camera driver: gc0308_v4l2_uninit. \n");
-    set_gpio_val(GPIOA_bank_bit0_27(25), GPIOA_bit_bit0_27(25), 1);    // set camera power disable
-    set_gpio_mode(GPIOA_bank_bit0_27(25), GPIOA_bit_bit0_27(25), GPIO_OUTPUT_MODE);
-}
-static void gc0308_v4l2_early_suspend(void)
-{
-    set_gpio_val(GPIOA_bank_bit0_27(25), GPIOA_bit_bit0_27(25), 1);    // set camera power disable
-    set_gpio_mode(GPIOA_bank_bit0_27(25), GPIOA_bit_bit0_27(25), GPIO_OUTPUT_MODE);
-}
-
-static void gc0308_v4l2_late_resume(void)
-{
-    set_gpio_val(GPIOA_bank_bit0_27(25), GPIOA_bit_bit0_27(25), 0);    // set camera power enable
-    set_gpio_mode(GPIOA_bank_bit0_27(25), GPIOA_bit_bit0_27(25), GPIO_OUTPUT_MODE);
 }
 
 static struct aml_camera_i2c_fig1_s gc0308_custom_init_script[] = {
@@ -1165,19 +1203,33 @@ static int ov2655_init(void)
     
 
 }
+static int ov2655_v4l2_init(void)
+{
+    ov2655_have_inited=1;
+	ov2655_init();
+}
 
 static int ov2655_v4l2_uninit(void)
 {
+    ov2655_have_inited=0;
 	printk( "amlogic camera driver: ov2655_v4l2_uninit. \n");
     set_gpio_val(GPIOA_bank_bit0_27(24), GPIOA_bit_bit0_27(24), 1);    // set camera power disable
     set_gpio_mode(GPIOA_bank_bit0_27(24), GPIOA_bit_bit0_27(24), GPIO_OUTPUT_MODE);
+	msleep(5);
+	unsigned pwm_cnt = get_ddr_pll_clk()/48000000 - 1;
+    pwm_cnt &= 0xffff;
+    WRITE_CBUS_REG(PWM_PWM_C, (pwm_cnt<<16) | pwm_cnt);
+	#if defined(CONFIG_VIDEO_AMLOGIC_CAPTURE_GC0308)
+	if(gc0308_have_inited==0)
+	#endif
+	CLEAR_CBUS_REG_MASK(PWM_MISC_REG_CD, (1 << 0)|(1 << 2));
 }
 
 static void ov2655_v4l2_early_suspend(void)
 {
     /// set camera VDD disable
-    set_gpio_val(GPIOA_bank_bit0_27(24), GPIOA_bit_bit0_27(24), 1);    // set camera power disable
-    set_gpio_mode(GPIOA_bank_bit0_27(24), GPIOA_bit_bit0_27(24), GPIO_OUTPUT_MODE);
+    //set_gpio_val(GPIOA_bank_bit0_27(24), GPIOA_bit_bit0_27(24), 1);    // set camera power disable
+    //set_gpio_mode(GPIOA_bank_bit0_27(24), GPIOA_bit_bit0_27(24), GPIO_OUTPUT_MODE);
 }
 
 static void ov2655_v4l2_late_resume(void)
@@ -1188,7 +1240,7 @@ static void ov2655_v4l2_late_resume(void)
 aml_plat_cam_data_t video_ov2655_data = {
 	.name="video-ov2655",
 	.video_nr=1,
-	.device_init=ov2655_init,
+	.device_init=ov2655_v4l2_init,
 	.device_uninit=ov2655_v4l2_uninit,
 	.early_suspend=ov2655_v4l2_early_suspend,
 	.late_resume=ov2655_v4l2_late_resume,
@@ -1600,8 +1652,8 @@ static struct platform_device vout_device = {
 #ifdef CONFIG_USB_ANDROID_MASS_STORAGE
 static struct usb_mass_storage_platform_data mass_storage_pdata = {
        .nluns = 2,
-       .vendor = "DEV",
-       .product = "FROYO",
+       .vendor = " ",
+       .product = "Andriod",
        .release = 0x0100,
 };
 static struct platform_device usb_mass_storage_device = {
@@ -1639,8 +1691,8 @@ static struct android_usb_platform_data android_usb_pdata = {
        .vendor_id      = 0x0bb4,
        .product_id     = 0x0c01,
        .version        = 0x0100,
-       .product_name   = "FROYO",
-       .manufacturer_name = "DEV",
+       .product_name   = "Andriod",
+       .manufacturer_name = " ",
        .num_products = ARRAY_SIZE(usb_products),
        .products = usb_products,
        .num_functions = ARRAY_SIZE(usb_functions_adb),

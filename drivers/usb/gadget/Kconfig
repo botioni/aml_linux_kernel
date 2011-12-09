@@ -895,4 +895,14 @@ config USB_G_MULTI_CDC
 
 endchoice
 
+config USB_G_ANDROID_FSG_NLUNS
+	int "Android gadget number of luns"
+	depends on USB_G_ANDROID
+	range 1 8
+	default 2
+	help
+	  The number of luns for the mass storage function of the Android gadget.
+
 endif # USB_GADGET
+
+
