@@ -404,7 +404,7 @@ struct aml_camera_i2c_fig_s GT2005_script[] = {
 	{0x011B , 0x00},
 
 	//DCLK Polarity
-	{0x011C , 0x00},//00
+	{0x011C , 0x01},//00 --> 01
 
 	//Do not change
 	{0x011D , 0x02},
