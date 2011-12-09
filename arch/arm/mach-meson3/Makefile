@@ -27,6 +27,6 @@ obj-$(CONFIG_MACH_MESON3_REFF08)	+= board-m3-reff08.o
 obj-$(CONFIG_MACH_MESON3_REFF09)	+= board-m3-reff09.o
 obj-$(CONFIG_MACH_MESON3_REFF10)	+= board-m3-reff10.o
 obj-$(CONFIG_MACH_MESON3_REFF11)	+= board-m3-reff11.o
-
+obj-$(CONFIG_MACH_MESON3_REFF11_P800)	+= board-m3-reff11-P800.o
 # Power Management
 obj-$(CONFIG_SUSPEND)			+= pm.o
