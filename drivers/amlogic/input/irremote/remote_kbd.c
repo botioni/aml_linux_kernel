@@ -789,8 +789,7 @@ static int __init kp_probe(struct platform_device *pdev)
     input_dev->relbit[0] = BIT_MASK(REL_X) | BIT_MASK(REL_Y)| BIT_MASK(REL_WHEEL);
     input_dev->keybit[BIT_WORD(BTN_MOUSE)] |=BIT_MASK(BTN_SIDE)|BIT_MASK(BTN_EXTRA);	
     for (i = 0; i<KEY_MAX; i++){
-        if(i != KEY_Q)   //if KEY_Q is set,device will be recognize as a qwerty keyboard
-            set_bit( i, input_dev->keybit);
+			set_bit( i, input_dev->keybit);
     }
 
     //clear_bit(0,input_dev->keybit);

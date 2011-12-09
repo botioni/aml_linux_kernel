@@ -518,7 +518,7 @@ static int aml_rtc_set_alarm(struct device *dev, struct rtc_wkalrm *alarm)
 		alarm_data.alarm_sec = alarm_secs - cur_secs + 3; 
 	else
 		alarm_data.alarm_sec =  0;
-    printk("set alarm = %d second\n",alarm_data.alarm_sec);
+
 	spin_lock(&priv->lock);
 	rtc_set_alarm_aml(dev, &alarm_data);
 	spin_unlock(&priv->lock);
