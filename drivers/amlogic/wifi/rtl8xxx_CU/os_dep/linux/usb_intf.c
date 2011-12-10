@@ -1365,8 +1365,17 @@ _func_exit_;
 extern int console_suspend_enabled;
 #endif
 
+#ifdef CONFIG_RTL8XXX_CU_EXT_POWER_CTRL
+void extern_usb_wifi_power(int is_power);
+#endif
+
 static int __init rtw_drv_entry(void)
 {
+#ifdef CONFIG_RTL8XXX_CU_EXT_POWER_CTRL
+	extern_usb_wifi_power(1);
+	mdelay(100);
+#endif
+
 #ifdef CONFIG_PLATFORM_RTK_DMP
 	u32 tmp;
 	tmp=readl((volatile unsigned int*)0xb801a608);
