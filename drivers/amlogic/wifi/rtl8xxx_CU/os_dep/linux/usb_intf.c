@@ -1399,6 +1399,9 @@ static void __exit rtw_drv_halt(void)
 	drvpriv.drv_registered = _FALSE;
 	usb_deregister(&drvpriv.rtw_usb_drv);
 	DBG_8192C("-rtw_drv_halt\n");
+#ifdef CONFIG_RTL8XXX_CU_EXT_POWER_CTRL
+	extern_usb_wifi_power(0);
+#endif
 }
 
 
