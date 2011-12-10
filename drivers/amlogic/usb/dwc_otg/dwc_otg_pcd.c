@@ -1608,7 +1608,7 @@ int usb_gadget_probe_driver(struct usb_gadget_driver *_driver,
 		s_pcd->gadget.dev.driver = 0;
 		return retval;
 	}
-	dwc_otg_device_soft_connect(GET_CORE_IF(s_pcd));
+	//dwc_otg_device_soft_connect(GET_CORE_IF(s_pcd));
 	DWC_DEBUGPL(DBG_ANY, "registered gadget driver '%s'\n",
 		    _driver->driver.name);
 	return 0;
