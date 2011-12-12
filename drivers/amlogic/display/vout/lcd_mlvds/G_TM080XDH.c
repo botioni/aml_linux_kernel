@@ -137,8 +137,8 @@ static lcdConfig_t lcd_config =
     .max_height = MAX_HEIGHT,
 	.video_on_pixel = VIDEO_ON_PIXEL,
     .video_on_line = VIDEO_ON_LINE,
-    .pll_ctrl = 0x889, //0x10222,
-    .div_ctrl = 0x813, //0x18813,
+    .pll_ctrl = 0x43a, //0x10222,
+    .div_ctrl = 0x18813, //0x18813,
 	.clk_ctrl = 0x1111,	//pll_sel,div_sel,vclk_sel,xd
 	
     .gamma_cntl_port = (1 << LCD_GAMMA_EN) | (0 << LCD_GAMMA_RVS_OUT) | (0 << LCD_GAMMA_VCOM_POL),
@@ -159,8 +159,8 @@ static lcdConfig_t lcd_config =
     .flags = LCD_DIGITAL_MLVDS,
     .screen_width = 4,
     .screen_height = 3,
-    .sync_duration_num = 60,
-    .sync_duration_den = 1,
+    .sync_duration_num = 497,
+    .sync_duration_den = 10,
 	.mlvds_config = &lcd_mlvds_config,
     .power_on=t13_power_on,
     .power_off=t13_power_off,
@@ -323,7 +323,7 @@ static ssize_t control_enable3d(struct class *class,
     
     control_lcd_3d(flag_3d);
 
-	return 0;
+	return count;
 }
 
 static struct class_attribute enable3d_class_attrs[] = {
@@ -493,7 +493,8 @@ static void power_on_bl(void)
 #endif
 static void t13_power_on(void)
 {
-    video_dac_disable();	
+    //video_dac_disable();	
+    printk("\n\n t13_power_on.\n\n");
 	power_on_lcd();	
    // PRINT_INFO("\n\nt13_power_on...\n\n");
     Power_on_bl = power_on_bl;
