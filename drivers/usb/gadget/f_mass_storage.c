@@ -290,6 +290,7 @@
 #include <linux/string.h>
 #include <linux/freezer.h>
 #include <linux/utsname.h>
+#include <linux/wakelock.h>
 
 #include <linux/usb/ch9.h>
 #include <linux/usb/gadget.h>
@@ -315,141 +316,6 @@ static const char fsg_string_interface[] = "Mass Storage";
 
 /*-------------------------------------------------------------------------*/
 
-struct fsg_dev;
-struct fsg_common;
-
-/* FSF callback functions */
-struct fsg_operations {
-	/*
-	 * Callback function to call when thread exits.  If no
-	 * callback is set or it returns value lower then zero MSF
-	 * will force eject all LUNs it operates on (including those
-	 * marked as non-removable or with prevent_medium_removal flag
-	 * set).
-	 */
-	int (*thread_exits)(struct fsg_common *common);
-
-	/*
-	 * Called prior to ejection.  Negative return means error,
-	 * zero means to continue with ejection, positive means not to
-	 * eject.
-	 */
-	int (*pre_eject)(struct fsg_common *common,
-			 struct fsg_lun *lun, int num);
-	/*
-	 * Called after ejection.  Negative return means error, zero
-	 * or positive is just a success.
-	 */
-	int (*post_eject)(struct fsg_common *common,
-			  struct fsg_lun *lun, int num);
-};
-
-/* Data shared by all the FSG instances. */
-struct fsg_common {
-	struct usb_gadget	*gadget;
-	struct usb_composite_dev *cdev;
-	struct fsg_dev		*fsg, *new_fsg;
-	wait_queue_head_t	fsg_wait;
-
-	/* filesem protects: backing files in use */
-	struct rw_semaphore	filesem;
-
-	/* lock protects: state, all the req_busy's */
-	spinlock_t		lock;
-
-	struct usb_ep		*ep0;		/* Copy of gadget->ep0 */
-	struct usb_request	*ep0req;	/* Copy of cdev->req */
-	unsigned int		ep0_req_tag;
-
-	struct fsg_buffhd	*next_buffhd_to_fill;
-	struct fsg_buffhd	*next_buffhd_to_drain;
-	struct fsg_buffhd	buffhds[FSG_NUM_BUFFERS];
-
-	int			cmnd_size;
-	u8			cmnd[MAX_COMMAND_SIZE];
-
-	unsigned int		nluns;
-	unsigned int		lun;
-	struct fsg_lun		*luns;
-	struct fsg_lun		*curlun;
-
-	unsigned int		bulk_out_maxpacket;
-	enum fsg_state		state;		/* For exception handling */
-	unsigned int		exception_req_tag;
-
-	enum data_direction	data_dir;
-	u32			data_size;
-	u32			data_size_from_cmnd;
-	u32			tag;
-	u32			residue;
-	u32			usb_amount_left;
-
-	unsigned int		can_stall:1;
-	unsigned int		free_storage_on_release:1;
-	unsigned int		phase_error:1;
-	unsigned int		short_packet_received:1;
-	unsigned int		bad_lun_okay:1;
-	unsigned int		running:1;
-
-	int			thread_wakeup_needed;
-	struct completion	thread_notifier;
-	struct task_struct	*thread_task;
-
-	/* Callback functions. */
-	const struct fsg_operations	*ops;
-	/* Gadget's private data. */
-	void			*private_data;
-
-	/*
-	 * Vendor (8 chars), product (16 chars), release (4
-	 * hexadecimal digits) and NUL byte
-	 */
-	char inquiry_string[8 + 16 + 4 + 1];
-
-	struct kref		ref;
-};
-
-struct fsg_config {
-	unsigned nluns;
-	struct fsg_lun_config {
-		const char *filename;
-		char ro;
-		char removable;
-		char cdrom;
-		char nofua;
-	} luns[FSG_MAX_LUNS];
-
-	const char		*lun_name_format;
-	const char		*thread_name;
-
-	/* Callback functions. */
-	const struct fsg_operations	*ops;
-	/* Gadget's private data. */
-	void			*private_data;
-
-	const char *vendor_name;		/*  8 characters or less */
-	const char *product_name;		/* 16 characters or less */
-	u16 release;
-
-	char			can_stall;
-};
-
-struct fsg_dev {
-	struct usb_function	function;
-	struct usb_gadget	*gadget;	/* Copy of cdev->gadget */
-	struct fsg_common	*common;
-
-	u16			interface_number;
-
-	unsigned int		bulk_in_enabled:1;
-	unsigned int		bulk_out_enabled:1;
-
-	unsigned long		atomic_bitflags;
-#define IGNORE_BULK_OUT		0
-
-	struct usb_ep		*bulk_in;
-	struct usb_ep		*bulk_out;
-};
 
 static inline int __fsg_is_set(struct fsg_common *common,
 			       const char *func, unsigned line)
@@ -1481,7 +1347,7 @@ static int do_start_stop(struct fsg_common *common)
 
 	up_read(&common->filesem);
 	down_write(&common->filesem);
-	fsg_lun_close(curlun);
+	fsg_lun_close(common, curlun);
 	up_write(&common->filesem);
 	down_read(&common->filesem);
 
@@ -2389,8 +2255,10 @@ reset:
 	}
 
 	common->running = 0;
-	if (!new_fsg || rc)
+	if (!new_fsg || rc) {
+		adjust_wake_lock(common);
 		return rc;
+	}
 
 	common->fsg = new_fsg;
 	fsg = common->fsg;
@@ -2431,6 +2299,7 @@ reset:
 	common->running = 1;
 	for (i = 0; i < common->nluns; ++i)
 		common->luns[i].unit_attention_data = SS_RESET_OCCURRED;
+	adjust_wake_lock(common);
 	return rc;
 }
 
@@ -2677,7 +2546,7 @@ static int fsg_main_thread(void *common_)
 			if (!fsg_lun_is_open(curlun))
 				continue;
 
-			fsg_lun_close(curlun);
+			fsg_lun_close(common, curlun);
 			curlun->unit_attention_data = SS_MEDIUM_NOT_PRESENT;
 		}
 		up_write(&common->filesem);
@@ -2774,6 +2643,9 @@ static struct fsg_common *fsg_common_init(struct fsg_common *common,
 
 	init_rwsem(&common->filesem);
 
+	wake_lock_init(&common->wake_lock, WAKE_LOCK_SUSPEND,
+			   "usb_mass_storage");
+
 	for (i = 0, lcfg = cfg->luns; i < nluns; ++i, ++curlun, ++lcfg) {
 		curlun->cdrom = !!lcfg->cdrom;
 		curlun->ro = lcfg->cdrom || lcfg->ro;
@@ -2782,7 +2654,7 @@ static struct fsg_common *fsg_common_init(struct fsg_common *common,
 		curlun->dev.release = fsg_lun_release;
 		curlun->dev.parent = &gadget->dev;
 		/* curlun->dev.driver = &fsg_driver.driver; XXX */
-		dev_set_drvdata(&curlun->dev, &common->filesem);
+		dev_set_drvdata(&curlun->dev, common);
 		dev_set_name(&curlun->dev,
 			     cfg->lun_name_format
 			   ? cfg->lun_name_format
@@ -2808,7 +2680,7 @@ static struct fsg_common *fsg_common_init(struct fsg_common *common,
 			goto error_luns;
 
 		if (lcfg->filename) {
-			rc = fsg_lun_open(curlun, lcfg->filename);
+			rc = fsg_lun_open(common, curlun, lcfg->filename);
 			if (rc)
 				goto error_luns;
 		} else if (!curlun->removable) {
@@ -2912,6 +2784,7 @@ buffhds_first_it:
 
 error_luns:
 	common->nluns = i + 1;
+	wake_lock_destroy(&common->wake_lock);
 error_release:
 	common->state = FSG_STATE_TERMINATED;	/* The thread is dead */
 	/* Call fsg_common_release() directly, ref might be not initialised. */
@@ -2938,7 +2811,7 @@ static void fsg_common_release(struct kref *ref)
 			device_remove_file(&lun->dev, &dev_attr_nofua);
 			device_remove_file(&lun->dev, &dev_attr_ro);
 			device_remove_file(&lun->dev, &dev_attr_file);
-			fsg_lun_close(lun);
+			fsg_lun_close(common, lun);
 			device_unregister(&lun->dev);
 		}
 
