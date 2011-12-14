@@ -544,6 +544,12 @@ static int mass_storage_function_init(struct android_usb_function *f,
 		return -ENOMEM;
 
 	config->fsg.nluns = CONFIG_USB_G_ANDROID_FSG_NLUNS;
+#ifdef CONFIG_USB_G_ANDROID_VENDOR
+	config->fsg.vendor_name = CONFIG_USB_G_ANDROID_VENDOR;
+#endif
+#ifdef CONFIG_USB_G_ANDROID_PRODUCT
+	config->fsg.product_name = CONFIG_USB_G_ANDROID_PRODUCT;
+#endif
 	for (i=0; i<config->fsg.nluns; i++)
 		config->fsg.luns[i].removable = 1;
 
