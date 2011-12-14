@@ -219,8 +219,8 @@ static struct mpu3050_platform_data mpu3050_data = {
                 // connected
                 .bus = EXT_SLAVE_BUS_SECONDARY, //The secondary I2C of MPU
                 .address = 0x1c,
-                //.orientation = {0,1,0,1,0,0,0,0,-1},
-                .orientation = {-1,0,0,0,1,0,0,0,-1},
+                .orientation = {0,1,0,1,0,0,0,0,-1},
+                //.orientation = {-1,0,0,0,1,0,0,0,-1},
             },
     #ifdef CONFIG_MPU_SENSORS_MMC314X
     .compass = {

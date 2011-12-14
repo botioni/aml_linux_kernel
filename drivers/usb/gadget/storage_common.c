@@ -522,14 +522,40 @@ static struct usb_gadget_strings	fsg_stringtab = {
 };
 
 
+
+#include "fsg.h"
  /*-------------------------------------------------------------------------*/
+static void adjust_wake_lock(struct fsg_common *common)
+{
+	int ums_active = 0;
+	int i;
+	unsigned long		flags;
+
+	spin_lock_irqsave(&common->lock, flags);
+
+	if (common->fsg) {
+		for (i = 0; i < common->nluns; ++i) {
+			if (fsg_lun_is_open(&common->luns[i]))
+				ums_active = 1;
+		}
+	}
+	//printk("common->fsg? %d ums_active/lock? %d\n", common->fsg != NULL, ums_active);
+
+	if (ums_active)
+		wake_lock(&common->wake_lock);
+	else
+		wake_unlock(&common->wake_lock);
+
+	spin_unlock_irqrestore(&common->lock, flags);
+}
+
 
 /*
  * If the next two routines are called while the gadget is registered,
  * the caller must own fsg->filesem for writing.
  */
 
-static int fsg_lun_open(struct fsg_lun *curlun, const char *filename)
+static int fsg_lun_open(struct fsg_common *common, struct fsg_lun *curlun, const char *filename)
 {
 	int				ro;
 	struct file			*filp = NULL;
@@ -605,6 +631,8 @@ static int fsg_lun_open(struct fsg_lun *curlun, const char *filename)
 	curlun->num_sectors = num_sectors;
 	LDBG(curlun, "open backing file: %s\n", filename);
 	rc = 0;
+	if (common != NULL)
+		adjust_wake_lock(common);
 
 out:
 	filp_close(filp, current->files);
@@ -612,12 +640,14 @@ out:
 }
 
 
-static void fsg_lun_close(struct fsg_lun *curlun)
+static void fsg_lun_close(struct fsg_common *common, struct fsg_lun *curlun)
 {
 	if (curlun->filp) {
 		LDBG(curlun, "close backing file\n");
 		fput(curlun->filp);
 		curlun->filp = NULL;
+		if (common != NULL)
+			adjust_wake_lock(common);
 	}
 }
 
@@ -681,7 +711,8 @@ static ssize_t fsg_show_file(struct device *dev, struct device_attribute *attr,
 			     char *buf)
 {
 	struct fsg_lun	*curlun = fsg_lun_from_dev(dev);
-	struct rw_semaphore	*filesem = dev_get_drvdata(dev);
+	struct fsg_common *common = dev_get_drvdata(dev);
+	struct rw_semaphore	*filesem = &common->filesem;
 	char		*p;
 	ssize_t		rc;
 
@@ -710,7 +741,8 @@ static ssize_t fsg_store_ro(struct device *dev, struct device_attribute *attr,
 {
 	ssize_t		rc = count;
 	struct fsg_lun	*curlun = fsg_lun_from_dev(dev);
-	struct rw_semaphore	*filesem = dev_get_drvdata(dev);
+	struct fsg_common *common = dev_get_drvdata(dev);
+	struct rw_semaphore	*filesem = &common->filesem;
 	unsigned long	ro;
 
 	if (strict_strtoul(buf, 2, &ro))
@@ -756,7 +788,8 @@ static ssize_t fsg_store_file(struct device *dev, struct device_attribute *attr,
 			      const char *buf, size_t count)
 {
 	struct fsg_lun	*curlun = fsg_lun_from_dev(dev);
-	struct rw_semaphore	*filesem = dev_get_drvdata(dev);
+	struct fsg_common *common = dev_get_drvdata(dev);
+	struct rw_semaphore	*filesem = &common->filesem;
 	int		rc = 0;
 
 
@@ -777,13 +810,13 @@ static ssize_t fsg_store_file(struct device *dev, struct device_attribute *attr,
 	/* Eject current medium */
 	down_write(filesem);
 	if (fsg_lun_is_open(curlun)) {
-		fsg_lun_close(curlun);
+		fsg_lun_close(common, curlun);
 		curlun->unit_attention_data = SS_MEDIUM_NOT_PRESENT;
 	}
 
 	/* Load new medium */
 	if (count > 0 && buf[0]) {
-		rc = fsg_lun_open(curlun, buf);
+		rc = fsg_lun_open(common, curlun, buf);
 		if (rc == 0)
 			curlun->unit_attention_data =
 					SS_NOT_READY_TO_READY_TRANSITION;
