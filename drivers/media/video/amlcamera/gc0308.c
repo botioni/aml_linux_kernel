@@ -324,9 +324,9 @@ static inline struct gc0308_fh *to_fh(struct gc0308_device *dev)
 	return container_of(dev, struct gc0308_fh, dev);
 }
 
-static struct v4l2_frmsize_discrete gc0308_prev_resolution[2]=
+static struct v4l2_frmsize_discrete gc0308_prev_resolution[2]= //should include 352x288 and 640x480, those two size are used for recording
 {
-	{320,240},
+	{352,288},
 	{640,480},
 };
 
