@@ -2011,6 +2011,49 @@ static void __init LED_PWM_REG0_init(void)
 
 }
 
+/* usb wifi power 1:power on  0:power off */
+/*void extern_usb_wifi_power(int is_power)
+{
+    printk(KERN_INFO "usb_wifi_power %s\n", is_power ? "On" : "Off");	
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_1,(1<<11));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0,(1<<18));
+	CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO2_EN_N, (1<<8));
+	if(is_power)
+		CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO2_O, (1<<8));
+	else
+		SET_CBUS_REG_MASK(PREG_PAD_GPIO2_O, (1<<8));   
+}*/
+/* usb wifi power 1:power on  0:power off */
+void extern_usb_wifi_power(int is_power)
+{
+    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0, (1<<6));
+    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_6, (1<<20));
+    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_3, (1<<5));
+    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_6, (1<<22));
+    CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO0_EN_N, (1<<4));
+    SET_CBUS_REG_MASK(PREG_PAD_GPIO0_O, (1<<4));
+
+    //delay at least 100us
+    udelay(500);
+
+    //SHUTDOWN high
+    CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO0_EN_N, (1<<6));
+    SET_CBUS_REG_MASK(PREG_PAD_GPIO0_O, (1<<6));
+
+    //delay at least 100us
+    udelay(500);
+
+    //VDD 1V2 low
+    if(is_power)
+            CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO0_O, (1<<4));
+    else
+            SET_CBUS_REG_MASK(PREG_PAD_GPIO0_O, (1<<4));
+
+    printk("[extern_wifi_power] 1V2 %d\n", is_power);
+}
+
+EXPORT_SYMBOL(extern_usb_wifi_power);
+
 static __init void m3_init_machine(void)
 {
     meson_cache_init();
@@ -2027,12 +2070,14 @@ static __init void m3_init_machine(void)
 // Gadmei uses PMU to control.
 //    pm_power_off = power_off;		//Elvis fool
     device_pinmux_init();
+	extern_usb_wifi_power(0);
     platform_add_devices(platform_devs, ARRAY_SIZE(platform_devs));
 
 #ifdef CONFIG_USB_DWC_OTG_HCD
     set_usb_phy_clk(USB_PHY_CLOCK_SEL_XTAL_DIV2);
     lm_device_register(&usb_ld_a);
-    //lm_device_register(&usb_ld_b);
+	set_usb_phy_id_mode(USB_PHY_PORT_B,USB_PHY_MODE_SW_HOST);
+    lm_device_register(&usb_ld_b);
 #endif
     disable_unused_model();
     // hp detect
