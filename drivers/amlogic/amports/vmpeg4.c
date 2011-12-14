@@ -133,6 +133,7 @@ static u32 stat;
 static u32 buf_start, buf_size, buf_offset;
 static u32 vmpeg4_ratio;
 static u32 rate_detect;
+static u32 vmpeg4_rotation;
 
 static u32 total_frame;
 static u32 last_vop_time_inc, last_duration;
@@ -641,6 +642,7 @@ static void vmpeg4_local_init(void)
     int i;
 
     vmpeg4_ratio = vmpeg4_amstream_dec_info.ratio;
+    vmpeg4_rotation = (((u32)vmpeg4_amstream_dec_info.param) >> 16) & 0xffff;
 
     fill_ptr = get_ptr = put_ptr = putting_ptr = 0;
 

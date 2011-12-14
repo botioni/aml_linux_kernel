@@ -137,6 +137,7 @@ static s32 buf_offset;
 static u32 pts_outside = 0;
 static u32 sync_outside = 0;
 static u32 vh264_ratio;
+static u32 vh264_rotation;
 
 static u32 seq_info;
 static u32 aspect_ratio_info;
@@ -1017,6 +1018,8 @@ static void vh264_local_init(void)
 
     //vh264_ratio = vh264_amstream_dec_info.ratio;
     vh264_ratio = 0x100;
+
+    vh264_rotation = (((u32)vh264_amstream_dec_info.param) >> 16) & 0xffff;
 
     fill_ptr = get_ptr = put_ptr = putting_ptr = 0;
 
