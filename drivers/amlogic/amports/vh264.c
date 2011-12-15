@@ -301,6 +301,7 @@ static void set_frame_info(vframe_t *vf)
     vf->width = frame_width;
     vf->height = frame_height;
     vf->duration = frame_dur;
+    vf->orientation = vh264_rotation;
 
     if (vh264_ratio == 0) {
         vf->ratio_control |= (0x90 << DISP_RATIO_ASPECT_RATIO_BIT); // always stretch to 16:9
