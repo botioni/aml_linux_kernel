@@ -118,6 +118,8 @@ typedef struct vframe_s {
     u32 height;
     u32 ratio_control;
 
+    u32 orientation;
+
 #if 1
     /* vframe properties */
     struct vframe_prop_s prop;

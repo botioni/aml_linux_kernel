@@ -354,6 +354,7 @@ static void vmpeg4_isr(void)
             vf->width = vmpeg4_amstream_dec_info.width;
             vf->height = vmpeg4_amstream_dec_info.height;
             vf->bufWidth = 1920;
+            vf->orientation = vmpeg4_rotation;
             vf->pts = pts;
             vf->duration = duration >> 1;
             vf->duration_pulldown = 0;
@@ -371,6 +372,7 @@ static void vmpeg4_isr(void)
             vf->width = vmpeg4_amstream_dec_info.width;
             vf->height = vmpeg4_amstream_dec_info.height;
             vf->bufWidth = 1920;
+            vf->orientation = vmpeg4_rotation;
 
             vf->pts = 0;
             vf->duration = duration >> 1;
@@ -399,6 +401,7 @@ static void vmpeg4_isr(void)
             vf->width = vmpeg4_amstream_dec_info.width;
             vf->height = vmpeg4_amstream_dec_info.height;
             vf->bufWidth = 1920;
+            vf->orientation = vmpeg4_rotation;
             vf->pts = pts;
             vf->duration = duration;
             vf->duration_pulldown = 0;
@@ -643,6 +646,7 @@ static void vmpeg4_local_init(void)
 
     vmpeg4_ratio = vmpeg4_amstream_dec_info.ratio;
     vmpeg4_rotation = (((u32)vmpeg4_amstream_dec_info.param) >> 16) & 0xffff;
+    printk("vmpeg4 rotation %d\n", vmpeg4_rotation);
 
     fill_ptr = get_ptr = put_ptr = putting_ptr = 0;
 
