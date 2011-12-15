@@ -104,7 +104,10 @@ struct signal_stat {
 };
 
 struct rx_pkt_attrib	{
-
+	u16	pkt_len;
+	u8	physt;
+	u8	drvinfo_sz;
+	u8	shift_sz;
 	u8 	amsdu;
 	u8	order;
 	u8	qos;
@@ -123,6 +126,7 @@ struct rx_pkt_attrib	{
 	u8	priority;
 	u8	ack_policy;
  	u8	crc_err;
+	u8	icv_err;
 
 	u8 	dst[ETH_ALEN];
 	u8 	src[ETH_ALEN];
@@ -145,7 +149,6 @@ struct rx_pkt_attrib	{
 
 	u32	RxPWDBAll;
 	s32	RecvSignalPower;
-	int RxSNRdB[2];
 };
 
 
@@ -270,9 +273,9 @@ struct recv_priv {
 	struct sk_buff_head free_recv_skb_queue;
 	struct sk_buff_head rx_skb_queue;
 
-#ifdef CONFIG_USE_USB_BUFFER_ALLOC
+#ifdef CONFIG_USE_USB_BUFFER_ALLOC_RX
 	_queue	recv_buf_pending_queue;
-#endif
+#endif	// CONFIG_USE_USB_BUFFER_ALLOC_RX
 #endif
 
 	u8 *pallocated_recv_buf;
@@ -303,6 +306,8 @@ struct recv_priv {
 	u8 signal_qual;
 	u8 noise;
 	int RxSNRdB[2];
+	s8 RxRssi[2];
+	int FalseAlmCnt_all;
 
 #ifdef CONFIG_NEW_SIGNAL_STAT_PROCESS
 	_timer signal_stat_timer;

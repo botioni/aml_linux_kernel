@@ -29,7 +29,7 @@
 #include "rtl8192c_recv.h"
 #include "rtl8192c_xmit.h"
 #include "rtl8192c_cmd.h"
-#ifdef SILENT_RESET_FOR_SPECIFIC_PLATFOM
+#ifdef DBG_CONFIG_ERROR_DETECT
 #include "rtl8192c_sreset.h"
 #endif
 
@@ -189,7 +189,8 @@
 
 #define FW_8192C_SIZE					16384+32//16k
 #define FW_8192C_START_ADDRESS		0x1000
-#define FW_8192C_END_ADDRESS		0x3FFF
+//#define FW_8192C_END_ADDRESS		0x3FFF //Filen said this is for test chip
+#define FW_8192C_END_ADDRESS		0x1FFF
 
 #define MAX_PAGE_SIZE			4096	// @ page : 4k bytes
 
@@ -204,11 +205,7 @@ typedef enum _FIRMWARE_SOURCE{
 
 typedef struct _RT_FIRMWARE{
 	FIRMWARE_SOURCE	eFWSource;
-	#ifdef CONFIG_EMBEDDED_FWIMG
 	u8*			szFwBuffer;
-	#else
-	u8			szFwBuffer[FW_8192C_SIZE];
-	#endif
 	u32			ulFwLength;
 }RT_FIRMWARE, *PRT_FIRMWARE, RT_FIRMWARE_92C, *PRT_FIRMWARE_92C;
 
@@ -630,7 +627,7 @@ struct hal_data_8192ce
 
 	struct dm_priv	dmpriv;
 	u8	bDumpRxPkt;//for debug
-#ifdef SILENT_RESET_FOR_SPECIFIC_PLATFOM
+#ifdef DBG_CONFIG_ERROR_DETECT
 	struct sreset_priv srestpriv;
 #endif
 	u8	bInterruptMigration;
@@ -643,7 +640,7 @@ struct hal_data_8192ce
 	
 #ifdef CONFIG_P2P
 	struct P2P_PS_Offload_t	p2p_ps_offload;
-#endif
+#endif //CONFIG_P2P
 };
 
 typedef struct hal_data_8192ce HAL_DATA_TYPE, *PHAL_DATA_TYPE;
@@ -777,7 +774,7 @@ struct hal_data_8192cu
 	u8	RegReg542;
 
 	struct dm_priv	dmpriv;
-#ifdef SILENT_RESET_FOR_SPECIFIC_PLATFOM
+#ifdef DBG_CONFIG_ERROR_DETECT
 	struct sreset_priv srestpriv;
 #endif	
 
@@ -851,7 +848,7 @@ struct hal_data_8192cu
 
 #ifdef CONFIG_P2P
 	struct P2P_PS_Offload_t	p2p_ps_offload;
-#endif
+#endif //CONFIG_P2P
 };
 
 typedef struct hal_data_8192cu HAL_DATA_TYPE, *PHAL_DATA_TYPE;
@@ -876,4 +873,3 @@ VOID rtl8192c_EfuseParseIDCode(PADAPTER pAdapter, u8 *hwinfo);
 void rtl8192c_set_hal_ops(struct hal_ops *pHalFunc);
 
 #endif
-

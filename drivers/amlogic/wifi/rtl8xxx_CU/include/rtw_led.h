@@ -198,15 +198,17 @@ struct led_priv{
 	/* add for led controll */
 };
 
-#ifdef CONFIG_LED
+#ifdef CONFIG_SW_LED
 #define rtw_led_control(adapter, LedAction) \
 	do { \
 		if((adapter)->ledpriv.LedControlHandler) \
 			(adapter)->ledpriv.LedControlHandler((adapter), (LedAction)); \
 	} while(0)
-#else //CONFIG_LED
+#else //CONFIG_SW_LED
 #define rtw_led_control(adapter, LedAction)
-#endif //CONFIG_LED
+#endif //CONFIG_SW_LED
+
+extern void BlinkHandler(PLED_871x	 pLed);
 
 #endif //__RTW_LED_H_
 

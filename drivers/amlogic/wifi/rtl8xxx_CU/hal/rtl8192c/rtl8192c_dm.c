@@ -15,8 +15,7 @@
  * this program; if not, write to the Free Software Foundation, Inc.,
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110, USA
  *
- *
- 
+ * 
 ******************************************************************************/
 //============================================================
 // Description:
@@ -184,7 +183,7 @@ dm_FalseAlarmCounterStatistics(
 						FalseAlmCnt->Cnt_Crc8_fail +
 						FalseAlmCnt->Cnt_Mcs_fail +
 						FalseAlmCnt->Cnt_Cck_fail);	
-	
+	Adapter->recvpriv.FalseAlmCnt_all = FalseAlmCnt->Cnt_all;
 	//reset false alarm counter registers
 	PHY_SetBBReg(Adapter, rOFDM1_LSTF, 0x08000000, 1);
 	PHY_SetBBReg(Adapter, rOFDM1_LSTF, 0x08000000, 0);
@@ -261,7 +260,7 @@ dm_CtrlInitGainByFA(
 		value_IGI = DM_DIG_FA_LOWER;
 
 	if(FalseAlmCnt->Cnt_all > 10000)
-		value_IGI = 0x32;
+		value_IGI = DM_DIG_FA_UPPER;
 	
 	pDigTable->CurIGValue = value_IGI;
 	
@@ -269,7 +268,7 @@ dm_CtrlInitGainByFA(
 	
 }
 
-#ifdef CONFIG_SPECIAL_SETTING_FOR_FUNAI
+#ifdef CONFIG_SPECIAL_SETTING_FOR_FUNAI_TV
 VOID dm_CtrlInitGainByRssi( IN PADAPTER pAdapter) 
 { 
 
@@ -551,7 +550,7 @@ dm_initial_gain_Multi_STA(
 
 
 	if((bMulti_STA == _FALSE) 
-		|| (pDigTable->CurSTAConnectState != DIG_STA_DISCONNECT))
+		|| (pDigTable->CurSTAConnectState == DIG_STA_DISCONNECT))	 
 	{
 		pdmpriv->binitialized = _FALSE;
 		pDigTable->Dig_Ext_Port_Stage = DIG_EXT_PORT_STAGE_MAX;
@@ -3609,7 +3608,7 @@ rtl8192c_dm_RF_Saving(
 			 
 			if(pPSTable->PreRFState == RF_Normal)
 			{
-			#ifdef CONFIG_SPECIAL_SETTING_FOR_FUNAI
+			#ifdef CONFIG_SPECIAL_SETTING_FOR_FUNAI_TV
 				if(pPSTable->Rssi_val_min >= 50)
 			#else
 				if(pPSTable->Rssi_val_min >= 30)
@@ -3619,7 +3618,7 @@ rtl8192c_dm_RF_Saving(
 					pPSTable->CurRFState = RF_Normal;
 			}
 			else{
-			#ifdef CONFIG_SPECIAL_SETTING_FOR_FUNAI
+			#ifdef CONFIG_SPECIAL_SETTING_FOR_FUNAI_TV
 				if(pPSTable->Rssi_val_min <= 45)
 			#else
 				if(pPSTable->Rssi_val_min <= 25)
@@ -4334,7 +4333,7 @@ static void dm_RSSIMonitorInit(
 	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(Adapter);
 	struct dm_priv	*pdmpriv = &pHalData->dmpriv;
 	pdmpriv->OFDM_Pkt_Cnt = 0;
-	pdmpriv->RSSI_Select = RSSI_CCK;
+	pdmpriv->RSSI_Select = RSSI_DEFAULT;
 }
 
 static void dm_RSSIMonitorCheck(
@@ -4343,6 +4342,16 @@ static void dm_RSSIMonitorCheck(
 {
 	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(Adapter);
 	struct dm_priv	*pdmpriv = &pHalData->dmpriv;
+	struct mlme_priv *pmlmepriv = &Adapter->mlmepriv;
+
+	if(check_fwstate(pmlmepriv, _FW_LINKED) == _FALSE)
+		return;
+		
+	if(check_fwstate(pmlmepriv, WIFI_AP_STATE |WIFI_ADHOC_STATE) == _TRUE )
+	{
+		if(Adapter->stapriv.asoc_sta_count < 2)
+			return;			
+	}		
 	
 	if(pdmpriv->OFDM_Pkt_Cnt == 0)
 		pdmpriv->RSSI_Select = RSSI_CCK;
@@ -4491,6 +4500,8 @@ rtl8192c_InitHalDm(
 	pdmpriv->DM_Type = DM_Type_ByDriver;	
 	pdmpriv->DMFlag = DYNAMIC_FUNC_DISABLE;
 	pdmpriv->UndecoratedSmoothedPWDB = (-1);
+	pdmpriv->UndecoratedSmoothedCCK = (-1);
+	
 	
 	//.1 DIG INIT
 	pdmpriv->bDMInitialGainEnable = _TRUE;
@@ -4560,7 +4571,7 @@ rtl8192c_HalDmWatchDog(
 	// modifed by thomas. 2011.06.11.
 	if(Adapter->wdinfo.p2p_ps_enable)
 		bFwPSAwake = _FALSE;
-#endif
+#endif //CONFIG_P2P
 
 	// Stop dynamic mechanism when:
 	// 1. RF is OFF. (No need to do DM.)
@@ -4588,9 +4599,9 @@ rtl8192c_HalDmWatchDog(
 		//
 		// Dynamic Initial Gain mechanism.
 		//
-#ifdef CONFIG_SPECIAL_SETTING_FOR_FUNAI
+
 		dm_RSSIMonitorCheck(Adapter);
-#endif
+
 		dm_FalseAlarmCounterStatistics(Adapter);
 		dm_DIG(Adapter);
 

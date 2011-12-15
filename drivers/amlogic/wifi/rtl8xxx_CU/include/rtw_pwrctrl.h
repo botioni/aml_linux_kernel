@@ -175,7 +175,8 @@ enum _PS_BBRegBackup_ {
 
 enum { // for ips_mode
 	IPS_NORMAL = 0,
-	IPS_LEVEL_2
+	IPS_LEVEL_2,
+	IPS_NONE,
 };
 
 struct	pwrctrl_priv {
@@ -197,7 +198,7 @@ struct	pwrctrl_priv {
 	u32	cur_ps_level;
 	u32	reg_rfps_level;
 
-	rt_rf_power_state	rf_pwrstate;//cur power state
+	
 
 #ifdef CONFIG_PCI_HCI
 	//just for PCIE ASPM
@@ -230,15 +231,17 @@ struct	pwrctrl_priv {
 
 
 	u8		bInternalAutoSuspend;
+	u8		bInSuspend;
 	u8		bSupportRemoteWakeup;	
 	_timer 	pwr_state_check_timer;
-	int		pwr_state_check_inverval;
+	int		pwr_state_check_interval;
 	u8		pwr_state_check_cnts;
 	uint 		bips_processing;
 
 	int 		ps_flag;
-
-	rt_rf_power_state 	current_rfpwrstate;
+	
+	rt_rf_power_state	rf_pwrstate;//cur power state
+	//rt_rf_power_state 	current_rfpwrstate;
 	rt_rf_power_state	change_rfpwrstate;
 
 	u8		wepkeymask;
@@ -278,7 +281,7 @@ struct	pwrctrl_priv {
 	} while(0)
 	
 #define rtw_set_pwr_state_check_timer(pwrctrlpriv) \
-	_rtw_set_pwr_state_check_timer((pwrctrlpriv), (pwrctrlpriv)->pwr_state_check_inverval)
+	_rtw_set_pwr_state_check_timer((pwrctrlpriv), (pwrctrlpriv)->pwr_state_check_interval)
 
 extern void rtw_init_pwrctrl_priv(_adapter *adapter);
 extern void rtw_free_pwrctrl_priv(_adapter * adapter);
@@ -294,8 +297,11 @@ extern void cpwm_int_hdl(_adapter *padapter, struct reportpwrstate_parm *preport
 extern void rtw_set_ps_mode(_adapter * padapter, u8 ps_mode, u8 smart_ps);
 extern void rtw_set_rpwm(_adapter * padapter, u8 val8);
 extern void LeaveAllPowerSaveMode(PADAPTER Adapter);
+#ifdef CONFIG_IPS
 void ips_enter(_adapter * padapter);
 int ips_leave(_adapter * padapter);
+#endif
+
 void rtw_ps_processor(_adapter*padapter);
 
 #ifdef CONFIG_AUTOSUSPEND
@@ -321,5 +327,6 @@ void rtw_register_early_suspend(struct pwrctrl_priv *pwrpriv);
 void rtw_unregister_early_suspend(struct pwrctrl_priv *pwrpriv);
 #endif //CONFIG_HAS_EARLYSUSPEND || CONFIG_ANDROID_POWER
 
+u8 rtw_interface_ps_func(_adapter *padapter,HAL_INTF_PS_FUNC efunc_id,u8* val);
 
 #endif  //__RTL871X_PWRCTRL_H_

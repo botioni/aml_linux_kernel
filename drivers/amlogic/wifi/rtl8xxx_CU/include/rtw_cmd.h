@@ -24,6 +24,7 @@
 #include <drv_conf.h>
 #include <wlan_bssdef.h>
 #include <rtw_rf.h>
+#include <rtw_led.h>
 
 #define C2H_MEM_SZ (16*1024)
 
@@ -139,11 +140,13 @@ extern u32 rtw_init_evt_priv (struct evt_priv *pevtpriv);
 extern void rtw_free_evt_priv (struct evt_priv *pevtpriv);
 extern void rtw_cmd_clr_isr(struct cmd_priv *pcmdpriv);
 extern void rtw_evt_notify_isr(struct evt_priv *pevtpriv);
+#ifdef CONFIG_P2P
+u8 p2p_protocol_wk_cmd(_adapter*padapter, int intCmdType );
+#endif //CONFIG_P2P
 
 #else
 	#include <ieee80211.h>
 #endif	/* CONFIG_RTL8711FW */
-
 
 enum rtw_drvextra_cmd_id
 {	
@@ -155,6 +158,8 @@ enum rtw_drvextra_cmd_id
 	LPS_CTRL_WK_CID,
 	ANT_SELECT_WK_CID,
 	P2P_PS_WK_CID,
+	P2P_PROTO_WK_CID,
+	CHECK_HIQ_WK_CID,//for softap mode, check hi queue if empty
 	MAX_WK_CID
 };
 
@@ -618,7 +623,7 @@ struct geth2clbk_rsp {
 // CMD param Formart for driver extra cmd handler
 struct drvextra_cmd_parm {
 	int ec_id; //extra cmd id
-	int sz; // buf sz
+	int type_size; // Can use this field as the type id or command size
 	unsigned char *pbuf;
 };
 
@@ -856,10 +861,15 @@ struct SetChannelPlan_param
 };
 
 /*H2C Handler index: 60 */ 
-struct rereg_nd_name_param
+struct LedBlink_param
 {
-	void *pnetdev;
-	//char ifname[IFNAMSIZ];
+	PLED_871x	 pLed;
+};
+
+/*H2C Handler index: 61 */ 
+struct SetChannelSwitch_param
+{
+	u8 new_ch_no;
 };
 
 #define GEN_CMD_CODE(cmd)	cmd ## _CMD_
@@ -914,17 +924,23 @@ extern u8 rtw_setfwra_cmd(_adapter*padapter, u8 type);
 extern u8 rtw_addbareq_cmd(_adapter*padapter, u8 tid, u8 *addr);
 
 extern u8 rtw_dynamic_chk_wk_cmd(_adapter *adapter);
-#ifdef CONFIG_LPS
+
 u8 rtw_lps_ctrl_wk_cmd(_adapter*padapter, u8 lps_ctrl_type, u8 enqueue);
-#endif
+
 #ifdef CONFIG_ANTENNA_DIVERSITY
 extern  u8 rtw_antenna_select_cmd(_adapter*padapter, u8 antenna,u8 enqueue);
 #endif
 
 extern u8 rtw_ps_cmd(_adapter*padapter);
 
-extern u8 rtw_set_chplan_cmd(_adapter*padapter, u8 chplan);
-extern u8 rtw_rereg_nd_name_cmd(_adapter*padapter, void *old_pnetdev);
+
+#ifdef CONFIG_AP_MODE
+u8 rtw_chk_hi_queue_cmd(_adapter*padapter);
+#endif
+
+extern u8 rtw_set_chplan_cmd(_adapter*padapter, u8 chplan, u8 enaueue);
+extern u8 rtw_led_blink_cmd(_adapter*padapter, PLED_871x pLed);
+extern u8 rtw_set_csa_cmd(_adapter*padapter, u8 new_ch_no);
 
 u8 rtw_drvextra_cmd_hdl(_adapter *padapter, unsigned char *pbuf);
 
@@ -1014,7 +1030,9 @@ enum rtw_h2c_cmd
 	GEN_CMD_CODE(_Set_H2C_MSG), /*58*/
 	
 	GEN_CMD_CODE(_SetChannelPlan), /*59*/
-	GEN_CMD_CODE(_ReRegNdName), /*60*/
+	GEN_CMD_CODE(_LedBlink), /*60*/
+	
+	GEN_CMD_CODE(_SetChannelSwitch), /*61*/
 	
 	MAX_H2CCMD
 };
@@ -1093,7 +1111,8 @@ struct _cmd_callback 	rtw_cmd_callback[] =
 	{GEN_CMD_CODE(_Set_Drv_Extra), NULL},/*57*/
 	{GEN_CMD_CODE(_Set_H2C_MSG), NULL},/*58*/
 	{GEN_CMD_CODE(_SetChannelPlan), NULL},/*59*/
-	{GEN_CMD_CODE(_ReRegNdName), NULL},/*60*/
+	{GEN_CMD_CODE(_LedBlink), NULL},/*60*/
+	{GEN_CMD_CODE(_SetChannelSwitch), NULL},/*61*/
 };
 #endif
 

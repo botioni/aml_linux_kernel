@@ -1074,7 +1074,8 @@ struct ADDBA_request
 #define	P2P_FINDPHASE_EX_CNT					3
 
 #define	P2P_PROVISION_TIMEOUT				5000	//	5 seconds timeout for sending the provision discovery request
-#define	P2P_GO_NEGO_TIMEOUT					2000	//	2 seconds timeout for receiving the group negotation response
+#define	P2P_GO_NEGO_TIMEOUT					5000	//	5 seconds timeout for receiving the group negotation response
+#define	P2P_TX_PRESCAN_TIMEOUT				100		//	100ms
 
 #define	P2P_MAX_INTENT						15
 
@@ -1128,6 +1129,14 @@ enum P2P_WPSINFO {
 
 #define	P2P_PRIVATE_IOCTL_SET_LEN		64
 
+enum P2P_PROTO_WK_ID
+{
+	P2P_FIND_PHASE_WK = 0,
+	P2P_RESTORE_STATE_WK = 1,
+	P2P_PRE_TX_PROVDISC_PROCESS_WK = 2,
+	P2P_PRE_TX_NEGOREQ_PROCESS_WK = 3,
+};
+
 enum P2P_PS
 {
 	P2P_PS_DISABLE=0,
@@ -1136,6 +1145,29 @@ enum P2P_PS
 	P2P_PS_SCAN_DONE=3,
 	P2P_PS_ALLSTASLEEP=4, // for owner
 };
+
+//	=====================WFD Section=====================
+//	For Wi-Fi Display
+#define	WFD_ATTR_DEVICE_INFO			0x00
+#define	WFD_ATTR_ASSOC_BSSID			0x01
+#define	WFD_ATTR_COUPLED_SINK_INFO	0x06
+#define	WFD_ATTR_SESSION_INFO		0x09
+
+//	For WFD Device Information Attribute
+#define	WFD_DEVINFO_SOURCE					0
+#define	WFD_DEVINFO_PRIARY_SINK				1
+#define	WFD_DEVINFO_SECARY_SINK				2
+#define	WFD_DEVINFO_SOURCE_PRIARY_SINK		3
+
+#define	WFD_DEVINFO_NO_COUPLED_SINK		0
+#define	WFD_DEVINFO_COUPLED_SINK			4
+
+#ifdef  CONFIG_TX_MCAST2UNI
+#define IP_MCAST_MAC(mac)		((mac[0]==0x01)&&(mac[1]==0x00)&&(mac[2]==0x5e))
+#define ICMPV6_MCAST_MAC(mac)	((mac[0]==0x33)&&(mac[1]==0x33)&&(mac[2]!=0xff))
+#endif	// CONFIG_TX_MCAST2UNI
+
+
 
 #endif // _WIFI_H_
 

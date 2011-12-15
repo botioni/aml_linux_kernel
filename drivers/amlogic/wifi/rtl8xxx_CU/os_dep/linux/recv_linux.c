@@ -45,7 +45,6 @@ int rtw_os_recv_resource_init(struct recv_priv *precvpriv, _adapter *padapter)
 int rtw_os_recv_resource_alloc(_adapter *padapter, union recv_frame *precvframe)
 {	
 	int	res=_SUCCESS;
-	struct recv_priv *precvpriv = &(padapter->recvpriv);	
 	
 	precvframe->u.hdr.pkt_newalloc = precvframe->u.hdr.pkt = NULL;
 
@@ -87,20 +86,16 @@ int rtw_os_recvbuf_resource_alloc(_adapter *padapter, struct recv_buf *precvbuf)
 
 	precvbuf->len = 0;
 	
-#ifdef CONFIG_USE_USB_BUFFER_ALLOC
-
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,35))
-	precvbuf->pallocated_buf = usb_alloc_coherent(pusbd, (size_t)precvbuf->alloc_sz, GFP_ATOMIC, &precvbuf->dma_transfer_addr);
-#else
-	precvbuf->pallocated_buf = usb_buffer_alloc(pusbd, (size_t)precvbuf->alloc_sz, GFP_ATOMIC, &precvbuf->dma_transfer_addr);
-#endif
+	#ifdef CONFIG_USE_USB_BUFFER_ALLOC_RX
+	precvbuf->pallocated_buf = rtw_usb_buffer_alloc(pusbd, (size_t)precvbuf->alloc_sz, GFP_ATOMIC, &precvbuf->dma_transfer_addr);
 	precvbuf->pbuf = precvbuf->pallocated_buf;
 	if(precvbuf->pallocated_buf == NULL)
 		return _FAIL;
-
-#endif
+	#endif //CONFIG_USE_USB_BUFFER_ALLOC_RX
 	
-#endif
+#endif //CONFIG_USB_HCI
+
+	
 #ifdef CONFIG_SDIO_HCI
 	precvbuf->pskb = NULL;
 
@@ -121,20 +116,16 @@ int rtw_os_recvbuf_resource_free(_adapter *padapter, struct recv_buf *precvbuf)
 
 #ifdef CONFIG_USB_HCI
 
-#ifdef CONFIG_USE_USB_BUFFER_ALLOC
+#ifdef CONFIG_USE_USB_BUFFER_ALLOC_RX
 
 	struct dvobj_priv	*pdvobjpriv = &padapter->dvobjpriv;
 	struct usb_device	*pusbd = pdvobjpriv->pusbdev;
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,35))
-	usb_free_coherent(pusbd, (size_t)precvbuf->alloc_sz, precvbuf->pallocated_buf, precvbuf->dma_transfer_addr);
-#else
-	usb_buffer_free(pusbd, (size_t)precvbuf->alloc_sz, precvbuf->pallocated_buf, precvbuf->dma_transfer_addr);
-#endif
+	rtw_usb_buffer_free(pusbd, (size_t)precvbuf->alloc_sz, precvbuf->pallocated_buf, precvbuf->dma_transfer_addr);
 	precvbuf->pallocated_buf =  NULL;
 	precvbuf->dma_transfer_addr = 0;
 
-#endif
+#endif //CONFIG_USE_USB_BUFFER_ALLOC_RX
 
 	if(precvbuf->purb)
 	{
@@ -142,7 +133,7 @@ int rtw_os_recvbuf_resource_free(_adapter *padapter, struct recv_buf *precvbuf)
 		usb_free_urb(precvbuf->purb);
 	}
 	
-#endif
+#endif //CONFIG_USB_HCI
 
 
 	if(precvbuf->pskb)
@@ -223,11 +214,15 @@ void rtw_hostapd_mlme_rx(_adapter *padapter, union recv_frame *precv_frame)
 int rtw_recv_indicatepkt(_adapter *padapter, union recv_frame *precv_frame)
 {	
 	struct recv_priv *precvpriv;
-	_queue	*pfree_recv_queue;	     
+	_queue	*pfree_recv_queue;
 	_pkt *skb;
 	struct mlme_priv*pmlmepriv = &padapter->mlmepriv;
 #ifdef CONFIG_TCP_CSUM_OFFLOAD_RX
 	struct rx_pkt_attrib *pattrib = &precv_frame->u.hdr.attrib;
+#endif
+
+#ifdef CONFIG_BR_EXT
+	void *br_port = NULL;
 #endif
 
 _func_enter_;
@@ -310,6 +305,35 @@ _func_enter_;
 			//DBG_871X("to APSelf\n");
 		}
 	}
+	
+
+#ifdef CONFIG_BR_EXT
+
+#if (LINUX_VERSION_CODE <= KERNEL_VERSION(2, 6, 35))
+	br_port = padapter->pnetdev->br_port;
+#else   // (LINUX_VERSION_CODE <= KERNEL_VERSION(2, 6, 35))
+	rcu_read_lock();
+	br_port = rcu_dereference(padapter->pnetdev->rx_handler_data);
+	rcu_read_unlock();
+#endif  // (LINUX_VERSION_CODE <= KERNEL_VERSION(2, 6, 35))
+
+	if( br_port && (check_fwstate(pmlmepriv, WIFI_STATION_STATE|WIFI_ADHOC_STATE) == _TRUE) )	 	
+	{
+		int nat25_handle_frame(_adapter *priv, struct sk_buff *skb);
+		if (nat25_handle_frame(padapter, skb) == -1) {
+			//priv->ext_stats.rx_data_drops++;
+			//DEBUG_ERR("RX DROP: nat25_handle_frame fail!\n");
+			//return FAIL;
+#if 1			
+			// bypass this frame to upper layer!!
+#else
+			goto _recv_indicatepkt_drop;
+#endif
+		}	
+	}
+
+#endif	// CONFIG_BR_EXT
+
 
 #ifdef CONFIG_TCP_CSUM_OFFLOAD_RX
 	if ( (pattrib->tcpchk_valid == 1) && (pattrib->tcp_chkrpt == 1) ) {
@@ -383,7 +407,7 @@ void rtw_os_read_port(_adapter *padapter, struct recv_buf *precvbuf)
 #endif
 
 }
-
+void _rtw_reordering_ctrl_timeout_handler (void *FunctionContext);
 void _rtw_reordering_ctrl_timeout_handler (void *FunctionContext)
 {
 	struct recv_reorder_ctrl *preorder_ctrl = (struct recv_reorder_ctrl *)FunctionContext;

@@ -16,7 +16,6 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110, USA
  *
  *
- 
 ******************************************************************************/
 #define _XMIT_OSDEP_C_
 
@@ -132,17 +131,12 @@ int rtw_os_xmit_resource_alloc(_adapter *padapter, struct xmit_buf *pxmitbuf,u32
 	struct dvobj_priv	*pdvobjpriv = &padapter->dvobjpriv;
 	struct usb_device	*pusbd = pdvobjpriv->pusbdev;
 
-#ifdef CONFIG_USE_USB_BUFFER_ALLOC
-
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,35))
-	pxmitbuf->pallocated_buf = usb_alloc_coherent(pusbd, (size_t)alloc_sz, GFP_ATOMIC, &pxmitbuf->dma_transfer_addr);
-#else
-	pxmitbuf->pallocated_buf = usb_buffer_alloc(pusbd, (size_t)alloc_sz, GFP_ATOMIC, &pxmitbuf->dma_transfer_addr);
-#endif
+#ifdef CONFIG_USE_USB_BUFFER_ALLOC_TX
+	pxmitbuf->pallocated_buf = rtw_usb_buffer_alloc(pusbd, (size_t)alloc_sz, GFP_ATOMIC, &pxmitbuf->dma_transfer_addr);
 	pxmitbuf->pbuf = pxmitbuf->pallocated_buf;
 	if(pxmitbuf->pallocated_buf == NULL)
 		return _FAIL;
-#else
+#else // CONFIG_USE_USB_BUFFER_ALLOC_TX
 	
 	pxmitbuf->pallocated_buf = rtw_zmalloc(alloc_sz);
 	if (pxmitbuf->pallocated_buf == NULL)
@@ -153,9 +147,9 @@ int rtw_os_xmit_resource_alloc(_adapter *padapter, struct xmit_buf *pxmitbuf,u32
 	pxmitbuf->pbuf = (u8 *)N_BYTE_ALIGMENT((SIZE_PTR)(pxmitbuf->pallocated_buf), XMITBUF_ALIGN_SZ);
 	pxmitbuf->dma_transfer_addr = 0;
 
-#endif
+#endif // CONFIG_USE_USB_BUFFER_ALLOC_TX
 
-       for(i=0; i<8; i++)
+	for(i=0; i<8; i++)
       	{
       		pxmitbuf->pxmit_urb[i] = usb_alloc_urb(0, GFP_KERNEL);
              	if(pxmitbuf->pxmit_urb[i] == NULL) 
@@ -196,22 +190,14 @@ void rtw_os_xmit_resource_free(_adapter *padapter, struct xmit_buf *pxmitbuf,u32
 		}
 	}
 
-#ifdef CONFIG_USE_USB_BUFFER_ALLOC
-
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,35))
-	usb_free_coherent(pusbd, (size_t)free_sz, pxmitbuf->pallocated_buf, pxmitbuf->dma_transfer_addr);
-#else
-	usb_buffer_free(pusbd, (size_t)free_sz, pxmitbuf->pallocated_buf, pxmitbuf->dma_transfer_addr);
-#endif
+#ifdef CONFIG_USE_USB_BUFFER_ALLOC_TX
+	rtw_usb_buffer_free(pusbd, (size_t)free_sz, pxmitbuf->pallocated_buf, pxmitbuf->dma_transfer_addr);
 	pxmitbuf->pallocated_buf =  NULL;
-	pxmitbuf->dma_transfer_addr = 0;
-	
-#else
-
+	pxmitbuf->dma_transfer_addr = 0;	
+#else	// CONFIG_USE_USB_BUFFER_ALLOC_TX
 	if(pxmitbuf->pallocated_buf)
 		rtw_mfree(pxmitbuf->pallocated_buf, free_sz);
-
-#endif
+#endif	// CONFIG_USE_USB_BUFFER_ALLOC_TX
 
 #endif
 #ifdef CONFIG_PCI_HCI
@@ -258,11 +244,69 @@ void rtw_os_xmit_schedule(_adapter *padapter)
 }
 
 
+
+#ifdef CONFIG_TX_MCAST2UNI
+int rtw_mlcst2unicst(_adapter *padapter, struct sk_buff *skb)
+{
+	struct	sta_priv *pstapriv = &padapter->stapriv;
+	struct xmit_priv *pxmitpriv = &padapter->xmitpriv;
+	_irqL	irqL;
+	_list	*phead, *plist;
+	struct sk_buff *newskb;
+	struct sta_info *psta = NULL;
+	s32	res;
+
+	_enter_critical_bh(&pstapriv->asoc_list_lock, &irqL);
+	phead = &pstapriv->asoc_list;
+	plist = get_next(phead);
+	
+	//free sta asoc_queue
+	while ((rtw_end_of_queue_search(phead, plist)) == _FALSE)	
+	{		
+		psta = LIST_CONTAINOR(plist, struct sta_info, asoc_list);
+		
+		plist = get_next(plist);
+
+		/* avoid   come from STA1 and send back STA1 */ 
+		if (!memcmp(psta->hwaddr, &skb->data[6], 6))	
+			continue; 
+
+		newskb = skb_copy(skb, GFP_ATOMIC);
+		
+		if (newskb) {
+			memcpy(newskb->data, psta->hwaddr, 6);
+			res = rtw_xmit(padapter, &newskb);
+			if (res < 0) {
+				DBG_871X("%s()-%d: rtw_xmit() return error!\n", __FUNCTION__, __LINE__);
+				pxmitpriv->tx_drop++;
+				dev_kfree_skb_any(newskb);			
+			} else
+				pxmitpriv->tx_pkts++;
+		} else {
+			DBG_871X("%s-%d: skb_copy() failed!\n", __FUNCTION__, __LINE__);
+			pxmitpriv->tx_drop++;
+
+			_exit_critical_bh(&pstapriv->asoc_list_lock, &irqL);
+			//dev_kfree_skb_any(skb);
+			return _FALSE;	// Caller shall tx this multicast frame via normal way.
+		}
+	}
+
+	_exit_critical_bh(&pstapriv->asoc_list_lock, &irqL);
+	dev_kfree_skb_any(skb);
+	return _TRUE;
+}
+#endif	// CONFIG_TX_MCAST2UNI
+
+
 int rtw_xmit_entry(_pkt *pkt, _nic_hdl pnetdev)
 {
 	_adapter *padapter = (_adapter *)rtw_netdev_priv(pnetdev);
 	struct xmit_priv *pxmitpriv = &padapter->xmitpriv;
-
+#ifdef CONFIG_TX_MCAST2UNI
+	struct mlme_priv	*pmlmepriv = &padapter->mlmepriv;
+	extern int rtw_mc2u_disable;
+#endif	// CONFIG_TX_MCAST2UNI	
 	s32 res = 0;
 	int ret = 0;
 
@@ -278,15 +322,34 @@ _func_enter_;
 		goto drop_packet;
 	}
 
-	res = rtw_xmit(padapter, pkt);
+#ifdef CONFIG_TX_MCAST2UNI
+	if ( !rtw_mc2u_disable
+		&& check_fwstate(pmlmepriv, WIFI_AP_STATE) == _TRUE
+		&& ( IP_MCAST_MAC(pkt->data)
+			|| ICMPV6_MCAST_MAC(pkt->data) )
+		)
+	{
+		if ( pxmitpriv->free_xmitframe_cnt > (NR_XMITFRAME/4) ) {
+			res = rtw_mlcst2unicst(padapter, pkt);
+			if (res == _TRUE) {
+				goto exit;
+			}
+		} else {
+			//DBG_871X("Stop M2U(%d, %d)! ", pxmitpriv->free_xmitframe_cnt, pxmitpriv->free_xmitbuf_cnt);
+			//DBG_871X("!m2u );
+		}
+	}	
+#endif	// CONFIG_TX_MCAST2UNI	
+
+	res = rtw_xmit(padapter, &pkt);
 	if (res < 0) {
 		#ifdef DBG_TX_DROP_FRAME
 		DBG_871X("DBG_TX_DROP_FRAME %s rtw_xmit fail\n", __FUNCTION__);
 		#endif
 		goto drop_packet;
 	}
-
 	pxmitpriv->tx_pkts++;
+
 	RT_TRACE(_module_xmit_osdep_c_, _drv_info_, ("rtw_xmit_entry: tx_pkts=%d\n", (u32)pxmitpriv->tx_pkts));
 	goto exit;
 

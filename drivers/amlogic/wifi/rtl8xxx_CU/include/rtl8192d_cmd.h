@@ -76,6 +76,7 @@ typedef enum _RTL8192D_H2C_CMD
 	H2C_MAC_MODE_SEL = 9,
 	H2C_PWRM=15,
 	H2C_P2P_PS_CTW_CMD = 24,
+	H2C_PathDiv = 26,                  //PathDiv--NeilChen--2011.07.15
 	H2C_CMD_MAX
 }RTL8192D_H2C_CMD;
 
@@ -96,7 +97,7 @@ u8	rtl8192d_set_raid_cmd(_adapter*padapter, u32 mask, u8 arg);
 void	rtl8192d_Add_RateATid(PADAPTER pAdapter, u32 bitmap, u8 arg);
 #ifdef CONFIG_P2P
 void	rtl8192d_set_p2p_ps_offload_cmd(_adapter* padapter, u8 p2p_ps_state);
-#endif
+#endif //CONFIG_P2P
 
 #endif
 

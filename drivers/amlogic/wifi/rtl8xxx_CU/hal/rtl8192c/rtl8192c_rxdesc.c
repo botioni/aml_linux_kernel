@@ -16,7 +16,6 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110, USA
  *
  *
- 
 ******************************************************************************/
 #define _RTL8192C_REDESC_C_
 #include <drv_conf.h>
@@ -384,7 +383,7 @@ void rtl8192c_query_rx_phy_status(union recv_frame *prframe, struct phy_stat *pp
 				//continue;
 
 			rx_pwr[i] =  ((pOfdm_buf->trsw_gain_X[i]&0x3F)*2) - 110;
-
+			padapter->recvpriv.RxRssi[i] = rx_pwr[i];
 			/* Translate DBM to percentage. */
 			rssi=query_rx_pwr_percentage(rx_pwr[i]);
 			total_rssi += rssi;
@@ -502,21 +501,16 @@ void rtl8192c_query_rx_phy_status(union recv_frame *prframe, struct phy_stat *pp
 static void process_rssi(_adapter *padapter,union recv_frame *prframe)
 {
 	u32	last_rssi, tmp_val;
-#ifdef CONFIG_NEW_SIGNAL_STAT_PROCESS
-	struct signal_stat * signal_stat; 
-#endif //CONFIG_NEW_SIGNAL_STAT_PROCESS
-
 	struct rx_pkt_attrib *pattrib = &prframe->u.hdr.attrib;
-	padapter->recvpriv.RxSNRdB[0] =  pattrib->RxSNRdB[0];
-	padapter->recvpriv.RxSNRdB[1] =  pattrib->RxSNRdB[1];
-
+#ifdef CONFIG_NEW_SIGNAL_STAT_PROCESS
+	struct signal_stat * signal_stat = &padapter->recvpriv.signal_strength_data;
+#endif //CONFIG_NEW_SIGNAL_STAT_PROCESS
 
 	//DBG_8192C("process_rssi=> pattrib->rssil(%d) signal_strength(%d)\n ",pattrib->RecvSignalPower,pattrib->signal_strength);
 	//if(pRfd->Status.bPacketToSelf || pRfd->Status.bPacketBeacon)
 	{
 	
 	#ifdef CONFIG_NEW_SIGNAL_STAT_PROCESS
-	 	signal_stat = &padapter->recvpriv.signal_strength_data;
 		if(signal_stat->update_req) {
 			signal_stat->total_num = 0;
 			signal_stat->total_val = 0;
@@ -629,30 +623,44 @@ static void process_PWDB(_adapter *padapter, union recv_frame *prframe)
 					(pattrib->RxPWDBAll)) /(Rx_Smooth_Factor);
 		}
 	}
-		
-
-
+	
+	
 	if(psta)
 	{
 		//psta->UndecoratedSmoothedPWDB = UndecoratedSmoothedPWDB;//todo:
 		pdmpriv->UndecoratedSmoothedPWDB = UndecoratedSmoothedPWDB;
 
-		if(pdmpriv->RSSI_Select == RSSI_OFDM)
+		if(pdmpriv->RSSI_Select == RSSI_OFDM){
 			psta->rssi_stat.UndecoratedSmoothedPWDB = UndecoratedSmoothedPWDB;
-		else if(pdmpriv->RSSI_Select == RSSI_CCK)
+		}
+		else if(pdmpriv->RSSI_Select == RSSI_CCK){
 			psta->rssi_stat.UndecoratedSmoothedPWDB = UndecoratedSmoothedCCK;
-
+		}
+		else{
+			if(UndecoratedSmoothedPWDB <0 ) 
+				pdmpriv->UndecoratedSmoothedPWDB = UndecoratedSmoothedCCK;
+			else
+				pdmpriv->UndecoratedSmoothedPWDB = UndecoratedSmoothedPWDB;
+		}
 		psta->rssi_stat.UndecoratedSmoothedCCK = UndecoratedSmoothedCCK;
 	}
 	else
 	{
 		//pdmpriv->UndecoratedSmoothedPWDB = UndecoratedSmoothedPWDB;
 
-		if(pdmpriv->RSSI_Select == RSSI_OFDM)
+		if(pdmpriv->RSSI_Select == RSSI_OFDM){
 			pdmpriv->UndecoratedSmoothedPWDB = UndecoratedSmoothedPWDB;
-		else if(pdmpriv->RSSI_Select == RSSI_CCK)
+		}
+		else if(pdmpriv->RSSI_Select == RSSI_CCK){
 			pdmpriv->UndecoratedSmoothedPWDB = UndecoratedSmoothedCCK;
-
+		}
+		else	{
+			if(UndecoratedSmoothedPWDB <0 ) 
+				pdmpriv->UndecoratedSmoothedPWDB = UndecoratedSmoothedCCK;
+			else
+				pdmpriv->UndecoratedSmoothedPWDB = UndecoratedSmoothedPWDB;
+			
+		}
 		pdmpriv->UndecoratedSmoothedCCK = UndecoratedSmoothedCCK;
 	}
 
@@ -688,7 +696,7 @@ static void process_link_qual(_adapter *padapter,union recv_frame *prframe)
 	}
 
 	signal_stat->total_num++;
-	signal_stat->total_val  += pattrib->signal_strength;
+	signal_stat->total_val  += pattrib->signal_qual;
 	signal_stat->avg_val = signal_stat->total_val / signal_stat->total_num;
 	
 #else //CONFIG_NEW_SIGNAL_STAT_PROCESS

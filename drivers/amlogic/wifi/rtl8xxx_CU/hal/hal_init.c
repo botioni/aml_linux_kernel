@@ -56,13 +56,13 @@ void	rtw_dm_init(_adapter *padapter)
 		padapter->HalFunc.dm_init(padapter);
 }
 
-void	rtw_led_init(_adapter *padapter)
+void	rtw_sw_led_init(_adapter *padapter)
 {
 	if(padapter->HalFunc.InitSwLeds)
 		padapter->HalFunc.InitSwLeds(padapter);
 }
 
-void rtw_led_deinit(_adapter *padapter)
+void rtw_sw_led_deinit(_adapter *padapter)
 {
 	if(padapter->HalFunc.DeInitSwLeds)
 		padapter->HalFunc.DeInitSwLeds(padapter);
@@ -74,7 +74,6 @@ uint	 rtw_hal_init(_adapter *padapter)
 	
 	padapter->hw_init_completed=_FALSE;
 
-	padapter->bfirst_init = _TRUE;
 	status = padapter->HalFunc.hal_init(padapter);
 
 	if(status == _SUCCESS){
@@ -84,7 +83,6 @@ uint	 rtw_hal_init(_adapter *padapter)
 	 	padapter->hw_init_completed = _FALSE;
 		RT_TRACE(_module_hal_init_c_,_drv_err_,("rtw_hal_init: hal__init fail\n"));
 	}
-	padapter->bfirst_init = _FALSE;
 
 	RT_TRACE(_module_hal_init_c_,_drv_err_,("-rtl871x_hal_init:status=0x%x\n",status));
 
@@ -113,7 +111,7 @@ _func_exit_;
 	return status;
 	
 }
-#ifdef SILENT_RESET_FOR_SPECIFIC_PLATFOM
+#ifdef DBG_CONFIG_ERROR_DETECT
 void	rtw_sreset_init(_adapter *padapter)
 {
 	if(padapter->HalFunc.sreset_init_value)
