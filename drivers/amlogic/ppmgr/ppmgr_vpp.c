@@ -387,6 +387,7 @@ static void process_vf_rotate(vframe_t *vf, ge2d_context_t *context, config_para
 
     pp_vf = to_ppframe(new_vf);
     pp_vf->angle = 0;
+    ppmgr_device.videoangle  =  (ppmgr_device.videoangle + vf->orientation)%4;
     pp_vf->dec_frame = (ppmgr_device.bypass || (ppmgr_device.videoangle == 0)) ? vf : NULL;
 
 #ifdef CONFIG_POST_PROCESS_MANAGER_PPSCALER
