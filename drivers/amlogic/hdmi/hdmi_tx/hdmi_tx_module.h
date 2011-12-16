@@ -91,7 +91,6 @@ typedef struct hdmi_tx_dev_s {
 
 
 #define HDMITX_VER "2011Dec16a"
->>>>>>> 011b042... optimise hpll output performance
 /************************************
 *    hdmitx protocol level interface
 *************************************/
