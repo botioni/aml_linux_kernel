@@ -371,6 +371,7 @@ static void process_vf_rotate(vframe_t *vf, ge2d_context_t *context, config_para
     ppframe_t *pp_vf;
     canvas_t cs0,cs1,cs2,cd;
     u32 mode = 0;
+    unsigned cur_angle = 0;
 #ifdef CONFIG_POST_PROCESS_MANAGER_PPSCALER
     int rect_x = 0, rect_y = 0, rect_w = 0, rect_h = 0;
     u32 ratio = 100;
@@ -387,8 +388,8 @@ static void process_vf_rotate(vframe_t *vf, ge2d_context_t *context, config_para
 
     pp_vf = to_ppframe(new_vf);
     pp_vf->angle = 0;
-    ppmgr_device.videoangle  =  (ppmgr_device.videoangle + vf->orientation)%4;
-    pp_vf->dec_frame = (ppmgr_device.bypass || (ppmgr_device.videoangle == 0)) ? vf : NULL;
+    cur_angle = (ppmgr_device.videoangle + vf->orientation)%4;
+    pp_vf->dec_frame = (ppmgr_device.bypass || (cur_angle == 0)) ? vf : NULL;
 
 #ifdef CONFIG_POST_PROCESS_MANAGER_PPSCALER
     if(mode)
@@ -401,12 +402,13 @@ static void process_vf_rotate(vframe_t *vf, ge2d_context_t *context, config_para
         vfq_push(&q_ready, new_vf);
         return;
     }
-    pp_vf->angle   =  ppmgr_device.videoangle;
+    pp_vf->angle   =  cur_angle;
     new_vf->duration = vf->duration;
     new_vf->duration_pulldown = vf->duration_pulldown;
     new_vf->pts = vf->pts;
     new_vf->type = VIDTYPE_VIU_444 | VIDTYPE_VIU_SINGLE_PLANE | VIDTYPE_VIU_FIELD;
     new_vf->canvas0Addr = new_vf->canvas1Addr = index2canvas(pp_vf->index);
+    new_vf->orientation = vf->orientation;
 
     if(interlace_mode == VIDTYPE_INTERLACE_TOP)
         pic_struct = (GE2D_FORMAT_M24_YUV420T & (3<<3));
@@ -414,10 +416,10 @@ static void process_vf_rotate(vframe_t *vf, ge2d_context_t *context, config_para
         pic_struct = (GE2D_FORMAT_M24_YUV420B & (3<<3));
 
 #ifndef CONFIG_POST_PROCESS_MANAGER_PPSCALER
-    vf_rotate_adjust(vf, new_vf, ppmgr_device.videoangle);
+    vf_rotate_adjust(vf, new_vf, cur_angle);
 #else
     if(!mode){
-        vf_rotate_adjust(vf, new_vf, ppmgr_device.videoangle);
+        vf_rotate_adjust(vf, new_vf, cur_angle);
         scale_clear_count = 0;
     }else{
         pp_vf->angle = 0;
@@ -643,15 +645,15 @@ static void process_vf_rotate(vframe_t *vf, ge2d_context_t *context, config_para
     ge2d_config->dst_xy_swap=0;
 
     if(!mode){
-        if(ppmgr_device.videoangle==1){
+        if(cur_angle==1){
             ge2d_config->dst_xy_swap=1;
             ge2d_config->dst_para.x_rev = 1;
         }
-        else if(ppmgr_device.videoangle==2){
+        else if(cur_angle==2){
             ge2d_config->dst_para.x_rev = 1;
             ge2d_config->dst_para.y_rev=1;        
         }
-        else if(ppmgr_device.videoangle==3)  {
+        else if(cur_angle==3)  {
             ge2d_config->dst_xy_swap=1;
             ge2d_config->dst_para.y_rev=1;
         }
@@ -668,7 +670,7 @@ static void process_vf_rotate(vframe_t *vf, ge2d_context_t *context, config_para
         return;
     }
     if(!mode)
-        pp_vf->angle = ppmgr_device.videoangle ;
+        pp_vf->angle = cur_angle ;
 
 #ifdef CONFIG_POST_PROCESS_MANAGER_PPSCALER
     if(mode){
@@ -755,9 +757,10 @@ static void process_vf_change(vframe_t *vf, ge2d_context_t *context, config_para
     temp_vf.type = VIDTYPE_VIU_444 | VIDTYPE_VIU_SINGLE_PLANE | VIDTYPE_VIU_FIELD;
     temp_vf.canvas0Addr = temp_vf.canvas1Addr = ass_index;
     int temp_angle = 0;
-    temp_angle = (ppmgr_device.videoangle  >= pp_vf->angle )?(ppmgr_device.videoangle -  pp_vf->angle) :  (ppmgr_device.videoangle + 4 -  pp_vf->angle)   ;
+    int cur_angle = (ppmgr_device.videoangle + vf->orientation)%4;
+    temp_angle = (cur_angle >= pp_vf->angle)?(cur_angle -  pp_vf->angle):(cur_angle + 4 -  pp_vf->angle);
     
-    pp_vf->angle = ppmgr_device.videoangle ;
+    pp_vf->angle = cur_angle;
     vf_rotate_adjust(vf, &temp_vf, temp_angle);
 
     int interlace_mode = vf->type & VIDTYPE_TYPEMASK;
