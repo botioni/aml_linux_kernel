@@ -56,6 +56,7 @@ static int pmu_earlysuspend_chgcur = 0;
 static struct early_suspend axp_early_suspend;
 int early_suspend_flag = 0;
 #endif
+static changer_online = 0 ;
 
 /*
  *	DC_DET(GPIOA_20)	enable internal pullup
@@ -73,6 +74,11 @@ static inline int is_ac_online(void)
 	//logd("%s: get from gpio is %d.\n", __FUNCTION__, val);
 	
 	return !val;
+}
+
+int is_charge_online()
+{
+    return changer_online; 
 }
 
 
@@ -167,6 +173,7 @@ static void axp_charger_update_state(struct axp_charger *charger)
   charger->usb_valid = (tmp & AXP20_STATUS_USBVA)?1:0;
   charger->ac_valid = (tmp & AXP20_STATUS_ACVA)?1:0;
   charger->ext_valid = charger->ac_valid | charger->usb_valid;
+  changer_online = charger->ext_valid ;
   charger->bat_current_direction = (tmp & AXP20_STATUS_BATCURDIR)?1:0;
   charger->in_short = (tmp& AXP20_STATUS_ACUSBSH)?1:0;
   charger->batery_active = (tmp & AXP20_STATUS_BATINACT)?1:0;

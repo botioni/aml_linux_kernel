@@ -22,6 +22,8 @@
 #include "axp19-mfd.h"
 #include "axp20-mfd.h"
 
+extern int is_charge_online();
+
 static inline int is_ac_online(void)
 {
 	int val;
@@ -208,11 +210,19 @@ failed:
 	axp_mfd_remove_subdevs(chip);
 	return ret;
 }
-
+void mute_amplifier(void)
+{
+	CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO0_EN_N, (1<<2));
+	CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO0_O, (1<<2));
+	printk("mute amplifier before cut down power.\n");
+	mdelay(200);
+}
  void axp_power_off(void)
 {
 	uint8_t val;
-    if(is_ac_online()){
+	
+	mute_amplifier();//mute amplifier before cut down power.
+    if(is_charge_online()){
         arm_pm_restart("","charging_reboot");
     }
 #if defined (CONFIG_AW_AXP18)
