@@ -243,7 +243,9 @@ int tvoutc_setmode(tvmode_t mode)
     //enable_vsync_interrupt();
     
     WRITE_MPEG_REG(VPP_POSTBLEND_H_SIZE, tvinfoTab[mode].xres);
-
+    
+// For debug only
+#if 0
 printk(" clk_util_clk_msr 6 = %d\n", clk_util_clk_msr(6));
 printk(" clk_util_clk_msr 7 = %d\n", clk_util_clk_msr(7));
 printk(" clk_util_clk_msr 8 = %d\n", clk_util_clk_msr(8));
@@ -251,7 +253,7 @@ printk(" clk_util_clk_msr 9 = %d\n", clk_util_clk_msr(9));
 printk(" clk_util_clk_msr 10 = %d\n", clk_util_clk_msr(10));
 printk(" clk_util_clk_msr 27 = %d\n", clk_util_clk_msr(27));
 printk(" clk_util_clk_msr 29 = %d\n", clk_util_clk_msr(29));
-
+#endif
 //while(1);
 
 

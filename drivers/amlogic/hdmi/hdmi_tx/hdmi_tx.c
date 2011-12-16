@@ -14,7 +14,7 @@
  * GNU General Public License for more details.
  *
  */
-#define HDMI_DEBUG()  printk("HDMI DEBUG: %s [%d]", __FUNCTION__, __LINE__)
+#define HDMI_DEBUG()  //printk("HDMI DEBUG: %s [%d]", __FUNCTION__, __LINE__)
 
 #ifndef AVOS
 
@@ -687,7 +687,7 @@ hdmi_task_handle(void *data)
         if((!hdmi_audio_off_flag)&&(hdmitx_device->audio_param_update_flag)&&(hdmitx_device->cur_VIC != HDMI_Unkown)){
             hdmitx_set_audio(hdmitx_device, &(hdmitx_device->cur_audio_param));
             hdmitx_device->audio_param_update_flag = 0;
-            hdmi_print(1, "HDMI: set audio param\n");
+            //hdmi_print(1, "HDMI: set audio param\n");
         }
 
         if (hdmitx_device->hpd_event == 1)

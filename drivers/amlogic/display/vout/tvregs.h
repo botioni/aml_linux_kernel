@@ -688,7 +688,11 @@ static const tvinfo_t tvinfoTab[] = {
 static inline void setreg(const reg_t *r)
 {
     WRITE_MPEG_REG(r->reg, r->val);
+    
+// For debug only. 
+#if 0 
     printk("[0x%x] = 0x%x\n", r->reg, r->val);
+#endif
 }
 
 #endif /* TVREGS_H */
