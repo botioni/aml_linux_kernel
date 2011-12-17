@@ -1080,7 +1080,6 @@ void hdmi_hw_set_powermode( int power_mode, int vic)
                     hdmi_wr_reg(TX_SYS1_AFE_RESET, 0x2);    //0x16
                     hdmi_wr_reg(TX_SYS1_BANDGAP, 0x0);      //0x14
                     hdmi_wr_reg(TX_SYS1_BIAS, 0x0);         //0x15
-                    Wr(HHI_VID_PLL_CNTL3, 0x40e8);
                     break;
                 case HDMI_720p60:
                     hdmi_wr_reg(TX_SYS1_AFE_TEST, 0x7d);    //0x17
@@ -1088,7 +1087,6 @@ void hdmi_hw_set_powermode( int power_mode, int vic)
                     hdmi_wr_reg(TX_SYS1_AFE_RESET, 0x2);    //0x16
                     hdmi_wr_reg(TX_SYS1_BANDGAP, 0x0);      //0x14
                     hdmi_wr_reg(TX_SYS1_BIAS, 0x3);         //0x15
-                    Wr(HHI_VID_PLL_CNTL3, 0x40e8);
                     break;
                 case HDMI_1080p60:
                     hdmi_wr_reg(TX_SYS1_AFE_TEST, 0x7d);    //0x17
@@ -1096,7 +1094,6 @@ void hdmi_hw_set_powermode( int power_mode, int vic)
                     hdmi_wr_reg(TX_SYS1_AFE_RESET, 0x3);    //0x16
                     hdmi_wr_reg(TX_SYS1_BANDGAP, 0x1);      //0x14 Prem
                     hdmi_wr_reg(TX_SYS1_BIAS, 0x3);         //0x15 Slew
-                    Wr(HHI_VID_PLL_CNTL3, 0xcce8);          //In 1080P case: Increase IBCOR. For other format, keep normal
                     break;
                 default:
                     break;
