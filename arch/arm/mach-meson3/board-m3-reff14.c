@@ -47,18 +47,6 @@
 #include "board-m3-reff14.h"
 
 
-#ifdef CONFIG_SENSORS_MMC328X
-#include <linux/mmc328x.h>
-#endif
-
-#ifdef CONFIG_SIX_AXIS_SENSOR_MPU3050
-#ifdef CONFIG_MPU_PRE_V340
-#include <linux/mpu.h>
-#else
-#include <linux/mpu_new/mpu.h>
-#endif
-#endif
-
 #ifdef CONFIG_USB_ANDROID
 #include <linux/usb/android_composite.h>
 #endif
@@ -69,35 +57,15 @@
 
 #ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE
 #include <media/amlogic/aml_camera.h>
+#include <linux/camera/amlogic_camera_common.h>
 #endif
 
-#ifdef CONFIG_BQ27x00_BATTERY
-#include <linux/bq27x00_battery.h>
+#ifdef CONFIG_AR1520_GPS
+#include <linux/ar1520.h>
 #endif
 
 #ifdef CONFIG_EFUSE
 #include <linux/efuse.h>
-#endif
-
-
-
-#if defined(CONFIG_KEYPADS_AM)||defined(CONFIG_KEYPADS_AM_MODULE)
-static struct resource intput_resources[] = {
-    {
-        .start = 0x0,
-        .end = 0x0,
-        .name="8726",
-        .flags = IORESOURCE_IO,
-    },
-};
-
-static struct platform_device input_device = {
-    .name = "m1-kp",
-    .id = 0,
-    .num_resources = ARRAY_SIZE(intput_resources),
-    .resource = intput_resources,
-    
-};
 #endif
 
 #ifdef CONFIG_SARADC_AM
@@ -107,23 +75,6 @@ static struct platform_device saradc_device = {
     .id = 0,
     .dev = {
         .platform_data = NULL,
-    },
-};
-#endif
-
-#ifdef CONFIG_ADC_TOUCHSCREEN_AM
-#include <linux/adc_ts.h>
-
-static struct adc_ts_platform_data adc_ts_pdata = {
-    .irq = -1,  //INT_SAR_ADC
-    .x_plate_ohms = 400,
-};
-
-static struct platform_device adc_ts_device = {
-    .name = "adc_ts",
-    .id = 0,
-    .dev = {
-        .platform_data = &adc_ts_pdata,
     },
 };
 #endif
@@ -195,58 +146,6 @@ static struct platform_device input_device_key = {
     }
 };
 #endif
-
-
-#ifdef CONFIG_SIX_AXIS_SENSOR_MPU3050
-#define GPIO_mpu3050_PENIRQ ((GPIOA_bank_bit0_27(14)<<16) | GPIOA_bit_bit0_27(14))
-#define MPU3050_IRQ  INT_GPIO_1
-static int mpu3050_init_irq(void)
-{
-    /* set input mode */
-    gpio_direction_input(GPIO_mpu3050_PENIRQ);
-    /* map GPIO_mpu3050_PENIRQ map to gpio interrupt, and triggered by rising edge(=0) */
-    gpio_enable_edge_int(gpio_to_idx(GPIO_mpu3050_PENIRQ), 0, MPU3050_IRQ-INT_GPIO_0);
-    return 0;
-}
-
-static struct mpu3050_platform_data mpu3050_data = {
-    .int_config = 0x10,
-    .orientation = {0,-1,0,-1,0,0,0,0,-1},
-    .level_shifter = 0,
-    .accel = {
-                .get_slave_descr = get_accel_slave_descr,
-                .adapt_num = 1, // The i2c bus to which the mpu device is
-                // connected
-                .bus = EXT_SLAVE_BUS_SECONDARY, //The secondary I2C of MPU
-                .address = 0x1c,
-                .orientation = {0,1,0,1,0,0,0,0,-1},
-                //.orientation = {-1,0,0,0,1,0,0,0,-1},
-            },
-    #ifdef CONFIG_MPU_SENSORS_MMC314X
-    .compass = {
-                .get_slave_descr = mmc314x_get_slave_descr,
-                .adapt_num = 0, // The i2c bus to which the compass device is. 
-                // It can be difference with mpu
-                // connected
-                .bus = EXT_SLAVE_BUS_PRIMARY,
-                .address = 0x30,
-                .orientation = { -1, 0, 0,  0, 1, 0,  0, 0, -1 },
-           } 
-#elif defined (CONFIG_MPU_SENSORS_MMC328X) 
-    .compass = {
-                .get_slave_descr = mmc328x_get_slave_descr,
-                .adapt_num = 1, // The i2c bus to which the compass device is. 
-                // It can be difference with mpu
-                // connected
-                .bus = EXT_SLAVE_BUS_PRIMARY,
-                .address = 0x30,
-                .orientation = /*{ 0, 1, 0,  1, 0, 0,  0, 0, -1 }*/ {0,1,0,1,0,0,0,0,-1}
-           }
-#endif
-
-    };
-#endif
-
 
 #if defined(CONFIG_FB_AM)
 static struct resource fb_device_resources[] = {
@@ -728,47 +627,6 @@ static struct ts_platform_data ts_pdata = {
 
 #endif
 
-#ifdef CONFIG_ITK_CAPACITIVE_TOUCHSCREEN
-#include <linux/i2c/itk.h>
-#define GPIO_ITK_PENIRQ ((GPIOA_bank_bit0_27(16)<<16) | GPIOA_bit_bit0_27(16))
-#define GPIO_ITK_RST ((GPIOC_bank_bit0_15(3)<<16) | GPIOC_bit_bit0_15(3))
-#define ITK_INT INT_GPIO_0
-static int itk_init_irq(void)
-{
-    /* set input mode */
-    gpio_direction_input(GPIO_ITK_PENIRQ);
-    /* set gpio interrupt #0 source=GPIOD_24, and triggered by falling edge(=1) */
-    gpio_enable_edge_int(gpio_to_idx(GPIO_ITK_PENIRQ), 1, ITK_INT-INT_GPIO_0);
-
-    return 0;
-}
-static int itk_get_irq_level(void)
-{
-    return gpio_get_value(GPIO_ITK_PENIRQ);
-}
-
-void touch_on(int flag)
-{
-	printk("enter %s flag=%d \n",__FUNCTION__,flag);
-	if(flag)
-		gpio_direction_output(GPIO_ITK_RST, 1);
-	else
-		gpio_direction_output(GPIO_ITK_RST, 0);
-}
-
-static struct itk_platform_data itk_pdata = {
-    .init_irq = &itk_init_irq,
-    .get_irq_level = &itk_get_irq_level,
-    .touch_on =  touch_on,
-    .tp_max_width = 3328,
-    .tp_max_height = 2432,
-    .lcd_max_width = 800,
-    .lcd_max_height = 600,
-    .xpol = 1,
-    .ypol = 1,
-};
-#endif
-
 
 #if defined(CONFIG_AML_RTC)
 static  struct platform_device aml_rtc_device = {
@@ -780,15 +638,6 @@ static  struct platform_device aml_rtc_device = {
 #ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE_GC0308
 int gc0308_init(void)
 {
-    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_1, (1<<29)); 
-    SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<2));
-
-    unsigned pwm_cnt = get_ddr_pll_clk()/48000000 - 1;
-    pwm_cnt &= 0xffff;
-    WRITE_CBUS_REG(PWM_PWM_C, (pwm_cnt<<16) | pwm_cnt);
-    SET_CBUS_REG_MASK(PWM_MISC_REG_CD, (1<<15)|(0<<8)|(1<<4)|(1<<0)); //select ddr pll for source, and clk divide 
-
-	
     // set camera power disable
     set_gpio_val(GPIOY_bank_bit0_22(10), GPIOY_bit_bit0_22(10), 0);    // set camera power disable
     set_gpio_mode(GPIOY_bank_bit0_22(10), GPIOY_bit_bit0_22(10), GPIO_OUTPUT_MODE);
@@ -823,12 +672,24 @@ static struct platform_device vm_device =
 };
 #endif /* AMLOGIC_VIDEOIN_MANAGER */
 
-#if defined(CONFIG_VIDEO_AMLOGIC_CAPTURE_GC0308)
-static int gc0308_v4l2_init(void)
+#ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE
+static void __init camera_power_on_init(void)
 {
+    udelay(1000);
+    SET_CBUS_REG_MASK(HHI_ETH_CLK_CNTL,0x30f);// 24M XTAL
+    SET_CBUS_REG_MASK(HHI_DEMOD_PLL_CNTL,0x232);// 24M XTAL
+
+    //eth_set_pinmux(ETH_BANK0_GPIOC3_C12,ETH_CLK_OUT_GPIOC12_REG3_1, 1);		
+}
+#endif
+
+#if defined(CONFIG_VIDEO_AMLOGIC_CAPTURE_GC0308)
+static void gc0308_v4l2_init(void)
+{
+	printk( "amlogic camera driver: gc0308_v4l2_init. \n");
 	gc0308_init();
 }
-static int gc0308_v4l2_uninit(void)
+static void gc0308_v4l2_uninit(void)
 {
 
 	printk( "amlogic camera driver: gc0308_v4l2_uninit. \n");
@@ -847,15 +708,143 @@ static void gc0308_v4l2_late_resume(void)
     set_gpio_mode(GPIOA_bank_bit0_27(25), GPIOA_bit_bit0_27(25), GPIO_OUTPUT_MODE);
 }
 
+struct aml_camera_i2c_fig1_s custom_gc0308_script[] = {  
+	{0x14,0x12}, // h_v
+	{0x26,0x01},
+	{0xff,0xff}, 
+};
+
+
 aml_plat_cam_data_t video_gc0308_data = {
 	.name="video-gc0308",
-	.video_nr=0,//1,
+	.video_nr=1,//1,
 	.device_init= gc0308_v4l2_init,
 	.device_uninit=gc0308_v4l2_uninit,
+	.custom_init_script = custom_gc0308_script,
 	.early_suspend = gc0308_v4l2_early_suspend,
 	.late_resume = gc0308_v4l2_late_resume,
 };
 
+#endif
+
+#if defined(CONFIG_VIDEO_AMLOGIC_CAPTURE_GT2005)
+static void gt2005_v4l2_init(void)
+{
+    // reset low 
+    printk( "amlogic camera driver: gt2005_v4l2_init. \n");
+    set_gpio_val(GPIOY_bank_bit0_22(10), GPIOY_bit_bit0_22(10), 0);   
+    set_gpio_mode(GPIOY_bank_bit0_22(10), GPIOY_bit_bit0_22(10), GPIO_OUTPUT_MODE);
+	
+    // set camera power disanable
+    set_gpio_val(GPIOA_bank_bit0_27(24), GPIOA_bit_bit0_27(24), 0);    
+    set_gpio_mode(GPIOA_bank_bit0_27(24), GPIOA_bit_bit0_27(24), GPIO_OUTPUT_MODE);
+	
+    msleep(20);
+	
+	// reset high
+    set_gpio_val(GPIOY_bank_bit0_22(10), GPIOY_bit_bit0_22(10), 1);    
+    set_gpio_mode(GPIOY_bank_bit0_22(10), GPIOY_bit_bit0_22(10), GPIO_OUTPUT_MODE);
+    msleep(20);
+    
+    // set camera power enable
+    set_gpio_val(GPIOA_bank_bit0_27(24), GPIOA_bit_bit0_27(24), 1);    
+    set_gpio_mode(GPIOA_bank_bit0_27(24), GPIOA_bit_bit0_27(24), GPIO_OUTPUT_MODE);
+    msleep(20);
+}
+static void gt2005_v4l2_uninit(void)
+{
+	printk( "amlogic camera driver: gt2005_v4l2_uninit.\n");
+    set_gpio_val(GPIOA_bank_bit0_27(24), GPIOA_bit_bit0_27(24), 0);    // set camera power disable
+    set_gpio_mode(GPIOA_bank_bit0_27(24), GPIOA_bit_bit0_27(24), GPIO_OUTPUT_MODE);
+}
+static void gt2005_v4l2_disable(void)
+{
+
+}
+
+static void gt2005_v4l2_early_suspend(void)
+{
+	printk( "amlogic camera driver: gt2005_v4l2_early_suspend. \n");
+    set_gpio_val(GPIOA_bank_bit0_27(24), GPIOA_bit_bit0_27(24), 0);    // set camera power disable
+    set_gpio_mode(GPIOA_bank_bit0_27(24), GPIOA_bit_bit0_27(24), GPIO_OUTPUT_MODE);
+}
+
+static void gt2005_v4l2_late_resume(void)
+{
+	printk( "amlogic camera driver: gt2005_v4l2_late_resume. \n");
+    set_gpio_val(GPIOA_bank_bit0_27(24), GPIOA_bit_bit0_27(24), 1);    // set camera power enable
+    set_gpio_mode(GPIOA_bank_bit0_27(24), GPIOA_bit_bit0_27(24), GPIO_OUTPUT_MODE);
+}
+
+aml_plat_cam_data_t video_gt2005_data = {
+	.name="video-gt2005",
+	.video_nr=0,   //    1
+	.device_init= gt2005_v4l2_init,
+	.device_uninit=gt2005_v4l2_uninit,
+	.early_suspend = gt2005_v4l2_early_suspend,
+	.late_resume = gt2005_v4l2_late_resume,
+	.device_disable=gt2005_v4l2_disable,
+};
+#endif /* VIDEO_AMLOGIC_CAPTURE_GT2005 */
+
+#if defined(CONFIG_VIDEO_AMLOGIC_CAPTURE_HY253)
+static void hy253_v4l2_init(void)
+{
+	printk( "hy253_v4l2_init. \n");
+    // reset low 
+    printk( "amlogic camera driver: gt2005_v4l2_init. \n");
+    set_gpio_val(GPIOY_bank_bit0_22(10), GPIOY_bit_bit0_22(10), 0);   
+    set_gpio_mode(GPIOY_bank_bit0_22(10), GPIOY_bit_bit0_22(10), GPIO_OUTPUT_MODE);
+	
+    // set camera power disanable
+    set_gpio_val(GPIOA_bank_bit0_27(24), GPIOA_bit_bit0_27(24), 0);    
+    set_gpio_mode(GPIOA_bank_bit0_27(24), GPIOA_bit_bit0_27(24), GPIO_OUTPUT_MODE);
+	
+    msleep(20);
+	
+	// reset high
+    set_gpio_val(GPIOY_bank_bit0_22(10), GPIOY_bit_bit0_22(10), 1);    
+    set_gpio_mode(GPIOY_bank_bit0_22(10), GPIOY_bit_bit0_22(10), GPIO_OUTPUT_MODE);
+    msleep(20);
+    
+    // set camera power enable
+    set_gpio_val(GPIOA_bank_bit0_27(24), GPIOA_bit_bit0_27(24), 1);    
+    set_gpio_mode(GPIOA_bank_bit0_27(24), GPIOA_bit_bit0_27(24), GPIO_OUTPUT_MODE);
+    msleep(20);
+
+}
+static void hy253_v4l2_uninit(void)
+{
+	printk( "hy253_v4l2_uninit. \n");
+    set_gpio_val(GPIOA_bank_bit0_27(24), GPIOA_bit_bit0_27(24), 1);    // set camera power disable
+    set_gpio_mode(GPIOA_bank_bit0_27(24), GPIOA_bit_bit0_27(24), GPIO_OUTPUT_MODE);
+}
+static void hy253_v4l2_disable(void)
+{
+
+}
+
+static void hy253_v4l2_early_suspend(void)
+{
+    set_gpio_val(GPIOA_bank_bit0_27(24), GPIOA_bit_bit0_27(24), 1);    // set camera power disable
+    set_gpio_mode(GPIOA_bank_bit0_27(24), GPIOA_bit_bit0_27(24), GPIO_OUTPUT_MODE);
+}
+
+static void hy253_v4l2_late_resume(void)
+{
+    set_gpio_val(GPIOA_bank_bit0_27(24), GPIOA_bit_bit0_27(24), 0);    // set camera power enable
+    set_gpio_mode(GPIOA_bank_bit0_27(24), GPIOA_bit_bit0_27(24), GPIO_OUTPUT_MODE);
+}
+
+aml_plat_cam_data_t video_hy253_data = {
+	.name="video-hy253",
+	.video_nr=1,
+	.device_init= hy253_v4l2_init,
+	.device_uninit=hy253_v4l2_uninit,
+	.early_suspend = hy253_v4l2_early_suspend,
+	.late_resume = hy253_v4l2_late_resume,
+	.device_disable=hy253_v4l2_disable,
+};
 
 #endif
 
@@ -1086,6 +1075,60 @@ static struct platform_device aml_i2c_device2 = {
     },
 };
 
+#endif
+
+#ifdef CONFIG_AR1520_GPS
+static void ar1520_power_on(void)
+{
+}
+
+static void ar1520_power_off(void)
+{
+}
+
+static void ar1520_reset(void)
+{
+}
+
+static struct ar1520_platform_data aml_ar1520_plat = {
+	.power_on = ar1520_power_on,
+	.power_off = ar1520_power_off,
+	.reset = ar1520_reset,
+};
+
+static struct platform_device aml_ar1520_device = {	
+    .name         = "ar1520_gps",  
+    .id       = -1, 
+    .dev = {        
+                .platform_data = &aml_ar1520_plat,  
+           },
+};
+#endif
+
+#ifdef CONFIG_EFUSE
+static bool efuse_data_verify(unsigned char *usid)
+{  int len;
+  
+    len = strlen(usid);
+    if((len > 8)&&(len<31) )
+        return true;
+		else
+				return false;
+}
+
+static struct efuse_platform_data aml_efuse_plat = {
+    .pos = 337,
+    .count = 30,
+    .data_verify = efuse_data_verify,
+};
+
+static struct platform_device aml_efuse_device = {
+    .name	= "efuse",
+    .id	= -1,
+    .dev = {
+                .platform_data = &aml_efuse_plat,
+           },
+};
 #endif
 
 #ifdef CONFIG_PMU_ACT8xxx
@@ -1411,43 +1454,6 @@ static struct platform_device aml_pmu_device = {
 };
 #endif
 
-#ifdef CONFIG_BQ27x00_BATTERY
-static struct bq27x00_battery_pdata bq27x00_pdata = {
-	.is_ac_online	= is_ac_online,
-	.get_charge_status = get_charge_status,	
-	.set_charge = set_charge_current,
-	.set_bat_off = set_bat_off,
-    .chip = 1,
-};
-#endif
-
-
-#ifdef CONFIG_EFUSE
-static bool efuse_data_verify(unsigned char *usid)
-{  int len;
-  
-    len = strlen(usid);
-    if((len > 8)&&(len<31) )
-        return true;
-		else
-				return false;
-}
-
-static struct efuse_platform_data aml_efuse_plat = {
-    .pos = 337,
-    .count = 30,
-    .data_verify = efuse_data_verify,
-};
-
-static struct platform_device aml_efuse_device = {
-    .name	= "efuse",
-    .id	= -1,
-    .dev = {
-                .platform_data = &aml_efuse_plat,
-           },
-};
-#endif
-
 #ifdef CONFIG_AM_NAND
 static struct mtd_partition multi_partition_info[] = 
 {
@@ -1508,7 +1514,7 @@ static struct aml_nand_platform aml_nand_mid_platform[] = {
 			.T_REA = 20,
 			.T_RHOH = 15,
 	},
-{
+	{
 		.name = NAND_MULTI_NAME,
 		.chip_enable_pad = (AML_NAND_CE0 | (AML_NAND_CE1 << 4) | (AML_NAND_CE2 << 8) | (AML_NAND_CE3 << 12)),
 		.ready_busy_pad = (AML_NAND_CE0 | (AML_NAND_CE0 << 4) | (AML_NAND_CE1 << 8) | (AML_NAND_CE1 << 12)),
@@ -1557,9 +1563,9 @@ extern void set_backlight_level(unsigned level);
 
 struct aml_bl_platform_data aml_bl_platform =
 {    
-   // .power_on_bl = power_on_backlight,
-   // .power_off_bl = power_off_backlight,
-   // .get_bl_level = get_backlight_level,
+    .power_on_bl = power_on_backlight,
+    .power_off_bl = power_off_backlight,
+    .get_bl_level = get_backlight_level,
     .set_bl_level = set_backlight_level,
 };
 
@@ -1594,8 +1600,8 @@ static struct platform_device vout_device = {
 #ifdef CONFIG_USB_ANDROID_MASS_STORAGE
 static struct usb_mass_storage_platform_data mass_storage_pdata = {
        .nluns = 2,
-       .vendor = "DEV",
-       .product = "FROYO",
+       .vendor = "Keenhi",
+       .product = "ICS",
        .release = 0x0100,
 };
 static struct platform_device usb_mass_storage_device = {
@@ -1633,8 +1639,8 @@ static struct android_usb_platform_data android_usb_pdata = {
        .vendor_id      = 0x0bb4,
        .product_id     = 0x0c01,
        .version        = 0x0100,
-       .product_name   = "FROYO",
-       .manufacturer_name = "DEV",
+       .product_name   = "ICS",
+       .manufacturer_name = "Keenhi",
        .num_products = ARRAY_SIZE(usb_products),
        .products = usb_products,
        .num_functions = ARRAY_SIZE(usb_functions_adb),
@@ -1767,14 +1773,8 @@ static struct platform_device __initdata *platform_devs[] = {
 #if defined(CONFIG_AML_RTC)
     &aml_rtc_device,
 #endif
-#if defined(CONFIG_KEYPADS_AM)||defined(CONFIG_VIRTUAL_REMOTE)||defined(CONFIG_KEYPADS_AM_MODULE)
-    &input_device,
-#endif
 #ifdef CONFIG_SARADC_AM
 &saradc_device,
-#endif
-#ifdef CONFIG_ADC_TOUCHSCREEN_AM
-    &adc_ts_device,
 #endif
 #if defined(CONFIG_ADC_KEYPADS_AM)||defined(CONFIG_ADC_KEYPADS_AM_MODULE)
     &adc_kp_device,
@@ -1814,7 +1814,9 @@ static struct platform_device __initdata *platform_devs[] = {
 #ifdef CONFIG_BT_DEVICE  
     &bt_device,
 #endif
-
+#ifdef CONFIG_AR1520_GPS
+	&aml_ar1520_device,
+#endif
 #ifdef CONFIG_EFUSE
 	&aml_efuse_device,
 #endif
@@ -1831,19 +1833,14 @@ static struct platform_device __initdata *platform_devs[] = {
 
 static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
 
-#ifdef CONFIG_ITK_CAPACITIVE_TOUCHSCREEN
-    {
-        I2C_BOARD_INFO("itk", 0x41),
-        .irq = ITK_INT,
-        .platform_data = (void *)&itk_pdata,
-    },
-#endif
 #ifdef CONFIG_FOCALTECH_CAPACITIVE_TOUCHSCREEN
     {
         I2C_BOARD_INFO("ft5x06", 0x38),
+        .irq = INT_GPIO_0,
         .platform_data = (void *)&ts_pdata,
     },
 #endif
+
 #ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE_GC0308
 
 	{
@@ -1853,30 +1850,19 @@ static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
 	},
 #endif
 
+#if CONFIG_VIDEO_AMLOGIC_CAPTURE_GT2005
+    {
+    	/*gt2005 i2c address is 0x78/0x79*/
+    	I2C_BOARD_INFO("gt2005_i2c",  0x78 >> 1 ),
+    	.platform_data = (void *)&video_gt2005_data
+    },
+#endif
 };
 
 static struct i2c_board_info __initdata aml_i2c_bus_info_1[] = {
-#ifdef CONFIG_SENSORS_MMC328X
-	{
-		I2C_BOARD_INFO(MMC328X_I2C_NAME,  MMC328X_I2C_ADDR),
-	},
-#endif
-#ifdef CONFIG_SIX_AXIS_SENSOR_MPU3050
-    {
-        I2C_BOARD_INFO("mpu3050", 0x68),
-        .irq = MPU3050_IRQ,
-        .platform_data = (void *)&mpu3050_data,
-    },
-#endif
 };
 
 static struct i2c_board_info __initdata aml_i2c_bus_info_2[] = {
-#ifdef CONFIG_BQ27x00_BATTERY
-    {
-        I2C_BOARD_INFO("bq27500", 0x55),
-        .platform_data = (void *)&bq27x00_pdata,
-    },
-#endif
 #ifdef CONFIG_PMU_ACT8xxx
 	{
         I2C_BOARD_INFO(ACT8xxx_I2C_NAME, ACT8xxx_ADDR),
@@ -1926,14 +1912,20 @@ static void __init device_pinmux_init(void )
 #endif
     set_audio_pinmux(AUDIO_OUT_TEST_N);
    // set_audio_pinmux(AUDIO_IN_JTAG);
-#ifdef CONFIG_SIX_AXIS_SENSOR_MPU3050
-    mpu3050_init_irq();
-#endif    
 #if 1
     //set clk for wifi
     WRITE_CBUS_REG(HHI_GEN_CLK_CNTL,(READ_CBUS_REG(HHI_GEN_CLK_CNTL)&(~(0x7f<<0)))|((0<<0)|(1<<8)|(7<<9)) );
     CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO2_EN_N, (1<<15));    
     SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_3, (1<<22));
+
+    // set clk for camera 
+    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_1, (1<<29)); 
+    SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<2));
+
+    unsigned pwm_cnt = get_ddr_pll_clk()/48000000 - 1;
+    pwm_cnt &= 0xffff;
+    WRITE_CBUS_REG(PWM_PWM_C, (pwm_cnt<<16) | pwm_cnt);
+    SET_CBUS_REG_MASK(PWM_MISC_REG_CD, (1<<15)|(0<<8)|(1<<4)|(1<<0)); //select ddr pll for source, and clk divide 
 #endif
 }
 
@@ -1978,36 +1970,7 @@ static void __init LED_PWM_REG0_init(void)
 
 }
 
-#if defined(CONFIG_AML_INIT_GATE_OFF)
-#define GATE_INIT_OFF(_MOD) CLEAR_CBUS_REG_MASK(GCLK_REG_##_MOD, GCLK_MASK_##_MOD);
-
-static __init void init_gate_off(void) 
-{
-	//turn of video gates
-	GATE_INIT_OFF(VCLK2_VENCP1);
-	GATE_INIT_OFF(VCLK2_VENCP);
-	GATE_INIT_OFF(VCLK2_VENCL);
-	GATE_INIT_OFF(VCLK2_ENCL);
-	GATE_INIT_OFF(VCLK2_OTHER1);
-	GATE_INIT_OFF(VCLK2_VENCI1);
-	GATE_INIT_OFF(VCLK2_VENCI);
-	GATE_INIT_OFF(VENC_P_TOP);
-	GATE_INIT_OFF(VENC_L_TOP);
-	GATE_INIT_OFF(VENC_I_TOP);
-	//GATE_INIT_OFF(VCLK2_VENCT);
-	//GATE_INIT_OFF(VCLK2_ENCT);
-	GATE_INIT_OFF(VENCP_INT);
-	GATE_INIT_OFF(VENCL_INT);
-	GATE_INIT_OFF(VCLK2_ENCI);
-	GATE_INIT_OFF(VCLK2_ENCP);
-	GATE_INIT_OFF(VCLK2_OTHER);
-	GATE_INIT_OFF(ENC480P);
-	GATE_INIT_OFF(VENC_DAC);
-	GATE_INIT_OFF(DAC_CLK);
-}
-#endif    
-
-static __init void m1_init_machine(void)
+static __init void m3_init_machine(void)
 {
     meson_cache_init();
 #ifdef CONFIG_AML_SUSPEND
@@ -2023,10 +1986,9 @@ static __init void m1_init_machine(void)
     pm_power_off = power_off;		//Elvis fool
     device_pinmux_init();
     
-#if defined(CONFIG_AML_INIT_GATE_OFF)
-    init_gate_off();
-#endif    
-
+#ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE
+    camera_power_on_init();
+#endif
     platform_add_devices(platform_devs, ARRAY_SIZE(platform_devs));
 
 #ifdef CONFIG_USB_DWC_OTG_HCD
@@ -2057,22 +2019,20 @@ static __initdata struct map_desc meson_video_mem_desc[] = {
 #endif
 };
 
-static __init void m1_map_io(void)
+static __init void m3_map_io(void)
 {
     meson_map_io();
     iotable_init(meson_video_mem_desc, ARRAY_SIZE(meson_video_mem_desc));
 }
 
-static __init void m1_irq_init(void)
+static __init void m3_irq_init(void)
 {
     meson_init_irq();
 }
 
-static __init void m1_fixup(struct machine_desc *mach, struct tag *tag, char **cmdline, struct meminfo *m)
+static __init void m3_fixup(struct machine_desc *mach, struct tag *tag, char **cmdline, struct meminfo *m)
 {
     struct membank *pbank;
-    
-    // PHYS_MEM_START ~ RESERVED_MEM_START
     m->nr_banks = 0;
     pbank=&m->bank[m->nr_banks];
     pbank->start = PAGE_ALIGN(PHYS_MEM_START);
@@ -2095,11 +2055,11 @@ MACHINE_START(MESON3_8726M_SKT, "AMLOGIC MESON3 8726M SKT SH")
     .phys_io        = MESON_PERIPHS1_PHYS_BASE,
     .io_pg_offst    = (MESON_PERIPHS1_PHYS_BASE >> 18) & 0xfffc,
     .boot_params    = BOOT_PARAMS_OFFSET,
-    .map_io         = m1_map_io,
-    .init_irq       = m1_irq_init,
+    .map_io         = m3_map_io,
+    .init_irq       = m3_irq_init,
     .timer          = &meson_sys_timer,
-    .init_machine   = m1_init_machine,
-    .fixup          = m1_fixup,
+    .init_machine   = m3_init_machine,
+    .fixup          = m3_fixup,
     .video_start    = RESERVED_MEM_START,
     .video_end      = RESERVED_MEM_END,
 MACHINE_END

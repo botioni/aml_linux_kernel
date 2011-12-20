@@ -1560,12 +1560,9 @@ unsigned int get_post_canvas(void)
 
 static int canvas_dup(ulong *dst, ulong src_paddr, ulong size)
 {
-    void __iomem *p = ioremap_wc(src_paddr, size);
-
-    if (p) {
+    void  *p = __phys_to_virt(src_paddr);      
+       if (p) {
         memcpy(dst, p, size);
-        iounmap(p);
-
         return 1;
     }
 

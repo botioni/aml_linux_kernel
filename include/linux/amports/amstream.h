@@ -109,6 +109,9 @@
 #define AMSTREAM_IOC_CM_DEBUG  _IOWR(AMSTREAM_IOC_MAGIC, 0x33, unsigned long long)
 #define AMSTREAM_IOC_CM_REGMAP  _IOW(AMSTREAM_IOC_MAGIC, 0x34, struct cm_regmap_s)
 
+#define AMSTREAM_IOC_SUB_NUM	_IOR(AMSTREAM_IOC_MAGIC, 0x50, unsigned long)
+#define AMSTREAM_IOC_SUB_INFO	_IOR(AMSTREAM_IOC_MAGIC, 0x51, unsigned long)
+#define AMSTREAM_IOC_VF_STATUS  _IOR(AMSTREAM_IOC_MAGIC, 0x60, unsigned long)
 #define AMSTREAM_IOC_CLEAR_VBUF _IO(AMSTREAM_IOC_MAGIC, 0x80)
 
 #define TRICKMODE_NONE       0x00
@@ -118,7 +121,8 @@
 #define TRICK_STAT_DONE     0x01
 #define TRICK_STAT_WAIT     0x00
 
-#define AUDIO_EXTRA_DATA_SIZE   (2048)
+#define AUDIO_EXTRA_DATA_SIZE   (4096)
+#define MAX_SUB_NUM		32
 
 enum VIDEO_DEC_TYPE
 {
@@ -198,7 +202,17 @@ struct dec_sysinfo {
     unsigned int    status;
     unsigned int    ratio;
     void *          param;
+	unsigned long long    ratio64;
 };
+
+struct subtitle_info
+{
+    unsigned char id;      
+    unsigned char width;
+    unsigned char height;
+    unsigned char type;    
+};
+
 struct codec_profile_t
 {
 	char *name;		// video codec short name 
@@ -220,6 +234,7 @@ struct tsdemux_ops {
     int (*set_vid)(int vpid);
     int (*set_aid)(int apid);
     int (*set_sid)(int spid);
+    int (*set_skipbyte)(int skipbyte);
 };
 
 void tsdemux_set_ops(struct tsdemux_ops *ops);

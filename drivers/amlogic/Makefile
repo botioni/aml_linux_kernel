@@ -45,9 +45,9 @@ obj-$(CONFIG_JPEGLOGO) += jpeglogo/
 
 obj-$(CONFIG_CARDREADER) += cardreader/
 
-obj-$(CONFIG_UMP) += ump/
-
 obj-$(CONFIG_MALI) += mali/
+
+obj-$(CONFIG_UMP) += ump/
 
 obj-$(CONFIG_TWX_TC101) += minilvds/
 
