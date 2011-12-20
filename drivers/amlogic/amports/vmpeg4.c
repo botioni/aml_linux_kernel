@@ -65,7 +65,7 @@ MODULE_AMLOG(LOG_LEVEL_ERROR, 0, LOG_LEVEL_DESC, LOG_DEFAULT_MASK_DESC);
 #define BOTTOM_FIELD_FIRST_FLAG 0x40
 
 /* protocol registers */
-#define MP4_PIC_RATIO       AV_SCRATCH_0
+#define MP4_PIC_RATIO       AV_SCRATCH_5
 #define MP4_RATE            AV_SCRATCH_3
 #define MP4_ERR_COUNT       AV_SCRATCH_6
 #define MP4_PIC_WH          AV_SCRATCH_7
@@ -132,6 +132,7 @@ static struct timer_list recycle_timer;
 static u32 stat;
 static u32 buf_start, buf_size, buf_offset;
 static u32 vmpeg4_ratio;
+static u64 vmpeg4_ratio64;
 static u32 rate_detect;
 static u32 vmpeg4_rotation;
 
@@ -182,34 +183,57 @@ static inline void ptr_atomic_wrap_inc(u32 *ptr)
 
 static void set_aspect_ratio(vframe_t *vf, unsigned pixel_ratio)
 {
-    int ar = 0;
+    unsigned int ar = 0;
+    unsigned int num = 0;
+    unsigned int den = 0;
 
+	if (vmpeg4_ratio64 != 0) {
+		num = vmpeg4_ratio64>>32;
+		den = vmpeg4_ratio64 & 0xffffffff;
+	} else {		
+		num = vmpeg4_ratio>>16;
+		den = vmpeg4_ratio & 0xffff;
+	
+	}
+    if ((num == 0) || (den == 0)) {
+        num = 1;
+        den = 1;
+    }
+    
     if (vmpeg4_ratio == 0) {
         vf->ratio_control |= (0x90 << DISP_RATIO_ASPECT_RATIO_BIT); // always stretch to 16:9
     } else if (pixel_ratio > 0x0f) {
-        ar = (pixel_ratio & 0xff) * vmpeg4_amstream_dec_info.height * vmpeg4_ratio / ((pixel_ratio >> 8) * vmpeg4_amstream_dec_info.width);
+        num = (pixel_ratio >> 8) * vmpeg4_amstream_dec_info.width * num;
+        ar = div_u64((pixel_ratio & 0xff) * vmpeg4_amstream_dec_info.height * den * 0x100ULL + (num>>1),  num);
     } else {
         switch (aspect_ratio_table[pixel_ratio]) {
         case 0:
-            ar = vmpeg4_amstream_dec_info.height * vmpeg4_ratio / vmpeg4_amstream_dec_info.width;
+            num = vmpeg4_amstream_dec_info.width * num;
+            ar = (vmpeg4_amstream_dec_info.height * den * 0x100 +  (num>>1))/ num;
             break;
-        case 1:
-            ar = vf->height * vmpeg4_ratio / vf->width;
+        case 1: 
+            num = vf->width * num;
+            ar = (vf->height * den * 0x100 + (num>>1)) / num;
             break;
         case 2:
-            ar = vf->height * vmpeg4_ratio * 11 / (vf->width * 12);
+            num = (vf->width * 12) * num;
+            ar = (vf->height * den * 0x100  * 11 + ((num)>>1)) / num;
             break;
         case 3:
-            ar = vf->height * vmpeg4_ratio * 11 / (vf->width * 10);
+            num = (vf->width * 10) * num;
+            ar = (vf->height * den * 0x100  * 11 + (num>>1))/ num ;
             break;
         case 4:
-            ar = vf->height * vmpeg4_ratio * 11 / (vf->width * 16);
+            num = (vf->width * 16) * num;
+            ar = (vf->height * den * 0x100  * 11 + (num>>1)) / num;
             break;
         case 5:
-            ar = vf->height * vmpeg4_ratio * 33 / (vf->width * 40);
+            num = (vf->width * 40) * num;
+            ar = (vf->height * den * 0x100 * 33 + (num>>1))/ num;
             break;
         default:
-            ar = vf->height * vmpeg4_ratio / vf->width;
+            num = vf->width * num;
+            ar = (vf->height * den * 0x100  + (num>>1)) / num;
             break;
         }
     }
@@ -645,8 +669,10 @@ static void vmpeg4_local_init(void)
     int i;
 
     vmpeg4_ratio = vmpeg4_amstream_dec_info.ratio;
+	
+	vmpeg4_ratio64 = vmpeg4_amstream_dec_info.ratio64;
+
     vmpeg4_rotation = (((u32)vmpeg4_amstream_dec_info.param) >> 16) & 0xffff;
-    printk("vmpeg4 rotation %d\n", vmpeg4_rotation);
 
     fill_ptr = get_ptr = put_ptr = putting_ptr = 0;
 
