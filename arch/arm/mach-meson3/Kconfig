@@ -73,6 +73,12 @@ config MACH_MESON3_REFF11_P800
 	help
 	  Include support for the AML M3 Gadmei board platform.
 
+config MACH_MESON3_REFF14
+	select GENERIC_ALLOCATOR
+	bool "Support MT720 (Keenhi M3 1024*600) platform"
+	help
+	  Include support for the Keenhi M3 board platform.
+
 config MESON3_CLOCK_TICK_RATE
     int "Clock Tick Rate"
 	default 25000000
