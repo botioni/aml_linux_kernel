@@ -538,7 +538,7 @@ int aml_m3_is_hp_pluged(void)
 	if(get_display_mode() != 0) //if !panel, return 1 to mute spk		
 		return 1;
 		
-	return READ_CBUS_REG_BITS(PREG_PAD_GPIO0_I, 19, 1); //return 1: hp pluged, 0: hp unpluged.
+	return !READ_CBUS_REG_BITS(PREG_PAD_GPIO0_I, 19, 1); //return 1: hp pluged, 0: hp unpluged.
 }
 
 
