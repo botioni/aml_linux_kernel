@@ -1128,6 +1128,16 @@ unsigned int OnAuthClient(_adapter *padapter, union recv_frame *precv_frame)
 	if (status != 0)
 	{
 		DBG_871X("clnt auth fail, status: %d\n", status);
+		if(status == 13)//&& pmlmeinfo->auth_algo == dot11AuthAlgrthm_Auto)
+		{
+			if(pmlmeinfo->auth_algo == dot11AuthAlgrthm_Shared)
+				pmlmeinfo->auth_algo = dot11AuthAlgrthm_Open;
+			else
+				pmlmeinfo->auth_algo = dot11AuthAlgrthm_Shared;
+			//pmlmeinfo->reauth_count = 0;
+		}
+		
+		set_link_timer(pmlmeext, 1);
 		goto authclnt_fail;
 	}
 
@@ -5689,10 +5699,13 @@ void issue_auth(_adapter *padapter, struct sta_info *psta, unsigned short status
 	struct mlme_ext_priv	*pmlmeext = &(padapter->mlmeextpriv);
 	struct mlme_ext_info	*pmlmeinfo = &(pmlmeext->mlmext_info);
 
-	// Because of AP's not receiving deauth before
-	// AP may: 1)not response auth or 2)deauth us after link is complete
-	// issue deauth before issuing auth to deal with the situation
-	issue_deauth(padapter, (&(pmlmeinfo->network))->MacAddress, WLAN_REASON_DEAUTH_LEAVING);
+
+	if(pmlmeinfo->auth_seq != 3) {		
+		// Because of AP's not receiving deauth before
+		// AP may: 1)not response auth or 2)deauth us after link is complete
+		// issue deauth before issuing auth to deal with the situation
+		issue_deauth(padapter, (&(pmlmeinfo->network))->MacAddress, WLAN_REASON_DEAUTH_LEAVING);
+	}
 
 
 	if ((pmgntframe = alloc_mgtxmitframe(pxmitpriv)) == NULL)
@@ -8351,17 +8364,17 @@ void link_timer_hdl(_adapter *padapter)
 		//re-auth timer
 		if (++pmlmeinfo->reauth_count > REAUTH_LIMIT)
 		{
-			if (pmlmeinfo->auth_algo != dot11AuthAlgrthm_Auto)
-			{
+			//if (pmlmeinfo->auth_algo != dot11AuthAlgrthm_Auto)
+			//{
 				pmlmeinfo->state = 0;
 				report_join_res(padapter, -1);
 				return;
-			}
-			else
-			{
-				pmlmeinfo->auth_algo = dot11AuthAlgrthm_Shared;
-				pmlmeinfo->reauth_count = 0;
-			}
+			//}
+			//else
+			//{
+			//	pmlmeinfo->auth_algo = dot11AuthAlgrthm_Shared;
+			//	pmlmeinfo->reauth_count = 0;
+			//}
 		}
 		
 		DBG_871X("link_timer_hdl: auth timeout and try again\n");

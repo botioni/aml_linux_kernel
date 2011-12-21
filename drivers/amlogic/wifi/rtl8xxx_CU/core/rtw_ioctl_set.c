@@ -130,15 +130,12 @@ _func_enter_;
 			pmlmepriv->to_join = _FALSE;
 			_set_timer(&pmlmepriv->assoc_timer, MAX_JOIN_TIMEOUT);
 		}
-#if 0
-		else if(ret == 2)
+		else if(ret == 2)//there is no need to wait for join
 		{
-			DBG_8712("*****UNDER_LINKED WITH SAME NETWORK, RETURN*****\n");
-
-			_clr_fwstate_(pmlmepriv, _FW_UNDER_LINKING);
-			
+			ret = _SUCCESS;
+			clr_fwstate(pmlmepriv, _FW_UNDER_LINKING);
+			rtw_indicate_connect(padapter);
 		}
-#endif
 		else	
 		{
 			if(check_fwstate(pmlmepriv, WIFI_ADHOC_STATE)==_TRUE)
@@ -337,12 +334,10 @@ _func_enter_;
 	_enter_critical_bh(&pmlmepriv->lock, &irqL);
 
 
+	DBG_871X("Set BSSID under fw_state=0x%08x\n", get_fwstate(pmlmepriv));
 	if (check_fwstate(pmlmepriv, _FW_UNDER_SURVEY) == _TRUE) {
-		
-		DBG_871X("Set BSSID under fw_state=0x%08x\n", get_fwstate(pmlmepriv));
 		goto handle_tkip_countermeasure;
 	} else if (check_fwstate(pmlmepriv, _FW_UNDER_LINKING) == _TRUE) {
-		DBG_871X("Set BSSID under fw_state=0x%08x\n", get_fwstate(pmlmepriv));
 		goto release_mlme_lock;
 	}
 
@@ -364,7 +359,7 @@ _func_enter_;
 			if (check_fwstate(pmlmepriv, _FW_LINKED) == _TRUE)
 				rtw_indicate_disconnect(padapter);
 
-			rtw_free_assoc_resources(padapter);
+			rtw_free_assoc_resources(padapter, 1);
 
 			if ((check_fwstate(pmlmepriv, WIFI_ADHOC_MASTER_STATE) == _TRUE)) {
 				_clr_fwstate_(pmlmepriv, WIFI_ADHOC_MASTER_STATE);
@@ -423,12 +418,10 @@ _func_enter_;
 		
 	_enter_critical_bh(&pmlmepriv->lock, &irqL);
 
-	if (check_fwstate(pmlmepriv, _FW_UNDER_SURVEY) == _TRUE) {
-		
-		DBG_871X("Set SSID under fw_state=0x%08x\n", get_fwstate(pmlmepriv));
+	DBG_871X("Set SSID under fw_state=0x%08x\n", get_fwstate(pmlmepriv));
+	if (check_fwstate(pmlmepriv, _FW_UNDER_SURVEY) == _TRUE) {	
 		goto handle_tkip_countermeasure;
 	} else if (check_fwstate(pmlmepriv, _FW_UNDER_LINKING) == _TRUE) {
-		DBG_871X("Set SSID under fw_state=0x%08x\n", get_fwstate(pmlmepriv));
 		goto release_mlme_lock;
 	}
 
@@ -454,7 +447,7 @@ _func_enter_;
 					if (check_fwstate(pmlmepriv, _FW_LINKED) == _TRUE)
 						rtw_indicate_disconnect(padapter);
 						
-					rtw_free_assoc_resources(padapter);
+					rtw_free_assoc_resources(padapter, 1);
 
 					if (check_fwstate(pmlmepriv, WIFI_ADHOC_MASTER_STATE) == _TRUE) {
 						_clr_fwstate_(pmlmepriv, WIFI_ADHOC_MASTER_STATE);
@@ -483,7 +476,7 @@ _func_enter_;
 			if (check_fwstate(pmlmepriv, _FW_LINKED) == _TRUE)
 				rtw_indicate_disconnect(padapter);
 			
-			rtw_free_assoc_resources(padapter);
+			rtw_free_assoc_resources(padapter, 1);
 
 			if (check_fwstate(pmlmepriv, WIFI_ADHOC_MASTER_STATE) == _TRUE) {
 				_clr_fwstate_(pmlmepriv, WIFI_ADHOC_MASTER_STATE);
@@ -583,7 +576,7 @@ _func_enter_;
 
 		if((check_fwstate(pmlmepriv, _FW_LINKED)== _TRUE) ||
 			(check_fwstate(pmlmepriv, WIFI_ADHOC_MASTER_STATE)== _TRUE) )
-			rtw_free_assoc_resources(padapter);
+			rtw_free_assoc_resources(padapter, 1);
 
 
 		if((check_fwstate(pmlmepriv, _FW_LINKED)== _TRUE) || (*pold_state==Ndis802_11Infrastructure) ||(*pold_state==Ndis802_11IBSS))
@@ -660,7 +653,7 @@ _func_enter_;
 
 		rtw_disassoc_cmd(padapter);		
 		rtw_indicate_disconnect(padapter);
-		rtw_free_assoc_resources(padapter);			
+		rtw_free_assoc_resources(padapter, 1);			
 	}
 
 	_exit_critical_bh(&pmlmepriv->lock, &irqL);
