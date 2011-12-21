@@ -1136,10 +1136,10 @@ typedef struct {
 } pinmux_data_t;
 
 
-#define MAX_PINMUX	1
+#define MAX_PINMUX	0
 
 pinmux_data_t pinmux_data[MAX_PINMUX] = {
-	{"HDMI", 	0, (1<<2)|(1<<1)|(1<<0), 						1},
+	//{"HDMI", 	0, (1<<2)|(1<<1)|(1<<0), 						1},
 };
 
 static unsigned pinmux_backup[6];

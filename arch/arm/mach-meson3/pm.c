@@ -368,7 +368,9 @@ void clk_switch(int flag)
                 if (READ_CBUS_REG(clks[i]) & (1 << 8)) {
                     clk_flag[i] = 1;
 
+		    printk("-----------------------------------------------------------------------\n");//make sure all the character in the fifo to be print out.
                     udelay(1000);
+                    
                     CLEAR_CBUS_REG_MASK(clks[i], (1 << 8)); // 24M
 
                     CLEAR_CBUS_REG_MASK(UART0_CONTROL, (1 << 19) | 0xFFF);
