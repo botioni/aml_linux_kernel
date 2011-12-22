@@ -44,6 +44,10 @@ _mali_osk_errcode_t mali_platform_power_mode_change(mali_power_mode power_mode)
             break;
 	    case MALI_POWER_MODE_DEEP_SLEEP:
             /* turn on MALI clock gating */
+			CLEAR_CBUS_REG_MASK(HHI_MALI_CLK_CNTL, 1 << 8);
+            break;
+        case MALI_POWER_MODE_ON:
+            /* turn off MALI clock gating */
 			local_irq_save(flags);
 			CLEAR_CBUS_REG_MASK(HHI_MALI_CLK_CNTL, 1 << 8);
 
@@ -71,10 +75,6 @@ _mali_osk_errcode_t mali_platform_power_mode_change(mali_power_mode power_mode)
 			local_irq_restore(flags);
 			if (mali_flag)
 				printk("(CTS_MALI_CLK) = %d/%d = %dMHz --- when mali gate on\n", ddr_freq, mali_divider, ddr_freq/mali_divider);
-            break;
-        case MALI_POWER_MODE_ON:
-            /* turn off MALI clock gating */
-            SET_CBUS_REG_MASK(HHI_MALI_CLK_CNTL, 1 << 8);
             break;
     }
 
