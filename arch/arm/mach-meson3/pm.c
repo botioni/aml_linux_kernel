@@ -368,9 +368,7 @@ void clk_switch(int flag)
                 if (READ_CBUS_REG(clks[i]) & (1 << 8)) {
                     clk_flag[i] = 1;
 
-		    printk("-----------------------------------------------------------------------\n");//make sure all the character in the fifo to be print out.
                     udelay(1000);
-                    
                     CLEAR_CBUS_REG_MASK(clks[i], (1 << 8)); // 24M
 
                     CLEAR_CBUS_REG_MASK(UART0_CONTROL, (1 << 19) | 0xFFF);
@@ -705,6 +703,15 @@ static void meson_system_late_resume(struct early_suspend *h)
         }
         printk(KERN_INFO "sys_resume\n");
     }
+#if 1
+#ifdef CONFIG_EARLYSUSPEND
+		extern void reset_watchdog(void);
+		reset_watchdog();
+#else
+		extern void disable_watchdog(void);
+		disable_watchdog();
+#endif
+#endif    
 }
 #endif
 
@@ -728,6 +735,10 @@ static void meson_pm_suspend(void)
 #endif
 
     printk(KERN_INFO "enter meson_pm_suspend!\n");
+#if 1
+		extern void enable_watchdog(void);
+		enable_watchdog();
+#endif
 
     pdata->ddr_clk = READ_CBUS_REG(HHI_DDR_PLL_CNTL);
 
