@@ -1422,7 +1422,7 @@ static int __init rtw_drv_entry(void)
 	extern_usb_wifi_power(0);
 	mdelay(100);
 	extern_usb_wifi_power(1);
-	mdelay(100);
+	mdelay(500);
 #endif
 
 #ifdef CONFIG_PLATFORM_RTK_DMP
