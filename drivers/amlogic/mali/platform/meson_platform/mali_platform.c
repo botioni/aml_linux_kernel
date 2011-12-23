@@ -41,7 +41,9 @@ _mali_osk_errcode_t mali_platform_power_mode_change(mali_power_mode power_mode)
 
     switch (power_mode) {
         case MALI_POWER_MODE_LIGHT_SLEEP:
-            break;
+            /* turn on MALI clock gating */
+			CLEAR_CBUS_REG_MASK(HHI_MALI_CLK_CNTL, 1 << 8);
+			break;
 	    case MALI_POWER_MODE_DEEP_SLEEP:
             /* turn on MALI clock gating */
 			CLEAR_CBUS_REG_MASK(HHI_MALI_CLK_CNTL, 1 << 8);
