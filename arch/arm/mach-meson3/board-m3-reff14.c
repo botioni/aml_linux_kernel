@@ -570,7 +570,7 @@ static struct aml_m3_platform_data aml_m3_pdata = {
 #include <linux/ft5x06_ts.h>
 /* GPIOD_24 */
 #define GPIO_KEY_LED  ((GPIOA_bank_bit0_27(18)<<16) |GPIOA_bit_bit0_27(18))
-#define GPIO_FT_RST  ((GPIOA_bank_bit0_27(1)<<16) |GPIOA_bit_bit0_27(1))
+#define GPIO_FT_RST  ((GPIOC_bank_bit0_15(3)<<16) |GPIOC_bit_bit0_15(3))
 #define GPIO_FT_IRQ  ((GPIOA_bank_bit0_27(16)<<16) |GPIOA_bit_bit0_27(16))
 #define FT_IRQ	INT_GPIO_0
 
