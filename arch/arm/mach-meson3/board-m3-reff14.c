@@ -787,67 +787,6 @@ aml_plat_cam_data_t video_gt2005_data = {
 };
 #endif /* VIDEO_AMLOGIC_CAPTURE_GT2005 */
 
-#if defined(CONFIG_VIDEO_AMLOGIC_CAPTURE_HY253)
-static void hy253_v4l2_init(void)
-{
-	printk( "hy253_v4l2_init. \n");
-    // reset low 
-    printk( "amlogic camera driver: gt2005_v4l2_init. \n");
-    set_gpio_val(GPIOY_bank_bit0_22(10), GPIOY_bit_bit0_22(10), 0);   
-    set_gpio_mode(GPIOY_bank_bit0_22(10), GPIOY_bit_bit0_22(10), GPIO_OUTPUT_MODE);
-	
-    // set camera power disanable
-    set_gpio_val(GPIOA_bank_bit0_27(24), GPIOA_bit_bit0_27(24), 0);    
-    set_gpio_mode(GPIOA_bank_bit0_27(24), GPIOA_bit_bit0_27(24), GPIO_OUTPUT_MODE);
-	
-    msleep(20);
-	
-	// reset high
-    set_gpio_val(GPIOY_bank_bit0_22(10), GPIOY_bit_bit0_22(10), 1);    
-    set_gpio_mode(GPIOY_bank_bit0_22(10), GPIOY_bit_bit0_22(10), GPIO_OUTPUT_MODE);
-    msleep(20);
-    
-    // set camera power enable
-    set_gpio_val(GPIOA_bank_bit0_27(24), GPIOA_bit_bit0_27(24), 1);    
-    set_gpio_mode(GPIOA_bank_bit0_27(24), GPIOA_bit_bit0_27(24), GPIO_OUTPUT_MODE);
-    msleep(20);
-
-}
-static void hy253_v4l2_uninit(void)
-{
-	printk( "hy253_v4l2_uninit. \n");
-    set_gpio_val(GPIOA_bank_bit0_27(24), GPIOA_bit_bit0_27(24), 1);    // set camera power disable
-    set_gpio_mode(GPIOA_bank_bit0_27(24), GPIOA_bit_bit0_27(24), GPIO_OUTPUT_MODE);
-}
-static void hy253_v4l2_disable(void)
-{
-
-}
-
-static void hy253_v4l2_early_suspend(void)
-{
-    set_gpio_val(GPIOA_bank_bit0_27(24), GPIOA_bit_bit0_27(24), 1);    // set camera power disable
-    set_gpio_mode(GPIOA_bank_bit0_27(24), GPIOA_bit_bit0_27(24), GPIO_OUTPUT_MODE);
-}
-
-static void hy253_v4l2_late_resume(void)
-{
-    set_gpio_val(GPIOA_bank_bit0_27(24), GPIOA_bit_bit0_27(24), 0);    // set camera power enable
-    set_gpio_mode(GPIOA_bank_bit0_27(24), GPIOA_bit_bit0_27(24), GPIO_OUTPUT_MODE);
-}
-
-aml_plat_cam_data_t video_hy253_data = {
-	.name="video-hy253",
-	.video_nr=1,
-	.device_init= hy253_v4l2_init,
-	.device_uninit=hy253_v4l2_uninit,
-	.early_suspend = hy253_v4l2_early_suspend,
-	.late_resume = hy253_v4l2_late_resume,
-	.device_disable=hy253_v4l2_disable,
-};
-
-#endif
-
 #if defined(CONFIG_SUSPEND)
 
 typedef struct {
