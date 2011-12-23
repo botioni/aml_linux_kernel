@@ -61,6 +61,8 @@ extern int ui_pid[3];
 #endif
 
 // combo scan
+#define WEXT_CSCAN_AMOUNT 9
+#define WEXT_CSCAN_BUF_LEN		360
 #define WEXT_CSCAN_HEADER		"CSCAN S\x01\x00\x00S\x00"
 #define WEXT_CSCAN_HEADER_SIZE		12
 #define WEXT_CSCAN_SSID_SECTION		'S'
@@ -592,7 +594,7 @@ static char *translate_scan(_adapter *padapter,
 	iwe.u.qual.level = (u8)pnetwork->network.PhyInfo.SignalStrength;//%
 	#endif
 	
-	iwe.u.qual.qual = (u8)pnetwork->network.PhyInfo.SignalStrength;   // signal quality
+	iwe.u.qual.qual = (u8)pnetwork->network.PhyInfo.SignalQuality;   // signal quality
 
 	#ifdef CONFIG_PLATFORM_ROCKCHIPS
 	iwe.u.qual.noise = -100; // noise level suggest by zhf@rockchips
@@ -1791,7 +1793,7 @@ static int rtw_wx_set_scan(struct net_device *dev, struct iw_request_info *a,
 	int ret = 0;	
 	_adapter *padapter = (_adapter *)rtw_netdev_priv(dev);
 	struct mlme_priv *pmlmepriv= &padapter->mlmepriv;
-	NDIS_802_11_SSID ssid;
+	NDIS_802_11_SSID ssid[RTW_SSID_SCAN_AMOUNT];
 	_irqL	irqL;
 
 #ifdef CONFIG_P2P
@@ -1876,6 +1878,8 @@ _func_enter_;
 	}
 #endif //CONFIG_P2P
 
+	_rtw_memset(ssid, 0, sizeof(NDIS_802_11_SSID)*RTW_SSID_SCAN_AMOUNT);
+
 #if WIRELESS_EXT >= 17
 	if (wrqu->data.length == sizeof(struct iw_scan_req)) 
 	{
@@ -1885,16 +1889,14 @@ _func_enter_;
 		{
 			int len = min((int)req->essid_len, IW_ESSID_MAX_SIZE);
 
-			_rtw_memset((unsigned char*)&ssid, 0, sizeof(NDIS_802_11_SSID));
-
-			_rtw_memcpy(ssid.Ssid, req->essid, len);
-			ssid.SsidLength = len;	
+			_rtw_memcpy(ssid[0].Ssid, req->essid, len);
+			ssid[0].SsidLength = len;	
 
 			DBG_8192C("IW_SCAN_THIS_ESSID, ssid=%s, len=%d\n", req->essid, req->essid_len);
 		
 			_enter_critical_bh(&pmlmepriv->lock, &irqL);				
 		
-			_status = rtw_sitesurvey_cmd(padapter, &ssid);
+			_status = rtw_sitesurvey_cmd(padapter, ssid, 1);
 		
 			_exit_critical_bh(&pmlmepriv->lock, &irqL);
 			
@@ -1916,51 +1918,60 @@ _func_enter_;
 		char *pos = extra+WEXT_CSCAN_HEADER_SIZE;
 		char section;
 		char sec_len;
+		int ssid_index = 0;
 
 		//DBG_871X("%s COMBO_SCAN header is recognized\n", __FUNCTION__);
-
-		_rtw_memset((unsigned char*)&ssid, 0, sizeof(NDIS_802_11_SSID));
-
+		
 		while(len >= 1) {
-			sscanf(pos, "%c", &section);
-			pos+=1; len-=1;
+			section = *(pos++); len-=1;
+			//sscanf(pos, "%c", &section);
+			//pos+=1; 
 
 			switch(section) {
 				case WEXT_CSCAN_SSID_SECTION:
-					DBG_871X("WEXT_CSCAN_SSID_SECTION\n");
-					if(len < 1) len = 0;
-					sscanf(pos, "%c", &sec_len);
-					pos+=1; len-=1;
+					//DBG_871X("WEXT_CSCAN_SSID_SECTION\n");
+					if(len < 1) {
+						len = 0;
+						break;
+					}
+					
+					sec_len = *(pos++); len-=1;
 
-					if(len >= sec_len) {
-						ssid.SsidLength = sec_len;
-						_rtw_memcpy(ssid.Ssid, pos, ssid.SsidLength);
-						DBG_871X("%s COMBO_SCAN with specific ssid:%s\n", __FUNCTION__, ssid.Ssid);
+					if(sec_len>0 && sec_len<=len) {
+						ssid[ssid_index].SsidLength = sec_len;
+						_rtw_memcpy(ssid[ssid_index].Ssid, pos, ssid[ssid_index].SsidLength);
+						DBG_871X("%s COMBO_SCAN with specific ssid:%s, %d\n", __FUNCTION__
+							, ssid[ssid_index].Ssid, ssid[ssid_index].SsidLength);
+						ssid_index++;
 					}
 					
 					pos+=sec_len; len-=sec_len;
 					break;
 					
-				#if 0
+				
 				case WEXT_CSCAN_CHANNEL_SECTION:
-					DBG_871X("WEXT_CSCAN_CHANNEL_SECTION\n");
-					
+					//DBG_871X("WEXT_CSCAN_CHANNEL_SECTION\n");
 					pos+=1; len-=1;
 					break;
-				case WEXT_CSCAN_NPROBE_SECTION:
-					DBG_871X("WEXT_CSCAN_NPROBE_SECTION\n");
-					break;
 				case WEXT_CSCAN_ACTV_DWELL_SECTION:
-					DBG_871X("WEXT_CSCAN_ACTV_DWELL_SECTION\n");
+					//DBG_871X("WEXT_CSCAN_ACTV_DWELL_SECTION\n");
+					pos+=2; len-=2;
 					break;
 				case WEXT_CSCAN_PASV_DWELL_SECTION:
-					DBG_871X("WEXT_CSCAN_PASV_DWELL_SECTION\n");
+					//DBG_871X("WEXT_CSCAN_PASV_DWELL_SECTION\n");
+					pos+=2; len-=2;					
 					break;
 				case WEXT_CSCAN_HOME_DWELL_SECTION:
-					DBG_871X("WEXT_CSCAN_HOME_DWELL_SECTION\n");
+					//DBG_871X("WEXT_CSCAN_HOME_DWELL_SECTION\n");
+					pos+=2; len-=2;
 					break;
 				case WEXT_CSCAN_TYPE_SECTION:
-					DBG_871X("WEXT_CSCAN_TYPE_SECTION\n");
+					//DBG_871X("WEXT_CSCAN_TYPE_SECTION\n");
+					pos+=1; len-=1;
+					break;
+				#if 0
+				case WEXT_CSCAN_NPROBE_SECTION:
+					DBG_871X("WEXT_CSCAN_NPROBE_SECTION\n");
 					break;
 				#endif
 				
@@ -1968,12 +1979,13 @@ _func_enter_;
 					//DBG_871X("Unknown CSCAN section %c\n", section);
 					len = 0; // stop parsing
 			}
+			//DBG_871X("len:%d\n", len);
 			
 		}
 		
 		//jeff: it has still some scan paramater to parse, we only do this now...			
 		_enter_critical_bh(&pmlmepriv->lock, &irqL);				
-		_status = rtw_sitesurvey_cmd(padapter, &ssid);	
+		_status = rtw_sitesurvey_cmd(padapter, ssid, RTW_SSID_SCAN_AMOUNT);	
 		_exit_critical_bh(&pmlmepriv->lock, &irqL);
 		
 	} else

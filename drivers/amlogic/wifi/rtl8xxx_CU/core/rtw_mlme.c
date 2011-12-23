@@ -1162,7 +1162,7 @@ _func_enter_;
 				#ifdef CONFIG_LAYER2_ROAMING
 				if(pmlmepriv->to_roaming!=0) {
 					if( --pmlmepriv->to_roaming == 0
-						|| _SUCCESS != rtw_sitesurvey_cmd(adapter, &pmlmepriv->assoc_ssid)
+						|| _SUCCESS != rtw_sitesurvey_cmd(adapter, &pmlmepriv->assoc_ssid, 1)
 					) {
 						pmlmepriv->to_roaming = 0;
 						rtw_free_assoc_resources(adapter, 1);
