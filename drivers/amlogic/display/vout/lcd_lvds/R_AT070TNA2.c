@@ -118,8 +118,8 @@ static lcdConfig_t lcd_config =
     .dual_port_cntl_addr = (1<<LCD_TTL_SEL) | (1<<LCD_ANALOG_SEL_CPH3) | (1<<LCD_ANALOG_3PHI_CLK_SEL),
 	
     .flags = LCD_DIGITAL_LVDS,
-    .screen_width = 4,
-    .screen_height = 3,
+    .screen_width = 16,
+    .screen_height = 9,
     .sync_duration_num = 502,  // 60
     .sync_duration_den = 10,	 // 1	
 	.lvds_config = &lcd_lvds_config,
