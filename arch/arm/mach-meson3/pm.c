@@ -703,6 +703,15 @@ static void meson_system_late_resume(struct early_suspend *h)
         }
         printk(KERN_INFO "sys_resume\n");
     }
+#if 1
+#ifdef CONFIG_EARLYSUSPEND
+		extern void reset_watchdog(void);
+		reset_watchdog();
+#else
+		extern void disable_watchdog(void);
+		disable_watchdog();
+#endif
+#endif    
 }
 #endif
 
@@ -726,6 +735,10 @@ static void meson_pm_suspend(void)
 #endif
 
     printk(KERN_INFO "enter meson_pm_suspend!\n");
+#if 1
+		extern void enable_watchdog(void);
+		enable_watchdog();
+#endif
 
     pdata->ddr_clk = READ_CBUS_REG(HHI_DDR_PLL_CNTL);
 

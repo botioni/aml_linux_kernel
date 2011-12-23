@@ -45,6 +45,29 @@
 #define APPF_SAVE_DEBUG        (1<<3)
 #define APPF_SAVE_L2           (1<<4)
 
+void disable_watchdog(void)
+{
+	//printk(KERN_INFO "** disable watchdog\n");
+	WRITE_MPEG_REG(WATCHDOG_RESET, 0);
+	CLEAR_MPEG_REG_MASK(WATCHDOG_TC,(1 << WATCHDOG_ENABLE_BIT));
+}
+EXPORT_SYSMBOL(disable_watchdog);
+
+void enable_watchdog(void)
+{
+	//printk(KERN_INFO "** enable watchdog\n");
+	WRITE_MPEG_REG(WATCHDOG_RESET, 0);
+	WRITE_MPEG_REG(WATCHDOG_TC, 1 << WATCHDOG_ENABLE_BIT | 0x1FFFFF);//about 20sec
+}
+EXPORT_SYSMBOL(enable_watchdog);
+
+void reset_watchdog(void)
+{
+	//printk(KERN_INFO "** reset watchdog\n");
+	WRITE_MPEG_REG(WATCHDOG_RESET, 0);	
+}
+EXPORT_SYSMBOL(reset_watchdog);
+
 int meson_power_suspend()
 {
 	static int test_flag = 0;
@@ -63,9 +86,13 @@ int meson_power_suspend()
 		printk("initial appf\n");
 		pwrtest_entry(APPF_INITIALIZE,0,0,0);
 	}
-
+#if 1
+	disable_watchdog();
+#endif
 	printk("power down cpu --\n");
 	pwrtest_entry(APPF_POWER_DOWN_CPU,0,0,APPF_SAVE_PMU|APPF_SAVE_VFP|APPF_SAVE_L2);
-
+#if 1
+	enable_watchdog();
+#endif
 	return 0;
 }
