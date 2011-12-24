@@ -92,5 +92,11 @@ config AML_MLVDS_G_TM080XDH
 	help
 		TM080XDH miniLVDS panel.
 		
+config AML_MLVDS_G_TM080XDH2D		
+	tristate "G_TM080XDH_2D"
+	depends on AM_LCD_MLVDS_OUTPUT
+	help
+		TM080XDH_2D miniLVDS panel.
+		
 endmenu
 	

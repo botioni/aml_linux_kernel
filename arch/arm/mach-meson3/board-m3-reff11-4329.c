@@ -714,36 +714,29 @@ static struct resource amlogic_card_resource[] = {
 
 void extern_wifi_power(int is_power)
 {
-    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0, (1<<6));
-    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_6, (1<<20));
-    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_3, (1<<5));
-    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_6, (1<<22));
-    CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO0_EN_N, (1<<4));
-    SET_CBUS_REG_MASK(PREG_PAD_GPIO0_O, (1<<4));
+         if(is_power){
+        set_gpio_val(GPIOA_bank_bit0_27(12), GPIOA_bit_bit0_27(12), 1);
+        set_gpio_mode(GPIOA_bank_bit0_27(12), GPIOA_bit_bit0_27(12), GPIO_OUTPUT_MODE);
+      }
 
-    //delay at least 100us
-    udelay(500);
-
-    //SHUTDOWN high
-    CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO0_EN_N, (1<<6));
-    SET_CBUS_REG_MASK(PREG_PAD_GPIO0_O, (1<<6));
-
-    //delay at least 100us
-    udelay(500);
-
-    //VDD 1V2 low
-    if(is_power)
-            CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO0_O, (1<<4));
-    else
-            SET_CBUS_REG_MASK(PREG_PAD_GPIO0_O, (1<<4));
-
-    printk("[extern_wifi_power] 1V2 %d\n", is_power);
+    else{
+        set_gpio_val(GPIOA_bank_bit0_27(12), GPIOA_bit_bit0_27(12),0);
+        set_gpio_mode(GPIOA_bank_bit0_27(12), GPIOA_bit_bit0_27(12), GPIO_OUTPUT_MODE);
+        }
 }
+
 
 EXPORT_SYMBOL(extern_wifi_power);
 
+#define GPIO_WIFI_HOSTWAKE  ((GPIOX_bank_bit0_31(11)<<16) |GPIOX_bit_bit0_31(11))
+
 void sdio_extern_init(void)
 {
+    #if defined(CONFIG_BCM4329_HW_OOB) || defined(CONFIG_BCM4329_OOB_INTR_ONLY)/* Jone add */
+    gpio_direction_input(GPIO_WIFI_HOSTWAKE);
+    gpio_enable_level_int(gpio_to_idx(GPIO_WIFI_HOSTWAKE), 0, 4);
+    gpio_enable_edge_int(gpio_to_idx(GPIO_WIFI_HOSTWAKE), 0, 4);
+    #endif /* (CONFIG_BCM4329_HW_OOB) || (CONFIG_BCM4329_OOB_INTR_ONLY) Jone add */
     extern_wifi_power(1);
 }
 
@@ -775,10 +768,10 @@ static struct aml_card_info  amlogic_card_info[] = {
         .card_ins_en_mask = 0,
         .card_ins_input_reg = 0,
         .card_ins_input_mask = 0,
-        .card_power_en_reg = 0,
-        .card_power_en_mask = 0,
-        .card_power_output_reg = 0,
-        .card_power_output_mask = 0,
+        .card_power_en_reg = EGPIO_GPIOA_ENABLE,
+        .card_power_en_mask = PREG_IO_12_MASK,
+        .card_power_output_reg = EGPIO_GPIOA_OUTPUT,
+        .card_power_output_mask = PREG_IO_12_MASK,
         .card_power_en_lev = 1,
         .card_wp_en_reg = 0,
         .card_wp_en_mask = 0,
@@ -787,6 +780,39 @@ static struct aml_card_info  amlogic_card_info[] = {
         .card_extern_init = sdio_extern_init,
     },
 };
+
+void extern_wifi_reset(int is_on)
+{
+    unsigned int val;
+    
+    /*output*/
+    val = readl(amlogic_card_info[1].card_power_en_reg);
+    val &= ~(amlogic_card_info[1].card_power_en_mask);
+    writel(val, amlogic_card_info[1].card_power_en_reg);
+        
+    if(is_on){
+        /*high*/
+        val = readl(amlogic_card_info[1].card_power_output_reg);
+        val |=(amlogic_card_info[1].card_power_output_mask);
+        writel(val, amlogic_card_info[1].card_power_output_reg);
+        printk("on val = %x\n", val);
+    }
+    else{
+        /*low*/
+        val = readl(amlogic_card_info[1].card_power_output_reg);
+        val &=~(amlogic_card_info[1].card_power_output_mask);
+        writel(val, amlogic_card_info[1].card_power_output_reg);
+        printk("off val = %x\n", val);
+    }
+
+    printk("ouput %x, bit %d, level %x, bit %d\n",
+            amlogic_card_info[1].card_power_en_reg,
+            amlogic_card_info[1].card_power_en_mask,
+            amlogic_card_info[1].card_power_output_reg,
+            amlogic_card_info[1].card_power_output_mask);
+    return;
+}
+EXPORT_SYMBOL(extern_wifi_reset);
 
 static struct aml_card_platform amlogic_card_platform = {
     .card_num = ARRAY_SIZE(amlogic_card_info),
@@ -1967,7 +1993,12 @@ static void __init device_pinmux_init(void )
 #endif
     //set_audio_pinmux(AUDIO_OUT_TEST_N);
    // set_audio_pinmux(AUDIO_IN_JTAG);
-
+#if 1
+    //set clk for wifi
+    WRITE_CBUS_REG(HHI_GEN_CLK_CNTL,(READ_CBUS_REG(HHI_GEN_CLK_CNTL)&(~(0x7f<<0)))|((0<<0)|(1<<8)|(7<<9)) );
+    CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO2_EN_N, (1<<15));    
+    SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_3, (1<<22));
+#endif
 }
 
 
@@ -2011,18 +2042,6 @@ static void __init LED_PWM_REG0_init(void)
 
 }
 
-/* usb wifi power 1:power on  0:power off */
-/*void extern_usb_wifi_power(int is_power)
-{
-    printk(KERN_INFO "usb_wifi_power %s\n", is_power ? "On" : "Off");	
-	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_1,(1<<11));
-	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0,(1<<18));
-	CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO2_EN_N, (1<<8));
-	if(is_power)
-		CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO2_O, (1<<8));
-	else
-		SET_CBUS_REG_MASK(PREG_PAD_GPIO2_O, (1<<8));   
-}*/
 /* usb wifi power 1:power on  0:power off */
 void extern_usb_wifi_power(int is_power)
 {
@@ -2070,7 +2089,6 @@ static __init void m3_init_machine(void)
 // Gadmei uses PMU to control.
 //    pm_power_off = power_off;		//Elvis fool
     device_pinmux_init();
-	extern_usb_wifi_power(0);
     platform_add_devices(platform_devs, ARRAY_SIZE(platform_devs));
 
 #ifdef CONFIG_USB_DWC_OTG_HCD

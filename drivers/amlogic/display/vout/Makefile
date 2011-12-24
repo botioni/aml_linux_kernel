@@ -12,6 +12,8 @@ obj-$(CONFIG_AML_MLVDS_A_TM080XDH)  += lcd_mlvds/A_TM080XDH.o
 
 obj-$(CONFIG_AML_MLVDS_G_TM080XDH)  += lcd_mlvds/G_TM080XDH.o
 
+obj-$(CONFIG_AML_MLVDS_G_TM080XDH2D)  += lcd_mlvds/G_TM080XDH_2D.o
+
 obj-$(CONFIG_AM_LCD_LVDS_OUTPUT)  += lvds.o
 
 obj-$(CONFIG_AML_LVDS_R_AT070TNA2)  += lcd_lvds/R_AT070TNA2.o

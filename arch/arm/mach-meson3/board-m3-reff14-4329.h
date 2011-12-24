@@ -4,7 +4,7 @@
 #include <asm/page.h>
 
 #define PHYS_MEM_START		(0x80000000)
-#define PHYS_MEM_SIZE		(1024*SZ_1M)
+#define PHYS_MEM_SIZE		(512*SZ_1M)
 #define PHYS_MEM_END		(PHYS_MEM_START + PHYS_MEM_SIZE -1 )
 
 /******** Reserved memory setting ************************/
@@ -26,7 +26,7 @@
 #define OSD_576_PIX			(768*576)
 #define OSD_720_PIX			(1280*720)
 #define OSD_1080_PIX		(1920*1080)
-#define OSD_PANEL_PIX		(800*1280)
+#define OSD_PANEL_PIX		(1024*600)
 #define B16BpP	(2)
 #define B32BpP	(4)
 #define DOUBLE_BUFFER	(2)
@@ -53,7 +53,7 @@
 #define PMEM_END			(PMEM_START + PMEM_SIZE-1)
 
 #if defined(CONFIG_AM_VDEC_H264)
-#define CODEC_MEM_SIZE		U_ALIGN(64*SZ_1M)
+#define CODEC_MEM_SIZE		U_ALIGN(32*SZ_1M)
 #else
 #define CODEC_MEM_SIZE		U_ALIGN(16*SZ_1M)
 #endif
@@ -61,9 +61,8 @@
 #define CODEC_ADDR_END		(CODEC_ADDR_START+CODEC_MEM_SIZE-1)
 
 /********VDIN memory configuration ***************/
-#define VDIN_MEM_SIZE           U_ALIGN(32*SZ_1M)
 #define VDIN_ADDR_START		U_ALIGN(CODEC_ADDR_END)
-#define VDIN_ADDR_END		(VDIN_ADDR_START +VDIN_MEM_SIZE -1)
+#define VDIN_ADDR_END		(VDIN_ADDR_START +CODEC_MEM_SIZE -1)
 
 #if defined(CONFIG_AMLOGIC_VIDEOIN_MANAGER)
 #define VM_SIZE     (SZ_1M*16)
@@ -83,9 +82,9 @@
 
 #ifdef CONFIG_POST_PROCESS_MANAGER
 #ifdef CONFIG_POST_PROCESS_MANAGER_PPSCALER
-#define PPMGR_MEM_SIZE               800 * 1280 * 21
+#define PPMGR_MEM_SIZE               1024 * 640*18
 #else
-#define PPMGR_MEM_SIZE               800 * 1280 * 18
+#define PPMGR_MEM_SIZE               1024 * 640*15
 #endif
 #else
 #define PPMGR_MEM_SIZE		0

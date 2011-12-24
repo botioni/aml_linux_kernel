@@ -73,6 +73,12 @@ config MACH_MESON3_REFF11_P800
 	help
 	  Include support for the AML M3 Gadmei board platform.
 
+config MACH_MESON3_REFF11_4329
+	select GENERIC_ALLOCATOR
+	bool "Support M3 (Gadmei BC 4329)"
+	help
+	  Include support for the AML M3 Gadmei board platform.
+
 config MACH_MESON3_REFF14
 	select GENERIC_ALLOCATOR
 	bool "Support MT720 (Keenhi M3 1024*600) platform"
