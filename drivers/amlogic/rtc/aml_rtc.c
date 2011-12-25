@@ -274,7 +274,10 @@ static void rtc_set_mode(unsigned mode)
 static void aml_rtc_reset(void)
 {
 	printk("error, the rtc serial communication abnormal, reset the rtc!\n");
-	WRITE_CBUS_REG(RESET3_REGISTER, 0x1<<3);
+	WRITE_CBUS_REG(RESET4_REGISTER, 0x1<<10);
+	READ_MPEG_REG(RESET4_REGISTER);
+	READ_MPEG_REG(RESET4_REGISTER);
+	READ_MPEG_REG(RESET4_REGISTER);
 }
 
 
@@ -341,11 +344,11 @@ int rtc_reset_gpo(struct device *dev, unsigned level)
 		data |= 1<<22;         //gpo pin level high
 	}
 	
-	spin_lock(&priv->lock);
+	spin_lock_irq(&priv->lock);
 	ser_access_write(RTC_GPO_COUNTER_ADDR, data);
-	spin_unlock(&priv->lock);
-	
 	rtc_wait_s_ready();
+	spin_unlock_irq(&priv->lock);
+	
 	return 0;
 }
 
@@ -384,13 +387,11 @@ int rtc_set_alarm_aml(struct device *dev, alarm_data_t *alarm_data) {
 
 	data |= alarm_data->alarm_sec - 1;
 	
-	spin_lock(&priv->lock);
+	spin_lock_irq(&priv->lock);
 	ser_access_write(RTC_GPO_COUNTER_ADDR, data);
-	spin_unlock(&priv->lock);
-	
 	rtc_wait_s_ready();
-
 	rtc_comm_delay();
+	spin_unlock_irq(&priv->lock);
 
 	return 0;
 }
@@ -466,9 +467,9 @@ static int aml_rtc_read_time(struct device *dev, struct rtc_time *tm)
 
     priv = dev_get_drvdata(dev);
     RTC_DBG(RTC_DBG_VAL, "aml_rtc: read rtc time\n");
-    spin_lock(&priv->lock);
+    spin_lock_irq(&priv->lock);
     time_t = ser_access_read(RTC_COUNTER_ADDR);
-    spin_unlock(&priv->lock);
+    spin_unlock_irq(&priv->lock);
     RTC_DBG(RTC_DBG_VAL, "aml_rtc: have read the rtc time, time is %d\n", time_t);
     if ((int)time_t < 0) {
         RTC_DBG(RTC_DBG_VAL, "aml_rtc: time(%d) < 0, reset to 0", time_t);
@@ -488,11 +489,11 @@ static int aml_rtc_write_time(struct device *dev, struct rtc_time *tm)
 
       rtc_tm_to_time(tm, &time_t);
      
-      spin_lock(&priv->lock);
+      spin_lock_irq(&priv->lock);
       RTC_DBG(RTC_DBG_VAL, "aml_rtc : write the rtc time, time is %ld\n", time_t);
       ser_access_write(RTC_COUNTER_ADDR, time_t);
       RTC_DBG(RTC_DBG_VAL, "aml_rtc : the time has been written\n");
-      spin_unlock(&priv->lock);
+      spin_unlock_irq(&priv->lock);
 
       return 0;
 }
@@ -519,9 +520,7 @@ static int aml_rtc_set_alarm(struct device *dev, struct rtc_wkalrm *alarm)
 	else
 		alarm_data.alarm_sec =  0;
 
-	spin_lock(&priv->lock);
 	rtc_set_alarm_aml(dev, &alarm_data);
-	spin_unlock(&priv->lock);
 
 	return 0;
 }
@@ -624,9 +623,9 @@ static int get_gpo_flag(struct aml_rtc_priv *priv)
 	u32 data32 = 0;
 	int ret = 0;
 
-	spin_lock(&priv->lock);
+	spin_lock_irq(&priv->lock);
 	data32 = ser_access_read(RTC_GPO_COUNTER_ADDR);
-	spin_unlock(&priv->lock);
+	spin_unlock_irq(&priv->lock);
 	
 	RTC_DBG(RTC_DBG_VAL, "%s() RTC_GPO_COUNTER=%x\n", __func__, data32);
 	ret = !!(data32 & (1 << 24));
@@ -640,9 +639,9 @@ static void reset_gpo_work(struct work_struct *work)
 	int count = 5;
 	
 	while(get_gpo_flag(priv)) {
-		spin_lock(&priv->lock);
+		spin_lock_irq(&priv->lock);
 		ser_access_write(RTC_GPO_COUNTER_ADDR,0x100000);
-		spin_unlock(&priv->lock);				
+		spin_unlock_irq(&priv->lock);				
 		count--;
 		if(count <= 0) {
 			printk("error: can not reset gpo !!!!!!!!!!!!!!!!!!!!\n");
@@ -668,9 +667,9 @@ static int aml_rtc_resume(struct platform_device *pdev)
 	struct aml_rtc_priv *priv;
 	priv = platform_get_drvdata(pdev);
 
-	spin_lock(&priv->lock);
+	spin_lock_irq(&priv->lock);
     ser_access_write(RTC_GPO_COUNTER_ADDR,0x100000);
-	spin_unlock(&priv->lock);
+	spin_unlock_irq(&priv->lock);
 	
 	queue_work(priv->rtc_work_queue, &priv->work);
 	//setup_timer(&priv->timer, power_down_gpo, priv) ;
@@ -684,9 +683,9 @@ static int aml_rtc_shutdown(struct platform_device *pdev)
 	struct aml_rtc_priv *priv;
 	priv = platform_get_drvdata(pdev);
 	
-	spin_lock(&priv->lock);
+	spin_lock_irq(&priv->lock);
     ser_access_write(RTC_GPO_COUNTER_ADDR,0x100000);
-	spin_unlock(&priv->lock);
+	spin_unlock_irq(&priv->lock);
     return 0;
 }
 
