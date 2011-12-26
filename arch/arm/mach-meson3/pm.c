@@ -761,7 +761,7 @@ static void meson_pm_suspend(void)
         pdata->set_vccx2(OFF);
     }
 
-    power_gate_switch(OFF);
+    //power_gate_switch(OFF);
 
     clk_switch(OFF);
 
@@ -827,7 +827,7 @@ extern int meson_power_suspend();
 
     clk_switch(ON);
 
-    power_gate_switch(ON);
+    //power_gate_switch(ON);
 
     usb_switch(ON, 0);
     usb_switch(ON, 1);
