@@ -57,7 +57,7 @@ void enable_watchdog(void)
 {
 	//printk(KERN_INFO "** enable watchdog\n");
 	WRITE_MPEG_REG(WATCHDOG_RESET, 0);
-	WRITE_MPEG_REG(WATCHDOG_TC, 1 << WATCHDOG_ENABLE_BIT | 0x1FFFFF);//about 20sec
+	WRITE_MPEG_REG(WATCHDOG_TC, 1 << WATCHDOG_ENABLE_BIT | 0xFFFFF);//about 10sec
 }
 EXPORT_SYSMBOL(enable_watchdog);
 
