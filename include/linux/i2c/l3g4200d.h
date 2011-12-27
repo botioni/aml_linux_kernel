@@ -1,12 +1,14 @@
 /******************** (C) COPYRIGHT 2010 STMicroelectronics ********************
 *
-* File Name          : l3g4200d.c
-* Authors            : MH - C&I BU - Application Team
-*		     : Carmine Iascone (carmine.iascone@st.com)
-*		     : Matteo Dameno (matteo.dameno@st.com)
-* Version            : V 0.2
-* Date               : 09/04/2010
-* Description        : L3G4200D digital output gyroscope sensor API
+* File Name		: l3g4200d.h
+* Authors		: MH - C&I BU - Application Team
+*			: Carmine Iascone (carmine.iascone@st.com)
+*			: Matteo Dameno (matteo.dameno@st.com)
+*			: Both authors are willing to be considered the contact
+*			: and update points for the driver.
+* Version		: V 1.1.3 sysfs
+* Date			: 2011/Jun/24
+* Description		: L3G4200D digital output gyroscope sensor API
 *
 ********************************************************************************
 *
@@ -22,55 +24,46 @@
 * CONTENT OF SUCH SOFTWARE AND/OR THE USE MADE BY CUSTOMERS OF THE CODING
 * INFORMATION CONTAINED HEREIN IN CONNECTION WITH THEIR PRODUCTS.
 *
-* THIS SOFTWARE IS SPECIFICALLY DESIGNED FOR EXCLUSIVE USE WITH ST PARTS.
-*
 ********************************************************************************
 * REVISON HISTORY
 *
-* VERSION | DATE 	| AUTHORS	     | DESCRIPTION
-*
-* 0.1	  | 29/01/2010	| Carmine Iascone    | First Release
-* 
-* 0.2	  | 09/04/2010  | Carmine Iascone    | Updated the struct l3g4200d_t
-*
+* VERSION	| DATE		| AUTHORS		| DESCRIPTION
+* 1.0		| 2010/Aug/19	| Carmine Iascone	| First Release
+* 1.1.0		| 2011/02/28	| Matteo Dameno		| Self Test Added
+* 1.1.1		| 2011/05/25	| Matteo Dameno		| Corrects Polling Bug
+* 1.1.2		| 2011/05/30	| Matteo Dameno		| Corrects ODR Bug
+* 1.1.3		| 2011/06/24	| Matteo Dameno		| Corrects ODR Bug
 *******************************************************************************/
 
 #ifndef __L3G4200D_H__
 #define __L3G4200D_H__
 
-#include <linux/ioctl.h>  /* For IOCTL macros */
+#define L3G4200D_MIN_POLL_PERIOD_MS	2
 
-/** This define controls compilation of the master device interface */
-/*#define L3G4200D_MASTER_DEVICE*/
+#define SAD0L				0x00
+#define SAD0H				0x01
+#define L3G4200D_GYR_I2C_SADROOT	0x34
+#define L3G4200D_GYR_I2C_SAD_L		((L3G4200D_GYR_I2C_SADROOT<<1)|SAD0L)
+#define L3G4200D_GYR_I2C_SAD_H		((L3G4200D_GYR_I2C_SADROOT<<1)|SAD0H)
 
-#define L3G4200D_IOCTL_BASE 'g'
-/* The following define the IOCTL command values via the ioctl macros */
-#define L3G4200D_SET_RANGE		_IOW(L3G4200D_IOCTL_BASE, 1, int)
-#define L3G4200D_SET_MODE		_IOW(L3G4200D_IOCTL_BASE, 2, int)
-#define L3G4200D_SET_BANDWIDTH		_IOW(L3G4200D_IOCTL_BASE, 3, int)
-#define L3G4200D_READ_GYRO_VALUES	_IOW(L3G4200D_IOCTL_BASE, 4, int)
+#define L3G4200D_GYR_DEV_NAME		"l3g4200d_gyr"
 
-#define L3G4200D_FS_250DPS	0x00
-#define L3G4200D_FS_500DPS	0x10
-#define L3G4200D_FS_2000DPS	0x30
+#define L3G4200D_GYR_FS_250DPS	0x00
+#define L3G4200D_GYR_FS_500DPS	0x10
+#define L3G4200D_GYR_FS_2000DPS	0x30
 
-#define PM_OFF		0x00
-#define PM_NORMAL	0x08
-#define ENABLE_ALL_AXES	0x07
-
-#define ODR100_BW12_5	0x00  /* ODR = 100Hz; BW = 12.5Hz */
-#define ODR100_BW25	0x10  /* ODR = 100Hz; BW = 25Hz   */
-#define ODR200_BW12_5	0x40  /* ODR = 200Hz; BW = 12.5Hz */
-#define ODR200_BW25	0x50  /* ODR = 200Hz; BW = 25Hz   */
-#define ODR200_BW50	0x60  /* ODR = 200Hz; BW = 50Hz   */
-#define ODR400_BW25	0x90  /* ODR = 400Hz; BW = 25Hz   */
-#define ODR400_BW50	0xA0  /* ODR = 400Hz; BW = 50Hz   */
-#define ODR400_BW110	0xB0  /* ODR = 400Hz; BW = 110Hz  */
-#define ODR800_BW50	0xE0  /* ODR = 800Hz; BW = 50Hz   */
-#define ODR800_BW100	0xF0  /* ODR = 800Hz; BW = 100Hz  */
+#define L3G4200D_GYR_ENABLED	1
+#define L3G4200D_GYR_DISABLED	0
 
 #ifdef __KERNEL__
-struct l3g4200d_platform_data {
+struct l3g4200d_gyr_platform_data {
+	int (*init)(void);
+	void (*exit)(void);
+	int (*power_on)(void);
+	int (*power_off)(void);
+	unsigned int poll_interval;
+	unsigned int min_interval;
+
 	u8 fs_range;
 
 	u8 axis_map_x;
@@ -80,14 +73,7 @@ struct l3g4200d_platform_data {
 	u8 negate_x;
 	u8 negate_y;
 	u8 negate_z;
-
-	int (*init)(void);
-	void (*exit)(void);
-	int (*power_on)(void);
-	int (*power_off)(void);
-
 };
-
 #endif /* __KERNEL__ */
 
 #endif  /* __L3G4200D_H__ */
