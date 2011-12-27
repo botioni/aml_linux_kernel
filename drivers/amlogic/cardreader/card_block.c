@@ -834,8 +834,8 @@ static int card_blk_suspend(struct memory_card *card, pm_message_t state)
 	struct card_blk_data *card_data = card_get_drvdata(card);
 	struct card_host *host = card->host;
 	
-	printk("Enter %s suspend\n",card->name);
 	printk("***Entered %s:%s\n", __FILE__,__func__);
+	printk("Enter %s suspend\n",card->name);
 
 
 	if (card_data) 
@@ -855,10 +855,14 @@ static int card_blk_suspend(struct memory_card *card, pm_message_t state)
 		card->card_suspend(card);
 	}
 	if(card->card_type == CARD_SDIO)
+	{
+		printk("***Exit %s:%s\n", __FILE__, __func__);
 		return 0;
+	}
 	//card->unit_state = CARD_UNIT_NOT_READY;
 	//host->slot_detector = CARD_REMOVED;
 	card->unit_state = CARD_UNIT_RESUMED;
+	printk("***Exit %s:%s\n", __FILE__, __func__);
 	return 0;
 }
 
@@ -868,7 +872,6 @@ static int card_blk_resume(struct memory_card *card)
 	struct card_host *host = card->host;
 	
 	printk("***Entered %s:%s\n", __FILE__,__func__);
-	
 	printk("Enter %s resume\n",card->name);
 
 	if(card->card_resume)
@@ -891,6 +894,7 @@ static int card_blk_resume(struct memory_card *card)
 		//mmc_blk_set_blksize(md, card);
 		card_queue_resume(&card_data->queue);
 	}
+	printk("***Exit %s:%s\n", __FILE__, __func__);
 	return 0;
 }
 #else

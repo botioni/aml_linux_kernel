@@ -9,6 +9,7 @@
 #include <linux/sched.h>
 #include <linux/slab.h>
 #include <linux/device.h>
+#include <linux/wakelock.h>
 #include "cardreader.h"
 
 #define card_get_drvdata(c)		dev_get_drvdata(&(c)->dev)
@@ -71,6 +72,10 @@ struct memory_card {
 
 	struct aml_card_info *card_plat_info;
 	void				 *card_info;
+
+#ifdef CONFIG_PM
+	struct wake_lock card_wakelock;
+#endif 
 
 	u8					card_status;
 	u8					unit_state;

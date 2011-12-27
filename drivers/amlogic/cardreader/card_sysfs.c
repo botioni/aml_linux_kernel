@@ -28,6 +28,10 @@ void card_release_card(struct device *dev)
 {
 	struct memory_card *card = dev_to_memory_card(dev);
 
+#ifdef CONFIG_PM
+		wake_lock_destroy(&card->card_wakelock);
+#endif
+
 	kfree(card);
 }
 
@@ -125,6 +129,9 @@ void card_init_card(struct memory_card *card, struct card_host *host)
 	memset(card, 0, sizeof(struct memory_card));
 	card->host = host;
 	device_initialize(&card->dev);
+#ifdef CONFIG_PM
+		wake_lock_init(&card->card_wakelock, WAKE_LOCK_SUSPEND, "card_wakelock");
+#endif 	
 	card->dev.parent = &card->host->class_dev;
 	card->dev.bus = &card_bus_type;
 	card->dev.release = card_release_card;
