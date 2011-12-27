@@ -79,6 +79,13 @@ static struct platform_device saradc_device = {
 };
 #endif
 
+#if defined(CONFIG_INPUT_LSM303DLM_ACCEL)||defined(CONFIG_INPUT_LSM303DLM_MAGNE)
+#include <linux/i2c/lsm303dlm.h>
+#endif
+#ifdef CONFIG_INPUT_L3G4200D
+#include <linux/i2c/l3g4200d.h>
+#endif
+
 #if defined(CONFIG_ADC_KEYPADS_AM)||defined(CONFIG_ADC_KEYPADS_AM_MODULE)
 #include <linux/input.h>
 #include <linux/adc_keypad.h>
@@ -144,6 +151,17 @@ static struct platform_device input_device_key = {
     .dev = {
         .platform_data = &key_input_pdata,
     }
+};
+#endif
+#ifdef CONFIG_INPUT_L3G4200D
+struct l3g4200d_gyr_platform_data l3g4200d_gyro_plt_dat = {
+	.fs_range = L3G4200D_GYR_FS_2000DPS,
+	.axis_map_x = 0,	  //x = x
+	.axis_map_y = 1,      //y = y
+	.axis_map_z = 2,      //z = z
+	.negate_x = 0,      //x = +x 
+	.negate_y = 0,      //y = +y 
+	.negate_z = 0,      //z = +z 
 };
 #endif
 
@@ -566,6 +584,36 @@ static struct aml_m3_platform_data aml_m3_pdata = {
 };
 #endif
 
+#ifdef  CONFIG_INPUT_LSM303DLM_ACCEL
+struct lsm303dlm_acc_platform_data lsm303dlc_acc_plt_dat = {
+	.poll_interval = 50,          //Driver polling interval as 50ms
+	.min_interval = 10,    //Driver polling interval minimum 10ms
+	.g_range = LSM303DLM_ACC_G_2G,    //Full Scale of LSM303DLH Accelerometer
+	.axis_map_x = 0,      //x = x
+	.axis_map_y = 1,      //y = y
+	.axis_map_z = 2,      //z = z
+	.negate_x = 0,      //x = +x
+	.negate_y = 0,      //y = +y
+	.negate_z = 1,      //z = +z
+	.gpio_int1=-1,
+	.gpio_int2=-1,
+};
+#endif
+
+#ifdef CONFIG_INPUT_LSM303DLM_MAGNE
+struct lsm303dlm_mag_platform_data lsm303dlc_mag_plt_dat = {
+	.poll_interval = 50,    //Driver polling interval as 50ms
+	.min_interval = 10,    //Driver polling interval minimum 10ms
+	.h_range = LSM303DLM_MAG_H_8_1G,  //Full Scale of LSM303DLH Magnetometer
+	.axis_map_x = 0,      //x = x
+	.axis_map_y = 1,      //y = y
+	.axis_map_z = 2,      //z = z
+	.negate_x = 0,      //x = +x
+	.negate_y = 0,      //y = +y
+	.negate_z = 0,      //z = +z
+};
+#endif
+
 #ifdef CONFIG_FOCALTECH_CAPACITIVE_TOUCHSCREEN
 #include <linux/ft5x06_ts.h>
 /* GPIOD_24 */
@@ -709,7 +757,7 @@ static void gc0308_v4l2_late_resume(void)
 }
 
 struct aml_camera_i2c_fig1_s custom_gc0308_script[] = {  
-	{0x14,0x12}, // h_v
+	{0x14,0x11}, // h_v
 	{0x26,0x01},
 	{0xff,0xff}, 
 };
@@ -728,6 +776,11 @@ aml_plat_cam_data_t video_gc0308_data = {
 #endif
 
 #if defined(CONFIG_VIDEO_AMLOGIC_CAPTURE_GT2005)
+struct aml_camera_i2c_fig_s custom_gt2005_script[] = {  
+	{0x0101,0x03}, 
+	{0xffff,0xff}, 
+};
+
 static void gt2005_v4l2_init(void)
 {
     // reset low 
@@ -781,6 +834,7 @@ aml_plat_cam_data_t video_gt2005_data = {
 	.video_nr=0,   //    1
 	.device_init= gt2005_v4l2_init,
 	.device_uninit=gt2005_v4l2_uninit,
+	.custom_init_script = custom_gt2005_script,
 	.early_suspend = gt2005_v4l2_early_suspend,
 	.late_resume = gt2005_v4l2_late_resume,
 	.device_disable=gt2005_v4l2_disable,
@@ -1799,6 +1853,27 @@ static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
 };
 
 static struct i2c_board_info __initdata aml_i2c_bus_info_1[] = {
+
+#ifdef CONFIG_INPUT_LSM303DLM_ACCEL
+  {
+  	I2C_BOARD_INFO("lsm303dlm_acc", 0x18),      //acc IIC address 0x18
+    .platform_data = (void *)&lsm303dlc_acc_plt_dat,
+  },
+#endif
+
+#ifdef CONFIG_INPUT_LSM303DLM_MAGNE
+  {
+  	I2C_BOARD_INFO("lsm303dlm_mag", 0x1E), 	//mag IIC address 0x1E
+    .platform_data = (void *)&lsm303dlc_mag_plt_dat,
+  },
+#endif
+#ifdef CONFIG_INPUT_L3G4200D
+  {
+  	I2C_BOARD_INFO("l3g4200d_gyr", 0x68),
+    .platform_data = (void *)&l3g4200d_gyro_plt_dat,
+  },
+#endif
+
 };
 
 static struct i2c_board_info __initdata aml_i2c_bus_info_2[] = {
