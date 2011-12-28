@@ -830,21 +830,13 @@ static struct resource aml_m3_audio_resource[] = {
     },
 };
 
+extern char* get_vout_mode_internal(void);
+
 /* Check current mode, 0: panel; 1: !panel*/
 int get_display_mode(void) {
-	int fd;
 	int ret = 0;
-	char mode[8];	
-	
-	fd = sys_open("/sys/class/display/mode", O_RDWR | O_NDELAY, 0);
-	if(fd >= 0) {
-	  	memset(mode,0,8);
-	  	sys_read(fd,mode,8);
-	  	if(strncmp("panel",mode,5))
-	  		ret = 1;
-	  	sys_close(fd);
-	}
-
+	if(strncmp("panel", get_vout_mode_internal(), 5))
+		ret = 1;
 	return ret;
 }
 
@@ -2074,6 +2066,35 @@ void extern_usb_wifi_power(int is_power)
 
 EXPORT_SYMBOL(extern_usb_wifi_power);
 
+#if defined(CONFIG_AML_INIT_GATE_OFF)
+#define GATE_INIT_OFF(_MOD) CLEAR_CBUS_REG_MASK(GCLK_REG_##_MOD, GCLK_MASK_##_MOD);
+
+static __init void init_gate_off(void) 
+{
+	//turn of video gates
+	GATE_INIT_OFF(VCLK2_VENCP1);
+	GATE_INIT_OFF(VCLK2_VENCP);
+	GATE_INIT_OFF(VCLK2_VENCL);
+	GATE_INIT_OFF(VCLK2_ENCL);
+	GATE_INIT_OFF(VCLK2_OTHER1);
+	GATE_INIT_OFF(VCLK2_VENCI1);
+	GATE_INIT_OFF(VCLK2_VENCI);
+	GATE_INIT_OFF(VENC_P_TOP);
+	GATE_INIT_OFF(VENC_L_TOP);
+	GATE_INIT_OFF(VENC_I_TOP);
+	//GATE_INIT_OFF(VCLK2_VENCT);
+	//GATE_INIT_OFF(VCLK2_ENCT);
+	GATE_INIT_OFF(VENCP_INT);
+	GATE_INIT_OFF(VENCL_INT);
+	GATE_INIT_OFF(VCLK2_ENCI);
+	GATE_INIT_OFF(VCLK2_ENCP);
+	GATE_INIT_OFF(VCLK2_OTHER);
+	GATE_INIT_OFF(ENC480P);
+	GATE_INIT_OFF(VENC_DAC);
+	GATE_INIT_OFF(DAC_CLK);
+}
+#endif    
+
 static __init void m3_init_machine(void)
 {
     meson_cache_init();
@@ -2091,6 +2112,9 @@ static __init void m3_init_machine(void)
 //    pm_power_off = power_off;		//Elvis fool
     device_pinmux_init();
 	extern_usb_wifi_power(0);
+#if defined(CONFIG_AML_INIT_GATE_OFF)
+    init_gate_off();
+#endif    
     platform_add_devices(platform_devs, ARRAY_SIZE(platform_devs));
 
 #ifdef CONFIG_USB_DWC_OTG_HCD
