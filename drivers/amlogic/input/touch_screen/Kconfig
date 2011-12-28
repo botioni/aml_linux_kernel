@@ -133,3 +133,13 @@ config IT7260_CAPACITIVE_TOUCHSCREEN
 
 	  To compile this driver as a module, choose M here: the
 	  module will be called .  
+	  
+config SSD25XX_CAPACITIVE_TOUCHSCREEN
+	tristate "SSD25XX capacitive touch panel"
+	depends on I2C
+	default n
+	help
+	  Say Y here if you want to use the SSD25XX capacitive panel.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called .  

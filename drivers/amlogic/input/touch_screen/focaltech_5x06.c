@@ -40,7 +40,7 @@ static struct ts_platform_data *focaltechPdata2;
 static int ft5x0x_printk_enable_flag=0;
 
 #define FT5X0X_EVENT_MAX	5
-#define CONFIG_TOUCH_PANEL_KEY
+//#define CONFIG_TOUCH_PANEL_KEY
 
 #ifdef CONFIG_TOUCH_PANEL_KEY
 #define TOUCH_SCREEN_RELEASE_DELAY (100 * 1000000)//unit usec
@@ -711,6 +711,7 @@ static int is_tp_key(struct tp_key *tp_key, int key_num, int x, int y)
 	return 0;
 }
 
+#ifdef CONFIG_TOUCH_PANEL_KEY
 static enum hrtimer_restart ft5x0x_timer(struct hrtimer *timer)
 {
 	struct ft5x0x_ts_data *data = container_of(timer, struct ft5x0x_ts_data, timer);
@@ -731,7 +732,7 @@ static enum hrtimer_restart ft5x0x_timer(struct hrtimer *timer)
  	data->touch_state = NO_TOUCH;
 	return HRTIMER_NORESTART;
 };
-
+#endif
 
 /*
  * return event number.
@@ -926,8 +927,12 @@ static void ft5x0x_ts_pen_irq_work(struct work_struct *work)
 	}
 #else
 	if (event_num)
+	{	
+		input_report_key(data->input_dev, BTN_TOUCH, 1);
 		ft5x0x_report_mt_event(data->input_dev, event, event_num);
+	}
 	else {
+		input_report_key(data->input_dev, BTN_TOUCH, 0);
 		input_report_abs(data->input_dev, ABS_MT_TOUCH_MAJOR, 0);
 		input_sync(data->input_dev);
 	}

@@ -340,11 +340,10 @@ static struct class enable3d_class = {
 #define BL_MIN_LEVEL		0
 void power_on_backlight(void)
 {
-	WRITE_CBUS_REG_BITS(LED_PWM_REG0, 1, 12, 2);
-    msleep(300);
 	lvds_port_enable();
+	WRITE_CBUS_REG_BITS(LED_PWM_REG0, 1, 12, 2);
+	msleep(300);
 	
-	msleep(20);
 	BL_MAX=BL_MAX_LEVEL_2D;
 	BL_MIN=BL_MIN_LEVEL_2D;
 	//BL_EN: GPIOD_1(PWM_D)
@@ -494,9 +493,10 @@ static void t13_power_on(void)
     //video_dac_disable();	
     printk("\n\n t13_power_on.\n\n");
 	power_on_lcd();	
-   // PRINT_INFO("\n\nt13_power_on...\n\n");
     Power_on_bl = power_on_bl;
-    set_backlight_level(250);
+
+    printk("\n\n set bl level to %d\n\n",bl_level);
+   // set_backlight_level(bl_level/*250*/);
 }
 static void t13_power_off(void)
 {

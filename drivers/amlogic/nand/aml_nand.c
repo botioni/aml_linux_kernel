@@ -444,7 +444,7 @@ static void aml_platform_adjust_timing(struct aml_nand_chip *aml_chip)
 
 static int aml_nand_add_partition(struct aml_nand_chip *aml_chip)
 {
-	int adjust_offset = 0, mini_part_blk_num, start_blk = 0;
+	uint32_t adjust_offset = 0, mini_part_blk_num, start_blk = 0;
 	struct mtd_info *mtd = &aml_chip->mtd;
 	struct aml_nand_platform *plat = aml_chip->platform;
 	struct platform_nand_chip *chip = &plat->platform_nand_data.chip;
