@@ -7168,7 +7168,7 @@ static int rtw_wx_set_priv(struct net_device *dev,
 		case ANDROID_WIFI_CMD_COUNTRY :
 			{
 				char country_code[10];
-				int channel_plan;
+				int channel_plan = RT_CHANNEL_DOMAIN_WORLD_WIDE37;
 				union iwreq_data wrqd;
 				int ret_inner;
 					
@@ -7180,8 +7180,10 @@ static int rtw_wx_set_priv(struct net_device *dev,
 					channel_plan = RT_CHANNEL_DOMAIN_ETSI;
 				else if(0 == strcmp(country_code, "JP"))
 					channel_plan = RT_CHANNEL_DOMAIN_MKK;
+				else if(0 == strcmp(country_code, "CN"))
+					channel_plan = RT_CHANNEL_DOMAIN_CHINA;
 				else
-					DBG_871X("%s unknown country_code:%s\n", __FUNCTION__, country_code);
+					DBG_871X("%s unknown country_code:%s,use default channel_plan=%d\n", __FUNCTION__, country_code,channel_plan);
 				
 				_rtw_memcpy(&wrqd, &channel_plan, sizeof(int));
 				
