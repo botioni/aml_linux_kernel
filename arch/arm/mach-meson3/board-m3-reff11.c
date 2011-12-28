@@ -951,6 +951,15 @@ static struct ts_platform_data ts_pdata = {
 
 #endif
 
+#ifdef CONFIG_SSD25XX_CAPACITIVE_TOUCHSCREEN
+#include <linux/ssd253x-ts_TP.h>
+#define FT_IRQ	INT_GPIO_0
+static struct ts_platform_data ts_pdata = {
+	.irq_no 			= FT_IRQ,
+	.reset_gpio_no	= ((GPIOA_bank_bit0_27(1)<<16) |GPIOA_bit_bit0_27(1)),
+	.irq_gpio_no		= ((GPIOA_bank_bit0_27(16)<<16) |GPIOA_bit_bit0_27(16)),
+};
+#endif
 
 #if defined(CONFIG_AML_RTC)
 static  struct platform_device aml_rtc_device = {
@@ -1543,6 +1552,11 @@ static struct mtd_partition multi_partition_info[] =
 		.offset = 640*SZ_1M+40*SZ_1M+128*SZ_1M,
 		.size = 1024*SZ_1M,
 	},
+	{//put some files by gadmei apk
+		.name = "usr",
+		.offset = 1664*SZ_1M+128*SZ_1M+40*SZ_1M,
+		.size = 512*SZ_1M,
+	},
 	{
 		.name = "NFTL_Part",
 		.offset = MTDPART_OFS_APPEND,
@@ -1838,6 +1852,12 @@ static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
 #ifdef CONFIG_FOCALTECH_CAPACITIVE_TOUCHSCREEN
     {
         I2C_BOARD_INFO("ft5x06", 0x38),
+        .platform_data = (void *)&ts_pdata,
+    },
+#endif
+#ifdef CONFIG_SSD25XX_CAPACITIVE_TOUCHSCREEN
+    {
+        I2C_BOARD_INFO("ssd253x-ts", 0x48),
         .platform_data = (void *)&ts_pdata,
     },
 #endif

@@ -431,11 +431,10 @@ static void set_pwm_3d_tcon(void)
 #define BL_MIN_LEVEL	0
 void power_on_backlight(void)
 {
-	WRITE_CBUS_REG_BITS(LED_PWM_REG0, 1, 12, 2);
-    msleep(20);
 	lvds_port_enable();
+	WRITE_CBUS_REG_BITS(LED_PWM_REG0, 1, 12, 2);
+    msleep(300);
 	
-	msleep(50);
 	BL_MAX=BL_MAX_LEVEL_2D;
 	BL_MIN=BL_MIN_LEVEL_2D;
 	//BL_EN: GPIOD_1(PWM_D)
