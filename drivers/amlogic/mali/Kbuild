@@ -39,11 +39,11 @@ CONFIG ?= aml-meson-m400-1
 
 ifeq ($(USING_UMP),1)
 	UMP_SYMVERS_FILE = ../ump/Module.symvers
-	KBUILD_EXTRA_SYMBOLS = $(src)/$(UMP_SYMVERS_FILE)
+	KBUILD_EXTRA_SYMBOLS = $(srctree)/$(src)/$(UMP_SYMVERS_FILE)
 endif
 
 # Get path to driver source from Linux build system
-DRIVER_DIR=$(src)
+DRIVER_DIR=$(srctree)/$(src)
 
 MALI_RELEASE_NAME=$(shell cat $(DRIVER_DIR)/.version 2> /dev/null)
 include $(DRIVER_DIR)/Makefile.common

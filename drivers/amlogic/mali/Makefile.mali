@@ -24,7 +24,7 @@ FILES_PREFIX=
 
 ifeq ($(USING_UMP),1)
 	UMP_SYMVERS_FILE = ../ump/Module.symvers
-	KBUILD_EXTRA_SYMBOLS = $(CURDIR)/$(UMP_SYMVERS_FILE)
+	KBUILD_EXTRA_SYMBOLS = $(srctree)/$(src)/$(UMP_SYMVERS_FILE)
 endif
 
 # Get any user defined KDIR-<names> or maybe even a hardcoded KDIR
