@@ -753,6 +753,8 @@ static int do_write(struct fsg_common *common)
 	}
 	spin_lock(&curlun->filp->f_lock);
 	curlun->filp->f_flags &= ~O_SYNC;	/* Default is not to wait */
+	if(curlun->force_sync)
+		curlun->filp->f_flags |= O_SYNC;
 	spin_unlock(&curlun->filp->f_lock);
 
 	/*
@@ -2563,6 +2565,7 @@ static int fsg_main_thread(void *common_)
 static DEVICE_ATTR(ro, 0644, fsg_show_ro, fsg_store_ro);
 static DEVICE_ATTR(nofua, 0644, fsg_show_nofua, fsg_store_nofua);
 static DEVICE_ATTR(file, 0644, fsg_show_file, fsg_store_file);
+static DEVICE_ATTR(force_sync, 0644, fsg_show_force_sync, fsg_store_force_sync);
 
 
 /****************************** FSG COMMON ******************************/
@@ -2678,6 +2681,9 @@ static struct fsg_common *fsg_common_init(struct fsg_common *common,
 		rc = device_create_file(&curlun->dev, &dev_attr_nofua);
 		if (rc)
 			goto error_luns;
+		rc = device_create_file(&curlun->dev, &dev_attr_force_sync);
+		if (rc)
+			goto error_luns;	
 
 		if (lcfg->filename) {
 			rc = fsg_lun_open(common, curlun, lcfg->filename);
@@ -2811,6 +2817,7 @@ static void fsg_common_release(struct kref *ref)
 			device_remove_file(&lun->dev, &dev_attr_nofua);
 			device_remove_file(&lun->dev, &dev_attr_ro);
 			device_remove_file(&lun->dev, &dev_attr_file);
+			device_remove_file(&lun->dev, &dev_attr_force_sync);
 			fsg_lun_close(common, lun);
 			device_unregister(&lun->dev);
 		}
@@ -2966,9 +2973,11 @@ struct fsg_module_parameters {
 	int		removable[FSG_MAX_LUNS];
 	int		cdrom[FSG_MAX_LUNS];
 	int		nofua[FSG_MAX_LUNS];
-
+  int		force_sync[FSG_MAX_LUNS];
+  
 	unsigned int	file_count, ro_count, removable_count, cdrom_count;
 	unsigned int	nofua_count;
+	unsigned int  force_sync_count;
 	unsigned int	luns;	/* nluns */
 	int		stall;	/* can_stall */
 };
@@ -2998,8 +3007,9 @@ struct fsg_module_parameters {
 	_FSG_MODULE_PARAM(prefix, params, luns, uint,			\
 			  "number of LUNs");				\
 	_FSG_MODULE_PARAM(prefix, params, stall, bool,			\
-			  "false to prevent bulk stalls")
-
+			  "false to prevent bulk stalls")               \
+  _FSG_MODULE_PARAM_ARRAY(prefix, params, force_sync, bool,		\
+				"true to force sync when do write"); 
 static void
 fsg_config_from_params(struct fsg_config *cfg,
 		       const struct fsg_module_parameters *params)
