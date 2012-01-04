@@ -7168,7 +7168,7 @@ static int rtw_wx_set_priv(struct net_device *dev,
 		case ANDROID_WIFI_CMD_COUNTRY :
 			{
 				char country_code[10];
-				int channel_plan = RT_CHANNEL_DOMAIN_WORLD_WIDE37;
+				int channel_plan = RT_CHANNEL_DOMAIN_FCC;
 				union iwreq_data wrqd;
 				int ret_inner;
 					
