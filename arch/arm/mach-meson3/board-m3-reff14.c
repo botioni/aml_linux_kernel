@@ -95,7 +95,8 @@ static struct adc_key adc_kp_key[] = {
     {KEY_VOLUMEDOWN,    "vol-", CHAN_4, 140, 60},
     {KEY_VOLUMEUP,      "vol+", CHAN_4, 266, 60},
     {KEY_BACK,          "exit", CHAN_4, 386, 60},
-    {KEY_HOME,          "home", CHAN_4, 508, 60},
+    {KEY_HOMEPAGE,          "home", CHAN_4, 508, 60},
+    {KEY_SEARCH,          "search", CHAN_4, 620, 60},
 };
 
 static struct adc_kp_platform_data adc_kp_pdata = {
