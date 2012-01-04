@@ -245,6 +245,10 @@ void power_gate_switch(int flag)
     GATE_SWITCH(flag, AIU_AMCLK);
     GATE_SWITCH(flag, AIU_ICE958_AMCLK);
     GATE_SWITCH(flag, AIU_AUDIN_SCLK);
+#ifndef CONFIG_AML_HDMI_TX
+    GATE_SWITCH(flag, HDMI_INTR_SYNC);
+    GATE_SWITCH(flag, HDMI_PCLK);
+#endif
 }
 EXPORT_SYMBOL(power_gate_switch);
 
@@ -257,8 +261,10 @@ void early_power_gate_switch(int flag)
     GATE_SWITCH(flag, VENC_P_TOP);
     GATE_SWITCH(flag, VENC_T_TOP);
     GATE_SWITCH(flag, VENC_DAC);
+#ifdef CONFIG_AML_HDMI_TX
     GATE_SWITCH(flag, HDMI_INTR_SYNC);
     GATE_SWITCH(flag, HDMI_PCLK);
+#endif
     GATE_SWITCH(flag, MISC_DVIN);
     GATE_SWITCH(flag, MISC_RDMA);
     GATE_SWITCH(flag, VENCI_INT);
