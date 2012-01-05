@@ -440,13 +440,14 @@ static int vvc1_vf_states(vframe_states_t *states)
 static int vvc1_event_cb(int type, void *data, void *private_data)
 {
     if(type & VFRAME_EVENT_RECEIVER_RESET){
+        const struct vframe_receiver_op_s *vf_receiver_bak;
         unsigned long flags;
         amvdec_stop();
 #ifndef CONFIG_POST_PROCESS_MANAGER
         vf_light_unreg_provider(&vvc1_vf_provider);
 #endif
         spin_lock_irqsave(&lock, flags);
-        const struct vframe_receiver_op_s *vf_receiver_bak = vf_receiver;
+        vf_receiver_bak = vf_receiver;
         vvc1_local_init();
         vf_receiver = vf_receiver_bak;
         vvc1_prot_init();
