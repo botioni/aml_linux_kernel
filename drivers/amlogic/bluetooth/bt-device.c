@@ -32,6 +32,16 @@ void rfkill_switch_all(enum rfkill_type type, bool blocked);
 static unsigned long bt_baud;
 extern int get_baud(int line);                                                                                        
 extern void set_baud(int line, unsigned long newbaud);
+static struct delayed_work btwork;
+
+static void bt_reset_workqueue(struct work_struct *work)
+{
+	struct hci_dev *hdev;
+	printk("bt reset\n");
+	if( hdev = hci_dev_get(0)){  
+        hci_resume_dev(hdev);
+	}
+}
 
 static int bt_set_block(void *data, bool blocked)
 {
@@ -84,7 +94,7 @@ static int bt_lateresume(struct platform_device *pdev)
             bt_dev.bt_dev_resume();
         }
 		/* when call the hci_dev_open after hci_dev_close, the bt will be restart */
-		hci_dev_open(0);
+		//hci_dev_open(0);
     }
 
     return 0;
@@ -97,11 +107,9 @@ static int bt_suspend(struct platform_device *pdev, pm_message_t state)
     pr_info("BCM_BT: going suspend\n");
 
     if( hdev = hci_dev_get(0)){        
-#ifndef CONFIG_HAS_EARLYSUSPEND
-        if (NULL != bt_dev.bt_dev_suspend) {
-            bt_dev.bt_dev_suspend();
+        if (NULL != bt_dev.bt_dev_off) {
+            bt_dev.bt_dev_off();
         }
-#endif
 		/* if we do not power off bt , we should restore uart baud */
         //bt_baud = get_baud(1);    
     }
@@ -116,13 +124,12 @@ static int bt_resume(struct platform_device *pdev)
     pr_info("BCM_BT: going resume\n");
 
     if( hdev = hci_dev_get(0)){
-#ifndef CONFIG_HAS_EARLYSUSPEND        
-        if (NULL != bt_dev.bt_dev_resume) {
-            bt_dev.bt_dev_resume();
+        if (NULL != bt_dev.bt_dev_on) {
+            bt_dev.bt_dev_on();
         }
-#endif
         //set_baud(1, bt_baud);
-		hci_dev_close(0);
+		//hci_dev_close(0);
+        schedule_delayed_work(&btwork, 100);
     }
 
     return 0;
@@ -133,6 +140,7 @@ static int __init bt_probe(struct platform_device *pdev)
 	int rc = 0;
 	struct rfkill *bt_rfk;
 
+    INIT_DELAYED_WORK(&btwork, bt_reset_workqueue);
     /* default to bluetooth off */
     //rfkill_switch_all(RFKILL_TYPE_BLUETOOTH, 1);
     if (NULL != bt_dev.bt_dev_off) {
@@ -148,7 +156,7 @@ static int __init bt_probe(struct platform_device *pdev)
 		goto err_rfk_alloc;
 	}
 	/* if not set false, the bt_set_block will call when rfkill class resume */
-    //rfkill_init_sw_state(bt_rfk, false);      //we want to reset bt when system resume
+    rfkill_init_sw_state(bt_rfk, false);      //we want to reset bt when system resume
 	rc = rfkill_register(bt_rfk);
 	if (rc){
         printk("rfkill_register fail\n");
