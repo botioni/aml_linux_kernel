@@ -112,12 +112,15 @@ unsigned get_sys_clkpll_setting(unsigned crystal_freq, unsigned out_freq)
 
 int sys_clkpll_setting(unsigned crystal_freq, unsigned out_freq)
 {
-    int i, lock_flag;
-    unsigned lock_time=0;
-    unsigned long result_freq, target_freq;
     unsigned long crys_M, out_M;
+    int i;
+#if 0
+    unsigned long result_freq, target_freq;
+    int lock_flag;
+    unsigned lock_time=0;
     unsigned long freq_log[64];
     int log_index;
+#endif
     unsigned target_pll_setting;
 
     if (!crystal_freq)
@@ -132,7 +135,7 @@ int sys_clkpll_setting(unsigned crystal_freq, unsigned out_freq)
         WRITE_MPEG_REG(HHI_SYS_PLL_CNTL2, pll_setting[i][1]); 
         WRITE_MPEG_REG(HHI_SYS_PLL_CNTL3, pll_setting[i][2]);
         WRITE_MPEG_REG(RESET5_REGISTER, (1<<2));        // reset sys pll
-
+#if 0
         lock_flag = 0;
         log_index = 0;
         target_freq = ((target_pll_setting&0x1ff)*crys_M)>>(target_pll_setting>>16);
@@ -155,6 +158,9 @@ int sys_clkpll_setting(unsigned crystal_freq, unsigned out_freq)
         //for (i=0;i<log_index;i++)
         //    printk("-%d", freq_log[i]);
         //printk("\ncpu_clk_changed: out_freq=%ld,pll_setting=%x,locktime=%dus\n",out_M,target_pll_setting,lock_time);
+#else
+		udelay(100);
+#endif
     }
     return 0;
 }

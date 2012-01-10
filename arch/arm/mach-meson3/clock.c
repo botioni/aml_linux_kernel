@@ -323,6 +323,9 @@ static int clk_set_rate_a9_clk(struct clk *clk, unsigned long rate)
     unsigned int clk_a9 = 0;
     unsigned long target_clk;
     int mali_divider;
+    int mali_change_flag;
+    int mali_busy_flag;
+    unsigned mali_cur_divider;
 	
     father_clk = clk_get_sys("clk_sys_pll", NULL);
 	divider = 0;
@@ -340,16 +343,25 @@ static int clk_set_rate_a9_clk(struct clk *clk, unsigned long rate)
 	while ((mali_divider * target_clk < ddr_pll_clk) || (264 * mali_divider < ddr_pll_clk)) // assume mali max 264M
 		mali_divider++;
     
-    local_irq_save(flags);
-    if (((mali_divider-1) != (READ_MPEG_REG(HHI_MALI_CLK_CNTL)&0x7f))&&(READ_CBUS_REG(HHI_MALI_CLK_CNTL)&(1<<8))){ // if mali busy skip change clk
+    local_irq_save(flags); // disable interrupt
+
+    mali_cur_divider = (READ_MPEG_REG(HHI_MALI_CLK_CNTL)&0x7f)+1;
+    mali_change_flag = (mali_divider != mali_cur_divider); // mali divider need to change
+    mali_busy_flag = READ_CBUS_REG(HHI_MALI_CLK_CNTL)&(1<<8);
+
+    if (mali_change_flag // mali divider need to change
+    	&& mali_busy_flag // mali busy
+    	&& (target_clk*mali_cur_divider<=ddr_pll_clk)){ // a9 <= mali
     	local_irq_restore(flags);
     	return -1;
 	}
 
-    if ((mali_divider-1) != (READ_MPEG_REG(HHI_MALI_CLK_CNTL)&0x7f)){
+    if ((!mali_busy_flag) && mali_change_flag){ // mali not busy
 	    WRITE_CBUS_REG(HHI_MALI_CLK_CNTL,
 	               (3 << 9)    |   		// select ddr pll as clock source
 	               ((mali_divider-1) << 0)); // ddr clk / divider
+		mali_change_flag = 0;
+		mali_cur_divider = mali_divider;
 	}
     CLEAR_CBUS_REG_MASK(HHI_SYS_CPU_CLK_CNTL, 1<<7); // cpu use xtal
     ret = father_clk->set_rate(father_clk, rate<<divider);
@@ -375,10 +387,10 @@ static int clk_set_rate_a9_clk(struct clk *clk, unsigned long rate)
     clk->rate = rate;
     local_irq_restore(flags);
 
-    //printk(KERN_INFO "-----------------------------------\n");
-    //printk(KERN_INFO "(CTS_MALI_CLK) = %ldMHz\n", ddr_pll_clk/mali_divider);
-	//printk(KERN_INFO "(CTS_A9_CLK) = %ldMHz\n", rate/1000000);
-    return 0;
+    printk(KERN_INFO "-----------------------------------\n");
+    printk(KERN_INFO "(CTS_MALI_CLK) = %ldMHz\n", ddr_pll_clk/mali_cur_divider);
+	printk(KERN_INFO "(CTS_A9_CLK) = %ldMHz\n", rate/1000000);
+	return mali_change_flag;
 }
 
 static struct clk xtal_clk = {

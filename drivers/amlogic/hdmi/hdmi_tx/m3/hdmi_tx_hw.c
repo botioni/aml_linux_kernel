@@ -1075,23 +1075,23 @@ void hdmi_hw_set_powermode( int power_mode, int vic)
             {
                 case HDMI_480p60:
                 case HDMI_480p60_16x9:
-                    hdmi_wr_reg(TX_SYS1_AFE_TEST, 0x7d);    //0x17
-                    hdmi_wr_reg(TX_CORE_CALIB_VALUE,0x6);   //0xf7
-                    hdmi_wr_reg(TX_SYS1_AFE_RESET, 0x2);    //0x16
+                    hdmi_wr_reg(TX_SYS1_AFE_TEST, 0x7f);    //0x17
+                    hdmi_wr_reg(TX_CORE_CALIB_VALUE,0x5);   //0xf7
+                    hdmi_wr_reg(TX_SYS1_AFE_RESET, 0x1);    //0x16
                     hdmi_wr_reg(TX_SYS1_BANDGAP, 0x0);      //0x14
                     hdmi_wr_reg(TX_SYS1_BIAS, 0x0);         //0x15
                     break;
                 case HDMI_720p60:
-                    hdmi_wr_reg(TX_SYS1_AFE_TEST, 0x7d);    //0x17
-                    hdmi_wr_reg(TX_CORE_CALIB_VALUE,0x4);   //0xf7
-                    hdmi_wr_reg(TX_SYS1_AFE_RESET, 0x2);    //0x16
+                    hdmi_wr_reg(TX_SYS1_AFE_TEST, 0x7f);    //0x17
+                    hdmi_wr_reg(TX_CORE_CALIB_VALUE,0x3);   //0xf7
+                    hdmi_wr_reg(TX_SYS1_AFE_RESET, 0x1);    //0x16
                     hdmi_wr_reg(TX_SYS1_BANDGAP, 0x0);      //0x14
                     hdmi_wr_reg(TX_SYS1_BIAS, 0x3);         //0x15
                     break;
                 case HDMI_1080p60:
-                    hdmi_wr_reg(TX_SYS1_AFE_TEST, 0x7d);    //0x17
-                    hdmi_wr_reg(TX_CORE_CALIB_VALUE,0xd);   //0xf7
-                    hdmi_wr_reg(TX_SYS1_AFE_RESET, 0x3);    //0x16
+                    hdmi_wr_reg(TX_SYS1_AFE_TEST, 0x7f);    //0x17
+                    hdmi_wr_reg(TX_CORE_CALIB_VALUE,0x3);   //0xf7
+                    hdmi_wr_reg(TX_SYS1_AFE_RESET, 0x1);    //0x16
                     hdmi_wr_reg(TX_SYS1_BANDGAP, 0x1);      //0x14 Prem
                     hdmi_wr_reg(TX_SYS1_BIAS, 0x3);         //0x15 Slew
                     break;
@@ -2668,12 +2668,12 @@ static void hdmitx_m3_cntl(hdmitx_dev_t* hdmitx_device, int cmd, unsigned argv)
             digital_clk_off(7); //off sys clk
             unmux_hpd();
         }
-        else{
-            hdmi_print(1,"power off hdmi\n");
-            digital_clk_on(6);
-            phy_pll_off();      //should call digital_clk_on(), otherwise hdmi_rd/wr_reg will hungup
-            digital_clk_off(3); //do not off sys clk
-        }
+//        else{
+//            hdmi_print(1,"power off hdmi\n");
+//            digital_clk_on(6);
+//            phy_pll_off();      //should call digital_clk_on(), otherwise hdmi_rd/wr_reg will hungup
+//            digital_clk_off(3); //do not off sys clk
+//        }
     }
     
 //    else if(cmd == HDMITX_HWCMD_TURNOFF_HDMIHW){
