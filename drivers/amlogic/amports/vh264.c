@@ -48,7 +48,7 @@
 
 /* 12M for L41 */
 #define MAX_DPB_BUFF_SIZE       (12*1024*1024)
-
+#define DEFAULT_MEM_SIZE        (32*1024*1024)
 #define AVIL_DPB_BUFF_SIZE      0x01ec2000
 
 #define DEF_BUF_START_ADDR            0x81000000
@@ -1024,7 +1024,7 @@ static void vh264_local_init(void)
 
     fill_ptr = get_ptr = put_ptr = putting_ptr = 0;
 
-    frame_buffer_size = AVIL_DPB_BUFF_SIZE;
+    frame_buffer_size = AVIL_DPB_BUFF_SIZE + buf_size - DEFAULT_MEM_SIZE;
     vf_receiver = NULL;
     frame_prog = 0;
     frame_width = vh264_amstream_dec_info.width;
@@ -1212,6 +1212,11 @@ static int amvdec_h264_probe(struct platform_device *pdev)
     }
 
     buf_size = mem->end - mem->start + 1;
+    if (buf_size < DEFAULT_MEM_SIZE) {
+        printk("\namvdec_h264 memory size not enough.\n");
+        return -ENOMEM;
+    }
+
     buf_offset = mem->start - DEF_BUF_START_ADDR;
     buf_start = V_BUF_ADDR_START + buf_offset;
 
