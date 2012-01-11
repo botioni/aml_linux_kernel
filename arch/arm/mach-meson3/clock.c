@@ -387,9 +387,9 @@ static int clk_set_rate_a9_clk(struct clk *clk, unsigned long rate)
     clk->rate = rate;
     local_irq_restore(flags);
 
-    printk(KERN_INFO "-----------------------------------\n");
-    printk(KERN_INFO "(CTS_MALI_CLK) = %ldMHz\n", ddr_pll_clk/mali_cur_divider);
-	printk(KERN_INFO "(CTS_A9_CLK) = %ldMHz\n", rate/1000000);
+    //printk(KERN_INFO "-----------------------------------\n");
+   // printk(KERN_INFO "(CTS_MALI_CLK) = %ldMHz\n", ddr_pll_clk/mali_cur_divider);
+	//printk(KERN_INFO "(CTS_A9_CLK) = %ldMHz\n", rate/1000000);
 	return mali_change_flag;
 }
 
