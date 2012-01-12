@@ -410,8 +410,9 @@ static void init_lvds_phy(lcdConfig_t *pConf)
 	unsigned tmp_add_data;
     WRITE_MPEG_REG(LVDS_PHY_CNTL4, READ_MPEG_REG(LVDS_PHY_CNTL4)|0xfff);	
 	
-    WRITE_MPEG_REG(LVDS_PHY_CNTL3, 0x36);  //0x3f  //0x36
-
+    //WRITE_MPEG_REG(LVDS_PHY_CNTL3, 0x36);  //0x3f  //0x36
+    WRITE_MPEG_REG(LVDS_PHY_CNTL3, 0x16);  //0x3f  //0x36
+    
     // tmp_add_data  = 0;
     // tmp_add_data |= 0xf<<0; //LVDS_PREM_CTL<3:0>=<1111>
     // tmp_add_data |= 0x3<<4; //LVDS_SWING_CTL<3:0>=<0011>
