@@ -75,11 +75,11 @@ void set_backlight_level(unsigned level);
 #define BL_CTL_PWM		1
 #define BL_CTL			BL_CTL_GPIO
 
-#define BL_MAX_LEVEL_2D		220
+static unsigned BL_MAX_LEVEL_2D=255;
 #define BL_MIN_LEVEL_2D		0
 #define BL_MAX_LEVEL_3D		255
 #define BL_MIN_LEVEL_3D		20
-static unsigned BL_MAX=220;
+static unsigned BL_MAX;
 static unsigned BL_MIN=0;
 static unsigned bl_level;
 
@@ -124,7 +124,11 @@ static mlvds_config_t lcd_mlvds_config =
                          |(0 << 7) ),
     .mlvds_tcon_config = &lcd_mlvds_tcon_config[0],
     .lvds_phy_control = &lcd_lvds_phy_control,
-    .scan_function = 1,
+#ifdef CONFIG_AML_MLVDS_G_TM080XDH_REVERSE
+    .scan_function = 0,
+#else
+		.scan_function = 1,
+#endif    
     .phase_select = 1,
     .TL080_phase =7,
 };
@@ -488,15 +492,33 @@ static void power_on_bl(void)
     power_on_backlight();
 }
 #endif
+static unsigned set_backlight_only_once=0;
 static void t13_power_on(void)
 {
     //video_dac_disable();	
+    unsigned pinmux_a9_status = 0;
+    set_gpio_mode(GPIOA_bank_bit0_27(9), GPIOA_bit_bit0_27(9), GPIO_INPUT_MODE);
+    pinmux_a9_status=get_gpio_mode(GPIOA_bank_bit0_27(9), GPIOA_bit_bit0_27(9));
+    if(pinmux_a9_status==1)
+    	{
+    	BL_MAX_LEVEL_2D=220;
+    	printk("\n GPIO A9 is high,3D panel\n"); 
+    	}
+    else
+    	{
+    	BL_MAX_LEVEL_2D=255;
+    	printk("\n GPIO A9 is low,2D panel\n"); 
+    	}
+    BL_MAX=BL_MAX_LEVEL_2D;
     printk("\n\n t13_power_on.\n\n");
 	power_on_lcd();	
     Power_on_bl = power_on_bl;
-
     printk("\n\n set bl level to %d\n\n",bl_level);
-   // set_backlight_level(bl_level/*250*/);
+    if(set_backlight_only_once==0)
+    {
+    set_backlight_only_once=1;
+    set_backlight_level(250);
+    }
 }
 static void t13_power_off(void)
 {
@@ -520,7 +542,6 @@ static struct platform_device lcd_dev = {
 static int __init t13_init(void)
 {
     int ret ;
-    
     t13_setup_gama_table(&lcd_config, 0);
     t13_io_init();
 

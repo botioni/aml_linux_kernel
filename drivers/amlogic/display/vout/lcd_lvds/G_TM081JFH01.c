@@ -237,11 +237,13 @@ static void set_gamma_table(u16 *data, u32 rgb_mask)
 
 static void chang_gamma_table(int flag)
 {
-	t13_setup_gama_table(&lcd_config, flag);
+	t13_setup_gama_table(&lcd_config, flag);	
 	
+	WRITE_CBUS_REG_BITS(L_GAMMA_CNTL_PORT, 0, 0, 1);
 	set_gamma_table(lcd_config.GammaTableR, H_SEL_R);
     set_gamma_table(lcd_config.GammaTableG, H_SEL_G);
     set_gamma_table(lcd_config.GammaTableB, H_SEL_B);
+    WRITE_CBUS_REG_BITS(L_GAMMA_CNTL_PORT, 1, 0, 1);
 }
 
 static void pwm_3d(int flag)

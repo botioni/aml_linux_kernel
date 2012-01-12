@@ -79,7 +79,7 @@ void set_backlight_level(unsigned level);
 #define BL_MIN_LEVEL_2D		0
 #define BL_MAX_LEVEL_3D		255
 #define BL_MIN_LEVEL_3D		20
-static unsigned BL_MAX=220;
+static unsigned BL_MAX=BL_MAX_LEVEL_2D;
 static unsigned BL_MIN=0;
 static unsigned bl_level;
 

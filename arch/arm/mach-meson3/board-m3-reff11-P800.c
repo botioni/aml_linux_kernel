@@ -950,6 +950,7 @@ static struct ts_platform_data ts_pdata = {
 	.irq_no 			= FT_IRQ,
 	.reset_gpio_no	= ((GPIOA_bank_bit0_27(1)<<16) |GPIOA_bit_bit0_27(1)),
 	.irq_gpio_no		= ((GPIOA_bank_bit0_27(16)<<16) |GPIOA_bit_bit0_27(16)),
+	.power_gpio_no      = ((GPIOA_bank_bit0_27(9)<<16) |GPIOA_bit_bit0_27(9)),
 };
 #endif
 
@@ -1512,22 +1513,22 @@ static struct mtd_partition multi_partition_info[] =
 	{
 		.name = "logo",
 		.offset = 32*SZ_1M+40*SZ_1M,
-		.size = 16*SZ_1M,
+		.size = 8*SZ_1M,
 	},
 	{
 		.name = "aml_logo",
 		.offset = 48*SZ_1M+40*SZ_1M,
-		.size = 16*SZ_1M,
+		.size = 8*SZ_1M,
 	},
 	{
 		.name = "recovery",
 		.offset = 64*SZ_1M+40*SZ_1M,
-		.size = 32*SZ_1M,
+		.size = 8*SZ_1M,
 	},
 	{
 		.name = "boot",
 		.offset = 96*SZ_1M+40*SZ_1M,
-		.size = 32*SZ_1M,
+		.size = 8*SZ_1M,
 	},
 	{
 		.name = "system",
@@ -1580,7 +1581,7 @@ static struct aml_nand_platform aml_nand_mid_platform[] = {
 				.nr_chips = 4,
 				.nr_partitions = ARRAY_SIZE(multi_partition_info),
 				.partitions = multi_partition_info,
-				.options = (NAND_TIMING_MODE5 | NAND_ECC_BCH60_1K_MODE | NAND_TWO_PLANE_MODE),
+				.options = (NAND_TIMING_MODE5 | NAND_ECC_BCH60_1K_MODE /*| NAND_TWO_PLANE_MODE*/),
 			},
     	},
 			.T_REA = 20,
@@ -1979,6 +1980,14 @@ static void __init device_pinmux_init(void )
 #endif
     //set_audio_pinmux(AUDIO_OUT_TEST_N);
    // set_audio_pinmux(AUDIO_IN_JTAG);
+   
+   // clear clk for camera for hardware EMI confirm
+    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_1, (1<<29)); 
+    SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<2));
+	unsigned pwm_cnt = get_ddr_pll_clk()/48000000 - 1;
+    pwm_cnt &= 0xffff;
+    WRITE_CBUS_REG(PWM_PWM_C, (pwm_cnt<<16) | pwm_cnt);
+    CLEAR_CBUS_REG_MASK(PWM_MISC_REG_CD, (1 << 0)|(1 << 2));
 
 }
 
@@ -2038,28 +2047,25 @@ static void __init LED_PWM_REG0_init(void)
 /* usb wifi power 1:power on  0:power off */
 void extern_usb_wifi_power(int is_power)
 {
+#if 1 //old board
     CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0, (1<<6));
-    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_6, (1<<20));
+    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_6, (1<<19));
     CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_3, (1<<5));
-    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_6, (1<<22));
-    CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO0_EN_N, (1<<4));
-    SET_CBUS_REG_MASK(PREG_PAD_GPIO0_O, (1<<4));
-
-    //delay at least 100us
-    udelay(500);
-
-    //SHUTDOWN high
-    CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO0_EN_N, (1<<6));
-    SET_CBUS_REG_MASK(PREG_PAD_GPIO0_O, (1<<6));
-
-    //delay at least 100us
-    udelay(500);
-
-    //VDD 1V2 low
+	set_gpio_mode(GPIOA_bank_bit0_27(7), GPIOA_bit_bit0_27(7), GPIO_OUTPUT_MODE);
     if(is_power)
-            CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO0_O, (1<<4));
+            set_gpio_val(GPIOA_bank_bit0_27(7), GPIOA_bit_bit0_27(7), 0);
     else
-            SET_CBUS_REG_MASK(PREG_PAD_GPIO0_O, (1<<4));
+            set_gpio_val(GPIOA_bank_bit0_27(7), GPIOA_bit_bit0_27(7), 1);
+//new board
+    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0, (1<<6));
+    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_6, (1<<22));
+    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_3, (1<<5));
+	set_gpio_mode(GPIOA_bank_bit0_27(4), GPIOA_bit_bit0_27(4), GPIO_OUTPUT_MODE);
+    if(is_power)
+            set_gpio_val(GPIOA_bank_bit0_27(4), GPIOA_bit_bit0_27(4), 0);
+    else
+            set_gpio_val(GPIOA_bank_bit0_27(4), GPIOA_bit_bit0_27(4), 1);
+#endif
 
     printk("[extern_wifi_power] 1V2 %d\n", is_power);
 }
