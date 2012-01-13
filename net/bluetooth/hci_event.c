@@ -1204,6 +1204,7 @@ static inline void hci_cmd_complete_evt(struct hci_dev *hdev, struct sk_buff *sk
 {
 	struct hci_ev_cmd_complete *ev = (void *) skb->data;
 	__u16 opcode;
+    //printk("%s\n", __FUNCTION__);
 
 	skb_pull(skb, sizeof(*ev));
 
@@ -1211,10 +1212,24 @@ static inline void hci_cmd_complete_evt(struct hci_dev *hdev, struct sk_buff *sk
 
 	switch (opcode) {
 	case HCI_OP_INQUIRY_CANCEL:
+#ifdef CONFIG_BT_DEVICE
+        if(hdev->inquiry_state){
+            hdev->inquiry_state = 0;
+            printk("inquiry %d\n", hdev->inquiry_state);
+            tasklet_enable(&hdev->tx_task);
+        }
+#endif
 		hci_cc_inquiry_cancel(hdev, skb);
 		break;
 
 	case HCI_OP_EXIT_PERIODIC_INQ:
+#ifdef CONFIG_BT_DEVICE
+        if(hdev->inquiry_state){
+            hdev->inquiry_state = 0;
+            printk("inquiry %d\n", hdev->inquiry_state);
+            tasklet_enable(&hdev->tx_task);
+        }
+#endif
 		hci_cc_exit_periodic_inq(hdev, skb);
 		break;
 
@@ -1313,7 +1328,16 @@ static inline void hci_cmd_complete_evt(struct hci_dev *hdev, struct sk_buff *sk
 	case HCI_OP_READ_BD_ADDR:
 		hci_cc_read_bd_addr(hdev, skb);
 		break;
-
+#ifdef CONFIG_BT_DEVICE
+    case HCI_OP_INQUIRY:
+    case 0x0403:
+        if(!hdev->inquiry_state){
+            hdev->inquiry_state = 1;
+            printk("inquiry %d\n", hdev->inquiry_state);
+            tasklet_disable(&hdev->tx_task);
+        }
+        break;
+#endif
 	default:
 		BT_DBG("%s opcode 0x%x", hdev->name, opcode);
 		break;
@@ -1337,6 +1361,11 @@ static inline void hci_cmd_status_evt(struct hci_dev *hdev, struct sk_buff *skb)
 
 	switch (opcode) {
 	case HCI_OP_INQUIRY:
+        if(!hdev->inquiry_state){
+            tasklet_disable(&hdev->tx_task);
+            hdev->inquiry_state = 1;
+            printk("inquiry %d\n", hdev->inquiry_state);
+        }
 		hci_cs_inquiry(hdev, ev->status);
 		break;
 
@@ -1832,6 +1861,14 @@ void hci_event_packet(struct hci_dev *hdev, struct sk_buff *skb)
 
 	switch (event) {
 	case HCI_EV_INQUIRY_COMPLETE:
+#ifdef CONFIG_BT_DEVICE
+        if(hdev->inquiry_state){
+            hdev->inquiry_state = 0;
+            tasklet_enable(&hdev->tx_task);
+            printk("inquiry %d\n", hdev->inquiry_state);
+
+        }
+#endif
 		hci_inquiry_complete_evt(hdev, skb);
 		break;
 

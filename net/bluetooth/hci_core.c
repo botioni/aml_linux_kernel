@@ -184,8 +184,10 @@ static void hci_init_req(struct hci_dev *hdev, unsigned long opt)
 	struct sk_buff *skb;
 	__le16 param;
 	__u8 flt_type;
+#ifdef CONFIG_BT_DEVICE
     unsigned char buf[10] = {0x01, 0x0a, 0x0a, 0x01, 0x01, 0x01, 0x01, 0x00, 0x00, 0x00};
     u16 opcode = (u16)((0x27 & 0x03ff)|(0x3f << 10));
+#endif
 
 	BT_DBG("%s %ld", hdev->name, opt);
 
@@ -253,9 +255,10 @@ static void hci_init_req(struct hci_dev *hdev, unsigned long opt)
 	/* Connection accept timeout ~20 secs */
 	param = cpu_to_le16(0x7d00);
 	hci_send_cmd(hdev, HCI_OP_WRITE_CA_TIMEOUT, 2, &param);
-
+#ifdef CONFIG_BT_DEVICE
     /* sleep mode Setting */
     hci_send_cmd(hdev, opcode, 10, buf);
+#endif
 }
 
 static void hci_scan_req(struct hci_dev *hdev, unsigned long opt)
@@ -908,7 +911,9 @@ int hci_register_dev(struct hci_dev *hdev)
 	hdev->idle_timeout = 0;
 	hdev->sniff_max_interval = 800;
 	hdev->sniff_min_interval = 80;
-
+#ifdef CONFIG_BT_DEVICE
+    hdev->inquiry_state = 0;
+#endif
 	tasklet_init(&hdev->cmd_task, hci_cmd_task,(unsigned long) hdev);
 	tasklet_init(&hdev->rx_task, hci_rx_task, (unsigned long) hdev);
 	tasklet_init(&hdev->tx_task, hci_tx_task, (unsigned long) hdev);
