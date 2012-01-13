@@ -457,6 +457,7 @@ void aml_linein_stop(void)
 static const DECLARE_TLV_DB_SCALE(lineout_volume, -12600, 150, 0);
 static const DECLARE_TLV_DB_SCALE(hs_volume, -4000, 100, 0);
 static const DECLARE_TLV_DB_SCALE(linein_volume, -9600, 150, 0);
+static const DECLARE_TLV_DB_SCALE(linein_pga_volume, -600, 150, 0);
 
 static const char *left_linein_texts[] = {
 	"Left Line In 1", "Left Line In 2", "Left Line In 3", "Left Line In 4",
@@ -534,7 +535,10 @@ static const struct snd_kcontrol_new amlm3_snd_controls[] = {
 
     SOC_DOUBLE_R_EXT_TLV("LINEIN Capture Volume", ADAC_RECVOL_CTRL_LSB, ADAC_RECVOL_CTRL_MSB,
 	       0, 84, 1, snd_soc_get_volsw_2r, aml_put_volsw_2r, linein_volume),
-
+    
+    SOC_DOUBLE_R_EXT_TLV("LINEIN PGA Volume", ADAC_STEREO_PGA_VOL_LSB, ADAC_STEREO_PGA_VOL_MSB,
+	       0, 18, 0, snd_soc_get_volsw_2r, aml_put_volsw_2r, linein_pga_volume),
+	       
 	SOC_VALUE_ENUM("Left LINEIN Select",left_linein_select),
 	SOC_VALUE_ENUM("Right LINEIN Select",right_linein_select),
 	SOC_VALUE_ENUM("IIS Split Select", iis_split_select),
