@@ -60,9 +60,10 @@
 #include <linux/camera/amlogic_camera_common.h>
 #endif
 
-#ifdef CONFIG_AR1520_GPS
-#include <linux/ar1520.h>
+#ifdef CONFIG_GPS_POWERCTRL
+#include <linux/gps_power.h>
 #endif
+
 
 #ifdef CONFIG_EFUSE
 #include <linux/efuse.h>
@@ -1071,32 +1072,51 @@ static struct platform_device aml_i2c_device2 = {
 
 #endif
 
-#ifdef CONFIG_AR1520_GPS
-static void ar1520_power_on(void)
+#ifdef CONFIG_GPS_POWERCTRL
+static void gps_power_on(void)
 {
+       printk("power on gps\n");
+       set_gpio_val(GPIOC_bank_bit0_15(5), GPIOC_bit_bit0_15(5), 1);
+       set_gpio_mode(GPIOC_bank_bit0_15(5), GPIOC_bit_bit0_15(5), GPIO_OUTPUT_MODE);
 }
 
-static void ar1520_power_off(void)
+static void gps_power_off(void)
 {
+       printk("power off gps\n");
+       set_gpio_val(GPIOC_bank_bit0_15(5), GPIOC_bit_bit0_15(5), 0);
+       set_gpio_mode(GPIOC_bank_bit0_15(5), GPIOC_bit_bit0_15(5), GPIO_OUTPUT_MODE);
 }
 
-static void ar1520_reset(void)
-{
-}
-
-static struct ar1520_platform_data aml_ar1520_plat = {
-	.power_on = ar1520_power_on,
-	.power_off = ar1520_power_off,
-	.reset = ar1520_reset,
+static struct gps_power_platform_data aml_gps_plat = {
+       .power_on = gps_power_on,
+       .power_off = gps_power_off,
 };
 
-static struct platform_device aml_ar1520_device = {	
-    .name         = "ar1520_gps",  
-    .id       = -1, 
-    .dev = {        
-                .platform_data = &aml_ar1520_plat,  
+static struct platform_device aml_gps_device = {
+    .name         = "gps_power",
+    .id       = -1,
+    .dev = {
+                .platform_data = &aml_gps_plat,
            },
 };
+
+static void gps_pinmux_init(void)
+{
+    //uart_cts_b
+    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_4,(1<<19)||(1<<23));
+    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_8,(1<<25)||(1<<29));
+    SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_4,(0<<7));
+    //uart_rts_b
+    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_4,(1<<18)||(1<<22));
+    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_8,(1<<24)||(1<<28));
+    SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_4,(0<<6));
+    //uart_tx_b
+    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_4,(1<<1)||(1<<15));
+    SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_4,(1<<5));
+    //uart_rx_b
+    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_4,(1<<0)||(1<<14));
+    SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_4,(1<<4));
+}
 #endif
 
 #ifdef CONFIG_EFUSE
@@ -1808,8 +1828,8 @@ static struct platform_device __initdata *platform_devs[] = {
 #ifdef CONFIG_BT_DEVICE  
     &bt_device,
 #endif
-#ifdef CONFIG_AR1520_GPS
-	&aml_ar1520_device,
+#ifdef CONFIG_GPS_POWERCTRL
+       &aml_gps_device,
 #endif
 #ifdef CONFIG_EFUSE
 	&aml_efuse_device,
@@ -1941,6 +1961,9 @@ static void __init device_pinmux_init(void )
     pwm_cnt &= 0xffff;
     WRITE_CBUS_REG(PWM_PWM_C, (pwm_cnt<<16) | pwm_cnt);
     SET_CBUS_REG_MASK(PWM_MISC_REG_CD, (1<<15)|(0<<8)|(1<<4)|(1<<0)); //select ddr pll for source, and clk divide 
+#endif
+#ifdef CONFIG_GPS_POWERCTRL
+    gps_pinmux_init();
 #endif
 }
 
