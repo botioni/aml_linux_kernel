@@ -30,6 +30,7 @@
 #include <linux/amports/canvas.h>
 #include <linux/amports/vframe.h>
 #include <linux/amports/vframe_provider.h>
+#include <linux/amports/vframe_receiver.h>
 #include <mach/am_regs.h>
 
 //#define CONFIG_AM_VDEC_MPEG4_LOG
@@ -103,26 +104,27 @@ MODULE_AMLOG(LOG_LEVEL_ERROR, 0, LOG_LEVEL_DESC, LOG_DEFAULT_MASK_DESC);
 
 #define DUR2PTS(x) ((x) - ((x) >> 4))
 
-static vframe_t *vmpeg_vf_peek(void);
-static vframe_t *vmpeg_vf_get(void);
-static void vmpeg_vf_put(vframe_t *);
+static vframe_t *vmpeg_vf_peek(void*);
+static vframe_t *vmpeg_vf_get(void*);
+static void vmpeg_vf_put(vframe_t *, void*);
+static int  vmpeg_vf_states(vframe_states_t *states, void*);
 static int vmpeg_event_cb(int type, void *data, void *private_data);
-static int  vmpeg_vf_states(vframe_states_t *states);
 
 static void vmpeg4_prot_init(void);
 static void vmpeg4_local_init(void);
 
 static const char vmpeg4_dec_id[] = "vmpeg4-dev";
 
-static const struct vframe_provider_s vmpeg_vf_provider = {
+#define PROVIDER_NAME   "decoder.mpeg4"
+static const struct vframe_operations_s vmpeg_vf_provider = {
     .peek = vmpeg_vf_peek,
     .get = vmpeg_vf_get,
     .put = vmpeg_vf_put,
     .event_cb = vmpeg_event_cb,
     .vf_states = vmpeg_vf_states,
 };
+static struct vframe_provider_s vmpeg_vf_prov;
 
-static const struct vframe_receiver_op_s *vf_receiver;
 static struct vframe_s vfpool[VF_POOL_SIZE];
 static u32 vfpool_idx[VF_POOL_SIZE];
 static s32 vfbuf_use[4];
@@ -390,7 +392,7 @@ static void vmpeg4_isr(void)
             vfbuf_use[buffer_index]++;
 
             INCPTR(fill_ptr);
-
+		vf_notify_receiver(PROVIDER_NAME,VFRAME_EVENT_PROVIDER_VFRAME_READY,NULL);
             vfpool_idx[fill_ptr] = buffer_index;
             vf = &vfpool[fill_ptr];
             vf->width = vmpeg4_amstream_dec_info.width;
@@ -414,10 +416,8 @@ static void vmpeg4_isr(void)
                        vf->duration, vmpeg4_amstream_dec_info.rate, picture_type);
 
             INCPTR(fill_ptr);
- #ifdef CONFIG_POST_PROCESS_MANAGER
-            if (vf_receiver)
-    	        vf_receiver->event_cb(VFRAME_EVENT_PROVIDER_VFRAME_READY, NULL, NULL);	
-#endif    	        
+
+            vf_notify_receiver(PROVIDER_NAME,VFRAME_EVENT_PROVIDER_VFRAME_READY,NULL);
 
         } else { // progressive
             vfpool_idx[fill_ptr] = buffer_index;
@@ -440,10 +440,7 @@ static void vmpeg4_isr(void)
             vfbuf_use[buffer_index]++;
 
             INCPTR(fill_ptr);
- #ifdef CONFIG_POST_PROCESS_MANAGER
-            if (vf_receiver)
-    	        vf_receiver->event_cb(VFRAME_EVENT_PROVIDER_VFRAME_READY, NULL, NULL);	
-#endif    	        
+            vf_notify_receiver(PROVIDER_NAME,VFRAME_EVENT_PROVIDER_VFRAME_READY,NULL);
         }
 
         total_frame++;
@@ -462,7 +459,7 @@ static void vmpeg4_isr(void)
 #endif
 }
 
-static vframe_t *vmpeg_vf_peek(void)
+static vframe_t *vmpeg_vf_peek(void* op_arg)
 {
     if (get_ptr == fill_ptr) {
         return NULL;
@@ -471,7 +468,7 @@ static vframe_t *vmpeg_vf_peek(void)
     return &vfpool[get_ptr];
 }
 
-static vframe_t *vmpeg_vf_get(void)
+static vframe_t *vmpeg_vf_get(void* op_arg)
 {
     vframe_t *vf;
 
@@ -486,7 +483,7 @@ static vframe_t *vmpeg_vf_get(void)
     return vf;
 }
 
-static void vmpeg_vf_put(vframe_t *vf)
+static void vmpeg_vf_put(vframe_t *vf, void* op_arg)
 {
     INCPTR(putting_ptr);
 }
@@ -497,23 +494,21 @@ static int vmpeg_event_cb(int type, void *data, void *private_data)
         unsigned long flags;
         amvdec_stop();
 #ifndef CONFIG_POST_PROCESS_MANAGER
-        vf_light_unreg_provider(&vmpeg_vf_provider);
+        vf_light_unreg_provider(&vmpeg_vf_prov);
 #endif
         spin_lock_irqsave(&lock, flags);
-        const struct vframe_receiver_op_s *vf_receiver_bak = vf_receiver;
         vmpeg4_local_init();
-        vf_receiver = vf_receiver_bak;
         vmpeg4_prot_init();
         spin_unlock_irqrestore(&lock, flags); 
 #ifndef CONFIG_POST_PROCESS_MANAGER
-        vf_reg_provider(&vmpeg_vf_provider);
+        vf_reg_provider(&vmpeg_vf_prov);
 #endif              
         amvdec_start();
     }
     return 0;        
 }
 
-static int  vmpeg_vf_states(vframe_states_t *states)
+static int  vmpeg_vf_states(vframe_states_t *states, void* op_arg)
 {
     unsigned long flags;
     int i;
@@ -688,8 +683,6 @@ static void vmpeg4_local_init(void)
 
     frame_num_since_last_anch = 0;
 
-    vf_receiver = NULL;
-
 #ifdef CONFIG_AM_VDEC_MPEG4_LOG
     pts_hit = pts_missed = pts_i_hit = pts_i_missed = 0;
 #endif
@@ -763,11 +756,12 @@ static s32 vmpeg4_init(void)
 
     stat |= STAT_ISR_REG;
  #ifdef CONFIG_POST_PROCESS_MANAGER
-	vf_receiver = vf_ppmgr_reg_provider(&vmpeg_vf_provider);
-	if ((vf_receiver) && (vf_receiver->event_cb))
-	vf_receiver->event_cb(VFRAME_EVENT_PROVIDER_START, NULL, NULL); 	
+    vf_provider_init(&vmpeg_vf_prov, PROVIDER_NAME, &vmpeg_vf_provider, NULL);
+    vf_reg_provider(&vmpeg_vf_prov);
+    vf_notify_receiver(PROVIDER_NAME,VFRAME_EVENT_PROVIDER_START,NULL);
  #else 
- 	vf_reg_provider(&vmpeg_vf_provider);
+    vf_provider_init(&vmpeg_vf_prov, PROVIDER_NAME, &vmpeg_vf_provider, NULL);
+    vf_reg_provider(&vmpeg_vf_prov);
  #endif 
     stat |= STAT_VF_HOOK;
 
@@ -833,13 +827,7 @@ static int amvdec_mpeg4_remove(struct platform_device *pdev)
         spin_lock_irqsave(&lock, flags);
         fill_ptr = get_ptr = put_ptr = putting_ptr = 0;
         spin_unlock_irqrestore(&lock, flags);
- #ifdef CONFIG_POST_PROCESS_MANAGER
-	vf_ppmgr_unreg_provider();
-	if ((vf_receiver) && (vf_receiver->event_cb))
-	vf_receiver->event_cb(VFRAME_EVENT_PROVIDER_UNREG, NULL, NULL); 	
- #else 
- 	vf_unreg_provider(&vmpeg_vf_provider);
- #endif         
+        vf_unreg_provider(&vmpeg_vf_prov);
         stat &= ~STAT_VF_HOOK;
     }
 

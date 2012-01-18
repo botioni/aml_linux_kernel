@@ -121,4 +121,22 @@ vpp_set_zoom_ratio(u32 r);
 extern u32
 vpp_get_zoom_ratio(void);
 
+#ifdef CONFIG_AM_VIDEO2
+extern void
+vpp2_set_filters(u32 wide_mode, vframe_t * vf,
+                vpp_frame_par_t * next_frame_par, const vinfo_t *vinfo);
+
+extern void
+vpp2_set_video_layer_position(s32 x, s32 y, s32 w, s32 h);
+
+extern void
+vpp2_get_video_layer_position(s32 *x, s32 *y, s32 *w, s32 *h);
+
+extern void
+vpp2_set_zoom_ratio(u32 r);
+
+extern u32
+vpp2_get_zoom_ratio(void);
+#endif
+
 #endif /* VPP_H */

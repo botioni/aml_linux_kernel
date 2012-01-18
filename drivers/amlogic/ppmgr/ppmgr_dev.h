@@ -30,6 +30,8 @@ typedef  struct {
 	int top;
 	int width;
 	int height;
+	
+	int video_out;
 }ppmgr_device_t;
 
 extern ppmgr_device_t  ppmgr_device;

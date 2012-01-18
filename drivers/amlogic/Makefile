@@ -13,7 +13,7 @@ obj-y += display/
 obj-$(CONFIG_POST_PROCESS_MANAGER) += ppmgr/
 
 #####for Basic drivers#####
-
+ 
 
 obj-y += uart/
 
@@ -41,6 +41,7 @@ obj-y += spi_nor/
 
 obj-$(CONFIG_CMEM) += cmem/
 
+obj-$(CONFIG_DEINTERLACE) += deinterlace/
 obj-$(CONFIG_JPEGLOGO) += jpeglogo/
 
 obj-$(CONFIG_CARDREADER) += cardreader/
@@ -82,3 +83,4 @@ obj-y += bluetooth/
 obj-y += camera/
 obj-y += modem/
 obj-y += debug/
+obj-y += vfm/

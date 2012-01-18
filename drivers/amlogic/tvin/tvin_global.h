@@ -147,6 +147,7 @@ typedef struct tvin_format_s {
 
 #define VDIN_START_CANVAS               24  //24~35 used to tvin
 #define BT656IN_VF_POOL_SIZE            6//8
+#define VIUIN_VF_POOL_SIZE              6//8
 
 #define TVAFE_VF_POOL_SIZE              6//8
 #define VDIN_VF_POOL_MAX_SIZE           6//8
@@ -154,6 +155,7 @@ typedef struct tvin_format_s {
 
 #define BT656IN_ANCI_DATA_SIZE          0x4000 //save anci data from bt656in
 #define CAMERA_IN_ANCI_DATA_SIZE        0x4000 //save anci data from bt656in
+#define VIUIN_ANCI_DATA_SIZE        0x4000 
 
 
 #define TVIN_MAX_PIXS					1600*1200

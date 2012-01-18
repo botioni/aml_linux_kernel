@@ -120,6 +120,12 @@ typedef struct vframe_s {
 
     u32 orientation;
 
+    /* vframe extension */
+    int (*early_process_fun)(void* arg);
+    int (*process_fun)(void* arg, unsigned zoom_start_x_lines,
+            unsigned zoom_end_x_lines, unsigned zoom_start_y_lines, unsigned zoom_end_y_lines);
+    void* private_data;
+    /**/
 #if 1
     /* vframe properties */
     struct vframe_prop_s prop;

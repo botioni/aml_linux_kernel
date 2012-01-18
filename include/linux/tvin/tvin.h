@@ -67,6 +67,9 @@ typedef enum tvin_port_e {
     TVIN_PORT_HDMI6,
     TVIN_PORT_HDMI7,
     TVIN_PORT_DVIN0   = 0x00008000,
+    TVIN_PORT_VIU_ENCT   = 0x0000C000,
+    TVIN_PORT_VIU_ENCP,
+    TVIN_PORT_VIU_ENCI,
     TVIN_PORT_MAX     = 0x80000000,
 } tvin_port_t;
 

@@ -484,6 +484,7 @@ int  init_ppmgr_device(void)
     ppmgr_device.scale_v_start = 0;
     ppmgr_device.scale_v_end = 0;
 #endif
+	ppmgr_device.video_out=0;
     amlog_level(LOG_LEVEL_LOW,"ppmgr_dev major:%d\r\n",ret);
     
     if((ppmgr_device.cla = init_ppmgr_cls())==NULL) return -1;

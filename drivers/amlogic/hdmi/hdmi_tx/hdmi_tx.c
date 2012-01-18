@@ -40,6 +40,11 @@
 
 #include <linux/osd/osd_dev.h>
 #include <linux/switch.h>
+
+#ifdef CONFIG_AM_VIDEO2
+#include <linux/tvin/tvin.h>
+#endif
+
 #else
 
 #include "includes.h"
@@ -119,12 +124,108 @@ static int hpdmode = 1; /*
 *    mode
 *    reg
 ******************************/
+#ifdef CONFIG_AM_VIDEO2
+//rain
+static const vinfo_t tv_info = 
+    { /* VMODE_480P */
+		.name              = "480p",
+		.mode              = VMODE_480P,
+        .width             = 720,
+        .height            = 480,
+        .field_height      = 480,
+        .aspect_ratio_num  = 4,
+        .aspect_ratio_den  = 3,
+        .sync_duration_num = 60,
+        .sync_duration_den = 1,
+    };
+
+static const vinfo_t tv_info720p = 
+    { /* VMODE_720P */
+		.name              = "720p",
+		.mode              = VMODE_720P,
+        .width             = 1280,
+        .height            = 720,
+        .field_height      = 720,
+        .aspect_ratio_num  = 16,
+        .aspect_ratio_den  = 9,
+        .sync_duration_num = 60,
+        .sync_duration_den = 1,
+    };
+
+static const vinfo_t tv_info1080i = 
+    { /* VMODE_1080I */
+		.name              = "1080i",
+		.mode              = VMODE_1080I,
+        .width             = 1920,
+        .height            = 1080,
+        .field_height      = 540,
+        .aspect_ratio_num  = 16,
+        .aspect_ratio_den  = 9,
+        .sync_duration_num = 60,
+        .sync_duration_den = 1,
+    };
+
+static const vinfo_t tv_info1080p = 
+    { /* VMODE_1080P */
+		.name              = "1080p",
+		.mode              = VMODE_1080P,
+        .width             = 1920,
+        .height            = 1080,
+        .field_height      = 1080,
+        .aspect_ratio_num  = 16,
+        .aspect_ratio_den  = 9,
+        .sync_duration_num = 60,
+        .sync_duration_den = 1,
+    };
+
+vinfo_t* get_current_vinfo2(void)
+{
+    if(hdmitx_device.cur_VIC==HDMI_480p60){
+        return &tv_info;   
+    }
+    else if(hdmitx_device.cur_VIC==HDMI_720p60){
+        return &tv_info720p;   
+    }
+    else if(hdmitx_device.cur_VIC==HDMI_1080p60){
+        return &tv_info1080p;   
+    }
+    return &tv_info;
+}    
+
+
+typedef enum {
+    TVMODE_480I  = 0,
+    TVMODE_480CVBS,
+    TVMODE_480P  ,
+    TVMODE_576I  ,
+    TVMODE_576CVBS,
+    TVMODE_576P  ,
+    TVMODE_720P  ,
+    TVMODE_1080I ,
+    TVMODE_1080P ,
+    TVMODE_720P_50HZ ,
+    TVMODE_1080I_50HZ ,
+    TVMODE_1080P_50HZ ,
+    TVMODE_MAX   
+} tvmode_t;
+
+int tvoutc_setmode2(tvmode_t mode);
+int start_tvin_service(int no ,tvin_parm_t *para);
+int stop_tvin_service(int no);
+void update_vinfo(void);
+
+int tvin_started = 0;
+int cur_dual_disp_vic = 0;
+int resume_flag = 0;
+#endif
 static  int  set_disp_mode(const char *mode)
 {
     int ret=-1;
     HDMI_Video_Codes_t vic;
     vic = hdmitx_edid_get_VIC(&hdmitx_device, mode, 1);
-
+#ifdef CONFIG_AM_VIDEO2
+    int start_video2_flag = 0;
+#endif
     if(vic != HDMI_Unkown){
         hdmitx_device.mux_hpd_if_pin_high_flag = 1;
         if(hdmitx_device.vic_count == 0){
@@ -133,6 +234,25 @@ static  int  set_disp_mode(const char *mode)
                 }
             }
         }
+#ifdef CONFIG_AM_VIDEO2
+	      if(tvin_started){
+	        stop_tvin_service(0);
+	        tvin_started=0;
+	      }
+
+        if(strncmp(mode,"480p",4)==0){
+           tvoutc_setmode2(VMODE_480P);
+            start_video2_flag = 1;
+        }
+        else if(strncmp(mode,"720p",4)==0){
+           tvoutc_setmode2(VMODE_720P);
+            start_video2_flag = 1;
+        }
+        else if(strncmp(mode,"1080p",5)==0){
+           tvoutc_setmode2(VMODE_1080P);
+            start_video2_flag = 1;
+        }
+#endif
 
     hdmitx_device.cur_VIC = HDMI_Unkown;
     ret = hdmitx_set_display(&hdmitx_device, vic);
@@ -150,7 +270,28 @@ static  int  set_disp_mode(const char *mode)
             hdmitx_device.HWOp.Cntl(&hdmitx_device, HDMITX_HWCMD_TURNOFF_HDMIHW, (hpdmode==2)?1:0);    
         }
     }
-    
+#ifdef CONFIG_AM_VIDEO2
+    if(start_video2_flag){
+        tvin_parm_t para;
+        update_vinfo();
+        WRITE_MPEG_REG(0x104b, 0x8001f); //0x3001f);
+        WRITE_MPEG_REG(0x104a, (READ_MPEG_REG(0x1059)&(~(0xff)))); //0x9900910d);
+        WRITE_MPEG_REG(0x1059, (READ_MPEG_REG(0x1059)&(~(0xff<<24)))|(0x88<<24)); //0x00100000|READ_MPEG_REG(0x1059));
+        WRITE_MPEG_REG(0x1073, (READ_MPEG_REG(0x1073)&(~(0xf<<16)))|(0x9<<16));
+        
+        WRITE_CBUS_REG_BITS(VPU_VIU_VENC_MUX_CTRL, 2, 2, 2); //select ENCP to VIU2
+
+        para.fmt_info.h_active = 800;
+        para.fmt_info.v_active = 600;
+        para.port  = TVIN_PORT_VIU_ENCT;
+        para.fmt_info.fmt = TVIN_SIG_FMT_MAX+1;//TVIN_SIG_FMT_MAX+1;TVIN_SIG_FMT_CAMERA_1280X720P_30Hz
+        para.fmt_info.frame_rate = 150;
+	      para.fmt_info.hsync_phase = 1;
+      	para.fmt_info.vsync_phase  = 0;	
+        start_tvin_service(0,&para);
+        tvin_started = 1;
+    }
+#endif    
     return ret;
 }
 
@@ -207,6 +348,9 @@ static ssize_t show_disp_mode(struct device * dev, struct device_attribute *attr
 static ssize_t store_disp_mode(struct device * dev, struct device_attribute *attr, const char * buf, size_t count)
 {
     set_disp_mode(buf);
+#ifdef CONFIG_AM_VIDEO2
+    cur_dual_disp_vic = hdmitx_device.cur_VIC;
+#endif    
     return 16;    
 }
 
@@ -678,6 +822,18 @@ hdmi_task_handle(void *data)
 
     while (hdmitx_device->hpd_event != 0xff)
     {
+#ifdef CONFIG_AM_VIDEO2
+        if(resume_flag){
+                if(cur_dual_disp_vic == HDMI_480p60)
+                    set_disp_mode("480p");
+                else if(cur_dual_disp_vic == HDMI_720p60)
+                    set_disp_mode("720p");
+                else if(cur_dual_disp_vic == HDMI_1080p60)
+                    set_disp_mode("1080p");
+            resume_flag=0;
+        }
+#endif				
+
         if((hdmitx_device->vic_count == 0)&&(hdmitx_device->mux_hpd_if_pin_high_flag)){
             if(hdmitx_device->HWOp.Cntl){
                 hdmitx_device->HWOp.Cntl(hdmitx_device, HDMITX_HWCMD_MUX_HPD_IF_PIN_HIGH, 0);
@@ -699,6 +855,14 @@ hdmi_task_handle(void *data)
 
 				switch_set_state(&sdev, 1);
                 hdmitx_device->hpd_event = 0;
+#ifdef CONFIG_AM_VIDEO2
+                if(cur_dual_disp_vic == HDMI_480p60)
+                    set_disp_mode("480p");
+                else if(cur_dual_disp_vic == HDMI_720p60)
+                    set_disp_mode("720p");
+                else if(cur_dual_disp_vic == HDMI_1080p60)
+                    set_disp_mode("1080p");
+#endif                    
             }    
         }
         else if(hdmitx_device->hpd_event == 2)
@@ -982,9 +1146,30 @@ static int amhdmitx_remove(struct platform_device *pdev)
     return 0;
 }
 
+#ifdef CONFIG_PM
+static int amhdmitx_suspend(struct platform_device *pdev,pm_message_t state)
+{
+    pr_info("amhdmitx: hdmirx_suspend\n");
+    return 0;
+}
+
+static int amhdmitx_resume(struct platform_device *pdev)
+{
+#ifdef CONFIG_AM_VIDEO2
+    resume_flag = 1;
+#endif
+    pr_info("amhdmitx: resume module\n");
+    return 0;
+}
+#endif
+
 static struct platform_driver amhdmitx_driver = {
     .probe      = amhdmitx_probe,
     .remove     = amhdmitx_remove,
+#ifdef CONFIG_PM
+    .suspend    = amhdmitx_suspend,
+    .resume     = amhdmitx_resume,
+#endif
     .driver     = {
         .name   = DEVICE_NAME,
 		    .owner	= THIS_MODULE,

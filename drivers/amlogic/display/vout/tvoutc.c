@@ -260,3 +260,24 @@ printk(" clk_util_clk_msr 29 = %d\n", clk_util_clk_msr(29));
     return 0;
 }
 
+
+#ifdef CONFIG_AM_VIDEO2
+int tvoutc_setmode2(tvmode_t mode)
+{
+    const  reg_t *s;
+
+    if (mode >= TVMODE_MAX) {
+        printk(KERN_ERR "Invalid video output modes.\n");
+        return -ENODEV;
+    }
+
+    printk(KERN_DEBUG "TV mode %s selected.\n", tvinfoTab[mode].id);
+   
+    s = tvregsTab[mode];
+			
+    while (MREG_END_MARKER != s->reg)
+        setreg(s++);
+    return 0;
+}
+
+#endif

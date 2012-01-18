@@ -2030,10 +2030,11 @@ static void hdmitx_set_pll(Hdmi_tx_video_para_t *param)
 
     Wr(HHI_VID_DIVIDER_CNTL, 0x10843);          //0x1066, set vid_pll_clk = HPLL_CLK_OUT_DIG / 5
 
+#ifndef CONFIG_AM_VIDEO2
     Wr_reg_bits(HHI_VID_CLK_CNTL, 0, 16, 3);    //0x105f    0: vid_pll_clk
     Wr_reg_bits(HHI_VID_CLK_CNTL, 0x1f, 0, 5);     //0x105f    1: DIV1_EN
     Wr_reg_bits(HHI_VID_CLK_CNTL, 1, 19, 1);    //0x105f    1: CLK_EN0
-
+#endif
     switch(param->VIC)
     {
         case HDMI_480p60:
@@ -2045,7 +2046,9 @@ static void hdmitx_set_pll(Hdmi_tx_video_para_t *param)
         case HDMI_576i50:
         case HDMI_576i50_16x9:
             Wr(HHI_VID_PLL_CNTL, (3<<18)|(2<<10)|(90<<0));    //27MHz=24MHz*45/4/10
+#ifndef CONFIG_AM_VIDEO2
             Wr(HHI_VID_CLK_DIV, 3);      //0x1059
+#endif
             Wr_reg_bits(HHI_HDMI_CLK_CNTL, 1, 16, 4);   //cts_hdmi_tx_pixel_clk
             break;
         case HDMI_1080p30:
@@ -2055,14 +2058,18 @@ static void hdmitx_set_pll(Hdmi_tx_video_para_t *param)
         case HDMI_1080i60:
         case HDMI_1080i50:
             Wr(HHI_VID_PLL_CNTL, (12<<10)|(371<<0));    //74.2MHz=24MHz*371/12/10
+#ifndef CONFIG_AM_VIDEO2
             Wr(HHI_VID_CLK_DIV, 0);      //0x1059
+#endif
             Wr_reg_bits(HHI_HDMI_CLK_CNTL, 1, 16, 4);   //cts_hdmi_tx_pixel_clk
                                                         //[19:16] 0:clk_div1 1:clk_div2 2:clk_div4 3: clk_div6 ...
             break;
         case HDMI_1080p60:
         case HDMI_1080p50:
             Wr(HHI_VID_PLL_CNTL, (6<<10)|(371<<0));    //148.4MHz=24MHz*371/6/10
+#ifndef CONFIG_AM_VIDEO2
             Wr(HHI_VID_CLK_DIV, 1);      //0x1059
+#endif
             Wr_reg_bits(HHI_HDMI_CLK_CNTL, 0, 16, 4);   //0x1073, cts_hdmi_tx_pixel_clk 
             break;
         default:

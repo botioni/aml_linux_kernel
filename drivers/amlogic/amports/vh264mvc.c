@@ -28,6 +28,7 @@
 #include <linux/amports/canvas.h>
 #include <linux/amports/vframe.h>
 #include <linux/amports/vframe_provider.h>
+#include <linux/amports/vframe_receiver.h>
 #include <linux/workqueue.h>
 #include <linux/dma-mapping.h>
 #include <asm/atomic.h>
@@ -57,10 +58,9 @@
 #define DROPPING_THREAD_HOLD    4
 #define DROPPING_FIRST_WAIT     6
 
-static const struct vframe_receiver_op_s *vf_receiver;
-static vframe_t *vh264mvc_vf_peek(void);
-static vframe_t *vh264mvc_vf_get(void);
-static void vh264mvc_vf_put(vframe_t *);
+static vframe_t *vh264mvc_vf_peek(void*);
+static vframe_t *vh264mvc_vf_get(void*);
+static void vh264mvc_vf_put(vframe_t *, void*);
 static int vh264mvc_event_cb(int type, void *data, void *private_data);
 
 static void vh264mvc_prot_init(void);
@@ -71,13 +71,14 @@ static const char vh264mvc_dec_id[] = "vh264mvc-dev";
 
 #define PROVIDER_NAME   "decoder.h264mvc"
 
-static const struct vframe_provider_s vh264mvc_vf_provider = {
+static const struct vframe_operations_s vh264mvc_vf_provider = {
     .peek = vh264mvc_vf_peek,
     .get = vh264mvc_vf_get,
     .put = vh264mvc_vf_put,
     .event_cb = vh264mvc_event_cb,
     .vf_states=NULL,
 };
+static struct vframe_provider_s vh264mvc_vf_prov;
 
 static u32 frame_width, frame_height, frame_dur;
 static struct timer_list recycle_timer;
@@ -279,7 +280,7 @@ static void set_frame_info(vframe_t *vf)
     return;
 }
 
-static vframe_t *vh264mvc_vf_peek(void)
+static vframe_t *vh264mvc_vf_peek(void* op_arg)
 {
     int ready_cnt = 0;
     vframe_t *vf, *vf_next;
@@ -371,10 +372,10 @@ static vframe_t *vh264mvc_vf_peek(void)
     return vf;
 }
 
-static vframe_t *vh264mvc_vf_get(void)
+static vframe_t *vh264mvc_vf_get(void* op_arg)
 {
     mvc_buf_t * mvc_buf;
-    vframe_t* vf = vh264mvc_vf_peek();
+    vframe_t* vf = vh264mvc_vf_peek(op_arg);
     if(vf){
         mvc_buf = to_mvcbuf(vf);
         list_del(&(mvc_buf->list));
@@ -400,7 +401,7 @@ static vframe_t *vh264mvc_vf_get(void)
     return vf;
 }
 
-static void vh264mvc_vf_put(vframe_t *vf)
+static void vh264mvc_vf_put(vframe_t *vf, void* op_arg)
 {
     mvc_buf_t * mvc_buf;
     if(vf_buf_init_flag == 0){
@@ -417,16 +418,14 @@ static int vh264mvc_event_cb(int type, void *data, void *private_data)
         unsigned long flags;
         amvdec_stop();
 #ifndef CONFIG_POST_PROCESS_MANAGER
-        vf_light_unreg_provider(&vh264mvc_vf_provider);
+        vf_light_unreg_provider(&vh264mvc_vf_prov);
 #endif
         spin_lock_irqsave(&lock, flags);
-        const struct vframe_receiver_op_s *vf_receiver_bak = vf_receiver;
         vh264mvc_local_init();
-        vf_receiver = vf_receiver_bak;
         vh264mvc_prot_init();
         spin_unlock_irqrestore(&lock, flags); 
 #ifndef CONFIG_POST_PROCESS_MANAGER
-        vf_reg_provider(&vh264mvc_vf_provider);
+        vf_reg_provider(&vh264mvc_vf_prov);
 #endif              
         amvdec_start();
     }
@@ -833,10 +832,7 @@ static void vh264mvc_isr(void)
                         in_list_flag = 1;
                         list_del(&(p->list));
                         list_add_tail(&(p->list), &ready_list_head);
-#ifdef CONFIG_POST_PROCESS_MANAGER
-                        if (vf_receiver)
-                            vf_receiver->event_cb(VFRAME_EVENT_PROVIDER_VFRAME_READY, NULL, NULL);	   
-#endif             
+                         vf_notify_receiver(PROVIDER_NAME,VFRAME_EVENT_PROVIDER_VFRAME_READY,NULL);
                     }
                 }
                 raw_local_irq_restore(fiq_flag);
@@ -1123,7 +1119,6 @@ static void vh264mvc_local_init(void)
     display_view_id = -1;
     display_POC = -1;
     no_dropping_cnt = 0;
-    vf_receiver = NULL;
 
 #ifdef DEBUG_PTS
     pts_missed = 0;
@@ -1208,14 +1203,10 @@ static s32 vh264mvc_init(void)
 
     stat |= STAT_ISR_REG;
 
- #ifdef CONFIG_POST_PROCESS_MANAGER
-    vf_receiver = vf_ppmgr_reg_provider(&vh264mvc_vf_provider);
-    if ((vf_receiver) && (vf_receiver->event_cb))
-        vf_receiver->event_cb(VFRAME_EVENT_PROVIDER_START, NULL, NULL); 	
- #else 
-    vf_reg_provider(&vh264mvc_vf_provider);
- #endif 
- 
+    vf_provider_init(&vh264mvc_vf_prov, PROVIDER_NAME, &vh264mvc_vf_provider, NULL);
+    vf_reg_provider(&vh264mvc_vf_prov);
+    vf_notify_receiver(PROVIDER_NAME,VFRAME_EVENT_PROVIDER_START,NULL);
+
     stat |= STAT_VF_HOOK;
 
     recycle_timer.data = (ulong) & recycle_timer;
@@ -1261,13 +1252,7 @@ static int vh264mvc_stop(void)
         ulong flags;
         spin_lock_irqsave(&lock, flags);
         spin_unlock_irqrestore(&lock, flags);
- #ifdef CONFIG_POST_PROCESS_MANAGER
-        vf_ppmgr_unreg_provider();
-        if ((vf_receiver) && (vf_receiver->event_cb))
-            vf_receiver->event_cb(VFRAME_EVENT_PROVIDER_UNREG, NULL, NULL); 	
- #else 
-        vf_unreg_provider(&vh264mvc_vf_provider);
- #endif  
+        vf_unreg_provider(&vh264mvc_vf_prov);
         stat &= ~STAT_VF_HOOK;
     }
 

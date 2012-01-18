@@ -21,6 +21,7 @@
 #include <linux/amports/canvas.h>
 #include <linux/amports/vframe.h>
 #include <linux/amports/vframe_provider.h>
+#include <linux/amports/vframe_receiver.h>
 #include <mach/am_regs.h>
 #include <linux/amlog.h>
 #include <linux/ge2d/ge2d_main.h>
@@ -87,6 +88,8 @@ static inline void vm_vf_put_from_provider(vframe_t *vf);
 #define GE2D_BIG_ENDIAN             (0 << GE2D_ENDIAN_SHIFT)
 #define GE2D_LITTLE_ENDIAN          (1 << GE2D_ENDIAN_SHIFT)
 
+#define PROVIDER_NAME "vm"
+#define RECEIVER_NAME "vm"
 static spinlock_t lock = SPIN_LOCK_UNLOCKED;
 
 static inline void ptr_atomic_wrap_inc(u32 *ptr)
@@ -111,7 +114,9 @@ struct semaphore  vb_done_sema;
 static inline vframe_t *vm_vf_get_from_provider(void);
 static inline vframe_t *vm_vf_peek_from_provider(void);
 static inline void vm_vf_put_from_provider(vframe_t *vf);
-
+static vframe_receiver_op_t* vf_vm_unreg_provider(void);
+static vframe_receiver_op_t* vf_vm_reg_provider();
+static void stop_vm_task(void) ;
 static int prepare_vframe(vframe_t *vf);
 
 
@@ -228,13 +233,14 @@ static void local_vf_put(vframe_t *vf)
     return 0;
 }*/
 
-static const struct vframe_provider_s vm_vf_provider =
+static const struct vframe_operations_s vm_vf_provider =
 {
     .peek = vm_vf_peek,
     .get  = vm_vf_get,
     .put  = vm_vf_put,
     .vf_states=vm_vf_states,
 };
+static struct vframe_provider_s vm_vf_prov;
 
 static int vm_receiver_event_fun(int type, void* data, void*);
 
@@ -242,6 +248,7 @@ static vframe_receiver_op_t vm_vf_receiver =
 {
     .event_cb = vm_receiver_event_fun
 };
+static struct vframe_receiver_s vm_vf_recv;
 static int vm_receiver_event_fun(int type, void* data, void* private_data)
 {
     switch(type){
@@ -249,11 +256,13 @@ static int vm_receiver_event_fun(int type, void* data, void* private_data)
             //up(&vb_start_sema);
             break;
         case VFRAME_EVENT_PROVIDER_START:
+		vf_vm_reg_provider();
 			vm_skip_count = gl_vm_skip_count; 
             test_zoom = 0;
             break;
         case VFRAME_EVENT_PROVIDER_UNREG:        
             vm_local_init();
+		vf_vm_unreg_provider();
             break;
             
         default:
@@ -304,36 +313,30 @@ void vm_local_init(void)
     fill_ptr=get_ptr=putting_ptr=put_ptr=0;
 }
 
-vframe_receiver_op_t* vf_vm_reg_provider(const vframe_provider_t *p )
+static vframe_receiver_op_t* vf_vm_unreg_provider(void)
+{
+//    ulong flags;    
+//    stop_vm_task();
+//    spin_lock_irqsave(&lock, flags); 
+//    vfp = NULL;
+//    spin_unlock_irqrestore(&lock, flags);
+    vf_unreg_provider(&vm_vf_prov);
+    return (vframe_receiver_op_t*)NULL;
+}
+static vframe_receiver_op_t* vf_vm_reg_provider( )
 {
     ulong flags;
 
     spin_lock_irqsave(&lock, flags);
-
-    if (vfp) {
-        vf_vm_unreg_provider();
-    }
-
-    vfp = p;
-
     spin_unlock_irqrestore(&lock, flags);
     
-    vf_reg_provider(&vm_vf_provider);
+    vf_reg_provider(&vm_vf_prov);
     start_vm_task();   
 #if 0   
     start_simulate_task();
 #endif    
     
     return &vm_vf_receiver;
-}
-vframe_receiver_op_t* vf_vm_unreg_provider(void)
-{
-    ulong flags;    
-    spin_lock_irqsave(&lock, flags); 
-    vfp = NULL;
-    spin_unlock_irqrestore(&lock, flags);
-    vf_unreg_provider(&vm_vf_provider);
-    return (vframe_receiver_op_t*)NULL;
 }
 
 
@@ -348,28 +351,31 @@ EXPORT_SYMBOL(vf_vm_unreg_provider);
 
 static inline vframe_t *vm_vf_peek_from_provider(void)
 {
-    if (vfp){
-        return vfp->peek();
-    }else{
+    struct vframe_provider_s *vfp;
+    vframe_t *vf;
+    vfp = vf_get_provider(RECEIVER_NAME);
+    if (!(vfp && vfp->ops && vfp->ops->peek))
         return NULL;
-    }
+    vf  = vfp->ops->peek(vfp->op_arg);
+    return vf;
 }
 
 static inline vframe_t *vm_vf_get_from_provider(void)
 {
-
-	if (vfp){
-    	return vfp->get();
-    }else{
+    struct vframe_provider_s *vfp;
+    vfp = vf_get_provider(RECEIVER_NAME);
+    if (!(vfp && vfp->ops && vfp->ops->peek))
         return NULL;
-    }
+    return vfp->ops->get(vfp->op_arg);
 }
 
 static inline void vm_vf_put_from_provider(vframe_t *vf)
 {
-    if (vfp){
-    	vfp->put(vf);
-    }
+	struct vframe_provider_s *vfp;
+	vfp = vf_get_provider(RECEIVER_NAME);
+	if (!(vfp && vfp->ops && vfp->ops->peek))
+	return;
+	vfp->ops->put(vf,vfp->op_arg);
 }
 
 /************************************************
@@ -1180,8 +1186,11 @@ int  init_vm_device(void)
 	}
     
     if(vm_buffer_init()<0) goto unregister_dev;
+    	vf_provider_init(&vm_vf_prov, PROVIDER_NAME ,&vm_vf_provider, NULL);	
+	vf_reg_provider(&vm_vf_prov);
+	vf_receiver_init(&vm_vf_recv, RECEIVER_NAME, &vm_vf_receiver, NULL);    
+	vf_reg_receiver(&vm_vf_recv);
 	return 0;
-    vf_reg_provider(&vm_vf_provider);
 unregister_dev:
     class_unregister(vm_device.cla);
     return -1;

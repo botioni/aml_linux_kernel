@@ -1,6 +1,8 @@
 #
 # Makefile for TVIN.
 #
+obj-$(CONFIG_TVIN_VIUIN) += tvin_viuin.o
+tvin_viuin-objs := viu_in.o
 
 obj-$(CONFIG_TVIN_BT656IN) += tvin_bt656in.o
 tvin_bt656in-objs := bt656_601_in.o

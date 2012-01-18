@@ -31,6 +31,7 @@
 #define VDIN_MUX_CVD2                   4
 #define VDIN_MUX_HDMI                   5
 #define VDIN_MUX_DVIN                   6
+#define VDIN_MUX_VIU                    7
 
 #define VDIN_MAP_Y_G                    0
 #define VDIN_MAP_BPB                    1
@@ -359,6 +360,9 @@ static inline void vdin_set_top(unsigned int offset, enum tvin_port_e port, unsi
         case 0x80: // dvin
             vdin_mux = VDIN_MUX_DVIN;
             break;
+        case 0xc0: //viu
+            vdin_mux = VDIN_MUX_VIU;
+            break;            
         default:
             vdin_mux = VDIN_MUX_NULL;
             break;
@@ -1016,6 +1020,10 @@ inline void vdin_set_default_regmap(unsigned int offset)
     // [    1] asfifo_dvin.clr_ov_flag      = 0
     // [    0] asfifo_dvin.rst              = 0
     WRITE_CBUS_REG((VDIN_ASFIFO_CTRL2         + offset), 0x000000e4);
+#endif
+
+#if defined(CONFIG_ARCH_MESON3)
+    WRITE_CBUS_REG((VDIN_ASFIFO_CTRL3         + offset), 0x000000e2);
 #endif
 
     // [    0]      matrix.en               = 0 ***sub_module.enable***

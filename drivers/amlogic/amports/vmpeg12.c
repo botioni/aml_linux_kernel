@@ -31,6 +31,7 @@
 #include <linux/amports/vframe.h>
 #include <linux/amports/vfp.h>
 #include <linux/amports/vframe_provider.h>
+#include <linux/amports/vframe_receiver.h>
 #include <mach/am_regs.h>
 
 #ifdef CONFIG_AM_VDEC_MPEG12_LOG
@@ -88,23 +89,26 @@ MODULE_AMLOG(LOG_LEVEL_ERROR, 0, LOG_LEVEL_DESC, LOG_DEFAULT_MASK_DESC);
 #define STAT_TIMER_ARM      0x10
 #define STAT_VDEC_RUN       0x20
 
-static vframe_t *vmpeg_vf_peek(void);
-static vframe_t *vmpeg_vf_get(void);
-static void vmpeg_vf_put(vframe_t *);
+static vframe_t *vmpeg_vf_peek(void*);
+static vframe_t *vmpeg_vf_get(void*);
+static void vmpeg_vf_put(vframe_t *, void*);
+static int  vmpeg_vf_states(vframe_states_t *states, void*);
 static int vmpeg_event_cb(int type, void *data, void *private_data);
-static int  vmpeg_vf_states(vframe_states_t *states);
 
 static void vmpeg12_prot_init(void);
 static void vmpeg12_local_init(void);
 
 static const char vmpeg12_dec_id[] = "vmpeg12-dev";
-static const struct vframe_provider_s vmpeg_vf_provider = {
+#define PROVIDER_NAME   "decoder.mpeg12"
+static const struct vframe_operations_s vmpeg_vf_provider =
+{
     .peek = vmpeg_vf_peek,
     .get  = vmpeg_vf_get,
     .put  = vmpeg_vf_put,
     .event_cb = vmpeg_event_cb,
     .vf_states = vmpeg_vf_states,
 };
+static struct vframe_provider_s vmpeg_vf_prov;
 
 static const u32 frame_rate_tab[16] = {
     96000 / 30, 96000 / 24, 96000 / 24, 96000 / 25,
@@ -114,7 +118,7 @@ static const u32 frame_rate_tab[16] = {
     96000 / 24, 96000 / 24, 96000 / 24, 96000 / 24,
     96000 / 24, 96000 / 24, 96000 / 24
 };
-static const struct vframe_receiver_op_s *vf_receiver;
+
 static struct vframe_s vfqool[VF_POOL_SIZE];
 static s32 vfbuf_use[VF_POOL_SIZE];
 static struct vframe_s *vfp_pool_newframe[VF_POOL_SIZE+1];
@@ -267,8 +271,7 @@ static irqreturn_t vmpeg12_isr(int irq, void *dev_id)
             } else {
                 vfq_push(&display_q, vf);
             }
-            if (vf_receiver)
-    	        vf_receiver->event_cb(VFRAME_EVENT_PROVIDER_VFRAME_READY, NULL, NULL);	            
+            vf_notify_receiver(PROVIDER_NAME,VFRAME_EVENT_PROVIDER_VFRAME_READY,NULL);
 
         } else {
             u32 index = ((reg & 7) - 1) & 3;
@@ -293,6 +296,7 @@ static irqreturn_t vmpeg12_isr(int irq, void *dev_id)
                 vfq_push(&recycle_q, vf);
             } else {
                 vfq_push(&display_q, vf);
+                vf_notify_receiver(PROVIDER_NAME,VFRAME_EVENT_PROVIDER_VFRAME_READY,NULL);
             }
 
             vf = vfq_pop(&newframe_q);
@@ -313,9 +317,8 @@ static irqreturn_t vmpeg12_isr(int irq, void *dev_id)
                 vfq_push(&recycle_q, vf);
             } else {
                 vfq_push(&display_q, vf);
+                vf_notify_receiver(PROVIDER_NAME,VFRAME_EVENT_PROVIDER_VFRAME_READY,NULL);
             }
-            if (vf_receiver)
-    	        vf_receiver->event_cb(VFRAME_EVENT_PROVIDER_VFRAME_READY, NULL, NULL);	            
         }
 
         WRITE_MPEG_REG(MREG_BUFFEROUT, 0);
@@ -324,17 +327,17 @@ static irqreturn_t vmpeg12_isr(int irq, void *dev_id)
     return IRQ_HANDLED;
 }
 
-static vframe_t *vmpeg_vf_peek(void)
+static vframe_t *vmpeg_vf_peek(void* op_arg)
 {
     return vfq_peek(&display_q);
 }
 
-static vframe_t *vmpeg_vf_get(void)
+static vframe_t *vmpeg_vf_get(void* op_arg)
 {
     return vfq_pop(&display_q);
 }
 
-static void vmpeg_vf_put(vframe_t *vf)
+static void vmpeg_vf_put(vframe_t *vf, void* op_arg)
 {
     vfq_push(&recycle_q, vf);
 }
@@ -345,23 +348,21 @@ static int vmpeg_event_cb(int type, void *data, void *private_data)
         unsigned long flags;
         amvdec_stop();
 #ifndef CONFIG_POST_PROCESS_MANAGER
-        vf_light_unreg_provider(&vmpeg_vf_provider);
+        vf_light_unreg_provider(&vmpeg_vf_prov);
 #endif
         spin_lock_irqsave(&lock, flags);
-        const struct vframe_receiver_op_s *vf_receiver_bak = vf_receiver;
         vmpeg12_local_init();
-        vf_receiver = vf_receiver_bak;
         vmpeg12_prot_init();
         spin_unlock_irqrestore(&lock, flags); 
 #ifndef CONFIG_POST_PROCESS_MANAGER
-        vf_reg_provider(&vmpeg_vf_provider);
+        vf_reg_provider(&vmpeg_vf_prov);
 #endif              
         amvdec_start();
     }
     return 0;        
 }
 
-static int  vmpeg_vf_states(vframe_states_t *states)
+static int  vmpeg_vf_states(vframe_states_t *states, void* op_arg)
 {
     unsigned long flags;
     spin_lock_irqsave(&lock, flags);
@@ -509,7 +510,6 @@ static void vmpeg12_prot_init(void)
 static void vmpeg12_local_init(void)
 {
     int i;
-	vf_receiver = NULL;
     vfq_init(&display_q, VF_POOL_SIZE+1, &vfp_pool_display[0]);
     vfq_init(&recycle_q, VF_POOL_SIZE+1, &vfp_pool_recycle[0]);
     vfq_init(&newframe_q, VF_POOL_SIZE+1, &vfp_pool_newframe[0]);
@@ -560,11 +560,12 @@ static s32 vmpeg12_init(void)
 
     stat |= STAT_ISR_REG;
  #ifdef CONFIG_POST_PROCESS_MANAGER
-	vf_receiver = vf_ppmgr_reg_provider(&vmpeg_vf_provider);
-	if ((vf_receiver) && (vf_receiver->event_cb))
-	vf_receiver->event_cb(VFRAME_EVENT_PROVIDER_START, NULL, NULL); 	
+    vf_provider_init(&vmpeg_vf_prov, PROVIDER_NAME, &vmpeg_vf_provider, NULL);
+    vf_reg_provider(&vmpeg_vf_prov);
+    vf_notify_receiver(PROVIDER_NAME,VFRAME_EVENT_PROVIDER_START,NULL);
  #else 
- 	vf_reg_provider(&vmpeg_vf_provider);
+    vf_provider_init(&vmpeg_vf_prov, PROVIDER_NAME, &vmpeg_vf_provider, NULL);
+    vf_reg_provider(&vmpeg_vf_prov);
  #endif 
 
     stat |= STAT_VF_HOOK;
@@ -636,13 +637,7 @@ static int amvdec_mpeg12_remove(struct platform_device *pdev)
         vfq_init(&newframe_q, VF_POOL_SIZE+1, &vfp_pool_newframe[0]);
         spin_unlock_irqrestore(&lock, flags);
 
- #ifdef CONFIG_POST_PROCESS_MANAGER
-	vf_ppmgr_unreg_provider();
-	if ((vf_receiver) && (vf_receiver->event_cb))
-	vf_receiver->event_cb(VFRAME_EVENT_PROVIDER_UNREG, NULL, NULL); 	
- #else 
- 	vf_unreg_provider(&vmpeg_vf_provider);
- #endif         
+    vf_unreg_provider(&vmpeg_vf_prov);
         stat &= ~STAT_VF_HOOK;
     }
 

@@ -42,6 +42,10 @@ obj-$(CONFIG_AM_VIDEO) += amvideo.o
 amvideo-objs := video.o vpp.o
 amvideo-y    := video.o vpp.o
 
+obj-$(CONFIG_AM_VIDEO2) += amvideo2.o
+amvideo2-objs := video2.o vpp2.o
+amvideo2-y    := video2.o vpp2.o
+
 obj-$(CONFIG_AM_DEINTERLACE) += deinterlace.o
 
 obj-$(CONFIG_AM_TIMESYNC) += amtsync.o

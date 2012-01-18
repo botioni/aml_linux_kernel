@@ -38,6 +38,7 @@
 #include <mach/am_regs.h>
 #include <linux/amports/vframe.h>
 #include <linux/amports/vframe_provider.h>
+#include <linux/amports/vframe_receiver.h>
 #include <linux/tvin/tvin.h>
 
 /* TVIN headers */
@@ -55,8 +56,14 @@
 #define VDIN_MODULE_NAME        "vdin"
 #define VDIN_DEVICE_NAME        "vdin"
 #define VDIN_CLASS_NAME         "vdin"
-
+#define PROVIDER_NAME   "vdin"
+#if defined(CONFIG_ARCH_MESON)
 #define VDIN_COUNT              1
+#elif defined(CONFIG_ARCH_MESON2)
+#define VDIN_COUNT              2
+#elif defined(CONFIG_ARCH_MESON3)
+#define VDIN_COUNT              1
+#endif
 
 #define VDIN_PUT_INTERVAL       1    //(HZ/100)   //10ms, #define HZ 100
 
@@ -65,7 +72,15 @@
 static dev_t vdin_devno;
 static struct class *vdin_clsp;
 
+static int debug;
+
+#if defined(CONFIG_ARCH_MESON)
 unsigned int vdin_addr_offset[VDIN_COUNT] = {0x00};
+#elif defined(CONFIG_ARCH_MESON2)
+unsigned int vdin_addr_offset[VDIN_COUNT] = {0x00, 0x70};
+#elif defined(CONFIG_ARCH_MESON3)
+unsigned int vdin_addr_offset[VDIN_COUNT] = {0x00};
+#endif
 
 static vdin_dev_t *vdin_devp[VDIN_COUNT];
 
@@ -164,6 +179,7 @@ static void vdin_start_dec(struct vdin_dev_s *devp)
 {
     vdin_vf_init();
     vdin_reg_vf_provider();
+     vf_notify_receiver(PROVIDER_NAME,VFRAME_EVENT_PROVIDER_START,NULL);
 #ifdef VDIN_DBG_MSG_CNT
         vdin_dbg_msg.vdin_isr_hard_counter = 0;
         vdin_dbg_msg.vdin_tasklet_counter = 0;
@@ -217,7 +233,6 @@ int start_tvin_service(int no ,tvin_parm_t *para)
     tasklet_enable(&devp->isr_tasklet);
     devp->pre_irq_time = jiffies,
     enable_irq(devp->irq);      
-    vdin_notify_receiver(VFRAME_EVENT_PROVIDER_START,NULL ,NULL);
     
 }
 
@@ -231,7 +246,8 @@ int stop_tvin_service(int no)
     devp->flags &= (~VDIN_FLAG_DEC_STARTED);  
             disable_irq_nosync(devp->irq);
             tasklet_disable_nosync(&devp->isr_tasklet);     
-    vdin_notify_receiver(VFRAME_EVENT_PROVIDER_UNREG,NULL ,NULL);
+//    vdin_notify_receiver(VFRAME_EVENT_PROVIDER_UNREG,NULL ,NULL);
+//vf_notify_receiver(PROVIDER_NAME,VFRAME_EVENT_PROVIDER_UNREG,NULL);
     vdin_stop_dec(devp);
     
 }
@@ -355,8 +371,9 @@ static void vdin_isr_tasklet(unsigned long arg)
         vdin_set_vframe_prop_info(vf, devp->addr_offset);
 
         vfq_push_display(vf);   
-        vdin_notify_receiver(VFRAME_EVENT_PROVIDER_VFRAME_READY,NULL ,NULL);
             
+       // vdin_notify_receiver(VFRAME_EVENT_PROVIDER_VFRAME_READY,NULL ,NULL);
+ 	 vf_notify_receiver(PROVIDER_NAME,VFRAME_EVENT_PROVIDER_VFRAME_READY,NULL);           
 #ifdef VDIN_DBG_MSG_CNT
         vdin_dbg_msg.vdin_tasklet_valid_type_cnt++;
 #endif

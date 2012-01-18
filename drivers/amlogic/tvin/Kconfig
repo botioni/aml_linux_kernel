@@ -35,6 +35,12 @@ config TVIN_AFE
 	help
 		AFE device driver.
 
+config TVIN_VIUIN
+	bool "Amlogic TVIN VIUIN device"
+	default n
+	help
+		VIUIN device driver.
+
 config TVIN_VDIN
 	bool "Amlogic TVIN VDIN device"
 	default n

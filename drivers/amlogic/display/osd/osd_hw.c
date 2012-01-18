@@ -34,6 +34,7 @@
 #include <linux/amports/canvas.h>
 #include "osd_log.h"
 #include <linux/amlog.h>
+#include <linux/amports/vframe_receiver.h>
 #include "osd_hw_def.h"
 
 #define  FIQ_VSYNC
@@ -46,12 +47,12 @@ static bool osd_vf_need_update = false;
 /********************************************************************/
 /***********		osd psedu frame provider 			*****************/
 /********************************************************************/
-static vframe_t *osd_vf_peek(void)
+static vframe_t *osd_vf_peek(void* op_arg)
 {
 	return ((osd_vf_need_update && (vf.width > 0) && (vf.height > 0)) ? &vf : NULL);
 }
 
-static vframe_t *osd_vf_get(void)
+static vframe_t *osd_vf_get(void* op_arg)
 {
 	if (osd_vf_need_update) {
 		osd_vf_need_update = false;
@@ -60,12 +61,16 @@ static vframe_t *osd_vf_get(void)
 	return NULL;
 }
 
-static const struct vframe_provider_s osd_vf_provider =
+#define PROVIDER_NAME   "osd"
+static const struct vframe_operations_s osd_vf_provider =
 {
     .peek = osd_vf_peek,
     .get  = osd_vf_get,
     .put  = NULL,
 };
+
+static struct vframe_provider_s osd_vf_prov;
+static unsigned char osd_vf_prov_init = 0;
 
 static inline void  osd_update_3d_mode(int enable_osd1,int enable_osd2)
 {
@@ -441,7 +446,11 @@ void osd_free_scale_enable_hw(u32 index,u32 enable)
 			vf.type = (VIDTYPE_NO_VIDEO_ENABLE | VIDTYPE_PROGRESSIVE | VIDTYPE_VIU_FIELD);
 			vf.ratio_control=DISP_RATIO_FORCECONFIG|DISP_RATIO_NO_KEEPRATIO;
 #ifdef CONFIG_AM_VIDEO 			
-			vf_reg_provider(&osd_vf_provider);
+      if(osd_vf_prov_init==0){
+            vf_provider_init(&osd_vf_prov, PROVIDER_NAME, &osd_vf_provider, NULL);
+            osd_vf_prov_init = 1;
+        }
+			vf_reg_provider(&osd_vf_prov);
 #endif
 			memcpy(&save_disp_data,&osd_hw.dispdata[OSD1],sizeof(dispdata_t));
 			memcpy(&save_pan_data,&osd_hw.pandata[OSD1],sizeof(pandata_t));
@@ -465,7 +474,7 @@ void osd_free_scale_enable_hw(u32 index,u32 enable)
 			add_to_update_list(OSD1,DISP_GEOMETRY);
 			add_to_update_list(OSD1,OSD_COLOR_MODE);
 #ifdef CONFIG_AM_VIDEO  			
-			vf_unreg_provider(&osd_vf_provider);
+			vf_unreg_provider(&osd_vf_prov);
 #endif
 				
 		}
@@ -478,8 +487,9 @@ void osd_free_scale_enable_hw(u32 index,u32 enable)
 	osd_enable_hw(osd_hw.enable[index],index);
 #ifdef CONFIG_AM_VIDEO  
 #ifdef CONFIG_POST_PROCESS_MANAGER
-	if(mode_changed)
-		vf_ppmgr_reset();
+	if(mode_changed){
+        vf_notify_receiver(PROVIDER_NAME,VFRAME_EVENT_PROVIDER_RESET,NULL);
+    }
 #endif
 #endif
 }

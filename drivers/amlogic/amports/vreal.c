@@ -32,6 +32,7 @@
 #include <linux/amports/canvas.h>
 #include <linux/amports/vframe.h>
 #include <linux/amports/vframe_provider.h>
+#include <linux/amports/vframe_receiver.h>
 #include <mach/am_regs.h>
 #include <asm/uaccess.h>
 
@@ -92,25 +93,27 @@
 #define REAL_RECYCLE_Q_SIZE (1<<(REAL_RECYCLE_Q_BITS))
 #define REAL_RECYCLE_Q_MASK ((REAL_RECYCLE_Q_SIZE)-1)
 
-static vframe_t *vreal_vf_peek(void);
-static vframe_t *vreal_vf_get(void);
-static void vreal_vf_put(vframe_t *);
+static vframe_t *vreal_vf_peek(void*);
+static vframe_t *vreal_vf_get(void*);
+static void vreal_vf_put(vframe_t *, void*);
+static int  vreal_vf_states(vframe_states_t *states, void*);
 static int vreal_event_cb(int type, void *data, void *private_data);
-static int  vreal_vf_states(vframe_states_t *states);
 
 static void vreal_prot_init(void);
 static void vreal_local_init(void);
 
 static const char vreal_dec_id[] = "vreal-dev";
 
-static const struct vframe_provider_s vreal_vf_provider = {
+#define PROVIDER_NAME   "decoder.real"
+static const struct vframe_operations_s vreal_vf_provider = {
     .peek = vreal_vf_peek,
     .get = vreal_vf_get,
     .put = vreal_vf_put,
     .event_cb = vreal_event_cb,
     .vf_states = vreal_vf_states,
 };
-static const struct vframe_receiver_op_s *vf_receiver;
+static struct vframe_provider_s vreal_vf_prov;
+
 static struct vframe_s vfpool[VF_POOL_SIZE];
 static u32 vfpool_idx[VF_POOL_SIZE];
 static s32 vfbuf_use[4];
@@ -318,8 +321,7 @@ static void vreal_isr(void)
         INCPTR(fill_ptr);
 
         frame_count++;
-        if (vf_receiver)
-	        vf_receiver->event_cb(VFRAME_EVENT_PROVIDER_VFRAME_READY, NULL, NULL);	
+        vf_notify_receiver(PROVIDER_NAME,VFRAME_EVENT_PROVIDER_VFRAME_READY,NULL);
         WRITE_MPEG_REG(FROM_AMRISC, 0);
     }
 
@@ -332,7 +334,7 @@ static void vreal_isr(void)
 #endif
 }
 
-static vframe_t *vreal_vf_peek(void)
+static vframe_t *vreal_vf_peek(void* op_arg)
 {
     if (get_ptr == fill_ptr) {
         return NULL;
@@ -341,7 +343,7 @@ static vframe_t *vreal_vf_peek(void)
     return &vfpool[get_ptr];
 }
 
-static vframe_t *vreal_vf_get(void)
+static vframe_t *vreal_vf_get(void* op_arg)
 {
     vframe_t *vf;
 
@@ -356,7 +358,7 @@ static vframe_t *vreal_vf_get(void)
     return vf;
 }
 
-static void vreal_vf_put(vframe_t *vf)
+static void vreal_vf_put(vframe_t *vf, void* op_arg)
 {
     INCPTR(putting_ptr);
 }
@@ -367,23 +369,21 @@ static int vreal_event_cb(int type, void *data, void *private_data)
         unsigned long flags;
         amvdec_stop();
 #ifndef CONFIG_POST_PROCESS_MANAGER
-        vf_light_unreg_provider(&vreal_vf_provider);
+        vf_light_unreg_provider(&vreal_vf_prov);
 #endif
         spin_lock_irqsave(&lock, flags);
-        const struct vframe_receiver_op_s *vf_receiver_bak = vf_receiver;
         vreal_local_init();
-        vf_receiver = vf_receiver_bak;
         vreal_prot_init();
         spin_unlock_irqrestore(&lock, flags); 
 #ifndef CONFIG_POST_PROCESS_MANAGER
-        vf_reg_provider(&vreal_vf_provider);
+        vf_reg_provider(&vreal_vf_prov);
 #endif              
         amvdec_start();
     }
     return 0;        
 }
 
-static int  vreal_vf_states(vframe_states_t *states)
+static int  vreal_vf_states(vframe_states_t *states, void* op_arg)
 {
     unsigned long flags;
     int i;
@@ -570,7 +570,7 @@ static void vreal_local_init(void)
 
     //vreal_ratio = vreal_amstream_dec_info.ratio;
     vreal_ratio = 0x100;
-	vf_receiver = NULL;
+
     fill_ptr = get_ptr = put_ptr = putting_ptr = 0;
 
     frame_prog = 0;
@@ -691,11 +691,12 @@ s32 vreal_init(void)
 
     stat |= STAT_ISR_REG;
  #ifdef CONFIG_POST_PROCESS_MANAGER
-	vf_receiver = vf_ppmgr_reg_provider(&vreal_vf_provider);
-	if ((vf_receiver) && (vf_receiver->event_cb))
-	vf_receiver->event_cb(VFRAME_EVENT_PROVIDER_START, NULL, NULL); 	
+    vf_provider_init(&vreal_vf_prov, PROVIDER_NAME, &vreal_vf_provider, NULL);
+    vf_reg_provider(&vreal_vf_prov);
+    vf_notify_receiver(PROVIDER_NAME,VFRAME_EVENT_PROVIDER_START,NULL);
  #else 
- 	vf_reg_provider(&vreal_vf_provider);
+    vf_provider_init(&vreal_vf_prov, PROVIDER_NAME, &vreal_vf_provider, NULL);
+    vf_reg_provider(&vreal_vf_prov);
  #endif 
 
     stat |= STAT_VF_HOOK;
@@ -765,13 +766,7 @@ static int amvdec_real_remove(struct platform_device *pdev)
         spin_lock_irqsave(&lock, flags);
         fill_ptr = get_ptr = put_ptr = putting_ptr = 0;
         spin_unlock_irqrestore(&lock, flags);
- #ifdef CONFIG_POST_PROCESS_MANAGER
-	vf_ppmgr_unreg_provider();
-	if ((vf_receiver) && (vf_receiver->event_cb))
-	vf_receiver->event_cb(VFRAME_EVENT_PROVIDER_UNREG, NULL, NULL); 	
- #else 
- 	vf_unreg_provider(&vreal_vf_provider);
- #endif         
+        vf_unreg_provider(&vreal_vf_prov);
         stat &= ~STAT_VF_HOOK;
     }
 

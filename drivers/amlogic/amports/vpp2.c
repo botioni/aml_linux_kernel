@@ -15,7 +15,6 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307, USA
  *
- * Author:  Tim Yao <timyao@amlogic.com>
  *
  */
 
@@ -26,7 +25,7 @@
 #include "vpp.h"
 
 #include <linux/amports/vframe_provider.h>
-
+#undef CONFIG_AM_DEINTERLACE
 #ifdef CONFIG_AM_DEINTERLACE
 #include "deinterlace.h"
 #endif
@@ -44,7 +43,7 @@
 #define COEF_4POINT_TRIANGLE 2
 #define COEF_BILINEAR        3
 
-const u32 vpp_filter_coefs_bicubic_sharp[] = {
+const u32 vpp2_filter_coefs_bicubic_sharp[] = {
     3,
     33 | 0x8000,
     //    0x01f80090, 0x01f80100, 0xff7f0200, 0xfe7f0300,
@@ -59,7 +58,7 @@ const u32 vpp_filter_coefs_bicubic_sharp[] = {
     0xf84848f8
 };
 
-const u32 vpp_filter_coefs_bicubic[] = {
+const u32 vpp2_filter_coefs_bicubic[] = {
     4,
     33,
     0x00800000, 0x007f0100, 0xff7f0200, 0xfe7f0300,
@@ -73,7 +72,7 @@ const u32 vpp_filter_coefs_bicubic[] = {
     0xf84848f8
 };
 
-const u32 vpp_filter_coefs_bilinear[] = {
+const u32 vpp2_filter_coefs_bilinear[] = {
     4,
     33,
     0x00800000, 0x007e0200, 0x007c0400, 0x007a0600,
@@ -87,7 +86,7 @@ const u32 vpp_filter_coefs_bilinear[] = {
     0x00404000
 };
 
-const u32 vpp_filter_coefs_3point_triangle[] = {
+const u32 vpp2_filter_coefs_3point_triangle[] = {
     3,
     33,
     0x40400000, 0x3f400100, 0x3d410200, 0x3c410300,
@@ -101,7 +100,7 @@ const u32 vpp_filter_coefs_3point_triangle[] = {
     0x1a4c1a00
 };
 
-const u32 vpp_filter_coefs_4point_triangle[] = {
+const u32 vpp2_filter_coefs_4point_triangle[] = {
     4,
     33,
     0x20402000, 0x20402000, 0x1f3f2101, 0x1f3f2101,
@@ -116,10 +115,10 @@ const u32 vpp_filter_coefs_4point_triangle[] = {
 };
 
 static const u32 *filter_table[] = {
-    vpp_filter_coefs_bicubic,
-    vpp_filter_coefs_3point_triangle,
-    vpp_filter_coefs_4point_triangle,
-    vpp_filter_coefs_bilinear
+    vpp2_filter_coefs_bicubic,
+    vpp2_filter_coefs_3point_triangle,
+    vpp2_filter_coefs_4point_triangle,
+    vpp2_filter_coefs_bilinear
 };
 
 static u32 vpp_wide_mode;
@@ -212,7 +211,7 @@ static void f2v_get_vertical_phase(u32 zoom_ratio,
 }
 
 static int
-vpp_process_speed_check(u32 width_in,
+vpp2_process_speed_check(u32 width_in,
                         u32 height_in,
                         u32 height_out,
                         u32 height_screen,vpp_frame_par_t *next_frame_par)
@@ -239,7 +238,7 @@ vpp_process_speed_check(u32 width_in,
 }
 
 static void
-vpp_set_filters2(u32 width_in,
+vpp2_set_filters2(u32 width_in,
                  u32 height_in,
                  u32 width_out,
                  u32 height_out,
@@ -450,7 +449,7 @@ RESTART:
     next_frame_par->VPP_hf_ini_phase_ = vpp_zoom_center_x & 0xff;
 
     if ((ratio_x == (1 << 18)) && (next_frame_par->VPP_hf_ini_phase_ == 0)) {
-        filter->vpp_horz_coeff = vpp_filter_coefs_bicubic_sharp;
+        filter->vpp_horz_coeff = vpp2_filter_coefs_bicubic_sharp;
     } else {
         filter->vpp_horz_coeff = filter_table[COEF_BICUBIC];
     }
@@ -504,7 +503,7 @@ RESTART:
      * frames.
      */
     if ((next_frame_par->vscale_skip_count < 4) &&
-        vpp_process_speed_check(next_frame_par->VPP_hd_end_lines_ - next_frame_par->VPP_hd_start_lines_ + 1,
+        vpp2_process_speed_check(next_frame_par->VPP_hd_end_lines_ - next_frame_par->VPP_hd_start_lines_ + 1,
                                 (next_frame_par->VPP_vd_end_lines_ - next_frame_par->VPP_vd_start_lines_ + 1) / (next_frame_par->vscale_skip_count + 1) ,
                                 next_frame_par->VPP_vsc_endp - next_frame_par->VPP_vsc_startp,
                                 height_out >> ((vpp_flags & VPP_FLAG_INTERLACE_OUT) ? 1 : 0),next_frame_par)) {
@@ -523,7 +522,7 @@ RESTART:
 }
 
 void
-vpp_set_filters(u32 wide_mode,
+vpp2_set_filters(u32 wide_mode,
                 vframe_t *vf,
                 vpp_frame_par_t *next_frame_par,
                 const vinfo_t *vinfo)
@@ -581,7 +580,7 @@ vpp_set_filters(u32 wide_mode,
     next_frame_par->VPP_post_blend_vd_h_end_ = vinfo->width - 1;
     next_frame_par->VPP_post_blend_h_size_ = vinfo->width;
 
-    vpp_set_filters2(src_width,
+    vpp2_set_filters2(src_width,
                      src_height,
                      vinfo->width,
                      vinfo->height,
@@ -590,7 +589,7 @@ vpp_set_filters(u32 wide_mode,
                      next_frame_par);
 }
 
-void vpp_set_video_layer_position(s32 x, s32 y, s32 w, s32 h)
+void vpp2_set_video_layer_position(s32 x, s32 y, s32 w, s32 h)
 {
     if ((w < 0) || (h < 0)) {
         return;
@@ -602,7 +601,7 @@ void vpp_set_video_layer_position(s32 x, s32 y, s32 w, s32 h)
     video_layer_height = h;
 }
 
-void vpp_get_video_layer_position(s32 *x, s32 *y, s32 *w, s32 *h)
+void vpp2_get_video_layer_position(s32 *x, s32 *y, s32 *w, s32 *h)
 {
     *x = video_layer_left;
     *y = video_layer_top;
@@ -610,12 +609,12 @@ void vpp_get_video_layer_position(s32 *x, s32 *y, s32 *w, s32 *h)
     *h = video_layer_height;
 }
 
-void vpp_set_zoom_ratio(u32 r)
+void vpp2_set_zoom_ratio(u32 r)
 {
     vpp_zoom_ratio = r;
 }
 
-u32 vpp_get_zoom_ratio(void)
+u32 vpp2_get_zoom_ratio(void)
 {
    return vpp_zoom_ratio;
 }

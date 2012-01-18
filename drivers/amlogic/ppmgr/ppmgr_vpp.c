@@ -15,6 +15,7 @@
 #include <linux/amports/vframe.h>
 #include <linux/amports/vfp.h>
 #include <linux/amports/vframe_provider.h>
+#include <linux/amports/vframe_receiver.h>
 #include <mach/am_regs.h>
 #include <linux/amlog.h>
 #include <linux/ge2d/ge2d_main.h>
@@ -34,6 +35,10 @@
 #define ASS_POOL_SIZE 1
 #endif
 #define PPMGR_CANVAS_INDEX 0x70
+#define PPMGR_DEINTERLACE_BUF_CANVAS 0x77   /*for progressive mjpeg use*/
+
+#define RECEIVER_NAME "ppmgr"
+#define PROVIDER_NAME   "ppmgr"
 
 #define THREAD_INTERRUPT 0
 #define THREAD_RUNNING 1
@@ -83,6 +88,9 @@ static vfq_t q_ready, q_free;
 static struct semaphore thread_sem;
 static DEFINE_MUTEX(ppmgr_mutex);
 
+const vframe_receiver_op_t* vf_ppmgr_reg_provider();
+void vf_ppmgr_unreg_provider(void);
+void vf_ppmgr_reset(void);
 static inline void ppmgr_vf_put_dec(vframe_t *vf);
 
 #define to_ppframe(vf)	\
@@ -165,7 +173,8 @@ static int ppmgr_event_cb(int type, void *data, void *private_data)
 #endif
             }
         }
-    }
+    } 
+
     return 0;        
 }
 
@@ -184,7 +193,8 @@ static int ppmgr_vf_states(vframe_states_t *states)
     return 0;
 }
 
-static const struct vframe_provider_s ppmgr_vf_provider =
+//static const struct vframe_provider_s ppmgr_vf_provider =
+static const struct vframe_operations_s ppmgr_vf_provider = 
 {
     .peek = ppmgr_vf_peek,
     .get  = ppmgr_vf_get,
@@ -192,7 +202,7 @@ static const struct vframe_provider_s ppmgr_vf_provider =
     .event_cb = ppmgr_event_cb,
     .vf_states = ppmgr_vf_states,
 };
-
+static struct vframe_provider_s ppmgr_vf_prov;
 /************************************************
 *
 *   ppmgr as a frame receiver
@@ -205,6 +215,7 @@ static const struct vframe_receiver_op_s ppmgr_vf_receiver =
 {
     .event_cb = ppmgr_receiver_event_fun
 };
+static struct vframe_receiver_s ppmgr_vf_recv;
 
 static int ppmgr_receiver_event_fun(int type, void *data, void *private_data)
 {
@@ -224,6 +235,23 @@ static int ppmgr_receiver_event_fun(int type, void *data, void *private_data)
                 return RECEIVER_INACTIVE;
             }
             break;    
+            case VFRAME_EVENT_PROVIDER_START:
+#ifdef DDD
+        printk("register now \n");
+#endif                        
+            vf_ppmgr_reg_provider();
+            break;
+            case VFRAME_EVENT_PROVIDER_UNREG:
+#ifdef DDD
+        printk("unregister now \n");
+#endif            
+            vf_ppmgr_unreg_provider();
+            break;
+            case VFRAME_EVENT_PROVIDER_LIGHT_UNREG:
+            break;                 
+            case VFRAME_EVENT_PROVIDER_RESET       :
+            	vf_ppmgr_reset();
+            	break;
         default:
             break;        
     }    		
@@ -254,24 +282,26 @@ void vf_local_init(void)
 
 static const struct vframe_provider_s *dec_vfp = NULL;
 
-const vframe_receiver_op_t* vf_ppmgr_reg_provider(const struct vframe_provider_s *p)
+const vframe_receiver_op_t* vf_ppmgr_reg_provider()
 {  
     const vframe_receiver_op_t *r = NULL;
     
     mutex_lock(&ppmgr_mutex);
 
-    if (dec_vfp) {
-        mutex_unlock(&ppmgr_mutex);
-        return NULL;
-    }
-
     vf_local_init();
 
-    vf_reg_provider(&ppmgr_vf_provider);
+    //vf_reg_provider(&ppmgr_vf_prov);
+	if(ppmgr_device.video_out==0) {
+		vf_reg_provider(&ppmgr_vf_prov);
+	} 
+#	ifdef CONFIG_V4L_AMLOGIC_VIDEO 
+	else  {
+		v4l_reg_provider(&ppmgr_vf_prov);
+	}
+#			endif
 
     if (start_vpp_task() == 0) {
         r = &ppmgr_vf_receiver;
-        dec_vfp = p;
     }
     
     mutex_unlock(&ppmgr_mutex);
@@ -285,7 +315,7 @@ void vf_ppmgr_unreg_provider(void)
 
     stop_vpp_task();
 
-    vf_unreg_provider(&ppmgr_vf_provider);
+    vf_unreg_provider(&ppmgr_vf_prov);
 
     dec_vfp = NULL;
 
@@ -300,26 +330,52 @@ void vf_ppmgr_reset(void)
     }
 }
 
+void vf_ppmgr_init_receiver(void)
+{
+    vf_receiver_init(&ppmgr_vf_recv, RECEIVER_NAME, &ppmgr_vf_receiver, NULL);
+}
+
+void vf_ppmgr_reg_receiver(void)
+{
+    vf_reg_receiver(&ppmgr_vf_recv);
+}
+void vf_ppmgr_init_provider()
+{
+	vf_provider_init(&ppmgr_vf_prov, PROVIDER_NAME ,&ppmgr_vf_provider, NULL);
+}
+
 static inline vframe_t *ppmgr_vf_peek_dec(void)
 {
-    if (dec_vfp)
-        return dec_vfp->peek();
+    struct vframe_provider_s *vfp;
+    vframe_t *vf;
+    vfp = vf_get_provider(RECEIVER_NAME);
+    if (!(vfp && vfp->ops && vfp->ops->peek))
+        return NULL;
 
-    return NULL;
+
+    vf  = vfp->ops->peek(vfp->op_arg);
+    return vf;	
 }
 
 static inline vframe_t *ppmgr_vf_get_dec(void)
 {
-    if ((dec_vfp) && (!ppmgr_blocking))
-    	return dec_vfp->get();
-
+    struct vframe_provider_s *vfp;
+    vframe_t *vf;
+    unsigned canvas_addr ;
+    vfp = vf_get_provider(RECEIVER_NAME);
+    if (!(vfp && vfp->ops && vfp->ops->peek))
     return NULL;
+    vf =   vfp->ops->get(vfp->op_arg);
+    return vf;
 }
 
 static inline void ppmgr_vf_put_dec(vframe_t *vf)
 {
-    if ((dec_vfp) && (!ppmgr_blocking))
-        dec_vfp->put(vf);
+	struct vframe_provider_s *vfp;
+	vfp = vf_get_provider(RECEIVER_NAME);
+	if (!(vfp && vfp->ops && vfp->ops->peek))
+	return;
+	vfp->ops->put(vf,vfp->op_arg);
 }
 
 
@@ -371,7 +427,6 @@ static void process_vf_rotate(vframe_t *vf, ge2d_context_t *context, config_para
     ppframe_t *pp_vf;
     canvas_t cs0,cs1,cs2,cd;
     u32 mode = 0;
-    unsigned cur_angle = 0;
 #ifdef CONFIG_POST_PROCESS_MANAGER_PPSCALER
     int rect_x = 0, rect_y = 0, rect_w = 0, rect_h = 0;
     u32 ratio = 100;
@@ -388,8 +443,7 @@ static void process_vf_rotate(vframe_t *vf, ge2d_context_t *context, config_para
 
     pp_vf = to_ppframe(new_vf);
     pp_vf->angle = 0;
-    cur_angle = (ppmgr_device.videoangle + vf->orientation)%4;
-    pp_vf->dec_frame = (ppmgr_device.bypass || (cur_angle == 0)) ? vf : NULL;
+    pp_vf->dec_frame = (ppmgr_device.bypass || (ppmgr_device.videoangle == 0)) ? vf : NULL;
 
 #ifdef CONFIG_POST_PROCESS_MANAGER_PPSCALER
     if(mode)
@@ -402,13 +456,12 @@ static void process_vf_rotate(vframe_t *vf, ge2d_context_t *context, config_para
         vfq_push(&q_ready, new_vf);
         return;
     }
-    pp_vf->angle   =  cur_angle;
+    pp_vf->angle   =  ppmgr_device.videoangle;
     new_vf->duration = vf->duration;
     new_vf->duration_pulldown = vf->duration_pulldown;
     new_vf->pts = vf->pts;
     new_vf->type = VIDTYPE_VIU_444 | VIDTYPE_VIU_SINGLE_PLANE | VIDTYPE_VIU_FIELD;
     new_vf->canvas0Addr = new_vf->canvas1Addr = index2canvas(pp_vf->index);
-    new_vf->orientation = vf->orientation;
 
     if(interlace_mode == VIDTYPE_INTERLACE_TOP)
         pic_struct = (GE2D_FORMAT_M24_YUV420T & (3<<3));
@@ -416,10 +469,10 @@ static void process_vf_rotate(vframe_t *vf, ge2d_context_t *context, config_para
         pic_struct = (GE2D_FORMAT_M24_YUV420B & (3<<3));
 
 #ifndef CONFIG_POST_PROCESS_MANAGER_PPSCALER
-    vf_rotate_adjust(vf, new_vf, cur_angle);
+    vf_rotate_adjust(vf, new_vf, ppmgr_device.videoangle);
 #else
     if(!mode){
-        vf_rotate_adjust(vf, new_vf, cur_angle);
+        vf_rotate_adjust(vf, new_vf, ppmgr_device.videoangle);
         scale_clear_count = 0;
     }else{
         pp_vf->angle = 0;
@@ -645,15 +698,15 @@ static void process_vf_rotate(vframe_t *vf, ge2d_context_t *context, config_para
     ge2d_config->dst_xy_swap=0;
 
     if(!mode){
-        if(cur_angle==1){
+        if(ppmgr_device.videoangle==1){
             ge2d_config->dst_xy_swap=1;
             ge2d_config->dst_para.x_rev = 1;
         }
-        else if(cur_angle==2){
+        else if(ppmgr_device.videoangle==2){
             ge2d_config->dst_para.x_rev = 1;
             ge2d_config->dst_para.y_rev=1;        
         }
-        else if(cur_angle==3)  {
+        else if(ppmgr_device.videoangle==3)  {
             ge2d_config->dst_xy_swap=1;
             ge2d_config->dst_para.y_rev=1;
         }
@@ -670,7 +723,7 @@ static void process_vf_rotate(vframe_t *vf, ge2d_context_t *context, config_para
         return;
     }
     if(!mode)
-        pp_vf->angle = cur_angle ;
+        pp_vf->angle = ppmgr_device.videoangle ;
 
 #ifdef CONFIG_POST_PROCESS_MANAGER_PPSCALER
     if(mode){
@@ -757,10 +810,9 @@ static void process_vf_change(vframe_t *vf, ge2d_context_t *context, config_para
     temp_vf.type = VIDTYPE_VIU_444 | VIDTYPE_VIU_SINGLE_PLANE | VIDTYPE_VIU_FIELD;
     temp_vf.canvas0Addr = temp_vf.canvas1Addr = ass_index;
     int temp_angle = 0;
-    int cur_angle = (ppmgr_device.videoangle + vf->orientation)%4;
-    temp_angle = (cur_angle >= pp_vf->angle)?(cur_angle -  pp_vf->angle):(cur_angle + 4 -  pp_vf->angle);
+    temp_angle = (ppmgr_device.videoangle  >= pp_vf->angle )?(ppmgr_device.videoangle -  pp_vf->angle) :  (ppmgr_device.videoangle + 4 -  pp_vf->angle)   ;
     
-    pp_vf->angle = cur_angle;
+    pp_vf->angle = ppmgr_device.videoangle ;
     vf_rotate_adjust(vf, &temp_vf, temp_angle);
 
     int interlace_mode = vf->type & VIDTYPE_TYPEMASK;
@@ -1250,11 +1302,17 @@ static int ppmgr_task(void *data)
         }
         
         if (ppmgr_blocking) {
-            if((dec_vfp)&&(dec_vfp->event_cb))
-                dec_vfp->event_cb(VFRAME_EVENT_RECEIVER_RESET,NULL,NULL);
-            vf_light_unreg_provider(&ppmgr_vf_provider);
+            vf_light_unreg_provider(&ppmgr_vf_prov);
             vf_local_init();
-            vf_reg_provider(&ppmgr_vf_provider);
+            //vf_reg_provider(&ppmgr_vf_prov);
+			if(ppmgr_device.video_out==0) {
+				vf_reg_provider(&ppmgr_vf_prov);
+			} 
+#			ifdef CONFIG_V4L_AMLOGIC_VIDEO 
+			else  {
+				v4l_reg_provider(&ppmgr_vf_prov);
+			}
+#			endif
             ppmgr_blocking = false;
             up(&thread_sem);
             printk("ppmgr rebuild from light-unregister\n");
@@ -1267,14 +1325,7 @@ static int ppmgr_task(void *data)
     }
 
     destroy_ge2d_work_queue(context);
-    while(!kthread_should_stop()){
-	/* 	   may not call stop, wait..
-                   it is killed by SIGTERM,eixt on down_interruptible
-		   if not call stop,this thread may on do_exit and 
-		   kthread_stop may not work good;
-	*/
-	msleep(10);
-    }
+
     return 0;
 }
 
@@ -1303,9 +1354,10 @@ int ppmgr_buffer_init(void)
     u32 decbuf_size;
     char* buf_start;
     int buf_size;
-
+    vf_ppmgr_init_provider();
+    vf_ppmgr_init_receiver();
     get_ppmgr_buf_info(&buf_start,&buf_size);
-    vf_reg_provider(&ppmgr_vf_provider);
+    vf_ppmgr_reg_receiver();
 
     vout_register_client(&vout_notifier);
     ppmgr_device.vinfo = get_current_vinfo();
@@ -1355,9 +1407,6 @@ int ppmgr_buffer_init(void)
 int start_vpp_task(void)
 {
     if (!task) {
-        ppmgr_blocking = false;
-        if(get_vfp()!=&ppmgr_vf_provider)
-            vf_reg_provider(&ppmgr_vf_provider);
         vf_local_init();
         task = kthread_run(ppmgr_task, 0, "ppmgr");
     }
