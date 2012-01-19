@@ -58,6 +58,7 @@ MODULE_AMLOG(AMLOG_DEFAULT_LEVEL, 0x0, LOG_LEVEL_DESC, LOG_MASK_DESC);
 static myfb_dev_t  *gp_fbdev_list[OSD_COUNT]={NULL,NULL};
 
 static DEFINE_MUTEX(dbg_mutex);
+static int request2XScaleValue = 0;
 
 
 const color_bit_define_t*	
@@ -770,6 +771,23 @@ static int parse_para(const char *para, int para_num, int *result)
 
 	return count;
 }
+static ssize_t show_request_2xscale(struct device *device, struct device_attribute *attr,
+			 char *buf)
+{
+    return sprintf(buf, "%d\n", request2XScaleValue);
+
+}
+
+static ssize_t store__request_2xscale(struct device *device, struct device_attribute *attr,
+			 const char *buf, size_t count)
+{
+    unsigned value;
+    ssize_t r;
+    r = sscanf(buf, "%d", &value);
+    request2XScaleValue = value;
+    return count;
+}
+
 
 static ssize_t show_free_scale_axis(struct device *device, struct device_attribute *attr,
 			 char *buf)
@@ -965,6 +983,7 @@ static struct device_attribute osd_attrs[] = {
 	__ATTR(block_windows, S_IRUGO|S_IWUSR, show_block_windows, store_block_windows),
 	__ATTR(block_mode, S_IRUGO|S_IWUSR, show_block_mode, store_block_mode),
 	__ATTR(free_scale_axis, S_IRUGO|S_IWUSR, show_free_scale_axis, store_free_scale_axis),
+	__ATTR(request2XScale, S_IRUGO|S_IWUSR, show_request_2xscale, store__request_2xscale),
 };		
 
 #ifdef  CONFIG_PM
