@@ -1102,14 +1102,8 @@ static struct platform_device aml_gps_device = {
 
 static void gps_pinmux_init(void)
 {
-    //uart_cts_b
-    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_4,(1<<19)||(1<<23));
-    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_8,(1<<25)||(1<<29));
-    SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_4,(1<<7));
-    //uart_rts_b
-    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_4,(1<<18)||(1<<22));
-    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_8,(1<<24)||(1<<28));
-    SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_4,(1<<6));
+    //uart_cts_b not connected
+    //uart_rts_b not connected
     //uart_tx_b
     CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_4,(1<<1)||(1<<15));
     SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_4,(1<<5));
