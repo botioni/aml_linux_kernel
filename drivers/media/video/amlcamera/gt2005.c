@@ -350,8 +350,8 @@ static struct v4l2_frmsize_discrete gt2005_prev_resolution[2]= //should include 
 
 static struct v4l2_frmsize_discrete gt2005_pic_resolution[2]=
 {
-	{800,600},
 	{1600,1200},
+	{800,600}
 };
 
 /* ------------------------------------------------------------------
