@@ -647,7 +647,7 @@ static struct platform_device codec_device = {
 };
 #endif
 
-#if defined(CONFIG_AM_VIDEO)
+#if defined(CONFIG_AM_DEINTERLACE) || defined (CONFIG_DEINTERLACE)
 static struct resource deinterlace_resources[] = {
     [0] = {
         .start =  DI_ADDR_START,
@@ -1750,7 +1750,7 @@ static struct platform_device __initdata *platform_devs[] = {
 #if defined(CONFIG_AM_STREAMING)
     &codec_device,
 #endif
-#if defined(CONFIG_AM_VIDEO)
+#if defined(CONFIG_AM_DEINTERLACE) || defined (CONFIG_DEINTERLACE)
     &deinterlace_device,
 #endif
 #if defined(CONFIG_TVIN_VDIN)
