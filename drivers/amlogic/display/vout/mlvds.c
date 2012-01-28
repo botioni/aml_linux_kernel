@@ -39,8 +39,6 @@
 
 extern unsigned int clk_util_clk_msr(unsigned int clk_mux);
 
-#define FIQ_VSYNC
-
 #define BL_MAX_LEVEL 0x100
 #define PANEL_NAME	"panel"
 

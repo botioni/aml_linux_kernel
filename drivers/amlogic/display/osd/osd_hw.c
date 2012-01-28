@@ -35,9 +35,10 @@
 #include "osd_log.h"
 #include <linux/amlog.h>
 #include <linux/amports/vframe_receiver.h>
-#include "osd_hw_def.h"
 
 #define  FIQ_VSYNC
+#include "osd_hw_def.h"
+
 
 
 static DECLARE_WAIT_QUEUE_HEAD(osd_vsync_wq);
