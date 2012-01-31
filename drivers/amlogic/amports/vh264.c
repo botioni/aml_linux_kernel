@@ -607,14 +607,13 @@ static void vh264_isr(void)
         WRITE_MPEG_REG(AV_SCRATCH_4, addr);
         WRITE_MPEG_REG(AV_SCRATCH_0, (max_reference_size << 24) | (actual_dpb_size << 16) | (max_dpb_size << 8));
     } else if ((cpu_cmd & 0xff) == 2) {
-        int frame_mb_only, pic_struct_present, pic_struct, prog_frame, poc_sel, idr_flag, neg_poc;
+        int pic_struct_present, pic_struct, prog_frame, poc_sel, idr_flag, neg_poc;
         int i, status, num_frame, b_offset;
         int current_error_count;
 
         vh264_running = 1;
         vh264_no_disp_count = 0;
         num_frame = (cpu_cmd >> 8) & 0xff;
-        frame_mb_only = seq_info & 0x8000;
         pic_struct_present = seq_info & 0x10;
 
         current_error_count = READ_MPEG_REG(AV_SCRATCH_D);
@@ -732,7 +731,7 @@ static void vh264_isr(void)
                 }
             }
 
-            if (frame_mb_only || prog_frame || (pic_struct_present && pic_struct <= PIC_TRIPLE_FRAME)) {
+            if (prog_frame || (pic_struct_present && pic_struct <= PIC_TRIPLE_FRAME)) {
                 if (pic_struct_present) {
                     if (pic_struct == PIC_TOP_BOT_TOP || pic_struct == PIC_BOT_TOP_BOT) {
                         vf->duration += vf->duration >> 1;
