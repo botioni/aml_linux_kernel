@@ -143,7 +143,7 @@ struct hci_dev {
 	struct rfkill		*rfkill;
 
 	struct module 		*owner;
-#ifdef CONFIG_BT_DEVICE
+#ifdef CONFIG_BCM4329_BT
     int inquiry_state;
 #endif
 

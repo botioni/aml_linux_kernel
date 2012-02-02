@@ -1212,7 +1212,7 @@ static inline void hci_cmd_complete_evt(struct hci_dev *hdev, struct sk_buff *sk
 
 	switch (opcode) {
 	case HCI_OP_INQUIRY_CANCEL:
-#ifdef CONFIG_BT_DEVICE
+#ifdef CONFIG_BCM4329_BT
         if(hdev->inquiry_state){
             hdev->inquiry_state = 0;
             printk("inquiry %d\n", hdev->inquiry_state);
@@ -1223,7 +1223,7 @@ static inline void hci_cmd_complete_evt(struct hci_dev *hdev, struct sk_buff *sk
 		break;
 
 	case HCI_OP_EXIT_PERIODIC_INQ:
-#ifdef CONFIG_BT_DEVICE
+#ifdef CONFIG_BCM4329_BT
         if(hdev->inquiry_state){
             hdev->inquiry_state = 0;
             printk("inquiry %d\n", hdev->inquiry_state);
@@ -1328,7 +1328,7 @@ static inline void hci_cmd_complete_evt(struct hci_dev *hdev, struct sk_buff *sk
 	case HCI_OP_READ_BD_ADDR:
 		hci_cc_read_bd_addr(hdev, skb);
 		break;
-#ifdef CONFIG_BT_DEVICE
+#ifdef CONFIG_BCM4329_BT
     case HCI_OP_INQUIRY:
     case 0x0403:
         if(!hdev->inquiry_state){
@@ -1361,11 +1361,13 @@ static inline void hci_cmd_status_evt(struct hci_dev *hdev, struct sk_buff *skb)
 
 	switch (opcode) {
 	case HCI_OP_INQUIRY:
+#ifdef CONFIG_BCM4329_BT
         if(!hdev->inquiry_state){
             tasklet_disable(&hdev->tx_task);
             hdev->inquiry_state = 1;
             printk("inquiry %d\n", hdev->inquiry_state);
         }
+#endif
 		hci_cs_inquiry(hdev, ev->status);
 		break;
 
@@ -1861,7 +1863,7 @@ void hci_event_packet(struct hci_dev *hdev, struct sk_buff *skb)
 
 	switch (event) {
 	case HCI_EV_INQUIRY_COMPLETE:
-#ifdef CONFIG_BT_DEVICE
+#ifdef CONFIG_BCM4329_BT
         if(hdev->inquiry_state){
             hdev->inquiry_state = 0;
             tasklet_enable(&hdev->tx_task);

@@ -872,6 +872,7 @@ CONFIG_BCM4329_OOB_INTR_ONLY=y
 # Amlogic BT Device Support
 #
 CONFIG_BT_DEVICE=y
+CONFIG_BCM4329_BT=y
 
 #
 # Media devices
