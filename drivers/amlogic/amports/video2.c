@@ -57,6 +57,10 @@
 #include <asm/fiq.h>
 #include <asm/uaccess.h>
 
+#ifdef CONFIG_TVIN_VIUIN
+#include <linux/tvin/tvin.h>
+#endif
+
 #include "videolog.h"
 
 #ifdef CONFIG_AM_VIDEO_LOG
@@ -262,6 +266,7 @@ static u32 disable_video = VIDEO_DISABLE_NONE;
 static u32 frame_repeat_count = 0;
 #endif
 
+static u32 clone = 1;
 /* vout */
 
 static const vinfo_t *vinfo = NULL;
@@ -653,33 +658,32 @@ static void vsync_toggle_frame(vframe_t *vf)
     //WRITE_MPEG_REG(VD2_IF0_CANVAS1, disp_canvas[1]);
 
     /* set video PTS */
-#if 0
-//rain
-    if (cur_dispbuf != vf) {
-        if (vf->pts != 0) {
-            amlog_mask(LOG_MASK_TIMESTAMP,
-                       "vpts to vf->pts: 0x%x, scr: 0x%x, abs_scr: 0x%x\n",
-                       vf->pts, timestamp_pcrscr_get(), READ_MPEG_REG(SCR_HIU));
-
-            timestamp_vpts_set(vf->pts);
-        } else if (cur_dispbuf) {
-            amlog_mask(LOG_MASK_TIMESTAMP,
-                       "vpts inc: 0x%x, scr: 0x%x, abs_scr: 0x%x\n",
-                       timestamp_vpts_get() + DUR2PTS(cur_dispbuf->duration),
-                       timestamp_pcrscr_get(), READ_MPEG_REG(SCR_HIU));
-
-            timestamp_vpts_inc(DUR2PTS(cur_dispbuf->duration));
-
-            vpts_remainder += DUR2PTS_RM(cur_dispbuf->duration);
-            if (vpts_remainder >= 0xf) {
-                vpts_remainder -= 0xf;
-                timestamp_vpts_inc(-1);
+    if(clone == 0){
+        if (cur_dispbuf != vf) {
+            if (vf->pts != 0) {
+                amlog_mask(LOG_MASK_TIMESTAMP,
+                           "vpts to vf->pts: 0x%x, scr: 0x%x, abs_scr: 0x%x\n",
+                           vf->pts, timestamp_pcrscr_get(), READ_MPEG_REG(SCR_HIU));
+    
+                timestamp_vpts_set(vf->pts);
+            } else if (cur_dispbuf) {
+                amlog_mask(LOG_MASK_TIMESTAMP,
+                           "vpts inc: 0x%x, scr: 0x%x, abs_scr: 0x%x\n",
+                           timestamp_vpts_get() + DUR2PTS(cur_dispbuf->duration),
+                           timestamp_pcrscr_get(), READ_MPEG_REG(SCR_HIU));
+    
+                timestamp_vpts_inc(DUR2PTS(cur_dispbuf->duration));
+    
+                vpts_remainder += DUR2PTS_RM(cur_dispbuf->duration);
+                if (vpts_remainder >= 0xf) {
+                    vpts_remainder -= 0xf;
+                    timestamp_vpts_inc(-1);
+                }
             }
+    
+            vf->type_backup = vf->type;
         }
-
-        vf->type_backup = vf->type;
     }
-#endif
     /* enable new config on the new frames */
     if ((first_picture) ||
         (cur_dispbuf->bufWidth != vf->bufWidth) ||
@@ -1021,10 +1025,10 @@ static inline bool vpts_expire(vframe_t *cur_vf, vframe_t *next_vf)
 {
     u32 pts = next_vf->pts;
     u32 systime;
-#if 1
-//by rain
-    return 1;
-#endif    
+
+    if(clone == 1){
+        return 1;
+    }
     
      if ((cur_vf == NULL) || (cur_dispbuf == &vf_local)) {
         return true;
@@ -1180,11 +1184,10 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
     vout_type = detect_vout_type();
     hold_line = calc_hold_line();
 
-#if 0
-//rain
-    timestamp_pcrscr_inc(vsync_pts_inc);
-	timestamp_apts_inc(vsync_pts_inc);
-#endif
+    if(clone == 0){
+      timestamp_pcrscr_inc(vsync_pts_inc);
+	    timestamp_apts_inc(vsync_pts_inc);
+	  }
 #ifdef SLOW_SYNC_REPEAT
     frame_repeat_count++;
 #endif
@@ -1194,11 +1197,10 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
         vf = video_vf_peek();
 
         if (vf) {
-#if 0
-//rain
-            tsync_avevent_locked(VIDEO_START,
+            if(clone == 0){
+                tsync_avevent_locked(VIDEO_START,
                           (vf->pts) ? vf->pts : timestamp_vpts_get());
-#endif
+            }
 #ifdef SLOW_SYNC_REPEAT
             frame_repeat_count = 0;
 #endif
@@ -1277,7 +1279,9 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
             if(debug&0x10000){
                 return;
             }
-            break; //rain
+            if(clone == 1){
+                break;
+            }
 
         } else {
 #ifdef SLOW_SYNC_REPEAT
@@ -1645,10 +1649,9 @@ static void video_vf_unreg_provider(void)
         vf_keep_current();
     }
 
-#if 0
-//rain
-    tsync_avevent(VIDEO_STOP, 0);
-#endif
+    if(clone == 0){
+        tsync_avevent(VIDEO_STOP, 0);
+    }
 #ifdef CONFIG_AM_DEINTERLACE
     if (deinterlace_mode == 2) {
         disable_pre_deinterlace();
@@ -2300,6 +2303,78 @@ static ssize_t video_disable_store(struct class *cla, struct class_attribute *at
     return count;
 }
 
+static int tvin_started = 0;
+static void stop_clone(void)
+{
+#ifdef CONFIG_TVIN_VIUIN
+    if(tvin_started){
+        stop_tvin_service(0);
+        tvin_started=0;
+    }
+#endif
+}
+
+static int start_clone(void)
+{
+    int ret = -1;
+#ifdef CONFIG_TVIN_VIUIN
+    tvin_parm_t para;
+    const vinfo_t *info = get_current_vinfo();
+    if(tvin_started){
+      stop_tvin_service(0);
+      tvin_started=0;
+      ret = 0;
+    }
+    if(info){
+        para.fmt_info.h_active = info->width;
+        para.fmt_info.v_active = info->height;
+        para.port  = TVIN_PORT_VIU_ENCT;
+        para.fmt_info.fmt = TVIN_SIG_FMT_MAX+1;//TVIN_SIG_FMT_MAX+1;TVIN_SIG_FMT_CAMERA_1280X720P_30Hz
+        para.fmt_info.frame_rate = 150;
+        para.fmt_info.hsync_phase = 1;
+      	para.fmt_info.vsync_phase  = 0;	
+        start_tvin_service(0,&para);
+        tvin_started = 1;
+        printk("%s: source %dx%d\n", __func__,info->width, info->height);
+        ret = 0;
+    }
+#endif
+    return ret;
+}
+
+
+static ssize_t video_clone_show(struct class *cla, struct class_attribute *attr, char *buf)
+{
+    return sprintf(buf, "%d\n", clone);
+}
+
+static ssize_t video_clone_store(struct class *cla, struct class_attribute *attr, const char *buf,
+                                   size_t count)
+{
+    size_t r;
+    int val;
+
+    r = sscanf(buf, "%d", &val);
+    if (r != 1) {
+        return -EINVAL;
+    }
+    printk("video clone try be changed to %d by %s\n",val,current->comm);
+    if ((val < 0) || (val > 1)) {
+        return -EINVAL;
+    }
+
+    if(clone != val){
+        if (val != 0) {
+            start_clone();
+            clone = 1;
+        } else {
+            stop_clone();
+            clone = 0;
+        }
+    }
+    return count;
+}
+
 static ssize_t frame_addr_show(struct class *cla, struct class_attribute *attr, char *buf)
 {
     canvas_t canvas;
@@ -2484,6 +2559,10 @@ static struct class_attribute amvideo_class_attrs[] = {
     S_IRUGO | S_IWUSR,
     video_saturation_show,
     video_saturation_store),
+    __ATTR(clone,
+    S_IRUGO | S_IWUSR,
+    video_clone_show,
+    video_clone_store),
     __ATTR_RO(device_resolution),
     __ATTR_RO(frame_addr),
     __ATTR_RO(frame_canvas_width),
@@ -2553,6 +2632,9 @@ static int vout_notify_callback(struct notifier_block *block, unsigned long cmd 
 
     spin_unlock_irqrestore(&lock, flags);
 
+    if(clone){
+        start_clone();
+    }
     return 0;
 }
 

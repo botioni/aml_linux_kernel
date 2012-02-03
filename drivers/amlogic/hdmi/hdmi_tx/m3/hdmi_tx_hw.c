@@ -2053,10 +2053,10 @@ static void hdmitx_set_pll(Hdmi_tx_video_para_t *param)
             Wr(HHI_VID_PLL_CNTL, (3<<18)|(2<<10)|(90<<0));    //27MHz=24MHz*45/4/10
             if(cur_vout_index !=2 ){
                 Wr(HHI_VID_CLK_DIV, 3);      //0x1059
-                Wr_reg_bits(HHI_HDMI_CLK_CNTL, 1, 16, 4);   //cts_hdmi_tx_pixel_clk
+                Wr_reg_bits(HHI_HDMI_CLK_CNTL, 1, 16, 4);   //cts_hdmi_tx_pixel_clk from clk_div2
             }
             else{
-                Wr_reg_bits(HHI_HDMI_CLK_CNTL, 9, 16, 4);   //cts_hdmi_tx_pixel_clk
+                Wr_reg_bits(HHI_HDMI_CLK_CNTL, 9, 16, 4);   //cts_hdmi_tx_pixel_clk from v2_clk_div2
             }
             break;
         case HDMI_1080p30:
@@ -2068,10 +2068,10 @@ static void hdmitx_set_pll(Hdmi_tx_video_para_t *param)
             Wr(HHI_VID_PLL_CNTL, (12<<10)|(371<<0));    //74.2MHz=24MHz*371/12/10
             if(cur_vout_index !=2 ){
                 Wr(HHI_VID_CLK_DIV, 0);      //0x1059
-                Wr_reg_bits(HHI_HDMI_CLK_CNTL, 1, 16, 4);   //cts_hdmi_tx_pixel_clk
+                Wr_reg_bits(HHI_HDMI_CLK_CNTL, 1, 16, 4);   //cts_hdmi_tx_pixel_clk from clk_div2
             }
             else{
-                Wr_reg_bits(HHI_HDMI_CLK_CNTL, 9, 16, 4);   //cts_hdmi_tx_pixel_clk
+                Wr_reg_bits(HHI_HDMI_CLK_CNTL, 9, 16, 4);   //cts_hdmi_tx_pixel_clk from v2_clk_div2
             }
                                                         //[19:16] 0:clk_div1 1:clk_div2 2:clk_div4 3: clk_div6 ...
             break;
@@ -2080,10 +2080,10 @@ static void hdmitx_set_pll(Hdmi_tx_video_para_t *param)
             Wr(HHI_VID_PLL_CNTL, (6<<10)|(371<<0));    //148.4MHz=24MHz*371/6/10
             if(cur_vout_index !=2 ){
                 Wr(HHI_VID_CLK_DIV, 1);      //0x1059
-                Wr_reg_bits(HHI_HDMI_CLK_CNTL, 0, 16, 4);   //0x1073, cts_hdmi_tx_pixel_clk 
+                Wr_reg_bits(HHI_HDMI_CLK_CNTL, 0, 16, 4);   //0x1073, cts_hdmi_tx_pixel_clk from clk_div1
             }
             else{
-                Wr_reg_bits(HHI_HDMI_CLK_CNTL, 9, 16, 4);   //cts_hdmi_tx_pixel_clk
+                Wr_reg_bits(HHI_HDMI_CLK_CNTL, 8, 16, 4);   //cts_hdmi_tx_pixel_clk from v2_clk_div1
             }
             break;
         default:

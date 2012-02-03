@@ -453,38 +453,6 @@ static int notify_callback_v(struct notifier_block *block, unsigned long cmd , v
     return 0;
 }
 
-#ifdef CONFIG_AM_TV_OUTPUT2
-static int tvin_started = 0;
-
-static void start_clone_disp(void)
-{
-    tvin_parm_t para;
-    const vinfo_t *info = get_current_vinfo();
-    if(tvin_started){
-      stop_tvin_service(0);
-      tvin_started=0;
-    }
-    if(info){
-        para.fmt_info.h_active = info->width;
-        para.fmt_info.v_active = info->height;
-        para.port  = TVIN_PORT_VIU_ENCT;
-        para.fmt_info.fmt = TVIN_SIG_FMT_MAX+1;//TVIN_SIG_FMT_MAX+1;TVIN_SIG_FMT_CAMERA_1280X720P_30Hz
-        para.fmt_info.frame_rate = 150;
-        para.fmt_info.hsync_phase = 1;
-      	para.fmt_info.vsync_phase  = 0;	
-        start_tvin_service(0,&para);
-        tvin_started = 1;
-        printk("%s: source %dx%d\n", __func__,info->width, info->height);
-    }
-}
-    
-static int notify_callback_v2(struct notifier_block *block, unsigned long cmd , void *p)
-{
-    printk("%s\n",__func__);
-    start_clone_disp();
-    return 0;
-}
-#endif
 
 static struct notifier_block viuin_notifier = {
     .notifier_call  = viuin_notifier_callback,
@@ -494,11 +462,6 @@ static struct notifier_block notifier_nb_v = {
     .notifier_call    = notify_callback_v,
 };
 
-#ifdef CONFIG_AM_TV_OUTPUT2
-static struct notifier_block notifier_nb_v2 = {
-    .notifier_call    = notify_callback_v2,
-};
-#endif
 
 static int amvdec_viuin_probe(struct platform_device *pdev)
 {
@@ -509,9 +472,6 @@ static int amvdec_viuin_probe(struct platform_device *pdev)
     tvin_dec_notifier_register(&viuin_notifier);
 
     vout_register_client(&notifier_nb_v);
-#ifdef CONFIG_AM_TV_OUTPUT2
-    vout2_register_client(&notifier_nb_v2);
-#endif    
     pr_dbg("amvdec_viuin probe end.\n");
     return r;
 }
@@ -521,9 +481,6 @@ static int amvdec_viuin_remove(struct platform_device *pdev)
     /* Remove the cdev */
     tvin_dec_notifier_unregister(&viuin_notifier);
     vout_unregister_client(&notifier_nb_v);
-#ifdef CONFIG_AM_TV_OUTPUT2
-    vout2_unregister_client(&notifier_nb_v2);
-#endif    
     return 0;
 }
 
