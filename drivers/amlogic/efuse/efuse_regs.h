@@ -120,6 +120,7 @@ bit[7-0]    XOR
 #define READ_MPEG_REG_BITS(reg, start, len) \
         READ_CBUS_REG_BITS(reg, start, len)        
 #endif                                             
-                                                   
+                             
+                                                  
 #endif                                             
                                                    
