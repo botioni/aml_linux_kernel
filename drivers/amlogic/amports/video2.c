@@ -263,11 +263,6 @@ static u32 frame_repeat_count = 0;
 #endif
 
 /* vout */
-#if 1
-vinfo_t* get_current_vinfo2(void);
-
-#define get_current_vinfo get_current_vinfo2
-#endif
 
 static const vinfo_t *vinfo = NULL;
 
@@ -2447,7 +2442,7 @@ static ssize_t vframe_states_show(struct class *cla, struct class_attribute* att
 
 static ssize_t device_resolution_show(struct class *cla, struct class_attribute* attr, char* buf)
 {
-    const vinfo_t *info = get_current_vinfo();
+    const vinfo_t *info = get_current_vinfo2();
 
     if (info != NULL) {
         return sprintf(buf, "%dx%d\n", info->width, info->height);
@@ -2547,7 +2542,7 @@ static int vout_notify_callback(struct notifier_block *block, unsigned long cmd 
         return -1;
     }
 
-    info = get_current_vinfo();
+    info = get_current_vinfo2();
 
     spin_lock_irqsave(&lock, flags);
 
@@ -2561,31 +2556,6 @@ static int vout_notify_callback(struct notifier_block *block, unsigned long cmd 
     return 0;
 }
 
-#if 1
-//rain
-void update_vinfo(void)
-{
-    const vinfo_t *info;
-    ulong flags;
-
-
-    info = get_current_vinfo();
-
-    spin_lock_irqsave(&lock, flags);
-
-    vinfo = info;
-
-    /* pre-calculate vsync_pts_inc in 90k unit */
-    vsync_pts_inc = 90000 * vinfo->sync_duration_den / vinfo->sync_duration_num;
-
-    spin_unlock_irqrestore(&lock, flags);
-
-    return 0;
-    
-}    
-
-#endif
-
 
 static struct notifier_block vout_notifier = {
     .notifier_call  = vout_notify_callback,
@@ -2598,24 +2568,21 @@ static struct notifier_block vout_notifier = {
 
 static void vout_hook(void)
 {
-#if 1
-//rain
-    vinfo = get_current_vinfo();
-#else
-    vout_register_client(&vout_notifier);
-    vinfo = get_current_vinfo();
+    vout2_register_client(&vout_notifier);
+
+/*
+    vinfo = get_current_vinfo2();
 
     if (!vinfo) {
-        set_current_vmode(VMODE_720P);
+        set_current_vmode2(VMODE_720P);
 
-        vinfo = get_current_vinfo();
+        vinfo = get_current_vinfo2();
     }
 
-#endif
     if (vinfo) {
         vsync_pts_inc = 90000 * vinfo->sync_duration_den / vinfo->sync_duration_num;
     }
-
+*/
 #ifdef CONFIG_AM_VIDEO_LOG
     if (vinfo) {
         amlog_mask(LOG_MASK_VINFO, "vinfo = %p\n", vinfo);

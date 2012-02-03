@@ -72,7 +72,7 @@ static  const  char*   signal_table[]={
          "PROGEESSIVE_B",   /**< Progressive B signal */
 		
 	};
-int 	 get_current_vdac_setting(void)
+int 	 get_current_vdac_setting2(void)
 {
 	return curr_vdac_setting;
 }
@@ -80,7 +80,7 @@ int 	 get_current_vdac_setting(void)
 extern unsigned int clk_util_clk_msr(unsigned int clk_mux);
 
 //120120
-void  change_vdac_setting(unsigned int  vdec_setting,vmode_t  mode)
+void  change_vdac_setting2(unsigned int  vdec_setting,vmode_t  mode)
 {
 	unsigned  int  signal_set_index=0;
 	unsigned int  idx=0,bit=5,i;
@@ -169,7 +169,7 @@ static void enable_vsync_interrupt(void)
     printk("Enable vsync done\n");
 }
 
-int tvoutc_setclk(tvmode_t mode)
+int tvoutc_setclk2(tvmode_t mode)
 {
 	struct clk *clk;
 	const  reg_t *sd,*hd;
@@ -224,7 +224,7 @@ int tvoutc_setclk(tvmode_t mode)
 	return 0;
 }
 
-int tvoutc_setmode(tvmode_t mode)
+int tvoutc_setmode2(tvmode_t mode)
 {
     const  reg_t *s;
 
@@ -239,10 +239,16 @@ int tvoutc_setmode(tvmode_t mode)
 			
     while (MREG_END_MARKER != s->reg)
         setreg(s++);
-	//tvoutc_setclk(mode);
+	//tvoutc_setclk2(mode);
     //enable_vsync_interrupt();
+        WRITE_MPEG_REG(0x104b, 0x8001f); //0x3001f);
+        WRITE_MPEG_REG(0x104a, (READ_MPEG_REG(0x1059)&(~(0xff)))); //0x9900910d);
+        WRITE_MPEG_REG(0x1059, (READ_MPEG_REG(0x1059)&(~(0xff<<24)))|(0x88<<24)); //0x00100000|READ_MPEG_REG(0x1059));
+        WRITE_MPEG_REG(0x1073, (READ_MPEG_REG(0x1073)&(~(0xf<<16)))|(0x9<<16));
+        WRITE_CBUS_REG_BITS(VPU_VIU_VENC_MUX_CTRL, 2, 2, 2); //select ENCP to VIU2
+
     
-    WRITE_MPEG_REG(VPP_POSTBLEND_H_SIZE, tvinfoTab[mode].xres);
+    WRITE_MPEG_REG(VPP2_POSTBLEND_H_SIZE, tvinfoTab[mode].xres);
     
 // For debug only
 #if 0
@@ -259,5 +265,6 @@ printk(" clk_util_clk_msr 29 = %d\n", clk_util_clk_msr(29));
 
     return 0;
 }
+
 
 

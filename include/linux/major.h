@@ -183,6 +183,7 @@
 #define AML_DEMOD_MAJOR		242
 #define AMAUDIO_MAJOR		243
 #define AMVIDEO2_MAJOR		245
+#define TV2_CONF_MAJOR		246
 #define BLOCK_EXT_MAJOR		259
 #define SCSI_OSD_MAJOR		260	/* open-osd's OSD scsi device */
 

@@ -142,6 +142,9 @@ static unsigned char power_off_vdac_flag=0;
     /* 0, do not use fixed tvenc val for all mode; 1, use fixed tvenc val mode for 480i; 2, use fixed tvenc val mode for all modes */
 static unsigned char use_tvenc_conf_flag=1;
 static unsigned char hpd_debug_mode=0;
+
+static unsigned char cur_vout_index = 1; //CONFIG_AM_TV_OUTPUT2
+
 #define HPD_DEBUG_IGNORE_UNPLUG   1
 
 static unsigned long modulo(unsigned long a, unsigned long b)
@@ -2012,11 +2015,13 @@ static void hdmitx_config_tvenc_reg(int vic, unsigned reg, unsigned val)
     }
 }
 
+
 static void hdmitx_set_pll(Hdmi_tx_video_para_t *param)
 {
     HDMI_DEBUG();
     printk("param->VIC:%d\n", param->VIC);
     
+    cur_vout_index = get_cur_vout_index();
 //    Wr_reg_bits(VPU_HDMI_SETTING, 2, 0, 2);     //[ 1: 0] src_sel. 0=Disable output to HDMI; 1=Select VENC_I output to HDMI; 2=Select VENC_P output.
     
     //reset HHI_VID_DIVIDER_CNTL
@@ -2030,11 +2035,11 @@ static void hdmitx_set_pll(Hdmi_tx_video_para_t *param)
 
     Wr(HHI_VID_DIVIDER_CNTL, 0x10843);          //0x1066, set vid_pll_clk = HPLL_CLK_OUT_DIG / 5
 
-#ifndef CONFIG_AM_VIDEO2
-    Wr_reg_bits(HHI_VID_CLK_CNTL, 0, 16, 3);    //0x105f    0: vid_pll_clk
-    Wr_reg_bits(HHI_VID_CLK_CNTL, 0x1f, 0, 5);     //0x105f    1: DIV1_EN
-    Wr_reg_bits(HHI_VID_CLK_CNTL, 1, 19, 1);    //0x105f    1: CLK_EN0
-#endif
+    if(cur_vout_index !=2 ){
+        Wr_reg_bits(HHI_VID_CLK_CNTL, 0, 16, 3);    //0x105f    0: vid_pll_clk
+        Wr_reg_bits(HHI_VID_CLK_CNTL, 0x1f, 0, 5);     //0x105f    1: DIV1_EN
+        Wr_reg_bits(HHI_VID_CLK_CNTL, 1, 19, 1);    //0x105f    1: CLK_EN0
+    }
     switch(param->VIC)
     {
         case HDMI_480p60:
@@ -2046,10 +2051,13 @@ static void hdmitx_set_pll(Hdmi_tx_video_para_t *param)
         case HDMI_576i50:
         case HDMI_576i50_16x9:
             Wr(HHI_VID_PLL_CNTL, (3<<18)|(2<<10)|(90<<0));    //27MHz=24MHz*45/4/10
-#ifndef CONFIG_AM_VIDEO2
-            Wr(HHI_VID_CLK_DIV, 3);      //0x1059
-#endif
-            Wr_reg_bits(HHI_HDMI_CLK_CNTL, 1, 16, 4);   //cts_hdmi_tx_pixel_clk
+            if(cur_vout_index !=2 ){
+                Wr(HHI_VID_CLK_DIV, 3);      //0x1059
+                Wr_reg_bits(HHI_HDMI_CLK_CNTL, 1, 16, 4);   //cts_hdmi_tx_pixel_clk
+            }
+            else{
+                Wr_reg_bits(HHI_HDMI_CLK_CNTL, 9, 16, 4);   //cts_hdmi_tx_pixel_clk
+            }
             break;
         case HDMI_1080p30:
         case HDMI_1080p24:
@@ -2058,19 +2066,25 @@ static void hdmitx_set_pll(Hdmi_tx_video_para_t *param)
         case HDMI_1080i60:
         case HDMI_1080i50:
             Wr(HHI_VID_PLL_CNTL, (12<<10)|(371<<0));    //74.2MHz=24MHz*371/12/10
-#ifndef CONFIG_AM_VIDEO2
-            Wr(HHI_VID_CLK_DIV, 0);      //0x1059
-#endif
-            Wr_reg_bits(HHI_HDMI_CLK_CNTL, 1, 16, 4);   //cts_hdmi_tx_pixel_clk
+            if(cur_vout_index !=2 ){
+                Wr(HHI_VID_CLK_DIV, 0);      //0x1059
+                Wr_reg_bits(HHI_HDMI_CLK_CNTL, 1, 16, 4);   //cts_hdmi_tx_pixel_clk
+            }
+            else{
+                Wr_reg_bits(HHI_HDMI_CLK_CNTL, 9, 16, 4);   //cts_hdmi_tx_pixel_clk
+            }
                                                         //[19:16] 0:clk_div1 1:clk_div2 2:clk_div4 3: clk_div6 ...
             break;
         case HDMI_1080p60:
         case HDMI_1080p50:
             Wr(HHI_VID_PLL_CNTL, (6<<10)|(371<<0));    //148.4MHz=24MHz*371/6/10
-#ifndef CONFIG_AM_VIDEO2
-            Wr(HHI_VID_CLK_DIV, 1);      //0x1059
-#endif
-            Wr_reg_bits(HHI_HDMI_CLK_CNTL, 0, 16, 4);   //0x1073, cts_hdmi_tx_pixel_clk 
+            if(cur_vout_index !=2 ){
+                Wr(HHI_VID_CLK_DIV, 1);      //0x1059
+                Wr_reg_bits(HHI_HDMI_CLK_CNTL, 0, 16, 4);   //0x1073, cts_hdmi_tx_pixel_clk 
+            }
+            else{
+                Wr_reg_bits(HHI_HDMI_CLK_CNTL, 9, 16, 4);   //cts_hdmi_tx_pixel_clk
+            }
             break;
         default:
             break;
@@ -2750,6 +2764,7 @@ static void hdmitx_print_info(hdmitx_dev_t* hdmitx_device, int printk_flag)
 {
     hdmi_print(printk_flag, "------------------\nHdmitx driver version: %s\nSerial %x\nColor Depth %d\n", HDMITX_VER, serial_reg_val, color_depth_f);
     hdmi_print(printk_flag, "chip type %c\n", hdmi_chip_type);
+    hdmi_print(printk_flag, "current vout index %d\n", cur_vout_index);
     hdmi_print(printk_flag, "reset sequence %d\n", new_reset_sequence_flag);
     hdmi_print(printk_flag, "power mode %d\n", power_mode);
     hdmi_print(printk_flag, "%spowerdown when unplug\n",hdmitx_device->unplug_powerdown?"":"do not ");

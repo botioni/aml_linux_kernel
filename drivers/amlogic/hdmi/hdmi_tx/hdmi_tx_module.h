@@ -90,7 +90,7 @@ typedef struct hdmi_tx_dev_s {
 #define HDMI_AUDIO_CONTENT_PROTECTION   5
 
 
-#define HDMITX_VER "2012Jan04a"
+#define HDMITX_VER "2012Feb02a"
 /************************************
 *    hdmitx protocol level interface
 *************************************/
@@ -120,6 +120,7 @@ extern void hdmi_set_audio_para(int para);
 
 extern void hdmitx_output_rgb(void);
 
+extern int get_cur_vout_index(void);
 
 /************************************
 *    hdmitx hardware level interface

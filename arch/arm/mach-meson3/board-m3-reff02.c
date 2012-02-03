@@ -1529,6 +1529,23 @@ static struct platform_device vout_device = {
 };
 #endif
 
+#if  defined(CONFIG_AM_TV_OUTPUT2)
+static struct resource vout2_device_resources[] = {
+    [0] = {
+        .start = 0,
+        .end   = 0,
+        .flags = IORESOURCE_MEM,
+    },
+};
+
+static struct platform_device vout2_device = {
+    .name       = "mesonvout2",
+    .id         = 0,
+    .num_resources = ARRAY_SIZE(vout2_device_resources),
+    .resource      = vout2_device_resources,
+};
+#endif
+
 #ifdef CONFIG_USB_ANDROID
 #ifdef CONFIG_USB_ANDROID_MASS_STORAGE
 static struct usb_mass_storage_platform_data mass_storage_pdata = {
@@ -1743,6 +1760,9 @@ static struct platform_device __initdata *platform_devs[] = {
 #endif
 #if defined(CONFIG_AM_TV_OUTPUT)||defined(CONFIG_AM_TCON_OUTPUT)
     &vout_device,   
+#endif
+#if defined(CONFIG_AM_TV_OUTPUT2)
+    &vout2_device,   
 #endif
 #ifdef CONFIG_USB_ANDROID
     &android_usb_device,
