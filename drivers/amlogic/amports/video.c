@@ -166,6 +166,10 @@ static int content_top = 0, content_left = 0, content_w = 0, content_h = 0;
 static int scaler_pos_changed = 0;
 #endif
 
+#if defined(CONFIG_ARCH_MESON3)
+    static u32 v_current_field = 0;
+#endif
+
 int video_property_notify(int flag)
 {
     video_property_changed  = flag;	
@@ -928,6 +932,18 @@ static int detect_vout_type(void)
 
     if (encp_enable) {
         if (READ_MPEG_REG(ENCP_VIDEO_MODE) & (1 << 12)) {
+#if defined(CONFIG_ARCH_MESON3)
+            /* 1080I */
+            if(READ_MPEG_REG(VENC_INTFLAG) & 0x200) {
+                WRITE_MPEG_REG(VENC_INTCTRL, 0x200);
+                v_current_field = 0;
+            }
+            else {
+                v_current_field = v_current_field^1;
+            }
+            vout_type = (v_current_field & 1) ?
+                    VOUT_TYPE_BOT_FIELD : VOUT_TYPE_TOP_FIELD;
+#else
             /* 1080I */
             if (READ_MPEG_REG(VENC_ENCP_LINE) < 562) {
                 vout_type = VOUT_TYPE_TOP_FIELD;
@@ -935,14 +951,27 @@ static int detect_vout_type(void)
             } else {
                 vout_type = VOUT_TYPE_BOT_FIELD;
             }
-
-        } else {
+#endif
+        }
+        else {
             vout_type = VOUT_TYPE_PROG;
         }
 
     } else {
+#if defined(CONFIG_ARCH_MESON3)
+        if(READ_MPEG_REG(VENC_INTFLAG) & 4) {
+            WRITE_MPEG_REG(VENC_INTCTRL, 4);
+            v_current_field = 0;
+        }
+        else {
+            v_current_field = v_current_field^1;
+        }
+        vout_type = (v_current_field & 1) ?
+                    VOUT_TYPE_BOT_FIELD : VOUT_TYPE_TOP_FIELD;
+#else
         vout_type = (READ_MPEG_REG(VENC_STATA) & 1) ?
                     VOUT_TYPE_BOT_FIELD : VOUT_TYPE_TOP_FIELD;
+#endif
     }
 
     return vout_type;

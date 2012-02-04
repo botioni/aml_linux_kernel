@@ -45,6 +45,10 @@ static DECLARE_WAIT_QUEUE_HEAD(osd_vsync_wq);
 static bool vsync_hit = false;
 static bool osd_vf_need_update = false;
 
+#if defined(CONFIG_ARCH_MESON3)
+static u32 osd_current_field = 0;
+#endif
+
 /********************************************************************/
 /***********		osd psedu frame provider 			*****************/
 /********************************************************************/
@@ -143,6 +147,27 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
 	{
 		fb0_cfg_w0=READ_MPEG_REG(VIU_OSD1_BLK0_CFG_W0);
 		fb1_cfg_w0=READ_MPEG_REG(VIU_OSD1_BLK0_CFG_W0+ REG_OFFSET);
+#if defined(CONFIG_ARCH_MESON3)
+        if (READ_MPEG_REG(ENCP_VIDEO_MODE) & (1 << 12))
+            {
+             /* 1080I */
+             
+                if(READ_MPEG_REG(VENC_INTFLAG) & 0x200) {
+                  osd_current_field = 0;
+                }
+                else {
+                  osd_current_field = osd_current_field^1;
+                }
+            } else {
+                if(READ_MPEG_REG(VENC_INTFLAG) & 4) {
+                  osd_current_field = 0;
+                }
+                else {
+                  osd_current_field = osd_current_field^1;
+                }
+            }
+        current_field = osd_current_field;
+#else
 		if (READ_MPEG_REG(ENCP_VIDEO_MODE) & (1 << 12))
         	{
        		 /* 1080I */
@@ -156,6 +181,7 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
     		} else {
         		current_field = READ_MPEG_REG(VENC_STATA) & 1;
     		}
+#endif
 		fb0_cfg_w0 &=~1;
 		fb1_cfg_w0 &=~1;
 		fb0_cfg_w0 |=current_field;
