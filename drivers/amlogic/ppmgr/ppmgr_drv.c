@@ -254,8 +254,8 @@ static void set_disp_para(const char *para)
     }
 }
 
-static ssize_t disp_write(struct device *dev,
-					struct device_attribute *attr,
+static ssize_t disp_write(struct class *cla,
+					struct class_attribute *attr,
 					const char *buf, size_t count)
 {
     set_disp_para(buf);
@@ -386,7 +386,7 @@ struct class* init_ppmgr_cls() {
 
 void set_ppmgr_buf_info(char* start,unsigned int size) {
     ppmgr_device.buffer_start=(char*)start;
-    ppmgr_device.buffer_size=(char*)size;
+    ppmgr_device.buffer_size=size;
 }
 
 void get_ppmgr_buf_info(char** start,unsigned int* size) {
@@ -542,9 +542,9 @@ static int ppmgr_driver_probe(struct platform_device *pdev)
         return -EFAULT;
     }
 
-    buf_start = mem->start;
+    buf_start = (char *)mem->start;
     buf_size = mem->end - mem->start + 1;
-    set_ppmgr_buf_info(mem->start,buf_size);
+    set_ppmgr_buf_info((char *)mem->start,buf_size);
     init_ppmgr_device();
     return 0;
 }

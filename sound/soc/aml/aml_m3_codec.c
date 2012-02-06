@@ -77,7 +77,7 @@ void aml_reset_path(struct snd_soc_codec* codec, AML_PATH_SET_TYPE type)
 
 void aml_m3_reset(struct snd_soc_codec* codec, bool first_time)
 {
-	unsigned long   i,data32;
+	unsigned long data32;
 
 	if (first_time)
 	{
@@ -112,12 +112,12 @@ void aml_m3_reset(struct snd_soc_codec* codec, bool first_time)
 	    // Check read back data
 	    data32 = READ_MPEG_REG(AIU_AUDAC_CTRL0);
 	    if (data32 != (0x55 << 1)) {
-			printk("audiocodec init error: AIU_AUDAC_CTRL0 = %x\n", data32);
+			printk("audiocodec init error: AIU_AUDAC_CTRL0 = %lx\n", data32);
 		}
 			
 		data32 = READ_MPEG_REG(AIU_AUDAC_CTRL1);
 		if (data32 != 0x80ff) {
-			printk("audiocodec init error: AIU_AUDAC_CTRL1 = %x\n", data32);
+			printk("audiocodec init error: AIU_AUDAC_CTRL1 = %lx\n", data32);
 		}
 
 		wr_regbank (0,			// rstdpz: active low.
@@ -689,8 +689,7 @@ static int aml_m3_codec_hw_params(struct snd_pcm_substream *substream,
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct snd_soc_device *socdev = rtd->socdev;
 	struct snd_soc_codec *codec = socdev->card->codec;
-	struct aml_m3_codec_priv *aml = codec->private_data;
-    unsigned int pwr_reg2, i2sfs;
+    unsigned int i2sfs;
     unsigned long rate = params_rate(params);
     int rate_idx = 0;
 
@@ -714,9 +713,6 @@ static int aml_m3_codec_hw_params(struct snd_pcm_substream *substream,
 static int aml_m3_codec_pcm_prepare(struct snd_pcm_substream *substream,
 			      struct snd_soc_dai *dai)
 {
-	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	struct snd_soc_device *socdev = rtd->socdev;
-	struct snd_soc_codec *codec = socdev->card->codec;
 	/* set active */
 	
 	// TODO
@@ -790,7 +786,6 @@ static int aml_m3_codec_set_dai_sysclk(struct snd_soc_dai *codec_dai,
 static int aml_m3_codec_set_dai_fmt(struct snd_soc_dai *codec_dai,
 		unsigned int fmt)
 {
-	struct snd_soc_codec *codec = codec_dai->codec;
 	u16 iface = 0;
 	/* set master/slave audio interface */
 	switch (fmt & SND_SOC_DAIFMT_MASTER_MASK) {
@@ -934,18 +929,19 @@ pcm_err:
 static int aml_m3_codec_remove(struct platform_device *pdev)
 {
 	struct snd_soc_device *socdev = platform_get_drvdata(pdev);
-	struct snd_soc_codec *codec = socdev->card->codec;
 	snd_soc_free_pcms(socdev);
 	snd_soc_dapm_free(socdev);
 	return 0;
 }
 
 #ifdef CONFIG_PM
-static int aml_m3_codec_suspend(struct platform_device* pdev)
+static int aml_m3_codec_suspend(struct platform_device* pdev, pm_message_t state)
 {
-    printk("aml_m3_codec_suspend\n");
     struct snd_soc_device *socdev = platform_get_drvdata(pdev);
     struct snd_soc_codec *codec = socdev->card->codec;
+
+    printk("aml_m3_codec_suspend\n");
+
     WRITE_MPEG_REG( HHI_GCLK_MPEG1, READ_MPEG_REG(HHI_GCLK_MPEG1)&~(1 << 2));
     aml_reset_path(codec, AML_PWR_DOWN);
     return 0;
@@ -953,9 +949,11 @@ static int aml_m3_codec_suspend(struct platform_device* pdev)
 
 static int aml_m3_codec_resume(struct platform_device* pdev)
 {
-    printk("aml_m3_codec resume\n");
     struct snd_soc_device *socdev = platform_get_drvdata(pdev);
     struct snd_soc_codec *codec = socdev->card->codec;
+
+    printk("aml_m3_codec resume\n");
+
     WRITE_MPEG_REG( HHI_GCLK_MPEG1, READ_MPEG_REG(HHI_GCLK_MPEG1)|(1 << 2));
     aml_m3_reset(codec, true);
     return 0;

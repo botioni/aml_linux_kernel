@@ -84,9 +84,9 @@ static inline void vfq_push(vfq_t *q, vframe_t *vf)
 static inline vframe_t *vfq_pop(vfq_t *q)
 {
     vframe_t *vf;
+	DVLOCK();
     	if (vfq_empty(q))
         	return NULL;
-	DVLOCK();
         VLOCK();	    
 	vf = q->pool[q->rp];
 

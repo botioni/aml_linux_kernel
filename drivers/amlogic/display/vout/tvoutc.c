@@ -110,6 +110,8 @@ void  change_vdac_setting(unsigned int  vdec_setting,vmode_t  mode)
 	}
 	curr_vdac_setting=vdec_setting;
 }
+
+#if 0
 static void enable_vsync_interrupt(void)
 {
     printk("enable_vsync_interrupt\n");
@@ -168,6 +170,7 @@ static void enable_vsync_interrupt(void)
 
     printk("Enable vsync done\n");
 }
+#endif
 
 int tvoutc_setclk(tvmode_t mode)
 {

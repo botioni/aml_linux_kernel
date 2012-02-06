@@ -115,7 +115,7 @@ static inline vframe_t *vm_vf_get_from_provider(void);
 static inline vframe_t *vm_vf_peek_from_provider(void);
 static inline void vm_vf_put_from_provider(vframe_t *vf);
 static vframe_receiver_op_t* vf_vm_unreg_provider(void);
-static vframe_receiver_op_t* vf_vm_reg_provider();
+static vframe_receiver_op_t* vf_vm_reg_provider(void);
 static void stop_vm_task(void) ;
 static int prepare_vframe(vframe_t *vf);
 
@@ -140,7 +140,7 @@ static inline u32 index2canvas(u32 index)
     return canvas_tab[index];
 }
 
-static vframe_t *vm_vf_peek(void)
+static vframe_t *vm_vf_peek(void *op_arg)
 {
 	vframe_t *vf = NULL;
 	vf = vm_vf_peek_from_provider();
@@ -155,17 +155,17 @@ static vframe_t *vm_vf_peek(void)
     return vf;
 }
 
-static vframe_t *vm_vf_get(void)
+static vframe_t *vm_vf_get(void *op_arg)
 {
     return vm_vf_get_from_provider();
 }
 
-static void vm_vf_put(vframe_t *vf)
+static void vm_vf_put(vframe_t *vf, void *op_arg)
 {
     prepare_vframe(vf);
 }
 
-static int  vm_vf_states(vframe_states_t *states)
+static int  vm_vf_states(vframe_states_t *states, void *op_arg)
 {
     return 0;
 }
@@ -301,7 +301,7 @@ static int prepare_vframe(vframe_t *vf)
 *   buffer op for decoder, camera, etc. 
 *
 *************************************************/
-static const vframe_provider_t *vfp = NULL;
+//static const vframe_provider_t *vfp = NULL;
 
 void vm_local_init(void) 
 {

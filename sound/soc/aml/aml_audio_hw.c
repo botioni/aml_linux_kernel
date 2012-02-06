@@ -19,8 +19,6 @@ unsigned ENABLE_IEC958 = 1;
 unsigned IEC958_MODE   = AIU_958_MODE_PCM16;
 unsigned I2S_MODE      = AIU_I2S_MODE_PCM16;
 
-static unsigned dac_reset_flag = 0;
-
 int  audio_in_buf_ready = 0;
 int audio_out_buf_ready = 0;
 

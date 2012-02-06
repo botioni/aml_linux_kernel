@@ -525,7 +525,7 @@ static void free_pts_list(pts_table_t *pTable)
 	unsigned long *p=pTable->pages_list;
 	void *onepage=(void  *)p[0];
 	while(onepage!=NULL){
-		free_page(onepage);
+		free_page((unsigned long)onepage);
 		p++;
 		onepage=(void  *)p[0];
 	}
@@ -584,7 +584,6 @@ error_alloc_pages:
 int pts_start(u8 type)
 {
     ulong flags;
-    int i;
     pts_table_t *pTable;
 
     if (type >= PTS_TYPE_MAX) {

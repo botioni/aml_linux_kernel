@@ -76,13 +76,14 @@ static int aml_dai_prepare(struct snd_pcm_substream *substream,
 #ifdef CONFIG_PM
 static int aml_dai_suspend(struct snd_soc_dai *cpu_dai)
 {
-		
-printk("***Entered %s:%s\n", __FILE__,__func__);
+	printk("***Entered %s:%s\n", __FILE__,__func__);
+    return 0;
 }
 
 static int aml_dai_resume(struct snd_soc_dai *cpu_dai)
 {
-printk("***Entered %s:%s\n", __FILE__,__func__);
+    printk("***Entered %s:%s\n", __FILE__,__func__);
+    return 0;
 }
 
 #else /* CONFIG_PM */

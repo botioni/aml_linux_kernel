@@ -166,8 +166,8 @@ static int content_top = 0, content_left = 0, content_w = 0, content_h = 0;
 static int scaler_pos_changed = 0;
 #endif
 
-#if defined(CONFIG_ARCH_MESON3)
-    static u32 v_current_field = 0;
+#if defined(CONFIG_ARCH_MESON3) && !defined(CONFIG_AM_TCON_OUTPUT)
+static u32 v_current_field = 0;
 #endif
 
 int video_property_notify(int flag)
@@ -1660,8 +1660,8 @@ unsigned int get_post_canvas(void)
 
 static int canvas_dup(ulong *dst, ulong src_paddr, ulong size)
 {
-    void  *p = __phys_to_virt(src_paddr);      
-       if (p) {
+    void *p = (void *)__phys_to_virt(src_paddr);      
+    if (p) {
         memcpy(dst, p, size);
         return 1;
     }
@@ -2589,9 +2589,10 @@ static int __init video_early_init(void)
 static int __init video_init(void)
 {
     int r = 0;
-    ulong clk = clk_get_rate(clk_get_sys("clk_misc_pll", NULL));
 
 #ifndef CONFIG_ARCH_MESON3
+    ulong clk = clk_get_rate(clk_get_sys("clk_misc_pll", NULL));
+
     /* MALI clock settings */
     if ((clk <= 750000000) &&
         (clk >= 600000000)) {

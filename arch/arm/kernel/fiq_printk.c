@@ -65,7 +65,7 @@ int fiq_vprintk(const char *fmt, va_list args)
 
 EXPORT_SYMBOL(fiq_vprintk);
 
-static int fiq_printk_timer(unsigned long arg){
+static void fiq_printk_timer(unsigned long arg){
 	unsigned long flags;
 	int len=0;
 	if(fiqprint_buf_off>0){
@@ -82,7 +82,6 @@ static int fiq_printk_timer(unsigned long arg){
 		printk("%s\n",fiqprint_buf1);
 	mod_timer(&fiq_print_timer,jiffies+HZ/10);
 	///printk("fiq timer fired,waper data len=%d\n",len);
-	return 0;
 }
 
 static __init int fiq_printk_init(void)

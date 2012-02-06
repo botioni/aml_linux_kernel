@@ -458,7 +458,7 @@ static int vvc1_event_cb(int type, void *data, void *private_data)
     return 0;        
 }
 
-int vvc1_dec_status(struct vdec_status *vstatus, void* op_arg)
+int vvc1_dec_status(struct vdec_status *vstatus)
 {
     vstatus->width = vvc1_amstream_dec_info.width;
     vstatus->height = vvc1_amstream_dec_info.height;

@@ -66,7 +66,10 @@ static void	enable_dsp(int flag)
 
 void halt_dsp( struct audiodsp_priv *priv)
 {
+#ifndef AUDIODSP_RESET
     int i;
+#endif
+
 	if(DSP_RD(DSP_STATUS)==DSP_STATUS_RUNING)
 		{
 #ifndef AUDIODSP_RESET
@@ -307,12 +310,12 @@ exit:
 
 static  int __init decode_option_setup(char *s)
 {
-    int value = -1;
+    unsigned long value = 0xffffffffUL;
     if(strict_strtoul(s, 16, &value)){
       decopt = 0x0000ffff;
       return -1;
     }
-    decopt = value;
+    decopt = (int)value;
     return 0;
 }
 __setup("decopt=",decode_option_setup) ;

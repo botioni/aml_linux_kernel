@@ -88,7 +88,7 @@ static vfq_t q_ready, q_free;
 static struct semaphore thread_sem;
 static DEFINE_MUTEX(ppmgr_mutex);
 
-const vframe_receiver_op_t* vf_ppmgr_reg_provider();
+const vframe_receiver_op_t* vf_ppmgr_reg_provider(void);
 void vf_ppmgr_unreg_provider(void);
 void vf_ppmgr_reset(void);
 static inline void ppmgr_vf_put_dec(vframe_t *vf);
@@ -117,19 +117,19 @@ static inline u32 index2canvas(u32 index)
 static int task_running = 0;
 static int still_picture_notify = 0 ;
 static int q_free_set = 0 ;
-static vframe_t *ppmgr_vf_peek(void)
+static vframe_t *ppmgr_vf_peek(void *op_arg)
 {
    vframe_t* vf;
    vf= vfq_peek(&q_ready);
    return vf;
 }
 
-static vframe_t *ppmgr_vf_get(void)
+static vframe_t *ppmgr_vf_get(void *op_arg)
 {
     return vfq_pop(&q_ready);
 }
 
-static void ppmgr_vf_put(vframe_t *vf)
+static void ppmgr_vf_put(vframe_t *vf, void *op_arg)
 {
     ppframe_t *pp_vf = to_ppframe(vf);
 
@@ -178,7 +178,7 @@ static int ppmgr_event_cb(int type, void *data, void *private_data)
     return 0;        
 }
 
-static int ppmgr_vf_states(vframe_states_t *states)
+static int ppmgr_vf_states(vframe_states_t *states, void *op_arg)
 {
     unsigned long flags;
     spin_lock_irqsave(&lock, flags);
@@ -228,7 +228,7 @@ static int ppmgr_receiver_event_fun(int type, void *data, void *private_data)
             up(&thread_sem);
             break;
         case VFRAME_EVENT_PROVIDER_QUREY_STATE:
-            ppmgr_vf_states(&states);
+            ppmgr_vf_states(&states, NULL);
             if(states.buf_avail_num > 0){
                 return RECEIVER_ACTIVE ;		
             }else{
@@ -282,7 +282,7 @@ void vf_local_init(void)
 
 static const struct vframe_provider_s *dec_vfp = NULL;
 
-const vframe_receiver_op_t* vf_ppmgr_reg_provider()
+const vframe_receiver_op_t* vf_ppmgr_reg_provider(void)
 {  
     const vframe_receiver_op_t *r = NULL;
     
@@ -339,7 +339,7 @@ void vf_ppmgr_reg_receiver(void)
 {
     vf_reg_receiver(&ppmgr_vf_recv);
 }
-void vf_ppmgr_init_provider()
+void vf_ppmgr_init_provider(void)
 {
 	vf_provider_init(&ppmgr_vf_prov, PROVIDER_NAME ,&ppmgr_vf_provider, NULL);
 }
@@ -361,7 +361,6 @@ static inline vframe_t *ppmgr_vf_get_dec(void)
 {
     struct vframe_provider_s *vfp;
     vframe_t *vf;
-    unsigned canvas_addr ;
     vfp = vf_get_provider(RECEIVER_NAME);
     if (!(vfp && vfp->ops && vfp->ops->peek))
     return NULL;
@@ -427,19 +426,19 @@ static void process_vf_rotate(vframe_t *vf, ge2d_context_t *context, config_para
     ppframe_t *pp_vf;
     canvas_t cs0,cs1,cs2,cd;
     u32 mode = 0;
+    int pic_struct = 0, interlace_mode;
 #ifdef CONFIG_POST_PROCESS_MANAGER_PPSCALER
     int rect_x = 0, rect_y = 0, rect_w = 0, rect_h = 0;
     u32 ratio = 100;
     mode = amvideo_get_scaler_para(&rect_x, &rect_y, &rect_w, &rect_h, &ratio);
 #endif
-    int pic_struct = 0;
 
     new_vf = vfq_pop(&q_free);
     
     if (unlikely((!new_vf) || (!vf)))
         return;
 
-    int interlace_mode = vf->type & VIDTYPE_TYPEMASK;
+    interlace_mode = vf->type & VIDTYPE_TYPEMASK;
 
     pp_vf = to_ppframe(new_vf);
     pp_vf->angle = 0;
@@ -802,20 +801,20 @@ static void process_vf_change(vframe_t *vf, ge2d_context_t *context, config_para
     vframe_t  temp_vf;
     ppframe_t *pp_vf = to_ppframe(vf);
     canvas_t cs0,cs1,cs2,cd;
-    int pic_struct = 0;
+    int pic_struct = 0, interlace_mode;
+    int temp_angle = 0;
 
     temp_vf.duration = vf->duration;
     temp_vf.duration_pulldown = vf->duration_pulldown;
     temp_vf.pts = vf->pts;
     temp_vf.type = VIDTYPE_VIU_444 | VIDTYPE_VIU_SINGLE_PLANE | VIDTYPE_VIU_FIELD;
     temp_vf.canvas0Addr = temp_vf.canvas1Addr = ass_index;
-    int temp_angle = 0;
     temp_angle = (ppmgr_device.videoangle  >= pp_vf->angle )?(ppmgr_device.videoangle -  pp_vf->angle) :  (ppmgr_device.videoangle + 4 -  pp_vf->angle)   ;
     
     pp_vf->angle = ppmgr_device.videoangle ;
     vf_rotate_adjust(vf, &temp_vf, temp_angle);
 
-    int interlace_mode = vf->type & VIDTYPE_TYPEMASK;
+    interlace_mode = vf->type & VIDTYPE_TYPEMASK;
     if(interlace_mode == VIDTYPE_INTERLACE_TOP)
         pic_struct = (GE2D_FORMAT_M24_YUV420T & (3<<3));
     else if(interlace_mode == VIDTYPE_INTERLACE_BOTTOM)
@@ -982,6 +981,9 @@ static int process_vf_adjust(vframe_t *vf, ge2d_context_t *context, config_para_
     canvas_t cs,cd;
     int rect_x = 0, rect_y = 0, rect_w = 0, rect_h = 0;
     u32 ratio = 100;
+    int sx,sy,sw,sh, dx,dy,dw,dh;
+    unsigned ratio_x;
+    unsigned ratio_y;
     u32 mode = amvideo_get_scaler_para(&rect_x, &rect_y, &rect_w, &rect_h, &ratio);
     
     if(!mode){
@@ -1120,9 +1122,8 @@ static int process_vf_adjust(vframe_t *vf, ge2d_context_t *context, config_para_
         return -2;
     }
 
-    int sx,sy,sw,sh, dx,dy,dw,dh;
-    unsigned ratio_x = (backup_content_w<<8)/rect_w;
-    unsigned ratio_y = (backup_content_h<<8)/rect_h;
+    ratio_x = (backup_content_w<<8)/rect_w;
+    ratio_y = (backup_content_h<<8)/rect_h;
 
     if(rect_x<0){
         sx = ((0-rect_x)*ratio_x)>>8;
@@ -1249,10 +1250,11 @@ static int ppmgr_task(void *data)
     allow_signal(SIGTERM);
 
     while (down_interruptible(&thread_sem) == 0) {
+        vframe_t *vf = NULL;       
+
         if (kthread_should_stop())
             break;
 
-        vframe_t *vf = NULL;       
 #ifdef CONFIG_POST_PROCESS_MANAGER_PPSCALER
         if(scaler_pos_changed){
             scaler_pos_changed = 0;
@@ -1265,7 +1267,7 @@ static int ppmgr_task(void *data)
             vf = vfq_peek(&q_ready);
             while(vf){
                 vf = vfq_pop(&q_ready);
-                ppmgr_vf_put(vf);
+                ppmgr_vf_put(vf, NULL);
                 vf = vfq_peek(&q_ready);		            		
             }                  		
          	                      

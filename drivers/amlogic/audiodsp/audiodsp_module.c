@@ -49,24 +49,6 @@ static struct audiodsp_priv *audiodsp_p;
 #define  DSP_DRIVER_NAME	"audiodsp"
 #define  DSP_NAME	"dsp"
 
-/**
- *  Audio codec necessary MIPS (KHz)
- */
-static unsigned int audiodsp_mips[]={
-    200000, //#define MCODEC_FMT_MPEG123 (1<<0)
-    200000, //#define MCODEC_FMT_AAC 	  (1<<1)
-    200000, //#define MCODEC_FMT_AC3 	  (1<<2)
-    200000, //#define MCODEC_FMT_DTS		  (1<<3)
-    200000, //#define MCODEC_FMT_FLAC	  (1<<4)
-    200000, //#define MCODEC_FMT_COOK		(1<<5)
-    200000, //#define MCODEC_FMT_AMR		(1<<6)
-    200000, //#define MCODEC_FMT_RAAC     (1<<7)
-    200000, //#define MCODEC_FMT_ADPCM	  (1<<8)
-    200000, //#define MCODEC_FMT_WMA     (1<<9)
-    200000, //#define MCODEC_FMT_PCM      (1<<10)
-    200000, //#define MCODEC_FMT_WMAPRO      (1<<11)
-};
-
 #ifdef CONFIG_PM
 typedef struct {
     int event;
@@ -175,7 +157,7 @@ static int audiodsp_ioctl(struct inode *node, struct file *file, unsigned int cm
 	int ret=0;
 	unsigned long *val=(unsigned long *)args;
 #ifdef ENABLE_WAIT_FORMAT
-	static wait_format_times=0;
+	static int wait_format_times=0;
 #endif	
 	switch(cmd)
 		{
@@ -664,14 +646,6 @@ static ssize_t codec_fmt_show(struct class* cla, struct class_attribute* attr, c
     return ret;
 }
 
-static ssize_t codec_mips_show(struct class* cla, struct class_attribute* attr, char* buf)
-{
-    size_t ret = 0;
-    struct audiodsp_priv *priv = audiodsp_privdata();
-    ret = sprintf(buf, "%d\n", 192000); // set to lowest, because M3 ARC not using A9 clk / 2
-    return ret;
-}
-
 static ssize_t codec_fatal_err_show(struct class* cla, struct class_attribute* attr, char* buf)
 {
     struct audiodsp_priv *priv = audiodsp_privdata();
@@ -681,10 +655,9 @@ static ssize_t codec_fatal_err_show(struct class* cla, struct class_attribute* a
 static ssize_t swap_buf_ptr_show(struct class *cla, struct class_attribute* attr, char* buf)
 {
     char *pbuf = buf;
-    struct audiodsp_priv *priv = audiodsp_privdata();
 
-    pbuf += sprintf(pbuf, "swap buffer wp: %x\n", DSP_RD(DSP_DECODE_OUT_WD_PTR));
-    pbuf += sprintf(pbuf, "swap buffer rp: %x\n", DSP_RD(DSP_DECODE_OUT_RD_ADDR));
+    pbuf += sprintf(pbuf, "swap buffer wp: %lx\n", DSP_RD(DSP_DECODE_OUT_WD_PTR));
+    pbuf += sprintf(pbuf, "swap buffer rp: %lx\n", DSP_RD(DSP_DECODE_OUT_RD_ADDR));
 
     return (pbuf - buf);
 }
@@ -694,17 +667,17 @@ static ssize_t dsp_working_status_show(struct class* cla, struct class_attribute
     struct audiodsp_priv *priv = audiodsp_privdata();
     struct dsp_working_info *info = priv->dsp_work_details;
     char *pbuf = 	buf;
-    pbuf += sprintf(pbuf, "\tdsp status  0x%x\n", DSP_RD(DSP_STATUS));
+    pbuf += sprintf(pbuf, "\tdsp status  0x%lx\n", DSP_RD(DSP_STATUS));
     pbuf += sprintf(pbuf, "\tdsp sp  0x%x\n", info->sp);
  //   pbuf += sprintf(pbuf, "\tdsp pc  0x%x\n", info->pc);
     pbuf += sprintf(pbuf, "\tdsp ilink1  0x%x\n", info->ilink1);
     pbuf += sprintf(pbuf, "\tdsp ilink2  0x%x\n", info->ilink2);
     pbuf += sprintf(pbuf, "\tdsp blink  0x%x\n", info->blink);
-    pbuf += sprintf(pbuf, "\tdsp jeffies  0x%x\n", DSP_RD(DSP_JIFFIES));
-    pbuf += sprintf(pbuf, "\tdsp pcm wp  0x%x\n", DSP_RD(DSP_DECODE_OUT_WD_ADDR));
-    pbuf += sprintf(pbuf, "\tdsp pcm rp  0x%x\n", DSP_RD(DSP_DECODE_OUT_RD_ADDR));
-    pbuf += sprintf(pbuf, "\tdsp pcm buffered size  0x%x\n", DSP_RD(DSP_BUFFERED_LEN));
-    pbuf += sprintf(pbuf, "\tdsp es read offset  0x%x\n", DSP_RD(DSP_AFIFO_RD_OFFSET1));
+    pbuf += sprintf(pbuf, "\tdsp jeffies  0x%lx\n", DSP_RD(DSP_JIFFIES));
+    pbuf += sprintf(pbuf, "\tdsp pcm wp  0x%lx\n", DSP_RD(DSP_DECODE_OUT_WD_ADDR));
+    pbuf += sprintf(pbuf, "\tdsp pcm rp  0x%lx\n", DSP_RD(DSP_DECODE_OUT_RD_ADDR));
+    pbuf += sprintf(pbuf, "\tdsp pcm buffered size  0x%lx\n", DSP_RD(DSP_BUFFERED_LEN));
+    pbuf += sprintf(pbuf, "\tdsp es read offset  0x%lx\n", DSP_RD(DSP_AFIFO_RD_OFFSET1));
 
     return 	(pbuf- buf);
 }

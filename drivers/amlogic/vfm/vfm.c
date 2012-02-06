@@ -150,7 +150,7 @@ static int vfm_map_add(char* id,   char* name_chain)
 
 char* vf_get_provider_name(const char* receiver_name)
 {
-    ulong flags;
+    ulong flags = 0;
     int i,j;
     char* provider_name = NULL;
     unsigned char receiver_is_amvideo = 0;

@@ -221,7 +221,7 @@ struct codec_profile_t
 #define SUPPORT_VDEC_NUM	(8)
 
 int vcodec_profile_register(const struct codec_profile_t *vdec_profile);
-ssize_t vcodec_profile_read(const char *buf,int size);
+ssize_t vcodec_profile_read(char *buf);
 
 #ifdef __KERNEL__
 #ifdef ENABLE_DEMUX_DRIVER

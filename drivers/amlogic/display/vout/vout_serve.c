@@ -266,7 +266,7 @@ static int  meson_vout_resume(struct platform_device *pdev)
 static void meson_vout_early_suspend(struct early_suspend *h)
 {
     if (early_suspend_flag)
-        return 0;
+        return;
     meson_vout_suspend((struct platform_device *)h->param, PMSG_SUSPEND);
     early_suspend_flag = 1;
 }
@@ -274,7 +274,7 @@ static void meson_vout_early_suspend(struct early_suspend *h)
 static void meson_vout_late_resume(struct early_suspend *h)
 {
     if (!early_suspend_flag)
-        return 0;
+        return;
     early_suspend_flag = 0;
     meson_vout_resume((struct platform_device *)h->param);
 }

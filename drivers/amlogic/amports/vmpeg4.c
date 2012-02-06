@@ -185,7 +185,7 @@ static inline void ptr_atomic_wrap_inc(u32 *ptr)
 
 static void set_aspect_ratio(vframe_t *vf, unsigned pixel_ratio)
 {
-    unsigned int ar = 0;
+    int ar = 0;
     unsigned int num = 0;
     unsigned int den = 0;
 

@@ -1410,10 +1410,9 @@ static ssize_t bufs_show(struct class *class, struct class_attribute *attr, char
 
 static ssize_t vcodec_profile_show(struct class *class, 
 								   struct class_attribute *attr, 
-								   const char *buf, 
-								   size_t size)
+								   char *buf)
 {
-	return vcodec_profile_read(buf,size);
+	return vcodec_profile_read(buf);
 }
 static struct class_attribute amstream_class_attrs[] = {
     __ATTR_RO(ports),
