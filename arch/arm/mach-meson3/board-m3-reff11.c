@@ -986,9 +986,17 @@ static struct platform_device vm_device =
     .resource      = vm_resources,
 };
 #endif /* AMLOGIC_VIDEOIN_MANAGER */
+#if defined(CONFIG_TVIN_BT656IN)
+static void __init bt656in_pinmux_init(void)
+{
+    SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, 0xf<<6);
+    SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_3, 1<<21);
+}
+#endif
 #ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE_GC0308
 int gc0308_init(void)
 {
+
     CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_1, (1<<29)); 
     SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<2));
 
@@ -1978,34 +1986,13 @@ static int __init aml_i2c_init(void)
     return 0;
 }
 
-#if defined(CONFIG_TVIN_BT656IN)
-static void __init bt656in_pinmux_init(void)
-{
-    SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, 0xf<<6);
-    SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_3, 1<<21);
-}
-
-
-#endif
 
 static void __init device_pinmux_init(void )
 {
     clearall_pinmux();
     aml_i2c_init();
-#if defined(CONFIG_TVIN_BT656IN)
-    bt656in_pinmux_init();
-#endif
     //set_audio_pinmux(AUDIO_OUT_TEST_N);
    // set_audio_pinmux(AUDIO_IN_JTAG);
-   
-   // clear clk for camera for hardware EMI confirm
-    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_1, (1<<29)); 
-    SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<2));
-	unsigned pwm_cnt = get_ddr_pll_clk()/48000000 - 1;
-    pwm_cnt &= 0xffff;
-    WRITE_CBUS_REG(PWM_PWM_C, (pwm_cnt<<16) | pwm_cnt);
-    CLEAR_CBUS_REG_MASK(PWM_MISC_REG_CD, (1 << 0)|(1 << 2));
-
 }
 
 

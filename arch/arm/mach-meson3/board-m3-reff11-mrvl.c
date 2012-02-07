@@ -45,7 +45,7 @@
 #include <mach/gpio.h>
 #include <linux/delay.h>
 #include <mach/clk_set.h>
-#include "board-m3-reff11-P800.h"
+#include "board-m3-reff11.h"
 
 #ifdef CONFIG_AW_AXP
 #include <linux/power_supply.h>
@@ -647,7 +647,7 @@ static struct platform_device codec_device = {
 };
 #endif
 
-#if defined(CONFIG_AM_DEINTERLACE) || defined (CONFIG_DEINTERLACE)
+#if defined(CONFIG_AM_VIDEO)
 static struct resource deinterlace_resources[] = {
     [0] = {
         .start =  DI_ADDR_START,
@@ -711,39 +711,47 @@ static struct resource amlogic_card_resource[] = {
         .flags = 0x200,
     }
 };
+/* WIFI ON Flag */
+static int WIFI_ON;
+/* BT ON Flag */
+static int BT_ON;
+/* WL_BT_REG_ON control function */
+static void reg_on_control(int is_on)
+{
+    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_3,(1<<5));
+    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_6,(1<<20));
+    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0,(1<<6));
+    CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO0_EN_N, (1<<6));
+    if(is_on){
+        SET_CBUS_REG_MASK(PREG_PAD_GPIO0_O, (1<<6));
+    }
+
+    else{
+    /* only pull donw reg_on pin when wifi and bt off */
+        if((!WIFI_ON) && (!BT_ON)){
+            CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO0_O, (1<<6));
+            printk("WIFI BT Power down\n");
+        }
+    }
+}
 
 void extern_wifi_power(int is_power)
 {
-    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0, (1<<6));
-    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_6, (1<<20));
-    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_3, (1<<5));
-    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_6, (1<<22));
-    CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO0_EN_N, (1<<4));
-    SET_CBUS_REG_MASK(PREG_PAD_GPIO0_O, (1<<4));
-
-    //delay at least 100us
-    udelay(500);
-
-    //SHUTDOWN high
-    CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO0_EN_N, (1<<6));
-    SET_CBUS_REG_MASK(PREG_PAD_GPIO0_O, (1<<6));
-
-    //delay at least 100us
-    udelay(500);
-
-    //VDD 1V2 low
-    if(is_power)
-            CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO0_O, (1<<4));
-    else
-            SET_CBUS_REG_MASK(PREG_PAD_GPIO0_O, (1<<4));
-
-    printk("[extern_wifi_power] 1V2 %d\n", is_power);
+    WIFI_ON = is_power;
+    reg_on_control(is_power);
 }
 
 EXPORT_SYMBOL(extern_wifi_power);
 
+#define GPIO_WIFI_HOSTWAKE  ((GPIOX_bank_bit0_31(11)<<16) |GPIOX_bit_bit0_31(11))
+
 void sdio_extern_init(void)
 {
+    #if defined(CONFIG_BCM4329_HW_OOB) || defined(CONFIG_BCM4329_OOB_INTR_ONLY)/* Jone add */
+    gpio_direction_input(GPIO_WIFI_HOSTWAKE);
+    gpio_enable_level_int(gpio_to_idx(GPIO_WIFI_HOSTWAKE), 0, 4);
+    gpio_enable_edge_int(gpio_to_idx(GPIO_WIFI_HOSTWAKE), 0, 4);
+    #endif /* (CONFIG_BCM4329_HW_OOB) || (CONFIG_BCM4329_OOB_INTR_ONLY) Jone add */
     extern_wifi_power(1);
 }
 
@@ -775,10 +783,10 @@ static struct aml_card_info  amlogic_card_info[] = {
         .card_ins_en_mask = 0,
         .card_ins_input_reg = 0,
         .card_ins_input_mask = 0,
-        .card_power_en_reg = 0,
-        .card_power_en_mask = 0,
-        .card_power_output_reg = 0,
-        .card_power_output_mask = 0,
+        .card_power_en_reg = EGPIO_GPIOA_ENABLE,
+        .card_power_en_mask = PREG_IO_5_MASK,
+        .card_power_output_reg = EGPIO_GPIOA_OUTPUT,
+        .card_power_output_mask = PREG_IO_5_MASK,
         .card_power_en_lev = 1,
         .card_wp_en_reg = 0,
         .card_wp_en_mask = 0,
@@ -787,6 +795,39 @@ static struct aml_card_info  amlogic_card_info[] = {
         .card_extern_init = sdio_extern_init,
     },
 };
+
+void extern_wifi_reset(int is_on)
+{
+    unsigned int val;
+
+    /*output*/
+    val = readl(amlogic_card_info[1].card_power_en_reg);
+    val &= ~(amlogic_card_info[1].card_power_en_mask);
+    writel(val, amlogic_card_info[1].card_power_en_reg);
+
+    if(is_on){
+        /*high*/
+        val = readl(amlogic_card_info[1].card_power_output_reg);
+        val |=(amlogic_card_info[1].card_power_output_mask);
+        writel(val, amlogic_card_info[1].card_power_output_reg);
+        printk("on val = %x\n", val);
+    }
+    else{
+        /*low*/
+        val = readl(amlogic_card_info[1].card_power_output_reg);
+        val &=~(amlogic_card_info[1].card_power_output_mask);
+        writel(val, amlogic_card_info[1].card_power_output_reg);
+        printk("off val = %x\n", val);
+    }
+
+    printk("ouput %x, bit %d, level %x, bit %d\n",
+            amlogic_card_info[1].card_power_en_reg,
+            amlogic_card_info[1].card_power_en_mask,
+            amlogic_card_info[1].card_power_output_reg,
+            amlogic_card_info[1].card_power_output_mask);
+    return;
+}
+EXPORT_SYMBOL(extern_wifi_reset);
 
 static struct aml_card_platform amlogic_card_platform = {
     .card_num = ARRAY_SIZE(amlogic_card_info),
@@ -950,8 +991,18 @@ static struct ts_platform_data ts_pdata = {
 	.irq_no 			= FT_IRQ,
 	.reset_gpio_no	= ((GPIOA_bank_bit0_27(1)<<16) |GPIOA_bit_bit0_27(1)),
 	.irq_gpio_no		= ((GPIOA_bank_bit0_27(16)<<16) |GPIOA_bit_bit0_27(16)),
-	.power_gpio_no      = ((GPIOA_bank_bit0_27(9)<<16) |GPIOA_bit_bit0_27(9)),
 };
+#endif
+
+#ifdef CONFIG_BOSCH_BMA222
+struct gsen_platform_data{
+	int	rotator[9];
+	};
+
+static struct gsen_platform_data gsen_pdata={
+		.rotator={-1,0,0,0,-1,0,0,0,1},
+	};
+	
 #endif
 
 #if defined(CONFIG_AML_RTC)
@@ -986,6 +1037,7 @@ static void __init bt656in_pinmux_init(void)
 #ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE_GC0308
 int gc0308_init(void)
 {
+
     CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_1, (1<<29)); 
     SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, (1<<2));
 
@@ -1739,6 +1791,77 @@ static struct platform_device ppmgr_device = {
 };
 #endif
 
+#ifdef CONFIG_BT_DEVICE
+#include <linux/bt-device.h>
+
+static struct platform_device bt_device = {
+    .name             = "bt-dev",
+    .id               = -1,
+};
+
+static void bt_device_init(void)
+{
+    /* BT_RST_N */
+    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_3, (1<<2));
+    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0, (1<<6));
+
+    /* UART_RTS_N(BT) */
+    SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_4, (1<<11));
+
+    /* UART_CTS_N(BT) */
+    SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_4, (1<<10));
+
+    /* UART_TX(BT) */
+    SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_4, (1<<12));
+
+    /* UART_RX(BT) */
+    SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_4, (1<<13));
+
+    /* BT_WAKE */
+    CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO4_EN_N, (1 << 10));
+    SET_CBUS_REG_MASK(PREG_PAD_GPIO4_O, (1 << 10));
+}
+
+static void bt_device_on(void)
+{
+    /* reg_on */
+    BT_ON = 1;
+    reg_on_control(1);
+    /* BT_RST_N */
+    CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO0_EN_N, (1<<5));
+    CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO0_O, (1<<5));
+    msleep(200);
+    SET_CBUS_REG_MASK(PREG_PAD_GPIO0_O, (1<<5));
+}
+
+static void bt_device_off(void)
+{
+    BT_ON = 0;
+    reg_on_control(0);
+    /* BT_RST_N */
+    CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO0_EN_N, (1<<5));
+    CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO0_O, (1<<5));
+    msleep(200);
+}
+
+static void bt_device_suspend(void)
+{
+    CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO4_O, (1 << 10));
+}
+
+static void bt_device_resume(void)
+{
+    SET_CBUS_REG_MASK(PREG_PAD_GPIO4_O, (1 << 10));
+}
+
+struct bt_dev_data bt_dev = {
+    .bt_dev_init    = bt_device_init,
+    .bt_dev_on      = bt_device_on,
+    .bt_dev_off     = bt_device_off,
+    .bt_dev_suspend = bt_device_suspend,
+    .bt_dev_resume  = bt_device_resume,
+};
+#endif
 
 static struct platform_device __initdata *platform_devs[] = {
 #if defined(CONFIG_FB_AM)
@@ -1747,7 +1870,7 @@ static struct platform_device __initdata *platform_devs[] = {
 #if defined(CONFIG_AM_STREAMING)
     &codec_device,
 #endif
-#if defined(CONFIG_AM_DEINTERLACE) || defined (CONFIG_DEINTERLACE)
+#if defined(CONFIG_AM_VIDEO)
     &deinterlace_device,
 #endif
 #if defined(CONFIG_TVIN_VDIN)
@@ -1812,6 +1935,9 @@ static struct platform_device __initdata *platform_devs[] = {
         &usb_mass_storage_device,
     #endif
 #endif
+#ifdef CONFIG_BT_DEVICE
+    &bt_device,
+#endif
 
 #ifdef CONFIG_EFUSE
 	&aml_efuse_device,
@@ -1861,7 +1987,11 @@ static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
         .platform_data = (void *)&ts_pdata,
     },
 #endif
-
+#ifdef CONFIG_GOODIX_GT82X_CAPACITIVE_TOUCHSCREEN
+    {
+        I2C_BOARD_INFO("Goodix-TS", 0x5d),
+    },
+#endif
 };
 
 static struct i2c_board_info __initdata aml_i2c_bus_info_1[] = {
@@ -1869,6 +1999,9 @@ static struct i2c_board_info __initdata aml_i2c_bus_info_1[] = {
 	{
 		I2C_BOARD_INFO("bma222",  0x08),
 		//.irq = INT_GPIO_1,
+#ifdef CONFIG_AML_MLVDS_G_TM080XDH_REVERSE	
+		.platform_data = (void *) &gsen_pdata,
+#endif		
 	},
 #endif
 };
@@ -1975,7 +2108,12 @@ static void __init device_pinmux_init(void )
     aml_i2c_init();
     //set_audio_pinmux(AUDIO_OUT_TEST_N);
    // set_audio_pinmux(AUDIO_IN_JTAG);
-   
+#if 1
+    //set clk for wifi
+    WRITE_CBUS_REG(HHI_GEN_CLK_CNTL,(READ_CBUS_REG(HHI_GEN_CLK_CNTL)&(~(0x7f<<0)))|((0<<0)|(1<<8)|(7<<9)) );
+    CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO2_EN_N, (1<<15));
+    SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_3, (1<<22));
+#endif
 
 }
 
@@ -2105,7 +2243,7 @@ static __init void m3_init_machine(void)
 // Gadmei uses PMU to control.
 //    pm_power_off = power_off;		//Elvis fool
     device_pinmux_init();
-	extern_usb_wifi_power(0);
+	//extern_usb_wifi_power(0);
 #if defined(CONFIG_AML_INIT_GATE_OFF)
     init_gate_off();
 #endif    

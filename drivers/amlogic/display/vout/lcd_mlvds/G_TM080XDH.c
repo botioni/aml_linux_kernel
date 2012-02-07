@@ -57,7 +57,7 @@ void set_backlight_level(unsigned level);
 #define LCD_HEIGHT      768
 #define MAX_WIDTH       1440
 #define MAX_HEIGHT      810//790
-#define VIDEO_ON_PIXEL  80//80//64
+#define VIDEO_ON_PIXEL  76//80//64
 #define VIDEO_ON_LINE   22//22//17 // Display Start Line
 
 //Define miniLVDS tcon channel
@@ -75,10 +75,10 @@ void set_backlight_level(unsigned level);
 #define BL_CTL_PWM		1
 #define BL_CTL			BL_CTL_GPIO
 
-static unsigned BL_MAX_LEVEL_2D=255;
-#define BL_MIN_LEVEL_2D		0
-#define BL_MAX_LEVEL_3D		255
-#define BL_MIN_LEVEL_3D		20
+static unsigned BL_MAX_LEVEL_2D=0;	//15-0
+static unsigned BL_MIN_LEVEL_2D=15;	//15-15
+#define BL_MAX_LEVEL_3D		0  //15-0
+#define BL_MIN_LEVEL_3D		13	//15-13
 static unsigned BL_MAX;
 static unsigned BL_MIN=0;
 static unsigned bl_level;
@@ -141,9 +141,9 @@ static lcdConfig_t lcd_config =
     .max_height = MAX_HEIGHT,
 	.video_on_pixel = VIDEO_ON_PIXEL,
     .video_on_line = VIDEO_ON_LINE,
-    .pll_ctrl = 0x43a, //0x10222,
+    .pll_ctrl = 0x1023a, //0x10222,
     .div_ctrl = 0x18813, //0x18813,
-	.clk_ctrl = 0x1111,	//pll_sel,div_sel,vclk_sel,xd
+	.clk_ctrl = 0x01111,//0x11111	//[19:16]:ss_level, [12]:pll_sel, [8]div_sel, [4]vclk_sel, [3:0]:xd	
 	
     .gamma_cntl_port = (1 << LCD_GAMMA_EN) | (0 << LCD_GAMMA_RVS_OUT) | (0 << LCD_GAMMA_VCOM_POL),
     .gamma_vcom_hswitch_addr = 0,
@@ -300,13 +300,13 @@ void control_lcd_3d(char flag_3d) {
     pwm_3d(flag_3d);
     if (flag_3d)
     {
-    	BL_MAX=BL_MAX_LEVEL_3D;
-    	BL_MIN=BL_MIN_LEVEL_3D;
+    	BL_MAX=15-BL_MAX_LEVEL_3D;
+    	BL_MIN=15-BL_MIN_LEVEL_3D;
     }
     else
     {
-    	BL_MAX=BL_MAX_LEVEL_2D;
-    	BL_MIN=BL_MIN_LEVEL_2D;
+    	BL_MAX=15-BL_MAX_LEVEL_2D;
+    	BL_MIN=15-BL_MIN_LEVEL_2D;
     }
     set_backlight_level(bl_level);    //change BL @ 2D/3D mode
 }
@@ -341,15 +341,15 @@ static struct class enable3d_class = {
 
 #define PWM_MAX			60000   //set pwm_freq=24MHz/PWM_MAX (Base on XTAL frequence: 24MHz, 0<PWM_MAX<65535)
 #define BL_MAX_LEVEL		255
-#define BL_MIN_LEVEL		0
+#define BL_MIN_LEVEL		20
 void power_on_backlight(void)
 {
 	lvds_port_enable();
 	WRITE_CBUS_REG_BITS(LED_PWM_REG0, 1, 12, 2);
 	msleep(300);
 	
-	BL_MAX=BL_MAX_LEVEL_2D;
-	BL_MIN=BL_MIN_LEVEL_2D;
+	//BL_MAX=15-BL_MAX_LEVEL_2D;
+	//BL_MIN=15-BL_MIN_LEVEL_2D;
 	//BL_EN: GPIOD_1(PWM_D)
 #if (BL_CTL==BL_CTL_GPIO)	
     WRITE_MPEG_REG(0x2013, READ_MPEG_REG(0x2013) | (1 << 17));    
@@ -388,16 +388,34 @@ unsigned get_backlight_level(void)
 }
 
 void set_backlight_level(unsigned level)
-{
+{	
 	bl_level=level;
-	level = level>BL_MAX_LEVEL ? BL_MAX_LEVEL:(level<BL_MIN_LEVEL ? BL_MIN_LEVEL:level);		
+	//level = level>BL_MAX_LEVEL ? BL_MAX_LEVEL:(level<BL_MIN_LEVEL ? BL_MIN_LEVEL:level);		
 	//printk("\n\nset backlight sys_level: %d\n", level);
-	level=(level*(BL_MAX-BL_MIN)/BL_MAX_LEVEL)+BL_MIN;	
-	//printk("\n\nset backlight mode_level: %d\n", level);
+	//level=(level*(BL_MAX-BL_MIN)/BL_MAX_LEVEL)+BL_MIN;	
+	printk("\n\nset backlight mode_level: %d\n", level);
 #if (BL_CTL==BL_CTL_GPIO)
-	level = level * 15 / BL_MAX_LEVEL;	
-	level = 15 - level;
+    if (level < BL_MIN_LEVEL)
+    {
+        level = 15;
+    }
+	else
+	{
+		level=((level-BL_MIN_LEVEL)*(BL_MAX-BL_MIN)*10/(BL_MAX_LEVEL-BL_MIN_LEVEL))+BL_MIN*10;
+		if ((level % 10) >= 5)
+		{
+			level = level/10+1;
+		}
+		else
+		{
+			level = level/10;
+		}		
+		level = 15-level;
+	}
+    
+	printk("set backlight drv_level: %d\n\n", level);
 	WRITE_CBUS_REG_BITS(LED_PWM_REG0, level, 0, 4);	
+	
 #elif (BL_CTL==BL_CTL_PWM)	
 	level = level * PWM_MAX / BL_MAX_LEVEL ;	
 	WRITE_CBUS_REG_BITS(PWM_PWM_D, (PWM_MAX - level), 0, 16);  //pwm low
@@ -492,24 +510,31 @@ static void power_on_bl(void)
     power_on_backlight();
 }
 #endif
+
 static unsigned set_backlight_only_once=0;
 static void t13_power_on(void)
 {
-    //video_dac_disable();	
+    //video_dac_disable();		
     unsigned pinmux_a9_status = 0;
+    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_3, (1<<1));
+    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0, (1<<6));
+    CLEAR_CBUS_REG_MASK(PAD_PULL_UP_REG0, (1<<9));
     set_gpio_mode(GPIOA_bank_bit0_27(9), GPIOA_bit_bit0_27(9), GPIO_INPUT_MODE);
-    pinmux_a9_status=get_gpio_mode(GPIOA_bank_bit0_27(9), GPIOA_bit_bit0_27(9));
+    pinmux_a9_status=get_gpio_val(GPIOA_bank_bit0_27(9), GPIOA_bit_bit0_27(9));
     if(pinmux_a9_status==1)
-    	{
-    	BL_MAX_LEVEL_2D=220;
+    	{//863
+    	BL_MAX_LEVEL_2D=4;  
+		BL_MIN_LEVEL_2D=14;  
     	printk("\n GPIO A9 is high,3D panel\n"); 
     	}
     else
-    	{
-    	BL_MAX_LEVEL_2D=255;
+    	{//860
+    	BL_MAX_LEVEL_2D=0;   
+		BL_MIN_LEVEL_2D=12; 
     	printk("\n GPIO A9 is low,2D panel\n"); 
     	}
-    BL_MAX=BL_MAX_LEVEL_2D;
+    BL_MAX=15-BL_MAX_LEVEL_2D;
+	BL_MIN=15-BL_MIN_LEVEL_2D;
     printk("\n\n t13_power_on.\n\n");
 	power_on_lcd();	
     Power_on_bl = power_on_bl;
