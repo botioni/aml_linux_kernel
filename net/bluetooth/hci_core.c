@@ -472,6 +472,81 @@ done:
 	return err;
 }
 
+#if defined(CONFIG_ARCH_MESON) || defined(CONFIG_ARCH_MESON3)
+static int hci_state_change(struct hci_dev *hdev)
+{
+    struct hci_dev_stats *new_stat = &hdev->stat;
+    struct hci_dev_stats *old_stat = &hdev->old_stat;
+
+    if/*(new_stat->err_rx != old_stat->err_rx){
+        old_stat->err_rx = new_stat->err_rx;
+        printk("err_rx\n");
+        return 1;
+    }else if(new_stat->err_tx != old_stat->err_tx){
+        old_stat->err_tx = new_stat->err_tx;
+        printk("err_tx\n");
+        return 1;
+    }else if(new_stat->cmd_tx != old_stat->cmd_tx){
+        old_stat->cmd_tx = new_stat->cmd_tx;
+        printk("cmd_tx\n");
+        return 1;
+    }else if(new_stat->evt_rx != old_stat->evt_rx){
+        old_stat->evt_rx = new_stat->evt_rx;
+        printk("evt_rx\n");
+        return 1;
+    }else if*/(new_stat->acl_tx != old_stat->acl_tx){
+        //old_stat->acl_tx = new_stat->acl_tx;
+        printk(KERN_DEBUG "acl_tx\n");
+        //return 1;
+        goto diff;
+    }else if(new_stat->acl_rx != old_stat->acl_rx){
+        //old_stat->acl_rx = new_stat->acl_rx;
+        printk(KERN_DEBUG "acl_rx\n");
+        //return 1;
+        goto diff;
+    }else if(new_stat->sco_tx != old_stat->sco_tx){
+        //old_stat->sco_tx = new_stat->sco_tx;
+        printk(KERN_DEBUG "sco_tx\n");
+        //return 1;
+        goto diff;
+    }else if(new_stat->sco_rx != old_stat->sco_rx){
+        //old_stat->sco_rx = new_stat->sco_rx;
+        printk(KERN_DEBUG "sco_rx\n");
+        //return 1;
+        goto diff;
+    }/*else if(new_stat->byte_rx != old_stat->byte_rx){
+        old_stat->byte_rx = new_stat->byte_rx;
+        printk("byte_rx\n");
+        return 1;
+    }else if(new_stat->sco_rx != old_stat->sco_rx){
+        old_stat->byte_tx = new_stat->byte_tx;
+        printk("byte_tx\n");
+        return 1;
+    }*/
+
+    return 0;
+diff:
+    old_stat->acl_tx = new_stat->acl_tx;
+    old_stat->acl_rx = new_stat->acl_rx;
+    old_stat->sco_tx = new_stat->sco_tx;
+    old_stat->sco_rx = new_stat->sco_rx;
+    return 1;
+}
+
+static void hdev_timer_handle(unsigned long arg)
+{
+    struct hci_dev *hdev = (struct hci_dev *)(arg);
+    if(hci_state_change(hdev)){
+        printk(KERN_DEBUG "date transfer occure in 6s\n");
+        hci_notify(hdev, HCI_DEV_RUN);
+    }
+    else{
+        printk(KERN_DEBUG "no date transfer occure in 6s\n");
+        hci_notify(hdev, HCI_DEV_IDLE);
+    }
+    mod_timer(&hdev->timer, jiffies + msecs_to_jiffies(HCI_IDLE_TIMEOUT));
+}
+#endif
 /* ---- HCI ioctl helpers ---- */
 
 int hci_dev_open(__u16 dev)
@@ -914,6 +989,14 @@ int hci_register_dev(struct hci_dev *hdev)
 #ifdef CONFIG_BCM4329_BT
     hdev->inquiry_state = 0;
 #endif
+#if defined(CONFIG_ARCH_MESON) || defined(CONFIG_ARCH_MESON3)
+    printk("init timer\n");
+    init_timer(&hdev->timer);
+    hdev->timer.function = &hdev_timer_handle;
+    hdev->timer.data = (unsigned long)hdev;
+    hdev->timer.expires = jiffies + msecs_to_jiffies(HCI_IDLE_TIMEOUT);
+    add_timer(&hdev->timer);
+#endif
 	tasklet_init(&hdev->cmd_task, hci_cmd_task,(unsigned long) hdev);
 	tasklet_init(&hdev->rx_task, hci_rx_task, (unsigned long) hdev);
 	tasklet_init(&hdev->tx_task, hci_tx_task, (unsigned long) hdev);
@@ -967,6 +1050,10 @@ int hci_unregister_dev(struct hci_dev *hdev)
 	write_unlock_bh(&hci_dev_list_lock);
 
 	hci_dev_do_close(hdev);
+#if defined(CONFIG_ARCH_MESON) || defined(CONFIG_ARCH_MESON3)
+    printk("del timer\n");
+    del_timer(&hdev->timer);
+#endif
 
 	for (i = 0; i < 3; i++)
 		kfree_skb(hdev->reassembly[i]);

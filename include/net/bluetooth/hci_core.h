@@ -146,6 +146,10 @@ struct hci_dev {
 #ifdef CONFIG_BCM4329_BT
     int inquiry_state;
 #endif
+#if defined(CONFIG_ARCH_MESON) || defined(CONFIG_ARCH_MESON3)
+    struct timer_list timer;
+    struct hci_dev_stats old_stat; 
+#endif
 
 	int (*open)(struct hci_dev *hdev);
 	int (*close)(struct hci_dev *hdev);

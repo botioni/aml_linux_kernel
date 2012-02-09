@@ -29,6 +29,7 @@ static struct early_suspend bt_early_suspend;
 extern struct bt_dev_data bt_dev;
 void rfkill_switch_all(enum rfkill_type type, bool blocked);
 
+#if 0
 static unsigned long bt_baud;
 extern int get_baud(int line);                                                                                        
 extern void set_baud(int line, unsigned long newbaud);
@@ -42,6 +43,7 @@ static void bt_reset_workqueue(struct work_struct *work)
         hci_resume_dev(hdev);
 	}
 }
+#endif
 
 static int bt_set_block(void *data, bool blocked)
 {
@@ -67,6 +69,7 @@ static const struct rfkill_ops bt_rfkill_ops = {
 
 static int bt_earlysuspend(struct platform_device *pdev, pm_message_t state)                                               
 {
+#if 0
     struct hci_dev *hdev;
         
     pr_info("BCM_BT: going early suspend\n");
@@ -78,12 +81,13 @@ static int bt_earlysuspend(struct platform_device *pdev, pm_message_t state)
         }
     
     }
-
+#endif
     return 0;
 }
 
 static int bt_lateresume(struct platform_device *pdev)
 {
+#if 0
     struct hci_dev *hdev;
     
     pr_info("BCM_BT: going later resume\n");
@@ -96,12 +100,13 @@ static int bt_lateresume(struct platform_device *pdev)
 		/* when call the hci_dev_open after hci_dev_close, the bt will be restart */
 		//hci_dev_open(0);
     }
-
+#endif
     return 0;
 }
 
 static int bt_suspend(struct platform_device *pdev, pm_message_t state)                                               
 {
+#if 0
     struct hci_dev *hdev;
     
     pr_info("BCM_BT: going suspend\n");
@@ -113,12 +118,13 @@ static int bt_suspend(struct platform_device *pdev, pm_message_t state)
 		/* if we do not power off bt , we should restore uart baud */
         //bt_baud = get_baud(1);    
     }
-
+#endif
     return 0;
 }
 
 static int bt_resume(struct platform_device *pdev)
 {
+#if 0
     struct hci_dev *hdev;
     
     pr_info("BCM_BT: going resume\n");
@@ -131,7 +137,7 @@ static int bt_resume(struct platform_device *pdev)
 		//hci_dev_close(0);
         schedule_delayed_work(&btwork, 100);
     }
-
+#endif
     return 0;
 }
 
@@ -140,7 +146,9 @@ static int __init bt_probe(struct platform_device *pdev)
 	int rc = 0;
 	struct rfkill *bt_rfk;
 
+#if 0
     INIT_DELAYED_WORK(&btwork, bt_reset_workqueue);
+#endif
     /* default to bluetooth off */
     //rfkill_switch_all(RFKILL_TYPE_BLUETOOTH, 1);
     if (NULL != bt_dev.bt_dev_off) {
