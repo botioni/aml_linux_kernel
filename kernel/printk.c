@@ -142,8 +142,6 @@ EXPORT_SYMBOL(console_set_on_cmdline);
 /* Flag: console code may call schedule() */
 static int console_may_schedule;
 
-static int log_no_printk	= 0;
-	
 #ifdef CONFIG_PRINTK
 
 static char __log_buf[__LOG_BUF_LEN];
@@ -169,13 +167,6 @@ void log_buf_kexec_setup(void)
 	VMCOREINFO_SYMBOL(logged_chars);
 }
 #endif
-
-static int __init log_no_printk_setup(char *str)
-{
-	log_no_printk = simple_strtoul(str,NULL,0);
-	return 1;
-}
-__setup("noprintk=", log_no_printk_setup);
 
 static int __init log_buf_len_setup(char *str)
 {
@@ -657,10 +648,6 @@ static int have_callable_console(void)
  */
 asmlinkage int printk(const char *fmt, ...)
 {
-	if(log_no_printk){
-		return;
-	}
-	
 	va_list args;
 	int r;
 	va_start(args, fmt);
