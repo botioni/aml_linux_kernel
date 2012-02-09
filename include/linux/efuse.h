@@ -42,8 +42,8 @@
 #define EFUSE_HDCP_ID			6
 #define EFUSE_USID_ID				7
 
-void efuse_bch_enc(const char *ibuf, int isize, char *obuf);
-void efuse_bch_dec(const char *ibuf, int isize, char *obuf);
+void efuse_bch_enc(const char *ibuf, int isize, char *obuf, int reverse);
+void efuse_bch_dec(const char *ibuf, int isize, char *obuf, int reverse);
 
 struct efuse_platform_data {
 	loff_t pos;
