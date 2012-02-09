@@ -54,6 +54,10 @@ version		380				3						1						4    (version+machid, version=1)
 static unsigned long efuse_status;
 #define EFUSE_IS_OPEN           (0x01)
 //#define EFUSE_DEBUG                                       
+
+#ifdef EFUSE_DEBUG
+void __efuse_debug_init(void);
+#endif                                     
                                                                                       
 typedef struct efuse_dev_s {
 	struct cdev         cdev;
@@ -538,7 +542,8 @@ static int __init efuse_init(void)
 		printk(KERN_ERR "failed to register efuse driver, error %d\n", ret);
 		return -ENODEV;
 	}
-	printk( KERN_INFO "efuse--------------------------------------------\n");		
+	printk( KERN_INFO "efuse--------------------------------------------\n");	
+		
 	return ret;
 }
 
