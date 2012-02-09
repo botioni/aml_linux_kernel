@@ -38,6 +38,21 @@ static void __efuse_read_dword_debug(unsigned long addr, unsigned long *data)
 	*data = efuse_test_buf_32[addr >> 2];		
 }
 
+void __efuse_debug_init(void)
+{
+	__efuse_write_byte_debug(0, 0x02);
+	__efuse_write_byte_debug(60, 0x02);
+	__efuse_write_byte_debug(1, 0x03);
+	__efuse_write_byte_debug(61, 0x03);
+	__efuse_write_byte_debug(2, 0x00);
+	__efuse_write_byte_debug(62, 0x00);
+	__efuse_write_byte_debug(3, 0xA3);
+	__efuse_write_byte_debug(63, 0xA3);
+	__efuse_write_byte_debug(380, 0x01);
+	__efuse_write_byte_debug(381, 0x8e);
+	__efuse_write_byte_debug(382, 0x0b);
+	__efuse_write_byte_debug(383, 0x66);
+}
 #endif
 
 
@@ -208,7 +223,7 @@ static int cpu_is_before_m6(void)
 	return ((val & 0x40000000) == 0x40000000);
 }
 
-static int efuse_is_all_free(void)
+static int check_if_version0(void)
 {
 	unsigned long* contents = (unsigned long*)kzalloc(sizeof(unsigned long)*EFUSE_DWORDS, GFP_KERNEL);
 	char *op = NULL;
@@ -224,7 +239,7 @@ static int efuse_is_all_free(void)
 
 	__efuse_read(op, EFUSE_BYTES, &pos);	
 	for(i=0; i<EFUSE_BYTES; i++)
-		if((op[i] != 0) && (i!=0) && (i!=0x40)){
+		if((op[i] != 0) && (i!=0) &&(i!=1)&&(i!=2)&&(i!=3)&& (i!=0x40)){
 			ret = 0;
 			break;
 		}
@@ -246,16 +261,19 @@ static int efuse_readversion(void)
 	if(cpu_is_before_m6()){    // M1, M2, M3, A3
 		ppos = 380;
 		__efuse_read(buf, 4, &ppos);
-		efuse_bch_dec(buf, 4, ver_buf);		
+		efuse_bch_dec(buf, 4, ver_buf, 0);		
 		if(ver_buf[0] != 0){
 			efuse_active_version = ver_buf[0];
 			return ver_buf[0];
 		}
 		else{   // distinguish free efuse layout and M1/M2 old version
-			if(efuse_is_all_free())
-				return -1;
-			else
+			//if(efuse_is_all_free())
+			if(check_if_version0()){
+				efuse_active_version = 0;
 				return 0;
+			}
+			else
+				return -1;
 		}
 	}
 	else{
@@ -379,6 +397,10 @@ int efuse_read_item(char *buf, size_t count, loff_t *ppos)
 	char* contents = NULL;
 	char *penc = NULL;
 	char *pdata = NULL;		
+	int reverse = 0;
+	unsigned pos = (unsigned)*ppos;
+	if(pos == 60)  //licence
+		reverse = 1;
 	ret = check_if_bchversion();
 	if(ret != 0)
 		enc_len += ((count+29)/30);
@@ -393,15 +415,15 @@ int efuse_read_item(char *buf, size_t count, loff_t *ppos)
 	penc = contents;
 	pdata = buf;			
 	if(ret != 0){						
-		__efuse_read(contents, enc_len, ppos);
+		__efuse_read(contents, enc_len, ppos);		
 		while(enc_len >= 31){
-			efuse_bch_dec(penc, 31, pdata);
+			efuse_bch_dec(penc, 31, pdata, reverse);
 			penc += 31;
 			pdata += 30;
 			enc_len -= 31;
 		}
 		if((enc_len > 0))
-			efuse_bch_dec(penc, enc_len, pdata);
+			efuse_bch_dec(penc, enc_len, pdata, reverse);
 	}	
 	else
 		__efuse_read(buf, enc_len, ppos);	
@@ -419,6 +441,10 @@ int efuse_write_item(char *buf, size_t count, loff_t *ppos)
 	char* contents = NULL;
 	char *pdata = NULL;
 	char *penc = NULL;		
+	int reverse = 0;
+	unsigned pos = (unsigned)*ppos;
+	if(pos == 60)
+		reverse = 1;
 	ret = check_if_bchversion();
 	if(ret != 0)
 		enc_len += ((count+29)/30);
@@ -434,13 +460,13 @@ int efuse_write_item(char *buf, size_t count, loff_t *ppos)
 	penc = contents;			
 	if(ret != 0){				
 		while(data_len >= 30){
-			efuse_bch_enc(pdata, 30, penc);
+			efuse_bch_enc(pdata, 30, penc, reverse);
 			data_len -= 30;
 			pdata += 30;
 			penc += 31;		
 		}
 		if(data_len > 0)
-			efuse_bch_enc(pdata, data_len, penc);
+			efuse_bch_enc(pdata, data_len, penc, reverse);
 	}	
 	else
 		memcpy(penc, pdata, data_len);
@@ -451,3 +477,4 @@ int efuse_write_item(char *buf, size_t count, loff_t *ppos)
 		kfree(contents);
 	return count ;		
 }
+
