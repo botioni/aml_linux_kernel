@@ -132,6 +132,11 @@ void mali_meson_poweron(void)
         return;
     }
 
+    if (READ_MALI_REG(MALI_MMU_DTE_ADDR) != 0) {
+        printk("mali_meson_poweron: Mali is not really powered off.");
+        return;
+    }
+
     p = (u32)kcalloc(4096 * 4, 1, GFP_KERNEL);
     if (!p) {
         printk("mali_meson_poweron: NOMEM in meson_poweron\n");
