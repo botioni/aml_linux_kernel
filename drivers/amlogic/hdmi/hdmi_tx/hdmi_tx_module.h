@@ -57,7 +57,7 @@ typedef struct hdmi_tx_dev_s {
         void (*SetupIRQ)(struct hdmi_tx_dev_s* hdmitx_device);
         void (*DebugFun)(struct hdmi_tx_dev_s* hdmitx_device, const char * buf);
         void (*UnInit)(struct hdmi_tx_dev_s* hdmitx_device);
-        void (*Cntl)(struct hdmi_tx_dev_s* hdmitx_device, int cmd, unsigned arg);
+        int (*Cntl)(struct hdmi_tx_dev_s* hdmitx_device, int cmd, unsigned arg);
     }HWOp;
     
     //wait_queue_head_t   wait_queue;            /* wait queues */
@@ -78,7 +78,10 @@ typedef struct hdmi_tx_dev_s {
     unsigned char unplug_powerdown;
     /**/
     unsigned char hpd_event; /* 1, plugin; 2, plugout */
+    unsigned char force_audio_flag;
     unsigned char mux_hpd_if_pin_high_flag; 
+	unsigned char cec_func_flag;
+    int  auth_process_timer;
     HDMI_TX_INFO_t hdmi_info;
     unsigned char tmp_buf[HDMI_TMP_BUF_SIZE];
 }hdmitx_dev_t;
@@ -89,8 +92,17 @@ typedef struct hdmi_tx_dev_s {
 #define HDMI_AUDIO_INFO         4
 #define HDMI_AUDIO_CONTENT_PROTECTION   5
 
+#ifdef AVOS
+#define HDMI_PROCESS_DELAY  AVTimeDly(500)
+#define AUTH_PROCESS_TIME   (4000/500)
+#else
+#define HDMI_PROCESS_DELAY  msleep(100)
+#define AUTH_PROCESS_TIME   (4000/100)
+#endif        
 
-#define HDMITX_VER "2012Feb02b"
+
+#define HDMITX_VER "2012Feb10a"
+
 /************************************
 *    hdmitx protocol level interface
 *************************************/
@@ -140,5 +152,10 @@ extern unsigned char hdmi_audio_off_flag;
 #define HDMITX_HWCMD_TURNOFF_HDMIHW           0x4
 #define HDMITX_HWCMD_MUX_HPD                0x5
 #define HDMITX_HWCMD_PLL_MODE                0x6
+#define HDMITX_HWCMD_TURN_ON_PRBS           0x7
+#define HDMITX_FORCE_480P_CLK                0x8
+#define HDMITX_OUTPUT_ENABLE                 0x9
+#define HDMITX_GET_AUTHENTICATE_STATE        0xa
+
 
 #endif

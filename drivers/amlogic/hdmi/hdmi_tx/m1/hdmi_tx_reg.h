@@ -56,7 +56,6 @@ unsigned long READ_APB_REG(unsigned long addr);
 #define HDMI_OTHER_INTR_STAT_CLR    0x6
 
 //********** TX related **********//
-#define TX_HDCP_DKEY_OFFSET             TX_BASE_ADDR+0x400 
 #define TX_RX_EDID_OFFSET               TX_BASE_ADDR+0x600 
 #define TX_HDCP_SHADOW_OFFSET           TX_BASE_ADDR+0x100 
 
@@ -430,5 +429,17 @@ unsigned long READ_APB_REG(unsigned long addr);
 #define TX_BUSY                 1  // Transmitter is busy
 #define TX_DONE                 2  // Message has been successfully transmitted
 #define TX_ERROR                3  // Message has been transmitted with error
+
+// rx_msg_cmd
+#define RX_NO_OP                0  // No transaction
+#define RX_ACK_CURRENT          1  // Read earliest message in buffer
+#define RX_DISABLE              2  // Disable receiving latest message
+#define RX_ACK_NEXT             3  // Clear earliest message from buffer and read next message
+
+// rx_msg_status
+#define RX_IDLE                 0  // No transaction
+#define RX_BUSY                 1  // Receiver is busy
+#define RX_DONE                 2  // Message has been received successfully
+#define RX_ERROR                3  // Message has been received with error
 
 #endif  // _HDMI_RX_REG_H

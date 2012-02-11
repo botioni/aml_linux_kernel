@@ -56,7 +56,6 @@ unsigned long READ_APB_REG(unsigned long addr);
 #define HDMI_OTHER_INTR_STAT_CLR    0x6
 
 //********** TX related **********//
-#define TX_HDCP_DKEY_OFFSET             TX_BASE_ADDR+0x400 
 #define TX_RX_EDID_OFFSET               TX_BASE_ADDR+0x600 
 #define TX_HDCP_SHADOW_OFFSET           TX_BASE_ADDR+0x100 
 
