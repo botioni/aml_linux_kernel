@@ -1723,7 +1723,10 @@ unsigned int vf_keep_current(void)
         canvas_read(y_index,&cs0);
         canvas_read(u_index,&cs1);
         canvas_read(v_index,&cs2);
-        
+        if((cs1.width >= cs0.width)||(cs2.width >= cs0.width)){
+           /*special case , happening while  osd provider unregister*/
+	    return 0;
+        }
         if (keep_y_addr != canvas_get_addr(y_index) && /*must not the same address*/
             canvas_dup(keep_y_addr_remap, canvas_get_addr(y_index), (cs0.width *cs0.height)) &&
             canvas_dup(keep_u_addr_remap, canvas_get_addr(u_index), (cs1.width *cs1.height)) &&
