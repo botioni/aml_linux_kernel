@@ -2379,7 +2379,7 @@ static int hdmitx_m3_set_audmode(struct hdmi_tx_dev_s* hdmitx_device, Hdmi_tx_au
                     audio_N_para = 25088;
                     break;
                 case FS_48K:
-                    audio_N_para = 6144;
+                    audio_N_para = 6144*2;  // not default 6144, otherwise HDMI CTS 7-29 ACR fail
                     break;
                 case FS_96K:
                     audio_N_para = 12288;
