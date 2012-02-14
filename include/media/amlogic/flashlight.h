@@ -22,6 +22,9 @@ typedef enum {
 	FLASHLIGHT_TORCH,
 }aml_plat_flashlight_status_t;
 
+extern int set_flashlight(bool);
+extern aml_plat_flashlight_status_t get_flashlightflag(void);
+
 #endif
 
 

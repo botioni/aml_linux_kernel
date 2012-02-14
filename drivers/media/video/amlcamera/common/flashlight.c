@@ -196,15 +196,19 @@ int set_flashlight(bool mode)
 {
 	aml_plat_flashlight_data_t *pdata = NULL;
 	if(devp&&devp->platform_data){
+		pdata = (aml_plat_flashlight_data_t *)devp->platform_data;
 		if(!mode){
 			if(pdata->flashlight_off)
 				pdata->flashlight_off();
+				return 0;
 		}
 		else {
 			if(pdata->flashlight_on)
 				pdata->flashlight_on();
+				return 0;
 		}
 	}
+	return -1;
 }
 
 EXPORT_SYMBOL(set_flashlight);

@@ -83,6 +83,10 @@ extern int disable_gt2005;
 static int gt2005_h_active=800;
 static int gt2005_v_active=600;
 
+#ifdef CONFIG_VIDEO_AMLOGIC_FLASHLIGHT
+#include <media/amlogic/flashlight.h>
+
+#endif
 
 /* supported controls */
 static struct v4l2_queryctrl gt2005_qctrl[] = {
@@ -2012,6 +2016,19 @@ static int vidioc_s_fmt_vid_cap(struct file *file, void *priv,
 		GT2005_set_resolution(dev,fh->height,fh->width);
 		}
 	#endif
+#ifdef CONFIG_VIDEO_AMLOGIC_FLASHLIGHT	
+	if(f->fmt.pix.pixelformat == V4L2_PIX_FMT_RGB24){
+		if(get_flashlightflag() == FLASHLIGHT_ON){
+			set_flashlight(true);
+		}
+	}
+	else if(f->fmt.pix.pixelformat == V4L2_PIX_FMT_NV21){
+		if(get_flashlightflag() != FLASHLIGHT_TORCH){
+			set_flashlight(false);
+		}		
+	}
+#endif	
+	
 	ret = 0;
 out:
 	mutex_unlock(&q->vb_lock);
