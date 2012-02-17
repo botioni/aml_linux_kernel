@@ -198,6 +198,15 @@ static struct clocksource clocksource_timer_e = {
     .flags  = CLOCK_SOURCE_IS_CONTINUOUS,
 };
 
+static struct clocksource clocksource_timer_f = {
+    .name   = "Timer-F",
+    .rating = 300,
+    .read   = cycle_read_timerE,
+    .mask   = CLOCKSOURCE_MASK(24),
+    .flags  = CLOCK_SOURCE_IS_CONTINUOUS,
+};
+
+
 static void __init meson_clocksource_init(void)
 {
     CLEAR_CBUS_REG_MASK(ISA_TIMER_MUX, TIMER_E_INPUT_MASK);
@@ -206,8 +215,18 @@ static void __init meson_clocksource_init(void)
 
     clocksource_timer_e.shift = clocksource_hz2shift(24, 1000);
     clocksource_timer_e.mult =
-        clocksource_khz2mult(1, clocksource_timer_e.shift);
+    clocksource_khz2mult(1, clocksource_timer_e.shift);
+    
+    clocksource_timer_f.shift = clocksource_timer_e.shift;
+    clocksource_timer_f.mult = ((clocksource_timer_e.mult)>>6)*40;
+    printk("Timer-E=%x,%x, Timer-F=%x,%x",
+    clocksource_timer_e.shift,
+    clocksource_timer_e.mult,
+    clocksource_timer_f.shift,
+    clocksource_timer_f.mult
+     );
     clocksource_register(&clocksource_timer_e);
+    clocksource_register(&clocksource_timer_f);
 }
 
 /*
