@@ -118,7 +118,7 @@ extern void di_hw_init(void);
 
 extern void di_hw_uninit(void);
 
-
+extern int di_vscale_skip_count;
 /*
 di hardware internal
 */
@@ -262,6 +262,9 @@ extern unsigned int pd22_num_th;
 
 #define DI_LOG_MTNINFO      0x02
 #define DI_LOG_PULLDOWN     0x10
+#define DI_LOG_BUFFER_STATE     0x20
+#define DI_LOG_TIMESTAMP        0x100
+#define DI_LOG_PRECISE_TIMESTAMP        0x200
 
 extern unsigned int di_log_flag;
 
