@@ -203,7 +203,8 @@ config AR6102_BOARD_DATA_FILE
 	  Path to the bdata file.
 	  
 menuconfig SDIO_MARVELL_NH387_WIFI
-	bool "Marvell nh387 wireless cards support"
+	tristate "Marvell nh387 wireless cards support"
+	default n
 	depends on SD_MMC
 	select WIRELESS_EXT
 	select WEXT_PRIV

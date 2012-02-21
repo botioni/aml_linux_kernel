@@ -15,6 +15,7 @@
 #include <linux/ioport.h>
 #include <linux/platform_device.h>
 #include <linux/io.h>
+#include <linux/mutex.h>
 #include <linux/dma-mapping.h>
 #include <linux/mtd/mtd.h>
 #include <linux/mtd/nand.h>
@@ -449,9 +450,11 @@ static struct resource amlogic_card_resource[] = {
     }
 };
 /* WIFI ON Flag */
-static int WIFI_ON;
+static int WIFI_ON = 0;
 /* BT ON Flag */
-static int BT_ON;
+static int BT_ON = 0;
+/* WIFI BT Power Flag */
+static int Wifi_Bt_Power = 0;
 /* WL_BT_REG_ON control function */
 static void reg_on_control(int is_on)
 {
@@ -461,6 +464,7 @@ static void reg_on_control(int is_on)
     
     if(is_on){
 		SET_CBUS_REG_MASK(PREG_PAD_GPIO2_O, (1<<8));
+		printk("WIFI BT Power on\n");
     }
 	else{
         /* only pull donw reg_on pin when wifi and bt off */
@@ -473,9 +477,9 @@ static void reg_on_control(int is_on)
 
 void extern_wifi_power(int is_power)
 {
-    WIFI_ON = is_power;
-    reg_on_control(is_power);
-    /*
+    //WIFI_ON = is_power;
+    //reg_on_control(is_power);
+    
 	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_1,(1<<11));
 	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0,(1<<18));
 	CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO2_EN_N, (1<<8));
@@ -483,13 +487,13 @@ void extern_wifi_power(int is_power)
 		SET_CBUS_REG_MASK(PREG_PAD_GPIO2_O, (1<<8));
 	else
 		CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO2_O, (1<<8));
-		*/
+		
 }
 
 EXPORT_SYMBOL(extern_wifi_power);
 
 #define GPIO_WIFI_HOSTWAKE  ((GPIOX_bank_bit0_31(11)<<16) |GPIOX_bit_bit0_31(11))
-
+void extern_wifi_reset(int is_on);
 void sdio_extern_init(void)
 {
     #if defined(CONFIG_BCM4329_HW_OOB) || defined(CONFIG_BCM4329_OOB_INTR_ONLY)/* Jone add */
@@ -497,7 +501,16 @@ void sdio_extern_init(void)
     gpio_enable_level_int(gpio_to_idx(GPIO_WIFI_HOSTWAKE), 0, 4);
     gpio_enable_edge_int(gpio_to_idx(GPIO_WIFI_HOSTWAKE), 0, 4);
     #endif /* (CONFIG_BCM4329_HW_OOB) || (CONFIG_BCM4329_OOB_INTR_ONLY) Jone add */
+    //extern_wifi_power(0);
+    //mdelay(500);
     extern_wifi_power(1);
+    mdelay(200);
+    extern_wifi_reset(1);
+    mdelay(100);
+    extern_wifi_reset(0);
+    mdelay(200);
+    extern_wifi_reset(1);
+    mdelay(300);
 }
 
 static struct aml_card_info  amlogic_card_info[] = {
@@ -573,6 +586,61 @@ void extern_wifi_reset(int is_on)
     return;
 }
 EXPORT_SYMBOL(extern_wifi_reset);
+
+extern void sdio_reinit(void);
+
+static struct mutex wifi_bt_mutex;
+
+static void wifi_bt_io_init(int is_on)
+{
+    printk("%s %d %d\n", __FUNCTION__, is_on, Wifi_Bt_Power);
+    mutex_lock(&wifi_bt_mutex);
+    if(is_on){
+        if(!Wifi_Bt_Power){
+            Wifi_Bt_Power = 1;
+        	sdio_reinit();
+        }
+    }
+    else{
+        /* only pull donw reg_on pin when wifi and bt off */
+        if((!WIFI_ON) && (!BT_ON)){
+            extern_wifi_power(0);
+            Wifi_Bt_Power = 0;
+            printk("WIFI BT Power down\n");
+        }
+    }    
+    mutex_unlock(&wifi_bt_mutex);
+}
+
+void extern_wifi_init(int is_on)
+{
+    printk("%s %d\n", __FUNCTION__, is_on);
+    if(is_on){
+        wifi_bt_io_init(is_on);
+        WIFI_ON = is_on;
+    }
+    else{
+        WIFI_ON = is_on;        
+        wifi_bt_io_init(is_on);
+    }
+    printk("WIFI_ON:%d\n", WIFI_ON);
+}
+EXPORT_SYMBOL(extern_wifi_init);
+
+void extern_bt_init(int is_on)
+{
+    printk("%s %d\n", __FUNCTION__, is_on);
+    if(is_on){
+        wifi_bt_io_init(is_on);
+        BT_ON = is_on;
+    }
+    else{
+        BT_ON = is_on;        
+        wifi_bt_io_init(is_on);
+    }
+    printk("BT_ON:%d\n", BT_ON);
+}
+EXPORT_SYMBOL(extern_bt_init);
 
 static struct aml_card_platform amlogic_card_platform = {
     .card_num = ARRAY_SIZE(amlogic_card_info),
@@ -1882,6 +1950,15 @@ static void __init device_pinmux_init(void )
 #ifdef CONFIG_SIX_AXIS_SENSOR_MPU3050
     mpu3050_init_irq();
 #endif    
+
+#if 1 // power off wifi & bt
+    WIFI_ON = 0;
+    BT_ON = 0;
+    Wifi_Bt_Power = 0;
+    mutex_init(&wifi_bt_mutex);
+    reg_on_control(0);
+#endif
+
 #if 1
     //set clk for wifi
     WRITE_CBUS_REG(HHI_GEN_CLK_CNTL,(READ_CBUS_REG(HHI_GEN_CLK_CNTL)&(~(0x7f<<0)))|((0<<0)|(1<<8)|(7<<9)) );
