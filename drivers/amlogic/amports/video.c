@@ -81,6 +81,7 @@ MODULE_AMLOG(LOG_LEVEL_ERROR, 0, LOG_DEFAULT_LEVEL_DESC, LOG_MASK_DESC);
 #include "cm_regs.h"
 #include "amcm.h"
 
+//#define VSYNC_ISR_DEBUG
 
 #define RECEIVER_NAME "amvideo"
 static int video_receiver_event_fun(int type, void* data, void*);
@@ -605,7 +606,9 @@ static void vsync_toggle_frame(vframe_t *vf)
     timer_count = 0 ;
 
     if(vf->early_process_fun){
-        vf->early_process_fun(vf->private_data);
+        if(vf->early_process_fun(vf->private_data) == 1){
+            video_property_changed = true;    
+        }
     }
     else{
 #ifndef CONFIG_AM_DEINTERLACE
@@ -1443,7 +1446,7 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
 #endif
     if(cur_dispbuf && cur_dispbuf->process_fun && (cur_dispbuf->duration > 0)){
         /* for new deinterlace driver */
-        cur_dispbuf->process_fun(cur_dispbuf->private_data, zoom_start_x_lines, zoom_end_x_lines, zoom_start_y_lines, zoom_end_y_lines);
+        cur_dispbuf->process_fun(cur_dispbuf->private_data, zoom_start_x_lines|(cur_frame_par->vscale_skip_count<<24), zoom_end_x_lines, zoom_start_y_lines, zoom_end_y_lines);
     }
 
 exit:
