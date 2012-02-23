@@ -327,6 +327,8 @@ void  osddev_update_disp_axis_hw(
 	memcpy(&osd_hw.pandata[index],&pan_data,sizeof(pandata_t));
 	memcpy(&osd_hw.dispdata[index],&disp_data,sizeof(dispdata_t));
 	add_to_update_list(index,DISP_GEOMETRY);
+	if(mode_change)
+	    return ;
 	osd_wait_vsync_hw();
 	
 }
