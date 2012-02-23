@@ -535,6 +535,170 @@ static void __exit amvdec_viuin_exit_module(void)
     return ;
 }
 
+void vdin0_set_hscale(
+                    int src_w, 
+                    int dst_w, 
+                    int hsc_en, 
+                    int prehsc_en, 
+                    int hsc_bank_length,
+                    int hsc_rpt_p0_num,
+                    int hsc_ini_rcv_num,
+                    int hsc_ini_phase,
+                    int short_lineo_en
+                    ) 
+{
+        const unsigned int filt_coef0[] =   //bicubic
+			{
+			0x00800000,
+			0x007f0100,
+			0xff7f0200,
+			0xfe7f0300,
+			0xfd7e0500,
+			0xfc7e0600,
+			0xfb7d0800,
+			0xfb7c0900,
+			0xfa7b0b00,
+			0xfa7a0dff,
+			0xf9790fff,
+			0xf97711ff,
+			0xf87613ff,
+			0xf87416fe,
+			0xf87218fe,
+			0xf8701afe,
+			0xf76f1dfd,
+			0xf76d1ffd,
+			0xf76b21fd,
+			0xf76824fd,
+			0xf76627fc,
+			0xf76429fc,
+			0xf7612cfc,
+			0xf75f2ffb,
+			0xf75d31fb,
+			0xf75a34fb,
+			0xf75837fa,
+			0xf7553afa,
+			0xf8523cfa,
+			0xf8503ff9,
+			0xf84d42f9,
+			0xf84a45f9,
+			0xf84848f8
+			};
+
+    const unsigned int filt_coef1[] =  //2 point bilinear
+			{
+			0x00800000,
+			0x007e0200,
+			0x007c0400,
+			0x007a0600,
+			0x00780800,
+			0x00760a00,
+			0x00740c00,
+			0x00720e00,
+			0x00701000,
+			0x006e1200,
+			0x006c1400,
+			0x006a1600,
+			0x00681800,
+			0x00661a00,
+			0x00641c00,
+			0x00621e00,
+			0x00602000,
+			0x005e2200,
+			0x005c2400,
+			0x005a2600,
+			0x00582800,
+			0x00562a00,
+			0x00542c00,
+			0x00522e00,
+			0x00503000,
+			0x004e3200,
+			0x004c3400,
+			0x004a3600,
+			0x00483800,
+			0x00463a00,
+			0x00443c00,
+			0x00423e00,
+			0x00404000
+			};
+
+     const unsigned int filt_coef2[] =  //2 point bilinear, bank_length == 2
+			{
+			0x80000000,
+			0x7e020000,
+			0x7c040000,
+			0x7a060000,
+			0x78080000,
+			0x760a0000,
+			0x740c0000,
+			0x720e0000,
+			0x70100000,
+			0x6e120000,
+			0x6c140000,
+			0x6a160000,
+			0x68180000,
+			0x661a0000,
+			0x641c0000,
+			0x621e0000,
+			0x60200000,
+			0x5e220000,
+			0x5c240000,
+			0x5a260000,
+			0x58280000,
+			0x562a0000,
+			0x542c0000,
+			0x522e0000,
+			0x50300000,
+			0x4e320000,
+			0x4c340000,
+			0x4a360000,
+			0x48380000,
+			0x463a0000,
+			0x443c0000,
+			0x423e0000,
+			0x40400000
+			};
+
+   int i;
+   int horz_phase_step;
+   int p_src_w;
+   int ini_pixi_ptr;
+
+    //write horz filter coefs
+    WRITE_MPEG_REG (VDIN0_SCALE_COEF_IDX, 0x0100);
+	for (i = 0; i < 33; i++)
+	{
+	    WRITE_MPEG_REG(VDIN0_SCALE_COEF, filt_coef0[i]); //bicubic
+	}
+
+    p_src_w =  (prehsc_en ? ((src_w+1) >>1) : src_w); 
+
+    horz_phase_step = (p_src_w << 20) / dst_w;
+    horz_phase_step = (horz_phase_step << 4);
+   
+    WRITE_MPEG_REG(VDIN0_WIDTHM1I_WIDTHM1O, ((src_w - 1) << 16) | 
+                               (dst_w  - 1)
+    );
+
+    WRITE_MPEG_REG(VDIN0_HSC_PHASE_STEP, horz_phase_step);
+    WRITE_MPEG_REG(VDIN0_HSC_INI_CTRL, (hsc_rpt_p0_num << 29) |
+                           (hsc_ini_rcv_num << 24) |
+                           (hsc_ini_phase << 0) 
+                           );
+
+    ini_pixi_ptr = 0;
+
+    WRITE_MPEG_REG(VDIN0_SC_MISC_CTRL,  
+                           (ini_pixi_ptr << 8) |
+                           (prehsc_en << 7) |
+                           (hsc_en << 6) |
+                           (short_lineo_en << 5) | 
+                           (0 << 4) |       //nearest_en
+                           (0 << 3) |       //phase0_always_en
+                           (hsc_bank_length << 0) 
+                           );
+
+}
+EXPORT_SYMBOL(vdin0_set_hscale);
 
 
 module_init(amvdec_viuin_init_module);

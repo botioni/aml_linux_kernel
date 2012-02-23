@@ -104,6 +104,18 @@ static struct vframe_receiver_s video_vf_recv;
 
 //#define SLOW_SYNC_REPEAT
 //#define INTERLACE_FIELD_MATCH_PROCESS
+void vdin0_set_hscale(
+                    int src_w, 
+                    int dst_w, 
+                    int hsc_en, 
+                    int prehsc_en, 
+                    int hsc_bank_length,
+                    int hsc_rpt_p0_num,
+                    int hsc_ini_rcv_num,
+                    int hsc_ini_phase,
+                    int short_lineo_en
+                    );
+
 
 #ifdef FIQ_VSYNC
 #define BRIDGE_IRQ  INT_TIMER_D
@@ -267,6 +279,9 @@ static u32 frame_repeat_count = 0;
 #endif
 
 static u32 clone = 1;
+static u32 clone_vpts_remainder;
+static int clone_frame_rate = 30; 
+static int clone_frame_scale_width = 0;
 /* vout */
 
 static const vinfo_t *vinfo = NULL;
@@ -1026,10 +1041,6 @@ static inline bool vpts_expire(vframe_t *cur_vf, vframe_t *next_vf)
     u32 pts = next_vf->pts;
     u32 systime;
 
-    if(clone == 1){
-        return 1;
-    }
-    
      if ((cur_vf == NULL) || (cur_dispbuf == &vf_local)) {
         return true;
     }
@@ -1243,15 +1254,39 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
     }
 
     while (vf) {
-#if 1
-        if(1){
-#else
-        if (vpts_expire(cur_dispbuf, vf)
+        if(clone == 1){
+            if(clone_vpts_remainder < vsync_pts_inc){
+                vf = video_vf_get();
+#ifdef CONFIG_TVIN_VIUIN
+                if(clone_frame_scale_width != 0){
+                    vdin0_set_hscale(
+                        vf->width, //int src_w, 
+                        clone_frame_scale_width, //int dst_w, 
+                        1, //int hsc_en, 
+                        0, //int prehsc_en, 
+                        4, //int hsc_bank_length,
+                        1, //int hsc_rpt_p0_num,
+                        4, //int hsc_ini_rcv_num,
+                        0, //int hsc_ini_phase,
+                        1  //int short_lineo_en
+                    ); 
+                    vf->width = clone_frame_scale_width;
+                }
+#endif                
+                vsync_toggle_frame(vf);
+                //clone_vpts_remainder += DUR2PTS(vf->duration);
+                clone_vpts_remainder += (90000/clone_frame_rate);
+            }
+            else{
+                clone_vpts_remainder -= vsync_pts_inc;
+            }
+            break;
+        }
+        else if (vpts_expire(cur_dispbuf, vf)
 #ifdef INTERLACE_FIELD_MATCH_PROCESS
             || interlace_field_type_match(vout_type, vf)
 #endif
            ) {
-#endif            
             amlog_mask(LOG_MASK_TIMESTAMP,
                        "VIDEO_PTS = 0x%x, cur_dur=0x%x, next_pts=0x%x, scr = 0x%x\n",
                        timestamp_vpts_get(),
@@ -1279,10 +1314,6 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
             if(debug&0x10000){
                 return;
             }
-            if(clone == 1){
-                break;
-            }
-
         } else {
 #ifdef SLOW_SYNC_REPEAT
             /* check if current frame's duration has expired, in this example
@@ -2133,12 +2164,10 @@ static ssize_t video_zoom_store(struct class *cla, struct class_attribute *attr,
     char *endp;
     
     r = simple_strtoul(buf, &endp, 0);
-    
     if ((r <= MAX_ZOOM_RATIO) && (r != vpp2_get_zoom_ratio())) {
         vpp2_set_zoom_ratio(r);
         video_property_changed = true;
     }
-
     return count;
 }
 
@@ -2326,11 +2355,12 @@ static int start_clone(void)
       ret = 0;
     }
     if(info){
+        clone_vpts_remainder = 0;
         para.fmt_info.h_active = info->width;
         para.fmt_info.v_active = info->height;
         para.port  = TVIN_PORT_VIU_ENCT;
         para.fmt_info.fmt = TVIN_SIG_FMT_MAX+1;//TVIN_SIG_FMT_MAX+1;TVIN_SIG_FMT_CAMERA_1280X720P_30Hz
-        para.fmt_info.frame_rate = 150;
+        para.fmt_info.frame_rate = clone_frame_rate*10;
         para.fmt_info.hsync_phase = 1;
       	para.fmt_info.vsync_phase  = 0;	
         start_tvin_service(0,&para);
@@ -2820,6 +2850,12 @@ module_exit(video2_exit);
 
 module_param(debug, uint, 0664);
 MODULE_PARM_DESC(debug, "\n debug flag \n");
+
+MODULE_PARM_DESC(clone_frame_rate, "\n clone_frame_rate\n");
+module_param(clone_frame_rate, uint, 0664);
+
+MODULE_PARM_DESC(clone_frame_scale_width, "\n clone_frame_scale_width\n");
+module_param(clone_frame_scale_width, uint, 0664);
 
 MODULE_PARM_DESC(vsync_hold_line, "\n vsync_hold_line\n");
 module_param(vsync_hold_line, uint, 0664);
