@@ -26,6 +26,24 @@ char* buf;
 struct work_struct audiodsp_workqueue;
 }audiodsp_work;
 
+extern unsigned int IEC958_bpf;
+extern unsigned int IEC958_brst;
+extern unsigned int IEC958_length;
+extern unsigned int IEC958_padsize;
+extern unsigned int IEC958_mode;
+extern unsigned int IEC958_syncword1;
+extern unsigned int IEC958_syncword2;
+extern unsigned int IEC958_syncword3;
+extern unsigned int IEC958_syncword1_mask;
+extern unsigned int IEC958_syncword2_mask;
+extern unsigned int IEC958_syncword3_mask;
+extern unsigned int IEC958_chstat0_l;
+extern unsigned int IEC958_chstat0_r;
+extern unsigned int IEC958_chstat1_l;
+extern unsigned int IEC958_chstat1_r;
+extern unsigned int IEC958_mode_raw;
+extern unsigned int IEC958_mode_codec;
+
 int dsp_mailbox_send(struct audiodsp_priv *priv,int overwrite,int num,int cmd,const char *data,int len)
 {
 	unsigned long flags;
@@ -163,6 +181,33 @@ static irqreturn_t audiodsp_mailbox_irq(int irq, void *data)
 				}
 			}
 		}
+        if(status & (1<<M1B_IRQ8_IEC958_INFO)){
+            struct digit_raw_output_info* info;
+            SYS_CLEAR_IRQ(M1B_IRQ8_IEC958_INFO);
+            get_mailbox_data(priv, M1B_IRQ8_IEC958_INFO, &msg);
+            info = (void*)msg.data;
+
+            IEC958_bpf = info->bpf;
+            IEC958_brst = info->brst;
+            IEC958_length = info->length;
+            IEC958_padsize = info->padsize;
+            IEC958_mode = info->mode;
+            IEC958_syncword1 = info->syncword1;
+            IEC958_syncword2 = info->syncword2;
+            IEC958_syncword3 = info->syncword3;
+            IEC958_syncword1_mask = info->syncword1_mask;
+            IEC958_syncword2_mask = info->syncword2_mask;
+            IEC958_syncword3_mask = info->syncword3_mask;
+            IEC958_chstat0_l = info->chstat0_l;
+            IEC958_chstat0_r = info->chstat0_r;
+            IEC958_chstat1_l = info->chstat1_l;
+            IEC958_chstat1_r = info->chstat1_r;
+  //          IEC958_mode_codec = info->can_bypass;
+            
+            strcpy(audiodsp_work.buf, "MAILBOX: got IEC958 info\n");
+            schedule_work(&audiodsp_work.audiodsp_workqueue);		
+        }
+
     	if(status& (1<<M1B_IRQ5_STREAM_RD_WD_TEST)){
             DSP_WD((0x84100000-4096+20*20),0);
     		SYS_CLEAR_IRQ(M1B_IRQ5_STREAM_RD_WD_TEST);

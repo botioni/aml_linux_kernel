@@ -43,7 +43,12 @@ MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Zhou Zhi <zhi.zhou@amlogic.com>");
 MODULE_VERSION("1.0.0");
 
+extern unsigned IEC958_mode_raw;
+extern unsigned IEC958_mode_codec;
+static int IEC958_mode_raw_last = -1;
+static int IEC958_mode_codec_last = -1;
 extern struct audio_info * get_audio_info(void);
+extern void	aml_alsa_hw_reprepare();
 void audiodsp_moniter(unsigned long);
 static struct audiodsp_priv *audiodsp_p;
 #define  DSP_DRIVER_NAME	"audiodsp"
@@ -163,8 +168,20 @@ static int audiodsp_ioctl(struct inode *node, struct file *file, unsigned int cm
 		{
 		case AUDIODSP_SET_FMT:
 			priv->stream_fmt=args;
+            if(args == MCODEC_FMT_DTS)
+              	IEC958_mode_codec = 1;
+            else if(args == MCODEC_FMT_AC3)
+            	IEC958_mode_codec = 2; 	
+            else
+            	IEC958_mode_codec = 0;
 			break;
 		case AUDIODSP_START:
+			if(IEC958_mode_raw_last != IEC958_mode_raw || IEC958_mode_codec_last !=  IEC958_mode_codec)
+			{
+				IEC958_mode_raw_last = IEC958_mode_raw;
+				IEC958_mode_codec_last = IEC958_mode_codec;
+				aml_alsa_hw_reprepare();
+			}	
 			priv->decoded_nb_frames = 0;
 			priv->format_wait_count = 0;
 			if(priv->stream_fmt<=0)
@@ -623,7 +640,7 @@ static int audiodsp_init_mcode(struct audiodsp_priv *priv)
     DSP_PRNT("DSP start addr 0x%x\n",AUDIO_DSP_START_ADDR);
 	priv->dsp_stack_size=1024*64;
 	priv->dsp_gstack_size=512;
-	priv->dsp_heap_size=0;
+	priv->dsp_heap_size=1024*1024;
 	priv->stream_buffer_mem=NULL;
 	priv->stream_buffer_mem_size=32*1024;
 	priv->stream_fmt=-1;
@@ -681,12 +698,34 @@ static ssize_t dsp_working_status_show(struct class* cla, struct class_attribute
 
     return 	(pbuf- buf);
 }
+
+static ssize_t digital_raw_show(struct class*cla, struct class_attribute* attr, char* buf)
+{
+  char* pbuf = buf;
+  pbuf += sprintf(pbuf, "Digital output mode: %s\n", (IEC958_mode_raw==0)?"0 - PCM":"1 - RAW");
+  return (pbuf-buf);
+}
+static ssize_t digital_raw_store(struct class* class, struct class_attribute* attr,
+   const char* buf, size_t count )
+{
+  printk("buf=%s\n", buf);
+  if(buf[0] == '0'){
+    IEC958_mode_raw = 0;
+  }else if(buf[0] == '1'){
+    IEC958_mode_raw = 1;
+  }
+  printk("IEC958_mode_raw=%d\n", IEC958_mode_raw);
+  return count;
+}
+
+
 static struct class_attribute audiodsp_attrs[]={
     __ATTR_RO(codec_fmt),
    // __ATTR_RO(codec_mips),   //no need for M3
     __ATTR_RO(codec_fatal_err),
     __ATTR_RO(swap_buf_ptr),
     __ATTR_RO(dsp_working_status),
+    __ATTR(digital_raw, S_IRUGO | S_IWUSR, digital_raw_show, digital_raw_store),
     __ATTR_NULL
 };
 
@@ -752,6 +791,16 @@ int audiodsp_probe(void )
 */    
 	audiodsp_p=priv;
 	audiodsp_init_mcode(priv);
+	if(priv->dsp_heap_size){
+		if(priv->dsp_heap_start==0)
+			priv->dsp_heap_start=(unsigned long)kmalloc(priv->dsp_heap_size,GFP_KERNEL);
+		if(priv->dsp_heap_start==0)
+		{
+			DSP_PRNT("kmalloc error,no memory for audio dsp dsp_set_heap\n");
+			kfree(priv);
+			return -ENOMEM;
+		}
+	}	
 	res = register_chrdev(AUDIODSP_MAJOR, DSP_NAME, &audiodsp_fops);
 	if (res < 0) {
 		DSP_PRNT("Can't register  char devie for " DSP_NAME "\n");

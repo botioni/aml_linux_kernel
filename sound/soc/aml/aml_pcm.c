@@ -30,15 +30,23 @@
 
 //#define _AML_PCM_DEBUG_
 
-#define AOUT_EVENT_PREPARE  0x1
+#define AOUT_EVENT_PREPARE      0x1
+#define AOUT_EVENT_RAWDATA_AC_3 0x2
+#define AOUT_EVENT_RAWDATA_DTS  0x3
 extern int aout_notifier_call_chain(unsigned long val, void *v);
+extern void	aml_alsa_hw_reprepare();
+
+extern unsigned IEC958_mode_raw;
+extern unsigned IEC958_mode_codec;
 
 unsigned int aml_pcm_playback_start_addr = 0;
 unsigned int aml_pcm_capture_start_addr  = 0;
-unsigned int aml_pcm_capture_start_phy = 0;
-unsigned int aml_pcm_capture_buf_size = 0;
+unsigned int aml_pcm_playback_end_addr = 0;
+unsigned int aml_pcm_capture_end_addr = 0;
+
 unsigned int aml_pcm_playback_off = 0;
 unsigned int aml_pcm_playback_enable = 1;
+static  unsigned  substream_handle = 0 ;
 
 EXPORT_SYMBOL(aml_pcm_playback_start_addr);
 EXPORT_SYMBOL(aml_pcm_capture_start_addr);
@@ -123,7 +131,7 @@ static int aml_pcm_preallocate_dma_buffer(struct snd_pcm *pcm,
 		buf->dev.dev = pcm->card->dev;
 		buf->private_data = NULL;
         /* one size for i2s output, another for 958, and 128 for alignment */
-		buf->area = dma_alloc_coherent(pcm->card->dev, size*2+128,
+		buf->area = dma_alloc_coherent(pcm->card->dev, size*2+4096,
 					  &buf->addr, GFP_KERNEL);
 		printk("aml-pcm %d:"
 		"preallocate_dma_buffer: area=%p, addr=%p, size=%d\n", stream,
@@ -131,7 +139,8 @@ static int aml_pcm_preallocate_dma_buffer(struct snd_pcm *pcm,
 		(void *) buf->addr,
 		size);
 
-        aml_pcm_playback_start_addr = (unsigned int)buf->area;
+        aml_pcm_playback_start_addr = buf->area;
+		aml_pcm_playback_end_addr = buf->area + size;
 	}else{
 		size = aml_pcm_capture.buffer_bytes_max;
 		buf->dev.type = SNDRV_DMA_TYPE_DEV;
@@ -145,9 +154,8 @@ static int aml_pcm_preallocate_dma_buffer(struct snd_pcm *pcm,
 		(void *) buf->addr,
 		size);
 
-        aml_pcm_capture_start_addr = (unsigned int)buf->area;
-        aml_pcm_capture_start_phy = buf->addr;
-        aml_pcm_capture_buf_size = size;
+        aml_pcm_capture_start_addr = buf->area;
+		aml_pcm_capture_end_addr = buf->area+size;
 	}
 
 	if (!buf->area)
@@ -198,6 +206,80 @@ static int aml_pcm_hw_free(struct snd_pcm_substream *substream)
 	}
 
 	return 0;
+}
+
+static void  aml_hw_i2s_init(struct snd_pcm_runtime *runtime)
+{
+
+      
+		switch(runtime->format){
+		case SNDRV_PCM_FORMAT_S32_LE:
+			I2S_MODE = AIU_I2S_MODE_PCM32;
+		// IEC958_MODE = AIU_958_MODE_PCM32;
+			break;
+		case SNDRV_PCM_FORMAT_S24_LE:
+			I2S_MODE = AIU_I2S_MODE_PCM24;
+		// IEC958_MODE = AIU_958_MODE_PCM24;
+			break;
+		case SNDRV_PCM_FORMAT_S16_LE:
+			I2S_MODE = AIU_I2S_MODE_PCM16;
+		// IEC958_MODE = AIU_958_MODE_PCM16;
+			break;
+		}
+		audio_set_i2s_mode(I2S_MODE);
+		audio_set_aiubuf(runtime->dma_addr, runtime->dma_bytes);
+		memset((void*)runtime->dma_area,0,runtime->dma_bytes * 2 + 4096);
+
+}
+
+static void aml_hw_iec958_init(void)
+{
+    _aiu_958_raw_setting_t set;
+    _aiu_958_channel_status_t chstat;
+    unsigned start,size;
+	memset((void*)(&set), 0, sizeof(set));
+	memset((void*)(&chstat), 0, sizeof(chstat));
+	set.chan_stat = &chstat;
+   
+    if(IEC958_mode_raw == 1 && IEC958_mode_codec){
+	  if(IEC958_mode_codec == 1){ //dts
+	    IEC958_MODE = AIU_958_MODE_RAW;
+		printk("iec958 mode AIU_958_MODE_RAW\n");
+	  }	
+	  else{ //ac3
+		IEC958_MODE = AIU_958_MODE_PCM_RAW;
+		printk("iec958 mode AIU_958_MODE_PCM_RAW\n");				
+	  }	
+	}else{
+	  IEC958_MODE = AIU_958_MODE_PCM16;
+	  printk("iec958 mode AIU_958_MODE_PCM16\n");
+    }
+
+	if(IEC958_MODE == AIU_958_MODE_PCM16 || IEC958_MODE == AIU_958_MODE_PCM24 ||
+	  IEC958_MODE == AIU_958_MODE_PCM32){
+	    set.chan_stat->chstat0_l = 0x0100;
+		set.chan_stat->chstat0_r = 0x0100;
+		set.chan_stat->chstat1_l = 0X200;
+		set.chan_stat->chstat1_r = 0X200;              
+        start = virt_to_phys(aml_pcm_playback_start_addr);
+        size = aml_pcm_playback_end_addr - aml_pcm_playback_start_addr;
+		audio_set_958outbuf(start, size, 0);
+	  }else{
+		set.chan_stat->chstat0_l = 0x1902;
+		set.chan_stat->chstat0_r = 0x1902;
+		set.chan_stat->chstat1_l = 0X200;
+		set.chan_stat->chstat1_r = 0X200;
+        start = virt_to_phys((aml_pcm_playback_end_addr + 4096)&(~127));
+        size  = aml_pcm_playback_end_addr - aml_pcm_playback_start_addr;
+		audio_set_958outbuf(start, size, (IEC958_MODE == AIU_958_MODE_RAW)?1:0);
+	}
+	audio_set_958_mode(IEC958_MODE, &set);
+
+}
+
+void	aml_alsa_hw_reprepare()
+{
+  aml_hw_iec958_init();
 }
 
 static int aml_pcm_prepare(struct snd_pcm_substream *substream)
@@ -260,43 +342,7 @@ static int aml_pcm_prepare(struct snd_pcm_substream *substream)
 	audio_set_clk(s->sample_rate, AUDIO_CLK_256FS);
 	audio_util_set_dac_format(AUDIO_ALGOUT_DAC_FORMAT_DSP);
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK){
-			//printk("aml_pcm_prepare SNDRV_PCM_STREAM_PLAYBACK: dma_addr=%x, dma_bytes=%x\n", runtime->dma_addr, runtime->dma_bytes);
-	        _aiu_958_channel_status_t set;
-		 _aiu_958_raw_setting_t	raw_set;	
-		 memset((void*)(&raw_set), 0, sizeof(raw_set));
-		 memset((void*)(&set), 0, sizeof(set));
-		 raw_set.chan_stat = &set;
-            audio_set_aiubuf(runtime->dma_addr, runtime->dma_bytes);
-            
-            switch(runtime->format){
-              case SNDRV_PCM_FORMAT_S32_LE:
-                I2S_MODE = AIU_I2S_MODE_PCM32;
-                IEC958_MODE = AIU_958_MODE_PCM32;
-                break;
-              case SNDRV_PCM_FORMAT_S24_LE:
-                I2S_MODE = AIU_I2S_MODE_PCM24;
-                IEC958_MODE = AIU_958_MODE_PCM24;
-                break;
-              case SNDRV_PCM_FORMAT_S16_LE:
-                I2S_MODE = AIU_I2S_MODE_PCM16;
-                IEC958_MODE = AIU_958_MODE_PCM16;
-                break;
-            }
-            audio_set_i2s_mode(I2S_MODE);
-
-            if(IEC958_MODE == AIU_958_MODE_PCM16 || IEC958_MODE == AIU_958_MODE_PCM24 || 
-                IEC958_MODE == AIU_958_MODE_PCM32){
-              set.chstat0_l = 0x0100;
-              set.chstat0_r = 0x0100;
-              audio_set_958outbuf(runtime->dma_addr, runtime->dma_bytes);
-            }else{
-              set.chstat0_l = 0x1902;
-              set.chstat0_r = 0x1902;
-              audio_set_958outbuf((runtime->dma_addr+runtime->dma_bytes+127)&(~127), runtime->dma_bytes);
-            }
-            audio_set_958_mode(IEC958_MODE, &raw_set);
-
-			memset((void*)runtime->dma_area,0,runtime->dma_bytes * 2 + 128);
+		aml_hw_i2s_init(runtime);		
 	}
 	else{
 			//printk("aml_pcm_prepare SNDRV_PCM_STREAM_CAPTURE: dma_addr=%x, dma_bytes=%x\n", runtime->dma_addr, runtime->dma_bytes);
@@ -310,6 +356,10 @@ static int aml_pcm_prepare(struct snd_pcm_substream *substream)
 	}
 
     aout_notifier_call_chain(AOUT_EVENT_PREPARE, substream);
+    if( IEC958_MODE == AIU_958_MODE_PCM_RAW)
+        aout_notifier_call_chain(AOUT_EVENT_RAWDATA_AC_3, substream);
+    if( IEC958_MODE == AIU_958_MODE_RAW)
+        aout_notifier_call_chain(AOUT_EVENT_RAWDATA_DTS, substream);
 #if 0
 	printk("Audio Parameters:\n");
 	printk("\tsample rate: %d\n", runtime->rate);
@@ -318,6 +368,7 @@ static int aml_pcm_prepare(struct snd_pcm_substream *substream)
     printk("\tformat: %s\n", snd_pcm_format_name(runtime->format));
 	printk("\tperiod size: %ld\n", runtime->period_size);
 	printk("\tperiods: %d\n", runtime->periods);
+    printk("\tiec958 mode: %d, raw=%d, codec=%d\n", IEC958_MODE, IEC958_mode_raw, IEC958_mode_codec);
 #endif	
 	
 	return 0;
@@ -508,6 +559,7 @@ static int aml_pcm_open(struct snd_pcm_substream *substream)
 	prtd->pcm = substream->pcm;
 	prtd->timer.function = &aml_pcm_timer_callback;
 	prtd->timer.data = (unsigned long)substream;
+	substream_handle = (unsigned long)substream;
 	init_timer(&prtd->timer);
 	
 	runtime->private_data = prtd;
