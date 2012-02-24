@@ -974,7 +974,7 @@ static struct device_attribute osd_attrs[] = {
 	__ATTR(enable_3d, S_IRUGO|S_IWUSR, show_enable_3d, store_enable_3d),
 	__ATTR(preblend_enable,S_IRUGO|S_IWUSR, show_preblend_enable, store_preblend_enable),
 	__ATTR(free_scale, S_IRUGO|S_IWUSR, NULL, store_free_scale),
-	__ATTR(scale_axis, S_IRUGO|S_IWUSR, show_scale_axis, store_scale_axis),
+	__ATTR(scale_axis, S_IRUGO|S_IWUSR|S_IWGRP, show_scale_axis, store_scale_axis),
 	__ATTR(scale_width, S_IRUGO|S_IWUSR, NULL, store_scale_width),
 	__ATTR(scale_height, S_IRUGO|S_IWUSR, NULL, store_scale_height),
     __ATTR(color_key, S_IRUGO|S_IWUSR, show_color_key, store_color_key),

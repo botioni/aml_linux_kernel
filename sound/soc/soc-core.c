@@ -165,7 +165,7 @@ static ssize_t codec_reg_write(struct device *dev,
   return count;
 }
 
-static DEVICE_ATTR(codec_reg, 0644, codec_reg_show, codec_reg_write);
+static DEVICE_ATTR(codec_reg, 0664, codec_reg_show, codec_reg_write);
 
 static ssize_t pmdown_time_show(struct device *dev,
 				struct device_attribute *attr, char *buf)
@@ -270,7 +270,7 @@ static void soc_init_codec_debugfs(struct snd_soc_codec *codec)
 		return;
 	}
 
-	codec->debugfs_reg = debugfs_create_file("codec_reg", 0644,
+	codec->debugfs_reg = debugfs_create_file("codec_reg", 0664,
 						 codec->debugfs_codec_root,
 						 codec, &codec_reg_fops);
 	if (!codec->debugfs_reg)

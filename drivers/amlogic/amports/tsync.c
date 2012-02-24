@@ -933,7 +933,7 @@ static struct class_attribute tsync_class_attrs[] = {
     __ATTR(mode,       S_IRUGO | S_IWUSR, show_mode,    NULL),
     __ATTR(enable,     S_IRUGO | S_IWUSR, show_enable,  store_enable),
     __ATTR(pcr_recover, S_IRUGO | S_IWUSR, show_pcr_recover,  store_pcr_recover),
-    __ATTR(discontinue, S_IRUGO | S_IWUGO, show_discontinue,  store_discontinue),
+    __ATTR(discontinue, S_IRUGO | S_IWUSR|S_IWGRP, show_discontinue,  store_discontinue),
     __ATTR_NULL
 };
 
