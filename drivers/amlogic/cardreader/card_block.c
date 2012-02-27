@@ -43,7 +43,7 @@ static unsigned long dev_use[1];
 static int card_blk_issue_rq(struct card_queue *cq, struct request *req);
 static int card_blk_probe(struct memory_card *card);
 static int card_blk_prep_rq(struct card_queue *cq, struct request *req);
-
+void card_queue_resume(struct card_queue *cq);
 struct card_blk_data {
 	spinlock_t lock;
 	struct gendisk *disk;
@@ -56,10 +56,6 @@ struct card_blk_data {
 
 static DEFINE_MUTEX(open_lock);
 
-static unsigned card_thread_sleep_flag = 0;
-static struct completion card_thread_complete;
-static wait_queue_head_t card_thread_wq;
-static struct semaphore card_thread_sem;
 /*wait device delete*/
 struct completion card_devdel_comp;
 
@@ -72,39 +68,16 @@ struct card_queue_list {
 	struct card_queue *cq;
 	struct card_queue_list *cq_next;
 };
-static struct card_queue_list *card_queue_head = NULL;
 
 void card_cleanup_queue(struct card_queue *cq)
 {
-	struct card_queue_list *cq_node_current = card_queue_head;
-	struct card_queue_list *cq_node_prev = NULL;
 	struct request_queue *q = cq->queue;
 	unsigned long flags;
 	
-	while (cq_node_current != NULL){
-		if (cq_node_current->cq == cq)
-			break;
+	card_queue_resume(cq);
 
-		cq_node_prev = cq_node_current;
-		cq_node_current = cq_node_current->cq_next;
-	}
-
-	if (cq_node_current == card_queue_head) {
-		if (cq_node_current->cq_next == NULL) {
-			cq->flags |= CARD_QUEUE_EXIT;
-			wake_up_interruptible(&card_thread_wq);
-			up(&card_thread_sem);
-			wait_for_completion(&card_thread_complete);
-		} else {
-			card_queue_head->cq_num = 0;
-		}
-		card_queue_head = card_queue_head->cq_next;
-	} else {
-		cq_node_prev->cq_next = cq_node_current->cq_next;
-	}
-
-	kfree(cq->sg);
-	cq->sg = NULL;
+	/* Then terminate our worker thread */
+	kthread_stop(cq->thread);
 
 	/* Empty the queue */   
 	spin_lock_irqsave(q->queue_lock, flags);
@@ -112,14 +85,18 @@ void card_cleanup_queue(struct card_queue *cq)
 	blk_start_queue(q);
 	spin_unlock_irqrestore(q->queue_lock, flags);
 	
-	//blk_cleanup_queue(cq->queue);
+ 	if (cq->bounce_sg)
+ 		kfree(cq->bounce_sg);
+ 	cq->bounce_sg = NULL;
+    if (cq->sg)
+	kfree(cq->sg);
+	cq->sg = NULL;
+
+	//if (cq->bounce_buf)
+	//	kfree(cq->bounce_buf);
+	cq->bounce_buf = NULL;
 
 	cq->card = NULL;
-
-	if (cq_node_current == card_queue_head)
-		card_queue_head = NULL;
-	kfree(cq_node_current);
-	cq_node_current = NULL;
 }
 
 static struct card_blk_data *card_blk_get(struct gendisk *disk)
@@ -240,7 +217,6 @@ static int card_prep_request(struct request_queue *q, struct request *req)
 static void card_request(struct request_queue *q)
 {
 	struct card_queue *cq = q->queuedata;
-	struct card_queue_list *cq_node_current = card_queue_head;
     struct request* req; 
 
 	if (!cq) {
@@ -250,23 +226,8 @@ static void card_request(struct request_queue *q)
 		}
 		return;
 	}
-	
-	WARN_ON(!cq);
-	WARN_ON(!cq_node_current);
-	WARN_ON(!cq_node_current->cq);
-
-	while (cq_node_current != NULL){
-		if (cq && cq_node_current->cq == cq) {
-			cq_node_current->cq_flag = 1;
-			break;
-		}
-
-		cq_node_current = cq_node_current->cq_next;
-	}
-
-	if (card_thread_sleep_flag) {
-		card_thread_sleep_flag = 0;
-		wake_up_interruptible(&card_thread_wq);
+	if (!cq->req) {
+		wake_up_process(cq->thread);
 	}
 }
 
@@ -281,8 +242,7 @@ void card_queue_suspend(struct card_queue *cq)
 		spin_lock_irqsave(q->queue_lock, flags);
 		blk_stop_queue(q);
 		spin_unlock_irqrestore(q->queue_lock, flags);
-
-		down(&card_thread_sem);
+		down(&cq->thread_sem);	
 	}
 }
 
@@ -294,7 +254,7 @@ void card_queue_resume(struct card_queue *cq)
 	if (cq->flags & CARD_QUEUE_SUSPENDED) {
 		cq->flags &= ~CARD_QUEUE_SUSPENDED;
 
-		up(&card_thread_sem);
+		up(&cq->thread_sem);
 
 		spin_lock_irqsave(q->queue_lock, flags);
 		blk_start_queue(q);
@@ -306,75 +266,44 @@ static int card_queue_thread(void *d)
 {
 	struct card_queue *cq = d;
 	struct request_queue *q = cq->queue;
-	struct card_queue_list *cq_node_current;
-	unsigned char rewait;
-	DECLARE_WAITQUEUE(wait, current);
-
-	daemonize("card_queue_thread");
+	// unsigned char rewait;
 	/*
 	 * Set iothread to ensure that we aren't put to sleep by
 	 * the process freezing.  We handle suspension ourselves.
 	 */
 	current->flags |= PF_MEMALLOC;
 
-	complete(&card_thread_complete);
 
-	down(&card_thread_sem);
-	add_wait_queue(&card_thread_wq, &wait);
+	down(&cq->thread_sem);
 	do {
 		struct request *req = NULL;
+
 		/*wait sdio handle irq & xfer data*/
-                for(rewait=3;(!sdio_irq_handled)&&(rewait--);)
-                	schedule();
+    	//for(rewait=3;(!sdio_irq_handled)&&(rewait--);)
+    	//	schedule();
 
-	//	spin_lock_irq(q->queue_lock);
-		cq_node_current = card_queue_head;
-		WARN_ON(!card_queue_head);
-		while (cq_node_current != NULL) {
-			cq = cq_node_current->cq;
+    	spin_lock_irq(q->queue_lock);
+		set_current_state(TASK_INTERRUPTIBLE);
 			q = cq->queue;
-			if (cq_node_current->cq_flag) {
 				if (!blk_queue_plugged(q)) {
-					spin_lock_irq(q->queue_lock);
 					req = blk_fetch_request(q);
-					spin_unlock_irq(q->queue_lock);
-				}
-				if (req)
-					break;
-
-				cq_node_current->cq_flag = 0;
-			}
-
-			cq_node_current = cq_node_current->cq_next;
 		}
-
 		cq->req = req;
-	//	spin_unlock_irq(q->queue_lock);
-
-		if (cq->flags & CARD_QUEUE_EXIT)
-			break;
-		
+		spin_unlock_irq(q->queue_lock);
 		if (!req) {
-
-			if (cq_node_current == NULL) {
-				up(&card_thread_sem);
-				card_thread_sleep_flag = 1;
-				interruptible_sleep_on(&card_thread_wq);
-				//schedule();
-				down_interruptible(&card_thread_sem);
+			if (kthread_should_stop()) {
+				set_current_state(TASK_RUNNING);
+			break;
 			}
+			up(&cq->thread_sem);
+			schedule();
+			down(&cq->thread_sem);
 			continue;
 		}
-
+              set_current_state(TASK_RUNNING);
 		cq->issue_fn(cq, req);
-		/*yield*/
-		cond_resched();
 	} while (1);
-	remove_wait_queue(&card_thread_wq, &wait);
-	up(&card_thread_sem);
-
-	complete_and_exit(&card_thread_complete, 0);
-
+	up(&cq->thread_sem);
 	return 0;
 }
 
@@ -540,8 +469,6 @@ int card_init_queue(struct card_queue *cq, struct memory_card *card,
 	struct card_host *host = card->host;
 	u64 limit = BLK_BOUNCE_HIGH;
 	int ret=0, card_quene_num;
-	struct card_queue_list *cq_node_current;
-	struct card_queue_list *cq_node_prev = NULL;
 
 	if (host->parent->dma_mask && *host->parent->dma_mask)
 		limit = *host->parent->dma_mask;
@@ -583,60 +510,12 @@ int card_init_queue(struct card_queue *cq, struct memory_card *card,
 		return ret;
 	}
 
-	if (card_queue_head == NULL)
-	{
-		card_queue_head = kmalloc(sizeof(struct card_queue_list), GFP_KERNEL);
-		if (card_queue_head == NULL) 
-		{
-			ret = -ENOMEM;
-			kfree(card_queue_head);
-			card_queue_head = NULL;
-			return ret;
-		}
-		card_queue_head->cq = cq;
-		card_queue_head->cq_num = 0;
-		card_queue_head->cq_flag = 0;
-		card_queue_head->cq_next = NULL;
 
-		init_completion(&card_thread_complete);
-		init_waitqueue_head(&card_thread_wq);
-		init_MUTEX(&card_thread_sem);
-		host->queue_task = kthread_run(card_queue_thread, cq, "card_queue");
-		if (host->queue_task)
-		{
-			wait_for_completion(&card_thread_complete);
-			init_completion(&card_thread_complete);
-			ret = 0;
-			return ret;
-		}
-	} 
-	else
-	{
-		card_quene_num = 0;
-		cq_node_current = card_queue_head;
-		do
-		{
-			card_quene_num = cq_node_current->cq_num;
-			cq_node_prev = cq_node_current;
-			cq_node_current = cq_node_current->cq_next;
-		} while (cq_node_current != NULL);
-
-		cq_node_current = kmalloc(sizeof(struct card_queue_list), GFP_KERNEL);
-		if (cq_node_current == NULL)
-		{
-			ret = -ENOMEM;
-			kfree(cq_node_current);
-			cq_node_current = NULL;
-			return ret;
-		}
-		cq_node_prev->cq_next = cq_node_current;
-		cq_node_current->cq = cq;
-		cq_node_current->cq_next = NULL;
-		cq_node_current->cq_num = (++card_quene_num);
-		cq_node_current->cq_flag = 0;
-
-		ret = 0;
-		return ret;
+	init_MUTEX(&cq->thread_sem);
+	cq->thread = kthread_run(card_queue_thread, cq, "card_queue");
+	if (IS_ERR(cq->thread)) {
+		ret = PTR_ERR(cq->thread);
+		//goto free_bounce_sg;
 	}
 
 	return ret;
@@ -814,7 +693,6 @@ static void card_blk_remove(struct memory_card *card)
 		/*
 		 * I think this is needed.
 		 */
-		
 		queue_flag_set_unlocked(QUEUE_FLAG_DEAD, card_data->queue.queue);
 		queue_flag_set_unlocked(QUEUE_FLAG_STOPPED, card_data->queue.queue);
 		card_data->queue.queue->queuedata = NULL;

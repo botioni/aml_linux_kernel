@@ -91,9 +91,10 @@ struct memory_card {
 
 struct card_queue {
 	struct memory_card		*card;
+	struct task_struct	*thread;
 	//struct completion	thread_complete;
 	//wait_queue_head_t	thread_wq;
-	//struct semaphore	thread_sem;
+	struct semaphore	thread_sem;
 	unsigned int		flags;
 	struct request		*req;
 	int			(*prep_fn)(struct card_queue *, struct request *);
