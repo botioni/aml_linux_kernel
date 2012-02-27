@@ -277,9 +277,9 @@ static int vdec_is_paused(void)
     unsigned long wp, rp, level;
     static int  paused_time = 0;
 
-    wp = READ_MPEG_REG(VLD_MEM_VIFIFO_START_PTR + VLD_MEM_VIFIFO_WP);
-    rp = READ_MPEG_REG(VLD_MEM_VIFIFO_START_PTR + VLD_MEM_VIFIFO_RP);
-    level = READ_MPEG_REG(VLD_MEM_VIFIFO_START_PTR + VLD_MEM_VIFIFO_LEVEL);
+    wp = READ_MPEG_REG(VLD_MEM_VIFIFO_WP);
+    rp = READ_MPEG_REG(VLD_MEM_VIFIFO_RP);
+    level = READ_MPEG_REG(VLD_MEM_VIFIFO_LEVEL);
     if ((rp == old_rp && level > 1024) || /*have data,but output buffer is fulle*/
         (rp == old_rp && wp == old_wp && level == level)) { /*no write && not read*/
         paused_time++;
