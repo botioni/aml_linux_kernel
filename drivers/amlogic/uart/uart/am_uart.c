@@ -890,6 +890,8 @@ static void am_uart_set_termios(struct tty_struct *tty,
                 struct ktermios *old_termios)
 {
     struct am_uart *info = (struct am_uart *)tty->driver_data;
+    am_uart_t *uart = uart_addr[info->line];
+    unsigned long tmp;
 
 #ifdef PRINT_DEBUG
     if(info->line >= 1)
@@ -906,6 +908,20 @@ static void am_uart_set_termios(struct tty_struct *tty,
         tty->hw_stopped = 0;
         am_uart_start(tty);
     }
+
+    tmp = __raw_readl(&uart->mode);
+    if (tty->termios->c_cflag & PARENB) {
+		tmp |= (1 << 19);
+		if (tty->termios->c_cflag & PARODD){
+	   		tmp |= (1 << 18);
+        }
+		else{
+            tmp &= ~(1 << 18);
+        }
+    } else {
+        tmp &= ~(1 << 19);
+    }
+	__raw_writel(tmp, &uart->mode);
 }
 
 /*
