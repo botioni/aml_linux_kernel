@@ -44,8 +44,13 @@ unsigned int aml_pcm_capture_start_addr  = 0;
 unsigned int aml_pcm_playback_end_addr = 0;
 unsigned int aml_pcm_capture_end_addr = 0;
 
+unsigned int aml_pcm_playback_phy_start_addr = 0;
+unsigned int aml_pcm_capture_phy_start_addr  = 0;
+unsigned int aml_pcm_playback_phy_end_addr = 0;
+unsigned int aml_pcm_capture_phy_end_addr = 0;
 unsigned int aml_pcm_playback_off = 0;
 unsigned int aml_pcm_playback_enable = 1;
+
 static  unsigned  substream_handle = 0 ;
 
 EXPORT_SYMBOL(aml_pcm_playback_start_addr);
@@ -141,6 +146,9 @@ static int aml_pcm_preallocate_dma_buffer(struct snd_pcm *pcm,
 
         aml_pcm_playback_start_addr = buf->area;
 		aml_pcm_playback_end_addr = buf->area + size;
+
+		aml_pcm_playback_phy_start_addr = buf->addr;
+		aml_pcm_playback_phy_end_addr = buf->addr+size;
 	}else{
 		size = aml_pcm_capture.buffer_bytes_max;
 		buf->dev.type = SNDRV_DMA_TYPE_DEV;
@@ -156,6 +164,8 @@ static int aml_pcm_preallocate_dma_buffer(struct snd_pcm *pcm,
 
         aml_pcm_capture_start_addr = buf->area;
 		aml_pcm_capture_end_addr = buf->area+size;
+		aml_pcm_capture_phy_start_addr = buf->addr;
+		aml_pcm_capture_phy_end_addr = buf->addr+size;		
 	}
 
 	if (!buf->area)
@@ -261,16 +271,16 @@ static void aml_hw_iec958_init(void)
 		set.chan_stat->chstat0_r = 0x0100;
 		set.chan_stat->chstat1_l = 0X200;
 		set.chan_stat->chstat1_r = 0X200;              
-        start = virt_to_phys(aml_pcm_playback_start_addr);
-        size = aml_pcm_playback_end_addr - aml_pcm_playback_start_addr;
+        start = (aml_pcm_playback_phy_start_addr);
+        size = aml_pcm_playback_phy_end_addr - aml_pcm_playback_phy_start_addr;
 		audio_set_958outbuf(start, size, 0);
 	  }else{
 		set.chan_stat->chstat0_l = 0x1902;
 		set.chan_stat->chstat0_r = 0x1902;
 		set.chan_stat->chstat1_l = 0X200;
 		set.chan_stat->chstat1_r = 0X200;
-        start = virt_to_phys((aml_pcm_playback_end_addr + 4096)&(~127));
-        size  = aml_pcm_playback_end_addr - aml_pcm_playback_start_addr;
+        start = ((aml_pcm_playback_phy_end_addr + 4096)&(~127));
+        size  = aml_pcm_playback_phy_end_addr - aml_pcm_playback_phy_start_addr;
 		audio_set_958outbuf(start, size, (IEC958_MODE == AIU_958_MODE_RAW)?1:0);
 	}
 	audio_set_958_mode(IEC958_MODE, &set);
