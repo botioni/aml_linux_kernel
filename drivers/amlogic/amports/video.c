@@ -1043,9 +1043,9 @@ static inline bool vpts_expire(vframe_t *cur_vf, vframe_t *next_vf)
 {
     u32 pts = next_vf->pts;
     u32 systime;
-     if ((cur_vf == NULL) || (cur_dispbuf == &vf_local)) {
+    /* if ((cur_vf == NULL) || (cur_dispbuf == &vf_local)) {
         return true;
-    }
+    }*/
     if ((trickmode_i == 1) || ((trickmode_fffb == 1))) {
         if (0 == atomic_read(&trickmode_framedone)) {
             return true;
