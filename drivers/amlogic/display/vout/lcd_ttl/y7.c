@@ -144,9 +144,13 @@ static void t13_setup_gama_table(lcdConfig_t *pConf)
     }
 }
 
-#define PWM_MAX			60000   //set pwm_freq=24MHz/PWM_MAX (Base on XTAL frequence: 24MHz, 0<PWM_MAX<65535)
+//#define PWM_MAX			60000   //set pwm_freq=24MHz/PWM_MAX (Base on XTAL frequence: 24MHz, 0<PWM_MAX<65535)
 #define BL_MAX_LEVEL	255
-#define BL_MIN_LEVEL	1//40
+#define BL_MIN_LEVEL	0//40
+#define	LEVEL_BASE (6000)
+#define	LEVEL_STEP (25)
+#define KERNEL_PWM_MAX  (33000)
+
 void power_on_backlight(void)
 {
     msleep(20);
@@ -176,7 +180,7 @@ void power_off_backlight(void)
     set_gpio_val(GPIOD_bank_bit0_9(1), GPIOD_bit_bit0_9(1), 0);
     set_gpio_mode(GPIOD_bank_bit0_9(1), GPIOD_bit_bit0_9(1), GPIO_OUTPUT_MODE);
 #elif (BL_CTL==BL_CTL_PWM)	
-	WRITE_CBUS_REG_BITS(PWM_PWM_D, PWM_MAX, 0, 16);  //pwm low
+	WRITE_CBUS_REG_BITS(PWM_PWM_D, KERNEL_PWM_MAX, 0, 16);  //pwm low
     WRITE_CBUS_REG_BITS(PWM_PWM_D, 0, 16, 16);  //pwm high
     CLEAR_CBUS_REG_MASK(PWM_MISC_REG_CD, ((1 << 23) | (1<<1)));  //disable pwm clk & pwm output
 #endif		
@@ -206,11 +210,12 @@ void set_backlight_level(unsigned level)
 	level = 15 - level;
 	WRITE_CBUS_REG_BITS(LED_PWM_REG0, level, 0, 4);	
 #elif (BL_CTL==BL_CTL_PWM)	
-	level = level * PWM_MAX / BL_MAX_LEVEL ;	
-	WRITE_CBUS_REG_BITS(PWM_PWM_D, (PWM_MAX - level), 0, 16);  //pwm low
+	if(level)
+		level=(LEVEL_BASE+level*LEVEL_STEP);
+	WRITE_CBUS_REG_BITS(PWM_PWM_D, (KERNEL_PWM_MAX - level), 0, 16);  //pwm low
     WRITE_CBUS_REG_BITS(PWM_PWM_D, level, 16, 16);  //pwm high	
 #endif	
-	printk("\n\nlcd parameter: set backlight level: %d.\n\n", level);
+	printk("\n\nlcd parameter: set backlight level: %d PWM_MAX %d.\n\n", level,KERNEL_PWM_MAX);
 }
 
 static void power_on_lcd(void)
