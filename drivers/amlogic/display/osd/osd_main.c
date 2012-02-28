@@ -58,7 +58,7 @@ MODULE_AMLOG(AMLOG_DEFAULT_LEVEL, 0x0, LOG_LEVEL_DESC, LOG_MASK_DESC);
 static myfb_dev_t  *gp_fbdev_list[OSD_COUNT]={NULL,NULL};
 
 static DEFINE_MUTEX(dbg_mutex);
-static int request2XScaleValue = 0;
+static char request2XScaleValue[32];
 
 
 const color_bit_define_t*	
@@ -774,17 +774,15 @@ static int parse_para(const char *para, int para_num, int *result)
 static ssize_t show_request_2xscale(struct device *device, struct device_attribute *attr,
 			 char *buf)
 {
-    return sprintf(buf, "%d\n", request2XScaleValue);
-
+	memcpy(buf,request2XScaleValue,32);
+    return 32;
 }
 
 static ssize_t store__request_2xscale(struct device *device, struct device_attribute *attr,
 			 const char *buf, size_t count)
 {
-    unsigned value;
-    ssize_t r;
-    r = sscanf(buf, "%d", &value);
-    request2XScaleValue = value;
+	memset(request2XScaleValue,0,32);
+	memcpy(request2XScaleValue,buf,count);
     return count;
 }
 
