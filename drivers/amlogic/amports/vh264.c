@@ -789,6 +789,9 @@ static void vh264_isr(void)
                 } else {
                     vf->type = poc_sel ? VIDTYPE_INTERLACE_TOP : VIDTYPE_INTERLACE_BOTTOM;
                 }
+                
+                if ((READ_MPEG_REG(AV_SCRATCH_F) & 3) == 2)
+                    vf->type = VIDTYPE_INTERLACE_TOP;
 
                 vf->duration >>= 1;
                 vf->duration_pulldown = 0;
