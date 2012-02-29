@@ -662,7 +662,8 @@ void audio_enable_ouput(int flag)
               WRITE_MPEG_REG_BITS(AIU_MEM_IEC958_CONTROL, 3, 1, 2);
             }
         }
-        audio_i2s_unmute();
+        // Maybe cause POP noise
+        //audio_i2s_unmute();
     } else {
         WRITE_MPEG_REG_BITS(AIU_MEM_I2S_CONTROL, 0, 1, 2);
 
@@ -670,7 +671,8 @@ void audio_enable_ouput(int flag)
             WRITE_MPEG_REG(AIU_958_DCU_FF_CTRL, 0);
             WRITE_MPEG_REG_BITS(AIU_MEM_IEC958_CONTROL, 0, 1, 2);
         }
-        audio_i2s_mute();
+        // Maybe cause POP noise
+        //audio_i2s_mute();
     }
     audio_out_enabled(flag);
 }
