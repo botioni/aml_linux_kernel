@@ -144,7 +144,7 @@ int set_current_vmode2(vmode_t mode)
 		}
 		else
 		{
-			p_server->op.disable(mode);
+			//p_server->op.disable(mode);
 		}
 	}
 	

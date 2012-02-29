@@ -57,6 +57,10 @@ static unsigned long ddr_pll_clk = 0;
 
 static tcon_dev_t *pDev = NULL;
 
+#ifdef CONFIG_AM_TV_OUTPUT2
+static unsigned int vpp2_sel = 0; /*0,vpp; 1, vpp2 */
+#endif
+
 static void _tcon_init(lcdConfig_t *pConf) ;
 static void set_lcd_gamma_table_B(u16 *data, u32 rgb_mask)
 {
@@ -142,7 +146,15 @@ static inline void _init_tcon_B(lcdConfig_t *pConf)
     WRITE_MPEG_REG(TCON_MISC_SEL_ADDR, 	pConf->tcon_misc_sel_addr);
     WRITE_MPEG_REG(DUAL_PORT_CNTL_ADDR, pConf->dual_port_cntl_addr);
 
-    CLEAR_MPEG_REG_MASK(VPP_MISC, VPP_OUT_SATURATE);
+#ifdef CONFIG_AM_TV_OUTPUT2
+    if(vpp2_sel){
+        CLEAR_MPEG_REG_MASK(VPP2_MISC, VPP_OUT_SATURATE);
+    }
+    else
+#endif        
+    {
+        CLEAR_MPEG_REG_MASK(VPP_MISC, VPP_OUT_SATURATE);
+    }
 
     PRINT_INFO("RGB_BASE = %x %x\n", READ_MPEG_REG(RGB_BASE_ADDR),    pConf->rgb_base_addr);
     PRINT_INFO("RGB_COEFF = %x %x\n", READ_MPEG_REG(RGB_COEFF_ADDR),  pConf->rgb_coeff_addr);
@@ -230,7 +242,15 @@ static inline void _init_tcon_A(lcdConfig_t *pConf)
     WRITE_MPEG_REG(L_TCON_MISC_SEL_ADDR, 	pConf->tcon_misc_sel_addr);
     WRITE_MPEG_REG(L_DUAL_PORT_CNTL_ADDR, pConf->dual_port_cntl_addr);
 
-    CLEAR_MPEG_REG_MASK(VPP_MISC, VPP_OUT_SATURATE);
+#ifdef CONFIG_AM_TV_OUTPUT2
+    if(vpp2_sel){
+        CLEAR_MPEG_REG_MASK(VPP2_MISC, VPP_OUT_SATURATE);
+    }
+    else
+#endif        
+    {
+        CLEAR_MPEG_REG_MASK(VPP_MISC, VPP_OUT_SATURATE);
+    }
 }
 
 static void vclk_set_lcd( int pll_sel, int pll_div_sel, int vclk_sel, 
@@ -294,8 +314,19 @@ static void vclk_set_lcd( int pll_sel, int pll_div_sel, int vclk_sel,
         WRITE_MPEG_REG(HHI_VID_DIVIDER_CNTL, READ_MPEG_REG(HHI_VID_DIVIDER_CNTL)|((1<<1)|(1<<0)));
     }
 
+#ifdef CONFIG_AM_TV_OUTPUT2
+    if(vclk_sel){
+        WRITE_MPEG_REG( HHI_VIID_CLK_DIV, (READ_MPEG_REG(HHI_VIID_CLK_DIV) & ~(0xFF << 0)) | (xd-1) );   // setup the XD divider value
+        WRITE_MPEG_REG_BITS(HHI_VID_CLK_DIV, 8, 20, 4);  //cts_enct_clk select v2_clk_div1
+    }
+    else{
+        WRITE_MPEG_REG( HHI_VID_CLK_DIV, (READ_MPEG_REG(HHI_VID_CLK_DIV) & ~(0xFF << 0)) | (xd-1) );   // setup the XD divider value
+        WRITE_MPEG_REG_BITS(HHI_VID_CLK_DIV, 0, 20, 4);  //cts_enct_clk select clk_div1
+    }
+#else
     if(vclk_sel) WRITE_MPEG_REG( HHI_VIID_CLK_DIV, (READ_MPEG_REG(HHI_VIID_CLK_DIV) & ~(0xFF << 0)) | (xd-1) );   // setup the XD divider value
     else WRITE_MPEG_REG( HHI_VID_CLK_DIV, (READ_MPEG_REG(HHI_VID_CLK_DIV) & ~(0xFF << 0)) | (xd-1) );   // setup the XD divider value
+#endif
 
     // delay 5uS
     //WRITE_MPEG_REG( ISA_TIMERE, 0); while( READ_MPEG_REG(ISA_TIMERE) < 5 ) {}    
@@ -378,10 +409,19 @@ static void set_lcd_pll(lcdConfig_t *pConf)
 static void venc_set_lcd(lcdConfig_t *pConf)
 {
     PRINT_INFO("setup lcd tvencoder.\n");
-    WRITE_MPEG_REG(VPU_VIU_VENC_MUX_CTRL,
-       (3<<0) |    // viu1 select enct
-       (3<<2)      // viu2 select enct
-    );
+#ifdef CONFIG_AM_TV_OUTPUT2
+    if(vpp2_sel){
+        WRITE_MPEG_REG_BITS (VPU_VIU_VENC_MUX_CTRL, 3, 2, 2); //viu2 select enct
+    }
+    else{
+        WRITE_MPEG_REG_BITS (VPU_VIU_VENC_MUX_CTRL, 3, 0, 2); //viu1 select enct
+    }
+#else
+        WRITE_MPEG_REG(VPU_VIU_VENC_MUX_CTRL,
+           (3<<0) |    // viu1 select enct
+           (3<<2)      // viu2 select enct
+        );
+#endif    
     WRITE_MPEG_REG(ENCT_VIDEO_MODE,        0);
     WRITE_MPEG_REG(ENCT_VIDEO_MODE_ADV,    0x0418);	
 
@@ -484,6 +524,9 @@ static int lcd_set_current_vmode(vmode_t mode)
 {
 	if (mode != VMODE_LCD)
         return -EINVAL;
+#ifdef CONFIG_AM_TV_OUTPUT2
+    vpp2_sel = 0;
+#endif    
     WRITE_MPEG_REG(VPP_POSTBLEND_H_SIZE, pDev->lcd_info.width);
     _lcd_module_enable();
     if (VMODE_INIT_NULL == pDev->lcd_info.mode)
@@ -492,6 +535,22 @@ static int lcd_set_current_vmode(vmode_t mode)
         _enable_backlight(BL_MAX_LEVEL);
 	return 0;
 }
+
+#ifdef CONFIG_AM_TV_OUTPUT2
+static int lcd_set_current_vmode2(vmode_t mode)
+{
+	if (mode != VMODE_LCD)
+        return -EINVAL;
+    vpp2_sel = 1;
+    WRITE_MPEG_REG(VPP2_POSTBLEND_H_SIZE, pDev->lcd_info.width);
+    _lcd_module_enable();
+    if (VMODE_INIT_NULL == pDev->lcd_info.mode)
+        pDev->lcd_info.mode = VMODE_LCD;
+    else
+        _enable_backlight(BL_MAX_LEVEL);
+	return 0;
+}
+#endif
 
 static vmode_t lcd_validate_vmode(char *mode)
 {
@@ -547,6 +606,23 @@ static vout_server_t lcd_vout_server={
 	},
 };
 
+#ifdef CONFIG_AM_TV_OUTPUT2
+static vout_server_t lcd_vout2_server={
+	.name = "lcd_vout2_server",
+	.op = {	
+		.get_vinfo = lcd_get_current_info,
+		.set_vmode = lcd_set_current_vmode2,
+		.validate_vmode = lcd_validate_vmode,
+		.vmode_is_supported=lcd_vmode_is_supported,
+		.disable=lcd_module_disable,
+#ifdef  CONFIG_PM  
+		.vout_suspend=lcd_suspend,
+		.vout_resume=lcd_resume,
+#endif
+	},
+};
+#endif
+
 static void _init_vout(tcon_dev_t *pDev)
 {
 	if (!ddr_pll_clk){
@@ -577,6 +653,9 @@ static void _init_vout(tcon_dev_t *pDev)
 	pDev->lcd_info.sync_duration_den = pDev->conf.sync_duration_den;
 
 	vout_register_server(&lcd_vout_server);
+#ifdef CONFIG_AM_TV_OUTPUT2
+   vout2_register_server(&lcd_vout2_server);
+#endif   
 }
 
 static void _tcon_init(lcdConfig_t *pConf)

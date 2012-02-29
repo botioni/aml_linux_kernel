@@ -244,6 +244,29 @@ int tvoutc_setmode(tvmode_t mode)
         setreg(s++);
 	//tvoutc_setclk(mode);
     //enable_vsync_interrupt();
+#ifdef CONFIG_AM_VIDEO2
+	switch(mode)
+	{
+		case TVMODE_480I:
+		case TVMODE_480CVBS:
+		case TVMODE_576I:
+		case TVMODE_576CVBS:
+        WRITE_CBUS_REG_BITS(VPU_VIU_VENC_MUX_CTRL, 1, 0, 2); //reg0x271a, select ENCI to VIU1
+			  break;
+		case TVMODE_480P:
+		case TVMODE_576P:
+		case TVMODE_720P:
+		case TVMODE_720P_50HZ:
+		case TVMODE_1080I: //??
+		case TVMODE_1080I_50HZ: //??
+		case TVMODE_1080P:
+		case TVMODE_1080P_50HZ:
+        WRITE_CBUS_REG_BITS(VPU_VIU_VENC_MUX_CTRL, 2, 0, 2); //reg0x271a, select ENCP to VIU1
+        break;		    
+		default:
+			printk(KERN_ERR "unsupport tv mode,video clk is not set!!\n");	
+	}
+#endif
     
     WRITE_MPEG_REG(VPP_POSTBLEND_H_SIZE, tvinfoTab[mode].xres);
     

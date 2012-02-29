@@ -80,7 +80,11 @@ static lcdConfig_t lcd_config =
     .video_on_line = VIDEO_ON_LINE,
     .pll_ctrl = 0x1021f,
 	.div_ctrl = 0x18803,
+#ifdef CONFIG_AM_TV_OUTPUT2
+    .clk_ctrl = 0x111b,	//pll_sel,div_sel,vclk_sel,xd
+#else
     .clk_ctrl = 0x100b,	//pll_sel,div_sel,vclk_sel,xd
+#endif    
     .gamma_cntl_port = (1 << LCD_GAMMA_EN) | (0 << LCD_GAMMA_RVS_OUT) | (1 << LCD_GAMMA_VCOM_POL),
     .gamma_vcom_hswitch_addr = 0,
     .rgb_base_addr = 0xf0,

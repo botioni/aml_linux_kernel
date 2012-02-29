@@ -249,25 +249,25 @@ int tvoutc_setmode2(tvmode_t mode)
 		case TVMODE_576I:
 		case TVMODE_576CVBS:
 		case TVMODE_576P:
-        WRITE_MPEG_REG(HHI_VIID_CLK_DIV, (READ_MPEG_REG(HHI_VIID_CLK_DIV)&(~(0xff)))|0x3); // reg 0x104a
+        //WRITE_MPEG_REG(HHI_VIID_CLK_DIV, (READ_MPEG_REG(HHI_VIID_CLK_DIV)&(~(0xff)))|0x3); // reg 0x104a
 			  break;
 		case TVMODE_720P:
 		case TVMODE_720P_50HZ:
 		case TVMODE_1080I:
 		case TVMODE_1080I_50HZ:
-        WRITE_MPEG_REG(HHI_VIID_CLK_DIV, (READ_MPEG_REG(HHI_VIID_CLK_DIV)&(~(0xff)))|0x0); // reg 0x104a
+        //WRITE_MPEG_REG(HHI_VIID_CLK_DIV, (READ_MPEG_REG(HHI_VIID_CLK_DIV)&(~(0xff)))|0x0); // reg 0x104a
         break;		    
 		case TVMODE_1080P:
 		case TVMODE_1080P_50HZ:
-        WRITE_MPEG_REG(HHI_VIID_CLK_DIV, (READ_MPEG_REG(HHI_VIID_CLK_DIV)&(~(0xff)))|0x1); // reg 0x104a
+        //WRITE_MPEG_REG(HHI_VIID_CLK_DIV, (READ_MPEG_REG(HHI_VIID_CLK_DIV)&(~(0xff)))|0x1); // reg 0x104a
         break;		    
 		default:
 			printk(KERN_ERR "unsupport tv mode,video clk is not set!!\n");	
 	}
     
-        WRITE_MPEG_REG(HHI_VIID_CLK_CNTL, 0x8001f); //reg 0x104b, select vid_pll_clk as source of v2_clk_divN
-        WRITE_MPEG_REG(HHI_VID_CLK_DIV, (READ_MPEG_REG(HHI_VID_CLK_DIV)&(~(0xff<<24)))|(0x88<<24)); // reg 0x1059, select cts_encp_clk and cts_enci_clk from v2_clk_div1
-        WRITE_CBUS_REG_BITS(VPU_VIU_VENC_MUX_CTRL, 2, 2, 2); //select ENCP to VIU2
+        //WRITE_MPEG_REG(HHI_VIID_CLK_CNTL, 0x8001f); //reg 0x104b, select vid_pll_clk as source of v2_clk_divN
+        //WRITE_MPEG_REG(HHI_VID_CLK_DIV, (READ_MPEG_REG(HHI_VID_CLK_DIV)&(~(0xff<<24)))|(0x88<<24)); // reg 0x1059, select cts_encp_clk and cts_enci_clk from v2_clk_div1
+        WRITE_CBUS_REG_BITS(VPU_VIU_VENC_MUX_CTRL, 2, 2, 2); //reg0x271a, select ENCP to VIU2
 
     
     WRITE_MPEG_REG(VPP2_POSTBLEND_H_SIZE, tvinfoTab[mode].xres);

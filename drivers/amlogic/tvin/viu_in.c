@@ -235,8 +235,6 @@ static void start_amvdec_viu_in(unsigned int mem_start, unsigned int mem_size,
         viu_in_canvas_init(mem_start, mem_size);
         init_viuin_dec_parameter(fmt_info);
         reset_viuin_dec_parameter();
-        WRITE_CBUS_REG_BITS(VPU_VIU_VENC_MUX_CTRL, 4, 4, 4); //select ENCT
-        WRITE_CBUS_REG_BITS(VPU_VIU_VENC_MUX_CTRL, 4, 8, 4); //select ENCT
 
         amviuin_dec_info.para.port = TVIN_PORT_VIU_ENCT;
 		    amviuin_dec_info.wr_canvas_index = 0xff;

@@ -282,6 +282,7 @@ static u32 clone = 1;
 static u32 clone_vpts_remainder;
 static int clone_frame_rate = 30; 
 static int clone_frame_scale_width = 0;
+static int throw_frame = 0;
 /* vout */
 
 static const vinfo_t *vinfo = NULL;
@@ -1255,7 +1256,11 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
 
     while (vf) {
         if(clone == 1){
-            if(clone_vpts_remainder < vsync_pts_inc){
+            if(throw_frame){
+                vf = video_vf_get();
+                video_vf_put(vf);
+            }
+            else if(clone_vpts_remainder < vsync_pts_inc){
                 vf = video_vf_get();
 #ifdef CONFIG_TVIN_VIUIN
                 if(clone_frame_scale_width != 0){
@@ -2355,6 +2360,15 @@ static int start_clone(void)
       ret = 0;
     }
     if(info){
+        printk("%s source is %s\n", __func__, info->name);
+        if(strcmp(info->name, "panel")==0){
+            WRITE_CBUS_REG_BITS(VPU_VIU_VENC_MUX_CTRL, 4, 4, 4); //reg0x271a, Select encT clock to VDIN            
+            WRITE_CBUS_REG_BITS(VPU_VIU_VENC_MUX_CTRL, 4, 8, 4); //reg0x271a,Enable VIU of ENC_T domain to VDIN;
+        }
+        else{
+            WRITE_CBUS_REG_BITS(VPU_VIU_VENC_MUX_CTRL, 2, 4, 4); //reg0x271a, Select encP clock to VDIN            
+            WRITE_CBUS_REG_BITS(VPU_VIU_VENC_MUX_CTRL, 2, 8, 4); //reg0x271a,Enable VIU of ENC_P domain to VDIN;
+        }
         clone_vpts_remainder = 0;
         para.fmt_info.h_active = info->width;
         para.fmt_info.v_active = info->height;
@@ -2866,3 +2880,5 @@ module_param(isr_interval_max, uint, 0664);
 MODULE_PARM_DESC(isr_run_time_max, "\n isr_run_time_max\n");
 module_param(isr_run_time_max, uint, 0664);
 
+MODULE_PARM_DESC(throw_frame, "\n throw_frame\n");
+module_param(throw_frame, uint, 0664);
