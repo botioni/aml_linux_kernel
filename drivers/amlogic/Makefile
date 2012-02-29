@@ -53,6 +53,7 @@ obj-$(CONFIG_UMP) += ump/
 obj-$(CONFIG_TWX_TC101) += minilvds/
 
 obj-$(CONFIG_AML_AUDIO_DSP) += audiodsp/
+obj-$(CONFIG_AML_AUDIO_DSP_LOG) += audiodsplog/
 
 obj-$(CONFIG_AML_RTC)+= rtc/
 
