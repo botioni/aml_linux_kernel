@@ -1187,7 +1187,7 @@ int  init_vm_device(void)
     
     if(vm_buffer_init()<0) goto unregister_dev;
         vf_provider_init(&vm_vf_prov, PROVIDER_NAME ,&vm_vf_provider, NULL);	
-    //vf_reg_provider(&vm_vf_prov);
+    vf_reg_provider(&vm_vf_prov);
     vf_receiver_init(&vm_vf_recv, RECEIVER_NAME, &vm_vf_receiver, NULL);    
     vf_reg_receiver(&vm_vf_recv);
     return 0;
