@@ -217,7 +217,10 @@ static int aml_pcm_hw_free(struct snd_pcm_substream *substream)
 
 	return 0;
 }
-
+/*
+the I2S hw  and IEC958 PCM output initation,958 initation here, 
+for the case that only use our ALSA driver for PCM s/pdif output.
+*/
 static void  aml_hw_i2s_init(struct snd_pcm_runtime *runtime)
 {
 
@@ -241,7 +244,12 @@ static void  aml_hw_i2s_init(struct snd_pcm_runtime *runtime)
 		memset((void*)runtime->dma_area,0,runtime->dma_bytes * 2 + 4096);
 
 }
-
+/*
+special call by the audiodsp,add these code,as there are three cases for 958 s/pdif output
+1)NONE-PCM  raw output ,only available when ac3/dts audio,when raw output mode is selected by user.
+2)PCM  output for  all audio, when pcm mode is selected by user .
+3)PCM  output for audios except ac3/dts,when raw output mode is selected by user
+*/
 static void aml_hw_iec958_init(void)
 {
     _aiu_958_raw_setting_t set;
@@ -250,19 +258,26 @@ static void aml_hw_iec958_init(void)
 	memset((void*)(&set), 0, sizeof(set));
 	memset((void*)(&chstat), 0, sizeof(chstat));
 	set.chan_stat = &chstat;
-   
-    if(IEC958_mode_raw == 1 && IEC958_mode_codec){
-	  if(IEC958_mode_codec == 1){ //dts
-	    IEC958_MODE = AIU_958_MODE_RAW;
-		printk("iec958 mode AIU_958_MODE_RAW\n");
+   	/* case 1,raw mode enabled */
+	if(IEC958_mode_raw == 1 && IEC958_mode_codec){
+	  if(IEC958_mode_codec == 1){ //dts, use raw sync-word mode
+	    	IEC958_MODE = AIU_958_MODE_RAW;
+		printk("iec958 mode RAW\n");
 	  }	
-	  else{ //ac3
+	  else{ //ac3,use the same pcm mode as i2s configuration
 		IEC958_MODE = AIU_958_MODE_PCM_RAW;
-		printk("iec958 mode AIU_958_MODE_PCM_RAW\n");				
+		printk("iec958 mode %s\n",(I2S_MODE == AIU_I2S_MODE_PCM32)?"PCM32_RAW":((I2S_MODE == AIU_I2S_MODE_PCM24)?"PCM24_RAW":"PCM16_RAW"));				
 	  }	
-	}else{
-	  IEC958_MODE = AIU_958_MODE_PCM16;
-	  printk("iec958 mode AIU_958_MODE_PCM16\n");
+	}
+	/* case 2,3 */
+	else{
+	  if(I2S_MODE == AIU_I2S_MODE_PCM32)
+	  	IEC958_MODE = AIU_958_MODE_PCM32;
+	  else if(I2S_MODE == AIU_I2S_MODE_PCM24)
+	  	IEC958_MODE = AIU_958_MODE_PCM24;
+	  else		
+	  	IEC958_MODE = AIU_958_MODE_PCM16;
+  	  printk("iec958 mode %s\n",(I2S_MODE == AIU_I2S_MODE_PCM32)?"PCM32":((I2S_MODE == AIU_I2S_MODE_PCM24)?"PCM24":"PCM16"));
     }
 
 	if(IEC958_MODE == AIU_958_MODE_PCM16 || IEC958_MODE == AIU_958_MODE_PCM24 ||
@@ -275,7 +290,7 @@ static void aml_hw_iec958_init(void)
         size = aml_pcm_playback_phy_end_addr - aml_pcm_playback_phy_start_addr;
 		audio_set_958outbuf(start, size, 0);
 	  }else{
-		set.chan_stat->chstat0_l = 0x1902;
+		set.chan_stat->chstat0_l = 0x1902;//NONE-PCM
 		set.chan_stat->chstat0_r = 0x1902;
 		set.chan_stat->chstat1_l = 0X200;
 		set.chan_stat->chstat1_r = 0X200;
@@ -289,6 +304,8 @@ static void aml_hw_iec958_init(void)
 
 void	aml_alsa_hw_reprepare()
 {
+	/* diable 958 module before call initiation */
+	audio_hw_958_enable(0);
   aml_hw_iec958_init();
 }
 
@@ -353,6 +370,7 @@ static int aml_pcm_prepare(struct snd_pcm_substream *substream)
 	audio_util_set_dac_format(AUDIO_ALGOUT_DAC_FORMAT_DSP);
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK){
 		aml_hw_i2s_init(runtime);		
+		aml_hw_iec958_init();
 	}
 	else{
 			//printk("aml_pcm_prepare SNDRV_PCM_STREAM_CAPTURE: dma_addr=%x, dma_bytes=%x\n", runtime->dma_addr, runtime->dma_bytes);
