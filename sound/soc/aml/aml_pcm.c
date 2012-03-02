@@ -79,10 +79,10 @@ static const struct snd_pcm_hardware aml_pcm_hardware = {
 	.buffer_bytes_max	= 64 * 1024,
 	
 	.rate_min = 32000,
-  .rate_max = 48000,
-  .channels_min = 2,
-  .channels_max = 2,
-  .fifo_size = 0,  
+    .rate_max = 48000,
+    .channels_min = 2,
+    .channels_max = 2,
+    .fifo_size = 0,
 };
 
 static const struct snd_pcm_hardware aml_pcm_capture = {
@@ -100,12 +100,13 @@ static const struct snd_pcm_hardware aml_pcm_capture = {
 	.buffer_bytes_max	= 64 * 1024,
 
 	.rate_min = 8000,
-  .rate_max = 48000,
-  .channels_min = 2,
-  .channels_max = 2,
-  .fifo_size = 0,  
+    .rate_max = 48000,
+    .channels_min = 2,
+    .channels_max = 2,
+    .fifo_size = 0,
 };
 
+static char snd_pcm_tmp[32*1024];
 /*--------------------------------------------------------------------------*\
  * Data types
 \*--------------------------------------------------------------------------*/
@@ -701,9 +702,13 @@ static int aml_pcm_copy_capture(struct snd_pcm_runtime *runtime, int channel,
     unsigned int t1, t2;
     char *hwbuf = runtime->dma_area + frames_to_bytes(runtime, pos)*2;
     
-    to = (unsigned short *)buf;
+    to = (unsigned short *)snd_pcm_tmp;//buf;
     tfrom = (unsigned int *)hwbuf;	// 32bit buffer
     n = frames_to_bytes(runtime, count);
+    if(n > 32*1024){
+      printk("Too many datas to read\n");
+      return -EINVAL;
+    }
     
 		if(access_ok(VERIFY_WRITE, buf, frames_to_bytes(runtime, count))){
 				left = tfrom;
@@ -728,7 +733,7 @@ static int aml_pcm_copy_capture(struct snd_pcm_runtime *runtime, int channel,
 		        right += 8;
 		    }
 		}
-	
+        res = copy_to_user(buf, snd_pcm_tmp,n);
 		return res;
 }
 
