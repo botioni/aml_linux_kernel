@@ -84,6 +84,8 @@
 #define STAT_TIMER_ARM      0x10
 #define STAT_VDEC_RUN       0x20
 
+#define DEC_CONTROL_FLAG_FORCE_2997_1080P_INTERLACE 0x0001
+
 #define INCPTR(p) ptr_atomic_wrap_inc(&p)
 
 typedef struct {
@@ -140,6 +142,7 @@ static u32 buf_start, buf_size;
 static s32 buf_offset;
 static u32 pts_outside = 0;
 static u32 sync_outside = 0;
+static u32 dec_control = DEC_CONTROL_FLAG_FORCE_2997_1080P_INTERLACE;
 static u32 vh264_ratio;
 static u32 vh264_rotation;
 
@@ -342,6 +345,7 @@ static void vh264_isr(void)
     vframe_t *vf;
     unsigned int cpu_cmd;
     unsigned int pts, pts_valid = 0, pts_duration = 0;
+    bool force_interlaced_frame = false;
 
     WRITE_MPEG_REG(ASSIST_MBOX1_CLR_REG, 1);
 
@@ -731,7 +735,15 @@ static void vh264_isr(void)
                 }
             }
 
-            if (prog_frame || (pic_struct_present && pic_struct <= PIC_TRIPLE_FRAME)) {
+            if ((dec_control & DEC_CONTROL_FLAG_FORCE_2997_1080P_INTERLACE) &&
+                (frame_width == 1920) &&
+                (frame_height >= 1080) &&
+                (vf->duration == 3203)) {
+                force_interlaced_frame = true;
+            }
+
+            if ((!force_interlaced_frame) &&
+                (prog_frame || (pic_struct_present && pic_struct <= PIC_TRIPLE_FRAME))) {
                 if (pic_struct_present) {
                     if (pic_struct == PIC_TOP_BOT_TOP || pic_struct == PIC_BOT_TOP_BOT) {
                         vf->duration += vf->duration >> 1;
@@ -1290,6 +1302,8 @@ module_param(error_recovery_mode, uint, 0664);
 MODULE_PARM_DESC(error_recovery_mode, "\n amvdec_h264 error_recovery_mode \n");
 module_param(sync_outside, uint, 0664);
 MODULE_PARM_DESC(sync_outside, "\n amvdec_h264 sync_outside \n");
+module_param(dec_control, uint, 0664);
+MODULE_PARM_DESC(dec_control, "\n amvdec_h264 decoder control \n");
 module_init(amvdec_h264_driver_init_module);
 module_exit(amvdec_h264_driver_remove_module);
 
