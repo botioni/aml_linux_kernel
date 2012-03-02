@@ -600,7 +600,10 @@ CONFIG_AM_UART0_SET_PORT_AO=y
 # Amlogic RTC support
 #
 CONFIG_AML_RTC=y
-# CONFIG_AMLOGIC_I2C is not set
+CONFIG_AMLOGIC_I2C=y
+# CONFIG_I2C_APOLLO is not set
+CONFIG_I2C_AML=y
+# CONFIG_I2C_SW_AML is not set
 
 #
 # Amlogic Input device support
@@ -631,7 +634,9 @@ CONFIG_KEYPADS_AM=y
 #
 # Amlogic Power Management Support
 #
-CONFIG_AMLOGIC_PM=y
+# CONFIG_AMLOGIC_PM is not set
+# CONFIG_SMBA10XX_BATTERY is not set
+# CONFIG_BQ27x00_BATTERY is not set
 # CONFIG_PMU_ACT8xxx is not set
 
 #
@@ -702,14 +707,14 @@ CONFIG_SDIO=y
 #
 # AMLOGIC SPI NOR Flash  support
 #
-# CONFIG_AMLOGIC_SPI_NOR is not set
+CONFIG_AMLOGIC_SPI_NOR=y
 
 #
 # AMLOGIC NAND Flash support
 #
 CONFIG_AM_NAND=y
-# CONFIG_AM_NAND_RBPIN is not set
-CONFIG_AML_NAND_ENV=y
+CONFIG_AM_NAND_RBPIN=y
+# CONFIG_AML_NAND_ENV is not set
 CONFIG_AML_NFTL=m
 
 #
@@ -787,7 +792,7 @@ CONFIG_FB_OSD2_DEFAULT_HEIGHT_VIRTUAL=32
 #
 # Amlogic Backlight Support
 #
-CONFIG_AMLOGIC_BACKLIGHT=y
+# CONFIG_AMLOGIC_BACKLIGHT is not set
 CONFIG_AM_GE2D=y
 CONFIG_AM_LOGO=y
 

@@ -121,6 +121,10 @@
 #include <linux/efuse.h>
 #endif
 
+#ifdef CONFIG_SUSPEND
+static int suspend_state=0;
+#endif
+
 #if defined(CONFIG_JPEGLOGO)
 static struct resource jpeglogo_resources[] = {
     [0] = {
@@ -227,14 +231,26 @@ int _key_code_list[] = {KEY_POWER};
 
 static inline int key_input_init_func(void)
 {
-    WRITE_AOBUS_REG(AO_RTC_ADDR0, (READ_AOBUS_REG(AO_RTC_ADDR0) &~(1<<11)));
-    WRITE_AOBUS_REG(AO_RTC_ADDR1, (READ_AOBUS_REG(AO_RTC_ADDR1) &~(1<<3)));
+        set_gpio_mode(GPIOAO_bank_bit0_11(3), GPIOAO_bit_bit0_11(3), GPIO_INPUT_MODE);
+//    WRITE_AOBUS_REG(AO_RTC_ADDR0, (READ_AOBUS_REG(AO_RTC_ADDR0) &~(1<<11)));
+//    WRITE_AOBUS_REG(AO_RTC_ADDR1, (READ_AOBUS_REG(AO_RTC_ADDR1) &~(1<<3)));
     return 0;
 }
 static inline int key_scan(int *key_state_list)
 {
     int ret = 0;
-    key_state_list[0] = ((READ_AOBUS_REG(AO_RTC_ADDR1) >> 2) & 1) ? 0 : 1;
+	 // GPIOAO_3
+	 #ifdef CONFIG_SUSPEND
+	 if(suspend_state)
+	 	{
+	 	// forse power key down
+	 	suspend_state--;
+	 	key_state_list[0] = 1;
+	 	}
+	 else
+	 #endif
+    key_state_list[0] = get_gpio_val(GPIOAO_bank_bit0_11(3), GPIOAO_bit_bit0_11(3))?0:1;
+//    key_state_list[0] = ((READ_AOBUS_REG(AO_RTC_ADDR1) >> 2) & 1) ? 0 : 1;
     return ret;
 }
 
@@ -245,7 +261,7 @@ static  struct key_input_platform_data  key_input_pdata = {
     .key_num = ARRAY_SIZE(_key_code_list),
     .scan_func = key_scan,
     .init_func = key_input_init_func,
-    .config = 0,
+    .config =  2, 	// 0: interrupt;    	2: polling;
 };
 
 static struct platform_device input_device_key = {
@@ -429,20 +445,43 @@ static struct platform_device amlogic_spi_nor_device = {
 #ifdef CONFIG_USB_DWC_OTG_HCD
 static void set_usb_a_vbus_power(char is_power_on)
 {
-#define USB_A_POW_GPIO         GPIOC_bank_bit0_15(8)	//GPIOD_bank_bit0_9(9)
-#define USB_A_POW_GPIO_BIT      GPIOC_bit_bit0_15(8) // GPIOD_bit_bit0_9(9)
+#define USB_A_POW_GPIO         GPIOC_bank_bit0_15(6)	//GPIOD_bank_bit0_9(9)
+#define USB_A_POW_GPIO_BIT      GPIOC_bit_bit0_15(6) // GPIOD_bit_bit0_9(9)
 #define USB_A_POW_GPIO_BIT_ON   1
 #define USB_A_POW_GPIO_BIT_OFF  0
     if(is_power_on) {
-        printk(KERN_INFO "set usb port power on (board gpio %d)!\n",USB_A_POW_GPIO_BIT);
+        printk(KERN_INFO "set usb a port power on (board gpio %d)!\n",USB_A_POW_GPIO_BIT);
         set_gpio_mode(USB_A_POW_GPIO, USB_A_POW_GPIO_BIT, GPIO_OUTPUT_MODE);
         set_gpio_val(USB_A_POW_GPIO, USB_A_POW_GPIO_BIT, USB_A_POW_GPIO_BIT_ON);
     } else    {
-        printk(KERN_INFO "set usb port power off (board gpio %d)!\n",USB_A_POW_GPIO_BIT);
+        printk(KERN_INFO "set usb a port power off (board gpio %d)!\n",USB_A_POW_GPIO_BIT);
         set_gpio_mode(USB_A_POW_GPIO, USB_A_POW_GPIO_BIT, GPIO_OUTPUT_MODE);
         set_gpio_val(USB_A_POW_GPIO, USB_A_POW_GPIO_BIT, USB_A_POW_GPIO_BIT_OFF);
     }
 }
+
+static void set_usb_b_vbus_power(char is_power_on)
+{
+#define USB_B_POW_GPIO         GPIOC_bank_bit0_15(6)	//GPIOD_bank_bit0_9(9)
+#define USB_B_POW_GPIO_BIT      GPIOC_bit_bit0_15(6) // GPIOD_bit_bit0_9(9)
+#define USB_B_POW_GPIO_BIT_ON   1
+#define USB_B_POW_GPIO_BIT_OFF  0
+    if(is_power_on) {
+        set_gpio_mode(GPIOC_bank_bit0_15(5), GPIOC_bit_bit0_15(5), GPIO_INPUT_MODE);
+		 set_gpio_val(GPIOC_bank_bit0_15(4), GPIOC_bit_bit0_15(4), 0);
+
+        printk(KERN_INFO "set usb b port power on (board gpio c5= %d)!\n",get_gpio_val(GPIOC_bank_bit0_15(4), GPIOC_bit_bit0_15(4)));
+        set_gpio_mode(USB_B_POW_GPIO, USB_B_POW_GPIO_BIT, GPIO_OUTPUT_MODE);
+        set_gpio_val(USB_B_POW_GPIO, USB_B_POW_GPIO_BIT, USB_B_POW_GPIO_BIT_ON);
+    } else    {
+    		set_gpio_val(GPIOC_bank_bit0_15(4), GPIOC_bit_bit0_15(4), 1);
+
+        printk(KERN_INFO "set usb b port power off (board gpio %d)!\n",USB_B_POW_GPIO_BIT);
+        set_gpio_mode(USB_B_POW_GPIO, USB_B_POW_GPIO_BIT, GPIO_OUTPUT_MODE);
+        set_gpio_val(USB_B_POW_GPIO, USB_B_POW_GPIO_BIT, USB_B_POW_GPIO_BIT_OFF);
+    }
+}
+
 //usb_a is OTG port
 static struct lm_device usb_ld_a = {
     .type = LM_DEVICE_TYPE_USB,
@@ -466,7 +505,7 @@ static struct lm_device usb_ld_b = {
     .port_type = USB_PORT_TYPE_HOST,
     .port_speed = USB_PORT_SPEED_DEFAULT,
     .dma_config = USB_DMA_BURST_SINGLE , //   USB_DMA_DISABLE,
-    .set_vbus_power = 0,
+    .set_vbus_power = set_usb_b_vbus_power,
 };
 
 #endif
@@ -940,8 +979,11 @@ typedef struct {
 	unsigned enable;
 } gpio_data_t;
 
-#define MAX_GPIO 0
+#define MAX_GPIO 3
 static gpio_data_t gpio_data[MAX_GPIO] = {
+{"GPIOD6--HDMI", 	GPIOD_bank_bit0_9(6), 	GPIOD_bit_bit0_9(6), 	GPIO_OUTPUT_MODE, 1, 1},
+{"GPIOD9--VCC5V", GPIOD_bank_bit0_9(9), 	GPIOD_bit_bit0_9(9), 	GPIO_OUTPUT_MODE, 1, 1},
+{"GPIOX29--MUTE", 	GPIOX_bank_bit0_31(29), GPIOX_bit_bit0_31(29), GPIO_OUTPUT_MODE, 1, 1},
 };	
 
 static void save_gpio(int port) 
@@ -1014,20 +1056,44 @@ static void set_vccx2(int power_on)
 		restore_pinmux();
 		for (i=0;i<MAX_GPIO;i++)
 			restore_gpio(i);
-        printk(KERN_INFO "set_vccx2 power up\n");
-				
-        set_gpio_mode(GPIOA_bank_bit0_27(26), GPIOA_bit_bit0_27(26), GPIO_OUTPUT_MODE);
-        set_gpio_val(GPIOA_bank_bit0_27(26), GPIOA_bit_bit0_27(26), 0);
+        printk(KERN_INFO "set_vcc power up\n");
+
+		#ifdef CONFIG_AML_SUSPEND
+       suspend_state=10;
+       #endif
+//        set_gpio_mode(GPIOA_bank_bit0_27(26), GPIOA_bit_bit0_27(26), GPIO_OUTPUT_MODE);
+//        set_gpio_val(GPIOA_bank_bit0_27(26), GPIOA_bit_bit0_27(26), 0);
               
     }
     else{
-        printk(KERN_INFO "set_vccx2 power down\n");        
-        set_gpio_mode(GPIOA_bank_bit0_27(26), GPIOA_bit_bit0_27(26), GPIO_OUTPUT_MODE);
-        set_gpio_val(GPIOA_bank_bit0_27(26), GPIOA_bit_bit0_27(26), 1);
+        printk(KERN_INFO "set_vcc power down\n");       			
+//        set_gpio_mode(GPIOA_bank_bit0_27(26), GPIOA_bit_bit0_27(26), GPIO_OUTPUT_MODE);
+//        set_gpio_val(GPIOA_bank_bit0_27(26), GPIOA_bit_bit0_27(26), 1);
 		save_pinmux();
 		for (i=0;i<MAX_GPIO;i++)
 			save_gpio(i);
     }
+}
+
+static void set_gpio_suspend_resume(int power_on)
+{
+    if(power_on)
+    	{
+    	printk("set gpio resume.\n");
+		 // HDMI
+        extern void hdmi_wr_reg(unsigned long addr, unsigned long data);
+        hdmi_wr_reg(0x8005, 2); 
+		 udelay(50);
+        hdmi_wr_reg(0x8005, 1); 
+        // LED
+        WRITE_CBUS_REG(PWM_PWM_C, (0xff00<<16) |(0xff00<<0));
+    	}
+	else
+		{
+    	printk("set gpio suspend.\n");
+		 // LED
+        WRITE_CBUS_REG(PWM_PWM_C, (0xff00<<16) |(0<<0));
+		}
 }
 
 static struct meson_pm_config aml_pm_pdata = {
@@ -1039,6 +1105,7 @@ static struct meson_pm_config aml_pm_pdata = {
     .sleepcount = 128,
     .set_vccx2 = set_vccx2,
     .core_voltage_adjust = 7,  //5,8
+    .set_exgpio_early_suspend = set_gpio_suspend_resume,
 };
 
 static struct platform_device aml_pm_device = {
@@ -1475,6 +1542,14 @@ static struct platform_device power_dev = {
         .platform_data  = &power_pdata,
     },
 };
+#else
+static void power_off(void)
+{
+    printk("power off...\n");
+    //Power hold down
+//    set_gpio_val(GPIOAO_bank_bit0_11(6), GPIOAO_bit_bit0_11(6), 0);
+//    set_gpio_mode(GPIOAO_bank_bit0_11(6), GPIOAO_bit_bit0_11(6), GPIO_OUTPUT_MODE);
+}
 #endif
 
 #ifdef CONFIG_BQ27x00_BATTERY
@@ -2117,6 +2192,7 @@ static struct mtd_partition multi_partition_info[] =
 
 
 static struct aml_nand_platform aml_nand_mid_platform[] = {
+#ifdef CONFIG_AML_NAND_ENV
 {
 		.name = NAND_BOOT_NAME,
 		.chip_enable_pad = AML_NAND_CE0,
@@ -2130,6 +2206,7 @@ static struct aml_nand_platform aml_nand_mid_platform[] = {
 			.T_REA = 20,
 			.T_RHOH = 15,
 	},
+#endif
 {
 		.name = NAND_MULTI_NAME,
 		.chip_enable_pad = (AML_NAND_CE0 | (AML_NAND_CE1 << 4) | (AML_NAND_CE2 << 8) | (AML_NAND_CE3 << 12)),
@@ -2612,12 +2689,21 @@ static void __init eth_pinmux_init(void)
     SET_CBUS_REG_MASK(PREG_ETHERNET_ADDR0, (1 << 1));     // divide by 2 for 100M
     SET_CBUS_REG_MASK(PREG_ETHERNET_ADDR0, 1);            // enable Ethernet clocks
     udelay(100);
+
+#if 1
+		 // ethernet reset
+        set_gpio_mode(GPIOD_bank_bit0_9(7), GPIOD_bit_bit0_9(7), GPIO_OUTPUT_MODE);
+        set_gpio_val(GPIOD_bank_bit0_9(7), GPIOD_bit_bit0_9(7), 0);
+		 mdelay(100);
+        set_gpio_val(GPIOD_bank_bit0_9(7), GPIOD_bit_bit0_9(7), 1);
+#else
     /* reset phy with GPIOA_23*/
     set_gpio_mode(GPIOA_bank_bit0_27(23), GPIOA_bit_bit0_27(23), GPIO_OUTPUT_MODE);
     set_gpio_val(GPIOA_bank_bit0_27(23), GPIOA_bit_bit0_27(23), 0);
     udelay(100);    //GPIOA_bank_bit0_27(23) reset end;
     set_gpio_val(GPIOA_bank_bit0_27(23), GPIOA_bit_bit0_27(23), 1);
     udelay(100);    //waiting reset end;
+#endif
 #if 0
     CLEAR_CBUS_REG_MASK(PREG_ETHERNET_ADDR0, 1);
     SET_CBUS_REG_MASK(PREG_ETHERNET_ADDR0, (1 << 1));
@@ -2688,59 +2774,52 @@ static void __init power_hold(void)
   //  set_gpio_val(GPIOAO_bank_bit0_11(6), GPIOAO_bit_bit0_11(6), 1);
   //  set_gpio_mode(GPIOAO_bank_bit0_11(6), GPIOAO_bit_bit0_11(6), GPIO_OUTPUT_MODE);
 
-		 // hdmi power on
+        // VCC5V
         set_gpio_mode(GPIOD_bank_bit0_9(9), GPIOD_bit_bit0_9(9), GPIO_OUTPUT_MODE);
         set_gpio_val(GPIOD_bank_bit0_9(9), GPIOD_bit_bit0_9(9), 1);
+		 // hdmi power on
         set_gpio_mode(GPIOD_bank_bit0_9(6), GPIOD_bit_bit0_9(6), GPIO_OUTPUT_MODE);
         set_gpio_val(GPIOD_bank_bit0_9(6), GPIOD_bit_bit0_9(6), 1);
 
-		 // ethernet reset
-        set_gpio_mode(GPIOD_bank_bit0_9(7), GPIOD_bit_bit0_9(7), GPIO_OUTPUT_MODE);
-        set_gpio_val(GPIOD_bank_bit0_9(7), GPIOD_bit_bit0_9(7), 0);
-		 mdelay(100);
-        set_gpio_val(GPIOD_bank_bit0_9(7), GPIOD_bit_bit0_9(7), 1);
+		// MUTE
+       set_gpio_mode(GPIOX_bank_bit0_31(29), GPIOX_bit_bit0_31(29), GPIO_OUTPUT_MODE);
+       set_gpio_val(GPIOX_bank_bit0_31(29), GPIOX_bit_bit0_31(29), 0);
 
-		// usb power
-		printk(KERN_INFO "set_vccx2: set usb power on.\n");
-		CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_1,(1<<10));
-		CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0,(1<<18));
-		CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_3,(1<<23));
-		set_gpio_mode(GPIOC_bank_bit0_15(8), GPIOC_bit_bit0_15(8), GPIO_OUTPUT_MODE);
-		set_gpio_val(GPIOC_bank_bit0_15(8), GPIOC_bit_bit0_15(8), 1);
+      // PC Link
+//       set_gpio_mode(GPIOC_bank_bit0_15(4), GPIOC_bit_bit0_15(4), GPIO_OUTPUT_MODE);
+//       set_gpio_val(GPIOC_bank_bit0_15(4), GPIOC_bit_bit0_15(4), 1);
+			 
+		// VCC, set to high when suspend 
+        set_gpio_mode(GPIOAO_bank_bit0_11(4), GPIOAO_bit_bit0_11(4), GPIO_OUTPUT_MODE);
+        set_gpio_val(GPIOAO_bank_bit0_11(4), GPIOAO_bit_bit0_11(4), 0);
+        set_gpio_mode(GPIOAO_bank_bit0_11(5), GPIOAO_bit_bit0_11(5), GPIO_OUTPUT_MODE);
+        set_gpio_val(GPIOAO_bank_bit0_11(5), GPIOAO_bit_bit0_11(5), 0);
 
-		CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_1,(1<<5));
-		CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0,(1<<16));
-		set_gpio_mode(GPIOC_bank_bit0_15(6), GPIOC_bit_bit0_15(6), GPIO_OUTPUT_MODE);
-		set_gpio_val(GPIOC_bank_bit0_15(6), GPIOC_bit_bit0_15(6), 1);
-
-       // LED
-        set_gpio_mode(GPIOD_bank_bit0_9(0), GPIOD_bit_bit0_9(0), GPIO_OUTPUT_MODE);
-        set_gpio_val(GPIOD_bank_bit0_9(0), GPIOD_bit_bit0_9(0), 1);
+     // VCCK
+        set_gpio_mode(GPIOAO_bank_bit0_11(6), GPIOAO_bit_bit0_11(6), GPIO_OUTPUT_MODE);
+        set_gpio_val(GPIOAO_bank_bit0_11(6), GPIOAO_bit_bit0_11(6), 1);
+	 // VCCIO
+        set_gpio_mode(GPIOAO_bank_bit0_11(2), GPIOAO_bit_bit0_11(2), GPIO_OUTPUT_MODE);
+        set_gpio_val(GPIOAO_bank_bit0_11(2), GPIOAO_bit_bit0_11(2), 1);
 				
-		 CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0,(1<<17));
-		 CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_1,(7<<2)|(1<<11));
-        set_gpio_mode(GPIOC_bank_bit0_15(7), GPIOC_bit_bit0_15(7), GPIO_OUTPUT_MODE);
-        set_gpio_val(GPIOC_bank_bit0_15(7), GPIOC_bit_bit0_15(7), 1);
-
-//        SET_AOBUS_REG_MASK(AO_RTI_PIN_MUX_REG, 13);
-//		 CLEAR_AOBUS_REG_MASK(AO_RTI_PIN_MUX_REG, 14);
-        set_gpio_mode(GPIOAO_bank_bit0_11(10), GPIOAO_bit_bit0_11(10), GPIO_OUTPUT_MODE);
-        set_gpio_val(GPIOAO_bank_bit0_11(10), GPIOAO_bit_bit0_11(10), 0);
-
-		// wifi power
-	   CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_1,(1<<6));
-	   CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0,(1<<15));
-       set_gpio_mode(GPIOC_bank_bit0_15(5), GPIOC_bit_bit0_15(5), GPIO_OUTPUT_MODE);
-       set_gpio_val(GPIOC_bank_bit0_15(5), GPIOC_bit_bit0_15(5), 1);
-	
     //VCCx2 power up
     printk(KERN_INFO "set_vccx2 power up\n");
-    set_gpio_mode(GPIOA_bank_bit0_27(26), GPIOA_bit_bit0_27(26), GPIO_OUTPUT_MODE);
-    set_gpio_val(GPIOA_bank_bit0_27(26), GPIOA_bit_bit0_27(26), 0);
+//    set_gpio_mode(GPIOA_bank_bit0_27(26), GPIOA_bit_bit0_27(26), GPIO_OUTPUT_MODE);
+//    set_gpio_val(GPIOA_bank_bit0_27(26), GPIOA_bit_bit0_27(26), 0);
 }
 
 static void __init LED_PWM_REG0_init(void)
 {
+#if 1 	// PWM_C
+    printk(KERN_INFO "LED_PWM_REG0_init.\n");
+	 SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_2,(1<<2));
+    WRITE_CBUS_REG(PWM_PWM_C, (0xff00<<16) |(0xff00<<0));
+    WRITE_CBUS_REG(PWM_MISC_REG_CD, (1<<0)	// enable
+																			|(0<<4)	// PWM_A_CLK_SEL: 0:XTAL;  1:ddr_pll_clk;  2:clk81;  3:sys_pll_clk;
+																			|(0x7f<<8)	// PWM_A_CLK_DIV
+																			|(1<<15)	// PWM_A_CLK_EN
+																			);
+#else
         // Enable VBG_EN
     WRITE_CBUS_REG_BITS(PREG_AM_ANALOG_ADDR, 1, 0, 1);
     // wire pm_gpioA_7_led_pwm = pin_mux_reg0[22];
@@ -2755,18 +2834,22 @@ static void __init LED_PWM_REG0_init(void)
                                 READ_CBUS_REG(LED_PWM_REG0)&0x0f);           // DIMCTL Analog dimmer
                                 
     WRITE_CBUS_REG_BITS(LED_PWM_REG0,1,0,4); //adust cpu1.2v   to 1.26V     
-
+#endif
 }
 
 static __init void m1_init_machine(void)
 {
     meson_cache_init();
+#ifdef CONFIG_AML_SUSPEND
+		extern int (*pm_power_suspend)(void);
+		pm_power_suspend = meson_power_suspend;
+#endif /*CONFIG_AML_SUSPEND*/
     
-    LED_PWM_REG0_init();
     power_hold();
     pm_power_off = power_off;		//Elvis fool
     device_clk_setting();
     device_pinmux_init();
+    LED_PWM_REG0_init();
 
 	
 #ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE
@@ -2797,6 +2880,14 @@ static __initdata struct map_desc meson_video_mem_desc[] = {
         .length     = RESERVED_MEM_END-RESERVED_MEM_START+1,
         .type       = MT_DEVICE,
     },
+#ifdef CONFIG_AML_SUSPEND
+    {
+        .virtual    = PAGE_ALIGN(0xdff00000),
+        .pfn        = __phys_to_pfn(0x1ff00000),
+        .length     = SZ_1M,
+        .type       = MT_MEMORY,
+    },
+#endif
 };
 
 static __init void m1_map_io(void)
@@ -2821,7 +2912,11 @@ static __init void m1_fixup(struct machine_desc *mach, struct tag *tag, char **c
     m->nr_banks++;
     pbank=&m->bank[m->nr_banks];
     pbank->start = PAGE_ALIGN(RESERVED_MEM_END+1);
+#ifdef CONFIG_AML_SUSPEND
+    pbank->size  = (PHYS_MEM_END-RESERVED_MEM_END-SZ_1M) & PAGE_MASK;
+#else
     pbank->size  = (PHYS_MEM_END-RESERVED_MEM_END) & PAGE_MASK;
+#endif
     pbank->node  = PHYS_TO_NID(RESERVED_MEM_END+1);
     m->nr_banks++;
 }
