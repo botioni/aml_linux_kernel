@@ -601,6 +601,12 @@ static ssize_t store_register(struct class *class,
 		printk("write cbus reg 0x%x value %x\n", reg, val);
 		WRITE_CBUS_REG(reg, val);
 	}
+	else if(buf[0] == 'b'){
+		unsigned int start, len;
+		ret = sscanf(buf, "b %x %x %d %d", &reg, &val, &start, &len);
+		printk("write cbus reg 0x%x from bit%d value 0x%x.\n", reg, start, val);
+		WRITE_CBUS_REG(reg, (READ_CBUS_REG(reg)&(~(((1<<len)-1)<<start))) | ((val&((1<<len)-1))<<start));
+	}
 	else{
 		ret =  sscanf(buf, "%x %d", &reg,&n);
 		printk("read %d cbus register from reg: %x \n",n,reg);
