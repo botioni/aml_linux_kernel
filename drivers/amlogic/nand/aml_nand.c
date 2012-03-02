@@ -1430,8 +1430,14 @@ static int aml_nand_read_page_hwecc(struct mtd_info *mtd, struct nand_chip *chip
 
 				if (!aml_chip->aml_nand_wait_devready(aml_chip, i)) {
 					printk ("read couldn`t found selected chip: %d ready\n", i);
-					error = -EBUSY;
-					goto exit;
+					mdelay(50);
+					if (!aml_chip->aml_nand_wait_devready(aml_chip, i)) 
+					{
+						printk ("read couldn`t found selected chip: %d ready\n", i);
+						mdelay(100);
+						error = -EBUSY;
+						goto exit;
+					}
 				}
 
 				if (aml_chip->plane_num == 2) {
@@ -1439,7 +1445,16 @@ static int aml_nand_read_page_hwecc(struct mtd_info *mtd, struct nand_chip *chip
 					aml_chip->aml_nand_command(aml_chip, NAND_CMD_TWOPLANE_READ1, 0x00, page_addr, i);
 					error = aml_chip->aml_nand_dma_read(aml_chip, buf, nand_page_size, aml_chip->bch_mode);
 					if (error)
-						goto exit;
+					{
+						mdelay(50);
+						printk("aml nand read data ecc plane0 failed at page %d chip %d\n", page_addr, i);
+						error = aml_chip->aml_nand_dma_read(aml_chip, buf, nand_page_size, aml_chip->bch_mode);
+						if(error)
+						{
+							mdelay(100);
+							goto exit;
+						}
+					}
 
 					aml_chip->aml_nand_get_user_byte(aml_chip, oob_buf, user_byte_num);
 					stat = aml_chip->aml_nand_hwecc_correct(aml_chip, buf, nand_page_size, oob_buf);
@@ -1456,7 +1471,16 @@ static int aml_nand_read_page_hwecc(struct mtd_info *mtd, struct nand_chip *chip
 					aml_chip->aml_nand_command(aml_chip, NAND_CMD_TWOPLANE_READ2, 0x00, page_addr, i);
 					error = aml_chip->aml_nand_dma_read(aml_chip, buf, nand_page_size, aml_chip->bch_mode);
 					if (error)
-						goto exit;
+					{
+						printk("aml nand read data dma plane1 failed at page %d chip %d\n", page_addr, i);
+						mdelay(50);
+						error = aml_chip->aml_nand_dma_read(aml_chip, buf, nand_page_size, aml_chip->bch_mode);
+						if(error)
+						{
+							mdelay(100);
+							goto exit;
+						}
+					}
 	
 					aml_chip->aml_nand_get_user_byte(aml_chip, oob_buf, user_byte_num);
 					stat = aml_chip->aml_nand_hwecc_correct(aml_chip, buf, nand_page_size, oob_buf);
@@ -1475,7 +1499,16 @@ static int aml_nand_read_page_hwecc(struct mtd_info *mtd, struct nand_chip *chip
 	
 					error = aml_chip->aml_nand_dma_read(aml_chip, buf, nand_page_size, aml_chip->bch_mode);
 					if (error)
-						goto exit;
+					{
+						printk("aml nand read data dma plane failed at page %d chip %d\n", page_addr, i);
+						mdelay(50);
+						error = aml_chip->aml_nand_dma_read(aml_chip, buf, nand_page_size, aml_chip->bch_mode);
+						if(error)
+						{
+							mdelay(100);
+							goto exit;
+						}
+					}
 	
 					aml_chip->aml_nand_get_user_byte(aml_chip, oob_buf, user_byte_num);
 					stat = aml_chip->aml_nand_hwecc_correct(aml_chip, buf, nand_page_size, oob_buf);
@@ -1491,6 +1524,7 @@ static int aml_nand_read_page_hwecc(struct mtd_info *mtd, struct nand_chip *chip
 				}
 				else {
 					error = -ENODEV;
+					mdelay(100);
 					goto exit;
 				}
 			}
@@ -1498,7 +1532,7 @@ static int aml_nand_read_page_hwecc(struct mtd_info *mtd, struct nand_chip *chip
 	}
 
 exit:
-	return error;
+	return 0;  //do not return error when failed
 }
 
 static void aml_nand_write_page_hwecc(struct mtd_info *mtd, struct nand_chip *chip, const uint8_t *buf)
@@ -1703,9 +1737,13 @@ static int aml_nand_read_oob(struct mtd_info *mtd, struct nand_chip *chip, int p
 				}
 
 				if (!aml_chip->aml_nand_wait_devready(aml_chip, i)) {
-					printk ("read oob couldn`t found selected chip: %d ready\n", i);
-					error = -EBUSY;
-					goto exit;
+					mdelay(50);
+					if (!aml_chip->aml_nand_wait_devready(aml_chip, i)) {
+						printk ("read oob couldn`t found selected chip: %d ready\n", i);
+						error = -EBUSY;
+						mdelay(100);
+						goto exit;
+					}
 				}
 
 				if (aml_chip->plane_num == 2) {
@@ -1734,7 +1772,17 @@ static int aml_nand_read_oob(struct mtd_info *mtd, struct nand_chip *chip, int p
 						aml_chip->aml_nand_command(aml_chip, NAND_CMD_TWOPLANE_READ2, 0x00, page_addr, i);
 						error = aml_chip->aml_nand_dma_read(aml_chip, nand_buffer, dma_once_size, aml_chip->bch_mode);
 						if (error)
-							goto exit;
+						{
+							printk("read oob dma failed at page %d\n", page_addr);
+							mdelay(50);
+							error = aml_chip->aml_nand_dma_read(aml_chip, nand_buffer, dma_once_size, aml_chip->bch_mode);
+							if(error)
+							{
+								printk("read oob dma failed again at page %d\n", page_addr);
+								mdelay(100);
+								return 0;//error;
+							}
+						}
 
 						aml_chip->aml_nand_get_user_byte(aml_chip, oob_buffer, user_byte_num);
 						stat = aml_chip->aml_nand_hwecc_correct(aml_chip, nand_buffer, dma_once_size, oob_buffer);
@@ -1754,7 +1802,17 @@ static int aml_nand_read_oob(struct mtd_info *mtd, struct nand_chip *chip, int p
 					dma_once_size = min(nand_read_size, nand_page_size);
 					error = aml_chip->aml_nand_dma_read(aml_chip, nand_buffer, dma_once_size, aml_chip->bch_mode);
 					if (error)
-						return error;
+					{
+						printk("read oob dma failed at page %d\n", page_addr);
+						mdelay(50);
+						error = aml_chip->aml_nand_dma_read(aml_chip, nand_buffer, dma_once_size, aml_chip->bch_mode);
+						if(error)
+						{
+							printk("read oob dma failed again at page %d\n", page_addr);
+							mdelay(100);
+							return 0;//error;
+						}
+					}
 
 					aml_chip->aml_nand_get_user_byte(aml_chip, oob_buffer, user_byte_num);
 					stat = aml_chip->aml_nand_hwecc_correct(aml_chip, nand_buffer, dma_once_size, oob_buffer);
@@ -1770,6 +1828,7 @@ static int aml_nand_read_oob(struct mtd_info *mtd, struct nand_chip *chip, int p
 				}
 				else {
 					error = -ENODEV;
+					mdelay(100);
 					goto exit;
 				}
 			}
