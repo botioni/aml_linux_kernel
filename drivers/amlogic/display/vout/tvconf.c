@@ -247,7 +247,7 @@ static int tv_set_current_vmode(vmode_t mod)
 	if ((mod&VMODE_MODE_BIT_MASK)> VMODE_1080P_50HZ )
 		return -EINVAL;
 
-	info->vinfo = &tv_info[mod];
+	info->vinfo = &tv_info[mod&VMODE_MODE_BIT_MASK];
 	if(mod&VMODE_LOGO_BIT_MASK)  return 0;
 
 	tvoutc_setmode(vmode_tvmode_tab[mod]);
