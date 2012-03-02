@@ -63,8 +63,14 @@ static void spi_hw_init(struct amlogic_spi	*amlogic_spi)
 
 static void spi_hw_enable(void)
 {
+#ifdef CONFIG_ARCH_MESON3
+  clear_mio_mux(2,7<<19);
+  clear_mio_mux(5,(0xf<<6));
+	set_mio_mux(5, 0xf);
+#else
 	clear_mio_mux(6,0x7fff);
 	SET_PERI_REG_MASK(PERIPHS_PIN_MUX_1, ((1 << 23)|(1 <<25)|(1 << 27)|(1 << 29)));
+#endif	
 	asm("nop");
 	asm("nop");
 	asm("nop");
