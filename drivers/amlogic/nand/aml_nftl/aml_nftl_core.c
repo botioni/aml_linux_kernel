@@ -843,6 +843,45 @@ static void aml_nftl_creat_structure(struct aml_nftl_info_t *aml_nftl_info)
 	return;
 }
 
+static ssize_t show_address_map_table(struct class *class, 
+			struct class_attribute *attr,	const char *buf, size_t count)
+{
+    struct aml_nftl_info_t *aml_nftl_info = container_of(class, struct aml_nftl_info_t, cls);
+	unsigned int address;
+    unsigned blks_per_sect, sect_addr;
+    addr_page_t logic_page_addr, phy_page_addr;
+	addr_blk_t logic_blk_addr, phy_blk_addr;
+    uint32_t page_per_blk;
+    int ret;
+    
+	ret =  sscanf(buf, "%x", &address);
+    blks_per_sect = aml_nftl_info->writesize / 512;
+	sect_addr = address / blks_per_sect;
+
+    page_per_blk = aml_nftl_info->pages_per_blk;
+    logic_page_addr = sect_addr % page_per_blk;
+	logic_blk_addr = sect_addr / page_per_blk;
+
+    ret = aml_nftl_get_valid_pos(aml_nftl_info, logic_blk_addr, &phy_blk_addr, logic_page_addr, &phy_page_addr, READ_OPERATION);
+	if (ret == AML_NFTL_FAILURE){
+        return AML_NFTL_FAILURE;
+	}
+
+    if ((ret == AML_NFTL_PAGENOTFOUND) || (ret == AML_NFTL_BLKNOTFOUND)) {
+		printk("the phy address not found\n");
+		return 1;
+	}
+
+    printk("address %x map phy address:blk addr %x page addr %x\n", address, logic_blk_addr, logic_page_addr);
+
+	return count;
+}
+
+static struct class_attribute nftl_class_attrs[] = {
+    __ATTR(map_table,  S_IRUGO | S_IWUSR, NULL,    show_address_map_table),
+    __ATTR_NULL
+};
+
 int aml_nftl_initialize(struct aml_nftl_blk_t *aml_nftl_blk)
 {
 	struct mtd_info *mtd = aml_nftl_blk->mbd.mtd;
@@ -989,6 +1028,15 @@ int aml_nftl_initialize(struct aml_nftl_blk_t *aml_nftl_blk)
 
 	aml_nftl_blk->mbd.size = (aml_nftl_info->accessibleblocks * (mtd->erasesize  >> 9));
 	aml_nftl_dbg("nftl initilize completely dev size: 0x%lx %d\n", aml_nftl_blk->mbd.size * 512, aml_nftl_wl->free_root.count);
+
+    /*setup class*/
+	aml_nftl_info->cls.name = kzalloc(strlen((const char*)AML_NFTL_MAGIC)+1, GFP_KERNEL);
+
+    strcpy(aml_nftl_info->cls.name, (char*)AML_NFTL_MAGIC);
+    aml_nftl_info->cls.class_attrs = nftl_class_attrs;
+   	error = class_register(&aml_nftl_info->cls);
+	if(error)
+		printk(" class register nand_class fail!\n");
 
 	return 0;
 }

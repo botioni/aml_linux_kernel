@@ -296,6 +296,7 @@ struct aml_nftl_info_t{
 
     struct aml_nftl_ops_t  *aml_nftl_ops;
     struct aml_nftl_wl_t	*aml_nftl_wl;
+    struct class      cls;
 
     int		(*read_page)(struct aml_nftl_info_t *aml_nftl_info, addr_blk_t blk_addr, addr_page_t page_addr, unsigned char *data_buf, unsigned char *nftl_oob_buf, int oob_len);
     int		(*write_page)(struct aml_nftl_info_t *aml_nftl_info, addr_blk_t blk_addr, addr_page_t page_addr, unsigned char *data_buf, unsigned char *nftl_oob_buf, int oob_len);

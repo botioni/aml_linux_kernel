@@ -3152,6 +3152,176 @@ static struct file_operations nand_env_fops = {
 
 #endif
 
+static ssize_t show_nand_info(struct class *class, 
+			struct class_attribute *attr,	char *buf)
+{
+    struct aml_nand_chip *aml_chip = container_of(class, struct aml_nand_chip, cls);
+
+    printk("mfr_type:\t\t0x%x\n", aml_chip->mfr_type);
+    printk("onfi_mode:\t\t0x%x\n", aml_chip->onfi_mode);
+    printk("T_REA:\t\t0x%x\n", aml_chip->T_REA);
+    printk("T_RHOH:\t\t0x%x\n", aml_chip->T_RHOH);
+    printk("options:\t\t0x%x\n", aml_chip->options);
+    printk("page_size:\t\t0x%x\n", aml_chip->page_size);
+    printk("block_size:\t\t0x%x\n", aml_chip->block_size);
+    printk("oob_size:\t\t0x%x\n", aml_chip->oob_size);
+    printk("virtual_page_size:\t\t0x%x\n", aml_chip->virtual_page_size);
+    printk("virtual_block_size:\t\t0x%x\n", aml_chip->virtual_block_size);
+    printk("plane_num:\t\t0x%x\n", aml_chip->plane_num);
+    printk("chip_num:\t\t0x%x\n", aml_chip->chip_num);
+    printk("internal_chipnr:\t\t0x%x\n", aml_chip->internal_chipnr);
+    printk("internal_page_nums:\t\t0x%x\n", aml_chip->internal_page_nums);
+    printk("internal_chip_shift:\t\t0x%x\n", aml_chip->internal_chip_shift);
+    printk("bch_mode:\t\t0x%x\n", aml_chip->bch_mode);
+    printk("user_byte_mode:\t\t0x%x\n", aml_chip->user_byte_mode);
+    printk("ops_mode:\t\t0x%x\n", aml_chip->ops_mode);
+    printk("cached_prog_status:\t\t0x%x\n", aml_chip->cached_prog_status);
+    printk("max_bch_mode:\t\t0x%x\n", aml_chip->max_bch_mode);
+
+    return 0;    
+}
+
+static ssize_t show_bbt_table(struct class *class, 
+			struct class_attribute *attr,	char *buf)
+{
+    struct aml_nand_chip *aml_chip = container_of(class, struct aml_nand_chip, cls);
+    struct mtd_info *mtd = &aml_chip->mtd;
+    int start_blk, total_blk, i, phys_erase_shift;
+    loff_t offset;
+
+    phys_erase_shift = fls(mtd->erasesize) - 1;
+	offset = (1024 * mtd->writesize / aml_chip->plane_num);
+	start_blk = (int)(offset >> phys_erase_shift);
+	total_blk = (int)(mtd->size >> phys_erase_shift);
+    
+    for (i = start_blk; i < total_blk; i++) {
+		if(NAND_BLOCK_BAD == aml_chip->block_status[i])
+            printk("block %d is a bad block\n", i);
+	}
+
+    return 0;    
+}
+
+static ssize_t nand_page_dump(struct class *class, 
+			struct class_attribute *attr,	const char *buf, size_t count)
+{
+    struct aml_nand_chip *aml_chip = container_of(class, struct aml_nand_chip, cls);
+    struct mtd_info *mtd = &aml_chip->mtd;
+
+    struct mtd_oob_ops ops;
+    loff_t off;
+    loff_t addr;
+    u_char *datbuf, *oobbuf, *p;
+    int ret, i;
+    printk(KERN_DEBUG "enter %s\n", __FUNCTION__);
+    ret = sscanf(buf, "%llx", &off);
+
+	datbuf = kmalloc(mtd->writesize + mtd->oobsize, GFP_KERNEL);
+	oobbuf = kmalloc(mtd->oobsize, GFP_KERNEL);
+	if (!datbuf || !oobbuf) {
+		printk("No memory for page buffer\n");
+		return 1;
+	}
+	addr = ~((loff_t)mtd->writesize - 1);
+	addr &= off;
+
+	memset(&ops, 0, sizeof(ops));
+	ops.datbuf = datbuf;
+	ops.oobbuf = NULL; /* must exist, but oob data will be appended to ops.datbuf */
+	ops.len = mtd->writesize;
+	ops.ooblen = mtd->oobsize;
+	ops.mode = MTD_OOB_RAW;
+	i = mtd->read_oob(mtd, addr, &ops);
+	if (i < 0) {
+		printk("Error (%d) reading page %09llx\n", i, off);
+		kfree(datbuf);
+		kfree(oobbuf);
+		return 1;
+	}
+	printk("Page %09llx dump,page size %d:\n", off,mtd->writesize);
+	i = (mtd->writesize + mtd->oobsize) >> 4;
+	p = datbuf;
+
+	while (i--) {
+		printk("\t%02x %02x %02x %02x %02x %02x %02x %02x"
+		       "  %02x %02x %02x %02x %02x %02x %02x %02x\n",
+		       p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7],
+		       p[8], p[9], p[10], p[11], p[12], p[13], p[14],
+		       p[15]);
+		p += 16;
+	}
+	/*printf("OOB oob size %d:\n",nand->oobsize);
+	i = nand->oobsize >> 3;
+	while (i--) {
+		printf("\t%02x %02x %02x %02x %02x %02x %02x %02x\n",
+		       p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7]);
+		p += 8;
+	}*/
+	kfree(datbuf);
+	kfree(oobbuf);
+    printk(KERN_DEBUG "exit %s\n", __FUNCTION__);
+    return count;
+}
+
+static ssize_t nand_page_read(struct class *class, 
+			struct class_attribute *attr,	const char *buf, size_t count)
+{
+    struct aml_nand_chip *aml_chip = container_of(class, struct aml_nand_chip, cls);
+    struct mtd_info *mtd = &aml_chip->mtd;
+
+    struct mtd_oob_ops ops;
+    loff_t off;
+    loff_t addr;
+    u_char *datbuf, *oobbuf, *p;
+    size_t ret;
+    int i;
+    printk(KERN_DEBUG "enter %s\n", __FUNCTION__);
+    ret = sscanf(buf, "%llx", &off);
+
+    datbuf = kmalloc(mtd->writesize + mtd->oobsize, GFP_KERNEL);
+	oobbuf = kmalloc(mtd->oobsize, GFP_KERNEL);
+	if (!datbuf || !oobbuf) {
+		printk("No memory for page buffer\n");
+		return 1;
+	}
+	addr = ~((loff_t)mtd->writesize - 1);
+	addr &= off;
+
+    mtd->read(mtd, addr, mtd->writesize, &ret, datbuf);
+    if (ret < 0) {
+		printk("Error (%d) reading page %09llx\n", i, off);
+		kfree(datbuf);
+		kfree(oobbuf);
+		return 1;
+	}
+
+    printk("Page %09llx read,page size %d:\n", off,mtd->writesize);
+	i = (mtd->writesize ) >> 4;
+	p = datbuf;
+
+    while (i--) {
+		printk("\t%02x %02x %02x %02x %02x %02x %02x %02x"
+		       "  %02x %02x %02x %02x %02x %02x %02x %02x\n",
+		       p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7],
+		       p[8], p[9], p[10], p[11], p[12], p[13], p[14],
+		       p[15]);
+		p += 16;
+	}
+
+    kfree(datbuf);
+	kfree(oobbuf);
+    printk(KERN_DEBUG "exit %s\n", __FUNCTION__);
+    return count;
+}
+
+static struct class_attribute nand_class_attrs[] = {
+    __ATTR(info,       S_IRUGO | S_IWUSR, show_nand_info,    NULL),
+    __ATTR(bbt_table,       S_IRUGO | S_IWUSR, show_bbt_table,    NULL),    
+    __ATTR(page_dump,  S_IRUGO | S_IWUSR, NULL,    nand_page_dump),
+    __ATTR(page_read,  S_IRUGO | S_IWUSR, NULL,    nand_page_read),
+    __ATTR_NULL
+};
+
 int aml_nand_init(struct aml_nand_chip *aml_chip)
 {
 	struct aml_nand_platform *plat = aml_chip->platform;
@@ -3656,6 +3826,15 @@ int aml_nand_init(struct aml_nand_chip *aml_chip)
 			 	ret = PTR_ERR(devp);
 	 		}
 #endif
+          /*setup class*/
+    	aml_chip->cls.name = kzalloc(strlen((const char*)NAND_MULTI_NAME)+1, GFP_KERNEL);
+
+        strcpy(aml_chip->cls.name, (const char*)NAND_MULTI_NAME);
+        //sprintf(aml_chip->cls.name, NAND_MULTI_NAME);
+        aml_chip->cls.class_attrs = nand_class_attrs;
+       	ret = class_register(&aml_chip->cls);
+    	if(ret)
+    		printk(" class register nand_class fail!\n");
 	}
 
 	if (aml_nand_add_partition(aml_chip) != 0) {

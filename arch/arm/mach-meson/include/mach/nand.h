@@ -382,6 +382,7 @@ struct aml_nand_chip {
 	struct device			*device;
 
 	struct early_suspend nand_early_suspend;
+    struct class      cls;
 
 	//plateform operation function
 	void	(*aml_nand_hw_init)(struct aml_nand_chip *aml_chip);
