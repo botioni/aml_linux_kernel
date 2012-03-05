@@ -3832,8 +3832,8 @@ int aml_nand_init(struct aml_nand_chip *aml_chip)
         strcpy(aml_chip->cls.name, (const char*)NAND_MULTI_NAME);
         //sprintf(aml_chip->cls.name, NAND_MULTI_NAME);
         aml_chip->cls.class_attrs = nand_class_attrs;
-       	ret = class_register(&aml_chip->cls);
-    	if(ret)
+       	err = class_register(&aml_chip->cls);
+    	if(err)
     		printk(" class register nand_class fail!\n");
 	}
 
