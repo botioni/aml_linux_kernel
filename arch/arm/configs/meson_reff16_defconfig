@@ -1,7 +1,7 @@
 #
 # Automatically generated make config: don't edit
 # Linux kernel version: 2.6.34
-# Mon Jan 16 16:00:34 2012
+# Mon Mar  5 20:03:08 2012
 #
 CONFIG_ARM=y
 CONFIG_HOLES_IN_ZONE=y
@@ -634,7 +634,7 @@ CONFIG_KEYPADS_AM=y
 #
 # Amlogic Power Management Support
 #
-# CONFIG_AMLOGIC_PM is not set
+CONFIG_AMLOGIC_PM=y
 # CONFIG_SMBA10XX_BATTERY is not set
 # CONFIG_BQ27x00_BATTERY is not set
 # CONFIG_PMU_ACT8xxx is not set
@@ -648,6 +648,8 @@ CONFIG_KEYPADS_AM=y
 #
 # Extern IO Support
 #
+# CONFIG_TCA6424 is not set
+# CONFIG_SN7325 is not set
 
 #
 # Amlogic GPIO Driver
@@ -657,6 +659,7 @@ CONFIG_AM_GPIO=y
 #
 # MINI LVDS Support
 #
+# CONFIG_TWX_TC101 is not set
 
 #
 # Amlogic EFUSE Support
@@ -698,7 +701,7 @@ CONFIG_USB_PHY_CONTROL=y
 #
 CONFIG_CARDREADER=y
 CONFIG_SD_MMC=y
-CONFIG_SDIO=y
+# CONFIG_SDIO is not set
 # CONFIG_AM_ATA is not set
 # CONFIG_MS_MSPRO is not set
 # CONFIG_XD is not set
@@ -735,9 +738,7 @@ CONFIG_AM_ETHERNET_DEBUG_LEVEL=0
 # Amlogic WIFI Support
 #
 # CONFIG_SDIO_DHD_CDC_WIFI_4319 is not set
-CONFIG_SDIO_DHD_CDC_WIFI_4329=y
-CONFIG_BCM4329_FW_PATH="broadcm_4329/sdio-g-cdc-full11n-reclaim-roml-wme-idsup.bin"
-CONFIG_BCM4329_NVRAM_PATH="broadcm_4329/nvram.txt"
+# CONFIG_SDIO_DHD_CDC_WIFI_4329 is not set
 # CONFIG_SAMSUNG_WIFI_4329 is not set
 # CONFIG_RTL8XXX_SU_USB_WIFI is not set
 CONFIG_RTL8XXX_CU_USB_WIFI=m
@@ -774,6 +775,11 @@ CONFIG_AM_TV_OUTPUT=y
 # CONFIG_AM_TCON_OUTPUT is not set
 
 #
+# Amlogic video output2 module
+#
+# CONFIG_AM_TV_OUTPUT2 is not set
+
+#
 # Amlogic osd module
 #
 CONFIG_FB_AM=y
@@ -800,9 +806,8 @@ CONFIG_AM_LOGO=y
 #
 # AMLOGIC AV Streaming devices
 #
-CONFIG_AM_DEINTERLACE=y
-CONFIG_AM_DEINTERLACE_SD_ONLY=y
 CONFIG_AM_VIDEO=y
+# CONFIG_AM_VIDEO2 is not set
 CONFIG_AM_PTSSERVER=y
 CONFIG_AM_VDEC_MPEG12=y
 CONFIG_AM_VDEC_MPEG4=y
@@ -821,15 +826,17 @@ CONFIG_AM_SUBTITLE=y
 # Amlogic HDMI Support
 #
 CONFIG_AML_HDMI_TX=y
+# CONFIG_AML_HDMI_TX_HDCP is not set
 
 #
 # Amlogic TVIN Support
 #
 # CONFIG_TVIN_MPEG is not set
 # CONFIG_TVIN_HDMI is not set
-CONFIG_TVIN_BT656IN=y
+# CONFIG_TVIN_BT656IN is not set
 # CONFIG_TVIN_DVIN is not set
-CONFIG_TVIN_VDIN=y
+# CONFIG_TVIN_VIUIN is not set
+# CONFIG_TVIN_VDIN is not set
 
 #
 # Amlogic TVIN Tuner Support
@@ -875,6 +882,16 @@ CONFIG_MALI=m
 # AMLOGIC Post Process Manager driver
 #
 # CONFIG_POST_PROCESS_MANAGER is not set
+
+#
+# Amlogic audio dsp log
+#
+CONFIG_AML_AUDIO_DSP_LOG=m
+
+#
+# AMLOGIC Deinterlace driver
+#
+# CONFIG_DEINTERLACE is not set
 
 #
 # Amlogic CAMERA Support
@@ -1283,6 +1300,7 @@ CONFIG_I2C_BOARDINFO=y
 CONFIG_I2C_COMPAT=y
 CONFIG_I2C_CHARDEV=y
 CONFIG_I2C_HELPER_AUTO=y
+CONFIG_I2C_ALGOBIT=y
 
 #
 # I2C Hardware Bus support
@@ -1494,8 +1512,6 @@ CONFIG_FB_CFB_IMAGEBLIT=y
 # CONFIG_FB_MB862XX is not set
 # CONFIG_FB_BROADSHEET is not set
 # CONFIG_BACKLIGHT_LCD_SUPPORT is not set
-CONFIG_BACKLIGHT_CLASS_DEVICE=y
-CONFIG_BACKLIGHT_GENERIC=y
 
 #
 # Display device support
