@@ -220,12 +220,12 @@ static void __init meson_clocksource_init(void)
     clocksource_timer_f.shift = clocksource_timer_e.shift;
     //clocksource_timer_f.mult = ((clocksource_timer_e.mult)>>6)*40;
     clocksource_timer_f.mult = ((clocksource_timer_e.mult)>>6)*64;
-    //printk("Timer-E=%x,%x, Timer-F=%x,%x",
+    /*printk("Timer-E=%x,%x, Timer-F=%x,%x",
     clocksource_timer_e.shift,
     clocksource_timer_e.mult,
     clocksource_timer_f.shift,
     clocksource_timer_f.mult
-     );
+     );*/
     clocksource_register(&clocksource_timer_e);
     clocksource_register(&clocksource_timer_f);
 }
