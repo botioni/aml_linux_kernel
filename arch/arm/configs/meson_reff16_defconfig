@@ -881,7 +881,8 @@ CONFIG_MALI=m
 #
 # AMLOGIC Post Process Manager driver
 #
-# CONFIG_POST_PROCESS_MANAGER is not set
+CONFIG_POST_PROCESS_MANAGER=y
+CONFIG_POST_PROCESS_MANAGER_PPSCALER=y
 
 #
 # Amlogic audio dsp log
