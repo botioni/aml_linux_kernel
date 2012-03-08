@@ -1024,6 +1024,43 @@ static void osd_late_resume(struct early_suspend *h)
 }
 #endif
 
+#ifdef CONFIG_MACH_MESON3_REFF16
+int  __init  get_resolution(char *str)
+{
+    if(strncmp("480", str, 3) == 0)
+    {
+			mydef_var[0].xres=mydef_var[1].xres=720;
+			mydef_var[0].yres=mydef_var[1].yres=480;	
+			mydef_var[0].xres_virtual=mydef_var[1].xres_virtual=720;
+			mydef_var[0].yres_virtual=mydef_var[1].yres_virtual=960;
+    }
+    else if(strncmp("576", str, 3) == 0)
+    {
+			mydef_var[0].xres=mydef_var[1].xres=720;
+			mydef_var[0].yres=mydef_var[1].yres=576;	
+			mydef_var[0].xres_virtual=mydef_var[1].xres_virtual=720;
+			mydef_var[0].yres_virtual=mydef_var[1].yres_virtual=1152;
+    }
+    else if(strncmp("720", str, 3) == 0)
+    {
+			mydef_var[0].xres=mydef_var[1].xres=1280;
+			mydef_var[0].yres=mydef_var[1].yres=720;	
+			mydef_var[0].xres_virtual=mydef_var[1].xres_virtual=1280;
+			mydef_var[0].yres_virtual=mydef_var[1].yres_virtual=1440;
+    }
+    else if(strncmp("1080", str, 4) == 0)
+    {
+			mydef_var[0].xres=mydef_var[1].xres=1920;
+			mydef_var[0].yres=mydef_var[1].yres=1080;	
+			mydef_var[0].xres_virtual=mydef_var[1].xres_virtual=1920;
+			mydef_var[0].yres_virtual=mydef_var[1].yres_virtual=2160;
+    }
+    printk("***osd size: %d, %d, %d, %d...\n", mydef_var[0].xres, mydef_var[0].yres, mydef_var[0].xres_virtual, mydef_var[0].yres_virtual);
+
+}
+__setup("androidboot.resolution=", get_resolution) ;
+#endif
+
 static int __init
 osd_probe(struct platform_device *pdev)
 {
