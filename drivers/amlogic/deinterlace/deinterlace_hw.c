@@ -104,7 +104,7 @@ static void init_pd_para(void)
 void reset_di_para(void)
 {
   	int nr_zone_0 = 4, nr_zone_1 = 8, nr_zone_2 = 12;
-    int nr_hfilt_en = 0;
+    //int nr_hfilt_en = 0;
     int nr_hfilt_mb_en = 0;
     int mtn_modify_en = 1;
     int post_mb_en = 0;
@@ -311,7 +311,6 @@ void enable_di_pre_aml (
      	WRITE_MPEG_REG(DI_NRWR_Y, (di_nrwr_mif->start_y <<16) | (di_nrwr_mif->end_y));   	// start_y 0 end_y 239.
      	WRITE_MPEG_REG(DI_NRWR_CTRL, di_nrwr_mif->canvas_num );     						// canvas index.
 #if !defined(CONFIG_ARCH_MESON)
-//#if defined(CONFIG_ARCH_MESON2)
      	WRITE_MPEG_REG(DI_NR_CTRL0, nr_ctrl0);
      	WRITE_MPEG_REG(DI_NR_CTRL1, nr_ctrl1);
      	WRITE_MPEG_REG(DI_NR_CTRL2, nr_ctrl2);
@@ -327,7 +326,6 @@ void enable_di_pre_aml (
        	WRITE_MPEG_REG(DI_MTNWR_CTRL, di_mtnwr_mif->canvas_num |  								// canvas index.
                       (0 << 8));       															// urgent.
 #if !defined(CONFIG_ARCH_MESON)
-//#if defined(CONFIG_ARCH_MESON2)
        //	WRITE_MPEG_REG(DI_MTN_CTRL, (1 << 31) | (1 << 30) | (1 << 29) |  (mtn_ctrl_char_diff_cnt<< 24) |  (mtn_ctrl_diff_level<<16) |   (mtn_ctrl_high_level<<8) |    (mtn_ctrl_low_level<< 0));
        //   WRITE_MPEG_REG(DI_MTN_CTRL,0x2300f080);
         WRITE_MPEG_REG(DI_MTN_CTRL,mtn_ctrl);
@@ -358,7 +356,6 @@ void enable_di_pre_aml (
                     (0x1 << 30 )      								// pre soft rst, pre frame rst.
                    );
 #else 
-//if defined(CONFIG_ARCH_MESON2)
   	WRITE_MPEG_REG(DI_PRE_CTRL, nr_en |        						// NR enable
                     (mtn_en << 1 ) |        						// MTN_EN
                     (pd32_check_en << 2 ) |        					// check 3:2 pulldown
@@ -1369,8 +1366,7 @@ void enable_di_post_2 (
                               (blend_mode << 20)    														// motion adaptive blend.
                );
 #else
- //lif defined(CONFIG_ARCH_MESON2)
-
+ 
 	//WRITE_MPEG_REG(DI_BLEND_CTRL, (blend_ctrl&(~(3<<20))&~(0xff))|(blend_mode<<20)|kdeint);
     WRITE_MPEG_REG(DI_BLEND_CTRL, (blend_ctrl&0xffffff00)| kdeint0);
     //if (di_pre_stru.di_wr_buf->mtn_info[4] > di_pre_stru.di_wr_buf->mtn_info[3] & di_pre_stru.di_wr_buf->mtn_info[3] > di_pre_stru.di_wr_buf->mtn_info[2])
@@ -1404,7 +1400,6 @@ void enable_di_post_2 (
                       (0x1 << 30 )       							// post soft rst  post frame rst.
         );
 #else 
-//lif defined(CONFIG_ARCH_MESON2)
    	WRITE_MPEG_REG(DI_POST_CTRL, ((ei_en | blend_en) << 0 ) | 		// line buffer 0 enable
                       (0 << 1)  |        							// line buffer 1 enable
                       (ei_en << 2) |        						// ei  enable
@@ -1478,7 +1473,6 @@ void enable_di_post_pd(
                        (blend_mode << 20)                                                            // motion adaptive blend.
                       );
 #else
- //lif defined(CONFIG_ARCH_MESON2)
         WRITE_MPEG_REG(DI_BLEND_CTRL, (post_mb_en << 28) |                                                   // post motion blur enable.
                        (0 << 27) |                                                                    // mtn3p(l, c, r) max.
                        (0 << 26) |                                                                    // mtn3p(l, c, r) min.
@@ -1517,7 +1511,6 @@ void enable_di_post_pd(
                    (0x1 << 30)                                   // post soft rst  post frame rst.
                   );
 #else 
-//lif defined(CONFIG_ARCH_MESON2)
     WRITE_MPEG_REG(DI_POST_CTRL, ((ei_en | blend_en) << 0) |        // line buffer 0 enable
                    (0 << 1)  |                                   // line buffer 1 enable
                    (ei_en << 2) |                                // ei  enable

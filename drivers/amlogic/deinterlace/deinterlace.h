@@ -112,6 +112,7 @@ extern pd_detect_threshold_t field_pd_th;
 extern pd_detect_threshold_t win_pd_th[MAX_WIN_NUM];
 extern pd_win_prop_t pd_win_prop[MAX_WIN_NUM];
 
+extern int  pd_enable;
 
 
 extern void di_hw_init(void);
@@ -256,6 +257,7 @@ extern unsigned int pd32_debug_th;
 extern unsigned int pd32_diff_num_0_th;
 extern unsigned int pd22_th;
 extern unsigned int pd22_num_th;
+extern int nr_hfilt_en;
 
 
 #undef DI_DEBUG
