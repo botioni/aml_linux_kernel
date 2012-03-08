@@ -3,7 +3,7 @@ display-objs=vout_notify.o  vout_serve.o
 
 
 
-obj-$(CONFIG_AM_TV_OUTPUT)  += am_tvout.o
+obj-$(CONFIG_AM_TV_OUTPUT)  += am_tvout.o enc_clk_config.o
 am_tvout-objs :=   tvoutc.o  tvconf.o 
 
 obj-$(CONFIG_AM_LCD_MLVDS_OUTPUT)  += mlvds.o

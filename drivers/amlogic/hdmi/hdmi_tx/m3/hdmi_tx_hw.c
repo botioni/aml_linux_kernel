@@ -38,6 +38,8 @@
 #include <mach/clock.h>
 #include <mach/power_gate.h>
 #include <linux/clk.h>
+#include <linux/vout/vinfo.h>
+#include <linux/vout/enc_clk_config.h>
 
 #else
 #include "ioapi.h"
@@ -94,6 +96,9 @@ static int hdcpkey_status = -1;
 #endif
 extern int task_tx_key_setting(unsigned force_wrong);
 
+extern int set_viu_path(unsigned viu_channel_sel, viu_type_e viu_type_sel);
+extern void set_enci_clk(unsigned clk);
+extern void set_encp_clk(unsigned clk);
 
 #define HDMI_M1A 'a'
 #define HDMI_M1B 'b'
@@ -179,7 +184,6 @@ static void delay_us (int us)
     while(Rd(IREG_TIMER_E_COUNT)<us){}
 #endif    
 } /* delay_us */
-
 
 #ifndef AVOS
 static irqreturn_t intr_handler(int irq, void *dev_instance)
@@ -1005,10 +1009,9 @@ static void digital_clk_on(unsigned char flag)
         //         .clk_div            ( hi_hdmi_clk_cntl[6:0] ),
         //         .clk_en             ( hi_hdmi_clk_cntl[8]   ),
         //         .clk_sel            ( hi_hdmi_clk_cntl[11:9]),
-        Wr_reg_bits(HHI_HDMI_CLK_CNTL, 1, 8, 1);
-//        Wr( HHI_HDMI_CLK_CNTL,  ((2 << 9)  |   // select "misc" PLL
-//                                 (1 << 8)  |   // Enable gated clock
-//                                 (5 << 0)) );  // Divide the "other" PLL output by 6
+        Wr_reg_bits(HHI_HDMI_CLK_CNTL, 0, 0, 7);    // Divide the "other" PLL output by 1
+        Wr_reg_bits(HHI_HDMI_CLK_CNTL, 0, 9, 3);    // select "XTAL" PLL
+        Wr_reg_bits(HHI_HDMI_CLK_CNTL, 1, 8, 1);    // Enable gated clock
     
 #else    
         // -----------------------------------------
@@ -1145,7 +1148,7 @@ void hdmi_hw_init(hdmitx_dev_t* hdmitx_device)
         Wr(HHI_VID_PLL_CNTL3, 0x40e8);
     }
 
-    Wr(HHI_VID_PLL_CNTL, 0x03040502); 
+    //Wr(HHI_VID_PLL_CNTL, 0x03040502); 
 
     Wr(HHI_VID_PLL_CNTL2, 0x00040003);
 #endif
@@ -1321,8 +1324,6 @@ static void hdmi_hw_reset(Hdmi_tx_video_para_t *param)
 {
     unsigned int tmp_add_data;
     unsigned long TX_OUTPUT_COLOR_FORMAT;
-
-    HDMI_DEBUG();
     
     digital_clk_on(7);
 
@@ -2017,77 +2018,63 @@ static void hdmitx_config_tvenc_reg(int vic, unsigned reg, unsigned val)
 
 static void hdmitx_set_pll(Hdmi_tx_video_para_t *param)
 {
-    HDMI_DEBUG();
     printk("param->VIC:%d\n", param->VIC);
     
     cur_vout_index = get_cur_vout_index();
 //    Wr_reg_bits(VPU_HDMI_SETTING, 2, 0, 2);     //[ 1: 0] src_sel. 0=Disable output to HDMI; 1=Select VENC_I output to HDMI; 2=Select VENC_P output.
-    
-    //reset HHI_VID_DIVIDER_CNTL
-    Wr(HHI_VID_DIVIDER_CNTL, Rd(HHI_VID_DIVIDER_CNTL)|(1<<7));    //0x1066[7]:SOFT_RESET_POST
-    Wr(HHI_VID_DIVIDER_CNTL, Rd(HHI_VID_DIVIDER_CNTL)|(1<<3));    //0x1066[3]:SOFT_RESET_PRE
-    Wr(HHI_VID_DIVIDER_CNTL, Rd(HHI_VID_DIVIDER_CNTL)&(~(1<<1)));    //0x1066[1]:RESET_N_POST
-    Wr(HHI_VID_DIVIDER_CNTL, Rd(HHI_VID_DIVIDER_CNTL)&(~(1<<0)));    //0x1066[0]:RESET_N_PRE
-    msleep(2);
-    Wr(HHI_VID_DIVIDER_CNTL, Rd(HHI_VID_DIVIDER_CNTL)&(~((1<<7)|(1<<3))));
-    Wr(HHI_VID_DIVIDER_CNTL, Rd(HHI_VID_DIVIDER_CNTL)|((1<<1)|(1<<0)));
 
-    Wr(HHI_VID_DIVIDER_CNTL, 0x10843);          //0x1066, set vid_pll_clk = HPLL_CLK_OUT_DIG / 5
-
-    //if(cur_vout_index !=2 ){
-        Wr_reg_bits(HHI_VID_CLK_CNTL, 0, 16, 3);    //0x105f    0: vid_pll_clk
-        Wr_reg_bits(HHI_VID_CLK_CNTL, 0x1f, 0, 5);     //0x105f    1: DIV1_EN
-        Wr_reg_bits(HHI_VID_CLK_CNTL, 1, 19, 1);    //0x105f    1: CLK_EN0
-    //}
     switch(param->VIC)
     {
         case HDMI_480p60:
         case HDMI_480p60_16x9:
+            set_vmode_clk(VMODE_480P);
+            break;
         case HDMI_576p50:
         case HDMI_576p50_16x9:
+            set_vmode_clk(VMODE_576P);
+            break;
         case HDMI_480i60:
         case HDMI_480i60_16x9:
+            set_vmode_clk(VMODE_480I);
+            break;
         case HDMI_576i50:
         case HDMI_576i50_16x9:
-            //Wr(HHI_VID_PLL_CNTL, (3<<18)|(2<<10)|(90<<0));    //27MHz=24MHz*45/4/10
-            Wr(HHI_VID_PLL_CNTL, 0xc042d);//use value 0x42d calculated by "m3_pll_video.pl 1080 24 pll_out hpll"
-            //if(cur_vout_index !=2 ){
-                Wr_reg_bits(HHI_VID_CLK_DIV, 3, 0, 8);      //0x1059
-                Wr_reg_bits(HHI_HDMI_CLK_CNTL, 1, 16, 4);   //cts_hdmi_tx_pixel_clk from clk_div2
-            //}
-            //else{
-            //    Wr_reg_bits(HHI_HDMI_CLK_CNTL, 9, 16, 4);   //cts_hdmi_tx_pixel_clk from v2_clk_div2
-            //}
+            set_vmode_clk(VMODE_576I);
             break;
+//            //Wr(HHI_VID_PLL_CNTL, (3<<18)|(2<<10)|(90<<0));    //27MHz=24MHz*45/4/10
+//            Wr(HHI_VID_PLL_CNTL, 0xc042d);//use value 0x42d calculated by "m3_pll_video.pl 1080 24 pll_out hpll"
+//            //if(cur_vout_index !=2 ){
+//                Wr_reg_bits(HHI_VID_CLK_DIV, 3, 0, 8);      //0x1059
+//                Wr_reg_bits(HHI_HDMI_CLK_CNTL, 1, 16, 4);   //cts_hdmi_tx_pixel_clk from clk_div2
+//            //}
+//            //else{
+//            //    Wr_reg_bits(HHI_HDMI_CLK_CNTL, 9, 16, 4);   //cts_hdmi_tx_pixel_clk from v2_clk_div2
+//            //}
         case HDMI_1080p30:
         case HDMI_1080p24:
         case HDMI_720p60:
         case HDMI_720p50:
-        case HDMI_1080i60:
+            set_vmode_clk(VMODE_720P);
+            break;
         case HDMI_1080i50:
-            //Wr(HHI_VID_PLL_CNTL, (12<<10)|(371<<0));    //74.2MHz=24MHz*371/12/10
-            Wr(HHI_VID_PLL_CNTL, 0x5043e);//use value 0x15043e (0x15043e does not work in some TV, use 0x5043e) calculated by "m3_pll_video.pl 742.5 24 pll_out hpll", 
-            //if(cur_vout_index !=2 ){
-                Wr_reg_bits(HHI_VID_CLK_DIV, 0, 0, 8);      //0x1059
-                Wr_reg_bits(HHI_HDMI_CLK_CNTL, 1, 16, 4);   //cts_hdmi_tx_pixel_clk from clk_div2
-            //}
-            //else{
-            //    Wr_reg_bits(HHI_HDMI_CLK_CNTL, 9, 16, 4);   //cts_hdmi_tx_pixel_clk from v2_clk_div2
-            //}
-                                                        //[19:16] 0:clk_div1 1:clk_div2 2:clk_div4 3: clk_div6 ...
+        case HDMI_1080i60:
+            set_vmode_clk(VMODE_1080I);
             break;
-        case HDMI_1080p60:
+//            //Wr(HHI_VID_PLL_CNTL, (12<<10)|(371<<0));    //74.2MHz=24MHz*371/12/10
+//            Wr(HHI_VID_PLL_CNTL, 0x5043e);//use value 0x15043e (0x15043e does not work in some TV, use 0x5043e) calculated by "m3_pll_video.pl 742.5 24 pll_out hpll", 
+//            //if(cur_vout_index !=2 ){
+//                Wr_reg_bits(HHI_VID_CLK_DIV, 0, 0, 8);      //0x1059
+//                Wr_reg_bits(HHI_HDMI_CLK_CNTL, 1, 16, 4);   //cts_hdmi_tx_pixel_clk from clk_div2
+//            //}
+//            //else{
+//            //    Wr_reg_bits(HHI_HDMI_CLK_CNTL, 9, 16, 4);   //cts_hdmi_tx_pixel_clk from v2_clk_div2
+//            //}
         case HDMI_1080p50:
-            //Wr(HHI_VID_PLL_CNTL, (6<<10)|(371<<0));    //148.4MHz=24MHz*371/6/10
-            Wr(HHI_VID_PLL_CNTL, 0x43e);//use value calculated by "m3_pll_video.pl 1485 24 pll_out hpll"
-            //if(cur_vout_index !=2 ){
-                Wr_reg_bits(HHI_VID_CLK_DIV, 1, 0 , 8);      //0x1059
-                Wr_reg_bits(HHI_HDMI_CLK_CNTL, 0, 16, 4);   //0x1073, cts_hdmi_tx_pixel_clk from clk_div1
-            //}
-            //else{
-            //    Wr_reg_bits(HHI_HDMI_CLK_CNTL, 8, 16, 4);   //cts_hdmi_tx_pixel_clk from v2_clk_div1
-            //}
+        case HDMI_1080p60:
+            set_vmode_clk(VMODE_1080P);
             break;
+//            set_vmode_clk(VMODE_1080P_50HZ);
+//            break;
         default:
             break;
     }
@@ -2192,7 +2179,7 @@ static int hdmitx_m3_set_dispmode(Hdmi_tx_video_para_t *param)
     }
 #endif
     hdmitx_dump_tvenc_reg(param->VIC, 0);
-
+    
     hdmi_wr_reg(0x011, 0x0f);   //Channels Power Up Setting ,"1" for Power-up ,"0" for Power-down,Bit[3:0]=CK,Data2,data1,data1,data0 Channels ;
     
     return 0;

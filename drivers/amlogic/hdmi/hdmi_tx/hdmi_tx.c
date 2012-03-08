@@ -37,6 +37,7 @@
 #include <linux/proc_fs.h> 
 #include <asm/uaccess.h>
 #include <mach/am_regs.h>
+#include <mach/clock.h>
 
 #include <linux/osd/osd_dev.h>
 #include <linux/switch.h>
@@ -206,7 +207,7 @@ static  int  set_disp_mode(const char *mode)
     int ret=-1;
     HDMI_Video_Codes_t vic;
     vic = hdmitx_edid_get_VIC(&hdmitx_device, mode, 1);
-
+    HDMI_DEBUG();
     if(vic != HDMI_Unkown){
         hdmitx_device.mux_hpd_if_pin_high_flag = 1;
         if(hdmitx_device.vic_count == 0){
@@ -235,7 +236,6 @@ static  int  set_disp_mode(const char *mode)
             hdmitx_device.HWOp.Cntl(&hdmitx_device, HDMITX_HWCMD_TURNOFF_HDMIHW, (hpdmode==2)?1:0);    
         }
     }
-    
     return ret;
 }
 
@@ -249,7 +249,6 @@ static int set_disp_mode_auto(void)
 #endif    
     HDMI_Video_Codes_t vic;     //Prevent warning
     //msleep(500);
-
     vic = hdmitx_edid_get_VIC(&hdmitx_device, info->name, (hdmitx_device.disp_switch_config==DISP_SWITCH_FORCE)?1:0);
     hdmitx_device.cur_VIC = HDMI_Unkown;
     ret = hdmitx_set_display(&hdmitx_device, vic); //if vic is HDMI_Unkown, hdmitx_set_display will disable HDMI

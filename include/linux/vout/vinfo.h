@@ -43,6 +43,7 @@ typedef enum {
     VMODE_LCD	,
     VMODE_MAX,
     VMODE_INIT_NULL,
+    VMODE_MASK = 0xFF,
 } vmode_t;
 
 typedef struct {

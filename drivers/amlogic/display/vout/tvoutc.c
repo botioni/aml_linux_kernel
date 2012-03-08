@@ -31,7 +31,7 @@
 #include <linux/vout/vinfo.h>
 #include "tvoutc.h"
 #include <linux/clk.h>
-
+#include <linux/vout/enc_clk_config.h>
 
 
 static u32 curr_vdac_setting=DEFAULT_VDAC_SEQUENCE;
@@ -227,6 +227,11 @@ int tvoutc_setclk(tvmode_t mode)
 	return 0;
 }
 
+static void set_tvmode_misc(tvmode_t mode)
+{
+    set_vmode_clk(mode);
+}
+
 int tvoutc_setmode(tvmode_t mode)
 {
     const  reg_t *s;
@@ -244,6 +249,7 @@ int tvoutc_setmode(tvmode_t mode)
         setreg(s++);
 	//tvoutc_setclk(mode);
     //enable_vsync_interrupt();
+    set_tvmode_misc(mode);
 #ifdef CONFIG_AM_VIDEO2
 	switch(mode)
 	{
