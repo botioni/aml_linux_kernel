@@ -201,9 +201,22 @@ osd_set_par(struct fb_info *info)
 	virt_end_x=osd_ctrl->disp_start_x+info->var.xres;
 	virt_end_y=osd_ctrl->disp_start_y+info->var.yres;
 	
-	osd_ctrl->disp_end_x=vinfo->width - 1 ;
-	osd_ctrl->disp_end_y=vinfo->height - 1;
-
+	if(virt_end_x > vinfo->width)
+	{
+		osd_ctrl->disp_end_x=vinfo->width - 1 ;
+	}
+	else
+	{
+		osd_ctrl->disp_end_x=virt_end_x -1;
+	}
+	if(virt_end_y  >vinfo->height)
+	{
+		osd_ctrl->disp_end_y=vinfo->height - 1;
+	}
+	else
+	{     
+		osd_ctrl->disp_end_y=virt_end_y - 1; 
+	}
 	osddev_set((struct myfb_dev *)info->par);
 	return  0;
 }

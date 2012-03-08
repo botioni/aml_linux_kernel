@@ -1284,16 +1284,21 @@ void osd_init_hw(u32  logo_loaded)
 #if defined(CONFIG_FB_OSD2_CURSOR)
 void osd_cursor_hw(s16 x, s16 y, s16 xstart, s16 ystart, u32 osd_w, u32 osd_h, int index)
 {
+	dispdata_t disp_tmp;;
 	if (index != 1) return;
-
+  	memcpy(&disp_tmp,&osd_hw.dispdata[OSD1],sizeof(dispdata_t));
 	if (osd_hw.scale[OSD2].h_enable && (osd_hw.scaledata[OSD2].x_start > 0)
 			&& (osd_hw.scaledata[OSD2].x_end > 0)) {
 		x = x * osd_hw.scaledata[OSD2].x_end / osd_hw.scaledata[OSD2].x_start;
+		disp_tmp.x_start=osd_hw.dispdata[OSD1].x_start* osd_hw.scaledata[OSD2].x_end / osd_hw.scaledata[OSD2].x_start;
+		disp_tmp.x_end=osd_hw.dispdata[OSD1].x_end* osd_hw.scaledata[OSD2].x_end / osd_hw.scaledata[OSD2].x_start;
 	}
 
 	if (osd_hw.scale[OSD2].v_enable && (osd_hw.scaledata[OSD2].y_start > 0)
 			&& (osd_hw.scaledata[OSD2].y_end > 0)) {
 		y = y * osd_hw.scaledata[OSD2].y_end / osd_hw.scaledata[OSD2].y_start;
+		disp_tmp.y_start=osd_hw.dispdata[OSD1].y_start* osd_hw.scaledata[OSD2].y_end / osd_hw.scaledata[OSD2].y_start;
+		disp_tmp.y_end=osd_hw.dispdata[OSD1].y_end* osd_hw.scaledata[OSD2].y_end / osd_hw.scaledata[OSD2].y_start;
 	}
 
 	x += xstart;
@@ -1306,34 +1311,34 @@ void osd_cursor_hw(s16 x, s16 y, s16 xstart, s16 ystart, u32 osd_w, u32 osd_h, i
 	 */
 	osd_hw.dispdata[OSD2].x_start = x;
 	osd_hw.dispdata[OSD2].y_start = y;
-	if (x < osd_hw.dispdata[OSD1].x_start) {
+	if (x <  disp_tmp.x_start) {
 		// if negative position, set osd to 0,y and pan.
-		if ((osd_hw.dispdata[OSD1].x_start - x) < osd_w) {
-			osd_hw.pandata[OSD2].x_start = osd_hw.dispdata[OSD1].x_start - x;
+		if (( disp_tmp.x_start - x) < osd_w) {
+			osd_hw.pandata[OSD2].x_start = disp_tmp.x_start - x;
 			osd_hw.pandata[OSD2].x_end = osd_w - 1;
 		}
 		osd_hw.dispdata[OSD2].x_start = 0;
 	} else {
 		osd_hw.pandata[OSD2].x_start = 0;
-		if (x + osd_w > osd_hw.dispdata[OSD1].x_end) {
+		if (x + osd_w > disp_tmp.x_end) {
 			// if past positive edge, set osd to inside of the edge and pan.
 			if (x < osd_hw.dispdata[OSD1].x_end)
-				osd_hw.pandata[OSD2].x_end = osd_hw.dispdata[OSD1].x_end - x;
+				osd_hw.pandata[OSD2].x_end = disp_tmp.x_end - x;
 		} else {
 			osd_hw.pandata[OSD2].x_end = osd_w - 1;
 		}
 	}
-	if (y < osd_hw.dispdata[OSD1].y_start) {
-		if ((osd_hw.dispdata[OSD1].y_start - y) < osd_h) {
-			osd_hw.pandata[OSD2].y_start = osd_hw.dispdata[OSD1].y_start - y;
+	if (y < disp_tmp.y_start) {
+		if ((disp_tmp.y_start- y) < osd_h) {
+			osd_hw.pandata[OSD2].y_start =disp_tmp.y_start - y;
 			osd_hw.pandata[OSD2].y_end = osd_h - 1;
 		}
 		osd_hw.dispdata[OSD2].y_start = 0;
 	} else {
 		osd_hw.pandata[OSD2].y_start = 0;
-		if (y + osd_h > osd_hw.dispdata[OSD1].y_end) {
-			if (y < osd_hw.dispdata[OSD1].y_end)
-				osd_hw.pandata[OSD2].y_end = osd_hw.dispdata[OSD1].y_end - y;
+		if (y + osd_h > disp_tmp.y_end) {
+			if (y < disp_tmp.y_end)
+				osd_hw.pandata[OSD2].y_end = disp_tmp.y_end - y;
 		} else {
 			osd_hw.pandata[OSD2].y_end = osd_h - 1;
 		}
