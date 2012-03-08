@@ -85,6 +85,7 @@
 #define STAT_VDEC_RUN       0x20
 
 #define DEC_CONTROL_FLAG_FORCE_2997_1080P_INTERLACE 0x0001
+#define DEC_CONTROL_FLAG_FORCE_2500_576P_INTERLACE  0x0002
 
 #define INCPTR(p) ptr_atomic_wrap_inc(&p)
 
@@ -142,7 +143,7 @@ static u32 buf_start, buf_size;
 static s32 buf_offset;
 static u32 pts_outside = 0;
 static u32 sync_outside = 0;
-static u32 dec_control = DEC_CONTROL_FLAG_FORCE_2997_1080P_INTERLACE;
+static u32 dec_control = 0;
 static u32 vh264_ratio;
 static u32 vh264_rotation;
 
@@ -739,6 +740,12 @@ static void vh264_isr(void)
                 (frame_width == 1920) &&
                 (frame_height >= 1080) &&
                 (vf->duration == 3203)) {
+                force_interlaced_frame = true;
+            }
+            else if ((dec_control & DEC_CONTROL_FLAG_FORCE_2500_576P_INTERLACE) &&
+                (frame_width == 720) &&
+                (frame_height == 576) &&
+                (vf->duration == 3840)) {
                 force_interlaced_frame = true;
             }
 
