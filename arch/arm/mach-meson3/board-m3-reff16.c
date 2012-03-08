@@ -1654,7 +1654,7 @@ static __init void m1_init_machine(void)
 #endif /*CONFIG_AML_SUSPEND*/
     
     power_hold();
-    pm_power_off = power_off;		//Elvis fool
+//    pm_power_off = power_off;		//Elvis fool
     device_clk_setting();
     device_pinmux_init();
     LED_PWM_REG0_init();

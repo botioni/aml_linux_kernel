@@ -634,7 +634,7 @@ CONFIG_KEYPADS_AM=y
 #
 # Amlogic Power Management Support
 #
-CONFIG_AMLOGIC_PM=y
+# CONFIG_AMLOGIC_PM is not set
 # CONFIG_SMBA10XX_BATTERY is not set
 # CONFIG_BQ27x00_BATTERY is not set
 # CONFIG_PMU_ACT8xxx is not set
