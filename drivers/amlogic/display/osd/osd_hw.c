@@ -713,7 +713,7 @@ static  void  osd1_update_disp_scale_enable(void)
 	{
 		CLEAR_MPEG_REG_MASK(VIU_OSD1_BLK0_CFG_W0, 3<<12);
 	}
-	if(osd_hw.scan_mode != SCAN_MODE_INTERLACE)
+	//if(osd_hw.scan_mode != SCAN_MODE_INTERLACE)
 	{
 		if(osd_hw.scale[OSD1].v_enable)
 		{
