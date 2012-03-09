@@ -11,6 +11,25 @@ config SINTEK_CAPACITIVE_TOUCHSCREEN
 	  To compile this driver as a module, choose M here: the
 	  module will be called .
 
+config ZET6221_CAPACITIVE_TOUCHSCREEN
+	tristate "ZET6221 capacitive touch panel"
+	default n
+	help
+	  Say Y here if you want to use the ITK capacitive panel.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called .
+
+config SSD2533_CAPACITIVE_TOUCHSCREEN
+	tristate "SSD2533 capacitive touch panel"
+	default n
+	help
+	  Say Y here if you want to use the ITK capacitive panel.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called .
+
+
 config ITK_CAPACITIVE_TOUCHSCREEN
 	tristate "ITK capacitive touch panel"
 	default n
