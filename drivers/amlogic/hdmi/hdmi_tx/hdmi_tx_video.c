@@ -390,16 +390,16 @@ int hdmitx_set_display(hdmitx_dev_t* hdmitx_device, HDMI_Video_Codes_t VideoCode
 //TMDS_MODE[hdmi_config]
 //0: DVI Mode       1: HDMI Mode
             //if(hdmitx_device->hdmi_info.output_state==CABLE_PLUGIN_DVI_OUT)
-            if(is_dvi_device(&hdmitx_device->RXCap))
-            {
-                hdmi_print(1,"Sink is DVI device\n");
-                hdmi_wr_reg(TX_TMDS_MODE, hdmi_rd_reg(TX_TMDS_MODE) & ~(1<<6));
-            }
-            else
-            {
-                hdmi_print(1,"Sink is HDMI device\n");
+//            if(is_dvi_device(&hdmitx_device->RXCap))
+//            {
+//                hdmi_print(1,"Sink is DVI device\n");
+//                hdmi_wr_reg(TX_TMDS_MODE, hdmi_rd_reg(TX_TMDS_MODE) & ~(1<<6));
+//            }
+//            else
+//            {
+//                hdmi_print(1,"Sink is HDMI device\n");
                 hdmi_wr_reg(TX_TMDS_MODE, hdmi_rd_reg(TX_TMDS_MODE) |  (3<<6));
-            }
+//            }
 
 //check system status by reading EDID_STATUS
             switch(hdmi_rd_reg(TX_HDCP_ST_EDID_STATUS) >> 6)
