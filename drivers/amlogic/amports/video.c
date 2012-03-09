@@ -171,6 +171,10 @@ static int scaler_pos_changed = 0;
 static u32 v_current_field = 0;
 #endif
 
+#ifdef CONFIG_AM_VIDEO2
+void set_clone_frame_rate(unsigned int frame_rate, unsigned int delay);
+#endif    
+
 int video_property_notify(int flag)
 {
     video_property_changed  = flag;	
@@ -1650,9 +1654,21 @@ static int video_receiver_event_fun(int type, void* data, void* private_data)
 {
     if(type == VFRAME_EVENT_PROVIDER_UNREG){
         video_vf_unreg_provider();
+#ifdef CONFIG_AM_VIDEO2
+        set_clone_frame_rate(30, 200);
+#endif    
     }
     else if(type == VFRAME_EVENT_PROVIDER_LIGHT_UNREG){
         video_vf_light_unreg_provider();
+    }
+    else if(type == VFRAME_EVENT_PROVIDER_REG){
+#ifdef CONFIG_AM_VIDEO2
+        char* provider_name = (char*)data;
+        if(strncmp(provider_name, "decoder", 7)==0){
+            set_clone_frame_rate(5, 0);
+            set_clone_frame_rate(10, 100);
+        }
+#endif    
     }
     return 0;
 }

@@ -280,6 +280,9 @@ static u32 frame_repeat_count = 0;
 
 static u32 clone = 1;
 static u32 clone_vpts_remainder;
+static int clone_frame_rate_delay = 0;
+static int clone_frame_rate_set_value = 0;
+static int clone_frame_rate_force = 0;
 static int clone_frame_rate = 30; 
 static int clone_frame_scale_width = 0;
 static int throw_frame = 0;
@@ -1158,6 +1161,12 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
 #ifdef CONFIG_AM_VIDEO_LOG
     toggle_cnt = 0;
 #endif
+        if(clone_frame_rate_delay!=0){
+            clone_frame_rate_delay--;
+            if(clone_frame_rate_delay==0){
+                clone_frame_rate = clone_frame_rate_set_value;
+            }
+        }
 
 #if 1
         if(READ_MPEG_REG(ISA_TIMERB)==0){
@@ -1280,7 +1289,12 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
 #endif                
                 vsync_toggle_frame(vf);
                 //clone_vpts_remainder += DUR2PTS(vf->duration);
-                clone_vpts_remainder += (90000/clone_frame_rate);
+                if(clone_frame_rate_force){
+                    clone_vpts_remainder += (90000/clone_frame_rate_force);
+                }
+                else{
+                    clone_vpts_remainder += (90000/clone_frame_rate);
+                }
             }
             else{
                 clone_vpts_remainder -= vsync_pts_inc;
@@ -2858,6 +2872,17 @@ static void __exit video2_exit(void)
 
     class_unregister(&amvideo_class);
 }
+
+void set_clone_frame_rate(unsigned int frame_rate, unsigned int delay)
+{
+    clone_frame_rate_delay = delay;
+    clone_frame_rate_set_value = frame_rate;
+    if(delay==0){
+        clone_frame_rate = frame_rate;    
+    }
+}    
+EXPORT_SYMBOL(set_clone_frame_rate);
+
 arch_initcall(video2_early_init);
 module_init(video2_init);
 module_exit(video2_exit);
@@ -2867,6 +2892,9 @@ MODULE_PARM_DESC(debug, "\n debug flag \n");
 
 MODULE_PARM_DESC(clone_frame_rate, "\n clone_frame_rate\n");
 module_param(clone_frame_rate, uint, 0664);
+
+MODULE_PARM_DESC(clone_frame_rate_force, "\n clone_frame_rate_force\n");
+module_param(clone_frame_rate_force, uint, 0664);
 
 MODULE_PARM_DESC(clone_frame_scale_width, "\n clone_frame_scale_width\n");
 module_param(clone_frame_scale_width, uint, 0664);
