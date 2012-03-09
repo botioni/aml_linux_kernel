@@ -244,8 +244,14 @@ static const vinfo_t *tv_get_current_info(void)
 
 static int tv_set_current_vmode(vmode_t mod)
 {
-	if ((mod&VMODE_MODE_BIT_MASK)> VMODE_1080P_50HZ )
+    printk("**********%s[%d]\n", __func__, __LINE__);
+    printk("mode is %d\n", mod);
+    mod = mod & 0xff;
+    printk("mode is %d\n", mod);
+	if ((mod&VMODE_MODE_BIT_MASK)> VMODE_1080P_50HZ ){
+	    printk("error\n");
 		return -EINVAL;
+	}
 
 	info->vinfo = &tv_info[mod&VMODE_MODE_BIT_MASK];
 	if(mod&VMODE_LOGO_BIT_MASK)  return 0;
@@ -344,7 +350,7 @@ static void  parse_vdac_setting(char *para)
 	}
 	amlog_mask_level(LOG_MASK_PARA,LOG_LEVEL_LOW,"current vdac setting:0x%x\n",vdac_sequence);
 	
-	change_vdac_setting(vdac_sequence,get_current_vmode());
+	//change_vdac_setting(vdac_sequence,get_current_vmode());
 }
 static  struct  class_attribute   *tv_attr[]={
 &class_TV_attr_vdac_setting,

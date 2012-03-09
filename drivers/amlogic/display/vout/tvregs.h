@@ -61,6 +61,8 @@ static const  reg_t tvreg_vclk_hd[]={
 
 static const  reg_t tvregs_720p[] = {
     {VENC_VDAC_SETTING,          0xff,  },
+    {ENCP_VIDEO_EN,              0,     },
+    {ENCI_VIDEO_EN,              0,     },
 #ifndef CONFIG_AM_TV_OUTPUT2
     {HHI_VID_CLK_CNTL,           0x0,},
 #endif
@@ -126,13 +128,15 @@ static const  reg_t tvregs_720p[] = {
     {VENC_VDAC_FIFO_CTRL,        0x1000,},
     {ENCP_DACSEL_0,              0x3210,},
     {ENCP_DACSEL_1,              0x0054,},
-    {ENCP_VIDEO_EN,              1,     },
     {ENCI_VIDEO_EN,              0,     },
+    {ENCP_VIDEO_EN,              1,     },
     {MREG_END_MARKER,            0      }
 };
 
 static const  reg_t tvregs_720p_50hz[] = {
     {VENC_VDAC_SETTING,          0xff,  },
+    {ENCP_VIDEO_EN,              0,     },
+    {ENCI_VIDEO_EN,              0,     },
 	{HHI_VID_CLK_DIV,			 1		},
     //{HHI_VID_CLK_CNTL,        	 0x0421,},
     {ENCP_VIDEO_FILT_CTRL,       0x0052,},
@@ -193,13 +197,21 @@ static const  reg_t tvregs_720p_50hz[] = {
     {VENC_INTCTRL,               0x200, },
     {VFIFO2VD_CTL,               0,     },
     {VENC_VDAC_SETTING,          0,     },
-    {ENCP_VIDEO_EN,              1,     },
+    {VENC_VDAC_DACSEL0,          0x0001,},
+    {VENC_VDAC_DACSEL1,          0x0001,},
+    {VENC_VDAC_DACSEL2,          0x0001,},
+    {VENC_VDAC_DACSEL3,          0x0001,},
+    {VENC_VDAC_DACSEL4,          0x0001,},
+    {VENC_VDAC_DACSEL5,          0x0001,},
     {ENCI_VIDEO_EN,              0,     },
+    {ENCP_VIDEO_EN,              1,     },
     {MREG_END_MARKER,            0      }
 };
 
 static const reg_t tvregs_480i[] = {
     {VENC_VDAC_SETTING,          0xff,  },
+    {ENCP_VIDEO_EN,              0,     },
+    {ENCI_VIDEO_EN,              0,     },
     {HHI_VID_CLK_DIV,            4,     },
     //{HHI_VID_CLK_CNTL,        	 0x05a1,},
     {ENCI_CFILT_CTRL,            0x0810,},
@@ -248,6 +260,8 @@ static const reg_t tvregs_480i[] = {
 
 static const reg_t tvregs_480cvbs[] = {
     {VENC_VDAC_SETTING,          0xff,  },
+    {ENCP_VIDEO_EN,              0,     },
+    {ENCI_VIDEO_EN,              0,     },
     {HHI_VID_CLK_DIV,            4,     },
     //{HHI_VID_CLK_CNTL,        	 0x05a1,},
     {ENCI_CFILT_CTRL,            0x0810,},
@@ -296,6 +310,8 @@ static const reg_t tvregs_480cvbs[] = {
 
 static const reg_t tvregs_480p[] = {
     {VENC_VDAC_SETTING,          0xff,  },
+    {ENCP_VIDEO_EN,              0,     },
+    {ENCI_VIDEO_EN,              0,     },
 #ifndef CONFIG_AM_TV_OUTPUT2
     {HHI_VID_CLK_CNTL,           0x0,},
 #endif
@@ -361,13 +377,15 @@ static const reg_t tvregs_480p[] = {
     {VENC_VDAC_FIFO_CTRL,        0x1fc0,},
     {ENCP_DACSEL_0,              0x3210,},
     {ENCP_DACSEL_1,              0x0054,},
-    {ENCI_VIDEO_EN,              0      },
     {ENCP_VIDEO_EN,              1      },
+    {ENCI_VIDEO_EN,              0      },
     {MREG_END_MARKER,            0      }
 };
 
 static const reg_t tvregs_576i[] = {
     {VENC_VDAC_SETTING,          0xff,  },
+    {ENCP_VIDEO_EN,              0,     },
+    {ENCI_VIDEO_EN,              0,     },
 //	{VCLK_SD},
 	{HHI_VID_CLK_DIV,			 4,		},
     //{HHI_VID_CLK_CNTL,        	 0x05a1,},
@@ -417,6 +435,8 @@ static const reg_t tvregs_576i[] = {
 
 static const reg_t tvregs_576cvbs[] = {
     {VENC_VDAC_SETTING,          0xff,  },
+    {ENCP_VIDEO_EN,              0,     },
+    {ENCI_VIDEO_EN,              0,     },
 //	{VCLK_SD},
 	{HHI_VID_CLK_DIV,			 4,		},
     //{HHI_VID_CLK_CNTL,        	 0x05a1,},
@@ -466,6 +486,8 @@ static const reg_t tvregs_576cvbs[] = {
 
 static const reg_t tvregs_576p[] = {
     {VENC_VDAC_SETTING,          0xff,  },
+    {ENCP_VIDEO_EN,              0,     },
+    {ENCI_VIDEO_EN,              0,     },
 //	{VCLK_SD},
 	{HHI_VID_CLK_DIV,			 4,		},
     //{HHI_VID_CLK_CNTL,        	 0x0561,},
@@ -523,6 +545,8 @@ static const reg_t tvregs_576p[] = {
 
 static const reg_t tvregs_1080i[] = {
     {VENC_VDAC_SETTING,          0xff,  },
+    {ENCP_VIDEO_EN,              0,     },
+    {ENCI_VIDEO_EN,              0,     },
 //	{VCLK_HD},
 	{HHI_VID_CLK_DIV,			 1		},
     //{HHI_VID_CLK_CNTL,        	 0x0421,},
@@ -564,6 +588,12 @@ static const reg_t tvregs_1080i[] = {
     {VENC_VDAC_SETTING,          0,     },
     {ENCP_DACSEL_0,              0x3210,},
     {ENCP_DACSEL_1,              0x0054,},
+    {VENC_VDAC_DACSEL0,          0x0001,},
+    {VENC_VDAC_DACSEL1,          0x0001,},
+    {VENC_VDAC_DACSEL2,          0x0001,},
+    {VENC_VDAC_DACSEL3,          0x0001,},
+    {VENC_VDAC_DACSEL4,          0x0001,},
+    {VENC_VDAC_DACSEL5,          0x0001,},
     {ENCI_VIDEO_EN,              0,     },
     {ENCP_VIDEO_EN,              1,     },
     {MREG_END_MARKER,            0      }
@@ -571,6 +601,8 @@ static const reg_t tvregs_1080i[] = {
 
 static const reg_t tvregs_1080i_50hz[] = {
     {VENC_VDAC_SETTING,          0xff,  },
+    {ENCP_VIDEO_EN,              0,     },
+    {ENCI_VIDEO_EN,              0,     },
 //	{VCLK_HD},
 	{HHI_VID_CLK_DIV,			 1		},
     //{HHI_VID_CLK_CNTL,        	 0x0421,},
@@ -635,6 +667,12 @@ static const reg_t tvregs_1080i_50hz[] = {
     {VENC_VDAC_SETTING,          0,     },
     {ENCP_DACSEL_0,              0x3210,},
     {ENCP_DACSEL_1,              0x0054,},
+    {VENC_VDAC_DACSEL0,          0x0001,},
+    {VENC_VDAC_DACSEL1,          0x0001,},
+    {VENC_VDAC_DACSEL2,          0x0001,},
+    {VENC_VDAC_DACSEL3,          0x0001,},
+    {VENC_VDAC_DACSEL4,          0x0001,},
+    {VENC_VDAC_DACSEL5,          0x0001,},
     {ENCI_VIDEO_EN,              0,     },
     {ENCP_VIDEO_EN,              1,     },
     {MREG_END_MARKER,            0      }
@@ -642,6 +680,8 @@ static const reg_t tvregs_1080i_50hz[] = {
 
 static const reg_t tvregs_1080p[] = {
     {VENC_VDAC_SETTING,          0xff,  },
+    {ENCP_VIDEO_EN,              0,     },
+    {ENCI_VIDEO_EN,              0,     },
 //	{VCLK_HD},
 #ifndef CONFIG_AM_TV_OUTPUT2
 	{HHI_VID_CLK_DIV,			 1		},
@@ -680,6 +720,12 @@ static const reg_t tvregs_1080p[] = {
     {VENC_INTCTRL,               0x200, },
     {VFIFO2VD_CTL,               0,     },
     {VENC_VDAC_SETTING,          0,     },
+    {VENC_VDAC_DACSEL0,          0x0001,},
+    {VENC_VDAC_DACSEL1,          0x0001,},
+    {VENC_VDAC_DACSEL2,          0x0001,},
+    {VENC_VDAC_DACSEL3,          0x0001,},
+    {VENC_VDAC_DACSEL4,          0x0001,},
+    {VENC_VDAC_DACSEL5,          0x0001,},
     {ENCP_DACSEL_0,              0x3210,},
     {ENCP_DACSEL_1,              0x0054,},
     {ENCI_VIDEO_EN,              0,     },
@@ -689,6 +735,8 @@ static const reg_t tvregs_1080p[] = {
 
 static const reg_t tvregs_1080p_50hz[] = {
     {VENC_VDAC_SETTING,          0xff,  },
+    {ENCP_VIDEO_EN,              0,     },
+    {ENCI_VIDEO_EN,              0,     },
 //	{VCLK_HD},
 	{HHI_VID_CLK_DIV,			 1		},
     //{HHI_VID_CLK_CNTL,        	 0x0421,},
@@ -754,6 +802,12 @@ static const reg_t tvregs_1080p_50hz[] = {
     {VENC_VDAC_SETTING,          0,     },
     {ENCP_DACSEL_0,              0x3210,},
     {ENCP_DACSEL_1,              0x0054,},
+    {VENC_VDAC_DACSEL0,          0x0001,},
+    {VENC_VDAC_DACSEL1,          0x0001,},
+    {VENC_VDAC_DACSEL2,          0x0001,},
+    {VENC_VDAC_DACSEL3,          0x0001,},
+    {VENC_VDAC_DACSEL4,          0x0001,},
+    {VENC_VDAC_DACSEL5,          0x0001,},
     {ENCI_VIDEO_EN,              0,     },
     {ENCP_VIDEO_EN,              1,     },
     {MREG_END_MARKER,            0      }
