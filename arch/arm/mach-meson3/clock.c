@@ -435,7 +435,7 @@ static struct clk a9_clk = {
     .name       = "a9_clk",
     .rate       = 600000000,
     .min        = 100000000,
-    .max        = 800000000, //1000000000
+    .max        = 1000000000, //1000000000
     .set_rate   = clk_set_rate_a9_clk,
 };
 
