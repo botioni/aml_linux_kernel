@@ -167,13 +167,46 @@ static struct v4l2_queryctrl ov5642_qctrl[] = {
         .flags         = V4L2_CTRL_FLAG_SLIDER,
     },{
         .id            = V4L2_CID_FOCUS_AUTO,
-        .type          = V4L2_CTRL_TYPE_INTEGER,
+        .type          = V4L2_CTRL_TYPE_MENU,
         .name          = "auto focus",
         .minimum       = CAM_FOCUS_MODE_RELEASE,
         .maximum       = CAM_FOCUS_MODE_CONTI_PIC,
         .step          = 0x1,
-        .default_value = 0,
+        .default_value = CAM_FOCUS_MODE_AUTO,
         .flags         = V4L2_CTRL_FLAG_SLIDER,
+    }
+};
+
+struct v4l2_querymenu ov5642_qmenu_autofocus[] = {
+    {
+        .id         = V4L2_CID_FOCUS_AUTO,
+        .index      = CAM_FOCUS_MODE_INFINITY,
+        .name       = "infinity",
+        .reserved   = 0,
+    },{
+        .id         = V4L2_CID_FOCUS_AUTO,
+        .index      = CAM_FOCUS_MODE_AUTO,
+        .name       = "auto",
+        .reserved   = 0,
+    },{
+        .id         = V4L2_CID_FOCUS_AUTO,
+        .index      = CAM_FOCUS_MODE_CONTI_VID,
+        .name       = "continuous-video",
+        .reserved   = 0,
+    }
+};
+
+typedef struct {
+    __u32   id;
+    int     num;
+    struct v4l2_querymenu* ov5642_qmenu;
+}ov5642_qmenu_set_t;
+
+ov5642_qmenu_set_t ov5642_qmenu_set[] = {
+    {
+        .id             = V4L2_CID_FOCUS_AUTO,
+        .num            = ARRAY_SIZE(ov5642_qmenu_autofocus),
+        .ov5642_qmenu   = ov5642_qmenu_autofocus,
     }
 };
 
@@ -1272,9 +1305,10 @@ void OV5642_NightMode(struct ov5642_device *dev,enum  camera_night_mode_flip_e e
 
 }    /* OV5642_NightMode */
 
-void OV5642_SingleFocus(struct ov5642_device *dev, int focus_mode)
+int OV5642_AutoFocus(struct ov5642_device *dev, int focus_mode)
 {
 	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
+	int ret = 0;
     
 	switch (focus_mode) {
         case CAM_FOCUS_MODE_AUTO:
@@ -1286,6 +1320,8 @@ void OV5642_SingleFocus(struct ov5642_device *dev, int focus_mode)
             printk("pause auto focus\n");
             i2c_put_byte(client, 0x3022 , 0x6); //pause the auto focus
             i2c_put_byte(client, 0x3023 , 0x1);
+            if (i2c_get_byte(client, 0x3028) == 0)
+                ret = -1;
             //while(i2c_get_byte(client, 0x3023)) //wait for the auto focus to be paused
             //    msleep(10);
             break;
@@ -1305,8 +1341,9 @@ void OV5642_SingleFocus(struct ov5642_device *dev, int focus_mode)
             printk("release focus to infinit\n");
             break;
     }
+    return ret;
 
-}    /* OV5642_SingleFocus */
+}    /* OV5642_AutoFocus */
 
 void OV5642_set_resolution(struct ov5642_device *dev,int height,int width)
 {
@@ -1467,7 +1504,7 @@ static int ov5642_setting(struct ov5642_device *dev,int PROP_ID,int value )
     	break;
 	case V4L2_CID_FOCUS_AUTO:
         printk("doing auto focus\n");
-        OV5642_SingleFocus(dev,value);
+        ret = OV5642_AutoFocus(dev,value);
         break;
 	default:
     	ret=-1;
@@ -1939,7 +1976,7 @@ static int vidioc_streamon(struct file *file, void *priv, enum v4l2_buf_type i)
 
     para.port  = TVIN_PORT_CAMERA;
     para.fmt_info.fmt = TVIN_SIG_FMT_MAX+1;//TVIN_SIG_FMT_MAX+1;;TVIN_SIG_FMT_CAMERA_1280X720P_30Hz
-	para.fmt_info.frame_rate = 90;//175;
+	para.fmt_info.frame_rate =175;//175;
 	para.fmt_info.h_active = ov5642_h_active;
 	para.fmt_info.v_active = ov5642_v_active;
 	para.fmt_info.hsync_phase = 1;
@@ -2056,9 +2093,30 @@ static int vidioc_queryctrl(struct file *file, void *priv,
 
 	for (i = 0; i < ARRAY_SIZE(ov5642_qctrl); i++)
     	if (qc->id && qc->id == ov5642_qctrl[i].id) {
-        	memcpy(qc, &(ov5642_qctrl[i]),
+            memcpy(qc, &(ov5642_qctrl[i]),
             	sizeof(*qc));
+            if (ov5642_qctrl[i].type == V4L2_CTRL_TYPE_MENU)
+                return ov5642_qctrl[i].maximum;
+            else
         	return (0);
+        }
+
+	return -EINVAL;
+}
+
+static int vidioc_querymenu(struct file *file, void *priv,
+                struct v4l2_querymenu *a)
+{
+	int i, j;
+
+	for (i = 0; i < ARRAY_SIZE(ov5642_qmenu_set); i++)
+    	if (a->id && a->id == ov5642_qmenu_set[i].id) {
+    	    for(j = 0; j < ov5642_qmenu_set[i].num; j++)
+    	        if (a->index == ov5642_qmenu_set[i].ov5642_qmenu[j].index) {
+        	        memcpy(a, &( ov5642_qmenu_set[i].ov5642_qmenu[j]),
+            	        sizeof(*a));
+        	        return (0);
+        	    }
         }
 
 	return -EINVAL;
@@ -2286,6 +2344,7 @@ static const struct v4l2_ioctl_ops ov5642_ioctl_ops = {
     .vidioc_g_input       = vidioc_g_input,
     .vidioc_s_input       = vidioc_s_input,
     .vidioc_queryctrl     = vidioc_queryctrl,
+    .vidioc_querymenu     = vidioc_querymenu,
     .vidioc_g_ctrl        = vidioc_g_ctrl,
     .vidioc_s_ctrl        = vidioc_s_ctrl,
     .vidioc_streamon      = vidioc_streamon,
