@@ -1664,7 +1664,8 @@ static int video_receiver_event_fun(int type, void* data, void* private_data)
     else if(type == VFRAME_EVENT_PROVIDER_REG){
 #ifdef CONFIG_AM_VIDEO2
         char* provider_name = (char*)data;
-        if(strncmp(provider_name, "decoder", 7)==0){
+        if(strncmp(provider_name, "decoder", 7)==0
+            || strncmp(provider_name, "ppmgr", 5)==0){
             set_clone_frame_rate(5, 0);
             set_clone_frame_rate(10, 100);
         }
