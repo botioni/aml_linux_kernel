@@ -2700,12 +2700,12 @@ static int hdmitx_m3_cntl(hdmitx_dev_t* hdmitx_device, int cmd, unsigned argv)
             digital_clk_off(7); //off sys clk
             unmux_hpd();
         }
-//        else{
-//            hdmi_print(1,"power off hdmi\n");
-//            digital_clk_on(6);
-//            phy_pll_off();      //should call digital_clk_on(), otherwise hdmi_rd/wr_reg will hungup
-//            digital_clk_off(3); //do not off sys clk
-//        }
+        else{
+            hdmi_print(1,"power off hdmi\n");
+            digital_clk_on(6);
+            phy_pll_off();      //should call digital_clk_on(), otherwise hdmi_rd/wr_reg will hungup
+            digital_clk_off(3); //do not off sys clk
+        }
     }
     
 //    else if(cmd == HDMITX_HWCMD_TURNOFF_HDMIHW){
