@@ -27,6 +27,8 @@
 #include <linux/string.h>
 #include <linux/delay.h>
 
+#include <mach/am_regs.h>
+
 #include <linux/vout/tcon.h>
 #include <linux/vout/vinfo.h>
 #include <linux/vout/vout_notify.h>
@@ -67,6 +69,9 @@ static const vinfo_t *get_valid_vinfo(char  *mode)
 static vmode_t nulldisp_validate_vmode(char *mode)
 {
     const vinfo_t *info = get_valid_vinfo(mode);
+    int viu1_select = READ_MPEG_REG(VPU_VIU_VENC_MUX_CTRL)&0x3;
+    
+    WRITE_MPEG_REG_BITS (VPU_VIU_VENC_MUX_CTRL, (viu1_select+1)&0x3, 2, 2); //viu2_select should be different from viu1_select (to fix viu1 video smooth problem)
 
     if (info)
         return info->mode;
