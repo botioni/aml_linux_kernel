@@ -55,6 +55,35 @@ void set_ppmgr_status(int flag) {
 
 /***********************************************************************
 *
+* Utilities.
+*
+************************************************************************/
+static ssize_t _ppmgr_orientation_write(unsigned long val)
+{
+    unsigned long angle = val;
+
+    if(angle>3) {
+        if(angle==90) angle=1;
+        else if(angle==180) angle=2;
+        else if(angle==270) angle=3;
+        else {
+            printk("invalid orientation value\n");
+            printk("you should set 0 or 0 for 0 clock wise,");
+            printk("1 or 90 for 90 clockwise,2 or 180 for 180 clockwise");
+            printk("3 or 270 for 270 clockwise\n");
+            return -EINVAL;
+        }
+    }
+    ppmgr_device.orientation = angle;
+    ppmgr_device.videoangle = (ppmgr_device.angle+ ppmgr_device.orientation)%4;
+    printk("angle:%d,orientation:%d,videoangle:%d \n",ppmgr_device.angle ,
+        ppmgr_device.orientation, ppmgr_device.videoangle);
+
+    return 0;
+}
+
+/***********************************************************************
+*
 * class property info.
 *
 ************************************************************************/
@@ -114,19 +143,11 @@ static ssize_t angle_write(struct class *cla,
 {
     ssize_t size;
     char *endp;
-    int angle  =  simple_strtoul(buf, &endp, 0);
-    printk("==%d==\n",angle);
-    if(angle>3) {
-        if(angle==90) angle=1;
-        else if(angle==180) angle=2;
-        else if(angle==270) angle=3;
-        else {
-            printk("invalid angle value\n");
-            printk("you should set 0 or 0 for 0 clock wise,");
-            printk("1 or 90 for 90 clockwise,2 or 180 for 180 clockwise");
-            printk("3 or 270 for 270 clockwise\n");
-            return -EINVAL;
-        }
+    unsigned long angle  =  simple_strtoul(buf, &endp, 0);
+    printk("==%ld==\n",angle);
+
+    if (_ppmgr_orientation_write(angle) < 0) {
+        return -EINVAL;
     }
 	
     if(angle != ppmgr_device.angle ){		
@@ -400,19 +421,22 @@ static int ppmgr_open(struct inode *inode, struct file *file)
     return 0;
 }
 
-/*static int ppmgr_ioctl(struct inode *inode, struct file *filp,
+static int ppmgr_ioctl(struct inode *inode, struct file *filp,
                  unsigned int cmd, unsigned long args)
 {
-
-    ge2d_context_t *context=(ge2d_context_t *)filp->private_data;
     void  __user* argp =(void __user*)args;
+    int ret = 0;
+#if 0
+    ge2d_context_t *context=(ge2d_context_t *)filp->private_data;
     config_para_t     ge2d_config;	
     ge2d_para_t  para ;
-    int  ret=0,flag;    	
+    int flag;    	
     frame_info_t frame_info;
+#endif
 
     switch (cmd)
     {
+#if 0
         case PPMGR_IOC_2OSD0:
             break;
         case PPMGR_IOC_ENABLE_PP:
@@ -422,13 +446,19 @@ static int ppmgr_open(struct inode *inode, struct file *file)
         case PPMGR_IOC_CONFIG_FRAME:
             copy_from_user(&frame_info,argp,sizeof(frame_info_t));
             break;
+#endif
+        case PPMGR_IOC_GET_ANGLE:
+            *((unsigned int *)argp) = ppmgr_device.angle;
+            break;
+        case PPMGR_IOC_SET_ANGLE:
+            ret = _ppmgr_orientation_write(args);
+            break;
         default :
             return -ENOIOCTLCMD;
 		
     }
     return ret;
 }
-*/
 
 static int ppmgr_release(struct inode *inode, struct file *file)
 {
@@ -456,7 +486,7 @@ static int ppmgr_release(struct inode *inode, struct file *file)
 static const struct file_operations ppmgr_fops = {
     .owner   = THIS_MODULE,
     .open    = ppmgr_open,  
-    //.ioctl = ppmgr_ioctl,
+    .ioctl   = ppmgr_ioctl,
     .release = ppmgr_release, 	
 };
 

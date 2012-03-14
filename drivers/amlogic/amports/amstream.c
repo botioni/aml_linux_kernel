@@ -1275,30 +1275,36 @@ static int amstream_ioctl(struct inode *inode, struct file *file,
         *((u32 *)arg) = timestamp_pcrscr_get();
         break;
 		
-	case AMSTREAM_IOC_SUB_NUM:
+    case AMSTREAM_IOC_SET_PCRSCR:
+        timestamp_vpts_set(arg);
+        break;
+
+    case AMSTREAM_IOC_SUB_NUM:
         *((u32 *)arg) = psparser_get_sub_found_num();
         break;
 
-	case AMSTREAM_IOC_SUB_INFO:
-		if (arg > 0) {
-			struct subtitle_info msub_info[MAX_SUB_NUM];
-			struct subtitle_info *psub_info[MAX_SUB_NUM];
-			int i;
-			for (i = 0; i < MAX_SUB_NUM; i ++) {
-				psub_info[i] = &msub_info[i];
-			}					
-			r = psparser_get_sub_info(psub_info);
-			if(r == 0) {
-				copy_to_user((void __user *)arg, msub_info, sizeof(struct subtitle_info) * MAX_SUB_NUM);
-			}
-		}
-		break;
+    case AMSTREAM_IOC_SUB_INFO:
+        if (arg > 0) {
+            struct subtitle_info msub_info[MAX_SUB_NUM];
+            struct subtitle_info *psub_info[MAX_SUB_NUM];
+            int i;
+            for (i = 0; i < MAX_SUB_NUM; i ++) {
+                psub_info[i] = &msub_info[i];
+            }					
+            r = psparser_get_sub_info(psub_info);
+            if(r == 0) {
+                copy_to_user((void __user *)arg, msub_info, sizeof(struct subtitle_info) * MAX_SUB_NUM);
+            }
+        }
+        break;
+
     default:
         r = -ENOIOCTLCMD;
     }
 
     return r;
 }
+
 static ssize_t ports_show(struct class *class, struct class_attribute *attr, char *buf)
 {
     int i;

@@ -1764,6 +1764,73 @@ EXPORT_SYMBOL(get_post_canvas);
 EXPORT_SYMBOL(vf_keep_current);
 
 /*********************************************************
+ * Utilities
+ *********************************************************/
+int _video_set_disable(u32 val)
+{
+    if ((val < VIDEO_DISABLE_NONE) || (val > VIDEO_DISABLE_FORNEXT)) {
+        return -EINVAL;
+    }
+
+    disable_video = val;
+
+    if (disable_video != VIDEO_DISABLE_NONE) {
+#ifdef CONFIG_POST_PROCESS_MANAGER_PPSCALER
+        if(video_scaler_mode)
+            DisableVideoLayer_PREBELEND();
+        else
+            DisableVideoLayer();
+#else
+        DisableVideoLayer();
+#endif
+        
+        if ((disable_video == VIDEO_DISABLE_FORNEXT) && cur_dispbuf && (cur_dispbuf != &vf_local))
+            video_property_changed = true;
+            
+    } else {
+        if (cur_dispbuf && (cur_dispbuf != &vf_local)) {
+            EnableVideoLayer();
+        }
+    }
+
+    return 0;
+}
+
+static void _set_video_window(int *p)
+{
+    int w, h;
+    int *parsed = p;
+
+    w = parsed[2] - parsed[0] + 1;
+    h = parsed[3] - parsed[1] + 1;
+
+#ifdef CONFIG_POST_PROCESS_MANAGER_PPSCALER
+    if(video_scaler_mode){
+        if ((w == 1) && (h == 1)){
+            w= 0;
+            h = 0;
+        }
+        if((content_left!=parsed[0])||(content_top!=parsed[1])||(content_w!=w)||(content_h!=h))
+            scaler_pos_changed = 1;
+        content_left = parsed[0];
+        content_top = parsed[1];
+        content_w = w;
+        content_h = h;   
+        //video_notify_flag = video_notify_flag|VIDEO_NOTIFY_POS_CHANGED;
+    }else
+#endif
+    {
+        if ((w == 1) && (h == 1)) {
+            w = h = 0;
+            vpp_set_video_layer_position(parsed[0], parsed[1], 0, 0);
+        } else if ((w > 0) && (h > 0)) {
+            vpp_set_video_layer_position(parsed[0], parsed[1], w, h);
+        }
+    }
+    video_property_changed = true;
+}
+
+/*********************************************************
  * /dev/amvideo APIs
  *********************************************************/
 static int amvideo_open(struct inode *inode, struct file *file)
@@ -1783,6 +1850,7 @@ static int amvideo_ioctl(struct inode *inode, struct file *file,
                          unsigned int cmd, ulong arg)
 {
     int ret = 0;
+    void *argp = (void *)arg;
 
     switch (cmd) {
     case AMSTREAM_IOC_TRICKMODE:
@@ -1832,6 +1900,49 @@ static int amvideo_ioctl(struct inode *inode, struct file *file,
 
 	case AMSTREAM_IOC_GET_SYNC_VDISCON:
         *((u32 *)arg) = tsync_get_sync_vdiscont();
+        break;
+
+    case AMSTREAM_IOC_GET_VIDEO_DISABLE:
+        *((u32 *)arg) = disable_video;
+        break;
+        
+    case AMSTREAM_IOC_SET_VIDEO_DISABLE:
+        ret = _video_set_disable(arg);
+        break;
+
+    case AMSTREAM_IOC_GET_VIDEO_AXIS:
+        {
+            int axis[4];
+#ifdef CONFIG_POST_PROCESS_MANAGER_PPSCALER
+            if (video_scaler_mode) {
+                axis[0] = content_left;
+                axis[1] = content_top;
+                axis[2] = content_w;
+                axis[3] = content_h;
+            } else
+#endif
+            {
+                vpp_get_video_layer_position(&axis[0], &axis[1], &axis[2], &axis[3]);
+            }
+
+            axis[2] = axis[0] + axis[2] - 1;
+            axis[3] = axis[1] + axis[3] - 1;
+
+            if (copy_to_user(argp, &axis[0], sizeof(axis)) != 0) {
+                ret = -EFAULT;
+            }
+        }
+        break;
+
+    case AMSTREAM_IOC_SET_VIDEO_AXIS:
+        {
+            int axis[4];
+            if (copy_from_user(axis, argp, sizeof(axis)) == 0) {
+                _set_video_window(axis);
+            } else {
+                ret = -EFAULT;
+            }
+        }
         break;
 
     case AMSTREAM_IOC_CLEAR_VBUF: {
@@ -1982,7 +2093,7 @@ static int amvideo_ioctl(struct inode *inode, struct file *file,
         return -EINVAL;
     }
 
-    return 0;
+    return ret;
 }
 
 static unsigned int amvideo_poll(struct file *file, poll_table *wait_table)
@@ -2051,35 +2162,7 @@ static void set_video_window(const char *para)
     int parsed[4];
 
     if (likely(parse_para(para, 4, parsed) == 4)) {
-        int w, h;
-
-        w = parsed[2] - parsed[0] + 1;
-        h = parsed[3] - parsed[1] + 1;
-
-#ifdef CONFIG_POST_PROCESS_MANAGER_PPSCALER
-        if(video_scaler_mode){
-            if ((w == 1) && (h == 1)){
-                w= 0;
-                h = 0;
-            }
-            if((content_left!=parsed[0])||(content_top!=parsed[1])||(content_w!=w)||(content_h!=h))
-                scaler_pos_changed = 1;
-            content_left = parsed[0];
-            content_top = parsed[1];
-            content_w = w;
-            content_h = h;   
-            //video_notify_flag = video_notify_flag|VIDEO_NOTIFY_POS_CHANGED;
-        }else
-#endif
-        {
-            if ((w == 1) && (h == 1)) {
-                w = h = 0;
-                vpp_set_video_layer_position(parsed[0], parsed[1], 0, 0);
-            } else if ((w > 0) && (h > 0)) {
-                vpp_set_video_layer_position(parsed[0], parsed[1], w, h);
-            }
-        }
-        video_property_changed = true;
+        _set_video_window(parsed);
     }
     amlog_mask(LOG_MASK_SYSFS,
                "video=>x0:%d,y0:%d,x1:%d,y1:%d\r\n ",
@@ -2271,29 +2354,9 @@ static ssize_t video_disable_store(struct class *cla, struct class_attribute *at
         return -EINVAL;
     }
     printk("video disable try be changed to %d by %s\n",val,current->comm);
-    if ((val < VIDEO_DISABLE_NONE) || (val > VIDEO_DISABLE_FORNEXT)) {
+
+    if (_video_set_disable(val) < 0) {
         return -EINVAL;
-    }
-
-    disable_video = val;
-
-    if (disable_video != VIDEO_DISABLE_NONE) {
-#ifdef CONFIG_POST_PROCESS_MANAGER_PPSCALER
-        if(video_scaler_mode)
-            DisableVideoLayer_PREBELEND();
-        else
-            DisableVideoLayer();
-#else
-        DisableVideoLayer();
-#endif
-        
-        if ((disable_video == VIDEO_DISABLE_FORNEXT) && cur_dispbuf && (cur_dispbuf != &vf_local))
-            video_property_changed = true;
-            
-    } else {
-        if (cur_dispbuf && (cur_dispbuf != &vf_local)) {
-            EnableVideoLayer();
-        }
     }
 
     return count;
