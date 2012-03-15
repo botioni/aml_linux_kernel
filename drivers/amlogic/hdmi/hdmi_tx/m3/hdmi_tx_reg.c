@@ -19,6 +19,7 @@
 #include <linux/module.h>
 #include <linux/types.h>
 #include <linux/kernel.h>
+#include <linux/delay.h>
 #include <linux/interrupt.h>
 #include <linux/fs.h>
 #include <linux/init.h>
@@ -64,19 +65,14 @@ unsigned long READ_APB_REG(unsigned long addr)
 static void check_cts_hdmi_sys_clk_status(void)
 {
     int status;
-    status = READ_MPEG_REG(HHI_HDMI_CLK_CNTL) & (1<<8);
+    status = (READ_MPEG_REG(HHI_HDMI_CLK_CNTL) & (1<<8)) | (READ_MPEG_REG(HHI_GCLK_MPEG2) | (1<<4));
     
     if(status == 0){
         // turn on clock gate
         printk("HDMI System Clock is off, turn on now\n");
         WRITE_MPEG_REG(HHI_HDMI_CLK_CNTL, READ_MPEG_REG(HHI_HDMI_CLK_CNTL)|(1<<8));
-        //delay some time
-        status = 100;
-        while(status--)
-            ;
-    }
-    else{
-        //do nothing
+        WRITE_MPEG_REG(HHI_GCLK_MPEG2, READ_MPEG_REG(HHI_GCLK_MPEG2)|(1<<4));
+        udelay(1);
     }
 }
 

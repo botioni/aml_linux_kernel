@@ -201,8 +201,13 @@ static void intr_handler(void *arg)
     WRITE_MPEG_REG(HHI_GCLK_MPEG2, READ_MPEG_REG(HHI_GCLK_MPEG2) | (1<<4));     //Enable HDMI PCLK
     
     data32 = hdmi_rd_reg(OTHER_BASE_ADDR + HDMI_OTHER_INTR_STAT); 
+    
+    // In drivers/amlogic/spi_nor/apollo_spi_nor.c, it clears the SDA pinmux
+    Wr(PERIPHS_PIN_MUX_1, Rd(PERIPHS_PIN_MUX_1)|(0x3<<23)); // Enable HDMI HPD/SCL/SDA pinmux
+
     hdmi_print(1,"HDMI irq %x\n",data32);
     if (data32 & (1 << 0)) {  //HPD rising 
+        printk("hpd rising\n");
         hdmi_wr_only_reg(OTHER_BASE_ADDR + HDMI_OTHER_INTR_STAT_CLR,  1 << 0); //clear HPD rising interrupt in hdmi module
         // If HPD asserts, then start DDC transaction
 #ifdef HPD_DELAY_CHECK
@@ -228,6 +233,7 @@ static void intr_handler(void *arg)
         }
 #endif        
     } else if (data32 & (1 << 1)) { //HPD falling
+            printk("hpd falling\n");
         if(hpd_debug_mode&HPD_DEBUG_IGNORE_UNPLUG){
             hdmi_wr_only_reg(OTHER_BASE_ADDR + HDMI_OTHER_INTR_STAT_CLR,  1 << 1); //clear HPD falling interrupt in hdmi module     
         }
@@ -244,6 +250,7 @@ static void intr_handler(void *arg)
 #endif        
         }
     } else if (data32 & (1 << 2)) { //TX EDID interrupt
+        printk("edid interrupt\n");
         if((hdmitx_device->cur_edid_block+2)<=EDID_MAX_BLOCK){
             int ii, jj;
             for(jj=0;jj<2;jj++){
@@ -1136,8 +1143,6 @@ void hdmi_hw_set_powermode( int power_mode, int vic)
 void hdmi_hw_init(hdmitx_dev_t* hdmitx_device)
 {
     unsigned int tmp_add_data;
-    
-    HDMI_DEBUG();
     
     digital_clk_on(7);
 #ifndef AML_A3
