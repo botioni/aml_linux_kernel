@@ -1335,9 +1335,6 @@ static  int __init hdmitx_boot_para_setup(char *s)
             else if((token_len==7)&& (strncmp(token, "hpdmode", token_len)==0)){
                 hpdmode = simple_strtoul(token+7,NULL,10);   
             }
-            else if((token_len==3)&&(strncmp(token, "rgb", 3)==0)){
-                hdmitx_output_rgb();    
-            }
             else if(strncmp(token, "audpara", 7)==0){
                 int tmp;
                 tmp = simple_strtoul(token+7,NULL,10);
