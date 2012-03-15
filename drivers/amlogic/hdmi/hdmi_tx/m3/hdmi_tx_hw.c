@@ -608,8 +608,9 @@ static void hdmi_tvenc480i_set(Hdmi_tx_video_para_t* param)
     // Annie 01Sep2011: Register VENC_DVI_SETTING and VENC_DVI_SETTING_MORE are no long valid, use VPU_HDMI_SETTING instead.
     Wr(VPU_HDMI_SETTING, (0                                 << 0) | // [    0] src_sel_enci
                          (0                                 << 1) | // [    1] src_sel_encp
-                         (HSYNC_POLARITY                    << 2) | // [    2] inv_hsync. 1=Invert Hsync polarity.
-                         (VSYNC_POLARITY                    << 3) | // [    3] inv_vsync. 1=Invert Vsync polarity.
+// In 480i/576i, hsync/vsync should be negative, not positive
+                         (0                    << 2) | // [    2] inv_hsync. 1=Invert Hsync polarity.
+                         (0                    << 3) | // [    3] inv_vsync. 1=Invert Vsync polarity.
                          (0                                 << 4) | // [    4] inv_dvi_clk. 1=Invert clock to external DVI, (clock invertion exists at internal HDMI).
                          (((TX_INPUT_COLOR_FORMAT==0)?1:0)  << 5) | // [ 7: 5] data_comp_map. Input data is CrYCb(BRG), map the output data to desired format:
                                                                     //                          0=output CrYCb(BRG);
