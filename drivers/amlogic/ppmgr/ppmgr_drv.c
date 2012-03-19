@@ -145,10 +145,6 @@ static ssize_t angle_write(struct class *cla,
     char *endp;
     unsigned long angle  =  simple_strtoul(buf, &endp, 0);
     printk("==%ld==\n",angle);
-
-    if (_ppmgr_orientation_write(angle) < 0) {
-        return -EINVAL;
-    }
 	
     if(angle != ppmgr_device.angle ){		
         property_change = 1;
