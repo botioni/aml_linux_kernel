@@ -4,7 +4,7 @@
 #include <asm/page.h>
 
 #define PHYS_MEM_START		(0x80000000)
-#define PHYS_MEM_SIZE		(512*SZ_1M)
+#define PHYS_MEM_SIZE		(1024*SZ_1M)
 #define PHYS_MEM_END		(PHYS_MEM_START + PHYS_MEM_SIZE -1 )
 
 /******** Reserved memory setting ************************/
@@ -74,7 +74,7 @@
 #define DI_ADDR_END			(DI_ADDR_START+DI_MEM_SIZE-1)
 
 #ifdef CONFIG_POST_PROCESS_MANAGER
-#ifdef CONFIG_MIX_FREE_SCALE
+#ifdef CONFIG_POST_PROCESS_MANAGER_PPSCALER
 #define PPMGR_MEM_SIZE               1920 * 1088*18
 #else
 #define PPMGR_MEM_SIZE               1920 * 1088*15
