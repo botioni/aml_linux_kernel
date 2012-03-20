@@ -594,7 +594,7 @@ static int hdmitx_notify_callback_v(struct notifier_block *block, unsigned long 
         return 0;
 
     if (cmd != VOUT_EVENT_MODE_CHANGE)
-        return -1;
+        return 0;
     if(hdmitx_device.vic_count == 0){
         if(is_dispmode_valid_for_hdmi()){
             hdmitx_device.mux_hpd_if_pin_high_flag = 1;
@@ -616,7 +616,7 @@ static int hdmitx_notify_callback_v2(struct notifier_block *block, unsigned long
         return 0;
 
     if (cmd != VOUT_EVENT_MODE_CHANGE)
-        return -1;
+        return 0;
 
     if(hdmitx_device.vic_count == 0){
         if(is_dispmode_valid_for_hdmi()){
@@ -714,7 +714,7 @@ static int hdmitx_notify_callback_a(struct notifier_block *block, unsigned long 
         hdmitx_device.audio_param_update_flag = 1;
         return 0;
     default:
-        return -1;
+        return 0;
     }
 }
 
