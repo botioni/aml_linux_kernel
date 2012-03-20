@@ -245,6 +245,7 @@ static DEFINE_MUTEX(amstream_mutex);
 atomic_t subdata_ready = ATOMIC_INIT(0);
 static int sub_type;
 static int sub_port_inited;
+static unsigned karaok_flag;
 /* wait queue for poll */
 static wait_queue_head_t amstream_sub_wait;
 
@@ -340,6 +341,8 @@ static  void video_port_release(stream_port_t *port, struct stream_buf_s * pbuf,
     case 1:
         ;
     }
+
+    karaok_flag = 0;
     return ;
 }
 static  int video_port_init(stream_port_t *port, struct stream_buf_s * pbuf)
@@ -1437,10 +1440,35 @@ static ssize_t vcodec_profile_show(struct class *class,
 {
 	return vcodec_profile_read(buf);
 }
+
+static ssize_t show_karaok(struct class *class, struct class_attribute *attr, char *buf)
+{
+    if(karaok_flag) {
+        return sprintf(buf, "1: enable\n");
+    }
+
+    return sprintf(buf, "0: disable\n");
+}
+
+static ssize_t store_karaok(struct class *class, struct class_attribute *attr, const char *buf, size_t size)
+{
+    unsigned val;
+    ssize_t ret;
+
+    ret = sscanf(buf, "%d", &val);
+    if(ret != 1) {
+        return -EINVAL;
+    }
+
+    karaok_flag = val ? 1 : 0;
+    return size;
+}
+
 static struct class_attribute amstream_class_attrs[] = {
     __ATTR_RO(ports),
     __ATTR_RO(bufs),
     __ATTR_RO(vcodec_profile),   
+    __ATTR(karaok, S_IRUGO | S_IWUGO, show_karaok,  store_karaok),
     __ATTR_NULL
 };
 static struct class amstream_class = {

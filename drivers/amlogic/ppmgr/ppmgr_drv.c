@@ -74,10 +74,10 @@ static ssize_t _ppmgr_orientation_write(unsigned long val)
             return -EINVAL;
         }
     }
-    ppmgr_device.orientation = angle;
+    ppmgr_device.angle = angle;
     ppmgr_device.videoangle = (ppmgr_device.angle+ ppmgr_device.orientation)%4;
     printk("angle:%d,orientation:%d,videoangle:%d \n",ppmgr_device.angle ,
-        ppmgr_device.orientation, ppmgr_device.videoangle);
+							ppmgr_device.orientation, ppmgr_device.videoangle);
 
     return 0;
 }
@@ -145,10 +145,6 @@ static ssize_t angle_write(struct class *cla,
     char *endp;
     unsigned long angle  =  simple_strtoul(buf, &endp, 0);
     printk("==%ld==\n",angle);
-
-    if (_ppmgr_orientation_write(angle) < 0) {
-        return -EINVAL;
-    }
 	
     if(angle != ppmgr_device.angle ){		
         property_change = 1;
