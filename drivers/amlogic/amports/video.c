@@ -1763,6 +1763,12 @@ unsigned int vf_keep_current(void)
 EXPORT_SYMBOL(get_post_canvas);
 EXPORT_SYMBOL(vf_keep_current);
 
+u32 get_blackout_policy(void)
+{
+    return blackout;
+}
+EXPORT_SYMBOL(get_blackout_policy);
+
 /*********************************************************
  * Utilities
  *********************************************************/
