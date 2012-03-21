@@ -1549,6 +1549,10 @@ static void __init device_pinmux_init(void )
     eth_pinmux_init();
     aml_i2c_init();
     
+    //init sata
+    set_gpio_mode(GPIOC_bank_bit0_15(7), GPIOC_bit_bit0_15(7), GPIO_OUTPUT_MODE);
+    set_gpio_val(GPIOC_bank_bit0_15(7), GPIOC_bit_bit0_15(7), 1);
+    
     printk("SPDIF output.\n");
 		CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0,(1<<19));
 		CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_3,(1<<25));
