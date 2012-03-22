@@ -45,7 +45,6 @@
 #define APPF_SAVE_DEBUG        (1<<3)
 #define APPF_SAVE_L2           (1<<4)
 
-#ifdef CONFIG_SUSPEND_WATCHDOG
 void disable_watchdog(void)
 {
 	//printk(KERN_INFO "** disable watchdog\n");
@@ -68,7 +67,6 @@ void reset_watchdog(void)
 	WRITE_MPEG_REG(WATCHDOG_RESET, 0);	
 }
 EXPORT_SYSMBOL(reset_watchdog);
-#endif
 
 int meson_power_suspend()
 {
