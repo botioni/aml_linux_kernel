@@ -94,22 +94,18 @@ static inline void wait_vsync_wakeup(void)
 	vsync_hit = true;
 	wake_up_interruptible(&osd_vsync_wq);
 }
+
 static inline void  walk_through_update_list(void)
 {
-	u32  i,j;
-	 for(i=0;i<HW_OSD_COUNT;i++)
-	 {	
-	 	j=0;
-	 	while(osd_hw.updated[i] && j<32)
-	 	{
-	 		if(osd_hw.updated[i]&(1<<j))
-	 		{
-	 			osd_hw.reg[i][j].update_func();
-				remove_from_update_list(i,j);
-	 		}
-			j++;
-	 	}
-	 }
+	u32 i, j;
+	for (i = 0; i < HW_OSD_COUNT; i++) {
+		for (j = 0; j < HW_REG_INDEX_MAX; j++) {
+			if (osd_hw.updated[i]
+					&& (osd_hw.updated[i] & (1 << j))
+					&& (osd_hw.reg[i][j].update_func != NULL))
+				osd_hw.reg[i][j].update_func();
+		}
+	}
 }
 /**********************************************************************/
 /**********          osd vsync irq handler              ***************/
@@ -142,6 +138,22 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
 	if(osd_hw.free_scale_enable[OSD1])
 	{
 		osd_hw.scan_mode= SCAN_MODE_PROGRESSIVE;
+		fb0_cfg_w0 = READ_MPEG_REG(VIU_OSD1_BLK0_CFG_W0);
+		if (fb0_cfg_w0 & 1 << 1) {
+			fb0_cfg_w0 &= ~(1 << 1);
+			WRITE_MPEG_REG(VIU_OSD1_BLK0_CFG_W0, fb0_cfg_w0);
+			WRITE_MPEG_REG(VIU_OSD1_BLK1_CFG_W0, fb0_cfg_w0);
+			WRITE_MPEG_REG(VIU_OSD1_BLK2_CFG_W0, fb0_cfg_w0);
+			WRITE_MPEG_REG(VIU_OSD1_BLK3_CFG_W0, fb0_cfg_w0);
+		}
+		fb1_cfg_w0 = READ_MPEG_REG(VIU_OSD1_BLK0_CFG_W0+ REG_OFFSET);
+		if (fb1_cfg_w0 & (1 << 1)) {
+			fb1_cfg_w0 &= ~(1 << 1);
+			WRITE_MPEG_REG(VIU_OSD1_BLK0_CFG_W0 + REG_OFFSET, fb1_cfg_w0);
+			WRITE_MPEG_REG(VIU_OSD1_BLK1_CFG_W0 + REG_OFFSET, fb1_cfg_w0);
+			WRITE_MPEG_REG(VIU_OSD1_BLK2_CFG_W0 + REG_OFFSET, fb1_cfg_w0);
+			WRITE_MPEG_REG(VIU_OSD1_BLK3_CFG_W0 + REG_OFFSET, fb1_cfg_w0);
+		}
 	}
 	if (osd_hw.scan_mode== SCAN_MODE_INTERLACE)
 	{
@@ -471,7 +483,6 @@ void osd_free_scale_enable_hw(u32 index,u32 enable)
 				vf.width=osd_hw.free_scale_width[OSD1];
 				vf.height=osd_hw.free_scale_height[OSD1];
 			}
-//			vf.type = (osd_hw.scan_mode==SCAN_MODE_INTERLACE ?VIDTYPE_INTERLACE:VIDTYPE_PROGRESSIVE) | VIDTYPE_VIU_FIELD;
 			vf.type = (VIDTYPE_NO_VIDEO_ENABLE | VIDTYPE_PROGRESSIVE | VIDTYPE_VIU_FIELD);
 			vf.ratio_control=DISP_RATIO_FORCECONFIG|DISP_RATIO_NO_KEEPRATIO;
 #ifdef CONFIG_AM_VIDEO 			
@@ -489,6 +500,7 @@ void osd_free_scale_enable_hw(u32 index,u32 enable)
 			osd_hw.dispdata[OSD1].y_end =osd_hw.dispdata[OSD1].y_start + vf.height-1;
 			add_to_update_list(OSD1,DISP_GEOMETRY);
 			add_to_update_list(OSD1,OSD_COLOR_MODE);
+			osd_wait_vsync_hw();
 		}
 		else
 		{
@@ -502,6 +514,7 @@ void osd_free_scale_enable_hw(u32 index,u32 enable)
 			memcpy(&osd_hw.pandata[OSD1],&save_pan_data,sizeof(pandata_t));
 			add_to_update_list(OSD1,DISP_GEOMETRY);
 			add_to_update_list(OSD1,OSD_COLOR_MODE);
+			osd_wait_vsync_hw();
 #ifdef CONFIG_AM_VIDEO  			
 			vf_unreg_provider(&osd_vf_prov);
 #endif
@@ -512,6 +525,7 @@ void osd_free_scale_enable_hw(u32 index,u32 enable)
 	{
 	     add_to_update_list(OSD2,DISP_GEOMETRY);  
          add_to_update_list(OSD2,OSD_COLOR_MODE);
+         osd_wait_vsync_hw();
 	}
 	osd_enable_hw(osd_hw.enable[index],index);
 #ifdef CONFIG_AM_VIDEO  
@@ -533,6 +547,7 @@ void osd_free_scale_width_hw(u32 index,u32 width)
 		osd_hw.dispdata[OSD1].x_end = osd_hw.dispdata[OSD1].x_start + vf.width-1;
 		add_to_update_list(index, DISP_GEOMETRY);
 		add_to_update_list(index, OSD_COLOR_MODE);
+		osd_wait_vsync_hw();
 	}
 }
 
@@ -546,6 +561,7 @@ void osd_free_scale_height_hw(u32 index,u32 height)
 		osd_hw.dispdata[OSD1].y_end = osd_hw.dispdata[OSD1].y_start + vf.height - 1;
 		add_to_update_list(index, DISP_GEOMETRY);
 		add_to_update_list(index, OSD_COLOR_MODE);
+		osd_wait_vsync_hw();
 	}
 }
 
@@ -575,6 +591,7 @@ void osd_set_free_scale_axis_hw(u32 index, s32 x0, s32 y0, s32 x1, s32 y1)
 
 		add_to_update_list(index, DISP_GEOMETRY);
 		add_to_update_list(index, OSD_COLOR_MODE);
+		osd_wait_vsync_hw();
 	}
 }
 

@@ -169,7 +169,7 @@ static unsigned long 	lock_flags;
 #ifdef FIQ_VSYNC
 static unsigned long	fiq_flag;
 #endif
-static vframe_t vf,vf_w;
+static vframe_t vf;
 static update_func_t     hw_func_array[HW_OSD_COUNT][HW_REG_INDEX_MAX]={
 	{
 		osd1_update_color_mode,
