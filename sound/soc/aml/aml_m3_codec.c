@@ -245,8 +245,8 @@ void aml_m3_reset(struct snd_soc_codec* codec, bool first_time)
         latch_(codec);
 	    latch_(codec);
     }
-
-
+	WRITE_CBUS_REG(HHI_GCLK_MPEG1, READ_CBUS_REG(HHI_GCLK_MPEG1)&~(1<<2));
+    aml_reset_path(codec, AML_PWR_DOWN);
     msleep(200);
 }
 

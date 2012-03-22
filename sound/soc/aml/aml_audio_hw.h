@@ -215,7 +215,7 @@ void wr_regbank (    unsigned long rstdpz,
 					 unsigned long recsel);
 void adac_power_up_mode_2(void);
 void adac_startup_seq(void);
-
+void adac_latch(void);
 #define APB_BASE	0x4000
 
 #define ADAC_RESET                		0x00

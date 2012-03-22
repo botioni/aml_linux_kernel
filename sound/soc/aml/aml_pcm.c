@@ -39,6 +39,8 @@ extern void	aml_alsa_hw_reprepare();
 extern unsigned IEC958_mode_raw;
 extern unsigned IEC958_mode_codec;
 
+extern int aml_m3_is_hp_pluged(void);
+extern void mute_spk(struct snd_soc_codec* codec, int flag);
 unsigned int aml_pcm_playback_start_addr = 0;
 unsigned int aml_pcm_capture_start_addr  = 0;
 unsigned int aml_pcm_playback_end_addr = 0;
@@ -120,7 +122,70 @@ struct aml_runtime_data {
 	struct timer_list timer;	// timeer for playback and capture
 };
 
+/*--------------------------------------------------------------------------*\
+ * audio clock gating
+\*--------------------------------------------------------------------------*/
 
+static void aml_audio_clock_gating_disable(void)
+{
+	//printk("***Entered %s:%s\n", __FILE__,__func__);
+	//WRITE_CBUS_REG(HHI_GCLK_MPEG0, READ_CBUS_REG(HHI_GCLK_MPEG0)&~(1<<18));
+	WRITE_CBUS_REG(HHI_GCLK_MPEG1, READ_CBUS_REG(HHI_GCLK_MPEG1)&~(1<<2)
+								    //&~(0xFF<<6)
+								    );
+	//WRITE_CBUS_REG(HHI_GCLK_MPEG2, READ_CBUS_REG(HHI_GCLK_MPEG2)&~(1<<10));
+	//WRITE_CBUS_REG(HHI_GCLK_OTHER, READ_CBUS_REG(HHI_GCLK_OTHER)&~(1<<10)
+								    //&~(1<<18)
+								    //&~(0x7<<14));
+	WRITE_APB_REG(APB_ADAC_POWER_CTRL_REG2, READ_APB_REG(APB_ADAC_POWER_CTRL_REG2)&(~(1<<7)));
+	adac_latch();
+	
+}
+
+static void aml_audio_clock_gating_enable(void)
+{
+	printk("***Entered %s:%s\n", __FILE__,__func__);
+	//WRITE_CBUS_REG(HHI_GCLK_MPEG0, READ_CBUS_REG(HHI_GCLK_MPEG0)|(1<<18));
+	WRITE_CBUS_REG(HHI_GCLK_MPEG1, READ_CBUS_REG(HHI_GCLK_MPEG1)|(1<<2)
+								    //|(0xFF<<6)
+								    );
+	//WRITE_CBUS_REG(HHI_GCLK_MPEG2, READ_CBUS_REG(HHI_GCLK_MPEG2)|(1<<10));
+	//WRITE_CBUS_REG(HHI_GCLK_OTHER, READ_CBUS_REG(HHI_GCLK_OTHER)|(1<<10)
+								    //|(1<<18)
+								    //|(0x7<<14));
+	WRITE_APB_REG(APB_ADAC_POWER_CTRL_REG2, READ_APB_REG(APB_ADAC_POWER_CTRL_REG2)|(1<<7));
+	adac_latch();
+}
+
+/*--------------------------------------------------------------------------*\
+ * audio power gating
+ * power up/down the audio module
+\*--------------------------------------------------------------------------*/
+static void aml_audio_dac_power_gating(int flag)//flag=1 : on; flag=0 : off
+{
+	u32 value;
+	value = READ_APB_REG(APB_ADAC_POWER_CTRL_REG1);
+	if(flag){
+		value |= 3;
+	}
+	else{
+		value &= ~3;
+	}
+	WRITE_APB_REG(APB_ADAC_POWER_CTRL_REG1, value);
+}
+
+static void aml_audio_adc_power_gating(int flag)//flag=1 : on; flag=0 : off
+{
+	u32 value;
+	value = READ_APB_REG(APB_ADAC_POWER_CTRL_REG2);
+	if(flag){
+		value |= 3;
+	}
+	else{
+		value &= ~3;
+	}
+	WRITE_APB_REG(APB_ADAC_POWER_CTRL_REG2, value);
+}
 /*--------------------------------------------------------------------------*\
  * Helper functions
 \*--------------------------------------------------------------------------*/
@@ -426,9 +491,11 @@ static int aml_pcm_trigger(struct snd_pcm_substream *substream,
 		// TODO
 		if(substream->stream == SNDRV_PCM_STREAM_PLAYBACK){
 		//    printk("aml_pcm_trigger: playback start\n");
+			aml_audio_clock_gating_enable();
 			audio_enable_ouput(1);
 		}else{
 		//	printk("aml_pcm_trigger: capture start\n");
+			aml_audio_clock_gating_enable();
 			audio_in_i2s_enable(1);
             {
               int * ppp = (int*)(rtd->dma_area+rtd->dma_bytes*2-8);
@@ -449,6 +516,7 @@ static int aml_pcm_trigger(struct snd_pcm_substream *substream,
 		if(substream->stream == SNDRV_PCM_STREAM_PLAYBACK){
         //    printk("aml_pcm_trigger: playback stop\n");
 				audio_enable_ouput(0);
+			aml_audio_clock_gating_disable();
 		}else{
         //    printk("aml_pcm_trigger: capture stop\n");
 				audio_in_i2s_enable(0);
@@ -607,7 +675,8 @@ static int aml_pcm_close(struct snd_pcm_substream *substream)
 	del_timer_sync(&prtd->timer);
 	
 	kfree(prtd);
-	
+	if(substream->stream == SNDRV_PCM_STREAM_CAPTURE)
+	aml_audio_clock_gating_disable();
 	return 0;
 }
 

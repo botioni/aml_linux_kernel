@@ -583,7 +583,7 @@ void adac_power_up_mode_2(void)
     adac_wr_reg(224, 0x11);
 }
 
-static inline void adac_latch(void)
+void adac_latch(void)
 {
     adac_wr_reg(1, 1);
     adac_wr_reg(1, 0);
