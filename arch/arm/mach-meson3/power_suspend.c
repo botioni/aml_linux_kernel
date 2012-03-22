@@ -45,6 +45,7 @@
 #define APPF_SAVE_DEBUG        (1<<3)
 #define APPF_SAVE_L2           (1<<4)
 
+#ifdef CONFIG_SUSPEND_WATCHDOG
 void disable_watchdog(void)
 {
 	//printk(KERN_INFO "** disable watchdog\n");
@@ -67,6 +68,7 @@ void reset_watchdog(void)
 	WRITE_MPEG_REG(WATCHDOG_RESET, 0);	
 }
 EXPORT_SYSMBOL(reset_watchdog);
+#endif
 
 int meson_power_suspend()
 {
@@ -86,12 +88,12 @@ int meson_power_suspend()
 		printk("initial appf\n");
 		pwrtest_entry(APPF_INITIALIZE,0,0,0);
 	}
-#if 1
+#ifdef CONFIG_SUSPEND_WATCHDOG
 	disable_watchdog();
 #endif
 	printk("power down cpu --\n");
 	pwrtest_entry(APPF_POWER_DOWN_CPU,0,0,APPF_SAVE_PMU|APPF_SAVE_VFP|APPF_SAVE_L2);
-#if 1
+#ifdef CONFIG_SUSPEND_WATCHDOG
 	enable_watchdog();
 #endif
 	return 0;

@@ -155,6 +155,12 @@ static void late_resume(struct work_struct *work)
 		pr_info("late_resume: done\n");
 abort:
 	mutex_unlock(&early_suspend_lock);
+#ifdef CONFIG_SUSPEND_WATCHDOG
+	{
+	extern void disable_watchdog(void);
+	disable_watchdog();
+	}
+#endif   
 }
 
 void request_suspend_state(suspend_state_t new_state)

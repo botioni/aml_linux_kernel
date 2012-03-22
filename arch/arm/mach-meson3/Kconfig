@@ -105,6 +105,11 @@ config AML_SUSPEND
 		bool "Support M3 A9 domain power down"
 		depends on SUSPEND
 		default n
+		
+config SUSPEND_WATCHDOG
+	bool "Enable watchdog while suspend and resume"
+	depends on AML_SUSPEND
+	default n
 
 config AML_INIT_GATE_OFF
 	bool "turn the gates off when system init"

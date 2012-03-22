@@ -295,13 +295,20 @@ int enter_state(suspend_state_t state)
  Finish:
 	pr_debug("PM: Finishing wakeup.\n");
 	suspend_finish();
-#if 1
-	extern void disable_watchdog(void);
-	disable_watchdog();
-#endif    
 
  Unlock:
 	mutex_unlock(&pm_mutex);
+#ifdef CONFIG_SUSPEND_WATCHDOG
+{
+#ifdef CONFIG_HAS_EARLYSUSPEND
+	extern void reset_watchdog(void);
+	reset_watchdog();
+#else
+	extern void disable_watchdog(void);
+	disable_watchdog();
+#endif
+}
+#endif   	
 	return error;
 }
 
