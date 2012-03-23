@@ -2397,13 +2397,13 @@ static int process_post_vframe(void)
     if(ready_count>0){
         ready_di_buf = list_first_entry(&pre_ready_list_head, struct di_buf_s, list);
         if(ready_di_buf->post_proc_flag){
-            if((pulldown_buffer_mode&1)
+            /*if((pulldown_buffer_mode&1)
                 &&(real_buf_mgr_mode==0)){
                 buffer_keep_count = 4;
             }
             else{
                 buffer_keep_count = 3;
-            }
+            }*/
             if(ready_count>=buffer_keep_count){
                 raw_local_save_flags(fiq_flag);
                 local_fiq_disable();
