@@ -555,7 +555,9 @@ extern char* get_vout_mode_internal(void);
 /* Check current mode, 0: panel; 1: !panel*/
 int get_display_mode(void) {
 	int ret = 0;
-	if(strncmp("panel", get_vout_mode_internal(), 5))
+	char * display_mode=NULL;
+	display_mode=get_vout_mode_internal();
+	if(display_mode&&display_mode[0]!=0&&strncmp("panel", get_vout_mode_internal(), 5))
 		ret = 1;
 	return ret;
 }
