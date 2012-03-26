@@ -1567,8 +1567,8 @@ static void __init  device_clk_setting(void)
     /*Demod CLK for eth and sata*/
     //demod_apll_setting(0,1200*CLK_1M);
     /*eth clk*/
-    //eth_clk_set(ETH_CLKSRC_MISC_CLK, get_misc_pll_clk(), (50 * CLK_1M), 0);
-    eth_clk_set(1, get_system_clk(), (50 * CLK_1M), 0);
+    eth_clk_set(ETH_CLKSRC_MISC_CLK, get_misc_pll_clk(), (50 * CLK_1M), 0);
+    //eth_clk_set(1, get_system_clk(), (50 * CLK_1M), 0);
 }
 
 static void disable_unused_model(void)
