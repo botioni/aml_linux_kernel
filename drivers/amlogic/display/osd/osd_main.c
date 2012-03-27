@@ -59,6 +59,7 @@ static myfb_dev_t  *gp_fbdev_list[OSD_COUNT]={NULL,NULL};
 
 static DEFINE_MUTEX(dbg_mutex);
 static char request2XScaleValue[32];
+static char videohole[32];
 
 
 const color_bit_define_t*	
@@ -786,6 +787,21 @@ static ssize_t store__request_2xscale(struct device *device, struct device_attri
     return count;
 }
 
+static ssize_t  show_video_hole(struct device *device, struct device_attribute *attr,
+			 char *buf)
+{
+	memcpy(buf,videohole,32);
+    return 32;
+}
+
+static ssize_t store__video_hole(struct device *device, struct device_attribute *attr,
+			 const char *buf, size_t count)
+{
+	memset(videohole,0,32);
+	memcpy(videohole,buf,count);
+    return count;
+}
+
 
 static ssize_t show_free_scale_axis(struct device *device, struct device_attribute *attr,
 			 char *buf)
@@ -982,6 +998,7 @@ static struct device_attribute osd_attrs[] = {
 	__ATTR(block_mode, S_IRUGO|S_IWUSR, show_block_mode, store_block_mode),
 	__ATTR(free_scale_axis, S_IRUGO|S_IWUSR, show_free_scale_axis, store_free_scale_axis),
 	__ATTR(request2XScale, S_IRUGO|S_IWUSR, show_request_2xscale, store__request_2xscale),
+	__ATTR(video_hole, S_IRUGO|S_IWUSR, show_video_hole, store__video_hole),
 };		
 
 #ifdef  CONFIG_PM
