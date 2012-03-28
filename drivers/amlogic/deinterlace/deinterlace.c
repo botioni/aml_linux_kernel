@@ -53,6 +53,7 @@
 #define FORCE_BOB_SUPPORT
 #endif
 //#define RUN_DI_PROCESS_IN_IRQ
+//#define RUN_DI_PROCESS_IN_TIMER
 
 #define FIQ_VSYNC
 #define CHECK_VDIN_BUF_ERROR
@@ -192,6 +193,7 @@ void trigger_pre_di_process(char idx)
     {
         log_buffer_state((idx=='i')?"irq":((idx=='p')?"put":((idx=='r')?"rdy":"oth")));
     }
+#ifndef RUN_DI_PROCESS_IN_TIMER
 #ifdef RUN_DI_PROCESS_IN_IRQ
     fiq_bridge_pulse_trigger(&fiq_handle_item);
 #else
@@ -204,6 +206,7 @@ void trigger_pre_di_process(char idx)
     {
         up(&di_sema);
     }
+#endif
 #endif
 }
 
@@ -297,6 +300,10 @@ static unsigned int di_log_rd_pos=0;
 static unsigned int di_log_buf_size=0;
 static unsigned int di_printk_flag=0;
 unsigned int di_log_flag=0;
+unsigned int buf_state_log_threshold = 16; 
+unsigned int buf_state_log_start = 0; /*  set to 1 by condition of "post_ready count < buf_state_log_threshold",
+																					reset to 0 by set buf_state_log_threshold as 0 */
+
 static DEFINE_SPINLOCK(di_print_lock);
 
 #define PRINT_TEMP_BUF_SIZE 128
@@ -879,11 +886,13 @@ static ssize_t store_config(struct device * dev, struct device_attribute *attr, 
 #ifdef DI_DEBUG
         di_print("%s: disable\n", __func__);
 #endif
-        di_pre_stru.disable_req_flag = 1;
-        provider_vframe_level = 0;
-        trigger_pre_di_process('d');
-        while(di_pre_stru.disable_req_flag){
-            msleep(1);    
+        if(init_flag){
+            di_pre_stru.disable_req_flag = 1;
+            provider_vframe_level = 0;
+            trigger_pre_di_process('d');
+            while(di_pre_stru.disable_req_flag){
+                msleep(1);    
+            }
         }
     }
     return count;
@@ -956,6 +965,9 @@ static int di_init_buf(int width, int height, unsigned char prog_flag)
     frame_count = 0;
     disp_frame_count = 0;
     cur_post_ready_di_buf = NULL;
+    for(i=0; i<MAX_IN_BUF_NUM; i++){
+			vframe_in[i]=NULL;
+		}
     memset(&di_pre_stru, 0, sizeof(di_pre_stru));
     memset(&di_post_stru, 0, sizeof(di_post_stru));
     if(prog_flag){
@@ -1041,6 +1053,7 @@ static int di_init_buf(int width, int height, unsigned char prog_flag)
 static void di_uninit_buf(void)
 {
     di_buf_t *p = NULL, *ptmp;
+    int i;
     list_for_each_entry_safe(p, ptmp, &local_free_list_head, list) {
         list_del(&p->list);
     }
@@ -1062,6 +1075,10 @@ static void di_uninit_buf(void)
     list_for_each_entry_safe(p, ptmp, &display_list_head, list) {
         list_del(&p->list);
     }
+    
+    for(i=0; i<MAX_IN_BUF_NUM; i++){
+			vframe_in[i]=NULL;
+		}
 }
 
 static void di_clean_in_buf(void)
@@ -1190,20 +1207,27 @@ static void log_buffer_state(unsigned char* tag)
             di_inp++;
         if(di_pre_stru.di_wr_buf)
             di_wr++;
-
-        di_print("[%s]i %d, i_f %d/%d, l_f %d/%d, pre_r %d, post_f %d/%d, post_r (%d:%d), disp (%d:%d),rec %d, di_i %d, di_w %d\r\n",
-            tag,
-            provider_vframe_level,
-            in_free,MAX_IN_BUF_NUM,
-            local_free, local_buf_num,
-            pre_ready,
-            post_free, MAX_POST_BUF_NUM,
-            post_ready, post_ready_ext,
-            display, display_ext,
-            recycle,
-            di_inp, di_wr
-            );
-
+				
+				if(buf_state_log_threshold == 0){
+					  buf_state_log_start = 0;
+				}
+				else if(post_ready < buf_state_log_threshold){
+			  		buf_state_log_start = 1;	
+				}
+				if(buf_state_log_start){	
+	        di_print("[%s]i %d, i_f %d/%d, l_f %d/%d, pre_r %d, post_f %d/%d, post_r (%d:%d), disp (%d:%d),rec %d, di_i %d, di_w %d\r\n",
+	            tag,
+	            provider_vframe_level,
+	            in_free,MAX_IN_BUF_NUM,
+	            local_free, local_buf_num,
+	            pre_ready,
+	            post_free, MAX_POST_BUF_NUM,
+	            post_ready, post_ready_ext,
+	            display, display_ext,
+	            recycle,
+	            di_inp, di_wr
+	            );
+				}
         raw_local_irq_restore(fiq_flag);
 
     }
@@ -2843,6 +2867,9 @@ static void di_process(void)
 #ifdef DI_DEBUG
                 di_print("%s: force_unreg\n", __func__);
 #endif
+                if(bypass_state == 0){
+                	vf_notify_receiver(VFM_NAME,VFRAME_EVENT_PROVIDER_FORCE_BLACKOUT,NULL);
+                }
                 goto unreg;
             }
             else if((real_buf_mgr_mode==1)&&(is_bypass()==0)){
@@ -2865,8 +2892,10 @@ unreg:
                 raw_local_save_flags(fiq_flag);
                 local_fiq_disable();
 
-                DisableVideoLayer();
-                
+                if(bypass_state == 0){
+	                DisableVideoLayer();
+  							}
+  							              
                 vf_unreg_provider(&di_vf_prov);
                 raw_local_irq_restore(fiq_flag);
                 spin_lock_irqsave(&plist_lock, flags);
@@ -3021,6 +3050,17 @@ void di_timer_handle(struct work_struct *work)
 #endif
         }
     }
+
+#ifdef RUN_DI_PROCESS_IN_TIMER
+    {
+        int i;
+        for(i=0; i<10; i++){
+            if(active_flag){
+                di_process();
+            }
+        }
+    }
+#endif
 }
 
 static int di_task_handle(void *data)
@@ -3076,6 +3116,28 @@ static int di_receiver_event_fun(int type, void* data, void* arg)
 #endif
         provider_vframe_level++;
         trigger_pre_di_process('r');
+    }
+    else if(type == VFRAME_EVENT_PROVIDER_QUREY_STATE){
+        int in_buf_num = 0;
+        for(i=0; i<MAX_IN_BUF_NUM; i++){
+            if(vframe_in[i]!=NULL){
+                in_buf_num++;
+            }
+        }
+        if(bypass_state==1){
+            if(in_buf_num>1){
+                return RECEIVER_ACTIVE ;
+            }else{
+                return RECEIVER_INACTIVE;
+            }
+        }
+        else{
+            if(in_buf_num>0){
+                return RECEIVER_ACTIVE ;
+            }else{
+                return RECEIVER_INACTIVE;
+            }
+        }
     }
     return 0;
 }
@@ -3198,9 +3260,10 @@ static void di_vf_put(vframe_t *vf, void* arg)
 
 static int di_event_cb(int type, void *data, void *private_data)
 {
-    if(type == VFRAME_EVENT_PROVIDER_FORCE_UNREG){
+    int i;
+    if(type == VFRAME_EVENT_RECEIVER_FORCE_UNREG){
 #ifdef DI_DEBUG
-        di_print("%s: VFRAME_EVENT_PROVIDER_FORCE_UNREG\n", __func__);
+        di_print("%s: VFRAME_EVENT_RECEIVER_FORCE_UNREG\n", __func__);
 #endif
         di_pre_stru.force_unreg_req_flag = 1;
         provider_vframe_level = 0;
@@ -3355,7 +3418,7 @@ static int di_probe(struct platform_device *pdev)
     di_pre_timer.expires = jiffies + DI_PRE_INTERVAL;
     add_timer(&di_pre_timer);
     /**/
-#ifndef RUN_DI_PROCESS_IN_IRQ
+#if (!(defined RUN_DI_PROCESS_IN_IRQ))&&(!(defined RUN_DI_PROCESS_IN_TIMER))
     di_device.task = kthread_run(di_task_handle, &di_device, "kthread_di");
 #endif
     return r;
@@ -3504,6 +3567,9 @@ module_param(frame_packing_mode, int, 0664);
 
 MODULE_PARM_DESC(di_log_flag, "\n di log flag \n");
 module_param(di_log_flag, int, 0664);
+
+MODULE_PARM_DESC(buf_state_log_threshold, "\n buf_state_log_threshold \n");
+module_param(buf_state_log_threshold, int, 0664);
 
 MODULE_PARM_DESC(buf_mgr_mode, "\n buf_mgr_mode\n");
 module_param(buf_mgr_mode, uint, 0664);

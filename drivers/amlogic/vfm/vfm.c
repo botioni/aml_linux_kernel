@@ -76,8 +76,8 @@ static int vfm_map_remove_by_index(int index)
 
             vfp = vf_get_provider(vfm_map[index]->name[i+1]);
             if(vfp && vfp->ops && vfp->ops->event_cb){
-                vfp->ops->event_cb(VFRAME_EVENT_PROVIDER_FORCE_UNREG, NULL, vfp->op_arg);
-                printk("%s: VFRAME_EVENT_PROVIDER_FORCE_UNREG %s\n", __func__, vfm_map[index]->name[i]);
+                vfp->ops->event_cb(VFRAME_EVENT_RECEIVER_FORCE_UNREG, NULL, vfp->op_arg);
+                printk("%s: VFRAME_EVENT_RECEIVER_FORCE_UNREG %s\n", __func__, vfm_map[index]->name[i]);
             }
         }
     }
@@ -175,7 +175,7 @@ char* vf_get_provider_name(const char* receiver_name)
     int i,j;
     char* provider_name = NULL;
     unsigned char receiver_is_amvideo = 0;
-    if(!strcmp(receiver_name, "amvideo")){
+    if((!strcmp(receiver_name, "amvideo"))||(!strcmp(receiver_name, "amvideo2"))){
         receiver_is_amvideo = 1; //do not call spin_lock_irqsave in fiq
     }
     if(receiver_is_amvideo==0){

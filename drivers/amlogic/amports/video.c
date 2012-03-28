@@ -261,6 +261,7 @@ static u32 blackout = 0;
 #else
 static u32 blackout = 1;
 #endif
+static u32 force_blackout = 0;
 
 /* disable video */
 static u32 disable_video = VIDEO_DISABLE_NONE;
@@ -1201,7 +1202,7 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
 #endif
 
         } else if ((cur_dispbuf == &vf_local) && (video_property_changed)) {
-            if (!blackout) {
+            if (!(blackout|force_blackout)) {
 #ifdef CONFIG_AM_DEINTERLACE
                 if ((deinterlace_mode == 0) || (cur_dispbuf->duration == 0)
 #if defined(CONFIG_AM_DEINTERLACE_SD_ONLY)
@@ -1250,6 +1251,7 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
             amlog_mask_if(toggle_cnt > 0, LOG_MASK_FRAMESKIP, "skipped\n");
 
             vf = video_vf_get();
+            force_blackout = 0;
 
             vsync_toggle_frame(vf);
 
@@ -1288,7 +1290,7 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
 #endif
                 /* setting video display property in pause mode */
                 if (video_property_changed && cur_dispbuf) {
-                    if (blackout) {
+                    if (blackout|force_blackout) {
                         if (cur_dispbuf != &vf_local) {
                             vsync_toggle_frame(cur_dispbuf);
                         }
@@ -1609,7 +1611,7 @@ static void video_vf_unreg_provider(void)
         atomic_set(&trickmode_framedone, 0);
     }
 
-    if (blackout) {
+    if (blackout|force_blackout) {
 #ifdef CONFIG_POST_PROCESS_MANAGER_PPSCALER
         if(video_scaler_mode)
             DisableVideoLayer_PREBELEND();
@@ -1671,6 +1673,9 @@ static int video_receiver_event_fun(int type, void* data, void* private_data)
         }
 #endif    
     }
+    else if(type == VFRAME_EVENT_PROVIDER_FORCE_BLACKOUT){
+    	  force_blackout = 1;	
+    }
     return 0;
 }
 unsigned int get_post_canvas(void)
@@ -1699,7 +1704,7 @@ unsigned int vf_keep_current(void)
 #ifdef CONFIG_AM_DEINTERLACE
     int deinterlace_mode = get_deinterlace_mode();
 #endif
-    if (blackout) {
+    if (blackout|force_blackout) {
         return 0;
     }
 
@@ -1846,7 +1851,7 @@ static int amvideo_open(struct inode *inode, struct file *file)
 
 static int amvideo_release(struct inode *inode, struct file *file)
 {
-    if (blackout) {
+    if (blackout|force_blackout) {
         ///DisableVideoLayer();/*don't need it ,it have problem on  pure music playing*/
     }
     return 0;

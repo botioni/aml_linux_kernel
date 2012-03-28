@@ -40,7 +40,7 @@ typedef struct vframe_states {
 #define VFRAME_EVENT_RECEIVER_POS_CHANGED       0x08
 #define VFRAME_EVENT_RECEIVER_PARAM_SET       	0x10
 #define VFRAME_EVENT_RECEIVER_RESET				0x20
-#define VFRAME_EVENT_PROVIDER_FORCE_UNREG			0x40
+#define VFRAME_EVENT_RECEIVER_FORCE_UNREG			0x40
 
 typedef struct vframe_operations_s {
     struct vframe_s * (*peek) (void* op_arg);
