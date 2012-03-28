@@ -2493,6 +2493,18 @@ static int gc0308_probe(struct i2c_client *client,
 		return -ENOMEM;
 	sd = &t->sd;
 	v4l2_i2c_subdev_init(sd, client, &gc0308_ops);
+	plat_dat= (aml_plat_cam_data_t*)client->dev.platform_data;
+	
+	/* test if devices exist. */
+#ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE_PROBE
+	unsigned char buf[4]; 
+	buf[0]=0;
+	plat_dat->device_init();
+	err=i2c_get_byte_add8(client,buf);
+	plat_dat->device_uninit();
+	if(err<0) return  -ENODEV;
+#endif
+	/* Now create a video4linux device */
 	mutex_init(&t->mutex);
 
 	/* Now create a video4linux device */
@@ -2507,8 +2519,8 @@ static int gc0308_probe(struct i2c_client *client,
 	video_set_drvdata(t->vdev, t);
 
 	this_client=client;
+
 	/* Register it */
-	plat_dat= (aml_plat_cam_data_t*)client->dev.platform_data;
 	if (plat_dat) {
 		t->platform_dev_data.device_init=plat_dat->device_init;
 		t->platform_dev_data.device_uninit=plat_dat->device_uninit;
