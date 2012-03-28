@@ -456,7 +456,7 @@ static inline void _init_tvenc(lcdConfig_t *pConf)
 
 static inline void _enable_vsync_interrupt(void)
 {
-    if (READ_MPEG_REG(ENCP_VIDEO_EN) & 1) {
+    if (READ_MPEG_REG(ENCT_VIDEO_EN) & 1) {
         WRITE_MPEG_REG(VENC_INTCTRL, 0x200);
 #if 0
         while ((READ_MPEG_REG(VENC_INTFLAG) & 0x200) == 0) {
@@ -477,14 +477,14 @@ static inline void _enable_vsync_interrupt(void)
                 break;
             }
 
-            WRITE_MPEG_REG(ENCP_VIDEO_EN, 0);
+            WRITE_MPEG_REG(ENCT_VIDEO_EN, 0);
             READ_MPEG_REG(VENC_INTFLAG);
             READ_MPEG_REG(VENC_INTFLAG);
             READ_MPEG_REG(VENC_INTFLAG);
             READ_MPEG_REG(VENC_INTFLAG);
             READ_MPEG_REG(VENC_INTFLAG);
 
-            WRITE_MPEG_REG(ENCP_VIDEO_EN, 1);
+            WRITE_MPEG_REG(ENCT_VIDEO_EN, 1);
             READ_MPEG_REG(VENC_INTFLAG);
             READ_MPEG_REG(VENC_INTFLAG);
             READ_MPEG_REG(VENC_INTFLAG);
