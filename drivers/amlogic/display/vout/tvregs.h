@@ -374,7 +374,7 @@ static const reg_t tvregs_480p[] = {
 #ifndef CONFIG_AM_TV_OUTPUT2
     {VPU_VIU_VENC_MUX_CTRL,      0x000a,},
 #endif
-    {VENC_VDAC_FIFO_CTRL,        0x1fc0,},
+    {VENC_VDAC_FIFO_CTRL,        0x1000,},
     {ENCP_DACSEL_0,              0x3210,},
     {ENCP_DACSEL_1,              0x0054,},
     {ENCP_VIDEO_EN,              1      },
@@ -535,7 +535,7 @@ static const reg_t tvregs_576p[] = {
     {VENC_VDAC_DACSEL4,          0xf003,    },
     {VENC_VDAC_DACSEL5,          0xf003,    },
 //    {VPU_VIU_VENC_MUX_CTRL,      0x000a,    },
-    {VENC_VDAC_FIFO_CTRL,        0x1fc0,    },
+    {VENC_VDAC_FIFO_CTRL,        0x1000,    },
     {ENCP_DACSEL_0,              0x3210,    },
     {ENCP_DACSEL_1,              0x0054,    },
     {ENCI_VIDEO_EN,              0      },
