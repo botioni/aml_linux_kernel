@@ -900,7 +900,7 @@ CONFIG_POST_PROCESS_MANAGER_PPSCALER=y
 #
 # Amlogic audio dsp log
 #
-CONFIG_AML_AUDIO_DSP_LOG=m
+CONFIG_AML_AUDIO_DSP_LOG=y
 
 #
 # AMLOGIC Deinterlace driver
