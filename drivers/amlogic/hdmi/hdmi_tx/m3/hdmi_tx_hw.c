@@ -1707,6 +1707,8 @@ static void hdmi_hw_reset(Hdmi_tx_video_para_t *param)
         }
 #endif        
     }
+    if(param->VIC == HDMI_720p60)
+        hdmi_wr_reg(0x018, 0x24);           // fix 720p flicks
 }
 
 static void hdmi_audio_init(unsigned char spdif_flag)
