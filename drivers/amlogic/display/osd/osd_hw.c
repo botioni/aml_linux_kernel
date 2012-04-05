@@ -1393,7 +1393,8 @@ void  osd_suspend_hw(void)
 void osd_resume_hw(void)
 {
     SET_MPEG_REG_MASK(VPP_MISC, osd_hw.reg_status_save);
-
+	// fix bug for  suspend when movie playing, and then resume
+	add_to_update_list(OSD1, OSD_ENABLE);
     printk("osd_resumed\n");
 	
 	return ;
