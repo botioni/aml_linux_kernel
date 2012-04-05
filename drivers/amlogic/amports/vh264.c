@@ -1141,7 +1141,7 @@ static s32 vh264_init(void)
     add_timer(&recycle_timer);
 
     stat |= STAT_TIMER_ARM;
-
+	vh264_running = 0;
     amvdec_start();
 
     stat |= STAT_VDEC_RUN;
