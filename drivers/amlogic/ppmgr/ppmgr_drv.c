@@ -28,6 +28,7 @@
 ************************************************************************/
 static int ppmgr_enable_flag=0;
 static int property_change = 0;
+static int buff_change = 0;
 ppmgr_device_t  ppmgr_device;
 
 int get_bypass_mode(void)
@@ -42,6 +43,15 @@ int get_property_change(void)
 void set_property_change(int flag)
 {
     property_change = flag;	
+}
+
+int get_buff_change(void)
+{
+    return buff_change;	
+}
+void set_buff_change(int flag)
+{
+    buff_change = flag;	
 }
 
 int get_ppmgr_status(void) {
@@ -266,6 +276,8 @@ static void set_disp_para(const char *para)
         int w, h;
         w = parsed[0] ;
         h = parsed[1];
+        if((ppmgr_device.disp_width != w)||(ppmgr_device.disp_height != h))
+            buff_change = 1;
         ppmgr_device.disp_width = w ;
         ppmgr_device.disp_height =  h ;
     }
@@ -519,7 +531,8 @@ int  init_ppmgr_device(void)
         amlog_level(LOG_LEVEL_HIGH,"create ppmgr device error\n");
         goto unregister_dev;
     }
-    
+    buff_change = 0;
+    ppmgr_register();    
     if(ppmgr_buffer_init()<0) goto unregister_dev;
     //if(start_vpp_task()<0) return -1;
     

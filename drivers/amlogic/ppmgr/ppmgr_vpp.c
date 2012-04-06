@@ -140,6 +140,9 @@ static void ppmgr_vf_put(vframe_t *vf, void *op_arg)
 }
 extern int get_property_change(void) ;
 extern void set_property_change(int flag) ;
+extern int get_buff_change(void);
+extern void set_buff_change(int flag) ;
+
 static int ppmgr_event_cb(int type, void *data, void *private_data)
 {
     if (type & VFRAME_EVENT_RECEIVER_PUT) {
@@ -1367,6 +1370,14 @@ static struct notifier_block vout_notifier =
 {
     .notifier_call  = vout_notify_callback,
 };
+int ppmgr_register()
+{    
+	vf_ppmgr_init_provider();
+	vf_ppmgr_init_receiver();
+	vf_ppmgr_reg_receiver();
+	vout_register_client(&vout_notifier);
+}
+
 
 int ppmgr_buffer_init(void)
 {
@@ -1375,12 +1386,7 @@ int ppmgr_buffer_init(void)
     u32 decbuf_size;
     char* buf_start;
     int buf_size;
-    vf_ppmgr_init_provider();
-    vf_ppmgr_init_receiver();
-    get_ppmgr_buf_info(&buf_start,&buf_size);
-    vf_ppmgr_reg_receiver();
-
-    vout_register_client(&vout_notifier);
+    get_ppmgr_buf_info(&buf_start,&buf_size);   
     ppmgr_device.vinfo = get_current_vinfo();
 
     if (ppmgr_device.disp_width == 0)
@@ -1420,6 +1426,7 @@ int ppmgr_buffer_init(void)
 #endif
     ppmgr_blocking = false;
     ppmgr_inited = true;
+    set_buff_change(0);
     init_MUTEX(&thread_sem);
     return 0;
 
@@ -1429,6 +1436,8 @@ int start_vpp_task(void)
 {
     if (!task) {
         vf_local_init();
+        if(get_buff_change())
+            ppmgr_buffer_init();
         task = kthread_run(ppmgr_task, 0, "ppmgr");
     }
     task_running  = 1;
