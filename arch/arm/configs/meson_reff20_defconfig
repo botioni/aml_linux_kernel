@@ -689,6 +689,10 @@ CONFIG_EFUSE=y
 # Amlogic GPS Support
 #
 # CONFIG_GPS_POWERCTRL is not set
+#
+# Amlogic BOOT MONITOR SYSFS
+#
+CONFIG_BOOT_MONITOR=y
 
 #
 # Block devices

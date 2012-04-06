@@ -1162,18 +1162,18 @@ static struct mtd_partition multi_partition_info_1G_or_More[] =
     {
         .name = "cache",
         .offset = 576*1024*1024,
-        .size = 192*1024*1024,
+        .size = 342*1024*1024,
     },
     {
         .name = "rs_data",
-        .offset = 768*1024*1024,
+        .offset = 918*1024*1024,
         .size = 640*1024*1024,
     },
 
 #ifdef CONFIG_AML_NFTL
    {
         .name = "userdata",
-        .offset = (768+640)*1024*1024,
+        .offset = (918+640)*1024*1024,
         .size = 512*1024*1024,
     },
     {
