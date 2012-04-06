@@ -133,6 +133,70 @@ unsigned int clk_util_clk_msr(unsigned int clk_mux)
     return (regval >> 6);
 }
 
+unsigned int clk_measure(char index)
+{
+	const char* clk_table[] = {
+		"CTS_PWM_A_CLK(45)",
+		"CTS_PWM_B_CLK(44)",
+		" CTS_PWM_C_CLK(43)",
+		" CTS_PWM_D_CLK(42)",
+		" CTS_ETH_RX_TX (41)",
+		" CTS_PCM_MCLK(40)",
+		" CTS_PCM_SCLK(39)",
+		" CTS_VDIN_MEAS_CLK(38)",
+		" CTS_VDAC_CLK1(37)",
+		" CTS_HDMI_TX_PIXEL_CLK(36)",
+		" CTS_MALI_CLK (35)",
+		" CTS_SDHC_CLK1(34)",
+		" CTS_SDHC_CLK0(33)",
+		" CTS_AUDAC_CLKPI(32)",
+		" CTS_A9_CLK(31)",
+		" CTS_DDR_CLK(30)",
+		" CTS_VDAC_CLK0(29)",
+		" CTS_SAR_ADC_CLK (28)",
+		" CTS_ENCI_CL(27)",
+		" SC_CLK_INT(26)",
+		" USB_CLK_12MHZ (25)",
+		" LVDS_FIFO_CLK (24)",
+		" HDMI_CH3_TMDSCLK(23)",
+		" MOD_ETH_CLK50_I (22)",
+		" MOD_AUDIN_AMCLK_I  (21)",
+		" CTS_BTCLK27 (20)",
+		" CTS_HDMI_SYS_CLK(19)",
+		" CTS_LED_PLL_CLK(18)",
+		" CTS_VGHL_PLL_CLK (17)",
+		" CTS_FEC_CLK_2(16)",
+		" CTS_FEC_CLK_1 (15)",
+		" CTS_FEC_CLK_0 (14)",
+		" CTS_AMCLK(13)",
+		" VID2_PLL_CLK(12)",
+		" CTS_ETH_RMII(11)",
+		" CTS_ENCT_CLK(10)",
+		" CTS_ENCL_CLK(9)",
+		" CTS_ENCP_CLK(8)",
+		" CLK81(7)",
+		" VID_PLL_CLK(6)",
+		" AUD_PLL_CLK(5)",
+		" MISC_PLL_CLK(4)",
+		" DDR_PLL_CLK(3)",
+		" SYS_PLL_CLK(2)",
+		" AM_RING_OSC_CLK_OUT1(1)",
+		" AM_RING_OSC_CLK_OUT0(0)",
+	};   
+	int i;
+	
+	if (index == 0xff) {
+	 	for (i = 0; i < sizeof(clk_table) / sizeof(char *); i++) {
+			printk("[%d] %s\n", clk_util_clk_msr(i), clk_table[45-i]);
+		}
+		return 0;
+	}	
+	printk("[%d MHz] %s\n", clk_util_clk_msr(index), clk_table[45-index]);
+
+	return 0;
+}
+EXPORT_SYMBOL(clk_measure);
+
 unsigned  int get_system_clk(void)
 {
     static unsigned int sys_freq = 0;
