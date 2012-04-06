@@ -244,19 +244,17 @@ static const vinfo_t *tv_get_current_info(void)
 
 static int tv_set_current_vmode(vmode_t mod)
 {
-    printk("**********%s[%d]\n", __func__, __LINE__);
-    printk("mode is %d\n", mod);
-    mod = mod & 0xff;
-    printk("mode is %d\n", mod);
-	if ((mod&VMODE_MODE_BIT_MASK)> VMODE_1080P_50HZ ){
-	    printk("error\n");
+    	vmode_t mode = mod&VMODE_MODE_BIT_MASK;
+	if (mode > VMODE_1080P_50HZ) {
+		amlog_mask_level(LOG_MASK_PARA, LOG_LEVEL_HIGH,"Invalid vmode: %d\n", mod);
 		return -EINVAL;
 	}
 
-	info->vinfo = &tv_info[mod&VMODE_MODE_BIT_MASK];
-	if(mod&VMODE_LOGO_BIT_MASK)  return 0;
+	info->vinfo = &tv_info[mode];
+	if (mod & VMODE_LOGO_BIT_MASK)
+		return 0;
 
-	tvoutc_setmode(vmode_tvmode_tab[mod]);
+	tvoutc_setmode(vmode_tvmode_tab[mode]);
 	//change_vdac_setting(get_current_vdac_setting(),mod);
 	return 0;
 }
