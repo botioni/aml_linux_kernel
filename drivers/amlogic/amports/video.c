@@ -604,6 +604,7 @@ static void zoom_display_vert(void)
 static void vsync_toggle_frame(vframe_t *vf)
 {
     u32 first_picture = 0;
+    u32 real_first_pic = 0;
 
 #ifdef CONFIG_AM_DEINTERLACE
     int deinterlace_mode = get_deinterlace_mode();
@@ -636,6 +637,8 @@ static void vsync_toggle_frame(vframe_t *vf)
 
     } else {
         first_picture = 1;
+        if(video_vf_peek())
+            real_first_pic = 1;
     }
 
     if (video_property_changed) {
@@ -745,7 +748,7 @@ static void vsync_toggle_frame(vframe_t *vf)
 
     cur_dispbuf = vf;
 
-    if ((vf->type & VIDTYPE_NO_VIDEO_ENABLE) == 0) {
+    if ((vf->type & VIDTYPE_NO_VIDEO_ENABLE) == 0 && real_first_pic) {
         if (disable_video == VIDEO_DISABLE_FORNEXT) {
             EnableVideoLayer();
             disable_video = VIDEO_DISABLE_NONE;
