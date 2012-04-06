@@ -1675,6 +1675,7 @@ static int video_receiver_event_fun(int type, void* data, void* private_data)
             set_clone_frame_rate(10, 100);
         }
 #endif    
+        video_vf_light_unreg_provider();
     }
     else if(type == VFRAME_EVENT_PROVIDER_FORCE_BLACKOUT){
     	  force_blackout = 1;	

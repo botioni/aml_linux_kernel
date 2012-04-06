@@ -138,6 +138,21 @@ static void ppmgr_vf_put(vframe_t *vf, void *op_arg)
         ppmgr_vf_put_dec(pp_vf->dec_frame);
     vfq_push(&q_free, vf);
 }
+
+int  vf_ppmgr_get_states(vframe_states_t *states)
+{
+    int ret = -1;
+    unsigned long flags;
+    struct vframe_provider_s *vfp;
+    vfp = vf_get_provider(RECEIVER_NAME);
+    spin_lock_irqsave(&lock, flags);
+    if (vfp && vfp->ops && vfp->ops->vf_states) {
+        ret=vfp->ops->vf_states(states, vfp->op_arg);
+    }
+    spin_unlock_irqrestore(&lock, flags);
+    return ret;
+}
+
 extern int get_property_change(void) ;
 extern void set_property_change(int flag) ;
 extern int get_buff_change(void);
@@ -303,7 +318,7 @@ const vframe_receiver_op_t* vf_ppmgr_reg_provider(void)
 	}
 #			endif
 
-    if (start_vpp_task() == 0) {
+    if (start_ppmgr_task() == 0) {
         r = &ppmgr_vf_receiver;
     }
     
@@ -316,7 +331,7 @@ void vf_ppmgr_unreg_provider(void)
 {
     mutex_lock(&ppmgr_mutex);
 
-    stop_vpp_task();
+    stop_ppmgr_task();
 
     vf_unreg_provider(&ppmgr_vf_prov);
 
@@ -1432,7 +1447,7 @@ int ppmgr_buffer_init(void)
 
 }
 
-int start_vpp_task(void)
+int start_ppmgr_task(void)
 {
     if (!task) {
         vf_local_init();
@@ -1444,7 +1459,7 @@ int start_vpp_task(void)
     return 0;
 }
 
-void stop_vpp_task(void)
+void stop_ppmgr_task(void)
 {
     if (task) {
         send_sig(SIGTERM, task, 1);

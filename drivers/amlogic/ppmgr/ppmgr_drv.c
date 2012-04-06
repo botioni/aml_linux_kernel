@@ -16,6 +16,11 @@
 #include <linux/amlog.h>
 #include <linux/ctype.h>
 #include <linux/vout/vout_notify.h>
+#include <linux/amports/vframe.h>
+#include <linux/amports/vframe_provider.h>
+#include <linux/amports/vframe_receiver.h>
+
+
 
 #include "ppmgr_log.h"
 #include "ppmgr_pri.h"
@@ -351,6 +356,26 @@ static ssize_t ppscaler_rect_write(struct class *cla,
 }
 #endif
 
+extern int  vf_ppmgr_get_states(vframe_states_t *states);
+
+static ssize_t ppmgr_vframe_states_show(struct class *cla, struct class_attribute* attr, char* buf)
+{
+    int ret = 0;
+    vframe_states_t states;
+
+    if (vf_ppmgr_get_states(&states) == 0) {
+        ret += sprintf(buf + ret, "vframe_pool_size=%d\n", states.vf_pool_size);
+        ret += sprintf(buf + ret, "vframe buf_free_num=%d\n", states.buf_free_num);
+        ret += sprintf(buf + ret, "vframe buf_recycle_num=%d\n", states.buf_recycle_num);
+        ret += sprintf(buf + ret, "vframe buf_avail_num=%d\n", states.buf_avail_num);
+
+    } else {
+        ret += sprintf(buf + ret, "vframe no states\n");
+    }
+
+    return ret;
+}
+
 static struct class_attribute ppmgr_class_attrs[] = {
     __ATTR(info,
            S_IRUGO | S_IWUSR,
@@ -388,6 +413,7 @@ static struct class_attribute ppmgr_class_attrs[] = {
            ppscaler_rect_read,
            ppscaler_rect_write),   
 #endif
+    __ATTR_RO(ppmgr_vframe_states),
     __ATTR_NULL
 };
 
@@ -545,7 +571,7 @@ unregister_dev:
 
 int uninit_ppmgr_device(void)
 {
-    stop_vpp_task();
+    stop_ppmgr_task();
     
     if(ppmgr_device.cla)
     {
