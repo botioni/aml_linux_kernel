@@ -1451,7 +1451,7 @@ int start_ppmgr_task(void)
 {
     if (!task) {
         vf_local_init();
-        if(get_buff_change())
+        //if(get_buff_change())
             ppmgr_buffer_init();
         task = kthread_run(ppmgr_task, 0, "ppmgr");
     }
