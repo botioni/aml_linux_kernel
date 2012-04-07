@@ -317,7 +317,9 @@ static ssize_t userdata_show(struct class *cla, struct class_attribute *attr, ch
 	char *op;
 	bool ret = true;
 	int i;
+	int data_count = 0;
 	efuseinfo_item_t info;
+	char temp_buf[5];
 	struct efuse_platform_data *data = NULL;	
 	struct device	*dev = efuse_class_to_device(cla);
 	data = dev->platform_data;
@@ -344,24 +346,35 @@ static ssize_t userdata_show(struct class *cla, struct class_attribute *attr, ch
 		return -1;
 	}
 		
-	if(data->data_verify)
-		ret = data->data_verify(op);
+	//if(data->data_verify)
+	//	ret = data->data_verify(op);
 	//ret = verify(op);
 		
 	if(!ret){
 		printk("%s error!data_verify failed!\n",__FUNCTION__);
 		return -1;
 	}
+	data_count = info.data_len - 1;
+	while(!op[data_count])
+	    data_count--;
+	data_count++;
+	for(i = 0; i < data_count; i++) {
+	    memset(temp_buf, 0, 5);
+	    sprintf(temp_buf, "%02x:", op[i]);
+	    strcat(buf, temp_buf);
+	}
+	buf[3*data_count - 1] = 0; //delete the last ':'
+	return 3*data_count - 1;
 	/*return sprintf(buf, "%01c%01c%01c%01c%01c%01c%01c%01c%01c%01c%01c%01c%01c%01c%01c%01c%01c%01c%01c%01c\n",
     			   op[0],op[1],op[2],op[3],op[4],op[5],
     			   op[6],op[7],op[8],op[9],op[10],op[11],
     			   op[12],op[13],op[14],op[15],op[16],op[17],
     			   op[18],op[19]);*/
-	memcpy(buf,op,strlen(op));
+	/*memcpy(buf,op,strlen(op));
 	printk("buf is ");
    	for(i=0;i<data->count;i++)
      	printk("%c",buf[i]);
-	return strlen(op);	
+	return strlen(op);	*/
 }
 
 #ifndef EFUSE_READ_ONLY
