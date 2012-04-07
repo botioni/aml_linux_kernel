@@ -360,7 +360,7 @@ static ssize_t userdata_show(struct class *cla, struct class_attribute *attr, ch
 	data_count++;
 	for(i = 0; i < data_count; i++) {
 	    memset(temp_buf, 0, 5);
-	    sprintf(temp_buf, "%02x:", op[i]);
+	    sprintf(temp_buf, "%02x", op[i]);
 	    strcat(buf, temp_buf);
 	}
 	buf[3*data_count - 1] = 0; //delete the last ':'
