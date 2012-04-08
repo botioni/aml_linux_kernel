@@ -1157,24 +1157,36 @@ static struct mtd_partition multi_partition_info_1G_or_More[] =
 	{
         .name = "system",
         .offset = 64*1024*1024,
-        .size = 512*1024*1024,
+        .size = 640*1024*1024,
     },
     {
         .name = "cache",
-        .offset = 576*1024*1024,
-        .size = 342*1024*1024,
+        .offset = 704*1024*1024,
+        .size = 192*1024*1024,
     },
     {
         .name = "rs_data",
-        .offset = 918*1024*1024,
-        .size = 640*1024*1024,
+        .offset = 896*1024*1024,
+        .size = 256*1024*1024,
+    },
+
+    {
+        .name = "fac_backup",
+        .offset = 1152*1024*1024,
+        .size = 192*1024*1024,
+    },
+
+    {
+        .name = "cus_config",
+        .offset = 1344*1024*1024,
+        .size = 32*1024*1024,
     },
 
 #ifdef CONFIG_AML_NFTL
    {
         .name = "userdata",
-        .offset = (918+640)*1024*1024,
-        .size = 512*1024*1024,
+        .offset = 1376*1024*1024,
+        .size = 1024*1024*1024,
     },
     {
 	.name = "NFTL_Part",
@@ -1514,9 +1526,14 @@ static int __init aml_i2c_init(void)
         ARRAY_SIZE(aml_i2c_bus_info_2)); 
     return 0;
 }
-
+#define NET_EXT_CLK 0
 static void __init eth_pinmux_init(void)
 {
+		#ifdef NET_EXT_CLK
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_6, (1<<17));//in disable
+  SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_6, (1 << 18));//out enable
+	#endif
+	
 	 eth_set_pinmux(ETH_BANK0_GPIOY1_Y9, ETH_CLK_OUT_GPIOY0_REG6_17, 0);
     //power hold
     //setbits_le32(P_PREG_AGPIO_O,(1<<8));
@@ -1569,7 +1586,11 @@ static void __init  device_clk_setting(void)
     /*Demod CLK for eth and sata*/
     //demod_apll_setting(0,1200*CLK_1M);
     /*eth clk*/
+    #ifdef NET_EXT_CLK
+		eth_clk_set(7, (50 * CLK_1M), (50 * CLK_1M), 0);
+		#else    
     eth_clk_set(ETH_CLKSRC_MISC_CLK, get_misc_pll_clk(), (50 * CLK_1M), 0);
+    #endif
     //eth_clk_set(1, get_system_clk(), (50 * CLK_1M), 0);
 }
 

@@ -39,7 +39,7 @@ void boot_timer_func(unsigned long arg);
 #define BOOT_MODE_SRAM_ADDR (0xC9000000 + REBOOT_MODE_OFFSET)
 #define BOOT_COUNTER_SRAM_ADDR (BOOT_MODE_SRAM_ADDR - 4)
 
-#define UPDATE_PACKAGE "--update_package=/cache/recovery/last_update_backup.zip"
+#define UPDATE_PACKAGE "--update_package=/fac_backup/last_update_backup.zip"
 
 void boot_timer_func(unsigned long arg)
 {
