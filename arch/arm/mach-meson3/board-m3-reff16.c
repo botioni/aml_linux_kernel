@@ -511,6 +511,28 @@ void mute_spk(struct snd_soc_codec* codec, int flag)
 
 #endif
 
+#ifdef CONFIG_SND_AML_M3_CS4334
+static struct platform_device aml_sound_card={
+       .name                   = "aml_m3_audio_cs4334",
+       .id                     = -1,
+       .resource               = aml_m3_audio_resource,
+       .num_resources          = ARRAY_SIZE(aml_m3_audio_resource),
+};
+
+/* --------------------------------------------------------------------------*/
+/**
+ * * @brief  set_audio_codec_pinmux
+ * *
+ * * @return
+ * */
+/* --------------------------------------------------------------------------*/
+static void __init set_audio_codec_pinmux(void)
+{
+    /* for gpiox_17~20 I2S_AMCLK I2S_AOCLK I2S_LRCLK I2S_OUT */
+    clear_mio_mux(7, (1 << 18) | (1 << 19) | (1 << 20) | (1 << 21) | (1 << 22) | (1 << 23));
+    set_mio_mux(8, (1 << 27) | (1 << 26) | (1 << 25) | (1 << 24));
+}
+#endif
 #ifdef CONFIG_ANDROID_PMEM
 static struct android_pmem_platform_data pmem_data =
 {
@@ -1423,6 +1445,9 @@ static struct platform_device __initdata *platform_devs[] = {
 #if defined(CONFIG_SND_AML_M3)
     &aml_audio,
 #endif
+#ifdef CONFIG_SND_AML_M3_CS4334
+    &aml_sound_card,
+#endif
 #if defined(CONFIG_CARDREADER)
     &amlogic_card_device,
 #endif
@@ -1557,6 +1582,9 @@ static void __init device_pinmux_init(void )
 		SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_3, (1<<24));
 //    set_audio_pinmux(AUDIO_OUT_TEST_N);
    // set_audio_pinmux(AUDIO_IN_JTAG);
+#if defined(CONFIG_SND_AML_M3_CS4334)
+        set_audio_codec_pinmux();
+#endif
 }
 
 static void __init  device_clk_setting(void)

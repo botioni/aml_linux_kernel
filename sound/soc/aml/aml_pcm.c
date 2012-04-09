@@ -125,7 +125,7 @@ struct aml_runtime_data {
 /*--------------------------------------------------------------------------*\
  * audio clock gating
 \*--------------------------------------------------------------------------*/
-
+#if defined(CONFIG_SND_AML_M3)
 static void aml_audio_clock_gating_disable(void)
 {
 	//printk("***Entered %s:%s\n", __FILE__,__func__);
@@ -173,7 +173,7 @@ static void aml_audio_dac_power_gating(int flag)//flag=1 : on; flag=0 : off
 	}
 	WRITE_APB_REG(APB_ADAC_POWER_CTRL_REG1, value);
 }
-
+#endif
 static void aml_audio_adc_power_gating(int flag)//flag=1 : on; flag=0 : off
 {
 	u32 value;
@@ -491,11 +491,15 @@ static int aml_pcm_trigger(struct snd_pcm_substream *substream,
 		// TODO
 		if(substream->stream == SNDRV_PCM_STREAM_PLAYBACK){
 		//    printk("aml_pcm_trigger: playback start\n");
+#if defined(CONFIG_SND_AML_M3)
 			aml_audio_clock_gating_enable();
+#endif
 			audio_enable_ouput(1);
 		}else{
 		//	printk("aml_pcm_trigger: capture start\n");
+#if defined(CONFIG_SND_AML_M3)
 			aml_audio_clock_gating_enable();
+#endif
 			audio_in_i2s_enable(1);
             {
               int * ppp = (int*)(rtd->dma_area+rtd->dma_bytes*2-8);
@@ -516,7 +520,9 @@ static int aml_pcm_trigger(struct snd_pcm_substream *substream,
 		if(substream->stream == SNDRV_PCM_STREAM_PLAYBACK){
         //    printk("aml_pcm_trigger: playback stop\n");
 				audio_enable_ouput(0);
+#if defined(CONFIG_SND_AML_M3)
 			aml_audio_clock_gating_disable();
+#endif
 		}else{
         //    printk("aml_pcm_trigger: capture stop\n");
 				audio_in_i2s_enable(0);
@@ -676,7 +682,11 @@ static int aml_pcm_close(struct snd_pcm_substream *substream)
 	
 	kfree(prtd);
 	if(substream->stream == SNDRV_PCM_STREAM_CAPTURE)
+    {
+#if defined(CONFIG_SND_AML_M3)
 	aml_audio_clock_gating_disable();
+#endif
+    }
 	return 0;
 }
 

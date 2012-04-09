@@ -44,3 +44,8 @@ snd-soc-aml-m3-objs := aml_m3.o
 snd-soc-aml-codec-objs := aml_m3_codec.o
 obj-$(CONFIG_SND_AML_M3) += snd-soc-aml-m3.o
 obj-$(CONFIG_SND_AML_M3) += snd-soc-aml-codec.o
+
+#AML M3 with CS4334 support
+
+snd-soc-aml-m3-cs4334-objs := aml_m3_cs4334.o
+obj-$(CONFIG_SND_AML_M3_CS4334) += snd-soc-aml-m3-cs4334.o
