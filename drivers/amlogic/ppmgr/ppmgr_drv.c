@@ -73,7 +73,7 @@ void set_ppmgr_status(int flag) {
 * Utilities.
 *
 ************************************************************************/
-static ssize_t _ppmgr_orientation_write(unsigned long val)
+static ssize_t _ppmgr_angle_write(unsigned long val)
 {
     unsigned long angle = val;
 
@@ -89,10 +89,15 @@ static ssize_t _ppmgr_orientation_write(unsigned long val)
             return -EINVAL;
         }
     }
+
+    if(angle != ppmgr_device.angle ){		
+        property_change = 1;
+    }
+
     ppmgr_device.angle = angle;
     ppmgr_device.videoangle = (ppmgr_device.angle+ ppmgr_device.orientation)%4;
     printk("angle:%d,orientation:%d,videoangle:%d \n",ppmgr_device.angle ,
-							ppmgr_device.orientation, ppmgr_device.videoangle);
+        ppmgr_device.orientation, ppmgr_device.videoangle);
 
     return 0;
 }
@@ -160,7 +165,11 @@ static ssize_t angle_write(struct class *cla,
     char *endp;
     unsigned long angle  =  simple_strtoul(buf, &endp, 0);
     printk("==%ld==\n",angle);
-	
+
+    if (_ppmgr_angle_write(angle) < 0) {
+        return -EINVAL;
+    }
+/*	
     if(angle != ppmgr_device.angle ){		
         property_change = 1;
     }
@@ -168,6 +177,7 @@ static ssize_t angle_write(struct class *cla,
     ppmgr_device.videoangle = (ppmgr_device.angle+ ppmgr_device.orientation)%4;
     printk("angle:%d,orientation:%d,videoangle:%d \n",ppmgr_device.angle ,
     ppmgr_device.orientation, ppmgr_device.videoangle);
+*/
     size = endp - buf;
     return count;
 }
@@ -485,7 +495,7 @@ static int ppmgr_ioctl(struct inode *inode, struct file *filp,
             *((unsigned int *)argp) = ppmgr_device.angle;
             break;
         case PPMGR_IOC_SET_ANGLE:
-            ret = _ppmgr_orientation_write(args);
+            ret = _ppmgr_angle_write(args);
             break;
         default :
             return -ENOIOCTLCMD;
