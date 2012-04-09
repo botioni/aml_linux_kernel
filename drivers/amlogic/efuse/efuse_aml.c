@@ -110,8 +110,8 @@ static void __efuse_read_dword( unsigned long addr, unsigned long *data )
 	//	auto_rd_is_enabled = 1;
 	//} else {                                                                               
 		/* temporarily enable Read mode */
-		WRITE_CBUS_REG_BITS( EFUSE_CNTL1, CNTL1_AUTO_RD_ENABLE_ON,
-		CNTL1_AUTO_RD_ENABLE_BIT, CNTL1_AUTO_RD_ENABLE_SIZE );
+	//	WRITE_CBUS_REG_BITS( EFUSE_CNTL1, CNTL1_AUTO_RD_ENABLE_ON,
+	//	CNTL1_AUTO_RD_ENABLE_BIT, CNTL1_AUTO_RD_ENABLE_SIZE );
 	//}
 
 	/* write the address */
@@ -139,8 +139,8 @@ static void __efuse_read_dword( unsigned long addr, unsigned long *data )
 
 	/* if auto read wasn't enabled and we enabled it, then disable it upon exit */
 	//if ( auto_rd_is_enabled == 0 ){                                                                               
-		WRITE_CBUS_REG_BITS( EFUSE_CNTL1, CNTL1_AUTO_RD_ENABLE_OFF,
-		CNTL1_AUTO_RD_ENABLE_BIT, CNTL1_AUTO_RD_ENABLE_SIZE );
+	//	WRITE_CBUS_REG_BITS( EFUSE_CNTL1, CNTL1_AUTO_RD_ENABLE_OFF,
+	//	CNTL1_AUTO_RD_ENABLE_BIT, CNTL1_AUTO_RD_ENABLE_SIZE );
 	//}
 
 	//printk(KERN_INFO "__efuse_read_dword: addr=%ld, data=0x%lx\n", addr, *data);
@@ -166,6 +166,10 @@ static ssize_t __efuse_read( char *buf, size_t count, loff_t *ppos )
 		count = EFUSE_BYTES - pos;
 	if (count > EFUSE_BYTES)
 		return -EFAULT;
+		
+	// remove enable AUTO_RD bit from __efuse_read_dword() function to avoid read efuse fail.
+	WRITE_CBUS_REG_BITS( EFUSE_CNTL1, CNTL1_AUTO_RD_ENABLE_ON,
+				CNTL1_AUTO_RD_ENABLE_BIT, CNTL1_AUTO_RD_ENABLE_SIZE );
 	
 	for (pdw = contents + pos/4; dwsize-- > 0 && pos < EFUSE_BYTES; pos += 4, ++pdw) {
 		#ifdef EFUSE_DEBUG     		
@@ -175,6 +179,10 @@ static ssize_t __efuse_read( char *buf, size_t count, loff_t *ppos )
 		__efuse_read_dword((pos - pos%4), pdw);
 		#endif
 	}     
+	
+	// remove enable AUTO_RD bit from __efuse_read_dword() function to avoid read efuse fail.
+	WRITE_CBUS_REG_BITS( EFUSE_CNTL1, CNTL1_AUTO_RD_ENABLE_OFF,
+					CNTL1_AUTO_RD_ENABLE_BIT, CNTL1_AUTO_RD_ENABLE_SIZE );
 	
 	tmp_p = (char*)contents;
     tmp_p += *ppos;                           
