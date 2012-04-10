@@ -82,4 +82,5 @@ int efuseinfo_num = sizeof(efuseinfo)/sizeof(efuseinfo_t);
 int efuse_active_version = -1;
 unsigned efuse_active_customerid = 0;
 pfn efuse_getinfoex = 0;
+pfn efuse_getinfoex_byPos=0;
 
