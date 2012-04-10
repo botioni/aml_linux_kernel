@@ -192,7 +192,7 @@ static ssize_t efuse_write( struct file *file, const char __user *buf, size_t co
 		return -EFAULT;
 		
 	if ((ret = check_if_efused(pos, count))) {
-		printk(KERN_INFO "the chip has been efused\n");
+		printk(KERN_INFO "check has been efused failed\n");
 		if (ret == 1)
 			return -EROFS;
 		else if (ret < 0)
