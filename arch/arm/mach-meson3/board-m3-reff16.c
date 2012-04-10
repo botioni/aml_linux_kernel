@@ -1162,6 +1162,13 @@ static struct mtd_partition multi_partition_info_512M[] =
 
 static struct mtd_partition multi_partition_info_1G_or_More[] = 
 {
+#ifdef CONFIG_AML_NAND_ENV
+    {
+	.name = "ubootenv",
+	.offset = 8*1024*1024,
+	.size = 4*1024*1024,
+    },
+#endif
     {
 	.name = "aml_logo",
 	.offset = 12*1024*1024,
