@@ -199,13 +199,12 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
 		fb0_cfg_w0 |=current_field;
 		fb1_cfg_w0 |=current_field;
 
-		if(osd_hw.color_info[OSD1] != NULL){
-			if(((fb0_cfg_w0&0xf00)!=osd_hw.color_info[OSD1]->hw_blkmode<<8) &&
-				((fb0_cfg_w0&0x3c)!=osd_hw.color_info[OSD1]->hw_colormat<<2)){
-					fb0_cfg_w0 &= 0xfffff0c3;
-					fb0_cfg_w0 |= osd_hw.color_info[OSD1]->hw_blkmode<<8;
-					fb0_cfg_w0 |= osd_hw.color_info[OSD1]->hw_colormat<<2; 
-			}
+		if((osd_hw.color_info[OSD1] != NULL) && 
+			(((fb0_cfg_w0&0xf00)!=osd_hw.color_info[OSD1]->hw_blkmode<<8) ||
+			((fb0_cfg_w0&0x3c)!=osd_hw.color_info[OSD1]->hw_colormat<<2))){		
+				fb0_cfg_w0 &= 0xfffff0c3;
+				fb0_cfg_w0 |= osd_hw.color_info[OSD1]->hw_blkmode<<8;
+				fb0_cfg_w0 |= osd_hw.color_info[OSD1]->hw_colormat<<2; 
 		}
 
 		WRITE_MPEG_REG(VIU_OSD1_BLK0_CFG_W0, fb0_cfg_w0);
