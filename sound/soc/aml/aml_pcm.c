@@ -128,6 +128,7 @@ struct aml_runtime_data {
 #if defined(CONFIG_SND_AML_M3)
 static void aml_audio_clock_gating_disable(void)
 {
+	struct snd_soc_codec* codec;
 	//printk("***Entered %s:%s\n", __FILE__,__func__);
 	//WRITE_CBUS_REG(HHI_GCLK_MPEG0, READ_CBUS_REG(HHI_GCLK_MPEG0)&~(1<<18));
 	WRITE_CBUS_REG(HHI_GCLK_MPEG1, READ_CBUS_REG(HHI_GCLK_MPEG1)&~(1<<2)
@@ -137,6 +138,7 @@ static void aml_audio_clock_gating_disable(void)
 	//WRITE_CBUS_REG(HHI_GCLK_OTHER, READ_CBUS_REG(HHI_GCLK_OTHER)&~(1<<10)
 								    //&~(1<<18)
 								    //&~(0x7<<14));
+	mute_spk(codec,1);							    
 	WRITE_APB_REG(APB_ADAC_POWER_CTRL_REG2, READ_APB_REG(APB_ADAC_POWER_CTRL_REG2)&(~(1<<7)));
 	adac_latch();
 	
@@ -144,6 +146,7 @@ static void aml_audio_clock_gating_disable(void)
 
 static void aml_audio_clock_gating_enable(void)
 {
+	struct snd_soc_codec* codec;
 	printk("***Entered %s:%s\n", __FILE__,__func__);
 	//WRITE_CBUS_REG(HHI_GCLK_MPEG0, READ_CBUS_REG(HHI_GCLK_MPEG0)|(1<<18));
 	WRITE_CBUS_REG(HHI_GCLK_MPEG1, READ_CBUS_REG(HHI_GCLK_MPEG1)|(1<<2)
@@ -154,6 +157,11 @@ static void aml_audio_clock_gating_enable(void)
 								    //|(1<<18)
 								    //|(0x7<<14));
 	WRITE_APB_REG(APB_ADAC_POWER_CTRL_REG2, READ_APB_REG(APB_ADAC_POWER_CTRL_REG2)|(1<<7));
+	if(aml_m3_is_hp_pluged()){
+		mute_spk(codec,1);	
+	}
+	else 
+		mute_spk(codec,0);
 	adac_latch();
 }
 

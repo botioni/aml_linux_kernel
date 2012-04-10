@@ -184,6 +184,9 @@ void aml_m3_reset(struct snd_soc_codec* codec, bool first_time)
     		mute_spk(codec, 0);
 	    	latch_(codec);
         }
+        WRITE_CBUS_REG(HHI_GCLK_MPEG1, READ_CBUS_REG(HHI_GCLK_MPEG1)&~(1<<2));
+        aml_reset_path(codec, AML_PWR_DOWN);//first time pwr down
+        latch_(codec);
 	    
 /*			snd_soc_write(codec, ADAC_RESET, (0<<1));
 	    	snd_soc_write(codec, ADAC_RESET, (0<<1));
@@ -245,9 +248,7 @@ void aml_m3_reset(struct snd_soc_codec* codec, bool first_time)
         latch_(codec);
 	    latch_(codec);
     }
-	WRITE_CBUS_REG(HHI_GCLK_MPEG1, READ_CBUS_REG(HHI_GCLK_MPEG1)&~(1<<2));
-    aml_reset_path(codec, AML_PWR_DOWN);
-    msleep(200);
+    msleep(300);
 }
 
 
