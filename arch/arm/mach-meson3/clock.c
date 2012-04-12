@@ -940,7 +940,7 @@ static ssize_t  clk81_level_store(struct class *cla, struct class_attribute *att
 			return -1;
 		}
 		if (clk81_freq_level == val)
-			return 0;
+			return count;
 		//set_clk81_level(val);
 		if (val == 1) {
 			SET_CBUS_REG_MASK(HHI_OTHER_PLL_CNTL, (0 << 15)); // other pll on
@@ -951,7 +951,7 @@ static ssize_t  clk81_level_store(struct class *cla, struct class_attribute *att
 			}
 		}
 		new_clk81_freq_level = val;
-		return 0;
+		return count;
 	} else
 		return -1;
 }
