@@ -276,6 +276,9 @@ static int efuse_readversion(void)
 			return ver_buf[0];
 		}
 		else{   // distinguish free efuse layout and M1/M2 old version
+#ifdef CONFIG_ARCH_MESON3
+			return -1;
+#else			
 			//if(efuse_is_all_free())
 			if(check_if_version0()){
 				efuse_active_version = 0;
@@ -283,6 +286,7 @@ static int efuse_readversion(void)
 			}
 			else
 				return -1;
+#endif				
 		}
 	}
 	else{
