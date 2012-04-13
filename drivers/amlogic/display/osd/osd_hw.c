@@ -413,12 +413,13 @@ void osd_setup(struct osd_ctl_s *osd_ctl,
 		osd_hw.color_info[index]=color;
 		add_to_update_list(index,OSD_COLOR_MODE);
 	}
-	if(osd_hw.enable[index] == DISABLE)
+	//control fb blank only by /sys/class/graphics/fbx/blank
+	/*if(osd_hw.enable[index] == DISABLE)
 	{
 		osd_hw.enable[index]=ENABLE;
 		add_to_update_list(index,OSD_ENABLE);
 		
-	}
+	}*/
 	if(memcmp(&pan_data,&osd_hw.pandata[index],sizeof(pandata_t))!= 0 ||
 		memcmp(&disp_data,&osd_hw.dispdata[index],sizeof(dispdata_t))!=0)
 	{
