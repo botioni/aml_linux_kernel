@@ -1541,9 +1541,13 @@ static int __init aml_i2c_init(void)
         ARRAY_SIZE(aml_i2c_bus_info_2)); 
     return 0;
 }
-
+#define NET_EXT_CLK 1
 static void __init eth_pinmux_init(void)
 {
+	#ifdef NET_EXT_CLK
+		CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_6, (1<<17));//in disable
+  		SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_6, (1 << 18));//out enable
+	#endif
 	 eth_set_pinmux(ETH_BANK0_GPIOY1_Y9, ETH_CLK_OUT_GPIOY0_REG6_17, 0);
     //power hold
     //setbits_le32(P_PREG_AGPIO_O,(1<<8));
@@ -1563,8 +1567,8 @@ static void __init eth_pinmux_init(void)
     udelay(100);
 
     // ethernet reset
-    set_gpio_val(GPIOD_bank_bit0_9(7), GPIOD_bit_bit0_9(7), 0);
     set_gpio_mode(GPIOD_bank_bit0_9(7), GPIOD_bit_bit0_9(7), GPIO_OUTPUT_MODE);
+    set_gpio_val(GPIOD_bank_bit0_9(7), GPIOD_bit_bit0_9(7), 0);
     mdelay(100);
     set_gpio_val(GPIOD_bank_bit0_9(7), GPIOD_bit_bit0_9(7), 1);
 }
@@ -1599,7 +1603,12 @@ static void __init  device_clk_setting(void)
     /*Demod CLK for eth and sata*/
     //demod_apll_setting(0,1200*CLK_1M);
     /*eth clk*/
-    eth_clk_set(ETH_CLKSRC_MISC_CLK, get_misc_pll_clk(), (50 * CLK_1M), 0);
+    #ifdef NET_EXT_CLK
+		eth_clk_set(7, (50 * CLK_1M), (50 * CLK_1M), 0);
+		printk("Dongtao external NET.\n");
+	#else    
+    	eth_clk_set(ETH_CLKSRC_MISC_CLK, get_misc_pll_clk(), (50 * CLK_1M), 0);
+    #endif
     //eth_clk_set(1, get_system_clk(), (50 * CLK_1M), 0);
 }
 
