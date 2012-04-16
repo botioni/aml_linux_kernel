@@ -577,7 +577,7 @@ static void change_speed(struct am_uart_port *info, unsigned long newbaud)
     am_uart_t *uart = uart_addr[info->line];
     struct tty_struct *tty;
     unsigned long tmp;
-
+    unsigned long tmp_intctl;
 #ifdef PRINT_DEBUG
     if(info->line == 0)
         printk("%s\n", __FUNCTION__);
@@ -598,8 +598,15 @@ static void change_speed(struct am_uart_port *info, unsigned long newbaud)
     }
 
     tmp = (clk_get_rate(clk_get_sys("clk81", NULL)) / (newbaud * 4)) - 1;
+    tmp_intctl = tmp >> 12;
+    tmp_intctl &= 0xf;
 
     info->baud = (int)newbaud;
+
+	if(tmp_intctl != 0x0){
+		tmp_intctl = (__raw_readl(&uart->intctl) & 0xff0fffff) | (tmp_intctl <<20);
+		__raw_writel(tmp_intctl, &uart->intctl);
+	}
 
 	tmp = (__raw_readl(&uart->mode) & ~0xfff) | (tmp & 0xfff);
 	__raw_writel(tmp, &uart->mode);
