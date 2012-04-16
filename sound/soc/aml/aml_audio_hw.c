@@ -462,7 +462,8 @@ void audio_set_clk(unsigned freq, unsigned fs_config)
     // gate the clock off
     WRITE_MPEG_REG( HHI_AUD_CLK_CNTL, READ_MPEG_REG(HHI_AUD_CLK_CNTL) & ~(1 << 8));
 
-#ifdef CONFIG_SND_AML_M3
+//#ifdef CONFIG_SND_AML_M3
+#ifdef CONFIG_ARCH_MESON3
     WRITE_MPEG_REG(HHI_AUD_PLL_CNTL2, 0x065e31ff);
     WRITE_MPEG_REG(HHI_AUD_PLL_CNTL3, 0x9649a941);
 		// select Audio PLL as MCLK source
@@ -475,7 +476,8 @@ void audio_set_clk(unsigned freq, unsigned fs_config)
     // Put the PLL to sleep
     WRITE_MPEG_REG( HHI_AUD_PLL_CNTL, READ_MPEG_REG(HHI_AUD_PLL_CNTL) | (1 << 15));//found
 
-#ifdef CONFIG_SND_AML_M3
+//#ifdef CONFIG_SND_AML_M3
+#ifdef CONFIG_ARCH_MESON3
 		WRITE_MPEG_REG_BITS(AIU_CODEC_ADC_LRCLK_CTRL, 64-1, 0, 12);//set codec adc ratio---lrclk
 		WRITE_MPEG_REG_BITS(AIU_CODEC_DAC_LRCLK_CTRL, 64-1, 0, 12);//set codec dac ratio---lrclk
 #endif		
