@@ -61,10 +61,17 @@ dsp_register.h
 #define DSP_AUDIO_FORMAT_INFO  DSP_REG(22)
 
 #define DSP_GET_EXTRA_INFO_FINISH    DSP_REG(23)
+#define DSP_HDMI_SR                  DSP_REG(24)
+
 #define DSP_LOG_START_ADDR  	DSP_REG(28)
 #define DSP_LOG_END_ADDR   	    DSP_REG(29)
 #define DSP_LOG_RD_ADDR  	    DSP_REG(30)
 #define DSP_LOG_WD_ADDR  		DSP_REG(31)
+
+#define DSP_PCMENC_START_ADDR  	DSP_REG(28)
+#define DSP_PCMENC_END_ADDR   	    DSP_REG(29)
+#define DSP_PCMENC_RD_ADDR  	    DSP_REG(30)
+#define DSP_PCMENC_WD_ADDR  		DSP_REG(31)
 
 #define MAILBOX1_REG(n)	DSP_REG(40+n)
 #define MAILBOX2_REG(n)	DSP_REG(40+32+n)
