@@ -454,6 +454,13 @@ static ssize_t show_disp_cap(struct device * dev, struct device_attribute *attr,
     return pos;    
 }
 
+static ssize_t show_hpd_state(struct device * dev, struct device_attribute *attr, char * buf)
+{   
+    int i,pos=0;
+    pos += snprintf(buf+pos, PAGE_SIZE,"%d", hdmitx_device.hpd_state);
+    return pos;    
+}
+
 static unsigned char* hdmi_log_buf=NULL;
 static unsigned int hdmi_log_wr_pos=0;
 static unsigned int hdmi_log_rd_pos=0;
@@ -581,6 +588,7 @@ static DEVICE_ATTR(edid, S_IWUSR | S_IRUGO, show_edid, store_edid);
 static DEVICE_ATTR(config, S_IWUSR | S_IRUGO, show_config, store_config);
 static DEVICE_ATTR(debug, S_IWUSR | S_IRUGO, NULL, store_dbg);
 static DEVICE_ATTR(disp_cap, S_IWUSR | S_IRUGO, show_disp_cap, NULL);
+static DEVICE_ATTR(hpd_state, S_IWUSR | S_IRUGO, show_hpd_state, NULL);
 static DEVICE_ATTR(log, S_IWUSR | S_IRUGO, show_log, store_log);
 static DEVICE_ATTR(cec, S_IWUSR | S_IRUGO, show_cec, store_cec);
 
@@ -932,7 +940,8 @@ hdmi_task_handle(void *data)
 
 				switch_set_state(&sdev, 1);
                 hdmitx_device->hpd_event = 0;
-            }    
+            }  
+            hdmitx_device->hpd_state = 1;  
         }
         else if(hdmitx_device->hpd_event == 2)
         {
@@ -951,6 +960,7 @@ hdmi_task_handle(void *data)
             hdmi_authenticated = -1;
 			switch_set_state(&sdev, 0);
             hdmitx_device->hpd_event = 0;
+            hdmitx_device->hpd_state = 0;
         }    
         else{
         }            
@@ -1186,6 +1196,7 @@ static int amhdmitx_probe(struct platform_device *pdev)
     device_create_file(hdmitx_dev, &dev_attr_config);
     device_create_file(hdmitx_dev, &dev_attr_debug);
     device_create_file(hdmitx_dev, &dev_attr_disp_cap);
+    device_create_file(hdmitx_dev, &dev_attr_hpd_state);
     device_create_file(hdmitx_dev, &dev_attr_log);
     device_create_file(hdmitx_dev, &dev_attr_cec);
     
@@ -1238,6 +1249,7 @@ static int amhdmitx_remove(struct platform_device *pdev)
     device_remove_file(hdmitx_dev, &dev_attr_config);
     device_remove_file(hdmitx_dev, &dev_attr_debug);
     device_remove_file(hdmitx_dev, &dev_attr_disp_cap);
+    device_remove_file(hdmitx_dev, &dev_attr_hpd_state);
     device_remove_file(hdmitx_dev, &dev_attr_log);
     device_remove_file(hdmitx_dev, &dev_attr_cec);
 
