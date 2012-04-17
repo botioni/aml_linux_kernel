@@ -1,5 +1,7 @@
 #ifndef __EFUSE_REG_H                                
 #define __EFUSE_REG_H
+                       
+//#define EFUSE_DEBUG                       
                                                      
 #define EFUSE_CNTL0 0x2158
 #define EFUSE_CNTL1 0x2159                           
@@ -121,6 +123,18 @@ bit[7-0]    XOR
         READ_CBUS_REG_BITS(reg, start, len)        
 #endif                                             
                              
+#define 	EFUSE_VERSION_OFFSET     		380
+#define 	EFUSE_VERSION_ENC_LEN  		4
+#define 	EFUSE_VERSION_DATA_LEN 		3
+#define 	EFUSE_VERSION_BCH_EN			1
+#define	EFUSE_VERSION_BCH_REVERSE		0
+
+#define	V1_EFUSE_USID_OFFSET				4
+#define	V1_EFUSE_USID_ENC_LEN				35
+#define	V1_EFUSE_USID_DATA_LEN			35
+#define 	V1_EFUSE_USID_BCH_EN				0
+#define	V1_EFUSE_USID_BCH_REVERSE		0
+                                                  
                                                   
 #endif                                             
                                                    

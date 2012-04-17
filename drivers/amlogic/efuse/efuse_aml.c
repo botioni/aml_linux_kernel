@@ -22,7 +22,6 @@ extern pfn efuse_getinfoex;
 extern pfn efuse_getinfoex_byPos;
 extern efuseinfo_t efuseinfo[];
 
-//#define EFUSE_DEBUG
 
 #ifdef EFUSE_DEBUG
 
@@ -232,83 +231,124 @@ static int cpu_is_before_m6(void)
 	return ((val & 0x40000000) == 0x40000000);
 }
 
-static int check_if_version0(void)
+static void efuse_set_versioninfo(efuseinfo_item_t *info)
 {
-	unsigned long* contents = (unsigned long*)kzalloc(sizeof(unsigned long)*EFUSE_DWORDS, GFP_KERNEL);
-	char *op = NULL;
-	loff_t pos = 0;
-	int i;
-	int ret = 1;	
-		
-	if (!contents) {
-		printk(KERN_INFO "memory not enough\n"); 
-		return -ENOMEM;
-	}	
-	op = (char *)contents;
-
-	__efuse_read(op, EFUSE_BYTES, &pos);	
-	for(i=0; i<EFUSE_BYTES; i++)
-		if((op[i] != 0) && (i!=0) &&(i!=1)&&(i!=2)&&(i!=3)&& (i!=0x40)){
-			ret = 0;
-			break;
-		}
-	
-	if(contents)
-		kfree(contents);
-	return ret;
+	// only used for M3/M1
+	strcpy(info->title, "version");		
+	info->id = EFUSE_VERSION_ID;
+	info->offset = EFUSE_VERSION_OFFSET; //380;		
+	info->data_len = EFUSE_VERSION_DATA_LEN; //3;			
 }
 
 static int efuse_readversion(void)
 {
 	loff_t ppos;
 	char ver_buf[4], buf[4];
+	efuseinfo_item_t info;
 	
 	if(efuse_active_version != -1)
 		return efuse_active_version;
 	
-	memset(ver_buf, 0, sizeof(ver_buf));	
-	if(cpu_is_before_m6()){    // M1, M2, M3, A3
-		ppos = 380;
-		__efuse_read(buf, 4, &ppos);
-		efuse_bch_dec(buf, 4, ver_buf, 0);		
-		if(ver_buf[0] != 0){
-			efuse_active_version = ver_buf[0];
-			return ver_buf[0];
-		}
-		else{   // distinguish free efuse layout and M1/M2 old version
+	efuse_set_versioninfo(&info);
+	memset(ver_buf, 0, sizeof(ver_buf));		
+	memset(buf, 0, sizeof(buf));
+	
+	__efuse_read(buf, EFUSE_VERSION_ENC_LEN, &info.offset);
+	//if(info.bch_en)
+	// only for M3/M1
+	efuse_bch_dec(buf, EFUSE_VERSION_ENC_LEN, ver_buf, EFUSE_VERSION_BCH_REVERSE);
+	//else
+	//	memcpy(ver_buf, buf, sizeof(buf));
+	
 #ifdef CONFIG_ARCH_MESON3
-			return -1;
-#else			
-			//if(efuse_is_all_free())
-			if(check_if_version0()){
-				efuse_active_version = 0;
-				return 0;
-			}
-			else
-				return -1;
-#endif				
+	if(ver_buf[0] == 1){
+		efuse_active_version = ver_buf[0];
+		return ver_buf[0];
+	}
+	else
+		return -1;
+#else  //M1
+	if(ver_buf[0] == 0){
+		efuse_active_version = ver_buf[0];
+		reurn ver_buf[0];
+	}
+	else
+		reurn -1;
+#endif	
+}
+
+static int efuse_getinfo_byPOS(unsigned pos, efuseinfo_item_t *info)
+{
+	int ver;
+	int i;
+	efuseinfo_t *vx = NULL;
+	efuseinfo_item_t *item = NULL;
+	int size;
+	int ret = -1;				
+	
+	if(pos == EFUSE_VERSION_OFFSET){
+		efuse_set_versioninfo(info);
+		return 0;
+	}
+	
+	ver = efuse_readversion();
+	if(ver < 0){
+		printk("efuse version is not selected.\n");
+		return -1;
+	}		
+	for(i=0; i<efuseinfo_num; i++){
+		if(efuseinfo[i].version == ver){
+			vx = &(efuseinfo[i]);
+			break;
+		}				
+	}
+	if(!vx){
+		printk("efuse version %d is not supported.\n", ver);
+		return -1;
+	}	
+		
+	// BSP setting priority is higher	
+	if(efuse_getinfoex_byPos != NULL){
+		ret = efuse_getinfoex_byPos(pos, info);		
+		if(ret>=0)
+			return ret;
+	}
+		
+	ret = -1;		
+	item = vx->efuseinfo_version;
+	size = vx->size;		
+	for(i=0; i<size; i++, item++){			
+		if(pos == item->offset){
+			strcpy(info->title, item->title);				
+			info->offset = item->offset;
+			info->id = item->id;				
+			info->data_len = item->data_len;									
+			ret = 0;
+			break;
 		}
+	}	
+		
+		if(ret < 0)
+			printk("POS:%d is not found.\n", pos);
+		return ret;
+}
+
+static void get_bch_info(unsigned id,  unsigned* bch_enable, unsigned* bch_reverse)
+{
+	if(id == EFUSE_USID_ID){
+		*bch_enable=0;
+		*bch_reverse=0;
+	}
+	else if(id == EFUSE_LICENCE_ID){
+		*bch_enable= 1;
+		*bch_reverse=1;
 	}
 	else{
-		ppos = 3;
-		__efuse_read(ver_buf, 1, &ppos);
-		if(ver_buf[0] != 0){
-			efuse_active_version = ver_buf[0];
-			return ver_buf[0];
-		}
-		else
-			return -1;	
-	}		
+		*bch_enable=1;
+		*bch_reverse=0;
+	}
+	return;		
 }
-
-static int check_if_bchversion(void)
-{
-	if(cpu_is_before_m6())
-		return 1;
-	else
-		return 0;
-}
-
 //=================================================================================================
 // public interface
 //=================================================================================================
@@ -321,158 +361,83 @@ int efuse_getinfo_byID(unsigned id, efuseinfo_item_t *info)
 	int size;
 	int ret = -1;		
 	
+	
 	if(id == EFUSE_VERSION_ID){
-		strcpy(info->title, "version");		
-		if(cpu_is_before_m6()){
-			info->offset = 380;		
-			info->data_len = 3;			
-		}
-		else{
-				info->offset = 3;		
-				info->data_len = 5;		
-			}
+		efuse_set_versioninfo(info);
 		return 0;		
 	}	
 	
-		ver = efuse_readversion();
-		if(ver < 0){
-			printk("efuse version is not selected.\n");
-			return -1;
-		}
+	ver = efuse_readversion();
+	if(ver < 0){
+		printk("efuse version is not selected.\n");
+		return -1;
+	}		
+	for(i=0; i<efuseinfo_num; i++){
+		if(efuseinfo[i].version == ver){
+			vx = &(efuseinfo[i]);
+			break;
+		}				
+	}
+	if(!vx){
+		printk("efuse version %d is not supported.\n", ver);
+		return -1;
+	}	
 		
-		for(i=0; i<efuseinfo_num; i++){
-			if(efuseinfo[i].version == ver){
-				vx = &(efuseinfo[i]);
-				break;
-			}				
-		}
-		if(!vx){
-			printk("efuse version %d is not supported.\n", ver);
-			return -1;
-		}	
+	// BSP setting priority is higher		
+	if(efuse_getinfoex != NULL){
+		ret = efuse_getinfoex(id, info);		
+		if(ret >=0)
+			return ret;
+	}
 		
-		// BSP setting priority is higher
-		ret = -1;		
-		if(efuse_getinfoex != NULL){
-			ret = efuse_getinfoex(id, info);		
-			if(ret >=0)
-				return ret;
+	ret = -1;		
+	item = vx->efuseinfo_version;
+	size = vx->size;		
+	for(i=0; i<size; i++, item++){			
+		if(id == item->id){
+			strcpy(info->title, item->title);				
+			info->offset = item->offset;
+			info->id = item->id;				
+			info->data_len = item->data_len;								
+			ret = 0;
+			break;
 		}
-		
-		item = vx->efuseinfo_version;
-		size = vx->size;		
-		for(i=0; i<size; i++, item++){			
-			if(id == item->id){
-				strcpy(info->title, item->title);				
-				info->offset = item->offset;
-				info->id = item->id;				
-				info->data_len = item->data_len;								
-				ret = 0;
-				break;
-			}
-		}
-				
-		if(ret < 0)
-			printk("ID:%d is not found.\n", id);
+	}				
+	if(ret < 0)
+		printk("ID:%d is not found.\n", id);
 			
-		return ret;
+	return ret;
 }
 
-static int efuse_getinfo_byPOS(unsigned pos, efuseinfo_item_t *info)
-{
-	int ver;
-	int i;
-	efuseinfo_t *vx = NULL;
-	efuseinfo_item_t *item = NULL;
-	int size;
-	int ret = -1;		
-	
-	unsigned versionPOS;
-	if(cpu_is_before_m6())
-		versionPOS = 380;
-	else
-		versionPOS = 3;
-	if(pos == versionPOS){
-		if(cpu_is_before_m6()){
-			info->offset = 380;		
-			info->data_len = 3;			
-		}
-		else{
-				info->offset = 3;		
-				info->data_len = 5;		
-			}
-		return 0;	
-	}
-	
-	ver = efuse_readversion();
-		if(ver < 0){
-			printk("efuse version is not selected.\n");
-			return -1;
-		}
-		
-		for(i=0; i<efuseinfo_num; i++){
-			if(efuseinfo[i].version == ver){
-				vx = &(efuseinfo[i]);
-				break;
-			}				
-		}
-		if(!vx){
-			printk("efuse version %d is not supported.\n", ver);
-			return -1;
-		}	
-		
-		// BSP setting priority is higher
-		ret = -1;		
-		if(efuse_getinfoex_byPos != NULL){
-			ret = efuse_getinfoex_byPos(pos, info);		
-			if(ret>=0)
-				return ret;
-		}
-		
-		item = vx->efuseinfo_version;
-		size = vx->size;		
-		for(i=0; i<size; i++, item++){			
-			if(pos == item->offset){
-				strcpy(info->title, item->title);				
-				info->offset = item->offset;
-				info->id = item->id;				
-				info->data_len = item->data_len;									
-				ret = 0;
-				break;
-			}
-		}	
-		
-		if(ret < 0)
-			printk("POS:%d is not found.\n", pos);
-		return ret;
-}
+
 
 int check_if_efused(loff_t pos, size_t count)
 {
 	loff_t local_pos = pos;
 	int i;
-	unsigned char* buf = NULL;
-	unsigned enc_len = count;	
-	unsigned info_enc_len = 0;
 	int ret;
+	unsigned char* buf = NULL;
+	unsigned enc_len;			
 	efuseinfo_item_t info;
-	
-	ret= check_if_bchversion();	
+	unsigned bch_en, bch_reverse;
+		
 	if(efuse_getinfo_byPOS(pos, &info) < 0){
 		printk("not found the position:%d.\n", pos);
 		return -1;
 	}
-	
-	info_enc_len = info.data_len;
-	if(ret != 0){
-		enc_len += ((count+29)/30);
-		info_enc_len += ((info.data_len+29)/30);
-	}
-	
-	if((enc_len != info_enc_len) && (info.id != EFUSE_USID_ID)){
-		printk("data length: %d is not math layout!\n", count);
+	 if(count>info.data_len){
+		printk("data length: %d is out of EFUSE layout!\n", count);
 		return -1;
 	}
+	if(count == 0){
+		printk("data length: 0 is error!\n");
+		return -1;
+	}
+		
+	get_bch_info(info.id, &bch_en, &bch_reverse);	
+	enc_len = info.data_len;
+	if(bch_en)
+		enc_len += ((info.data_len+29)/30);
 		
 	buf = (unsigned char*)kzalloc(sizeof(char)*enc_len, GFP_KERNEL);
 	if (buf) {
@@ -496,117 +461,139 @@ int check_if_efused(loff_t pos, size_t count)
 int efuse_read_item(char *buf, size_t count, loff_t *ppos)
 {	
 	int ret;
-	unsigned enc_len = count;		
-	unsigned info_enc_len =0;
-	char* contents = NULL;
+	unsigned enc_len;		
+	char* enc_buf=NULL;
+	char* data_buf=NULL;	
 	char *penc = NULL;
-	char *pdata = NULL;		
-	int reverse = 0;
+	char *pdata = NULL;			
 	unsigned pos = (unsigned)*ppos;
 	efuseinfo_item_t info;
-
-	ret = check_if_bchversion();		
+	unsigned bch_en, bch_reverse;
+	
 	if(efuse_getinfo_byPOS(pos, &info) < 0){
 		printk("not found the position:%d.\n", pos);
 		return -1;
 	}	
-	info_enc_len = info.data_len;
-	
-	if(pos == 60)  //licence
-		reverse = 1;
-	if(ret != 0){
-		enc_len += ((count+29)/30);
-		info_enc_len += ((info.data_len+29)/30);
-	}	
-	if((enc_len != info_enc_len) && (info.id != EFUSE_USID_ID)){
-		printk("data length: %d is not math layout!\n", count);
+	if(count>info.data_len){
+		printk("data length: %d is out of EFUSE layout!\n", count);
 		return -1;
-	}	
+	}
+	if(count == 0){
+		printk("data length: 0 is error!\n");
+		return -1;
+	}
 	
-	contents = (char*)kzalloc(sizeof(char)*EFUSE_BYTES, GFP_KERNEL);
-	if (!contents) {
+	get_bch_info(info.id, &bch_en, &bch_reverse);
+	enc_len = info.data_len;
+	if(bch_en)
+		enc_len += ((info.data_len+29)/30);
+	
+	enc_buf = (char*)kzalloc(sizeof(char)*EFUSE_BYTES, GFP_KERNEL);
+	if (!enc_buf) {
 		printk(KERN_INFO "memory not enough\n"); 
 		return -ENOMEM;
 	}	
-	memset(contents, 0, sizeof(contents));	
+	data_buf = (char*)kzalloc(sizeof(char)*EFUSE_BYTES, GFP_KERNEL);
+	if(!data_buf){
+		if(enc_buf)
+			kfree(enc_buf);
+		printk(KERN_INFO "memory not enough\n"); 
+		return -ENOMEM;
+	}
 		
-	penc = contents;
-	pdata = buf;			
-	if(ret != 0){						
-		__efuse_read(contents, enc_len, ppos);		
+	penc = enc_buf;
+	pdata = data_buf;			
+	if(bch_en){						
+		__efuse_read(enc_buf, enc_len, ppos);		
 		while(enc_len >= 31){
-			efuse_bch_dec(penc, 31, pdata, reverse);
+			efuse_bch_dec(penc, 31, pdata, bch_reverse);
 			penc += 31;
 			pdata += 30;
 			enc_len -= 31;
 		}
 		if((enc_len > 0))
-			efuse_bch_dec(penc, enc_len, pdata, reverse);
+			efuse_bch_dec(penc, enc_len, pdata, bch_reverse);
 	}	
 	else
-		__efuse_read(buf, enc_len, ppos);	
-		
-	if(contents)
-		kfree(contents);
+		__efuse_read(data_buf, enc_len, ppos);	
+	
+	memcpy(buf, data_buf, count);		
+	
+	if(enc_buf)
+		kfree(enc_buf);
+	if(data_buf)
+		kfree(data_buf);		
 	return count;	
 }
 
 int efuse_write_item(char *buf, size_t count, loff_t *ppos)
 {
-	int ret;
-	unsigned data_len = count;	
-	unsigned enc_len = count;
-	unsigned info_enc_len=0;
+	int ret;	
 	efuseinfo_item_t info;
-	char* contents = NULL;
+	char* enc_buf = NULL;
+	char* data_buf = NULL;	
 	char *pdata = NULL;
 	char *penc = NULL;		
-	int reverse = 0;
+	unsigned data_len;	
+	unsigned enc_len;	
 	unsigned pos = (unsigned)*ppos;	
+	unsigned bch_en, bch_reverse;
 	
-	ret = check_if_bchversion();			
 	if(efuse_getinfo_byPOS(pos, &info) < 0){
 		printk("not found the position:%d.\n", pos);
 		return -1;
-	}	
-	info_enc_len = info.data_len;
-	if(pos == 60)
-		reverse = 1;	
-	if(ret != 0){
-		enc_len += ((count+29)/30);
-		info_enc_len +=  ((info.data_len+29)/30);
 	}
-	if((enc_len != info_enc_len) && (info.id != EFUSE_USID_ID)){
-		printk("data length: %d is not math layout!\n", count);
+	if(count>info.data_len){
+		printk("data length: %d is out of EFUSE layout!\n", count);
+		return -1;
+	}
+	if(count == 0){
+		printk("data length: 0 is error!\n");
 		return -1;
 	}	
 	
-	contents = (char*)kzalloc(sizeof(char)*EFUSE_BYTES, GFP_KERNEL);
-	if (!contents) {
+	enc_buf = (char*)kzalloc(sizeof(char)*EFUSE_BYTES, GFP_KERNEL);
+	if (!enc_buf) {
 		printk(KERN_INFO "memory not enough\n"); 
 		return -ENOMEM;
 	}	
-	memset(contents, 0, sizeof(contents));
+	data_buf = (char*)kzalloc(sizeof(char)*EFUSE_BYTES, GFP_KERNEL);
+	if(!data_buf){
+		if(enc_buf)
+			kfree(enc_buf);
+		printk(KERN_INFO "memory not enough\n"); 
+		return -ENOMEM;
+	}	
 
-	pdata = buf;
-	penc = contents;			
-	if(ret != 0){				
+	memcpy(data_buf, buf, count)	;	
+	get_bch_info(info.id, &bch_en, &bch_reverse);
+	pdata = data_buf;
+	penc = enc_buf;			
+	data_len = info.data_len;
+	enc_len=info.data_len;
+	if(bch_en)
+		enc_len += ((info.data_len+29)/30);
+		
+	if(bch_en){				
 		while(data_len >= 30){
-			efuse_bch_enc(pdata, 30, penc, reverse);
+			efuse_bch_enc(pdata, 30, penc, bch_reverse);
 			data_len -= 30;
 			pdata += 30;
 			penc += 31;		
 		}
 		if(data_len > 0)
-			efuse_bch_enc(pdata, data_len, penc, reverse);
+			efuse_bch_enc(pdata, data_len, penc, bch_reverse);
 	}	
 	else
 		memcpy(penc, pdata, data_len);
 	
-	__efuse_write(contents, enc_len, ppos);
+	__efuse_write(enc_buf, enc_len, ppos);
 	
-	if(contents)
-		kfree(contents);
-	return count ;		
+	if(enc_buf)
+		kfree(enc_buf);
+	if(data_buf)
+		kfree(data_buf);
+		
+	return enc_len ;		
 }
 

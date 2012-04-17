@@ -26,8 +26,8 @@ static efuseinfo_item_t efuseinfo_v1[] =
 	{
 		.title = "usid",
 		.id = EFUSE_USID_ID,
-		.offset = 4,		
-		.data_len = 33,				
+		.offset = V1_EFUSE_USID_OFFSET, //4,		
+		.data_len = V1_EFUSE_USID_DATA_LEN, //35,				
 	},	
 	{
 		.title = "mac_wifi",
@@ -62,8 +62,8 @@ static efuseinfo_item_t efuseinfo_v1[] =
 	{
 		.title= "version",     //1B(version=1)+2B(machid)
 		.id = EFUSE_VERSION_ID,
-		.offset=380,		
-		.data_len = 3,		
+		.offset=EFUSE_VERSION_OFFSET, //380,		
+		.data_len = EFUSE_VERSION_DATA_LEN, //3,		
 	},
 };
 
