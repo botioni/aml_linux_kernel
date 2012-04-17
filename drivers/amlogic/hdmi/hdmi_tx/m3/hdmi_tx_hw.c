@@ -1221,7 +1221,7 @@ void hdmi_hw_init(hdmitx_dev_t* hdmitx_device)
     hdmi_wr_reg(OTHER_BASE_ADDR + HDMI_OTHER_INTR_MASKN, 0x7);
     // HPD glitch filter
     hdmi_wr_reg(TX_HDCP_HPD_FILTER_L, 0x00);
-    hdmi_wr_reg(TX_HDCP_HPD_FILTER_H, 0xa0);
+    hdmi_wr_reg(TX_HDCP_HPD_FILTER_H, 0xaf);
 
 //#ifdef AML_A3
 #if 1
@@ -1286,7 +1286,7 @@ void hdmi_hw_init(hdmitx_dev_t* hdmitx_device)
     //tmp_add_data[7:0]   = 0xa ; // time_divider[7:0] for DDC I2C bus clock
     //tmp_add_data = 0xa; //800k
     //tmp_add_data = 0x3f; //190k
-    tmp_add_data = 0x78; //100k
+    tmp_add_data = 0x18; //100k     // hdmi system clock change to XTAL 24MHz
     hdmi_wr_reg(TX_HDCP_CONFIG3, tmp_add_data);
 
     //tmp_add_data[15:8] = 0;
@@ -1603,7 +1603,7 @@ static void hdmi_hw_reset(Hdmi_tx_video_para_t *param)
     
     //tmp_add_data = 0xa; //800k
     //tmp_add_data = 0x3f; //190k
-    tmp_add_data = 0x78; //100k
+    tmp_add_data = 0x18; //100k     // hdmi system clock change to XTAL 24MHz
     hdmi_wr_reg(TX_HDCP_CONFIG3, tmp_add_data);
 
     //tmp_add_data[15:8] = 0;
@@ -2524,6 +2524,41 @@ static int hdmitx_m3_set_audmode(struct hdmi_tx_dev_s* hdmitx_device, Hdmi_tx_au
         enable_audio_spdif();
     else
         enable_audio_i2s();
+        
+    //TODO. Different audio type, maybe have different settings
+    switch(audio_param->type){
+        case CT_PCM:
+            break;
+        case CT_AC_3:
+            break;
+        case CT_MPEG1:
+            break;
+        case CT_MP3:
+            break;
+        case CT_MPEG2:
+            break;
+        case CT_AAC:
+            break;
+        case CT_DTS:
+            break;
+        case CT_ATRAC:
+            break;
+        case CT_ONE_BIT_AUDIO:
+            break;
+        case CT_DOLBY_D:
+            break;
+        case CT_DTS_HD:
+            break;
+        case CT_MAT:
+            break;
+        case CT_DST:
+            break;
+        case CT_WMA:
+            break;
+        default:
+            break;
+    }
+    
     return 0;
 }    
     
@@ -2753,7 +2788,7 @@ static int hdmitx_m3_cntl(hdmitx_dev_t* hdmitx_device, int cmd, unsigned argv)
             return 0;
         }
     }
-                
+    return 1;
 }
 #if 0
 #include <mach/gpio.h>
