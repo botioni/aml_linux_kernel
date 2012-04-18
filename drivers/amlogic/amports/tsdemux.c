@@ -226,6 +226,21 @@ static int tsdemux_set_sid(int spid)
 
     return r;
 }
+static int tsdemux_set_skip_byte(int skipbyte)
+{
+    unsigned long flags;
+    int r = 0;
+
+    spin_lock_irqsave(&demux_ops_lock, flags);
+    if (demux_ops && demux_ops->set_skipbyte) {
+        r = demux_ops->set_skipbyte(skipbyte);
+    }else{
+        demux_skipbyte = skipbyte;
+    }
+    spin_unlock_irqrestore(&demux_ops_lock, flags);
+
+    return r;
+}
 
 static int tsdemux_config(void)
 {
@@ -724,6 +739,25 @@ void tsdemux_sub_reset(void)
 
 void tsdemux_set_skipbyte(int skipbyte)
 {
+#ifndef ENABLE_DEMUX_DRIVER
     demux_skipbyte = skipbyte;
+#else
+    tsdemux_set_skip_byte(skipbyte);
+#endif
     return;
 }
+
+void tsdemux_set_demux(int dev)
+{
+#ifdef ENABLE_DEMUX_DRIVER
+    unsigned long flags;
+    int r = 0;
+
+    spin_lock_irqsave(&demux_ops_lock, flags);
+    if (demux_ops && demux_ops->set_demux) {
+        r = demux_ops->set_demux(dev);
+    }
+    spin_unlock_irqrestore(&demux_ops_lock, flags);
+#endif
+}
+
