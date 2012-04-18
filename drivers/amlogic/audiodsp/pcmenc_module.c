@@ -19,10 +19,7 @@
 #include <linux/amports/dsp_register.h>
 
 
-#define AUDIODSP_PCMENC_GET_RING_BUF_SIZE      _IOR('l', 0x01, unsigned long)
-#define AUDIODSP_PCMENC_GET_RING_BUF_CONTENT   _IOR('l', 0x02, unsigned long)
-#define AUDIODSP_PCMENC_GET_RING_BUF_SPACE     _IOR('l', 0x03, unsigned long)
-#define AUDIODSP_PCMENC_SET_RING_BUF_RPTR	   _IOW('l', 0x04, unsigned long)	
+
 
 static int __init audiodsp_pcmenc_init_module(void);
 static void __exit audiodsp_pcmenc_exit_module(void);
@@ -82,7 +79,6 @@ static ssize_t pcmenc_ptr_show(struct class* class, struct class_attribute* attr
 }
 static struct class_attribute pcmenc_attrs[]={
   __ATTR_RO(pcmenc_ptr),
-  //__ATTR(audio_channels_mask, S_IRUGO | S_IWUSR, show_audio_channels_mask, store_audio_channels_mask),
   __ATTR_NULL
 };
 static void create_pcmenc_attrs(struct class* class)
@@ -152,22 +148,23 @@ static void __exit audiodsp_pcmenc_exit_module(void)
 
 static int audiodsp_pcmenc_open(struct inode *inode, struct file *file)
 {
-    if (device_opened)
-        return -EBUSY;
-
-    device_opened++;
-    try_module_get(THIS_MODULE);
-    if(buf == NULL)	
-    	buf = (char *)kmalloc(priv_data.stream_buffer_size, GFP_KERNEL);
-    if(buf == NULL){
-	 device_opened--; 	
-    	 module_put(THIS_MODULE);
-        return -ENOMEM;
-    }
-    audiodsp_pcmenc_create_stream_buffer(); //init the r/p register	
-    pcmenc_stream_init();
-
-    return SUCCESS;
+	if (device_opened)
+		return -EBUSY;
+	device_opened++;
+	try_module_get(THIS_MODULE);
+#if  0
+	if(buf == NULL)	
+		buf = (char *)kmalloc(priv_data.stream_buffer_size, GFP_KERNEL);
+	if(buf == NULL){
+		device_opened--; 	
+		module_put(THIS_MODULE);
+		printk("pcmenc: malloc buffer failed\n");
+		return -ENOMEM;
+	}
+#endif /* 0 */
+	audiodsp_pcmenc_create_stream_buffer(); //init the r/p register	
+	pcmenc_stream_init();
+	return SUCCESS;
 }
 
 static int audiodsp_pcmenc_release(struct inode *inode, struct file *file)
@@ -190,6 +187,7 @@ static ssize_t audiodsp_pcmenc_read(struct file *filp,
         size_t length,	
         loff_t * offset)
 {
+#if 0
     int bytes_read = 0;
     int len = 0;
 
@@ -201,6 +199,9 @@ static ssize_t audiodsp_pcmenc_read(struct file *filp,
     bytes_read = pcmenc_stream_read(buf, len);
     copy_to_user((void *)buffer, (const char *)buf, bytes_read);
     return bytes_read;
+#endif
+    printk(KERN_ALERT "Sorry, read operation isn't supported.\n");
+    return -EINVAL;
 }
 
 static ssize_t audiodsp_pcmenc_write(struct file *filp, const char *buff, size_t len, loff_t * off)

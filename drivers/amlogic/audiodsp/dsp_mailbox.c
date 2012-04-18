@@ -89,7 +89,7 @@ int get_mailbox_data(struct audiodsp_priv *priv,int num,struct mail_msg *msg)
     //dma_unmap_single(priv->dev,dsp_addr_map,sizeof(*m),DMA_FROM_DEVICE);
 	msg->cmd=m->cmd; 
 	msg->data=m->data;
-    msg->data = (char *)((unsigned)msg->data+AUDIO_DSP_START_ADDR);
+       msg->data = (char *)((unsigned)msg->data+AUDIO_DSP_START_ADDR);
 	msg->status=m->status;
 	msg->len=m->len;
 	m->status=0;

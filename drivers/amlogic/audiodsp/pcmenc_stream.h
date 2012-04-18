@@ -12,6 +12,11 @@
 #ifndef __PCMENC_STREAM_H__
 #define __PCMENC_STREAM_H__
 
+#define AUDIODSP_PCMENC_GET_RING_BUF_SIZE      _IOR('l', 0x01, unsigned long)
+#define AUDIODSP_PCMENC_GET_RING_BUF_CONTENT   _IOR('l', 0x02, unsigned long)
+#define AUDIODSP_PCMENC_GET_RING_BUF_SPACE     _IOR('l', 0x03, unsigned long)
+#define AUDIODSP_PCMENC_SET_RING_BUF_RPTR	   _IOW('l', 0x04, unsigned long)	
+
 /* initialize  stream FIFO 
  * return value: on success, zero is returned, on error, -1 is returned
  * */
