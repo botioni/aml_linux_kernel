@@ -1279,7 +1279,7 @@ static int amstream_ioctl(struct inode *inode, struct file *file,
         break;
 		
     case AMSTREAM_IOC_SET_PCRSCR:
-        timestamp_vpts_set(arg);
+        timestamp_pcrscr_set(arg);
         break;
 
     case AMSTREAM_IOC_SUB_NUM:
