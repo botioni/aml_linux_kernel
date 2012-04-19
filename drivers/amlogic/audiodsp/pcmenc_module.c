@@ -88,6 +88,13 @@ static void create_pcmenc_attrs(struct class* class)
     class_create_file(class, &pcmenc_attrs[i]);
   }
 }
+static void remove_amaudio_attrs(struct class* class)
+{
+  int i=0;
+  for(i=0; pcmenc_attrs[i].attr.name; i++){
+    class_remove_file(class, &pcmenc_attrs[i]);
+  }
+}
 static struct file_operations fops = {
     .read = audiodsp_pcmenc_read,
     .ioctl = audiodsp_pcmenc_ioctl,
@@ -140,6 +147,7 @@ err0:
 static void __exit audiodsp_pcmenc_exit_module(void)
 {
     device_destroy(class_pcmenc, MKDEV(major, 0));
+    remove_amaudio_attrs(class_pcmenc);
     class_destroy(class_pcmenc);
     unregister_chrdev(major, DEVICE_NAME);
 
@@ -317,5 +325,6 @@ static int audiodsp_pcmenc_destroy_stream_buffer(void)
 
 module_init(audiodsp_pcmenc_init_module);
 module_exit(audiodsp_pcmenc_exit_module);
+MODULE_DESCRIPTION("AMLOGIC PCM encoder interface driver");
 MODULE_LICENSE("GPL");
-
+MODULE_AUTHOR("jian.xu <jian.xu@amlogic.com>");
