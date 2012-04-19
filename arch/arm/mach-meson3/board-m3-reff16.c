@@ -1607,8 +1607,7 @@ static void __init  device_clk_setting(void)
     //demod_apll_setting(0,1200*CLK_1M);
     /*eth clk*/
     #ifdef NET_EXT_CLK
-		eth_clk_set(7, (50 * CLK_1M), (50 * CLK_1M), 0);
-		printk("Dongtao external NET.\n");
+		eth_clk_set(7, (50 * CLK_1M), (50 * CLK_1M), 1);
 	#else    
     	eth_clk_set(ETH_CLKSRC_MISC_CLK, get_misc_pll_clk(), (50 * CLK_1M), 0);
     #endif
