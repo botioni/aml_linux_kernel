@@ -1544,11 +1544,14 @@ static int __init aml_i2c_init(void)
 //#define NET_EXT_CLK 1
 static void __init eth_pinmux_init(void)
 {
-	#ifdef NET_EXT_CLK
-		CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_6, (1<<17));//in disable
-  		SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_6, (1 << 18));//out enable
-	#endif
-	 eth_set_pinmux(ETH_BANK0_GPIOY1_Y9, ETH_CLK_OUT_GPIOY0_REG6_17, 0);
+	
+   CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_6,(3<<17));//reg6[17/18]=0
+   #ifdef NET_EXT_CLK
+       eth_set_pinmux(ETH_BANK0_GPIOY1_Y9, ETH_CLK_IN_GPIOY0_REG6_18, 0);
+   #else
+       eth_set_pinmux(ETH_BANK0_GPIOY1_Y9, ETH_CLK_OUT_GPIOY0_REG6_17, 0);
+   #endif
+	
     //power hold
     //setbits_le32(P_PREG_AGPIO_O,(1<<8));
     //clrbits_le32(P_PREG_AGPIO_EN_N,(1<<8));
