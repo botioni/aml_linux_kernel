@@ -73,8 +73,8 @@ MODULE_PARM_DESC(amlog_level, "ethernet debug level\n");
 
 static int running = 0;
 static struct net_device *my_ndev = NULL;
-#define DEFAULT_ADDR   "\x00\x01\x23\xcd\xee\xaf"
-static char DEFMAC[] = DEFAULT_ADDR;
+static unsigned int g_mac_setup = 0;
+static char DEFMAC[] = "\x00\x01\x23\xcd\xee\xaf";
 
 #define PERIPHS_SET_BITS(reg,val)	{	\
     	WRITE_CBUS_REG(reg,READ_CBUS_REG(reg) |(val));}
@@ -1487,8 +1487,8 @@ static unsigned char inline chartonum(char c)
 /* --------------------------------------------------------------------------*/
 static void config_mac_addr(struct net_device *dev, void *mac)
 {
-	if(strcmp(DEFMAC, DEFAULT_ADDR) == 0) {
-		printk("WARNING: Haven't setup MAC address! Using random MAC address.\n");
+	if(g_mac_setup == 0) {
+		printk("*****WARNING: Haven't setup MAC address! Using random MAC address.\n");
 		unsigned long mac_fir = 0;
 		unsigned char mac_add[6] = {};
 
@@ -1524,6 +1524,10 @@ static int __init mac_addr_set(char *line)
 		line += 3;
 	}
 	memcpy(DEFMAC, mac, 6);
+	printk("******** uboot setup mac-addr: %x:%x:%x:%x:%x:%x\n",
+			DEFMAC[0], DEFMAC[1], DEFMAC[2], DEFMAC[3], DEFMAC[4], DEFMAC[5]);
+	g_mac_setup++;
+
 	return 1;
 }
 
