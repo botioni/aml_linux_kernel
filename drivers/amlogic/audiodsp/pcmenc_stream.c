@@ -43,17 +43,17 @@ static inline void cache_invalidate(unsigned int addr, unsigned int size);
 
 static inline unsigned long get_read_pointer(void)
 {
-	return ARC_2_ARM_ADDR_SWAP(DSP_RD(DSP_PCMENC_RD_ADDR));
+	return ARC_2_ARM_ADDR_SWAP(DSP_RD(DSP_DECODE_51PCM_OUT_RD_ADDR));
 }
 
 static inline void set_read_pointer(void)
 {
-	DSP_WD(DSP_PCMENC_RD_ADDR, ARM_2_ARC_ADDR_SWAP(log_stream.rpointer));
+	DSP_WD(DSP_DECODE_51PCM_OUT_RD_ADDR, ARM_2_ARC_ADDR_SWAP(log_stream.rpointer));
 }
 
 static inline unsigned long get_write_pointer(void)
 {
-	return ARC_2_ARM_ADDR_SWAP(DSP_RD(DSP_PCMENC_WD_ADDR));
+	return ARC_2_ARM_ADDR_SWAP(DSP_RD(DSP_DECODE_51PCM_OUT_WD_ADDR));
 }
 
 static inline void cache_flush(unsigned int addr, unsigned int size)
@@ -157,8 +157,8 @@ int pcmenc_stream_read(unsigned char *buf, int size)
 
 int pcmenc_stream_init(void)
 {
-	log_stream.start = ARC_2_ARM_ADDR_SWAP(DSP_RD(DSP_PCMENC_START_ADDR));
-	log_stream.end = ARC_2_ARM_ADDR_SWAP(DSP_RD(DSP_PCMENC_END_ADDR));
+	log_stream.start = ARC_2_ARM_ADDR_SWAP(DSP_RD(DSP_DECODE_51PCM_OUT_START_ADDR));
+	log_stream.end = ARC_2_ARM_ADDR_SWAP(DSP_RD(DSP_DECODE_51PCM_OUT_END_ADDR));
 	log_stream.size = log_stream.end - log_stream.start;
 	return 0;
 }

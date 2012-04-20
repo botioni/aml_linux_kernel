@@ -68,14 +68,20 @@ dsp_register.h
 #define DSP_LOG_RD_ADDR  	    DSP_REG(30)
 #define DSP_LOG_WD_ADDR  		DSP_REG(31)
 
-#define DSP_PCMENC_START_ADDR  	DSP_REG(28)
-#define DSP_PCMENC_END_ADDR   	    DSP_REG(29)
-#define DSP_PCMENC_RD_ADDR  	    DSP_REG(30)
-#define DSP_PCMENC_WD_ADDR  		DSP_REG(31)
 
 #define MAILBOX1_REG(n)	DSP_REG(40+n)
 #define MAILBOX2_REG(n)	DSP_REG(40+32+n)
+
+
+//----------------------------------------------
+#define DSP_DECODE_51PCM_OUT_START_ADDR  	DSP_REG(106)
+#define DSP_DECODE_51PCM_OUT_END_ADDR   	DSP_REG(107)
+#define DSP_DECODE_51PCM_OUT_RD_ADDR  	    DSP_REG(108)
+#define DSP_DECODE_51PCM_OUT_WD_ADDR  		DSP_REG(109)
+//------------------------------------------------
+
 #define DSP_WORK_INFO (AUDIO_DSP_END_ADDR - 128)
+
 
 
 #ifndef __ASSEMBLY__

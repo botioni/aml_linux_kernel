@@ -71,8 +71,8 @@ static ssize_t pcmenc_ptr_show(struct class* class, struct class_attribute* attr
 	                     "  pcmenc rd ptr :\t%x\n"    
 	                     "  pcmenc wr ptr :\t%x\n"    
 	                     "  pcmenc level  :\t%x\n",
-	                     (DSP_RD(DSP_PCMENC_RD_ADDR)),
-	                     (DSP_RD(DSP_PCMENC_WD_ADDR)),
+	                     (DSP_RD(DSP_DECODE_51PCM_OUT_RD_ADDR)),
+	                     (DSP_RD(DSP_DECODE_51PCM_OUT_WD_ADDR)),
 	                     pcmenc_stream_content()
 	                     );
   	return ret;
@@ -255,9 +255,9 @@ static int audiodsp_pcmenc_ioctl(struct inode *inode, struct file *file, unsigne
 			break;
 		case AUDIODSP_PCMENC_SET_RING_BUF_RPTR:
 			priv_data.user_read_offset = (unsigned long)args;
-		//	printk("dsp rd ptr %x\n",DSP_RD(DSP_PCMENC_RD_ADDR));
-			DSP_WD(DSP_PCMENC_RD_ADDR, ARM_2_ARC_ADDR_SWAP(priv_data.stream_buffer_start+priv_data.user_read_offset));
-		//	printk("dsp rd ptr change to %x\n",DSP_RD(DSP_PCMENC_RD_ADDR));
+		//	printk("dsp rd ptr %x\n",DSP_RD(DSP_DECODE_51PCM_OUT_RD_ADDR));
+			DSP_WD(DSP_DECODE_51PCM_OUT_RD_ADDR, ARM_2_ARC_ADDR_SWAP(priv_data.stream_buffer_start+priv_data.user_read_offset));
+		//	printk("dsp rd ptr change to %x\n",DSP_RD(DSP_DECODE_51PCM_OUT_RD_ADDR));
 
 			break;
 		default:
@@ -271,10 +271,10 @@ static int audiodsp_pcmenc_create_stream_buffer(void)
 {
     dma_addr_t buf_map;
 
-    DSP_WD(DSP_PCMENC_START_ADDR, ARM_2_ARC_ADDR_SWAP(0));
-    DSP_WD(DSP_PCMENC_END_ADDR,ARM_2_ARC_ADDR_SWAP(0));
-    DSP_WD(DSP_PCMENC_RD_ADDR,ARM_2_ARC_ADDR_SWAP(0));
-    DSP_WD(DSP_PCMENC_WD_ADDR,ARM_2_ARC_ADDR_SWAP(0));
+    DSP_WD(DSP_DECODE_51PCM_OUT_START_ADDR, ARM_2_ARC_ADDR_SWAP(0));
+    DSP_WD(DSP_DECODE_51PCM_OUT_END_ADDR,ARM_2_ARC_ADDR_SWAP(0));
+    DSP_WD(DSP_DECODE_51PCM_OUT_RD_ADDR,ARM_2_ARC_ADDR_SWAP(0));
+    DSP_WD(DSP_DECODE_51PCM_OUT_WD_ADDR,ARM_2_ARC_ADDR_SWAP(0));
 
     if(priv_data.stream_buffer_mem_size == 0){
         return 0;
@@ -300,10 +300,10 @@ static int audiodsp_pcmenc_create_stream_buffer(void)
         return -2;
     }
 
-    DSP_WD(DSP_PCMENC_START_ADDR,ARM_2_ARC_ADDR_SWAP(priv_data.stream_buffer_start));
-    DSP_WD(DSP_PCMENC_END_ADDR,ARM_2_ARC_ADDR_SWAP(priv_data.stream_buffer_end));
-    DSP_WD(DSP_PCMENC_RD_ADDR,ARM_2_ARC_ADDR_SWAP(priv_data.stream_buffer_start));
-    DSP_WD(DSP_PCMENC_WD_ADDR,ARM_2_ARC_ADDR_SWAP(priv_data.stream_buffer_start));
+    DSP_WD(DSP_DECODE_51PCM_OUT_START_ADDR,ARM_2_ARC_ADDR_SWAP(priv_data.stream_buffer_start));
+    DSP_WD(DSP_DECODE_51PCM_OUT_END_ADDR,ARM_2_ARC_ADDR_SWAP(priv_data.stream_buffer_end));
+    DSP_WD(DSP_DECODE_51PCM_OUT_RD_ADDR,ARM_2_ARC_ADDR_SWAP(priv_data.stream_buffer_start));
+    DSP_WD(DSP_DECODE_51PCM_OUT_WD_ADDR,ARM_2_ARC_ADDR_SWAP(priv_data.stream_buffer_start));
 
     printk("DSP pcmenc stream buffer to [%#lx-%#lx]\n",ARM_2_ARC_ADDR_SWAP(priv_data.stream_buffer_start), ARM_2_ARC_ADDR_SWAP(priv_data.stream_buffer_end));
     return 0;
@@ -316,10 +316,10 @@ static int audiodsp_pcmenc_destroy_stream_buffer(void)
         priv_data.stream_buffer_mem = NULL;
     }
 
-    DSP_WD(DSP_PCMENC_START_ADDR, ARM_2_ARC_ADDR_SWAP(0));
-    DSP_WD(DSP_PCMENC_END_ADDR,ARM_2_ARC_ADDR_SWAP(0));
-    DSP_WD(DSP_PCMENC_RD_ADDR,ARM_2_ARC_ADDR_SWAP(0));
-    DSP_WD(DSP_PCMENC_WD_ADDR,ARM_2_ARC_ADDR_SWAP(0));
+    DSP_WD(DSP_DECODE_51PCM_OUT_START_ADDR, ARM_2_ARC_ADDR_SWAP(0));
+    DSP_WD(DSP_DECODE_51PCM_OUT_END_ADDR,ARM_2_ARC_ADDR_SWAP(0));
+    DSP_WD(DSP_DECODE_51PCM_OUT_RD_ADDR,ARM_2_ARC_ADDR_SWAP(0));
+    DSP_WD(DSP_DECODE_51PCM_OUT_WD_ADDR,ARM_2_ARC_ADDR_SWAP(0));
     return 0;
 }
 
