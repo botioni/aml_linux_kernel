@@ -12,3 +12,4 @@ obj-y	+= key_input/
 obj-y	+= touch_screen/
 obj-y	+= touch_keypad/
 obj-y	+= vfd/
+obj-y	+= irreceiver/

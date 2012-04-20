@@ -201,7 +201,7 @@ static  struct key_input_platform_data  key_input_pdata = {
     .fuzz_time = 60,
     .key_code_list = &_key_code_list[0],
     .key_num = ARRAY_SIZE(_key_code_list),
-    .scan_func = key_scan,
+.scan_func = key_scan,
     .init_func = key_input_init_func,
     .config =  2, 	// 0: interrupt;    	2: polling;
 };
@@ -213,6 +213,54 @@ static struct platform_device input_device_key = {
     .resource = NULL,
     .dev = {
         .platform_data = &key_input_pdata,
+    }
+};
+#endif
+
+#if defined(CONFIG_AM_IR_RECEIVER)
+#include <linux/input/irreceiver.h>
+
+static int ir_init()
+{
+    unsigned int control_value;
+    
+    //mask--mux gpioao_7 to remote
+    SET_AOBUS_REG_MASK(AO_RTI_PIN_MUX_REG,1<<0);
+    
+    //max frame time is 80ms, base rate is 20us
+    control_value = 3<<28|(0x9c40 << 12)|0x13;
+    WRITE_AOBUS_REG(AO_IR_DEC_REG0, control_value);
+     
+    /*[3-2]rising or falling edge detected
+      [8-7]Measure mode
+    */
+    control_value = 0x8574;
+    WRITE_AOBUS_REG(AO_IR_DEC_REG1, control_value);
+    
+    return 0;
+}
+
+static int pwm_init()
+{
+    CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_7, (1<<16));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0, (1<<29));
+    SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_3, (1<<26));
+}
+
+static struct irreceiver_platform_data irreceiver_data = {
+    .pwm_no = PWM_A,
+    .freq = 38000, //38k
+    .init_pwm_pinmux = pwm_init,
+    .init_ir_pinmux = ir_init,
+};
+
+static struct platform_device irreceiver_device = {
+    .name = "irreceiver",
+    .id = 0,
+    .num_resources = 0,
+    .resource = NULL,
+    .dev = {
+        .platform_data = &irreceiver_data,
     }
 };
 #endif
@@ -254,7 +302,7 @@ static struct mtd_partition spi_partition_info[] = {
         .name = "ubootenv",
         .offset = 0x80000,
         .size = 0x2000,
-    },
+},
     /* Hide recovery partition
             {
                     .name = "recovery",
@@ -1472,6 +1520,9 @@ static struct platform_device __initdata *platform_devs[] = {
 #endif
 #if defined(CONFIG_KEY_INPUT_CUSTOM_AM) || defined(CONFIG_KEY_INPUT_CUSTOM_AM_MODULE)
     &input_device_key,  //changed by Elvis
+#endif
+#if defined(CONFIG_AM_IR_RECEIVER)
+    &irreceiver_device,
 #endif
 #ifdef CONFIG_AM_NAND
     &aml_nand_device,
