@@ -318,6 +318,7 @@ static void  aml_hw_i2s_init(struct snd_pcm_runtime *runtime)
 		memset((void*)runtime->dma_area,0,runtime->dma_bytes * 2 + 4096);
 		/* update the i2s hw buffer end addr as android may update that */
 		aml_pcm_playback_phy_end_addr = aml_pcm_playback_phy_start_addr+runtime->dma_bytes;
+		printk("I2S hw init,i2s mode %d\n",I2S_MODE);
 
 }
 /*
