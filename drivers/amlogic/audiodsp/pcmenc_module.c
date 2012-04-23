@@ -51,7 +51,7 @@ static struct device *dev_pcmenc;
 static int device_opened = 0;	/* Is device open?  
                              * Used to prevent multiple access to device */
 static char *buf = NULL;	
-
+static pcm51_encoded_info_t pcminfo = {0};
 typedef struct {
        void *stream_buffer_mem; 
 	unsigned int stream_buffer_mem_size;
@@ -260,6 +260,16 @@ static int audiodsp_pcmenc_ioctl(struct inode *inode, struct file *file, unsigne
 		//	printk("dsp rd ptr change to %x\n",DSP_RD(DSP_DECODE_51PCM_OUT_RD_ADDR));
 
 			break;
+		case AUDIODSP_PCMENC_GET_PCMINFO:
+			if(args == NULL){
+				printk("pcm enc: args invalid\n");
+				ret = -EINVAL;
+			}
+			 ret = copy_to_user( (void __user *)args,&pcminfo, sizeof(pcminfo));
+			 if(ret != 0){
+			 	printk("pcm enc:copy to user error\n");
+			 }
+			break;
 		default:
 			printk("pcmenc:un-implemented  cmd\n");	
 			break;
@@ -322,6 +332,19 @@ static int audiodsp_pcmenc_destroy_stream_buffer(void)
     DSP_WD(DSP_DECODE_51PCM_OUT_WD_ADDR,ARM_2_ARC_ADDR_SWAP(0));
     return 0;
 }
+void set_pcminfo_data(void *pcm_encoded_info)
+{
+    	dma_addr_t buf_map;
+/*as this ptr got from arc dsp side,which mapping to 0 address,so add this dsp start offset */ 		
+	pcm51_encoded_info_t *info = (pcm51_encoded_info_t*)((unsigned)pcm_encoded_info+AUDIO_DSP_START_ADDR);
+	/* inv dcache as this data from device */
+	buf_map = dma_map_single(dev_pcmenc,(void*)info ,sizeof(pcm51_encoded_info_t),DMA_FROM_DEVICE);
+	dma_unmap_single(dev_pcmenc,buf_map,sizeof(pcm51_encoded_info_t),DMA_FROM_DEVICE);	
+	memcpy(&pcminfo,info,sizeof(pcm51_encoded_info_t));
+	printk("got pcm51 info from dsp \n");
+}
+EXPORT_SYMBOL(set_pcminfo_data);
+
 
 module_init(audiodsp_pcmenc_init_module);
 module_exit(audiodsp_pcmenc_exit_module);
