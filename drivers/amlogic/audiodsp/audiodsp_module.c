@@ -489,6 +489,14 @@ static int audiodsp_ioctl(struct inode *node, struct file *file, unsigned int cm
 			tsync_set_apts(pts);
 			
 			break;
+
+                case AUDIODSP_AUTOMUTE_ON:
+                        tsync_set_automute_on(1);
+                        break;
+
+                case AUDIODSP_AUTOMUTE_OFF:
+                        tsync_set_automute_on(0);
+                        break;
 			
 		default:
 			DSP_PRNT("unsupport cmd number%d\n",cmd);
