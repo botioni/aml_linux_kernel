@@ -870,7 +870,7 @@ static void viu_set_dcu(vpp_frame_par_t *frame_par, vframe_t *vf)
         loop = 0;
 
         if (vf->type & VIDTYPE_INTERLACE) {
-            pat = vpat[frame_par->vscale_skip_count - 1];
+            pat = vpat[frame_par->vscale_skip_count >> 1];
         }
     } else if (vf->type & VIDTYPE_MVC) {
         loop = 0x11;

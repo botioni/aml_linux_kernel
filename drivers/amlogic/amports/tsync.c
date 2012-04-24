@@ -106,6 +106,7 @@ static unsigned int tsync_av_thresh = AV_DISCONTINUE_THREDHOLD;
 static unsigned int tsync_syncthresh = 1;
 static int tsync_dec_reset_flag = 0;
 static int tsync_dec_reset_video_start = 0;
+static int tsync_automute_on = 0;
 
 #define M_HIGH_DIFF  10
 #define M_LOW_DIFF   10
@@ -606,6 +607,12 @@ void tsync_set_sync_vdiscont(int syncdiscont)
 }
 EXPORT_SYMBOL(tsync_set_sync_vdiscont);
 
+void tsync_set_automute_on(int automute_on)
+{
+    tsync_automute_on = automute_on;
+}
+EXPORT_SYMBOL(tsync_set_automute_on);
+
 int tsync_set_apts(unsigned pts)
 {
     unsigned  t;
@@ -897,7 +904,9 @@ static ssize_t store_enable(struct class *class,
         return -EINVAL;
     }
 
-    tsync_enable = mode ? 1 : 0;
+    if (!tsync_automute_on) {
+        tsync_enable = mode ? 1 : 0;
+    }
 
     return size;
 }
