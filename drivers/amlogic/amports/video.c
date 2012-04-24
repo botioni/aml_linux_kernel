@@ -1223,7 +1223,7 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
                 video_property_changed = false;
             }
         } else {
-            goto exit;
+            goto SET_FILTER;
         }
     }
 
@@ -1306,6 +1306,7 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
 #endif
     }
 
+SET_FILTER:
     /* filter setting management */
     if ((frame_par_ready_to_set) || (frame_par_force_to_set)) {
         cur_frame_par = next_frame_par;
