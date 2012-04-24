@@ -15,7 +15,8 @@ typedef struct {
 #define AUDIO_SPDIF_GET_958_ENABLE_STATUS	 _IOR('s', 0x05, unsigned long)	
 #define AUDIO_SPDIF_GET_I2S_ENABLE_STATUS	 _IOR('s', 0x06, unsigned long)	
 #define AUDIO_SPDIF_SET_958_ENABLE	   		 _IOW('s', 0x07, unsigned long)	
-#define AUDIO_SPDIF_SET_958_INIT_PREPARE	   		 _IOW('s', 0x08, unsigned long)	
+#define AUDIO_SPDIF_SET_958_INIT_PREPARE	        _IOW('s', 0x08, unsigned long)	
+#define AUDIO_SPDIF_SET_958_WR_OFFSET	   	  _IOW('s', 0x09, unsigned long)	
 
 static int audio_spdif_open(struct inode *inode, struct file *file);
 static int audio_spdif_release(struct inode *inode, struct file *file);

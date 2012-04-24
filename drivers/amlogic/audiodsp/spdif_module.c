@@ -29,6 +29,7 @@ static struct class *class_spdif;
 static struct device *dev_spdif;
 static struct mutex mutex_spdif;  
 static  _iec958_data_info   iec958_info = {0};
+static  unsigned iec958_wr_offset;
 extern void	aml_alsa_hw_reprepare();
 extern unsigned int IEC958_mode_raw;
 extern unsigned int IEC958_mode_codec;
@@ -73,6 +74,7 @@ static int audio_spdif_open(struct inode *inode, struct file *file)
 }
 static int audio_spdif_release(struct inode *inode, struct file *file)
 {
+   audio_output_iec958_enable(0);  
     device_opened--;		
     module_put(THIS_MODULE);
     return 0;
@@ -103,6 +105,9 @@ static int audio_spdif_ioctl(struct inode *inode, struct file *file, unsigned in
 		case AUDIO_SPDIF_SET_958_INIT_PREPARE:
 			aml_alsa_hw_reprepare();
 			break;
+		case AUDIO_SPDIF_SET_958_WR_OFFSET:
+			iec958_wr_offset = *val;
+		      break;	
 		default:
 			printk("audio spdif: cmd not implemented\n");
 			break;
@@ -129,21 +134,56 @@ static int audio_spdif_mmap(struct file *file, struct vm_area_struct *vma)
     unsigned long off = vma->vm_pgoff << PAGE_SHIFT;
     unsigned vm_size = vma->vm_end - vma->vm_start;
     if (vm_size == 0) {
+	 printk("audio spdif:vm_size 0\n"); 	
         return -EAGAIN;
     }
-    off += READ_MPEG_REG(AIU_MEM_IEC958_START_PTR);//mapping the 958 dma buffer to user space to write
+    off = READ_MPEG_REG(AIU_MEM_IEC958_START_PTR);//mapping the 958 dma buffer to user space to write
 
     vma->vm_flags |= VM_RESERVED | VM_IO;
-
     if (remap_pfn_range(vma, vma->vm_start, off >> PAGE_SHIFT,
                         vma->vm_end - vma->vm_start, vma->vm_page_prot)) {
         printk("	audio spdif : failed remap_pfn_range\n");
         return -EAGAIN;
     }
     printk("audio spdif: mmap finished\n");	
+    printk("audio spdif: 958 dma buf:py addr 0x%x,vir addr 0x%x\n",READ_MPEG_REG(AIU_MEM_IEC958_START_PTR), \
+			phys_to_virt((void*)READ_MPEG_REG(AIU_MEM_IEC958_START_PTR)));		
     return 0;
 
-	
+}
+static ssize_t audio_spdif_ptr_show(struct class* class, struct class_attribute* attr,
+    char* buf)
+{
+	  ssize_t ret = 0;
+	  ret = sprintf(buf, "iec958 buf runtime info:\n"
+	                     "  iec958 rd ptr :\t%x\n"    
+	                     "  iec958 wr ptr :\t%x\n" ,   
+	                     READ_MPEG_REG(AIU_MEM_IEC958_RD_PTR),
+	                     (READ_MPEG_REG(AIU_MEM_IEC958_RD_PTR)+iec958_wr_offset));
+  	return ret;
+}
+static ssize_t audio_spdif_buf_show(struct class* class, struct class_attribute* attr,
+    char* buf)
+{
+	  ssize_t ret = 0;
+	  unsigned *ptr = (unsigned*)phys_to_virt(READ_MPEG_REG(AIU_MEM_IEC958_RD_PTR)+iec958_wr_offset);
+	  ret = sprintf(buf, "iec958 buf  info:\n"
+	                     "  iec958 wr ptr val:\t[%x][%x][%x][%x]\n"    ,
+	                     ptr[0], ptr[1],ptr[2], ptr[3]);
+  	return ret;
+}
+
+static struct class_attribute audio_spdif_attrs[]={
+  __ATTR_RO(audio_spdif_ptr),
+  __ATTR_RO(audio_spdif_buf),
+  __ATTR_NULL
+};
+static void create_audio_spdif_attrs(struct class* class)
+{
+  int i=0;
+  for(i=0; audio_spdif_attrs[i].attr.name; i++){
+    class_create_file(class, &audio_spdif_attrs[i]);
+  }
 }
 static int __init audio_spdif_init_module(void)
 {
@@ -158,7 +198,7 @@ static int __init audio_spdif_init_module(void)
     if(IS_ERR(ptr_err = class_spdif)){
         goto err0;
     }
- //   create_spdif_attrs(class_spdif);
+    create_audio_spdif_attrs(class_spdif);
     dev_spdif = device_create(class_spdif, NULL, MKDEV(major_spdif,0),NULL, DEVICE_NAME);
     if(IS_ERR(ptr_err = dev_spdif)){
         goto err1;
