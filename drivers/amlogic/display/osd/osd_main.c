@@ -288,6 +288,7 @@ osd_ioctl(struct fb_info *info, unsigned int cmd,
 		case FBIOGET_OSD_ORDER:
 		case FBIOGET_OSD_GET_GBL_ALPHA:
 		case FBIOPUT_OSD_2X_SCALE:	
+		case FBIOPUT_OSD_CANVAS_CONF:
 		case FBIOPUT_OSD_ENABLE_3D_MODE:
 		case FBIOPUT_OSD_FREE_SCALE_ENABLE:
 		case FBIOPUT_OSD_FREE_SCALE_WIDTH:
@@ -336,6 +337,8 @@ osd_ioctl(struct fb_info *info, unsigned int cmd,
     		case FBIOPUT_OSD_2X_SCALE: //arg :higher 16 bit h_scale_enable, lower 16 bit v_scale_enable
 		osddev_set_2x_scale(info->node,arg&0xffff0000?1:0,arg&0xffff?1:0);
 		break;		
+		case FBIOPUT_OSD_CANVAS_CONF:
+			osddev_set_canvas_conf(info->node, arg);
     		case FBIOPUT_OSD_SRCCOLORKEY:
 	    	switch(fbdev->color->color_index)
 	  	{
@@ -1098,6 +1101,28 @@ static ssize_t store_enforce_progressive(struct device *device, struct device_at
 
 	return count;
 }
+
+static ssize_t show_canvas_conf(struct device *device, struct device_attribute *attr,
+			 char *buf)
+{
+	struct fb_info *fb_info = dev_get_drvdata(device);
+	struct myfb_dev *fbdev = (struct myfb_dev *)fb_info->par;
+	return snprintf(buf, PAGE_SIZE, "canvas_conf:[0x%x]\n",fbdev->canvas_conf);
+
+}
+
+static ssize_t store_canvas_conf(struct device *device, struct device_attribute *attr,
+			 const char *buf, size_t count)
+{
+	struct fb_info *fb_info = dev_get_drvdata(device);
+	struct myfb_dev *fbdev = (struct myfb_dev *)fb_info->par;
+	int err;
+	fbdev->canvas_conf = simple_strtoul(buf, NULL, 0);
+	if ((err = osd_ioctl(fb_info,FBIOPUT_OSD_CANVAS_CONF,fbdev->canvas_conf)))
+		return err;
+	return count;
+}
+
 static struct device_attribute osd_attrs[] = {
 	__ATTR(scale, S_IRUGO|S_IWUSR, show_scale, store_scale),
 	__ATTR(order, S_IRUGO|S_IWUSR, show_order, store_order),	
@@ -1117,6 +1142,7 @@ static struct device_attribute osd_attrs[] = {
 	__ATTR(request2XScale, S_IRUGO|S_IWUSR, show_request_2xscale, store__request_2xscale),
 	__ATTR(video_hole, S_IRUGO|S_IWUSR, show_video_hole, store__video_hole),
 	__ATTR(enforce_progressive, S_IRUGO| S_IWUSR, show_enforce_progressive, store_enforce_progressive),
+	__ATTR(canvas_conf, S_IRUGO|S_IWUSR, show_canvas_conf, store_canvas_conf),
 };		
 
 #ifdef  CONFIG_PM

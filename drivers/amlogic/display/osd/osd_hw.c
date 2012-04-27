@@ -682,6 +682,15 @@ void osd_get_osd_info_hw(u32 index, s32 (*posdval)[4], u32(*posdreq)[5], s32 inf
 	}
 }
 
+void osd_set_canvas_conf_hw(u32 index, u32 canvas_config)
+{
+	amlog_level(LOG_LEVEL_HIGH,"osd%d canvas_config %s\r\n",index,canvas_config?"ENABLE":"DISABLE");
+	osd_hw.canvas_conf[index]=canvas_config;
+
+	add_to_update_list(index, DISP_CANVAS_CONFIG);
+	osd_wait_vsync_hw();
+}
+
 void osd_get_block_windows_hw(u32 index, u32 *windows)
 {
 	memcpy(windows, osd_hw.block_windows[index], sizeof(osd_hw.block_windows[index]));
@@ -994,6 +1003,35 @@ static   void  osd2_update_enable(void)
 	}
 	remove_from_update_list(OSD2,OSD_ENABLE);
 }
+
+static void osd1_update_canvas_conf(void)
+{
+	if(osd_hw.canvas_conf[OSD1]){
+		canvas_config(osd_hw.fb_gem[OSD2].canvas_idx, osd_hw.fb_gem[OSD1].addr,
+						osd_hw.fb_gem[OSD1].width, osd_hw.fb_gem[OSD1].height,
+						CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_LINEAR);
+	}else{
+		canvas_config(osd_hw.fb_gem[OSD2].canvas_idx, osd_hw.fb_gem[OSD2].addr,
+						osd_hw.fb_gem[OSD2].width, osd_hw.fb_gem[OSD2].height,
+						CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_LINEAR);
+	}
+	remove_from_update_list(OSD1,DISP_CANVAS_CONFIG);
+}
+
+static void osd2_update_canvas_conf(void)
+{
+	if(osd_hw.canvas_conf[OSD2]){
+		canvas_config(osd_hw.fb_gem[OSD1].canvas_idx, osd_hw.fb_gem[OSD2].addr,
+						osd_hw.fb_gem[OSD2].width, osd_hw.fb_gem[OSD2].height,
+						CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_LINEAR);
+	}else{
+		canvas_config(osd_hw.fb_gem[OSD1].canvas_idx, osd_hw.fb_gem[OSD1].addr,
+						osd_hw.fb_gem[OSD1].width, osd_hw.fb_gem[OSD1].height,
+						CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_LINEAR);
+	}
+	remove_from_update_list(OSD2,DISP_CANVAS_CONFIG);
+}
+
 static  void  osd1_update_color_key(void)
 {
 	WRITE_MPEG_REG(VIU_OSD1_TCOLOR_AG0,osd_hw.color_key[OSD1]);
