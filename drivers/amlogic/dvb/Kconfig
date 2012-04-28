@@ -17,6 +17,21 @@ config AM_GX1001
 	depends on AM_DVB
 	help
 		Select to enable GX1001 demod driver.
+		
+config AM_MXL101
+	tristate "MXL101 demod driver"
+	default n
+	depends on AM_DVB
+	help
+		Select to enable MXL101 demod driver.
+		
+config AM_AVL6211
+	tristate "AVL6211 demod driver"
+	default n
+	depends on AM_DVB
+	help
+		Select to enable AVL6211 demod driver.		
+		
 
 endmenu
 

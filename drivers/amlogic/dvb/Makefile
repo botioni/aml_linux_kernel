@@ -8,3 +8,6 @@ aml-objs=aml_dvb.o aml_dmx.o
 
 obj-$(CONFIG_AM_GX1001) += gx1001/
 
+obj-$(CONFIG_AM_MXL101) += mxl101/
+
+obj-$(CONFIG_AM_AVL6211) += avl6211/
