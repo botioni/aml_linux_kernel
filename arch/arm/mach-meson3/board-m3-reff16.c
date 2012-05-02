@@ -1876,7 +1876,7 @@ static void __init device_pinmux_init(void )
 
 #ifdef CONFIG_AM_AVL6211
 
-//for avl6211
+//for avl6211  
 	set_mio_mux(3, 0x3F<<6);
 	clear_mio_mux(0, 1<<4);
 	clear_mio_mux(0, 0xf);

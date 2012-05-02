@@ -249,7 +249,7 @@ struct analog_demod_ops {
 	/** This is to allow setting tuner-specific configuration */
 	int (*set_config)(struct dvb_frontend *fe, void *priv_cfg);
 };
-//for dvbs2
+//for dvbs2  
 /*Stores the blind scan parameters which are passed to the FE_SET_BLINDSCAN ioctl.*/
 struct dvbsx_blindscanpara
 {

@@ -330,7 +330,7 @@ static int avl6211_set_frontend(struct dvb_frontend *fe, struct dvb_frontend_par
 	struct AVL_DVBSx_Channel Channel;
 	AVL_DVBSx_ErrorCode r = AVL_DVBSx_EC_OK;
 	avl6211pTuner->m_uiFrequency_100kHz=p->frequency/100;
-	avl6211pTuner->m_uiFrequency_100kHz=15000;
+//	avl6211pTuner->m_uiFrequency_100kHz=15000;
 	printk("avl6211pTuner m_uiFrequency_100kHz is %d",avl6211pTuner->m_uiFrequency_100kHz);
 	
 	 r = CPU_Halt(pAVLChip_all);
