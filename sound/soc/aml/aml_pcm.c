@@ -18,7 +18,7 @@
 #include <sound/control.h>
 #include <sound/soc.h>
 #include <sound/pcm_params.h>
-
+#include <sound/aml_platform.h>
 
 #include <mach/am_regs.h>
 #include <mach/pinmux.h>
