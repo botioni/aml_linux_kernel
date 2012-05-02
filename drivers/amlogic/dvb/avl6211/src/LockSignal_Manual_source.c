@@ -460,7 +460,7 @@ struct AVL_Demod_Tuner_Configuration_t g_DemodTuner_Config[]=
 			AVL_DVBSx_SA_0,
 			Ref_clock_27M,
 			AVL_DVBSx_MPM_Parallel,
-			AVL_DVBSx_MPCP_Falling,
+			AVL_DVBSx_MPCP_Rising,
 			AVL_DVBSx_MPF_TS,
 			AVL_DVBSx_MPSP_DATA0,										
 
