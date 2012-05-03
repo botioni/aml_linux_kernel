@@ -89,20 +89,17 @@ static int mxl101_init(struct dvb_frontend *fe)
 {
 	struct mxl101_state *state = fe->demodulator_priv;
 	pr_dbg("=========================demod init\r\n");
-	MxL101SF_Init();
 	gpio_direction_output(frontend_reset, 0);
 	msleep(300);
 	gpio_direction_output(frontend_reset, 1); //enable tuner power
 	msleep(200);
+	MxL101SF_Init();
 	return 0;
 }
 
 static int mxl101_sleep(struct dvb_frontend *fe)
 {
 	struct mxl101_state *state = fe->demodulator_priv;
-	
-//	GX_Set_Sleep(state, 1);
-
 	return 0;
 }
 
@@ -161,7 +158,6 @@ static int mxl101_read_ucblocks(struct dvb_frontend *fe, u32 * ucblocks)
 static int mxl101_set_frontend(struct dvb_frontend *fe, struct dvb_frontend_parameters *p)
 {
 	struct mxl101_state *state = fe->demodulator_priv;
-	MxL101SF_Init();
 	UINT8 bandwidth=8;
 	bandwidth=p->u.ofdm.bandwidth;
 	if(bandwidth=0)
@@ -172,6 +168,7 @@ static int mxl101_set_frontend(struct dvb_frontend *fe, struct dvb_frontend_para
 		bandwidth=6;
 	else
 		bandwidth=8;	
+		MxL101SF_Tune(p->frequency,bandwidth);
 //	demod_connect(state, p->frequency,p->u.qam.modulation,p->u.qam.symbol_rate);
 	state->freq=p->frequency;
 	state->mode=p->u.qam.modulation ;
