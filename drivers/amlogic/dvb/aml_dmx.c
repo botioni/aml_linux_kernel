@@ -103,6 +103,11 @@
 #define LARGE_SEC_BUFF_COUNT 32
 #define WATCHDOG_TIMER    250
 
+#ifdef CONFIG_AM_MXL101
+#define CONFIG_AMLOGIC_S2P_TS0
+#define CONFIG_AMLOGIC_S2P_TS1
+#endif
+
 /*Reset the demux device*/
 void dmx_reset_hw(struct aml_dvb *dvb);
 static int dmx_remove_feed(struct aml_dmx *dmx, struct dvb_demux_feed *feed);
@@ -548,6 +553,7 @@ static void stb_enable(struct aml_dvb *dvb)
 			hiu     = 0;
 		break;		
 		case AM_TS_SRC_S2P0:
+			printk("[RSJ]AM_TS_SRC_S2P0\n");
 			out_src = 6;
 			invert_clk = 1;
 			fec_s   = 0;
@@ -905,7 +911,7 @@ static int dmx_init(struct aml_dmx *dmx)
 	/*Reset the hardware*/
 	if (!dvb->dmx_init) {
 		pr_dbg("demux reset\n");
-		dmx_set_mux(dvb);
+	//	dmx_set_mux(dvb);
 		
 		init_timer(&dvb->watchdog_timer);
 		dvb->watchdog_timer.function = section_buffer_watchdog_func;
