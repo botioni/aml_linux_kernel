@@ -160,15 +160,15 @@ static int mxl101_set_frontend(struct dvb_frontend *fe, struct dvb_frontend_para
 	struct mxl101_state *state = fe->demodulator_priv;
 	UINT8 bandwidth=8;
 	bandwidth=p->u.ofdm.bandwidth;
-	if(bandwidth=0)
+	if(bandwidth==0)
 		bandwidth=8;
-	else if(bandwidth=1)
+	else if(bandwidth==1)
 		bandwidth=7;
-	else if(bandwidth=2)
+	else if(bandwidth==2)
 		bandwidth=6;
 	else
 		bandwidth=8;	
-		MxL101SF_Tune(p->frequency,bandwidth);
+	MxL101SF_Tune(p->frequency,bandwidth);
 //	demod_connect(state, p->frequency,p->u.qam.modulation,p->u.qam.symbol_rate);
 	state->freq=p->frequency;
 	state->mode=p->u.qam.modulation ;
