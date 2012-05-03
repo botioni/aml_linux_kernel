@@ -120,8 +120,6 @@ void MxL101SF_Tune(UINT32 u32TunerFreq, UINT8 u8BandWidth)
 	 }*/
 
  	 // 8. Tune RF with channel frequency and bandwidth
- 	 u32TunerFreq=666000000;
-	 u8BandWidth=8;
  	 printf("u32TunerFreq is %d,u8BandWidth is %d\n",u32TunerFreq,u8BandWidth);
  	 mxlChanCfg.Bandwidth = u8BandWidth;
  	 mxlChanCfg.Frequency = u32TunerFreq;//u32TunerFreq*1000;
