@@ -1085,7 +1085,7 @@ void hdmi_hw_init(hdmitx_dev_t* hdmitx_device)
     hdmi_wr_reg(OTHER_BASE_ADDR + HDMI_OTHER_INTR_MASKN, 0x7);
     // HPD glitch filter
     hdmi_wr_reg(TX_HDCP_HPD_FILTER_L, 0x00);
-    hdmi_wr_reg(TX_HDCP_HPD_FILTER_H, 0xa0);
+    hdmi_wr_reg(TX_HDCP_HPD_FILTER_H, 0xaf);
 
 #ifdef AML_A3
     hdmi_wr_reg(TX_SYS5_TX_SOFT_RESET_2, 0x90); //bit5,6 is converted
@@ -1149,7 +1149,7 @@ void hdmi_hw_init(hdmitx_dev_t* hdmitx_device)
     //tmp_add_data[7:0]   = 0xa ; // time_divider[7:0] for DDC I2C bus clock
     //tmp_add_data = 0xa; //800k
     //tmp_add_data = 0x3f; //190k
-    tmp_add_data = 0x78; //100k
+    tmp_add_data = 0x18 - 1; //100k
     hdmi_wr_reg(TX_HDCP_CONFIG3, tmp_add_data);
 
     //tmp_add_data[15:8] = 0;
@@ -1467,7 +1467,7 @@ static void hdmi_hw_reset(Hdmi_tx_video_para_t *param)
     
     //tmp_add_data = 0xa; //800k
     //tmp_add_data = 0x3f; //190k
-    tmp_add_data = 0x78; //100k
+    tmp_add_data = 0x18 - 1; //100k
     hdmi_wr_reg(TX_HDCP_CONFIG3, tmp_add_data);
 
     //tmp_add_data[15:8] = 0;
