@@ -1956,11 +1956,11 @@ static void check_chip_type(void)
 #endif		
 }
 
-#if 0
+#ifdef CONFIG_AML_HDMI_TX_HDCP
 // Only applicable if external HPD is on and stable.
 // This function generates an HDMI TX internal sys_trigger pulse that will
 // restart EDID and then HDCP transfer on DDC channel.
-static void restart_edid_hdcp (void)
+extern void restart_edid_hdcp (void)
 {
     // Force clear HDMI TX internal sys_trigger
     hdmi_wr_reg(TX_HDCP_EDID_CONFIG, hdmi_rd_reg(TX_HDCP_EDID_CONFIG) & ~(1<<6)); // Release sys_trigger_config

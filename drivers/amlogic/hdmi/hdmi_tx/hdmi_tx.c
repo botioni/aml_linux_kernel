@@ -880,6 +880,10 @@ static void
 #endif
 hdmi_task_handle(void *data) 
 {
+#ifdef CONFIG_AML_HDMI_TX_HDCP
+    extern void restart_edid_hdcp(void);
+    static int edid_hdcp_reset_flag = 0;
+#endif
     extern void hdmitx_edid_ram_buffer_clear(hdmitx_dev_t*);
     hdmitx_dev_t* hdmitx_device = (hdmitx_dev_t*)data;
     hdmitx_init_parameters(&hdmitx_device->hdmi_info);
@@ -967,6 +971,12 @@ hdmi_task_handle(void *data)
         /* authentication process */
 #ifdef CONFIG_AML_HDMI_TX_HDCP
         if(hdmitx_device->cur_VIC != HDMI_Unkown){
+            {
+                if(edid_hdcp_reset_flag){
+                    edid_hdcp_reset_flag = 0;
+                    restart_edid_hdcp();
+                }
+            }
             if(hdmitx_device->auth_process_timer>0){
                 hdmitx_device->auth_process_timer--;
             }
@@ -984,6 +994,9 @@ hdmi_task_handle(void *data)
                     hdmitx_device->HWOp.Cntl(hdmitx_device, HDMITX_OUTPUT_ENABLE, hdmi_output_on);
                 }
             }
+        }
+        else{
+            edid_hdcp_reset_flag = 1;
         }
 #endif        
         /**/    
