@@ -2908,10 +2908,6 @@ static void hdmitx_m3_debug(hdmitx_dev_t* hdmitx_device, const char* buf)
             printk("CBUS[0x%x]: 0x%x\n", adr+j, READ_MPEG_REG(adr+j));
         }
     }
-    else if(strncmp(tmpbuf, "plla", 4)==0){
-        printk("CTS_AMCLK : %u Hz\n", clk_util_clk_msr_Hz(CTS_AMCLK));
-        printk("HDMI_CH3_TMDSCLK : %u Hz\n", clk_util_clk_msr_Hz(HDMI_CH3_TMDSCLK));
-    }
     else if(strncmp(tmpbuf, "pllcalc", 7)==0){
         adr=simple_strtoul(tmpbuf+7, NULL, 10);
         if((adr == 0) && (*(tmpbuf+7) != 'a')){
