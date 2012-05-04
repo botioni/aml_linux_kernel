@@ -137,7 +137,7 @@ static unsigned delay_flag = 0;
 //static unsigned char i2s_to_spdif_flag=1; //i2s clock in avos is div by 4 from amclk by audio driver, so use spdif
 //#else
 static unsigned serial_reg_val=0x1; //0x22;
-static unsigned char i2s_to_spdif_flag=0;
+static unsigned char i2s_to_spdif_flag=1;
 //#endif
 static unsigned color_depth_f=0;
 static unsigned color_space_f=0;
@@ -1864,25 +1864,25 @@ static void enable_audio_spdif(void)
     
     printk("Enable audio spdif to HDMI\n");
     
-        Wr( AIU_958_MISC, 0x204a ); // // Program the IEC958 Module in the AIU
-        Wr( AIU_958_FORCE_LEFT, 0x0000 );
-        Wr( AIU_958_CTRL, 0x0240 );
+//        Wr( AIU_958_MISC, 0x204a ); // // Program the IEC958 Module in the AIU
+//        Wr( AIU_958_FORCE_LEFT, 0x0000 );
+//        Wr( AIU_958_CTRL, 0x0240 );
 
     /* enable audio*/        
         hdmi_wr_reg(TX_AUDIO_I2S,   0x0 );  // Address  0x5A=0x0    TX_AUDIO_I2S
 
         hdmi_wr_reg(TX_AUDIO_SPDIF, 1); // TX AUDIO SPDIF Enable
 
-        Wr(AIU_CLK_CTRL,        Rd(AIU_CLK_CTRL) | 2); // enable iec958 clock which is audio_master_clk
-        Wr( AIU_958_BPF, 0x0100 ); // Set the PCM frame size to 256 bytes
-        Wr( AIU_958_DCU_FF_CTRL, 0x0001 );
-        
-        Wr(AIU_I2S_MISC, Rd(AIU_I2S_MISC)|0x18); //i2s_to_958 directly
-
-#ifdef AML_A3
-    //hdmi 958 clk  = amclk/128/2;
-        Wr(AIU_CLK_CTRL, (Rd(AIU_CLK_CTRL)&(~(0x3<<4))&(~(1<<12)))|(0x1<<4));
-#endif
+        //Wr(AIU_CLK_CTRL,        Rd(AIU_CLK_CTRL) | 2); // enable iec958 clock which is audio_master_clk
+//        Wr( AIU_958_BPF, 0x0100 ); // Set the PCM frame size to 256 bytes
+//        Wr( AIU_958_DCU_FF_CTRL, 0x0001 );
+//        
+//        Wr(AIU_I2S_MISC, Rd(AIU_I2S_MISC)|0x18); //i2s_to_958 directly
+//
+//#ifdef AML_A3
+//    //hdmi 958 clk  = amclk/128/2;
+//        Wr(AIU_CLK_CTRL, (Rd(AIU_CLK_CTRL)&(~(0x3<<4))&(~(1<<12)))|(0x1<<4));
+//#endif
 }
 
 static void enable_audio_i2s(void)
@@ -1890,11 +1890,11 @@ static void enable_audio_i2s(void)
     printk("Enable audio i2s to HDMI\n");
     hdmi_wr_reg(TX_AUDIO_I2S,   0x1 );  // Address  0x5A=0x0    TX_AUDIO_I2S
     hdmi_wr_reg(TX_AUDIO_SPDIF, 0); // TX AUDIO SPDIF Enable
-    Wr(AIU_CLK_CTRL,        Rd(AIU_CLK_CTRL) | 3); // enable iec958 clock which is audio_master_clk
-    Wr(AIU_CLK_CTRL, (Rd(AIU_CLK_CTRL)&(~(0x3 << 4)))|(1<<4));
+    //Wr(AIU_CLK_CTRL,        Rd(AIU_CLK_CTRL) | 3); // enable iec958 clock which is audio_master_clk
+    //Wr(AIU_CLK_CTRL, (Rd(AIU_CLK_CTRL)&(~(0x3 << 4)))|(1<<4));
 #ifdef AML_A3
     //hdmi 958 clk  = amclk/128/2;
-        Wr(AIU_CLK_CTRL, (Rd(AIU_CLK_CTRL)&(~(0x3<<4))&(~(1<<12)))|(0x1<<4));
+//        Wr(AIU_CLK_CTRL, (Rd(AIU_CLK_CTRL)&(~(0x3<<4))&(~(1<<12)))|(0x1<<4));
 #endif
 
 }    
@@ -2267,6 +2267,21 @@ static void hdmitx_m3_setaudioinfoframe(unsigned char* AUD_DB, unsigned char* CH
     }
 }
 
+static void hdmitx_m3_setHBRAudioStreamPacket(void)
+{
+    hdmi_wr_reg_bits(TX_AUDIO_CONTROL, 0, 4, 2);
+    hdmi_wr_reg_bits(TX_AUDIO_CONTROL, 3, 1, 2);
+    return ;
+//    int i;
+//    unsigned char HBR_HB[3]={0x9, 0x0, 0xF0};
+    //hdmitx_m3_set_packet(HDMI_PACKET_HBR, AUD_DB, HBR_HB);
+    printk("set HBR Audio Stream Packet\n");
+    hdmi_wr_reg_bits(TX_AUDIO_CONTROL, 2, 4, 2);
+    hdmi_wr_reg_bits(TX_AUDIO_CONTROL, 3, 1, 2);
+    hdmi_wr_reg(TX_AUDIO_VALID, 0xfc);
+    hdmi_wr_reg(TX_AUDIO_USER, 0xfc);
+    hdmi_wr_reg(TX_AUDIO_PACK, 0x1);
+}
 
 //------------------------------------------------------------------------------
 // set_hdmi_audio_source(unsigned int src)
@@ -2329,6 +2344,7 @@ static void set_hdmi_audio_source(unsigned int src)
     data32 |= src   << 4;   // [5:4]    hdmi_data_sel: 00=disable hdmi i2s input; 01=Select pcm data; 10=Select AIU I2S data; 11=Not allowed.
     data32 |= src   << 0;   // [1:0]    hdmi_clk_sel: 00=Disable hdmi audio clock input; 01=Select pcm clock; 10=Select AIU aoclk; 11=Not allowed.
     Wr(AIU_HDMI_CLK_DATA_CTRL, data32);
+    Wr(AIU_HDMI_CLK_DATA_CTRL, 0x2);
 
     // Wait until data change is settled
     i = 0;
@@ -2350,6 +2366,8 @@ static int hdmitx_m3_set_audmode(struct hdmi_tx_dev_s* hdmitx_device, Hdmi_tx_au
     hdmi_print(0,"HDMI DEBUG [%s] hdmitx_device->cur_VIC=[%d]\n", __FUNCTION__, hdmitx_device->cur_VIC);
     
 //Refer to HDMI SPEC V1.4 Page 137
+    printk("current VIC: %d\n", hdmitx_device->cur_VIC);
+    printk("audio sample rate: %d\n", audio_param->sample_rate);
     switch(hdmitx_device->cur_VIC)
     {
         //TMDS Clock:27MHz
@@ -2364,6 +2382,8 @@ static int hdmitx_m3_set_audmode(struct hdmi_tx_dev_s* hdmitx_device, Hdmi_tx_au
             switch(audio_param->sample_rate)
             {
                 case FS_32K:
+                    audio_N_para = 4096;
+                    break;
                 case FS_44K1:
                     audio_N_para = 6272;
                     break;
@@ -2509,22 +2529,7 @@ static int hdmitx_m3_set_audmode(struct hdmi_tx_dev_s* hdmitx_device, Hdmi_tx_au
         default:
             break;
     }
-    hdmi_wr_reg(TX_SYS1_ACR_N_0, (audio_N_para&0xff)); // N[7:0]
-    hdmi_wr_reg(TX_SYS1_ACR_N_1, (audio_N_para>>8)&0xff); // N[15:8]
-    hdmi_wr_reg(TX_SYS1_ACR_N_2, (audio_N_tolerance<<4)|((audio_N_para>>16)&0xf)); // N[19:16]
-    hdmi_wr_reg(TX_AUDIO_CONTROL,   hdmi_rd_reg(TX_AUDIO_CONTROL)|0x1); 
 
-    hdmi_wr_reg(TX_SYS0_ACR_CTS_0, 0);      //audio_CTS & 0xff);
-    hdmi_wr_reg(TX_SYS0_ACR_CTS_1, 0);      //(audio_CTS>>8) & 0xff);
-    hdmi_wr_reg(TX_SYS0_ACR_CTS_2, 0);      //(1<<5)|(1<<4)|((audio_CTS>>16)&0xf));
-    
-    set_hdmi_audio_source(i2s_to_spdif_flag ? 1 : 2);
-    
-    if(i2s_to_spdif_flag)
-        enable_audio_spdif();
-    else
-        enable_audio_i2s();
-        
     //TODO. Different audio type, maybe have different settings
     switch(audio_param->type){
         case CT_PCM:
@@ -2545,7 +2550,8 @@ static int hdmitx_m3_set_audmode(struct hdmi_tx_dev_s* hdmitx_device, Hdmi_tx_au
             break;
         case CT_ONE_BIT_AUDIO:
             break;
-        case CT_DOLBY_D:
+	case CT_DOLBY_D:
+	    audio_N_para *= 4;   
             break;
         case CT_DTS_HD:
             break;
@@ -2558,7 +2564,23 @@ static int hdmitx_m3_set_audmode(struct hdmi_tx_dev_s* hdmitx_device, Hdmi_tx_au
         default:
             break;
     }
+
+    hdmi_wr_reg(TX_SYS1_ACR_N_0, (audio_N_para&0xff)); // N[7:0]
+    hdmi_wr_reg(TX_SYS1_ACR_N_1, (audio_N_para>>8)&0xff); // N[15:8]
+    hdmi_wr_reg(TX_SYS1_ACR_N_2, (audio_N_tolerance<<4)|((audio_N_para>>16)&0xf)); // N[19:16]
+    hdmi_wr_reg(TX_AUDIO_CONTROL,   hdmi_rd_reg(TX_AUDIO_CONTROL)|0x1); 
+
+    hdmi_wr_reg(TX_SYS0_ACR_CTS_0, 0);      //audio_CTS & 0xff);
+    hdmi_wr_reg(TX_SYS0_ACR_CTS_1, 0);      //(audio_CTS>>8) & 0xff);
+    hdmi_wr_reg(TX_SYS0_ACR_CTS_2, 0);      //(1<<5)|(1<<4)|((audio_CTS>>16)&0xf));
     
+    set_hdmi_audio_source(i2s_to_spdif_flag ? 1 : 2);
+    
+    if(i2s_to_spdif_flag)
+        enable_audio_spdif();
+    else
+        enable_audio_i2s();
+   
     return 0;
 }    
     
@@ -2886,6 +2908,10 @@ static void hdmitx_m3_debug(hdmitx_dev_t* hdmitx_device, const char* buf)
             printk("CBUS[0x%x]: 0x%x\n", adr+j, READ_MPEG_REG(adr+j));
         }
     }
+    else if(strncmp(tmpbuf, "plla", 4)==0){
+        printk("CTS_AMCLK : %u Hz\n", clk_util_clk_msr_Hz(CTS_AMCLK));
+        printk("HDMI_CH3_TMDSCLK : %u Hz\n", clk_util_clk_msr_Hz(HDMI_CH3_TMDSCLK));
+    }
     else if(strncmp(tmpbuf, "pllcalc", 7)==0){
         adr=simple_strtoul(tmpbuf+7, NULL, 10);
         if((adr == 0) && (*(tmpbuf+7) != 'a')){
@@ -2925,11 +2951,11 @@ static void hdmitx_m3_debug(hdmitx_dev_t* hdmitx_device, const char* buf)
     else if(strncmp(tmpbuf, "hdmiaudio", 9)==0){
         value=simple_strtoul(tmpbuf+9, NULL, 16);
         if(value == 1){
-            hdmi_audio_off_flag = 1;
+            hdmi_audio_off_flag = 0;
             hdmi_audio_init(i2s_to_spdif_flag);
         }
         else if(value == 0){
-            hdmi_audio_off_flag = 0;
+            hdmi_audio_off_flag = 1;
             hdmi_wr_reg(TX_AUDIO_PACK, 0x00); // disable audio sample packets
         }
         return;
@@ -3079,6 +3105,7 @@ void HDMITX_M1B_Init(hdmitx_dev_t* hdmitx_device)
 {
     hdmitx_device->HWOp.SetPacket = hdmitx_m3_set_packet;
     hdmitx_device->HWOp.SetAudioInfoFrame = hdmitx_m3_setaudioinfoframe;
+    hdmitx_device->HWOp.SetHBRAudioStreamPacket = hdmitx_m3_setHBRAudioStreamPacket;
     hdmitx_device->HWOp.GetEDIDData = hdmitx_m3_getediddata;
     hdmitx_device->HWOp.SetDispMode = hdmitx_m3_set_dispmode;
     hdmitx_device->HWOp.SetAudMode = hdmitx_m3_set_audmode;

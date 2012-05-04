@@ -768,7 +768,9 @@ static int hdmitx_notify_callback_a(struct notifier_block *block, unsigned long 
         audio_param->type = CT_DOLBY_D;
         audio_param->channel_num = CC_2CH;
         audio_param->sample_size = SS_16BITS; 
+        //audio_param->sample_rate = FS_48K;//192K;      // FS_48K;       //
         hdmi_print(1, "HDMI: aout notify format Dobly Digital +\n");
+        printk("audio sample_rate: %d\n", substream->runtime->rate);
         break;
     case AOUT_EVENT_RAWDATA_DTS_HD:
         audio_param->type = CT_DTS_HD;
