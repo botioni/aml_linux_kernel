@@ -103,10 +103,11 @@
 #define LARGE_SEC_BUFF_COUNT 32
 #define WATCHDOG_TIMER    250
 
-/*#ifdef CONFIG_AM_MXL101
-#define CONFIG_AMLOGIC_S2P_TS0
-#define CONFIG_AMLOGIC_S2P_TS1
-#endif*/
+#ifdef CONFIG_AM_MXL101
+#define CONFIG_AMLOGIC_S_TS0
+#define CONFIG_AMLOGIC_S_TS1
+#define CONFIG_AMLOGIC_S_TS2
+#endif
 
 /*Reset the demux device*/
 void dmx_reset_hw(struct aml_dvb *dvb);
@@ -449,7 +450,7 @@ static irqreturn_t dmx_irq_handler(int irq_number, void *para)
 
 	status = DMX_READ_REG(dmx->id, STB_INT_STATUS);
 	if(!status) return IRQ_HANDLED;
-	//printk("demux int\n");
+	//printk("demux int 0x%x\n", status);
 	if(status & (1<<SECTION_BUFFER_READY)) {
 		process_section(dmx);
 	}
@@ -552,18 +553,24 @@ static void stb_enable(struct aml_dvb *dvb)
 			fec_clk = 4;
 			hiu     = 0;
 		break;		
-		case AM_TS_SRC_S2P0:
-			printk("[RSJ]AM_TS_SRC_S2P0\n");
+		case AM_TS_SRC_S_TS0:
 			out_src = 6;
 			invert_clk = 1;
 			fec_s   = 0;
 			fec_clk = 4;
 			hiu     = 0;
 		break;
-		case AM_TS_SRC_S2P1:
+		case AM_TS_SRC_S_TS1:
 			out_src = 6;
 			invert_clk = 1;
 			fec_s   = 1;
+			fec_clk = 4;
+			hiu     = 0;
+		break;
+		case AM_TS_SRC_S_TS2:
+			out_src = 6;
+			invert_clk = 1;
+			fec_s   = 2;
 			fec_clk = 4;
 			hiu     = 0;
 		break;
@@ -1056,8 +1063,9 @@ static int dmx_enable(struct aml_dmx *dmx)
 			fec_clk = 0;
 			record  = record?1:0;
 		break;		
-		case AM_TS_SRC_S2P0:
-		case AM_TS_SRC_S2P1:
+		case AM_TS_SRC_S_TS0:
+		case AM_TS_SRC_S_TS1:
+		case AM_TS_SRC_S_TS2:
 			fec_sel = 6;
 			fec_clk = 1;
 			record  = record?1:0;
@@ -2075,36 +2083,43 @@ int aml_dmx_hw_set_source(struct dmx_demux* demux, dmx_source_t src)
 	spin_lock_irqsave(&dmx->slock, flags);
 	switch(src) {
 		case DMX_SOURCE_FRONT0:
-#ifndef CONFIG_AMLOGIC_S2P_TS0
+#ifndef CONFIG_AMLOGIC_S_TS0
 			if(dmx->source!=AM_TS_SRC_TS0) {
 				dmx->source = AM_TS_SRC_TS0;
 				ret = 1;
 			}
 #else
-			if(dmx->source!=AM_TS_SRC_S2P0) {
-				dmx->source = AM_TS_SRC_S2P0;
+			if(dmx->source!=AM_TS_SRC_S_TS0) {
+				dmx->source = AM_TS_SRC_S_TS0;
 				ret = 1;
 			}
 #endif
 		break;
 		case DMX_SOURCE_FRONT1:
-#ifndef CONFIG_AMLOGIC_S2P_TS1
+#ifndef CONFIG_AMLOGIC_S_TS1
 			if(dmx->source!=AM_TS_SRC_TS1) {
 				dmx->source = AM_TS_SRC_TS1;
 				ret = 1;
 			}
 #else
-			if(dmx->source!=AM_TS_SRC_S2P1) {
-				dmx->source = AM_TS_SRC_S2P1;
+			if(dmx->source!=AM_TS_SRC_S_TS1) {
+				dmx->source = AM_TS_SRC_S_TS1;
 				ret = 1;
 			}
 #endif
 		break;
 		case DMX_SOURCE_FRONT2:
+#ifndef CONFIG_AMLOGIC_S_TS2
 			if(dmx->source!=AM_TS_SRC_TS2) {
 				dmx->source = AM_TS_SRC_TS2;
 				ret = 1;
 			}
+#else
+			if(dmx->source!=AM_TS_SRC_S_TS2) {
+				dmx->source = AM_TS_SRC_S_TS2;
+				ret = 1;
+			}
+#endif
 		break;
 		case DMX_SOURCE_DVR0:
 			if(dmx->source!=AM_TS_SRC_HIU) {
@@ -2136,22 +2151,25 @@ int aml_stb_hw_set_source(struct aml_dvb *dvb, dmx_source_t src)
 
 	switch(src) {
 		case DMX_SOURCE_FRONT0:
-#ifndef CONFIG_AMLOGIC_S2P_TS0
+#ifndef CONFIG_AMLOGIC_S_TS0
 			dvb->stb_source = AM_TS_SRC_TS0;
 #else
-			dvb->stb_source = AM_TS_SRC_S2P0;
+			dvb->stb_source = AM_TS_SRC_S_TS0;
 #endif
 		break;
 		case DMX_SOURCE_FRONT1:
-#ifndef CONFIG_AMLOGIC_S2P_TS1
+#ifndef CONFIG_AMLOGIC_S_TS1
 			dvb->stb_source = AM_TS_SRC_TS1;
 #else
-			dvb->stb_source = AM_TS_SRC_S2P1;
+			dvb->stb_source = AM_TS_SRC_S_TS1;
 #endif
 		break;
 		case DMX_SOURCE_FRONT2:
+#ifndef CONFIG_AMLOGIC_S_TS2
 			dvb->stb_source = AM_TS_SRC_TS2;
-
+#else
+			dvb->stb_source = AM_TS_SRC_S_TS2;
+#endif
 		break;
 		case DMX_SOURCE_DVR0:
 			dvb->stb_source = AM_TS_SRC_HIU;

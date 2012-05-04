@@ -47,8 +47,9 @@ typedef enum {
 	AM_TS_SRC_TS0,
 	AM_TS_SRC_TS1,
 	AM_TS_SRC_TS2,	
-	AM_TS_SRC_S2P0,
-	AM_TS_SRC_S2P1,
+	AM_TS_SRC_S_TS0,
+	AM_TS_SRC_S_TS1,
+	AM_TS_SRC_S_TS2,
 	AM_TS_SRC_HIU
 } aml_ts_source_t;
 

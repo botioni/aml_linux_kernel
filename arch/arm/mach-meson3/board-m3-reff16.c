@@ -1874,8 +1874,13 @@ static void __init device_pinmux_init(void )
 #ifdef CONFIG_AM_MXL101
 	//for mxl101
 
-	set_mio_mux(3, 0x3F);
-	clear_mio_mux(6, 0x1F<<19);
+	//set_mio_mux(3, 0x3F);
+	//clear_mio_mux(6, 0x1F<<19);
+
+	set_mio_mux(3, 0x3F<<6);
+	clear_mio_mux(0, 0xF);
+	clear_mio_mux(5, 0x1<<23);
+
 	clear_mio_mux(0, 1<<6);
 	//pwr pin;
 	clear_mio_mux(0, 1<<13);

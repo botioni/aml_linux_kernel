@@ -362,14 +362,15 @@ static ssize_t stb_show_source(struct class *class, struct class_attribute *attr
 	
 	switch(dvb->stb_source) {
 		case AM_TS_SRC_TS0:
-		case AM_TS_SRC_S2P0:
+		case AM_TS_SRC_S_TS0:
 			src = "ts0";
 		break;
 		case AM_TS_SRC_TS1:
-		case AM_TS_SRC_S2P1:
+		case AM_TS_SRC_S_TS1:
 			src = "ts1";
 		break;
 		case AM_TS_SRC_TS2:
+		case AM_TS_SRC_S_TS2:
 			src = "ts2";
 		break;		
 		case AM_TS_SRC_HIU:
@@ -391,7 +392,7 @@ static ssize_t stb_store_source(struct class *class,struct class_attribute *attr
 {
     dmx_source_t src = -1;
 	
-	if(!strncmp("ts0", buf, 3)) {
+    if(!strncmp("ts0", buf, 3)) {
     	src = DMX_SOURCE_FRONT0;
     } else if(!strncmp("ts1", buf, 3)) {
     	src = DMX_SOURCE_FRONT1;
@@ -466,14 +467,15 @@ static ssize_t demux##i##_show_source(struct class *class,  struct class_attribu
 	char *src;\
 	switch(dmx->source) {\
 		case AM_TS_SRC_TS0:\
-		case AM_TS_SRC_S2P0:\
+		case AM_TS_SRC_S_TS0:\
 			src = "ts0";\
 		break;\
 		case AM_TS_SRC_TS1:\
-		case AM_TS_SRC_S2P1:\
+		case AM_TS_SRC_S_TS1:\
 			src = "ts1";\
 		break;\
 		case AM_TS_SRC_TS2:\
+		case AM_TS_SRC_S_TS2:\
 			src = "ts2";\
 		break;\
 		case AM_TS_SRC_HIU:\
