@@ -307,6 +307,12 @@ exit:
 	return 0;
  	}
 
+
+/**
+ *	bit31 - digital raw output
+ *	bit30 - IEC61937 pass over HDMI
+ * */
+
 static  int __init decode_option_setup(char *s)
 {
     unsigned long value = 0xffffffffUL;
