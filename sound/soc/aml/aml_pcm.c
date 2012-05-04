@@ -30,9 +30,21 @@
 
 //#define _AML_PCM_DEBUG_
 
-#define AOUT_EVENT_PREPARE      0x1
-#define AOUT_EVENT_RAWDATA_AC_3 0x2
-#define AOUT_EVENT_RAWDATA_DTS  0x3
+#define AOUT_EVENT_IEC_60958_PCM                0x1
+#define AOUT_EVENT_RAWDATA_AC_3                 0x2
+#define AOUT_EVENT_RAWDATA_MPEG1                0x3
+#define AOUT_EVENT_RAWDATA_MP3                  0x4
+#define AOUT_EVENT_RAWDATA_MPEG2                0x5
+#define AOUT_EVENT_RAWDATA_AAC                  0x6
+#define AOUT_EVENT_RAWDATA_DTS                  0x7
+#define AOUT_EVENT_RAWDATA_ATRAC                0x8
+#define AOUT_EVENT_RAWDATA_ONE_BIT_AUDIO        0x9
+#define AOUT_EVENT_RAWDATA_DOBLY_DIGITAL_PLUS   0xA
+#define AOUT_EVENT_RAWDATA_DTS_HD               0xB
+#define AOUT_EVENT_RAWDATA_MAT_MLP              0xC
+#define AOUT_EVENT_RAWDATA_DST                  0xD
+#define AOUT_EVENT_RAWDATA_WMA_PRO              0xE
+
 extern int aout_notifier_call_chain(unsigned long val, void *v);
 extern void	aml_alsa_hw_reprepare();
 
@@ -52,6 +64,10 @@ unsigned int aml_pcm_playback_phy_end_addr = 0;
 unsigned int aml_pcm_capture_phy_end_addr = 0;
 unsigned int aml_pcm_playback_off = 0;
 unsigned int aml_pcm_playback_enable = 1;
+
+unsigned int aml_iec958_playback_start_addr = 0;
+unsigned int aml_iec958_playback_start_phy = 0;
+unsigned int aml_iec958_playback_size = 0;  // in bytes
 
 static  unsigned  substream_handle = 0 ;
 
@@ -210,7 +226,7 @@ static int aml_pcm_preallocate_dma_buffer(struct snd_pcm *pcm,
 		buf->dev.dev = pcm->card->dev;
 		buf->private_data = NULL;
         /* one size for i2s output, another for 958, and 128 for alignment */
-		buf->area = dma_alloc_coherent(pcm->card->dev, size*2+4096,
+		buf->area = dma_alloc_coherent(pcm->card->dev, size+4096,
 					  &buf->addr, GFP_KERNEL);
 		printk("aml-pcm %d:"
 		"preallocate_dma_buffer: area=%p, addr=%p, size=%d\n", stream,
@@ -223,6 +239,16 @@ static int aml_pcm_preallocate_dma_buffer(struct snd_pcm *pcm,
 
 		aml_pcm_playback_phy_start_addr = buf->addr;
 		aml_pcm_playback_phy_end_addr = buf->addr+size;
+
+        /* alloc iec958 buffer */
+        aml_iec958_playback_start_addr = dma_alloc_coherent(pcm->card->dev, size*4,
+           &aml_iec958_playback_start_phy, GFP_KERNEL);
+        if(aml_iec958_playback_start_addr == 0){
+          printk("aml-pcm %d: alloc iec958 buffer failed\n");
+          return -ENOMEM;
+        }
+        aml_iec958_playback_size = size*4;
+        printk("iec958 %d: preallocate dma buffer start=%p, size=%x\n", aml_iec958_playback_start_addr, size*4);
 	}else{
 		size = aml_pcm_capture.buffer_bytes_max;
 		buf->dev.type = SNDRV_DMA_TYPE_DEV;
@@ -315,7 +341,7 @@ static void  aml_hw_i2s_init(struct snd_pcm_runtime *runtime)
 		}
 		audio_set_i2s_mode(I2S_MODE);
 		audio_set_aiubuf(runtime->dma_addr, runtime->dma_bytes);
-		memset((void*)runtime->dma_area,0,runtime->dma_bytes * 2 + 4096);
+		memset((void*)runtime->dma_area,0,runtime->dma_bytes + 4096);
 		/* update the i2s hw buffer end addr as android may update that */
 		aml_pcm_playback_phy_end_addr = aml_pcm_playback_phy_start_addr+runtime->dma_bytes;
 		printk("I2S hw init,i2s mode %d\n",I2S_MODE);
@@ -336,7 +362,7 @@ static void aml_hw_iec958_init(void)
 	memset((void*)(&chstat), 0, sizeof(chstat));
 	set.chan_stat = &chstat;
    	/* case 1,raw mode enabled */
-	if(IEC958_mode_raw == 1 && IEC958_mode_codec){
+	if(IEC958_mode_raw >= 1 && IEC958_mode_codec){
 	  if(IEC958_mode_codec == 1){ //dts, use raw sync-word mode
 	    	IEC958_MODE = AIU_958_MODE_RAW;
 		printk("iec958 mode RAW\n");
@@ -345,9 +371,7 @@ static void aml_hw_iec958_init(void)
 		IEC958_MODE = AIU_958_MODE_PCM_RAW;
 		printk("iec958 mode %s\n",(I2S_MODE == AIU_I2S_MODE_PCM32)?"PCM32_RAW":((I2S_MODE == AIU_I2S_MODE_PCM24)?"PCM24_RAW":"PCM16_RAW"));				
 	  }	
-	}
-	/* case 2,3 */
-	else{
+	}else{	/* case 2,3 */
 	  if(I2S_MODE == AIU_I2S_MODE_PCM32)
 	  	IEC958_MODE = AIU_958_MODE_PCM32;
 	  else if(I2S_MODE == AIU_I2S_MODE_PCM24)
@@ -355,7 +379,7 @@ static void aml_hw_iec958_init(void)
 	  else		
 	  	IEC958_MODE = AIU_958_MODE_PCM16;
   	  printk("iec958 mode %s\n",(I2S_MODE == AIU_I2S_MODE_PCM32)?"PCM32":((I2S_MODE == AIU_I2S_MODE_PCM24)?"PCM24":"PCM16"));
-    }
+	}
 
 	if(IEC958_MODE == AIU_958_MODE_PCM16 || IEC958_MODE == AIU_958_MODE_PCM24 ||
 	  IEC958_MODE == AIU_958_MODE_PCM32){
@@ -371,8 +395,10 @@ static void aml_hw_iec958_init(void)
 		set.chan_stat->chstat0_r = 0x1902;
 		set.chan_stat->chstat1_l = 0X200;
 		set.chan_stat->chstat1_r = 0X200;
-        start = ((aml_pcm_playback_phy_end_addr + 4096)&(~127));
-        size  = aml_pcm_playback_phy_end_addr - aml_pcm_playback_phy_start_addr;
+        // start = ((aml_pcm_playback_phy_end_addr + 4096)&(~127));
+        // size  = aml_pcm_playback_phy_end_addr - aml_pcm_playback_phy_start_addr;
+        start = aml_iec958_playback_start_phy;
+        size = aml_iec958_playback_size;
 		audio_set_958outbuf(start, size, (IEC958_MODE == AIU_958_MODE_RAW)?1:0);
 	}
 	audio_set_958_mode(IEC958_MODE, &set);
@@ -459,12 +485,19 @@ static int aml_pcm_prepare(struct snd_pcm_substream *substream)
 			  ppp[1] = 0x78787878;
             }
 	}
-
-    aout_notifier_call_chain(AOUT_EVENT_PREPARE, substream);
-    if( IEC958_MODE == AIU_958_MODE_PCM_RAW)
-        aout_notifier_call_chain(AOUT_EVENT_RAWDATA_AC_3, substream);
-    if( IEC958_MODE == AIU_958_MODE_RAW)
+    if( IEC958_MODE == AIU_958_MODE_PCM_RAW){
+	if(IEC958_mode_raw == 2){ // need Over clock
+	    WRITE_MPEG_REG_BITS(AIU_CLK_CTRL, 0, 4, 2);	// 4x than i2s
+	    aout_notifier_call_chain(AOUT_EVENT_RAWDATA_DOBLY_DIGITAL_PLUS, substream);
+	}else{ // no-over clock
+	    aout_notifier_call_chain(AOUT_EVENT_RAWDATA_AC_3, substream);
+	}
+    }else if( IEC958_MODE == AIU_958_MODE_RAW){
         aout_notifier_call_chain(AOUT_EVENT_RAWDATA_DTS, substream);
+    }else{
+	aout_notifier_call_chain(AOUT_EVENT_IEC_60958_PCM, substream);
+    }
+
 #if 0
 	printk("Audio Parameters:\n");
 	printk("\tsample rate: %d\n", runtime->rate);
@@ -922,6 +955,11 @@ static void aml_pcm_free_dma_buffers(struct snd_pcm *pcm)
 	}
     aml_pcm_playback_start_addr = 0;
     aml_pcm_capture_start_addr  = 0;
+
+    if(aml_iec958_playback_start_addr){
+      dma_free_coherent(pcm->card->dev, aml_iec958_playback_size, aml_iec958_playback_start_addr, aml_iec958_playback_start_phy);
+      aml_iec958_playback_start_addr = 0;
+    }
 }
 
 #ifdef CONFIG_PM

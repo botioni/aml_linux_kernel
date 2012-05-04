@@ -409,6 +409,14 @@ static void vh264_isr(void)
         mb_width = mb_width & 0xff;
         mb_height = mb_total / mb_width;
 
+        /* if width or height from outside is not equal to mb, then use mb */
+        if ((frame_width >> 4) != mb_width) {
+            frame_width = 0;
+        }
+        if ((frame_height >> 4) != mb_height) {
+            frame_height = 0;
+        }
+
         if (frame_width == 0 || frame_height == 0) {
             frame_width = mb_width << 4;
             frame_height = mb_height << 4;
