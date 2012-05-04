@@ -92,7 +92,13 @@ void MxL101SF_Init(void)
   mxlMpegOutCfg.MpegClkPhase = MPEG_CLK_IN_PHASE;//MPEG_CLK_IN_PHASE;
   mxlMpegOutCfg.MpegSyncPol = MPEG_CLK_IN_PHASE;
   mxlMpegOutCfg.MpegValidPol = MPEG_CLK_IN_PHASE;
-  mxlMpegOutCfg.SerialOrPar = MPEG_DATA_SERIAL;//MPEG_DATA_PARALLEL;
+
+#ifdef CONFIG_AMLOGIC_S_TS2
+  mxlMpegOutCfg.SerialOrPar = MPEG_DATA_SERIAL;
+#else
+  mxlMpegOutCfg.SerialOrPar = MPEG_DATA_PARALLEL;
+#endif
+
   MxLWare_API_ConfigDevice(MXL_DEV_MPEG_OUT_CFG, &mxlMpegOutCfg);
 
   // 7. Enable Top Master Control

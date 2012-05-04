@@ -103,12 +103,6 @@
 #define LARGE_SEC_BUFF_COUNT 32
 #define WATCHDOG_TIMER    250
 
-#ifdef CONFIG_AM_MXL101
-#define CONFIG_AMLOGIC_S_TS0
-#define CONFIG_AMLOGIC_S_TS1
-#define CONFIG_AMLOGIC_S_TS2
-#endif
-
 /*Reset the demux device*/
 void dmx_reset_hw(struct aml_dvb *dvb);
 static int dmx_remove_feed(struct aml_dmx *dmx, struct dvb_demux_feed *feed);
