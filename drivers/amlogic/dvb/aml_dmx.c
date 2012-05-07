@@ -1131,6 +1131,7 @@ static int dmx_enable(struct aml_dmx *dmx)
 	struct aml_dvb *dvb = (struct aml_dvb*)dmx->demux.priv;
 	int fec_sel, hi_bsf, fec_clk, record;
 	int fec_core_sel;
+	int fec_s, invert_clk, set_stb=0;
 	
 	record = dmx_get_record_flag(dmx);
 	
@@ -1156,6 +1157,14 @@ static int dmx_enable(struct aml_dmx *dmx)
 			fec_sel = 6;
 			fec_clk = 1;
 			record  = record?1:0;
+			set_stb = 1;
+			invert_clk = 1;
+			if(dmx->source==AM_TS_SRC_S_TS0)
+				fec_s = 0;
+			else if(dmx->source==AM_TS_SRC_S_TS1)
+				fec_s = 1;
+			else
+				fec_s = 2;
 		break;
 		case AM_TS_SRC_HIU:
 			fec_sel = 7;
@@ -1180,6 +1189,15 @@ static int dmx_enable(struct aml_dmx *dmx)
 		fec_core_sel = 0;
 	if(dmx->chan_count) {
 		/*Initialize the registers*/
+		if(set_stb){
+			u32 v = READ_MPEG_REG(STB_TOP_CONFIG);
+
+			v &= ~((3<<S2P0_FEC_SERIAL_SEL)|(1<<INVERT_S2P0_FEC_CLK));
+			v |= (fec_s<<S2P0_FEC_SERIAL_SEL)|(invert_clk<<INVERT_S2P0_FEC_CLK);
+
+			WRITE_MPEG_REG(STB_TOP_CONFIG, v);
+		}
+
 		DMX_WRITE_REG(dmx->id, STB_INT_MASK, DEMUX_INT_MASK);
 		DMX_WRITE_REG(dmx->id, DEMUX_MEM_REQ_EN, 
 #ifdef USE_AHB_MODE
