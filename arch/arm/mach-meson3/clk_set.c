@@ -35,14 +35,14 @@ static int get_max_common_divisor(int a, int b)
 
 /*
     select clk:
-    7-SYS_PLL_DIV2_CLK
+    7-EXT_XTAL_CLK(25MHz)
     6-VID2_PLL_CLK
     5-VID_PLL_CLK
     4-AUDIO_PLL_CLK
     3-DDR_PLL_CLK
     2-MISC_PLL_CLK
     1-SYS_PLL_CLK
-    0-XTAL (25Mhz)
+    0-XTAL
 
     clk_freq:50M=50000000
     output_clk:50000000;
@@ -64,6 +64,7 @@ int eth_clk_set(int selectclk, unsigned long clk_freq, unsigned long out_clk, un
     WRITE_CBUS_REG(HHI_ETH_CLK_CNTL,
                    (n - 1) << 0 |
                    selectclk << 9 |
+                   ((clk_invert == 1) ? 1 : 0) << 14 | //PAD signal invert
                    1 << 8 //enable clk
                   );
 

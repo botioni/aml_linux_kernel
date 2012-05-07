@@ -45,8 +45,8 @@ MODULE_VERSION("1.0.0");
 
 extern unsigned IEC958_mode_raw;
 extern unsigned IEC958_mode_codec;
-static int IEC958_mode_raw_last = -1;
-static int IEC958_mode_codec_last = -1;
+static int IEC958_mode_raw_last = 0;
+static int IEC958_mode_codec_last = 0;
 extern struct audio_info * get_audio_info(void);
 extern void	aml_alsa_hw_reprepare();
 void audiodsp_moniter(unsigned long);
@@ -176,7 +176,7 @@ static int audiodsp_ioctl(struct inode *node, struct file *file, unsigned int cm
             	IEC958_mode_codec = 0;
 			break;
 		case AUDIODSP_START:
-			if(IEC958_mode_raw_last != IEC958_mode_raw || IEC958_mode_codec_last !=  IEC958_mode_codec)
+			if(IEC958_mode_raw_last != IEC958_mode_raw || (IEC958_mode_raw&&(IEC958_mode_codec_last !=  IEC958_mode_codec)))
 			{
 				IEC958_mode_raw_last = IEC958_mode_raw;
 				IEC958_mode_codec_last = IEC958_mode_codec;
@@ -489,6 +489,14 @@ static int audiodsp_ioctl(struct inode *node, struct file *file, unsigned int cm
 			tsync_set_apts(pts);
 			
 			break;
+
+                case AUDIODSP_AUTOMUTE_ON:
+                        tsync_set_automute_on(1);
+                        break;
+
+                case AUDIODSP_AUTOMUTE_OFF:
+                        tsync_set_automute_on(0);
+                        break;
 			
 		default:
 			DSP_PRNT("unsupport cmd number%d\n",cmd);
@@ -701,8 +709,13 @@ static ssize_t dsp_working_status_show(struct class* cla, struct class_attribute
 
 static ssize_t digital_raw_show(struct class*cla, struct class_attribute* attr, char* buf)
 {
+  static char* digital_format[] = {
+    "0 - PCM",
+    "1 - RAW w/o over clock",
+    "2 - RAW w/  over clock",
+  };
   char* pbuf = buf;
-  pbuf += sprintf(pbuf, "Digital output mode: %s\n", (IEC958_mode_raw==0)?"0 - PCM":"1 - RAW");
+  pbuf += sprintf(pbuf, "\nDigital output mode: %s\n", digital_format[IEC958_mode_raw]);
   return (pbuf-buf);
 }
 static ssize_t digital_raw_store(struct class* class, struct class_attribute* attr,
@@ -710,9 +723,11 @@ static ssize_t digital_raw_store(struct class* class, struct class_attribute* at
 {
   printk("buf=%s\n", buf);
   if(buf[0] == '0'){
-    IEC958_mode_raw = 0;
+    IEC958_mode_raw = 0;	// PCM
   }else if(buf[0] == '1'){
-    IEC958_mode_raw = 1;
+    IEC958_mode_raw = 1;	// RAW without over clock
+  }else if(buf[0] == '2'){
+    IEC958_mode_raw = 2;	// RAW with over clock
   }
   printk("IEC958_mode_raw=%d\n", IEC958_mode_raw);
   return count;

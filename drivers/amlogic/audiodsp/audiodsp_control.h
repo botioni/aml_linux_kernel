@@ -42,6 +42,8 @@ char *data;
 #define AUDIODSP_GET_FIRST_PTS_FLAG				_IOR('r',6,long)
 #define AUDIODSP_SYNC_GET_APTS					_IOR('r',7,unsigned long)
 #define AUDIODSP_SYNC_GET_PCRSCR					_IOR('r',8,unsigned long)
+#define AUDIODSP_AUTOMUTE_ON					_IOW('r',9,unsigned long)
+#define AUDIODSP_AUTOMUTE_OFF					_IOW('r',10,unsigned long)
 
 #define MCODEC_FMT_MPEG123 (1<<0)
 #define MCODEC_FMT_AAC 	  (1<<1)

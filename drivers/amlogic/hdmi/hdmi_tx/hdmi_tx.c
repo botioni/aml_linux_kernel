@@ -454,6 +454,13 @@ static ssize_t show_disp_cap(struct device * dev, struct device_attribute *attr,
     return pos;    
 }
 
+static ssize_t show_hpd_state(struct device * dev, struct device_attribute *attr, char * buf)
+{   
+    int pos=0;
+    pos += snprintf(buf+pos, PAGE_SIZE,"%d", hdmitx_device.hpd_state);
+    return pos;    
+}
+
 static unsigned char* hdmi_log_buf=NULL;
 static unsigned int hdmi_log_wr_pos=0;
 static unsigned int hdmi_log_rd_pos=0;
@@ -581,6 +588,7 @@ static DEVICE_ATTR(edid, S_IWUSR | S_IRUGO, show_edid, store_edid);
 static DEVICE_ATTR(config, S_IWUSR | S_IRUGO, show_config, store_config);
 static DEVICE_ATTR(debug, S_IWUSR | S_IRUGO, NULL, store_dbg);
 static DEVICE_ATTR(disp_cap, S_IWUSR | S_IRUGO, show_disp_cap, NULL);
+static DEVICE_ATTR(hpd_state, S_IWUSR | S_IRUGO, show_hpd_state, NULL);
 static DEVICE_ATTR(log, S_IWUSR | S_IRUGO, show_log, store_log);
 static DEVICE_ATTR(cec, S_IWUSR | S_IRUGO, show_cec, store_cec);
 
@@ -645,9 +653,22 @@ static struct notifier_block hdmitx_notifier_nb_v2 = {
 
 #ifndef DISABLE_AUDIO
 
-#define AOUT_EVENT_PREPARE  0x1
-#define AOUT_EVENT_RAWDATA_AC_3 0x2
-#define AOUT_EVENT_RAWDATA_DTS  0x3
+// Refer to CEA-861-D Page 88
+#define AOUT_EVENT_REFER_TO_STREAM_HEADER       0x0
+#define AOUT_EVENT_IEC_60958_PCM                0x1
+#define AOUT_EVENT_RAWDATA_AC_3                 0x2
+#define AOUT_EVENT_RAWDATA_MPEG1                0x3
+#define AOUT_EVENT_RAWDATA_MP3                  0x4
+#define AOUT_EVENT_RAWDATA_MPEG2                0x5
+#define AOUT_EVENT_RAWDATA_AAC                  0x6
+#define AOUT_EVENT_RAWDATA_DTS                  0x7
+#define AOUT_EVENT_RAWDATA_ATRAC                0x8
+#define AOUT_EVENT_RAWDATA_ONE_BIT_AUDIO        0x9
+#define AOUT_EVENT_RAWDATA_DOBLY_DIGITAL_PLUS   0xA
+#define AOUT_EVENT_RAWDATA_DTS_HD               0xB
+#define AOUT_EVENT_RAWDATA_MAT_MLP              0xC
+#define AOUT_EVENT_RAWDATA_DST                  0xD
+#define AOUT_EVENT_RAWDATA_WMA_PRO              0xE
 extern int aout_register_client(struct notifier_block * ) ;
 extern int aout_unregister_client(struct notifier_block * ) ;
 
@@ -662,7 +683,7 @@ static int hdmitx_notify_callback_a(struct notifier_block *block, unsigned long 
     struct snd_pcm_substream *substream =(struct snd_pcm_substream*)para;
     Hdmi_tx_audio_para_t* audio_param = &(hdmitx_device.cur_audio_param);
     switch (cmd){
-    case AOUT_EVENT_PREPARE:
+    case AOUT_EVENT_IEC_60958_PCM:
         audio_param->type = CT_PCM;
         audio_param->channel_num = CC_2CH;
         audio_param->sample_size = SS_16BITS; 
@@ -694,28 +715,92 @@ static int hdmitx_notify_callback_a(struct notifier_block *block, unsigned long 
         }
         hdmi_print(1, "HDMI: aout notify rate %d\n", substream->runtime->rate);
         hdmi_print(1, "HDMI: aout notify format PCM\n");
-
-        hdmitx_device.audio_param_update_flag = 1;
-        return 0;
+        break;
     case AOUT_EVENT_RAWDATA_AC_3:
         audio_param->type = CT_AC_3;
         audio_param->channel_num = CC_2CH;
         audio_param->sample_size = SS_16BITS; 
         hdmi_print(1, "HDMI: aout notify format AC-3\n");
-
-        hdmitx_device.audio_param_update_flag = 1;
-        return 0;
+        break;
+    case AOUT_EVENT_RAWDATA_MPEG1:
+        audio_param->type = CT_MPEG1;
+        audio_param->channel_num = CC_2CH;
+        audio_param->sample_size = SS_16BITS; 
+        hdmi_print(1, "HDMI: aout notify format MPEG1(Layer1 2)\n");
+        break;
+    case AOUT_EVENT_RAWDATA_MP3:
+        audio_param->type = CT_MP3;
+        audio_param->channel_num = CC_2CH;
+        audio_param->sample_size = SS_16BITS; 
+        hdmi_print(1, "HDMI: aout notify format MP3(MPEG1 Layer3)\n");
+        break;
+    case AOUT_EVENT_RAWDATA_MPEG2:
+        audio_param->type = CT_MPEG2;
+        audio_param->channel_num = CC_2CH;
+        audio_param->sample_size = SS_16BITS; 
+        hdmi_print(1, "HDMI: aout notify format MPEG2\n");
+        break;
+    case AOUT_EVENT_RAWDATA_AAC:
+        audio_param->type = CT_AAC;
+        audio_param->channel_num = CC_2CH;
+        audio_param->sample_size = SS_16BITS; 
+        hdmi_print(1, "HDMI: aout notify format AAC\n");
+        break;
     case AOUT_EVENT_RAWDATA_DTS:
         audio_param->type = CT_DTS;
         audio_param->channel_num = CC_2CH;
         audio_param->sample_size = SS_16BITS; 
         hdmi_print(1, "HDMI: aout notify format DTS\n");
-
-        hdmitx_device.audio_param_update_flag = 1;
-        return 0;
+        break;
+    case AOUT_EVENT_RAWDATA_ATRAC:
+        audio_param->type = CT_ATRAC;
+        audio_param->channel_num = CC_2CH;
+        audio_param->sample_size = SS_16BITS; 
+        hdmi_print(1, "HDMI: aout notify format ATRAC\n");
+        break;
+    case AOUT_EVENT_RAWDATA_ONE_BIT_AUDIO:
+        audio_param->type = CT_ONE_BIT_AUDIO;
+        audio_param->channel_num = CC_2CH;
+        audio_param->sample_size = SS_16BITS; 
+        hdmi_print(1, "HDMI: aout notify format One Bit Audio\n");
+        break;
+    case AOUT_EVENT_RAWDATA_DOBLY_DIGITAL_PLUS:
+        audio_param->type = CT_DOLBY_D;
+        audio_param->channel_num = CC_2CH;
+        audio_param->sample_size = SS_16BITS; 
+        //audio_param->sample_rate = FS_48K;//192K;      // FS_48K;       //
+        hdmi_print(1, "HDMI: aout notify format Dobly Digital +\n");
+        printk("audio sample_rate: %d\n", substream->runtime->rate);
+        break;
+    case AOUT_EVENT_RAWDATA_DTS_HD:
+        audio_param->type = CT_DTS_HD;
+        audio_param->channel_num = CC_2CH;
+        audio_param->sample_size = SS_16BITS; 
+        hdmi_print(1, "HDMI: aout notify format DTS-HD\n");
+        break;
+    case AOUT_EVENT_RAWDATA_MAT_MLP:
+        audio_param->type = CT_MAT;
+        audio_param->channel_num = CC_2CH;
+        audio_param->sample_size = SS_16BITS; 
+        hdmi_print(1, "HDMI: aout notify format MAT(MLP)\n");
+        break;
+    case AOUT_EVENT_RAWDATA_DST:
+        audio_param->type = CT_DST;
+        audio_param->channel_num = CC_2CH;
+        audio_param->sample_size = SS_16BITS; 
+        hdmi_print(1, "HDMI: aout notify format DST\n");
+        break;
+    case AOUT_EVENT_RAWDATA_WMA_PRO:
+        audio_param->type = CT_WMA;
+        audio_param->channel_num = CC_2CH;
+        audio_param->sample_size = SS_16BITS; 
+        hdmi_print(1, "HDMI: aout notify format WMA Pro\n");
+        break;
     default:
-        return 0;
-    }
+        break;
+    }    
+    hdmitx_device.audio_param_update_flag = 1;
+    return 0;
 }
 
 static struct notifier_block hdmitx_notifier_nb_a = {
@@ -797,6 +882,10 @@ static void
 #endif
 hdmi_task_handle(void *data) 
 {
+#ifdef CONFIG_AML_HDMI_TX_HDCP
+    extern void restart_edid_hdcp(void);
+    static int edid_hdcp_reset_flag = 0;
+#endif
     extern void hdmitx_edid_ram_buffer_clear(hdmitx_dev_t*);
     hdmitx_dev_t* hdmitx_device = (hdmitx_dev_t*)data;
     hdmitx_init_parameters(&hdmitx_device->hdmi_info);
@@ -857,7 +946,8 @@ hdmi_task_handle(void *data)
 
 				switch_set_state(&sdev, 1);
                 hdmitx_device->hpd_event = 0;
-            }    
+            }  
+            hdmitx_device->hpd_state = 1;  
         }
         else if(hdmitx_device->hpd_event == 2)
         {
@@ -876,12 +966,19 @@ hdmi_task_handle(void *data)
             hdmi_authenticated = -1;
 			switch_set_state(&sdev, 0);
             hdmitx_device->hpd_event = 0;
+            hdmitx_device->hpd_state = 0;
         }    
         else{
         }            
         /* authentication process */
 #ifdef CONFIG_AML_HDMI_TX_HDCP
         if(hdmitx_device->cur_VIC != HDMI_Unkown){
+            {
+                if(edid_hdcp_reset_flag){
+                    edid_hdcp_reset_flag = 0;
+                    restart_edid_hdcp();
+                }
+            }
             if(hdmitx_device->auth_process_timer>0){
                 hdmitx_device->auth_process_timer--;
             }
@@ -899,6 +996,9 @@ hdmi_task_handle(void *data)
                     hdmitx_device->HWOp.Cntl(hdmitx_device, HDMITX_OUTPUT_ENABLE, hdmi_output_on);
                 }
             }
+        }
+        else{
+            edid_hdcp_reset_flag = 1;
         }
 #endif        
         /**/    
@@ -1111,6 +1211,7 @@ static int amhdmitx_probe(struct platform_device *pdev)
     device_create_file(hdmitx_dev, &dev_attr_config);
     device_create_file(hdmitx_dev, &dev_attr_debug);
     device_create_file(hdmitx_dev, &dev_attr_disp_cap);
+    device_create_file(hdmitx_dev, &dev_attr_hpd_state);
     device_create_file(hdmitx_dev, &dev_attr_log);
     device_create_file(hdmitx_dev, &dev_attr_cec);
     
@@ -1163,6 +1264,7 @@ static int amhdmitx_remove(struct platform_device *pdev)
     device_remove_file(hdmitx_dev, &dev_attr_config);
     device_remove_file(hdmitx_dev, &dev_attr_debug);
     device_remove_file(hdmitx_dev, &dev_attr_disp_cap);
+    device_remove_file(hdmitx_dev, &dev_attr_hpd_state);
     device_remove_file(hdmitx_dev, &dev_attr_log);
     device_remove_file(hdmitx_dev, &dev_attr_cec);
 

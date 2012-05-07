@@ -51,6 +51,7 @@ typedef struct hdmi_tx_dev_s {
     struct {
         void (*SetPacket)(int type, unsigned char* DB, unsigned char* HB);
         void (*SetAudioInfoFrame)(unsigned char* AUD_DB, unsigned char* CHAN_STAT_BUF);
+        void (*SetHBRAudioStreamPacket)(void);
         unsigned char (*GetEDIDData)(struct hdmi_tx_dev_s* hdmitx_device);
         int (*SetDispMode)(Hdmi_tx_video_para_t *param);
         int (*SetAudMode)(struct hdmi_tx_dev_s* hdmitx_device, Hdmi_tx_audio_para_t* audio_param);
@@ -78,6 +79,7 @@ typedef struct hdmi_tx_dev_s {
     unsigned char unplug_powerdown;
     /**/
     unsigned char hpd_event; /* 1, plugin; 2, plugout */
+    unsigned char hpd_state; /* 1, connect; 0, disconnect */
     unsigned char force_audio_flag;
     unsigned char mux_hpd_if_pin_high_flag; 
 	unsigned char cec_func_flag;
@@ -91,6 +93,7 @@ typedef struct hdmi_tx_dev_s {
 #define HDMI_PACKET_AVI         3
 #define HDMI_AUDIO_INFO         4
 #define HDMI_AUDIO_CONTENT_PROTECTION   5
+#define HDMI_PACKET_HBR         6
 
 #ifdef AVOS
 #define HDMI_PROCESS_DELAY  AVTimeDly(500)
@@ -101,7 +104,7 @@ typedef struct hdmi_tx_dev_s {
 #endif        
 
 
-#define HDMITX_VER "2012Mar15b"
+#define HDMITX_VER "2012May7a"
 
 /************************************
 *    hdmitx protocol level interface

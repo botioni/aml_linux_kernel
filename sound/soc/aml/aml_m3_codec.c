@@ -15,6 +15,7 @@
 #include <sound/soc-dapm.h>
 #include <sound/initval.h>
 #include <sound/tlv.h>
+#include <sound/aml_platform.h>
 
 #include <mach/am_regs.h>
 #include "aml_audio_hw.h"
@@ -24,6 +25,7 @@ static struct snd_soc_codec *aml_m3_codec;
 
 extern int aml_m3_is_hp_pluged(void);
 extern void mute_spk(struct snd_soc_codec* codec, int flag);
+extern void mute_headphone(struct snd_soc_codec* codec, int flag);
 
 /* codec private data */
 struct aml_m3_codec_priv {
@@ -171,16 +173,18 @@ void aml_m3_reset(struct snd_soc_codec* codec, bool first_time)
 	    udelay(10);
 	    
 	    if(aml_m3_is_hp_pluged()) {
-	    	data32 = snd_soc_read(codec, ADAC_MUTE_CTRL_REG1);
-		    data32 &= ~0xc0;
-		    snd_soc_write(codec, ADAC_MUTE_CTRL_REG1, data32); //unmute HP
+	    	//data32 = snd_soc_read(codec, ADAC_MUTE_CTRL_REG1);
+		//data32 &= ~0xc0;
+		//snd_soc_write(codec, ADAC_MUTE_CTRL_REG1, data32); //unmute HP
+		mute_headphone(codec, 0);  //unmute HP
     	    mute_spk(codec, 1);
     	    latch_(codec);
     	}
     	else {
-    		data32 = snd_soc_read(codec, ADAC_MUTE_CTRL_REG1);
-	    	data32 |= 0xc0;
-		    snd_soc_write(codec, ADAC_MUTE_CTRL_REG1, data32);//mute HP
+    		//data32 = snd_soc_read(codec, ADAC_MUTE_CTRL_REG1);
+	    	//data32 |= 0xc0;
+		//snd_soc_write(codec, ADAC_MUTE_CTRL_REG1, data32);//mute HP
+		mute_headphone(codec, 1);  //mute HP
     		mute_spk(codec, 0);
 	    	latch_(codec);
         }
@@ -749,7 +753,7 @@ static int aml_m3_codec_mute(struct snd_soc_dai *dai, int mute)
 		reg &= ~3;
 	}
 	printk("aml_m3_codec_mute mute=%d\n",mute);
-//	snd_soc_write(codec, ADAC_MUTE_CTRL_REG1, reg);
+	snd_soc_write(codec, ADAC_MUTE_CTRL_REG1, reg);
 	return 0;
 }
 
@@ -900,12 +904,17 @@ static int aml_m3_codec_probe(struct platform_device *pdev)
 {
 	struct snd_soc_device *socdev = platform_get_drvdata(pdev);
 	struct snd_soc_codec *codec;
+	struct aml_audio_platform *p;
 	int ret = 0;
 
 	if (!aml_m3_codec) {
 		dev_err(&pdev->dev, "AML_M3_CODEC not yet discovered\n");
 		return -ENODEV;
 	}
+
+	p = pdev->dev.platform_data;
+	socdev->dev->platform_data = p;
+	
 	codec = aml_m3_codec;			
 	socdev->card->codec = codec;	
 	
@@ -1003,6 +1012,7 @@ static int aml_m3_register(struct aml_m3_codec_priv* aml_m3)
 	codec->set_bias_level = aml_m3_set_bias_level;
 	aml_m3_codec_dai.dev = codec->dev;
 	
+	codec->dev->platform_data = aml_m3->codec.dev->platform_data;
 	aml_m3_reset(codec, true);
 	aml_m3_set_bias_level(codec, SND_SOC_BIAS_STANDBY);
 
@@ -1055,6 +1065,7 @@ static int aml_m3_codec_platform_probe(struct platform_device *pdev)
 	codec->pop_time = 0;
 
 	codec->dev = &pdev->dev;
+	aml_m3->codec.dev->platform_data = pdev->dev.platform_data;
 	platform_set_drvdata(pdev, aml_m3);
 	return aml_m3_register(aml_m3);
 }

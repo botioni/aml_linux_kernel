@@ -922,7 +922,7 @@ static int amstream_release(struct inode *inode, struct file *file)
     this->flag = 0;
 
     timestamp_pcrscr_set(0);
-
+    
 #ifdef DATA_DEBUG
     if (debug_filp) {
         filp_close(debug_filp, current->files);
@@ -1279,7 +1279,7 @@ static int amstream_ioctl(struct inode *inode, struct file *file,
         break;
 		
     case AMSTREAM_IOC_SET_PCRSCR:
-        timestamp_vpts_set(arg);
+        timestamp_pcrscr_set(arg);
         break;
 
     case AMSTREAM_IOC_SUB_NUM:
@@ -1300,7 +1300,9 @@ static int amstream_ioctl(struct inode *inode, struct file *file,
             }
         }
         break;
-
+    case AMSTREAM_IOC_SET_DEMUX:
+        tsdemux_set_demux((int)arg);
+        break;
     default:
         r = -ENOIOCTLCMD;
     }

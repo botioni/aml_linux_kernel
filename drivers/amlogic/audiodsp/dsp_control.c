@@ -15,7 +15,7 @@
 
 
 //#include <asm/dsp/dsp_register.h>
-#include "dsp_register.h"
+#include <linux/amports/dsp_register.h>
 
 
 #include "dsp_mailbox.h"
@@ -68,14 +68,11 @@ static void	enable_dsp(int flag)
 
 void halt_dsp( struct audiodsp_priv *priv)
 {
-#ifndef AUDIODSP_RESET
-    int i;
-#endif
-
 	if(DSP_RD(DSP_STATUS)==DSP_STATUS_RUNING)
 		{
 #ifndef AUDIODSP_RESET
-		dsp_mailbox_send(priv,1,M2B_IRQ0_DSP_SLEEP,0,0,0);
+	  int i;
+	  dsp_mailbox_send(priv,1,M2B_IRQ0_DSP_SLEEP,0,0,0);
         for(i = 0; i< 100;i++)
             {
                 if(DSP_RD(DSP_STATUS)== DSP_STATUS_SLEEP)
@@ -99,8 +96,8 @@ void halt_dsp( struct audiodsp_priv *priv)
     if(!priv->dsp_is_started){
 
 	    enable_dsp(0);/*hardware halt the cpu*/
-        DSP_WD(DSP_STATUS, DSP_STATUS_HALT);
-        priv->last_stream_fmt=-1;/*mask the stream format is not valid*/
+           DSP_WD(DSP_STATUS, DSP_STATUS_HALT);
+          priv->last_stream_fmt=-1;/*mask the stream format is not valid*/
     }   
     else
         DSP_WD(DSP_STATUS, DSP_STATUS_SLEEP);
@@ -115,7 +112,14 @@ void reset_dsp( struct audiodsp_priv *priv)
  //   SET_MPEG_REG_MASK(SDRAM_CTL0,1);//arc mapping to ddr memory
     SET_MPEG_REG_MASK(MEDIA_CPU_CTL, ((AUDIO_DSP_START_PHY_ADDR)>> 20) << 4);
 // decode option    
-    DSP_WD(DSP_DECODE_OPTION, decopt|(IEC958_mode_raw<<31));
+    if(IEC958_mode_raw){
+      if(IEC958_mode_raw > 1){
+	DSP_WD(DSP_DECODE_OPTION, decopt|(3<<30));
+      }else{
+	DSP_WD(DSP_DECODE_OPTION, decopt|(1<<31));
+      }
+    }
+
     printk("reset dsp : dec opt=%x\n", DSP_RD(DSP_DECODE_OPTION));
     if(!priv->dsp_is_started){
         DSP_PRNT("dsp reset now\n");
@@ -309,6 +313,12 @@ exit:
 	mutex_unlock(&priv->dsp_mutex);	
 	return 0;
  	}
+
+
+/**
+ *	bit31 - digital raw output
+ *	bit30 - IEC61937 pass over HDMI
+ * */
 
 static  int __init decode_option_setup(char *s)
 {
