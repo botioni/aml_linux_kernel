@@ -224,18 +224,11 @@ int hdmitx_set_audio(hdmitx_dev_t* hdmitx_device, Hdmi_tx_audio_para_t* audio_pa
     for(i=0;i<(24*2);i++) CHAN_STAT_BUF[i]=0;
     if(hdmitx_device->HWOp.SetAudMode(hdmitx_device, audio_param)>=0){
         hdmi_tx_construct_aud_packet(audio_param, AUD_DB, CHAN_STAT_BUF);
-    printk("CHAN_STAT_BUF[0] = %d\n", CHAN_STAT_BUF[0]);
-    printk("CHAN_STAT_BUF[2] = %d\n", CHAN_STAT_BUF[2]);
-    printk("HDMI Reg[0xb0] = 0x%x\n", hdmi_rd_reg(0xb0));
-    printk("HDMI Reg[0xc8] = 0x%x\n", hdmi_rd_reg(0xc8));
         hdmitx_device->HWOp.SetAudioInfoFrame(AUD_DB, CHAN_STAT_BUF);
         ret = 0;
     }
     if(audio_param->type == CT_DOLBY_D)
         hdmitx_device->HWOp.SetHBRAudioStreamPacket();
-    printk("CHAN_STAT_BUF[0] = %d\n", CHAN_STAT_BUF[0]);
-    printk("HDMI Reg[0xb0] = 0x%x\n", hdmi_rd_reg(0xb0));
-    printk("HDMI Reg[0xc8] = 0x%x\n", hdmi_rd_reg(0xc8));
     return ret;
 }
 
