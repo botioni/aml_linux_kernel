@@ -108,13 +108,13 @@ static int mxl101_read_status(struct dvb_frontend *fe, fe_status_t * status)
 	struct mxl101_state *state = fe->demodulator_priv;
 	unsigned char s=0;
 	int ber,snr,strength;
-	msleep(1000);
+	//msleep(1000);
 	s=MxL101SF_GetLock();
-	ber=MxL101SF_GetBER();
+	/*ber=MxL101SF_GetBER();
 	snr=MxL101SF_GetSNR();
 	strength=MxL101SF_GetSigStrength();
 	printk("ber is %d,snr is%d,strength is%d\n",ber,snr,strength);
-	s=1;
+	s=1;*/
 	if(s==1)
 	{
 		*status = FE_HAS_LOCK|FE_HAS_SIGNAL|FE_HAS_CARRIER|FE_HAS_VITERBI|FE_HAS_SYNC;
