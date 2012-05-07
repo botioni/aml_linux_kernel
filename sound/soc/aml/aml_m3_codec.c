@@ -57,24 +57,27 @@ typedef enum  {
 
 void aml_reset_path(struct snd_soc_codec* codec, AML_PATH_SET_TYPE type)
 {
+	unsigned int mute_reg1 = snd_soc_read(codec,ADAC_MUTE_CTRL_REG1);
+	unsigned int mute_reg2 = snd_soc_read(codec,ADAC_MUTE_CTRL_REG2);
     unsigned int pwr_reg2 = snd_soc_read(codec, ADAC_POWER_CTRL_REG2);
-    latch_(codec);
-    snd_soc_write(codec, ADAC_POWER_CTRL_REG2, pwr_reg2&(~(1<<7)));
-    latch_(codec);
-    snd_soc_write(codec, ADAC_POWER_CTRL_REG2, pwr_reg2|(1<<7));
-    latch_(codec);
-     
+
+	snd_soc_write(codec, ADAC_MUTE_CTRL_REG1, 0xff);
+	snd_soc_write(codec, ADAC_MUTE_CTRL_REG2, 0x04);
     if (AML_PWR_DOWN == type)
     {
         snd_soc_write(codec, ADAC_POWER_CTRL_REG2, pwr_reg2&(~(1<<7)));
-        latch_(codec);
     }
-    
-    if (AML_PWR_KEEP == type)
+    else if (AML_PWR_KEEP == type)
     {
         snd_soc_write(codec, ADAC_POWER_CTRL_REG2, pwr_reg2);
-        latch_(codec);
     }
+	else 
+	{
+		snd_soc_write(codec, ADAC_POWER_CTRL_REG2, pwr_reg2|(1<<7));
+	}
+	latch_(codec);
+	snd_soc_write(codec, ADAC_MUTE_CTRL_REG1, mute_reg1);
+	snd_soc_write(codec, ADAC_MUTE_CTRL_REG2, mute_reg2);
 }
 
 void aml_m3_reset(struct snd_soc_codec* codec, bool first_time)
@@ -83,46 +86,9 @@ void aml_m3_reset(struct snd_soc_codec* codec, bool first_time)
 
 	if (first_time)
 	{
-        //audio_set_clk(AUDIO_CLK_FREQ_48,0);
-        audio_set_clk(AUDIO_CLK_FREQ_192,0);
-	 	set_acodec_source(AIU_I2SOUT_TO_DAC);   // 0=no clock to CODEC; 1=pcmout to DAC; 2=Aiu I2S out to DAC.
+        audio_set_clk(AUDIO_CLK_FREQ_48,0);
 
-    	// --------------------------------------------------------
-    	// Configure audio DAC control interface
-    	// --------------------------------------------------------
-
-	    data32  = 0;
-	    data32 |= 0     << 15;  // [15]     audac_soft_reset_n
-	    data32 |= 0     << 14;  // [14]     audac_reset_ctrl: 0=use audac_reset_n pulse from reset module; 1=use audac_soft_reset_n.
-	    data32 |= 0     << 9;   // [9]      delay_rd_en
-	    data32 |= 0     << 8;   // [8]      audac_reg_clk_inv
-	    data32 |= 0x55  << 1;   // [7:1]    audac_i2caddr
-	    data32 |= 0     << 0;   // [0]      audac_intfsel: 0=use host bus; 1=use I2C.
-	    WRITE_MPEG_REG(AIU_AUDAC_CTRL0, data32);
-			
-			
-	    WRITE_MPEG_REG( HHI_AUD_PLL_CNTL, READ_MPEG_REG(HHI_AUD_PLL_CNTL) & ~(1 << 15));
-	    WRITE_MPEG_REG_BITS(HHI_AUD_CLK_CNTL, 1, 23, 1);
-	    WRITE_MPEG_REG(AUDIN_SOURCE_SEL, (1<<0)); // select audio codec output as I2S source
-	    msleep(100);
-	 
-	    // Enable APB3 fail on error
-	    data32  = 0;
-	    data32 |= 1     << 15;  // [15]     err_en
-	    data32 |= 255   << 0;   // [11:0]   max_err
-	    WRITE_MPEG_REG(AIU_AUDAC_CTRL1, data32);
-	    // Check read back data
-	    data32 = READ_MPEG_REG(AIU_AUDAC_CTRL0);
-	    if (data32 != (0x55 << 1)) {
-			printk("audiocodec init error: AIU_AUDAC_CTRL0 = %lx\n", data32);
-		}
-			
-		data32 = READ_MPEG_REG(AIU_AUDAC_CTRL1);
-		if (data32 != 0x80ff) {
-			printk("audiocodec init error: AIU_AUDAC_CTRL1 = %lx\n", data32);
-		}
-
-		wr_regbank (0,			// rstdpz: active low.
+/*		wr_regbank (0,			// rstdpz: active low.
 					0,			// mclksel[3:0]: master clock freq sel. 0=256Fs, 1=384Fs, ... 
 					8,		    // i2sfsadc[3:0]: sample freq sel. 0=8kHz, 1=11.025k, 2=12k, 3=16k, 4=22.05k, 5=24k, 6=32k, 7=44.1k, 8=48k, 9=88.2k, 10=96k, 11=192k, >11=Rsrv.
 					8,		    // i2sfsdac[3:0]: sample freq sel. 0=8kHz, 1=11.025k, 2=12k, 3=16k, 4=22.05k, 5=24k, 6=32k, 7=44.1k, 8=48k, 9=88.2k, 10=96k, 11=192k, >11=Rsrv.
@@ -167,8 +133,99 @@ void aml_m3_reset(struct snd_soc_codec* codec, bool first_time)
 					0x0101);	// recsel[15:0]: Input PGA selection. [15:8] control right channel, [7:0] control left channel.
 								// 0x01=input1, 0x03=input2, 0x05=input3, 0x09=input4,
 								// 0x11=input5, 0x21=input6, 0x41=input7, 0x81=input8, others=Rsrv.
-        adac_power_up_mode_2();
-        adac_startup_seq();
+*/
+
+					snd_soc_write(codec, ADAC_RESET, (0<<1));
+					snd_soc_write(codec, ADAC_RESET, (0<<1));
+					snd_soc_write(codec, ADAC_RESET, (0<<1));
+					snd_soc_write(codec, ADAC_RESET, (0<<1));
+					snd_soc_write(codec, ADAC_RESET, (0<<1));
+					msleep(100);
+					
+		
+					snd_soc_write(codec,ADAC_CLOCK, 0); // 256fs
+					set_acodec_source(AIU_I2SOUT_TO_DAC);	// 0=no clock to CODEC; 1=pcmout to DAC; 2=Aiu I2S out to DAC.
+					
+					// --------------------------------------------------------
+					// Configure audio DAC control interface
+					// --------------------------------------------------------
+					
+					data32	= 0;
+					data32 |= 0 	<< 15;	// [15] 	audac_soft_reset_n
+					data32 |= 0 	<< 14;	// [14] 	audac_reset_ctrl: 0=use audac_reset_n pulse from reset module; 1=use audac_soft_reset_n.
+					data32 |= 0 	<< 9;	// [9]		delay_rd_en
+					data32 |= 0 	<< 8;	// [8]		audac_reg_clk_inv
+					data32 |= 0x55	<< 1;	// [7:1]	audac_i2caddr
+					data32 |= 0 	<< 0;	// [0]		audac_intfsel: 0=use host bus; 1=use I2C.
+					WRITE_MPEG_REG(AIU_AUDAC_CTRL0, data32);
+									
+					WRITE_MPEG_REG( HHI_AUD_PLL_CNTL, READ_MPEG_REG(HHI_AUD_PLL_CNTL) & ~(1 << 15));
+					WRITE_MPEG_REG_BITS(HHI_AUD_CLK_CNTL, 1, 23, 1);
+					WRITE_MPEG_REG(AUDIN_SOURCE_SEL, (1<<0)); // select audio codec output as I2S source
+					msleep(100);
+					
+					// Enable APB3 fail on error
+					data32	= 0;
+					data32 |= 1 	<< 15;	// [15] 	err_en
+					data32 |= 255	<< 0;	// [11:0]	max_err
+					WRITE_MPEG_REG(AIU_AUDAC_CTRL1, data32);
+					// Check read back data
+					data32 = READ_MPEG_REG(AIU_AUDAC_CTRL0);
+					if (data32 != (0x55 << 1)) {
+						printk("audiocodec init error: AIU_AUDAC_CTRL0 = %lx\n", data32);
+					}
+						
+					data32 = READ_MPEG_REG(AIU_AUDAC_CTRL1);
+					if (data32 != 0x80ff) {
+						printk("audiocodec init error: AIU_AUDAC_CTRL1 = %lx\n", data32);
+					}
+
+					snd_soc_write(codec, ADAC_POWER_CTRL_REG2, 0x80);
+
+					
+					snd_soc_write(codec, ADAC_I2S_CONFIG_REG1, (8<<4)|8);	 // samplerate for ADC&DAC
+					snd_soc_write(codec, ADAC_I2S_CONFIG_REG2, 1|(1<<3));		// I2S | split
+					
+					snd_soc_write(codec, ADAC_RESET, (0<<1));
+					msleep(100);			
+					snd_soc_write(codec, ADAC_RESET, (1<<1));
+
+					snd_soc_write(codec, ADAC_MUTE_CTRL_REG1,0);
+					snd_soc_write(codec, ADAC_MUTE_CTRL_REG2, 0);
+					
+					snd_soc_write(codec,ADAC_DAC_ADC_MIXER, 1);
+					
+					snd_soc_write(codec, ADAC_LS_MIX_CTRL_LSB, 1);
+					snd_soc_write(codec, ADAC_LS_MIX_CTRL_MSB, 0);
+
+
+
+					
+					snd_soc_write(codec,ADAC_PLAYBACK_VOL_CTRL_LSB, 0x54);
+					snd_soc_write(codec,ADAC_PLAYBACK_VOL_CTRL_MSB, 0x54);
+					snd_soc_write(codec,ADAC_STEREO_HS_VOL_CTRL_LSB, 0x28);
+					snd_soc_write(codec,ADAC_STEREO_HS_VOL_CTRL_MSB, 0x28); 
+		
+					snd_soc_write(codec, ADAC_PLAYBACK_MIX_CTRL_LSB, 0);
+					snd_soc_write(codec, ADAC_PLAYBACK_MIX_CTRL_MSB, 0);
+
+					snd_soc_write(codec, ADAC_STEREO_PGA_VOL_LSB, 0x12);
+					snd_soc_write(codec, ADAC_STEREO_PGA_VOL_MSB, 0x12);
+		
+					snd_soc_write(codec, ADAC_RECVOL_CTRL_LSB, 0x11);
+					snd_soc_write(codec, ADAC_RECVOL_CTRL_MSB, 0x11);
+		
+					snd_soc_write(codec, ADAC_REC_CH_SEL_LSB, 1|(1<<(1-1)));// 1|(1<<(channel-1))
+					snd_soc_write(codec, ADAC_REC_CH_SEL_MSB, 1|(1<<(1-1)));// 1|(1<<(channel-1))
+					snd_soc_write(codec, ADAC_POWER_CTRL_REG1, 0xf7);
+					snd_soc_write(codec, ADAC_POWER_CTRL_REG2, 0x2f);
+
+					aml_reset_path(codec, AML_PWR_UP);
+					aml_reset_path(codec, AML_PWR_DOWN);
+
+
+        //adac_power_up_mode_2();
+        //adac_startup_seq();
 
 	    udelay(10);
 	    
@@ -191,66 +248,10 @@ void aml_m3_reset(struct snd_soc_codec* codec, bool first_time)
         WRITE_CBUS_REG(HHI_GCLK_MPEG1, READ_CBUS_REG(HHI_GCLK_MPEG1)&~(1<<2));
         aml_reset_path(codec, AML_PWR_DOWN);//first time pwr down
         latch_(codec);
-	    
-/*			snd_soc_write(codec, ADAC_RESET, (0<<1));
-	    	snd_soc_write(codec, ADAC_RESET, (0<<1));
-	    	snd_soc_write(codec, ADAC_RESET, (0<<1));
-	    	snd_soc_write(codec, ADAC_RESET, (0<<1));
-	    	snd_soc_write(codec, ADAC_RESET, (0<<1));
-	    	msleep(100);
-	        
-
-	    	snd_soc_write(codec,ADAC_CLOCK, 0); // 256fs
-	    	snd_soc_write(codec, ADAC_I2S_CONFIG_REG1, (7<<4)|7);	 // samplerate for ADC&DAC
-	    	snd_soc_write(codec, ADAC_I2S_CONFIG_REG2, 1|(1<<3)); 		// I2S | split
-
-	        snd_soc_write(codec, ADAC_MUTE_CTRL_REG1,0);
-	    	snd_soc_write(codec, ADAC_MUTE_CTRL_REG2, 0);
-	        
-	        snd_soc_write(codec,ADAC_DAC_ADC_MIXER, 0);
-
-	        snd_soc_write(codec,ADAC_PLAYBACK_VOL_CTRL_LSB, 0x54);
-	        snd_soc_write(codec,ADAC_PLAYBACK_VOL_CTRL_MSB, 0x54);
-	        snd_soc_write(codec,ADAC_STEREO_HS_VOL_CTRL_LSB, 0x28);
-	        snd_soc_write(codec,ADAC_STEREO_HS_VOL_CTRL_MSB, 0x28); 
-
-	        snd_soc_write(codec, ADAC_PLAYBACK_MIX_CTRL_LSB, 0);
-	        snd_soc_write(codec, ADAC_PLAYBACK_MIX_CTRL_MSB, 0);
-
-	        snd_soc_write(codec, ADAC_STEREO_PGA_VOL_LSB, 4);
-	        snd_soc_write(codec, ADAC_STEREO_PGA_VOL_MSB, 4);
-
-	        snd_soc_write(codec, ADAC_RECVOL_CTRL_LSB, 0x14);
-	        snd_soc_write(codec, ADAC_RECVOL_CTRL_MSB, 0x14);
-
-	        snd_soc_write(codec, ADAC_REC_CH_SEL_LSB, 1|(1<<(1-1)));// 1|(1<<(channel-1))
-	        snd_soc_write(codec, ADAC_REC_CH_SEL_MSB, 1|(1<<(1-1)));// 1|(1<<(channel-1))
-
-	        snd_soc_write(codec, ADAC_POWER_CTRL_REG1, 0xf7);
-	      	snd_soc_write(codec, ADAC_POWER_CTRL_REG2, 0x2f);
-
-	        snd_soc_write(codec, ADAC_LS_MIX_CTRL_LSB, 1);
-	        snd_soc_write(codec, ADAC_LS_MIX_CTRL_MSB, 0);
-	   
-	    	aml_reset_path(codec, AML_PWR_UP);
-	        aml_reset_path(codec, AML_PWR_DOWN);
-*/
-
 	}
     else
     {
-        snd_soc_write(codec, ADAC_LS_MIX_CTRL_LSB, 1);
-        snd_soc_write(codec, ADAC_LS_MIX_CTRL_MSB, 0);
         aml_reset_path(codec, AML_PWR_UP);
-
-    	latch_(codec);
-	    snd_soc_write(codec, ADAC_RESET, (0<<1));
-        latch_(codec);
-	    latch_(codec);
-    	latch_(codec);
-	    snd_soc_write(codec, ADAC_RESET, (1<<1));
-        latch_(codec);
-	    latch_(codec);
     }
     msleep(300);
 }
