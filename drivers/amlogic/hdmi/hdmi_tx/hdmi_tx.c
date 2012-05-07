@@ -456,7 +456,7 @@ static ssize_t show_disp_cap(struct device * dev, struct device_attribute *attr,
 
 static ssize_t show_hpd_state(struct device * dev, struct device_attribute *attr, char * buf)
 {   
-    int i,pos=0;
+    int pos=0;
     pos += snprintf(buf+pos, PAGE_SIZE,"%d", hdmitx_device.hpd_state);
     return pos;    
 }

@@ -967,6 +967,7 @@ void hdmi_hw_set_powermode( int power_mode, int vic)
                     hdmi_wr_reg(TX_SYS1_BIAS, 0x0);         //0x15
                     break;
                 case HDMI_1080p60:
+                case HDMI_1080p50:
                     hdmi_wr_reg(TX_SYS1_AFE_TEST, 0x1f);     //0x17
                     hdmi_wr_reg(TX_CORE_CALIB_VALUE, 0x9);   //0xf7
                     hdmi_wr_reg(TX_SYS1_AFE_RESET, 0x2);     //0x16   //Def.
@@ -974,6 +975,11 @@ void hdmi_hw_set_powermode( int power_mode, int vic)
                     hdmi_wr_reg(TX_SYS1_BANDGAP, 0x2);       //0x14
                     hdmi_wr_reg(TX_SYS1_BIAS, 0x3);          //0x15
                 default:
+                    hdmi_wr_reg(TX_SYS1_AFE_TEST, 0x1f);    //0x17
+                    hdmi_wr_reg(TX_CORE_CALIB_VALUE,0x3);   //0xf7
+                    hdmi_wr_reg(TX_SYS1_AFE_RESET, 0x1);    //0x16
+                    hdmi_wr_reg(TX_SYS1_BANDGAP, 0x0);      //0x14
+                    hdmi_wr_reg(TX_SYS1_BIAS, 0x0);         //0x15
                     break;
             }
 #ifdef MORE_LOW_P
