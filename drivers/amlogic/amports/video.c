@@ -1965,6 +1965,19 @@ static int amvideo_ioctl(struct inode *inode, struct file *file,
         spin_unlock_irqrestore(&lock, flags);
     }
     break;
+    
+    case AMSTREAM_IOC_CLEAR_VIDEO:
+        if (blackout || force_blackout) {
+        #ifdef CONFIG_MIX_FREE_SCALE
+            if(video_scaler_mode)
+                DisableVideoLayer_PREBELEND();
+            else
+                DisableVideoLayer();
+        #else
+            DisableVideoLayer();
+        #endif
+        }
+        break;
 
     /**********************************************************************
     video enhancement ioctl
