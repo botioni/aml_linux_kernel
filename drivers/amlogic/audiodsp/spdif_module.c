@@ -96,11 +96,11 @@ static int audio_spdif_ioctl(struct inode *inode, struct file *file, unsigned in
 			break;	
 		case AUDIO_SPDIF_SET_958_ENABLE:
 		//	IEC958_mode_raw = 1;
-			IEC958_mode_codec = 2;
 			//audio_enable_ouput(1);
 			audio_output_iec958_enable(args);
 			break;
 		case AUDIO_SPDIF_SET_958_INIT_PREPARE:
+			IEC958_mode_codec = 2;
 			aml_alsa_hw_reprepare();
 			break;
 		case AUDIO_SPDIF_SET_958_WR_OFFSET:
