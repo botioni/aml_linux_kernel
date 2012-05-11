@@ -78,6 +78,7 @@ void aml_reset_path(struct snd_soc_codec* codec, AML_PATH_SET_TYPE type)
 	latch_(codec);
 	snd_soc_write(codec, ADAC_MUTE_CTRL_REG1, mute_reg1);
 	snd_soc_write(codec, ADAC_MUTE_CTRL_REG2, mute_reg2);
+	latch_(codec);
 }
 
 void aml_m3_reset(struct snd_soc_codec* codec, bool first_time)
