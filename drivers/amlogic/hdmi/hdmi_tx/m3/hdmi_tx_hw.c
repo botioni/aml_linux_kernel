@@ -1888,6 +1888,8 @@ static void enable_audio_spdif(void)
         hdmi_wr_reg(TX_AUDIO_I2S,   0x0 );  // Address  0x5A=0x0    TX_AUDIO_I2S
 
         hdmi_wr_reg(TX_AUDIO_SPDIF, 1); // TX AUDIO SPDIF Enable
+        
+        hdmi_wr_reg_bits(TX_SYS4_CK_INV_AUDIO, 1, 7, 1);        //tx_audio_master_clk_invert
 
         //Wr(AIU_CLK_CTRL,        Rd(AIU_CLK_CTRL) | 2); // enable iec958 clock which is audio_master_clk
 //        Wr( AIU_958_BPF, 0x0100 ); // Set the PCM frame size to 256 bytes
