@@ -57,6 +57,14 @@
 
 #define KEY_RELEASE_DELAY    200
 
+static bool key_pointer_switch = true;
+static unsigned int FN_KEY_SCANCODE = 0; 
+static unsigned int LEFT_KEY_SCANCODE = 0;
+static unsigned int RIGHT_KEY_SCANCODE = 0;
+static unsigned int UP_KEY_SCANCODE = 0;
+static unsigned int DOWN_KEY_SCANCODE = 0;
+static unsigned int OK_KEY_SCANCODE = 0;
+
 type_printk input_dbg;
 
 static DEFINE_MUTEX(kp_enable_mutex);
@@ -117,7 +125,8 @@ static int kp_mouse_event(struct input_dev *dev, unsigned int scancode, unsigned
     __u16 mouse_code;
     __s32 mouse_value;
     static unsigned int repeat_count = 0;
-    __s32 move_accelerate[] = {0, 1, 1, 2, 2, 3, 4, 5, 6, 7, 8, 9};
+    // __s32 move_accelerate[] = {0, 1, 1, 2, 2, 3, 4, 5, 6, 7, 8, 9};
+    __s32 move_accelerate[] = {0, 2, 2, 4, 4, 6, 8, 10, 12, 14, 16, 18};
     unsigned int i;
 		
     for(i = 0; i < ARRAY_SIZE(mouse_map); i++)
@@ -183,6 +192,40 @@ static int kp_mouse_event(struct input_dev *dev, unsigned int scancode, unsigned
 
 void kp_send_key(struct input_dev *dev, unsigned int scancode, unsigned int type)
 {
+    if(scancode == FN_KEY_SCANCODE && type == 1)
+    {
+        // switch from key to pointer
+        if(key_pointer_switch)
+        {
+            mouse_map[0] = LEFT_KEY_SCANCODE;
+            mouse_map[1] = RIGHT_KEY_SCANCODE;
+            mouse_map[2] = UP_KEY_SCANCODE;
+            mouse_map[3] = DOWN_KEY_SCANCODE;
+	
+            key_pointer_switch = false;
+        }
+        // switch from pointer to key
+        else
+        {
+            mouse_map[0] = mouse_map[1] = mouse_map[2] = mouse_map[3] = 0xFFFF;
+
+            key_pointer_switch = true;
+        }
+
+        input_event(dev, EV_KEY, key_map[scancode], type);
+        input_sync(dev);
+
+        return;
+    }
+	
+    if(scancode == OK_KEY_SCANCODE && key_pointer_switch == false)
+    {
+        input_event(dev, EV_KEY, BTN_MOUSE, type);
+        input_sync(dev);
+	
+        return;
+    }
+
     if(kp_mouse_event(dev, scancode, type)){
         if(scancode > ARRAY_SIZE(key_map)){
             input_dbg("scancode is 0x%04x, out of key mapping.\n", scancode);
@@ -651,6 +694,30 @@ remote_config_ioctl(struct inode *inode, struct file *filp,
         break;
         case REMOTE_IOC_GET_TW_REPEATE_LEADER:
         val=kp->time_window[6]|(kp->time_window[7]<<16);
+        break;
+
+	case REMOTE_IOC_SET_FN_KEY_SCANCODE:
+            FN_KEY_SCANCODE = val;
+	break;
+	
+        case REMOTE_IOC_SET_LEFT_KEY_SCANCODE:
+            LEFT_KEY_SCANCODE = val;
+        break;
+	
+        case REMOTE_IOC_SET_RIGHT_KEY_SCANCODE:
+            RIGHT_KEY_SCANCODE = val;
+        break;
+
+        case REMOTE_IOC_SET_UP_KEY_SCANCODE:
+            UP_KEY_SCANCODE = val;
+        break;
+	
+        case REMOTE_IOC_SET_DOWN_KEY_SCANCODE:
+            DOWN_KEY_SCANCODE = val;
+        break;
+	
+        case REMOTE_IOC_SET_OK_KEY_SCANCODE:
+            OK_KEY_SCANCODE = val;
         break;
     }
     //output result
