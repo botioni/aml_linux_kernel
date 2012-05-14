@@ -614,7 +614,7 @@ static const struct snd_soc_dapm_widget amlm3_dapm_widgets[] = {
 	SND_SOC_DAPM_SWITCH("LINEINR Switch", ADAC_POWER_CTRL_REG2, 3, 0,
 			    &lineinr_switch_controls),
 
-    SND_SOC_DAPM_POST("RESET", post_reset),
+    	//SND_SOC_DAPM_POST("RESET", post_reset),
 	
 	//SND_SOC_DAPM_PGA("HSL", ADAC_POWER_CTRL_REG1, 4, 0, NULL, 0),
 	//SND_SOC_DAPM_PGA("HSR", ADAC_POWER_CTRL_REG1, 5, 0, NULL, 0),
