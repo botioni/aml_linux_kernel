@@ -194,6 +194,7 @@ static int audiodsp_ioctl(struct inode *node, struct file *file, unsigned int cm
 				}
 			break;
 		case AUDIODSP_STOP:
+			IEC958_mode_codec = 0; //958 pcm ouput by default
 			//DSP_PRNT("audiodsp command stop\n");
 			stop_audiodsp_monitor(priv);
 			dsp_stop(priv);
@@ -708,6 +709,7 @@ static ssize_t dsp_working_status_show(struct class* cla, struct class_attribute
     pbuf += sprintf(pbuf, "\tdsp jeffies  0x%lx\n", DSP_RD(DSP_JIFFIES));
     pbuf += sprintf(pbuf, "\tdsp pcm wp  0x%lx\n", DSP_RD(DSP_DECODE_OUT_WD_ADDR));
     pbuf += sprintf(pbuf, "\tdsp pcm rp  0x%lx\n", DSP_RD(DSP_DECODE_OUT_RD_ADDR));
+	pbuf += sprintf(pbuf, "\tdsp pcm buffer level  0x%lx\n", dsp_codec_get_bufer_data_len(priv));
     pbuf += sprintf(pbuf, "\tdsp pcm buffered size  0x%lx\n", DSP_RD(DSP_BUFFERED_LEN));
     pbuf += sprintf(pbuf, "\tdsp es read offset  0x%lx\n", DSP_RD(DSP_AFIFO_RD_OFFSET1));
 
