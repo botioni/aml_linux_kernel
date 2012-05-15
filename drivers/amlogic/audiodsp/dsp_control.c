@@ -119,6 +119,9 @@ void reset_dsp( struct audiodsp_priv *priv)
 	DSP_WD(DSP_DECODE_OPTION, decopt|(1<<31));
       }
     }
+	else{
+		DSP_WD(DSP_DECODE_OPTION, decopt&(~(1<<31)));
+	}
 
     printk("reset dsp : dec opt=%x\n", DSP_RD(DSP_DECODE_OPTION));
     if(!priv->dsp_is_started){
