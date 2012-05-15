@@ -241,8 +241,9 @@ static int audiodsp_ioctl(struct inode *node, struct file *file, unsigned int cm
 						priv->format_wait_count++;
 						if(priv->format_wait_count > 5){						
 							if(audio_format->channels&&audio_format->sample_rate){
-								//priv->frame_format.channel_num = audio_format->channels>2?2:audio_format->channels;
-                                priv->frame_format.channel_num = 2; // force stereo
+								priv->frame_format.channel_num = audio_format->channels>2?2:audio_format->channels;
+								if(audio_format->channels == 1 && (priv->stream_fmt == MCODEC_FMT_AC3 ||priv->stream_fmt == MCODEC_FMT_DTS)) //ac3/dts decoder use Lt/Rt 2ch dmx mode
+                                	priv->frame_format.channel_num = 2; // force stereo
 								priv->frame_format.sample_rate = audio_format->sample_rate;
 								priv->frame_format.data_width = 16;
 								priv->frame_format.valid = CHANNEL_VALID|DATA_WIDTH_VALID|SAMPLE_RATE_VALID;
@@ -256,8 +257,7 @@ static int audiodsp_ioctl(struct inode *node, struct file *file, unsigned int cm
 						}
 					}
 				}else if(priv->frame_format.valid == (CHANNEL_VALID|DATA_WIDTH_VALID|SAMPLE_RATE_VALID)){
-					       DSP_PRNT("audio info from header: sr %d,ch %d\n",audio_format->sample_rate,audio_format->channels);
-#if 0                           
+					       DSP_PRNT("audio info from header: sr %d,ch %d\n",audio_format->sample_rate,audio_format->channels);       
 						if(audio_format->channels > 0 ){
 							if(audio_format->channels > 2)
 								ch = 2;
@@ -270,12 +270,11 @@ static int audiodsp_ioctl(struct inode *node, struct file *file, unsigned int cm
 							}	
 							
 						}
-#else
                         /**
-                         * force to stereo
+                         * force to stereo for ac3/dts decoder
                          * */
-                        priv->frame_format.channel_num = 2;  
-#endif                        
+						if(priv->frame_format.channel_num == 1 && (priv->stream_fmt == MCODEC_FMT_AC3 ||priv->stream_fmt == MCODEC_FMT_DTS)) //ac3/dts decoder use Lt/Rt 2ch dmx mode
+                        	priv->frame_format.channel_num = 2; // force stereo                         
 						if(audio_format->sample_rate&&audio_format->sample_rate != priv->frame_format.sample_rate){
 								DSP_PRNT(" sr num info from dsp and header not match,[dsp %d ],[header %d ]", \
 									priv->frame_format.sample_rate,audio_format->sample_rate);
