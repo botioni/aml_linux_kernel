@@ -1393,6 +1393,7 @@ void osd_init_hw(u32  logo_loaded)
 	//here we will init default value ,these value only set once .
 	if(!logo_loaded)
 	{
+		data32  = 1;
 	    	data32  = 4   << 5;  // hold_fifo_lines
 	    	data32 |= 3   << 10; // burst_len_sel: 3=64
 	    	data32 |= 32  << 12; // fifo_depth_val: 32*8=256
