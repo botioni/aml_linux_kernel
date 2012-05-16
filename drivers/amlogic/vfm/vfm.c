@@ -264,7 +264,7 @@ static void vfm_init(void)
     }
     vfm_map_add(def_id, def_name_chain);
     vfm_map_add(def_osd_id, def_osd_name_chain);
-#ifdef CONFIG_AMLOGIC_VIDEOIN_MANAGER
+#if (defined CONFIG_AMLOGIC_VIDEOIN_MANAGER)||(defined CONFIG_TVIN_VIUIN)
     vfm_map_add(def_ext_id, def_ext_name_chain);
 #endif        
 

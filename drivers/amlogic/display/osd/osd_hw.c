@@ -128,8 +128,14 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
 	unsigned  int  fb0_cfg_w0,fb1_cfg_w0;
 	unsigned  int  current_field;
 	
+#ifdef CONFIG_AM_VIDEO2
+  int viu1_sel = (READ_MPEG_REG(VPU_VIU_VENC_MUX_CTRL)>>0)&0x3; // 0=No connection, 1=ENCI, 2=ENCP, 3=ENCT.
+  if((viu1_sel==1)&&(READ_MPEG_REG(ENCI_VIDEO_EN) & 1)) 
+    osd_hw.scan_mode= SCAN_MODE_INTERLACE;
+#else
 	if (READ_MPEG_REG(ENCI_VIDEO_EN) & 1)
 		osd_hw.scan_mode= SCAN_MODE_INTERLACE;
+#endif		
 	else if (READ_MPEG_REG(ENCP_VIDEO_MODE) & (1 << 12))
 		osd_hw.scan_mode= SCAN_MODE_INTERLACE;
 	else
