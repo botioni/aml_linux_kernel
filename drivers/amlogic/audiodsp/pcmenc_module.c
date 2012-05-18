@@ -282,12 +282,12 @@ static int audiodsp_pcmenc_ioctl(struct inode *inode, struct file *file, unsigne
 static int audiodsp_pcmenc_create_stream_buffer(void)
 {
     dma_addr_t buf_map;
-
+#if 0
     DSP_WD(DSP_DECODE_51PCM_OUT_START_ADDR, ARM_2_ARC_ADDR_SWAP(0));
     DSP_WD(DSP_DECODE_51PCM_OUT_END_ADDR,ARM_2_ARC_ADDR_SWAP(0));
     DSP_WD(DSP_DECODE_51PCM_OUT_RD_ADDR,ARM_2_ARC_ADDR_SWAP(0));
     DSP_WD(DSP_DECODE_51PCM_OUT_WD_ADDR,ARM_2_ARC_ADDR_SWAP(0));
-
+#endif
     if(priv_data.stream_buffer_mem_size == 0){
         return 0;
     }
