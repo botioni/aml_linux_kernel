@@ -724,7 +724,7 @@ static ssize_t digital_raw_show(struct class*cla, struct class_attribute* attr, 
     "2 - RAW w/  over clock",
   };
   char* pbuf = buf;
-  pbuf += sprintf(pbuf, "\nDigital output mode: %s\n", digital_format[IEC958_mode_raw]);
+  pbuf += sprintf(pbuf, "Digital output mode: %s\n", digital_format[IEC958_mode_raw]);
   return (pbuf-buf);
 }
 static ssize_t digital_raw_store(struct class* class, struct class_attribute* attr,
