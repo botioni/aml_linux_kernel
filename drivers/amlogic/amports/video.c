@@ -111,21 +111,33 @@ static struct vframe_receiver_s video_vf_recv;
 #define EnableVideoLayer()  \
     do { SET_MPEG_REG_MASK(VPP_MISC, \
          VPP_VD1_PREBLEND | VPP_PREBLEND_EN | VPP_VD1_POSTBLEND); \
+         if(debug_flag& DEBUG_FLAG_BLACKOUT){  \
+            printk("EnableVideoLayer()\n"); \
+         } \
     } while (0)
 
 #define EnableVideoLayer2()  \
     do { SET_MPEG_REG_MASK(VPP_MISC, \
          VPP_VD2_PREBLEND | (0x1ff << VPP_VD2_ALPHA_BIT)); \
+         if(debug_flag& DEBUG_FLAG_BLACKOUT){  \
+            printk("EnableVideoLayer2()\n"); \
+         } \
     } while (0)
 
 #define DisableVideoLayer() \
     do { CLEAR_MPEG_REG_MASK(VPP_MISC, \
          VPP_VD1_PREBLEND|VPP_VD2_PREBLEND|VPP_VD2_POSTBLEND|VPP_VD1_POSTBLEND ); \
+         if(debug_flag& DEBUG_FLAG_BLACKOUT){  \
+            printk("DisableVideoLayer()\n"); \
+         } \
     } while (0)
 
 #define DisableVideoLayer_PREBELEND() \
     do { CLEAR_MPEG_REG_MASK(VPP_MISC, \
          VPP_VD1_PREBLEND|VPP_VD2_PREBLEND); \
+         if(debug_flag& DEBUG_FLAG_BLACKOUT){  \
+            printk("DisableVideoLayer_PREBELEND()\n"); \
+         } \
     } while (0)
 
 /*********************************************************/
@@ -143,6 +155,9 @@ static struct vframe_receiver_s video_vf_recv;
 #define DUR2PTS(x) ((x) - ((x) >> 4))
 #define DUR2PTS_RM(x) ((x) & 0xf)
 
+#define DEBUG_FLAG_BLACKOUT     0x1
+#define DEBUG_FLAG_TOGGLE_FRAME 0x2
+static int debug_flag = 0;
 const char video_dev_id[] = "amvideo-dev";
 
 #ifdef CONFIG_PM
@@ -609,6 +624,9 @@ static void vsync_toggle_frame(vframe_t *vf)
     int deinterlace_mode = get_deinterlace_mode();
 #endif
     timer_count = 0 ;
+     if(debug_flag& DEBUG_FLAG_TOGGLE_FRAME){  
+        printk("%s()\n", __func__);
+     } 
 
     if(vf->early_process_fun){
         if(vf->early_process_fun(vf->private_data) == 1){
@@ -1593,6 +1611,27 @@ int get_curren_frame_para(int* top ,int* left , int* bottom, int* right)
 	return 	0;
 }
 
+int get_current_vscale_skip_count(void)
+{
+    if(cur_frame_par)
+		return cur_frame_par->vscale_skip_count;
+	else
+		return 0;
+}
+int query_video_status(int type , int* value)
+{
+	if(value == NULL){
+		return -1;
+	}
+	switch(type){
+		case 0:
+			*value = trickmode_fffb ;
+			break;
+		default:
+			break;
+	}
+	return 0;
+}
 static void video_vf_unreg_provider(void)
 {
     ulong flags;
@@ -1653,6 +1692,27 @@ static void video_vf_light_unreg_provider(void)
     spin_unlock_irqrestore(&lock, flags);
 }
 
+static void video_vf_light_unreg_provider_return_vframe(void)
+{
+    ulong flags;
+
+    spin_lock_irqsave(&lock, flags);
+
+    if (cur_dispbuf) {
+        vframe_t* buf_for_return = cur_dispbuf;
+        cur_dispbuf = &vf_local;
+        vf_local = *cur_dispbuf;
+
+        if(buf_for_return != &vf_local){
+            vf_put(buf_for_return, RECEIVER_NAME);
+        }
+    }
+
+    //vfp = NULL;
+
+    spin_unlock_irqrestore(&lock, flags);
+}
+
 static int video_receiver_event_fun(int type, void* data, void* private_data)
 {
     if(type == VFRAME_EVENT_PROVIDER_UNREG){
@@ -1664,6 +1724,15 @@ static int video_receiver_event_fun(int type, void* data, void* private_data)
     else if(type == VFRAME_EVENT_PROVIDER_LIGHT_UNREG){
         video_vf_light_unreg_provider();
     }
+    else if(type == VFRAME_EVENT_PROVIDER_LIGHT_UNREG_RETURN_VFRAME){
+        video_vf_light_unreg_provider_return_vframe();
+    }
+    else if(type == VFRAME_EVENT_PROVIDER_FORCE_BLACKOUT){
+    	  force_blackout = 1;	
+        if(debug_flag& DEBUG_FLAG_BLACKOUT){
+            printk("%s VFRAME_EVENT_PROVIDER_FORCE_BLACKOUT\n", __func__);
+        }
+    }
     else if(type == VFRAME_EVENT_PROVIDER_REG){
 #ifdef CONFIG_AM_VIDEO2
         char* provider_name = (char*)data;
@@ -1674,9 +1743,6 @@ static int video_receiver_event_fun(int type, void* data, void* private_data)
         }
 #endif    
         video_vf_light_unreg_provider();
-    }
-    else if(type == VFRAME_EVENT_PROVIDER_FORCE_BLACKOUT){
-    	  force_blackout = 1;	
     }
     return 0;
 }
@@ -1739,12 +1805,18 @@ unsigned int vf_keep_current(void)
         if (keep_y_addr != canvas_get_addr(y_index) && /*must not the same address*/
             canvas_dup(keep_y_addr_remap, canvas_get_addr(y_index), (cd.width)*(cd.height))) {
             canvas_update_addr(y_index, (u32)keep_y_addr);
+            if(debug_flag& DEBUG_FLAG_BLACKOUT){
+                printk("%s: VIDTYPE_VIU_422\n", __func__);
+            }
         }
     } else if ((cur_dispbuf->type & VIDTYPE_VIU_444) == VIDTYPE_VIU_444) {
     	 canvas_read(y_index,&cd);
         if (keep_y_addr != canvas_get_addr(y_index) && /*must not the same address*/ 
             canvas_dup(keep_y_addr_remap, canvas_get_addr(y_index), (cd.width)*(cd.height))){
             canvas_update_addr(y_index, (u32)keep_y_addr);
+            if(debug_flag& DEBUG_FLAG_BLACKOUT){
+                printk("%s: VIDTYPE_VIU_444\n", __func__);
+            }
         }
     } else {
         canvas_read(y_index,&cs0);
@@ -1761,6 +1833,9 @@ unsigned int vf_keep_current(void)
             canvas_update_addr(y_index, (u32)keep_y_addr);
             canvas_update_addr(u_index, (u32)keep_u_addr);
             canvas_update_addr(v_index, (u32)keep_v_addr);
+            if(debug_flag& DEBUG_FLAG_BLACKOUT){
+                printk("%s()\n", __func__);
+            }
         }
     }
 
@@ -1769,6 +1844,7 @@ unsigned int vf_keep_current(void)
 
 EXPORT_SYMBOL(get_post_canvas);
 EXPORT_SYMBOL(vf_keep_current);
+EXPORT_SYMBOL(query_video_status);
 
 u32 get_blackout_policy(void)
 {
@@ -2285,6 +2361,10 @@ static ssize_t video_blackout_policy_store(struct class *cla, struct class_attri
     size_t r;
 
     r = sscanf(buf, "%d", &blackout);
+
+    if(debug_flag& DEBUG_FLAG_BLACKOUT){
+        printk("%s(%d)\n", __func__, blackout);
+    }
     if (r != 1) {
         return -EINVAL;
     }
@@ -2374,7 +2454,9 @@ static ssize_t video_disable_store(struct class *cla, struct class_attribute *at
 {
     size_t r;
     int val;
-
+    if(debug_flag& DEBUG_FLAG_BLACKOUT){
+        printk("%s(%s)\n", __func__, buf);
+    }
     r = sscanf(buf, "%d", &val);
     if (r != 1) {
         return -EINVAL;
@@ -2830,6 +2912,9 @@ module_param(isr_interval_max, uint, 0664);
 MODULE_PARM_DESC(isr_run_time_max, "\n isr_run_time_max\n");
 module_param(isr_run_time_max, uint, 0664);
 #endif
+MODULE_PARM_DESC(debug_flag, "\n debug_flag\n");
+module_param(debug_flag, uint, 0664);
+
 MODULE_DESCRIPTION("AMLOGIC video output driver");
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Tim Yao <timyao@amlogic.com>");
