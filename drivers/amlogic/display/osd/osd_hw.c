@@ -128,8 +128,14 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
 	unsigned  int  fb0_cfg_w0,fb1_cfg_w0;
 	unsigned  int  current_field;
 	
+#ifdef CONFIG_AM_VIDEO2
+  int viu1_sel = (READ_MPEG_REG(VPU_VIU_VENC_MUX_CTRL)>>0)&0x3; // 0=No connection, 1=ENCI, 2=ENCP, 3=ENCT.
+  if((viu1_sel==1)&&(READ_MPEG_REG(ENCI_VIDEO_EN) & 1)) 
+    osd_hw.scan_mode= SCAN_MODE_INTERLACE;
+#else
 	if (READ_MPEG_REG(ENCI_VIDEO_EN) & 1)
 		osd_hw.scan_mode= SCAN_MODE_INTERLACE;
+#endif		
 	else if (READ_MPEG_REG(ENCP_VIDEO_MODE) & (1 << 12))
 		osd_hw.scan_mode= SCAN_MODE_INTERLACE;
 	else
@@ -1387,6 +1393,7 @@ void osd_init_hw(u32  logo_loaded)
 	//here we will init default value ,these value only set once .
 	if(!logo_loaded)
 	{
+		data32  = 1;
 	    	data32  = 4   << 5;  // hold_fifo_lines
 	    	data32 |= 3   << 10; // burst_len_sel: 3=64
 	    	data32 |= 32  << 12; // fifo_depth_val: 32*8=256
