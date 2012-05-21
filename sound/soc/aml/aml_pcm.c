@@ -413,6 +413,8 @@ static void aml_hw_iec958_init(void)
         start = aml_iec958_playback_start_phy;
         size = aml_iec958_playback_size;
 		audio_set_958outbuf(start, size, (IEC958_MODE == AIU_958_MODE_RAW)?1:0);
+		memset((void*)aml_iec958_playback_start_addr,0,size);
+		
 	}
 	audio_set_958_mode(IEC958_MODE, &set);
 
