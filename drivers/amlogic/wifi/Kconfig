@@ -361,6 +361,8 @@ config BCM4329_OOB_INTR_ONLY
 	default n
 	---help---
 	   Use out of band interrupt for all interrupts(including SDIO interrupts).
+	   
+source "drivers/amlogic/wifi/broadcm_40181/Kconfig"
 
 config SDIO_NRX600
         tristate "NANO NRX600 wireless card support"
