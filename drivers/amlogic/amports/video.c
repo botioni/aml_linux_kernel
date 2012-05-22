@@ -1474,7 +1474,6 @@ SET_FILTER:
         cur_dispbuf->process_fun(cur_dispbuf->private_data, zoom_start_x_lines|(cur_frame_par->vscale_skip_count<<24), zoom_end_x_lines, zoom_start_y_lines, zoom_end_y_lines);
     }
 
-exit:
     if(timer_count > 50){
         timer_count = 0 ;
         video_notify_flag |= VIDEO_NOTIFY_FRAME_WAIT;	
@@ -1885,6 +1884,13 @@ int _video_set_disable(u32 val)
     return 0;
 }
 
+static void _set_video_crop(int *p)
+{
+    vpp_set_video_source_crop(p[0], p[1], p[2], p[3]);
+
+    video_property_changed = true;
+}
+
 static void _set_video_window(int *p)
 {
     int w, h;
@@ -2028,6 +2034,30 @@ static int amvideo_ioctl(struct inode *inode, struct file *file,
             int axis[4];
             if (copy_from_user(axis, argp, sizeof(axis)) == 0) {
                 _set_video_window(axis);
+            } else {
+                ret = -EFAULT;
+            }
+        }
+        break;
+
+    case AMSTREAM_IOC_GET_VIDEO_CROP:
+        {
+            int crop[4];
+            {
+                vpp_get_video_source_crop(&crop[0], &crop[1], &crop[2], &crop[3]);
+            }
+
+            if (copy_to_user(argp, &crop[0], sizeof(crop)) != 0) {
+                ret = -EFAULT;
+            }
+        }
+        break;
+
+    case AMSTREAM_IOC_SET_VIDEO_CROP:
+        {
+            int crop[4];
+            if (copy_from_user(crop, argp, sizeof(crop)) == 0) {
+                _set_video_crop(crop);
             } else {
                 ret = -EFAULT;
             }
@@ -2259,6 +2289,18 @@ static int parse_para(const char *para, int para_num, int *result)
     return count;
 }
 
+static void set_video_crop(const char *para)
+{
+    int parsed[4];
+
+    if (likely(parse_para(para, 4, parsed) == 4)) {
+        _set_video_crop(parsed);
+    }
+    amlog_mask(LOG_MASK_SYSFS,
+               "video crop=>x0:%d,y0:%d,x1:%d,y1:%d\r\n ",
+               parsed[0], parsed[1], parsed[2], parsed[3]);
+}
+
 static void set_video_window(const char *para)
 {
     int parsed[4];
@@ -2269,6 +2311,27 @@ static void set_video_window(const char *para)
     amlog_mask(LOG_MASK_SYSFS,
                "video=>x0:%d,y0:%d,x1:%d,y1:%d\r\n ",
                parsed[0], parsed[1], parsed[2], parsed[3]);
+}
+
+static ssize_t video_crop_show(struct class *cla, struct class_attribute *attr, char *buf)
+{
+    u32 t, l, b, r;
+
+    vpp_get_video_layer_position(&t, &l, &b, &r);
+
+    return snprintf(buf, 40, "%d %d %d %d\n", t, l, b, r);
+}
+
+static ssize_t video_crop_store(struct class *cla, struct class_attribute *attr, const char *buf,
+                                size_t count)
+{
+    mutex_lock(&video_module_mutex);
+
+    set_video_crop(buf);
+
+    mutex_unlock(&video_module_mutex);
+
+    return strnlen(buf, count);
 }
 
 static ssize_t video_axis_show(struct class *cla, struct class_attribute *attr, char *buf)
@@ -2626,6 +2689,10 @@ static struct class_attribute amvideo_class_attrs[] = {
     S_IRUGO | S_IWUSR,
     video_axis_show,
     video_axis_store),
+    __ATTR(crop,
+    S_IRUGO | S_IWUSR,
+    video_crop_show,
+    video_crop_store),
     __ATTR(screen_mode,
     S_IRUGO | S_IWUSR,
     video_screen_mode_show,
