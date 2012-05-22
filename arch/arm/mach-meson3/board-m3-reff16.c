@@ -457,6 +457,67 @@ static struct platform_device vdin_device = {
 };
 #endif
 
+//#define CONFIG_WIFI_BCM_4018x
+#if defined(CONFIG_WIFI_BCM_4018x)
+/******************************
+*WL_Power_EN	-->NOPin
+*WL_REG_ON	-->GPIOC_8
+*WIFI_32K		-->GPIOC_15(CLK_OUT1)
+*WIFIWAKE(WL_HOST_WAKE)-->GPIOX_11
+*******************************/
+void extern_wifi_power(int is_power)
+{//NOPin
+}
+EXPORT_SYMBOL(extern_wifi_power);
+void extern_wifi_reset(int is_on)
+{
+}
+EXPORT_SYMBOL(extern_wifi_reset);
+
+void extern_wifi_set_enable(int enable)
+{
+	if(enable){
+		SET_CBUS_REG_MASK(PREG_PAD_GPIO2_O, (1<<8));
+		printk("Enable WIFI  Module!\n");
+	}
+    	else{
+		CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO2_O, (1<<8));
+		printk("Disable WIFI  Module!\n");
+	}
+}
+EXPORT_SYMBOL(extern_wifi_set_enable);
+
+static void wifi_set_clk_enable(int on)
+{
+    //set clk for wifi
+	printk("set WIFI CLK Pin GPIOC_15 32KHz ***%d\n",on);
+	WRITE_CBUS_REG(HHI_GEN_CLK_CNTL,(READ_CBUS_REG(HHI_GEN_CLK_CNTL)&(~(0x7f<<0)))|((0<<0)|(1<<8)|(7<<9)) );
+	CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO2_EN_N, (1<<15));   
+	if(on)
+		SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_3, (1<<22));
+	else
+		CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_3, (1<<22));	
+}
+
+static void wifi_gpio_init(void)
+{
+    //set WL_REG_ON Pin GPIOC_8 out 
+   	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_3, (1<<23));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0, (1<<18));
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_1, (1<<10));
+     	CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO2_EN_N, (1<<8));  //GPIOC_8
+}
+
+
+static void aml_wifi_bcm4018x_init()
+{
+	wifi_set_clk_enable(1);
+	wifi_gpio_init();
+	//extern_wifi_set_enable(1);
+}
+
+#endif
+
 #if defined(CONFIG_CARDREADER)
 static struct resource amlogic_card_resource[] = {
     [0] = {
@@ -465,6 +526,22 @@ static struct resource amlogic_card_resource[] = {
         .flags = 0x200,
     }
 };
+
+#if defined(CONFIG_WIFI_BCM_4018x)
+#define GPIO_WIFI_HOSTWAKE  ((GPIOX_bank_bit0_31(11)<<16) |GPIOX_bit_bit0_31(11))
+void sdio_extern_init(void)
+{
+	printk("sdio_extern_init !\n");
+#if defined(CONFIG_BCM40183_WIFI)
+	printk("40183 set oob mode !\n");
+  SET_CBUS_REG_MASK(PAD_PULL_UP_REG4, (1<<11));
+	gpio_direction_input(GPIO_WIFI_HOSTWAKE);
+	//gpio_enable_level_int(gpio_to_idx(GPIO_WIFI_HOSTWAKE), 0, 4);  //for 40181
+	gpio_enable_edge_int(gpio_to_idx(GPIO_WIFI_HOSTWAKE), 0, 5);     //for 40183
+#endif 
+	extern_wifi_set_enable(1);
+}
+#endif
 
 static struct aml_card_info  amlogic_card_info[] = {
     [0] = {
@@ -486,6 +563,27 @@ static struct aml_card_info  amlogic_card_info[] = {
         .card_wp_input_mask = PREG_IO_30_MASK,
         .card_extern_init = 0,
     },
+#if defined(CONFIG_WIFI_BCM_4018x)    
+    [1] = {
+        .name = "sdio_card",
+        .work_mode = CARD_HW_MODE,
+        .io_pad_type = SDIO_A_GPIOX_0_3,
+        .card_ins_en_reg = 0,
+        .card_ins_en_mask = 0,
+        .card_ins_input_reg = 0,
+        .card_ins_input_mask = 0,
+        .card_power_en_reg = 0,
+        .card_power_en_mask = 0,
+        .card_power_output_reg = 0,
+        .card_power_output_mask = 0,
+        .card_power_en_lev = 1,
+        .card_wp_en_reg = 0,
+        .card_wp_en_mask = 0,
+        .card_wp_input_reg = 0,
+        .card_wp_input_mask = 0,
+        .card_extern_init = sdio_extern_init,
+    },
+#endif
 };
 
 static struct aml_card_platform amlogic_card_platform = {
@@ -1929,6 +2027,10 @@ static void __init device_pinmux_init(void )
 	clear_mio_mux(0, 0x3<4);
 	clear_mio_mux(5, 0x3F<<17);
 	clear_mio_mux(5, 1<27);
+#endif
+
+#if defined(CONFIG_WIFI_BCM_4018x)
+    aml_wifi_bcm4018x_init();
 #endif
 
 

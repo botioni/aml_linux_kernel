@@ -41,8 +41,8 @@
 #ifdef CUSTOMER_HW_AMLOGIC
 extern  void sdio_reinit(void);
 //extern  void extern_wifi_reset(int is_on);
-extern void extern_wifi_power(int is_on);
-extern void extern_wifi_enable(int is_on);
+//extern void extern_wifi_power(int is_on);
+extern void extern_wifi_set_enable(int is_on);
 
 
 #endif /* CUSTOMER_HW_AMLOGIC */
@@ -175,9 +175,9 @@ dhd_customer_gpio_wlan_ctrl(int onoff)
 #endif
 #ifdef CUSTOMER_HW_AMLOGIC
 
-		   extern_wifi_enable(0);
+		   extern_wifi_set_enable(0);
                     mdelay(200);
-                    extern_wifi_enable(1);
+                    extern_wifi_set_enable(1);
                    mdelay(200);
                     sdio_reinit();
 #endif /* CUSTOMER_HW_AMLOGIC */
@@ -194,7 +194,7 @@ dhd_customer_gpio_wlan_ctrl(int onoff)
 #ifdef CUSTOMER_HW_AMLOGIC
 		
 
-		extern_wifi_enable(0);
+		extern_wifi_set_enable(0);
 		//extern_wifi_power(0);
 #endif /* CUSTOMER_HW_AMLOGIC */
 
@@ -210,9 +210,9 @@ dhd_customer_gpio_wlan_ctrl(int onoff)
 #endif /* CUSTOMER_HW */
 
 #ifdef CUSTOMER_HW_AMLOGIC
-			extern_wifi_enable(0);
+			extern_wifi_set_enable(0);
                   	mdelay(200);
-                    	extern_wifi_enable(1);
+                    	extern_wifi_set_enable(1);
 			mdelay(200);
                    	 sdio_reinit();
 #endif /* CUSTOMER_HW_AMLOGIC */
