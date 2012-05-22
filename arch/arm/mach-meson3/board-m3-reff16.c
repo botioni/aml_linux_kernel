@@ -1802,6 +1802,13 @@ static  struct platform_device gx1001_device = {
 };
 
 #endif
+#if defined(CONFIG_AML_WATCHDOG)
+static struct platform_device aml_wdt_device = {
+    .name = "aml_wdt",
+    .id   = -1,
+    .num_resources = 0,
+};
+#endif
 
 
 static struct platform_device __initdata *platform_devs[] = {
@@ -1910,6 +1917,9 @@ static struct platform_device __initdata *platform_devs[] = {
 	&gx1001_device,
 	&avl6211_device,
 #endif
+ #if defined(CONFIG_AML_WATCHDOG)
+        &aml_wdt_device,
+ #endif
 };
 
 static struct i2c_board_info __initdata aml_i2c_bus_info[] = {
