@@ -96,6 +96,8 @@
 #define AMSTREAM_IOC_SET_PCRSCR       _IOW(AMSTREAM_IOC_MAGIC, 0x4a, unsigned long)
 #define AMSTREAM_IOC_GET_VIDEO_AXIS   _IOR(AMSTREAM_IOC_MAGIC, 0x4b, unsigned long)
 #define AMSTREAM_IOC_SET_VIDEO_AXIS   _IOW(AMSTREAM_IOC_MAGIC, 0x4c, unsigned long)
+#define AMSTREAM_IOC_GET_VIDEO_CROP   _IOR(AMSTREAM_IOC_MAGIC, 0x4d, unsigned long)
+#define AMSTREAM_IOC_SET_VIDEO_CROP   _IOW(AMSTREAM_IOC_MAGIC, 0x4e, unsigned long)
 
 // VPP.VE IOCTL command list
 #define AMSTREAM_IOC_VE_BEXT   _IOW(AMSTREAM_IOC_MAGIC, 0x20, struct ve_bext_s  )
