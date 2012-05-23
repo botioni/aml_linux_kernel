@@ -16,7 +16,12 @@
 #include "MxL101SF_PhyDefs.h"
 #include "MxL101SF_OEM_Drv.h"
 
+
+#if 0
 #define printdebug printf
+#else
+#define printdebug(a...)
+#endif
 
 const UINT8 MxLCtrlVersion[] = {6, 3, 8, 1};
 

@@ -27,7 +27,7 @@
 #include "MxL101SF_PhyCtrlApi.h"
 #include "MxL101SF_PhyDefs.h"
 
-#define MS_DEBUG
+//#define MS_DEBUG
 #ifdef MS_DEBUG
 #define MXL_MSB(x)          x
 #else
@@ -87,7 +87,7 @@ void MxL101SF_Init(void)
 
   // 6. Configure MPEG Out 
   // CLK, MPEG_CLK_INV, Polarity of MPEG Valid/MPEG Sync
-  mxlMpegOutCfg.MpegClkFreq = MPEG_CLOCK_27_428571MHz;//MPEG_CLOCK_9_142857MHz;//MPEG_CLOCK_36_571429MHz;
+  mxlMpegOutCfg.MpegClkFreq = MPEG_CLOCK_36_571429MHz;//MPEG_CLOCK_9_142857MHz;//MPEG_CLOCK_36_571429MHz;
   mxlMpegOutCfg.LsbOrMsbFirst = MPEG_SERIAL_MSB_1ST;
   mxlMpegOutCfg.MpegClkPhase = MPEG_CLK_IN_PHASE;//MPEG_CLK_IN_PHASE;
   mxlMpegOutCfg.MpegSyncPol = MPEG_CLK_IN_PHASE;
