@@ -59,6 +59,7 @@
 
 #include "../hdmi_info_global.h"
 #include "../hdmi_tx_module.h"
+#include "../hdmi_tx_cec.h"
 #include "hdmi_tx_reg.h"
 #include "tvenc_conf.h"
 //#define XTAL_24MHZ
@@ -77,8 +78,6 @@ static void hdmi_audio_init(unsigned char spdif_flag);
 static void hdmitx_dump_tvenc_reg(int cur_VIC, int printk_flag);
 static void hdmi_suspend(void);
 static void hdmi_wakeup(void);
-
-#define CEC0_LOG_ADDR 0x4
 
 //#define HPD_DELAY_CHECK
 //#define CEC_SUPPORT
@@ -924,7 +923,7 @@ static void unmux_hpd(void)
 //    Wr(PERIPHS_PIN_MUX_1, Rd(PERIPHS_PIN_MUX_1)&(~(1 <<22))); //use hpd as gpio
 //#endif        
 //    Wr(PREG_PAD_GPIO2_EN_N, Rd(PREG_PAD_GPIO2_EN_N)|(1<<0)); //GPIOA_0 as input
-    Wr(PERIPHS_PIN_MUX_1, Rd(PERIPHS_PIN_MUX_1)&~(1 << 22));
+    Wr(PERIPHS_PIN_MUX_1, Rd(PERIPHS_PIN_MUX_1)&(~(1 << 22)));
     //GPIOC_10 0x2012[10]
     Wr(PREG_PAD_GPIO2_EN_N, Rd(PREG_PAD_GPIO2_EN_N)|(1<<10)); //GPIOC_10 as input
 }    
@@ -1232,7 +1231,14 @@ void hdmi_hw_init(hdmitx_dev_t* hdmitx_device)
                                (1 << 24))); // pm_hdmi_i2c_scl_en
 #endif                               
 #endif
-
+    if(hdmitx_device->cec_func_flag){
+#if defined CONFIG_ARCH_MESON
+        Wr(PERIPHS_PIN_MUX_0, Rd(PERIPHS_PIN_MUX_0)|(1<<2));   // pm_hdmi_cec_en
+#endif
+#if defined CONFIG_ARCH_MESON3
+        Wr(PERIPHS_PIN_MUX_1, Rd(PERIPHS_PIN_MUX_1)|(1<<25));   // pm_hdmi_cec_en
+#endif
+    }
     // Enable these interrupts: [2] tx_edit_int_rise [1] tx_hpd_int_fall [0] tx_hpd_int_rise
     hdmi_wr_reg(OTHER_BASE_ADDR + HDMI_OTHER_INTR_MASKN, 0x7);
     // HPD glitch filter
@@ -1340,6 +1346,9 @@ void hdmi_hw_init(hdmitx_dev_t* hdmitx_device)
         delay_us(10);
 #endif        
     /**/
+    /*cec config*/
+    cec_init(hdmitx_device);
+    cec_set_pending(TV_CEC_PENDING_OFF);
 }    
 
 static void hdmi_hw_reset(Hdmi_tx_video_para_t *param)
