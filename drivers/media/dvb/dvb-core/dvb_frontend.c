@@ -1913,10 +1913,46 @@ static int dvb_frontend_ioctl_legacy(struct inode *inode, struct file *file,
 		err = 0;
 		break;
 
+	#if 1  // for dvbs2 blind scan;	
+	case  FE_SET_BLINDSCAN:
+		printk("FE_SET_BLINDSCAN\n");
+		if (fe->ops.blindscan_scan)
+			err = fe->ops.blindscan_scan(fe, (struct dvbsx_blindscanpara*) parg);
+	
+		break;
+
+	case  FE_GET_BLINDSCANSTATUS:
+		printk("FE_GET_BLINDSCANSTATUS\n");
+		if (fe->ops.blindscan_getscanstatus)
+			err = fe->ops.blindscan_getscanstatus(fe, (struct dvbsx_blindscaninfo*) parg);
+		break;
+
+	case  FE_SET_BLINDSCANCANCEl:
+		printk("FE_SET_BLINDSCANCANCEl\n");
+		if (fe->ops.blindscan_cancel)
+			err = fe->ops.blindscan_cancel(fe);
+
+		break;
+
+	case FE_READ_BLINDSCANCHANNELINFO:
+		printk("FE_READ_BLINDSCANCHANNELINFO\n");
+		if (fe->ops.blindscan_readchannelinfo)
+			err = fe->ops.blindscan_readchannelinfo(fe, (struct dvb_frontend_parameters*) parg);
+
+		break;
+
+	case FE_SET_BLINDSCANRESET:
+		printk("FE_SET_BLINDSCANRESET\n");
+		if (fe->ops.blindscan_reset)
+			err = fe->ops.blindscan_reset(fe);
+
+		break;
 	case FE_SET_DELAY:
 		fepriv->user_delay = (int)parg;
 		err = 0;
 		break;			
+	
+	#endif
 	};
 
 	if (fe->dvb->fe_ioctl_override) {

@@ -983,7 +983,7 @@ AVL_DVBSx_ErrorCode AVL6211_LockSignal_Manual(void)
 
 
 
-AVL_uint32 AVL6211_GETLockStatus()
+AVL_uint32 AVL6211_GETLockStatus(void)
 {
 	AVL_uchar HandIndex = 0;
 	struct AVL_DVBSx_Chip * pAVLChip = &g_stAvlDVBSxChip[HandIndex];
@@ -998,7 +998,7 @@ AVL_uint32 AVL6211_GETLockStatus()
 }
 
 
-AVL_uint32 AVL6211_GETBer()
+AVL_uint32 AVL6211_GETBer(void)
 {
 	AVL_uchar HandIndex = 0;
 	struct AVL_DVBSx_Chip * pAVLChip = &g_stAvlDVBSxChip[HandIndex];
@@ -1019,7 +1019,7 @@ AVL_uint32 AVL6211_GETBer()
 }
 
 
-AVL_uint32 AVL6211_GETPer()
+AVL_uint32 AVL6211_GETPer(void)
 {
 	AVL_uchar HandIndex = 0;
 	struct AVL_DVBSx_Chip * pAVLChip = &g_stAvlDVBSxChip[HandIndex];
@@ -1041,7 +1041,7 @@ AVL_uint32 AVL6211_GETPer()
 }
 
 
-AVL_uint32 AVL6211_GETSnr()
+AVL_uint32 AVL6211_GETSnr(void)
 {
 	AVL_uchar HandIndex = 0;
 	struct AVL_DVBSx_Chip * pAVLChip = &g_stAvlDVBSxChip[HandIndex];
@@ -1062,7 +1062,7 @@ AVL_uint32 AVL6211_GETSnr()
 }
 
 
-AVL_uint32 AVL6211_GETSignalLevel()
+AVL_uint32 AVL6211_GETSignalLevel(void)
 {
 	AVL_uchar HandIndex = 0;
 	AVL_uint16 i;

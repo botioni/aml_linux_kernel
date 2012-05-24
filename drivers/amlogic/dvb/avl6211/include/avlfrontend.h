@@ -11,6 +11,17 @@
 #include "../aml_dvb.h"
 
 
+#include "IBSP.h"
+#include "avl_dvbsx.h"
+#include "IBase.h"
+#include "IRx.h"
+#include "II2C.h"
+#include "IDiseqc.h"
+#include "ITuner.h"
+#include "IBlindScan.h"
+#include "IBlindscanAPI.h"
+
+
 #define printf printk
 
 
