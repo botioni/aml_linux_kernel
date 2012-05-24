@@ -168,12 +168,16 @@ static int audiodsp_ioctl(struct inode *node, struct file *file, unsigned int cm
 		{
 		case AUDIODSP_SET_FMT:
 			priv->stream_fmt=args;
-            if(args == MCODEC_FMT_DTS)
-              	IEC958_mode_codec = 1;
-            else if(args == MCODEC_FMT_AC3)
-            	IEC958_mode_codec = 2; 	
-            else
-            	IEC958_mode_codec = 0;
+			if(IEC958_mode_raw == 1){		
+				if(args == MCODEC_FMT_DTS)
+					IEC958_mode_codec = 1;
+				else if(args == MCODEC_FMT_AC3)
+					IEC958_mode_codec = 2; 	
+				else
+					IEC958_mode_codec = 0;
+			}	
+			else
+				IEC958_mode_codec = 0;
 			break;
 		case AUDIODSP_START:
 			if(IEC958_mode_raw_last != IEC958_mode_raw || (IEC958_mode_raw&&(IEC958_mode_codec_last !=  IEC958_mode_codec)))
@@ -194,7 +198,6 @@ static int audiodsp_ioctl(struct inode *node, struct file *file, unsigned int cm
 				}
 			break;
 		case AUDIODSP_STOP:
-			IEC958_mode_codec = 0; //958 pcm ouput by default
 			//DSP_PRNT("audiodsp command stop\n");
 			stop_audiodsp_monitor(priv);
 			dsp_stop(priv);
