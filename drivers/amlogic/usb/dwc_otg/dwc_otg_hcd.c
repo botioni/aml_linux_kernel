@@ -289,7 +289,7 @@ static void kill_urbs_in_qh_list(dwc_otg_hcd_t * _hcd,
 			    list_entry(qtd_item, dwc_otg_qtd_t, qtd_list_entry);
 			if (qtd->urb != NULL) {
 				dwc_otg_hcd_complete_urb(_hcd, qtd->urb,
-							 -ETIMEDOUT);
+							 -ESHUTDOWN);
 			}
 			dwc_otg_hcd_qtd_remove_and_free(qtd);
 		}
