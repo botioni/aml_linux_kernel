@@ -705,8 +705,8 @@ static const reg_t tvregs_1080p[] = {
     {ENCP_VIDEO_VSPULS_END,      2059,  },
     {ENCP_VIDEO_VSPULS_BLINE,    0,     },
     {ENCP_VIDEO_VSPULS_ELINE,    4,     },//35
-    {ENCP_VIDEO_HAVON_BEGIN,     148,   },
-    {ENCP_VIDEO_HAVON_END,       2067,  },
+    {ENCP_VIDEO_HAVON_BEGIN,     188,   },
+    {ENCP_VIDEO_HAVON_END,       2107,  },
     {ENCP_VIDEO_VAVON_BLINE,     41,    },
     {ENCP_VIDEO_VAVON_ELINE,     1120,  },
     {ENCP_VIDEO_HSO_BEGIN,       44,    },
