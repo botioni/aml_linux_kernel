@@ -1743,17 +1743,22 @@ static struct resource avl6211_resource[]  = {
 		.name  = "frontend0_reset_value_enable"
 	},
 	[4] = {
-		.start = (GPIOC_bank_bit0_15(3)<<16)|GPIOC_bit_bit0_15(3),  //power enable pin
-		.end   = (GPIOC_bank_bit0_15(3)<<16)|GPIOC_bit_bit0_15(3),
+		.start = (GPIOB_bank_bit0_23(23)<<16)|GPIOB_bit_bit0_23(23),  //DVBS2 LNBON/OFF pin
+		.end   = (GPIOB_bank_bit0_23(23)<<16)|GPIOB_bit_bit0_23(23),
 		.flags = IORESOURCE_MEM,
-		.name  = "frontend0_reset"
-	//	.name  = "frontend0_power_pin"
+		.name  = "frontend0_LNBON/OFF"
 	},	
 	[5] = {
 	.start = 0xc0,                                 //is avl6211
 	.end   = 0xc0,
 	.flags = IORESOURCE_MEM,
 	.name  = "frontend0_tuner_addr"
+	},	
+	[6] = {
+	.start = (GPIOB_bank_bit0_23(21)<<16)|GPIOB_bit_bit0_23(21),        //is avl6211
+	.end   = (GPIOB_bank_bit0_23(21)<<16)|GPIOB_bit_bit0_23(21),
+	.flags = IORESOURCE_MEM,
+	.name  = "frontend0_POWERON/OFF"
 	},	
 };
 
@@ -2024,19 +2029,16 @@ static void __init device_pinmux_init(void )
 	clear_mio_mux(0, 1<<6);*/
 #endif
 
+
 #ifdef CONFIG_AM_AVL6211
 
-//for avl6211  
+//for avl6211
+	printk("CONFIG_AM_AVL6211 set pinmux\n");
 	set_mio_mux(3, 0x3F<<6);
-	clear_mio_mux(0, 1<<4);
-	clear_mio_mux(0, 0xf);
+//	clear_mio_mux(0, 1<<4);
+	clear_mio_mux(0, 0x7);
 
-/*FEC_OUT*/
-	set_mio_mux(3, 0x3F<<12);
-	clear_mio_mux(0, 1<<2);
-	clear_mio_mux(0, 0x3<4);
-	clear_mio_mux(5, 0x3F<<17);
-	clear_mio_mux(5, 1<27);
+
 #endif
 
 #if defined(CONFIG_WIFI_BCM_4018x)

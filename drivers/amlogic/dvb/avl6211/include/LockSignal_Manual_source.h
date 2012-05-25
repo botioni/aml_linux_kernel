@@ -24,11 +24,6 @@
 	#ifdef AVL_CPLUSPLUS
 extern "C" {
 	#endif
-#include"ITuner.h"
-#include "IRx.h"
-#include "DiSEqC_source.h"	
-#include "IBlindScan.h"
-#include "IBlindscanAPI.h"	
 
 
     struct Signal_Level
@@ -44,11 +39,11 @@ extern "C" {
    void AVL_Set_LPF(struct AVL_Tuner * pTuner, AVL_uint32 m_uiSymbolRate_Hz);
 		
    
-	AVL_uint32 AVL6211_GETBer();
-	AVL_uint32 AVL6211_GETPer();
-	AVL_uint32 AVL6211_GETSnr();
-	AVL_uint32 AVL6211_GETSignalLevel();
-	AVL_uint32 AVL6211_GETLockStatus();
+	AVL_uint32 AVL6211_GETBer(void);
+	AVL_uint32 AVL6211_GETPer(void);
+	AVL_uint32 AVL6211_GETSnr(void);
+	AVL_uint32 AVL6211_GETSignalLevel(void);
+	AVL_uint32 AVL6211_GETLockStatus(void);
 
 	
 	#ifdef AVL_CPLUSPLUS
