@@ -180,7 +180,7 @@ static int audiodsp_ioctl(struct inode *node, struct file *file, unsigned int cm
 				IEC958_mode_codec = 0;
 			break;
 		case AUDIODSP_START:
-			if(IEC958_mode_raw_last != IEC958_mode_raw || (IEC958_mode_raw&&(IEC958_mode_codec_last !=  IEC958_mode_codec)))
+			if(IEC958_mode_raw_last != IEC958_mode_raw || (IEC958_mode_raw&&(/*IEC958_mode_codec_last !=  */IEC958_mode_codec)))
 			{
 				IEC958_mode_raw_last = IEC958_mode_raw;
 				IEC958_mode_codec_last = IEC958_mode_codec;
@@ -198,6 +198,7 @@ static int audiodsp_ioctl(struct inode *node, struct file *file, unsigned int cm
 				}
 			break;
 		case AUDIODSP_STOP:
+			IEC958_mode_codec = 0;
 			//DSP_PRNT("audiodsp command stop\n");
 			stop_audiodsp_monitor(priv);
 			dsp_stop(priv);
