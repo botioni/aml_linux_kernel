@@ -32,7 +32,7 @@
 #include <linux/i2c.h>
 #include <linux/gpio.h>
 #include "avlfrontend.h"
-#include "LockSignal_Manual_source.h"
+#include "LockSignal_Api.h"
 
 
 
@@ -132,8 +132,6 @@ static int	AVL6211_Diseqc_Send_Master_Cmd(struct dvb_frontend* fe, struct dvb_di
 		printk("%x ",cmd->msg[i]);
 	}
 	
-//	AVL6211_DiseqcSendCmd(ucData,cmd->msg_len);
-
 	r=AVL_DVBSx_IDiseqc_SendModulationData(ucData, cmd->msg_len, pAVLChip_all);
 	if(r != AVL_DVBSx_EC_OK)
 	{
@@ -370,11 +368,12 @@ static int AVL6211_Init(struct dvb_frontend *fe)
 	AVL6211_Reset();
 	msleep(100);
 	//LBNON
-	AVL6211_Lnb_Power_Ctrl(1);
+//	AVL6211_Lnb_Power_Ctrl(1);
 	//tunerpower
 	AVL6211_Tuner_Power_Ctrl(0);
 	//init
-	r=AVL6211_LockSignal_Manual();
+	r=AVL6211_LockSignal_Init();
+//	r=AVL_DVBSx_IDiseqc_StopContinuous(pAVLChip_all);
 	if(AVL_DVBSx_EC_OK != r)
 	{
 		return r;
@@ -413,7 +412,7 @@ static int AVL6211_Read_Status(struct dvb_frontend *fe, fe_status_t * status)
 
 static int AVL6211_Read_Ber(struct dvb_frontend *fe, u32 * ber)
 {
-	*ber=AVL6211_GETBer();
+	//*ber=AVL6211_GETBer();
 	return 0;
 }
 
@@ -448,7 +447,7 @@ static int AVL6211_Set_Frontend(struct dvb_frontend *fe, struct dvb_frontend_par
 	AVL_DVBSx_ErrorCode r = AVL_DVBSx_EC_OK;
 	avl6211pTuner->m_uiFrequency_100kHz=p->frequency/100;
 //	avl6211pTuner->m_uiFrequency_100kHz=15000;
-	printk("avl6211pTuner m_uiFrequency_100kHz is %d",avl6211pTuner->m_uiFrequency_100kHz);
+//	printk("avl6211pTuner m_uiFrequency_100kHz is %d",avl6211pTuner->m_uiFrequency_100kHz);
 	
 	/* r = CPU_Halt(pAVLChip_all);
 	if(AVL_DVBSx_EC_OK != r)

@@ -24,6 +24,14 @@
 	#ifdef AVL_CPLUSPLUS
 extern "C" {
 	#endif
+/*#include"ITuner.h"
+#include "IRx.h"
+#include "DiSEqC_source.h"	
+#include "IBlindScan.h"
+#include "IBlindscanAPI.h"	
+#include "II2C.h"
+#include "IBase.h"*/
+
 
 
     struct Signal_Level
@@ -34,7 +42,7 @@ extern "C" {
 
     void AVL_DVBSx_Error_Dispose(AVL_DVBSx_ErrorCode r);
     AVL_DVBSx_ErrorCode AVL6211_Initialize(struct AVL_DVBSx_Chip * pAVLChip,struct AVL_Tuner * pTuner);
-    AVL_DVBSx_ErrorCode AVL6211_LockSignal_Manual(void);
+    AVL_DVBSx_ErrorCode AVL6211_LockSignal_Init(void);
    AVL_DVBSx_ErrorCode CPU_Halt(struct AVL_DVBSx_Chip * pAVLChip);
    void AVL_Set_LPF(struct AVL_Tuner * pTuner, AVL_uint32 m_uiSymbolRate_Hz);
 		
