@@ -163,6 +163,10 @@ void audio_set_958outbuf(u32 addr, u32 size,int flag)
 {
     if (ENABLE_IEC958) {
         WRITE_MPEG_REG(AIU_MEM_IEC958_START_PTR, addr & 0xffffffc0);
+	if(READ_MPEG_REG(AIU_MEM_IEC958_START_PTR) == READ_MPEG_REG(AIU_MEM_I2S_START_PTR)){
+		WRITE_MPEG_REG(AIU_MEM_IEC958_RD_PTR, READ_MPEG_REG(AIU_MEM_I2S_RD_PTR));
+	}
+	else
         WRITE_MPEG_REG(AIU_MEM_IEC958_RD_PTR, addr & 0xffffffc0);
         if(flag == 0){
           WRITE_MPEG_REG(AIU_MEM_IEC958_END_PTR, (addr & 0xffffffc0) + (size & 0xffffffc0) - 64);    // this is for 16bit 2 channel
