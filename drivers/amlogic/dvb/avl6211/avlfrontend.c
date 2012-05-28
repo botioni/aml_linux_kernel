@@ -396,7 +396,7 @@ static int AVL6211_Sleep(struct dvb_frontend *fe)
 static int AVL6211_Read_Status(struct dvb_frontend *fe, fe_status_t * status)
 {
 	unsigned char s=0;
-	msleep(1000);
+//	msleep(1000);
 	s=AVL6211_GETLockStatus();
 	if(s==1)
 	{
