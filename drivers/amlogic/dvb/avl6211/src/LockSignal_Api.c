@@ -243,6 +243,61 @@ int AVL_Get_Quality_Percent(struct AVL_DVBSx_Chip * pAVLChip)
 }    
 
 
+struct Signal_Level  AGC_LUT [91]=
+{
+    {63688,  0},{62626, -1},{61840, -2},{61175, -3},{60626, -4},{60120, -5},{59647, -6},{59187, -7},{58741, -8},{58293, -9},
+    {57822,-10},{57387,-11},{56913,-12},{56491,-13},{55755,-14},{55266,-15},{54765,-16},{54221,-17},{53710,-18},{53244,-19},
+    {52625,-20},{52043,-21},{51468,-22},{50904,-23},{50331,-24},{49772,-25},{49260,-26},{48730,-27},{48285,-28},{47804,-29},
+    {47333,-30},{46880,-31},{46460,-32},{46000,-33},{45539,-34},{45066,-35},{44621,-36},{44107,-37},{43611,-38},{43082,-39},
+    {42512,-40},{41947,-41},{41284,-42},{40531,-43},{39813,-44},{38978,-45},{38153,-46},{37294,-47},{36498,-48},{35714,-49},
+    {35010,-50},{34432,-51},{33814,-52},{33315,-53},{32989,-54},{32504,-55},{32039,-56},{31608,-57},{31141,-58},{30675,-59},
+    {30215,-60},{29711,-61},{29218,-62},{28688,-63},{28183,-64},{27593,-65},{26978,-66},{26344,-67},{25680,-68},{24988,-69},
+    {24121,-70},{23285,-71},{22460,-72},{21496,-73},{20495,-74},{19320,-75},{18132,-76},{16926,-77},{15564,-78},{14398,-79},
+    {12875,-80},{11913,-81},{10514,-82},{ 9070,-83},{ 7588,-84},{ 6044,-85},{ 4613,-86},{ 3177,-87},{ 1614,-88},{  123,-89},
+    {    0,-90}
+};
+	
+AVL_int16 AVL_Get_Level_Percent(struct AVL_DVBSx_Chip * pAVLChip)
+{
+
+	AVL_DVBSx_ErrorCode r = AVL_DVBSx_EC_OK;
+	AVL_uint16 Level;
+	AVL_int16 i;
+	AVL_int16 Percent;
+/*
+	#define Level_High_Stage	36
+	#define Level_Low_Stage 	70
+
+	#define Percent_Space_High	6
+	#define Percent_Space_Mid	44
+	#define Percent_Space_Low	50		//Percent_Space_High+Percent_Space_Mid+Percent_Space_Low = 100
+
+*/	
+	#define Level_High_Stage	36
+	#define Level_Low_Stage		76
+
+	#define Percent_Space_High	10
+	#define Percent_Space_Mid	30
+	#define Percent_Space_Low	60
+
+
+	i = 0;
+	Percent = 0;
+
+	r = AVL_DVBSx_IRx_GetSignalLevel(&Level,pAVLChip);
+
+	while(Level < AGC_LUT[i++].SignalLevel);
+	
+	if(i<= Level_High_Stage)
+		Percent = Percent_Space_Low+Percent_Space_Mid+ (Level_High_Stage-i)*Percent_Space_High/Level_High_Stage;
+	else if(i<=Level_Low_Stage)
+		Percent = Percent_Space_Low+ (Level_Low_Stage-i)*Percent_Space_Mid/(Level_Low_Stage-Level_High_Stage);
+	else
+		Percent =(90-i)*Percent_Space_Low/(90-Level_Low_Stage);
+
+	return Percent;	
+}
+
 
 
 

@@ -412,13 +412,14 @@ static int AVL6211_Read_Status(struct dvb_frontend *fe, fe_status_t * status)
 
 static int AVL6211_Read_Ber(struct dvb_frontend *fe, u32 * ber)
 {
-	//*ber=AVL6211_GETBer();
+	*ber=AVL6211_GETBer();
 	return 0;
 }
 
 static int AVL6211_Read_Signal_Strength(struct dvb_frontend *fe, u16 *strength)
 {
-	*strength=AVL6211_GETSignalLevel();
+	*strength=AVL_Get_Level_Percent(pAVLChip_all);
+//	*strength=AVL6211_GETSignalLevel();
 	return 0;
 }
 
@@ -504,14 +505,14 @@ static int AVL6211_Set_Frontend(struct dvb_frontend *fe, struct dvb_frontend_par
 		printf("Lock channel failed !\n");
 		return (r);
 	}
-
-/*	r=AVL_DVBSx_IRx_ResetErrorStat(pAVLChip_all);
+	msleep(500);
+	r=AVL_DVBSx_IRx_ResetErrorStat(pAVLChip_all);
 	if (AVL_DVBSx_EC_OK != r)
 	{
 		printf("Reset error status failed !\n");
 		return (r);
-	}*/
-	msleep(500);
+	}
+	
 //	demod_connect(state, p->frequency,p->u.qam.modulation,p->u.qam.symbol_rate);
 	state->freq=p->frequency;
 	state->mode=p->u.qam.modulation ;
