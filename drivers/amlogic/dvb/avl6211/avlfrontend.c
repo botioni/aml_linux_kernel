@@ -424,7 +424,8 @@ static int AVL6211_Read_Signal_Strength(struct dvb_frontend *fe, u16 *strength)
 
 static int AVL6211_Read_Snr(struct dvb_frontend *fe, u16 * snr)
 {
-	*snr=AVL6211_GETSnr();
+	*snr=AVL_Get_Quality_Percent(pAVLChip_all);
+	//*snr=AVL6211_GETSnr();
 	return 0;
 }
 
@@ -510,7 +511,7 @@ static int AVL6211_Set_Frontend(struct dvb_frontend *fe, struct dvb_frontend_par
 		printf("Reset error status failed !\n");
 		return (r);
 	}*/
-	
+	msleep(500);
 //	demod_connect(state, p->frequency,p->u.qam.modulation,p->u.qam.symbol_rate);
 	state->freq=p->frequency;
 	state->mode=p->u.qam.modulation ;

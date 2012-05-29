@@ -180,6 +180,72 @@ struct AVL_Demod_Tuner_Configuration_t g_DemodTuner_Config[]=
 };
 
 
+AVL_uchar DVBS_SNR[6] ={12,32,41,52,58,62};
+AVL_uchar DVBS2Qpsk_SNR[8] ={10,24,32,41,47,52,63,65};
+AVL_uchar DVBS28psk_SNR[6] ={57,67,80,95,100,110};
+
+int AVL_Get_Quality_Percent(struct AVL_DVBSx_Chip * pAVLChip)
+{
+    AVL_DVBSx_ErrorCode r=AVL_DVBSx_EC_OK;
+    AVL_uint32 uiSNR;
+    AVL_uint16 uiLockStatus=0;
+    AVL_uchar SNRrefer = 0;;
+    AVL_uchar Quality=5;
+	AVL_uchar i;
+    struct AVL_DVBSx_SignalInfo SignalInfo;      
+
+	for(i=0;i<5;i++)
+	{
+		AVL_DVBSx_IBSP_Delay(10);
+    	r |= AVL_DVBSx_IRx_GetLockStatus(&uiLockStatus, pAVLChip);
+		if(uiLockStatus!=1)		break;
+	}
+    if(i==5)
+    {
+        r |= AVL_DVBSx_IRx_GetSNR(&uiSNR, pAVLChip);
+        r |= AVL_DVBSx_IRx_GetSignalInfo(&SignalInfo, pAVLChip);
+    }
+	else
+		return Quality;
+	
+    if (SignalInfo.m_coderate < RX_DVBS2_1_4)
+    {
+        SNRrefer = DVBS_SNR[SignalInfo.m_coderate];
+    }
+    else
+    {
+        if (SignalInfo.m_modulation == AVL_DVBSx_MM_8PSK)
+            SNRrefer = DVBS28psk_SNR[SignalInfo.m_coderate -RX_DVBS2_3_5];
+        else
+            SNRrefer = DVBS2Qpsk_SNR[SignalInfo.m_coderate -RX_DVBS2_1_2];
+    }
+	
+    if ((uiSNR/10) > SNRrefer)
+    {
+    	uiSNR = uiSNR/10 - SNRrefer;
+        if(uiSNR>=100)
+            Quality = 99;
+        else if(uiSNR>=50)  //  >5.0dB
+            Quality = 80+ (uiSNR-50)*20/50;
+        else if(uiSNR>=25)  //  > 2.5dB
+            Quality = 50+ (uiSNR-25)*30/25;
+        else if(uiSNR>=10)  //  > 1dB
+            Quality = 25+ (uiSNR-10)*25/15;			
+        else 
+            Quality = 5+ (uiSNR)*20/10;
+    }
+    else
+    {
+        Quality = 5;
+    }
+	
+	return Quality;
+}    
+
+
+
+
+
 void AVL_DVBSx_Error_Dispose(AVL_DVBSx_ErrorCode r)
 {
     switch(r)

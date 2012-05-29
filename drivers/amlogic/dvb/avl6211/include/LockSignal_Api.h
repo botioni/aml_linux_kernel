@@ -45,7 +45,7 @@ extern "C" {
     AVL_DVBSx_ErrorCode AVL6211_LockSignal_Init(void);
    AVL_DVBSx_ErrorCode CPU_Halt(struct AVL_DVBSx_Chip * pAVLChip);
    void AVL_Set_LPF(struct AVL_Tuner * pTuner, AVL_uint32 m_uiSymbolRate_Hz);
-		
+	int AVL_Get_Quality_Percent(struct AVL_DVBSx_Chip * pAVLChip);	
    
 	AVL_uint32 AVL6211_GETBer(void);
 	AVL_uint32 AVL6211_GETPer(void);
