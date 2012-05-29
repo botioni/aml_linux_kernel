@@ -2074,7 +2074,7 @@ static int amvideo_ioctl(struct inode *inode, struct file *file,
     
     case AMSTREAM_IOC_CLEAR_VIDEO:
         if (blackout || force_blackout) {
-        #ifdef CONFIG_MIX_FREE_SCALE
+        #ifdef CONFIG_POST_PROCESS_MANAGER_PPSCALER
             if(video_scaler_mode)
                 DisableVideoLayer_PREBELEND();
             else
