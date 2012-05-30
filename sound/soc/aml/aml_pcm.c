@@ -507,7 +507,7 @@ static int aml_pcm_prepare(struct snd_pcm_substream *substream)
 	}else{ // no-over clock
 	    aout_notifier_call_chain(AOUT_EVENT_RAWDATA_AC_3, substream);
 	}
-    }else if( IEC958_MODE == AIU_958_MODE_RAW){
+    }else if( IEC958_MODE == AIU_958_MODE_RAW||(IEC958_MODE == AIU_958_MODE_PCM_RAW && IEC958_mode_codec == 3)){
         aout_notifier_call_chain(AOUT_EVENT_RAWDATA_DTS, substream);
     }else{
 	aout_notifier_call_chain(AOUT_EVENT_IEC_60958_PCM, substream);

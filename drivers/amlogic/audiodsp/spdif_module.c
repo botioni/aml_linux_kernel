@@ -102,7 +102,7 @@ static int audio_spdif_ioctl(struct inode *inode, struct file *file, unsigned in
 			audio_output_iec958_enable(args);
 			break;
 		case AUDIO_SPDIF_SET_958_INIT_PREPARE:
-			IEC958_mode_codec = 2;
+			IEC958_mode_codec = 3; //dts pcm raw
 			DSP_WD(DSP_IEC958_INIT_READY_INFO, 0x12345678);
 			aml_alsa_hw_reprepare();
 			DSP_WD(DSP_IEC958_INIT_READY_INFO, 0);
