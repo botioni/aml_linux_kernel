@@ -141,44 +141,9 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
 	else
 		osd_hw.scan_mode= SCAN_MODE_PROGRESSIVE;
 
-	fb0_cfg_w0 = READ_MPEG_REG(VIU_OSD1_BLK0_CFG_W0);
-	fb1_cfg_w0 = READ_MPEG_REG(VIU_OSD1_BLK0_CFG_W0+ REG_OFFSET);
 	if(osd_hw.free_scale_enable[OSD1])
 	{
 		osd_hw.scan_mode= SCAN_MODE_PROGRESSIVE;
-		if (fb0_cfg_w0 & 1 << 1) {
-			fb0_cfg_w0 &= ~(1 << 1);
-		}
-
-		if (fb1_cfg_w0 & (1 << 1)) {
-			fb1_cfg_w0 &= ~(1 << 1);
-		}
-	}
-
-	{
-		if((osd_hw.color_info[OSD1] != NULL) &&
-			(((fb0_cfg_w0&0xf00)!=osd_hw.color_info[OSD1]->hw_blkmode<<8) ||
-			((fb0_cfg_w0&0x3c)!=osd_hw.color_info[OSD1]->hw_colormat<<2))){
-			fb0_cfg_w0 &= 0xfffff0c3;
-			fb0_cfg_w0 |= osd_hw.color_info[OSD1]->hw_blkmode<<8;
-			fb0_cfg_w0 |= osd_hw.color_info[OSD1]->hw_colormat<<2;
-		}
-		WRITE_MPEG_REG(VIU_OSD1_BLK0_CFG_W0, fb0_cfg_w0);
-		WRITE_MPEG_REG(VIU_OSD1_BLK1_CFG_W0, fb0_cfg_w0);
-		WRITE_MPEG_REG(VIU_OSD1_BLK2_CFG_W0, fb0_cfg_w0);
-		WRITE_MPEG_REG(VIU_OSD1_BLK3_CFG_W0, fb0_cfg_w0);
-
-		if((osd_hw.color_info[OSD2] != NULL) &&
-			(((fb1_cfg_w0&0xf00)!=osd_hw.color_info[OSD2]->hw_blkmode<<8) ||
-			((fb1_cfg_w0&0x3c)!=osd_hw.color_info[OSD2]->hw_colormat<<2))){
-			fb1_cfg_w0 &= 0xfffff0c3;
-			fb1_cfg_w0 |= osd_hw.color_info[OSD2]->hw_blkmode<<8;
-			fb1_cfg_w0 |= osd_hw.color_info[OSD2]->hw_colormat<<2;
-		}
-		WRITE_MPEG_REG(VIU_OSD1_BLK0_CFG_W0 + REG_OFFSET, fb1_cfg_w0);
-		WRITE_MPEG_REG(VIU_OSD1_BLK1_CFG_W0 + REG_OFFSET, fb1_cfg_w0);
-		WRITE_MPEG_REG(VIU_OSD1_BLK2_CFG_W0 + REG_OFFSET, fb1_cfg_w0);
-		WRITE_MPEG_REG(VIU_OSD1_BLK3_CFG_W0 + REG_OFFSET, fb1_cfg_w0);
 	}
 
 	if (osd_hw.scan_mode == SCAN_MODE_INTERLACE)
