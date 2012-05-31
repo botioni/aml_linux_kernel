@@ -797,7 +797,7 @@ CONFIG_AM_TV_OUTPUT=y
 #
 # Amlogic video output2 module
 #
-# CONFIG_AM_TV_OUTPUT2 is not set
+CONFIG_AM_TV_OUTPUT2=y
 
 #
 # Amlogic osd module
@@ -827,7 +827,7 @@ CONFIG_AM_LOGO=y
 # AMLOGIC AV Streaming devices
 #
 CONFIG_AM_VIDEO=y
-# CONFIG_AM_VIDEO2 is not set
+CONFIG_AM_VIDEO2=y
 CONFIG_AM_PTSSERVER=y
 CONFIG_AM_VDEC_MPEG12=y
 CONFIG_AM_VDEC_MPEG4=y
@@ -855,8 +855,8 @@ CONFIG_AML_HDMI_TX=y
 # CONFIG_TVIN_HDMI is not set
 # CONFIG_TVIN_BT656IN is not set
 # CONFIG_TVIN_DVIN is not set
-# CONFIG_TVIN_VIUIN is not set
-# CONFIG_TVIN_VDIN is not set
+CONFIG_TVIN_VIUIN=y
+CONFIG_TVIN_VDIN=y
 
 #
 # Amlogic TVIN Tuner Support
