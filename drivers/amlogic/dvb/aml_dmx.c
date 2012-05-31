@@ -1560,7 +1560,7 @@ static void async_fifo_set_regs(struct aml_asyncfifo *afifo, int source_val)
 					(0 << ASYNC_FIFO_FILL_CNT_LSB));   // forever FILL;
 	WRITE_ASYNC_FIFO_REG(afifo->id, REG2, READ_ASYNC_FIFO_REG(afifo->id, REG2) | (1 <<  ASYNC_FIFO_FILL_EN));       // Enable fill path
 
-	WRITE_ASYNC_FIFO_REG(afifo->id, REG3, ((((size >> 8) - 1) & 0x7fff) << ASYNC_FLUSH_SIZE_IRQ_LSB)); // generate flush interrupt
+	WRITE_ASYNC_FIFO_REG(afifo->id, REG3, READ_ASYNC_FIFO_REG(afifo->id, REG3) | ((((size >> 8) - 1) & 0x7fff) << ASYNC_FLUSH_SIZE_IRQ_LSB)); // generate flush interrupt
 
 	/* Connect the STB DEMUX to ASYNC_FIFO*/
 	WRITE_ASYNC_FIFO_REG(afifo->id, REG2, READ_ASYNC_FIFO_REG(afifo->id, REG2) | (source_val << ASYNC_FIFO_SOURCE_LSB));
