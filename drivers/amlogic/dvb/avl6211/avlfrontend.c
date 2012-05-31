@@ -273,13 +273,13 @@ static int AVL6211_Blindscan_Scan(struct dvb_frontend* fe, struct dvbsx_blindsca
 
 		r |= AVL_DVBSx_IBlindScan_Reset(pAVLChip_all);
 		
-	//	printk("m_uistartfreq_100khz is %d,m_uistartfreq_100khz is %d,m_uiminsymrate_khz is %d,,m_uimaxsymrate_khz is %d,m_uitunerlpf_100khz is %d\n",pbspara->m_uistartfreq_100khz,pbspara->m_uistopfreq_100khz,pbspara->m_uiminsymrate_khz,pbspara->m_uimaxsymrate_khz,pbspara->m_uitunerlpf_100khz);
-		pbsParaZ.m_uiStartFreq_100kHz = pbspara->m_uistartfreq_100khz;
-		pbsParaZ.m_uiStopFreq_100kHz = pbspara->m_uistopfreq_100khz;
+	//	printf("m_uistartfreq_100khz is %d,m_uistartfreq_100khz is %d,m_uiminsymrate_khz is %d,,m_uimaxsymrate_khz is %d,m_uitunerlpf_100khz is %d\n",pbspara->m_uistartfreq_100khz,pbspara->m_uistopfreq_100khz,pbspara->m_uiminsymrate_khz,pbspara->m_uimaxsymrate_khz,pbspara->m_uitunerlpf_100khz);
+		pbsParaZ.m_uiStartFreq_100kHz = pbspara->m_uifrequency_100khz-320;//pbspara->m_uistartfreq_100khz;//pbspara->m_uifrequency_100khz-320
+		pbsParaZ.m_uiStopFreq_100kHz = pbspara->m_uifrequency_100khz+320;//pbspara->m_uistopfreq_100khz;//pbspara->m_uifrequency_100khz+320
 		pbsParaZ.m_uiMinSymRate_kHz = pbspara->m_uiminsymrate_khz;
 		pbsParaZ.m_uiMaxSymRate_kHz = pbspara->m_uimaxsymrate_khz;
 
-		r |=AVL_DVBSx_IBlindScan_Scan(&pbsParaZ,pbspara->m_uitunerlpf_100khz, pAVLChip_all);
+		r |=AVL_DVBSx_IBlindScan_Scan(&pbsParaZ,340, pAVLChip_all);
 		if(r== AVL_DVBSx_EC_OK)
 		{
 			printf("AVL_DVBSx_IBlindScan_Scan,OK\n");
@@ -396,7 +396,6 @@ static int AVL6211_Sleep(struct dvb_frontend *fe)
 static int AVL6211_Read_Status(struct dvb_frontend *fe, fe_status_t * status)
 {
 	unsigned char s=0;
-//	msleep(1000);
 	s=AVL6211_GETLockStatus();
 	if(s==1)
 	{
@@ -505,7 +504,16 @@ static int AVL6211_Set_Frontend(struct dvb_frontend *fe, struct dvb_frontend_par
 		printf("Lock channel failed !\n");
 		return (r);
 	}
-	msleep(500);
+	int waittime=150;//3s 
+	int lockstatus = 0;
+	while(waittime)
+	{
+		lockstatus=AVL6211_GETLockStatus();
+		if(1==lockstatus)
+			break;
+		msleep(20);
+		waittime--;
+	}
 	r=AVL_DVBSx_IRx_ResetErrorStat(pAVLChip_all);
 	if (AVL_DVBSx_EC_OK != r)
 	{
