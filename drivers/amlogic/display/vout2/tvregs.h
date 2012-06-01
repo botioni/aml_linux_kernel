@@ -230,8 +230,8 @@ static const reg_t tvregs_480i[] = {
     {ENCI_VFIFO2VD_LINE_BOT_START, 0x13,  },
     {ENCI_VFIFO2VD_LINE_BOT_END,   0x103, },
     {VENC_SYNC_ROUTE,              0,     },
-    {ENCI_DBG_PX_RST,            0,     },
-    {VENC_INTCTRL,               0x2,   },
+    {ENCI_DBG_PX_RST,              0,     },
+    {VENC_INTCTRL,                 0x2,   },
     {ENCI_VFIFO2VD_CTL,            0x4e01,},
     {VENC_VDAC_SETTING,          0,     },
     {VENC_UPSAMPLE_CTRL0,          0x0000,},
@@ -286,13 +286,14 @@ static const reg_t tvregs_480cvbs[] = {
     {ENCI_VFIFO2VD_LINE_BOT_START, 0x13,  },
     {ENCI_VFIFO2VD_LINE_BOT_END,   0x103, },
     {VENC_SYNC_ROUTE,              0,     },
-    {ENCI_DBG_PX_RST,            0,     },
-    {VENC_INTCTRL,               0x2,   },
+    {ENCI_DBG_PX_RST,              0,     },
+    {VENC_INTCTRL,                 0x2,   },
     {ENCI_VFIFO2VD_CTL,            0x4e01,},
-    {VENC_VDAC_SETTING,          0,     },
+    {VENC_VDAC_SETTING,            0,     },
     {VENC_UPSAMPLE_CTRL0,          0x0000,},
     {VENC_UPSAMPLE_CTRL1,          0x0000,},
     {VENC_UPSAMPLE_CTRL2,          0x0000,},
+#ifndef CONFIG_AM_TV_OUTPUT2
     {VENC_VDAC_DACSEL0,            0x0000,},
     {VENC_VDAC_DACSEL1,            0x0000,},
     {VENC_VDAC_DACSEL2,            0x0000,},
@@ -303,8 +304,15 @@ static const reg_t tvregs_480cvbs[] = {
     {VENC_VDAC_FIFO_CTRL,          0x2000,},
     {ENCI_DACSEL_0,                0x1540 },
     {ENCI_DACSEL_1,                0x11   },
-#ifndef CONFIG_AM_TV_OUTPUT2
     {ENCP_VIDEO_EN,              0,     },
+#else
+    {VENC_VDAC_DACSEL0,               0x0001,    },
+    {VENC_VDAC_DACSEL1,               0x0001,    },
+    {VENC_VDAC_DACSEL2,               0x0001,    },
+    {VENC_VDAC_DACSEL3,               0x0000,    },
+    {VENC_VDAC_FIFO_CTRL,             0x3000,    },
+    {ENCI_DACSEL_0,                0x1540 },
+    {ENCI_DACSEL_1,                   0x11       },
 #endif    
     {ENCI_VIDEO_EN,              1,     },
     {MREG_END_MARKER,            0      }
@@ -414,10 +422,10 @@ static const reg_t tvregs_576i[] = {
     {ENCI_VFIFO2VD_LINE_BOT_START,    0x0017     },
     {ENCI_VFIFO2VD_LINE_BOT_END,      0x0137     },
     {VENC_SYNC_ROUTE,                 0,         },
-    {ENCI_DBG_PX_RST,            0,     },
-    {VENC_INTCTRL,               0x2,   },
+    {ENCI_DBG_PX_RST,                 0,         },
+    {VENC_INTCTRL,                    0x2,       },
     {ENCI_VFIFO2VD_CTL,               0x4e01,    },
-    {VENC_VDAC_SETTING,          0,     },
+    {VENC_VDAC_SETTING,               0,         },
     {VENC_UPSAMPLE_CTRL0,          0x0000,},
     {VENC_UPSAMPLE_CTRL1,          0x0000,},
     {VENC_UPSAMPLE_CTRL2,          0x0000,},
@@ -471,13 +479,14 @@ static const reg_t tvregs_576cvbs[] = {
     {ENCI_VFIFO2VD_LINE_BOT_START,    0x0017     },
     {ENCI_VFIFO2VD_LINE_BOT_END,      0x0137     },
     {VENC_SYNC_ROUTE,                 0,         },
-    {ENCI_DBG_PX_RST,            0,     },
-    {VENC_INTCTRL,               0x2,   },
+    {ENCI_DBG_PX_RST,                 0,         },
+    {VENC_INTCTRL,                    0x2,       },
     {ENCI_VFIFO2VD_CTL,               0x4e01,    },
-    {VENC_VDAC_SETTING,          0,     },
+    {VENC_VDAC_SETTING,               0,         },
     {VENC_UPSAMPLE_CTRL0,          0x0000,},
     {VENC_UPSAMPLE_CTRL1,          0x0000,},
     {VENC_UPSAMPLE_CTRL2,          0x0000,},
+#ifndef CONFIG_AM_TV_OUTPUT2
     {VENC_VDAC_DACSEL0,               0x0000,    },
     {VENC_VDAC_DACSEL1,               0x0000,    },
     {VENC_VDAC_DACSEL2,               0x0000,    },
@@ -488,8 +497,15 @@ static const reg_t tvregs_576cvbs[] = {
     {VENC_VDAC_FIFO_CTRL,             0x2000,    },
     {ENCI_DACSEL_0,                0x1540 },
     {ENCI_DACSEL_1,                   0x11       },
-#ifndef CONFIG_AM_TV_OUTPUT2
     {ENCP_VIDEO_EN,              0,     },
+#else
+    {VENC_VDAC_DACSEL0,               0x0001,    },
+    {VENC_VDAC_DACSEL1,               0x0001,    },
+    {VENC_VDAC_DACSEL2,               0x0001,    },
+    {VENC_VDAC_DACSEL3,               0x0000,    },
+    {VENC_VDAC_FIFO_CTRL,             0x3000,    },
+    {ENCI_DACSEL_0,                0x1540 },
+    {ENCI_DACSEL_1,                   0x11       },
 #endif    
     {ENCI_VIDEO_EN,              1,     },
     {MREG_END_MARKER,            0      }
@@ -802,7 +818,7 @@ static inline void setreg(const reg_t *r)
     WRITE_MPEG_REG(r->reg, r->val);
     
 // For debug only. 
-#if 0 
+#if 0
     printk("[0x%x] = 0x%x\n", r->reg, r->val);
 #endif
 }
