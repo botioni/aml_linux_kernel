@@ -1238,7 +1238,7 @@ static int dmx_enable(struct aml_dmx *dmx)
 			(0<<DISCARD_AV_PACKAGE)               |
 			(0<<TS_RECORDER_SELECT)               |
 			(record<<TS_RECORDER_ENABLE)          |
-			(0<<KEEP_DUPLICATE_PACKAGE)           |
+			(1<<KEEP_DUPLICATE_PACKAGE)           |
 			//(1<<SECTION_END_WITH_TABLE_ID)        |
 			(1<<ENABLE_FREE_CLK_FEC_DATA_VALID)   |
 			(1<<ENABLE_FREE_CLK_STB_REG)          |
