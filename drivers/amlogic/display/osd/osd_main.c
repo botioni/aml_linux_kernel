@@ -296,7 +296,7 @@ osd_ioctl(struct fb_info *info, unsigned int cmd,
 		case FBIOGET_OSD_BLOCK_WINDOWS:
 		case FBIOGET_OSD_BLOCK_MODE:
 		case FBIOGET_OSD_FREE_SCALE_AXIS:
-		case	FBIOPUT_OSD_ENFORCE_PROGRESSIVE:
+		case FBIOPUT_OSD_ENFORCE_PROGRESSIVE:
 			break;
 		case FBIOPUT_OSD_BLOCK_MODE:
 			block_mode = (u32)argp;
