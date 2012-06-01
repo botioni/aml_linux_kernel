@@ -314,8 +314,8 @@ static struct class_attribute saradc_class_attrs[] = {
     __ATTR_RO(saradc_ch5),
     __ATTR_RO(saradc_ch6),
     __ATTR_RO(saradc_ch7),    
-    __ATTR(saradc_print_flag, S_IRWXUGO, 0, saradc_print_flag_store),
-    __ATTR(saradc_temperature, S_IRWXUGO, 0, saradc_temperature_store),    
+    __ATTR(saradc_print_flag, S_IRUGO | S_IWUSR, 0, saradc_print_flag_store),
+    __ATTR(saradc_temperature, S_IRUGO | S_IWUSR, 0, saradc_temperature_store),    
     __ATTR_NULL
 };
 static struct class saradc_class = {
