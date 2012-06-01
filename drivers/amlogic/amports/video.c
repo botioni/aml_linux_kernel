@@ -1721,6 +1721,7 @@ static int video_receiver_event_fun(int type, void* data, void* private_data)
 #endif    
     }
     else if(type == VFRAME_EVENT_PROVIDER_LIGHT_UNREG){
+        vf_keep_current();
         video_vf_light_unreg_provider();
     }
     else if(type == VFRAME_EVENT_PROVIDER_LIGHT_UNREG_RETURN_VFRAME){
@@ -1771,13 +1772,16 @@ unsigned int vf_keep_current(void)
 #ifdef CONFIG_AM_DEINTERLACE
     int deinterlace_mode = get_deinterlace_mode();
 #endif
-    if (blackout|force_blackout) {
-        return 0;
-    }
-
-    if (0 == (READ_MPEG_REG(VPP_MISC) & VPP_VD1_POSTBLEND)) {
-        return 0;
-    }
+	  if (!cur_dispbuf){
+		  return 0 ;
+	  }
+//    if (blackout|force_blackout) {
+//        return 0;
+//    }
+//
+//    if (0 == (READ_MPEG_REG(VPP_MISC) & VPP_VD1_POSTBLEND)) {
+//        return 0;
+//    }
 
 #ifdef CONFIG_AM_DEINTERLACE
     if ((deinterlace_mode != 0) && cur_dispbuf && (cur_dispbuf->duration > 0)

@@ -946,6 +946,17 @@ static void vh264_put_timer_func(unsigned long arg)
 
         if (index >= VF_BUF_NUM) {
             printk("index %d\n", index);
+	         amvdec_stop();
+	#ifdef CONFIG_POST_PROCESS_MANAGER
+	        vh264_ppmgr_reset();
+	#else 
+	        vf_light_unreg_provider(&vh264_vf_prov);
+	        vh264_local_init();
+	        vf_reg_provider(&vh264_vf_prov);
+	#endif
+	        vh264_prot_init();
+	        amvdec_start();           
+          goto restart;  
         }
 
         if (--vfbuf_use[index] == 0) {
@@ -973,7 +984,7 @@ static void vh264_put_timer_func(unsigned long arg)
             }
         }
     }
-
+restart:
     timer->expires = jiffies + PUT_INTERVAL;
 
     add_timer(timer);
