@@ -64,6 +64,8 @@ static unsigned int RIGHT_KEY_SCANCODE = 0;
 static unsigned int UP_KEY_SCANCODE = 0;
 static unsigned int DOWN_KEY_SCANCODE = 0;
 static unsigned int OK_KEY_SCANCODE = 0;
+static unsigned int PAGEUP_KEY_SCANCODE = 0;
+static unsigned int PAGEDOWN_KEY_SCANCODE = 0;
 
 type_printk input_dbg;
 
@@ -201,13 +203,17 @@ void kp_send_key(struct input_dev *dev, unsigned int scancode, unsigned int type
 			mouse_map[fcode][1] = RIGHT_KEY_SCANCODE;
 			mouse_map[fcode][2] = UP_KEY_SCANCODE;
 			mouse_map[fcode][3] = DOWN_KEY_SCANCODE;
+			mouse_map[fcode][4] = PAGEUP_KEY_SCANCODE;
+			mouse_map[fcode][5] = PAGEDOWN_KEY_SCANCODE;
 
 			key_pointer_switch = false;
 		}
 		// switch from pointer to key
 		else
 		{
-			mouse_map[fcode][0] = mouse_map[fcode][1] = mouse_map[fcode][2] = mouse_map[fcode][3] = 0xFFFF;
+			mouse_map[fcode][0] = mouse_map[fcode][1] = 
+			mouse_map[fcode][2] = mouse_map[fcode][3] = 
+			mouse_map[fcode][4] = mouse_map[fcode][5] = 0xFFFF;
 
 			key_pointer_switch = true;
 		}
@@ -771,6 +777,14 @@ remote_config_ioctl(struct inode *inode, struct file *filp,
 
 		case REMOTE_IOC_SET_OK_KEY_SCANCODE:
 			OK_KEY_SCANCODE = val;
+			break;
+
+		case REMOTE_IOC_SET_PAGEUP_KEY_SCANCODE:
+			PAGEUP_KEY_SCANCODE = val;
+			break;
+
+		case REMOTE_IOC_SET_PAGEDOWN_KEY_SCANCODE:
+			PAGEDOWN_KEY_SCANCODE = val;
 			break;
 	}
 	//output result
