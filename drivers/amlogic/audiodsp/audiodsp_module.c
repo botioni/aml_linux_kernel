@@ -168,7 +168,7 @@ static int audiodsp_ioctl(struct inode *node, struct file *file, unsigned int cm
 		{
 		case AUDIODSP_SET_FMT:
 			priv->stream_fmt=args;
-			if(IEC958_mode_raw == 1){		
+			if(IEC958_mode_raw){		
 				if(args == MCODEC_FMT_DTS)
 					IEC958_mode_codec = 1;
 				else if(args == MCODEC_FMT_AC3)
