@@ -308,7 +308,8 @@ static int aml_pcm_hw_params(struct snd_pcm_substream *substream,
 
 	snd_pcm_set_runtime_buffer(substream, &substream->dma_buffer);
 	runtime->dma_bytes = params_buffer_bytes(params);
-
+	if(substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
+		aml_iec958_playback_size = runtime->dma_bytes*4;
 	s->I2S_addr = runtime->dma_addr;
 
 
