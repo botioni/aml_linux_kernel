@@ -682,37 +682,40 @@ static int hdmitx_notify_callback_a(struct notifier_block *block, unsigned long 
 {
     struct snd_pcm_substream *substream =(struct snd_pcm_substream*)para;
     Hdmi_tx_audio_para_t* audio_param = &(hdmitx_device.cur_audio_param);
+    
+    switch (substream->runtime->rate) {
+        case 192000:
+            audio_param->sample_rate = FS_192K; 
+            break;
+        case 176400:
+            audio_param->sample_rate = FS_176K4; 
+            break;
+        case 96000:
+            audio_param->sample_rate = FS_96K; 
+            break;
+        case 88200:
+            audio_param->sample_rate = FS_88K2; 
+            break;
+        case 48000:
+            audio_param->sample_rate = FS_48K; 
+            break;
+        case 44100:
+            audio_param->sample_rate = FS_44K1; 
+            break;
+        case 32000:
+            audio_param->sample_rate = FS_32K; 
+            break;
+        default:
+            printk("HDMI: unknown audio frequence\n");
+            break;
+    }
+    
     switch (cmd){
     case AOUT_EVENT_IEC_60958_PCM:
         audio_param->type = CT_PCM;
         audio_param->channel_num = CC_2CH;
         audio_param->sample_size = SS_16BITS; 
     
-        switch (substream->runtime->rate) {
-            case 192000:
-                audio_param->sample_rate = FS_192K; 
-                break;
-            case 176400:
-                audio_param->sample_rate = FS_176K4; 
-                break;
-            case 96000:
-                audio_param->sample_rate = FS_96K; 
-                break;
-            case 88200:
-                audio_param->sample_rate = FS_88K2; 
-                break;
-            case 48000:
-                audio_param->sample_rate = FS_48K; 
-                break;
-            case 44100:
-                audio_param->sample_rate = FS_44K1; 
-                break;
-            case 32000:
-                audio_param->sample_rate = FS_32K; 
-                break;
-            default:
-                break;
-        }
         hdmi_print(1, "HDMI: aout notify rate %d\n", substream->runtime->rate);
         hdmi_print(1, "HDMI: aout notify format PCM\n");
         break;
