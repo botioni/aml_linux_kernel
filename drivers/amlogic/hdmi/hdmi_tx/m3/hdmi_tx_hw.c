@@ -2294,22 +2294,6 @@ static void hdmitx_m3_setaudioinfoframe(unsigned char* AUD_DB, unsigned char* CH
     }
 }
 
-static void hdmitx_m3_setHBRAudioStreamPacket(void)
-{
-    hdmi_wr_reg_bits(TX_AUDIO_CONTROL, 0, 4, 2);
-    hdmi_wr_reg_bits(TX_AUDIO_CONTROL, 3, 1, 2);
-    return ;
-//    int i;
-//    unsigned char HBR_HB[3]={0x9, 0x0, 0xF0};
-    //hdmitx_m3_set_packet(HDMI_PACKET_HBR, AUD_DB, HBR_HB);
-    printk("set HBR Audio Stream Packet\n");
-    hdmi_wr_reg_bits(TX_AUDIO_CONTROL, 2, 4, 2);
-    hdmi_wr_reg_bits(TX_AUDIO_CONTROL, 3, 1, 2);
-    hdmi_wr_reg(TX_AUDIO_VALID, 0xfc);
-    hdmi_wr_reg(TX_AUDIO_USER, 0xfc);
-    hdmi_wr_reg(TX_AUDIO_PACK, 0x1);
-}
-
 //------------------------------------------------------------------------------
 // set_hdmi_audio_source(unsigned int src)
 //
@@ -3128,7 +3112,6 @@ void HDMITX_M1B_Init(hdmitx_dev_t* hdmitx_device)
 {
     hdmitx_device->HWOp.SetPacket = hdmitx_m3_set_packet;
     hdmitx_device->HWOp.SetAudioInfoFrame = hdmitx_m3_setaudioinfoframe;
-    hdmitx_device->HWOp.SetHBRAudioStreamPacket = hdmitx_m3_setHBRAudioStreamPacket;
     hdmitx_device->HWOp.GetEDIDData = hdmitx_m3_getediddata;
     hdmitx_device->HWOp.SetDispMode = hdmitx_m3_set_dispmode;
     hdmitx_device->HWOp.SetAudMode = hdmitx_m3_set_audmode;

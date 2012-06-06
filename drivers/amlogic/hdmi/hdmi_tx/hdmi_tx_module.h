@@ -51,7 +51,6 @@ typedef struct hdmi_tx_dev_s {
     struct {
         void (*SetPacket)(int type, unsigned char* DB, unsigned char* HB);
         void (*SetAudioInfoFrame)(unsigned char* AUD_DB, unsigned char* CHAN_STAT_BUF);
-        void (*SetHBRAudioStreamPacket)(void);
         unsigned char (*GetEDIDData)(struct hdmi_tx_dev_s* hdmitx_device);
         int (*SetDispMode)(Hdmi_tx_video_para_t *param);
         int (*SetAudMode)(struct hdmi_tx_dev_s* hdmitx_device, Hdmi_tx_audio_para_t* audio_param);
@@ -104,7 +103,7 @@ typedef struct hdmi_tx_dev_s {
 #endif        
 
 
-#define HDMITX_VER "2012May23a"
+#define HDMITX_VER "2012Jun6a"
 
 /************************************
 *    hdmitx protocol level interface

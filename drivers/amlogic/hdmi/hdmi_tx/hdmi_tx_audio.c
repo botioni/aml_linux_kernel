@@ -227,8 +227,6 @@ int hdmitx_set_audio(hdmitx_dev_t* hdmitx_device, Hdmi_tx_audio_para_t* audio_pa
         hdmitx_device->HWOp.SetAudioInfoFrame(AUD_DB, CHAN_STAT_BUF);
         ret = 0;
     }
-    if(audio_param->type == CT_DOLBY_D)
-        hdmitx_device->HWOp.SetHBRAudioStreamPacket();
     return ret;
 }
 
