@@ -506,6 +506,7 @@ static int m3_nand_hwecc_correct(struct aml_nand_chip *aml_chip, unsigned char *
 	 	//check if there have uncorrectable sector
 		if(NAND_ECC_CNT(*(unsigned *)(&aml_chip->user_info_buf[ecc_step_num*info_times_int_len])) == 0x3f)
 		{
+            		aml_chip->zero_cnt = NAND_ZERO_CNT(*(unsigned *)(&aml_chip->user_info_buf[ecc_step_num*info_times_int_len]));
 			//printk ("nand communication have uncorrectable ecc error %d\n", ecc_step_num);
 	 		return -EIO;
 	 	}

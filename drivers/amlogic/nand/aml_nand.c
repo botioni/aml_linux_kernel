@@ -441,27 +441,31 @@ void aml_nand_read_retry_handle_hynix(struct mtd_info *mtd, int chipnr)
 {
 	struct aml_nand_chip *aml_chip = mtd_to_nand_chip(mtd);
 	u8 hynix_reg_read_value[READ_RETRY_REG_NUM];
-	int i;
+	int i, cur_cnt;
 
 	if((aml_chip->new_nand_info.type == 0) ||(aml_chip->new_nand_info.type > 10))
 		return;
+	cur_cnt = aml_chip->new_nand_info.read_rety_info.cur_cnt[chipnr];
 	
 	printk("HYNIX NAND set partmeters here and hynix_read_retry_cnt:%d\n", aml_chip->new_nand_info.read_rety_info.cur_cnt[chipnr]);
 	
 	memset(&hynix_reg_read_value[0], 0, READ_RETRY_REG_NUM);
 	
 	for(i=0;i<aml_chip->new_nand_info.read_rety_info.reg_cnt;i++){
-		if(aml_chip->new_nand_info.read_rety_info.reg_offset_value[aml_chip->new_nand_info.read_rety_info.cur_cnt[chipnr]][i] == -1)
+		//printk("reg_offset_value[%d][%d]%02x\n", cur_cnt, i, aml_chip->new_nand_info.read_rety_info.reg_offset_value[cur_cnt][i]);
+		if(aml_chip->new_nand_info.read_rety_info.reg_offset_value[cur_cnt][i] == READ_RETRY_ZERO){
 			hynix_reg_read_value[i] = 0;
-		else
-			hynix_reg_read_value[i] = aml_chip->new_nand_info.read_rety_info.reg_default_value[chipnr][i]  + aml_chip->new_nand_info.read_rety_info.reg_offset_value[aml_chip->new_nand_info.read_rety_info.cur_cnt[chipnr]][i];
+		}
+		else{
+			hynix_reg_read_value[i] = aml_chip->new_nand_info.read_rety_info.reg_default_value[chipnr][i]  + aml_chip->new_nand_info.read_rety_info.reg_offset_value[cur_cnt][i];
+		}
 	}
 	
 	aml_nand_set_reg_value_hynix(aml_chip, &hynix_reg_read_value[0], &aml_chip->new_nand_info.read_rety_info.reg_addr[0], chipnr, aml_chip->new_nand_info.read_rety_info.reg_cnt);
 	udelay(10); 	
 
-	aml_chip->new_nand_info.read_rety_info.cur_cnt[chipnr]++;
-	aml_chip->new_nand_info.read_rety_info.cur_cnt[chipnr] = (aml_chip->new_nand_info.read_rety_info.cur_cnt[chipnr] > (aml_chip->new_nand_info.read_rety_info.retry_cnt-1)) ? 0 : aml_chip->new_nand_info.read_rety_info.cur_cnt[chipnr];
+	cur_cnt++;
+	aml_chip->new_nand_info.read_rety_info.cur_cnt[chipnr] = (cur_cnt > (aml_chip->new_nand_info.read_rety_info.retry_cnt-1)) ? 0 : cur_cnt;
 
 }
 
@@ -653,17 +657,19 @@ void aml_nand_set_reg_value_toshiba(struct aml_nand_chip *aml_chip,  uint8_t *bu
 void aml_nand_read_retry_handle_toshiba(struct mtd_info *mtd, int chipnr)
 {
 	struct aml_nand_chip *aml_chip = mtd_to_nand_chip(mtd);
+	int cur_cnt;
 	
 	if(aml_chip->new_nand_info.type != TOSHIBA_24NM)
 		return;
-	
-	printk("TOSHIBA NAND set partmeters here and read_retry_cnt:%d\n", aml_chip->new_nand_info.read_rety_info.cur_cnt[chipnr]);
 
-	aml_nand_set_reg_value_toshiba(aml_chip, &aml_chip->new_nand_info.read_rety_info.reg_offset_value[aml_chip->new_nand_info.read_rety_info.cur_cnt[chipnr]][0], &aml_chip->new_nand_info.read_rety_info.reg_addr[0], chipnr, aml_chip->new_nand_info.read_rety_info.reg_cnt);
+	cur_cnt = aml_chip->new_nand_info.read_rety_info.cur_cnt[chipnr];
+	printk("TOSHIBA NAND set partmeters here and read_retry_cnt:%d\n", cur_cnt);
+
+	aml_nand_set_reg_value_toshiba(aml_chip, &aml_chip->new_nand_info.read_rety_info.reg_offset_value[cur_cnt][0], &aml_chip->new_nand_info.read_rety_info.reg_addr[0], chipnr, aml_chip->new_nand_info.read_rety_info.reg_cnt);
 	udelay(10); 	
 
-	aml_chip->new_nand_info.read_rety_info.cur_cnt[chipnr]++;
-	aml_chip->new_nand_info.read_rety_info.cur_cnt[chipnr] = (aml_chip->new_nand_info.read_rety_info.cur_cnt[chipnr] > (aml_chip->new_nand_info.read_rety_info.retry_cnt-1)) ? 0 : aml_chip->new_nand_info.read_rety_info.cur_cnt[chipnr];
+	cur_cnt++;
+	aml_chip->new_nand_info.read_rety_info.cur_cnt[chipnr] = (cur_cnt > (aml_chip->new_nand_info.read_rety_info.retry_cnt-1)) ? 0 : cur_cnt;
 }
 
 void aml_nand_read_retry_exit_toshiba(struct mtd_info *mtd, int chipnr)
@@ -1789,7 +1795,7 @@ static int aml_nand_read_page_hwecc(struct mtd_info *mtd, struct nand_chip *chip
 	unsigned pages_per_blk_shift = (chip->phys_erase_shift - chip->page_shift);
 	int user_byte_num = (((nand_page_size + chip->ecc.size - 1) / chip->ecc.size) * aml_chip->user_byte_mode);
 	int error = 0, i = 0, stat = 0, j = 0, page_addr, internal_chipnr = 1;
-	int readretry_failed_cnt = 0, ran_mode;
+	int readretry_failed_cnt = 0, ran_mode = aml_chip->ran_mode;
 
 	if (aml_chip->ops_mode & AML_INTERLEAVING_MODE)
 		internal_chipnr = aml_chip->internal_chipnr;
@@ -1797,7 +1803,6 @@ static int aml_nand_read_page_hwecc(struct mtd_info *mtd, struct nand_chip *chip
 		nand_page_size = chip->ecc.steps * chip->ecc.size;
 		user_byte_num = chip->ecc.steps;
 	}
-	ran_mode = aml_chip->ran_mode;
 
 	for (i=0; i<aml_chip->chip_num; i++) {
 		if (aml_chip->valid_chip[i]) {
@@ -1830,37 +1835,40 @@ ecc_failed_retry:
 				if (aml_chip->plane_num == 2) {
 
 					aml_chip->aml_nand_command(aml_chip, NAND_CMD_TWOPLANE_READ1, 0x00, page_addr, i);
-dma_retry_1:	
+dma_retry_plane0:					
 					error = aml_chip->aml_nand_dma_read(aml_chip, buf, nand_page_size, aml_chip->bch_mode);
-					if (error)
-					{
+					if (error){
 						mdelay(50);
 						printk("aml nand read data ecc plane0 failed at page %d chip %d\n", page_addr, i);
 						error = aml_chip->aml_nand_dma_read(aml_chip, buf, nand_page_size, aml_chip->bch_mode);
-						if(error)
-						{
+						if(error){
 							mdelay(100);
 							goto exit;
-						}
+						}   
 					}
 
 					aml_chip->aml_nand_get_user_byte(aml_chip, oob_buf, user_byte_num);
 					stat = aml_chip->aml_nand_hwecc_correct(aml_chip, buf, nand_page_size, oob_buf);
 					if (stat < 0) {
-						//mtd->ecc_stats.failed++;
-						if(ran_mode){
-							if(aml_chip->ran_mode){
-								//printk("%s dma retry here at page:%d  blk %d chip %d\n", __func__, page_addr, (page_addr >> pages_per_blk_shift), i);
-								aml_chip->ran_mode = 0;
-								goto dma_retry_1;
-							}
-							aml_chip->ran_mode = 1;
-						}						
-						printk("aml nand read data ecc failed at page:%d  blk %d chip %d\n", page_addr, (page_addr >> pages_per_blk_shift), i);
-						mtd->ecc_stats.failed++;
+						if(aml_chip->ran_mode && (aml_chip->zero_cnt <  aml_chip->ecc_max)){
+							memset(buf, 0xff, nand_page_size);
+						    	memset(oob_buf, 0xff, user_byte_num);	
+						    	goto plane0_ff;
+						 }
+						 
+					 	if(ran_mode && aml_chip->ran_mode){
+							//printk("%s dma retry here at page:%d  blk %d chip %d\n", __func__, page_addr, (page_addr >> pages_per_blk_shift), i);
+							aml_chip->ran_mode = 0;
+							ndelay(300);
+							aml_chip->aml_nand_command(aml_chip, NAND_CMD_RNDOUT, 0, -1, i);
+                            				ndelay(500);					
+							goto dma_retry_plane0;			    
+						 } 							 
+
+				        	mtd->ecc_stats.failed++;  
+					    	printk("aml nand read data ecc plane0 failed at page %d chip %d \n", page_addr, i);
 					}
 					else{
-						aml_chip->ran_mode = ran_mode;
 						if(aml_chip->ecc_cnt_cur > aml_chip->ecc_cnt_limit){
 							printk("%s line:%d uncorrected ecc_cnt_cur:%d, and limit:%d and at page:%d, blk:%d chip[%d]\n",\
 											__func__, __LINE__, aml_chip->ecc_cnt_cur, aml_chip->ecc_cnt_limit, page_addr, (page_addr >> pages_per_blk_shift), i);
@@ -1869,20 +1877,19 @@ dma_retry_1:
 						}
 						mtd->ecc_stats.corrected += stat;
 					}
-
+plane0_ff:					
+					aml_chip->ran_mode = ran_mode;
 					oob_buf += user_byte_num;
 					buf += nand_page_size;
 
 					aml_chip->aml_nand_command(aml_chip, NAND_CMD_TWOPLANE_READ2, 0x00, page_addr, i);
-dma_retry_2:	
+dma_retry_plane1:					
 					error = aml_chip->aml_nand_dma_read(aml_chip, buf, nand_page_size, aml_chip->bch_mode);
-					if (error)
-					{
+					if (error){
 						printk("aml nand read data dma plane1 failed at page %d chip %d\n", page_addr, i);
 						mdelay(50);
 						error = aml_chip->aml_nand_dma_read(aml_chip, buf, nand_page_size, aml_chip->bch_mode);
-						if(error)
-						{
+						if(error){
 							mdelay(100);
 							goto exit;
 						}
@@ -1891,20 +1898,28 @@ dma_retry_2:
 					aml_chip->aml_nand_get_user_byte(aml_chip, oob_buf, user_byte_num);
 					stat = aml_chip->aml_nand_hwecc_correct(aml_chip, buf, nand_page_size, oob_buf);
 					if (stat < 0) {
-						//mtd->ecc_stats.failed++;
-						if(ran_mode){
-							if(aml_chip->ran_mode){
-								//printk("%s dma retry here at page:%d  blk %d chip %d\n", __func__, page_addr, (page_addr >> pages_per_blk_shift), i);
-								aml_chip->ran_mode = 0;
-								goto dma_retry_2;
-							}
-							aml_chip->ran_mode = 1;
-						}						
-						printk("aml nand read data ecc failed at page:%d  blk %d chip %d\n", page_addr, (page_addr >> pages_per_blk_shift), i);
-						mtd->ecc_stats.failed++;
+						if(aml_chip->ran_mode && (aml_chip->zero_cnt <  aml_chip->ecc_max)){
+						    	memset(buf, 0xff, nand_page_size);
+						    	memset(oob_buf, 0xff, user_byte_num);
+						  	oob_buf += user_byte_num;
+							buf += nand_page_size;
+							continue;
+						 }
+						 
+					 	if(ran_mode && aml_chip->ran_mode){
+							//printk("%s dma retry here at page:%d  blk %d chip %d\n", __func__, page_addr, (page_addr >> pages_per_blk_shift), i);
+							aml_chip->ran_mode = 0;
+							ndelay(300);
+							aml_chip->aml_nand_command(aml_chip, NAND_CMD_RNDOUT, 0, -1, i);
+                            				ndelay(500);					
+							goto dma_retry_plane1;			    
+						 } 							 
+
+				        	mtd->ecc_stats.failed++;  
+					    	printk("aml nand read data ecc plane1 failed at page %d chip %d \n", page_addr, i);
+
 					}
 					else{
-						aml_chip->ran_mode = ran_mode;
 						if(aml_chip->ecc_cnt_cur > aml_chip->ecc_cnt_limit) {
 							printk("%s line:%d uncorrected ecc_cnt_cur:%d, and limit:%d and at page:%d, blk:%d chip[%d]\n",
 											__func__, __LINE__, aml_chip->ecc_cnt_cur, aml_chip->ecc_cnt_limit, page_addr, (page_addr >> pages_per_blk_shift), i);
@@ -1913,7 +1928,8 @@ dma_retry_2:
 						}
 						mtd->ecc_stats.corrected += stat;
 					}
-	
+
+					aml_chip->ran_mode = ran_mode;
 					oob_buf += user_byte_num;
 					buf += nand_page_size;
 
@@ -1921,13 +1937,11 @@ dma_retry_2:
 				else if (aml_chip->plane_num == 1) {
 dma_retry_3:		
 					error = aml_chip->aml_nand_dma_read(aml_chip, buf, nand_page_size, aml_chip->bch_mode);
-					if (error)
-					{
+					if (error){
 						printk("aml nand read data dma plane failed at page %d chip %d\n", page_addr, i);
 						mdelay(50);
 						error = aml_chip->aml_nand_dma_read(aml_chip, buf, nand_page_size, aml_chip->bch_mode);
-						if(error)
-						{
+						if(error){
 							mdelay(100);
 							goto exit;
 						}
@@ -1937,14 +1951,25 @@ dma_retry_3:
 					stat = aml_chip->aml_nand_hwecc_correct(aml_chip, buf, nand_page_size, oob_buf);
 					if (stat < 0) {
 						//mtd->ecc_stats.failed++;
-						if(ran_mode){
-							if(aml_chip->ran_mode){
-								//printk("%s dma retry here at page:%d  blk %d chip %d\n", __func__, page_addr, (page_addr >> pages_per_blk_shift), i);
-								aml_chip->ran_mode = 0;
-								goto dma_retry_3;
-							}
-							aml_chip->ran_mode = 1;
-						}						
+						if(aml_chip->ran_mode && (aml_chip->zero_cnt <  aml_chip->ecc_max)){
+						    	memset(buf, 0xff, nand_page_size);
+						    	memset(oob_buf, 0xff, user_byte_num);
+							oob_buf += user_byte_num;
+							buf += nand_page_size;						    
+						    	continue;
+						 }
+
+						 if(ran_mode && aml_chip->ran_mode && (readretry_failed_cnt == 0)){
+							//printk("%s dma retry here at page:%d  blk %d chip %d\n", __func__, page_addr, (page_addr >> pages_per_blk_shift), i);
+							aml_chip->ran_mode = 0;
+							ndelay(300);
+							aml_chip->aml_nand_command(aml_chip, NAND_CMD_RNDOUT, 0, -1, i);
+                            				ndelay(500);					
+							goto dma_retry_3;			    
+						 } 
+						 
+						 aml_chip->ran_mode = ran_mode;	
+							
 						printk("aml nand read data ecc failed at page:%d  blk %d chip %d, readretry_failed_cnt:%d\n", page_addr, (page_addr >> pages_per_blk_shift), i, readretry_failed_cnt);
 						if(aml_chip->new_nand_info.type){
 							goto ecc_failed;
@@ -1953,7 +1978,7 @@ dma_retry_3:
 					}
 					else{
 						aml_chip->ran_mode = ran_mode;
-						if((aml_chip->ecc_cnt_cur > aml_chip->ecc_cnt_limit) ||(readretry_failed_cnt > (aml_chip->new_nand_info.read_rety_info.retry_cnt-2))){
+						if((aml_chip->ecc_cnt_cur > aml_chip->ecc_cnt_limit) ||((readretry_failed_cnt > (aml_chip->new_nand_info.read_rety_info.retry_cnt-2)) && aml_chip->new_nand_info.type)){
 							printk("%s line:%d uncorrected ecc_cnt_cur:%d, and limit:%d and at page:%d, blk:%d chip[%d], readretry_failed_cnt:%d\n",
 											__func__, __LINE__, aml_chip->ecc_cnt_cur, aml_chip->ecc_cnt_limit, page_addr, (page_addr >> pages_per_blk_shift), i, readretry_failed_cnt);
 
@@ -2160,7 +2185,7 @@ static int aml_nand_read_oob(struct mtd_info *mtd, struct nand_chip *chip, int p
 	unsigned nand_page_size = (1 << chip->page_shift);
 	unsigned nand_read_size = ((readlen / aml_chip->user_byte_mode) * chip->ecc.size);
 	unsigned read_chip_num = (((nand_read_size + (aml_chip->plane_num * nand_page_size) - 1) / (aml_chip->plane_num * nand_page_size)));
-	int readretry_failed_cnt = 0, ran_mode;
+	int readretry_failed_cnt = 0, ran_mode = aml_chip->ran_mode;
 
 	if (nand_read_size >= nand_page_size)
 		user_byte_num = (((nand_page_size + chip->ecc.size - 1) / chip->ecc.size) * aml_chip->user_byte_mode);
@@ -2177,7 +2202,7 @@ static int aml_nand_read_oob(struct mtd_info *mtd, struct nand_chip *chip, int p
 			read_chip_num = (read_chip_num + aml_chip->internal_chipnr - 1) / aml_chip->internal_chipnr;
 		}
 	}
-	ran_mode = aml_chip->ran_mode;
+	
 
 	if (chip->cmdfunc == aml_nand_command)
 		chip->cmdfunc(mtd, NAND_CMD_READOOB, 0, page_addr);
@@ -2223,7 +2248,7 @@ ecc_failed_retry:
 
 					dma_once_size = min(nand_read_size, nand_page_size);
 					aml_chip->aml_nand_command(aml_chip, NAND_CMD_TWOPLANE_READ1, 0x00, page_addr, i);
-dma_retry_1:	
+dma_retry_plane0:	
 					error = aml_chip->aml_nand_dma_read(aml_chip, nand_buffer, dma_once_size, aml_chip->bch_mode);
 					if (error)
 					{
@@ -2241,21 +2266,25 @@ dma_retry_1:
 					aml_chip->aml_nand_get_user_byte(aml_chip, oob_buffer, user_byte_num);
 					stat = aml_chip->aml_nand_hwecc_correct(aml_chip, nand_buffer, dma_once_size, oob_buffer);
 					if (stat < 0) {
-						//mtd->ecc_stats.failed++;
-						if(ran_mode){
-							if(aml_chip->ran_mode){
-								//printk("%s dma retry here at page:%d  blk %d chip %d\n", __func__, page_addr, (page_addr >> pages_per_blk_shift), i);
-								aml_chip->ran_mode = 0;
-								goto dma_retry_1;
-							}
-							aml_chip->ran_mode = 1;
-						}							
-						printk("aml nand read data ecc failed at page:%d  blk %d chip %d\n", page_addr, (page_addr >> pages_per_blk_shift), i);
-						mtd->ecc_stats.failed++;
-						printk("read oob ecc plane0 failed at page %d chip: %d\n", page_addr, i);
+						if(aml_chip->ran_mode && (aml_chip->zero_cnt <  aml_chip->ecc_max)){
+						    memset(oob_buffer, 0xff, user_byte_num);
+						    goto plane0_ff;
+						 }
+						 
+					 	if(ran_mode && aml_chip->ran_mode){
+							printk("%s dma retry here at page:%d  blk %d chip %d\n", __func__, page_addr, (page_addr >> pages_per_blk_shift), i);
+							aml_chip->ran_mode = 0;
+							ndelay(300);
+							aml_chip->aml_nand_command(aml_chip, NAND_CMD_RNDOUT, 0, -1, i);
+                            				ndelay(500);					
+							goto dma_retry_plane0;			    
+						 } 							 
+
+				        	mtd->ecc_stats.failed++;  
+					    	printk("aml nand read oob plane0 failed at page %d chip %d \n", page_addr, i);
+
 					}
 					else{
-						aml_chip->ran_mode = ran_mode;
 						if(aml_chip->ecc_cnt_cur > aml_chip->ecc_cnt_limit){
 							printk("%s line:%d uncorrected ecc_cnt_cur:%d, and limit:%d and at page:%d, blk:%d chip[%d]\n",
 											__func__, __LINE__, aml_chip->ecc_cnt_cur, aml_chip->ecc_cnt_limit, page_addr, (page_addr >> pages_per_blk_shift), i);
@@ -2264,23 +2293,22 @@ dma_retry_1:
 						}
 						mtd->ecc_stats.corrected += stat;
 					}
-
+plane0_ff:
+					aml_chip->ran_mode = ran_mode;	
 					oob_buffer += user_byte_num;
 					nand_read_size -= dma_once_size;
 
 					if (nand_read_size > 0) {
-
+	
 						dma_once_size = min(nand_read_size, nand_page_size);
 						aml_chip->aml_nand_command(aml_chip, NAND_CMD_TWOPLANE_READ2, 0x00, page_addr, i);
-dma_retry_2:
+dma_retry_plane1:	
 						error = aml_chip->aml_nand_dma_read(aml_chip, nand_buffer, dma_once_size, aml_chip->bch_mode);
-						if (error)
-						{
+						if (error){
 							printk("read oob dma failed at page %d\n", page_addr);
 							mdelay(50);
 							error = aml_chip->aml_nand_dma_read(aml_chip, nand_buffer, dma_once_size, aml_chip->bch_mode);
-							if(error)
-							{
+							if(error){
 								printk("read oob dma failed again at page %d\n", page_addr);
 								mdelay(100);
 								return 0;//error;
@@ -2290,20 +2318,26 @@ dma_retry_2:
 						aml_chip->aml_nand_get_user_byte(aml_chip, oob_buffer, user_byte_num);
 						stat = aml_chip->aml_nand_hwecc_correct(aml_chip, nand_buffer, dma_once_size, oob_buffer);
 						if (stat < 0) {
-							//mtd->ecc_stats.failed++;
-							if(ran_mode){
-								if(aml_chip->ran_mode){
-									//printk("%s dma retry here at page:%d  blk %d chip %d\n", __func__, page_addr, (page_addr >> pages_per_blk_shift), i);
-									aml_chip->ran_mode = 0;
-									goto dma_retry_2;
-								}
-								aml_chip->ran_mode = 1;
-							}								
-							printk("aml nand read data ecc failed at page:%d  blk %d chip %d\n", page_addr, (page_addr >> pages_per_blk_shift), i);
-							mtd->ecc_stats.failed++;
+							if(aml_chip->ran_mode && (aml_chip->zero_cnt <  aml_chip->ecc_max)){
+								memset(oob_buffer, 0xff, user_byte_num);
+								oob_buffer += user_byte_num;
+								nand_read_size -= dma_once_size;
+								continue;
+							}
+								
+							if(ran_mode && aml_chip->ran_mode){
+								printk("%s dma retry here at page:%d  blk %d chip %d\n", __func__, page_addr, (page_addr >> pages_per_blk_shift), i);
+								aml_chip->ran_mode = 0;
+								ndelay(300);
+								aml_chip->aml_nand_command(aml_chip, NAND_CMD_RNDOUT, 0, -1, i);
+								ndelay(500); 				   
+								goto dma_retry_plane1;			   
+							}			
+																
+							mtd->ecc_stats.failed++;  
+							printk("aml nand read oob plane1 failed at page %d chip %d \n", page_addr, i);
 						}
 						else{
-							aml_chip->ran_mode = ran_mode;
 							if(aml_chip->ecc_cnt_cur > aml_chip->ecc_cnt_limit){
 								printk("%s line:%d uncorrected ecc_cnt_cur:%d, and limit:%d and at page:%d, blk:%d chip[%d]\n",
 												__func__, __LINE__, aml_chip->ecc_cnt_cur, aml_chip->ecc_cnt_limit, page_addr, (page_addr >> pages_per_blk_shift), i);
@@ -2312,22 +2346,20 @@ dma_retry_2:
 							}
 							mtd->ecc_stats.corrected += stat;
 						}
-
+						aml_chip->ran_mode = ran_mode;
 						oob_buffer += user_byte_num;
 						nand_read_size -= dma_once_size;
 					}
 				}
 				else if (aml_chip->plane_num == 1) {
-dma_retry_3:	
 					dma_once_size = min(nand_read_size, nand_page_size);
+dma_retry_3:					
 					error = aml_chip->aml_nand_dma_read(aml_chip, nand_buffer, dma_once_size, aml_chip->bch_mode);
-					if (error)
-					{
+					if (error){
 						printk("read oob dma failed at page %d\n", page_addr);
 						mdelay(50);
 						error = aml_chip->aml_nand_dma_read(aml_chip, nand_buffer, dma_once_size, aml_chip->bch_mode);
-						if(error)
-						{
+						if(error){
 							printk("read oob dma failed again at page %d\n", page_addr);
 							mdelay(100);
 							return 0;//error;
@@ -2337,15 +2369,24 @@ dma_retry_3:
 					aml_chip->aml_nand_get_user_byte(aml_chip, oob_buffer, user_byte_num);
 					stat = aml_chip->aml_nand_hwecc_correct(aml_chip, nand_buffer, dma_once_size, oob_buffer);
 					if (stat < 0) {
+						if(aml_chip->ran_mode && (aml_chip->zero_cnt <  aml_chip->ecc_max)){
+						    	memset(oob_buffer, 0xff, user_byte_num);
+							oob_buffer += user_byte_num;
+							nand_read_size -= dma_once_size;						    	
+						  	continue;
+						 }
+
+						 if(ran_mode && aml_chip->ran_mode && (readretry_failed_cnt == 0)){
+							printk("%s dma retry here at page:%d  blk %d chip %d\n", __func__, page_addr, (page_addr >> pages_per_blk_shift), i);
+							aml_chip->ran_mode = 0;
+							ndelay(300);
+							aml_chip->aml_nand_command(aml_chip, NAND_CMD_RNDOUT, 0, -1, i);
+                            				ndelay(500);					
+							goto dma_retry_3;			    
+						 } 
+						 
+						 aml_chip->ran_mode = ran_mode;							 
 						//mtd->ecc_stats.failed++;
-						if(ran_mode){
-							if(aml_chip->ran_mode){
-								//printk("%s dma retry here at page:%d  blk %d chip %d\n", __func__, page_addr, (page_addr >> pages_per_blk_shift), i);
-								aml_chip->ran_mode = 0;
-								goto dma_retry_3;
-							}
-							aml_chip->ran_mode = 1;
-						}						
 						printk("aml nand read data ecc failed at page:%d  blk %d chip %d, readretry_failed_cnt:%d\n", page_addr, (page_addr >> pages_per_blk_shift), i, readretry_failed_cnt);
 						if(aml_chip->new_nand_info.type){
 							goto ecc_failed;
@@ -2354,7 +2395,7 @@ dma_retry_3:
 					}
 					else{
 						aml_chip->ran_mode = ran_mode;
-						if((aml_chip->ecc_cnt_cur > aml_chip->ecc_cnt_limit) ||(readretry_failed_cnt > (aml_chip->new_nand_info.read_rety_info.retry_cnt-2))){
+						if((aml_chip->ecc_cnt_cur > aml_chip->ecc_cnt_limit) ||((readretry_failed_cnt > (aml_chip->new_nand_info.read_rety_info.retry_cnt-2)) && aml_chip->new_nand_info.type)){
 							printk("%s line:%d uncorrected ecc_cnt_cur:%d, and limit:%d and at page:%d, blk:%d chip[%d], readretry_failed_cnt:%d\n",
 											__func__, __LINE__, aml_chip->ecc_cnt_cur, aml_chip->ecc_cnt_limit, page_addr, (page_addr >> pages_per_blk_shift), i, readretry_failed_cnt);
 					
@@ -2646,28 +2687,28 @@ static struct aml_nand_flash_dev *aml_nand_get_flash_type(struct mtd_info *mtd,
 		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][2] = 0x0A;
 		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][3] = 0x06;
 
-		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][0] = -1;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][0] = READ_RETRY_ZERO;
 		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][1] = -0x03;
 		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][2] = -0x07;
 		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][3] = -0x08;		
 
-		aml_chip->new_nand_info.read_rety_info.reg_offset_value[2][0] = -1;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[2][0] = READ_RETRY_ZERO;
 		aml_chip->new_nand_info.read_rety_info.reg_offset_value[2][1] = -0x06;
 		aml_chip->new_nand_info.read_rety_info.reg_offset_value[2][2] = -0x0D;
 		aml_chip->new_nand_info.read_rety_info.reg_offset_value[2][3] = -0x0F;	
 
-		aml_chip->new_nand_info.read_rety_info.reg_offset_value[3][0] = -1;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[3][0] = READ_RETRY_ZERO;
 		aml_chip->new_nand_info.read_rety_info.reg_offset_value[3][1] = -0x0B;
 		aml_chip->new_nand_info.read_rety_info.reg_offset_value[3][2] = -0x14;
 		aml_chip->new_nand_info.read_rety_info.reg_offset_value[3][3] = -0x17;	
 
-		aml_chip->new_nand_info.read_rety_info.reg_offset_value[4][0] = -1;
-		aml_chip->new_nand_info.read_rety_info.reg_offset_value[4][1] = -1;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[4][0] = READ_RETRY_ZERO;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[4][1] = READ_RETRY_ZERO;
 		aml_chip->new_nand_info.read_rety_info.reg_offset_value[4][2] = -0x1A;
 		aml_chip->new_nand_info.read_rety_info.reg_offset_value[4][3] = -0x1E;	
 
-		aml_chip->new_nand_info.read_rety_info.reg_offset_value[5][0] = -1;
-		aml_chip->new_nand_info.read_rety_info.reg_offset_value[5][1] = -1;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[5][0] = READ_RETRY_ZERO;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[5][1] = READ_RETRY_ZERO;
 		aml_chip->new_nand_info.read_rety_info.reg_offset_value[5][2] = -0x20;
 		aml_chip->new_nand_info.read_rety_info.reg_offset_value[5][3] = -0x25;	
 
@@ -2713,28 +2754,28 @@ static struct aml_nand_flash_dev *aml_nand_get_flash_type(struct mtd_info *mtd,
 		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][2] = 0x0A;
 		aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][3] = 0x06;
 
-		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][0] = -1;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][0] = READ_RETRY_ZERO;
 		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][1] = -0x03;
 		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][2] = -0x07;
 		aml_chip->new_nand_info.read_rety_info.reg_offset_value[1][3] = -0x08;		
 
-		aml_chip->new_nand_info.read_rety_info.reg_offset_value[2][0] = -1;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[2][0] = READ_RETRY_ZERO;
 		aml_chip->new_nand_info.read_rety_info.reg_offset_value[2][1] = -0x06;
 		aml_chip->new_nand_info.read_rety_info.reg_offset_value[2][2] = -0x0D;
 		aml_chip->new_nand_info.read_rety_info.reg_offset_value[2][3] = -0x0F;	
 
-		aml_chip->new_nand_info.read_rety_info.reg_offset_value[3][0] = -1;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[3][0] = READ_RETRY_ZERO;
 		aml_chip->new_nand_info.read_rety_info.reg_offset_value[3][1] = -0x09;   //not same
 		aml_chip->new_nand_info.read_rety_info.reg_offset_value[3][2] = -0x14;
 		aml_chip->new_nand_info.read_rety_info.reg_offset_value[3][3] = -0x17;	
 
-		aml_chip->new_nand_info.read_rety_info.reg_offset_value[4][0] = -1;
-		aml_chip->new_nand_info.read_rety_info.reg_offset_value[4][1] = -1;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[4][0] = READ_RETRY_ZERO;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[4][1] = READ_RETRY_ZERO;
 		aml_chip->new_nand_info.read_rety_info.reg_offset_value[4][2] = -0x1A;
 		aml_chip->new_nand_info.read_rety_info.reg_offset_value[4][3] = -0x1E;	
 
-		aml_chip->new_nand_info.read_rety_info.reg_offset_value[5][0] = -1;
-		aml_chip->new_nand_info.read_rety_info.reg_offset_value[5][1] = -1;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[5][0] = READ_RETRY_ZERO;
+		aml_chip->new_nand_info.read_rety_info.reg_offset_value[5][1] = READ_RETRY_ZERO;
 		aml_chip->new_nand_info.read_rety_info.reg_offset_value[5][2] = -0x20;
 		aml_chip->new_nand_info.read_rety_info.reg_offset_value[5][3] = -0x25;	
 
@@ -4421,29 +4462,42 @@ int aml_nand_init(struct aml_nand_chip *aml_chip)
 	switch(aml_chip->bch_mode){
 		case NAND_ECC_BCH8:
 		case NAND_ECC_BCH8_1K:
+			aml_chip->ecc_cnt_limit = 6;
+			aml_chip->ecc_max = 8;
+			break;		
 		case NAND_ECC_BCH9:
+			aml_chip->ecc_cnt_limit = 6;
+			aml_chip->ecc_max = 9;
+			break;		
 		case NAND_ECC_BCH12:
 			aml_chip->ecc_cnt_limit = 6;
+			aml_chip->ecc_max = 12;
 			break;
 		case NAND_ECC_BCH16:
 		case NAND_ECC_BCH16_1K:
 			aml_chip->ecc_cnt_limit = 13;
+			aml_chip->ecc_max = 16;
 			break;	
 		case NAND_ECC_BCH24_1K:
 			aml_chip->ecc_cnt_limit = 20;
+			aml_chip->ecc_max = 24;
 			break;		
 		case NAND_ECC_BCH30_1K:
 			aml_chip->ecc_cnt_limit = 25;
+			aml_chip->ecc_max = 30;
 			break;		
 		case NAND_ECC_BCH40_1K:
 			aml_chip->ecc_cnt_limit = 35;
+			aml_chip->ecc_max = 40;
 			break;		
 		case NAND_ECC_BCH60_1K:
 			aml_chip->ecc_cnt_limit = 50;
+			aml_chip->ecc_max = 60;
 			break;		
 
 		default:
 			aml_chip->ecc_cnt_limit = 9;
+			aml_chip->ecc_max = 16;
 			break;
 	}
 	if (plat->platform_nand_data.chip.ecclayout) {

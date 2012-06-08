@@ -392,6 +392,7 @@ struct aml_nand_bch_desc{
 
 #define	ENHANCE_SLC_REG_NUM   	5
 
+#define	READ_RETRY_ZERO   		((char)-1)
 #define	NAND_CMD_HYNIX_GET_VALUE				0x37
 #define	NAND_CMD_HYNIX_SET_VALUE_START		0x36
 #define	NAND_CMD_HYNIX_SET_VALUE_END		0x16
@@ -487,6 +488,8 @@ struct aml_nand_chip {
 	int8_t *block_status;
 	u8 ecc_cnt_limit;
 	u8 ecc_cnt_cur;
+	u8 ecc_max;
+    unsigned zero_cnt;
 
 	struct mtd_info			mtd;
 	struct nand_chip		chip;
