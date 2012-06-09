@@ -89,7 +89,7 @@ static dev_t di_id;
 static struct class *di_class;
 
 #define INIT_FLAG_NOT_LOAD 0x80
-static int version = 5;
+static int version = 6;
 static unsigned char boot_init_flag=0;
 static int receiver_is_amvideo = 1;
 static int buf_mgr_mode = 0;
@@ -3698,10 +3698,17 @@ static int di_receiver_event_fun(int type, void* data, void* arg)
         provider_vframe_level = 0;
         trigger_pre_di_process('n');
     }
+    else if(type == VFRAME_EVENT_PROVIDER_RESET){
+#ifdef DI_DEBUG
+        di_print("%s: VFRAME_EVENT_PROVIDER_RESET\n", __func__);
+#endif
+        goto light_unreg;
+    }
     else if(type == VFRAME_EVENT_PROVIDER_LIGHT_UNREG){
 #ifdef DI_DEBUG
         di_print("%s: vf_notify_receiver ligth unreg\n", __func__);
 #endif
+light_unreg:
         provider_vframe_level = 0;
        spin_lock_irqsave(&plist_lock, flags);
         for(i=0; i<MAX_IN_BUF_NUM; i++){
