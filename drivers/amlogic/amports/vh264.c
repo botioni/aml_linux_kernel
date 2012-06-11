@@ -129,6 +129,7 @@ static struct vframe_provider_s vh264_vf_prov;
 
 static u32 frame_buffer_size;
 static u32 frame_width, frame_height, frame_dur, frame_prog;
+static u32 last_mb_width, last_mb_height;
 static struct vframe_s vfpool[VF_POOL_SIZE];
 static u32 vfpool_idx[VF_POOL_SIZE];
 static s32 vfbuf_use[VF_BUF_NUM];
@@ -410,12 +411,14 @@ static void vh264_isr(void)
         mb_height = mb_total / mb_width;
 
         /* if width or height from outside is not equal to mb, then use mb */
-        if ((frame_width >> 4) != mb_width) {
+        if (last_mb_width && (last_mb_width != mb_width)) {
             frame_width = 0;
         }
-        if ((frame_height >> 4) != mb_height) {
+        if (last_mb_height && (last_mb_height != mb_height)) {
             frame_height = 0;
         }
+        last_mb_width = mb_width;
+        last_mb_height = mb_height;
 
         if (frame_width == 0 || frame_height == 0) {
             frame_width = mb_width << 4;
@@ -1072,6 +1075,9 @@ static void vh264_local_init(void)
 
     buffer_for_recycle_rd = 0;
     buffer_for_recycle_wr = 0;
+
+    last_mb_width = 0;
+    last_mb_height = 0;
 
     for (i = 0; i < VF_BUF_NUM; i++) {
         vfbuf_use[i] = 0;
