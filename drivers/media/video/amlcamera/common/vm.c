@@ -330,6 +330,7 @@ static vframe_receiver_op_t* vf_vm_reg_provider( )
     spin_lock_irqsave(&lock, flags);
     spin_unlock_irqrestore(&lock, flags);
     
+    vm_buffer_init();
     vf_reg_provider(&vm_vf_prov);
     start_vm_task();   
 #if 0   

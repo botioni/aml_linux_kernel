@@ -164,8 +164,10 @@ static void init_viuin_dec_parameter(fmt_info_t fmt_info)
 static int viu_in_canvas_init(unsigned int mem_start, unsigned int mem_size)
 {
     int i, canvas_start_index ;
-    unsigned int canvas_width  = 1600 << 1;
-    unsigned int canvas_height = 1200;
+    //unsigned int canvas_width  = 1600 << 1;
+    //unsigned int canvas_height = 1200;
+    unsigned int canvas_width  = 1920 << 1;
+    unsigned int canvas_height = 1080;
     unsigned decbuf_start = mem_start + VIUIN_ANCI_DATA_SIZE;
     amviuin_dec_info.decbuf_size   = 0x400000;
 
