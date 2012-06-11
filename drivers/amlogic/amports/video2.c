@@ -1307,20 +1307,27 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
             else if(clone_vpts_remainder < vsync_pts_inc){
                 vf = video_vf_get();
 #ifdef CONFIG_TVIN_VIUIN
-                if(clone_frame_scale_width != 0){
-                    vdin0_set_hscale(
-                        vf->width, //int src_w, 
-                        clone_frame_scale_width, //int dst_w, 
-                        1, //int hsc_en, 
-                        0, //int prehsc_en, 
-                        4, //int hsc_bank_length,
-                        1, //int hsc_rpt_p0_num,
-                        4, //int hsc_ini_rcv_num,
-                        0, //int hsc_ini_phase,
-                        1  //int short_lineo_en
-                    ); 
-                    vf->width = clone_frame_scale_width;
-                }
+				if(vf->width >= 1280){
+					if(clone_frame_scale_width != 0){
+						vdin0_set_hscale(
+							vf->width, //int src_w, 
+							clone_frame_scale_width, //int dst_w, 
+							1, //int hsc_en, 
+							0, //int prehsc_en, 
+							4, //int hsc_bank_length,
+							1, //int hsc_rpt_p0_num,
+							4, //int hsc_ini_rcv_num,
+							0, //int hsc_ini_phase,
+							1  //int short_lineo_en
+						); 
+						vf->width = clone_frame_scale_width;
+					}
+				}else{
+/*
+   the vframe is  freescale processed , so nothing to change
+   freescale width&height is less than 800*600
+*/					
+				}
 #endif                
                 vsync_toggle_frame(vf);
                 //clone_vpts_remainder += DUR2PTS(vf->duration);
