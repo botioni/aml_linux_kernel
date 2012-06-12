@@ -93,6 +93,7 @@ static int tsdemux_reset(void)
 
     spin_lock_irqsave(&demux_ops_lock, flags);
     if (demux_ops && demux_ops->reset) {
+        tsdemux_set_reset_flag();
         r = demux_ops->reset();
     } else {
         WRITE_MPEG_REG(RESET1_REGISTER, RESET_DEMUXSTB);
