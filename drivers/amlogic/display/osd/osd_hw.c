@@ -48,6 +48,7 @@ static bool osd_vf_need_update = false;
 #if defined(CONFIG_ARCH_MESON3)
 static u32 osd_current_field = 0;
 #endif
+static struct vframe_provider_s osd_vf_prov;
 
 /********************************************************************/
 /***********		osd psedu frame provider 			*****************/
@@ -60,6 +61,7 @@ static vframe_t *osd_vf_peek(void* op_arg)
 static vframe_t *osd_vf_get(void* op_arg)
 {
 	if (osd_vf_need_update) {
+		vf_ext_light_unreg_provider(&osd_vf_prov);
 		osd_vf_need_update = false;
 		return &vf;
 	}
@@ -74,7 +76,6 @@ static const struct vframe_operations_s osd_vf_provider =
     .put  = NULL,
 };
 
-static struct vframe_provider_s osd_vf_prov;
 static unsigned char osd_vf_prov_init = 0;
 
 static inline void  osd_update_3d_mode(int enable_osd1,int enable_osd2)
@@ -524,7 +525,9 @@ void osd_free_scale_enable_hw(u32 index,u32 enable)
 #ifdef CONFIG_AM_VIDEO  
 #ifdef CONFIG_POST_PROCESS_MANAGER
 	if(mode_changed){
-        vf_notify_receiver(PROVIDER_NAME,VFRAME_EVENT_PROVIDER_RESET,NULL);
+        //vf_notify_receiver(PROVIDER_NAME,VFRAME_EVENT_PROVIDER_RESET,NULL);
+        extern void vf_ppmgr_reset_ext(void);
+        vf_ppmgr_reset_ext();
     }
 #endif
 #endif
