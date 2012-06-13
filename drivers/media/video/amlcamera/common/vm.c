@@ -82,6 +82,24 @@ static inline void vm_vf_put_from_provider(vframe_t *vf);
 #define VM_DEPTH_8_CANVAS_V 0x58
 #define VM_DMA_CANVAS_INDEX 0x5e
 #define VM_CANVAS_MX 0x5f
+static int vmdecbuf_size[] ={
+			0xE79C00,//5M
+			0x900000,//3M
+			0x591000,//2M
+			0x384000,//1M3
+			0x240000,//1M
+			0xE1000,//VGA
+			0x3C000,//QVGA
+			};
+static struct v4l2_frmsize_discrete canvas_config_wh[]={
+					{2592,1952},
+					{2048,1536},
+					{1600,1216},
+					{1280,960},
+					{1024,768},
+					{640,480},
+					{320,256},
+				    };
 
 #define GE2D_ENDIAN_SHIFT        24
 #define GE2D_ENDIAN_MASK            (0x1 << GE2D_ENDIAN_SHIFT)
@@ -959,11 +977,21 @@ int vm_buffer_init(void)
     init_MUTEX_LOCKED(&vb_start_sema);
     init_MUTEX_LOCKED(&vb_done_sema);    
     if(buf_start && buf_size){
-        canvas_width = 1920;
-        canvas_height = 1200;
-        decbuf_size = 0x700000;
-        
+	for(i=0; i<ARRAY_SIZE(vmdecbuf_size);i++){
+		if( buf_size >= vmdecbuf_size[i])
+			break;
+	}
+	if(ARRAY_SIZE(vmdecbuf_size) == i){
+		printk("vmbuf size=%d less than the smallest vmbuf size%d\n",
+			buf_size, vmdecbuf_size[i-1]);
+		return -1;
+	}
+
+	canvas_width = canvas_config_wh[i].width;//1920;
+	canvas_height = canvas_config_wh[i].height;//1200;
+	decbuf_size = vmdecbuf_size[i];//0x700000;
         buf_num  = buf_size/decbuf_size;
+
         if(buf_num > 0){
             local_pool_size   = 1;  
         }else{
