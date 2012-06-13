@@ -3460,28 +3460,29 @@ static void di_process(void)
             }
             else{
 unreg:                
-                init_flag = 0;
-                raw_local_save_flags(fiq_flag);
-                local_fiq_disable();
-
-                if(bypass_state == 0){
-	                DisableVideoLayer();
-  							}
-  							              
-                vf_unreg_provider(&di_vf_prov);
-                raw_local_irq_restore(fiq_flag);
-                spin_lock_irqsave(&plist_lock, flags);
-
-                raw_local_save_flags(fiq_flag);
-                local_fiq_disable();
+                if(init_flag){
+                    init_flag = 0;
+                    raw_local_save_flags(fiq_flag);
+                    local_fiq_disable();
+    
+                    if(bypass_state == 0){
+    	                DisableVideoLayer();
+      							}
+      							              
+                    vf_unreg_provider(&di_vf_prov);
+                    raw_local_irq_restore(fiq_flag);
+                    spin_lock_irqsave(&plist_lock, flags);
+    
+                    raw_local_save_flags(fiq_flag);
+                    local_fiq_disable();
 #ifdef DI_DEBUG
-                di_print("%s: di_uninit_buf\n", __func__);
+                    di_print("%s: di_uninit_buf\n", __func__);
 #endif
-                di_uninit_buf();
-                raw_local_irq_restore(fiq_flag);
-
-                spin_unlock_irqrestore(&plist_lock, flags);
-                
+                    di_uninit_buf();
+                    raw_local_irq_restore(fiq_flag);
+    
+                    spin_unlock_irqrestore(&plist_lock, flags);
+                }
                 di_pre_stru.force_unreg_req_flag = 0;
                 di_pre_stru.disable_req_flag = 0;
                 recovery_flag = 0;
