@@ -2371,7 +2371,7 @@ static void set_hdmi_audio_source(unsigned int src)
 static int hdmitx_m3_set_audmode(struct hdmi_tx_dev_s* hdmitx_device, Hdmi_tx_audio_para_t* audio_param)
 {
     unsigned int audio_N_para = 6272;
-    unsigned int audio_N_tolerance = 1;
+    unsigned int audio_N_tolerance = 3;
 //    unsigned int audio_CTS = 30000;
 
     hdmi_print(0,"HDMI DEBUG [%s] hdmitx_device->cur_VIC=[%d]\n", __FUNCTION__, hdmitx_device->cur_VIC);
@@ -2396,7 +2396,7 @@ static int hdmitx_m3_set_audmode(struct hdmi_tx_dev_s* hdmitx_device, Hdmi_tx_au
                     audio_N_para = 4096;
                     break;
                 case FS_44K1:
-                    audio_N_para = 6272;
+                    audio_N_para = 6272*4;
                     break;
                 case FS_88K2:
                     audio_N_para = 12544;
@@ -2405,7 +2405,7 @@ static int hdmitx_m3_set_audmode(struct hdmi_tx_dev_s* hdmitx_device, Hdmi_tx_au
                     audio_N_para = 25088;
                     break;
                 case FS_48K:
-                    audio_N_para = 6144*2;  // not default 6144, otherwise HDMI CTS 7-29 ACR fail
+                    audio_N_para = 6144*4;
                     break;
                 case FS_96K:
                     audio_N_para = 12288;
@@ -2516,7 +2516,7 @@ static int hdmitx_m3_set_audmode(struct hdmi_tx_dev_s* hdmitx_device, Hdmi_tx_au
                     audio_N_para = 11648;
                     break;
                 case FS_44K1:
-                    audio_N_para = 8918;
+                    audio_N_para = 6272*2;
                     break;
                 case FS_88K2:
                     audio_N_para = 17836;
@@ -2525,7 +2525,7 @@ static int hdmitx_m3_set_audmode(struct hdmi_tx_dev_s* hdmitx_device, Hdmi_tx_au
                     audio_N_para = 35672;
                     break;
                 case FS_48K:
-                    audio_N_para = 5824;
+                    audio_N_para = 6144*2;
                     break;
                 case FS_96K:
                     audio_N_para = 11648;
@@ -2539,7 +2539,7 @@ static int hdmitx_m3_set_audmode(struct hdmi_tx_dev_s* hdmitx_device, Hdmi_tx_au
             break;
         default:
             break;
-    }
+    }    
 
     //TODO. Different audio type, maybe have different settings
     switch(audio_param->type){

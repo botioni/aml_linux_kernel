@@ -361,6 +361,16 @@ void vf_ppmgr_reset(void)
     }
 }
 
+void vf_ppmgr_reset_ext(void)
+{
+    video_vf_lock  = 1;
+    vf_light_unreg_provider(&ppmgr_vf_prov);
+    if(ppmgr_inited){
+        ppmgr_blocking = true;
+        up(&thread_sem);
+    }
+}
+
 void vf_ppmgr_init_receiver(void)
 {
     vf_receiver_init(&ppmgr_vf_recv, RECEIVER_NAME, &ppmgr_vf_receiver, NULL);
