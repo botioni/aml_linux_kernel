@@ -1304,6 +1304,11 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
                 vf = video_vf_get();
                 video_vf_put(vf);
             }
+            else if(clone_frame_rate_force < 0){
+                vf = video_vf_get();
+                vsync_toggle_frame(vf);
+                
+            }
             else if(clone_vpts_remainder < vsync_pts_inc){
                 vf = video_vf_get();
 #ifdef CONFIG_TVIN_VIUIN
@@ -2429,7 +2434,7 @@ static int start_clone(void)
         para.fmt_info.h_active = info->width;
         para.fmt_info.v_active = info->height;
         para.port  = TVIN_PORT_VIU_ENCT;
-        para.fmt_info.fmt = TVIN_SIG_FMT_MAX+1;//TVIN_SIG_FMT_MAX+1;TVIN_SIG_FMT_CAMERA_1280X720P_30Hz
+        para.fmt_info.fmt = info->mode; //TVIN_SIG_FMT_MAX+1;//TVIN_SIG_FMT_MAX+1;TVIN_SIG_FMT_CAMERA_1280X720P_30Hz
         para.fmt_info.frame_rate = clone_frame_rate*10;
         para.fmt_info.hsync_phase = 1;
       	para.fmt_info.vsync_phase  = 0;	
