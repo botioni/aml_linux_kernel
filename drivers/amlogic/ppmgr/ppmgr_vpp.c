@@ -322,14 +322,14 @@ const vframe_receiver_op_t* vf_ppmgr_reg_provider(void)
     vf_local_init();
 
     //vf_reg_provider(&ppmgr_vf_prov);
-	if(ppmgr_device.video_out==0) {
-		vf_reg_provider(&ppmgr_vf_prov);
-	} 
-#	ifdef CONFIG_V4L_AMLOGIC_VIDEO 
-	else  {
-		v4l_reg_provider(&ppmgr_vf_prov);
-	}
-#			endif
+    if(ppmgr_device.video_out==0) {
+        vf_reg_provider(&ppmgr_vf_prov);
+    } 
+#ifdef CONFIG_V4L_AMLOGIC_VIDEO 
+    else{
+        v4l_reg_provider(&ppmgr_vf_prov);
+    }
+#endif
 
     if (start_ppmgr_task() == 0) {
         r = &ppmgr_vf_receiver;
@@ -1366,17 +1366,18 @@ static int ppmgr_task(void *data)
         }
         
         if (ppmgr_blocking) {
+            vf_notify_provider(PROVIDER_NAME,VFRAME_EVENT_RECEIVER_RESET,NULL);
             //vf_light_unreg_provider(&ppmgr_vf_prov);
             vf_local_init();
             //vf_reg_provider(&ppmgr_vf_prov);
-			if(ppmgr_device.video_out==0) {
-				vf_reg_provider(&ppmgr_vf_prov);
-			} 
-#			ifdef CONFIG_V4L_AMLOGIC_VIDEO 
-			else  {
-				v4l_reg_provider(&ppmgr_vf_prov);
-			}
-#			endif
+            if(ppmgr_device.video_out==0) {
+                vf_reg_provider(&ppmgr_vf_prov);
+            } 
+#ifdef CONFIG_V4L_AMLOGIC_VIDEO 
+            else{
+                v4l_reg_provider(&ppmgr_vf_prov);
+            }
+#endif
             ppmgr_blocking = false;
             video_vf_lock  =0 ;
             up(&thread_sem);
