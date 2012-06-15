@@ -988,7 +988,7 @@ static void digital_clk_off(unsigned char flag)
 //        Wr(HHI_GCLK_MPEG2, Rd(HHI_GCLK_MPEG2)&(~(1<<4))); //disable pixel clock, set cbus reg HHI_GCLK_MPEG2 bit [4] = 0
         Wr(HHI_GCLK_OTHER, Rd(HHI_GCLK_OTHER)&(~(1<<17))); //disable VCLK1_HDMI GATE, set cbus reg HHI_GCLK_OTHER bit [17] = 0
         Wr(VENC_DVI_SETTING, (Rd(VENC_DVI_SETTING)&(~(7<<4)))|(5<<4)); //set cbus reg VENC_DVI_SETTING bit[6:4] = 0x5
-        Wr(HHI_VID_PLL_CNTL, (Rd(HHI_VID_PLL_CNTL) | (1<<30)));     //0x105c[30]PD, 1: PowerDown
+//        Wr(HHI_VID_PLL_CNTL, (Rd(HHI_VID_PLL_CNTL) | (1<<30)));     //0x105c[30]PD, 1: PowerDown
         Wr(HHI_VID_PLL_CNTL3, (Rd(HHI_VID_PLL_CNTL3) & ~((1<<5)|(1<<3))));  //0x1058[5]VBG_PU [3]IREXT_PU
 #if 1
     // Second turn off gate.
