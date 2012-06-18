@@ -1806,6 +1806,46 @@ static  struct platform_device gx1001_device = {
 	.resource         = gx1001_resource,
 };
 
+
+static struct resource ite9173_resource[]  = {
+	[0] = {
+		.start = (GPIOD_bank_bit0_9(8)<<16)|GPIOD_bit_bit0_9(8), //reset pin
+		.end   = (GPIOD_bank_bit0_9(8)<<16)|GPIOD_bit_bit0_9(8),
+		.flags = IORESOURCE_MEM,
+		.name  = "frontend0_reset"
+	},
+	[1] = {
+		.start = 0,                                    //frontend 0 i2c adapter id
+		.end   = 0,
+		.flags = IORESOURCE_MEM,
+		.name  = "frontend0_i2c"
+	},
+	[2] = {
+		.start = 0x9E,                                 //frontend 0 tuner address
+		.end   = 0x9E,
+		.flags = IORESOURCE_MEM,
+		.name  = "frontend0_tuner_addr"
+	},
+	[3] = {
+		.start =  0x38,                                 //frontend 0 demod address
+		.end   =  0x38,
+		.flags = IORESOURCE_MEM,
+		.name  = "frontend0_demod_addr"
+	},
+	[4] = {
+		.start = (GPIOB_bank_bit0_23(23)<<16)|GPIOB_bit_bit0_23(23),  //// ANT_PWR_CTRL pin
+		.end   = (GPIOB_bank_bit0_23(23)<<16)|GPIOB_bit_bit0_23(23),
+		.flags = IORESOURCE_MEM,
+		.name  = "frontend0_power"
+	},
+};
+
+static  struct platform_device ite9173_device = {
+	.name             = "ite9173",
+	.id               = -1,
+	.num_resources    = ARRAY_SIZE(ite9173_resource),
+	.resource         = ite9173_resource,
+};
 #endif
 #if defined(CONFIG_AML_WATCHDOG)
 static struct platform_device aml_wdt_device = {
@@ -1921,6 +1961,7 @@ static struct platform_device __initdata *platform_devs[] = {
 	&mxl101_device,
 	&gx1001_device,
 	&avl6211_device,
+	&ite9173_device,
 #endif
  #if defined(CONFIG_AML_WATCHDOG)
         &aml_wdt_device,
@@ -2040,6 +2081,16 @@ static void __init device_pinmux_init(void )
 
 
 #endif
+
+
+#ifdef CONFIG_AM_ITE9173
+//for ite9173
+	printk("CONFIG_AM_ITE9173 set pinmux\n");
+	set_mio_mux(3, 0x3F<<6);
+//	clear_mio_mux(0, 1<<4);
+	clear_mio_mux(0, 0x7);
+#endif
+
 
 #if defined(CONFIG_WIFI_BCM_4018x)
     aml_wifi_bcm4018x_init();
