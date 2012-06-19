@@ -192,6 +192,9 @@ vinfo_t * hdmi_get_current_vinfo(void)
 #ifdef CONFIG_AM_TV_OUTPUT2
     if(get_cur_vout_index() == 2){
         info = get_current_vinfo2();
+        if(info == NULL){ //add to fix problem when dual display is not enabled in UI
+            info = get_current_vinfo();
+        }
     }
     else{
         info = get_current_vinfo();
