@@ -1742,9 +1742,9 @@ static void video_vf_unreg_provider(void)
     }
 
     //if (!trickmode_fffb)
-    {
-        vf_keep_current();
-    }
+    //{
+        //vf_keep_current();
+    //}
 
     if(clone == 0){
         tsync_avevent(VIDEO_STOP, 0);
