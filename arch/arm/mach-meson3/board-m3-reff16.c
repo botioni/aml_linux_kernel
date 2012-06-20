@@ -457,8 +457,7 @@ static struct platform_device vdin_device = {
 };
 #endif
 
-//#define CONFIG_WIFI_BCM_4018x
-#if defined(CONFIG_WIFI_BCM_4018x)
+#if defined(CONFIG_SDIO_DHD_CDC_WIFI_40181_MODULE_MODULE)
 /******************************
 *WL_Power_EN	-->NOPin
 *WL_REG_ON	-->GPIOC_8
@@ -527,19 +526,20 @@ static struct resource amlogic_card_resource[] = {
     }
 };
 
-#if defined(CONFIG_WIFI_BCM_4018x)
+#if defined(CONFIG_SDIO_DHD_CDC_WIFI_40181_MODULE_MODULE)
 #define GPIO_WIFI_HOSTWAKE  ((GPIOX_bank_bit0_31(11)<<16) |GPIOX_bit_bit0_31(11))
 void sdio_extern_init(void)
 {
 	printk("sdio_extern_init !\n");
-#if defined(CONFIG_BCM40183_WIFI)
-	printk("40183 set oob mode !\n");
-  SET_CBUS_REG_MASK(PAD_PULL_UP_REG4, (1<<11));
+	SET_CBUS_REG_MASK(PAD_PULL_UP_REG4, (1<<11));
 	gpio_direction_input(GPIO_WIFI_HOSTWAKE);
-	//gpio_enable_level_int(gpio_to_idx(GPIO_WIFI_HOSTWAKE), 0, 4);  //for 40181
+#if defined(CONFIG_BCM40181_WIFI)
+	gpio_enable_level_int(gpio_to_idx(GPIO_WIFI_HOSTWAKE), 0, 4);  //for 40181
+#endif
+#if defined(CONFIG_BCM40183_WIFI)
 	gpio_enable_edge_int(gpio_to_idx(GPIO_WIFI_HOSTWAKE), 0, 5);     //for 40183
 #endif 
-	extern_wifi_set_enable(1);
+	//extern_wifi_set_enable(1);
 }
 #endif
 
@@ -563,7 +563,7 @@ static struct aml_card_info  amlogic_card_info[] = {
         .card_wp_input_mask = PREG_IO_30_MASK,
         .card_extern_init = 0,
     },
-#if defined(CONFIG_WIFI_BCM_4018x)    
+#if defined(CONFIG_SDIO_DHD_CDC_WIFI_40181_MODULE_MODULE)
     [1] = {
         .name = "sdio_card",
         .work_mode = CARD_HW_MODE,
@@ -2092,7 +2092,7 @@ static void __init device_pinmux_init(void )
 #endif
 
 
-#if defined(CONFIG_WIFI_BCM_4018x)
+#if defined(CONFIG_SDIO_DHD_CDC_WIFI_40181_MODULE_MODULE)
     aml_wifi_bcm4018x_init();
 #endif
 
