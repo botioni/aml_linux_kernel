@@ -9,26 +9,6 @@ config MALI400
 
 	  To compile this driver as a module, choose M here: the module will be
 	  called mali.
-choice
-	prompt "Mali frequency"
-	default MALI_CLK_333M
-	depends on ARCH_MESON6 
-	depends on MALI400
-	
-config MALI_CLK_400M
-	bool "Mali clock 400M"
-	help	
-		Mali clock set to 400M
-config MALI_CLK_333M
-	bool"Mali clock 333M"
-	help
-		Mali clock set to 333M
-config MALI_CLK_250M
-	bool"Mali clock 250M"
-	help
-		Mali clock set to 250M		
-
-endchoice
 
 config MALI400_DEBUG
 	bool "Enable debug in Mali driver"
