@@ -464,6 +464,7 @@ static struct platform_device vdin_device = {
 *WIFI_32K		-->GPIOC_15(CLK_OUT1)
 *WIFIWAKE(WL_HOST_WAKE)-->GPIOX_11
 *******************************/
+//#define WL_REG_ON_USE_GPIOC_6
 void extern_wifi_power(int is_power)
 {//NOPin
 }
@@ -476,11 +477,19 @@ EXPORT_SYMBOL(extern_wifi_reset);
 void extern_wifi_set_enable(int enable)
 {
 	if(enable){
+#ifdef WL_REG_ON_USE_GPIOC_6
+		SET_CBUS_REG_MASK(PREG_PAD_GPIO2_O, (1<<6));
+#else
 		SET_CBUS_REG_MASK(PREG_PAD_GPIO2_O, (1<<8));
+#endif
 		printk("Enable WIFI  Module!\n");
 	}
     	else{
+#ifdef WL_REG_ON_USE_GPIOC_6
+		CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO2_O, (1<<6));
+#else
 		CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO2_O, (1<<8));
+#endif
 		printk("Disable WIFI  Module!\n");
 	}
 }
@@ -500,11 +509,18 @@ static void wifi_set_clk_enable(int on)
 
 static void wifi_gpio_init(void)
 {
+#ifdef WL_REG_ON_USE_GPIOC_6
+    //set WL_REG_ON Pin GPIOC_6 out
+        CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0, (1<<16));
+        CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_1, (1<<5));
+        CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO2_EN_N, (1<<6));  //GPIOC_6
+#else
     //set WL_REG_ON Pin GPIOC_8 out 
    	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_3, (1<<23));
 	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0, (1<<18));
 	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_1, (1<<10));
      	CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO2_EN_N, (1<<8));  //GPIOC_8
+#endif
 }
 
 
