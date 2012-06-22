@@ -886,13 +886,13 @@ static void set_gpio_suspend_resume(int power_on)
 		 udelay(50);
         hdmi_wr_reg(0x8005, 1); 
         // LED
-        WRITE_CBUS_REG(PWM_PWM_C, (0xff00<<16) |(0xff00<<0));
+       // WRITE_CBUS_REG(PWM_PWM_C, (0xff00<<16) |(0xff00<<0));
     	}
 	else
 		{
     	printk("set gpio suspend.\n");
 		 // LED
-        WRITE_CBUS_REG(PWM_PWM_C, (0xff00<<16) |(0<<0));
+       // WRITE_CBUS_REG(PWM_PWM_C, (0xff00<<16) |(0<<0));
 		}
 }
 
@@ -2222,7 +2222,7 @@ static __init void m1_init_machine(void)
 //    pm_power_off = power_off;		//Elvis fool
     device_clk_setting();
     device_pinmux_init();
-    LED_PWM_REG0_init();
+//    LED_PWM_REG0_init();
 
 	
 #ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE
