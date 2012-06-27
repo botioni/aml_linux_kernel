@@ -112,6 +112,7 @@ static const u32 poweron_data[] =
 #define MMU_FLAG_PTE_PAGE_PRESENT       0x01
 #define MMU_FLAG_PTE_RD_PERMISSION      0x02
 #define MMU_FLAG_PTE_WR_PERMISSION      0x04
+#define INT_ALL              (0xffffffff)
 
 static spinlock_t lock = SPIN_LOCK_UNLOCKED;
 
@@ -202,7 +203,16 @@ void mali_meson_poweron(void)
 
     /* stop MMU paging and reset */
     WRITE_MALI_REG(MALI_MMU_CMD, 1);
-    WRITE_MALI_REG(MALI_MMU_CMD, 1 << 6);
+    WRITE_MALI_REG(MALI_MMU_CMD, 6);
+
+#if 1
+    for (i = 0; i<100; i++)
+        udelay(500);
+    WRITE_MALI_REG(MALI_APB_GP_INT_CLEAR, 0x3ff);
+    WRITE_MALI_REG(MALI_MMU_INT_CLEAR, INT_ALL);
+    WRITE_MALI_REG(MALI_MMU_INT_MASK, 0);
+    printk("=====fucking=====test2===\n");
+#endif  
 
     WRITE_CBUS_REG(A9_0_IRQ_IN1_INTR_MASK, int_mask);
 
