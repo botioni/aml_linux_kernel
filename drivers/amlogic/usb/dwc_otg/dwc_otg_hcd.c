@@ -258,6 +258,7 @@ static void del_xfer_timers(dwc_otg_hcd_t * _hcd)
 	int i;
 	int num_channels = _hcd->core_if->core_params->host_channels;
 	for (i = 0; i < num_channels; i++) {
+		if(timer_pending(&_hcd->core_if->hc_xfer_timer[i]))
 		del_timer(&_hcd->core_if->hc_xfer_timer[i]);
 	}
 #endif
@@ -289,7 +290,7 @@ static void kill_urbs_in_qh_list(dwc_otg_hcd_t * _hcd,
 			    list_entry(qtd_item, dwc_otg_qtd_t, qtd_list_entry);
 			if (qtd->urb != NULL) {
 				dwc_otg_hcd_complete_urb(_hcd, qtd->urb,
-							 -ESHUTDOWN);
+							 -ETIMEDOUT);
 			}
 			dwc_otg_hcd_qtd_remove_and_free(qtd);
 		}
@@ -418,6 +419,9 @@ static int32_t dwc_otg_hcd_disconnect_cb(void *_p)
 					      &dwc_otg_hcd->free_hc_list);
 				local_irq_save(flags);
 				/* Take back a non_periodic_channel */
+				dwc_otg_hcd->non_periodic_channels = 0;
+				dwc_otg_hcd->periodic_channels = 0;
+#if 0
 				switch (channel->ep_type) {
 					case DWC_OTG_EP_TYPE_CONTROL:
 					case DWC_OTG_EP_TYPE_BULK:
@@ -427,6 +431,7 @@ static int32_t dwc_otg_hcd_disconnect_cb(void *_p)
 					default:
 						break;
 				}
+#endif
 				local_irq_restore(flags);
 			}
 		}
@@ -618,7 +623,7 @@ int dwc_otg_hcd_init(struct lm_device *_lmdev)
 		channel->hc_num = i;
 		dwc_otg_hcd->hc_ptr_array[i] = channel;
 #ifdef DEBUG
-		init_timer(&dwc_otg_hcd->core_if->hc_xfer_timer[i]);
+		//init_timer(&dwc_otg_hcd->core_if->hc_xfer_timer[i]);
 #endif
 
 		DWC_DEBUGPL(DBG_HCDV, "HCD Added channel #%d, hc=%p\n", i,
@@ -1137,6 +1142,7 @@ int dwc_otg_hcd_urb_enqueue(struct usb_hcd *_hcd,
 	if (unlikely(retval)) {
 		DWC_ERROR("DWC OTG HCD URB Enqueue failed linking urb. "
 			  "Error status %d\n", retval);
+		usb_hcd_unlink_urb_from_ep(_hcd,_urb);	  
 		local_irq_restore(flags);
 		return retval;
 	}
@@ -1186,7 +1192,8 @@ int dwc_otg_hcd_urb_dequeue(struct usb_hcd *_hcd, struct urb *_urb)
 	dwc_otg_qh_t *qh;
 	struct usb_host_endpoint *_ep = dwc_urb_to_endpoint(_urb);
 
-	DWC_DEBUGPL(DBG_HCD, "DWC OTG HCD URB Dequeue\n");
+	DWC_DEBUGPL(DBG_HCD,"DWC OTG HCD URB Dequeue dev%d ep%d\n",
+		usb_pipedevice(_urb->pipe),usb_pipeendpoint(_urb->pipe));
 	
 	local_irq_save(flags);
 
@@ -1211,6 +1218,10 @@ int dwc_otg_hcd_urb_dequeue(struct usb_hcd *_hcd, struct urb *_urb)
 		if (urb_qtd == qh->qtd_in_process) {
 		/* The QTD is in process (it has been assigned to a channel). */
 
+			if(qh->do_split && (dwc_otg_hcd->ssplit_lock == usb_pipedevice(_urb->pipe))){
+				dwc_otg_hcd->ssplit_lock = 0;
+				DWC_DEBUGPL(DBG_HCD,"release ssplit_lock from dev %d\n",usb_pipedevice(_urb->pipe));
+			}
 			if (dwc_otg_hcd->flags.b.port_connect_status) {
 			/* 
 			 * Waitting for host core halt the channel by itself
@@ -2449,7 +2460,7 @@ static int periodic_channel_available(dwc_otg_hcd_t * _hcd)
 	     num_channels) && (_hcd->periodic_channels < num_channels - 1)) {
 		status = 0;
 	} else {
-		DWC_WARN
+		printk
 		    ("%s: Total channels: %d, Periodic: %d, Non-periodic: %d\n",
 		     __func__, num_channels, _hcd->periodic_channels,
 		     _hcd->non_periodic_channels);
@@ -2485,6 +2496,7 @@ static int assign_and_init_hc(dwc_otg_hcd_t * _hcd, dwc_otg_qh_t * _qh)
 
 	qtd = list_entry(_qh->qtd_list.next, dwc_otg_qtd_t, qtd_list_entry);
 	urb = qtd->urb;
+	uint16_t frame_number = dwc_otg_hcd_get_frame_number(dwc_otg_hcd_to_hcd(_hcd));
 
 	if(_qh->do_split && qtd->complete_split == 0){
 		if(_qh->ep_type == DWC_OTG_EP_TYPE_CONTROL ||
@@ -2529,6 +2541,7 @@ static int assign_and_init_hc(dwc_otg_hcd_t * _hcd, dwc_otg_qh_t * _qh)
 			return status;
 		}		
 	}
+#if 0
 	if(_qh->do_split && (_qh->ep_type == USB_ENDPOINT_XFER_INT)){
 		if((_hcd->ssplit_lock == 0) || qtd->complete_split){					
 			_hcd->ssplit_lock = usb_pipedevice(urb->pipe);
@@ -2541,6 +2554,7 @@ static int assign_and_init_hc(dwc_otg_hcd_t * _hcd, dwc_otg_qh_t * _qh)
 			return -2;
 		}
 	}
+#endif
 	if(!dwc_qh_is_non_per(_qh))	
 		_hcd->periodic_channels++;
 	local_irq_restore(flags);
@@ -2731,12 +2745,12 @@ dwc_otg_transaction_type_e dwc_otg_hcd_select_transactions(dwc_otg_hcd_t * _hcd)
 
 		qh = list_entry(qh_ptr, dwc_otg_qh_t, qh_list_entry);
 //		assign_and_init_hc(_hcd, qh);
-
+#if 1
 		if(assign_and_init_hc(_hcd, qh)){
 			qh_ptr = qh_ptr->next;
 			continue;		
   		}
-
+#endif
 
 		/*
 		 * Move the QH from the periodic ready schedule to the
@@ -2755,9 +2769,11 @@ dwc_otg_transaction_type_e dwc_otg_hcd_select_transactions(dwc_otg_hcd_t * _hcd)
 	 */
 	qh_ptr = _hcd->non_periodic_sched_inactive.next;
 	num_channels = _hcd->core_if->core_params->host_channels;
-	if(_hcd->non_periodic_channels > num_channels - _hcd->periodic_channels)
-		DWC_WARN("%s: Total channels: %d, Periodic: %d, Non-periodic: %d\n",
+	if(_hcd->non_periodic_channels > num_channels - _hcd->periodic_channels){
+		printk("%s: Total channels: %d, Periodic: %d, Non-periodic: %d\n",
 		     __func__, num_channels, _hcd->periodic_channels, _hcd->non_periodic_channels);
+		 return ret_val;  
+		    }
 	while (qh_ptr != &_hcd->non_periodic_sched_inactive &&
 	       (_hcd->non_periodic_channels <
 		num_channels - _hcd->periodic_channels) &&

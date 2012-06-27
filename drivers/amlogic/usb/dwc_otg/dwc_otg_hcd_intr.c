@@ -912,10 +912,12 @@ static void release_channel(dwc_otg_hcd_t * _hcd,
 	switch (_hc->ep_type) {
 	case DWC_OTG_EP_TYPE_CONTROL:
 	case DWC_OTG_EP_TYPE_BULK:
+		if(_hcd->non_periodic_channels)
 		_hcd->non_periodic_channels--;
 		break;
 	case DWC_OTG_EP_TYPE_ISOC:
 	case DWC_OTG_EP_TYPE_INTR:
+		if(_hcd->periodic_channels)
 		_hcd->periodic_channels--;
 		break;
 	default:
@@ -1105,8 +1107,11 @@ static int32_t handle_hc_xfercomp_intr(dwc_otg_hcd_t * _hcd,
 	 * Handle xfer complete on CSPLIT.
 	 */
 	if (_hc->qh->do_split) {
+		if(pipe_type == PIPE_INTERRUPT){
+//			printk(KERN_DEBUG "%s %d-%d",__func__,_hcd->ssplit_lock,_qtd->complete_split);
+			_hcd->ssplit_lock = 0;
+		}
 		_qtd->complete_split = 0;
-		_hcd->ssplit_lock = 0;
 	}
 
 	/* Update the QTD and URB states. */
@@ -1209,8 +1214,9 @@ static int32_t handle_hc_stall_intr(dwc_otg_hcd_t * _hcd,
 
 	DWC_DEBUGPL(DBG_HCD, "--Host Channel %d Interrupt: "
 		    "STALL Received--\n", _hc->hc_num);
+	if(pipe_type == PIPE_INTERRUPT){
 	_hcd->ssplit_lock = 0;
-
+	}
 	if (pipe_type == PIPE_CONTROL) {
 		dwc_otg_hcd_complete_urb(_hcd, _qtd->urb, -EPIPE);
 	}
@@ -1293,8 +1299,9 @@ static int32_t handle_hc_nak_intr(dwc_otg_hcd_t * _hcd,
 			_qtd->error_count = 0;
 		}
 		_qtd->complete_split = 0;
-		if(_hcd->ssplit_lock == usb_pipedevice(_qtd->urb->pipe))
+		if((_hcd->ssplit_lock == usb_pipedevice(_qtd->urb->pipe)) && usb_pipeint(_qtd->urb->pipe)){
 			_hcd->ssplit_lock = 0;
+		}
 		halt_channel(_hcd, _hc, _qtd, DWC_OTG_HC_XFER_NAK);
 		goto handle_nak_done;
 	}
@@ -1649,7 +1656,8 @@ static int32_t handle_hc_xacterr_intr(dwc_otg_hcd_t * _hcd,
 		break;
 	case PIPE_INTERRUPT:
 		_qtd->error_count++;
-		if ((_hc->do_split) && (_hc->complete_split)) {
+		if (_hc->do_split) {
+			if(_hc->complete_split)
 			_qtd->complete_split = 0;
 			_hcd->ssplit_lock = 0;
 		}

@@ -618,14 +618,7 @@ static ssize_t bussuspend_store(struct device *_dev,
 				size_t count)
 {
 	dwc_otg_device_t *otg_dev = dev_get_drvdata(_dev);
-	uint32_t in;
-
-	if(strncmp(buf, "1", sizeof("1")-1) == 0)
-		in = 1;
-	else if(strncmp(buf, "0", sizeof("0")-1) == 0)
-		in = 0;
-	else
-		in = simple_strtoul(buf, NULL, 16);
+	uint32_t in = simple_strtoul(buf, NULL, 16);
 	
 	uint32_t *addr = (uint32_t *) otg_dev->core_if->host_if->hprt0;
 	hprt0_data_t mem;
