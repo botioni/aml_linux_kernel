@@ -1928,6 +1928,9 @@ static struct platform_device __initdata *platform_devs[] = {
 #if defined(CONFIG_NAND_FLASH_DRIVER_MULTIPLANE_CE)
     &aml_nand_device,
 #endif
+#ifdef CONFIG_BT_DEVICE
+ 	&bt_device,
+#endif
 #if defined(CONFIG_AML_RTC)
     &aml_rtc_device,
 #endif
