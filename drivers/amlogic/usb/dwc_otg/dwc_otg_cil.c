@@ -1286,7 +1286,11 @@ void dwc_otg_hc_init(dwc_otg_core_if_t * _core_if, dwc_hc_t * _hc)
 	hcchar.b.epnum = _hc->ep_num;
 	hcchar.b.epdir = _hc->ep_is_in;
 	hcchar.b.lspddev = (_hc->speed == DWC_OTG_EP_SPEED_LOW);
-	hcchar.b.eptype = _hc->ep_type;
+	/* Workaround for BT dongle in HUB */
+	if((_hc->ep_type == DWC_OTG_EP_TYPE_INTR) && _hc->do_split)
+		hcchar.b.eptype = DWC_OTG_EP_TYPE_BULK;
+	else
+		hcchar.b.eptype = _hc->ep_type;
 	hcchar.b.mps = _hc->max_packet;
 
 	dwc_write_reg32(&host_if->hc_regs[hc_num]->hcchar, hcchar.d32);
