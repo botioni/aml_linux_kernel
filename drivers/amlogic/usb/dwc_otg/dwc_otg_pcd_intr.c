@@ -1855,7 +1855,7 @@ static void restart_transfer(dwc_otg_pcd_t * _pcd, const uint32_t _epnum)
 		if (_epnum == 0) {
 			dwc_otg_ep0_start_transfer(core_if, &ep->dwc_ep);
 		} else {
-			dwc_otg_ep_start_transfer(core_if, &ep->dwc_ep);
+			;//dwc_otg_ep_start_transfer(core_if, &ep->dwc_ep);
 		}
 	}
 }

@@ -556,7 +556,10 @@ static int m3_nand_boot_read_page_hwecc(struct mtd_info *mtd, struct nand_chip *
 	unsigned pages_per_blk_shift = (chip->phys_erase_shift - chip->page_shift);
 	int user_byte_num = (chip->ecc.steps * aml_chip->user_byte_mode);
 	int error = 0, i = 0, stat = 0, bch_mode, read_page, read_page_tmp;
-	int new_nand_type = aml_chip->new_nand_info.type;
+	int new_nand_type = 0;
+#ifdef NEW_NAND_SUPPORT	
+	new_nand_type = aml_chip->new_nand_info.type;
+ #endif
 
 	if((new_nand_type < 10)&&(new_nand_type))
 	{
@@ -677,14 +680,21 @@ static int m3_nand_boot_write_page(struct mtd_info *mtd, struct nand_chip *chip,
 {
 	struct aml_nand_chip *aml_chip = mtd_to_nand_chip(mtd);
 	int status, i, write_page, configure_data, pages_per_blk, write_page_tmp, ran_mode;
-	int enslc_flag = (aml_chip->new_nand_info.type && (aml_chip->new_nand_info.type < 10)) ? 1:0;
-	int new_nand_type = aml_chip->new_nand_info.type;
+	int new_nand_type = 0;
+	int en_slc = 0;
 
-	if(enslc_flag){
+#ifdef NEW_NAND_SUPPORT
+	new_nand_type = aml_chip->new_nand_info.type;
+	en_slc = ((aml_chip->new_nand_info.type < 10)&&(aml_chip->new_nand_info.type))? 1:0;
+#endif
+
+	if(en_slc){
 		if (page >= (M3_BOOT_PAGES_PER_COPY/2 - 3))
 			return 0;
+#ifdef NEW_NAND_SUPPORT			
 		if(page > 3)
 		   aml_chip->new_nand_info.slc_program_info.enter_enslc_mode(mtd);
+#endif			
 	}
 	else{
 		if (page >= (M3_BOOT_PAGES_PER_COPY - 1))
@@ -723,7 +733,7 @@ static int m3_nand_boot_write_page(struct mtd_info *mtd, struct nand_chip *chip,
 				return -EIO;
 		}
 		write_page++;
-		if((page > 3) && enslc_flag){
+		if((page > 3) && en_slc){
 			write_page_tmp = page + 2;
 			
 			//printk("%s, write_page_tmp:0x%x\n", __func__, write_page_tmp);
@@ -753,8 +763,10 @@ static int m3_nand_boot_write_page(struct mtd_info *mtd, struct nand_chip *chip,
 				status = chip->errstat(mtd, chip, FL_WRITING, status, write_page);
 
 			if (status & NAND_STATUS_FAIL){
-				if((enslc_flag) && (page > 3))
+#ifdef NEW_NAND_SUPPORT                		
+                		if(en_slc && (page > 3))
 					aml_chip->new_nand_info.slc_program_info.exit_enslc_mode(mtd);
+ #endif               		
 				return -EIO;
 			}
 		} else {
@@ -762,9 +774,10 @@ static int m3_nand_boot_write_page(struct mtd_info *mtd, struct nand_chip *chip,
 			status = chip->waitfunc(mtd, chip);
 		}
 	}
-
-	if((enslc_flag) && (page > 3))
+#ifdef NEW_NAND_SUPPORT	
+	if(en_slc && (page > 3))
 		aml_chip->new_nand_info.slc_program_info.exit_enslc_mode(mtd);
+#endif
 		
 	return 0;
 }
@@ -851,12 +864,14 @@ static int m3_nand_reboot_notifier(struct notifier_block *nb, unsigned long prio
 		aml_chip = plat->aml_chip;
 		if (aml_chip) {
 			mtd = &aml_chip->mtd;
+#ifdef NEW_NAND_SUPPORT			
 			if (mtd) {
 				if((aml_chip->new_nand_info.type) && (aml_chip->new_nand_info.type < 10)){
 					aml_chip->new_nand_info.slc_program_info.exit_enslc_mode(mtd);
 					aml_chip->new_nand_info.read_rety_info.set_default_value(mtd);
 				}  
 			}
+#endif			
 		}
 	}
 
@@ -912,10 +927,12 @@ static int m3_nand_remove(struct platform_device *pdev)
 		if (aml_chip) {
 			mtd = &aml_chip->mtd;
 			if (mtd) {
+#ifdef NEW_NAND_SUPPORT				    
 				if((aml_chip->new_nand_info.type) && (aml_chip->new_nand_info.type < 10) && (i == 1)){
 					aml_chip->new_nand_info.slc_program_info.exit_enslc_mode(mtd);
 					aml_chip->new_nand_info.read_rety_info.set_default_value(mtd);
 				}  
+#endif
 				nand_release(mtd);
 				kfree(mtd);
 			}
@@ -940,12 +957,14 @@ static void m3_nand_shutdown(struct platform_device *pdev)
 		aml_chip = plat->aml_chip;
 		if (aml_chip) {
 			mtd = &aml_chip->mtd;
+#ifdef NEW_NAND_SUPPORT			
 			if (mtd) {
 				if((aml_chip->new_nand_info.type) && (aml_chip->new_nand_info.type < 10)){
 					aml_chip->new_nand_info.slc_program_info.exit_enslc_mode(mtd);
 					aml_chip->new_nand_info.read_rety_info.set_default_value(mtd);
 				}  
 			}
+#endif
 		}
 	}
 

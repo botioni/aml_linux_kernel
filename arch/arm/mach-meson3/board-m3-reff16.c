@@ -459,21 +459,11 @@ static struct platform_device vdin_device = {
 
 #if defined(CONFIG_SDIO_DHD_CDC_WIFI_40181_MODULE_MODULE)
 /******************************
-*WL_Power_EN	-->NOPin
 *WL_REG_ON	-->GPIOC_8
 *WIFI_32K		-->GPIOC_15(CLK_OUT1)
 *WIFIWAKE(WL_HOST_WAKE)-->GPIOX_11
 *******************************/
 //#define WL_REG_ON_USE_GPIOC_6
-void extern_wifi_power(int is_power)
-{//NOPin
-}
-EXPORT_SYMBOL(extern_wifi_power);
-void extern_wifi_reset(int is_on)
-{
-}
-EXPORT_SYMBOL(extern_wifi_reset);
-
 void extern_wifi_set_enable(int enable)
 {
 	if(enable){
@@ -528,7 +518,9 @@ static void aml_wifi_bcm4018x_init()
 {
 	wifi_set_clk_enable(1);
 	wifi_gpio_init();
-	//extern_wifi_set_enable(1);
+	extern_wifi_set_enable(0);
+        msleep(5);
+	extern_wifi_set_enable(1);
 }
 
 #endif
@@ -1927,6 +1919,9 @@ static struct platform_device __initdata *platform_devs[] = {
 #endif
 #if defined(CONFIG_NAND_FLASH_DRIVER_MULTIPLANE_CE)
     &aml_nand_device,
+#endif
+#ifdef CONFIG_BT_DEVICE
+ 	&bt_device,
 #endif
 #if defined(CONFIG_AML_RTC)
     &aml_rtc_device,
