@@ -1286,9 +1286,6 @@ void dwc_otg_hc_init(dwc_otg_core_if_t * _core_if, dwc_hc_t * _hc)
 	hcchar.b.epnum = _hc->ep_num;
 	hcchar.b.epdir = _hc->ep_is_in;
 	hcchar.b.lspddev = (_hc->speed == DWC_OTG_EP_SPEED_LOW);
-	if((_hc->ep_type == DWC_OTG_EP_TYPE_INTR) && _hc->do_split)
-		hcchar.b.eptype = DWC_OTG_EP_TYPE_BULK;
-	else
 	hcchar.b.eptype = _hc->ep_type;
 	hcchar.b.mps = _hc->max_packet;
 
@@ -1495,7 +1492,6 @@ void dwc_otg_hc_cleanup(dwc_otg_core_if_t * _core_if, dwc_hc_t * _hc)
 	dwc_write_reg32(&hc_regs->hcint, 0xFFFFFFFF);
 
 #ifdef DEBUG
-	if(timer_pending(&_core_if->hc_xfer_timer[_hc->hc_num]))
 	del_timer(&_core_if->hc_xfer_timer[_hc->hc_num]);
 	{
 		hcchar_data_t hcchar;
@@ -1728,7 +1724,7 @@ void dwc_otg_hc_start_transfer(dwc_otg_core_if_t * _core_if, dwc_hc_t * _hc)
 
 	if (_core_if->dma_enable) {
 		dwc_write_reg32(&hc_regs->hcdma, (uint32_t) _hc->xfer_buff);
-		dwc_wmb();
+		
 		//dma_cache_maint((unsigned long)_hc->xfer_buff,(unsigned long) _hc->xfer_len);
 	}
 
@@ -1771,9 +1767,8 @@ void dwc_otg_hc_start_transfer(dwc_otg_core_if_t * _core_if, dwc_hc_t * _hc)
 
   	if((_hc->speed == DWC_OTG_EP_SPEED_HIGH) && (_hc->ep_is_in) && !(_hc->ep_type == DWC_OTG_EP_TYPE_INTR ||
   		    _hc->ep_type == DWC_OTG_EP_TYPE_ISOC))
-  return;
-	/* Start a timer for this transfer. */
-	init_timer(&_core_if->hc_xfer_timer[_hc->hc_num]);
+  		;
+  	else{	
   		_core_if->hc_xfer_timer[_hc->hc_num].function = hc_xfer_timeout;
   		_core_if->hc_xfer_info[_hc->hc_num].core_if = _core_if;
   		_core_if->hc_xfer_info[_hc->hc_num].hc = _hc;
@@ -1781,7 +1776,9 @@ void dwc_otg_hc_start_transfer(dwc_otg_core_if_t * _core_if, dwc_hc_t * _hc)
   	    	(unsigned long)(&_core_if->hc_xfer_info[_hc->hc_num]);
   		_core_if->hc_xfer_timer[_hc->hc_num].expires = jiffies + (HZ * 10);
   		add_timer(&_core_if->hc_xfer_timer[_hc->hc_num]);
+  	}
 #endif
+	dwc_wmb();
 }
 
 /**
