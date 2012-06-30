@@ -11,7 +11,7 @@
 #define User_MAX_PKT_SIZE               255
 #define User_USE_SHORT_CMD              0
 
-#define User_RETRY_MAX_LIMIT            100
+#define User_RETRY_MAX_LIMIT            20
 
 
 /** Define I2C master speed, the default value 0x07 means 366KHz (1000000000 / (24.4 * 16 * User_I2C_SPEED)). */
