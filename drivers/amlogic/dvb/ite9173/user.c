@@ -145,7 +145,7 @@ Dword I2CWrite(Word I2CSlaveAddr,  Byte *data, Word length)
 
 	ret = i2c_transfer((struct i2c_adapter *)cfg.i2c_adapter, &msg, 1);
 	if(ret<0) {
-		printk(" %s: writereg error, errno is %d \n", __FUNCTION__, ret);
+		printk("DVB---- %s: writereg error, errno is %d \n", __FUNCTION__, ret);
 		return 1;
 	}
 
@@ -169,7 +169,7 @@ Dword  I2CRead(Word I2CSlaveAddr,  Byte *data, Word length)
 
 	 ret = i2c_transfer((struct i2c_adapter *)cfg.i2c_adapter, &msg, 1); 
 	if(ret<0) {
-		printk(" %s: readreg error, errno is %d \n", __FUNCTION__, ret);
+		printk("DVB---- %s: readreg error, errno is %d \n", __FUNCTION__, ret);
 		return 1;
 	}
 

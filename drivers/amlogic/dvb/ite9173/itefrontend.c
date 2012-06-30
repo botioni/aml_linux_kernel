@@ -23,6 +23,7 @@
 #include <linux/delay.h>
 #include <linux/jiffies.h>
 #include <linux/slab.h>
+#include <linux/mutex.h>
 #include <linux/platform_device.h>
 #ifdef ARC_700
 #include <asm/arch/am_regs.h>
@@ -81,7 +82,7 @@ MODULE_PARM_DESC(frontend_power, "\n\t\t ANT_PWR_CTRL of frontend");
 static int frontend_power = -1;
 module_param(frontend_power, int, S_IRUGO);
 
-
+static struct mutex ite_lock;
 static struct aml_fe ite9173_fe[FE_DEV_COUNT];
 
 extern StreamType streamType;
@@ -123,20 +124,27 @@ static int ite9173_sleep(struct dvb_frontend *fe)
 
 static int ite9173_read_status(struct dvb_frontend *fe, fe_status_t * status)
 {
+	Bool locked = 0;
+	Dword ret = 0;
 	struct ite9173_state *state = fe->demodulator_priv;
 
-	Dword ret;
-	Bool locked = 0;
+	pr_dbg("ite9173_read_status\n");
 
-	msleep(1000);
-
+	mutex_lock(&ite_lock);
 	ret = Demodulator_isLocked(pdemod,&locked);
+	printk("DVB: lock status is %d\n",locked);
+	mutex_unlock(&ite_lock);
+
+	if(Error_NO_ERROR != ret)
+		return -1;
 
 	if(locked==1) {
 		*status = FE_HAS_LOCK|FE_HAS_SIGNAL|FE_HAS_CARRIER|FE_HAS_VITERBI|FE_HAS_SYNC;
 	} else {
 		*status = FE_TIMEDOUT;
 	}
+
+	pr_dbg("ite9173_read_status--\n");
 
 	return  0;
 }
@@ -145,31 +153,43 @@ static int ite9173_read_ber(struct dvb_frontend *fe, u32 * ber)
 {
 	struct ite9173_state *state = fe->demodulator_priv;
 
-	pr_dbg("ite9173_read_ber\n");
-
 	return 0;
 }
 
 static int ite9173_read_signal_strength(struct dvb_frontend *fe, u16 *strength)
 {
+	Dword ret = 0;
 	struct ite9173_state *state = fe->demodulator_priv;
 
 	pr_dbg("ite9173_read_signal_strength\n");
 
-	if(Error_NO_ERROR != Demodulator_getSignalStrength(pdemod,(Byte*)strength))
+	mutex_lock(&ite_lock);
+	ret = Demodulator_getSignalStrength(pdemod,(Byte*)strength);
+	mutex_unlock(&ite_lock);
+
+	if(Error_NO_ERROR != ret)
 		return -1;
+
+	pr_dbg("ite9173_read_signal_strength--\n");
 
 	return 0;
 }
 
 static int ite9173_read_snr(struct dvb_frontend *fe, u16 *snr)
 {
+	Dword ret = 0;
 	struct ite9173_state *state = fe->demodulator_priv;
 
 	pr_dbg("ite9173_read_snr\n");
 
-	if(Error_NO_ERROR != Demodulator_getSNR(pdemod,(Byte*)snr))
+	mutex_lock(&ite_lock);
+	ret = Demodulator_getSNR(pdemod,(Byte*)snr);
+	mutex_unlock(&ite_lock);
+
+	if(Error_NO_ERROR != ret)
 		return -1;
+
+	pr_dbg("ite9173_read_snr--\n");
 
 	return 0;
 }
@@ -186,13 +206,13 @@ static int ite9173_read_ucblocks(struct dvb_frontend *fe, u32 * ucblocks)
 
 static int ite9173_set_frontend(struct dvb_frontend *fe, struct dvb_frontend_parameters *p)
 {
-
-	pr_dbg("ite9173_set_frontend\n");
-
+	Bool locked = 0;
+	Word bandwidth=8;
+	Dword ret = 0;
+	int times=40;
 	struct ite9173_state *state = fe->demodulator_priv;
 
-	Dword ret;
-	Word bandwidth=8;
+	pr_dbg("ite9173_set_frontend\n");
 
 	bandwidth=p->u.ofdm.bandwidth;
 	if(bandwidth==0)
@@ -207,9 +227,29 @@ static int ite9173_set_frontend(struct dvb_frontend *fe, struct dvb_frontend_par
 	state->freq=(p->frequency/1000);
 
 	if(state->freq>0&&state->freq!=-1) {
+		mutex_lock(&ite_lock);
 		ret = Demodulator_acquireChannel(pdemod, bandwidth*1000,state->freq);
-	}else
-		printk("\n--[xsw]: Invalidate Fre!!!!!!!!!!!!!--\n");
+		mutex_unlock(&ite_lock);
+		if(Error_NO_ERROR != ret)
+			return -1;
+	} else {
+		printk("\n--Invalidate Fre!!!!!!!!!!!!!--\n");
+	}
+//	printk("now1 the jiffies is %x\n",jiffies);
+	while(times) {
+		mutex_lock(&ite_lock);
+		ret = Demodulator_isLocked(pdemod,&locked);
+		printk("DVB----lock status is %d\n",locked);
+		mutex_unlock(&ite_lock);
+		if(Error_NO_ERROR != ret)
+			return -1;
+		if(1==locked)
+			break;
+//		msleep(10);
+		times--;
+	}	
+//	printk("now2 the jiffies is %x\n",jiffies);
+	pr_dbg("ite9173_set_frontend--\n");
 
 	return  0;
 }
@@ -217,11 +257,13 @@ static int ite9173_set_frontend(struct dvb_frontend *fe, struct dvb_frontend_par
 static int ite9173_get_frontend(struct dvb_frontend *fe, struct dvb_frontend_parameters *p)
 {//these content will be writed into eeprom .
 
-	pr_dbg("ite9173_get_frontend\n");
-
 	struct ite9173_state *state = fe->demodulator_priv;
 
+	pr_dbg("ite9173_get_frontend\n");
+
 	p->frequency=1000*state->freq;
+
+	pr_dbg("ite9173_get_frontend--\n");
 
 	return 0;
 }
@@ -301,6 +343,7 @@ static void ite9173_fe_release(struct aml_dvb *advb, struct aml_fe *fe)
 {
 	if(fe && fe->fe) {
 		pr_dbg("release ite9173 frontend %d\n", fe->id);
+		mutex_destroy(&ite_lock);
 		dvb_unregister_frontend(fe->fe);
 		dvb_frontend_detach(fe->fe);
 		if(fe->cfg){
@@ -407,6 +450,8 @@ static int ite9173_fe_init(struct aml_dvb *advb, struct platform_device *pdev, s
 
 	fe->id = id;
 	fe->cfg = cfg;
+
+	mutex_init(&ite_lock);
 
 	return 0;
 
