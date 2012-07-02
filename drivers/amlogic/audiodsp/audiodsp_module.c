@@ -746,6 +746,32 @@ static ssize_t digital_raw_store(struct class* class, struct class_attribute* at
   printk("IEC958_mode_raw=%d\n", IEC958_mode_raw);
   return count;
 }
+
+static ssize_t print_flag_show(struct class*cla, struct class_attribute* attr, char* buf)
+{
+  static char* dec_format[] = {
+    "0 - disable arc dsp print",
+    "1 - enable arc dsp print",  };
+  char* pbuf = buf;
+  pbuf += sprintf(pbuf, "audiodsp decode option: %s\n", dec_format[(decopt&0x5)>>2]);
+  return (pbuf-buf);
+}
+static ssize_t print_flag_store(struct class* class, struct class_attribute* attr,
+   const char* buf, size_t count )
+{
+  unsigned dec_opt = 0x1;
+  printk("buf=%s\n", buf);
+  if(buf[0] == '0'){
+    dec_opt = 0;	// disable print flag
+  }else if(buf[0] == '1'){
+    dec_opt = 1;	// enable print flag
+  }
+  
+  decopt = 	(decopt&(~4))|(dec_opt<<2);
+  printk("dec option=%d, decopt = %x\n", dec_opt, decopt);
+  return count;
+}
+
 static ssize_t dec_option_show(struct class*cla, struct class_attribute* attr, char* buf)
 {
   static char* dec_format[] = {
@@ -786,6 +812,7 @@ static struct class_attribute audiodsp_attrs[]={
     __ATTR_RO(dsp_working_status),
     __ATTR(digital_raw, S_IRUGO | S_IWUSR, digital_raw_show, digital_raw_store),
 	__ATTR(dec_option, S_IRUGO | S_IWUSR, dec_option_show, dec_option_store),    
+	__ATTR(print_flag, S_IRUGO | S_IWUSR, print_flag_show, print_flag_store),	 
     __ATTR_NULL
 };
 

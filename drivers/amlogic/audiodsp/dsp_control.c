@@ -321,6 +321,7 @@ exit:
 /**
  *	bit31 - digital raw output
  *	bit30 - IEC61937 pass over HDMI
+ *	bit 2 - ARC DSP print flag
  *	bit 1  - dts decoder policy select: 0:mute 1:noise
  *	bit 0  - dd/dd+ 	decoder policy select  0:mute 1:noise
  * */
