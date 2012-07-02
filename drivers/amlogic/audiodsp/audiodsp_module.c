@@ -45,6 +45,7 @@ MODULE_VERSION("1.0.0");
 
 extern unsigned IEC958_mode_raw;
 extern unsigned IEC958_mode_codec;
+extern int decopt;
 static int IEC958_mode_raw_last = 0;
 static int IEC958_mode_codec_last = 0;
 extern struct audio_info * get_audio_info(void);
@@ -745,6 +746,36 @@ static ssize_t digital_raw_store(struct class* class, struct class_attribute* at
   printk("IEC958_mode_raw=%d\n", IEC958_mode_raw);
   return count;
 }
+static ssize_t dec_option_show(struct class*cla, struct class_attribute* attr, char* buf)
+{
+  static char* dec_format[] = {
+	"0 - mute dts and ac3 ",  	
+    "1 - mute dts.ac3 with noise ",
+    "2 - mute ac3.dts with noise",
+    "3 - both ac3 and dts with noise",
+  };
+  char* pbuf = buf;
+  pbuf += sprintf(pbuf, "audiodsp decode option: %s\n", dec_format[decopt&0x3]);
+  return (pbuf-buf);
+}
+static ssize_t dec_option_store(struct class* class, struct class_attribute* attr,
+   const char* buf, size_t count )
+{
+  unsigned dec_opt = 0x3;
+  printk("buf=%s\n", buf);
+  if(buf[0] == '0'){
+    dec_opt = 0;	// mute ac3/dts
+  }else if(buf[0] == '1'){
+    dec_opt = 1;	// mute dts
+  }else if(buf[0] == '2'){
+    dec_opt = 2;	// mute ac3
+  }else if(buf[0] == '3'){
+  	dec_opt = 3; //with noise
+  }
+  decopt = 	(decopt&(~3))|dec_opt;
+  printk("dec option=%d\n", dec_opt);
+  return count;
+}
 
 
 static struct class_attribute audiodsp_attrs[]={
@@ -754,6 +785,7 @@ static struct class_attribute audiodsp_attrs[]={
     __ATTR_RO(swap_buf_ptr),
     __ATTR_RO(dsp_working_status),
     __ATTR(digital_raw, S_IRUGO | S_IWUSR, digital_raw_show, digital_raw_store),
+	__ATTR(dec_option, S_IRUGO | S_IWUSR, dec_option_show, dec_option_store),    
     __ATTR_NULL
 };
 

@@ -27,7 +27,7 @@
 
 extern unsigned IEC958_mode_raw;
 
-static int decopt = 0x0000ffff;
+int decopt = 0x0000ffff;
 
 #define RESET_AUD_ARC	(1<<13)
 static void	enable_dsp(int flag)
@@ -321,6 +321,8 @@ exit:
 /**
  *	bit31 - digital raw output
  *	bit30 - IEC61937 pass over HDMI
+ *	bit 1  - dts decoder policy select: 0:mute 1:noise
+ *	bit 0  - dd/dd+ 	decoder policy select  0:mute 1:noise
  * */
 
 static  int __init decode_option_setup(char *s)
