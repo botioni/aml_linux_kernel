@@ -14,3 +14,4 @@ obj-$(CONFIG_SDIO_DHD_CDC_WIFI_40181_MODULE) += broadcm_40181/
 obj-$(CONFIG_SDIO_NRX600) += nano_c047_12/
 obj-$(CONFIG_ATH6KL_USB_WIFI) += atheros_ath6kl/
 obj-$(CONFIG_RTL8192DU) += rtl8xxx_DU/
+obj-$(CONFIG_RTL8xxx_CU_MP) += rtl8xxx_CU_MP/
