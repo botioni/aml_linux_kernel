@@ -13,3 +13,5 @@ obj-$(CONFIG_AM_MXL101) += mxl101/
 obj-$(CONFIG_AM_AVL6211) += avl6211/
 
 obj-$(CONFIG_AM_ITE9173) += ite9173/
+
+obj-$(CONFIG_AM_ITE9133) += ite9133/
