@@ -2773,7 +2773,7 @@ static int hdmitx_m3_cntl(hdmitx_dev_t* hdmitx_device, int cmd, unsigned argv)
         if(unmux_hpd_flag){
             hdmi_print(1,"power off hdmi, unmux hpd\n");
             phy_pll_off();
-            digital_clk_off(7); //off sys clk
+            digital_clk_off(4); //off sys clk
             unmux_hpd();
         }
         else{

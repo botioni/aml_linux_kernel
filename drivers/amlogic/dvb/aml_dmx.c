@@ -344,8 +344,6 @@ static void process_section(struct aml_dmx *dmx)
 	//	WRITE_ISA_REG(AHB_BRIDGE_CTRL1, READ_ISA_REG (AHB_BRIDGE_CTRL1) & (~ (1 << 31)));
 #endif
 
-	dma_sync_single_for_cpu(NULL, dmx->sec_pages_map, dmx->sec_total_len, DMA_FROM_DEVICE);
-
 	for(i=0; i<32; i++) {
 			if(!(ready & (1 << i)))
 				continue;
@@ -353,10 +351,10 @@ static void process_section(struct aml_dmx *dmx)
 			DMX_WRITE_REG(dmx->id, SEC_BUFF_NUMBER, i);
 			sec_num = (DMX_READ_REG(dmx->id, SEC_BUFF_NUMBER) >> 8);
 			
+			dma_sync_single_for_cpu(NULL, dmx->sec_pages_map+(sec_num<<0x0c), (1<<0x0c), DMA_FROM_DEVICE);
+
 			sec_data_notify(dmx, sec_num, i);
 
-			//flush_cache_all();
-			
 			DMX_WRITE_REG(dmx->id, SEC_BUFF_READY, (1 << i));
 		}
 	}

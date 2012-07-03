@@ -440,6 +440,10 @@ static void aml_hw_iec958_init(void)
 		
 	}
 	audio_set_958_mode(IEC958_MODE, &set);
+	if(IEC958_MODE == AIU_958_MODE_PCM_RAW && IEC958_mode_raw == 2 &&IEC958_mode_codec == 2)  //dd+
+		WRITE_MPEG_REG_BITS(AIU_CLK_CTRL, 0, 4, 2); // 4x than i2s
+	else
+		WRITE_MPEG_REG_BITS(AIU_CLK_CTRL, 3, 4, 2);
 	iec958_notify_hdmi_info();
 
 

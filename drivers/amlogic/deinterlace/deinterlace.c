@@ -89,7 +89,7 @@ static dev_t di_id;
 static struct class *di_class;
 
 #define INIT_FLAG_NOT_LOAD 0x80
-static int version = 6;
+static int version = 7;
 static unsigned char boot_init_flag=0;
 static int receiver_is_amvideo = 1;
 static int buf_mgr_mode = 0;
@@ -771,6 +771,8 @@ typedef struct di_buf_s{
     int nr_canvas_idx;
     unsigned int mtn_adr;
     int mtn_canvas_idx;
+    unsigned int canvas_config_flag; /* 0, configed; 1, config type 1 (prog); 2, config type 2 (interlace) */
+    unsigned int canvas_config_size; /* bit [31~16] width; bit [15~0] height */
     /* pull down information */
     pulldown_detect_info_t field_pd_info;
     pulldown_detect_info_t win_pd_info[MAX_WIN_NUM];
@@ -1359,6 +1361,25 @@ static unsigned char is_bypass(void)
 #error "DEINTERLACE_CANVAS_BASE_INDEX is not 0x68 or DEINTERLACE_CANVAS_MAX_INDEX is not 0x7f, update canvas.h"
 #endif
 #endif
+
+static void config_canvas(di_buf_t* di_buf)
+{
+    if(di_buf){
+        int width = (di_buf->canvas_config_size>>16)&0xffff;
+        int canvas_height = (di_buf->canvas_config_size)&0xffff;
+        if(di_buf->canvas_config_flag == 1){
+            canvas_config(di_buf->nr_canvas_idx, di_buf->nr_adr, width*2, canvas_height, 0, 0);            
+            di_buf->canvas_config_flag = 0;
+        }
+        else if(di_buf->canvas_config_flag == 2){
+            canvas_config(di_buf->nr_canvas_idx, di_buf->nr_adr, width*2, canvas_height/2, 0, 0);
+	          canvas_config(di_buf->mtn_canvas_idx, di_buf->mtn_adr, width/2, canvas_height/2, 0, 0);
+            di_buf->canvas_config_flag = 0;
+        }
+        
+    }
+}
+    
 static int di_init_buf(int width, int height, unsigned char prog_flag)
 {
     int i, local_buf_num_available;
@@ -1405,15 +1426,20 @@ static int di_init_buf(int width, int height, unsigned char prog_flag)
             if(prog_flag){
                 di_buf->nr_adr = di_mem_start + (width*canvas_height*2)*i;
     	          di_buf->nr_canvas_idx = DEINTERLACE_CANVAS_BASE_INDEX+i;
-	              canvas_config(di_buf->nr_canvas_idx, di_buf->nr_adr, width*2, canvas_height, 0, 0);
+
+	              //canvas_config(di_buf->nr_canvas_idx, di_buf->nr_adr, width*2, canvas_height, 0, 0);
+                di_buf->canvas_config_flag = 1;
+                di_buf->canvas_config_size = (width<<16)|canvas_height;
             }
             else{
                 di_buf->nr_adr = di_mem_start + (width*canvas_height*5/4)*i;
     	          di_buf->nr_canvas_idx = DEINTERLACE_CANVAS_BASE_INDEX+i*2;
-	              canvas_config(di_buf->nr_canvas_idx, di_buf->nr_adr, width*2, canvas_height/2, 0, 0);
+	              //canvas_config(di_buf->nr_canvas_idx, di_buf->nr_adr, width*2, canvas_height/2, 0, 0);
                 di_buf->mtn_adr = di_mem_start + (width*canvas_height*5/4)*i + (width*canvas_height);
     	          di_buf->mtn_canvas_idx = DEINTERLACE_CANVAS_BASE_INDEX+i*2+1;
-	              canvas_config(di_buf->mtn_canvas_idx, di_buf->mtn_adr, width/2, canvas_height/2, 0, 0);
+	              //canvas_config(di_buf->mtn_canvas_idx, di_buf->mtn_adr, width/2, canvas_height/2, 0, 0);
+                di_buf->canvas_config_flag = 2;
+                di_buf->canvas_config_size = (width<<16)|canvas_height;
             }
             di_buf->index = i;
             di_buf->vframe = &(vframe_local[i]);
@@ -2325,6 +2351,8 @@ static unsigned char pre_de_buf_config(void)
 
      /* di_wr_buf */
      di_buf= get_di_buf_head(QUEUE_LOCAL_FREE);
+     config_canvas(di_buf);
+      
      if((di_buf == NULL)||(di_buf->vframe == NULL)){
 #ifdef DI_DEBUG
         printk("%s:Error\n", __func__);
@@ -3460,28 +3488,29 @@ static void di_process(void)
             }
             else{
 unreg:                
-                init_flag = 0;
-                raw_local_save_flags(fiq_flag);
-                local_fiq_disable();
-
-                if(bypass_state == 0){
-	                DisableVideoLayer();
-  							}
-  							              
-                vf_unreg_provider(&di_vf_prov);
-                raw_local_irq_restore(fiq_flag);
-                spin_lock_irqsave(&plist_lock, flags);
-
-                raw_local_save_flags(fiq_flag);
-                local_fiq_disable();
+                if(init_flag){
+                    init_flag = 0;
+                    raw_local_save_flags(fiq_flag);
+                    local_fiq_disable();
+    
+                    if(bypass_state == 0){
+    	                DisableVideoLayer();
+      							}
+      							              
+                    vf_unreg_provider(&di_vf_prov);
+                    raw_local_irq_restore(fiq_flag);
+                    spin_lock_irqsave(&plist_lock, flags);
+    
+                    raw_local_save_flags(fiq_flag);
+                    local_fiq_disable();
 #ifdef DI_DEBUG
-                di_print("%s: di_uninit_buf\n", __func__);
+                    di_print("%s: di_uninit_buf\n", __func__);
 #endif
-                di_uninit_buf();
-                raw_local_irq_restore(fiq_flag);
-
-                spin_unlock_irqrestore(&plist_lock, flags);
-                
+                    di_uninit_buf();
+                    raw_local_irq_restore(fiq_flag);
+    
+                    spin_unlock_irqrestore(&plist_lock, flags);
+                }
                 di_pre_stru.force_unreg_req_flag = 0;
                 di_pre_stru.disable_req_flag = 0;
                 recovery_flag = 0;

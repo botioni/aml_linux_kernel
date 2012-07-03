@@ -813,7 +813,7 @@ static void __exit aml_dvb_exit(void)
 static struct aml_dmx* get_stb_dmx(void)
 {
 	struct aml_dvb *dvb = &aml_dvb_device;
-	struct aml_dmx *dmx;
+	struct aml_dmx *dmx = NULL;
 	int i;
 
 	switch(dvb->stb_source){
@@ -836,7 +836,7 @@ static struct aml_dmx* get_stb_dmx(void)
 		break;
 	}
 	
-	return NULL;
+	return dmx;
 }
 
 static int aml_tsdemux_reset(void)

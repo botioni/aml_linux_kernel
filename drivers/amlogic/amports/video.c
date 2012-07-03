@@ -2837,7 +2837,7 @@ static void vout_hook(void)
 static int __init video_early_init(void)
 {
     logo_object_t  *init_logo_obj=NULL;
-    init_logo_obj = NULL; //get_current_logo_obj();
+    init_logo_obj = get_current_logo_obj();
 
     if(NULL==init_logo_obj || !init_logo_obj->para.loaded)
     {

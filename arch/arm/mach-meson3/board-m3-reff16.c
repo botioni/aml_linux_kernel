@@ -457,31 +457,29 @@ static struct platform_device vdin_device = {
 };
 #endif
 
-//#define CONFIG_WIFI_BCM_4018x
-#if defined(CONFIG_WIFI_BCM_4018x)
+#if defined(CONFIG_SDIO_DHD_CDC_WIFI_40181_MODULE_MODULE)
 /******************************
-*WL_Power_EN	-->NOPin
 *WL_REG_ON	-->GPIOC_8
 *WIFI_32K		-->GPIOC_15(CLK_OUT1)
 *WIFIWAKE(WL_HOST_WAKE)-->GPIOX_11
 *******************************/
-void extern_wifi_power(int is_power)
-{//NOPin
-}
-EXPORT_SYMBOL(extern_wifi_power);
-void extern_wifi_reset(int is_on)
-{
-}
-EXPORT_SYMBOL(extern_wifi_reset);
-
+//#define WL_REG_ON_USE_GPIOC_6
 void extern_wifi_set_enable(int enable)
 {
 	if(enable){
+#ifdef WL_REG_ON_USE_GPIOC_6
+		SET_CBUS_REG_MASK(PREG_PAD_GPIO2_O, (1<<6));
+#else
 		SET_CBUS_REG_MASK(PREG_PAD_GPIO2_O, (1<<8));
+#endif
 		printk("Enable WIFI  Module!\n");
 	}
     	else{
+#ifdef WL_REG_ON_USE_GPIOC_6
+		CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO2_O, (1<<6));
+#else
 		CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO2_O, (1<<8));
+#endif
 		printk("Disable WIFI  Module!\n");
 	}
 }
@@ -501,11 +499,18 @@ static void wifi_set_clk_enable(int on)
 
 static void wifi_gpio_init(void)
 {
+#ifdef WL_REG_ON_USE_GPIOC_6
+    //set WL_REG_ON Pin GPIOC_6 out
+        CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0, (1<<16));
+        CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_1, (1<<5));
+        CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO2_EN_N, (1<<6));  //GPIOC_6
+#else
     //set WL_REG_ON Pin GPIOC_8 out 
    	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_3, (1<<23));
 	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0, (1<<18));
 	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_1, (1<<10));
      	CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO2_EN_N, (1<<8));  //GPIOC_8
+#endif
 }
 
 
@@ -513,7 +518,9 @@ static void aml_wifi_bcm4018x_init()
 {
 	wifi_set_clk_enable(1);
 	wifi_gpio_init();
-	//extern_wifi_set_enable(1);
+	extern_wifi_set_enable(0);
+        msleep(5);
+	extern_wifi_set_enable(1);
 }
 
 #endif
@@ -527,19 +534,20 @@ static struct resource amlogic_card_resource[] = {
     }
 };
 
-#if defined(CONFIG_WIFI_BCM_4018x)
+#if defined(CONFIG_SDIO_DHD_CDC_WIFI_40181_MODULE_MODULE)
 #define GPIO_WIFI_HOSTWAKE  ((GPIOX_bank_bit0_31(11)<<16) |GPIOX_bit_bit0_31(11))
 void sdio_extern_init(void)
 {
 	printk("sdio_extern_init !\n");
-#if defined(CONFIG_BCM40183_WIFI)
-	printk("40183 set oob mode !\n");
-  SET_CBUS_REG_MASK(PAD_PULL_UP_REG4, (1<<11));
+	SET_CBUS_REG_MASK(PAD_PULL_UP_REG4, (1<<11));
 	gpio_direction_input(GPIO_WIFI_HOSTWAKE);
-	//gpio_enable_level_int(gpio_to_idx(GPIO_WIFI_HOSTWAKE), 0, 4);  //for 40181
+#if defined(CONFIG_BCM40181_WIFI)
+	gpio_enable_level_int(gpio_to_idx(GPIO_WIFI_HOSTWAKE), 0, 4);  //for 40181
+#endif
+#if defined(CONFIG_BCM40183_WIFI)
 	gpio_enable_edge_int(gpio_to_idx(GPIO_WIFI_HOSTWAKE), 0, 5);     //for 40183
 #endif 
-	extern_wifi_set_enable(1);
+	//extern_wifi_set_enable(1);
 }
 #endif
 
@@ -563,7 +571,7 @@ static struct aml_card_info  amlogic_card_info[] = {
         .card_wp_input_mask = PREG_IO_30_MASK,
         .card_extern_init = 0,
     },
-#if defined(CONFIG_WIFI_BCM_4018x)    
+#if defined(CONFIG_SDIO_DHD_CDC_WIFI_40181_MODULE_MODULE)
     [1] = {
         .name = "sdio_card",
         .work_mode = CARD_HW_MODE,
@@ -870,13 +878,13 @@ static void set_gpio_suspend_resume(int power_on)
 		 udelay(50);
         hdmi_wr_reg(0x8005, 1); 
         // LED
-        WRITE_CBUS_REG(PWM_PWM_C, (0xff00<<16) |(0xff00<<0));
+       // WRITE_CBUS_REG(PWM_PWM_C, (0xff00<<16) |(0xff00<<0));
     	}
 	else
 		{
     	printk("set gpio suspend.\n");
 		 // LED
-        WRITE_CBUS_REG(PWM_PWM_C, (0xff00<<16) |(0<<0));
+       // WRITE_CBUS_REG(PWM_PWM_C, (0xff00<<16) |(0<<0));
 		}
 }
 
@@ -1806,6 +1814,88 @@ static  struct platform_device gx1001_device = {
 	.resource         = gx1001_resource,
 };
 
+
+static struct resource ite9173_resource[]  = {
+	[0] = {
+		.start = (GPIOD_bank_bit0_9(8)<<16)|GPIOD_bit_bit0_9(8), //reset pin
+		.end   = (GPIOD_bank_bit0_9(8)<<16)|GPIOD_bit_bit0_9(8),
+		.flags = IORESOURCE_MEM,
+		.name  = "frontend0_reset"
+	},
+	[1] = {
+		.start = 0,                                    //frontend 0 i2c adapter id
+		.end   = 0,
+		.flags = IORESOURCE_MEM,
+		.name  = "frontend0_i2c"
+	},
+	[2] = {
+		.start = 0x9E,                                 //frontend 0 tuner address
+		.end   = 0x9E,
+		.flags = IORESOURCE_MEM,
+		.name  = "frontend0_tuner_addr"
+	},
+	[3] = {
+		.start =  0x38,                                 //frontend 0 demod address
+		.end   =  0x38,
+		.flags = IORESOURCE_MEM,
+		.name  = "frontend0_demod_addr"
+	},
+	[4] = {
+		.start = (GPIOB_bank_bit0_23(23)<<16)|GPIOB_bit_bit0_23(23),  //// ANT_PWR_CTRL pin
+		.end   = (GPIOB_bank_bit0_23(23)<<16)|GPIOB_bit_bit0_23(23),
+		.flags = IORESOURCE_MEM,
+		.name  = "frontend0_power"
+	},
+};
+
+static  struct platform_device ite9173_device = {
+	.name             = "ite9173",
+	.id               = -1,
+	.num_resources    = ARRAY_SIZE(ite9173_resource),
+	.resource         = ite9173_resource,
+};
+
+static struct resource ite9133_resource[]  = {
+	[0] = {
+		.start = (GPIOD_bank_bit0_9(8)<<16)|GPIOD_bit_bit0_9(8), //reset pin
+		.end   = (GPIOD_bank_bit0_9(8)<<16)|GPIOD_bit_bit0_9(8),
+		.flags = IORESOURCE_MEM,
+		.name  = "frontend0_reset"
+	},
+	[1] = {
+		.start = 0,                                    //frontend 0 i2c adapter id
+		.end   = 0,
+		.flags = IORESOURCE_MEM,
+		.name  = "frontend0_i2c"
+	},
+	[2] = {
+		.start = 0x98,                                 //frontend 0 tuner address
+		.end   = 0x98,
+		.flags = IORESOURCE_MEM,
+		.name  = "frontend0_tuner_addr"
+	},
+	[3] = {
+		.start =  0x38,                                 //frontend 0 demod address
+		.end   =  0x38,
+		.flags = IORESOURCE_MEM,
+		.name  = "frontend0_demod_addr"
+	},
+	[4] = {
+		.start = (GPIOC_bank_bit0_15(3)<<16)|GPIOC_bank_bit0_15(3),  //// tuner_enable
+		.end   = (GPIOC_bank_bit0_15(3)<<16)|GPIOC_bank_bit0_15(3),
+		.flags = IORESOURCE_MEM,
+		.name  = "frontend0_power"
+	},
+};
+
+static  struct platform_device ite9133_device = {
+	.name             = "ite9133",
+	.id               = -1,
+	.num_resources    = ARRAY_SIZE(ite9133_resource),
+	.resource         = ite9133_resource,
+};
+
+
 #endif
 #if defined(CONFIG_AML_WATCHDOG)
 static struct platform_device aml_wdt_device = {
@@ -1872,6 +1962,9 @@ static struct platform_device __initdata *platform_devs[] = {
 #if defined(CONFIG_NAND_FLASH_DRIVER_MULTIPLANE_CE)
     &aml_nand_device,
 #endif
+#ifdef CONFIG_BT_DEVICE
+ 	&bt_device,
+#endif
 #if defined(CONFIG_AML_RTC)
     &aml_rtc_device,
 #endif
@@ -1921,6 +2014,8 @@ static struct platform_device __initdata *platform_devs[] = {
 	&mxl101_device,
 	&gx1001_device,
 	&avl6211_device,
+	&ite9173_device,
+	&ite9133_device,
 #endif
  #if defined(CONFIG_AML_WATCHDOG)
         &aml_wdt_device,
@@ -2041,7 +2136,29 @@ static void __init device_pinmux_init(void )
 
 #endif
 
-#if defined(CONFIG_WIFI_BCM_4018x)
+
+#ifdef CONFIG_AM_ITE9173
+//for ite9173
+	printk("CONFIG_AM_ITE9173 set pinmux\n");
+	set_mio_mux(3, 0x3F<<6);
+//	clear_mio_mux(0, 1<<4);
+	clear_mio_mux(0, 0x7);
+#endif
+
+#ifdef CONFIG_AM_ITE9133
+
+//for ite9133
+	printk("CONFIG_AM_ITE9133 set pinmux\n");
+	set_mio_mux(3, 0xFFF<<6);
+//	clear_mio_mux(0, 1<<4);
+	clear_mio_mux(0, 0x3F);
+
+
+#endif
+
+
+
+#if defined(CONFIG_SDIO_DHD_CDC_WIFI_40181_MODULE_MODULE)
     aml_wifi_bcm4018x_init();
 #endif
 
@@ -2155,7 +2272,7 @@ static __init void m1_init_machine(void)
 //    pm_power_off = power_off;		//Elvis fool
     device_clk_setting();
     device_pinmux_init();
-    LED_PWM_REG0_init();
+//    LED_PWM_REG0_init();
 
 	
 #ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE
