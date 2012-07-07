@@ -654,7 +654,6 @@ static void vh264_isr(void)
 
                 continue;
             }
-
             pic_struct = (status >> 5) & 0x7;
             prog_frame = status & 0x100;
             poc_sel = status & 0x200;
@@ -794,6 +793,10 @@ static void vh264_isr(void)
                     vf->type = poc_sel ? VIDTYPE_INTERLACE_BOTTOM : VIDTYPE_INTERLACE_TOP;
                 }
 
+                // set default to use TOP only when picture struct invalid and in imode
+                if ((prog_frame == 0)&&(pic_struct == PIC_INVALID)&&(trickmode_i)) 
+		    vf->type = VIDTYPE_INTERLACE_TOP;
+                
                 vf->type |= VIDTYPE_INTERLACE_FIRST;
 
                 vf->duration >>= 1;
@@ -822,6 +825,10 @@ static void vh264_isr(void)
                 
                 if ((READ_MPEG_REG(AV_SCRATCH_F) & 3) == 2)
                     vf->type = VIDTYPE_INTERLACE_TOP;
+
+                // set default to use TOP only when picture struct invalid and in imode
+                if ((prog_frame == 0)&&(pic_struct == PIC_INVALID)&&(trickmode_i)) 
+		    vf->type = VIDTYPE_INTERLACE_TOP;
 
                 vf->duration >>= 1;
                 vf->duration_pulldown = 0;
@@ -1107,7 +1114,6 @@ static void vh264_local_init(void)
     pts_missed = 0;
     pts_hit = 0;
 #endif
-
     return;
 }
 
