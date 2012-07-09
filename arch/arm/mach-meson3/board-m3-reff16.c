@@ -337,6 +337,20 @@ static struct platform_device amlogic_spi_nor_device = {
 #endif
 
 #ifdef CONFIG_USB_DWC_OTG_HCD
+#ifdef CONFIG_USB_DPLINE_PULLUP_DISABLE
+static set_vbus_valid_ext_fun(unsigned int id,char val)
+{
+	unsigned int  reg = (PREI_USB_PHY_A_REG1 + id);
+	if(val == 1)
+	{
+		SET_CBUS_REG_MASK(reg,1<<0);
+	}
+	else
+	{
+		CLEAR_CBUS_REG_MASK(reg,1<<0);
+	}
+}
+#endif
 static void set_usb_a_vbus_power(char is_power_on)
 {
 }
@@ -370,6 +384,9 @@ static struct lm_device usb_ld_a = {
     .port_speed = USB_PORT_SPEED_DEFAULT,
     .dma_config = USB_DMA_BURST_SINGLE,
     .set_vbus_power = set_usb_a_vbus_power,
+#ifdef CONFIG_USB_DPLINE_PULLUP_DISABLE	
+	.set_vbus_valid_ext = set_vbus_valid_ext_fun,
+#endif
 };
 static struct lm_device usb_ld_b = {
     .type = LM_DEVICE_TYPE_USB,
@@ -382,6 +399,9 @@ static struct lm_device usb_ld_b = {
     .port_speed = USB_PORT_SPEED_DEFAULT,
     .dma_config = USB_DMA_BURST_SINGLE , //   USB_DMA_DISABLE,
     .set_vbus_power = set_usb_b_vbus_power,
+#ifdef CONFIG_USB_DPLINE_PULLUP_DISABLE	
+	.set_vbus_valid_ext = set_vbus_valid_ext_fun,
+#endif	
 };
 
 #endif
