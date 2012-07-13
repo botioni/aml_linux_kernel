@@ -268,8 +268,8 @@ osd_ioctl(struct fb_info *info, unsigned int cmd,
 	 s32  osd_axis[4] = {0};
 	 u32  block_windows[8] = {0};
 	 u32  block_mode;
-
-    	switch (cmd)
+	 u32  flush_rate;
+	switch (cmd)
   	{
    		case  FBIOPUT_OSD_SRCKEY_ENABLE:
 			copy_from_user(&srckey_enable,argp,sizeof(u32));
@@ -282,6 +282,9 @@ osd_ioctl(struct fb_info *info, unsigned int cmd,
 			break;
 		case FBIOPUT_OSD_SCALE_AXIS:
 			copy_from_user(&osd_axis, argp, 4 * sizeof(s32));
+			break;
+		case FBIOGET_OSD_FLUSH_RATE:
+			copy_from_user(&flush_rate, argp, sizeof(u32));
 			break;
 		case FBIOGET_OSD_SCALE_AXIS:
 		case FBIOPUT_OSD_ORDER:
@@ -337,6 +340,11 @@ osd_ioctl(struct fb_info *info, unsigned int cmd,
     		case FBIOPUT_OSD_2X_SCALE: //arg :higher 16 bit h_scale_enable, lower 16 bit v_scale_enable
 		osddev_set_2x_scale(info->node,arg&0xffff0000?1:0,arg&0xffff?1:0);
 		break;		
+		case FBIOGET_OSD_FLUSH_RATE:
+		osddev_get_flush_rate(&flush_rate);
+		if(copy_to_user(argp, &flush_rate, sizeof(u32)))
+			return -EFAULT;
+		break;
 		case FBIOPUT_OSD_CANVAS_CONF:
 			osddev_set_canvas_conf(info->node, arg);
     		case FBIOPUT_OSD_SRCCOLORKEY:
@@ -1123,6 +1131,15 @@ static ssize_t store_canvas_conf(struct device *device, struct device_attribute 
 	return count;
 }
 
+static ssize_t show_flush_rate(struct device *device, struct device_attribute *attr,
+			 char *buf)
+{
+	u32 flush_rate = 0;
+	osddev_get_flush_rate(&flush_rate);
+	return snprintf(buf, PAGE_SIZE, "flush_rate:[%d]\n", flush_rate);
+
+}
+
 static struct device_attribute osd_attrs[] = {
 	__ATTR(scale, S_IRUGO|S_IWUSR, show_scale, store_scale),
 	__ATTR(order, S_IRUGO|S_IWUSR, show_order, store_order),	
@@ -1143,6 +1160,7 @@ static struct device_attribute osd_attrs[] = {
 	__ATTR(video_hole, S_IRUGO|S_IWUSR, show_video_hole, store__video_hole),
 	__ATTR(enforce_progressive, S_IRUGO| S_IWUSR, show_enforce_progressive, store_enforce_progressive),
 	__ATTR(canvas_conf, S_IRUGO|S_IWUSR, show_canvas_conf, store_canvas_conf),
+	__ATTR(flush_rate, S_IRUGO|S_IWUSR, show_flush_rate, NULL),
 };		
 
 #ifdef  CONFIG_PM
