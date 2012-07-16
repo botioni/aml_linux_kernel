@@ -107,7 +107,13 @@ config MACH_MESON3_REFF33
         select GENERIC_ALLOCATOR
         bool "Support M3 PBI MBX platform"
         help
-          Include support for the Ref M3 board platform.
+          Include support for the PBI M3 board platform.
+
+config MACH_MESON3_REFF34
+        select GENERIC_ALLOCATOR
+        bool "Support M3 NGN MBX platform"
+        help
+          Include support for the NGN M3 board platform.
 
 config MESON3_CLOCK_TICK_RATE
     int "Clock Tick Rate"
