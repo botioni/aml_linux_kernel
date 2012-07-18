@@ -1,7 +1,7 @@
 #
 # Automatically generated make config: don't edit
 # Linux kernel version: 2.6.34
-# Wed Jul 18 09:46:21 2012
+# Wed Jul 18 10:58:13 2012
 #
 CONFIG_ARM=y
 CONFIG_HOLES_IN_ZONE=y
@@ -916,7 +916,7 @@ CONFIG_AML_AUDIO_DSP_LOG=y
 #
 # AMLOGIC Deinterlace driver
 #
-# CONFIG_DEINTERLACE is not set
+CONFIG_DEINTERLACE=y
 
 #
 # Amlogic CAMERA Support
