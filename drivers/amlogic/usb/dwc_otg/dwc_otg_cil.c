@@ -65,8 +65,6 @@
 #include "dwc_otg_regs.h"
 #include "dwc_otg_cil.h"
 
-#define dwc_wmb()	wmb()
-#define dwc_rmb()	rmb()
 
 /* ------------------------------------------------------- */
 /*
@@ -1287,7 +1285,8 @@ void dwc_otg_hc_init(dwc_otg_core_if_t * _core_if, dwc_hc_t * _hc)
 	hcchar.b.epdir = _hc->ep_is_in;
 	hcchar.b.lspddev = (_hc->speed == DWC_OTG_EP_SPEED_LOW);
 	/* Workaround for BT dongle in HUB */
-	if((_hc->ep_type == DWC_OTG_EP_TYPE_INTR) && _hc->do_split)
+	if(!hcchar.b.lspddev && (_hc->ep_type == DWC_OTG_EP_TYPE_INTR) 
+	   && _hc->do_split)
 		hcchar.b.eptype = DWC_OTG_EP_TYPE_BULK;
 	else
 		hcchar.b.eptype = _hc->ep_type;

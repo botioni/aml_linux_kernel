@@ -62,7 +62,8 @@
 #define NAK_TIMER_INTERVAL		1
 #endif
 
-
+#define dwc_wmb()	wmb()
+#define dwc_rmb()	rmb()
 /**
  * @file 
  *
