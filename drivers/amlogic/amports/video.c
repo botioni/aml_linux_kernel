@@ -2766,6 +2766,17 @@ static int amvideo_class_resume(struct device *dev)
 }
 #endif
 
+#ifdef CONFIG_SCREEN_ON_EARLY
+void amvideo_class_resume_early(void)
+{
+    if (pm_state.event == PM_EVENT_SUSPEND) {
+        WRITE_MPEG_REG(VPP_MISC, pm_state.vpp_misc);
+        pm_state.event = -1;
+    }
+}
+EXPORT_SYMBOL(amvideo_class_resume_early);
+#endif
+
 static struct class amvideo_class = {
         .name = AMVIDEO_CLASS_NAME,
         .class_attrs = amvideo_class_attrs,

@@ -52,6 +52,9 @@
 static struct early_suspend early_suspend;
 static int early_suspend_flag = 0;
 #endif
+#ifdef CONFIG_SCREEN_ON_EARLY
+static int early_resume_flag = 0;
+#endif
 
 MODULE_AMLOG(AMLOG_DEFAULT_LEVEL, 0x0, LOG_LEVEL_DESC, LOG_MASK_DESC);
 
@@ -1180,6 +1183,12 @@ static int osd_resume(struct platform_device *pdev)
     if (early_suspend_flag)
         return 0;
 #endif
+#ifdef CONFIG_SCREEN_ON_EARLY
+	if (early_resume_flag) {
+		early_resume_flag = 0;
+		return 0;
+	}
+#endif
        osddev_resume();
        return 0;
 }
@@ -1202,6 +1211,20 @@ static void osd_late_resume(struct early_suspend *h)
     osd_resume((struct platform_device *)h->param);
 }
 #endif
+
+#ifdef CONFIG_SCREEN_ON_EARLY
+void osd_resume_early(void)
+{
+#ifdef CONFIG_HAS_EARLYSUSPEND
+	osddev_resume();
+	early_suspend_flag = 0;
+#endif
+	early_resume_flag = 1;
+	return ;
+}
+EXPORT_SYMBOL(osd_resume_early);
+#endif
+
 
 #ifdef CONFIG_MACH_MESON3_REFF16
 int  __init  get_resolution(char *str)
