@@ -44,6 +44,13 @@ unsigned int IEC958_chstat0_r;
 unsigned int IEC958_chstat1_l;
 unsigned int IEC958_chstat1_r;
 unsigned int IEC958_mode_raw;
+/*
+ 0 --  other formats except(DD,DD+,DTS)
+ 1 --  DTS
+ 2 --  DD
+ 3 -- DTS with 958 PCM RAW package mode
+ 4 -- DD+
+*/
 unsigned int IEC958_mode_codec;
 
 EXPORT_SYMBOL(IEC958_bpf);

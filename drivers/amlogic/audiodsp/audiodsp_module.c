@@ -126,7 +126,8 @@ int audiodsp_start(void)
 	   (pmcode->fmt == MCODEC_FMT_PCM)  ||
 	   (pmcode->fmt == MCODEC_FMT_WMAPRO)||
 	   (pmcode->fmt == MCODEC_FMT_ALAC)||
-	  (pmcode->fmt == MCODEC_FMT_AC3) ||
+	   (pmcode->fmt == MCODEC_FMT_AC3) ||
+	   (pmcode->fmt == MCODEC_FMT_EAC3) ||	  
 	  (pmcode->fmt == MCODEC_FMT_APE) ||
 	  (pmcode->fmt == MCODEC_FMT_FLAC))
 
@@ -182,17 +183,23 @@ static int audiodsp_ioctl(struct inode *node, struct file *file, unsigned int cm
 		{
 		case AUDIODSP_SET_FMT:
 			priv->stream_fmt=args;
-			if(IEC958_mode_raw){		
+			if(IEC958_mode_raw){// raw data pass through		
 				if(args == MCODEC_FMT_DTS)
-					IEC958_mode_codec = 1;
+					IEC958_mode_codec = 1;//dts
 				else if(args == MCODEC_FMT_AC3)
-					IEC958_mode_codec = 2; 	
+					IEC958_mode_codec = 2; 	//ac3
+				else if(args == MCODEC_FMT_EAC3){
+					if(IEC958_mode_raw == 2)
+						IEC958_mode_codec = 4; //958 dd+ package
+					else
+						IEC958_mode_codec =2;// 958 dd package
+				}	
 				else
 					IEC958_mode_codec = 0;
 			}	
 			else
 				IEC958_mode_codec = 0;
-			if(args == MCODEC_FMT_AC3) //for dd+ certification
+			if(args == MCODEC_FMT_AC3||args == MCODEC_FMT_EAC3) //for dd+ certification
 				DSP_WD(DSP_AC3_DRC_INFO,ac3_drc_control|(1<<31));
 			break;
 		case AUDIODSP_START:
@@ -263,7 +270,8 @@ static int audiodsp_ioctl(struct inode *node, struct file *file, unsigned int cm
 						if(priv->format_wait_count > 5){						
 							if(audio_format->channels&&audio_format->sample_rate){
 								priv->frame_format.channel_num = audio_format->channels>2?2:audio_format->channels;
-								if(audio_format->channels == 1 && (priv->stream_fmt == MCODEC_FMT_AC3 ||priv->stream_fmt == MCODEC_FMT_DTS)) //ac3/dts decoder use Lt/Rt 2ch dmx mode
+								if(audio_format->channels == 1 && (priv->stream_fmt == MCODEC_FMT_AC3  \
+									||priv->stream_fmt == MCODEC_FMT_EAC3||priv->stream_fmt == MCODEC_FMT_DTS)) //ac3/dts decoder use Lt/Rt 2ch dmx mode
                                 	priv->frame_format.channel_num = 2; // force stereo
 								priv->frame_format.sample_rate = audio_format->sample_rate;
 								priv->frame_format.data_width = 16;
@@ -294,7 +302,8 @@ static int audiodsp_ioctl(struct inode *node, struct file *file, unsigned int cm
                         /**
                          * force to stereo for ac3/dts decoder
                          * */
-						if(priv->frame_format.channel_num == 1 && (priv->stream_fmt == MCODEC_FMT_AC3 ||priv->stream_fmt == MCODEC_FMT_DTS)) //ac3/dts decoder use Lt/Rt 2ch dmx mode
+						if(priv->frame_format.channel_num == 1 && (priv->stream_fmt == MCODEC_FMT_AC3 \
+							||priv->stream_fmt == MCODEC_FMT_EAC3||priv->stream_fmt == MCODEC_FMT_DTS)) //ac3/dts decoder use Lt/Rt 2ch dmx mode
                         	priv->frame_format.channel_num = 2; // force stereo                         
 						if(audio_format->sample_rate&&audio_format->sample_rate != priv->frame_format.sample_rate){
 								DSP_PRNT(" sr num info from dsp and header not match,[dsp %d ],[header %d ]", \
