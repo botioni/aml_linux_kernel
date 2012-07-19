@@ -36,6 +36,8 @@ typedef struct {
 
 #define OSD1_CANVAS_INDEX 0x40
 #define OSD2_CANVAS_INDEX 0x43
+#define OSD3_CANVAS_INDEX 0x41
+#define OSD4_CANVAS_INDEX 0x42
 #define ALLOC_CANVAS_INDEX  0x46
 
 #define GE2D_MAX_CANVAS_INDEX   0x5f

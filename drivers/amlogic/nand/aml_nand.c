@@ -978,6 +978,31 @@ static int aml_platform_wait_devready(struct aml_nand_chip *aml_chip, int chipnr
 
 	/* wait until command is processed or timeout occures */
 	aml_chip->aml_nand_select_chip(aml_chip, chipnr);
+#if 1
+	if (aml_chip->ops_mode & AML_CHIP_NONE_RB) {		
+		do{
+			//udelay(chip->chip_delay);    		
+			aml_chip->aml_nand_command(aml_chip, NAND_CMD_STATUS, -1, -1, chipnr);    		
+			udelay(2);    		
+			status = (int)chip->read_byte(mtd);    		
+			if (status & NAND_STATUS_READY)    			
+				break;    		
+			udelay(20);    	
+		}while(time_out_cnt++ <= 0x2000);   //200ms max	    	    
+
+		if (time_out_cnt > 0x2000)		    
+			return 0;   		
+	}
+	else{
+		do{		
+			if (chip->dev_ready(mtd))
+				break;
+		} while (time_out_cnt++ <= AML_NAND_BUSY_TIMEOUT);		
+
+			if (time_out_cnt > AML_NAND_BUSY_TIMEOUT)
+		return 0;
+	}
+#else
 	do {
 		if (aml_chip->ops_mode & AML_CHIP_NONE_RB) {
 			//udelay(chip->chip_delay);
@@ -997,7 +1022,7 @@ static int aml_platform_wait_devready(struct aml_nand_chip *aml_chip, int chipnr
 
 	if (time_out_cnt > AML_NAND_BUSY_TIMEOUT)
 		return 0;
-
+#endif
 	return 1;
 }
 
@@ -4083,6 +4108,9 @@ int aml_nand_init(struct aml_nand_chip *aml_chip)
 	struct mtd_info *mtd = &aml_chip->mtd;
 	int err = 0, i = 0, phys_erase_shift;
 	int oobmul  ;
+#if ((defined CONFIG_ARCH_MESON3) || (defined CONFIG_ARCH_MESON6))	
+	unsigned por_cfg, valid_chip_num = 0;
+#endif
 
 #ifdef CONFIG_HAS_EARLYSUSPEND
     aml_chip->nand_early_suspend.level = EARLY_SUSPEND_LEVEL_BLANK_SCREEN;
@@ -4359,7 +4387,9 @@ int aml_nand_init(struct aml_nand_chip *aml_chip)
 
 	chip->select_chip = aml_nand_select_chip;
 	chip->cmd_ctrl = aml_nand_cmd_ctrl;
-	chip->dev_ready = aml_nand_dev_ready;
+#if ((defined CONFIG_ARCH_MESON3) || (defined CONFIG_ARCH_MESON6))	
+	//chip->dev_ready = aml_nand_dev_ready;
+#endif
 	chip->verify_buf = aml_nand_verify_buf;
 	chip->read_byte = aml_platform_read_byte;
 
@@ -4374,12 +4404,18 @@ int aml_nand_init(struct aml_nand_chip *aml_chip)
 		aml_chip->chip_enable[i] = (((plat->chip_enable_pad >> i*4) & 0xf) << 10);
 		aml_chip->rb_enable[i] = (((plat->ready_busy_pad >> i*4) & 0xf) << 10);
 	}
+#if ((defined CONFIG_ARCH_MESON3) || (defined CONFIG_ARCH_MESON6))		
+	//use NO RB mode to detect nand chip num
+	aml_chip->ops_mode |= AML_CHIP_NONE_RB;
+	chip->chip_delay = 100;
+#else
 	if (!aml_chip->rb_enable[0]) {
 		aml_chip->ops_mode |= AML_CHIP_NONE_RB;
 		chip->dev_ready = NULL;
 		chip->chip_delay = 100;
 		printk("#####%s, none RB and chip->chip_delay:%d\n", __func__, chip->chip_delay);
 	}
+#endif
 
 	aml_chip->aml_nand_hw_init(aml_chip);
 
@@ -4405,6 +4441,53 @@ int aml_nand_init(struct aml_nand_chip *aml_chip)
 		chip->ecc.read_page_raw = aml_nand_read_page_raw;
 		chip->ecc.write_page_raw = aml_nand_write_page_raw;
 	}
+#if ((defined CONFIG_ARCH_MESON3) || (defined CONFIG_ARCH_MESON6))	
+	valid_chip_num = 0;
+	for (i=0; i<aml_chip->chip_num; i++) {
+		if (aml_chip->valid_chip[i]) {
+		    valid_chip_num++;
+		}
+    	}
+    	
+    	//due to hardware limit, for chip num over 2, must use NO RB mode.
+    	if(valid_chip_num > 2){
+		printk("dect valid_chip_num:%d over 2, using NO RB mode\n", valid_chip_num);
+    	}
+    	else{
+		
+		if(aml_chip->rbpin_detect){
+			por_cfg = READ_CBUS_REG(ASSIST_POR_CONFIG);		
+			printk("%s auto detect RB pin here and por_cfg:%x\n", __func__, por_cfg);
+			if(por_cfg&4){
+				if(por_cfg&1){				
+					printk("%s detect without RB pin here\n", __func__);
+					aml_chip->rb_enable[0] = NULL;
+				}
+				else{
+					printk("%s detect with RB pin here\n", __func__);
+				}
+			}
+			else{
+				printk("%s power config ERROR and force using NO RB mode here\n", __func__);			
+				aml_chip->rb_enable[0] = NULL;
+			}
+		}	
+		
+		if (!aml_chip->rb_enable[0]) {
+			aml_chip->ops_mode |= AML_CHIP_NONE_RB;
+			chip->dev_ready = NULL;
+			chip->chip_delay = 100;
+			printk("#####%s, none RB and chip->chip_delay:%d\n", __func__, chip->chip_delay);
+		}	
+		else{
+			chip->chip_delay = 20;
+			chip->dev_ready = aml_nand_dev_ready;
+			aml_chip->ops_mode &= ~AML_CHIP_NONE_RB;			
+			printk("#####%s, with RB pins and chip->chip_delay:%d\n", __func__, chip->chip_delay);
+		}		
+	}	
+#endif
+
 	chip->scan_bbt = aml_nand_scan_bbt;
 
 	mtd->suspend = aml_nand_suspend;

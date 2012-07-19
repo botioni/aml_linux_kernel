@@ -1814,7 +1814,10 @@ unsigned int vf_keep_current(void)
         }
     } else if ((cur_dispbuf->type & VIDTYPE_VIU_444) == VIDTYPE_VIU_444) {
     	 canvas_read(y_index,&cd);
-        if (keep_y_addr != canvas_get_addr(y_index) && /*must not the same address*/ 
+				if((cd.width*cd.height) > Y_BUFFER_SIZE ){
+					return -1;	
+				}			
+    	         if (keep_y_addr != canvas_get_addr(y_index) && /*must not the same address*/ 
             canvas_dup(keep_y_addr_remap, canvas_get_addr(y_index), (cd.width)*(cd.height))){
             canvas_update_addr(y_index, (u32)keep_y_addr);
             if(debug_flag& DEBUG_FLAG_BLACKOUT){
