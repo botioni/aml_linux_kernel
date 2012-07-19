@@ -26,6 +26,7 @@
 #define MAX_CACHE_ALIGN(x)	((x+0x1f)&(~0x1f))
 
 extern unsigned IEC958_mode_raw;
+extern unsigned IEC958_mode_codec;
 
 int decopt = 0x0000ffff;
 
@@ -112,11 +113,11 @@ void reset_dsp( struct audiodsp_priv *priv)
  //   SET_MPEG_REG_MASK(SDRAM_CTL0,1);//arc mapping to ddr memory
     SET_MPEG_REG_MASK(MEDIA_CPU_CTL, ((AUDIO_DSP_START_PHY_ADDR)>> 20) << 4);
 // decode option    
-    if(IEC958_mode_raw){
-      if(IEC958_mode_raw > 1){
-	DSP_WD(DSP_DECODE_OPTION, decopt|(3<<30));
+    if(IEC958_mode_codec){
+      if(IEC958_mode_codec == 4){//dd+
+		DSP_WD(DSP_DECODE_OPTION, decopt|(3<<30));
       }else{
-	DSP_WD(DSP_DECODE_OPTION, decopt|(1<<31));
+		DSP_WD(DSP_DECODE_OPTION, decopt|(1<<31));//dd,dts
       }
     }
 	else{
