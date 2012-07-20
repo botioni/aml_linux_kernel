@@ -408,9 +408,30 @@ static int mxl101_fe_remove(struct platform_device *pdev)
 	return 0;
 }
 
+static int mxl101_fe_resume(struct platform_device *pdev)
+{
+	printk("mxl101_fe_resume\n");
+	gpio_direction_output(frontend_reset, 0);
+	msleep(300);
+	gpio_direction_output(frontend_reset, 1); //enable tuner power
+	msleep(200);
+	MxL101SF_Init();
+	return 0;
+
+}
+
+static int mxl101_fe_suspend(struct platform_device *pdev, pm_message_t state)
+{
+	return 0;
+}
+
+
+
 static struct platform_driver aml_fe_driver = {
 	.probe		= mxl101_fe_probe,
-	.remove		= mxl101_fe_remove,	
+	.remove		= mxl101_fe_remove,
+	.resume		= mxl101_fe_resume,
+	.suspend    = mxl101_fe_suspend,
 	.driver		= {
 		.name	= "mxl101",
 		.owner	= THIS_MODULE,
