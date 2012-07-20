@@ -5,6 +5,7 @@ EXTRA_AFLAGS=-mfloat-abi=softfp -mfpu=neon
 amlflash-objs := common/flashlight.o
 gt2005dri-objs := gt2005.o
 gc0308dri-objs := gc0308.o
+gc0329dri-objs := gc0329.o
 ov5642dri-objs := ov5642.o
 ov5640dri-objs := ov5640.o
 ov7675dri-objs := ov7675.o
@@ -15,6 +16,7 @@ amlvm-objs := common/vm.o common/util.o common/plat_ctrl.o
 obj-$(CONFIG_VIDEO_AMLOGIC_FLASHLIGHT)  += amlflash.o
 obj-$(CONFIG_VIDEO_AMLOGIC_CAPTURE_GT2005) +=gt2005dri.o
 obj-$(CONFIG_VIDEO_AMLOGIC_CAPTURE_GC0308) += gc0308dri.o
+obj-$(CONFIG_VIDEO_AMLOGIC_CAPTURE_GC0329) += gc0329dri.o
 obj-$(CONFIG_VIDEO_AMLOGIC_CAPTURE_OV3660) += ov3660.o
 obj-$(CONFIG_VIDEO_AMLOGIC_CAPTURE_OV5642) += ov5642dri.o
 obj-$(CONFIG_VIDEO_AMLOGIC_CAPTURE_OV5640) += ov5640dri.o

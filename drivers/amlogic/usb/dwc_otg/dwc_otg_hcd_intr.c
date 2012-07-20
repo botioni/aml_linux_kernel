@@ -126,7 +126,7 @@ int32_t dwc_otg_hcd_handle_intr(dwc_otg_hcd_t * _dwc_otg_hcd)
 
 	return retval;
 }
-
+//#define DWC_TRACK_MISSED_SOFS
 #ifdef DWC_TRACK_MISSED_SOFS
 #warning Compiling code to track missed SOFs
 #define FRAME_NUM_ARRAY_SIZE 1000
@@ -192,6 +192,8 @@ int32_t dwc_otg_hcd_handle_sof_intr(dwc_otg_hcd_t * _hcd)
 #ifdef DWC_TRACK_MISSED_SOFS
 	track_missed_sofs(_hcd->frame_number);
 #endif
+
+	dwc_wmb();
 
 	/* Determine whether any periodic QHs should be executed. */
 	qh_entry = _hcd->periodic_sched_inactive.next;

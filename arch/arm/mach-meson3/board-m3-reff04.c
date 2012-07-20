@@ -247,7 +247,6 @@ static struct mpu3050_platform_data mpu3050_data = {
     };
 #endif
 
-
 #if defined(CONFIG_FB_AM)
 static struct resource fb_device_resources[] = {
     [0] = {
@@ -271,6 +270,30 @@ static struct platform_device fb_device = {
     .resource      = fb_device_resources,
 };
 #endif
+
+#if defined(CONFIG_AM_FB_EXT)
+static struct resource fb_ext_device_resources[] = {
+    [0] = {
+        .start = OSD3_ADDR_START,
+        .end   = OSD3_ADDR_END,
+        .flags = IORESOURCE_MEM,
+    },
+#if defined(CONFIG_FB_OSD2_ENABLE)
+    [1] = {
+        .start = OSD4_ADDR_START,
+        .end   = OSD4_ADDR_END,
+        .flags = IORESOURCE_MEM,
+    },
+#endif
+};
+static struct platform_device fb_ext_device = {
+    .name       = "mesonfb-ext",
+    .id         = 0,
+    .num_resources = ARRAY_SIZE(fb_ext_device_resources),
+    .resource      = fb_ext_device_resources,
+};
+#endif
+
 #ifdef CONFIG_USB_PHY_CONTROL
 static struct resource usb_phy_control_device_resources[] = {
 	{
@@ -1828,6 +1851,9 @@ static struct platform_device freescale_device =
 static struct platform_device __initdata *platform_devs[] = {
 #if defined(CONFIG_FB_AM)
     &fb_device,
+#endif
+#if defined(CONFIG_AM_FB_EXT)
+    &fb_ext_device,
 #endif
 #if defined(CONFIG_AM_STREAMING)
     &codec_device,
