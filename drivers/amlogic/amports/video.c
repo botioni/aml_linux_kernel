@@ -1957,9 +1957,9 @@ static int amvideo_ioctl(struct inode *inode, struct file *file,
         	WRITE_MPEG_REG(AV_SCRATCH_F, (READ_MPEG_REG(AV_SCRATCH_F) & 0xfffffffc) | 2);
             trickmode_i = 1;
         } else if (arg == TRICKMODE_FFFB) {
-        	WRITE_MPEG_REG(AV_SCRATCH_F, READ_MPEG_REG(AV_SCRATCH_F) & 0xfffffffc);
             trickmode_fffb = 1;
         } else {
+        	WRITE_MPEG_REG(AV_SCRATCH_F, READ_MPEG_REG(AV_SCRATCH_F) & 0xfffffffc);
             trickmode_i = 0;
             trickmode_fffb = 0;
         }
