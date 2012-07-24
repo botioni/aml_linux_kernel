@@ -315,6 +315,7 @@ u32 trickmode_i = 0;
 /* trickmode ff/fb */
 u32 trickmode_fffb = 0;
 atomic_t trickmode_framedone = ATOMIC_INIT(0);
+u32 trickmode_duration = 0;
 
 static const f2v_vphase_type_t vpp_phase_table[4][3] = {
     {F2V_P2IT,  F2V_P2IB,  F2V_P2P },   /* VIDTYPE_PROGRESSIVE */
@@ -1071,7 +1072,15 @@ static inline bool vpts_expire(vframe_t *cur_vf, vframe_t *next_vf)
     }*/
     if ((trickmode_i == 1) || ((trickmode_fffb == 1))) {
         if (0 == atomic_read(&trickmode_framedone)) {
+            #if 1
+            if (cur_vf) {
+                pts = timestamp_vpts_get() + trickmode_duration;
+            } else {
+                return true;
+            }
+            #else
             return true;
+            #endif
         } else {
             return false;
         }
@@ -2693,6 +2702,26 @@ static ssize_t device_resolution_show(struct class *cla, struct class_attribute*
     }
 }
 
+static ssize_t trickmode_duration_show(struct class *cla, struct class_attribute *attr, char *buf)
+{
+    return sprintf(buf, "trickmode frame duration %d\n", trickmode_duration/9000);
+}
+
+static ssize_t trickmode_duration_store(struct class *cla, struct class_attribute *attr, const char *buf,
+        size_t count)
+{
+    size_t r;
+    u32 s_value;
+
+    r = sscanf(buf, "%d", &s_value);
+    if (r != 1) {
+        return -EINVAL;
+    }
+    trickmode_duration = s_value * 9000;
+
+    return count;
+}
+
 static struct class_attribute amvideo_class_attrs[] = {
     __ATTR(axis,
     S_IRUGO | S_IWUSR,
@@ -2730,6 +2759,10 @@ static struct class_attribute amvideo_class_attrs[] = {
     S_IRUGO | S_IWUSR,
     video_saturation_show,
     video_saturation_store),
+    __ATTR(trickmode_duration,
+    S_IRUGO | S_IWUSR,
+    trickmode_duration_show,
+    trickmode_duration_store),
     __ATTR_RO(device_resolution),
     __ATTR_RO(frame_addr),
     __ATTR_RO(frame_canvas_width),
