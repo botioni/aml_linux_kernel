@@ -48,6 +48,7 @@ static bool osd_ext_vf_need_update = false;
 static u32 osd_ext_current_field = 0;
 #endif
 static struct vframe_provider_s osd_ext_vf_prov;
+extern hw_para_t osd_hw;
 
 /********************************************************************/
 /***********        osd psedu frame provider        *****************/
@@ -1466,6 +1467,15 @@ void osd_ext_resume_hw(void)
 	return ;
 }
 
+void osd_ext_clone_pan(u32 index)
+{
+	if (osd_ext_hw.clone[index]) {
+		memcpy(&osd_ext_hw.pandata[index], &osd_hw.pandata[index], sizeof(pandata_t));
+		add_to_update_list(index, DISP_GEOMETRY);
+		osd_ext_wait_vsync_hw();
+	}
+}
+
 void osd_ext_get_clone_hw(u32 index, u32 *clone)
 {
 	amlog_level(LOG_LEVEL_HIGH, "get osd_ext[%d]->clone: %d\n", index, osd_ext_hw.clone[index]);
@@ -1474,22 +1484,24 @@ void osd_ext_get_clone_hw(u32 index, u32 *clone)
 
 void osd_ext_set_clone_hw(u32 index, u32 clone)
 {
-	extern hw_para_t osd_hw;
-	static color_bit_define_t *color_info[HW_OSD_COUNT];
+	static const color_bit_define_t *color_info[HW_OSD_COUNT] = {};
+	static pandata_t pandata[HW_OSD_COUNT] = {};
 
 	amlog_level(LOG_LEVEL_HIGH, "set osd_ext[%d]->clone: %d->%d\n", index, clone);
 	osd_ext_hw.clone[index] = clone;
 	if(osd_ext_hw.clone[index]) {
+		color_info[index] = osd_ext_hw.color_info[index];
+		osd_ext_hw.color_info[index] = osd_hw.color_info[index];
+		memcpy(&pandata, &osd_ext_hw.pandata[index], sizeof(pandata_t));
 		canvas_config(osd_ext_hw.fb_gem[index].canvas_idx, osd_hw.fb_gem[index].addr,
 			osd_hw.fb_gem[index].width, osd_hw.fb_gem[index].height,
 			CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_LINEAR);
-		color_info[index] = osd_ext_hw.color_info[index];
-		osd_ext_hw.color_info[index] = osd_hw.color_info[index];
 	} else {
 		canvas_config(osd_ext_hw.fb_gem[index].canvas_idx, osd_ext_hw.fb_gem[index].addr,
 			osd_ext_hw.fb_gem[index].width, osd_ext_hw.fb_gem[index].height,
 			CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_LINEAR);
 		osd_ext_hw.color_info[index] = color_info[index];
+		memcpy(&osd_ext_hw.pandata[index], &pandata, sizeof(pandata_t));
 	}
 	add_to_update_list(index, OSD_COLOR_MODE);
 }
