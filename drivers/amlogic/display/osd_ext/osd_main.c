@@ -1258,7 +1258,8 @@ osd_ext_probe(struct platform_device *pdev)
 	vout2_register_client(&osd_ext_notifier_nb);
 
 	if (NULL == init_logo_obj) {
-		set_current_vmode2(VMODE_720P);
+		//set_current_vmode2(VMODE_720P);
+		set_current_vmode2(VMODE_INIT_NULL);
 		osddev_ext_init();
 	}
 	vinfo = get_current_vinfo2();

@@ -1349,7 +1349,7 @@ static struct mtd_partition multi_partition_info_512M[] =
 #endif
 };
 
-static struct mtd_partition multi_partition_info_1G_or_More[] = 
+static struct mtd_partition multi_partition_info_1G[] = 
 {
     {
 	.name = "aml_logo",
@@ -1376,20 +1376,48 @@ static struct mtd_partition multi_partition_info_1G_or_More[] =
         .offset = 576*1024*1024,
         .size = 192*1024*1024,
     },
-#ifdef CONFIG_AML_NFTL
-   {
+    {
         .name = "userdata",
-        .offset = 768*1024*1024,
+        .offset = MTDPART_OFS_APPEND,
+        .size = MTDPART_SIZ_FULL,
+    },
+};
+
+static struct mtd_partition multi_partition_info_4G[] =
+{
+    {
+        .name = "aml_logo",
+        .offset = 12*1024*1024,
+        .size = 16*1024*1024,
+    },
+    {
+        .name = "recovery",
+        .offset = 28*1024*1024,
+        .size = 16*1024*1024,
+    },
+    {
+        .name = "boot",
+        .offset = 44*1024*1024,
+        .size = 20*1024*1024,
+    },
+    {
+        .name = "system",
+        .offset = 64*1024*1024,
         .size = 512*1024*1024,
     },
     {
-	.name = "NFTL_Part",
-	.offset = MTDPART_OFS_APPEND,
-	.size = MTDPART_SIZ_FULL,
+        .name = "cache",
+        .offset = 576*1024*1024,
+        .size = 192*1024*1024,
     },
-#else
     {
         .name = "userdata",
+        .offset = 768*1024*1024,
+        .size = 1280*1024*1024,
+    },
+#ifdef CONFIG_AML_NFTL
+    {
+        .name = "NFTL_Part",
         .offset = MTDPART_OFS_APPEND,
         .size = MTDPART_SIZ_FULL,
     },
@@ -1404,9 +1432,13 @@ static void nand_set_parts(uint64_t size, struct platform_nand_chip *chip)
         chip->partitions = multi_partition_info_512M;
         chip->nr_partitions = ARRAY_SIZE(multi_partition_info_512M);
         }
-    else if (size/(1024*1024) >= 1024) {
-        chip->partitions = multi_partition_info_1G_or_More;
-        chip->nr_partitions = ARRAY_SIZE(multi_partition_info_1G_or_More);
+    else if ((size/(1024*1024) == 1024)||(size/(1024*1024) == 2048)) {
+        chip->partitions = multi_partition_info_1G;
+        chip->nr_partitions = ARRAY_SIZE(multi_partition_info_1G);
+        }
+    else if (size/(1024*1024) > 2048) {
+        chip->partitions = multi_partition_info_4G;
+        chip->nr_partitions = ARRAY_SIZE(multi_partition_info_4G);
         }
     else {
         chip->partitions = multi_partition_info_512M;

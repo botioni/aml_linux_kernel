@@ -45,6 +45,9 @@
 static DECLARE_WAIT_QUEUE_HEAD(osd_vsync_wq);
 static bool vsync_hit = false;
 static bool osd_vf_need_update = false;
+#ifdef CONFIG_AM_FB_EXT
+extern void osd_ext_clone_pan(u32 index);
+#endif
 
 #if defined(CONFIG_ARCH_MESON3)
 static u32 osd_current_field = 0;
@@ -335,6 +338,7 @@ void  osddev_update_disp_axis_hw(
 	add_to_update_list(index,DISP_GEOMETRY);
 	if(mode_change)
 	    return ;
+
 	osd_wait_vsync_hw();
 	
 }
@@ -414,6 +418,10 @@ void osd_setup(struct osd_ctl_s *osd_ctl,
 #endif
 		logo_setup_ok++;
 	}
+#endif
+
+#ifdef CONFIG_AM_FB_EXT
+	osd_ext_clone_pan(index);
 #endif
 
 	osd_wait_vsync_hw();
@@ -787,6 +795,9 @@ void osd_pan_display_hw(unsigned int xoffset, unsigned int yoffset,int index )
 		osd_hw.pandata[index].y_end   += diff_y;
 		add_to_update_list(index,DISP_GEOMETRY);
 		
+#ifdef CONFIG_AM_FB_EXT
+		osd_ext_clone_pan(index);
+#endif
 		osd_wait_vsync_hw();
 		
 		amlog_mask_level(LOG_MASK_HARDWARE,LOG_LEVEL_LOW,"offset[%d-%d]x[%d-%d]y[%d-%d]\n", \

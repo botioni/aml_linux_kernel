@@ -260,7 +260,7 @@ static void vfm_init(void)
     char def_id[] = "default";
     char def_name_chain[] = "decoder amvideo";
 #endif    
-#ifdef CONFIG_AM_VIDEO2
+#ifdef CONFIG_TVIN_VIUIN
     char def_ext_id[] = "default_ext";
     char def_ext_name_chain[] = "vdin amvideo2";
 #else
