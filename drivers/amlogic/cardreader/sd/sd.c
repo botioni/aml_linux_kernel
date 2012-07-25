@@ -343,6 +343,8 @@ int inand_probe(struct memory_card *card)
 	card->card_insert_process = sd_open;
 	card->card_remove_process = sd_close;
 	card->card_request_process = sd_request;
+	card->card_suspend = sd_suspend;
+	card->card_resume = sd_resume;
 
 	if (aml_card_info->card_extern_init)
 		aml_card_info->card_extern_init();

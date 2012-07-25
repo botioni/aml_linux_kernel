@@ -856,13 +856,15 @@ int add_card_partition(struct gendisk * disk, struct mtd_partition * part,
 		if (part[i].size == MTDPART_SIZ_FULL)
 			size = disk->part0.nr_sects - offset;
 		ret = add_partition(disk, 1+i, offset, size, 0);
+#ifdef  CONFIG_INAND
+		printk("[%s%d] %20s  offset 0x%012llx, len 0x%012llx %s\n", 
+				disk->disk_name, 1+i, part[i].name,offset<<9, size<<9, 
+				IS_ERR(ret) ? "add fail":"");
+#else
 		printk("[%s] %20s  offset 0x%012llx, len 0x%012llx %s\n", 
 				disk->disk_name, part[i].name, offset<<9, size<<9, 
 				IS_ERR(ret) ? "add fail":"");
-		//if(IS_ERR(ret)){
-		//	printk("errno = %d, offset = %x, size = %x, disk->part0.nr_sects = %x\n", ret, offset, size);
-		//	return ERR_PTR(ret);
-		//}
+#endif
 		cur_offset = offset + size;
 		
 		card_table[i] = &part[i];
