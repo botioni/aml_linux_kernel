@@ -1,11 +1,12 @@
 #
 # Frame buffer configuration
 #
-menu "Amlogic OSD_EXT module"
+menu "Amlogic osd_ext module"
 
 config AM_FB_EXT
-	tristate "Amlogic OSD_EXT support"
-	depends on FB
+	tristate "Amlogic osd_ext support"
+	default n
+	depends on FB && AM_TV_OUTPUT2
 	select FB_CFB_FILLRECT
 	select FB_CFB_COPYAREA
 	select FB_CFB_IMAGEBLIT
