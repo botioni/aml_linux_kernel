@@ -1076,7 +1076,7 @@ static inline bool vpts_expire(vframe_t *cur_vf, vframe_t *next_vf)
         return true;
     }*/
     if ((trickmode_i == 1) || ((trickmode_fffb == 1))) {
-        if ((0 == atomic_read(&trickmode_framedone)) && (trickmode_duration_count <= 0)) {
+        if (((0 == atomic_read(&trickmode_framedone)) || (trickmode_i == 1)) && (trickmode_duration_count <= 0)) {
             #if 0
             if (cur_vf) {
                 pts = timestamp_vpts_get() + trickmode_duration;
