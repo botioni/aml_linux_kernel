@@ -1159,8 +1159,87 @@ void hdmi_hw_set_powermode( int power_mode, int vic)
 void hdmi_hw_init(hdmitx_dev_t* hdmitx_device)
 {
     unsigned int tmp_add_data;
-    
+
     digital_clk_on(7);
+
+    // HPD glitch filter
+    hdmi_wr_reg(TX_HDCP_HPD_FILTER_L, 0x00);
+    hdmi_wr_reg(TX_HDCP_HPD_FILTER_H, 0xaf);
+
+
+    // Enable software controlled DDC transaction
+    //tmp_add_data[15:8] = 0;
+
+    //tmp_add_data[7]   = 1'b0 ;  // forced_sys_trigger
+    //tmp_add_data[6]   = 1'b0 ;  // sys_trigger_config
+    //tmp_add_data[5]   = 1'b0 ;  // mem_acc_seq_mode
+    //tmp_add_data[4]   = 1'b0 ;  // mem_acc_seq_start
+    //tmp_add_data[3]   = 1'b1 ;  // forced_mem_copy_done
+    //tmp_add_data[2]   = 1'b1 ;  // mem_copy_done_config
+    //tmp_add_data[1]   = 1'b1 ;  // sys_trigger_config_semi_manu
+    //tmp_add_data[0]   = 1'b0 ;  // Rsrv
+    hdmi_wr_reg(TX_HDCP_EDID_CONFIG, 0x0c); //// for hdcp, can not use 0x0e
+    
+    hdmi_wr_reg(TX_HDCP_CONFIG0,      1<<3);  //set TX rom_encrypt_off=1
+    hdmi_wr_reg(TX_HDCP_MEM_CONFIG,   0<<3);  //set TX read_decrypt=0
+    hdmi_wr_reg(TX_HDCP_ENCRYPT_BYTE, 0);     //set TX encrypt_byte=0x00
+
+#ifdef CONFIG_AML_HDMI_TX_HDCP
+    hdcpkey_status = task_tx_key_setting(force_wrong);
+#endif
+    //tmp_add_data[15:8] = 0;
+    //tmp_add_data[7] = 1'b0;       // Force packet timing
+    //tmp_add_data[6] = 1'b0;       // PACKET ALLOC MODE
+    //tmp_add_data[5:0] = 6'd47 ;   // PACKET_START_LATENCY
+    //tmp_add_data = 47;
+    tmp_add_data = 58;
+    hdmi_wr_reg(TX_PACKET_CONTROL_1, tmp_add_data); //this register should be set to ensure the first hdcp succeed
+
+    //tmp_add_data[7] = 1'b0;      // cp_desired
+    //tmp_add_data[6] = 1'b0;      // ess_config
+    //tmp_add_data[5] = 1'b0;      // set_avmute
+    //tmp_add_data[4] = 1'b1;      // clear_avmute
+    //tmp_add_data[3] = 1'b0;      // hdcp_1_1
+    //tmp_add_data[2] = 1'b0;      // Vsync/Hsync forced_polarity_select
+    //tmp_add_data[1] = 1'b0;      // forced_vsync_polarity
+    //tmp_add_data[0] = 1'b0;      // forced_hsync_polarity
+    //tmp_add_data = 0x10;
+    tmp_add_data = 0x0; //rain
+    hdmi_wr_reg(TX_HDCP_MODE, tmp_add_data);
+    //config_hdmi(1);
+
+    //tmp_add_data[15:8] = 0;
+    //tmp_add_data[7:0]   = 0xa ; // time_divider[7:0] for DDC I2C bus clock
+    //tmp_add_data = 0xa; //800k
+    //tmp_add_data = 0x3f; //190k
+    tmp_add_data = 0x18 - 1; //100k     // hdmi system clock change to XTAL 24MHz
+    hdmi_wr_reg(TX_HDCP_CONFIG3, tmp_add_data);
+
+    //tmp_add_data[15:8] = 0;
+    //tmp_add_data[7]   = 8'b1 ;  //cp_desired 
+    //tmp_add_data[6]   = 8'b1 ;  //ess_config 
+    //tmp_add_data[5]   = 8'b0 ;  //set_avmute 
+    //tmp_add_data[4]   = 8'b0 ;  //clear_avmute 
+    //tmp_add_data[3]   = 8'b1 ;  //hdcp_1_1 
+    //tmp_add_data[2]   = 8'b0 ;  //forced_polarity 
+    //tmp_add_data[1]   = 8'b0 ;  //forced_vsync_polarity 
+    //tmp_add_data[0]   = 8'b0 ;  //forced_hsync_polarity
+    tmp_add_data = 0x40;
+    hdmi_wr_reg(TX_HDCP_MODE, tmp_add_data);
+
+    {
+        extern vinfo_t * hdmi_get_current_vinfo(void);
+        extern unsigned char uboot_vmode_flag;
+        HDMI_Video_Codes_t vic;     //Prevent warning
+        const vinfo_t *info = hdmi_get_current_vinfo();
+        vic = hdmitx_edid_get_VIC(&hdmitx_device, info->name, (hdmitx_device->disp_switch_config==DISP_SWITCH_FORCE)?1:0);
+        if(uboot_vmode_flag == vic){
+            printk("don\'t re-init hdmi mode\n");
+            return;
+        }
+    }
+
+    
 #ifndef AML_A3
     if((hdmi_chip_type == HDMI_M1A)||(hdmi_pll_mode == 1)){
         Wr(HHI_VID_PLL_CNTL3, 0x50e8);
@@ -1241,9 +1320,6 @@ void hdmi_hw_init(hdmitx_dev_t* hdmitx_device)
     }
     // Enable these interrupts: [2] tx_edit_int_rise [1] tx_hpd_int_fall [0] tx_hpd_int_rise
     hdmi_wr_reg(OTHER_BASE_ADDR + HDMI_OTHER_INTR_MASKN, 0x7);
-    // HPD glitch filter
-    hdmi_wr_reg(TX_HDCP_HPD_FILTER_L, 0x00);
-    hdmi_wr_reg(TX_HDCP_HPD_FILTER_H, 0xaf);
 
 //#ifdef AML_A3
 #if 1
@@ -1263,65 +1339,6 @@ void hdmi_hw_init(hdmitx_dev_t* hdmitx_device)
     delay_us(10);
 #endif    
     /**/
-
-    // Enable software controlled DDC transaction
-    //tmp_add_data[15:8] = 0;
-    //tmp_add_data[7]   = 1'b0 ;  // forced_sys_trigger
-    //tmp_add_data[6]   = 1'b0 ;  // sys_trigger_config
-    //tmp_add_data[5]   = 1'b0 ;  // mem_acc_seq_mode
-    //tmp_add_data[4]   = 1'b0 ;  // mem_acc_seq_start
-    //tmp_add_data[3]   = 1'b1 ;  // forced_mem_copy_done
-    //tmp_add_data[2]   = 1'b1 ;  // mem_copy_done_config
-    //tmp_add_data[1]   = 1'b1 ;  // sys_trigger_config_semi_manu
-    //tmp_add_data[0]   = 1'b0 ;  // Rsrv
-    hdmi_wr_reg(TX_HDCP_EDID_CONFIG, 0x0c); //// for hdcp, can not use 0x0e
-    
-    hdmi_wr_reg(TX_HDCP_CONFIG0,      1<<3);  //set TX rom_encrypt_off=1
-    hdmi_wr_reg(TX_HDCP_MEM_CONFIG,   0<<3);  //set TX read_decrypt=0
-    hdmi_wr_reg(TX_HDCP_ENCRYPT_BYTE, 0);     //set TX encrypt_byte=0x00
-
-#ifdef CONFIG_AML_HDMI_TX_HDCP
-    hdcpkey_status = task_tx_key_setting(force_wrong);
-#endif
-    //tmp_add_data[15:8] = 0;
-    //tmp_add_data[7] = 1'b0;       // Force packet timing
-    //tmp_add_data[6] = 1'b0;       // PACKET ALLOC MODE
-    //tmp_add_data[5:0] = 6'd47 ;   // PACKET_START_LATENCY
-    //tmp_add_data = 47;
-    tmp_add_data = 58;
-    hdmi_wr_reg(TX_PACKET_CONTROL_1, tmp_add_data); //this register should be set to ensure the first hdcp succeed
-
-    //tmp_add_data[7] = 1'b0;      // cp_desired
-    //tmp_add_data[6] = 1'b0;      // ess_config
-    //tmp_add_data[5] = 1'b0;      // set_avmute
-    //tmp_add_data[4] = 1'b1;      // clear_avmute
-    //tmp_add_data[3] = 1'b0;      // hdcp_1_1
-    //tmp_add_data[2] = 1'b0;      // Vsync/Hsync forced_polarity_select
-    //tmp_add_data[1] = 1'b0;      // forced_vsync_polarity
-    //tmp_add_data[0] = 1'b0;      // forced_hsync_polarity
-    //tmp_add_data = 0x10;
-    tmp_add_data = 0x0; //rain
-    hdmi_wr_reg(TX_HDCP_MODE, tmp_add_data);
-    //config_hdmi(1);
-
-    //tmp_add_data[15:8] = 0;
-    //tmp_add_data[7:0]   = 0xa ; // time_divider[7:0] for DDC I2C bus clock
-    //tmp_add_data = 0xa; //800k
-    //tmp_add_data = 0x3f; //190k
-    tmp_add_data = 0x18 - 1; //100k     // hdmi system clock change to XTAL 24MHz
-    hdmi_wr_reg(TX_HDCP_CONFIG3, tmp_add_data);
-
-    //tmp_add_data[15:8] = 0;
-    //tmp_add_data[7]   = 8'b1 ;  //cp_desired 
-    //tmp_add_data[6]   = 8'b1 ;  //ess_config 
-    //tmp_add_data[5]   = 8'b0 ;  //set_avmute 
-    //tmp_add_data[4]   = 8'b0 ;  //clear_avmute 
-    //tmp_add_data[3]   = 8'b1 ;  //hdcp_1_1 
-    //tmp_add_data[2]   = 8'b0 ;  //forced_polarity 
-    //tmp_add_data[1]   = 8'b0 ;  //forced_vsync_polarity 
-    //tmp_add_data[0]   = 8'b0 ;  //forced_hsync_polarity
-    tmp_add_data = 0x40;
-    hdmi_wr_reg(TX_HDCP_MODE, tmp_add_data);
 
     hdmi_hw_set_powermode(power_mode, 0);
 
@@ -2591,6 +2608,8 @@ static int hdmitx_m3_set_audmode(struct hdmi_tx_dev_s* hdmitx_device, Hdmi_tx_au
         enable_audio_spdif();
     else
         enable_audio_i2s();
+
+    hdmi_audio_init(i2s_to_spdif_flag);
    
     return 0;
 }    
@@ -2599,6 +2618,7 @@ static void hdmitx_m3_setupirq(hdmitx_dev_t* hdmitx_device)
 {
 #ifndef AVOS
    int r;
+    hdmi_wr_reg(0x8005, 0);
    r = request_irq(INT_HDMI_TX, &intr_handler,
                     IRQF_SHARED, "amhdmitx",
                     (void *)hdmitx_device);
