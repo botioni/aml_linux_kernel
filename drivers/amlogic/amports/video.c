@@ -315,7 +315,8 @@ u32 trickmode_i = 0;
 /* trickmode ff/fb */
 u32 trickmode_fffb = 0;
 atomic_t trickmode_framedone = ATOMIC_INIT(0);
-u32 trickmode_duration = 0;
+int trickmode_duration = 0;
+int trickmode_duration_count = 0;
 
 static const f2v_vphase_type_t vpp_phase_table[4][3] = {
     {F2V_P2IT,  F2V_P2IB,  F2V_P2P },   /* VIDTYPE_PROGRESSIVE */
@@ -628,6 +629,10 @@ static void vsync_toggle_frame(vframe_t *vf)
      if(debug_flag& DEBUG_FLAG_TOGGLE_FRAME){  
         printk("%s()\n", __func__);
      } 
+
+    if (trickmode_i || trickmode_fffb) {
+        trickmode_duration_count = trickmode_duration;
+    }
 
     if(vf->early_process_fun){
         if(vf->early_process_fun(vf->private_data) == 1){
@@ -1071,8 +1076,8 @@ static inline bool vpts_expire(vframe_t *cur_vf, vframe_t *next_vf)
         return true;
     }*/
     if ((trickmode_i == 1) || ((trickmode_fffb == 1))) {
-        if (0 == atomic_read(&trickmode_framedone)) {
-            #if 1
+        if ((0 == atomic_read(&trickmode_framedone)) && (trickmode_duration_count <= 0)) {
+            #if 0
             if (cur_vf) {
                 pts = timestamp_vpts_get() + trickmode_duration;
             } else {
@@ -1211,6 +1216,10 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
 
     timestamp_pcrscr_inc(vsync_pts_inc);
 	timestamp_apts_inc(vsync_pts_inc);
+
+    if (trickmode_duration_count > 0) {
+        trickmode_duration_count -= vsync_pts_inc;
+    }
 
 #ifdef SLOW_SYNC_REPEAT
     frame_repeat_count++;
