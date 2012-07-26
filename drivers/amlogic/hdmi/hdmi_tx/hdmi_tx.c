@@ -108,6 +108,7 @@ static unsigned char init_flag=INIT_FLAG_POWERDOWN;
 static unsigned char init_powermode=0x80;
 #else
 static unsigned char init_flag=0;
+extern unsigned char uboot_vmode_flag = 0;
 static unsigned char init_powermode=0;
 #endif
 #undef DISABLE_AUDIO
@@ -186,7 +187,7 @@ return value: 1, vout; 2, vout2;
     return vout_index;    
 }    
 
-vinfo_t * hdmi_get_current_vinfo(void)
+extern vinfo_t * hdmi_get_current_vinfo(void)
 {
     const vinfo_t *info;
 #ifdef CONFIG_AM_TV_OUTPUT2
@@ -254,6 +255,16 @@ static int set_disp_mode_auto(void)
     //msleep(500);
     vic = hdmitx_edid_get_VIC(&hdmitx_device, info->name, (hdmitx_device.disp_switch_config==DISP_SWITCH_FORCE)?1:0);
     hdmitx_device.cur_VIC = HDMI_Unkown;
+
+    if(uboot_vmode_flag == vic){
+        printk("don\'t set same hdmi mode\n");
+        uboot_vmode_flag = 0;
+        hdmitx_device.audio_param_update_flag = 1;
+        hdmitx_device.cur_VIC = vic;
+        hdmi_authenticated = -1;
+        hdmitx_device.auth_process_timer = AUTH_PROCESS_TIME;
+        return;
+    }
     ret = hdmitx_set_display(&hdmitx_device, vic); //if vic is HDMI_Unkown, hdmitx_set_display will disable HDMI
     if(ret>=0){
         hdmitx_device.cur_VIC = vic;
@@ -897,7 +908,6 @@ hdmi_task_handle(void *data)
     hdmitx_init_parameters(&hdmitx_device->hdmi_info);
 
     HDMITX_M1B_Init(hdmitx_device);
-
     //When init hdmi, clear the hdmitx module edid ram and edid buffer.
     hdmitx_edid_ram_buffer_clear(hdmitx_device);
 
@@ -925,7 +935,6 @@ hdmi_task_handle(void *data)
     }
     
     HDMI_DEBUG();
-
     while (hdmitx_device->hpd_event != 0xff)
     {
         if((hdmitx_device->vic_count == 0)&&(hdmitx_device->mux_hpd_if_pin_high_flag)){
@@ -1482,7 +1491,20 @@ static  int __init hdmitx_boot_para_setup(char *s)
                 init_flag |= INIT_FLAG_CEC_FUNC;
                 printk("hdmi: enable cec function\n");    
             }
-            
+#define PAR_VMODE(a, mode)      \
+            else if(strncmp(token, a, strlen(a))==0){ \
+                uboot_vmode_flag = mode;    \
+            }
+            PAR_VMODE("480i", HDMI_480i60)
+            PAR_VMODE("480p", HDMI_480p60)
+            PAR_VMODE("576i", HDMI_576i50)
+            PAR_VMODE("576p", HDMI_576p50)
+            PAR_VMODE("720p50hz", HDMI_720p50)
+            PAR_VMODE("720p", HDMI_720p60)
+            PAR_VMODE("1080i50hz", HDMI_1080i50)
+            PAR_VMODE("1080i", HDMI_1080i60)
+            PAR_VMODE("1080p50hz", HDMI_1080p50)
+            PAR_VMODE("1080p", HDMI_1080p60)
         }    
         offset=token_offset;
     }while(token);
