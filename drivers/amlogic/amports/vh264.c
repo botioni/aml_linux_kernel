@@ -1126,8 +1126,10 @@ static void vh264_local_init(void)
     buffer_for_recycle_rd = 0;
     buffer_for_recycle_wr = 0;
 
-    last_mb_width = 0;
-    last_mb_height = 0;
+    if (!vh264_running) {
+        last_mb_width = 0;
+        last_mb_height = 0;
+    }
 
     for (i = 0; i < VF_BUF_NUM; i++) {
         vfbuf_use[i] = 0;
