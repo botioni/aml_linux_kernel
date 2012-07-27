@@ -1368,7 +1368,10 @@ static int ppmgr_task(void *data)
         }
         
         if (ppmgr_blocking) {
-            vf_notify_provider(PROVIDER_NAME,VFRAME_EVENT_RECEIVER_RESET,NULL);
+        	if(ppmgr_reset_type){
+            	vf_notify_provider(PROVIDER_NAME,VFRAME_EVENT_RECEIVER_RESET,NULL);
+            	ppmgr_reset_type = 0 ;            	
+        	}
             //vf_light_unreg_provider(&ppmgr_vf_prov);
             vf_local_init();
             //vf_reg_provider(&ppmgr_vf_prov);
