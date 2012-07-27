@@ -92,11 +92,15 @@ static struct class *di_class;
 static int version = 8;
 static unsigned char boot_init_flag=0;
 static int receiver_is_amvideo = 1;
-static int buf_mgr_mode = 0;
+static int buf_mgr_mode = 0x300;
 static int buf_mgr_mode_mask = 0xffff;
 static int bypass_state = 0;
 static int bypass_prog = 0;
+#ifdef CONFIG_AM_DEINTERLACE_SD_ONLY
+static int bypass_hd = 1;
+#else
 static int bypass_hd = 0;
+#endif
 static int bypass_all = 0;
 static int bypass_trick_mode = 1;
 static int bypass_vscale_skip = 0;
@@ -796,8 +800,13 @@ typedef struct di_buf_s{
 
 static unsigned long di_mem_start;
 static unsigned long di_mem_size;
+#if defined(CONFIG_AM_DEINTERLACE_SD_ONLY)
+static unsigned int default_width = 720;
+static unsigned int default_height = 576;
+#else
 static unsigned int default_width = 1920;
 static unsigned int default_height = 1080;
+#endif
 static int local_buf_num;
 
     /*
@@ -1392,7 +1401,7 @@ static void config_canvas(di_buf_t* di_buf)
     
 static int di_init_buf(int width, int height, unsigned char prog_flag)
 {
-    int i, local_buf_num_available;
+    int i, local_buf_num_available, local_buf_num_valid;
     int canvas_height = height + 8;
     frame_count = 0;
     disp_frame_count = 0;
@@ -1426,6 +1435,7 @@ static int di_init_buf(int width, int height, unsigned char prog_flag)
     same_field_bot_count = 0;
 
     queue_init(local_buf_num);
+    local_buf_num_valid = local_buf_num;
     for(i=0; i<local_buf_num; i++){
         di_buf_t* di_buf = &(di_buf_local[i]);
         if(di_buf){
@@ -1458,7 +1468,8 @@ static int di_init_buf(int width, int height, unsigned char prog_flag)
             di_buf->vframe->canvas0Addr = di_buf->nr_canvas_idx;
             di_buf->vframe->canvas1Addr = di_buf->nr_canvas_idx;
             di_buf->queue_index = -1;
-            if(real_buf_mgr_mode&0x200){
+            if((real_buf_mgr_mode&0x200)&&
+                (local_buf_num_valid>6)){ /* least local buf number is 6 */
             	for(ii=0; ii<USED_LOCAL_BUF_MAX; ii++){ 
             		if(di_buf->index == used_local_buf_index[ii]){
             			break;
@@ -1467,10 +1478,13 @@ static int di_init_buf(int width, int height, unsigned char prog_flag)
             	if(ii>=USED_LOCAL_BUF_MAX){
             		queue_in(di_buf, QUEUE_LOCAL_FREE);
             	}
+            	else{
+            	    local_buf_num_valid--;    
+            	}
             }
 						else{            	
-            queue_in(di_buf, QUEUE_LOCAL_FREE);
-        }
+                queue_in(di_buf, QUEUE_LOCAL_FREE);
+            }
         		for(ii=0; ii<USED_LOCAL_BUF_MAX; ii++){
 				    	used_local_buf_index[ii] = -1;
  						}
