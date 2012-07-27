@@ -102,6 +102,7 @@ static struct switch_dev sdev = {	// android ics switch device
 #define INIT_FLAG_CEC_FUNC       0x4
 
 #define INIT_FLAG_NOT_LOAD 0x80
+#define HDMI_SINK_NO_EDID       // For sink no edid case. If HDMI CTS, undef HDMI_SINK_NO_EDID
 
 #ifdef AVOS
 static unsigned char init_flag=INIT_FLAG_POWERDOWN;
@@ -122,7 +123,9 @@ static int hpdmode = 1; /*
 static int force_vout_index = 0;                      
 static int hdmi_prbs_mode = 0xffff; /* 0xffff=disable; 0=PRBS 11; 1=PRBS 15; 2=PRBS 7; 3=PRBS 31*/
 static int hdmi_480p_force_clk = 0; /* 200, 225, 250, 270 */
-
+#ifdef HDMI_SINK_NO_EDID
+static int force_output_mode = 0;   // if 1, then output force without edid  if 0, the with edid
+#endif
 static int hdmi_output_on = 1;   
 static int hdmi_authenticated = -1;                     
 static int auth_output_auto_off = 0;
@@ -210,7 +213,16 @@ static  int  set_disp_mode(const char *mode)
 {
     int ret=-1;
     HDMI_Video_Codes_t vic;
+#ifndef HDMI_SINK_NO_EDID
     vic = hdmitx_edid_get_VIC(&hdmitx_device, mode, 1);
+#else
+    if(force_output_mode){
+        vic = hdmitx_get_VIC(&hdmitx_device, mode);
+    }
+    else{
+        vic = hdmitx_edid_get_VIC(&hdmitx_device, mode, 1);
+    }
+#endif
     HDMI_DEBUG();
     if(vic != HDMI_Unkown){
         hdmitx_device.mux_hpd_if_pin_high_flag = 1;
@@ -253,7 +265,16 @@ static int set_disp_mode_auto(void)
 #endif    
     HDMI_Video_Codes_t vic;     //Prevent warning
     //msleep(500);
+#ifndef HDMI_SINK_NO_EDID
     vic = hdmitx_edid_get_VIC(&hdmitx_device, info->name, (hdmitx_device.disp_switch_config==DISP_SWITCH_FORCE)?1:0);
+#else
+    if(force_output_mode){
+        vic = hdmitx_get_VIC(&hdmitx_device, info->name);
+    }
+    else{
+        vic = hdmitx_edid_get_VIC(&hdmitx_device, info->name, (hdmitx_device.disp_switch_config==DISP_SWITCH_FORCE)?1:0);
+    }
+#endif
     hdmitx_device.cur_VIC = HDMI_Unkown;
 
     if(uboot_vmode_flag == vic){
@@ -293,7 +314,16 @@ static unsigned char is_dispmode_valid_for_hdmi(void)
 #else
     vinfo_t* info=&lvideo_info;
 #endif    
+#ifndef HDMI_SINK_NO_EDID
     vic = hdmitx_edid_get_VIC(&hdmitx_device, info->name, (hdmitx_device.disp_switch_config==DISP_SWITCH_FORCE)?1:0);
+#else
+    if(force_output_mode){
+        vic = hdmitx_get_VIC(&hdmitx_device, info->name);
+    }
+    else{
+        vic = hdmitx_edid_get_VIC(&hdmitx_device, info->name, (hdmitx_device.disp_switch_config==DISP_SWITCH_FORCE)?1:0);
+    }
+#endif
     return (vic != HDMI_Unkown);
 }
 
@@ -453,18 +483,27 @@ static ssize_t show_disp_cap(struct device * dev, struct device_attribute *attr,
     char* disp_mode_t[]={"480i","480p","576i","576p","720p","1080i","1080p","720p50hz","1080i50hz","1080p50hz",NULL};
     char* native_disp_mode = hdmitx_edid_get_native_VIC(&hdmitx_device);
     HDMI_Video_Codes_t vic;
-    for(i=0; disp_mode_t[i]; i++){
-        vic = hdmitx_edid_get_VIC(&hdmitx_device, disp_mode_t[i], 0);
-        if( vic != HDMI_Unkown){
-            pos += snprintf(buf+pos, PAGE_SIZE,"%s",disp_mode_t[i]);
-            if(native_disp_mode&&(strcmp(native_disp_mode, disp_mode_t[i])==0)){
-                pos += snprintf(buf+pos, PAGE_SIZE,"*\n");
-            }
-            else{
-                pos += snprintf(buf+pos, PAGE_SIZE,"\n");
-            }                
-        }
+#ifdef HDMI_SINK_NO_EDID
+    if(force_output_mode){
+        pos += snprintf(buf+pos, PAGE_SIZE,"null edid\n");
     }
+    else{
+#endif			
+        for(i=0; disp_mode_t[i]; i++){
+            vic = hdmitx_edid_get_VIC(&hdmitx_device, disp_mode_t[i], 0);
+            if( vic != HDMI_Unkown){
+                pos += snprintf(buf+pos, PAGE_SIZE,"%s",disp_mode_t[i]);
+                if(native_disp_mode&&(strcmp(native_disp_mode, disp_mode_t[i])==0)){
+                    pos += snprintf(buf+pos, PAGE_SIZE,"*\n");
+                }
+                else{
+                pos += snprintf(buf+pos, PAGE_SIZE,"\n");
+                }                
+            }
+        }
+#ifdef HDMI_SINK_NO_EDID
+    }
+#endif
     return pos;    
 }
 
@@ -952,16 +991,30 @@ hdmi_task_handle(void *data)
 
         if (hdmitx_device->hpd_event == 1)
         {
+#ifdef HDMI_SINK_NO_EDID
+            msleep(500);
+#endif
             if(hdmitx_device->HWOp.GetEDIDData(hdmitx_device)){
                 hdmi_print(1,"HDMI: EDID Ready\n");
                 hdmitx_edid_clear(hdmitx_device);
                 hdmitx_edid_parse(hdmitx_device);
                 cec_node_init(hdmitx_device);
+#ifdef HDMI_SINK_NO_EDID
+                force_output_mode = 0;
+#endif
                 set_disp_mode_auto();
-
-				switch_set_state(&sdev, 1);
+                switch_set_state(&sdev, 1);
                 hdmitx_device->hpd_event = 0;
             }  
+#ifdef HDMI_SINK_NO_EDID
+            else{
+                hdmi_print(1,"HDMI: EDID Bad\n");
+                force_output_mode = 1;
+                set_disp_mode_auto();
+                switch_set_state(&sdev, 1);
+                hdmitx_device->hpd_event = 0;
+            }
+#endif            
             hdmitx_device->hpd_state = 1;  
         }
         else if(hdmitx_device->hpd_event == 2)

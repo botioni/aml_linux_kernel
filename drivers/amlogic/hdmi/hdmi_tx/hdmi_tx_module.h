@@ -103,7 +103,7 @@ typedef struct hdmi_tx_dev_s {
 #endif        
 
 
-#define HDMITX_VER "2012Jul26a"
+#define HDMITX_VER "2012Jul27a"
 
 /************************************
 *    hdmitx protocol level interface
@@ -113,6 +113,8 @@ extern void hdmitx_init_parameters(HDMI_TX_INFO_t *info);
 extern int hdmitx_edid_parse(hdmitx_dev_t* hdmitx_device);
 
 HDMI_Video_Codes_t hdmitx_edid_get_VIC(hdmitx_dev_t* hdmitx_device,const char* disp_mode, char force_flag);
+
+HDMI_Video_Codes_t hdmitx_get_VIC(hdmitx_dev_t* hdmitx_device,const char* disp_mode);
 
 extern int hdmitx_edid_dump(hdmitx_dev_t* hdmitx_device, char* buffer, int buffer_len);
 
