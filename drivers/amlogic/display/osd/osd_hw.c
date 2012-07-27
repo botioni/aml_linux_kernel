@@ -536,7 +536,7 @@ void osd_free_scale_enable_hw(u32 index,u32 enable)
 	if(mode_changed){
         //vf_notify_receiver(PROVIDER_NAME,VFRAME_EVENT_PROVIDER_RESET,NULL);
         extern void vf_ppmgr_reset_ext(void);
-        vf_ppmgr_reset_ext();
+        //vf_ppmgr_reset_ext();
     }
 #endif
 #endif

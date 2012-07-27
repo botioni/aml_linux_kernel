@@ -49,7 +49,7 @@ typedef struct{
 vfm_map_t* vfm_map[VFM_MAP_COUNT];
 static int vfm_map_num = 0;
 
-int vfm_debug_flag = 0;
+int vfm_debug_flag = 1;
 
 void vf_update_active_map(void)
 {
@@ -270,7 +270,7 @@ static void vfm_init(void)
 #endif    
 #endif
     char def_osd_id[] = "default_osd";
-    char def_osd_name_chain[] = "osd amvideo";
+    char def_osd_name_chain[] = "osd amvideo4osd";
     
     int i;
     for(i=0; i<VFM_MAP_COUNT; i++){
