@@ -270,7 +270,8 @@ static void vfm_init(void)
 #endif    
 #endif
     char def_osd_id[] = "default_osd";
-    char def_osd_name_chain[] = "osd amvideo4osd";
+    //char def_osd_name_chain[] = "osd amvideo4osd";
+    char def_osd_name_chain[] = "osd amvideo";
     
     int i;
     for(i=0; i<VFM_MAP_COUNT; i++){
