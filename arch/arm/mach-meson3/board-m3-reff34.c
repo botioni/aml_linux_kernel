@@ -294,6 +294,11 @@ static struct platform_device fb_device = {
 #if defined(CONFIG_AMLOGIC_SPI_NOR)
 static struct mtd_partition spi_partition_info[] = {
     {
+        .name = "ubootwhole",
+        .offset = 0,
+        .size = 0x6000,
+    },
+    {
         .name = "ekey",
         .offset = 0x7d000,
         .size = 0x1000,
