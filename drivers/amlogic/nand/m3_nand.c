@@ -376,6 +376,7 @@ static int m3_nand_options_confirm(struct aml_nand_chip *aml_chip)
 		valid_chip_num *= aml_chip->internal_chipnr;	
 	
 	if(valid_chip_num > 2){
+		aml_chip->plane_num = 1;
 	    printk("detect valid_chip_num:%d over 2, and aml_chip->internal_chipnr:%d, disable NAND_TWO_PLANE_MODE here\n", valid_chip_num, aml_chip->internal_chipnr);
 	}
 	else{
