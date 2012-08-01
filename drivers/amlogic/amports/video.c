@@ -1573,6 +1573,21 @@ err1:
     return -ENOMEM;
 }
 
+void get_video_keep_buffer(unsigned long *addr, unsigned long *phys_addr)
+{
+    if (addr) {
+        addr[0] = (ulong)keep_y_addr_remap;
+        addr[1] = (ulong)keep_u_addr_remap;
+        addr[2] = (ulong)keep_v_addr_remap;
+    }
+
+    if (phys_addr) {
+        phys_addr[0] = (keep_y_addr == 0) ? 0 : (ulong)virt_to_phys((u8 *)keep_y_addr);
+        phys_addr[1] = (keep_u_addr == 0) ? 0 : (ulong)virt_to_phys((u8 *)keep_u_addr);
+        phys_addr[2] = (keep_v_addr == 0) ? 0 : (ulong)virt_to_phys((u8 *)keep_v_addr);
+    }
+}
+
 /*********************************************************
  * FIQ Routines
  *********************************************************/
