@@ -45,6 +45,17 @@ config VIDEO_AMLOGIC_CAPTURE_GC0329
 	  Amlogic capture driver.
 	  Say Y here if you want this driver.
 
+config VIDEO_AMLOGIC_CAPTURE_OV3640
+	tristate "Amlogic Platform Capture Driver for OV3640"
+	depends on VIDEO_AMLOGIC_CAPTURE
+	select VIDEOBUF_VMALLOC
+	select TVIN_BT656IN
+	select TVIN_VDIN
+	default n
+	---help---
+	  Amlogic capture driver.
+	  Say Y here if you want this driver.
+
 config VIDEO_AMLOGIC_CAPTURE_OV3660
 	tristate "Amlogic Platform Capture Driver for OV3660"
 	depends on VIDEO_AMLOGIC_CAPTURE
