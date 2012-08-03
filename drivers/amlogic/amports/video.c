@@ -1288,13 +1288,7 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
 
         } else if ((cur_dispbuf == &vf_local) && (video_property_changed)) {
             if (!(blackout|force_blackout)) {
-#ifdef CONFIG_AM_DEINTERLACE
-                if ((deinterlace_mode == 0) || (cur_dispbuf->duration == 0)
-#if defined(CONFIG_AM_DEINTERLACE_SD_ONLY)
-                    || (cur_dispbuf->width > 720)
-#endif
-                   )
-#endif
+        			if((READ_MPEG_REG(DI_IF1_GEN_REG)&0x1)==0)
                 {
                     /* setting video display property in unregister mode */
                     u32 cur_index = cur_dispbuf->canvas0Addr;
@@ -1868,7 +1862,9 @@ unsigned int vf_keep_current(void)
     u32 y_index, u_index, v_index;
     canvas_t cs0,cs1,cs2,cd;
 
-
+if(READ_MPEG_REG(DI_IF1_GEN_REG)&0x1){
+    return 0;
+}
 #ifdef CONFIG_AM_DEINTERLACE
     int deinterlace_mode = get_deinterlace_mode();
 #endif
