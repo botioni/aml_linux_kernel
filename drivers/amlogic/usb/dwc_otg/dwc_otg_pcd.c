@@ -1022,9 +1022,10 @@ static int32_t dwc_otg_pcd_start_cb(void *_p)
 static int32_t dwc_otg_pcd_stop_cb(void *_p)
 {
 	dwc_otg_pcd_t *pcd = (dwc_otg_pcd_t *) _p;
-	
 
+	SPIN_LOCK(&pcd->lock);
 	dwc_otg_pcd_stop(pcd);
+	SPIN_UNLOCK(&pcd->lock);
 	return 1;
 }
 
@@ -1039,9 +1040,9 @@ static int32_t dwc_otg_pcd_suspend_cb(void *_p)
 	dwc_otg_pcd_t *pcd = (dwc_otg_pcd_t *) _p;
 
 	if (pcd->driver && pcd->driver->resume) {
-		SPIN_UNLOCK(&pcd->lock);
-		pcd->driver->suspend(&pcd->gadget);
 		SPIN_LOCK(&pcd->lock);
+		pcd->driver->suspend(&pcd->gadget);
+		SPIN_UNLOCK(&pcd->lock);
 	}
 
 	return 0;
@@ -1058,9 +1059,9 @@ static int32_t dwc_otg_pcd_resume_cb(void *_p)
 	dwc_otg_pcd_t *pcd = (dwc_otg_pcd_t *) _p;
 
 	if (pcd->driver && pcd->driver->resume) {
-		SPIN_UNLOCK(&pcd->lock);
-		pcd->driver->resume(&pcd->gadget);
 		SPIN_LOCK(&pcd->lock);
+		pcd->driver->resume(&pcd->gadget);
+		SPIN_UNLOCK(&pcd->lock);
 	}
 
 	/* Stop the SRP timeout timer. */
