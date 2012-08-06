@@ -1227,6 +1227,9 @@ void hdmi_hw_init(hdmitx_dev_t* hdmitx_device)
     tmp_add_data = 0x40;
     hdmi_wr_reg(TX_HDCP_MODE, tmp_add_data);
 
+    // Enable these interrupts: [2] tx_edit_int_rise [1] tx_hpd_int_fall [0] tx_hpd_int_rise
+    hdmi_wr_reg(OTHER_BASE_ADDR + HDMI_OTHER_INTR_MASKN, 0x7);
+
     {
         extern vinfo_t * hdmi_get_current_vinfo(void);
         extern unsigned char uboot_vmode_flag;
@@ -1318,8 +1321,6 @@ void hdmi_hw_init(hdmitx_dev_t* hdmitx_device)
         Wr(PERIPHS_PIN_MUX_1, Rd(PERIPHS_PIN_MUX_1)|(1<<25));   // pm_hdmi_cec_en
 #endif
     }
-    // Enable these interrupts: [2] tx_edit_int_rise [1] tx_hpd_int_fall [0] tx_hpd_int_rise
-    hdmi_wr_reg(OTHER_BASE_ADDR + HDMI_OTHER_INTR_MASKN, 0x7);
 
 //#ifdef AML_A3
 #if 1
