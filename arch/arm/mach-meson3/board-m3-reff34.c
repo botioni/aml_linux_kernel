@@ -80,8 +80,6 @@
 #include <linux/efuse.h>
 #endif
 
-//#define KANG_MBOX_BOARD
-
 #ifdef CONFIG_SUSPEND
 static int suspend_state=0;
 #endif
@@ -144,11 +142,11 @@ static struct platform_device saradc_device = {
 
 static struct adc_key adc_kp_key[] = {
     {KEY_MENU,          "menu", CHAN_4, 0, 60},
-    {KEY_VOLUMEDOWN,    "vol-", CHAN_4, 131, 60},
-    {KEY_VOLUMEUP,      "vol+", CHAN_4, 263, 60},
+    {KEY_VOLUMEDOWN,    "vol-", CHAN_4, 140, 60},
+    {KEY_VOLUMEUP,      "vol+", CHAN_4, 266, 60},
     {KEY_BACK,          "exit", CHAN_4, 386, 60},
-    {KEY_HOME,          "home", CHAN_4, 504, 60},
-    {KEY_ENTER,         "enter", CHAN_4, 639, 60},
+    {KEY_HOME,          "home", CHAN_4, 510, 60},
+    {KEY_ENTER,          "enter", CHAN_4, 639, 60},
 };
 
 static struct adc_kp_platform_data adc_kp_pdata = {
@@ -341,7 +339,6 @@ static void set_usb_a_vbus_power(char is_power_on)
 
 static void set_usb_b_vbus_power(char is_power_on)
 { /*wifi rtl8188cus power control*/
-#ifndef KANG_MBOX_BOARD
 #define USB_B_POW_GPIO         GPIOC_bank_bit0_15(5)
 #define USB_B_POW_GPIO_BIT     GPIOC_bit_bit0_15(5)
 #define USB_B_POW_GPIO_BIT_ON   1
@@ -355,7 +352,6 @@ static void set_usb_b_vbus_power(char is_power_on)
         set_gpio_mode(USB_B_POW_GPIO, USB_B_POW_GPIO_BIT, GPIO_OUTPUT_MODE);
         set_gpio_val(USB_B_POW_GPIO, USB_B_POW_GPIO_BIT, USB_B_POW_GPIO_BIT_OFF);
     }
-#endif
 }
 
 //usb_a is OTG port
@@ -654,11 +650,7 @@ static struct platform_device aml_audio = {
 
 int aml_m3_is_hp_pluged(void)
 {
-#ifdef KANG_MBOX_BOARD
-    return READ_CBUS_REG_BITS(PREG_PAD_GPIO0_I, 19, 1); //return 1: hp pluged, 0: hp unpluged.
-#else 
-    return 0; //return 1: hp pluged, 0: hp unpluged.
-#endif
+	return 0; //return 1: hp pluged, 0: hp unpluged.
 }
 
 #include <sound/soc.h>
@@ -666,9 +658,6 @@ void mute_spk(struct snd_soc_codec* codec, int flag)
 {
 #ifdef _AML_M3_HW_DEBUG_
 	printk("***Entered %s:%s\n", __FILE__,__func__);
-#endif
-#ifdef KANG_MBOX_BOARD
-    flag != flag;
 #endif
     if(flag){
 		set_gpio_val(GPIOC_bank_bit0_15(4), GPIOC_bit_bit0_15(4), 1);	 // mute speak
@@ -1399,7 +1388,7 @@ static struct mtd_partition multi_partition_info_1G[] =
     },
 };
 
-static struct mtd_partition multi_partition_info_4G[] =
+static struct mtd_partition multi_partition_info_2G[] =
 {
     {
         .name = "aml_logo",
@@ -1429,7 +1418,7 @@ static struct mtd_partition multi_partition_info_4G[] =
     {
         .name = "userdata",
         .offset = 768*1024*1024,
-        .size = 1280*1024*1024,
+        .size = 768*1024*1024,
     },
 #ifdef CONFIG_AML_NFTL
     {
@@ -1444,21 +1433,17 @@ static void nand_set_parts(uint64_t size, struct platform_nand_chip *chip)
 {
     printk("set nand parts for chip %lldMB\n", (size/(1024*1024)));
 
-    if (size/(1024*1024) == 512) {
+    if (size/(1024*1024) <= 512) {
         chip->partitions = multi_partition_info_512M;
         chip->nr_partitions = ARRAY_SIZE(multi_partition_info_512M);
         }
-    else if ((size/(1024*1024) == 1024)||(size/(1024*1024) == 2048)) {
+    else if (size/(1024*1024) == 1024) {
         chip->partitions = multi_partition_info_1G;
         chip->nr_partitions = ARRAY_SIZE(multi_partition_info_1G);
         }
-    else if (size/(1024*1024) > 2048) {
-        chip->partitions = multi_partition_info_4G;
-        chip->nr_partitions = ARRAY_SIZE(multi_partition_info_4G);
-        }
     else {
-        chip->partitions = multi_partition_info_512M;
-        chip->nr_partitions = ARRAY_SIZE(multi_partition_info_512M);
+        chip->partitions = multi_partition_info_2G;
+        chip->nr_partitions = ARRAY_SIZE(multi_partition_info_2G);
         }
     return;
 }
@@ -2063,19 +2048,11 @@ static void __init eth_pinmux_init(void)
     SET_CBUS_REG_MASK(PREG_ETHERNET_ADDR0, 1);            // enable Ethernet clocks
     udelay(100);
 
-#ifdef KANG_MBOX_BOARD
-    // ethernet reset X32
-    set_gpio_mode(GPIOX_bank_bit32_35(0), GPIOX_bit_bit32_35(0), GPIO_OUTPUT_MODE);
-    set_gpio_val(GPIOX_bank_bit32_35(0), GPIOX_bit_bit32_35(0), 0);
-    mdelay(100);
-    set_gpio_val(GPIOX_bank_bit32_35(0), GPIOX_bit_bit32_35(0), 1);
-#else
     // ethernet reset
     set_gpio_mode(GPIOD_bank_bit0_9(7), GPIOD_bit_bit0_9(7), GPIO_OUTPUT_MODE);
     set_gpio_val(GPIOD_bank_bit0_9(7), GPIOD_bit_bit0_9(7), 0);
     mdelay(100);
     set_gpio_val(GPIOD_bank_bit0_9(7), GPIOD_bit_bit0_9(7), 1);
-#endif
 }
 
 static void __init device_pinmux_init(void )
@@ -2180,18 +2157,6 @@ static void disable_unused_model(void)
 static void __init power_hold(void)
 {
     printk(KERN_INFO "power hold set high!\n");
-
-#ifdef KANG_MBOX_BOARD
-    //set HDMI_PWR_EN# to low
-    set_gpio_mode(GPIOA_bank_bit0_27(26), GPIOA_bit_bit0_27(26), GPIO_OUTPUT_MODE);
-    set_gpio_val(GPIOA_bank_bit0_27(26), GPIOA_bit_bit0_27(26), 0);
-    // hdmi power on
-    set_gpio_mode(GPIOC_bank_bit0_15(6), GPIOC_bit_bit0_15(6), GPIO_OUTPUT_MODE);
-    set_gpio_val(GPIOC_bank_bit0_15(6), GPIOC_bit_bit0_15(6), 1);
-    //+5V_AMP on
-    set_gpio_mode(GPIOA_bank_bit0_27(15), GPIOA_bit_bit0_27(15), GPIO_OUTPUT_MODE);
-    set_gpio_val(GPIOA_bank_bit0_27(15), GPIOA_bit_bit0_27(15), 1);
-#else
   //  set_gpio_val(GPIOAO_bank_bit0_11(6), GPIOAO_bit_bit0_11(6), 1);
   //  set_gpio_mode(GPIOAO_bank_bit0_11(6), GPIOAO_bit_bit0_11(6), GPIO_OUTPUT_MODE);
 
@@ -2231,7 +2196,6 @@ static void __init power_hold(void)
     printk(KERN_INFO "set_vccx2 power up\n");
 //    set_gpio_mode(GPIOA_bank_bit0_27(26), GPIOA_bit_bit0_27(26), GPIO_OUTPUT_MODE);
 //    set_gpio_val(GPIOA_bank_bit0_27(26), GPIOA_bit_bit0_27(26), 0);
-#endif
 }
 
 static void __init LED_PWM_REG0_init(void)
@@ -2277,9 +2241,7 @@ static __init void m1_init_machine(void)
 //    pm_power_off = power_off;		//Elvis fool
     device_clk_setting();
     device_pinmux_init();
-#ifndef KANG_MBOX_BOARD
     LED_PWM_REG0_init();
-#endif
 
 	
 #ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE

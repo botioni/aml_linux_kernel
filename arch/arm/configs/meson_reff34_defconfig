@@ -1,7 +1,7 @@
 #
 # Automatically generated make config: don't edit
 # Linux kernel version: 2.6.34
-# Mon Jul 30 19:49:00 2012
+# Mon Aug  6 20:15:10 2012
 #
 CONFIG_ARM=y
 CONFIG_HOLES_IN_ZONE=y
@@ -733,7 +733,7 @@ CONFIG_AMLOGIC_SPI_NOR=y
 CONFIG_AM_NAND=y
 CONFIG_AM_NAND_RBPIN=y
 # CONFIG_AML_NAND_ENV is not set
-CONFIG_AML_NFTL=m
+CONFIG_AML_NFTL=y
 
 #
 # AMLOGIC DEMOD Support
@@ -923,6 +923,7 @@ CONFIG_AML_AUDIO_DSP_LOG=y
 # AMLOGIC Deinterlace driver
 #
 CONFIG_DEINTERLACE=y
+# CONFIG_AM_DEINTERLACE_SD_ONLY is not set
 
 #
 # Amlogic CAMERA Support
