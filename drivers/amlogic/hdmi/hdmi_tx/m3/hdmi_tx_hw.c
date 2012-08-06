@@ -1813,14 +1813,14 @@ static void hdmi_audio_init(unsigned char spdif_flag)
 
     hdmi_wr_reg(TX_AUDIO_PACK, 0x01); // Enable audio sample packets
 
-    // Set N = 4096 (N is not measured, N must be configured so as to be a reference to clock_meter)
-    hdmi_wr_reg(TX_SYS1_ACR_N_0, 0x00); // N[7:0]
-    hdmi_wr_reg(TX_SYS1_ACR_N_1, 0x18 /*0x10*/); // N[15:8]
+//    // Set N = 4096 (N is not measured, N must be configured so as to be a reference to clock_meter)
+//    hdmi_wr_reg(TX_SYS1_ACR_N_0, 0x00); // N[7:0]
+//    hdmi_wr_reg(TX_SYS1_ACR_N_1, 0x18 /*0x10*/); // N[15:8]
 
-    tmp_add_data  = 0;
-    tmp_add_data |= 0xa << 4;    // [7:4] Meas Tolerance
-    tmp_add_data |= 0x0 << 0;    // [3:0] N[19:16]
-    hdmi_wr_reg(TX_SYS1_ACR_N_2, tmp_add_data); // 0xa0
+//    tmp_add_data  = 0;
+//    tmp_add_data |= 0xa << 4;    // [7:4] Meas Tolerance
+//    tmp_add_data |= 0x0 << 0;    // [3:0] N[19:16]
+//    hdmi_wr_reg(TX_SYS1_ACR_N_2, tmp_add_data); // 0xa0
 
     hdmi_wr_reg(TX_AUDIO_CONTROL,   hdmi_rd_reg(TX_AUDIO_CONTROL)|0x1); 
 #else
