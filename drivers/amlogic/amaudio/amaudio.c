@@ -89,6 +89,9 @@ static unsigned int enable_resample_flag=0;
 static unsigned int resample_type_flag=0; //0-->no resample  processing
                                            //1-->down resample processing
                                            //2-->up     resample processing
+/*resample update for sync*/
+extern unsigned int timestamp_enable_resample_flag;
+extern unsigned int timestamp_resample_type_flag;
 //--------------------------------------------
 #define DEBUG_DUMP 1
 
@@ -1686,8 +1689,10 @@ static ssize_t store_enable_resample(struct class* class, struct class_attribute
 {
   if(buf[0] == '0'){
     enable_resample_flag = 0;
+    timestamp_enable_resample_flag = 0;
   }else if(buf[0] == '1'){
     enable_resample_flag = 1;
+    timestamp_enable_resample_flag = 1;
   }
   return count;
 }
@@ -1709,10 +1714,13 @@ static ssize_t store_resample_type(struct class* class, struct class_attribute* 
 {
   if(buf[0] == '0'){ 
     resample_type_flag = 0;  //0-->no resample  processing
+    timestamp_resample_type_flag = 0;
   }else if(buf[0] == '1'){     
     resample_type_flag = 1;  //1-->down resample processing
+    timestamp_resample_type_flag = 1;
   }else if(buf[0] == '2'){
     resample_type_flag = 2;  //2-->up resample processing
+    timestamp_resample_type_flag = 2;
   }
   return count;
 }
