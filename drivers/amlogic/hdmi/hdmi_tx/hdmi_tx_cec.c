@@ -114,13 +114,9 @@ static struct {
 static unsigned char * osd_name_uninit = "\0\0\0\0\0\0\0\0";
 static irqreturn_t cec_isr_handler(int irq, void *dev_instance);
 
-static struct timer_list tv_cec_timer;
-
 //static unsigned char dev = 0;
 static unsigned char cec_init_flag = 0;
 static unsigned char cec_mutex_flag = 0;
-
-void tv_cec_timer_func(unsigned long arg);
 
 //static unsigned int hdmi_rd_reg(unsigned long addr);
 //static void hdmi_wr_reg(unsigned long addr, unsigned long data);
@@ -357,14 +353,6 @@ void cec_usr_cmd_post_process(void)
     //printk("[TV CEC TX]: tx_msg_cnt = %x\n", tx_msg_cnt);
 }
 
-////void cec_timer_post_process(void)
-////{
-////    /* timer post process*/
-////    if (cec_polling_state == TV_CEC_POLLING_ON) {
-////        cec_tv_polling_online_dev();
-////        cec_polling_state = TV_CEC_POLLING_OFF;
-////    }
-////}
 void cec_node_init(hdmitx_dev_t* hdmitx_device)
 {
 	int i, bool = 0;
@@ -382,11 +370,6 @@ void cec_node_init(hdmitx_dev_t* hdmitx_device)
     WRITE_MPEG_REG(A9_0_IRQ_IN1_INTR_STAT_CLR, READ_MPEG_REG(A9_0_IRQ_IN1_INTR_STAT_CLR) | (1 << 23));    // Clear the interrupt
     WRITE_MPEG_REG(A9_0_IRQ_IN1_INTR_MASK, READ_MPEG_REG(A9_0_IRQ_IN1_INTR_MASK) | (1 << 23));            // Enable the hdmi cec interrupt
 
-    init_timer(&tv_cec_timer);
-    tv_cec_timer.data = (ulong) & tv_cec_timer;
-    tv_cec_timer.function = tv_cec_timer_func;
-    tv_cec_timer.expires = jiffies + TV_CEC_INTERVAL;
-    add_timer(&tv_cec_timer);
 	for(i = 0; i < 3; i++){ 
 //	    printk("CEC: start poll dev\n");  	
 		cec_polling_online_dev(player_dev[i], &bool);
@@ -428,7 +411,6 @@ void cec_node_uninit(hdmitx_dev_t* hdmitx_device)
         return ;
     WRITE_MPEG_REG(A9_0_IRQ_IN1_INTR_MASK, READ_MPEG_REG(A9_0_IRQ_IN1_INTR_MASK) & ~(1 << 23));            // Disable the hdmi cec interrupt
     //free_irq(INT_HDMI_CEC, (void *)hdmitx_device);
-    del_timer_sync(&tv_cec_timer);
 }
 
 static int cec_task(void *data)
@@ -445,18 +427,14 @@ static int cec_task(void *data)
     
     cec_node_init(hdmitx_device);
     
-//    dump_hdmi_cec_reg();
-    
     // Get logical address
 
     printk("CEC: CEC task process\n");
 
     while (1) {
-            
         down_interruptible(&tv_cec_sema);
         cec_isr_post_process();
         cec_usr_cmd_post_process();
-        //\\cec_timer_post_process();
     }
 
     return 0;
@@ -466,21 +444,6 @@ static int cec_task(void *data)
 
 
 /***************************** cec middle level code *****************************/
-
-void tv_cec_timer_func(unsigned long arg)
-{
-    struct timer_list *timer = (struct timer_list *)arg;
-    timer->expires = jiffies + TV_CEC_INTERVAL;
-
-    if (cec_pending_flag == TV_CEC_PENDING_OFF) {
-        cec_polling_state = TV_CEC_POLLING_ON;
-    }
-
-    add_timer(timer);
-
-    up(&tv_cec_sema);
-}
-
 void register_cec_rx_msg(unsigned char *msg, unsigned char len )
 {
     memset((void*)(&(cec_rx_msg_buf.cec_rx_message[cec_rx_msg_buf.rx_write_pos])), 0, sizeof(cec_rx_message_t));
@@ -1489,8 +1452,6 @@ void cec_uninit(hdmitx_dev_t* hdmitx_device)
     if (cec_init_flag == 1) {
         WRITE_MPEG_REG(A9_0_IRQ_IN1_INTR_MASK, READ_MPEG_REG(A9_0_IRQ_IN1_INTR_MASK) & ~(1 << 23));            // Disable the hdmi cec interrupt
         free_irq(INT_HDMI_CEC, (void *)hdmitx_device);
-
-        del_timer_sync(&tv_cec_timer);
 
         cec_init_flag = 0;
     }
