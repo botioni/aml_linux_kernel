@@ -1320,8 +1320,10 @@ osd_ext_probe(struct platform_device *pdev)
 				mydef_var[index].bits_per_pixel = 32;
 			}
 		} else {
+#if 0//avoid clearing the mem of uboot osd1 logo
 			amlog_level(LOG_LEVEL_HIGH, "---------------clear framebuffer%d memory  \r\n", index + 2);
 			memset((char*)fbdev->fb_mem_vaddr, 0x80, fbdev->fb_len);
+#endif
 		}
 
 		_fbdev_set_default(fbdev, index);
