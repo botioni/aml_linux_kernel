@@ -646,7 +646,8 @@ struct aml_camera_i2c_fig1_s SP0838_script[] = {
 	{0x31,0x40},
 	{0x32,0x15},  //Auto_mode set
 	{0x34,0x66},  //Isp_mode set
-	{0x35,0xc0},  //out format
+	//{0x35,0xc0},  //out format
+	{0x35,0x41},
 	{0x36,0x80},
 	//{0x0d,0x1c},   // seltest
 	//{0x30,0x02},
@@ -2015,7 +2016,7 @@ static int vidioc_streamon(struct file *file, void *priv, enum v4l2_buf_type i)
 	if (i != fh->type)
 		return -EINVAL;
 
-    para.port  = TVIN_PORT_CAMERA;
+    para.port  = TVIN_PORT_CAMERA_YUYV;
     para.fmt_info.fmt = TVIN_SIG_FMT_MAX+1;//TVIN_SIG_FMT_MAX+1;TVIN_SIG_FMT_CAMERA_1280X720P_30Hz
 	para.fmt_info.frame_rate = 236;
 	para.fmt_info.h_active = sp0838_h_active;
@@ -2528,7 +2529,7 @@ static int sp0838_resume(struct i2c_client *client)
     struct sp0838_fh  *fh = to_fh(t);
     tvin_parm_t para;
     if (sp0838_have_open) {
-        para.port  = TVIN_PORT_CAMERA;
+        para.port  = TVIN_PORT_CAMERA_YUYV;
         para.fmt_info.fmt = TVIN_SIG_FMT_MAX+1;
         SP0838_init_regs(t);
 	if(fh->stream_on == 1){
