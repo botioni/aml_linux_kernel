@@ -1179,15 +1179,16 @@ static int osd_suspend(struct platform_device *pdev, pm_message_t state)
 
 static int osd_resume(struct platform_device *pdev)
 {
-#ifdef CONFIG_HAS_EARLYSUSPEND
-    if (early_suspend_flag)
-        return 0;
-#endif
 #ifdef CONFIG_SCREEN_ON_EARLY
 	if (early_resume_flag) {
 		early_resume_flag = 0;
 		return 0;
 	}
+#endif
+
+#ifdef CONFIG_HAS_EARLYSUSPEND
+    if (early_suspend_flag)
+        return 0;
 #endif
        osddev_resume();
        return 0;
@@ -1199,7 +1200,8 @@ static void osd_early_suspend(struct early_suspend *h)
 {
     if (early_suspend_flag)
         return;
-    osd_suspend((struct platform_device *)h->param, PMSG_SUSPEND);
+    //osd_suspend((struct platform_device *)h->param, PMSG_SUSPEND);
+    osddev_suspend();
     early_suspend_flag = 1;
 }
 
@@ -1208,7 +1210,8 @@ static void osd_late_resume(struct early_suspend *h)
     if (!early_suspend_flag)
         return;
     early_suspend_flag = 0;
-    osd_resume((struct platform_device *)h->param);
+    //osd_resume((struct platform_device *)h->param);
+    osddev_resume();
 }
 #endif
 

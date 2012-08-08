@@ -256,15 +256,15 @@ static int  meson_vout_suspend(struct platform_device *pdev, pm_message_t state)
 
 static int  meson_vout_resume(struct platform_device *pdev)
 {
-#ifdef CONFIG_HAS_EARLYSUSPEND
-    if (early_suspend_flag)
-        return 0;
-#endif
 #ifdef CONFIG_SCREEN_ON_EARLY
     if (early_resume_flag) {
     	early_resume_flag = 0;
     	return 0;
     }
+#endif
+#ifdef CONFIG_HAS_EARLYSUSPEND
+    if (early_suspend_flag)
+        return 0;
 #endif
 	vout_resume();
 	return 0;
@@ -289,7 +289,8 @@ static void meson_vout_early_suspend(struct early_suspend *h)
 {
     if (early_suspend_flag)
         return;
-    meson_vout_suspend((struct platform_device *)h->param, PMSG_SUSPEND);
+    //meson_vout_suspend((struct platform_device *)h->param, PMSG_SUSPEND);
+    vout_suspend();
     early_suspend_flag = 1;
 }
 
@@ -298,7 +299,8 @@ static void meson_vout_late_resume(struct early_suspend *h)
     if (!early_suspend_flag)
         return;
     early_suspend_flag = 0;
-    meson_vout_resume((struct platform_device *)h->param);
+    //meson_vout_resume((struct platform_device *)h->param);
+    vout_resume();
 }
 #endif
 
