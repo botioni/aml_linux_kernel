@@ -126,8 +126,8 @@ int audiodsp_start(void)
 	   (pmcode->fmt == MCODEC_FMT_PCM)  ||
 	   (pmcode->fmt == MCODEC_FMT_WMAPRO)||
 	   (pmcode->fmt == MCODEC_FMT_ALAC)||
-	   (pmcode->fmt == MCODEC_FMT_AC3) ||
-	   (pmcode->fmt == MCODEC_FMT_EAC3) ||	  
+	   (pmcode->fmt & MCODEC_FMT_AC3) ||
+	   (pmcode->fmt & MCODEC_FMT_EAC3) ||	  
 	  (pmcode->fmt == MCODEC_FMT_APE) ||
 	  (pmcode->fmt == MCODEC_FMT_FLAC))
 
