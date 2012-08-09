@@ -978,7 +978,7 @@ static void vh264_put_timer_func(unsigned long arg)
     }
 #endif
 
-    if (putting_ptr != put_ptr) {
+    while (putting_ptr != put_ptr) {
         u32 index = vfpool_idx[put_ptr];
 
         if (index != -1 && index >= VF_BUF_NUM) {
@@ -1012,11 +1012,14 @@ static void vh264_put_timer_func(unsigned long arg)
 
                     if (i == VF_BUF_NUM) {
                         stream_switching_done();
+			   buffer_for_recycle_rd == buffer_for_recycle_wr;
                     }
                 }
             }
         }
         INCPTR(put_ptr);
+	if (!vh264_stream_switching)
+		break;
     }
 
     if (buffer_for_recycle_rd != buffer_for_recycle_wr) {
