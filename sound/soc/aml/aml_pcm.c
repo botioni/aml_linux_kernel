@@ -314,11 +314,13 @@ static int aml_pcm_hw_params(struct snd_pcm_substream *substream,
 		aml_iec958_playback_size = runtime->dma_bytes*4;
 	s->I2S_addr = runtime->dma_addr;
 
-
-    if(substream->stream == SNDRV_PCM_STREAM_PLAYBACK){
+    /*
+     * Both capture and playback need to reset the last ptr to the start address
+     * */
+    //if(substream->stream == SNDRV_PCM_STREAM_PLAYBACK){
         /* s->last_ptr must initialized as dma buffer's start addr */
         s->last_ptr = runtime->dma_addr;
-    }
+    //}
 	
 	return 0;
 }
