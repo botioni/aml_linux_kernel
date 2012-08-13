@@ -49,6 +49,9 @@ static bool osd_vf_need_update = false;
 static u32 osd_current_field = 0;
 #endif
 static struct vframe_provider_s osd_vf_prov;
+static int  g_vf_visual_width;
+static int  g_vf_width;
+static int  g_vf_height;
 
 /********************************************************************/
 /***********		osd psedu frame provider 			*****************/
@@ -359,16 +362,24 @@ void osd_setup(struct osd_ctl_s *osd_ctl,
 #ifdef CONFIG_AM_LOGO	
 	static u32	    logo_setup_ok=0;
 #endif
-
 	pan_data.x_start=xoffset;
-	pan_data.x_end=xoffset + (disp_end_x-disp_start_x);
 	pan_data.y_start=yoffset;
-	pan_data.y_end=yoffset + (disp_end_y-disp_start_y);
-
 	disp_data.x_start=disp_start_x;
 	disp_data.y_start=disp_start_y;
-	disp_data.x_end=disp_end_x;
-	disp_data.y_end=disp_end_y;
+
+	if(likely(osd_hw.free_scale_enable[OSD1] && index==OSD1))
+	{     
+		pan_data.x_end=xoffset + g_vf_visual_width; 
+		pan_data.y_end=yoffset + g_vf_height; 
+		disp_data.x_end=disp_start_x + g_vf_width;
+		disp_data.y_end=disp_start_y + g_vf_height;
+	}else{
+		pan_data.x_end=xoffset + (disp_end_x-disp_start_x);
+		pan_data.y_end=yoffset + (disp_end_y-disp_start_y);
+		disp_data.x_end=disp_end_x;
+		disp_data.y_end=disp_end_y;
+	}
+
 	
        if( osd_hw.fb_gem[index].addr!=fbmem || osd_hw.fb_gem[index].width !=w ||  osd_hw.fb_gem[index].height !=yres_virtual)
        	{
@@ -395,7 +406,7 @@ void osd_setup(struct osd_ctl_s *osd_ctl,
 	if(memcmp(&pan_data,&osd_hw.pandata[index],sizeof(pandata_t))!= 0 ||
 		memcmp(&disp_data,&osd_hw.dispdata[index],sizeof(dispdata_t))!=0)
 	{
-		if(!osd_hw.free_scale_enable[OSD1]) //in free scale mode ,adjust geometry para is abandoned.
+		//if(!osd_hw.free_scale_enable[OSD1]) //in free scale mode ,adjust geometry para is abandoned.
 		{
 			memcpy(&osd_hw.pandata[index],&pan_data,sizeof(pandata_t));
 			memcpy(&osd_hw.dispdata[index],&disp_data,sizeof(dispdata_t));
@@ -488,7 +499,10 @@ void osd_free_scale_enable_hw(u32 index,u32 enable)
 #endif
 			memcpy(&save_disp_data,&osd_hw.dispdata[OSD1],sizeof(dispdata_t));
 			memcpy(&save_pan_data,&osd_hw.pandata[OSD1],sizeof(pandata_t));
-			osd_hw.pandata[OSD1].x_end =osd_hw.pandata[OSD1].x_start + vf.width-1-osd_hw.dispdata[OSD1].x_start;
+			g_vf_visual_width=vf.width-1-osd_hw.dispdata[OSD1].x_start ;
+			g_vf_width=vf.width-1;
+			g_vf_height=vf.height-1;
+			osd_hw.pandata[OSD1].x_end =osd_hw.pandata[OSD1].x_start + g_vf_visual_width;
 			osd_hw.pandata[OSD1].y_end =osd_hw.pandata[OSD1].y_start + vf.height-1;	
 			osd_hw.dispdata[OSD1].x_end =osd_hw.dispdata[OSD1].x_start + vf.width-1;
 			osd_hw.dispdata[OSD1].y_end =osd_hw.dispdata[OSD1].y_start + vf.height-1;
