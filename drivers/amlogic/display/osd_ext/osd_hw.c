@@ -1304,7 +1304,7 @@ void osd_ext_init_hw(u32  logo_loaded)
 	//here we will init default value ,these value only set once .
 	if (!logo_loaded) {
 		data32  = 1;
-		data32  = 4   << 5;  // hold_fifo_lines
+		data32 |= 4   << 5;  // hold_fifo_lines
 		data32 |= 3   << 10; // burst_len_sel: 3=64
 		data32 |= 32  << 12; // fifo_depth_val: 32*8=256
 
@@ -1469,8 +1469,20 @@ void osd_ext_resume_hw(void)
 
 void osd_ext_clone_pan(u32 index)
 {
+	s32 offset = 0;
 	if (osd_ext_hw.clone[index]) {
-		memcpy(&osd_ext_hw.pandata[index], &osd_hw.pandata[index], sizeof(pandata_t));
+		if ((osd_ext_hw.pandata[index].x_end - osd_ext_hw.pandata[index].x_start)
+				<= (osd_hw.pandata[index].x_end - osd_hw.pandata[index].x_start)) {
+			memcpy(&osd_ext_hw.pandata[index], &osd_hw.pandata[index], sizeof(pandata_t));
+		} else {
+			if (osd_ext_hw.pandata[index].y_start > osd_hw.pandata[index].y_start) {
+				offset -= osd_ext_hw.pandata[index].y_end - osd_ext_hw.pandata[index].y_start + 1;
+			} else if (osd_ext_hw.pandata[index].y_start < osd_hw.pandata[index].y_start) {
+				offset += osd_ext_hw.pandata[index].y_end - osd_ext_hw.pandata[index].y_start + 1;
+			}
+			osd_ext_hw.pandata[index].y_start += offset;
+			osd_ext_hw.pandata[index].y_end += offset;
+		}
 		add_to_update_list(index, DISP_GEOMETRY);
 		osd_ext_wait_vsync_hw();
 	}
