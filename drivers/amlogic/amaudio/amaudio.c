@@ -84,7 +84,15 @@ static unsigned int music_mix_flag = 1;
 static unsigned int mic_mix_flag = 1;
 static unsigned int enable_debug = 0;
 static unsigned int enable_debug_dump = 0;
-
+//--------------------------------------------
+static unsigned int enable_resample_flag=0;
+static unsigned int resample_type_flag=0; //0-->no resample  processing
+                                           //1-->down resample processing
+                                           //2-->up     resample processing
+/*resample update for sync*/
+extern unsigned int timestamp_enable_resample_flag;
+extern unsigned int timestamp_resample_type_flag;
+//--------------------------------------------
 #define DEBUG_DUMP 1
 
 static unsigned short* dump_buf = 0;
@@ -96,6 +104,8 @@ extern int aml_pcm_playback_enable;
 
 static unsigned int audio_in_int_cnt = 0;
 static unsigned int level2 = 0;
+static int last_out_status = 0;
+static int last_in_status = 0;
 static int amaudio_in_started = 0;
 static int amaudio_out_started = 0;
 
@@ -1666,6 +1676,54 @@ static ssize_t amaudio_runtime_show(struct class* class, struct class_attribute*
   return ret;
 }
 
+//--------------------------------------------
+static ssize_t show_enable_resample(struct class* class, struct class_attribute* attr,
+    char* buf)
+{
+  return sprintf(buf, "%s\n", enable_resample_flag? "ON": "OFF");
+}
+
+static ssize_t store_enable_resample(struct class* class, struct class_attribute* attr,
+   const char* buf, size_t count )
+{
+  if(buf[0] == '0'){
+    enable_resample_flag = 0;
+    timestamp_enable_resample_flag = 0;
+  }else if(buf[0] == '1'){
+    enable_resample_flag = 1;
+    timestamp_enable_resample_flag = 1;
+  }
+  return count;
+}
+
+static ssize_t show_resample_type(struct class* class, struct class_attribute* attr,
+    char* buf)
+{
+     if(resample_type_flag==0){      //0-->no resample  processing
+         return sprintf(buf, "NO\n");
+     }else if(resample_type_flag==1){//1-->down resample processing
+         return sprintf(buf, "DW\n");
+     }else if(resample_type_flag==2){//2-->up resample processing
+         return sprintf(buf, "UP\n");
+     }
+}
+
+static ssize_t store_resample_type(struct class* class, struct class_attribute* attr,
+   const char* buf, size_t count )
+{
+  if(buf[0] == '0'){ 
+    resample_type_flag = 0;  //0-->no resample  processing
+    timestamp_resample_type_flag = 0;
+  }else if(buf[0] == '1'){     
+    resample_type_flag = 1;  //1-->down resample processing
+    timestamp_resample_type_flag = 1;
+  }else if(buf[0] == '2'){
+    resample_type_flag = 2;  //2-->up resample processing
+    timestamp_resample_type_flag = 2;
+  }
+  return count;
+}
+//--------------------------------------------
 static struct class_attribute amaudio_attrs[]={
   __ATTR(enable_direct_audio,  S_IRUGO | S_IWUSR, show_direct_flag, store_direct_flag),
   __ATTR(enable_music_mix, S_IRUGO | S_IWUSR, show_music_mix, store_music_mix),
@@ -1675,6 +1733,8 @@ static struct class_attribute amaudio_attrs[]={
   __ATTR(enable_debug_dump, S_IRUGO | S_IWUSR, show_enable_dump, store_enable_dump),
   __ATTR_RO(amaudio_runtime),
   __ATTR(audio_channels_mask, S_IRUGO | S_IWUSR, show_audio_channels_mask, store_audio_channels_mask),
+  __ATTR(enable_resample, S_IRUGO | S_IWUSR, show_enable_resample, store_enable_resample),
+  __ATTR(resample_type, S_IRUGO | S_IWUSR, show_resample_type, store_resample_type),
   __ATTR_NULL
 };
 
