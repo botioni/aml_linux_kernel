@@ -49,6 +49,9 @@
 static struct early_suspend early_suspend;
 static int early_suspend_flag = 0;
 #endif
+#ifdef CONFIG_SCREEN_ON_EARLY
+static int early_resume_flag = 0;
+#endif
 
 MODULE_AMLOG(0, 0xff, LOG_LEVEL_DESC, LOG_MASK_DESC);
 //class attribute
@@ -253,6 +256,12 @@ static int  meson_vout_suspend(struct platform_device *pdev, pm_message_t state)
 
 static int  meson_vout_resume(struct platform_device *pdev)
 {
+#ifdef CONFIG_SCREEN_ON_EARLY
+    if (early_resume_flag) {
+    	early_resume_flag = 0;
+    	return 0;
+    }
+#endif
 #ifdef CONFIG_HAS_EARLYSUSPEND
     if (early_suspend_flag)
         return 0;
@@ -262,12 +271,26 @@ static int  meson_vout_resume(struct platform_device *pdev)
 }
 #endif 
 
+#ifdef CONFIG_SCREEN_ON_EARLY
+void resume_vout_early(void)
+{
+#ifdef CONFIG_HAS_EARLYSUSPEND
+   early_suspend_flag = 0;
+   early_resume_flag = 1;
+   vout_resume();
+#endif
+    return;
+}
+EXPORT_SYMBOL(resume_vout_early);
+#endif
+
 #ifdef CONFIG_HAS_EARLYSUSPEND
 static void meson_vout_early_suspend(struct early_suspend *h)
 {
     if (early_suspend_flag)
         return;
-    meson_vout_suspend((struct platform_device *)h->param, PMSG_SUSPEND);
+    //meson_vout_suspend((struct platform_device *)h->param, PMSG_SUSPEND);
+    vout_suspend();
     early_suspend_flag = 1;
 }
 
@@ -276,7 +299,8 @@ static void meson_vout_late_resume(struct early_suspend *h)
     if (!early_suspend_flag)
         return;
     early_suspend_flag = 0;
-    meson_vout_resume((struct platform_device *)h->param);
+    //meson_vout_resume((struct platform_device *)h->param);
+    vout_resume();
 }
 #endif
 

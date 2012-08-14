@@ -284,6 +284,7 @@ static u32 frame_repeat_count = 0;
 #endif
 
 static u32 clone = 1;
+static u32 stream_play_enable = 0;
 static u32 clone_vpts_remainder;
 static int clone_frame_rate_delay = 0;
 static int clone_frame_rate_set_value = 0;
@@ -682,7 +683,7 @@ static void vsync_toggle_frame(vframe_t *vf)
     //WRITE_MPEG_REG(VD2_IF0_CANVAS1, disp_canvas[1]);
 
     /* set video PTS */
-    if(clone == 0){
+    if((clone == 0)&&(stream_play_enable == 1)){
         if (cur_dispbuf != vf) {
             if (vf->pts != 0) {
                 amlog_mask(LOG_MASK_TIMESTAMP,
@@ -1240,7 +1241,7 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
     vout_type = detect_vout_type();
     hold_line = calc_hold_line();
 
-    if(clone == 0){
+    if((clone == 0)&&(stream_play_enable == 1)){
       timestamp_pcrscr_inc(vsync_pts_inc);
 	    timestamp_apts_inc(vsync_pts_inc);
 	  }
@@ -1253,7 +1254,7 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
         vf = video_vf_peek();
 
         if (vf) {
-            if(clone == 0){
+            if((clone == 0)&&(stream_play_enable == 1)){
                 tsync_avevent_locked(VIDEO_START,
                           (vf->pts) ? vf->pts : timestamp_vpts_get());
             }
@@ -1746,7 +1747,7 @@ static void video_vf_unreg_provider(void)
         //vf_keep_current();
     //}
 
-    if(clone == 0){
+    if((clone == 0)&&(stream_play_enable == 1)){
         tsync_avevent(VIDEO_STOP, 0);
     }
 #ifdef CONFIG_AM_DEINTERLACE
@@ -1774,8 +1775,12 @@ static void video_vf_light_unreg_provider(void)
 
 static int video_receiver_event_fun(int type, void* data, void* private_data)
 {
-    if(type == VFRAME_EVENT_PROVIDER_UNREG){
+    if(type == VFRAME_EVENT_PROVIDER_REG){
+        stream_play_enable = 1;
+    }
+    else if(type == VFRAME_EVENT_PROVIDER_UNREG){
         video_vf_unreg_provider();
+        stream_play_enable = 0;
     }
     else if(type == VFRAME_EVENT_PROVIDER_LIGHT_UNREG){
         video_vf_light_unreg_provider();

@@ -1053,6 +1053,22 @@ static dispmode_vic_t dispmode_VIC_tab[]=
     {"1080p50hz", HDMI_1080p50},
 };    
 
+HDMI_Video_Codes_t hdmitx_get_VIC(hdmitx_dev_t* hdmitx_device, const char* disp_mode)
+{
+    HDMI_Video_Codes_t vic=HDMI_720p60;
+    int count=ARRAY_SIZE(dispmode_VIC_tab);
+    int  i;
+    for(i=0;i<count;i++)
+    {
+        if(strncmp(disp_mode, dispmode_VIC_tab[i].disp_mode, strlen(dispmode_VIC_tab[i].disp_mode))==0)
+        {
+            vic = dispmode_VIC_tab[i].VIC;
+        }
+    }
+    hdmitx_device->vic_count = vic;
+    return vic;
+}
+
 HDMI_Video_Codes_t hdmitx_edid_get_VIC(hdmitx_dev_t* hdmitx_device, const char* disp_mode, char force_flag)
 {
     rx_cap_t* pRXCap = &(hdmitx_device->RXCap);

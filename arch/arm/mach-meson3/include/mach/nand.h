@@ -467,6 +467,7 @@ struct aml_nand_chip {
 
 	unsigned int		  ran_mode; 			   //def close, for all part
 	unsigned int		  rbpin_mode;				   //may get from romboot 
+	unsigned int		  rbpin_detect;				   //add for rbpin auto detect
 	unsigned int		  short_pgsz;			   //zero means no short 
 	
 	unsigned internal_chip_shift;
@@ -536,6 +537,7 @@ struct aml_nand_platform {
 		unsigned T_RHOH;
 		unsigned int		  ran_mode; 			   //def close, for all part
 		unsigned int		  rbpin_mode;				   //may get from romboot 
+		unsigned int		  rbpin_detect;
 		unsigned int		  short_pgsz;			   //zero means no short 
 		 		
 		 struct aml_nand_chip  *aml_chip;

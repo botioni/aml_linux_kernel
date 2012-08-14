@@ -23,7 +23,7 @@
 #define CEC0_LOG_ADDR 4 // MBX logical address
 #define TV_CEC_INTERVAL     (HZ*3)
 
-#define CEC_VERSION     "v1.0"
+#define CEC_VERSION     "v1.1"
 
 //#define _SUPPORT_CEC_TV_MASTER_
 

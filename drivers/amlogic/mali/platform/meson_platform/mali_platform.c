@@ -211,7 +211,6 @@ void mali_meson_poweron(void)
     WRITE_MALI_REG(MALI_APB_GP_INT_CLEAR, 0x3ff);
     WRITE_MALI_REG(MALI_MMU_INT_CLEAR, INT_ALL);
     WRITE_MALI_REG(MALI_MMU_INT_MASK, 0);
-    printk("=====fucking=====test2===\n");
 #endif  
 
     WRITE_CBUS_REG(A9_0_IRQ_IN1_INTR_MASK, int_mask);

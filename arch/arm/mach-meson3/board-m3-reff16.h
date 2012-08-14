@@ -71,9 +71,9 @@
 #endif
 
 #if defined(CONFIG_AM_DEINTERLACE_SD_ONLY)
-#define DI_MEM_SIZE			(SZ_1M*3)
+#define DI_MEM_SIZE			(SZ_1M*6)
 #else
-#define DI_MEM_SIZE			(SZ_1M*15)
+#define DI_MEM_SIZE			(SZ_1M*30)
 #endif
 #define DI_ADDR_START		U_ALIGN(VDIN_ADDR_END)
 #define DI_ADDR_END			(DI_ADDR_START+DI_MEM_SIZE-1)
@@ -102,4 +102,9 @@
 
 #define RESERVED_MEM_END	(STREAMBUF_ADDR_END)
 
+#define CONFIG_ENV_OFFSET       0x1000000	//16M
+#define CONFIG_ENV_SIZE         0x8000		//32K
+
+#define BOOTLOADER_OFFSET       0
+#define BOOTLOADER_SIZE         0x100000	//1M
 #endif

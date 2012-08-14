@@ -128,6 +128,12 @@ static struct nand_ecclayout aml_nand_oob_640 = {
 		 .length = 16}}
 };
 
+static struct nand_ecclayout aml_nand_oob_1280 = {
+	.eccbytes = 1200,
+	.oobfree = {
+		{.offset = 0,
+		 .length = 32}}
+};
 
 static unsigned default_environment_size = (ENV_SIZE - sizeof(struct aml_nand_bbt_info));
 static uint8_t nand_boot_flag = 0;
@@ -165,6 +171,7 @@ struct aml_nand_flash_dev aml_nand_flash_ids[] = {
 #ifdef NEW_NAND_SUPPORT
 	{"F serials NAND 4GiB TC58NVG5D2HTA00", {NAND_MFR_TOSHIBA, 0xD7, 0x94, 0x32, 0x76, 0x56}, 8192, 4096, 0x100000, 640, 1, 20, 25, 0, (NAND_TIMING_MODE5 | NAND_ECC_BCH16_MODE )},	//need readretry, disable two plane mode
 	{"F serials NAND 8GiB TC58NVG6D2GTA00", {NAND_MFR_TOSHIBA, 0xDE, 0x94, 0x82, 0x76, 0x56}, 8192, 8192, 0x200000, 640, 1, 20, 25, 0, (NAND_TIMING_MODE5 | NAND_ECC_BCH16_MODE )}, 	//need readretry, disable two plane mode
+	{"F serials NAND 8GiB TC58NVG7DCJTA00", {NAND_MFR_TOSHIBA, 0xDE, 0x84, 0x93, 0x72, 0x57}, 16384, 8192, 0x400000, 1280, 1, 20, 25, 0, (NAND_TIMING_MODE5 | NAND_ECC_BCH16_MODE )},  //need readretry, disable two plane mode
 #endif
 
 	{"M Generation NAND 2GiB K9GAG08U0M", {NAND_MFR_SAMSUNG, 0xD5, 0x14, 0xb6, 0x74}, 4096, 2048, 0x80000, 128, 1, 20, 15, 0, (NAND_TIMING_MODE5 | NAND_ECC_BCH8_MODE)},
@@ -978,6 +985,31 @@ static int aml_platform_wait_devready(struct aml_nand_chip *aml_chip, int chipnr
 
 	/* wait until command is processed or timeout occures */
 	aml_chip->aml_nand_select_chip(aml_chip, chipnr);
+#if 1
+	if (aml_chip->ops_mode & AML_CHIP_NONE_RB) {		
+		do{
+			//udelay(chip->chip_delay);    		
+			aml_chip->aml_nand_command(aml_chip, NAND_CMD_STATUS, -1, -1, chipnr);    		
+			udelay(2);    		
+			status = (int)chip->read_byte(mtd);    		
+			if (status & NAND_STATUS_READY)    			
+				break;    		
+			udelay(20);    	
+		}while(time_out_cnt++ <= 0x2000);   //200ms max	    	    
+
+		if (time_out_cnt > 0x2000)		    
+			return 0;   		
+	}
+	else{
+		do{		
+			if (chip->dev_ready(mtd))
+				break;
+		} while (time_out_cnt++ <= AML_NAND_BUSY_TIMEOUT);		
+
+			if (time_out_cnt > AML_NAND_BUSY_TIMEOUT)
+		return 0;
+	}
+#else
 	do {
 		if (aml_chip->ops_mode & AML_CHIP_NONE_RB) {
 			//udelay(chip->chip_delay);
@@ -997,7 +1029,7 @@ static int aml_platform_wait_devready(struct aml_nand_chip *aml_chip, int chipnr
 
 	if (time_out_cnt > AML_NAND_BUSY_TIMEOUT)
 		return 0;
-
+#endif
 	return 1;
 }
 
@@ -1076,7 +1108,7 @@ static void aml_nand_base_command(struct aml_nand_chip *aml_chip, unsigned comma
 {
 	struct nand_chip *chip = &aml_chip->chip;
 	struct mtd_info *mtd = &aml_chip->mtd;
-	unsigned command_temp, pages_per_blk_shift, plane_page_addr = 0, plane_blk_addr = 0;
+	unsigned command_temp, pages_per_blk_shift, plane_page_addr = 0, plane_blk_addr = 0, cmd_time_cnt = 0;
 	pages_per_blk_shift = (chip->phys_erase_shift - chip->page_shift);
 
 	if (page_addr != -1) {
@@ -1335,7 +1367,9 @@ static void aml_nand_base_command(struct aml_nand_chip *aml_chip, unsigned comma
 			printk ("couldn`t found selected chip: %d ready\n", chipnr);
 		chip->cmd_ctrl(mtd, NAND_CMD_STATUS, NAND_NCE | NAND_CLE | NAND_CTRL_CHANGE);
 		chip->cmd_ctrl(mtd, NAND_CMD_NONE, NAND_NCE | NAND_CTRL_CHANGE);
-		while (!(chip->read_byte(mtd) & NAND_STATUS_READY)) ;
+		while (!(chip->read_byte(mtd) & NAND_STATUS_READY) && (cmd_time_cnt++<0x1000)) {
+			udelay(20);
+		}
 		return;
 
 	default:
@@ -2589,6 +2623,7 @@ static struct aml_nand_flash_dev *aml_nand_get_flash_type(struct mtd_info *mtd,
 	u8 dev_id_hynix_26nm_4g[MAX_ID_LEN] = {NAND_MFR_HYNIX, 0xd7, 0x94, 0xda, 0x74, 0xc3};	
 	u8 dev_id_toshiba_24nm_4g[MAX_ID_LEN] = {NAND_MFR_TOSHIBA, 0xD7, 0x94, 0x32, 0x76, 0x56};	
 	u8 dev_id_toshiba_24nm_8g[MAX_ID_LEN] = {NAND_MFR_TOSHIBA, 0xDE, 0x94, 0x82, 0x76, 0x56};
+	u8 dev_id_toshiba_19nm_8g[MAX_ID_LEN] = {NAND_MFR_TOSHIBA, 0xDE, 0x84, 0x93, 0x72, 0x57};
 #endif
 	//int tmp_id, tmp_manf;
 
@@ -2756,7 +2791,8 @@ static struct aml_nand_flash_dev *aml_nand_get_flash_type(struct mtd_info *mtd,
 	
 	}
 	else  if((!strncmp((char*)type->id, (char*)dev_id_toshiba_24nm_4g, strlen((const char*)aml_nand_flash_ids[i].id)))
-	            ||(!strncmp((char*)type->id, (char*)dev_id_toshiba_24nm_8g, strlen((const char*)aml_nand_flash_ids[i].id)))){
+	            ||(!strncmp((char*)type->id, (char*)dev_id_toshiba_24nm_8g, strlen((const char*)aml_nand_flash_ids[i].id)))
+	            || (!strncmp((char*)type->id, (char*)dev_id_toshiba_19nm_8g, strlen((const char*)aml_nand_flash_ids[i].id)))){
 		aml_chip->new_nand_info.type =  TOSHIBA_24NM;
 
 		aml_chip->new_nand_info.read_rety_info.reg_addr[0] = 0x04;
@@ -4083,6 +4119,9 @@ int aml_nand_init(struct aml_nand_chip *aml_chip)
 	struct mtd_info *mtd = &aml_chip->mtd;
 	int err = 0, i = 0, phys_erase_shift;
 	int oobmul  ;
+#if ((defined CONFIG_ARCH_MESON3) || (defined CONFIG_ARCH_MESON6))	
+	unsigned por_cfg, valid_chip_num = 0;
+#endif
 
 #ifdef CONFIG_HAS_EARLYSUSPEND
     aml_chip->nand_early_suspend.level = EARLY_SUSPEND_LEVEL_BLANK_SCREEN;
@@ -4359,7 +4398,9 @@ int aml_nand_init(struct aml_nand_chip *aml_chip)
 
 	chip->select_chip = aml_nand_select_chip;
 	chip->cmd_ctrl = aml_nand_cmd_ctrl;
-	chip->dev_ready = aml_nand_dev_ready;
+#if ((defined CONFIG_ARCH_MESON3) || (defined CONFIG_ARCH_MESON6))	
+	//chip->dev_ready = aml_nand_dev_ready;
+#endif
 	chip->verify_buf = aml_nand_verify_buf;
 	chip->read_byte = aml_platform_read_byte;
 
@@ -4374,12 +4415,18 @@ int aml_nand_init(struct aml_nand_chip *aml_chip)
 		aml_chip->chip_enable[i] = (((plat->chip_enable_pad >> i*4) & 0xf) << 10);
 		aml_chip->rb_enable[i] = (((plat->ready_busy_pad >> i*4) & 0xf) << 10);
 	}
+#if ((defined CONFIG_ARCH_MESON3) || (defined CONFIG_ARCH_MESON6))		
+	//use NO RB mode to detect nand chip num
+	aml_chip->ops_mode |= AML_CHIP_NONE_RB;
+	chip->chip_delay = 100;
+#else
 	if (!aml_chip->rb_enable[0]) {
 		aml_chip->ops_mode |= AML_CHIP_NONE_RB;
 		chip->dev_ready = NULL;
 		chip->chip_delay = 100;
 		printk("#####%s, none RB and chip->chip_delay:%d\n", __func__, chip->chip_delay);
 	}
+#endif
 
 	aml_chip->aml_nand_hw_init(aml_chip);
 
@@ -4405,6 +4452,53 @@ int aml_nand_init(struct aml_nand_chip *aml_chip)
 		chip->ecc.read_page_raw = aml_nand_read_page_raw;
 		chip->ecc.write_page_raw = aml_nand_write_page_raw;
 	}
+#if ((defined CONFIG_ARCH_MESON3) || (defined CONFIG_ARCH_MESON6))	
+	valid_chip_num = 0;
+	for (i=0; i<aml_chip->chip_num; i++) {
+		if (aml_chip->valid_chip[i]) {
+		    valid_chip_num++;
+		}
+    	}
+    	
+    	//due to hardware limit, for chip num over 2, must use NO RB mode.
+    	if(valid_chip_num > 2){
+		printk("dect valid_chip_num:%d over 2, using NO RB mode\n", valid_chip_num);
+    	}
+    	else{
+		
+		if(aml_chip->rbpin_detect){
+			por_cfg = READ_CBUS_REG(ASSIST_POR_CONFIG);		
+			printk("%s auto detect RB pin here and por_cfg:%x\n", __func__, por_cfg);
+			if(por_cfg&4){
+				if(por_cfg&1){				
+					printk("%s detect without RB pin here\n", __func__);
+					aml_chip->rb_enable[0] = NULL;
+				}
+				else{
+					printk("%s detect with RB pin here\n", __func__);
+				}
+			}
+			else{
+				printk("%s power config ERROR and force using NO RB mode here\n", __func__);			
+				aml_chip->rb_enable[0] = NULL;
+			}
+		}	
+		
+		if (!aml_chip->rb_enable[0]) {
+			aml_chip->ops_mode |= AML_CHIP_NONE_RB;
+			chip->dev_ready = NULL;
+			chip->chip_delay = 100;
+			printk("#####%s, none RB and chip->chip_delay:%d\n", __func__, chip->chip_delay);
+		}	
+		else{
+			chip->chip_delay = 20;
+			chip->dev_ready = aml_nand_dev_ready;
+			aml_chip->ops_mode &= ~AML_CHIP_NONE_RB;			
+			printk("#####%s, with RB pins and chip->chip_delay:%d\n", __func__, chip->chip_delay);
+		}		
+	}	
+#endif
+
 	chip->scan_bbt = aml_nand_scan_bbt;
 
 	mtd->suspend = aml_nand_suspend;
@@ -4501,6 +4595,9 @@ int aml_nand_init(struct aml_nand_chip *aml_chip)
 				case 640:
 					chip->ecc.layout = &aml_nand_oob_640;
 					break;					
+				case 1280:
+					chip->ecc.layout = &aml_nand_oob_1280;
+					break;							
 				default:
 					printk("havn`t found any oob layout use nand base oob layout " "oobsize %d\n", mtd->oobsize);
 					chip->ecc.layout = kzalloc(sizeof(struct nand_ecclayout), GFP_KERNEL);

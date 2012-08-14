@@ -107,7 +107,13 @@ config MACH_MESON3_REFF33
         select GENERIC_ALLOCATOR
         bool "Support M3 PBI MBX platform"
         help
-          Include support for the Ref M3 board platform.
+          Include support for the PBI M3 board platform.
+
+config MACH_MESON3_REFF34
+        select GENERIC_ALLOCATOR
+        bool "Support M3 NGN MBX platform"
+        help
+          Include support for the NGN M3 board platform.
 
 config MESON3_CLOCK_TICK_RATE
     int "Clock Tick Rate"
@@ -117,6 +123,11 @@ config AML_SUSPEND
 		bool "Support M3 A9 domain power down"
 		depends on SUSPEND
 		default n
+
+config SCREEN_ON_EARLY
+	bool "Turn on screen early"
+	depends on AML_SUSPEND
+	default n
 		
 config SUSPEND_WATCHDOG
 	bool "Enable watchdog while suspend and resume"
