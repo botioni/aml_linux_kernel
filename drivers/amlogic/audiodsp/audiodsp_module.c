@@ -98,6 +98,7 @@ int audiodsp_start(void)
 	struct audiodsp_microcode *pmcode;
 	struct audio_info *audio_info;
 	int ret,i;
+	unsigned int decopt_reg;
 	priv->frame_format.valid=0;
 	priv->decode_error_count=0;
 	priv->last_valid_pts=0;
@@ -155,6 +156,10 @@ int audiodsp_start(void)
     }
 #endif
      }
+	decopt_reg = DSP_RD(DSP_DECODE_OPTION);
+	decopt_reg = (decopt_reg&(~0x00000018));
+	DSP_WD(DSP_DECODE_OPTION, decopt_reg);
+	DSP_PRNT("dsp set decopt_reg 3-4 bits: decopt_reg=0x%x \n",decopt_reg);
 	return ret;
 }
 
@@ -902,6 +907,13 @@ static ssize_t file_read_end_flag_store(struct class* class, struct class_attrib
     printk("decopt_reg = 0x%x, end_flag = 0x%x\n", decopt_reg, end_flag);
     return count;
 }
+static ssize_t pcm_left_len_show(struct class* cla, struct class_attribute* attr, char* buf)
+{
+	struct audiodsp_priv *priv = audiodsp_privdata();
+	char *pbuf = 	buf;
+	pbuf += sprintf(pbuf, "%d\n", dsp_codec_get_bufer_data_len(priv));
+	return (pbuf- buf);
+}
 //------------------------------------------------
 
 static struct class_attribute audiodsp_attrs[]={
@@ -910,6 +922,7 @@ static struct class_attribute audiodsp_attrs[]={
     __ATTR_RO(codec_fatal_err),
     __ATTR_RO(swap_buf_ptr),
     __ATTR_RO(dsp_working_status),
+    __ATTR_RO(pcm_left_len),
     __ATTR(digital_raw, S_IRUGO | S_IWUSR, digital_raw_show, digital_raw_store),
 	__ATTR(dec_option, S_IRUGO | S_IWUSR, dec_option_show, dec_option_store),    
 	__ATTR(print_flag, S_IRUGO | S_IWUSR, print_flag_show, print_flag_store),	
