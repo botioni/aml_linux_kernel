@@ -1655,7 +1655,7 @@ static void aml_nand_base_command(struct aml_nand_chip *aml_chip, unsigned comma
 
 	case NAND_CMD_RESET:
 		if (!aml_chip->aml_nand_wait_devready(aml_chip, chipnr))
-			aml_nand_debug ("couldn't found selected chip: %d ready\n", chipnr);
+			printk("couldn't found selected chip: %d ready\n", chipnr);
  		if (chip->dev_ready)
 			break;
 		udelay(chip->chip_delay);
