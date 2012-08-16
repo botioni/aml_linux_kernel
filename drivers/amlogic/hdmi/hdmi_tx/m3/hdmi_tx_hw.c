@@ -2173,7 +2173,7 @@ static int hdmitx_m3_set_dispmode(Hdmi_tx_video_para_t *param)
     hdmi_hw_reset(param);    
     
     // For some chips, increase IBIC_SEL to get better performance in 1080P
-    if((param->VIC == HDMI_1080p60)||(param->VIC == HDMI_1080p60)){
+    if((param->VIC == HDMI_1080p60)||(param->VIC == HDMI_1080p50)){
         Wr(HHI_VID_PLL_CNTL3, (Rd(HHI_VID_PLL_CNTL3) | (2<<8)));
     }
     
