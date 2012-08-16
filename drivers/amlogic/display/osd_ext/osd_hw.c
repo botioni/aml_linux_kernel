@@ -1471,18 +1471,13 @@ void osd_ext_clone_pan(u32 index)
 {
 	s32 offset = 0;
 	if (osd_ext_hw.clone[index]) {
-		if ((osd_ext_hw.pandata[index].x_end - osd_ext_hw.pandata[index].x_start)
-				<= (osd_hw.pandata[index].x_end - osd_hw.pandata[index].x_start)) {
-			memcpy(&osd_ext_hw.pandata[index], &osd_hw.pandata[index], sizeof(pandata_t));
-		} else {
-			if (osd_ext_hw.pandata[index].y_start > osd_hw.pandata[index].y_start) {
-				offset -= osd_ext_hw.pandata[index].y_end - osd_ext_hw.pandata[index].y_start + 1;
-			} else if (osd_ext_hw.pandata[index].y_start < osd_hw.pandata[index].y_start) {
-				offset += osd_ext_hw.pandata[index].y_end - osd_ext_hw.pandata[index].y_start + 1;
-			}
-			osd_ext_hw.pandata[index].y_start += offset;
-			osd_ext_hw.pandata[index].y_end += offset;
+		if (osd_ext_hw.pandata[index].y_start > osd_hw.pandata[index].y_start) {
+			offset -= osd_ext_hw.pandata[index].y_end - osd_ext_hw.pandata[index].y_start + 1;
+		} else if (osd_ext_hw.pandata[index].y_start < osd_hw.pandata[index].y_start) {
+			offset += osd_ext_hw.pandata[index].y_end - osd_ext_hw.pandata[index].y_start + 1;
 		}
+		osd_ext_hw.pandata[index].y_start += offset;
+		osd_ext_hw.pandata[index].y_end += offset;
 		add_to_update_list(index, DISP_GEOMETRY);
 		osd_ext_wait_vsync_hw();
 	}
