@@ -108,6 +108,7 @@ static unsigned int tsync_syncthresh = 1;
 static int tsync_dec_reset_flag = 0;
 static int tsync_dec_reset_video_start = 0;
 static int tsync_automute_on = 0;
+static int tsync_video_started = 0;
 
 #define M_HIGH_DIFF    2
 #define M_LOW_DIFF     2
@@ -320,6 +321,7 @@ void tsync_avevent_locked(avevent_t event, u32 param)
 
     switch (event) {
     case VIDEO_START:
+        tsync_video_started = 1;
         if (tsync_enable) {
             tsync_mode = TSYNC_MODE_AMASTER;
         } else {
@@ -367,6 +369,7 @@ void tsync_avevent_locked(avevent_t event, u32 param)
         tsync_stat = TSYNC_STAT_PCRSCR_SETUP_NONE;
         timestamp_vpts_set(0);
         timestamp_pcrscr_enable(0);
+        tsync_video_started = 0;
         break;
 
         /* Note:
@@ -412,6 +415,10 @@ void tsync_avevent_locked(avevent_t event, u32 param)
 
     case AUDIO_TSTAMP_DISCONTINUITY:
 		timestamp_apts_set(param);
+        if (!tsync_video_started) {
+            timestamp_pcrscr_set(param);
+        }
+        
         amlog_level(LOG_LEVEL_ATTENTION, "audio discontinue, reset apts, 0x%x\n", param);	
 		 
         if (!tsync_enable) {
