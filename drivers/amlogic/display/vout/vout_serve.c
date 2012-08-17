@@ -107,21 +107,38 @@ static   int* parse_para(char *para,char   *para_num)
 
 static  void  read_reg(char *para)
 {
-	char  count=1;
+	char  count=2;
 	vout_reg_t  reg;
 
-	memcpy(&reg.addr,parse_para(para+1,&count),sizeof(unsigned int));
-
+	memcpy(&reg,parse_para(para+1,&count),sizeof(vout_reg_t));
+	if(reg.value==0|| reg.value > 100) 
+	reg.value=1;
 	if (((*para) == 'm') || ((*para) == 'M'))
-	{
-		amlog_level(LOG_LEVEL_HIGH,"[0x%x] : 0x%x\r\n", CBUS_REG_ADDR(reg.addr), READ_MPEG_REG(reg.addr));
+	{	
+		for(count=0;count < reg.value;count++)
+		{
+			amlog_level(LOG_LEVEL_HIGH,"[0x%x]-[0x%x] : 0x%x\r\n", CBUS_REG_ADDR(reg.addr),reg.addr, READ_MPEG_REG(reg.addr));
+			reg.addr++;
+		}
 	}else if (((*para) == 'p') || ((*para) == 'P')) {
-		if (APB_REG_ADDR_VALID(reg.addr))
-		    amlog_level(LOG_LEVEL_HIGH,"[0x%x] : 0x%x\r\n", APB_REG_ADDR(reg.addr), READ_APB_REG(reg.addr));
+		for(count=0;count < reg.value;count++)
+		{
+			if (APB_REG_ADDR_VALID(reg.addr))
+		    	amlog_level(LOG_LEVEL_HIGH,"[0x%x]-[0x%x] : 0x%x\r\n", APB_REG_ADDR(reg.addr),reg.addr, READ_APB_REG(reg.addr));
+			reg.addr++;
+		}
 	}else if (((*para) == 'h') || ((*para) == 'H')) {
-	    amlog_level(LOG_LEVEL_HIGH,"[0x%x] : 0x%x\r\n", AHB_REG_ADDR(reg.addr), READ_AHB_REG(reg.addr));
+		for(count=0;count < reg.value;count++)
+		{
+	    		amlog_level(LOG_LEVEL_HIGH,"[0x%x]-[0x%x] : 0x%x\r\n", AHB_REG_ADDR(reg.addr),reg.addr, READ_AHB_REG(reg.addr));
+			reg.addr++;
+		}
 	}else if (((*para) == 'a') || ((*para) == 'A')) {
-	    amlog_level(LOG_LEVEL_HIGH,"[0x%x] : 0x%x\r\n", AOBUS_REG_ADDR(reg.addr), READ_AOBUS_REG(reg.addr));
+		for(count=0;count < reg.value;count++)
+		{
+	    		amlog_level(LOG_LEVEL_HIGH,"[0x%x]-[0x%x] : 0x%x\r\n", AOBUS_REG_ADDR(reg.addr),reg.addr, READ_AOBUS_REG(reg.addr));
+			reg.addr++;
+		}
 	}
 }
 
@@ -256,15 +273,15 @@ static int  meson_vout_suspend(struct platform_device *pdev, pm_message_t state)
 
 static int  meson_vout_resume(struct platform_device *pdev)
 {
+#ifdef CONFIG_HAS_EARLYSUSPEND
+    if (early_suspend_flag)
+        return 0;
+#endif
 #ifdef CONFIG_SCREEN_ON_EARLY
     if (early_resume_flag) {
     	early_resume_flag = 0;
     	return 0;
     }
-#endif
-#ifdef CONFIG_HAS_EARLYSUSPEND
-    if (early_suspend_flag)
-        return 0;
 #endif
 	vout_resume();
 	return 0;
@@ -289,8 +306,7 @@ static void meson_vout_early_suspend(struct early_suspend *h)
 {
     if (early_suspend_flag)
         return;
-    //meson_vout_suspend((struct platform_device *)h->param, PMSG_SUSPEND);
-    vout_suspend();
+    meson_vout_suspend((struct platform_device *)h->param, PMSG_SUSPEND);
     early_suspend_flag = 1;
 }
 
@@ -299,8 +315,7 @@ static void meson_vout_late_resume(struct early_suspend *h)
     if (!early_suspend_flag)
         return;
     early_suspend_flag = 0;
-    //meson_vout_resume((struct platform_device *)h->param);
-    vout_resume();
+    meson_vout_resume((struct platform_device *)h->param);
 }
 #endif
 
