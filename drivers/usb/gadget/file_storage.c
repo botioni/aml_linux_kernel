@@ -3851,7 +3851,7 @@ static int __init fsg_init(void)
 		kref_put(&fsg->ref, fsg_release);
 	return rc;
 }
-module_init(fsg_init);
+late_initcall(fsg_init);
 
 
 static void __exit fsg_cleanup(void)
