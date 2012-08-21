@@ -63,6 +63,9 @@ typedef struct{
 vinfo_t lvideo_info;
 #endif
 
+#include <linux/input.h>
+#include <asm/irq.h>
+#include <asm/io.h>
 
 #include "hdmi_info_global.h"
 #include "hdmi_tx_cec.h"
@@ -306,6 +309,36 @@ static int set_disp_mode_auto(void)
     return ret;
 }    
 
+
+
+static unsigned int set_cec_code(const char * buf, size_t count)
+{
+    char tmpbuf[128];
+    int i=0;
+    int j;
+    unsigned int cec_code;
+    //unsigned int value=0;
+
+    while((buf[i])&&(buf[i]!=',')&&(buf[i]!=' ')){
+        tmpbuf[i]=buf[i];
+        i++;    
+    }
+    tmpbuf[i]=0;
+
+    cec_code=simple_strtoul(tmpbuf, NULL, 16);
+    //cec_value=simple_strtoul(buf+i+1, NULL, 16);    
+    //cec_code = param[0];
+    //cec_value = param[1];
+    //printk("\n----------set_cec_code------------ \n");
+
+	//printk("\n----cec_code:%u\n",cec_code);
+	//printk("\n----cec_value:%u\n",cec_value);	
+	   input_event(remote_cec_dev, EV_KEY, cec_code,1);
+    input_event(remote_cec_dev, EV_KEY, cec_code,0);       
+    input_sync(remote_cec_dev);  
+    return cec_code;
+}
+
 static unsigned char is_dispmode_valid_for_hdmi(void)
 {
     HDMI_Video_Codes_t vic;
@@ -351,6 +384,7 @@ static ssize_t show_cec(struct device * dev, struct device_attribute *attr, char
 
 static ssize_t store_cec(struct device * dev, struct device_attribute *attr, const char * buf, size_t count)
 {
+    //set_cec_code(buf, count);
     cec_usrcmd_set_dispatch(buf, count);
     return count;
 }
