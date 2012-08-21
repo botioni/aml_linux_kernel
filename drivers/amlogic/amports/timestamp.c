@@ -139,7 +139,7 @@ void timestamp_pcrscr_inc(s32 inc)
 			inc -= inc / DEFALT_NUMSAMPS_PERCH;
 			acc_pcrscr_dec += inc % DEFALT_NUMSAMPS_PERCH;
 			if(acc_pcrscr_dec >= 128){
-				inc -= acc_pcrscr_inc / DEFALT_NUMSAMPS_PERCH;
+				inc -= acc_pcrscr_dec / DEFALT_NUMSAMPS_PERCH;
 				acc_pcrscr_dec = acc_pcrscr_dec % DEFALT_NUMSAMPS_PERCH;
 			}
 		}
