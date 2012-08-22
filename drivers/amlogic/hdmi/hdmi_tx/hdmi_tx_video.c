@@ -344,6 +344,11 @@ void hdmitx_init_parameters(HDMI_TX_INFO_t *info)
 //If not, treated as a DVI Device
 static int is_dvi_device(rx_cap_t* pRXCap)
 {
+    extern int force_output_mode;
+    
+    if(force_output_mode)
+        return 0;
+    
     if(pRXCap->IEEEOUI != 0x000c03)
         return 1;
     else
