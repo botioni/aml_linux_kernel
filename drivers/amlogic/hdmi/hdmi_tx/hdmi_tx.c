@@ -267,6 +267,10 @@ static int set_disp_mode_auto(void)
     vinfo_t* info=&lvideo_info;
 #endif    
     HDMI_Video_Codes_t vic;     //Prevent warning
+    
+    if(info == NULL)
+        return -1;
+        
     //msleep(500);
 #ifndef HDMI_SINK_NO_EDID
     vic = hdmitx_edid_get_VIC(&hdmitx_device, info->name, (hdmitx_device.disp_switch_config==DISP_SWITCH_FORCE)?1:0);
