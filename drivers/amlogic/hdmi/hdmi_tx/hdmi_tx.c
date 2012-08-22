@@ -92,9 +92,9 @@ static struct device *hdmitx_dev;
 #endif
 
 static hdmitx_dev_t hdmitx_device;
-static struct switch_dev sdev = {	// android ics switch device
-	.name = "hdmi",
-	};	
+static struct switch_dev sdev = {   // android ics switch device
+    .name = "hdmi",
+    };
 
 //static HDMI_TX_INFO_t hdmi_info;
 #define INIT_FLAG_VDACOFF        0x1
@@ -331,9 +331,9 @@ static unsigned int set_cec_code(const char * buf, size_t count)
     //cec_value = param[1];
     //printk("\n----------set_cec_code------------ \n");
 
-	//printk("\n----cec_code:%u\n",cec_code);
-	//printk("\n----cec_value:%u\n",cec_value);	
-	   input_event(remote_cec_dev, EV_KEY, cec_code,1);
+    //printk("\n----cec_code:%u\n",cec_code);
+    //printk("\n----cec_value:%u\n",cec_value);
+    input_event(remote_cec_dev, EV_KEY, cec_code,1);
     input_event(remote_cec_dev, EV_KEY, cec_code,0);       
     input_sync(remote_cec_dev);  
     return cec_code;
@@ -522,7 +522,7 @@ static ssize_t show_disp_cap(struct device * dev, struct device_attribute *attr,
         pos += snprintf(buf+pos, PAGE_SIZE,"null edid\n");
     }
     else{
-#endif			
+#endif
         for(i=0; disp_mode_t[i]; i++){
             vic = hdmitx_edid_get_VIC(&hdmitx_device, disp_mode_t[i], 0);
             if( vic != HDMI_Unkown){
@@ -590,22 +590,22 @@ int hdmi_print(int printk_flag, const char *fmt, ...)
     int pos,len=0;
     if(printk_flag){
         va_start(args, fmt);
-	      vprintk(fmt, args);
-        va_end(args);	
+          vprintk(fmt, args);
+        va_end(args);
     }
     if(hdmi_log_buf_size==0)
         return 0;
         
     va_start(args, fmt);
     len += vsnprintf(buf+len, avail-len, fmt, args);
-    va_end(args);	
+    va_end(args);
 
     if ((avail-len) <= 0) {
         buf[PRINT_TEMP_BUF_SIZE - 1] = '\0';
     }
     pos = hdmi_print_buf(buf, len);
     //printk("hdmi_print:%d %d\n", hdmi_log_wr_pos, hdmi_log_rd_pos);
-	  return pos;
+    return pos;
 }
 
 static ssize_t show_log(struct device * dev, struct device_attribute *attr, char * buf)
@@ -694,9 +694,9 @@ static int hdmitx_notify_callback_v(struct notifier_block *block, unsigned long 
         if(is_dispmode_valid_for_hdmi()){
             hdmitx_device.mux_hpd_if_pin_high_flag = 1;
             if(hdmitx_device.unplug_powerdown){
-    			      return 0;
-    			  }
-		    }
+                      return 0;
+                  }
+            }
     }
 
     set_disp_mode_auto();
@@ -717,9 +717,9 @@ static int hdmitx_notify_callback_v2(struct notifier_block *block, unsigned long
         if(is_dispmode_valid_for_hdmi()){
             hdmitx_device.mux_hpd_if_pin_high_flag = 1;
             if(hdmitx_device.unplug_powerdown){
-    			      return 0;
-    			  }
-		    }
+                      return 0;
+                  }
+            }
     }
 
     set_disp_mode_auto();
@@ -914,8 +914,8 @@ void hdmi_tv_enc_post_func(char* mode)
         if(is_dispmode_valid_for_hdmi()){
             hdmitx_device.mux_hpd_if_pin_high_flag = 1;
             if(hdmitx_device.unplug_powerdown){
-    			      return;
-    			  }
+                      return;
+                  }
         }
     }
 
@@ -1032,7 +1032,14 @@ hdmi_task_handle(void *data)
                 hdmi_print(1,"HDMI: EDID Ready\n");
                 hdmitx_edid_clear(hdmitx_device);
                 hdmitx_edid_parse(hdmitx_device);
-                cec_node_init(hdmitx_device);
+                {
+                    static unsigned flag = 1;
+                    if(flag){
+                        flag = 0;
+                        cec_node_init(hdmitx_device);
+                    }
+                }
+                hdmitx_cec_dbg_print("\n-------function:%s,file:%s,line:%d-----\n",__FUNCTION__,__FILE__,__LINE__);
 #ifdef HDMI_SINK_NO_EDID
                 force_output_mode = 0;
 #endif
@@ -1066,7 +1073,7 @@ hdmi_task_handle(void *data)
             }
             hdmitx_device->cur_VIC = HDMI_Unkown;
             hdmi_authenticated = -1;
-			switch_set_state(&sdev, 0);
+            switch_set_state(&sdev, 0);
             hdmitx_device->hpd_event = 0;
             hdmitx_device->hpd_state = 0;
         }    
@@ -1132,15 +1139,15 @@ int hdmi_print(int printk_flag, const char *fmt, ...)
     /*
     if(printk_flag){
         va_start(args, fmt);
-	      vprintk(fmt, args);
-        va_end(args);	
+          vprintk(fmt, args);
+        va_end(args);   
     }
     if(hdmi_log_buf_size==0)
         return 0;
     */  
     va_start(args, fmt);
     len += vsnprintf(buf+len, avail-len, fmt, args);
-    va_end(args);	
+    va_end(args);   
 
     if ((avail-len) <= 0) {
         buf[PRINT_TEMP_BUF_SIZE - 1] = '\0';
@@ -1152,7 +1159,7 @@ int hdmi_print(int printk_flag, const char *fmt, ...)
         pos = hdmi_print_buf(buf, len);
     }
     //printk("hdmi_print:%d %d\n", hdmi_log_wr_pos, hdmi_log_rd_pos);
-	  return pos;
+      return pos;
 }
 
 #define HDMI_OP_STK_SIZE            (512)
@@ -1182,17 +1189,16 @@ avfs_device_driver hdmi_init(avfs_device_major_number major, avfs_device_minor_n
     hdmitx_device.audio_param_update_flag=0;
     tv_tv_enc_post_fun = hdmi_tv_enc_post_func;
 
-   	hdmitx_device.taskstack = (OS_STK*) AVMem_malloc(HDMI_OP_STK_SIZE_IN_BYTE);
+    hdmitx_device.taskstack = (OS_STK*) AVMem_malloc(HDMI_OP_STK_SIZE_IN_BYTE);
     AVTaskCreate(hdmi_task_handle, (void *)(&hdmitx_device), &hdmitx_device.taskstack[HDMI_OP_STK_SIZE - 1], HDMI_OP_TASK_PRI, &hdmitx_device.task_id); 
 #if OS_TASK_STACKCHK_EN > 0
-   	AVTaskSetStackSize(hdmitx_device.task_id, HDMI_OP_STK_SIZE * sizeof(OS_STK));
+    AVTaskSetStackSize(hdmitx_device.task_id, HDMI_OP_STK_SIZE * sizeof(OS_STK));
 #endif
     return AVFS_SUCCESSFUL;
 }
 
 avfs_device_driver hdmi_open(avfs_device_major_number major, avfs_device_minor_number minor, void *arg)
 { 
-   		    		   			
     return AVFS_SUCCESSFUL;
 }
 
@@ -1332,19 +1338,19 @@ static int amhdmitx_probe(struct platform_device *pdev)
 #endif
     hdmitx_device.task = kthread_run(hdmi_task_handle, &hdmitx_device, "kthread_hdmi");
     
-	switch_dev_register(&sdev);
-	if (r < 0){
-		printk(KERN_ERR "hdmitx: register switch dev failed\n");
-		return r;
-	}    
+    switch_dev_register(&sdev);
+    if (r < 0){
+        printk(KERN_ERR "hdmitx: register switch dev failed\n");
+        return r;
+    }    
 
     return r;
 }
 
 static int amhdmitx_remove(struct platform_device *pdev)
 {
-	switch_dev_unregister(&sdev);
-	
+    switch_dev_unregister(&sdev);
+    
     if(hdmitx_device.HWOp.UnInit){
         hdmitx_device.HWOp.UnInit(&hdmitx_device);
     }
@@ -1403,7 +1409,7 @@ static struct platform_driver amhdmitx_driver = {
 #endif
     .driver     = {
         .name   = DEVICE_NAME,
-		    .owner	= THIS_MODULE,
+        .owner  = THIS_MODULE,
     }
 };
 
@@ -1423,7 +1429,7 @@ static int  __init amhdmitx_init(void)
             hdmi_log_buf_size=0;
         }
     }
-	  amhdmi_tx_device = platform_device_alloc(DEVICE_NAME,0);
+    amhdmi_tx_device = platform_device_alloc(DEVICE_NAME,0);
     if (!amhdmi_tx_device) {
         pr_error("failed to alloc amhdmi_tx_device\n");
         return -ENOMEM;
@@ -1467,36 +1473,36 @@ MODULE_VERSION("1.0.0");
 
 static char* next_token_ex(char* seperator, char *buf, unsigned size, unsigned offset, unsigned *token_len, unsigned *token_offset)
 { /* besides characters defined in seperator, '\"' are used as seperator; and any characters in '\"' will not act as seperator */
-	char *pToken = NULL;
+    char *pToken = NULL;
     char last_seperator = 0;
     char trans_char_flag = 0;
     if(buf){
-    	for (;offset<size;offset++){
-    	    int ii=0;
-    	    char ch;
+        for (;offset<size;offset++){
+            int ii=0;
+            char ch;
             if (buf[offset] == '\\'){
                 trans_char_flag = 1;
                 continue;
             }
-    	    while(((ch=seperator[ii++])!=buf[offset])&&(ch)){
-    	    }
-    	    if (ch){
-                if (!pToken){
-    	            continue;
-                }
-    	        else {
-                    if (last_seperator != '"'){
-    	                *token_len = (unsigned)(buf + offset - pToken);
-    	                *token_offset = offset;
-    	                return pToken;
-    	            }
-    	        }
+            while(((ch=seperator[ii++])!=buf[offset])&&(ch)){
             }
-    	    else if (!pToken)
+            if (ch){
+                if (!pToken){
+                    continue;
+                }
+                else {
+                    if (last_seperator != '"'){
+                        *token_len = (unsigned)(buf + offset - pToken);
+                        *token_offset = offset;
+                        return pToken;
+                    }
+                }
+            }
+            else if (!pToken)
             {
                 if (trans_char_flag&&(buf[offset] == '"'))
                     last_seperator = buf[offset];
-    	        pToken = &buf[offset];
+                pToken = &buf[offset];
             }
             else if ((trans_char_flag&&(buf[offset] == '"'))&&(last_seperator == '"')){
                 *token_len = (unsigned)(buf + offset - pToken - 2);
@@ -1510,7 +1516,7 @@ static char* next_token_ex(char* seperator, char *buf, unsigned size, unsigned o
             *token_offset = offset;
         }
     }
-	return pToken;
+    return pToken;
 }
 
 static  int __init hdmitx_boot_para_setup(char *s)
