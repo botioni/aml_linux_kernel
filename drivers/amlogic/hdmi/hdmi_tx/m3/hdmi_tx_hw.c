@@ -1641,17 +1641,28 @@ static void hdmi_hw_reset(Hdmi_tx_video_para_t *param)
     //tmp_add_data[0]   = 8'b0 ;  //forced_hsync_polarity
     tmp_add_data = 0x40;
     hdmi_wr_reg(TX_HDCP_MODE, tmp_add_data);
+
     if(param->cc == CC_ITU709){
-        hdmi_wr_reg(TX_VIDEO_CSC_COEFF_CB0, 0xf2);        
-        hdmi_wr_reg(TX_VIDEO_CSC_COEFF_CB1, 0x2f);        
-        hdmi_wr_reg(TX_VIDEO_CSC_COEFF_CR0, 0xd4);        
-        hdmi_wr_reg(TX_VIDEO_CSC_COEFF_CR1, 0x77);        
+        hdmi_wr_reg(TX_VIDEO_CSC_COEFF_B0, 0x7b);
+        hdmi_wr_reg(TX_VIDEO_CSC_COEFF_B1, 0x12);
+        hdmi_wr_reg(TX_VIDEO_CSC_COEFF_R0, 0x6c);
+        hdmi_wr_reg(TX_VIDEO_CSC_COEFF_R1, 0x36);
+
+        hdmi_wr_reg(TX_VIDEO_CSC_COEFF_CB0, 0xf2);
+        hdmi_wr_reg(TX_VIDEO_CSC_COEFF_CB1, 0x2f);
+        hdmi_wr_reg(TX_VIDEO_CSC_COEFF_CR0, 0xd4);
+        hdmi_wr_reg(TX_VIDEO_CSC_COEFF_CR1, 0x77);
     }
     else{
-        hdmi_wr_reg(TX_VIDEO_CSC_COEFF_CB0, 0x18);        
-        hdmi_wr_reg(TX_VIDEO_CSC_COEFF_CB1, 0x58);        
-        hdmi_wr_reg(TX_VIDEO_CSC_COEFF_CR0, 0xd0);        
-        hdmi_wr_reg(TX_VIDEO_CSC_COEFF_CR1, 0x66);        
+        hdmi_wr_reg(TX_VIDEO_CSC_COEFF_B0, 0x2f);
+        hdmi_wr_reg(TX_VIDEO_CSC_COEFF_B1, 0x1d);
+        hdmi_wr_reg(TX_VIDEO_CSC_COEFF_R0, 0x8b);
+        hdmi_wr_reg(TX_VIDEO_CSC_COEFF_R1, 0x4c);
+
+        hdmi_wr_reg(TX_VIDEO_CSC_COEFF_CB0, 0x18);
+        hdmi_wr_reg(TX_VIDEO_CSC_COEFF_CB1, 0x58);
+        hdmi_wr_reg(TX_VIDEO_CSC_COEFF_CR0, 0xd0);
+        hdmi_wr_reg(TX_VIDEO_CSC_COEFF_CR1, 0xb6);
     }    
 
     hdmi_hw_set_powermode(power_mode, param->VIC);
