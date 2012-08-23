@@ -384,7 +384,7 @@ int hdmitx_set_display(hdmitx_dev_t* hdmitx_device, HDMI_Video_Codes_t VideoCode
             default:
                 param->color = COLOR_SPACE_RGB444;
         }
-        if(hdmitx_device->HWOp.SetDispMode(param)>=0){
+        if(hdmitx_device->HWOp.SetDispMode(hdmitx_device, param)>=0){
 //HDMI CT 7-33 DVI Sink, no HDMI VSDB nor any other VSDB, No GB or DI expected
 //TMDS_MODE[hdmi_config]
 //0: DVI Mode       1: HDMI Mode
@@ -428,7 +428,7 @@ int hdmitx_set_display(hdmitx_dev_t* hdmitx_device, HDMI_Video_Codes_t VideoCode
     }
     else{
         if(hdmitx_device->HWOp.SetDispMode) {
-            hdmitx_device->HWOp.SetDispMode(NULL); //disable HDMI    
+            hdmitx_device->HWOp.SetDispMode(hdmitx_device, NULL); //disable HDMI    
         }
     }
     return ret;

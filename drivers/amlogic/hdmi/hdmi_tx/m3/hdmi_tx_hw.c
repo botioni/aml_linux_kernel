@@ -1068,9 +1068,31 @@ static void phy_pll_off(void)
 }
 
 /**/
-void hdmi_hw_set_powermode( int power_mode, int vic)
+void hdmi_hw_set_powermode(hdmitx_dev_t* hdmitx_device, int power_mode, int vic)
 {
+    struct hdmi_phy_set_data *pdata = NULL;
     hdmi_wakeup();
+    
+    // relate to different board
+    if(hdmitx_device->brd_phy_data){
+        printk("hdmin get brd phy data\n");
+    }
+    printk("hdmi phy setting\n");
+    
+#define SET_PHY_BRD(frq)                                            \
+    do{                                                             \
+        if(hdmitx_device->brd_phy_data){                            \
+            pdata = *(hdmitx_device->brd_phy_data);                 \
+            if(pdata){                                              \
+                while((pdata->addr != -1)){                         \
+                    if(pdata->freq == frq)                          \
+                        hdmi_wr_reg(pdata->addr, pdata->data);      \
+                    pdata++;                                        \
+                }                                                   \
+            }                                                       \
+        }                                                           \
+    }while(0)
+
     switch(power_mode){
         case 1:
             hdmi_wr_reg(0x016, 0x02);
@@ -1095,6 +1117,7 @@ void hdmi_hw_set_powermode( int power_mode, int vic)
                     hdmi_wr_reg(TX_SYS1_AFE_RESET, 0x1);    //0x16
                     hdmi_wr_reg(TX_SYS1_BANDGAP, 0x0);      //0x14
                     hdmi_wr_reg(TX_SYS1_BIAS, 0x0);         //0x15
+                    SET_PHY_BRD(27);
                     break;
                 case HDMI_720p60:
                 case HDMI_720p50:
@@ -1105,6 +1128,7 @@ void hdmi_hw_set_powermode( int power_mode, int vic)
                     hdmi_wr_reg(TX_SYS1_AFE_RESET, 0x1);    //0x16
                     hdmi_wr_reg(TX_SYS1_BANDGAP, 0x0);      //0x14
                     hdmi_wr_reg(TX_SYS1_BIAS, 0x3);         //0x15
+                    SET_PHY_BRD(74);
                     break;
                 case HDMI_1080p60:
                 case HDMI_1080p50:
@@ -1113,6 +1137,7 @@ void hdmi_hw_set_powermode( int power_mode, int vic)
                     hdmi_wr_reg(TX_SYS1_AFE_RESET, 0x1);    //0x16
                     hdmi_wr_reg(TX_SYS1_BANDGAP, 0x1);      //0x14 Prem
                     hdmi_wr_reg(TX_SYS1_BIAS, 0x3);         //0x15 Slew
+                    SET_PHY_BRD(148);
                     break;
                 default:
                     hdmi_wr_reg(TX_SYS1_AFE_TEST, 0x7f);    //0x17
@@ -1149,6 +1174,7 @@ void hdmi_hw_set_powermode( int power_mode, int vic)
 #endif            
             break;
     }
+#undef SET_PHY_BRD
 }
 
 void hdmi_hw_init(hdmitx_dev_t* hdmitx_device)
@@ -1230,7 +1256,7 @@ void hdmi_hw_init(hdmitx_dev_t* hdmitx_device)
         extern unsigned char uboot_vmode_flag;
         HDMI_Video_Codes_t vic;     //Prevent warning
         const vinfo_t *info = hdmi_get_current_vinfo();
-        vic = hdmitx_edid_get_VIC(&hdmitx_device, info->name, (hdmitx_device->disp_switch_config==DISP_SWITCH_FORCE)?1:0);
+        vic = hdmitx_edid_get_VIC(hdmitx_device, info->name, (hdmitx_device->disp_switch_config==DISP_SWITCH_FORCE)?1:0);
         if(uboot_vmode_flag == vic){
             printk("don\'t re-init hdmi mode\n");
             return;
@@ -1263,7 +1289,7 @@ void hdmi_hw_init(hdmitx_dev_t* hdmitx_device)
     }
     hdmi_wr_reg(0x01a, 0xfb);   //bit[2:0]=011 ,CK channel output TMDS CLOCK ,bit[2:0]=101 ,ck channel output PHYCLCK 
 
-    hdmi_hw_set_powermode(power_mode, 0);
+    hdmi_hw_set_powermode(hdmitx_device, power_mode, 0);
 
     hdmi_wr_reg(0x0F7, 0x0F);   // Termination resistor calib value
   //hdmi_wr_reg(0x014, 0x07);   // This register is for pre-emphasis control ,we need test different TMDS Clcok speed then write down the suggested     value for each one ;
@@ -1322,7 +1348,7 @@ void hdmi_hw_init(hdmitx_dev_t* hdmitx_device)
 #endif    
     /**/
 
-    hdmi_hw_set_powermode(power_mode, 0);
+    hdmi_hw_set_powermode(hdmitx_device, power_mode, 0);
 
     // --------------------------------------------------------
     // Release TX out of reset
@@ -1350,7 +1376,7 @@ void hdmi_hw_init(hdmitx_dev_t* hdmitx_device)
     cec_set_pending(TV_CEC_PENDING_OFF);
 }    
 
-static void hdmi_hw_reset(Hdmi_tx_video_para_t *param)
+static void hdmi_hw_reset(hdmitx_dev_t* hdmitx_device, Hdmi_tx_video_para_t *param)
 {
     unsigned int tmp_add_data;
     unsigned long TX_OUTPUT_COLOR_FORMAT;
@@ -1421,7 +1447,7 @@ static void hdmi_hw_reset(Hdmi_tx_video_para_t *param)
     }
     hdmi_wr_reg(0x01a, 0xfb);   //bit[2:0]=011 ,CK channel output TMDS CLOCK ,bit[2:0]=101 ,ck channel output PHYCLCK 
 
-    hdmi_hw_set_powermode(power_mode, param->VIC);
+    hdmi_hw_set_powermode(hdmitx_device, power_mode, param->VIC);
 
     hdmi_wr_reg(0x0F7, 0x0F);   // Termination resistor calib value
   //hdmi_wr_reg(0x014, 0x07);   // This register is for pre-emphasis control ,we need test different TMDS Clcok speed then write down the suggested     value for each one ;
@@ -1665,7 +1691,7 @@ static void hdmi_hw_reset(Hdmi_tx_video_para_t *param)
         hdmi_wr_reg(TX_VIDEO_CSC_COEFF_CR1, 0xb6);
     }    
 
-    hdmi_hw_set_powermode(power_mode, param->VIC);
+    hdmi_hw_set_powermode(hdmitx_device, power_mode, param->VIC);
     
     // --------------------------------------------------------
     // Release TX out of reset
@@ -2125,7 +2151,7 @@ static void hdmitx_set_pll(Hdmi_tx_video_para_t *param)
     }
 }
 
-static int hdmitx_m3_set_dispmode(Hdmi_tx_video_para_t *param)
+static int hdmitx_m3_set_dispmode(hdmitx_dev_t* hdmitx_device, Hdmi_tx_video_para_t *param)
 {
     if(param == NULL){ //disable HDMI
         return 0;
@@ -2162,7 +2188,7 @@ static int hdmitx_m3_set_dispmode(Hdmi_tx_video_para_t *param)
     }
 
     hdmitx_set_pll(param);
-    hdmi_hw_reset(param);    
+    hdmi_hw_reset(hdmitx_device, param);    
     
     // For some chips, increase IBIC_SEL to get better performance in 1080P
     if((param->VIC == HDMI_1080p60)||(param->VIC == HDMI_1080p50)){
@@ -2745,9 +2771,15 @@ static void hdmitx_m3_uninit(hdmitx_dev_t* hdmitx_device)
 
 static int hdmitx_m3_cntl(hdmitx_dev_t* hdmitx_device, int cmd, unsigned argv)
 {
+    struct hdmi_config_platform_data *hdmi_pdata = NULL;
+
+    if(hdmitx_device->brd_phy_data){
+        hdmi_pdata = container_of(hdmitx_device->brd_phy_data, struct hdmi_config_platform_data, phy_data);
+    }
+
     if(cmd == HDMITX_HWCMD_POWERMODE_SWITCH){
         power_mode=argv;
-        hdmi_hw_set_powermode(power_mode, hdmitx_device->cur_VIC);
+        hdmi_hw_set_powermode(hdmitx_device, power_mode, hdmitx_device->cur_VIC);
     }
 #ifndef AVOS
     else if(cmd == HDMITX_HWCMD_VDAC_OFF){
@@ -2756,6 +2788,21 @@ static int hdmitx_m3_cntl(hdmitx_dev_t* hdmitx_device, int cmd, unsigned argv)
         SET_CBUS_REG_MASK(VENC_VDAC_SETTING, 0x1f);
     }
 #endif 
+    else if(cmd == HDMITX_HWCMD_5V_CTL) {
+        if(hdmi_pdata && hdmi_pdata->hdmi_5v_ctrl)
+            hdmi_pdata->hdmi_5v_ctrl(argv);
+    }
+    else if(cmd == HDMITX_HWCMD_3V3_CTL) {
+        if(hdmi_pdata && hdmi_pdata->hdmi_3v3_ctrl) 
+            hdmi_pdata->hdmi_3v3_ctrl(argv);
+    }
+    else if(cmd == HDMITX_HWCMD_PLL_AVDD_CTL) {
+        if(hdmi_pdata && hdmi_pdata->hdmi_pll_vdd_ctrl)
+            hdmi_pdata->hdmi_pll_vdd_ctrl(argv);
+    }
+    else if(cmd == HDMITX_HWCMD_SSPLL_CTL) {
+        hdmi_pdata->hdmi_sspll_ctrl ? hdmi_pdata->hdmi_sspll_ctrl(argv) : 0;
+    }
     else if(cmd == HDMITX_HWCMD_MUX_HPD_IF_PIN_HIGH){
         /* turnon digital module if gpio is high */
         if(is_hpd_muxed() == 0){
@@ -3119,6 +3166,12 @@ void HDMITX_M1B_Init(hdmitx_dev_t* hdmitx_device)
     hdmitx_device->HWOp.DebugFun = hdmitx_m3_debug;
     hdmitx_device->HWOp.UnInit = hdmitx_m3_uninit;
     hdmitx_device->HWOp.Cntl = hdmitx_m3_cntl;
+    
+    //open hdmi power
+    hdmitx_m3_cntl(hdmitx_device, HDMITX_HWCMD_5V_CTL, 1);
+    hdmitx_m3_cntl(hdmitx_device, HDMITX_HWCMD_3V3_CTL, 1);
+    hdmitx_m3_cntl(hdmitx_device, HDMITX_HWCMD_PLL_AVDD_CTL, 1);
+    
 #ifdef HPD_DELAY_CHECK
     /*hdp timer*/
     init_timer(&hpd_timer);

@@ -41,6 +41,7 @@
 
 #include <linux/osd/osd_dev.h>
 #include <linux/switch.h>
+#include <linux/hdmi/hdmi_config.h>
 #else
 
 #include "includes.h"
@@ -90,6 +91,7 @@ static dev_t hdmitx_id;
 static struct class *hdmitx_class;
 static struct device *hdmitx_dev;
 #endif
+
 
 static hdmitx_dev_t hdmitx_device;
 static struct switch_dev sdev = {   // android ics switch device
@@ -999,7 +1001,7 @@ hdmi_task_handle(void *data)
         }
     }
     if(init_flag&INIT_FLAG_POWERDOWN){
-        hdmitx_device->HWOp.SetDispMode(NULL); //power down
+        hdmitx_device->HWOp.SetDispMode(hdmitx_device, NULL); //power down
         hdmitx_device->unplug_powerdown=1;
         if(hdmitx_device->HWOp.Cntl){
             hdmitx_device->HWOp.Cntl(hdmitx_device, HDMITX_HWCMD_TURNOFF_HDMIHW, (hpdmode!=0)?1:0);    
@@ -1279,6 +1281,7 @@ const static struct file_operations amhdmitx_fops = {
 static int amhdmitx_probe(struct platform_device *pdev)
 {
     int r;
+    struct hdmi_config_platform_data *hdmi_pdata = NULL;
     HDMI_DEBUG();
     pr_dbg("amhdmitx_probe\n");
     r = alloc_chrdev_region(&hdmitx_id, 0, HDMI_TX_COUNT, DEVICE_NAME);
@@ -1342,11 +1345,23 @@ static int amhdmitx_probe(struct platform_device *pdev)
 #endif
     hdmitx_device.task = kthread_run(hdmi_task_handle, &hdmitx_device, "kthread_hdmi");
     
-    switch_dev_register(&sdev);
-    if (r < 0){
-        printk(KERN_ERR "hdmitx: register switch dev failed\n");
-        return r;
-    }    
+    hdmi_pdata = pdev->dev.platform_data;
+    if (!hdmi_pdata) {
+        dev_err(&pdev->dev, "hdmin cannot get platform data\n");
+        r = -ENOENT;
+    }
+    else{
+        printk("hdmin get hdmi platform data\n");
+    }
+    //open HDMI_PWR
+    HDMI_DEBUG();
+    if(hdmi_pdata && hdmi_pdata->phy_data)
+        hdmitx_device.brd_phy_data = &(hdmi_pdata->phy_data);
+	switch_dev_register(&sdev);
+	if (r < 0){
+		printk(KERN_ERR "hdmitx: register switch dev failed\n");
+		return r;
+	}    
 
     return r;
 }
@@ -1393,13 +1408,21 @@ static int amhdmitx_remove(struct platform_device *pdev)
 #ifdef CONFIG_PM
 static int amhdmitx_suspend(struct platform_device *pdev,pm_message_t state)
 {
-    pr_info("amhdmitx: hdmirx_suspend\n");
+    pr_info("amhdmitx: suspend module\n");
+    hdmitx_device.HWOp.Cntl(&hdmitx_device, HDMITX_HWCMD_5V_CTL, 0);
+    hdmitx_device.HWOp.Cntl(&hdmitx_device, HDMITX_HWCMD_3V3_CTL, 1);       // prevent Voff leak current
+    hdmitx_device.HWOp.Cntl(&hdmitx_device, HDMITX_HWCMD_PLL_AVDD_CTL, 0);
+    
     return 0;
 }
 
 static int amhdmitx_resume(struct platform_device *pdev)
 {
     pr_info("amhdmitx: resume module\n");
+    hdmitx_device.HWOp.Cntl(&hdmitx_device, HDMITX_HWCMD_5V_CTL, 1);
+    hdmitx_device.HWOp.Cntl(&hdmitx_device, HDMITX_HWCMD_3V3_CTL, 1);       // prevent Voff leak current
+    hdmitx_device.HWOp.Cntl(&hdmitx_device, HDMITX_HWCMD_PLL_AVDD_CTL, 1);
+        
     return 0;
 }
 #endif
@@ -1417,8 +1440,6 @@ static struct platform_driver amhdmitx_driver = {
     }
 };
 
-static struct platform_device* amhdmi_tx_device = NULL;
-
 
 static int  __init amhdmitx_init(void)
 {
@@ -1433,22 +1454,9 @@ static int  __init amhdmitx_init(void)
             hdmi_log_buf_size=0;
         }
     }
-    amhdmi_tx_device = platform_device_alloc(DEVICE_NAME,0);
-    if (!amhdmi_tx_device) {
-        pr_error("failed to alloc amhdmi_tx_device\n");
-        return -ENOMEM;
-    }
-    
-    if(platform_device_add(amhdmi_tx_device)){
-        platform_device_put(amhdmi_tx_device);
-        pr_error("failed to add amhdmi_tx_device\n");
-        return -ENODEV;
-    }
     if (platform_driver_register(&amhdmitx_driver)) {
         pr_error("failed to register amhdmitx module\n");
         
-        platform_device_del(amhdmi_tx_device);
-        platform_device_put(amhdmi_tx_device);
         return -ENODEV;
     }
     return 0;
@@ -1461,8 +1469,6 @@ static void __exit amhdmitx_exit(void)
 {
     pr_dbg("amhdmitx_exit\n");
     platform_driver_unregister(&amhdmitx_driver);
-    platform_device_unregister(amhdmi_tx_device); 
-    amhdmi_tx_device = NULL;
     return ;
 }
 
