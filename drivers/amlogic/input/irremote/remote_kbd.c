@@ -919,8 +919,8 @@ static int __init kp_probe(struct platform_device *pdev)
 	}
 
 	input_dbg("device_create_file completed \r\n");
-	input_dev->evbit[0] = BIT_MASK(EV_KEY)  | BIT_MASK(EV_REL);
-	input_dev->absbit[0] =  BIT_MASK(EV_ABS);
+	input_dev->evbit[0] = BIT_MASK(EV_KEY)  | BIT_MASK(EV_REL)| BIT_MASK(EV_ABS);
+	input_dev->absbit[0] =  BIT_MASK(ABS_X) | BIT_MASK(ABS_Y);
 	input_dev->keybit[BIT_WORD(BTN_MOUSE)] = BIT_MASK(BTN_LEFT) |BIT_MASK(BTN_RIGHT)|BIT_MASK(BTN_MIDDLE);
 	input_dev->relbit[0] = BIT_MASK(REL_X) | BIT_MASK(REL_Y)| BIT_MASK(REL_WHEEL);
 	input_dev->keybit[BIT_WORD(BTN_MOUSE)] |=BIT_MASK(BTN_SIDE)|BIT_MASK(BTN_EXTRA);	
