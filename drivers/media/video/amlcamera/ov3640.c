@@ -127,7 +127,7 @@ static struct v4l2_queryctrl ov3640_qctrl[] = {
         .maximum       = 1,
         .step          = 0x1,
         .default_value = 0,
-        .flags         = V4L2_CTRL_FLAG_SLIDER,
+        .flags         = V4L2_CTRL_FLAG_DISABLED,
     } ,{
         .id            = V4L2_CID_VFLIP,
         .type          = V4L2_CTRL_TYPE_INTEGER,
@@ -136,7 +136,7 @@ static struct v4l2_queryctrl ov3640_qctrl[] = {
         .maximum       = 1,
         .step          = 0x1,
         .default_value = 0,
-        .flags         = V4L2_CTRL_FLAG_SLIDER,
+        .flags         = V4L2_CTRL_FLAG_DISABLED,
     },{
         .id            = V4L2_CID_DO_WHITE_BALANCE,
         .type          = V4L2_CTRL_TYPE_INTEGER,

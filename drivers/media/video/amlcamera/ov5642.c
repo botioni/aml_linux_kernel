@@ -108,7 +108,7 @@ static struct v4l2_queryctrl ov5642_qctrl[] = {
 		.maximum       = 1,
 		.step          = 0x1,
 		.default_value = 0,
-		.flags         = V4L2_CTRL_FLAG_SLIDER,
+		.flags         = V4L2_CTRL_FLAG_DISABLED,
 	} ,{
 		.id            = V4L2_CID_VFLIP,
 		.type          = V4L2_CTRL_TYPE_INTEGER,
@@ -117,7 +117,7 @@ static struct v4l2_queryctrl ov5642_qctrl[] = {
 		.maximum       = 1,
 		.step          = 0x1,
 		.default_value = 0,
-		.flags         = V4L2_CTRL_FLAG_SLIDER,
+		.flags         = V4L2_CTRL_FLAG_DISABLED,
 	},{
 		.id            = V4L2_CID_DO_WHITE_BALANCE,
 		.type          = V4L2_CTRL_TYPE_INTEGER,
@@ -1209,7 +1209,6 @@ static int ov5642_setting(struct ov5642_device *dev,int PROP_ID,int value )
 	case V4L2_CID_EXPOSURE:
 		ret=i2c_put_byte(client,0x0201, value);
 		break;	
-#endif
 	case V4L2_CID_HFLIP:    /* set flip on H. */
 		ret=i2c_get_byte(client,0x0101);
 		if(ret>0) {
@@ -1237,6 +1236,7 @@ static int ov5642_setting(struct ov5642_device *dev,int PROP_ID,int value )
 			dprintk(dev, 1, "vertical read error\n");
 		}
 		break;	
+#endif
 	case V4L2_CID_DO_WHITE_BALANCE:
         if(ov5642_qctrl[4].default_value!=value){
 			ov5642_qctrl[4].default_value=value;

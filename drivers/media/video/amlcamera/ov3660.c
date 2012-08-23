@@ -111,7 +111,7 @@ static struct v4l2_queryctrl ov3660_qctrl[] = {
 		.maximum       = 1,
 		.step          = 0x1,
 		.default_value = 0,
-		.flags         = V4L2_CTRL_FLAG_SLIDER,
+		.flags         = V4L2_CTRL_FLAG_DISABLED,
 	} ,{
 		.id            = V4L2_CID_VFLIP,
 		.type          = V4L2_CTRL_TYPE_INTEGER,
@@ -120,7 +120,7 @@ static struct v4l2_queryctrl ov3660_qctrl[] = {
 		.maximum       = 1,
 		.step          = 0x1,
 		.default_value = 0,
-		.flags         = V4L2_CTRL_FLAG_SLIDER,
+		.flags         = V4L2_CTRL_FLAG_DISABLED,
 	},{
 		.id            = V4L2_CID_DO_WHITE_BALANCE,
 		.type          = V4L2_CTRL_TYPE_INTEGER,
@@ -1045,6 +1045,7 @@ static int ov3660_setting(struct ov3660_device *dev,int PROP_ID,int value )
 			printk(KERN_INFO " set camera  saturation=%d. \n ",value);
         }
 		break;	
+#if 0
 	case V4L2_CID_HFLIP:    /* set flip on H. */
 		reg_3820=i2c_get_byte(client,0x3820);
 		reg_3821=i2c_get_byte(client,0x3821);
@@ -1087,6 +1088,7 @@ static int ov3660_setting(struct ov3660_device *dev,int PROP_ID,int value )
 			i2c_put_byte(client, 0x4515, reg_4515);
 		}
 		break;	
+#endif
 	case V4L2_CID_DO_WHITE_BALANCE:
         if(ov3660_qctrl[4].default_value!=value){
 			ov3660_qctrl[4].default_value=value;
