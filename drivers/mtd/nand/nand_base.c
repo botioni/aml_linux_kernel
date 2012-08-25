@@ -107,7 +107,7 @@ static struct nand_ecclayout nand_oob_128 = {
 		 .length = 78}}
 };
 
-static int nand_get_device(struct nand_chip *chip, struct mtd_info *mtd,
+int nand_get_device(struct nand_chip *chip, struct mtd_info *mtd,
 			   int new_state);
 
 static int nand_do_write_oob(struct mtd_info *mtd, loff_t to,
@@ -125,7 +125,7 @@ DEFINE_LED_TRIGGER(nand_led_trigger);
  *
  * Deselect, release chip lock and wake up anyone waiting on the device
  */
-static void nand_release_device(struct mtd_info *mtd)
+void nand_release_device(struct mtd_info *mtd)
 {
 	struct nand_chip *chip = mtd->priv;
 
@@ -412,6 +412,11 @@ static int nand_default_block_markbad(struct mtd_info *mtd, loff_t ofs)
 static int nand_check_wp(struct mtd_info *mtd)
 {
 	struct nand_chip *chip = mtd->priv;
+	/* force WP for readonly add for shutdown protect */
+	if (chip->options & NAND_ROM){
+		printk("%s force WP for shutdown\n", __func__);
+		return 1;
+	}
 	/* Check the WP bit */
 	chip->cmdfunc(mtd, NAND_CMD_STATUS, -1, -1);
 	return (chip->read_byte(mtd) & NAND_STATUS_WP) ? 0 : 1;
@@ -735,7 +740,7 @@ static void panic_nand_get_device(struct nand_chip *chip,
  *
  * Get the device and lock it for exclusive access
  */
-static int
+int
 nand_get_device(struct nand_chip *chip, struct mtd_info *mtd, int new_state)
 {
 	spinlock_t *lock = &chip->controller->lock;
