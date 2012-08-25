@@ -2754,6 +2754,10 @@ static int aml_nand_block_bad(struct mtd_info *mtd, loff_t ofs, int getchip)
 			printk(" NAND bbt detect Bad block at %llx \n", (uint64_t)ofs);
 			return EFAULT;
 		}
+		else if (aml_chip->block_status[blk_addr] == NAND_FACTORY_BAD) {
+			printk(" NAND bbt detect factory Bad block at %llx \n", (uint64_t)ofs);
+			return EFAULT;  //159
+		}
 		else if (aml_chip->block_status[blk_addr] == NAND_BLOCK_GOOD) {
 			return 0;
 		}
@@ -4273,8 +4277,16 @@ static int aml_nand_env_check(struct mtd_info *mtd)
 			for (i=start_blk; i<total_blk; i++) {
 				aml_chip->block_status[i] = NAND_BLOCK_GOOD;
 				for (j=0; j<MAX_BAD_BLK_NUM; j++) {
-					if (nand_bbt_info->nand_bbt[j] == i) {
-						aml_chip->block_status[i] = NAND_BLOCK_BAD;
+					if ((nand_bbt_info->nand_bbt[j] &0x7fff)== i) {    
+					
+						if((nand_bbt_info->nand_bbt[j] &0x8000)) {
+						    aml_chip->block_status[i] = NAND_FACTORY_BAD;	
+							//printk("aml_nand_env_check init the block_status factory bbt blk=%d,aml_chip->block_status[%d] =%d\n",i,i,aml_chip->block_status[i]);
+						}
+						else{
+						    aml_chip->block_status[i] = NAND_BLOCK_BAD;
+							//printk("aml_nand_env_check init the block_status bbt blk=%d\n",i);
+						}
 						break;
 					}
 				}
