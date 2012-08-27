@@ -291,7 +291,7 @@ static struct platform_device fb_device = {
 
 #if defined(CONFIG_AMLOGIC_SPI_NOR)
 static struct mtd_partition spi_partition_info[] = {
-#ifdef CONFIG_GNTV_F16
+#if defined(CONFIG_GNTV_F16) || defined(CONFIG_GNTV_TCB_008001)
     {
         .name = "ubootwhole",
         .offset = 0,
@@ -308,7 +308,7 @@ static struct mtd_partition spi_partition_info[] = {
         .size = 0x2000,
     },
 #endif
-#if defined(CONFIG_GNTV_MICO_HD6023) || defined(CONFIG_GNTV_TCB_008001)
+#ifdef CONFIG_GNTV_MICO_HD6023
     {
         .name = "ubootenv",
         .offset = 0x80000,
