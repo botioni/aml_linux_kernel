@@ -124,6 +124,8 @@ choice
                 bool "MyGica RM0216 VER1.2"
         config GNTV_MICO_HD6023
                 bool "Mico HD6023"
+        config GNTV_TCB_008001
+                bool "TCB 008001-01"
 
 endchoice
 
