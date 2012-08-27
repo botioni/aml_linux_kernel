@@ -307,6 +307,11 @@ static struct mtd_partition spi_partition_info[] = {
         .offset = 0x80000,
         .size = 0x2000,
 },
+    {
+	.name = "hashtable",
+	.offset = 0x100000,
+	.size = 0x2000,
+    },
     /* Hide recovery partition
             {
                     .name = "recovery",
@@ -2400,6 +2405,16 @@ static __initdata struct map_desc meson_video_mem_desc[] = {
         .type       = MT_MEMORY,
     },
 #endif
+// #ifdef CONFIG_AML_SECURE_DRIVER
+#ifdef CONFIG_AM_IPTV_SECURITY
+    {
+        .virtual    = PAGE_ALIGN(0xdfe00000),
+        .pfn        = __phys_to_pfn(0x9fe00000),
+        .length     = SZ_1M,
+        .type       = MT_MEMORY,
+    },
+#endif
+
 };
 
 static __init void m1_map_io(void)
@@ -2416,19 +2431,28 @@ static __init void m1_irq_init(void)
 static __init void m1_fixup(struct machine_desc *mach, struct tag *tag, char **cmdline, struct meminfo *m)
 {
     struct membank *pbank;
+    unsigned size;
+    
     m->nr_banks = 0;
     pbank=&m->bank[m->nr_banks];
     pbank->start = PAGE_ALIGN(PHYS_MEM_START);
     pbank->size  = SZ_64M & PAGE_MASK;
     pbank->node  = PHYS_TO_NID(PHYS_MEM_START);
-    m->nr_banks++;
+    m->nr_banks++;    
     pbank=&m->bank[m->nr_banks];
     pbank->start = PAGE_ALIGN(RESERVED_MEM_END+1);
+   size = PHYS_MEM_END-RESERVED_MEM_END;
 #ifdef CONFIG_AML_SUSPEND
     pbank->size  = (PHYS_MEM_END-RESERVED_MEM_END-SZ_1M) & PAGE_MASK;
 #else
     pbank->size  = (PHYS_MEM_END-RESERVED_MEM_END) & PAGE_MASK;
 #endif
+// #ifdef CONFIG_ENCRYPT
+#ifdef CONFIG_AM_IPTV_SECURITY
+	size -= SZ_1M;
+#endif
+    pbank->size  = size & PAGE_MASK;
+
     pbank->node  = PHYS_TO_NID(RESERVED_MEM_END+1);
     m->nr_banks++;
 }
