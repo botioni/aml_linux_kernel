@@ -84,6 +84,33 @@
 static int suspend_state=0;
 #endif
 
+#ifdef CONFIG_AML_HDMI_TX
+#include <linux/hdmi/hdmi_config.h>
+#endif
+
+#if defined(CONFIG_AML_HDMI_TX)
+static struct hdmi_phy_set_data brd_phy_data[] = {
+//    {27, 0xf7, 0x0},    // an example: set Reg0xf7 to 0 in 27MHz
+    {-1,   -1},         //end of phy setting
+};
+
+static struct hdmi_config_platform_data aml_hdmi_pdata ={
+    .hdmi_5v_ctrl = NULL,
+    .hdmi_3v3_ctrl = NULL,
+    .hdmi_pll_vdd_ctrl = NULL,
+    .hdmi_sspll_ctrl = NULL,
+    .phy_data = brd_phy_data,
+};
+
+static struct platform_device aml_hdmi_device = {
+    .name = "amhdmitx",
+    .id   = -1,
+    .dev  = {
+        .platform_data = &aml_hdmi_pdata,
+    }
+};
+#endif
+
 #if defined(CONFIG_JPEGLOGO)
 static struct resource jpeglogo_resources[] = {
     [0] = {
@@ -291,7 +318,7 @@ static struct platform_device fb_device = {
 
 #if defined(CONFIG_AMLOGIC_SPI_NOR)
 static struct mtd_partition spi_partition_info[] = {
-#if defined(CONFIG_GNTV_F16) || defined(CONFIG_GNTV_TCB_008001)
+#ifdef CONFIG_GNTV_F16
     {
         .name = "ubootwhole",
         .offset = 0,
@@ -344,22 +371,10 @@ static struct platform_device amlogic_spi_nor_device = {
 #ifdef CONFIG_USB_DWC_OTG_HCD
 static void set_usb_a_vbus_power(char is_power_on)
 {
-#ifdef CONFIG_GNTV_MICO_HD6023
-    if(is_power_on) {
-        printk(KERN_INFO "set usb a port power on !\n");
-        set_gpio_val(GPIOC_bank_bit0_15(5), GPIOC_bit_bit0_15(5), 1);
-    } else    {
-        printk(KERN_INFO "set usb a port power off !\n");
-        set_gpio_val(GPIOC_bank_bit0_15(5), GPIOC_bit_bit0_15(5), 0);
-    }
-    set_gpio_mode(GPIOC_bank_bit0_15(5), GPIOC_bit_bit0_15(5), GPIO_OUTPUT_MODE);
-#endif
 }
 
 static void set_usb_b_vbus_power(char is_power_on)
-{
-#ifdef CONFIG_GNTV_F16
- /*wifi rtl8188cus power control*/
+{ /*wifi rtl8188cus power control*/
 #define USB_B_POW_GPIO         GPIOC_bank_bit0_15(5)
 #define USB_B_POW_GPIO_BIT     GPIOC_bit_bit0_15(5)
 #define USB_B_POW_GPIO_BIT_ON   1
@@ -373,17 +388,6 @@ static void set_usb_b_vbus_power(char is_power_on)
         set_gpio_mode(USB_B_POW_GPIO, USB_B_POW_GPIO_BIT, GPIO_OUTPUT_MODE);
         set_gpio_val(USB_B_POW_GPIO, USB_B_POW_GPIO_BIT, USB_B_POW_GPIO_BIT_OFF);
     }
-#endif
-#ifdef CONFIG_GNTV_TCB_008001
-    if(is_power_on) {
-        printk(KERN_INFO "set usb b port power on !\n");
-        set_gpio_val(GPIOD_bank_bit0_9(4), GPIOD_bit_bit0_9(4), 1);
-    } else    {
-        printk(KERN_INFO "set usb b port power off !\n");
-        set_gpio_val(GPIOD_bank_bit0_9(4), GPIOD_bit_bit0_9(4), 0);
-    }
-    set_gpio_mode(GPIOD_bank_bit0_9(4), GPIOD_bit_bit0_9(4), GPIO_OUTPUT_MODE);
-#endif
 }
 
 //usb_a is OTG port
@@ -695,7 +699,7 @@ void mute_spk(struct snd_soc_codec* codec, int flag)
 #ifdef CONFIG_GNTV_F16
 		set_gpio_val(GPIOC_bank_bit0_15(4), GPIOC_bit_bit0_15(4), 1);	 // mute speak
 #endif
-#if defined(CONFIG_GNTV_MICO_HD6023) || defined(CONFIG_GNTV_TCB_008001)
+#ifdef CONFIG_GNTV_MICO_HD6023
                 set_gpio_val(GPIOC_bank_bit0_15(4), GPIOC_bit_bit0_15(4), 0);    // mute speak
 #endif
 		set_gpio_mode(GPIOC_bank_bit0_15(4), GPIOC_bit_bit0_15(4), GPIO_OUTPUT_MODE);
@@ -703,7 +707,7 @@ void mute_spk(struct snd_soc_codec* codec, int flag)
 #ifdef CONFIG_GNTV_F16
 		set_gpio_val(GPIOC_bank_bit0_15(4), GPIOC_bit_bit0_15(4), 0);	 // unmute speak
 #endif
-#if defined(CONFIG_GNTV_MICO_HD6023) || defined(CONFIG_GNTV_TCB_008001)
+#ifdef CONFIG_GNTV_MICO_HD6023
 		set_gpio_val(GPIOC_bank_bit0_15(4), GPIOC_bit_bit0_15(4), 1);	 // unmute speak
 #endif
 		set_gpio_mode(GPIOC_bank_bit0_15(4), GPIOC_bit_bit0_15(4), GPIO_OUTPUT_MODE);
@@ -837,15 +841,6 @@ static gpio_data_t gpio_data[MAX_GPIO] = {
 };
 #endif
 
-#ifdef CONFIG_GNTV_TCB_008001
-#define MAX_GPIO 3
-static gpio_data_t gpio_data[MAX_GPIO] = {
-{"GPIOD6--HDMI",        GPIOD_bank_bit0_9(6),   GPIOD_bit_bit0_9(6),    GPIO_OUTPUT_MODE, 1, 1},
-{"GPIOC4--MUTE",	GPIOC_bank_bit0_15(4), GPIOC_bit_bit0_15(4), GPIO_OUTPUT_MODE, 1, 1},
-{"GPIOD4--USB", 	GPIOD_bank_bit0_9(4), 	GPIOD_bit_bit0_9(4), 	GPIO_OUTPUT_MODE, 1, 1},
-};
-#endif
-
 static void save_gpio(int port) 
 {
 	gpio_data[port].mode = get_gpio_mode(gpio_data[port].bank, gpio_data[port].bit);
@@ -950,10 +945,6 @@ static void set_gpio_suspend_resume(int power_on)
         set_gpio_val(GPIOAO_bank_bit0_11(10), GPIOAO_bit_bit0_11(10), 0);
         set_gpio_mode(GPIOAO_bank_bit0_11(10), GPIOAO_bit_bit0_11(10), GPIO_OUTPUT_MODE);
 #endif
-#ifdef CONFIG_GNTV_TCB_008001
-        set_gpio_val(GPIOAO_bank_bit0_11(5), GPIOAO_bit_bit0_11(5), 1);
-        set_gpio_mode(GPIOAO_bank_bit0_11(5), GPIOAO_bit_bit0_11(5), GPIO_OUTPUT_MODE);
-#endif
        // WRITE_CBUS_REG(PWM_PWM_C, (0xff00<<16) |(0xff00<<0));
     	}
 	else
@@ -963,10 +954,6 @@ static void set_gpio_suspend_resume(int power_on)
 #ifdef CONFIG_GNTV_MICO_HD6023
         set_gpio_val(GPIOAO_bank_bit0_11(10), GPIOAO_bit_bit0_11(10), 1);
         set_gpio_mode(GPIOAO_bank_bit0_11(10), GPIOAO_bit_bit0_11(10), GPIO_OUTPUT_MODE);   
-#endif
-#ifdef CONFIG_GNTV_TCB_008001
-        set_gpio_val(GPIOAO_bank_bit0_11(5), GPIOAO_bit_bit0_11(5), 0);
-        set_gpio_mode(GPIOAO_bank_bit0_11(5), GPIOAO_bit_bit0_11(5), GPIO_OUTPUT_MODE);
 #endif
        // WRITE_CBUS_REG(PWM_PWM_C, (0xff00<<16) |(0<<0));
 		}
@@ -1970,6 +1957,9 @@ static struct platform_device aml_wdt_device = {
 
 
 static struct platform_device __initdata *platform_devs[] = {
+#if defined(CONFIG_AML_HDMI_TX)
+    &aml_hdmi_device,
+#endif
 #if defined(CONFIG_JPEGLOGO)
     &jpeglogo_device,
 #endif
@@ -2248,55 +2238,43 @@ static void __init power_hold(void)
            set_gpio_mode(GPIOC_bank_bit0_15(2), GPIOC_bit_bit0_15(2), GPIO_OUTPUT_MODE);    //lbzchina
            set_gpio_val(GPIOC_bank_bit0_15(2), GPIOC_bit_bit0_15(2), 1);      //lbzchina
 #endif
-#ifdef CONFIG_GNTV_TCB_008001
-        set_gpio_val(GPIOAO_bank_bit0_11(5), GPIOAO_bit_bit0_11(5), 1);
-        set_gpio_mode(GPIOAO_bank_bit0_11(5), GPIOAO_bit_bit0_11(5), GPIO_OUTPUT_MODE);
-#endif
-#ifdef CONFIG_GNTV_F16
         // VCC5V
         set_gpio_mode(GPIOD_bank_bit0_9(9), GPIOD_bit_bit0_9(9), GPIO_OUTPUT_MODE);
         set_gpio_val(GPIOD_bank_bit0_9(9), GPIOD_bit_bit0_9(9), 1);
-#endif
 		 // hdmi power on
         set_gpio_mode(GPIOD_bank_bit0_9(6), GPIOD_bit_bit0_9(6), GPIO_OUTPUT_MODE);
         set_gpio_val(GPIOD_bank_bit0_9(6), GPIOD_bit_bit0_9(6), 1);
 
-#ifdef CONFIG_GNTV_F16
 		// MUTE
        set_gpio_mode(GPIOX_bank_bit0_31(29), GPIOX_bit_bit0_31(29), GPIO_OUTPUT_MODE);
        set_gpio_val(GPIOX_bank_bit0_31(29), GPIOX_bit_bit0_31(29), 0);
-#endif
 
       // PC Link
 //       set_gpio_mode(GPIOC_bank_bit0_15(4), GPIOC_bit_bit0_15(4), GPIO_OUTPUT_MODE);
 //       set_gpio_val(GPIOC_bank_bit0_15(4), GPIOC_bit_bit0_15(4), 1);
-
-#ifdef CONFIG_GNTV_F16 
+			 
 		// VCC, set to high when suspend 
         set_gpio_mode(GPIOAO_bank_bit0_11(4), GPIOAO_bit_bit0_11(4), GPIO_OUTPUT_MODE);
         set_gpio_val(GPIOAO_bank_bit0_11(4), GPIOAO_bit_bit0_11(4), 0);
         set_gpio_mode(GPIOAO_bank_bit0_11(5), GPIOAO_bit_bit0_11(5), GPIO_OUTPUT_MODE);
         set_gpio_val(GPIOAO_bank_bit0_11(5), GPIOAO_bit_bit0_11(5), 0);
-#endif
 
      // VCCK
         set_gpio_mode(GPIOAO_bank_bit0_11(6), GPIOAO_bit_bit0_11(6), GPIO_OUTPUT_MODE);
 #ifdef CONFIG_GNTV_F16
         set_gpio_val(GPIOAO_bank_bit0_11(6), GPIOAO_bit_bit0_11(6), 1);
 #endif
-#if defined(CONFIG_GNTV_MICO_HD6023) || defined(CONFIG_GNTV_TCB_008001)
+#ifdef CONFIG_GNTV_MICO_HD6023
         set_gpio_val(GPIOAO_bank_bit0_11(6), GPIOAO_bit_bit0_11(6), 0);
 #endif
 	 // VCCIO
         set_gpio_mode(GPIOAO_bank_bit0_11(2), GPIOAO_bit_bit0_11(2), GPIO_OUTPUT_MODE);
         set_gpio_val(GPIOAO_bank_bit0_11(2), GPIOAO_bit_bit0_11(2), 1);
 
-#ifdef CONFIG_GNTV_F16
     //init sata
     set_gpio_mode(GPIOC_bank_bit0_15(7), GPIOC_bit_bit0_15(7), GPIO_OUTPUT_MODE);
     set_gpio_val(GPIOC_bank_bit0_15(7), GPIOC_bit_bit0_15(7), 1);
-#endif
-
+		
     //VCCx2 power up
     printk(KERN_INFO "set_vccx2 power up\n");
 //    set_gpio_mode(GPIOA_bank_bit0_27(26), GPIOA_bit_bit0_27(26), GPIO_OUTPUT_MODE);

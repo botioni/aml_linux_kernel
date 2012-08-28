@@ -101,6 +101,7 @@ static unsigned int dump_off = 0;
 
 
 extern int aml_pcm_playback_enable;
+extern unsigned int dac_mute_const;
 
 static unsigned int audio_in_int_cnt = 0;
 static unsigned int level2 = 0;
@@ -1723,6 +1724,25 @@ static ssize_t store_resample_type(struct class* class, struct class_attribute* 
   }
   return count;
 }
+
+static ssize_t dac_mute_const_show(struct class*cla, struct class_attribute* attr, char* buf)
+{
+  char* pbuf = buf;
+  pbuf += sprintf(pbuf, "dac mute const val  0x%x\n", dac_mute_const);
+  return (pbuf-buf);
+}
+static ssize_t dac_mute_const_store(struct class* class, struct class_attribute* attr,
+   const char* buf, size_t count )
+{
+  unsigned val = dac_mute_const;
+  if(buf[0])
+  	val=simple_strtoul(buf, NULL, 16);	
+  if(val == 0 || val == 0x800000)
+  	dac_mute_const = val;
+  printk("dac mute const val set to 0x%x\n", val);
+  return count;
+}
+
 //--------------------------------------------
 static struct class_attribute amaudio_attrs[]={
   __ATTR(enable_direct_audio,  S_IRUGO | S_IWUSR, show_direct_flag, store_direct_flag),
@@ -1735,6 +1755,7 @@ static struct class_attribute amaudio_attrs[]={
   __ATTR(audio_channels_mask, S_IRUGO | S_IWUSR, show_audio_channels_mask, store_audio_channels_mask),
   __ATTR(enable_resample, S_IRUGO | S_IWUSR, show_enable_resample, store_enable_resample),
   __ATTR(resample_type, S_IRUGO | S_IWUSR, show_resample_type, store_resample_type),
+  __ATTR(dac_mute_const, S_IRUGO | S_IWUSR, dac_mute_const_show, dac_mute_const_store),
   __ATTR_NULL
 };
 

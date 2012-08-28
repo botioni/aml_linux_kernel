@@ -617,7 +617,7 @@ static int dwc_otg_pcd_ep_queue(struct usb_ep *_ep,
 				DWC_DEBUGPL(DBG_PCD,
 					    "%s ep0: EP0_OUT_DATA_PHASE\n",
 					    __func__);
-				if (pcd->request_config) {
+				if (pcd->request_config || _req->length == 0) {
 					/* Complete STATUS PHASE */
 					ep->dwc_ep.is_in = 1;
 					pcd->ep0state = EP0_STATUS;
@@ -1022,9 +1022,10 @@ static int32_t dwc_otg_pcd_start_cb(void *_p)
 static int32_t dwc_otg_pcd_stop_cb(void *_p)
 {
 	dwc_otg_pcd_t *pcd = (dwc_otg_pcd_t *) _p;
-	
 
+	SPIN_LOCK(&pcd->lock);
 	dwc_otg_pcd_stop(pcd);
+	SPIN_UNLOCK(&pcd->lock);
 	return 1;
 }
 
@@ -1039,9 +1040,9 @@ static int32_t dwc_otg_pcd_suspend_cb(void *_p)
 	dwc_otg_pcd_t *pcd = (dwc_otg_pcd_t *) _p;
 
 	if (pcd->driver && pcd->driver->resume) {
-		SPIN_UNLOCK(&pcd->lock);
-		pcd->driver->suspend(&pcd->gadget);
 		SPIN_LOCK(&pcd->lock);
+		pcd->driver->suspend(&pcd->gadget);
+		SPIN_UNLOCK(&pcd->lock);
 	}
 
 	return 0;
@@ -1058,9 +1059,9 @@ static int32_t dwc_otg_pcd_resume_cb(void *_p)
 	dwc_otg_pcd_t *pcd = (dwc_otg_pcd_t *) _p;
 
 	if (pcd->driver && pcd->driver->resume) {
-		SPIN_UNLOCK(&pcd->lock);
-		pcd->driver->resume(&pcd->gadget);
 		SPIN_LOCK(&pcd->lock);
+		pcd->driver->resume(&pcd->gadget);
+		SPIN_UNLOCK(&pcd->lock);
 	}
 
 	/* Stop the SRP timeout timer. */

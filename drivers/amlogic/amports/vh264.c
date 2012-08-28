@@ -112,7 +112,7 @@ static int  vh264_vf_states(vframe_states_t *states, void*);
 static int vh264_event_cb(int type, void *data, void *private_data);
 
 static void vh264_prot_init(void);
-static void vh264_local_init(void);
+static void vh264_local_init(int init_flag);
 static void vh264_put_timer_func(unsigned long arg);
 static void stream_switching_done(void);
 static int vh264_vfbuf_use(void);
@@ -193,7 +193,7 @@ extern u32 trickmode_i;
 static spinlock_t lock = SPIN_LOCK_UNLOCKED;
 
 static int vh264_stop(void);
-static s32 vh264_init(void);
+static s32 vh264_init(int init_flag);
 
 void spec_set_canvas(buffer_spec_t *spec,
                      unsigned width,
@@ -287,7 +287,7 @@ static int vh264_event_cb(int type, void *data, void *private_data)
 #endif
         spin_lock_irqsave(&lock, flags);
         const struct vframe_receiver_op_s *vf_receiver_bak = vf_receiver;
-        vh264_local_init();
+        vh264_local_init(0);
         vf_receiver = vf_receiver_bak;
         vh264_prot_init();
         spin_unlock_irqrestore(&lock, flags); 
@@ -349,7 +349,7 @@ static void vh264_ppmgr_reset(void)
 {
     vf_notify_receiver(PROVIDER_NAME,VFRAME_EVENT_PROVIDER_RESET,NULL);
 
-    vh264_local_init();
+    vh264_local_init(0);
 
     //vf_notify_receiver(PROVIDER_NAME,VFRAME_EVENT_PROVIDER_START,NULL);
     
@@ -479,7 +479,7 @@ static void vh264_set_params(int switch_done)
             printk("dpb_size is too large, error happened\n");
             amvdec_stop();
             vf_light_unreg_provider(&vh264_vf_prov);
-            vh264_local_init();
+            vh264_local_init(0);
             vh264_prot_init();
             vf_reg_provider(&vh264_vf_prov);
             amvdec_start();
@@ -845,6 +845,10 @@ static void vh264_isr(void)
                     vf->type = poc_sel ? VIDTYPE_INTERLACE_BOTTOM : VIDTYPE_INTERLACE_TOP;
                 }
 
+                // set default to use TOP only when picture struct invalid and in imode
+                if ((prog_frame == 0)&&(pic_struct == PIC_INVALID)&&(trickmode_i)) 
+		    vf->type = VIDTYPE_INTERLACE_TOP;
+                
                 vf->type |= VIDTYPE_INTERLACE_FIRST;
 
                 vf->duration >>= 1;
@@ -873,6 +877,10 @@ static void vh264_isr(void)
                 
                 if ((READ_MPEG_REG(AV_SCRATCH_F) & 3) == 2)
                     vf->type = VIDTYPE_INTERLACE_TOP;
+
+                // set default to use TOP only when picture struct invalid and in imode
+                if ((prog_frame == 0)&&(pic_struct == PIC_INVALID)&&(trickmode_i)) 
+		    vf->type = VIDTYPE_INTERLACE_TOP;
 
                 vf->duration >>= 1;
                 vf->duration_pulldown = 0;
@@ -974,7 +982,7 @@ static void vh264_put_timer_func(unsigned long arg)
                 vh264_ppmgr_reset();
 #else 
                 vf_light_unreg_provider(&vh264_vf_prov);
-                vh264_local_init();
+                vh264_local_init(0);
                 vf_reg_provider(&vh264_vf_prov);
 #endif                            
                 vh264_prot_init();
@@ -988,7 +996,7 @@ static void vh264_put_timer_func(unsigned long arg)
         vh264_ppmgr_reset();
 #else 
         vf_light_unreg_provider(&vh264_vf_prov);
-        vh264_local_init();
+        vh264_local_init(0);
         vf_reg_provider(&vh264_vf_prov);
 #endif
         vh264_prot_init();
@@ -1004,7 +1012,7 @@ static void vh264_put_timer_func(unsigned long arg)
             vh264_ppmgr_reset();
 #else
             vf_light_unreg_provider(&vh264_vf_prov);
-            vh264_local_init();
+            vh264_local_init(0);
             vf_reg_provider(vh264_vf_prov);
 #endif
             vh264_prot_init();
@@ -1026,7 +1034,7 @@ static void vh264_put_timer_func(unsigned long arg)
 	        vh264_ppmgr_reset();
 	#else 
 	        vf_light_unreg_provider(&vh264_vf_prov);
-	        vh264_local_init();
+	        vh264_local_init(0);
 	        vf_reg_provider(&vh264_vf_prov);
 	#endif
 	        vh264_prot_init();
@@ -1136,7 +1144,7 @@ static void vh264_prot_init(void)
     WRITE_MPEG_REG(ASSIST_MBOX1_MASK, 1);
 }
 
-static void vh264_local_init(void)
+static void vh264_local_init(int init_flag)
 {
     int i;
 
@@ -1149,16 +1157,20 @@ static void vh264_local_init(void)
 
     frame_buffer_size = AVIL_DPB_BUFF_SIZE + buf_size - DEFAULT_MEM_SIZE;
     frame_prog = 0;
-    frame_width = vh264_amstream_dec_info.width;
-    frame_height = vh264_amstream_dec_info.height;
-    frame_dur = vh264_amstream_dec_info.rate;
-    pts_outside = ((u32)vh264_amstream_dec_info.param) & 0x01;
-    sync_outside = ((u32)vh264_amstream_dec_info.param & 0x02) >> 1;
-
+    /* set the external infor when init */
+    if (init_flag)
+    {
+        frame_width = vh264_amstream_dec_info.width;
+        frame_height = vh264_amstream_dec_info.height;
+        frame_dur = vh264_amstream_dec_info.rate;
+        pts_outside = ((u32)vh264_amstream_dec_info.param) & 0x01;
+        sync_outside = ((u32)vh264_amstream_dec_info.param & 0x02) >> 1;
+    }
     buffer_for_recycle_rd = 0;
     buffer_for_recycle_wr = 0;
 
-    if (!vh264_running) {
+    /* initialize last_mb_width&last_mb_height when init */
+    if (!vh264_running && init_flag) {
         last_mb_width = 0;
         last_mb_height = 0;
     }
@@ -1195,7 +1207,7 @@ static void vh264_local_init(void)
     return;
 }
 
-static s32 vh264_init(void)
+static s32 vh264_init(int init_flag)
 {
     void __iomem *p = ioremap_nocache(MEM_HEADER_CPU_BASE, MEM_SWAP_SIZE);
 
@@ -1209,7 +1221,7 @@ static s32 vh264_init(void)
 
     stat |= STAT_TIMER_INIT;
 
-    vh264_local_init();
+    vh264_local_init(init_flag);
 
     amvdec_enable();
 
@@ -1326,7 +1338,7 @@ static void error_do_work(struct work_struct *work)
      */
     if (atomic_read(&vh264_active)) {
         vh264_stop();
-        vh264_init();
+        vh264_init(0);
     }
 
     mutex_unlock(&vh264_mutex);
@@ -1471,7 +1483,7 @@ static int amvdec_h264_probe(struct platform_device *pdev)
 
     memcpy(&vh264_amstream_dec_info, (void *)mem[1].start, sizeof(vh264_amstream_dec_info));
 
-    if (vh264_init() < 0) {
+    if (vh264_init(1) < 0) {
         printk("\namvdec_h264 init failed.\n");
         mutex_unlock(&vh264_mutex);
         return -ENODEV;

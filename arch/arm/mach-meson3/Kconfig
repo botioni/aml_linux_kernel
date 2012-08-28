@@ -124,8 +124,6 @@ choice
                 bool "MyGica RM0216 VER1.2"
         config GNTV_MICO_HD6023
                 bool "Mico HD6023"
-        config GNTV_TCB_008001
-                bool "TCB 008001-01"
 
 endchoice
 
@@ -137,6 +135,11 @@ config AML_SUSPEND
 		bool "Support M3 A9 domain power down"
 		depends on SUSPEND
 		default n
+
+config SCREEN_ON_EARLY
+	bool "Turn on screen early"
+	depends on AML_SUSPEND
+	default n
 		
 config SUSPEND_WATCHDOG
 	bool "Enable watchdog while suspend and resume"

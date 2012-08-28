@@ -89,7 +89,7 @@ static dev_t di_id;
 static struct class *di_class;
 
 #define INIT_FLAG_NOT_LOAD 0x80
-static int version = 9;
+static int version = 11;
 static unsigned char boot_init_flag=0;
 static int receiver_is_amvideo = 1;
 static int buf_mgr_mode = 0x300;
@@ -2104,7 +2104,7 @@ static void pre_de_done_buf_config(void)
                 di_pre_stru.di_wr_buf->new_format_flag = 1; 
                 bypass_state = 0;   
 //#ifdef DI_DEBUG
-    						di_print("%s:bypass_state change to 1, real_buf_mgr_mode %x, is_bypass() %d trick_mode %d bypass_all %d\n", __func__, real_buf_mgr_mode, is_bypass(), trick_mode, bypass_all);        
+        						di_print("%s:bypass_state change to 0, real_buf_mgr_mode %x, is_bypass() %d trick_mode %d bypass_all %d\n", __func__, real_buf_mgr_mode, is_bypass(), trick_mode, bypass_all);        
 //#endif
             }
             

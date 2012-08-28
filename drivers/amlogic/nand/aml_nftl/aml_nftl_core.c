@@ -115,6 +115,7 @@ int aml_nftl_check_node(struct aml_nftl_info_t *aml_nftl_info, addr_blk_t blk_ad
 		return -ENOMEM;
 	}
 
+#if 0  //removed unused printk	
 	if (node_len_actual > node_len_max) {
 		aml_nftl_dbg("%s Line:%d blk_addr:%d  have node length over MAX, and node_len_actual:%d\n", __func__, __LINE__, blk_addr, node_len_actual);
 #if 0		
@@ -134,6 +135,7 @@ int aml_nftl_check_node(struct aml_nftl_info_t *aml_nftl_info, addr_blk_t blk_ad
 		}
 #endif		
 	}
+#endif
 
 	memset((unsigned char *)valid_page, 0x0, sizeof(int16_t)*(node_len_actual+2));
 	for (k=0; k<aml_nftl_info->pages_per_blk; k++) {
@@ -286,6 +288,7 @@ static int aml_nftl_blk_mark_bad(struct aml_nftl_info_t *aml_nftl_info, addr_blk
 			if ((vt_blk_node != NULL) && (vt_blk_node->phy_blk_addr == blk_addr)) {
 				vt_blk_node_prev->next = vt_blk_node->next;
 				aml_nftl_free(vt_blk_node);
+				vt_blk_node = NULL; //NULL for free				
 			}
 			else if ((vt_blk_node_prev != NULL) && (vt_blk_node_prev->phy_blk_addr == blk_addr)) {
 				if (*(aml_nftl_info->vtpmt + phy_blk_node->vtblk) == vt_blk_node_prev)
@@ -378,6 +381,7 @@ static void aml_nftl_erase_sect_map(struct aml_nftl_info_t * aml_nftl_info, addr
 				aml_nftl_dbg("free blk had mapped vt blk: %d phy blk: %d\n", phy_blk_node->vtblk, blk_addr);
 				vt_blk_node_prev->next = vt_blk_node->next;
 				aml_nftl_free(vt_blk_node);
+				vt_blk_node = NULL; //NULL for free
 			}
 			else if ((vt_blk_node_prev != NULL) && (vt_blk_node_prev->phy_blk_addr == blk_addr)) {
 				aml_nftl_dbg("free blk had mapped vt blk: %d phy blk: %d\n", phy_blk_node->vtblk, blk_addr);

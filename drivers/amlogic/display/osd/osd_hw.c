@@ -31,6 +31,7 @@
 #include <linux/slab.h>
 #include <linux/interrupt.h>
 #include <linux/osd/osd.h>
+#include  <linux/vout/vout_notify.h>
 #include <linux/amports/canvas.h>
 #include "osd_log.h"
 #include <linux/amlog.h>
@@ -540,8 +541,8 @@ void osd_free_scale_enable_hw(u32 index,u32 enable)
 #ifdef CONFIG_POST_PROCESS_MANAGER
 	if(mode_changed){
         //vf_notify_receiver(PROVIDER_NAME,VFRAME_EVENT_PROVIDER_RESET,NULL);
-        extern void vf_ppmgr_reset_ext(void);
-        vf_ppmgr_reset_ext();
+        extern void vf_ppmgr_reset(int type);
+        vf_ppmgr_reset(1);
     }
 #endif
 #endif
@@ -769,6 +770,13 @@ void osd_set_2x_scale_hw(u32 index,u16 h_scale_enable,u16 v_scale_enable)
 	add_to_update_list(index, DISP_GEOMETRY);
 
 	osd_wait_vsync_hw();
+}
+
+void osd_get_flush_rate(u32 *break_rate)
+{
+	const vinfo_t *vinfo;
+	vinfo = get_current_vinfo();
+	*break_rate =  vinfo->sync_duration_num /vinfo->sync_duration_den;
 }
 
 void osd_pan_display_hw(unsigned int xoffset, unsigned int yoffset,int index )

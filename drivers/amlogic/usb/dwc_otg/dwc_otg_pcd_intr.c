@@ -1703,6 +1703,8 @@ static void handle_ep0(dwc_otg_pcd_t * _pcd)
 {
 	dwc_otg_core_if_t *core_if = GET_CORE_IF(_pcd);
 	dwc_otg_pcd_ep_t *ep0 = &_pcd->ep0;
+	deptsiz0_data_t deptsiz;
+	uint32_t byte_count;
 
 #ifdef DEBUG_EP0
 	DWC_DEBUGPL(DBG_PCDV, "%s()\n", __func__);
@@ -1750,6 +1752,18 @@ static void handle_ep0(dwc_otg_pcd_t * _pcd)
 			    ep0->dwc_ep.num, (ep0->dwc_ep.is_in ? "IN" : "OUT"),
 			    ep0->dwc_ep.type, ep0->dwc_ep.maxpacket);
 #endif
+		if (core_if->dma_enable) {
+
+			deptsiz.d32 = dwc_read_reg32(&core_if->
+						dev_if->out_ep_regs[0]->
+							doeptsiz);
+						byte_count =
+							ep0->dwc_ep.maxpacket - deptsiz.b.xfersize;
+
+			ep0->dwc_ep.xfer_count += byte_count;
+			ep0->dwc_ep.xfer_buff += byte_count;
+			ep0->dwc_ep.dma_addr += byte_count;
+		}
 		ep0_complete_request(ep0);
 		break;
 

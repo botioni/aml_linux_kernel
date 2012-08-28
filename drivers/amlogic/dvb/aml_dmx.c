@@ -359,7 +359,7 @@ static void process_section(struct aml_dmx *dmx)
 			DMX_WRITE_REG(dmx->id, SEC_BUFF_NUMBER, i);
 			sec_num = (DMX_READ_REG(dmx->id, SEC_BUFF_NUMBER) >> 8);
 			
-			dma_sync_single_for_cpu(NULL, dmx->sec_pages_map+(sec_num<<0x0c), (1<<0x0c), DMA_FROM_DEVICE);
+			dma_sync_single_for_cpu(NULL, dmx->sec_pages_map+(i<<0x0c), (1<<0x0c), DMA_FROM_DEVICE);
 
 			sec_data_notify(dmx, sec_num, i);
 
@@ -503,7 +503,7 @@ static irqreturn_t dmx_irq_handler(int irq_number, void *para)
 	if(status & (1<<AUDIO_SPLICING_POINT)) {
 	}
 	if(status & (1<<TS_ERROR_PIN)) {
-		//pr_error("TS_ERROR_PIN\n");
+		pr_error("TS_ERROR_PIN\n");
 	}
 	 if (status & (1 << NEW_PDTS_READY)) {
 		 u32 pdts_status = DMX_READ_REG(dmx->id, STB_PTS_DTS_STATUS);
