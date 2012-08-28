@@ -8,6 +8,7 @@
 //#include <asm/bsp.h>
 
 #include <linux/amports/ptsserv.h>
+#include <linux/amports/timestamp.h>
 //#include <asm/dsp/dsp_register.h>
 
 #include "dsp_microcode.h"
@@ -115,6 +116,11 @@ u32 dsp_codec_get_current_pts(struct audiodsp_priv *priv)
         buffered_len = DSP_RD(DSP_BUFFERED_LEN);
         wp = DSP_RD(DSP_DECODE_OUT_WD_PTR);
         offset = DSP_RD(DSP_AFIFO_RD_OFFSET1);
+        // before audio start, the pts always be at the first index
+        if(!timestamp_apts_started()){
+          offset = 0;
+        }
+        
         if (priv->stream_fmt == MCODEC_FMT_COOK || priv->stream_fmt == MCODEC_FMT_RAAC) {
             pts = DSP_RD(DSP_AFIFO_RD_OFFSET1);
             res = 0;

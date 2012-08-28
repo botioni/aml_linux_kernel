@@ -82,6 +82,7 @@ const static struct {
     {"AUDIO_STOP",  10, AUDIO_STOP,  0},
     {"AUDIO_PAUSE", 11, AUDIO_PAUSE, 0},
     {"AUDIO_TSTAMP_DISCONTINUITY", 26, AUDIO_TSTAMP_DISCONTINUITY, AVEVENT_FLAG_PARAM},
+    {"AUDIO_PRE_START",15, AUDIO_PRE_START, 0 },
 };
 
 const static char *tsync_mode_str[] = {
@@ -445,13 +446,19 @@ void tsync_avevent_locked(avevent_t event, u32 param)
         }
         break;
 
+    case AUDIO_PRE_START:
+        timestamp_apts_start(0);
+        break;
+
     case AUDIO_START:		
 		timestamp_apts_set(param);
 
 		amlog_level(LOG_LEVEL_INFO, "audio start, reset apts = 0x%x\n", param);
 
         timestamp_apts_enable(1);
-		 
+		
+        timestamp_apts_start(1);
+
         if (!tsync_enable) {
             break;
         }
@@ -507,6 +514,7 @@ void tsync_avevent_locked(avevent_t event, u32 param)
             tsync_stat = TSYNC_STAT_PCRSCR_SETUP_NONE;
         }
         apause_flag = 0;
+        timestamp_apts_start(0);
         break;
 
     case AUDIO_PAUSE:
