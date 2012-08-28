@@ -1742,6 +1742,10 @@ static ssize_t dac_mute_const_store(struct class* class, struct class_attribute*
   return count;
 }
 
+static ssize_t output_enable_show(struct class*cla, struct class_attribute* attr, char* buf)
+{
+    return sprintf(buf, "%d\n", if_audio_out_enable());	
+}
 //--------------------------------------------
 static struct class_attribute amaudio_attrs[]={
   __ATTR(enable_direct_audio,  S_IRUGO | S_IWUSR, show_direct_flag, store_direct_flag),
@@ -1755,7 +1759,7 @@ static struct class_attribute amaudio_attrs[]={
   __ATTR(enable_resample, S_IRUGO | S_IWUSR, show_enable_resample, store_enable_resample),
   __ATTR(resample_type, S_IRUGO | S_IWUSR, show_resample_type, store_resample_type),
   __ATTR(dac_mute_const, S_IRUGO | S_IWUSR, dac_mute_const_show, dac_mute_const_store),
-  
+  __ATTR_RO(output_enable),
   __ATTR_NULL
 };
 
