@@ -2168,9 +2168,6 @@ static int hdmitx_m3_set_dispmode(hdmitx_dev_t* hdmitx_device, Hdmi_tx_video_par
         return -1;
     }
 
-#ifdef CONFIG_AML_HDMI_TX_HDCP
-    hdmi_wr_reg(TX_HDCP_MODE, hdmi_rd_reg(TX_HDCP_MODE)&(~0x80)); //disable authentication
-#endif    
     check_chip_type(); /* check chip_type again */
     if((hdmi_chip_type == HDMI_M1B || hdmi_chip_type == HDMI_M1C)&&(color_depth_f != 0)){
         if(color_depth_f==24)
@@ -2190,6 +2187,10 @@ static int hdmitx_m3_set_dispmode(hdmitx_dev_t* hdmitx_device, Hdmi_tx_video_par
     hdmitx_set_pll(param);
     hdmi_hw_reset(hdmitx_device, param);    
     
+#ifdef CONFIG_AML_HDMI_TX_HDCP
+    hdmi_wr_reg(TX_HDCP_MODE, hdmi_rd_reg(TX_HDCP_MODE)&(~0x80)); //disable authentication
+#endif    
+
     // For some chips, increase IBIC_SEL to get better performance in 1080P
     if((param->VIC == HDMI_1080p60)||(param->VIC == HDMI_1080p50)){
         Wr(HHI_VID_PLL_CNTL3, 0xcce8);
