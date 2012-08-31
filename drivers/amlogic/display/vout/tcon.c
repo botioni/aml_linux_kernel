@@ -656,12 +656,9 @@ static void _init_vout(tcon_dev_t *pDev)
        pDev->lcd_info.screen_real_width= pDev->conf.screen_actual_width;
        pDev->lcd_info.screen_real_height= pDev->conf.screen_actual_height;
 	
-	float width, height;
-	width = pDev->conf.screen_actual_width;
-	height = pDev->conf.screen_actual_height;
        
 	//add lcd actual active area size
-	printk("lcd actual active area size: %.2f x %.2f (mm).\n", width, height);
+	printk("lcd actual active area size: %d %d.\n",pDev->conf.screen_actual_width,pDev->conf.screen_actual_height);
 
 	vout_register_server(&lcd_vout_server);
 #ifdef CONFIG_AM_TV_OUTPUT2
