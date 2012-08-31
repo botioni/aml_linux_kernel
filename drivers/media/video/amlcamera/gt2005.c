@@ -41,6 +41,7 @@
 #include <mach/pinmux.h>
 #include <linux/tvin/tvin.h>
 #include "common/plat_ctrl.h"
+#include "common/vmapi.h"
 #ifdef CONFIG_HAS_EARLYSUSPEND
 #include <linux/earlysuspend.h>
 static struct early_suspend gt2005_early_suspend;
@@ -179,6 +180,15 @@ static struct v4l2_queryctrl gt2005_qctrl[] = {
 		.maximum       = 1,
 		.step          = 0x1,
 		.default_value = 0,
+		.flags         = V4L2_CTRL_FLAG_SLIDER,
+	},{
+		.id		= V4L2_CID_ROTATE,
+		.type		= V4L2_CTRL_TYPE_INTEGER,
+		.name		= "Rotate",
+		.minimum	= 0,
+		.maximum	= 270,
+		.step		= 90,
+		.default_value	= 0,
 		.flags         = V4L2_CTRL_FLAG_SLIDER,
 	}
 };
@@ -1532,7 +1542,7 @@ void GT2005_set_resolution(struct gt2005_device *dev,int height,int width)
 
 	int ret;
 	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
-	if((width<1600)&&(height<1200)){
+	if (width*height<1600*1200){
 		//800*600
 
 		i2c_put_byte(client,0x0109 ,  0x00);
@@ -1548,8 +1558,7 @@ void GT2005_set_resolution(struct gt2005_device *dev,int height,int width)
         mdelay(100);
 		gt2005_h_active=800;
 		gt2005_v_active=600;
-		}
-		else	if(width>=1600&&height>=1200 ){
+	} else if(width*height>=1600*1200){
 		//1600x1200
 
 		i2c_put_byte(client,0x0109 ,  0x01);
@@ -1704,6 +1713,12 @@ static int gt2005_setting(struct gt2005_device *dev,int PROP_ID,int value )
 			printk(KERN_INFO " set camera  scene mode=%d. \n ",value);
         	}
 		break;
+	case V4L2_CID_ROTATE:
+		if(gt2005_qctrl[5].default_value!=value){
+			gt2005_qctrl[5].default_value=value;
+			printk(" set camera  rotate =%d. \n ",value);
+		}
+		break;
 	default:
 		ret=-1;
 		break;
@@ -1723,7 +1738,6 @@ static void power_down_gt2005(struct gt2005_device *dev)
 	DMA and thread functions
    ------------------------------------------------------------------*/
 
-extern   int vm_fill_buffer(struct videobuf_buffer* vb , int v4l2_format , int magic,void* vaddr);
 #define TSTAMP_MIN_Y	24
 #define TSTAMP_MAX_Y	(TSTAMP_MIN_Y + 15)
 #define TSTAMP_INPUT_X	10
@@ -1733,11 +1747,18 @@ static void gt2005_fillbuff(struct gt2005_fh *fh, struct gt2005_buffer *buf)
 {
 	struct gt2005_device *dev = fh->dev;
 	void *vbuf = videobuf_to_vmalloc(&buf->vb);
+	vm_output_para_t para = {0};
 	dprintk(dev,1,"%s\n", __func__);
 	if (!vbuf)
 		return;
- /*  0x18221223 indicate the memory type is MAGIC_VMAL_MEM*/
-    vm_fill_buffer(&buf->vb,fh->fmt->fourcc ,0x18221223,vbuf);
+	/*  0x18221223 indicate the memory type is MAGIC_VMAL_MEM*/
+	para.mirror = -1;// not set
+	para.v4l2_format = fh->fmt->fourcc;
+	para.v4l2_memory = 0x18221223;
+	para.zoom = -1;
+	para.angle = gt2005_qctrl[5].default_value;
+	para.vaddr = (unsigned)vbuf;
+	vm_fill_buffer(&buf->vb,&para);
 	buf->vb.state = VIDEOBUF_DONE;
 }
 
@@ -1904,7 +1925,7 @@ static void free_buffer(struct videobuf_queue *vq, struct gt2005_buffer *buf)
 }
 
 #define norm_maxw() 1920
-#define norm_maxh() 1200
+#define norm_maxh() 1600
 static int
 buffer_prepare(struct videobuf_queue *vq, struct videobuf_buffer *vb,
 						enum v4l2_field field)
@@ -2460,7 +2481,7 @@ static int gt2005_close(struct file *file)
 	gt2005_qctrl[3].default_value=CAM_BANDING_50HZ;
 	gt2005_qctrl[4].default_value=0;
 
-
+	gt2005_qctrl[5].default_value=0;
 	power_down_gt2005(dev);
 #endif
 	msleep(10);

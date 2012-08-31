@@ -41,6 +41,7 @@
 #include <mach/pinmux.h>
 #include <linux/tvin/tvin.h>
 #include "common/plat_ctrl.h"
+#include "common/vmapi.h"
 
 #ifdef CONFIG_HAS_EARLYSUSPEND
 #include <linux/earlysuspend.h>
@@ -1135,7 +1136,6 @@ static void power_down_ov7675(struct ov7675_device *dev)
 	DMA and thread functions
    ------------------------------------------------------------------*/
 
-extern   int vm_fill_buffer(struct videobuf_buffer* vb , int v4l2_format , int magic,void* vaddr);
 #define TSTAMP_MIN_Y	24
 #define TSTAMP_MAX_Y	(TSTAMP_MIN_Y + 15)
 #define TSTAMP_INPUT_X	10
@@ -1145,11 +1145,18 @@ static void ov7675_fillbuff(struct ov7675_fh *fh, struct ov7675_buffer *buf)
 {
 	struct ov7675_device *dev = fh->dev;
 	void *vbuf = videobuf_to_vmalloc(&buf->vb);
+	vm_output_para_t para = {0};
 	dprintk(dev,1,"%s\n", __func__);
 	if (!vbuf)
 		return;
  /*  0x18221223 indicate the memory type is MAGIC_VMAL_MEM*/
-    vm_fill_buffer(&buf->vb,fh->fmt->fourcc ,0x18221223,vbuf);
+	para.mirror = -1;// not set
+	para.v4l2_format = fh->fmt->fourcc;
+	para.v4l2_memory = 0x18221223;
+	para.zoom = -1;
+	para.angle = 0;
+	para.vaddr = (unsigned)vbuf;
+	vm_fill_buffer(&buf->vb,&para);
 	buf->vb.state = VIDEOBUF_DONE;
 }
 

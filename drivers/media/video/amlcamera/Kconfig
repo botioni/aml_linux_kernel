@@ -1,3 +1,17 @@
+config AMLOGIC_CAPTURE_FRAME_ROTATE
+	bool "Enable function to support frame rotation"
+	depends on VIDEO_AMLOGIC_CAPTURE
+	default n
+	---help---
+          It will support frame rotation when enable this config
+
+config AMLOGIC_VM_DISABLE_VIDEOLAYER
+	bool "Force disable Videolayer when use vm"
+	depends on VIDEO_AMLOGIC_CAPTURE
+	default n
+	---help---
+          It will disable amvideo provider when enable this config
+
 config VIDEO_AMLOGIC_CAPTURE_PROBE
 	bool "Force check wether camera devices exist"
 	depends on VIDEO_AMLOGIC_CAPTURE

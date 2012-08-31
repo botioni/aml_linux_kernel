@@ -41,6 +41,7 @@
 #include <mach/pinmux.h>
 #include <linux/tvin/tvin.h>
 #include "common/plat_ctrl.h"
+#include "common/vmapi.h"
 
 #ifdef CONFIG_HAS_EARLYSUSPEND
 #include <linux/earlysuspend.h>
@@ -167,7 +168,14 @@ static struct v4l2_queryctrl gc0308_qctrl[] = {
 		.minimum       = 0,
 		.maximum       = 1,
 		.step          = 0x1,
-		.default_value = 0,
+	},{
+		.id		= V4L2_CID_ROTATE,
+		.type		= V4L2_CTRL_TYPE_INTEGER,
+		.name		= "Rotate",
+		.minimum	= 0,
+		.maximum	= 270,
+		.step		= 90,
+		.default_value	= 0,
 		.flags         = V4L2_CTRL_FLAG_SLIDER,
 	}
 };
@@ -1668,6 +1676,12 @@ static int gc0308_setting(struct gc0308_device *dev,int PROP_ID,int value )
 			printk(KERN_INFO " set camera  scene mode=%d. \n ",value);
 		}
 		break;
+	case V4L2_CID_ROTATE:
+		if(gc0308_qctrl[5].default_value!=value){
+			gc0308_qctrl[5].default_value=value;
+			printk(" set camera  rotate =%d. \n ",value);
+		}
+		break;
 	default:
 		ret=-1;
 		break;
@@ -1695,7 +1709,6 @@ static void power_down_gc0308(struct gc0308_device *dev)
 	DMA and thread functions
    ------------------------------------------------------------------*/
 
-extern   int vm_fill_buffer(struct videobuf_buffer* vb , int v4l2_format , int magic,void* vaddr);
 #define TSTAMP_MIN_Y	24
 #define TSTAMP_MAX_Y	(TSTAMP_MIN_Y + 15)
 #define TSTAMP_INPUT_X	10
@@ -1705,11 +1718,18 @@ static void gc0308_fillbuff(struct gc0308_fh *fh, struct gc0308_buffer *buf)
 {
 	struct gc0308_device *dev = fh->dev;
 	void *vbuf = videobuf_to_vmalloc(&buf->vb);
+	vm_output_para_t para = {0};
 	dprintk(dev,1,"%s\n", __func__);
 	if (!vbuf)
 		return;
  /*  0x18221223 indicate the memory type is MAGIC_VMAL_MEM*/
-    vm_fill_buffer(&buf->vb,fh->fmt->fourcc ,0x18221223,vbuf);
+	para.mirror = -1;// not set
+	para.v4l2_format = fh->fmt->fourcc;
+	para.v4l2_memory = 0x18221223;
+	para.zoom = -1;
+	para.vaddr = (unsigned)vbuf;
+	para.angle = gc0308_qctrl[5].default_value;
+	vm_fill_buffer(&buf->vb,&para);
 	buf->vb.state = VIDEOBUF_DONE;
 }
 
@@ -2410,6 +2430,7 @@ static int gc0308_close(struct file *file)
 	gc0308_qctrl[3].default_value= CAM_BANDING_50HZ;
 	gc0308_qctrl[4].default_value=0;
 
+	gc0308_qctrl[5].default_value=0;
 	//power_down_gc0308(dev);
 #endif
 	if(dev->platform_dev_data.device_uninit) {
