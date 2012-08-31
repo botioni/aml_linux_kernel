@@ -79,17 +79,6 @@ static struct i2c_client *this_client;
 static void do_download(struct work_struct *work);
 static DECLARE_DELAYED_WORK(dl_work, do_download);
 
-typedef enum camera_focus_mode_e {
-    CAM_FOCUS_MODE_RELEASE = 0,
-    CAM_FOCUS_MODE_FIXED,
-    CAM_FOCUS_MODE_INFINITY,
-    CAM_FOCUS_MODE_AUTO,
-    CAM_FOCUS_MODE_MACRO,
-    CAM_FOCUS_MODE_EDOF,
-    CAM_FOCUS_MODE_CONTI_VID,
-    CAM_FOCUS_MODE_CONTI_PIC,
-}camera_focus_mode_t;
-
 /* supported controls */
 static struct v4l2_queryctrl ov5640_qctrl[] = {
     {
@@ -1517,7 +1506,7 @@ void OV5640_set_param_effect(struct ov5640_device *dev,enum camera_effect_flip_e
 * GLOBALS AFFECTED
 *
 *************************************************************************/
-void OV5640_set_param_banding(struct ov5640_device *dev,enum  camera_night_mode_flip_e banding)
+void OV5640_set_param_banding(struct ov5640_device *dev,enum  camera_banding_flip_e banding)
 {
 	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
     unsigned char buf[4];
@@ -1530,6 +1519,8 @@ void OV5640_set_param_banding(struct ov5640_device *dev,enum  camera_night_mode_
         	printk("set banding 50Hz\n");
         	i2c_put_byte(client, 0x3c00, 0x04);
             break;
+	default:
+	    break;
     }
 }
 

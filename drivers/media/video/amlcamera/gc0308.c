@@ -126,12 +126,12 @@ static struct v4l2_queryctrl gc0308_qctrl[] = {
 		.flags         = V4L2_CTRL_FLAG_SLIDER,
 	},*/{
 		.id            = V4L2_CID_DO_WHITE_BALANCE,
-		.type          = V4L2_CTRL_TYPE_INTEGER,
+		.type          = V4L2_CTRL_TYPE_MENU,
 		.name          = "white balance",
-		.minimum       = 0,
-		.maximum       = 6,
+		.minimum       = CAM_WB_AUTO,
+		.maximum       = CAM_WB_WARM_FLUORESCENT,
 		.step          = 0x1,
-		.default_value = 0,
+		.default_value = CAM_WB_AUTO,
 		.flags         = V4L2_CTRL_FLAG_SLIDER,
 	},{
 		.id            = V4L2_CID_EXPOSURE,
@@ -152,13 +152,13 @@ static struct v4l2_queryctrl gc0308_qctrl[] = {
 		.default_value = 0,
 		.flags         = V4L2_CTRL_FLAG_SLIDER,
 	},{
-		.id            = V4L2_CID_WHITENESS,
-		.type          = V4L2_CTRL_TYPE_INTEGER,
+		.id            = V4L2_CID_POWER_LINE_FREQUENCY,
+		.type          = V4L2_CTRL_TYPE_MENU,
 		.name          = "banding",
-		.minimum       = 0,
-		.maximum       = 1,
+		.minimum       = CAM_BANDING_50HZ,
+		.maximum       = CAM_BANDING_60HZ,
 		.step          = 0x1,
-		.default_value = 0,
+		.default_value = CAM_BANDING_50HZ,
 		.flags         = V4L2_CTRL_FLAG_SLIDER,
 	},{
 		.id            = V4L2_CID_BLUE_BALANCE,
@@ -171,6 +171,90 @@ static struct v4l2_queryctrl gc0308_qctrl[] = {
 		.flags         = V4L2_CTRL_FLAG_SLIDER,
 	}
 };
+
+struct v4l2_querymenu gc0308_qmenu_wbmode[] = {
+    {
+        .id         = V4L2_CID_DO_WHITE_BALANCE,
+        .index      = CAM_WB_AUTO,
+        .name       = "auto",
+        .reserved   = 0,
+    },{
+        .id         = V4L2_CID_DO_WHITE_BALANCE,
+        .index      = CAM_WB_CLOUD,
+        .name       = "cloudy-daylight",
+        .reserved   = 0,
+    },{
+        .id         = V4L2_CID_DO_WHITE_BALANCE,
+        .index      = CAM_WB_INCANDESCENCE,
+        .name       = "incandescent",
+        .reserved   = 0,
+    },{
+        .id         = V4L2_CID_DO_WHITE_BALANCE,
+        .index      = CAM_WB_DAYLIGHT,
+        .name       = "daylight",
+        .reserved   = 0,
+    },{
+        .id         = V4L2_CID_DO_WHITE_BALANCE,
+        .index      = CAM_WB_FLUORESCENT,
+        .name       = "fluorescent", 
+        .reserved   = 0,
+    },{
+        .id         = V4L2_CID_DO_WHITE_BALANCE,
+        .index      = CAM_WB_FLUORESCENT,
+        .name       = "warm-fluorescent", 
+        .reserved   = 0,
+    },
+};
+
+struct v4l2_querymenu gc0308_qmenu_anti_banding_mode[] = {
+    {
+        .id         = V4L2_CID_POWER_LINE_FREQUENCY,
+        .index      = CAM_BANDING_50HZ, 
+        .name       = "50hz",
+        .reserved   = 0,
+    },{
+        .id         = V4L2_CID_POWER_LINE_FREQUENCY,
+        .index      = CAM_BANDING_60HZ, 
+        .name       = "60hz",
+        .reserved   = 0,
+    },
+};
+
+typedef struct {
+    __u32   id;
+    int     num;
+    struct v4l2_querymenu* gc0308_qmenu;
+}gc0308_qmenu_set_t;
+
+gc0308_qmenu_set_t gc0308_qmenu_set[] = {
+    {
+        .id         	= V4L2_CID_DO_WHITE_BALANCE,
+        .num            = ARRAY_SIZE(gc0308_qmenu_wbmode),
+        .gc0308_qmenu   = gc0308_qmenu_wbmode,
+    },{
+        .id         	= V4L2_CID_POWER_LINE_FREQUENCY,
+        .num            = ARRAY_SIZE(gc0308_qmenu_anti_banding_mode),
+        .gc0308_qmenu   = gc0308_qmenu_anti_banding_mode,
+    },
+};
+
+static int vidioc_querymenu(struct file *file, void *priv,
+                struct v4l2_querymenu *a)
+{
+	int i, j;
+
+	for (i = 0; i < ARRAY_SIZE(gc0308_qmenu_set); i++)
+	if (a->id && a->id == gc0308_qmenu_set[i].id) {
+	    for(j = 0; j < gc0308_qmenu_set[i].num; j++)
+		if (a->index == gc0308_qmenu_set[i].gc0308_qmenu[j].index) {
+			memcpy(a, &( gc0308_qmenu_set[i].gc0308_qmenu[j]),
+				sizeof(*a));
+			return (0);
+		}
+	}
+
+	return -EINVAL;
+}
 
 #define dprintk(dev, level, fmt, arg...) \
 	v4l2_dbg(level, debug, &dev->v4l2_dev, fmt, ## arg)
@@ -983,7 +1067,7 @@ void set_GC0308_param_wb(struct gc0308_device *dev,enum  camera_wb_flip_e para)
 			i2c_put_byte_add8(client,buf,2);
 			break;
 
-		case CAM_WB_TUNGSTEN:   // wu si deng
+		case CAM_WB_WARM_FLUORESCENT://CAM_WB_TUNGSTEN:   // wu si deng
 		    buf[0]=0x22;
 			buf[1]=temp_reg&~0x02;
 			i2c_put_byte_add8(client,buf,2);
@@ -999,6 +1083,14 @@ void set_GC0308_param_wb(struct gc0308_device *dev,enum  camera_wb_flip_e para)
 			break;
 
 		case CAM_WB_MANUAL:
+			// TODO
+			break;
+
+		case CAM_WB_SHADE:
+			// TODO
+			break;
+
+		case CAM_WB_TWILIGHT:
 			// TODO
 			break;
 		default:
@@ -1097,7 +1189,7 @@ void GC0308_night_mode(struct gc0308_device *dev,enum  camera_night_mode_flip_e 
 *
 *************************************************************************/
 
-void GC0308_set_param_banding(struct gc0308_device *dev,enum  camera_night_mode_flip_e banding)
+void GC0308_set_param_banding(struct gc0308_device *dev,enum  camera_banding_flip_e banding)
 {
     struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
     unsigned char buf[4];
@@ -1178,6 +1270,8 @@ void GC0308_set_param_banding(struct gc0308_device *dev,enum  camera_night_mode_
             buf[1]=0xa0;
             i2c_put_byte_add8(client,buf,2);
             break;
+	default:
+		break;
     }
 }
 
@@ -1560,7 +1654,7 @@ static int gc0308_setting(struct gc0308_device *dev,int PROP_ID,int value )
 			printk(KERN_INFO " set camera  effect=%d. \n ",value);
 		}
 		break;
-	case V4L2_CID_WHITENESS:
+	case V4L2_CID_POWER_LINE_FREQUENCY:
 		if(gc0308_qctrl[3].default_value!=value){
 			gc0308_qctrl[3].default_value=value;
 			GC0308_set_param_banding(dev,value);
@@ -2313,7 +2407,7 @@ static int gc0308_close(struct file *file)
 	gc0308_qctrl[0].default_value=0;
 	gc0308_qctrl[1].default_value=4;
 	gc0308_qctrl[2].default_value=0;
-	gc0308_qctrl[3].default_value=0;
+	gc0308_qctrl[3].default_value= CAM_BANDING_50HZ;
 	gc0308_qctrl[4].default_value=0;
 
 	//power_down_gc0308(dev);
@@ -2368,6 +2462,7 @@ static const struct v4l2_ioctl_ops gc0308_ioctl_ops = {
 	.vidioc_g_input       = vidioc_g_input,
 	.vidioc_s_input       = vidioc_s_input,
 	.vidioc_queryctrl     = vidioc_queryctrl,
+    .vidioc_querymenu     = vidioc_querymenu,
 	.vidioc_g_ctrl        = vidioc_g_ctrl,
 	.vidioc_s_ctrl        = vidioc_s_ctrl,
 	.vidioc_streamon      = vidioc_streamon,

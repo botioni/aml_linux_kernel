@@ -817,7 +817,22 @@ typedef enum camera_wb_flip_e {
     CAM_WB_TUNGSTEN,
     CAM_WB_FLUORESCENT,
     CAM_WB_MANUAL,
+    CAM_WB_SHADE,
+    CAM_WB_TWILIGHT,
+    CAM_WB_WARM_FLUORESCENT,
 }camera_wb_flip_t;
+
+typedef enum camera_focus_mode_e {
+    CAM_FOCUS_MODE_RELEASE = 0,
+    CAM_FOCUS_MODE_FIXED,
+    CAM_FOCUS_MODE_INFINITY,
+    CAM_FOCUS_MODE_AUTO,
+    CAM_FOCUS_MODE_MACRO,
+    CAM_FOCUS_MODE_EDOF,
+    CAM_FOCUS_MODE_CONTI_VID,
+    CAM_FOCUS_MODE_CONTI_PIC,
+}camera_focus_mode_t;
+
 typedef enum camera_night_mode_flip_e {
     CAM_NM_AUTO = 0,
 	CAM_NM_ENABLE,
@@ -831,8 +846,11 @@ typedef enum camera_effect_flip_e {
 	CAM_EFFECT_ENC_COLORINV,
 }camera_effect_flip_t;
 typedef enum camera_banding_flip_e {
-    CAM_BANDING_50HZ = 0,
-	CAM_BANDING_60HZ,
+    CAM_BANDING_DISABLED = 0,
+    CAM_BANDING_50HZ,
+    CAM_BANDING_60HZ,
+    CAM_BANDING_AUTO,
+    CAM_BANDING_OFF,
 }camera_banding_flip_t;
 
 
