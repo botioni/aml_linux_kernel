@@ -400,6 +400,7 @@ static int  option_resume(struct usb_serial *serial);
 
 #define STRONGRISING_VENDOR_ID                  0x21f5
 #define STRONGRISING_PRODUCT_SEW868             0x2012
+#define STRONGRISING_PRODUCT_SEV789             0x2008
 
 /* some devices interfaces need special handling due to a number of reasons */
 enum option_blacklist_reason {
@@ -767,6 +768,7 @@ static const struct usb_device_id option_ids[] = {
 
 	{ USB_DEVICE(CINTERION_VENDOR_ID, 0x0047) },
 	{ USB_DEVICE(STRONGRISING_VENDOR_ID, STRONGRISING_PRODUCT_SEW868) },
+	{ USB_DEVICE(STRONGRISING_VENDOR_ID, STRONGRISING_PRODUCT_SEV789) },
 	{ } /* Terminating entry */
 };
 MODULE_DEVICE_TABLE(usb, option_ids);
