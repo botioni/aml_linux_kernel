@@ -42,7 +42,7 @@
 
 
 extern  char *remote_log_buf;
-static int mode_flag;
+static int mode_flag,addbit;
 static unsigned int savekeycode;
 static int  dbg_printk(const char *fmt, ...)
 {
@@ -93,6 +93,8 @@ static inline void kbd_software_mode_remote_wait(unsigned long data)
 	kp_data->step   = REMOTE_STATUS_LEADER;
 	kp_data->cur_keycode = 0 ;
 	kp_data->bit_num = kp_data->bit_count ;
+	mode_flag = 0;
+	//addbit = 0;
 }
 static inline void kbd_software_mode_remote_leader(unsigned long data)
 {
@@ -103,6 +105,7 @@ static inline void kbd_software_mode_remote_leader(unsigned long data)
 	if((pulse_width > kp_data->time_window[0]) && (pulse_width <kp_data->time_window[1])){
 		kp_data->step   = REMOTE_STATUS_DATA;
 		mode_flag = 1;
+		//addbit = 0;
 	}
 	else {
 		kp_data->step    = REMOTE_STATUS_WAIT ;
@@ -115,8 +118,7 @@ static inline void kbd_software_mode_remote_leader(unsigned long data)
 static inline void kbd_software_mode_remote_send_key(unsigned long data)
 {
 	struct kp *kp_data = (struct kp *) data;
-	unsigned int mouse_xvalue,mouse_yvalue;
-	int type;
+	unsigned int mouse_xvalue,mouse_yvalue,tmpkeyscan;
 	unsigned int  reort_key_code=kp_data->cur_keycode>>16&0xffff;
 
 	kp_data->step = REMOTE_STATUS_SYNC;
@@ -133,36 +135,43 @@ static inline void kbd_software_mode_remote_send_key(unsigned long data)
 	else{
 		switch(kp_data->work_mode){
 			case REMOTE_WORK_MODE_FIQ_RCMM :
-				if(kp_data->bit_count == 30){
-					kp_data->bit_count = 46;
+				input_dbg("#### cur_keycode code is 0x%08x :: num = %d\n", kp_data->cur_keycode,kp_data->bit_count);
+				if(kp_data->bit_count == 46){
 					unsigned int  function_flag;
-					function_flag = ((kp_data->cur_keycode>>8)&0x7);
-					mouse_yvalue = (kp_data->cur_keycode>>20)&0x3ff;
-				       mouse_xvalue = (kp_data->cur_keycode>>9)&0x7ff;
-					input_dbg(" savekeycode 16bit = 0x%08x ;30 bit custom code is 0x%08x\n",savekeycode, kp_data->cur_keycode);
-					input_dbg(" mouse_yvalue  = 0x%08x ;mouse_xvalue = 0x%08x\n",mouse_yvalue, mouse_xvalue);
-
-					switch(function_flag){
-					case 0x0 :
-						input_dbg(" abs ms\n");
-					input_event(kp_data->input, EV_ABS, ABS_X, mouse_xvalue);
-					input_event(kp_data->input, EV_ABS, ABS_Y, mouse_yvalue);
+					function_flag = (kp_data->cur_keycode&0x1f);
+					mouse_xvalue = (kp_data->cur_keycode>>6)&0x3ff;
+				       mouse_yvalue = (kp_data->cur_keycode>>16)&0x3ff;
+					function_flag =  ((kp_data->cur_keycode>>5)&0x1)|((function_flag&0x3)<<3)|((function_flag&0xc)>>1);
+					mouse_xvalue = (((kp_data->cur_keycode>>4)&0x1)<<10)|((mouse_xvalue&0x3)<<8)|((mouse_xvalue&0xc)<<4)|(mouse_xvalue&0x30)|((mouse_xvalue&0xc0)>>4)|((mouse_xvalue&0x300)>>8);
+					//input_dbg(" ((mouse_yvalue&0x3)<<8)  = 0x%08x ;((mouse_yvalue&0xc)<<4) = 0x%08x (mouse_yvalue&0x30)==0x%x ((mouse_yvalue&0xc0)>>4) = 0x%x ((mouse_yvalue&0x300)>>8) =0x%x\n",((mouse_yvalue&0x3)<<8), ((mouse_yvalue&0xc)<<4),(mouse_yvalue&0x30),((mouse_yvalue&0xc0)>>4),((mouse_yvalue&0x300)>>8));
+					mouse_yvalue = ((mouse_yvalue&0x3)<<8)|((mouse_yvalue&0xc)<<4)|(mouse_yvalue&0x30)|((mouse_yvalue&0xc0)>>4)|((mouse_yvalue&0x300)>>8);
+					input_dbg(" mouse_yvalue  = 0x%08x ;mouse_xvalue = 0x%08x *function_flag==0x%x\n",mouse_yvalue, mouse_xvalue,function_flag);
+					switch(function_flag&0x1f){
+					case 0x0 :	
+					input_report_abs(kp_data->input,ABS_X, mouse_xvalue&0x7ff);
+					input_report_abs(kp_data->input,ABS_Y, mouse_yvalue&0x3ff);
 					input_sync(kp_data->input);
+					input_dbg(" abs ms\n");
 					break;
 					case 0x1 :
-						kp_send_key(kp_data->input, 0x101, 1);
-						input_dbg(" press ok key\n");
+						input_report_key(kp_data->input, BTN_RIGHT, mouse_yvalue);
+						input_sync(kp_data->input);
+						input_dbg(" press rightkey\n");
 					break;
 					case 0x4 :
-						kp_send_key(kp_data->input, 0x110, 1);
-						input_dbg("press home key \n");
+						input_report_key(kp_data->input, BTN_LEFT, mouse_yvalue);
+						input_sync(kp_data->input);
+						input_dbg("press left  key \n");
 					break;
 					}
 				}
 				else if(kp_data->bit_count == 32)
 					kp_send_key(kp_data->input, 0x100|(kp_data->cur_keycode>>(kp_data->bit_count - 8)), 1);
 				else if(kp_data->bit_count == 12){
-					kp_send_key(kp_data->input, kp_data->cur_keycode>>(kp_data->bit_count - 8), 1);
+						 tmpkeyscan =kp_data->cur_keycode>>(kp_data->bit_count - 8);
+						 kp_data->cur_keycode = ((tmpkeyscan&0x3)<<6)|((tmpkeyscan&0xc)<<2)|((tmpkeyscan&0x30)>>2)|((tmpkeyscan&0xc0)>>6);
+					 	 kp_send_key(kp_data->input, kp_data->cur_keycode&0xff, 1);
+						 input_dbg(" tmpkeyscan = 0x%08x ********cur_keycode code is 0x%08x\n", tmpkeyscan,kp_data->cur_keycode);
 				}
 				else
 					kp_send_key(kp_data->input, kp_data->cur_keycode>>(kp_data->bit_count - 8), 1);
@@ -190,6 +199,7 @@ static inline void kbd_software_mode_remote_data(unsigned long data)
 	switch(kp_data->work_mode){
 		case REMOTE_WORK_MODE_SW :
 		case REMOTE_WORK_MODE_FIQ :
+			
 			if((pulse_width > kp_data->time_window[2]) && (pulse_width < kp_data->time_window[3])) {
 				kp_data->bit_num--;
 			}
@@ -209,45 +219,57 @@ static inline void kbd_software_mode_remote_data(unsigned long data)
 			}
 			break;
 		case REMOTE_WORK_MODE_FIQ_RCMM :
-			if((pulse_width > kp_data->time_window[2]) && (pulse_width < kp_data->time_window[3])) {
+			if(kp_data->bit_num == kp_data->bit_count -32)
+			{
+				addbit = 1;
+				savekeycode = kp_data->cur_keycode;
+				kp_data->cur_keycode = 0;
+				kp_data->bit_count = kp_data->bit_count -32;
+			}
+			if((pulse_width > kp_data->time_window[2]) && (pulse_width < kp_data->time_window[3])) {//00
 				if((mode_flag == 2)&&(kp_data->bit_count == 12)){
-
 					kp_data->bit_count = kp_data->bit_num = 46;
 				}
+#if 0
 				if((kp_data->bit_num == 12)&&(kp_data->bit_count == 24)){/*sub mode is remote control*/
 					kp_data->bit_count += 8;
 					kp_data->bit_num += 8;
 				}
+#endif
 				kp_data->bit_num-=2;
-			}else if((pulse_width > kp_data->time_window[4]) && (pulse_width < kp_data->time_window[5])) {
-				kp_data->cur_keycode |= 2<<(kp_data->bit_count-kp_data->bit_num) ;
+			}else if((pulse_width > kp_data->time_window[4]) && (pulse_width < kp_data->time_window[5])) {//01
+				kp_data->cur_keycode |= 1<<(kp_data->bit_count-kp_data->bit_num) ;
 				kp_data->bit_num-=2;
-			}else if((pulse_width > kp_data->time_window[8]) && (pulse_width < kp_data->time_window[9])) {
-				if(((mode_flag == 2)&&(kp_data->bit_count == 46))||((mode_flag == 2)&&(kp_data->bit_count == 30))){
-
+			}else if((pulse_width > kp_data->time_window[8]) && (pulse_width < kp_data->time_window[9])) {//10
+				if((mode_flag == 2)&&(kp_data->bit_count == 46)){
 					kp_data->bit_count = kp_data->bit_num = 12;
 				}
-				kp_data->cur_keycode |= 1<<(kp_data->bit_count-kp_data->bit_num) ;
+				kp_data->cur_keycode |= 2<<(kp_data->bit_count-kp_data->bit_num) ;
+#if 0				
 				if((kp_data->bit_num == 20)&&(kp_data->bit_count == 32)){/*sub mode is keyboard*/
 					kp_data->bit_count -= 8;
 					kp_data->bit_num -= 8;
 				}
+#endif
 				kp_data->bit_num-=2;
-			}else if((pulse_width > kp_data->time_window[10]) && (pulse_width < kp_data->time_window[11])) {
+			}else if((pulse_width > kp_data->time_window[10]) && (pulse_width < kp_data->time_window[11])) {//11
 				kp_data->cur_keycode |= 3<<(kp_data->bit_count-kp_data->bit_num) ;
 				kp_data->bit_num-=2;
 			}else {
 				kp_data->step   = REMOTE_STATUS_WAIT ;
 			}
-			if((kp_data->cur_keycode&0xffff) == 0x1c28)
-				{
-				savekeycode = kp_data->cur_keycode;
-				kp_data->cur_keycode = ((kp_data->cur_keycode >>16)&0xffff);
-				kp_data->bit_count = 30;
-				kp_data->bit_num  = 30;
-				}
 			if(kp_data->bit_num == 0) {
 				kp_data->repeate_flag = 0;
+				if(addbit  == 1)
+				{
+					kp_data->bit_count = 46;
+					kp_data->cur_keycode = ((kp_data->cur_keycode&0x3fff)<<12)|(savekeycode>>20);
+					savekeycode =0;
+					addbit = 0;
+					kp_data->release_delay = 17;
+				}
+				else
+					kp_data->release_delay =kp_data->tmp_release_delay;
 				kp_data->send_data = 1;	
 				fiq_bridge_pulse_trigger(&kp_data->fiq_handle_item);
 				mode_flag = 0;

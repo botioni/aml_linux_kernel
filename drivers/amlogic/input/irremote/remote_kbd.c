@@ -308,7 +308,15 @@ static void kp_repeat_sr(unsigned long data)
 static void kp_timer_sr(unsigned long data)
 {
 	struct kp *kp_data=(struct kp *)data;
-	kp_send_key(kp_data->input, (kp_data->cur_keycode>>16)&0xff ,0);
+	if(kp_data->work_mode == REMOTE_WORK_MODE_FIQ_RCMM )
+	{
+		if(kp_data->bit_count == 12)
+		kp_send_key(kp_data->input, kp_data->cur_keycode&0xff ,0);
+		else
+		{}
+	}
+	else
+		kp_send_key(kp_data->input, (kp_data->cur_keycode>>16)&0xff ,0);
 	if(!(kp_data->work_mode&REMOTE_WORK_MODE_HW))
 		kp_data->step   = REMOTE_STATUS_WAIT ;
 }
@@ -690,6 +698,7 @@ remote_config_ioctl(struct inode *inode, struct file *filp,
 			break;
 		case REMOTE_IOC_SET_RELEASE_DELAY:
 			copy_from_user(&kp->release_delay,argp,sizeof(long));
+			kp->tmp_release_delay =kp->release_delay;
 			break;
 			//SW
 		case REMOTE_IOC_SET_TW_LEADER_ACT:
