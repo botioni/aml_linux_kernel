@@ -39,8 +39,6 @@
 #include <mach/am_regs.h>
 #include "amkbd_remote.h"
 
-
-
 extern  char *remote_log_buf;
 static int mode_flag,addbit;
 static unsigned int savekeycode;
@@ -146,6 +144,7 @@ static inline void kbd_software_mode_remote_send_key(unsigned long data)
 					//input_dbg(" ((mouse_yvalue&0x3)<<8)  = 0x%08x ;((mouse_yvalue&0xc)<<4) = 0x%08x (mouse_yvalue&0x30)==0x%x ((mouse_yvalue&0xc0)>>4) = 0x%x ((mouse_yvalue&0x300)>>8) =0x%x\n",((mouse_yvalue&0x3)<<8), ((mouse_yvalue&0xc)<<4),(mouse_yvalue&0x30),((mouse_yvalue&0xc0)>>4),((mouse_yvalue&0x300)>>8));
 					mouse_yvalue = ((mouse_yvalue&0x3)<<8)|((mouse_yvalue&0xc)<<4)|(mouse_yvalue&0x30)|((mouse_yvalue&0xc0)>>4)|((mouse_yvalue&0x300)>>8);
 					input_dbg(" mouse_yvalue  = 0x%08x ;mouse_xvalue = 0x%08x *function_flag==0x%x\n",mouse_yvalue, mouse_xvalue,function_flag);
+					kp_data->function_flag = function_flag;
 					switch(function_flag&0x1f){
 					case 0x0 :	
 					input_report_abs(kp_data->input,ABS_X, mouse_xvalue&0x7ff);
@@ -154,14 +153,16 @@ static inline void kbd_software_mode_remote_send_key(unsigned long data)
 					input_dbg(" abs ms\n");
 					break;
 					case 0x1 :
-						input_report_key(kp_data->input, BTN_RIGHT, mouse_yvalue);
+						input_report_key(kp_data->input, BTN_RIGHT, 1);
 						input_sync(kp_data->input);
 						input_dbg(" press rightkey\n");
+						kp_data->release_delay = kp_data->tmp_release_delay;
 					break;
 					case 0x4 :
-						input_report_key(kp_data->input, BTN_LEFT, mouse_yvalue);
+						input_report_key(kp_data->input, BTN_LEFT, 1);
 						input_sync(kp_data->input);
 						input_dbg("press left  key \n");
+						kp_data->release_delay = kp_data->tmp_release_delay;
 					break;
 					}
 				}
