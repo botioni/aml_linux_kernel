@@ -313,7 +313,18 @@ static void kp_timer_sr(unsigned long data)
 		if(kp_data->bit_count == 12)
 		kp_send_key(kp_data->input, kp_data->cur_keycode&0xff ,0);
 		else
-		{}
+		{
+			switch(kp_data->function_flag&0x1f){
+					case 0x1 :
+						input_report_key(kp_data->input, BTN_RIGHT, 0);
+						input_sync(kp_data->input);
+					break;
+					case 0x4 :
+						input_report_key(kp_data->input, BTN_LEFT, 0);
+						input_sync(kp_data->input);
+					break;
+				}
+		}
 	}
 	else
 		kp_send_key(kp_data->input, (kp_data->cur_keycode>>16)&0xff ,0);
