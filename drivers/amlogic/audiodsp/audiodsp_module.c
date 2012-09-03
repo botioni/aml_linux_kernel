@@ -463,6 +463,14 @@ static int audiodsp_ioctl(struct inode *node, struct file *file, unsigned int cm
 			/*val=-1 is not valid*/
 			*val=dsp_codec_get_current_pts(priv);
 			break;
+                case AUDIODSP_LOOKUP_APTS:
+                {
+                        u32 pts, offset;
+                        offset=*val;
+                        pts_lookup_offset(PTS_TYPE_AUDIO, offset, &pts, 300);
+                        *val=pts;
+                }
+                        break;
 		case AUDIODSP_GET_FIRST_PTS_FLAG:
 			if(priv->stream_fmt == MCODEC_FMT_COOK || priv->stream_fmt == MCODEC_FMT_RAAC)
 				*val = 1;
