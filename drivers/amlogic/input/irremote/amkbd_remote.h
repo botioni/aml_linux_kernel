@@ -108,6 +108,7 @@ struct kp {
 	unsigned int debounce;
 	unsigned int custom_code[2];
 	unsigned int release_delay;
+	unsigned int tmp_release_delay;
 	unsigned int debug_enable;
 //sw
 	unsigned int delay;
