@@ -78,6 +78,7 @@ static int NEC_REMOTE_IRQ_NO=INT_REMOTE;
 DECLARE_TASKLET_DISABLED(tasklet, kp_tasklet, 0);
 
 static struct kp   *gp_kp=NULL;
+static int repeat_flag;
 char *remote_log_buf;
 typedef  struct {
 	char		     *platform_name;
@@ -282,7 +283,8 @@ static void kp_repeat_sr(unsigned long data)
 	switch(status&REMOTE_HW_DECODER_STATUS_MASK) 
 	{
 		case REMOTE_HW_DECODER_STATUS_OK:
-			kp_send_key(kp_data->input, (kp_data->cur_keycode>>16)&0xff, 0);	
+			kp_send_key(kp_data->input, (kp_data->cur_keycode>>16)&0xff, 0);
+			repeat_flag = 0;
 			break ;
 		default:
 			SET_AOBUS_REG_MASK(AO_IR_DEC_REG1,1);//reset ir deocoder
@@ -326,8 +328,10 @@ static void kp_timer_sr(unsigned long data)
 				}
 		}
 	}
-	else
+	else{
 		kp_send_key(kp_data->input, (kp_data->cur_keycode>>16)&0xff ,0);
+		repeat_flag = 0;
+	}
 	if(!(kp_data->work_mode&REMOTE_WORK_MODE_HW))
 		kp_data->step   = REMOTE_STATUS_WAIT ;
 }
@@ -386,8 +390,10 @@ static inline int kp_hw_reprot_key(struct kp *kp_data )
 			{
 				if(kp_data->repeat_timer.expires > jiffies){//release last key.
 					kp_send_key(kp_data->input, (kp_data->cur_keycode>>16)&0xff, 0);
+					repeat_flag = 0;
 				}
 				kp_send_key(kp_data->input, (scan_code>>16)&0xff, 1);
+				repeat_flag = 1;
 				last_scan_code=scan_code;
 				kp_data->cur_keycode=last_scan_code;
 				kp_data->repeat_timer.data=(unsigned long)kp_data;
@@ -398,9 +404,12 @@ static inline int kp_hw_reprot_key(struct kp *kp_data )
 			}
 			else
 			{
-				if(kp_data->timer.expires > jiffies)
+				if(kp_data->timer.expires > jiffies){
 					kp_send_key(kp_data->input, (kp_data->cur_keycode>>16)&0xff, 0);
+					repeat_flag = 0;
+				}
 				kp_send_key(kp_data->input, (scan_code>>16)&0xff, 1);
+				repeat_flag = 1;
 				if(kp_data->repeat_enable)
 					kp_data->repeat_tick = jiffies + msecs_to_jiffies(kp_data->input->rep[REP_DELAY]);
 			}
@@ -417,7 +426,7 @@ static inline int kp_hw_reprot_key(struct kp *kp_data )
 		if((kp_data->custom_code[0] == last_custom_code )||(kp_data->custom_code[1] == last_custom_code) )
 		{
 			if(kp_data->repeat_enable){
-				if(kp_data->repeat_tick < jiffies){
+				if((kp_data->repeat_tick < jiffies)&&(repeat_flag == 1)){
 					kp_send_key(kp_data->input, (scan_code>>16)&0xff, 2);
 					kp_data->repeat_tick += msecs_to_jiffies(kp_data->input->rep[REP_PERIOD]);
 				}
