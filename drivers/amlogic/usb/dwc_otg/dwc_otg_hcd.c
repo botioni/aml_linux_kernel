@@ -398,6 +398,8 @@ static int32_t dwc_otg_hcd_disconnect_cb(void *_p)
 			}
 		}
 
+		/* release_channel by hand */
+		local_irq_save(flags);
 		for (i = 0; i < num_channels; i++) {
 			channel = dwc_otg_hcd->hc_ptr_array[i];
 			if (list_empty(&channel->hc_list_entry)) {
@@ -416,20 +418,25 @@ static int32_t dwc_otg_hcd_disconnect_cb(void *_p)
 						   channel);
 				list_add_tail(&channel->hc_list_entry,
 					      &dwc_otg_hcd->free_hc_list);
-				local_irq_save(flags);
-				/* Take back a non_periodic_channel */
+				/* 
+				  * Take back the non_periodic_channel 
+				  * and periodic_channels
+				  */
 				switch (channel->ep_type) {
 					case DWC_OTG_EP_TYPE_CONTROL:
 					case DWC_OTG_EP_TYPE_BULK:
 							dwc_otg_hcd->non_periodic_channels--;
 						break;
-
+					case DWC_OTG_EP_TYPE_ISOC:
+					case DWC_OTG_EP_TYPE_INTR:
+							dwc_otg_hcd->periodic_channels--;
+						break;
 					default:
 						break;
 				}
-				local_irq_restore(flags);
 			}
 		}
+		local_irq_restore(flags);
 	}
 
 	/* A disconnect will end the session so the B-Device is no
