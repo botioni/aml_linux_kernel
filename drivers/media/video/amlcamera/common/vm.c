@@ -585,6 +585,7 @@ static int get_output_format(int v4l2_format)
 	case V4L2_PIX_FMT_NV12:
 	case V4L2_PIX_FMT_NV21:
 	case V4L2_PIX_FMT_YUV420:
+	case V4L2_PIX_FMT_YVU420:
 		format = GE2D_FORMAT_S8_Y;
 		break;
 	default:
@@ -613,6 +614,7 @@ int is_need_ge2d_pre_process(void)
 	case  V4L2_PIX_FMT_BGR24:
 	case  V4L2_PIX_FMT_RGB24:
 	case  V4L2_PIX_FMT_YUV420:
+	case  V4L2_PIX_FMT_YVU420:
 	case  V4L2_PIX_FMT_NV12:
 	case  V4L2_PIX_FMT_NV21:
 		ret = 1;
@@ -662,6 +664,7 @@ int get_canvas_index(int v4l2_format, int *depth)
 		*depth = 12;   
 		break;
 	case V4L2_PIX_FMT_YUV420:
+	case V4L2_PIX_FMT_YVU420:
 		canvas = VM_DEPTH_8_CANVAS_Y|(VM_DEPTH_8_CANVAS_U<<8)|(VM_DEPTH_8_CANVAS_V<<16);
 		*depth = 12;
 		break;
@@ -854,7 +857,8 @@ int vm_ge2d_pre_process(vframe_t* vf, ge2d_context_t *context,config_para_ex_t* 
 	stretchblt_noalpha(context,src_left ,src_top ,src_width, src_height,0,0,output_para.width,output_para.height);
 
 	/* for cr of  yuv420p or yuv420sp. */
-	if(output_para.v4l2_format==V4L2_PIX_FMT_YUV420) {
+	if((output_para.v4l2_format==V4L2_PIX_FMT_YUV420)
+		||(output_para.v4l2_format==V4L2_PIX_FMT_YVU420)){
 		/* for cb. */
 		canvas_read((output_para.index>>8)&0xff,&cd);
 		ge2d_config->dst_planes[0].addr = cd.addr;
@@ -937,6 +941,7 @@ int vm_ge2d_pre_process(vframe_t* vf, ge2d_context_t *context,config_para_ex_t* 
 
 	/* for cb of yuv420p or yuv420sp. */
 	if(output_para.v4l2_format==V4L2_PIX_FMT_YUV420||
+		output_para.v4l2_format==V4L2_PIX_FMT_YVU420||
 		output_para.v4l2_format==V4L2_PIX_FMT_NV12||
 		output_para.v4l2_format==V4L2_PIX_FMT_NV21) {
 		canvas_read((output_para.index>>16)&0xff,&cd);
@@ -1053,7 +1058,8 @@ int vm_sw_post_process(int canvas , int addr)
 
 		iounmap(buffer_u_start);
 		iounmap(buffer_v_start);
-	} else if (output_para.v4l2_format == V4L2_PIX_FMT_YUV420) {
+	} else if ( (output_para.v4l2_format == V4L2_PIX_FMT_YUV420)
+			||(output_para.v4l2_format == V4L2_PIX_FMT_YVU420)){
 		int uv_width = output_para.width>>1;
 		int uv_height = output_para.height>>1;
 
@@ -1069,16 +1075,30 @@ int vm_sw_post_process(int canvas , int addr)
 		buffer_u_start = ioremap_wc(canvas_work_u.addr,canvas_work_u.width*canvas_work_u.height);
 		canvas_read((canvas>>16)&0xff,&canvas_work_v);
 		buffer_v_start = ioremap_wc(canvas_work_v.addr,canvas_work_v.width*canvas_work_v.height);
-		for(i=uv_height;i>0;i--) { /* copy y */
-			memcpy((void *)(addr+poss),(void *)(buffer_u_start+posd),uv_width);
-			poss+=uv_width;
-			posd+= canvas_work_u.width;		
-		}
-		posd=0;
-		for(i=uv_height;i>0;i--) { /* copy y */
-			memcpy((void *)(addr+poss),(void *)(buffer_v_start+posd),uv_width);
-			poss+=uv_width;
-			posd+= canvas_work_v.width;		
+		if(output_para.v4l2_format == V4L2_PIX_FMT_YUV420){
+			for(i=uv_height;i>0;i--) { /* copy y */
+				memcpy((void *)(addr+poss),(void *)(buffer_u_start+posd),uv_width);
+				poss+=uv_width;
+				posd+= canvas_work_u.width;
+			}
+			posd=0;
+			for(i=uv_height;i>0;i--) { /* copy y */
+				memcpy((void *)(addr+poss),(void *)(buffer_v_start+posd),uv_width);
+				poss+=uv_width;
+				posd+= canvas_work_v.width;
+			}
+		}else{
+			for(i=uv_height;i>0;i--) { /* copy v */
+				memcpy((void *)(addr+poss),(void *)(buffer_v_start+posd),uv_width);
+				poss+=uv_width;
+				posd+= canvas_work_v.width;
+			}
+			posd=0;
+			for(i=uv_height;i>0;i--) { /* copy u */
+				memcpy((void *)(addr+poss),(void *)(buffer_u_start+posd),uv_width);
+				poss+=uv_width;
+				posd+= canvas_work_u.width;
+			}
 		}
 		iounmap(buffer_u_start);
 		iounmap(buffer_v_start);

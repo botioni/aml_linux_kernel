@@ -322,6 +322,10 @@ static struct gt2005_fmt formats[] = {
 		.name     = "YUV420P",
 		.fourcc   = V4L2_PIX_FMT_YUV420,
 		.depth    = 12,
+	},{
+		.name     = "YVU420P",
+		.fourcc   = V4L2_PIX_FMT_YVU420,
+		.depth    = 12,
 	}
 #if 0
 	{
@@ -1418,7 +1422,6 @@ void GT2005_set_param_exposure(struct gt2005_device *dev,enum camera_exposure_e 
 			i2c_put_byte(client,0x0301 , 0x90);
 			i2c_put_byte(client,0x0201 , 0x0c);
 			break;
-			break;
 
 
 
@@ -2241,7 +2244,11 @@ static int vidioc_enum_framesizes(struct file *file, void *fh,struct v4l2_frmsiz
 	}
 	if (fmt == NULL)
 		return -EINVAL;
-	if (fmt->fourcc == V4L2_PIX_FMT_NV21){
+	if ((fmt->fourcc == V4L2_PIX_FMT_NV21)
+		||(fmt->fourcc == V4L2_PIX_FMT_NV12)
+		||(fmt->fourcc == V4L2_PIX_FMT_YVU420)
+		||(fmt->fourcc == V4L2_PIX_FMT_YUV420))
+	{
 		if (fsize->index >= ARRAY_SIZE(gt2005_prev_resolution))
 			return -EINVAL;
 		frmsize = &gt2005_prev_resolution[fsize->index];

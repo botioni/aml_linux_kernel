@@ -308,6 +308,11 @@ static struct gc0308_fmt formats[] = {
 		.name     = "YUV420P",
 		.fourcc   = V4L2_PIX_FMT_YUV420,
 		.depth    = 12,
+	},
+	{
+		.name     = "YVU420P",
+		.fourcc   = V4L2_PIX_FMT_YVU420,
+		.depth    = 12,
 	}
 #if 0
 	{
@@ -2189,7 +2194,11 @@ static int vidioc_enum_framesizes(struct file *file, void *fh,struct v4l2_frmsiz
 	}
 	if (fmt == NULL)
 		return -EINVAL;
-	if (fmt->fourcc == V4L2_PIX_FMT_NV21){
+	if ((fmt->fourcc == V4L2_PIX_FMT_NV21)
+		||(fmt->fourcc == V4L2_PIX_FMT_NV12)
+		||(fmt->fourcc == V4L2_PIX_FMT_YUV420)
+		||(fmt->fourcc == V4L2_PIX_FMT_YVU420)
+		){
 		if (fsize->index >= ARRAY_SIZE(gc0308_prev_resolution))
 			return -EINVAL;
 		frmsize = &gc0308_prev_resolution[fsize->index];
