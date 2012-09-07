@@ -390,8 +390,8 @@ static ssize_t show_cec(struct device * dev, struct device_attribute *attr, char
 
 static ssize_t store_cec(struct device * dev, struct device_attribute *attr, const char * buf, size_t count)
 {
-    //set_cec_code(buf, count);
-    cec_usrcmd_set_dispatch(buf, count);
+    set_cec_code(buf, count);
+    //cec_usrcmd_set_dispatch(buf, count);
     return count;
 }
 

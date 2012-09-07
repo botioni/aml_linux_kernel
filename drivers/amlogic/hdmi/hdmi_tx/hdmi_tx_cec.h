@@ -23,7 +23,7 @@
 #define CEC0_LOG_ADDR 4 // MBX logical address
 #define TV_CEC_INTERVAL     (HZ*3)
 
-#define CEC_VERSION     "v1.2"
+#define CEC_VERSION     "v1.3"
 #define _RX_DATA_BUF_SIZE_ 6
 
 //#define _SUPPORT_CEC_TV_MASTER_
@@ -339,6 +339,11 @@ typedef enum {
     CEC_MENU_LANG_GER,
 } cec_menu_lang_e;
 
+typedef enum {
+    OFF = 0,
+    ON,
+} system_audio_status_e;
+
 typedef unsigned long cec_info_mask;
 
 #define INFO_MASK_CEC_VERSION                (1<<0)
@@ -390,6 +395,7 @@ typedef struct {
     unsigned char osd_name_def[16];
     menu_state_e menu_state;
     cec_menu_lang_e menu_lang;
+
     union {
         struct {
         } display;
@@ -403,6 +409,11 @@ typedef struct {
         struct {
         } tuner;
         struct {
+            system_audio_status_e sys_audio_mode;
+            struct {
+                unsigned char audio_mute_status : 1;
+                unsigned char audio_volume_status : 7;
+            } audio_status;      	
         } audio;
     }specific_info;
 } cec_node_info_t;
@@ -528,6 +539,10 @@ void cec_report_power_status(cec_rx_message_t* pcec_message);
 void cec_active_source(cec_rx_message_t* pcec_message);
 void cec_set_stream_path(cec_rx_message_t* pcec_message);
 void cec_set_osd_name(cec_rx_message_t* pcec_message);
+void cec_deactive_source(cec_rx_message_t* pcec_message);
+void cec_set_system_audio_mode(void);
+void cec_system_audio_mode_request(void);
+void cec_report_audio_status(void);
 
 
 size_t cec_usrcmd_get_global_info(char * buf);
