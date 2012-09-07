@@ -1211,7 +1211,7 @@ static void osd_ext_late_resume(struct early_suspend *h)
 }
 #endif
 
-#ifdef CONFIG_MACH_MESON3_REFF16
+#if 0 // def CONFIG_MACH_MESON3_REFF16
 int __init get_resolution(char *str)
 {
 	if (strncmp("480", str, 3) == 0) {
