@@ -111,7 +111,7 @@ void dwc_otg_hcd_qh_free(dwc_otg_qh_t * _qh)
  * @param[in] _urb Holds the information about the device/endpoint that we need
  * to initialize the QH. */
 #define SCHEDULE_SLOP 10
-#define SCHEDULE_SPLIT_SLOP	10  /* 1 == 125us,  10 -> 1.25ms, 20 -> 2.5ms, */
+#define SCHEDULE_SPLIT_SLOP	2  /* 1 == 125us,  10 -> 1.25ms, 20 -> 2.5ms, */
 void dwc_otg_hcd_qh_init(dwc_otg_hcd_t * _hcd, dwc_otg_qh_t * _qh,
 			 struct urb *_urb)
 {
