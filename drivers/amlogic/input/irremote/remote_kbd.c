@@ -66,7 +66,7 @@ static unsigned int DOWN_KEY_SCANCODE = 0;
 static unsigned int OK_KEY_SCANCODE = 0;
 static unsigned int PAGEUP_KEY_SCANCODE = 0;
 static unsigned int PAGEDOWN_KEY_SCANCODE = 0;
-
+static unsigned int MOUSE_LEFT = 0;
 type_printk input_dbg;
 
 static DEFINE_MUTEX(kp_enable_mutex);
@@ -78,7 +78,7 @@ static int NEC_REMOTE_IRQ_NO=INT_REMOTE;
 DECLARE_TASKLET_DISABLED(tasklet, kp_tasklet, 0);
 
 static struct kp   *gp_kp=NULL;
-static int repeat_flag;
+static int repeat_flag,mouse_lefft_flag;
 char *remote_log_buf;
 typedef  struct {
 	char		     *platform_name;
@@ -228,11 +228,22 @@ void kp_send_key(struct input_dev *dev, unsigned int scancode, unsigned int type
 	if(scancode == OK_KEY_SCANCODE && key_pointer_switch == false)
 	{
 		input_event(dev, EV_KEY, BTN_MOUSE, type);
-		input_sync(dev);
-
+		input_sync(dev);	
+		mouse_lefft_flag = 0;
 		return;
 	}
-
+	if(scancode == MOUSE_LEFT && mouse_lefft_flag == 0)
+	{
+		input_event(dev, EV_KEY, BTN_LEFT, 0);
+		input_sync(dev);
+		return;
+	}
+	if(scancode == MOUSE_LEFT && mouse_lefft_flag == 1)
+	{
+		input_event(dev, EV_KEY, BTN_LEFT, 1);
+		input_sync(dev);
+		return;
+	}
 	if(kp_mouse_event(dev, scancode, type)){
 		if(scancode > ARRAY_SIZE(key_map[fcode])){
 			input_dbg("scancode is 0x%04x, out of key mapping.\n", scancode);
@@ -372,6 +383,10 @@ static inline int kp_hw_reprot_key(struct kp *kp_data )
 	status=READ_AOBUS_REG(AO_IR_DEC_STATUS);
 	key_index=0 ;
 	key_hold=-1 ;
+	if(((scan_code>>16)&0xff) == (MOUSE_LEFT&0xff))
+	{
+		mouse_lefft_flag =!mouse_lefft_flag;
+	}
 	if(scan_code)  //key first press
 	{
 		last_custom_code=scan_code&0xffff;
@@ -654,6 +669,9 @@ remote_config_ioctl(struct inode *inode, struct file *filp,
 			break;
 		case REMOTE_IOC_UNFCODE_CONFIG:
 			fcode = 0;
+			break;
+		case REMOTE_IOC_SET_MOUSEDRAW:
+			MOUSE_LEFT  = val&0xffff;
 			break;
 		case REMOTE_IOC_RESET_KEY_MAPPING:
 			for(i = 0; i < ARRAY_SIZE(key_map[fcode]); i++)
