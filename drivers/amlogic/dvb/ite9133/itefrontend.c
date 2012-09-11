@@ -23,6 +23,7 @@
 #include <linux/delay.h>
 #include <linux/jiffies.h>
 #include <linux/slab.h>
+#include <linux/mutex.h>
 #include <linux/platform_device.h>
 #ifdef ARC_700
 #include <asm/arch/am_regs.h>
@@ -81,7 +82,7 @@ MODULE_PARM_DESC(frontend_power, "\n\t\t ANT_PWR_CTRL of frontend");
 static int frontend_power = -1;
 module_param(frontend_power, int, S_IRUGO);
 
-
+static struct mutex ite_lock;
 static struct aml_fe ite9133_fe[FE_DEV_COUNT];
 
 
@@ -153,9 +154,11 @@ static int ite9133_read_status(struct dvb_frontend *fe, fe_status_t * status)
 	Dword ret;
 	Bool locked = 0;
 
-	msleep(1000);
+	pr_dbg("ite9133_read_status\n");
 
+	mutex_lock(&ite_lock);
 	ret = Demodulator_isLocked(pdemod,&locked);
+	mutex_unlock(&ite_lock);
 
 	if(locked==1) {
 		*status = FE_HAS_LOCK|FE_HAS_SIGNAL|FE_HAS_CARRIER|FE_HAS_VITERBI|FE_HAS_SYNC;
@@ -163,6 +166,7 @@ static int ite9133_read_status(struct dvb_frontend *fe, fe_status_t * status)
 		*status = FE_TIMEDOUT;
 	}
 
+	pr_dbg("ite9133_read_status--\n");
 	return  0;
 }
 
@@ -193,9 +197,13 @@ static int ite9133_read_snr(struct dvb_frontend *fe, u16 *snr)
 
 	pr_dbg("ite9133_read_snr\n");
 
+	mutex_lock(&ite_lock);
 	if(Error_NO_ERROR != Demodulator_getSNR(pdemod,(Byte*)snr))
-		return -1;
+;
+	mutex_unlock(&ite_lock);
+		//return -1;
 
+	pr_dbg("ite9133_read_snr--\n");
 	return 0;
 }
 
@@ -231,11 +239,15 @@ static int ite9133_set_frontend(struct dvb_frontend *fe, struct dvb_frontend_par
 
 	state->freq=(p->frequency/1000);
 
+	pr_dbg("state->freq ==== %d \n", state->freq);
 	if(state->freq>0&&state->freq!=-1) {
+		mutex_lock(&ite_lock);
 		ret = Demodulator_acquireChannel(pdemod, bandwidth*1000,state->freq);
+		mutex_unlock(&ite_lock);
 	}else
 		printk("\n--[xsw]: Invalidate Fre!!!!!!!!!!!!!--\n");
 
+	pr_dbg("ite9133_set_frontend--\n");
 	return  0;
 }
 
@@ -326,6 +338,7 @@ static void ite9133_fe_release(struct aml_dvb *advb, struct aml_fe *fe)
 {
 	if(fe && fe->fe) {
 		pr_dbg("release ite9133 frontend %d\n", fe->id);
+		mutex_destroy(&ite_lock);
 		dvb_unregister_frontend(fe->fe);
 		dvb_frontend_detach(fe->fe);
 		if(fe->cfg){
@@ -433,6 +446,8 @@ static int ite9133_fe_init(struct aml_dvb *advb, struct platform_device *pdev, s
 	fe->id = id;
 	fe->cfg = cfg;
 
+	mutex_init(&ite_lock);
+pr_dbg("ite9133_ite9133_fe_init--%d\n", ite_lock);
 	return 0;
 
 err_resource:
@@ -481,9 +496,37 @@ static int ite9133_fe_remove(struct platform_device *pdev)
 	return 0;
 }
 
+static int ite9133_fe_resume(struct platform_device *pdev)
+{
+	pr_dbg("ite9133_fe_resume \n");
+	gpio_direction_output(frontend_reset, 0);
+	msleep(300);
+	gpio_direction_output(frontend_reset, 1);  //reset
+	msleep(500);
+//	gpio_direction_output(frontend_power, 1);  //enable tuner power
+
+	if(Error_NO_ERROR != Demodulator_initialize (pdemod, streamType))
+		return -1;
+
+	printk("ite9133_fe_resume\n");
+
+	return 0;
+
+
+}
+
+static int ite9133_fe_suspend(struct platform_device *pdev, pm_message_t state)
+{
+	return 0;
+}
+
+
+
 static struct platform_driver aml_fe_driver = {
 	.probe		= ite9133_fe_probe,
-	.remove		= ite9133_fe_remove,	
+	.remove		= ite9133_fe_remove,
+	.resume		= ite9133_fe_resume,
+	.suspend	= ite9133_fe_suspend,
 	.driver		= {
 		.name	= "ite9133",
 		.owner	= THIS_MODULE,

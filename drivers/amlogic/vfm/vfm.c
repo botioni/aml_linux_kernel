@@ -266,7 +266,11 @@ static void vfm_init(void)
 #else
 #ifdef CONFIG_AMLOGIC_VIDEOIN_MANAGER
     char def_ext_id[] = "default_ext";
+#ifdef CONFIG_AMLOGIC_VM_DISABLE_VIDEOLAYER
+    char def_ext_name_chain[] = "vdin vm";
+#else
     char def_ext_name_chain[] = "vdin vm amvideo";
+#endif
 #endif    
 #endif
     char def_osd_id[] = "default_osd";

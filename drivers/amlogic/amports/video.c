@@ -112,6 +112,10 @@ static struct vframe_provider_s * osd_prov = NULL;
 //#define SLOW_SYNC_REPEAT
 //#define INTERLACE_FIELD_MATCH_PROCESS
 
+#define M_PTS_SMOOTH_MAX 45000
+#define M_PTS_SMOOTH_MIN 2250
+#define M_PTS_SMOOTH_ADJUST 900
+
 #ifdef FIQ_VSYNC
 #define BRIDGE_IRQ  INT_TIMER_D
 #define BRIDGE_IRQ_SET() WRITE_CBUS_REG(ISA_TIMERD, 1)
@@ -339,6 +343,10 @@ static const f2v_vphase_type_t vpp_phase_table[4][3] = {
 static const u8 skip_tab[6] = { 0x24, 0x04, 0x68, 0x48, 0x28, 0x08 };
 /* wait queue for poll */
 static wait_queue_head_t amvideo_trick_wait;
+
+static u32 vpts_ref = 0;
+static u32 video_frame_repeat_count = 0;
+static u32 smooth_sync_enable = 0;
 
 #if 0
 /* video enhancement */
@@ -1109,6 +1117,7 @@ static inline bool vpts_expire(vframe_t *cur_vf, vframe_t *next_vf)
 {
     u32 pts = next_vf->pts;
     u32 systime;
+    u32 adjust_pts, org_vpts;
     /* if ((cur_vf == NULL) || (cur_dispbuf == &vf_local)) {
         return true;
     }*/
@@ -1145,6 +1154,31 @@ static inline bool vpts_expire(vframe_t *cur_vf, vframe_t *next_vf)
             tsync_avevent_locked(VIDEO_TSTAMP_DISCONTINUITY, next_vf->pts);
 			printk("video discontinue, system=0x%x vpts=0x%x\n", systime, pts);
             return true;
+        }
+    }
+
+    if(smooth_sync_enable){
+        org_vpts = timestamp_vpts_get();
+        if((abs(org_vpts + vsync_pts_inc - systime) < M_PTS_SMOOTH_MAX)
+            && (abs(org_vpts + vsync_pts_inc - systime) > M_PTS_SMOOTH_MIN)){
+
+            if(!video_frame_repeat_count){
+                vpts_ref = org_vpts;
+                video_frame_repeat_count ++;
+            }
+            
+            if((int)(org_vpts + vsync_pts_inc - systime) > 0){
+                adjust_pts = vpts_ref + (vsync_pts_inc - M_PTS_SMOOTH_ADJUST) * video_frame_repeat_count;
+            }else{
+                adjust_pts = vpts_ref + (vsync_pts_inc + M_PTS_SMOOTH_ADJUST) * video_frame_repeat_count;
+            }
+            
+            return ((int)(adjust_pts - pts) >= 0);
+        }
+
+        if(video_frame_repeat_count){
+            vpts_ref = 0;
+            video_frame_repeat_count = 0;
         }
     }
 
@@ -1261,6 +1295,12 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
 #ifdef SLOW_SYNC_REPEAT
     frame_repeat_count++;
 #endif
+
+    if(smooth_sync_enable){
+        if(video_frame_repeat_count){
+            video_frame_repeat_count++;
+        }
+    }
 
     if (osd_prov && osd_prov->ops && osd_prov->ops->get){
         vf = osd_prov->ops->get(osd_prov->op_arg);
@@ -3126,6 +3166,9 @@ module_param(isr_run_time_max, uint, 0664);
 #endif
 MODULE_PARM_DESC(debug_flag, "\n debug_flag\n");
 module_param(debug_flag, uint, 0664);
+
+MODULE_PARM_DESC(smooth_sync_enable, "\n smooth_sync_enable\n");
+module_param(smooth_sync_enable, uint, 0664);
 
 MODULE_DESCRIPTION("AMLOGIC video output driver");
 MODULE_LICENSE("GPL");

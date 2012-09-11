@@ -19,6 +19,8 @@
 
 #include <mach/nand.h>
 
+extern int nand_get_device(struct nand_chip *chip, struct mtd_info *mtd,  int new_state);
+extern void nand_release_device(struct mtd_info *mtd);
 static char *aml_nand_plane_string[]={
 	"NAND_SINGLE_PLANE_MODE",
 	"NAND_TWO_PLANE_MODE",
@@ -421,6 +423,7 @@ static int m3_nand_dma_write(struct aml_nand_chip *aml_chip, unsigned char *buf,
 	int ret = 0;
 	unsigned dma_unit_size = 0, count = 0;
 	struct nand_chip *chip = &aml_chip->chip;
+    struct mtd_info *mtd = &aml_chip->mtd;  
 
 	memcpy(aml_chip->aml_nand_data_buf, buf, len);
 	wmb();
@@ -440,7 +443,7 @@ static int m3_nand_dma_write(struct aml_nand_chip *aml_chip, unsigned char *buf,
 	NFC_SEND_CMD_AIH((aml_chip->nand_info_dma_addr));
 	
 	if(aml_chip->ran_mode){
-		NFC_SEND_CMD_SEED(aml_chip->page_addr);
+	        NFC_SEND_CMD_SEED((aml_chip->page_addr/(mtd->writesize >> chip->page_shift)) * (mtd->writesize >> chip->page_shift));
 	}
 	if(!bch_mode)
 		NFC_SEND_CMD_M2N_RAW(aml_chip->ran_mode, len);
@@ -460,6 +463,7 @@ static int m3_nand_dma_read(struct aml_nand_chip *aml_chip, unsigned char *buf, 
 	struct nand_chip *chip = &aml_chip->chip;
 	unsigned dma_unit_size = 0, count = 0, info_times_int_len;
 	int ret = 0;
+    struct mtd_info *mtd = &aml_chip->mtd;  
 
 	info_times_int_len = PER_INFO_BYTE/sizeof(unsigned int);
 	if (bch_mode == NAND_ECC_NONE)
@@ -480,7 +484,7 @@ static int m3_nand_dma_read(struct aml_nand_chip *aml_chip, unsigned char *buf, 
 	NFC_SEND_CMD_AIL(aml_chip->nand_info_dma_addr);
 	NFC_SEND_CMD_AIH((aml_chip->nand_info_dma_addr));
 	if(aml_chip->ran_mode){
-		NFC_SEND_CMD_SEED(aml_chip->page_addr);
+	        NFC_SEND_CMD_SEED((aml_chip->page_addr/(mtd->writesize >> chip->page_shift)) * (mtd->writesize >> chip->page_shift));
 	}
 
 	if(bch_mode == NAND_ECC_NONE)
@@ -874,7 +878,7 @@ static int m3_nand_reboot_notifier(struct notifier_block *nb, unsigned long prio
 	struct aml_nand_chip *aml_chip = NULL;
 	struct mtd_info *mtd = NULL;
 	int i;
-
+	printk("%s %d \n", __func__, __LINE__);
 	for (i=1; i<aml_nand_dev->dev_num; i++) {
 		plat = &aml_nand_dev->aml_nand_platform[i];
 		aml_chip = plat->aml_chip;
@@ -966,6 +970,7 @@ static void m3_nand_shutdown(struct platform_device *pdev)
 	struct aml_nand_platform *plat = NULL;
 	struct aml_nand_chip *aml_chip = NULL;
 	struct mtd_info *mtd = NULL;
+	struct nand_chip *chip = NULL;
 	int i;
 
 	for (i=1; i<aml_nand_dev->dev_num; i++) {
@@ -981,6 +986,15 @@ static void m3_nand_shutdown(struct platform_device *pdev)
 				}  
 			}
 #endif
+			if(mtd){
+				chip = mtd->priv;
+				if(chip){				
+					nand_get_device(chip, mtd, FL_SHUTDOWN);
+					chip->options |= NAND_ROM;					
+					printk("%s %d chip->options:%x\n", __func__, __LINE__, chip->options);
+					nand_release_device(mtd);
+				}
+			}
 		}
 	}
 

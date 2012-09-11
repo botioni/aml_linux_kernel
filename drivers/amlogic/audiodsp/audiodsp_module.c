@@ -98,6 +98,7 @@ int audiodsp_start(void)
 	struct audiodsp_microcode *pmcode;
 	struct audio_info *audio_info;
 	int ret,i;
+	unsigned int decopt_reg;
 	priv->frame_format.valid=0;
 	priv->decode_error_count=0;
 	priv->last_valid_pts=0;
@@ -155,6 +156,10 @@ int audiodsp_start(void)
     }
 #endif
      }
+	decopt_reg = DSP_RD(DSP_DECODE_OPTION);
+	decopt_reg = (decopt_reg&(~0x00000018));
+	DSP_WD(DSP_DECODE_OPTION, decopt_reg);
+	DSP_PRNT("dsp set decopt_reg 3-4 bits: decopt_reg=0x%x \n",decopt_reg);
 	return ret;
 }
 
@@ -458,6 +463,14 @@ static int audiodsp_ioctl(struct inode *node, struct file *file, unsigned int cm
 			/*val=-1 is not valid*/
 			*val=dsp_codec_get_current_pts(priv);
 			break;
+                case AUDIODSP_LOOKUP_APTS:
+                {
+                        u32 pts, offset;
+                        offset=*val;
+                        pts_lookup_offset(PTS_TYPE_AUDIO, offset, &pts, 300);
+                        *val=pts;
+                }
+                        break;
 		case AUDIODSP_GET_FIRST_PTS_FLAG:
 			if(priv->stream_fmt == MCODEC_FMT_COOK || priv->stream_fmt == MCODEC_FMT_RAAC)
 				*val = 1;
@@ -871,16 +884,58 @@ static ssize_t ac3_drc_control_store(struct class* class, struct class_attribute
 
 }
 
+//------------------------------------------------
+static ssize_t file_read_end_flag_show(struct class*cla, struct class_attribute* attr, char* buf)
+{
+    char* pbuf = buf;
+    unsigned end_flag = DSP_RD(DSP_DECODE_OPTION);
+    end_flag = (end_flag & 0x00000018)>>3;
+    if(end_flag==0){
+	pbuf += sprintf(pbuf, "F_NEND\n");
+    }else if(end_flag==1){
+	pbuf += sprintf(pbuf, "F_END\n");
+    }else if(end_flag==2){
+	pbuf += sprintf(pbuf, "DSP_END\n");
+    }
+    return (pbuf-buf);
+}
+static ssize_t file_read_end_flag_store(struct class* class, struct class_attribute* attr,const char* buf, size_t count )
+{
+    unsigned decopt_reg;
+    unsigned end_flag = 0x0;
+    if(buf[0] == '0'){
+	end_flag = 0;	// not arrive at the end of file
+    }else if(buf[0] == '1'){
+	end_flag = 1;	// has arrived at the end of file
+    }else if(buf[0] == '2')
+	end_flag = 2;
+    decopt_reg = DSP_RD(DSP_DECODE_OPTION);
+    decopt_reg = (decopt_reg&(~0x00000018))| (end_flag<<3);
+    DSP_WD(DSP_DECODE_OPTION, decopt_reg);
+    printk("decopt_reg = 0x%x, end_flag = 0x%x\n", decopt_reg, end_flag);
+    return count;
+}
+static ssize_t pcm_left_len_show(struct class* cla, struct class_attribute* attr, char* buf)
+{
+	struct audiodsp_priv *priv = audiodsp_privdata();
+	char *pbuf = 	buf;
+	pbuf += sprintf(pbuf, "%d\n", dsp_codec_get_bufer_data_len(priv));
+	return (pbuf- buf);
+}
+//------------------------------------------------
+
 static struct class_attribute audiodsp_attrs[]={
     __ATTR_RO(codec_fmt),
    // __ATTR_RO(codec_mips),   //no need for M3
     __ATTR_RO(codec_fatal_err),
     __ATTR_RO(swap_buf_ptr),
     __ATTR_RO(dsp_working_status),
+    __ATTR_RO(pcm_left_len),
     __ATTR(digital_raw, S_IRUGO | S_IWUSR, digital_raw_show, digital_raw_store),
 	__ATTR(dec_option, S_IRUGO | S_IWUSR, dec_option_show, dec_option_store),    
 	__ATTR(print_flag, S_IRUGO | S_IWUSR, print_flag_show, print_flag_store),	
 	__ATTR(ac3_drc_control, S_IRUGO | S_IWUSR, ac3_drc_control_show, ac3_drc_control_store),
+    __ATTR(fread_end_flag, S_IRUGO | S_IWUSR, file_read_end_flag_show, file_read_end_flag_store),
     __ATTR_NULL
 };
 

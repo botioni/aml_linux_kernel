@@ -58,6 +58,13 @@ dsp_register.h
 #define DSP_AFIFO_RD_OFFSET1  		DSP_REG(20)
 
 #define DSP_DECODE_OPTION       DSP_REG(21)
+	/*
+	*  bit 3:4 - used for the communication of dsp and player tansfer decoding infomation:
+        *                  00: defauled value 
+	*                  01: used for libplayer_end to tell dsp_end that the file end has been reached;
+	*                  10: used for dsp_end to tell libplayer_end that all the data in the dsp_end_buf has been decoded completely;
+	*                  11: reserved;
+	*/
 #define DSP_AUDIO_FORMAT_INFO  DSP_REG(22)
 
 #define DSP_GET_EXTRA_INFO_FINISH    DSP_REG(23)

@@ -1307,6 +1307,7 @@ osd_probe(struct platform_device *pdev)
 		osddev_init();
     	}
 	vinfo = get_current_vinfo();
+       
     	for (index=0;index<OSD_COUNT;index++)
     	{
     		//platform resource 
@@ -1356,7 +1357,8 @@ osd_probe(struct platform_device *pdev)
 		 amlog_level(LOG_LEVEL_HIGH,"Frame buffer memory assigned at phy:0x%08x, vir:0x%p, size=%dK\n",
 	    	fbdev->fb_mem_paddr, fbdev->fb_mem_vaddr, fbdev->fb_len >> 10);
 		 
-
+              mydef_var[index].width=vinfo->screen_real_width;
+              mydef_var[index].height=vinfo->screen_real_height;
 		if(init_logo_obj && index==logo_osd_index ) //adjust default var info
 		{
 			int  bpp=init_logo_obj->dev->output_dev.osd.color_depth;//bytes per pixel

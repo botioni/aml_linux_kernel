@@ -84,6 +84,33 @@
 static int suspend_state=0;
 #endif
 
+#ifdef CONFIG_AML_HDMI_TX
+#include <linux/hdmi/hdmi_config.h>
+#endif
+
+#if defined(CONFIG_AML_HDMI_TX)
+static struct hdmi_phy_set_data brd_phy_data[] = {
+//    {27, 0xf7, 0x0},    // an example: set Reg0xf7 to 0 in 27MHz
+    {-1,   -1},         //end of phy setting
+};
+
+static struct hdmi_config_platform_data aml_hdmi_pdata ={
+    .hdmi_5v_ctrl = NULL,
+    .hdmi_3v3_ctrl = NULL,
+    .hdmi_pll_vdd_ctrl = NULL,
+    .hdmi_sspll_ctrl = NULL,
+    .phy_data = brd_phy_data,
+};
+
+static struct platform_device aml_hdmi_device = {
+    .name = "amhdmitx",
+    .id   = -1,
+    .dev  = {
+        .platform_data = &aml_hdmi_pdata,
+    }
+};
+#endif
+
 #if defined(CONFIG_JPEGLOGO)
 static struct resource jpeglogo_resources[] = {
     [0] = {
@@ -291,6 +318,7 @@ static struct platform_device fb_device = {
 
 #if defined(CONFIG_AMLOGIC_SPI_NOR)
 static struct mtd_partition spi_partition_info[] = {
+#ifdef CONFIG_GNTV_F16
     {
         .name = "ubootwhole",
         .offset = 0,
@@ -306,6 +334,14 @@ static struct mtd_partition spi_partition_info[] = {
         .offset = 0x7e000,
         .size = 0x2000,
     },
+#endif
+#ifdef CONFIG_GNTV_MICO_HD6023
+    {
+        .name = "ubootenv",
+        .offset = 0x80000,
+        .size = 0x2000,
+    },
+#endif
 };
 
 static struct flash_platform_data amlogic_spi_platform = {
@@ -660,10 +696,20 @@ void mute_spk(struct snd_soc_codec* codec, int flag)
 	printk("***Entered %s:%s\n", __FILE__,__func__);
 #endif
     if(flag){
+#ifdef CONFIG_GNTV_F16
 		set_gpio_val(GPIOC_bank_bit0_15(4), GPIOC_bit_bit0_15(4), 1);	 // mute speak
+#endif
+#ifdef CONFIG_GNTV_MICO_HD6023
+                set_gpio_val(GPIOC_bank_bit0_15(4), GPIOC_bit_bit0_15(4), 0);    // mute speak
+#endif
 		set_gpio_mode(GPIOC_bank_bit0_15(4), GPIOC_bit_bit0_15(4), GPIO_OUTPUT_MODE);
 	}else{
+#ifdef CONFIG_GNTV_F16
 		set_gpio_val(GPIOC_bank_bit0_15(4), GPIOC_bit_bit0_15(4), 0);	 // unmute speak
+#endif
+#ifdef CONFIG_GNTV_MICO_HD6023
+		set_gpio_val(GPIOC_bank_bit0_15(4), GPIOC_bit_bit0_15(4), 1);	 // unmute speak
+#endif
 		set_gpio_mode(GPIOC_bank_bit0_15(4), GPIOC_bit_bit0_15(4), GPIO_OUTPUT_MODE);
 	}
 }
@@ -775,12 +821,25 @@ typedef struct {
 	unsigned enable;
 } gpio_data_t;
 
+#ifdef CONFIG_GNTV_F16
 #define MAX_GPIO 3
 static gpio_data_t gpio_data[MAX_GPIO] = {
 {"GPIOD6--HDMI", 	GPIOD_bank_bit0_9(6), 	GPIOD_bit_bit0_9(6), 	GPIO_OUTPUT_MODE, 1, 1},
 {"GPIOD9--VCC5V", GPIOD_bank_bit0_9(9), 	GPIOD_bit_bit0_9(9), 	GPIO_OUTPUT_MODE, 1, 1},
 {"GPIOX29--MUTE", 	GPIOX_bank_bit0_31(29), GPIOX_bit_bit0_31(29), GPIO_OUTPUT_MODE, 1, 1},
 };	
+#endif
+
+#ifdef CONFIG_GNTV_MICO_HD6023
+#define MAX_GPIO 5
+static gpio_data_t gpio_data[MAX_GPIO] = {
+{"GPIOD6--HDMI",        GPIOD_bank_bit0_9(6),   GPIOD_bit_bit0_9(6),    GPIO_OUTPUT_MODE, 1, 1},
+{"GPIOC4--MUTE",	GPIOC_bank_bit0_15(4), GPIOC_bit_bit0_15(4), GPIO_OUTPUT_MODE, 1, 1},
+{"GPIOAO10--power_led", GPIOAO_bank_bit0_11(10), GPIOAO_bit_bit0_11(10), GPIO_OUTPUT_MODE, 1, 1},
+{"GPIOC2--ir-led",	GPIOC_bank_bit0_15(2), GPIOC_bit_bit0_15(2), GPIO_OUTPUT_MODE, 1, 1},
+{"GPIOD1--NetLed",	GPIOD_bank_bit0_9(1), GPIOD_bit_bit0_9(1), GPIO_OUTPUT_MODE, 1, 1},
+};
+#endif
 
 static void save_gpio(int port) 
 {
@@ -882,12 +941,20 @@ static void set_gpio_suspend_resume(int power_on)
 		 udelay(50);
         hdmi_wr_reg(0x8005, 1); 
         // LED
+#ifdef CONFIG_GNTV_MICO_HD6023
+        set_gpio_val(GPIOAO_bank_bit0_11(10), GPIOAO_bit_bit0_11(10), 0);
+        set_gpio_mode(GPIOAO_bank_bit0_11(10), GPIOAO_bit_bit0_11(10), GPIO_OUTPUT_MODE);
+#endif
        // WRITE_CBUS_REG(PWM_PWM_C, (0xff00<<16) |(0xff00<<0));
     	}
 	else
 		{
     	printk("set gpio suspend.\n");
 		 // LED
+#ifdef CONFIG_GNTV_MICO_HD6023
+        set_gpio_val(GPIOAO_bank_bit0_11(10), GPIOAO_bit_bit0_11(10), 1);
+        set_gpio_mode(GPIOAO_bank_bit0_11(10), GPIOAO_bit_bit0_11(10), GPIO_OUTPUT_MODE);   
+#endif
        // WRITE_CBUS_REG(PWM_PWM_C, (0xff00<<16) |(0<<0));
 		}
 }
@@ -1890,6 +1957,9 @@ static struct platform_device aml_wdt_device = {
 
 
 static struct platform_device __initdata *platform_devs[] = {
+#if defined(CONFIG_AML_HDMI_TX)
+    &aml_hdmi_device,
+#endif
 #if defined(CONFIG_JPEGLOGO)
     &jpeglogo_device,
 #endif
@@ -2160,6 +2230,14 @@ static void __init power_hold(void)
   //  set_gpio_val(GPIOAO_bank_bit0_11(6), GPIOAO_bit_bit0_11(6), 1);
   //  set_gpio_mode(GPIOAO_bank_bit0_11(6), GPIOAO_bit_bit0_11(6), GPIO_OUTPUT_MODE);
 
+#ifdef CONFIG_GNTV_MICO_HD6023
+         //POWER LED
+          set_gpio_mode(GPIOAO_bank_bit0_11(10), GPIOAO_bit_bit0_11(10), GPIO_OUTPUT_MODE);  //lbzchina
+          set_gpio_val(GPIOAO_bank_bit0_11(10), GPIOAO_bit_bit0_11(10), 0);    //lbzchina
+         //ir-led
+           set_gpio_mode(GPIOC_bank_bit0_15(2), GPIOC_bit_bit0_15(2), GPIO_OUTPUT_MODE);    //lbzchina
+           set_gpio_val(GPIOC_bank_bit0_15(2), GPIOC_bit_bit0_15(2), 1);      //lbzchina
+#endif
         // VCC5V
         set_gpio_mode(GPIOD_bank_bit0_9(9), GPIOD_bit_bit0_9(9), GPIO_OUTPUT_MODE);
         set_gpio_val(GPIOD_bank_bit0_9(9), GPIOD_bit_bit0_9(9), 1);
@@ -2183,7 +2261,12 @@ static void __init power_hold(void)
 
      // VCCK
         set_gpio_mode(GPIOAO_bank_bit0_11(6), GPIOAO_bit_bit0_11(6), GPIO_OUTPUT_MODE);
+#ifdef CONFIG_GNTV_F16
         set_gpio_val(GPIOAO_bank_bit0_11(6), GPIOAO_bit_bit0_11(6), 1);
+#endif
+#ifdef CONFIG_GNTV_MICO_HD6023
+        set_gpio_val(GPIOAO_bank_bit0_11(6), GPIOAO_bit_bit0_11(6), 0);
+#endif
 	 // VCCIO
         set_gpio_mode(GPIOAO_bank_bit0_11(2), GPIOAO_bit_bit0_11(2), GPIO_OUTPUT_MODE);
         set_gpio_val(GPIOAO_bank_bit0_11(2), GPIOAO_bit_bit0_11(2), 1);
@@ -2198,6 +2281,7 @@ static void __init power_hold(void)
 //    set_gpio_val(GPIOA_bank_bit0_27(26), GPIOA_bit_bit0_27(26), 0);
 }
 
+#ifdef CONFIG_GNTV_F16
 static void __init LED_PWM_REG0_init(void)
 {
 #if 1 	// PWM_C
@@ -2226,6 +2310,7 @@ static void __init LED_PWM_REG0_init(void)
     WRITE_CBUS_REG_BITS(LED_PWM_REG0,1,0,4); //adust cpu1.2v   to 1.26V     
 #endif
 }
+#endif
 
 static __init void m1_init_machine(void)
 {
@@ -2241,9 +2326,10 @@ static __init void m1_init_machine(void)
 //    pm_power_off = power_off;		//Elvis fool
     device_clk_setting();
     device_pinmux_init();
+#ifdef CONFIG_GNTV_F16
     LED_PWM_REG0_init();
+#endif
 
-	
 #ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE
     camera_power_on_init();
 #endif

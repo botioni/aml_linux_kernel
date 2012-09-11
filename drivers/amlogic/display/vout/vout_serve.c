@@ -107,21 +107,38 @@ static   int* parse_para(char *para,char   *para_num)
 
 static  void  read_reg(char *para)
 {
-	char  count=1;
+	char  count=2;
 	vout_reg_t  reg;
 
-	memcpy(&reg.addr,parse_para(para+1,&count),sizeof(unsigned int));
-
+	memcpy(&reg,parse_para(para+1,&count),sizeof(vout_reg_t));
+	if(reg.value==0|| reg.value > 100) 
+	reg.value=1;
 	if (((*para) == 'm') || ((*para) == 'M'))
-	{
-		amlog_level(LOG_LEVEL_HIGH,"[0x%x] : 0x%x\r\n", CBUS_REG_ADDR(reg.addr), READ_MPEG_REG(reg.addr));
+	{	
+		for(count=0;count < reg.value;count++)
+		{
+			amlog_level(LOG_LEVEL_HIGH,"[0x%x]-[0x%x] : 0x%x\r\n", CBUS_REG_ADDR(reg.addr),reg.addr, READ_MPEG_REG(reg.addr));
+			reg.addr++;
+		}
 	}else if (((*para) == 'p') || ((*para) == 'P')) {
-		if (APB_REG_ADDR_VALID(reg.addr))
-		    amlog_level(LOG_LEVEL_HIGH,"[0x%x] : 0x%x\r\n", APB_REG_ADDR(reg.addr), READ_APB_REG(reg.addr));
+		for(count=0;count < reg.value;count++)
+		{
+			if (APB_REG_ADDR_VALID(reg.addr))
+		    	amlog_level(LOG_LEVEL_HIGH,"[0x%x]-[0x%x] : 0x%x\r\n", APB_REG_ADDR(reg.addr),reg.addr, READ_APB_REG(reg.addr));
+			reg.addr++;
+		}
 	}else if (((*para) == 'h') || ((*para) == 'H')) {
-	    amlog_level(LOG_LEVEL_HIGH,"[0x%x] : 0x%x\r\n", AHB_REG_ADDR(reg.addr), READ_AHB_REG(reg.addr));
+		for(count=0;count < reg.value;count++)
+		{
+	    		amlog_level(LOG_LEVEL_HIGH,"[0x%x]-[0x%x] : 0x%x\r\n", AHB_REG_ADDR(reg.addr),reg.addr, READ_AHB_REG(reg.addr));
+			reg.addr++;
+		}
 	}else if (((*para) == 'a') || ((*para) == 'A')) {
-	    amlog_level(LOG_LEVEL_HIGH,"[0x%x] : 0x%x\r\n", AOBUS_REG_ADDR(reg.addr), READ_AOBUS_REG(reg.addr));
+		for(count=0;count < reg.value;count++)
+		{
+	    		amlog_level(LOG_LEVEL_HIGH,"[0x%x]-[0x%x] : 0x%x\r\n", AOBUS_REG_ADDR(reg.addr),reg.addr, READ_AOBUS_REG(reg.addr));
+			reg.addr++;
+		}
 	}
 }
 

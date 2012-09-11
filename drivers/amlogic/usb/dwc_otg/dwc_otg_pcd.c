@@ -617,7 +617,7 @@ static int dwc_otg_pcd_ep_queue(struct usb_ep *_ep,
 				DWC_DEBUGPL(DBG_PCD,
 					    "%s ep0: EP0_OUT_DATA_PHASE\n",
 					    __func__);
-				if (pcd->request_config) {
+				if (pcd->request_config || _req->length == 0) {
 					/* Complete STATUS PHASE */
 					ep->dwc_ep.is_in = 1;
 					pcd->ep0state = EP0_STATUS;

@@ -2794,14 +2794,15 @@ static int __init video2_early_init(void)
 
     if(NULL==init_logo_obj || !init_logo_obj->para.loaded)
     {
-    	WRITE_MPEG_REG_BITS(VPP2_OFIFO_SIZE, 0x300,
-                        VPP_OFIFO_SIZE_BIT, VPP_OFIFO_SIZE_WID);
    	 CLEAR_MPEG_REG_MASK(VPP2_VSC_PHASE_CTRL, VPP_PHASECTL_TYPE_INTERLACE);
 #ifndef CONFIG_FB_AML_TCON
     	SET_MPEG_REG_MASK(VPP2_MISC, VPP_OUT_SATURATE);
 #endif
     	WRITE_MPEG_REG(VPP2_HOLD_LINES, 0x08080808);
     }
+
+   	WRITE_MPEG_REG_BITS(VPP2_OFIFO_SIZE, 0x780,
+                        VPP_OFIFO_SIZE_BIT, VPP_OFIFO_SIZE_WID);
     return 0;
 }
 static int __init video2_init(void)

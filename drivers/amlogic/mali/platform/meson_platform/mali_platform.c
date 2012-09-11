@@ -116,7 +116,7 @@ static const u32 poweron_data[] =
 
 static spinlock_t lock = SPIN_LOCK_UNLOCKED;
 
-void mali_meson_poweron(void)
+void mali_meson_poweron(int first_poweron)
 {
     unsigned long flags;
     u32 p, p_aligned;
@@ -124,19 +124,24 @@ void mali_meson_poweron(void)
     int i;
     unsigned int_mask;
     
-    if ((last_power_mode != -1) && (last_power_mode != MALI_POWER_MODE_DEEP_SLEEP)) {
-        return;
-    }
+    if(!first_poweron) {
+		if (/*(last_power_mode != -1) && */ (last_power_mode != MALI_POWER_MODE_DEEP_SLEEP)) {
+			MALI_DEBUG_PRINT(3,("not deep sleep..........\n"));
+			return;
+		}
+	}
 
     if (READ_MALI_REG(MALI_PP_PP_VERSION) != MALI_PP_PP_VERSION_MAGIC) {
-        printk("mali_meson_poweron: Mali APB bus access failed.");
+        MALI_DEBUG_PRINT(3,("mali_meson_poweron: Mali APB bus access failed."));
         return;
     }
 
-    if (READ_MALI_REG(MALI_MMU_DTE_ADDR) != 0) {
-        printk("mali_meson_poweron: Mali is not really powered off.");
-        return;
-    }
+	if(first_poweron) {
+		if (READ_MALI_REG(MALI_MMU_DTE_ADDR) != 0) {
+			MALI_DEBUG_PRINT(3,("@@,mali_meson_poweron: Mali is not really powered off."));
+			return;
+		}
+	}
 
     p = (u32)kcalloc(4096 * 4, 1, GFP_KERNEL);
     if (!p) {
@@ -166,7 +171,7 @@ void mali_meson_poweron(void)
     WRITE_MALI_REG(MALI_MMU_CMD, 0);
 
     if ((READ_MALI_REG(MALI_MMU_STATUS) & 1) != 1) {
-        printk("mali_meson_poweron: MMU enabling failed.\n");
+        MALI_DEBUG_PRINT(3,("mali_meson_poweron: MMU enabling failed.\n"));
     }
 
     /* Set up Mali command registers */
@@ -205,13 +210,11 @@ void mali_meson_poweron(void)
     WRITE_MALI_REG(MALI_MMU_CMD, 1);
     WRITE_MALI_REG(MALI_MMU_CMD, 6);
 
-#if 1
     for (i = 0; i<100; i++)
         udelay(500);
     WRITE_MALI_REG(MALI_APB_GP_INT_CLEAR, 0x3ff);
     WRITE_MALI_REG(MALI_MMU_INT_CLEAR, INT_ALL);
-    WRITE_MALI_REG(MALI_MMU_INT_MASK, 0);
-#endif  
+    WRITE_MALI_REG(MALI_MMU_INT_MASK, 0); 
 
     WRITE_CBUS_REG(A9_0_IRQ_IN1_INTR_MASK, int_mask);
 
@@ -222,8 +225,25 @@ void mali_meson_poweron(void)
     kfree((void *)p);
 }
 
+static int mali_platform_init_flag = 0;
 _mali_osk_errcode_t mali_platform_init(void)
 {
+	if(!mali_platform_init_flag) {
+		unsigned long flags;
+		local_irq_save(flags);
+		CLEAR_CBUS_REG_MASK(HHI_MALI_CLK_CNTL, 1 << 8);
+		WRITE_CBUS_REG(HHI_MALI_CLK_CNTL,
+			(3 << 9)    |                   // select ddr pll as clock source
+			(2 << 0)); // ddr clk / divider
+		READ_CBUS_REG(HHI_MALI_CLK_CNTL); // delay
+		SET_CBUS_REG_MASK(HHI_MALI_CLK_CNTL, 1 << 8);
+		local_irq_restore(flags);
+		
+		mali_meson_poweron(1);
+	}
+	
+	mali_platform_init_flag = 1;
+	
     MALI_SUCCESS;
 }
 
@@ -278,9 +298,9 @@ _mali_osk_errcode_t mali_platform_power_mode_change(mali_power_mode power_mode)
 			SET_CBUS_REG_MASK(HHI_MALI_CLK_CNTL, 1 << 8);
 			local_irq_restore(flags);
 			if (mali_flag)
-				printk("(CTS_MALI_CLK) = %d/%d = %dMHz --- when mali gate on\n", ddr_freq, mali_divider, ddr_freq/mali_divider);
-
-            mali_meson_poweron();
+				MALI_DEBUG_PRINT(3,("(CTS_MALI_CLK) = %d/%d = %dMHz --- when mali gate on\n", ddr_freq, mali_divider, ddr_freq/mali_divider));
+            
+            mali_meson_poweron(0);
             break;
     }
 
