@@ -80,36 +80,21 @@
 #include <linux/efuse.h>
 #endif
 
-#ifdef CONFIG_SUSPEND
-static int suspend_state=0;
-#endif
-
 #ifdef CONFIG_AML_HDMI_TX
 #include <linux/hdmi/hdmi_config.h>
 #endif
 
-#if defined(CONFIG_AML_HDMI_TX)
-static struct hdmi_phy_set_data brd_phy_data[] = {
-//    {27, 0xf7, 0x0},    // an example: set Reg0xf7 to 0 in 27MHz
-    {-1,   -1},         //end of phy setting
-};
-
-static struct hdmi_config_platform_data aml_hdmi_pdata ={
-    .hdmi_5v_ctrl = NULL,
-    .hdmi_3v3_ctrl = NULL,
-    .hdmi_pll_vdd_ctrl = NULL,
-    .hdmi_sspll_ctrl = NULL,
-    .phy_data = brd_phy_data,
-};
-
-static struct platform_device aml_hdmi_device = {
-    .name = "amhdmitx",
-    .id   = -1,
-    .dev  = {
-        .platform_data = &aml_hdmi_pdata,
-    }
-};
+#ifdef CONFIG_SUSPEND
+static int suspend_state=0;
 #endif
+
+enum BOARD_TYPE{
+    RM0216_V12,
+    HD6023,
+    TCB008001
+};
+
+static enum BOARD_TYPE board_ver = HD6023;
 
 #if defined(CONFIG_JPEGLOGO)
 static struct resource jpeglogo_resources[] = {
@@ -318,30 +303,16 @@ static struct platform_device fb_device = {
 
 #if defined(CONFIG_AMLOGIC_SPI_NOR)
 static struct mtd_partition spi_partition_info[] = {
-#ifdef CONFIG_GNTV_F16
     {
         .name = "ubootwhole",
         .offset = 0,
-        .size = 0x6000,
-    },
-    {
-        .name = "ekey",
-        .offset = 0x7d000,
-        .size = 0x1000,
+        .size = 0x60000,
     },
     {
         .name = "ubootenv",
         .offset = 0x7e000,
         .size = 0x2000,
     },
-#endif
-#ifdef CONFIG_GNTV_MICO_HD6023
-    {
-        .name = "ubootenv",
-        .offset = 0x80000,
-        .size = 0x2000,
-    },
-#endif
 };
 
 static struct flash_platform_data amlogic_spi_platform = {
@@ -371,23 +342,40 @@ static struct platform_device amlogic_spi_nor_device = {
 #ifdef CONFIG_USB_DWC_OTG_HCD
 static void set_usb_a_vbus_power(char is_power_on)
 {
+  if(board_ver == HD6023){
+    if(is_power_on) {
+        printk(KERN_INFO "set usb a port power on !\n");
+        set_gpio_val(GPIOC_bank_bit0_15(5), GPIOC_bit_bit0_15(5), 1);
+    } else    {
+        printk(KERN_INFO "set usb a port power off !\n");
+        set_gpio_val(GPIOC_bank_bit0_15(5), GPIOC_bit_bit0_15(5), 0);
+    }
+    set_gpio_mode(GPIOC_bank_bit0_15(5), GPIOC_bit_bit0_15(5), GPIO_OUTPUT_MODE);
+  }
 }
 
 static void set_usb_b_vbus_power(char is_power_on)
-{ /*wifi rtl8188cus power control*/
-#define USB_B_POW_GPIO         GPIOC_bank_bit0_15(5)
-#define USB_B_POW_GPIO_BIT     GPIOC_bit_bit0_15(5)
-#define USB_B_POW_GPIO_BIT_ON   1
-#define USB_B_POW_GPIO_BIT_OFF  0
+{
+  if(board_ver == RM0216_V12){
     if(is_power_on) {
-        printk(KERN_INFO "set usb b port power on (board gpio %d)!\n",USB_B_POW_GPIO_BIT);
-        set_gpio_mode(USB_B_POW_GPIO, USB_B_POW_GPIO_BIT, GPIO_OUTPUT_MODE);
-        set_gpio_val(USB_B_POW_GPIO, USB_B_POW_GPIO_BIT, USB_B_POW_GPIO_BIT_ON);
+        printk(KERN_INFO "set usb b port power on !\n");
+        set_gpio_val(GPIOC_bank_bit0_15(5), GPIOC_bit_bit0_15(5), 1);
     } else    {
-        printk(KERN_INFO "set usb b port power off (board gpio %d)!\n",USB_B_POW_GPIO_BIT);
-        set_gpio_mode(USB_B_POW_GPIO, USB_B_POW_GPIO_BIT, GPIO_OUTPUT_MODE);
-        set_gpio_val(USB_B_POW_GPIO, USB_B_POW_GPIO_BIT, USB_B_POW_GPIO_BIT_OFF);
+        printk(KERN_INFO "set usb a port power off !\n");
+        set_gpio_val(GPIOC_bank_bit0_15(5), GPIOC_bit_bit0_15(5), 0);
     }
+    set_gpio_mode(GPIOC_bank_bit0_15(5), GPIOC_bit_bit0_15(5), GPIO_OUTPUT_MODE);
+  }
+  if(board_ver == TCB008001){
+    if(is_power_on) {
+        printk(KERN_INFO "set usb b port power on !\n");
+        set_gpio_val(GPIOD_bank_bit0_9(4), GPIOD_bit_bit0_9(4), 1);
+    } else    {
+        printk(KERN_INFO "set usb b port power off !\n");
+        set_gpio_val(GPIOD_bank_bit0_9(4), GPIOD_bit_bit0_9(4), 0);
+    }
+    set_gpio_mode(GPIOD_bank_bit0_9(4), GPIOD_bit_bit0_9(4), GPIO_OUTPUT_MODE);
+  }
 }
 
 //usb_a is OTG port
@@ -696,21 +684,17 @@ void mute_spk(struct snd_soc_codec* codec, int flag)
 	printk("***Entered %s:%s\n", __FILE__,__func__);
 #endif
     if(flag){
-#ifdef CONFIG_GNTV_F16
+        if(board_ver == RM0216_V12)
 		set_gpio_val(GPIOC_bank_bit0_15(4), GPIOC_bit_bit0_15(4), 1);	 // mute speak
-#endif
-#ifdef CONFIG_GNTV_MICO_HD6023
+        else if((board_ver == HD6023)||(board_ver == TCB008001))
                 set_gpio_val(GPIOC_bank_bit0_15(4), GPIOC_bit_bit0_15(4), 0);    // mute speak
-#endif
-		set_gpio_mode(GPIOC_bank_bit0_15(4), GPIOC_bit_bit0_15(4), GPIO_OUTPUT_MODE);
+	set_gpio_mode(GPIOC_bank_bit0_15(4), GPIOC_bit_bit0_15(4), GPIO_OUTPUT_MODE);
 	}else{
-#ifdef CONFIG_GNTV_F16
+        if(board_ver == RM0216_V12)
 		set_gpio_val(GPIOC_bank_bit0_15(4), GPIOC_bit_bit0_15(4), 0);	 // unmute speak
-#endif
-#ifdef CONFIG_GNTV_MICO_HD6023
+        else if((board_ver == HD6023)||(board_ver == TCB008001))
 		set_gpio_val(GPIOC_bank_bit0_15(4), GPIOC_bit_bit0_15(4), 1);	 // unmute speak
-#endif
-		set_gpio_mode(GPIOC_bank_bit0_15(4), GPIOC_bit_bit0_15(4), GPIO_OUTPUT_MODE);
+	set_gpio_mode(GPIOC_bank_bit0_15(4), GPIOC_bit_bit0_15(4), GPIO_OUTPUT_MODE);
 	}
 }
 
@@ -821,25 +805,13 @@ typedef struct {
 	unsigned enable;
 } gpio_data_t;
 
-#ifdef CONFIG_GNTV_F16
-#define MAX_GPIO 3
+#define MAX_GPIO 4
 static gpio_data_t gpio_data[MAX_GPIO] = {
 {"GPIOD6--HDMI", 	GPIOD_bank_bit0_9(6), 	GPIOD_bit_bit0_9(6), 	GPIO_OUTPUT_MODE, 1, 1},
 {"GPIOD9--VCC5V", GPIOD_bank_bit0_9(9), 	GPIOD_bit_bit0_9(9), 	GPIO_OUTPUT_MODE, 1, 1},
 {"GPIOX29--MUTE", 	GPIOX_bank_bit0_31(29), GPIOX_bit_bit0_31(29), GPIO_OUTPUT_MODE, 1, 1},
-};	
-#endif
-
-#ifdef CONFIG_GNTV_MICO_HD6023
-#define MAX_GPIO 5
-static gpio_data_t gpio_data[MAX_GPIO] = {
-{"GPIOD6--HDMI",        GPIOD_bank_bit0_9(6),   GPIOD_bit_bit0_9(6),    GPIO_OUTPUT_MODE, 1, 1},
 {"GPIOC4--MUTE",	GPIOC_bank_bit0_15(4), GPIOC_bit_bit0_15(4), GPIO_OUTPUT_MODE, 1, 1},
-{"GPIOAO10--power_led", GPIOAO_bank_bit0_11(10), GPIOAO_bit_bit0_11(10), GPIO_OUTPUT_MODE, 1, 1},
-{"GPIOC2--ir-led",	GPIOC_bank_bit0_15(2), GPIOC_bit_bit0_15(2), GPIO_OUTPUT_MODE, 1, 1},
-{"GPIOD1--NetLed",	GPIOD_bank_bit0_9(1), GPIOD_bit_bit0_9(1), GPIO_OUTPUT_MODE, 1, 1},
-};
-#endif
+};	
 
 static void save_gpio(int port) 
 {
@@ -916,14 +888,10 @@ static void set_vccx2(int power_on)
 		#ifdef CONFIG_AML_SUSPEND
        suspend_state=10;
        #endif
-//        set_gpio_mode(GPIOA_bank_bit0_27(26), GPIOA_bit_bit0_27(26), GPIO_OUTPUT_MODE);
-//        set_gpio_val(GPIOA_bank_bit0_27(26), GPIOA_bit_bit0_27(26), 0);
               
     }
     else{
         printk(KERN_INFO "set_vcc power down\n");       			
-//        set_gpio_mode(GPIOA_bank_bit0_27(26), GPIOA_bit_bit0_27(26), GPIO_OUTPUT_MODE);
-//        set_gpio_val(GPIOA_bank_bit0_27(26), GPIOA_bit_bit0_27(26), 1);
 		save_pinmux();
 		for (i=0;i<MAX_GPIO;i++)
 			save_gpio(i);
@@ -933,30 +901,39 @@ static void set_vccx2(int power_on)
 static void set_gpio_suspend_resume(int power_on)
 {
     extern void hdmi_wr_reg(unsigned long addr, unsigned long data);
-    if(power_on)
-    	{
+    if(power_on){
     	printk("set gpio resume.\n");
 		 // HDMI
         hdmi_wr_reg(0x8005, 2); 
 		 udelay(50);
         hdmi_wr_reg(0x8005, 1); 
-        // LED
-#ifdef CONFIG_GNTV_MICO_HD6023
-        set_gpio_val(GPIOAO_bank_bit0_11(10), GPIOAO_bit_bit0_11(10), 0);
-        set_gpio_mode(GPIOAO_bank_bit0_11(10), GPIOAO_bit_bit0_11(10), GPIO_OUTPUT_MODE);
-#endif
-       // WRITE_CBUS_REG(PWM_PWM_C, (0xff00<<16) |(0xff00<<0));
+        if(board_ver == HD6023){
+            //POWER LED
+            set_gpio_val(GPIOAO_bank_bit0_11(10), GPIOAO_bit_bit0_11(10), 0);
+            set_gpio_mode(GPIOAO_bank_bit0_11(10), GPIOAO_bit_bit0_11(10), GPIO_OUTPUT_MODE);
+        }else if(board_ver == TCB008001){
+            //Power LED
+            set_gpio_val(GPIOAO_bank_bit0_11(5), GPIOAO_bit_bit0_11(5), 1);
+            set_gpio_mode(GPIOAO_bank_bit0_11(5), GPIOAO_bit_bit0_11(5), GPIO_OUTPUT_MODE);
+        }else if(board_ver == RM0216_V12)
+            WRITE_CBUS_REG(PWM_PWM_C, (0xff00<<16) |(0xff00<<0));
     	}
-	else
-		{
+	else{
     	printk("set gpio suspend.\n");
-		 // LED
-#ifdef CONFIG_GNTV_MICO_HD6023
-        set_gpio_val(GPIOAO_bank_bit0_11(10), GPIOAO_bit_bit0_11(10), 1);
-        set_gpio_mode(GPIOAO_bank_bit0_11(10), GPIOAO_bit_bit0_11(10), GPIO_OUTPUT_MODE);   
-#endif
-       // WRITE_CBUS_REG(PWM_PWM_C, (0xff00<<16) |(0<<0));
-		}
+        if(board_ver == HD6023){
+            //Network LED
+            set_gpio_val(GPIOD_bank_bit0_9(1), GPIOD_bit_bit0_9(1), 1);
+            set_gpio_mode(GPIOD_bank_bit0_9(1), GPIOD_bit_bit0_9(1), GPIO_OUTPUT_MODE);
+            //Power LED
+            set_gpio_val(GPIOAO_bank_bit0_11(10), GPIOAO_bit_bit0_11(10), 1);
+            set_gpio_mode(GPIOAO_bank_bit0_11(10), GPIOAO_bit_bit0_11(10), GPIO_OUTPUT_MODE);
+        }else if(board_ver == TCB008001){
+            //Power LED
+            set_gpio_val(GPIOAO_bank_bit0_11(5), GPIOAO_bit_bit0_11(5), 0);
+            set_gpio_mode(GPIOAO_bank_bit0_11(5), GPIOAO_bit_bit0_11(5), GPIO_OUTPUT_MODE);
+        }else if(board_ver == RM0216_V12)
+            WRITE_CBUS_REG(PWM_PWM_C, (0xff00<<16) |(0<<0));
+	}
 }
 
 static struct meson_pm_config aml_pm_pdata = {
@@ -1546,6 +1523,7 @@ static struct aml_nand_platform aml_nand_mid_platform[] = {
     	},
 			.T_REA = 20,
 			.T_RHOH = 15,
+			.ran_mode = 1,
 	}
 };
 
@@ -1955,6 +1933,27 @@ static struct platform_device aml_wdt_device = {
 };
 #endif
 
+#if defined(CONFIG_AML_HDMI_TX)
+static struct hdmi_phy_set_data brd_phy_data[] = {
+//    {27, 0xf7, 0x0},    // an example: set Reg0xf7 to 0 in 27MHz
+    {-1,   -1},         //end of phy setting
+};
+static struct hdmi_config_platform_data aml_hdmi_pdata ={
+    .hdmi_5v_ctrl = NULL,
+    .hdmi_3v3_ctrl = NULL,
+    .hdmi_pll_vdd_ctrl = NULL,
+    .hdmi_sspll_ctrl = NULL,
+    .phy_data = brd_phy_data,
+};
+
+static struct platform_device aml_hdmi_device = {
+    .name = "amhdmitx",
+    .id   = -1,
+    .dev  = {
+        .platform_data = &aml_hdmi_pdata,
+    }
+};
+#endif
 
 static struct platform_device __initdata *platform_devs[] = {
 #if defined(CONFIG_AML_HDMI_TX)
@@ -2227,64 +2226,55 @@ static void disable_unused_model(void)
 static void __init power_hold(void)
 {
     printk(KERN_INFO "power hold set high!\n");
-  //  set_gpio_val(GPIOAO_bank_bit0_11(6), GPIOAO_bit_bit0_11(6), 1);
-  //  set_gpio_mode(GPIOAO_bank_bit0_11(6), GPIOAO_bit_bit0_11(6), GPIO_OUTPUT_MODE);
 
-#ifdef CONFIG_GNTV_MICO_HD6023
-         //POWER LED
-          set_gpio_mode(GPIOAO_bank_bit0_11(10), GPIOAO_bit_bit0_11(10), GPIO_OUTPUT_MODE);  //lbzchina
-          set_gpio_val(GPIOAO_bank_bit0_11(10), GPIOAO_bit_bit0_11(10), 0);    //lbzchina
-         //ir-led
-           set_gpio_mode(GPIOC_bank_bit0_15(2), GPIOC_bit_bit0_15(2), GPIO_OUTPUT_MODE);    //lbzchina
-           set_gpio_val(GPIOC_bank_bit0_15(2), GPIOC_bit_bit0_15(2), 1);      //lbzchina
-#endif
-        // VCC5V
-        set_gpio_mode(GPIOD_bank_bit0_9(9), GPIOD_bit_bit0_9(9), GPIO_OUTPUT_MODE);
-        set_gpio_val(GPIOD_bank_bit0_9(9), GPIOD_bit_bit0_9(9), 1);
-		 // hdmi power on
-        set_gpio_mode(GPIOD_bank_bit0_9(6), GPIOD_bit_bit0_9(6), GPIO_OUTPUT_MODE);
-        set_gpio_val(GPIOD_bank_bit0_9(6), GPIOD_bit_bit0_9(6), 1);
-
-		// MUTE
-       set_gpio_mode(GPIOX_bank_bit0_31(29), GPIOX_bit_bit0_31(29), GPIO_OUTPUT_MODE);
-       set_gpio_val(GPIOX_bank_bit0_31(29), GPIOX_bit_bit0_31(29), 0);
-
-      // PC Link
-//       set_gpio_mode(GPIOC_bank_bit0_15(4), GPIOC_bit_bit0_15(4), GPIO_OUTPUT_MODE);
-//       set_gpio_val(GPIOC_bank_bit0_15(4), GPIOC_bit_bit0_15(4), 1);
-			 
-		// VCC, set to high when suspend 
-        set_gpio_mode(GPIOAO_bank_bit0_11(4), GPIOAO_bit_bit0_11(4), GPIO_OUTPUT_MODE);
-        set_gpio_val(GPIOAO_bank_bit0_11(4), GPIOAO_bit_bit0_11(4), 0);
-        set_gpio_mode(GPIOAO_bank_bit0_11(5), GPIOAO_bit_bit0_11(5), GPIO_OUTPUT_MODE);
-        set_gpio_val(GPIOAO_bank_bit0_11(5), GPIOAO_bit_bit0_11(5), 0);
-
-     // VCCK
-        set_gpio_mode(GPIOAO_bank_bit0_11(6), GPIOAO_bit_bit0_11(6), GPIO_OUTPUT_MODE);
-#ifdef CONFIG_GNTV_F16
-        set_gpio_val(GPIOAO_bank_bit0_11(6), GPIOAO_bit_bit0_11(6), 1);
-#endif
-#ifdef CONFIG_GNTV_MICO_HD6023
+    if(board_ver == HD6023){
+        //Network LED
+        set_gpio_val(GPIOD_bank_bit0_9(1), GPIOD_bit_bit0_9(1), 1);
+        set_gpio_mode(GPIOD_bank_bit0_9(1), GPIOD_bit_bit0_9(1), GPIO_OUTPUT_MODE);
+        //POWER LED
+        set_gpio_val(GPIOAO_bank_bit0_11(10), GPIOAO_bit_bit0_11(10), 0);
+        set_gpio_mode(GPIOAO_bank_bit0_11(10), GPIOAO_bit_bit0_11(10), GPIO_OUTPUT_MODE);
+        //VCC5V_EN
         set_gpio_val(GPIOAO_bank_bit0_11(6), GPIOAO_bit_bit0_11(6), 0);
-#endif
-	 // VCCIO
-        set_gpio_mode(GPIOAO_bank_bit0_11(2), GPIOAO_bit_bit0_11(2), GPIO_OUTPUT_MODE);
-        set_gpio_val(GPIOAO_bank_bit0_11(2), GPIOAO_bit_bit0_11(2), 1);
+        set_gpio_mode(GPIOAO_bank_bit0_11(6), GPIOAO_bit_bit0_11(6), GPIO_OUTPUT_MODE);
+    }else if(board_ver == TCB008001){
+        //POWER LED
+        set_gpio_val(GPIOAO_bank_bit0_11(5), GPIOAO_bit_bit0_11(5), 1);
+        set_gpio_mode(GPIOAO_bank_bit0_11(5), GPIOAO_bit_bit0_11(5), GPIO_OUTPUT_MODE);
+        //VCC5V_EN
+        set_gpio_val(GPIOAO_bank_bit0_11(6), GPIOAO_bit_bit0_11(6), 0);
+        set_gpio_mode(GPIOAO_bank_bit0_11(6), GPIOAO_bit_bit0_11(6), GPIO_OUTPUT_MODE);
+    }else if(board_ver == RM0216_V12){
+        // VCC5V
+        set_gpio_val(GPIOD_bank_bit0_9(9), GPIOD_bit_bit0_9(9), 1);
+        set_gpio_mode(GPIOD_bank_bit0_9(9), GPIOD_bit_bit0_9(9), GPIO_OUTPUT_MODE);
+		// MUTE
+       set_gpio_val(GPIOX_bank_bit0_31(29), GPIOX_bit_bit0_31(29), 0);
+       set_gpio_mode(GPIOX_bank_bit0_31(29), GPIOX_bit_bit0_31(29), GPIO_OUTPUT_MODE);
+		// VCC, set to high when suspend 
+        set_gpio_val(GPIOAO_bank_bit0_11(4), GPIOAO_bit_bit0_11(4), 0);
+        set_gpio_mode(GPIOAO_bank_bit0_11(4), GPIOAO_bit_bit0_11(4), GPIO_OUTPUT_MODE);
+        set_gpio_val(GPIOAO_bank_bit0_11(5), GPIOAO_bit_bit0_11(5), 0);
+        set_gpio_mode(GPIOAO_bank_bit0_11(5), GPIOAO_bit_bit0_11(5), GPIO_OUTPUT_MODE);
+        //VCCK
+        set_gpio_val(GPIOAO_bank_bit0_11(6), GPIOAO_bit_bit0_11(6), 1);
+        set_gpio_mode(GPIOAO_bank_bit0_11(6), GPIOAO_bit_bit0_11(6), GPIO_OUTPUT_MODE);
+        //init sata
+        set_gpio_val(GPIOC_bank_bit0_15(7), GPIOC_bit_bit0_15(7), 1);
+        set_gpio_mode(GPIOC_bank_bit0_15(7), GPIOC_bit_bit0_15(7), GPIO_OUTPUT_MODE);
+    }
+    // hdmi power on
+    set_gpio_val(GPIOD_bank_bit0_9(6), GPIOD_bit_bit0_9(6), 1);
+    set_gpio_mode(GPIOD_bank_bit0_9(6), GPIOD_bit_bit0_9(6), GPIO_OUTPUT_MODE);
+    // VCCIO
+    set_gpio_val(GPIOAO_bank_bit0_11(2), GPIOAO_bit_bit0_11(2), 1);
+    set_gpio_mode(GPIOAO_bank_bit0_11(2), GPIOAO_bit_bit0_11(2), GPIO_OUTPUT_MODE);
 
-    //init sata
-    set_gpio_mode(GPIOC_bank_bit0_15(7), GPIOC_bit_bit0_15(7), GPIO_OUTPUT_MODE);
-    set_gpio_val(GPIOC_bank_bit0_15(7), GPIOC_bit_bit0_15(7), 1);
-		
-    //VCCx2 power up
     printk(KERN_INFO "set_vccx2 power up\n");
-//    set_gpio_mode(GPIOA_bank_bit0_27(26), GPIOA_bit_bit0_27(26), GPIO_OUTPUT_MODE);
-//    set_gpio_val(GPIOA_bank_bit0_27(26), GPIOA_bit_bit0_27(26), 0);
 }
 
-#ifdef CONFIG_GNTV_F16
 static void __init LED_PWM_REG0_init(void)
 {
-#if 1 	// PWM_C
     printk(KERN_INFO "LED_PWM_REG0_init.\n");
 	 SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_2,(1<<2));
     WRITE_CBUS_REG(PWM_PWM_C, (0xff00<<16) |(0xff00<<0));
@@ -2293,24 +2283,7 @@ static void __init LED_PWM_REG0_init(void)
 																			|(0x7f<<8)	// PWM_A_CLK_DIV
 																			|(1<<15)	// PWM_A_CLK_EN
 																			);
-#else
-        // Enable VBG_EN
-    WRITE_CBUS_REG_BITS(PREG_AM_ANALOG_ADDR, 1, 0, 1);
-    // wire pm_gpioA_7_led_pwm = pin_mux_reg0[22];
-    WRITE_CBUS_REG(LED_PWM_REG0,(0 << 31)   |       // disable the overall circuit
-                                (0 << 30)   |       // 1:Closed Loop  0:Open Loop
-                                (0 << 16)   |       // PWM total count
-                                (0 << 13)   |       // Enable
-                                (1 << 12)   |       // enable
-                                (0 << 10)   |       // test
-                                (7 << 7)    |       // CS0 REF, Voltage FeedBack: about 0.505V
-                                (7 << 4)    |       // CS1 REF, Current FeedBack: about 0.505V
-                                READ_CBUS_REG(LED_PWM_REG0)&0x0f);           // DIMCTL Analog dimmer
-                                
-    WRITE_CBUS_REG_BITS(LED_PWM_REG0,1,0,4); //adust cpu1.2v   to 1.26V     
-#endif
 }
-#endif
 
 static __init void m1_init_machine(void)
 {
@@ -2326,9 +2299,8 @@ static __init void m1_init_machine(void)
 //    pm_power_off = power_off;		//Elvis fool
     device_clk_setting();
     device_pinmux_init();
-#ifdef CONFIG_GNTV_F16
-    LED_PWM_REG0_init();
-#endif
+    if(board_ver == RM0216_V12)
+        LED_PWM_REG0_init();
 
 #ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE
     camera_power_on_init();
@@ -2407,3 +2379,23 @@ MACHINE_START(MESON3_8726M_SKT, "AMLOGIC MESON3 8726M SKT SH")
     .video_start    = RESERVED_MEM_START,
     .video_end      = RESERVED_MEM_END,
 MACHINE_END
+
+static  int __init board_ver_setup(char *s)
+{
+    if(strncmp(s, "v2", 2)==0)
+        board_ver = TCB008001;
+    else if(strncmp(s, "V2", 2)==0)
+        board_ver = TCB008001;
+    else if(strncmp(s, "v1", 2)==0)
+        board_ver = HD6023;
+    else if(strncmp(s, "V1", 2)==0)
+        board_ver = HD6023;
+    else if(strncmp(s, "v0", 2)==0)
+        board_ver = RM0216_V12;
+    else if(strncmp(s, "V0", 2)==0)
+        board_ver = RM0216_V12;
+    printk("board_ver = %s, boardtype = %d", s, board_ver);
+    return 0;
+}
+__setup("boardver=",board_ver_setup);
+
