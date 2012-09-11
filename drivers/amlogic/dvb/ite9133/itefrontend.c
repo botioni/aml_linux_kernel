@@ -496,9 +496,37 @@ static int ite9133_fe_remove(struct platform_device *pdev)
 	return 0;
 }
 
+static int ite9133_fe_resume(struct platform_device *pdev)
+{
+	pr_dbg("ite9133_fe_resume \n");
+	gpio_direction_output(frontend_reset, 0);
+	msleep(300);
+	gpio_direction_output(frontend_reset, 1);  //reset
+	msleep(500);
+//	gpio_direction_output(frontend_power, 1);  //enable tuner power
+
+	if(Error_NO_ERROR != Demodulator_initialize (pdemod, streamType))
+		return -1;
+
+	printk("ite9133_fe_resume\n");
+
+	return 0;
+
+
+}
+
+static int ite9133_fe_suspend(struct platform_device *pdev, pm_message_t state)
+{
+	return 0;
+}
+
+
+
 static struct platform_driver aml_fe_driver = {
 	.probe		= ite9133_fe_probe,
-	.remove		= ite9133_fe_remove,	
+	.remove		= ite9133_fe_remove,
+	.resume		= ite9133_fe_resume,
+	.suspend	= ite9133_fe_suspend,
 	.driver		= {
 		.name	= "ite9133",
 		.owner	= THIS_MODULE,
