@@ -115,18 +115,6 @@ config MACH_MESON3_REFF34
         help
           Include support for the NGN M3 board platform.
 
-choice
-        prompt "Select Hardware Platform"
-        depends on MACH_MESON3_REFF34
-        default GNTV_F16
-
-        config GNTV_F16
-                bool "MyGica RM0216 VER1.2"
-        config GNTV_MICO_HD6023
-                bool "Mico HD6023"
-
-endchoice
-
 config MESON3_CLOCK_TICK_RATE
     int "Clock Tick Rate"
 	default 25000000
