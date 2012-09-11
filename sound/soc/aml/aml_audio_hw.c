@@ -44,7 +44,18 @@ unsigned int IEC958_chstat0_r;
 unsigned int IEC958_chstat1_l;
 unsigned int IEC958_chstat1_r;
 unsigned int IEC958_mode_raw;
+/*
+ 0 --  other formats except(DD,DD+,DTS)
+ 1 --  DTS
+ 2 --  DD
+ 3 -- DTS with 958 PCM RAW package mode
+ 4 -- DD+
+*/
 unsigned int IEC958_mode_codec;
+// Bit 3:  mute constant
+//         0 => 'h0000000
+//         1 => 'h800000
+unsigned int dac_mute_const = 0x800000;
 
 EXPORT_SYMBOL(IEC958_bpf);
 EXPORT_SYMBOL(IEC958_brst);
@@ -345,8 +356,10 @@ void audio_util_set_dac_format(unsigned format)
     } else if (format == AUDIO_ALGOUT_DAC_FORMAT_LEFT_JUSTIFY) {
         WRITE_MPEG_REG_BITS(AIU_CLK_CTRL, 0, 8, 2);
     }
- 
-    WRITE_MPEG_REG(AIU_I2S_DAC_CFG, 	0x000f);	// Payload 24-bit, Msb first, alrclk = aoclk/64
+ 	if(dac_mute_const == 0x800000)
+    	WRITE_MPEG_REG(AIU_I2S_DAC_CFG, 	0x000f);	// Payload 24-bit, Msb first, alrclk = aoclk/64.mute const 0x800000
+    else
+    	WRITE_MPEG_REG(AIU_I2S_DAC_CFG, 	0x0007);	// Payload 24-bit, Msb first, alrclk = aoclk/64		
 	WRITE_MPEG_REG(AIU_I2S_SOURCE_DESC, 0x0001);	// four 2-channel
 }
 
@@ -861,5 +874,9 @@ unsigned int read_i2s_mute_swap_reg(void)
 
 void audio_i2s_swap_left_right(unsigned int flag)
 {
+    if (ENABLE_IEC958) 
+    {
+        WRITE_MPEG_REG_BITS(AIU_958_CTRL, flag, 1, 2);  
+    }
 	WRITE_MPEG_REG_BITS(AIU_I2S_MUTE_SWAP, flag, 0, 2);
 }

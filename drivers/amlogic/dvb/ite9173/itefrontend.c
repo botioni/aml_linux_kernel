@@ -151,7 +151,26 @@ static int ite9173_read_status(struct dvb_frontend *fe, fe_status_t * status)
 
 static int ite9173_read_ber(struct dvb_frontend *fe, u32 * ber)
 {
+	Dword ret = 0;
+	OUT Dword postErrorCount = 0;  /** 24 bits */
+	OUT Dword postBitCount = 0;    /** 16 bits */
+	OUT Word abortCount = 0;
+
 	struct ite9173_state *state = fe->demodulator_priv;
+
+	pr_dbg("ite9173_read_ber\n");
+
+	mutex_lock(&ite_lock);
+	ret = Demodulator_getPostVitBer(pdemod,&postErrorCount,&postBitCount,&abortCount);
+	mutex_unlock(&ite_lock);
+
+	*ber = (postErrorCount /postBitCount );
+
+	if(Error_NO_ERROR != ret)
+		return -1;
+
+	pr_dbg("ite9173_read_ber--\n");
+
 
 	return 0;
 }
@@ -163,8 +182,9 @@ static int ite9173_read_signal_strength(struct dvb_frontend *fe, u16 *strength)
 
 	pr_dbg("ite9173_read_signal_strength\n");
 
+	*strength = 0;
 	mutex_lock(&ite_lock);
-	ret = Demodulator_getSignalStrength(pdemod,(Byte*)strength);
+	ret = Demodulator_getSignalStrengthDbm(pdemod,(Long*)strength);	
 	mutex_unlock(&ite_lock);
 
 	if(Error_NO_ERROR != ret)
@@ -182,6 +202,7 @@ static int ite9173_read_snr(struct dvb_frontend *fe, u16 *snr)
 
 	pr_dbg("ite9173_read_snr\n");
 
+	*snr = 0;
 	mutex_lock(&ite_lock);
 	ret = Demodulator_getSNR(pdemod,(Byte*)snr);
 	mutex_unlock(&ite_lock);
@@ -209,7 +230,6 @@ static int ite9173_set_frontend(struct dvb_frontend *fe, struct dvb_frontend_par
 	Bool locked = 0;
 	Word bandwidth=8;
 	Dword ret = 0;
-	int times=40;
 	struct ite9173_state *state = fe->demodulator_priv;
 
 	pr_dbg("ite9173_set_frontend\n");
@@ -226,6 +246,8 @@ static int ite9173_set_frontend(struct dvb_frontend *fe, struct dvb_frontend_par
 
 	state->freq=(p->frequency/1000);
 
+	pr_dbg("state->freq ==== %d \n", state->freq);
+
 	if(state->freq>0&&state->freq!=-1) {
 		mutex_lock(&ite_lock);
 		ret = Demodulator_acquireChannel(pdemod, bandwidth*1000,state->freq);
@@ -235,20 +257,7 @@ static int ite9173_set_frontend(struct dvb_frontend *fe, struct dvb_frontend_par
 	} else {
 		printk("\n--Invalidate Fre!!!!!!!!!!!!!--\n");
 	}
-//	printk("now1 the jiffies is %x\n",jiffies);
-	while(times) {
-		mutex_lock(&ite_lock);
-		ret = Demodulator_isLocked(pdemod,&locked);
-		printk("DVB----lock status is %d\n",locked);
-		mutex_unlock(&ite_lock);
-		if(Error_NO_ERROR != ret)
-			return -1;
-		if(1==locked)
-			break;
-//		msleep(10);
-		times--;
-	}	
-//	printk("now2 the jiffies is %x\n",jiffies);
+
 	pr_dbg("ite9173_set_frontend--\n");
 
 	return  0;

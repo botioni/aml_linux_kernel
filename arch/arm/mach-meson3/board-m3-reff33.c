@@ -84,6 +84,33 @@
 static int suspend_state=0;
 #endif
 
+#ifdef CONFIG_AML_HDMI_TX
+#include <linux/hdmi/hdmi_config.h>
+#endif
+
+#if defined(CONFIG_AML_HDMI_TX)
+static struct hdmi_phy_set_data brd_phy_data[] = {
+//    {27, 0xf7, 0x0},    // an example: set Reg0xf7 to 0 in 27MHz
+    {-1,   -1},         //end of phy setting
+};
+
+static struct hdmi_config_platform_data aml_hdmi_pdata ={
+    .hdmi_5v_ctrl = NULL,
+    .hdmi_3v3_ctrl = NULL,
+    .hdmi_pll_vdd_ctrl = NULL,
+    .hdmi_sspll_ctrl = NULL,
+    .phy_data = brd_phy_data,
+};
+
+static struct platform_device aml_hdmi_device = {
+    .name = "amhdmitx",
+    .id   = -1,
+    .dev  = {
+        .platform_data = &aml_hdmi_pdata,
+    }
+};
+#endif
+
 #if defined(CONFIG_JPEGLOGO)
 static struct resource jpeglogo_resources[] = {
     [0] = {
@@ -291,25 +318,16 @@ static struct platform_device fb_device = {
 
 #if defined(CONFIG_AMLOGIC_SPI_NOR)
 static struct mtd_partition spi_partition_info[] = {
-    /* Hide uboot partition
-            {
-                    .name = "uboot",
-                    .offset = 0,
-                    .size = 0x3e000,
-            },
-    //*/
+    {
+        .name = "ubootwhole",
+        .offset = 0,
+        .size = 0x60000,
+    },
     {
         .name = "ubootenv",
         .offset = 0x7e000,
         .size = 0x2000,
-},
-    /* Hide recovery partition
-            {
-                    .name = "recovery",
-                    .offset = 0x40000,
-                    .size = 0x1c0000,
-            },
-    //*/
+    },
 };
 
 static struct flash_platform_data amlogic_spi_platform = {
@@ -1335,7 +1353,7 @@ static struct aml_nand_platform aml_nand_mid_platform[] = {
 				.nr_partitions = ARRAY_SIZE(multi_partition_info_512M),
 				.partitions = multi_partition_info_512M,
 				.set_parts = nand_set_parts,
-				.options = (NAND_TIMING_MODE5 | NAND_ECC_BCH60_1K_MODE | NAND_TWO_PLANE_MODE),
+				.options = (NAND_TIMING_MODE5 | NAND_ECC_BCH60_1K_MODE),
 			},
     	},
 			.T_REA = 20,
@@ -1528,6 +1546,9 @@ static struct platform_device aml_wdt_device = {
 #endif
 
 static struct platform_device __initdata *platform_devs[] = {
+#if defined(CONFIG_AML_HDMI_TX)
+    &aml_hdmi_device,
+#endif
 #if defined(CONFIG_JPEGLOGO)
     &jpeglogo_device,
 #endif

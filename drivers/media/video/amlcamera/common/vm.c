@@ -48,7 +48,7 @@
 
 /*class property info.*/
 #include "vmcls.h"
-
+static int task_running = 0;
 //#define DEBUG
 #define MAGIC_SG_MEM 0x17890714
 #define MAGIC_DC_MEM 0x0733ac61
@@ -334,11 +334,11 @@ void vm_local_init(void)
 static vframe_receiver_op_t* vf_vm_unreg_provider(void)
 {
 //    ulong flags;    
+	vf_unreg_provider(&vm_vf_prov);
     stop_vm_task();
 //    spin_lock_irqsave(&lock, flags); 
 //    vfp = NULL;
 //    spin_unlock_irqrestore(&lock, flags);
-    vf_unreg_provider(&vm_vf_prov);
     return (vframe_receiver_op_t*)NULL;
 }
 static vframe_receiver_op_t* vf_vm_reg_provider( )
@@ -580,7 +580,10 @@ int vm_fill_buffer(struct videobuf_buffer* vb , int v4l2_format , int magic,void
         magic = MAGIC_VMAL_MEM ;
         v4l2_format =  V4L2_PIX_FMT_YUV444 ; 
         vb = &buf;
-    }    
+    }  
+	if(!task_running){
+		return ret;	
+	}  
 #endif             
      switch(magic){
         case   MAGIC_DC_MEM:
@@ -930,6 +933,11 @@ static int vm_task(void *data) {
         }
 		/*wait for frame from 656 provider until 500ms runs out*/        
         while(((vf = local_vf_peek()) == NULL)&&(timer_count < 100)){
+			if(!task_running){
+	            up(&vb_done_sema);
+	            goto vm_exit;
+	            break;					
+			}
             timer_count ++;
             msleep(5);
         }            		
@@ -948,9 +956,13 @@ static int vm_task(void *data) {
                 vm_sw_post_process(src_canvas ,output_para.vaddr);
             }
         }
+        if (kthread_should_stop()){
+            up(&vb_done_sema);
+            break;
+        }
         up(&vb_done_sema); 
     }
-    
+vm_exit:    
     destroy_ge2d_work_queue(context);
     while(!kthread_should_stop()){
 	/* 	   may not call stop, wait..
@@ -1064,6 +1076,7 @@ int start_vm_task(void) {
         }
         wake_up_process(task);    
     }
+    task_running = 1;
     return 0;
 }
 
@@ -1083,6 +1096,7 @@ int start_simulate_task(void)
 
 void stop_vm_task(void) {
     if(task){
+        task_running = 0;
         send_sig(SIGTERM, task, 1);
         kthread_stop(task);
         task = NULL;

@@ -1552,7 +1552,6 @@ static int gt2005_setting(struct gt2005_device *dev,int PROP_ID,int value )
 	case V4L2_CID_EXPOSURE:
 		ret=i2c_put_byte(client,0x0201, value);
 		break;
-#endif
 	case V4L2_CID_HFLIP:    /* set flip on H. */
 		ret=i2c_get_byte(client,0x0101);
 		if(ret>0) {
@@ -1580,6 +1579,7 @@ static int gt2005_setting(struct gt2005_device *dev,int PROP_ID,int value )
 			dprintk(dev, 1, "vertical read error\n");
 		}
 		break;
+#endif
 	case V4L2_CID_DO_WHITE_BALANCE:
         if(gt2005_qctrl[0].default_value!=value){
 			gt2005_qctrl[0].default_value=value;

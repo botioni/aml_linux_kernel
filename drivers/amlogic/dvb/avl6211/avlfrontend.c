@@ -495,6 +495,10 @@ static int AVL6211_Set_Frontend(struct dvb_frontend *fe, struct dvb_frontend_par
 	r=avl6211pTuner->m_pLockFunc(avl6211pTuner);
 	if (AVL_DVBSx_EC_OK != r)
 	{
+		state->freq=p->frequency;
+		state->mode=p->u.qam.modulation ;
+		state->symbol_rate=p->u.qam.symbol_rate;
+		
  		printf("Tuner test failed !\n");
 		return (r);
 	}
@@ -530,6 +534,10 @@ static int AVL6211_Set_Frontend(struct dvb_frontend *fe, struct dvb_frontend_par
 	r = AVL_DVBSx_IRx_LockChannel(&Channel, pAVLChip_all);  
 	if (AVL_DVBSx_EC_OK != r)
 	{
+		state->freq=p->frequency;
+		state->mode=p->u.qam.modulation ;
+		state->symbol_rate=p->u.qam.symbol_rate;	
+		
 		printf("Lock channel failed !\n");
 		return (r);
 	}
@@ -547,6 +555,10 @@ static int AVL6211_Set_Frontend(struct dvb_frontend *fe, struct dvb_frontend_par
 	r=AVL_DVBSx_IRx_ResetErrorStat(pAVLChip_all);
 	if (AVL_DVBSx_EC_OK != r)
 	{
+		state->freq=p->frequency;
+		state->mode=p->u.qam.modulation ;
+		state->symbol_rate=p->u.qam.symbol_rate;
+		
 		printf("Reset error status failed !\n");
 		return (r);
 	}

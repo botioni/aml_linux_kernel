@@ -1052,7 +1052,6 @@ static int ov7675_setting(struct ov7675_device *dev,int PROP_ID,int value )
 	case V4L2_CID_EXPOSURE:
 		ret=i2c_put_byte(client,0x0201, value);
 		break;
-#endif
 	case V4L2_CID_HFLIP:    /* set flip on H. */
 		ret=i2c_get_byte(client,0x0101);
 		if(ret>0) {
@@ -1080,6 +1079,7 @@ static int ov7675_setting(struct ov7675_device *dev,int PROP_ID,int value )
 			dprintk(dev, 1, "vertical read error\n");
 		}
 		break;
+#endif
 	case V4L2_CID_DO_WHITE_BALANCE:
         if(ov7675_qctrl[0].default_value!=value){
 			ov7675_qctrl[0].default_value=value;
