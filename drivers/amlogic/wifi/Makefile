@@ -1,6 +1,6 @@
 obj-$(CONFIG_RTL8XXX_CU_USB_WIFI) += rtl8xxx_CU/
 obj-$(CONFIG_RTL8XXX_SU_USB_WIFI) += rtl8xxx_SU/
-obj-$(CONFIG_RALINK_3070_USB_WIFI) += ralink3070/
+obj-$(CONFIG_RTXX7X_USB_WIFI) += rtxx7x/
 obj-$(CONFIG_SAMSUNG_WIFI_4329) += bcm4329/
 obj-$(CONFIG_SDIO_DHD_CDC_WIFI_4329) += broadcm_4329/
 obj-$(CONFIG_SDIO_DHD_CDC_WIFI_4319) += broadcm_4329/
@@ -13,5 +13,3 @@ obj-$(CONFIG_SDIO_DHD_CDC_WIFI_4319_MODULE) += broadcm_4329_new/
 obj-$(CONFIG_SDIO_DHD_CDC_WIFI_40181_MODULE) += broadcm_40181/
 obj-$(CONFIG_SDIO_NRX600) += nano_c047_12/
 obj-$(CONFIG_ATH6KL_USB_WIFI) += atheros_ath6kl/
-obj-$(CONFIG_RTL8192DU) += rtl8xxx_DU/
-obj-$(CONFIG_RTL8xxx_CU_MP) += rtl8xxx_CU_MP/
