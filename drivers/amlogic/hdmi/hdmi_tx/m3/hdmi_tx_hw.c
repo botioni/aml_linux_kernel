@@ -1113,7 +1113,11 @@ void hdmi_hw_set_powermode(hdmitx_dev_t* hdmitx_device, int power_mode, int vic)
                 case HDMI_576i50:
                 case HDMI_576i50_16x9:
                     hdmi_wr_reg(TX_SYS1_AFE_TEST, 0x7f);    //0x17
+				#ifdef CONFIG_MACH_MESON3_REFF16_DONGLE	
+					hdmi_wr_reg(TX_CORE_CALIB_VALUE,0x0);
+				#else
                     hdmi_wr_reg(TX_CORE_CALIB_VALUE,0x5);   //0xf7
+				#endif
                     hdmi_wr_reg(TX_SYS1_AFE_RESET, 0x1);    //0x16
                     hdmi_wr_reg(TX_SYS1_BANDGAP, 0x0);      //0x14
                     hdmi_wr_reg(TX_SYS1_BIAS, 0x0);         //0x15
@@ -1124,7 +1128,11 @@ void hdmi_hw_set_powermode(hdmitx_dev_t* hdmitx_device, int power_mode, int vic)
                 case HDMI_1080i60:
                 case HDMI_1080i50:
                     hdmi_wr_reg(TX_SYS1_AFE_TEST, 0x7f);    //0x17
+				#ifdef CONFIG_MACH_MESON3_REFF16_DONGLE	
+					hdmi_wr_reg(TX_CORE_CALIB_VALUE,0x0);
+				#else
                     hdmi_wr_reg(TX_CORE_CALIB_VALUE,0x3);   //0xf7
+				#endif
                     hdmi_wr_reg(TX_SYS1_AFE_RESET, 0x1);    //0x16
                     hdmi_wr_reg(TX_SYS1_BANDGAP, 0x0);      //0x14
                     hdmi_wr_reg(TX_SYS1_BIAS, 0x3);         //0x15
@@ -1133,18 +1141,31 @@ void hdmi_hw_set_powermode(hdmitx_dev_t* hdmitx_device, int power_mode, int vic)
                 case HDMI_1080p60:
                 case HDMI_1080p50:
                     hdmi_wr_reg(TX_SYS1_AFE_TEST, 0x7f);    //0x17
+				#ifdef CONFIG_MACH_MESON3_REFF16_DONGLE	
+					hdmi_wr_reg(TX_CORE_CALIB_VALUE,0x0);
+				#else
                     hdmi_wr_reg(TX_CORE_CALIB_VALUE,0x3);   //0xf7
+				#endif
                     hdmi_wr_reg(TX_SYS1_AFE_RESET, 0x1);    //0x16
                     hdmi_wr_reg(TX_SYS1_BANDGAP, 0x1);      //0x14 Prem
+				#ifdef CONFIG_MACH_MESON3_REFF16_DONGLE	
+					hdmi_wr_reg(TX_SYS1_BIAS, 0x0);         //0x15 Slew
+				#else
                     hdmi_wr_reg(TX_SYS1_BIAS, 0x3);         //0x15 Slew
+				#endif
                     SET_PHY_BRD(148);
                     break;
                 default:
                     hdmi_wr_reg(TX_SYS1_AFE_TEST, 0x7f);    //0x17
                     hdmi_wr_reg(TX_CORE_CALIB_VALUE,0x3);   //0xf7
                     hdmi_wr_reg(TX_SYS1_AFE_RESET, 0x1);    //0x16
+				#ifdef CONFIG_MACH_MESON3_REFF16_DONGLE	
+					hdmi_wr_reg(TX_SYS1_BANDGAP, 0x0);      //0x14
+                    hdmi_wr_reg(TX_SYS1_BIAS, 0x3);         //0x15
+				#else	
                     hdmi_wr_reg(TX_SYS1_BANDGAP, 0x0);      //0x14
                     hdmi_wr_reg(TX_SYS1_BIAS, 0x3);         //0x15
+				#endif
                     break;
             }
 #ifdef MORE_LOW_P
