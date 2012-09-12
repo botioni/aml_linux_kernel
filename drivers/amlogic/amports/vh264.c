@@ -1221,6 +1221,8 @@ static s32 vh264_init(int init_flag)
 
     stat |= STAT_TIMER_INIT;
 
+    vh264_running = 0;    //init here to reset last_mb_width&last_mb_height
+    
     vh264_local_init(init_flag);
 
     amvdec_enable();
@@ -1281,7 +1283,7 @@ static s32 vh264_init(int init_flag)
     add_timer(&recycle_timer);
 
     stat |= STAT_TIMER_ARM;
-	vh264_running = 0;
+    
 	vh264_stream_switching = 0;
 	vh264_stream_new = 0;
     amvdec_start();
