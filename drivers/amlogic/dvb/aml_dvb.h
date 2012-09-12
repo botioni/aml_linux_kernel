@@ -146,6 +146,7 @@ struct aml_fe {
 	struct early_suspend es;
 #endif /*CONFIG_HAS_EARLYSUSPEND*/
 	struct class class;
+	void *priv;
 };
 
 struct aml_asyncfifo {

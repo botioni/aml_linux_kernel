@@ -1724,6 +1724,7 @@ static ssize_t store_resample_type(struct class* class, struct class_attribute* 
   }
   return count;
 }
+
 static ssize_t dac_mute_const_show(struct class*cla, struct class_attribute* attr, char* buf)
 {
   char* pbuf = buf;

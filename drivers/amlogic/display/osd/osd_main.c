@@ -1229,7 +1229,7 @@ EXPORT_SYMBOL(osd_resume_early);
 #endif
 
 
-#ifdef CONFIG_MACH_MESON3_REFF16
+#if 0 // def CONFIG_MACH_MESON3_REFF16
 int  __init  get_resolution(char *str)
 {
     if(strncmp("480", str, 3) == 0)
@@ -1375,7 +1375,7 @@ osd_probe(struct platform_device *pdev)
 				mydef_var[index].bits_per_pixel=32;
 			}
 		} else {
-			amlog_level(LOG_LEVEL_HIGH,"---------------clear framebuffer%d memory  \r\n",index);
+			amlog_level(LOG_LEVEL_HIGH,"---------------clear framebuffer%d memory size=%x. \r\n",index, fbdev->fb_len);
 			memset((char*)fbdev->fb_mem_vaddr, 0x80, fbdev->fb_len);	
 		}
 	

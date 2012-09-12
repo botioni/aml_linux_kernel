@@ -874,5 +874,9 @@ unsigned int read_i2s_mute_swap_reg(void)
 
 void audio_i2s_swap_left_right(unsigned int flag)
 {
+    if (ENABLE_IEC958) 
+    {
+        WRITE_MPEG_REG_BITS(AIU_958_CTRL, flag, 1, 2);  
+    }
 	WRITE_MPEG_REG_BITS(AIU_I2S_MUTE_SWAP, flag, 0, 2);
 }

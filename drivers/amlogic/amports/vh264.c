@@ -176,6 +176,7 @@ static s32 last_ptr;
 static u32 wait_buffer_counter;
 static uint error_recovery_mode = 0;
 static uint mb_total = 0, mb_width = 0,  mb_height=0;
+static uint dpb_size_error_count = 0;
 
 #ifdef DEBUG_PTS
 static unsigned long pts_missed, pts_hit;
@@ -468,6 +469,20 @@ static void vh264_set_params(int switch_done)
                 actual_dpb_size = max_dpb_size + 4;
                 max_reference_size = (frame_buffer_size - mb_total * 384 * actual_dpb_size) / (mb_total * mb_mv_byte);
             }
+        }
+
+        if (actual_dpb_size > VF_BUF_NUM) {
+            dpb_size_error_count++;
+            vh264_running = 0;
+
+            // this is fatal error, need restart
+            printk("dpb_size is too large, error happened\n");
+            amvdec_stop();
+            vf_light_unreg_provider(&vh264_vf_prov);
+            vh264_local_init(0);
+            vh264_prot_init();
+            vf_reg_provider(&vh264_vf_prov);
+            amvdec_start();
         }
 
         if (!(READ_MPEG_REG(AV_SCRATCH_F) & 0x1)) {
@@ -1547,6 +1562,8 @@ module_param(sync_outside, uint, 0664);
 MODULE_PARM_DESC(sync_outside, "\n amvdec_h264 sync_outside \n");
 module_param(dec_control, uint, 0664);
 MODULE_PARM_DESC(dec_control, "\n amvdec_h264 decoder control \n");
+module_param(dpb_size_error_count, uint, 0664);
+MODULE_PARM_DESC(dpb_size_error_count, "\n amvdec_h264 dpb_size_error_count \n");
 module_init(amvdec_h264_driver_init_module);
 module_exit(amvdec_h264_driver_remove_module);
 

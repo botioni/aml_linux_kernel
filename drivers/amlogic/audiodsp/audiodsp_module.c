@@ -881,7 +881,6 @@ static ssize_t ac3_drc_control_store(struct class* class, struct class_attribute
 	else
 		printk("invalid args\n");
 	return count;
-
 }
 
 //------------------------------------------------
@@ -935,8 +934,8 @@ static struct class_attribute audiodsp_attrs[]={
 	__ATTR(dec_option, S_IRUGO | S_IWUSR, dec_option_show, dec_option_store),    
 	__ATTR(print_flag, S_IRUGO | S_IWUSR, print_flag_show, print_flag_store),	
 	__ATTR(ac3_drc_control, S_IRUGO | S_IWUSR, ac3_drc_control_show, ac3_drc_control_store),
-    __ATTR(fread_end_flag, S_IRUGO | S_IWUSR, file_read_end_flag_show, file_read_end_flag_store),
-    __ATTR_NULL
+  __ATTR(fread_end_flag, S_IRUGO | S_IWUSR, file_read_end_flag_show, file_read_end_flag_store),
+  __ATTR_NULL
 };
 
 #ifdef CONFIG_PM

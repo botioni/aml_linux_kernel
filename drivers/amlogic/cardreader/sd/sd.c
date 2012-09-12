@@ -62,6 +62,9 @@ void sd_open(struct memory_card *card)
 	card->sdio_funcs  = sd_mmc_info->sdio_function_nums;
 	memcpy(card->raw_cid, &(sd_mmc_info->raw_cid), sizeof(card->raw_cid));
 
+      if(sd_mmc_info->write_protected_flag)
+            card->state |= CARD_STATE_READONLY;
+      
 	if(ret)
 		card->unit_state = CARD_UNIT_READY;
 	else
