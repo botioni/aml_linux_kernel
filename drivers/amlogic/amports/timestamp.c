@@ -20,7 +20,6 @@ static s32 system_time_inc_adj = 0;
 static u32 system_time = 0;
 static u32 system_time_up = 0;
 static u32 audio_pts_up = 0;
-static u32 audio_pts_started = 0;
 
 #ifdef MODIFY_TIMESTAMP_INC_WITH_PLL
 #define PLL_FACTOR 10000
@@ -105,20 +104,6 @@ void timestamp_apts_enable(u32 enable)
 }
 
 EXPORT_SYMBOL(timestamp_apts_enable);
-
-void timestamp_apts_start(u32 enable)
-{
-  audio_pts_started = enable;
-  printk("audio pts started::::::: %d\n", enable);
-}
-EXPORT_SYMBOL(timestamp_apts_start);
-
-u32 timestamp_apts_started()
-{
-  return audio_pts_started;
-}
-EXPORT_SYMBOL(timestamp_apts_started);
-
 
 u32 timestamp_pcrscr_get(void)
 {
