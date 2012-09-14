@@ -50,4 +50,6 @@ extern void  timestamp_apts_start(u32 enable);
 
 extern u32 timestamp_apts_started(void);
 
+extern u32 timestamp_pcrscr_enable_state(void);
+
 #endif /* TIMESTAMP_H */

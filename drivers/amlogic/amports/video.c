@@ -109,7 +109,7 @@ static struct vframe_provider_s * osd_prov = NULL;
 
 #define FIQ_VSYNC
 
-//#define SLOW_SYNC_REPEAT
+#define SLOW_SYNC_REPEAT
 //#define INTERLACE_FIELD_MATCH_PROCESS
 
 #define M_PTS_SMOOTH_MAX 45000
@@ -1091,7 +1091,7 @@ static inline bool duration_expire(vframe_t *cur_vf, vframe_t *next_vf, u32 dur)
     u32 pts;
     s32 dur_disp;
     static s32 rpt_tab_idx = 0;
-    static const u32 rpt_tab[4] = {0x100, 0x100, 0x300, 0x300};
+    static const u32 rpt_tab[4] = {0x100, 0x100, 0x180, 0x180};
 
     if ((cur_vf == NULL) || (cur_dispbuf == &vf_local)) {
         return true;
