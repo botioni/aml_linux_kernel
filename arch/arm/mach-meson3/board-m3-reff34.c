@@ -88,6 +88,8 @@
 static int suspend_state=0;
 #endif
 
+struct work_struct mutework;
+
 enum BOARD_TYPE{
     RM0216_V12,
     HD6023,
@@ -664,6 +666,8 @@ static struct resource aml_m3_audio_resource[] = {
     },
 };
 
+//#define _AML_M3_HW_DEBUG_
+
 #if defined(CONFIG_SND_AML_M3)
 static struct platform_device aml_audio = {
     .name               = "aml_m3_audio",
@@ -677,12 +681,25 @@ int aml_m3_is_hp_pluged(void)
 	return 0; //return 1: hp pluged, 0: hp unpluged.
 }
 
+static void do_mute_spk(struct work_struct *work)
+{
+        msleep(600);
+        if(board_ver == RM0216_V12)
+                set_gpio_val(GPIOC_bank_bit0_15(4), GPIOC_bit_bit0_15(4), 0);    // unmute speak
+        else if((board_ver == HD6023)||(board_ver == TCB008001))
+                set_gpio_val(GPIOC_bank_bit0_15(4), GPIOC_bit_bit0_15(4), 1);    // unmute speak
+        set_gpio_mode(GPIOC_bank_bit0_15(4), GPIOC_bit_bit0_15(4), GPIO_OUTPUT_MODE);
+}
+
 #include <sound/soc.h>
 void mute_spk(struct snd_soc_codec* codec, int flag)
 {
+    static int mute_status = 1;
 #ifdef _AML_M3_HW_DEBUG_
-	printk("***Entered %s:%s\n", __FILE__,__func__);
+	printk("***Entered %s:%s ++++++++ %d\n", __FILE__,__func__, flag);
 #endif
+    if(flag == mute_status) return;
+        else mute_status = flag; 
     if(flag){
         if(board_ver == RM0216_V12)
 		set_gpio_val(GPIOC_bank_bit0_15(4), GPIOC_bit_bit0_15(4), 1);	 // mute speak
@@ -690,11 +707,7 @@ void mute_spk(struct snd_soc_codec* codec, int flag)
                 set_gpio_val(GPIOC_bank_bit0_15(4), GPIOC_bit_bit0_15(4), 0);    // mute speak
 	set_gpio_mode(GPIOC_bank_bit0_15(4), GPIOC_bit_bit0_15(4), GPIO_OUTPUT_MODE);
 	}else{
-        if(board_ver == RM0216_V12)
-		set_gpio_val(GPIOC_bank_bit0_15(4), GPIOC_bit_bit0_15(4), 0);	 // unmute speak
-        else if((board_ver == HD6023)||(board_ver == TCB008001))
-		set_gpio_val(GPIOC_bank_bit0_15(4), GPIOC_bit_bit0_15(4), 1);	 // unmute speak
-	set_gpio_mode(GPIOC_bank_bit0_15(4), GPIOC_bit_bit0_15(4), GPIO_OUTPUT_MODE);
+        schedule_work(&mutework);
 	}
 }
 
@@ -703,7 +716,7 @@ void mute_headphone(void* codec, int flag)
 {
 	int reg_val;
 #ifdef _AML_M3_HW_DEBUG_
-	printk("***Entered %s:%s\n", __FILE__,__func__);
+	printk("***Entered %s:%s  +++++++%d\n", __FILE__,__func__,flag);
 #endif
 	reg_val = READ_APB_REG(APB_BASE+(0x18<<2));
     if(flag){
@@ -2237,6 +2250,9 @@ static void __init power_hold(void)
         //VCC5V_EN
         set_gpio_val(GPIOAO_bank_bit0_11(6), GPIOAO_bit_bit0_11(6), 0);
         set_gpio_mode(GPIOAO_bank_bit0_11(6), GPIOAO_bit_bit0_11(6), GPIO_OUTPUT_MODE);
+        //Mute Speaker
+        set_gpio_val(GPIOC_bank_bit0_15(4), GPIOC_bit_bit0_15(4), 0);
+        set_gpio_mode(GPIOC_bank_bit0_15(4), GPIOC_bit_bit0_15(4), GPIO_OUTPUT_MODE);
     }else if(board_ver == TCB008001){
         //POWER LED
         set_gpio_val(GPIOAO_bank_bit0_11(5), GPIOAO_bit_bit0_11(5), 1);
@@ -2315,6 +2331,7 @@ static __init void m1_init_machine(void)
   	set_usb_phy_id_mode(USB_PHY_PORT_B,USB_PHY_MODE_SW_HOST);
     lm_device_register(&usb_ld_b);
 #endif
+    INIT_WORK(&mutework, do_mute_spk);
     disable_unused_model();
 }
 
