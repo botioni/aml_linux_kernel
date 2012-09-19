@@ -445,10 +445,8 @@ static void vh264_set_params(int switch_done)
                 max_reference_size++;
             }
 #else
-            if (max_dpb_size > max_reference_size) {
-                max_dpb_size = max_reference_size;
-                max_reference_size++;
-            }
+            max_dpb_size = max_reference_size;
+            max_reference_size++;
 #endif
         } else {
             max_dpb_size = max_reference_size;
