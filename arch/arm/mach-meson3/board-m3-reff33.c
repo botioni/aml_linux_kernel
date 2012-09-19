@@ -355,6 +355,20 @@ static struct platform_device amlogic_spi_nor_device = {
 #endif
 
 #ifdef CONFIG_USB_DWC_OTG_HCD
+#ifdef CONFIG_USB_DPLINE_PULLUP_DISABLE
+static set_vbus_valid_ext_fun(unsigned int id,char val)
+{
+	unsigned int  reg = (PREI_USB_PHY_A_REG1 + id);
+	if(val == 1)
+	{
+		SET_CBUS_REG_MASK(reg,1<<0);
+	}
+	else
+	{
+		CLEAR_CBUS_REG_MASK(reg,1<<0);
+	}
+}
+#endif
 static void set_usb_a_vbus_power(char is_power_on)
 {
     if(is_power_on) {
@@ -400,6 +414,9 @@ static struct lm_device usb_ld_a = {
     .port_speed = USB_PORT_SPEED_DEFAULT,
     .dma_config = USB_DMA_BURST_SINGLE,
     .set_vbus_power = set_usb_a_vbus_power,
+#ifdef CONFIG_USB_DPLINE_PULLUP_DISABLE	
+	.set_vbus_valid_ext = set_vbus_valid_ext_fun,
+#endif
 };
 static struct lm_device usb_ld_b = {
     .type = LM_DEVICE_TYPE_USB,
@@ -412,6 +429,9 @@ static struct lm_device usb_ld_b = {
     .port_speed = USB_PORT_SPEED_DEFAULT,
     .dma_config = USB_DMA_BURST_SINGLE , //   USB_DMA_DISABLE,
     .set_vbus_power = set_usb_b_vbus_power,
+#ifdef CONFIG_USB_DPLINE_PULLUP_DISABLE	
+	.set_vbus_valid_ext = set_vbus_valid_ext_fun,
+#endif	
 };
 
 #endif
@@ -833,7 +853,26 @@ static struct platform_device aml_pm_device = {
 #endif
 
 #if defined(CONFIG_I2C_SW_AML)
+#define MESON3_I2C_PREG_GPIOX_OE		CBUS_REG_ADDR(PREG_PAD_GPIO4_EN_N)
+#define MESON3_I2C_PREG_GPIOX_OUTLVL	CBUS_REG_ADDR(PREG_PAD_GPIO4_O)
+#define MESON3_I2C_PREG_GPIOX_INLVL	CBUS_REG_ADDR(PREG_PAD_GPIO4_I)
 
+static struct aml_sw_i2c_platform aml_sw_i2c_plat = {
+    .sw_pins = {
+        .scl_reg_out        = MESON3_I2C_PREG_GPIOX_OUTLVL,
+        .scl_reg_in     = MESON3_I2C_PREG_GPIOX_INLVL,
+        .scl_bit            = 26, 
+        .scl_oe         = MESON3_I2C_PREG_GPIOX_OE,
+        .sda_reg_out        = MESON3_I2C_PREG_GPIOX_OUTLVL,
+        .sda_reg_in     = MESON3_I2C_PREG_GPIOX_INLVL,
+        .sda_bit            = 25,
+        .sda_oe         = MESON3_I2C_PREG_GPIOX_OE,
+    },  
+    .udelay         = 2,
+    .timeout            = 100,
+};
+
+#if 0
 static struct aml_sw_i2c_platform aml_sw_i2c_plat = {
     .sw_pins = {
         .scl_reg_out        = MESON_I2C_PREG_GPIOB_OUTLVL,
@@ -848,7 +887,7 @@ static struct aml_sw_i2c_platform aml_sw_i2c_plat = {
     .udelay         = 2,
     .timeout            = 100,
 };
-
+#endif
 static struct platform_device aml_sw_i2c_device = {
     .name         = "aml-sw-i2c",
     .id       = -1,
@@ -1358,6 +1397,7 @@ static struct aml_nand_platform aml_nand_mid_platform[] = {
     	},
 			.T_REA = 20,
 			.T_RHOH = 15,
+			.ran_mode = 1,
 	}
 };
 
@@ -1604,6 +1644,9 @@ static struct platform_device __initdata *platform_devs[] = {
 #if defined(CONFIG_NAND_FLASH_DRIVER_MULTIPLANE_CE)
     &aml_nand_device,
 #endif
+#ifdef CONFIG_BT_DEVICE
+ 	&bt_device,
+#endif
 #if defined(CONFIG_AML_RTC)
     &aml_rtc_device,
 #endif
@@ -1849,6 +1892,16 @@ static __initdata struct map_desc meson_video_mem_desc[] = {
         .type       = MT_MEMORY,
     },
 #endif
+// #ifdef CONFIG_AML_SECURE_DRIVER
+#ifdef CONFIG_AM_IPTV_SECURITY
+    {
+        .virtual    = PAGE_ALIGN(0xdfe00000),
+        .pfn        = __phys_to_pfn(0x9fe00000),
+        .length     = SZ_1M,
+        .type       = MT_MEMORY,
+    },
+#endif
+
 };
 
 static __init void m1_map_io(void)
@@ -1865,6 +1918,8 @@ static __init void m1_irq_init(void)
 static __init void m1_fixup(struct machine_desc *mach, struct tag *tag, char **cmdline, struct meminfo *m)
 {
     struct membank *pbank;
+    unsigned size;
+    
     m->nr_banks = 0;
     pbank=&m->bank[m->nr_banks];
     pbank->start = PAGE_ALIGN(PHYS_MEM_START);
@@ -1873,11 +1928,18 @@ static __init void m1_fixup(struct machine_desc *mach, struct tag *tag, char **c
     m->nr_banks++;
     pbank=&m->bank[m->nr_banks];
     pbank->start = PAGE_ALIGN(RESERVED_MEM_END+1);
+   size = PHYS_MEM_END-RESERVED_MEM_END;
 #ifdef CONFIG_AML_SUSPEND
     pbank->size  = (PHYS_MEM_END-RESERVED_MEM_END-SZ_1M) & PAGE_MASK;
 #else
     pbank->size  = (PHYS_MEM_END-RESERVED_MEM_END) & PAGE_MASK;
 #endif
+// #ifdef CONFIG_ENCRYPT
+#ifdef CONFIG_AM_IPTV_SECURITY
+	size -= SZ_1M;
+#endif
+    pbank->size  = size & PAGE_MASK;
+
     pbank->node  = PHYS_TO_NID(RESERVED_MEM_END+1);
     m->nr_banks++;
 }
