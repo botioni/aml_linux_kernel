@@ -762,7 +762,7 @@ void sdio_extern_init(void)
 	SET_CBUS_REG_MASK(PAD_PULL_UP_REG4, (1<<11));
 	gpio_direction_input(GPIO_WIFI_HOSTWAKE);
 #if defined(CONFIG_BCM40181_WIFI)
-	gpio_enable_level_int(gpio_to_idx(GPIO_WIFI_HOSTWAKE), 0, 4);  //for 40181
+	gpio_enable_level_int(gpio_to_idx(GPIO_WIFI_HOSTWAKE), 1, 4);  //for 40181
 #endif
 #if defined(CONFIG_BCM40183_WIFI)
 	gpio_enable_edge_int(gpio_to_idx(GPIO_WIFI_HOSTWAKE), 0, 5);     //for 40183
