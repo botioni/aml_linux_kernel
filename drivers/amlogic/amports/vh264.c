@@ -570,7 +570,7 @@ static void vh264_set_params(int switch_done)
         if (aspect_ratio_info_present_flag) {
             if (aspect_ratio_idc == EXTEND_SAR) {
                 printk("v264dec: aspect_ratio_idc = EXTEND_SAR, aspect_ratio_info = 0x%x\n", aspect_ratio_info);
-                h264_ar = 0x100 * (aspect_ratio_info >> 16) * frame_height / ((aspect_ratio_info & 0xffff) * frame_width);
+                h264_ar = div_u64(256ULL * (aspect_ratio_info >> 16) * frame_height, (aspect_ratio_info & 0xffff) * frame_width);
             } else {
                 printk("v264dec: aspect_ratio_idc = %d\n", aspect_ratio_idc);
 
