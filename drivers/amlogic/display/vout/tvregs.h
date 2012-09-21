@@ -406,7 +406,7 @@ static const reg_t tvregs_576i[] = {
     {ENCI_VIDEO_MODE_ADV,        0x26,  },
     {ENCI_VIDEO_SCH,             0x28,  },
     {ENCI_SYNC_MODE,             0x07,  },
-    {ENCI_YC_DELAY,              0x353, },
+    {ENCI_YC_DELAY,              0x333, },
     {ENCI_VFIFO2VD_PIXEL_START,       0x010b     },
     {ENCI_VFIFO2VD_PIXEL_END,         0x06ab     },
     {ENCI_VFIFO2VD_LINE_TOP_START,    0x0016     },
@@ -433,6 +433,10 @@ static const reg_t tvregs_576i[] = {
     {ENCI_DACSEL_1,                   0x11       },
     {ENCP_VIDEO_EN,              0,     },
     {ENCI_VIDEO_EN,              1,     },
+    {VENC_VDAC_DAC3_GAINCTRL,	 0x23	},
+    {ENCI_VIDEO_SAT,		 0x8	},
+    {VENC_VDAC_DAC3_FILT_CTRL0,	 0x1	},
+    {VENC_VDAC_DAC3_FILT_CTRL1,	 0xfc48	},
     {MREG_END_MARKER,            0      }
 };
 
