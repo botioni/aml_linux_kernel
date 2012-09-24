@@ -15,6 +15,14 @@ int secure_runtime_call(char *pSRC, int nDataLen,char *pOUT,int *pOUTLen,int pro
 // #define SECURE_CMD_UPDATE_AUTH_RA  6
 #define SECURE_CMD_RSA_DEC_VIA_SECU_KEY 6
 #define SECURE_CMD_CHECK_IN_FREE 7
+/* pSRC data must be little-endian */
+#define SECURE_CMD_BURN_SN_RAW       8
+/* pSRC data must be little-endian */
+#define SECURE_CMD_BURN_IN_RAW       9
+/* pSRC data must be little-endian */
+#define SECURE_CMD_BURN_MAC     10
+/* pSRC data must be little-endian */
+#define SECURE_CMD_GAIN_MAC     11
 
 /**********************************************************************************/
 
