@@ -695,10 +695,19 @@ static void vmpeg4_local_init(void)
 
 static s32 vmpeg4_init(void)
 {
+    void __iomem *p = ioremap_nocache(buf_start, buf_size);
+
+    if (!p) {
+        printk("\nvmpeg4_init: Cannot remap ucode swapping memory\n");
+        return -ENOMEM;
+    }
+    
     amlog_level(LOG_LEVEL_INFO, "vmpeg4_init\n");
     init_timer(&recycle_timer);
 
     stat |= STAT_TIMER_INIT;
+
+    memset(p, 0, buf_size);
 
     amvdec_enable();
 
@@ -740,6 +749,7 @@ static s32 vmpeg4_init(void)
         amlog_level(LOG_LEVEL_ERROR, "not supported MPEG4 format\n");
     }
 
+    iounmap(p);
     stat |= STAT_MC_LOAD;
 
     /* enable AMRISC side protocol */
