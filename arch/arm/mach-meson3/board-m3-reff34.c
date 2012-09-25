@@ -934,9 +934,9 @@ static void set_gpio_suspend_resume(int power_on)
 	else{
     	printk("set gpio suspend.\n");
         if(board_ver == HD6023){
-            //Network LED
-            set_gpio_val(GPIOD_bank_bit0_9(1), GPIOD_bit_bit0_9(1), 1);
-            set_gpio_mode(GPIOD_bank_bit0_9(1), GPIOD_bit_bit0_9(1), GPIO_OUTPUT_MODE);
+            //Network LED, because of wifi can't resend net status when resume, but ethernet is okay.
+            //set_gpio_val(GPIOD_bank_bit0_9(1), GPIOD_bit_bit0_9(1), 1);
+            //set_gpio_mode(GPIOD_bank_bit0_9(1), GPIOD_bit_bit0_9(1), GPIO_OUTPUT_MODE);
             //Power LED
             set_gpio_val(GPIOAO_bank_bit0_11(10), GPIOAO_bit_bit0_11(10), 1);
             set_gpio_mode(GPIOAO_bank_bit0_11(10), GPIOAO_bit_bit0_11(10), GPIO_OUTPUT_MODE);
