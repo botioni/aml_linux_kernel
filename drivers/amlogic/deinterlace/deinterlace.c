@@ -89,7 +89,7 @@ static dev_t di_id;
 static struct class *di_class;
 
 #define INIT_FLAG_NOT_LOAD 0x80
-static int version = 11;
+static int version = 13;
 static unsigned char boot_init_flag=0;
 static int receiver_is_amvideo = 1;
 static int buf_mgr_mode = 0x300;
@@ -103,7 +103,7 @@ static int bypass_hd = 0;
 #endif
 static int bypass_all = 0;
 static int bypass_trick_mode = 1;
-static int bypass_vscale_skip = 0;
+static int invert_top_bot = 0;
 static int bypass_get_buf_threshold = 4;
     /* prog_proc_config,
         bit[0]: only valid when real_buf_mgr_mode[bit0]==0, when real_buf_mgr_mode[bit0]==1, two field buffers are used for "prog vdin"
@@ -181,7 +181,6 @@ static vframe_t *di_vf_get(void* arg);
 static void di_vf_put(vframe_t *vf, void* arg);
 static int di_event_cb(int type, void *data, void *private_data);
 static void di_process(void);
-static int get_current_vscale_skip_count(void);
 
 static const struct vframe_operations_s deinterlace_vf_provider =
 {
@@ -1344,9 +1343,6 @@ static unsigned char is_source_change(vframe_t* vframe)
 static int trick_mode;
 static unsigned char is_bypass(void)
 {
-    if(bypass_vscale_skip && (get_current_vscale_skip_count()>0))
-        return 1;
-    
     if(bypass_all)
         return 1;
     if(di_pre_stru.cur_prog_flag&&
@@ -1375,11 +1371,44 @@ static unsigned char is_bypass(void)
 
 }
 
+#ifndef DI_USE_FIXED_CANVAS_IDX
 #if defined(CONFIG_ARCH_MESON2)
 #if ((DEINTERLACE_CANVAS_BASE_INDEX!=0x68)||(DEINTERLACE_CANVAS_MAX_INDEX!=0x7f))
 #error "DEINTERLACE_CANVAS_BASE_INDEX is not 0x68 or DEINTERLACE_CANVAS_MAX_INDEX is not 0x7f, update canvas.h"
 #endif
 #endif
+#endif
+
+#ifdef DI_USE_FIXED_CANVAS_IDX
+static void config_canvas_idx(di_buf_t* di_buf, int nr_canvas_idx, int mtn_canvas_idx)
+{
+    if(di_buf){
+        int width = (di_buf->canvas_config_size>>16)&0xffff;
+        int canvas_height = (di_buf->canvas_config_size)&0xffff;
+        if(di_buf->canvas_config_flag == 1){
+            if(nr_canvas_idx>=0){
+                di_buf->nr_canvas_idx = nr_canvas_idx;
+                canvas_config(nr_canvas_idx, di_buf->nr_adr, width*2, canvas_height, 0, 0);            
+            }
+        }
+        else if(di_buf->canvas_config_flag == 2){
+            if(nr_canvas_idx>=0){
+                di_buf->nr_canvas_idx = nr_canvas_idx;
+                canvas_config(nr_canvas_idx, di_buf->nr_adr, width*2, canvas_height/2, 0, 0);
+            }
+	          if(mtn_canvas_idx>=0){
+                di_buf->mtn_canvas_idx = mtn_canvas_idx;
+                canvas_config(mtn_canvas_idx, di_buf->mtn_adr, width/2, canvas_height/2, 0, 0);
+	          }
+        }
+        if(nr_canvas_idx>=0){
+            di_buf->vframe->canvas0Addr = di_buf->nr_canvas_idx;
+            di_buf->vframe->canvas1Addr = di_buf->nr_canvas_idx;
+        }
+    }
+}    
+
+#else
 
 static void config_canvas(di_buf_t* di_buf)
 {
@@ -1398,6 +1427,8 @@ static void config_canvas(di_buf_t* di_buf)
         
     }
 }
+    
+#endif
     
 static int di_init_buf(int width, int height, unsigned char prog_flag)
 {
@@ -1446,18 +1477,23 @@ static int di_init_buf(int width, int height, unsigned char prog_flag)
             di_buf->post_ref_count = 0;
             if(prog_flag){
                 di_buf->nr_adr = di_mem_start + (width*canvas_height*2)*i;
+#ifndef DI_USE_FIXED_CANVAS_IDX
     	          di_buf->nr_canvas_idx = DEINTERLACE_CANVAS_BASE_INDEX+i;
-
+#endif
 	              //canvas_config(di_buf->nr_canvas_idx, di_buf->nr_adr, width*2, canvas_height, 0, 0);
                 di_buf->canvas_config_flag = 1;
                 di_buf->canvas_config_size = (width<<16)|canvas_height;
             }
             else{
                 di_buf->nr_adr = di_mem_start + (width*canvas_height*5/4)*i;
+#ifndef DI_USE_FIXED_CANVAS_IDX
     	          di_buf->nr_canvas_idx = DEINTERLACE_CANVAS_BASE_INDEX+i*2;
+#endif
 	              //canvas_config(di_buf->nr_canvas_idx, di_buf->nr_adr, width*2, canvas_height/2, 0, 0);
                 di_buf->mtn_adr = di_mem_start + (width*canvas_height*5/4)*i + (width*canvas_height);
+#ifndef DI_USE_FIXED_CANVAS_IDX
     	          di_buf->mtn_canvas_idx = DEINTERLACE_CANVAS_BASE_INDEX+i*2+1;
+#endif
 	              //canvas_config(di_buf->mtn_canvas_idx, di_buf->mtn_adr, width/2, canvas_height/2, 0, 0);
                 di_buf->canvas_config_flag = 2;
                 di_buf->canvas_config_size = (width<<16)|canvas_height;
@@ -1925,6 +1961,15 @@ static void pre_de_process(void)
     di_pre_stru.pre_de_busy_timer_count = 0;
 
     config_di_mif(&di_pre_stru.di_inp_mif, di_pre_stru.di_inp_buf);
+#ifdef DI_USE_FIXED_CANVAS_IDX
+    if((di_pre_stru.di_mem_buf_dup_p!=NULL && di_pre_stru.di_mem_buf_dup_p!=di_pre_stru.di_inp_buf)){
+        config_canvas_idx(di_pre_stru.di_mem_buf_dup_p, DI_PRE_MEM_NR_CANVAS_IDX, -1);
+    }
+    if(di_pre_stru.di_chan2_buf_dup_p!=NULL){
+        config_canvas_idx(di_pre_stru.di_chan2_buf_dup_p, DI_PRE_CHAN2_NR_CANVAS_IDX, -1);
+    }
+    config_canvas_idx(di_pre_stru.di_wr_buf, DI_PRE_WR_NR_CANVAS_IDX, DI_PRE_WR_MTN_CANVAS_IDX);
+#endif
     config_di_mif(&di_pre_stru.di_mem_mif, di_pre_stru.di_mem_buf_dup_p);
     config_di_mif(&di_pre_stru.di_chan2_mif, di_pre_stru.di_chan2_buf_dup_p);
     config_di_wr_mif(&di_pre_stru.di_nrwr_mif, &di_pre_stru.di_mtnwr_mif,
@@ -2049,9 +2094,9 @@ static void pre_de_done_buf_config(void)
             if(bypass_state == 1){
                 di_pre_stru.di_wr_buf->new_format_flag = 1; 
                 bypass_state = 0;   
-#ifdef DI_DEBUG
-     						di_print("%s:bypass_state change to 1, real_buf_mgr_mode %x, is_bypass() %d trick_mode %d bypass_all %d\n", __func__, real_buf_mgr_mode, is_bypass(), trick_mode, bypass_all);        
-#endif
+//#ifdef DI_DEBUG
+     						di_print("%s:bypass_state change to 0, real_buf_mgr_mode %x, is_bypass() %d trick_mode %d bypass_all %d\n", __func__, real_buf_mgr_mode, is_bypass(), trick_mode, bypass_all);        
+//#endif
             }
             
             queue_in(di_pre_stru.di_wr_buf, QUEUE_PRE_READY);
@@ -2273,6 +2318,18 @@ static unsigned char pre_de_buf_config(void)
         if(vframe == NULL){
             return 0;
         }
+        
+        if((invert_top_bot!=0) && (!is_progressive(vframe))){
+            if((vframe->type & VIDTYPE_TYPEMASK) == VIDTYPE_INTERLACE_TOP){
+                vframe->type&=(~VIDTYPE_TYPEMASK);
+                vframe->type|=VIDTYPE_INTERLACE_BOTTOM;
+            }
+            else{
+                vframe->type&=(~VIDTYPE_TYPEMASK);
+                vframe->type|=VIDTYPE_INTERLACE_TOP;
+            }
+        }
+        
 #ifdef DI_DEBUG
         di_print("%s: vf_get => %x\n", __func__, vframe);
 #endif
@@ -2439,8 +2496,9 @@ static unsigned char pre_de_buf_config(void)
 
      /* di_wr_buf */
      di_buf= get_di_buf_head(QUEUE_LOCAL_FREE);
+#ifndef DI_USE_FIXED_CANVAS_IDX
      config_canvas(di_buf);
-      
+#endif      
      if((di_buf == NULL)||(di_buf->vframe == NULL)){
 #ifdef DI_DEBUG
         printk("%s:Error\n", __func__);
@@ -2719,6 +2777,16 @@ static int de_post_process(void* arg, unsigned zoom_start_x_lines,
 	    	di_post_stru.di_mtnprd_mif.end_y 		= (di_end_y + 1)/2 - 1;
     	}
 
+#ifdef DI_USE_FIXED_CANVAS_IDX
+      config_canvas_idx(di_buf->di_buf_dup_p[1], DI_POST_BUF0_CANVAS_IDX, -1);
+	    if ( post_blend_mode == 1 )
+          config_canvas_idx(di_buf->di_buf_dup_p[2], DI_POST_BUF1_CANVAS_IDX, -1);
+      else
+        config_canvas_idx(di_buf->di_buf_dup_p[0], DI_POST_BUF1_CANVAS_IDX, -1);
+
+      config_canvas_idx(di_buf->di_buf_dup_p[1], -1, DI_POST_MTNCRD_CANVAS_IDX);
+      config_canvas_idx(di_buf->di_buf_dup_p[2], -1, DI_POST_MTNPRD_CANVAS_IDX);
+#endif
 	    di_post_stru.di_buf0_mif.canvas0_addr0 = di_buf->di_buf_dup_p[1]->nr_canvas_idx;
 	    if ( post_blend_mode == 1 )
 	        di_post_stru.di_buf1_mif.canvas0_addr0 = di_buf->di_buf_dup_p[2]->nr_canvas_idx;
@@ -2800,6 +2868,16 @@ static int de_post_process_pd(void* arg, unsigned zoom_start_x_lines,
 			  di_post_stru.di_mtnprd_mif.start_y 		= di_start_y/2;
 	    	di_post_stru.di_mtnprd_mif.end_y 		= (di_end_y + 1)/2 - 1;
     	}
+#ifdef DI_USE_FIXED_CANVAS_IDX
+      config_canvas_idx(di_buf->di_buf_dup_p[1], DI_POST_BUF0_CANVAS_IDX, -1);
+	    if ( post_blend_mode == 1 )
+          config_canvas_idx(di_buf->di_buf_dup_p[2], DI_POST_BUF1_CANVAS_IDX, -1);
+      else
+        config_canvas_idx(di_buf->di_buf_dup_p[0], DI_POST_BUF1_CANVAS_IDX, -1);
+
+      config_canvas_idx(di_buf->di_buf_dup_p[1], -1, DI_POST_MTNCRD_CANVAS_IDX);
+      config_canvas_idx(di_buf->di_buf_dup_p[2], -1, DI_POST_MTNPRD_CANVAS_IDX);
+#endif
 
 	    di_post_stru.di_buf0_mif.canvas0_addr0 = di_buf->di_buf_dup_p[1]->nr_canvas_idx;
 	    if ( post_blend_mode == 1 )
@@ -2878,6 +2956,10 @@ static int de_post_process_prog(void* arg, unsigned zoom_start_x_lines,
 	    	di_post_stru.di_mtnprd_mif.end_y 		= (di_end_y + 1)/2 - 1;
     	}
 
+#ifdef DI_USE_FIXED_CANVAS_IDX
+      config_canvas_idx(di_buf->di_buf_dup_p[0], DI_POST_BUF0_CANVAS_IDX, DI_POST_MTNCRD_CANVAS_IDX);
+      config_canvas_idx(di_buf->di_buf_dup_p[1], DI_POST_BUF1_CANVAS_IDX, DI_POST_MTNPRD_CANVAS_IDX);
+#endif
 	    di_post_stru.di_buf0_mif.canvas0_addr0 = di_buf->di_buf_dup_p[0]->nr_canvas_idx;
       di_post_stru.di_buf1_mif.canvas0_addr0 = di_buf->di_buf_dup_p[1]->nr_canvas_idx;
 	    di_post_stru.di_mtncrd_mif.canvas_num = di_buf->di_buf_dup_p[0]->mtn_canvas_idx;
@@ -4359,8 +4441,8 @@ module_param(bypass_all, int, 0664);
 MODULE_PARM_DESC(bypass_trick_mode, "\n bypass_trick_mode \n");
 module_param(bypass_trick_mode, int, 0664);
 
-MODULE_PARM_DESC(bypass_vscale_skip, "\n bypass_vscale_skip \n");
-module_param(bypass_vscale_skip, int, 0664);
+MODULE_PARM_DESC(invert_top_bot, "\n invert_top_bot \n");
+module_param(invert_top_bot, int, 0664);
 
 MODULE_PARM_DESC(bypass_get_buf_threshold, "\n bypass_get_buf_threshold\n");
 module_param(bypass_get_buf_threshold, uint, 0664);
