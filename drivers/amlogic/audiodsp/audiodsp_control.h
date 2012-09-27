@@ -62,5 +62,8 @@ char *data;
 #define MCODEC_FMT_AAC_LATM     (1<<14)
 #define MCODEC_FMT_APE     (1<<15)
 #define MCODEC_FMT_EAC3     (1<<16)
+
+#define AUDIOINFO_FROM_AUDIODSP(format)  ((format == MCODEC_FMT_AAC) || \
+										  (format ==MCODEC_FMT_AAC_LATM))
 #endif
 
