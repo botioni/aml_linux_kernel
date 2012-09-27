@@ -39,7 +39,7 @@
 #define DRIVER_NAME "amvdec_avs"
 #define MODULE_NAME "amvdec_avs"
 
-#undef  DEBUG_UCODE
+//#define DEBUG_UCODE
 
 #define HANDLE_AVS_IRQ
 #define DEBUG_PTS
@@ -80,7 +80,10 @@
 static vframe_t *vavs_vf_peek(void*);
 static vframe_t *vavs_vf_get(void*);
 static void vavs_vf_put(vframe_t *, void*);
-
+static int  vavs_vf_states(vframe_states_t *states, void*);
+static int vavs_event_cb(int type, void *data, void *private_data);
+static void vavs_prot_init(void);
+static void vavs_local_init(void);
 static const char vavs_dec_id[] = "vavs-dev";
 
 #define PROVIDER_NAME   "decoder.avs"
@@ -89,6 +92,8 @@ static const struct vframe_operations_s vavs_vf_provider = {
         .peek = vavs_vf_peek,
         .get = vavs_vf_get,
         .put = vavs_vf_put,
+         .event_cb = vavs_event_cb,
+         .vf_states = vavs_vf_states,
 };
 
 static struct vframe_provider_s vavs_vf_prov;
@@ -110,7 +115,7 @@ static u32 next_pts;
 #ifdef DEBUG_PTS
 static u32 pts_hit, pts_missed, pts_i_hit, pts_i_missed;
 #endif
-
+static spinlock_t lock = SPIN_LOCK_UNLOCKED;
 static struct dec_sysinfo vavs_amstream_dec_info;
 
 static inline u32 index2canvas(u32 index)
@@ -182,8 +187,9 @@ static void vavs_isr(void)
         u32 picture_type;
         u32 buffer_index;
         unsigned int pts, pts_valid=0, offset;
-
+        
 #ifdef DEBUG_UCODE
+       printk("vavs isr\n");
        if(READ_MPEG_REG(AV_SCRATCH_E)!=0){
             printk("dbg%x: %x\n",  READ_MPEG_REG(AV_SCRATCH_E), READ_MPEG_REG(AV_SCRATCH_D));
             WRITE_MPEG_REG(AV_SCRATCH_E, 0);
@@ -373,7 +379,7 @@ static void vavs_isr(void)
 
                 total_frame++;
 
-                //printk("PicType = %d, PTS = 0x%x\n", picture_type, vf->pts);
+                printk("PicType = %d, duration=%d, PTS = 0x%x\n", picture_type, vf->duration,vf->pts);
                 WRITE_MPEG_REG(AVS_BUFFEROUT, 0);
         }
 
@@ -418,6 +424,48 @@ static vframe_t *vavs_vf_get(void* op_arg)
 static void vavs_vf_put(vframe_t *vf, void* op_arg)
 {
         INCPTR(putting_ptr);
+}
+static int vavs_vf_states(vframe_states_t *states, void* op_arg)
+{
+    unsigned long flags;
+    int i;
+    spin_lock_irqsave(&lock, flags);
+    states->vf_pool_size = VF_POOL_SIZE;
+
+    i = put_ptr - fill_ptr;
+    if (i < 0) i += VF_POOL_SIZE;
+    states->buf_free_num = i;
+    
+    i = putting_ptr - put_ptr;
+    if (i < 0) i += VF_POOL_SIZE;
+    states->buf_recycle_num = i;
+    
+    i = fill_ptr - get_ptr;
+    if (i < 0) i += VF_POOL_SIZE;
+    states->buf_avail_num = i;
+    
+    spin_unlock_irqrestore(&lock, flags);
+    return 0;
+}
+
+static int vavs_event_cb(int type, void *data, void *private_data)
+{
+    if(type & VFRAME_EVENT_RECEIVER_RESET){
+        unsigned long flags;
+        amvdec_stop();
+#ifndef CONFIG_POST_PROCESS_MANAGER
+        vf_light_unreg_provider(&vavs_vf_prov);
+#endif
+        spin_lock_irqsave(&lock, flags);
+        vavs_local_init();
+        vavs_prot_init();
+        spin_unlock_irqrestore(&lock, flags); 
+#ifndef CONFIG_POST_PROCESS_MANAGER
+        vf_reg_provider(&vavs_vf_prov);
+#endif              
+        amvdec_start();
+    }
+    return 0;        
 }
 
 int vavs_dec_status(struct vdec_status *vstatus)
@@ -563,8 +611,14 @@ static void vavs_local_init(void)
 
         avi_flag = (u32)vavs_amstream_dec_info.param;
 
+		if(vavs_amstream_dec_info.height>1080)
+			vavs_amstream_dec_info.height=1080;
+        printk("avi_flag=%d,vavs_ratio=%d\n",avi_flag,vavs_ratio);
         fill_ptr = get_ptr = put_ptr = putting_ptr = 0;
-
+        printk("width=%d,height=%d,rate=%d\n",
+			vavs_amstream_dec_info.width,
+			vavs_amstream_dec_info.height,
+			vavs_amstream_dec_info.rate);
         frame_width = frame_height = frame_dur = frame_prog = 0;
 
         total_frame = 0;
@@ -646,9 +700,14 @@ static s32 vavs_init(void)
 #endif
 
         stat |= STAT_ISR_REG;
-
-        vf_provider_init(&vavs_vf_prov, PROVIDER_NAME, &vavs_vf_provider, NULL);
-        vf_reg_provider(&vavs_vf_prov);
+ #ifdef CONFIG_POST_PROCESS_MANAGER
+    vf_provider_init(&vavs_vf_prov, PROVIDER_NAME, &vavs_vf_provider, NULL);
+    vf_reg_provider(&vavs_vf_prov);
+    vf_notify_receiver(PROVIDER_NAME,VFRAME_EVENT_PROVIDER_START,NULL);
+ #else 
+    vf_provider_init(&vavs_vf_prov, PROVIDER_NAME, &vavs_vf_provider, NULL);
+    vf_reg_provider(&vavs_vf_prov);
+ #endif 
 
         stat |= STAT_VF_HOOK;
 
