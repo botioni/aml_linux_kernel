@@ -228,7 +228,7 @@ static struct dvb_frontend_ops mxl101_ops = {
 		.type = FE_OFDM,
 		.frequency_min = 51000000,
 		.frequency_max = 858000000,
-		.frequency_stepsize = 166667,
+		.frequency_stepsize = 0,
 		.frequency_tolerance = 0,
 		.caps =
 			FE_CAN_FEC_1_2 | FE_CAN_FEC_2_3 | FE_CAN_FEC_3_4 |
