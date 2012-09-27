@@ -43,6 +43,7 @@ extern unsigned int IEC958_chstat1_l;
 extern unsigned int IEC958_chstat1_r;
 extern unsigned int IEC958_mode_raw;
 extern unsigned int IEC958_mode_codec;
+extern int format_change_flag;
 
 int dsp_mailbox_send(struct audiodsp_priv *priv,int overwrite,int num,int cmd,const char *data,int len)
 {
@@ -188,6 +189,8 @@ static irqreturn_t audiodsp_mailbox_irq(int irq, void *data)
 			if(fmt->data.pcm_encoded_info){
 				set_pcminfo_data(fmt->data.pcm_encoded_info);
 			}
+			format_change_flag=1;
+			DSP_PRNT("format_change_flag=%d sample_rate=%d channel_num=%d\n",format_change_flag,priv->frame_format.sample_rate,priv->frame_format.channel_num);
 		}
         if(status & (1<<M1B_IRQ8_IEC958_INFO)){
             struct digit_raw_output_info* info;
