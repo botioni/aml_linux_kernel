@@ -49,6 +49,7 @@ extern unsigned IEC958_mode_codec;
 extern int decopt;
 static int IEC958_mode_raw_last = 0;
 static int IEC958_mode_codec_last = 0;
+
 /* code for DD/DD+ DRC control  */
 /* Dynamic range compression mode */
 typedef enum {
@@ -191,7 +192,7 @@ static int audiodsp_ioctl(struct inode *node, struct file *file, unsigned int cm
 			priv->stream_fmt=args;
 			if(IEC958_mode_raw){// raw data pass through		
 				if(args == MCODEC_FMT_DTS)
-					IEC958_mode_codec = 1;//dts
+					IEC958_mode_codec = ((decopt>>5)&1)?3:1;//dts PCM/RAW mode
 				else if(args == MCODEC_FMT_AC3)
 					IEC958_mode_codec = 2; 	//ac3
 				else if(args == MCODEC_FMT_EAC3){
@@ -835,6 +836,12 @@ static ssize_t dec_option_store(struct class* class, struct class_attribute* att
     dec_opt = 2;	// mute ac3
   }else if(buf[0] == '3'){
   	dec_opt = 3; //with noise
+  }else if(buf[0] == '4'){
+  	  printk("digital mode :PCM-raw  \n"); 
+	  decopt |= (1<<5); 
+  }else if(buf[0] == '5'){
+	  printk("digital mode :raw \n"); 
+	  decopt &= ~(1<<5);
   }
   decopt = 	(decopt&(~3))|dec_opt;
   printk("dec option=%d\n", dec_opt);

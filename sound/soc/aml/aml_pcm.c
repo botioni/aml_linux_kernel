@@ -413,7 +413,7 @@ static void aml_hw_iec958_init(void)
 	if(IEC958_mode_codec){
 	  if(IEC958_mode_codec == 1){ //dts, use raw sync-word mode
 	    	IEC958_MODE = AIU_958_MODE_RAW;
-		printk("iec958 mode RAW\n");
+			printk("iec958 mode RAW\n");
 	  }	
 	  else{ //ac3,use the same pcm mode as i2s configuration
 		IEC958_MODE = AIU_958_MODE_PCM_RAW;
