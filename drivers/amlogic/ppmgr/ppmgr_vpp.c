@@ -449,6 +449,11 @@ static void vf_rotate_adjust(vframe_t *vf, vframe_t *new_vf, int angle)
         else
             w = (ar * h) >> 8;
 
+        if(w > ppmgr_device.disp_width ){           
+            h = (h * ppmgr_device.disp_width)/w ;
+            w = ppmgr_device.disp_width;
+        }
+
         new_vf->ratio_control = DISP_RATIO_PORTRAIT_MODE;
 
     } else {
@@ -471,7 +476,24 @@ static void vf_rotate_adjust(vframe_t *vf, vframe_t *new_vf, int angle)
     new_vf->width = w;
     new_vf->height = h;
 }
-
+static void vf_ratio_adjust(vframe_t *vf, int* left ,int* top, int* width ,int* height)
+{
+    int w, h ,ww,hh;
+    
+    ww = w = *width;
+    hh = h = *height;
+    if ((vf->width * hh) > (ww * vf->height)) {
+        w = ww;
+        h = ww * vf->height / vf->width;
+    } else {
+        h = hh;
+        w = hh * vf->width / vf->height;
+    }
+    *top +=(hh-h)/2;
+    *left += (ww-w)/2;
+    *width = w;
+    *height =h;
+}
 static void process_vf_rotate(vframe_t *vf, ge2d_context_t *context, config_para_ex_t *ge2d_config)
 {
     vframe_t *new_vf;
@@ -846,6 +868,9 @@ static void process_vf_rotate(vframe_t *vf, ge2d_context_t *context, config_para
             dy = rect_y;
             sh = vf->height;
             dh = rect_h;
+        }
+        if((dx >=0)&&(dy>=0)){
+            vf_ratio_adjust(vf, &dx,&dy,&dw,&dh);
         }
         //if(scale_clear_count==3)
         //    printk("--ppmgr scale rect: src x:%d, y:%d, w:%d, h:%d. dst x:%d, y:%d, w:%d, h:%d.\n", sx, sy, sw, sh,dx,dy,dw,dh);
