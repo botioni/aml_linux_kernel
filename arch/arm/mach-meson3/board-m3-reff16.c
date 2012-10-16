@@ -1970,6 +1970,60 @@ static  struct platform_device ite9133_device = {
 };
 
 
+
+static struct resource dib7090p_resource[]  = {
+	[0] = {
+		.start = (GPIOD_bank_bit0_9(8)<<16)|GPIOD_bit_bit0_9(8), //reset pin
+		.end   = (GPIOD_bank_bit0_9(8)<<16)|GPIOD_bit_bit0_9(8),
+		.flags = IORESOURCE_MEM,
+		.name  = "frontend0_reset_pin"
+	},
+	[1] = {
+		.start = 0,                                    //frontend 0 i2c adapter id
+		.end   = 0,
+		.flags = IORESOURCE_MEM,
+		.name  = "frontend0_i2c"
+	},
+	[2] = {
+		.start = 0x98,                                 //frontend 0 tuner address
+		.end   = 0x98,
+		.flags = IORESOURCE_MEM,
+		.name  = "frontend0_tuner_addr"
+	},
+	[3] = {
+		.start =  0x10,                                 //frontend 0 demod address
+		.end   =  0x10,
+		.flags = IORESOURCE_MEM,
+		.name  = "frontend0_demod_addr"
+	},
+	[4] = {
+		.start = (GPIOAO_bank_bit0_11(6)<<16)|GPIOAO_bank_bit0_11(6), //(GPIOC_bank_bit0_15(3)<<16)|GPIOC_bank_bit0_15(3),  //// tuner_enable
+		.end   = (GPIOAO_bank_bit0_11(6)<<16)|GPIOAO_bank_bit0_11(6), //(GPIOC_bank_bit0_15(3)<<16)|GPIOC_bank_bit0_15(3),
+		.flags = IORESOURCE_MEM,
+		.name  = "frontend0_power_pin"
+	},
+	[5] = {
+		.start = 0x1,                                 
+		.end   = 0x1,
+		.flags = IORESOURCE_MEM,
+		.name  = "frontend0_reset_value_enable"
+	},
+	[6] = {
+		.start =  0x0,                                 
+		.end   =  0x0,
+		.flags = IORESOURCE_MEM,
+		.name  = "frontend0_power_value_enable"
+	},
+};
+
+static  struct platform_device dib7090p_device = {
+	.name             = "DiB7090P",
+	.id               = -1,
+	.num_resources    = ARRAY_SIZE(dib7090p_resource),
+	.resource         = dib7090p_resource,
+};
+
+
 #endif
 #if defined(CONFIG_AML_WATCHDOG)
 static struct platform_device aml_wdt_device = {
@@ -2114,6 +2168,7 @@ static struct platform_device __initdata *platform_devs[] = {
 	&avl6211_device,
 	&ite9173_device,
 	&ite9133_device,
+	& dib7090p_device,
 #endif
  #if defined(CONFIG_AML_WATCHDOG)
         &aml_wdt_device,
@@ -2252,6 +2307,20 @@ static void __init device_pinmux_init(void )
 	clear_mio_mux(0, 0x3F);
 
 
+#endif
+#ifdef CONFIG_AM_DIB7090P
+	printk("CONFIG_AM_DIB7090P set pinmux\n");
+	set_mio_mux(3, 0x3F<<6);
+	clear_mio_mux(0, 0xF);
+	clear_mio_mux(5, 0x1<<23);
+
+/*	clear_mio_mux(0, 1<<6);
+	//pwr pin;
+	clear_mio_mux(0, 1<<13);
+	clear_mio_mux(1, 1<<8);
+	//rst pin;
+	clear_mio_mux(0, 1<<28);
+	clear_mio_mux(1, 1<<20);*/
 #endif
 
 
