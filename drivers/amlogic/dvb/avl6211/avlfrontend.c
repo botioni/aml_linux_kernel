@@ -542,16 +542,39 @@ static int AVL6211_Set_Frontend(struct dvb_frontend *fe, struct dvb_frontend_par
 		return (r);
 	}
 	AVL_DVBSx_IBSP_ReleaseSemaphore(&blindscanSem);
+	if (AVL_DVBSx_EC_OK != r)
+	{
+		printf("Lock channel failed !\n");
+		return (r);
+	}
 	int waittime=150;//3s 
+	//Channel lock time increase while symbol rate decrease.Give the max waiting time for different symbolrates.
+	if(p->u.qam.symbol_rate<5000000)
+	{
+		waittime = 250;       //The max waiting time is 5000ms,considering the IQ swapped status the time should be doubled.
+	}
+	else if(p->u.qam.symbol_rate<10000000)
+	{
+        waittime = 30;        //The max waiting time is 600ms,considering the IQ swapped status the time should be doubled.
+	}
+	else
+	{
+        waittime = 15;        //The max waiting time is 300ms,considering the IQ swapped status the time should be doubled.
+	} 
 	int lockstatus = 0;
 	while(waittime)
 	{
 		lockstatus=AVL6211_GETLockStatus();
-		if(1==lockstatus)
+		if(1==lockstatus){
+			pr_dbg("lock success !\n");
 			break;
+		}
 		msleep(20);
 		waittime--;
 	}
+	if(!AVL6211_GETLockStatus())
+		pr_dbg("lock timeout !\n");
+	
 	r=AVL_DVBSx_IRx_ResetErrorStat(pAVLChip_all);
 	if (AVL_DVBSx_EC_OK != r)
 	{
@@ -568,7 +591,7 @@ static int AVL6211_Set_Frontend(struct dvb_frontend *fe, struct dvb_frontend_par
 	state->mode=p->u.qam.modulation ;
 	state->symbol_rate=p->u.qam.symbol_rate; //these data will be writed to eeprom
 
-//	pr_dbg("avl6211=>frequency=%d,symbol_rate=%d\r\n",p->frequency,p->u.qam.symbol_rate);
+	pr_dbg("avl6211=>frequency=%d,symbol_rate=%d\r\n",p->frequency,p->u.qam.symbol_rate);
 	return  0;
 }
 

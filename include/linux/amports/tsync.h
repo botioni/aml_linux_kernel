@@ -36,7 +36,8 @@ typedef enum {
     AUDIO_PAUSE,
     AUDIO_RESUME,
     AUDIO_STOP,
-    AUDIO_TSTAMP_DISCONTINUITY
+    AUDIO_TSTAMP_DISCONTINUITY,
+    AUDIO_PRE_START
 } avevent_t;
 
 typedef enum {

@@ -741,8 +741,7 @@ void audio_i2s_mute(void)
 
 void audio_hw_958_reset(unsigned slow_domain, unsigned fast_domain)
 {
-    WRITE_MPEG_REG_BITS(AIU_958_DCU_FF_CTRL,0,0,1);
-	//WRITE_MPEG_REG(AIU_958_DCU_FF_CTRL,0);
+	WRITE_MPEG_REG(AIU_958_DCU_FF_CTRL,0);
     WRITE_MPEG_REG(AIU_RST_SOFT,
                    (slow_domain << 3) | (fast_domain << 2));
 }

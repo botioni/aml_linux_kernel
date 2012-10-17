@@ -102,7 +102,33 @@ static void security_to_gain_rn(void)  // gp.rn : RN generated dynamically
 //        *ptr++ = 'Z' - index;  // + index;
 //    }
 
-    get_random_bytes((void*)ptr, sizeof(security_rn_t));
+    // get_random_bytes((void*)ptr, sizeof(security_rn_t));
+	
+	char random_number[16];
+	
+	do
+	{
+		memset((void*)random_number, 0, 16);
+		get_random_bytes((void*)random_number, 16);
+		
+		int tmp_index = 0;
+		for(tmp_index = 0; tmp_index < 16; tmp_index++)
+		{
+			if((random_number[tmp_index] >= '0') && (random_number[tmp_index] <= '9') && (index < 16))
+			{
+				*(ptr + index) = random_number[tmp_index];
+				index++;
+				
+				printk(KERN_INFO "get the random %c\n", random_number[tmp_index]);
+				
+				if(index == 16)
+				{
+					break;
+				}
+			}
+		}
+	}
+	while(index < 16);
 
     for(index = 0; index < sizeof(security_rn_t); index++)
     {
@@ -313,9 +339,6 @@ static int security_ioctl(struct inode *inode, struct file *file, unsigned int c
     void __user *argp = (void __user *)arg;
 
     int result = 0;
-
-//    void* in = NULL;
-//    void* out = NULL;
 	
 	printk(KERN_INFO "security_ioctl!\n");
 	printk(KERN_INFO "current status is: %d\n", security_dev->security_gp.status);
@@ -360,7 +383,7 @@ static int security_ioctl(struct inode *inode, struct file *file, unsigned int c
             {
                 security_to_gain_rn();
 				
-		int ret = copy_to_user(argp, (void*)(&security_dev->security_gp.rn), sizeof(security_rn_t));
+				int ret = copy_to_user(argp, (void*)(&security_dev->security_gp.rn), sizeof(security_rn_t));
 
                 if( ret != 0)
                 {
@@ -427,6 +450,47 @@ static int security_ioctl(struct inode *inode, struct file *file, unsigned int c
                 }
             }
 
+            if(!security_validation(security_dev->security_gp.iv.oi, security_dev->security_gp.cd.oi))
+            {
+                return -EFAULT;
+            }
+
+            security_dev->security_gp.status = SECURITY_STATUS_S_IV;
+            security_task();
+
+            if (security_dev->security_gp.status != SECURITY_STATUS_G_XX)
+            {
+                ret = -EFAULT;
+            }
+            else
+            {
+                if(copy_to_user(argp, (void*)(&security_dev->security_gp.xx), sizeof(security_xx_t)) != 0)
+                {
+                    return -EFAULT;
+                }
+            }
+
+            security_dev->security_gp.status = SECURITY_STATUS_IDLE;
+
+            break;
+        }
+        
+        case SECURITY_IOC_G_SH_256:
+        {
+            if (security_dev->security_gp.status != SECURITY_STATUS_IDLE)
+            {
+                ret = -EFAULT;
+            }
+            else
+            {
+                if(copy_from_user((void*)(&security_dev->security_gp.iv), argp, sizeof(security_iv_t)) != 0)
+                {
+                    memset((void*)(&security_dev->security_gp.iv), 0, sizeof(security_iv_t));
+
+                    return -EFAULT;
+                }
+            }
+
 //            if(!security_validation(security_dev->security_gp.iv.oi, security_dev->security_gp.cd.oi))
 //            {
 //                return -EFAULT;
@@ -455,18 +519,30 @@ static int security_ioctl(struct inode *inode, struct file *file, unsigned int c
         case SECURITY_IOC_B_SN:
         {
             unsigned long flags = 0;
+	    char sn_enc[128];
+	    memset((void*)sn_enc, 0, 128);
 
-            if(copy_from_user((void*)(&security_dev->security_gp.sn), argp, sizeof(security_sn_t)) != 0)
-            {
-                memset((void*)(&security_dev->security_gp.sn), 0, sizeof(security_sn_t));
-
+            // if(copy_from_user((void*)(&security_dev->security_gp.sn), argp, sizeof(security_sn_t)) != 0)
+            if(copy_from_user((void*)sn_enc, argp, 128) != 0)
+	    {
+                // memset((void*)(&security_dev->security_gp.sn), 0, sizeof(security_sn_t));
+		memset((void*)(void*)sn_enc, 0, 128);
                 return -EFAULT;
             }
 
             spin_lock_irqsave(&secure_lock, flags);
-            result = secure_call((void*)(&security_dev->security_gp.sn), sizeof(security_sn_t), NULL, NULL, -1,
+            result = secure_call((void*)sn_enc, 128, NULL, NULL, -1,
                 SECURE_CMD_BURN_SN);
             spin_unlock_irqrestore(&secure_lock, flags);
+
+	    if(result != 0)
+	    {
+	    	printk(KERN_INFO "kernel, burn sn unsuccessfully!\n");
+	    }
+	    else
+	    {
+		printk(KERN_INFO "kernel, burn sn successfully!\n");
+	    }
 
             if(result != 0)
             {
@@ -495,18 +571,30 @@ static int security_ioctl(struct inode *inode, struct file *file, unsigned int c
         case SECURITY_IOC_B_IN:
         {
             unsigned long flags = 0;
+	    char in_enc[128];
+	    memset((void*)in_enc, 0, 128);
 
-            if(copy_from_user((void*)(&security_dev->security_gp.in), argp, sizeof(security_in_t)) != 0)
+            // if(copy_from_user((void*)(&security_dev->security_gp.in), argp, sizeof(security_in_t)) != 0)
+	    if(copy_from_user((void*)in_enc, argp, 128) != 0)
             {
-                memset((void*)(&security_dev->security_gp.in), 0, sizeof(security_in_t));
-
+               //  memset((void*)(&security_dev->security_gp.in), 0, sizeof(security_in_t));
+		memset((void*)in_enc, 0, 128);
                 return -EFAULT;
             }
 
             spin_lock_irqsave(&secure_lock, flags);
-            result = secure_call((void*)(&security_dev->security_gp.in), sizeof(security_in_t), NULL, NULL, -1,
+            result = secure_call((void*)in_enc, 128, NULL, NULL, -1,
                 SECURE_CMD_BURN_IN);
             spin_unlock_irqrestore(&secure_lock, flags);
+
+		if(result != 0)
+		{
+			printk(KERN_INFO "kernel, burn in unsuccessfully!\n");
+		}
+		else
+		{
+			printk(KERN_INFO "kernel, burn in successfully!\n");
+		}
 
             if(result != 0)
             {
@@ -655,6 +743,107 @@ static int security_ioctl(struct inode *inode, struct file *file, unsigned int c
           kfree(out);
 
           break;
+        }
+        
+        case SECURITY_IOC_B_SN_RAW:
+        {
+        	unsigned long flags = 0;
+        	if(copy_from_user((void*)(&security_dev->security_gp.sn), argp, sizeof(security_sn_t)) != 0)
+        	{
+        		memset((void*)(&security_dev->security_gp.sn), 0, sizeof(security_sn_t));
+        		
+        		return -EFAULT;
+        	}
+        	
+        	spin_lock_irqsave(&secure_lock, flags);
+        	result = secure_call((void*)(&security_dev->security_gp.sn), sizeof(security_sn_t), NULL, NULL, -1,
+        			SECURE_CMD_BURN_SN_RAW);
+        	spin_unlock_irqrestore(&secure_lock, flags);
+        	
+        	if(result != 0)
+        	{
+        		return -EFAULT;
+        	}
+        	
+        	break;
+        }
+        
+        case SECURITY_IOC_B_IN_RAW:
+        {
+        	unsigned long flags = 0;
+
+			if(copy_from_user((void*)(&security_dev->security_gp.in), argp, sizeof(security_in_t)) != 0)
+			{
+				memset((void*)(&security_dev->security_gp.in), 0, sizeof(security_in_t));
+
+				return -EFAULT;
+			}
+
+			spin_lock_irqsave(&secure_lock, flags);
+			result = secure_call((void*)(&security_dev->security_gp.in), sizeof(security_in_t), NULL, NULL, -1,
+					SECURE_CMD_BURN_IN_RAW);
+			spin_unlock_irqrestore(&secure_lock, flags);
+
+			if(result != 0)
+			{
+				return -EFAULT;
+			}
+
+        	break;
+        }
+        
+        case SECURITY_IOC_B_MAC:
+        {
+        	unsigned long flags = 0;
+        	
+        	char mac[6];
+        	
+        	memset((void*)mac, 0, 6);
+        	
+        	if(copy_from_user((void*)mac, argp, 6) != 0)
+        	{
+        		memset((void*)mac, 0, 6);
+        		
+        		return -EFAULT;
+        	}
+        	
+        	spin_lock_irqsave(&secure_lock, flags);
+        	result = secure_call((void*)mac, 6, NULL, NULL, -1, SECURE_CMD_BURN_MAC);
+        	spin_unlock_irqrestore(&secure_lock, flags);
+        	
+        	if(result != 0)
+        	{
+        		return -EFAULT;
+        	}
+        	
+        	break;
+        }
+        
+        case SECURITY_IOC_G_MAC:
+        {
+        	unsigned long flags = 0;
+        	
+        	int length = 6;
+        	
+        	char mac[6];
+        	
+        	memset((void*)mac, 0, 6);
+        	
+        	spin_lock_irqsave(&secure_lock, flags);
+        	result = secure_call(NULL, 0, (void*)mac, &length, -1, SECURE_CMD_GAIN_MAC);
+        	spin_unlock_irqrestore(&secure_lock, flags);
+        	
+        	if(result != 0)
+        	{
+        		return -EFAULT;
+        	}
+        	
+        	if(copy_to_user(argp, (void*)mac, 6) != 0)
+        	{
+        		return -EFAULT;
+        	}
+        	
+        	break;
         }
 
         default:

@@ -150,6 +150,7 @@ static u32 sync_outside = 0;
 static u32 dec_control = 0;
 static u32 vh264_ratio;
 static u32 vh264_rotation;
+static u32 use_idr_framerate = 0;
 
 static u32 seq_info;
 static u32 aspect_ratio_info;
@@ -780,7 +781,7 @@ static void vh264_isr(void)
                             pts_duration = ((h264pts2 - h264pts1) / h264_pts_count) * 16 / 15;
                             duration_from_pts_done = 1;
 
-                            if ((pts_duration != frame_dur) && (!pts_outside)) {
+                            if ((pts_duration != frame_dur) && (!pts_outside) && (!use_idr_framerate)) {
                                 frame_dur = pts_duration;
                             }
                         }
@@ -1169,6 +1170,7 @@ static void vh264_local_init(int init_flag)
         frame_dur = vh264_amstream_dec_info.rate;
         pts_outside = ((u32)vh264_amstream_dec_info.param) & 0x01;
         sync_outside = ((u32)vh264_amstream_dec_info.param & 0x02) >> 1;
+        use_idr_framerate = ((u32)vh264_amstream_dec_info.param & 0x04) >> 2;
     }
     buffer_for_recycle_rd = 0;
     buffer_for_recycle_wr = 0;
@@ -1513,8 +1515,8 @@ static int amvdec_h264_remove(struct platform_device *pdev)
     atomic_set(&vh264_active, 0);
 
 #ifdef DEBUG_PTS
-    printk("pts missed %ld, pts hit %ld, pts_outside %d, duration %d, sync_outside %d\n",
-           pts_missed, pts_hit, pts_outside, frame_dur, sync_outside);
+    printk("pts missed %ld, pts hit %ld, pts_outside %d, duration %d, sync_outside %d, use_idr_framerate %d\n",
+           pts_missed, pts_hit, pts_outside, frame_dur, sync_outside, use_idr_framerate);
 #endif
     mutex_unlock(&vh264_mutex);
     return 0;

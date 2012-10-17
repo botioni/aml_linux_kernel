@@ -51,6 +51,10 @@ typedef struct security_xx_s { // ÖÕ¶ËÌôÕ½×Ö, XX, 32 bytes
   u8 data[32];
 } security_xx_t;
 
+typedef struct security_mac_s {
+	u8 data[6];
+} security_mac_t;
+
 // ***************************************************************************
 // *** IOCTL command definition **********************************************
 // ***************************************************************************
@@ -78,6 +82,12 @@ typedef struct security_xx_s { // ÖÕ¶ËÌôÕ½×Ö, XX, 32 bytes
 #define SECURITY_IOC_S_IV_LEN   _IOW(SECURITY_IOC_MAGIC, 0x11, signed int)
 #define SECURITY_IOC_G_XX_LEN   _IOR(SECURITY_IOC_MAGIC, 0x12, signed int)
 #define SECURITY_IOC_G_IN_STU   _IOR(SECURITY_IOC_MAGIC, 0x13, signed int) // get in status
+#define SECURITY_IOC_B_SN_RAW	_IOW(SECURITY_IOC_MAGIC, 0x14, security_sn_t)
+#define SECURITY_IOC_B_IN_RAW	_IOW(SECURITY_IOC_MAGIC, 0x15, security_in_t)
+#define SECURITY_IOC_B_MAC	 	_IOW(SECURITY_IOC_MAGIC, 0x16, security_mac_t)
+#define SECURITY_IOC_G_MAC		_IOR(SECURITY_IOC_MAGIC, 0x17, security_mac_t)
+// get hash256 when burn the chip
+#define SECURITY_IOC_G_SH_256	_IOWR(SECURITY_IOC_MAGIC, 0x18, signed int)
 
 #define SECURITY_DEVICE_NODE_NAME  "security"
 #define SECURITY_DEVICE_FILE_NAME  "security_device"
