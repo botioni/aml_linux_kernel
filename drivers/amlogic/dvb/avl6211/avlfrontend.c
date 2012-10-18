@@ -325,7 +325,7 @@ static int AVL6211_Blindscan_Cancel(struct dvb_frontend* fe)
 }
 
 
-static int AVL6211_Blindscan_Readchannelinfo(struct dvb_frontend* fe, struct dvb_frontend_parameters *pchannel)
+static int AVL6211_Blindscan_Readchannelinfo(struct dvb_frontend* fe, struct dvbsx_frontend_parameters *pchannel)
 {
 		struct AVL_DVBSx_BlindScanAPI_Setting  pBSsetting;
 		unsigned short pChannelCount;
@@ -341,8 +341,8 @@ static int AVL6211_Blindscan_Readchannelinfo(struct dvb_frontend* fe, struct dvb
 		
 		}
 		for( i1=0; i1<pChannelCount; i1++ ){
-		pchannel[i1].frequency=pBSsetting.channels_Temp[i1].m_uiFrequency_kHz;
-		pchannel[i1].u.qam.symbol_rate=pBSsetting.channels_Temp[i1].m_uiSymbolRate_Hz;
+		pchannel->parameters[i1].frequency=pBSsetting.channels_Temp[i1].m_uiFrequency_kHz;
+		pchannel->parameters[i1].u.qam.symbol_rate=pBSsetting.channels_Temp[i1].m_uiSymbolRate_Hz;
 		}
 		return r;
 }

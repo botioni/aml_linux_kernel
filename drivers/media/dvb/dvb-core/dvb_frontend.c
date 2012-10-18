@@ -1937,7 +1937,7 @@ static int dvb_frontend_ioctl_legacy(struct inode *inode, struct file *file,
 	case FE_READ_BLINDSCANCHANNELINFO:
 		printk("FE_READ_BLINDSCANCHANNELINFO\n");
 		if (fe->ops.blindscan_readchannelinfo)
-			err = fe->ops.blindscan_readchannelinfo(fe, (struct dvb_frontend_parameters*) parg);
+			err = fe->ops.blindscan_readchannelinfo(fe, (struct dvbsx_frontend_parameters*) parg);
 
 		break;
 

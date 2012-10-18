@@ -564,7 +564,11 @@ static void vh264_set_params(int switch_done)
 
         if (timing_info_present_flag) {
             if ((num_units_in_tick * 120) >= time_scale && (!sync_outside)) {
-                frame_dur = div_u64(96000ULL * 2 * num_units_in_tick, time_scale);
+                u32 temp_dur;
+                temp_dur = div_u64(96000ULL * 2 * num_units_in_tick, time_scale);
+                if (temp_dur != 0) {
+                    frame_dur = temp_dur;
+                }
             }
         }
 
@@ -781,7 +785,7 @@ static void vh264_isr(void)
                             pts_duration = ((h264pts2 - h264pts1) / h264_pts_count) * 16 / 15;
                             duration_from_pts_done = 1;
 
-                            if ((pts_duration != frame_dur) && (!pts_outside) && (!use_idr_framerate)) {
+                            if ((pts_duration != frame_dur) && (!pts_outside) && ((!use_idr_framerate) || (!frame_dur))) {
                                 frame_dur = pts_duration;
                             }
                         }
