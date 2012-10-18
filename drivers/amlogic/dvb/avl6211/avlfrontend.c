@@ -82,6 +82,7 @@ module_param(frontend_demod_addr, int, S_IRUGO);
 
 static int frontend_LNB = -1;
 static int frontend_PWR = -1;
+static int frontend_ANT = -1;
 
 static struct aml_fe avl6211_fe[FE_DEV_COUNT];
 
@@ -113,7 +114,10 @@ static int AVL6211_Tuner_Power_Ctrl(int tunerpwr)
 	return 0;
 }
 
-
+static int AVL6211_Ant_Overload_Ctrl(void)
+{
+	return gpio_get_value(frontend_ANT);
+}
 
 static int	AVL6211_Diseqc_Reset_Overload(struct dvb_frontend* fe)
 {
@@ -613,6 +617,23 @@ static void AVL6211_Release(struct dvb_frontend *fe)
 	kfree(state);
 }
 
+static ssize_t avl_frontend_show_short_circuit(struct class* class, struct class_attribute* attr, char* buf)
+{
+	int ant_overload_status = AVL6211_Ant_Overload_Ctrl();
+	
+	return sprintf(buf, "%d\n", ant_overload_status);
+}
+
+static struct class_attribute avl_frontend_class_attrs[] = {
+	__ATTR(short_circuit,  S_IRUGO | S_IWUSR, avl_frontend_show_short_circuit, NULL),
+	__ATTR_NULL
+};
+
+static struct class avl_frontend_class = {
+	.name = "avl_frontend",
+	.class_attrs = avl_frontend_class_attrs,
+};
+
 static struct dvb_frontend_ops avl6211_ops;
 
 struct dvb_frontend *avl6211_attach(const struct avl6211_fe_config *config)
@@ -787,6 +808,17 @@ static int avl6211_fe_init(struct aml_dvb *advb, struct platform_device *pdev, s
 			goto err_resource;
 		}
 		frontend_PWR = res->start;
+
+		snprintf(buf, sizeof(buf), "frontend%d_ANTOVERLOAD", id);
+		res = platform_get_resource_byname(pdev, IORESOURCE_MEM, buf);
+		if (!res) {
+			pr_error("cannot get resource \"%s\"\n", buf);
+			ret = -EINVAL;
+			goto err_resource;
+		}
+		frontend_ANT = res->start;
+
+		gpio_direction_input(frontend_ANT);
 	
 
 	frontend_reset = cfg->reset_pin;
@@ -840,20 +872,35 @@ int avl6211_get_fe_config(struct avl6211_fe_config *cfg)
 
 static int avl6211_fe_probe(struct platform_device *pdev)
 {
+	int ret = 0;
 	struct aml_dvb *dvb = aml_get_dvb_device();
 	
 	if(avl6211_fe_init(dvb, pdev, &avl6211_fe[0], 0)<0)
 		return -ENXIO;
 
 	platform_set_drvdata(pdev, &avl6211_fe[0]);
+
+	if((ret = class_register(&avl_frontend_class))<0) {
+		pr_error("register class error\n");
+
+		struct aml_fe *drv_data = platform_get_drvdata(pdev);
+		
+		platform_set_drvdata(pdev, NULL);
 	
-	return 0;
+		avl6211_fe_release(dvb, drv_data);
+
+		return ret;
+	}
+	
+	return ret;
 }
 
 static int avl6211_fe_remove(struct platform_device *pdev)
 {
 	struct aml_fe *drv_data = platform_get_drvdata(pdev);
 	struct aml_dvb *dvb = aml_get_dvb_device();
+
+	class_unregister(&avl_frontend_class);
 
 	platform_set_drvdata(pdev, NULL);
 	
