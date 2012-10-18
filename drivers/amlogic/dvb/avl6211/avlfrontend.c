@@ -472,6 +472,11 @@ static int AVL6211_Set_Frontend(struct dvb_frontend *fe, struct dvb_frontend_par
 	if(1==blindstart)
 		return;
 	AVL_DVBSx_IBSP_WaitSemaphore(&blindscanSem);
+	if((850000<p->frequency)||(p->frequency>2300000))
+	{
+			p->frequency =945000;
+			pr_dbg("freq is out of range,force to set 945000khz\n");
+	}
 	struct avl6211_state *state = fe->demodulator_priv;
 	struct AVL_DVBSx_Channel Channel;
 	AVL_DVBSx_ErrorCode r = AVL_DVBSx_EC_OK;
