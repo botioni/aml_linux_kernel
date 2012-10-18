@@ -496,12 +496,12 @@ void tsync_avevent_locked(avevent_t event, u32 param)
 
     case AUDIO_RESUME:
 		timestamp_apts_enable(1);
+		apause_flag = 0;
 		
         if (!tsync_enable) {
             break;
         }
-        timestamp_pcrscr_enable(1);
-        apause_flag = 0;
+        timestamp_pcrscr_enable(1);        
         break;
 
     case AUDIO_STOP:
