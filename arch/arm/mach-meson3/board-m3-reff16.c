@@ -1842,6 +1842,12 @@ static struct resource avl6211_resource[]  = {
 	.flags = IORESOURCE_MEM,
 	.name  = "frontend0_POWERON/OFF"
 	},	
+	[7] = {
+	.start = (GPIOB_bank_bit0_23(20)<<16)|GPIOB_bit_bit0_23(20),
+	.end   = (GPIOB_bank_bit0_23(20)<<16)|GPIOB_bit_bit0_23(20),
+	.flags = IORESOURCE_MEM,
+	.name  = "frontend0_ANTOVERLOAD"
+	},		
 };
 
 static  struct platform_device avl6211_device = {
