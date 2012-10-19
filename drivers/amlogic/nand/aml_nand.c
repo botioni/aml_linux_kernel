@@ -667,7 +667,8 @@ void aml_nand_get_slc_default_value_hynix(struct mtd_info *mtd)
 
 void aml_nand_get_read_default_value_hynix(struct mtd_info *mtd)
 {
-	struct mtd_oob_ops aml_oob_ops;
+	//struct mtd_oob_ops aml_oob_ops;
+	struct mtd_oob_ops  *aml_oob_ops;//my_
 	struct aml_nand_chip *aml_chip = mtd_to_nand_chip(mtd);
 	struct nand_chip *chip = mtd->priv;
 	size_t addr;
@@ -676,6 +677,10 @@ void aml_nand_get_read_default_value_hynix(struct mtd_info *mtd)
 	unsigned char page_list[RETRY_NAND_COPY_NUM] = {0x07, 0x0B, 0x0F, 0x13};
 	int error = 0, i, j, k, nand_type, total_blk, phys_erase_shift = fls(mtd->erasesize) - 1;
 
+	aml_oob_ops = kzalloc(sizeof(struct mtd_oob_ops), GFP_KERNEL);
+	if (aml_oob_ops == NULL)
+		return -ENOMEM; //my_
+	
 	data_buf = kzalloc(mtd->writesize, GFP_KERNEL);
 	if (data_buf == NULL){
 		printk("%s %d no mem for databuf and mtd->writesize:%d \n", __func__, __LINE__, mtd->writesize);
@@ -703,31 +708,33 @@ void aml_nand_get_read_default_value_hynix(struct mtd_info *mtd)
 			continue;
 		}
 		
-		aml_oob_ops.mode = MTD_OOB_AUTO;
-		aml_oob_ops.len = mtd->writesize;
-		aml_oob_ops.ooblen = 4;
-		aml_oob_ops.ooboffs = mtd->ecclayout->oobfree[0].offset;
-		aml_oob_ops.datbuf = data_buf;
-		aml_oob_ops.oobbuf = oob_buf;
+		aml_oob_ops->mode = MTD_OOB_AUTO;
+		aml_oob_ops->len = mtd->writesize;
+		aml_oob_ops->ooblen = 4;
+		aml_oob_ops->ooboffs = mtd->ecclayout->oobfree[0].offset;
+		aml_oob_ops->datbuf = data_buf;
+		aml_oob_ops->oobbuf = oob_buf;
 
 		memset(oob_buf, 0, 4);
-		memset((unsigned char *)aml_oob_ops.datbuf, 0x0, mtd->writesize);
-		memset((unsigned char *)aml_oob_ops.oobbuf, 0x0, aml_oob_ops.ooblen);
+		//memset((unsigned char *)aml_oob_ops.datbuf, 0x0, mtd->writesize);
+		//memset((unsigned char *)aml_oob_ops.oobbuf, 0x0, aml_oob_ops.ooblen);
+		memset((unsigned char *)aml_oob_ops->datbuf, 0x0, mtd->writesize);
+		memset((unsigned char *)aml_oob_ops->oobbuf, 0x0, aml_oob_ops->ooblen);
 
 		for(i=0;i<RETRY_NAND_COPY_NUM;i++){
 			memset(oob_buf, 0, 4);
-			memset((unsigned char *)aml_oob_ops.datbuf, 0x0, mtd->writesize);
-			memset((unsigned char *)aml_oob_ops.oobbuf, 0x0, aml_oob_ops.ooblen);		
+			memset((unsigned char *)aml_oob_ops->datbuf, 0x0, mtd->writesize);
+			memset((unsigned char *)aml_oob_ops->oobbuf, 0x0, aml_oob_ops->ooblen);		
 			nand_type = aml_chip->new_nand_info.type;
 			aml_chip->new_nand_info.type = 0;
-			error = mtd->read_oob(mtd, (addr +  page_list[i]*mtd->writesize), &aml_oob_ops);
+			error = mtd->read_oob(mtd, (addr +  page_list[i]*mtd->writesize), aml_oob_ops);
 			aml_chip->new_nand_info.type = nand_type;
 			if ((error != 0) && (error != -EUCLEAN)) {
 				printk("%s %d read oob failed at blk:%d, page:%d\n", __func__, __LINE__, addr>> phys_erase_shift, (addr +  page_list[i]*mtd->writesize)/mtd->writesize);
 				continue;
 			}			
 			if (!memcmp(oob_buf, RETRY_NAND_MAGIC, 4)){ 
-				memcpy(&aml_chip->new_nand_info.read_rety_info.reg_default_value[0][0], (unsigned char *)aml_oob_ops.datbuf, MAX_CHIP_NUM*READ_RETRY_REG_NUM);
+				memcpy(&aml_chip->new_nand_info.read_rety_info.reg_default_value[0][0], (unsigned char *)aml_oob_ops->datbuf, MAX_CHIP_NUM*READ_RETRY_REG_NUM);
 				//memcpy(&aml_chip->new_nand_info.slc_program_info.reg_default_value[0][0], (unsigned char *)aml_oob_ops.datbuf, MAX_CHIP_NUM*ENHANCE_SLC_REG_NUM);
 				printk("%s %d get default reg value at blk:%d, page:%d\n", __func__, __LINE__, addr>> phys_erase_shift, (addr +  page_list[i]*mtd->writesize)/mtd->writesize);
 				for(i=0; i<aml_chip->chip_num; i++){
@@ -742,7 +749,7 @@ void aml_nand_get_read_default_value_hynix(struct mtd_info *mtd)
 				}
 
 				if((aml_chip->new_nand_info.type == HYNIX_20NM_8GB) || (aml_chip->new_nand_info.type == HYNIX_20NM_4GB)){
-					memcpy(&aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][0][0], (unsigned char *)(aml_oob_ops.datbuf+MAX_CHIP_NUM*READ_RETRY_REG_NUM), 		
+					memcpy(&aml_chip->new_nand_info.read_rety_info.reg_offset_value[0][0][0], (unsigned char *)(aml_oob_ops->datbuf+MAX_CHIP_NUM*READ_RETRY_REG_NUM), 		
 															MAX_CHIP_NUM*READ_RETRY_CNT*READ_RETRY_REG_NUM);
 
 					for(i=0; i<aml_chip->chip_num; i++){
@@ -788,7 +795,8 @@ void aml_nand_get_read_default_value_hynix(struct mtd_info *mtd)
 
 READ_OK:	
 
-	kfree(data_buf);	
+	kfree(data_buf);
+	kfree(aml_oob_ops);
 
 }
 /*******************************************TOSHIBA*********************************************/
@@ -3132,9 +3140,12 @@ static int aml_nand_block_bad(struct mtd_info *mtd, loff_t ofs, int getchip)
 	struct nand_chip * chip = mtd->priv;	
 	struct aml_nand_chip *aml_chip = mtd_to_nand_chip(mtd);
 	struct aml_nand_platform *plat = aml_chip->platform;
-	struct mtd_oob_ops aml_oob_ops;
+	//struct mtd_oob_ops aml_oob_ops;
+	struct mtd_oob_ops *aml_oob_ops;
 	int32_t ret = 0, read_cnt, page, mtd_erase_shift, blk_addr, pages_per_blk;
 	loff_t addr;
+
+
 
 	if ((!strncmp((char*)plat->name, NAND_BOOT_NAME, strlen((const char*)NAND_BOOT_NAME)))/* && ((chip->ecc.read_page == aml_nand_read_page_hwecc) || (!getchip))*/)
 		return 0;
@@ -3154,22 +3165,25 @@ static int aml_nand_block_bad(struct mtd_info *mtd, loff_t ofs, int getchip)
 			return 0;
 		}
 	}
-
+	
+	aml_oob_ops = kzalloc(sizeof(struct mtd_oob_ops), GFP_KERNEL);
+	if (aml_oob_ops == NULL)
+		return -ENOMEM; //my_
 	chip->pagebuf = -1;
 	pages_per_blk = (1 << (chip->phys_erase_shift - chip->page_shift));
 	if (getchip) {
 
-		aml_oob_ops.mode = MTD_OOB_AUTO;
-		aml_oob_ops.len = mtd->writesize;
-		aml_oob_ops.ooblen = mtd->oobavail;
-		aml_oob_ops.ooboffs = chip->ecc.layout->oobfree[0].offset;
-		aml_oob_ops.datbuf = chip->buffers->databuf;
-		aml_oob_ops.oobbuf = chip->oob_poi;
+		aml_oob_ops->mode = MTD_OOB_AUTO;
+		aml_oob_ops->len = mtd->writesize;
+		aml_oob_ops->ooblen = mtd->oobavail;
+		aml_oob_ops->ooboffs = chip->ecc.layout->oobfree[0].offset;
+		aml_oob_ops->datbuf = chip->buffers->databuf;
+		aml_oob_ops->oobbuf = chip->oob_poi;
 
 		for (read_cnt=0; read_cnt<2; read_cnt++) {
 
 			addr = ofs + (pages_per_blk - 1) * read_cnt * mtd->writesize;
-			ret = mtd->read_oob(mtd, addr, &aml_oob_ops);
+			ret = mtd->read_oob(mtd, addr, aml_oob_ops);
 			if (ret == -EUCLEAN)
 				ret = 0;
 
@@ -3177,11 +3191,11 @@ static int aml_nand_block_bad(struct mtd_info *mtd, loff_t ofs, int getchip)
 				printk(" NAND detect Bad block at %llx \n", (uint64_t)addr);
 				return EFAULT;
 			}
-			if (aml_oob_ops.oobbuf[chip->badblockpos] == 0xFF)
+			if (aml_oob_ops->oobbuf[chip->badblockpos] == 0xFF)
 				continue;
-			if (aml_oob_ops.oobbuf[chip->badblockpos] == 0) {
-				memset(aml_chip->aml_nand_data_buf, 0, aml_oob_ops.ooblen);
-				if (!memcmp(aml_chip->aml_nand_data_buf, aml_oob_ops.oobbuf, aml_oob_ops.ooblen)) {
+			if (aml_oob_ops->oobbuf[chip->badblockpos] == 0) {
+				memset(aml_chip->aml_nand_data_buf, 0, aml_oob_ops->ooblen);
+				if (!memcmp(aml_chip->aml_nand_data_buf, aml_oob_ops->oobbuf, aml_oob_ops->ooblen)) {
 					printk(" NAND detect Bad block at %llx \n", (uint64_t)addr);
 					return EFAULT;
 				}
@@ -3211,7 +3225,7 @@ static int aml_nand_block_bad(struct mtd_info *mtd, loff_t ofs, int getchip)
 			}
 		}
 	}
-
+	kfree(aml_oob_ops);
 	return 0;
 }
 
@@ -3219,8 +3233,13 @@ static int aml_nand_block_markbad(struct mtd_info *mtd, loff_t ofs)
 { 
 	struct nand_chip * chip = mtd->priv;	
 	struct aml_nand_chip *aml_chip = mtd_to_nand_chip(mtd);
-	struct mtd_oob_ops aml_oob_ops;
-	int blk_addr, mtd_erase_shift, j;
+	//struct mtd_oob_ops aml_oob_ops;
+	struct mtd_oob_ops  *aml_oob_ops;//my_
+	int blk_addr, mtd_erase_shift, j, ret;
+
+	aml_oob_ops = kzalloc(sizeof(struct mtd_oob_ops), GFP_KERNEL);
+	if (aml_oob_ops == NULL)
+		return -ENOMEM; //my_
 
 	mtd_erase_shift = fls(mtd->erasesize) - 1;
 	blk_addr = (int)(ofs >> mtd_erase_shift);
@@ -3241,18 +3260,20 @@ static int aml_nand_block_markbad(struct mtd_info *mtd, loff_t ofs)
 		}
 	}
 
-	aml_oob_ops.mode = MTD_OOB_AUTO;
-	aml_oob_ops.len = mtd->writesize;
-	aml_oob_ops.ooblen = mtd->oobavail;
-	aml_oob_ops.ooboffs = chip->ecc.layout->oobfree[0].offset;
-	aml_oob_ops.datbuf = chip->buffers->databuf;
-	aml_oob_ops.oobbuf = chip->oob_poi;
+	aml_oob_ops->mode = MTD_OOB_AUTO;
+	aml_oob_ops->len = mtd->writesize;
+	aml_oob_ops->ooblen = mtd->oobavail;
+	aml_oob_ops->ooboffs = chip->ecc.layout->oobfree[0].offset;
+	aml_oob_ops->datbuf = chip->buffers->databuf;
+	aml_oob_ops->oobbuf = chip->oob_poi;
 	chip->pagebuf = -1;
 
-	memset((unsigned char *)aml_oob_ops.datbuf, 0x0, mtd->writesize);
-	memset((unsigned char *)aml_oob_ops.oobbuf, 0x0, aml_oob_ops.ooblen);
+	memset((unsigned char *)aml_oob_ops->datbuf, 0x0, mtd->writesize);
+	memset((unsigned char *)aml_oob_ops->oobbuf, 0x0, aml_oob_ops->ooblen);
 
-	return mtd->write_oob(mtd, ofs, &aml_oob_ops);
+	ret = mtd->write_oob(mtd, ofs, aml_oob_ops);
+	kfree(aml_oob_ops);
+	return ret;
 }
 
 #ifdef CONFIG_HAS_EARLYSUSPEND
@@ -4374,13 +4395,18 @@ static int aml_nand_read_env (struct mtd_info *mtd, size_t offset, u_char * buf)
 	size_t addr = 0;
 	size_t amount_loaded = 0;
 	size_t len;
-	struct mtd_oob_ops aml_oob_ops;
+	//struct mtd_oob_ops aml_oob_ops;
+	struct mtd_oob_ops  * aml_oob_ops; //my_
 	unsigned char *data_buf;
 	unsigned char env_oob_buf[sizeof(struct env_oobinfo_t)];
 
 	struct aml_nand_chip *aml_chip = mtd_to_nand_chip(mtd);
 	if (!aml_chip->aml_nandenv_info->env_valid)
 		return 1;
+
+	aml_oob_ops = kzalloc(sizeof(struct mtd_oob_ops), GFP_KERNEL);
+	if (aml_oob_ops == NULL)
+		return -ENOMEM; //my_
 
 	addr = (1024 * mtd->writesize / aml_chip->plane_num);
 #ifdef NEW_NAND_SUPPORT
@@ -4400,20 +4426,21 @@ static int aml_nand_read_env (struct mtd_info *mtd, size_t offset, u_char * buf)
 	env_oobinfo = (struct env_oobinfo_t *)env_oob_buf;
 	while (amount_loaded < CONFIG_ENV_SIZE ) {
 
-		aml_oob_ops.mode = MTD_OOB_AUTO;
-		aml_oob_ops.len = mtd->writesize;
-		aml_oob_ops.ooblen = sizeof(struct env_oobinfo_t);
-		aml_oob_ops.ooboffs = mtd->ecclayout->oobfree[0].offset;
-		aml_oob_ops.datbuf = data_buf;
-		aml_oob_ops.oobbuf = env_oob_buf;
+		aml_oob_ops->mode = MTD_OOB_AUTO;
+		aml_oob_ops->len = mtd->writesize;
+		aml_oob_ops->ooblen = sizeof(struct env_oobinfo_t);
+		aml_oob_ops->ooboffs = mtd->ecclayout->oobfree[0].offset;
+		aml_oob_ops->datbuf = data_buf;
+		aml_oob_ops->oobbuf = env_oob_buf;
 
-		memset((unsigned char *)aml_oob_ops.datbuf, 0x0, mtd->writesize);
-		memset((unsigned char *)aml_oob_ops.oobbuf, 0x0, aml_oob_ops.ooblen);
+		memset((unsigned char *)aml_oob_ops->datbuf, 0x0, mtd->writesize);
+		memset((unsigned char *)aml_oob_ops->oobbuf, 0x0, aml_oob_ops->ooblen);
 
-		error = mtd->read_oob(mtd, addr, &aml_oob_ops);
+		error = mtd->read_oob(mtd, addr, aml_oob_ops);
 		if ((error != 0) && (error != -EUCLEAN)) {
 			printk("blk check good but read failed: %llx, %d\n", (uint64_t)addr, error);
-			return 1;
+			//return 1; 
+			goto exit;
 		}
 
 		if (memcmp(env_oobinfo->name, ENV_NAND_MAGIC, 4)) 
@@ -4425,10 +4452,17 @@ static int aml_nand_read_env (struct mtd_info *mtd, size_t offset, u_char * buf)
 		amount_loaded += mtd->writesize;
 	}
 	if (amount_loaded < CONFIG_ENV_SIZE)
-		return 1;
-
+		//return 1;
+		goto exit;
+	
 	kfree(data_buf);
+	kfree(aml_oob_ops);
 	return 0;
+
+exit:
+	kfree(data_buf);
+	kfree(aml_oob_ops);
+	return 1;
 }
 
 static int aml_nand_write_env(struct mtd_info *mtd, loff_t offset, u_char *buf)
@@ -4438,11 +4472,18 @@ static int aml_nand_write_env(struct mtd_info *mtd, loff_t offset, u_char *buf)
 	loff_t addr = 0;
 	size_t amount_saved = 0;
 	size_t len;
-	struct mtd_oob_ops aml_oob_ops;
+	//struct mtd_oob_ops aml_oob_ops;
+	
+	struct mtd_oob_ops  * aml_oob_ops; //my_
 	unsigned char *data_buf;
 	unsigned char env_oob_buf[sizeof(struct env_oobinfo_t)];
 
 	struct aml_nand_chip *aml_chip = mtd_to_nand_chip(mtd);
+
+	aml_oob_ops = kzalloc(sizeof(struct mtd_oob_ops), GFP_KERNEL);
+	if (aml_oob_ops == NULL)
+		return -ENOMEM; //my_
+	
 	data_buf = kzalloc(mtd->writesize, GFP_KERNEL);
 	if (data_buf == NULL)
 		return -ENOMEM;
@@ -4456,31 +4497,39 @@ static int aml_nand_write_env(struct mtd_info *mtd, loff_t offset, u_char *buf)
 
 	while (amount_saved < CONFIG_ENV_SIZE ) {
 
-		aml_oob_ops.mode = MTD_OOB_AUTO;
-		aml_oob_ops.len = mtd->writesize;
-		aml_oob_ops.ooblen = sizeof(struct env_oobinfo_t);
-		aml_oob_ops.ooboffs = mtd->ecclayout->oobfree[0].offset;
-		aml_oob_ops.datbuf = data_buf;
-		aml_oob_ops.oobbuf = env_oob_buf;
+		aml_oob_ops->mode = MTD_OOB_AUTO;
+		aml_oob_ops->len = mtd->writesize;
+		aml_oob_ops->ooblen = sizeof(struct env_oobinfo_t);
+		aml_oob_ops->ooboffs = mtd->ecclayout->oobfree[0].offset;
+		aml_oob_ops->datbuf = data_buf;
+		aml_oob_ops->oobbuf = env_oob_buf;
 
-		memset((unsigned char *)aml_oob_ops.datbuf, 0x0, mtd->writesize);
+		memset((unsigned char *)aml_oob_ops->datbuf, 0x0, mtd->writesize);
 		len = min(mtd->writesize, CONFIG_ENV_SIZE - amount_saved);
-		memcpy((unsigned char *)aml_oob_ops.datbuf, buf + amount_saved, len);
+		memcpy((unsigned char *)aml_oob_ops->datbuf, buf + amount_saved, len);
 
-		error = mtd->write_oob(mtd, addr, &aml_oob_ops);
+		error = mtd->write_oob(mtd, addr, aml_oob_ops);
 		if (error) {
 			printk("blk check good but write failed: %llx, %d\n", (uint64_t)addr, error);
-			return 1;
+					//return 1;
+			goto exit;
 		}
 
 		addr += mtd->writesize;;
 		amount_saved += mtd->writesize;
 	}
 	if (amount_saved < CONFIG_ENV_SIZE)
-		return 1;
+				//return 1;
+		goto exit;
 
 	kfree(data_buf);
+	kfree(aml_oob_ops);
 	return 0;
+
+exit:
+	kfree(data_buf);
+	kfree(aml_oob_ops);
+	return 1;	
 }
 
 static int aml_nand_save_env(struct mtd_info *mtd, u_char *buf)
@@ -4489,12 +4538,17 @@ static int aml_nand_save_env(struct mtd_info *mtd, u_char *buf)
 	struct env_free_node_t *env_free_node, *env_tmp_node;
 	int error = 0, pages_per_blk, i = 1;
 	loff_t addr = 0;
-	struct erase_info aml_env_erase_info;
+	//struct erase_info aml_env_erase_info;
+	struct erase_info  *aml_env_erase_info; //my_
 	env_t *env_ptr = (env_t *)buf;
 
 	struct aml_nand_chip *aml_chip = mtd_to_nand_chip(mtd);
 	if (!aml_chip->aml_nandenv_info->env_init) 
 		return 1;
+
+	aml_env_erase_info = kzalloc(sizeof(struct erase_info), GFP_KERNEL);
+	if(aml_env_erase_info == NULL)
+		return  -ENOMEM; //my_
 
 	pages_per_blk = mtd->erasesize / mtd->writesize;
 	if ((mtd->writesize < CONFIG_ENV_SIZE) && (aml_chip->aml_nandenv_info->env_valid == 1))
@@ -4541,12 +4595,12 @@ static int aml_nand_save_env(struct mtd_info *mtd, u_char *buf)
 	addr += aml_chip->aml_nandenv_info->env_valid_node->phy_page_addr * mtd->writesize;
 	if (aml_chip->aml_nandenv_info->env_valid_node->phy_page_addr == 0) {
 
-		memset(&aml_env_erase_info, 0, sizeof(struct erase_info));
-		aml_env_erase_info.mtd = mtd;
-		aml_env_erase_info.addr = addr;
-		aml_env_erase_info.len = mtd->erasesize;
+		memset(aml_env_erase_info, 0, sizeof(struct erase_info));
+		aml_env_erase_info->mtd = mtd;
+		aml_env_erase_info->addr = addr;
+		aml_env_erase_info->len = mtd->erasesize;
 
-		error = mtd->erase(mtd, &aml_env_erase_info);
+		error = mtd->erase(mtd, aml_env_erase_info);
 		if (error) {
 			printk("env free blk erase failed %d\n", error);
 			mtd->block_markbad(mtd, addr);
@@ -4566,6 +4620,7 @@ static int aml_nand_save_env(struct mtd_info *mtd, u_char *buf)
 		return 1;
 	}
 	
+	kfree(aml_env_erase_info);
 	return error;
 }
 
@@ -4575,11 +4630,17 @@ static int aml_nand_env_init(struct mtd_info *mtd)
 	struct nand_chip *chip = &aml_chip->chip;
 	struct env_oobinfo_t *env_oobinfo;
 	struct env_free_node_t *env_free_node, *env_tmp_node, *env_prev_node;
-	int error = 0, ret, start_blk, total_blk, env_blk, i, j, pages_per_blk, bad_blk_cnt = 0, max_env_blk, phys_erase_shift;
+	int error = 0, start_blk, total_blk, env_blk, i, j, pages_per_blk, bad_blk_cnt = 0, max_env_blk, phys_erase_shift;
 	loff_t offset;
 	unsigned char *data_buf;
-	struct mtd_oob_ops aml_oob_ops;
+	//struct mtd_oob_ops aml_oob_ops;
+	
+	struct mtd_oob_ops  *aml_oob_ops; //my_
 	unsigned char env_oob_buf[sizeof(struct env_oobinfo_t)];
+
+	aml_oob_ops = kzalloc(sizeof(struct mtd_oob_ops), GFP_KERNEL);
+	if (aml_oob_ops == NULL)
+		return -ENOMEM;   //my_
 
 	data_buf = kzalloc(mtd->writesize, GFP_KERNEL);
 	if (data_buf == NULL)
@@ -4634,17 +4695,17 @@ static int aml_nand_env_init(struct mtd_info *mtd)
 			continue;
 		}
 
-		aml_oob_ops.mode = MTD_OOB_AUTO;
-		aml_oob_ops.len = mtd->writesize;
-		aml_oob_ops.ooblen = sizeof(struct env_oobinfo_t);
-		aml_oob_ops.ooboffs = mtd->ecclayout->oobfree[0].offset;
-		aml_oob_ops.datbuf = data_buf;
-		aml_oob_ops.oobbuf = env_oob_buf;
+		aml_oob_ops->mode = MTD_OOB_AUTO;
+		aml_oob_ops->len = mtd->writesize;
+		aml_oob_ops->ooblen = sizeof(struct env_oobinfo_t);
+		aml_oob_ops->ooboffs = mtd->ecclayout->oobfree[0].offset;
+		aml_oob_ops->datbuf = data_buf;
+		aml_oob_ops->oobbuf = env_oob_buf;
 
-		memset((unsigned char *)aml_oob_ops.datbuf, 0x0, mtd->writesize);
-		memset((unsigned char *)aml_oob_ops.oobbuf, 0x0, aml_oob_ops.ooblen);
+		memset((unsigned char *)aml_oob_ops->datbuf, 0x0, mtd->writesize);
+		memset((unsigned char *)aml_oob_ops->oobbuf, 0x0, aml_oob_ops->ooblen);
 
-		error = mtd->read_oob(mtd, offset, &aml_oob_ops);
+		error = mtd->read_oob(mtd, offset, aml_oob_ops);
 		if ((error != 0) && (error != -EUCLEAN)) {
 			printk("blk check good but read failed: %llx, %d\n", (uint64_t)offset, error);
 			continue;
@@ -4730,22 +4791,22 @@ static int aml_nand_env_init(struct mtd_info *mtd)
 
 	if (aml_chip->aml_nandenv_info->env_valid == 1) {
 
-		aml_oob_ops.mode = MTD_OOB_AUTO;
-		aml_oob_ops.len = mtd->writesize;
-		aml_oob_ops.ooblen = sizeof(struct env_oobinfo_t);
-		aml_oob_ops.ooboffs = mtd->ecclayout->oobfree[0].offset;
-		aml_oob_ops.datbuf = data_buf;
-		aml_oob_ops.oobbuf = env_oob_buf;
+		aml_oob_ops->mode = MTD_OOB_AUTO;
+		aml_oob_ops->len = mtd->writesize;
+		aml_oob_ops->ooblen = sizeof(struct env_oobinfo_t);
+		aml_oob_ops->ooboffs = mtd->ecclayout->oobfree[0].offset;
+		aml_oob_ops->datbuf = data_buf;
+		aml_oob_ops->oobbuf = env_oob_buf;
 
 		for (i=0; i<pages_per_blk; i++) {
 
-			memset((unsigned char *)aml_oob_ops.datbuf, 0x0, mtd->writesize);
-			memset((unsigned char *)aml_oob_ops.oobbuf, 0x0, aml_oob_ops.ooblen);
+			memset((unsigned char *)aml_oob_ops->datbuf, 0x0, mtd->writesize);
+			memset((unsigned char *)aml_oob_ops->oobbuf, 0x0, aml_oob_ops->ooblen);
 
 			offset = aml_chip->aml_nandenv_info->env_valid_node->phy_blk_addr;
 			offset *= mtd->erasesize;
 			offset += i * mtd->writesize;
-			error = mtd->read_oob(mtd, offset, &aml_oob_ops);
+			error = mtd->read_oob(mtd, offset, aml_oob_ops);
 			if ((error != 0) && (error != -EUCLEAN)) {
 				printk("blk check good but read failed: %llx, %d\n", (uint64_t)offset, error);
 				continue;
@@ -4766,8 +4827,10 @@ static int aml_nand_env_init(struct mtd_info *mtd)
 	offset *= mtd->erasesize;
 	offset += aml_chip->aml_nandenv_info->env_valid_node->phy_page_addr * mtd->writesize;
 	printk("aml nand env valid addr: %llx \n", (uint64_t)offset);
-
+	printk(KERN_DEBUG "CONFIG_ENV_SIZE=0x%x; ENV_SIZE=0x%x; bbt=0x%x; default_environment_size=0x%x\n",
+		CONFIG_ENV_SIZE, ENV_SIZE, sizeof(struct aml_nand_bbt_info), default_environment_size);
 	kfree(data_buf);
+	kfree(aml_oob_ops);
 	return 0;
 }
 
@@ -5243,7 +5306,7 @@ static ssize_t nand_page_read(struct class *class,
     struct aml_nand_chip *aml_chip = container_of(class, struct aml_nand_chip, cls);
     struct mtd_info *mtd = &aml_chip->mtd;
 
-    struct mtd_oob_ops ops;
+    //struct mtd_oob_ops ops;
     loff_t off;
     loff_t addr;
     u_char *datbuf, *oobbuf, *p;
