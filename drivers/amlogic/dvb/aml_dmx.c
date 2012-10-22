@@ -569,19 +569,21 @@ static irqreturn_t dvr_irq_handler(int irq_number, void *para)
 	struct aml_dmx *dmx;
 	u32 size;
 	u8 *p;
-	int i;
+	int i, factor;
 
-	//pr_dbg("dvr irq: fifo %d, dmx %d\n", afifo->id, afifo->source);
+	pr_dbg("dvr irq: fifo %d, dmx %d\n", afifo->id, afifo->source);
 	if (dvb && afifo->source >= AM_DMX_0 && afifo->source < AM_DMX_MAX) {
 		dmx = &dvb->dmx[afifo->source];
 		if (dmx->init && dmx->record) {
+			factor = (afifo->buf_len/afifo->flush_size)>>1;
 			for(i=0; i<CHANNEL_COUNT; i++) {
 				if(dmx->channel[i].used && dmx->channel[i].dvr_feed) {
-					size = afifo->buf_len >> 1;
+					size = afifo->buf_len >> factor;
 					p = (u8*)afifo->pages + afifo->buf_toggle * size;
 			
-					afifo->buf_toggle ^= 1;
-					//pr_dbg("write data to dvr: buf %p, size %u\n", p, size);
+					afifo->buf_toggle++;
+					afifo->buf_toggle %= (1 << factor);
+					pr_dbg("write data to dvr: buf %p, size %u\n", p, size);
 					dmx->channel[i].dvr_feed->cb.ts(p, size, NULL, 0, &dmx->channel[i].dvr_feed->feed.ts, DMX_OK);
 					break;
 				}
@@ -881,6 +883,10 @@ static int asyncfifo_alloc_buffer(struct aml_asyncfifo *afifo)
 
 	afifo->buf_toggle = 0;
 	afifo->buf_len = 512*1024;
+	pr_error("async fifo %d buf size %d, flush size %d\n", afifo->id, afifo->buf_len, afifo->flush_size);
+	if (afifo->flush_size <= 0) {
+		afifo->flush_size = afifo->buf_len>>1;
+	}
 	afifo->pages = __get_free_pages(GFP_KERNEL, get_order(afifo->buf_len));
 	if(!afifo->pages) {
 		pr_error("cannot allocate async fifo buffer\n");
@@ -892,9 +898,10 @@ static int asyncfifo_alloc_buffer(struct aml_asyncfifo *afifo)
 
 int async_fifo_init(struct aml_asyncfifo *afifo)
 {
+	if (afifo->init) 
+		return 0;
 	afifo->source  = AM_DMX_MAX;
 	afifo->pages = 0;
-	afifo->buf_len = 0;
 	afifo->buf_toggle = 0;
 
 	if (afifo->asyncfifo_irq == -1) {
@@ -915,6 +922,8 @@ int async_fifo_init(struct aml_asyncfifo *afifo)
 
 int async_fifo_deinit(struct aml_asyncfifo *afifo)
 {
+	if (! afifo->init)
+		return 0;
 	CLEAR_ASYNC_FIFO_REG_MASK(afifo->id, REG1, 1 << ASYNC_FIFO_FLUSH_EN);
 	CLEAR_ASYNC_FIFO_REG_MASK(afifo->id, REG2, 1 << ASYNC_FIFO_FILL_EN);
 	if (afifo->pages) {
@@ -922,14 +931,14 @@ int async_fifo_deinit(struct aml_asyncfifo *afifo)
 		afifo->pages = 0;
 	}
 	afifo->source  = AM_DMX_MAX;
-	afifo->buf_len = 0;
 	afifo->buf_toggle = 0;
 	
 	if (afifo->asyncfifo_irq != -1) {
 		free_irq(afifo->asyncfifo_irq, afifo);
 		tasklet_kill(&afifo->asyncfifo_tasklet);
-		afifo->asyncfifo_irq = -1;
 	}
+	
+	afifo->init = 0;
 
 	return 0;
 }
@@ -1540,9 +1549,11 @@ static void async_fifo_set_regs(struct aml_asyncfifo *afifo, int source_val)
 {
 	u32 start_addr = virt_to_phys((void*)afifo->pages);
 	u32 size = afifo->buf_len;
+	u32 flush_size = afifo->flush_size;
+	int factor = (size/flush_size)>>1;
 
-	pr_dbg("ASYNC FIFO id=%d, link to DMX%d, start_addr %x, buf_size %d, source value 0x%x\n",
-			afifo->id, afifo->source, start_addr, size, source_val);
+	pr_dbg("ASYNC FIFO id=%d, link to DMX%d, start_addr %x, buf_size %d, source value 0x%x, factor %d\n",
+			afifo->id, afifo->source, start_addr, size, source_val, factor);
 	/* Destination address*/
 	WRITE_ASYNC_FIFO_REG(afifo->id, REG0, start_addr);
 
@@ -1568,7 +1579,7 @@ static void async_fifo_set_regs(struct aml_asyncfifo *afifo, int source_val)
 					(0 << ASYNC_FIFO_FILL_CNT_LSB));   // forever FILL;
 	WRITE_ASYNC_FIFO_REG(afifo->id, REG2, READ_ASYNC_FIFO_REG(afifo->id, REG2) | (1 <<  ASYNC_FIFO_FILL_EN));       // Enable fill path
 
-	WRITE_ASYNC_FIFO_REG(afifo->id, REG3, READ_ASYNC_FIFO_REG(afifo->id, REG3) | ((((size >> 8) - 1) & 0x7fff) << ASYNC_FLUSH_SIZE_IRQ_LSB)); // generate flush interrupt
+	WRITE_ASYNC_FIFO_REG(afifo->id, REG3, (READ_ASYNC_FIFO_REG(afifo->id, REG3)&0xffff0000) | ((((size >> (factor + 7)) - 1) & 0x7fff) << ASYNC_FLUSH_SIZE_IRQ_LSB)); // generate flush interrupt
 
 	/* Connect the STB DEMUX to ASYNC_FIFO*/
 	WRITE_ASYNC_FIFO_REG(afifo->id, REG2, READ_ASYNC_FIFO_REG(afifo->id, REG2) | (source_val << ASYNC_FIFO_SOURCE_LSB));
@@ -2184,6 +2195,28 @@ int aml_asyncfifo_hw_deinit(struct aml_asyncfifo *afifo)
 	int ret;
 	spin_lock_irqsave(&afifo->slock, flags);
 	ret = async_fifo_deinit(afifo);
+	spin_unlock_irqrestore(&afifo->slock, flags);
+	
+	return ret;
+}
+
+int aml_asyncfifo_hw_reset(struct aml_asyncfifo *afifo)
+{
+	unsigned long flags;
+	int ret, src = -1;
+	spin_lock_irqsave(&afifo->slock, flags);
+	if (afifo->init) {
+		src = afifo->source;
+		async_fifo_deinit(afifo);
+	}
+	ret = async_fifo_init(afifo);
+	/* restore the source */
+	if (src != -1) {
+		afifo->source = src;
+	}
+	if(ret==0 && afifo->dvb) {
+		reset_async_fifos(afifo->dvb);
+	}
 	spin_unlock_irqrestore(&afifo->slock, flags);
 	
 	return ret;
