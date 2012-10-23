@@ -2340,8 +2340,8 @@ static int ethernet_resume(struct platform_device *dev)
 	// res = probe_init(my_ndev);
 //	res = netdev_open(my_ndev);
 	
-	mdio_write(dev, np->phys[0], 0,1<<15);
-	printk("phy sf reaet\n");
+	mdio_write(my_ndev, np->phys[0], 0,1<<15);
+	printk("phy sf reset\n");
 	if (res != 0) {
 		printk("nono, it can not be true!\n");
 	}
