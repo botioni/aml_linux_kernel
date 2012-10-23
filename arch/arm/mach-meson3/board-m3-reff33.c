@@ -20,6 +20,7 @@
 #include <linux/mtd/nand.h>
 #include <linux/mtd/nand_ecc.h>
 #include <linux/mtd/partitions.h>
+#include <linux/aml_eth.h>
 #include <linux/device.h>
 #include <linux/spi/flash.h>
 #include <mach/hardware.h>
@@ -80,35 +81,12 @@
 #include <linux/efuse.h>
 #endif
 
-#ifdef CONFIG_SUSPEND
-static int suspend_state=0;
-#endif
-
 #ifdef CONFIG_AML_HDMI_TX
 #include <linux/hdmi/hdmi_config.h>
 #endif
 
-#if defined(CONFIG_AML_HDMI_TX)
-static struct hdmi_phy_set_data brd_phy_data[] = {
-//    {27, 0xf7, 0x0},    // an example: set Reg0xf7 to 0 in 27MHz
-    {-1,   -1},         //end of phy setting
-};
-
-static struct hdmi_config_platform_data aml_hdmi_pdata ={
-    .hdmi_5v_ctrl = NULL,
-    .hdmi_3v3_ctrl = NULL,
-    .hdmi_pll_vdd_ctrl = NULL,
-    .hdmi_sspll_ctrl = NULL,
-    .phy_data = brd_phy_data,
-};
-
-static struct platform_device aml_hdmi_device = {
-    .name = "amhdmitx",
-    .id   = -1,
-    .dev  = {
-        .platform_data = &aml_hdmi_pdata,
-    }
-};
+#ifdef CONFIG_SUSPEND
+static int suspend_state=0;
 #endif
 
 #if defined(CONFIG_JPEGLOGO)
@@ -1585,7 +1563,58 @@ static struct platform_device aml_wdt_device = {
 };
 #endif
 
+#if defined(CONFIG_AML_HDMI_TX)
+static struct hdmi_phy_set_data brd_phy_data[] = {
+//    {27, 0xf7, 0x0},    // an example: set Reg0xf7 to 0 in 27MHz
+    {-1,   -1},         //end of phy setting
+};
+static struct hdmi_config_platform_data aml_hdmi_pdata ={
+    .hdmi_5v_ctrl = NULL,
+    .hdmi_3v3_ctrl = NULL,
+    .hdmi_pll_vdd_ctrl = NULL,
+    .hdmi_sspll_ctrl = NULL,
+    .phy_data = brd_phy_data,
+};
+
+static struct platform_device aml_hdmi_device = {
+    .name = "amhdmitx",
+    .id   = -1,
+    .dev  = {
+        .platform_data = &aml_hdmi_pdata,
+    }
+};
+#endif
+#define ETH_PM_DEV
+#if defined(ETH_PM_DEV)
+#define ETH_MODE_RMII_EXTERNAL
+static void meson_eth_clock_enable(int flag)
+{
+}
+
+static void meson_eth_reset(void)
+{
+    set_gpio_mode(GPIOD_bank_bit0_9(7), GPIOD_bit_bit0_9(7), GPIO_OUTPUT_MODE);
+    set_gpio_val(GPIOD_bank_bit0_9(7), GPIOD_bit_bit0_9(7), 0);
+    mdelay(100);
+    set_gpio_val(GPIOD_bank_bit0_9(7), GPIOD_bit_bit0_9(7), 1);
+}
+static struct aml_eth_platform_data  aml_pm_eth_platform_data ={
+    .clock_enable = meson_eth_clock_enable,
+    .reset = meson_eth_reset,
+};
+
+struct platform_device meson_device_eth = {
+	.name   = "ethernet_pm_driver",
+	.id     = -1,
+	.dev    = {
+		.platform_data = &aml_pm_eth_platform_data,
+	}
+};
+#endif
 static struct platform_device __initdata *platform_devs[] = {
+#if defined(ETH_PM_DEV)
+    &meson_device_eth,
+#endif
 #if defined(CONFIG_AML_HDMI_TX)
     &aml_hdmi_device,
 #endif
