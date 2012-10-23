@@ -1691,20 +1691,86 @@ static struct platform_device bt_device = {
 
 static void bt_device_init(void)
 {
+#ifdef CONFIG_BCM40183_WIFI
+        printk("-----------%s-----------\n", __FUNCTION__);
+        /* BT_RST_N GPIOD_3*/
+        CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0, 1<<23);
+        CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_1, 1<<18);
+        set_gpio_val(GPIOD_bank_bit0_9(3), GPIOD_bit_bit0_9(3), 0); 
+        set_gpio_mode(GPIOD_bank_bit0_9(3), GPIOD_bit_bit0_9(3), GPIO_OUTPUT_MODE);
+
+        /* BT_REG_EN GPIOD_2*/
+        CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0, 1<<22);
+        CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_1, 1<<19);
+        set_gpio_val(GPIOD_bank_bit0_9(2), GPIOD_bit_bit0_9(2), 0); 
+        set_gpio_mode(GPIOD_bank_bit0_9(2), GPIOD_bit_bit0_9(2), GPIO_OUTPUT_MODE);
+
+        /* BT_WAKE GPIOX_10*/
+        set_gpio_val(GPIOX_bank_bit0_31(10), GPIOX_bit_bit0_31(10), 0);
+        set_gpio_mode(GPIOD_bank_bit0_9(2), GPIOD_bit_bit0_9(2), GPIO_OUTPUT_MODE);
+
+        /*UART_A GPIOX_13~16*/
+        SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_4, 0xf<<10);
+
+        /*PCM GPIOX_17~20*/
+        CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, 0xff<<24);
+        CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_4, 0xf<<6);
+        CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_4, 0xf<<18);
+        SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_4, 0xf<<22);
+#endif /*CONFIG_BCM40183_WIFI*/
 }
 
 static void bt_device_on(void)
 {
+#ifdef CONFIG_BCM40183_WIFI
+        printk("-----------%s-----------\n", __FUNCTION__);
+        /* BT_REG_EN set to high */
+        set_gpio_val(GPIOD_bank_bit0_9(2), GPIOD_bit_bit0_9(2), 1);
+        msleep(50);
+        /* BT_RST_EN set to high */
+        set_gpio_val(GPIOD_bank_bit0_9(3), GPIOD_bit_bit0_9(3), 1);
+        /* BT_WAKE set to high */
+        set_gpio_val(GPIOX_bank_bit0_31(10), GPIOX_bit_bit0_31(10), 1);
+#endif /*CONFIG_BCM40183_WIFI*/
 }
 
 static void bt_device_off(void)
 {
+#ifdef CONFIG_BCM40183_WIFI
+        printk("-----------%s-----------\n", __FUNCTION__);
+        /* BT_REG_EN set to low */
+        set_gpio_val(GPIOD_bank_bit0_9(2), GPIOD_bit_bit0_9(2), 0);
+        /* BT_RST_EN set to low */
+        set_gpio_val(GPIOD_bank_bit0_9(3), GPIOD_bit_bit0_9(3), 0);
+        /* BT_WAKE set to low */
+        set_gpio_val(GPIOX_bank_bit0_31(10), GPIOX_bit_bit0_31(10), 0);
+#endif /*CONFIG_BCM40183_WIFI*/
+}
+
+static void bt_device_suspend(void)
+{
+#if defined(CONFIG_BCM40183_WIFI) & defined(BCM40181_POWER_ALWAYS_ON)
+        printk("-----------%s-----------\n", __FUNCTION__);
+        /* BT_WAKE set to low */
+        set_gpio_val(GPIOX_bank_bit0_31(10), GPIOX_bit_bit0_31(10), 0);
+#endif /*CONFIG_BCM40183_WIFI*/
+}
+
+static void bt_device_resume(void)
+{
+#if defined(CONFIG_BCM40183_WIFI) & defined(BCM40181_POWER_ALWAYS_ON)
+        printk("-----------%s-----------\n", __FUNCTION__);
+        /* BT_WAKE set to high */
+        set_gpio_val(GPIOX_bank_bit0_31(10), GPIOX_bit_bit0_31(10), 1);
+#endif /*CONFIG_BCM40183_WIFI*/
 }
 
 struct bt_dev_data bt_dev = {
     .bt_dev_init    = bt_device_init,
     .bt_dev_on      = bt_device_on,
     .bt_dev_off     = bt_device_off,
+    .bt_dev_suspend = bt_device_suspend,
+    .bt_dev_resume  = bt_device_resume,
 };
 #endif
 
