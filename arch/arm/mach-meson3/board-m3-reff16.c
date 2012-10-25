@@ -1988,11 +1988,23 @@ static struct resource ite9173_resource[]  = {
 		.name  = "frontend0_demod_addr"
 	},
 	[4] = {
-		.start = (GPIOB_bank_bit0_23(23)<<16)|GPIOB_bit_bit0_23(23),  //// ANT_PWR_CTRL pin
+		.start = (GPIOB_bank_bit0_23(21)<<16)|GPIOB_bit_bit0_23(21),  // TUNER_POWERC pin
+		.end   = (GPIOB_bank_bit0_23(21)<<16)|GPIOB_bit_bit0_23(21),
+		.flags = IORESOURCE_MEM,
+		.name  = "frontend0_TUNER_POWER"
+	},
+	[5] = {
+		.start = (GPIOB_bank_bit0_23(20)<<16)|GPIOB_bit_bit0_23(20),  // ANT_OVERLOAD pin
+		.end   = (GPIOB_bank_bit0_23(20)<<16)|GPIOB_bit_bit0_23(20),
+		.flags = IORESOURCE_MEM,
+		.name  = "frontend0_ANT_OVERLOAD"
+	},
+	[6] = {
+		.start = (GPIOB_bank_bit0_23(23)<<16)|GPIOB_bit_bit0_23(23),  //ANT_POWER pin
 		.end   = (GPIOB_bank_bit0_23(23)<<16)|GPIOB_bit_bit0_23(23),
 		.flags = IORESOURCE_MEM,
-		.name  = "frontend0_power"
-	},
+		.name  = "frontend0_ANT_POWER"
+	},	
 };
 
 static  struct platform_device ite9173_device = {
