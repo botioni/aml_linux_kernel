@@ -91,14 +91,6 @@ static int suspend_state=0;
 
 struct work_struct mutework;
 
-enum BOARD_TYPE{
-    RM0216_V12,
-    HD6023,
-    TCB008001
-};
-
-static enum BOARD_TYPE board_ver = HD6023;
-
 #if defined(CONFIG_JPEGLOGO)
 static struct resource jpeglogo_resources[] = {
     [0] = {
@@ -345,40 +337,10 @@ static struct platform_device amlogic_spi_nor_device = {
 #ifdef CONFIG_USB_DWC_OTG_HCD
 static void set_usb_a_vbus_power(char is_power_on)
 {
-  if(board_ver == HD6023){
-    if(is_power_on) {
-        printk(KERN_INFO "set usb a port power on !\n");
-        set_gpio_val(GPIOC_bank_bit0_15(5), GPIOC_bit_bit0_15(5), 1);
-    } else    {
-        printk(KERN_INFO "set usb a port power off !\n");
-        set_gpio_val(GPIOC_bank_bit0_15(5), GPIOC_bit_bit0_15(5), 0);
-    }
-    set_gpio_mode(GPIOC_bank_bit0_15(5), GPIOC_bit_bit0_15(5), GPIO_OUTPUT_MODE);
-  }
 }
 
 static void set_usb_b_vbus_power(char is_power_on)
 {
-  if(board_ver == RM0216_V12){
-    if(is_power_on) {
-        printk(KERN_INFO "set usb b port power on !\n");
-        set_gpio_val(GPIOC_bank_bit0_15(5), GPIOC_bit_bit0_15(5), 1);
-    } else    {
-        printk(KERN_INFO "set usb a port power off !\n");
-        set_gpio_val(GPIOC_bank_bit0_15(5), GPIOC_bit_bit0_15(5), 0);
-    }
-    set_gpio_mode(GPIOC_bank_bit0_15(5), GPIOC_bit_bit0_15(5), GPIO_OUTPUT_MODE);
-  }
-  if(board_ver == TCB008001){
-    if(is_power_on) {
-        printk(KERN_INFO "set usb b port power on !\n");
-        set_gpio_val(GPIOD_bank_bit0_9(4), GPIOD_bit_bit0_9(4), 1);
-    } else    {
-        printk(KERN_INFO "set usb b port power off !\n");
-        set_gpio_val(GPIOD_bank_bit0_9(4), GPIOD_bit_bit0_9(4), 0);
-    }
-    set_gpio_mode(GPIOD_bank_bit0_9(4), GPIOD_bit_bit0_9(4), GPIO_OUTPUT_MODE);
-  }
 }
 
 //usb_a is OTG port
@@ -483,11 +445,10 @@ static struct platform_device vdin_device = {
 #if defined(CONFIG_SDIO_DHD_CDC_WIFI_40181_MODULE_MODULE)
 /******************************
 *WL_Power_EN	-->NOPin
-*WL_REG_ON	-->GPIOC_8
+*WL_REG_ON	-->GPIOC_6
 *WIFI_32K		-->GPIOC_15(CLK_OUT1)
 *WIFIWAKE(WL_HOST_WAKE)-->GPIOX_11
 *******************************/
-//#define WL_REG_ON_USE_GPIOC_6
 void extern_wifi_power(int is_power)
 {//NOPin
 }
@@ -500,19 +461,11 @@ EXPORT_SYMBOL(extern_wifi_reset);
 void extern_wifi_set_enable(int enable)
 {
 	if(enable){
-#ifdef WL_REG_ON_USE_GPIOC_6
 		SET_CBUS_REG_MASK(PREG_PAD_GPIO2_O, (1<<6));
-#else
-		SET_CBUS_REG_MASK(PREG_PAD_GPIO2_O, (1<<8));
-#endif
 		printk("Enable WIFI  Module!\n");
 	}
     	else{
-#ifdef WL_REG_ON_USE_GPIOC_6
 		CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO2_O, (1<<6));
-#else
-		CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO2_O, (1<<8));
-#endif
 		printk("Disable WIFI  Module!\n");
 	}
 }
@@ -532,18 +485,10 @@ static void wifi_set_clk_enable(int on)
 
 static void wifi_gpio_init(void)
 {
-#ifdef WL_REG_ON_USE_GPIOC_6
     //set WL_REG_ON Pin GPIOC_6 out
         CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0, (1<<16));
         CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_1, (1<<5));
         CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO2_EN_N, (1<<6));  //GPIOC_6
-#else
-    //set WL_REG_ON Pin GPIOC_8 out 
-   	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_3, (1<<23));
-	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0, (1<<18));
-	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_1, (1<<10));
-     	CLEAR_CBUS_REG_MASK(PREG_PAD_GPIO2_EN_N, (1<<8));  //GPIOC_8
-#endif
 }
 
 
@@ -570,15 +515,19 @@ static struct resource amlogic_card_resource[] = {
 void sdio_extern_init(void)
 {
 	printk("sdio_extern_init !\n");
-	SET_CBUS_REG_MASK(PAD_PULL_UP_REG4, (1<<11));
+#if defined(CONFIG_BCM40181_HW_OOB) || defined(CONFIG_BCM40181_OOB_INTR_ONLY)
 	gpio_direction_input(GPIO_WIFI_HOSTWAKE);
 #if defined(CONFIG_BCM40181_WIFI)
+	CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_4, (1<<11));
+	SET_CBUS_REG_MASK(PAD_PULL_UP_REG4, (1<<15));
 	gpio_enable_level_int(gpio_to_idx(GPIO_WIFI_HOSTWAKE), 1, 4);  //for 40181
 #endif
 #if defined(CONFIG_BCM40183_WIFI)
+	SET_CBUS_REG_MASK(PAD_PULL_UP_REG4, (1<<11));
 	gpio_enable_edge_int(gpio_to_idx(GPIO_WIFI_HOSTWAKE), 0, 5);     //for 40183
 #endif 
-	//extern_wifi_set_enable(1);
+#endif
+	extern_wifi_set_enable(1);
 }
 #endif
 
@@ -685,11 +634,7 @@ int aml_m3_is_hp_pluged(void)
 static void do_mute_spk(struct work_struct *work)
 {
         msleep(600);
-        if(board_ver == RM0216_V12)
-                set_gpio_val(GPIOC_bank_bit0_15(4), GPIOC_bit_bit0_15(4), 0);    // unmute speak
-        else if((board_ver == HD6023)||(board_ver == TCB008001))
-                set_gpio_val(GPIOC_bank_bit0_15(4), GPIOC_bit_bit0_15(4), 1);    // unmute speak
-        set_gpio_mode(GPIOC_bank_bit0_15(4), GPIOC_bit_bit0_15(4), GPIO_OUTPUT_MODE);
+        set_gpio_val(GPIOC_bank_bit0_15(4), GPIOC_bit_bit0_15(4), 1);    // unmute speak
 }
 
 #include <sound/soc.h>
@@ -702,10 +647,7 @@ void mute_spk(struct snd_soc_codec* codec, int flag)
     if(flag == mute_status) return;
         else mute_status = flag; 
     if(flag){
-        if(board_ver == RM0216_V12)
-		set_gpio_val(GPIOC_bank_bit0_15(4), GPIOC_bit_bit0_15(4), 1);	 // mute speak
-        else if((board_ver == HD6023)||(board_ver == TCB008001))
-                set_gpio_val(GPIOC_bank_bit0_15(4), GPIOC_bit_bit0_15(4), 0);    // mute speak
+	set_gpio_val(GPIOC_bank_bit0_15(4), GPIOC_bit_bit0_15(4), 0);	 // mute speak
 	set_gpio_mode(GPIOC_bank_bit0_15(4), GPIOC_bit_bit0_15(4), GPIO_OUTPUT_MODE);
 	}else{
         schedule_work(&mutework);
@@ -819,11 +761,10 @@ typedef struct {
 	unsigned enable;
 } gpio_data_t;
 
-#define MAX_GPIO 4
+#define MAX_GPIO 3
 static gpio_data_t gpio_data[MAX_GPIO] = {
 {"GPIOD6--HDMI", 	GPIOD_bank_bit0_9(6), 	GPIOD_bit_bit0_9(6), 	GPIO_OUTPUT_MODE, 1, 1},
 {"GPIOD9--VCC5V", GPIOD_bank_bit0_9(9), 	GPIOD_bit_bit0_9(9), 	GPIO_OUTPUT_MODE, 1, 1},
-{"GPIOX29--MUTE", 	GPIOX_bank_bit0_31(29), GPIOX_bit_bit0_31(29), GPIO_OUTPUT_MODE, 1, 1},
 {"GPIOC4--MUTE",	GPIOC_bank_bit0_15(4), GPIOC_bit_bit0_15(4), GPIO_OUTPUT_MODE, 1, 1},
 };	
 
@@ -919,34 +860,13 @@ static void set_gpio_suspend_resume(int power_on)
     	printk("set gpio resume.\n");
 		 // HDMI
         hdmi_wr_reg(0x8005, 2); 
-		 udelay(50);
+	udelay(50);
         hdmi_wr_reg(0x8005, 1); 
-        if(board_ver == HD6023){
-            //POWER LED
-            set_gpio_val(GPIOAO_bank_bit0_11(10), GPIOAO_bit_bit0_11(10), 0);
-            set_gpio_mode(GPIOAO_bank_bit0_11(10), GPIOAO_bit_bit0_11(10), GPIO_OUTPUT_MODE);
-        }else if(board_ver == TCB008001){
-            //Power LED
-            set_gpio_val(GPIOAO_bank_bit0_11(5), GPIOAO_bit_bit0_11(5), 1);
-            set_gpio_mode(GPIOAO_bank_bit0_11(5), GPIOAO_bit_bit0_11(5), GPIO_OUTPUT_MODE);
-        }else if(board_ver == RM0216_V12)
-            WRITE_CBUS_REG(PWM_PWM_C, (0xff00<<16) |(0xff00<<0));
+        WRITE_CBUS_REG(PWM_PWM_C, (0xff00<<16) |(0xff00<<0));
     	}
 	else{
     	printk("set gpio suspend.\n");
-        if(board_ver == HD6023){
-            //Network LED, because of wifi can't resend net status when resume, but ethernet is okay.
-            //set_gpio_val(GPIOD_bank_bit0_9(1), GPIOD_bit_bit0_9(1), 1);
-            //set_gpio_mode(GPIOD_bank_bit0_9(1), GPIOD_bit_bit0_9(1), GPIO_OUTPUT_MODE);
-            //Power LED
-            set_gpio_val(GPIOAO_bank_bit0_11(10), GPIOAO_bit_bit0_11(10), 1);
-            set_gpio_mode(GPIOAO_bank_bit0_11(10), GPIOAO_bit_bit0_11(10), GPIO_OUTPUT_MODE);
-        }else if(board_ver == TCB008001){
-            //Power LED
-            set_gpio_val(GPIOAO_bank_bit0_11(5), GPIOAO_bit_bit0_11(5), 0);
-            set_gpio_mode(GPIOAO_bank_bit0_11(5), GPIOAO_bit_bit0_11(5), GPIO_OUTPUT_MODE);
-        }else if(board_ver == RM0216_V12)
-            WRITE_CBUS_REG(PWM_PWM_C, (0xff00<<16) |(0<<0));
+        WRITE_CBUS_REG(PWM_PWM_C, (0xff00<<16) |(0<<0));
 	}
 }
 
@@ -2132,7 +2052,7 @@ static int __init aml_i2c_init(void)
         ARRAY_SIZE(aml_i2c_bus_info_2)); 
     return 0;
 }
-#define NET_EXT_CLK 1
+//#define NET_EXT_CLK 1
 static void __init eth_pinmux_init(void)
 {
 	
@@ -2270,49 +2190,31 @@ static void __init power_hold(void)
 {
     printk(KERN_INFO "power hold set high!\n");
 
-    if(board_ver == HD6023){
-        //Network LED
-        set_gpio_val(GPIOD_bank_bit0_9(1), GPIOD_bit_bit0_9(1), 1);
-        set_gpio_mode(GPIOD_bank_bit0_9(1), GPIOD_bit_bit0_9(1), GPIO_OUTPUT_MODE);
-        //POWER LED
-        set_gpio_val(GPIOAO_bank_bit0_11(10), GPIOAO_bit_bit0_11(10), 0);
-        set_gpio_mode(GPIOAO_bank_bit0_11(10), GPIOAO_bit_bit0_11(10), GPIO_OUTPUT_MODE);
-        //VCC5V_EN
-        set_gpio_val(GPIOAO_bank_bit0_11(6), GPIOAO_bit_bit0_11(6), 0);
-        set_gpio_mode(GPIOAO_bank_bit0_11(6), GPIOAO_bit_bit0_11(6), GPIO_OUTPUT_MODE);
-        //Mute Speaker
-        set_gpio_val(GPIOC_bank_bit0_15(4), GPIOC_bit_bit0_15(4), 0);
-        set_gpio_mode(GPIOC_bank_bit0_15(4), GPIOC_bit_bit0_15(4), GPIO_OUTPUT_MODE);
-    }else if(board_ver == TCB008001){
-        //POWER LED
-        set_gpio_val(GPIOAO_bank_bit0_11(5), GPIOAO_bit_bit0_11(5), 1);
-        set_gpio_mode(GPIOAO_bank_bit0_11(5), GPIOAO_bit_bit0_11(5), GPIO_OUTPUT_MODE);
-        //VCC5V_EN
-        set_gpio_val(GPIOAO_bank_bit0_11(6), GPIOAO_bit_bit0_11(6), 0);
-        set_gpio_mode(GPIOAO_bank_bit0_11(6), GPIOAO_bit_bit0_11(6), GPIO_OUTPUT_MODE);
-    }else if(board_ver == RM0216_V12){
-        // VCC5V
-        set_gpio_val(GPIOD_bank_bit0_9(9), GPIOD_bit_bit0_9(9), 1);
-        set_gpio_mode(GPIOD_bank_bit0_9(9), GPIOD_bit_bit0_9(9), GPIO_OUTPUT_MODE);
-		// MUTE
-       set_gpio_val(GPIOX_bank_bit0_31(29), GPIOX_bit_bit0_31(29), 0);
-       set_gpio_mode(GPIOX_bank_bit0_31(29), GPIOX_bit_bit0_31(29), GPIO_OUTPUT_MODE);
-		// VCC, set to high when suspend 
-        set_gpio_val(GPIOAO_bank_bit0_11(4), GPIOAO_bit_bit0_11(4), 0);
-        set_gpio_mode(GPIOAO_bank_bit0_11(4), GPIOAO_bit_bit0_11(4), GPIO_OUTPUT_MODE);
-        set_gpio_val(GPIOAO_bank_bit0_11(5), GPIOAO_bit_bit0_11(5), 0);
-        set_gpio_mode(GPIOAO_bank_bit0_11(5), GPIOAO_bit_bit0_11(5), GPIO_OUTPUT_MODE);
-        //VCCK
-        set_gpio_val(GPIOAO_bank_bit0_11(6), GPIOAO_bit_bit0_11(6), 1);
-        set_gpio_mode(GPIOAO_bank_bit0_11(6), GPIOAO_bit_bit0_11(6), GPIO_OUTPUT_MODE);
-        //init sata
-        set_gpio_val(GPIOC_bank_bit0_15(7), GPIOC_bit_bit0_15(7), 1);
-        set_gpio_mode(GPIOC_bank_bit0_15(7), GPIOC_bit_bit0_15(7), GPIO_OUTPUT_MODE);
-    }
-    // hdmi power on
+    //VCC5V_EN
+    set_gpio_val(GPIOAO_bank_bit0_11(6), GPIOAO_bit_bit0_11(6), 1);
+    set_gpio_mode(GPIOAO_bank_bit0_11(6), GPIOAO_bit_bit0_11(6), GPIO_OUTPUT_MODE);
+    //Power LED
+    set_gpio_val(GPIOD_bank_bit0_9(0), GPIOD_bit_bit0_9(0), 1);
+    set_gpio_mode(GPIOD_bank_bit0_9(0), GPIOD_bit_bit0_9(0), GPIO_OUTPUT_MODE);
+    //NET LED
+    set_gpio_val(GPIOD_bank_bit0_9(4), GPIOD_bit_bit0_9(4), 0);
+    set_gpio_mode(GPIOD_bank_bit0_9(4), GPIOD_bit_bit0_9(4), GPIO_OUTPUT_MODE);
+    //WIFI LED
+    set_gpio_val(GPIOD_bank_bit0_9(3), GPIOD_bit_bit0_9(3), 0);
+    set_gpio_mode(GPIOD_bank_bit0_9(3), GPIOD_bit_bit0_9(3), GPIO_OUTPUT_MODE);
+    //Mute Speaker
+    set_gpio_val(GPIOC_bank_bit0_15(4), GPIOC_bit_bit0_15(4), 0);
+    set_gpio_mode(GPIOC_bank_bit0_15(4), GPIOC_bit_bit0_15(4), GPIO_OUTPUT_MODE);
+    //RMII_EN
+    set_gpio_val(GPIOD_bank_bit0_9(5), GPIOD_bit_bit0_9(5), 0);
+    set_gpio_mode(GPIOD_bank_bit0_9(5), GPIOD_bit_bit0_9(5), GPIO_OUTPUT_MODE);
+    //WIFI_EN
+    set_gpio_val(GPIOD_bank_bit0_9(2), GPIOD_bit_bit0_9(2), 0);
+    set_gpio_mode(GPIOD_bank_bit0_9(2), GPIOD_bit_bit0_9(2), GPIO_OUTPUT_MODE);
+    //hdmi power on
     set_gpio_val(GPIOD_bank_bit0_9(6), GPIOD_bit_bit0_9(6), 1);
     set_gpio_mode(GPIOD_bank_bit0_9(6), GPIOD_bit_bit0_9(6), GPIO_OUTPUT_MODE);
-    // VCCIO
+    //VCCIO
     set_gpio_val(GPIOAO_bank_bit0_11(2), GPIOAO_bit_bit0_11(2), 1);
     set_gpio_mode(GPIOAO_bank_bit0_11(2), GPIOAO_bit_bit0_11(2), GPIO_OUTPUT_MODE);
 
@@ -2345,8 +2247,7 @@ static __init void m1_init_machine(void)
 //    pm_power_off = power_off;		//Elvis fool
     device_clk_setting();
     device_pinmux_init();
-    if(board_ver == RM0216_V12)
-        LED_PWM_REG0_init();
+    LED_PWM_REG0_init();
 
 #ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE
     camera_power_on_init();
@@ -2426,23 +2327,3 @@ MACHINE_START(MESON3_8726M_SKT, "AMLOGIC MESON3 8726M SKT SH")
     .video_start    = RESERVED_MEM_START,
     .video_end      = RESERVED_MEM_END,
 MACHINE_END
-
-static  int __init board_ver_setup(char *s)
-{
-    if(strncmp(s, "v2", 2)==0)
-        board_ver = TCB008001;
-    else if(strncmp(s, "V2", 2)==0)
-        board_ver = TCB008001;
-    else if(strncmp(s, "v1", 2)==0)
-        board_ver = HD6023;
-    else if(strncmp(s, "V1", 2)==0)
-        board_ver = HD6023;
-    else if(strncmp(s, "v0", 2)==0)
-        board_ver = RM0216_V12;
-    else if(strncmp(s, "V0", 2)==0)
-        board_ver = RM0216_V12;
-    printk("board_ver = %s, boardtype = %d", s, board_ver);
-    return 0;
-}
-__setup("boardver=",board_ver_setup);
-

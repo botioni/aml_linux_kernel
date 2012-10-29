@@ -2315,8 +2315,8 @@ static int ethernet_pm_remove(struct platform_device *pdev)
 /* --------------------------------------------------------------------------*/
 static int ethernet_suspend(struct platform_device *dev, pm_message_t event)
 {
-	netdev_close(my_ndev);
-	eth_pm_ops->clock_enable(0);
+//	netdev_close(my_ndev);
+//	eth_pm_ops->clock_enable(0);
 	printk("ethernet_suspend!\n");
 	return 0;
 }
@@ -2332,12 +2332,16 @@ static int ethernet_suspend(struct platform_device *dev, pm_message_t event)
 /* --------------------------------------------------------------------------*/
 static int ethernet_resume(struct platform_device *dev)
 {
+	struct am_net_private *np = netdev_priv(my_ndev);
 	int res = 0;
-	eth_pm_ops->clock_enable(1);
-	eth_pm_ops->reset();
+//	eth_pm_ops->clock_enable(1);
+//	eth_pm_ops->reset();
 	printk("\ngot it ?\n");
 	// res = probe_init(my_ndev);
-	res = netdev_open(my_ndev);
+//	res = netdev_open(my_ndev);
+	
+	mdio_write(my_ndev, np->phys[0], 0,1<<15);
+	printk("phy sf reset\n");
 	if (res != 0) {
 		printk("nono, it can not be true!\n");
 	}

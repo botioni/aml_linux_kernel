@@ -946,9 +946,9 @@ static int dwc_otg_pcd_pullup(struct usb_gadget *_gadget, int is_on)
 		dwc_otg_device_soft_connect(GET_CORE_IF(pcd));
 	else{
 		dwc_otg_device_soft_disconnect(GET_CORE_IF(pcd));
-		SPIN_LOCK(&pcd->lock);
+		//SPIN_LOCK(&pcd->lock);
 		dwc_otg_pcd_stop(pcd);
-		SPIN_UNLOCK(&pcd->lock);
+		//SPIN_UNLOCK(&pcd->lock);
 	}
 
 	return 0;

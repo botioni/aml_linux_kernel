@@ -573,12 +573,13 @@ static int AVL6211_Set_Frontend(struct dvb_frontend *fe, struct dvb_frontend_par
 	int lockstatus = 0;
 	while(waittime)
 	{
+		msleep(20);
 		lockstatus=AVL6211_GETLockStatus();
 		if(1==lockstatus){
 			pr_dbg("lock success !\n");
 			break;
 		}
-		msleep(20);
+		
 		waittime--;
 	}
 	if(!AVL6211_GETLockStatus())

@@ -20,6 +20,7 @@
 #include <linux/mtd/nand.h>
 #include <linux/mtd/nand_ecc.h>
 #include <linux/mtd/partitions.h>
+#include <linux/aml_eth.h>
 #include <linux/device.h>
 #include <linux/spi/flash.h>
 #include <mach/hardware.h>
@@ -1690,20 +1691,86 @@ static struct platform_device bt_device = {
 
 static void bt_device_init(void)
 {
+#ifdef CONFIG_BCM40183_WIFI
+        printk("-----------%s-----------\n", __FUNCTION__);
+        /* BT_RST_N GPIOD_3*/
+        CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0, 1<<23);
+        CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_1, 1<<18);
+        set_gpio_val(GPIOD_bank_bit0_9(3), GPIOD_bit_bit0_9(3), 0); 
+        set_gpio_mode(GPIOD_bank_bit0_9(3), GPIOD_bit_bit0_9(3), GPIO_OUTPUT_MODE);
+
+        /* BT_REG_EN GPIOD_2*/
+        CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_0, 1<<22);
+        CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_1, 1<<19);
+        set_gpio_val(GPIOD_bank_bit0_9(2), GPIOD_bit_bit0_9(2), 0); 
+        set_gpio_mode(GPIOD_bank_bit0_9(2), GPIOD_bit_bit0_9(2), GPIO_OUTPUT_MODE);
+
+        /* BT_WAKE GPIOX_10*/
+        set_gpio_val(GPIOX_bank_bit0_31(10), GPIOX_bit_bit0_31(10), 0);
+        set_gpio_mode(GPIOD_bank_bit0_9(2), GPIOD_bit_bit0_9(2), GPIO_OUTPUT_MODE);
+
+        /*UART_A GPIOX_13~16*/
+        SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_4, 0xf<<10);
+
+        /*PCM GPIOX_17~20*/
+        CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, 0xff<<24);
+        CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_4, 0xf<<6);
+        CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_4, 0xf<<18);
+        SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_4, 0xf<<22);
+#endif /*CONFIG_BCM40183_WIFI*/
 }
 
 static void bt_device_on(void)
 {
+#ifdef CONFIG_BCM40183_WIFI
+        printk("-----------%s-----------\n", __FUNCTION__);
+        /* BT_REG_EN set to high */
+        set_gpio_val(GPIOD_bank_bit0_9(2), GPIOD_bit_bit0_9(2), 1);
+        msleep(50);
+        /* BT_RST_EN set to high */
+        set_gpio_val(GPIOD_bank_bit0_9(3), GPIOD_bit_bit0_9(3), 1);
+        /* BT_WAKE set to high */
+        set_gpio_val(GPIOX_bank_bit0_31(10), GPIOX_bit_bit0_31(10), 1);
+#endif /*CONFIG_BCM40183_WIFI*/
 }
 
 static void bt_device_off(void)
 {
+#ifdef CONFIG_BCM40183_WIFI
+        printk("-----------%s-----------\n", __FUNCTION__);
+        /* BT_REG_EN set to low */
+        set_gpio_val(GPIOD_bank_bit0_9(2), GPIOD_bit_bit0_9(2), 0);
+        /* BT_RST_EN set to low */
+        set_gpio_val(GPIOD_bank_bit0_9(3), GPIOD_bit_bit0_9(3), 0);
+        /* BT_WAKE set to low */
+        set_gpio_val(GPIOX_bank_bit0_31(10), GPIOX_bit_bit0_31(10), 0);
+#endif /*CONFIG_BCM40183_WIFI*/
+}
+
+static void bt_device_suspend(void)
+{
+#if defined(CONFIG_BCM40183_WIFI) & defined(BCM40181_POWER_ALWAYS_ON)
+        printk("-----------%s-----------\n", __FUNCTION__);
+        /* BT_WAKE set to low */
+        set_gpio_val(GPIOX_bank_bit0_31(10), GPIOX_bit_bit0_31(10), 0);
+#endif /*CONFIG_BCM40183_WIFI*/
+}
+
+static void bt_device_resume(void)
+{
+#if defined(CONFIG_BCM40183_WIFI) & defined(BCM40181_POWER_ALWAYS_ON)
+        printk("-----------%s-----------\n", __FUNCTION__);
+        /* BT_WAKE set to high */
+        set_gpio_val(GPIOX_bank_bit0_31(10), GPIOX_bit_bit0_31(10), 1);
+#endif /*CONFIG_BCM40183_WIFI*/
 }
 
 struct bt_dev_data bt_dev = {
     .bt_dev_init    = bt_device_init,
     .bt_dev_on      = bt_device_on,
     .bt_dev_off     = bt_device_off,
+    .bt_dev_suspend = bt_device_suspend,
+    .bt_dev_resume  = bt_device_resume,
 };
 #endif
 
@@ -1921,11 +1988,23 @@ static struct resource ite9173_resource[]  = {
 		.name  = "frontend0_demod_addr"
 	},
 	[4] = {
-		.start = (GPIOB_bank_bit0_23(23)<<16)|GPIOB_bit_bit0_23(23),  //// ANT_PWR_CTRL pin
+		.start = (GPIOB_bank_bit0_23(21)<<16)|GPIOB_bit_bit0_23(21),  // TUNER_POWERC pin
+		.end   = (GPIOB_bank_bit0_23(21)<<16)|GPIOB_bit_bit0_23(21),
+		.flags = IORESOURCE_MEM,
+		.name  = "frontend0_TUNER_POWER"
+	},
+	[5] = {
+		.start = (GPIOB_bank_bit0_23(20)<<16)|GPIOB_bit_bit0_23(20),  // ANT_OVERLOAD pin
+		.end   = (GPIOB_bank_bit0_23(20)<<16)|GPIOB_bit_bit0_23(20),
+		.flags = IORESOURCE_MEM,
+		.name  = "frontend0_ANT_OVERLOAD"
+	},
+	[6] = {
+		.start = (GPIOB_bank_bit0_23(23)<<16)|GPIOB_bit_bit0_23(23),  //ANT_POWER pin
 		.end   = (GPIOB_bank_bit0_23(23)<<16)|GPIOB_bit_bit0_23(23),
 		.flags = IORESOURCE_MEM,
-		.name  = "frontend0_power"
-	},
+		.name  = "frontend0_ANT_POWER"
+	},	
 };
 
 static  struct platform_device ite9173_device = {
@@ -2060,8 +2139,37 @@ static struct platform_device aml_hdmi_device = {
     }
 };
 #endif
+#define ETH_PM_DEV
+#if defined(ETH_PM_DEV)
+#define ETH_MODE_RMII_EXTERNAL
+static void meson_eth_clock_enable(int flag)
+{
+}
 
+static void meson_eth_reset(void)
+{
+    set_gpio_mode(GPIOD_bank_bit0_9(7), GPIOD_bit_bit0_9(7), GPIO_OUTPUT_MODE);
+    set_gpio_val(GPIOD_bank_bit0_9(7), GPIOD_bit_bit0_9(7), 0);
+    mdelay(100);
+    set_gpio_val(GPIOD_bank_bit0_9(7), GPIOD_bit_bit0_9(7), 1);
+}
+static struct aml_eth_platform_data  aml_pm_eth_platform_data ={
+    .clock_enable = meson_eth_clock_enable,
+    .reset = meson_eth_reset,
+};
+
+struct platform_device meson_device_eth = {
+	.name   = "ethernet_pm_driver",
+	.id     = -1,
+	.dev    = {
+		.platform_data = &aml_pm_eth_platform_data,
+	}
+};
+#endif
 static struct platform_device __initdata *platform_devs[] = {
+#if defined(ETH_PM_DEV)
+    &meson_device_eth,
+#endif
 #if defined(CONFIG_AML_HDMI_TX)
     &aml_hdmi_device,
 #endif

@@ -127,6 +127,12 @@ config MACH_MESON3_REFF34_1
         help
           Include support for the NGN M3 board platform.
 
+config MACH_MESON3_REFF34_2
+        select GENERIC_ALLOCATOR
+        bool "Support M3 NGN MBX platform"
+	help
+          Include support for the NGN M3 board platform.
+
 config MESON3_CLOCK_TICK_RATE
     int "Clock Tick Rate"
 	default 25000000
