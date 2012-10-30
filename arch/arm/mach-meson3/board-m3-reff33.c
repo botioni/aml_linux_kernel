@@ -178,7 +178,8 @@ int _key_code_list[] = {KEY_POWER};
 
 static inline int key_input_init_func(void)
 {
-        set_gpio_mode(GPIOAO_bank_bit0_11(3), GPIOAO_bit_bit0_11(3), GPIO_INPUT_MODE);
+     WRITE_AOBUS_REG(AO_RTI_PULL_UP_REG, (READ_AOBUS_REG(AO_RTI_PULL_UP_REG) & 0xfef));
+        set_gpio_mode(GPIOAO_bank_bit0_11(4), GPIOAO_bit_bit0_11(4), GPIO_INPUT_MODE);
 //    WRITE_AOBUS_REG(AO_RTC_ADDR0, (READ_AOBUS_REG(AO_RTC_ADDR0) &~(1<<11)));
 //    WRITE_AOBUS_REG(AO_RTC_ADDR1, (READ_AOBUS_REG(AO_RTC_ADDR1) &~(1<<3)));
     return 0;
@@ -196,7 +197,7 @@ static inline int key_scan(int *key_state_list)
 	 	}
 	 else
 	 #endif
-    key_state_list[0] = get_gpio_val(GPIOAO_bank_bit0_11(3), GPIOAO_bit_bit0_11(3))?0:1;
+    key_state_list[0] = get_gpio_val(GPIOAO_bank_bit0_11(4), GPIOAO_bit_bit0_11(4))?0:1;
 //    key_state_list[0] = ((READ_AOBUS_REG(AO_RTC_ADDR1) >> 2) & 1) ? 0 : 1;
     return ret;
 }
@@ -799,13 +800,13 @@ static void set_gpio_suspend_resume(int power_on)
 		 udelay(50);
         hdmi_wr_reg(0x8005, 1); 
         // LED
-        WRITE_CBUS_REG(PWM_PWM_C, (0xff00<<16) |(0xff00<<0));
+        //WRITE_CBUS_REG(PWM_PWM_C, (0xff00<<16) |(0xff00<<0));
     	}
 	else
 		{
     	printk("set gpio suspend.\n");
 		 // LED
-        WRITE_CBUS_REG(PWM_PWM_C, (0xff00<<16) |(0<<0));
+        //WRITE_CBUS_REG(PWM_PWM_C, (0xff00<<16) |(0<<0));
 		}
 }
 
