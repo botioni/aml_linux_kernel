@@ -29,7 +29,7 @@ static unsigned char fiqprint_buf1[MAX_PRINT_SIZE+4];
 
 static int fiqprint_buf_off=0;
 
-#define FIQ_PREF "<FIQ>:"
+#define FIQ_PREF " <FIQ>:"
 static struct timer_list fiq_print_timer;
 
 
@@ -54,9 +54,11 @@ int fiq_vprintk(const char *fmt, va_list args)
 		strcpy(bufp,FIQ_PREF);
 		bufp+=strlen(FIQ_PREF);
 		buf_len-=strlen(FIQ_PREF);
+		fiqprint_buf_off+=strlen(FIQ_PREF);
 	}
-	r=vscnprintf(bufp,MAX_PRINT_SIZE-fiqprint_buf_off,fmt,args);
-	fiqprint_buf_off+=r;
+	r=vscnprintf(bufp,buf_len,fmt,args);
+	if(r>0)
+	    fiqprint_buf_off+=r;
 	if(fiqprint_buf_off>MAX_PRINT_SIZE)
 		fiqprint_buf_off=0;/*overflow,drop all.*/
 	return r;
