@@ -384,6 +384,17 @@ struct dtv_properties {
 #define FE_GET_PROPERTY		   _IOR('o', 83, struct dtv_properties)
 
 /*Stores the blind scan parameters which are passed to the FE_SET_BLINDSCAN ioctl.*/
+
+struct dvbsx_blindscanpara {
+	__u32 minfrequency;			/* minimum tuner frequency in kHz */
+	__u32 maxfrequency;			/* maximum tuner frequency in kHz */
+	__u32 minSymbolRate;		/* minimum symbol rate in sym/sec */
+	__u32 maxSymbolRate;		/* maximum symbol rate in sym/sec */
+	__u32 frequencyRange;		/* search range in kHz. freq -/+freqRange will be searched */
+	__u32 frequencyStep;			/* tuner step frequency in kHz */	
+};
+
+#if 0
 struct dvbsx_blindscanpara
 {
 	__u16 m_uifrequency_100khz;
@@ -393,6 +404,7 @@ struct dvbsx_blindscanpara
 	__u16 m_uiminsymrate_khz;		/*The minimum symbol rate to be scanned in units of kHz. The minimum value is 1000 kHz.*/
 	__u16 m_uimaxsymrate_khz;		/*The maximum symbol rate to be scanned in units of kHz. The maximum value is 45000 kHz.*/
 };
+#endif
 
 /*Stores the blind scan status information.*/
 struct dvbsx_blindscaninfo
