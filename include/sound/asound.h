@@ -402,7 +402,7 @@ struct snd_pcm_status {
 	snd_pcm_uframes_t overrange;	/* count of ADC (capture) overrange detections from last status */
 	snd_pcm_state_t suspended_state; /* suspended stream state */
 	snd_pcm_uframes_t ex_size;   /* extra size kept not be put into HW buf */
-    unsigned char reserved[60];	/* must be filled with zero */
+    unsigned char reserved[56];	/* must be filled with zero */
 };
 
 struct snd_pcm_mmap_status {
