@@ -1,7 +1,7 @@
 #
 # Automatically generated make config: don't edit
 # Linux kernel version: 2.6.34
-# Mon Oct 22 20:44:23 2012
+# Fri Nov  2 16:58:08 2012
 #
 CONFIG_ARM=y
 CONFIG_HOLES_IN_ZONE=y
@@ -737,7 +737,7 @@ CONFIG_AM_UART0_SET_PORT_AO=y
 #
 # Amlogic RTC support
 #
-CONFIG_AML_RTC=y
+# CONFIG_AML_RTC is not set
 # CONFIG_AMLOGIC_I2C is not set
 
 #
