@@ -1988,11 +1988,23 @@ static struct resource ite9173_resource[]  = {
 		.name  = "frontend0_demod_addr"
 	},
 	[4] = {
-		.start = (GPIOB_bank_bit0_23(23)<<16)|GPIOB_bit_bit0_23(23),  //// ANT_PWR_CTRL pin
+		.start = (GPIOB_bank_bit0_23(21)<<16)|GPIOB_bit_bit0_23(21),  // TUNER_POWERC pin
+		.end   = (GPIOB_bank_bit0_23(21)<<16)|GPIOB_bit_bit0_23(21),
+		.flags = IORESOURCE_MEM,
+		.name  = "frontend0_TUNER_POWER"
+	},
+	[5] = {
+		.start = (GPIOB_bank_bit0_23(20)<<16)|GPIOB_bit_bit0_23(20),  // ANT_OVERLOAD pin
+		.end   = (GPIOB_bank_bit0_23(20)<<16)|GPIOB_bit_bit0_23(20),
+		.flags = IORESOURCE_MEM,
+		.name  = "frontend0_ANT_OVERLOAD"
+	},
+	[6] = {
+		.start = (GPIOB_bank_bit0_23(23)<<16)|GPIOB_bit_bit0_23(23),  //ANT_POWER pin
 		.end   = (GPIOB_bank_bit0_23(23)<<16)|GPIOB_bit_bit0_23(23),
 		.flags = IORESOURCE_MEM,
-		.name  = "frontend0_power"
-	},
+		.name  = "frontend0_ANT_POWER"
+	},	
 };
 
 static  struct platform_device ite9173_device = {
@@ -2095,9 +2107,34 @@ static  struct platform_device dib7090p_device = {
 	.num_resources    = ARRAY_SIZE(dib7090p_resource),
 	.resource         = dib7090p_resource,
 };
-
-
 #endif
+
+#if defined(CONFIG_AM_SMARTCARD)
+static struct resource amlogic_smc_resource[]  = {
+	[0] = {
+		.start = ((GPIOD_bank_bit2_24(11)<<16) | GPIOD_bit_bit2_24(11)),                          //smc POWER gpio
+		.end   = ((GPIOD_bank_bit2_24(11)<<16) | GPIOD_bit_bit2_24(11)),
+		.flags = IORESOURCE_MEM,
+		.name  = "smc0_power"
+	},
+	[1] = {
+		.start = INT_SMART_CARD,                   //smc irq number
+		.end   = INT_SMART_CARD,
+		.flags = IORESOURCE_IRQ,
+		.name  = "smc0_irq"
+	},
+
+};
+
+static  struct platform_device amlogic_smc_device = {
+	.name             = "amlogic-smc",
+	.id               = -1,
+	.num_resources    = ARRAY_SIZE(amlogic_smc_resource),
+	.resource         = amlogic_smc_resource,
+};
+#endif
+
+
 #if defined(CONFIG_AML_WATCHDOG)
 static struct platform_device aml_wdt_device = {
     .name = "aml_wdt",
@@ -2271,6 +2308,9 @@ static struct platform_device __initdata *platform_devs[] = {
 	&ite9173_device,
 	&ite9133_device,
 	& dib7090p_device,
+#endif
+#if defined(CONFIG_AM_SMARTCARD)	
+	&amlogic_smc_device,
 #endif
  #if defined(CONFIG_AML_WATCHDOG)
         &aml_wdt_device,

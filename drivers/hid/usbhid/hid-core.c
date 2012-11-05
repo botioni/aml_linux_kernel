@@ -258,10 +258,11 @@ static void hid_irq_in(struct urb *urb)
 		else
 			clear_bit(HID_KEYS_PRESSED, &usbhid->iofl);
 		break;
+	case -EOVERFLOW:
 	case -EPIPE:		/* stall */
 		usbhid_mark_busy(usbhid);
 		clear_bit(HID_IN_RUNNING, &usbhid->iofl);
-		set_bit(HID_CLEAR_HALT, &usbhid->iofl);
+		set_bit((urb->status == -EPIPE)? HID_CLEAR_HALT:HID_RESET_PENDING, &usbhid->iofl);
 		schedule_work(&usbhid->reset_work);
 		return;
 	case -ECONNRESET:	/* unlink */

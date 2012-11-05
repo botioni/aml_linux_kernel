@@ -413,11 +413,11 @@ static void vh264_set_params(int switch_done)
         /* if width or height from outside is not equal to mb, then use mb */
         /* add: for seeking stream with other resolution */
         if ((last_mb_width && (last_mb_width != mb_width))
-            || (mb_width != (frame_width >> 4))) {
+        || (mb_width != ((frame_width+15) >> 4))) {
             frame_width = 0;
         }
         if ((last_mb_height && (last_mb_height != mb_height))
-            || (mb_height != (frame_height >> 4))) {
+        || (mb_height != ((frame_height+15) >> 4))) {
             frame_height = 0;
         }
         last_mb_width = mb_width;

@@ -78,9 +78,17 @@ MODULE_PARM_DESC(frontend_demod_addr, "\n\t\t Demod IIC address of frontend");
 static int frontend_demod_addr = -1;
 module_param(frontend_demod_addr, int, S_IRUGO);
 
-MODULE_PARM_DESC(frontend_power, "\n\t\t ANT_PWR_CTRL of frontend");
+MODULE_PARM_DESC(frontend_power, "\n\t\t TUNER_POWER of frontend");
 static int frontend_power = -1;
 module_param(frontend_power, int, S_IRUGO);
+
+MODULE_PARM_DESC(frontend_antoverload, "\n\t\t ANT_ANTOVERLOAD of frontend");
+static int frontend_antoverload = -1;
+module_param(frontend_antoverload, int, S_IRUGO);
+
+MODULE_PARM_DESC(frontend_antpower, "\n\t\t ANT_POWER of frontend");
+static int frontend_antpower = -1;
+module_param(frontend_antpower, int, S_IRUGO);
 
 static struct mutex ite_lock;
 static struct aml_fe ite9173_fe[FE_DEV_COUNT];
@@ -118,6 +126,27 @@ static int ite9173_init(struct dvb_frontend *fe)
 static int ite9173_sleep(struct dvb_frontend *fe)
 {
 	struct ite9173_state *state = fe->demodulator_priv;
+
+	return 0;
+}
+
+static int	ite9173_ant_power(struct dvb_frontend* fe, fe_sec_voltage_t voltage)
+{
+	struct ite9173_state *state = fe->demodulator_priv;	
+	int nValue = 0;
+
+	pr_dbg("ite9173_ant_power\n");
+
+	if(voltage ==  SEC_VOLTAGE_ON)
+		nValue = 1;
+	else if(voltage ==SEC_VOLTAGE_OFF)
+		nValue = 0;
+	else
+		return -1;	
+	
+	gpio_direction_output(frontend_antpower, nValue);
+
+	pr_dbg("ite9173_ant_power--\n");
 
 	return 0;
 }
@@ -345,6 +374,8 @@ static struct dvb_frontend_ops ite9173_ops = {
 	.read_signal_strength =ite9173_read_signal_strength,
 	.read_snr = ite9173_read_snr,
 	.read_ucblocks = ite9173_read_ucblocks,
+
+	.set_voltage = ite9173_ant_power,
 };
 
 
@@ -427,7 +458,7 @@ static int ite9173_fe_init(struct aml_dvb *advb, struct platform_device *pdev, s
 	}
 
 	if(frontend_power==-1) {
-		snprintf(buf, sizeof(buf), "frontend%d_power", id);
+		snprintf(buf, sizeof(buf), "frontend%d_TUNER_POWER", id);
 		res = platform_get_resource_byname(pdev, IORESOURCE_MEM, buf);
 		if (!res) {
 			pr_error("cannot get resource \"%s\"\n", buf);
@@ -435,6 +466,28 @@ static int ite9173_fe_init(struct aml_dvb *advb, struct platform_device *pdev, s
 			goto err_resource;
 		}
 		frontend_power = res->start;
+	}
+
+	if(frontend_antoverload==-1) {
+		snprintf(buf, sizeof(buf), "frontend%d_ANT_OVERLOAD", id);
+		res = platform_get_resource_byname(pdev, IORESOURCE_MEM, buf);
+		if (!res) {
+			pr_error("cannot get resource \"%s\"\n", buf);
+			ret = -EINVAL;
+			goto err_resource;
+		}
+		frontend_antoverload = res->start;
+	}
+
+	if(frontend_antpower==-1) {
+		snprintf(buf, sizeof(buf), "frontend%d_ANT_POWER", id);
+		res = platform_get_resource_byname(pdev, IORESOURCE_MEM, buf);
+		if (!res) {
+			pr_error("cannot get resource \"%s\"\n", buf);
+			ret = -EINVAL;
+			goto err_resource;
+		}
+		frontend_antpower = res->start;
 	}
 
 	frontend_reset = cfg->reset_pin;

@@ -507,7 +507,7 @@ static int AVL6211_Set_Frontend(struct dvb_frontend *fe, struct dvb_frontend_par
 		state->freq=p->frequency;
 		state->mode=p->u.qam.modulation ;
 		state->symbol_rate=p->u.qam.symbol_rate;
-		
+		AVL_DVBSx_IBSP_ReleaseSemaphore(&blindscanSem);
  		pr_dbg("Tuner test failed !\n");
 		return (r);
 	}
@@ -546,7 +546,7 @@ static int AVL6211_Set_Frontend(struct dvb_frontend *fe, struct dvb_frontend_par
 		state->freq=p->frequency;
 		state->mode=p->u.qam.modulation ;
 		state->symbol_rate=p->u.qam.symbol_rate;	
-		
+		AVL_DVBSx_IBSP_ReleaseSemaphore(&blindscanSem);
 		pr_dbg("Lock channel failed !\n");
 		return (r);
 	}
@@ -573,12 +573,13 @@ static int AVL6211_Set_Frontend(struct dvb_frontend *fe, struct dvb_frontend_par
 	int lockstatus = 0;
 	while(waittime)
 	{
+		msleep(20);
 		lockstatus=AVL6211_GETLockStatus();
 		if(1==lockstatus){
 			pr_dbg("lock success !\n");
 			break;
 		}
-		msleep(20);
+		
 		waittime--;
 	}
 	if(!AVL6211_GETLockStatus())
