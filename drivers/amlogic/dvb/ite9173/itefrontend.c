@@ -130,10 +130,24 @@ static int ite9173_sleep(struct dvb_frontend *fe)
 	return 0;
 }
 
-static int ite9173_Ant_Power(int ant)
+static int	ite9173_ant_power(struct dvb_frontend* fe, fe_sec_voltage_t voltage)
 {
-	if(1==ant)	gpio_direction_output(frontend_antpower, 1);
-	else	gpio_direction_output(frontend_antpower, 0);
+	struct ite9173_state *state = fe->demodulator_priv;	
+	int nValue = 0;
+
+	pr_dbg("ite9173_ant_power\n");
+
+	if(voltage ==  SEC_VOLTAGE_ON)
+		nValue = 1;
+	else if(voltage ==SEC_VOLTAGE_OFF)
+		nValue = 0;
+	else
+		return -1;	
+	
+	gpio_direction_output(frontend_antpower, nValue);
+
+	pr_dbg("ite9173_ant_power--\n");
+
 	return 0;
 }
 
@@ -360,6 +374,8 @@ static struct dvb_frontend_ops ite9173_ops = {
 	.read_signal_strength =ite9173_read_signal_strength,
 	.read_snr = ite9173_read_snr,
 	.read_ucblocks = ite9173_read_ucblocks,
+
+	.set_voltage = ite9173_ant_power,
 };
 
 

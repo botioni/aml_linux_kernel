@@ -2107,9 +2107,34 @@ static  struct platform_device dib7090p_device = {
 	.num_resources    = ARRAY_SIZE(dib7090p_resource),
 	.resource         = dib7090p_resource,
 };
-
-
 #endif
+
+#if defined(CONFIG_AM_SMARTCARD)
+static struct resource amlogic_smc_resource[]  = {
+	[0] = {
+		.start = ((GPIOD_bank_bit2_24(11)<<16) | GPIOD_bit_bit2_24(11)),                          //smc POWER gpio
+		.end   = ((GPIOD_bank_bit2_24(11)<<16) | GPIOD_bit_bit2_24(11)),
+		.flags = IORESOURCE_MEM,
+		.name  = "smc0_power"
+	},
+	[1] = {
+		.start = INT_SMART_CARD,                   //smc irq number
+		.end   = INT_SMART_CARD,
+		.flags = IORESOURCE_IRQ,
+		.name  = "smc0_irq"
+	},
+
+};
+
+static  struct platform_device amlogic_smc_device = {
+	.name             = "amlogic-smc",
+	.id               = -1,
+	.num_resources    = ARRAY_SIZE(amlogic_smc_resource),
+	.resource         = amlogic_smc_resource,
+};
+#endif
+
+
 #if defined(CONFIG_AML_WATCHDOG)
 static struct platform_device aml_wdt_device = {
     .name = "aml_wdt",
@@ -2283,6 +2308,9 @@ static struct platform_device __initdata *platform_devs[] = {
 	&ite9173_device,
 	&ite9133_device,
 	& dib7090p_device,
+#endif
+#if defined(CONFIG_AM_SMARTCARD)	
+	&amlogic_smc_device,
 #endif
  #if defined(CONFIG_AML_WATCHDOG)
         &aml_wdt_device,
