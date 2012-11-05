@@ -250,6 +250,21 @@ struct analog_demod_ops {
 	int (*set_config)(struct dvb_frontend *fe, void *priv_cfg);
 };
 
+struct dvbsx_blindscan_info {
+	int (*blindscan_callback)(struct dvb_frontend *fe, struct dvbsx_blindscanevent *pbsevent);	
+};
+
+struct dvbsx_blindscan_ops {
+
+	struct dvbsx_blindscan_info info;
+	
+	/*
+	 * These are provided start and stop blindscan
+	 */
+	int (*blindscan_scan)(struct dvb_frontend* fe, struct dvbsx_blindscanpara *pbspara);
+	int (*blindscan_cancel)(struct dvb_frontend* fe);
+};
+
 struct dvb_frontend_ops {
 
 	struct dvb_frontend_info info;
@@ -306,20 +321,24 @@ struct dvb_frontend_ops {
 	int (*set_property)(struct dvb_frontend* fe, struct dtv_property* tvp);
 	int (*get_property)(struct dvb_frontend* fe, struct dtv_property* tvp);
 
-//add by rsj for dvb-s2
-	int (*blindscan_scan)(struct dvb_frontend* fe, struct dvbsx_blindscanpara *pbspara);
-	int (*blindscan_getscanstatus)(struct dvb_frontend* fe, struct dvbsx_blindscaninfo *pbsinfo);
-	int (*blindscan_cancel)(struct dvb_frontend* fe);
-	int (*blindscan_readchannelinfo)(struct dvb_frontend* fe, struct dvbsx_frontend_parameters *pchannel);
-	int (*blindscan_reset)(struct dvb_frontend* fe);
-
-//end
+	struct dvbsx_blindscan_ops blindscan_ops;
 };
 
 #define MAX_EVENT 8
 
 struct dvb_fe_events {
 	struct dvb_frontend_event events[MAX_EVENT];
+	int			  eventw;
+	int			  eventr;
+	int			  overflow;
+	wait_queue_head_t	  wait_queue;
+	struct mutex		  mtx;
+};
+
+#define MAX_BLINDSCAN_EVENT 256
+
+struct dvbsx_blindscan_events {
+	struct dvbsx_blindscanevent events[MAX_BLINDSCAN_EVENT];
 	int			  eventw;
 	int			  eventr;
 	int			  overflow;

@@ -384,38 +384,38 @@ struct dtv_properties {
 #define FE_SET_PROPERTY		   _IOW('o', 82, struct dtv_properties)
 #define FE_GET_PROPERTY		   _IOR('o', 83, struct dtv_properties)
 
-/*Stores the blind scan parameters which are passed to the FE_SET_BLINDSCAN ioctl.*/
-struct dvbsx_blindscanpara
-{
-	__u16 m_uifrequency_100khz;
-	__u16 m_uitunerlpf_100khz;
-	__u16 m_uistartfreq_100khz;		/*The start scan frequency in units of 100kHz. The minimum value depends on the tuner specification.*/ 
-	__u16 m_uistopfreq_100khz;		/*The stop scan frequency in units of 100kHz. The maximum value depends on the tuner specification.*/
-	__u16 m_uiminsymrate_khz;		/*The minimum symbol rate to be scanned in units of kHz. The minimum value is 1000 kHz.*/
-	__u16 m_uimaxsymrate_khz;		/*The maximum symbol rate to be scanned in units of kHz. The maximum value is 45000 kHz.*/
+/* Satellite blind scan settings */
+struct dvbsx_blindscanpara {
+	__u32 minfrequency;			/* minimum tuner frequency in kHz */
+	__u32 maxfrequency;			/* maximum tuner frequency in kHz */
+	__u32 minSymbolRate;		/* minimum symbol rate in sym/sec */
+	__u32 maxSymbolRate;		/* maximum symbol rate in sym/sec */
+	__u32 frequencyRange;		/* search range in kHz. freq -/+freqRange will be searched */
+	__u32 frequencyStep;		/* tuner step frequency in kHz */	
 };
 
-/*Stores the blind scan status information.*/
-struct dvbsx_blindscaninfo
-{
-	__u16 m_uiProgress;					/*The percentage completion of the blind scan procedure. A value of 100 indicates that the blind scan is finished.*/ 
-	__u16 m_uiChannelCount;				/*The number of channels detected thus far by the blind scan operation.  The Availink device can store up to 120 detected channels.*/ 
-	__u16 m_uiNextStartFreq_100kHz;	/*The start frequency of the next scan in units of 100kHz.*/ 
-	__u16 m_uiResultCode;				/*The result of the blind scan operation.  Possible values are:  0 - blind scan operation normal; 1 -- more than 120 channels have been detected.*/ 
-};
+/* Satellite blind scan status */
+typedef enum dvbsx_blindscanstatus {
+	BLINDSCAN_NONEDO,
+	BLINDSCAN_UPDATESTARTFREQ,
+	BLINDSCAN_UPDATEPROCESS,
+	BLINDSCAN_UPDATERESULTFREQ
+} dvbsx_blindscanstatus_t;
 
-#define DVBSX_IOCTL_MAX_CHANNEL_INFO 16
-
-/*Store the blind scan channel info*/
-struct dvbsx_frontend_parameters {
-	struct dvb_frontend_parameters parameters[DVBSX_IOCTL_MAX_CHANNEL_INFO];
+/* Satellite blind scan event */
+struct dvbsx_blindscanevent {
+	dvbsx_blindscanstatus_t status;
+	union {
+		__u16 m_uiprogress;							/* The percentage completion of the blind scan procedure. A value of 100 indicates that the blind scan is finished. */
+		__u16 m_uistartfreq_100khz;					/* The start scan frequency in units of 100kHz. The minimum value depends on the tuner specification. */
+		struct dvb_frontend_parameters parameters;	/* Blind scan channel info. */
+	} u;	
 };
 
 #define FE_SET_BLINDSCAN					_IOW('o', 84, struct dvbsx_blindscanpara)
-#define FE_GET_BLINDSCANSTATUS			    _IOR('o', 85, struct dvbsx_blindscaninfo)
+#define FE_GET_BLINDSCANEVENT		   		_IOR('o', 85, struct dvbsx_blindscanevent)
 #define FE_SET_BLINDSCANCANCEl				_IO('o', 86)
-#define FE_READ_BLINDSCANCHANNELINFO		_IOR('o', 87, struct dvbsx_frontend_parameters)
-#define FE_SET_BLINDSCANRESET               _IO('o', 88)
+
 /**
  * When set, this flag will disable any zigzagging or other "normal" tuning
  * behaviour. Additionally, there will be no automatic monitoring of the lock
