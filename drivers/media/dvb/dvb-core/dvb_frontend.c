@@ -267,7 +267,7 @@ static int dvbsx_blindscan_get_event(struct dvb_frontend *fe,
 				struct dvbsx_blindscanevent *event , int flags)
 {
 	struct dvb_frontend_private *fepriv = fe->frontend_priv;
-	struct dvbsx_blindscan_events *events = &fepriv->events;
+	struct dvbsx_blindscan_events *events = &fepriv->blindscan_events;
 
 	dprintk ("%s\n", __func__);
 
@@ -2012,38 +2012,40 @@ static int dvb_frontend_ioctl_legacy(struct inode *inode, struct file *file,
 		
 		fepriv->in_blindscan = true;
 		
-		if (fe->ops.blindscan_scan)
+		if (fe->ops.blindscan_ops.blindscan_scan)
 			err = fe->ops.blindscan_ops.blindscan_scan(fe, (struct dvbsx_blindscanpara*) parg);
 		break;
 
 	case  FE_GET_BLINDSCANEVENT:
-		struct dvbsx_blindscanevent *p_tmp_bsevent = NULL;
-		
-		err = dvbsx_blindscan_get_event (fe, (struct dvbsx_blindscanevent*) parg, file->f_flags);
-
-		p_tmp_bsevent = (struct dvbsx_blindscanevent*) parg;
-
-		dprintk("FE_GET_BLINDSCANEVENT status:%d\n", p_tmp_bsevent->status);
-
-		if(p_tmp_bsevent->status == BLINDSCAN_UPDATESTARTFREQ)
 		{
-			dprintk("start freq %d\n", p_tmp_bsevent->u.m_uistartfreq_100khz);
+			struct dvbsx_blindscanevent *p_tmp_bsevent = NULL;
+			
+			err = dvbsx_blindscan_get_event (fe, (struct dvbsx_blindscanevent*) parg, file->f_flags);
+
+			p_tmp_bsevent = (struct dvbsx_blindscanevent*) parg;
+
+			dprintk("FE_GET_BLINDSCANEVENT status:%d\n", p_tmp_bsevent->status);
+
+			if(p_tmp_bsevent->status == BLINDSCAN_UPDATESTARTFREQ)
+			{
+				dprintk("start freq %d\n", p_tmp_bsevent->u.m_uistartfreq_100khz);
+			}
+			else if(p_tmp_bsevent->status == BLINDSCAN_UPDATEPROCESS)
+			{
+				dprintk("process %d\n", p_tmp_bsevent->u.m_uiprogress);
+			}
+			else if(p_tmp_bsevent->status == BLINDSCAN_UPDATERESULTFREQ)
+			{
+				dprintk("result freq %d symb %d\n", p_tmp_bsevent->u.parameters.frequency, p_tmp_bsevent->u.parameters.u.qpsk.symbol_rate);
+			}
+			break;		
 		}
-		else if(p_tmp_bsevent->status == BLINDSCAN_UPDATEPROCESS)
-		{
-			dprintk("process %d\n", p_tmp_bsevent->u.m_uiprogress);
-		}
-		else if(p_tmp_bsevent->status == BLINDSCAN_UPDATERESULTFREQ)
-		{
-			dprintk("result freq %d symb %d\n", p_tmp_bsevent->u.parameters.frequency, p_tmp_bsevent->u.parameters.u.qpsk.symbol_rate);
-		}
-		break;
 
 	case  FE_SET_BLINDSCANCANCEl:
 		dprintk("FE_SET_BLINDSCANCANCEl\n");
 
 				
-		if (fe->ops.blindscan_cancel)
+		if (fe->ops.blindscan_ops.blindscan_cancel)
 			err = fe->ops.blindscan_ops.blindscan_cancel(fe);
 
 		fepriv->in_blindscan = false;
