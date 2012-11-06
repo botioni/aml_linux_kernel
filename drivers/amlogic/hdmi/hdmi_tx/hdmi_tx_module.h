@@ -106,8 +106,7 @@ typedef struct hdmi_tx_dev_s {
 #define AUTH_PROCESS_TIME   (4000/100)
 #endif        
 
-
-#define HDMITX_VER "2012Aug29a"
+#define HDMITX_VER "2012Nov6a"
 
 /************************************
 *    hdmitx protocol level interface
