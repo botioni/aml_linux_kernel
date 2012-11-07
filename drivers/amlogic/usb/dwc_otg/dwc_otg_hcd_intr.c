@@ -1874,6 +1874,17 @@ static void handle_hc_chhltd_intr_dma(dwc_otg_hcd_t * _hcd,
 		 * split transfers. Start splits halt on ACK.
 		 */
 		handle_hc_ack_intr(_hcd, _hc, _hc_regs, _qtd);
+	} else if (hcint.b.datatglerr && !hcintmsk.b.datatglerr){
+		if (_hc->ep_type == DWC_OTG_EP_TYPE_INTR ||
+		    _hc->ep_type == DWC_OTG_EP_TYPE_ISOC) {
+			handle_hc_nak_intr(_hcd, _hc, _hc_regs, _qtd);
+		}
+		else {
+			DWC_PRINT
+			    ("%s: Halt channel %d (hcint=%08x)(data toggle error transfer)\n",
+			     __func__, _hc->hc_num,hcint.d32);
+			clear_hc_int(_hc_regs, chhltd);
+		}
 	} else {
 		if (_hc->ep_type == DWC_OTG_EP_TYPE_INTR ||
 		    _hc->ep_type == DWC_OTG_EP_TYPE_ISOC) {
@@ -1885,8 +1896,8 @@ static void handle_hc_chhltd_intr_dma(dwc_otg_hcd_t * _hcd,
 			 */
 #ifdef DEBUG
 			DWC_PRINT
-			    ("%s: Halt channel %d (assume incomplete periodic transfer)\n",
-			     __func__, _hc->hc_num);
+			    ("%s: Halt channel %d (hcint=%08x)(assume incomplete periodic transfer)\n",
+			     __func__, _hc->hc_num,hcint.d32);
 #endif
 			halt_channel(_hcd, _hc, _qtd,
 				     DWC_OTG_HC_XFER_PERIODIC_INCOMPLETE);

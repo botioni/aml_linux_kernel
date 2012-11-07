@@ -2230,6 +2230,27 @@ static int amvideo_ioctl(struct inode *inode, struct file *file,
         }
         break;
 
+    case AMSTREAM_IOC_GET_BLACKOUT_POLICY:
+        if (copy_to_user(argp, &blackout, sizeof(u32)) != 0) {
+            ret = -EFAULT;
+        }
+        break;
+
+    case AMSTREAM_IOC_SET_BLACKOUT_POLICY:
+        {
+            u32 mode;
+            if (copy_from_user(&mode, argp, sizeof(u32)) == 0) {
+               if (mode > 2) {
+                   ret = -EINVAL;
+               } else {
+                   blackout = mode;
+               }
+            } else {
+                ret = -EFAULT;
+            }
+        }
+        break;
+
     /**********************************************************************
     video enhancement ioctl
     **********************************************************************/
