@@ -391,7 +391,8 @@ struct dvbsx_blindscanpara {
 	__u32 minSymbolRate;		/* minimum symbol rate in sym/sec */
 	__u32 maxSymbolRate;		/* maximum symbol rate in sym/sec */
 	__u32 frequencyRange;		/* search range in kHz. freq -/+freqRange will be searched */
-	__u32 frequencyStep;		/* tuner step frequency in kHz */	
+	__u32 frequencyStep;			/* tuner step frequency in kHz */	
+	__s32 timeout;				/* blindscan event timeout*/
 };
 
 /* Satellite blind scan status */
@@ -407,7 +408,7 @@ struct dvbsx_blindscanevent {
 	dvbsx_blindscanstatus_t status;
 	union {
 		__u16 m_uiprogress;							/* The percentage completion of the blind scan procedure. A value of 100 indicates that the blind scan is finished. */
-		__u16 m_uistartfreq_100khz;					/* The start scan frequency in units of 100kHz. The minimum value depends on the tuner specification. */
+		__u32 m_uistartfreq_khz;					/* The start scan frequency in units of kHz. The minimum value depends on the tuner specification. */
 		struct dvb_frontend_parameters parameters;	/* Blind scan channel info. */
 	} u;	
 };

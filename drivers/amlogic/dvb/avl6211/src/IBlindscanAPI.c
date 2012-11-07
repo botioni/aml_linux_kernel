@@ -83,14 +83,14 @@ AVL_DVBSx_ErrorCode AVL_DVBSx_IBlindScanAPI_Start(struct AVL_DVBSx_Chip * pAVLCh
 
 	if(pBSsetting->BS_Mode)
 	{
-		pTuner->m_uiFrequency_100kHz = 10*pBSsetting->m_uiScan_Start_Freq_MHz + pBSsetting->m_uiTuner_MaxLPF_100kHz + (pBSsetting->m_uiScan_Bind_No) * pBSsetting->m_uiScan_Center_Freq_Step_100KHz;
-		pbsPara->m_uiStartFreq_100kHz = pTuner->m_uiFrequency_100kHz - pBSsetting->m_uiTuner_MaxLPF_100kHz;
-		pbsPara->m_uiStopFreq_100kHz =  pTuner->m_uiFrequency_100kHz + pBSsetting->m_uiTuner_MaxLPF_100kHz;
+		pTuner->m_uiFrequency_100kHz = 10*pBSsetting->m_uiScan_Start_Freq_MHz + 320 + (pBSsetting->m_uiScan_Bind_No) * pBSsetting->m_uiScan_Center_Freq_Step_100KHz;
+		pbsPara->m_uiStartFreq_100kHz = pTuner->m_uiFrequency_100kHz - 320;
+		pbsPara->m_uiStopFreq_100kHz =  pTuner->m_uiFrequency_100kHz + 320;
 	}
 	else
 	{
 		pbsPara->m_uiStartFreq_100kHz = pBSsetting->m_uiScan_Next_Freq_100KHz;
-		pbsPara->m_uiStopFreq_100kHz = pBSsetting->m_uiScan_Next_Freq_100KHz + pBSsetting->m_uiTuner_MaxLPF_100kHz*2;
+		pbsPara->m_uiStopFreq_100kHz = pBSsetting->m_uiScan_Next_Freq_100KHz + 320*2;
 		pTuner->m_uiFrequency_100kHz = (pbsPara->m_uiStartFreq_100kHz + pbsPara->m_uiStopFreq_100kHz)/2;
 	}
 
@@ -110,7 +110,7 @@ AVL_DVBSx_ErrorCode AVL_DVBSx_IBlindScanAPI_Start(struct AVL_DVBSx_Chip * pAVLCh
 	pbsPara->m_uiMinSymRate_kHz = 1000*pBSsetting->m_uiScan_Min_Symbolrate_MHz;
 	
 	r |= AVL_DVBSx_IBlindScan_Reset(pAVLChip);
-	r |= AVL_DVBSx_IBlindScan_Scan(pbsPara,pBSsetting->m_uiTuner_MaxLPF_100kHz, pAVLChip);
+	r |= AVL_DVBSx_IBlindScan_Scan(pbsPara,340, pAVLChip);
 	pBSsetting->m_uiScaning = 1;
 	
 	return r;

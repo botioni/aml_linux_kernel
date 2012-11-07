@@ -251,6 +251,8 @@ struct analog_demod_ops {
 };
 
 struct dvbsx_blindscan_info {
+	/* timeout of get blindscan event */
+	int timeout;
 	int (*blindscan_callback)(struct dvb_frontend *fe, struct dvbsx_blindscanevent *pbsevent);	
 };
 

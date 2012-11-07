@@ -105,6 +105,7 @@ struct dvb_frontend_private {
 	struct dvb_fe_events events;
 	struct semaphore sem;
 	struct dvbsx_blindscan_events blindscan_events;
+	struct semaphore blindscan_sem;
 	bool in_blindscan;
 	struct list_head list_head;
 	wait_queue_head_t wait_queue;
@@ -282,8 +283,13 @@ static int dvbsx_blindscan_get_event(struct dvb_frontend *fe,
 		if (flags & O_NONBLOCK)
 			return -EWOULDBLOCK;
 
-		ret = wait_event_interruptible (events->wait_queue,
-						events->eventw != events->eventr);
+		up(&fepriv->blindscan_sem);
+		
+		ret = wait_event_interruptible_timeout (events->wait_queue,
+												events->eventw != events->eventr, fe->ops.blindscan_ops.info.timeout * HZ);
+
+		if (down_interruptible (&fepriv->blindscan_sem))
+			return -ERESTARTSYS;
 
 		if (ret < 0)
 			return ret;
@@ -304,12 +310,19 @@ static int dvbsx_blindscan_get_event(struct dvb_frontend *fe,
 
 static int dvbsx_blindscan_event_callback(struct dvb_frontend *fe, struct dvbsx_blindscanevent *pbsevent)
 {
+	struct dvb_frontend_private *fepriv = fe->frontend_priv;
+	
 	dprintk ("%s\n", __func__);
 
 	if((!fe) || (!pbsevent ))
 		return -1;
 
+	if (down_interruptible (&fepriv->blindscan_sem))
+		return -ERESTARTSYS;
+
 	dvbsx_blindscan_add_event(fe, pbsevent);
+
+	up(&fepriv->blindscan_sem);
 
 	return 0;
 }
@@ -1594,6 +1607,7 @@ static int dvb_frontend_ioctl(struct inode *inode, struct file *file,
 	struct dvb_frontend_private *fepriv = fe->frontend_priv;
 	int err = -EOPNOTSUPP;
 	int need_lock = 1;
+	int need_blindscan = 0;
 
 	dprintk("%s (%d)\n", __func__, _IOC_NR(cmd));
 
@@ -1616,9 +1630,18 @@ static int dvb_frontend_ioctl(struct inode *inode, struct file *file,
 			cmd==FE_SET_BLINDSCANCANCEl)
 		need_lock = 0;
 
+	if (cmd==FE_SET_BLINDSCAN ||
+			cmd==FE_GET_BLINDSCANEVENT ||
+			cmd==FE_SET_BLINDSCANCANCEl)
+			need_blindscan = 1;
+
 	if (need_lock)
 		if (down_interruptible (&fepriv->sem))
 			return -ERESTARTSYS;
+
+	if (need_blindscan)
+		if (down_interruptible (&fepriv->blindscan_sem))
+			return -ERESTARTSYS;		
 
 	if ((cmd == FE_SET_PROPERTY) || (cmd == FE_GET_PROPERTY))
 		err = dvb_frontend_ioctl_properties(inode, file, cmd, parg);
@@ -1626,6 +1649,9 @@ static int dvb_frontend_ioctl(struct inode *inode, struct file *file,
 		fe->dtv_property_cache.state = DTV_UNDEFINED;
 		err = dvb_frontend_ioctl_legacy(inode, file, cmd, parg);
 	}
+
+	if(need_blindscan)
+		up(&fepriv->blindscan_sem);
 
 	if(need_lock)
 		up(&fepriv->sem);
@@ -2007,6 +2033,7 @@ static int dvb_frontend_ioctl_legacy(struct inode *inode, struct file *file,
 	case  FE_SET_BLINDSCAN:
 		dprintk("FE_SET_BLINDSCAN\n");
 
+		fe->ops.blindscan_ops.info.timeout = ((struct dvbsx_blindscanpara*) parg)->timeout;
 		/*register*/
 		fe->ops.blindscan_ops.info.blindscan_callback = dvbsx_blindscan_event_callback;
 		
@@ -2028,7 +2055,7 @@ static int dvb_frontend_ioctl_legacy(struct inode *inode, struct file *file,
 
 			if(p_tmp_bsevent->status == BLINDSCAN_UPDATESTARTFREQ)
 			{
-				dprintk("start freq %d\n", p_tmp_bsevent->u.m_uistartfreq_100khz);
+				dprintk("start freq %d\n", p_tmp_bsevent->u.m_uistartfreq_khz);
 			}
 			else if(p_tmp_bsevent->status == BLINDSCAN_UPDATEPROCESS)
 			{
@@ -2076,21 +2103,10 @@ static unsigned int dvb_frontend_poll(struct file *file, struct poll_table_struc
 
 	dprintk ("%s\n", __func__);
 
-	/*protect in_blindscan member*/
-	if(!fepriv->in_blindscan)
-	{
-		poll_wait (file, &fepriv->events.wait_queue, wait);
+	poll_wait (file, &fepriv->events.wait_queue, wait);
 
-		if (fepriv->events.eventw != fepriv->events.eventr)
-			return (POLLIN | POLLRDNORM | POLLPRI);
-	}
-	else
-	{
-		poll_wait (file, &fepriv->blindscan_events.wait_queue, wait);
-
-		if (fepriv->blindscan_events.eventw != fepriv->blindscan_events.eventr)
-			return (POLLIN | POLLRDNORM | POLLPRI);	
-	}
+	if (fepriv->events.eventw != fepriv->events.eventr)
+		return (POLLIN | POLLRDNORM | POLLPRI);
 
 	return 0;
 }
@@ -2242,6 +2258,7 @@ int dvb_register_frontend(struct dvb_adapter* dvb,
 	fepriv = fe->frontend_priv;
 
 	init_MUTEX (&fepriv->sem);
+	init_MUTEX (&fepriv->blindscan_sem);
 	init_waitqueue_head (&fepriv->wait_queue);
 	init_waitqueue_head (&fepriv->events.wait_queue);
 	init_waitqueue_head (&fepriv->blindscan_events.wait_queue);
