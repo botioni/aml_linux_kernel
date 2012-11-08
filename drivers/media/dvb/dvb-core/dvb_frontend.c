@@ -286,7 +286,7 @@ static int dvbsx_blindscan_get_event(struct dvb_frontend *fe,
 		up(&fepriv->blindscan_sem);
 		
 		ret = wait_event_interruptible_timeout (events->wait_queue,
-												events->eventw != events->eventr, fe->ops.blindscan_ops.info.timeout * HZ);
+												events->eventw != events->eventr, fe->ops.blindscan_ops.info.bspara.timeout * HZ);
 
 		if (down_interruptible (&fepriv->blindscan_sem))
 			return -ERESTARTSYS;
@@ -309,9 +309,7 @@ static int dvbsx_blindscan_get_event(struct dvb_frontend *fe,
 }
 
 static int dvbsx_blindscan_event_callback(struct dvb_frontend *fe, struct dvbsx_blindscanevent *pbsevent)
-{
-	struct dvb_frontend_private *fepriv = fe->frontend_priv;
-	
+{	
 	dprintk ("%s\n", __func__);
 
 	if((!fe) || (!pbsevent ))
@@ -2026,16 +2024,24 @@ static int dvb_frontend_ioctl_legacy(struct inode *inode, struct file *file,
 		break;			
 
 	case  FE_SET_BLINDSCAN:
-		dprintk("FE_SET_BLINDSCAN\n");
+		memcpy (&(fe->ops.blindscan_ops.info.bspara), parg, sizeof (struct dvbsx_blindscanpara));
 
-		fe->ops.blindscan_ops.info.timeout = ((struct dvbsx_blindscanpara*) parg)->timeout;
+		dprintk("FE_SET_BLINDSCAN %d %d %d %d %d %d %d\n", 
+				fe->ops.blindscan_ops.info.bspara.minfrequency,
+				fe->ops.blindscan_ops.info.bspara.maxfrequency,
+				fe->ops.blindscan_ops.info.bspara.minSymbolRate,
+				fe->ops.blindscan_ops.info.bspara.maxSymbolRate,
+				fe->ops.blindscan_ops.info.bspara.frequencyRange,
+				fe->ops.blindscan_ops.info.bspara.frequencyStep,
+				fe->ops.blindscan_ops.info.bspara.timeout);
+
 		/*register*/
 		fe->ops.blindscan_ops.info.blindscan_callback = dvbsx_blindscan_event_callback;
 		
 		fepriv->in_blindscan = true;
 		
 		if (fe->ops.blindscan_ops.blindscan_scan)
-			err = fe->ops.blindscan_ops.blindscan_scan(fe, (struct dvbsx_blindscanpara*) parg);
+			err = fe->ops.blindscan_ops.blindscan_scan(fe, &(fe->ops.blindscan_ops.info.bspara));
 		break;
 
 	case  FE_GET_BLINDSCANEVENT:

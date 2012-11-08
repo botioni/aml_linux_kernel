@@ -452,15 +452,13 @@ static int dvbs2_blindscan_task(struct dvbsx_blindscanpara *pbspara)//(struct dv
 static struct task_struct *dvbs2_task;
 static int AVL6211_Blindscan_Scan(struct dvb_frontend* fe, struct dvbsx_blindscanpara *pbspara)
 {
-	struct dvbsx_blindscanpara tmp_bspara;
 	printk(KERN_INFO "AVL6211_Blindscan_Scan printk\n");
 
-	memcpy(&tmp_bspara, pbspara, sizeof(struct dvbsx_blindscanpara));
 	AVL_DVBSx_IBSP_WaitSemaphore(&blindscanSem);
 	fe_use = fe;
 	blindstart=1;
 	AVL_DVBSx_IBSP_ReleaseSemaphore(&blindscanSem);
-	  dvbs2_task = kthread_create(dvbs2_blindscan_task, &tmp_bspara, "dvbs2_task");
+	  dvbs2_task = kthread_create(dvbs2_blindscan_task, pbspara, "dvbs2_task");
       if(!dvbs2_task){
       	printk("Unable to start dvbs2 thread.\n");
      	dvbs2_task = NULL;
