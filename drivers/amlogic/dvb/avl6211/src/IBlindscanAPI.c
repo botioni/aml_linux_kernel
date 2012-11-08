@@ -28,8 +28,8 @@ AVL_DVBSx_ErrorCode AVL_DVBSx_IBlindScanAPI_Initialize(struct AVL_DVBSx_BlindSca
 	pBSsetting->m_uiScan_Stop_Freq_MHz = 2150;     //Default Set Blind scan stop frequency
 	pBSsetting->m_uiScan_Next_Freq_100KHz = 10*pBSsetting->m_uiScan_Start_Freq_MHz;
 
-//	pBSsetting->m_uiScan_Max_Symbolrate_MHz = 45;  //Set MAX symbol rate
-//	pBSsetting->m_uiScan_Min_Symbolrate_MHz = 2;   //Set MIN symbol rate
+	pBSsetting->m_uiScan_Max_Symbolrate_MHz = 45;  //Set MAX symbol rate
+	pBSsetting->m_uiScan_Min_Symbolrate_MHz = 2;   //Set MIN symbol rate
 	
 	pBSsetting->m_uiTuner_MaxLPF_100kHz = 340;
 

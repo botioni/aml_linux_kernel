@@ -317,12 +317,7 @@ static int dvbsx_blindscan_event_callback(struct dvb_frontend *fe, struct dvbsx_
 	if((!fe) || (!pbsevent ))
 		return -1;
 
-	if (down_interruptible (&fepriv->blindscan_sem))
-		return -ERESTARTSYS;
-
 	dvbsx_blindscan_add_event(fe, pbsevent);
-
-	up(&fepriv->blindscan_sem);
 
 	return 0;
 }

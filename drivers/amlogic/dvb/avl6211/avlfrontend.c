@@ -262,6 +262,29 @@ static int	AVL6211_Enable_High_Lnb_Voltage(struct dvb_frontend* fe, long arg)
 	return 0;
 }
 
+static void AVL6211_DumpSetting(struct AVL_DVBSx_BlindScanAPI_Setting *pBSsetting)
+{
+	printk(KERN_INFO "AVL6211_DumpSetting+++\n");
+
+	printk(KERN_INFO "m_uiScan_Min_Symbolrate_MHz %d\n", pBSsetting->m_uiScan_Min_Symbolrate_MHz);
+	printk(KERN_INFO "m_uiScan_Max_Symbolrate_MHz %d\n", pBSsetting->m_uiScan_Max_Symbolrate_MHz);
+	printk(KERN_INFO "m_uiScan_Start_Freq_MHz %d\n", pBSsetting->m_uiScan_Start_Freq_MHz);
+	printk(KERN_INFO "m_uiScan_Stop_Freq_MHz %d\n", pBSsetting->m_uiScan_Stop_Freq_MHz);
+	printk(KERN_INFO "m_uiScan_Next_Freq_100KHz %d\n", pBSsetting->m_uiScan_Next_Freq_100KHz);
+	printk(KERN_INFO "m_uiScan_Progress_Per %d\n", pBSsetting->m_uiScan_Progress_Per);
+	printk(KERN_INFO "m_uiScan_Bind_No %d\n", pBSsetting->m_uiScan_Bind_No);
+	printk(KERN_INFO "m_uiTuner_MaxLPF_100kHz %d\n", pBSsetting->m_uiTuner_MaxLPF_100kHz);
+	printk(KERN_INFO "m_uiScan_Center_Freq_Step_100KHz %d\n", pBSsetting->m_uiScan_Center_Freq_Step_100KHz);
+	printk(KERN_INFO "BS_Mode %d\n", pBSsetting->BS_Mode);
+	printk(KERN_INFO "m_uiScaning %d\n", pBSsetting->m_uiScaning);
+	printk(KERN_INFO "m_uiChannelCount %d\n", pBSsetting->m_uiChannelCount);
+	printk(KERN_INFO "m_eSpectrumMode %d\n", pBSsetting->m_eSpectrumMode);
+
+	printk(KERN_INFO "AVL6211_DumpSetting---\n");
+	
+	return;
+}
+
 static int dvbs2_blindscan_task(struct dvbsx_blindscanpara *pbspara)//(struct dvb_frontend* fe, struct dvbsx_blindscanpara *pbspara)
 
 {
@@ -286,6 +309,8 @@ static int dvbs2_blindscan_task(struct dvbsx_blindscanpara *pbspara)//(struct dv
 			return (r);
 		}
 		printf("Initialization success !\n");*/
+
+		memset(pBSsetting, 0, sizeof(struct AVL_DVBSx_BlindScanAPI_Setting));
 	
 		pBSsetting->m_uiScan_Start_Freq_MHz=pbspara->minfrequency/1000;
 		pBSsetting->m_uiScan_Stop_Freq_MHz=pbspara->maxfrequency/1000;
@@ -298,6 +323,7 @@ static int dvbs2_blindscan_task(struct dvbsx_blindscanpara *pbspara)//(struct dv
 					BS_Status = AVL_DVBSx_BS_Status_Cancel;
 					printf("AVL_DVBSx_BS_Status_Cancel\n");
 				}
+				printk(KERN_INFO "BS_Status %d blindstart %d\n", BS_Status, blindstart);
 				switch(BS_Status)
 				{
 				case AVL_DVBSx_BS_Status_Init:			{
@@ -307,10 +333,12 @@ static int dvbs2_blindscan_task(struct dvbsx_blindscanpara *pbspara)//(struct dv
 														AVL_DVBSx_IBlindScanAPI_SetFreqRange(pBSsetting, bs_start_freq, bs_stop_freq); //Default scan rang is from 950 to 2150. User may call this function to change scan frequency rang.
 														AVL_DVBSx_IBlindScanAPI_SetScanMode(pBSsetting, Blindscan_Mode);
 		
-														AVL_DVBSx_IBlindScanAPI_SetSpectrumMode(pBSsetting, M_TUNERMAXLPF_100KHZ); //Default set is AVL_DVBSx_Spectrum_Normal, it must be set correctly according Board HW configuration
-														AVL_DVBSx_IBlindScanAPI_SetMaxLPF(pBSsetting, AVL_DVBSx_Spectrum_Normal); //Set Tuner max LPF value, this value will difference according tuner type
+														AVL_DVBSx_IBlindScanAPI_SetSpectrumMode(pBSsetting, AVL_DVBSx_Spectrum_Normal); //Default set is AVL_DVBSx_Spectrum_Normal, it must be set correctly according Board HW configuration
+														AVL_DVBSx_IBlindScanAPI_SetMaxLPF(pBSsetting, M_TUNERMAXLPF_100KHZ); //Set Tuner max LPF value, this value will difference according tuner type
 		
 														BS_Status = AVL_DVBSx_BS_Status_Start;
+
+														AVL6211_DumpSetting(pBSsetting);
 														break;
 													}
 		
@@ -326,7 +354,7 @@ static int dvbs2_blindscan_task(struct dvbsx_blindscanpara *pbspara)//(struct dv
 														{	
 															
 															bsevent.status = BLINDSCAN_UPDATESTARTFREQ;
-															bsevent.u.m_uistartfreq_khz = pBSsetting->m_uiScan_Next_Freq_100KHz * 100;
+															bsevent.u.m_uistartfreq_khz = avl6211pTuner->m_uiFrequency_100kHz * 100;
 															fe_use->ops.blindscan_ops.info.blindscan_callback(fe_use, &bsevent);
 															BS_Status = AVL_DVBSx_BS_Status_Wait;
 														}
@@ -335,7 +363,7 @@ static int dvbs2_blindscan_task(struct dvbsx_blindscanpara *pbspara)//(struct dv
 		
 				case AVL_DVBSx_BS_Status_Wait:		{
 														r = AVL_DVBSx_IBlindScanAPI_GetCurrentScanStatus(pAVLChip_all, pBSsetting);
-														printk(KERN_INFO "AVL_DVBSx_BS_Status_Wait %d\n", r);
+														printk(KERN_INFO "AVL_DVBSx_BS_Status_Wait %d %d\n", r, pBSsetting->bsInfo.m_uiChannelCount);
 														if(AVL_DVBSx_EC_GeneralFail == r)
 														{
 															BS_Status = AVL_DVBSx_BS_Status_Exit;
@@ -424,13 +452,15 @@ static int dvbs2_blindscan_task(struct dvbsx_blindscanpara *pbspara)//(struct dv
 static struct task_struct *dvbs2_task;
 static int AVL6211_Blindscan_Scan(struct dvb_frontend* fe, struct dvbsx_blindscanpara *pbspara)
 {
-	printf("AVL6211_Blindscan_Scan\n");
+	struct dvbsx_blindscanpara tmp_bspara;
 	printk(KERN_INFO "AVL6211_Blindscan_Scan printk\n");
+
+	memcpy(&tmp_bspara, pbspara, sizeof(struct dvbsx_blindscanpara));
 	AVL_DVBSx_IBSP_WaitSemaphore(&blindscanSem);
 	fe_use = fe;
 	blindstart=1;
 	AVL_DVBSx_IBSP_ReleaseSemaphore(&blindscanSem);
-	  dvbs2_task = kthread_create(dvbs2_blindscan_task, pbspara, "dvbs2_task");
+	  dvbs2_task = kthread_create(dvbs2_blindscan_task, &tmp_bspara, "dvbs2_task");
       if(!dvbs2_task){
       	printk("Unable to start dvbs2 thread.\n");
      	dvbs2_task = NULL;
@@ -443,7 +473,7 @@ static int AVL6211_Blindscan_Scan(struct dvb_frontend* fe, struct dvbsx_blindsca
 static int AVL6211_Blindscan_Cancel(struct dvb_frontend* fe)
 {
 		blindstart=0;
-		printf("AVL6211_Blindscan_Cancel\n");
+		printk(KERN_INFO "AVL6211_Blindscan_Cancel\n");
 		while(2!=blindstart){
 				pr_dbg("wait for scan exit\n");
 				msleep(100);
