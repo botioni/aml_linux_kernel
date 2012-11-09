@@ -157,7 +157,7 @@ struct fsg_config {
 
 	char			can_stall;
 };
-
+#ifdef CONFIG_USB_G_ANDROID
 struct fsg_dev {
 	struct usb_function	function;
 	struct usb_gadget	*gadget;	/* Copy of cdev->gadget */
@@ -174,3 +174,4 @@ struct fsg_dev {
 	struct usb_ep		*bulk_in;
 	struct usb_ep		*bulk_out;
 };
+#endif

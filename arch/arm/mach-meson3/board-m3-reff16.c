@@ -296,13 +296,13 @@ static struct platform_device fb_device = {
 
 #if defined(CONFIG_AMLOGIC_SPI_NOR)
 static struct mtd_partition spi_partition_info[] = {
-    /* Hide uboot partition
+
             {
-                    .name = "uboot",
+                    .name = "bootloader",
                     .offset = 0,
-                    .size = 0x3e000,
+                   .size = 0x60000,
             },
-    //*/
+  
     {
         .name = "ubootenv",
         .offset = 0x80000,

@@ -119,6 +119,9 @@ void arm_machine_restart(char mode, const char *cmd)
 		if(strcmp(cmd, "lock_reboot") == 0){
 			*sram_vaddr = AMLOGIC_LOCK_REBOOT;
 		}
+		else if (strcmp(cmd, "usb_burner_reboot") == 0){
+            *sram_vaddr = MESON_USB_BURNER_REBOOT;
+		}
 	}
     
 	flush_cache_vmap((long unsigned int)sram_vaddr,(long unsigned int)(sram_vaddr + 4));    
