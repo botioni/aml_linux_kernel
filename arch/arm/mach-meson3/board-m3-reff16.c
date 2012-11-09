@@ -934,7 +934,21 @@ void mute_headphone(void* codec, int flag)
 }
 
 #endif
+#if defined(CONFIG_SND_SOC_BT40183)
 
+static struct platform_device bt40183_audio = {
+    .name           = "bt40183_audio",
+    .id             = 1,
+    .resource       = aml_m3_audio_resource,
+    .num_resources  = ARRAY_SIZE(aml_m3_audio_resource),
+};
+
+static struct platform_device bt40183 = {
+    .name           = "BT40183",
+    .id             = -1,
+};
+
+#endif
 #ifdef CONFIG_SND_AML_M3_CS4334
 static struct platform_device aml_sound_card={
        .name                   = "aml_m3_audio_cs4334",
@@ -2222,6 +2236,10 @@ static struct platform_device __initdata *platform_devs[] = {
 #endif
 #if defined(CONFIG_SND_AML_M3)
     &aml_audio,
+#endif
+#ifdef CONFIG_SND_SOC_BT40183
+    &bt40183_audio,
+    &bt40183,    
 #endif
 #ifdef CONFIG_SND_AML_M3_CS4334
     &aml_sound_card,

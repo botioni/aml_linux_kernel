@@ -47,7 +47,7 @@ struct aml_pcm_dma_params{
 		void (*dma_intr_handler)(u32, struct snd_pcm_substream *);
 	
 };
-
 extern struct snd_soc_platform aml_soc_platform;
+extern struct aml_audio_interface aml_i2s_interface;
 
 #endif

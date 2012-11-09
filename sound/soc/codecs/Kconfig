@@ -279,5 +279,7 @@ config SND_SOC_WM2000
 config SND_SOC_RT5621
 	tristate
 
+config SND_SOC_BT40183
+	tristate
 config SND_SOC_CS4334
        tristate
