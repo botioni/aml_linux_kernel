@@ -1950,6 +1950,10 @@ static struct platform_device aml_wdt_device = {
 #if defined(CONFIG_AML_HDMI_TX)
 static struct hdmi_phy_set_data brd_phy_data[] = {
 //    {27, 0xf7, 0x0},    // an example: set Reg0xf7 to 0 in 27MHz
+    { 74, 0x16,  2},
+    { 74, 0xf7,  7},
+    {148, 0x16,  3},
+    {148, 0xf7,  8},
     {-1,   -1},         //end of phy setting
 };
 static struct hdmi_config_platform_data aml_hdmi_pdata ={
