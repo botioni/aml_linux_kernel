@@ -482,6 +482,11 @@ typedef struct {
     unsigned char rx_buf_size;
 } cec_rx_msg_buf_t;
 
+typedef enum {
+    DEVICE_MENU_ACTIVE = 0,
+    DEVICE_MENU_INACTIVE,    
+} cec_device_menu_state_e;
+
 extern cec_rx_msg_buf_t cec_rx_msg_buf;
 
 
@@ -540,6 +545,7 @@ void cec_active_source(cec_rx_message_t* pcec_message);
 void cec_set_stream_path(cec_rx_message_t* pcec_message);
 void cec_set_osd_name(cec_rx_message_t* pcec_message);
 void cec_deactive_source(cec_rx_message_t* pcec_message);
+void cec_menu_status(cec_rx_message_t* pcec_message);
 void cec_set_system_audio_mode(void);
 void cec_system_audio_mode_request(void);
 void cec_report_audio_status(void);
