@@ -902,8 +902,14 @@ static inline void hci_conn_complete_evt(struct hci_dev *hdev, struct sk_buff *s
 			cp.handle = ev->handle;
 			hci_send_cmd(hdev, HCI_OP_READ_REMOTE_FEATURES,
 							sizeof(cp), &cp);
+            /* set link policy not allow role switch, so host always be master*/
+            struct hci_cp_write_link_policy lp_cp;
+            lp_cp.handle = ev->handle;
+            lp_cp.policy = cpu_to_le16(hdev->link_policy);
+            lp_cp.policy &= ~HCI_LP_RSWITCH;
+            hci_send_cmd(hdev, HCI_OP_WRITE_LINK_POLICY, sizeof(lp_cp), &lp_cp);
             /* force host to be master role */
-            hci_conn_switch_role(conn, 0x00);
+            //hci_conn_switch_role(conn, 0x00);
 		}
 
 		/* Set packet type for incoming connection */
