@@ -1657,6 +1657,17 @@ static struct platform_device aml_nand_device = {
 };
 #endif
 
+#if defined(CONFIG_AML_NAND_KEY)
+static char * secure_device[2]={"nand_key",NULL};
+static struct platform_device aml_keys_device = {
+    .name   = "aml_keys",
+    .id = -1,
+    .dev = {
+                .platform_data = &secure_device[0],
+           },
+};
+#endif
+
 #if defined(CONFIG_AMLOGIC_BACKLIGHT)
 extern void power_on_backlight(void);
 extern void power_off_backlight(void);
@@ -1975,6 +1986,9 @@ static struct platform_device __initdata *platform_devs[] = {
 #ifdef CONFIG_FREE_SCALE
 	&freescale_device,
 #endif 
+#if defined(CONFIG_AML_NAND_KEY)
+	&aml_keys_device,
+#endif
 };
 
 static struct i2c_board_info __initdata aml_i2c_bus_info[] = {

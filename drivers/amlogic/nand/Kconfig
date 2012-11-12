@@ -24,7 +24,23 @@ config AML_NAND_ENV
 	bool "use aml nand env (/dev/nand_env)"
 	    depends on AM_NAND
 	default y
-				
+
+config AML_NAND_KEY
+	bool "Meson key data store in nand device(dev/nand_key) support"
+	depends on AM_NAND
+	depends on ARCH_MESON3 || ARCH_MESON6
+	default n
+	help
+	  Support   key variable store in NAND device
+
+config NAND_KEY_BLOCK_NUM
+	int "config nand key area block number"
+	depends on AML_NAND_KEY
+	range 2  16
+	default 8
+	help
+		config nand key block number, the number must be even number
+
 config AML_NFTL
 	tristate "Amlogic NFTL (NAND Flash Translation Layer) support"
 	depends on (AM_NAND)

@@ -68,4 +68,32 @@ typedef struct efuseinfo{
 
 typedef int (*pfn) (unsigned id, efuseinfo_item_t *info); 
 
+
+#include <linux/cdev.h>
+
+typedef struct 
+{
+    struct cdev cdev;
+    unsigned int flags;
+} keys_dev_t;
+//} efuse_dev_t;
+
+#include <linux/ioctl.h>
+
+#define AML_KEYS_INSTALL_ID     _IO('f', 0x10)
+#define AML_KEYS_INSTALL        _IO('f', 0x20)
+#define AML_KEYS_SET_VERSION    _IO('f', 0x30)
+
+typedef struct aml_keybox_provider_s aml_keybox_provider_t;
+struct aml_keybox_provider_s{
+	char * name;
+	int32_t flag;
+	int32_t (* read)(aml_keybox_provider_t * provider,uint8_t * buf,int bytes,int flags);
+	int32_t (* write)(aml_keybox_provider_t * provider,uint8_t * buf,int bytes);
+	void * priv;
+};
+int32_t aml_keybox_provider_register(aml_keybox_provider_t * provider);
+aml_keybox_provider_t * aml_keybox_provider_get(char * name);
+
+
 #endif

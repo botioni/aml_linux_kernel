@@ -1369,7 +1369,7 @@ static void aml_platform_adjust_timing(struct aml_nand_chip *aml_chip)
 
 static int aml_nand_add_partition(struct aml_nand_chip *aml_chip)
 {
-	uint32_t adjust_offset = 0, mini_part_blk_num, start_blk = 0;
+	uint32_t adjust_offset = 0, mini_part_blk_num, start_blk = 0,key_block;
 	struct mtd_info *mtd = &aml_chip->mtd;
 	struct aml_nand_platform *plat = aml_chip->platform;
 	struct platform_nand_chip *chip = &plat->platform_nand_data.chip;
@@ -1380,6 +1380,9 @@ static int aml_nand_add_partition(struct aml_nand_chip *aml_chip)
 	u8 part_num = 0;
 	size_t offset;
 	uint64_t mini_part_size = ((mtd->erasesize > NAND_MINI_PART_SIZE) ? mtd->erasesize : NAND_MINI_PART_SIZE);
+#ifdef CONFIG_AML_NAND_KEY
+	//mini_part_size = ((mtd->erasesize > (NAND_MINI_PART_SIZE + NAND_MINIKEY_PART_SIZE)) ? mtd->erasesize : (NAND_MINI_PART_SIZE + NAND_MINIKEY_PART_SIZE));
+#endif
 
 	if (chip->set_parts)
 		chip->set_parts(mtd->size, chip);
@@ -1407,10 +1410,16 @@ static int aml_nand_add_partition(struct aml_nand_chip *aml_chip)
 #endif
 		part_num++;
 		start_blk = adjust_offset / mtd->erasesize;
-		if ((NAND_MINI_PART_SIZE / mtd->erasesize) < 2)
-			mini_part_blk_num = 2;
+		if ((NAND_MINI_PART_SIZE / mtd->erasesize) < NAND_MINI_PART_BLOCKNUM)
+			mini_part_blk_num = NAND_MINI_PART_BLOCKNUM;
 		else
 			mini_part_blk_num = (NAND_MINI_PART_SIZE >> phys_erase_shift);
+#ifdef CONFIG_AML_NAND_KEY
+		//if ((NAND_MINIKEY_PART_SIZE / mtd->erasesize) < NAND_MINIKEY_PART_BLOCKNUM)
+		//	mini_part_blk_num += NAND_MINIKEY_PART_BLOCKNUM; //for nand key
+		//else
+		//	mini_part_blk_num += (NAND_MINIKEY_PART_SIZE >> phys_erase_shift);
+#endif
         start_blk = 0;
 		do {
 			offset = adjust_offset + start_blk * mtd->erasesize;
@@ -1471,6 +1480,17 @@ static int aml_nand_add_partition(struct aml_nand_chip *aml_chip)
 				sprintf(temp_parts->name, "mtd%d", part_num++);
 			}
 		}
+#ifdef CONFIG_AML_NAND_KEY
+		temp_parts = parts + (nr-1);
+		key_block = aml_chip->aml_nandkey_info->end_block - aml_chip->aml_nandkey_info->start_block + 1;
+
+		if(temp_parts->size == MTDPART_SIZ_FULL){
+			temp_parts->size = mtd->size - temp_parts->offset - key_block*mtd->erasesize;
+		}
+		else{
+			temp_parts->size -= key_block*mtd->erasesize;
+		}
+#endif
 	}
 
 	return add_mtd_partitions(mtd, parts, nr);
@@ -5966,6 +5986,10 @@ int aml_nand_init(struct aml_nand_chip *aml_chip)
 			 	printk(KERN_ERR "nand_env: failed to create device node\n");
 			 	ret = PTR_ERR(devp);
 	 		}
+#endif
+#ifdef CONFIG_AML_NAND_KEY
+		int aml_key_init(struct aml_nand_chip *aml_chip);
+        aml_key_init(aml_chip);
 #endif
           /*setup class*/
     	aml_chip->cls.name = kzalloc(strlen((const char*)NAND_MULTI_NAME)+1, GFP_KERNEL);
