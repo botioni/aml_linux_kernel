@@ -658,12 +658,20 @@ static int update_urb_state_xfer_comp(dwc_hc_t * _hc,
 {
 	int xfer_done = 0;
 	int short_read = 0;
-
-	_urb->actual_length += get_actual_xfer_length(_hc, _hc_regs, _qtd,
+	int xfer_length;
+	
+	xfer_length = get_actual_xfer_length(_hc, _hc_regs, _qtd,
 						      DWC_OTG_HC_XFER_COMPLETE,
 						      &short_read);
+	_urb->actual_length += xfer_length;
 
-	if (short_read || (_urb->actual_length == _urb->transfer_buffer_length)) {
+	if (xfer_length && (_hc->ep_type == DWC_OTG_EP_TYPE_BULK) &&
+	    (_urb->transfer_flags & URB_ZERO_PACKET)
+	    && (_urb->actual_length == _urb->transfer_buffer_length)
+	    && !(_urb->transfer_buffer_length % _hc->max_packet)) {
+		xfer_done = 0;
+	}
+	else if (short_read || (_urb->actual_length == _urb->transfer_buffer_length)) {
 		xfer_done = 1;
 		if (short_read && (_urb->transfer_flags & URB_SHORT_NOT_OK)) {
 			_urb->status = -EREMOTEIO;
@@ -671,11 +679,11 @@ static int update_urb_state_xfer_comp(dwc_hc_t * _hc,
 			_urb->status = 0;
 		}
 	}
-
-	if(_urb->actual_length > _urb->transfer_buffer_length){
+	else if(_urb->actual_length > _urb->transfer_buffer_length){
 		DWC_WARN("_urb->actual_length(%d) > _urb->transfer_buffer_length(%d)!\n",
 			_urb->actual_length , _urb->transfer_buffer_length);
 		xfer_done = 1;
+		_urb->status = -EOVERFLOW;
 	}
 #ifdef DEBUG
 	{
