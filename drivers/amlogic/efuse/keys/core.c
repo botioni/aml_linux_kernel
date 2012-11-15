@@ -1479,6 +1479,57 @@ void trigger_key_init(void)
 
 }
 
+#if 1
+char asc_to_i(char para)
+{
+    if(para>='0' && para<='9')
+        para = para-'0';
+    else if(para>='a' && para<='f')
+        para = para-'a'+0xa;
+    else if(para>='A' && para<='F')
+        para = para-'A'+0xa;
+        
+        return para;
+}
+
+#define MAX_BUF_LEN 2048
+int get_aml_key_kernel(const char* key_name, unsigned char* data, int ascii_flag)
+{
+	int ret;
+	int i, j;
+	char* buf = NULL;
+	if (!key_name) {
+		printk("error, keyname or is null\n");
+		return -1;
+	}
+	buf = kmalloc(MAX_BUF_LEN, GFP_KERNEL);
+	if (!buf) {
+		printk("no memory\n");
+		return -1;
+	}
+	memset(buf, 0, MAX_BUF_LEN);
+	//printk("11111111\n");
+	key_name_store(NULL, NULL, key_name, strlen(key_name));
+	//printk("2222222\n");
+	ret = key_read_show(NULL, NULL, buf);
+	//printk("hdcp strlen is %d\n", strlen(buf));
+	if (ret >= 0) {
+		if (ascii_flag == 0) {
+			for (i=0, j=0; (i < MAX_BUF_LEN) && (buf[i]!=0); i++, j++){
+				data[j]= (((asc_to_i(buf[i]))<<4) | (asc_to_i(buf[++i])));
+                        }
+                        ret = ret >> 1;
+                } else {
+                	strncpy(data, buf, MAX_BUF_LEN);
+                }
+        }
+        kfree(buf);
+        buf = NULL;
+        return ret;
+}
+#endif
+
+
 /**
  *
  * @param inode
