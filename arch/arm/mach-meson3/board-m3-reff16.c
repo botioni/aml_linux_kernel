@@ -1192,7 +1192,11 @@ static struct aml_sw_i2c_platform aml_sw_i2c_plat = {
         .sda_bit            = 25,
         .sda_oe         = MESON3_I2C_PREG_GPIOX_OE,
     },  
+#ifdef CONFIG_AM_ITE9133
+    .udelay         = 5,
+#else 
     .udelay         = 2,
+ #endif
     .timeout            = 100,
 };
 
