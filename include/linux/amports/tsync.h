@@ -49,6 +49,8 @@ typedef enum {
 
 extern void tsync_avevent_locked(avevent_t event, u32 param);
 
+extern void tsync_mode_reinit(void);
+
 extern void tsync_avevent(avevent_t event, u32 param);
 
 extern void tsync_audio_break(int audio_break);

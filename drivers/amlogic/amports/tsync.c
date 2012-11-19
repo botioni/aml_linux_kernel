@@ -360,15 +360,17 @@ static int tsync_mode_switch(int mode,unsigned long diff_pts,int jump_pts)
 	char VA[]="VA--";
        unsigned int olddur=tsync_av_dynamic_duration_ms;
 	
-	printk("mingliang Switch_mode %c-discontinue,pcr=%d,vpts=%d,apts=%d,diff_pts=%d,jump_Pts=%d\n",mode,timestamp_pcrscr_get(),timestamp_vpts_get(),timestamp_apts_get(),diff_pts,jump_pts);
+	printk(" Switch_mode %c-discontinue,pcr=%d,vpts=%d,apts=%d,diff_pts=%d,jump_Pts=%d\n",mode,timestamp_pcrscr_get(),timestamp_vpts_get(),timestamp_apts_get(),diff_pts,jump_pts);
 	if (!tsync_enable) {
-		if(tsync_mode != TSYNC_MODE_VMASTER)
-			tsync_mode = TSYNC_MODE_VMASTER;
-			printk("tsyn_enable [%d]\n",tsync_enable);
+	      if(tsync_mode != TSYNC_MODE_VMASTER){
+        		tsync_mode = TSYNC_MODE_VMASTER;
+        		tsync_av_mode=TSYNC_STATE_S;
+        		tsync_av_dynamic_duration_ms=0;
+			}
+       	printk("tsync_enable [%d] \n",tsync_enable);
 		return 0;
-        }
+    }
 	if(mode=='T'){/*D/A--> ...*/
-		printk(" mingliang timeout lastswitchtime%d \n",tsync_av_latest_switch_time_ms);
 		if(tsync_av_mode==TSYNC_STATE_D){
 			debugcnt|=1<<1;
 			tsync_av_mode=TSYNC_STATE_A;
@@ -387,7 +389,7 @@ static int tsync_mode_switch(int mode,unsigned long diff_pts,int jump_pts)
 			///
 		}
 		if(tsync_mode!=old_tsync_mode || tsync_av_mode!=old_tsync_av_mode)
-			printk("mingliang Timeout mode changes:tsync_mode:%c->%c,state:%c->%c,debugcnt=0x%x,diff_pts=%d lastswitchtime%d  duratinms [%d]\n",
+			printk("mode changes:tsync_mode:%c->%c,state:%c->%c,debugcnt=0x%x,diff_pts=%d lastswitchtime%d  duratinms [%d]\n",
 			VA[old_tsync_mode],VA[tsync_mode],old_tsync_av_mode,tsync_av_mode,debugcnt,diff_pts,tsync_av_latest_switch_time_ms,tsync_av_dynamic_duration_ms);
 		return 0;
 	}
@@ -400,7 +402,6 @@ static int tsync_mode_switch(int mode,unsigned long diff_pts,int jump_pts)
 			tsync_mode = TSYNC_MODE_AMASTER;
 			tsync_av_latest_switch_time_ms=jiffies_ms;
 			tsync_av_dynamic_duration_ms=0;
-			printk("mingliang D->S Amaster %x \n",debugcnt);
 		}else if(tsync_av_mode==TSYNC_STATE_S){
 			if(tsync_mode != TSYNC_MODE_AMASTER){
 				debugcnt|=1<<5;
@@ -408,7 +409,6 @@ static int tsync_mode_switch(int mode,unsigned long diff_pts,int jump_pts)
            	             	tsync_mode = TSYNC_MODE_AMASTER;
                 	       tsync_av_latest_switch_time_ms=jiffies_ms;
                         	tsync_av_dynamic_duration_ms=5*1000;
-                          printk("S->S, amaster debugcnt 0x%x\n",debugcnt);
 			}
 		}
 	}else if(diff_pts<=tsync_av_threshold_max){/*min<-->max*/
@@ -418,14 +418,12 @@ static int tsync_mode_switch(int mode,unsigned long diff_pts,int jump_pts)
 			tsync_mode = TSYNC_MODE_VMASTER;
 			tsync_av_latest_switch_time_ms=jiffies_ms;
 			tsync_av_dynamic_duration_ms=15*1000;
-			printk("mingliang S->D Vmaster %x \n",debugcnt);
 		}else if(tsync_av_mode==TSYNC_STATE_D){/*new discontinue,continue wait....*/
 			    debugcnt|=1<<7;
                         tsync_av_mode=TSYNC_STATE_D;
                         tsync_mode = TSYNC_MODE_VMASTER;
                         tsync_av_latest_switch_time_ms=jiffies_ms;
                         tsync_av_dynamic_duration_ms=30*1000;
-                        printk("D->D, V debugcnt 0x%x\n",debugcnt);
 		}
 	}else if(diff_pts>=tsync_av_threshold_max){/*max<--*/
 		if(tsync_av_mode==TSYNC_STATE_D ){
@@ -434,21 +432,19 @@ static int tsync_mode_switch(int mode,unsigned long diff_pts,int jump_pts)
 			tsync_mode = TSYNC_MODE_VMASTER;
 			tsync_av_latest_switch_time_ms=jiffies_ms;
 			tsync_av_dynamic_duration_ms=0;
-			printk("mingliang S->S Vmaster %x \n",debugcnt);
 		}else if(tsync_mode != TSYNC_MODE_VMASTER){
 			debugcnt|=1<<4;
 			tsync_av_mode=TSYNC_STATE_S;
 			tsync_mode = TSYNC_MODE_VMASTER;
 			tsync_av_latest_switch_time_ms=jiffies_ms;
 			tsync_av_dynamic_duration_ms=0;
-			printk("mingliang Vmaster %x \n",debugcnt);
 		}
 	}else{
 		debugcnt|=1<<16;
 	}
 	
 	if(tsync_mode!=old_tsync_mode || tsync_av_mode!=old_tsync_av_mode){
-		printk("mingliang tsync_mode:%c->%c,state:%c->%c,debugcnt=0x%x,diff_pts=%d %d ms\n",
+		printk(" tsync_mode:%c->%c,state:%c->%c,debugcnt=0x%x,diff_pts=%d %d ms\n",
                 	VA[old_tsync_mode],VA[tsync_mode],old_tsync_av_mode,tsync_av_mode,debugcnt,diff_pts,tsync_av_dynamic_duration_ms);
 	}
 	if(olddur!=tsync_av_dynamic_duration_ms){/*duration changed,update new timeout.*/
@@ -458,7 +454,6 @@ static int tsync_mode_switch(int mode,unsigned long diff_pts,int jump_pts)
 }
 static void tsync_state_switch_timer_fun(unsigned long arg)
 {
-      // printk("mingliang tsync_av_dynamic_timeout_ms %d %d %d %d \n ",tsync_av_dynamic_timeout_ms,jiffies_ms,vpause_flag,apause_flag);
 	if(!vpause_flag && !apause_flag){
 		if(tsync_av_mode==TSYNC_STATE_D || tsync_av_mode==TSYNC_STATE_A){
 			if(tsync_av_dynamic_timeout_ms<jiffies_ms)
@@ -472,11 +467,17 @@ static void tsync_state_switch_timer_fun(unsigned long arg)
 	}else{
 		//video&audio paused,changed the timeout time to latter.
 		tsync_av_dynamic_timeout_ms=jiffies_ms+tsync_av_dynamic_duration_ms;
-		//printk(" delay the durationms %d \n",tsync_av_dynamic_duration_ms);
 	}
  	tsync_state_switch_timer.expires = jiffies + 20;// jiffies + 20//200ms
 	add_timer(&tsync_state_switch_timer);
 }
+void tsync_mode_reinit(void)
+{
+    tsync_av_mode==TSYNC_STATE_S;
+    tsync_av_dynamic_duration_ms=0;
+    return ;
+}
+EXPORT_SYMBOL(tsync_mode_reinit);
 void tsync_avevent_locked(avevent_t event, u32 param)
 {
     u32 t;
@@ -557,16 +558,13 @@ void tsync_avevent_locked(avevent_t event, u32 param)
 		else
 			t = timestamp_pcrscr_get();
         	//amlog_level(LOG_LEVEL_ATTENTION, "VIDEO_TSTAMP_DISCONTINUITY, 0x%x, 0x%x\n", t, param);
-		printk("DISCONTINUITY :param(nextpts)= 0x%x oldpts=0x%x  pcrscr=0x%x apts=0x%x\n",param,oldpts,timestamp_pcrscr_get(),timestamp_apts_get());		
 		if(abs(param-oldpts)>tsync_av_threshold_min){
-            printk("VIDEO_TSTAMP_DISCONTINUITY video discontinue 0x%x 0x%x switch V\n",t,param);
 			tsync_mode_switch('V',abs(param - t),param-oldpts);
 		}
 		timestamp_vpts_set(param);
 		if(tsync_mode == TSYNC_MODE_VMASTER){
 			timestamp_pcrscr_set(param);	
 		}else if(tsync_mode!=oldmod && tsync_mode == TSYNC_MODE_AMASTER){
-			printk("pcrset))))))))\n ",timestamp_pcrscr_get());
 			timestamp_pcrscr_set(timestamp_pcrscr_get());
 		}
 	}

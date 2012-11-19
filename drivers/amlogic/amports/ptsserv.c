@@ -728,7 +728,7 @@ int pts_stop(u8 type)
         if (type == PTS_TYPE_AUDIO) {
             timestamp_apts_set(-1);
         }
-
+ 		tsync_mode_reinit();
         return 0;
 
     } else {
