@@ -4,6 +4,7 @@
 #include <linux/slab.h>
 #include <linux/amports/ptsserv.h>
 #include <linux/amports/timestamp.h>
+#include <linux/amports/tsync.h>
 
 #include <mach/am_regs.h>
 
