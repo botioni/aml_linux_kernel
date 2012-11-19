@@ -1396,6 +1396,11 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
              * you can adjust this array for any slow sync control as you want.
              * The playback can be smoother than previous method.
              */
+             if (trickmode_fffb == 1) {
+                atomic_set(&trickmode_framedone, 1);
+                video_notify_flag |= VIDEO_NOTIFY_TRICK_WAIT;
+                break;
+            }
             if (duration_expire(cur_dispbuf, vf, frame_repeat_count * vsync_pts_inc) && timestamp_pcrscr_enable_state()) {
                 amlog_mask(LOG_MASK_SLOWSYNC,
                            "slow sync toggle, frame_repeat_count = %d\n",
