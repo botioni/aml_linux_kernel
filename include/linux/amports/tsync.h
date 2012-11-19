@@ -25,7 +25,9 @@
 #define TIME_UNIT90K    (90000)
 #define VIDEO_HOLD_THRESHOLD        (TIME_UNIT90K * 3)
 #define VIDEO_HOLD_SLOWSYNC_THRESHOLD        (TIME_UNIT90K / 10)
-#define AV_DISCONTINUE_THREDHOLD    (TIME_UNIT90K * 8)
+
+#define AV_DISCONTINUE_THREDHOLD_MIN    (TIME_UNIT90K * 1)
+#define AV_DISCONTINUE_THREDHOLD_MAX    (TIME_UNIT90K * 60)
 
 typedef enum {
     VIDEO_START,
@@ -73,7 +75,7 @@ extern int tsync_set_apts(unsigned pts);
 
 static inline u32 tsync_vpts_discontinuity_margin(void)
 {
-    return AV_DISCONTINUE_THREDHOLD;
+    return AV_DISCONTINUE_THREDHOLD_MIN;
 }
 
 extern void tsync_set_automute_on(int automute_on);
