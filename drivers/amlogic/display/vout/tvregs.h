@@ -217,6 +217,7 @@ static const reg_t tvregs_480i[] = {
     {ENCI_CFILT_CTRL,              0x12,},
     {ENCI_CFILT_CTRL2,             0x12,},
     {VENC_DVI_SETTING,           0,     },
+    {ENCP_VIDEO_MODE,            0x4040,},	//when mode change form 1080i to 480i need to reset ENCP_VIDEO_MODE status
     {ENCI_VIDEO_MODE,              0,     },
     {ENCI_VIDEO_MODE_ADV,          0,     },
     {ENCI_SYNC_HSO_BEGIN,        5,     },
@@ -399,6 +400,7 @@ static const reg_t tvregs_576i[] = {
     {ENCI_CFILT_CTRL,              0x12,},
     {ENCI_CFILT_CTRL2,             0x12,},
     {VENC_DVI_SETTING,           0,     },
+    {ENCP_VIDEO_MODE,            0x4040,},	//when mode change form 1080i to 576i need to reset ENCP_VIDEO_MODE status
     {ENCI_VIDEO_MODE,                 0,         },
     {ENCI_VIDEO_MODE_ADV,             0,         },
     {ENCI_SYNC_HSO_BEGIN,        3,     },
