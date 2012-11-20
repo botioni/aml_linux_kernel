@@ -2172,8 +2172,30 @@ static void hdmitx_set_pll(Hdmi_tx_video_para_t *param)
     }
 }
 
+// used to check the TARGET clock, if return 0, means something error
+static int check_clk_valid(unsigned int idx, unsigned int target_clk)
+{
+    int ret;
+    unsigned int msr_clk = clk_util_clk_msr(idx);
+    if(target_clk == msr_clk){
+        ret = 1;
+    }
+    else{
+        ret = 0;
+        pr_emerg("%s %s %d\n", __FILE__, __func__, __LINE__);
+        pr_emerg("Clock index = %u   Target clock = %uMHz   Measured clock = %uMHz\n", idx, target_clk, msr_clk);
+    }
+    return ret;
+}
+
+#define RESET_MAX_COUNT     10
+
 static int hdmitx_m3_set_dispmode(hdmitx_dev_t* hdmitx_device, Hdmi_tx_video_para_t *param)
 {
+    hdmi_wr_reg(0x11, 0x00);
+    int reset_flag = 0;
+    int reset_count = 0;
+redo:
     if(param == NULL){ //disable HDMI
         return 0;
     }
@@ -2278,6 +2300,62 @@ static int hdmitx_m3_set_dispmode(hdmitx_dev_t* hdmitx_device, Hdmi_tx_video_par
     }
 #endif
     hdmitx_dump_tvenc_reg(param->VIC, 0);
+    msleep(400);
+    {   // After some time, check the lock status
+        int i = 10000;
+        while( (!(READ_CBUS_REG(HHI_VID_PLL_CNTL3) && (1<<31))) && i){
+            i--;
+        }
+        if(i == 0){
+            pr_emerg("%s %s %d\n", __FILE__, __func__, __LINE__);
+            pr_emerg("Unable to lock HPLL\n");
+        }
+    }
+
+    // check the video pll clock, if not stable, then reset the set_dispmode()
+    switch(param->VIC)
+    {
+        //Video Clock: 149MHz
+        case HDMI_720p60:
+        case HDMI_1080i60:
+        case HDMI_1080p30:
+        case HDMI_1080p24:
+        case HDMI_720p50:
+        case HDMI_1080i50:
+        case HDMI_1080p50:
+        case HDMI_1080p60:
+            if(!check_clk_valid(VID_PLL_CLK, 149)){
+                    reset_count ++;
+                    reset_flag = 1;
+            }
+            else{
+                    reset_flag = 0;
+            }
+            break;
+        //Video Clock: 216MHz
+        case HDMI_480p60:
+        case HDMI_480p60_16x9:
+        case HDMI_576p50:
+        case HDMI_576p50_16x9:
+        case HDMI_480i60:
+        case HDMI_576i50:
+        case HDMI_576i50_16x9:
+            if(!check_clk_valid(VID_PLL_CLK, 216)){
+                    reset_count ++;
+                    reset_flag = 1;
+            }
+            else{
+                    reset_flag = 0;
+            }
+            break;
+        default:
+            break;
+    }
+
+    if((reset_flag) && (reset_count < RESET_MAX_COUNT)){
+        msleep(20);
+        goto redo;
+    }
     
     hdmi_wr_reg(0x011, 0x0f);   //Channels Power Up Setting ,"1" for Power-up ,"0" for Power-down,Bit[3:0]=CK,Data2,data1,data1,data0 Channels ;
     

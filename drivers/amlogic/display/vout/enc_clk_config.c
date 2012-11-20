@@ -97,11 +97,14 @@ static void set_vid_pll_div(unsigned div)
     WRITE_CBUS_REG_BITS(HHI_VID_DIVIDER_CNTL, 0, 0, 2);
     WRITE_CBUS_REG_BITS(HHI_VID_DIVIDER_CNTL, 1, 3, 1);
     WRITE_CBUS_REG_BITS(HHI_VID_DIVIDER_CNTL, 1, 7, 1);
+
+    // adjust the sequence according to VLSI's suggestion
+    // Gate enable
+    WRITE_CBUS_REG_BITS(HHI_VID_DIVIDER_CNTL, 1, 16, 1);
+
     WRITE_CBUS_REG_BITS(HHI_VID_DIVIDER_CNTL, 3, 0, 2);
     WRITE_CBUS_REG_BITS(HHI_VID_DIVIDER_CNTL, 0, 3, 1);
     WRITE_CBUS_REG_BITS(HHI_VID_DIVIDER_CNTL, 0, 7, 1);
-    // Gate enable
-    WRITE_CBUS_REG_BITS(HHI_VID_DIVIDER_CNTL, 1, 16, 1);
 }
 
 static void set_clk_final_div(unsigned div)
@@ -255,3 +258,4 @@ void set_vmode_clk(vmode_t mode)
     PP(AM_RING_OSC_CLK_OUT0 );
 #endif
 } 
+
