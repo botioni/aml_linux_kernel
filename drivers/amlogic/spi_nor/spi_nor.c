@@ -471,6 +471,11 @@ static struct flash_info spi_nor_data [] = {
 
         /*GigaByte----*/
         { "GD25Q40", 0xC84013, 64 * 1024, 8, SECT_4K, },
+	/*ESMT----*/
+	{"f25l08qa", 0x8c4014, 64 * 1024, 16, SECT_4K, },
+	{"f25l16pa", 0x8c2115, 64 * 1024, 32, SECT_4K, },
+	{"f25l32pa", 0x8c2116, 64 * 1024, 64, SECT_4K, },
+	{"f25l32qa", 0x8c4116, 64 * 1024, 64, SECT_4K, },
 };
 
 static struct flash_info * jedec_probe(struct spi_device *spi)
