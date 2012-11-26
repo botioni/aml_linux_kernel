@@ -60,6 +60,26 @@ config AM_ITE9173
 	help
 		Select to enable ITE9173 demod driver.	
 
+config AM_RTL2830
+	tristate "RTL2830 demod driver"
+	default n
+	depends on AM_DVB
+	help
+		Select to enable RTL2830 demod driver.	
+		
+config AM_DS3000
+	tristate "DS3000 demod driver"
+	default n
+	depends on AM_DVB
+	help
+		Select to enable DS3000 demod driver.	
+config TH_SONY_T2
+	tristate "sony demod driver"
+	default n
+	depends on AM_DVB
+	help
+		Select to enable sony demod driver.		
+
 config AM_ITE9133
 	tristate "ITE9133 demod driver"
 	default n

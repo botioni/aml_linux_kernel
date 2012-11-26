@@ -368,6 +368,7 @@ struct dtv_frontend_properties {
 
 	/* ISDB-T specifics */
 	u32			isdbs_ts_id;
+	u32			dvbt2_plp_id;
 };
 
 struct dvb_frontend {

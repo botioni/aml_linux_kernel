@@ -1340,6 +1340,11 @@ static int dtv_property_process_get(struct dvb_frontend *fe,
 	case DTV_ISDBS_TS_ID:
 		tvp->u.data = fe->dtv_property_cache.isdbs_ts_id;
 		break;
+	case DTV_DVBT2_PLP_ID:
+		tvp->u.data = fe->dtv_property_cache.dvbt2_plp_id;
+		break;
+	case DTV_DVBT2_DATA_PLPS:
+		break;
 	default:
 		r = -1;
 	}
@@ -1495,6 +1500,11 @@ static int dtv_property_process_set(struct dvb_frontend *fe,
 		break;
 	case DTV_ISDBS_TS_ID:
 		fe->dtv_property_cache.isdbs_ts_id = tvp->u.data;
+		break;
+	case DTV_DVBT2_PLP_ID:
+		fe->dtv_property_cache.dvbt2_plp_id = tvp->u.data;
+		break;
+	case DTV_DVBT2_DATA_PLPS:
 		break;
 	default:
 		r = -1;

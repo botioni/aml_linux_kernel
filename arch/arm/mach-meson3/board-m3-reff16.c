@@ -2125,6 +2125,129 @@ static  struct platform_device dib7090p_device = {
 	.num_resources    = ARRAY_SIZE(dib7090p_resource),
 	.resource         = dib7090p_resource,
 };
+static struct resource rtl2830_resource[]  = {
+
+	[0] = {
+		.start = 0,                                    //frontend  i2c adapter id
+		.end   = 0,
+		.flags = IORESOURCE_MEM,
+		.name  = "frontend0_i2c"
+	},
+	[1] = {
+		.start = 0x20,                                 //frontend 0 demod address
+		.end   = 0x20,
+		.flags = IORESOURCE_MEM,
+		.name  = "frontend0_demod_addr"
+	},
+	[2] = {
+		.start = (GPIOD_bank_bit0_9(8)<<16)|GPIOD_bit_bit0_9(8), //reset pin
+		.end   = (GPIOD_bank_bit0_9(8)<<16)|GPIOD_bit_bit0_9(8),
+		.flags = IORESOURCE_MEM,
+		.name  = "frontend0_reset_pin"
+	},
+	[3] = {
+		.start = 0, //reset enable value
+		.end   = 0,
+		.flags = IORESOURCE_MEM,
+		.name  = "frontend0_reset_value_enable"
+	},
+	[4] = {
+		.start = (GPIOC_bank_bit0_15(3)<<16)|GPIOC_bit_bit0_15(3),  //power enable pin
+		.end   = (GPIOC_bank_bit0_15(3)<<16)|GPIOC_bit_bit0_15(3),
+		.flags = IORESOURCE_MEM,
+		.name  = "frontend0_reset"
+	//	.name  = "frontend0_power_pin"
+	},	
+	[5] = {
+	.start = 0x34,                                 
+	.end   = 0x34,
+	.flags = IORESOURCE_MEM,
+	.name  = "frontend0_tuner_addr"
+	},	
+};
+
+static  struct platform_device rtl2830_device = {
+	.name             = "rtl2830",
+	.id               = -1,
+	.num_resources    = ARRAY_SIZE(rtl2830_resource),
+	.resource         = rtl2830_resource,
+};
+
+static struct resource ds3000_resource[] = {
+	[0] = {
+		.start = (GPIOD_bank_bit0_9(8)<<16)|GPIOD_bit_bit0_9(8),                           //frontend 0 reset pin
+		.end   = (GPIOD_bank_bit0_9(8)<<16)|GPIOD_bit_bit0_9(8),
+		.flags = IORESOURCE_MEM,
+		.name  = "frontend0_reset"
+	},
+	[1] = {
+		.start = 0,                                    //frontend 0 i2c adapter id
+		.end   = 0,
+		.flags = IORESOURCE_MEM,
+		.name  = "frontend0_i2c"
+	},
+	[2] = {
+		.start = 0xC0,                                 //frontend 0 tuner address
+		.end   = 0xC0,
+		.flags = IORESOURCE_MEM,
+		.name  = "frontend0_tuner_addr"
+	},
+	[3] = {
+		.start = 0xD0,                                 //frontend 0 demod address
+		.end   = 0xD0,
+		.flags = IORESOURCE_MEM,
+		.name  = "frontend0_demod_addr"
+	},
+};
+
+static  struct platform_device ds3000_device = {
+	.name             = "ds3000",
+	.id               = -1,
+	.num_resources    = ARRAY_SIZE(ds3000_resource),
+	.resource         = ds3000_resource,
+};
+#endif
+
+#if defined(CONFIG_TH_SONY_T2)
+
+static struct resource cxd2834_resource[]  = {
+
+	[0] = {
+		.start = (GPIOD_bank_bit0_9(8)<<16)|GPIOD_bit_bit0_9(8),                           //frontend 0 reset pin
+		.end   = (GPIOD_bank_bit0_9(8)<<16)|GPIOD_bit_bit0_9(8),
+		.flags = IORESOURCE_MEM,
+		.name  = "frontend0_reset"
+	},
+	[1] = {
+		.start = 0,                                    //frontend  i2c adapter id
+		.end   = 0,
+		.flags = IORESOURCE_MEM,
+		.name  = "frontend0_i2c"
+	},
+	[2] = {
+		.start = 0xC0,                                 //frontend 0 tuner address
+		.end   = 0xC0,
+		.flags = IORESOURCE_MEM,
+		.name  = "frontend0_tuner_addr"
+	},	
+	[3] = {
+		.start = 0xD8,                                 //frontend 0 demod address
+		.end   = 0xD8,
+		.flags = IORESOURCE_MEM,
+		.name  = "frontend0_demod_addr"
+	},
+
+};
+
+static  struct platform_device cxd2834_device = {
+	.name             = "cxd2834",
+	.id               = 0,
+	.num_resources    = ARRAY_SIZE(cxd2834_resource),
+	.resource         = cxd2834_resource,
+};
+
+
+
 #endif
 
 #if defined(CONFIG_AM_SMARTCARD)
@@ -2328,8 +2451,14 @@ static struct platform_device __initdata *platform_devs[] = {
 	&gx1001_device,
 	&avl6211_device,
 	&ite9173_device,
+	&rtl2830_device,
+	&ds3000_device,
+#ifdef CONFIG_TH_SONY_T2
+	&cxd2834_device,
+#endif
 	&ite9133_device,
 	& dib7090p_device,
+
 #endif
 #if defined(CONFIG_AM_SMARTCARD)	
 	&amlogic_smc_device,
@@ -2457,6 +2586,30 @@ static void __init device_pinmux_init(void )
 #ifdef CONFIG_AM_ITE9173
 //for ite9173
 	printk("CONFIG_AM_ITE9173 set pinmux\n");
+	set_mio_mux(3, 0x3F<<6);
+//	clear_mio_mux(0, 1<<4);
+	clear_mio_mux(0, 0x7);
+#endif
+
+#ifdef CONFIG_AM_RTL2830
+//for rtl2830
+	printk("CONFIG_AM_RTL2830 set pinmux\n");
+	set_mio_mux(3, 0x3F<<6);
+//	clear_mio_mux(0, 1<<4);
+	clear_mio_mux(0, 0x7);
+#endif
+
+#ifdef CONFIG_AM_DS3000
+//for rtl2830
+	printk("CONFIG_AM_DS3000 set pinmux\n");
+	set_mio_mux(3, 0x3F<<6);
+//	clear_mio_mux(0, 1<<4);
+	clear_mio_mux(0, 0x7);
+#endif
+
+#ifdef CONFIG_TH_SONY_T2
+//for rtl2830
+	printk("CONFIG_AM_DS3000 set pinmux\n");
 	set_mio_mux(3, 0x3F<<6);
 //	clear_mio_mux(0, 1<<4);
 	clear_mio_mux(0, 0x7);
