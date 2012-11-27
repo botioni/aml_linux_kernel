@@ -337,7 +337,7 @@ struct dvb_fe_events {
 	struct mutex		  mtx;
 };
 
-#define MAX_BLINDSCAN_EVENT 256
+#define MAX_BLINDSCAN_EVENT 32
 
 struct dvbsx_blindscan_events {
 	struct dvbsx_blindscanevent events[MAX_BLINDSCAN_EVENT];
