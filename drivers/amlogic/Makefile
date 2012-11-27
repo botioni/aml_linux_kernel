@@ -14,6 +14,7 @@ obj-$(CONFIG_POST_PROCESS_MANAGER) += ppmgr/
 
 #####for Basic drivers#####
  
+obj-y += secure/
 
 obj-y += uart/
 

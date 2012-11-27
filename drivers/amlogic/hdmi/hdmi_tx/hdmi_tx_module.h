@@ -49,6 +49,7 @@ typedef struct hdmi_tx_dev_s {
     struct cdev cdev;             /* The cdev structure */
     struct proc_dir_entry *proc_file;
     struct task_struct *task;
+    struct task_struct *task_monitor;
 #endif
     struct {
         void (*SetPacket)(int type, unsigned char* DB, unsigned char* HB);
@@ -89,7 +90,12 @@ typedef struct hdmi_tx_dev_s {
     int  auth_process_timer;
     HDMI_TX_INFO_t hdmi_info;
     unsigned char tmp_buf[HDMI_TMP_BUF_SIZE];
+    unsigned int  log;
 }hdmitx_dev_t;
+
+// HDMI LOG
+#define HDMI_LOG_HDCP           (1 << 0)
+
 #define HDMI_SOURCE_DESCRIPTION 0
 #define HDMI_PACKET_VEND        1
 #define HDMI_MPEG_SOURCE_INFO   2
@@ -106,7 +112,8 @@ typedef struct hdmi_tx_dev_s {
 #define AUTH_PROCESS_TIME   (4000/100)
 #endif        
 
-#define HDMITX_VER "2012Nov6a"
+
+#define HDMITX_VER "2012Nov21a"
 
 /************************************
 *    hdmitx protocol level interface
@@ -167,6 +174,21 @@ extern unsigned char hdmi_audio_off_flag;
 #define HDMITX_HWCMD_3V3_CTL                 0xc
 #define HDMITX_HWCMD_PLL_AVDD_CTL            0xd
 #define HDMITX_HWCMD_SSPLL_CTL               0xe
+#define HDMITX_HWCMD_OSD_ENABLE              0xf
+#define HDMITX_HDCP_CNTL                     0x10
+    #define HDCP_OFF    0x0
+    #define HDCP_ON     0x1
+    #define IS_HDCP_ON  0x2
+#define HDMITX_HDCP_MONITOR                  0x11
+
+#define HDMI_HDCP_DELAYTIME_AFTER_DISPLAY    20      // unit: ms
+
+#define HDMITX_HDCP_MONITOR_BUF_SIZE         1024
+typedef struct {
+    char *hdcp_sub_name;
+    unsigned hdcp_sub_addr_start;
+    unsigned hdcp_sub_len;
+}hdcp_sub_t;
 
 
 #endif

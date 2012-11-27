@@ -294,6 +294,7 @@
 #define NAND_BLOCK_BAD					1
 #define NAND_FACTORY_BAD				2
 #define NAND_MINI_PART_SIZE				0x800000
+#define NAND_MINI_PART_BLOCKNUM			2
 #define NAND_MINI_PART_NUM				4
 #define MAX_BAD_BLK_NUM					2000
 #define MAX_MTD_PART_NUM				16
@@ -308,6 +309,18 @@
 #define NAND_SYS_PART_SIZE				0x10000000
 
 #define ENV_NAND_SCAN_BLK                            50 
+
+
+#define ENV_NAND_SCAN_BLK                            50 
+
+#define NAND_MINIKEY_PART_SIZE				0x800000
+#define NAND_MINIKEY_PART_NUM				4
+//#define NAND_MINIKEY_PART_BLOCKNUM			CONFIG_NAND_KEY_BLOCK_NUM
+#define NAND_MINIKEY_PART_BLOCKNUM			4
+#define CONFIG_KEYSIZE         		(0x4000*4)
+#define ENV_KEY_MAGIC					"keyx"
+
+#define NAND_KEY_SAVE_MULTI_BLOCK  //key save in multi block same time
 
 
 struct aml_nand_flash_dev {
@@ -344,6 +357,10 @@ struct env_valid_node_t {
 	int16_t	phy_blk_addr;
 	int16_t	phy_page_addr;
 	int timestamp;
+#ifdef NAND_KEY_SAVE_MULTI_BLOCK
+	int rd_flag;
+	struct env_valid_node_t *next;
+#endif
 };
 
 struct env_free_node_t {
@@ -369,6 +386,18 @@ struct aml_nandenv_info_t {
 	u_char part_num_before_sys;
 	struct aml_nand_bbt_info nand_bbt_info;
 };
+struct aml_nandkey_info_t {
+         struct mtd_info *mtd;
+         struct env_valid_node_t *env_valid_node;
+         struct env_free_node_t *env_free_node;
+         u_char env_valid;
+         u_char env_init;
+         u_char part_num_before_sys;
+         struct aml_nand_bbt_info nand_bbt_info;
+         int start_block;
+         int end_block;
+};
+
 
 typedef	struct environment_s {
 	uint32_t	crc;		/* CRC32 over data bytes	*/
@@ -560,6 +589,9 @@ struct aml_nand_chip {
 
 	/* nand env device */
 	struct cdev				nand_env_cdev;
+
+	struct aml_nandkey_info_t *aml_nandkey_info;
+	struct cdev				nand_key_cdev;
 
 	struct early_suspend nand_early_suspend;
     struct class      cls;

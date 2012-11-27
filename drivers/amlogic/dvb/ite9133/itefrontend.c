@@ -86,7 +86,7 @@ static struct mutex ite_lock;
 static struct aml_fe ite9133_fe[FE_DEV_COUNT];
 
 
-StreamType streamType = StreamType_DVBT_PARALLEL;//StreamType_DVBT_SERIAL;//StreamType_DVBT_PARALLEL;//StreamType_DVBT_SERIAL;//Modified by Roan 2012-03-14
+StreamType streamType = StreamType_DVBT_SERIAL;//StreamType_DVBT_SERIAL;//StreamType_DVBT_PARALLEL;//StreamType_DVBT_SERIAL;//Modified by Roan 2012-03-14
 
 DefaultDemodulator demod = {
 	NULL,
@@ -99,7 +99,7 @@ DefaultDemodulator demod = {
     2025000,
 //20480,
 //2048000,
-    StreamType_DVBT_PARALLEL,//StreamType_DVBT_PARALLEL,//StreamType_DVBT_SERIAL,//Modified by Roan 2012-03-14
+    StreamType_DVBT_SERIAL,//StreamType_DVBT_PARALLEL,//StreamType_DVBT_SERIAL,//Modified by Roan 2012-03-14
     8000,
     642000,
     0x00000000,
@@ -158,6 +158,7 @@ static int ite9133_read_status(struct dvb_frontend *fe, fe_status_t * status)
 
 	mutex_lock(&ite_lock);
 	ret = Demodulator_isLocked(pdemod,&locked);
+	printk("DVB: lock status is %d\n",locked);
 	mutex_unlock(&ite_lock);
 
 	if(locked==1) {

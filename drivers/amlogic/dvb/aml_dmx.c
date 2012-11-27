@@ -1173,7 +1173,7 @@ static int dmx_enable(struct aml_dmx *dmx)
 			fec_clk = 1;
 			record  = record?1:0;
 			set_stb = 1;
-			invert_clk = 1;
+			invert_clk = 0;
 			if(dmx->source==AM_TS_SRC_S_TS0)
 				fec_s = 0;
 			else if(dmx->source==AM_TS_SRC_S_TS1)

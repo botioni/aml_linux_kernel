@@ -25,6 +25,10 @@ config SND_AML_M1_MID_RT5621
 	tristate "AML8726M MID board with RT5621"
 	depends on SND_AML_SOC
 		select SND_SOC_RT5621 if SND_AML_M1_MID_RT5621
+config SND_AML_M3_BT40183
+	tristate "AML M3  board with BT40183"
+	depends on SND_AML_SOC
+		select SND_SOC_BT40183 if SND_AML_M3_BT40183
 config SND_AML_M2
 	tristate "M2 evaluation board with internal audio codec"
 	depends on SND_AML_SOC

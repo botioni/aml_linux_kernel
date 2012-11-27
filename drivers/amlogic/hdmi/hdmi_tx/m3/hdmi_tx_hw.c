@@ -31,6 +31,7 @@
 #include <linux/platform_device.h>
 #include <linux/mutex.h>
 #include <linux/cdev.h>
+#include <linux/slab.h>
 //#include <linux/amports/canvas.h>
 #include <asm/uaccess.h>
 #include <asm/delay.h>
@@ -199,7 +200,6 @@ static void intr_handler(void *arg)
     // In drivers/amlogic/spi_nor/apollo_spi_nor.c, it clears the SDA pinmux
     Wr(PERIPHS_PIN_MUX_1, Rd(PERIPHS_PIN_MUX_1)|(0x3<<23)); // Enable HDMI HPD/SCL/SDA pinmux
 
-    hdmi_print(1,"HDMI irq %x\n",data32);
     if (data32 & (1 << 0)) {  //HPD rising 
         printk("hpd rising\n");
         hdmi_wr_only_reg(OTHER_BASE_ADDR + HDMI_OTHER_INTR_STAT_CLR,  1 << 0); //clear HPD rising interrupt in hdmi module
@@ -226,8 +226,10 @@ static void intr_handler(void *arg)
             hdmi_print(1,"HDMI Error: HDMI HPD deasserts!\n");
         }
 #endif        
-    } else if (data32 & (1 << 1)) { //HPD falling
-            printk("hpd falling\n");
+    } 
+    if (data32 & (1 << 1)) { //HPD falling
+        hdmitx_device->vic_count = 0;
+        printk("hpd falling\n");
         if(hpd_debug_mode&HPD_DEBUG_IGNORE_UNPLUG){
             hdmi_wr_only_reg(OTHER_BASE_ADDR + HDMI_OTHER_INTR_STAT_CLR,  1 << 1); //clear HPD falling interrupt in hdmi module     
         }
@@ -239,11 +241,12 @@ static void intr_handler(void *arg)
             add_timer(&hpd_timer);
 #else
             hdmi_wr_reg(TX_HDCP_EDID_CONFIG, hdmi_rd_reg(TX_HDCP_EDID_CONFIG) & ~(1<<6)); // Release sys_trigger_config
-            hdmi_wr_reg(TX_HDCP_EDID_CONFIG, hdmi_rd_reg(TX_HDCP_EDID_CONFIG) | (1<<1)); // Assert sys_trigger_config_semi_manu
+            //hdmi_wr_reg(TX_HDCP_EDID_CONFIG, hdmi_rd_reg(TX_HDCP_EDID_CONFIG) | (1<<1)); // Assert sys_trigger_config_semi_manu
             hdmitx_device->hpd_event = 2;
 #endif        
         }
-    } else if (data32 & (1 << 2)) { //TX EDID interrupt
+    } 
+    if (data32 & (1 << 2)) { //TX EDID interrupt
         printk("edid interrupt\n");
         if((hdmitx_device->cur_edid_block+2)<=EDID_MAX_BLOCK){
             int ii, jj;
@@ -283,9 +286,11 @@ static void intr_handler(void *arg)
         hdmi_print(1,"HDMI Error: Unkown HDMI Interrupt source Process_Irq\n");
         hdmi_wr_only_reg(OTHER_BASE_ADDR + HDMI_OTHER_INTR_STAT_CLR,  data32); //clear unkown interrupt in hdmi module 
     }
+    hdmi_wr_only_reg(OTHER_BASE_ADDR + HDMI_OTHER_INTR_STAT_CLR, 0x7); //clear HPD falling interrupt in hdmi module
 //#ifdef AML_A3
     hdmi_rd_reg(OTHER_BASE_ADDR + HDMI_OTHER_INTR_STAT_CLR); // A read to allow the interrupt cleared in hdmi_module before next action
 //#endif    
+    hdmi_print(1,"HDMI irq %x\n",data32);
 #ifndef AVOS
     Wr(A9_0_IRQ_IN1_INTR_STAT_CLR, 1 << 25);  //clear hdmi_tx interrupt
     return IRQ_HANDLED;
@@ -1113,11 +1118,7 @@ void hdmi_hw_set_powermode(hdmitx_dev_t* hdmitx_device, int power_mode, int vic)
                 case HDMI_576i50:
                 case HDMI_576i50_16x9:
                     hdmi_wr_reg(TX_SYS1_AFE_TEST, 0x7f);    //0x17
-				#ifdef CONFIG_MACH_MESON3_REFF16_DONGLE	
-					hdmi_wr_reg(TX_CORE_CALIB_VALUE,0x0);
-				#else
                     hdmi_wr_reg(TX_CORE_CALIB_VALUE,0x5);   //0xf7
-				#endif
                     hdmi_wr_reg(TX_SYS1_AFE_RESET, 0x1);    //0x16
                     hdmi_wr_reg(TX_SYS1_BANDGAP, 0x0);      //0x14
                     hdmi_wr_reg(TX_SYS1_BIAS, 0x0);         //0x15
@@ -1128,36 +1129,19 @@ void hdmi_hw_set_powermode(hdmitx_dev_t* hdmitx_device, int power_mode, int vic)
                 case HDMI_1080i60:
                 case HDMI_1080i50:
                     hdmi_wr_reg(TX_SYS1_AFE_TEST, 0x7f);    //0x17
-				#ifdef CONFIG_MACH_MESON3_REFF16_DONGLE	
-					hdmi_wr_reg(TX_CORE_CALIB_VALUE,0x0);
-				#else
                     hdmi_wr_reg(TX_CORE_CALIB_VALUE,0x3);   //0xf7
-				#endif
                     hdmi_wr_reg(TX_SYS1_AFE_RESET, 0x1);    //0x16
                     hdmi_wr_reg(TX_SYS1_BANDGAP, 0x0);      //0x14
-                #ifdef CONFIG_MACH_MESON3_REFF16_DONGLE   
-                    hdmi_wr_reg(TX_SYS1_BIAS,0x0);
-                #else
                     hdmi_wr_reg(TX_SYS1_BIAS, 0x3);         //0x15
-				#endif
                     SET_PHY_BRD(74);
                     break;
                 case HDMI_1080p60:
                 case HDMI_1080p50:
                     hdmi_wr_reg(TX_SYS1_AFE_TEST, 0x7f);    //0x17
-				#ifdef CONFIG_MACH_MESON3_REFF16_DONGLE	
-					hdmi_wr_reg(TX_CORE_CALIB_VALUE,0x0);
-				#else
                     hdmi_wr_reg(TX_CORE_CALIB_VALUE,0x3);   //0xf7
-				#endif
                     hdmi_wr_reg(TX_SYS1_AFE_RESET, 0x1);    //0x16
-                #ifdef CONFIG_MACH_MESON3_REFF16_DONGLE   
-                    hdmi_wr_reg(TX_SYS1_BANDGAP, 0x0);      //0x14 Prem
-                    hdmi_wr_reg(TX_SYS1_BIAS, 0x0);         //0x15 Slew
-                #else     
                     hdmi_wr_reg(TX_SYS1_BANDGAP, 0x1);      //0x14 Prem
                     hdmi_wr_reg(TX_SYS1_BIAS, 0x3);         //0x15 Slew
-                #endif
                     SET_PHY_BRD(148);
                     break;
                 default:
@@ -1205,8 +1189,8 @@ void hdmi_hw_init(hdmitx_dev_t* hdmitx_device)
     digital_clk_on(7);
 
     // HPD glitch filter
-    hdmi_wr_reg(TX_HDCP_HPD_FILTER_L, 0x00);
-    hdmi_wr_reg(TX_HDCP_HPD_FILTER_H, 0xaf);
+    hdmi_wr_reg(TX_HDCP_HPD_FILTER_L, 0xa0);
+    hdmi_wr_reg(TX_HDCP_HPD_FILTER_H, 0xa0);
 
 
     // Enable software controlled DDC transaction
@@ -1221,6 +1205,8 @@ void hdmi_hw_init(hdmitx_dev_t* hdmitx_device)
     //tmp_add_data[1]   = 1'b1 ;  // sys_trigger_config_semi_manu
     //tmp_add_data[0]   = 1'b0 ;  // Rsrv
     hdmi_wr_reg(TX_HDCP_EDID_CONFIG, 0x0c); //// for hdcp, can not use 0x0e
+    hdmi_wr_reg(TX_CORE_EDID_CONFIG_MORE, (1 << 0));    // [1]: keep_edid_error
+                                                        // [0]: sys_trigger_config_semi_manu
     
     hdmi_wr_reg(TX_HDCP_CONFIG0,      1<<3);  //set TX rom_encrypt_off=1
     hdmi_wr_reg(TX_HDCP_MEM_CONFIG,   0<<3);  //set TX read_decrypt=0
@@ -1254,7 +1240,7 @@ void hdmi_hw_init(hdmitx_dev_t* hdmitx_device)
     //tmp_add_data[7:0]   = 0xa ; // time_divider[7:0] for DDC I2C bus clock
     //tmp_add_data = 0xa; //800k
     //tmp_add_data = 0x3f; //190k
-    tmp_add_data = 0x18 - 1; //100k     // hdmi system clock change to XTAL 24MHz
+    tmp_add_data = 0x30 - 1; //50k     // hdmi system clock change to XTAL 24MHz
     hdmi_wr_reg(TX_HDCP_CONFIG3, tmp_add_data);
 
     //tmp_add_data[15:8] = 0;
@@ -1513,6 +1499,7 @@ static void hdmi_hw_reset(hdmitx_dev_t* hdmitx_device, Hdmi_tx_video_para_t *par
         hdmi_wr_reg(TX_SYS5_TX_SOFT_RESET_1, tmp_add_data);
     
         tmp_add_data  = 0;
+
         tmp_add_data |= 1 << 7; // HDMI_CH3_RST_IN
         tmp_add_data |= 1 << 6; // HDMI_CH2_RST_IN
         tmp_add_data |= 1 << 5; // HDMI_CH1_RST_IN
@@ -1534,7 +1521,7 @@ static void hdmi_hw_reset(hdmitx_dev_t* hdmitx_device, Hdmi_tx_video_para_t *par
     //tmp_add_data[0]   = 1'b0 ;  // Rsrv
 
     tmp_add_data = 0x0c; // for hdcp, can not use 0x0e 
-    hdmi_wr_reg(TX_HDCP_EDID_CONFIG, tmp_add_data);
+    hdmi_wr_reg(TX_HDCP_EDID_CONFIG, (hdmi_rd_reg(TX_HDCP_EDID_CONFIG) & (1<<6)) | tmp_add_data);
     
     hdmi_wr_reg(TX_HDCP_CONFIG0,      1<<3);  //set TX rom_encrypt_off=1
     hdmi_wr_reg(TX_HDCP_MEM_CONFIG,   0<<3);  //set TX read_decrypt=0
@@ -1674,7 +1661,7 @@ static void hdmi_hw_reset(hdmitx_dev_t* hdmitx_device, Hdmi_tx_video_para_t *par
     
     //tmp_add_data = 0xa; //800k
     //tmp_add_data = 0x3f; //190k
-    tmp_add_data = 0x18 - 1; //100k     // hdmi system clock change to XTAL 24MHz
+    tmp_add_data = 0x30 - 1; //50k     // hdmi system clock change to XTAL 24MHz
     hdmi_wr_reg(TX_HDCP_CONFIG3, tmp_add_data);
 
     //tmp_add_data[15:8] = 0;
@@ -2048,12 +2035,12 @@ extern void restart_edid_hdcp (void)
 {
     // Force clear HDMI TX internal sys_trigger
     hdmi_wr_reg(TX_HDCP_EDID_CONFIG, hdmi_rd_reg(TX_HDCP_EDID_CONFIG) & ~(1<<6)); // Release sys_trigger_config
-    hdmi_wr_reg(TX_HDCP_EDID_CONFIG, hdmi_rd_reg(TX_HDCP_EDID_CONFIG) | (1<<1)); // Assert sys_trigger_config_semi_manu
+    //hdmi_wr_reg(TX_HDCP_EDID_CONFIG, hdmi_rd_reg(TX_HDCP_EDID_CONFIG) | (1<<1)); // Assert sys_trigger_config_semi_manu
     // Wait some time for both TX and RX to reset DDC channel
     delay_us(10);
     // Recover HDMI TX internal sys_trigger
     hdmi_wr_reg(TX_HDCP_EDID_CONFIG, hdmi_rd_reg(TX_HDCP_EDID_CONFIG) | (1<<6)); // Assert sys_trigger_config
-    hdmi_wr_reg(TX_HDCP_EDID_CONFIG, hdmi_rd_reg(TX_HDCP_EDID_CONFIG) & ~(1<<1)); // Release sys_trigger_config_semi_manu
+    //hdmi_wr_reg(TX_HDCP_EDID_CONFIG, hdmi_rd_reg(TX_HDCP_EDID_CONFIG) & ~(1<<1)); // Release sys_trigger_config_semi_manu
 }
 #endif
 
@@ -2172,8 +2159,30 @@ static void hdmitx_set_pll(Hdmi_tx_video_para_t *param)
     }
 }
 
+// used to check the TARGET clock, if return 0, means something error
+static int check_clk_valid(unsigned int idx, unsigned int target_clk)
+{
+    int ret;
+    unsigned int msr_clk = clk_util_clk_msr(idx);
+    if(target_clk == msr_clk){
+        ret = 1;
+    }
+    else{
+        ret = 0;
+        pr_emerg("%s %s %d\n", __FILE__, __func__, __LINE__);
+        pr_emerg("Clock index = %u   Target clock = %uMHz   Measured clock = %uMHz\n", idx, target_clk, msr_clk);
+    }
+    return ret;
+}
+
+#define RESET_MAX_COUNT     10
+
 static int hdmitx_m3_set_dispmode(hdmitx_dev_t* hdmitx_device, Hdmi_tx_video_para_t *param)
 {
+    hdmi_wr_reg(0x11, 0x00);
+    int reset_flag = 0;
+    int reset_count = 0;
+redo:
     if(param == NULL){ //disable HDMI
         return 0;
     }
@@ -2207,10 +2216,6 @@ static int hdmitx_m3_set_dispmode(hdmitx_dev_t* hdmitx_device, Hdmi_tx_video_par
 
     hdmitx_set_pll(param);
     hdmi_hw_reset(hdmitx_device, param);    
-    
-#ifdef CONFIG_AML_HDMI_TX_HDCP
-    hdmi_wr_reg(TX_HDCP_MODE, hdmi_rd_reg(TX_HDCP_MODE)&(~0x80)); //disable authentication
-#endif    
 
     // For some chips, increase IBIC_SEL to get better performance in 1080P
     if((param->VIC == HDMI_1080p60)||(param->VIC == HDMI_1080p50)){
@@ -2262,15 +2267,6 @@ static int hdmitx_m3_set_dispmode(hdmitx_dev_t* hdmitx_device, Hdmi_tx_video_par
 //            hdmi_tvenc_set(param);
 //        }
 //    }
-    
-#ifdef CONFIG_AML_HDMI_TX_HDCP
-    if(hdcpkey_status>=0){
-    hdmi_wr_reg(TX_HDCP_MODE, hdmi_rd_reg(TX_HDCP_MODE)|0x80); //enable authentication
-    }
-    else{
-        printk("HDMITX: HDCP Key error, disable authentication\n");    
-    }
-#endif    
 #ifndef AVOS
     if(power_off_vdac_flag){
         //video_dac_disable();
@@ -2278,6 +2274,62 @@ static int hdmitx_m3_set_dispmode(hdmitx_dev_t* hdmitx_device, Hdmi_tx_video_par
     }
 #endif
     hdmitx_dump_tvenc_reg(param->VIC, 0);
+    msleep(400);
+    {   // After some time, check the lock status
+        int i = 10000;
+        while( (!(READ_CBUS_REG(HHI_VID_PLL_CNTL3) && (1<<31))) && i){
+            i--;
+        }
+        if(i == 0){
+            pr_emerg("%s %s %d\n", __FILE__, __func__, __LINE__);
+            pr_emerg("Unable to lock HPLL\n");
+        }
+    }
+
+    // check the video pll clock, if not stable, then reset the set_dispmode()
+    switch(param->VIC)
+    {
+        //Video Clock: 149MHz
+        case HDMI_720p60:
+        case HDMI_1080i60:
+        case HDMI_1080p30:
+        case HDMI_1080p24:
+        case HDMI_720p50:
+        case HDMI_1080i50:
+        case HDMI_1080p50:
+        case HDMI_1080p60:
+            if(!check_clk_valid(VID_PLL_CLK, 149)){
+                    reset_count ++;
+                    reset_flag = 1;
+            }
+            else{
+                    reset_flag = 0;
+            }
+            break;
+        //Video Clock: 216MHz
+        case HDMI_480p60:
+        case HDMI_480p60_16x9:
+        case HDMI_576p50:
+        case HDMI_576p50_16x9:
+        case HDMI_480i60:
+        case HDMI_576i50:
+        case HDMI_576i50_16x9:
+            if(!check_clk_valid(VID_PLL_CLK, 216)){
+                    reset_count ++;
+                    reset_flag = 1;
+            }
+            else{
+                    reset_flag = 0;
+            }
+            break;
+        default:
+            break;
+    }
+
+    if((reset_flag) && (reset_count < RESET_MAX_COUNT)){
+        msleep(20);
+        goto redo;
+    }
     
     hdmi_wr_reg(0x011, 0x0f);   //Channels Power Up Setting ,"1" for Power-up ,"0" for Power-down,Bit[3:0]=CK,Data2,data1,data1,data0 Channels ;
     
@@ -2605,6 +2657,16 @@ static int hdmitx_m3_set_audmode(struct hdmi_tx_dev_s* hdmitx_device, Hdmi_tx_au
             break;
     }    
 
+    printk("HDMI: reset audio N para\n");
+    switch(audio_param->sample_rate){
+        case FS_44K1:
+            audio_N_para = 6272;
+            break;
+        case FS_48K:
+            audio_N_para = 6144;
+            break;
+    }
+
     //TODO. Different audio type, maybe have different settings
     switch(audio_param->type){
         case CT_PCM:
@@ -2791,6 +2853,38 @@ static void hdmitx_m3_uninit(hdmitx_dev_t* hdmitx_device)
     unmux_hpd();
 }    
 
+static unsigned int osd_reg_save = -1;
+static char hdcp_log_buf[HDMITX_HDCP_MONITOR_BUF_SIZE] = { 0 };
+const static hdcp_sub_t hdcp_monitor_array[] = {
+    {"Aksv_shw", TX_HDCP_SHW_AKSV_0, 5},
+    {"Aksv_ram", 0x540, 5},
+    {"Bksv    ", TX_HDCP_SHW_BKSV_0, 5},
+    {"Ainfo   ", TX_HDCP_SHW_AINFO , 1},
+    {"An      ", TX_HDCP_SHW_AN_0 ,  8},
+    {"Bcaps   ", TX_HDCP_SHW_BCAPS,  1},
+    {"Bstatus ", TX_HDCP_SHW_BSTATUS_0, 2},
+    {"Km      ", 0x148,              7},
+    {"Ri      ", 0x150,              2},
+    {"Ri'     ", TX_HDCP_SHW_RI1_0 , 2},
+    {"Pj      ", 0x14f,              1},
+    {"Pj'     ", TX_HDCP_SHW_PJ1   , 1},
+    {"AuthSt  ", TX_HDCP_ST_AUTHENTICATION, 1},
+    {"EncrySt0", TX_HDCP_ST_STATUS_0, 1},
+    {"EncrySt1", TX_HDCP_ST_STATUS_1, 1},
+    {"EncrySt2", TX_HDCP_ST_STATUS_2, 1},
+    {"EncrySt3", TX_HDCP_ST_STATUS_3, 1},
+    {"FramCnt ", TX_HDCP_ST_FRAME_COUNT, 1},
+    {"EDIDStat", TX_HDCP_ST_EDID_STATUS, 1},
+    {"MEMStat ", TX_HDCP_ST_MEM_STATUS, 1},
+    {"EDID_Ext", 0x198, 1},
+    {"EDDC_SEG", 0x199, 1},
+    {"EDDC_ST ", 0x19a, 1},
+    {"HDCP_RSV", 0x19b, 4},
+    {"EDDC_SEG", 0x19c, 1},
+    {"HDCPMODE", TX_HDCP_ST_ST_MODE, 1},
+    {"TmdsMod ", TX_TMDS_MODE, 1},
+};
+
 static int hdmitx_m3_cntl(hdmitx_dev_t* hdmitx_device, int cmd, unsigned argv)
 {
     struct hdmi_config_platform_data *hdmi_pdata = NULL;
@@ -2803,6 +2897,75 @@ static int hdmitx_m3_cntl(hdmitx_dev_t* hdmitx_device, int cmd, unsigned argv)
         power_mode=argv;
         hdmi_hw_set_powermode(hdmitx_device, power_mode, hdmitx_device->cur_VIC);
     }
+    else if(cmd == HDMITX_HWCMD_OSD_ENABLE) {
+        if(osd_reg_save == -1){ // First save the VPP_MISC reg value
+            osd_reg_save = Rd(VPP_MISC) & ((0xff << 10) | (0x3 << 6));  //You shall turn off bit 10,11,12,13,14,15,16,17, but leave bit 6 and 7 = 1
+            printk("HDMI: osd_reg_save = 0x%x\n", osd_reg_save);
+        }
+        if(argv == 0){
+            Wr(VPP_MISC, ((Rd(VPP_MISC) & (~(0xff << 10))) | (0x3 << 6)));
+        }
+        if(argv == 1){
+            Wr(VPP_MISC, (Rd(VPP_MISC) & (~((0xff << 10) | (0x3 << 6)))) | osd_reg_save);
+        }
+    }
+    else if(cmd == HDMITX_HDCP_MONITOR) {
+        int i, len, st;
+        int array = sizeof(hdcp_monitor_array) / sizeof(hdcp_sub_t);
+
+        int pos;
+
+        if(!(hdmitx_device->log & HDMI_LOG_HDCP))
+            return 0;
+
+        memset(hdcp_log_buf, 0, HDMITX_HDCP_MONITOR_BUF_SIZE);
+        printk("\n\nHDMI: Monitor HDCP start\n");
+        pos = 0;
+        for(i = 0; i < array; i ++){
+            len = hdcp_monitor_array[i].hdcp_sub_len;
+            st  = hdcp_monitor_array[i].hdcp_sub_addr_start;
+            pos += sprintf(hdcp_log_buf + pos, "   %s: ", hdcp_monitor_array[i].hdcp_sub_name);
+            do {
+                pos += sprintf(hdcp_log_buf + pos, "%02x", (unsigned)hdmi_rd_reg(st+len-1));
+            }while(--len);
+            pos += sprintf(hdcp_log_buf + pos, "\n");
+        }
+        pos += sprintf(hdcp_log_buf + pos, "HDCP %s",
+                                            (((hdmi_rd_reg(TX_HDCP_ST_AUTHENTICATION)&0xf)==0x4)
+                                            &&((hdmi_rd_reg(TX_HDCP_ST_STATUS_3)&0xa0)==0xa0))
+                                            ? "OK\n" : "BAD\n"
+                       );
+        printk("%s", hdcp_log_buf);
+        printk("HDMI: Monitor HDCP end\n");
+        return 0;
+    }
+#ifdef CONFIG_AML_HDMI_TX_HDCP
+    else if(cmd == HDMITX_HDCP_CNTL) {
+        if(argv == HDCP_OFF ) {
+            hdmi_wr_reg(TX_HDCP_MODE, hdmi_rd_reg(TX_HDCP_MODE)&(~0x80)); //disable authentication
+            printk("HDMITX: HDCP disable\n");
+            return 0;
+        }
+        if(argv == HDCP_ON ) {
+            if(hdcpkey_status >= 0){
+                if(hdmi_rd_reg(TX_HDCP_ST_EDID_STATUS) & (1<<4)){       // [4]: edid_done
+                    hdmi_wr_reg(TX_HDCP_MODE, hdmi_rd_reg(TX_HDCP_MODE)|0x80); //enable authentication
+                    printk("HDMITX: HDCP enable\n");
+                }
+                else{
+                    printk("HDMITX: edid_done error\n");
+                }
+            }
+            else{
+                printk("HDMITX: HDCP Key error, disable authentication\n");
+            }
+            return 0;
+        }
+        if(argv == IS_HDCP_ON ){
+            return !!(hdmi_rd_reg(TX_HDCP_MODE) & 0x80);
+        }
+    }
+#endif
 #ifndef AVOS
     else if(cmd == HDMITX_HWCMD_VDAC_OFF){
         power_off_vdac_flag=1;
@@ -2829,10 +2992,13 @@ static int hdmitx_m3_cntl(hdmitx_dev_t* hdmitx_device, int cmd, unsigned argv)
         /* turnon digital module if gpio is high */
         if(is_hpd_muxed() == 0){
             if(read_hpd_gpio()){
-                hdmi_print(1,"mux hpd\n");
-                digital_clk_on(4);
-                delay_us(1000*100);
-                mux_hpd();
+                msleep(500);
+                if(read_hpd_gpio()){
+                    hdmi_print(1,"mux hpd\n");
+                    digital_clk_on(4);
+                    delay_us(1000*100);
+                    mux_hpd();
+                }
             }
         }
     } 
@@ -2992,6 +3158,19 @@ static void hdmitx_m3_debug(hdmitx_dev_t* hdmitx_device, const char* buf)
         for(j = 0 ; j < value-adr+1 ; j++){
             printk("CBUS[0x%x]: 0x%x\n", adr+j, READ_MPEG_REG(adr+j));
         }
+    }
+    else if(strncmp(tmpbuf, "log", 3)==0){
+        if(strncmp(tmpbuf+3, "hdcp", 4)==0){
+            static unsigned int i = 1;
+            if(i & 1){
+                hdmitx_device->log |= HDMI_LOG_HDCP;
+            }
+            else{
+                hdmitx_device->log &= ~HDMI_LOG_HDCP;
+            }
+            i ++;
+        }
+        return ;
     }
     else if(strncmp(tmpbuf, "pllcalc", 7)==0){
         adr=simple_strtoul(tmpbuf+7, NULL, 10);
@@ -3158,8 +3337,7 @@ static void hpd_post_process(unsigned long arg)
     if (hdmi_rd_reg(TX_HDCP_ST_EDID_STATUS) & (1<<1)) {
         // Start DDC transaction
         hdmi_wr_reg(TX_HDCP_EDID_CONFIG, hdmi_rd_reg(TX_HDCP_EDID_CONFIG) | (1<<6)); // Assert sys_trigger_config
-        hdmi_wr_reg(TX_HDCP_EDID_CONFIG, hdmi_rd_reg(TX_HDCP_EDID_CONFIG) & ~(1<<1)); // Release sys_trigger_config_semi_manu
-    
+        //hdmi_wr_reg(TX_HDCP_EDID_CONFIG, hdmi_rd_reg(TX_HDCP_EDID_CONFIG) & ~(1<<1)); // Release sys_trigger_config_semi_manu
         hdmitx_device->cur_edid_block=0;
         hdmitx_device->cur_phy_block_ptr=0;
         hdmitx_device->hpd_event = 1;
@@ -3168,7 +3346,7 @@ static void hpd_post_process(unsigned long arg)
     else{ //HPD falling
         hdmi_wr_only_reg(OTHER_BASE_ADDR + HDMI_OTHER_INTR_STAT_CLR,  1 << 1); //clear HPD falling interrupt in hdmi module 
         hdmi_wr_reg(TX_HDCP_EDID_CONFIG, hdmi_rd_reg(TX_HDCP_EDID_CONFIG) & ~(1<<6)); // Release sys_trigger_config
-        hdmi_wr_reg(TX_HDCP_EDID_CONFIG, hdmi_rd_reg(TX_HDCP_EDID_CONFIG) | (1<<1)); // Assert sys_trigger_config_semi_manu
+        //hdmi_wr_reg(TX_HDCP_EDID_CONFIG, hdmi_rd_reg(TX_HDCP_EDID_CONFIG) | (1<<1)); // Assert sys_trigger_config_semi_manu
         hdmitx_device->hpd_event = 2;
         hdmi_print(1,"hpd_event 2\n");
     }
