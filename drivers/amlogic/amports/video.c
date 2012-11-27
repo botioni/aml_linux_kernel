@@ -1330,7 +1330,7 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
 #endif
 
         } else if ((cur_dispbuf == &vf_local) && (video_property_changed)) {
-            if (!(blackout|force_blackout)) {
+            if (!(blackout|force_blackout) && (disable_video != VIDEO_DISABLE_FORNEXT)) {
         			if((READ_MPEG_REG(DI_IF1_GEN_REG)&0x1)==0)
                 {
                     /* setting video display property in unregister mode */
