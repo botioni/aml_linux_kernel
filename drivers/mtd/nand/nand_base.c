@@ -1994,7 +1994,8 @@ static int nand_do_write_ops(struct mtd_info *mtd, loff_t to,
 
 	/* Check, if it is write protected */
 	if (nand_check_wp(mtd))
-		return -EIO;
+		//return -EIO;
+		return 0;
 
 	realpage = (int)(to >> chip->page_shift);
 	page = realpage & chip->pagemask;
@@ -2194,8 +2195,8 @@ static int nand_do_write_oob(struct mtd_info *mtd, loff_t to,
 
 	/* Check, if it is write protected */
 	if (nand_check_wp(mtd))
-		return -EROFS;
-
+		//return -EROFS;
+		return 0;
 	/* Invalidate the page cache, if we write to the cached page */
 	if (page == chip->pagebuf)
 		chip->pagebuf = -1;
@@ -2363,7 +2364,8 @@ int nand_erase_nand(struct mtd_info *mtd, struct erase_info *instr,
 	if (nand_check_wp(mtd)) {
 		DEBUG(MTD_DEBUG_LEVEL0, "%s: Device is write protected!!!\n",
 					__func__);
-		instr->state = MTD_ERASE_FAILED;
+		//instr->state = MTD_ERASE_FAILED;
+		instr->state = MTD_ERASE_DONE;
 		goto erase_exit;
 	}
 
