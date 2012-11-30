@@ -13,6 +13,7 @@
 #include <linux/mutex.h>
 #include <linux/cdev.h>
 #include <asm/uaccess.h>
+#include <mach/am_regs.h>
 #include "m1/hdmi_tx_reg.h"
 
 #else
@@ -321,6 +322,8 @@ int Edid_Parse_check_HDMI_VSDB(HDMI_TX_INFO_t * info, unsigned char *buff)
     else {
         vsdb_phy_addr_t *tmp = &info->vsdb_phy_addr;
         if(tmp->valid){
+            WRITE_AOBUS_REG(AO_DEBUG_REG1, (((tmp->a) & 0xf) << 12) | (((tmp->b) & 0xf) << 8) | (((tmp->c) & 0xf) << 4) | ((tmp->d) & 0xf));
+            printk("HDMI CEC: READ_AOBUS_REG(AO_DEBUG_REG1) Physical address: 0x%x\n", READ_AOBUS_REG(AO_DEBUG_REG1));
             printk("CEC: Physical address: %1x.%1x.%1x.%1x\n", tmp->a, tmp->b, tmp->c, tmp->d);
         }
     }

@@ -104,7 +104,10 @@ static struct switch_dev sdev = {   // android ics switch device
 #define INIT_FLAG_POWERDOWN      0x2
 
 // HDMI CEC Function Flag
-#define INIT_FLAG_CEC_FUNC       0x4
+#define INIT_FLAG_CEC_FUNC         0x4
+#define CEC_ONE_TOUCH_PLAY         0x8
+#define CEC_ONE_TOUCH_STANDBY      0x10
+#define CEC_AUTO_POWERON_FROM_TV   0x20
 
 #define INIT_FLAG_NOT_LOAD 0x80
 #define HDMI_SINK_NO_EDID       // For sink no edid case. If HDMI CTS, undef HDMI_SINK_NO_EDID
@@ -403,8 +406,19 @@ static ssize_t show_cec(struct device * dev, struct device_attribute *attr, char
 
 static ssize_t store_cec(struct device * dev, struct device_attribute *attr, const char * buf, size_t count)
 {
-    set_cec_code(buf, count);
-    //cec_usrcmd_set_dispatch(buf, count);
+    cec_usrcmd_set_dispatch(buf, count);
+    return count;
+}
+
+//static ssize_t show_cec(struct device * dev, struct device_attribute *attr, char * buf)
+//{
+//    ssize_t t = cec_usrcmd_get_global_info(buf);    
+//    return t;
+//}
+
+static ssize_t store_cec_config(struct device * dev, struct device_attribute *attr, const char * buf, size_t count)
+{
+    cec_usrcmd_set_config(buf, count);
     return count;
 }
 
@@ -697,6 +711,8 @@ static DEVICE_ATTR(disp_cap, S_IWUSR | S_IRUGO, show_disp_cap, NULL);
 static DEVICE_ATTR(hpd_state, S_IWUSR | S_IRUGO, show_hpd_state, NULL);
 static DEVICE_ATTR(log, S_IWUSR | S_IRUGO, show_log, store_log);
 static DEVICE_ATTR(cec, S_IWUSR | S_IRUGO, show_cec, store_cec);
+static DEVICE_ATTR(cec_config, S_IWUSR | S_IRUGO , NULL, store_cec_config);
+//static DEVICE_ATTR(cec_config, S_IWUGO | S_IRUGO , NULL, store_cec_config);
 
 /*****************************
 *    hdmitx display client interface 
@@ -1077,14 +1093,8 @@ hdmi_task_handle(void *data)
                 hdmi_print(1,"HDMI: EDID Ready\n");
                 hdmitx_edid_clear(hdmitx_device);
                 hdmitx_edid_parse(hdmitx_device);
-                {
-                    static unsigned flag = 1;
-                    if(flag){
-                        flag = 0;
-                        cec_node_init(hdmitx_device);
-                    }
-                }
-                hdmitx_cec_dbg_print("\n-------function:%s,file:%s,line:%d-----\n",__FUNCTION__,__FILE__,__LINE__);
+                cec_node_init(hdmitx_device);
+
 #ifdef HDMI_SINK_NO_EDID
                 force_output_mode = 0;
 #endif
@@ -1326,7 +1336,7 @@ const static struct file_operations amhdmitx_fops = {
 
 static int amhdmitx_probe(struct platform_device *pdev)
 {
-    int r;
+    int r,ret=0;
     struct hdmi_config_platform_data *hdmi_pdata = NULL;
     HDMI_DEBUG();
     pr_dbg("amhdmitx_probe\n");
@@ -1366,15 +1376,16 @@ static int amhdmitx_probe(struct platform_device *pdev)
     //hdmitx_dev = device_create(hdmitx_class, NULL, hdmitx_id, "amhdmitx%d", 0);
     hdmitx_dev = device_create(hdmitx_class, NULL, hdmitx_id, NULL, "amhdmitx%d", 0); //kernel>=2.6.27 
 
-    device_create_file(hdmitx_dev, &dev_attr_disp_mode);
-    device_create_file(hdmitx_dev, &dev_attr_aud_mode);
-    device_create_file(hdmitx_dev, &dev_attr_edid);
-    device_create_file(hdmitx_dev, &dev_attr_config);
-    device_create_file(hdmitx_dev, &dev_attr_debug);
-    device_create_file(hdmitx_dev, &dev_attr_disp_cap);
-    device_create_file(hdmitx_dev, &dev_attr_hpd_state);
-    device_create_file(hdmitx_dev, &dev_attr_log);
-    device_create_file(hdmitx_dev, &dev_attr_cec);
+    ret=device_create_file(hdmitx_dev, &dev_attr_disp_mode);
+    ret=device_create_file(hdmitx_dev, &dev_attr_aud_mode);
+    ret=device_create_file(hdmitx_dev, &dev_attr_edid);
+    ret=device_create_file(hdmitx_dev, &dev_attr_config);
+    ret=device_create_file(hdmitx_dev, &dev_attr_debug);
+    ret=device_create_file(hdmitx_dev, &dev_attr_disp_cap);
+    ret=device_create_file(hdmitx_dev, &dev_attr_hpd_state);
+    ret=device_create_file(hdmitx_dev, &dev_attr_log);
+    ret=device_create_file(hdmitx_dev, &dev_attr_cec);
+    ret=device_create_file(hdmitx_dev, &dev_attr_cec_config);
     
     if (hdmitx_dev == NULL) {
         pr_error("device_create create error\n");
@@ -1581,6 +1592,7 @@ static  int __init hdmitx_boot_para_setup(char *s)
     char separator[]={' ',',',';',0x0};
     char *token;
     unsigned token_len, token_offset, offset=0;
+    unsigned long cec_flag;
     int size=strlen(s);
     HDMI_DEBUG();
     do{
@@ -1637,10 +1649,48 @@ static  int __init hdmitx_boot_para_setup(char *s)
                 hdmi_480p_force_clk = simple_strtoul(token+8,NULL,10);
                 printk("hdmi, set 480p mode clock as %dMHz always\n", hdmi_480p_force_clk);    
             }
-            else if(strncmp(token, "true", 4)==0){
-                init_flag |= INIT_FLAG_CEC_FUNC;
-                printk("hdmi: enable cec function\n");    
-            }
+            else if(strncmp(token, "cec", 3)==0){
+                if(0x1 & (INIT_FLAG_CEC_FUNC>>2)){          
+                    hdmi_cec_func_config |= INIT_FLAG_CEC_FUNC>>2;
+                    WRITE_AOBUS_REG(AO_DEBUG_REG0, READ_AOBUS_REG(AO_DEBUG_REG0) | (hdmi_cec_func_config & 0xf));               
+                    printk("hdmi: enable cec function\n");
+                    
+                    cec_flag = simple_strtoul(token+3,NULL,16);                   
+                    if(((cec_flag >> 1) & 0x1) == 1){
+                        hdmi_cec_func_config |= CEC_ONE_TOUCH_PLAY>>2;
+                        WRITE_AOBUS_REG(AO_DEBUG_REG0, READ_AOBUS_REG(AO_DEBUG_REG0) | (hdmi_cec_func_config & 0xf));
+                        printk("hdmi: enable cec one touch play function\n");    
+                    }else{
+                        hdmi_cec_func_config &= ~(CEC_ONE_TOUCH_PLAY>>2);
+                        WRITE_AOBUS_REG(AO_DEBUG_REG0, READ_AOBUS_REG(AO_DEBUG_REG0) & (~(hdmi_cec_func_config & 0xf)));
+                        printk("hdmi: disable cec one touch play function\n");                     
+                    }            
+                    if(((cec_flag >> 2) & 0x1) == 1){
+                        hdmi_cec_func_config |= CEC_ONE_TOUCH_STANDBY>>2;
+                        WRITE_AOBUS_REG(AO_DEBUG_REG0, READ_AOBUS_REG(AO_DEBUG_REG0) | (hdmi_cec_func_config & 0xf));
+                        printk("hdmi: enable cec one touch standby function\n");    
+                    }else{
+                        hdmi_cec_func_config &= ~(CEC_ONE_TOUCH_STANDBY>>2);
+                        WRITE_AOBUS_REG(AO_DEBUG_REG0, READ_AOBUS_REG(AO_DEBUG_REG0) & (~(hdmi_cec_func_config & 0xf)));
+                        printk("hdmi: disable cec one touch standby function\n");                         
+                    }
+                    if(((cec_flag >> 3) & 0x1) == 1){
+                        hdmi_cec_func_config |= CEC_AUTO_POWERON_FROM_TV>>2;
+                        WRITE_AOBUS_REG(AO_DEBUG_REG0, READ_AOBUS_REG(AO_DEBUG_REG0) | (hdmi_cec_func_config & 0xf));
+                        printk("hdmi: enable cec auto power on form TV function\n");    
+                    }else{
+                    hdmi_cec_func_config &= ~(CEC_AUTO_POWERON_FROM_TV>>2);
+                    WRITE_AOBUS_REG(AO_DEBUG_REG0, READ_AOBUS_REG(AO_DEBUG_REG0) & (~(hdmi_cec_func_config & 0xf)));
+                        printk("hdmi: disable cec auto power on form TV function\n");                     
+                    }
+                }else{
+                    hdmi_cec_func_config &= ~(INIT_FLAG_CEC_FUNC>>2);
+                    WRITE_AOBUS_REG(AO_DEBUG_REG0, READ_AOBUS_REG(AO_DEBUG_REG0) & (~(hdmi_cec_func_config & 0xf)));
+                    printk("hdmi: disable cec function\n");
+                }
+                printk("HDMI READ_AOBUS_REG(AO_DEBUG_REG0):0x%x\n",READ_AOBUS_REG(AO_DEBUG_REG0));
+                printk("HDMI hdmi_cec_func_config:0x%x\n",hdmi_cec_func_config); 
+            }                                     
 #define PAR_VMODE(a, mode)      \
             else if(strncmp(token, a, strlen(a))==0){ \
                 uboot_vmode_flag = mode;    \

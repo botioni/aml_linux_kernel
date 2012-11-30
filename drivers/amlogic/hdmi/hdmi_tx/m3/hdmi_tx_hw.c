@@ -1322,7 +1322,7 @@ void hdmi_hw_init(hdmitx_dev_t* hdmitx_device)
                                (0 << 0 ))); // pm_gpioA_0_hdmi_hpd , enable this signal after all init done to ensure fist HPD rising ok
 
 #else
-    Wr(PERIPHS_PIN_MUX_1, Rd(PERIPHS_PIN_MUX_1)|((0 << 25) | // pm_hdmi_cec_en
+    Wr(PERIPHS_PIN_MUX_1, Rd(PERIPHS_PIN_MUX_1)|((1 << 25) | // pm_hdmi_cec_en
                                (0 << 22) | // pm_hdmi_hpd_5v_en , enable this signal after all init done to ensure fist HPD rising ok
                                (1 << 23) | // pm_hdmi_i2c_sda_en
                                (1 << 24))); // pm_hdmi_i2c_scl_en

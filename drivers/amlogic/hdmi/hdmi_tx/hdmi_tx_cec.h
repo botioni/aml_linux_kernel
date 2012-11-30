@@ -28,8 +28,8 @@
 
 //#define _SUPPORT_CEC_TV_MASTER_
 
-//#define _RX_CEC_DBG_ON_
-//#define _TX_CEC_DBG_ON_
+#define _RX_CEC_DBG_ON_
+#define _TX_CEC_DBG_ON_
 
 #ifdef _RX_CEC_DBG_ON_
 #define hdmirx_cec_dbg_print(fmt, args...) printk(KERN_WARNING fmt, ## args)//hdmi_print
@@ -358,6 +358,12 @@ typedef unsigned long cec_info_mask;
 #define INFO_MASK_DECK_INfO                  (1<<9)
 #define INFO_MASK_PLAY_MODE                  (1<<10)
 
+/*CEC UI MASK*/
+#define CEC_FUNC_MSAK                        0
+#define ONE_TOUCH_PLAY_MASK                  1
+#define ONE_TOUCH_STANDBY_MASK               2
+#define AUTO_POWER_ON_MASK                   3
+
 //typedef struct {
 //    unsigned long vendor_id;
 //    unsigned char vendor_id_byte_num;
@@ -545,14 +551,20 @@ void cec_active_source(cec_rx_message_t* pcec_message);
 void cec_set_stream_path(cec_rx_message_t* pcec_message);
 void cec_set_osd_name(cec_rx_message_t* pcec_message);
 void cec_deactive_source(cec_rx_message_t* pcec_message);
-void cec_menu_status(cec_rx_message_t* pcec_message);
 void cec_set_system_audio_mode(void);
 void cec_system_audio_mode_request(void);
 void cec_report_audio_status(void);
+void cec_get_menu_language_smp(void);
+void cec_device_vendor_id_smp(void);
+void cec_menu_status_smp(void);
 
+void cec_report_physical_address_smp(void);
+void cec_imageview_on_smp(void);
+void cec_active_source_smp(void);
 
 size_t cec_usrcmd_get_global_info(char * buf);
 void cec_usrcmd_set_dispatch(const char * buf, size_t count);
+void cec_usrcmd_set_config(const char * buf, size_t count);
 void cec_input_handle_message(void);
 void cec_send_event_irq(void);
 void cec_standby_irq(void);
@@ -563,6 +575,8 @@ extern struct input_dev *remote_cec_dev;
 extern __u16 cec_key_map[];
 extern unsigned int cec_key_flag;
 
+extern cec_global_info_t cec_global_info;
+extern unsigned char hdmi_cec_func_config;
 extern unsigned char check_cec_msg_valid(const cec_rx_message_t* pcec_message);
 extern void cec_send_event(cec_rx_message_t* pcec_message);
 extern void cec_user_control_pressed(cec_rx_message_t* pcec_message);
