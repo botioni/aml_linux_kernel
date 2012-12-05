@@ -222,6 +222,8 @@ unsigned long READ_APB_REG(unsigned long addr);
 #define TX_CORE_CALIB_VALUE_AUTO  TX_BASE_ADDR+0x0F6 
 #define TX_CORE_CALIB_VALUE       TX_BASE_ADDR+0x0F7 
 
+#define TX_CORE_EDID_CONFIG_MORE  TX_BASE_ADDR+0x080
+
 // HDCP shadow register
 #define TX_HDCP_SHW_BKSV_0        TX_BASE_ADDR+0x100 
 #define TX_HDCP_SHW_BKSV_1        TX_BASE_ADDR+0x101 
@@ -434,4 +436,17 @@ unsigned long READ_APB_REG(unsigned long addr);
 #define TX_DONE                 2  // Message has been successfully transmitted
 #define TX_ERROR                3  // Message has been transmitted with error
 
+// rx_msg_cmd
+#define RX_NO_OP                0  // No transaction
+#define RX_ACK_CURRENT          1  // Read earliest message in buffer
+#define RX_DISABLE              2  // Disable receiving latest message
+#define RX_ACK_NEXT             3  // Clear earliest message from buffer and read next message
+
+// rx_msg_status
+#define RX_IDLE                 0  // No transaction
+#define RX_BUSY                 1  // Receiver is busy
+#define RX_DONE                 2  // Message has been received successfully
+#define RX_ERROR                3  // Message has been received with error
+
 #endif  // _HDMI_RX_REG_H
+

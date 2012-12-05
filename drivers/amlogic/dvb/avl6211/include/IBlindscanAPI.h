@@ -33,7 +33,8 @@ extern "C" {
 		AVL_DVBSx_BS_Status_Adjust = 3,							///< = 3 Indicates that the blind scan process is reading the channel info which have scanned out.
 		AVL_DVBSx_BS_Status_User_Process = 4,					///< = 4 Indicates that the blind scan process is in custom code. Customer can add the callback function in this stage such as adding TP information to TP list or lock the TP for parsing PSI.
 		AVL_DVBSx_BS_Status_Cancel = 5,							///< = 5 Indicates that the blind scan process is cancelled or the blind scan have completed.
-		AVL_DVBSx_BS_Status_Exit = 6							///< = 6 Indicates that the blind scan process have ended.
+		AVL_DVBSx_BS_Status_Exit = 6,							///< = 6 Indicates that the blind scan process have ended.
+		AVL_DVBSx_BS_Status_WaitExit = 7
 	};
 
 	/// 

@@ -71,17 +71,20 @@ void halt_dsp( struct audiodsp_priv *priv)
 {
 	if(DSP_RD(DSP_STATUS)==DSP_STATUS_RUNING)
 		{
-#ifndef AUDIODSP_RESET
+//#ifndef AUDIODSP_RESET
+#if 1
 	  int i;
 	  dsp_mailbox_send(priv,1,M2B_IRQ0_DSP_SLEEP,0,0,0);
-        for(i = 0; i< 100;i++)
+        for(i = 0; i< 1000;i++)
             {
                 if(DSP_RD(DSP_STATUS)== DSP_STATUS_SLEEP)
                     break;
 		        msleep(1);/*waiting arc2 sleep*/
             }
-        if(i == 100)
-           DSP_PRNT("warning: dsp is not sleeping when call dsp_stop\n"); 
+        if(i == 1000)
+           DSP_PRNT("WARNING--->dsp is not sleeping when call dsp_stop\n"); 
+		else
+		   DSP_PRNT("NOTE---> halt dsp used time : %d (ms)\n",i);
 #else
 		dsp_mailbox_send(priv,1,M2B_IRQ0_DSP_HALT,0,0,0);
 		msleep(1);/*waiting arc2 sleep*/

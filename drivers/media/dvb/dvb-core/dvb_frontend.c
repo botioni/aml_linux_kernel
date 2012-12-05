@@ -104,6 +104,9 @@ struct dvb_frontend_private {
 	struct dvb_frontend_parameters parameters;
 	struct dvb_fe_events events;
 	struct semaphore sem;
+	struct dvbsx_blindscan_events blindscan_events;
+	struct semaphore blindscan_sem;
+	bool in_blindscan;
 	struct list_head list_head;
 	wait_queue_head_t wait_queue;
 	struct task_struct *thread;
@@ -227,6 +230,92 @@ static int dvb_frontend_get_event(struct dvb_frontend *fe,
 	events->eventr = (events->eventr + 1) % MAX_EVENT;
 
 	mutex_unlock(&events->mtx);
+
+	return 0;
+}
+
+static void dvbsx_blindscan_add_event(struct dvb_frontend *fe, struct dvbsx_blindscanevent *pbsevent)
+{
+	struct dvb_frontend_private *fepriv = fe->frontend_priv;
+	struct dvbsx_blindscan_events *events = &fepriv->blindscan_events;
+	struct dvbsx_blindscanevent *e;
+	int wp;
+
+	dprintk ("%s\n", __func__);
+
+	if (mutex_lock_interruptible (&events->mtx))
+		return;
+
+	wp = (events->eventw + 1) % MAX_BLINDSCAN_EVENT;
+
+	if (wp == events->eventr) {
+		events->overflow = 1;
+		events->eventr = (events->eventr + 1) % MAX_BLINDSCAN_EVENT;
+	}
+
+	e = &events->events[events->eventw];
+
+	memcpy (e, pbsevent, sizeof (struct dvbsx_blindscanevent));
+
+	events->eventw = wp;
+
+	mutex_unlock(&events->mtx);
+
+	wake_up_interruptible (&events->wait_queue);
+}
+
+static int dvbsx_blindscan_get_event(struct dvb_frontend *fe,
+				struct dvbsx_blindscanevent *event , int flags)
+{
+	struct dvb_frontend_private *fepriv = fe->frontend_priv;
+	struct dvbsx_blindscan_events *events = &fepriv->blindscan_events;
+
+	dprintk ("%s\n", __func__);
+
+	if (events->overflow) {
+		events->overflow = 0;
+		return -EOVERFLOW;
+	}
+
+	if (events->eventw == events->eventr) {
+		int ret;
+
+		if (flags & O_NONBLOCK)
+			return -EWOULDBLOCK;
+
+		up(&fepriv->blindscan_sem);
+		
+		ret = wait_event_interruptible_timeout (events->wait_queue,
+												events->eventw != events->eventr, fe->ops.blindscan_ops.info.bspara.timeout * HZ);
+
+		if (down_interruptible (&fepriv->blindscan_sem))
+			return -ERESTARTSYS;
+
+		if (ret < 0)
+			return ret;
+	}
+
+	if (mutex_lock_interruptible (&events->mtx))
+		return -ERESTARTSYS;
+
+	memcpy (event, &events->events[events->eventr],
+		sizeof(struct dvbsx_blindscanevent));
+
+	events->eventr = (events->eventr + 1) % MAX_BLINDSCAN_EVENT;
+
+	mutex_unlock(&events->mtx);
+
+	return 0;
+}
+
+static int dvbsx_blindscan_event_callback(struct dvb_frontend *fe, struct dvbsx_blindscanevent *pbsevent)
+{	
+	dprintk ("%s\n", __func__);
+
+	if((!fe) || (!pbsevent ))
+		return -1;
+
+	dvbsx_blindscan_add_event(fe, pbsevent);
 
 	return 0;
 }
@@ -1521,6 +1610,7 @@ static int dvb_frontend_ioctl(struct inode *inode, struct file *file,
 	struct dvb_frontend_private *fepriv = fe->frontend_priv;
 	int err = -EOPNOTSUPP;
 	int need_lock = 1;
+	int need_blindscan = 0;
 
 	dprintk("%s (%d)\n", __func__, _IOC_NR(cmd));
 
@@ -1537,12 +1627,24 @@ static int dvb_frontend_ioctl(struct inode *inode, struct file *file,
 			cmd==FE_READ_SIGNAL_STRENGTH ||
 			cmd==FE_READ_SNR ||
 			cmd==FE_READ_UNCORRECTED_BLOCKS ||
-			cmd==FE_GET_FRONTEND)
+			cmd==FE_GET_FRONTEND ||
+			cmd==FE_SET_BLINDSCAN ||
+			cmd==FE_GET_BLINDSCANEVENT ||
+			cmd==FE_SET_BLINDSCANCANCEl)
 		need_lock = 0;
+
+	if (cmd==FE_SET_BLINDSCAN ||
+			cmd==FE_GET_BLINDSCANEVENT ||
+			cmd==FE_SET_BLINDSCANCANCEl)
+			need_blindscan = 1;
 
 	if (need_lock)
 		if (down_interruptible (&fepriv->sem))
 			return -ERESTARTSYS;
+
+	if (need_blindscan)
+		if (down_interruptible (&fepriv->blindscan_sem))
+			return -ERESTARTSYS;		
 
 	if ((cmd == FE_SET_PROPERTY) || (cmd == FE_GET_PROPERTY))
 		err = dvb_frontend_ioctl_properties(inode, file, cmd, parg);
@@ -1550,6 +1652,9 @@ static int dvb_frontend_ioctl(struct inode *inode, struct file *file,
 		fe->dtv_property_cache.state = DTV_UNDEFINED;
 		err = dvb_frontend_ioctl_legacy(inode, file, cmd, parg);
 	}
+
+	if(need_blindscan)
+		up(&fepriv->blindscan_sem);
 
 	if(need_lock)
 		up(&fepriv->sem);
@@ -1923,46 +2028,71 @@ static int dvb_frontend_ioctl_legacy(struct inode *inode, struct file *file,
 		err = 0;
 		break;
 
-	#if 1  // for dvbs2 blind scan;	
-	case  FE_SET_BLINDSCAN:
-		printk("FE_SET_BLINDSCAN\n");
-		if (fe->ops.blindscan_scan)
-			err = fe->ops.blindscan_scan(fe, (struct dvbsx_blindscanpara*) parg);
-	
-		break;
-
-	case  FE_GET_BLINDSCANSTATUS:
-		printk("FE_GET_BLINDSCANSTATUS\n");
-		if (fe->ops.blindscan_getscanstatus)
-			err = fe->ops.blindscan_getscanstatus(fe, (struct dvbsx_blindscaninfo*) parg);
-		break;
-
-	case  FE_SET_BLINDSCANCANCEl:
-		printk("FE_SET_BLINDSCANCANCEl\n");
-		if (fe->ops.blindscan_cancel)
-			err = fe->ops.blindscan_cancel(fe);
-
-		break;
-
-	case FE_READ_BLINDSCANCHANNELINFO:
-		printk("FE_READ_BLINDSCANCHANNELINFO\n");
-		if (fe->ops.blindscan_readchannelinfo)
-			err = fe->ops.blindscan_readchannelinfo(fe, (struct dvbsx_frontend_parameters*) parg);
-
-		break;
-
-	case FE_SET_BLINDSCANRESET:
-		printk("FE_SET_BLINDSCANRESET\n");
-		if (fe->ops.blindscan_reset)
-			err = fe->ops.blindscan_reset(fe);
-
-		break;
 	case FE_SET_DELAY:
 		fepriv->user_delay = (int)parg;
 		err = 0;
 		break;			
+
+	case  FE_SET_BLINDSCAN:
+		memcpy (&(fe->ops.blindscan_ops.info.bspara), parg, sizeof (struct dvbsx_blindscanpara));
+
+		dprintk("FE_SET_BLINDSCAN %d %d %d %d %d %d %d\n", 
+				fe->ops.blindscan_ops.info.bspara.minfrequency,
+				fe->ops.blindscan_ops.info.bspara.maxfrequency,
+				fe->ops.blindscan_ops.info.bspara.minSymbolRate,
+				fe->ops.blindscan_ops.info.bspara.maxSymbolRate,
+				fe->ops.blindscan_ops.info.bspara.frequencyRange,
+				fe->ops.blindscan_ops.info.bspara.frequencyStep,
+				fe->ops.blindscan_ops.info.bspara.timeout);
+
+		/*register*/
+		fe->ops.blindscan_ops.info.blindscan_callback = dvbsx_blindscan_event_callback;
+		
+		fepriv->in_blindscan = true;
+		
+		if (fe->ops.blindscan_ops.blindscan_scan)
+			err = fe->ops.blindscan_ops.blindscan_scan(fe, &(fe->ops.blindscan_ops.info.bspara));
+		break;
+
+	case  FE_GET_BLINDSCANEVENT:
+		{
+			struct dvbsx_blindscanevent *p_tmp_bsevent = NULL;
+			
+			err = dvbsx_blindscan_get_event (fe, (struct dvbsx_blindscanevent*) parg, file->f_flags);
+
+			p_tmp_bsevent = (struct dvbsx_blindscanevent*) parg;
+
+			dprintk("FE_GET_BLINDSCANEVENT status:%d\n", p_tmp_bsevent->status);
+
+			if(p_tmp_bsevent->status == BLINDSCAN_UPDATESTARTFREQ)
+			{
+				dprintk("start freq %d\n", p_tmp_bsevent->u.m_uistartfreq_khz);
+			}
+			else if(p_tmp_bsevent->status == BLINDSCAN_UPDATEPROCESS)
+			{
+				dprintk("process %d\n", p_tmp_bsevent->u.m_uiprogress);
+			}
+			else if(p_tmp_bsevent->status == BLINDSCAN_UPDATERESULTFREQ)
+			{
+				dprintk("result freq %d symb %d\n", p_tmp_bsevent->u.parameters.frequency, p_tmp_bsevent->u.parameters.u.qpsk.symbol_rate);
+			}
+			break;		
+		}
+
+	case  FE_SET_BLINDSCANCANCEl:
+		dprintk("FE_SET_BLINDSCANCANCEl\n");
+
+				
+		if (fe->ops.blindscan_ops.blindscan_cancel)
+			err = fe->ops.blindscan_ops.blindscan_cancel(fe);
+
+		fepriv->in_blindscan = false;
+
+		/*unregister*/
+		fe->ops.blindscan_ops.info.blindscan_callback = NULL;
+		
+		break;
 	
-	#endif
 	};
 
 	if (fe->dvb->fe_ioctl_override) {
@@ -2061,6 +2191,7 @@ static int dvb_frontend_open(struct inode *inode, struct file *file)
 
 		/*  empty event queue */
 		fepriv->events.eventr = fepriv->events.eventw = 0;
+		fepriv->blindscan_events.eventr = fepriv->blindscan_events.eventw = 0;
 	}
 
 	if (adapter->mfe_shared)
@@ -2138,9 +2269,12 @@ int dvb_register_frontend(struct dvb_adapter* dvb,
 	fepriv = fe->frontend_priv;
 
 	init_MUTEX (&fepriv->sem);
+	init_MUTEX (&fepriv->blindscan_sem);
 	init_waitqueue_head (&fepriv->wait_queue);
 	init_waitqueue_head (&fepriv->events.wait_queue);
+	init_waitqueue_head (&fepriv->blindscan_events.wait_queue);
 	mutex_init(&fepriv->events.mtx);
+	mutex_init(&fepriv->blindscan_events.mtx);
 	fe->dvb = dvb;
 	fepriv->inversion = INVERSION_OFF;
 

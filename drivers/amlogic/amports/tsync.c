@@ -694,7 +694,7 @@ void tsync_avevent_locked(avevent_t event, u32 param)
         	timestamp_pcrscr_enable(0);
 			amlog_level(LOG_LEVEL_INFO, "video pause!\n");
 		}else{
-		       if (!apause_flag) {
+		       if ((!apause_flag) || (!tsync_enable)) {
 			timestamp_pcrscr_enable(1);
 			amlog_level(LOG_LEVEL_INFO, "video resume\n");
                       }
