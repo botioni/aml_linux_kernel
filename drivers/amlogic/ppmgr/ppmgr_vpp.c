@@ -201,7 +201,9 @@ static int ppmgr_event_cb(int type, void *data, void *private_data)
                 still_picture_notify = 1;
                 up(&thread_sem);
 #endif
-            }
+            }else {
+                up(&thread_sem);
+	    }
         }
     } 
 
