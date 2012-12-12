@@ -219,8 +219,8 @@ static inline int key_scan(int *key_state_list)
 }
 
 static  struct key_input_platform_data  key_input_pdata = {
-    .scan_period = 20,
-    .fuzz_time = 60,
+    .scan_period = 30,
+    .fuzz_time = 50,
     .key_code_list = &_key_code_list[0],
     .key_num = ARRAY_SIZE(_key_code_list),
 .scan_func = key_scan,
