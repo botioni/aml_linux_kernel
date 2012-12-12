@@ -184,10 +184,12 @@ static struct platform_device adc_kp_device = {
 #include <linux/input.h>
 #include <linux/input/key_input.h>
 
-int _key_code_list[] = {KEY_POWER};
+int _key_code_list[] = {KEY_POWER, KEY_XFER};
 
 static inline int key_input_init_func(void)
 {
+    if(board_ver == TCB008001)
+        set_gpio_mode(GPIOD_bank_bit0_9(3), GPIOD_bit_bit0_9(3), GPIO_INPUT_MODE);
         set_gpio_mode(GPIOAO_bank_bit0_11(3), GPIOAO_bit_bit0_11(3), GPIO_INPUT_MODE);
 //    WRITE_AOBUS_REG(AO_RTC_ADDR0, (READ_AOBUS_REG(AO_RTC_ADDR0) &~(1<<11)));
 //    WRITE_AOBUS_REG(AO_RTC_ADDR1, (READ_AOBUS_REG(AO_RTC_ADDR1) &~(1<<3)));
@@ -208,6 +210,8 @@ static inline int key_scan(int *key_state_list)
 	 #endif
     key_state_list[0] = get_gpio_val(GPIOAO_bank_bit0_11(3), GPIOAO_bit_bit0_11(3))?0:1;
 //    key_state_list[0] = ((READ_AOBUS_REG(AO_RTC_ADDR1) >> 2) & 1) ? 0 : 1;
+    if(board_ver == TCB008001)
+        key_state_list[1] = get_gpio_val(GPIOD_bank_bit0_9(3), GPIOD_bit_bit0_9(3))?0:1;
     return ret;
 }
 
