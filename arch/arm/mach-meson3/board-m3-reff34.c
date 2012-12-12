@@ -190,13 +190,12 @@ static inline int key_input_init_func(void)
 {
     if(board_ver == TCB008001)
         set_gpio_mode(GPIOD_bank_bit0_9(3), GPIOD_bit_bit0_9(3), GPIO_INPUT_MODE);
-        set_gpio_mode(GPIOAO_bank_bit0_11(3), GPIOAO_bit_bit0_11(3), GPIO_INPUT_MODE);
-//    WRITE_AOBUS_REG(AO_RTC_ADDR0, (READ_AOBUS_REG(AO_RTC_ADDR0) &~(1<<11)));
-//    WRITE_AOBUS_REG(AO_RTC_ADDR1, (READ_AOBUS_REG(AO_RTC_ADDR1) &~(1<<3)));
+    set_gpio_mode(GPIOAO_bank_bit0_11(3), GPIOAO_bit_bit0_11(3), GPIO_INPUT_MODE);
     return 0;
 }
 static inline int key_scan(int *key_state_list)
 {
+    static unsigned int vbus_flag = 1; /*default set vbus on*/
     int ret = 0;
 	 // GPIOAO_3
 	 #ifdef CONFIG_SUSPEND
@@ -209,9 +208,13 @@ static inline int key_scan(int *key_state_list)
 	 else
 	 #endif
     key_state_list[0] = get_gpio_val(GPIOAO_bank_bit0_11(3), GPIOAO_bit_bit0_11(3))?0:1;
-//    key_state_list[0] = ((READ_AOBUS_REG(AO_RTC_ADDR1) >> 2) & 1) ? 0 : 1;
-    if(board_ver == TCB008001)
+    if(board_ver == TCB008001){
         key_state_list[1] = get_gpio_val(GPIOD_bank_bit0_9(3), GPIOD_bit_bit0_9(3))?0:1;
+        if(key_state_list[1] == vbus_flag){
+            vbus_flag ^= 1;
+            set_gpio_val(GPIOD_bank_bit0_9(4), GPIOD_bit_bit0_9(4), vbus_flag);
+            }
+        }
     return ret;
 }
 
