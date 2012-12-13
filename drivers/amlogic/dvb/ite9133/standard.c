@@ -1710,11 +1710,11 @@ Dword Standard_isLocked (
 ) {
 	Dword error = Error_NO_ERROR;
 
-//	Word emptyLoop = 0;
+	Word emptyLoop = 0;
 	Word tpsLoop = 0;
 	Word mpeg2Loop = 0;
-//	Byte channels;
-//	Byte emptyChannel = 1;
+	Byte channels = 2;
+	Byte emptyChannel = 1;
 	Byte tpsLocked = 0;
     
 	DefaultDemodulator* demod;
@@ -1730,7 +1730,26 @@ Dword Standard_isLocked (
 	demod->statistic.signalQuality = 0;
 	demod->statistic.signalStrength = 0;
 
-	while (tpsLoop < 100) {   //timeout = loop* 25ms      
+	//2012.12.11, my.wei add to reduce the lock time
+	while (emptyLoop < 40) {
+	    error = Standard_readRegister (demodulator, Processor_OFDM, empty_channel_status, &channels);
+	    if (error) goto exit;
+	    if (channels == 1) {
+		emptyChannel = 0;
+		break;
+	    }
+	    if (channels == 2) {
+	    	  emptyChannel = 1;
+	    	  goto exit;
+	    }
+	    User_delay (demodulator, 25);
+	    emptyLoop++;
+	}
+
+	if (emptyChannel == 1) goto exit;
+
+
+	while (tpsLoop < 50) {   //timeout = loop* 25ms      
 		
 		error = Standard_isTpsLocked (demodulator, &demod->statistic.signalPresented);
 		if (error) goto exit;
@@ -1747,7 +1766,7 @@ Dword Standard_isLocked (
 
 	if (tpsLocked == 0) goto exit;
         
-	while (mpeg2Loop < 120) { //timeout = loop* 25ms
+	while (mpeg2Loop < 40) { //timeout = loop* 25ms            //2012.12.11, my.wei add to reduce the lock time,  change 120 to 100.
 		error = Standard_isMpeg2Locked (demodulator, &demod->statistic.signalLocked);
 		if (error) goto exit;
 		if (demod->statistic.signalLocked == True) {
