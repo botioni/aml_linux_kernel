@@ -794,6 +794,7 @@ void hdmi_tvenc_set(Hdmi_tx_video_para_t *param)
     if (de_v_begin_even >= SOF_LINES + VSYNC_LINES + (1-vs_adjust)) {
         vs_bline_evn = de_v_begin_even - SOF_LINES - VSYNC_LINES - (1-vs_adjust); // 42 - 30 - 6 - 1 = 5
     } else {
+
         vs_bline_evn = TOTAL_LINES + de_v_begin_even - SOF_LINES - VSYNC_LINES - (1-vs_adjust);
     }
     vs_eline_evn = modulo(vs_bline_evn + VSYNC_LINES, TOTAL_LINES); // (5 + 6) % 525 = 11
@@ -2156,6 +2157,12 @@ static void hdmitx_set_pll(Hdmi_tx_video_para_t *param)
 //            break;
         default:
             break;
+    }
+    // if we find that current VCO outputs 1488,
+    // then we will set to 1485, equals to 24MHz * 495 / 8,
+    // to get exactly clock for 720/1080 mode
+    if((READ_CBUS_REG(HHI_VID_PLL_CNTL) & 0x3fff ) == 0x43e) {
+        WRITE_CBUS_REG_BITS(HHI_VID_PLL_CNTL, 0x21ef, 0, 15);
     }
 }
 
