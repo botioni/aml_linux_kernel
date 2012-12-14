@@ -559,13 +559,14 @@ void tsync_avevent_locked(avevent_t event, u32 param)
 			t = timestamp_pcrscr_get();
         	//amlog_level(LOG_LEVEL_ATTENTION, "VIDEO_TSTAMP_DISCONTINUITY, 0x%x, 0x%x\n", t, param);
 		if(abs(param-oldpts)>tsync_av_threshold_min){
+			vpts_discontinue=1;
 			tsync_mode_switch('V',abs(param - t),param-oldpts);
 		}
 		timestamp_vpts_set(param);
 		if(tsync_mode == TSYNC_MODE_VMASTER){
 			timestamp_pcrscr_set(param);	
 		}else if(tsync_mode!=oldmod && tsync_mode == TSYNC_MODE_AMASTER){
-			timestamp_pcrscr_set(timestamp_pcrscr_get());
+			timestamp_pcrscr_set(timestamp_apts_get());
 		}
 	}
         break;
@@ -591,6 +592,7 @@ void tsync_avevent_locked(avevent_t event, u32 param)
 				
         	amlog_level(LOG_LEVEL_ATTENTION, " AUDIO_TSTAMP_DISCONTINUITY, 0x%x, 0x%x\n", t, param);
 		if(abs(param-oldpts)>tsync_av_threshold_min){
+			apts_discontinue=1;
 			tsync_mode_switch('A',abs(param - t),param-oldpts);
 		}
 		timestamp_apts_set(param);
@@ -838,8 +840,10 @@ int tsync_set_apts(unsigned pts)
     	t = timestamp_vpts_get();
     else 
 	t = timestamp_pcrscr_get();
-    if(abs(oldpts-pts)>tsync_av_threshold_min) //is discontinue 
+    if(abs(oldpts-pts)>tsync_av_threshold_min){ //is discontinue 
+        apts_discontinue=1;
         tsync_mode_switch('A',abs(pts - t),pts-oldpts);/*if in VMASTER ,just wait */
+    }
     timestamp_apts_set(pts); 
     if( tsync_mode == TSYNC_MODE_AMASTER && abs(timestamp_apts_get()-t)>100*TIME_UNIT90K/1000){
     	printk("reset apts:%d-->%d\n",oldpts,pts);
