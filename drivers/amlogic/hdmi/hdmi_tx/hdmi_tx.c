@@ -97,6 +97,9 @@ static hdmitx_dev_t hdmitx_device;
 static struct switch_dev sdev = {   // android ics switch device
     .name = "hdmi",
     };
+static struct switch_dev hdcp_dev = {	// android ics switch device
+	.name = "hdcp",
+	};
 
 #ifdef CONFIG_HAS_EARLYSUSPEND
 #include <linux/earlysuspend.h>
@@ -1162,6 +1165,7 @@ hdmi_task_handle(void *data)
                 hdmitx_device->hpd_event = 0;
             hdmitx_device->hpd_state = 0;
             hdmitx_device->vic_count = 0;
+            switch_set_state(&hdcp_dev, 0);
         }    
         else{
         }            
@@ -1179,6 +1183,7 @@ hdmi_task_handle(void *data)
             }
             else{
                 hdmi_authenticated = hdmitx_device->HWOp.Cntl(hdmitx_device, HDMITX_GET_AUTHENTICATE_STATE, 0);
+                switch_set_state(&hdcp_dev, hdmi_authenticated);
                 if(auth_output_auto_off){
                     if(hdmi_authenticated){
                         hdmitx_device->HWOp.Cntl(hdmitx_device, HDMITX_OUTPUT_ENABLE, 1);
@@ -1443,6 +1448,7 @@ static int amhdmitx_probe(struct platform_device *pdev)
     if(hdmi_pdata && hdmi_pdata->phy_data)
         hdmitx_device.brd_phy_data = &(hdmi_pdata->phy_data);
 	switch_dev_register(&sdev);
+    switch_dev_register(&hdcp_dev);
 	if (r < 0){
 		printk(KERN_ERR "hdmitx: register switch dev failed\n");
 		return r;
@@ -1454,6 +1460,7 @@ static int amhdmitx_probe(struct platform_device *pdev)
 static int amhdmitx_remove(struct platform_device *pdev)
 {
     switch_dev_unregister(&sdev);
+    switch_dev_unregister(&hdcp_dev);
     
     if(hdmitx_device.HWOp.UnInit){
         hdmitx_device.HWOp.UnInit(&hdmitx_device);
