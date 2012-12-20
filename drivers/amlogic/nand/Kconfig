@@ -47,4 +47,12 @@ config AML_NFTL
 	default m
         help
 		This is aml nftl suport
+		
+config AML_NFTL_NEW
+	tristate "Meson NAND NEW_FTL support"
+	depends on AM_NAND
+	default n
+	help
+	  Support NAND Flash New Translation Layer
+
 endmenu

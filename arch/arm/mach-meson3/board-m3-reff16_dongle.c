@@ -581,7 +581,8 @@ static struct mtd_partition multi_partition_info_1G_or_More[] =
         .offset = 576*1024*1024,
         .size = 192*1024*1024,
     },
-#ifdef CONFIG_AML_NFTL
+//#ifdef CONFIG_AML_NFTL
+#if defined(CONFIG_AML_NFTL) || defined(CONFIG_AML_NFTL_NEW)
    {
         .name = "userdata",
         .offset = 768*1024*1024,
