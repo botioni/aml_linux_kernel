@@ -105,6 +105,8 @@ static struct timer_list tsync_pcr_recover_timer;
 static int tsync_trickmode = 0;
 static int vpause_flag = 0;
 static int apause_flag = 0;
+static unsigned int last_vmaster_count=0;
+
 /*
                   threshold_min              threshold_max
                          |                          |			
@@ -360,7 +362,7 @@ static int tsync_mode_switch(int mode,unsigned long diff_pts,int jump_pts)
 	char VA[]="VA--";
        unsigned int olddur=tsync_av_dynamic_duration_ms;
 	
-	printk(" Switch_mode %c-discontinue,pcr=%d,vpts=%d,apts=%d,diff_pts=%d,jump_Pts=%d\n",mode,timestamp_pcrscr_get(),timestamp_vpts_get(),timestamp_apts_get(),diff_pts,jump_pts);
+	printk("%c-discontinue,pcr=%d,vpts=%d,apts=%d,diff_pts=%d,jump_Pts=%d\n",mode,timestamp_pcrscr_get(),timestamp_vpts_get(),timestamp_apts_get(),diff_pts,jump_pts);
 	if (!tsync_enable) {
 	      if(tsync_mode != TSYNC_MODE_VMASTER){
         		tsync_mode = TSYNC_MODE_VMASTER;
@@ -389,28 +391,18 @@ static int tsync_mode_switch(int mode,unsigned long diff_pts,int jump_pts)
 			///
 		}
 		if(tsync_mode!=old_tsync_mode || tsync_av_mode!=old_tsync_av_mode)
-			printk("mode changes:tsync_mode:%c->%c,state:%c->%c,debugcnt=0x%x,diff_pts=%d lastswitchtime%d  duratinms [%d]\n",
+			printk("Tmode changes:tsync_mode:%c->%c,state:%c->%c,debugcnt=0x%x,diff_pts=%d lastswitchtime%d  duratinms [%d]\n",
 			VA[old_tsync_mode],VA[tsync_mode],old_tsync_av_mode,tsync_av_mode,debugcnt,diff_pts,tsync_av_latest_switch_time_ms,tsync_av_dynamic_duration_ms);
 		return 0;
 	}
 
 
 	if(diff_pts<tsync_av_threshold_min){/*->min*/
-		if(tsync_av_mode==TSYNC_STATE_D){
 			debugcnt|=1<<1;
 			tsync_av_mode=TSYNC_STATE_S;
 			tsync_mode = TSYNC_MODE_AMASTER;
 			tsync_av_latest_switch_time_ms=jiffies_ms;
 			tsync_av_dynamic_duration_ms=0;
-		}else if(tsync_av_mode==TSYNC_STATE_S){
-			if(tsync_mode != TSYNC_MODE_AMASTER){
-				debugcnt|=1<<5;
-				tsync_av_mode=TSYNC_STATE_A;
-           	             	tsync_mode = TSYNC_MODE_AMASTER;
-                	       tsync_av_latest_switch_time_ms=jiffies_ms;
-                        	tsync_av_dynamic_duration_ms=5*1000;
-			}
-		}
 	}else if(diff_pts<=tsync_av_threshold_max){/*min<-->max*/
 		if(tsync_av_mode==TSYNC_STATE_S){
 			debugcnt|=1<<2;
@@ -442,14 +434,24 @@ static int tsync_mode_switch(int mode,unsigned long diff_pts,int jump_pts)
 	}else{
 		debugcnt|=1<<16;
 	}
-	
-	if(tsync_mode!=old_tsync_mode || tsync_av_mode!=old_tsync_av_mode){
-		printk(" tsync_mode:%c->%c,state:%c->%c,debugcnt=0x%x,diff_pts=%d %d ms\n",
-                	VA[old_tsync_mode],VA[tsync_mode],old_tsync_av_mode,tsync_av_mode,debugcnt,diff_pts,tsync_av_dynamic_duration_ms);
+	if((tsync_mode==TSYNC_MODE_VMASTER)&&(old_tsync_mode==TSYNC_MODE_VMASTER)){
+			if (tsync_av_mode== TSYNC_STATE_D){
+				tsync_av_latest_switch_time_ms=jiffies_ms;
+				last_vmaster_count++;
+				if(last_vmaster_count>=1){
+					tsync_av_dynamic_duration_ms = tsync_av_dynamic_duration_ms/(last_vmaster_count*4); 
+				    printk("maybeAV_DISCONTINUE_DATAERROR reduce dynamic_duration diffpts[%d] durationms[%d]\n",diff_pts,tsync_av_dynamic_duration_ms);
+				}
+			}
+	}else{
+		last_vmaster_count=1;	
 	}
+	
 	if(olddur!=tsync_av_dynamic_duration_ms){/*duration changed,update new timeout.*/
 			tsync_av_dynamic_timeout_ms=tsync_av_latest_switch_time_ms+tsync_av_dynamic_duration_ms;
 	}
+	printk(" tsync_mode:%c->%c,state:%c->%c,debugcnt=0x%x,diff_pts=%d %d ms\n",
+                	VA[old_tsync_mode],VA[tsync_mode],old_tsync_av_mode,tsync_av_mode,debugcnt,diff_pts,tsync_av_dynamic_duration_ms);
 	return 0;
 }
 static void tsync_state_switch_timer_fun(unsigned long arg)
@@ -578,7 +580,7 @@ void tsync_avevent_locked(avevent_t event, u32 param)
             }
 		unsigned oldpts=timestamp_apts_get();
 		int oldmod=tsync_mode;
-        	amlog_level(LOG_LEVEL_ATTENTION, " audio discontinue, reset apts, 0x%x\n", param);	
+        	//amlog_level(LOG_LEVEL_ATTENTION, " audio discontinue, reset apts, 0x%x\n", param);	
 
 		timestamp_apts_set(param);	
         	if (!tsync_enable) {
@@ -590,7 +592,7 @@ void tsync_avevent_locked(avevent_t event, u32 param)
                 else
                         t = timestamp_pcrscr_get();
 				
-        	amlog_level(LOG_LEVEL_ATTENTION, " AUDIO_TSTAMP_DISCONTINUITY, 0x%x, 0x%x\n", t, param);
+        	//amlog_level(LOG_LEVEL_ATTENTION, " AUDIO_TSTAMP_DISCONTINUITY, 0x%x, 0x%x\n", t, param);
 		if(abs(param-oldpts)>tsync_av_threshold_min){
 			apts_discontinue=1;
 			tsync_mode_switch('A',abs(param - t),param-oldpts);
