@@ -2667,10 +2667,10 @@ static int hdmitx_m3_set_audmode(struct hdmi_tx_dev_s* hdmitx_device, Hdmi_tx_au
     printk("HDMI: reset audio N para\n");
     switch(audio_param->sample_rate){
         case FS_44K1:
-            audio_N_para = 6272;
+            audio_N_para = 6272 * 2;
             break;
         case FS_48K:
-            audio_N_para = 6144;
+            audio_N_para = 6144 * 2;
             break;
     }
 
