@@ -14,9 +14,10 @@ obj-$(CONFIG_AM_AVL6211) += avl6211/
 
 obj-$(CONFIG_AM_ITE9173) += ite9173/
 
-obj-$(CONFIG_AM_RTL2830) += rtl2830/
 
-obj-$(CONFIG_AM_DS3000) += ds3000/
+#obj-$(CONFIG_AM_RTL2830) += rtl2830/
+
+#obj-$(CONFIG_AM_DS3000) += ds3000/
 obj-$(CONFIG_TH_SONY_T2) += cxd2834/
 obj-$(CONFIG_AM_ITE9133) += ite9133/
 
