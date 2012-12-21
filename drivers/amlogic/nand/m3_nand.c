@@ -19,6 +19,7 @@
 
 #include <mach/nand.h>
 
+#include "version.h"
 extern int nand_get_device(struct nand_chip *chip, struct mtd_info *mtd,  int new_state);
 extern void nand_release_device(struct mtd_info *mtd);
 static char *aml_nand_plane_string[]={
@@ -443,7 +444,10 @@ static int m3_nand_dma_write(struct aml_nand_chip *aml_chip, unsigned char *buf,
 	NFC_SEND_CMD_AIH((aml_chip->nand_info_dma_addr));
 	
 	if(aml_chip->ran_mode){
-	        NFC_SEND_CMD_SEED((aml_chip->page_addr/(mtd->writesize >> chip->page_shift)) * (mtd->writesize >> chip->page_shift));
+		if(aml_chip->plane_num == 2)
+	      NFC_SEND_CMD_SEED((aml_chip->page_addr/(mtd->writesize >> chip->page_shift)) * (mtd->writesize >> chip->page_shift));
+		else		
+				NFC_SEND_CMD_SEED(aml_chip->page_addr);
 	}
 	if(!bch_mode)
 		NFC_SEND_CMD_M2N_RAW(aml_chip->ran_mode, len);
@@ -484,7 +488,10 @@ static int m3_nand_dma_read(struct aml_nand_chip *aml_chip, unsigned char *buf, 
 	NFC_SEND_CMD_AIL(aml_chip->nand_info_dma_addr);
 	NFC_SEND_CMD_AIH((aml_chip->nand_info_dma_addr));
 	if(aml_chip->ran_mode){
-	        NFC_SEND_CMD_SEED((aml_chip->page_addr/(mtd->writesize >> chip->page_shift)) * (mtd->writesize >> chip->page_shift));
+		if(aml_chip->plane_num == 2)
+	      NFC_SEND_CMD_SEED((aml_chip->page_addr/(mtd->writesize >> chip->page_shift)) * (mtd->writesize >> chip->page_shift));
+		else		
+				NFC_SEND_CMD_SEED(aml_chip->page_addr);
 	}
 
 	if(bch_mode == NAND_ECC_NONE)
@@ -748,8 +755,8 @@ static int m3_nand_boot_write_page(struct mtd_info *mtd, struct nand_chip *chip,
 			if ((status & NAND_STATUS_FAIL) && (chip->errstat))
 				status = chip->errstat(mtd, chip, FL_WRITING, status, write_page);
 
-			if (status & NAND_STATUS_FAIL)
-				return -EIO;
+		/*	if (status & NAND_STATUS_FAIL)
+				return -EIO;*/
 		}
 		write_page++;
 		if((page > 3) && en_slc){
@@ -786,7 +793,7 @@ static int m3_nand_boot_write_page(struct mtd_info *mtd, struct nand_chip *chip,
                 		if(en_slc && (page > 3))
 					aml_chip->new_nand_info.slc_program_info.exit_enslc_mode(mtd);
  #endif               		
-				return -EIO;
+		//		return -EIO;
 			}
 		} else {
 
@@ -1000,10 +1007,17 @@ static void m3_nand_shutdown(struct platform_device *pdev)
 
 	return;
 }
-#define DRV_NAME	"aml_m3_nand"
-#define DRV_VERSION	"1.1"
-#define DRV_AUTHOR	"xiaojun_yoyo"
-#define DRV_DESC	"Amlogic nand flash AVOS driver for M3"
+
+
+int  show_nand_version_info(struct class *class, 
+			struct class_attribute *attr,	char *buf)
+{
+    struct aml_nand_chip *aml_chip = container_of(class, struct aml_nand_chip, cls);
+
+    printk(KERN_INFO "kernel Version %s,uboot version %s\n", DRV_VERSION,DRV_UBOOT_VERSION);
+
+	return 0;
+}
 
 /* driver device registration */
 static struct platform_driver m3_nand_driver = {
@@ -1019,7 +1033,7 @@ static struct platform_driver m3_nand_driver = {
 static int __init m3_nand_init(void)
 {
 	printk(KERN_INFO "%s, Version %s (c) 2010 Amlogic Inc.\n", DRV_DESC, DRV_VERSION);
-
+	printk(KERN_INFO "####Version of Uboot must be newer than %s!!!!! \n",  DRV_UBOOT_VERSION);
 	return platform_driver_register(&m3_nand_driver);
 }
 
