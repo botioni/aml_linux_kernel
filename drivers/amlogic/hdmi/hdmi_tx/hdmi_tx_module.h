@@ -111,11 +111,11 @@ typedef struct hdmi_tx_dev_s {
 #define AUTH_PROCESS_TIME   (4000/500)
 #else
 #define HDMI_PROCESS_DELAY  msleep(100)
-#define AUTH_PROCESS_TIME   (4000/100)
+#define AUTH_PROCESS_TIME   (1000/100)
 #endif        
 
 
-#define HDMITX_VER "2012Dec21a"
+#define HDMITX_VER "2012Dec24a"
 
 /************************************
 *    hdmitx protocol level interface
@@ -171,6 +171,8 @@ extern unsigned char hdmi_audio_off_flag;
 #define HDMITX_HWCMD_TURN_ON_PRBS           0x7
 #define HDMITX_FORCE_480P_CLK                0x8
 #define HDMITX_OUTPUT_ENABLE                 0x9
+    #define HDMITX_SET_AVMUTE                0x0
+    #define HDMITX_CLEAR_AVMUTE              0x1
 #define HDMITX_GET_AUTHENTICATE_STATE        0xa
 #define HDMITX_HWCMD_5V_CTL                  0xb
 #define HDMITX_HWCMD_3V3_CTL                 0xc

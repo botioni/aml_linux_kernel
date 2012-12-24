@@ -42,6 +42,7 @@
 #include <linux/osd/osd_dev.h>
 #include <linux/switch.h>
 #include <linux/hdmi/hdmi_config.h>
+#include "hdmi_tx_hdcp.h"
 #else
 
 #include "includes.h"
@@ -162,8 +163,10 @@ static int hdmi_480p_force_clk = 0; /* 200, 225, 250, 270 */
 extern int force_output_mode = 0;   // if 1, then output force without edid  if 0, the with edid
 #endif
 static int hdmi_output_on = 1;   
-static int hdmi_authenticated = -1;                     
-static int auth_output_auto_off = 0;
+static int hdmi_authenticated = -1;
+static int hdmi_hdcp_process = 1;   // default hdcp is on, if aksv is 0, then disable
+static int hdmi_hdcp_status = -1;
+static int hdmi_hdcp_required = -1;
 /*****************************
 *    hdmitx attr management :
 *    enable
@@ -269,14 +272,9 @@ static  int  set_disp_mode(const char *mode)
         }
 
     hdmitx_device.cur_VIC = HDMI_Unkown;
+    hdmi_hdcp_status = -1;
     ret = hdmitx_set_display(&hdmitx_device, vic);
     if(ret>=0){
-#ifdef CONFIG_AML_HDMI_TX_HDCP
-        msleep(HDMI_HDCP_DELAYTIME_AFTER_DISPLAY);     // After HDMI display on, wait some time then enable HDCP
-        if(hdmitx_device.HWOp.Cntl){
-            hdmitx_device.HWOp.Cntl(&hdmitx_device, HDMITX_HDCP_CNTL, HDCP_ON);
-        }
-#endif
         hdmitx_device.cur_VIC = vic;
         hdmitx_device.audio_param_update_flag = 1;
         hdmi_authenticated = -1;
@@ -306,8 +304,10 @@ static int set_disp_mode_auto(void)
 #endif    
     HDMI_Video_Codes_t vic;     //Prevent warning
     
-    if(info == NULL)
+    if(info == NULL) {
+        printk("HDMITX: cann't get valid mode\n");
         return -1;
+    }
         
     //msleep(500);
 #ifndef HDMI_SINK_NO_EDID
@@ -321,6 +321,7 @@ static int set_disp_mode_auto(void)
     }
 #endif
     hdmitx_device.cur_VIC = HDMI_Unkown;
+    hdmi_hdcp_status = -1;
 
     if(uboot_vmode_flag == vic){
         printk("don\'t set same hdmi mode\n");
@@ -333,12 +334,6 @@ static int set_disp_mode_auto(void)
     }
     ret = hdmitx_set_display(&hdmitx_device, vic); //if vic is HDMI_Unkown, hdmitx_set_display will disable HDMI
     if(ret>=0){
-#ifdef CONFIG_AML_HDMI_TX_HDCP
-        msleep(HDMI_HDCP_DELAYTIME_AFTER_DISPLAY);     // After HDMI display on, wait some time then enable HDCP
-        if(hdmitx_device.HWOp.Cntl){
-            hdmitx_device.HWOp.Cntl(&hdmitx_device, HDMITX_HDCP_CNTL, HDCP_ON);
-        }
-#endif
         hdmitx_device.cur_VIC = vic;
         hdmitx_device.audio_param_update_flag = 1;
         hdmi_authenticated = -1;
@@ -601,6 +596,29 @@ static ssize_t show_disp_cap(struct device * dev, struct device_attribute *attr,
     return pos;    
 }
 
+static ssize_t show_hdcp_ksv_info(struct device * dev, struct device_attribute *attr, char * buf)
+{
+    int pos = 0, i;
+    char aksv_buf[5];
+    char bksv_buf[5];
+
+    hdmi_hdcp_get_aksv(aksv_buf, 0);
+    hdmi_hdcp_get_bksv(bksv_buf, 0);
+    pos+=snprintf(buf+pos, PAGE_SIZE, "AKSV: ");
+    for(i = 0;i < 5; i++) {
+        pos+=snprintf(buf+pos, PAGE_SIZE, "%02x", aksv_buf[i]);
+    }
+    pos+=snprintf(buf+pos, PAGE_SIZE, "  %s\r\n", hdcp_ksv_valid(aksv_buf) ? "Valid" : "Invalid");
+
+    pos+=snprintf(buf+pos, PAGE_SIZE, "BKSV: ");
+    for(i = 0;i < 5; i++) {
+        pos+=snprintf(buf+pos, PAGE_SIZE, "%02x", bksv_buf[i]);
+    }
+    pos+=snprintf(buf+pos, PAGE_SIZE, "  %s\r\n", hdcp_ksv_valid(bksv_buf) ? "Valid" : "Invalid");
+
+    return pos;
+}
+
 static ssize_t show_hpd_state(struct device * dev, struct device_attribute *attr, char * buf)
 {   
     int pos=0;
@@ -735,6 +753,7 @@ static DEVICE_ATTR(edid, S_IWUSR | S_IRUGO, show_edid, store_edid);
 static DEVICE_ATTR(config, S_IWUSR | S_IRUGO, show_config, store_config);
 static DEVICE_ATTR(debug, S_IWUSR | S_IRUGO, NULL, store_dbg);
 static DEVICE_ATTR(disp_cap, S_IWUSR | S_IRUGO, show_disp_cap, NULL);
+static DEVICE_ATTR(hdcp_ksv_info, S_IWUSR | S_IRUGO, show_hdcp_ksv_info, NULL);
 static DEVICE_ATTR(hpd_state, S_IWUSR | S_IRUGO, show_hpd_state, NULL);
 static DEVICE_ATTR(log, S_IWUSR | S_IRUGO, show_log, store_log);
 static DEVICE_ATTR(cec, S_IWUSR | S_IRUGO, show_cec, store_cec);
@@ -1059,10 +1078,6 @@ static void
 #endif
 hdmi_task_handle(void *data) 
 {
-#ifdef CONFIG_AML_HDMI_TX_HDCP
-    extern void restart_edid_hdcp(void);
-    static int edid_hdcp_reset_flag = 0;
-#endif
     extern void hdmitx_edid_ram_buffer_clear(hdmitx_dev_t*);
     hdmitx_dev_t* hdmitx_device = (hdmitx_dev_t*)data;
     hdmitx_init_parameters(&hdmitx_device->hdmi_info);
@@ -1143,11 +1158,9 @@ hdmi_task_handle(void *data)
         if(hdmitx_device->hpd_event == 2)
         {
             hdmitx_edid_clear(hdmitx_device);
-#ifdef CONFIG_AML_HDMI_TX_HDCP
             if(hdmitx_device->HWOp.Cntl){
                 hdmitx_device->HWOp.Cntl(&hdmitx_device, HDMITX_HDCP_CNTL, HDCP_OFF);
             }
-#endif
             //When unplug hdmi, clear the hdmitx module edid ram and edid buffer.
             hdmitx_edid_ram_buffer_clear(hdmitx_device);
             cec_node_uninit(hdmitx_device);
@@ -1166,41 +1179,38 @@ hdmi_task_handle(void *data)
             hdmitx_device->hpd_state = 0;
             hdmitx_device->vic_count = 0;
             switch_set_state(&hdcp_dev, 0);
+            hdmi_hdcp_status = -1;
         }    
         else{
         }            
         /* authentication process */
-#ifdef CONFIG_AML_HDMI_TX_HDCP
         if(hdmitx_device->cur_VIC != HDMI_Unkown){
-            {
-                if(edid_hdcp_reset_flag){
-                    edid_hdcp_reset_flag = 0;
-                    restart_edid_hdcp();
-                }
-            }
             if(hdmitx_device->auth_process_timer>0){
                 hdmitx_device->auth_process_timer--;
             }
             else{
+                if(((hdmi_hdcp_process == 1) && (hdmi_hdcp_status == -1)) || ((hdmi_hdcp_status == -1) && (hdmi_hdcp_required == 1))){    // 1: start hdcp
+                    hdmi_hdcp_process = -1;
+                    hdmi_hdcp_status = hdmi_hdcp_required = 1;
+                    hdmitx_device->HWOp.Cntl(hdmitx_device, HDMITX_HDCP_CNTL, HDCP_ON);
+                }
                 hdmi_authenticated = hdmitx_device->HWOp.Cntl(hdmitx_device, HDMITX_GET_AUTHENTICATE_STATE, 0);
                 switch_set_state(&hdcp_dev, hdmi_authenticated);
-                if(auth_output_auto_off){
-                    if(hdmi_authenticated){
-                        hdmitx_device->HWOp.Cntl(hdmitx_device, HDMITX_OUTPUT_ENABLE, 1);
-                    }
-                    else{
-                        hdmitx_device->HWOp.Cntl(hdmitx_device, HDMITX_OUTPUT_ENABLE, 0);
-                    }
-                }
-                else{
-                    hdmitx_device->HWOp.Cntl(hdmitx_device, HDMITX_OUTPUT_ENABLE, hdmi_output_on);
+                hdmitx_device->HWOp.Cntl(hdmitx_device, HDMITX_OUTPUT_ENABLE, (unsigned)(hdmi_output_on));
+                if((hdmi_hdcp_process == 1) || ((hdmi_hdcp_status == -1) && (hdmi_hdcp_required == 1))) {    // 1: start hdcp
+                    hdmi_hdcp_process = -1;
+                    hdmi_hdcp_required = 1;
+                    hdmi_hdcp_status = 1;
+                    hdmitx_device->HWOp.Cntl(hdmitx_device, HDMITX_HDCP_CNTL, HDCP_ON);
                 }
             }
+            if(hdmi_hdcp_process == 0){    // 0: stop hdcp
+                hdmi_hdcp_process = -1;
+                hdmi_hdcp_required = 0;
+                hdmi_hdcp_status = 0;
+                hdmitx_device->HWOp.Cntl(hdmitx_device, HDMITX_HDCP_CNTL, HDCP_OFF);
+            }
         }
-        else{
-            edid_hdcp_reset_flag = 1;
-        }
-#endif        
         /**/    
         HDMI_PROCESS_DELAY;            
     }
@@ -1414,6 +1424,7 @@ static int amhdmitx_probe(struct platform_device *pdev)
     ret=device_create_file(hdmitx_dev, &dev_attr_config);
     ret=device_create_file(hdmitx_dev, &dev_attr_debug);
     ret=device_create_file(hdmitx_dev, &dev_attr_disp_cap);
+    ret=device_create_file(hdmitx_dev, &dev_attr_hdcp_ksv_info);
     ret=device_create_file(hdmitx_dev, &dev_attr_hpd_state);
     ret=device_create_file(hdmitx_dev, &dev_attr_log);
     ret=device_create_file(hdmitx_dev, &dev_attr_cec);
@@ -1757,12 +1768,13 @@ MODULE_PARM_DESC(hdmi_prbs_mode, "\n hdmi_prbs_mode \n");
 module_param(hdmi_prbs_mode, int, 0664);
 
 MODULE_PARM_DESC(hdmi_authenticated, "\n hdmi_authenticated \n");
-module_param(hdmi_authenticated, int, 0664);
+module_param(hdmi_authenticated, int, S_IRUGO);
+
+MODULE_PARM_DESC(hdmi_hdcp_process, "\n hdmi_hdcp_process \n");
+module_param(hdmi_hdcp_process, int, 0664);
 
 MODULE_PARM_DESC(hdmi_output_on, "\n hdmi_output_on \n");
 module_param(hdmi_output_on, int, 0664);
 
-MODULE_PARM_DESC(auth_output_auto_off, "\n auth_output_auto_off \n");
-module_param(auth_output_auto_off, int, 0664);
-
 #endif
+

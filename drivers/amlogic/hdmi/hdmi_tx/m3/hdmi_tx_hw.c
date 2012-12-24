@@ -61,6 +61,7 @@
 #include "../hdmi_info_global.h"
 #include "../hdmi_tx_module.h"
 #include "../hdmi_tx_cec.h"
+#include "../hdmi_tx_hdcp.h"
 #include "hdmi_tx_reg.h"
 #include "tvenc_conf.h"
 //#define XTAL_24MHZ
@@ -85,10 +86,6 @@ static void hdmi_wakeup(void);
 //#define MORE_LOW_P
 #define LOG_EDID
 
-#ifdef CONFIG_AML_HDMI_TX_HDCP
-static unsigned force_wrong=0;
-static int hdcpkey_status = -1;
-#endif
 extern int task_tx_key_setting(unsigned force_wrong);
 
 extern int set_viu_path(unsigned viu_channel_sel, viu_type_e viu_type_sel);
@@ -229,6 +226,7 @@ static void intr_handler(void *arg)
     } 
     if (data32 & (1 << 1)) { //HPD falling
         hdmitx_device->vic_count = 0;
+        hdmi_wr_reg(TX_HDCP_MODE, hdmi_rd_reg(TX_HDCP_MODE)&(~0x80)); //disable authentication
         printk("hpd falling\n");
         if(hpd_debug_mode&HPD_DEBUG_IGNORE_UNPLUG){
             hdmi_wr_only_reg(OTHER_BASE_ADDR + HDMI_OTHER_INTR_STAT_CLR,  1 << 1); //clear HPD falling interrupt in hdmi module     
@@ -1213,9 +1211,6 @@ void hdmi_hw_init(hdmitx_dev_t* hdmitx_device)
     hdmi_wr_reg(TX_HDCP_MEM_CONFIG,   0<<3);  //set TX read_decrypt=0
     hdmi_wr_reg(TX_HDCP_ENCRYPT_BYTE, 0);     //set TX encrypt_byte=0x00
 
-#ifdef CONFIG_AML_HDMI_TX_HDCP
-    hdcpkey_status = task_tx_key_setting(force_wrong);
-#endif
     //tmp_add_data[15:8] = 0;
     //tmp_add_data[7] = 1'b0;       // Force packet timing
     //tmp_add_data[6] = 1'b0;       // PACKET ALLOC MODE
@@ -1527,10 +1522,7 @@ static void hdmi_hw_reset(hdmitx_dev_t* hdmitx_device, Hdmi_tx_video_para_t *par
     hdmi_wr_reg(TX_HDCP_CONFIG0,      1<<3);  //set TX rom_encrypt_off=1
     hdmi_wr_reg(TX_HDCP_MEM_CONFIG,   0<<3);  //set TX read_decrypt=0
     hdmi_wr_reg(TX_HDCP_ENCRYPT_BYTE, 0);     //set TX encrypt_byte=0x00
-    
-#ifdef CONFIG_AML_HDMI_TX_HDCP
-    hdcpkey_status = task_tx_key_setting(force_wrong);
-#endif
+
     //tmp_add_data[15:8] = 0;
     //tmp_add_data[7] = 1'b0;      // Force DTV timing (Auto)
     //tmp_add_data[6] = 1'b0;      // Force Video Scan, only if [7]is set
@@ -2003,6 +1995,7 @@ static unsigned char hdmitx_m3_getediddata(hdmitx_dev_t* hdmitx_device)
                 hdmitx_device->cur_phy_block_ptr=hdmitx_device->cur_phy_block_ptr&0x3;
             }
         }        
+
         return 1;
     }
     else{
@@ -2028,7 +2021,7 @@ static void check_chip_type(void)
 #endif		
 }
 
-#ifdef CONFIG_AML_HDMI_TX_HDCP
+#if 0
 // Only applicable if external HPD is on and stable.
 // This function generates an HDMI TX internal sys_trigger pulse that will
 // restart EDID and then HDCP transfer on DDC channel.
@@ -2305,7 +2298,7 @@ redo:
         case HDMI_1080i50:
         case HDMI_1080p50:
         case HDMI_1080p60:
-            if(!check_clk_valid(VID_PLL_CLK, 149)){
+            if((!check_clk_valid(VID_PLL_CLK, 148)) && (!check_clk_valid(VID_PLL_CLK, 149))){
                     reset_count ++;
                     reset_flag = 1;
             }
@@ -2955,7 +2948,6 @@ static int hdmitx_m3_cntl(hdmitx_dev_t* hdmitx_device, int cmd, unsigned argv)
         printk("HDMI: Monitor HDCP end\n");
         return 0;
     }
-#ifdef CONFIG_AML_HDMI_TX_HDCP
     else if(cmd == HDMITX_HDCP_CNTL) {
         if(argv == HDCP_OFF ) {
             hdmi_wr_reg(TX_HDCP_MODE, hdmi_rd_reg(TX_HDCP_MODE)&(~0x80)); //disable authentication
@@ -2963,17 +2955,15 @@ static int hdmitx_m3_cntl(hdmitx_dev_t* hdmitx_device, int cmd, unsigned argv)
             return 0;
         }
         if(argv == HDCP_ON ) {
-            if(hdcpkey_status >= 0){
-                if(hdmi_rd_reg(TX_HDCP_ST_EDID_STATUS) & (1<<4)){       // [4]: edid_done
-                    hdmi_wr_reg(TX_HDCP_MODE, hdmi_rd_reg(TX_HDCP_MODE)|0x80); //enable authentication
-                    printk("HDMITX: HDCP enable\n");
-                }
-                else{
-                    printk("HDMITX: edid_done error\n");
-                }
+            char aksv[5];
+
+            hdmi_hdcp_get_aksv(aksv, 0);
+            if(hdcp_ksv_valid(aksv) == 1) {
+                hdmi_wr_reg(TX_HDCP_MODE, hdmi_rd_reg(TX_HDCP_MODE)|0x80); //enable authentication
+                printk("HDMITX: HDCP enable\n");
             }
-            else{
-                printk("HDMITX: HDCP Key error, disable authentication\n");
+            else {
+                printk("HDMITX: HDCP Key error\n");
             }
             return 0;
         }
@@ -2981,7 +2971,6 @@ static int hdmitx_m3_cntl(hdmitx_dev_t* hdmitx_device, int cmd, unsigned argv)
             return !!(hdmi_rd_reg(TX_HDCP_MODE) & 0x80);
         }
     }
-#endif
 #ifndef AVOS
     else if(cmd == HDMITX_HWCMD_VDAC_OFF){
         power_off_vdac_flag=1;
