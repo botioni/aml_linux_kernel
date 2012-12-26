@@ -1,5 +1,5 @@
-#ifndef _AML8218_H_
-#define _AML8218_H_
+#ifndef _AML_DVB_H_
+#define _AML_DVB_H_
 
 #include <linux/interrupt.h>
 #include <linux/socket.h>
@@ -136,19 +136,6 @@ struct aml_dmx {
 	int                  error_check;
 };
 
-
-struct aml_fe {
-	int                  id;
-	struct dvb_frontend *fe;
-	void               *cfg;
-	struct platform_device *pdev;
-#ifdef CONFIG_HAS_EARLYSUSPEND
-	struct early_suspend es;
-#endif /*CONFIG_HAS_EARLYSUSPEND*/
-	struct class class;
-	void *priv;
-};
-
 struct aml_asyncfifo {
 	int	id;
 	int	init;
@@ -157,7 +144,6 @@ struct aml_asyncfifo {
 	unsigned long	pages;
 	int	buf_len;
 	int	buf_toggle;
-	int flush_size;
 	struct tasklet_struct     asyncfifo_tasklet;
 	spinlock_t           slock;
 	struct aml_dvb *dvb;
@@ -204,7 +190,6 @@ extern int dsc_release(struct aml_dsc *dsc);
 extern int aml_asyncfifo_hw_init(struct aml_asyncfifo *afifo);
 extern int aml_asyncfifo_hw_deinit(struct aml_asyncfifo *afifo);
 extern int aml_asyncfifo_hw_set_source(struct aml_asyncfifo *afifo, aml_dmx_id_t src);
-extern int aml_asyncfifo_hw_reset(struct aml_asyncfifo *afifo);
 
 /*Get the Audio & Video PTS*/
 extern u32 aml_dmx_get_video_pts(struct aml_dvb *dvb);

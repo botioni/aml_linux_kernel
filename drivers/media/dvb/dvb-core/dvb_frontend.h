@@ -324,6 +324,8 @@ struct dvb_frontend_ops {
 	int (*get_property)(struct dvb_frontend* fe, struct dtv_property* tvp);
 
 	struct dvbsx_blindscan_ops blindscan_ops;
+	int (*set_mode)(struct dvb_frontend* fe, fe_type_t type);
+	int (*read_ts)(struct dvb_frontend* fe, int *ts);
 };
 
 #define MAX_EVENT 8
@@ -390,6 +392,10 @@ struct dtv_frontend_properties {
 	/* ISDB-T specifics */
 	u32			isdbs_ts_id;
 	u32			dvbt2_plp_id;
+	/* Analog specifics */
+	int                     mode;
+	int                     audmode;
+	u64                     std;
 };
 
 struct dvb_frontend {

@@ -1835,6 +1835,135 @@ static  struct platform_device amlogic_dvb_device = {
 #endif
 
 #ifdef CONFIG_AM_DVB
+#ifdef CONFIG_AM_NEW_TV_ARCH
+static struct resource amlogic_dvb_fe_resource[]  = {
+#if (defined CONFIG_AM_MXL101)
+	[0] = {
+		.start = 2,                                 //DTV demod: M1=0, SI2176=1, MXL101=2
+		.end   = 2,
+		.flags = IORESOURCE_MEM,
+		.name  = "dtv_demod0"
+	},
+	[1] = {
+		.start = 0,                                 //i2c adapter id
+		.end   = 0,
+		.flags = IORESOURCE_MEM,
+		.name  = "dtv_demod0_i2c_adap_id"
+	},
+	[2] = {
+		.start = 0x60,                              //i2c address
+		.end   = 0x60,
+		.flags = IORESOURCE_MEM,
+		.name  = "dtv_demod0_i2c_addr"
+	},
+	[3] = {
+		.start = 0,                                 //reset value
+		.end   = 0,
+		.flags = IORESOURCE_MEM,
+		.name  = "dtv_demod0_reset_value"
+	},
+	[4] = {
+		.start = (GPIOC_bank_bit0_15(3)<<16)|GPIOC_bit_bit0_15(3), //reset pin
+		.end   = (GPIOC_bank_bit0_15(3)<<16)|GPIOC_bit_bit0_15(3),
+		.flags = IORESOURCE_MEM,
+		.name  = "dtv_demod0_reset_gpio"
+	},
+	[5] = {
+		.start = 0,
+		.end   = 0,
+		.flags = IORESOURCE_MEM,
+		.name  = "fe0_dtv_demod"
+	},
+	[6] = {
+		.start = 2,
+		.end   = 2,
+		.flags = IORESOURCE_MEM,
+		.name  = "fe0_ts"
+	},
+	[7] = {
+		.start = 0,
+		.end   = 0,
+		.flags = IORESOURCE_MEM,
+		.name  = "fe0_dev"
+	},
+#endif
+#if (defined CONFIG_AM_AVL6211)
+	[0] = {
+		.start = 3,                                 //DTV demod: M1=0, SI2176=1, MXL101=2, AVL6211=3
+		.end   = 3,
+		.flags = IORESOURCE_MEM,
+		.name  = "dtv_demod0"
+	},
+	[1] = {
+		.start = 0,                                 //i2c adapter id
+		.end   = 0,
+		.flags = IORESOURCE_MEM,
+		.name  = "dtv_demod0_i2c_adap_id"
+	},
+	[2] = {
+		.start = 0xC0,                              //i2c address
+		.end   = 0xC0,
+		.flags = IORESOURCE_MEM,
+		.name  = "dtv_demod0_i2c_addr"
+	},
+	[3] = {
+		.start = 0,                                 //reset value
+		.end   = 0,
+		.flags = IORESOURCE_MEM,
+		.name  = "dtv_demod0_reset_value"
+	},
+	[4] = {
+		.start = (GPIOD_bank_bit0_9(8)<<16)|GPIOD_bit_bit0_9(8), //reset pin
+		.end   = (GPIOD_bank_bit0_9(8)<<16)|GPIOD_bit_bit0_9(8),
+		.flags = IORESOURCE_MEM,
+		.name  = "dtv_demod0_reset_gpio"
+	},
+	[5] = {
+		.start = 0,
+		.end   = 0,
+		.flags = IORESOURCE_MEM,
+		.name  = "fe0_dtv_demod"
+	},
+	[6] = {
+		.start = 2,
+		.end   = 2,
+		.flags = IORESOURCE_MEM,
+		.name  = "fe0_ts"
+	},
+	[7] = {
+		.start = 0,
+		.end   = 0,
+		.flags = IORESOURCE_MEM,
+		.name  = "fe0_dev"
+	},
+	[8] = {
+		.start = (GPIOB_bank_bit0_23(21)<<16)|GPIOB_bit_bit0_23(21),	 //is avl6211
+		.end   = (GPIOB_bank_bit0_23(21)<<16)|GPIOB_bit_bit0_23(21),
+		.flags = IORESOURCE_MEM,
+		.name  = "dtv_demod0_tunerpower"
+	},
+	[9] = {
+		.start = (GPIOB_bank_bit0_23(23)<<16)|GPIOB_bit_bit0_23(23),	//DVBS2 LNBON/OFF pin
+		.end   = (GPIOB_bank_bit0_23(23)<<16)|GPIOB_bit_bit0_23(23),
+		.flags = IORESOURCE_MEM,
+		.name  = "dtv_demod0_lnbpower"
+	},	
+	[10] = {
+		.start = (GPIOB_bank_bit0_23(20)<<16)|GPIOB_bit_bit0_23(20),
+		.end   = (GPIOB_bank_bit0_23(20)<<16)|GPIOB_bit_bit0_23(20),
+		.flags = IORESOURCE_MEM,
+		.name  = "dtv_demod0_antoverload"
+	},		
+#endif	
+};
+
+static  struct platform_device amlogic_dvb_fe_device = {
+	.name             = "amlogic-dvb-fe",
+	.id               = -1,
+	.num_resources    = ARRAY_SIZE(amlogic_dvb_fe_resource),
+	.resource         = amlogic_dvb_fe_resource,
+};
+#else
 static struct resource mxl101_resource[]  = {
 
 	[0] = {
@@ -2206,7 +2335,6 @@ static  struct platform_device ds3000_device = {
 	.num_resources    = ARRAY_SIZE(ds3000_resource),
 	.resource         = ds3000_resource,
 };
-#endif
 
 #if defined(CONFIG_TH_SONY_T2)
 
@@ -2249,6 +2377,11 @@ static  struct platform_device cxd2834_device = {
 
 
 #endif
+
+#endif
+#endif
+
+
 
 #if defined(CONFIG_AM_SMARTCARD)
 static struct resource amlogic_smc_resource[]  = {
@@ -2447,6 +2580,9 @@ static struct platform_device __initdata *platform_devs[] = {
 #endif
 #ifdef CONFIG_AM_DVB
 	&amlogic_dvb_device,
+#ifdef CONFIG_AM_NEW_TV_ARCH	
+	&amlogic_dvb_fe_device,	
+#else	
 	&mxl101_device,
 	&gx1001_device,
 	&avl6211_device,
@@ -2458,7 +2594,7 @@ static struct platform_device __initdata *platform_devs[] = {
 #endif
 	&ite9133_device,
 	& dib7090p_device,
-
+#endif
 #endif
 #if defined(CONFIG_AM_SMARTCARD)	
 	&amlogic_smc_device,

@@ -1171,6 +1171,12 @@ static void dtv_property_cache_sync(struct dvb_frontend *fe,
 		else
 			c->delivery_system = SYS_DVBC_ANNEX_B;
 		break;
+	case FE_ANALOG:
+		c->delivery_system = SYS_ANALOG;
+		c->mode    = p->u.analog.mode;
+		c->audmode = p->u.analog.audmode;
+		c->std     = p->u.analog.std;
+		break;
 	}
 }
 
@@ -1225,6 +1231,12 @@ static void dtv_property_legacy_params_sync(struct dvb_frontend *fe)
 			c->delivery_system = SYS_ATSC;
 		else
 			c->delivery_system = SYS_DVBC_ANNEX_B;
+		break;
+	case FE_ANALOG:
+		p->u.analog.mode    = c->mode;
+		p->u.analog.audmode = c->audmode;
+		p->u.analog.std     = c->std;
+		c->delivery_system = SYS_ANALOG;
 		break;
 	}
 }
@@ -1628,6 +1640,7 @@ static int dvb_frontend_ioctl(struct inode *inode, struct file *file,
 			cmd==FE_READ_SNR ||
 			cmd==FE_READ_UNCORRECTED_BLOCKS ||
 			cmd==FE_GET_FRONTEND ||
+			cmd==FE_READ_AFC ||
 			cmd==FE_SET_BLINDSCAN ||
 			cmd==FE_GET_BLINDSCANEVENT ||
 			cmd==FE_SET_BLINDSCANCANCEl)
@@ -1814,6 +1827,10 @@ static int dvb_frontend_ioctl_legacy(struct inode *inode, struct file *file,
 			err = fe->ops.read_ucblocks(fe, (__u32*) parg);
 		break;
 
+	case FE_READ_AFC:
+		if (fe->ops.analog_ops.get_afc)
+			*((__u32*)parg) = fe->ops.analog_ops.get_afc(fe);
+		break;
 
 	case FE_DISEQC_RESET_OVERLOAD:
 		if (fe->ops.diseqc_reset_overload) {
@@ -1995,6 +2012,11 @@ static int dvb_frontend_ioctl_legacy(struct inode *inode, struct file *file,
 				fepriv->step_size = 0;
 				fepriv->max_drift = 0;
 				break;
+			case FE_ANALOG:
+				fepriv->min_delay = HZ/20;
+				fepriv->step_size = 0;
+				fepriv->max_drift = 0;
+				break;
 			}
 		}
 		if (dvb_override_tune_delay > 0)
@@ -2093,7 +2115,20 @@ static int dvb_frontend_ioctl_legacy(struct inode *inode, struct file *file,
 		
 		break;
 	
+	case FE_SET_MODE:
+		if(fe->ops.set_mode){
+			err = fe->ops.set_mode(fe, (int)parg);
+		}
+		break;
+
+	case FE_READ_TS:
+		if(fe->ops.read_ts){
+			err = fe->ops.read_ts(fe, (int*)parg);
+		}
+		break;
+
 	};
+
 
 	if (fe->dvb->fe_ioctl_override) {
 		cb_err = fe->dvb->fe_ioctl_override(fe, cmd, parg,

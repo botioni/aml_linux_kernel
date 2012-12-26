@@ -1,4 +1,6 @@
 
+
+
 #ifndef _AVL6211SF_H_
 #define _AVL6211SF_H_
 
@@ -6,7 +8,6 @@
 
 #include <linux/dvb/frontend.h>
 #include "../../../media/dvb/dvb-core/dvb_frontend.h"
-#include "../aml_dvb.h"
 
 
 #include "IBSP.h"

@@ -3,6 +3,13 @@
 #
 menu "Amlogic Device Drivers"
 	depends on AMLOGIC_SERIES
+
+config AM_NEW_TV_ARCH
+	bool "Amlogic new TV frontend drviers architecture"
+	default n
+	help
+		Use new TV frontend drivers architecture.
+
 #
 #	Char devices
 #
@@ -31,8 +38,10 @@ source "drivers/amlogic/sata/Kconfig"
 source "drivers/amlogic/cardreader/Kconfig"
 source "drivers/amlogic/spi_nor/Kconfig"
 source "drivers/amlogic/nand/Kconfig"
-source "drivers/amlogic/demod/Kconfig"
 
+if !AM_NEW_TV_ARCH
+source "drivers/amlogic/demod/Kconfig"
+endif
 
 #
 #	Network devices
@@ -57,10 +66,17 @@ source "drivers/amlogic/cmem/Kconfig"
 source "drivers/amlogic/jpeglogo/Kconfig"
 source "drivers/amlogic/ump/Kconfig"
 source "drivers/amlogic/mali/Kconfig"
-source "drivers/amlogic/dvb/Kconfig"
 source "drivers/amlogic/ppmgr/Kconfig"
 source "drivers/amlogic/audiodsplog/Kconfig"
 source "drivers/amlogic/deinterlace/Kconfig"
+
+if !AM_NEW_TV_ARCH
+source "drivers/amlogic/dvb/Kconfig"
+endif
+
+if AM_NEW_TV_ARCH
+source "drivers/amlogic/dvb_tv/Kconfig"
+endif
 
 #
 #	camera devices
