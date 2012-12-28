@@ -49,7 +49,7 @@
 #include <mach/gpio.h>
 #include <linux/delay.h>
 #include <mach/clk_set.h>
-#include "board-m3-reff16.h"
+#include "board-m3-reff16_dongle.h"
 
 
 #ifdef CONFIG_ANDROID_PMEM
