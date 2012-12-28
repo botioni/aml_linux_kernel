@@ -1173,7 +1173,6 @@ static void dtv_property_cache_sync(struct dvb_frontend *fe,
 		break;
 	case FE_ANALOG:
 		c->delivery_system = SYS_ANALOG;
-		c->mode    = p->u.analog.mode;
 		c->audmode = p->u.analog.audmode;
 		c->std     = p->u.analog.std;
 		break;
@@ -1233,7 +1232,6 @@ static void dtv_property_legacy_params_sync(struct dvb_frontend *fe)
 			c->delivery_system = SYS_DVBC_ANNEX_B;
 		break;
 	case FE_ANALOG:
-		p->u.analog.mode    = c->mode;
 		p->u.analog.audmode = c->audmode;
 		p->u.analog.std     = c->std;
 		c->delivery_system = SYS_ANALOG;

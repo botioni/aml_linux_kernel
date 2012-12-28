@@ -124,7 +124,6 @@ static int aml_fe_analog_set_frontend(struct dvb_frontend* fe, struct dvb_fronte
 	int ret = -1;
 
 	p.frequency = params->frequency;
-	p.mode      = params->u.analog.mode;
 	p.audmode   = params->u.analog.audmode;
 	p.std       = params->u.analog.std;
 
