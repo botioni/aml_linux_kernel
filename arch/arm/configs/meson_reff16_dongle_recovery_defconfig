@@ -1,7 +1,7 @@
 #
 # Automatically generated make config: don't edit
 # Linux kernel version: 2.6.34
-# Wed Dec 26 18:30:54 2012
+# Mon Jan  7 16:44:52 2013
 #
 CONFIG_ARM=y
 CONFIG_HOLES_IN_ZONE=y
@@ -739,6 +739,7 @@ CONFIG_EXTRA_FIRMWARE=""
 #
 # Amlogic Device Drivers
 #
+# CONFIG_AM_NEW_TV_ARCH is not set
 
 #
 # Char devices
@@ -892,8 +893,8 @@ CONFIG_AM_NAND=y
 CONFIG_AM_NAND_RBPIN=y
 CONFIG_AML_NAND_ENV=y
 # CONFIG_AML_NAND_KEY is not set
-# CONFIG_AML_NFTL is not set
-CONFIG_AML_NFTL_NEW=y
+CONFIG_AML_NFTL=y
+# CONFIG_AML_NFTL_NEW is not set
 
 #
 # AMLOGIC DEMOD Support
@@ -1064,11 +1065,6 @@ CONFIG_MALI400=m
 # CONFIG_MALI400_GPU_UTILIZATION is not set
 
 #
-# AMLOGIC DVB driver
-#
-# CONFIG_AM_DVB is not set
-
-#
 # AMLOGIC Post Process Manager driver
 #
 CONFIG_POST_PROCESS_MANAGER=y
@@ -1084,6 +1080,11 @@ CONFIG_AML_AUDIO_DSP_LOG=y
 #
 CONFIG_DEINTERLACE=y
 CONFIG_AM_DEINTERLACE_SD_ONLY=y
+
+#
+# AMLOGIC DVB driver
+#
+# CONFIG_AM_DVB is not set
 
 #
 # Amlogic CAMERA Support
@@ -2222,17 +2223,11 @@ CONFIG_EXT3_FS=y
 CONFIG_EXT3_FS_XATTR=y
 # CONFIG_EXT3_FS_POSIX_ACL is not set
 # CONFIG_EXT3_FS_SECURITY is not set
-CONFIG_EXT4_FS=y
-CONFIG_EXT4_FS_XATTR=y
-CONFIG_EXT4_FS_POSIX_ACL=y
-CONFIG_EXT4_FS_SECURITY=y
-CONFIG_EXT4_DEBUG=y
+# CONFIG_EXT4_FS is not set
 CONFIG_EXFAT_FS=y
 # CONFIG_EXFAT_FS_DEBUG is not set
 CONFIG_JBD=y
 # CONFIG_JBD_DEBUG is not set
-CONFIG_JBD2=y
-# CONFIG_JBD2_DEBUG is not set
 CONFIG_FS_MBCACHE=y
 # CONFIG_REISERFS_FS is not set
 # CONFIG_JFS_FS is not set
