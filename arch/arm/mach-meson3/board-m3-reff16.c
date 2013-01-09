@@ -2201,6 +2201,87 @@ static  struct platform_device ite9133_device = {
 	.resource         = ite9133_resource,
 };
 
+static struct resource mn88436_resource[]  = {
+	[0] = {
+		.start = (GPIOD_bank_bit0_9(8)<<16)|GPIOD_bit_bit0_9(8), //reset pin
+		.end   = (GPIOD_bank_bit0_9(8)<<16)|GPIOD_bit_bit0_9(8),
+		.flags = IORESOURCE_MEM,
+		.name  = "frontend0_reset_pin"
+	},
+	[1] = {
+		.start = 0,                                    //frontend 0 i2c adapter id
+		.end   = 0,
+		.flags = IORESOURCE_MEM,
+		.name  = "frontend0_i2c"
+	},
+	[2] = {
+		.start = 0xce,                                 //frontend 0 tuner address  nmi120 tuner
+		.end   = 0xce,
+		.flags = IORESOURCE_MEM,
+		.name  = "frontend0_tuner_addr"
+	},
+	[3] = {
+		.start =  0xce,                                 //frontend 0 demod address  
+		.end   =  0xce,
+		.flags = IORESOURCE_MEM,
+		.name  = "frontend0_demod_addr"
+	},
+	[4] = {
+		.start = (GPIOB_bank_bit0_23(19)<<16)|GPIOB_bit_bit0_23(19),  //// tuner_enable
+		.end   = (GPIOB_bank_bit0_23(19)<<16)|GPIOB_bit_bit0_23(19),
+		.flags = IORESOURCE_MEM,
+		.name  = "frontend0_power"
+	},
+};
+
+static  struct platform_device mn88436_device = {
+	.name             = "mn88436",
+	.id               = -1,
+	.num_resources    = ARRAY_SIZE(mn88436_resource),
+	.resource         = mn88436_resource,
+};
+
+
+
+static struct resource si2168_resource[]  = {
+	[0] = {
+		.start = (GPIOD_bank_bit0_9(8)<<16)|GPIOD_bit_bit0_9(8), //reset pin
+		.end   = (GPIOD_bank_bit0_9(8)<<16)|GPIOD_bit_bit0_9(8),
+		.flags = IORESOURCE_MEM,
+		.name  = "frontend0_reset_pin"
+	},
+	[1] = {
+		.start = 0,                                    //frontend 0 i2c adapter id
+		.end   = 0,
+		.flags = IORESOURCE_MEM,
+		.name  = "frontend0_i2c"
+	},
+	[2] = {
+		.start = 0xce,                                 //frontend 0 tuner address   nmi120 tuner
+		.end   = 0xce,
+		.flags = IORESOURCE_MEM,
+		.name  = "frontend0_tuner_addr"
+	},
+	[3] = {
+		.start =  0x38,                                 //frontend 0 demod address
+		.end   =  0x38,
+		.flags = IORESOURCE_MEM,
+		.name  = "frontend0_demod_addr"
+	},
+	[4] = {
+		.start = (GPIOB_bank_bit0_23(21)<<16)|GPIOB_bit_bit0_23(21),  //// tuner_enable
+		.end   = (GPIOB_bank_bit0_23(21)<<16)|GPIOB_bit_bit0_23(21),
+		.flags = IORESOURCE_MEM,
+		.name  = "frontend0_power"
+	},
+};
+
+static  struct platform_device si2168_device = {
+	.name             = "si2168",
+	.id               = -1,
+	.num_resources    = ARRAY_SIZE(si2168_resource),
+	.resource         = si2168_resource,
+};
 
 
 static struct resource dib7090p_resource[]  = {
@@ -2594,6 +2675,8 @@ static struct platform_device __initdata *platform_devs[] = {
 #endif
 	&ite9133_device,
 	& dib7090p_device,
+	&mn88436_device,
+	&si2168_device,
 #endif
 #endif
 #if defined(CONFIG_AM_SMARTCARD)	
@@ -2774,6 +2857,27 @@ static void __init device_pinmux_init(void )
 	//rst pin;
 	clear_mio_mux(0, 1<<28);
 	clear_mio_mux(1, 1<<20);*/
+#endif
+#ifdef CONFIG_AM_MN88436
+
+//for MN88436
+	printk("CONFIG_AM_MN88436 set pinmux\n");
+	set_mio_mux(3, 0x3F<<6);
+//	clear_mio_mux(0, 1<<4);
+	clear_mio_mux(0, 0x7);
+
+
+#endif
+
+#ifdef CONFIG_AM_SI2168
+
+//for MN88436
+	printk("CONFIG_AM_SI2168 set pinmux\n");
+	set_mio_mux(3, 0x3F<<6);
+//	clear_mio_mux(0, 1<<4);
+	clear_mio_mux(0, 0x7);
+
+
 #endif
 
 

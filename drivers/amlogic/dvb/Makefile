@@ -22,4 +22,6 @@ obj-$(CONFIG_TH_SONY_T2) += cxd2834/
 obj-$(CONFIG_AM_ITE9133) += ite9133/
 
 obj-$(CONFIG_AM_DIB7090P) += dib7090/
+obj-$(CONFIG_AM_MN88436) += mn88436/
 
+obj-$(CONFIG_AM_SI2168) += si2168/
