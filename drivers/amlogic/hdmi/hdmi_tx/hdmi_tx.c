@@ -98,6 +98,30 @@ static struct switch_dev sdev = {   // android ics switch device
     .name = "hdmi",
     };
 
+#ifdef CONFIG_HAS_EARLYSUSPEND
+#include <linux/earlysuspend.h>
+static void hdmitx_early_suspend(struct early_suspend *h)
+{
+    hdmitx_dev_t * phdmi = (hdmitx_dev_t *)h->param;
+    phdmi->HWOp.Cntl((hdmitx_dev_t *)h->param, HDMITX_EARLY_SUSPEND_RESUME_CNTL, HDMITX_EARLY_SUSPEND);
+    printk(KERN_INFO "HDMITX: early suspend\n");
+}
+
+static void hdmitx_late_resume(struct early_suspend *h)
+{
+    hdmitx_dev_t * phdmi = (hdmitx_dev_t *)h->param;
+    phdmi->HWOp.Cntl((hdmitx_dev_t *)h->param, HDMITX_EARLY_SUSPEND_RESUME_CNTL, HDMITX_LATE_RESUME);
+    printk(KERN_INFO "HDMITX: late resume\n");
+}
+
+static struct early_suspend hdmitx_early_suspend_handler = {
+    .level = EARLY_SUSPEND_LEVEL_BLANK_SCREEN - 10,
+    .suspend = hdmitx_early_suspend,
+    .resume = hdmitx_late_resume,
+    .param = &hdmitx_device,
+};
+#endif
+
 //static HDMI_TX_INFO_t hdmi_info;
 #define INIT_FLAG_VDACOFF        0x1
     /* unplug powerdown */
@@ -1356,6 +1380,9 @@ static int amhdmitx_probe(struct platform_device *pdev)
     hdmitx_device.vic_count=0;
     hdmitx_device.auth_process_timer=0;
     hdmitx_device.force_audio_flag=0;
+#ifdef CONFIG_HAS_EARLYSUSPEND
+    register_early_suspend(&hdmitx_early_suspend_handler);
+#endif
     if(init_flag&INIT_FLAG_CEC_FUNC){
         hdmitx_device.cec_func_flag = 1;
     }

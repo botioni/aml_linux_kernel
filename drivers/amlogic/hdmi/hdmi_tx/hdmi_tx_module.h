@@ -180,6 +180,9 @@ extern unsigned char hdmi_audio_off_flag;
     #define HDCP_ON     0x1
     #define IS_HDCP_ON  0x2
 #define HDMITX_HDCP_MONITOR                  0x11
+#define HDMITX_EARLY_SUSPEND_RESUME_CNTL     0x14
+    #define HDMITX_EARLY_SUSPEND             0x1
+    #define HDMITX_LATE_RESUME               0x2
 
 #define HDMI_HDCP_DELAYTIME_AFTER_DISPLAY    20      // unit: ms
 

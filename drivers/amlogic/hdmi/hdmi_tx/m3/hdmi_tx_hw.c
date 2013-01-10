@@ -2897,6 +2897,15 @@ static int hdmitx_m3_cntl(hdmitx_dev_t* hdmitx_device, int cmd, unsigned argv)
         power_mode=argv;
         hdmi_hw_set_powermode(hdmitx_device, power_mode, hdmitx_device->cur_VIC);
     }
+    else if(cmd == HDMITX_EARLY_SUSPEND_RESUME_CNTL) {
+        if(argv == HDMITX_EARLY_SUSPEND) {
+            Wr(HHI_VID_PLL_CNTL, Rd(HHI_VID_PLL_CNTL) | (1 << 30));
+        }
+        if(argv == HDMITX_LATE_RESUME) {
+            Wr(HHI_VID_PLL_CNTL, Rd(HHI_VID_PLL_CNTL) & (~(1 << 30)));
+        }
+        return 0;
+    }
     else if(cmd == HDMITX_HWCMD_OSD_ENABLE) {
         if(osd_reg_save == -1){ // First save the VPP_MISC reg value
             osd_reg_save = Rd(VPP_MISC) & ((0xff << 10) | (0x3 << 6));  //You shall turn off bit 10,11,12,13,14,15,16,17, but leave bit 6 and 7 = 1
@@ -3172,6 +3181,7 @@ static void hdmitx_m3_debug(hdmitx_dev_t* hdmitx_device, const char* buf)
         }
         return ;
     }
+
     else if(strncmp(tmpbuf, "pllcalc", 7)==0){
         adr=simple_strtoul(tmpbuf+7, NULL, 10);
         if((adr == 0) && (*(tmpbuf+7) != 'a')){
