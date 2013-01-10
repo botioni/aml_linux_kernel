@@ -25,7 +25,7 @@
 #define OSD_480_PIX			(640*480)
 #define OSD_576_PIX			(768*576)
 #define OSD_720_PIX			(1280*720)
-#define OSD_1080_PIX		(1920*1080)
+#define OSD_1080_PIX		(1280*1080)
 #define OSD_PANEL_PIX		(800*600)
 #define B16BpP	(2)
 #define B32BpP	(4)
@@ -73,7 +73,7 @@
 #if defined(CONFIG_AM_DEINTERLACE_SD_ONLY)
 #define DI_MEM_SIZE			(SZ_1M*6)
 #else
-#define DI_MEM_SIZE			(SZ_1M*30)
+#define DI_MEM_SIZE			(0)
 #endif
 #define DI_ADDR_START		U_ALIGN(VDIN_ADDR_END)
 #define DI_ADDR_END			(DI_ADDR_START+DI_MEM_SIZE-1)
