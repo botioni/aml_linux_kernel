@@ -121,8 +121,8 @@ tsync_av_mode switch...
 (AMASTER S)<-->(D VMASTER)<--> (S VMASTER)
 (D VMASTER)--time out->(A AMASTER)--time out->((AMASTER S))
 */
-static unsigned int tsync_av_threshold_min= AV_DISCONTINUE_THREDHOLD_MIN;
-static unsigned int tsync_av_threshold_max = AV_DISCONTINUE_THREDHOLD_MAX;
+unsigned  int tsync_av_threshold_min= AV_DISCONTINUE_THREDHOLD_MIN;
+unsigned  int tsync_av_threshold_max = AV_DISCONTINUE_THREDHOLD_MAX;
 #define TSYNC_STATE_S  ('S')
 #define TSYNC_STATE_A ('A')
 #define TSYNC_STATE_D  ('D')
@@ -894,6 +894,30 @@ void tsync_pcr_recover(void)
 
 EXPORT_SYMBOL(tsync_pcr_recover);
 
+int tsync_get_av_threshold_min(void)
+{ 
+    return tsync_av_threshold_min;
+}
+EXPORT_SYMBOL(tsync_get_av_threshold_min);
+
+int tsync_get_av_threshold_max(void)
+{ 
+    return tsync_av_threshold_max;
+}
+EXPORT_SYMBOL(tsync_get_av_threshold_max);
+int tsync_set_av_threshold_min(int min)
+{
+     
+    return tsync_av_threshold_min=min;
+}
+EXPORT_SYMBOL(tsync_set_av_threshold_min);
+
+int tsync_set_av_threshold_max(int max)
+{
+ 
+    return tsync_av_threshold_max=max;
+}
+EXPORT_SYMBOL(tsync_set_av_threshold_max);
 static ssize_t store_pcr_recover(struct class *class,
                                  struct class_attribute *attr,
                                  const char *buf,
@@ -1120,6 +1144,57 @@ static ssize_t store_discontinue(struct class *class,
     return size;
 }
 
+static ssize_t show_av_threshold_min(struct class *class,
+                           struct class_attribute *attr,
+                           char *buf)
+{
+
+  return sprintf(buf, "tsync_av_threshold_min=%d\n", tsync_av_threshold_min);
+  
+}
+
+static ssize_t store_av_threshold_min(struct class *class,
+                            struct class_attribute *attr,
+                            const char *buf,
+                            size_t size)
+{
+    unsigned min;
+    ssize_t r;
+	
+    r = sscanf(buf, "%d", &min);
+    if (r != 1) {
+        return -EINVAL;
+    }
+	
+    tsync_set_av_threshold_min(min);
+    return size;
+}
+static ssize_t show_av_threshold_max(struct class *class,
+                           struct class_attribute *attr,
+                           char *buf)
+{
+
+     return sprintf(buf, "tsync_av_threshold_max=%d\n", tsync_av_threshold_max);
+	 
+}
+
+static ssize_t store_av_threshold_max(struct class *class,
+                            struct class_attribute *attr,
+                            const char *buf,
+                            size_t size)
+{
+    unsigned max;
+    ssize_t r;
+
+    r = sscanf(buf, "%d", &max);
+    if (r != 1) {
+        return -EINVAL;
+    }
+
+    tsync_set_av_threshold_max(max);
+    return size;
+}
+
 static struct class_attribute tsync_class_attrs[] = {
     __ATTR(pts_video,  S_IRUGO | S_IWUSR, show_vpts,    store_vpts),
     __ATTR(pts_audio,  S_IRUGO | S_IWUSR, show_apts,    store_apts),
@@ -1129,6 +1204,8 @@ static struct class_attribute tsync_class_attrs[] = {
     __ATTR(enable,     S_IRUGO | S_IWUSR, show_enable,  store_enable),
     __ATTR(pcr_recover, S_IRUGO | S_IWUSR, show_pcr_recover,  store_pcr_recover),
     __ATTR(discontinue, S_IRUGO | S_IWUSR|S_IWGRP, show_discontinue,  store_discontinue),
+    __ATTR(av_threshold_min, S_IRUGO | S_IWUSR, show_av_threshold_min,  store_av_threshold_min),
+    __ATTR(av_threshold_max, S_IRUGO | S_IWUSR, show_av_threshold_max,  store_av_threshold_max),
     __ATTR_NULL
 };
 

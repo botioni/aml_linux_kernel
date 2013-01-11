@@ -75,9 +75,17 @@ extern void tsync_set_sync_vdiscont(int syncdiscont);
 
 extern int tsync_set_apts(unsigned pts);
 
+extern int tsync_get_av_threshold_min(void);
+
+extern int tsync_get_av_threshold_max(void);
+
+extern int tsync_set_av_threshold_min(int min);
+
+extern int tsync_set_av_threshold_max(int max);
+
 static inline u32 tsync_vpts_discontinuity_margin(void)
 {
-    return AV_DISCONTINUE_THREDHOLD_MIN;
+    return tsync_get_av_threshold_min();
 }
 
 extern void tsync_set_automute_on(int automute_on);
