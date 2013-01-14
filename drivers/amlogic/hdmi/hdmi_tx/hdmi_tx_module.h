@@ -33,6 +33,8 @@ typedef struct rx_cap_
     unsigned char RxSpeakerAllocation;
     /*vendor*/    
     unsigned int IEEEOUI;
+    unsigned char ReceiverBrandName[4];
+    unsigned char ReceiverProductName[16];
     unsigned int ColorDeepSupport;
     unsigned int Max_TMDS_Clock; 
     
@@ -113,7 +115,7 @@ typedef struct hdmi_tx_dev_s {
 #endif        
 
 
-#define HDMITX_VER "2012Dec14a"
+#define HDMITX_VER "2013Jan14a"
 
 /************************************
 *    hdmitx protocol level interface

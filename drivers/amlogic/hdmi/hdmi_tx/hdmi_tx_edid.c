@@ -48,6 +48,12 @@
 #define HDMI_EDID_BLOCK_TYPE_VESA         5
 #define HDMI_EDID_BLOCK_TYPE_EXTENDED_TAG 7
 
+#define EDID_DETAILED_TIMING_DES_BLOCK0_POS 0x36
+#define EDID_DETAILED_TIMING_DES_BLOCK1_POS 0x48
+#define EDID_DETAILED_TIMING_DES_BLOCK2_POS 0x5A
+#define EDID_DETAILED_TIMING_DES_BLOCK3_POS 0x6C
+
+
 //-----------------------------------------------------------
 static int Edid_DecodeHeader(HDMI_TX_INFO_t *info, unsigned char *buff)
 {
@@ -69,6 +75,48 @@ static int Edid_DecodeHeader(HDMI_TX_INFO_t *info, unsigned char *buff)
             ret = -1;
     	}
     return ret;
+}
+
+static void Edid_ReceiverBrandNameParse(rx_cap_t * pRxCap, unsigned char * data)
+{
+    int i;
+    unsigned char uppercase[26] = { 0 };
+    unsigned char brand[3];
+
+    // Fill array uppercase with 'A' to 'Z'
+    for(i = 0; i < 26; i++)
+        uppercase[i] = 'A' + i;
+
+    brand[0] = data[0] >> 2;
+    brand[1] = ((data[0] & 0x3) << 3) + (data[1] >> 5);
+    brand[2] = data[1] & 0x1f;
+
+    for(i = 0; i < 3; i++) {
+        pRxCap->ReceiverBrandName[i] = uppercase[brand[i] - 1];
+    }
+}
+
+static int Edid_find_name_block(unsigned char * data)
+{
+    int ret = 0;
+    int i;
+    for(i = 0; i < 3; i++) {
+        if(data[i])
+            return ret;
+    }
+    if(data[3] == 0xfc)
+        ret = 1;
+    return ret;
+}
+
+static void Edid_ReceiverProductNameParse(rx_cap_t * pRxCap, unsigned char * data)
+{
+    int i = 0;
+    while(data[i] != 0x0a) {
+        pRxCap->ReceiverProductName[i] = data[i];
+        i++;
+    }
+    pRxCap->ReceiverProductName[i] = '\0';
 }
 
 void Edid_DecodeStandardTiming(HDMI_TX_INFO_t * info, unsigned char * Data, unsigned char length)
@@ -955,6 +1003,7 @@ int hdmitx_edid_parse(hdmitx_dev_t* hdmitx_device)
     unsigned char BlockCount ;
     unsigned char* EDID_buf = hdmitx_device->EDID_buf;
     int i, j, ret_val ;
+    int idx[4];
     rx_cap_t* pRXCap = &(hdmitx_device->RXCap);
     hdmi_print(0, "EDID Parser:\n");
     ret_val = Edid_DecodeHeader(&hdmitx_device->hdmi_info, &EDID_buf[0]);
@@ -975,6 +1024,16 @@ int hdmitx_edid_parse(hdmitx_dev_t* hdmitx_device)
 //        return -1 ;
     }
 	
+    Edid_ReceiverBrandNameParse(&hdmitx_device->RXCap, &EDID_buf[8]);
+
+    idx[0] = EDID_DETAILED_TIMING_DES_BLOCK0_POS;
+    idx[1] = EDID_DETAILED_TIMING_DES_BLOCK1_POS;
+    idx[2] = EDID_DETAILED_TIMING_DES_BLOCK2_POS;
+    idx[3] = EDID_DETAILED_TIMING_DES_BLOCK3_POS;
+    for(i = 0; i < 4; i++) {
+        if(Edid_find_name_block(&EDID_buf[idx[i]]))
+            Edid_ReceiverProductNameParse(&hdmitx_device->RXCap, &EDID_buf[idx[i]+5]);
+    }
     Edid_DecodeStandardTiming(&hdmitx_device->hdmi_info, &EDID_buf[26], 8);
     Edid_ParseCEADetailedTimingDescriptors(&hdmitx_device->hdmi_info, 4, 0x36, &EDID_buf[0]);
 
@@ -1181,12 +1240,18 @@ void hdmitx_edid_clear(hdmitx_dev_t* hdmitx_device)
     hdmitx_device->hdmi_info.vsdb_phy_addr.d = 0;
     hdmitx_device->hdmi_info.vsdb_phy_addr.valid = 0;
     memset(&vsdb_local, 0, sizeof(vsdb_phy_addr_t));    
+    memset(pRXCap->ReceiverBrandName, 0, sizeof(pRXCap->ReceiverBrandName));
+    memset(pRXCap->ReceiverProductName, 0, sizeof(pRXCap->ReceiverProductName));
 }
 
 int hdmitx_edid_dump(hdmitx_dev_t* hdmitx_device, char* buffer, int buffer_len)
 {
     int i,pos=0;
     rx_cap_t* pRXCap = &(hdmitx_device->RXCap);
+
+    pos+=snprintf(buffer+pos, buffer_len-pos, "Receiver Brand Name: %s\r\n", pRXCap->ReceiverBrandName);
+    pos+=snprintf(buffer+pos, buffer_len-pos, "Receiver Product Name: %s\r\n", pRXCap->ReceiverProductName);
+
     pos+=snprintf(buffer+pos, buffer_len-pos, "EDID block number: 0x%x\r\n",hdmitx_device->EDID_buf[0x7e]);
 
     pos+=snprintf(buffer+pos, buffer_len-pos, "Source Physical Address[a.b.c.d]: %x.%x.%x.%x\r\n",
