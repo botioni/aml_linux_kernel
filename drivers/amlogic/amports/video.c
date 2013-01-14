@@ -2154,6 +2154,22 @@ static int amvideo_ioctl(struct inode *inode, struct file *file,
         *((u32 *)arg) = tsync_get_sync_vdiscont();
         break;
 
+	case AMSTREAM_IOC_GET_SYNC_ADISCON_DIFF:
+		*((u32 *)arg) = tsync_get_sync_adiscont_diff();
+		break;
+		
+	case AMSTREAM_IOC_GET_SYNC_VDISCON_DIFF:
+		*((u32 *)arg) = tsync_get_sync_vdiscont_diff();
+		break;
+		
+	case AMSTREAM_IOC_SET_SYNC_ADISCON_DIFF:
+        tsync_set_sync_adiscont_diff(arg);
+        break;
+
+	 case AMSTREAM_IOC_SET_SYNC_VDISCON_DIFF:
+        tsync_set_sync_vdiscont_diff(arg);
+        break;
+
     case AMSTREAM_IOC_GET_VIDEO_DISABLE:
         *((u32 *)arg) = disable_video;
         break;

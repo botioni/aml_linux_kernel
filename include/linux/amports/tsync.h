@@ -73,6 +73,13 @@ extern void tsync_set_sync_adiscont(int syncdiscont);
 
 extern void tsync_set_sync_vdiscont(int syncdiscont);
 
+extern u32 tsync_get_sync_adiscont_diff(void);
+
+extern u32 tsync_get_sync_vdiscont_diff(void);
+
+extern void tsync_set_sync_adiscont_diff(u32 discontinue_diff);
+
+extern void tsync_set_sync_vdiscont_diff(u32 discontinue_diff);
 extern int tsync_set_apts(unsigned pts);
 
 extern int tsync_get_av_threshold_min(void);

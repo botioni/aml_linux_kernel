@@ -97,6 +97,8 @@ static int tsync_enable = 0;   //1;
 static int apts_discontinue = 0;
 static int vpts_discontinue = 0;
 static int pts_discontinue = 0;
+static u32 apts_discontinue_diff = 0;
+static u32 vpts_discontinue_diff = 0;
 static int tsync_abreak = 0;
 static bool tsync_pcr_recover_enable = false;
 static int pcr_sync_stat = PCR_SYNC_UNSET;
@@ -562,6 +564,7 @@ void tsync_avevent_locked(avevent_t event, u32 param)
         	//amlog_level(LOG_LEVEL_ATTENTION, "VIDEO_TSTAMP_DISCONTINUITY, 0x%x, 0x%x\n", t, param);
 		if(abs(param-oldpts)>tsync_av_threshold_min){
 			vpts_discontinue=1;
+			vpts_discontinue_diff = abs(param-t);
 			tsync_mode_switch('V',abs(param - t),param-oldpts);
 		}
 		timestamp_vpts_set(param);
@@ -595,6 +598,7 @@ void tsync_avevent_locked(avevent_t event, u32 param)
         	//amlog_level(LOG_LEVEL_ATTENTION, " AUDIO_TSTAMP_DISCONTINUITY, 0x%x, 0x%x\n", t, param);
 		if(abs(param-oldpts)>tsync_av_threshold_min){
 			apts_discontinue=1;
+			apts_discontinue_diff = abs(param-t);
 			tsync_mode_switch('A',abs(param - t),param-oldpts);
 		}
 		timestamp_apts_set(param);
@@ -806,6 +810,27 @@ int tsync_get_sync_vdiscont(void)
     return vpts_discontinue;
 }
 EXPORT_SYMBOL(tsync_get_sync_vdiscont);
+u32 tsync_get_sync_adiscont_diff(void)
+{	
+    return apts_discontinue_diff;
+}
+EXPORT_SYMBOL(tsync_get_sync_adiscont_diff);
+
+u32 tsync_get_sync_vdiscont_diff(void)
+{	
+    return vpts_discontinue_diff;
+}
+EXPORT_SYMBOL(tsync_get_sync_vdiscont_diff);
+void tsync_set_sync_adiscont_diff(u32 discontinue_diff)
+{
+	apts_discontinue_diff = discontinue_diff;
+}
+EXPORT_SYMBOL(tsync_set_sync_adiscont_diff);
+void tsync_set_sync_vdiscont_diff(u32 discontinue_diff)
+{
+	vpts_discontinue_diff = discontinue_diff;
+}
+EXPORT_SYMBOL(tsync_set_sync_vdiscont_diff);
 
 void tsync_set_sync_adiscont(int syncdiscont)
 {
@@ -1120,7 +1145,8 @@ static ssize_t show_discontinue(struct class *class,
 {
 	pts_discontinue = vpts_discontinue || apts_discontinue;
     if (pts_discontinue) {
-        return sprintf(buf, "1: pts_discontinue\n");
+        return sprintf(buf, "1: pts_discontinue, apts_discontinue_diff=%d, vpts_discontinue_diff=%d,\n",
+			apts_discontinue_diff, vpts_discontinue_diff);
     }
 
     return sprintf(buf, "0: pts_continue\n");
