@@ -62,6 +62,7 @@
 #include "../hdmi_tx_module.h"
 #include "../hdmi_tx_cec.h"
 #include "../hdmi_tx_hdcp.h"
+#include "../hdmi_tx_compliance.h"
 #include "hdmi_tx_reg.h"
 #include "tvenc_conf.h"
 //#define XTAL_24MHZ
@@ -2330,7 +2331,9 @@ redo:
         msleep(20);
         goto redo;
     }
-    
+
+    hdmitx_special_handler_video(hdmitx_device);
+
     hdmi_wr_reg(0x011, 0x0f);   //Channels Power Up Setting ,"1" for Power-up ,"0" for Power-down,Bit[3:0]=CK,Data2,data1,data1,data0 Channels ;
     
     return 0;
@@ -2719,6 +2722,8 @@ static int hdmitx_m3_set_audmode(struct hdmi_tx_dev_s* hdmitx_device, Hdmi_tx_au
         enable_audio_i2s();
 
     hdmi_audio_init(i2s_to_spdif_flag);
+
+    hdmitx_special_handler_audio(hdmitx_device);
    
     return 0;
 }    
