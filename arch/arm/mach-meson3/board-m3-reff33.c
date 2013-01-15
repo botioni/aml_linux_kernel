@@ -1371,7 +1371,7 @@ static struct aml_nand_platform aml_nand_mid_platform[] = {
 				.nr_partitions = ARRAY_SIZE(multi_partition_info_512M),
 				.partitions = multi_partition_info_512M,
 				.set_parts = nand_set_parts,
-				.options = (NAND_TIMING_MODE5 | NAND_ECC_BCH60_1K_MODE),
+				.options = (NAND_TIMING_MODE5 | NAND_ECC_BCH60_1K_MODE | NAND_TWO_PLANE_MODE),
 			},
     	},
 			.T_REA = 20,
