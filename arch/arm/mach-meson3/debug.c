@@ -32,6 +32,7 @@
 enum {
     WORK_MODE_READ,
     WORK_MODE_WRITE,
+    WORK_MODE_WRITE_BIT,
     WORK_MODE_CLKMEASURE,
     WORK_MODE_DUMP,
 };
@@ -39,10 +40,10 @@ static const char * usage_str = {
 	"Usage:\n"
 	"    echo [read | write <data>] addrmem > debug ; Access memory address\n"
 #ifdef CONFIG_ARCH_MESON6
-	"    echo [read | write <data>] [c | a | x | d] addr > debug ; Access CBUS/AOBUS/AXBUX/DOS logic address\n"
+	"    echo [read | write <data> | b <value> <start> <len>] [c | a | x | d | s] addr > debug ; Access CBUS/AOBUS/AXBUX/DOS/SECBUS logic address\n"
 	"    echo dump [c | a | x | d] <start> <end> > debug ; Dump CBUS/AOBUS/AXBUS/DOS address from <start> to <end>\n"
 #else
-	"    echo [read | write <data>] [c | a | x] addr > debug ; Access CBUS/AOBUS/AXBUX logic address\n"
+	"    echo [read | write <data> | b <value> <start> <len>] [c | a | x] addr > debug ; Access CBUS/AOBUS/AXBUX logic address\n"
 	"    echo dump [c | a | x] <start> <end> > debug ; Dump CBUS/AOBUS/AXBUS address from <start> to <end>\n"
 #endif // CONFIG_ARCH_MESON6
 	"    echo clkmsr {<index>} > debug ; Output clk source value, no index then all\n"
@@ -218,19 +219,62 @@ static int do_write_work(char argn , char **argv)
 	}
 	return 0;
 }
+
+static int do_write_bit_work(char argn ,char **argv)
+{
+	char base ;
+	char *type = NULL;
+	unsigned int address,vir_addr,value;
+	unsigned int start, len, data, mask;
+
+	if (argn < 5){
+		printk("Invalid syntax.\n");
+		return -1;
+	}
+
+	base = argv[4][0];
+	if (base == '0' || argn == 5){
+		address = simple_strtol(argv[4], NULL, 16);
+		base = '0';
+	}
+	else
+		address = simple_strtol(argv[5], NULL, 16);
+
+	type = base_addr_type(base);
+	vir_addr = base_addr_convert(base,address);
+	if (vir_addr == -1)	{
+		printk("%s[0x%04x] Invalid Address\n", type, address);
+		return -1;
+	}
+	value = simple_strtol(argv[1], NULL, 16);
+	start = simple_strtol(argv[2], NULL, 16);
+	len = simple_strtol(argv[3], NULL, 16);
+	mask = ((1<<len)-1)<<start;
+	data = aml_read_reg32(vir_addr);
+	data &= ~mask;
+	data |= (value<<start);
+	aml_write_reg32(vir_addr, data);
+
+	if (base == '0')
+		printk("Write %s[0x%08x] bits[%d:%d]=0x%08x\n", type, vir_addr, start, start+len-1, aml_read_reg32(vir_addr));
+	else
+		printk("Write %s[0x%04x] bits[%d:%d]=0x%08x\n", type, address, start, start+len-1, aml_read_reg32(vir_addr));
+ 	return 0;
+}
+
 static ssize_t dbg_do_command(struct class *class,
                               struct class_attribute *attr,	const char *buf, size_t count)
 {
 
 	int argn;
 	char * buf_work, *p, *para;
-	char * argv[4];
+	char * argv[6];
 	char cmd, work_mode;
 
 	buf_work = kstrdup(buf, GFP_KERNEL);
 	p = buf_work;
 
-	for (argn = 0; argn < 4; argn++) {
+	for (argn = 0; argn < 6; argn++) {
 		para = strsep(&p, " ");
 		if (para == NULL) {
 			break;
@@ -239,7 +283,7 @@ static ssize_t dbg_do_command(struct class *class,
 		//printk("argv[%d] = %s\n",argn,para);
 	}
 
-	if (argn < 1 || argn > 4) {
+	if (argn < 1 || argn > 6) {
 		goto end;
 	}
 
@@ -254,6 +298,11 @@ static ssize_t dbg_do_command(struct class *class,
 	case 'W':
 		work_mode = WORK_MODE_WRITE;
 		do_write_work(argn, argv);
+		break;
+	case 'b':
+	case 'B':
+		work_mode=WORK_MODE_WRITE_BIT;
+		do_write_bit_work(argn,argv);
 		break;
 	case 'c':
 	case 'C':
