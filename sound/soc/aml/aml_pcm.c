@@ -190,13 +190,11 @@ static void aml_audio_clock_gating_enable(void)
 
 static int aml_clock_gating(unsigned int status)
 {
-	static int once=0;
-	if(status && once<=1){
-		once++;
+	if(status){
 		aml_audio_clock_gating_enable();
 	}
 	else{
-		//aml_audio_clock_gating_disable();
+		aml_audio_clock_gating_disable();
 	}
 }
 /*--------------------------------------------------------------------------*\
