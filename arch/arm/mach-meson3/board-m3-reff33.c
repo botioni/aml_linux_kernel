@@ -335,7 +335,7 @@ static struct platform_device amlogic_spi_nor_device = {
 
 #ifdef CONFIG_USB_DWC_OTG_HCD
 #ifdef CONFIG_USB_DPLINE_PULLUP_DISABLE
-static set_vbus_valid_ext_fun(unsigned int id,char val)
+static void set_vbus_valid_ext_fun(unsigned int id,char val)
 {
 	unsigned int  reg = (PREI_USB_PHY_A_REG1 + id);
 	if(val == 1)
@@ -760,6 +760,7 @@ void sdio_extern_init(void)
 }
 #endif
 
+#ifdef CONFIG_INAND
 static void inand_extern_init(void)
 {
 	printk("inand_extern_init !\n");
@@ -769,6 +770,7 @@ static void inand_extern_init(void)
    SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_6, (0x1f<<25)); //set sdio c cmd&data
    SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_6, (0x1<<24)); //set sdio c clk
 }		
+#endif
 static struct aml_card_info  amlogic_card_info[] = {
     [0] = {
         .name = "sd_card",
