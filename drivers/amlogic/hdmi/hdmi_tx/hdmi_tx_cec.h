@@ -26,23 +26,22 @@
 #define CEC_VERSION     "v1.3"
 #define _RX_DATA_BUF_SIZE_ 6
 
-//#define _SUPPORT_CEC_TV_MASTER_
 
+//#define _SUPPORT_CEC_TV_MASTER_
 #define _RX_CEC_DBG_ON_
 #define _TX_CEC_DBG_ON_
 
-#ifdef _RX_CEC_DBG_ON_
+#ifdef  _RX_CEC_DBG_ON_
 #define hdmirx_cec_dbg_print(fmt, args...) printk(KERN_WARNING fmt, ## args)//hdmi_print
 #else
 #define hdmirx_cec_dbg_print(fmt, args...)
 #endif
 
-#ifdef _TX_CEC_DBG_ON_
+#ifdef  _TX_CEC_DBG_ON_
 #define hdmitx_cec_dbg_print(fmt, args...) printk(KERN_WARNING fmt, ## args)//hdmi_print
 #else
 #define hdmitx_cec_dbg_print(fmt, args...)
 #endif
-
 
 #define MSG_P0( init, follow, opcode )	{				\
 	gbl_msg[0] = (init)<<4 | (follow);					\
@@ -144,6 +143,15 @@ enum cec_dev_type_addr {
 typedef struct _context_t {
     unsigned char state;
 } context_t;
+
+typedef enum  {
+    CEC_UNRECONIZED_OPCODE = 0x0,
+    CEC_NOT_CORRECT_MODE_TO_RESPOND,
+    CEC_CANNOT_PROVIDE_SOURCE,
+    CEC_INVALID_OPERAND,
+    CEC_REFUSED,
+    CEC_UNABLE_TO_DETERMINE,
+} cec_feature_abort_e;
 
 /*
  * CEC OPCODES
@@ -343,7 +351,6 @@ typedef enum {
     OFF = 0,
     ON,
 } system_audio_status_e;
-
 typedef unsigned long cec_info_mask;
 
 #define INFO_MASK_CEC_VERSION                (1<<0)
@@ -382,6 +389,7 @@ typedef struct {
     unsigned int vendor_id:24;
 //    vendor_id_t vendor_id;
     unsigned char dev_type;
+    unsigned char menu_status;
     cec_power_status_e power_status;
     union {
         unsigned short phy_addr_4;
@@ -401,7 +409,6 @@ typedef struct {
     unsigned char osd_name_def[16];
     menu_state_e menu_state;
     cec_menu_lang_e menu_lang;
-
     union {
         struct {
         } display;
@@ -424,6 +431,7 @@ typedef struct {
     }specific_info;
 } cec_node_info_t;
 
+
 typedef struct {
     unsigned short dev_mask;
     //unsigned char tv_log_addr;
@@ -431,6 +439,7 @@ typedef struct {
     unsigned char active_log_dev;
     unsigned char my_node_index;
     cec_node_info_t cec_node_info[MAX_NUM_OF_DEV];
+    hdmitx_dev_t* hdmitx_device;
 } cec_global_info_t;
 
 typedef struct {
@@ -479,8 +488,6 @@ typedef enum {
     TV_CEC_POLLING_OFF = 0,
     TV_CEC_POLLING_ON,
 } tv_cec_polling_state_e;
-
-
 typedef struct {
     cec_rx_message_t cec_rx_message[_RX_DATA_BUF_SIZE_];
     unsigned char rx_write_pos;
@@ -494,10 +501,10 @@ typedef enum {
 } cec_device_menu_state_e;
 
 extern cec_rx_msg_buf_t cec_rx_msg_buf;
+extern unsigned char cec_power_flag;
 
-
-
-int cec_ll_tx(unsigned char *msg, unsigned char len, unsigned char *stat_header);
+unsigned long cec_ll_tx(unsigned char *msg, unsigned char len, unsigned char *stat_header);
+int cec_ll_tx_irq(unsigned char *msg, unsigned char len);
 
 void cec_test_function(unsigned char* arg, unsigned char arg_cnt);
 void cec_init(hdmitx_dev_t* hdmitx_device);
@@ -556,7 +563,8 @@ void cec_system_audio_mode_request(void);
 void cec_report_audio_status(void);
 void cec_get_menu_language_smp(void);
 void cec_device_vendor_id_smp(void);
-void cec_menu_status_smp(void);
+void cec_menu_status_smp(cec_device_menu_state_e status);
+void cec_set_imageview_on_irq(void);
 
 void cec_report_physical_address_smp(void);
 void cec_imageview_on_smp(void);
@@ -565,11 +573,14 @@ void cec_active_source_smp(void);
 size_t cec_usrcmd_get_global_info(char * buf);
 void cec_usrcmd_set_dispatch(const char * buf, size_t count);
 void cec_usrcmd_set_config(const char * buf, size_t count);
+void cec_usrcmd_set_lang_config(const char * buf, size_t count); 
 void cec_input_handle_message(void);
 void cec_send_event_irq(void);
 void cec_standby_irq(void);
 void cec_user_control_released_irq(void);
 void cec_user_control_pressed_irq(void);
+void cec_inactive_source(void);
+void cec_set_standby(void);
 
 extern struct input_dev *remote_cec_dev;
 extern __u16 cec_key_map[];
@@ -582,7 +593,5 @@ extern void cec_send_event(cec_rx_message_t* pcec_message);
 extern void cec_user_control_pressed(cec_rx_message_t* pcec_message);
 extern void cec_user_control_released(cec_rx_message_t* pcec_message);  
 extern void cec_standby(cec_rx_message_t* pcec_message);
-
-
 #endif
 

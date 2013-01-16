@@ -444,6 +444,21 @@ static ssize_t store_cec_config(struct device * dev, struct device_attribute *at
     return count;
 }
 
+static ssize_t store_cec_lang_config(struct device * dev, struct device_attribute *attr, const char * buf, size_t count)
+{
+	printk("store_cec_lang_config\n");
+	//cec_global_info.cec_node_info[cec_global_info.my_node_index].menu_lang = strtoul(buf, NULL, 16);
+    cec_usrcmd_set_lang_config(buf, count);   
+    return count;
+}
+
+static ssize_t show_cec_lang_config(struct device * dev, struct device_attribute *attr, char * buf)
+{
+    int pos=0;
+    printk("show_cec_lang_config\n");
+    pos+=snprintf(buf+pos, PAGE_SIZE, "%x\n",cec_global_info.cec_node_info[cec_global_info.my_node_index].menu_lang);   
+    return pos;
+}
 
 /*aud_mode attr*/
 static ssize_t show_aud_mode(struct device * dev, struct device_attribute *attr, char * buf)
@@ -759,6 +774,7 @@ static DEVICE_ATTR(log, S_IWUSR | S_IRUGO, show_log, store_log);
 static DEVICE_ATTR(cec, S_IWUSR | S_IRUGO, show_cec, store_cec);
 static DEVICE_ATTR(cec_config, S_IWUSR | S_IRUGO , NULL, store_cec_config);
 //static DEVICE_ATTR(cec_config, S_IWUGO | S_IRUGO , NULL, store_cec_config);
+static DEVICE_ATTR(cec_lang_config, S_IWUSR | S_IRUGO , show_cec_lang_config, store_cec_lang_config);
 
 /*****************************
 *    hdmitx display client interface 
@@ -1149,6 +1165,8 @@ hdmi_task_handle(void *data)
                 force_output_mode = 1;
                 set_disp_mode_auto();
                 switch_set_state(&sdev, 1);
+                if(READ_AOBUS_REG(AO_DEBUG_REG1))
+                    cec_node_init(hdmitx_device);
             }
 #endif            
             hdmitx_device->hpd_state = 1;  
@@ -1375,6 +1393,7 @@ const static struct file_operations amhdmitx_fops = {
 
 static int amhdmitx_probe(struct platform_device *pdev)
 {
+	extern struct switch_dev lang_dev;
     int r,ret=0;
     struct hdmi_config_platform_data *hdmi_pdata = NULL;
     HDMI_DEBUG();
@@ -1429,6 +1448,7 @@ static int amhdmitx_probe(struct platform_device *pdev)
     ret=device_create_file(hdmitx_dev, &dev_attr_log);
     ret=device_create_file(hdmitx_dev, &dev_attr_cec);
     ret=device_create_file(hdmitx_dev, &dev_attr_cec_config);
+    ret=device_create_file(hdmitx_dev, &dev_attr_cec_lang_config);
     
     if (hdmitx_dev == NULL) {
         pr_error("device_create create error\n");
@@ -1459,6 +1479,7 @@ static int amhdmitx_probe(struct platform_device *pdev)
     if(hdmi_pdata && hdmi_pdata->phy_data)
         hdmitx_device.brd_phy_data = &(hdmi_pdata->phy_data);
 	switch_dev_register(&sdev);
+    switch_dev_register(&lang_dev);
     switch_dev_register(&hdcp_dev);
 	if (r < 0){
 		printk(KERN_ERR "hdmitx: register switch dev failed\n");
@@ -1512,10 +1533,13 @@ static int amhdmitx_remove(struct platform_device *pdev)
 static int amhdmitx_suspend(struct platform_device *pdev,pm_message_t state)
 {
     pr_info("amhdmitx: suspend module\n");
+    extern void hdmi_suspend(void);
     hdmitx_device.HWOp.Cntl(&hdmitx_device, HDMITX_HWCMD_5V_CTL, 0);
     hdmitx_device.HWOp.Cntl(&hdmitx_device, HDMITX_HWCMD_3V3_CTL, 1);       // prevent Voff leak current
     hdmitx_device.HWOp.Cntl(&hdmitx_device, HDMITX_HWCMD_PLL_AVDD_CTL, 0);
-    
+#ifdef CONFIG_HDMI_TX_PHY
+		hdmi_suspend();
+#endif
     return 0;
 }
 

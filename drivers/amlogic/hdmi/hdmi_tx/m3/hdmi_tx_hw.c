@@ -79,7 +79,11 @@
 
 static void hdmi_audio_init(unsigned char spdif_flag);
 static void hdmitx_dump_tvenc_reg(int cur_VIC, int printk_flag);
+#ifdef CONFIG_HDMI_TX_PHY
+extern void hdmi_suspend(void);
+#else
 static void hdmi_suspend(void);
+#endif
 static void hdmi_wakeup(void);
 
 //#define HPD_DELAY_CHECK
@@ -3464,8 +3468,11 @@ static hdmi_phy_t hdmi_phy_reg [HDMI_PHY_REG_NUM] = {
                          //{0x18, 0x24,0x0}, remove this line per shichao's suggestion, rain
                          {0x1a, 0x3, 0x0},
                         };
-                        
+#ifdef CONFIG_HDMI_TX_PHY                     
+void hdmi_suspend(void)
+#else
 static void hdmi_suspend(void)
+#endif
 {
     // First backup HDMI PHY register according to Chao Shi.
     int i;

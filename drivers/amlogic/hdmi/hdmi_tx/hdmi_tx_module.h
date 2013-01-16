@@ -197,5 +197,7 @@ typedef struct {
     unsigned hdcp_sub_len;
 }hdcp_sub_t;
 
+//Delete late
+#define CONFIG_HDMI_TX_PHY
 
 #endif
