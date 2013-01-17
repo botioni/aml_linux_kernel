@@ -347,6 +347,9 @@ static wait_queue_head_t amvideo_trick_wait;
 static u32 vpts_ref = 0;
 static u32 video_frame_repeat_count = 0;
 static u32 smooth_sync_enable = 0;
+#ifdef CONFIG_AM_VIDEO2
+static int video_play_clone_rate = 10;
+#endif
 
 #if 0
 /* video enhancement */
@@ -1863,7 +1866,7 @@ static int video_receiver_event_fun(int type, void* data, void* private_data)
         if(strncmp(provider_name, "decoder", 7)==0
             || strncmp(provider_name, "ppmgr", 5)==0){
             set_clone_frame_rate(5, 0);
-            set_clone_frame_rate(10, 100);
+            set_clone_frame_rate(video_play_clone_rate, 100);
         }
 #endif    
         video_vf_light_unreg_provider();
@@ -3227,6 +3230,11 @@ module_param(debug_flag, uint, 0664);
 
 MODULE_PARM_DESC(smooth_sync_enable, "\n smooth_sync_enable\n");
 module_param(smooth_sync_enable, uint, 0664);
+
+#ifdef CONFIG_AM_VIDEO2
+MODULE_PARM_DESC(video_play_clone_rate, "\n video_play_clone_rate\n");
+module_param(video_play_clone_rate, uint, 0664);
+#endif
 
 MODULE_DESCRIPTION("AMLOGIC video output driver");
 MODULE_LICENSE("GPL");
