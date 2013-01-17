@@ -176,8 +176,8 @@ int nandmtd2_ReadChunkWithTagsFromNAND(yaffs_Device *dev, int chunkInNAND,
 		}
 	}
 	//add by xiaojun.pi EUCLEAN is data corrected by ecc so needn`t return error
-	if (retval == -EUCLEAN)
-		retval = 0;
+	//if (retval == -EUCLEAN)
+	//	retval = 0;
 
 	if (localData)
 		yaffs_ReleaseTempBuffer(dev, data, __LINE__);

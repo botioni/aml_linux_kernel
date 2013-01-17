@@ -14,7 +14,7 @@ config MTD_UBI
 
 config MTD_UBI_WL_THRESHOLD
 	int "UBI wear-leveling threshold"
-	default 4096
+	default 2048
 	range 2 65536
 	depends on MTD_UBI
 	help

@@ -87,7 +87,11 @@
 #define NFC_SET_TIMING_SYNC(bus_tim,bus_cyc,sync_mode)  WRITE_CBUS_REG_BITS(NAND_CFG,(bus_cyc&31)|((bus_tim&31)<<5)|((sync_mode&2)<<10),0,12)
 #define NFC_SET_TIMING_SYNC_ADJUST() 
 #define NFC_SET_DMA_MODE(is_apb,spare_only)        WRITE_CBUS_REG_BITS(NAND_CFG,((spare_only<<1)|(is_apb)),14,2)
-
+#define NFC_ENABLE_TOSHIBA_TOGGLE_MODE()       	SET_CBUS_REG_MASK(NAND_CFG,1<<11)
+#define NFC_EXIT_TOSHIBA_TOGGLE_MODE() 			CLEAR_CBUS_REG_MASK(NAND_CFG,1<<11)
+#define NFC_ENABLE_MICRON_TOGGLE_MODE()      		 SET_CBUS_REG_MASK(NAND_CFG,1<<10)
+#define NFC_SYNC_ADJ()      							SET_CBUS_REG_MASK(NAND_CFG,1<<16)
+#define NFC_EXIT_SYNC_ADJ()      							CLEAR_CBUS_REG_MASK(NAND_CFG,1<<16)
 /**
     CMD relative Macros
     Shortage word . NFCC
@@ -444,6 +448,7 @@ struct aml_nand_bch_desc{
 #define	HYNIX_26NM_4GB 		2		//H27UBG8T2BTR
 #define	HYNIX_20NM_8GB 		3		//
 #define	HYNIX_20NM_4GB 		4		//
+#define	HYNIX_20NM_LGA_8GB 		5		//
 //for Toshiba
 #define	TOSHIBA_24NM 			20		//TC58NVG5D2HTA00
 										//TC58NVG6D2GTA00
@@ -474,8 +479,13 @@ struct aml_nand_bch_desc{
 
 #define	NAND_CMD_SANDISK_DYNAMIC_ENABLE			0xB6
 #define	NAND_CMD_SANDISK_DYNAMIC_DISABLE			0xD6
-#define 	NAND_CMD_SANDISK_SLC  						0xA2 
+#define 	NAND_CMD_SANDISK_SLC  						0xA2     
+#define   NAND_CMD_SANDISK_SET_VALUE					0XEF
+#define   NAND_CMD_SANDISK_GET_VALUE					0XEE
+#define	NAND_CMD_SANDISK_SET_OUTPUT_DRV			0x10
+#define	NAND_CMD_SANDISK_SET_VENDOR_SPC			0x80
 
+#define	NAND_CMD_MICRON_SET_TOGGLE_SPC			0x01
 
 
 
@@ -573,11 +583,12 @@ struct aml_nand_chip {
 	unsigned int *user_info_buf;
 	dma_addr_t nand_info_dma_addr;
 	int8_t *block_status;
+	unsigned int 		 toggle_mode;
 	u8 ecc_cnt_limit;
 	u8 ecc_cnt_cur;
 	u8 ecc_max;
     unsigned zero_cnt;
-
+	unsigned oob_fill_cnt;
 	struct mtd_info			mtd;
 	struct nand_chip		chip;
 	struct aml_nandenv_info_t *aml_nandenv_info;
@@ -644,7 +655,7 @@ static void inline  nand_get_chip(void )
 	SET_CBUS_REG_MASK(PREG_PAD_GPIO3_EN_N, 0x3ffff);
 	SET_CBUS_REG_MASK(PAD_PULL_UP_REG3, (0xff | (1<<16)));
 	SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_5, ((1<<7) | (1 << 8) | (1 << 9)));
-	SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, ((0xf<<18) | (1 << 17) | (0x3 << 25)));
+	SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, ((0xf<<18) | (1 << 17) | (0x3 << 25) | (1<<27)));
 }
 static void inline nand_release_chip(void)
 {
