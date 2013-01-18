@@ -1587,15 +1587,27 @@ unsigned char Si2168_L1_POWER_UP                  (L1_Si2168_Context *api,
     cmdByteBuffer[5] = (unsigned char) ( ( reserved1  & Si2168_POWER_UP_CMD_RESERVED1_MASK  ) << Si2168_POWER_UP_CMD_RESERVED1_LSB |
                                          ( addr_mode  & Si2168_POWER_UP_CMD_ADDR_MODE_MASK  ) << Si2168_POWER_UP_CMD_ADDR_MODE_LSB |
                                          ( reserved5  & Si2168_POWER_UP_CMD_RESERVED5_MASK  ) << Si2168_POWER_UP_CMD_RESERVED5_LSB );
+	cmdByteBuffer[5] = 0x10;
     cmdByteBuffer[6] = (unsigned char) ( ( func       & Si2168_POWER_UP_CMD_FUNC_MASK       ) << Si2168_POWER_UP_CMD_FUNC_LSB      |
                                          ( clock_freq & Si2168_POWER_UP_CMD_CLOCK_FREQ_MASK ) << Si2168_POWER_UP_CMD_CLOCK_FREQ_LSB|
                                          ( ctsien     & Si2168_POWER_UP_CMD_CTSIEN_MASK     ) << Si2168_POWER_UP_CMD_CTSIEN_LSB    );
     cmdByteBuffer[7] = (unsigned char) ( ( wake_up    & Si2168_POWER_UP_CMD_WAKE_UP_MASK    ) << Si2168_POWER_UP_CMD_WAKE_UP_LSB   );
+	int i=0;
+	printk("Si2168_POWER_UP_CMD\n");
+	for(i;i<8;i++)
+		printk("%x\n",cmdByteBuffer[i]);
 
     if (L0_WriteCommandBytes(api->i2c, 8, cmdByteBuffer) != 8) {
       SiTRACE("Error writing POWER_UP bytes!\n");
       return ERROR_Si2168_SENDING_COMMAND;
     }
+
+	
+	error_code = Si2168_pollForCTS(api);
+	   if (error_code)
+	   {
+		   printk("%s: poll cts error:%d!!!!\n", __func__, error_code);
+	   }
 
     error_code = Si2168_pollForResponse(api, 1, rspByteBuffer);
     if (error_code) {
@@ -1813,7 +1825,7 @@ unsigned char Si2168_L1_START_CLK                 (L1_Si2168_Context *api,
     api->rsp->start_clk.STATUS = api->status;
 
 	//rsj
-	clk_mode=Si2168_START_CLK_CMD_CLK_MODE_CLK_CLKIO;
+	clk_mode=Si2168_START_CLK_CMD_CLK_MODE_XTAL;
 
     SiTRACE("Si2168 START_CLK ");
   #ifdef   DEBUG_RANGE_CHECK
@@ -1847,9 +1859,19 @@ unsigned char Si2168_L1_START_CLK                 (L1_Si2168_Context *api,
     cmdByteBuffer[11] = (unsigned char)0x00;
     cmdByteBuffer[12] = (unsigned char) ( ( start_clk & Si2168_START_CLK_CMD_START_CLK_MASK ) << Si2168_START_CLK_CMD_START_CLK_LSB);
 
+	int i=0;
+	printk("Si2168_START_CLK_CMD\n");
+	for(i;i<12;i++)
+		printk("%x\n",cmdByteBuffer[i]);
     if (L0_WriteCommandBytes(api->i2c, 13, cmdByteBuffer) != 13) {
       SiTRACE("Error writing START_CLK bytes!\n");
       return ERROR_Si2168_SENDING_COMMAND;
+    }
+
+	 error_code = Si2168_pollForCTS(api);
+    if (error_code)
+    {
+        printk("%s: poll cts error:%d!!!!\n", __func__, error_code);
     }
 
     return NO_Si2168_ERROR;

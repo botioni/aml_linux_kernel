@@ -485,7 +485,7 @@ int Si2168_WAKEUP              (L1_Si2168_Context *api)
     }
 
 	//rsj
-		api->cmd->start_clk.clk_mode=Si2168_START_CLK_CMD_CLK_MODE_CLK_CLKIO;
+		api->cmd->start_clk.clk_mode=Si2168_START_CLK_CMD_CLK_MODE_XTAL;
 		api->tuner_ter_clock_freq=24;
 
     Si2168_L1_START_CLK (api,
@@ -1210,7 +1210,7 @@ int  Si2168_L2_switch_to_standard (Si2168_L2_Context *front_end, int new_standar
   /* Allow i2c traffic to reach the tuners                        */
   /* ------------------------------------------------------------ */
   SiTRACE("Connect    tuners i2c\n");
-  Si2168_L2_Tuner_I2C_Enable(front_end);
+//  Si2168_L2_Tuner_I2C_Enable(front_end);
   DTV_DELAY
 
   /* ------------------------------------------------------------ */

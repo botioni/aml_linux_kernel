@@ -137,7 +137,7 @@ typedef enum Si2168_CLOCK_SOURCE {
 /* ( possible values are those defined above in Si2168_CLOCK_SOURCE )         */
 /******************************************************************************/
 #ifdef   SILABS_EVB
-  #define Si2168_TER_CLOCK_SOURCE            Si2168_TER_Tuner_clock
+  #define Si2168_TER_CLOCK_SOURCE            Si2168_Xtal_clock// Si2168_TER_Tuner_clock
   #define Si2168_SAT_CLOCK_SOURCE            Si2168_Xtal_clock
 #else
   #define Si2168_TER_CLOCK_SOURCE            Si2168_TER_Tuner_clock
