@@ -2334,6 +2334,9 @@ static void __init power_hold(void)
     printk(KERN_INFO "set_vccx2 power up\n");
 //    set_gpio_mode(GPIOA_bank_bit0_27(26), GPIOA_bit_bit0_27(26), GPIO_OUTPUT_MODE);
 //    set_gpio_val(GPIOA_bank_bit0_27(26), GPIOA_bit_bit0_27(26), 0);
+	/*wifi */	
+    set_gpio_mode(GPIOC_bank_bit0_15(6), GPIOC_bit_bit0_15(6), GPIO_OUTPUT_MODE);
+    set_gpio_val(GPIOC_bank_bit0_15(6), GPIOC_bit_bit0_15(6), 0);
 }
 
 static void __init LED_PWM_REG0_init(void)
