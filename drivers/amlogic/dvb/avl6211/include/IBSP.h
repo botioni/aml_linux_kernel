@@ -103,7 +103,8 @@ extern "C" {
 	/// Return ::AVL_DVBSx_EC_OK Returned by the function stub provided with the SDK. 
 	AVL_DVBSx_ErrorCode AVL_DVBSx_IBSP_ReleaseSemaphore( AVL_psemaphore pSemaphore );
 
-
+	unsigned int avl6211_get_Time();
+	
 	extern AVL_int32 I2CWrite(AVL_uchar I2CSlaveAddr, AVL_uchar *data, AVL_int32 length);
 
 

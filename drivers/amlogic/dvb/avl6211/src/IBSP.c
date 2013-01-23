@@ -19,6 +19,8 @@
 #include "IBSP.h"
 #include <linux/semaphore.h>
 #include <linux/delay.h>
+#include <linux/kernel.h>
+
 
 
 /// The following table illustrates a set of PLL configuration values to operate AVL6211 in two modes:
@@ -113,6 +115,15 @@ AVL_DVBSx_ErrorCode AVL_DVBSx_IBSP_ReleaseSemaphore( AVL_psemaphore pSemaphore )
 {
 	up(pSemaphore);
 	return(AVL_DVBSx_EC_OK);
+}
+
+
+extern unsigned int jiffies_to_msecs(const unsigned long j);
+
+unsigned int avl6211_get_Time()
+{
+  printk("now time is %d\n",jiffies_to_msecs(jiffies));
+  return jiffies_to_msecs(jiffies);;
 }
 
 

@@ -293,7 +293,7 @@ static int dvbs2_blindscan_task(struct dvbsx_blindscanpara *pbspara)//(struct dv
 		AVL_uint16	index = 0;
 		struct AVL_DVBSx_Channel * pChannel;
 	//	AVL_uchar HandIndex = 0;
-
+		AVL_uint32 time;
 		//struct AVL_DVBSx_Chip * pAVLChip = &g_stAvlDVBSxChip[HandIndex];
 		//struct AVL_Tuner * pTuner = &g_stTuner[HandIndex];
 		struct AVL_DVBSx_BlindScanAPI_Setting BSsetting;
@@ -343,7 +343,6 @@ static int dvbs2_blindscan_task(struct dvbsx_blindscanpara *pbspara)//(struct dv
 													}
 		
 				case AVL_DVBSx_BS_Status_Start: 	{	
-															
 														r = AVL_DVBSx_IBlindScanAPI_Start(pAVLChip_all, avl6211pTuner, pBSsetting);
 														printk(KERN_INFO "AVL_DVBSx_BS_Status_Start %d\n", r);
 														if(AVL_DVBSx_EC_OK != r)
@@ -374,7 +373,7 @@ static int dvbs2_blindscan_task(struct dvbsx_blindscanpara *pbspara)//(struct dv
 														}
 														if(AVL_DVBSx_EC_Running == r)
 														{
-															AVL_DVBSx_IBSP_Delay(100);
+															AVL_DVBSx_IBSP_Delay(50);//100
 														}
 														break;
 													}
@@ -676,7 +675,7 @@ static int AVL6211_Set_Frontend(struct dvb_frontend *fe, struct dvb_frontend_par
 	//Channel lock time increase while symbol rate decrease.Give the max waiting time for different symbolrates.
 	if(p->u.qam.symbol_rate<5000000)
 	{
-		waittime = 250;       //The max waiting time is 5000ms,considering the IQ swapped status the time should be doubled.
+		waittime = 150;//250;       //The max waiting time is 5000ms,considering the IQ swapped status the time should be doubled.
 	}
 	else if(p->u.qam.symbol_rate<10000000)
 	{

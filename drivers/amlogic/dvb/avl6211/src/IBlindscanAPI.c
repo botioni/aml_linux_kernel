@@ -39,10 +39,10 @@ AVL_DVBSx_ErrorCode AVL_DVBSx_IBlindScanAPI_Initialize(struct AVL_DVBSx_BlindSca
 	
 	pBSsetting->m_eSpectrumMode = AVL_DVBSx_Spectrum_Normal;  //Set spectrum mode
 
-	pBSsetting->BS_Mode = AVL_DVBSx_BS_Slow_Mode; //1: Freq Step forward is 10MHz        0: Freq Step firmware is 20.7MHz
+	pBSsetting->BS_Mode = AVL_DVBSx_BS_Fast_Mode; //1: Freq Step forward is 10MHz        0: Freq Step firmware is 20.7MHz
 	pBSsetting->m_uiScaning = 0;
 	pBSsetting->m_uiScan_Center_Freq_Step_100KHz = 100;  //only valid when scan_algorithmic set to 1 and would be ignored when scan_algorithmic set to 0.
-
+	printk("BS_Mode is %d(0-fast,1-slow)\n",pBSsetting->BS_Mode);
 	return AVL_DVBSx_EC_OK;
 }
 AVL_DVBSx_ErrorCode AVL_DVBSx_IBlindScanAPI_SetSpectrumMode(struct AVL_DVBSx_BlindScanAPI_Setting * pBSsetting, enum AVL_DVBSx_SpectrumPolarity SpectrumMode)
