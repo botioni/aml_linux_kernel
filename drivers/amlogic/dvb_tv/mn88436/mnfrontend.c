@@ -296,7 +296,7 @@ static void __exit mnfrontend_exit(void)
 }
 
 
-module_init(mnfrontend_init);
+fs_initcall(mnfrontend_init);
 module_exit(mnfrontend_exit);
 
 

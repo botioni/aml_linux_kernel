@@ -802,7 +802,7 @@ static void __exit avlfrontend_exit(void)
 	return aml_unregister_fe_drv(AM_DEV_DTV_DEMOD, &avl6211_dtv_demod_drv);	
 }
 
-module_init(avlfrontend_init);
+fs_initcall(avlfrontend_init);
 module_exit(avlfrontend_exit);
 
 
