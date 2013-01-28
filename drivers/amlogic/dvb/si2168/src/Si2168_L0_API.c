@@ -17,7 +17,6 @@ void system_wait(int time)
 
 unsigned int L0_WriteCommandBytes(unsigned char slaveaddress, unsigned char length, unsigned char *pucDataBuffer)
 {		
-		printk("[w]%x\n",slaveaddress);
 		slaveaddress = 0x64;
 		I2CWrite(slaveaddress,pucDataBuffer,length);
 		return length;

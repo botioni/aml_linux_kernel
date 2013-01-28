@@ -109,10 +109,10 @@ unsigned char Si2168_pollForResponse (L1_Si2168_Context *api, unsigned int nbByt
       SiTRACE("Si2168_pollForResponse ERROR reading byte 0!\n");
       return ERROR_Si2168_POLLING_RESPONSE;
     }
-	printk("pByteBuffer[0] is %x \n",pByteBuffer[0]);
+//	printk("pByteBuffer[0] is %x \n",pByteBuffer[0]);
     /* return response err flag if CTS set */
     if (pByteBuffer[0] & 0x80)  {
-      return Si2168_CurrentResponseStatus(api, pByteBuffer[0]);
+      return NO_Si2168_ERROR;//Si2168_CurrentResponseStatus(api, pByteBuffer[0]);
     }
   }
 
@@ -1587,7 +1587,6 @@ unsigned char Si2168_L1_POWER_UP                  (L1_Si2168_Context *api,
     cmdByteBuffer[5] = (unsigned char) ( ( reserved1  & Si2168_POWER_UP_CMD_RESERVED1_MASK  ) << Si2168_POWER_UP_CMD_RESERVED1_LSB |
                                          ( addr_mode  & Si2168_POWER_UP_CMD_ADDR_MODE_MASK  ) << Si2168_POWER_UP_CMD_ADDR_MODE_LSB |
                                          ( reserved5  & Si2168_POWER_UP_CMD_RESERVED5_MASK  ) << Si2168_POWER_UP_CMD_RESERVED5_LSB );
-	cmdByteBuffer[5] = 0x10;
     cmdByteBuffer[6] = (unsigned char) ( ( func       & Si2168_POWER_UP_CMD_FUNC_MASK       ) << Si2168_POWER_UP_CMD_FUNC_LSB      |
                                          ( clock_freq & Si2168_POWER_UP_CMD_CLOCK_FREQ_MASK ) << Si2168_POWER_UP_CMD_CLOCK_FREQ_LSB|
                                          ( ctsien     & Si2168_POWER_UP_CMD_CTSIEN_MASK     ) << Si2168_POWER_UP_CMD_CTSIEN_LSB    );
@@ -1603,11 +1602,11 @@ unsigned char Si2168_L1_POWER_UP                  (L1_Si2168_Context *api,
     }
 
 	
-	error_code = Si2168_pollForCTS(api);
+/*	error_code = Si2168_pollForCTS(api);
 	   if (error_code)
 	   {
 		   printk("%s: poll cts error:%d!!!!\n", __func__, error_code);
-	   }
+	   }*/
 
     error_code = Si2168_pollForResponse(api, 1, rspByteBuffer);
     if (error_code) {

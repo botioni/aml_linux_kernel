@@ -67,7 +67,7 @@ unsigned char    Si2168_L1_API_Patch     (L1_Si2168_Context *api, int iNbBytes, 
     unsigned char res;
     unsigned char rspByteBuffer[1];
 
-    SiTRACE("Si2168 Patch %d bytes\n",iNbBytes);
+ //   SiTRACE("Si2168 Patch %d bytes\n",iNbBytes);
 
     res = L0_WriteCommandBytes(api->i2c, iNbBytes, pucDataBuffer);
     if (res!=iNbBytes) {
