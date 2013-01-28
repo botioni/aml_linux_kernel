@@ -129,13 +129,11 @@ static int SI2168_Init(struct dvb_frontend *fe)
 	SiLabs_API_SW_Init(&front_end, DEMOD_ADDRESS+(fe1*2), TUNER_ADDRESS_TER+(fe1*2), TUNER_ADDRESS_SAT+(fe1*2));
 	front_end.Si2168_FE->demod->i2c=DEMOD_ADDRESS;
 	SiLabs_API_switch_to_standard		(&front_end, standard, 1);
-	//front_end  = (FrontEnd_Table[fe]);
 	printk("chip id is %d, i2c is %x\n",front_end.chip,front_end.Si2168_FE->demod->i2c);
 	if(MDrv_Tuner_Init()==1)
 		pr_dbg("TUNER OK\n");
 	else
-		pr_dbg("TUNER NG\n");
-	msleep(200);
+		pr_dbg("TUNER NG\n");	
 	return 0;
 }
 
@@ -149,8 +147,9 @@ static int SI2168_Sleep(struct dvb_frontend *fe)
 static int SI2168_Read_Status(struct dvb_frontend *fe, fe_status_t * status)
 {
 	unsigned char s=0;
-	s=SiLabs_API_Demod_status(&front_end, &custom_status);
-
+	SiLabs_API_Demod_status(&front_end, &custom_status);
+	printk("lock status is %x\n",custom_status.fec_lock);
+	s=custom_status.fec_lock;
 	if(s==1)
 	{
 		*status = FE_HAS_LOCK|FE_HAS_SIGNAL|FE_HAS_CARRIER|FE_HAS_VITERBI|FE_HAS_SYNC;
@@ -165,19 +164,21 @@ static int SI2168_Read_Status(struct dvb_frontend *fe, fe_status_t * status)
 
 static int SI2168_Read_Ber(struct dvb_frontend *fe, u32 * ber)
 {
-	*ber=SiLabs_API_Demod_status(&front_end, &custom_status);
+	SiLabs_API_Demod_status(&front_end, &custom_status);
+	*ber=custom_status.ber;
 	return 0;
 }
 
 static int SI2168_Read_Signal_Strength(struct dvb_frontend *fe, u16 *strength)
 {
-	*strength=SiLabs_API_Demod_status(&front_end, &custom_status);
+	*strength=NMI120_GetRSSI(1);
 	return 0;
 }
 
 static int SI2168_Read_Snr(struct dvb_frontend *fe, u16 * snr)
 {
-	*snr=SiLabs_API_Demod_status(&front_end, &custom_status);
+	SiLabs_API_Demod_status(&front_end, &custom_status);
+	*snr=custom_status.c_n;
 	return 0;
 }
 
@@ -201,26 +202,44 @@ static int SI2168_Set_Frontend(struct dvb_frontend *fe, struct dvb_frontend_para
     int                  polarization;
     int                  band;
     int                  plp_id;
+	int					 i;
 	struct si2168_state *state = fe->demodulator_priv;
 	freq=p->frequency;
-	MDrv_Tuner_SetTuner(freq,8);
+	unsigned char bandwidth=8;
+	bandwidth=p->u.ofdm.bandwidth;
+	if(bandwidth==0)
+		bandwidth=8;
+	else if(bandwidth==1)
+		bandwidth=7;
+	else if(bandwidth==2)
+		bandwidth=6;
+	else
+		bandwidth=8;	
+//	MDrv_Tuner_SetTuner(freq,8);
 	printk("tuner set ok\n");
 	standard=SILABS_DVB_T2;
-	bandwidth_Hz=8000000;
+	bandwidth_Hz=bandwidth*1000000;
 	stream=0;
 	symbol_rate_bps=0;
-	constellation=0;
+	constellation=2;
 	polarization=0;
 	band=0;
 	plp_id=0;
 	 /* Call SiLabs_API_switch_to_standard, in case the standard is different or the init has not been done yet */
 	// if (SiLabs_API_switch_to_standard		(&front_end, standard, 1) ==0) return 0;
-
+	MDrv_Tuner_SetTuner(freq,bandwidth);
+	NMI120_GetRSSI(1);	
   	printk("now to lock carrier\n");
 	SiLabs_API_lock_to_carrier (&front_end, standard, freq, bandwidth_Hz, stream, symbol_rate_bps, constellation, polarization, band, plp_id);
-	state->freq=p->frequency;
-	state->mode=p->u.vsb.modulation ; //these data will be writed to eeprom
-	msleep(1000);
+	state->freq=p->frequency; //these data will be writed to eeprom
+	for(i=0;i<50;i++){
+		SiLabs_API_Demod_status(&front_end, &custom_status);
+		if(1==custom_status.fec_lock){
+			printk("si2168 lock success\n");
+			break;
+		}
+		msleep(20);
+	}
 
 	pr_dbg("si2168=>frequency=%d\r\n",p->frequency);
 	return  0;

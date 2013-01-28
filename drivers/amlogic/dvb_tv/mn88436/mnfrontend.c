@@ -161,11 +161,6 @@ struct i2c_adapter *i2c_handle;
 int mn88436_get_fe_config(struct mn88436_fe_config *cfg)
 {
 //	printk("\n frontend_i2c is %d,,frontend_demod_addr is %x,frontend_tuner_addr is %x,frontend_reset is %d",frontend_i2c,frontend_demod_addr,frontend_tuner_addr,frontend_reset);
-	i2c_handle = i2c_get_adapter(cfg->i2c_id);
-	if (!i2c_handle) {
-		printk("cannot get i2c adaptor\n");
-		return 0;
-	}
 	cfg->i2c_adapter =i2c_handle;
 	return 1;
 	

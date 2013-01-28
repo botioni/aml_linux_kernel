@@ -333,6 +333,10 @@
 
 ****************************************************************************************/
 
+/* Si2168 API Specific Includes */
+#include "Si2168_L2_API.h"               /* Include file for this code */
+
+
 #ifdef    Si2167B_1A_COMPATIBLE
  #include "Si2167B_ROM0_Firmware_2_0b9.h"       /* firmware compatible with Si2167B_1A */
  #ifndef   Si2167B_LoadFirmware
@@ -356,11 +360,11 @@
  #include "Si2168_10_ROM1_Patch_0_Cb20.h"       /* patch    compatible with Si2168-10 ROM 1 */
 #endif /* Si2168_10_COMPATIBLE */
 #ifdef    Si2168_20_COMPATIBLE
- #include "Si2168_20_ROM2_Patch_2_0b11.h"       /* patch    compatible with Si2168-20 ROM 2 */
+#include "Si2168_20_ROM2_Patch_2_0b11.h"       /* patch    compatible with Si2168-20 ROM 2 */
 #endif /* Si2168_20_COMPATIBLE */
 
-/* Si2168 API Specific Includes */
-#include "Si2168_L2_API.h"               /* Include file for this code */
+
+
 
 #define Si2168_BYTES_PER_LINE 8
 
