@@ -1955,6 +1955,63 @@ static struct resource amlogic_dvb_fe_resource[]  = {
 		.name  = "dtv_demod0_antoverload"
 	},		
 #endif	
+#if (defined CONFIG_AM_MN88436)
+	[0] = {
+		.start = 4,                                 //DTV demod: M1=0, SI2176=1, MXL101=2,, AVL6211=3,MN88436=4
+		.end   = 4,
+		.flags = IORESOURCE_MEM,
+		.name  = "dtv_demod0"
+	},
+	[1] = {
+		.start = 0,                                 //i2c adapter id
+		.end   = 0,
+		.flags = IORESOURCE_MEM,
+		.name  = "dtv_demod0_i2c_adap_id"
+	},
+	[2] = {
+		.start = 0x60,                              //i2c address
+		.end   = 0x60,
+		.flags = IORESOURCE_MEM,
+		.name  = "dtv_demod0_i2c_addr"
+	},
+	[3] = {
+		.start = 0,                                 //reset value
+		.end   = 0,
+		.flags = IORESOURCE_MEM,
+		.name  = "dtv_demod0_reset_value"
+	},
+	[4] = {
+		.start = (GPIOD_bank_bit0_9(8)<<16)|GPIOD_bit_bit0_9(8), //reset pin
+		.end   = (GPIOD_bank_bit0_9(8)<<16)|GPIOD_bit_bit0_9(8),
+		.flags = IORESOURCE_MEM,
+		.name  = "dtv_demod0_reset_gpio"
+	},
+	[5] = {
+		.start = 0,
+		.end   = 0,
+		.flags = IORESOURCE_MEM,
+		.name  = "fe0_dtv_demod"
+	},
+	[6] = {
+		.start = 2,
+		.end   = 2,
+		.flags = IORESOURCE_MEM,
+		.name  = "fe0_ts"
+	},
+	[7] = {
+		.start = 0,
+		.end   = 0,
+		.flags = IORESOURCE_MEM,
+		.name  = "fe0_dev"
+	},
+	[8] = {
+		.start = (GPIOB_bank_bit0_23(19)<<16)|GPIOB_bit_bit0_23(19),  //// tuner_enable
+		.end   = (GPIOB_bank_bit0_23(19)<<16)|GPIOB_bit_bit0_23(19),
+		.flags = IORESOURCE_MEM,
+		.name  = "dtv_demod0_tunerpower"
+	}
+#endif
+
 };
 
 static  struct platform_device amlogic_dvb_fe_device = {

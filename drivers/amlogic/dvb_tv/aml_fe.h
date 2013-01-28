@@ -54,7 +54,8 @@ typedef enum{
 	AM_DTV_DEMOD_M1     = 0,
 	AM_DTV_DEMOD_SI2176 = 1,
 	AM_DTV_DEMOD_MXL101 = 2,
-	AM_DTV_DEMOD_AVL6211 = 3
+	AM_DTV_DEMOD_AVL6211 = 3,
+	AM_DTV_DEMOD_MN88435 = 4
 }aml_dtv_demod_type_t;
 
 typedef enum{

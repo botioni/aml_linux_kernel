@@ -67,6 +67,13 @@ config AM_AVL6211
 	help
 		Select to enable AVL6211 demod driver.		
 		
+config AM_MN88436
+	tristate "MN88436 demod driver"
+	default n
+	depends on AM_DVB
+	help
+		Select to enable MN88436 demod driver.		
+
 
 endmenu
 

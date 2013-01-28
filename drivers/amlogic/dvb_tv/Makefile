@@ -10,3 +10,4 @@ obj-$(CONFIG_AM_MXL101) += mxl101/
 
 obj-$(CONFIG_AM_AVL6211) += avl6211/
 
+obj-$(CONFIG_AM_MN88436) += mn88436/
