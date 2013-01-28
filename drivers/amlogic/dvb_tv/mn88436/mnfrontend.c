@@ -122,7 +122,6 @@ static int MN88436_Set_Frontend(struct dvb_frontend *fe, struct dvb_frontend_par
 	param.freq=p->frequency;
 	param.funit=DMD_E_KHZ;
 	MDrv_Tuner_SetTuner(param.freq,6);
-	//MDrv_Tuner_SetTuner(474000,6);
 	DMD_scan(&param);
 	//DMD_tune(&param);
 	state->freq=p->frequency;
