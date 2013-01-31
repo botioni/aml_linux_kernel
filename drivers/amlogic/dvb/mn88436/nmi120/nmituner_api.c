@@ -134,7 +134,7 @@ uint8_t MDrv_NMI120_Tuner_SetTuner(uint32_t dwFreq, uint8_t ucBw,uint8_t type)//
 
 	nmi_tuner_os_memset((void *)&param, 0x00, sizeof(tNMI_TUNE_PARAM));
 
-	param.freq = dwFreq * 1000;
+	param.freq = dwFreq;
 	param.if_freq = 5000000;
 	param.dacsel =  nDac2;
 	param.if_freq_invert = FALSE;
