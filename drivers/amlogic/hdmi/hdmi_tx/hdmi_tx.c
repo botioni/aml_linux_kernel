@@ -164,7 +164,7 @@ extern int force_output_mode = 0;   // if 1, then output force without edid  if 
 #endif
 static int hdmi_output_on = 1;   
 static int hdmi_authenticated = -1;
-static int hdmi_hdcp_process = 1;   // default hdcp is on, if aksv is 0, then disable
+static int hdmi_hdcp_process = 0;   // default hdcp is on, if aksv is 0, then disable
 static int hdmi_hdcp_status = -1;
 static int hdmi_hdcp_required = -1;
 /*****************************
