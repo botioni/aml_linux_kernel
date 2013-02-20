@@ -366,7 +366,10 @@ static void vh264_set_params(int switch_done)
         int i, mb_mv_byte;
         unsigned addr;
         unsigned int post_canvas;
-	ulong videoKeepBuf[3];
+        ulong videoKeepBuf[3];
+        unsigned int frame_mbs_only_flag;
+        unsigned int chroma_format_idc, chroma444;
+        unsigned int crop_infor, crop_bottom;
 	
         if (vh264_running) {
 /*
@@ -411,6 +414,18 @@ static void vh264_set_params(int switch_done)
         mb_width = mb_width & 0xff;
         mb_height = mb_total / mb_width;
 
+        /* AV_SCRATCH_2
+           bit 15: frame_mbs_only_flag
+           bit 13-14: chroma_format_idc */
+        frame_mbs_only_flag = (seq_info >> 15) & 0x01;
+        chroma_format_idc = (seq_info >> 13) & 0x03;
+        chroma444 = (chroma_format_idc == 3) ? 1 : 0;
+
+        /* @AV_SCRATCH_6.31-16 =  (left  << 8 | right ) << 1
+           @AV_SCRATCH_6.15-0   =  (top << 8  | bottom ) <<  (2 - frame_mbs_only_flag) */
+        crop_infor = READ_MPEG_REG(AV_SCRATCH_6);
+        crop_bottom = (crop_infor & 0xff) >> (2 - frame_mbs_only_flag);
+
         /* if width or height from outside is not equal to mb, then use mb */
         /* add: for seeking stream with other resolution */
         if ((last_mb_width && (last_mb_width != mb_width))
@@ -427,6 +442,15 @@ static void vh264_set_params(int switch_done)
         if (frame_width == 0 || frame_height == 0) {
             frame_width = mb_width << 4;
             frame_height = mb_height << 4;
+
+            if (frame_mbs_only_flag) {
+                frame_height = frame_height - (2>>chroma444)*min(crop_bottom, (unsigned int)((8<<chroma444)-1));
+            } else {
+                frame_height = frame_height - (4>>chroma444)*min(crop_bottom, (unsigned int)((8<<chroma444)-1));
+            }
+            printk("frame_mbs_only_flag %d, crop_bottom %d, frame_height %d, mb_height %d\n",
+                frame_mbs_only_flag, crop_bottom, frame_height, mb_height);
+
             if (frame_height == 1088) {
                 frame_height = 1080;
             }
