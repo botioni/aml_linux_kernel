@@ -1305,7 +1305,8 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
                 vf = video_vf_get();
                 video_vf_put(vf);
             }
-            else if(clone_frame_rate_force < 0){
+            else if((clone_frame_rate_force < 0)||
+                    (clone_frame_rate_force == 0 && clone_frame_rate < 0)){
                 vf = video_vf_get();
                 vsync_toggle_frame(vf);
                 
