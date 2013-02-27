@@ -333,6 +333,12 @@ atomic_t trickmode_framedone = ATOMIC_INIT(0);
 int trickmode_duration = 0;
 int trickmode_duration_count = 0;
 
+/* video freerun mode */
+#define FREERUN_NONE    0   // no freerun mode
+#define FREERUN_NODUR   1   // freerun without duration
+#define FREERUN_DUR     2   // freerun with duration
+static u32 freerun_mode;
+
 static const f2v_vphase_type_t vpp_phase_table[4][3] = {
     {F2V_P2IT,  F2V_P2IB,  F2V_P2P },   /* VIDTYPE_PROGRESSIVE */
     {F2V_IT2IT, F2V_IT2IB, F2V_IT2P},   /* VIDTYPE_INTERLACE_TOP */
@@ -1125,7 +1131,12 @@ static inline bool vpts_expire(vframe_t *cur_vf, vframe_t *next_vf)
     u32 adjust_pts, org_vpts;
     /* if ((cur_vf == NULL) || (cur_dispbuf == &vf_local)) {
         return true;
-    }*/
+    */
+
+    if (FREERUN_NODUR == freerun_mode) {
+        return true;
+    }
+    
     if ((trickmode_i == 1) || ((trickmode_fffb == 1))) {
         if (((0 == atomic_read(&trickmode_framedone)) || (trickmode_i == 1)) && (trickmode_duration_count <= 0)) {
             #if 0
@@ -1148,7 +1159,7 @@ static inline bool vpts_expire(vframe_t *cur_vf, vframe_t *next_vf)
 
     systime = timestamp_pcrscr_get();
 
-    if ((pts == 0) && (cur_dispbuf != &vf_local)) {
+    if (((pts == 0) && (cur_dispbuf != &vf_local)) || (FREERUN_DUR == freerun_mode)) {
         pts = timestamp_vpts_get() + (cur_vf ? DUR2PTS(cur_vf->duration) : 0);
     }
     /* check video PTS discontinuity */
@@ -2281,6 +2292,17 @@ static int amvideo_ioctl(struct inode *inode, struct file *file,
                 ret = -EFAULT;
             }
         }
+	break;
+    case AMSTREAM_IOC_SET_FREERUN_MODE:
+        if (arg > FREERUN_DUR) {
+            ret = -EFAULT;
+        } else {
+	        freerun_mode = arg;
+        }
+        break;
+
+    case AMSTREAM_IOC_GET_FREERUN_MODE:
+        *((u32 *)arg) = freerun_mode;
         break;
 
     /**********************************************************************
@@ -2731,6 +2753,28 @@ static ssize_t video_disable_store(struct class *cla, struct class_attribute *at
     return count;
 }
 
+static ssize_t video_freerun_mode_show(struct class *cla, struct class_attribute *attr, char *buf)
+{
+    return sprintf(buf, "%d\n", freerun_mode);
+}
+
+static ssize_t video_freerun_mode_store(struct class *cla, struct class_attribute *attr, const char *buf,
+                                   size_t count)
+{
+    size_t r;
+
+    r = sscanf(buf, "%d", &freerun_mode);
+
+    if(debug_flag){
+        printk("%s(%d)\n", __func__, freerun_mode);
+    }
+    if (r != 1) {
+        return -EINVAL;
+    }
+
+    return count;
+}
+
 static ssize_t frame_addr_show(struct class *cla, struct class_attribute *attr, char *buf)
 {
     canvas_t canvas;
@@ -2943,6 +2987,10 @@ static struct class_attribute amvideo_class_attrs[] = {
     S_IRUGO | S_IWUSR,
     trickmode_duration_show,
     trickmode_duration_store),
+    __ATTR(freerun_mode,
+    S_IRUGO | S_IWUSR,
+    video_freerun_mode_show,
+    video_freerun_mode_store),
     __ATTR_RO(device_resolution),
     __ATTR_RO(frame_addr),
     __ATTR_RO(frame_canvas_width),
