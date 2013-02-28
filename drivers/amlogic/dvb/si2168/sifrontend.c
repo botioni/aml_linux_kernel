@@ -256,6 +256,116 @@ static int SI2168_Get_Frontend(struct dvb_frontend *fe, struct dvb_frontend_para
 	return 0;
 }
 
+static int SI2168_set_property(struct dvb_frontend *fe, struct dtv_property *p)
+{
+	struct si2168_state *state = fe->demodulator_priv;
+	int r = 0;
+	int plp_id=0;
+	plp_id=p->u.data;
+	printk("[SI2168_set_property]plp_id is %d\n",plp_id);
+	switch (p->cmd) {
+		case DTV_DVBT2_PLP_ID:
+			SiLabs_API_Select_PLP(&front_end,plp_id);
+			if (SiLabs_API_Select_PLP(&front_end,plp_id) != 0) {
+				r = -EINVAL;
+			}
+			break;
+		default:
+			r = EOPNOTSUPP;
+			break;
+	}
+
+	return r;
+
+}
+
+static int SI2168_get_property(struct dvb_frontend *fe, struct dtv_property *p)
+{
+	struct si2168_state *state = fe->demodulator_priv;
+	int r = 0;
+	int lock;
+	  int standard;
+	  int freq;
+	  int bandwidth_Hz;
+	  int stream;
+	  unsigned int symbol_rate_bps;
+	  int constellation;
+	  int polarization;
+	  int band;
+	  int num_plp;
+	  int carrier_index;
+	  int i;
+	  int plp_id;
+	  int plp_type;
+	  i = 0;
+
+    lock = SiLabs_API_Channel_Seek_Next(&front_end, &standard, &freq,  &bandwidth_Hz, &stream, &symbol_rate_bps, &constellation, &polarization, &band, &num_plp);
+	 if (lock==1) {
+    		printf("%s Channel detected (standard %d). freq %d,num_plp is %d", Silabs_Standard_Text(standard), standard, freq,num_plp);
+	  }
+	  else
+	  {
+	    printf("\n   Seek complete  now call SeekEnd to finish properly the scan\n");
+	  }
+
+	switch (p->cmd) {
+		case DTV_DVBT2_PLP_ID:
+			{
+				//if (demod_get_active_data_plp(state, &plp_info) != 0) {
+				if (num_plp < 1) {
+					p->u.buffer.len = 0;
+					r = -EINVAL;
+				} else {
+					p->u.buffer.len = 2;
+					p->u.buffer.data[0] = plp_id;
+					p->u.buffer.data[1] = plp_type;
+				}
+			}
+			break;
+		case DTV_DVBT2_DATA_PLPS:
+			{
+				uint8_t plpids[256];
+				uint8_t plpnum = 0;
+				plpnum=num_plp;
+				for (i=0; i<num_plp; i++) {
+			        SiLabs_API_Get_PLP_ID_and_TYPE   (&front_end, i, &plp_id, &plp_type);
+					plpids[i]=(uint8_t)plp_id;
+					printk("plp_id[%d] is %d\n",i,plp_id);
+			        if (plp_id == -1) {
+			          printf ("ERROR retrieving PLP info for plp index %d\n", i);
+			          SiERROR("ERROR retrieving PLP info\n");
+			        } else {
+			          if (plp_type != SILABS_PLP_TYPE_COMMON) {
+			           // carrier_index = SiLabs_Scan_Table_AddOneCarrier (standard, freq, bandwidth_Hz, stream, symbol_rate_bps, constellation, polarization, band, plp_id);
+			          }
+			        }
+			      }
+				
+				p->u.buffer.len = 0;
+				p->u.buffer.reserved1[0] = 0;
+				if (p->u.buffer.reserved2 != NULL) {
+				//	demod_get_data_plps(state, plpids, &plpnum);
+					/* As linux dvb has property_dump, buffer.len cannot be used in this case, 
+					 * it must < 32 , we use u.buffer.resvered1[0] to save plp num instead */
+					p->u.buffer.reserved1[0] = plpnum;
+					if (plpnum > 0 && 
+						copy_to_user(p->u.buffer.reserved2, plpids, plpnum * sizeof(uint8_t))) {
+						p->u.buffer.reserved1[0] = 0;
+					}
+				}
+			}
+			break;
+		default:
+			r = EOPNOTSUPP;
+			break;
+	}
+
+	return r;
+
+}
+
+
+
 static void SI2168_Release(struct dvb_frontend *fe)
 {
 	struct si2168_state *state = fe->demodulator_priv;
@@ -335,6 +445,8 @@ static struct dvb_frontend_ops si2168_ops = {
 	.read_signal_strength =SI2168_Read_Signal_Strength,
 	.read_snr = SI2168_Read_Snr,
 	.read_ucblocks = SI2168_Read_Ucblocks,
+	.set_property = SI2168_set_property,
+	.get_property = SI2168_get_property,
 
 };
 
