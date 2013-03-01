@@ -46,12 +46,12 @@ config AM_MXL101
 	help
 		Select to enable MXL101 demod driver.
 		
-config AM_AVL6211
-	tristate "AVL6211 demod driver"
-	default n
-	depends on AM_DVB
-	help
-		Select to enable AVL6211 demod driver.		
+#config AM_AVL6211
+#	tristate "AVL6211 demod driver"
+#	default n
+#	depends on AM_DVB
+#	help
+#		Select to enable AVL6211 demod driver.		
 		
 config AM_ITE9173
 	tristate "ITE9173 demod driver"
@@ -102,6 +102,8 @@ config AM_SI2168
 		Select to enable SI2168 demod driver.
 
 source "drivers/amlogic/dvb/dib7090/Kconfig" 
+
+source "drivers/amlogic/dvb/avl6211/Kconfig" 
 
 endmenu
 

@@ -221,7 +221,7 @@ static int SI2168_Set_Frontend(struct dvb_frontend *fe, struct dvb_frontend_para
 	bandwidth_Hz=bandwidth*1000000;
 	stream=0;
 	symbol_rate_bps=0;
-	constellation=2;
+	constellation=0;
 	polarization=0;
 	band=0;
 	plp_id=0;
@@ -240,7 +240,7 @@ static int SI2168_Set_Frontend(struct dvb_frontend *fe, struct dvb_frontend_para
 		}
 		msleep(20);
 	}
-
+	printk("per is %d,c_n is %d,fec_lock is %d\n",custom_status.per,custom_status.c_n,custom_status.fec_lock);
 	pr_dbg("si2168=>frequency=%d\r\n",p->frequency);
 	return  0;
 }
@@ -262,7 +262,7 @@ static int SI2168_set_property(struct dvb_frontend *fe, struct dtv_property *p)
 	int r = 0;
 	int plp_id=0;
 	plp_id=p->u.data;
-	printk("[SI2168_set_property]plp_id is %d\n",plp_id);
+	printk("[SI2168_set_property]plp_id is %d,cmd is %d\n",plp_id,p->cmd);
 	switch (p->cmd) {
 		case DTV_DVBT2_PLP_ID:
 			SiLabs_API_Select_PLP(&front_end,plp_id);
@@ -298,16 +298,14 @@ static int SI2168_get_property(struct dvb_frontend *fe, struct dtv_property *p)
 	  int plp_id;
 	  int plp_type;
 	  i = 0;
+	  L1_Si2168_Context *api;
 
-    lock = SiLabs_API_Channel_Seek_Next(&front_end, &standard, &freq,  &bandwidth_Hz, &stream, &symbol_rate_bps, &constellation, &polarization, &band, &num_plp);
-	 if (lock==1) {
-    		printf("%s Channel detected (standard %d). freq %d,num_plp is %d", Silabs_Standard_Text(standard), standard, freq,num_plp);
-	  }
-	  else
-	  {
-	    printf("\n   Seek complete  now call SeekEnd to finish properly the scan\n");
-	  }
+    api = front_end.Si2168_FE->demod;
 
+	Si2168_L1_DVBT2_STATUS (api, Si2168_DVBT_STATUS_CMD_INTACK_CLEAR);
+    num_plp = api->rsp->dvbt2_status.num_plp;
+	printk("num_plp is %d\n",num_plp);
+  //  lock = SiLabs_API_Channel_Seek_Next(&front_end, &standard, &freq,  &bandwidth_Hz, &stream, &symbol_rate_bps, &constellation, &polarization, &band, &num_plp);
 	switch (p->cmd) {
 		case DTV_DVBT2_PLP_ID:
 			{

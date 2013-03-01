@@ -106,6 +106,16 @@ static int AVL6211_Reset(void)
 	return 0;
 }
 
+static int AVL6211_Tuner_Power_Ctrl(int tunerpwr)
+{
+	if(1==tunerpwr)	gpio_direction_output(frontend_PWR, 1);
+	else	gpio_direction_output(frontend_PWR, 0);
+	return 0;
+}
+
+
+#ifndef CONFIG_AVL6211_LNB_DEMOD_GPIO
+
 static int AVL6211_Lnb_Power_Ctrl(int lnb)
 {
 	if(1==lnb)	gpio_direction_output(frontend_LNB, 1);
@@ -113,12 +123,71 @@ static int AVL6211_Lnb_Power_Ctrl(int lnb)
 	return 0;
 }
 
-static int AVL6211_Tuner_Power_Ctrl(int tunerpwr)
+static int	AVL6211_Set_Voltage(struct dvb_frontend* fe, fe_sec_voltage_t voltage)
 {
-	if(1==tunerpwr)	gpio_direction_output(frontend_PWR, 1);
-	else	gpio_direction_output(frontend_PWR, 0);
-	return 0;
+	AVL_DVBSx_ErrorCode r=AVL_DVBSx_EC_OK;	
+	AVL_uchar nValue = 1;
+	if(voltage == SEC_VOLTAGE_OFF){
+		AVL6211_Lnb_Power_Ctrl(0);//lnb power off
+		return 0;
+	}
+
+	if(voltage ==  SEC_VOLTAGE_13)
+		nValue = 1;
+	else if(voltage ==SEC_VOLTAGE_18)
+		nValue = 0;
+	else;	
+	
+	AVL6211_Lnb_Power_Ctrl(1);//lnb power on
+	r=AVL_DVBSx_IDiseqc_SetLNBOut(nValue,pAVLChip_all);
+	if(r!=AVL_DVBSx_EC_OK)
+	{
+		pr_dbg("[AVL6211_LNB_PIO_Control] set nPIN_Index:0x%x,Err\n",r);
+	}
+	return r;
 }
+#else
+static int AVL6211_Lnb_Power_Ctrl(int lnb)
+{
+	AVL_DVBSx_ErrorCode r = AVL_DVBSx_EC_OK;
+
+	if(1 == lnb)
+		r=AVL_DVBSx_IDiseqc_SetLNB1Out(1, pAVLChip_all);	//set LNB1_PIN60 1: Hight 
+	else
+		r=AVL_DVBSx_IDiseqc_SetLNB1Out(0, pAVLChip_all);	//set LNB1_PIN60 1: Low 	
+	
+	return r;
+
+
+}
+
+static int	AVL6211_Set_Voltage(struct dvb_frontend* fe, fe_sec_voltage_t voltage)
+{
+	AVL_DVBSx_ErrorCode r=AVL_DVBSx_EC_OK;	
+	AVL_uchar nValue = 1;
+	if(voltage == SEC_VOLTAGE_OFF){
+		AVL6211_Lnb_Power_Ctrl(0);//lnb power off
+		return 0;
+	}
+
+	if(voltage ==  SEC_VOLTAGE_13)
+		nValue = 0;
+	else if(voltage ==SEC_VOLTAGE_18)
+		nValue = 1;
+	else;	
+	
+	AVL6211_Lnb_Power_Ctrl(1);//lnb power on
+
+	if(1==nValue)
+		r=AVL_DVBSx_IDiseqc_SetLNBOut(1, pAVLChip_all);	//set LNB0_PIN59 1: Hight 
+	else
+		r=AVL_DVBSx_IDiseqc_SetLNBOut(0, pAVLChip_all);	//set LNB0_PIN59 1: Low 
+
+	return r;
+}
+
+
+#endif
 
 static int AVL6211_Ant_Overload_Ctrl(void)
 {
@@ -233,29 +302,6 @@ static int	AVL6211_Set_Tone(struct dvb_frontend* fe, fe_sec_tone_mode_t tone)
 	
 }
 
-static int	AVL6211_Set_Voltage(struct dvb_frontend* fe, fe_sec_voltage_t voltage)
-{
-	AVL_DVBSx_ErrorCode r=AVL_DVBSx_EC_OK;	
-	AVL_uchar nValue = 1;
-	if(voltage == SEC_VOLTAGE_OFF){
-		AVL6211_Lnb_Power_Ctrl(0);//lnb power off
-		return 0;
-	}
-
-	if(voltage ==  SEC_VOLTAGE_13)
-		nValue = 1;
-	else if(voltage ==SEC_VOLTAGE_18)
-		nValue = 0;
-	else;	
-	
-	AVL6211_Lnb_Power_Ctrl(1);//lnb power on
-	r=AVL_DVBSx_IDiseqc_SetLNBOut(nValue,pAVLChip_all);
-	if(r!=AVL_DVBSx_EC_OK)
-	{
-		pr_dbg("[AVL6211_LNB_PIO_Control] set nPIN_Index:0x%x,Err\n",r);
-	}
-	return r;
-}
 
 static int	AVL6211_Enable_High_Lnb_Voltage(struct dvb_frontend* fe, long arg)
 {
@@ -332,8 +378,11 @@ static int dvbs2_blindscan_task(struct dvbsx_blindscanpara *pbspara)//(struct dv
 		
 														AVL_DVBSx_IBlindScanAPI_SetFreqRange(pBSsetting, bs_start_freq, bs_stop_freq); //Default scan rang is from 950 to 2150. User may call this function to change scan frequency rang.
 														AVL_DVBSx_IBlindScanAPI_SetScanMode(pBSsetting, Blindscan_Mode);
-		
+														#ifndef CONFIG_AVL_Spectrum_Invert
 														AVL_DVBSx_IBlindScanAPI_SetSpectrumMode(pBSsetting, AVL_DVBSx_Spectrum_Normal); //Default set is AVL_DVBSx_Spectrum_Normal, it must be set correctly according Board HW configuration
+														#else
+														AVL_DVBSx_IBlindScanAPI_SetSpectrumMode(pBSsetting, AVL_DVBSx_Spectrum_Invert);
+														#endif
 														AVL_DVBSx_IBlindScanAPI_SetMaxLPF(pBSsetting, M_TUNERMAXLPF_100KHZ); //Set Tuner max LPF value, this value will difference according tuner type
 		
 														BS_Status = AVL_DVBSx_BS_Status_Start;
@@ -493,6 +542,11 @@ static int initflag=-1;
 
 static int AVL6211_Init(struct dvb_frontend *fe)
 {
+	#ifndef CONFIG_AVL6211_LNB_DEMOD_GPIO
+		pr_dbg("AVL6211_LNB_mainboard_GPIO\n");
+	#else
+		pr_dbg("AVL6211_LNB_DEMOD_GPIO\n");
+	#endif
 	AVL_DVBSx_ErrorCode r = AVL_DVBSx_EC_OK;
 	pr_dbg("frontend_reset is %d\n",frontend_reset);
 	//init sema

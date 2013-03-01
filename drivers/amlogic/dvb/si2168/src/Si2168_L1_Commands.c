@@ -695,7 +695,7 @@ unsigned char Si2168_L1_DD_STATUS                 (L1_Si2168_Context *api,
     unsigned char rspByteBuffer[8];
     api->rsp->dd_status.STATUS = api->status;
 
-    SiTRACE("Si2168 DD_STATUS ");
+//    SiTRACE("Si2168 DD_STATUS ");
   #ifdef   DEBUG_RANGE_CHECK
     if ((intack > Si2168_DD_STATUS_CMD_INTACK_MAX) ) {error_code++; SiTRACE("\nOut of range: ");}; SiTRACE("INTACK %d ", intack );
     if (error_code) {
