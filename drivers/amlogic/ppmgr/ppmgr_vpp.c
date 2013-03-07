@@ -535,6 +535,7 @@ static void process_vf_rotate(vframe_t *vf, ge2d_context_t *context, config_para
         /* bypass mode */
         *new_vf = *vf;
         vfq_push(&q_ready, new_vf);
+        vf_notify_receiver(PROVIDER_NAME,VFRAME_EVENT_PROVIDER_VFRAME_READY,NULL);
         return;
     }
     pp_vf->angle   =  cur_angle;
@@ -891,7 +892,7 @@ static void process_vf_rotate(vframe_t *vf, ge2d_context_t *context, config_para
     ppmgr_vf_put_dec(vf);
 
     vfq_push(&q_ready, new_vf);
-
+	  vf_notify_receiver(PROVIDER_NAME,VFRAME_EVENT_PROVIDER_VFRAME_READY,NULL);
 #ifdef DDD
     printk("rotate avail=%d, free=%d\n", vfq_level(&q_ready),  vfq_level(&q_free));
 #endif

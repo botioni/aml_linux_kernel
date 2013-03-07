@@ -226,7 +226,7 @@ vpp_process_speed_check(u32 width_in,
     1920 * 1080 / width_in * height_in
 #endif
    
-   if((height_in > 1080)&&(next_frame_par->vscale_skip_count== 0 )){
+   if((height_in > 1088)&&(next_frame_par->vscale_skip_count== 0 )){
    		return 1;
    }
    

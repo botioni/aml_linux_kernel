@@ -95,7 +95,7 @@ static int receiver_is_amvideo = 1;
 static int buf_mgr_mode = 0x300;
 static int buf_mgr_mode_mask = 0xffff;
 static int bypass_state = 0;
-static int bypass_prog = 0;
+static int bypass_prog = 1;
 #ifdef CONFIG_AM_DEINTERLACE_SD_ONLY
 static int bypass_hd = 1;
 #else
@@ -2584,6 +2584,8 @@ static int check_recycle_buf(void)
                         di_print("%s: vf_put(%d) %x\n", __func__, di_pre_stru.recycle_seq, vframe_in[di_buf->index]);
 #endif
                         vframe_in[di_buf->index] = NULL;
+
+								        vf_notify_provider(VFM_NAME, VFRAME_EVENT_RECEIVER_PUT, NULL);                         
                     }
                 queue_in(di_buf, QUEUE_IN_FREE);
                 di_pre_stru.recycle_seq++;
@@ -3959,6 +3961,8 @@ light_unreg:
 #ifdef DI_DEBUG
                 printk("DI:clear vframe_in[%d]\n", i);    
 #endif
+				        vf_notify_provider(VFM_NAME, VFRAME_EVENT_RECEIVER_PUT, NULL);                         
+
             }
             vframe_in[i] = NULL;
         }

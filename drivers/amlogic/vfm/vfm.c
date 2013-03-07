@@ -255,7 +255,7 @@ static void vfm_init(void)
 {
 #ifdef CONFIG_POST_PROCESS_MANAGER
     char def_id[] = "default";
-    char def_name_chain[] = "decoder ppmgr amvideo";
+    char def_name_chain[] = "decoder ppmgr deinterlace amvideo";
 #else
     char def_id[] = "default";
     char def_name_chain[] = "decoder amvideo";
