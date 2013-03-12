@@ -1048,10 +1048,22 @@ CONFIG_MALI=m
 CONFIG_AM_DVB=y
 # CONFIG_AMLOGIC_S_TS0 is not set
 # CONFIG_AMLOGIC_S_TS1 is not set
-CONFIG_AMLOGIC_S_TS2=y
+# CONFIG_AMLOGIC_S_TS2 is not set
 # CONFIG_AM_GX1001 is not set
-CONFIG_AM_MXL101=y
-# CONFIG_AM_AVL6211 is not set
+# CONFIG_AM_MXL101 is not set
+# CONFIG_AM_ITE9173 is not set
+# CONFIG_AM_RTL2830 is not set
+# CONFIG_AM_DS3000 is not set
+# CONFIG_TH_SONY_T2 is not set
+# CONFIG_AM_ITE9133 is not set
+# CONFIG_AM_MN88436 is not set
+# CONFIG_AM_SI2168 is not set
+# CONFIG_AM_DIB7090P is not set
+CONFIG_AM_AVL6211=y
+CONFIG_AVL6211_LNB_DEMOD_GPIO=y
+CONFIG_AVL_Spectrum_Invert=y
+
+
 
 #
 # AMLOGIC Post Process Manager driver
