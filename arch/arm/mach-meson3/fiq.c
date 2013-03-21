@@ -38,12 +38,12 @@ static u8 fiq_stack[4096];
 static u8 fiq_index[MAX_FIQ];
 static fiq_routine fiq_func[MAX_FIQ];
 
-static void __attribute__((naked)) fiq_vector(void)
+static void __naked fiq_vector(void)
 {
     asm __volatile__("mov pc, r8 ;");
 }
 
-static void __attribute__((naked)) fiq_isr(void)
+static void __naked fiq_isr(void)
 {
     int i;
     unsigned int_status;
@@ -51,8 +51,8 @@ static void __attribute__((naked)) fiq_isr(void)
     asm __volatile__(
         "mov    ip, sp;\n"
         "stmfd	sp!, {r0-r12, lr};\n"
-        "sub    sp, sp, #256;\n"
-        "sub    fp, sp, #256;\n");
+        "sub    sp, sp, #512;\n"
+        "sub    fp, sp, #512;\n");
 
     int_status = READ_CBUS_REG(IRQ_STATUS_REG(AM_IRQ0(0)));
 
@@ -68,7 +68,7 @@ static void __attribute__((naked)) fiq_isr(void)
     dsb();
 
     asm __volatile__(
-        "add	sp, sp, #256 ;\n"
+        "add	sp, sp, #512 ;\n"
         "ldmia	sp!, {r0-r12, lr};\n"
         "subs	pc, lr, #4;\n");
 }
