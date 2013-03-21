@@ -71,6 +71,8 @@ int hdcp_ksv_valid(unsigned char * dat)
             }
         }
     }
+    if(one_num == 0)
+        printk("HDMITX: no HDCP key available\n");
     return (one_num == 20);
 }
 

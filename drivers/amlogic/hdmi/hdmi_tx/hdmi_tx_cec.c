@@ -482,7 +482,7 @@ unsigned long cec_ll_tx(unsigned char *msg, unsigned char len, unsigned char *st
 	            }        
 	            msleep(50);
 	            n++;
-	            printk("CEC: TX transmit\n");
+//	            printk("CEC: TX transmit\n");
 	            if(n >= 20){
 	                n = 0;
 	                ret = TX_BUSY;

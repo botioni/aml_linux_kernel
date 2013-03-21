@@ -224,6 +224,7 @@ int hdmitx_set_audio(hdmitx_dev_t* hdmitx_device, Hdmi_tx_audio_para_t* audio_pa
     for(i=0;i<(24*2);i++) CHAN_STAT_BUF[i]=0;
     if(hdmitx_device->HWOp.SetAudMode(hdmitx_device, audio_param)>=0){
         hdmi_tx_construct_aud_packet(audio_param, AUD_DB, CHAN_STAT_BUF);
+    
         hdmitx_device->HWOp.SetAudioInfoFrame(AUD_DB, CHAN_STAT_BUF);
         ret = 0;
     }

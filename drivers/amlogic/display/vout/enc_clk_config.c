@@ -199,6 +199,7 @@ static enc_clk_val_t setting_enc_clk_val[] = {
     {VMODE_720P_50HZ,  1488, 2, 1, VIU_ENCP, 10, 1, 2, 1, -1, -1, -1,  1,  -1},
     {VMODE_1080I_50HZ, 1488, 2, 1, VIU_ENCP, 10, 1, 2, 1, -1, -1, -1,  1,  -1},
     {VMODE_1080P_50HZ, 1488, 1, 1, VIU_ENCP, 10, 1, 1, 1, -1, -1, -1,  1,  -1},
+    {VMODE_1080P_24HZ, 1488, 2, 1, VIU_ENCP, 10, 2, 1, 1, -1, -1, -1,  1,  -1},
 };
 
 void set_vmode_clk(vmode_t mode)
@@ -236,6 +237,13 @@ void set_vmode_clk(vmode_t mode)
             break;
         default:
             break;
+    }
+
+    // If VCO outputs 1488, then we will reset it to exact 1485
+    // please note, don't forget to re-config CNTL2
+    if((READ_CBUS_REG(HHI_VID_PLL_CNTL) & 0x7fff) == 0x43e) {
+        WRITE_CBUS_REG_BITS(HHI_VID_PLL_CNTL, 0x21ef, 0, 14);
+        WRITE_CBUS_REG(HHI_VID_PLL_CNTL2, 0xec0033);
     }
 
 // For debug only
