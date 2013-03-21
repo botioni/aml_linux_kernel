@@ -92,6 +92,7 @@ in this case,it will cause 958 module not work.so add a protocal register to co-
 */
 #define DSP_IEC958_INIT_READY_INFO  		DSP_REG(110) 
 #define DSP_AC3_DRC_INFO 					DSP_IEC958_INIT_READY_INFO
+#define DSP_DTS_DEC_INFO					DSP_REG(111)
 #define DSP_WORK_INFO (AUDIO_DSP_END_ADDR - 128)
 
 
@@ -128,26 +129,69 @@ int len;
 
 #define CMD_PRINT_LOG					(1234<<8 |1)
 
-#define MDEC_TRIGGER_IRQ(irq)	{SET_MPEG_REG_MASK(ASSIST_MBOX0_FIQ_SEL,1<<irq);\
-								WRITE_MPEG_REG(ASSIST_MBOX0_IRQ_REG,1<<irq);}
-#define SYS_TRIGGER_IRQ(irq)		{SET_MPEG_REG_MASK(ASSIST_MBOX1_FIQ_SEL,1<<irq); \
-								WRITE_MPEG_REG(ASSIST_MBOX1_IRQ_REG,1<<irq);}
-#define DSP_TRIGGER_IRQ(irq)		{SET_MPEG_REG_MASK(ASSIST_MBOX2_FIQ_SEL,1<<irq); \
-								WRITE_MPEG_REG(ASSIST_MBOX2_IRQ_REG,1<<irq);}
+#if 0// >= MESON_CPU_TYPE_MESON6
+#define MB0_REG VDEC_ASSIST_MBOX0_IRQ_REG
+#define MB0_SEL VDEC_ASSIST_MBOX0_FIQ_SEL
+#define MB0_CLR VDEC_ASSIST_MBOX0_CLR_REG
+#define MB0_MSK VDEC_ASSIST_MBOX0_MASK
+#define MB1_REG VDEC_ASSIST_MBOX1_IRQ_REG
+#define MB1_SEL VDEC_ASSIST_MBOX1_FIQ_SEL
+#define MB1_CLR VDEC_ASSIST_MBOX1_CLR_REG
+#define MB1_MSK VDEC_ASSIST_MBOX1_MASK
+#define MB2_REG VDEC_ASSIST_MBOX2_IRQ_REG
+#define MB2_SEL VDEC_ASSIST_MBOX2_FIQ_SEL
+#define MB2_CLR VDEC_ASSIST_MBOX2_CLR_REG
+#define MB2_MSK VDEC_ASSIST_MBOX2_MASK
 
-#define MDEC_CLEAR_IRQ(irq)		{CLEAR_MPEG_REG_MASK(ASSIST_MBOX0_FIQ_SEL,1<<irq); \
-								WRITE_MPEG_REG(ASSIST_MBOX0_CLR_REG,1<<irq);}
+#define READ_VREG(r) (__raw_readl(DOS_REG_ADDR(r)))
+#define WRITE_VREG(r, val) __raw_writel(val, DOS_REG_ADDR(r))
+#define WRITE_VREG_BITS(r, val, start, len) \
+    WRITE_VREG(r, (READ_VREG(r) & ~(((1L<<(len))-1)<<(start)))|((unsigned)((val)&((1L<<(len))-1)) << (start)))
+#define SET_VREG_MASK(r, mask) WRITE_VREG(r, READ_VREG(r) | (mask))
+#define CLEAR_VREG_MASK(r, mask) WRITE_VREG(r, READ_VREG(r) & ~(mask))
 
-#define SYS_CLEAR_IRQ(irq)		{CLEAR_MPEG_REG_MASK(ASSIST_MBOX1_FIQ_SEL,1<<irq); \
-								WRITE_MPEG_REG(ASSIST_MBOX1_CLR_REG,1<<irq);}
+#else
+#define MB0_REG ASSIST_MBOX0_IRQ_REG
+#define MB0_SEL ASSIST_MBOX0_FIQ_SEL
+#define MB0_CLR ASSIST_MBOX0_CLR_REG
+#define MB0_MSK ASSIST_MBOX0_MASK
+#define MB1_REG ASSIST_MBOX1_IRQ_REG
+#define MB1_SEL ASSIST_MBOX1_FIQ_SEL
+#define MB1_CLR ASSIST_MBOX1_CLR_REG
+#define MB1_MSK ASSIST_MBOX1_MASK
+#define MB2_REG ASSIST_MBOX2_IRQ_REG
+#define MB2_SEL ASSIST_MBOX2_FIQ_SEL
+#define MB2_CLR ASSIST_MBOX2_CLR_REG
+#define MB2_MSK ASSIST_MBOX2_MASK
 
-#define DSP_CLEAR_IRQ(irq)		{CLEAR_MPEG_REG_MASK(ASSIST_MBOX2_FIQ_SEL,1<<irq); \
-								WRITE_MPEG_REG(ASSIST_MBOX2_CLR_REG,1<<irq);}
+#define READ_VREG(r) READ_CBUS_REG(r)
+#define WRITE_VREG(r, val) WRITE_CBUS_REG(r, val)
+#define WRITE_VREG_BITS(r, val, start, len) WRITE_CBUS_REG_BITS(r, val, start, len)
+#define SET_VREG_MASK(r, mask) SET_CBUS_REG_MASK(r, mask)
+#define CLEAR_VREG_MASK(r, mask) CLEAR_CBUS_REG_MASK(r, mask)
+
+#endif
+
+#define MDEC_TRIGGER_IRQ(irq)	{SET_VREG_MASK(MB0_SEL,1<<irq);\
+								WRITE_VREG(MB0_REG,1<<irq);}
+#define SYS_TRIGGER_IRQ(irq)		{SET_VREG_MASK(MB1_SEL,1<<irq); \
+								WRITE_VREG(MB1_REG,1<<irq);}
+#define DSP_TRIGGER_IRQ(irq)		{SET_VREG_MASK(MB2_SEL,1<<irq); \
+								WRITE_VREG(MB2_REG,1<<irq);}
+
+#define MDEC_CLEAR_IRQ(irq)		{CLEAR_VREG_MASK(MB0_SEL,1<<irq); \
+								WRITE_VREG(MB0_CLR,1<<irq);}
+
+#define SYS_CLEAR_IRQ(irq)		{CLEAR_VREG_MASK(MB1_SEL,1<<irq); \
+								WRITE_VREG(MB1_CLR,1<<irq);}
+
+#define DSP_CLEAR_IRQ(irq)		{CLEAR_VREG_MASK(MB2_SEL,1<<irq); \
+								WRITE_VREG(MB2_CLR,1<<irq);}
 
 
-#define MAIBOX0_IRQ_ENABLE(irq)		SET_MPEG_REG_MASK(ASSIST_MBOX0_MASK,1<<irq)
-#define MAIBOX1_IRQ_ENABLE(irq)		SET_MPEG_REG_MASK(ASSIST_MBOX1_MASK,1<<irq)
-#define MAIBOX2_IRQ_ENABLE(irq)		SET_MPEG_REG_MASK(ASSIST_MBOX2_MASK,1<<irq)
+#define MAIBOX0_IRQ_ENABLE(irq)		SET_VREG_MASK(MB0_MSK,1<<irq)
+#define MAIBOX1_IRQ_ENABLE(irq)		SET_VREG_MASK(MB1_MSK,1<<irq)
+#define MAIBOX2_IRQ_ENABLE(irq)		SET_VREG_MASK(MB2_MSK,1<<irq)
 
 #define ARC_2_ARM_ADDR_SWAP(addr)  ((unsigned long)(phys_to_virt(addr)))
 #define ARM_2_ARC_ADDR_SWAP(addr)  (virt_to_phys((void*)addr))

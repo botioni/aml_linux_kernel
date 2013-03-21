@@ -219,14 +219,14 @@ void vf_ext_light_unreg_provider(struct vframe_provider_s *prov)
         p = provider_table[i];
         if(p){
             if (!strcmp(p->name, prov->name)) {
+                provider_table[i] = NULL;
                 if(vfm_debug_flag&1){
                     printk("%s:%s\n", __func__, prov->name);
                 }
                 receiver = vf_get_receiver(prov->name);
                 if(receiver && receiver->ops && receiver->ops->event_cb){
-                    receiver->ops->event_cb(VFRAME_EVENT_PROVIDER_LIGHT_UNREG_RETURN_VFRAME, NULL, receiver->op_arg);
+                    receiver->ops->event_cb(VFRAME_EVENT_PROVIDER_LIGHT_UNREG, NULL, receiver->op_arg);
                 }
-                provider_table[i] = NULL;
                 vf_update_active_map();
                 break;
             }

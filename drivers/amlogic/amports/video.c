@@ -1263,6 +1263,7 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
 #endif
 {
     int hold_line;
+    unsigned char frame_par_di_set = 0;
 #ifdef VSYNC_ISR_DEBUG
     unsigned int cur_timerb_value;
     unsigned int interval;
@@ -1452,6 +1453,7 @@ SET_FILTER:
     /* filter setting management */
     if ((frame_par_ready_to_set) || (frame_par_force_to_set)) {
         cur_frame_par = next_frame_par;
+        frame_par_di_set = 1;
     }
 
     if (cur_dispbuf) {
@@ -1593,9 +1595,11 @@ SET_FILTER:
     }
     else
 #endif
-    if(cur_dispbuf && cur_dispbuf->process_fun && (cur_dispbuf->duration > 0)){
+    if(cur_dispbuf && cur_dispbuf->process_fun){
         /* for new deinterlace driver */
-        cur_dispbuf->process_fun(cur_dispbuf->private_data, zoom_start_x_lines|(cur_frame_par->vscale_skip_count<<24), zoom_end_x_lines, zoom_start_y_lines, zoom_end_y_lines);
+        cur_dispbuf->process_fun(cur_dispbuf->private_data, 
+            zoom_start_x_lines|(cur_frame_par->vscale_skip_count<<24)|(frame_par_di_set<<16), 
+            zoom_end_x_lines, zoom_start_y_lines, zoom_end_y_lines);
     }
 
     if(timer_count > 50){

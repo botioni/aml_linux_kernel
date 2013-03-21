@@ -4,7 +4,7 @@
 
 di-objs = deinterlace.o \
     deinterlace_hw.o \
-    deinterlace_pd.o
+    deinterlace_pd.o \
     
     
 

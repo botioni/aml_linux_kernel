@@ -68,7 +68,7 @@
 #if defined(CONFIG_AM_DEINTERLACE_SD_ONLY)
 #define DI_MEM_SIZE			(SZ_1M*3)
 #else
-#define DI_MEM_SIZE			(SZ_1M*15)
+#define DI_MEM_SIZE			(SZ_1M*25)
 #endif
 #define DI_ADDR_START		U_ALIGN(CODEC_ADDR_END)
 #define DI_ADDR_END			(DI_ADDR_START+DI_MEM_SIZE-1)
