@@ -360,7 +360,12 @@
  #include "Si2168_10_ROM1_Patch_0_Cb20.h"       /* patch    compatible with Si2168-10 ROM 1 */
 #endif /* Si2168_10_COMPATIBLE */
 #ifdef    Si2168_20_COMPATIBLE
-#include "Si2168_20_ROM2_Patch_2_0b11.h"       /* patch    compatible with Si2168-20 ROM 2 */
+//#include "Si2168_20_ROM2_Patch_2_0b28.h"  
+#include "Si2168_20_ROM2_Patch_2_0b30.h" 
+
+
+
+//#include "Si2168_20_ROM2_Patch_2_0b11.h"       /* patch    compatible with Si2168-20 ROM 2 */
 #endif /* Si2168_20_COMPATIBLE */
 
 
@@ -694,6 +699,59 @@ int Si2168_PowerUpWithPatch    (L1_Si2168_Context *api)
     }
     #endif /* Si2168_PATCH_2_0b11_LINES */
 #endif /* Si2168_20_COMPATIBLE */
+
+//rsj
+#ifdef    Si2168_20_COMPATIBLE
+#ifdef    ALLOW_Si2168_BLINDSCAN_DEBUG
+    #ifdef    Si2168_FIRMWARE_2_0b2_LINES
+    if (!fw_loaded) {
+      SiTRACE  ("Is this part a  'Si21%2d_ROM%x_%c_%c_b%d'?\n", Si2168_FIRMWARE_2_0b2_PART, Si2168_FIRMWARE_2_0b2_ROM, Si2168_FIRMWARE_2_0b2_PMAJOR, Si2168_FIRMWARE_2_0b2_PMINOR, Si2168_FIRMWARE_2_0b2_PBUILD );
+      if ((api->rsp->part_info.romid  == Si2168_FIRMWARE_2_0b2_ROM   )
+        &((api->rsp->part_info.part   == 69 ) || (api->rsp->part_info.part == 68 ))
+        & (api->rsp->part_info.pmajor == Si2168_FIRMWARE_2_0b2_PMAJOR)
+        & (api->rsp->part_info.pminor == Si2168_FIRMWARE_2_0b2_PMINOR)
+        & (api->rsp->part_info.pbuild == Si2168_FIRMWARE_2_0b2_PBUILD)) {
+          SiTRACE("Updating FW for 'Si21%2d_ROM%x %c_%c_b%d'\n", api->rsp->part_info.part, api->rsp->part_info.romid, api->rsp->part_info.pmajor, api->rsp->part_info.pminor, api->rsp->part_info.pbuild );
+          #ifdef    Si2168_FIRMWARE_2_0b2_INFOS
+          SiTRACE(Si2168_FIRMWARE_2_0b2_INFOS);
+          SiERROR(Si2168_FIRMWARE_2_0b2_INFOS);
+          #endif /* Si2168_FIRMWARE_2_0b2_INFOS */
+          if ((return_code = Si2168_LoadFirmware(api, Si2168_FIRMWARE_2_0b2, Si2168_FIRMWARE_2_0b2_LINES)) != NO_Si2168_ERROR) {
+            SiTRACE ("Si2168_LoadFirmware error 0x%02x: %s\n", return_code, Si2168_L1_API_ERROR_TEXT(return_code) );
+            return return_code;
+          }
+          fw_loaded++;
+        }
+    }
+    #endif /* Si2168_FIRMWARE_2_0b2_LINES */
+#endif /* ALLOW_Si2168_BLINDSCAN_DEBUG */
+    #ifdef    Si2168_PATCH_2_0b30_LINES
+    if (!fw_loaded) {
+      SiTRACE  ("Is this part a  'Si21%2d_ROM%x_%c_%c_b%d'?\n", Si2168_PATCH_2_0b30_PART, Si2168_PATCH_2_0b30_ROM, Si2168_PATCH_2_0b30_PMAJOR, Si2168_PATCH_2_0b30_PMINOR, Si2168_PATCH_2_0b30_PBUILD );
+      if ((api->rsp->part_info.romid  == Si2168_PATCH_2_0b30_ROM   )
+        &((api->rsp->part_info.part   == 69 ) || (api->rsp->part_info.part == 68 ))
+        & (api->rsp->part_info.pmajor == Si2168_PATCH_2_0b30_PMAJOR)
+        & (api->rsp->part_info.pminor == Si2168_PATCH_2_0b30_PMINOR)
+        & (api->rsp->part_info.pbuild == Si2168_PATCH_2_0b30_PBUILD)) {
+          SiTRACE("Updating FW for 'Si21%2d_ROM%x %c_%c_b%d'\n", api->rsp->part_info.part, api->rsp->part_info.romid, api->rsp->part_info.pmajor, api->rsp->part_info.pminor, api->rsp->part_info.pbuild );
+          #ifdef    Si2168_PATCH_2_0b30_INFOS
+          SiTRACE(Si2168_PATCH_2_0b30_INFOS);
+          SiERROR(Si2168_PATCH_2_0b30_INFOS);
+          #endif /* Si2168_PATCH_2_0b30_INFOS */
+          if ((return_code = Si2168_LoadFirmware(api, Si2168_PATCH_2_0b30, Si2168_PATCH_2_0b30_LINES)) != NO_Si2168_ERROR) {
+            SiTRACE ("Si2168_LoadFirmware error 0x%02x: %s\n", return_code, Si2168_L1_API_ERROR_TEXT(return_code) );
+            return return_code;
+          }
+          fw_loaded++;
+        }
+    }
+    #endif /* Si2168_PATCH_2_0b28_LINES */
+#endif /* Si2168_20_COMPATIBLE */
+
+
+//rsj
+
+
 
     if (!fw_loaded) {
       SiTRACE ("Si2168_LoadFirmware error: NO Firmware Loaded! Possible part/code incompatibility !\n");
