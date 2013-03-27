@@ -232,7 +232,7 @@ static irqreturn_t vmpeg12_isr(int irq, void *dev_id)
     if (reg) {
         info = READ_MPEG_REG(MREG_PIC_INFO);
         offset = READ_MPEG_REG(MREG_FRAME_OFFSET);
-
+				info = info | PICINFO_TOP_FIRST;
         if (((info & PICINFO_TYPE_MASK) == PICINFO_TYPE_I) &&
             (pts_lookup_offset(PTS_TYPE_VIDEO, offset, &pts, 0) == 0)) {
             pts_valid = 1;
@@ -327,7 +327,7 @@ static irqreturn_t vmpeg12_isr(int irq, void *dev_id)
 
             vf->index = index;
             vf->type = (info & PICINFO_TOP_FIRST) ?
-                       VIDTYPE_INTERLACE_TOP : VIDTYPE_INTERLACE_BOTTOM;
+                       VIDTYPE_INTERLACE_BOTTOM : VIDTYPE_INTERLACE_TOP;
             vf->duration >>= 1;
             vf->duration_pulldown = (info & PICINFO_RPT_FIRST) ?
                                     vf->duration >> 1 : 0;
