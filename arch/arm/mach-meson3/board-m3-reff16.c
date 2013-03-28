@@ -374,11 +374,19 @@ static void set_usb_b_vbus_power(char is_power_on)
     if(is_power_on) {
         printk(KERN_INFO "set usb b port power on (board gpio %d)!\n",USB_B_POW_GPIO_BIT);
         set_gpio_mode(USB_B_POW_GPIO, USB_B_POW_GPIO_BIT, GPIO_OUTPUT_MODE);
+#ifdef CONFIG_MACH_MESON3_REFF16_V1029
+		set_gpio_val(USB_B_POW_GPIO, USB_B_POW_GPIO_BIT, USB_B_POW_GPIO_BIT_OFF);
+#else
         set_gpio_val(USB_B_POW_GPIO, USB_B_POW_GPIO_BIT, USB_B_POW_GPIO_BIT_ON);
+#endif
     } else    {
         printk(KERN_INFO "set usb b port power off (board gpio %d)!\n",USB_B_POW_GPIO_BIT);
         set_gpio_mode(USB_B_POW_GPIO, USB_B_POW_GPIO_BIT, GPIO_OUTPUT_MODE);
+#ifdef CONFIG_MACH_MESON3_REFF16_V1029
+		set_gpio_val(USB_B_POW_GPIO, USB_B_POW_GPIO_BIT, USB_B_POW_GPIO_BIT_ON);
+#else
         set_gpio_val(USB_B_POW_GPIO, USB_B_POW_GPIO_BIT, USB_B_POW_GPIO_BIT_OFF);
+#endif
     }
 }
 
@@ -899,7 +907,11 @@ static struct platform_device aml_audio = {
 
 int aml_m3_is_hp_pluged(void)
 {
+#ifdef CONFIG_MACH_MESON3_REFF16_V1029
+	return get_gpio_val(GPIOX_bank_bit0_31(31), GPIOX_bit_bit0_31(31));
+#else
 	return 0; //return 1: hp pluged, 0: hp unpluged.
+#endif
 }
 
 void mute_spk(struct snd_soc_codec* codec, int flag)
@@ -908,10 +920,18 @@ void mute_spk(struct snd_soc_codec* codec, int flag)
 	printk("***Entered %s:%s\n", __FILE__,__func__);
 #endif
     if(flag){
+#ifdef CONFIG_MACH_MESON3_REFF16_V1029
+		set_gpio_val(GPIOC_bank_bit0_15(4), GPIOC_bit_bit0_15(4), 0);	 // mute speak
+#else
 		set_gpio_val(GPIOC_bank_bit0_15(4), GPIOC_bit_bit0_15(4), 1);	 // mute speak
+#endif
 		set_gpio_mode(GPIOC_bank_bit0_15(4), GPIOC_bit_bit0_15(4), GPIO_OUTPUT_MODE);
 	}else{
+#ifdef CONFIG_MACH_MESON3_REFF16_V1029
+		set_gpio_val(GPIOC_bank_bit0_15(4), GPIOC_bit_bit0_15(4), 1);	 // unmute speak
+#else
 		set_gpio_val(GPIOC_bank_bit0_15(4), GPIOC_bit_bit0_15(4), 0);	 // unmute speak
+#endif
 		set_gpio_mode(GPIOC_bank_bit0_15(4), GPIOC_bit_bit0_15(4), GPIO_OUTPUT_MODE);
 	}
 }
@@ -2819,8 +2839,12 @@ static void __init device_pinmux_init(void )
 //    set_audio_pinmux(AUDIO_OUT_TEST_N);
    // set_audio_pinmux(AUDIO_IN_JTAG);
 
+#ifdef CONFIG_MACH_MESON3_REFF16_V1029
+   #if defined(CONFIG_SND_AML_M3_CS4334)
+		set_audio_codec_pinmux();
+   #endif
+#endif
 
-	
 #ifdef CONFIG_AM_MXL101
 	//for mxl101
 

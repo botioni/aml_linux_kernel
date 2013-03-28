@@ -102,6 +102,12 @@ config MACH_MESON3_REFF16_DONGLE
 	bool "Support M3(dongle) MBX platform"
 	help
 	  Include support for the Ref M3 board platform.
+
+config MACH_MESON3_REFF16_V1029
+	select GENERIC_ALLOCATOR
+	bool "Support M3(V1029) MBX platform"
+	help
+	  Include support for the Ref M3 board platform.
 	  
 config MACH_MESON3_REFF20
 	select GENERIC_ALLOCATOR
