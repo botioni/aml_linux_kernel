@@ -13,7 +13,7 @@
 //#define DEBUG_CHECKIN
 //#define DEBUG_CHECKOUT
 
-#define VIDEO_REC_SIZE  8192
+#define VIDEO_REC_SIZE  4096
 #define AUDIO_REC_SIZE  8192
 #define VIDEO_LOOKUP_RESOLUTION 2500
 #define AUDIO_LOOKUP_RESOLUTION 1024
@@ -149,7 +149,6 @@ static inline void get_rdpage_offset(u8 type, u32 *page, u32 *page_offset)
 int pts_cached_time(u8 type)
 {
     pts_table_t *pTable;
-    u32 pts;
 
     if (type >= PTS_TYPE_MAX) {
         return 0;
@@ -157,18 +156,10 @@ int pts_cached_time(u8 type)
 
     pTable = &pts_table[type];
 
-    if(type==PTS_TYPE_VIDEO)
-        pts = timestamp_apts_get();
-    else
-        pts = timestamp_vpts_get();
-
-    if(pts==-1)
-        pts = pTable->last_checkout_pts;
-
-    if((pTable->last_checkin_pts==-1) || (pts==-1))
+    if((pTable->last_checkin_pts==-1) || (pTable->last_checkout_pts==-1)) {
         return 0;
-
-    return pTable->last_checkin_pts-pts;
+    }
+    return pTable->last_checkin_pts-pTable->last_checkout_pts;
 }
 
 EXPORT_SYMBOL(pts_cached_time);
@@ -177,7 +168,6 @@ EXPORT_SYMBOL(pts_cached_time);
 int pts_checkin_offset(u8 type, u32 offset, u32 val)
 {
     ulong flags;
-    const u32 pts_reg[PTS_TYPE_MAX] = {VIDEO_PTS, AUDIO_PTS};
     pts_table_t *pTable;
 
     if (type >= PTS_TYPE_MAX) {
@@ -255,7 +245,13 @@ int pts_checkin_offset(u8 type, u32 offset, u32 val)
                 printk("init apts[%d] at 0x%x\n", type, val);
             }
 #endif
-            WRITE_MPEG_REG(pts_reg[type], val);
+
+            if (type == PTS_TYPE_VIDEO) {
+                WRITE_MPEG_REG(VIDEO_PTS, val);
+            } else if (type == PTS_TYPE_AUDIO) {
+                WRITE_MPEG_REG(AUDIO_PTS, val);
+            }
+
             pTable->status = PTS_RUNNING;
         }
 
