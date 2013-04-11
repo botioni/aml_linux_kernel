@@ -114,7 +114,8 @@ static struct vframe_provider_s * osd_prov = NULL;
 
 #define M_PTS_SMOOTH_MAX 45000
 #define M_PTS_SMOOTH_MIN 2250
-#define M_PTS_SMOOTH_ADJUST 900
+#define M_PTS_SMOOTH_ADJUST_PLUS 450
+#define M_PTS_SMOOTH_ADJUST_MINUS 450
 
 #ifdef FIQ_VSYNC
 #define BRIDGE_IRQ  INT_TIMER_D
@@ -1187,9 +1188,9 @@ static inline bool vpts_expire(vframe_t *cur_vf, vframe_t *next_vf)
             }
             
             if((int)(org_vpts + vsync_pts_inc - systime) > 0){
-                adjust_pts = vpts_ref + (vsync_pts_inc - M_PTS_SMOOTH_ADJUST) * video_frame_repeat_count;
+                adjust_pts = vpts_ref + (vsync_pts_inc - M_PTS_SMOOTH_ADJUST_MINUS) * video_frame_repeat_count;
             }else{
-                adjust_pts = vpts_ref + (vsync_pts_inc + M_PTS_SMOOTH_ADJUST) * video_frame_repeat_count;
+                adjust_pts = vpts_ref + (vsync_pts_inc + M_PTS_SMOOTH_ADJUST_PLUS) * video_frame_repeat_count;
             }
             
             return ((int)(adjust_pts - pts) >= 0);
