@@ -183,6 +183,7 @@ static void delay_us (int us)
 } /* delay_us */
 
 #ifndef AVOS
+extern unsigned int uboot_vmode_flag;
 static irqreturn_t intr_handler(int irq, void *dev_instance)
 #else
 static void intr_handler(void *arg)
@@ -217,6 +218,7 @@ static void intr_handler(void *arg)
         hpd_timer.expires = jiffies + HZ/2;
         add_timer(&hpd_timer);
 #else
+        uboot_vmode_flag = 0;
         if (hdmi_rd_reg(TX_HDCP_ST_EDID_STATUS) & (1<<1)) {
             // Start DDC transaction
             hdmi_wr_reg(TX_HDCP_EDID_CONFIG, hdmi_rd_reg(TX_HDCP_EDID_CONFIG) & (~(1<<6))); // Assert sys_trigger_config
@@ -1282,7 +1284,6 @@ void hdmi_hw_init(hdmitx_dev_t* hdmitx_device)
 
     {
         extern vinfo_t * hdmi_get_current_vinfo(void);
-        extern unsigned char uboot_vmode_flag;
         HDMI_Video_Codes_t vic;     //Prevent warning
         const vinfo_t *info = hdmi_get_current_vinfo();
         vic = hdmitx_edid_get_VIC(hdmitx_device, info->name, (hdmitx_device->disp_switch_config==DISP_SWITCH_FORCE)?1:0);

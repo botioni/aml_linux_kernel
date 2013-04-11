@@ -28,8 +28,8 @@
 
 
 //#define _SUPPORT_CEC_TV_MASTER_
-#define _RX_CEC_DBG_ON_
-#define _TX_CEC_DBG_ON_
+//#define _RX_CEC_DBG_ON_
+//#define _TX_CEC_DBG_ON_
 
 #ifdef  _RX_CEC_DBG_ON_
 #define hdmirx_cec_dbg_print(fmt, args...) printk(KERN_WARNING fmt, ## args)//hdmi_print
@@ -371,6 +371,12 @@ typedef unsigned long cec_info_mask;
 #define ONE_TOUCH_STANDBY_MASK               2
 #define AUTO_POWER_ON_MASK                   3
 
+#define CEC_FUN_ENABLE //cec funciton enable/disable
+#ifdef  CEC_FUN_ENABLE
+#define CEC_FUN_VALUE 0xf
+#else 
+#define CEC_FUN_VALUE 0x0
+#endif
 //typedef struct {
 //    unsigned long vendor_id;
 //    unsigned char vendor_id_byte_num;
@@ -569,6 +575,7 @@ void cec_set_imageview_on_irq(void);
 void cec_report_physical_address_smp(void);
 void cec_imageview_on_smp(void);
 void cec_active_source_smp(void);
+void cec_active_source_irq(void);
 
 size_t cec_usrcmd_get_global_info(char * buf);
 void cec_usrcmd_set_dispatch(const char * buf, size_t count);

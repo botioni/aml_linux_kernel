@@ -54,7 +54,7 @@ __u16 cec_key_map[128] = {
     0 , 0, 0, 0, 0, 0, 0, 0,//0x50
     0 , 0, 0, 0, 0, 0, 0, 0,
     KEY_PLAYCD, KEY_PLAYPAUSE, KEY_RECORD, KEY_PAUSECD, KEY_STOPCD, KEY_MUTE, 0, KEY_TUNER,//0x60
-    0 , KEY_MEDIA, 0, 0, KEY_POWER, KEY_POWER, 0, 0,
+    0 , KEY_MEDIA, 0, 0, KEY_POWER, 0, 0, 0,
     0 , KEY_BLUE, KEY_RED, KEY_GREEN, KEY_YELLOW, 0, 0, 0,//0x70
     0 , 0, 0, 0, 0, 0, 0, 0,
 };

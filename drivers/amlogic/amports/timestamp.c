@@ -2,20 +2,6 @@
 
 #include <mach/am_regs.h>
 
-unsigned int timestamp_enable_resample_flag = 0;
-EXPORT_SYMBOL(timestamp_enable_resample_flag);
-unsigned int timestamp_resample_type_flag = 0;
-EXPORT_SYMBOL(timestamp_resample_type_flag);
-
-u32 acc_apts_inc = 0;
-u32 acc_apts_dec = 0;
-u32 acc_pcrscr_inc = 0;
-u32 acc_pcrscr_dec = 0;
-
-/*need match to libplayer resample lib*/
-#define RESAMPLE_DELTA_NUMSAMPS 1
-#define DEFALT_NUMSAMPS_PERCH   128
-
 static s32 system_time_inc_adj = 0;
 static u32 system_time = 0;
 static u32 system_time_up = 0;
@@ -71,28 +57,8 @@ void timestamp_apts_inc(s32 inc)
 {
 	if(audio_pts_up){
 #ifdef MODIFY_TIMESTAMP_INC_WITH_PLL
-	inc = inc*timestamp_inc_factor/PLL_FACTOR;
+	    inc = inc*timestamp_inc_factor/PLL_FACTOR;
 #endif
-	if(timestamp_enable_resample_flag){
-		if(timestamp_resample_type_flag==0){      //0-->no resample  processing
-		
-		}else if(timestamp_resample_type_flag==1){//1-->down resample processing
-			inc += inc / DEFALT_NUMSAMPS_PERCH;
-			acc_apts_inc += inc % DEFALT_NUMSAMPS_PERCH;
-			if(acc_apts_inc >= 128){
-				inc += acc_apts_inc / DEFALT_NUMSAMPS_PERCH;
-				acc_apts_inc = acc_apts_inc % DEFALT_NUMSAMPS_PERCH;
-			}			
-		}else if(timestamp_resample_type_flag==2){//2-->up resample processing
-			inc -= inc / DEFALT_NUMSAMPS_PERCH;
-			acc_apts_dec += inc % DEFALT_NUMSAMPS_PERCH;
-			if(acc_apts_dec >= 128){
-				inc -= acc_apts_dec / DEFALT_NUMSAMPS_PERCH;
-				acc_apts_dec = acc_apts_dec % DEFALT_NUMSAMPS_PERCH;
-			}			
-		}
-	}
-
     	WRITE_MPEG_REG(AUDIO_PTS, READ_MPEG_REG(AUDIO_PTS) + inc);
 	}
 }
@@ -108,14 +74,14 @@ EXPORT_SYMBOL(timestamp_apts_enable);
 
 void timestamp_apts_start(u32 enable)
 {
-  audio_pts_started = enable;
-  printk("audio pts started::::::: %d\n", enable);
+    audio_pts_started = enable;
+    printk("audio pts started::::::: %d\n", enable);
 }
 EXPORT_SYMBOL(timestamp_apts_start);
 
-u32 timestamp_apts_started()
+u32 timestamp_apts_started(void)
 {
-  return audio_pts_started;
+    return audio_pts_started;
 }
 EXPORT_SYMBOL(timestamp_apts_started);
 
@@ -140,26 +106,6 @@ void timestamp_pcrscr_inc(s32 inc)
 #ifdef MODIFY_TIMESTAMP_INC_WITH_PLL
         inc = inc*timestamp_inc_factor/PLL_FACTOR;
 #endif
-	if(timestamp_enable_resample_flag){
-		if(timestamp_resample_type_flag==0){      //0-->no resample  processing
-		
-		}else if(timestamp_resample_type_flag==1){//1-->down resample processing
-			inc += inc / DEFALT_NUMSAMPS_PERCH;
-			acc_pcrscr_inc += inc % DEFALT_NUMSAMPS_PERCH;
-			if(acc_pcrscr_inc >= 128){
-				inc += acc_pcrscr_inc / DEFALT_NUMSAMPS_PERCH;
-				acc_pcrscr_inc = acc_pcrscr_inc % DEFALT_NUMSAMPS_PERCH;
-			}
-		}else if(timestamp_resample_type_flag==2){//2-->up resample processing
-			inc -= inc / DEFALT_NUMSAMPS_PERCH;
-			acc_pcrscr_dec += inc % DEFALT_NUMSAMPS_PERCH;
-			if(acc_pcrscr_dec >= 128){
-				inc -= acc_pcrscr_dec / DEFALT_NUMSAMPS_PERCH;
-				acc_pcrscr_dec = acc_pcrscr_dec % DEFALT_NUMSAMPS_PERCH;
-			}
-		}
-	}
-
         system_time += inc + system_time_inc_adj;
     }
 }
