@@ -114,8 +114,6 @@ static struct vframe_provider_s * osd_prov = NULL;
 
 #define M_PTS_SMOOTH_MAX 45000
 #define M_PTS_SMOOTH_MIN 2250
-#define M_PTS_SMOOTH_ADJUST_PLUS 450
-#define M_PTS_SMOOTH_ADJUST_MINUS 450
 
 #ifdef FIQ_VSYNC
 #define BRIDGE_IRQ  INT_TIMER_D
@@ -352,6 +350,7 @@ static wait_queue_head_t amvideo_trick_wait;
 
 static u32 vpts_ref = 0;
 static u32 video_frame_repeat_count = 0;
+/*0-smooth sync disable, >0 smooth sync adjust time(pts90khz, unit 90000 = 1 second)*/
 static u32 smooth_sync_enable = 0;
 #ifdef CONFIG_AM_VIDEO2
 static int video_play_clone_rate = 10;
@@ -1188,9 +1187,9 @@ static inline bool vpts_expire(vframe_t *cur_vf, vframe_t *next_vf)
             }
             
             if((int)(org_vpts + vsync_pts_inc - systime) > 0){
-                adjust_pts = vpts_ref + (vsync_pts_inc - M_PTS_SMOOTH_ADJUST_MINUS) * video_frame_repeat_count;
+                adjust_pts = vpts_ref + (vsync_pts_inc - smooth_sync_enable) * video_frame_repeat_count;
             }else{
-                adjust_pts = vpts_ref + (vsync_pts_inc + M_PTS_SMOOTH_ADJUST_PLUS) * video_frame_repeat_count;
+                adjust_pts = vpts_ref + (vsync_pts_inc + smooth_sync_enable) * video_frame_repeat_count;
             }
             
             return ((int)(adjust_pts - pts) >= 0);
