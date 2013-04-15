@@ -919,6 +919,9 @@ void net_tasklet(unsigned long dev_instance)
 					printk("NET skb pointer error!!!\n");
 					break;
 				}
+				if (rx->buf_dma != 0) {
+                                        dma_unmap_single(&dev->dev, rx->buf_dma, np->rx_buf_sz, DMA_FROM_DEVICE);
+                                }
 				if (rx->skb->len > 0) {
 					printk("skb have data before,skb=%p,len=%d\n", rx->skb, rx->skb->len);
 					rx->skb = NULL;
@@ -931,9 +934,6 @@ void net_tasklet(unsigned long dev_instance)
 				/*we have checked in hardware;
 				   we not need check again */
 				rx->skb->ip_summed = ip_summed;
-				if (rx->buf_dma != 0) {
-					dma_unmap_single(&dev->dev, rx->buf_dma, np->rx_buf_sz, DMA_FROM_DEVICE);
-				}
 				rx->buf_dma = 0;
 				netif_rx(rx->skb);
 				if (g_debug > 3) {
