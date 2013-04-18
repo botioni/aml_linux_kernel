@@ -551,7 +551,7 @@ static int audiodsp_ioctl(struct inode *node, struct file *file, unsigned int cm
                         break;
 			
 		default:
-			DSP_PRNT("unsupport cmd number%d\n",cmd);
+			//DSP_PRNT("unsupport cmd number%d\n",cmd);
 			ret=-1;
 		}
 	return ret;
