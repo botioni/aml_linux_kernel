@@ -2544,13 +2544,13 @@ static  struct platform_device cxd2834_device = {
 #if defined(CONFIG_AM_SMARTCARD)
 static struct resource amlogic_smc_resource[]  = {
 	[0] = {
-		.start = ((GPIOD_bank_bit2_24(11)<<16) | GPIOD_bit_bit2_24(11)),                          //smc POWER gpio
-		.end   = ((GPIOD_bank_bit2_24(11)<<16) | GPIOD_bit_bit2_24(11)),
+		.start = ((GPIOD_bank_bit0_9(11)<<16) | GPIOD_bit_bit0_9(11)), //smc enable gpio
+		.end   = ((GPIOD_bank_bit0_9(11)<<16) | GPIOD_bit_bit0_9(11)),
 		.flags = IORESOURCE_MEM,
-		.name  = "smc0_power"
+		.name  = "smc0_enable_pin"
 	},
 	[1] = {
-		.start = INT_SMART_CARD,                   //smc irq number
+		.start = INT_SMART_CARD,             //smc irq number
 		.end   = INT_SMART_CARD,
 		.flags = IORESOURCE_IRQ,
 		.name  = "smc0_irq"
