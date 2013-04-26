@@ -127,6 +127,14 @@ config RTL8XXX_CU_EXT_POWER_CTRL
 	---help---
 	  This config adds support for controlling power of Realtek 8xxxCU series,need define function extern_usb_wifi_power() in bsp first.
 
+config RTL8188EU
+	tristate "Realtek EU series (8188EU 8188ETV) Wireless USB Dongle support"
+	default n
+	depends on MAC80211 && USB
+	---help---
+	  This module adds support for wireless USB dongle based on
+	  Realtek 8188EU chipset.
+	  
 config ATH6KL_USB_WIFI	
 	tristate "Atheros ath6kl Wireless USB Dongle support"	
 	default n	
