@@ -2199,6 +2199,7 @@ static void hdmitx_set_pll(Hdmi_tx_video_para_t *param)
         case HDMI_1080p60:
             set_vmode_clk(VMODE_1080P);
             break;
+
 //            set_vmode_clk(VMODE_1080P_50HZ);
 //            break;
         default:

@@ -115,7 +115,7 @@ static int Edid_find_name_block(unsigned char * data)
 static void Edid_ReceiverProductNameParse(rx_cap_t * pRxCap, unsigned char * data)
 {
     int i = 0;
-    while(data[i] != 0x0a) {
+    while((data[i] != 0x0a) && (i < 16)) {
         pRxCap->ReceiverProductName[i] = data[i];
         i++;
     }

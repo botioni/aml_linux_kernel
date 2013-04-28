@@ -1286,6 +1286,7 @@ hdmi_task_handle(void *data)
                 }
             }
             hdmitx_device->cur_VIC = HDMI_Unkown;
+            hdmitx_device->internal_mode_change = 0;
             hdmi_authenticated = -1;
 			switch_set_state(&sdev, 0);
             if(hdmitx_device->hpd_event == 2)
