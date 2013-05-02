@@ -1686,6 +1686,7 @@ static int amhdmitx_suspend(struct platform_device *pdev,pm_message_t state)
 
 static int amhdmitx_resume(struct platform_device *pdev)
 {
+    hdmitx_device.internal_mode_change = 0;
 #if 0
     pr_info("amhdmitx: resume module\n");
     hdmitx_device.HWOp.Cntl(&hdmitx_device, HDMITX_HWCMD_5V_CTL, 1);
