@@ -1,4 +1,5 @@
 obj-$(CONFIG_RTL8XXX_CU_USB_WIFI) += rtl8xxx_CU/
+obj-$(CONFIG_RTL8188EU) += rtl8xxx_EU/
 obj-$(CONFIG_RTL8XXX_SU_USB_WIFI) += rtl8xxx_SU/
 obj-$(CONFIG_RTXX7X_USB_WIFI) += rtxx7x/
 obj-$(CONFIG_SAMSUNG_WIFI_4329) += bcm4329/
