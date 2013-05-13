@@ -50,8 +50,12 @@
 #include <mach/gpio.h>
 #include <linux/delay.h>
 #include <mach/clk_set.h>
-#include "board-m3-reff16.h"
 
+#ifdef CONFIG_MACH_MESON3_REFF16_512M
+#include "board-m3-reff16_512m.h"
+#else
+#include "board-m3-reff16.h"
+#endif
 
 #ifdef CONFIG_ANDROID_PMEM
 #include <linux/slab.h>
