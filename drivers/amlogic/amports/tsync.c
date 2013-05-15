@@ -506,9 +506,9 @@ void tsync_avevent_locked(avevent_t event, u32 param)
 #endif
 
             tsync_stat = TSYNC_STAT_PCRSCR_SETUP_VIDEO;
-            amlog_level(LOG_LEVEL_INFO, "vpts to scr, apts = 0x%x, vpts = 0x%x\n",
+        /*    amlog_level(LOG_LEVEL_INFO, "vpts to scr, apts = 0x%x, vpts = 0x%x\n",
                         timestamp_apts_get(),
-                        timestamp_vpts_get());
+                        timestamp_vpts_get()); */
         }
 
         if (tsync_stat == TSYNC_STAT_PCRSCR_SETUP_AUDIO) {
@@ -731,8 +731,8 @@ void tsync_avevent(avevent_t event, u32 param)
 {
     ulong flags;
     ulong fiq_flag;
-    amlog_level(LOG_LEVEL_INFO, "[%s]event:%d, param %d\n",
-                __FUNCTION__, event, param);
+ /*   amlog_level(LOG_LEVEL_INFO, "[%s]event:%d, param %d\n",
+                __FUNCTION__, event, param);*/
     spin_lock_irqsave(&lock, flags);
 
     raw_local_save_flags(fiq_flag);

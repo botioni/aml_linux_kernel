@@ -189,8 +189,7 @@ s32 adec_init(stream_port_t *port)
 }
 
 s32 adec_release(aformat_t vf)
-{
-    printk("adec_release\n");
+{    
 
     if (!astream_dev) {
         return -ENODEV;

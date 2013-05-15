@@ -95,7 +95,7 @@ static unsigned first_apts, first_vpts;
 static unsigned audio_got_first_pts, video_got_first_dts, sub_got_first_pts;
 atomic_t sub_block_found = ATOMIC_INIT(0);
 
-#define DEBUG_VOB_SUB
+//#define DEBUG_VOB_SUB
 #ifdef DEBUG_VOB_SUB
 static u8 sub_found_num;
 static struct subtitle_info *sub_info[MAX_SUB_NUM];
@@ -812,8 +812,9 @@ s32 psparser_init(u32 vid, u32 aid, u32 sid)
     first_apts = 0;
     first_vpts = 0;
     pts_equ_dts_flag = 0;
-
+#ifdef DEBUG_PARSER
     printk("video 0x%x, audio 0x%x, sub 0x%x\n", video_id, audio_id, sub_id);
+#endif
     if (fetchbuf == 0) {
         printk("%s: no fetchbuf\n", __FUNCTION__);
         return -ENOMEM;
@@ -917,8 +918,9 @@ Err_1:
 void psparser_release(void)
 {
 	u8 i;
+#ifdef DEBUG_PARSER	
     printk("psparser_release\n");
-
+#endif
     WRITE_MPEG_REG(PARSER_INT_ENABLE, 0);
 
     free_irq(INT_PARSER, (void *)psparser_id);
