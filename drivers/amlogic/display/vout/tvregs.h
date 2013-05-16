@@ -205,7 +205,8 @@ static const  reg_t tvregs_720p_50hz[] = {
     {VENC_VDAC_DACSEL5,          0x0001,},
     {ENCI_VIDEO_EN,              0,     },
     {ENCP_VIDEO_EN,              1,     },
-    {MREG_END_MARKER,            0      }
+    {MREG_END_MARKER,            0      },
+    {ENCP_DACSEL_0,              0x3210,}
 };
 
 static const reg_t tvregs_480i[] = {
