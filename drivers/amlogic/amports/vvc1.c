@@ -125,6 +125,7 @@ typedef struct {
     int num;
     u32 end_pts;
     u32 rate;
+    u32 trymax;
 } frm_t;
 
 static frm_t frm;
@@ -295,12 +296,12 @@ static void vvc1_isr(void)
             if (frm.state == RATE_MEASURE_START_PTS) {
                 frm.start_pts = pts;
                 frm.state = RATE_MEASURE_END_PTS;
+				frm.trymax =RATE_MEASURE_NUM;
             } else if (frm.state == RATE_MEASURE_END_PTS) {
-                if (frm.num >= RATE_MEASURE_NUM) {
+                if (frm.num >= frm.trymax) {
                     frm.end_pts = pts;
-                    frm.rate = (frm.end_pts - frm.start_pts) / frm.num;
-                    frm.state = RATE_MEASURE_DONE;
-
+                    frm.rate = (frm.end_pts - frm.start_pts) /frm.num;
+                    printk("vvc1: before convert rate =%d %d,frm.num=%d\n",frm.rate,DUR2PTS(vvc1_amstream_dec_info.rate),frm.num);
                     /* check if measured rate is same as settings from upper layer and correct it if necessary */
                     if ((close_to(frm.rate, RATE_30_FPS, RATE_CORRECTION_THRESHOLD) &&
                          close_to(DUR2PTS(vvc1_amstream_dec_info.rate), RATE_24_FPS, RATE_CORRECTION_THRESHOLD)) ||
@@ -309,6 +310,16 @@ static void vvc1_isr(void)
                         printk("vvc1: frame rate converted from %d to %d\n",
                             vvc1_amstream_dec_info.rate, PTS2DUR(frm.rate));
                         vvc1_amstream_dec_info.rate = PTS2DUR(frm.rate);
+                        frm.state = RATE_MEASURE_DONE;
+                    }else if(close_to(frm.rate, DUR2PTS(vvc1_amstream_dec_info.rate), RATE_CORRECTION_THRESHOLD)){
+                        frm.state = RATE_MEASURE_DONE;
+                    }else{/*maybe still have problem,try next double frames....*/
+                        frm.state = RATE_MEASURE_DONE;
+                        frm.start_pts = pts;
+                        frm.state = RATE_MEASURE_END_PTS;
+                        if(frm.trymax < 60*10)/*60 fps*60 S */
+                            frm.trymax = frm.trymax<<1;
+                        frm.num = 0; 
                     }
                 }
             }
