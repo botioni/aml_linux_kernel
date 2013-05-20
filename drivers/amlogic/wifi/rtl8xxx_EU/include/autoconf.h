@@ -115,7 +115,7 @@
 		#define CONFIG_TSF_RESET_OFFLOAD 			// For 2 PORT TSF SYNC.
 	#endif
 
-	//#define CONFIG_IOL
+	#define CONFIG_IOL
 //#else 	//#ifndef CONFIG_MP_INCLUDED
 	
 //#endif 	//#ifndef CONFIG_MP_INCLUDED
@@ -178,9 +178,9 @@
 	#define CONFIG_IOL_NEW_GENERATION
 	#define CONFIG_IOL_READ_EFUSE_MAP
 	//#define DBG_IOL_READ_EFUSE_MAP
-	#define CONFIG_IOL_LLT
+	//#define CONFIG_IOL_LLT
 	#define CONFIG_IOL_EFUSE_PATCH		
-	#define CONFIG_IOL_IOREG_CFG
+	//#define CONFIG_IOL_IOREG_CFG
 	//#define CONFIG_IOL_IOREG_CFG_DBG	
 #endif
 
@@ -204,7 +204,7 @@
 #endif	// CONFIG_BR_EXT
 
 #define CONFIG_TX_MCAST2UNI		// Support IP multicast->unicast
-//#define CONFIG_CHECK_AC_LIFETIME 	// Check packet lifetime of 4 ACs.
+#define CONFIG_CHECK_AC_LIFETIME 	// Check packet lifetime of 4 ACs.
 
 
 /* 
@@ -225,6 +225,9 @@
  */
 //#define CONFIG_USE_USB_BUFFER_ALLOC_TX 	// Trade-off: For TX path, improve stability on some platforms, but may cause performance degrade on other platforms.
 //#define CONFIG_USE_USB_BUFFER_ALLOC_RX 	// For RX path
+#ifdef CONFIG_USE_USB_BUFFER_ALLOC_RX
+#undef CONFIG_PREALLOC_RECV_SKB
+#endif
 
 #ifdef CONFIG_PLATFORM_ARM_SUNxI
 	#ifndef 	CONFIG_USE_USB_BUFFER_ALLOC_TX 
@@ -355,19 +358,21 @@
 
 #define CONFIG_80211D
 
+#define CONFIG_ATTEMPT_TO_FIX_AP_BEACON_ERROR
+
 /*
  * Debug Related Config
  */
-#define DBG	1
+#define DBG	0
 
-#define CONFIG_DEBUG /* DBG_871X, etc... */
+//#define CONFIG_DEBUG /* DBG_871X, etc... */
 //#define CONFIG_DEBUG_RTL871X /* RT_TRACE, RT_PRINT_DATA, _func_enter_, _func_exit_ */
 
 #define CONFIG_PROC_DEBUG
 
 #define DBG_CONFIG_ERROR_DETECT
 //#define DBG_CONFIG_ERROR_DETECT_INT
-//#define DBG_CONFIG_ERROR_RESET
+#define DBG_CONFIG_ERROR_RESET
 
 //#define DBG_IO
 //#define DBG_DELAY_OS

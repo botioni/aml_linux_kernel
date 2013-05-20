@@ -115,6 +115,18 @@ typedef enum _RT_SCAN_TYPE
 	SCAN_MIX,
 }RT_SCAN_TYPE, *PRT_SCAN_TYPE;
 
+enum  _BAND
+{
+	GHZ24_50 = 0,
+	GHZ_50,
+	GHZ_24,
+};
+
+enum DriverInterface {
+	DRIVER_WEXT =  1,
+	DRIVER_CFG80211 = 2
+};
+
 enum SCAN_RESULT_TYPE
 {
 	SCAN_RESULT_P2P_ONLY = 0,		//	Will return all the P2P devices.
@@ -245,7 +257,6 @@ struct cfg80211_wifidirect_info{
 	struct ieee80211_channel	remain_on_ch_channel;
 	enum nl80211_channel_type	remain_on_ch_type;
 	u64						remain_on_ch_cookie;
-	struct net_device 			*remain_on_ch_dev;
 	bool is_ro_ch;
 };
 #endif //CONFIG_IOCTL_CFG80211
@@ -326,6 +337,8 @@ struct wifidirect_info{
 	uint						channel_list_attr_len;		//	This field will contain the length of body of P2P Channel List attribute of group negotitation response frame.
 	u8						channel_list_attr[100];		//	This field will contain the body of P2P Channel List attribute of group negotitation response frame.
 														//	We will use the channel_cnt and channel_list fields when constructing the group negotitation confirm frame.
+	u8						driver_interface; // Indicate DRIVER_WEXT or DRIVER_CFG80211
+
 #ifdef CONFIG_CONCURRENT_MODE
 	u16						ext_listen_interval;	//	The interval to be available with legacy AP (ms)
 	u16						ext_listen_period;	//	The time period to be available for P2P listen state (ms)
@@ -700,7 +713,6 @@ __inline static void up_scanned_network(struct mlme_priv *pmlmepriv)
 #ifdef CONFIG_CONCURRENT_MODE
 sint rtw_buddy_adapter_up(_adapter *padapter);
 sint check_buddy_fwstate(_adapter *padapter, sint state);
-sint check_buddy_fw_link(_adapter *padapter);
 #endif //CONFIG_CONCURRENT_MODE
 
 __inline static void down_scanned_network(struct mlme_priv *pmlmepriv)
@@ -782,6 +794,7 @@ extern void _rtw_free_network_queue(_adapter* padapter, u8 isfreeall);
 
 extern sint rtw_if_up(_adapter *padapter);
 
+sint rtw_linked_check(_adapter *padapter);
 
 u8 *rtw_get_capability_from_ie(u8 *ie);
 u8 *rtw_get_timestampe_from_ie(u8 *ie);
@@ -800,8 +813,15 @@ int rtw_is_same_ibss(_adapter *adapter, struct wlan_network *pnetwork);
 int is_same_network(WLAN_BSSID_EX *src, WLAN_BSSID_EX *dst);
 
 #ifdef CONFIG_LAYER2_ROAMING
-void rtw_roaming(_adapter *padapter, struct wlan_network *tgt_network);
-void _rtw_roaming(_adapter *padapter, struct wlan_network *tgt_network);
+void _rtw_roaming(_adapter *adapter, struct wlan_network *tgt_network);
+void rtw_roaming(_adapter *adapter, struct wlan_network *tgt_network);
+void rtw_set_roaming(_adapter *adapter, u8 to_roaming);
+u8 rtw_to_roaming(_adapter *adapter);
+#else
+#define _rtw_roaming(adapter, tgt_network) do {} while(0)
+#define rtw_roaming(adapter, tgt_network) do {} while(0)
+#define rtw_set_roaming(adapter, to_roaming) do {} while(0)
+#define rtw_to_roaming(adapter) 0
 #endif
 
 void rtw_stassoc_hw_rpt(_adapter *adapter,struct sta_info *psta);

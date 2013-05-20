@@ -269,11 +269,6 @@ static s32 update_txdesc(struct xmit_frame *pxmitframe, u8 *pmem, s32 sz ,u8 bag
 	struct wifidirect_info*	pwdinfo = &padapter->wdinfo;
 #endif //CONFIG_P2P
 
-#ifdef CONFIG_CONCURRENT_MODE
-	if(rtw_buddy_adapter_up(padapter) && padapter->adapter_type > PRIMARY_ADAPTER)	
-		pHalData = GET_HAL_DATA(padapter->pbuddy_adapter);				
-#endif //CONFIG_CONCURRENT_MODE
-
 #ifndef CONFIG_USE_USB_BUFFER_ALLOC_TX 
 if (padapter->registrypriv.mp_mode == 0)
 {
@@ -812,15 +807,10 @@ s32 rtl8188eu_xmitframe_complete(_adapter *padapter, struct xmit_priv *pxmitpriv
 		pxmitframe->pkt_offset = 1; // first frame of aggregation, reserve offset
 		#endif
 
-#ifdef IDEA_CONDITION
-		rtw_xmitframe_coalesce(padapter, pxmitframe->pkt, pxmitframe);
-#else
-		res = rtw_xmitframe_coalesce(padapter, pxmitframe->pkt, pxmitframe);
-		if (res == _FALSE) {
-//			rtw_free_xmitframe(pxmitpriv, pxmitframe);
+		if (rtw_xmitframe_coalesce(padapter, pxmitframe->pkt, pxmitframe) == _FALSE) {
+			DBG_871X("%s coalesce 1st xmitframe failed \n",__FUNCTION__);
 			continue;
 		}
-#endif
 
 		// always return ndis_packet after rtw_xmitframe_coalesce
 		rtw_os_xmit_complete(padapter, pxmitframe);
@@ -845,7 +835,18 @@ s32 rtl8188eu_xmitframe_complete(_adapter *padapter, struct xmit_priv *pxmitpriv
 	}
 
 	// dequeue same priority packet from station tx queue
-	psta = pfirstframe->attrib.psta;
+	//psta = pfirstframe->attrib.psta;
+	psta = rtw_get_stainfo(&padapter->stapriv, pfirstframe->attrib.ra);
+	if(pfirstframe->attrib.psta != psta){
+		DBG_871X("%s, pattrib->psta(%p) != psta(%p)\n", __func__, pfirstframe->attrib.psta, psta);		
+	}
+	if (psta == NULL) {		
+		DBG_8192C("rtw_xmit_classifier: psta == NULL\n");		
+	}
+	if(!(psta->state &_FW_LINKED)){
+		DBG_871X("%s, psta->state(0x%x) != _FW_LINKED\n", __func__, psta->state);		
+	}
+	
 	switch (pfirstframe->attrib.priority) {
 		case 1:
 		case 2:
@@ -931,16 +932,12 @@ s32 rtl8188eu_xmitframe_complete(_adapter *padapter, struct xmit_priv *pxmitpriv
 //		pxmitframe->pxmitbuf = pxmitbuf;
 		pxmitframe->buf_addr = pxmitbuf->pbuf + pbuf;
 	
-#ifdef IDEA_CONDITION
-		rtw_xmitframe_coalesce(padapter, pxmitframe->pkt, pxmitframe);
-#else
-		res = rtw_xmitframe_coalesce(padapter, pxmitframe->pkt, pxmitframe);
-		if (res == _FALSE) {
+		if (rtw_xmitframe_coalesce(padapter, pxmitframe->pkt, pxmitframe) == _FALSE) {
 			DBG_871X("%s coalesce failed \n",__FUNCTION__);
 			rtw_free_xmitframe(pxmitpriv, pxmitframe);
 			continue;
 		}
-#endif
+
 		//DBG_8192C("==> pxmitframe->attrib.priority:%d\n",pxmitframe->attrib.priority);
 		// always return ndis_packet after rtw_xmitframe_coalesce
 		rtw_os_xmit_complete(padapter, pxmitframe);
@@ -1210,6 +1207,31 @@ s32 rtl8188eu_hal_xmit(_adapter *padapter, struct xmit_frame *pxmitframe)
 {
 	return pre_xmitframe(padapter, pxmitframe);
 }
+
+s32	rtl8188eu_hal_xmitframe_enqueue(_adapter *padapter, struct xmit_frame *pxmitframe)
+{
+	struct xmit_priv 	*pxmitpriv = &padapter->xmitpriv;
+	s32 err;
+	
+	if ((err=rtw_xmitframe_enqueue(padapter, pxmitframe)) != _SUCCESS) 
+	{
+		rtw_free_xmitframe(pxmitpriv, pxmitframe);
+
+		// Trick, make the statistics correct
+		pxmitpriv->tx_pkts--;
+		pxmitpriv->tx_drop++;					
+	}
+	else
+	{
+#ifdef PLATFORM_LINUX
+		tasklet_hi_schedule(&pxmitpriv->xmit_tasklet);
+#endif
+	}
+	
+	return err;
+	
+}
+
 
 #ifdef  CONFIG_HOSTAPD_MLME
 

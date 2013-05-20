@@ -88,24 +88,16 @@ static s32 FillH2CCmd_88E(PADAPTER padapter, u8 ElementID, u32 CmdLen, u8 *pCmdB
 
 _func_enter_;
 
+	padapter = GET_PRIMARY_ADAPTER(padapter);		
+	pHalData = GET_HAL_DATA(padapter);
+
 	if(padapter->bFWReady == _FALSE)
 	{
 		DBG_8192C("FillH2CCmd_88E(): return H2C cmd because fw is not ready\n");
 		return ret;
 	}
 
-#ifdef CONFIG_CONCURRENT_MODE
-
-	if(padapter->adapter_type > PRIMARY_ADAPTER)
-	{
-		padapter = padapter->pbuddy_adapter;
-	}
-	
-	pHalData = GET_HAL_DATA(padapter);	
-
-	_enter_critical_mutex(padapter->ph2c_fwcmd_mutex, NULL);
-	
-#endif
+	_enter_critical_mutex(&(adapter_to_dvobj(padapter)->h2c_fwcmd_mutex), NULL);
 
 	if (!pCmdBuffer) {
 		goto exit;
@@ -171,9 +163,7 @@ _func_enter_;
 
 exit:
 
-#ifdef CONFIG_CONCURRENT_MODE
-	_exit_critical_mutex(padapter->ph2c_fwcmd_mutex, NULL);	
-#endif
+	_exit_critical_mutex(&(adapter_to_dvobj(padapter)->h2c_fwcmd_mutex), NULL);	
 
 _func_exit_;
 
@@ -267,11 +257,6 @@ void rtl8188e_Add_RateATid(PADAPTER pAdapter, u32 bitmap, u8 arg, u8 rssi_level)
 	//struct dm_priv	*pdmpriv = &pHalData->dmpriv;
 
 	u8 macid, init_rate, raid, shortGIrate=_FALSE;
-
-#ifdef CONFIG_CONCURRENT_MODE
-	if(rtw_buddy_adapter_up(pAdapter) && pAdapter->adapter_type > PRIMARY_ADAPTER)	
-		pHalData = GET_HAL_DATA(pAdapter->pbuddy_adapter);				
-#endif //CONFIG_CONCURRENT_MODE
 
 	macid = arg&0x1f;
 
