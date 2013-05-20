@@ -108,6 +108,12 @@ config MACH_MESON3_REFF16_V1029
 	bool "Support M3(V1029) MBX platform"
 	help
 	  Include support for the Ref M3 board platform.
+
+config MACH_MESON3_REFF16_IPTV
+	select GENERIC_ALLOCATOR
+	bool "Support M3(V1029) MBX platform"
+	help
+	  Include support for the Ref M3 board platform.
 	  
 config MACH_MESON3_REFF16_512M
 	select GENERIC_ALLOCATOR
