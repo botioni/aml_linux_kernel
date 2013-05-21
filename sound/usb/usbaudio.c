@@ -3727,6 +3727,46 @@ static int snd_usb_audio_dev_free(struct snd_device *device)
 }
 
 
+/*proc info of usb sound card*/
+struct usb_audio_source_config{
+	int card;
+	int device;
+};
+
+static struct snd_info_entry *snd_usb_audio_sourece_info_entry;
+static struct usb_audio_source_config  snd_usb_config;
+static void usb_audio_source_info_read(struct snd_info_entry *entry, struct snd_info_buffer *buffer)
+{
+	printk("USB sound card = %d**device = %d**\n", snd_usb_config.card, snd_usb_config.device);
+	snd_iprintf(buffer, "%d %d\n", snd_usb_config.card, snd_usb_config.device);
+}
+
+static int usb_audio_source_info_init(int card, int device)
+{
+	struct snd_info_entry *entry;
+	
+	snd_usb_config.card = card;
+	snd_usb_config.device = device;
+	entry = snd_info_create_module_entry(THIS_MODULE, "usb_audio_info", NULL);
+	if (entry == NULL)
+		return -ENOMEM;
+	entry->c.text.read = usb_audio_source_info_read;
+	if (snd_info_register(entry) < 0) {
+		snd_info_free_entry(entry);
+		return -ENOMEM;
+	}
+	snd_usb_audio_sourece_info_entry = entry;
+	return 0;
+}
+
+static int usb_audio_source_info_done(void)
+{
+	snd_info_free_entry(snd_usb_audio_sourece_info_entry);
+	return 0;
+}
+
+
+
 /*
  * create a chip instance and set its names.
  */
@@ -3757,6 +3797,7 @@ static int snd_usb_audio_create(struct usb_device *dev, int idx,
 		return err;
 	}
 
+    usb_audio_source_info_init(card->number, 0);//
 	chip = kzalloc(sizeof(*chip), GFP_KERNEL);
 	if (! chip) {
 		snd_card_free(card);
@@ -3998,6 +4039,7 @@ static void snd_usb_audio_disconnect(struct usb_device *dev, void *ptr)
 	} else {
 		mutex_unlock(&register_mutex);
 	}
+    usb_audio_source_info_done();
 }
 
 /*
