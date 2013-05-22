@@ -320,6 +320,7 @@ _func_enter_;
 	v = sdio_readl(func, addr, err);
 	if (claim_needed)
 		sdio_release_host(func);
+
 	if (err && *err)
 	{
 		int i;
@@ -439,6 +440,7 @@ _func_enter_;
 	sdio_writel(func, v, addr, err);
 	if (claim_needed)
 		sdio_release_host(func);
+
 	if (err && *err)
 	{
 		int i;

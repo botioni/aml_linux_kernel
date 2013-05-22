@@ -1108,13 +1108,8 @@ void rtl8188e_InitializeFirmwareVars(PADAPTER padapter)
 static void rtl8188e_free_hal_data(PADAPTER padapter)
 {
 _func_enter_;
-
-	if(padapter->HalData)
-	{
-#ifdef CONFIG_CONCURRENT_MODE
-		if(padapter->isprimary)
-#endif //CONFIG_CONCURRENT_MODE
-			rtw_mfree(padapter->HalData, sizeof(HAL_DATA_TYPE));
+	if (padapter->HalData) {
+		rtw_mfree(padapter->HalData, sizeof(HAL_DATA_TYPE));
 		padapter->HalData = NULL;
 	}
 _func_exit_;
@@ -2787,6 +2782,13 @@ void rtl8188e_SetHalODMVar(
 		case HAL_ODM_STA_INFO:
 			{	
 				struct sta_info *psta = (struct sta_info *)pValue1;				
+				#ifdef CONFIG_CONCURRENT_MODE	
+				//get Primary adapter's odmpriv
+				if(Adapter->adapter_type > PRIMARY_ADAPTER){
+					pHalData = GET_HAL_DATA(Adapter->pbuddy_adapter);
+					podmpriv = &pHalData->odmpriv;	
+				}
+				#endif				
 				if(bSet){
 					DBG_8192C("### Set STA_(%d) info\n",psta->mac_id);
 					ODM_CmnInfoPtrArrayHook(podmpriv, ODM_CMNINFO_STA_STATUS,psta->mac_id,psta);

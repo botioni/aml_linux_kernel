@@ -5263,16 +5263,10 @@ void rtl8188eu_set_hal_ops(_adapter * padapter)
 
 _func_enter_;
 
-#ifdef CONFIG_CONCURRENT_MODE
-	if(padapter->isprimary)
-#endif //CONFIG_CONCURRENT_MODE
-	{
-		padapter->HalData = rtw_zmalloc(sizeof(HAL_DATA_TYPE));
-		if(padapter->HalData == NULL){
-			DBG_8192C("cant not alloc memory for HAL DATA \n");
-		}
+	padapter->HalData = rtw_zmalloc(sizeof(HAL_DATA_TYPE));
+	if(padapter->HalData == NULL){
+		DBG_8192C("cant not alloc memory for HAL DATA \n");
 	}
-
 	//_rtw_memset(padapter->HalData, 0, sizeof(HAL_DATA_TYPE));
 	padapter->hal_data_sz = sizeof(HAL_DATA_TYPE);
 
