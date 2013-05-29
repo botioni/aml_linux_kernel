@@ -38,9 +38,11 @@ void boot_timer_func(unsigned long arg);
 #define BOOT_TIMER_INTERVAL     (HZ*120)
 #define BOOT_MODE_SRAM_ADDR (0xC9000000 + REBOOT_MODE_OFFSET)
 #define BOOT_COUNTER_SRAM_ADDR (BOOT_MODE_SRAM_ADDR - 4)
-
-#define UPDATE_PACKAGE "--update_package=/fac_backup/last_update_backup.zip"
-
+#ifdef CONFIG_MACH_MESON3_REFF16_IPTV
+    #define UPDATE_PACKAGE "--update_package=/backup/last_update_backup.zip"
+#else
+    #define UPDATE_PACKAGE "--update_package=/fac_backup/last_update_backup.zip"
+#endif
 void boot_timer_func(unsigned long arg)
 {
     printk("boot_timer_func: <%s>\n", "timer expires, reboot system!");   

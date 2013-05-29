@@ -839,8 +839,10 @@ CONFIG_AML_WATCHDOG=y
 # Amlogic BOOT MONITOR SYSFS
 #
 # CONFIG_BOOT_MONITOR is not set
-
 #
+# Amlogic BOOT MONITOR SYSFS
+#
+CONFIG_BOOT_MONITOR=y
 # Block devices
 #
 

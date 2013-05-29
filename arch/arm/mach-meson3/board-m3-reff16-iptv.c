@@ -601,6 +601,11 @@ static struct mtd_partition multi_partition_info_1G_or_More[] =
         .size = 512*1024*1024,
     },
     {
+        .name = "backup",
+        .offset = 1280*1024*1024,
+        .size = 300*1024*1024,
+    },
+    {
 	.name = "NFTL_Part",
 	.offset = MTDPART_OFS_APPEND,
 	.size = MTDPART_SIZ_FULL,
