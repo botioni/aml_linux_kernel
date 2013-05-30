@@ -114,6 +114,11 @@ typedef struct {
     _aiu_958_channel_status_t *chan_stat;
 } _aiu_958_raw_setting_t;
 
+enum {
+	I2SIN_MASTER_MODE = 0,
+	I2SIN_SLAVE_MODE  =   1<<0,
+	SPDIFIN_MODE   = 1<<1,
+};
 #define AUDIO_CLK_256FS             0
 #define AUDIO_CLK_384FS             1
 
@@ -152,7 +157,7 @@ extern unsigned I2S_MODE;
 
 void audio_set_aiubuf(u32 addr, u32 size);
 void audio_set_958outbuf(u32 addr, u32 size, int flag);
-void audio_in_i2s_set_buf(u32 addr, u32 size);
+void audio_in_i2s_set_buf(u32 addr, u32 size,u32 i2s_mode);
 void audio_in_spdif_set_buf(u32 addr, u32 size);
 void audio_in_i2s_enable(int flag);
 void audio_in_spdif_enable(int flag);

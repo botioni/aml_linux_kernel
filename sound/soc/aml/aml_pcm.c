@@ -76,6 +76,7 @@ static unsigned clock_gating_playback = 1;
 static unsigned clock_gating_capture = 2;
 static int audio_type_info = -1;
 static int audio_sr_info = -1;
+extern unsigned audioin_mode;
 
 EXPORT_SYMBOL(aml_i2s_playback_start_addr);
 EXPORT_SYMBOL(aml_i2s_capture_start_addr);
@@ -534,7 +535,7 @@ static int aml_i2s_prepare(struct snd_pcm_substream *substream)
 	}
 	else{
 			//printk("aml_pcm_prepare SNDRV_PCM_STREAM_CAPTURE: dma_addr=%x, dma_bytes=%x\n", runtime->dma_addr, runtime->dma_bytes);
-			audio_in_i2s_set_buf(runtime->dma_addr, runtime->dma_bytes*2);
+			audio_in_i2s_set_buf(runtime->dma_addr, runtime->dma_bytes*2,audioin_mode);
 			memset((void*)runtime->dma_area,0,runtime->dma_bytes*2);
             {
 			  int * ppp = (int*)(runtime->dma_area+runtime->dma_bytes*2-8);
@@ -901,7 +902,11 @@ static int aml_i2s_copy_capture(struct snd_pcm_runtime *runtime, int channel,
     int i = 0, j = 0;
     unsigned int t1, t2;
     char *hwbuf = runtime->dma_area + frames_to_bytes(runtime, pos)*2;
-    
+    unsigned char r_shift = 8;	
+    if(audioin_mode&SPDIFIN_MODE) //spdif in
+    {
+    	r_shift = 12;
+    }
     to = (unsigned short *)snd_i2s_tmp;//buf;
     tfrom = (unsigned int *)hwbuf;	// 32bit buffer
     n = frames_to_bytes(runtime, count);
@@ -924,8 +929,8 @@ static int aml_i2s_copy_capture(struct snd_pcm_runtime *runtime, int channel,
 		        	t1 = (*left++);
 		        	t2 = (*right++);
 		        	//printk("%08x,%08x,", t1, t2);
-	              *to++ = (unsigned short)((t1>>8)&0xffff);
-	              *to++ = (unsigned short)((t1>>8)&0xffff);//copy left channel to right
+	              *to++ = (unsigned short)((t1>>r_shift)&0xffff);
+	              *to++ = (unsigned short)((t2>>r_shift)&0xffff);
 	              //*to++ = (unsigned short)((t2>>8)&0xffff);
 		         }
 		         //printk("\n");

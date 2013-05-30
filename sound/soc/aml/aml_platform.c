@@ -41,9 +41,10 @@
 #ifndef ARRY_SIZE
 #define ARRY_SIZE(A)    (sizeof(A) /sizeof(A[0]))
 #endif
+extern unsigned audioin_mode;
 
 static LIST_HEAD(stream_list);
-static DEFINE_SPINLOCK(platform_lock);
+static DEFINE_SPINLOCK(platform_lock);
     
 struct aml_platform_stream{
     struct list_head list;
@@ -756,8 +757,7 @@ struct snd_soc_platform aml_soc_platform = {
 	.suspend	= aml_platform_suspend,
 	.resume		= aml_platform_resume,
 };
-
-static int __init aml_soc_platform_init(void)
+static int  aml_soc_platform_init(void)
 {
     int n = ARRY_SIZE(audio_interfaces);
     int i = 0;
@@ -770,20 +770,52 @@ static int __init aml_soc_platform_init(void)
     }
 #ifdef CONFIG_DEBUG_FS	
 	aml_pcm_init_debugfs();
-#endif
-	
-	return snd_soc_register_platform(&aml_soc_platform);
+#endif	
+    return snd_soc_register_platform(&aml_soc_platform);
 }
-module_init(aml_soc_platform_init);
-
-static void __exit aml_soc_platform_exit(void)
+static int __devinit aml_soc_platform_probe(struct platform_device *pdev)
 {
-#ifdef CONFIG_DEBUG_FS	
-	aml_pcm_cleanup_debugfs();
-#endif
-	snd_soc_unregister_platform(&aml_soc_platform);
+	/* get audioin cfg data from board */
+	if(pdev->dev.platform_data){
+		audioin_mode = *(unsigned *)pdev->dev.platform_data;
+		printk("AML soc audio in mode =============   %d \n",audioin_mode);
+	}	
+	return aml_soc_platform_init();
 }
-module_exit(aml_soc_platform_exit);
+
+static int __devexit aml_soc_platform_remove(struct platform_device *pdev)
+{
+	snd_soc_unregister_platform(&pdev->dev);
+	return 0;
+}
+static struct platform_driver aml_pcm_driver = {
+	.driver = {
+			.name = "aml-audio",
+			.owner = THIS_MODULE,
+	},
+
+	.probe = aml_soc_platform_probe,
+	.remove = __devexit_p(aml_soc_platform_remove),
+};
+
+
+
+static int __init aml_alsa_audio_init(void)
+{
+	aml_pcm_init_debugfs();
+	return platform_driver_register(&aml_pcm_driver);
+}
+
+static void __exit aml_alsa_audio_exit(void)
+{
+    aml_pcm_cleanup_debugfs();
+    platform_driver_unregister(&aml_pcm_driver);
+}
+
+module_init(aml_alsa_audio_init);
+
+
+module_exit(aml_alsa_audio_exit);
 
 MODULE_AUTHOR("Amlogic, Inc.");
 MODULE_DESCRIPTION("Amlogic ASoC platform driver");

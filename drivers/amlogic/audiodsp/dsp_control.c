@@ -27,6 +27,7 @@
 
 extern unsigned IEC958_mode_raw;
 extern unsigned IEC958_mode_codec;
+extern unsigned audioin_mode;
 
 int decopt = 0x0000ffff;
 
@@ -113,6 +114,9 @@ void reset_dsp( struct audiodsp_priv *priv)
  //   SET_MPEG_REG_MASK(SDRAM_CTL0,1);//arc mapping to ddr memory
     SET_MPEG_REG_MASK(MEDIA_CPU_CTL, ((AUDIO_DSP_START_PHY_ADDR)>> 20) << 4);
 // decode option    
+    if(audioin_mode &2){
+		decopt &= ~(1<<6);
+    }
     if(IEC958_mode_codec){
       if(IEC958_mode_codec == 4){//dd+
 		DSP_WD(DSP_DECODE_OPTION, decopt|(3<<30));
@@ -322,6 +326,9 @@ exit:
 /**
  *	bit31 - digital raw output
  *	bit30 - IEC61937 pass over HDMI
+ *    bit 6  -  audio in mode.
+ 		     00: spdif in mode
+ 		     01: i2s in mode
  *    bit 5 - DTS passthrough working mode
  		     00:  AIU 958 hw search raw mode 
  		     01:  PCM_RAW mode,the same as AC3/AC3+

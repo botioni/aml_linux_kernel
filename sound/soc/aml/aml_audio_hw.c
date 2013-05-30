@@ -58,6 +58,12 @@ unsigned int IEC958_mode_codec;
 //         0 => 'h0000000
 //         1 => 'h800000
 unsigned int dac_mute_const = 0x800000;
+/*
+bit 0:soc in slave mode for adc;
+bit 1:audio in data source from spdif in;
+bit 2:adc & spdif in work at the same time;
+*/
+unsigned audioin_mode = I2SIN_MASTER_MODE;
 
 EXPORT_SYMBOL(IEC958_bpf);
 EXPORT_SYMBOL(IEC958_brst);
@@ -194,8 +200,14 @@ void audio_set_958outbuf(u32 addr, u32 size,int flag)
         WRITE_MPEG_REG(AIU_MEM_IEC958_BUF_CNTL, 0 | (0 << 1));
     }
 }
-void audio_in_i2s_set_buf(u32 addr, u32 size)
+/*
+i2s mode 0: master 1: slave
+*/
+static void i2sin_fifo0_set_buf(u32 addr, u32 size,u32 i2s_mode)
 {
+	unsigned char  mode = 0;
+	if(i2s_mode &I2SIN_SLAVE_MODE)
+		mode = 1;
 	WRITE_MPEG_REG(AUDIN_FIFO0_START, addr & 0xffffffc0);
 	WRITE_MPEG_REG(AUDIN_FIFO0_PTR, (addr&0xffffffc0));
 	WRITE_MPEG_REG(AUDIN_FIFO0_END, (addr&0xffffffc0) + (size&0xffffffc0)-8);
@@ -223,14 +235,51 @@ void audio_in_i2s_set_buf(u32 addr, u32 size)
 	WRITE_MPEG_REG(AUDIN_I2SIN_CTRL, //(0<<I2SIN_SIZE)			///*bit8*/  16bit
 									 (3<<I2SIN_SIZE)
 									|(1<<I2SIN_CHAN_EN)		/*bit10~13*/ //2 channel 
-									|(1<<I2SIN_POS_SYNC)	
-									//|(0<<I2SIN_POS_SYNC)	
+#if 0/* MESON_CPU_TYPE == MESON_CPU_TYPE_MESON6TV*/
+									|(0<<I2SIN_POS_SYNC)
+#else
+									|(1<<I2SIN_POS_SYNC)
+#endif
 									|(1<<I2SIN_LRCLK_SKEW)
-                                    |(1<<I2SIN_LRCLK_INVT)
-									|(1<<I2SIN_CLK_SEL)
-									|(1<<I2SIN_LRCLK_SEL)
-				    				|(1<<I2SIN_DIR)
-				  );															
+                                    				|(1<<I2SIN_LRCLK_INVT)
+									|(!mode<<I2SIN_CLK_SEL)
+									|(!mode<<I2SIN_LRCLK_SEL)
+				    				|(!mode<<I2SIN_DIR)
+				  );
+
+}
+static void spdifin_fifo1_set_buf(u32 addr, u32 size)
+{
+	WRITE_MPEG_REG(AUDIN_SPDIF_MODE, READ_MPEG_REG(AUDIN_SPDIF_MODE)&0x7fffffff);
+	WRITE_MPEG_REG(AUDIN_FIFO0_START, addr & 0xffffffc0);
+	WRITE_MPEG_REG(AUDIN_FIFO0_PTR, (addr&0xffffffc0));
+	WRITE_MPEG_REG(AUDIN_FIFO0_END, (addr&0xffffffc0) + (size&0xffffffc0)-8);
+	WRITE_MPEG_REG(AUDIN_FIFO0_CTRL, (1<<AUDIN_FIFO0_EN)	// FIFO0_EN
+    								|(1<<AUDIN_FIFO0_LOAD)	// load start address./* AUDIN_FIFO0_LOAD */
+								|(0<<AUDIN_FIFO0_DIN_SEL)	// DIN from i2sin./* AUDIN_FIFO0_DIN_SEL */
+	    							//|(1<<6)	// 32 bits data in./*AUDIN_FIFO0_D32b */
+									//|(0<<7)	// put the 24bits data to  low 24 bits./* AUDIN_FIFO0_h24b */16bit
+								|(4<<AUDIN_FIFO0_ENDIAN)	// /*AUDIN_FIFO0_ENDIAN */
+								|(2<<AUDIN_FIFO0_CHAN)//2 channel./* AUDIN_FIFO0_CHAN*/
+		    						|(0<<16)	//to DDR
+                                                       |(1<<AUDIN_FIFO0_UG)    // Urgent request.  DDR SDRAM urgent request enable.
+                                                       |(0<<17)    // Overflow Interrupt mask
+                                                       |(0<<18)    // Audio in INT
+			                                	//|(1<<19)	//hold 0 enable
+								|(0<<AUDIN_FIFO0_UG)	// hold0 to aififo
+				  );
+	WRITE_MPEG_REG(AUDIN_FIFO0_CTRL1,0xc);
+}
+void audio_in_i2s_set_buf(u32 addr, u32 size,u32 i2s_mode)
+{
+	if(i2s_mode&SPDIFIN_MODE){ //spdif in ,use fifo1
+		printk("spdifin_fifo1_set_buf \n");			
+		spdifin_fifo1_set_buf(addr,size);
+	}
+	else{
+		printk("i2sin_fifo0_set_buf \n");		
+		i2sin_fifo0_set_buf(addr,size,i2s_mode);
+	}	
     audio_in_buf_ready = 1;
 
     in_error_flag = 0;
@@ -255,9 +304,15 @@ reset_again:
               printk("error %08x, %08x !!!!!!!!!!!!!!!!!!!!!!!!\n", rd, start);
               goto reset_again;
             }
+		if(audioin_mode == 	SPDIFIN_MODE)
+			WRITE_MPEG_REG(AUDIN_SPDIF_MODE, READ_MPEG_REG(AUDIN_SPDIF_MODE)| (1<<31));
+		else
+			WRITE_MPEG_REG_BITS(AUDIN_I2SIN_CTRL, 1, I2SIN_EN, 1);
 
-        	WRITE_MPEG_REG_BITS(AUDIN_I2SIN_CTRL, 1, I2SIN_EN, 1);
-		}else{
+	}else{
+		if(audioin_mode == 	SPDIFIN_MODE)	
+			WRITE_MPEG_REG(AUDIN_SPDIF_MODE, READ_MPEG_REG(AUDIN_SPDIF_MODE)& ~(1<<31));
+		else
 				WRITE_MPEG_REG_BITS(AUDIN_I2SIN_CTRL, 0, I2SIN_EN, 1);
 		}
         in_error_flag = 0;
