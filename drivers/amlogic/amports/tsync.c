@@ -780,6 +780,12 @@ void tsync_set_dec_reset(void)
     tsync_dec_reset_flag = 1;
 }
 EXPORT_SYMBOL(tsync_set_dec_reset);
+void tsync_stat_reset(void)
+{
+    tsync_stat = TSYNC_STAT_PCRSCR_SETUP_NONE;
+    printk("## tsync_stat_reset tsync_stat=%d,-------\n", tsync_stat);
+}
+EXPORT_SYMBOL(tsync_stat_reset);
 
 void tsync_set_enable(int enable)
 {
@@ -820,6 +826,11 @@ void tsync_set_sync_vdiscont_diff(u32 discontinue_diff)
 	vpts_discontinue_diff = discontinue_diff;
 }
 EXPORT_SYMBOL(tsync_set_sync_vdiscont_diff);
+u32 tsync_get_scr_state(void)
+{	
+    return tsync_stat;
+}
+EXPORT_SYMBOL(tsync_get_scr_state);
 
 void tsync_set_sync_adiscont(int syncdiscont)
 {

@@ -919,6 +919,20 @@ static int amstream_release(struct inode *inode, struct file *file)
     if (this->flag & PORT_FLAG_INITED) {
         amstream_port_release(this);
     }
+	
+    if ((this->type & (PORT_TYPE_AUDIO | PORT_TYPE_VIDEO)) == PORT_TYPE_AUDIO) {
+        s32 i;
+        stream_port_t *s;
+        for (s = &ports[0], i = 0; i < MAX_PORT_NUM; i++, s++) {
+            if ((s->flag & PORT_FLAG_IN_USE) && (s->type & PORT_TYPE_VIDEO)) {
+                break;
+            }
+        }
+        if (i == MAX_PORT_NUM) {
+            tsync_stat_reset();
+        }
+    }
+
     this->flag = 0;
 
     timestamp_pcrscr_set(0);

@@ -2189,6 +2189,10 @@ static int amvideo_ioctl(struct inode *inode, struct file *file,
         tsync_set_sync_vdiscont_diff(arg);
         break;
 
+    case AMSTREAM_IOC_GET_SCR_STATE:
+        ret = tsync_get_scr_state();
+        *((u32 *)arg) = timestamp_pcrscr_get();
+        break;
     case AMSTREAM_IOC_GET_VIDEO_DISABLE:
         *((u32 *)arg) = disable_video;
         break;
