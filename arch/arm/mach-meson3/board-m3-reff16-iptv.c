@@ -905,6 +905,13 @@ static struct resource aml_m3_audio_resource[] = {
         .flags  =   IORESOURCE_MEM,
     },
 };
+static struct resource aml_audio_resource[] = {
+    [0] =   {
+        .start  =   0,
+        .end        =   0,
+        .flags  =   IORESOURCE_MEM,
+    },
+};
 
 #if defined(CONFIG_SND_AML_M3)
 static struct platform_device aml_audio = {
@@ -913,7 +920,12 @@ static struct platform_device aml_audio = {
     .resource       =   aml_m3_audio_resource,
     .num_resources  =   ARRAY_SIZE(aml_m3_audio_resource),
 };
-
+static struct platform_device aml_audio_platform = {
+    .name               = "aml-audio",
+    .id                     = -1,
+    .resource       =   aml_audio_resource,
+    .num_resources  =   ARRAY_SIZE(aml_audio_resource),
+};
 int aml_m3_is_hp_pluged(void)
 {
 #if 1
@@ -2663,7 +2675,9 @@ static struct platform_device __initdata *platform_devs[] = {
 #endif
 #if defined(CONFIG_SND_AML_M3)
     &aml_audio,
+    &aml_audio_platform,
 #endif
+
 #ifdef CONFIG_SND_SOC_BT40183
     &bt40183_audio,
     &bt40183,    
