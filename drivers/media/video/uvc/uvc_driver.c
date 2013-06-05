@@ -1815,18 +1815,24 @@ static int uvc_probe(struct usb_interface *intf,
 	struct usb_device *udev = interface_to_usbdev(intf);
 	struct uvc_device *dev;
 	int ret;
+	int skip_num = 0;
 
-	if (id->idVendor && id->idProduct)
-		uvc_trace(UVC_TRACE_PROBE, "Probing known UVC device %s "
+	if (id->idVendor && id->idProduct) {
+		printk("Probing known UVC device %s "
 				"(%04x:%04x)\n", udev->devpath, id->idVendor,
 				id->idProduct);
-	else
+		skip_num = get_skip_num(id->idVendor, id->idProduct);
+	} else {
 		uvc_trace(UVC_TRACE_PROBE, "Probing generic UVC device %s\n",
 				udev->devpath);
+		skip_num = 2;
+	}
 
 	/* Allocate memory for the device and initialize it. */
 	if ((dev = kzalloc(sizeof *dev, GFP_KERNEL)) == NULL)
 		return -ENOMEM;
+		
+	dev->skip_num = skip_num;
 
 	INIT_LIST_HEAD(&dev->entities);
 	INIT_LIST_HEAD(&dev->chains);

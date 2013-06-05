@@ -115,7 +115,7 @@ static int Edid_find_name_block(unsigned char * data)
 static void Edid_ReceiverProductNameParse(rx_cap_t * pRxCap, unsigned char * data)
 {
     int i = 0;
-    while((data[i] != 0x0a) && (i < 16)) {
+    while((data[i] != 0x0a) && (data[i] != 0x20) && (i < 13)) {  // some Display Product name end with 0x20, not 0x0a
         pRxCap->ReceiverProductName[i] = data[i];
         i++;
     }
@@ -243,6 +243,7 @@ void Edid_CompareTimingDescriptors(HDMI_TX_INFO_t * info, unsigned char *Data)
         }
         if(index2==12)
         {
+
             switch(index1)
             {
                 case 0:

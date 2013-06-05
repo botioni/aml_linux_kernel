@@ -690,8 +690,10 @@ _InitWMACSetting(
 	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(Adapter);
 
 	//pHalData->ReceiveConfig = AAP | APM | AM | AB | APP_ICV | ADF | AMF | APP_FCS | HTC_LOC_CTRL | APP_MIC | APP_PHYSTS;
-	pHalData->ReceiveConfig = 
-	RCR_AAP | RCR_APM | RCR_AM | RCR_AB |RCR_CBSSID_DATA| RCR_CBSSID_BCN| RCR_APP_ICV | RCR_AMF | RCR_HTC_LOC_CTRL | RCR_APP_MIC | RCR_APP_PHYSTS;	  
+	//pHalData->ReceiveConfig = 
+	//RCR_AAP | RCR_APM | RCR_AM | RCR_AB |RCR_CBSSID_DATA| RCR_CBSSID_BCN| RCR_APP_ICV | RCR_AMF | RCR_HTC_LOC_CTRL | RCR_APP_MIC | RCR_APP_PHYSTS;	  
+	 // don't turn on AAP, it will allow all packets to driver
+        pHalData->ReceiveConfig = RCR_APM | RCR_AM | RCR_AB |RCR_CBSSID_DATA| RCR_CBSSID_BCN| RCR_APP_ICV | RCR_AMF | RCR_HTC_LOC_CTRL | RCR_APP_MIC | RCR_APP_PHYSTS;	 
 	 
 #if (1 == RTL8188E_RX_PACKET_INCLUDE_CRC)
 	pHalData->ReceiveConfig |= ACRC32;
@@ -1685,10 +1687,7 @@ HAL_INIT_PROFILE_TAG(HAL_INIT_STAGES_DOWNLOAD_FW);
 	if (Adapter->registrypriv.mp_mode == 1)
 	{
 		_InitRxSetting(Adapter);
-		Adapter->bFWReady = _FALSE;
-		pHalData->fw_ractrl = _FALSE;
 	}
-	else
 #endif  //MP_DRIVER == 1
 	{
 	#if 0		
@@ -2183,7 +2182,7 @@ CardDisableRTL8188EU(
 	pHalData->bMacPwrCtrlOn = _FALSE;
 	Adapter->bFWReady = _FALSE;
 }
-static void rtl8192cu_hw_power_down(_adapter *padapter)
+static void rtl8188eu_hw_power_down(_adapter *padapter)
 {
 	// 2010/-8/09 MH For power down module, we need to enable register block contrl reg at 0x1c.
 	// Then enable power down control bit of register 0x04 BIT4 and BIT15 as 1.
@@ -2210,7 +2209,7 @@ u32 rtl8188eu_hal_deinit(PADAPTER Adapter)
  	{
 		_ps_close_RF(Adapter);		
 		if((Adapter->pwrctrlpriv.bHWPwrPindetect) && (Adapter->pwrctrlpriv.bHWPowerdown))		
-			rtl8192cu_hw_power_down(Adapter);
+			rtl8188eu_hw_power_down(Adapter);
  	}
 	else
 #endif
@@ -2219,7 +2218,7 @@ u32 rtl8188eu_hal_deinit(PADAPTER Adapter)
 			CardDisableRTL8188EU(Adapter);
 
 			if((Adapter->pwrctrlpriv.bHWPwrPindetect ) && (Adapter->pwrctrlpriv.bHWPowerdown))		
-				rtl8192cu_hw_power_down(Adapter);
+				rtl8188eu_hw_power_down(Adapter);
 			
 		}
 	}	
@@ -4061,6 +4060,14 @@ _func_enter_;
 			}
 #endif
 			break;
+		case HW_VAR_ON_RCR_AM:
+                        rtw_write32(Adapter, REG_RCR, rtw_read32(Adapter, REG_RCR)|RCR_AM);
+                        DBG_871X("%s, %d, RCR= %x \n", __FUNCTION__,__LINE__, rtw_read32(Adapter, REG_RCR));
+                        break;
+              case HW_VAR_OFF_RCR_AM:
+                        rtw_write32(Adapter, REG_RCR, rtw_read32(Adapter, REG_RCR)& (~RCR_AM));
+                        DBG_871X("%s, %d, RCR= %x \n", __FUNCTION__,__LINE__, rtw_read32(Adapter, REG_RCR));
+                        break;
 		case HW_VAR_BEACON_INTERVAL:
 			rtw_write16(Adapter, REG_BCN_INTERVAL, *((u16 *)val));
 #ifdef  CONFIG_INTERRUPT_BASED_TXBCN_EARLY_INT
@@ -4650,7 +4657,6 @@ _func_enter_;
 			//BCN_VALID, BIT16 of REG_TDECTRL = BIT0 of REG_TDECTRL+2, write 1 to clear, Clear by sw
 			rtw_write8(Adapter, REG_TDECTRL+2, rtw_read8(Adapter, REG_TDECTRL+2) | BIT0); 
 			break;
-
 		default:
 			
 			break;
@@ -4717,6 +4723,12 @@ _func_enter_;
 		case HW_VAR_CHK_HI_QUEUE_EMPTY:
 			*val = ((rtw_read32(Adapter, REG_HGQ_INFORMATION)&0x0000ff00)==0) ? _TRUE:_FALSE;
 			break;
+
+		case HW_VAR_READ_LLT_TAB:
+			{
+				Read_LLT_Tab(Adapter);
+			}
+			break;	
 		default:
 			break;
 	}
@@ -5302,6 +5314,7 @@ _func_enter_;
 
 	pHalFunc->hal_xmit = &rtl8188eu_hal_xmit;
 	pHalFunc->mgnt_xmit = &rtl8188eu_mgnt_xmit;
+	pHalFunc->hal_xmitframe_enqueue = &rtl8188eu_hal_xmitframe_enqueue;
 
 
 #ifdef CONFIG_HOSTAPD_MLME

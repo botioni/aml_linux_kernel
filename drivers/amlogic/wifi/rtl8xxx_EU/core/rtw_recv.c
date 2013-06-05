@@ -1643,8 +1643,10 @@ sint validate_recv_ctrl_frame(_adapter *padapter, union recv_frame *precv_frame)
 			_irqL irqL;	 
 			_list	*xmitframe_plist, *xmitframe_phead;
 			struct xmit_frame *pxmitframe=NULL;
+			struct xmit_priv *pxmitpriv = &padapter->xmitpriv;
 		
-			_enter_critical_bh(&psta->sleep_q.lock, &irqL);	
+			//_enter_critical_bh(&psta->sleep_q.lock, &irqL);
+			_enter_critical_bh(&pxmitpriv->lock, &irqL);
 
 			xmitframe_phead = get_list_head(&psta->sleep_q);
 			xmitframe_plist = get_next(xmitframe_phead);
@@ -1668,12 +1670,15 @@ sint validate_recv_ctrl_frame(_adapter *padapter, union recv_frame *precv_frame)
 
 	                        //DBG_871X("handling ps-poll, q_len=%d, tim=%x\n", psta->sleepq_len, pstapriv->tim_bitmap);
 
+#if 0
                                 _exit_critical_bh(&psta->sleep_q.lock, &irqL);	
 				if(rtw_hal_xmit(padapter, pxmitframe) == _TRUE)
 				{		
 					rtw_os_xmit_complete(padapter, pxmitframe);
 				}
                                 _enter_critical_bh(&psta->sleep_q.lock, &irqL);	
+#endif
+				rtw_hal_xmitframe_enqueue(padapter, pxmitframe);
 
 				if(psta->sleepq_len==0)
 				{
@@ -1686,9 +1691,15 @@ sint validate_recv_ctrl_frame(_adapter *padapter, union recv_frame *precv_frame)
 					update_beacon(padapter, _TIM_IE_, NULL, _FALSE);
 				}
 				
+				//_exit_critical_bh(&psta->sleep_q.lock, &irqL);
+				_exit_critical_bh(&pxmitpriv->lock, &irqL);
+				
 			}
 			else
 			{
+				//_exit_critical_bh(&psta->sleep_q.lock, &irqL);
+				_exit_critical_bh(&pxmitpriv->lock, &irqL);
+			
 				//DBG_871X("no buffered packets to xmit\n");
 				if(pstapriv->tim_bitmap&BIT(psta->aid))
 				{
@@ -1712,9 +1723,7 @@ sint validate_recv_ctrl_frame(_adapter *padapter, union recv_frame *precv_frame)
 					update_beacon(padapter, _TIM_IE_, NULL, _FALSE);
 				}
 				
-			}
-	
-			_exit_critical_bh(&psta->sleep_q.lock, &irqL);			
+			}				
 			
 		}
 		
@@ -3686,12 +3695,15 @@ int recv_indicatepkt_reorder(_adapter *padapter, union recv_frame *prframe)
 		#ifdef DBG_RX_DROP_FRAME
 		DBG_871X("DBG_RX_DROP_FRAME %s check_indicate_seq fail\n", __FUNCTION__);
 		#endif
-		
+#if 0		
 		rtw_recv_indicatepkt(padapter, prframe);
 
 		_exit_critical_bh(&ppending_recvframe_queue->lock, &irql);
 		
 		goto _success_exit;
+#else
+		goto _err_exit;
+#endif
 	}
 
 
@@ -3851,7 +3863,8 @@ int recv_func_prehandle(_adapter *padapter, union recv_frame *rframe)
 	struct rx_pkt_attrib *pattrib = &rframe->u.hdr.attrib;
 	struct recv_priv *precvpriv = &padapter->recvpriv;
 	_queue *pfree_recv_queue = &padapter->recvpriv.free_recv_queue;
-	
+
+
 #ifdef CONFIG_MP_INCLUDED
 	struct mlme_priv *pmlmepriv = &padapter->mlmepriv;
 #endif //CONFIG_MP_INCLUDED
@@ -3859,19 +3872,19 @@ int recv_func_prehandle(_adapter *padapter, union recv_frame *rframe)
 #ifdef CONFIG_MP_INCLUDED
 	if (padapter->registrypriv.mp_mode == 1)
 	{
-		if ((check_fwstate(pmlmepriv, WIFI_MP_STATE) == _TRUE))//&&(padapter->mppriv.check_mp_pkt == 0))
-		{
 		if (pattrib->crc_err == 1)
+		{
 			padapter->mppriv.rx_crcerrpktcount++;
+		}
 		else
+		{
 			padapter->mppriv.rx_pktcount++;
-
+		}
 		if (check_fwstate(pmlmepriv, WIFI_MP_LPBK_STATE) == _FALSE) {
 			RT_TRACE(_module_rtl871x_recv_c_, _drv_alert_, ("MP - Not in loopback mode , drop pkt \n"));
 			ret = _FAIL;
 			rtw_free_recvframe(rframe, pfree_recv_queue);//free this recv_frame
 			goto exit;
-		}
 		}
 	}
 #endif
@@ -4177,41 +4190,62 @@ void rtw_signal_stat_timer_hdl(RTW_TIMER_HDL_ARGS){
 			recvpriv->signal_qual_data.update_req = 1;
 		}
 
-		//update value of signal_strength, rssi, signal_qual
-		if(check_fwstate(&adapter->mlmepriv, _FW_UNDER_SURVEY) == _FALSE) {
-			tmp_s = (avg_signal_strength+(_alpha-1)*recvpriv->signal_strength);
-			if(tmp_s %_alpha)
-				tmp_s = tmp_s/_alpha + 1;
-			else
-				tmp_s = tmp_s/_alpha;
-			if(tmp_s>100)
-				tmp_s = 100;
-
-			tmp_q = (avg_signal_qual+(_alpha-1)*recvpriv->signal_qual);
-			if(tmp_q %_alpha)
-				tmp_q = tmp_q/_alpha + 1;
-			else
-				tmp_q = tmp_q/_alpha;
-			if(tmp_q>100)
-				tmp_q = 100;
-
-			recvpriv->signal_strength = tmp_s;
-			recvpriv->rssi = (s8)translate_percentage_to_dbm(tmp_s);
-			recvpriv->signal_qual = tmp_q;
-
-			#if defined(DBG_RX_SIGNAL_DISPLAY_PROCESSING) && 1
-			DBG_871X("%s signal_strength:%3u, rssi:%3d, signal_qual:%3u"
-				", num_signal_strength:%u, num_signal_qual:%u"
-				"\n"
-				, __FUNCTION__
-				, recvpriv->signal_strength
-				, recvpriv->rssi
-				, recvpriv->signal_qual
-				, num_signal_strength, num_signal_qual
-			);
-			#endif
+		if (num_signal_strength == 0) {
+			if (rtw_get_on_cur_ch_time(adapter) == 0
+				|| rtw_get_passing_time_ms(rtw_get_on_cur_ch_time(adapter)) < 2 * adapter->mlmeextpriv.mlmext_info.bcn_interval
+			) {
+				goto set_timer;
+			}
 		}
+
+		if(check_fwstate(&adapter->mlmepriv, _FW_UNDER_SURVEY) == _TRUE
+			|| check_fwstate(&adapter->mlmepriv, _FW_LINKED) == _FALSE
+		) { 
+			goto set_timer;
+		}
+
+		#ifdef CONFIG_CONCURRENT_MODE
+		if (check_buddy_fwstate(adapter, _FW_UNDER_SURVEY) == _TRUE)
+			goto set_timer;
+		#endif
+
+		//update value of signal_strength, rssi, signal_qual
+		tmp_s = (avg_signal_strength+(_alpha-1)*recvpriv->signal_strength);
+		if(tmp_s %_alpha)
+			tmp_s = tmp_s/_alpha + 1;
+		else
+			tmp_s = tmp_s/_alpha;
+		if(tmp_s>100)
+			tmp_s = 100;
+
+		tmp_q = (avg_signal_qual+(_alpha-1)*recvpriv->signal_qual);
+		if(tmp_q %_alpha)
+			tmp_q = tmp_q/_alpha + 1;
+		else
+			tmp_q = tmp_q/_alpha;
+		if(tmp_q>100)
+			tmp_q = 100;
+
+		recvpriv->signal_strength = tmp_s;
+		recvpriv->rssi = (s8)translate_percentage_to_dbm(tmp_s);
+		recvpriv->signal_qual = tmp_q;
+
+		#if defined(DBG_RX_SIGNAL_DISPLAY_PROCESSING) && 1
+		DBG_871X(FUNC_ADPT_FMT" signal_strength:%3u, rssi:%3d, signal_qual:%3u"
+			", num_signal_strength:%u, num_signal_qual:%u"
+			", on_cur_ch_ms:%d"
+			"\n"
+			, FUNC_ADPT_ARG(adapter)
+			, recvpriv->signal_strength
+			, recvpriv->rssi
+			, recvpriv->signal_qual
+			, num_signal_strength, num_signal_qual
+			, rtw_get_on_cur_ch_time(adapter) ? rtw_get_passing_time_ms(rtw_get_on_cur_ch_time(adapter)) : 0
+		);
+		#endif
 	}
+
+set_timer:
 	rtw_set_signal_stat_timer(recvpriv);
 	
 }

@@ -3,6 +3,7 @@
 
 #include <linux/types.h>
 #include <linux/videodev2.h>
+#include <linux/usb.h>
 
 /*
  * Dynamic controls
@@ -516,6 +517,10 @@ struct uvc_device {
 	__u8 *status;
 	struct input_dev *input;
 	char input_phys[64];
+	
+	__u16 skip_num;
+	__u16 skip_index;
+	
 };
 
 enum uvc_handle_state {
@@ -532,6 +537,14 @@ struct uvc_fh {
 struct uvc_driver {
 	struct usb_driver driver;
 };
+
+struct uvc_frame_skip {
+	__u16		idVendor;
+	__u16		idProduct;
+	__u16		skip_num;
+};
+
+extern int get_skip_num(__u16 idVendor, __u16 idProduct);
 
 /* ------------------------------------------------------------------------
  * Debugging, printing and logging

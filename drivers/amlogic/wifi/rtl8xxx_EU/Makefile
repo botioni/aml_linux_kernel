@@ -46,6 +46,7 @@ CONFIG_WOWLAN = n
 
 CONFIG_PLATFORM_I386_PC = n
 CONFIG_PLATFORM_ANDROID_X86 = n
+CONFIG_PLATFORM_JB_X86 = n
 CONFIG_PLATFORM_ARM_S3C2K4 = n
 CONFIG_PLATFORM_ARM_PXA2XX = n
 CONFIG_PLATFORM_ARM_S3C6K4 = n
@@ -62,6 +63,7 @@ CONFIG_PLATFORM_TEGRA3_CARDHU = n
 CONFIG_PLATFORM_TEGRA4_DALMORE = n
 CONFIG_PLATFORM_ARM_TCC8900 = n
 CONFIG_PLATFORM_ARM_TCC8920 = n
+CONFIG_PLATFORM_ARM_TCC8920_JB42 = n
 CONFIG_PLATFORM_ARM_RK2818 = n
 CONFIG_PLATFORM_ARM_URBETTER = n
 CONFIG_PLATFORM_ARM_TI_PANDA = n
@@ -71,8 +73,10 @@ CONFIG_PLATFORM_TI_DM365 = n
 CONFIG_PLATFORM_MSTAR_TITANIA12 = n
 CONFIG_PLATFORM_SZEBOOK = n
 CONFIG_PLATFORM_ARM_SUNxI = n
+CONFIG_PLATFORM_ARM_SUN6I = n
 CONFIG_PLATFORM_ACTIONS_ATM702X = n
 CONFIG_PLATFORM_MN10300 = n
+CONFIG_PLATFORM_ACTIONS_ATV5201 = n
 CONFIG_PLATFORM_AML = y
 
 CONFIG_DRVEXT_MODULE = n
@@ -415,6 +419,18 @@ KSRC := /media/DATA-2/android-x86/ics-x86_20120130/out/target/product/generic_x8
 MODULE_NAME :=wlan
 endif
 
+ifeq ($(CONFIG_PLATFORM_JB_X86), y)
+EXTRA_CFLAGS += -DCONFIG_LITTLE_ENDIAN
+EXTRA_CFLAGS += -DCONFIG_CONCURRENT_MODE
+EXTRA_CFLAGS += -DCONFIG_IOCTL_CFG80211 -DRTW_USE_CFG80211_STA_EVENT
+EXTRA_CFLAGS += -DCONFIG_P2P_IPS
+SUBARCH := $(shell uname -m | sed -e s/i.86/i386/)
+ARCH := $(SUBARCH)
+CROSS_COMPILE := /home/android_sdk/android-x86_JB/prebuilts/gcc/linux-x86/x86/i686-linux-android-4.7/bin/i686-linux-android-
+KSRC := /home/android_sdk/android-x86_JB/out/target/product/x86/obj/kernel/
+MODULE_NAME :=wlan
+endif
+
 ifeq ($(CONFIG_PLATFORM_ARM_PXA2XX), y)
 EXTRA_CFLAGS += -DCONFIG_LITTLE_ENDIAN
 ARCH := arm
@@ -528,6 +544,11 @@ endif
 
 ifeq ($(CONFIG_PLATFORM_TEGRA3_CARDHU), y)
 EXTRA_CFLAGS += -DCONFIG_LITTLE_ENDIAN
+# default setting for Android 4.1, 4.2
+EXTRA_CFLAGS += -DRTW_ENABLE_WIFI_CONTROL_FUNC
+EXTRA_CFLAGS += -DCONFIG_CONCURRENT_MODE
+EXTRA_CFLAGS += -DCONFIG_IOCTL_CFG80211 -DRTW_USE_CFG80211_STA_EVENT
+EXTRA_CFLAGS += -DCONFIG_P2P_IPS
 ARCH := arm
 CROSS_COMPILE := /home/android_sdk/nvidia/tegra-16r3-partner-android-4.1_20120723/prebuilt/linux-x86/toolchain/arm-eabi-4.4.3/bin/arm-eabi-
 KSRC := /home/android_sdk/nvidia/tegra-16r3-partner-android-4.1_20120723/out/target/product/cardhu/obj/KERNEL
@@ -536,6 +557,11 @@ endif
 
 ifeq ($(CONFIG_PLATFORM_TEGRA4_DALMORE), y)
 EXTRA_CFLAGS += -DCONFIG_LITTLE_ENDIAN
+# default setting for Android 4.1, 4.2
+EXTRA_CFLAGS += -DRTW_ENABLE_WIFI_CONTROL_FUNC
+EXTRA_CFLAGS += -DCONFIG_CONCURRENT_MODE
+EXTRA_CFLAGS += -DCONFIG_IOCTL_CFG80211 -DRTW_USE_CFG80211_STA_EVENT
+EXTRA_CFLAGS += -DCONFIG_P2P_IPS
 ARCH := arm
 CROSS_COMPILE := /home/android_sdk/nvidia/tegra-17r9-partner-android-4.2-dalmore_20130131/prebuilts/gcc/linux-x86/arm/arm-eabi-4.6/bin/arm-eabi-
 KSRC := /home/android_sdk/nvidia/tegra-17r9-partner-android-4.2-dalmore_20130131/out/target/product/dalmore/obj/KERNEL
@@ -555,6 +581,18 @@ EXTRA_CFLAGS += -DCONFIG_LITTLE_ENDIAN
 ARCH := arm
 CROSS_COMPILE := /home/android_sdk/Telechips/v12.06_r1-tcc-android-4.0.4/prebuilt/linux-x86/toolchain/arm-eabi-4.4.3/bin/arm-eabi-
 KSRC := /home/android_sdk/Telechips/v12.06_r1-tcc-android-4.0.4/kernel
+MODULE_NAME := wlan
+endif
+
+ifeq ($(CONFIG_PLATFORM_ARM_TCC8920_JB42), y)
+EXTRA_CFLAGS += -DCONFIG_LITTLE_ENDIAN
+# default setting for Android 4.1, 4.2
+EXTRA_CFLAGS += -DCONFIG_CONCURRENT_MODE
+EXTRA_CFLAGS += -DCONFIG_IOCTL_CFG80211 -DRTW_USE_CFG80211_STA_EVENT
+EXTRA_CFLAGS += -DCONFIG_P2P_IPS
+ARCH := arm
+CROSS_COMPILE := /home/android_sdk/Telechips/v13.03_r1-tcc-android-4.2.2_ds_patched/prebuilts/gcc/linux-x86/arm/arm-eabi-4.6/bin/arm-eabi-
+KSRC := /home/android_sdk/Telechips/v13.03_r1-tcc-android-4.2.2_ds_patched/kernel
 MODULE_NAME := wlan
 endif
 
@@ -618,8 +656,26 @@ KVER  := 3.0.8
 #KSRC:= ../lichee/linux-3.0/
 endif
 
-ifneq ($(USER_MODULE_NAME),)
-MODULE_NAME := $(USER_MODULE_NAME)
+ifeq ($(CONFIG_PLATFORM_ARM_SUN6I), y)
+EXTRA_CFLAGS += -DCONFIG_LITTLE_ENDIAN
+EXTRA_CFLAGS += -DCONFIG_PLATFORM_ARM_SUN6I
+EXTRA_CFLAGS += -DCONFIG_USE_USB_BUFFER_ALLOC_TX
+# default setting for Android 4.1, 4.2
+EXTRA_CFLAGS += -DCONFIG_CONCURRENT_MODE
+EXTRA_CFLAGS += -DCONFIG_IOCTL_CFG80211 -DRTW_USE_CFG80211_STA_EVENT
+EXTRA_CFLAGS += -DCONFIG_P2P_IPS
+ARCH := arm
+CROSS_COMPILE := arm-none-linux-gnueabi-
+KVER  := 3.3.0
+#KSRC:= ../lichee/linux-3.3/
+endif
+
+ifeq ($(CONFIG_PLATFORM_ACTIONS_ATV5201), y)
+EXTRA_CFLAGS += -DCONFIG_LITTLE_ENDIAN -DCONFIG_PLATFORM_ACTIONS_ATV5201
+ARCH := mips
+CROSS_COMPILE := mipsel-linux-gnu-
+KVER  := $(KERNEL_VER)
+KSRC:= $(CFGDIR)/../../kernel/linux-$(KERNEL_VER)
 endif
 
 ifeq ($(CONFIG_PLATFORM_AML), y)
@@ -627,6 +683,10 @@ EXTRA_CFLAGS += -DCONFIG_LITTLE_ENDIAN
 ARCH := arm
 CROSS_COMPILE := arm-none-linux-gnueabi-
 KSRC := 
+endif
+
+ifneq ($(USER_MODULE_NAME),)
+MODULE_NAME := $(USER_MODULE_NAME)
 endif
 
 ifneq ($(KERNELRELEASE),)
