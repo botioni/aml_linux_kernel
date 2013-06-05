@@ -555,7 +555,7 @@ void audio_set_clk(unsigned freq, unsigned fs_config)
 
 //#ifdef CONFIG_SND_AML_M3
 #ifdef CONFIG_ARCH_MESON3
-    WRITE_MPEG_REG(HHI_AUD_PLL_CNTL2, 0x065e31ff);
+    WRITE_MPEG_REG(HHI_AUD_PLL_CNTL2, 0x065d31ff);
     WRITE_MPEG_REG(HHI_AUD_PLL_CNTL3, 0x9649a941);
 		// select Audio PLL as MCLK source
 		//WRITE_MPEG_REG( HHI_AUD_CLK_CNTL, READ_MPEG_REG(HHI_AUD_CLK_CNTL) & ~(1 << 9));
