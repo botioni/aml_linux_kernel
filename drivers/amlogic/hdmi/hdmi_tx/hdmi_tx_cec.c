@@ -675,7 +675,6 @@ void cec_usr_cmd_post_process(void)
 void cec_node_init(hdmitx_dev_t* hdmitx_device)
 {
 	int i, bool = 0;
-	unsigned timeout = 2;
 	//unsigned long cec_init_flags;
 	cec_tx_flag = 1;
 	cec_rx_flag = 1;
@@ -690,8 +689,9 @@ void cec_node_init(hdmitx_dev_t* hdmitx_device)
         return ;
     hdmitx_cec_dbg_print("CEC node init\n");
     // If VSDB is not valid, wait
-    while((hdmitx_device->hdmi_info.vsdb_phy_addr.valid == 0) && (timeout--)) {
-        msleep(100);
+    if(hdmitx_device->hdmi_info.vsdb_phy_addr.valid == 0) {
+        printk("hdmitx: cec: no valid cec physical address\n");
+        return ;
     }
 #if 0
     //Init GPIOx_27 IN for HDMI CEC arbitration
