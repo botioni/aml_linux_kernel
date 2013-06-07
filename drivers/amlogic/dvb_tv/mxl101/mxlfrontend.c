@@ -79,8 +79,17 @@ static int mxl101_read_signal_strength(struct dvb_frontend *fe, u16 *strength)
 {
 	struct aml_fe *afe = fe->demodulator_priv;
 	struct aml_fe_dev *dev = afe->dtv_demod;
-
-	*strength=MxL101SF_GetSigStrength(dev);
+	int para;
+	para=MxL101SF_GetSigStrength(dev);
+	para=para+90;
+	if(para<=0){
+		*strength=0;
+	}else if(para>=100){
+		*strength=100;
+	}else{
+		*strength=para;
+	}
+	pr_dbg("[debug_mxl]strength is %d\n",*strength);	
 	return 0;
 }
 
@@ -88,8 +97,17 @@ static int mxl101_read_snr(struct dvb_frontend *fe, u16 * snr)
 {
 	struct aml_fe *afe = fe->demodulator_priv;
 	struct aml_fe_dev *dev = afe->dtv_demod;
-
-	*snr=MxL101SF_GetSNR(dev) ;		
+	int para;
+	para=MxL101SF_GetSNR(dev) ;
+	para=para*100/40;
+	if(para<=0){
+		*snr=0;
+	}else if(para>=100){
+		*snr=100;
+	}else{
+		*snr=para;
+	}
+	pr_dbg("[debug_mxl]snr is %d\n",*snr);	
 	return 0;
 }
 

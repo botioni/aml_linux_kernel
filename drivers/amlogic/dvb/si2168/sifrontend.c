@@ -215,6 +215,11 @@ static int SI2168_Set_Frontend(struct dvb_frontend *fe, struct dvb_frontend_para
 		bandwidth=6;
 	else
 		bandwidth=8;	
+	if((50000>p->frequency)||(p->frequency>900000))
+	{
+			p->frequency =474000;
+			pr_dbg("freq is out of range,force to set 474000khz\n");
+	}
 //	MDrv_Tuner_SetTuner(freq,8);
 	printk("tuner set ok\n");
 	standard=SILABS_DVB_T2;
