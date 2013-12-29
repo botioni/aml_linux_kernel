@@ -135,14 +135,6 @@ config RTL8188EU
 	  This module adds support for wireless USB dongle based on
 	  Realtek 8188EU chipset.
 	  
-config ATH6KL_USB_WIFI	
-	tristate "Atheros ath6kl Wireless USB Dongle support"	
-	default n	
-	depends on USB&&CFG80211&&(CFG80211 = "m")
-	---help---	  
-	  This module adds support for wireless USB dongle based on	  
-	  Atheros ath6kl chipset.
-	  
 config SDIO_ATHEROS_6302_WIFI
 	tristate "ATHEROS 6302 wireless cards support"
 	depends on SD_MMC
