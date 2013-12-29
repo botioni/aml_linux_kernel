@@ -840,6 +840,13 @@ config ARCH_OMAP
 
 endchoice
 
+config XBMC_BUILD
+	bool "XBMC build"
+	default n
+	depends on ARCH_MESON || ARCH_MESON3
+	help
+	  Select this option if you will be building kernel for Linux XBMC
+
 #
 # This is sorted alphabetically by mach-* pathname.  However, plat-*
 # Kconfigs may be included either alphabetically (according to the
