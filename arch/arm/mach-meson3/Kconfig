@@ -90,7 +90,13 @@ config MACH_MESON3_REFF16
 	bool "Support M3 MBX platform"
 	help
 	  Include support for the Ref M3 board platform.
-	  
+
+config MACH_MESON3_REFF16_ATV102
+	select GENERIC_ALLOCATOR
+	bool "Visson ATV-102"
+	help
+	  Support for Visson ATV-102 board.
+
 config MACH_MESON3_REFF16_1
 	select GENERIC_ALLOCATOR
 	bool "Support M3(lenovo) MBX platform"
