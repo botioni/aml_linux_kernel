@@ -74,10 +74,6 @@ void mali_gpu_utilization_handler(u32 utilization);
  */
 void set_mali_parent_power_domain(void* dev);
 
-#ifdef CONFIG_ARCH_MESON6
-int mali_meson_is_revb(void);
-#endif
-
 #ifdef __cplusplus
 }
 #endif
