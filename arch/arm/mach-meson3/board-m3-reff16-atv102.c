@@ -601,18 +601,9 @@ static void nand_set_parts(uint64_t size, struct platform_nand_chip *chip)
 {
     printk("set nand parts for chip %lldMB\n", (size/(1024*1024)));
 
-    if (size/(1024*1024) == 512) {
-        chip->partitions = multi_partition_info_512M;
-        chip->nr_partitions = ARRAY_SIZE(multi_partition_info_512M);
-        }
-    else if (size/(1024*1024) >= 1024) {
-        chip->partitions = multi_partition_info_1G_or_More;
-        chip->nr_partitions = ARRAY_SIZE(multi_partition_info_1G_or_More);
-        }
-    else {
-        chip->partitions = multi_partition_info_512M;
-        chip->nr_partitions = ARRAY_SIZE(multi_partition_info_512M);
-        }
+	chip->partitions = multi_partition_info_1G_or_More;
+	chip->nr_partitions = ARRAY_SIZE(multi_partition_info_1G_or_More);
+
     return;
 }
 
@@ -639,8 +630,8 @@ static struct aml_nand_platform aml_nand_mid_platform[] = {
 		.platform_nand_data = {
 			.chip =  {
 				.nr_chips = 4,
-				.nr_partitions = ARRAY_SIZE(multi_partition_info_512M),
-				.partitions = multi_partition_info_512M,
+				.nr_partitions = ARRAY_SIZE(multi_partition_info_1G_or_More),
+				.partitions = multi_partition_info_1G_or_More,
 				.set_parts = nand_set_parts,
 				.options = (NAND_TIMING_MODE5 | NAND_ECC_BCH60_1K_MODE | NAND_TWO_PLANE_MODE),
 			},
