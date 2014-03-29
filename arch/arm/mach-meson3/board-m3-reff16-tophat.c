@@ -3194,7 +3194,7 @@ MACHINE_START(MESON3_8726M_SKT, "Amlogic based TopHat TV")
     .video_end      = RESERVED_MEM_END,
 MACHINE_END
 #else
-MACHINE_START(MESON3_8726M_SKT, "Amlogic based TopHat TV")
+MACHINE_START(MESON3_8726M_SKT, "TopHat TV")
     .phys_io        = MESON_PERIPHS1_PHYS_BASE,
     .io_pg_offst    = (MESON_PERIPHS1_PHYS_BASE >> 18) & 0xfffc,
     .boot_params    = BOOT_PARAMS_OFFSET,
