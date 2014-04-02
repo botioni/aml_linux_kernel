@@ -71,7 +71,11 @@
 	#define SUPPORT_HW_RFOFF_DETECTED	1
 	
 	#define CONFIG_LPS	1
+#ifndef CONFIG_XBMC_BUILD
 	#define CONFIG_BT_COEXIST	1
+#else
+	#define CONFIG_BT_COEXIST	0
+#endif
 	//befor link
 	#define CONFIG_ANTENNA_DIVERSITY	 	
 	//after link

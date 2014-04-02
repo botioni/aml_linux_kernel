@@ -110,8 +110,9 @@
 	#define CONFIG_HW_ANTENNA_DIVERSITY		
 	#endif
 
-
-	#define CONFIG_CONCURRENT_MODE 
+#ifndef CONFIG_XBMC_BUILD
+	#define CONFIG_CONCURRENT_MODE
+#endif
 	#ifdef CONFIG_CONCURRENT_MODE
 		//#define CONFIG_HWPORT_SWAP				//Port0->Sec , Port1 -> Pri
 		#define CONFIG_TSF_RESET_OFFLOAD 			// For 2 PORT TSF SYNC.
@@ -144,7 +145,9 @@
 #define CONFIG_P2P	
 #ifdef CONFIG_P2P
 	//The CONFIG_WFD is for supporting the Wi-Fi display
-	#define CONFIG_WFD	
+#ifndef CONFIG_XBMC_BUILD
+	#define CONFIG_WFD
+#endif
 	
 	#ifndef CONFIG_WIFI_TEST
 		#define CONFIG_P2P_REMOVE_GROUP_INFO
