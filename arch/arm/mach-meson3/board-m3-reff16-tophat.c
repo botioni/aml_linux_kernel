@@ -3188,6 +3188,7 @@ static __init void m1_fixup(struct machine_desc *mach, struct tag *tag, char **c
     m->nr_banks++;
 }
 
+#ifndef CONFIG_MACH_MESON3_REFF16_TOPHAT_UNKNOWN_NAME
 #ifndef CONFIG_XBMC_BUILD
 MACHINE_START(MESON3_8726M_SKT, "Amlogic based TopHat TV")
     .phys_io        = MESON_PERIPHS1_PHYS_BASE,
@@ -3203,6 +3204,20 @@ MACHINE_START(MESON3_8726M_SKT, "Amlogic based TopHat TV")
 MACHINE_END
 #else
 MACHINE_START(MESON3_8726M_SKT, "TopHat TV")
+    .phys_io        = MESON_PERIPHS1_PHYS_BASE,
+    .io_pg_offst    = (MESON_PERIPHS1_PHYS_BASE >> 18) & 0xfffc,
+    .boot_params    = BOOT_PARAMS_OFFSET,
+    .map_io         = m1_map_io,
+    .init_irq       = m1_irq_init,
+    .timer          = &meson_sys_timer,
+    .init_machine   = m1_init_machine,
+    .fixup          = m1_fixup,
+    .video_start    = RESERVED_MEM_START,
+    .video_end      = RESERVED_MEM_END,
+MACHINE_END
+#endif
+#else
+MACHINE_START(MESON3_8726M_SKT, "Linux XBMC")
     .phys_io        = MESON_PERIPHS1_PHYS_BASE,
     .io_pg_offst    = (MESON_PERIPHS1_PHYS_BASE >> 18) & 0xfffc,
     .boot_params    = BOOT_PARAMS_OFFSET,

@@ -110,6 +110,13 @@ config MACH_MESON3_REFF16_TOPHAT_LINUX
 	help
 	  Linux partition layout (no internal SDCARD)
 
+config MACH_MESON3_REFF16_TOPHAT_UNKNOWN_NAME
+	bool "Unknown board name"
+	depends on MACH_MESON3_REFF16_TOPHAT
+	default n
+	help
+	  Use unknown board name instead of TopHat TV
+
 config MACH_MESON3_REFF16_1
 	select GENERIC_ALLOCATOR
 	bool "Support M3(lenovo) MBX platform"
