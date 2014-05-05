@@ -590,6 +590,7 @@ static struct mtd_partition multi_partition_info_1G_or_More[] =
         .offset = 576*1024*1024,
         .size = 192*1024*1024,
     },
+#ifndef CONFIG_MACH_MESON3_REFF16_TOPHAT_LINUX
 #ifdef CONFIG_AML_NFTL
    {
         .name = "userdata",
@@ -601,6 +602,13 @@ static struct mtd_partition multi_partition_info_1G_or_More[] =
 	.offset = MTDPART_OFS_APPEND,
 	.size = MTDPART_SIZ_FULL,
     },
+#else
+    {
+        .name = "userdata",
+        .offset = MTDPART_OFS_APPEND,
+        .size = MTDPART_SIZ_FULL,
+    },
+#endif
 #else
     {
         .name = "userdata",

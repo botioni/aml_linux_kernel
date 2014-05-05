@@ -103,6 +103,13 @@ config MACH_MESON3_REFF16_TOPHAT
 	help
 	  Support for TopHat TV M3 boards.
 
+config MACH_MESON3_REFF16_TOPHAT_LINUX
+	bool "Linux partition layout"
+	depends on MACH_MESON3_REFF16_TOPHAT
+	default n
+	help
+	  Linux partition layout (no internal SDCARD)
+
 config MACH_MESON3_REFF16_1
 	select GENERIC_ALLOCATOR
 	bool "Support M3(lenovo) MBX platform"
