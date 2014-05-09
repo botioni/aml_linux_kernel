@@ -577,6 +577,7 @@ static struct mtd_partition multi_partition_info_1G_or_More[] =
         .offset = 576*1024*1024,
         .size = 192*1024*1024,
     },
+#ifndef CONFIG_XBMC_BUILD
 #ifdef CONFIG_AML_NFTL
    {
         .name = "userdata",
@@ -588,6 +589,13 @@ static struct mtd_partition multi_partition_info_1G_or_More[] =
 	.offset = MTDPART_OFS_APPEND,
 	.size = MTDPART_SIZ_FULL,
     },
+#else
+    {
+        .name = "userdata",
+        .offset = MTDPART_OFS_APPEND,
+        .size = MTDPART_SIZ_FULL,
+    },
+#endif
 #else
     {
         .name = "userdata",
@@ -3145,7 +3153,7 @@ MACHINE_START(MESON3_8726M_SKT, "Amlogic based Visson ATV-102")
     .video_end      = RESERVED_MEM_END,
 MACHINE_END
 #else
-MACHINE_START(MESON3_8726M_SKT, "Visson ATV-102")
+MACHINE_START(MESON3_8726M_SKT, "MESON3 based Visson ATV-102")
     .phys_io        = MESON_PERIPHS1_PHYS_BASE,
     .io_pg_offst    = (MESON_PERIPHS1_PHYS_BASE >> 18) & 0xfffc,
     .boot_params    = BOOT_PARAMS_OFFSET,
