@@ -1379,13 +1379,6 @@ static int get_charge_status(void)
     return 0;
 }
 
-static void power_off(void)
-{
-    //Power hold down
-    //set_gpio_val(GPIOAO_bank_bit0_11(6), GPIOAO_bit_bit0_11(6), 0);
-    //set_gpio_mode(GPIOAO_bank_bit0_11(6), GPIOAO_bit_bit0_11(6), GPIO_OUTPUT_MODE);
-}
-
 static void set_bat_off(void)
 {
     //BL_PWM power off
@@ -1544,6 +1537,13 @@ static struct platform_device power_dev = {
     },
 };
 #endif
+
+static void power_off(void)
+{
+    //Power hold down
+    //set_gpio_val(GPIOAO_bank_bit0_11(6), GPIOAO_bit_bit0_11(6), 0);
+    //set_gpio_mode(GPIOAO_bank_bit0_11(6), GPIOAO_bit_bit0_11(6), GPIO_OUTPUT_MODE);
+}
 
 #if defined(CONFIG_AM_UART_WITH_S_CORE)
 static struct aml_uart_platform aml_uart_plat = {
@@ -2994,17 +2994,41 @@ static void disable_unused_model(void)
 static void __init power_hold(void)
 {
     printk(KERN_INFO "power hold set high!\n");
+  //  set_gpio_val(GPIOAO_bank_bit0_11(6), GPIOAO_bit_bit0_11(6), 1);
+  //  set_gpio_mode(GPIOAO_bank_bit0_11(6), GPIOAO_bit_bit0_11(6), GPIO_OUTPUT_MODE);
+
+        // VCC5V
+       // set_gpio_mode(GPIOD_bank_bit0_9(9), GPIOD_bit_bit0_9(9), GPIO_OUTPUT_MODE);
+       // set_gpio_val(GPIOD_bank_bit0_9(9), GPIOD_bit_bit0_9(9), 1);
+		 // hdmi power on
+    //    set_gpio_mode(GPIOD_bank_bit0_9(6), GPIOD_bit_bit0_9(6), GPIO_OUTPUT_MODE);
+    //    set_gpio_val(GPIOD_bank_bit0_9(6), GPIOD_bit_bit0_9(6), 1);
 
 		// MUTE
        set_gpio_mode(GPIOX_bank_bit0_31(29), GPIOX_bit_bit0_31(29), GPIO_OUTPUT_MODE);
        set_gpio_val(GPIOX_bank_bit0_31(29), GPIOX_bit_bit0_31(29), 0);
 
+      // PC Link
+//       set_gpio_mode(GPIOC_bank_bit0_15(4), GPIOC_bit_bit0_15(4), GPIO_OUTPUT_MODE);
+//       set_gpio_val(GPIOC_bank_bit0_15(4), GPIOC_bit_bit0_15(4), 1);
+			 
+		// VCC, set to high when suspend 
+    //    set_gpio_mode(GPIOAO_bank_bit0_11(4), GPIOAO_bit_bit0_11(4), GPIO_OUTPUT_MODE);
+      //  set_gpio_val(GPIOAO_bank_bit0_11(4), GPIOAO_bit_bit0_11(4), 0);
+     //   set_gpio_mode(GPIOAO_bank_bit0_11(5), GPIOAO_bit_bit0_11(5), GPIO_OUTPUT_MODE);
+     //   set_gpio_val(GPIOAO_bank_bit0_11(5), GPIOAO_bit_bit0_11(5), 0);
+
+     // VCCK
+   //     set_gpio_mode(GPIOAO_bank_bit0_11(6), GPIOAO_bit_bit0_11(6), GPIO_OUTPUT_MODE);
+    //    set_gpio_val(GPIOAO_bank_bit0_11(6), GPIOAO_bit_bit0_11(6), 1);
+	 // VCCIO
+        //set_gpio_mode(GPIOAO_bank_bit0_11(2), GPIOAO_bit_bit0_11(2), GPIO_OUTPUT_MODE);
+        //set_gpio_val(GPIOAO_bank_bit0_11(2), GPIOAO_bit_bit0_11(2), 1);
+
     //init sata
-#if defined(CONFIG_ATA)
-    set_gpio_mode(GPIOC_bank_bit0_15(7), GPIOC_bit_bit0_15(7), GPIO_OUTPUT_MODE);
-    set_gpio_val(GPIOC_bank_bit0_15(7), GPIOC_bit_bit0_15(7), 1);
-#endif
-	
+//    set_gpio_mode(GPIOC_bank_bit0_15(7), GPIOC_bit_bit0_15(7), GPIO_OUTPUT_MODE);
+//    set_gpio_val(GPIOC_bank_bit0_15(7), GPIOC_bit_bit0_15(7), 1);
+		
     //VCCx2 power up
     printk(KERN_INFO "set_vccx2 power up\n");
 //    set_gpio_mode(GPIOA_bank_bit0_27(26), GPIOA_bit_bit0_27(26), GPIO_OUTPUT_MODE);
@@ -3013,31 +3037,14 @@ static void __init power_hold(void)
 
 static void __init LED_PWM_REG0_init(void)
 {
-#if 1 	// PWM_C
     printk(KERN_INFO "LED_PWM_REG0_init.\n");
 	 SET_CBUS_REG_MASK(PERIPHS_PIN_MUX_2,(1<<2));
     WRITE_CBUS_REG(PWM_PWM_C, (0xff00<<16) |(0xff00<<0));
     WRITE_CBUS_REG(PWM_MISC_REG_CD, (1<<0)	// enable
-																			|(0<<4)	// PWM_A_CLK_SEL: 0:XTAL;  1:ddr_pll_clk;  2:clk81;  3:sys_pll_clk;
-																			|(0x7f<<8)	// PWM_A_CLK_DIV
-																			|(1<<15)	// PWM_A_CLK_EN
-																			);
-#else
-        // Enable VBG_EN
-    WRITE_CBUS_REG_BITS(PREG_AM_ANALOG_ADDR, 1, 0, 1);
-    // wire pm_gpioA_7_led_pwm = pin_mux_reg0[22];
-    WRITE_CBUS_REG(LED_PWM_REG0,(0 << 31)   |       // disable the overall circuit
-                                (0 << 30)   |       // 1:Closed Loop  0:Open Loop
-                                (0 << 16)   |       // PWM total count
-                                (0 << 13)   |       // Enable
-                                (1 << 12)   |       // enable
-                                (0 << 10)   |       // test
-                                (7 << 7)    |       // CS0 REF, Voltage FeedBack: about 0.505V
-                                (7 << 4)    |       // CS1 REF, Current FeedBack: about 0.505V
-                                READ_CBUS_REG(LED_PWM_REG0)&0x0f);           // DIMCTL Analog dimmer
-                                
-    WRITE_CBUS_REG_BITS(LED_PWM_REG0,1,0,4); //adust cpu1.2v   to 1.26V     
-#endif
+									|(0<<4)	// PWM_A_CLK_SEL: 0:XTAL;  1:ddr_pll_clk;  2:clk81;  3:sys_pll_clk;
+									|(0x7f<<8)	// PWM_A_CLK_DIV
+									|(1<<15)	// PWM_A_CLK_EN
+									);
 }
 
 static __init void m1_init_machine(void)
@@ -3049,7 +3056,7 @@ static __init void m1_init_machine(void)
 #endif /*CONFIG_AML_SUSPEND*/
     
     power_hold();
-//    pm_power_off = power_off;		//Elvis fool
+    //pm_power_off = power_off;		//Elvis fool
     device_clk_setting();
     device_pinmux_init();
     LED_PWM_REG0_init();
