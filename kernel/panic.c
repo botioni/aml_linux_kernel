@@ -33,7 +33,9 @@ static DEFINE_SPINLOCK(pause_on_oops_lock);
 #ifndef CONFIG_PANIC_TIMEOUT
 #define CONFIG_PANIC_TIMEOUT 0
 #endif
+#ifdef CONFIG_SUSPEND_WATCHDOG
 extern void enable_watchdog(void);
+#endif
 int panic_timeout = 10;//CONFIG_PANIC_TIMEOUT;
 
 ATOMIC_NOTIFIER_HEAD(panic_notifier_list);
@@ -126,9 +128,9 @@ NORET_TYPE void panic(const char * fmt, ...)
 		 * We can't use the "normal" timers since we just panicked.
 		 */
 		printk(KERN_EMERG "Rebooting in %d seconds..", panic_timeout);
-		
+#ifdef CONFIG_SUSPEND_WATCHDOG
 		enable_watchdog();
-
+#endif
 		for (i = 0; i < panic_timeout; i++) {
 			touch_nmi_watchdog();
 			panic_blink_one_second();
