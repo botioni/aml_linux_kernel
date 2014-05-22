@@ -224,12 +224,14 @@ static void m3_nand_resume(struct mtd_info *mtd)
 			printk("onfi timing mode set failed: %x\n", onfi_features[0]);		
 		}
 	}
-	chip->select_chip(mtd, -1);
+	if (chip->state == FL_PM_SUSPENDED)
+		nand_release_device(mtd);
+//	chip->select_chip(mtd, -1);
 
-	spin_lock(&chip->controller->lock);
-	chip->controller->active = NULL;
-	chip->state = FL_READY;
-	spin_unlock(&chip->controller->lock);
+//	spin_lock(&chip->controller->lock);
+//	chip->controller->active = NULL;
+//	chip->state = FL_READY;
+//	spin_unlock(&chip->controller->lock);
 
 	printk("m3 nand resume entered\n");
 	return;
@@ -898,14 +900,7 @@ static int m3_nand_reboot_notifier(struct notifier_block *nb, unsigned long prio
 		aml_chip = plat->aml_chip;
 		if (aml_chip) {
 			mtd = &aml_chip->mtd;
-#ifdef NEW_NAND_SUPPORT			
-			if (mtd) {
-				if((aml_chip->new_nand_info.type) && (aml_chip->new_nand_info.type < 10)){
-					aml_chip->new_nand_info.slc_program_info.exit_enslc_mode(mtd);
-					aml_chip->new_nand_info.read_rety_info.set_default_value(mtd);
-				}  
-			}
-#endif			
+
 		}
 	}
 
@@ -961,12 +956,6 @@ static int m3_nand_remove(struct platform_device *pdev)
 		if (aml_chip) {
 			mtd = &aml_chip->mtd;
 			if (mtd) {
-#ifdef NEW_NAND_SUPPORT				    
-				if((aml_chip->new_nand_info.type) && (aml_chip->new_nand_info.type < 10) && (i == 1)){
-					aml_chip->new_nand_info.slc_program_info.exit_enslc_mode(mtd);
-					aml_chip->new_nand_info.read_rety_info.set_default_value(mtd);
-				}  
-#endif
 				nand_release(mtd);
 				kfree(mtd);
 			}
@@ -992,14 +981,7 @@ static void m3_nand_shutdown(struct platform_device *pdev)
 		aml_chip = plat->aml_chip;
 		if (aml_chip) {
 			mtd = &aml_chip->mtd;
-#ifdef NEW_NAND_SUPPORT			
-			if (mtd) {
-				if((aml_chip->new_nand_info.type) && (aml_chip->new_nand_info.type < 10)){
-					aml_chip->new_nand_info.slc_program_info.exit_enslc_mode(mtd);
-					aml_chip->new_nand_info.read_rety_info.set_default_value(mtd);
-				}  
-			}
-#endif
+
 			if(mtd){
 				chip = mtd->priv;
 				if(chip){				
