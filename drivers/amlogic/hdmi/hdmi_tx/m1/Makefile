@@ -2,6 +2,4 @@
 # Makefile for eFuse.         
 #                             
                               
-obj-$(CONFIG_EFUSE) += efuse_bch_8.o efuse_version.o efuse_aml.o efuse.o 
-                              
-obj-y += keys/
+obj-y += hdmi_tx_reg.o hdmi_tx_hw.o
