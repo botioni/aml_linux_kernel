@@ -97,6 +97,12 @@ config MACH_MESON3_REFF16_ATV102
 	help
 	  Support for Visson ATV-102 board.
 
+config MACH_MESON3_REFF16_ZOOMTAK
+	select GENERIC_ALLOCATOR
+	bool "Zoomtak M3"
+	help
+	  Support for Zoomtak M3 board.
+
 config MACH_MESON3_REFF16_TOPHAT
 	select GENERIC_ALLOCATOR
 	bool "TopHat TV V4 and V6"
