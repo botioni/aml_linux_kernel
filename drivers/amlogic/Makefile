@@ -66,7 +66,7 @@ obj-$(CONFIG_AM_GPIO) +=gpio/
 
 obj-y += tvin/
 
-obj-$(CONFIG_EFUSE)+=efuse/
+obj-$(CONFIG_EFUSE) += efuse/
 
 obj-$(CONFIG_BOOT_MONITOR) += boot_monitor/
 #####Sound system is later init in kernel default..######################

@@ -673,7 +673,7 @@ static void dpm_resume(pm_message_t state)
 			int error;
 
 			mutex_unlock(&dpm_list_mtx);
-#if 1		
+#if defined(CONFIG_AML_SUSPEND)
 			extern void reset_watchdog(void);
 			reset_watchdog();
 #endif

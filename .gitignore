@@ -84,6 +84,9 @@ GRTAGS
 GSYMS
 GTAGS
 
+# Mali build info
+drivers/amlogic/mali/__malidrv_build_info.c
+
 *.orig
 *~
 \#*#

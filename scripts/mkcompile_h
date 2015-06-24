@@ -64,8 +64,21 @@ UTS_TRUNCATE="cut -b -$UTS_LEN"
   echo \#define UTS_VERSION \"`echo $UTS_VERSION | $UTS_TRUNCATE`\"
 
   echo \#define LINUX_COMPILE_TIME \"`date +%T`\"
-  echo \#define LINUX_COMPILE_BY \"`whoami`\"
-  echo \#define LINUX_COMPILE_HOST \"`hostname | $UTS_TRUNCATE`\"
+
+if [ -n "$FAKE_BUILD_USER" ] ; then
+	LINUX_COMPILE_BY="$FAKE_BUILD_USER"
+else
+	LINUX_COMPILE_BY=$(whoami | sed 's/\\/\\\\/')
+fi
+
+if [ -n "$FAKE_BUILD_HOST" ] ; then
+	LINUX_COMPILE_HOST="$FAKE_BUILD_HOST"
+else
+    LINUX_COMPILE_HOST=`hostname`
+fi
+
+  echo \#define LINUX_COMPILE_BY \"`echo $LINUX_COMPILE_BY`\"
+  echo \#define LINUX_COMPILE_HOST \"`echo $LINUX_COMPILE_HOST | $UTS_TRUNCATE`\"
 
   if [ -x /bin/dnsdomainname ]; then
     domain=`dnsdomainname 2> /dev/null`

@@ -5,8 +5,8 @@
 menu "Amlogic EFUSE Support"
 
 config EFUSE
-        tristate "EFUSE Driver"
-        default m
+        bool "EFUSE Driver"
+        default n
         help
          	EFUSE device driver.
 
